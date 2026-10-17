@@ -548,18 +548,21 @@ fn apply_newline_rule(mut tokens: Vec<Token>) -> Vec<Token> {
             next = k;
         }
     }
-    let mut prev = EOF;
+    let (mut prev, mut before_prev) = (EOF, EOF);
     for (i, tok) in tokens.iter_mut().enumerate() {
         match tok.kind {
             NEWLINE => {
-                if ends_statement(prev) && !continues_statement(next_significant[i]) {
-                    prev = NEWLINE;
+                // A keyword after `/` is a module name (`import std/test`, §2.1), so it ends a
+                // line like any name.
+                let name = ends_statement(prev) || (prev.is_keyword() && before_prev == SLASH);
+                if name && !continues_statement(next_significant[i]) {
+                    (before_prev, prev) = (prev, NEWLINE);
                 } else {
                     tok.kind = WHITESPACE;
                 }
             }
             k if k.is_trivia() => {}
-            k => prev = k,
+            k => (before_prev, prev) = (prev, k),
         }
     }
     let mut merged: Vec<Token> = Vec::with_capacity(tokens.len());
@@ -692,6 +695,10 @@ mod tests {
         );
         assert_eq!(kinds("a >\nb"), [IDENT, GT, NEWLINE, IDENT]);
         assert_eq!(kinds("a\n> b"), [IDENT, GT, IDENT]);
+        assert_eq!(
+            kinds("std/test\nx"),
+            [IDENT, SLASH, TEST_KW, NEWLINE, IDENT]
+        );
         assert_eq!(kinds("(a\nb)"), [L_PAREN, IDENT, IDENT, R_PAREN]);
         assert_eq!(kinds("{a\nb}"), [L_BRACE, IDENT, NEWLINE, IDENT, R_BRACE]);
         assert_eq!(
