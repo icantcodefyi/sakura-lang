@@ -24,6 +24,7 @@ pub(crate) fn module(cx: &Cx, module: &str) -> (String, String) {
         cx,
     };
     let ns = RefCell::new(BTreeSet::new());
+    let pool = Pool::default();
     for (i, t) in cx.m.types.iter().enumerate() {
         if t.module == module && t.builtin.is_none() {
             type_class(&mut w, TypeId(i as u32));
@@ -40,9 +41,9 @@ pub(crate) fn module(cx: &Cx, module: &str) -> (String, String) {
         if d.module == module {
             let id = DefId(i as u32);
             if cx.direct[i] {
-                FnEmit::new(cx, id, module, &module_defs, Mode::Direct, &ns).def(&mut w);
+                FnEmit::new(cx, id, module, &module_defs, Mode::Direct, &ns, &pool).def(&mut w);
             }
-            FnEmit::new(cx, id, module, &module_defs, Mode::Cps, &ns).def(&mut w);
+            FnEmit::new(cx, id, module, &module_defs, Mode::Cps, &ns, &pool).def(&mut w);
         }
     }
 
@@ -67,7 +68,11 @@ pub(crate) fn module(cx: &Cx, module: &str) -> (String, String) {
             rel(&module_path(other))
         );
     }
-    head.push_str("const { G: $G, LIMIT: $L, bounce: $b, ret: $ret } = $rt;\n\n");
+    head.push_str("const { G: $G, LIMIT: $L, bounce: $b, ret: $ret, S: $S } = $rt;\n");
+    for (i, lit) in pool.lits.borrow().iter().enumerate() {
+        let _ = writeln!(head, "const $c{i} = {lit};");
+    }
+    head.push('\n');
     let shift = head.matches('\n').count() as u32;
     let file = path.rsplit('/').next().unwrap_or(&path).to_owned();
     let maps = w
@@ -81,6 +86,26 @@ pub(crate) fn module(cx: &Cx, module: &str) -> (String, String) {
     let map = sourcemap::render(&file, &cx.sources, maps);
     let text = format!("{head}{}//# sourceMappingURL={file}.map\n", w.out);
     (text, map)
+}
+
+/// Module-level constants (schemas, source spans), deduplicated: `$c0`, `$c1`, ….
+#[derive(Default)]
+struct Pool {
+    lits: RefCell<Vec<String>>,
+    index: RefCell<HashMap<String, usize>>,
+}
+
+impl Pool {
+    fn get(&self, lit: String) -> String {
+        if let Some(&i) = self.index.borrow().get(&lit) {
+            return format!("$c{i}");
+        }
+        let mut lits = self.lits.borrow_mut();
+        lits.push(lit.clone());
+        let i = lits.len() - 1;
+        self.index.borrow_mut().insert(lit, i);
+        format!("$c{i}")
+    }
 }
 
 fn ns_name(module: &str) -> String {
@@ -139,7 +164,7 @@ fn type_class(w: &mut W, t: TypeId) {
             let cs: Vec<String> = ctors
                 .iter()
                 .map(|c| {
-                    let hs: Vec<String> = c.fields.iter().map(|f| hint(f, true)).collect();
+                    let hs: Vec<String> = c.fields.iter().map(|f| schema(cx.m, f)).collect();
                     format!("[{}, [{}]]", js_string(&c.name), hs.join(", "))
                 })
                 .collect();
@@ -177,7 +202,7 @@ fn type_class(w: &mut W, t: TypeId) {
                         "[{}, {}, {}]",
                         js_string(&f.name),
                         js_string(&prop(&f.name)),
-                        hint(&f.ty, true)
+                        schema(cx.m, &f.ty)
                     )
                 })
                 .collect();
@@ -204,35 +229,43 @@ fn prop(field: &str) -> String {
     }
 }
 
-/// A `Show` type hint (ABI.md §7) as a JS literal; `null` when the type contains no `Float`.
-fn hint(ty: &Ty, vars: bool) -> String {
-    hint_opt(ty, vars).unwrap_or_else(|| "null".into())
-}
-
-fn hint_opt(ty: &Ty, vars: bool) -> Option<String> {
-    let all = |ts: &[Ty]| -> Option<Vec<String>> {
-        let hs: Vec<Option<String>> = ts.iter().map(|t| hint_opt(t, vars)).collect();
-        if hs.iter().all(Option::is_none) {
-            None
-        } else {
-            Some(
-                hs.into_iter()
-                    .map(|h| h.unwrap_or_else(|| "null".into()))
-                    .collect(),
-            )
-        }
+/// A type's runtime schema (ABI.md §7) as a JS literal: `"U" "B" "I" "F" "S" "Y"`,
+/// `["T", s…]`, `["L", s]`, `["E", s]` (set), `["M", sk, sv]`, `["A", id, [s…]]` (a named type
+/// by qualified name), `["W", [id…]]` (error union), `["V", i]` (a type parameter of the
+/// enclosing type), `["X", name]` (opaque), `null` (functions, unknown).
+pub(crate) fn schema(m: &Module, ty: &Ty) -> String {
+    let all = |ts: &[Ty]| {
+        ts.iter()
+            .map(|t| schema(m, t))
+            .collect::<Vec<_>>()
+            .join(", ")
     };
     match ty {
-        Ty::Float => Some("\"F\"".into()),
-        Ty::Var(i) if vars => Some(format!("[\"V\", {i}]")),
-        Ty::Tuple(ts) => all(ts).map(|hs| format!("[\"T\", {}]", hs.join(", "))),
-        Ty::List(t) => hint_opt(t, vars).map(|h| format!("[\"L\", {h}]")),
-        Ty::Set(t) => hint_opt(t, vars).map(|h| format!("[\"S\", {h}]")),
-        Ty::Map(k, v) => {
-            all(&[(**k).clone(), (**v).clone()]).map(|hs| format!("[\"M\", {}]", hs.join(", ")))
+        Ty::Unit => "\"U\"".into(),
+        Ty::Bool => "\"B\"".into(),
+        Ty::Int => "\"I\"".into(),
+        Ty::Float => "\"F\"".into(),
+        Ty::String => "\"S\"".into(),
+        Ty::Bytes => "\"Y\"".into(),
+        Ty::Tuple(ts) => format!("[\"T\", {}]", all(ts)),
+        Ty::List(t) => format!("[\"L\", {}]", schema(m, t)),
+        Ty::Set(t) => format!("[\"E\", {}]", schema(m, t)),
+        Ty::Map(k, v) => format!("[\"M\", {}, {}]", schema(m, k), schema(m, v)),
+        Ty::Adt(t, args) => format!(
+            "[\"A\", {}, [{}]]",
+            js_string(&m.ty(*t).qualified_name()),
+            all(args)
+        ),
+        Ty::Union(ts) => {
+            let ids: Vec<String> = ts
+                .iter()
+                .map(|t| js_string(&m.ty(*t).qualified_name()))
+                .collect();
+            format!("[\"W\", [{}]]", ids.join(", "))
         }
-        Ty::Adt(_, args) => all(args).map(|hs| format!("[\"A\", [{}]]", hs.join(", "))),
-        _ => None,
+        Ty::Var(i) if *i != u32::MAX => format!("[\"V\", {i}]"),
+        Ty::Opaque(name) => format!("[\"X\", {}]", js_string(name)),
+        Ty::Never | Ty::Fn(_) | Ty::Handler(_) | Ty::Instance(_) | Ty::Var(_) => "null".into(),
     }
 }
 
@@ -268,6 +301,7 @@ struct FnEmit<'a> {
     in_entry: Vec<Label>,
     ctxs: u32,
     ns: &'a RefCell<BTreeSet<String>>,
+    pool: &'a Pool,
 }
 
 impl<'a> FnEmit<'a> {
@@ -278,6 +312,7 @@ impl<'a> FnEmit<'a> {
         module_defs: &[&str],
         mode: Mode,
         ns: &'a RefCell<BTreeSet<String>>,
+        pool: &'a Pool,
     ) -> Self {
         let def = cx.m.def(id);
         let mut taken: HashSet<String> = module_defs.iter().map(|s| (*s).to_owned()).collect();
@@ -309,6 +344,7 @@ impl<'a> FnEmit<'a> {
             in_entry: Vec::new(),
             ctxs: 0,
             ns,
+            pool,
         };
         e.analyze_labels();
         e
@@ -321,30 +357,59 @@ impl<'a> FnEmit<'a> {
     fn def(mut self, w: &mut W) {
         let d = self.def;
         let name = self.cx.def_names[self.id.index()].clone();
-        let export = if matches!(d.kind, FnKind::Top { .. } | FnKind::Test) {
+        let export = if matches!(d.kind, FnKind::Top { .. } | FnKind::Test | FnKind::Const) {
             "export "
         } else {
             ""
         };
+        let constant = d.kind == FnKind::Const;
+        // A constant's body is `name$init`; `name` evaluates it once and caches the value.
+        let body_name = if constant {
+            format!("{name}$init")
+        } else {
+            name.clone()
+        };
+        let body_export = if constant { "" } else { export };
         let mut params: Vec<String> = d
             .captures
             .iter()
             .chain(&d.params)
             .map(|l| self.name(*l).to_owned())
             .collect();
+        let site = if self.cx.takes_site[self.id.index()] {
+            "const $site = $rt.take_site();"
+        } else {
+            ""
+        };
         w.at(d.pos);
         match self.mode {
             Mode::Direct => {
                 w.line(&format!(
-                    "{export}function {name}$d({}) {{",
+                    "{body_export}function {body_name}$d({}) {{",
                     params.join(", ")
                 ));
                 w.depth += 1;
+                if !site.is_empty() {
+                    w.line(site);
+                }
                 self.expr(w, &d.body, "");
                 w.depth -= 1;
                 w.line("}");
+                if constant {
+                    w.line(&format!("{export}function {name}$d() {{"));
+                    w.depth += 1;
+                    w.line(&format!(
+                        "if (!{name}$once) {{ {name}$value = {name}$init$d(); {name}$once = true; }}"
+                    ));
+                    w.line(&format!("return {name}$value;"));
+                    w.depth -= 1;
+                    w.line("}");
+                }
             }
             Mode::Cps if self.cx.direct[self.id.index()] => {
+                if constant {
+                    w.line(&format!("let {name}$once = false, {name}$value;"));
+                }
                 let ps = params.join(", ");
                 params.extend(["$ctx".into(), "$k".into()]);
                 w.line(&format!(
@@ -359,15 +424,53 @@ impl<'a> FnEmit<'a> {
             Mode::Cps => {
                 params.extend(["$ctx".into(), "$k".into()]);
                 let ps = params.join(", ");
-                w.line(&format!("{export}function {name}({ps}) {{"));
+                w.line(&format!("{body_export}function {body_name}({ps}) {{"));
                 w.depth += 1;
-                w.line(&format!("if (++$G.d > $L) return $b({name}, [{ps}]);"));
+                w.line(&format!("if (++$G.d > $L) return $b({body_name}, [{ps}]);"));
+                if !site.is_empty() {
+                    w.line(site);
+                }
                 self.expr(w, &d.body, "$ctx");
                 w.depth -= 1;
                 w.line("}");
+                if constant {
+                    w.line(&format!("let {name}$once = false, {name}$value;"));
+                    w.line(&format!("{export}function {name}($ctx, $k) {{"));
+                    w.depth += 1;
+                    w.line(&format!("if ({name}$once) return $ret($k, {name}$value);"));
+                    w.line(&format!(
+                        "return {name}$init($ctx, (v) => {{ {name}$value = v; {name}$once = true; return $ret($k, v); }});"
+                    ));
+                    w.depth -= 1;
+                    w.line("}");
+                }
             }
         }
         w.line("");
+    }
+
+    /// `$S.s = <span>;` before a call to a def that blames its caller, so its contract defects
+    /// name this call (design §7.2).
+    fn site_for(&self, callee: &Atom, pos: Option<Pos>) -> Option<String> {
+        match callee {
+            Atom::Global(d) if self.cx.takes_site[d.index()] => {
+                Some(format!("$S.s = {};", self.span(pos)))
+            }
+            _ => None,
+        }
+    }
+
+    /// A source span as a pooled `{ uri, start_byte, end_byte }`, or `null`.
+    fn span(&self, pos: Option<Pos>) -> String {
+        match pos.and_then(|p| Some((p, self.cx.lines.get(&p.file)?.0))) {
+            Some((p, source)) => self.pool.get(format!(
+                "{{ uri: {}, start_byte: {}, end_byte: {} }}",
+                js_string(&self.cx.sources[source]),
+                p.offset,
+                p.end
+            )),
+            None => "null".into(),
+        }
     }
 
     // -----------------------------------------------------------------------------------------
@@ -482,9 +585,9 @@ impl<'a> FnEmit<'a> {
             } => {
                 w.at(*pos);
                 if self.is_cps(bind) {
-                    self.cps_call(w, *local, bind, body, ctx);
+                    self.cps_call(w, *local, bind, *pos, body, ctx);
                 } else {
-                    self.simple_bind(w, *local, bind);
+                    self.simple_bind(w, *local, bind, *pos);
                     self.expr(w, body, ctx);
                 }
             }
@@ -582,7 +685,15 @@ impl<'a> FnEmit<'a> {
         }
     }
 
-    fn cps_call(&mut self, w: &mut W, x: Local, bind: &Bind, body: &Expr, ctx: &str) {
+    fn cps_call(
+        &mut self,
+        w: &mut W,
+        x: Local,
+        bind: &Bind,
+        pos: Option<Pos>,
+        body: &Expr,
+        ctx: &str,
+    ) {
         // The continuation: `$k` for a tail call, a join point for `jump j(x)`, else an arrow.
         let xs = self.name(x).to_owned();
         let k = match body {
@@ -606,6 +717,9 @@ impl<'a> FnEmit<'a> {
                 format!("{f}.i.c[{op}]({}, ", a.join(", "))
             }
             Bind::Call(callee, args) => {
+                if let Some(site) = self.site_for(callee, pos) {
+                    w.line(&site);
+                }
                 let mut a: Vec<String> = args.iter().map(|x| self.atom(x)).collect();
                 a.push(ctx.to_owned());
                 let f = match callee {
@@ -628,12 +742,15 @@ impl<'a> FnEmit<'a> {
         }
     }
 
-    fn simple_bind(&mut self, w: &mut W, x: Local, bind: &Bind) {
+    fn simple_bind(&mut self, w: &mut W, x: Local, bind: &Bind, pos: Option<Pos>) {
         let xs = self.name(x).to_owned();
         let rhs = match bind {
             Bind::Atom(a) => self.atom(a),
             Bind::Prim(op, args) => self.prim(op, args),
-            Bind::Call(Atom::Global(d), args) => {
+            Bind::Call(f @ Atom::Global(d), args) => {
+                if let Some(site) = self.site_for(f, pos) {
+                    w.line(&site);
+                }
                 format!("{}$d({})", self.def_ref(*d), self.atoms(args))
             }
             Bind::Call(Atom::Builtin(name), args) => format!("$rt.{name}({})", self.atoms(args)),
@@ -668,10 +785,16 @@ impl<'a> FnEmit<'a> {
                     "{what} `{}` of {} violated",
                     decl.name, self.def.name
                 ));
+                let site = if decl.kind == ContractKind::Ensures {
+                    "null"
+                } else {
+                    "$site"
+                };
                 w.line(&format!(
-                    "if (!{}) $rt.defect({}, {msg});",
+                    "if (!{}) $rt.violated({}, {msg}, {site}, {});",
                     self.atom(cond),
-                    js_string(decl.defect_code())
+                    js_string(decl.defect_code()),
+                    self.span(decl.pos)
                 ));
                 "undefined".into()
             }
@@ -913,50 +1036,30 @@ impl<'a> FnEmit<'a> {
             PrimOp::Ge(t) => cmp(t, ">="),
             PrimOp::Arbitrary(ty) => format!(
                 "$rt.arbitrary({}, {}, {}, {})",
-                gen_rep(self.cx.m, ty),
+                self.schema(ty),
                 a[0],
                 a[1],
                 a[2]
             ),
+            PrimOp::Schema(ty) => self.schema(ty),
             PrimOp::Show(ty) => match ty {
                 Ty::String => a[0].clone(),
                 Ty::Int | Ty::Bool => format!("String({})", a[0]),
                 Ty::Float => format!("$rt.showFloat({})", a[0]),
-                _ => match hint_opt(ty, false) {
-                    Some(h) => format!("$rt.show({}, {h})", a[0]),
-                    None => format!("$rt.show({})", a[0]),
+                _ => match self.schema(ty).as_str() {
+                    "null" => format!("$rt.show({})", a[0]),
+                    s => format!("$rt.show({}, {s})", a[0]),
                 },
             },
         }
     }
-}
 
-/// A generator description for `$rt.arbitrary` (ABI.md §7); `null` when none is derivable.
-fn gen_rep(m: &Module, ty: &Ty) -> String {
-    let r = |t: &Ty| gen_rep(m, t);
-    match ty {
-        Ty::Unit => "\"U\"".into(),
-        Ty::Bool => "\"B\"".into(),
-        Ty::Int => "\"I\"".into(),
-        Ty::Float => "\"F\"".into(),
-        Ty::String => "\"S\"".into(),
-        Ty::List(t) => format!("[\"L\", {}]", r(t)),
-        Ty::Set(t) => format!("[\"E\", {}]", r(t)),
-        Ty::Map(k, v) => format!("[\"M\", {}, {}]", r(k), r(v)),
-        Ty::Tuple(ts) => format!(
-            "[\"T\", {}]",
-            ts.iter().map(r).collect::<Vec<_>>().join(", ")
-        ),
-        Ty::Adt(t, args) => match m.ty(*t).builtin.as_deref() {
-            Some("Option") => format!("[\"O\", {}]", args.first().map_or("null".into(), r)),
-            Some("Result") => format!(
-                "[\"R\", {}, {}]",
-                args.first().map_or("null".into(), r),
-                args.get(1).map_or("null".into(), r)
-            ),
-            _ => "null".into(),
-        },
-        _ => "null".into(),
+    /// A pooled schema literal for `ty` (`null` stays inline).
+    fn schema(&self, ty: &Ty) -> String {
+        match schema(self.cx.m, ty) {
+            s if s == "null" || s.starts_with('"') => s,
+            s => self.pool.get(s),
+        }
     }
 }
 

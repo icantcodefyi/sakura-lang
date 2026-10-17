@@ -172,10 +172,10 @@ test("Show follows design §4.8", () => {
   assert.equal(rt.show(new Banned(), null), "Banned");
   assert.equal(rt.show(new Shape(0, [1]), null), "Circle(1.0)");
   assert.equal(rt.show(new Shape(1, []), null), "Empty");
-  assert.equal(rt.show(rt.Some(3), ["A", ["F"]]), "Some(3.0)");
+  assert.equal(rt.show(rt.Some(3), ["A", "std::option::Option", ["F"]]), "Some(3.0)");
   assert.equal(rt.show(rt.Some(3), null), "Some(3)");
-  assert.equal(rt.show(rt.Some(rt.list([1])), ["A", [["L", "F"]]]), "Some([1.0])");
-  assert.equal(rt.show([1, "x"], ["T", "F", null]), '(1.0, "x")');
+  assert.equal(rt.show(rt.Some(rt.list([1])), ["A", "std::option::Option", [["L", "F"]]]), "Some([1.0])");
+  assert.equal(rt.show([1, "x"], ["T", "F", "S"]), '(1.0, "x")');
   assert.equal(rt.show([1], null), "(1,)");
   assert.equal(rt.show(undefined, null), "()");
   assert.equal(rt.show(rt.map_of(rt.list([["a", 1]])), null), 'Map.of([("a", 1)])');

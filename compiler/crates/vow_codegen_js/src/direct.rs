@@ -16,7 +16,7 @@ pub(crate) fn analyze(m: &Module) -> Vec<bool> {
         .iter()
         .enumerate()
         .map(|(i, d)| {
-            matches!(d.kind, FnKind::Top { .. })
+            matches!(d.kind, FnKind::Top { .. } | FnKind::Const)
                 && d.row.is_pure()
                 && body_ok(&d.body, &mut callees[i])
         })

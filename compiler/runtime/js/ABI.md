@@ -33,6 +33,10 @@ operations are covered by `test/runtime.test.js` and by the codegen end-to-end t
 Runtime functions that take callbacks (`list_map`, `map_update`, …) follow the same
 convention: `list_map(xs, f, $ctx, $k)`.
 
+A top-level constant (`FnKind::Const`) is emitted as `c$init` (its body) and `c`, which
+evaluates `c$init` on first use and returns the cached value afterwards (`c$d` likewise in the
+direct ABI).
+
 ### Direct-style functions (M2)
 
 A top-level function whose row is `{}` and whose body only calls other direct functions or
@@ -114,6 +118,16 @@ becomes defect `D090`; a rejected host promise becomes `D091`.
 | `D031` | `String.slice` off a character boundary |
 | `D090` `D091` | runtime-internal / host failure (requested in `REQUESTS.md`) |
 
+A defect carries `spans` (`{ uri, start_byte, end_byte, role }`, `uri` being the emitter's
+`Source::name`). Contract checks call `$rt.violated(code, message, site, clause)`:
+
+- `requires` (`D020`) and the `where` of `T.from` (`D010`) blame the **caller** (design §7.2).
+  A function containing such a check starts with `const $site = $rt.take_site();`, and every
+  call to it through a known global first sets `$S.s` (`$rt.S.s`) to the call's span, so the
+  primary span is the call (`scale(Percent.from(50), -1)`) and the clause is the `definition`
+  span. A call through a function value leaves the register `null`; the clause is then primary.
+- `ensures` (`D021`) blames the callee: the clause is the primary span.
+
 `$rt.defect_catch(body, $ctx, $k)` runs `body` as a child task under the current handlers and
 resumes with `Ok(value)` or `Err("Dnnn: message")`; a `Fail` in the child propagates to the
 caller. `std/test`'s `expect_defect` is built on it.
@@ -141,6 +155,7 @@ caller. `std/test`'s `expect_defect` is built on it.
   ```json
   {"schema_version":"1.0","kind":"defect","code":"D002","message":"division by zero"}
   ```
+  plus `"spans": [...]` (section 5) when the defect has a source location.
 - `Console` output is buffered and flushed before suspending, before writing to stderr, and at
   task end.
 
@@ -164,9 +179,19 @@ caller. `std/test`'s `expect_defect` is built on it.
 | `Secret` | `$rt.Secret` with a private field; `toString`, `toJSON` and `Symbol.toPrimitive` throw; `Show` prints `<secret>` |
 | `Range` | the tuple `[start, end]` (ponytail: a real type when ranges get methods) |
 
-`Show` (`$rt.show(v, hint)`) is structural and uses the `$t` descriptors. Type hints from Core
-types distinguish `Float` from `Int` (`2.0` vs `2`); see the comment above `show` for the
-encoding. `Eq` (`$rt.eq`, iterative), `Ord` (`$rt.cmp`) and `Hash` (`$rt.keyOf`) are
+**Schemas.** A runtime schema describes a Core type (`emit::schema`): `"U" "B" "I" "F" "S"
+"Y"` (Unit, Bool, Int, Float, String, Bytes), `["T", s…]` tuple, `["L", s]` list, `["E", s]`
+set, `["M", sk, sv]` map, `["A", id, [s…]]` a named type by qualified name (`"std::option::Option"`,
+registered with `$rt.def(id, class)`), `["W", [id…]]` an error union, `["V", i]` parameter `i` of
+the enclosing type, `["X", name]` opaque, `null` unknown or a function. Type descriptors give
+their fields' schemas over their own parameters. Module-level schema and span literals are pooled
+as `const $c0 = …`. Generic functions whose type parameters are bounded by `Show` or `Schema`
+are **specialized** per instantiation in Core (ponytail: up to 64 copies, then the generic code),
+so every `Show` sees a concrete type; builtins with such bounds (`json_encode`, `json_decode`)
+receive the schema as an extra trailing argument (`PrimOp::Schema`).
+
+`Show` (`$rt.show(v, schema)`) is structural and uses the `$t` descriptors; the schema
+distinguishes `Float` from `Int` (`2.0` vs `2`), also through `A: Show`. `Eq` (`$rt.eq`, iterative), `Ord` (`$rt.cmp`) and `Hash` (`$rt.keyOf`) are
 structural over the same representation. Field names that are not safe JS property names
 (`__proto__`) get a `$` suffix in the emitted class; `$t` keeps the Vow name.
 

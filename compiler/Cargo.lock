@@ -831,6 +831,7 @@ name = "vow_codegen_js"
 version = "0.0.0"
 dependencies = [
  "insta",
+ "serde_json",
  "vow_core",
  "vow_diagnostics",
  "vow_hir",

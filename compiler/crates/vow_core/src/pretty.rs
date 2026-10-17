@@ -141,6 +141,7 @@ impl<'a> Printer<'a> {
                 format!("clause[{}.{}]", e.name, e.ops[*op as usize].name)
             }
             FnKind::Test => "test fn".to_owned(),
+            FnKind::Const => "const fn".to_owned(),
         };
         let caps = if d.captures.is_empty() {
             String::new()
@@ -373,6 +374,7 @@ impl<'a> Printer<'a> {
                 let name = match op {
                     PrimOp::Show(t) => format!("show<{}>", self.ty(t)),
                     PrimOp::Arbitrary(t) => format!("arbitrary<{}>", self.ty(t)),
+                    PrimOp::Schema(t) => format!("schema<{}>", self.ty(t)),
                     other => format!("{other:?}").to_lowercase(),
                 };
                 format!("{name}({})", self.atoms(args))

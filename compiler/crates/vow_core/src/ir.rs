@@ -56,11 +56,13 @@ id!(
     Label
 );
 
-/// A source position (start byte) used for source maps and runtime reports.
+/// A source span (start and end byte) used for source maps and runtime reports: a contract
+/// defect names the span of the call it blames (design §7.2).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Pos {
     pub file: FileId,
     pub offset: u32,
+    pub end: u32,
 }
 
 /// A whole compilation unit: one package plus the parts of `std` it uses. Definitions from
@@ -192,7 +194,7 @@ pub struct Ctor {
 }
 
 /// A resolved type. Polymorphic code keeps `Var`s; backends treat values uniformly.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Ty {
     Unit,
     Bool,
@@ -220,7 +222,7 @@ pub enum Ty {
     Var(u32),
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct FnTy {
     pub params: Vec<Ty>,
     pub ret: Ty,
@@ -229,7 +231,7 @@ pub struct FnTy {
 
 /// An effect row: a set of effects, whether `Fail` is present (with its error type), and an
 /// optional open tail variable.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Row {
     pub effects: Vec<EffectId>,
     pub fail: Option<Box<Ty>>,
@@ -320,6 +322,8 @@ pub enum FnKind {
     Clause { effect: EffectId, op: u32 },
     /// The body of a `test` block.
     Test,
+    /// A top-level constant: evaluated on first use, then cached (no parameters).
+    Const,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -476,6 +480,9 @@ pub enum PrimOp {
     Show(Ty),
     /// A pseudo-random value of the type for property tests, from `(seed, run, param)`.
     Arbitrary(Ty),
+    /// The runtime schema of a type (ABI.md §7), passed to builtins whose type parameters are
+    /// bounded by `Show` or `Schema` (`json_encode`, `json_decode`).
+    Schema(Ty),
 }
 
 impl PrimOp {
@@ -484,6 +491,7 @@ impl PrimOp {
         match self {
             IntNeg | FloatNeg | Not | Show(_) => 1,
             Arbitrary(_) => 3,
+            Schema(_) => 0,
             _ => 2,
         }
     }

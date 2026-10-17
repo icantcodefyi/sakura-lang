@@ -14,6 +14,7 @@ vow_diagnostics.workspace = true
 
 [dev-dependencies]
 insta.workspace = true
+serde_json.workspace = true
 vow_syntax.workspace = true
 vow_hir.workspace = true
 vow_types.workspace = true

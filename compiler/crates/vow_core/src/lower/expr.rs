@@ -11,7 +11,7 @@ use text_size::TextRange;
 use vow_hir::{self as hir, ExprId, LocalId, Res};
 use vow_types::TypedBody;
 
-use super::{Lower, walk};
+use super::{Lower, Subst, walk};
 use crate::build::*;
 use crate::ir::*;
 
@@ -38,6 +38,8 @@ pub(crate) struct FnLower<'a, 'p> {
     name: String,
     lambdas: u32,
     row_vars: Vec<u32>,
+    /// Type arguments of a specialized copy (see [`Lower::def_spec`]).
+    subst: Subst,
 }
 
 static EMPTY: std::sync::LazyLock<TypedBody> = std::sync::LazyLock::new(TypedBody::default);
@@ -74,6 +76,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
             name,
             lambdas: 0,
             row_vars: Vec::new(),
+            subst: Vec::new(),
         }
     }
 
@@ -83,15 +86,17 @@ impl<'a, 'p> FnLower<'a, 'p> {
         def: hir::DefId,
         body_id: hir::BodyId,
         id: DefId,
+        subst: Subst,
     ) -> FnDef {
         let hdef = l.p.def(def);
         let pos = l.pos(def.module, hdef.range);
         let scheme = l.t.defs.get(&def).cloned();
         let mut s = FnLower::new(l, def.module, body_id, l_name(hdef));
+        s.subst = subst;
         let (ret, row) = match &scheme {
             Some(sc) => match s.l.t.interner.ty(sc.ty).clone() {
-                vow_types::Type::Fn { ret, row, .. } => (s.l.ty(ret), s.l.row(row)),
-                _ => (s.l.ty(sc.ty), Row::empty()),
+                vow_types::Type::Fn { ret, row, .. } => (s.conv(ret), s.l.row(row)),
+                _ => (s.conv(sc.ty), Row::empty()),
             },
             None => (Ty::Unit, Row::empty()),
         };
@@ -580,24 +585,55 @@ impl<'a, 'p> FnLower<'a, 'p> {
     // -----------------------------------------------------------------------------------------
     // Types and positions
 
+    /// A checker type in this (possibly specialized) function.
+    fn conv(&mut self, t: vow_types::TypeId) -> Ty {
+        super::subst_params(&self.l.ty(t), &self.subst)
+    }
+
     pub(crate) fn ty_of(&mut self, e: ExprId) -> Ty {
         match self.typed.types.get(e) {
-            Some(&t) => self.l.ty(t),
+            Some(&t) => self.conv(t),
             None => Ty::Var(u32::MAX),
         }
     }
 
     pub(crate) fn local_ty(&mut self, l: LocalId) -> Ty {
         match self.typed.locals.get(l) {
-            Some(&t) => self.l.ty(t),
+            Some(&t) => self.conv(t),
             None => Ty::Var(u32::MAX),
         }
     }
 
     pub(crate) fn pat_ty(&mut self, p: hir::PatId) -> Ty {
         match self.typed.pat_types.get(p) {
-            Some(&t) => self.l.ty(t),
+            Some(&t) => self.conv(t),
             None => Ty::Var(u32::MAX),
+        }
+    }
+
+    /// How to call or reference function `d` at `at` (the path or method-call expression the
+    /// checker recorded the instantiation on): a specialized copy when `d` has `Show`/`Schema`
+    /// type parameters, plus the types to pass as runtime schemas when `d` is a builtin.
+    fn callee_at(&mut self, d: hir::DefId, at: ExprId) -> (Atom, Vec<Ty>) {
+        let params = self.l.runtime_typed_params(d);
+        let inst = self.typed.instantiations.get(at).cloned();
+        let (Some(inst), false) = (inst, params.is_empty()) else {
+            return (self.l.callee(d), Vec::new());
+        };
+        let mut subst = Vec::new();
+        for (i, p) in params {
+            let Some(&t) = inst.get(i) else {
+                return (self.l.callee(d), Vec::new());
+            };
+            subst.push((p, self.conv(t)));
+        }
+        match self.l.callee(d) {
+            Atom::Builtin(name) => (
+                Atom::Builtin(name),
+                subst.into_iter().map(|(_, t)| t).collect(),
+            ),
+            _ if subst.iter().any(|(_, t)| super::has_unknown(t)) => (self.l.callee(d), Vec::new()),
+            _ => (Atom::Global(self.l.def_spec(d, subst)), Vec::new()),
         }
     }
 
@@ -974,7 +1010,10 @@ impl<'a, 'p> FnLower<'a, 'p> {
             Res::Def(d) => {
                 let ty = self.ty_of(e);
                 match &self.l.p.def(d).kind {
-                    hir::DefKind::Fn(_) => Some(self.l.callee(d)),
+                    hir::DefKind::Fn(_) => match self.callee_at(d, e) {
+                        (f, reps) if reps.is_empty() => Some(f),
+                        _ => self.unsupported(e, "a schema-typed builtin as a value"),
+                    },
                     hir::DefKind::Const(c) => {
                         let cbody = self.l.p.body(d.module, c.body);
                         if let Some(v) = cbody.value
@@ -1033,11 +1072,22 @@ impl<'a, 'p> FnLower<'a, 'p> {
                     .map(|a| self.ty_of(*a))
                     .collect();
                 let bind = match &self.l.p.def(d).kind {
-                    hir::DefKind::Fn(_) => match self.l.callee(d) {
-                        Atom::Builtin(name) if name == "show" && vs.len() == 1 => {
+                    hir::DefKind::Fn(_) => match self.callee_at(d, callee.unwrap_or(e)) {
+                        (Atom::Builtin(name), _) if name == "show" && vs.len() == 1 => {
                             Bind::Prim(PrimOp::Show(arg_tys[0].clone()), vs)
                         }
-                        f => Bind::Call(f, vs),
+                        (f, reps) => {
+                            for t in reps {
+                                let r = self.bind(
+                                    "schema",
+                                    Ty::Unit,
+                                    Bind::Prim(PrimOp::Schema(t), vec![]),
+                                    pos,
+                                );
+                                vs.push(r);
+                            }
+                            Bind::Call(f, vs)
+                        }
                     },
                     _ => self.l.ctor_bind(d, vs),
                 };
@@ -1569,6 +1619,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
             name: name.clone(),
             lambdas: 0,
             row_vars,
+            subst: self.subst.clone(),
         };
         let captures: Vec<Local> = free
             .iter()

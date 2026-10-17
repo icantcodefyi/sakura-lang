@@ -105,7 +105,7 @@ impl Validator<'_> {
     fn check_def(&mut self) {
         let def = self.def;
         match def.kind {
-            FnKind::Top { .. } | FnKind::Test => {
+            FnKind::Top { .. } | FnKind::Test | FnKind::Const => {
                 if !def.captures.is_empty() {
                     self.err("only lambdas and clauses capture".into());
                 }
@@ -134,6 +134,9 @@ impl Validator<'_> {
         }
         if def.kind == FnKind::Test && def.params.len() > 1 {
             self.err("tests take at most one parameter (the seed)".into());
+        }
+        if def.kind == FnKind::Const && !def.params.is_empty() {
+            self.err("constants take no parameters".into());
         }
         for l in def.captures.iter().chain(&def.params) {
             self.bind(*l);
@@ -175,7 +178,7 @@ impl Validator<'_> {
             Atom::Global(d) => {
                 if d.index() >= self.m.defs.len() {
                     self.err(format!("unknown def #{}", d.0));
-                } else if !matches!(self.m.def(*d).kind, FnKind::Top { .. }) {
+                } else if !matches!(self.m.def(*d).kind, FnKind::Top { .. } | FnKind::Const) {
                     self.err(format!("def #{} is not top-level; build a Closure", d.0));
                 }
             }

@@ -44,6 +44,8 @@ pub fn lower(program: &hir::Program, typed: &TypedProgram, opts: &LowerOptions) 
         refined: HashMap::new(),
         queue: Vec::new(),
         ctor_fns: HashMap::new(),
+        specs: HashMap::new(),
+        spec_count: HashMap::new(),
     };
     l.builtin_types();
     let main = program
@@ -103,11 +105,20 @@ pub(crate) struct Lower<'p> {
     ty_cache: HashMap<types::TypeId, Ty>,
     /// Refined type → its generated `from` def.
     refined: HashMap<(hir::DefId, hir::RefinementIntro), DefId>,
-    /// Defs allocated but not yet lowered.
-    queue: Vec<(hir::DefId, DefId)>,
+    /// Defs allocated but not yet lowered, with the type arguments they are specialized to.
+    queue: Vec<(hir::DefId, DefId, Subst)>,
     /// Constructor/op used as a function value → wrapper lambda.
     ctor_fns: HashMap<hir::DefId, DefId>,
+    /// Copies of generic functions specialized to their `Show`/`Schema` type arguments.
+    specs: HashMap<(hir::DefId, Subst), DefId>,
+    spec_count: HashMap<hir::DefId, u32>,
 }
+
+/// Type arguments for a function's type parameters, by `ParamId` index (`Ty::Var(p)`).
+pub(crate) type Subst = Vec<(u32, Ty)>;
+
+/// Copies of one generic function before polymorphic recursion falls back to the generic code.
+const MAX_SPECS: u32 = 64;
 
 impl<'p> Lower<'p> {
     pub fn unsupported(&mut self, module: hir::ModuleId, range: text_size::TextRange, what: &str) {
@@ -135,6 +146,7 @@ impl<'p> Lower<'p> {
         Some(Pos {
             file: self.p.module(module).file,
             offset: range.start().into(),
+            end: range.end().into(),
         })
     }
 
@@ -161,8 +173,53 @@ impl<'p> Lower<'p> {
         let def = self.p.def(d);
         let id = self.push_placeholder(&def.name, self.module_name(d.module));
         self.defs.insert(d, id);
-        self.queue.push((d, id));
+        self.queue.push((d, id, Vec::new()));
         id
+    }
+
+    /// A copy of HIR function `d` with type parameters replaced by `subst` (design §13.1:
+    /// `Show` and `Schema` need the concrete type at runtime, e.g. to print `1.0` for a
+    /// `Float`). ponytail: polymorphic recursion stops specializing after [`MAX_SPECS`] copies
+    /// and uses the generic code, which shows a whole `Float` as an `Int`.
+    pub fn def_spec(&mut self, d: hir::DefId, subst: Subst) -> DefId {
+        if subst.is_empty() {
+            return self.def(d);
+        }
+        if let Some(&id) = self.specs.get(&(d, subst.clone())) {
+            return id;
+        }
+        let n = self.spec_count.entry(d).or_default();
+        *n += 1;
+        if *n > MAX_SPECS {
+            return self.def(d);
+        }
+        let id = self.push_placeholder(&self.p.def(d).name, self.module_name(d.module));
+        self.specs.insert((d, subst.clone()), id);
+        self.queue.push((d, id, subst));
+        id
+    }
+
+    /// Indices (in the scheme's sorted parameter order) and ids of `d`'s type parameters bounded
+    /// by `Show` or `Schema`.
+    pub fn runtime_typed_params(&self, d: hir::DefId) -> Vec<(usize, u32)> {
+        let Some(scheme) = self.t.defs.get(&d) else {
+            return Vec::new();
+        };
+        let mut params = scheme.params.clone();
+        params.sort();
+        params
+            .iter()
+            .enumerate()
+            .filter(|(_, p)| {
+                self.t
+                    .interner
+                    .param(**p)
+                    .bounds
+                    .iter()
+                    .any(|b| matches!(b, types::Constraint::Show | types::Constraint::Schema))
+            })
+            .map(|(i, p)| (i, p.0))
+            .collect()
     }
 
     pub fn push_placeholder(&mut self, name: &str, module: String) -> DefId {
@@ -183,7 +240,7 @@ impl<'p> Lower<'p> {
     }
 
     fn drain(&mut self) {
-        while let Some((hd, id)) = self.queue.pop() {
+        while let Some((hd, id, subst)) = self.queue.pop() {
             let def = self.p.def(hd);
             match &def.kind {
                 hir::DefKind::Fn(f) => {
@@ -192,16 +249,19 @@ impl<'p> Lower<'p> {
                         self.unsupported(hd.module, def.range, "a bodiless function");
                         continue;
                     }
-                    let export = def.is_pub;
-                    let fd = expr::FnLower::lower_fn(self, hd, f.body, id);
+                    let export = def.is_pub && subst.is_empty();
+                    let fd = expr::FnLower::lower_fn(self, hd, f.body, id, subst);
                     self.m.defs[id.index()] = FnDef {
                         kind: FnKind::Top { export },
                         ..fd
                     };
                 }
                 hir::DefKind::Const(c) => {
-                    let fd = expr::FnLower::lower_fn(self, hd, c.body, id);
-                    self.m.defs[id.index()] = fd;
+                    let fd = expr::FnLower::lower_fn(self, hd, c.body, id, subst);
+                    self.m.defs[id.index()] = FnDef {
+                        kind: FnKind::Const,
+                        ..fd
+                    };
                 }
                 _ => self.unsupported(hd.module, def.range, "this kind of definition"),
             }
@@ -261,7 +321,9 @@ impl<'p> Lower<'p> {
         let module = self.module_name(t.module);
         let body_id = self.push_placeholder(&format!("test${n}"), module.clone());
         let mut fd = match &def.kind {
-            hir::DefKind::Test(td) => expr::FnLower::lower_fn(self, t, td.body, body_id),
+            hir::DefKind::Test(td) => {
+                expr::FnLower::lower_fn(self, t, td.body, body_id, Vec::new())
+            }
             hir::DefKind::Property(pd) => expr::FnLower::lower_property(self, t, pd.body, body_id),
             _ => return,
         };
@@ -733,19 +795,45 @@ impl<'p> Lower<'p> {
 
 /// Substitute a type's parameters (`Var(i)`) with `args`.
 pub(crate) fn subst(ty: &Ty, args: &[Ty]) -> Ty {
-    let s = |t: &Ty| subst(t, args);
+    map_vars(ty, &|i| args.get(i as usize).cloned())
+}
+
+/// Substitute a function's type parameters (`Var(param id)`).
+pub(crate) fn subst_params(ty: &Ty, s: &[(u32, Ty)]) -> Ty {
+    if s.is_empty() {
+        return ty.clone();
+    }
+    map_vars(ty, &|i| {
+        s.iter().find(|(p, _)| *p == i).map(|(_, t)| t.clone())
+    })
+}
+
+fn map_vars(ty: &Ty, f: &dyn Fn(u32) -> Option<Ty>) -> Ty {
+    let s = |t: &Ty| map_vars(t, f);
     match ty {
-        Ty::Var(i) => args.get(*i as usize).cloned().unwrap_or(Ty::Var(*i)),
+        Ty::Var(i) => f(*i).unwrap_or(Ty::Var(*i)),
         Ty::Tuple(ts) => Ty::Tuple(ts.iter().map(s).collect()),
-        Ty::Fn(f) => Ty::Fn(Box::new(FnTy {
-            params: f.params.iter().map(s).collect(),
-            ret: s(&f.ret),
-            row: f.row.clone(),
+        Ty::Fn(fty) => Ty::Fn(Box::new(FnTy {
+            params: fty.params.iter().map(s).collect(),
+            ret: s(&fty.ret),
+            row: fty.row.clone(),
         })),
         Ty::Adt(t, a) => Ty::Adt(*t, a.iter().map(s).collect()),
         Ty::List(t) => Ty::List(Box::new(s(t))),
         Ty::Set(t) => Ty::Set(Box::new(s(t))),
         Ty::Map(k, v) => Ty::Map(Box::new(s(k)), Box::new(s(v))),
         other => other.clone(),
+    }
+}
+
+/// Whether `ty` still mentions an unknown type (`Var(u32::MAX)`).
+pub(crate) fn has_unknown(ty: &Ty) -> bool {
+    match ty {
+        Ty::Var(i) => *i == u32::MAX,
+        Ty::Tuple(ts) | Ty::Adt(_, ts) => ts.iter().any(has_unknown),
+        Ty::Fn(f) => f.params.iter().any(has_unknown) || has_unknown(&f.ret),
+        Ty::List(t) | Ty::Set(t) => has_unknown(t),
+        Ty::Map(k, v) => has_unknown(k) || has_unknown(v),
+        _ => false,
     }
 }

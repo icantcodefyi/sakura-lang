@@ -48,23 +48,45 @@ export function suspend(promise, k) {
 // Defects (design §5.4): thrown, caught only at a task boundary.
 
 export class Defect extends Error {
-  constructor(code, message) {
+  constructor(code, message, spans = []) {
     super(`${code}: ${message}`);
     this.name = "VowDefect";
     this.code = code;
     this.detail = message;
+    /** Source spans `{ uri, start_byte, end_byte, role }`, primary first (design §12.2). */
+    this.spans = spans;
   }
 }
 
 let contractDepth = 0;
 
 /** A defect while evaluating a contract predicate is `D011` (design §7.1). */
-export function defect(code, message) {
+export function defect(code, message, spans = []) {
   if (contractDepth > 0) {
     contractDepth = 0;
-    throw new Defect("D011", `contract evaluation failed: ${code}: ${message}`);
+    throw new Defect("D011", `contract evaluation failed: ${code}: ${message}`, spans);
   }
-  throw new Defect(code, message);
+  throw new Defect(code, message, spans);
+}
+
+/**
+ * Call-site register for contract blame (design §7.2): a caller sets `S.s` to the span of a
+ * call right before calling a function whose `requires` (or `T.from`'s `where`) blames its
+ * caller; that function takes it on entry, so a call through a function value leaves `null`.
+ */
+export const S = { s: null };
+export function take_site() {
+  const s = S.s;
+  S.s = null;
+  return s;
+}
+
+/** A failed contract check: the blamed call (if known) is the primary span, then the clause. */
+export function violated(code, message, site, clause) {
+  const spans = [];
+  if (site !== null) spans.push({ ...site, role: "primary" });
+  if (clause !== null) spans.push({ ...clause, role: site === null ? "primary" : "definition" });
+  defect(code, message, spans);
 }
 
 /** Bracket the evaluation of a `requires`/`ensures`/`where` predicate. */
@@ -203,7 +225,7 @@ function drive(t, start) {
     contractDepth = 0;
     runFins(t, 0);
     const d = err instanceof Defect ? err : asDefect(err);
-    return { kind: "defect", code: d.code, message: d.detail, error: d };
+    return { kind: "defect", code: d.code, message: d.detail, spans: d.spans, error: d };
   }
 }
 
@@ -232,6 +254,7 @@ export function runMain(entry) {
       setExit(1);
     } else {
       const record = { schema_version: "1.0", kind: "defect", code: o.code, message: o.message };
+      if (o.spans?.length) record.spans = o.spans;
       writeErr(JSON.stringify(record));
       setExit(70);
     }
@@ -381,7 +404,7 @@ export class Variant {
   }
 }
 
-/** Descriptor for a variant type; `ctors` = [[name, fieldHints], …]. */
+/** Descriptor for a variant type; `ctors` = [[name, fieldSchemas], …]. */
 export function variantType(name, module, ctors) {
   return {
     kind: "variant",
@@ -391,7 +414,7 @@ export function variantType(name, module, ctors) {
   };
 }
 
-/** Descriptor for a record or error type; `fields` = [[name, jsProp, hint], …]. */
+/** Descriptor for a record or error type; `fields` = [[name, jsProp, schema], …]. */
 export function recordType(name, module, fields, error) {
   return {
     kind: "record",
@@ -434,10 +457,16 @@ const types = new Map();
 export function def(id, cls) {
   types.set(id, cls);
 }
+def("std::option::Option", Option);
+def("std::result::Result", Result);
 function std(id) {
   const cls = types.get(id);
   if (cls === undefined) throw internal(`std type ${id} is not loaded`);
   return cls;
+}
+/** The descriptor (`$t`) of the named type `id`. */
+function descriptor(id) {
+  return std(id).prototype.$t;
 }
 function variant(id, tag, fields) {
   return new (std(id))(tag, fields);
@@ -473,12 +502,9 @@ export function secret_expose(s) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Show (design §4.8). `h` is a type hint built from Core types: "F" Float, "I" Int,
-// ["T", h…] tuple, ["L", h] list, ["M", hk, hv] map, ["S", h] set, ["A", [args]] named type,
-// ["V", i] type variable, null unknown. Hints only matter for telling Float from Int: without
-// one, an integral number shows as an Int.
-// ponytail: generic `A: Show` code has no hint for A, so a whole Float shows as "1"; pass type
-// reps for Show-constrained parameters if that shows up in practice.
+// Show (design §4.8). `h` is the value's schema (ABI.md §7) or null when unknown; it tells
+// `Float` from `Int` (`2.0` vs `2`). Type descriptors give field schemas over the type's own
+// parameters (`["V", i]`), resolved against the arguments of the use (`env`).
 
 /** Interpolation and `show`: top-level strings are raw. */
 export function show(v, h = null) {
@@ -486,7 +512,7 @@ export function show(v, h = null) {
 }
 
 function showIn(v, h, env) {
-  if (h !== null && h[0] === "V") h = env === null ? null : (env[h[1]] ?? null);
+  h = resolve(h, env);
   switch (typeof v) {
     case "number":
       return h === "F" || (h !== "I" && !Number.isInteger(v)) ? showFloat(v) : String(v);
@@ -499,7 +525,7 @@ function showIn(v, h, env) {
     case "function":
       return "<fn>";
   }
-  const sub = (x, hx) => showIn(x, hx ?? null, env);
+  const sub = (x, hx) => showIn(x, hx ?? null, null);
   if (Array.isArray(v)) {
     const parts = v.map((x, i) => sub(x, h && h[0] === "T" ? h[i + 1] : null));
     return parts.length === 1 ? `(${parts[0]},)` : `(${parts.join(", ")})`;
@@ -517,7 +543,7 @@ function showIn(v, h, env) {
     return `Map.of([${parts.join(", ")}])`;
   }
   if (v instanceof VSet) {
-    const eh = h && h[0] === "S" ? h[1] : null;
+    const eh = h && h[0] === "E" ? h[1] : null;
     return `Set.of([${[...v.m.values()].map((x) => sub(x, eh)).join(", ")}])`;
   }
   if (v instanceof Uint8Array) return `Bytes.of([${v.join(", ")}])`;
@@ -525,8 +551,8 @@ function showIn(v, h, env) {
   if (v instanceof Secret) return "<secret>";
   const t = v.$t;
   if (t === undefined) return "<js value>";
-  // Field hints refer to the type's own parameters; resolve them against this use's arguments.
-  const args = h && h[0] === "A" ? h[1].map((a) => resolveHint(a, env)) : null;
+  // Field schemas refer to the type's own parameters; resolve them against this use's arguments.
+  const args = h && h[0] === "A" ? h[2] : null;
   const field = (x, fh) => showIn(x, fh, args);
   if (t.kind === "variant") {
     const c = t.ctors[v.tag];
@@ -538,12 +564,31 @@ function showIn(v, h, env) {
   return `${t.name} { ${parts.join(", ")} }`;
 }
 
-/** Substitute type variables in hint `h` with `env` (hints of the enclosing use). */
-function resolveHint(h, env) {
+/**
+ * Substitute type parameters (`["V", i]`) in schema `h` with `env` (the enclosing use's
+ * arguments), and see through refined types to their base schema.
+ */
+function resolve(h, env) {
   if (h === null || typeof h === "string") return h;
-  if (h[0] === "V") return env === null ? null : (env[h[1]] ?? null);
-  if (h[0] === "A") return ["A", h[1].map((a) => resolveHint(a, env))];
-  return [h[0], ...h.slice(1).map((a) => resolveHint(a, env))];
+  switch (h[0]) {
+    case "V":
+      return env === null ? null : resolve(env[h[1]] ?? null, null);
+    case "A": {
+      const args = h[2].map((a) => resolve(a, env));
+      const r = refinements.get(h[1]);
+      return r === undefined ? ["A", h[1], args] : resolve(r.base, args);
+    }
+    case "W":
+    case "X":
+      return h;
+  }
+  return [h[0], ...h.slice(1).map((a) => resolve(a, env))];
+}
+
+/** Refined types by qualified name: `{ name, base: schema, check: CPS fn(value) -> Bool }`. */
+const refinements = new Map();
+export function refined(id, name, base, check) {
+  refinements.set(id, { name, base, check });
 }
 
 export function showFloat(f) {
@@ -1117,10 +1162,9 @@ export function arbitrary(rep, seed, run, param) {
         return map_of(list(Array.from({ length: len() }, () => [gen(r[1]), gen(r[2])])));
       case "T":
         return r.slice(1).map(gen);
-      case "O":
-        return next() < 0.25 ? None : Some(gen(r[1]));
-      case "R":
-        return next() < 0.5 ? Ok(gen(r[1])) : Err(gen(r[2]));
+      case "A":
+        if (r[1] === "std::option::Option") return next() < 0.25 ? None : Some(gen(r[2][0]));
+        if (r[1] === "std::result::Result") return next() < 0.5 ? Ok(gen(r[2][0])) : Err(gen(r[2][1]));
     }
     throw internal(`bad generator ${JSON.stringify(r)}`);
   };
