@@ -200,6 +200,8 @@ pub(crate) struct Machine<'m> {
     depth: usize,
     /// Under `run_tests`, Console output is captured into `test_output`.
     testing: bool,
+    /// Nesting of contract predicates being evaluated (`contract_enter`/`contract_exit`).
+    pub(crate) contract_depth: u32,
     stdout: String,
     failures: Vec<String>,
     test_output: Vec<String>,
@@ -213,6 +215,7 @@ impl<'m> Machine<'m> {
             steps: 0,
             depth: 0,
             testing: false,
+            contract_depth: 0,
             stdout: String::new(),
             failures: Vec::new(),
             test_output: Vec::new(),
@@ -346,6 +349,21 @@ impl<'m> Machine<'m> {
         }
     }
 
+    /// Like the runtime's `defect`: a defect raised while a contract predicate is being
+    /// evaluated becomes `D011` (design §7.1).
+    fn in_contract(&mut self, stop: Stop) -> Stop {
+        match stop {
+            Stop::Defect { code, message } if self.contract_depth > 0 => {
+                self.contract_depth = 0;
+                defect(
+                    "D011",
+                    format!("contract evaluation failed: {code}: {message}"),
+                )
+            }
+            other => other,
+        }
+    }
+
     /// A `Console.print` line: stdout under `run_main`, the test's captured output under tests.
     pub(crate) fn print(&mut self, line: &str) {
         if self.testing {
@@ -422,7 +440,7 @@ impl<'m> Machine<'m> {
                     local, bind, body, ..
                 } => {
                     self.tick()?;
-                    match self.bind(env, bind, hs)? {
+                    match self.bind(env, bind, hs).map_err(|e| self.in_contract(e))? {
                         Ok(v) => env[local.index()] = Some(v),
                         Err(e) => return Ok(Flow::Fail(e)),
                     }

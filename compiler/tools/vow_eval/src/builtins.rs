@@ -361,6 +361,14 @@ pub(crate) fn call(m: &mut Machine, name: &str, args: Vec<Value>, hs: &Rc<Handle
         ("int_max", [Int(a), Int(b)]) => Int(*a.max(b)),
         ("float_sqrt", [Float(f)]) => Float(f.sqrt()),
         ("float_is_nan", [Float(f)]) => Bool(f.is_nan()),
+        ("contract_enter", []) => {
+            m.contract_depth += 1;
+            Unit
+        }
+        ("contract_exit", []) => {
+            m.contract_depth = m.contract_depth.saturating_sub(1);
+            Unit
+        }
         ("console_print", [Str(line)]) => {
             m.print(line);
             Unit
