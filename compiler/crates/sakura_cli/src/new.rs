@@ -30,16 +30,16 @@ test "clamps to the bounds" {
 }
 "#;
 
-const AGENT: &str = r#"import std/budget.{Budget, BudgetExceeded, Limits}
+const AGENT: &str = r#"import std/budget.{Budget, Limits}
 import std/http.{Http}
 import std/llm.{Llm, LlmError, Model}
 
 type Answer = { text: String where String.len(it) > 0 }
 
 @llm(system: "Answer in one short sentence.")
-fn answer(question: Untrusted<String>) -> Answer ! {Budget, Llm, Fail<BudgetExceeded | LlmError>}
+fn answer(question: Untrusted<String>) -> Answer ! {Llm, Fail<LlmError>}
 
-pub fn main() -> Unit ! {Console, Env, Http, Fail<BudgetExceeded | LlmError>} {
+pub fn main() -> Unit ! {Console, Env, Http, Fail<LlmError>} {
   let key = Env.secret("ANTHROPIC_API_KEY").expect("set ANTHROPIC_API_KEY")
   let limits = Limits { tokens: Some(10_000), usd: Some(0.10), calls: None }
   with Budget.limits(limits), Llm.anthropic(key, Model.of("claude-sonnet-5-5")) {
@@ -48,12 +48,32 @@ pub fn main() -> Unit ! {Console, Env, Http, Fail<BudgetExceeded | LlmError>} {
 }
 
 test "the scripted answer is validated" {
-  with Llm.scripted([Json.encode(Answer { text: "A placeholder." })]), Budget.unlimited() {
+  with Llm.scripted([Json.encode(Answer { text: "A placeholder." })]) {
     let text = try { answer(Untrusted.of("anything")).text } catch {
       _ => "no answer",
     }
     expect_eq(text, "A placeholder.")
   }
+}
+"#;
+
+const API: &str = r#"import std/request.{Get, Request}
+import std/response.{Response, Status}
+import std/router.{Router}
+import std/serve.{Address, Serve, ServeError}
+import std/url.{Url}
+
+/// The routes of this service. (`Router<{}>` once types take row parameters.)
+pub fn routes() -> Router<fn(Request) -> Response ! {}> {
+  Router.new().get("/health", fn(_req) { Response.status(200, "ok") })
+}
+
+pub fn main() -> Unit ! {Serve, Fail<ServeError>} {
+  Serve.listen(routes(), Address.of("127.0.0.1", 8080))
+}
+
+test "health answers 200" {
+  expect_eq(Router.handle(routes(), Request.of(Get, Url.from("/health"))).status, Status.from(200))
 }
 "#;
 
@@ -69,11 +89,10 @@ fn template(kind: &str) -> Result<(&'static str, &'static str), String> {
             AGENT,
             "net = [\"api.anthropic.com:443\"]\nenv = [\"ANTHROPIC_API_KEY\"]\n",
         ),
-        // ponytail: add the template once `std/serve` and `std/router` exist (REQUESTS.md).
-        "api" => return Err("`sakura new api` needs `std/serve`, which is not in std yet".into()),
+        "api" => (API, "net = [\"127.0.0.1:8080\"]\n"),
         _ => {
             return Err(format!(
-                "unknown project kind `{kind}`; use cli, lib or agent"
+                "unknown project kind `{kind}`; use cli, lib, agent or api"
             ));
         }
     })
