@@ -1,4 +1,4 @@
-import type { SVGProps } from "react";
+import { useId, type SVGProps } from "react";
 import { MARK_PATH } from "@/components/brand";
 
 const mid = (p: number[], q: number[]) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
@@ -25,10 +25,11 @@ export function Seal({
   label = "signature checked · promise kept · ",
   ...props
 }: SVGProps<SVGSVGElement> & { label?: string }) {
+  const rim = `seal-rim-${useId()}`;
   return (
     <svg viewBox="0 0 100 100" aria-hidden="true" {...props}>
       <defs>
-        <path id="seal-rim" d="M50 50m-36.5 0a36.5 36.5 0 1 1 73 0a36.5 36.5 0 1 1-73 0" />
+        <path id={rim} d="M50 50m-36.5 0a36.5 36.5 0 1 1 73 0a36.5 36.5 0 1 1-73 0" />
       </defs>
       <path d={BLOB} fill="var(--seal)" />
       <path d={BLOB} fill="none" stroke="var(--seal-ink)" strokeOpacity="0.18" strokeWidth="1.2" />
@@ -41,7 +42,7 @@ export function Seal({
         letterSpacing="2.05"
         className="font-mono uppercase"
       >
-        <textPath href="#seal-rim">{label}</textPath>
+        <textPath href={`#${rim}`}>{label}</textPath>
       </text>
       <path
         d={MARK_PATH}

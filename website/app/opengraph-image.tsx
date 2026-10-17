@@ -25,7 +25,7 @@ export default async function OpengraphImage() {
     font(
       "Atkinson Hyperlegible Mono",
       400,
-      `fn signup(…) -> User ! {Db, Clock, Fail<SignupError>}The language agents write.${host}`,
+      `fn signup(…) -> User ! {Clock, Db, Fail<SignupError>}The language agents write.${host}`,
     ),
   ]);
   const fonts = [
@@ -80,7 +80,7 @@ export default async function OpengraphImage() {
         >
           <span style={{ color: "#f5f6f8" }}>fn signup</span>
           <span>(…) -&gt; User&nbsp;</span>
-          <span style={{ color: seal }}>! {"{Db, Clock, Fail<SignupError>}"}</span>
+          <span style={{ color: seal }}>! {"{Clock, Db, Fail<SignupError>}"}</span>
         </div>
       </div>
       <div
