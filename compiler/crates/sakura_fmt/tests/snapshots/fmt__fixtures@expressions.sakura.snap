@@ -1,6 +1,5 @@
 ---
 source: crates/sakura_fmt/tests/fmt.rs
-assertion_line: 66
 expression: "check(path, &text)"
 input_file: tests/fmt/expressions.sakura
 ---
@@ -40,5 +39,7 @@ fn exprs(xs: List<Int>, c: Bool) -> Int {
     [x, ..rest] => x + List.len(rest),
   }
   let neg = -x + !c
+  for i in 0..n { count = count + i }
+  for j in lo + 1..hi { count = count + j }
   return count
 }

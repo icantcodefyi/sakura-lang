@@ -22,6 +22,7 @@
 //!   bodies, at most one blank line is kept where the source had one.
 //! - **Imports** form two groups, `std/…` then everything else, because the formatter does not
 //!   know the package name that would separate dependencies from local modules.
+//! - **Ranges** are tight (`0..n`, as in §4); other binary operators are spaced.
 //! - **Line breaks** are only introduced where §2.4 cannot turn them into a statement end: after
 //!   `(`, `[`, `{`, `,`, `=>` and `-`, and before `.`, `|`, `)`, `]`, `}` and the other binary
 //!   operators (a line never ends in `>`, which ends a statement).
@@ -1172,6 +1173,11 @@ impl Fmt<'_> {
                     ])
                     .nest(INDENT),
                 );
+                continue;
+            }
+            // A range is written tight, as in design §4: `0..n`.
+            if op == ".." && before.is_empty() && after.is_empty() {
+                parts.extend([t(".."), self.opt(b.rhs())]);
                 continue;
             }
             for c in &before {

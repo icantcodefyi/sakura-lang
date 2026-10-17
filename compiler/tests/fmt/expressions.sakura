@@ -10,5 +10,7 @@ fn exprs(xs: List<Int>, c: Bool) -> Int {
   let caught = try { risky()? } catch { NotFound { id } => 0, _ => 1 }
   let m = match xs { [] => 0, [x] => x, [x, ..rest] => x + List.len(rest), }
   let neg = -x + !c
+  for i in 0 .. n { count = count + i }
+  for j in lo+1..hi { count = count + j }
   return count
 }
