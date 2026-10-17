@@ -127,6 +127,16 @@ Fixed:
     V0013 "invalid_assign_target" PARSE,
 "The left side of `=` must be a `var` name or a field path on one (`u.email = e`).";
 
+    V0014 "named_argument" PARSE,
+"Calls take positional arguments only (design §3.2 rule 13, §17.21); `name: value` exists only
+inside attribute arguments. Pass the value positionally, or pass a record when the call needs
+an options bag.
+
+Wrong:
+    clamp(x, lo: 0, hi: 10)
+Fixed:
+    clamp(x, 0, 10)";
+
     // 1: resolve / modules
     V1001 "duplicate_definition" RESOLVE,
 "Two items in the same module and namespace have the same name (design §9). Rename or remove one.";
