@@ -379,17 +379,11 @@ deterministic: no loops, no recursion, and calls only to `@total` functions in t
 subset (design §7.1).";
 
     V5002 "refinement_checked_at_runtime" CONTRACT,
-"A scalar literal (`Int`, `Float`, `String` or `Bool`) stands where a refined type over its base
-is expected. It is accepted and checked once through `T.from` when the module is initialised, so
-a literal that fails the predicate is `D010` before `main` starts (design §4.3, §17.71).
-Severity: warning, until `sakura verify` proves the predicate. Only literals convert implicitly;
-any other value needs `T.from` or `Untrusted.validate`.
-
-Warning:
-    type Port = Int where it >= 1 && it <= 65535
-    let http: Port = 8080
-Fixed (the checked introduction is explicit):
-    let http = Port.from(8080)";
+"Retired (design §17.87, §12.3): never reported. It warned that a literal into a refined type
+was checked at start-up. The predicate is now evaluated on the literal at compile time: a
+literal that satisfies it compiles silently, one that cannot is `V5004`, and one the compiler
+cannot decide is checked once through `T.from` when the module is initialised (`D010` before
+`main`), with no diagnostic; `sakura audit` lists it. See `sakura explain V5004`.";
 
     V5003 "validate_target_not_refined" CONTRACT,
 "`Untrusted.validate(u)` takes its target `V` from the expected type `Result<V, Violation>`.
@@ -405,6 +399,25 @@ Wrong:
 Fixed:
     type Port = Int where it >= 1 && it <= 65535
     fn port(u: Untrusted<Int>) -> Result<Port, Violation> { Untrusted.validate(u) }";
+
+    V5004 "literal_violates_refinement" CONTRACT,
+"A literal stands where a refined type is expected, and the compiler evaluated the type's
+`where` clause on it: the predicate is false, or evaluating it defects (an integer division
+by zero, a failed `requires` of a function it calls). The literal can never be a value of the
+type, so the program would stop with `D010` before `main` (design §4.3, §17.87). Use a value
+that satisfies the clause; there is no mechanical fix.
+
+The compiler evaluates predicates over scalars (`Bool`, `Int`, `Float`, `String`), operators,
+`if`, `let`, calls to pure functions and `String.len`/`contains`/`starts_with`/`ends_with`, for
+at most 10,000 steps. A literal it cannot decide this way is checked at start-up instead,
+with no diagnostic.
+
+Wrong:
+    type Percent = Int where it >= 0 && it <= 100
+    let p: Percent = 150
+Fixed:
+    type Percent = Int where it >= 0 && it <= 100
+    let p: Percent = 50";
 
     // 6: capabilities / resources / escape
     V6001 "capability_construction" CAPABILITY,
