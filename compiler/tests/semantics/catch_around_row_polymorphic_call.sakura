@@ -8,11 +8,13 @@ error Oops(code: Int)
 fn twice<e>(f: fn() -> Int ! e) -> Int ! e { f() + f() }
 
 pub fn main() -> Unit ! {Console} {
-  Console.print("{(try { if false { fail Oops { code: 1 } }; twice(fn() { 1 }) } catch { Oops { code: c } => c })}")
+  Console.print(
+    "{(try { if false { fail Oops { code: 1 } }; twice(fn() { 1 }) } catch { Oops { code: c } => c })}",
+  )
   let doubled = try {
     List.map([1, -2, 3], fn(x) { if x < 0 { fail Oops { code: x } } else { x * 2 } })
   } catch {
-    Oops { code: c } => [c]
+    Oops { code: c } => [c],
   }
   Console.print("{doubled}")
 }
