@@ -33,10 +33,15 @@
 //! - **Not reformatted:** string text (interpolated expressions are formatted on one line) and
 //!   the order of variants in `type` declarations, which is part of the program.
 //! - **Comments inside expressions** are laid out around binary operators, before the `.` of a
-//!   method chain, after the `=` of a binding and the `=>` of a match arm, and between the
+//!   method chain, around the `=` of a binding and the `=>` of a match arm, and between the
 //!   entries of argument lists, literals, blocks and arms: a one-line block comment stays inline,
-//!   a line comment ends its line (and breaks the chain or list). A node with a comment anywhere
-//!   else (a signature, a pattern) is kept verbatim, re-indented as a block.
+//!   a line comment ends its line (and breaks the chain or list).
+//! - **Comments in signatures, types and patterns** stay in the gap they were written in: before
+//!   a name, a parameter list, `->`, `!`, an effect row, a contract or a body, around the `:` of
+//!   a parameter or field, and between the entries of effect rows, type and pattern lists (where
+//!   a line comment puts the list one entry per line). A comment after a sorted entry moves with
+//!   it. A node with a comment anywhere else (`pub /* c */ fn`, inside a union type) is kept
+//!   verbatim, re-indented as a block.
 //! - **No comment is ever dropped.** `format` reparses its output; if a comment is missing or
 //!   the output does not parse, it returns a `V9001` instead and the caller keeps the original.
 
@@ -44,7 +49,7 @@ use pretty::RcDoc;
 use sakura_diagnostics::{Phase, Span, codes};
 use sakura_syntax::SyntaxKind::{self, *};
 use sakura_syntax::ast::{self, AstNode, HasAttrs};
-use sakura_syntax::{Diagnostic, FileId, NodeOrToken, SyntaxNode, SyntaxToken};
+use sakura_syntax::{Diagnostic, FileId, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxToken};
 
 type Doc = RcDoc<'static, ()>;
 
@@ -219,7 +224,9 @@ fn token(n: &SyntaxNode, kind: SyntaxKind) -> Option<SyntaxToken> {
     child_tokens(n).find(|t| t.kind() == kind)
 }
 
-/// Nodes that lay out their own comments between elements.
+/// Nodes that lay out every comment among their children. In other nodes, each child node
+/// prints the comments just before it, and the layout places those before a few tokens
+/// (`places_comments_before`).
 fn handles_comments(kind: SyntaxKind) -> bool {
     matches!(
         kind,
@@ -245,6 +252,15 @@ fn handles_comments(kind: SyntaxKind) -> bool {
             | VAR_STMT
             | ASSIGN_STMT
             | MATCH_ARM
+            | EFFECT_ROW
+            | TYPE_PARAM_LIST
+            | GENERIC_ARG_LIST
+            | TYPE_LIST
+            | TUPLE_TYPE
+            | VARIANT_PAT
+            | TUPLE_PAT
+            | LIST_PAT
+            | RECORD_PAT
     )
 }
 
@@ -476,18 +492,48 @@ impl Fmt<'_> {
             .group()
     }
 
+    /// A list kept on one line (`<A, B>`, a pattern) unless a comment needs a line of its own.
+    fn short_list(&self, open: &str, close: &str, s: &Seq) -> Doc {
+        if s.has_comments() {
+            return self.comma_list(open, close, s, false);
+        }
+        t(open)
+            .append(join(s.entries.iter().map(|e| self.entry(e)), t(", ")))
+            .append(t(close))
+    }
+
+    /// A parenthesized list that keeps the `,` of a one-element tuple.
+    fn tuple(&self, n: &SyntaxNode, is_entry: impl Fn(SyntaxKind) -> bool) -> Doc {
+        let s = seq(n, is_entry);
+        let one_tuple = s.entries.len() == 1 && token(n, COMMA).is_some() && !s.has_comments();
+        self.short_list("(", if one_tuple { ",)" } else { ")" }, &s)
+    }
+
     // ---- Dispatch ----
 
     fn node(&self, n: &SyntaxNode) -> Doc {
-        lead_doc(leading_comments(n)).append(self.bare(n))
+        let mut lead = match n.parent() {
+            Some(p) if !handles_comments(p.kind()) => comments_before(&n.clone().into()),
+            _ => Vec::new(),
+        };
+        // These nodes start with a space (` -> T`), which goes before their comments.
+        let space = matches!(n.kind(), WHERE_CLAUSE | RET_TYPE | MATCH_GUARD)
+            || (!lead.is_empty() && hugs_previous(n));
+        lead.extend(leading_comments(n));
+        let space = if space { t(" ") } else { nil() };
+        space.append(lead_doc(lead)).append(self.bare(n))
     }
 
     /// A node without its leading comments.
     fn bare(&self, n: &SyntaxNode) -> Doc {
-        if !handles_comments(n.kind()) && has_inner_comments(n) {
-            // These nodes print the space before their keyword themselves.
-            let space = matches!(n.kind(), WHERE_CLAUSE | RET_TYPE | MATCH_GUARD);
-            if space { t(" ") } else { nil() }.append(self.verbatim(n))
+        // Sorting a union's members would move a comment to another gap.
+        let keep = if n.kind() == UNION_TYPE {
+            has_inner_comments(n)
+        } else {
+            !handles_comments(n.kind()) && has_stray_comments(n)
+        };
+        if keep {
+            self.verbatim(n)
         } else {
             let parens = type_parens(n);
             if parens == 0 {
@@ -511,9 +557,7 @@ impl Fmt<'_> {
             TYPE_DECL => self.type_decl(n),
             ERROR_DECL => {
                 let d = ast::ErrorDecl::cast(n.clone()).expect("kind checked");
-                let fields = d.fields().map_or_else(nil, |l| {
-                    self.comma_list("(", ")", &seq(l.syntax(), |k| k == FIELD_DECL), false)
-                });
+                let fields = self.opt(d.fields());
                 self.item_prefix(&d)
                     .append(t("error "))
                     .append(name(d.name()))
@@ -531,17 +575,10 @@ impl Fmt<'_> {
             FN_DECL => {
                 let d = ast::FnDecl::cast(n.clone()).expect("kind checked");
                 let head = t("fn ")
+                    .append(lead_before(n, IDENT))
                     .append(name(d.name()))
                     .append(self.opt(d.type_params()));
-                let sig = self.signature(
-                    head,
-                    d.params(),
-                    d.ret(),
-                    d.row(),
-                    d.contracts().collect(),
-                    d.body(),
-                );
-                self.item_prefix(&d).append(sig)
+                self.item_prefix(&d).append(self.signature(n, head))
             }
             OP_SIG => {
                 let d = ast::OpSig::cast(n.clone()).expect("kind checked");
@@ -549,28 +586,16 @@ impl Fmt<'_> {
                     .children()
                     .find(|c| c.kind() == TYPE_PARAM_LIST)
                     .map_or_else(nil, |c| self.node(&c));
-                let head = t("fn ").append(name(d.name())).append(tparams);
-                self.signature(
-                    head,
-                    d.params(),
-                    d.ret(),
-                    d.row(),
-                    d.contracts().collect(),
-                    None,
-                )
+                let head = t("fn ")
+                    .append(lead_before(n, IDENT))
+                    .append(name(d.name()))
+                    .append(tparams);
+                self.signature(n, head)
             }
             PROPERTY_DECL => {
                 let d = ast::PropertyDecl::cast(n.clone()).expect("kind checked");
                 let head = t("property ").append(self.opt(d.name()));
-                let sig = self.signature(
-                    head,
-                    d.params(),
-                    None,
-                    None,
-                    d.contracts().collect(),
-                    d.body(),
-                );
-                self.item_prefix(&d).append(sig)
+                self.item_prefix(&d).append(self.signature(n, head))
             }
             CONST_DECL => {
                 let d = ast::ConstDecl::cast(n.clone()).expect("kind checked");
@@ -598,9 +623,7 @@ impl Fmt<'_> {
                     .append(name(token(n, IDENT)))
                     .append(args.map_or_else(nil, |a| self.node(&a)))
             }
-            TYPE_PARAM_LIST => t("<")
-                .append(join(n.children().map(|c| self.node(&c)), t(", ")))
-                .append(t(">")),
+            TYPE_PARAM_LIST => self.short_list("<", ">", &seq(n, |k| k == TYPE_PARAM)),
             TYPE_PARAM => {
                 let p = ast::TypeParam::cast(n.clone()).expect("kind checked");
                 let bounds: Vec<String> = p.bounds().map(|b| b.text().to_string()).collect();
@@ -614,7 +637,7 @@ impl Fmt<'_> {
             PARAM_LIST => self.comma_list("(", ")", &seq(n, |k| k == PARAM), false),
             PARAM => {
                 let p = ast::Param::cast(n.clone()).expect("kind checked");
-                name(p.name()).append(
+                name(p.name()).append(trail_before(n, COLON)).append(
                     p.ty()
                         .map_or_else(nil, |ty| t(": ").append(self.node(ty.syntax()))),
                 )
@@ -624,11 +647,12 @@ impl Fmt<'_> {
             FIELD_DECL => {
                 let f = ast::FieldDecl::cast(n.clone()).expect("kind checked");
                 name(f.name())
+                    .append(trail_before(n, COLON))
                     .append(t(": "))
                     .append(self.opt(f.ty()))
                     .append(self.opt(f.where_clause()))
             }
-            WHERE_CLAUSE => t(" where ")
+            WHERE_CLAUSE => t("where ")
                 .append(self.opt(ast::WhereClause::cast(n.clone()).and_then(|w| w.expr()))),
             VARIANT_LIST => {
                 let mut variants = n.children().filter(|c| c.kind() == VARIANT);
@@ -639,7 +663,7 @@ impl Fmt<'_> {
             }
             VARIANT => {
                 let fields = n.children().find(|c| c.kind() == TYPE_LIST);
-                self.tight(
+                self.node(
                     &n.children()
                         .find(|c| c.kind() == PATH)
                         .expect("variant path"),
@@ -647,22 +671,21 @@ impl Fmt<'_> {
                 .append(fields.map_or_else(nil, |f| self.node(&f)))
             }
             RET_TYPE => {
-                t(" -> ").append(self.opt(ast::RetType::cast(n.clone()).and_then(|r| r.ty())))
+                t("-> ").append(self.opt(ast::RetType::cast(n.clone()).and_then(|r| r.ty())))
             }
+            CONTRACT => self.contract(&ast::Contract::cast(n.clone()).expect("kind checked")),
 
             // Types
             NAMED_TYPE => {
                 let args = n.children().find(|c| c.kind() == GENERIC_ARG_LIST);
-                self.tight(
+                self.node(
                     &n.children()
                         .find(|c| c.kind() == PATH)
                         .expect("named type path"),
                 )
                 .append(args.map_or_else(nil, |a| self.node(&a)))
             }
-            GENERIC_ARG_LIST => t("<")
-                .append(join(n.children().map(|c| self.node(&c)), t(", ")))
-                .append(t(">")),
+            GENERIC_ARG_LIST => self.short_list("<", ">", &seq(n, |_| true)),
             FN_TYPE => {
                 let f = ast::FnType::cast(n.clone()).expect("kind checked");
                 let row = f
@@ -673,14 +696,7 @@ impl Fmt<'_> {
                     .append(self.opt(f.ret()))
                     .append(row)
             }
-            TYPE_LIST | TUPLE_TYPE => {
-                let types: Vec<Doc> = n.children().map(|c| self.node(&c)).collect();
-                let one_tuple = types.len() == 1 && token(n, COMMA).is_some();
-                t("(")
-                    .append(join(types, t(", ")))
-                    .append(if one_tuple { t(",") } else { nil() })
-                    .append(t(")"))
-            }
+            TYPE_LIST | TUPLE_TYPE => self.tuple(n, |_| true),
             UNION_TYPE => {
                 let mut members: Vec<(String, Doc)> =
                     n.children().map(|c| self.keyed(&c)).collect();
@@ -760,14 +776,17 @@ impl Fmt<'_> {
             }
             FIELD_INIT => {
                 let f = ast::FieldInit::cast(n.clone()).expect("kind checked");
-                name(f.name()).append(
+                name(f.name()).append(trail_before(n, COLON)).append(
                     f.value()
                         .map_or_else(nil, |v| t(": ").append(self.node(v.syntax()))),
                 )
             }
             NAMED_ARG => {
                 let a = ast::NamedArg::cast(n.clone()).expect("kind checked");
-                name(a.name()).append(t(": ")).append(self.opt(a.value()))
+                name(a.name())
+                    .append(trail_before(n, COLON))
+                    .append(t(": "))
+                    .append(self.opt(a.value()))
             }
             PAREN_EXPR => t("(")
                 .append(self.opt(ast::ParenExpr::cast(n.clone()).and_then(|p| p.expr())))
@@ -802,7 +821,7 @@ impl Fmt<'_> {
             MATCH_ARM_LIST => self.braced_lines(&seq(n, |k| k == MATCH_ARM), ",", false),
             MATCH_ARM => self.arm(n),
             MATCH_GUARD => {
-                t(" if ").append(self.opt(ast::MatchGuard::cast(n.clone()).and_then(|g| g.expr())))
+                t("if ").append(self.opt(ast::MatchGuard::cast(n.clone()).and_then(|g| g.expr())))
             }
             WITH_EXPR => {
                 let e = ast::WithExpr::cast(n.clone()).expect("kind checked");
@@ -845,6 +864,7 @@ impl Fmt<'_> {
             HANDLER_CLAUSE => {
                 let c = ast::HandlerClause::cast(n.clone()).expect("kind checked");
                 t("fn ")
+                    .append(lead_before(n, IDENT))
                     .append(name(c.name()))
                     .append(self.opt(c.params()))
                     .append(t(" "))
@@ -872,13 +892,20 @@ impl Fmt<'_> {
             VARIANT_PAT => {
                 let p = ast::VariantPat::cast(n.clone()).expect("kind checked");
                 self.opt(p.path())
-                    .append(t("("))
-                    .append(join(p.pats().map(|x| self.node(x.syntax())), t(", ")))
-                    .append(t(")"))
+                    .append(self.short_list("(", ")", &seq(n, |k| k != PATH)))
             }
             RECORD_PAT => {
                 let p = ast::RecordPat::cast(n.clone()).expect("kind checked");
-                let mut parts: Vec<Doc> = p.fields().map(|f| self.node(f.syntax())).collect();
+                let s = seq(n, |k| k == FIELD_PAT);
+                if s.has_comments() {
+                    // `..` has to stay last, after any comment.
+                    if p.has_rest() {
+                        return self.verbatim(n);
+                    }
+                    let fields = self.comma_list("{", "}", &s, true);
+                    return self.opt(p.path()).append(t(" ")).append(fields);
+                }
+                let mut parts: Vec<Doc> = s.entries.iter().map(|e| self.entry(e)).collect();
                 if p.has_rest() {
                     parts.push(t(".."));
                 }
@@ -891,22 +918,13 @@ impl Fmt<'_> {
             }
             FIELD_PAT => {
                 let p = ast::FieldPat::cast(n.clone()).expect("kind checked");
-                name(p.name()).append(
+                name(p.name()).append(trail_before(n, COLON)).append(
                     p.pat()
                         .map_or_else(nil, |x| t(": ").append(self.node(x.syntax()))),
                 )
             }
-            TUPLE_PAT => {
-                let pats: Vec<Doc> = n.children().map(|c| self.node(&c)).collect();
-                let one_tuple = pats.len() == 1 && token(n, COMMA).is_some();
-                t("(")
-                    .append(join(pats, t(", ")))
-                    .append(if one_tuple { t(",") } else { nil() })
-                    .append(t(")"))
-            }
-            LIST_PAT => t("[")
-                .append(join(n.children().map(|c| self.node(&c)), t(", ")))
-                .append(t("]")),
+            TUPLE_PAT => self.tuple(n, |_| true),
+            LIST_PAT => self.short_list("[", "]", &seq(n, |_| true)),
             REST_PAT => t("..").append(name(token(n, IDENT))),
             OR_PAT => join(n.children().map(|c| self.node(&c)), t(" | ")),
             _ => self.verbatim(n),
@@ -921,6 +939,9 @@ impl Fmt<'_> {
             item.attributes()
                 .map(|a| self.node(a.syntax()).append(nl())),
         );
+        // Comments between the attributes and the first keyword.
+        let first = child_tokens(item.syntax()).find(|t| !gap_trivia(t.kind()));
+        let attrs = attrs.append(first.map_or_else(nil, |t| lead_doc(comments_before(&t.into()))));
         let vis = match (item.is_pub(), item.is_opaque()) {
             (true, true) => t("pub opaque "),
             (true, false) => t("pub "),
@@ -933,13 +954,14 @@ impl Fmt<'_> {
         let d = ast::Import::cast(n.clone()).expect("kind checked");
         // Sorting the names would separate a comment from its name.
         if d.names().is_some_and(|l| {
-            l.syntax()
-                .descendants_with_tokens()
-                .any(|e| is_comment(e.kind()))
+            !comments_before(&l.syntax().clone().into()).is_empty()
+                || l.syntax()
+                    .descendants_with_tokens()
+                    .any(|e| is_comment(e.kind()))
         }) {
             return self.verbatim(n);
         }
-        let path = d.path().map_or_else(nil, |p| self.tight(p.syntax()));
+        let path = self.opt(d.path());
         let names = d.names().map_or_else(nil, |list| {
             let mut names: Vec<String> = list.names().map(|t| t.text().to_string()).collect();
             names.sort();
@@ -976,52 +998,65 @@ impl Fmt<'_> {
             .append(self.opt(d.where_clause()))
     }
 
-    /// Shared by `fn` declarations, effect operations and properties.
-    fn signature(
-        &self,
-        head: Doc,
-        params: Option<ast::ParamList>,
-        ret: Option<ast::RetType>,
-        row: Option<ast::EffectRow>,
-        contracts: Vec<ast::Contract>,
-        body: Option<ast::Block>,
-    ) -> Doc {
+    /// The parameters, return type, row, contracts and body of `n`, a `fn` declaration, an
+    /// effect operation or a property, after `head`.
+    fn signature(&self, n: &SyntaxNode, head: Doc) -> Doc {
+        let params = n.children().find_map(ast::ParamList::cast);
+        let ret = n.children().find_map(ast::RetType::cast);
+        let row = n.children().find_map(ast::EffectRow::cast);
+        let contracts: Vec<ast::Contract> = n.children().filter_map(ast::Contract::cast).collect();
+        let body = n.children().find_map(ast::Block::cast);
         let head = head.append(self.opt(params)).append(self.opt(ret));
-        let row = row.map(|r| t("! ").append(self.node(r.syntax())));
         let has_contracts = !contracts.is_empty();
-        let parts: Vec<Doc> = row
-            .into_iter()
-            .chain(contracts.iter().map(|c| self.contract(c)))
-            .collect();
+        // Each part with the element its comments precede (`!` for the row).
+        let mut parts: Vec<(Option<SyntaxElement>, Doc)> = Vec::new();
+        if let Some(r) = row {
+            let row = t("! ").append(self.node(r.syntax()));
+            parts.push((token(n, BANG).map(Into::into), row));
+        }
+        for c in &contracts {
+            parts.push((Some(c.syntax().clone().into()), self.bare(c.syntax())));
+        }
         let brk = if has_contracts { nl() } else { line() };
-        let tail = concat(
-            parts
-                .into_iter()
-                .map(|p| brk.clone().append(p).nest(INDENT)),
-        );
-        match body {
-            Some(b) if has_contracts => {
-                head.append(tail).append(nl()).append(self.node(b.syntax()))
-            }
-            Some(b) => head
-                .append(tail)
-                .append(nl().flat_alt(t(" ")))
-                .group()
-                .append(self.node(b.syntax())),
-            None => head.append(tail).group(),
+        let mut tail = Vec::new();
+        for (el, part) in parts {
+            let gap = el.as_ref().map_or_else(SplitGap::none, split_gap);
+            let brk = if gap.ends_line { nl() } else { brk.clone() };
+            tail.push(gap.trailing);
+            tail.push(concat([brk, gap.leading, part]).nest(INDENT));
+        }
+        let tail = concat(tail);
+        let Some(b) = body else {
+            return head.append(tail).group();
+        };
+        let gap = split_gap(&b.syntax().clone().into());
+        let body = gap.leading.append(self.bare(b.syntax()));
+        let brk = if has_contracts || gap.ends_line {
+            nl()
+        } else {
+            nl().flat_alt(t(" "))
+        };
+        let sig = head.append(tail).append(gap.trailing).append(brk);
+        if has_contracts {
+            sig.append(body)
+        } else {
+            sig.group().append(body)
         }
     }
 
     fn contract(&self, c: &ast::Contract) -> Doc {
-        if has_inner_comments(c.syntax()) {
-            return self.verbatim(c.syntax());
-        }
+        let n = c.syntax();
         let kw = if c.is_requires() {
             "requires "
         } else {
             "ensures "
         };
-        let label = c.label().map_or_else(nil, |l| t(format!("{}: ", l.text())));
+        let label = c.label().map_or_else(nil, |l| {
+            lead_before(n, IDENT)
+                .append(t(l.text()))
+                .append(trail_before(n, COLON))
+                .append(t(": "))
+        });
         t(kw).append(label).append(self.opt(c.expr()))
     }
 
@@ -1030,23 +1065,26 @@ impl Fmt<'_> {
         if row.is_bare_var() {
             return name(row.tail());
         }
-        let mut effects: Vec<(bool, String, Doc)> = row
-            .effects()
-            .map(|e| {
-                let (key, doc) = self.keyed(e.syntax());
-                let is_fail = e
-                    .path()
-                    .and_then(|p| p.name())
-                    .is_some_and(|n| n.text() == "Fail");
-                (is_fail, key, doc)
-            })
-            .collect();
-        effects.sort_by(|a, b| (a.0, &a.1).cmp(&(b.0, &b.1)));
+        let mut s = seq(n, |k| k == NAMED_TYPE);
+        // A comment around `| e` has no entry to stay with.
+        if s.has_comments() && row.tail().is_some() {
+            return self.verbatim(n);
+        }
+        s.entries.sort_by_cached_key(|e| {
+            let is_fail = ast::NamedType::cast(e.node.clone())
+                .and_then(|ty| ty.path())
+                .and_then(|p| p.name())
+                .is_some_and(|n| n.text() == "Fail");
+            (is_fail, self.keyed(&e.node).0)
+        });
+        if s.has_comments() {
+            return self.comma_list("{", "}", &s, false);
+        }
         let tail = row
             .tail()
             .map_or_else(nil, |v| t(format!(" | {}", v.text())));
         t("{")
-            .append(join(effects.into_iter().map(|e| e.2), t(", ")))
+            .append(join(s.entries.iter().map(|e| self.entry(e)), t(", ")))
             .append(tail)
             .append(t("}"))
     }
@@ -1091,28 +1129,31 @@ impl Fmt<'_> {
     fn arm(&self, n: &SyntaxNode) -> Doc {
         let a = ast::MatchArm::cast(n.clone()).expect("kind checked");
         let (before, after) = inner_comments(n, |k| k == FAT_ARROW);
-        if !before.is_empty() {
+        if a.guard()
+            .is_some_and(|g| !comments_before(&g.syntax().clone().into()).is_empty())
+        {
             return self.verbatim(n);
         }
+        // Comments before `=>` follow the pattern (or guard).
+        let gap = Gap::of(&before);
         let head = self
             .opt(a.pat())
             .append(self.opt(a.guard()))
-            .append(t(" =>"));
+            .append(concat(gap.parts.clone()))
+            .append(gap.brk(t(" ")))
+            .append(t("=>"));
         if !after.is_empty() {
             let gap = Gap::of(&after);
             let brk = gap.brk(line());
             let body = a.expr().map_or_else(nil, |e| self.node(e.syntax()));
-            return head
-                .append(concat([concat(gap.parts), brk, body]).nest(INDENT))
-                .group();
+            return head.append(concat([concat(gap.parts), brk, body]).nest(INDENT).group());
         }
+        // Only the body is grouped: a pattern broken by a comment keeps `=> body` on its line.
         match a.expr() {
             Some(e) if braced(e.syntax().kind()) => {
                 head.append(t(" ")).append(self.node(e.syntax()))
             }
-            Some(e) => head
-                .append(line().append(self.node(e.syntax())).nest(INDENT))
-                .group(),
+            Some(e) => head.append(line().append(self.node(e.syntax())).nest(INDENT).group()),
             None => head,
         }
     }
@@ -1559,13 +1600,181 @@ fn leading_comments(n: &SyntaxNode) -> Vec<(String, bool)> {
     n.children_with_tokens()
         .map_while(|e| e.into_token().filter(|t| t.kind().is_trivia()))
         .filter(|t| is_comment(t.kind()))
-        .map(|t| {
-            let newline = t.next_token().is_some_and(|next| {
-                next.kind() == NEWLINE || (next.kind() == WHITESPACE && next.text().contains('\n'))
-            });
-            (t.text().trim_end().to_string(), newline)
-        })
+        .map(|t| comment_entry(&t))
         .collect()
+}
+
+fn comment_entry(t: &SyntaxToken) -> (String, bool) {
+    (
+        t.text().trim_end().to_string(),
+        breaks_line(t, SyntaxToken::next_token),
+    )
+}
+
+/// A line break in the whitespace next to `t`, looking towards `step`.
+fn breaks_line(t: &SyntaxToken, step: fn(&SyntaxToken) -> Option<SyntaxToken>) -> bool {
+    let mut cur = step(t);
+    while let Some(c) = cur.filter(|c| matches!(c.kind(), WHITESPACE | NEWLINE)) {
+        if c.text().contains('\n') {
+            return true;
+        }
+        cur = step(&c);
+    }
+    false
+}
+
+/// Whitespace, line breaks and comments.
+fn gap_trivia(kind: SyntaxKind) -> bool {
+    kind.is_trivia() || kind == NEWLINE
+}
+
+/// The comments in the gap just before `el` among its siblings, as `leading_comments` lists
+/// them. None if nothing but trivia precedes them: those lead the parent.
+fn comments_before(el: &SyntaxElement) -> Vec<(String, bool)> {
+    comment_tokens_before(el)
+        .iter()
+        .map(comment_entry)
+        .collect()
+}
+
+fn comment_tokens_before(el: &SyntaxElement) -> Vec<SyntaxToken> {
+    let mut found = Vec::new();
+    let mut prev = el.prev_sibling_or_token();
+    while let Some(p) = prev {
+        match p.as_token() {
+            Some(t) if gap_trivia(t.kind()) => {
+                if is_comment(t.kind()) {
+                    found.push(t.clone());
+                }
+                prev = p.prev_sibling_or_token();
+            }
+            _ => {
+                found.reverse();
+                return found;
+            }
+        }
+    }
+    Vec::new()
+}
+
+/// The comments in a gap before an element that the layout puts on a new line.
+struct SplitGap {
+    /// Those on the previous token's line, each after a space.
+    trailing: Doc,
+    /// The last of them is a line comment or ends its line.
+    ends_line: bool,
+    /// The others, before the element.
+    leading: Doc,
+}
+
+impl SplitGap {
+    fn none() -> Self {
+        SplitGap {
+            trailing: nil(),
+            ends_line: false,
+            leading: nil(),
+        }
+    }
+}
+
+fn split_gap(el: &SyntaxElement) -> SplitGap {
+    let comments = comment_tokens_before(el);
+    let same_line = comments
+        .iter()
+        .take_while(|c| !breaks_line(c, SyntaxToken::prev_token))
+        .count();
+    let (before, after) = comments.split_at(same_line);
+    SplitGap {
+        trailing: concat(
+            before
+                .iter()
+                .flat_map(|c| [t(" "), raw(c.text().trim_end())]),
+        ),
+        ends_line: before.last().is_some_and(|c| {
+            let (text, newline_after) = comment_entry(c);
+            !is_inline(&text) || newline_after
+        }),
+        leading: lead_doc(after.iter().map(comment_entry).collect()),
+    }
+}
+
+/// The comments before `n`'s first `kind` token, for a token after a space or line break.
+fn lead_before(n: &SyntaxNode, kind: SyntaxKind) -> Doc {
+    token(n, kind).map_or_else(nil, |t| lead_doc(comments_before(&t.into())))
+}
+
+/// The comments before `n`'s first `kind` token, for a token right after the previous one
+/// (`a /* c */: Int`): a space before each, a line break after a line comment.
+fn trail_before(n: &SyntaxNode, kind: SyntaxKind) -> Doc {
+    let Some(tok) = token(n, kind) else {
+        return nil();
+    };
+    let mut parts = Vec::new();
+    for (text, newline_after) in comments_before(&tok.into()) {
+        let end = !is_inline(&text) || newline_after;
+        parts.extend([t(" "), raw(&text)]);
+        if end {
+            parts.push(nl());
+        }
+    }
+    concat(parts)
+}
+
+/// Nodes written right after the previous token (`f(`, `List<`, `-x`): a comment before one
+/// also gets a space before it.
+fn hugs_previous(n: &SyntaxNode) -> bool {
+    matches!(
+        n.kind(),
+        PARAM_LIST | TYPE_PARAM_LIST | GENERIC_ARG_LIST | TYPE_LIST | FIELD_LIST | ARG_LIST
+    ) || n.parent().is_some_and(|p| {
+        matches!(
+            p.kind(),
+            PREFIX_EXPR | LITERAL_PAT | RECORD_SPREAD | TAGGED_STRING
+        )
+    })
+}
+
+/// Whether the layout of `n` (which does not handle its comments) prints the comments just
+/// before its child token `tok`.
+fn places_comments_before(n: &SyntaxNode, tok: &SyntaxToken) -> bool {
+    let mut prev = tok.prev_sibling_or_token();
+    while let Some(p) = prev.clone().filter(|p| gap_trivia(p.kind())) {
+        prev = p.prev_sibling_or_token();
+    }
+    // `item_prefix` places the comments between the attributes and the first keyword.
+    prev.is_some_and(|p| p.kind() == ATTRIBUTE)
+        || matches!(
+            (n.kind(), tok.kind()),
+            (FN_DECL | OP_SIG | HANDLER_CLAUSE, IDENT | BANG)
+                | (CONTRACT, IDENT)
+                | (
+                    PARAM | FIELD_DECL | FIELD_PAT | FIELD_INIT | NAMED_ARG | CONTRACT,
+                    COLON
+                )
+        )
+}
+
+/// A comment among the node's children (after its first token) just before a token its layout
+/// does not place comments before. Comments before a child node are printed by that child.
+fn has_stray_comments(n: &SyntaxNode) -> bool {
+    let mut comment = false;
+    for e in n
+        .children_with_tokens()
+        .skip_while(|e| e.as_token().is_some_and(|t| t.kind().is_trivia()))
+    {
+        match e {
+            NodeOrToken::Token(t) if is_comment(t.kind()) => comment = true,
+            NodeOrToken::Token(t) if gap_trivia(t.kind()) => {}
+            NodeOrToken::Token(t) => {
+                if comment && !places_comments_before(n, &t) {
+                    return true;
+                }
+                comment = false;
+            }
+            NodeOrToken::Node(_) => comment = false,
+        }
+    }
+    comment
 }
 
 /// A comment among the node's direct children after its first token.

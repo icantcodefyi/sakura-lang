@@ -1,0 +1,38 @@
+// Comments in signatures, types and patterns are laid out, not kept verbatim.
+fn /* name */ clamp(x: Int, /* low */ lo: Int,   hi /* high */ : Int) -> /* result */ Int
+  ! {Fail<Range>, /* the console */ Console}
+  requires /* bounds */ ordered: lo <= hi // lo first
+  ensures it >= lo
+{ if x < lo { lo } else { x } }
+
+fn log(msg: String) -> Unit ! {
+  Log, // trailing Log
+  Console,
+} { Console.print(msg) }
+
+fn params(
+  a: Int, // the first
+  // before b
+  b: List< /* elem */ Int>,
+) -> Int { a }
+
+effect Store<K /* key */> {
+  fn get(key: K) -> Option<String> /* may fail */ ! {Fail<Unavailable>}
+}
+
+@deprecated("use g")
+// between the attribute and fn
+fn attributed() -> Unit { () }
+
+fn patterns(p: Shape) -> Int {
+  match p {
+    Circle(/* radius */ r) => 1,
+    Rect(w, // width
+      h) => 2,
+    Point { x: /* x */ 0, y } => 3,
+    [first, /* rest */ ..rest] => 4,
+    (a, b) /* pair */ => 5,
+    _ // anything else
+      => 0,
+  }
+}
