@@ -1,0 +1,25 @@
+// milestone: M3
+// covers: Template
+// spec: §4.11, §6.4, §17.101
+
+// Templates see through `Untrusted<T>`: `sql` binds the wrapped value as a parameter, so an
+// injection attempt matches nothing, and `html` escapes the raw text, not its shown form.
+import std/html.{Html}
+import std/sql.{Sql, SqlError}
+
+type Row = { name: String }
+
+fn find(u: Untrusted<String>) -> List<Row> ! {Sql, Fail<SqlError>} {
+  Sql.query(sql"select name from users where name = {u}")
+}
+
+pub fn main() -> Unit ! {Console, Fail<SqlError>} {
+  with Sql.memory() {
+    let _ = Sql.execute(sql"create table users (name text)")
+    let _ = Sql.execute(sql"insert into users (name) values ({"ada"})")
+    Console.print("{List.len(find(Untrusted.of("ada")))}")
+    Console.print("{List.len(find(Untrusted.of("x' or 1=1 --")))}")
+  }
+  let u = Untrusted.of("<b>x")
+  Console.print(Html.to_string(html"<p>{u}</p>"))
+}

@@ -952,6 +952,13 @@ impl<'a, 'p> FnLower<'a, 'p> {
                         vs.push(v);
                         continue;
                     };
+                    // `Untrusted<T>` is converted as its wrapped `T` (design §17.101).
+                    let v = if self.typed.unwrapped.contains(&a) {
+                        let raw = Bind::Call(builtin("untrusted_value"), vec![v]);
+                        self.bind("raw", Ty::Var(u32::MAX), raw, pos)
+                    } else {
+                        v
+                    };
                     let Callee {
                         f,
                         leading,
