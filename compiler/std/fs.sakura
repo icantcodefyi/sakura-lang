@@ -15,7 +15,9 @@ pub type Mode = Read | Write | Append
 
 /// An open file, valid only inside the `with_file` body that received it (design §6.7). The
 /// body runs under the handlers of its perform site (design §5.5), so `Fs.read_chunk` and
-/// `Fs.write_chunk` inside it reach the handler that opened the file.
+/// `Fs.write_chunk` inside it reach the handler that opened the file. A resource: the body may
+/// not return it or store it in handler state (`V6003`, design §8.4).
+@resource
 pub opaque type File = { id: Int, path: Path, mode: Mode }
 
 /// `path` is relative to the handler's directory; `reason` is the host's message.

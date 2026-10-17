@@ -1,13 +1,19 @@
 // Data from outside the deployment: request bodies, file text, free-text model output
 // (design §6.4). `Untrusted` is compiler-known; this module is its home. It is `Show`, so it
 // can be logged, but templates accept it only as a bound parameter or escaped text.
-// needs M3: `validate` into a refined type (a compiler intrinsic, design §6.4).
 
 import std/core.{Violation}
 
 /// Marks `value` as untrusted. For tests and host adapters.
 @external(js, "sakura_runtime", "untrusted_of")
 pub fn of<T>(value: T) -> Untrusted<T>
+
+/// Checks the value against the refined type `V` named by the expected type, e.g.
+/// `let e: Email = Untrusted.validate(body)?`. Compiler-known (design §17.71): `V` must refine
+/// `T` (`V5003` otherwise) and the call runs `V.validate` on the value; the external is never
+/// called.
+@external(js, "sakura_runtime", "untrusted_validate")
+pub fn validate<T, V>(u: Untrusted<T>) -> Result<V, Violation>
 
 /// Releases the value without checking it. `sakura audit` lists every `@trust` reason.
 pub fn trust<T>(u: Untrusted<T>, reason: Trust) -> T { inner(u) }
