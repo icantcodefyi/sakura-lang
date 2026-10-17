@@ -9,7 +9,7 @@
     "lint": "oxlint --deny-warnings",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
-    "typecheck": "fumadocs-mdx && tsc --noEmit"
+    "typecheck": "fumadocs-mdx && next typegen && tsc --noEmit"
   },
   "dependencies": {
     "@types/mdx": "^2.0.14",
