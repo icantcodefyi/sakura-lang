@@ -1,6 +1,6 @@
 // HTTP responses (design §10.4, M3), the home module of `Response` (see `std/request`).
-// needs M3: `Schema` codecs in runtime/js for `ok_json` and `json`; `Response.html`.
 
+import std/html.{Html}
 import std/json.{DecodeError}
 import std/untrusted
 
@@ -21,6 +21,11 @@ pub fn status(code: Int, body: String) -> Response
 /// A 200 response with `value` encoded as JSON.
 pub fn ok_json<T: Schema>(value: T) -> Response {
   Response { status: Status.from(200), headers: [("content-type", "application/json")], body: Json.encode(value) }
+}
+
+/// A 200 response with an HTML page.
+pub fn html(h: Html) -> Response {
+  Response { status: Status.from(200), headers: [("content-type", "text/html; charset=utf-8")], body: Html.to_string(h) }
 }
 
 /// The body decoded as `T` (named by the binding's annotation), refinements included.
