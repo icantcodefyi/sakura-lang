@@ -39,25 +39,25 @@ test fn test$0$run#10(seed%0: Int) -> Unit {
   }
 }
 
-fn counter#34() -> Handler<Counter> {
+fn counter#38() -> Handler<Counter> {
   let next%0: fn() -> Int = closure @counter$Counter_next[]
   let handler%1: Handler<Counter> = handler Counter state[0] clauses[next%0]
   ret handler%1
 }
 
-lambda answer$1#35() -> Int ! {Counter} {
+lambda answer$1#39() -> Int ! {Counter} {
   let r%0: Int = perform Counter.next()
   ret r%0
 }
 
-fn twice#36(f%0: fn() -> Int ! r24) -> Int ! r24 {
+fn twice#40(f%0: fn() -> Int ! r24) -> Int ! r24 {
   let r%1: Int = call f%0()
   let r%2: Int = call f%0()
   let t%3: Int = intadd(r%1, r%2)
   ret t%3
 }
 
-clause[Counter.next] counter$Counter_next#37(inst%0: Instance<Counter>) -> Int {
+clause[Counter.next] counter$Counter_next#41(inst%0: Instance<Counter>) -> Int {
   let n%1: Int = state_get inst%0[0]
   let t%2: Int = intadd(n%1, 1)
   let set%3: Unit = state_set inst%0[0] = t%2

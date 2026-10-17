@@ -1,6 +1,7 @@
 // UUIDs in canonical lowercase `8-4-4-4-12` hex form.
 
-pub type Uuid = Uuid(String)
+/// Built only by `parse`, `from_canonical` and `Random.uuid()`.
+pub opaque type Uuid = Uuid(String)
 
 pub error UuidError(input: String)
 
@@ -11,11 +12,23 @@ pub fn to_string(u: Uuid) -> String {
 /// Accepts the `8-4-4-4-12` form in either case; stores it lowercase.
 pub fn parse(text: String) -> Result<Uuid, UuidError> {
   let lower = String.to_lower(text)
-  let cs = String.chars(lower)
-  let ok = List.len(cs) == 36 && List.all(List.enumerate(cs), fn(ic) {
+  if is_canonical(lower) { Ok(Uuid(lower)) } else { Err(UuidError { input: text }) }
+}
+
+/// For text already in canonical form, such as a generator's output.
+pub fn from_canonical(text: String) -> Uuid
+  requires is_canonical(text)
+{
+  Uuid(text)
+}
+
+/// Lowercase hex in the `8-4-4-4-12` form.
+@total
+pub fn is_canonical(text: String) -> Bool {
+  let cs = String.chars(text)
+  List.len(cs) == 36 && List.all(List.enumerate(cs), fn(ic) {
     if ic.0 == 8 || ic.0 == 13 || ic.0 == 18 || ic.0 == 23 { ic.1 == "-" } else { String.contains("0123456789abcdef", ic.1) }
   })
-  if ok { Ok(Uuid(lower)) } else { Err(UuidError { input: text }) }
 }
 
 test "parse normalizes case and rejects junk" {

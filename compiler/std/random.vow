@@ -53,7 +53,7 @@ pub fn seeded(seed: Int) -> Handler<Random> {
         text = text + hex_digit(nibble)
         if i == 7 || i == 11 || i == 15 || i == 19 { text = text + "-" }
       }
-      Uuid.Uuid(text)
+      Uuid.from_canonical(text)
     }
   }
 }

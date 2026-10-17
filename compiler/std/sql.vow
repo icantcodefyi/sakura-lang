@@ -1,7 +1,7 @@
 // SQL databases as an effect (design §10.2, §4.11, M3). A `Query<R>` comes from the
 // `sql"…"` template, which sends every interpolated value as a bound parameter, never as
 // SQL text. `R` is the row type, decoded by its `Schema` (named by the binding's annotation).
-// needs M3: `pub opaque` on `Query`, template arguments converted with `SqlValue.from`
+// needs M3: template arguments converted with `SqlValue.from`
 // (design §4.11; today each must already be a `SqlValue`), and the `sql_*` externals.
 
 import std/fs.{Fs}
@@ -9,7 +9,8 @@ import std/path.{Path}
 
 pub type SqlValue = Null | Int(Int) | Float(Float) | Text(String) | Blob(Bytes)
 
-pub type Query<R> = { text: String, params: List<SqlValue> }
+/// Built only by `template`, so a query's text never contains an interpolated value.
+pub opaque type Query<R> = { text: String, params: List<SqlValue> }
 
 pub error SqlError(message: String)
 

@@ -80,8 +80,8 @@ externals they touch; their host handlers and `Schema` codecs are runtime extern
 (`Secret.expose`), `Untrusted.validate/check/trust` (need the compiler-known `Trust`),
 `Fs.with_file`/`File`, `Http.scoped`/`recording`, `Llm.stream`/`replay`, `Sql.postgres`, the
 `url"…"`/`html"…"` tags, `List.par_map` (written as `std/task.par_map` until `Task` runs),
-`Env.host(scope)`, and `pub opaque` on `Uuid`, `Path`, `Prompt` and `Query` (the parser does
-not accept `opaque` yet). Their signatures are the ones in design §10.2–§10.7.
+and `Env.host(scope)`. Their signatures are the ones in design §10.2–§10.7. `Uuid`, `Path`,
+`Prompt` and `Query` are `pub opaque` (design §17.10).
 
 ## Signatures
 
@@ -261,10 +261,12 @@ fn parse(text: String) -> Result<Instant, TimeError>
 ### `std/uuid`
 
 ```vow
-type Uuid = Uuid(String)
+opaque type Uuid = Uuid(String)
 error UuidError(input: String)
 fn to_string(u: Uuid) -> String
 fn parse(text: String) -> Result<Uuid, UuidError>
+fn from_canonical(text: String) -> Uuid requires is_canonical(text)
+fn is_canonical(text: String) -> Bool    // @total
 ```
 
 ### `std/json`
@@ -386,6 +388,7 @@ fn retry<T, E, e>(p: Policy<E>, action: fn() -> T ! {Fail<E> | e}) -> T ! {Clock
 
 ```vow
 type Scope
+type Fiber<T>
 effect Task {
   fn scope<T, e>(body: fn(Scope) -> T ! e) -> T ! e
   fn spawn<T, e>(s: Scope, body: fn() -> T ! e) -> Fiber<T> ! e
@@ -399,7 +402,6 @@ fn deterministic(seed: Int) -> Handler<Task>    // @external
 error Timeout(limit: Duration)
 fn timeout<T, e>(limit: Duration, action: fn() -> T ! e) -> T ! {Clock, Task, Fail<Timeout> | e}
 fn par_map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! {Task | e}
-type Fiber<T>
 ```
 
 ### `std/graph`
@@ -424,7 +426,7 @@ fn of<T>(value: T) -> Untrusted<T>    // @external
 ### `std/path`
 
 ```vow
-type Path = Path(List<String>)
+opaque type Path = Path(List<String>)
 fn is_relative(s: String) -> Bool    // @total
 fn of(s: String) -> Path requires is_relative(s)
 fn join(p: Path, rest: String) -> Path requires is_relative(rest)
@@ -536,7 +538,7 @@ fn zero() -> Cost
 
 ```vow
 type PromptPart = Text(String) | Untrusted(Untrusted<String>) | Image(Bytes)
-type Prompt = Prompt(List<PromptPart>)
+opaque type Prompt = Prompt(List<PromptPart>)
 fn of(parts: List<PromptPart>) -> Prompt
 fn text(s: String) -> Prompt
 fn parts(p: Prompt) -> List<PromptPart>
@@ -567,7 +569,7 @@ fn scripted(responses: List<String>) -> Handler<Llm>
 
 ```vow
 type SqlValue = Null | Int(Int) | Float(Float) | Text(String) | Blob(Bytes)
-type Query<R> = { text: String, params: List<SqlValue> }
+opaque type Query<R> = { text: String, params: List<SqlValue> }
 error SqlError(message: String)
 effect Sql {
   fn query<R: Schema>(q: Query<R>) -> List<R> ! {Fail<SqlError>}
@@ -601,7 +603,7 @@ fn memory() -> Handler<Sql>    // @external
    body in a child task).
 7. **Additions used by §15 or needed by handlers:** `Result.is_ok`/`is_err` (§15.2),
    `List.filter_map` and `Graph.neighbors` (§15.12), `Graph.empty`/`len`, `Bytes.len`/
-   `from_list` (`Random.bytes`), `Uuid.Uuid` constructor, `Gen.*` combinators and
+   `from_list` (`Random.bytes`), `Uuid.from_canonical`/`is_canonical` (for `Random.uuid()`), `Gen.*` combinators and
    `Gen.for_all`, `Console.captured`/`Log.captured` forwarding to `Test.output`.
 8. **`List.par_map`** lives in `std/task` until `Task` exists, so `std/list` stays M1.
 9. **`Log.host()` and `Env.host()`** exist because the JS entry point installs each declared
@@ -621,5 +623,3 @@ fn memory() -> Handler<Sql>    // @external
     `Fs.memory`'s `root()` is a directory without host access. `Cli.exit` under `Cli.of` is
     a defect (`D030`). `Llm.scripted` reports undecodable output as `InvalidOutput` with one
     `Violation` whose `clause` is the decoder's message and `value_summary` its JSON Pointer.
-14. **`Fiber<T>`** is the last item of `std/task`: a line ending in `>` continues (§2.4), so
-    a bodiless generic type followed by another item does not parse.

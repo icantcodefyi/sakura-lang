@@ -1,8 +1,8 @@
 // Relative filesystem paths (design §10.3). A `Path` has no leading `/` and no `..`
 // segment, so a handler rooted at a directory cannot be escaped through one.
-// needs M3: `pub opaque` (design §17.10), so that only `of` and `join` build a `Path`.
 
-pub type Path = Path(List<String>)
+/// Built only by `of` and `join`.
+pub opaque type Path = Path(List<String>)
 
 /// Non-empty, no leading `/`, and no `..` segment.
 @total
