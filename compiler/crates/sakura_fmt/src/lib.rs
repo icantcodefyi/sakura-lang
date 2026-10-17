@@ -1349,7 +1349,8 @@ impl Fmt<'_> {
             .collect::<String>())
     }
 
-    /// The node's source text, re-indented relative to the line it starts on.
+    /// The node's source text. Each continuation line keeps its indentation relative to the
+    /// node's first token, wherever the layout puts that token, so the output is a fixed point.
     fn verbatim(&self, n: &SyntaxNode) -> Doc {
         let mut tokens = n
             .descendants_with_tokens()
@@ -1367,31 +1368,38 @@ impl Fmt<'_> {
         };
         let start = usize::from(first.text_range().start());
         let line_start = self.src[..start].rfind('\n').map_or(0, |i| i + 1);
-        let base = self.src[line_start..]
-            .bytes()
-            .take_while(|b| matches!(b, b' ' | b'\t'))
-            .count();
-        let mut parts = Vec::new();
+        let column = self.src[line_start..start].chars().count() as isize;
+        // A part after a line break carries its indentation relative to `column`.
+        let mut parts: Vec<(Option<isize>, Doc)> = Vec::new();
         for tok in tokens {
             let text = tok.text();
             if matches!(tok.kind(), WHITESPACE | NEWLINE) && text.contains('\n') {
                 let mut pieces = text.split('\n');
                 pieces.next();
                 for piece in pieces {
-                    let strip = piece
+                    let indent = piece
                         .bytes()
                         .take_while(|b| matches!(b, b' ' | b'\t'))
-                        .count()
-                        .min(base);
-                    parts.extend([nl(), t(&piece[strip..])]);
+                        .count();
+                    parts.push((Some(indent as isize - column), t(&piece[indent..])));
                 }
             } else if tok.kind() == WHITESPACE {
-                parts.push(t(" "));
+                parts.push((None, t(" ")));
             } else {
-                parts.push(raw(text));
+                parts.push((None, raw(text)));
             }
         }
-        concat(parts)
+        RcDoc::column(move |at| {
+            let doc = concat(parts.iter().map(|(indent, d)| match indent {
+                Some(i) => {
+                    let spaces = usize::try_from(at as isize + i).unwrap_or(0);
+                    concat([nl(), t(" ".repeat(spaces)), d.clone()])
+                }
+                None => d.clone(),
+            }));
+            // Absolute indentation: cancel the enclosing nesting.
+            RcDoc::nesting(move |nest| doc.clone().nest(-(nest as isize)))
+        })
     }
 
     /// String text stays byte-identical; interpolated expressions are formatted on one line.

@@ -155,6 +155,16 @@ fn import_sorting_keeps_the_header_on_top() {
     assert_eq!(out.unwrap(), "// header\n\nimport a\n// b\nimport b\n");
 }
 
+#[test]
+fn verbatim_nodes_are_a_fixed_point() {
+    // A node kept verbatim inside the extra nesting of a `with` list used to move its
+    // continuation lines further right on every run.
+    let text =
+        "fn f() -> Int {\n  with A.b /* c */ ([\n    1,\n  ]),\n      D.e() {\n    1\n  }\n}\n";
+    let once = sakura_fmt::format(text).unwrap();
+    assert_eq!(sakura_fmt::format(&once).unwrap(), once);
+}
+
 /// The file's header: the comments on their own lines before the first token, except a last
 /// group set off from them by a blank line.
 fn header(text: &str) -> Vec<String> {
