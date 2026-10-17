@@ -1,6 +1,7 @@
 // milestone: M2
 // mode: test
 // covers: TestDecl MatchExpr
+// known-bug: `vow test` needs the `wrap_secret` external in the JS runtime (REQUESTS.md, E to D)
 
 fn greeting() -> String ! {Env, Log} {
   match Env.get("USER") {
