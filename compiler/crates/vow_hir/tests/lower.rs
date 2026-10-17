@@ -569,6 +569,81 @@ fn has_missing(p: &Program) -> bool {
     })
 }
 
+/// 10,000-link expression chains (`a.b.b…`, `1 + 1 + …`, `a.m().m()…`, `a??…`, `a[0][0]…`,
+/// `- - … a`) lower and dump without overflowing the 2 MiB test-thread stack. The parser caps
+/// nesting at `MAX_DEPTH`, so the deep trees are built by wrapping a parsed node directly.
+#[test]
+fn long_chains_do_not_overflow() {
+    use SyntaxKind::*;
+    type Elem = NodeOrToken<GreenNode, GreenToken>;
+    fn tok(k: SyntaxKind, t: &str) -> Elem {
+        NodeOrToken::Token(GreenToken::new(VowLanguage::kind_to_raw(k), t))
+    }
+    fn node(k: SyntaxKind, children: Vec<Elem>) -> GreenNode {
+        GreenNode::new(VowLanguage::kind_to_raw(k), children)
+    }
+    type Wrap = fn(Elem) -> GreenNode;
+    let wraps: [(&str, Wrap); 6] = [
+        ("field", |e| {
+            node(FIELD_EXPR, vec![e, tok(DOT, "."), tok(IDENT, "b")])
+        }),
+        ("binary", |e| {
+            let one = NodeOrToken::Node(node(LITERAL, vec![tok(INT, "1")]));
+            node(BIN_EXPR, vec![e, tok(PLUS, "+"), one])
+        }),
+        ("method", |e| {
+            let f = node(FIELD_EXPR, vec![e, tok(DOT, "."), tok(IDENT, "m")]);
+            let args = node(ARG_LIST, vec![tok(L_PAREN, "("), tok(R_PAREN, ")")]);
+            node(
+                CALL_EXPR,
+                vec![NodeOrToken::Node(f), NodeOrToken::Node(args)],
+            )
+        }),
+        ("raise", |e| node(RAISE_EXPR, vec![e, tok(QUESTION, "?")])),
+        ("index", |e| {
+            let zero = NodeOrToken::Node(node(LITERAL, vec![tok(INT, "0")]));
+            node(
+                INDEX_EXPR,
+                vec![e, tok(L_BRACKET, "["), zero, tok(R_BRACKET, "]")],
+            )
+        }),
+        ("prefix", |e| node(PREFIX_EXPR, vec![tok(MINUS, "-"), e])),
+    ];
+    for (name, wrap) in wraps {
+        let root = vow_syntax::parse("fn f(a: Int) -> Int { a }\n").syntax();
+        let a = root.descendants().find(|n| n.kind() == PATH_EXPR).unwrap();
+        let mut e = a.green().into_owned();
+        for _ in 0..10_000 {
+            e = wrap(NodeOrToken::Node(e));
+        }
+        let stmt = a.parent().unwrap();
+        let stmt_green = stmt.green().replace_child(a.index(), NodeOrToken::Node(e));
+        let root = SyntaxNode::new_root(stmt.replace_with(stmt_green));
+        // Rowan drops green nodes recursively, which overflows at this depth by itself
+        // (compiler/REQUESTS.md); leak the tree rather than test rowan.
+        std::mem::forget(root.clone());
+        let program = lower(&[PackageInput {
+            name: "app",
+            deps: vec![],
+            modules: vec![ModuleInput {
+                file: FileId(0),
+                path: "main".into(),
+                root,
+            }],
+        }]);
+        let body = program.module(ModuleId(0)).bodies.values().next().unwrap();
+        assert!(
+            body.exprs.len() > 10_000,
+            "{name}: {} exprs",
+            body.exprs.len()
+        );
+        assert!(
+            program.dump_module(ModuleId(0)).lines().count() > 10_000,
+            "{name}"
+        );
+    }
+}
+
 /// Lowering is deterministic: the same snapshot gives the same dump and diagnostics.
 #[test]
 fn deterministic() {

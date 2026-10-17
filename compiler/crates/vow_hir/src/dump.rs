@@ -54,7 +54,8 @@ struct Printer<'a> {
 
 impl<'a> Printer<'a> {
     fn line(&mut self, depth: usize, text: impl AsRef<str>) {
-        for _ in 0..depth {
+        // Indentation stops at 100 levels, so a 10,000-link chain dumps in linear space.
+        for _ in 0..depth.min(100) {
             self.out.push_str("  ");
         }
         self.out.push_str(text.as_ref());
@@ -349,6 +350,10 @@ impl<'a> Printer<'a> {
     }
 
     fn expr(&mut self, d: usize, id: ExprId) {
+        crate::ensure_stack(|| self.expr_inner(d, id))
+    }
+
+    fn expr_inner(&mut self, d: usize, id: ExprId) {
         let body = self.b();
         match &body.exprs[id] {
             Expr::Missing => self.line(d, "<missing>"),

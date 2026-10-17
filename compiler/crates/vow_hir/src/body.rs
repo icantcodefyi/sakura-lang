@@ -265,6 +265,10 @@ impl<'a> BodyCx<'a> {
     // ---- Expressions ----
 
     fn expr(&mut self, n: &SyntaxNode) -> ExprId {
+        crate::ensure_stack(|| self.expr_inner(n))
+    }
+
+    fn expr_inner(&mut self, n: &SyntaxNode) -> ExprId {
         let range = n.text_range();
         let e = match n.kind() {
             LITERAL => self.literal(n),

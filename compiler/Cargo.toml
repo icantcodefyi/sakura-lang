@@ -35,6 +35,7 @@ clap = { version = "4.6.7", features = ["derive"] }
 pretty = "0.12.5"
 insta = { version = "1.49.0", features = ["json"] }
 proptest = "1.12.0"
+stacker = "0.1.25"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
