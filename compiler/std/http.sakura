@@ -1,8 +1,10 @@
 // HTTP client as an effect (design §10.2, §10.4, M3). The manifest's `net` list limits the
 // host handler (§6.2); `Http.scoped(hosts)` attenuates by data; there is no `Net` effect.
-// needs M3: `Http.recording(path)`.
+// `Http.recording(path)` replays cassettes (design §17.73).
 
 import std/duration.{Duration}
+import std/fs.{Dir, Fs}
+import std/path.{Path}
 import std/request.{Method, Request}
 import std/response.{HttpError, Response, Status}
 import std/url.{Url}
@@ -68,6 +70,37 @@ fn host_port(u: Url) -> String {
   }
 }
 
+/// Replays the cassette at `path` (JSON Lines, inside the installed `Fs` handler's directory,
+/// usually `with Fs.rooted(Test.fixtures())`): a request whose method, url, headers and body
+/// match a recorded exchange gets its response; identical requests replay in recorded order,
+/// the last one repeating. A miss fails with `HttpError` naming `sakura test --record`, under
+/// which it is forwarded to the enclosing `Http` and appended. `secret_headers` are never
+/// written and never part of the match (design §17.57, §17.73).
+pub fn recording(path: Path) -> Handler<Http, {Http, Fs}> {
+  handler Http {
+    var id = 0
+    fn send(req) {
+      if id == 0 {
+        id = match http_recording_open(Fs.root(), Path.to_string(path)) {
+          Ok(i) => i,
+          Err(reason) => fail HttpError { status: None, reason },
+        }
+      }
+      match http_recording_lookup(id, req) {
+        Ok(Some(resp)) => resp,
+        Ok(None) => {
+          let resp = Http.send(req)
+          match http_recording_append(id, req, resp) {
+            Ok(_) => resp,
+            Err(reason) => fail HttpError { status: None, reason },
+          }
+        }
+        Err(reason) => fail HttpError { status: None, reason },
+      }
+    }
+  }
+}
+
 /// Test handler: the response of the first matching entry; no match is an `HttpError`.
 pub fn scripted(script: List<(Matcher, Response)>) -> Handler<Http> {
   handler Http {
@@ -103,6 +136,15 @@ fn rate_limited(resp: Response) -> Response ! {Fail<RateLimited>} {
 
 @external(js, "sakura_runtime", "http_send")
 fn http_send(req: Request) -> Result<Response, String>
+
+@external(js, "sakura_runtime", "http_recording_open")
+fn http_recording_open(dir: Dir, path: String) -> Result<Int, String>
+
+@external(js, "sakura_runtime", "http_recording_lookup")
+fn http_recording_lookup(id: Int, req: Request) -> Result<Option<Response>, String>
+
+@external(js, "sakura_runtime", "http_recording_append")
+fn http_recording_append(id: Int, req: Request, resp: Response) -> Result<Unit, String>
 
 test "scripted matches by path and method" {
   let script = [(Path("/a"), Response.status(200, "a")), (Method(Method.Post), Response.status(201, "p"))]

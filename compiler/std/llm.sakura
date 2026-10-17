@@ -1,11 +1,13 @@
 // Typed LLM calls as an effect (design §10.7, §11.1, M3). `Llm.generate` decodes the output
 // as `Json.decode` would, so every refinement of `T` is checked. Schema-valid output is not
 // truth: check what matters before acting on it.
-// needs M3: `@llm` bodies (§11.1), `Llm.replay(path)`.
+// `Llm.replay(path)` replays a recorded provider exchange (design §17.73).
 
 import std/budget.{Budget, BudgetExceeded}
 import std/core.{Violation}
+import std/fs.{Fs}
 import std/http.{Http, RateLimited}
+import std/path.{Path}
 import std/prompt.{Prompt}
 import std/task.{Timeout}
 import std/untrusted
@@ -74,6 +76,28 @@ pub fn default() -> Model { Model("default") }
 /// against the installed `Budget` first and settles the reported usage after.
 @external(js, "sakura_runtime", "llm_anthropic")
 pub fn anthropic(key: Secret<String>, model: Model) -> Handler<Llm, {Http, Budget}>
+
+/// `anthropic` over `Http.recording(path)` and `Budget.unlimited()` (design §17.73): each call
+/// replays the recorded Messages API exchange whose request matches, and nothing reaches the
+/// network. The key is a placeholder, which is safe because secret headers are never recorded
+/// or matched; record cassettes with `anthropic` and a real key under `sakura test --record`.
+/// A missing exchange is `ProviderError`.
+/// ponytail: each call reopens the cassette, so identical requests in one test all replay the
+/// first recorded response; keep one recording handler across calls if a test needs more.
+pub fn replay(path: Path) -> Handler<Llm, {Fs}> {
+  handler Llm {
+    fn generate(req) { offline(path, fn() { Llm.generate(req) }) }
+    fn generate_text(req) { offline(path, fn() { Llm.generate_text(req) }) }
+    fn stream(req, on_partial) { offline(path, fn() { Llm.stream(req, on_partial) }) }
+    fn step(req, tools, transcript) { offline(path, fn() { Llm.step(req, tools, transcript) }) }
+  }
+}
+
+fn offline<T, e>(path: Path, call: fn() -> T ! {Llm | e}) -> T ! {Fs, Fail<LlmError> | e} {
+  with Budget.unlimited(), Http.scripted([]), Http.recording(path), anthropic(Secret.of("replay"), default()) {
+    call()
+  }
+}
 
 /// Test handler: each call consumes the next raw model output, in order. Running out is a
 /// defect (the test is wrong, not the program). For `step`, an output that is a JSON object

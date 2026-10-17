@@ -53,13 +53,14 @@ when `f` is not an operation (`Console.captured()`, `Clock.fixed(t)`, `Random.se
 
 ## Module dependencies (non-test code)
 
-Acyclic. Test blocks additionally use `std/test`, which depends only on `std/core`.
+Acyclic. Test blocks additionally use `std/test`, which depends on `std/core` and (for
+`Test.fixtures()`'s `Dir`) `std/fs`.
 
 ```
 core  unit  option  result  set  int  float  duration       (no std dependencies)
 list → set              map → list            string → list       bytes → list
 json → map              uuid → string, list   instant → duration, string, list, int
-test → core             console → test        clock → duration, instant, int
+test → core, fs         console → test        clock → duration, instant, int
 random → uuid, int, string, bytes, list       env → map, list
 log → json, test, list, core                  gen → test, random, list, int, string
 retry → duration, int   (+ Clock, Random)     task → duration, list (+ Clock)   [M3]
@@ -69,8 +70,8 @@ url → string, list      cli [M3]                fs → path, untrusted, map [M
 request → url, json [M3]                       response → html, json, untrusted [M3]
 html → core [M3]        router → request, response, url [M3]
 serve → request, response, router, url [M3]
-http → request, response, url, duration [M3]  budget [M3]      prompt [M3]
-llm → budget, core, http, prompt, task, untrusted [M3]          sql → fs, path [M3]
+http → request, response, url, duration, fs, path [M3]  budget [M3]      prompt [M3]
+llm → budget, core, fs, http, path, prompt, task, untrusted [M3]          sql → fs, path [M3]
 tool → llm [M3]         agent → budget, core, llm, prompt, tool [M3]
 ```
 
@@ -80,8 +81,9 @@ externals.
 
 ## Planned, not yet in source (design §10, milestone M3)
 
-`Http.recording`, `Llm.replay` and `Test.fixtures` (cassettes, design §17.73). Their signatures
-are the ones in design §17.73. `Uuid`, `Prompt` and `Query` are `pub opaque` (design §17.10).
+`Http.stream`, `Http.read_chunk`, `Body` and `Incoming` (streaming responses, design §17.88),
+waiting for the runtime's `http_stream_*` externals. `Uuid`, `Prompt` and `Query` are
+`pub opaque` (design §17.10).
 
 ## Signatures
 
@@ -292,6 +294,7 @@ effect Test {
   fn output(line: String) -> Unit
   fn output_lines() -> List<String>
   fn snapshot(name: String, rendered: String) -> Unit
+  fn fixtures() -> Dir
 }
 fn expect(cond: Bool) -> Unit ! {Test}
 fn expect_eq<A: Eq + Show>(actual: A, expected: A) -> Unit ! {Test}
@@ -555,6 +558,7 @@ fn post_json<T: Schema>(url: Url, body: T) -> Response ! {Http, Fail<HttpError |
 fn bearer(req: Request, token: Secret<String>) -> Request
 fn host() -> Handler<Http>
 fn scoped(hosts: List<String>) -> Handler<Http, {Http}>
+fn recording(path: Path) -> Handler<Http, {Http, Fs}>
 fn scripted(script: List<(Matcher, Response)>) -> Handler<Http>
 ```
 
@@ -651,6 +655,7 @@ fn request<T: Schema>(system: String, user: Prompt) -> Request<T>
 fn of(name: String) -> Model
 fn default() -> Model
 fn anthropic(key: Secret<String>, model: Model) -> Handler<Llm, {Http, Budget}>    // @external
+fn replay(path: Path) -> Handler<Llm, {Fs}>
 fn scripted(responses: List<String>) -> Handler<Llm>
 ```
 
