@@ -46,6 +46,9 @@ pub enum Callable {
     Closure(DefId, Vec<Value>),
     Builtin(String),
     Native(Native),
+    /// A function-typed operation argument: it runs under the perform site's handlers, whoever
+    /// calls it (design §5.5, §17.48; `$rt.callback` in `runtime/js/ABI.md` §3).
+    Callback(Value, Rc<Handlers>),
 }
 
 /// Root handler clauses implemented by the evaluator itself.
@@ -184,7 +187,7 @@ enum Flow {
 
 /// A persistent stack of installed handlers, innermost first.
 #[derive(Debug)]
-enum Handlers {
+pub enum Handlers {
     Nil,
     Frame(Rc<Instance>, Rc<Handlers>),
 }
@@ -280,6 +283,7 @@ impl<'m> Machine<'m> {
             Callable::Closure(d, caps) => self.call_def(*d, caps, args, hs),
             Callable::Builtin(name) => builtins::call(self, name, args, hs),
             Callable::Native(n) => self.native(*n, args).map(Ok),
+            Callable::Callback(f, site) => self.call(f, args, site),
         }
     }
 
@@ -564,7 +568,27 @@ impl<'m> Machine<'m> {
                     .ok_or_else(|| Stop::Internal(format!("bad projection {p:?} of {v:?}")))?
             }
             Bind::Perform(effect, op, args) => {
-                let args = self.atoms(env, args)?;
+                let params = self
+                    .module
+                    .effect(*effect)
+                    .ops
+                    .get(*op as usize)
+                    .map(|o| o.params.as_slice())
+                    .unwrap_or_default();
+                // Re-wrapping keeps the first perform site.
+                let args: Vec<Value> = self
+                    .atoms(env, args)?
+                    .into_iter()
+                    .zip(params.iter().map(Some).chain(std::iter::repeat(None)))
+                    .map(|(v, p)| match (p, &v) {
+                        (Some(Ty::Fn(_)), Value::Fn(c))
+                            if !matches!(**c, Callable::Callback(..)) =>
+                        {
+                            Value::Fn(Rc::new(Callable::Callback(v.clone(), hs.clone())))
+                        }
+                        _ => v,
+                    })
+                    .collect();
                 let mut frame = hs.clone();
                 loop {
                     match &*frame {
