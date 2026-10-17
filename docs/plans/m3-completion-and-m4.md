@@ -195,6 +195,19 @@ Scope: `docs/roadmap.mdx` restated as M3 → M4 → M5 with the §4 gates (no da
 
 Waits for: the corresponding workstream to land (write against the plan, verify against the binary before merging).
 
+### WS8 — Round-5 decisions (§17.100–§17.103)
+
+Owner: **Opus**, per crate as below; the items are small and independent of each other. The tests named are the acceptance bar; each lands with its own commit.
+
+1. `sakura_types` (§17.100): no semantic change. `V2001` at a `catch` arm whose union settled empty because the body's `Fail` came from an unresolved callback type adds the note “the failures of `g` are not known here; annotate its type”; the hidden-tail case (`fn wrap<e>(f: fn() -> Int ! e) … catch { Oops … }`) says that the failures of `e` cannot be named (`V3003` wording) instead of `… has type Never`. Tests in `crates/sakura_types/tests/rows.rs`: accepted (annotated parameter; the lambda in argument position against `fn(fn() -> Int ! {Fail<Oops>}) -> Int`; a generalized `let app = fn(g) { g() }` under two `try`s; recursion through `twice(fn() { deep(n - 1) })`) and rejected (unannotated parameter, `var` reassigned after the `try`), each pinned to its code and note.
+2. `sakura_types` (§17.101): the template conversion rule unwraps `Untrusted<T>` to `T` before choosing `X.from`, always through `from` (never the pass-through, even when `T` is `X`); `TypedBody::conversions` marks the unwrap (WS8 chooses the shape and posts it in REQUESTS for item 3). Tests: `sql` with `Untrusted<String>`, `Untrusted<Int>` and `Untrusted<User>` accepted with a marked conversion each; `html` with `Untrusted<String>`; `Secret<String>` in `sql` still `V2032`; `Untrusted<Html>` in `html` converts through `Html.from` (escaped), not as markup.
+3. `sakura_core` (§17.101): a marked conversion lowers as `X.from(untrusted_value(a))`. `tests/semantics/sql_untrusted_param.sakura` on `Sql.memory()`: insert a row, `select … where name = {u}` with `u = Untrusted.of(name)` returns it, with `u = Untrusted.of("x' or 1=1 --")` returns nothing; `html"<p>{u}</p>"` prints `<p>&lt;b&gt;x</p>` (today `<p>Untrusted.of(&quot;…&quot;)</p>`).
+4. `std`, `docs/llms.txt` (§17.101): the same two cases as `test` blocks in `std/sql.sakura` and `std/html.sakura`; `std/sql`'s `from` doc already states the rule; llms.txt's template line (done by design, keep in sync).
+5. `std/llm`, `examples/llm_extract` (§17.102): `Llm.recording(path, provider)`; `replay(path)` becomes `recording(path, anthropic(Secret.of("replay"), default()))` under `Http.scripted([])`; the handler opens the cassette once per handler value. Tests: in `std/llm.sakura`, `recording` over an absent cassette (missing file = empty, WS2) with `Http.scripted([])` enclosing and `SAKURA_RECORD` unset fails `ProviderError` whose reason names `sakura test --record`; `examples/llm_extract` gains §15.7's recorded test replaying the committed synthetic cassette with the network denied (`Http.host()` is installed but never reached); `std/INDEX.md` regenerated.
+6. `sakura_core` test defaults, `sakura_cli` (§17.102): the lowered test wrapper installs `Env.host()` as the default `Env` when `SAKURA_RECORD=1`, else `Env.of(Map.empty())`; `--record` puts the manifest's `env` list in `SAKURA_PERMISSIONS` next to `net` (`fs` stays empty). `cli.rs`: a project with `env = ["K"]`, `net = ["127.0.0.1:1"]` and a test printing `Env.get("K")`: `sakura test --record` with `K=v` in the environment sees `Some("v")`, plain `sakura test` sees `None`; `--record` with an empty `net` still exits 75.
+
+Performance (§17.103): items 1–6 add nothing to a production path; item 2's unwrap is one inline field read. The `SqlValue.from` JSON round trip is flagged for research/10, not changed here.
+
 ### Ordering
 
 ```
@@ -202,6 +215,7 @@ WS1 ─┬─▶ WS2 ─┬─▶ WS3 (--contracts, UI_MILESTONE=3 last)
      │        └─▶ WS4 (std handlers, Http.stream, examples, llms.txt)
      ├─▶ WS1b (literal evaluation, W5005, contains-rule; independent of WS2/WS4)
      └─▶ WS5 fixtures green            WS5 audit/doc/fuzz, WS6, WS7 run from day one
+WS8 (round-5 decisions) runs from day one; item 3 waits for item 2, item 6 for nothing.
 ```
 
 ---
@@ -287,6 +301,7 @@ All must pass on `origin/master`, on ubuntu and macos, before M4 backend coding 
 8. `cargo test -p sakura_fmt --test props` and the fmt corpus green; `sakura fmt --check` clean on `std/`, `examples/`, `tests/`.
 9. Website: `bun run fmt:check && bun run lint && bun run typecheck && bun run build` green with the WS7 pages; `docs/roadmap.mdx` matches this plan.
 10. Named maintainer review (CODEOWNERS) of WS1's escape rules and WS2's cassette format, because both are security-relevant (§6.3, §17.57).
+11. WS8 green (§17.100–§17.102): the `rows.rs` catch cases, `tests/semantics/sql_untrusted_param.sakura`, the `std/llm` recording miss, `examples/llm_extract`'s recorded test, and the `cli.rs` `--record` env case; item 2 is in the maintainer review of 10 (it touches a trust boundary).
 
 ---
 
