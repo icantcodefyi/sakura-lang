@@ -24,7 +24,8 @@ for (const t of tests) {
   $rt.flushOut();
   if (o.kind !== "ok" || failures.length > 0) {
     failed++;
-    console.log(`FAIL ${t.name}: ${o.kind} ${o.code ?? ""} ${o.message ?? ""} ${failures.join("; ")}`);
+    const why = o.kind === "fail" ? $rt.show(o.error) : `${o.code ?? ""} ${o.message ?? ""} ${failures.join("; ")}`;
+    console.log(`FAIL ${t.name}: ${o.kind}  ${why}`.trimEnd());
   }
 }
 process.exitCode = failed > 0 ? 3 : 0;

@@ -245,7 +245,11 @@ test("String lengths and offsets are UTF-8 bytes", () => {
   assert.deepEqual(rt.string_chars("a😀").a, ["a", "😀"]);
   assert.deepEqual(rt.string_parse_int("-42"), rt.Some(-42));
   assert.deepEqual(rt.string_parse_int("4x"), rt.None);
-  assert.throws(() => rt.string_parse_int("9007199254740993"), { code: "D003" });
+  assert.deepEqual(rt.string_parse_int("9007199254740993"), rt.None);
+  assert.deepEqual(rt.string_parse_int("9007199254740991"), rt.Some(9007199254740991));
+  assert.deepEqual(rt.float_to_int_checked(1e300), rt.None);
+  assert.deepEqual(rt.float_to_int_checked(-2.7), rt.Some(-2));
+  assert.deepEqual(rt.float_to_int_checked(NaN), rt.None);
   assert.equal(rt.string_pad_left("7", 3, "0"), "007");
   assert.equal(rt.quote('a"\n'), '"a\\"\\n"');
 });

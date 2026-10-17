@@ -107,7 +107,7 @@ becomes defect `D090`; a rejected host promise becomes `D091`.
 |---|---|
 | `D001` | `Int` overflow beyond i64 |
 | `D002` | `/` or `%` by zero |
-| `D003` | `Int` beyond ±(2^53−1) on the JS backend (arithmetic, literals, parsing) |
+| `D003` | `Int` beyond ±(2^53−1) on the JS backend (arithmetic, literals; parsing returns `None`, §17.44) |
 | `D004` | `Float.round`/`to_int_checked` of NaN or ±∞ (requested in `REQUESTS.md`) |
 | `D010` `D020` `D021` | contract checks (`Check` in Core); std preconditions use `D020` |
 | `D030` | `Option.expect` on `None` |

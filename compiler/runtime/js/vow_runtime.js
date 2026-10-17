@@ -351,9 +351,13 @@ function floatToInt(f, what) {
 export function float_round(f) {
   return floatToInt(Math.sign(f) * Math.round(Math.abs(f)), "Float.round");
 }
-/** Truncates toward zero; `None` for NaN and infinities. */
+/**
+ * Truncates toward zero; `None` for NaN, infinities and values the backend cannot represent
+ * (beyond ±(2^53−1) on JS, design §17.44).
+ */
 export function float_to_int_checked(f) {
-  return Number.isFinite(f) ? Some(floatToInt(Math.trunc(f), "Float.to_int_checked")) : None;
+  const i = Math.trunc(f) + 0;
+  return Number.isSafeInteger(i) ? Some(i) : None;
 }
 export function float_sqrt(f) {
   return Math.sqrt(f);
@@ -1006,12 +1010,11 @@ export function string_to_lower(s) {
 export function string_to_upper(s) {
   return s.toUpperCase();
 }
+/** `None` for malformed text and for values the backend cannot represent (§17.44). */
 export function string_parse_int(s) {
   if (!/^[+-]?[0-9]+$/.test(s)) return None;
-  const big = BigInt(s);
-  if (big > I64_MAX || big < I64_MIN) return None;
-  const n = Number(big);
-  return Number.isSafeInteger(n) ? Some(n + 0) : intResult(big);
+  const n = Number(BigInt(s));
+  return Number.isSafeInteger(n) ? Some(n + 0) : None;
 }
 export function string_parse_float(s) {
   if (/^[+-]?([0-9]+(\.[0-9]*)?|\.[0-9]+)([eE][+-]?[0-9]+)?$/.test(s)) return Some(Number(s));

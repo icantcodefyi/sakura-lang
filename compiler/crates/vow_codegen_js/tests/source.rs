@@ -256,3 +256,21 @@ fn externals_work_as_function_values() {
         r.stderr
     );
 }
+
+/// Design §17.30: a test body may fail; an uncaught failure fails the test with its `Show`.
+#[test]
+#[ignore = "needs vow_types to allow Fail in test rows (design §17.30); un-ignore when C lands it"]
+fn uncaught_fail_in_a_test_is_a_test_failure() {
+    let src = r#"
+error Nope(why: String)
+fn check(n: Int) -> Int ! {Fail<Nope>} { if n > 0 { n } else { fail Nope { why: "small" } } }
+test "passes" { expect_eq(check(1), 1) }
+test "fails" { let _ = check(0) }
+"#;
+    let r = common::test("test_fail", src).unwrap();
+    assert_eq!(r.code, 3, "{}{}", r.stdout, r.stderr);
+    assert_eq!(
+        r.stdout.trim(),
+        r#"FAIL fails: fail  Nope { why: "small" }"#
+    );
+}
