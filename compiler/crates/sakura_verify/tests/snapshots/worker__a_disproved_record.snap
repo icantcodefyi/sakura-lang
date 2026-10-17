@@ -20,8 +20,8 @@ expression: r
   "solver": {
     "name": "z3",
     "version": "5.3.1",
-    "timeout_ms": 1000,
-    "rlimit": 1000000,
+    "timeout_ms": 2000,
+    "rlimit": 10000000,
     "deadline_ms": 500
   },
   "cross_check": null,

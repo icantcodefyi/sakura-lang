@@ -116,8 +116,13 @@ pub struct Record {
     pub inlined: Vec<String>,
     pub counterexample: Option<Counterexample>,
     pub replay: Option<Replay>,
+    /// Diagnostic codes (§12.3).
     pub warnings: Vec<&'static str>,
 }
+
+/// `W7002 vacuous_obligation` (§17.105): proved only because the path is impossible. The code is
+/// registered in `sakura_diagnostics` at V3.
+pub const VACUOUS_OBLIGATION: &str = "W7002";
 
 /// `o:` + sha256 of the symbol, clause and site (the §17.76 manifest id, per site).
 pub fn obligation_id(vc: &DefVc, o: &Obligation) -> String {
@@ -134,8 +139,8 @@ pub(crate) fn hex(bytes: &[u8]) -> String {
 }
 
 /// Asks `ask` the queries of §17.98 in order and turns the answers into a record: an
-/// impossible path is `proved` with `path_feasible: false` and the `vacuous_obligation`
-/// warning; an inconclusive answer at any step is `unknown` with its reason, never relabelled.
+/// impossible path is `proved` with `path_feasible: false` and the warning
+/// [`VACUOUS_OBLIGATION`]; an inconclusive answer at any step is `unknown` with its reason, never relabelled.
 pub fn decide(
     vc: &DefVc,
     o: &Obligation,
@@ -179,7 +184,7 @@ pub fn decide(
             (Query::Feasible, Answer::Unsat) => {
                 r.status = Status::Proved;
                 r.path_feasible = Some(false);
-                r.warnings.push("vacuous_obligation");
+                r.warnings.push(VACUOUS_OBLIGATION);
                 return r;
             }
             (Query::Feasible, Answer::Sat(_)) => r.path_feasible = Some(true),

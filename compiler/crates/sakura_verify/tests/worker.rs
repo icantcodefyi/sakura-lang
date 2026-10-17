@@ -181,6 +181,21 @@ fn only_the_pinned_version_runs() {
     );
 }
 
+/// §17.106: `--rlimit N` beats `[verify] rlimit`, both beat the default, zero (Z3's "no limit")
+/// is refused, and the record shows the value used.
+#[test]
+fn the_rlimit_override_is_recorded() {
+    assert_eq!(Limits::with_rlimit(None, None), Ok(Limits::default()));
+    assert_eq!(Limits::with_rlimit(None, Some(7)).unwrap().rlimit, 7);
+    assert_eq!(Limits::with_rlimit(Some(5), Some(7)).unwrap().rlimit, 5);
+    assert!(Limits::with_rlimit(Some(0), Some(7)).is_err());
+    assert!(Limits::with_rlimit(None, Some(0)).is_err());
+    let s = solver("unsat", Limits::with_rlimit(Some(42), None).unwrap());
+    let vcs = common::vcs("scale", Profile::Js);
+    let o = &vcs[0].obligations[0];
+    assert_eq!(verify(&vcs[0], o, &s, None).solver.unwrap().rlimit, 42);
+}
+
 #[test]
 fn models_are_decoded_to_source_values() {
     let s = solver("model", quick());
@@ -210,7 +225,7 @@ fn records_keep_reasons_and_cross_check_disagreements() {
     let r = verify(vc, ensures, &hang, None);
     assert_eq!(r.status, Status::Unknown);
     assert_eq!(r.reason.unwrap().kind, ReasonKind::Timeout);
-    assert_eq!(r.solver.unwrap().rlimit, 1_000_000);
+    assert_eq!(r.solver.unwrap().rlimit, 10_000_000);
 
     // Feasible, then `unsat` for every other query: proved.
     let primary = solver("by-query", quick());
@@ -224,7 +239,7 @@ fn records_keep_reasons_and_cross_check_disagreements() {
     let vacuous = verify(vc, ensures, &never, None);
     assert_eq!(vacuous.status, Status::Proved);
     assert_eq!(vacuous.path_feasible, Some(false));
-    assert_eq!(vacuous.warnings, ["vacuous_obligation"]);
+    assert_eq!(vacuous.warnings, ["W7002"]);
 
     let cross = solver("sat", quick());
     let blocked = verify(vc, ensures, &primary, Some(&cross));

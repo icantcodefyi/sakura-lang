@@ -340,9 +340,9 @@ mod tests {
             solver: SolverInfo {
                 name: "z3".into(),
                 version: "5.3.1".into(),
-                timeout_ms: 1000,
-                rlimit: 1_000_000,
-                deadline_ms: 3000,
+                timeout_ms: 2000,
+                rlimit: 10_000_000,
+                deadline_ms: 5000,
             },
             transcript: "t".into(),
             dependencies: vec![],

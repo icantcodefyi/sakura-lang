@@ -1,12 +1,14 @@
 //! Against a real Z3 5.3.1 (and cvc5 1.4.2 when present): every obligation of every fixture gets
 //! the committed status of `tests/expected/*.tsv`. Skipped, with a message, when the pinned
-//! solver is not on `PATH`; `SAKURA_BLESS=1` rewrites the expected files (review the diff).
+//! solver is not on `PATH`; `SAKURA_BLESS=1` rewrites the expected files (review the diff). No
+//! obligation may be `unknown` because of a timeout: under the §17.106 limits that is a budget
+//! bug, not a result.
 
 mod common;
 
 use std::collections::BTreeMap;
 
-use sakura_verify::record::{Answer, Status};
+use sakura_verify::record::{Answer, ReasonKind, Status};
 use sakura_verify::smt::{self, Query};
 use sakura_verify::solver::{Limits, Solver, SolverKind, verify};
 use sakura_verify::vc::Profile;
@@ -40,6 +42,12 @@ fn every_obligation_has_its_committed_status() {
             for vc in common::vcs(name, p) {
                 for o in &vc.obligations {
                     let r = verify(&vc, o, &z3, cvc5.as_ref());
+                    assert_ne!(
+                        r.reason.as_ref().map(|w| w.kind),
+                        Some(ReasonKind::Timeout),
+                        "{name}: {:?} timed out; the rlimit must bind first",
+                        common::id(&vc, o)
+                    );
                     got.insert(common::id(&vc, o), status(r.status));
                 }
             }

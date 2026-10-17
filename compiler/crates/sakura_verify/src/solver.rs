@@ -54,7 +54,9 @@ impl SolverKind {
     }
 }
 
-/// Initial limits of §17.98; cvc5's `rlimit` units are not Z3's and are recorded separately.
+/// Per-query limits of §17.106 (each of an obligation's queries gets all of them); cvc5's
+/// `rlimit` units are not Z3's and are recorded separately. The `rlimit` binds first on the
+/// reference machine, so statuses do not depend on machine speed.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Limits {
     pub timeout_ms: u64,
@@ -70,13 +72,27 @@ pub struct Limits {
 impl Default for Limits {
     fn default() -> Self {
         Limits {
-            timeout_ms: 1000,
-            rlimit: 1_000_000,
-            deadline: Duration::from_secs(3),
+            timeout_ms: 2000,
+            rlimit: 10_000_000,
+            deadline: Duration::from_secs(5),
             aggregate: Duration::from_secs(600),
             memory_mb: 1024,
             output_cap: 1 << 20,
         }
+    }
+}
+
+impl Limits {
+    /// The defaults with the `rlimit` of `sakura verify --rlimit N`, else of the manifest's
+    /// `[verify] rlimit`, if either is given (§17.106). Zero is refused: Z3 reads it as no limit.
+    pub fn with_rlimit(flag: Option<u64>, manifest: Option<u64>) -> Result<Limits, String> {
+        let mut l = Limits::default();
+        match flag.or(manifest) {
+            Some(0) => return Err("rlimit must be at least 1".into()),
+            Some(n) => l.rlimit = n,
+            None => {}
+        }
+        Ok(l)
     }
 }
 

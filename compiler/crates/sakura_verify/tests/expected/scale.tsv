@@ -19,7 +19,7 @@ js	main::main::main	r%1	proved	requires scale_wrong
 js	main::main::main	r%2	proved	requires half
 js	main::main::scale	post%10	proved	ensures scale
 js	main::main::scale	t%11	disproved	overflow t%11 = total * p
-js	main::main::scale	t%12	unknown	division t%12 = t%11 / 100
+js	main::main::scale	t%12	proved	division t%12 = t%11 / 100
 js	main::main::scale_wrong	post%10	disproved	ensures scale_wrong
 js	main::main::scale_wrong	t%11	disproved	overflow t%11 = total * p
-js	main::main::scale_wrong	t%12	unknown	division t%12 = t%11 / 50
+js	main::main::scale_wrong	t%12	proved	division t%12 = t%11 / 50
