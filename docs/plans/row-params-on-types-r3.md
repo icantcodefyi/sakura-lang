@@ -158,3 +158,26 @@ Update `compiler/std/INDEX.md` (signatures; deviations 16 and 18 become "resolve
   e} }` Fail-free; generalization of a local holding a `Box<?t>`; rendering snapshots.
 - `sakura_hir` lowering snapshot for `Agent<T, e>`.
 - Order-independence proptests from plan r2 §3.5 extended with one row-argument case.
+
+## Deviations (C, who implemented §1–§6)
+
+1. **Count stays `V2002`, kind is `V1007`, both reported by `sakura_types`.** `V1004` is
+   registered as `name_case_mismatch`, and every other wrong type-argument count is already
+   `V2002` in the checker; HIR has no cross-definition generics table at that point, so the
+   checker (which already did arity) also does kinds. HIR keeps `Named { args: Vec<TypeRef> }`
+   with rows as `TypeRefKind::Row` (it already had them for `Handler`).
+2. **Representation (b)**: `Type::RowArg(RowId)` at the row parameter's position inside
+   `Con` arguments, which are positional over all of a type's generics; `sakura_core` maps it
+   to `Ty::Unit` so its positions keep matching `td.generics` (D was told in REQUESTS.md).
+   Substitution maps a row parameter to a whole row (the row brings its own `Fail` label).
+3. **Kinds through types**: a function's row parameter written as the row argument of a
+   type's Fail-free slot (`x: Wrap<E, e>`) is Fail-free, since the type's body writes it next
+   to `Fail<E>`. Without this, `try` over such a field is `V3003` although the failures are
+   named.
+4. **A bare lowercase type argument** that is not a row parameter (`List<int>`) is reported by
+   HIR as the `V1004` case mismatch (one diagnostic; before this round it was `V0001` plus
+   `V1004`).
+5. **The §7 semantics fixture** leaves the pure box unannotated: a `Box<{}>` and a
+   `Box<{Console}>` do not unify (rows are never widened), so only an open row joins the list.
+6. **Not done**: a `sakura_hir` lowering snapshot for `Agent<T, e>` (the parser corpus
+   `row_arguments.sakura` and `sakura_types/tests/row_args.rs` cover the shapes).
