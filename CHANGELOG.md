@@ -32,6 +32,12 @@ published yet.
   loading/usage failures remain errors. Undecided literal conversions are not yet inventoried.
 - `sakura doc [--search "fn(List<A>) -> Int"] [symbol] [--json]` prints signatures, effect
   rows, contracts and doc comments offline; `--json` returns the records of MCP `symbol_query`.
+- `sakura test --contracts` also runs one property per `pub fn` with a refined parameter or a
+  `requires` clause: inputs come from the parameter types, `requires` filters them, and `ensures`
+  is checked. A property that discards more than 90% of its inputs fails and is reported as
+  `W7001` at the function. A shrunk failure is saved to `tests/regressions/<fn>.json` and runs
+  first next time. Functions with effects other than `Fail`, `Clock` and `Random` are skipped
+  unless `@contract_test(handlers: [Effect.constructor()])` names their handlers.
 - The `sakura explain` pages for `V5003`, `V5004`, `V6002`, `V6003`, `W5005` and `W7001`
   describe the M3 rules with minimal pairs; the retired `V5002` page remains for older reports.
 - Test fixtures accept backend-suffixed expectations (`// expect-defect@js: D003`,
