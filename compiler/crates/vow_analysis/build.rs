@@ -29,9 +29,11 @@ fn main() {
             .unwrap()
             .to_string_lossy()
             .replace('\\', "/");
+        // Resolved through CARGO_MANIFEST_DIR at compile time, not an absolute path baked in
+        // here, so a build output reused by another checkout cannot embed that checkout's std.
         src.push_str(&format!(
-            "    ({rel:?}, include_str!({:?})),\n",
-            path.display().to_string()
+            "    ({rel:?}, include_str!(concat!(env!(\"CARGO_MANIFEST_DIR\"), {:?}))),\n",
+            format!("/../../std/{rel}")
         ));
     }
     src.push_str("];\n");

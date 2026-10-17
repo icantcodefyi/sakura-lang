@@ -109,7 +109,7 @@ impl Analysis {
 /// Every frontend phase: HIR, typed program, and their diagnostics and holes.
 fn analyze(snapshot: &Snapshot) -> (vow_hir::Program, vow_types::TypedProgram, CheckResult) {
     let (mut program, mut diagnostics) = lower(snapshot);
-    let (typed, type_diags) = vow_types::check_program(&program);
+    let (typed, type_diags) = vow_types::check_program_with(&program, &diagnostics);
     let holes = typed
         .holes
         .iter()
