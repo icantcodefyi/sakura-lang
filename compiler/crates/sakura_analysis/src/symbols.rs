@@ -104,8 +104,9 @@ pub(crate) fn index(program: &Program, roots: &[Option<SyntaxNode>], uris: &[&st
                 module: ModuleId(mi as u32),
                 index,
             };
-            // Generated refinement introductions (`T.from`) have no source of their own.
-            if d.attrs.iter().any(|a| a.name == "refinement") {
+            // Generated defs have no source of their own: refinement introductions (`T.from`)
+            // and `@tool` argument records (`f$Args`, a name no source can write).
+            if d.attrs.iter().any(|a| a.name == "refinement") || d.name.contains('$') {
                 continue;
             }
             let node = item_node(root, d.range.start());

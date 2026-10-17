@@ -96,3 +96,18 @@ fn hover_on_unicode_text_uses_byte_offsets() {
         src.find("s =").unwrap() as u32
     );
 }
+
+#[test]
+fn tool_argument_records_are_not_symbols() {
+    let src = "import std/tool.{Tool}\n\n@tool(\"Adds.\")\nfn add(a: Int, b: Int) -> Int { a + b }\n\npub fn tools() -> Unit { let _ = Tool.of(add) }\n";
+    let snap = Snapshot::with_std([("file:///p/src/app.sakura".into(), src.into())]);
+    let a = Analysis::analyze(&snap);
+    assert!(a.check.diagnostics.is_empty(), "{:?}", a.check.diagnostics);
+    let names: Vec<&str> = a
+        .symbols()
+        .iter()
+        .filter(|s| s.package != "std")
+        .map(|s| s.name.as_str())
+        .collect();
+    assert_eq!(names, ["add", "tools"]);
+}
