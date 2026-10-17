@@ -255,3 +255,131 @@ property "low"(g: Grade) { expect(g.score < 50) }"#,
         "{line}"
     );
 }
+
+#[test]
+fn json_round_trips_through_schemas_and_checks_refinements() {
+    let src = r#"import std/json.{DecodeError}
+type Percent = Int where it >= 0 && it <= 100
+type Shape = Circle(Float) | Rect(Int, Int) | Dot
+type User = { name: String, age: Percent, tags: List<String>, nick: Option<String>, shape: Shape, scores: Map<String, Float> }
+pub fn main() -> Unit ! {Console} {
+  let u = User { name: "a", age: Percent.from(30), tags: ["x"], nick: None, shape: Rect(2, 3), scores: Map.of([("m", 1.0)]) }
+  let text = Json.encode(u)
+  Console.print(text)
+  let back: Result<User, DecodeError> = Json.decode(text)
+  Console.print("{back == Ok(u)}")
+  let shapes: Result<List<Shape>, DecodeError> = Json.decode("[\"Dot\", \{\"Circle\": 2\}]")
+  Console.print("{shapes}")
+  let bad: Result<User, DecodeError> = Json.decode("\{\"name\": \"b\", \"age\": 101, \"tags\": [], \"shape\": \"Dot\", \"scores\": \{\}\}")
+  Console.print("{bad}")
+  let missing: Result<User, DecodeError> = Json.decode("\{\"name\": \"b\", \"age\": 1, \"tags\": [3]\}")
+  Console.print("{missing}")
+}
+"#;
+    let r = common::run("json_codec", src).unwrap();
+    assert_eq!(
+        (r.stdout.as_str(), r.code),
+        (
+            concat!(
+                r#"{"name":"a","age":30,"tags":["x"],"nick":null,"shape":{"Rect":[2,3]},"scores":{"m":1}}"#,
+                "\ntrue\n",
+                "Ok([Dot, Circle(2.0)])\n",
+                r#"Err(DecodeError { path: "/age", message: "does not satisfy the where clause of Percent" })"#,
+                "\n",
+                r#"Err(DecodeError { path: "/tags/0", message: "expected a string, found an integer" })"#,
+                "\n"
+            ),
+            0
+        ),
+        "{}",
+        r.stderr
+    );
+}
+
+#[test]
+fn host_fs_is_confined_to_its_directory() {
+    let src = r#"import std/fs.{Fs, FsError}
+import std/path.{Path}
+pub fn main() -> Unit ! {Console, Fs} {
+  let w = try { Fs.write(Path.of("out/a.txt"), String.to_bytes("hi")) }
+  Console.print("{w}")
+  let t = try { Bytes.len(Fs.read(Path.of("out/a.txt"))) }
+  Console.print("{t} {Fs.exists(Path.of("out/a.txt"))} {Fs.exists(Path.of("out/nope"))}")
+  let names = try { List.map(Fs.list(Path.of("out")), fn(e) { e.name }) }
+  Console.print("{names}")
+  let escape = try { Fs.read(Path.of("link/secret.txt")) }
+  Console.print("{escape}")
+}
+"#;
+    let (m, sources) = common::build("fs_host", src, false).unwrap();
+    let base = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("fs-host");
+    let dir = base.join("js");
+    common::write(&m, sources, &dir);
+    let work = base.join("work");
+    let outside = base.join("outside");
+    let _ = std::fs::remove_dir_all(&work);
+    let _ = std::fs::remove_dir_all(&outside);
+    std::fs::create_dir_all(work.join("out")).unwrap();
+    std::fs::create_dir_all(&outside).unwrap();
+    std::fs::write(outside.join("secret.txt"), "s").unwrap();
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(&outside, work.join("link")).unwrap();
+    let out = std::process::Command::new("node")
+        .arg(dir.join("__main__.js"))
+        .current_dir(&work)
+        .output()
+        .unwrap();
+    assert_eq!(
+        String::from_utf8_lossy(&out.stdout),
+        concat!(
+            "Ok(())\nOk(2) true false\nOk([\"a.txt\"])\n",
+            "Err(FsError { path: \"link/secret.txt\", reason: \"escapes the directory\" })\n"
+        ),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+#[test]
+fn cli_parses_flags_into_a_record_and_exits_with_finalizers() {
+    let src = r#"import std/cli.{Cli, CliError}
+type Port = Int where it > 0 && it < 65536
+type Args = { name: String, port: Port, verbose: Bool, tag: Option<String> }
+pub fn main() -> Unit ! {Console, Cli} {
+  let a = try { let x: Args = Cli.parse(Cli.args()); x }
+  match a {
+    Ok(args) => Console.print("{args}"),
+    Err(e) => Console.print("{e.message}"),
+  }
+  Cli.exit(3)
+}
+"#;
+    let (m, sources) = common::build("cli_parse", src, false).unwrap();
+    let dir = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("cli-parse");
+    common::write(&m, sources, &dir);
+    let r = common::node(
+        &dir,
+        "__main__.js",
+        &["--name", "x", "--port", "8080", "--verbose"],
+    );
+    assert_eq!(
+        (r.stdout.as_str(), r.code),
+        (
+            "Args { name: \"x\", port: 8080, verbose: true, tag: None }\n",
+            3
+        ),
+        "{}",
+        r.stderr
+    );
+    let r = common::node(&dir, "__main__.js", &["--name", "x", "--port", "0"]);
+    assert_eq!(
+        r.stdout, "--port: \"0\" does not satisfy the where clause of Port\n",
+        "{}",
+        r.stderr
+    );
+    let r = common::node(&dir, "__main__.js", &["--help"]);
+    assert_eq!(
+        r.stdout,
+        "usage: --name <value> --port <value> [--verbose] [--tag <value>]\n"
+    );
+}

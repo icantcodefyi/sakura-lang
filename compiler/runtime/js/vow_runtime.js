@@ -224,6 +224,7 @@ function drive(t, start) {
   } catch (err) {
     contractDepth = 0;
     runFins(t, 0);
+    if (err instanceof Exit) throw err;
     const d = err instanceof Defect ? err : asDefect(err);
     return { kind: "defect", code: d.code, message: d.detail, spans: d.spans, error: d };
   }
@@ -259,8 +260,17 @@ export function runMain(entry) {
       setExit(70);
     }
   };
-  const o = runTask(entry);
-  return o instanceof Promise ? o.then(done) : done(o);
+  const exit = (e) => {
+    if (!(e instanceof Exit)) throw e;
+    flushOut();
+    setExit(e.code);
+  };
+  try {
+    const o = runTask(entry);
+    return o instanceof Promise ? o.then(done, exit) : done(o);
+  } catch (e) {
+    return exit(e);
+  }
 }
 
 /**
@@ -501,6 +511,17 @@ export function secret_expose(s) {
   return Secret.expose(s);
 }
 
+/** `Untrusted<T>` (design §6.4): data from outside the deployment, shown as `Untrusted.of(…)`. */
+export class Untrusted {
+  constructor(v) {
+    this.v = v;
+  }
+}
+Untrusted.prototype.$t = recordType("Untrusted", "std::untrusted", [["value", "v", null]], false);
+export function untrusted_of(v) {
+  return new Untrusted(v);
+}
+
 // ---------------------------------------------------------------------------------------------
 // Show (design §4.8). `h` is the value's schema (ABI.md §7) or null when unknown; it tells
 // `Float` from `Int` (`2.0` vs `2`). Type descriptors give field schemas over the type's own
@@ -549,6 +570,7 @@ function showIn(v, h, env) {
   if (v instanceof Uint8Array) return `Bytes.of([${v.join(", ")}])`;
   if (v instanceof Handler) return `<handler ${v.e}>`;
   if (v instanceof Secret) return "<secret>";
+  if (v instanceof Untrusted) return `Untrusted.of(${showIn(v.v, null, null)})`;
   const t = v.$t;
   if (t === undefined) return "<js value>";
   // Field schemas refer to the type's own parameters; resolve them against this use's arguments.
@@ -1898,6 +1920,229 @@ export function json_parse(text) {
   return Ok(jsToJson(raw));
 }
 
+// ---------------------------------------------------------------------------------------------
+// Schema codecs (design §4.4 `Schema`, §10). `Json.encode`/`Json.decode` and `Cli.parse` receive
+// the type's schema (ABI.md §7) as a trailing argument. Encoding (ABI.md §7): Unit null; Bool,
+// Int, Float numbers (non-finite floats are null); String; Bytes base64; List, Set and tuples
+// arrays; Map with String keys an object, other maps arrays of [key, value]; None null and
+// Some(x) as x; records and error tags objects; a variant constructor without fields its name,
+// with one field {"Name": value}, with more {"Name": [values]}; an error union member
+// {"Tag": {fields}}; `Json` itself; refined types as their base.
+
+class DecodeFailure {
+  constructor(path, message) {
+    this.path = path;
+    this.message = message;
+  }
+}
+
+const OPTION = "std::option::Option";
+const JSON_ID = "std::json::Json";
+
+function pointer(path, key) {
+  return `${path}/${String(key).replaceAll("~", "~0").replaceAll("/", "~1")}`;
+}
+
+/** A plain JS value (for `JSON.stringify`) of Vow value `v` with schema `s`. */
+function toJs(v, s) {
+  if (s === "U") return null;
+  if (s === "B" || s === "S") return v;
+  if (s === "I") return v;
+  if (s === "F") return Number.isFinite(v) ? v : null;
+  if (s === "Y") return base64(v);
+  if (s === null || typeof s === "string") throw internal("value has no Schema");
+  switch (s[0]) {
+    case "L":
+      return items(v).map((x) => toJs(x, s[1]));
+    case "E":
+      return entries(v).map((x) => toJs(x, s[1]));
+    case "M":
+      if (s[1] === "S") {
+        const o = {};
+        for (const [k, x] of entries(v)) o[k] = toJs(x, s[2]);
+        return o;
+      }
+      return entries(v).map(([k, x]) => [toJs(k, s[1]), toJs(x, s[2])]);
+    case "T":
+      return v.map((x, i) => toJs(x, s[i + 1]));
+    case "W":
+      return { [v.$t.name]: toJs(v, ["A", v.$t.id, []]) };
+    case "X":
+      throw internal(`a ${s[1]} cannot be encoded`);
+    case "A":
+      return namedToJs(v, s[1], s[2]);
+  }
+  throw internal(`bad schema ${JSON.stringify(s)}`);
+}
+
+function namedToJs(v, id, args) {
+  const r = refinements.get(id);
+  if (r !== undefined) return toJs(v, bindVars(r.base, args));
+  if (id === JSON_ID) return jsonToJs(v);
+  if (id === OPTION) return v.tag === 0 ? null : toJs(v.fields[0], args[0]);
+  const t = descriptor(id);
+  if (t.kind === "record") {
+    const o = {};
+    t.fields.forEach((name, i) => {
+      o[name] = toJs(v[t.props[i]], bindVars(t.h[i], args));
+    });
+    return o;
+  }
+  const c = t.ctors[v.tag];
+  const hs = c.h.map((h) => bindVars(h, args));
+  if (hs.length === 0) return c.name;
+  if (hs.length === 1) return { [c.name]: toJs(v.fields[0], hs[0]) };
+  return { [c.name]: v.fields.map((x, i) => toJs(x, hs[i])) };
+}
+
+/** Vow value of schema `s` from plain JS value `j` (from `JSON.parse`); throws DecodeFailure. */
+function fromJs(j, s, path) {
+  const bad = (what) => {
+    throw new DecodeFailure(path, `expected ${what}, found ${describe(j)}`);
+  };
+  if (s === "U") return j === null ? undefined : bad("null");
+  if (s === "B") return typeof j === "boolean" ? j : bad("a boolean");
+  if (s === "S") return typeof j === "string" ? j : bad("a string");
+  if (s === "I") return Number.isSafeInteger(j) ? j + 0 : bad("an integer");
+  if (s === "F") return typeof j === "number" ? j : bad("a number");
+  if (s === "Y") {
+    if (typeof j !== "string") bad("a base64 string");
+    const b = unbase64(j);
+    return b === null ? bad("a base64 string") : b;
+  }
+  if (s === null || typeof s === "string") throw internal("value has no Schema");
+  const arr = (what) => (Array.isArray(j) ? j : bad(what));
+  switch (s[0]) {
+    case "L":
+      return list(arr("an array").map((x, i) => fromJs(x, s[1], pointer(path, i))));
+    case "E":
+      return set_of(list(arr("an array").map((x, i) => fromJs(x, s[1], pointer(path, i)))));
+    case "M": {
+      let m = EMPTY_MAP;
+      if (s[1] === "S") {
+        if (j === null || typeof j !== "object" || Array.isArray(j)) bad("an object");
+        for (const [k, x] of Object.entries(j)) m = map_insert(m, k, fromJs(x, s[2], pointer(path, k)));
+        return m;
+      }
+      arr("an array of [key, value] pairs").forEach((e, i) => {
+        const p = pointer(path, i);
+        if (!Array.isArray(e) || e.length !== 2) throw new DecodeFailure(p, "expected a [key, value] pair");
+        m = map_insert(m, fromJs(e[0], s[1], pointer(p, 0)), fromJs(e[1], s[2], pointer(p, 1)));
+      });
+      return m;
+    }
+    case "T": {
+      const xs = arr(`an array of ${s.length - 1}`);
+      if (xs.length !== s.length - 1) bad(`an array of ${s.length - 1}`);
+      return xs.map((x, i) => fromJs(x, s[i + 1], pointer(path, i)));
+    }
+    case "W": {
+      const [tag, body] = single(j, path, bad);
+      const id = s[1].find((m) => descriptor(m).name === tag);
+      if (id === undefined) throw new DecodeFailure(path, `unknown error tag ${quote(tag)}`);
+      return fromJs(body, ["A", id, []], pointer(path, tag));
+    }
+    case "X":
+      throw internal(`a ${s[1]} cannot be decoded`);
+    case "A":
+      return namedFromJs(j, s[1], s[2], path, bad);
+  }
+  throw internal(`bad schema ${JSON.stringify(s)}`);
+}
+
+/** The single key and value of object `j`. */
+function single(j, path, bad) {
+  if (j === null || typeof j !== "object" || Array.isArray(j)) bad("an object with one key");
+  const keys = Object.keys(j);
+  if (keys.length !== 1) bad("an object with one key");
+  return [keys[0], j[keys[0]]];
+}
+
+function namedFromJs(j, id, args, path, bad) {
+  const r = refinements.get(id);
+  if (r !== undefined) {
+    const v = fromJs(j, bindVars(r.base, args), path);
+    if (!satisfies(r, v)) throw new DecodeFailure(path, `does not satisfy the where clause of ${r.name}`);
+    return v;
+  }
+  if (id === JSON_ID) return jsToJson(j);
+  if (id === OPTION) return j === null ? None : Some(fromJs(j, args[0], path));
+  const cls = std(id);
+  const t = cls.prototype.$t;
+  if (t.kind === "record") {
+    if (j === null || typeof j !== "object" || Array.isArray(j)) bad("an object");
+    const fs = t.fields.map((name, i) => {
+      const fs = bindVars(t.h[i], args);
+      if (!Object.hasOwn(j, name)) {
+        if (fs !== null && fs[0] === "A" && fs[1] === OPTION) return None;
+        throw new DecodeFailure(pointer(path, name), "missing field");
+      }
+      return fromJs(j[name], fs, pointer(path, name));
+    });
+    return new cls(...fs);
+  }
+  const [name, body] = typeof j === "string" ? [j, undefined] : single(j, path, bad);
+  const tag = t.ctors.findIndex((c) => c.name === name);
+  if (tag < 0) throw new DecodeFailure(path, `unknown constructor ${quote(name)} of ${t.name}`);
+  const hs = t.ctors[tag].h.map((h) => bindVars(h, args));
+  if (hs.length === 0) {
+    if (body !== undefined) bad(`${quote(name)} without a payload`);
+    return new cls(tag, []);
+  }
+  if (body === undefined) bad(`a payload for ${name}`);
+  const p = pointer(path, name);
+  if (hs.length === 1) return new cls(tag, [fromJs(body, hs[0], p)]);
+  if (!Array.isArray(body) || body.length !== hs.length) {
+    throw new DecodeFailure(p, `expected an array of ${hs.length}`);
+  }
+  return new cls(tag, body.map((x, i) => fromJs(x, hs[i], pointer(p, i))));
+}
+
+function describe(j) {
+  if (j === null) return "null";
+  if (Array.isArray(j)) return "an array";
+  if (typeof j === "object") return "an object";
+  if (typeof j === "string") return "a string";
+  if (typeof j === "number") return Number.isInteger(j) ? "an integer" : "a number";
+  return `a ${typeof j}`;
+}
+
+function base64(bytes) {
+  let s = "";
+  for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s);
+}
+
+function unbase64(text) {
+  try {
+    return Uint8Array.from(atob(text), (c) => c.charCodeAt(0));
+  } catch {
+    return null;
+  }
+}
+
+/** `Json.encode(value)`: compact JSON. */
+export function json_encode(v, schema) {
+  return JSON.stringify(toJs(v, schema));
+}
+
+/** `Json.decode(text)`: `Ok(value)` or `Err(DecodeError { path, message })`. */
+export function json_decode(text, schema) {
+  const E = std("std::json::DecodeError");
+  let raw;
+  try {
+    raw = JSON.parse(text);
+  } catch (e) {
+    return Err(new E("", String(e.message)));
+  }
+  try {
+    return Ok(fromJs(raw, schema, ""));
+  } catch (e) {
+    if (e instanceof DecodeFailure) return Err(new E(e.path, e.message));
+    throw e;
+  }
+}
+
 /** A plain JS value (from `JSON.parse`) as std/json `Json`. */
 function jsToJson(v) {
   const J = "std::json::Json";
@@ -1952,4 +2197,191 @@ export function env_get(key) {
 /** One line to stderr (the `Log.stderr()` / `Log.json()` sinks). */
 export function log_write(line) {
   writeErr(line);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Fs (design §6.1, §10.2): a `Dir` capability is a host directory (or none, for
+// `fs_detached_root`); user code cannot build one. Paths are relative (`std/path` rejects `/`
+// and `..`); after resolving symlinks the target must still be inside the directory.
+
+const nodeFs = () => proc.getBuiltinModule("node:fs");
+const nodePath = () => proc.getBuiltinModule("node:path");
+
+export class Dir {
+  #root;
+  constructor(brand, root) {
+    if (brand !== DIR_BRAND) throw internal("a Dir is only created by the Fs host");
+    this.#root = root;
+  }
+  static root(d) {
+    return d.#root;
+  }
+}
+const DIR_BRAND = Symbol("Dir");
+
+/** The working directory (ponytail: the manifest's `fs.read`/`fs.write` lists are E's to pass). */
+export function fs_root() {
+  return new Dir(DIR_BRAND, nodeFs().realpathSync(proc.cwd()));
+}
+export function fs_detached_root() {
+  return new Dir(DIR_BRAND, null);
+}
+
+/** The host path of `rel` inside `d`, or an error message; `forWrite` allows a missing file. */
+function inside(d, rel, forWrite) {
+  const root = Dir.root(d);
+  if (root === null) return { err: "this directory has no host access" };
+  if (rel.startsWith("/") || rel.split(/[\\/]/).includes("..")) return { err: "not a relative path" };
+  const fs = nodeFs();
+  const path = nodePath();
+  const full = path.join(root, rel);
+  let real;
+  try {
+    real = fs.realpathSync(full);
+  } catch (e) {
+    if (!forWrite || e.code !== "ENOENT") return { err: hostMessage(e) };
+    try {
+      real = path.join(fs.realpathSync(path.dirname(full)), path.basename(full));
+    } catch (e2) {
+      return { err: hostMessage(e2) };
+    }
+  }
+  if (real !== root && !real.startsWith(root + path.sep)) return { err: "escapes the directory" };
+  return { path: real };
+}
+
+function hostMessage(e) {
+  return e.code === "ENOENT" ? "not found" : String(e.message ?? e);
+}
+
+function fsResult(d, rel, forWrite, f) {
+  const r = inside(d, rel, forWrite);
+  if (r.err !== undefined) return Err(r.err);
+  try {
+    return Ok(f(r.path));
+  } catch (e) {
+    return Err(hostMessage(e));
+  }
+}
+
+export function fs_subdir(d, name) {
+  return fsResult(d, name, false, (p) => {
+    if (!nodeFs().statSync(p).isDirectory()) throw new Error("not a directory");
+    return new Dir(DIR_BRAND, p);
+  });
+}
+export function fs_read(d, rel) {
+  return fsResult(d, rel, false, (p) => new Uint8Array(nodeFs().readFileSync(p)));
+}
+export function fs_write(d, rel, data) {
+  return fsResult(d, rel, true, (p) => void nodeFs().writeFileSync(p, data));
+}
+/** Entries sorted by name. */
+export function fs_list(d, rel) {
+  const Entry = std("std::fs::Entry");
+  return fsResult(d, rel, false, (p) =>
+    list(
+      nodeFs()
+        .readdirSync(p, { withFileTypes: true })
+        .map((e) => new Entry(e.name, e.isDirectory()))
+        .sort((a, b) => cmpStr(a.name, b.name)),
+    ),
+  );
+}
+export function fs_exists(d, rel) {
+  const r = inside(d, rel, false);
+  return r.err === undefined;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Cli (design §10.5, §17.38)
+
+/** The process arguments after the script (`vow run -- a b` passes `a b`). */
+export function cli_args() {
+  return list(proc ? proc.argv.slice(2) : []);
+}
+
+/** `Cli.exit(code)`: unwinds every task (running finalizers), then exits with `code`. */
+export class Exit {
+  constructor(code) {
+    this.code = code;
+  }
+}
+export function cli_exit(code) {
+  throw new Exit(code);
+}
+
+/**
+ * `Cli.parse(args)` into record schema `schema`: `--field-name value` per field (kebab-case),
+ * `Bool` fields are switches, `Option` fields may be absent, `List` fields repeat, values are
+ * checked against refinements. `--help` fails with the usage.
+ */
+export function cli_parse(args, schema, ctx, k) {
+  const CliError = std("std::cli::CliError");
+  const failWith = (message) => fail(ctx, new CliError(message));
+  if (schema === null || schema[0] !== "A" || descriptor(schema[1]).kind !== "record") {
+    throw internal("Cli.parse needs a record type");
+  }
+  const cls = std(schema[1]);
+  const t = cls.prototype.$t;
+  const flag = (name) => `--${name.replaceAll("_", "-")}`;
+  const fieldSchemas = t.h.map((h) => bindVars(h, schema[2]));
+  const kind = (s) =>
+    s === "B" ? "switch" : s?.[0] === "A" && s[1] === OPTION ? "option" : s?.[0] === "L" ? "list" : "one";
+  const usage = () =>
+    `usage: ${t.fields
+      .map((n, i) => {
+        const kd = kind(fieldSchemas[i]);
+        const f = kd === "switch" ? flag(n) : `${flag(n)} <value>`;
+        return kd === "one" ? f : `[${f}]${kd === "list" ? "..." : ""}`;
+      })
+      .join(" ")}`;
+  const given = new Map();
+  const a = items(args);
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] === "--help" || a[i] === "-h") return failWith(usage());
+    const at = t.fields.findIndex((n) => flag(n) === a[i]);
+    if (at < 0) return failWith(`unknown argument ${a[i]}\n${usage()}`);
+    if (kind(fieldSchemas[at]) === "switch") {
+      given.set(at, [true]);
+      continue;
+    }
+    if (i + 1 >= a.length) return failWith(`${a[i]} needs a value`);
+    given.set(at, [...(given.get(at) ?? []), a[++i]]);
+  }
+  const values = [];
+  for (let i = 0; i < t.fields.length; i++) {
+    const s = fieldSchemas[i];
+    const raw = given.get(i);
+    const kd = kind(s);
+    try {
+      if (kd === "switch") values.push(raw !== undefined);
+      else if (kd === "list") values.push(list((raw ?? []).map((x) => cliValue(x, s[1]))));
+      else if (raw === undefined && kd === "option") values.push(None);
+      else if (raw === undefined) return failWith(`missing ${flag(t.fields[i])}\n${usage()}`);
+      else if (raw.length > 1) return failWith(`${flag(t.fields[i])} given more than once`);
+      else values.push(kd === "option" ? Some(cliValue(raw[0], s[2][0])) : cliValue(raw[0], s));
+    } catch (e) {
+      if (!(e instanceof DecodeFailure)) throw e;
+      return failWith(`${flag(t.fields[i])}: ${e.message}`);
+    }
+  }
+  return ret(k, new cls(...values));
+}
+
+/** A flag value of schema `s`: strings as given, numbers and refinements checked. */
+function cliValue(text, s) {
+  if (s === "S") return text;
+  if (s === "I" || s === "F") {
+    const n = s === "I" ? string_parse_int(text) : string_parse_float(text);
+    if (n.tag === 0) throw new DecodeFailure("", `expected ${s === "I" ? "an integer" : "a number"}, found ${quote(text)}`);
+    return n.fields[0];
+  }
+  if (s !== null && s[0] === "A" && refinements.has(s[1])) {
+    const r = refinements.get(s[1]);
+    const v = cliValue(text, bindVars(r.base, s[2]));
+    if (!satisfies(r, v)) throw new DecodeFailure("", `${quote(text)} does not satisfy the where clause of ${r.name}`);
+    return v;
+  }
+  return fromJs(text, s, "");
 }

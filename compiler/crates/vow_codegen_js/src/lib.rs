@@ -74,6 +74,12 @@ pub fn emit(m: &Module, opts: &Options) -> Vec<OutputFile> {
         path: RUNTIME_FILE.into(),
         text: RUNTIME.into(),
     }];
+    // Entry files import every module so each registers its types (`$rt.def`), which host
+    // functions such as `json_decode` construct even when no Vow code imports their module.
+    let mut all_modules = String::new();
+    for module in &modules {
+        let _ = writeln!(all_modules, "import \"./{}\";", module_path(module));
+    }
     for module in modules {
         let (text, map) = emit::module(&cx, module);
         let path = module_path(module);
@@ -88,7 +94,7 @@ pub fn emit(m: &Module, opts: &Options) -> Vec<OutputFile> {
         files.push(OutputFile {
             path: "__main__.js".into(),
             text: format!(
-                "import {{ runMain }} from \"./{RUNTIME_FILE}\";\nimport {{ {name} }} from \"./{}\";\n\nrunMain({name});\n",
+                "import {{ runMain }} from \"./{RUNTIME_FILE}\";\n{all_modules}import {{ {name} }} from \"./{}\";\n\nrunMain({name});\n",
                 module_path(&d.module),
                 name = cx.def_names[entry.index()]
             ),
@@ -108,7 +114,7 @@ pub fn emit(m: &Module, opts: &Options) -> Vec<OutputFile> {
                 js_string(&d.module)
             );
         }
-        let mut text = String::new();
+        let mut text = all_modules.clone();
         for (module, names) in imports {
             let _ = writeln!(
                 text,

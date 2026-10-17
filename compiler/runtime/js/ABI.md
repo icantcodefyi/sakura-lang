@@ -147,6 +147,8 @@ caller. `std/test`'s `expect_defect` is built on it.
   import { $entry } from "./main.js";
   runMain($entry);
   ```
+  The entry files (`__main__.js`, `__tests__.js`) also import every emitted module, so each
+  registers its classes (`$rt.def`) before host functions build std values.
   `$entry` is a Core-generated function that builds the root handlers for the effects `main`
   declares (calling each std effect's `host()`), installs them, and calls `main`. `runMain`
   flushes stdout and sets `process.exitCode`: `0` ok; `1` if `main` fails with an uncaught
@@ -156,6 +158,8 @@ caller. `std/test`'s `expect_defect` is built on it.
   {"schema_version":"1.0","kind":"defect","code":"D002","message":"division by zero"}
   ```
   plus `"spans": [...]` (section 5) when the defect has a source location.
+- `Cli.exit(code)` throws `$rt.Exit`: every task on the way out runs its finalizers, then
+  `runMain` flushes and exits with `code`. `Cli.args()` is `process.argv` after the script.
 - `Console` output is buffered and flushed before suspending, before writing to stderr, and at
   task end.
 
@@ -211,6 +215,24 @@ silicon, best of 3; ns per operation at n = 100,000):
 
 The old maps copied on every update, so 100k inserts took minutes; the "before" column is
 therefore measured at n = 20,000.
+
+**Schema codecs.** `json_encode(v, schema)`, `json_decode(text, schema)` and
+`cli_parse(args, schema, $ctx, $k)` are driven by the schema. JSON: `Unit` is `null`; `Bool`,
+`Int`, `Float` are numbers (non-finite floats `null`); `Bytes` base64; `List`, `Set` and tuples
+arrays; a `Map` with `String` keys an object, other maps arrays of `[key, value]`; `None` is
+`null` and `Some(x)` is `x` (a missing record field of `Option` type decodes as `None`);
+records and error tags objects in field order; a variant constructor without fields is its
+name (`"Dot"`), with one field `{"Circle": 2.0}`, with more `{"Rect": [2, 3]}`; an error-union
+member `{"Tag": {…}}`; `Json` maps to itself; refined types encode as their base and decode
+only when their `where` holds. Decode errors carry a JSON Pointer (`/items/0/email`).
+`Cli.parse` reads `--kebab-case value` per record field; `Bool` fields are switches, `Option`
+fields optional, `List` fields repeat, refinements are checked; `--help` fails with the usage.
+
+**Capabilities.** `$rt.Dir` holds a host directory in a private field and is only built by
+`fs_root()` (the working directory; the manifest's `fs.*` lists are not applied yet) and
+`fs_subdir`. `fs_detached_root()` has no host access. Every `fs_*` path is relative and must
+stay inside the directory after symlinks are resolved (`escapes the directory` otherwise).
+`Untrusted<T>` is `$rt.Untrusted { v }`, shown as `Untrusted.of(…)`.
 
 ## 8. Builtins
 
