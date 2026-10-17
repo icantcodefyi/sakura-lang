@@ -1,0 +1,6 @@
+fn spawn() -> Int { 1 }
+fn ok() -> Int { Task.spawn(1) }
+effect Task { fn spawn() -> Int }
+fn h() -> Handler<Task> { handler Task { fn spawn() { 1 } } }
+fn price() -> Int { 1 $ 2 }
+fn after() -> Int { let resume = 1; resume }

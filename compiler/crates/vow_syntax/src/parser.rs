@@ -77,6 +77,8 @@ pub(crate) struct Parser<'t> {
     events: Vec<Event>,
     pub(crate) errors: Vec<ParseError>,
     pub(crate) depth: u32,
+    /// The next bumped `IDENT` may be a reserved word (member and operation names).
+    allow_reserved: bool,
 }
 
 /// Lookaheads allowed without consuming a token. Unwinding `MAX_DEPTH` levels at one token
@@ -112,6 +114,7 @@ impl<'t> Parser<'t> {
             events: Vec::new(),
             errors: Vec::new(),
             depth: 0,
+            allow_reserved: false,
         }
     }
 
@@ -179,8 +182,26 @@ impl<'t> Parser<'t> {
         self.pos.checked_sub(1).map_or(0, |i| self.sig[i].end)
     }
 
+    /// Let the next token be a reserved word: `Task.spawn`, `effect Task { fn spawn(…) }`.
+    pub(crate) fn allow_reserved_next(&mut self) {
+        self.allow_reserved = true;
+    }
+
     pub(crate) fn bump(&mut self) {
         assert!(self.pos < self.sig.len(), "bump at end of input");
+        let tok = self.sig[self.pos];
+        let text = &self.text[tok.start as usize..tok.end as usize];
+        if tok.kind == IDENT
+            && !std::mem::take(&mut self.allow_reserved)
+            && crate::lexer::is_reserved(text)
+        {
+            self.error_at(
+                codes::RESERVED_WORD,
+                format!("`{text}` is reserved for a later edition"),
+                tok.start,
+                tok.end,
+            );
+        }
         self.fuel.set(FUEL);
         self.events.push(Event::Token);
         self.pos += 1;
@@ -290,6 +311,24 @@ impl<'t> Parser<'t> {
             {
                 break;
             }
+        }
+        m.complete(self, ERROR);
+    }
+
+    /// After an invalid character (already reported by the lexer), wrap the rest of the
+    /// statement in an `ERROR` node without another diagnostic, so it does not cascade.
+    pub(crate) fn skip_after_lex_error(&mut self) {
+        let m = self.start();
+        let mut balance = 0u32;
+        loop {
+            match self.current() {
+                EOF => break,
+                NEWLINE | SEMICOLON | R_BRACE if balance == 0 => break,
+                L_PAREN | L_BRACKET | L_BRACE | INTERP_START => balance += 1,
+                R_PAREN | R_BRACKET | R_BRACE | INTERP_END => balance = balance.saturating_sub(1),
+                _ => {}
+            }
+            self.bump();
         }
         m.complete(self, ERROR);
     }

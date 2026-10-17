@@ -112,6 +112,7 @@ pub(crate) fn member_term(p: &mut Parser<'_>, what: &str) {
     match p.current() {
         NEWLINE | SEMICOLON => p.bump(),
         EOF | R_BRACE => {}
+        ERROR_TOKEN => p.skip_after_lex_error(),
         _ if p.newline_before(0) => {}
         _ => p.error(
             codes::EXPECTED_TERMINATOR,
@@ -412,7 +413,12 @@ fn effect_decl(p: &mut Parser<'_>) -> bool {
 fn signature(p: &mut Parser<'_>, allow_body: bool) -> bool {
     p.bump();
     match p.current() {
-        IDENT => p.bump(),
+        IDENT => {
+            if !allow_body {
+                p.allow_reserved_next(); // operation names (`Task.spawn`)
+            }
+            p.bump();
+        }
         TYPE_NAME => {
             p.error(
                 codes::EXPECTED,

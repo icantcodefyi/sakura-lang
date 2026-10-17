@@ -20,6 +20,8 @@ pub(crate) struct LexError {
     pub end: u32,
 }
 
+/// Words reserved for a later edition (§2.1). The parser reports them (`V0007`) except as
+/// member and operation names.
 const RESERVED: &[&str] = &[
     "verify",
     "proof",
@@ -254,17 +256,6 @@ impl Lexer<'_> {
                 } else {
                     SyntaxKind::from_keyword(text).unwrap_or(IDENT)
                 };
-                // Member and operation names (`Task.spawn`, `fn spawn`) are not future keyword
-                // positions, so reserved words are allowed there (design §8.6, §15.10).
-                if RESERVED.contains(&text) && !matches!(self.last_significant(), Some(DOT | FN_KW))
-                {
-                    self.error(
-                        codes::RESERVED_WORD,
-                        format!("`{text}` is reserved for a later edition"),
-                        start,
-                        self.pos,
-                    );
-                }
                 self.push(kind, start);
             }
             b'A'..=b'Z' => {
@@ -485,6 +476,10 @@ fn starts_token(s: &str) -> bool {
         b'&' => s.as_bytes().get(1) == Some(&b'&'),
         _ => b.is_ascii_alphanumeric() || b"_ \t\r\n\"(){}[],.:;=|!?@+-*/%<>".contains(&b),
     }
+}
+
+pub(crate) fn is_reserved(text: &str) -> bool {
+    RESERVED.contains(&text)
 }
 
 /// Tokens after which a line break ends the statement (§2.4 condition 1).

@@ -1,6 +1,6 @@
 ---
 source: crates/vow_syntax/tests/parse.rs
-assertion_line: 38
+assertion_line: 42
 expression: out
 input_file: crates/vow_syntax/tests/data/err/lex_errors.vow
 ---
@@ -70,13 +70,11 @@ SOURCE_FILE@0..110
           STRING_TEXT@75..99 "bad \\q escape \\u{110000}"
           STRING_END@99..100 "\""
       WHITESPACE@100..101 " "
-      ERROR@101..102
+      ERROR@101..107
         ERROR_TOKEN@101..102 "#"
-      WHITESPACE@102..103 " "
-      ERROR@103..104
+        WHITESPACE@102..103 " "
         ERROR_TOKEN@103..104 "&"
-      WHITESPACE@104..105 " "
-      ERROR@105..107
+        WHITESPACE@104..105 " "
         ERROR_TOKEN@105..107 "é"
       WHITESPACE@107..108 "\n"
       R_BRACE@108..109 "}"

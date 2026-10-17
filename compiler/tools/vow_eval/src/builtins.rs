@@ -49,7 +49,7 @@ fn float_to_int(f: f64, what: &str) -> R<Value> {
             format!("{what} of {} is not an integer", crate::show::show_float(f)),
         ));
     }
-    if f.abs() >= 9.223_372_036_854_775_808e18 {
+    if f.abs() >= -(i64::MIN as f64) {
         return Err(defect("D001", "integer overflow"));
     }
     int(f as i64)

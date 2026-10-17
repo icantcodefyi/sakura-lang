@@ -13,6 +13,8 @@
 //! assert_eq!(parse.syntax().to_string(), "fn id(x: Int) -> Int { x }\n"); // lossless
 //! ```
 //!
+//! - An invalid character (`V0004`) ends its statement without further diagnostics: the rest
+//!   of the statement becomes an `ERROR` node so later phases see no cascade.
 //! - [`parse`] / [`parse_file`] never panic and always terminate; every byte of the input is in
 //!   the tree (`root.to_string() == text`). Problems are reported in [`Parse::errors`] as
 //!   [`Diagnostic`]s with `V0xxx` codes from [`codes`], and unplaceable tokens are wrapped in
@@ -58,8 +60,9 @@
 //! 13. **Rows as type arguments.** `GenericArgList` accepts `EffectRow`s
 //!     (`Handler<Db, {Http}>`, §4.2, §6.2); see [`ast::GenericArg`].
 //! 14. **Keyword module segments.** `ModPath` accepts keywords after `/` (`import std/test`).
-//! 15. **Reserved words** (`V0007`) are allowed directly after `.` or `fn`, so std can name the
-//!     operation `Task.spawn` (§8.6, §15.10).
+//! 15. **Reserved words** (`V0007`, reported by the parser) are allowed as member names after
+//!     `.` and as operation names in `effect` declarations and handlers, so std can name the
+//!     operation `Task.spawn` (§8.6, §15.10). `fn spawn()` as a function is still `V0007`.
 //! 16. **Type arguments need adjacency.** `f<T>(…)` is recognized only with no space before `<`
 //!     and none between `>` and `(`, so `f(a < B, c > (d))` stays two comparisons.
 

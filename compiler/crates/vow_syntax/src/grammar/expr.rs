@@ -259,6 +259,9 @@ fn handler_expr(p: &mut Parser<'_>) -> CompletedMarker {
                 FN_KW => {
                     let c = p.start();
                     p.bump();
+                    if p.at(IDENT) {
+                        p.allow_reserved_next(); // operation names (`Task.spawn`)
+                    }
                     if !p.eat(IDENT) {
                         p.error_expected("an operation name");
                     }
@@ -394,6 +397,7 @@ fn postfix_loop(p: &mut Parser<'_>, mut lhs: CompletedMarker) -> CompletedMarker
             FIELD_EXPR => {
                 p.bump();
                 if matches!(p.current(), IDENT | TYPE_NAME | INT) {
+                    p.allow_reserved_next();
                     p.bump();
                 } else {
                     p.error_expected("a field name or tuple index after `.`");
@@ -627,6 +631,7 @@ pub(crate) fn block(p: &mut Parser<'_>) -> CompletedMarker {
                 match p.current() {
                     NEWLINE | SEMICOLON => p.bump(),
                     R_BRACE | EOF => {}
+                    ERROR_TOKEN => p.skip_after_lex_error(),
                     _ => p.error(
                         codes::EXPECTED_TERMINATOR,
                         "expected a newline or `;` after the statement",
