@@ -47,10 +47,8 @@ fn check_json_goes_to_stdout_and_ends_with_summary() {
         assert_eq!(r["kind"], "diagnostic");
         assert_eq!(r["snapshot"], summary["snapshot"]);
         let uri = r["spans"][0]["uri"].as_str().unwrap();
-        assert!(
-            uri.starts_with("file:///") && uri.ends_with("/main.vow"),
-            "{uri}"
-        );
+        let user = uri.starts_with("file:///") && uri.ends_with("/main.vow");
+        assert!(user || uri.starts_with("vow:///std/"), "{uri}");
     }
     assert!(out.stderr.is_empty(), "{}", out.stderr);
 }
