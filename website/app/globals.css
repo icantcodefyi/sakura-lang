@@ -242,3 +242,30 @@ figure.shiki {
   --color-fd-secondary: var(--line);
   --color-fd-muted-foreground: var(--fg-muted);
 }
+
+/* Server-tokenized code on the landing page */
+.tk {
+  color: var(--l);
+}
+.dark .tk {
+  color: var(--d);
+}
+
+@keyframes caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes note-in {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}

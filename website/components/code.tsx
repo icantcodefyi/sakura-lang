@@ -1,0 +1,52 @@
+import type { ReactNode } from "react";
+import { tokenize } from "@/lib/vow/highlight";
+import { TokenSpans } from "./token-spans";
+
+type CodeProps = {
+  code: string;
+  lang?: string;
+  title?: ReactNode;
+  /** 0-based line indexes to mark */
+  mark?: Record<number, "add" | "del" | "seal" | "fail" | "ok">;
+  className?: string;
+  numbers?: boolean;
+};
+
+const markClass = {
+  add: "bg-ok-wash",
+  del: "bg-fail-wash",
+  seal: "bg-seal-wash",
+  fail: "bg-fail-wash",
+  ok: "bg-ok-wash",
+} as const;
+
+/** Static, server-highlighted code block in the site's code style. */
+export async function Code({ code, lang = "vow", title, mark, className, numbers = false }: CodeProps) {
+  const lines = await tokenize(code.replace(/\n$/, ""), lang);
+  return (
+    <figure className={`overflow-hidden rounded-xl border border-line bg-code ${className ?? ""}`}>
+      {title ? (
+        <figcaption className="flex items-center gap-2 border-b border-line px-4 py-2 font-mono text-[11.5px] text-fg-muted">
+          {title}
+        </figcaption>
+      ) : null}
+      <pre className="overflow-x-auto py-3 font-mono text-[12.5px] leading-[1.7]">
+        <code className="grid min-w-max">
+          {lines.map((line, i) => (
+            <span key={i} className={`flex px-4 ${mark?.[i] ? markClass[mark[i]] : ""}`}>
+              {numbers ? (
+                <span aria-hidden className="mr-4 w-5 shrink-0 text-right text-fg-faint tabular-nums select-none">
+                  {i + 1}
+                </span>
+              ) : null}
+              <span>
+                <TokenSpans line={line} />
+                {line.length === 0 ? " " : null}
+              </span>
+            </span>
+          ))}
+        </code>
+      </pre>
+    </figure>
+  );
+}
