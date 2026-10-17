@@ -217,6 +217,18 @@ impl<'a> Printer<'a> {
         }
     }
 
+    /// Row variables are numbered by position in the def's `row_vars` (global ids shift
+    /// whenever another module gains a row variable).
+    fn row_var(&self, v: u32) -> String {
+        match self
+            .def
+            .and_then(|d| d.row_vars.iter().position(|x| *x == v))
+        {
+            Some(i) => format!("r{i}"),
+            None => format!("r?{v}"),
+        }
+    }
+
     fn row(&self, r: &Row) -> String {
         let mut labels: Vec<String> = r
             .effects
@@ -229,11 +241,11 @@ impl<'a> Printer<'a> {
         if labels.is_empty()
             && let Some(v) = r.tail
         {
-            return format!("r{v}");
+            return self.row_var(v);
         }
         let mut s = format!("{{{}", labels.join(", "));
         if let Some(v) = r.tail {
-            let _ = write!(s, " | r{v}");
+            let _ = write!(s, " | {}", self.row_var(v));
         }
         s.push('}');
         s
