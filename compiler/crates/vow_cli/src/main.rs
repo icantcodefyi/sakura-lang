@@ -75,6 +75,9 @@ enum Command {
         /// Run only tests whose name contains this text.
         #[arg(long)]
         filter: Option<String>,
+        /// Write `tests/__snapshots__/<module>/<name>.snap` files instead of comparing them.
+        #[arg(long)]
+        update_snapshots: bool,
         #[arg(long, default_value = "target/vow/js")]
         out_dir: PathBuf,
         paths: Vec<PathBuf>,
@@ -151,12 +154,14 @@ fn dispatch(command: Command) -> ExitCode {
             json,
             seed,
             filter,
+            update_snapshots,
             out_dir,
             paths,
         } => test(
             json,
             seed,
             filter.as_deref().unwrap_or(""),
+            update_snapshots,
             &out_dir,
             &paths,
         ),
@@ -334,7 +339,14 @@ fn run(path: Option<PathBuf>, out_dir: &Path, args: &[String]) -> ExitCode {
     }
 }
 
-fn test(json: bool, seed: u64, filter: &str, out_dir: &Path, paths: &[PathBuf]) -> ExitCode {
+fn test(
+    json: bool,
+    seed: u64,
+    filter: &str,
+    update_snapshots: bool,
+    out_dir: &Path,
+    paths: &[PathBuf],
+) -> ExitCode {
     let dir = match build(json, paths, out_dir, false) {
         Ok(d) => d,
         Err(code) => return code,
@@ -350,14 +362,26 @@ fn test(json: bool, seed: u64, filter: &str, out_dir: &Path, paths: &[PathBuf]) 
         return ExitCode::SUCCESS;
     }
     let dir = std::fs::canonicalize(&dir).unwrap_or(dir);
-    // Tests read only their own build output: no network, no child processes, no writes.
+    let snapshots = std::path::absolute("tests/__snapshots__").unwrap_or_default();
+    // Tests read only their build output and snapshots: no network, no child processes, and
+    // writes only to snapshots under --update-snapshots.
     let mut cmd = node();
     cmd.arg("--permission")
         .arg(format!("--allow-fs-read={}", dir.display()))
-        .arg("--max-old-space-size=1024")
+        .arg(format!("--allow-fs-read={}", snapshots.display()));
+    if update_snapshots {
+        // Node's permission model cannot create the granted directory itself.
+        if let Err(e) = std::fs::create_dir_all(&snapshots) {
+            return usage_error(format!("{}: {e}", snapshots.display()));
+        }
+        cmd.arg(format!("--allow-fs-write={}", snapshots.display()));
+    }
+    cmd.arg("--max-old-space-size=1024")
         .arg(dir.join("__vow_test__.js"))
         .arg(seed.to_string())
         .arg(filter)
+        .arg(&snapshots)
+        .arg(if update_snapshots { "1" } else { "0" })
         .stdout(Stdio::piped());
     let mut child = match cmd.spawn() {
         Ok(c) => c,
