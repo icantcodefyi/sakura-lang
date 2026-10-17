@@ -848,7 +848,14 @@ impl<'a> BodyCx<'a> {
         let mut cands = self.local_names();
         cands.extend(self.cx.module_candidates(self.m));
         let mut d = diag::error(diag::UNRESOLVED_NAME, file, range, msg);
-        if let Some(s) = did_you_mean(text, cands.iter().map(String::as_str)) {
+        let import = self.cx.std_import_fix(self.m, text, false).or_else(|| {
+            (name.kind() == IDENT)
+                .then(|| self.cx.std_import_fix(self.m, text, true))
+                .flatten()
+        });
+        if let Some(fix) = import {
+            d = d.with_fix(fix);
+        } else if let Some(s) = did_you_mean(text, cands.iter().map(String::as_str)) {
             d.message.push_str(&format!("; did you mean `{s}`?"));
             d = d.with_fix(diag::replace_fix(file, range, format!("Use `{s}`"), s));
         }

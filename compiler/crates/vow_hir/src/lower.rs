@@ -13,7 +13,7 @@ use std::collections::BTreeMap;
 
 use la_arena::Idx;
 use text_size::TextRange;
-use vow_diagnostics::{Diagnostic, FileId, Phase, codes};
+use vow_diagnostics::{Applicability, Diagnostic, Edit, FileId, Fix, Impact, Phase, codes};
 use vow_syntax::ast::AstNode;
 use vow_syntax::{SyntaxKind, SyntaxKind::*, SyntaxNode, SyntaxToken};
 
@@ -642,6 +642,19 @@ impl Cx {
             .unwrap_or_default();
         let binding = match (&alias, names.is_empty()) {
             (Some(a), _) => Some(a.text().to_string()),
+            // §9: a keyword segment (`std/test`) has no bindable name.
+            (None, true) if segs.last().is_some_and(|t| t.kind().is_keyword()) => {
+                let last = segs.last().map(|t| t.text()).unwrap_or_default();
+                let msg = format!(
+                    "`{last}` is a keyword, so `import {}` binds no name; list the items (`import {}.{{…}}`) or rename it (`import {} as {last}_mod`)",
+                    path.join("/"),
+                    path.join("/"),
+                    path.join("/")
+                );
+                let file = self.file(m);
+                self.report(diag::error(diag::UNRESOLVED_MODULE, file, range, msg));
+                None
+            }
             (None, true) => path.last().cloned(),
             (None, false) => None,
         };
@@ -1676,6 +1689,46 @@ impl Cx {
         TypeRes::Err
     }
 
+    /// The fix adding `import std/<module>.{name}` when exactly one std module exports `name`,
+    /// or `import std/<name>` when `is_module` and that module exists (design §9, §17.36).
+    pub(crate) fn std_import_fix(&self, m: ModuleId, name: &str, is_module: bool) -> Option<Fix> {
+        let mut std = (0..self.program.modules.len() as u32)
+            .map(ModuleId)
+            .filter(|&t| {
+                t != m
+                    && self.program.packages[self.program.module(t).package.0 as usize].name
+                        == "std"
+            });
+        let line = if is_module {
+            std.find(|&t| self.program.module(t).path == name)?;
+            format!("import std/{name}")
+        } else {
+            let mut exporting = std.filter(|&t| self.program.module(t).exports.contains_key(name));
+            let t = exporting.next()?;
+            if exporting.next().is_some() {
+                return None;
+            }
+            format!("import std/{}.{{{name}}}", self.program.module(t).path)
+        };
+        let root = self.mods[m.0 as usize].root.as_ref()?;
+        let (at, text) = match root.children().filter(|c| c.kind() == IMPORT).last() {
+            Some(i) if i.text().to_string().ends_with('\n') => {
+                (i.text_range().end(), format!("{line}\n"))
+            }
+            Some(i) => (i.text_range().end(), format!("\n{line}")),
+            None => (0.into(), format!("{line}\n")),
+        };
+        Some(Fix {
+            title: format!("Add `{line}`"),
+            applicability: Applicability::MachineApplicable,
+            impact: Impact::Local,
+            edits: vec![Edit {
+                span: diag::span(self.file(m), TextRange::empty(at)),
+                replacement: text,
+            }],
+        })
+    }
+
     fn report_unresolved_type(
         &mut self,
         m: ModuleId,
@@ -1696,7 +1749,9 @@ impl Cx {
             );
         }
         let mut d = diag::error(diag::UNRESOLVED_TYPE, file, range, msg);
-        if let Some(s) = did_you_mean(name, cands.iter().map(String::as_str)) {
+        if let Some(fix) = self.std_import_fix(m, name, false) {
+            d = d.with_fix(fix);
+        } else if let Some(s) = did_you_mean(name, cands.iter().map(String::as_str)) {
             d.message.push_str(&format!("; did you mean `{s}`?"));
             d = d.with_fix(diag::replace_fix(file, range, format!("Use `{s}`"), s));
         }
@@ -1776,12 +1831,11 @@ impl Cx {
                     "cannot find module `{0}`; import it first, e.g. `import std/{0}`",
                     first.text()
                 );
-                self.report(diag::error(
-                    diag::UNRESOLVED_MODULE,
-                    file,
-                    first.text_range(),
-                    msg,
-                ));
+                let mut d = diag::error(diag::UNRESOLVED_MODULE, file, first.text_range(), msg);
+                if let Some(fix) = self.std_import_fix(m, first.text(), true) {
+                    d = d.with_fix(fix);
+                }
+                self.report(d);
             } else {
                 self.report_unresolved_type(m, first.text(), first.text_range(), &[]);
             }

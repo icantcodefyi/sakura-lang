@@ -21,6 +21,10 @@ const STD: &[(&str, &str)] = &[
         "@external(js, \"vow_runtime\", \"list_len\")\npub fn len<A>(xs: List<A>) -> Int\nfn secret() -> Int { 1 }\n",
     ),
     (
+        "http",
+        "pub effect Http {\n  fn get(url: Int) -> Int\n}\npub type Request = { url: Int }\npub fn host() -> Handler<Http> { handler Http { fn get(url) { url } } }\n",
+    ),
+    (
         "test",
         "pub effect Test {\n  fn record(ok: Bool) -> Unit\n}\npub fn expect_eq<A: Eq + Show>(a: A, b: A) -> Unit ! {Test} { Test.record(a == b) }\n",
     ),
@@ -499,6 +503,17 @@ effect Local { fn op() -> Int }
 pub fn main() -> Unit ! {Console, Db, Local, Fail<Int>} { () }
 "#,
     "db" => "pub effect Db { fn count() -> Int }\nfn main() -> Unit ! {Db} { () }\n",
+);
+
+snap!(diag_explicit_imports,
+    "main" => r#"
+import app/lib
+import std/test
+import std/test.{expect_eq} as t
+fn f() -> Int ! {Http} { http.get(1) + Http.get(1) + host() + lib.one() }
+fn g(r: Request) -> Unit { () }
+"#,
+    "lib" => "import std/console\npub fn one() -> Int { 1 }\n",
 );
 
 snap!(diag_shadowed_import,
