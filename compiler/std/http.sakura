@@ -102,11 +102,27 @@ fn host_port(u: Url) -> String {
 /// the last one repeating. A miss fails with `HttpError` naming `sakura test --record`, under
 /// which it is forwarded to the enclosing `Http` and appended. `secret_headers` are never
 /// written and never part of the match (design §17.57, §17.73).
-pub fn recording(path: Path) -> Handler<Http, {Http, Fs}> {
+pub fn recording(path: Path) -> Handler<Http, {Http, Fs}> { replaying(cassette(path)) }
+
+/// A cassette file, read on first use. `Llm.recording` opens one per installation and replays
+/// each call through it, so its exchanges advance in order across calls (design §17.102).
+pub opaque type Cassette = { path: Path, id: Int }
+
+pub fn cassette(path: Path) -> Cassette { Cassette { path, id: 0 } }
+
+/// `c` with its file read; an open cassette as it is.
+pub fn open(c: Cassette) -> Cassette ! {Fs, Fail<HttpError>} {
+  if c.id != 0 { return c }
+  Cassette { path: c.path, id: ok_or_fail(http_recording_open(Fs.root(), Path.to_string(c.path))) }
+}
+
+/// `recording` over the cassette `c`: one already open is not read again.
+pub fn replaying(c: Cassette) -> Handler<Http, {Http, Fs}> {
   handler Http {
-    var id = 0
+    var cur = c
     fn send(req) {
-      id = opened(id, path)
+      cur = open(cur)
+      let id = cur.id
       match http_recording_lookup(id, req) {
         Ok(Some(resp)) => resp,
         Ok(None) => {
@@ -118,7 +134,8 @@ pub fn recording(path: Path) -> Handler<Http, {Http, Fs}> {
       }
     }
     fn stream(req, body) {
-      id = opened(id, path)
+      cur = open(cur)
+      let id = cur.id
       let incoming = match ok_or_fail(http_recording_lookup_stream(id, req)) {
         Some(incoming) => incoming,
         None => {
@@ -132,12 +149,6 @@ pub fn recording(path: Path) -> Handler<Http, {Http, Fs}> {
     }
     fn read_chunk(b, max) { ok_or_fail(http_stream_read(b, max)) }
   }
-}
-
-/// The cassette id, opening `path` on first use.
-fn opened(id: Int, path: Path) -> Int ! {Fs, Fail<HttpError>} {
-  if id != 0 { return id }
-  ok_or_fail(http_recording_open(Fs.root(), Path.to_string(path)))
 }
 
 fn read_body(b: Body) -> Bytes ! {Http, Fail<HttpError>} {

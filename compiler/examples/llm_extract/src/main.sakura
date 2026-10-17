@@ -4,10 +4,12 @@
 // covers: Attribute TypeDecl RecordType FieldDecl WithExpr Lambda MatchExpr
 
 // Design §15.7. `main` calls a real model, so CI runs the offline tests only: two under
-// `Llm.scripted` and one replaying `tests/fixtures/extract_ticket.jsonl` through
-// `Llm.anthropic` (a synthetic cassette, see `tests/fixtures/README.md`). Difference
-// from the design text: `Budget.limits` is installed outside `Llm.anthropic`, whose handler
-// performs `Budget` (the first handler in a `with` list is the outermost).
+// `Llm.scripted`, one replaying `tests/fixtures/extract_ticket.jsonl` with `Llm.replay` and
+// §15.7's recorded test through `Llm.recording` (a synthetic cassette, see
+// `tests/fixtures/README.md`). Difference from the design text: `extract_ticket` declares
+// `Budget` and the tests install `Budget.unlimited()`, and `Budget.limits` is installed
+// outside `Llm.anthropic`, whose handler performs `Budget` (the first handler in a `with` list
+// is the outermost).
 
 import std/budget.{Budget, Limits}
 import std/fs.{Fs}
@@ -66,5 +68,19 @@ test "a recorded Messages API exchange replays offline" {
     expect_eq(t.priority, High)
     expect(t.title == "Login page returns 500 errors")
     expect_eq(t.evidence, ["Login page 500s since 9am", "blocking all customers"])
+  }
+}
+
+test "a recorded exchange replays offline; sakura test --record fetches it once" {
+  // Unset outside `sakura test --record`; the placeholder is a `Secret` too, and secret headers
+  // are never written to the cassette (§17.102). Plain `sakura test` denies the network, so
+  // `Http.host()` is installed but never reached: the exchange replays from the cassette.
+  let key = Option.unwrap_or(Env.secret("ANTHROPIC_API_KEY"), Secret.of("replay"))
+  with Http.host(),
+      Fs.rooted(Test.fixtures()),
+      Budget.unlimited(),
+      Llm.recording(Path.of("extract_ticket.jsonl"), Llm.anthropic(key, Model.of("claude-sonnet-5-5"))) {
+    let t = extract_ticket(Untrusted.of("Login page 500s since 9am, blocking all customers"))
+    expect_eq(t.priority, High)
   }
 }

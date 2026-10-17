@@ -564,6 +564,10 @@ fn bearer(req: Request, token: Secret<String>) -> Request
 fn host() -> Handler<Http>
 fn scoped(hosts: List<String>) -> Handler<Http, {Http}>
 fn recording(path: Path) -> Handler<Http, {Http, Fs}>
+opaque type Cassette = { path: Path, id: Int }
+fn cassette(path: Path) -> Cassette
+fn open(c: Cassette) -> Cassette ! {Fs, Fail<HttpError>}
+fn replaying(c: Cassette) -> Handler<Http, {Http, Fs}>
 fn scripted(script: List<(Matcher, Response)>) -> Handler<Http>
 ```
 
@@ -660,6 +664,7 @@ fn request<T: Schema>(system: String, user: Prompt) -> Request<T>
 fn of(name: String) -> Model
 fn default() -> Model
 fn anthropic(key: Secret<String>, model: Model) -> Handler<Llm, {Http, Budget}>    // @external
+fn recording(path: Path, provider: Handler<Llm, {Http, Budget}>) -> Handler<Llm, {Http, Fs}>
 fn replay(path: Path) -> Handler<Llm, {Fs}>
 fn scripted(responses: List<String>) -> Handler<Llm>
 ```

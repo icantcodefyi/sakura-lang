@@ -1,12 +1,13 @@
 // Typed LLM calls as an effect (design §10.7, §11.1, M3). `Llm.generate` decodes the output
 // as `Json.decode` would, so every refinement of `T` is checked. Schema-valid output is not
 // truth: check what matters before acting on it.
-// `Llm.replay(path)` replays a recorded provider exchange (design §17.73).
+// `Llm.recording(path, provider)` records and replays provider exchanges; `Llm.replay(path)`
+// only replays (design §17.73, §17.102).
 
 import std/budget.{Budget, BudgetExceeded}
 import std/core.{Violation}
 import std/fs.{Fs}
-import std/http.{Http, RateLimited}
+import std/http.{Cassette, Http, RateLimited}
 import std/path.{Path}
 import std/prompt.{Prompt}
 import std/task.{Timeout}
@@ -78,25 +79,80 @@ pub fn default() -> Model { Model("default") }
 @external(js, "sakura_runtime", "llm_anthropic")
 pub fn anthropic(key: Secret<String>, model: Model) -> Handler<Llm, {Http, Budget}>
 
-/// `anthropic` over `Http.recording(path)` and `Budget.unlimited()` (design §17.73): each call
-/// replays the recorded Messages API exchange whose request matches, and nothing reaches the
-/// network. The key is a placeholder, which is safe because secret headers are never recorded
-/// or matched; record cassettes with `anthropic` and a real key under `sakura test --record`.
-/// A missing exchange is `ProviderError` whose `reason` names `sakura test --record`.
-/// ponytail: each call reopens the cassette, so identical requests in one test all replay the
-/// first recorded response; keep one recording handler across calls if a test needs more.
-pub fn replay(path: Path) -> Handler<Llm, {Fs}> {
+/// `provider` under `Budget.unlimited()` and `Http.recording(path)` (design §17.102): a call
+/// whose Messages API exchange is in the cassette replays it; a miss reaches the enclosing
+/// `Http` and is appended under `sakura test --record`, and otherwise is `ProviderError` whose
+/// `reason` names `sakura test --record`. The cassette is read once per installation, so
+/// identical requests replay in recorded order. The key travels in `secret_headers`, which are
+/// never written or matched:
+/// `with Http.host(), Fs.rooted(Test.fixtures()), Llm.recording(Path.of("x.jsonl"), Llm.anthropic(key, model))`.
+pub fn recording(path: Path, provider: Handler<Llm, {Http, Budget}>) -> Handler<Llm, {Http, Fs}> {
   handler Llm {
-    fn generate(req) { offline(path, fn() { Llm.generate(req) }) }
-    fn generate_text(req) { offline(path, fn() { Llm.generate_text(req) }) }
-    fn stream(req, on_partial) { offline(path, fn() { Llm.stream(req, on_partial) }) }
-    fn step(req, tools, transcript) { offline(path, fn() { Llm.step(req, tools, transcript) }) }
+    var c = Http.cassette(path)
+    fn generate(req) {
+      c = opened(c)
+      recorded(c, provider, fn() { Llm.generate(req) })
+    }
+    fn generate_text(req) {
+      c = opened(c)
+      recorded(c, provider, fn() { Llm.generate_text(req) })
+    }
+    fn stream(req, on_partial) {
+      c = opened(c)
+      recorded(c, provider, fn() { Llm.stream(req, on_partial) })
+    }
+    fn step(req, tools, transcript) {
+      c = opened(c)
+      recorded(c, provider, fn() { Llm.step(req, tools, transcript) })
+    }
   }
 }
 
-fn offline<T, e>(path: Path, call: fn() -> T ! {Llm | e}) -> T ! {Fs, Fail<LlmError> | e} {
-  with Budget.unlimited(), Http.scripted([]), Http.recording(path), anthropic(Secret.of("replay"), default()) {
+/// `recording(path, anthropic(Secret.of("replay"), default()))` under `Http.scripted([])`: the
+/// offline consumer of a committed cassette (design §17.73, §17.102). Nothing reaches the
+/// network; a missing exchange is `ProviderError` naming `sakura test --record` (record it
+/// with `Llm.recording`). The placeholder key is never written or matched.
+pub fn replay(path: Path) -> Handler<Llm, {Fs}> {
+  let provider = anthropic(Secret.of("replay"), default())
+  handler Llm {
+    var c = Http.cassette(path)
+    fn generate(req) {
+      c = opened(c)
+      offline(c, provider, fn() { Llm.generate(req) })
+    }
+    fn generate_text(req) {
+      c = opened(c)
+      offline(c, provider, fn() { Llm.generate_text(req) })
+    }
+    fn stream(req, on_partial) {
+      c = opened(c)
+      offline(c, provider, fn() { Llm.stream(req, on_partial) })
+    }
+    fn step(req, tools, transcript) {
+      c = opened(c)
+      offline(c, provider, fn() { Llm.step(req, tools, transcript) })
+    }
+  }
+}
+
+fn opened(c: Cassette) -> Cassette ! {Fs, Fail<LlmError>} {
+  match try { Http.open(c) } {
+    Ok(open) => open,
+    Err(e) => fail ProviderError { status: 0, reason: e.reason },
+  }
+}
+
+fn recorded<T, e>(c: Cassette, provider: Handler<Llm, {Http, Budget}>, call: fn() -> T ! {Llm | e})
+  -> T ! {Http, Fs, Fail<LlmError> | e} {
+  with Budget.unlimited(), Http.replaying(c), provider {
     call()
+  }
+}
+
+fn offline<T, e>(c: Cassette, provider: Handler<Llm, {Http, Budget}>, call: fn() -> T ! {Llm | e})
+  -> T ! {Fs, Fail<LlmError> | e} {
+  with Http.scripted([]) {
+    recorded(c, provider, call)
   }
 }
 
@@ -193,5 +249,18 @@ test "scripted stream reports a partial, then the value" {
     let n = try { Llm.stream(req, fn(p) { Console.print(p.text) }) }
     expect_eq(n, Ok(5))
     expect_output(["5"])
+  }
+}
+
+test "recording a missing exchange without --record is a ProviderError naming it" {
+  let req: Request<Int> = request("Count.", Prompt.text("how many?"))
+  with Fs.rooted(Test.fixtures()), Http.scripted([]), recording(Path.of("absent.jsonl"), anthropic(Secret.of("k"), default())) {
+    match try { Llm.generate(req) } {
+      Err(ProviderError { status, reason }) => {
+        expect_eq(status, 0)
+        expect(String.contains(reason, "sakura test --record"))
+      }
+      other => expect_eq("{other}", "a ProviderError"),
+    }
   }
 }
