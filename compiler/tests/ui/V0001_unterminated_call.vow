@@ -1,6 +1,5 @@
 // milestone: M0
 // expect: V0001
-// known-bug: V2002 cascade from the unterminated call (REQUESTS.md, E to B and C)
 fn greet(name: String) -> Unit ! {Console} {
   Console.print(
 }
