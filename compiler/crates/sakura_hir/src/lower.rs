@@ -446,6 +446,7 @@ impl Cx {
             "test_only",
             "total",
             "contract_test",
+            "resource",
         ];
         if !name.is_empty() && !KNOWN.contains(&name.as_str()) {
             let file = self.file(m);
