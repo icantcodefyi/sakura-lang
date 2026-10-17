@@ -1,156 +1,234 @@
 ---
 title: Types
-description: Primitive types, records, sum types, generics, Option and Result, and exhaustive pattern matching in Vow.
+description: Primitive types, records, variants, refinements, generics with derived constraints, inference, method-call resolution, and exhaustive pattern matching in Vow.
 ---
 
-<Callout type="warn" title="Design draft">
-  The type system described here is a draft. Names of built-in types may change.
+<Callout type="warn" title="Designed for v0, not implemented yet">
+  This page describes the v0 design ([design §4](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)). The compiler is under construction (milestone M0), so none of this code can be run yet.
 </Callout>
 
-Vow is statically typed with local type inference. Top-level signatures are always explicit. Inside a body, the compiler infers types for `let` bindings and lambdas.
+Vow is statically typed with Hindley-Milner inference inside bodies. Top-level signatures are always explicit. There are no implicit conversions, no null, and no subtyping except three narrow cases: refined types coerce to their base, smaller error unions fit larger ones, and closed effect rows widen at function-value use sites.
 
 ## Primitive types
 
-| Type | Example | Notes |
+| Type | Values | Notes |
 | --- | --- | --- |
-| `Int` | `42`, `20_000` | 64-bit signed integer. Overflow never wraps silently; whether it traps or must be handled is an open design question. |
-| `Float` | `3.14` | 64-bit IEEE 754. |
-| `Bool` | `true`, `false` | |
-| `String` | `"Hello, {name}"` | UTF-8, immutable. |
-| `()` | `()` | The unit type, returned by functions that only perform effects. |
-| `List<T>` | `[1, 2, 3]` | Immutable list. Updates reuse memory in place when unshared. |
-| `Map<K, V>` | `Map.empty()` | Immutable map. |
-| `Set<T>` | `Set.empty()` | Immutable set. |
+| `Unit` | `()` | Result of statement-only functions. |
+| `Bool` | `true`, `false` | `&&` and `\|\|` short-circuit. |
+| `Int` | 64-bit signed | Checked: overflow is defect `D001`, division by zero is `D002`. `/` and `%` truncate toward zero. On the JS backend, values beyond ±(2^53−1) are defect `D003`, never silently wrong. |
+| `Float` | IEEE-754 binary64 | `NaN != NaN`. Not `Hash`, so not a `Map` key. |
+| `String` | immutable UTF-8 text | No integer indexing. `String.len` is the byte length; `String.chars` and `String.graphemes` give lists. |
+| `Bytes` | immutable bytes | `Bytes.get(b, i) -> Option<Int>`. |
+| `Never` | none | Type of `fail e`, `return e`, `break`, `continue`. |
 
-Standard library types such as `Uuid`, `Instant`, `Duration`, and `Json` are ordinary types defined in Vow.
+Conversions are explicit functions: `Int.to_float`, `Float.round` (defect on NaN or out of range), `Float.to_int_checked -> Option<Int>`, `Int.to_string`, `String.parse_int -> Option<Int>`. `Decimal` (std) is a library type for money with `Decimal.add` and friends; it has no operators in v0.
 
 ## Records
 
-A record type lists named fields:
+Records are nominal. Construction names the type, and a field whose value is a same-named local can be written once (punning). Update copies a record and overrides the listed fields.
 
 ```vow
-type User = { id: Uuid, email: Email, created: Instant }
+type User = { id: Int, email: String, name: String }
+
+test "records" {
+  let id = 7
+  let u = User { id, email: "a@b.co", name: "Ada" }
+  let moved = User { ..u, email: "ada@new.co" }
+  expect_eq(moved.email, "ada@new.co")
+  expect_eq(u.email, "a@b.co")
+}
 ```
 
-Construct a record with its type name. If a local binding has the same name as a field, write it once (field punning):
+Every field must be supplied at construction. Every field named in an update must exist. There are no anonymous records in v0. When `u` is not used again, the native backend can reuse its memory for the update; see [Memory model](/docs/tour/memory).
+
+## Tuples
+
+`(A, B)` is a tuple type, `(1, "one")` a tuple value, and `.0`, `.1` its fields. `(e)` is grouping, `(e,)` is a one-element tuple, and `()` is `Unit`.
+
+## Variants
+
+A variant type is a nominal sum. Payloads are positional. Constructors are functions: `Circle` has type `fn(Float) -> Shape`.
 
 ```vow
-let user = User { id: Uuid.new(), email, created: Clock.now() }
-```
-
-Records are values. "Updating" one produces a new record with some fields changed:
-
-```vow
-let moved = { user with email: new_email }
-let email = moved.email
-```
-
-When the original `user` is not used again, the compiler reuses its memory for `moved`, so the update costs the same as an in-place write. See [Memory model](/docs/tour/memory).
-
-## Sum types
-
-A sum type is one of several variants. Variants can carry named fields:
-
-```vow
-type Shape = Circle(radius: Float) | Rect(w: Float, h: Float)
+type Shape = Circle(Float) | Rect(Float, Float) | Empty
 
 fn area(s: Shape) -> Float {
   match s {
-    Circle(r) => 3.14 * r * r
+    Circle(r) => 3.14159 * r * r
     Rect(w, h) => w * h
+    Empty => 0.0
   }
 }
 ```
 
-Variants without fields are written by name. These are typical error types:
-
-```vow
-type SignupError = EmailTaken | Banned
-type Weekday = Mon | Tue | Wed | Thu | Fri | Sat | Sun
-```
+Adding a variant makes every `match` on `Shape` that does not handle it a compile error (`V4001`), so the change cannot be half applied.
 
 ## No null: Option
 
-There is no `null`. A value that may be absent has type `Option<T>`:
+A value that may be absent has type `Option<T> = None | Some(T)`.
 
 ```vow
-type Option<T> = Some(T) | None
-
-fn find_user(users: List<User>, email: Email) -> Option<User> {
-  users.find(u => u.email == email)
+fn find_user(users: List<User>, email: String) -> Option<User> {
+  List.find(users, fn(u) { u.email == email })
 }
 
-fn greeting(users: List<User>, email: Email) -> String {
-  match find_user(users, email) {
-    Some(user) => "Welcome back, {user.email}"
-    None => "Welcome"
-  }
+fn display_name(users: List<User>, email: String) -> String {
+  find_user(users, email).map(fn(u) { u.name }).unwrap_or("guest")
 }
 ```
 
-`Option` has the usual helpers: `map`, `or`, `is_some`, `unwrap_or`. There is no `unwrap` that crashes.
+The `Option` module has `map`, `unwrap_or`, `is_some`, `or_fail` (turns `None` into a typed failure), and `expect`. `Option.expect` on `None` is defect `D030`; use it only where absence is a bug.
+
+## Errors and Result
+
+`Result<T, E> = Ok(T) | Err(E)` exists, but a function that can fail declares `Fail<E>` in its effect row instead of returning `Result`. `E` is a union of nominal `error` tags.
 
 ```vow
-let name = find_user(users, email).map(u => u.email).unwrap_or("guest")
-```
+error ParseError(input: String)
 
-## Errors: Fail, not Result
-
-The standard library defines `Result`:
-
-```vow
-type Result<T, E> = Ok(T) | Err(E)
-```
-
-Idiomatic Vow does not return `Result` from functions that can fail. It declares the `Fail<E>` effect instead, which keeps the happy path free of wrapping and unwrapping and keeps the error type in the signature:
-
-```vow
-fn parse_port(s: String) -> Port ! {Fail<Invalid>} {
-  Port.from(Int.parse(s))
-}
-```
-
-`Result` is useful when you want to store an outcome as data, for example in a list of per-item results. `Fail.catch` converts a failing computation into a `Result`. See [Handlers](/docs/tour/handlers).
-
-## Generics
-
-Type parameters go in angle brackets after the name:
-
-```vow
-fn first<T>(xs: List<T>) -> Option<T> {
-  match xs {
-    [] => None
-    _ => xs.get(0)
+fn parse_age(s: String) -> Int ! {Fail<ParseError>} {
+  match String.parse_int(s) {
+    Some(n) if n >= 0 => n
+    _ => fail ParseError { input: s }
   }
 }
 
+test "bad age is a typed failure" {
+  let r = try { parse_age("x") }
+  expect_eq(r, Err(ParseError { input: "x" }))
+}
+```
+
+`try { body }` without `catch` turns failures into a `Result`. Postfix `r?` turns a `Result` back into `Fail<E>`. Only error tags can be unioned: `type SignupError = EmailTaken | Banned`. Recovery with `try`/`catch` is covered in [Effects](/docs/tour/effects).
+
+## Other built-in types
+
+- **Collections**: `List<T>` (`[1, 2, 3]`), `Map<K, V>` and `Set<T>` (keys need `Hash`, iteration is insertion order), and `Range` (`0..n`, exclusive end).
+- **Functions**: `fn(A, B) -> C ! row`. Without `!` the function is pure.
+- **Handlers**: `Handler<Eff, r>`, a handler for `Eff` whose clauses perform `r`. See [Handlers](/docs/tour/handlers).
+- **Resources**: `Fs.File`, `Sql.Conn`, `Http.Body`, `Task.Fiber<T>`. Affine and scope-bound; see [Memory model](/docs/tour/memory#resources).
+- **`Secret<T>` and `Untrusted<T>`**: see [Capabilities](/docs/tour/capabilities).
+- **`Graph<N>`** with `NodeId` keys, for cyclic data; see [Memory model](/docs/tour/memory#cycles-use-graph).
+
+## Refinement types
+
+A refinement narrows a base type with a predicate. `it` is the value being checked.
+
+```vow
+type Email = String where String.len(it) <= 254 && String.contains(it, "@")
+type Percent = Int where it >= 0 && it <= 100
+type NonEmpty<T> = List<T> where List.len(it) > 0
+```
+
+The predicate must be in the contract subset: pure, terminating, no loops or recursion ([design §7.1](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)). A refined type is a distinct nominal type with the same representation as its base. Values enter it through:
+
+- `Percent.validate(n) -> Result<Percent, Violation>`, generated for every refined type. Use it for external input.
+- `Percent.from(n) -> Percent`, a checked introduction that is defect `D010` on failure. Use it at trusted boundaries only; `vow audit` lists each use.
+- Schema decoding (`Json.decode`, `Request.json`, `Llm.generate`), which checks nested refinements and reports a typed `DecodeError`, never a defect.
+- Literals: `let p: Percent = 50` is checked at compile time where possible, otherwise at program start (warning `V5002`).
+
+A refined value coerces implicitly to its base: a `Percent` works anywhere an `Int` does. The reverse never happens implicitly. Because no value can be mutated, a validated value stays valid. Contracts are covered in [Contracts](/docs/tour/contracts).
+
+## Generics and constraints
+
+Generics are rank-1. Uppercase type parameters are type variables; lowercase ones are effect-row variables ([Effects](/docs/tour/effects)).
+
+```vow
 type Pair<A, B> = { left: A, right: B }
 
 fn swap<A, B>(p: Pair<A, B>) -> Pair<B, A> {
   Pair { left: p.right, right: p.left }
 }
+
+fn largest<A: Ord>(xs: List<A>) -> Option<A> {
+  List.last(List.sort(xs))
+}
+
+fn render<A: Eq + Show>(xs: List<A>, highlight: A) -> String {
+  List.join(List.map(xs, fn(x) { if x == highlight { "[{x}]" } else { "{x}" } }), ", ")
+}
 ```
 
-`Pair` is the standard library's two-field record, defined exactly as above. Vow has no separate tuple type: `Pair` and named records cover the same ground with field names that read well in review.
+Constraints come from a fixed set that the compiler derives structurally. There are no traits, no interfaces, and no user-written instances in v0.
 
-Functions can also be generic over effects. That uses a lowercase row variable and is covered in [Effects](/docs/tour/effects).
+| Constraint | Derived for | Not derived for |
+| --- | --- | --- |
+| `Eq` | all data types, recursively | functions, handlers, resources, `Secret` |
+| `Ord` | `Int`, `Float` (NaN last), `String`, `Bytes`, and tuples, records, variants of `Ord` parts (declaration order) | `Map`, `Set`, functions, `Secret` |
+| `Hash` | `Eq` types except `Float`, `Map`, `Set` | as `Eq`, plus `Float` |
+| `Show` | all data types; records print as `User { id: 1, email: "a@b" }` | functions, handlers, resources, `Secret` |
+| `Schema` | data types made of `Schema` parts, refinements included (JSON Schema plus codec) | functions, handlers, resources, `Secret`, `Graph` |
 
-## Refinement types
+An unconstrained type parameter can only be passed around and matched through concrete constructors. Interpolation uses `Show`; its output is stable across backends and is the format `vow test` snapshots use.
 
-A refinement narrows an existing type with a predicate. `it` is the value being checked.
+## Inference
+
+- Top-level functions are fully annotated and the body is checked against the signature.
+- `let`, `var`, and lambda parameters are inferred. Only syntactic values (lambdas, literals, constructors) are generalized; an effectful expression never is.
+- A lambda is checked against the expected `fn` type when one is known, such as an argument position.
+- Top-level functions may be mutually recursive. Local lambdas may not recurse (`V1020`).
+- You must also annotate `pub let` constants, `property` parameters, and empty collections whose element type cannot be inferred (`V2010`). There are no call-site type arguments:
 
 ```vow
-type Age = Int where 0..=150
-type Port = Int where 1..=65535
-type Email = String where is_email(it)
-type NonEmpty<T> = List<T> where it.len > 0
+fn start() -> List<Int> {
+  let xs: List<Int> = List.empty()   // not List<Int>.empty() (V0011)
+  List.push(xs, 1)
+}
 ```
 
-Refined values are still their base type: an `Age` can be passed anywhere an `Int` is expected. Going the other way requires a check, either proven at compile time or performed at the boundary. Refinements and contracts have their own page: [Contracts](/docs/tour/contracts).
+## Type aliases and distinct types
+
+`type Meters = Float` is a transparent alias: `Meters` and `Float` are the same type. For a distinct type, use a refinement or a single-variant type:
+
+```vow
+import std/http.{Request, Response}
+
+type Meters = Float                              // alias
+type UserId = UserId(Int)                        // distinct: UserId(7) is not an Int
+type Route = fn(Request) -> Response ! {Sql, Log} // alias for a function type
+```
+
+Two refined types with identical predicates are still different types. Tuples, functions, lists, maps, sets, options, results, and ranges are structural in their parameters; everything else is nominal.
+
+## Method-call resolution
+
+`e.f(args)` is resolved in this order; the first match wins ([design §4.9](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
+
+1. `e` is a record and `f` is a field: field access.
+2. `e` names an effect: `Eff.op(args)` performs the operation on the innermost installed handler.
+3. `e` names a type: `Type.f` is function `f` in the type's **home module** (the module that declared it; for std types, the std module of the same name, such as `List.map`), or a variant constructor.
+4. `e` names an imported module: `mod.f` is that module's exported `f`.
+5. Otherwise `e` is a value of type `T`, and `e.f(args)` means `T.f(e, args)` with `f` looked up in `T`'s home module.
+
+There are no methods, no `self`, and no extension methods. A function becomes callable with dot syntax on a type only by living in that type's module:
+
+```vow
+// src/shapes.vow, the home module of Shape
+pub type Shape = Circle(Float) | Rect(Float, Float) | Empty
+
+pub fn area(s: Shape) -> Float {
+  match s {
+    Circle(r) => 3.14159 * r * r
+    Rect(w, h) => w * h
+    Empty => 0.0
+  }
+}
+```
+
+```vow
+// src/report.vow, in package `app`
+import app/shapes.{Shape}
+
+fn total_area(xs: List<Shape>) -> Float {
+  List.fold(xs, 0.0, fn(acc, s) { acc + s.area() })   // s.area() is Shape.area(s)
+}
+```
+
+On a generic `A` with no constraint, `x.len()` is an error with a fix suggesting a constraint; there is no structural lookup.
 
 ## Pattern matching
 
-Patterns destructure records, variants, literals, and lists. A match must cover every case.
+`match` must be exhaustive. A missing case is `V4001` with a witness value; a redundant arm is `V4002`. Guards never count toward coverage.
 
 ```vow
 fn summary(xs: List<Int>) -> String {
@@ -158,29 +236,55 @@ fn summary(xs: List<Int>) -> String {
     [] => "empty"
     [x] => "one item: {x}"
     [x, y] => "two items: {x}, {y}"
-    _ => "{xs.len} items"
+    [first, ..rest] => "{first} and {List.len(rest)} more"
+  }
+}
+
+fn size(n: Int) -> String {
+  match n {
+    0 => "none"
+    1 | 2 | 3 => "a few"
+    _ if n < 0 => "negative"
+    _ => "many"
+  }
+}
+
+fn is_admin(u: User) -> Bool {
+  match u {
+    User { name: "root", .. } => true
+    _ => false
   }
 }
 ```
 
-If a variant is added to `Shape`, every `match` on `Shape` that does not handle it becomes a compile error, so the change cannot be half applied.
+- Patterns: `_`, names, literals (including `-5`), constructors `Some(x)`, records `User { id, .. }`, tuples `(a, b)`, lists `[]`, `[x, ..rest]`, `[first, second, ..]`, and or-patterns `A | B`.
+- Literal patterns on `Int`, `String`, or `Float` need a `_` arm.
+- Record patterns need `..` to ignore remaining fields.
+- All alternatives of an or-pattern must bind the same names with the same types (`V4003`).
+- Matching on an error union is exhaustive over its tags.
 
-## Type aliases
+## Tagged templates
 
-Without `where` or variants, `type` creates an alias:
+A tagged string `tag"…"` desugars to `tag.template(parts, values)`, where `tag` resolves to a module that exports `template`. Each interpolated value is checked against the tag's argument type, and the tag receives it as a value, never as spliced text.
 
 ```vow
-type UserId = Uuid
-type RouteFn = (Request) -> Response ! {Db, Log}
+import std/sql
+
+fn find_by_email(email: Email) -> List<User> ! {Sql, Fail<SqlError>} {
+  Sql.query(sql"select id, email, name from users where email = {email}")
+}
 ```
+
+Here `{email}` becomes a bound parameter. For `sql`, an `Untrusted<String>` or a refined string converts to `SqlValue`, but a raw table name does not. `html"<p>{name}</p>"` escapes text by construction. The prelude tags are `sql`, `html`, `url`, and `shell`. See [Capabilities](/docs/tour/capabilities).
 
 ## What the compiler checks
 
-- Every expression has exactly one type. There are no implicit conversions between `Int` and `Float`.
-- Matches are exhaustive. A missing case is an error that names the missing pattern.
-- There is no null and no uninitialized value. Absence is always `Option`.
-- Record construction must supply every field.
-- Refined types are checked at compile time when the value is known or provable, otherwise at an explicit conversion. They are never silently trusted.
+- Every expression has one type. No implicit conversions, and `Int` and `Float` never mix.
+- Matches are exhaustive (`V4001`) with no redundant arms (`V4002`).
+- There is no null and no uninitialized value. Absence is `Option`.
+- Record construction supplies every field.
+- Refined values are checked at introduction: `validate` returns a `Result`, `from` defects (`D010`), decoding returns `DecodeError`. They are never silently trusted.
+- Constraints are derived, never declared, so `Secret`, functions, and resources can never be shown, compared, or serialized by accident.
 
 ## Next
 

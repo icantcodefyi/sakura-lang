@@ -1,71 +1,87 @@
 ---
 title: Memory model
-description: Values, compile-time reference counting with in-place reuse, why cycles cannot occur, and where mutable state lives in Vow.
+description: Value semantics, var rebinding, compiler-inserted reference counting with Perceus reuse, cycles through Graph, scope-bound resources, and backends in Vow.
 ---
 
-<Callout type="warn" title="Design draft">
-  The memory model follows published work (Perceus, as used in Koka and Roc). Vow's implementation does not exist yet, and all performance statements here are design goals.
+<Callout type="warn" title="Designed for v0, not implemented yet">
+  This page describes the v0 design ([design §8](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)). The compiler is under construction (milestone M0), so none of this code can be run yet. Reference counting and reuse arrive with the native backend (M5); nothing here has been measured.
 </Callout>
 
-Vow aims for the predictability of manual memory management without asking anyone, human or agent, to manage memory. There is no tracing garbage collector, no lifetime annotations, and no borrow checker.
+The compiler owns memory. There are no lifetimes, no borrow annotations, no `Rc`/`Arc`, no pointers, and no reference cells in user code. The price is a restricted data model: no aliasable mutation, no cycles in the heap, and explicit scopes for resources.
 
-## Everything is a value
+## Value semantics
 
-Every value in Vow is immutable. Records, lists, maps, and strings cannot be changed after they are created. Operations that look like updates return new values:
+Every value behaves as an independent value. Assigning, passing, capturing, and returning never create an observable alias. Records, variants, lists, maps, and strings are deeply immutable from the program's point of view. Physical sharing is an optimization the program cannot detect.
 
-```vow
-let xs = [1, 2, 3]
-let ys = xs.push(4)      // [1, 2, 3, 4]
-// xs is still [1, 2, 3]
-```
-
-Values have no identity. Two lists with the same elements are equal, and there is no way to ask whether they are "the same object". This is what makes the rest of the model work.
-
-## Compile-time reference counting
-
-Each heap value carries a reference count. The compiler, not the programmer, inserts the increments and decrements, using the Perceus algorithm:
-
-- **Precise.** A value is freed as soon as its last reference is gone, not at the end of a scope and not at the next collection. Memory use follows the program's live data closely.
-- **Borrow inference.** When a function only reads an argument, the compiler passes it without touching the count.
-- **Drop specialization.** When the compiler knows the shape of a value being freed, it emits specialized code instead of a generic traversal.
-
-There are no pauses. Freeing work happens at predictable points in the program, in proportion to what is being freed.
-
-## In-place reuse
-
-If a value is uniquely owned (its reference count is one) when it is "updated", the compiler reuses its memory instead of allocating a new value. The update becomes a mutation that nobody can observe.
+`let` bindings are immutable. A `var` binding can be **reassigned**, which changes the binding and nothing else:
 
 ```vow
-fn add_all(xs: List<Int>, more: List<Int>) -> List<Int> {
-  more.fold(xs, (acc, x) => acc.push(x))
+type User = { id: Int, name: String, handle: String }
+
+fn rename(u: User, name: String) -> User {
+  var v = u
+  v.name = name          // sugar for v = User { ..v, name: name }
+  v
+}
+
+test "updates never alias" {
+  let a = User { id: 1, name: "Ada", handle: "ada" }
+  let b = rename(a, "Ada L.")
+  expect_eq(a.name, "Ada")
+  expect_eq(b.name, "Ada L.")
 }
 ```
 
-`acc` is never shared, so each `push` writes into the same buffer. The code is written in a functional style and runs like an imperative loop.
-
-When a value is shared, the update copies, and the original is unchanged:
+Collections grow the same way: `xs = List.push(xs, 1)`. `List.push` returns a new list, so calling it as a statement and dropping the result is error `V2040`, which catches the forgotten reassignment:
 
 ```vow
-let xs = [1, 2, 3]
-let ys = xs.push(4)      // xs is still used below, so this copies
-Log.info("{xs.len} {ys.len}")
-```
-
-The same applies to records. `{ user with email: new_email }` overwrites `user`'s memory when `user` is not used afterwards:
-
-```vow
-fn normalize(user: User) -> User {
-  let user = { user with email: user.email.lower() }
-  { user with name: user.name.trim() }
+fn evens(n: Int) -> List<Int> {
+  var xs: List<Int> = []
+  for i in 0..n {
+    if i % 2 == 0 { xs = List.push(xs, i) }   // List.push(xs, i) alone would be V2040
+  }
+  xs
 }
 ```
 
-If the caller passes its last reference to `user`, both updates happen in place.
+## Closures capture values
 
-Reuse also applies to pattern matching. A `match` that takes apart a value and builds one of the same size reuses the old cell:
+A closure captures `var` bindings **by value at creation**. It cannot assign to an outer `var` (`V2041`); accumulate with a `var` in the same function body, or with `List.fold`.
 
 ```vow
-type Tree = Leaf | Node(left: Tree, value: Int, right: Tree)
+test "closures see the value at creation" {
+  var greeting = "hello"
+  let say = fn() { greeting }
+  greeting = "bye"
+  expect_eq(say(), "hello")
+}
+```
+
+The only stateful constructs are handler `var` state and `Graph`, and both are confined. Shared mutable state, such as a counter or a cache, lives in a handler instance:
+
+```vow
+effect Counter { fn next() -> Int }
+
+fn counter() -> Handler<Counter> {
+  handler Counter {
+    var n = 0
+    fn next() { n = n + 1; n }
+  }
+}
+```
+
+The state is private to the instance, initialized once per `with`, and released when the `with` exits. See [Handlers](/docs/tour/handlers).
+
+## Reference counting and reuse
+
+With no aliasable mutation and strict evaluation, the heap is an acyclic graph: a value can only reference values that existed before it. That makes reference counting complete without a cycle collector. The plan for native and WASM ([design §8.2](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
+
+- **Non-atomic counts per task.** The compiler inserts `dup`/`drop` after Core lowering (Perceus). Values sent across worker threads are promoted to atomic counts on send.
+- **Same-constructor reuse.** When a value is uniquely referenced, an update or a `match` that rebuilds a value of the same shape reuses its memory.
+- **Copy-on-write buffers** for `List`, `Map`, and `String`. A `var xs` whose last use is `List.push(xs, v)` appends in place when the count is one, which gives amortized O(1) appends without exposing uniqueness in the language.
+
+```vow
+type Tree = Leaf | Node(Tree, Int, Tree)
 
 fn increment(t: Tree) -> Tree {
   match t {
@@ -75,76 +91,80 @@ fn increment(t: Tree) -> Tree {
 }
 ```
 
-With a unique tree, `increment` allocates nothing.
+If the caller passes its last reference to `t`, native code can rebuild each `Node` in the cell it just took apart. If the tree is still used elsewhere, the update copies and the original stays intact. Either way the program's behavior is identical; reuse is never observable.
 
-## Why there are no cycles
+When an update in a loop is forced to copy because an older value is still live, the compiler emits warning `W8001 copy_on_write`, pointing at the use that retains it.
 
-Reference counting cannot free cycles on its own, which is why most RC languages add a cycle collector or weak references. Vow does not need either.
+The JavaScript backend ignores all of this and uses the host's garbage collector. Semantics are the same on every backend.
 
-A cycle requires a value that points, directly or indirectly, to itself. With immutable values, a value can only point to values that existed before it was created, so a cycle cannot be built. Reference counting is complete: every unreachable value is freed.
+## Cycles: use Graph
 
-Graph-shaped data uses identifiers instead of pointers:
+Reference counting cannot free cycles, and Vow's data model cannot build them. Cyclic structures use `std/graph`: a `Graph<N>` owns a table of nodes, and edges are `NodeId`s (slot plus generation) validated against the graph. There are no weak pointers in v0.
 
 ```vow
-type NodeId = Int
-type Graph = { edges: Map<NodeId, List<NodeId>> }
+import std/graph
 
-fn neighbors(g: Graph, n: NodeId) -> List<NodeId> {
-  g.edges.get(n).unwrap_or([])
+type Person = { name: String }
+
+fn befriend(g: Graph<Person>, a: Person, b: Person) -> (Graph<Person>, NodeId, NodeId) {
+  let (g1, ia) = Graph.insert(g, a)
+  let (g2, ib) = Graph.insert(g1, b)
+  (Graph.connect(Graph.connect(g2, ia, ib), ib, ia), ia, ib)
 }
 ```
 
-## Where mutable state lives
+`ia` and `ib` refer to each other through the graph, but no value points to itself. `Graph.get(g, id)` returns `Option<N>`, so a stale id is a `None`, not a dangling pointer.
 
-Some state really is shared and changes over time: a counter, a cache, a connection pool. In Vow it lives behind effects, not inside values.
+## Resources
+
+Files, sockets, database connections, HTTP bodies, and fibers are **resource types**. They are affine (used at most once as a whole), are not `Eq`, `Show`, or `Schema`, and are bound to a scope provided by their effect:
 
 ```vow
-fn count_visits(paths: List<String>) -> Int ! {State} {
-  let visits = State.atom(0)               // Atom<Int>
-  for p in paths {
-    visits.update(n => n + 1)
-  }
-  visits.get()
+effect Fs {
+  fn with_file<T, e>(path: Path, mode: Mode, body: fn(File) -> T ! e) -> T ! {Fail<FsError> | e}
 }
 ```
 
-An `Atom<T>` is a handle managed by the `State` effect's handler. It holds a value and swaps it atomically. Because an atom is a handle rather than a pointer inside a value, it does not participate in reference-count cycles, and its storage is released when the handler's scope ends.
+The excerpt above is from the std `Fs` declaration ([design §10.2](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)). `Sql.transaction(fn() { … })` follows the same pattern. The closure's result may not contain the resource (`V6003`, the same escape check that keeps capabilities in scope). Resources are released on normal exit, `fail`, defect, and cancellation, in reverse order of acquisition. A failed release is logged as a defect, never ignored.
 
-Larger shared state belongs in `Db`, whose handler might be Postgres, SQLite, or an in-memory table in tests.
+## Regions
 
-## Performance
+Not in v0. The `region` keyword is reserved. Request-scoped arenas may arrive with the native backend as an internal optimization first, and become user-visible only if measurements justify it.
 
-Vow's design goal is performance in the same league as Rust and Go for typical services: no GC pauses, predictable memory, and native code. That is a goal, not a measurement. There are no benchmarks because there is no compiler yet.
+## Concurrency and determinism
 
-Planned backends:
+There is no shared mutable memory, so tasks cannot race on data. Tasks communicate through `Channel<T>` and handler state, whose clauses run one at a time per instance. Evaluation is strict and left to right, arguments before the call, and `Map`/`Set` iterate in insertion order on every backend. See [Concurrency](/docs/tour/concurrency).
 
-| Target | Planned via | Use |
+## Backends
+
+| Backend | Milestone | Memory management |
 | --- | --- | --- |
-| `native` | LLVM | Servers, CLIs |
-| `wasm` | WebAssembly | Edge, browser, plugins |
-| `js` | JavaScript | Browser front ends, Node-compatible runtimes |
+| JavaScript (ES modules, trampolined CPS) | first, M0 onward | host GC |
+| WebAssembly (`wasm-encoder`, runtime in linear memory) | M4 | non-atomic RC, no WASM GC required |
+| Native (Cranelift) | M5 | Perceus RC with reuse |
+
+In v0 the only build target is JavaScript:
 
 ```bash
-vow build --target native
-vow build --target wasm
 vow build --target js
 ```
 
 ## Costs and limits
 
-Being honest about the trade-offs:
-
-- Reference counting has a per-operation cost that a tracing GC avoids. Borrow inference and reuse are what make it competitive, and how well they work in practice remains to be measured.
-- Sharing a large value and then updating it copies. A planned warning will point at hot loops where uniqueness is lost.
-- Atomic counts are needed for values shared across threads. The compiler plans to use non-atomic counts for values it can show are thread-local.
+- Reference counting costs something on every `dup` and `drop`. Reuse is what makes it competitive; how well it works is unmeasured.
+- Sharing a large value and then updating it copies. `W8001` points at loops where this happens.
+- Cyclic data needs `Graph` and `NodeId`s instead of direct references.
+- On the JS backend, `Int` values beyond ±(2^53−1) are defect `D003` until a wider representation lands.
+- Native handler state uses a per-instance lock. Whether that holds up under parallelism is an open question ([design §16](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)).
 
 ## What the compiler checks
 
-- There is no syntax for mutation or pointer identity, so aliasing bugs cannot be written.
-- Reference counting is inserted automatically and is never visible in source.
-- Reuse is an optimization only: whether an update reuses memory or copies, the program's behavior is the same.
-- Mutable shared state requires the `State` or `Db` effect, so it is visible in the signature.
+- There is no syntax for mutation of shared values or pointer identity, so aliasing bugs cannot be written.
+- A dropped non-`Unit` result is an error (`V2040`), which catches `List.push(xs, v)` without reassignment.
+- A lambda cannot assign an outer `var` (`V2041`).
+- A resource cannot escape its scope (`V6003`).
+- Reference counting is inserted automatically and is never visible in source. Reuse is an optimization only.
 
 ## Next
 
-[Concurrency](/docs/tour/concurrency): structured tasks, channels, and durable workflows.
+[Concurrency](/docs/tour/concurrency): structured tasks, cancellation, timeouts, and channels.

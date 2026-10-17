@@ -1,92 +1,112 @@
 ---
 title: Basics
-description: Bindings, functions, control flow, strings, lambdas, pipes, loops, and modules in Vow.
+description: Lexical rules, bindings, functions, control flow, operators, strings, lambdas, loops, and modules in Vow.
 ---
 
-<Callout type="warn" title="Design draft">
-  Syntax and semantics on this page are a draft and may change before the first release.
+<Callout type="warn" title="Designed for v0, not implemented yet">
+  This page describes the v0 design ([design §2, §3, §9](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)). The compiler is under construction (milestone M0), so none of this code can be run yet.
 </Callout>
 
-Vow has a deliberately small surface. The complete keyword list is:
+Vow has a small surface: braces, `fn`, `let`/`var`, `match`, `if`/`else`. The keywords are:
 
-```md
-fn let type match if else with handle effect test property requires ensures
-where fail return import pub for in resume as and or not expect
+```text
+fn let var type error effect handler with try catch fail if else match for in while
+return break continue import pub as test property requires ensures where true false
 ```
 
-The literals are `true` and `false`. Three names have special meaning in specific places: `it` inside a `where` refinement, `result` inside an `ensures` clause, and `self`. There is no `mut`, no `null`, no `class`, no exceptions, no `try`/`catch`, no `async`/`await`, and no `?` operator. Each of those jobs is done by something on this page or in the rest of the tour.
+`verify proof ghost control resume region spawn actor interface impl` are reserved for later and rejected today (`V0007`). Two names are special only in one place: `it` inside a `where` refinement and `result` inside an `ensures` clause. There is no `null`, no `class`, no `self`, no exceptions, no `async`/`await`, no macros, and no operator overloading.
 
-## Comments
+## Names and casing
+
+Casing is part of the grammar. Values, functions, modules, fields, and effect-row variables are `snake_case`. Types, variants, error tags, effects, and type variables are `PascalCase`. A `TypeName` is never a value and an `Ident` is never a type; the resolver reports `V1004` on a mismatch.
+
+## Comments and attributes
 
 ```vow
-// A line comment.
+// A line comment. /* Block comments */ nest.
 
-/// A doc comment. It attaches to the next definition and becomes
-/// hover documentation and, for tools, the tool description.
+/// A doc comment. It attaches to the next item and is exported with its signature.
 pub fn double(n: Int) -> Int {
   n * 2
 }
 ```
 
+`@name(args)` attributes precede items. The v0 set is `@tool`, `@llm`, `@external`, `@trust`, `@deprecated`, `@server`, and `@test_only`. An unknown attribute is `V1010`.
+
+## Statements and newlines
+
+There are no mandatory semicolons. The lexer ends a statement at a line break only when **both** hold ([design §2.4](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
+
+1. The previous token can end an expression: a name, a hole, a literal, `)`, `]`, `}`, postfix `?`, `true`, `false`, `break`, `continue`, or `return`.
+2. The next token cannot continue one: it is not `.`, `else`, `catch`, `)`, `]`, `}`, `,`, `=>`, `=`, `->`, `|`, `..`, or a binary operator other than `-`.
+
+In practice:
+
+- A line ending in an operator, `(`, `[`, `{`, or `,` continues.
+- A line starting with `.`, `else`, or `catch` continues the previous one, so method chains and `} else {` work across lines.
+- `foo` followed by `(bar)` on the next line is **two** statements. So is `foo` followed by `-1`.
+- Newlines inside `(` and `[` are never significant. `;` is always accepted; `vow fmt` removes redundant ones.
+
 ## Bindings
 
-`let` binds a name to a value. Bindings are immutable. Shadowing a name with a new `let` is allowed and is the idiomatic way to build up a value step by step.
+`let` binds an immutable name. `var` binds a name that can be reassigned. Local types are inferred.
 
 ```vow
-let total = 10
-let total = total + 1      // a new binding that shadows the old one
-let name = "Ada"
-let big = 20_000           // underscores are allowed in number literals
-let ratio = 0.75
-let primes = [2, 3, 5, 7]  // List<Int>
-let nothing = ()           // the unit value
+fn bindings() -> Int {
+  let big = 20_000          // underscores between digits
+  let mask = 0xFF           // also 0b1010
+  let ratio = 0.75          // Float needs a digit on both sides of the dot
+  let primes = [2, 3, 5, 7] // List<Int>
+  let pair = (1, "one")     // tuple; pair.0, pair.1
+  var count = 0
+  count = count + List.len(primes)
+  count + big + mask
+}
 ```
 
-Types of local bindings are inferred. Types of top-level functions are always written out, because the signature is the contract.
+`()` is the `Unit` value. There is no unary plus; `-5` is unary minus applied to `5`. Reassigning a `var` changes the binding, never a value seen elsewhere ([Memory model](/docs/tour/memory)). Top-level `let` declares a constant; a `pub let` needs a type annotation.
 
 ## Functions
+
+Every top-level function has a full signature: parameter types, `-> Result`, and an effect row unless it is pure.
 
 ```vow
 fn add(a: Int, b: Int) -> Int {
   a + b
 }
 
-pub fn area(w: Float, h: Float) -> Float {
-  w * h
-}
-```
-
-- The last expression of the body is the return value.
-- `return` exists only for early exit.
-- `pub` exports a definition from its module. Everything else is private to the module.
-- A function with no `! {...}` row is pure: it performs no effects and cannot fail. Effects are covered in [Effects](/docs/tour/effects).
-- A function with no `-> R` returns `()`.
-
-```vow
 fn clamp(n: Int, lo: Int, hi: Int) -> Int {
   if n < lo { return lo }
   if n > hi { return hi }
   n
 }
-```
 
-## Control flow
-
-`if` is an expression. Both branches must have the same type, and `else` is required when the value is used.
-
-```vow
-let label = if score >= 90 { "excellent" } else { "keep going" }
-```
-
-Boolean operators are words: `and`, `or`, `not`. Comparison uses `==`, `!=`, `<`, `<=`, `>`, `>=`.
-
-```vow
-fn can_vote(age: Int, registered: Bool, suspended: Bool) -> Bool {
-  age >= 18 and registered and not suspended
+pub fn greet(name: String) -> Unit ! {Console} {
+  Console.print("hello, {name}")
 }
 ```
 
-`match` branches on the shape of a value. Arms go one per line, with no commas. Guards use `if`, `_` matches anything, and the match must be exhaustive.
+- A block's value is its final expression. `return e` exits the enclosing function or lambda early.
+- A signature without `!` is pure (`! {}`). Effects are covered in [Effects](/docs/tour/effects).
+- `-> Unit` is written out; there is no default return type.
+- Items are private to their module unless marked `pub`.
+- A non-final expression statement whose value is not `Unit` is an error (`V2040`). Write `let _ = e` to discard on purpose.
+
+## Control flow
+
+`if` is an expression. With `else`, both branches must have the same type. Without `else`, its type is `Unit`.
+
+```vow
+fn label(score: Int) -> String {
+  if score >= 90 { "excellent" } else if score >= 50 { "pass" } else { "keep going" }
+}
+
+fn can_vote(age: Int, registered: Bool, suspended: Bool) -> Bool {
+  age >= 18 && registered && !suspended
+}
+```
+
+`match` branches on the shape of a value. Arms end with a newline or `,`. Guards use `if`. A match must be exhaustive, and a literal pattern on `Int`, `String`, or `Float` needs a `_` arm. See [Types](/docs/tour/types#pattern-matching).
 
 ```vow
 fn describe(n: Option<Int>) -> String {
@@ -99,92 +119,137 @@ fn describe(n: Option<Int>) -> String {
 }
 ```
 
+## Operators
+
+Tightest first ([design §3.1](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
+
+| Level | Operators | Associativity |
+| --- | --- | --- |
+| 1 | call `f(x)`, field `.x`, tuple index `.0`, index `[i]`, raise `?` | postfix |
+| 2 | `-` `!` | prefix |
+| 3 | `*` `/` `%` | left |
+| 4 | `+` `-` | left |
+| 5 | `..` (range, exclusive end) | none |
+| 6 | `==` `!=` `<` `<=` `>` `>=` | none |
+| 7 | `&&` | left |
+| 8 | `\|\|` | left |
+
+- Both operands must have the same type. `Int + Float` is a type error; convert with `Int.to_float` or `Float.round`.
+- `+` also concatenates `String`. Nothing else is overloaded, and there are no user-defined operators.
+- `Int` arithmetic is checked. Overflow (`D001`) and division by zero (`D002`) are defects, not errors.
+- `a < b < c` is `V0010`. `&&` and `||` short-circuit.
+- `xs[i]` is `List.get(xs, i)` and returns `Option`.
+
+Three parsing rules remove guesswork ([design §3.2](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
+
+- In expressions, `<` is always comparison. There are no call-site type arguments: write `let xs: List<Int> = List.empty()`, not `List<Int>.empty()` (`V0011`).
+- In the header of `if`, `while`, `for`, `match`, and `with`, `Name {` starts the block, not a record literal. Parenthesize record literals there.
+- `if`, `match`, `with`, `try`, `fn`, `handler`, and `fail` expressions are never operands without parentheses: `(match x { … }).len()`, not `match x { … }.len()` (`V0012`).
+
 ## Strings
 
-Braces inside a string interpolate any expression.
+Strings are UTF-8 and may span lines. `{expr}` interpolates any expression whose type is `Show`. Escapes are `\\ \" \n \r \t \0 \{ \}` and `\u{…}`; write `\{` for a literal brace.
 
 ```vow
-let greeting = "Hello, {name}. You have {inbox.len} messages."
+fn inbox(name: String, unread: List<String>) -> String {
+  "Hello, {name}. You have {List.len(unread)} messages. \{not interpolated\}"
+}
 ```
 
-Tagged string literals are checked by the compiler. Interpolations inside `sql"..."` become bound parameters, and interpolations inside `html"..."` are escaped. This is covered in [Capabilities and security](/docs/tour/capabilities).
+Interpolating a `Secret<T>` is a compile error (`V2031`). Tagged strings `sql"…"`, `html"…"`, `url"…"`, and `shell"…"` pass interpolations to the tag as values and never splice them raw. See [Types](/docs/tour/types#tagged-templates).
+
+## Lambdas and function types
+
+There is one lambda form: `fn(params) { body }`, with optional parameter and result annotations.
 
 ```vow
-let query = sql"select * from users where email = {email}"
-let page = html"<p>Welcome, {name}</p>"
-```
-
-## Lambdas
-
-```vow
-let inc = x => x + 1
-let add = (a, b) => a + b
-let hello = () => "hello"
-```
-
-Function types are written `(A, B) -> R`, with an effect row when the function performs effects: `(String) -> () ! {Log}`.
-
-```vow
-fn twice(f: (Int) -> Int, x: Int) -> Int {
+fn twice<e>(f: fn(Int) -> Int ! e, x: Int) -> Int ! e {
   f(f(x))
 }
 
-let nine = twice(x => x + 3, 3)
+test "twice applies f two times" {
+  let add3 = fn(x) { x + 3 }
+  let mul2 = fn(x: Int) -> Int { x * 2 }
+  expect_eq(twice(add3, 3), 9)
+  expect_eq(twice(mul2, 3), 12)
+}
 ```
 
-## Pipes and method-call sugar
+A function type is `fn(A, B) -> C ! row`; without `!` it is pure. The lowercase `e` is an effect-row variable, so `twice` performs whatever `f` performs. Lambdas capture values, not variables, and cannot assign to an outer `var` (`V2041`). A local lambda cannot call itself (`V1020`); lift it to a top-level function.
 
-`x |> f(a)` means `f(x, a)`. `x.f(a)` means `T.f(x, a)` where `T` is the module of `x`'s type, so `xs.map(f)` is `List.map(xs, f)`. Both forms exist so that long chains read left to right.
+## Method-call syntax
+
+`x.f(a)` means `T.f(x, a)`, where `T` is the type of `x` and `f` is looked up in `T`'s home module. So `xs.map(f)` is `List.map(xs, f)` and `s.len()` is `String.len(s)`. There are no methods, no `self`, and no pipe operator. Chains continue across lines with a leading `.`:
 
 ```vow
-let positive_total = xs
-  |> List.filter(x => x > 0)
-  |> List.sum
+type User = { name: String, active: Bool }
 
-let names = users.map(u => u.name).sort()
+fn names(users: List<User>) -> List<String> {
+  users
+    .filter(fn(u) { u.active })
+    .map(fn(u) { u.name })
+}
 ```
+
+The full lookup order is in [Types](/docs/tour/types#method-call-resolution).
 
 ## Loops
 
-Prefer `map`, `filter`, and `fold` for computing values:
+`for pattern in expr { }` iterates a `List`, `Range`, `Set`, or `Map` (as `(key, value)` pairs). `while cond { }` loops while a condition holds. `break` and `continue` work in both. Loops are statements and produce no value; accumulate in a `var`, or use `List.fold`.
 
 ```vow
-let sum = xs.fold(0, (acc, x) => acc + x)
-let squares = xs.map(x => x * x)
-```
-
-`for x in xs { ... }` exists for effectful iteration. It always returns `()`, so it cannot be used to compute a value by accident.
-
-```vow
-fn print_all(xs: List<Int>) ! {Log} {
+fn total(xs: List<Int>) -> Int {
+  var sum = 0
   for x in xs {
-    Log.info("{x}")
+    if x < 0 { continue }
+    sum = sum + x
+  }
+  sum
+}
+
+fn total_fold(xs: List<Int>) -> Int {
+  List.fold(xs, 0, fn(acc, x) { if x < 0 { acc } else { acc + x } })
+}
+
+fn countdown(n: Int) -> Unit ! {Console} {
+  for i in 0..n {
+    Console.print("{n - i}")
   }
 }
 ```
 
-## Modules
+## Holes
 
-One module per file. The path is the module name: `src/users.vow` in package `app` is the module `app/users`.
+`?name` is a typed hole: an unfinished expression. `vow check` accepts holes and reports each one's expected type, the locals in scope, and ranked candidates. `vow build` and `vow run` reject them (`V2050`). See [Typed holes](/docs/agents/typed-holes).
 
 ```vow
-import std/http
-import app/users.{signup, User}
-import std/json as json
+fn unfinished(x: Int) -> Int { ?result }
 ```
 
-- `import std/http` makes `http.Request` and friends available under the module's last segment.
-- `import app/users.{signup, User}` brings specific names into scope.
-- `import std/json as json` renames the module.
+## Modules
+
+One file is one module. The module path is the file path under the package's `src/`: `src/users/repo.vow` is module `users/repo`. The first import segment is a package name (`std`, the current package, or a dependency in `vow.toml`).
+
+```vow
+import std/http.{Request, Response, Router}   // bind names directly
+import std/sql                                 // bind the module as `sql`
+import acme/billing/invoices as inv            // rename
+```
+
+- No wildcard imports, no relative imports, no re-exports, and no import cycles (`V1030`).
+- Variants and error tags live directly in their module's namespace (`Some`, `EmailTaken`); `Option.Some` is also accepted.
+- The prelude needs no import: `Option`, `Result`, `List`, `Map`, `Set`, `String`, `Int`, `Float`, `Bytes`, the effects `Fail Console Clock Random Env Log Task`, and the tags `sql html url shell`.
+- The entry point is `pub fn main() -> Unit ! {…}` in `src/main.vow`.
 
 ## What the compiler checks
 
-- Every top-level function has a complete signature. Local `let` types are inferred.
-- Every `match` is exhaustive, and every `if` used as a value has an `else`.
-- Names are not reassigned. Shadowing creates a new binding; it never mutates the old one.
-- `pub` controls exports. Using a private name from another module is an error (`E01xx` codes, see [Diagnostics](/docs/agents/diagnostics)).
-- `vow fmt` has no options, so every Vow file is formatted the same way.
+- Every top-level function has a complete signature (`V3001` lists effects a body performs beyond it).
+- Casing matches the namespace (`V1004`). Reserved words cannot be identifiers (`V0007`).
+- Unused non-`Unit` results are errors (`V2040`).
+- Name conflicts within a module are errors (`V1001`). A local shadowing an import is a warning (`W1002`).
+- Every `match` is exhaustive (`V4001`). Unreachable arms are reported (`V4002`).
+- `vow fmt` has no options: 2-space indent, width 100, one canonical layout.
 
 ## Next
 
-[Types](/docs/tour/types): records, sum types, generics, and why there is no null.
+[Types](/docs/tour/types): records, variants, refinements, generics, and why there is no null.
