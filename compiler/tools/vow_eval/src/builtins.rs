@@ -323,9 +323,15 @@ pub(crate) fn call(m: &mut Machine, name: &str, args: Vec<Value>, hs: &Rc<Handle
             Str(s[b0..b1].into())
         }
         ("string_chars", [Str(s)]) => list(s.chars().map(|c| Str(c.to_string().into())).collect()),
+        // Like the runtime: not an integer or beyond i64 is `None`; within i64 but beyond the
+        // JS safe range is defect D003.
         ("string_parse_int", [Str(s)]) => {
-            let parsed = s.parse::<i64>().ok().filter(|i| i.abs() <= crate::MAX_SAFE);
-            option(module, parsed.map(Int))?
+            let digits = s.strip_prefix(['+', '-']).unwrap_or(s);
+            let well_formed = !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit());
+            match s.parse::<i64>().ok().filter(|_| well_formed) {
+                Some(i) => option(module, Some(int(i)?))?,
+                None => option(module, None)?,
+            }
         }
         ("int_to_string", [Int(i)]) => Str(i.to_string().into()),
         ("int_to_float", [Int(i)]) => Float(*i as f64),
