@@ -27,16 +27,21 @@ pub fn fixed(at: Instant) -> Handler<Clock> {
   }
 }
 
-/// Virtual time starting at the Unix epoch: `sleep(d)` returns immediately and
-/// advances `now` and `monotonic` by `d`. Use it to test timeouts and backoff.
+/// Virtual time starting at the Unix epoch: `sleep(d)` parks the task until nothing else can
+/// run, then advances `now` and `monotonic` by `d`; sleepers wake in virtual-time order. Use it
+/// to test timeouts and backoff.
 pub fn virtual() -> Handler<Clock> {
   handler Clock {
     var elapsed = 0
     fn now() { Instant.from_unix_millis(elapsed) }
     fn monotonic() { Duration.millis(elapsed) }
-    fn sleep(d) { elapsed = elapsed + Int.max(0, d.to_millis()) }
+    fn sleep(d) { elapsed = clock_virtual_sleep(elapsed, d.to_millis()) }
   }
 }
+
+/// `now + max(ms, 0)`, once every other runnable task has run (runtime/js/ABI.md §6).
+@external(js, "sakura_runtime", "clock_virtual_sleep")
+fn clock_virtual_sleep(now: Int, ms: Int) -> Int
 
 test "fixed clock never moves" {
   let at = Instant.from_unix_millis(42)

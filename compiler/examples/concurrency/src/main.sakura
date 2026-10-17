@@ -1,7 +1,6 @@
 // milestone: M3
 // needs: `timeout` under `Clock.virtual` and `Task.deterministic` raises `Timeout` in runtime/js (D)
 // mode: test
-// known-bug: `timeout` under virtual time raises `Timeout` (D, REQUESTS.md)
 // covers: Import NameList RecordLit TupleLit Lambda WithExpr
 
 // Design §15.10. Difference from the design text: `HttpError` and `Response` come from

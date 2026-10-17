@@ -1,7 +1,6 @@
 // milestone: M3
 // needs: none (tests pass today)
 // mode: test
-// known-bug: `sql"…"` arguments need `SqlValue.from` (C, REQUESTS.md); `Sql.memory` (D)
 // covers: Import NameList TypeDecl RecordType TryExpr Lambda
 
 // Design §15.5. `main` serves forever, so CI runs the tests only. Difference from the
