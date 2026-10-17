@@ -1,0 +1,44 @@
+// HTTP responses (design §10.4, M3), the home module of `Response` (see `std/request`).
+// needs M3: `Schema` codecs in runtime/js for `ok_json` and `json`; `Response.html`.
+
+import std/json.{DecodeError}
+import std/untrusted
+
+/// `Status.from(200)`; `Status.validate(code)` for untrusted codes.
+pub type Status = Int where it >= 100 && it <= 599
+
+pub type Response = { status: Status, headers: List<(String, String)>, body: String }
+
+/// Transport failure (`status` is `None`), a status outside 2xx, or a body over its limit.
+pub error HttpError(status: Option<Status>, reason: String)
+
+pub fn status(code: Int, body: String) -> Response
+  requires code >= 100 && code <= 599
+{
+  Response { status: Status.from(code), headers: [], body }
+}
+
+/// A 200 response with `value` encoded as JSON.
+pub fn ok_json<T: Schema>(value: T) -> Response {
+  Response { status: Status.from(200), headers: [("content-type", "application/json")], body: Json.encode(value) }
+}
+
+/// The body decoded as `T` (named by the binding's annotation), refinements included.
+pub fn json<T: Schema>(r: Response, limit: Int) -> T ! {Fail<HttpError | DecodeError>} {
+  match Json.decode(checked_body(r, limit)) {
+    Ok(value) => value,
+    Err(e) => fail e,
+  }
+}
+
+/// The body as text, still untrusted.
+pub fn text(r: Response, limit: Int) -> Untrusted<String> ! {Fail<HttpError>} {
+  untrusted.of(checked_body(r, limit))
+}
+
+/// The body of a 2xx response that is at most `limit` bytes.
+fn checked_body(r: Response, limit: Int) -> String ! {Fail<HttpError>} {
+  if r.status < 200 || r.status > 299 { fail HttpError { status: Some(r.status), reason: "status {r.status}" } }
+  if String.len(r.body) > limit { fail HttpError { status: Some(r.status), reason: "body exceeds {limit} bytes" } }
+  r.body
+}

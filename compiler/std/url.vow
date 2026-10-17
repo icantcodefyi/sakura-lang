@@ -1,0 +1,51 @@
+// URLs (design §10.3). `Url.from(s)` and `Url.validate(s)` are generated from the refinement.
+// needs M3: the `url"…"` template, which percent-encodes interpolated parts.
+
+/// An absolute `http://` or `https://` URL, or an origin-form path such as `/users?id=1`.
+pub type Url = String where is_valid(it)
+
+/// Starts with `https://`, `http://` or `/`, and has no spaces.
+@total
+pub fn is_valid(s: String) -> Bool {
+  (String.starts_with(s, "https://") || String.starts_with(s, "http://") || String.starts_with(s, "/"))
+    && !String.contains(s, " ")
+}
+
+/// `example.com:8080` for `https://example.com:8080/a`; `None` for a path.
+pub fn host(u: Url) -> Option<String> {
+  if String.starts_with(u, "/") { None } else { List.get(String.split(u, "/"), 2) }
+}
+
+/// The path without scheme, host or query: `/a/b` for `https://x/a/b?q=1`.
+pub fn path(u: Url) -> String {
+  let no_query = List.first(String.split(u, "?")).unwrap_or("")
+  if String.starts_with(no_query, "/") {
+    no_query
+  } else {
+    let parts = String.split(no_query, "/")
+    "/{List.join(List.slice(parts, 3, List.len(parts)), "/")}"
+  }
+}
+
+/// The value of query parameter `name`, without percent-decoding.
+pub fn query_param(u: Url, name: String) -> Option<String> {
+  let query = List.get(String.split(u, "?"), 1).unwrap_or("")
+  let values = List.filter_map(String.split(query, "&"), fn(pair) {
+    match String.split(pair, "=") {
+      [k, v] if k == name => Some(v),
+      _ => None,
+    }
+  })
+  List.first(values)
+}
+
+test "host, path and query" {
+  let u = Url.from("https://example.com:8080/a/b?q=1&r=two")
+  expect_eq(host(u), Some("example.com:8080"))
+  expect_eq(path(u), "/a/b")
+  expect_eq(path(Url.from("https://example.com")), "/")
+  expect_eq(path(Url.from("/users?id=3")), "/users")
+  expect_eq(query_param(u, "r"), Some("two"))
+  expect_eq(query_param(u, "s"), None)
+  expect(Url.validate("ftp://x").is_err())
+}

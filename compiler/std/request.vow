@@ -1,0 +1,62 @@
+// HTTP requests (design §10.4, M3), the home module of `Request`. A separate module from
+// `std/http` and `std/response` because `Request.json` and `Response.json` (and
+// `Request.post_json` and `Http.post_json`) would otherwise be one name (§4.9).
+// needs M3: `Schema` codecs in runtime/js for `post_json` and `json`.
+
+import std/url.{Url}
+
+pub type Method = Get | Head | Post | Put | Patch | Delete
+
+/// `bearer` holds a credential added by `Http.bearer`; the host handler sends it as an
+/// `Authorization` header and nothing else can read it.
+pub type Request = {
+  method: Method,
+  url: Url,
+  headers: List<(String, String)>,
+  body: String,
+  bearer: Option<Secret<String>>,
+}
+
+/// The request body is not acceptable; `detail` is safe to return to the client.
+pub error BadRequest(detail: String)
+
+/// A request with no headers or body.
+pub fn of(method: Method, url: Url) -> Request {
+  Request { method, url, headers: [], body: "", bearer: None }
+}
+
+/// A `POST` of `body` to `path`, for route handlers and their tests.
+pub fn post(path: String, body: String) -> Request {
+  Request { ..of(Post, Url.from(path)), body }
+}
+
+/// A `POST` of `body` encoded as JSON.
+pub fn post_json<T: Schema>(url: Url, body: T) -> Request {
+  Request { ..of(Post, url), headers: [("content-type", "application/json")], body: Json.encode(body) }
+}
+
+/// The body decoded as `T` (named by the binding's annotation), refinements included.
+/// A body over `limit` bytes or one that does not decode is `BadRequest`.
+pub fn json<T: Schema>(req: Request, limit: Int) -> T ! {Fail<BadRequest>} {
+  if String.len(req.body) > limit { fail BadRequest { detail: "body exceeds {limit} bytes" } }
+  match Json.decode(req.body) {
+    Ok(value) => value,
+    Err(e) => fail BadRequest { detail: "{e.path}: {e.message}" },
+  }
+}
+
+/// The query parameter `name`, without percent-decoding.
+pub fn param(req: Request, name: String) -> Option<String> { Url.query_param(req.url, name) }
+
+/// The first header called `name`, compared case-insensitively.
+pub fn header(req: Request, name: String) -> Option<String> {
+  let wanted = String.to_lower(name)
+  List.find(req.headers, fn(h) { String.to_lower(h.0) == wanted }).map(fn(h) { h.1 })
+}
+
+test "post and param" {
+  let req = post("/users?invite=abc", "\{\}")
+  expect_eq(req.method, Post)
+  expect_eq(param(req, "invite"), Some("abc"))
+  expect_eq(header(Request { ..req, headers: [("Content-Type", "text/plain")] }, "content-type"), Some("text/plain"))
+}
