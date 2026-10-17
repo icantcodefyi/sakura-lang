@@ -81,10 +81,10 @@ externals they touch; their host handlers and `Schema` codecs are runtime extern
 ## Planned, not yet in source (design §10, milestone M3)
 
 `Tool.of` (a compiler intrinsic on a `@tool`
-function), `Untrusted.validate` (a compiler intrinsic into a refined type), `Fs.with_file`/`File`, `Http.scoped`/`recording`, `Llm.replay`, `Sql.postgres`, `Html`
+function), `Untrusted.validate` (a compiler intrinsic into a refined type), `Http.scoped`/`recording`, `Llm.replay`, `Sql.postgres`, `Html`
 values as `html"…"` arguments, `List.par_map` (written as `std/task.par_map` until `Task` runs),
-and `Env.host(scope)`. Their signatures are the ones in design §10.2–§10.7. `Uuid`, `Path`,
-`Prompt` and `Query` are `pub opaque` (design §17.10).
+and `Env.host(scope)`. Their signatures are the ones in design §10.2–§10.7. `Uuid`, `Prompt` and
+`Query` are `pub opaque` (design §17.10).
 
 ## Signatures
 
@@ -459,7 +459,7 @@ fn round(d: Decimal, places: Int) -> Decimal requires places >= 0
 ### `std/path`
 
 ```vow
-opaque type Path = Path(List<String>)
+type Path = String where is_relative(it)
 fn is_relative(s: String) -> Bool    // @total
 fn of(s: String) -> Path requires is_relative(s)
 fn join(p: Path, rest: String) -> Path requires is_relative(rest)
@@ -471,6 +471,8 @@ fn to_string(p: Path) -> String
 ```vow
 type Dir
 type Entry = { name: String, is_dir: Bool }
+type Mode = Read | Write | Append
+opaque type File = { id: Int, path: Path, mode: Mode }
 error FsError(path: String, reason: String)
 effect Fs {
   fn root() -> Dir
@@ -479,11 +481,15 @@ effect Fs {
   fn write(path: Path, data: Bytes) -> Unit ! {Fail<FsError>}
   fn list(dir: Path) -> List<Entry> ! {Fail<FsError>}
   fn exists(path: Path) -> Bool
+  fn with_file<T, e>(path: Path, mode: Mode, body: fn(File) -> T ! e) -> T ! {Fail<FsError> | e}
 }
 fn host() -> Handler<Fs>
 fn rooted(dir: Dir) -> Handler<Fs>
 fn subdir(d: Dir, name: String) -> Dir ! {Fail<FsError>}
 fn memory(files: List<(Path, Bytes)>) -> Handler<Fs>
+fn read_chunk(file: File, max: Int) -> Bytes ! {Fail<FsError>} requires max > 0
+fn write_chunk(file: File, data: Bytes) -> Unit ! {Fail<FsError>}
+fn read_all(file: File) -> Bytes ! {Fail<FsError>}
 ```
 
 ### `std/cli`
@@ -746,10 +752,10 @@ fn memory() -> Handler<Sql>    // @external
     that is a JSON object with a `tool_use` array is a tool-call turn. `Partial<T>` is
     `{ text, step, calls }`. `Llm.stream`'s callback may perform effects (`! e`), otherwise
     a partial could not be observed. `Agent.run` reserves `max_tokens` and one call per step
-    and settles to zero, as a headroom check; provider handlers charge actual use.
+    and settles to zero, as a headroom check; the provider charges actual use.
 18. **`Router<F>`** for the same reason as `Tool<F>` (`F` is `fn(Request) -> Response ! e`),
-    and `Serve.listen<e>` performs what the routes perform, so the handlers installed around
-    `listen` serve every request (§10.4). `Router.route`, `put`, `delete` and `handle` are
+    and `Serve.listen<e>` performs what the routes perform, so what is installed around `listen`
+    serves every request (§10.4). `Router.route`, `put`, `delete` and `handle` are
     additions; `:name` path segments fill the new `Request.params`, which `Request.param`
     reads before the query. `Serve.scripted(requests)` is the test handler; `Address.of`
     lives in `std/serve`.
@@ -757,3 +763,15 @@ fn memory() -> Handler<Sql>    // @external
     for every sink (§6.4). `Html.untrusted(u)` escapes untrusted text. `html"…"` escapes every
     interpolated value until template arguments can convert (`Html` as markup, like
     `SqlValue.from`).
+20. **`File.read_chunk`/`File.write_chunk`/`File.read_all` are functions on the `File`, not
+    `Fs` operations** (the design leaves them unspecified): a clause sees the handlers
+    outside its `with` (§5.5), so the `with_file` body, run by the clause, could not reach
+    the handler that opened the file. The `File` is the capability; `Fs.with_file` is
+    where authority is used. `Mode = Read | Write | Append`. Until the `file_*` externals
+    exist, `with_file` fails with `FsError` in `Fs.rooted` and `Fs.memory` (see the
+    `ponytail:` note in `std/fs`).
+21. **`Path` is `String where is_relative(it)`**, not `pub opaque type Path = Path(List<String>)`:
+    `Cli.parse` and `Json.decode` read a refined type from a string and check it, while an
+    opaque variant has no string form (§15.6 parses `--input notes.txt` into a `Path`). The
+    guarantee is the same: no leading `/`, no `..` segment. `Path.of` drops `.` and empty
+    segments; a decoded `Path` keeps them.

@@ -1,5 +1,5 @@
 // milestone: M3
-// needs: @llm desugaring, Schema codecs (Json.encode/decode) and Untrusted.of in runtime/js
+// needs: @llm desugaring and schemas inside generic operation clauses (D090) in runtime/js, Fail escaping a test (§17.30)
 // mode: test
 // covers: Attribute TypeDecl RecordType FieldDecl WithExpr Lambda MatchExpr
 

@@ -1,5 +1,5 @@
 // milestone: M3
-// needs: Cli.parse via Schema, the cli_*, fs_* and untrusted_* externals in runtime/js, [permissions]
+// needs: none (runs today)
 // mode: run
 // args: --input notes.txt --top 3
 // covers: Import ForStmt TuplePat Lambda

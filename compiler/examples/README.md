@@ -14,12 +14,12 @@ whose milestone has landed.
 | `counter` | §15.3 | M2 | run + test | user effects, handler state |
 | `typed_errors` | §15.4 | M2 | run + test | `try`/`catch`, `Fail` ops, `Log` |
 | `json_api` | §15.5 | M3 | test | `SqlValue.from` in `sql"…"` (C), `Sql.memory` (D), `Fail` escaping a test (§17.30, C) |
-| `word_count` | §15.6 | M3 | run + test | `Cli.parse`, `cli_*`/`fs_*`/`untrusted_*` runtime externals |
-| `llm_extract` | §15.7 | M3 | test | `@llm` desugaring, `Schema` codecs, `Untrusted.of` in the runtime |
-| `agent_loop` | §15.8 | M3 | check | `Tool.of` intrinsic (B/C) |
-| `property` | §15.9 | M2 | test | `property` blocks, snapshots |
-| `concurrency` | §15.10 | M3 | test | `Task` handlers in the runtime, `Fail` escaping a test (§17.30) |
-| `secrets` | §15.11 | M3 | check | `Schema` codecs, `http_send` |
+| `word_count` | §15.6 | M3 | run + test | nothing (runs and passes) |
+| `llm_extract` | §15.7 | M3 | test | `@llm` desugaring (D), generic-operation schemas (D090, D), `Fail` escaping a test (§17.30, C) |
+| `agent_loop` | §15.8 | M3 | check | `Tool.of` intrinsic (B/C); `json_schema` (D) to run |
+| `property` | §15.9 | M2 | test | runner: snapshot path, generating inputs from `requires` (E) |
+| `concurrency` | §15.10 | M3 | test | `Fail` escaping a test (§17.30, C) |
+| `secrets` | §15.11 | M3 | check | nothing (checks clean) |
 | `graph` | §15.12 | M1 | run + test | records, generics, imports |
 
 Where a design example does not check as written (types whose home module is not the one

@@ -1,5 +1,5 @@
 // milestone: M3
-// needs: Task handlers and untrusted_* externals in runtime/js, Fail escaping a test (§17.30)
+// needs: Fail escaping a test (§17.30)
 // mode: test
 // covers: Import NameList RecordLit TupleLit Lambda WithExpr
 
