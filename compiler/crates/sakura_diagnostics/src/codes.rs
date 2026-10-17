@@ -162,8 +162,15 @@ Fixed:
 dependencies. The first path segment is a package name (`std`, this package, or a dependency).";
 
     V1006 "private_item" RESOLVE,
-"The item exists but is not `pub`, so other modules cannot use it. Mark it `pub` (an interface
-change) or use a public API.";
+"The item exists but this module cannot use it: it is not `pub`, or it is a constructor or field
+of a `pub opaque` type, which only the declaring module may use (design §9, §17.10). Mark a
+private item `pub` (an interface change) or use a public API; build and read an opaque value
+through the functions its module exports.
+
+Wrong:
+    fn make() -> Uuid { Uuid(\"not checked\") }
+Fixed:
+    fn make() -> Result<Uuid, UuidError> { Uuid.parse(text) }";
 
     V1007 "wrong_kind" RESOLVE,
 "A name resolved to the wrong kind of item for where it is used: an effect where a type is
@@ -175,8 +182,16 @@ Fixed:
     fn log(line: String) -> Unit ! {Console} { … }";
 
     V1010 "unknown_attribute" RESOLVE,
-"Only these attributes exist in v0: `@tool`, `@llm`, `@external`, `@trust`, `@deprecated`,
-`@server`, `@test_only` (design §2.5).";
+"Only these attributes exist in v0: `@tool`, `@llm`, `@external`, `@total`, `@contract_test`,
+`@deprecated`, `@server`, `@test_only` on items, and `@trust(\"reason\")` as an expression
+(design §2.5). Any other attribute is unknown, any attribute but `@trust` in expression position
+is rejected, and `Tool.of` takes only a function declared with `@tool` (§11.2).
+
+Wrong:
+    @pure
+    fn double(n: Int) -> Int { n * 2 }
+Fixed:
+    fn double(n: Int) -> Int { n * 2 }";
 
     V1011 "missing_body" RESOLVE,
 "A function has no body. Only `@external` and `@llm` declarations may omit it (design §11.1,
