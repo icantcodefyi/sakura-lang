@@ -15,7 +15,7 @@
   --surface: oklch(0.995 0.002 255);
   --fg: oklch(0.21 0.014 255);
   --fg-muted: oklch(0.46 0.016 255);
-  --fg-faint: oklch(0.6 0.014 255);
+  --fg-faint: oklch(0.53 0.014 255); /* 4.5:1 on --bg-sunk */
   --line: oklch(0.9 0.007 255);
   --line-strong: oklch(0.82 0.01 255);
 
@@ -24,7 +24,7 @@
   --seal-text: oklch(0.52 0.12 70);
   --seal-wash: oklch(0.81 0.155 78 / 0.14);
 
-  --fail: oklch(0.55 0.19 32);
+  --fail: oklch(0.52 0.19 32); /* 4.5:1 on --fail-wash */
   --fail-wash: oklch(0.63 0.19 32 / 0.1);
   --ok: oklch(0.5 0.1 172);
   --ok-wash: oklch(0.6 0.1 172 / 0.12);
@@ -46,7 +46,7 @@
   --surface: oklch(0.192 0.009 255);
   --fg: oklch(0.945 0.006 255);
   --fg-muted: oklch(0.72 0.012 255);
-  --fg-faint: oklch(0.58 0.012 255);
+  --fg-faint: oklch(0.63 0.012 255); /* 4.5:1 on --surface */
   --line: oklch(0.27 0.01 255);
   --line-strong: oklch(0.34 0.012 255);
 
@@ -209,6 +209,13 @@ figure.shiki {
 
 /* ---------- Motion ---------- */
 
+@keyframes rise-text {
+  from {
+    transform: translateY(12px);
+    filter: blur(3px);
+  }
+}
+
 @keyframes rise {
   from {
     opacity: 0;
@@ -225,6 +232,11 @@ figure.shiki {
 @media (prefers-reduced-motion: no-preference) {
   .rise {
     animation: rise 700ms var(--ease-out) both;
+    animation-delay: calc(var(--i, 0) * 70ms);
+  }
+  /* For the hero's largest text: no opacity step, so it paints (and counts for LCP) at once. */
+  .rise-text {
+    animation: rise-text 700ms var(--ease-out) both;
     animation-delay: calc(var(--i, 0) * 70ms);
   }
 }

@@ -28,14 +28,14 @@ export async function Hero() {
             <ArrowRight className="size-3 transition-transform duration-200 group-hover:translate-x-0.5" />
           </Link>
           <h1
-            className="rise mt-7 font-display text-[clamp(2.6rem,4.4vw,3.5rem)] leading-[1.02] font-semibold tracking-[-0.035em] text-balance"
+            className="rise-text mt-7 font-display text-[clamp(2.6rem,4.4vw,3.5rem)] leading-[1.02] font-semibold tracking-[-0.035em] text-balance"
             style={{ "--i": 1 } as CSSProperties}
           >
             Code that keeps <br className="hidden sm:block" />
             its promises.
           </h1>
           <p
-            className="rise mt-6 max-w-[34rem] text-[clamp(1.05rem,1.4vw,1.2rem)] leading-relaxed text-pretty text-fg-muted"
+            className="rise-text mt-6 max-w-[34rem] text-[clamp(1.05rem,1.4vw,1.2rem)] leading-relaxed text-pretty text-fg-muted"
             style={{ "--i": 2 } as CSSProperties}
           >
             Vow is the language agents write. Every signature declares its effects, errors and
@@ -85,7 +85,7 @@ export async function Hero() {
           </p>
         </div>
 
-        <div className="rise lg:-mr-6" style={{ "--i": 2 } as CSSProperties}>
+        <div className="rise xl:-mr-6" style={{ "--i": 2 } as CSSProperties}>
           <HeroDemo lines={lines} />
         </div>
       </div>
