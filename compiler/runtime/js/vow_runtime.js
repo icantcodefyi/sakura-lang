@@ -17,9 +17,10 @@ class Bounce {
 }
 
 class Suspend {
-  constructor(p, k) {
+  constructor(p, k, cancel) {
     this.p = p;
     this.k = k;
+    this.cancel = cancel; // stops the host operation when the task is cancelled
   }
 }
 
@@ -39,10 +40,16 @@ export function ret(k, v) {
   return ++G.d > LIMIT ? new Bounce(k, [v]) : k(v);
 }
 
-/** A host operation that completes later: the driver awaits `promise` and resumes `k`. */
-export function suspend(promise, k) {
-  return new Suspend(promise, k);
+/**
+ * A host operation that completes later: the driver awaits `promise` and resumes `k`. If the
+ * task is cancelled meanwhile, `cancel()` (optional) stops the operation and the task unwinds.
+ */
+export function suspend(promise, k, cancel = null) {
+  return new Suspend(promise, k, cancel);
 }
+
+/** Thrown at a cancellation point of a cancelled task; the task ends `{ kind: "cancelled" }`. */
+const CANCEL = Object.freeze({ cancelled: true });
 
 // ---------------------------------------------------------------------------------------------
 // Defects (design §5.4): thrown, caught only at a task boundary.
@@ -129,6 +136,7 @@ export function install(ctx, h) {
 
 /** The innermost frame handling effect `e`. */
 export function find(ctx, e) {
+  if (ctx.t.cancelled) throw CANCEL;
   let f = ctx.h;
   while (f !== null && f.e !== e) f = f.n;
   if (f === null) throw internal(`no handler installed for ${e}`);
@@ -138,9 +146,10 @@ export function find(ctx, e) {
 /**
  * Context for running a clause found at frame `f`: handlers outside the frame (design §5.5),
  * catchers and task of the performer (an operation's `Fail` surfaces at the perform site).
+ * `p` keeps the performer's own frames for host clauses that start fibers (`Task`).
  */
 export function cctx(ctx, f) {
-  return { h: f.n, c: ctx.c, t: ctx.t };
+  return { h: f.n, c: ctx.c, t: ctx.t, p: ctx.h };
 }
 
 /** `Perform` for code that does not inline it (runtime and tests). */
@@ -187,8 +196,7 @@ export function finalize(ctx, fin, body, k) {
  * Returns an outcome, or a Promise of one if the task suspends:
  *   { kind: "ok", value } | { kind: "fail", error } | { kind: "defect", code, message }
  */
-export function runTask(f, args = [], frames = null) {
-  const t = { fins: [] };
+export function runTask(f, args = [], frames = null, t = newTask()) {
   const ctx = { h: frames, c: { j: (e) => new Done({ kind: "fail", error: e }), m: 0 }, t };
   const k = (value) => new Done({ kind: "ok", value });
   const saved = G.d;
@@ -212,11 +220,8 @@ function drive(t, start) {
         return step.o;
       } else if (step instanceof Suspend) {
         flushOut();
-        const { p, k } = step;
-        return p.then(
-          (v) => drive(t, () => ret(k, v)),
-          (err) => drive(t, () => { throw hostFailure(err); }),
-        );
+        if (t.cancelled) throw CANCEL;
+        return resumeLater(t, step);
       } else {
         throw internal(`not a step: ${typeof step}`);
       }
@@ -225,9 +230,40 @@ function drive(t, start) {
     contractDepth = 0;
     runFins(t, 0);
     if (err instanceof Exit) throw err;
+    if (err === CANCEL) return { kind: "cancelled" };
     const d = err instanceof Defect ? err : asDefect(err);
     return { kind: "defect", code: d.code, message: d.detail, spans: d.spans, error: d };
   }
+}
+
+/** Await a suspension; cancelling the task wakes it early (and stops the host operation). */
+function resumeLater(t, { p, k, cancel }) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const go = (start) => {
+      if (settled) return;
+      settled = true;
+      t.wake = null;
+      try {
+        resolve(drive(t, start));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    t.wake = () => {
+      cancel?.();
+      go(() => {
+        throw CANCEL;
+      });
+    };
+    p.then(
+      (v) => go(() => ret(k, v)),
+      (err) =>
+        go(() => {
+          throw hostFailure(err);
+        }),
+    );
+  });
 }
 
 function hostFailure(err) {
@@ -281,6 +317,7 @@ export function defect_catch(body, ctx, k) {
   const resume = (o) => {
     if (o.kind === "ok") return ret(k, Ok(o.value));
     if (o.kind === "fail") return fail(ctx, o.error);
+    if (o.kind === "cancelled") throw CANCEL;
     return ret(k, Err(`${o.code}: ${o.message}`));
   };
   const o = runTask(body, [], ctx.h);
@@ -1822,7 +1859,11 @@ export function clock_monotonic_ms() {
 }
 export function clock_sleep_ms(ms, _ctx, k) {
   if (ms <= 0) return ret(k, undefined);
-  return suspend(new Promise((resolve) => setTimeout(() => resolve(undefined), ms)), k);
+  let timer;
+  const done = new Promise((resolve) => {
+    timer = setTimeout(() => resolve(undefined), ms);
+  });
+  return suspend(done, k, () => clearTimeout(timer));
 }
 
 const crypto = globalThis.crypto;
@@ -2384,4 +2425,161 @@ function cliValue(text, s) {
     return v;
   }
   return fromJs(text, s, "");
+}
+
+// ---------------------------------------------------------------------------------------------
+// Structured concurrency (design §8.6). A fiber is a child task (`runTask` with its own task
+// object) under the performer's handlers; JS is single-threaded, so fibers interleave only
+// where one suspends. Cancellation is cooperative: a cancelled task stops at its next effect
+// operation (`find`) or suspension point, and a suspended one is woken at once, so its
+// finalizers have run when `cancelTask` returns (that is the join). The first failure or
+// defect among a scope's children cancels the others and is propagated.
+
+const TASK = "std::task::Task";
+
+function newTask() {
+  return { fins: [], cancelled: false, wake: null, kids: new Set() };
+}
+
+/** Cancel `t` and its descendants; a suspended task unwinds (finalizers run) before return. */
+function cancelTask(t) {
+  if (t.cancelled) return;
+  t.cancelled = true;
+  for (const kid of t.kids) cancelTask(kid);
+  if (t.wake !== null) t.wake();
+}
+
+/** Start `body()` as a child of the performer; `onDone(outcome)` runs when it finishes. */
+function startFiber(body, ctx, onDone) {
+  const t = newTask();
+  const parent = ctx.t;
+  parent.kids.add(t);
+  const fiber = { t, outcome: null, promise: null, joined: false };
+  const finish = (o) => {
+    fiber.outcome = o;
+    parent.kids.delete(t);
+    onDone(fiber, o);
+    return o;
+  };
+  const o = runTask(body, [], ctx.p ?? ctx.h, t);
+  if (o instanceof Promise) fiber.promise = o.then(finish);
+  else finish(o);
+  return fiber;
+}
+
+/** Continue the performer with a child's outcome. */
+function propagate(o, ctx, k) {
+  switch (o.kind) {
+    case "ok":
+      return ret(k, o.value);
+    case "fail":
+      return fail(ctx, o.error);
+    case "defect":
+      throw o.error;
+  }
+  throw CANCEL;
+}
+
+/** Call `then()` once every fiber in `fibers` has an outcome (suspending if needed). */
+function joinAll(fibers, then) {
+  const pending = fibers.filter((f) => f.outcome === null).map((f) => f.promise);
+  return pending.length === 0 ? then() : suspend(Promise.all(pending), () => then());
+}
+
+/** Start order: input order, or a seeded permutation (`Task.deterministic`). */
+function startOrder(n, rng) {
+  const order = Array.from({ length: n }, (_, i) => i);
+  if (rng !== null) {
+    for (let i = n - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+  }
+  return order;
+}
+
+function taskHandler(rng, yieldNow) {
+  const all = (_i, bodies, ctx, k) => {
+    const fns = items(bodies);
+    const fibers = [];
+    let failed = null;
+    const onDone = (_f, o) => {
+      if (o.kind === "ok" || failed !== null) return;
+      failed = o;
+      for (const f of fibers) if (f.outcome === null) cancelTask(f.t);
+    };
+    const byIndex = new Array(fns.length);
+    for (const i of startOrder(fns.length, rng)) {
+      if (failed !== null) break;
+      byIndex[i] = startFiber(fns[i], ctx, onDone);
+      fibers.push(byIndex[i]);
+    }
+    return joinAll(fibers, () =>
+      failed !== null ? propagate(failed, ctx, k) : ret(k, list(byIndex.map((f) => f.outcome.value))),
+    );
+  };
+  const race = (_i, bodies, ctx, k) => {
+    const fns = items(bodies);
+    const fibers = [];
+    let winner = null;
+    const onDone = (f, o) => {
+      if (winner !== null) return;
+      winner = o;
+      for (const g of fibers) if (g !== f && g.outcome === null) cancelTask(g.t);
+    };
+    for (const i of startOrder(fns.length, rng)) {
+      if (winner !== null) break;
+      fibers.push(startFiber(fns[i], ctx, onDone));
+    }
+    if (winner !== null) return propagate(winner, ctx, k);
+    return suspend(Promise.race(fibers.map((f) => f.promise)), () => propagate(winner, ctx, k));
+  };
+  const scope = (_i, body, ctx, k) => {
+    const s = { fibers: [], failed: null };
+    const cancelAll = () => {
+      for (const f of s.fibers) if (f.outcome === null) cancelTask(f.t);
+    };
+    const run = (c, kk) =>
+      body(s, c, (v) =>
+        joinAll(s.fibers, () => {
+          const f = s.fibers.find((x) => !x.joined && x.outcome.kind !== "ok");
+          return f === undefined ? ret(kk, v) : propagate(f.outcome, c, kk);
+        }),
+      );
+    // The body runs under the performer's handlers, like every fiber.
+    const pc = { h: ctx.p ?? ctx.h, c: ctx.c, t: ctx.t };
+    return finalize(pc, cancelAll, run, k);
+  };
+  const spawn = (_i, s, body, ctx, k) => {
+    const onDone = (f, o) => {
+      if (o.kind === "ok" || o.kind === "cancelled" || s.failed !== null) return;
+      s.failed = o;
+      for (const g of s.fibers) if (g !== f && g.outcome === null) cancelTask(g.t);
+    };
+    const fiber = startFiber(body, ctx, onDone);
+    s.fibers.push(fiber);
+    return ret(k, fiber);
+  };
+  const join = (_i, f, ctx, k) => {
+    f.joined = true;
+    return f.outcome !== null ? propagate(f.outcome, ctx, k) : suspend(f.promise, (o) => propagate(o, ctx, k));
+  };
+  return new Handler(TASK, [scope, spawn, join, all, race, yieldNow], []);
+}
+
+/** Root `Task` handler on the host event loop: `yield_now` lets other fibers and I/O run. */
+export function task_host() {
+  const yieldNow = (_i, _ctx, k) => suspend(new Promise((r) => setTimeout(r, 0)), k);
+  return taskHandler(null, yieldNow);
+}
+
+/**
+ * `Task.deterministic(seed)`: children start in a seeded order and `yield_now` does not
+ * suspend, so under the deterministic test handlers (which never suspend) every run of a seed
+ * interleaves the same way.
+ */
+export function task_deterministic(seed) {
+  let state = seed | 0;
+  const rng = () => mulberry((state = (state + 0x6d2b79f5) | 0));
+  return taskHandler(rng, (_i, _ctx, k) => ret(k, undefined));
 }

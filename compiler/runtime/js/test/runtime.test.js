@@ -344,3 +344,20 @@ test("Secret never prints; Json.parse builds std values", () => {
   assert.equal(rt.show(rt.json_parse('{"a": [1, true, null]}')), 'Ok(Object(Map.of([("a", Array([Number(1.0), Bool(true), Null]))])))');
   assert.equal(rt.json_parse("{").tag, 1);
 });
+
+test("a race cancels the loser, whose finalizer runs before the race returns", async () => {
+  const log = [];
+  const frames = rt.install({ h: null, c: null, t: null }, rt.task_host()).h;
+  const loser = ($ctx, $k) =>
+    rt.finalize($ctx, () => log.push("loser finalized"), (c, k) => rt.clock_sleep_ms(5_000, c, k), $k);
+  const winner = ($ctx, $k) => rt.clock_sleep_ms(10, $ctx, () => ret($k, "w"));
+  const race = ($ctx, $k) =>
+    rt.perform($ctx, "std::task::Task", 4, [rt.list([loser, winner])], (v) => {
+      log.push(`won ${v}`);
+      return ret($k, v);
+    });
+  const t0 = Date.now();
+  assert.deepEqual(await rt.runTask(race, [], frames), ok("w"));
+  assert.deepEqual(log, ["loser finalized", "won w"]);
+  assert.ok(Date.now() - t0 < 1_000);
+});

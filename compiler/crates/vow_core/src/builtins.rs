@@ -77,6 +77,8 @@ table! {
     Direct fs_root/0, Direct fs_detached_root/0, Direct fs_subdir/2, Direct fs_read/2,
     Direct fs_write/3, Direct fs_list/2, Direct fs_exists/2, Direct cli_args/0, Direct cli_exit/1,
     Cps cli_parse/2,
+    // Task
+    Direct task_host/0, Direct task_deterministic/1,
     // Compiler support
     Direct match_failure/0, Direct contract_enter/0, Direct contract_exit/0,
 }

@@ -58,11 +58,14 @@ time including ~40 ms startup): a pure helper called 10M times from a loop, 204 
 ## 2. Context
 
 ```js
-$ctx = { h: frame | null, c: catcher, t: task }
+$ctx = { h: frame | null, c: catcher, t: task, p?: frame | null }
 frame   = { e: effectId, i: instance, n: frame | null }   // innermost first
 catcher = { j: (error) → Step, m: number }                // m = finalizer mark
-task    = { fins: Array<() → void> }
+task    = { fins: Array<() → void>, cancelled, wake, kids }
 ```
+
+A clause's context (`cctx`) also carries `p`, the performer's own frames, for host clauses that
+start fibers under the performer's handlers (`Task`).
 
 Contexts are immutable; regions that change them bind a new `$ctx` lexically. Code after a
 region uses the outer variable, so leaving a region by falling through, `return`, `break` or
@@ -162,6 +165,21 @@ caller. `std/test`'s `expect_defect` is built on it.
   `runMain` flushes and exits with `code`. `Cli.args()` is `process.argv` after the script.
 - `Console` output is buffered and flushed before suspending, before writing to stderr, and at
   task end.
+
+### Structured concurrency (design §8.6)
+
+`task_host()` and `task_deterministic(seed)` are `std::task::Task` handlers (ops `scope`,
+`spawn`, `join`, `all`, `race`, `yield_now`). A fiber is a child task (`runTask(body, [], p,
+task)`) under the performer's handlers; JS fibers interleave only where one suspends.
+`cancelTask(t)` marks the task and its descendants: a cancelled task stops at its next effect
+operation (`find` throws a cancel signal) or suspension, and a suspended one is woken at once
+(`suspend(promise, k, cancel)` stops the host operation, e.g. clears the sleep timer), so its
+finalizers have run when `cancelTask` returns; the task ends `{ kind: "cancelled" }`. `all`
+and a scope cancel the other children on the first failure or defect and propagate it; `race`
+propagates the first outcome and cancels the rest; `scope` joins every child before returning
+(a child's failure surfaces at its `join`, or at scope end if never joined) and cancels them if
+its body fails. `Task.deterministic` starts children in a seeded order and `yield_now` does not
+suspend; `timeout` is std code over `race`.
 
 ## 7. Values (design §13.4)
 

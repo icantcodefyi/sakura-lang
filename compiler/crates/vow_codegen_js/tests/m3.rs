@@ -383,3 +383,59 @@ pub fn main() -> Unit ! {Console, Cli} {
         "usage: --name <value> --port <value> [--verbose] [--tag <value>]\n"
     );
 }
+
+/// Design §8.6: fibers run concurrently on the event loop; `race`, `timeout` and a failing
+/// child cancel the others (their sleeps stop, so the program does not wait 5 s).
+#[test]
+fn tasks_run_concurrently_and_cancel_losers() {
+    let src = r#"import std/task.{Timeout, timeout}
+import std/duration.{Duration}
+error Boom
+fn slow(ms: Int, v: Int) -> Int ! {Clock} {
+  Clock.sleep(Duration.millis(ms))
+  v
+}
+pub fn main() -> Unit ! {Console, Clock, Task} {
+  let t0 = Clock.monotonic()
+  let xs = Task.all([fn() { slow(60, 1) }, fn() { slow(60, 2) }, fn() { slow(60, 3) }])
+  let took = Duration.to_millis(Clock.monotonic()) - Duration.to_millis(t0)
+  Console.print("{xs} {took < 150}")
+  Console.print("{Task.race([fn() { slow(300, 1) }, fn() { slow(10, 2) }])}")
+  let t = try { timeout(Duration.millis(30), fn() { slow(5000, 9) }) }
+  Console.print("{t.is_err()}")
+  let b = try { Task.all([fn() { slow(5000, 1) }, fn() { fail Boom }]) }
+  Console.print("{b}")
+  let s = Task.scope(fn(sc) {
+    let a = Task.spawn(sc, fn() { slow(20, 10) })
+    let c = Task.spawn(sc, fn() { slow(10, 20) })
+    Task.join(a) + Task.join(c)
+  })
+  Console.print("{s}")
+}
+"#;
+    let started = std::time::Instant::now();
+    let r = common::run("tasks", src).unwrap();
+    assert_eq!(
+        (r.stdout.as_str(), r.code),
+        ("[1, 2, 3] true\n2\ntrue\nErr(Boom)\n30\n", 0),
+        "{}",
+        r.stderr
+    );
+    assert!(
+        started.elapsed().as_secs() < 4,
+        "cancelled sleeps kept node alive"
+    );
+}
+
+#[test]
+fn deterministic_tasks_give_input_order_results() {
+    let src = r#"test "all keeps input order" {
+  with Task.deterministic(7) {
+    expect_eq(Task.all([fn() { 1 }, fn() { 2 }, fn() { 3 }]), [1, 2, 3])
+    expect_eq(Task.scope(fn(s) { Task.join(Task.spawn(s, fn() { 4 })) }), 4)
+  }
+}
+"#;
+    let r = common::test("tasks_det", src).unwrap();
+    assert_eq!(r.code, 0, "{}{}", r.stdout, r.stderr);
+}
