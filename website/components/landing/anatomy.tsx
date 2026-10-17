@@ -82,7 +82,7 @@ export async function Anatomy() {
                 >
                   {i + 1}
                 </span>
-                <code className="font-mono text-[12.5px] leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap sm:text-[14.5px] sm:whitespace-pre">
+                <code className="pl-[2ch] -indent-[2ch] font-mono text-[12.5px] leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap sm:pl-0 sm:indent-0 sm:text-[14.5px] sm:whitespace-pre">
                   <TokenSpans line={line} />
                 </code>
                 <p className="mt-1 text-[14px] leading-snug text-fg-muted lg:mt-0 lg:flex lg:items-baseline lg:gap-3">
@@ -107,7 +107,7 @@ export async function Anatomy() {
               </code>
             </li>
           </ol>
-          <figcaption className="relative flex flex-wrap items-end justify-between gap-x-10 gap-y-4 border-t border-dashed border-line-strong px-5 pt-5 pb-6 sm:px-8">
+          <figcaption className="relative flex items-center justify-between gap-x-6 border-t border-dashed border-line-strong px-5 py-5 sm:items-end sm:gap-x-10 sm:px-8 sm:pb-6">
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[13.5px]">
               <dt className="text-fg-faint">Reviewed by</dt>
               <dd className="font-medium">a person, reading five lines</dd>
@@ -116,7 +116,7 @@ export async function Anatomy() {
                 <code className="font-mono text-[0.92em]">vow check</code>, on every change
               </dd>
             </dl>
-            <Seal className="mr-2 ml-auto size-20 -rotate-12 sm:size-24" />
+            <Seal className="size-16 shrink-0 -rotate-12 sm:mr-2 sm:size-24" />
           </figcaption>
         </figure>
       </div>

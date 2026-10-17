@@ -129,6 +129,7 @@ export async function AgentView() {
               },
               {
                 label: "Diagnostics",
+                short: "Errors",
                 panel: <Code code={DIAGNOSTIC} lang="json" title={<span>vow check --json</span>} />,
               },
               {

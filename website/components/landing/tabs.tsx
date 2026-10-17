@@ -3,7 +3,12 @@
 import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
 /** Segmented tabs with a sliding indicator (transform-only), arrow-key navigation. */
-export function Tabs({ items }: { items: { label: string; panel: ReactNode }[] }) {
+export function Tabs({
+  items,
+}: {
+  /** `short` replaces `label` on phones, where four equal tabs leave ~80px each. */
+  items: { label: string; short?: string; panel: ReactNode }[];
+}) {
   const [active, setActive] = useState(0);
   const id = useId();
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -60,7 +65,14 @@ export function Tabs({ items }: { items: { label: string; panel: ReactNode }[] }
               active === i ? "text-fg" : "text-fg-muted hover:text-fg"
             }`}
           >
-            {it.label}
+            {it.short ? (
+              <>
+                <span className="sm:hidden">{it.short}</span>
+                <span className="max-sm:hidden">{it.label}</span>
+              </>
+            ) : (
+              it.label
+            )}
           </button>
         ))}
       </div>

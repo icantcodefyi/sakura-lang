@@ -76,8 +76,9 @@ export function HandlersDiagram() {
                 className="w-full rounded-xl border border-seal/45 bg-seal-wash px-2 py-2.5 motion-safe:animate-[swap-in_320ms_var(--ease-out)_both] sm:px-3"
                 style={{ animationDelay: `${i * 50}ms` }}
               >
-                <p className="truncate font-mono text-[11px] font-medium text-fg sm:text-[12.5px]">
-                  {h.handler}
+                <p className="font-mono text-[11px] font-medium text-fg sm:text-[12.5px]">
+                  {/* a zero-width space lets Clock.fixed(t0) break after the dot on phones */}
+                  {h.handler.replace(".", ".\u200b")}
                 </p>
                 <p className="mt-0.5 text-[11px] leading-snug text-fg-muted sm:text-[12.5px]">
                   {h.does}
