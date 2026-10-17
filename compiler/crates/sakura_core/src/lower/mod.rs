@@ -470,15 +470,6 @@ impl<'p> Lower<'p> {
     }
 
     fn conv_ty(&mut self, t: types::TypeId, keep: bool) -> Ty {
-        self.conv_vars(t, keep, &HashMap::new())
-    }
-
-    /// [`Lower::conv_ty`] where inference variable `v` with `vars[v] = p` is type parameter `p`
-    /// (used in clauses of generic operations, see `FnLower::lift`).
-    pub fn conv_vars(&mut self, t: types::TypeId, keep: bool, vars: &HashMap<u32, u32>) -> Ty {
-        if !vars.is_empty() {
-            return self.conv_uncached(t, keep, vars);
-        }
         let cache = if keep {
             &self.schema_cache
         } else {
@@ -487,7 +478,7 @@ impl<'p> Lower<'p> {
         if let Some(ty) = cache.get(&t) {
             return ty.clone();
         }
-        let ty = self.conv_uncached(t, keep, vars);
+        let ty = self.conv_uncached(t, keep);
         if keep {
             self.schema_cache.insert(t, ty.clone());
         } else {
@@ -496,19 +487,14 @@ impl<'p> Lower<'p> {
         ty
     }
 
-    fn conv_uncached(&mut self, t: types::TypeId, keep: bool, vars: &HashMap<u32, u32>) -> Ty {
+    fn conv_uncached(&mut self, t: types::TypeId, keep: bool) -> Ty {
         match self.t.interner.ty(t).clone() {
             types::Type::Tuple(ts) if ts.is_empty() => Ty::Unit,
-            types::Type::Tuple(ts) => Ty::Tuple(
-                ts.into_iter()
-                    .map(|t| self.conv_vars(t, keep, vars))
-                    .collect(),
-            ),
+            types::Type::Tuple(ts) => {
+                Ty::Tuple(ts.into_iter().map(|t| self.conv_ty(t, keep)).collect())
+            }
             types::Type::Con(con, args) => {
-                let mut args: Vec<Ty> = args
-                    .into_iter()
-                    .map(|t| self.conv_vars(t, keep, vars))
-                    .collect();
+                let mut args: Vec<Ty> = args.into_iter().map(|t| self.conv_ty(t, keep)).collect();
                 let mut arg = |i: usize| Box::new(std::mem::replace(&mut args[i], Ty::Unit));
                 match con {
                     types::TyCon::Bool => Ty::Bool,
@@ -527,11 +513,8 @@ impl<'p> Lower<'p> {
                 }
             }
             types::Type::Fn { params, ret, row } => Ty::Fn(Box::new(FnTy {
-                params: params
-                    .into_iter()
-                    .map(|t| self.conv_vars(t, keep, vars))
-                    .collect(),
-                ret: self.conv_vars(ret, keep, vars),
+                params: params.into_iter().map(|t| self.conv_ty(t, keep)).collect(),
+                ret: self.conv_ty(ret, keep),
                 row: self.row(row),
             })),
             types::Type::Handler { label, .. } => match label.effect {
@@ -543,7 +526,7 @@ impl<'p> Lower<'p> {
             }
             types::Type::Never => Ty::Never,
             types::Type::Param(p) => Ty::Var(p.0),
-            types::Type::Var(v) => vars.get(&v.0).map_or(Ty::Var(u32::MAX), |&p| Ty::Var(p)),
+            types::Type::Var(_) => Ty::Var(u32::MAX),
             types::Type::Error => Ty::Var(u32::MAX),
         }
     }
@@ -1103,49 +1086,6 @@ fn map_vars(ty: &Ty, f: &dyn Fn(u32) -> Option<Ty>) -> Ty {
         Ty::Set(t) => Ty::Set(Box::new(s(t))),
         Ty::Map(k, v) => Ty::Map(Box::new(s(k)), Box::new(s(v))),
         other => other.clone(),
-    }
-}
-
-/// Map inference variables in `typed` to the type parameters at the same place in `scheme`.
-pub(crate) fn match_vars(
-    i: &types::Interner,
-    scheme: types::TypeId,
-    typed: types::TypeId,
-    out: &mut HashMap<u32, u32>,
-) {
-    use types::Type as T;
-    match (i.ty(scheme), i.ty(typed)) {
-        (T::Param(p), T::Var(v)) => {
-            out.entry(v.0).or_insert(p.0);
-        }
-        (T::Con(a, xs), T::Con(b, ys)) if a == b => {
-            for (x, y) in xs.iter().zip(ys) {
-                match_vars(i, *x, *y, out);
-            }
-        }
-        (T::Tuple(xs), T::Tuple(ys)) => {
-            for (x, y) in xs.iter().zip(ys) {
-                match_vars(i, *x, *y, out);
-            }
-        }
-        (
-            T::Fn {
-                params: xs,
-                ret: rx,
-                ..
-            },
-            T::Fn {
-                params: ys,
-                ret: ry,
-                ..
-            },
-        ) => {
-            for (x, y) in xs.iter().zip(ys) {
-                match_vars(i, *x, *y, out);
-            }
-            match_vars(i, *rx, *ry, out);
-        }
-        _ => {}
     }
 }
 

@@ -43,9 +43,6 @@ pub(crate) struct FnLower<'a, 'p> {
     /// Type parameters whose schema is a runtime value (dictionary passing): the local
     /// holding it. See [`Lower::def_dict`].
     reps: Vec<(u32, Local)>,
-    /// Inference variables that stand for type parameters (`TyVar` → `ParamId`): in a clause of
-    /// a generic operation the checker leaves the operation's type parameters as variables.
-    infer_vars: HashMap<u32, u32>,
 }
 
 /// How to call a function: its atom, schema types for leading parameters (dictionary
@@ -92,7 +89,6 @@ impl<'a, 'p> FnLower<'a, 'p> {
             row_vars: Vec::new(),
             subst: Vec::new(),
             reps: Vec::new(),
-            infer_vars: HashMap::new(),
         }
     }
 
@@ -734,7 +730,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
 
     /// A checker type in this (possibly specialized) function.
     fn conv(&mut self, t: sakura_types::TypeId) -> Ty {
-        let ty = self.l.conv_vars(t, false, &self.infer_vars);
+        let ty = self.l.ty(t);
         if self.subst.is_empty() {
             return ty;
         }
@@ -743,7 +739,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
 
     /// Like [`FnLower::conv`], keeping refined types (for runtime schemas).
     fn schema_conv(&mut self, t: sakura_types::TypeId) -> Ty {
-        let ty = self.l.conv_vars(t, true, &self.infer_vars);
+        let ty = self.l.schema_ty(t);
         super::subst_params(&ty, &self.subst)
     }
 
@@ -1873,29 +1869,13 @@ impl<'a, 'p> FnLower<'a, 'p> {
                 .into_iter()
                 .map(|(_, p)| p)
                 .collect();
-            // Recover which inference variables of the clause are the op's type parameters.
-            let mut vars = self.infer_vars.clone();
-            let i = &self.l.t.interner;
-            if let Some(sc) = self.l.t.defs.get(&op_def)
-                && let sakura_types::Type::Fn { params, ret, .. } = i.ty(sc.ty)
-            {
-                for (sp, lp) in params.iter().zip(&c.params) {
-                    if let Some(&t) = self.typed.locals.get(*lp) {
-                        super::match_vars(i, *sp, t, &mut vars);
-                    }
-                }
-                if let Some(&t) = self.typed.types.get(c.body) {
-                    super::match_vars(i, *ret, t, &mut vars);
-                }
-            }
             // The clause is checked with the op's row parameters rigid (§17.67): they are in
             // scope in the lifted clause like a function's own.
             let outer_rows = self.row_vars.clone();
             if let Some(sc) = self.l.t.defs.get(&op_def) {
                 self.row_vars.extend(sc.row_params.iter().map(|p| p.0));
             }
-            let (d, caps) = self.lift_with(
-                vars,
+            let (d, caps) = self.lift(
                 kind,
                 &c.params,
                 &schemas,
@@ -1931,35 +1911,6 @@ impl<'a, 'p> FnLower<'a, 'p> {
     #[allow(clippy::too_many_arguments)]
     fn lift(
         &mut self,
-        kind: FnKind,
-        params: &[LocalId],
-        schema_params: &[u32],
-        body: ExprId,
-        ret: Ty,
-        row: Row,
-        slots: HashMap<LocalId, u32>,
-        instance_of: Option<EffectId>,
-        pos: Option<Pos>,
-    ) -> (DefId, Vec<Atom>) {
-        let vars = self.infer_vars.clone();
-        self.lift_with(
-            vars,
-            kind,
-            params,
-            schema_params,
-            body,
-            ret,
-            row,
-            slots,
-            instance_of,
-            pos,
-        )
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn lift_with(
-        &mut self,
-        infer_vars: HashMap<u32, u32>,
         kind: FnKind,
         params: &[LocalId],
         schema_params: &[u32],
@@ -2026,7 +1977,6 @@ impl<'a, 'p> FnLower<'a, 'p> {
             row_vars,
             subst: self.subst.clone(),
             reps: Vec::new(),
-            infer_vars,
         };
         let mut captures: Vec<Local> = free
             .iter()

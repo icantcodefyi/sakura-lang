@@ -321,9 +321,9 @@ stderr) and the server continues. `std/serve`'s `host()` is
 `handler Serve { fn serve(handle, addr) { serve_listen(addr, handle) } }`; `handle` arrives
 as a callback (section 3), so each request runs under the handlers around `Serve.listen`.
 
-**Generic operations.** The checker leaves an operation's type parameters as inference
-variables inside a clause, so lowering matches the operation's scheme against the clause's
-typed parameters and result to find which variables they are. An operation whose type parameters are bounded by `Show`/`Schema`
+**Generic operations.** The checker types a clause with the operation's type and row
+parameters rigid (design §17.67), so a clause names them like a generic function's own. An
+operation whose type parameters are bounded by `Show`/`Schema`
 (`Sql.query<R: Schema>`, `Llm.generate<T: Schema>`) takes one trailing schema argument per
 such parameter (`OpDef::params` lists them as `Opaque("Schema")`); clauses receive them after
 the declared parameters. Inside a clause (and in **dictionary-passing copies** `f$dict` of
