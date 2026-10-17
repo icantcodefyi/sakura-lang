@@ -63,7 +63,8 @@ test → core             console → test        clock → duration, instant, i
 random → uuid, int, string, bytes, list       env → map, list
 log → json, test, list, core                  gen → test, random, list, int, string
 retry → duration, int   (+ Clock, Random)     task → duration, list (+ Clock)   [M3]
-graph → map, list       untrusted               path → string, list
+graph → map, list       untrusted → core        path → string, list
+secret → core           decimal → string, list, int
 url → string, list      cli [M3]                fs → path, untrusted, map [M3]
 request → url, json [M3]                       response → json, untrusted [M3]
 http → request, response, url, duration [M3]  budget [M3]      prompt [M3]
@@ -76,9 +77,8 @@ externals they touch; their host handlers and `Schema` codecs are runtime extern
 
 ## Planned, not yet in source (design §10, milestone M3)
 
-`std/router`, `std/serve`, `std/html`, `std/tool`, `std/agent`, `std/decimal`, `std/secret`
-(`Secret.expose`), `Untrusted.validate/check/trust` (need the compiler-known `Trust`),
-`Fs.with_file`/`File`, `Http.scoped`/`recording`, `Llm.stream`/`replay`, `Sql.postgres`, the
+`std/router`, `std/serve`, `std/html`, `std/tool`, `std/agent`, `Untrusted.validate` (a
+compiler intrinsic into a refined type), `Fs.with_file`/`File`, `Http.scoped`/`recording`, `Llm.stream`/`replay`, `Sql.postgres`, the
 `url"…"`/`html"…"` tags, `List.par_map` (written as `std/task.par_map` until `Task` runs),
 and `Env.host(scope)`. Their signatures are the ones in design §10.2–§10.7. `Uuid`, `Path`,
 `Prompt` and `Query` are `pub opaque` (design §17.10).
@@ -90,6 +90,7 @@ and `Env.host(scope)`. Their signatures are the ones in design §10.2–§10.7. 
 ```vow
 fn show<A: Show>(a: A) -> String    // @external
 type Violation = { type_name: String, clause: String, value_summary: String }
+type Trust
 ```
 
 ### `std/unit`
@@ -421,6 +422,34 @@ fn len<N>(g: Graph<N>) -> Int
 
 ```vow
 fn of<T>(value: T) -> Untrusted<T>    // @external
+fn trust<T>(u: Untrusted<T>, reason: Trust) -> T
+fn check<T>(u: Untrusted<T>, clause: String, pred: fn(T) -> Bool) -> Result<T, Violation>
+fn len(u: Untrusted<String>) -> Int
+```
+
+### `std/secret`
+
+```vow
+fn of<T>(value: T) -> Secret<T>    // @external
+fn expose<T>(s: Secret<T>, reason: Trust) -> T
+fn map<T, U>(s: Secret<T>, f: fn(T) -> U) -> Secret<U>
+```
+
+### `std/decimal`
+
+```vow
+opaque type Decimal = { whole: Int, frac: List<Int> }
+error DecimalError(input: String)
+fn from_int(n: Int) -> Decimal
+fn zero() -> Decimal
+fn parse(text: String) -> Result<Decimal, DecimalError>
+fn to_string(d: Decimal) -> String
+fn add(a: Decimal, b: Decimal) -> Decimal
+fn sub(a: Decimal, b: Decimal) -> Decimal
+fn neg(a: Decimal) -> Decimal
+fn mul(a: Decimal, b: Decimal) -> Decimal
+fn div_checked(a: Decimal, b: Decimal, places: Int) -> Option<Decimal> requires places >= 0
+fn round(d: Decimal, places: Int) -> Decimal requires places >= 0
 ```
 
 ### `std/path`
@@ -623,3 +652,12 @@ fn memory() -> Handler<Sql>    // @external
     `Fs.memory`'s `root()` is a directory without host access. `Cli.exit` under `Cli.of` is
     a defect (`D030`). `Llm.scripted` reports undecodable output as `InvalidOutput` with one
     `Violation` whose `clause` is the decoder's message and `value_summary` its JSON Pointer.
+14. **`Trust` is declared in `std/core`** as an external type until the compiler knows it
+    (§17.16); `@trust("…")` takes its type from the parameter it is passed to, so callers do
+    not change when it moves. `Untrusted.check(u, clause, pred)` takes the clause text for
+    its `Violation`; `Secret.of` and `Secret.map` are additions for tests and derived
+    credentials.
+15. **`Decimal` is `{ whole: Int, frac: List<Int> }`** (floor and fractional digits, no
+    trailing zeros), not `{ units: Int, scale: Int }`: derived `Ord` compares fields in order,
+    which is numeric only for this form. `div_checked(a, b, places)` and `round` round half to
+    even. Interpolation shows the record form; `Decimal.to_string` gives `-12.34`.

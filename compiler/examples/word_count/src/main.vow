@@ -1,5 +1,5 @@
 // milestone: M3
-// needs: Untrusted.trust with @trust (design §17.16), Cli.parse via Schema, std/fs host externals, [permissions]
+// needs: Cli.parse via Schema, the cli_*, fs_* and untrusted_* externals in runtime/js, [permissions]
 // mode: run
 // args: --input notes.txt --top 3
 // covers: Import ForStmt TuplePat Lambda

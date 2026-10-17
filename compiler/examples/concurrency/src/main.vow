@@ -1,5 +1,5 @@
 // milestone: M3
-// needs: Task handlers in runtime/js, Untrusted.trust with @trust (design §17.16)
+// needs: Task handlers and untrusted_* externals in runtime/js, Fail escaping a test (§17.30)
 // mode: test
 // covers: Import NameList RecordLit TupleLit Lambda WithExpr
 
