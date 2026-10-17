@@ -7,7 +7,7 @@ use std::process::{ExitCode, Stdio};
 use std::time::{Duration, Instant};
 
 use clap::{Parser, Subcommand};
-use vow_analysis::{Analysis, Snapshot};
+use vow_analysis::{Analysis, BuildOptions, Snapshot};
 use vow_diagnostics::{
     Diagnostic, HoleReport, SourceFile, codes, diagnostic_records, hole_records, render_human,
     summary_record,
@@ -78,6 +78,9 @@ enum Command {
         /// Write `tests/__snapshots__/<module>/<name>.snap` files instead of comparing them.
         #[arg(long)]
         update_snapshots: bool,
+        /// Run the embedded std library's own tests instead of a project's.
+        #[arg(long, conflicts_with = "paths")]
+        std: bool,
         #[arg(long, default_value = "target/vow/js")]
         out_dir: PathBuf,
         paths: Vec<PathBuf>,
@@ -141,7 +144,10 @@ fn dispatch(command: Command) -> ExitCode {
             target: _,
             out_dir,
             paths,
-        } => match build(json, &paths, &out_dir, false, false) {
+        } => match load(&paths)
+            .map_err(usage_error)
+            .and_then(|snapshot| build(json, &snapshot, &out_dir, BuildOptions::default(), false))
+        {
             Ok(_) => ExitCode::SUCCESS,
             Err(code) => code,
         },
@@ -155,16 +161,28 @@ fn dispatch(command: Command) -> ExitCode {
             seed,
             filter,
             update_snapshots,
+            std,
             out_dir,
             paths,
-        } => test(
-            json,
-            seed,
-            filter.as_deref().unwrap_or(""),
-            update_snapshots,
-            &out_dir,
-            &paths,
-        ),
+        } => {
+            let snapshot = if std {
+                Ok(Snapshot::with_std([]))
+            } else {
+                load(&paths)
+            };
+            match snapshot {
+                Ok(snapshot) => test(
+                    json,
+                    seed,
+                    filter.as_deref().unwrap_or(""),
+                    update_snapshots,
+                    &out_dir,
+                    &snapshot,
+                    std,
+                ),
+                Err(e) => usage_error(e),
+            }
+        }
         Command::Fmt { check, paths } => fmt(check, &paths),
         Command::Explain { code } => explain(&code),
         Command::Prompt { budget } => {
@@ -306,17 +324,16 @@ fn report(
 /// final summary itself.
 fn build(
     json: bool,
-    paths: &[PathBuf],
+    snapshot: &Snapshot,
     out_dir: &Path,
-    need_entry: bool,
+    opts: BuildOptions,
     then: bool,
 ) -> Result<PathBuf, ExitCode> {
-    let snapshot = load(paths).map_err(usage_error)?;
-    let result = Analysis::build_js(&snapshot, need_entry);
+    let result = Analysis::build_js(snapshot, &opts);
     let failed = result.diagnostics.iter().any(Diagnostic::is_error);
     let summary = failed || !then;
     if (json && summary) || !result.diagnostics.is_empty() {
-        report(json, &snapshot, &result.diagnostics, &[], summary);
+        report(json, snapshot, &result.diagnostics, &[], summary);
     }
     let Some(files) = result.files.filter(|_| !failed) else {
         return Err(ExitCode::from(EXIT_ERRORS));
@@ -342,7 +359,15 @@ fn node() -> std::process::Command {
 
 fn run(path: Option<PathBuf>, out_dir: &Path, args: &[String]) -> ExitCode {
     let paths: Vec<PathBuf> = path.into_iter().collect();
-    let dir = match build(false, &paths, out_dir, true, true) {
+    let snapshot = match load(&paths) {
+        Ok(s) => s,
+        Err(e) => return usage_error(e),
+    };
+    let opts = BuildOptions {
+        need_entry: true,
+        std_tests: false,
+    };
+    let dir = match build(false, &snapshot, out_dir, opts, true) {
         Ok(d) => d,
         Err(code) => return code,
     };
@@ -359,9 +384,14 @@ fn test(
     filter: &str,
     update_snapshots: bool,
     out_dir: &Path,
-    paths: &[PathBuf],
+    snapshot: &Snapshot,
+    std_tests: bool,
 ) -> ExitCode {
-    let dir = match build(json, paths, out_dir, false, true) {
+    let opts = BuildOptions {
+        need_entry: false,
+        std_tests,
+    };
+    let dir = match build(json, snapshot, out_dir, opts, true) {
         Ok(d) => d,
         Err(code) => return code,
     };

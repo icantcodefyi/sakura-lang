@@ -9,7 +9,12 @@ use std::fmt::Write as _;
 use std::path::Path;
 use std::process::Command;
 
-use vow_analysis::{Analysis, Snapshot};
+use vow_analysis::{Analysis, BuildOptions, Snapshot};
+
+const ENTRY: BuildOptions = BuildOptions {
+    need_entry: true,
+    std_tests: false,
+};
 use vow_eval::{Limits, Stop, run_main};
 
 /// splitmix64: tiny, seedable, and the same on every platform.
@@ -348,7 +353,7 @@ fn js_backend_agrees_with_the_evaluator() {
 fn check_one(seed: u64, dir: &Path) -> Result<Option<String>, String> {
     let src = program(seed);
     let snapshot = Snapshot::with_std([("file:///diff/main.vow".to_owned(), src.clone())]);
-    let build = Analysis::build_js(&snapshot, true);
+    let build = Analysis::build_js(&snapshot, &ENTRY);
     let errors: Vec<String> = build
         .diagnostics
         .iter()
@@ -358,7 +363,7 @@ fn check_one(seed: u64, dir: &Path) -> Result<Option<String>, String> {
     let Some(files) = build.files.filter(|_| errors.is_empty()) else {
         return Err(format!("does not build: {errors:?}\n{src}"));
     };
-    let (module, _) = Analysis::lower_core(&snapshot, true);
+    let (module, _) = Analysis::lower_core(&snapshot, &ENTRY);
     let Some(eval) = run_eval(module.expect("built programs lower")) else {
         return Ok(None);
     };

@@ -172,6 +172,15 @@ fn has_entry(program: &vow_hir::Program) -> bool {
         })
 }
 
+/// What [`Analysis::build_js`] and [`Analysis::lower_core`] produce besides the program.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct BuildOptions {
+    /// Report `V8001` when the user package has no `pub fn main` (for `vow run`).
+    pub need_entry: bool,
+    /// Also compile std's own `test` blocks (for `vow test --std`).
+    pub std_tests: bool,
+}
+
 /// The result of [`Analysis::build_js`]: every diagnostic, and the emitted files if there were no
 /// errors.
 #[derive(Clone, Debug, Default)]
@@ -183,10 +192,9 @@ pub struct BuildResult {
 }
 
 impl Analysis {
-    /// Check, then generate JS. Holes are rejected with `V2050`; with `need_entry` (for
-    /// `vow run`) a missing `pub fn main` is `V8001`.
-    pub fn build_js(snapshot: &Snapshot, need_entry: bool) -> BuildResult {
-        let (module, diagnostics) = Analysis::lower_core(snapshot, need_entry);
+    /// Check, then generate JS. Holes are rejected with `V2050`; see [`BuildOptions`].
+    pub fn build_js(snapshot: &Snapshot, opts: &BuildOptions) -> BuildResult {
+        let (module, diagnostics) = Analysis::lower_core(snapshot, opts);
         let files = module.map(|m| {
             let sources = snapshot
                 .file_ids()
@@ -205,15 +213,14 @@ impl Analysis {
     }
 
     /// Check and lower to validated Core (the input of every backend and of `vow_eval`). The
-    /// module is `None` if there were errors. Holes are rejected with `V2050`; with `need_entry`
-    /// a missing `pub fn main` is `V8001`.
+    /// module is `None` if there were errors. Holes are rejected with `V2050`; see [`BuildOptions`].
     pub fn lower_core(
         snapshot: &Snapshot,
-        need_entry: bool,
+        opts: &BuildOptions,
     ) -> (Option<vow_core::Module>, Vec<Diagnostic>) {
         let (program, typed, check) = analyze(snapshot);
         let mut diagnostics = check.diagnostics;
-        if need_entry
+        if opts.need_entry
             && !has_entry(&program)
             && let Some(file) = snapshot.user_files().next()
         {
@@ -239,7 +246,10 @@ impl Analysis {
         if diagnostics.iter().any(Diagnostic::is_error) {
             return (None, diagnostics);
         }
-        let lowered = vow_core::lower(&program, &typed, &vow_core::LowerOptions::default());
+        let lower = vow_core::LowerOptions {
+            std_tests: opts.std_tests,
+        };
+        let lowered = vow_core::lower(&program, &typed, &lower);
         diagnostics.extend(lowered.diagnostics);
         if diagnostics.iter().any(Diagnostic::is_error) {
             return (None, diagnostics);

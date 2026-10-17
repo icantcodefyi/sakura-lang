@@ -126,3 +126,27 @@ fn test_json_has_exactly_one_summary_at_the_end() {
     assert_eq!(recs[1]["seed"], 3);
     assert_eq!(recs[2]["failed"], 1);
 }
+
+/// std's own `test` blocks run under the same runner as user tests and must all pass.
+#[test]
+fn std_tests_pass() {
+    let out_dir = std::env::temp_dir().join(format!("vow-std-tests-{}", std::process::id()));
+    let out = vow(
+        &[
+            "test",
+            "--std",
+            "--json",
+            "--out-dir",
+            out_dir.to_str().unwrap(),
+        ],
+        Path::new("."),
+    );
+    let recs = common::json_lines(&out.stdout).unwrap();
+    let failed: Vec<_> = recs
+        .iter()
+        .filter(|r| r["kind"] == "test" && r["status"] != "passed")
+        .collect();
+    assert!(failed.is_empty(), "{failed:#?}\n{}", out.stderr);
+    assert_eq!(out.code, Some(0));
+    assert!(recs.last().unwrap()["passed"].as_u64().unwrap() > 0);
+}

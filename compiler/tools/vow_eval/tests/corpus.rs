@@ -5,7 +5,12 @@
 
 use std::path::Path;
 
-use vow_analysis::{Analysis, Snapshot};
+use vow_analysis::{Analysis, BuildOptions, Snapshot};
+
+const ENTRY: BuildOptions = BuildOptions {
+    need_entry: true,
+    std_tests: false,
+};
 use vow_eval::{Limits, Stop, run_main};
 
 #[test]
@@ -30,7 +35,7 @@ fn evaluator_agrees_with_expected_stdout() {
             continue;
         }
         let snapshot = Snapshot::with_std([(format!("file:///semantics/{name}"), text)]);
-        let (module, diags) = Analysis::lower_core(&snapshot, true);
+        let (module, diags) = Analysis::lower_core(&snapshot, &ENTRY);
         let Some(module) = module else {
             let codes: Vec<_> = diags
                 .iter()
