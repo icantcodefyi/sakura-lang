@@ -1,5 +1,5 @@
 // milestone: M3
-// needs: `timeout` under `Clock.virtual` and `Task.deterministic` raises `Timeout` in runtime/js (D)
+// needs: none (tests pass today)
 // mode: test
 // covers: Import NameList RecordLit TupleLit Lambda WithExpr
 
