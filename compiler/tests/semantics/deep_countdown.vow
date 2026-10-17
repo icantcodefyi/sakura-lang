@@ -1,0 +1,7 @@
+// milestone: M0
+// needs: CPS emission with a trampoline (design §13.3)
+// covers: IfExpr BinaryExpr Recursion
+fn countdown(n: Int) -> Unit ! {Console} {
+  if n == 0 { Console.print("liftoff") } else { countdown(n - 1) }
+}
+pub fn main() -> Unit ! {Console} { countdown(1000000) }

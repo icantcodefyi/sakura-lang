@@ -1,0 +1,6 @@
+// milestone: M0
+// covers: FnDecl ImportlessCall StringInterpolation EffectRow
+fn greet(name: String) -> Unit ! {Console} {
+  Console.print("hello, {name}")
+}
+pub fn main() -> Unit ! {Console} { greet("Vow") }
