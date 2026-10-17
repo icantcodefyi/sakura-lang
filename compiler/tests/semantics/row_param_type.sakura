@@ -1,0 +1,26 @@
+// milestone: M2
+// mode: run
+// covers: TypeDecl TypeParams TypeArgs EffectRow
+
+// Effect-row parameters on types (design §4.4, §17.49): a row argument is unified, never
+// widened, so the unannotated `quiet` (open row) joins `loud` in one list.
+
+type Box<e> = { run: fn(Int) -> Int ! e }
+
+fn apply<e>(b: Box<e>, x: Int) -> Int ! e {
+  let f = b.run
+  f(x)
+}
+
+pub fn main() -> Unit ! {Console} {
+  let loud: Box<{Console}> = Box { run: fn(x) { Console.print("run {x}"); x + 1 } }
+  let quiet = Box { run: fn(x) { x * 2 } }
+  let empty: Box<{}> = Box { run: fn(x) { x } }
+  let both = [loud, quiet]
+  Console.print("{apply(loud, 1)}")
+  Console.print("{apply(quiet, 2)}")
+  Console.print("{apply(empty, 3)}")
+  for b in both {
+    Console.print("{apply(b, 10)}")
+  }
+}

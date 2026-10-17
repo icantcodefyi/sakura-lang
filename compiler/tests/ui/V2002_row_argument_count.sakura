@@ -1,0 +1,5 @@
+// milestone: M2
+// expect: V2002
+type Box<e> = { run: fn() -> Unit ! e }
+
+fn wrong(b: Box<{Console}, {Log}>) -> Unit { () }

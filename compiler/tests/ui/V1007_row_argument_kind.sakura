@@ -1,0 +1,7 @@
+// milestone: M2
+// expect: V1007 V1007
+type Box<e> = { run: fn() -> Unit ! e }
+
+fn wrong(b: Box<Int>) -> Unit { () }
+
+fn also(xs: List<{Console}>) -> Unit { () }
