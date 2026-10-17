@@ -45,7 +45,17 @@ pub fn directives(text: &str) -> BTreeMap<String, String> {
         };
         if let Some((k, v)) = rest.split_once(':') {
             let k = k.trim();
-            if !k.is_empty() && k.bytes().all(|b| b.is_ascii_lowercase() || b == b'-') {
+            let plain = |key: &str| {
+                !key.is_empty() && key.bytes().all(|b| b.is_ascii_lowercase() || b == b'-')
+            };
+            let valid = match k.split_once('@') {
+                None => plain(k),
+                Some((key, backend)) => {
+                    matches!(key, "expect-defect" | "expect-exit")
+                        && matches!(backend, "js" | "wasm")
+                }
+            };
+            if valid {
                 map.insert(k.to_owned(), v.trim().to_owned());
             }
         }
@@ -249,4 +259,23 @@ pub fn check_never_crashes(path: &Path) -> Result<(Vec<serde_json::Value>, Strin
         }
     }
     Ok((recs, out.stdout))
+}
+
+#[cfg(test)]
+mod directive_tests {
+    use super::*;
+
+    #[test]
+    fn backend_expectations_keep_defaults_and_do_not_override_each_other() {
+        let d = directives(
+            "// expect-defect: D002\n// expect-defect@js: D003\n// expect-defect@wasm: D001\n// expect-exit: 70\n// expect-exit@js: 1\n// expect-exit@wasm: 2\n// expect@js: ignored\n// expect-exit@unknown: ignored\n// expect-defect@js@wasm: ignored\nfn f() {}\n// expect-exit: 3\n",
+        );
+        assert_eq!(d.len(), 6);
+        assert_eq!(d["expect-defect"], "D002");
+        assert_eq!(d["expect-defect@js"], "D003");
+        assert_eq!(d["expect-defect@wasm"], "D001");
+        assert_eq!(d["expect-exit"], "70");
+        assert_eq!(d["expect-exit@js"], "1");
+        assert_eq!(d["expect-exit@wasm"], "2");
+    }
 }
