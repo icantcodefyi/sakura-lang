@@ -77,7 +77,7 @@ pub use vow_diagnostics::{Diagnostic, FileId};
 pub type SyntaxNode = rowan::SyntaxNode<VowLanguage>;
 pub type SyntaxToken = rowan::SyntaxToken<VowLanguage>;
 pub type SyntaxElement = rowan::SyntaxElement<VowLanguage>;
-pub use rowan::{GreenNode, TextRange, TextSize};
+pub use rowan::{GreenNode, NodeOrToken, TextRange, TextSize};
 
 /// Maximum nesting depth of expressions, types, patterns and blocks before the parser reports
 /// `V0008` and skips the over-deep group.
