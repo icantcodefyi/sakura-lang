@@ -5,7 +5,9 @@
 //! Before the M3 gates this crate reads committed Core snapshots ([`core`]) instead of
 //! `sakura_core`; nothing here can remove a runtime check (the removal hook is V3).
 
+pub mod cache;
 pub mod core;
 pub mod record;
 pub mod smt;
+pub mod solver;
 pub mod vc;

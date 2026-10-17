@@ -1,0 +1,50 @@
+---
+source: crates/sakura_verify/tests/worker.rs
+expression: r
+---
+{
+  "schema_version": "1.0",
+  "kind": "obligation",
+  "id": "o:2ee927e19d68c8ecb2010be3237393f2e280e4910c7d5dc6cb4f62c07a364d59",
+  "symbol_id": "main::main::scale_wrong",
+  "clause": "ensures scale_wrong",
+  "obligation": "ensures",
+  "site": "post%10",
+  "span": {
+    "file": 0,
+    "offset": 358,
+    "end": 373
+  },
+  "status": "disproved",
+  "profile": "js",
+  "solver": {
+    "name": "z3",
+    "version": "5.3.1",
+    "timeout_ms": 1000,
+    "rlimit": 1000000,
+    "deadline_ms": 500
+  },
+  "cross_check": null,
+  "reason": null,
+  "path_feasible": true,
+  "path_conditions": [
+    "|Percent$from.v%3|",
+    "|t%3|",
+    "(in_js |t%11|)",
+    "(in_js |t%12|)"
+  ],
+  "summaries": [],
+  "inlined": [
+    "refinement main::main::Percent"
+  ],
+  "counterexample": {
+    "failed": "holds",
+    "inputs": {
+      "p": "100",
+      "total": "1"
+    },
+    "summaries": {}
+  },
+  "replay": "unavailable",
+  "warnings": []
+}
