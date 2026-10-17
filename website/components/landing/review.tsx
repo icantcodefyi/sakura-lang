@@ -13,7 +13,7 @@ const FILES = [
 const BEFORE =
   "pub fn charge(card: Card, amount: Cents) -> Receipt ! {Payments, Fail<ChargeError>}";
 const AFTER =
-  "pub fn charge(card: Card, amount: Cents) -> Receipt ! {Payments, Net, Fail<ChargeError>}";
+  "pub fn charge(card: Card, amount: Cents) -> Receipt ! {Http, Payments, Fail<ChargeError>}";
 
 export async function Review() {
   const [before, after] = await Promise.all([tokenize(BEFORE), tokenize(AFTER)]);
@@ -92,8 +92,8 @@ export async function Review() {
                       </div>
                     </div>
                     <p className="px-5 py-3 text-[13.5px] leading-relaxed text-fg">
-                      <span className="font-semibold">charge</span> now talks to the network. That
-                      is a decision for a person, so the diff surfaces it, and nothing else.
+                      <span className="font-semibold">charge</span> now makes HTTP calls. That is a
+                      decision for a person, so the diff surfaces it, and nothing else.
                     </p>
                   </li>
                 ) : (

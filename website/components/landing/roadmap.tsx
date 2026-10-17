@@ -1,24 +1,38 @@
 import Link from "next/link";
 
+// Milestones from docs/design.md §14.3.
 const PHASES = [
-  { name: "Design", body: "Language design document, prior-art research, this site.", now: true },
   {
-    name: "Checker",
-    body: "Parser, type and effect checker, JSON diagnostics, typed holes, interpreter.",
+    id: "M0",
+    name: "Hello, effects",
+    body: "Lexer, parser, Console, inference, CPS JavaScript, vow run and vow check --json.",
+    now: true,
   },
   {
-    name: "Verification",
-    body: "Contracts, refinement solving, property tests, deterministic simulation.",
+    id: "M1",
+    name: "Pure language, typed errors",
+    body: "Records, variants, exhaustive match, Fail with try/catch, std in Vow, tests, vow fmt.",
   },
   {
-    name: "Code generation",
-    body: "Reference-counted IR with reuse; native, WASM and JS backends.",
+    id: "M2",
+    name: "Handlers and holes",
+    body: "User effects and handlers, row variables, deterministic test handlers, typed holes.",
   },
   {
-    name: "Batteries",
-    body: "Standard library, HTTP, typed SQL, web and RPC, workflows, Llm, MCP.",
+    id: "M3",
+    name: "Contracts and agents",
+    body: "Runtime contracts, permissions, Secret and Untrusted, Task, Http, Sql, LSP and MCP.",
   },
-  { name: "Toward 1.0", body: "Stability policy and a package registry." },
+  {
+    id: "M4",
+    name: "WASM and verify",
+    body: "WASM backend; vow verify discharges contracts with Z3 and drops proved checks.",
+  },
+  {
+    id: "M5",
+    name: "Native",
+    body: "Cranelift backend with Perceus reference counting and in-place reuse.",
+  },
 ];
 
 export function Roadmap() {
@@ -27,11 +41,11 @@ export function Roadmap() {
       <div className="mx-auto max-w-6xl px-5 py-24 sm:px-8 md:py-32">
         <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
           <h2 className="max-w-xl font-display text-[clamp(2rem,3.6vw,2.9rem)] leading-[1.04] font-semibold tracking-[-0.03em] text-balance">
-            Early, on purpose.
+            Designed. Now being built.
           </h2>
           <p className="max-w-sm text-[15px] leading-relaxed text-fg-muted">
-            Vow is being designed in the open. There is no compiler to download yet; this is the
-            order it gets built in.{" "}
+            The v0 design is written. The compiler is under construction in the open, one milestone
+            at a time, and nothing is released yet.{" "}
             <Link
               href="/docs/roadmap"
               className="font-medium text-fg underline decoration-seal underline-offset-4"
@@ -50,8 +64,8 @@ export function Roadmap() {
             aria-hidden
             className="absolute top-0 bottom-0 left-[7px] w-px bg-line-strong md:hidden"
           />
-          {PHASES.map((p, i) => (
-            <li key={p.name} className="relative pl-9 md:pl-0">
+          {PHASES.map((p) => (
+            <li key={p.id} className="relative pl-9 md:pl-0">
               <span
                 aria-hidden
                 className={`absolute top-0 left-0 grid size-[15px] place-items-center rounded-full border ${
@@ -63,10 +77,10 @@ export function Roadmap() {
                 ) : null}
               </span>
               <p className="font-mono text-[11.5px] text-fg-faint md:mt-5">
-                {String(i).padStart(2, "0")}
+                {p.id}
                 {p.now ? (
                   <span className="ml-2 rounded-full bg-seal-wash px-2 py-0.5 font-sans font-medium text-seal-text">
-                    Now
+                    In progress
                   </span>
                 ) : null}
               </p>

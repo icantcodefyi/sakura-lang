@@ -17,7 +17,7 @@ const ROWS: { label: string; cells: Cell[] }[] = [
   {
     label: "Errors in the signature",
     cells: [
-      ["yes", "Fail<E>"],
+      ["yes", "Fail<E> error unions"],
       ["no", "untyped throw"],
       ["no", "untyped raise"],
       ["yes", "Result"],
@@ -37,7 +37,7 @@ const ROWS: { label: string; cells: Cell[] }[] = [
   {
     label: "Memory without GC pauses or lifetimes",
     cells: [
-      ["yes", "RC with in-place reuse"],
+      ["yes", "native RC with reuse; JS GC"],
       ["no", "tracing GC"],
       ["partial", "RC plus cycle GC"],
       ["partial", "no GC, lifetimes"],
@@ -47,7 +47,7 @@ const ROWS: { label: string; cells: Cell[] }[] = [
   {
     label: "Contracts and refinement types",
     cells: [
-      ["yes", "in the language"],
+      ["yes", "always checked at runtime"],
       ["no"],
       ["no", "runtime libraries"],
       ["partial", "external verifiers"],
@@ -55,9 +55,9 @@ const ROWS: { label: string; cells: Cell[] }[] = [
     ],
   },
   {
-    label: "Capabilities per dependency",
+    label: "Authority you grant, not ambient",
     cells: [
-      ["yes", "granted in vow.toml"],
+      ["yes", "handlers grant authority"],
       ["no"],
       ["no"],
       ["no"],
@@ -77,7 +77,7 @@ const ROWS: { label: string; cells: Cell[] }[] = [
   {
     label: "Diagnostics as data, with fixes",
     cells: [
-      ["yes", "fix safety levels"],
+      ["yes", "fixes declare impact"],
       ["partial", "tsserver code fixes"],
       ["partial", "varies by tool"],
       ["yes", "JSON, applicable fixes"],

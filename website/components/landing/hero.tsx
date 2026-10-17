@@ -21,7 +21,7 @@ export async function Hero() {
             <span className="rounded-full bg-seal-wash px-2 py-0.5 font-medium text-seal-text">
               Pre-alpha
             </span>
-            In early design, no release yet
+            Compiler under construction, no release yet
             <ArrowRight className="size-3 transition-transform duration-200 group-hover:translate-x-0.5" />
           </Link>
           <h1

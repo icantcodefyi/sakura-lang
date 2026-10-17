@@ -4,40 +4,59 @@ import { llmsTxt } from "@/lib/source";
 import { Tabs } from "./tabs";
 
 const MCP = `// → tools/call
-{ "name": "hole", "arguments": { "file": "src/cart.vow", "line": 14 } }
+{ "name": "hole_context", "arguments": { "snapshot": "s:41c2", "hole_id": "h:receipt" } }
 
 // ← result
 {
-  "expected": "Cents",
-  "effects_allowed": [],
-  "in_scope": { "items": "List<Item>", "discount": "Percent" },
-  "candidates": ["items.map(i => i.price).sum()", "Cents.zero"]
+  "expected_type": "Receipt",
+  "allowed_effects": "{Payments, Fail<CheckoutError>}",
+  "locals": [
+    { "name": "cart", "type": "Cart" },
+    { "name": "card", "type": "Card" },
+    { "name": "total", "type": "Int" }
+  ],
+  "candidates": [{ "expr": "Payments.charge(card, total)", "fit": "result_unifies" }],
+  "contracts_in_scope": []
 }`;
 
 const DIAGNOSTIC = `{
-  "code": "E0402",
+  "schema_version": "1.0",
+  "kind": "diagnostic",
+  "id": "d:7f3a",
+  "code": "V3001",
   "severity": "error",
-  "message": "effect \`Net\` is performed but not declared in the signature of \`signup\`",
-  "span": { "file": "src/users.vow", "start": { "line": 12, "col": 3 }, "end": { "line": 12, "col": 28 } },
-  "expected": "! {Db, Clock, Random, Fail<SignupError>}",
-  "found": "! {Db, Clock, Random, Net, Fail<SignupError>}",
+  "phase": "effect",
+  "message": "function \`signup\` performs \`Http\`, which its signature does not allow",
+  "snapshot": "sha256:9c1e…",
+  "symbol_id": "app::users::signup",
+  "spans": [{
+    "uri": "file:///app/src/users.vow", "content_hash": "sha256:52b0…",
+    "start_byte": 431, "end_byte": 461, "role": "cause",
+    "label": "\`Http.post_json\` introduces \`Http\` here"
+  }],
+  "related_ids": [],
+  "expected": { "render": "{Clock, Db, Random, Fail<SignupError>}", "row": { /* … */ } },
+  "actual": { "render": "{Clock, Db, Http, Random, Fail<SignupError>}", "row": { /* … */ } },
+  "obligation": null,
+  "counterexample": null,
+  "explanation_uri": "vow://explain/V3001",
   "fixes": [
-    { "title": "Declare \`Net\` in the signature", "safety": "changes-signature" },
-    { "title": "Remove the call to \`Http.post\`", "safety": "changes-behaviour" }
-  ],
-  "docs": "/docs/tour/effects.md#undeclared-effects"
+    { "id": "f:1", "title": "Add \`Http\` to the signature of \`signup\`",
+      "applicability": "suggested", "impact": "interface_change", "edits": [/* … */] },
+    { "id": "f:2", "title": "Handle \`Http\` locally",
+      "applicability": "incomplete", "impact": "local", "edits": [] }
+  ]
 }`;
 
 const HOLE = `fn checkout(cart: Cart, card: Card) -> Receipt ! {Payments, Fail<CheckoutError>} {
-  let total = cart.items.map(i => i.price).sum()
-  let receipt = todo()
-  receipt
+  let total = cart.items.map(fn(i) { i.price }).sum()
+  ?receipt
 }`;
 
-const HOLE_REPLY = `hole at src/cart.vow:3:17
+const HOLE_REPLY = `hole ?receipt at src/cart.vow:3:3
   expected  Receipt
-  effects   Payments, Fail<CheckoutError>
-  in scope  cart: Cart, card: Card, total: Cents
+  effects   {Payments, Fail<CheckoutError>}
+  locals    cart: Cart, card: Card, total: Int
   fits      Payments.charge(card, total)`;
 
 export async function AgentView() {
@@ -63,17 +82,17 @@ export async function AgentView() {
               [
                 "/docs/agents/mcp",
                 "The compiler is an MCP server",
-                "Check, explain, find, test and fix as tool calls.",
+                "check, symbol_query, hole_context, check_patch and test as tools.",
               ],
               [
                 "/docs/agents/diagnostics",
                 "Errors are data",
-                "JSON with spans, expected and found, and ranked fixes.",
+                "JSON Lines with byte spans, expected and actual, and fixes with an impact class.",
               ],
               [
                 "/docs/agents/typed-holes",
                 "Holes, not hallucinations",
-                "todo() returns the type, the effects and what fits.",
+                "?name reports the expected type, allowed effects, locals and what fits.",
               ],
             ].map(([href, title, body]) => (
               <li key={href} className="bg-bg">
@@ -121,17 +140,11 @@ export async function AgentView() {
               },
               {
                 label: "MCP",
-                panel: <Code code={MCP} lang="jsonc" title={<span>vow mcp</span>} />,
+                panel: <Code code={MCP} lang="jsonc" title={<span>vow mcp serve</span>} />,
               },
               {
                 label: "Diagnostics",
-                panel: (
-                  <Code
-                    code={DIAGNOSTIC}
-                    lang="json"
-                    title={<span>vow check --format json</span>}
-                  />
-                ),
+                panel: <Code code={DIAGNOSTIC} lang="json" title={<span>vow check --json</span>} />,
               },
               {
                 label: "Typed holes",
@@ -150,7 +163,7 @@ export async function AgentView() {
             ]}
           />
           <p className="mt-3 text-[12.5px] text-fg-faint">
-            Tool output shapes follow the design docs; the compiler is not released.
+            Shapes follow design §12; the compiler is under construction and not released.
           </p>
         </div>
       </div>

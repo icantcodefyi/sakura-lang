@@ -58,8 +58,9 @@ export function llmsTxt() {
 
 > ${site.description}
 
-Vow is in early design (pre-alpha). There is no compiler release yet, and syntax may change.
+Vow is pre-alpha. The v0 language design is written (docs/design.md in the repository); the compiler is under construction and nothing is released. Code on this site cannot be run yet.
 
+- The core language for agents, in one file: ${site.github}/blob/master/docs/llms.txt
 - Every docs page is available as Markdown: append \`.md\` to its URL (for example ${site.url}/docs/tour/effects.md).
 - All docs in one file: ${site.url}/llms-full.txt
 

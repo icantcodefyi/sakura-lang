@@ -7,9 +7,9 @@ import { TokenSpans, type TokenLine } from "@/components/token-spans";
  * The hero story, in one loop of the agent/compiler conversation:
  * 1. an agent streams `signup` token by token,
  * 2. the checker confirms each effect against the signature as lines land,
- * 3. line 10 performs `Net`, which the signature never promised: E0402,
- * 4. the agent picks the fix that keeps the signature, deleting the call,
- * 5. the contract is proved and the signature is unchanged.
+ * 3. line 12 performs `Http`, which the signature never allowed: V3001,
+ * 4. the agent declines the signature change and deletes the call,
+ * 5. the signature is unchanged; its `ensures` stays a runtime check (design §7.2).
  */
 
 const BAD_LINE = 11;
@@ -17,13 +17,12 @@ const BAD_LINE = 11;
 type Note = { kind: "ok" | "fail" | "seal"; text: string };
 
 const NOTES: Record<number, Note> = {
-  0: { kind: "ok", text: "refinement" },
-  4: { kind: "seal", text: "4 effects promised" },
-  7: { kind: "ok", text: "Db, Fail" },
-  8: { kind: "ok", text: "Random" },
-  9: { kind: "ok", text: "Clock" },
+  2: { kind: "ok", text: "error union" },
+  5: { kind: "seal", text: "4 effects promised" },
+  8: { kind: "ok", text: "Db, Fail" },
+  9: { kind: "ok", text: "Random, Clock" },
   10: { kind: "ok", text: "Db" },
-  [BAD_LINE]: { kind: "fail", text: "Net not promised" },
+  [BAD_LINE]: { kind: "fail", text: "Http not allowed" },
 };
 
 type Phase = "idle" | "typing" | "caught" | "fixing" | "kept";
@@ -147,7 +146,7 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
         className="overflow-hidden rounded-2xl border border-line bg-code shadow-[0_1px_0_oklch(1_0_0/0.04)_inset,0_30px_80px_-30px_oklch(0.2_0.02_255/0.35)]"
         // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- animated composite figure; an <img> can't hold it
         role="img"
-        aria-label="Animation: an agent writes a Vow function. The compiler checks each effect against the signature, flags an undeclared network call, and the agent removes it so the signature's promise holds."
+        aria-label="Animation: an agent writes a Vow function. The compiler checks each effect against the signature, flags an HTTP call the signature does not allow, and the agent removes it so the signature's promise holds."
       >
         {/* window chrome */}
         <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
@@ -174,7 +173,7 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
               const showNote = note && r.complete && !(i === BAD_LINE && state.phase === "fixing");
               const bad = i === BAD_LINE && (state.phase === "caught" || state.phase === "fixing");
               const upTo = i === BAD_LINE ? Math.max(0, r.shown - state.deleted) : r.shown;
-              const proved = i === 5 && done;
+              const proved = i === 6 && done;
               return (
                 <span
                   key={i}
@@ -191,7 +190,7 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
                   </span>
                   <span className="hidden pr-4 sm:block">
                     {proved ? (
-                      <MarginNote note={{ kind: "ok", text: "ensures: proved" }} />
+                      <MarginNote note={{ kind: "ok", text: "ensures: checked" }} />
                     ) : showNote ? (
                       <MarginNote note={note} />
                     ) : null}
@@ -278,26 +277,24 @@ function Diagnostic() {
   return (
     <div className="border-t border-line px-4 py-3.5 font-mono text-[11.5px] leading-relaxed sm:px-5">
       <p className="text-fg">
-        <span className="font-semibold text-fail">error E0402</span>{" "}
-        <span className="text-fg-muted">src/users.vow:12:3</span>
+        <span className="font-semibold text-fail">error V3001</span>{" "}
+        <span className="text-fg-muted">src/users.vow:12:11</span>
       </p>
       <p className="mt-1 font-sans text-[13px] text-fg">
-        <code className="font-mono">signup</code> performs{" "}
-        <code className="font-mono text-seal-text">Net</code> but its signature never promised it.
+        function <code className="font-mono">signup</code> performs{" "}
+        <code className="font-mono text-seal-text">Http</code>, which its signature does not allow.
       </p>
       <ul className="mt-3 grid gap-1.5">
         <li className="flex flex-wrap items-baseline gap-x-2">
           <span className="rounded border border-line px-1.5 text-[10.5px] text-fg-muted">
-            changes-signature
+            interface_change
           </span>
-          <span className="text-fg-muted">declare Net: needs human review</span>
+          <span className="text-fg-muted">add Http to the signature: needs review</span>
         </li>
         <li className="flex flex-wrap items-baseline gap-x-2">
-          <span className="rounded border border-ok/40 px-1.5 text-[10.5px] text-ok">
-            changes-behaviour
-          </span>
-          <span className="text-fg">remove the call to Http.post</span>
-          <span className="text-seal-text">← agent applies</span>
+          <span className="rounded border border-ok/40 px-1.5 text-[10.5px] text-ok">agent</span>
+          <span className="text-fg">removes the call instead</span>
+          <span className="text-seal-text">← keeps the promise</span>
         </li>
       </ul>
     </div>
@@ -305,11 +302,11 @@ function Diagnostic() {
 }
 
 const STATUS: Record<Phase, { text: string; tone: string }> = {
-  idle: { text: "vow check --watch", tone: "text-fg-faint" },
+  idle: { text: "vow check --json", tone: "text-fg-faint" },
   typing: { text: "agent is writing, checker is following", tone: "text-fg-muted" },
   caught: { text: "1 error: effect not in signature", tone: "text-fail" },
-  fixing: { text: "applying fix: remove the call", tone: "text-fg-muted" },
-  kept: { text: "0 errors, 1 contract proved, signature unchanged", tone: "text-ok" },
+  fixing: { text: "agent edit: remove the call", tone: "text-fg-muted" },
+  kept: { text: "0 errors, signature unchanged", tone: "text-ok" },
 };
 
 function StatusBar({ phase, onReplay }: { phase: Phase; onReplay?: () => void }) {

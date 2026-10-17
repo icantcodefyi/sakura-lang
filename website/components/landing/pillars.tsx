@@ -105,16 +105,14 @@ export async function Pillars() {
             visual={
               <div className="grid gap-4">
                 <Snippet
-                  code={`fn signup(email: Email, pw: Password) -> User ! {Db, Clock, Fail<SignupError>}`}
+                  code={`fn signup(email: Email, pw: Password) -> User ! {Clock, Db, Fail<SignupError>}`}
                 />
                 <div className="grid gap-2 sm:grid-cols-2">
                   <div className="rounded-lg border border-line bg-code px-3 py-2.5">
                     <p className="mb-1 font-sans text-[11px] font-medium text-fg-faint">
                       In production
                     </p>
-                    <Snippet
-                      code={`with Db.postgres(url), Clock.system() {\n  signup(email, pw)\n}`}
-                    />
+                    <Snippet code={`with Db.sql(), Clock.host() {\n  signup(email, pw)\n}`} />
                   </div>
                   <div className="rounded-lg border border-line bg-code px-3 py-2.5">
                     <p className="mb-1 font-sans text-[11px] font-medium text-fg-faint">In tests</p>
@@ -124,33 +122,36 @@ export async function Pillars() {
               </div>
             }
           >
-            Database, clock, network and failure are typed effects in the signature. No exceptions,
-            no null, no hidden I/O. Handlers decide what an effect means, so tests swap Postgres for
+            Effects are requirements written after{" "}
+            <code className="font-mono text-[13.5px]">!</code>, and failure is{" "}
+            <code className="font-mono text-[13.5px]">Fail&lt;E&gt;</code> over named error tags. No
+            exceptions, no null. Handlers decide what an effect does, so tests swap the database for
             memory without mocks.
           </Cell>
 
           <Cell
             className="lg:col-span-2"
-            title="Fast, without a borrow checker"
+            title="Values, without a borrow checker"
             href="/docs/tour/memory"
             visual={<ReuseDiagram />}
           >
-            Values, not references. Reference counts are inserted at compile time and unique values
-            are updated in place. No GC pauses, no lifetimes. Native, WASM and JS targets.
+            Value semantics: no aliasing, no lifetimes, no cycles. Native code (M5) gets
+            compile-time reference counting with in-place reuse; the JS backend uses the host GC.
           </Cell>
 
           <Cell
             className="lg:col-span-2"
-            title="Verified by default"
+            title="Contracts that always run"
             href="/docs/tour/contracts"
             visual={
               <Snippet
-                code={`type Age = Int where 0..=150\n\nfn withdraw(a: Account, amt: Cents)\n  -> Account ! {Fail<Overdrawn>}\n  requires amt > 0\n  ensures result.balance < a.balance`}
+                code={`type Percent = Int where it >= 0 && it <= 100\n\nfn clamp(x: Int, lo: Int, hi: Int) -> Int\n  requires ordered: lo <= hi\n  ensures bounded: lo <= result && result <= hi`}
               />
             }
           >
-            Refinement types and contracts are part of the language. What the checker cannot prove
-            becomes generated property tests, and simulation tests replay every failure by seed.
+            Refinements and <code className="font-mono text-[13.5px]">requires</code>/
+            <code className="font-mono text-[13.5px]">ensures</code> are checked in every build,
+            release included. They also generate property tests; SMT proofs remove checks later.
           </Cell>
 
           <Cell
@@ -161,19 +162,21 @@ export async function Pillars() {
               <div className="grid gap-3">
                 <Snippet
                   lang="toml"
-                  code={`[dependencies]\nmarkdown = { version = "2.2" }\ns3 = { version = "0.4", grants = ["Net"] }`}
+                  code={`[permissions]\nfs.read = ["./data"]\nnet     = ["api.anthropic.com:443"]\nenv     = ["ANTHROPIC_API_KEY"]`}
                 />
                 <p className="rounded-lg border border-fail/35 bg-fail-wash px-3 py-2 font-mono text-[11.5px] leading-relaxed text-fg">
-                  <span className="font-semibold text-fail">E0501</span> markdown 2.2 asks for{" "}
-                  <span className="text-seal-text">Net</span>, which was never granted
+                  <span className="font-semibold text-fail">V2031</span>{" "}
+                  <span className="text-seal-text">Secret&lt;String&gt;</span> is not Show: a token
+                  cannot be logged
                 </p>
               </div>
             }
           >
-            A dependency can only touch the network, files or environment if you hand it that
-            capability. <code className="font-mono text-[13.5px]">Untrusted&lt;T&gt;</code> blocks
-            injection, <code className="font-mono text-[13.5px]">Secret&lt;T&gt;</code> cannot be
-            logged.
+            Effects are requirements; handlers are authority.{" "}
+            <code className="font-mono text-[13.5px]">main</code> gets only what{" "}
+            <code className="font-mono text-[13.5px]">[permissions]</code> grants, and code can
+            narrow that, never widen it.{" "}
+            <code className="font-mono text-[13.5px]">Secret&lt;T&gt;</code> cannot be logged.
           </Cell>
 
           <Cell
@@ -182,22 +185,21 @@ export async function Pillars() {
             href="/docs/agents"
             visual={
               <div className="grid gap-3">
-                <Snippet code={`fn total(items: List<Item>) -> Cents {\n  todo()\n}`} />
+                <Snippet code={`fn total(items: List<Item>) -> Int {\n  ?sum\n}`} />
                 <div className="rounded-lg border border-line bg-code px-3 py-2 font-mono text-[11.5px] leading-relaxed">
                   <p>
-                    <span className="text-seal-text">hole</span>{" "}
-                    <span className="text-fg-muted">expects</span> Cents
+                    <span className="text-seal-text">hole ?sum</span>{" "}
+                    <span className="text-fg-muted">expects</span> Int
                   </p>
                   <p className="text-fg-muted">
-                    fits: <span className="text-fg">items.map(i =&gt; i.price).sum()</span>
+                    fits: <span className="text-fg">items.map(fn(i) {"{ i.price }"}).sum()</span>
                   </p>
                 </div>
               </div>
             }
           >
-            A grammar small enough for llms.txt, one way to do each thing, typed holes, JSON
-            diagnostics with fixes, a compiler MCP server, and content-addressed code so parallel
-            agents do not collide.
+            The core language fits in one llms.txt. One way to do each thing, typed holes, JSON
+            diagnostics whose fixes declare their impact, and the compiler as an MCP server.
           </Cell>
 
           <Cell
@@ -208,12 +210,13 @@ export async function Pillars() {
             visualClassName="bg-code"
             visual={<Toolchain />}
           >
-            One binary for the whole loop. HTTP, typed SQL checked against your schema, full-stack
-            web with typed RPC, durable workflows, and LLM calls as typed effects with budgets.
+            One <code className="font-mono text-[13.5px]">vow</code> binary for the whole loop, over
+            one compiler library. The standard library covers HTTP client and server, SQLite, JSON
+            with schemas, CLIs, and typed LLM calls with tools and budgets.
           </Cell>
         </ul>
         <p className="mt-4 text-[12.5px] text-fg-faint">
-          Error codes and messages are illustrative; the compiler is not built yet.
+          Codes and messages follow the v0 design; the compiler is under construction.
         </p>
       </div>
     </section>
@@ -226,7 +229,7 @@ function ReuseDiagram() {
   return (
     <svg viewBox="0 0 260 136" className="mx-auto w-full max-w-[18rem]" role="presentation">
       <text x="0" y="16" className="fill-fg-faint font-mono text-[10px]">
-        let ys = xs.push(4)
+        xs = List.push(xs, 4)
       </text>
       {/* rc badge */}
       <g transform="translate(0 38)">
@@ -278,13 +281,14 @@ function ReuseDiagram() {
 }
 
 const COMMANDS = [
-  ["new", "scaffold a project"],
+  ["new", "api, cli, agent or lib"],
   ["check", "types, effects, contracts"],
-  ["test", "tests, properties, simulation"],
-  ["run", "interpret instantly"],
-  ["build", "native, wasm, js"],
+  ["test", "deterministic tests, properties"],
+  ["run", "under vow.toml permissions"],
+  ["build", "JS first; WASM, native later"],
   ["fmt", "one canonical format"],
-  ["mcp", "compiler as MCP server"],
+  ["fix", "fixes gated by impact class"],
+  ["mcp serve", "the compiler as MCP tools"],
 ] as const;
 
 function Toolchain() {
@@ -301,7 +305,9 @@ function Toolchain() {
       ))}
       <li className="flex items-baseline gap-2 text-fg-muted">
         <span className="text-fg-faint">#</span>
-        <span className="font-sans text-[12.5px]">std: Http, Sql, Rpc, Workflow, Llm, Budget</span>
+        <span className="font-sans text-[12.5px]">
+          std: Http, Serve, Sql, Fs, Json, Cli, Llm, Budget
+        </span>
       </li>
     </ul>
   );

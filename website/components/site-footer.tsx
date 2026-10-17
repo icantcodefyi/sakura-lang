@@ -40,7 +40,8 @@ export function SiteFooter() {
             <Wordmark />
           </Link>
           <p className="mt-4 max-w-[17rem] text-[14px] leading-relaxed text-fg-muted">
-            The language agents write. In early design; nothing here is a released product.
+            The language agents write. Pre-alpha: the compiler is under construction and nothing is
+            released.
           </p>
         </div>
         {COLUMNS.map((c) => (

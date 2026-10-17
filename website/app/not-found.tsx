@@ -10,7 +10,7 @@ export default function NotFound() {
         id="main"
         className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-5 py-28 sm:px-8"
       >
-        <p className="font-mono text-[13px] text-fail">error E0404: no page at this path</p>
+        <p className="font-mono text-[13px] text-fail">404: no page at this path</p>
         <h1 className="mt-4 font-display text-[clamp(2.4rem,5vw,3.6rem)] leading-[1.02] font-semibold tracking-[-0.03em]">
           This page never made that promise.
         </h1>
