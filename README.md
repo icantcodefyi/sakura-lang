@@ -37,17 +37,23 @@ target/debug/sakura run examples/contracts
 cargo test -p sakura_cli --test examples
 ```
 
-All twelve examples pass their configured modes: six run plus test, four test,
-and two check-only (`agent_loop`, `secrets`). This does not yet meet the M3 gate
-requiring execution or offline replay for every example.
+All twelve examples pass their configured modes: seven run plus test and five test;
+none is check-only. `llm_extract`, `agent_loop` and `secrets` replay committed synthetic
+cassettes with the test network denied. These are not live-provider recordings, and
+passing the example corpus does not close every M3 gate.
 
-Recent additions include `Tool.of` for `@tool` functions, `sakura new api`,
-`SAKURA_PERMISSIONS` enforcement by host handlers, per-module rechecking when public
-interfaces hold, `Tool<e>` / `Agent<T, e>` / `Router<e>` row parameters, opaque access
-diagnostics (`V1006`), prelude `Trust` and sink-only `@trust` (`V6001`), automatic
-`SqlValue.from` conversions in `sql"…"`, escaping typed failures reported as failed
-tests, and one `Llm.anthropic` streaming callback per SSE text delta. Provider behavior
-is covered by local mocks; this is not a claim of live-provider verification.
+Recent additions include [trust audits](website/content/docs/agents/audit.mdx),
+[offline API search](website/content/docs/agents/doc.mdx),
+[build manifests](website/content/docs/agents/build-manifest.mdx), and
+[HTTP/LLM cassettes with `--record`](website/content/docs/agents/cassettes.mdx).
+Scoped escape checks (`V6002`/`V6003`), foreign-capability FFI rejection (`V6001`),
+refined-target `Untrusted.validate` (`V5003`), bounded literal evaluation (`V5004`,
+`V5002` retired), collection-only `W5005`, and `Html.from`/nested HTML templates have landed.
+
+`--contracts` and streaming HTTP remain planned. Audits currently omit undecided literal
+conversions, and direct `Untrusted<String>` SQL interpolation is rejected; the guides record
+these limitations. The M4 plan allows isolated runtime (R1–R3), LIR (L1–L2) and verifier
+(V1–V2) work before the M3 gates, with CLI/backend integration still gated.
 
 ## A small promise
 

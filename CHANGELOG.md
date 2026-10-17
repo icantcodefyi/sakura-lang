@@ -28,11 +28,12 @@ published yet.
   75 when `main` declares an effect that `[permissions]` does not grant.
 - `sakura audit [--json] [paths]` lists every `@trust` (with its reason and sink), `@total`,
   `@external`, `@resource` and refined-type `T.from` site in your packages, as a table by file
-  or as JSON Lines `audit` records plus a `summary`. It is a report and always exits 0.
+  or as JSON Lines `audit` records plus a `summary`. It exits 0 after reporting sites;
+  loading/usage failures remain errors. Undecided literal conversions are not yet inventoried.
 - `sakura doc [--search "fn(List<A>) -> Int"] [symbol] [--json]` prints signatures, effect
   rows, contracts and doc comments offline; `--json` returns the records of MCP `symbol_query`.
-- The `sakura explain` pages for `V5002`, `V5003`, `V6002`, `V6003`, `W5005` and `W7001`
-  describe the M3 rules with minimal pairs.
+- The `sakura explain` pages for `V5003`, `V5004`, `V6002`, `V6003`, `W5005` and `W7001`
+  describe the M3 rules with minimal pairs; the retired `V5002` page remains for older reports.
 - Test fixtures accept backend-suffixed expectations (`// expect-defect@js: D003`,
   `// expect-exit@wasm: …`) beside the unsuffixed default; the M4 harness will use them.
 - `compiler/fuzz`: cargo-fuzz targets for parsing, checking, formatter idempotence and row
@@ -45,16 +46,32 @@ published yet.
   compiler-known prelude `Trust` restricts `@trust("reason")` to trusted sink arguments (`V6001`).
 - `sql"…"` interpolations convert through `SqlValue.from` and remain bound parameters.
 - Typed failures escaping test bodies are reported as test failures.
-- All twelve examples pass their configured harness modes (six run plus test, four test,
-  two check-only); full execution/replay remains an M3 exit gate.
+- `sakura build --manifest` emits the trusted base and runtime contract obligations to
+  `target/sakura/manifest.json`.
+- `sakura test --record`, `Http.recording`, `Llm.replay` and `Test.fixtures` support
+  scoped cassette recording and offline replay. Example fixtures are explicitly synthetic.
+- Scoped escape diagnostics `V6002`/`V6003`, foreign-capability FFI rejection `V6001`,
+  and refined-target `Untrusted.validate` with `V5003` for invalid targets.
+- Bounded compile-time scalar refinement evaluation: invalid literals report `V5004`;
+  undecidable literals retain startup checks without a warning.
+- `Html.from` and HTML-valued template interpolation compose markup while escaping text.
+- All twelve examples execute (seven run plus test, five test), including committed
+  cassette replay in `llm_extract`, `agent_loop` and `secrets`. This does not close all M3 gates.
 
 ### Changed
+
+- Retired `V5002`; narrowed `W5005` to user clauses scanning collection parameters with
+  `List.all`, `List.any` or `List.contains`. `String.contains` no longer triggers it.
+- WS7 Phase B documents the landed CLI and language behavior, regenerates the website
+  std signatures from `compiler/std/INDEX.md`, and describes early M4 R1–R3/L1–L2/V1–V2
+  work separately from gated integration. `--contracts` and streaming HTTP remain planned.
 
 - Renamed the language from Vow to Sakura Lang: binary `sakura`, sources `.sakura`, manifest `sakura.toml`, crates `sakura_*`, env `SAKURA_*`, URIs `sakura://`, repo `icantcodefyi/sakura-lang`. Diagnostic codes are unchanged. <!-- rename:keep -->
 
 - Host handlers enforce manifest grants delivered by `sakura run` in `SAKURA_PERMISSIONS`.
-- Analysis rechecks only edited modules when public interfaces are unchanged; interface
-  changes invalidate dependents. Lowering still processes the whole program.
+- Analysis reuses unchanged modules' signatures and bodies; private-body edits lower and
+  check only the edited module. Item/import/export collection remains global. Bodies reachable
+  from refinement predicates participate in interface invalidation.
 - Roadmap and source-build documentation now distinguish implemented M3 behavior from
   M3 exit gates, planned M4 WASM/verification and M5 native execution.
 

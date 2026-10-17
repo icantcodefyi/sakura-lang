@@ -4,47 +4,56 @@ description: Finish M3, establish WASM and verification in M4, then add native c
 ---
 
 <Callout type="info" title="Where things stand">
-  Sakura Lang is pre-alpha and builds from source. The core language and substantial M3 functionality run on JavaScript. M3 is not complete, and neither WASM nor static contract verification is implemented. There are no milestone dates or published releases.
+  Sakura Lang is pre-alpha and builds from source. The core language and substantial M3 functionality run on JavaScript. M3 is not complete. WASM execution and static contract verification are not available through the CLI; isolated M4 work is allowed before the M3 gates. There are no milestone dates or published releases.
 </Callout>
 
-The sequence is **M3 → M4 → M5**. The [completion plan](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/plans/m3-completion-and-m4.md) defines the gates; [design §17.81–§17.86](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md) defines the provisional M4 decisions. M0–M2 provide the existing parser, type/effect checker, JS backend, handlers, typed holes, formatter and test runner.
+The sequence is **M3 → M4 → M5**. The [completion plan](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/plans/m3-completion-and-m4.md) defines the gates; [design §17.81–§17.99](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md) defines the provisional M4 decisions. M0–M2 provide the existing parser, type/effect checker, JS backend, handlers, typed holes, formatter and test runner.
 
 ## M3: finish the JS language and agent tooling
 
 Working today:
 
-- Runtime contracts and refinements; opaque constructors and fields rejected outside their module with `V1006`; compiler-known prelude `Trust`, with `@trust("reason")` restricted to trusted sink arguments (`V6001`).
+- Runtime contracts and refinements, bounded compile-time literal evaluation (`V5004`, with `V5002` retired), refined-target `Untrusted.validate` (`V5003`) and collection-only `W5005`; opaque constructors and fields rejected outside their module with `V1006`; compiler-known prelude `Trust`, with `@trust("reason")` restricted to trusted sink arguments (`V6001`).
+- Scoped capability/resource escape checks (`V6002`/`V6003`) and `V6001` for user externals receiving or constructing another package's capabilities or any handler.
 - Std data, JSON schemas and codecs, SQLite and memory SQL, filesystem and file callbacks, HTTP, serving, CLI, structured tasks, budgets, tools and agent loops. `sql"…"` arguments use `SqlValue.from` conversions and become bound parameters.
 - `Tool.of` on a named `@tool` function, `@llm` body generation, and effect-row parameters on types: `Tool<e>`, `Agent<T, e>`, `Router<e>`.
-- `sakura new <cli|lib|agent|api> <name>`, `init`, LSP, compiler MCP, impact-aware fixes and frozen-spec checks. Analysis rechecks an edited module alone when its public interface is unchanged; interface changes invalidate dependents. Whole-program lowering remains.
+- `sakura new <cli|lib|agent|api> <name>`, `init`, LSP, compiler MCP, impact-aware fixes and frozen-spec checks. Analysis reuses unchanged modules' signatures and bodies; a private-body edit parses, lowers and checks only its module. Item collection, imports and exports remain global. Bodies reachable from a refinement predicate are part of the interface hash, so editing one invalidates reuse.
+- [`sakura audit`](/docs/agents/audit), [`sakura doc`](/docs/agents/doc), [`sakura build --manifest`](/docs/agents/build-manifest) and [`sakura test --record`](/docs/agents/cassettes). The audit still omits undecided literal conversions.
+- `Html.from` and nested `Html` templates, plus `Http.recording`, `Llm.replay` and `Test.fixtures` for offline cassettes.
 - `sakura run` checks declared root permissions (exit 75 on denial) and passes `[permissions]` as `SAKURA_PERMISSIONS`; host handlers enforce filesystem, network and environment grants. This is not an OS sandbox for arbitrary JS or trusted FFI.
 - Tests accept escaping typed failures and report them as failed tests. `Llm.anthropic` requests SSE and delivers one partial callback per text delta; local mock tests cover this, not a live-provider guarantee.
 
-All twelve repository examples pass their current harness modes: six run plus test (`hello`, `contracts`, `counter`, `typed_errors`, `word_count`, `graph`), four test (`json_api`, `llm_extract`, `property`, `concurrency`), and two check only (`agent_loop`, `secrets`). Passing that harness does **not** yet satisfy the execution/replay gate below.
+All twelve repository examples pass their current harness modes: seven run plus test (`hello`, `contracts`, `counter`, `typed_errors`, `word_count`, `graph`, `secrets`) and five test (`json_api`, `llm_extract`, `property`, `concurrency`, `agent_loop`). None is check-only. `llm_extract`, `agent_loop` and `secrets` replay committed **synthetic** cassettes with the test network denied. Their fixture READMEs describe provenance; this is not live-provider validation.
 
 ### M3 exit gates
 
-All ten gates must pass on `origin/master` on Ubuntu and macOS before M4 backend coding starts. Commands are run in `compiler/` unless stated otherwise. These are acceptance requirements, not a claim that every command or flag is available today.
+All ten gates must pass on `origin/master` on Ubuntu and macOS before integrating the M4 backend with the existing compiler. The isolated early milestones below are the plan §3.5 exception. Commands are run in `compiler/` unless stated otherwise. These are acceptance requirements, not a claim that every command or flag is available today.
 
 1. `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, and `cargo test --workspace --locked` pass with both `UI_MILESTONE` and `SEMANTICS_MILESTONE` at 3.
-2. Every registered diagnostic except `V9999` and M5's `W8001` is constructed by a crate and has a passing UI fixture. `W8001` has a fixture skipped by milestone. Compare `grep -rhoE '\b[VWD][0-9]{3,4}\b' crates --exclude-dir=sakura_diagnostics | sort -u` against the registry.
+2. Every registered diagnostic except `V9999`, M5's `W8001` and retired codes such as `V5002` is constructed by a crate and has a passing UI fixture. `W8001` has a fixture skipped by milestone. Compare `grep -rhoE '\b[VWD][0-9]{3,4}\b' crates --exclude-dir=sakura_diagnostics | sort -u` against the registry.
 3. M3 acceptance tests cover contract blame (`m3.rs::m3_acceptance_contracts`, `D020`/`D010`), CLI exit 75, `tests/ui/V6003_route_handler_returns_file.sakura`, stale/Unicode LSP replay matching MCP `hole_context`, and `recheck.rs` counters.
 4. `cargo test -p sakura_cli --test examples`: all twelve examples execute in run or test mode, none only check. `llm_extract`, `agent_loop` and `secrets` replay committed cassettes with network denied.
 5. `sakura test --std` passes; `std/INDEX.md` has no Planned section; `docs/llms.txt` has no remaining M3 items except `Sql.postgres` if the owner defers it.
-6. CLI integration tests cover the planned `sakura audit --json`, `sakura doc --search "fn(List<A>) -> Int"`, `sakura build --manifest`, `sakura test --contracts`, and `sakura test --record`.
+6. CLI integration tests cover `sakura audit --json`, `sakura doc --search "fn(List<A>) -> Int"`, `sakura build --manifest`, `sakura test --contracts`, and `sakura test --record`.
 7. `SAKURA_DIFF_PROGRAMS=2000 cargo test -p sakura_eval --test differential` passes with the expanded generator. Each of `parse`, `check`, `fmt_idempotent`, and `row_unify` runs clean via `cargo fuzz run <target> -- -max_total_time=600` on the gate-review day.
 8. `cargo test -p sakura_fmt --test props` and the formatter corpus pass; `sakura fmt --check` is clean on `std/`, `examples/`, and `tests/`.
 9. In `website/`, `bun run fmt:check`, `bun run lint`, `bun run typecheck`, and `bun run build` pass; documentation matches the implemented behavior and this plan.
 10. The named CODEOWNERS maintainer reviews the escape rules and cassette format because both affect security.
 
-The remaining completion work includes escape/validation rules, offline recordings, audit/doc/manifest and contract-test tooling, diagnostics and fuzzing. See the plan for ownership; those planned interfaces are not setup instructions for today's binary.
+The local documentation verification passed the CLI integration suite, all twelve example modes and all 101 std tests. It did not establish all ten gates on both CI platforms. `--contracts` is absent, streaming HTTP remains planned, and the audit literal inventory is incomplete. Gate 5 still has a Planned section in `std/INDEX.md`; named maintainer review and the full gate-day fuzz/diagnostic evidence remain required.
 
 ## M4: WASM and contract verification
 
-Backend coding starts after the M3 gates and the [ABI and encoding research](https://github.com/icantcodefyi/sakura-lang/blob/master/research/09-m4-abi-and-encoding.md). The obligation generator can be explored earlier; M4 implementation remains gated as described in the plan.
+The [ABI and encoding research](https://github.com/icantcodefyi/sakura-lang/blob/master/research/09-m4-abi-and-encoding.md) and [runtime ABI](https://github.com/icantcodefyi/sakura-lang/blob/master/compiler/runtime/rt/ABI.md) have landed. Plan §3.5 starts three isolated tracks before the M3 gates; it does not declare their implementation complete:
+
+- **R1 → R2/R3:** runtime skeleton, allocator and bounded reference counting; then values/collections (R2) and frames, trampoline and scheduler (R3).
+- **L1 → L2:** LIR model, layout/ownership validation and printing; then lowering and an interpreter checked against stored differential expectations.
+- **V1 → V2:** verification conditions and SMT-LIB2 output; then bounded solver workers, failure handling, cross-checks and cache records.
+
+Before the gates, these tracks may add new crates, `compiler/runtime/rt` and ABI tests. They may not change M0–M3 crates, `runtime/js`, std, the CLI or CI. L1/V1 consume committed Core snapshots instead of a live `sakura_core` dependency. R4, L3, V3 and W1 integrate after the gates and their listed prerequisites. In particular, `sakura verify`, `--emit lir` and a WASM CLI target are not available today.
 
 - **LIR:** closure conversion, explicit continuations and handler environments, boxing at polymorphic boundaries, conservative balanced `Dup`/`Drop`, and a layout table. An interpreter must agree with Core on the differential corpus.
-- **Runtime:** a bounded `no_std` wasm32 runtime, size-class allocator, conservative reference counting, non-recursive destruction, persistent collections, scheduler and explicit value/fail/defect/cancel/pending outcomes. Agree the ownership graph and versioned ABI before implementation.
+- **Runtime:** a bounded `no_std` wasm32 runtime, size-class allocator, conservative reference counting, non-recursive destruction, persistent collections, scheduler and explicit value/fail/defect/cancel/pending outcomes. Follow the committed ownership graph and versioned ABI.
 - **WASM emission:** one bounded, non-shared linear memory, tables, multi-value and bulk memory, validated against an explicit feature allowlist. Node imports reuse the JS host handlers through copies. Wasmtime is an additional gate for pure and fake-handler programs.
 - **Verification:** bounded Z3 workers generate definedness and predicate obligations from Core. Only a matching `proved` result permits removal of that individual runtime check. `disproved`, `unknown` and `unsupported` keep checks; cvc5 cross-checks every corpus `unsat`. Body edits invalidate the function's own proofs, even when its signature stays unchanged.
 - **Parity and layout:** compare stdout and effect/finalizer/cancellation traces across JS and WASM on Ubuntu and macOS. JS's safe-integer range and WASM's i64 range have explicit backend-specific fixtures. Tagged `Option` is the baseline; niche layout remains opt-in until nested options and generic calls preserve values, traces and ownership.
@@ -59,4 +68,4 @@ A Cranelift backend adds native execution, borrow inference and reference-counte
 
 ## Decisions still open
 
-Package-management placement, external solver distribution, PostgreSQL timing, ownership of real-provider cassette recording, and Windows coverage remain owner decisions in plan §6. SQLite is implemented; `Sql.postgres` is not. Do not treat these open items as promised releases.
+Plan §6 retains questions about package-management placement, real-provider recording ownership and Windows coverage. The solver decision is now recorded in §3.5: a pinned external binary on `PATH` or `--solver`, without automatic downloads (V2 pins Z3 5.3.1 and cvc5 1.4.2). The std index records PostgreSQL as deferred past M4; SQLite is implemented and `Sql.postgres` is absent. These are scope decisions, not release dates.
