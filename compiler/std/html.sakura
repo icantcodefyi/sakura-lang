@@ -1,8 +1,8 @@
 // HTML built so that text is always escaped (design §4.11, §10.4, M3). An `Html` value is
 // only made by escaping text, by joining other `Html` values, or by `raw` with a `@trust`
-// reason, so markup from outside the program cannot reach a page unescaped.
-// needs M3: `html"…"` template arguments of type `Html` inserted as markup (a conversion like
-// `SqlValue.from` for `sql"…"`); today every interpolated value is escaped text.
+// reason, so markup from outside the program cannot reach a page unescaped. In `html"…"` an
+// interpolated `Html` value is markup and any other value goes through `from`, as escaped text
+// (design §17.77).
 
 
 pub opaque type Html = Html(String)
@@ -16,6 +16,11 @@ pub fn untrusted(u: Untrusted<String>) -> Html { text(Untrusted.trust(u, @trust(
 /// Markup inserted as it is. `sakura audit` lists every `@trust` reason.
 pub fn raw(markup: String, reason: Trust) -> Html { Html(markup) }
 
+/// `v` shown as escaped text; what `html"…"` applies to an interpolated value that is not
+/// `Html` (design §17.77). `Untrusted<String>` is `Show`, so it is escaped too, in its shown
+/// form `Untrusted.of("…")`; `untrusted(u)` gives just the escaped text.
+pub fn from<T: Show>(v: T) -> Html { text(show(v)) }
+
 pub fn concat(parts: List<Html>) -> Html { Html(List.join(List.map(parts, to_string), "")) }
 
 pub fn to_string(h: Html) -> String {
@@ -24,12 +29,12 @@ pub fn to_string(h: Html) -> String {
   }
 }
 
-/// `html"<p>Hello, {name}</p>"`: the literal parts are markup, each interpolated value is
-/// escaped text.
-pub fn template(parts: List<String>, args: List<String>) -> Html {
+/// `html"<p>Hello, {name}</p>"`: the literal parts are markup; each argument is already
+/// `Html` (an `Html` value as is, anything else through `from`).
+pub fn template(parts: List<String>, args: List<Html>) -> Html {
   var out = parts.first().unwrap_or("")
   for pair in List.enumerate(args) {
-    out = out + escape(pair.1) + parts[pair.0 + 1].unwrap_or("")
+    out = out + to_string(pair.1) + parts[pair.0 + 1].unwrap_or("")
   }
   Html(out)
 }
@@ -44,9 +49,19 @@ fn escape(s: String) -> String {
 
 test "text is escaped, markup is kept" {
   let name = "<script>alert('x') & \"y\"</script>"
-  // What `html"<p>Hi, {name}</p>"` calls; tagged templates do not run on JS yet.
-  let page = template(["<p>Hi, ", "</p>"], [name])
+  let page = html"<p>Hi, {name}</p>"
   expect_eq(to_string(page), "<p>Hi, &lt;script&gt;alert(&#39;x&#39;) &amp; &quot;y&quot;&lt;/script&gt;</p>")
   let list = concat([raw("<ul>", @trust("constant markup")), text("a<b"), raw("</ul>", @trust("constant markup"))])
   expect_eq(to_string(list), "<ul>a&lt;b</ul>")
+}
+
+test "a page composes Html fragments as markup and escapes everything else" {
+  let title = html"<h1>{"Tom & Jerry"}</h1>"
+  let body = Untrusted.of("<img src=x onerror=alert(1)>")
+  let banner = raw("<hr class=\"x\">", @trust("constant markup"))
+  let count = 3
+  let page = html"<main>{title}{banner}<p>{untrusted(body)}</p><p>{count} items</p></main>"
+  expect_eq(to_string(page), "<main><h1>Tom &amp; Jerry</h1><hr class=\"x\"><p>&lt;img src=x onerror=alert(1)&gt;</p><p>3 items</p></main>")
+  let direct = html"<p>{body}</p>"
+  expect_eq(to_string(direct), "<p>Untrusted.of(&quot;&lt;img src=x onerror=alert(1)&gt;&quot;)</p>")
 }
