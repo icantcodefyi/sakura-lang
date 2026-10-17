@@ -580,3 +580,76 @@ transport encoding of each std record; a `sakura.debug` section round trip; the 
 and lifetime list; and the hostile-host tests from research/09 §5 (wrong-kind, stale and
 foreign handles; invalid pointer and oversized length slices; non-UTF-8 strings; late and
 double completions; cancellation races; shutdown with pending work).
+
+## Questions and errata (from M4-RT)
+
+Recorded by the `sakura_rt` implementer (R1–R3) where this document is ambiguous, silent or
+not implementable as written. Each entry names the reading implemented and why; none changes a
+decision, and each is a question for the designer (`compiler/REQUESTS.md`, 2026-10-18). Where the
+LIR must agree, the entry says so. `compiler/runtime/rt/src/layout.rs` holds the exact table
+formats.
+
+- **E1 Destruction worklist (§3.5).** Implemented as a stack threaded through the `rc` fields of
+  the dying objects (an object at count zero has no other use for the field), not as an arena
+  array with an in-place fallback. Destruction therefore never allocates, never recurses and
+  cannot overflow, which is what §3.5 and research/09 §3 ("reserve room for destruction
+  metadata") ask for; the bounded array and its fallback become unnecessary. Not observable.
+- **E2 Tuple payload (§3.2 tag 5).** "`u32 arity`, `u32 pointer_bitmap_len`, then slots" names a
+  bitmap length but no bitmap, and per-arity layout rows (§3.4) cannot tell `(Int, String)` from
+  `(String, Int)`. Read as: `u32 arity`, `u32 type_id` of the tuple's **layout row** (one row
+  per tuple *shape* used), slots at offset 16, so tuples, like records, are described by the
+  layout table and nothing else (§3.4 rationale). Runtime builtins that build tuples use the two
+  shapes named in the table header (E3). LIR must agree.
+- **E3 Layout table bytes (§3.4).** The listed row fields are kept in order (`size_bytes`,
+  `n_slots`, pointer bitmap words, `scalar_kinds` offset, `name_offset`) with one field appended,
+  `field_names` (offsets of the field names, which `Show` of a record needs). Around the rows: a
+  header `n_types, option_type_id, result_type_id, pair_type_id (word, word),
+  int_pair_type_id (i64, word)` (builtins such as `list_get`, `map_entries` and
+  `list_enumerate` construct these), a directory of entry offsets, and per type an entry
+  `kind (record | error record | tuple | variant), name, n_rows, row offsets` (one row per
+  constructor for a variant). Names are `u32 len` + UTF-8; offsets are relative to the table.
+  Error records need their own kind because `Show` prints a field-less error tag as `Name`, a
+  field-less record as `Name {}` (as JS). LIR must agree.
+- **E4 Closures and frames need a descriptor (§3.2 tag 8, §6.1).** A closure's captures can be
+  scalars or pointers and its header has no bitmap; frames name "the function's frame
+  descriptor" without a format. Both are read from one **code descriptor table** indexed by
+  `code`: `name, n_frame_slots, frame_kinds, n_captures, capture_kinds` (2-bit kinds as §3.4). A
+  slot of kind 0 owns its word. LIR must agree.
+- **E5 `Unit` slots (§3.3, §3.4).** Kind 3 covers `Bool` and `Unit`, so `Show` cannot tell
+  `false` from `()`. Read as: kind 3 is `Bool` (`i64` 0/1); a `Unit` slot has kind 0 and holds
+  the `Unit` immediate word (dropping an immediate is a no-op). LIR must agree.
+- **E6 Slot alignment and handler state (§3.2 tags 6, 8, 14).** Slots start at the next 8-byte
+  boundary: offset 16 for records, variants, tuples and closures (records pad after
+  `type_id`), offset 24 for a handler's state slots, followed by its `n_clauses` 4-byte clause
+  closure pointers. A handler's state slots and an activation's live state slots hold **generic
+  words** (§4), because neither object has a type to describe them; `StateGet`/`StateSet` box and
+  unbox. LIR must agree.
+- **E7 `rc` overflow (§3.1).** A count may reach 2^32 − 1; the increment from 2^32 − 1 is
+  `D092` and leaves the count unchanged.
+- **E8 Building the runtime object (§1).** LLVM's default wasm32 features include
+  `reference-types`, whose `call_indirect` encoding (a padded multi-byte table index) fails the
+  MVP validator ("zero byte expected"), even though no reference-typed instruction is used. The
+  object passes the gate unchanged in profile when compiled with `-Ctarget-cpu=mvp
+  -Ctarget-feature=+mutable-globals,+multivalue,+bulk-memory` and fat LTO with one codegen
+  unit (so libcore's embedded bitcode is recompiled under those features);
+  `runtime/rt/tests/wasm_gate.rs` builds it that way. `sign-ext` and `nontrapping-fptoint` were
+  **not** needed, so the allowlist stays as written and no MINOR bump is due. The M4-WASM build
+  must use the same flags.
+- **E9 Exports rustc cannot produce (§0, §9).** rustc exports a `static` as a global holding its
+  *address*, so the immutable `sakura_abi_version` global with the version as its value, and
+  the multi-value exports (`layout_table`, `effect_table`, `outcome`, `tests`, `stats`), must be
+  synthesised by the M4-WASM linker over single-value runtime functions. The runtime object
+  exports only `memory`, `alloc_bytes` and `drop` today (all in §9), and imports only
+  `sakura_host.retire_handle`.
+- **E10 `retire_handle` signature (§8.5).** Named but not typed: implemented as
+  `(kind: i32, slot: i32, generation: i32) -> ()`.
+- **E11 Counters (§10).** `requested` is cumulative bytes requested; `live` and `peak` are bytes
+  of live blocks at their class or run size; `committed` is linear memory above the heap base;
+  `free_list_bytes` counts small free lists and free page runs; `live_objects` (added) counts
+  live blocks, which the §7.5 tests compare.
+- **E12 Page runs and the emergency region (§10).** Page runs are 4 KiB-granular runs from the
+  same bounded heap (first fit, coalesced on free), and small classes are carved from 64 KiB
+  runs; "a separate bounded region" is read as separate free structures, bounded by
+  `SAKURA_MAX_HEAP` like everything else. The emergency region is a separate 64 KiB pool with
+  its own free lists, committed at start, used only while the runtime has enabled emergency
+  allocation (unwinding) and only for small blocks.
