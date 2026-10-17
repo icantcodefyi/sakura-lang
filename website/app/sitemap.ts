@@ -1,14 +1,20 @@
 import type { MetadataRoute } from "next";
-import { site } from "@/lib/site";
+import { absolute } from "@/lib/seo";
 import { source } from "@/lib/source";
 
-const url = (path: string) => new URL(path, site.url).toString();
-
 export default function sitemap(): MetadataRoute.Sitemap {
+  const pages = source.getPages();
+  const latest = Math.max(...pages.map((p) => p.data.lastModified?.getTime() ?? 0));
   return [
-    { url: url("/"), changeFrequency: "weekly", priority: 1 },
-    ...source.getPages().map((page) => ({
-      url: url(page.url),
+    {
+      url: absolute("/"),
+      lastModified: latest ? new Date(latest) : undefined,
+      changeFrequency: "weekly",
+      priority: 1,
+    },
+    ...pages.map((page) => ({
+      url: absolute(page.url),
+      lastModified: page.data.lastModified,
       changeFrequency: "weekly" as const,
       priority: page.url === "/docs" ? 0.9 : 0.7,
     })),

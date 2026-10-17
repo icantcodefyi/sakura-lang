@@ -6,6 +6,8 @@ import { site } from "@/lib/site";
 const docs = defineDocs({
   dir: "content/docs",
   docs: {
+    // From git history (vercel.json unshallows the clone): sitemap lastmod, JSON-LD dateModified.
+    lastModified: true,
     postprocess: {
       // JSX blocks become placeholders, rendered to plain Markdown in renderPage below.
       includeProcessedMarkdown: { mdxAsPlaceholder: ["Callout", "Cards", "Card", "Steps", "Step"] },
@@ -67,3 +69,17 @@ Sakura Lang is pre-alpha and nothing is released. The v0 language design is writ
 ${index}
 `;
 }
+
+/** The sidebar section a docs page sits under (the nearest separator above it). */
+export function docsSection(url: string) {
+  let section = "Docs";
+  for (const node of source.getPageTree().children) {
+    if (node.type === "separator" && typeof node.name === "string") section = node.name;
+    if (node.type === "page" && node.url === url) return section;
+  }
+  return "Docs";
+}
+
+/** The generated share card for a docs page (app/og/docs/[...slug]/route.tsx). */
+export const docsImageUrl = (page: { slugs: string[] }) =>
+  `/og/docs/${[...page.slugs, "image.png"].join("/")}`;
