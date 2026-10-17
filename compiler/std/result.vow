@@ -35,6 +35,7 @@ pub fn raise<A, E>(r: Result<A, E>) -> A ! {Fail<E>} {
   }
 }
 
+@total
 pub fn is_ok<A, E>(r: Result<A, E>) -> Bool {
   match r {
     Ok(_) => true,
@@ -42,6 +43,7 @@ pub fn is_ok<A, E>(r: Result<A, E>) -> Bool {
   }
 }
 
+@total
 pub fn is_err<A, E>(r: Result<A, E>) -> Bool {
   match r {
     Ok(_) => false,

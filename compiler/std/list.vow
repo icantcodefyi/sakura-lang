@@ -4,10 +4,12 @@
 
 /// Number of elements.
 @external(js, "vow_runtime", "list_len")
+@total
 pub fn len<A>(xs: List<A>) -> Int
 
 /// The element at zero-based index `i`, or `None` when `i < 0` or `i >= len(xs)`.
 @external(js, "vow_runtime", "list_get")
+@total
 pub fn get<A>(xs: List<A>, i: Int) -> Option<A>
 
 /// A new list with `x` appended. Amortized O(1) when `xs` is not used again.
@@ -74,6 +76,7 @@ pub fn find<A, e>(xs: List<A>, f: fn(A) -> Bool ! e) -> Option<A> ! e {
 }
 
 /// True when `f` holds for every element (true for `[]`). In the contract subset.
+@total
 pub fn all<A, e>(xs: List<A>, f: fn(A) -> Bool ! e) -> Bool ! e {
   for x in xs {
     if !f(x) { return false }
@@ -82,6 +85,7 @@ pub fn all<A, e>(xs: List<A>, f: fn(A) -> Bool ! e) -> Bool ! e {
 }
 
 /// True when `f` holds for some element (false for `[]`). In the contract subset.
+@total
 pub fn any<A, e>(xs: List<A>, f: fn(A) -> Bool ! e) -> Bool ! e {
   for x in xs {
     if f(x) { return true }
@@ -173,10 +177,13 @@ pub fn sum(xs: List<Int>) -> Int {
   fold(xs, 0, fn(acc, x) { acc + x })
 }
 
+@total
 pub fn first<A>(xs: List<A>) -> Option<A> { get(xs, 0) }
 
+@total
 pub fn last<A>(xs: List<A>) -> Option<A> { get(xs, len(xs) - 1) }
 
+@total
 pub fn contains<A: Eq>(xs: List<A>, x: A) -> Bool {
   any(xs, fn(y) { y == x })
 }

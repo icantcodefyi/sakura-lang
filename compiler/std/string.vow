@@ -6,6 +6,7 @@ pub error Utf8Error(offset: Int)
 
 /// Length in UTF-8 bytes.
 @external(js, "vow_runtime", "string_len")
+@total
 pub fn len(s: String) -> Int
 
 /// Unicode scalar values, each as a one-character string.
@@ -26,12 +27,15 @@ pub fn split(s: String, sep: String) -> List<String>
 pub fn trim(s: String) -> String
 
 @external(js, "vow_runtime", "string_starts_with")
+@total
 pub fn starts_with(s: String, prefix: String) -> Bool
 
 @external(js, "vow_runtime", "string_ends_with")
+@total
 pub fn ends_with(s: String, suffix: String) -> Bool
 
 @external(js, "vow_runtime", "string_contains")
+@total
 pub fn contains(s: String, needle: String) -> Bool
 
 /// Replaces every non-overlapping occurrence of `from`, left to right.
@@ -45,8 +49,8 @@ pub fn to_lower(s: String) -> String
 pub fn to_upper(s: String) -> String
 
 /// Decimal integer: optional sign, then ASCII digits only (no `_`, whitespace, or `0x`
-/// prefixes), as Rust's `str::parse`. `None` when malformed or outside the `Int` range.
-/// On JS a value beyond ±(2^53 − 1) is Defect `D003`.
+/// prefixes), as Rust's `str::parse`. `None` when malformed or outside the range the
+/// backend can represent (±(2^53 − 1) on JS), never a defect (design §16.3).
 @external(js, "vow_runtime", "string_parse_int")
 pub fn parse_int(s: String) -> Option<Int>
 
@@ -110,6 +114,7 @@ test "parse_int is strict" {
   expect_eq(parse_int("1_000"), None)
   expect_eq(parse_int(""), None)
   expect_eq(parse_int("99999999999999999999999"), None)
+  expect_eq(parse_int("9007199254740991"), Some(9007199254740991))
 }
 
 test "parse_float" {

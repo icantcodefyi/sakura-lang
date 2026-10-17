@@ -17,6 +17,7 @@ pub fn insert<N>(g: Graph<N>, n: N) -> (Graph<N>, NodeId) {
   (Graph { ..g, nodes: g.nodes.insert(id, n), next: id + 1 }, NodeId(id))
 }
 
+@total
 pub fn get<N>(g: Graph<N>, id: NodeId) -> Option<N> {
   g.nodes.get(slot(id))
 }

@@ -30,6 +30,7 @@ pub fn or_fail<A, E>(o: Option<A>, err: E) -> A ! {Fail<E>} {
 @external(js, "vow_runtime", "option_expect")
 pub fn expect<A>(o: Option<A>, msg: String) -> A
 
+@total
 pub fn is_some<A>(o: Option<A>) -> Bool {
   match o {
     Some(_) => true,

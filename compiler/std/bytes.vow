@@ -1,10 +1,12 @@
 // Immutable byte sequences. `Bytes` is compiler-known; this module is its home.
 
 @external(js, "vow_runtime", "bytes_len")
+@total
 pub fn len(b: Bytes) -> Int
 
 /// The byte at index `i` as `0..=255`, or `None` out of range.
 @external(js, "vow_runtime", "bytes_get")
+@total
 pub fn get(b: Bytes, i: Int) -> Option<Int>
 
 /// Bytes from integers in `0..=255`.

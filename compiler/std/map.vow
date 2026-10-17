@@ -6,6 +6,7 @@
 pub fn empty<K: Hash, V>() -> Map<K, V>
 
 @external(js, "vow_runtime", "map_get")
+@total
 pub fn get<K: Hash, V>(m: Map<K, V>, k: K) -> Option<V>
 
 /// A new map with `k` bound to `v`. A key already present keeps its original position.
@@ -17,6 +18,7 @@ pub fn insert<K: Hash, V>(m: Map<K, V>, k: K, v: V) -> Map<K, V>
 pub fn remove<K: Hash, V>(m: Map<K, V>, k: K) -> Map<K, V>
 
 @external(js, "vow_runtime", "map_len")
+@total
 pub fn len<K: Hash, V>(m: Map<K, V>) -> Int
 
 /// Key/value pairs in insertion order.
@@ -30,6 +32,7 @@ pub fn of<K: Hash, V>(pairs: List<(K, V)>) -> Map<K, V> {
   m
 }
 
+@total
 pub fn contains<K: Hash, V>(m: Map<K, V>, k: K) -> Bool {
   get(m, k).is_some()
 }

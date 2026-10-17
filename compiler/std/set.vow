@@ -9,9 +9,11 @@ pub fn empty<A: Hash>() -> Set<A>
 pub fn insert<A: Hash>(s: Set<A>, x: A) -> Set<A>
 
 @external(js, "vow_runtime", "set_contains")
+@total
 pub fn contains<A: Hash>(s: Set<A>, x: A) -> Bool
 
 @external(js, "vow_runtime", "set_len")
+@total
 pub fn len<A: Hash>(s: Set<A>) -> Int
 
 /// Elements in insertion order.

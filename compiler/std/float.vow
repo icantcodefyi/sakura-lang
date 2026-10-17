@@ -5,7 +5,8 @@
 @external(js, "vow_runtime", "float_round")
 pub fn round(f: Float) -> Int
 
-/// Truncates toward zero; `None` for `NaN`, infinities, or out of range.
+/// Truncates toward zero; `None` for `NaN`, infinities, or outside the range the backend
+/// can represent (±(2^53 − 1) on JS), never a defect (design §16.3).
 @external(js, "vow_runtime", "float_to_int_checked")
 pub fn to_int_checked(f: Float) -> Option<Int>
 
@@ -24,6 +25,7 @@ test "round and to_int_checked" {
   expect_eq(round(-2.5), -3)
   expect_eq(to_int_checked(9.99), Some(9))
   expect_eq(to_int_checked(sqrt(-1.0)), None)
+  expect_eq(to_int_checked(1.0e300), None)
 }
 
 test "nan is not equal to itself" {
