@@ -419,3 +419,31 @@ seed, inputs, failure}`. The `sakura test` runner backs these with `tests/regres
 - `Check(contract, cond)` checks a `Bool`; lowering computes the predicate first.
 - Locals carry types; `Switch` names the variant type or error union it discriminates;
   projections say whether they read a tuple slot, a record field or a constructor payload.
+
+## 10. Runtime links and ownership (research/08 §3.3, research/09 §4)
+
+The JS runtime relies on tracing GC, so cycles among its own records are harmless here; this
+table records which links a reference-counted runtime (`sakura_rt`, M4) must treat as owning
+and which are back-edges that would leak a cycle if counted. "Owning" means the target lives
+exactly as long as the source; "back-edge" means the target is an ancestor (or the source's own
+container) and must be a borrowed or generation-checked id.
+
+| Link (JS) | Kind | Why |
+| --- | --- | --- |
+| frame `{e, i, n}` → instance `i` | owning | `install` creates the instance for this frame alone |
+| frame → outer frame `n` | back-edge | the outer frame belongs to an enclosing `with`, which outlives it |
+| instance → state `s`, clauses `c` | owning | copied from the handler value at `install` |
+| state slot → callback / closure | owning | user values; may close over the instance's own frame (below) |
+| callback (`$rt.callback(f, pctx)`) → `pctx.h`, `pctx.p` | back-edge | the perform site's frames enclose the clause that holds the callback; this is the handler → state → callback → same handler cycle tested in `runtime.test.js` |
+| `cctx` context → `h = f.n`, `p` | back-edge | contexts are views of frames owned by `install` |
+| continuation (`$k`, emitted arrows, `Bounce`) → locals | owning | captured values live until the continuation runs |
+| continuation → `$ctx`, outer `$k` | back-edge for `$ctx`, owning for the next continuation | a context belongs to its frames; the continuation chain is a stack |
+| catcher `{j, m}` → `j` | back-edge | the join continuation belongs to the enclosing function |
+| task → `fins` entries | owning | each finalizer runs exactly once, popped before it runs |
+| finalizer → resource (file id, body id, abort controller) | owning | released by the finalizer |
+| task → `kids` | owning (until finished) | `startFiber` deletes the child on completion |
+| fiber `finish` closure → parent task, fiber | back-edge | completion reports upward |
+| suspended task → `wake`, promise callbacks → `k` | owning while pending | cleared when the task resumes (`t.wake = null`) |
+| `files`, `bodies` tables → open file / stream | owning | deleted by `file_closing`/`file_contents` and `http_stream_closing` |
+| `cassettes` table → cursor | owning, never released | ponytail: one entry per `Http.recording` instance that opened a file, kept until the process exits; key cursors by handler instance if long-running programs record |
+| `opNames`, `types`, `refinements` | owning, program-lifetime | registered once at start-up |

@@ -513,3 +513,38 @@ test("cassettes record, replay in order and never touch secret headers", async (
     fs.rmSync(path.dirname(dir), { recursive: true });
   }
 });
+
+// Runtime back-edges (ABI.md §10, research/09 §4): a handler whose state holds a callback bound
+// to a perform site under that same handler is a cycle (instance → state → callback → context →
+// frame → instance). Tracing GC must release it once the task is done.
+test("a handler holding a callback bound to itself is released after the task", async () => {
+  const v8 = await import("node:v8");
+  const vm = await import("node:vm");
+  v8.setFlagsFromString("--expose-gc");
+  const gc = vm.runInNewContext("gc");
+  const STORE = "test::Store";
+  let instance;
+  // effect Store { fn keep(f: fn() -> Int) -> Unit; fn run() -> Int }, state `var kept`
+  const program = () => {
+    const keep = (inst, f, _ctx, k) => {
+      inst.s[0] = f;
+      return ret(k, undefined);
+    };
+    const run = (inst, ctx, k) => inst.s[0](ctx, k);
+    const h = rt.makeHandler(STORE, [null], [keep, run]);
+    return rt.runTask(($ctx, $k) => {
+      const c = rt.install($ctx, h);
+      const f = rt.find(c, STORE, 0);
+      instance = new WeakRef(f.i);
+      const cb = rt.callback((_ctx, k) => ret(k, 42), c);
+      return f.i.c[0](f.i, cb, rt.cctx(c, f), () => {
+        const g = rt.find(c, STORE, 1);
+        return g.i.c[1](g.i, rt.cctx(c, g), $k);
+      });
+    });
+  };
+  assert.deepEqual(program(), ok(42));
+  await new Promise((resolve) => setImmediate(resolve));
+  gc();
+  assert.equal(instance.deref(), undefined);
+});
