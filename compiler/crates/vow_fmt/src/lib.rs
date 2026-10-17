@@ -5,7 +5,7 @@
 //! assert_eq!(out, "fn main() -> Unit ! {Console} { greet(\"Vow\") }\n");
 //! ```
 //!
-//! One style, no options: 2-space indent, width 100 (measured in bytes), trailing commas only in
+//! One style, no options: 2-space indent, width 100 (measured in chars), trailing commas only in
 //! multi-line lists, `{` and `else`/`catch` on the same line, effect rows sorted with `Fail<…>`
 //! last, union members sorted, imports sorted with `std` first, redundant `;` removed. Files
 //! with parse errors are refused. The output is idempotent and reparses to the same program.
@@ -28,9 +28,11 @@
 //! - **Parenthesized types** keep their parentheses (`(fn() -> A) ! {E}` differs from
 //!   `fn() -> A ! {E}`).
 //! - **Not reformatted:** string text (interpolated expressions are formatted on one line) and
-//!   the order of variants in `type` declarations, which is part of the program. A node with a comment in a
-//!   position the formatter does not model (inside an expression or a signature) is kept
-//!   verbatim, re-indented as a block.
+//!   the order of variants in `type` declarations, which is part of the program.
+//! - **Comments inside expressions** are laid out around binary operators and before the `.` of
+//!   a method chain: block comments stay inline, a line comment ends its line and breaks the
+//!   chain. A node with a comment anywhere else (a `let` before its value, a signature, a match
+//!   arm after `=>`) is kept verbatim, re-indented as a block.
 
 use pretty::RcDoc;
 use vow_syntax::SyntaxKind::{self, *};
@@ -65,8 +67,18 @@ pub fn format(text: &str) -> Result<String, Vec<Diagnostic>> {
 
 // ---- Document helpers ----
 
+/// Text whose width is its length in chars, not bytes or display columns, so the layout does
+/// not depend on the `unicode-width` tables `pretty` uses.
 fn t(s: impl Into<String>) -> Doc {
-    RcDoc::text(s.into())
+    let s = s.into();
+    if s.is_ascii() {
+        return RcDoc::text(s);
+    }
+    let width = s.chars().count();
+    RcDoc::new(pretty::Doc::RenderLen(
+        width,
+        RcDoc::new(pretty::Doc::OwnedText(s.into())),
+    ))
 }
 
 /// Text that may contain line breaks that must be kept exactly (strings, comments).
@@ -95,8 +107,32 @@ fn trailing_comma() -> Doc {
     t(",").flat_alt(nil())
 }
 
+/// Concatenation as a balanced tree, built without recursion. `RcDoc` drops recursively, so a
+/// left-nested run of appends as long as a 10k-link chain would overflow the stack.
+fn concat(docs: impl IntoIterator<Item = Doc>) -> Doc {
+    let mut docs: Vec<Doc> = docs.into_iter().collect();
+    while docs.len() > 1 {
+        docs = docs
+            .chunks(2)
+            .map(|pair| match pair {
+                [a, b] => a.clone().append(b.clone()),
+                [a] => a.clone(),
+                _ => unreachable!("chunks of two"),
+            })
+            .collect();
+    }
+    docs.pop().unwrap_or_else(nil)
+}
+
 fn join(docs: impl IntoIterator<Item = Doc>, sep: Doc) -> Doc {
-    RcDoc::intersperse(docs, sep)
+    let mut parts = Vec::new();
+    for (i, d) in docs.into_iter().enumerate() {
+        if i > 0 {
+            parts.push(sep.clone());
+        }
+        parts.push(d);
+    }
+    concat(parts)
 }
 
 fn render(doc: &Doc, width: usize) -> String {
@@ -140,6 +176,11 @@ fn handles_comments(kind: SyntaxKind) -> bool {
             | RECORD_EXPR
             | RECORD_TYPE
             | FIELD_LIST
+            | BIN_EXPR
+            | CALL_EXPR
+            | FIELD_EXPR
+            | INDEX_EXPR
+            | RAISE_EXPR
     )
 }
 
@@ -246,14 +287,14 @@ fn seq(container: &SyntaxNode, is_entry: impl Fn(SyntaxKind) -> bool) -> Seq {
 }
 
 fn comments_doc(comments: &[Comment]) -> Doc {
-    let mut doc = nil();
+    let mut parts = Vec::new();
     for c in comments {
-        doc = doc.append(raw(&c.text)).append(nl());
+        parts.extend([raw(&c.text), nl()]);
         if c.blank_after {
-            doc = doc.append(nl());
+            parts.push(nl());
         }
     }
-    doc
+    concat(parts)
 }
 
 struct Fmt<'a> {
@@ -265,29 +306,26 @@ impl Fmt<'_> {
 
     /// Entries one per line with their comments; `sep` follows each entry.
     fn lines(&self, s: &Seq, sep: &str, keep_blanks: bool) -> Doc {
-        let mut doc = nil();
+        let mut parts = Vec::new();
         for (i, e) in s.entries.iter().enumerate() {
             if i > 0 {
-                doc = doc.append(nl());
+                parts.push(nl());
                 if keep_blanks && e.blank_before {
-                    doc = doc.append(nl());
+                    parts.push(nl());
                 }
             }
-            doc = doc
-                .append(comments_doc(&e.leading))
-                .append(self.node(&e.node))
-                .append(t(sep));
+            parts.extend([comments_doc(&e.leading), self.node(&e.node), t(sep)]);
             if let Some(c) = &e.trailing {
-                doc = doc.append(t(" ")).append(raw(c));
+                parts.extend([t(" "), raw(c)]);
             }
         }
         for (i, c) in s.dangling.iter().enumerate() {
             if i > 0 || !s.entries.is_empty() {
-                doc = doc.append(nl());
+                parts.push(nl());
             }
-            doc = doc.append(raw(&c.text));
+            parts.push(raw(&c.text));
         }
-        doc
+        concat(parts)
     }
 
     /// `{` entries `}` with one entry per line (always broken), or `{}` when empty.
@@ -495,7 +533,7 @@ impl Fmt<'_> {
                 let first = variants.next().map_or_else(nil, |v| self.node(&v));
                 let rest =
                     variants.map(|v| line().append(t("| ")).append(self.node(&v)).nest(INDENT));
-                first.append(RcDoc::concat(rest)).group()
+                first.append(concat(rest)).group()
             }
             VARIANT => {
                 let fields = n.children().find(|c| c.kind() == TYPE_LIST);
@@ -785,7 +823,7 @@ impl Fmt<'_> {
 
     /// Attributes (one per line) and `pub`.
     fn item_prefix(&self, item: &impl HasAttrs) -> Doc {
-        let attrs = RcDoc::concat(
+        let attrs = concat(
             item.attributes()
                 .map(|a| self.node(a.syntax()).append(nl())),
         );
@@ -854,7 +892,7 @@ impl Fmt<'_> {
             .chain(contracts.iter().map(|c| self.contract(c)))
             .collect();
         let brk = if has_contracts { nl() } else { line() };
-        let tail = RcDoc::concat(
+        let tail = concat(
             parts
                 .into_iter()
                 .map(|p| brk.clone().append(p).nest(INDENT)),
@@ -949,7 +987,10 @@ impl Fmt<'_> {
         }
     }
 
-    /// Flattens a left-nested chain of same-precedence operators and breaks after operators.
+    /// Flattens a left-nested chain of same-precedence operators (iteratively: a chain may be
+    /// 10k links long) and breaks before each operator, or after `-`: a line starting with `-`
+    /// would be a new statement (§2.4). Comments around an operator are kept: a block comment
+    /// stays inline, a line comment ends its line and breaks the whole chain.
     fn binary(&self, n: &SyntaxNode) -> Doc {
         let level = |n: &SyntaxNode| {
             ast::BinExpr::cast(n.clone())
@@ -957,50 +998,91 @@ impl Fmt<'_> {
                 .map(|op| precedence(op.kind()))
         };
         let target = level(n);
-        let mut rest = Vec::new();
-        let mut cur = n.clone();
-        loop {
-            let b = ast::BinExpr::cast(cur.clone()).expect("binary chain");
-            rest.push((
-                b.op().map_or(String::new(), |o| o.text().to_string()),
-                b.rhs(),
-            ));
-            match b.lhs() {
-                Some(l)
-                    if l.syntax().kind() == BIN_EXPR
-                        && level(l.syntax()) == target
-                        && !has_inner_comments(l.syntax()) =>
-                {
-                    cur = l.syntax().clone();
+        let mut links = vec![n.clone()];
+        let base = loop {
+            let lhs =
+                ast::BinExpr::cast(links.last().expect("non-empty").clone()).and_then(|b| b.lhs());
+            match lhs {
+                Some(l) if l.syntax().kind() == BIN_EXPR && level(l.syntax()) == target => {
+                    links.push(l.syntax().clone());
                 }
-                l => {
-                    let mut doc = self.opt(l);
-                    for (op, rhs) in rest.into_iter().rev() {
-                        // Break before the operator so §2.4 joins the lines; `-` can begin an
-                        // expression, so a line starting with it would be a new statement.
-                        let link = if op == "-" {
-                            t(" -").append(line().append(self.opt(rhs)).nest(INDENT))
-                        } else {
-                            line()
-                                .append(t(format!("{op} ")))
-                                .append(self.opt(rhs))
-                                .nest(INDENT)
-                        };
-                        doc = doc.append(link);
+                l => break l,
+            }
+        };
+        let mut parts = vec![self.opt(base)];
+        for link in links.iter().rev() {
+            let b = ast::BinExpr::cast(link.clone()).expect("binary chain");
+            let op = b.op().map_or(String::new(), |o| o.text().to_string());
+            let (before, after) = inner_comments(link, |k| ast::BINARY_OPS.contains(&k));
+            let mut gap = Gap::default();
+            if op == "-" {
+                // Block comments after `-` stay with the operand, past the break, unless a line
+                // break separates them from it.
+                for c in &before {
+                    gap.add(c);
+                }
+                let attached = !gap.broken
+                    && after.iter().all(|c| c.block)
+                    && after.iter().skip(1).all(|c| !c.newline_before);
+                let mut inline = Vec::new();
+                for c in &after {
+                    if attached {
+                        inline.extend([raw(&c.text), t(" ")]);
+                    } else {
+                        gap.add(c);
                     }
-                    return doc.group();
+                }
+                let brk = gap.brk(line());
+                parts.push(
+                    concat([
+                        t(" -"),
+                        concat(gap.parts),
+                        brk,
+                        concat(inline),
+                        self.opt(b.rhs()),
+                    ])
+                    .nest(INDENT),
+                );
+                continue;
+            }
+            for c in &before {
+                gap.add(c);
+            }
+            let mut inline = Vec::new();
+            for c in &after {
+                if c.block && !c.newline_before {
+                    inline.extend([raw(&c.text), t(" ")]);
+                } else {
+                    gap.add_on_own_line(c);
                 }
             }
+            let brk = gap.brk(line());
+            parts.push(
+                concat([
+                    concat(gap.parts),
+                    brk,
+                    t(format!("{op} ")),
+                    concat(inline),
+                    self.opt(b.rhs()),
+                ])
+                .nest(INDENT),
+            );
         }
+        concat(parts).group()
     }
 
     /// Calls, fields, indexing and `?`. Chains with two or more `.name` segments break before
-    /// each `.` when they do not fit (the first one stays on a type or module path).
+    /// each `.` when they do not fit (the first one stays on a type or module path). Comments
+    /// before a `.` are kept and break the chain; a comment anywhere else in a postfix node
+    /// leaves that node verbatim.
     fn postfix(&self, n: &SyntaxNode) -> Doc {
+        if !postfix_comments_ok(n) {
+            return self.verbatim(n);
+        }
         let mut parts = Vec::new();
         let mut cur = n.clone();
         while matches!(cur.kind(), CALL_EXPR | FIELD_EXPR | INDEX_EXPR | RAISE_EXPR)
-            && !has_inner_comments(&cur)
+            && postfix_comments_ok(&cur)
         {
             let receiver = cur.children().find(|c| ast::Expr::can_cast(c.kind()));
             parts.push(cur.clone());
@@ -1016,28 +1098,41 @@ impl Fmt<'_> {
             self.node(&cur)
         };
         let dots = parts.iter().filter(|p| p.kind() == FIELD_EXPR).count();
-        let mut segments: Vec<Doc> = Vec::new();
+        // Each segment is a `.name` with the calls, indexes and `?` after it, plus the comments
+        // before its `.`.
+        let mut segments: Vec<(Gap, Vec<Doc>)> = Vec::new();
+        let mut commented = false;
         for p in &parts {
             let piece = self.postfix_piece(p);
             if p.kind() == FIELD_EXPR || segments.is_empty() {
-                segments.push(piece);
+                let mut gap = Gap::default();
+                for c in inner_comments(p, |k| k == DOT).0 {
+                    gap.add(&c);
+                    commented = true;
+                }
+                segments.push((gap, vec![piece]));
             } else {
-                let last = segments.pop().expect("non-empty");
-                segments.push(last.append(piece));
+                segments.last_mut().expect("non-empty").1.push(piece);
             }
         }
-        if dots < 2 {
-            return base.append(RcDoc::concat(segments));
+        if dots < 2 && !commented {
+            return base.append(concat(segments.into_iter().map(|s| concat(s.1))));
         }
-        let mut segments = segments.into_iter();
+        let mut segments = segments.into_iter().peekable();
         let mut doc = base;
         // Never break before a leading call/index (`f\n(x)` would be two statements), and keep
-        // the first `.name` on a type or module path (`Router.new()`).
-        if parts.first().is_some_and(|p| p.kind() != FIELD_EXPR) || cur.kind() == PATH_EXPR {
-            doc = doc.append(segments.next().unwrap_or_else(nil));
+        // the first `.name` on a type or module path (`Router.new()`) unless a comment
+        // precedes it.
+        let glue = parts.first().is_some_and(|p| p.kind() != FIELD_EXPR)
+            || (cur.kind() == PATH_EXPR && segments.peek().is_some_and(|s| s.0.parts.is_empty()));
+        if glue && let Some((_, first)) = segments.next() {
+            doc = doc.append(concat(first));
         }
-        doc.append(RcDoc::concat(segments.map(|s| line_().append(s))).nest(INDENT))
-            .group()
+        let rest = segments.map(|(gap, seg)| {
+            let brk = gap.brk(line_());
+            concat([concat(gap.parts), brk, concat(seg)])
+        });
+        doc.append(concat(rest).nest(INDENT)).group()
     }
 
     /// The part a postfix node adds to its receiver.
@@ -1078,7 +1173,7 @@ impl Fmt<'_> {
                 .map(|e| self.node(&e.node))
                 .collect();
             let prefix = join(before, t(", "));
-            if flat(&prefix).is_some_and(|f| f.len() <= 40) {
+            if flat(&prefix).is_some_and(|f| f.chars().count() <= 40) {
                 let sep = if s.entries.len() > 1 { t(", ") } else { nil() };
                 return t("(")
                     .append(prefix)
@@ -1127,35 +1222,34 @@ impl Fmt<'_> {
             .bytes()
             .take_while(|b| matches!(b, b' ' | b'\t'))
             .count();
-        let mut doc = nil();
+        let mut parts = Vec::new();
         for tok in tokens {
             let text = tok.text();
             if matches!(tok.kind(), WHITESPACE | NEWLINE) && text.contains('\n') {
                 let mut pieces = text.split('\n');
                 pieces.next();
                 for piece in pieces {
-                    doc = doc.append(nl());
                     let strip = piece
                         .bytes()
                         .take_while(|b| matches!(b, b' ' | b'\t'))
                         .count()
                         .min(base);
-                    doc = doc.append(t(&piece[strip..]));
+                    parts.extend([nl(), t(&piece[strip..])]);
                 }
             } else if tok.kind() == WHITESPACE {
-                doc = doc.append(t(" "));
+                parts.push(t(" "));
             } else {
-                doc = doc.append(raw(text));
+                parts.push(raw(text));
             }
         }
-        doc
+        concat(parts)
     }
 
     /// String text stays byte-identical; interpolated expressions are formatted on one line.
     fn string(&self, n: &SyntaxNode) -> Doc {
-        let mut doc = nil();
+        let mut parts = Vec::new();
         for element in n.children_with_tokens() {
-            doc = doc.append(match element {
+            parts.push(match element {
                 NodeOrToken::Token(tok) => raw(tok.text()),
                 NodeOrToken::Node(node)
                     if node.kind() == INTERPOLATION && !has_inner_comments(&node) =>
@@ -1169,7 +1263,7 @@ impl Fmt<'_> {
                 NodeOrToken::Node(node) => raw(&node.text().to_string()),
             });
         }
-        doc
+        concat(parts)
     }
 
     // ---- File ----
@@ -1229,7 +1323,7 @@ fn import_key(n: &SyntaxNode) -> (u8, String) {
 }
 
 fn name(tok: Option<SyntaxToken>) -> Doc {
-    tok.map_or_else(nil, |t| RcDoc::text(t.text().to_string()))
+    tok.map_or_else(nil, |tok| t(tok.text()))
 }
 
 fn is_expr(kind: SyntaxKind) -> bool {
@@ -1287,4 +1381,88 @@ fn has_inner_comments(n: &SyntaxNode) -> bool {
     n.children_with_tokens()
         .skip_while(|e| e.as_token().is_some_and(|t| t.kind().is_trivia()))
         .any(|e| e.as_token().is_some_and(|t| is_comment(t.kind())))
+}
+
+/// A comment among a node's direct children.
+struct InnerComment {
+    text: String,
+    /// `/* … */` rather than `// …`.
+    block: bool,
+    /// A line break separates it from the previous token.
+    newline_before: bool,
+}
+
+/// The comments among `n`'s direct children before and after its first token matching
+/// `split` (the operator of a `BIN_EXPR`, the `.` of a `FIELD_EXPR`).
+fn inner_comments(
+    n: &SyntaxNode,
+    split: impl Fn(SyntaxKind) -> bool,
+) -> (Vec<InnerComment>, Vec<InnerComment>) {
+    let (mut before, mut after) = (Vec::new(), Vec::new());
+    let mut seen = false;
+    let mut newline = false;
+    for e in n
+        .children_with_tokens()
+        .skip_while(|e| e.as_token().is_some_and(|t| t.kind().is_trivia()))
+    {
+        let NodeOrToken::Token(tok) = e else {
+            newline = false;
+            continue;
+        };
+        match tok.kind() {
+            k if is_comment(k) => {
+                let text = tok.text().trim_end().to_string();
+                let c = InnerComment {
+                    block: text.starts_with("/*"),
+                    text,
+                    newline_before: newline,
+                };
+                if seen { &mut after } else { &mut before }.push(c);
+                newline = false;
+            }
+            WHITESPACE | NEWLINE => newline |= tok.text().contains('\n'),
+            k => {
+                seen |= split(k);
+                newline = false;
+            }
+        }
+    }
+    (before, after)
+}
+
+/// Comments in a postfix node are laid out only before the `.` of a field access.
+fn postfix_comments_ok(n: &SyntaxNode) -> bool {
+    match n.kind() {
+        FIELD_EXPR => inner_comments(n, |k| k == DOT).1.is_empty(),
+        _ => !has_inner_comments(n),
+    }
+}
+
+/// Comments between two tokens where the formatter may break the line: block comments stay
+/// inline while the line is open, a line comment ends the line, and anything after it goes on
+/// its own line. Once a comment has ended the line, the break that follows is forced.
+#[derive(Default)]
+struct Gap {
+    parts: Vec<Doc>,
+    broken: bool,
+}
+
+impl Gap {
+    fn add(&mut self, c: &InnerComment) {
+        if self.broken || c.newline_before {
+            self.add_on_own_line(c);
+        } else {
+            self.parts.extend([t(" "), raw(&c.text)]);
+            self.broken = !c.block;
+        }
+    }
+
+    fn add_on_own_line(&mut self, c: &InnerComment) {
+        self.parts.extend([nl(), raw(&c.text)]);
+        self.broken = true;
+    }
+
+    fn brk(&self, soft: Doc) -> Doc {
+        if self.broken { nl() } else { soft }
+    }
 }

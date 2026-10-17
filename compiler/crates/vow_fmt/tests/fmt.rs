@@ -48,10 +48,7 @@ fn check(path: &Path, text: &str) -> String {
     );
     for line in once.lines() {
         assert!(
-            line.len() <= vow_fmt::WIDTH
-                || !line.is_ascii()
-                || line.contains('"')
-                || line.contains("//"),
+            line.chars().count() <= vow_fmt::WIDTH || line.contains('"') || line.contains("//"),
             "{}: line too long: {line}",
             path.display()
         );
@@ -102,8 +99,6 @@ fn deepest_accepted_input_formats() {
             "{ ".repeat(depth),
             " }".repeat(depth)
         ),
-        format!("fn f() -> Int {{ 1{} }}\n", " + 1".repeat(depth)),
-        format!("fn f() -> Int {{ x{} }}\n", ".f()".repeat(depth / 2)),
         format!(
             "fn f() -> {}Int{} {{ 1 }}\n",
             "List<".repeat(depth),
@@ -115,4 +110,34 @@ fn deepest_accepted_input_formats() {
             .unwrap_or_else(|e| panic!("{:?} for {}…", e[0].message, &text[..30]));
         assert_eq!(vow_fmt::format(&once).unwrap(), once);
     }
+}
+
+#[test]
+fn long_chains_format() {
+    // Chains are not nesting: 10,000 links parse, and formatting them must not overflow the
+    // default 2 MiB test-thread stack.
+    let n = 10_000;
+    let cases = [
+        format!("fn f() -> Int {{ 1{} }}\n", " + 1".repeat(n)),
+        format!("fn f() -> Int {{ 1{} }}\n", " - 1".repeat(n)),
+        format!("fn f() -> Int {{ x{} }}\n", ".f()".repeat(n)),
+        format!("fn f() -> Int {{ x{} }}\n", "[0]?.y(1)".repeat(n)),
+        format!("fn f() -> Bool {{ a{} }}\n", " && b || c".repeat(n)),
+        format!("fn f() -> Int {{ a{} }}\n", " + /* c */ b // d\n".repeat(n)),
+    ];
+    for text in &cases {
+        let once = vow_fmt::format(text)
+            .unwrap_or_else(|e| panic!("{:?} for {}…", e[0].message, &text[..30]));
+        assert_eq!(vow_fmt::format(&once).unwrap(), once, "{}…", &text[..30]);
+        assert!(parse(&once).errors.is_empty());
+    }
+}
+
+#[test]
+fn width_is_measured_in_chars() {
+    // `  g("é…")` is 97 chars but 187 bytes: it must stay on one line.
+    let arg = format!("\"{}\"", "é".repeat(90));
+    let fits = format!("fn f() -> Int {{ g({arg}) }}\n");
+    let once = vow_fmt::format(&fits).unwrap();
+    assert!(once.contains(&format!("  g({arg})\n")), "{once}");
 }
