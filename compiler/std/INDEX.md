@@ -19,7 +19,7 @@ In scope in every module without an import (design §9, with the additions marke
 | Std types | `Option Result` · + `Duration Instant Uuid Json Level` (prelude effects mention them; §15.1 and §15.4 use `Instant.format_iso`, `Level.Warn`, `Json.String` unimported) |
 | Constructors | `Some None Ok Err` (other variants are used qualified: `Level.Warn`, `Json.String(s)`) |
 | Effects | `Fail` (compiler-known) `Console Clock Random Env Log Task` · + `Test` |
-| Functions | `show` · + `expect expect_eq expect_fail expect_fails_with expect_defect expect_snapshot` (they need `Test`, which only `test`/`property` bodies have; elsewhere they are `V3001`) |
+| Functions | `show` · + `expect expect_eq expect_fail expect_fails_with expect_defect expect_output expect_snapshot` (they need `Test`, which only `test`/`property` bodies have; elsewhere they are `V3001`) |
 | Tags (M3) | `sql html url shell` |
 
 Not in the prelude, import them: `import std/retry.{Policy, retry}`, `import std/task.{Timeout, timeout}`,
@@ -276,6 +276,7 @@ effect Test {
   fn record_failure(message: String) -> Unit
   fn failures() -> Int
   fn output(line: String) -> Unit
+  fn output_lines() -> List<String>
   fn snapshot(name: String, rendered: String) -> Unit
 }
 fn expect(cond: Bool) -> Unit ! {Test}
@@ -283,6 +284,7 @@ fn expect_eq<A: Eq + Show>(actual: A, expected: A) -> Unit ! {Test}
 fn expect_fail<T, E: Eq + Show, e>(body: fn() -> T ! {Fail<E> | e}, err: E) -> Unit ! {Test | e}
 fn expect_fails_with<T, E: Show, e>(body: fn() -> T ! {Fail<E> | e}, pred: fn(E) -> Bool) -> Unit ! {Test | e}
 fn expect_defect<T, e>(body: fn() -> T ! e) -> Unit ! {Test | e}    // @external
+fn expect_output(lines: List<String>) -> Unit ! {Test}
 fn expect_snapshot<A: Show>(name: String, value: A) -> Unit ! {Test}
 ```
 
