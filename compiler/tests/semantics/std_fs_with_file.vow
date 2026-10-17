@@ -1,0 +1,42 @@
+// milestone: M3
+// needs: the `file_buffer`, `file_closing`, `file_read`, `file_write` and `file_contents` externals (std/fs)
+// mode: test
+// covers: WithExpr TryExpr Lambda
+
+import std/fs.{Append, File, Fs, Read, Write}
+import std/path.{Path}
+
+test "with_file writes when the body returns and reads back in chunks" {
+  let log = Path.of("log.txt")
+  with Fs.memory([]) {
+    let r = try {
+      Fs.with_file(log, Write, fn(f) {
+        File.write_chunk(f, String.to_bytes("ab"))
+        File.write_chunk(f, String.to_bytes("cd"))
+      })
+      Fs.with_file(log, Append, fn(f) { File.write_chunk(f, String.to_bytes("e")) })
+      Fs.with_file(log, Read, fn(f) { (File.read_chunk(f, 2), File.read_all(f)) })
+    }
+    expect_eq(r, Ok((String.to_bytes("ab"), String.to_bytes("cde"))))
+  }
+}
+
+error Abort
+
+test "a failing body writes nothing" {
+  let a = Path.of("a.txt")
+  with Fs.memory([(a, String.to_bytes("old"))]) {
+    let r = try {
+      Fs.with_file(a, Write, fn(f) {
+        File.write_chunk(f, String.to_bytes("new"))
+        fail Abort
+      })
+    }
+    expect(r.is_err())
+    expect_eq(try { Fs.read(a) }, Ok(String.to_bytes("old")))
+    expect_fails_with(
+      fn() { Fs.with_file(a, Read, fn(f) { File.write_chunk(f, String.to_bytes("x")) }) },
+      fn(e) { e.reason == "opened for reading" },
+    )
+  }
+}
