@@ -12,7 +12,8 @@ import { TokenSpans, type TokenLine } from "@/components/token-spans";
  * 4. the agent declines the signature change and deletes the call,
  * 5. the signature is unchanged; its `ensures` stays a runtime check (design §7.2).
  *
- * Phones get the same story without sideways scrolling: long lines wrap with a hanging
+ * A narrow window (phones, and the 1024px two-column layout) tells the same story without
+ * sideways scrolling: long lines wrap with a hanging
  * indent, margin notes become gutter marks plus a ticker in the status bar, and the seal
  * stamps the status bar instead of overhanging the window.
  */
@@ -148,7 +149,7 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
   const tickerLine = rows.findLastIndex((r, i) => NOTES[i] && r.complete);
 
   return (
-    <div ref={root} className="relative">
+    <div ref={root} className="@container relative">
       <div
         className="overflow-hidden rounded-2xl border border-line bg-code shadow-[0_1px_0_oklch(1_0_0/0.04)_inset,0_30px_80px_-30px_oklch(0.2_0.02_255/0.35)]"
         // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- animated composite figure; an <img> can't hold it
@@ -167,9 +168,9 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
 
         <pre
           aria-hidden
-          className="overflow-x-auto py-4 font-mono text-[12px] leading-[1.75] sm:text-[12.25px]"
+          className="overflow-x-auto py-4 font-mono text-[12px] leading-[1.75] @min-[38rem]:text-[12.25px]"
         >
-          <code className="grid content-start sm:min-w-max">
+          <code className="grid content-start @min-[38rem]:min-w-max">
             {rows.map((r, i) => {
               if (i === BAD_LINE && removed) return null;
               const visible = r.started;
@@ -181,11 +182,11 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
               return (
                 <span
                   key={i}
-                  className={`grid grid-cols-[2rem_minmax(0,1fr)] transition-colors duration-300 sm:grid-cols-[2.25rem_1fr_7.5rem] ${
+                  className={`grid grid-cols-[2rem_minmax(0,1fr)] transition-colors duration-300 @min-[38rem]:grid-cols-[2.25rem_1fr_7.5rem] ${
                     bad ? "bg-fail-wash" : proved ? "bg-ok-wash" : ""
                   } ${visible ? "" : "invisible"}`}
                 >
-                  <span className="relative pr-2.5 text-right text-fg-faint tabular-nums select-none sm:pr-3">
+                  <span className="relative pr-2.5 text-right text-fg-faint tabular-nums select-none @min-[38rem]:pr-3">
                     {showNote || proved ? (
                       <GutterMark kind={proved ? "ok" : (note?.kind ?? "ok")} />
                     ) : null}
@@ -193,7 +194,7 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
                   </span>
                   {/* The invisible full line reserves the final height, so wrapped lines never
                       push the window taller while the agent types. */}
-                  <span className="grid pr-3 sm:pr-4">
+                  <span className="grid pr-3 @min-[38rem]:pr-2">
                     <span className={`invisible col-start-1 row-start-1 ${LINE}`}>
                       <TokenSpans line={r.line} />
                     </span>
@@ -202,7 +203,7 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
                       {cursorLine === i && !done ? <Caret /> : null}
                     </span>
                   </span>
-                  <span className="hidden pr-4 sm:block">
+                  <span className="hidden pr-4 @min-[38rem]:block">
                     {proved ? (
                       <MarginNote note={{ kind: "ok", text: "runtime check" }} />
                     ) : showNote ? (
@@ -236,9 +237,9 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
           onReplay={done ? play : undefined}
         />
       </div>
-      {/* The compiler's seal lands on the window's empty corner (on phones, in the status bar). */}
+      {/* The seal lands on the window's empty corner (in a narrow window, in the status bar). */}
       <Seal
-        className={`pointer-events-none absolute -top-10 -right-3 hidden size-[6.5rem] drop-shadow-[0_6px_10px_oklch(0.45_0.12_70/0.35)] transition-[opacity,transform] sm:block lg:-right-7 ${
+        className={`pointer-events-none absolute -top-10 -right-3 hidden size-[6.5rem] drop-shadow-[0_6px_10px_oklch(0.45_0.12_70/0.35)] transition-[opacity,transform] @min-[38rem]:block lg:-right-7 ${
           done
             ? "rotate-[-14deg] scale-100 opacity-100 duration-[420ms] ease-[var(--ease-out)]"
             : "rotate-[-30deg] scale-[1.6] opacity-0 duration-0"
@@ -248,17 +249,17 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
   );
 }
 
-/** Wrap with a hanging indent on phones; one unbroken line from `sm` up. */
+/** In a narrow window, wrap with a hanging indent; from 38rem up, one unbroken line. */
 const LINE =
-  "whitespace-pre-wrap pl-[2ch] -indent-[2ch] [overflow-wrap:anywhere] sm:whitespace-pre sm:pl-0 sm:indent-0";
+  "whitespace-pre-wrap pl-[2ch] -indent-[2ch] [overflow-wrap:anywhere] @min-[38rem]:whitespace-pre @min-[38rem]:pl-0 @min-[38rem]:indent-0";
 
-/** On phones the margin notes are hidden; a colored tick in the gutter stands in for them. */
+/** A narrow window has no margin for notes; a colored tick in the gutter stands in for them. */
 function GutterMark({ kind }: { kind: Note["kind"] }) {
   const tone = kind === "fail" ? "bg-fail" : kind === "seal" ? "bg-seal" : "bg-ok";
   return (
     <span
       aria-hidden
-      className={`absolute inset-y-[0.35em] left-0 w-[3px] rounded-r-full sm:hidden motion-safe:animate-[note-in_260ms_var(--ease-out)_both] ${tone}`}
+      className={`absolute inset-y-[0.35em] left-0 w-[3px] rounded-r-full @min-[38rem]:hidden motion-safe:animate-[note-in_260ms_var(--ease-out)_both] ${tone}`}
     />
   );
 }
@@ -320,7 +321,7 @@ function Cross() {
 
 function Diagnostic() {
   return (
-    <div className="border-t border-line px-4 py-3.5 font-mono text-[11.5px] leading-relaxed sm:px-5">
+    <div className="border-t border-line px-4 py-3.5 font-mono text-[11.5px] leading-relaxed @min-[38rem]:px-5">
       <p className="text-fg">
         <span className="font-semibold text-fail">error V3001</span>{" "}
         <span className="text-fg-muted">src/users.vow:12:11</span>
@@ -360,7 +361,7 @@ function StatusBar({
   onReplay,
 }: {
   phase: Phase;
-  /** phones only: the latest margin note, which has no margin to sit in */
+  /** narrow window only: the latest margin note, which has no margin to sit in */
   ticker?: { line: number; note: Note };
   onReplay?: () => void;
 }) {
@@ -370,15 +371,15 @@ function StatusBar({
     <div className="flex min-h-10 items-center justify-between gap-3 border-t border-line bg-bg-sunk/60 px-4 font-mono text-[11.5px]">
       <span className="flex min-w-0 items-center gap-2" aria-live="polite">
         {kept ? (
-          <Seal className="-my-2 -ml-1 size-8 shrink-0 motion-reduce:rotate-[-14deg] motion-safe:animate-[stamp_420ms_var(--ease-out)_both] sm:hidden" />
+          <Seal className="-my-2 -ml-1 size-8 shrink-0 motion-reduce:rotate-[-14deg] motion-safe:animate-[stamp_420ms_var(--ease-out)_both] @min-[38rem]:hidden" />
         ) : null}
         <span
           aria-hidden
-          className={`size-1.5 shrink-0 rounded-full ${kept ? "bg-ok max-sm:hidden" : phase === "caught" ? "bg-fail" : "bg-seal motion-safe:animate-pulse"}`}
+          className={`size-1.5 shrink-0 rounded-full ${kept ? "bg-ok @max-[38rem]:hidden" : phase === "caught" ? "bg-fail" : "bg-seal motion-safe:animate-pulse"}`}
         />
         <span
           key={phase}
-          className={`${s.tone} truncate motion-safe:animate-[note-in_220ms_var(--ease-out)_both] ${ticker ? "max-sm:hidden" : ""}`}
+          className={`${s.tone} truncate motion-safe:animate-[note-in_220ms_var(--ease-out)_both] ${ticker ? "@max-[38rem]:hidden" : ""}`}
         >
           {s.text}
         </span>
@@ -386,7 +387,7 @@ function StatusBar({
           <span
             key={ticker.line}
             aria-hidden
-            className={`truncate motion-safe:animate-[note-in_220ms_var(--ease-out)_both] sm:hidden ${
+            className={`truncate motion-safe:animate-[note-in_220ms_var(--ease-out)_both] @min-[38rem]:hidden ${
               ticker.note.kind === "fail"
                 ? "text-fail"
                 : ticker.note.kind === "seal"
