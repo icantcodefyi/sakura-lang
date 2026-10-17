@@ -1032,8 +1032,10 @@ dependencies = [
  "clap",
  "sakura_analysis",
  "sakura_diagnostics",
+ "sakura_hir",
  "sakura_lsp",
  "sakura_mcp",
+ "sakura_types",
  "serde_json",
 ]
 

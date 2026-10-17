@@ -13,6 +13,8 @@ use sakura_diagnostics::{
     summary_record,
 };
 
+mod audit;
+mod doc;
 mod fix;
 mod new;
 mod testing;
@@ -129,6 +131,20 @@ enum Command {
         check: bool,
         paths: Vec<PathBuf>,
     },
+    /// Report trust, totality, refinement and external/resource sites.
+    Audit {
+        #[arg(long)]
+        json: bool,
+        paths: Vec<PathBuf>,
+    },
+    /// Offline documentation and type-pattern search.
+    Doc {
+        #[arg(long)]
+        json: bool,
+        #[arg(long)]
+        search: Option<String>,
+        symbol: Option<String>,
+    },
     /// Explain a diagnostic code: rationale, causes, repairs.
     Explain { code: String },
     /// Print the language guide for agents (`docs/llms.txt`, matched to this compiler).
@@ -181,6 +197,8 @@ fn main() -> ExitCode {
         Command::Check { json: true, .. }
             | Command::Build { json: true, .. }
             | Command::Test { json: true, .. }
+            | Command::Audit { json: true, .. }
+            | Command::Doc { json: true, .. }
     );
     // A compiler bug must still produce a diagnostic (and valid JSON Lines), never a bare panic.
     std::panic::catch_unwind(move || dispatch(cli.command)).unwrap_or_else(|panic| {
@@ -273,6 +291,12 @@ fn dispatch(command: Command) -> ExitCode {
             }
         }
         Command::Fmt { check, paths } => fmt(check, &paths),
+        Command::Audit { json, paths } => audit::audit(json, &paths),
+        Command::Doc {
+            json,
+            search,
+            symbol,
+        } => doc::doc(json, search.as_deref(), symbol.as_deref()),
         Command::Explain { code } => explain(&code),
         Command::Prompt { budget } => {
             print!("{}", prompt(budget));
