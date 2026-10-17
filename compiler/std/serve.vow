@@ -1,7 +1,7 @@
 // HTTP servers (design §10.2, §10.4, M3). `listen` runs a router until the process stops;
 // each request runs in its own task with the handlers installed around `listen`, and a
 // handler's defect becomes a 500 with a redacted report, never a crashed server.
-// needs M3: the `serve_host` adapter in runtime/js and `[permissions] net` scoping.
+// needs M3: `[permissions] net` scoping of the address.
 
 import std/request.{Get, Request}
 import std/response.{Response}
@@ -25,8 +25,16 @@ pub fn of(host: String, port: Int) -> Address
 }
 
 /// Listens on the host network, within the manifest's `net` list.
-@external(js, "vow_runtime", "serve_host")
-pub fn host() -> Handler<Serve>
+pub fn host() -> Handler<Serve> {
+  handler Serve {
+    fn listen(router, addr) { serve_listen(addr, fn(req) { Router.handle(router, req) }) }
+  }
+}
+
+/// Serves until the process stops, each request in its own task; a failure or defect in
+/// `handle` becomes a 500 and the server keeps running.
+@external(js, "vow_runtime", "serve_listen")
+fn serve_listen<e>(addr: Address, handle: fn(Request) -> Response ! e) -> Never ! {Fail<ServeError> | e}
 
 /// Test handler: `listen` answers each of `requests` in order, writes
 /// `"<METHOD> <path> -> <status> <body>"` to the test output, then fails with
