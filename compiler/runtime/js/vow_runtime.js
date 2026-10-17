@@ -533,18 +533,18 @@ function showIn(v, h, env) {
   if (v instanceof List) {
     const eh = h && h[0] === "L" ? h[1] : null;
     const parts = [];
-    for (let i = 0; i < v.n; i++) parts.push(sub(v.a[i], eh));
+    for (const x of items(v)) parts.push(sub(x, eh));
     return `[${parts.join(", ")}]`;
   }
   if (v instanceof VMap) {
     const [kh, vh] = h && h[0] === "M" ? [h[1], h[2]] : [null, null];
     const parts = [];
-    for (const [k, x] of v.m.values()) parts.push(`(${sub(k, kh)}, ${sub(x, vh)})`);
+    for (const [k, x] of entries(v)) parts.push(`(${sub(k, kh)}, ${sub(x, vh)})`);
     return `Map.of([${parts.join(", ")}])`;
   }
   if (v instanceof VSet) {
     const eh = h && h[0] === "E" ? h[1] : null;
-    return `Set.of([${[...v.m.values()].map((x) => sub(x, eh)).join(", ")}])`;
+    return `Set.of([${entries(v).map((x) => sub(x, eh)).join(", ")}])`;
   }
   if (v instanceof Uint8Array) return `Bytes.of([${v.join(", ")}])`;
   if (v instanceof Handler) return `<handler ${v.e}>`;
@@ -635,17 +635,19 @@ export function eq(a, b) {
       for (let i = 0; i < x.length; i++) todo.push(x[i], y[i]);
     } else if (x instanceof List) {
       if (x.n !== y.n) return false;
-      for (let i = 0; i < x.n; i++) todo.push(x.a[i], y.a[i]);
+      const a = items(x);
+      const b = items(y);
+      for (let i = 0; i < a.length; i++) todo.push(a[i], b[i]);
     } else if (x instanceof VMap) {
-      if (x.m.size !== y.m.size) return false;
-      for (const [key, [, v]] of x.m) {
-        const e = y.m.get(key);
+      if (x.size !== y.size) return false;
+      for (const [k, v] of entries(x)) {
+        const e = mapFind(y, k);
         if (e === undefined) return false;
         todo.push(v, e[1]);
       }
     } else if (x instanceof VSet) {
-      if (x.m.size !== y.m.size) return false;
-      for (const key of x.m.keys()) if (!y.m.has(key)) return false;
+      if (x.size !== y.size) return false;
+      for (const e of entries(x)) if (!set_contains(y, e)) return false;
     } else if (x instanceof Uint8Array) {
       if (x.length !== y.length) return false;
       for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return false;
@@ -678,7 +680,7 @@ export function cmp(a, b) {
       return 0;
   }
   if (Array.isArray(a)) return cmpSeq(a, a.length, b, b.length);
-  if (a instanceof List) return cmpSeq(a.a, a.n, b.a, b.n);
+  if (a instanceof List) return cmpSeq(items(a), a.n, items(b), b.n);
   if (a instanceof Uint8Array) return cmpSeq(a, a.length, b, b.length);
   if (a instanceof Variant) {
     if (a.tag !== b.tag) return a.tag < b.tag ? -1 : 1;
@@ -740,7 +742,7 @@ function ser(v) {
       return "u";
   }
   if (Array.isArray(v)) return `(${v.map(ser).join(",")})`;
-  if (v instanceof List) return `[${v.a.slice(0, v.n).map(ser).join(",")}]`;
+  if (v instanceof List) return `[${items(v).map(ser).join(",")}]`;
   if (v instanceof Uint8Array) return `b${v.join(".")}`;
   if (v instanceof Variant) return `${v.tag}(${v.fields.map(ser).join(",")})`;
   if (v.$t !== undefined) return `{${v.$t.props.map((p) => ser(v[p])).join(",")}}`;
@@ -748,25 +750,121 @@ function ser(v) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// List: elements a[0..n). Versions share the array; push/concat on the newest version append
-// in place (amortized O(1)), on an older version copy. Semantics stay persistent.
+// List: a persistent vector (design §13.4): a 32-way trie of full leaves plus a tail of up to 32
+// elements. `get` and `push` are O(log32 n). The tail array may be longer than this version's
+// `tl`: a push onto the newest version appends to the shared tail in place (amortized O(1) for
+// loops), any other push copies at most 32 elements. Trie nodes are never mutated.
 
 export class List {
-  constructor(a, n) {
-    this.a = a;
-    this.n = n;
+  constructor(n, shift, root, tail, tl) {
+    this.n = n; // length
+    this.shift = shift; // level of `root`'s children (5 per level; leaves are level 0)
+    this.root = root; // trie of the first n - tl elements, null when there are none
+    this.tail = tail; // the last `tl` elements are tail[0..tl)
+    this.tl = tl;
   }
 }
 
-/** A list literal; takes ownership of `arr`. */
+const EMPTY_LIST = new List(0, 5, null, [], 0);
+
+/** A list of the elements of `arr`, built bottom-up in O(n); `arr` is not retained. */
 export function list(arr) {
-  return new List(arr, arr.length);
+  const n = arr.length;
+  if (n === 0) return EMPTY_LIST;
+  const tl = n % 32 === 0 ? 32 : n % 32;
+  const body = n - tl;
+  let level = [];
+  for (let i = 0; i < body; i += 32) level.push(arr.slice(i, i + 32));
+  let shift = 5;
+  while (level.length > 32) {
+    const up = [];
+    for (let i = 0; i < level.length; i += 32) up.push(level.slice(i, i + 32));
+    level = up;
+    shift += 5;
+  }
+  return new List(n, shift, level.length === 0 ? null : level, arr.slice(body), tl);
 }
 
-const EMPTY_LIST = list([]);
+/** The elements as a fresh array (also for hosts and tests). */
+export function toArray(xs) {
+  return items(xs);
+}
 
 function items(xs) {
-  return xs.n === xs.a.length ? xs.a : xs.a.slice(0, xs.n);
+  const out = new Array(xs.n);
+  let k = 0;
+  const walk = (node, level) => {
+    if (level === 0) {
+      for (let i = 0; i < node.length; i++) out[k++] = node[i];
+    } else {
+      for (let i = 0; i < node.length; i++) walk(node[i], level - 5);
+    }
+  };
+  if (xs.root !== null) walk(xs.root, xs.shift);
+  for (let i = 0; i < xs.tl; i++) out[k++] = xs.tail[i];
+  return out;
+}
+
+function at(xs, i) {
+  const off = xs.n - xs.tl;
+  if (i >= off) return xs.tail[i - off];
+  let node = xs.root;
+  for (let level = xs.shift; level > 0; level -= 5) node = node[(i >>> level) & 31];
+  return node[i & 31];
+}
+
+function push(xs, x) {
+  const { n, tl } = xs;
+  if (tl < 32) {
+    if (xs.tail.length === tl) {
+      xs.tail.push(x);
+      return new List(n + 1, xs.shift, xs.root, xs.tail, tl + 1);
+    }
+    const t = xs.tail.slice(0, tl);
+    t.push(x);
+    return new List(n + 1, xs.shift, xs.root, t, tl + 1);
+  }
+  // The full tail becomes a leaf of the trie.
+  const off = n - tl;
+  let { root, shift } = xs;
+  if (root === null) {
+    root = [xs.tail];
+  } else if (off >>> 5 >= 1 << shift) {
+    root = [root, path(shift, xs.tail)];
+    shift += 5;
+  } else {
+    root = pushLeaf(root, shift, off, xs.tail);
+  }
+  return new List(n + 1, shift, root, [x], 1);
+}
+
+function path(level, leaf) {
+  return level === 0 ? leaf : [path(level - 5, leaf)];
+}
+
+function pushLeaf(node, level, off, leaf) {
+  const copy = node.slice();
+  const i = (off >>> level) & 31;
+  if (level === 5) copy[i] = leaf;
+  else copy[i] = i < node.length ? pushLeaf(node[i], level - 5, off, leaf) : path(level - 5, leaf);
+  return copy;
+}
+
+/** A copy of `xs` with element `i` (in range) replaced by `x`. */
+function setAt(xs, i, x) {
+  const off = xs.n - xs.tl;
+  if (i >= off) {
+    const t = xs.tail.slice(0, xs.tl);
+    t[i - off] = x;
+    return new List(xs.n, xs.shift, xs.root, t, xs.tl);
+  }
+  const go = (node, level) => {
+    const copy = node.slice();
+    const j = (i >>> level) & 31;
+    copy[j] = level === 0 ? x : go(node[j], level - 5);
+    return copy;
+  };
+  return new List(xs.n, xs.shift, go(xs.root, xs.shift), xs.tail, xs.tl);
 }
 
 export function list_empty() {
@@ -776,29 +874,21 @@ export function list_len(xs) {
   return xs.n;
 }
 export function list_get(xs, i) {
-  return i >= 0 && i < xs.n ? Some(xs.a[i]) : None;
+  return i >= 0 && i < xs.n ? Some(at(xs, i)) : None;
 }
 /** Unchecked index for compiler-generated loops. */
 export function list_at(xs, i) {
-  return xs.a[i];
+  return at(xs, i);
 }
 export function list_push(xs, x) {
-  if (xs.n === xs.a.length) {
-    xs.a.push(x);
-    return new List(xs.a, xs.n + 1);
-  }
-  const a = xs.a.slice(0, xs.n);
-  a.push(x);
-  return list(a);
+  return push(xs, x);
 }
 export function list_concat(xs, ys) {
   if (ys.n === 0) return xs;
   if (xs.n === 0) return ys;
-  if (xs.n === xs.a.length) {
-    for (let i = 0; i < ys.n; i++) xs.a.push(ys.a[i]);
-    return new List(xs.a, xs.n + ys.n);
-  }
-  return list(xs.a.slice(0, xs.n).concat(items(ys)));
+  let out = xs;
+  for (const y of items(ys)) out = push(out, y);
+  return out;
 }
 export function list_range(start, end) {
   const a = [];
@@ -806,55 +896,56 @@ export function list_range(start, end) {
   return list(a);
 }
 export function list_reverse(xs) {
-  return list(items(xs).slice().reverse());
+  return list(items(xs).reverse());
 }
 export function list_join(xs, sep) {
   return items(xs).join(sep);
 }
 export function list_sum(xs) {
   let s = 0;
-  for (let i = 0; i < xs.n; i++) s = add(s, xs.a[i]);
+  for (const x of items(xs)) s = add(s, x);
   return s;
 }
 export function list_first(xs) {
-  return xs.n > 0 ? Some(xs.a[0]) : None;
+  return xs.n > 0 ? Some(at(xs, 0)) : None;
 }
 export function list_last(xs) {
-  return xs.n > 0 ? Some(xs.a[xs.n - 1]) : None;
+  return xs.n > 0 ? Some(at(xs, xs.n - 1)) : None;
 }
 export function list_contains(xs, x) {
-  for (let i = 0; i < xs.n; i++) if (eq(xs.a[i], x)) return true;
+  for (const y of items(xs)) if (eq(y, x)) return true;
   return false;
 }
 /** Clamped, never defects. */
 export function list_slice(xs, start, end) {
   const s = Math.max(0, Math.min(start, xs.n));
   const e = Math.max(s, Math.min(end, xs.n));
-  return list(xs.a.slice(s, e));
+  if (s === 0 && e === xs.n) return xs;
+  return list(items(xs).slice(s, e));
 }
 export function list_sort(xs) {
-  return list(items(xs).slice().sort(cmp));
+  return list(items(xs).sort(cmp));
 }
 export function list_zip(xs, ys) {
-  const n = Math.min(xs.n, ys.n);
-  const a = new Array(n);
-  for (let i = 0; i < n; i++) a[i] = [xs.a[i], ys.a[i]];
-  return list(a);
+  const a = items(xs);
+  const b = items(ys);
+  const n = Math.min(a.length, b.length);
+  const out = new Array(n);
+  for (let i = 0; i < n; i++) out[i] = [a[i], b[i]];
+  return list(out);
 }
 export function list_enumerate(xs) {
-  const a = new Array(xs.n);
-  for (let i = 0; i < xs.n; i++) a[i] = [i, xs.a[i]];
-  return list(a);
+  return list(items(xs).map((x, i) => [i, x]));
 }
 /** First occurrences, in order. */
 export function list_unique(xs) {
   const seen = new Set();
   const a = [];
-  for (let i = 0; i < xs.n; i++) {
-    const key = keyOf(xs.a[i]);
+  for (const x of items(xs)) {
+    const key = keyOf(x);
     if (!seen.has(key)) {
       seen.add(key);
-      a.push(xs.a[i]);
+      a.push(x);
     }
   }
   return list(a);
@@ -865,6 +956,7 @@ export function list_unique(xs) {
  * returns `undefined` to continue or `{ v }` to stop early with `v`; `end()` gives the result.
  */
 function iterate(xs, ctx, k, each, step, end) {
+  const a = items(xs);
   let i = 0;
   const next = (r) => {
     const stop = step(r, i);
@@ -872,7 +964,7 @@ function iterate(xs, ctx, k, each, step, end) {
     i++;
     return loop();
   };
-  const loop = () => (i < xs.n ? each(xs.a[i], ctx, next) : ret(k, end()));
+  const loop = () => (i < a.length ? each(a[i], ctx, next) : ret(k, end()));
   return loop();
 }
 
@@ -881,8 +973,9 @@ export function list_map(xs, f, ctx, k) {
   return iterate(xs, ctx, k, f, (r, i) => void (out[i] = r), () => list(out));
 }
 export function list_filter(xs, f, ctx, k) {
+  const a = items(xs);
   const out = [];
-  return iterate(xs, ctx, k, f, (keep, i) => void (keep && out.push(xs.a[i])), () => list(out));
+  return iterate(xs, ctx, k, f, (keep, i) => void (keep && out.push(a[i])), () => list(out));
 }
 export function list_fold(xs, init, f, ctx, k) {
   let acc = init;
@@ -890,7 +983,8 @@ export function list_fold(xs, init, f, ctx, k) {
   return iterate(xs, ctx, k, each, (r) => void (acc = r), () => acc);
 }
 export function list_find(xs, f, ctx, k) {
-  return iterate(xs, ctx, k, f, (hit, i) => (hit ? { v: Some(xs.a[i]) } : undefined), () => None);
+  const a = items(xs);
+  return iterate(xs, ctx, k, f, (hit, i) => (hit ? { v: Some(a[i]) } : undefined), () => None);
 }
 export function list_all(xs, f, ctx, k) {
   return iterate(xs, ctx, k, f, (ok) => (ok ? undefined : { v: false }), () => true);
@@ -901,83 +995,259 @@ export function list_any(xs, f, ctx, k) {
 export function list_flat_map(xs, f, ctx, k) {
   const out = [];
   const step = (ys) => {
-    for (let i = 0; i < ys.n; i++) out.push(ys.a[i]);
+    for (const y of items(ys)) out.push(y);
   };
   return iterate(xs, ctx, k, f, step, () => list(out));
 }
 export function list_sort_by(xs, key, ctx, k) {
-  const keys = new Array(xs.n);
+  const a = items(xs);
+  const keys = new Array(a.length);
   const sorted = () => {
     const idx = keys.map((_, i) => i).sort((i, j) => cmp(keys[i], keys[j]) || i - j);
-    return list(idx.map((i) => xs.a[i]));
+    return list(idx.map((i) => a[i]));
   };
   return iterate(xs, ctx, k, key, (r, i) => void (keys[i] = r), sorted);
 }
 
 // ---------------------------------------------------------------------------------------------
-// Map and Set: insertion-ordered; m is a JS Map from keyOf(k) to [k, v] (Set: to the value).
-// ponytail: every update copies the JS Map (O(n)); switch to an ordered HAMT when map-building
-// loops show up in benchmarks.
+// Map and Set (design §13.4): insertion-ordered and persistent. `log` is a List of entries in
+// insertion order (`[k, v]` for maps, the element for sets; removed entries are HOLE); `idx` is a
+// hash array mapped trie from keyOf(key) to the entry's position in `log`. Updating an existing
+// key keeps its position. Removals leave holes until they outnumber live entries, then the log
+// is compacted (amortized O(1)). ponytail: composite keys hash their keyOf serialization.
+
+const HOLE = Object.freeze({});
 
 export class VMap {
-  constructor(m) {
-    this.m = m;
+  constructor(log, idx, size) {
+    this.log = log;
+    this.idx = idx;
+    this.size = size;
   }
 }
 
 export class VSet {
-  constructor(m) {
-    this.m = m;
+  constructor(log, idx, size) {
+    this.log = log;
+    this.idx = idx;
+    this.size = size;
   }
 }
 
-const EMPTY_MAP = new VMap(new Map());
-const EMPTY_SET = new VSet(new Map());
+class HLeaf {
+  constructor(h, k, s) {
+    this.h = h; // hash
+    this.k = k; // keyOf(key)
+    this.s = s; // position in the log
+  }
+}
+
+class HNode {
+  constructor(bm, a) {
+    this.bm = bm; // bitmap of occupied 5-bit slots
+    this.a = a; // children, dense
+  }
+}
+
+/** Leaves whose keys share one full hash. */
+class HColl {
+  constructor(h, ls) {
+    this.h = h;
+    this.ls = ls;
+  }
+}
+
+/** keyOf equality: SameValueZero, like JS Map keys. */
+function same(a, b) {
+  return a === b || (a !== a && b !== b);
+}
+
+function hashOf(key) {
+  switch (typeof key) {
+    case "string": {
+      let h = 0x811c9dc5;
+      for (let i = 0; i < key.length; i++) h = Math.imul(h ^ key.charCodeAt(i), 0x01000193);
+      return h | 0;
+    }
+    case "number": {
+      if (!Number.isSafeInteger(key)) return hashOf(String(key));
+      let h = (key | 0) ^ Math.floor(key / 4294967296);
+      h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
+      h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+      return (h ^ (h >>> 16)) | 0;
+    }
+    case "boolean":
+      return key ? 1231 : 1237;
+  }
+  return 0;
+}
+
+function popcount(x) {
+  x -= (x >>> 1) & 0x55555555;
+  x = (x & 0x33333333) + ((x >>> 2) & 0x33333333);
+  x = (x + (x >>> 4)) & 0x0f0f0f0f;
+  return Math.imul(x, 0x01010101) >>> 24;
+}
+
+/** The log position of key `k` (hash `h`), or -1. */
+function hget(node, h, k) {
+  let shift = 0;
+  for (;;) {
+    if (node === null) return -1;
+    if (node instanceof HNode) {
+      const bit = 1 << ((h >>> shift) & 31);
+      if ((node.bm & bit) === 0) return -1;
+      node = node.a[popcount(node.bm & (bit - 1))];
+      shift += 5;
+    } else if (node instanceof HLeaf) {
+      return node.h === h && same(node.k, k) ? node.s : -1;
+    } else {
+      if (node.h !== h) return -1;
+      for (const l of node.ls) if (same(l.k, k)) return l.s;
+      return -1;
+    }
+  }
+}
+
+function hset(node, shift, leaf) {
+  if (node === null) return leaf;
+  if (node instanceof HNode) {
+    const bit = 1 << ((leaf.h >>> shift) & 31);
+    const i = popcount(node.bm & (bit - 1));
+    const a = node.a.slice();
+    if (node.bm & bit) {
+      a[i] = hset(a[i], shift + 5, leaf);
+      return new HNode(node.bm, a);
+    }
+    a.splice(i, 0, leaf);
+    return new HNode(node.bm | bit, a);
+  }
+  if (node.h !== leaf.h) return hmerge(node, leaf, shift);
+  if (node instanceof HLeaf) {
+    return same(node.k, leaf.k) ? leaf : new HColl(leaf.h, [node, leaf]);
+  }
+  const ls = node.ls.filter((l) => !same(l.k, leaf.k));
+  ls.push(leaf);
+  return new HColl(leaf.h, ls);
+}
+
+/** A node holding leaves or collision nodes `a` and `b`, whose hashes differ. */
+function hmerge(a, b, shift) {
+  const ia = (a.h >>> shift) & 31;
+  const ib = (b.h >>> shift) & 31;
+  if (ia === ib) return new HNode(1 << ia, [hmerge(a, b, shift + 5)]);
+  return new HNode((1 << ia) | (1 << ib), ia < ib ? [a, b] : [b, a]);
+}
+
+function hdel(node, shift, h, k) {
+  if (node instanceof HLeaf) return node.h === h && same(node.k, k) ? null : node;
+  if (node instanceof HColl) {
+    if (node.h !== h) return node;
+    const ls = node.ls.filter((l) => !same(l.k, k));
+    if (ls.length === node.ls.length) return node;
+    return ls.length === 1 ? ls[0] : new HColl(h, ls);
+  }
+  const bit = 1 << ((h >>> shift) & 31);
+  if ((node.bm & bit) === 0) return node;
+  const i = popcount(node.bm & (bit - 1));
+  const child = hdel(node.a[i], shift + 5, h, k);
+  if (child === node.a[i]) return node;
+  const a = node.a.slice();
+  let bm = node.bm;
+  if (child === null) {
+    a.splice(i, 1);
+    bm &= ~bit;
+  } else {
+    a[i] = child;
+  }
+  if (a.length === 0) return null;
+  // A lone leaf moves up a level: lookups compare the full hash at a leaf.
+  if (a.length === 1 && !(a[0] instanceof HNode)) return a[0];
+  return new HNode(bm, a);
+}
+
+/** Insert or replace entry `e` under `key` (= keyOf of its key) in map or set `m` of class `C`. */
+function upsert(C, m, key, e) {
+  const h = hashOf(key);
+  const s = hget(m.idx, h, key);
+  if (s >= 0) return new C(setAt(m.log, s, e), m.idx, m.size);
+  const log = push(m.log, e);
+  return new C(log, hset(m.idx, 0, new HLeaf(h, key, log.n - 1)), m.size + 1);
+}
+
+function without(C, m, key) {
+  const h = hashOf(key);
+  const s = hget(m.idx, h, key);
+  if (s < 0) return m;
+  const log = setAt(m.log, s, HOLE);
+  const size = m.size - 1;
+  const holes = log.n - size;
+  if (holes > 32 && holes > size) {
+    const live = items(log).filter((e) => e !== HOLE);
+    return rebuild(C, live, C === VMap ? (e) => keyOf(e[0]) : keyOf);
+  }
+  return new C(log, hdel(m.idx, 0, h, key), size);
+}
+
+/** A map or set of the distinct-keyed entries `es`, in order. */
+function rebuild(C, es, keyFn) {
+  let idx = null;
+  for (let i = 0; i < es.length; i++) {
+    const key = keyFn(es[i]);
+    idx = hset(idx, 0, new HLeaf(hashOf(key), key, i));
+  }
+  return new C(list(es), idx, es.length);
+}
+
+/** Live entries, in insertion order. */
+function entries(m) {
+  return m.size === m.log.n ? items(m.log) : items(m.log).filter((e) => e !== HOLE);
+}
+
+const EMPTY_MAP = new VMap(EMPTY_LIST, null, 0);
+const EMPTY_SET = new VSet(EMPTY_LIST, null, 0);
 
 export function map_empty() {
   return EMPTY_MAP;
 }
 export function map_of(pairs) {
-  const m = new Map();
-  for (let i = 0; i < pairs.n; i++) {
-    const [k, v] = pairs.a[i];
-    m.set(keyOf(k), [k, v]);
-  }
-  return new VMap(m);
+  let m = EMPTY_MAP;
+  for (const [k, v] of items(pairs)) m = upsert(VMap, m, keyOf(k), [k, v]);
+  return m;
+}
+/** The `[k, v]` entry for `k`, or undefined. */
+function mapFind(m, k) {
+  const key = keyOf(k);
+  const s = hget(m.idx, hashOf(key), key);
+  return s < 0 ? undefined : at(m.log, s);
 }
 export function map_get(m, k) {
-  const e = m.m.get(keyOf(k));
+  const e = mapFind(m, k);
   return e === undefined ? None : Some(e[1]);
 }
 export function map_insert(m, k, v) {
-  const c = new Map(m.m);
-  c.set(keyOf(k), [k, v]);
-  return new VMap(c);
+  return upsert(VMap, m, keyOf(k), [k, v]);
 }
 export function map_remove(m, k) {
-  const key = keyOf(k);
-  if (!m.m.has(key)) return m;
-  const c = new Map(m.m);
-  c.delete(key);
-  return new VMap(c);
+  return without(VMap, m, keyOf(k));
 }
 export function map_contains(m, k) {
-  return m.m.has(keyOf(k));
+  return mapFind(m, k) !== undefined;
 }
 export function map_entries(m) {
-  return list([...m.m.values()].map(([k, v]) => [k, v]));
+  return list(entries(m).map(([k, v]) => [k, v]));
 }
 export function map_keys(m) {
-  return list([...m.m.values()].map(([k]) => k));
+  return list(entries(m).map(([k]) => k));
 }
 export function map_values(m) {
-  return list([...m.m.values()].map(([, v]) => v));
+  return list(entries(m).map(([, v]) => v));
 }
 export function map_len(m) {
-  return m.m.size;
+  return m.size;
 }
 export function map_update(m, k, f, ctx, kont) {
-  const e = m.m.get(keyOf(k));
+  const e = mapFind(m, k);
   return f(e === undefined ? None : Some(e[1]), ctx, (v) => ret(kont, map_insert(m, k, v)));
 }
 
@@ -985,25 +1255,23 @@ export function set_empty() {
   return EMPTY_SET;
 }
 export function set_of(xs) {
-  const m = new Map();
-  for (let i = 0; i < xs.n; i++) {
-    const key = keyOf(xs.a[i]);
-    if (!m.has(key)) m.set(key, xs.a[i]);
-  }
-  return new VSet(m);
+  let s = EMPTY_SET;
+  for (const x of items(xs)) s = set_insert(s, x);
+  return s;
 }
 export function set_insert(s, x) {
   const key = keyOf(x);
-  if (s.m.has(key)) return s;
-  const c = new Map(s.m);
-  c.set(key, x);
-  return new VSet(c);
+  return hget(s.idx, hashOf(key), key) >= 0 ? s : upsert(VSet, s, key, x);
+}
+export function set_remove(s, x) {
+  return without(VSet, s, keyOf(x));
 }
 export function set_contains(s, x) {
-  return s.m.has(keyOf(x));
+  const key = keyOf(x);
+  return hget(s.idx, hashOf(key), key) >= 0;
 }
 export function set_to_list(s) {
-  return list([...s.m.values()]);
+  return list(entries(s));
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1181,16 +1449,17 @@ export function bytes_get(b, i) {
   return i >= 0 && i < b.length ? Some(b[i]) : None;
 }
 export function bytes_from_list(xs) {
-  const b = new Uint8Array(xs.n);
-  for (let i = 0; i < xs.n; i++) {
-    const x = xs.a[i];
+  const a = items(xs);
+  const b = new Uint8Array(a.length);
+  for (let i = 0; i < a.length; i++) {
+    const x = a[i];
     requires(x >= 0 && x <= 255, "Bytes.from_list", "every element in 0..=255");
     b[i] = x;
   }
   return b;
 }
 export function set_len(s) {
-  return s.m.size;
+  return s.size;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1402,9 +1671,9 @@ function jsToJson(v) {
       return variant(J, 3, [v]);
   }
   if (Array.isArray(v)) return variant(J, 4, [list(v.map(jsToJson))]);
-  const m = new Map();
-  for (const [k, x] of Object.entries(v)) m.set(k, [k, jsToJson(x)]);
-  return variant(J, 5, [new VMap(m)]);
+  let m = EMPTY_MAP;
+  for (const [k, x] of Object.entries(v)) m = map_insert(m, k, jsToJson(x));
+  return variant(J, 5, [m]);
 }
 
 /** std/json `Json` (Null | Bool | Number | String | Array | Object) to a plain JS value. */
@@ -1420,7 +1689,7 @@ function jsonToJs(j) {
       return items(j.fields[0]).map(jsonToJs);
     default: {
       const o = {};
-      for (const [k, v] of j.fields[0].m.values()) o[k] = jsonToJs(v);
+      for (const [k, v] of entries(j.fields[0])) o[k] = jsonToJs(v);
       return o;
     }
   }

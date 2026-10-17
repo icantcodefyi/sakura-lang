@@ -200,7 +200,7 @@ test("Eq, Ord and keys are structural", () => {
   assert.equal(rt.cmp("\u{ffff}", "\u{10000}"), -1); // UTF-16 units would say 1
   assert.equal(rt.cmp([1, "b"], [1, "a"]), 1);
   assert.equal(rt.cmp(NaN, 1), 1);
-  assert.deepEqual(rt.list_sort(rt.list([3, 1, 2])).a, [1, 2, 3]);
+  assert.deepEqual(rt.toArray(rt.list_sort(rt.list([3, 1, 2]))), [1, 2, 3]);
   const m = rt.map_insert(rt.map_insert(rt.map_empty(), [1, "a"], "x"), [1, "a"], "y");
   assert.equal(rt.map_len(m), 1);
   assert.deepEqual(rt.map_get(m, [1, "a"]), rt.Some("y"));
@@ -213,19 +213,75 @@ test("List versions stay independent while appends stay in place", () => {
   assert.deepEqual([rt.list_len(a), rt.list_len(b), rt.list_len(c)], [2, 3, 3]);
   assert.deepEqual(rt.list_get(b, 2), rt.Some(3));
   assert.deepEqual(rt.list_get(c, 2), rt.Some(4));
-  assert.ok(a.a === b.a);
+  assert.ok(a.tail === b.tail);
   let xs = rt.list_empty();
   for (let i = 0; i < 1_000_000; i++) xs = rt.list_push(xs, i);
   assert.equal(rt.list_sum(xs), 499999500000);
+});
+
+test("List, Map and Set agree with a model under random persistent updates", () => {
+  let seed = 7;
+  const rand = (n) => {
+    seed = (Math.imul(seed, 1103515245) + 12345) & 0x7fffffff;
+    return seed % n;
+  };
+  // Lists: random pushes onto random earlier versions, spanning several trie levels.
+  const versions = [[rt.list_empty(), []]];
+  for (let i = 0; i < 40_000; i++) {
+    const [xs, model] = versions[rand(versions.length)];
+    const next = [rt.list_push(xs, i), [...model, i]];
+    if (versions.length < 64) versions.push(next);
+    else versions[rand(64)] = next;
+  }
+  for (const [xs, model] of versions) {
+    assert.deepEqual(rt.toArray(xs), model);
+    if (model.length > 0) {
+      const j = rand(model.length);
+      assert.deepEqual(rt.list_get(xs, j), rt.Some(model[j]));
+    }
+  }
+  const big = rt.list(Array.from({ length: 70_000 }, (_, i) => i));
+  assert.equal(rt.list_len(rt.list_push(big, 1)), 70_001);
+  assert.deepEqual(rt.list_get(big, 69_999), rt.Some(69_999));
+  assert.deepEqual(rt.toArray(rt.list_slice(big, 33_000, 33_003)), [33_000, 33_001, 33_002]);
+  // Maps: inserts, updates and removals with Int, String and tuple keys, keeping old versions.
+  for (const mk of [(i) => i, (i) => `k${i}`, (i) => [i % 7, `x${i}`]]) {
+    let m = rt.map_empty();
+    let model = new Map();
+    const olds = [];
+    for (let i = 0; i < 6_000; i++) {
+      const k = mk(rand(500));
+      const key = JSON.stringify(k);
+      if (rand(3) === 0) {
+        m = rt.map_remove(m, k);
+        model.delete(key);
+      } else {
+        m = rt.map_insert(m, k, i);
+        model.set(key, [k, i]);
+      }
+      if (i % 1000 === 0) olds.push([m, new Map(model)]);
+    }
+    olds.push([m, model]);
+    for (const [mm, mod] of olds) {
+      assert.equal(rt.map_len(mm), mod.size);
+      assert.deepEqual(rt.toArray(rt.map_entries(mm)), [...mod.values()]);
+      for (const [k, v] of mod.values()) assert.deepEqual(rt.map_get(mm, k), rt.Some(v));
+    }
+  }
+  let s = rt.set_empty();
+  for (let i = 0; i < 5_000; i++) s = rt.set_insert(s, i % 1_000);
+  for (let i = 0; i < 1_000; i += 2) s = rt.set_remove(s, i);
+  assert.equal(rt.set_len(s), 500);
+  assert.deepEqual(rt.toArray(rt.set_to_list(s)).slice(0, 3), [1, 3, 5]);
 });
 
 test("Map and Set keep insertion order", () => {
   let m = rt.map_empty();
   for (const k of ["b", "a", "c"]) m = rt.map_insert(m, k, k.toUpperCase());
   m = rt.map_insert(m, "b", "B2");
-  assert.deepEqual(rt.map_keys(m).a, ["b", "a", "c"]);
-  assert.deepEqual(rt.map_values(rt.map_remove(m, "a")).a, ["B2", "C"]);
-  assert.deepEqual(rt.set_to_list(rt.set_of(rt.list([3, 1, 3]))).a, [3, 1]);
+  assert.deepEqual(rt.toArray(rt.map_keys(m)), ["b", "a", "c"]);
+  assert.deepEqual(rt.toArray(rt.map_values(rt.map_remove(m, "a"))), ["B2", "C"]);
+  assert.deepEqual(rt.toArray(rt.set_to_list(rt.set_of(rt.list([3, 1, 3])))), [3, 1]);
 });
 
 test("CPS list functions handle callbacks and long lists", () => {
@@ -242,7 +298,7 @@ test("String lengths and offsets are UTF-8 bytes", () => {
   assert.equal(rt.string_len("aé€😀"), 1 + 2 + 3 + 4);
   assert.equal(rt.string_slice("aé€", 1, 3), "é");
   assert.throws(() => rt.string_slice("aé", 0, 2), { code: "D031" });
-  assert.deepEqual(rt.string_chars("a😀").a, ["a", "😀"]);
+  assert.deepEqual(rt.toArray(rt.string_chars("a😀")), ["a", "😀"]);
   assert.deepEqual(rt.string_parse_int("-42"), rt.Some(-42));
   assert.deepEqual(rt.string_parse_int("4x"), rt.None);
   assert.deepEqual(rt.string_parse_int("9007199254740993"), rt.None);

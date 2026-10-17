@@ -172,8 +172,8 @@ caller. `std/test`'s `expect_defect` is built on it.
 | record, error tag | instance of an emitted class, fields as own properties in declaration order; the prototype's `$t` comes from `$rt.recordType(name, module, [[field, jsProp, hint]…], isError)` |
 | variant | instance of an emitted `class T extends $rt.Variant` with `{ tag, fields }`; `$t` from `$rt.variantType(name, module, [[ctor, [hints…]]…])`; nullary constructors are frozen singletons |
 | `Option`, `Result` | the runtime's `$rt.Option` / `$rt.Result` variants (`None`/`Some` = tags 0/1, `Ok`/`Err` = 0/1) |
-| `List` | `$rt.List { a, n }`: elements `a[0..n)`. Pushing onto the newest version appends in place; older versions copy, so lists stay persistent. Literals: `$rt.list([…])` |
-| `Map`, `Set` | `$rt.VMap` / `$rt.VSet` over an insertion-ordered JS `Map` keyed by `$rt.keyOf` (structural). ponytail: updates copy, O(n) |
+| `List` | `$rt.List`: a persistent vector, a 32-way trie of full leaves plus a tail of up to 32 elements; `get`/`push`/`set` O(log32 n). A push onto the newest version appends to the shared tail in place. Literals: `$rt.list([…])`; `$rt.toArray(xs)` copies out |
+| `Map`, `Set` | `$rt.VMap` / `$rt.VSet`: an insertion-order log (a `List` of entries, removed ones as holes, compacted when holes outnumber entries) plus a HAMT from `$rt.keyOf(key)` (structural) to the entry's log position. Insert, update, remove and lookup O(log32 n); updating a key keeps its position |
 | closure | JS function with the CPS ABI |
 | `Handler` | `$rt.Handler { e, c, s }`; instances are `{ e, c, s }` |
 | `Secret` | `$rt.Secret` with a private field; `toString`, `toJSON` and `Symbol.toPrimitive` throw; `Show` prints `<secret>` |
@@ -194,6 +194,23 @@ receive the schema as an extra trailing argument (`PrimOp::Schema`).
 distinguishes `Float` from `Int` (`2.0` vs `2`), also through `A: Show`. `Eq` (`$rt.eq`, iterative), `Ord` (`$rt.cmp`) and `Hash` (`$rt.keyOf`) are
 structural over the same representation. Field names that are not safe JS property names
 (`__proto__`) get a `$` suffix in the emitted class; `$t` keeps the Vow name.
+
+Collections, measured with `node runtime/js/bench/collections.js 100000` (node 26, Apple
+silicon, best of 3; ns per operation at n = 100,000):
+
+| Case | Before (copying `Map`, array list) | Persistent HAMT / vector |
+|---|---|---|
+| `List.push`, linear | 20 | 31 |
+| `List.push` onto an older version | 1,486 at n = 20k, O(n) | 51 |
+| `List.get` / loop `list_at` | 11 / 2 | 46 / 4 |
+| `Map.insert`, new Int / String / tuple keys | ~368,000 at n = 20k, O(n) | 1,003 / 965 / 1,660 |
+| `Map.insert`, existing key | ~805,000 at n = 20k | 941 |
+| `Map.get` | 22 | 128 |
+| `Map.remove`, every key | ~366,000 at n = 20k | 1,831 |
+| `Set.insert`, Int | ~376,000 at n = 20k | 663 |
+
+The old maps copied on every update, so 100k inserts took minutes; the "before" column is
+therefore measured at n = 20,000.
 
 ## 8. Builtins
 
