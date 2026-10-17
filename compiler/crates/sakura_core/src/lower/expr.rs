@@ -28,8 +28,9 @@ pub(crate) struct FnLower<'a, 'p> {
     /// Assigned `var`s in scope, carried through join points.
     pub vars: Vec<LocalId>,
     assigned: BTreeSet<LocalId>,
-    /// (break, continue) targets of enclosing loops.
-    loops: Vec<(Label, Label)>,
+    /// (break, continue) targets of enclosing loops, and how many `vars` they carry: a `var`
+    /// declared inside the loop body is not a parameter of either.
+    loops: Vec<(Label, Label, usize)>,
     /// Handler state slots visible in a clause, and the clause's instance.
     state: HashMap<LocalId, u32>,
     inst: Option<Local>,
@@ -1116,15 +1117,15 @@ impl<'a, 'p> FnLower<'a, 'p> {
                 body: fb,
             } => self.for_(*pat, *iterable, *fb),
             hir::Expr::Break => match self.loops.last() {
-                Some(&(brk, _)) => {
-                    let j = self.jump_with(brk, None);
+                Some(&(brk, _, n)) => {
+                    let j = Expr::Jump(brk, self.var_args()[..n].to_vec());
                     self.terminate(j)
                 }
                 None => self.unsupported(e, "`break` outside a loop"),
             },
             hir::Expr::Continue => match self.loops.last() {
-                Some(&(_, cont)) => {
-                    let j = self.jump_with(cont, None);
+                Some(&(_, cont, n)) => {
+                    let j = Expr::Jump(cont, self.var_args()[..n].to_vec());
                     self.terminate(j)
                 }
                 None => self.unsupported(e, "`continue` outside a loop"),
@@ -1630,7 +1631,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
         let entry = self.var_args();
         let code = self.scoped(|s| {
             s.rebind_vars(&hs);
-            s.loops.push((exit, head));
+            s.loops.push((exit, head, s.vars.len()));
             let _ = s.expr(lb);
             s.loops.pop();
             s.jump_with(head, None)
@@ -1751,7 +1752,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
                 });
                 s.blk.join(cont, cs, next);
                 s.bind_pat(pat, x, pat_ty.clone());
-                s.loops.push((exit, cont));
+                s.loops.push((exit, cont, s.vars.len()));
                 let _ = s.expr(fb);
                 s.loops.pop();
                 s.jump_with(cont, None)
