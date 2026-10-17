@@ -5,6 +5,7 @@ import {
   DocsDescription,
   DocsPage,
   DocsTitle,
+  EditOnGitHub,
   MarkdownCopyButton,
   ViewOptionsPopover,
 } from "fumadocs-ui/layouts/docs/page";
@@ -21,9 +22,15 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
 
   const MDX = page.data.body;
   const markdownUrl = getPageMarkdownUrl(page);
+  const githubUrl = `${site.github}/blob/master/website/content/docs/${page.path}`;
 
   return (
-    <DocsPage toc={page.data.toc} full={page.data.full}>
+    // 760px keeps body lines near 75 characters at the 17px prose size.
+    <DocsPage
+      toc={page.data.toc}
+      full={page.data.full}
+      className={page.data.full ? undefined : "max-w-[760px]"}
+    >
       <DocsTitle className="font-display text-[clamp(2rem,3vw,2.5rem)] leading-[1.08] tracking-[-0.03em]">
         {page.data.title}
       </DocsTitle>
@@ -33,12 +40,13 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
         <ViewOptionsPopover
           markdownUrl={markdownUrl}
           pageUrl={new URL(page.url, site.url).toString()}
-          githubUrl={`${site.github}/blob/master/website/content/docs/${page.path}`}
+          githubUrl={githubUrl}
         />
       </div>
       <DocsBody>
         <MDX components={getMDXComponents({ a: createRelativeLink(source, page) })} />
       </DocsBody>
+      <EditOnGitHub href={githubUrl} className="mt-6 self-start" />
     </DocsPage>
   );
 }

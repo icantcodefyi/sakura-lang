@@ -89,7 +89,7 @@
   --secondary-foreground: #ededed;
   --muted: #181818;
   --muted-foreground: #a8a8a8; /* 6.4:1 on card */
-  --accent: color-mix(in oklab, #f386a1 14%, #1e1e1e);
+  --accent: color-mix(in oklab, #e070b0 15%, #1e1e1e); /* plum, not brown: dark pinks drift brown */
   --accent-foreground: #ededed;
   --destructive: #ff8a78;
   --border: #333333;
@@ -108,7 +108,7 @@
   --faint-foreground: #949494; /* 5:1 on card */
   --border-strong: #474747;
   --sakura-text: #f386a1; /* 6.3:1 on card */
-  --sakura-wash: color-mix(in oklab, #f386a1 14%, #1e1e1e);
+  --sakura-wash: color-mix(in oklab, #e070b0 15%, #1e1e1e);
   --fail: #ff8a78;
   --fail-wash: color-mix(in oklab, #ff8a78 13%, transparent);
   --ok: #7fd3b8;
@@ -143,6 +143,11 @@
 }
 #nd-sidebar {
   --color-fd-primary-foreground: var(--sidebar-primary-foreground);
+}
+/* Active page: sakura ink on the blush wash (5:1), plum in dark, instead of a 10% primary tint. */
+#nd-sidebar a[data-active="true"] {
+  background-color: var(--sakura-wash);
+  font-weight: 500;
 }
 
 @theme inline {
@@ -255,8 +260,8 @@
   --tw-prose-hr: var(--border);
   --tw-prose-th-borders: var(--border-strong);
   --tw-prose-td-borders: var(--border);
-  font-size: 1rem;
-  line-height: 1.72;
+  font-size: 1.0625rem;
+  line-height: 1.7;
 }
 
 .prose :where(h1, h2, h3, h4):not(:where(.not-prose *)) {
