@@ -63,18 +63,25 @@ test → core             console → test        clock → duration, instant, i
 random → uuid, int, string, bytes, list       env → map, list
 log → json, test, list, core                  gen → test, random, list, int, string
 retry → duration, int   (+ Clock, Random)     task → duration, list (+ Clock)   [M3]
-graph → map, list
+graph → map, list       untrusted               path → string, list
+url → string, list      cli [M3]                fs → path, untrusted, map [M3]
+request → url, json [M3]                       response → json, untrusted [M3]
+http → request, response, url, duration [M3]  budget [M3]      prompt [M3]
+llm → budget, core, http, prompt, task, untrusted [M3]          sql → fs, path [M3]
 ```
+
+M3 modules type-check today. Their test handlers written in Vow (`Http.scripted`,
+`Budget.limits`, `Cli.of`, `Fs.memory`, `Llm.scripted`) run as soon as the runtime has the
+externals they touch; their host handlers and `Schema` codecs are runtime externals (M3).
 
 ## Planned, not yet in source (design §10, milestone M3)
 
-`std/fs`, `std/http`, `std/router`, `std/html`, `std/sql`, `std/cli`, `std/ai` (`Llm`,
-`Budget`, `Prompt`, `Tool`, `Agent`), `std/decimal`, `std/url`, `std/path`, `Secret.expose`,
-`Untrusted.validate/check/trust`, `Json` `Schema` codecs (declared as externals, need M3),
-`List.par_map` (written as `std/task.par_map` until `Task` runs), `Env.host(scope)`. Their
-signatures are the ones in design §10.2–§10.7. `std/task` declares the external types `Scope`
-and `Fiber<T>` (design §17.28); `Fiber<T>` is the last item of the file because a line ending
-in `>` continues onto the next one (§2.4).
+`std/router`, `std/serve`, `std/html`, `std/tool`, `std/agent`, `std/decimal`, `std/secret`
+(`Secret.expose`), `Untrusted.validate/check/trust` (need the compiler-known `Trust`),
+`Fs.with_file`/`File`, `Http.scoped`/`recording`, `Llm.stream`/`replay`, `Sql.postgres`, the
+`url"…"`/`html"…"` tags, `List.par_map` (written as `std/task.par_map` until `Task` runs),
+`Env.host(scope)`, and `pub opaque` on `Uuid`, `Path`, `Prompt` and `Query` (the parser does
+not accept `opaque` yet). Their signatures are the ones in design §10.2–§10.7.
 
 ## Signatures
 
@@ -585,8 +592,8 @@ fn memory() -> Handler<Sql>    // @external
    §5.9's `retry<T, e>(policy: Retry.Policy, …)` cannot type `retry_on: fn(E) -> Bool`, and
    `Retry.Policy` is not a valid `TypePath` (the qualifier must be a lowercase module). The
    policy type is `Policy<E>` in `std/retry`, plus a `policy(retry_on, max_attempts)` helper.
-4. **`Timeout`** is `std/task.Timeout(limit: Duration)`. §15.10 declares its own `Timeout`
-   and §11.1 lists another in `LlmError`; one name, three tags.
+4. **`Timeout`** is `std/task.Timeout(limit: Duration)`, reused by `LlmError` (resolved,
+   design §17.6).
 5. **`Clock.fixed(at: Instant)`** as in §10.2 (§5.5 passes a string). **`Clock.virtual()`**
    advances on `sleep`, since a handler cannot expose an extra "advance" operation.
 6. **`Test` effect operations** are `record_failure`, `failures`, `output`, `snapshot`; §5.8
@@ -602,3 +609,17 @@ fn memory() -> Handler<Sql>    // @external
    environment until `[permissions]` scoping lands (M3).
 10. **`String.parse_int`/`parse_float`** follow Rust's `str::parse` (a leading `+` is accepted;
     floats accept `NaN`/`inf`), matching the runtime.
+11. **One home module per type in the web and AI surface:** `std/request` (`Request`,
+    `Method`, `BadRequest`), `std/response` (`Response`, `Status`, `HttpError`) and
+    `std/prompt` (`Prompt`, `PromptPart`) are separate from `std/http` and `std/llm`, because
+    `Request.json`/`Response.json`, `Request.post_json`/`Http.post_json` and
+    `Prompt.of`/`Model.of` would otherwise be one name (§4.9). `std/budget` and `std/llm`
+    replace the `std/ai` placeholder.
+12. **`Request.bearer: Option<Secret<String>>`** keeps a credential added by `Http.bearer`
+    out of the `Show`-able headers; the host handler sends it.
+13. **Parameterless `Fs.host()` and `Http.host()`** for the entry point (as item 9);
+    `Fs.memory`'s `root()` is a directory without host access. `Cli.exit` under `Cli.of` is
+    a defect (`D030`). `Llm.scripted` reports undecodable output as `InvalidOutput` with one
+    `Violation` whose `clause` is the decoder's message and `value_summary` its JSON Pointer.
+14. **`Fiber<T>`** is the last item of `std/task`: a line ending in `>` continues (§2.4), so
+    a bodiless generic type followed by another item does not parse.
