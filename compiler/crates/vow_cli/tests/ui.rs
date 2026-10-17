@@ -15,9 +15,46 @@ fn line_col(text: &str, byte: usize) -> String {
     format!("{line}:{col}")
 }
 
+/// `// command: run`: the codes in `vow run`'s terminal diagnostics (`error[V8001]: …`).
+fn run_codes(path: &Path) -> Result<Vec<String>, String> {
+    let dir = path.parent().unwrap();
+    let name = path.file_name().unwrap().to_str().unwrap();
+    let out_dir = std::env::temp_dir().join(format!("vow-ui-{}-{name}", std::process::id()));
+    let out = vow(&["run", name, "--out-dir", out_dir.to_str().unwrap()], dir);
+    if out.timed_out {
+        return Err("`vow run` timed out".into());
+    }
+    let mut codes = Vec::new();
+    for line in out.stderr.lines() {
+        for prefix in ["error[", "warning["] {
+            if let Some(rest) = line.strip_prefix(prefix)
+                && let Some((code, _)) = rest.split_once(']')
+            {
+                codes.push(code.to_owned());
+            }
+        }
+    }
+    Ok(codes)
+}
+
 fn run(path: &Path) -> Result<(), String> {
     let text = std::fs::read_to_string(path).unwrap();
     let d = directives(&text);
+    let mut expected: Vec<&str> = d
+        .get("expect")
+        .map_or(vec![], |e| e.split_whitespace().collect());
+    expected.sort();
+    if d.get("command").map(String::as_str) == Some("run") {
+        let mut actual = run_codes(path)?;
+        actual.sort();
+        return if actual == expected {
+            Ok(())
+        } else {
+            Err(format!(
+                "`vow run`: expected codes {expected:?}, got {actual:?}"
+            ))
+        };
+    }
     let (recs, stdout) = check_never_crashes(path)?;
     let mut actual: Vec<&str> = recs
         .iter()
@@ -25,10 +62,6 @@ fn run(path: &Path) -> Result<(), String> {
         .map(|r| r["code"].as_str().unwrap())
         .collect();
     actual.sort();
-    let mut expected: Vec<&str> = d
-        .get("expect")
-        .map_or(vec![], |e| e.split_whitespace().collect());
-    expected.sort();
     if actual != expected {
         return Err(format!("expected codes {expected:?}, got {actual:?}"));
     }
@@ -68,12 +101,15 @@ fn ui() {
     for path in fixtures("ui") {
         let name = path.file_name().unwrap().to_string_lossy().into_owned();
         let d = directives(&std::fs::read_to_string(&path).unwrap());
-        let result = match skip_reason(&d) {
+        let result = match skip_reason(&d, UI_MILESTONE) {
             Some(why) => {
                 report.skip(&name, why);
                 check_never_crashes(&path).map(|_| ())
             }
-            None => run(&path).inspect(|_| report.pass()),
+            None => {
+                report.settle(&name, &d, run(&path));
+                Ok(())
+            }
         };
         if let Err(e) = result {
             report.fail(&name, e);

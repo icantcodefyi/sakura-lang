@@ -8,9 +8,11 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-/// Fixtures whose `// milestone:` is above this are skipped (and still must not crash `vow
-/// check`). Raised as each milestone's pipeline lands; -1 means no milestone is enforced yet.
-pub const CURRENT_MILESTONE: i8 = -1;
+/// Per suite, fixtures whose `// milestone:` is above these are skipped (and still must not crash
+/// `vow check`). Raised as each milestone's pipeline lands; -1 means none is enforced yet.
+pub const UI_MILESTONE: i8 = 0;
+/// Waits for Core lowering (`vow run` needs it).
+pub const SEMANTICS_MILESTONE: i8 = -1;
 
 /// Every invocation is killed after this; a hang is a test failure, not a stuck CI job.
 pub const TIME_LIMIT: Duration = Duration::from_secs(30);
@@ -56,10 +58,10 @@ pub fn milestone(d: &BTreeMap<String, String>) -> i8 {
         .unwrap_or(0)
 }
 
-/// `Some(reason)` when the fixture is above [`CURRENT_MILESTONE`].
-pub fn skip_reason(d: &BTreeMap<String, String>) -> Option<String> {
+/// `Some(reason)` when the fixture is above the suite's enforced milestone.
+pub fn skip_reason(d: &BTreeMap<String, String>, enforced: i8) -> Option<String> {
     let m = milestone(d);
-    (m > CURRENT_MILESTONE).then(|| {
+    (m > enforced).then(|| {
         let why = d
             .get("needs")
             .map(String::as_str)
@@ -155,6 +157,17 @@ impl Report {
 
     pub fn skip(&mut self, name: &str, why: String) {
         self.skipped.push(format!("{name}: {why}"));
+    }
+
+    /// Records a fixture's result. `// known-bug: <owner request>` fixtures are expected to fail:
+    /// a failure is listed as skipped with the reason, a pass is an error asking to drop the line.
+    pub fn settle(&mut self, name: &str, d: &BTreeMap<String, String>, result: Result<(), String>) {
+        match (d.get("known-bug"), result) {
+            (None, Ok(())) => self.pass(),
+            (None, Err(e)) => self.fail(name, e),
+            (Some(bug), Err(_)) => self.skip(name, format!("known bug: {bug}")),
+            (Some(_), Ok(())) => self.fail(name, "passes now; remove its `// known-bug:` line"),
+        }
     }
 
     pub fn finish(self, suite: &str) {

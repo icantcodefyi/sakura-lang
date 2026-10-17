@@ -50,12 +50,15 @@ fn semantics() {
     for path in fixtures("semantics") {
         let name = path.file_name().unwrap().to_string_lossy().into_owned();
         let d = directives(&std::fs::read_to_string(&path).unwrap());
-        let result = match skip_reason(&d) {
+        let result = match skip_reason(&d, SEMANTICS_MILESTONE) {
             Some(why) => {
                 report.skip(&name, why);
                 check_never_crashes(&path).map(|_| ())
             }
-            None => run(&path, &d).inspect(|_| report.pass()),
+            None => {
+                report.settle(&name, &d, run(&path, &d));
+                Ok(())
+            }
         };
         if let Err(e) = result {
             report.fail(&name, e);
