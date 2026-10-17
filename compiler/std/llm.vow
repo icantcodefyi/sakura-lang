@@ -1,8 +1,8 @@
 // Typed LLM calls as an effect (design §10.7, §11.1, M3). `Llm.generate` decodes the output
 // as `Json.decode` would, so every refinement of `T` is checked. Schema-valid output is not
 // truth: check what matters before acting on it.
-// needs M3: `@llm` desugaring, `Schema` codecs and the `llm_anthropic` adapter in
-// runtime/js, `Llm.stream`, `Llm.replay(path)`.
+// needs M3: `@llm` desugaring, the `llm_anthropic` adapter in runtime/js (all four
+// operations), `Llm.replay(path)`.
 
 import std/budget.{Budget}
 import std/core.{Violation}
@@ -31,9 +31,34 @@ pub error ProviderError(status: Int)
 /// `RateLimited` is `std/http.RateLimited` and `Timeout` is `std/task.Timeout` (§5.9).
 pub type LlmError = Refused | InvalidOutput | Truncated | RateLimited | Timeout | ProviderError
 
+/// What the provider sees of a tool: `schema` is the JSON Schema of its arguments.
+pub type ToolSpec = { name: String, description: String, schema: Json }
+
+/// A call the model asked for; `id` pairs it with its result.
+pub type ToolCall = { id: String, name: String, input: Json }
+
+pub type ToolResult = { id: String, output: Json }
+
+/// The conversation after the user prompt, in order: the model's calls, then their results.
+pub type Turn = Asked(List<ToolCall>) | Answered(List<ToolResult>)
+
+/// One model turn of an agent loop: the final output, or tool calls to run first.
+pub type Step<T> = Answer(T) | Use(List<ToolCall>)
+
+/// An unfinished call: the output text so far (`stream`), and in an agent loop the number of
+/// steps taken and every tool call made. `T` is the final output type.
+pub type Partial<T> = { text: String, step: Int, calls: List<ToolCall> }
+
 pub effect Llm {
   fn generate<T: Schema>(req: Request<T>) -> T ! {Fail<LlmError>}
   fn generate_text(req: Request<String>) -> Untrusted<String> ! {Fail<LlmError>}
+  /// Like `generate`, calling `on_partial` as output arrives.
+  fn stream<T: Schema, e>(req: Request<T>, on_partial: fn(Partial<T>) -> Unit ! e) -> T
+    ! {Fail<LlmError> | e}
+  /// One agent turn: the model sees `tools` and the `transcript` so far. With no tools it
+  /// must answer. `Agent.run` drives this; most code calls `generate`.
+  fn step<T: Schema>(req: Request<T>, tools: List<ToolSpec>, transcript: List<Turn>) -> Step<T>
+    ! {Fail<LlmError>}
 }
 
 /// A request with the default model, 1024 output tokens and temperature 0.
@@ -51,7 +76,10 @@ pub fn default() -> Model { Model("default") }
 pub fn anthropic(key: Secret<String>, model: Model) -> Handler<Llm, {Http, Budget}>
 
 /// Test handler: each call consumes the next raw model output, in order. Running out is a
-/// defect (the test is wrong, not the program).
+/// defect (the test is wrong, not the program). For `step`, an output that is a JSON object
+/// with a `tool_use` array is a tool-call turn (design §16.15):
+/// `{"tool_use": [{"name": "kb_search", "input": {"query": "refunds"}}]}`; anything else is
+/// the answer. `stream` reports the whole output as one partial.
 pub fn scripted(responses: List<String>) -> Handler<Llm> {
   handler Llm {
     var rest = responses
@@ -65,6 +93,34 @@ pub fn scripted(responses: List<String>) -> Handler<Llm> {
       rest = List.slice(rest, 1, List.len(rest))
       untrusted.of(next)
     }
+    fn stream(req, on_partial) {
+      let next = Option.expect(List.first(rest), "Llm.scripted ran out of responses")
+      rest = List.slice(rest, 1, List.len(rest))
+      on_partial(Partial { text: next, step: 0, calls: [] })
+      decode_output(next)
+    }
+    fn step(req, tools, transcript) {
+      let next = Option.expect(List.first(rest), "Llm.scripted ran out of responses")
+      rest = List.slice(rest, 1, List.len(rest))
+      scripted_step(next, List.len(transcript))
+    }
+  }
+}
+
+fn scripted_step<T: Schema>(text: String, turn: Int) -> Step<T> ! {Fail<LlmError>} {
+  let uses = match Json.parse(text) {
+    Ok(j) => Json.get(j, "tool_use"),
+    Err(_) => None,
+  }
+  match uses {
+    Some(Json.Array(items)) => Use(List.map(List.enumerate(items), fn(p) {
+      ToolCall {
+        id: "call_" + Int.to_string(turn) + "_" + Int.to_string(p.0),
+        name: Json.get_string(p.1, "name").unwrap_or(""),
+        input: Json.get(p.1, "input").unwrap_or(Json.Null),
+      }
+    })),
+    _ => Answer(decode_output(text)),
   }
 }
 
