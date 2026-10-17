@@ -77,6 +77,10 @@ impl Infer {
         self.level += 1;
     }
 
+    pub fn set_level(&mut self, level: u32) {
+        self.level = level;
+    }
+
     pub fn exit_level(&mut self) {
         self.level -= 1;
     }
@@ -846,20 +850,33 @@ impl Infer {
 
     /// Generalizes every variable created at a level deeper than the current one.
     pub fn generalize(&mut self, ty: TypeId) -> Scheme {
+        self.generalize_mapped(ty).0
+    }
+
+    /// Like [`Infer::generalize`], also returning which variable became which parameter.
+    pub fn generalize_mapped(&mut self, ty: TypeId) -> (Scheme, Vec<(TypeId, ParamId)>) {
         let ty = self.zonk(ty);
         let mut tys = HashMap::new();
         let mut rows = HashMap::new();
         let mut order = (Vec::new(), Vec::new());
         self.collect_general(ty, &mut tys, &mut rows, &mut order);
         if tys.is_empty() && rows.is_empty() {
-            return Scheme::mono(ty);
+            return (Scheme::mono(ty), Vec::new());
+        }
+        let mut mapping: Vec<(TypeId, ParamId)> = Vec::new();
+        for (v, pty) in &tys {
+            if let Type::Param(p) = *self.interner.ty(*pty) {
+                let var = self.interner.intern(Type::Var(*v));
+                mapping.push((var, p));
+            }
         }
         let ty = self.replace_vars(ty, &tys, &rows);
-        Scheme {
+        let scheme = Scheme {
             params: order.0,
             row_params: order.1,
             ty,
-        }
+        };
+        (scheme, mapping)
     }
 
     fn collect_general(

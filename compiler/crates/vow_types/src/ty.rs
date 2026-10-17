@@ -215,6 +215,10 @@ impl Interner {
         &self.params[id.0 as usize]
     }
 
+    pub fn param_mut(&mut self, id: ParamId) -> &mut ParamInfo {
+        &mut self.params[id.0 as usize]
+    }
+
     pub fn new_row_param(&mut self, name: impl Into<String>) -> RowParamId {
         let id = RowParamId(self.row_params.len() as u32);
         self.row_params.push(name.into());

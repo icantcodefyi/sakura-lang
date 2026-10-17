@@ -902,6 +902,7 @@ dependencies = [
  "text-size",
  "vow_diagnostics",
  "vow_hir",
+ "vow_syntax",
 ]
 
 [[package]]

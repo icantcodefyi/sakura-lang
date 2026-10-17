@@ -15,6 +15,7 @@ la-arena.workspace = true
 text-size.workspace = true
 
 [dev-dependencies]
+vow_syntax.workspace = true
 proptest.workspace = true
 insta.workspace = true
 

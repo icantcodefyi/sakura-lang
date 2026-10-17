@@ -1,0 +1,10 @@
+---
+source: crates/vow_types/tests/acceptance.rs
+expression: c.render()
+---
+V3001 1:4 function `greet` performs `Console`, which its signature does not allow (allowed: `{}`)
+  Cause 2:3 `Console.print("hello, {name}")` `Console.print` performs `Console` here
+  expected: {}
+  actual: {Console}
+  fix (Suggested, InterfaceChange): Add `Console` to the signature " ! {Console}"
+  fix (Incomplete, Local): Handle the effect locally with `with` "{ with ?handler " " }"

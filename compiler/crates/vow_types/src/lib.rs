@@ -19,6 +19,8 @@ use la_arena::ArenaMap;
 use text_size::TextRange;
 use vow_hir::{BodyId, ExprId, LocalId, ModuleId, PatId};
 
+mod check;
+pub mod exhaust;
 pub mod infer;
 pub mod render;
 pub mod ty;
@@ -142,7 +144,5 @@ impl Fit {
 pub fn check_program(
     program: &vow_hir::Program,
 ) -> (TypedProgram, Vec<vow_diagnostics::Diagnostic>) {
-    // The checker lands in the next commits; the output shape above is final.
-    let _ = program;
-    (TypedProgram::default(), Vec::new())
+    check::check(program)
 }
