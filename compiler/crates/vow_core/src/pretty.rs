@@ -17,6 +17,25 @@ impl fmt::Display for Module {
     }
 }
 
+impl Module {
+    /// The defs of one source module only (for snapshots and `--dump core` of user code).
+    pub fn display_module(&self, module: &str) -> String {
+        let mut p = Printer {
+            m: self,
+            def: None,
+            out: String::new(),
+            depth: 0,
+        };
+        for (i, d) in self.defs.iter().enumerate() {
+            if d.module == module {
+                p.def(DefId(i as u32), d);
+                p.out.push('\n');
+            }
+        }
+        p.out
+    }
+}
+
 struct Printer<'a> {
     m: &'a Module,
     def: Option<&'a FnDef>,
@@ -206,6 +225,11 @@ impl<'a> Printer<'a> {
         if let Some(t) = &r.fail {
             labels.push(format!("Fail<{}>", self.ty(t)));
         }
+        if labels.is_empty()
+            && let Some(v) = r.tail
+        {
+            return format!("r{v}");
+        }
         let mut s = format!("{{{}", labels.join(", "));
         if let Some(v) = r.tail {
             let _ = write!(s, " | r{v}");
@@ -244,6 +268,7 @@ impl<'a> Printer<'a> {
             Ty::Handler(e) => format!("Handler<{}>", self.effect_name(*e)),
             Ty::Instance(e) => format!("Instance<{}>", self.effect_name(*e)),
             Ty::Opaque(n) => n.clone(),
+            Ty::Var(u32::MAX) => "_".into(),
             Ty::Var(v) => format!("T{v}"),
         }
     }

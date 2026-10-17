@@ -136,3 +136,75 @@ fn bench_direct_style() {
         eprintln!("{name}: CPS {} ms, direct {} ms", times[0], times[1]);
     }
 }
+
+/// Every corpus program at any milestone lowers to valid Core or reports diagnostics; nothing
+/// panics (programs with frontend errors are skipped: lowering requires a checked program).
+#[test]
+fn lowering_never_panics_on_the_corpus() {
+    let mut files = Vec::new();
+    for dir in ["tests/semantics", "../examples"] {
+        let walk = walkdir(&common::compiler_dir().join(dir));
+        files.extend(walk);
+    }
+    let mut report = Vec::new();
+    for path in files {
+        let src = std::fs::read_to_string(&path).unwrap();
+        let name = path.file_stem().unwrap().to_string_lossy().into_owned();
+        let r = std::panic::catch_unwind(|| common::build(&name, &src, false).map(|_| ()));
+        match r {
+            Err(_) => panic!("lowering panicked on {}", path.display()),
+            Ok(Err(e)) if e.contains("invalid Core") => panic!("{}: {e}", path.display()),
+            Ok(Err(e)) => report.push(format!("{name}: {}", e.lines().next().unwrap_or(""))),
+            Ok(Ok(())) => {}
+        }
+    }
+    eprintln!("not built:\n{}", report.join("\n"));
+}
+
+fn walkdir(dir: &std::path::Path) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    for e in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+        let p = e.path();
+        if p.is_dir() {
+            out.extend(walkdir(&p));
+        } else if p.extension().is_some_and(|x| x == "vow") {
+            out.push(p);
+        }
+    }
+    out.sort();
+    out
+}
+
+/// Core and JS for the M1 and M2 acceptance programs (design §14.3).
+#[test]
+fn acceptance_programs_snapshot() {
+    let m1 = r#"
+error ParseError(input: String)
+fn parse_age(s: String) -> Int ! {Fail<ParseError>} {
+  match String.parse_int(s) { Some(n) if n >= 0 => n, _ => fail ParseError { input: s } }
+}
+test "bad age is a typed failure" {
+  let r = try { parse_age("x") }
+  expect_eq(r, Err(ParseError { input: "x" }))
+}
+test "local polymorphism" { let id = fn(x) { x }; expect_eq(id(3), 3); expect(id(true)) }
+"#;
+    let m2 = r#"
+effect Counter { fn next() -> Int }
+fn counter() -> Handler<Counter> { handler Counter { var n = 0; fn next() { n = n + 1; n } } }
+fn twice<e>(f: fn() -> Int ! e) -> Int ! e { f() + f() }
+fn answer() -> Int { with counter() { twice(fn() { Counter.next() }) } }
+test "handler state advances" { expect_eq(answer(), 3) }
+"#;
+    for (name, src) in [("m1", m1), ("m2", m2)] {
+        let r = common::test(name, src).unwrap();
+        assert_eq!(r.code, 0, "{}{}", r.stdout, r.stderr);
+        let (m, sources) = common::build(name, src, false).unwrap();
+        insta::assert_snapshot!(format!("{name}_core"), m.display_module("main::main"));
+        let js = vow_codegen_js::emit(&m, &vow_codegen_js::Options::new(sources))
+            .into_iter()
+            .find(|f| f.path == "main/main.js")
+            .unwrap();
+        insta::assert_snapshot!(format!("{name}_js"), js.text);
+    }
+}

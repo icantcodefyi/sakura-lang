@@ -25,7 +25,7 @@ fn semantics_corpus() {
         let name = path.file_stem().unwrap().to_string_lossy().into_owned();
         let milestone = directive(&src, "milestone").unwrap_or("M0");
         let mode = directive(&src, "mode").unwrap_or("run");
-        if milestone > "M2" || mode == "check" {
+        if milestone > option_env!("VOW_MAX_MILESTONE").unwrap_or("M2") || mode == "check" {
             continue;
         }
         if mode == "test" {

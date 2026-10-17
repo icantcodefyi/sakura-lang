@@ -1590,8 +1590,12 @@ impl<'a, 'p> FnLower<'a, 'p> {
     }
 }
 
+/// The base for names of lifted lambdas: tests are named by their description.
 fn l_name(d: &hir::Def) -> String {
-    d.name.clone()
+    match d.kind {
+        hir::DefKind::Test(_) | hir::DefKind::Property(_) => "test".into(),
+        _ => d.name.clone(),
+    }
 }
 
 pub(crate) fn lit_of(lit: &hir::Literal) -> Lit {

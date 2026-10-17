@@ -1,0 +1,67 @@
+---
+source: crates/vow_codegen_js/tests/source.rs
+assertion_line: 203
+expression: "m.display_module(\"main::main\")"
+---
+fn test$0#0() -> Unit {
+  let r%0: Int = call @answer()
+  let r%1: Unit = call @expect_eq(r%0, 3)
+  ret r%1
+}
+
+fn answer#1() -> Int {
+  let r%0: Handler<Counter> = call @counter()
+  handle r%0 {
+    let f%2: fn() -> Int ! {Counter} = closure @answer$1[]
+    let r%3: Int = call @twice(f%2)
+    ret r%3
+  }
+}
+
+test fn test$0$run#9(seed%0: Int) -> Unit {
+  let console%1: Handler<Console> = call @captured()
+  handle console%1 {
+    let log%2: Handler<Log> = call @captured()
+    handle log%2 {
+      let epoch%3: Unit = call @from_unix_millis(0)
+      let clock%4: Handler<Clock> = call @fixed(epoch%3)
+      handle clock%4 {
+        let random%5: Handler<Random> = call @seeded(seed%0)
+        handle random%5 {
+          let vars%6: Unit = call $map_empty()
+          let env%7: Handler<Env> = call @of(vars%6)
+          handle env%7 {
+            let r%8: Unit = call @test$0()
+            ret r%8
+          }
+        }
+      }
+    }
+  }
+}
+
+fn counter#33() -> Handler<Counter> {
+  let next%0: fn() -> Int = closure @counter$Counter_next[]
+  let handler%1: Handler<Counter> = handler Counter state[0] clauses[next%0]
+  ret handler%1
+}
+
+lambda answer$1#34() -> Int ! {Counter} {
+  let r%0: Int = perform Counter.next()
+  ret r%0
+}
+
+fn twice#35(f%0: fn() -> Int ! r21) -> Int ! r21 {
+  let r%1: Int = call f%0()
+  let r%2: Int = call f%0()
+  let t%3: Int = intadd(r%1, r%2)
+  ret t%3
+}
+
+clause[Counter.next] counter$Counter_next#36(inst%0: Instance<Counter>) -> Int {
+  let n%1: Int = state_get inst%0[0]
+  let t%2: Int = intadd(n%1, 1)
+  let set%3: Unit = state_set inst%0[0] = t%2
+  let n%4: Int = state_get inst%0[0]
+  ret n%4
+}
