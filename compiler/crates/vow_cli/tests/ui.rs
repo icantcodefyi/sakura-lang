@@ -96,6 +96,10 @@ fn run(path: &Path) -> Result<(), String> {
             return Err(format!("no {code} with a {role} span at {pos}"));
         }
     }
+    // Known bugs are judged on codes and spans alone, so a fix is noticed before it has a snapshot.
+    if d.contains_key("known-bug") {
+        return Ok(());
+    }
     let dir = std::fs::canonicalize(path.parent().unwrap()).unwrap();
     let snapshot = recs.last().unwrap()["snapshot"]
         .as_str()
