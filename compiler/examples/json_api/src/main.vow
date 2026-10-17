@@ -1,20 +1,20 @@
 // milestone: M3
-// needs: std/router, std/serve, SqlValue.from for sql"…" arguments, Schema codecs and Sql.memory in runtime/js
+// needs: SqlValue.from for sql"…" arguments, Sql.memory and serve_host in runtime/js, Fail escaping a test (§17.30)
 // mode: test
 // covers: Import NameList TypeDecl RecordType TryExpr Lambda
 
 // Design §15.5. `main` serves forever, so CI runs the tests only. Difference from the
 // design text: `Request` and `BadRequest` come from `std/request`, `Response` and `Status`
 // from `std/response` (one home module per type, see compiler/std/INDEX.md), and `main`
-// declares `Fs` (which `Sql.sqlite` needs) instead of `Sql`, `Log` and `Env`, which it
-// handles or never uses.
+// declares `Fs` (which `Sql.sqlite` needs) and `Fail<ServeError>` (`listen` can fail to
+// start) instead of `Sql`, `Log` and `Env`, which it handles or never uses.
 
 import std/fs.{Fs}
 import std/path.{Path}
 import std/request.{BadRequest, Request}
 import std/response.{Response, Status}
 import std/router.{Router}
-import std/serve.{Address, Serve}
+import std/serve.{Address, Serve, ServeError}
 import std/sql.{Sql, SqlError}
 
 type Email = String where String.len(it) <= 254 && String.contains(it, "@")
@@ -51,7 +51,7 @@ fn handle_create(req: Request) -> Response ! {Log, Sql} {
   }
 }
 
-pub fn main() -> Unit ! {Fs, Serve} {
+pub fn main() -> Unit ! {Fs, Serve, Fail<ServeError>} {
   let router = Router.new()
     .post("/users", handle_create)
     .get("/health", fn(_req) { Response.status(200, "ok") })

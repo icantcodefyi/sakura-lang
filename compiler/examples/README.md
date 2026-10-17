@@ -13,7 +13,7 @@ whose milestone has landed.
 | `contracts` | §15.2 | M3 | run + test | contract checks, refined types |
 | `counter` | §15.3 | M2 | run + test | user effects, handler state |
 | `typed_errors` | §15.4 | M2 | run + test | `try`/`catch`, `Fail` ops, `Log` |
-| `json_api` | §15.5 | M3 | test | `std/router`, `std/serve`, `SqlValue.from` in `sql"…"`, `Schema` codecs |
+| `json_api` | §15.5 | M3 | test | `SqlValue.from` in `sql"…"` (C), `Sql.memory` (D), `Fail` escaping a test (§17.30, C) |
 | `word_count` | §15.6 | M3 | run + test | `Cli.parse`, `cli_*`/`fs_*`/`untrusted_*` runtime externals |
 | `llm_extract` | §15.7 | M3 | test | `@llm` desugaring, `Schema` codecs, `Untrusted.of` in the runtime |
 | `agent_loop` | §15.8 | M3 | check | `Tool.of` intrinsic (B/C) |

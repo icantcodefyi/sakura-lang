@@ -66,7 +66,9 @@ retry → duration, int   (+ Clock, Random)     task → duration, list (+ Clock
 graph → map, list       untrusted → core        path → string, list
 secret → core           decimal → string, list, int
 url → string, list      cli [M3]                fs → path, untrusted, map [M3]
-request → url, json [M3]                       response → json, untrusted [M3]
+request → url, json [M3]                       response → html, json, untrusted [M3]
+html → core [M3]        router → request, response, url [M3]
+serve → request, response, router, url [M3]
 http → request, response, url, duration [M3]  budget [M3]      prompt [M3]
 llm → budget, core, http, prompt, task, untrusted [M3]          sql → fs, path [M3]
 tool → llm [M3]         agent → budget, core, llm, prompt, tool [M3]
@@ -78,9 +80,9 @@ externals they touch; their host handlers and `Schema` codecs are runtime extern
 
 ## Planned, not yet in source (design §10, milestone M3)
 
-`std/router`, `std/serve`, `std/html`, `Tool.of` (a compiler intrinsic on a `@tool`
-function), `Untrusted.validate` (a compiler intrinsic into a refined type), `Fs.with_file`/`File`, `Http.scoped`/`recording`, `Llm.replay`, `Sql.postgres`, the `html"…"`
-tag, `List.par_map` (written as `std/task.par_map` until `Task` runs),
+`Tool.of` (a compiler intrinsic on a `@tool`
+function), `Untrusted.validate` (a compiler intrinsic into a refined type), `Fs.with_file`/`File`, `Http.scoped`/`recording`, `Llm.replay`, `Sql.postgres`, `Html`
+values as `html"…"` arguments, `List.par_map` (written as `std/task.par_map` until `Task` runs),
 and `Env.host(scope)`. Their signatures are the ones in design §10.2–§10.7. `Uuid`, `Path`,
 `Prompt` and `Query` are `pub opaque` (design §17.10).
 
@@ -513,7 +515,7 @@ fn encode_component(s: String) -> String
 
 ```vow
 type Method = Get | Head | Post | Put | Patch | Delete
-type Request = { method: Method, url: Url, headers: List<(String, String)>, body: String, bearer: Option<Secret<String>> }
+type Request = { method: Method, url: Url, headers: List<(String, String)>, body: String, bearer: Option<Secret<String>>, params: List<(String, String)> }
 error BadRequest(detail: String)
 fn of(method: Method, url: Url) -> Request
 fn post(path: String, body: String) -> Request
@@ -531,6 +533,7 @@ type Response = { status: Status, headers: List<(String, String)>, body: String 
 error HttpError(status: Option<Status>, reason: String)
 fn status(code: Int, body: String) -> Response requires code >= 100 && code <= 599
 fn ok_json<T: Schema>(value: T) -> Response
+fn html(h: Html) -> Response
 fn json<T: Schema>(r: Response, limit: Int) -> T ! {Fail<HttpError | DecodeError>}
 fn text(r: Response, limit: Int) -> Untrusted<String> ! {Fail<HttpError>}
 ```
@@ -548,6 +551,44 @@ fn post_json<T: Schema>(url: Url, body: T) -> Response ! {Http, Fail<HttpError |
 fn bearer(req: Request, token: Secret<String>) -> Request
 fn host() -> Handler<Http>
 fn scripted(script: List<(Matcher, Response)>) -> Handler<Http>
+```
+
+### `std/html`
+
+```vow
+opaque type Html = Html(String)
+fn text(s: String) -> Html
+fn untrusted(u: Untrusted<String>) -> Html
+fn raw(markup: String, reason: Trust) -> Html
+fn concat(parts: List<Html>) -> Html
+fn to_string(h: Html) -> String
+fn template(parts: List<String>, args: List<String>) -> Html
+```
+
+### `std/router`
+
+```vow
+opaque type Router<F> = { routes: List<Route<F>> }
+fn new<F>() -> Router<F>
+fn route<e>(r: Router<fn(Request) -> Response ! e>, method: Method, pattern: String, h: fn(Request) -> Response ! e) -> Router<fn(Request) -> Response ! e>
+fn get<e>(r: Router<fn(Request) -> Response ! e>, pattern: String, h: fn(Request) -> Response ! e) -> Router<fn(Request) -> Response ! e>
+fn post<e>(r: Router<fn(Request) -> Response ! e>, pattern: String, h: fn(Request) -> Response ! e) -> Router<fn(Request) -> Response ! e>
+fn put<e>(r: Router<fn(Request) -> Response ! e>, pattern: String, h: fn(Request) -> Response ! e) -> Router<fn(Request) -> Response ! e>
+fn delete<e>(r: Router<fn(Request) -> Response ! e>, pattern: String, h: fn(Request) -> Response ! e) -> Router<fn(Request) -> Response ! e>
+fn handle<e>(r: Router<fn(Request) -> Response ! e>, req: Request) -> Response ! e
+```
+
+### `std/serve`
+
+```vow
+type Address = { host: String, port: Int }
+error ServeError(reason: String)
+effect Serve {
+  fn listen<e>(router: Router<fn(Request) -> Response ! e>, addr: Address) -> Never ! {Fail<ServeError> | e}
+}
+fn of(host: String, port: Int) -> Address requires port >= 0 && port <= 65_535
+fn host() -> Handler<Serve>    // @external
+fn scripted(requests: List<Request>) -> Handler<Serve, {Test}>
 ```
 
 ### `std/budget`
@@ -706,3 +747,13 @@ fn memory() -> Handler<Sql>    // @external
     `{ text, step, calls }`. `Llm.stream`'s callback may perform effects (`! e`), otherwise
     a partial could not be observed. `Agent.run` reserves `max_tokens` and one call per step
     and settles to zero, as a headroom check; provider handlers charge actual use.
+18. **`Router<F>`** for the same reason as `Tool<F>` (`F` is `fn(Request) -> Response ! e`),
+    and `Serve.listen<e>` performs what the routes perform, so the handlers installed around
+    `listen` serve every request (§10.4). `Router.route`, `put`, `delete` and `handle` are
+    additions; `:name` path segments fill the new `Request.params`, which `Request.param`
+    reads before the query. `Serve.scripted(requests)` is the test handler; `Address.of`
+    lives in `std/serve`.
+19. **`Html.raw(markup, @trust("…"))`** instead of `Html.raw(s: TrustedHtml)`: one trust type
+    for every sink (§6.4). `Html.untrusted(u)` escapes untrusted text. `html"…"` escapes every
+    interpolated value until template arguments can convert (`Html` as markup, like
+    `SqlValue.from`).
