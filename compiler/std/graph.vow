@@ -23,7 +23,7 @@ pub fn get<N>(g: Graph<N>, id: NodeId) -> Option<N> {
 
 /// Adds the edge `a -> b`. Both ids must belong to `g`. Adding an edge twice is a no-op.
 pub fn connect<N>(g: Graph<N>, a: NodeId, b: NodeId) -> Graph<N>
-  requires Map.contains(g.nodes, slot(a)) && Map.contains(g.nodes, slot(b))
+  requires get(g, a).is_some() && get(g, b).is_some()
 {
   let out = neighbors(g, a)
   if List.contains(out, b) { g } else { Graph { ..g, edges: g.edges.insert(slot(a), out.push(b)) } }
