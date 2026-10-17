@@ -403,3 +403,22 @@ test("with_file buffers keep their contents after closing", () => {
   assert.deepEqual(rt.file_read(id, 1), rt.Err("the file is closed"));
   assert.equal(rt.file_contents(id).length, 102);
 });
+
+test("with_file buffers are released when the body fails, hits a defect or is cancelled", async () => {
+  const failed = rt.file_buffer(rt.string_to_bytes("ab"));
+  const out = rt.runTask(($ctx, $k) => rt.file_closing(failed, (c, k) => rt.fail(c, "boom"), $ctx, $k));
+  assert.deepEqual(out, { kind: "fail", error: "boom" });
+  assert.throws(() => rt.file_contents(failed), /is not a buffer/);
+
+  const defected = rt.file_buffer(rt.string_to_bytes("ab"));
+  rt.runTask(($ctx, $k) => rt.file_closing(defected, (c, k) => ret(k, rt.div(1, 0)), $ctx, $k));
+  assert.throws(() => rt.file_contents(defected), /is not a buffer/);
+
+  const cancelled = rt.file_buffer(rt.string_to_bytes("ab"));
+  const frames = rt.install({ h: null, c: null, t: null }, rt.task_host()).h;
+  const loser = ($ctx, $k) => rt.file_closing(cancelled, (c, k) => rt.clock_sleep_ms(5_000, c, k), $ctx, $k);
+  const winner = ($ctx, $k) => rt.clock_sleep_ms(10, $ctx, () => ret($k, "w"));
+  const race = ($ctx, $k) => rt.perform($ctx, "std::task::Task", 4, [rt.list([loser, winner])], $k);
+  assert.deepEqual(await rt.runTask(race, [], frames), ok("w"));
+  assert.throws(() => rt.file_contents(cancelled), /is not a buffer/);
+});

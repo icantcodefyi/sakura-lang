@@ -106,8 +106,8 @@ region uses the outer variable, so leaving a region by falling through, `return`
 - `fail e`: `return $rt.fail($ctx, e)`: runs finalizers registered since the catcher (newest
   first), then continues at the catcher's join. No JS exceptions are involved.
 - Finalizers: `$rt.finalize($ctx, fin, body, $k)` registers `fin` for the dynamic extent of
-  `body($ctx, k)`; it runs exactly once on normal exit, on a `Fail` that leaves the extent, or
-  when the task ends in a defect (used by resources in M3).
+  `body($ctx, k)`; it runs exactly once on normal exit (as `fin(true)`), on a `Fail` that leaves
+  the extent, or when the task ends in a defect or is cancelled (as `fin()`).
 - An uncaught `Fail` ends the task with outcome `{ kind: "fail", error }`.
 
 ## 5. Defects (design §5.4)
@@ -284,8 +284,9 @@ and `Append` `fs.write`) and `file_buffer(initial)` return an `Int` id into one 
 `file_closing(id, body, $ctx, $k)` registers a finalizer (section 4) that closes the file on
 return, `fail`, defect or cancellation. `file_read(id, max)` reads from the current position
 (empty at the end), `file_write(id, data)` appends; both return `Err("the file is closed")`
-after closing. Host writes are immediate; `file_contents(id)` takes a buffer's bytes, open or
-closed, and releases it.
+after closing. Host writes are immediate; `file_contents(id)` takes the bytes of a buffer whose
+body returned, open or closed, and releases it. A buffer whose body failed, hit a defect or was
+cancelled is released when it closes.
 
 **Http.** `http_send(req, $ctx, $k)` suspends on `fetch`: `Ok(Response)` for every status,
 `Err(reason)` when no response arrives; every `req.secret_headers` entry (`Http.bearer` adds

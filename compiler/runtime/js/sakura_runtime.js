@@ -188,15 +188,16 @@ function runFins(t, mark) {
 }
 
 /**
- * Run `body(ctx, k)` with `fin()` registered as a finalizer: it runs exactly once when the body
- * returns, fails past this point, or the task ends in a defect.
+ * Run `body(ctx, k)` with `fin(returned)` registered as a finalizer: it runs exactly once when the
+ * body returns (`returned` is true), fails past this point, or the task ends in a defect or is
+ * cancelled (`returned` is undefined).
  */
 export function finalize(ctx, fin, body, k) {
   const fins = ctx.t.fins;
   fins.push(fin);
   const mark = fins.length;
   return body(ctx, (v) => {
-    if (fins.length === mark) fins.pop()();
+    if (fins.length === mark) fins.pop()(true);
     return ret(k, v);
   });
 }
@@ -2450,8 +2451,9 @@ export function fs_exists(d, rel) {
 }
 
 // Open files behind `Fs.with_file` (std/fs): ids index this table. A host file is
-// `{ fd, pos }`, an in-memory one `{ buf, len, pos }`; `closed` stops reads and writes, and a
-// closed buffer stays until `file_contents` takes it.
+// `{ fd, pos }`, an in-memory one `{ buf, len, pos }`; `closed` stops reads and writes. A buffer
+// whose body returned stays until `file_contents` takes it; one whose body failed, hit a defect
+// or was cancelled is released with it, since no `file_contents` will follow.
 const files = new Map();
 let nextFile = 1;
 
@@ -2473,14 +2475,12 @@ export function file_buffer(initial) {
 export function file_closing(id, body, ctx, k) {
   return finalize(
     ctx,
-    () => {
+    (returned) => {
       const f = files.get(id);
       if (f === undefined || f.closed) return;
       f.closed = true;
-      if (f.fd !== undefined) {
-        files.delete(id);
-        nodeFs().closeSync(f.fd);
-      }
+      if (f.fd !== undefined || !returned) files.delete(id);
+      if (f.fd !== undefined) nodeFs().closeSync(f.fd);
     },
     body,
     k,
