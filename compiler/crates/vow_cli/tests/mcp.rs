@@ -1,84 +1,9 @@
 //! `vow mcp serve` driven over stdio JSON-RPC, as an agent would (design §12.6).
 
+mod common;
+
+use common::rpc::Mcp;
 use serde_json::{Value, json};
-use std::io::{BufRead, BufReader, Write};
-use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
-
-struct Server {
-    child: Child,
-    stdin: ChildStdin,
-    stdout: BufReader<ChildStdout>,
-    next_id: u64,
-}
-
-impl Server {
-    fn start(root: &std::path::Path) -> Server {
-        let mut child = Command::new(env!("CARGO_BIN_EXE_vow"))
-            .args(["mcp", "serve", "--root"])
-            .arg(root)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()
-            .expect("spawn vow mcp serve");
-        let stdin = child.stdin.take().unwrap();
-        let stdout = BufReader::new(child.stdout.take().unwrap());
-        let mut s = Server {
-            child,
-            stdin,
-            stdout,
-            next_id: 0,
-        };
-        let init = s.request(
-            "initialize",
-            json!({
-                "protocolVersion": "2025-06-18",
-                "capabilities": {},
-                "clientInfo": {"name": "vow-tests", "version": "0"},
-            }),
-        );
-        assert_eq!(init["serverInfo"]["name"], "vow", "{init}");
-        s.send(json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
-        s
-    }
-
-    fn send(&mut self, msg: Value) {
-        writeln!(self.stdin, "{msg}").unwrap();
-        self.stdin.flush().unwrap();
-    }
-
-    /// The `result` of a request; server-initiated messages in between are skipped.
-    fn request(&mut self, method: &str, params: Value) -> Value {
-        self.next_id += 1;
-        let id = self.next_id;
-        self.send(json!({"jsonrpc": "2.0", "id": id, "method": method, "params": params}));
-        loop {
-            let mut line = String::new();
-            assert!(
-                self.stdout.read_line(&mut line).unwrap() > 0,
-                "server closed stdout"
-            );
-            let msg: Value = serde_json::from_str(&line).unwrap();
-            if msg["id"] == id {
-                assert!(msg["error"].is_null(), "{method}: {msg}");
-                return msg["result"].clone();
-            }
-        }
-    }
-
-    /// A tool's structured result and its `isError` flag.
-    fn call(&mut self, tool: &str, args: Value) -> (Value, bool) {
-        let r = self.request("tools/call", json!({"name": tool, "arguments": args}));
-        (r["structuredContent"].clone(), r["isError"] == true)
-    }
-}
-
-impl Drop for Server {
-    fn drop(&mut self) {
-        let _ = self.child.kill();
-        let _ = self.child.wait();
-    }
-}
 
 const BROKEN: &str = "fn double(x: Int) -> Int { x * true }\n\n\
                       test \"doubles\" { expect_eq(double(2), 4) }\n";
@@ -89,7 +14,7 @@ fn check_patch_apply_and_test_over_stdio() {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join("main.vow"), BROKEN).unwrap();
-    let mut s = Server::start(&dir);
+    let mut s = Mcp::start(&dir);
 
     let tools = s.request("tools/list", json!({}));
     let names: Vec<&str> = tools["tools"]

@@ -1,5 +1,6 @@
 //! `vow lsp`: the Language Server Protocol on stdio over the analysis facade (design §12.6):
-//! diagnostics, hover, go to definition, completion, formatting and quick fixes. Positions are
+//! diagnostics, hover, go to definition, completion, formatting and quick fixes, plus
+//! `vow/holeContext` (the MCP `hole_context` record at a position). Positions are
 //! UTF-8 when the client offers it, else UTF-16; the facade itself only sees byte offsets.
 
 use std::collections::{HashMap, HashSet};
@@ -11,7 +12,7 @@ use lsp_types as lsp;
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 use vow_analysis::{Analysis, Analyzed, Snapshot, disk};
-use vow_diagnostics::{Diagnostic, FileId, Severity, Span};
+use vow_diagnostics::{Diagnostic, FileId, Severity, Span, hole_records};
 
 pub fn serve() -> Result<(), String> {
     let (conn, io) = Connection::stdio();
@@ -318,6 +319,22 @@ impl Server {
                     Some(json!(self.code_actions(a, f, p.range)))
                 });
                 Ok(r.unwrap_or(json!([])))
+            }
+            // Extension: the MCP `hole_context` record of the hole at a position, same JSON.
+            "vow/holeContext" => {
+                let p: lsp::TextDocumentPositionParams = params(req.params).map_err(bad)?;
+                let r = self.at(&p, |a, f, o| {
+                    let s = &a.snapshot;
+                    let holes = hole_records(&a.check.holes, s.files(), s.hash());
+                    let hole = holes.iter().find(|h| {
+                        let at = |k: &str| h["span"][k].as_u64().unwrap_or(0) as u32;
+                        h["span"]["uri"] == s.file(f).uri.as_str()
+                            && at("start_byte") <= o
+                            && o <= at("end_byte")
+                    })?;
+                    a.hole_context(hole["id"].as_str()?)
+                });
+                Ok(r.unwrap_or(Value::Null))
             }
             m => Err((ErrorCode::MethodNotFound, format!("unsupported method {m}"))),
         }

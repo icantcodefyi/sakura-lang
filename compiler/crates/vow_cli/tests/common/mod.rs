@@ -2,6 +2,8 @@
 //! real `vow` binary with a time limit. Fixture format: `compiler/REQUESTS.md` (F → E).
 #![allow(dead_code)]
 
+pub mod rpc;
+
 use std::collections::BTreeMap;
 use std::io::Read;
 use std::path::{Path, PathBuf};
