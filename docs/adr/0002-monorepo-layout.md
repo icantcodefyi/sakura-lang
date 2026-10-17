@@ -6,7 +6,7 @@
 
 ## Context
 
-Vow needs language research, accepted design, an implementation, and documentation
+Sakura Lang needs language research, accepted design, an implementation, and documentation
 that evolve together. The website already uses Bun, Next.js, and Fumadocs.
 The Rust compiler workspace does not exist yet. We need boundaries that support
 small coordinated changes without prematurely creating many packages or repos.
@@ -18,11 +18,11 @@ Use one repository with these responsibilities:
 - `research/`: evidence and prior-art studies, not normative language authority.
 - `docs/`: language design, future specification/reference material, RFCs, and ADRs.
 - `compiler/` (planned): Rust implementation, initially core phases as modules in
-  `vow-core` and CLI orchestration in `vow-cli`.
+  `sakura_core` and CLI orchestration in `sakura_cli`.
 - `website/`: Bun-managed Next.js/Fumadocs website and documentation presentation.
 
-When implementation begins, use a root Cargo workspace with `compiler/vow-core`,
-`compiler/vow-cli`, and `xtask`, a single committed root `Cargo.lock`, inherited
+When implementation begins, use a root Cargo workspace with `compiler/sakura_core`,
+`compiler/sakura_cli`, and `xtask`, a single committed root `Cargo.lock`, inherited
 workspace metadata/lints, Rust edition 2024, and resolver 3. Choose and test the
 MSRV, pin the development toolchain, and exclude any future nightly fuzz workspace.
 Do not create empty crates to imply implementation exists.

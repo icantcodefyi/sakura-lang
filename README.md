@@ -1,12 +1,12 @@
-# Vow
+# Sakura Lang
 
 **The signature is the contract.**
 
 ![Status: pre-alpha / design phase](https://img.shields.io/badge/status-pre--alpha%20%2F%20design%20phase-orange)
 
-Vow is an **agent-first programming language** being designed around explicit,
+Sakura Lang is an **agent-first programming language** being designed around explicit,
 reviewable promises. Humans review signatures; the compiler is intended to check
-that implementations keep their vows.
+that implementations keep them.
 
 The design brings together:
 
@@ -22,14 +22,14 @@ The design brings together:
   workflow, and standard-library direction rather than assembly from unrelated tools.
 
 These are **design goals**, not shipped capabilities or benchmark claims. There is
-no installable Vow compiler yet. Syntax, verification boundaries, runtime details,
+no installable Sakura Lang compiler yet. Syntax, verification boundaries, runtime details,
 and the library surface are still being worked out in [the design](docs/design.md).
 
-## A small vow
+## A small promise
 
 Illustrative proposed syntax; this example cannot be compiled yet:
 
-```vow
+```sakura
 fn add(a: Int, b: Int) -> Int {
   a + b
 }
@@ -70,7 +70,7 @@ see [governance](GOVERNANCE.md), [conduct](CODE_OF_CONDUCT.md), and
 
 ## License
 
-Original Vow code and documentation are dual-licensed under **MIT OR Apache-2.0**,
+Original Sakura Lang code and documentation are dual-licensed under **MIT OR Apache-2.0**,
 at your choice. See [LICENSE-MIT](LICENSE-MIT) and [LICENSE-APACHE](LICENSE-APACHE).
 Third-party material retains its own notices and terms. Compiling a program does
 not by itself place that program under the compiler's license; any future embedded

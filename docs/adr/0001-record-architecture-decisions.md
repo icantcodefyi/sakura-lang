@@ -6,7 +6,7 @@
 
 ## Context
 
-Vow is being designed while research and a documentation website grow in parallel.
+Sakura Lang is being designed while research and a documentation website grow in parallel.
 Issue threads alone make it difficult to recover why a build or architecture
 choice was made. We need a small durable record without turning every engineering
 fix into a language proposal.

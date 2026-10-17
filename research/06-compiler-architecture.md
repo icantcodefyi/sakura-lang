@@ -1,6 +1,6 @@
-# Vow: compiler architecture and implementation strategy
+# Sakura Lang: compiler architecture and implementation strategy
 
-Research date: **2026-10-17**. Recommendations below are design proposals for Vow, distinguished from observations about existing implementations. Example Vow syntax is illustrative, not an existing language specification. Package versions were checked against crates.io release metadata, excluding prereleases, yanked releases, and releases after this date. Repository documentation can lag implementation; the report identifies consequential differences.
+Research date: **2026-10-17**. Recommendations below are design proposals for Sakura Lang, distinguished from observations about existing implementations. Example Sakura Lang syntax is illustrative, not an existing language specification. Package versions were checked against crates.io release metadata, excluding prereleases, yanked releases, and releases after this date. Repository documentation can lag implementation; the report identifies consequential differences.
 
 ## 1. Summary
 
@@ -27,7 +27,7 @@ Gleam's diagnostic implementation converts its own labeled diagnostic structures
 
 Richard Feldman's July 2026 account reports feature parity for the Zig rewrite. He separates the decision to rewrite from the decision to choose Zig: lambda-set specialization exposed architectural problems spanning compiler phases; an OCaml prototype demonstrated a replacement. Zig's attraction included compiler rebuild times, explicit allocators, structure-of-arrays facilities, and relevant backend tooling. These are project-specific reasons, not evidence that Rust cannot implement a fast compiler. [Author's experience report](https://rtfeldman.com/rust-to-zig)
 
-The current glossary exposes canonicalization, interned identifiers, type variables, monomorphization, layout-related concepts, reference counting, borrowing, and reuse. Copy explicit phase contracts and compact IDs. For Vow, postpone lambda-set specialization and sophisticated closure representations: first use ordinary closures with an explicit environment. Measure Rust edit/build/test latency alongside Vow compilation latency, and keep heavy backend dependencies outside the frontend's development loop. [Roc compiler glossary](https://github.com/roc-lang/roc/blob/main/Glossary.md)
+The current glossary exposes canonicalization, interned identifiers, type variables, monomorphization, layout-related concepts, reference counting, borrowing, and reuse. Copy explicit phase contracts and compact IDs. For Sakura Lang, postpone lambda-set specialization and sophisticated closure representations: first use ordinary closures with an explicit environment. Measure Rust edit/build/test latency alongside Sakura Lang compilation latency, and keep heavy backend dependencies outside the frontend's development loop. [Roc compiler glossary](https://github.com/roc-lang/roc/blob/main/Glossary.md)
 
 ### Koka: semantic and memory-management reference
 
@@ -39,7 +39,7 @@ There is an important historical distinction: Koka labels `v1-master` as the old
 
 ### Effekt: a concrete JS handler implementation
 
-Effekt's overview describes source analysis, capability passing, Core, and backend-specific lowering. Its current JavaScript implementation is more specific than that overview: `Source → Core → CPS → JS`, with a contification pass. The runtime implements prompts, capture/resume, and trampolines explicitly. Copy the explicit CPS representation and runtime conformance testing, not necessarily Effekt's capability type system, which differs from Vow's proposed row effects. [Overview](https://effekt-lang.org/docs/implementation), [JS pipeline](https://github.com/effekt-lang/effekt/blob/main/effekt/shared/src/main/scala/effekt/generator/js/JavaScript.scala), [JS runtime](https://github.com/effekt-lang/effekt/blob/main/libraries/js/effekt_runtime.js)
+Effekt's overview describes source analysis, capability passing, Core, and backend-specific lowering. Its current JavaScript implementation is more specific than that overview: `Source → Core → CPS → JS`, with a contification pass. The runtime implements prompts, capture/resume, and trampolines explicitly. Copy the explicit CPS representation and runtime conformance testing, not necessarily Effekt's capability type system, which differs from Sakura Lang's proposed row effects. [Overview](https://effekt-lang.org/docs/implementation), [JS pipeline](https://github.com/effekt-lang/effekt/blob/main/effekt/shared/src/main/scala/effekt/generator/js/JavaScript.scala), [JS runtime](https://github.com/effekt-lang/effekt/blob/main/libraries/js/effekt_runtime.js)
 
 ### rust-analyzer and Salsa: editing is a first-class workload
 
@@ -51,33 +51,33 @@ Salsa supplies tracked dependencies and reuse of unchanged query results. Its do
 
 **MoonBit:** the public compiler source builds using OCaml, while `moon` is a distinct build-system/package-manager project. The public compiler snapshot is not evidence that every current toolchain component or backend is available there. Copy the attention to package-level workflows and short feedback loops; benchmark cold startup, checking, incremental builds, and execution separately. Do not repeat promotional speed ratios as comparable measurements. Its compiler license is not permissive; copy architectural ideas rather than source without reviewing the license. [Compiler repository and license](https://github.com/moonbitlang/moonbit-compiler), [moon](https://github.com/moonbitlang/moon), [LLVM announcement](https://www.moonbitlang.com/blog/llvm-backend)
 
-**Unison:** definitions are content-addressed, with code represented as ASTs in a database and names referring to definitions. This enables substantial reuse and changes the relationship between source, identity, and dependency management. Copy content hashes for Vow's derived artifacts and interface fingerprints. Keep ordinary source files and Git as the initial source of truth: adopting Unison's persistent codebase format would be a separate product project. [Repository](https://github.com/unisonweb/unison), [technical explanation](https://www.unison-lang.org/docs/tour/_big-technical-idea/)
+**Unison:** definitions are content-addressed, with code represented as ASTs in a database and names referring to definitions. This enables substantial reuse and changes the relationship between source, identity, and dependency management. Copy content hashes for Sakura Lang's derived artifacts and interface fingerprints. Keep ordinary source files and Git as the initial source of truth: adopting Unison's persistent codebase format would be a separate product project. [Repository](https://github.com/unisonweb/unison), [technical explanation](https://www.unison-lang.org/docs/tour/_big-technical-idea/)
 
-**OCaml/ReScript:** `js_of_ocaml` compiles OCaml bytecode, gaining a stable input boundary and reuse of OCaml libraries. ReScript emphasizes JS-native interoperability and readable generated code. Vow should favor readable ES modules and predictable representations, while taking the stable-IR lesson from `js_of_ocaml`. Do not conflate their pipelines or assume OCaml's runtime representation is ideal for Vow. [js_of_ocaml overview](https://ocaml.org/u/4c75bdb9b1a49059c39037f4a609a6ba/js_of_ocaml/6.4.1/doc/overview.html), [ReScript FFI output](https://rescript-lang.org/docs/manual/bind-to-global-js-values/)
+**OCaml/ReScript:** `js_of_ocaml` compiles OCaml bytecode, gaining a stable input boundary and reuse of OCaml libraries. ReScript emphasizes JS-native interoperability and readable generated code. Sakura Lang should favor readable ES modules and predictable representations, while taking the stable-IR lesson from `js_of_ocaml`. Do not conflate their pipelines or assume OCaml's runtime representation is ideal for Sakura Lang. [js_of_ocaml overview](https://ocaml.org/u/4c75bdb9b1a49059c39037f4a609a6ba/js_of_ocaml/6.4.1/doc/overview.html), [ReScript FFI output](https://rescript-lang.org/docs/manual/bind-to-global-js-values/)
 
-## 3. Recommended Vow architecture
+## 3. Recommended Sakura Lang architecture
 
 ### Crates and ownership
 
-Begin with five physical crates: `vow_syntax`, `vow_diagnostics`, `vow_compiler`, `vow_codegen_js`, and `vow_cli`. Keep the following logical modules inside `vow_compiler` initially, extracting crates when a real reuse or dependency boundary appears. This avoids maintaining a dozen tiny interfaces before their types settle.
+Begin with five physical crates: `sakura_syntax`, `sakura_diagnostics`, `sakura_compiler`, `sakura_codegen_js`, and `sakura_cli`. Keep the following logical modules inside `sakura_compiler` initially, extracting crates when a real reuse or dependency boundary appears. This avoids maintaining a dozen tiny interfaces before their types settle.
 
 | Eventual crate | Responsibility and dependency rule |
 |---|---|
-| `vow_syntax` | Tokens, syntax kinds, Rowan wrappers, typed AST views; no semantic or protocol dependencies. |
-| `vow_parse` | Lexer and event parser; initially inside syntax. Depends on shared syntax kinds, not HIR. |
-| `vow_diagnostics` | Source IDs, spans, diagnostic data, JSON schema, renderer adapters. |
-| `vow_hir` | Desugared bodies, declaration tables, resolution, source mappings. |
-| `vow_types` | Type representation, schemes, kinds, inference variables, unification, body checking. |
-| `vow_effects` | Row operations and handler checks, initially a module of `vow_types`; avoid a cyclic dependency. |
-| `vow_core` | Typed ANF, explicit operations/handlers, contracts, match decisions, lowering and validation. |
-| `vow_codegen_js` | CPS lowering, JS AST/emission, runtime ABI and source maps. |
-| `vow_analysis` | Workspace inputs, analysis facade, later Salsa integration; reused by every frontend. |
-| `vow_fmt` | CST-to-document formatting and comment handling; needs no type checking. |
-| `vow_cli` | Filesystem, packages, process execution, command options and exit codes. |
-| `vow_lsp`, `vow_mcp` | Protocol adapters over analysis, no independent compiler logic. |
-| Later: `vow_codegen_wasm`, `vow_codegen_native`, `vow_runtime` | Target lowering, layouts, ownership passes, runtime implementation. |
+| `sakura_syntax` | Tokens, syntax kinds, Rowan wrappers, typed AST views; no semantic or protocol dependencies. |
+| `sakura_parse` | Lexer and event parser; initially inside syntax. Depends on shared syntax kinds, not HIR. |
+| `sakura_diagnostics` | Source IDs, spans, diagnostic data, JSON schema, renderer adapters. |
+| `sakura_hir` | Desugared bodies, declaration tables, resolution, source mappings. |
+| `sakura_types` | Type representation, schemes, kinds, inference variables, unification, body checking. |
+| `sakura_effects` | Row operations and handler checks, initially a module of `sakura_types`; avoid a cyclic dependency. |
+| `sakura_core` | Typed ANF, explicit operations/handlers, contracts, match decisions, lowering and validation. |
+| `sakura_codegen_js` | CPS lowering, JS AST/emission, runtime ABI and source maps. |
+| `sakura_analysis` | Workspace inputs, analysis facade, later Salsa integration; reused by every frontend. |
+| `sakura_fmt` | CST-to-document formatting and comment handling; needs no type checking. |
+| `sakura_cli` | Filesystem, packages, process execution, command options and exit codes. |
+| `sakura_lsp`, `sakura_mcp` | Protocol adapters over analysis, no independent compiler logic. |
+| Later: `sakura_codegen_wasm`, `sakura_codegen_native`, `sakura_runtime` | Target lowering, layouts, ownership passes, runtime implementation. |
 
-Keep dependency direction explicit: adapters call analysis; analysis composes syntax/HIR/types/core; code generators consume core. `vow_types` must not know about Rowan, Tokio, JSON-RPC, or Cranelift.
+Keep dependency direction explicit: adapters call analysis; analysis composes syntax/HIR/types/core; code generators consume core. `sakura_types` must not know about Rowan, Tokio, JSON-RPC, or Cranelift.
 
 ### Data flow and IRs
 
@@ -88,7 +88,7 @@ Keep dependency direction explicit: adapters call analysis; analysis composes sy
 5. **Typed Core:** explicit evaluation order in administrative normal form; named intermediates, calls, closures, `Perform`, `Handle`, `Resume`, `Check`, and match branches. A small validator checks binding and typing invariants after transformations.
 6. **Target lowering:** JS uses CPS and JS ASTs. Later native uses closure conversion, layout specialization, ownership operations, and basic-block IR. WASM needs its own target emitter.
 
-Do not create a universal backend IR containing every target's details. Preserve semantic Core, then introduce lower IRs when required. Retain original source identity through generated contract checks and continuation functions so failures can identify Vow code.
+Do not create a universal backend IR containing every target's details. Preserve semantic Core, then introduce lower IRs when required. Retain original source identity through generated contract checks and continuation functions so failures can identify Sakura Lang code.
 
 Use compact typed indices into `Vec`/arenas: `ExprId`, `PatId`, `TypeVarId`, `RowVarId`, `DefId`. Use interned names and immutable type nodes, but keep mutable unification state local to one body or recursive group. Freeze solved results before caching. Avoid references crossing arena lifetimes and long-lived `Rc<RefCell<...>>` graphs.
 
@@ -102,7 +102,7 @@ First expose ordinary functions such as `parse(file)`, `module_interface(module)
 
 Track semantic HIR separately from spans so whitespace edits can reuse semantic results without displaying stale ranges. Add query instrumentation: changing a private function body must not recheck unrelated modules. Handle recursion explicitly as SCCs; do not rely on arbitrary query-cycle recovery to implement recursive inference. Bound retained syntax trees and cancel obsolete work. [Salsa durability](https://salsa-rs.github.io/salsa/reference/durability.html), [cancellation and retention](https://salsa-rs.github.io/salsa/tuning.html)
 
-Define a Vow-owned diagnostic structure: stable code, severity, message, primary/related spans, structured expected/actual types and effects, notes, and fixes with applicability. Include source revision/hash on edits. Render this into terminal text, JSON, LSP diagnostics, or MCP results. Rust's compiler has its own `rustc_errors` infrastructure; `codespan-reporting`, Ariadne, and Miette are alternatives for consumers, not rustc's interchangeable internal engines. [rustc diagnostic design](https://rustc-dev-guide.rust-lang.org/diagnostics.html)
+Define a Sakura Lang-owned diagnostic structure: stable code, severity, message, primary/related spans, structured expected/actual types and effects, notes, and fixes with applicability. Include source revision/hash on edits. Render this into terminal text, JSON, LSP diagnostics, or MCP results. Rust's compiler has its own `rustc_errors` infrastructure; `codespan-reporting`, Ariadne, and Miette are alternatives for consumers, not rustc's interchangeable internal engines. [rustc diagnostic design](https://rustc-dev-guide.rust-lang.org/diagnostics.html)
 
 Recommend `codespan-reporting` for terminal source diagnostics. Ariadne is a viable alternative; Miette is particularly convenient for application-level error chains. Keep renderer types out of inference results. MCP should expose bounded tools such as `check`, `type_at`, `hole_candidates`, `explain_diagnostic`, and `test`, through the official `rmcp` SDK. Running tests is execution with explicit host capabilities, not merely analysis. Keep protocol stdout clean and log to stderr. [Codespan](https://github.com/brendanzab/codespan), [Ariadne](https://github.com/zesterer/ariadne), [Miette](https://github.com/zkat/miette), [Rust MCP SDK](https://github.com/modelcontextprotocol/rust-sdk)
 
@@ -112,7 +112,7 @@ These are observed release versions, not a dependency graph proven to build toge
 
 | Purpose | Version available by 2026-10-17 | Recommendation |
 |---|---|---|
-| Lossless trees | [`rowan 0.17.0`](https://crates.io/crates/rowan/0.17.0), [`text-size 1.1.1`](https://crates.io/crates/text-size/1.1.1) | Adopt; hide Rowan behind Vow syntax wrappers. |
+| Lossless trees | [`rowan 0.17.0`](https://crates.io/crates/rowan/0.17.0), [`text-size 1.1.1`](https://crates.io/crates/text-size/1.1.1) | Adopt; hide Rowan behind Sakura Lang syntax wrappers. |
 | Lexing | [`logos 0.16.1`](https://crates.io/crates/logos/0.16.1) | Optional; a small handwritten lexer is also reasonable. |
 | Incremental analysis | [`salsa 0.28.5`](https://crates.io/crates/salsa/0.28.5) | Add at M3; reported MSRV 1.88. |
 | Source diagnostics | [`codespan-reporting 0.13.1`](https://crates.io/crates/codespan-reporting/0.13.1) | Default renderer. |
@@ -128,7 +128,7 @@ These are observed release versions, not a dependency graph proven to build toge
 | Native | [`cranelift-codegen`](https://crates.io/crates/cranelift-codegen/0.136.3), [`cranelift-frontend`](https://crates.io/crates/cranelift-frontend/0.136.3), [`cranelift-module`](https://crates.io/crates/cranelift-module/0.136.3), [`cranelift-object`](https://crates.io/crates/cranelift-object/0.136.3): all **0.136.3** | Keep release train aligned; these releases report Rust **1.96.0**. |
 | WASM | [`wasm-encoder 0.262.0`](https://crates.io/crates/wasm-encoder/0.262.0), [`wasmparser 0.262.0`](https://crates.io/crates/wasmparser/0.262.0) | Encode and validate a dedicated WASM backend. |
 
-`tower-lsp-server` is explicitly a community fork of `tower-lsp`; do not choose a version solely from an old tutorial. Cranelift's `FunctionBuilder` assists SSA construction; `ObjectModule` emits relocatable object files, not finished executables. Vow still owns runtime calls, ABI, closures, layouts, linking, and debug/source mapping. Cranelift is not a WASM-output backend. [Fork documentation](https://github.com/tower-lsp-community/tower-lsp-server), [frontend API](https://docs.rs/cranelift-frontend/latest/cranelift_frontend/), [object API](https://docs.rs/cranelift-object/latest/cranelift_object/)
+`tower-lsp-server` is explicitly a community fork of `tower-lsp`; do not choose a version solely from an old tutorial. Cranelift's `FunctionBuilder` assists SSA construction; `ObjectModule` emits relocatable object files, not finished executables. Sakura Lang still owns runtime calls, ABI, closures, layouts, linking, and debug/source mapping. Cranelift is not a WASM-output backend. [Fork documentation](https://github.com/tower-lsp-community/tower-lsp-server), [frontend API](https://docs.rs/cranelift-frontend/latest/cranelift_frontend/), [object API](https://docs.rs/cranelift-object/latest/cranelift_object/)
 
 ## 4. Algorithms to implement
 
@@ -208,20 +208,20 @@ These are dependency-ordered gates, not calendar estimates. M0 should have an in
 
 Implement literals, named functions, explicit signatures, calls, one built-in effect, minimal CST/HIR/Core, CPS JS emission, JSON diagnostics, and a host console handler.
 
-```vow
+```sakura
 fn greet() -> Unit ! {Console} {
-  Console.print("hello, Vow")
+  Console.print("hello, Sakura Lang")
 }
 fn main() -> Unit ! {Console} { greet() }
 ```
 
-`vow run hello.vow --target js` prints exactly one line. Removing `Console` from `greet`'s declared row must fail with a stable diagnostic. An unfinished `Console.print(` must produce a tree and diagnostic without hanging. Snapshot emitted JS and actually execute it; generated text alone is insufficient.
+`sakura run hello.sakura --target js` prints exactly one line. Removing `Console` from `greet`'s declared row must fail with a stable diagnostic. An unfinished `Console.print(` must produce a tree and diagnostic without hanging. Snapshot emitted JS and actually execute it; generated text alone is insufficient.
 
 ### M1 — useful pure language and typed errors
 
 Add ADTs, exhaustive matches, closures, HM local polymorphism, recursive groups, modules with explicit exports, abortive `Fail<E>`, built-in tests, and initial formatting.
 
-```vow
+```sakura
 enum Option<A> { None, Some(A) }
 fn unwrap_or(x: Option<Int>, fallback: Int) -> Int ! {} {
   match x { None => fallback, Some(n) => n }
@@ -240,7 +240,7 @@ Deleting `None` must report a missing-case witness; adding an arm after `_` must
 
 Add parameterized effects, polymorphic row tails, affine deep handlers, handler forwarding, and hole diagnostics. Use the same CPS runtime as M0, expanded rather than replaced without tests.
 
-```vow
+```sakura
 effect Ask { ask() -> Int }
 fn twice<e>(f: fn() -> Int ! e) -> Int ! e { f() + f() }
 fn answer() -> Int ! {} {
@@ -258,7 +258,7 @@ The hole reports `Int` and suggests `x`. Calling the *same* `resume` twice is re
 
 Add Salsa, LSP, MCP, complete formatting, checked refinements, capabilities, versioned diagnostics, and bounded candidate search.
 
-```vow
+```sakura
 fn increment(x: Int) -> Int ! {}
   requires x >= 0 && x < Int.max
   ensures result == x + 1
@@ -290,7 +290,7 @@ Acceptance program: retain `original = [1,2,3]`, compute `updated = map(original
 6. **Incrementality without dependency discipline.** Hidden environment reads and unstable IDs invalidate caches. Make file inputs explicit and test both reuse and required invalidation.
 7. **Snapshot approval mistaken for correctness.** Use `insta` for syntax, diagnostics, IR, and generated-code review, plus executable semantic tests. rustc-style UI fixtures pair programs with expected diagnostics and pass/fail modes. Normalize paths, not meaningful spans or codes. [Insta](https://insta.rs/docs/), [rustc UI tests](https://rustc-dev-guide.rust-lang.org/tests/ui.html)
 8. **Insufficient adversarial testing.** Fuzz parser progress, malformed Unicode boundaries, row unification, and nested patterns. Property-test formatter idempotence, parse/print preservation, alpha-renaming, and differential execution against the reference evaluator. Test LSP/MCP cancellation and request framing separately from compiler logic.
-9. **Premature backend or dependency expansion.** Keep Cranelift/LLVM optional and out of normal frontend builds. Track compiler rebuild time, cold Vow checks, warm edits, memory, and generated-program runtime as different metrics.
+9. **Premature backend or dependency expansion.** Keep Cranelift/LLVM optional and out of normal frontend builds. Track compiler rebuild time, cold Sakura Lang checks, warm edits, memory, and generated-program runtime as different metrics.
 10. **Mistaking source availability for a reusable implementation.** Check licenses and branch dates. Read current source when overview diagrams are historical; preserve links and revision information in design decisions.
 
 ## 7. Sources consulted

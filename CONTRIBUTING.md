@@ -1,8 +1,8 @@
-# Contributing to Vow
+# Contributing to Sakura Lang
 
-Vow is in **pre-alpha / design phase**. Research, design discussion, documentation,
+Sakura Lang is in **pre-alpha / design phase**. Research, design discussion, documentation,
 and the website are useful contributions today. There is no compiler workspace,
-installable Vow toolchain, supported release, or measured performance guarantee yet.
+installable Sakura Lang toolchain, supported release, or measured performance guarantee yet.
 Start with the [design](docs/design.md), [research](research/),
 [stability policy](STABILITY.md), and [Code of Conduct](CODE_OF_CONDUCT.md).
 
@@ -14,8 +14,8 @@ Run `git config core.hooksPath .githooks` once after cloning. The pre-push hook 
 ## Set up the checkout
 
 ```sh
-git clone https://github.com/icantcodefyi/vow.git
-cd vow
+git clone https://github.com/icantcodefyi/sakura-lang.git
+cd sakura-lang
 cd website
 bun install --frozen-lockfile
 bun run dev
@@ -46,7 +46,7 @@ states and describe what you actually checked.
 - `docs/adr/`: internal engineering decisions and their rationale.
 - `website/`: Bun / Next.js / Fumadocs website and documentation presentation.
 - `.github/`: CI, contribution forms, ownership, and dependency automation.
-- `compiler/` (planned): Rust compiler, initially `vow-core` and a thin `vow-cli`.
+- `compiler/` (planned): Rust compiler, initially `sakura_core` and a thin `sakura_cli`.
   A root Cargo workspace and `xtask` will be introduced with implementation.
 
 The design is provisional. Future `docs/spec/` text will define normative grammar

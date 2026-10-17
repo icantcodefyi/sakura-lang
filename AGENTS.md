@@ -1,6 +1,6 @@
-# Working on Vow
+# Working on Sakura Lang
 
-Vow is an agent-first language in **pre-alpha / design phase**. Read
+Sakura Lang is an agent-first language in **pre-alpha / design phase**. Read
 [CONTRIBUTING.md](CONTRIBUTING.md), [docs/design.md](docs/design.md), and
 [STABILITY.md](STABILITY.md). Research is evidence; design is provisional. A future
 `docs/spec/` will be normative. [CODEOWNERS](.github/CODEOWNERS) names reviewers;

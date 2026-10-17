@@ -36,7 +36,7 @@ separate static proof, runtime checks, trusted assumptions, and unknowns.
 ## Alternatives and prior art
 
 Compare doing nothing, simpler designs, and relevant existing languages or tools.
-Link sources and explain which tradeoffs transfer to Vow.
+Link sources and explain which tradeoffs transfer to Sakura Lang.
 
 ## Drawbacks and costs
 

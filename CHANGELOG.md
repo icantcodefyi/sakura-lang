@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Vow are recorded here, following
+All notable changes to Sakura Lang are recorded here, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Future releases follow the [stability policy](STABILITY.md). No release has been
 published yet.
@@ -17,14 +17,18 @@ published yet.
   and dual MIT OR Apache-2.0 licensing.
 - RFC and architecture decision records, compatibility policy, GitHub contribution
   forms, and bootstrap CI/dependency automation.
-- `vow mcp serve`: the compiler as an MCP server with check, symbol and hole queries,
+- `sakura mcp serve`: the compiler as an MCP server with check, symbol and hole queries,
   docs, formatting, checked patches and test runs. Setup: [docs/mcp.md](docs/mcp.md).
-- `vow lsp`: a language server with diagnostics, hover, go to definition, completion,
+- `sakura lsp`: a language server with diagnostics, hover, go to definition, completion,
   formatting and quick fixes.
-- `vow fix [--preview] [--apply ids]` applies compiler fixes by impact class, and
-  `vow check --frozen-specs <symbols|all> [--since rev]` reports spec changes since a git
+- `sakura fix [--preview] [--apply ids]` applies compiler fixes by impact class, and
+  `sakura check --frozen-specs <symbols|all> [--since rev]` reports spec changes since a git
   revision as `V8020`.
-- `vow new <cli|lib|agent> <name>` and `vow init` scaffold a project, and `vow run` exits
+- `sakura new <cli|lib|agent> <name>` and `sakura init` scaffold a project, and `sakura run` exits
   75 when `main` declares an effect that `[permissions]` does not grant.
 
-[Unreleased]: https://github.com/icantcodefyi/vow/commits/master
+### Changed
+
+- Renamed the language from Vow to Sakura Lang: binary `sakura`, sources `.sakura`, manifest `sakura.toml`, crates `sakura_*`, env `SAKURA_*`, URIs `sakura://`, repo `icantcodefyi/sakura-lang`. Diagnostic codes are unchanged. <!-- rename:keep -->
+
+[Unreleased]: https://github.com/icantcodefyi/sakura-lang/commits/master

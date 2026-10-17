@@ -5,8 +5,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        For language syntax, semantics, effects, or compatibility changes, use the language proposal form and [RFC process](https://github.com/icantcodefyi/vow/blob/master/docs/rfcs/README.md).
-        Vow is in the design phase; distinguish existing behavior from proposed behavior.
+        For language syntax, semantics, effects, or compatibility changes, use the language proposal form and [RFC process](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/rfcs/README.md).
+        Sakura Lang is in the design phase; distinguish existing behavior from proposed behavior.
   - type: textarea
     id: problem
     attributes:

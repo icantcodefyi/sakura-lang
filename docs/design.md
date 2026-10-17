@@ -1,4 +1,4 @@
-# Vow language design (v0)
+# Sakura Lang design (v0)
 
 Status: **authoritative design for v0**. Date: 2026-10-17, revised the same day for round 2 (see §17 for every decision taken against implementer questions). Owner: language design.
 Change process: edits to syntax, semantics, effects, module/package rules, or the diagnostic protocol go through `docs/rfcs/NNNN-title.md` with a seven-day final comment period (`research/07 §3`); the normative `docs/spec/` is extracted from this document once M1 lands.
@@ -10,14 +10,14 @@ This document is written so that several engineers can implement the compiler in
 
 ## 0. One-page summary
 
-- Vow is a strict, eagerly evaluated, expression-oriented language with braces, `fn`, `let`/`var`, nominal records and variants, exhaustive `match`, rank-1 generics with HM inference, and **explicit signatures on every top-level function**.
+- Sakura Lang is a strict, eagerly evaluated, expression-oriented language with braces, `fn`, `let`/`var`, nominal records and variants, exhaustive `match`, rank-1 generics with HM inference, and **explicit signatures on every top-level function**.
 - Every function type carries an **effect row** `! {Db, Clock, Fail<SignupError>}`. Rows are inferred inside bodies and declared (as upper bounds) on signatures. Rows are **sets of unique labels** with an optional open tail variable (`R01 §3.1`, second algebra).
 - Expected failure is the built-in abortive effect **`Fail<E>`**, where `E` is a union of nominal `error` tags. Defects (contract violations, overflow, division by zero) are **not** effects; they terminate the task.
 - Effects are **requirements**; **handlers** are authority. All std effects are ordinary `effect` declarations handled by handler values installed with `with`. Root handlers come from the host and are limited by the project manifest; libraries can only narrow authority (`R01 §4.3`, `R03 §2.10`).
 - Handlers are **tail-resumptive by construction**: an operation clause returns the operation's result once. No `resume`, no multi-shot, no `Async` effect in v0 (`R01 §1`, `R06 §4`).
 - Values have **value semantics**. `var` rebinding is allowed; aliasing is unobservable; closures capture by value. No reference cells, no cycles in the safe heap. Native uses compiler-inserted RC with Perceus reuse; JS uses the host GC (`R02 §4`).
 - Contracts (`requires`, `ensures`, `where`) are **always runtime-checked** in v0, never disabled in release; SMT discharge later removes individual checks. Specs are frozen during agent repair (`R03 §1`, `§3`).
-- One toolchain: `vow` CLI, formatter, test runner, package manager, LSP and MCP, all over one Rust compiler library with JSON diagnostics (`R04 §4`, `R05 §3`, `R06 §3`).
+- One toolchain: `sakura` CLI, formatter, test runner, package manager, LSP and MCP, all over one Rust compiler library with JSON diagnostics (`R04 §4`, `R05 §3`, `R06 §3`).
 - First backend: JavaScript via a trampolined CPS runtime; then WASM; then native with Cranelift and Perceus RC (`R06 §5`).
 
 ---
@@ -47,13 +47,13 @@ This document is written so that several engineers can implement the compiler in
 
 ### 1.2 The guarantee model
 
-Every claim Vow makes about a program is one of four kinds. Tooling (`vow check --json`, `vow verify`) reports each obligation with exactly one status.
+Every claim Sakura Lang makes about a program is one of four kinds. Tooling (`sakura check --json`, `sakura verify`) reports each obligation with exactly one status.
 
 | Status | Meaning | Who establishes it |
 |---|---|---|
 | `proved` | Holds on all executions under the stated assumptions. | Type/effect checker (type safety, effect safety, exhaustiveness, no null, no unchecked indexing, capability non-forgeability) and, later, SMT-discharged contracts. |
 | `runtime_checked` | Violations are detected at the boundary and turn into a Defect; the invalid value never escapes. | Contract lowering (`requires`, `ensures`, `where`), checked arithmetic, checked refinements at decode boundaries. |
-| `tested` | Held on the executed inputs (unit, property, snapshot, simulation). | `vow test`. |
+| `tested` | Held on the executed inputs (unit, property, snapshot, simulation). | `sakura test`. |
 | `trusted` | Assumed. | FFI declarations, host handlers, `@trust`, solver/runtime/compiler themselves. Exported in the build manifest. |
 
 What the type system proves (status `proved`, no solver required): well-typed programs do not get stuck; every performed effect operation has an installed handler; every `Fail` tag is either caught or declared; every `match` is exhaustive; no value is null; no index is unchecked; a `Secret` is never shown or serialized; a resource is released exactly once; a capability cannot be created by user code.
@@ -64,7 +64,7 @@ What it does **not** prove: business correctness, termination, idempotency of ex
 
 ## 2. Lexical structure
 
-Source files are UTF-8, extension `.vow`, one module per file. The lexer is total: every byte sequence lexes to tokens, with `ERROR` tokens for invalid input.
+Source files are UTF-8, extension `.sakura`, one module per file. The lexer is total: every byte sequence lexes to tokens, with `ERROR` tokens for invalid input.
 
 ### 2.1 Tokens
 
@@ -112,7 +112,7 @@ Multi-line strings: a string literal may contain raw newlines. The formatter kee
 
 ### 2.4 Newlines and statement termination
 
-Vow has no mandatory semicolons. Statements end at a line break according to one rule, applied by the lexer, which emits a `NEWLINE` token only when **both** hold:
+Sakura Lang has no mandatory semicolons. Statements end at a line break according to one rule, applied by the lexer, which emits a `NEWLINE` token only when **both** hold:
 
 1. The previous significant token is one of: `Ident`, `TypeName`, `Hole`, a literal, `)`, `]`, `}`, `>`, postfix `?`, `true`, `false`, `break`, `continue`, `return`.
 2. The next significant token is **not** one of: `.`, `else`, `catch`, `)`, `]`, `}`, `,`, `=>`, `=`, `->`, `|`, `..`, or a binary operator that cannot begin an expression: `+ * / % == != < <= > >= && ||`.
@@ -136,8 +136,8 @@ Consequences, stated so nobody has to guess:
 | `@tool(description)` | `fn` | Exported as an LLM tool (§11.2). |
 | `@llm(system: …)` | bodiless `fn` | Prompt-defined function (§11.1). |
 | `@external(target, module, name)` | bodiless `fn`, `type` | Host binding (§13.6). |
-| `@total` | `fn` with row `{}` | Trusted claim that the function terminates on every input; admits it to the contract subset (§7.1). Listed by `vow audit`. |
-| `@contract_test(handlers: […])` | `fn` | Handlers for `vow test --contracts` (§7.4). |
+| `@total` | `fn` with row `{}` | Trusted claim that the function terminates on every input; admits it to the contract subset (§7.1). Listed by `sakura audit`. |
+| `@contract_test(handlers: […])` | `fn` | Handlers for `sakura test --contracts` (§7.4). |
 | `@deprecated(message)` | any item | Warning at use sites. |
 | `@server`, `@test_only` | `fn`, items | Build-target and test-visibility markers (M3). |
 
@@ -314,7 +314,7 @@ There are **no implicit conversions**. `Int.to_float(i)`, `Float.round(f) -> Int
 
 ### 4.3 Refinement types
 
-```vow
+```sakura
 type Email = String where String.len(it) <= 254 && Email.is_valid(it)
 type Percent = Int where it >= 0 && it <= 100
 type NonEmpty<T> = List<T> where List.len(it) > 0
@@ -323,7 +323,7 @@ type NonEmpty<T> = List<T> where List.len(it) > 0
 `where` binds `it` to the underlying value. The predicate must be in the **contract subset** (§7.1): pure, total, effect row `{}`, no recursion, calls only to pure functions already marked `@total` or in the subset. A refined type is a distinct nominal type whose representation equals its base. Values enter it through:
 
 - `Email.validate(s) -> Result<Email, Violation>` — generated for every refined type; `Violation { type_name, clause, value_summary }`.
-- `Email.from(s) -> Email` — checked introduction; failure is a **Defect** `D010`. Use at trusted boundaries only (`vow audit` lists uses).
+- `Email.from(s) -> Email` — checked introduction; failure is a **Defect** `D010`. Use at trusted boundaries only (`sakura audit` lists uses).
 - Decoding: `let u: User = Json.decode(text)?` checks all refinements of nested fields and reports typed `DecodeError`s, never Defects.
 - Literals: `let e: Email = "a@b.co"` is checked at compile time when the predicate is in the SMT fragment, otherwise at program start (`V5002` warning: "checked at runtime").
 
@@ -364,7 +364,7 @@ All `Int` operations are checked; `Int.wrapping_add` etc. exist for hashing. Com
 
 ### 4.8 Show and interpolation
 
-`"{x}"` calls the derived `Show`. Output is **valid Vow expression syntax**, stable across backends, and the same format `vow test` snapshots use:
+`"{x}"` calls the derived `Show`. Output is **valid Sakura Lang expression syntax**, stable across backends, and the same format `sakura test` snapshots use:
 
 | Value | Shows as |
 |---|---|
@@ -410,7 +410,7 @@ There are no methods, `self`, or extension methods. A library adds "methods" to 
 
 A function type is `fn(Params) -> Result ! Row`. The row lists the **effects the function may perform when called**. Creating a closure performs nothing; calling it performs its row (`R01 §4.2`).
 
-```vow
+```sakura
 fn signup(email: Email, pw: Password) -> User ! {Db, Clock, Random, Fail<SignupError>}
 fn map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! e
 fn pure_len(s: String) -> Int                       // ! {} implied
@@ -420,7 +420,7 @@ fn pure_len(s: String) -> Int                       // ! {} implied
 
 Rows are **sets of unique labels** plus an optional open tail: `{Db, Clock | e}`. A label is an effect declaration plus its type arguments (`Fail<E>`, `State<Int>`). Decision rationale: v0 handlers are tail-resumptive services and `Fail` is abortive, so the duplicate-label multiplicity that Koka's scoped rows provide is never observable; unique labels give simpler unification and simpler diagnostics (`R01 §3.1` recommendation; departs from `R06 §4.2` which assumed resumable nested handlers).
 
-Unification rules (implemented in `vow_types::rows`):
+Unification rules (implemented in `sakura_types::rows`):
 
 1. `{A, B | r} ~ {A, C | s}` with distinct flexible tails: fresh `t`; `r := {C | t}`, `s := {B | t}`. Occurs check on tails.
 2. `{A | r} ~ {}`: fail with `V3002` (label `A` not permitted here).
@@ -436,7 +436,7 @@ Unification rules (implemented in `vow_types::rows`):
 
 `Fail<E>` is the one compiler-known effect. Its operation is `fail e : Never`. `E` is an **error union**: a set of nominal `error` tags. Within a row, `Fail` occurs at most once and its argument is joined on sequencing: `Fail<A> ∪ Fail<B> = Fail<A | B>`. Union is associative, commutative, idempotent (`R01 §4.1`).
 
-```vow
+```sakura
 error EmailTaken(email: Email)
 error Banned
 error DbUnavailable(reason: String)
@@ -453,7 +453,7 @@ type SignupError = EmailTaken | Banned           // union alias
 - Postfix `r?` on `r: Result<T, E>` yields `T` and adds `Fail<E>`. Also `Option.or_fail(o, err)`.
 - There is no implicit conversion between error types. Public functions should translate internal tags to stable domain tags with `catch` (`R01 §4.1`).
 
-Error tags carry no stack traces by default; `vow test` and `vow run --trace` record the fail site. Tags are `Eq`, `Show`, `Schema`.
+Error tags carry no stack traces by default; `sakura test` and `sakura run --trace` record the fail site. Tags are `Eq`, `Show`, `Schema`.
 
 ### 5.4 Defects are not effects
 
@@ -461,7 +461,7 @@ A **Defect** is a violated contract (`requires`/`ensures`/`where` at a trusted i
 
 ### 5.5 User-defined effects and handlers
 
-```vow
+```sakura
 effect Db {
   fn exists(table: String, key: String) -> Bool
   fn insert(table: String, key: String, row: Json) -> Unit ! {Fail<DbUnavailable>}
@@ -496,7 +496,7 @@ Rules:
 
 ### 5.6 Why there is no `Async` effect in v0
 
-Every Vow function may suspend; the JS runtime is uniformly CPS-trampolined (§12.3) and native will use its own stacks. Because nothing in application code can observe "did not suspend", an `Async` label would be noise without a contract (`R01 §6.2`). Suspension is a property of **handlers**: `Clock.sleep` suspends under the live clock and returns immediately under `Clock.fixed`. FFI callbacks that must be synchronous require `! {}` arguments (§13.6). If native direct-style compilation later needs a no-suspend proof, it will be an inferred, non-user-visible analysis, not a source-level effect.
+Every Sakura Lang function may suspend; the JS runtime is uniformly CPS-trampolined (§12.3) and native will use its own stacks. Because nothing in application code can observe "did not suspend", an `Async` label would be noise without a contract (`R01 §6.2`). Suspension is a property of **handlers**: `Clock.sleep` suspends under the live clock and returns immediately under `Clock.fixed`. FFI callbacks that must be synchronous require `! {}` arguments (§13.6). If native direct-style compilation later needs a no-suspend proof, it will be an inferred, non-user-visible analysis, not a source-level effect.
 
 ### 5.7 Effect inference rules, precisely
 
@@ -526,7 +526,7 @@ A `test` block is a function `fn() -> Unit ! {Test, Fail<E>}` for any error unio
 
 All three are ordinary std functions over thunks (`R01 §4.5`):
 
-```vow
+```sakura
 // std/retry
 type Policy<E> = { retry_on: fn(E) -> Bool, max_attempts: Int, backoff: Duration, jitter: Bool, deadline: Option<Duration> }
 fn policy<E>(retry_on: fn(E) -> Bool, max_attempts: Int) -> Policy<E> requires max_attempts >= 1
@@ -555,7 +555,7 @@ fn limits(l: Limits) -> Handler<Budget>
 - The entry point is `fn main() -> Unit ! {…}`. The **host** supplies root handlers for exactly the std effects `main` declares, and nothing else. The handlers are built from host capabilities constrained by the project manifest:
 
 ```toml
-# vow.toml
+# sakura.toml
 [permissions]
 fs.read  = ["./data", "./templates"]
 fs.write = ["./data/out"]
@@ -564,7 +564,7 @@ env      = ["DATABASE_URL", "ANTHROPIC_API_KEY"]
 process  = []          # no subprocesses
 ```
 
-- `vow run` builds root handlers from this table. The `net` list limits the network effects (`Http`, `Serve`, `Sql.postgres`); a `main` that declares `Http` with an empty `net` list fails at startup with exit code 75, not at first use.
+- `sakura run` builds root handlers from this table. The `net` list limits the network effects (`Http`, `Serve`, `Sql.postgres`); a `main` that declares `Http` with an empty `net` list fails at startup with exit code 75, not at first use.
 - **Capability values** (`Dir`, `NetScope`, `EnvScope`, `SecretStore`) are external types (§4.2); user code cannot construct them (`V6001` if attempted via FFI tricks on supported targets). They are obtained only from operations of the installed handler (`Fs.root() -> Dir`), or by **attenuating** an existing one: `Dir.subdir(d, "uploads")`, `NetScope.restrict(n, ["api.example.com:443"])`.
 - Attenuation handlers are std functions: `Fs.rooted(dir) -> Handler<Fs>`, `Http.scoped(scope) -> Handler<Http, {Http}>` (its clauses forward to the outer `Http` after checking), `Env.only(keys) -> Handler<Env, {Env}>`.
 
@@ -574,17 +574,17 @@ A capability or a handler that captured one is a **scoped value**: it may be pas
 
 ### 6.4 `Secret<T>` and `Untrusted<T>`
 
-- `Secret<T>` wraps credentials. It is not `Show`, `Eq`, `Schema`, or `Ord`; it cannot be interpolated, logged, snapshotted, or serialized (`V2031`). `Env.secret("KEY") -> Option<Secret<String>>` (`None` when the variable is unset or outside the manifest's `env` list). Only std sinks accept it: `Http.bearer(req, secret)`, `Sql.postgres(url: Secret<String>)`, `Crypto.hmac(key: Secret<Bytes>, …)`. `Secret.expose(s, @trust("reason")) -> T` exists for adapters; `vow audit` lists each use with its reason. This prevents accidental disclosure only (`R03 §2.12`).
+- `Secret<T>` wraps credentials. It is not `Show`, `Eq`, `Schema`, or `Ord`; it cannot be interpolated, logged, snapshotted, or serialized (`V2031`). `Env.secret("KEY") -> Option<Secret<String>>` (`None` when the variable is unset or outside the manifest's `env` list). Only std sinks accept it: `Http.bearer(req, secret)`, `Sql.postgres(url: Secret<String>)`, `Crypto.hmac(key: Secret<Bytes>, …)`. `Secret.expose(s, @trust("reason")) -> T` exists for adapters; `sakura audit` lists each use with its reason. This prevents accidental disclosure only (`R03 §2.12`).
 - `Untrusted<T>` wraps data from **outside the deployment**: raw request bodies, free-text LLM output, file contents read as text. Environment variables are operator-controlled and permission-gated, so `Env.get` returns a plain `Option<String>` (§17.15). `Untrusted` supports `Untrusted.validate(u) -> Result<V, Violation>` (into any refined type `V`, named by annotation: `let e: Email = Untrusted.validate(body)?`), `Untrusted.check(u, pred) -> Result<T, Violation>`, `Untrusted.len(u)`, `Untrusted.trust(u, @trust("reason")) -> T`, and `Untrusted.of(t)` for tests. It is `Show` (so it can be logged) but it is **not** accepted by raw-splice positions of `sql`/`html`/`shell`/`url` templates (those accept it only as a bound parameter or escaped text, which is always safe). Schema-decoded values (`Response.json`, `Json.decode`, `Llm.generate`) are already validated against the target type's refinements and are returned as that type, not `Untrusted<T>` (`R03 §2.11`).
-- `Trust` is the type of the expression `@trust("reason")` (§2.5). It cannot be stored, returned or constructed any other way (`V6001`), so every trust decision is a literal at the sink, and `vow audit` lists them all.
+- `Trust` is the type of the expression `@trust("reason")` (§2.5). It cannot be stored, returned or constructed any other way (`V6001`), so every trust decision is a literal at the sink, and `sakura audit` lists them all.
 
 ### 6.5 Package-level authority
 
-Each package declares the effects its public functions use (computed, not hand-written) and the capabilities its handlers need. `vow deps capabilities` prints the authority graph. An application grants a dependency authority only by **installing a handler around the calls it makes** — there is no ambient authority to acquire, no `import` that grants anything. Build scripts do not exist in v0 (packages are source + manifest); `@external` bindings are listed per package and make the package `trusted` in the build manifest (`R05 §3`).
+Each package declares the effects its public functions use (computed, not hand-written) and the capabilities its handlers need. `sakura deps capabilities` prints the authority graph. An application grants a dependency authority only by **installing a handler around the calls it makes** — there is no ambient authority to acquire, no `import` that grants anything. Build scripts do not exist in v0 (packages are source + manifest); `@external` bindings are listed per package and make the package `trusted` in the build manifest (`R05 §3`).
 
 ### 6.6 Trusted computing base (explicit)
 
-Compiler, runtime, std root handlers, FFI bindings marked `@external`, `@trust` sites, host platform, and (later) the SMT solver. `vow build --manifest` emits the list with content hashes.
+Compiler, runtime, std root handlers, FFI bindings marked `@external`, `@trust` sites, host platform, and (later) the SMT solver. `sakura build --manifest` emits the list with content hashes.
 
 ---
 
@@ -594,11 +594,11 @@ Compiler, runtime, std root handlers, FFI bindings marked `@external`, `@trust` 
 
 Predicates in `where`, `requires`, `ensures`, and `property` `requires` clauses must be **pure (`! {}`), terminating, and deterministic**. v0 enforces this syntactically: no loops, no recursion, calls only to functions whose row is `{}` and that are either marked `@total` or themselves in the subset (checked transitively; `V5001` otherwise). Comparison, arithmetic (checked, so a predicate itself can defect — reported as `D011 contract_evaluation_failed`), boolean operators, field access, tuple access, pattern `match` on finite variants, and lambdas passed to `@total` functions are in the subset.
 
-`@total` (§2.5) is a **trusted** claim (status `trusted`, §1.2) that a `{}`-row function terminates on every input; it is how loops and recursion inside std reach contracts. Std marks exactly: `List.len`, `List.get`, `List.all`, `List.any`, `List.contains`, `List.first`, `List.last`, `Map.len`, `Map.get`, `Map.contains`, `Set.len`, `Set.contains`, `String.len`, `String.contains`, `String.starts_with`, `String.ends_with`, `Bytes.len`, `Bytes.get`, `Option.is_some`, `Result.is_ok`, `Result.is_err`, `Int.abs`, `Int.min`, `Int.max`, `Graph.get`. User code may use `@total` too; `vow audit` lists every site, like `@trust`.
+`@total` (§2.5) is a **trusted** claim (status `trusted`, §1.2) that a `{}`-row function terminates on every input; it is how loops and recursion inside std reach contracts. Std marks exactly: `List.len`, `List.get`, `List.all`, `List.any`, `List.contains`, `List.first`, `List.last`, `Map.len`, `Map.get`, `Map.contains`, `Set.len`, `Set.contains`, `String.len`, `String.contains`, `String.starts_with`, `String.ends_with`, `Bytes.len`, `Bytes.get`, `Option.is_some`, `Result.is_ok`, `Result.is_err`, `Int.abs`, `Int.min`, `Int.max`, `Graph.get`. User code may use `@total` too; `sakura audit` lists every site, like `@trust`.
 
 ### 7.2 Syntax and semantics
 
-```vow
+```sakura
 fn clamp(x: Int, lo: Int, hi: Int) -> Int
   requires ordered: lo <= hi
   ensures bounded: lo <= result && result <= hi
@@ -610,21 +610,21 @@ fn clamp(x: Int, lo: Int, hi: Int) -> Int
 - `requires` is checked on entry; a failure is a **caller defect** `D020` with blame on the call site (span of the call, in the diagnostic) and the clause name.
 - `ensures` is checked once on **normal return**, with `result` bound to the value. Never checked when the function fails or defects. Failure is a **callee defect** `D021`. `old(expr)` is not in v0 (no mutation to snapshot).
 - `where` on a refined type is checked at introduction (§4.3). Field refinements are checked at record construction, which is why `User { ..u, email: e }` with `e: Email` needs no re-check.
-- Contract checks run in **all build modes**. `vow build --release` keeps them. The only way a check disappears is a `proved` status from `vow verify` (M4+), recorded per obligation.
-- Contracts on `pub` functions are part of the signature printed by `vow doc`, `symbol_query`, and hover.
+- Contract checks run in **all build modes**. `sakura build --release` keeps them. The only way a check disappears is a `proved` status from `sakura verify` (M4+), recorded per obligation.
+- Contracts on `pub` functions are part of the signature printed by `sakura doc`, `symbol_query`, and hover.
 - Performance guard: a clause the compiler estimates as O(n) over an argument (contains `List.all`/`any`) triggers warning `W5005` on hot paths; bounded quantifiers are permitted because v0 chooses honesty over silent cost (`R03 §5.4`).
 
 ### 7.3 Frozen specs during agent repair
 
-`vow fix`, the MCP `apply_patch` tool, and `vow check --frozen-specs <symbols|all>` reject any patch that modifies a frozen symbol's signature, effect row, error union, `requires`/`ensures`/`where` clauses, or any `test`/`property` body. The diagnostic `V8020 spec_frozen` names the clause. Fixes emitted by the compiler itself carry `impact: contract_change | authority_change | interface_change` and are never `machine_applicable` (`R03 §1`, `R04 §4.2`).
+`sakura fix`, the MCP `apply_patch` tool, and `sakura check --frozen-specs <symbols|all>` reject any patch that modifies a frozen symbol's signature, effect row, error union, `requires`/`ensures`/`where` clauses, or any `test`/`property` body. The diagnostic `V8020 spec_frozen` names the clause. Fixes emitted by the compiler itself carry `impact: contract_change | authority_change | interface_change` and are never `machine_applicable` (`R03 §1`, `R04 §4.2`).
 
 ### 7.4 Property tests from refinements
 
-`vow test --contracts` synthesizes a property test for every `pub` function with at least one refined parameter or `requires` clause: inputs are generated **jointly** from parameter refinements and `requires` (constructive generators for ranges, lengths, enums, non-empty lists; filter-based fallback with a discard budget of 90%, reported as `W7001` when exceeded), the function is run under test default handlers, and `ensures` plus result refinements are checked. Failures are shrunk and stored under `tests/regressions/<fn>.json` (`R03 §2.5`). Functions with effects other than `Fail`, `Clock`, `Random` are skipped unless a `@contract_test(handlers: [Sql.memory(), Log.captured()])` attribute supplies handlers.
+`sakura test --contracts` synthesizes a property test for every `pub` function with at least one refined parameter or `requires` clause: inputs are generated **jointly** from parameter refinements and `requires` (constructive generators for ranges, lengths, enums, non-empty lists; filter-based fallback with a discard budget of 90%, reported as `W7001` when exceeded), the function is run under test default handlers, and `ensures` plus result refinements are checked. Failures are shrunk and stored under `tests/regressions/<fn>.json` (`R03 §2.5`). Functions with effects other than `Fail`, `Clock`, `Random` are skipped unless a `@contract_test(handlers: [Sql.memory(), Log.captured()])` attribute supplies handlers.
 
 ### 7.5 Upgrade path to SMT (not v0)
 
-M4 adds `vow verify`: obligations from `requires`/`ensures`/`where`/overflow/division in the QF_LIA + QF_BV + EUF fragment are discharged by Z3 via SMT-LIB in a worker process; statuses `proved | disproved(counterexample) | unknown | unsupported`. Only `proved` removes a runtime check; `unknown` keeps it. `verify fn` (reserved keyword) later requests hard verification. Termination proofs are never implied (`R03 §4`).
+M4 adds `sakura verify`: obligations from `requires`/`ensures`/`where`/overflow/division in the QF_LIA + QF_BV + EUF fragment are discharged by Z3 via SMT-LIB in a worker process; statuses `proved | disproved(counterexample) | unknown | unsupported`. Only `proved` removes a runtime check; `unknown` keeps it. `verify fn` (reserved keyword) later requests hard verification. Termination proofs are never implied (`R03 §4`).
 
 ---
 
@@ -632,7 +632,7 @@ M4 adds `vow verify`: obligations from `requires`/`ensures`/`where`/overflow/div
 
 ### 8.1 Value semantics (decision)
 
-Every Vow value behaves as an independent value. Assignment, passing, capturing, and returning never create observable aliases. Physical sharing (RC, copy-on-write) is an optimization the compiler owns and the program cannot detect (`R02 §4.1`). Consequences:
+Every Sakura Lang value behaves as an independent value. Assignment, passing, capturing, and returning never create observable aliases. Physical sharing (RC, copy-on-write) is an optimization the compiler owns and the program cannot detect (`R02 §4.1`). Consequences:
 
 - `let` bindings are immutable (assigning to one, or to a module constant, is `V1040`). `var` bindings may be **reassigned**; reassignment changes the binding, not any value seen elsewhere. `u.email = e` on `var u` is sugar for `u = User { ..u, email: e }`; `xs = List.push(xs, 1)` is how collections grow. An unused non-`Unit` result (e.g. `List.push(xs, 1)` as a statement) is error `V2040`, which catches the forgotten reassignment.
 - Closures capture `var` bindings **by value at creation**. A lambda cannot assign to an outer `var` (`V2041`); loops that accumulate use a `var` in the same function body. The body of a `try` cannot assign to a `var` declared outside it either (also `V2041`): a `try` body may stop at any failing call, so an assignment inside it would have to be either transactional or partially applied, and both are surprises. Assign after the `try` (`let v = try { … } catch { … }; total = total + v`) or declare the `var` inside it.
@@ -661,7 +661,7 @@ Not in v0. The `region` keyword is reserved. Request-scoped arenas arrive with t
 
 ### 8.6 Structured concurrency (`std/task`)
 
-```vow
+```sakura
 // std/task (M3)
 pub type Scope          // external, scoped
 pub type Fiber<T>       // external, scoped, affine
@@ -691,26 +691,26 @@ Strict, left-to-right, arguments before call. `Map`/`Set` iteration order is ins
 
 ## 9. Modules, visibility, packages
 
-- **One file = one module.** The module path is the file path relative to the package's `src/` directory: `src/users/repo.vow` is module `users/repo` in its package. Directories are not modules; there are no `mod.vow` files.
-- **Imports**: `import std/http` binds the module name `http` and nothing else; `import std/http.{Http, Request, Response}` binds the listed names (types, effects, error tags, functions, constants) directly; `import acme/billing/invoices as inv` renames. Effects and types are **never** brought into scope implicitly, so a row like `! {Http, Sql}` needs `.{Http}`/`.{Sql}` imports or qualified paths (`http.Request`). `V1002` on an unresolved std name carries the `machine_applicable` fix that adds the import. The first segment is a package name (`std`, the current package's name, or a dependency listed in `vow.toml`); a later segment may be a keyword (`std/test`), and such a module can only be imported with `.{…}` or `as`. No wildcard imports, no relative imports, no re-exports in v0, **no import cycles** (`V1030`, counting only names a module actually references). Using an item that is not `pub` is `V1006`.
+- **One file = one module.** The module path is the file path relative to the package's `src/` directory: `src/users/repo.sakura` is module `users/repo` in its package. Directories are not modules; there are no `mod.sakura` files.
+- **Imports**: `import std/http` binds the module name `http` and nothing else; `import std/http.{Http, Request, Response}` binds the listed names (types, effects, error tags, functions, constants) directly; `import acme/billing/invoices as inv` renames. Effects and types are **never** brought into scope implicitly, so a row like `! {Http, Sql}` needs `.{Http}`/`.{Sql}` imports or qualified paths (`http.Request`). `V1002` on an unresolved std name carries the `machine_applicable` fix that adds the import. The first segment is a package name (`std`, the current package's name, or a dependency listed in `sakura.toml`); a later segment may be a keyword (`std/test`), and such a module can only be imported with `.{…}` or `as`. No wildcard imports, no relative imports, no re-exports in v0, **no import cycles** (`V1030`, counting only names a module actually references). Using an item that is not `pub` is `V1006`.
 - **Visibility**: items are private unless `pub`. `pub type` exports the type **with** its constructors and fields. `pub opaque type` exports the type name only: constructors and fields are usable in the declaring module alone (`V1006` elsewhere), which is how std keeps `Query<R>` buildable only by the `sql` template, `Html` only by escaping code, and `Uuid` only by `Uuid.parse`. Predicate validation uses a refinement type instead (`type Email = String where …` gets `validate`/`from` generated). Opaque types still derive `Eq`/`Show`/`Hash`/`Ord`/`Schema` structurally; `Show` prints them like any record or variant.
 - **Namespaces**: values (functions, constants, modules) are `Ident`s. `TypeName`s split into a **type level** (types, effects, error tags) and a **value level** (variants, error tags as constructors); an error tag occupies both, a variant only the value level, a type or effect only the type level. Variants and error tags live in the namespace of their declaring module directly (`Some`, `EmailTaken`); `Option.Some` and `Json.String` are the qualified forms. A variant may share its own type's name (`type Meters = Meters(Float)`): the type owns the scope entry and a value or pattern use resolves to the variant. Any other conflict within one level of a module is `V1001`; shadowing an import by a local is allowed and warned (`W1002`). A `TypeName` in type position never resolves to a variant, so `std/json` declares a variant `String` while `String` in its signatures stays the prelude type.
 - **Prelude** (always in scope, no import): compiler-known types `Unit Bool Int Float String Bytes Never List Map Set Range Handler Secret Untrusted Trust`; std types `Option Result Duration Instant Uuid Json Level`; constructors `Some None Ok Err`; effects `Fail Console Clock Random Env Log Task Test`; functions `show expect expect_eq expect_fail expect_fails_with expect_defect expect_output expect_snapshot`; the tags `sql html url shell` (module aliases, resolved lazily; using `sql` requires `std/sql` in the lockfile). `Type.f` for a prelude type resolves through its home module (`std/list`, `std/option`, …), so no module names are in the prelude.
-- **Entry point**: `pub fn main() -> Unit ! {…}` in `src/main.vow`. Only std effects may appear in `main`'s row (`V6010`), because only they have host root handlers; the driver installs `<module>.host()` for each (§13.3).
-- **Packages**: `vow.toml` (name, version, edition `2026`, dependencies with lower bounds, `[permissions]`, `[targets]`), `vow.lock` (exact versions + content hashes, committed). Resolution is MVS within a major (`R05 §3`). Registry packages are immutable; `vow publish` computes the API/effect/error/schema diff and enforces the version bump (Elm rule, extended to effect rows and error unions).
-- **Editions**: `vow.toml` carries `edition = "2026"` so every project is self-describing, but v0 ships exactly one edition and no multi-edition support; pre-1.0, minor releases may break the language deliberately and patch releases may not (`research/07 §3`, release and stability plan).
+- **Entry point**: `pub fn main() -> Unit ! {…}` in `src/main.sakura`. Only std effects may appear in `main`'s row (`V6010`), because only they have host root handlers; the driver installs `<module>.host()` for each (§13.3).
+- **Packages**: `sakura.toml` (name, version, edition `2026`, dependencies with lower bounds, `[permissions]`, `[targets]`), `sakura.lock` (exact versions + content hashes, committed). Resolution is MVS within a major (`R05 §3`). Registry packages are immutable; `sakura publish` computes the API/effect/error/schema diff and enforces the version bump (Elm rule, extended to effect rows and error unions).
+- **Editions**: `sakura.toml` carries `edition = "2026"` so every project is self-describing, but v0 ships exactly one edition and no multi-edition support; pre-1.0, minor releases may break the language deliberately and patch releases may not (`research/07 §3`, release and stability plan).
 
 ---
 
 ## 10. Standard library v0
 
-Everything below ships with the compiler, has one canonical API per task, and is searchable with `vow doc --search` / MCP `symbol_query`. Signatures are the contract; bodies are Vow (`compiler/std/*.vow`) or bodiless `@external` host adapters bound to `runtime/js`. `e` is an effect-row variable. The generated index `compiler/std/INDEX.md` is the exact surface; this section lists the same signatures in call form (`List.map` is `std/list.map`).
+Everything below ships with the compiler, has one canonical API per task, and is searchable with `sakura doc --search` / MCP `symbol_query`. Signatures are the contract; bodies are Sakura Lang (`compiler/std/*.sakura`) or bodiless `@external` host adapters bound to `runtime/js`. `e` is an effect-row variable. The generated index `compiler/std/INDEX.md` is the exact surface; this section lists the same signatures in call form (`List.map` is `std/list.map`).
 
 **Layout rule: one std module per effect, and one per compiler-known or prelude type** (`std/console` declares `Console` and its handlers, `std/list` declares the `List` functions). The home-module rule (§4.9) makes `Console.host()` and `Clock.host()` distinct names, and the driver can install `<module>.host()` for every effect in `main`'s row. A module may declare the helper types of its effect or type alongside it (`std/log` declares `Level` and `Log`; `std/json` declares `Json` and `DecodeError`).
 
 ### 10.1 Core data (one module per type; all in the prelude)
 
-```vow
+```sakura
 // std/core, std/unit
 fn show<A: Show>(a: A) -> String
 fn Unit.ignore<A>(a: A) -> Unit                                 // explicit discard
@@ -816,7 +816,7 @@ fn Bytes.from_list(xs: List<Int>) -> Bytes requires List.all(xs, fn(x) { x >= 0 
 
 ### 10.2 Effects (one module each; the first seven are in the prelude)
 
-```vow
+```sakura
 // std/console
 effect Console { fn print(line: String) -> Unit; fn read_line() -> Option<String> }
 fn Console.host() -> Handler<Console>
@@ -905,7 +905,7 @@ Every `host` handler is built by the driver from the manifest's `[permissions]`;
 
 ### 10.3 Data (`std/json`, `std/duration`, `std/instant`, `std/uuid`, `std/url`, `std/path`, `std/decimal`)
 
-```vow
+```sakura
 type Json = Null | Bool(Bool) | Number(Float) | String(String) | Array(List<Json>) | Object(Map<String, Json>)
 error DecodeError(path: String, message: String)                        // path is a JSON Pointer
 fn Json.encode<T: Schema>(value: T) -> String
@@ -926,7 +926,7 @@ Milliseconds, not nanoseconds: a nanosecond `Instant` is already past 2^53 and w
 
 ### 10.4 Web (`std/http`, `std/router`, `std/html`, M3)
 
-```vow
+```sakura
 type Request  = { method: Method, url: Url, headers: Headers, body: Body }
 type Response = { status: Status, headers: Headers, body: Body }
 type Status = Int where it >= 100 && it <= 599                            // Status.from(200), Status.validate(code)
@@ -956,7 +956,7 @@ Route handlers run per request in their own task with the handler environment ca
 
 ### 10.5 CLI (`std/cli`, M3)
 
-```vow
+```sakura
 effect Cli {
   fn args() -> List<String>                                             // after `--`
   fn exit(code: Int) -> Never requires code >= 0 && code <= 255
@@ -968,7 +968,7 @@ fn Cli.parse<T: Schema>(args: List<String>) -> T ! {Fail<CliError>}  // flags fr
 
 ### 10.6 Testing (`std/test`, `std/gen`)
 
-```vow
+```sakura
 effect Test {
   fn record_failure(message: String) -> Unit   // expectations record and continue; the runner fails the test at the end
   fn failures() -> Int
@@ -999,7 +999,7 @@ The module is `std/test` (a keyword segment, §9); its names are in the prelude,
 
 ### 10.7 AI (`std/llm`, `std/tool`, `std/agent`, M3)
 
-```vow
+```sakura
 // std/llm
 type Request<T> = { system: String, user: Prompt, model: Model, max_tokens: Int, temperature: Float, tools: List<Tool>, max_steps: Int }
 type PromptPart = Text(String) | Untrusted(Untrusted<String>) | Image(Bytes)
@@ -1031,11 +1031,11 @@ fn Agent.run<T: Schema>(a: Agent<T>) -> T ! {Llm, Budget, Fail<LlmError | ToolEr
 
 ### 11.1 Typed LLM calls
 
-`Llm.generate(req)` with `req: Request<T>` sends the prompt with `T`'s derived JSON Schema as the structured-output constraint, decodes the response as `Json.decode` would (so **all refinements are checked**), and returns `T`. Failures are typed: `LlmError = Refused | InvalidOutput | Truncated | RateLimited | Timeout | ProviderError` (§10.7; `RateLimited` and `Timeout` are the std-wide tags). Schema-valid output is not truth; the docs and `vow doc` say so on every `Llm` entry (`R05 §2.6`). Repair/retry is explicit: `retry(retry.policy(fn(e) { match e { InvalidOutput { .. } => true, _ => false } }, 3), fn() { Llm.generate(req) })`, charged to the same `Budget`.
+`Llm.generate(req)` with `req: Request<T>` sends the prompt with `T`'s derived JSON Schema as the structured-output constraint, decodes the response as `Json.decode` would (so **all refinements are checked**), and returns `T`. Failures are typed: `LlmError = Refused | InvalidOutput | Truncated | RateLimited | Timeout | ProviderError` (§10.7; `RateLimited` and `Timeout` are the std-wide tags). Schema-valid output is not truth; the docs and `sakura doc` say so on every `Llm` entry (`R05 §2.6`). Repair/retry is explicit: `retry(retry.policy(fn(e) { match e { InvalidOutput { .. } => true, _ => false } }, 3), fn() { Llm.generate(req) })`, charged to the same `Budget`.
 
 `@llm` sugar on a function declares the prompt in place and desugars to the above:
 
-```vow
+```sakura
 @llm(system: "Extract only facts present in the text.")
 fn extract_ticket(text: Untrusted<String>) -> Ticket ! {Llm, Budget, Fail<LlmError | BudgetExceeded>}
 // body omitted: the compiler generates
@@ -1043,11 +1043,11 @@ fn extract_ticket(text: Untrusted<String>) -> Ticket ! {Llm, Budget, Fail<LlmErr
 //   Llm.generate(req)
 ```
 
-The parameter list becomes the user prompt (each parameter rendered by `Show` or as an `Untrusted` part, which the handler marks as data, never instructions, in the provider payload). `vow ai preview extract_ticket --arg text=…` prints the exact provider payload with secrets redacted. `Llm.scripted`/`Llm.replay` handlers make tests deterministic and offline.
+The parameter list becomes the user prompt (each parameter rendered by `Show` or as an `Untrusted` part, which the handler marks as data, never instructions, in the provider payload). `sakura ai preview extract_ticket --arg text=…` prints the exact provider payload with secrets redacted. `Llm.scripted`/`Llm.replay` handlers make tests deterministic and offline.
 
 ### 11.2 Tools from functions and MCP export
 
-A `@tool("description")` function must have `Schema` parameters and result, and an error union of `Schema` tags. `Tool.of(name)` builds a `Tool` whose `schema` is derived from the parameters and whose `call` validates JSON arguments, runs the function **under the caller's current handlers** (the model never supplies authority; the installing code does), and maps failures to a public `ToolError` with the tag name and payload. `vow mcp serve --tools a,b` exports the same `Tool` values over MCP stdio/HTTP, with the manifest's `[permissions]` as the ceiling (`R05 §5`).
+A `@tool("description")` function must have `Schema` parameters and result, and an error union of `Schema` tags. `Tool.of(name)` builds a `Tool` whose `schema` is derived from the parameters and whose `call` validates JSON arguments, runs the function **under the caller's current handlers** (the model never supplies authority; the installing code does), and maps failures to a public `ToolError` with the tag name and payload. `sakura mcp serve --tools a,b` exports the same `Tool` values over MCP stdio/HTTP, with the manifest's `[permissions]` as the ceiling (`R05 §5`).
 
 ### 11.3 Agent loop and budgets
 
@@ -1061,20 +1061,20 @@ A `@tool("description")` function must have `Schema` parameters and result, and 
 
 | Command | Behavior |
 |---|---|
-| `vow new <api|cli|agent|lib> name`, `vow init` | Scaffold with `vow.toml`, lockfile, `src/main.vow`, one test, `[permissions]` section. |
-| `vow check [--json] [--frozen-specs …] [paths]` | Parse, resolve, type/effect check, contracts subset, exhaustiveness. No codegen. Holes allowed. |
-| `vow build [--target js] [--release] [--manifest]` | Check + codegen. Holes rejected (`V2050`). `--manifest` writes the trust/assurance manifest. |
-| `vow run [file] [-- args]` | Check, build, execute under root handlers from `[permissions]`. |
-| `vow test [--json] [--seed N] [--contracts] [--filter pat] [--update-snapshots]` | Runs `test`/`property`; deterministic default handlers; network denied; per-test time/memory limits. |
-| `vow fmt [--check]` | Canonical format (§12.5). |
-| `vow fix [--preview] [--apply id,…]` | Lists compiler fixes with impact class; applies only `machine_applicable` ones unless an id is given. Never applies `contract_change`/`authority_change`. |
-| `vow explain V3001` | Rationale, causes, repair alternatives. |
-| `vow doc [--search "fn(List<A>) -> Int"] [symbol]` | Offline docs and signature search. |
-| `vow prompt [--budget tokens]` | Emits `docs/llms.txt` (compiler-matched edition) plus requested library signatures. |
-| `vow add/remove/update --plan/sync --locked/deps tree|why|capabilities/audit` | Package operations; no scripts run on install. |
-| `vow lsp`, `vow mcp serve` | Protocol adapters over the same analysis library. |
-| `vow ai preview|replay`, `vow db prepare|migrate plan|migrate apply` | v0 for SQLite/one model provider. |
-| `vow verify` | M4+. Per-obligation statuses. |
+| `sakura new <api|cli|agent|lib> name`, `sakura init` | Scaffold with `sakura.toml`, lockfile, `src/main.sakura`, one test, `[permissions]` section. |
+| `sakura check [--json] [--frozen-specs …] [paths]` | Parse, resolve, type/effect check, contracts subset, exhaustiveness. No codegen. Holes allowed. |
+| `sakura build [--target js] [--release] [--manifest]` | Check + codegen. Holes rejected (`V2050`). `--manifest` writes the trust/assurance manifest. |
+| `sakura run [file] [-- args]` | Check, build, execute under root handlers from `[permissions]`. |
+| `sakura test [--json] [--seed N] [--contracts] [--filter pat] [--update-snapshots]` | Runs `test`/`property`; deterministic default handlers; network denied; per-test time/memory limits. |
+| `sakura fmt [--check]` | Canonical format (§12.5). |
+| `sakura fix [--preview] [--apply id,…]` | Lists compiler fixes with impact class; applies only `machine_applicable` ones unless an id is given. Never applies `contract_change`/`authority_change`. |
+| `sakura explain V3001` | Rationale, causes, repair alternatives. |
+| `sakura doc [--search "fn(List<A>) -> Int"] [symbol]` | Offline docs and signature search. |
+| `sakura prompt [--budget tokens]` | Emits `docs/llms.txt` (compiler-matched edition) plus requested library signatures. |
+| `sakura add/remove/update --plan/sync --locked/deps tree|why|capabilities/audit` | Package operations; no scripts run on install. |
+| `sakura lsp`, `sakura mcp serve` | Protocol adapters over the same analysis library. |
+| `sakura ai preview|replay`, `sakura db prepare|migrate plan|migrate apply` | v0 for SQLite/one model provider. |
+| `sakura verify` | M4+. Per-obligation statuses. |
 
 Exit codes: 0 ok; 1 diagnostics with errors, or `main` ended with an uncaught `Fail` (stderr: `error: main failed with <Show of the error>`); 2 usage; 3 test failures; 70 defect at runtime (stderr: one `defect` record, §12.2); 75 permission denied at startup.
 
@@ -1093,7 +1093,7 @@ Record kinds on stdout: `diagnostic`, `hole`, `obligation`, `progress`, `summary
   "message": "function `load_user` performs `Db`, which its signature does not allow",
   "snapshot": "sha256:…",                   // hash of the workspace snapshot checked
   "symbol_id": "pkg::users/repo::load_user" | null,
-  "spans": [ { "uri": "file:///…/repo.vow", "content_hash": "sha256:…",
+  "spans": [ { "uri": "file:///…/repo.sakura", "content_hash": "sha256:…",
                "start_byte": 1203, "end_byte": 1219, "role": "primary" | "cause" | "definition" | "use",
                "label": "`Users.get` introduces `Db` here" } ],
   "related_ids": ["d:…"],                   // root-cause diagnostics this one cascades from
@@ -1101,7 +1101,7 @@ Record kinds on stdout: `diagnostic`, `hole`, `obligation`, `progress`, `summary
   "actual":   { "render": "{Clock, Db}", "row": { … } } | null,
   "obligation": null | { "id": "o:…", "clause": "ensures bounded", "status": "runtime_checked" },
   "counterexample": null | { "inputs": { "x": -1 }, "trace": "…" },
-  "explanation_uri": "vow://explain/V3001",
+  "explanation_uri": "sakura://explain/V3001",
   "fixes": [ { "id": "f:…", "title": "Add `Db` to the signature of `load_user`",
                "applicability": "machine_applicable" | "suggested" | "incomplete",
                "impact": "local" | "behavior_change" | "interface_change" | "contract_change" | "authority_change",
@@ -1131,7 +1131,7 @@ The `hole` record is exactly:
 
 ### 12.3 Error code scheme
 
-`V` + phase digit + three digits; `W` for warnings; `D` for runtime defects. Phases: `0` lex/parse, `1` resolve/modules, `2` types, `3` effects/handlers, `4` patterns, `5` contracts/refinements, `6` capabilities/resources/escape, `7` tests/verification, `8` packages/build/frozen specs, `9` internal. The letters are opaque and read as `V` violation (an error is a contract violation), `W` warning, `D` defect; they do not change with the language's name (§17 entry 47). Codes are never reused or renumbered; retired codes stay documented. Every code has an `explain` page with a minimal pair (wrong program → diagnostic → fixed program). The registry is `vow_diagnostics::codes`.
+`V` + phase digit + three digits; `W` for warnings; `D` for runtime defects. Phases: `0` lex/parse, `1` resolve/modules, `2` types, `3` effects/handlers, `4` patterns, `5` contracts/refinements, `6` capabilities/resources/escape, `7` tests/verification, `8` packages/build/frozen specs, `9` internal. The letters are opaque and read as `V` violation (an error is a contract violation), `W` warning, `D` defect; they do not change with the language's name (§17 entry 47). Codes are never reused or renumbered; retired codes stay documented. Every code has an `explain` page with a minimal pair (wrong program → diagnostic → fixed program). The registry is `sakura_diagnostics::codes`.
 
 Defect codes in v0:
 
@@ -1150,7 +1150,7 @@ Defect codes in v0:
 
 ### 12.4 Typed holes
 
-`?name` is an expression of a fresh type. `vow check` reports each hole as a `hole` record after solving the enclosing body: expected type (fully solved where possible), the effect budget at that point (allowed row minus what is already used is not subtracted; the full allowed row is shown), in-scope locals with types, up to 10 ranked candidates (exact local fits first, then constructors and functions whose result unifies, instantiated in a rollback snapshot, filtered by effect budget), and the refinements/contracts assumed at that point. Holes never affect inference of other bindings beyond their fresh variable. `vow build` and `vow run` reject holes (`V2050`) (`R04 §4.1`, `R06 §4.6`).
+`?name` is an expression of a fresh type. `sakura check` reports each hole as a `hole` record after solving the enclosing body: expected type (fully solved where possible), the effect budget at that point (allowed row minus what is already used is not subtracted; the full allowed row is shown), in-scope locals with types, up to 10 ranked candidates (exact local fits first, then constructors and functions whose result unifies, instantiated in a rollback snapshot, filtered by effect budget), and the refinements/contracts assumed at that point. Holes never affect inference of other bindings beyond their fresh variable. `sakura build` and `sakura run` reject holes (`V2050`) (`R04 §4.1`, `R06 §4.6`).
 
 ### 12.5 Formatter rules
 
@@ -1180,7 +1180,7 @@ source text ─lex/parse─▶ CST (Rowan, lossless) ─lower─▶ HIR (arena, 
   ─emit─▶ JS (CPS + trampoline, ES modules, source maps)  |  WASM (M4)  |  native via Cranelift (M5)
 ```
 
-One Rust library (`vow_analysis` facade) serves CLI, LSP, and MCP. No phase reads the filesystem; inputs arrive as an immutable workspace snapshot (`R06 §3`).
+One Rust library (`sakura_analysis` facade) serves CLI, LSP, and MCP. No phase reads the filesystem; inputs arrive as an immutable workspace snapshot (`R06 §3`).
 
 ### 13.2 Core IR (the interface between frontend and all backends)
 
@@ -1198,22 +1198,22 @@ Bind          = Atom | Prim(op, [Atom]) | Call(Atom, [Atom]) | Closure(DefId, ca
 Atom          = Local(Local) | Lit | Global(DefId) | Builtin(name)
 ```
 
-`Handle`, `Try` and `Fail` are **expressions**, not bindings: their bodies live in the same function, so `return`/`break`/`continue` inside `with` and `try` are ordinary jumps and the region's context is lexical (no thunks, no unwinding tables). Handler state is explicit (`StateGet`/`StateSet` on the clause's instance parameter) and clauses are closures because they capture the enclosing function's variables. Locals carry types; `Switch` names the variant type or error union it discriminates. `vow_core::ir` and `runtime/js/ABI.md` are normative for field names.
+`Handle`, `Try` and `Fail` are **expressions**, not bindings: their bodies live in the same function, so `return`/`break`/`continue` inside `with` and `try` are ordinary jumps and the region's context is lexical (no thunks, no unwinding tables). Handler state is explicit (`StateGet`/`StateSet` on the clause's instance parameter) and clauses are closures because they capture the enclosing function's variables. Locals carry types; `Switch` names the variant type or error union it discriminates. `sakura_core::ir` and `runtime/js/ABI.md` are normative for field names.
 
-Invariants checked by `vow_core::validate` after every pass: every `Local` is bound once and used only in scope; `Perform` targets a declared operation with matching arity; `Check` precedes any use of the checked value; `Switch` tags are exhaustive or carry a default; rows on `Call` targets are closed or variables bound by the enclosing def. Decision trees come from a Maranget-style compiler in `vow_core` that shares normalized patterns with the usefulness checker in `vow_types` but is a separate module (`R06 §4.3`).
+Invariants checked by `sakura_core::validate` after every pass: every `Local` is bound once and used only in scope; `Perform` targets a declared operation with matching arity; `Check` precedes any use of the checked value; `Switch` tags are exhaustive or carry a default; rows on `Call` targets are closed or variables bound by the enclosing def. Decision trees come from a Maranget-style compiler in `sakura_core` that shares normalized patterns with the usefulness checker in `sakura_types` but is a separate module (`R06 §4.3`).
 
 ### 13.3 JS backend strategy (v0)
 
-- **Uniform CPS with a trampoline.** Every Vow function compiles to `function f(args…, ctx, k)` returning a step; the driver loop runs steps, so deep recursion and a million effect operations never overflow the JS stack. `ctx` carries the **handler stack** (array of `{effect_id, handler}` frames) and the current task/cancellation token.
-- **`Perform`** walks `ctx.handlers` from the top for `effect_id`, calls the clause with the outer context (handlers above the found frame removed, per `design.md §5.5`), and continues with `k(result)`. Because clauses are tail-resumptive, this is a direct call; no continuation capture is needed. **`Fail`** unwinds to the nearest enclosing `try` frame recorded in `ctx.catchers`, running finalizers registered in between. Defects unwind to the task boundary. JS exceptions are never used for Vow control flow (`R06 §4.4`).
+- **Uniform CPS with a trampoline.** Every Sakura Lang function compiles to `function f(args…, ctx, k)` returning a step; the driver loop runs steps, so deep recursion and a million effect operations never overflow the JS stack. `ctx` carries the **handler stack** (array of `{effect_id, handler}` frames) and the current task/cancellation token.
+- **`Perform`** walks `ctx.handlers` from the top for `effect_id`, calls the clause with the outer context (handlers above the found frame removed, per `design.md §5.5`), and continues with `k(result)`. Because clauses are tail-resumptive, this is a direct call; no continuation capture is needed. **`Fail`** unwinds to the nearest enclosing `try` frame recorded in `ctx.catchers`, running finalizers registered in between. Defects unwind to the task boundary. JS exceptions are never used for Sakura Lang control flow (`R06 §4.4`).
 - **Suspension** (live `Clock.sleep`, `Http.send`, `Task`): a host handler returns a `Suspend(promise)` step; the driver awaits it and resumes `k`. The handler environment is captured in `ctx`, never read from a global (`R01 §4.5`).
 - **Direct-style fast path (M2):** functions whose row is `{}` and whose callees are all direct are emitted as plain JS functions; adapters bridge the two ABIs at calls from CPS code. Measured, not assumed (`R01 §3.2`).
-- Output is readable ES2022 modules with original names, one file per Vow module, source maps, and a `vow_runtime.js` (handler stack, trampoline, collections, `Show`, `Eq`, hashing, decimal, JSON Schema codecs).
-- **Entry.** The emitter generates `$entry`, which builds a root handler for each effect in `main`'s row by calling `<effect module>.host()` with the host capabilities derived from `[permissions]`, installs them, and calls `main`. For `vow test` each `test` becomes a wrapper `fn(seed: Int)` that installs the §5.8 defaults for the std effects the body uses; the runner installs `Test` outermost. Exit codes are §12.1; an uncaught `Fail` from `main` is exit 1, a defect exit 70 with the `defect` record on stderr.
+- Output is readable ES2022 modules with original names, one file per Sakura Lang module, source maps, and a `sakura_runtime.js` (handler stack, trampoline, collections, `Show`, `Eq`, hashing, decimal, JSON Schema codecs).
+- **Entry.** The emitter generates `$entry`, which builds a root handler for each effect in `main`'s row by calling `<effect module>.host()` with the host capabilities derived from `[permissions]`, installs them, and calls `main`. For `sakura test` each `test` becomes a wrapper `fn(seed: Int)` that installs the §5.8 defaults for the std effects the body uses; the runner installs `Test` outermost. Exit codes are §12.1; an uncaught `Fail` from `main` is exit 1, a defect exit 70 with the `defect` record on stderr.
 
 ### 13.4 Runtime representation of values (JS)
 
-| Vow | JS |
+| Sakura Lang | JS |
 |---|---|
 | `Unit` | `undefined` |
 | `Bool`, `Float` | boolean, number |
@@ -1237,7 +1237,7 @@ Core → closure conversion → layout-specialized low-level IR → Perceus `dup
 
 ### 13.6 FFI (JS, v0)
 
-`@external(js, "npm:pkg", "name") fn raw(args) -> JsValue ! {Foreign, Fail<ForeignError>}`. Generated wrappers convert exceptions and rejections into `ForeignError`, copy ordinary values across the boundary, forbid retaining Vow buffers, and require callback arguments passed to foreign code to be `! {}` functions (they cannot suspend or perform). A package containing `@external` is `trusted` in the manifest. `Foreign` is handled only by the host root handler, so `main` must declare it to use such a package (`R05 §6`).
+`@external(js, "npm:pkg", "name") fn raw(args) -> JsValue ! {Foreign, Fail<ForeignError>}`. Generated wrappers convert exceptions and rejections into `ForeignError`, copy ordinary values across the boundary, forbid retaining Sakura Lang buffers, and require callback arguments passed to foreign code to be `! {}` functions (they cannot suspend or perform). A package containing `@external` is `trusted` in the manifest. `Foreign` is handled only by the host root handler, so `main` must declare it to use such a package (`R05 §6`).
 
 ---
 
@@ -1249,52 +1249,52 @@ Core → closure conversion → layout-specialized low-level IR → Perceus `dup
 compiler/
   Cargo.toml                 # workspace; edition 2024; MSRV pinned; lockfile committed
   crates/
-    vow_syntax/              # lexer, event parser, Rowan CST, typed AST views   (no deps on other vow crates)
-    vow_diagnostics/         # Diagnostic/Span/Fix types, codes registry, JSON + codespan renderers
-    vow_hir/                 # desugar + name resolution, DefId/LocalId arenas, module graph
-    vow_types/               # types, rows, schemes, unification, bidirectional checker, holes, exhaustiveness
-    vow_core/                # Core IR, lowering from typed HIR, match compilation, contract lowering, validator
-    vow_codegen_js/          # Core → JS AST → text + source maps; owns runtime/js/vow_runtime.js
-    vow_analysis/            # workspace snapshot, package graph, the facade used by every frontend (Salsa at M3)
-    vow_fmt/                 # CST → pretty document; comment attachment
-    vow_cli/                 # `vow` binary: commands, process/fs, test runner driver, permissions table
-    vow_lsp/  vow_mcp/       # thin adapters (M3)
-  runtime/js/                # vow_runtime.js + conformance tests (node)
-  std/                       # Vow source for std, compiled by the compiler; platform/js/ host handlers
+    sakura_syntax/              # lexer, event parser, Rowan CST, typed AST views   (no deps on other sakura crates)
+    sakura_diagnostics/         # Diagnostic/Span/Fix types, codes registry, JSON + codespan renderers
+    sakura_hir/                 # desugar + name resolution, DefId/LocalId arenas, module graph
+    sakura_types/               # types, rows, schemes, unification, bidirectional checker, holes, exhaustiveness
+    sakura_core/                # Core IR, lowering from typed HIR, match compilation, contract lowering, validator
+    sakura_codegen_js/          # Core → JS AST → text + source maps; owns runtime/js/sakura_runtime.js
+    sakura_analysis/            # workspace snapshot, package graph, the facade used by every frontend (Salsa at M3)
+    sakura_fmt/                 # CST → pretty document; comment attachment
+    sakura_cli/                 # `sakura` binary: commands, process/fs, test runner driver, permissions table
+    sakura_lsp/  sakura_mcp/       # thin adapters (M3)
+  runtime/js/                # sakura_runtime.js + conformance tests (node)
+  std/                       # Sakura Lang source for std, compiled by the compiler; platform/js/ host handlers
   tests/                     # ui/ (program + expected diagnostics), semantics/ (run + expected stdout), fmt/, fuzz/
-  tools/vow_eval/            # reference interpreter over Core for differential testing (M2)
+  tools/sakura_eval/            # reference interpreter over Core for differential testing (M2)
 ```
 
-Dependency direction is strict: `vow_cli → vow_analysis → {vow_codegen_js, vow_core, vow_types, vow_hir, vow_syntax, vow_fmt} → vow_diagnostics`. `vow_types` must not depend on Rowan, Tokio, serde_json, or any protocol crate (`R06 §3`). Crates recommended in `R06 §3`: `rowan 0.17`, `text-size`, `codespan-reporting 0.13`, `insta`, `proptest`, `serde/serde_json`, `clap 4`, `pretty 0.12`, `lsp-server 0.10`/`lsp-types 0.97`, `rmcp 3.5`, `salsa 0.28` (M3), `wasm-encoder/wasmparser 0.262` (M4), Cranelift 0.136 (M5).
+Dependency direction is strict: `sakura_cli → sakura_analysis → {sakura_codegen_js, sakura_core, sakura_types, sakura_hir, sakura_syntax, sakura_fmt} → sakura_diagnostics`. `sakura_types` must not depend on Rowan, Tokio, serde_json, or any protocol crate (`R06 §3`). Crates recommended in `R06 §3`: `rowan 0.17`, `text-size`, `codespan-reporting 0.13`, `insta`, `proptest`, `serde/serde_json`, `clap 4`, `pretty 0.12`, `lsp-server 0.10`/`lsp-types 0.97`, `rmcp 3.5`, `salsa 0.28` (M3), `wasm-encoder/wasmparser 0.262` (M4), Cranelift 0.136 (M5).
 
 ### 14.2 Interfaces between crates (what each team can code against on day one)
 
 | Producer → consumer | Type | Stable fields |
 |---|---|---|
-| `vow_syntax` → `vow_hir`, `vow_fmt` | `Parse { root: SyntaxNode, errors: Vec<Diagnostic> }` with typed views `ast::FnDecl::name()/params()/ret()/row()/body()` returning `Option<_>` | `SyntaxKind` enum frozen at M0 |
-| `vow_hir` → `vow_types` | `lower(&[PackageInput]) -> Program` with `Program::diagnostics`; `Module { defs: Arena<Def>, bodies: Arena<Body>, imports, exports }`, `Body { exprs: Arena<Expr>, pats: Arena<Pat>, locals }`, `DefId`, `LocalId`, `ExprId`, `SourceMap: ExprId → TextRange`, `Program::home_module`/`resolve_home` for §4.9 | HIR `Expr` enum (`design.md §3` forms, desugared: `for`→`List.fold`-style loop node, `x?`→`Raise`, `e.f(a)`→`Call(Resolved, [e, a])`) |
-| `vow_types` → `vow_core` | `check_program(&Program) -> (TypedProgram, Vec<Diagnostic>)`; `TypedProgram { interner, defs: DefId → Scheme, bodies: (ModuleId, BodyId) → TypedBody, holes }`, `TypedBody { types, rows, pat_types, locals, local_schemes, calls: ExprId → CallTarget, instantiations }` (zonked; leftover row tails closed). Exhaustiveness is reported here; decision trees are built in `vow_core`. | `Type`, `Row`, `Scheme` enums |
-| `vow_core` → `vow_codegen_js` | `core::Module` (§13.2) + `validate()` | Core enum |
-| everything → `vow_diagnostics` | `Diagnostic { code: Code, severity, message, spans: Vec<Span>, expected, actual, fixes, related }` | JSON schema §12.2 |
-| `vow_analysis` → CLI/LSP/MCP | `Analysis::check(&Snapshot) -> CheckResult { diagnostics, holes, interfaces }`, `::build_js`, `::format`, `::symbol_query`, `::hole_context` | function signatures, not internals |
+| `sakura_syntax` → `sakura_hir`, `sakura_fmt` | `Parse { root: SyntaxNode, errors: Vec<Diagnostic> }` with typed views `ast::FnDecl::name()/params()/ret()/row()/body()` returning `Option<_>` | `SyntaxKind` enum frozen at M0 |
+| `sakura_hir` → `sakura_types` | `lower(&[PackageInput]) -> Program` with `Program::diagnostics`; `Module { defs: Arena<Def>, bodies: Arena<Body>, imports, exports }`, `Body { exprs: Arena<Expr>, pats: Arena<Pat>, locals }`, `DefId`, `LocalId`, `ExprId`, `SourceMap: ExprId → TextRange`, `Program::home_module`/`resolve_home` for §4.9 | HIR `Expr` enum (`design.md §3` forms, desugared: `for`→`List.fold`-style loop node, `x?`→`Raise`, `e.f(a)`→`Call(Resolved, [e, a])`) |
+| `sakura_types` → `sakura_core` | `check_program(&Program) -> (TypedProgram, Vec<Diagnostic>)`; `TypedProgram { interner, defs: DefId → Scheme, bodies: (ModuleId, BodyId) → TypedBody, holes }`, `TypedBody { types, rows, pat_types, locals, local_schemes, calls: ExprId → CallTarget, instantiations }` (zonked; leftover row tails closed). Exhaustiveness is reported here; decision trees are built in `sakura_core`. | `Type`, `Row`, `Scheme` enums |
+| `sakura_core` → `sakura_codegen_js` | `core::Module` (§13.2) + `validate()` | Core enum |
+| everything → `sakura_diagnostics` | `Diagnostic { code: Code, severity, message, spans: Vec<Span>, expected, actual, fixes, related }` | JSON schema §12.2 |
+| `sakura_analysis` → CLI/LSP/MCP | `Analysis::check(&Snapshot) -> CheckResult { diagnostics, holes, interfaces }`, `::build_js`, `::format`, `::symbol_query`, `::hole_context` | function signatures, not internals |
 
 ### 14.3 Milestones and acceptance programs
 
 Each milestone has executable acceptance tests under `compiler/tests/`; a milestone is done when they pass in CI on macOS and Linux.
 
-**M0 — effectful hello world end to end.** Lexer with the newline rule; parser for `fn`, `import`, calls, literals, strings with interpolation, blocks, `let`; `Console` as a std effect with a host handler; HIR, inference for monomorphic code, rows with closed labels; Core; CPS JS emission; `vow run`, `vow check --json`.
+**M0 — effectful hello world end to end.** Lexer with the newline rule; parser for `fn`, `import`, calls, literals, strings with interpolation, blocks, `let`; `Console` as a std effect with a host handler; HIR, inference for monomorphic code, rows with closed labels; Core; CPS JS emission; `sakura run`, `sakura check --json`.
 
-```vow
+```sakura
 fn greet(name: String) -> Unit ! {Console} {
   Console.print("hello, {name}")
 }
-pub fn main() -> Unit ! {Console} { greet("Vow") }
+pub fn main() -> Unit ! {Console} { greet("Sakura Lang") }
 ```
-Acceptance: prints exactly `hello, Vow`; removing `Console` from `greet`'s row yields `V3001` with a `cause` span on `Console.print` and a `suggested` fix of impact `interface_change` that adds the label (never `machine_applicable`, §7.3); `Console.print(` unterminated yields a CST, `V0001`, and no hang; a 1,000,000-iteration recursive countdown does not overflow the JS stack.
+Acceptance: prints exactly `hello, Sakura Lang`; removing `Console` from `greet`'s row yields `V3001` with a `cause` span on `Console.print` and a `suggested` fix of impact `interface_change` that adds the label (never `machine_applicable`, §7.3); `Console.print(` unterminated yields a CST, `V0001`, and no hang; a 1,000,000-iteration recursive countdown does not overflow the JS stack.
 
-**M1 — the pure language and typed errors.** Records, variants, error tags and unions, `match` with exhaustiveness, closures, let-polymorphism, `var`/`for`/`while`, `Fail`/`try`/`catch`/`?`, `Option`/`Result`/`List`/`Map`/`String` std in Vow, `test` blocks with `expect`, `vow fmt` idempotent on the corpus.
+**M1 — the pure language and typed errors.** Records, variants, error tags and unions, `match` with exhaustiveness, closures, let-polymorphism, `var`/`for`/`while`, `Fail`/`try`/`catch`/`?`, `Option`/`Result`/`List`/`Map`/`String` std in Sakura Lang, `test` blocks with `expect`, `sakura fmt` idempotent on the corpus.
 
-```vow
+```sakura
 error ParseError(input: String)
 fn parse_age(s: String) -> Int ! {Fail<ParseError>} {
   match String.parse_int(s) { Some(n) if n >= 0 => n, _ => fail ParseError { input: s } }
@@ -1305,11 +1305,11 @@ test "bad age is a typed failure" {
 }
 test "local polymorphism" { let id = fn(x) { x }; expect_eq(id(3), 3); expect(id(true)) }
 ```
-Acceptance: deleting the `_` arm gives `V4001` with witness `None`; adding an arm after `_` gives `V4002`; `fmt` twice equals once on 200 fixture files; `vow test --json` reports per-test records with seeds.
+Acceptance: deleting the `_` arm gives `V4001` with witness `None`; adding an arm after `_` gives `V4002`; `fmt` twice equals once on 200 fixture files; `sakura test --json` reports per-test records with seeds.
 
 **M2 — general rows, user handlers, holes, direct-style fast path.** `effect`/`handler`/`with`, row variables and widening, handler state, `Clock`/`Random`/`Env`/`Log` with host and fake handlers, deterministic test defaults, typed holes, reference evaluator for differential tests, direct-style emission for `{}` rows.
 
-```vow
+```sakura
 effect Counter { fn next() -> Int }
 fn counter() -> Handler<Counter> { handler Counter { var n = 0; fn next() { n = n + 1; n } } }
 fn twice<e>(f: fn() -> Int ! e) -> Int ! e { f() + f() }
@@ -1319,9 +1319,9 @@ fn unfinished(x: Int) -> Int { ?result }
 ```
 Acceptance: `answer()` is pure in its signature and compiles; the hole reports expected `Int`, local `x: Int`, candidate `x`; nested `with counter() { with counter() { … } }` uses the inner instance; a clause performing an undeclared effect is `V3001` at the clause; a closed-row callback `fn() -> Int ! {Clock}` passed to `twice` yields `twice`'s row `{Clock}`; 1,000,000 handled operations run without stack growth; the differential evaluator agrees on 500 generated programs.
 
-**M3 — agent loop and contracts.** `requires`/`ensures`/`where` runtime checks and defects; refined-type `validate`/`from`; capabilities and `[permissions]`; `Secret`/`Untrusted`; resources and escape check; `Task` structured concurrency on JS; `Http`/`Fs`/`Sql.sqlite`/`Serve`; `Json` with `Schema`; `Cli`; LSP and MCP over `vow_analysis` with Salsa; `vow fix` with impact classes; `--frozen-specs`.
+**M3 — agent loop and contracts.** `requires`/`ensures`/`where` runtime checks and defects; refined-type `validate`/`from`; capabilities and `[permissions]`; `Secret`/`Untrusted`; resources and escape check; `Task` structured concurrency on JS; `Http`/`Fs`/`Sql.sqlite`/`Serve`; `Json` with `Schema`; `Cli`; LSP and MCP over `sakura_analysis` with Salsa; `sakura fix` with impact classes; `--frozen-specs`.
 
-```vow
+```sakura
 type Percent = Int where it >= 0 && it <= 100
 fn scale(p: Percent, total: Int) -> Int
   requires total >= 0
@@ -1331,7 +1331,7 @@ test "precondition blames caller" { expect_defect(fn() { scale(Percent.from(50),
 ```
 Acceptance: `scale(Percent.from(50), -1)` reports `D020` with the call span; `Percent.from(101)` is `D010`; a `main` declaring `Fs` with empty `fs.read` fails at startup with exit 75; a route handler returning `Fs.File` is `V6003`; an LSP edit replay with Unicode and stale requests matches MCP `hole_context` byte for byte; editing a private body does not recheck other modules (query instrumentation).
 
-**M4 — WASM backend and verification.** `wasm-encoder` backend with the runtime in linear memory; the M0–M3 semantic corpus passes on JS and WASM with identical stdout and effect traces; `vow verify` discharges QF_LIA/QF_BV obligations through a Z3 worker; `proved` removes individual checks; `Option` null-unboxing after nested-option tests.
+**M4 — WASM backend and verification.** `wasm-encoder` backend with the runtime in linear memory; the M0–M3 semantic corpus passes on JS and WASM with identical stdout and effect traces; `sakura verify` discharges QF_LIA/QF_BV obligations through a Z3 worker; `proved` removes individual checks; `Option` null-unboxing after nested-option tests.
 
 Acceptance: `scale` above is `proved` for `ensures` under its `requires`; a wrong body (`total * p / 50`) yields `disproved` with a counterexample; obligation cache invalidates on signature change only.
 
@@ -1343,12 +1343,12 @@ Acceptance: `let original = [1,2,3]; let updated = List.map(original, fn(x) { x 
 
 | Engineer | Owns | M0 | M1 | M2 | Interface they must publish first |
 |---|---|---|---|---|---|
-| A — Syntax | `vow_syntax`, `vow_fmt` | lexer incl. §2.4 newline rule, event parser for the M0 subset, CST, `SyntaxKind`, error recovery, 50 parser snapshot tests | full §3 grammar, `fmt` with comments, idempotence property test | tagged strings, holes, attributes, parser fuzzing (progress, nesting limits) | `SyntaxKind` enum and `ast::*` typed views (day 1) |
-| B — HIR | `vow_hir` | module loading from snapshot, two-pass resolution, prelude, `DefId`/`LocalId` arenas, source map | records/variants/error tags, `match` desugar, `for`/`while`/`var`, imports with cycle detection, visibility | `effect`/`handler` resolution, home-module method resolution (§4.9), package graph | HIR `Expr`/`Pat` enums (day 2) |
-| C — Types | `vow_types` | types, interner, HM with levels, closed rows, bidirectional check against signatures, `V2xxx`/`V3001` | let-polymorphism, error unions and subsumption, exhaustiveness (usefulness), `try/catch` row arithmetic, `Fail` lattice | row variables and widening, handler typing, generalization tests (negative soundness suite), holes with candidate search | `Type`/`Row`/`Scheme` + `TypedBody` (day 2) |
-| D — Core & JS | `vow_core`, `vow_codegen_js`, `runtime/js` | Core IR + validator, ANF lowering, CPS emission, trampoline runtime, `Console` host handler, source maps | match compilation to decision trees, `Fail`/`try` unwinding with finalizer frames, std collections in runtime, `Show`/`Eq`/`Hash` | handler stack, handler state, direct-style fast path and adapters, `Clock`/`Random`/`Env`/`Log` hosts | Core enum (day 1, from §13.2) and runtime ABI doc (`runtime/js/ABI.md`) |
-| E — Driver & tooling | `vow_analysis`, `vow_cli`, `vow_diagnostics` | diagnostic types + codes registry + JSON renderer + codespan renderer, `vow check/run/build`, snapshot model, CI harness (`tests/ui`, `tests/semantics`) | `vow test` runner with deterministic defaults and seeds, `vow fmt --check`, exit codes, `explain` pages for all codes | `vow_eval` reference interpreter over Core, differential fuzzing, `vow prompt`, hole JSON records | `Diagnostic` struct + JSON schema (day 1) |
-| F — Std & examples | `std/`, `docs/`, examples | prelude surface spec, `Console` effect decl, example programs as acceptance tests, `llms.txt` kept in sync | `Option/Result/List/Map/String/Int/Float` in Vow with tests, `std/test` | `Clock/Random/Env/Log` decls and fake handlers, `retry`/`timeout`, property-test generators, example corpus (§15) runs in CI | std signature index (`std/INDEX.md`) generated from source |
+| A — Syntax | `sakura_syntax`, `sakura_fmt` | lexer incl. §2.4 newline rule, event parser for the M0 subset, CST, `SyntaxKind`, error recovery, 50 parser snapshot tests | full §3 grammar, `fmt` with comments, idempotence property test | tagged strings, holes, attributes, parser fuzzing (progress, nesting limits) | `SyntaxKind` enum and `ast::*` typed views (day 1) |
+| B — HIR | `sakura_hir` | module loading from snapshot, two-pass resolution, prelude, `DefId`/`LocalId` arenas, source map | records/variants/error tags, `match` desugar, `for`/`while`/`var`, imports with cycle detection, visibility | `effect`/`handler` resolution, home-module method resolution (§4.9), package graph | HIR `Expr`/`Pat` enums (day 2) |
+| C — Types | `sakura_types` | types, interner, HM with levels, closed rows, bidirectional check against signatures, `V2xxx`/`V3001` | let-polymorphism, error unions and subsumption, exhaustiveness (usefulness), `try/catch` row arithmetic, `Fail` lattice | row variables and widening, handler typing, generalization tests (negative soundness suite), holes with candidate search | `Type`/`Row`/`Scheme` + `TypedBody` (day 2) |
+| D — Core & JS | `sakura_core`, `sakura_codegen_js`, `runtime/js` | Core IR + validator, ANF lowering, CPS emission, trampoline runtime, `Console` host handler, source maps | match compilation to decision trees, `Fail`/`try` unwinding with finalizer frames, std collections in runtime, `Show`/`Eq`/`Hash` | handler stack, handler state, direct-style fast path and adapters, `Clock`/`Random`/`Env`/`Log` hosts | Core enum (day 1, from §13.2) and runtime ABI doc (`runtime/js/ABI.md`) |
+| E — Driver & tooling | `sakura_analysis`, `sakura_cli`, `sakura_diagnostics` | diagnostic types + codes registry + JSON renderer + codespan renderer, `sakura check/run/build`, snapshot model, CI harness (`tests/ui`, `tests/semantics`) | `sakura test` runner with deterministic defaults and seeds, `sakura fmt --check`, exit codes, `explain` pages for all codes | `sakura_eval` reference interpreter over Core, differential fuzzing, `sakura prompt`, hole JSON records | `Diagnostic` struct + JSON schema (day 1) |
+| F — Std & examples | `std/`, `docs/`, examples | prelude surface spec, `Console` effect decl, example programs as acceptance tests, `llms.txt` kept in sync | `Option/Result/List/Map/String/Int/Float` in Sakura Lang with tests, `std/test` | `Clock/Random/Env/Log` decls and fake handlers, `retry`/`timeout`, property-test generators, example corpus (§15) runs in CI | std signature index (`std/INDEX.md`) generated from source |
 
 Sync points: end of week 1 — A/B/C/D agree on `SyntaxKind`, HIR, `Type`, Core enums (frozen by PR review, changes need all four); M0 integration day — E wires the pipeline; after that, every PR must keep `tests/semantics` green on JS. Teams C and D are the critical path; A and F have slack to absorb grammar churn and documentation.
 
@@ -1360,23 +1360,23 @@ Sync points: end of week 1 — A/B/C/D agree on `SyntaxKind`, HIR, `Type`, Core 
 
 ## 15. Example programs
 
-All examples are complete files under `examples/` and run in CI as acceptance tests (`vow run`, `vow test`). Imports of prelude names are omitted because the prelude is always in scope (§9).
+All examples are complete files under `examples/` and run in CI as acceptance tests (`sakura run`, `sakura test`). Imports of prelude names are omitted because the prelude is always in scope (§9).
 
 ### 15.1 Hello world with effects
 
-```vow
-// examples/hello/src/main.vow
+```sakura
+// examples/hello/src/main.sakura
 fn greet(name: String) -> Unit ! {Console, Clock} {
   let now = Clock.now()
   Console.print("hello, {name}; it is {Instant.format_iso(now)}")
 }
 
-pub fn main() -> Unit ! {Console, Clock} { greet("Vow") }
+pub fn main() -> Unit ! {Console, Clock} { greet("Sakura Lang") }
 ```
 
 ### 15.2 Refinements and contracts
 
-```vow
+```sakura
 type Percent = Int where it >= 0 && it <= 100
 
 fn clamp(x: Int, lo: Int, hi: Int) -> Int
@@ -1401,7 +1401,7 @@ test "percent validates" {
 
 ### 15.3 User-defined effect, handler with state, tests swapping handlers
 
-```vow
+```sakura
 effect Counter {
   fn next() -> Int
   fn reset() -> Unit
@@ -1434,7 +1434,7 @@ test "inner handler shadows outer" {
 
 ### 15.4 Typed errors across a public boundary
 
-```vow
+```sakura
 error NotFound(id: String)
 error Forbidden
 error Unavailable(reason: String)
@@ -1479,7 +1479,7 @@ test "missing user is NotFound" {
 
 ### 15.5 JSON HTTP API with a database
 
-```vow
+```sakura
 import std/http.{Request, Response, Status, BadRequest}
 import std/router.{Router}
 import std/serve.{Serve, Address}
@@ -1539,12 +1539,12 @@ test "duplicate email is 409" {
 
 ### 15.6 CLI tool with file IO and attenuated authority
 
-```vow
+```sakura
 import std/cli.{Cli, CliError}
 import std/fs.{Fs, FsError, Dir}
 import std/path.{Path}
 
-type Args = { input: Path, top: Int }   // `vow run -- --input notes.txt --top 5`
+type Args = { input: Path, top: Int }   // `sakura run -- --input notes.txt --top 5`
 
 fn word_counts(text: String) -> Map<String, Int> {
   List.fold(String.split(String.to_lower(text), " "), Map.empty(), fn(acc, w) {
@@ -1565,7 +1565,7 @@ pub fn main() -> Unit ! {Console, Cli, Fs, Fail<CliError | FsError>} {
 
 ### 15.7 Typed LLM extraction with budget and offline test
 
-```vow
+```sakura
 import std/llm.{Llm, LlmError, InvalidOutput, Model}
 import std/budget.{Budget, BudgetExceeded, Limits}
 import std/http.{Http}
@@ -1608,7 +1608,7 @@ test "invalid output is a typed failure, not a crash" {
 
 ### 15.8 Agent loop with tools and a budget
 
-```vow
+```sakura
 import std/llm.{Llm, LlmError, Request, Prompt, Model}
 import std/tool.{Tool, ToolError}
 import std/agent.{Agent}
@@ -1647,7 +1647,7 @@ pub fn main() -> Unit ! {Console, Env, Http, Fail<LlmError | ToolError | BudgetE
 
 ### 15.9 Property test and snapshot
 
-```vow
+```sakura
 fn normalize(xs: List<Int>) -> List<Int> { List.unique(List.sort(xs)) }
 
 property "normalize is idempotent"(xs: List<Int>) {
@@ -1663,7 +1663,7 @@ test "rendering is stable" { expect_snapshot("normalize_doc", normalize([3, 1, 3
 
 ### 15.10 Structured concurrency, timeout, retry
 
-```vow
+```sakura
 import std/http.{Http, HttpError, RateLimited, Response, Any}
 import std/url.{Url}
 import std/retry.{Policy, retry}
@@ -1690,7 +1690,7 @@ test "deterministic under virtual time" {
 
 ### 15.11 Secrets and sinks
 
-```vow
+```sakura
 import std/http.{Http, HttpError, Request}
 import std/url.{Url}
 import std/decimal.{Decimal}
@@ -1706,7 +1706,7 @@ pub fn call_billing(amount: Decimal) -> Unit ! {Env, Http, Log, Fail<HttpError>}
 
 ### 15.12 Graph without cycles in the heap
 
-```vow
+```sakura
 import std/graph.{Graph, NodeId}
 
 type Person = { name: String }
@@ -1725,11 +1725,11 @@ fn friends_of_friends(g: Graph<Person>, id: NodeId) -> List<Person> {
 4. **Handler state under native parallelism.** Per-instance lock (default) vs. forbidding stateful handlers across threads. Decide with M5 measurements.
 5. **Tail-resumptive-only handlers.** Generators, async iterators, and backtracking need `control` operations later. Default: add `control` ops (one-shot, non-tail, explicit `resume`) in a later edition behind a different keyword, keeping ordinary `handler` clauses as they are.
 6. **Positional-only arguments.** Records cover option bags, but call sites like `clamp(x, 0, 10)` lose names. Default: positional only (reaffirmed in §17.21: `f(name: v)` is `V0014`); consider named arguments in edition 2027 if agent-written code shows argument-order bugs.
-7. **Automatic `Schema` for every data type.** Convenient but exposes internal types over the wire accidentally. Default: derive for all; `@no_schema` opt-out; `vow publish` warns on `pub` functions whose wire types are not `pub`.
+7. **Automatic `Schema` for every data type.** Convenient but exposes internal types over the wire accidentally. Default: derive for all; `@no_schema` opt-out; `sakura publish` warns on `pub` functions whose wire types are not `pub`.
 8. **Refinement predicates calling user functions.** The contract subset is syntactic and `@total` is a trusted claim (§7.1). Default: keep both; add termination checking for structural recursion in M4 so `@total` can be `proved` for common shapes.
 9. **`Untrusted<T>` scope.** Decided in §17.15: `Env.get` returns a plain `Option<String>`; `Fs.read_text`, `Response.text` and LLM text are `Untrusted`. Revisit only if a deployment story appears where the environment is not operator-controlled.
 10. **Method resolution for generic receivers.** `xs.len()` with `xs: A` and no constraint is an error; agents may expect duck typing. Default: error with a fix suggesting the constraint; no structural lookup.
-11. **Package capability declarations.** Computed from code vs. declared in `vow.toml` and checked. Default: computed and shown; declared ceilings in `vow.toml` become mandatory for published packages at v1.
+11. **Package capability declarations.** Computed from code vs. declared in `sakura.toml` and checked. Default: computed and shown; declared ceilings in `sakura.toml` become mandatory for published packages at v1.
 12. **Formatter width and style details.** Default: 100 columns, 2 spaces, no configuration. Not revisited without measured evidence.
 13. **Channels.** `Channel<T>` was mentioned without an API and is removed from v0 (§17.29). Fibers communicate through results and handler state. Add bounded channels as `Task` operations when a concrete program needs streaming between fibers.
 14. **Detached tasks.** `Task.Supervisor` is deferred: every fiber belongs to a scope in v0. Revisit with the first long-running service example.
@@ -1737,7 +1737,7 @@ fn friends_of_friends(g: Graph<Person>, id: NodeId) -> List<Person> {
 16. **Type-directed functions without a value argument.** `Schema.of<T>()` was removed because there is no call-site type argument to name `T` (§17.20). If a real need appears, prefer a type-witness value (`Schema.of(Ticket.schema)`) over reopening call-site type arguments.
 17. **Finer visibility than `opaque`.** `pub opaque type` hides every constructor and field. Per-field or per-constructor `pub` (Rust style) is not planned; revisit if std needs a type with one public and one private constructor.
 18. **Affinity of external types.** External types are scoped (§6.3); which ones are also affine (resources, §8.4) is decided when the M3 escape check lands, likely by a `@resource` marker on the std declaration.
-19. **Error unions over a type parameter (`Fail<E | Timeout>`).** `Type::Union` holds tags only, so a function cannot say "fails with whatever its callback fails with, plus `Timeout`". Under §5.2 rule 8, `std/task.timeout<T, e>(action: fn() -> T ! e) -> T ! {Clock, Task, Fail<Timeout> | e}` therefore makes `e` Fail-free: `action` cannot fail (the §15.10 example assumes it can). Default: ship as is for M0–M2; add parameter-bearing unions (representation shared with `vow_core`) with M3 and then change `timeout` to `<T, E, e>` with `Fail<E | Timeout>`.
+19. **Error unions over a type parameter (`Fail<E | Timeout>`).** `Type::Union` holds tags only, so a function cannot say "fails with whatever its callback fails with, plus `Timeout`". Under §5.2 rule 8, `std/task.timeout<T, e>(action: fn() -> T ! e) -> T ! {Clock, Task, Fail<Timeout> | e}` therefore makes `e` Fail-free: `action` cannot fail (the §15.10 example assumes it can). Default: ship as is for M0–M2; add parameter-bearing unions (representation shared with `sakura_core`) with M3 and then change `timeout` to `<T, E, e>` with `Fail<E | Timeout>`.
 
 ---
 
@@ -1745,22 +1745,22 @@ fn friends_of_friends(g: Graph<Person>, id: NodeId) -> List<Person> {
 
 Each entry answers one `design-question` from `compiler/REQUESTS.md` or one contradiction found while publishing the site. Format: question → decision → why → sections changed → impact on implementers (none / small / requires change in crate X). "Endorsed" means the implementer's choice stands as built.
 
-1. **V3001 fix applicability (C).** §7.3 forbids `machine_applicable` for `interface_change` fixes, while the M0 brief asked for an auto-applicable "add `Console` to the signature". Decision: §7.3 stands; the fix is `suggested` + `interface_change`. Why: an agent running `vow fix` must never widen a public signature silently; `--apply <id>` is one step away. Changed: §14.3 M0 acceptance. Impact: none (endorsed).
+1. **V3001 fix applicability (C).** §7.3 forbids `machine_applicable` for `interface_change` fixes, while the M0 brief asked for an auto-applicable "add `Console` to the signature". Decision: §7.3 stands; the fix is `suggested` + `interface_change`. Why: an agent running `sakura fix` must never widen a public signature silently; `--apply <id>` is one step away. Changed: §14.3 M0 acceptance. Impact: none (endorsed).
 2. **`Eff.name` for non-operations (F, B).** Decision: endorsed. `Eff.op` performs when `op` is an operation, otherwise resolves to the function or constant `op` of the effect's home module; a clash is `V1001`. Why: handler constructors (`Console.host()`, `Users.memory([])`) need a home. Changed: §4.9 rule 2. Impact: none.
 3. **One std module per type and effect (F).** Decision: endorsed; §10 is rewritten to the `std/<lowercase>` layout and `std/INDEX.md` is the generated surface. Why: `host()` of two effects in one module would collide under §4.9. Changed: §9 prelude, §10 throughout, §13.3 entry. Impact: none.
 4. **Qualified type paths (F, A, B).** `TypePath = [Ident "."] TypeName ["." TypeName]`; the nested name is a variant of the first type or a type declared in its home module (`Json.String(s)`, `Level.Warn`, `Task.Fiber<T>`). `Retry.Policy` does not exist: `Retry` is neither a type nor an effect, so the policy is `std/retry.Policy<E>` imported by name. Changed: §3 EBNF, §3.2 rule 16, §4.9 rule 3. Impact: none (A parses it, B resolves it).
 5. **`retry` typing (F).** Decision: endorsed: `retry<T, E, e>(p: Policy<E>, action: fn() -> T ! {Fail<E> | e}) -> T ! {Clock, Random, Fail<E> | e}`, `Policy<E>` record plus `retry.policy(retry_on, max_attempts)`. Why: `retry_on: fn(E) -> Bool` needs the error type as a parameter. Changed: §5.9, §15.10. Impact: none.
 6. **One `Timeout` tag (F).** Decision: `std/task.Timeout(limit: Duration)` is the only timeout tag; `LlmError` reuses it (instead of F's `LlmTimeout`); §15.10 no longer declares its own. Why: one tag per concept, shared across unions, keeps `catch` arms and docs uniform. Changed: §5.9, §10.7, §11.1, §15.10. Impact: none now; `std/llm` (M3) imports the tag.
 7. **Milliseconds (F).** Decision: endorsed. `Instant` and `Duration` are whole milliseconds; `Instant.from_unix_millis`/`to_unix_millis` added. Why: nanoseconds since 1970 exceed 2^53 and would be `D003` on JS. Changed: §10.3, §5.5 example, §5.8 defaults. Impact: none.
-8. **`@total` (F).** Decision: `@total` is a v0 attribute (§2.5): a trusted claim of termination on a `{}`-row function, listed by `vow audit`; std marks the fixed list in §7.1 (`List.len/get/all/any/contains/first/last`, `Map.len/get/contains`, `Set.len/contains`, `String.len/contains/starts_with/ends_with`, `Bytes.len/get`, `Option.is_some`, `Result.is_ok/is_err`, `Int.abs/min/max`, `Graph.get`). `@contract_test` is listed too. Changed: §2.5, §7.1, §7.4. Impact: small for F (add `@total` to those std functions); B already accepts the name, must add `contract_test` to the known list.
+8. **`@total` (F).** Decision: `@total` is a v0 attribute (§2.5): a trusted claim of termination on a `{}`-row function, listed by `sakura audit`; std marks the fixed list in §7.1 (`List.len/get/all/any/contains/first/last`, `Map.len/get/contains`, `Set.len/contains`, `String.len/contains/starts_with/ends_with`, `Bytes.len/get`, `Option.is_some`, `Result.is_ok/is_err`, `Int.abs/min/max`, `Graph.get`). `@contract_test` is listed too. Changed: §2.5, §7.1, §7.4. Impact: small for F (add `@total` to those std functions); B already accepts the name, must add `contract_test` to the known list.
 9. **No `defect()` intrinsic (F).** Decision: none in v0; programming errors are expressed with `requires` (`D020`) or `Option.expect` (`D030`); std raises other defects through externals. Why: a user-callable defect invites exception-style control flow. Changed: nothing. Impact: none.
 10. **Private construction (F).** Decision: `pub opaque type` (Gleam's `pub opaque type`): the type name is exported, constructors and fields are usable only in the declaring module (`V1006` elsewhere); constraints still derive. Refinement types stay the way to validate by predicate. Why: §9 promised private construction and §4.11/§10.4 safety (`Query<R>` only from `sql"…"`, `Html` only escaped) depends on it; constructor-level visibility would be a larger feature. Changed: §2.1 keyword `opaque`, §3 `Item`, §4.2, §9, §10.3/§10.4/§10.7, §16.17. Impact: small for A (keyword + `Item`), small for B (constructor/field visibility check); F may make `Uuid` opaque when convenient.
 11. **Operation type parameters and rows (F).** Decision: `OpSig` has `[TypeParams]`; an operation row may contain `Fail<…>` and row variables of its own type parameters that occur in a function-typed parameter; anything else is `V3010`. Why: `Task`, `Sql.transaction`, `Fs.with_file` are effects whose operations run callbacks. Changed: §3, §5.5. Impact: C at M3 (generic operations); A/B done.
-12. **`Show` format (F).** Decision: endorsed and specified as valid Vow syntax (table in §4.8): `[1, 2]`, `(1, "a")`, `Some("x")`, unqualified variants, `Map.of([...])`, `Set.of([...])`, `Bytes.of([...])`, floats always with `.` or exponent, `NaN`/`Infinity`/`-Infinity`/`-0.0`, strings quoted only inside containers. Changed: §4.8. Impact: none (matches `runtime/js`).
+12. **`Show` format (F).** Decision: endorsed and specified as valid Sakura Lang syntax (table in §4.8): `[1, 2]`, `(1, "a")`, `Some("x")`, unqualified variants, `Map.of([...])`, `Set.of([...])`, `Bytes.of([...])`, floats always with `.` or exponent, `NaN`/`Infinity`/`-Infinity`/`-0.0`, strings quoted only inside containers. Changed: §4.8. Impact: none (matches `runtime/js`).
 13. **Constraints and operators (F).** Decision: stated in §4.4: `Eq` unlocks `==`/`!=`, `Ord` the comparisons (and implies `Eq`), `Hash` map keys (implies `Eq`), `Show` interpolation, `Schema` codecs; `V2032` for an unsatisfied constraint. Changed: §4.4. Impact: none (C registered `V2032`).
 14. **Explicit generators (F).** Decision: endorsed: `property` parameters always use type-derived generators; explicit generators are `std/gen` values driven by `gen.for_all` inside a `test`. Changed: §10.6, §15.9 unchanged. Impact: none.
 15. **`Env.get` and `Untrusted` (F).** Decision: `Env.get -> Option<String>`, not `Untrusted`. Why: environment variables are operator-controlled and gated by `[permissions] env`; `Untrusted` marks data from outside the deployment. Changed: §6.4, §16.9. Impact: none.
-16. **`@trust` in expression position (F, A, B, C).** Decision: endorsed. `Attribute` is a `PrimaryExpr`; only `@trust("literal")` is valid there and has the compiler-known type `Trust`, accepted only by `Untrusted.trust` and `Secret.expose`. Why: keeps every trust decision a literal at the sink for `vow audit`. Changed: §2.5, §3, §6.4, §9 prelude. Impact: C at M3 (type `Expr::Attr` as `Trust`).
+16. **`@trust` in expression position (F, A, B, C).** Decision: endorsed. `Attribute` is a `PrimaryExpr`; only `@trust("literal")` is valid there and has the compiler-known type `Trust`, accepted only by `Untrusted.trust` and `Secret.expose`. Why: keeps every trust decision a literal at the sink for `sakura audit`. Changed: §2.5, §3, §6.4, §9 prelude. Impact: C at M3 (type `Expr::Attr` as `Trust`).
 17. **Core IR shape and uncaught `Fail` (D).** Decision: endorsed. `Handle`/`Try`/`Fail` are expressions, handler state is `StateGet`/`StateSet`, clauses are closures; an uncaught `Fail` from `main` exits 1 with `error: main failed with <Show>`, a defect exits 70 with a `defect` record on stderr. Runtime codes `D004`, `D090`, `D091` are adopted. Changed: §12.1, §12.2, §12.3 table, §13.2, §13.3. Impact: none.
 18. **Variant sharing its type's name (B).** Decision: endorsed: `type Meters = Meters(Float)` is legal; the type owns the scope entry and value/pattern uses resolve to the variant. Changed: §9. Impact: none.
 19. **Variants and the type namespace (B).** Decision: endorsed and stated: `TypeName`s split into a type level (types, effects, tags) and a value level (variants, tags); type positions never see variants; a `TypeName` at the head of a path resolves as a type or effect, elsewhere as a variant or tag. Changed: §4.9, §9. Impact: small for B (confirm `String.len` resolves inside `std/json`).
@@ -1784,14 +1784,14 @@ Each entry answers one `design-question` from `compiler/REQUESTS.md` or one cont
 37. **Keyword module segments (B, A).** Decision: endorsed: a `ModPath` segment after `/` may be a keyword, so `std/test` keeps its name; such a module can be imported only with `.{…}` or `as` (it has no bindable name). Changed: §2.1, §3, §9, §10.6. Impact: none.
 38. **`Cli` (consistency).** `Cli.args()`/`Cli.exit()` are host interactions, so `Cli` is an effect with a root handler and `Cli.parse` is a home-module function; `main` in §15.6 declares `Cli` instead of `Env`. Changed: §10.5, §15.6. Impact: none (M3).
 39. **Codes adopted from implementers.** `V1007 wrong_kind`, `V1011 missing_body`, `V1040 assign_immutable`, `V1041 jump_outside_loop` (B), `V2032 constraint_not_satisfied` (C), `D004`, `D090`, `D091` (D) are design-level codes now referenced in §3.2, §4.4, §8.1 and §12.3. New: `V0014 named_argument` (E to register). Impact: small for E.
-40. **Signature layout (A, `vow_fmt`).** Decision: endorsed as built: one line when it fits; otherwise `! row`, each contract and the `{` on their own lines with parameters kept together; parameters break one per line only when the head alone does not fit; contracts force the broken layout. Changed: §12.5. Impact: none.
-41. **Import groups (A, `vow_fmt`).** Decision: endorsed: two groups (`std/…`, then the rest), each sorted; a third group when the package name is available. Changed: §12.5. Impact: none.
-42. **Blank lines and ordering (A, `vow_fmt`).** Decision: endorsed: adjacent one-line items of the same kind stay together; variant lists are never reordered; type-position unions and effect rows are sorted. Changed: §12.5. Impact: none.
+40. **Signature layout (A, `sakura_fmt`).** Decision: endorsed as built: one line when it fits; otherwise `! row`, each contract and the `{` on their own lines with parameters kept together; parameters break one per line only when the head alone does not fit; contracts force the broken layout. Changed: §12.5. Impact: none.
+41. **Import groups (A, `sakura_fmt`).** Decision: endorsed: two groups (`std/…`, then the rest), each sorted; a third group when the package name is available. Changed: §12.5. Impact: none.
+42. **Blank lines and ordering (A, `sakura_fmt`).** Decision: endorsed: adjacent one-line items of the same kind stay together; variant lists are never reordered; type-position unions and effect rows are sorted. Changed: §12.5. Impact: none.
 43. **`var` assigned inside a failing `try` (D).** Decision: a `try` body may not assign to a `var` declared outside it (`V2041`, the same code as for lambdas) with the fix "assign after the `try` or declare the `var` inside". Why: SSA lowering would make such assignments transactional, the imperative reading would need boxing, and either is a surprise; the restriction makes the value and the error the only outputs of a `try`. Changed: §5.3, §8.1. Impact: small for C (extend the `V2041` check to `try` bodies); D's lowering stands.
 44. **`String.parse_int` beyond 2^53 on JS (F).** Decision: `None`, not `D003`, for a value the backend cannot represent (`Float.to_int_checked` likewise); arithmetic and literals keep trapping. Why: parsing is the untrusted boundary and a defect there is a denial-of-service vector; §16.3 records the resulting JS/native divergence as the known cost of the trap decision. Changed: §10.1, §16.3. Impact: small for D (`string_parse_int` returns `None` instead of raising `D003`).
 
-45. **`try` over an open row (C, round 2 soundness).** Question: `try { f() }` with `f: fn() -> Int ! e` (or an unsolved tail) typed its result from the `Fail` label visible at that moment, so a failure hidden in the tail escaped as `Err` inside a `Result<_, Never>`. Decision: tails never hide `Fail` (§5.2 rule 8). Flexible tails are Fail-free and an open row that may fail carries `Fail<ε>` with `ε` an error-union variable that accumulates lower bounds and resolves to their union; two callbacks sharing one row variable therefore join their tags (`Fail<A | B>`), while two *closed* unions met in synthesis must still be equal (`V2015`). A declared row parameter is Fail-free iff it appears next to `Fail<…>` in its declaration, otherwise it hides an unnamed `e.Fail`; `try` without `catch` over such a tail is `V3003`, `try … catch` matches only explicit tags and a catch-all over it is `W4010`. Why: this is the unique-label reading of `{Fail<E> | e}`, it keeps `retry`/`expect_fail` sound (their `try` sees exactly `E`), it lets `List.map`-style callbacks fail freely, and it needs no new syntax. Changed: §5.2 rule 8, §5.3, §5.7, §16.19. Impact: requires change in `vow_types` (`docs/plans/types-soundness-r2.md`); none for `vow_core`; std's `timeout` becomes Fail-free in `e` (§16.19), no std edit now.
-46. **Order-independent row solving (C).** Question: checking an open row against a closed one solved its tail minimally (`e := {}`), so a later demand for a label inside the bound failed and acceptance depended on statement order. Decision: flexible tails carry deferred upper bounds (§5.2 rule 9); bounds intersect, flow to fresh tails, and an unconstrained tail closes at body end. `Never` checked against an inference variable constrains nothing (it is a lower bound of everything), so `fn(c) { if c { fail A } else { 1 } }` checks in either branch order. Bounded variables are not generalized (v0 has no bounded quantification): they default to `{}` / `Never`. Why: constraints must accumulate commutatively for agents to repair programs locally; the research note's "union is not equality" (R01 §3.1) applies equally to subset constraints. Changed: §5.2 rule 9. Impact: `vow_types` only; proptests over permuted statements and arguments are part of the plan.
+45. **`try` over an open row (C, round 2 soundness).** Question: `try { f() }` with `f: fn() -> Int ! e` (or an unsolved tail) typed its result from the `Fail` label visible at that moment, so a failure hidden in the tail escaped as `Err` inside a `Result<_, Never>`. Decision: tails never hide `Fail` (§5.2 rule 8). Flexible tails are Fail-free and an open row that may fail carries `Fail<ε>` with `ε` an error-union variable that accumulates lower bounds and resolves to their union; two callbacks sharing one row variable therefore join their tags (`Fail<A | B>`), while two *closed* unions met in synthesis must still be equal (`V2015`). A declared row parameter is Fail-free iff it appears next to `Fail<…>` in its declaration, otherwise it hides an unnamed `e.Fail`; `try` without `catch` over such a tail is `V3003`, `try … catch` matches only explicit tags and a catch-all over it is `W4010`. Why: this is the unique-label reading of `{Fail<E> | e}`, it keeps `retry`/`expect_fail` sound (their `try` sees exactly `E`), it lets `List.map`-style callbacks fail freely, and it needs no new syntax. Changed: §5.2 rule 8, §5.3, §5.7, §16.19. Impact: requires change in `sakura_types` (`docs/plans/types-soundness-r2.md`); none for `sakura_core`; std's `timeout` becomes Fail-free in `e` (§16.19), no std edit now.
+46. **Order-independent row solving (C).** Question: checking an open row against a closed one solved its tail minimally (`e := {}`), so a later demand for a label inside the bound failed and acceptance depended on statement order. Decision: flexible tails carry deferred upper bounds (§5.2 rule 9); bounds intersect, flow to fresh tails, and an unconstrained tail closes at body end. `Never` checked against an inference variable constrains nothing (it is a lower bound of everything), so `fn(c) { if c { fail A } else { 1 } }` checks in either branch order. Bounded variables are not generalized (v0 has no bounded quantification): they default to `{}` / `Never`. Why: constraints must accumulate commutatively for agents to repair programs locally; the research note's "union is not equality" (R01 §3.1) applies equally to subset constraints. Changed: §5.2 rule 9. Impact: `sakura_types` only; proptests over permuted statements and arguments are part of the plan.
 47. **Rename to Sakura Lang (owner, 2026-10-18).** Question: the working name Vow is replaced. Decision: the language is **Sakura Lang**, written as both words in prose with no short form; where a short label is needed the Sakura Seal mark stands in. Code identifier `sakura`: binary `sakura`, sources `.sakura`, manifest `sakura.toml` and lockfile `sakura.lock`, crates `sakura_*`, runtime `sakura_runtime.js`, env `SAKURA_*`, URIs `sakura://explain/…` and `sakura:///std/…`, MCP and LSP server name and language id `sakura`, TextMate scope `source.sakura`, repo `icantcodefyi/sakura-lang`, site `sakura-lang.vercel.app`. Diagnostic codes keep their letters and numbers (§12.3 states the letter reading); symbol ids never carried the name. The word "vow" leaves our prose entirely; the voice keeps promise, contract, signature and seal ("Code that keeps its promises." stays the tagline). Why: owner decision; `.sakura` because every shorter extension is a short form and nothing else uses it; codes kept because they are opaque identifiers and §12.3 forbids renumbering. Changed: title, §12.3, every command and path in this document. Impact: requires the mechanical rename in `docs/plans/rename-sakura-lang.md` across every crate; no semantic change. <!-- rename:keep -->
 
 Open after this round: §16.13–§16.19.

@@ -2,7 +2,7 @@
 
 ## Today: pre-alpha / design phase
 
-Vow has no released compiler, supported versions, or stable language/API contract.
+Sakura Lang has no released compiler, supported versions, or stable language/API contract.
 [The design](docs/design.md) is provisional; examples are illustrative unless
 explicitly backed by a runnable test. Research and performance goals do not imply
 verified soundness, production readiness, or measured efficiency.

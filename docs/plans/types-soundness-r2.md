@@ -1,18 +1,18 @@
-# Plan: `vow_types` round 2 — sound `try`, joining `Fail`, order-independent rows, §17 items, deep chains
+# Plan: `sakura_types` round 2 — sound `try`, joining `Fail`, order-independent rows, §17 items, deep chains
 
 Status: ready to implement. Owner of the crate: the engineer executing this plan. Design authority:
 `docs/design.md` §5.2–§5.3, §5.7, §17.45–§17.46 (added with this plan). Everything below is
 normative for this round; where the plan and the design text disagree, fix the plan and say so in
 the commit message.
 
-Work only in the worktree `/Users/aniruddhdubge/.t3/scratch/vow-worktrees/types` (branch
+Work only in the worktree `/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/types` (branch
 `wt/types`). Before every push, from `compiler/`:
 
 ```sh
 cargo fmt --all
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
-cargo test -p vow_types --locked -- --ignored std_typechecks   # report only; no NEW std diagnostics
+cargo test -p sakura_types --locked -- --ignored std_typechecks   # report only; no NEW std diagnostics
 ```
 
 then `git fetch origin master && git rebase origin/master && git push origin HEAD:master`. Use
@@ -21,16 +21,16 @@ Commits scoped `types` (docs changes `docs(design)` / `docs(llms)`), each messag
 line and `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`. Review every snapshot diff by
 hand (`cargo insta review` or read the `.snap.new`); never bulk-accept.
 
-Crate rules that bind this work: `vow_types` depends on `vow_hir`, `vow_diagnostics`, `la-arena`,
+Crate rules that bind this work: `sakura_types` depends on `sakura_hir`, `sakura_diagnostics`, `la-arena`,
 `text-size` only (never rowan or serde_json, not even as a dev-dependency); `Type::Union(Vec<DefId>)`
-and the `Type` enum shape are consumed by `vow_core` (`compiler/crates/vow_core/src/lower/mod.rs`,
+and the `Type` enum shape are consumed by `sakura_core` (`compiler/crates/sakura_core/src/lower/mod.rs`,
 exhaustive match) and must not change this round; no phase panics on malformed input.
 
 ---
 
 ## 0. The row model after this round (read first)
 
-Current representation (`compiler/crates/vow_types/src/ty.rs`): `Row { labels: Vec<Label>, tail:
+Current representation (`compiler/crates/sakura_types/src/ty.rs`): `Row { labels: Vec<Label>, tail:
 Tail }`, `Label { effect: Effect::{Def(DefId) | Fail}, args }`, `Tail::{Closed, Var(RowVar),
 Param(RowParamId)}`. `Fail<E>` is an ordinary label whose single argument is the error type.
 `Infer` (`src/infer.rs`) holds `TySlot`/`RowSlot` union-find slots with levels.
@@ -309,9 +309,9 @@ the hidden parameter's name. Check `tidy_vars` still renames `?T` vars that are 
      `err_ty` stays unless a catch-all arm exists);
    - `W4010`: also when `hidden` and a catch-all arm exists (message: "…including the failures of
      the row variable `e`…"); keep the existing `Param` case (fixture
-     `compiler/tests/ui/W4010_catch_all_on_open_union.vow` must still pass).
+     `compiler/tests/ui/W4010_catch_all_on_open_union.sakura` must still pass).
 
-3. **New code `V3003`** in `vow_diagnostics::codes` (append after `V3002`, phase `EFFECT`, title
+3. **New code `V3003`** in `sakura_diagnostics::codes` (append after `V3002`, phase `EFFECT`, title
    `try_unknown_failures`). Message: ``"`try` cannot name the failures of its body: the row ends in
    `e`, which may hide `Fail<…>`; declare them with a type parameter (`fn f<E, e>(g: fn() -> T !
    {Fail<E> | e}) -> Result<T, E> ! e`)"``. One `Fix` with `applicability: Incomplete`, `impact:
@@ -319,7 +319,7 @@ the hidden parameter's name. Check `tidy_vars` still renames `?T` vars that are 
    Explain page: minimal pair `fn wrap<e>(f: fn() -> Int ! e) -> Result<Int, Never> ! e { try {
    f() } }` → fixed `fn wrap<E, e>(f: fn() -> Int ! {Fail<E> | e}) -> Result<Int, E> ! e { try {
    f() } }`. Add the code to the design §12.3 phase list? Not needed (the scheme is by phase digit);
-   add it to `compiler/tests/ui/V3003_try_unknown_failures.vow` with `// expect: V3003` and the
+   add it to `compiler/tests/ui/V3003_try_unknown_failures.sakura` with `// expect: V3003` and the
    `.jsonl` the CLI harness expects (copy the format of `V3002_effect_label_not_permitted.jsonl`).
 
 4. **`finish_body`** (`body.rs`), before defaulting:
@@ -355,7 +355,7 @@ before the fix.)
 Positive (`tests/acceptance.rs` or a new `tests/rows.rs` using `common::check`; assert
 `c.diags.is_empty()` and the rendered rows/types via `value_row`):
 
-```vow
+```sakura
 error A
 error B
 fn wrap<E, e>(f: fn() -> Int ! {Fail<E> | e}) -> Result<Int, E> ! e { try { f() } }
@@ -372,9 +372,9 @@ fn local() -> Result<Int, A> {
 Expect `swallow` to report exactly `W4010` and nothing else; `partial` row is `e`; `k`'s rendered
 scheme (via `local_schemes`) is `fn(fn() -> A ! {Fail<B> | e1}) -> Result<A, B> ! e1`.
 
-Also: `compiler/tests/ui/V3003_try_unknown_failures.vow` (`wrap<e>` above). Confirm std still
-checks: `retry.vow::attempt` (`try { action() }` over `{Fail<E> | e}` → `Result<T, E>`),
-`test.vow::expect_fail`, `task.vow::timeout` and `par_map` (see risks).
+Also: `compiler/tests/ui/V3003_try_unknown_failures.sakura` (`wrap<e>` above). Confirm std still
+checks: `retry.sakura::attempt` (`try { action() }` over `{Fail<E> | e}` → `Result<T, E>`),
+`test.sakura::expect_fail`, `task.sakura::timeout` and `par_map` (see risks).
 
 ---
 
@@ -410,7 +410,7 @@ Unit (`src/infer/tests.rs`): extend the `fail` helper and add
   → `Err` whose extra label renders `Fail<E102>`.
 
 Program level (`tests/rows.rs`):
-```vow
+```sakura
 error A
 error B
 fn both<e>(f: fn() -> Int ! e, g: fn() -> Int ! e) -> Int ! e { f() + g() }
@@ -435,7 +435,7 @@ binding `r := {| rigid}` (or `{}` for a closed expected row). A later lower boun
 with more labels checked against `fn() ! r`, or a unification `r ~ {Clock}`) fails even when the
 label is inside the bound. Example that checks in one statement order and not the other:
 
-```vow
+```sakura
 fn use_clock(k: fn() -> Int ! {Clock}) -> Int ! {Clock} { k() }
 fn f(c: Bool) -> Int ! {Clock} {
   let pick = fn(k) { let _ = use_clock(k); if c { k } else { fn() { Clock.now().to_unix_millis() } } }
@@ -530,10 +530,10 @@ and a `tail` choice among {closed, shared `x`, shared `y`, fresh, rigid `e` (Fai
   `A` then `B` equals `B` then `A` equals `A ∪ B` once; lower-bounding twice with `A` equals once.
 - keep the existing six laws; they must still hold (update `build` for the new spec).
 
-Program level (`tests/order.rs`, new): a generator that emits Vow programs from this template and
+Program level (`tests/order.rs`, new): a generator that emits Sakura Lang programs from this template and
 checks every permutation (use `proptest` with a `Vec<usize>` shuffle strategy, ~64 cases):
 
-```vow
+```sakura
 error A
 error B
 error C
@@ -566,7 +566,7 @@ generator is not vacuous.
 body row is compared **without its `Fail` label**: `let checked = inf.remove_labels(row, |l|
 l.effect != Effect::Fail); bound_row(value, checked, allowed, range, ViolationKind::Test)`. For
 holes (`b.allowed_row`, rendered as `allowed_effects`), build `{defaults, Fail<E>}` with a fresh
-rigid parameter named `E` (`fresh_param_like("E", vec![])`) so `vow check` shows `{Clock, Console,
+rigid parameter named `E` (`fresh_param_like("E", vec![])`) so `sakura check` shows `{Clock, Console,
 Env, Log, Random, Test, Fail<E>}`. Delete the `ViolationKind::Test if labels.iter().all(Fail)`
 branch in `effects.rs` (dead) and update the `V3020` explain text only if it mentions failures.
 
@@ -588,7 +588,7 @@ explain page (codes.rs) to mention `try` bodies.
 
 Tests: negative `("try body assigns an outer var", "fn f() -> Int { var n = 0; let _ = try { n =
 1 }; n }", &["V2041"])`; positive: assigning a `var` declared *inside* the try body, and assigning
-after the try from the result; ui fixture `V2041_assign_in_try.vow` (`// expect: V2041`) next to
+after the try from the result; ui fixture `V2041_assign_in_try.sakura` (`// expect: V2041`) next to
 the existing lambda fixture.
 
 ### 4.3 Remove dead `explicit_type_args` / `order_args`
@@ -618,8 +618,8 @@ left-nested forms: `MethodCall.receiver`, `Field.base`, `TupleField.base`, `Inde
 2 MiB test-thread stack. `effects.rs::find_origins`/`children` recurse the same way when a `V3001`
 cause is searched, and `is_value` for `let` right-hand sides. The parser bounds *nesting* at
 `MAX_DEPTH = 128` but a chain is left-nested, so once A's parser change admits long chains they
-reach the checker (B's `vow_hir` already lowers them iteratively; see
-`compiler/crates/vow_hir/tests/lower.rs::long_chains_do_not_overflow`).
+reach the checker (B's `sakura_hir` already lowers them iteratively; see
+`compiler/crates/sakura_hir/tests/lower.rs::long_chains_do_not_overflow`).
 
 ### 5.2 Fix: iterative spine
 
@@ -660,20 +660,20 @@ Build deep trees without a rowan dependency by reusing tokens from a parsed node
 
 ```rust
 // Parse once, take the FIELD_EXPR `a.b` green node, then wrap 10,000 times reusing its kind and
-// its DOT/IDENT token children (GreenNode and NodeOrToken are re-exported by vow_syntax).
-let root = vow_syntax::parse("fn f(a: P) -> Int { a.b + 1 }\n").syntax();
+// its DOT/IDENT token children (GreenNode and NodeOrToken are re-exported by sakura_syntax).
+let root = sakura_syntax::parse("fn f(a: P) -> Int { a.b + 1 }\n").syntax();
 let field = root.descendants().find(|n| n.kind() == SyntaxKind::FIELD_EXPR).unwrap();
 let kind = field.green().kind();
 let toks: Vec<_> = field.green().children().filter(|c| c.as_token().is_some()).map(|c| c.to_owned()).collect();
 let a = field.first_child().unwrap();            // the PATH_EXPR `a`
 let mut e = a.green().into_owned();
 for _ in 0..10_000 { let mut kids = vec![NodeOrToken::Node(e)]; kids.extend(toks.iter().cloned()); e = GreenNode::new(kind, kids); }
-// splice `e` in place of `a` (see vow_hir/tests/lower.rs for `replace_child` / `replace_with`), then
+// splice `e` in place of `a` (see sakura_hir/tests/lower.rs for `replace_child` / `replace_with`), then
 // `std::mem::forget(root.clone())` because rowan drops recursively.
 ```
 If `NodeOrToken<&GreenNodeData, &GreenTokenData>::to_owned` is not available in the pinned rowan,
 append a request to `compiler/REQUESTS.md` for A to re-export `rowan::GreenToken` (one line) and
-build tokens with `GreenToken::new`; do not add rowan to `vow_types`.
+build tokens with `GreenToken::new`; do not add rowan to `sakura_types`.
 
 Programs to check, each with 10,000 links, run on the default test thread (no `stack_size`):
 - `a.b.b.b…` with `type P = { b: P }` — hmm, `P` is recursive; use `type P = { b: Q }`? A record
@@ -714,18 +714,18 @@ finishes in bounded time (`Instant::now()` guard of ~10 s to catch accidental qu
 
 ## 7. Risks and how to handle them
 
-1. **std `timeout`** (`compiler/std/task.vow`): `fn timeout<T, e>(limit, action: fn() -> T ! e) ->
+1. **std `timeout`** (`compiler/std/task.sakura`): `fn timeout<T, e>(limit, action: fn() -> T ! e) ->
    T ! {Clock, Task, Fail<Timeout> | e}` writes `e` next to `Fail<Timeout>`, so by I3 `e` is
    Fail-free and `action` cannot fail. The body still checks (`fn() { action() }` has row `{| e}` ⊆
    `{Clock, Fail<Timeout> | e}`), no current M0–M2 program passes a failing action (`timeout` is
    M3), but the §15.10 example intends `action` to fail. The honest signature needs
    `Fail<E | Timeout>` (a union containing a type parameter), which `Type::Union(Vec<DefId>)`
-   cannot represent and `vow_core` consumes; recorded as design §16.19. Action: append a dated
+   cannot represent and `sakura_core` consumes; recorded as design §16.19. Action: append a dated
    entry to `compiler/REQUESTS.md` (C → F, design) stating the limitation and that no std change is
    needed now; do not touch std.
 2. **Behavior change `Never ⊆ ?v`** (3.3): rendered types of lambdas whose body only `fail`s change
    from `-> Never` to a fresh variable; check `acceptance__hole_candidates_snapshot` and the
-   `vow_analysis`/`vow_cli` snapshots that print hover types (grep `-> Never` in
+   `sakura_analysis`/`sakura_cli` snapshots that print hover types (grep `-> Never` in
    `compiler/crates/*/tests/snapshots` before and after). If a snapshot regresses in a way that
    reads worse, prefer keeping the `Never` binding in *synthesis* (`join`) and only skipping the
    bind in checking mode, and say so in the commit.
@@ -735,9 +735,9 @@ finishes in bounded time (`Instant::now()` guard of ~10 s to catch accidental qu
 4. **Shared files**: `codes.rs` is edited concurrently by other agents (it was dirty in the shared
    checkout); rebase often and keep the `V3003` block self-contained. Do not touch `Cargo.toml`
    or `Cargo.lock` (no new dependencies are needed).
-5. **`vow_core`/`vow_analysis` consumers**: `TypedBody.rows` still contains plain `Row`s; `Fail`
+5. **`sakura_core`/`sakura_analysis` consumers**: `TypedBody.rows` still contains plain `Row`s; `Fail`
    args are concrete after defaulting (`Never` labels removed, inexpressible → `Error`, only in
-   erroneous programs). Run the whole workspace, including `vow_cli`'s `vow test --std` runner.
+   erroneous programs). Run the whole workspace, including `sakura_cli`'s `sakura test --std` runner.
 6. **Kind inference surprises**: a signature that uses `e` both bare and next to `Fail` (`fn g<e>(f:
    fn() -> Int ! {Fail<X> | e}, h: fn() -> Int ! e)`) makes `h` unable to fail. This is the
    design's reading of unique labels (§17.45); add a positive test documenting it and a negative
@@ -799,11 +799,11 @@ Each commit: fmt, clippy `-D warnings`, full workspace tests, rebase, push.
    `V4002` next to the `W4010`).
 7. **Inspecting a value settles its error union.** A field read, method call, tuple access or
    operator on a value whose type is an error-union variable (`fn(e) { e.tag }` passed as
-   `pred: fn(E) -> Bool` after `body` failed with `ToolError`, std `tool.vow`) fixes the
+   `pred: fn(E) -> Bool` after `body` failed with `ToolError`, std `tool.sakura`) fixes the
    variable to its current union (`Infer::settle`); later failures must fit it, as with an
    ordinary type variable. Without this the field read is `V2010`.
 8. **Kind rule refined: Fail-free iff next to `Fail<E>` with a type parameter `E`** (1.5.1,
-   risks 1 and 6). Upstream added a D test (`vow_codegen_js` m3
+   risks 1 and 6). Upstream added a D test (`sakura_codegen_js` m3
    `sql_memory_queries_rows_by_schema_and_rolls_back_failed_transactions`) whose
    `Sql.transaction<T, e>(body: fn() -> T ! {Sql | e}) -> T ! {Fail<SqlError> | e}` body fails
    with `Abort`; under the plan's rule `e` is Fail-free there and the test is rejected (the

@@ -1,4 +1,4 @@
-# Vow RFC process
+# Sakura Lang RFC process
 
 RFCs make substantial language and policy changes reviewable before implementation.
 Use one for syntax, semantics, effects/errors, module or package rules, breaking

@@ -2,14 +2,14 @@
 
 ## Supported versions
 
-Vow is in pre-alpha design. **No versions are supported yet**, and there is no
+Sakura Lang is in pre-alpha design. **No versions are supported yet**, and there is no
 released compiler or security support window. Do not use prototype behavior as a
 security boundary. This policy also covers this repository's website and tooling.
 Future supported release lines will be listed here before publication.
 
 ## Report privately
 
-Use [GitHub private vulnerability reporting](https://github.com/icantcodefyi/vow/security/advisories/new)
+Use [GitHub private vulnerability reporting](https://github.com/icantcodefyi/sakura-lang/security/advisories/new)
 from the repository's **Security → Advisories → Report a vulnerability** page.
 The initial security contact and triage owner is
 [@icantcodefyi](https://github.com/icantcodefyi).

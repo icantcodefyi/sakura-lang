@@ -1,8 +1,8 @@
-# Vow governance
+# Sakura Lang governance
 
 ## Initial stewardship
 
-Vow starts with a BDFL-style model: [@icantcodefyi](https://github.com/icantcodefyi)
+Sakura Lang starts with a BDFL-style model: [@icantcodefyi](https://github.com/icantcodefyi)
 is the initial maintainer and final decision maker. Contributors provide evidence,
 implementation, and review; there is no committee or implied consensus today.
 The maintainer administers repository access, moderation, security triage, and

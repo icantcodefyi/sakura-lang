@@ -1,10 +1,10 @@
-# The Vow MCP server
+# The Sakura Lang MCP server
 
 > **Pre-alpha.** Tool names, parameters and result shapes may change between commits until the
 > first release (see [STABILITY.md](../STABILITY.md)). Design: [design.md §12.6](design.md).
 
-`vow mcp serve` runs the compiler as a [Model Context Protocol](https://modelcontextprotocol.io)
-server on stdin/stdout, so an agent can check, query, patch and test a Vow workspace through
+`sakura mcp serve` runs the compiler as a [Model Context Protocol](https://modelcontextprotocol.io)
+server on stdin/stdout, so an agent can check, query, patch and test a Sakura Lang workspace through
 structured tools instead of parsing terminal output.
 
 ## Install
@@ -12,8 +12,8 @@ structured tools instead of parsing terminal output.
 No release is published yet. Build the CLI from a checkout:
 
 ```sh
-cargo install --locked --path compiler/crates/vow_cli
-vow mcp serve --help
+cargo install --locked --path compiler/crates/sakura_cli
+sakura mcp serve --help
 ```
 
 The server works on the workspace in its current directory, or the one named by
@@ -27,20 +27,20 @@ directory, pass `--root` with an absolute path.
 **Claude Code**: from the project directory,
 
 ```sh
-claude mcp add vow -- vow mcp serve
+claude mcp add sakura -- sakura mcp serve
 ```
 
 or commit a project-scoped `.mcp.json`:
 
 ```json
-{ "mcpServers": { "vow": { "command": "vow", "args": ["mcp", "serve"] } } }
+{ "mcpServers": { "sakura": { "command": "sakura", "args": ["mcp", "serve"] } } }
 ```
 
-**Codex**: `codex mcp add vow -- vow mcp serve`, or in `~/.codex/config.toml`:
+**Codex**: `codex mcp add sakura -- sakura mcp serve`, or in `~/.codex/config.toml`:
 
 ```toml
-[mcp_servers.vow]
-command = "vow"
+[mcp_servers.sakura]
+command = "sakura"
 args = ["mcp", "serve"]
 ```
 
@@ -49,7 +49,7 @@ args = ["mcp", "serve"]
 ```json
 {
   "mcpServers": {
-    "vow": { "command": "vow", "args": ["mcp", "serve", "--root", "${workspaceFolder}"] }
+    "sakura": { "command": "sakura", "args": ["mcp", "serve", "--root", "${workspaceFolder}"] }
   }
 }
 ```

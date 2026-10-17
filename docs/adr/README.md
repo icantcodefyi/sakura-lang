@@ -1,6 +1,6 @@
 # Architecture decision records
 
-ADRs preserve why Vow's implementation and repository work the way they do.
+ADRs preserve why Sakura Lang's implementation and repository work the way they do.
 Use them for durable internal choices such as workspace layout, build tooling,
 compiler boundaries, and generated sources. Language and public policy changes
 use the [RFC process](../rfcs/README.md).
