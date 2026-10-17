@@ -855,6 +855,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "vow_eval"
+version = "0.0.0"
+dependencies = [
+ "vow_core",
+]
+
+[[package]]
 name = "vow_fmt"
 version = "0.0.0"
 dependencies = [

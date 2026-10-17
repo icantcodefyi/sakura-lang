@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/*"]
+members = ["crates/*", "tools/*"]
 
 [workspace.package]
 version = "0.0.0"
@@ -21,6 +21,7 @@ vow_core = { path = "crates/vow_core" }
 vow_codegen_js = { path = "crates/vow_codegen_js" }
 vow_analysis = { path = "crates/vow_analysis" }
 vow_fmt = { path = "crates/vow_fmt" }
+vow_eval = { path = "tools/vow_eval" }
 
 # External crates. Add new ones here and use `dep.workspace = true` in crates.
 rowan = "0.16.1"

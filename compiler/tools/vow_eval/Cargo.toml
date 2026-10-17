@@ -1,0 +1,15 @@
+[package]
+name = "vow_eval"
+description = "Reference interpreter over Core, for differential testing of the backends."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+vow_core.workspace = true
+
+[lints]
+workspace = true
