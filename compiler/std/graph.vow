@@ -1,0 +1,64 @@
+// Directed graphs without cycles in the heap (design §8.3): the graph owns its nodes
+// and edges refer to them by `NodeId`. Every lookup is validated against the graph.
+// ponytail: no node removal yet, so a `NodeId` is a slot without a generation; add the
+// generation together with `remove`.
+
+pub type NodeId = NodeId(Int)
+
+pub type Graph<N> = { nodes: Map<Int, N>, edges: Map<Int, List<NodeId>>, next: Int }
+
+pub fn empty<N>() -> Graph<N> {
+  Graph { nodes: Map.empty(), edges: Map.empty(), next: 0 }
+}
+
+/// Adds `n` and returns the new graph with its id.
+pub fn insert<N>(g: Graph<N>, n: N) -> (Graph<N>, NodeId) {
+  let id = g.next
+  (Graph { ..g, nodes: g.nodes.insert(id, n), next: id + 1 }, NodeId(id))
+}
+
+pub fn get<N>(g: Graph<N>, id: NodeId) -> Option<N> {
+  g.nodes.get(slot(id))
+}
+
+/// Adds the edge `a -> b`. Both ids must belong to `g`. Adding an edge twice is a no-op.
+pub fn connect<N>(g: Graph<N>, a: NodeId, b: NodeId) -> Graph<N>
+  requires Map.contains(g.nodes, slot(a)) && Map.contains(g.nodes, slot(b))
+{
+  let out = neighbors(g, a)
+  if List.contains(out, b) { g } else { Graph { ..g, edges: g.edges.insert(slot(a), out.push(b)) } }
+}
+
+/// Targets of edges leaving `id`, in insertion order; `[]` for unknown ids.
+pub fn neighbors<N>(g: Graph<N>, id: NodeId) -> List<NodeId> {
+  g.edges.get(slot(id)).unwrap_or([])
+}
+
+pub fn len<N>(g: Graph<N>) -> Int { g.nodes.len() }
+
+fn slot(id: NodeId) -> Int {
+  match id { NodeId(n) => n }
+}
+
+test "insert, connect, neighbors" {
+  let (g1, a) = empty().insert("a")
+  let (g2, b) = g1.insert("b")
+  let (g3, c) = g2.insert("c")
+  let g = g3.connect(a, b).connect(a, c).connect(b, a).connect(a, b)
+  expect_eq(neighbors(g, a), [b, c])
+  expect_eq(neighbors(g, b), [a])
+  expect_eq(neighbors(g, c), [])
+  expect_eq(get(g, c), Some("c"))
+  expect_eq(len(g), 3)
+}
+
+test "cycles are just ids" {
+  let (g1, a) = empty().insert(1)
+  let g = g1.connect(a, a)
+  expect_eq(neighbors(g, a), [a])
+}
+
+test "connecting a foreign id blames the caller" {
+  let (g, a) = empty().insert(1)
+  expect_defect(fn() { g.connect(a, NodeId(99)) })
+}

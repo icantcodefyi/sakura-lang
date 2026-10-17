@@ -1,0 +1,28 @@
+// Structured logging as an effect. Prelude effect.
+
+import std/json.{Json}
+import std/test.{Test}
+
+pub type Level = Debug | Info | Warn | Error
+
+pub effect Log {
+  fn event(level: Level, message: String, fields: List<(String, Json)>) -> Unit
+}
+
+/// Root handler: one human-readable line per event on stderr.
+@external(js, "vow_runtime", "log_stderr")
+pub fn stderr() -> Handler<Log>
+
+/// Root handler: one JSON object per line on stderr (`level`, `message`, then fields).
+@external(js, "vow_runtime", "log_json")
+pub fn json() -> Handler<Log>
+
+/// Test default: each event becomes a captured line `Warn message key=value …`.
+pub fn captured() -> Handler<Log, {Test}> {
+  handler Log {
+    fn event(level, message, fields) {
+      let rendered = List.map(fields, fn(kv) { " {kv.0}={show(kv.1)}" })
+      Test.output("{level} {message}{List.join(rendered, "")}")
+    }
+  }
+}

@@ -1,0 +1,54 @@
+// Assertions for `test` and `property` blocks. A test body is `fn() -> Unit ! {Test}`;
+// the `vow test` runner installs the `Test` handler and the deterministic defaults of
+// design §5.8. A failed expectation is recorded and the test keeps running, so one run
+// reports every failed check (the runner marks the test failed at the end).
+
+pub effect Test {
+  /// Records a failed check with a human-readable message.
+  fn record_failure(message: String) -> Unit
+  /// Number of failures recorded so far in this test.
+  fn failures() -> Int
+  /// Captured output (from `Console.captured()` and `Log.captured()`), shown on failure.
+  fn output(line: String) -> Unit
+  /// Compares `rendered` with `tests/__snapshots__/<module>/<name>.snap`; records a
+  /// failure on mismatch, writes the file under `--update-snapshots`.
+  fn snapshot(name: String, rendered: String) -> Unit
+}
+
+pub fn expect(cond: Bool) -> Unit ! {Test} {
+  if !cond { Test.record_failure("expected true, got false") }
+}
+
+pub fn expect_eq<A: Eq + Show>(actual: A, expected: A) -> Unit ! {Test} {
+  if actual != expected { Test.record_failure("expected {show(expected)}, got {show(actual)}") }
+}
+
+/// `body` must fail with exactly `err`.
+pub fn expect_fail<T, E: Eq + Show, e>(body: fn() -> T ! {Fail<E> | e}, err: E) -> Unit ! {Test | e} {
+  let outcome = try { body() }
+  match outcome {
+    Ok(_) => Test.record_failure("expected failure {show(err)}, but the body returned"),
+    Err(got) => expect_eq(got, err),
+  }
+}
+
+/// `body` must fail with an error for which `pred` is true.
+pub fn expect_fails_with<T, E: Show, e>(body: fn() -> T ! {Fail<E> | e}, pred: fn(E) -> Bool) -> Unit ! {Test | e} {
+  let outcome = try { body() }
+  match outcome {
+    Ok(_) => Test.record_failure("expected a failure, but the body returned"),
+    Err(got) => {
+      if !pred(got) { Test.record_failure("failure {show(got)} did not satisfy the predicate") }
+    }
+  }
+}
+
+/// `body` must end in a defect (contract violation, overflow, `Option.expect`, …).
+/// The runtime runs it in a child task so the defect does not end the test.
+@external(js, "vow_runtime", "test_expect_defect")
+pub fn expect_defect<T, e>(body: fn() -> T ! e) -> Unit ! {Test | e}
+
+/// Compares `show(value)` with the stored snapshot `name`.
+pub fn expect_snapshot<A: Show>(name: String, value: A) -> Unit ! {Test} {
+  Test.snapshot(name, show(value))
+}

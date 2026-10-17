@@ -1,0 +1,43 @@
+// JSON values and codecs. Construct and match values qualified (`Json.String(s)`,
+// `Json.Object(m)`): the variant names `Bool` and `String` would otherwise collide with
+// the prelude types. Typed encode/decode use the derived `Schema` codec (milestone M3).
+
+pub type Json = Null | Bool(Bool) | Number(Float) | String(String) | Array(List<Json>) | Object(Map<String, Json>)
+
+/// Where and why decoding failed. `path` is a JSON Pointer such as `/items/0/email`.
+pub error DecodeError(path: String, message: String)
+
+/// Compact JSON for any `Schema` value; refined fields encode as their base type.
+@external(js, "vow_runtime", "json_encode")
+pub fn encode<T: Schema>(value: T) -> String
+
+/// Parses and checks `text` against `T`'s schema, including every refinement.
+@external(js, "vow_runtime", "json_decode")
+pub fn decode<T: Schema>(text: String) -> Result<T, DecodeError>
+
+@external(js, "vow_runtime", "json_parse")
+pub fn parse(text: String) -> Result<Json, DecodeError>
+
+/// The member `key` of an object; `None` for other values or a missing key.
+pub fn get(j: Json, key: String) -> Option<Json> {
+  match j {
+    Json.Object(members) => Map.get(members, key),
+    _ => None,
+  }
+}
+
+/// The member `key` when it is a string.
+pub fn get_string(j: Json, key: String) -> Option<String> {
+  match get(j, key) {
+    Some(Json.String(s)) => Some(s),
+    _ => None,
+  }
+}
+
+test "get and get_string read object members" {
+  let j = Json.Object(Map.of([("id", Json.String("u1")), ("n", Json.Number(2.0))]))
+  expect_eq(get(j, "n"), Some(Json.Number(2.0)))
+  expect_eq(get_string(j, "id"), Some("u1"))
+  expect_eq(get_string(j, "n"), None)
+  expect_eq(get(Json.Null, "id"), None)
+}

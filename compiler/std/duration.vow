@@ -1,0 +1,21 @@
+// Lengths of time in whole milliseconds. Negative durations are allowed.
+// Milliseconds, not nanoseconds: an `Instant` in nanoseconds passes 2^53 and would be
+// Defect `D003` on the JS backend (design §4.1).
+
+pub type Duration = Duration(Int)
+
+pub fn millis(n: Int) -> Duration { Duration(n) }
+
+pub fn seconds(n: Int) -> Duration { Duration(n * 1000) }
+
+pub fn minutes(n: Int) -> Duration { Duration(n * 60_000) }
+
+pub fn to_millis(d: Duration) -> Int {
+  match d { Duration(ms) => ms }
+}
+
+test "units convert to milliseconds" {
+  expect_eq(seconds(2).to_millis(), 2000)
+  expect_eq(minutes(1), millis(60_000))
+  expect_eq(millis(-5).to_millis(), -5)
+}

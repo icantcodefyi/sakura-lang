@@ -1,0 +1,26 @@
+// UUIDs in canonical lowercase `8-4-4-4-12` hex form.
+
+pub type Uuid = Uuid(String)
+
+pub error UuidError(input: String)
+
+pub fn to_string(u: Uuid) -> String {
+  match u { Uuid(s) => s }
+}
+
+/// Accepts the `8-4-4-4-12` form in either case; stores it lowercase.
+pub fn parse(text: String) -> Result<Uuid, UuidError> {
+  let lower = String.to_lower(text)
+  let cs = String.chars(lower)
+  let ok = List.len(cs) == 36 && List.all(List.enumerate(cs), fn(ic) {
+    if ic.0 == 8 || ic.0 == 13 || ic.0 == 18 || ic.0 == 23 { ic.1 == "-" } else { String.contains("0123456789abcdef", ic.1) }
+  })
+  if ok { Ok(Uuid(lower)) } else { Err(UuidError { input: text }) }
+}
+
+test "parse normalizes case and rejects junk" {
+  let u = parse("123E4567-E89B-12D3-A456-426614174000")
+  expect_eq(u.map(to_string), Ok("123e4567-e89b-12d3-a456-426614174000"))
+  expect(parse("123e4567e89b12d3a456426614174000").is_err())
+  expect(parse("123e4567-e89b-12d3-a456-42661417400g").is_err())
+}

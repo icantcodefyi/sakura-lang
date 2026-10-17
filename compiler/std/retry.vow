@@ -1,0 +1,120 @@
+// Retrying an action that fails with a typed error (design §5.9). Each attempt is a new
+// call of `action`; nothing is resumed. The last error propagates unchanged; there is
+// no extra "exhausted" tag. Only retry actions that are safe to repeat.
+
+import std/duration.{Duration}
+
+/// `retry_on` decides from the error whether another attempt is worth it.
+/// The first retry waits `backoff`; each later wait doubles, capped at one hour.
+/// `jitter` waits a uniform random time up to the computed backoff instead.
+/// `deadline` bounds the total time across attempts, measured with `Clock.monotonic`.
+pub type Policy<E> = {
+  retry_on: fn(E) -> Bool,
+  max_attempts: Int,
+  backoff: Duration,
+  jitter: Bool,
+  deadline: Option<Duration>,
+}
+
+/// A policy with `max_attempts` tries, 100 ms exponential backoff with jitter, and no
+/// deadline. Change fields with a record update: `Policy { ..retry.policy(f, 5), jitter: false }`.
+pub fn policy<E>(retry_on: fn(E) -> Bool, max_attempts: Int) -> Policy<E>
+  requires max_attempts >= 1
+{
+  Policy { retry_on, max_attempts, backoff: Duration.millis(100), jitter: true, deadline: None }
+}
+
+pub fn retry<T, E, e>(p: Policy<E>, action: fn() -> T ! {Fail<E> | e}) -> T ! {Clock, Random, Fail<E> | e} {
+  let started = Clock.monotonic()
+  attempt(p, action, 1, p.backoff, started)
+}
+
+fn attempt<T, E, e>(p: Policy<E>, action: fn() -> T ! {Fail<E> | e}, n: Int, delay: Duration, started: Duration)
+  -> T ! {Clock, Random, Fail<E> | e}
+{
+  let outcome = try { action() }
+  match outcome {
+    Ok(value) => value,
+    Err(err) => {
+      if n >= p.max_attempts || !p.retry_on(err) { fail err }
+      let wait = if p.jitter { Duration.millis(Random.int(0, delay.to_millis())) } else { delay }
+      if past_deadline(p.deadline, started, wait) { fail err }
+      Clock.sleep(wait)
+      let next = Duration.millis(Int.min(delay.to_millis() * 2, 3_600_000))
+      attempt(p, action, n + 1, next, started)
+    }
+  }
+}
+
+fn past_deadline(deadline: Option<Duration>, started: Duration, wait: Duration) -> Bool ! {Clock} {
+  match deadline {
+    None => false,
+    Some(limit) => {
+      let spent = Clock.monotonic().to_millis() - started.to_millis()
+      spent + wait.to_millis() > limit.to_millis()
+    }
+  }
+}
+
+error Flaky(attempt: Int)
+error Fatal
+
+effect Attempts {
+  fn next() -> Int
+}
+
+fn attempts() -> Handler<Attempts> {
+  handler Attempts {
+    var n = 0
+    fn next() {
+      n = n + 1
+      n
+    }
+  }
+}
+
+fn flaky_until(ok_at: Int) -> String ! {Attempts, Fail<Flaky>} {
+  let n = Attempts.next()
+  if n < ok_at { fail Flaky { attempt: n } }
+  "ok after {n}"
+}
+
+test "retries until success, sleeping with backoff" {
+  let p = Policy { ..policy(fn(e) { true }, 5), jitter: false }
+  let out = with Clock.virtual(), attempts() {
+    let v = retry(p, fn() { flaky_until(3) })
+    (v, Clock.monotonic())
+  }
+  expect_eq(out, ("ok after 3", Duration.millis(300)))
+}
+
+test "the last error propagates after max_attempts" {
+  let p = Policy { ..policy(fn(e) { true }, 2), jitter: false }
+  with Clock.virtual(), attempts() {
+    expect_fail(fn() { retry(p, fn() { flaky_until(10) }) }, Flaky { attempt: 2 })
+  }
+}
+
+test "retry_on false stops at the first error" {
+  let p: Policy<Fatal> = policy(fn(e) { false }, 5)
+  with Clock.virtual() {
+    expect_fail(fn() { retry(p, fn() { fail Fatal }) }, Fatal)
+    expect_eq(Clock.monotonic(), Duration.millis(0))
+  }
+}
+
+test "deadline stops retrying early" {
+  let p = Policy { ..policy(fn(e) { true }, 10), jitter: false, deadline: Some(Duration.millis(250)) }
+  with Clock.virtual(), attempts() {
+    expect_fail(fn() { retry(p, fn() { flaky_until(10) }) }, Flaky { attempt: 2 })
+  }
+}
+
+test "jittered waits stay within the backoff" {
+  let p = Policy { ..policy(fn(e) { true }, 4), backoff: Duration.millis(100) }
+  let spent = with Clock.virtual(), Random.seeded(3), attempts() {
+    let _ = retry(p, fn() { flaky_until(4) })
+    Clock.monotonic().to_millis()
+  }
+  expect(spent >= 0 && spent <= 700)
+}

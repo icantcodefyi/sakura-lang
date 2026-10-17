@@ -1,0 +1,94 @@
+// Explicit generators for property-style tests (design §10.6). `property` blocks derive
+// generators from parameter types; use a `Gen` when that is not enough, and drive it
+// with `for_all` inside a `test`. Generators draw from `Random`, so a run is
+// reproducible from `vow test --seed N`.
+
+import std/test.{Test}
+
+/// `sample(size)` produces one value; `size` grows from 0 with each case so early cases
+/// are small.
+pub type Gen<A> = { sample: fn(Int) -> A ! {Random} }
+
+/// Uniform integers in `[lo, hi]`.
+pub fn int(lo: Int, hi: Int) -> Gen<Int>
+  requires lo <= hi
+{
+  Gen { sample: fn(size) { Random.int(lo, hi) } }
+}
+
+pub fn bool() -> Gen<Bool> {
+  Gen { sample: fn(size) { Random.int(0, 1) == 1 } }
+}
+
+/// One of `choices`, uniformly.
+pub fn one_of<A>(choices: List<A>) -> Gen<A>
+  requires List.len(choices) > 0
+{
+  Gen { sample: fn(size) { choices[Random.int(0, List.len(choices) - 1)].expect("index in range") } }
+}
+
+/// Lists of up to `max_len` elements (and at most `size`).
+pub fn list<A>(item: Gen<A>, max_len: Int) -> Gen<List<A>>
+  requires max_len >= 0
+{
+  Gen {
+    sample: fn(size) {
+      let n = Random.int(0, Int.min(size, max_len))
+      List.map(List.range(0, n), fn(i) { item.sample(size) })
+    },
+  }
+}
+
+/// Lowercase ASCII strings of up to `max_len` letters.
+pub fn string(max_len: Int) -> Gen<String>
+  requires max_len >= 0
+{
+  map(list(one_of(String.chars("abcdefghijklmnopqrstuvwxyz")), max_len), fn(cs) { List.join(cs, "") })
+}
+
+pub fn map<A, B>(g: Gen<A>, f: fn(A) -> B) -> Gen<B> {
+  Gen { sample: fn(size) { f(g.sample(size)) } }
+}
+
+pub fn pair<A, B>(a: Gen<A>, b: Gen<B>) -> Gen<(A, B)> {
+  Gen { sample: fn(size) { (a.sample(size), b.sample(size)) } }
+}
+
+/// Runs `prop` on `runs` generated values. Stops at the first case that records a
+/// failure and reports that input in the test output.
+/// ponytail: no shrinking; the growing `size` keeps early counterexamples small.
+pub fn for_all<A: Show, e>(g: Gen<A>, runs: Int, prop: fn(A) -> Unit ! {Test | e}) -> Unit ! {Random, Test | e} {
+  for i in 0..runs {
+    let before = Test.failures()
+    let x = g.sample(i)
+    prop(x)
+    if Test.failures() > before {
+      Test.output("for_all: case {i} failed for input {show(x)}")
+      return
+    }
+  }
+}
+
+test "generated ints stay in range" {
+  for_all(int(-3, 3), 100, fn(x) { expect(x >= -3 && x <= 3) })
+}
+
+test "lists respect max_len and strings use the alphabet" {
+  for_all(list(int(0, 9), 4), 50, fn(xs) { expect(List.len(xs) <= 4) })
+  for_all(string(6), 50, fn(s) {
+    expect(String.len(s) <= 6)
+    expect(String.chars(s).all(fn(c) { String.contains("abcdefghijklmnopqrstuvwxyz", c) }))
+  })
+}
+
+test "pair and map compose" {
+  let sums = map(pair(int(0, 5), int(10, 15)), fn(p) { p.0 + p.1 })
+  for_all(sums, 50, fn(s) { expect(s >= 10 && s <= 20) })
+}
+
+test "same seed, same samples" {
+  let g = list(int(0, 100), 5)
+  let a = with Random.seeded(11) { [g.sample(5), g.sample(5)] }
+  let b = with Random.seeded(11) { [g.sample(5), g.sample(5)] }
+  expect_eq(a, b)
+}
