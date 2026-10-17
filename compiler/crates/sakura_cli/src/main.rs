@@ -437,8 +437,25 @@ fn run(path: Option<PathBuf>, out_dir: &Path, args: &[String]) -> ExitCode {
         eprintln!("error: permission denied: {why}");
         return ExitCode::from(EXIT_PERMISSION);
     }
-    let main = dir.join("__main__.js");
-    match testing::node().arg(&main).args(args).status() {
+    // The runtime scopes its root handlers by `SAKURA_PERMISSIONS` (runtime/js/ABI.md §7), with
+    // paths relative to the package root, which is therefore the working directory.
+    let root = a
+        .snapshot
+        .files()
+        .iter()
+        .find(|f| f.uri.ends_with("/sakura.toml"))
+        .and_then(|f| disk::uri_path(&f.uri))
+        .and_then(|p| p.parent().map(Path::to_path_buf));
+    let main = std::path::absolute(dir.join("__main__.js")).unwrap_or_default();
+    let mut node = testing::node();
+    node.arg(&main).args(args).env(
+        "SAKURA_PERMISSIONS",
+        serde_json::to_string(&permissions).unwrap_or_default(),
+    );
+    if let Some(root) = root {
+        node.current_dir(root);
+    }
+    match node.status() {
         Ok(status) => ExitCode::from(status.code().map_or(EXIT_DEFECT, |c| c as u8)),
         Err(e) => usage_error(format!("cannot start node: {e}")),
     }

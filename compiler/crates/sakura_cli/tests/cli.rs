@@ -232,7 +232,7 @@ fn new_projects_check_and_are_formatted() {
     let dir = std::env::temp_dir().join(format!("sakura-cli-{}-new", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    for kind in ["cli", "lib", "agent"] {
+    for kind in ["cli", "lib", "agent", "api"] {
         let name = format!("p_{kind}");
         let out = sakura(&["new", kind, &name], &dir);
         assert_eq!(out.code, Some(0), "{}", out.stderr);
@@ -247,9 +247,9 @@ fn new_projects_check_and_are_formatted() {
             Some(0),
             "{kind}"
         );
+        let test = sakura(&["test"], &project);
+        assert_eq!(test.code, Some(0), "{kind}: {}{}", test.stdout, test.stderr);
     }
-    let test = sakura(&["test"], &dir.join("p_lib"));
-    assert_eq!(test.code, Some(0), "{}", test.stderr);
     // Refusals: a non-empty directory, a bad name, an existing manifest.
     assert_eq!(sakura(&["new", "lib", "p_lib"], &dir).code, Some(2));
     assert_eq!(sakura(&["new", "lib", "Bad-Name"], &dir).code, Some(2));
@@ -277,4 +277,37 @@ fn run_exits_75_when_permissions_do_not_cover_main() {
     let allowed = sakura(&["run", "main.sakura"], &dir);
     assert_eq!(allowed.code, Some(0), "{}", allowed.stderr);
     assert_eq!(allowed.stdout, "started\n");
+}
+
+#[test]
+fn run_scopes_root_handlers_to_the_manifest() {
+    let dir = tmp(
+        "scoped",
+        r#"import std/fs.{Fs, FsError}
+import std/path.{Path}
+
+fn probe(path: String) -> String ! {Fs} {
+  try {
+    let _ = Fs.read_text(Path.of(path))
+    "read"
+  } catch {
+    FsError { .. } => "denied",
+  }
+}
+
+pub fn main() -> Unit ! {Console, Fs} { Console.print("{probe("data/a.txt")} {probe("secret.txt")}") }
+"#,
+    );
+    std::fs::create_dir_all(dir.join("data")).unwrap();
+    std::fs::write(dir.join("data/a.txt"), "a").unwrap();
+    std::fs::write(dir.join("secret.txt"), "s").unwrap();
+    std::fs::write(
+        dir.join("sakura.toml"),
+        "[package]\nname = \"scoped\"\n\n[permissions]\nfs.read = [\"./data\"]\n",
+    )
+    .unwrap();
+    // Run from elsewhere: `fs.read` is relative to the package root, not the caller's directory.
+    let out = sakura(&["run", dir.to_str().unwrap()], &std::env::temp_dir());
+    assert_eq!(out.code, Some(0), "{}", out.stderr);
+    assert_eq!(out.stdout, "read denied\n");
 }
