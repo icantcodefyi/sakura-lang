@@ -264,3 +264,34 @@ fn f(s: String) -> Int {
     let c = check(ok);
     assert!(c.diags.is_empty(), "{}", c.render());
 }
+
+/// A clause of a generic operation checks against the operation's own type parameters,
+/// rigid (`T` below), as a generic function would: no false `V4002` on `Ok(v)`.
+#[test]
+fn generic_operation_clauses_see_rigid_type_parameters() {
+    let src = r#"import std/json.{DecodeError}
+error Bad(message: String)
+effect Gen {
+  fn generate<T: Schema>(text: String) -> T ! {Fail<DecodeError>}
+  fn wrapped<T: Schema>(req: List<T>) -> T ! {Fail<Bad>}
+}
+fn scripted(next: String) -> Handler<Gen> {
+  handler Gen {
+    fn generate(text) {
+      match Json.decode(text) {
+        Ok(v) => v,
+        Err(e) => fail e,
+      }
+    }
+    fn wrapped(req) {
+      match Json.decode(next) {
+        Ok(v) => v,
+        Err(e) => fail Bad { message: e.message },
+      }
+    }
+  }
+}
+"#;
+    let c = check(src);
+    assert!(c.diags.is_empty(), "{}", c.render());
+}

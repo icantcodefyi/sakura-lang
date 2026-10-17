@@ -1690,6 +1690,8 @@ impl Checker<'_> {
                 continue;
             };
             // Effect generics come first in the op's scheme; fix them to this handler's args.
+            // The op's own type parameters stay rigid: a clause must work for every `T`, as
+            // the body of a generic function does (and `sakura_core` sees them by name).
             let subst: std::collections::HashMap<_, _> = scheme
                 .params
                 .iter()
@@ -1697,12 +1699,7 @@ impl Checker<'_> {
                 .zip(eff_args.iter().copied())
                 .collect();
             let partial = crate::ty::Scheme {
-                params: scheme
-                    .params
-                    .iter()
-                    .copied()
-                    .filter(|p| !subst.contains_key(p))
-                    .collect(),
+                params: Vec::new(),
                 row_params: scheme.row_params.clone(),
                 ty: self.inf.substitute(scheme.ty, &subst, &Default::default()),
             };
