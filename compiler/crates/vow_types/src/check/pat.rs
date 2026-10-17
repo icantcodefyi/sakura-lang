@@ -280,8 +280,8 @@ impl Checker<'_> {
             let Some(&ty) = self.b.pat_types.get(first.0) else {
                 continue;
             };
-            if self.contains_error(ty) {
-                continue;
+            if self.contains_error(ty) || c.arms.iter().any(|(p, _)| self.unresolved_pat(*p)) {
+                continue; // an unresolved name would look like a wildcard
             }
             let pats: Vec<(exhaust::Pat, bool, PatId)> = c
                 .arms
@@ -383,11 +383,30 @@ impl Checker<'_> {
         }
     }
 
-    fn contains_error(&mut self, ty: TypeId) -> bool {
+    fn unresolved_pat(&self, p: PatId) -> bool {
+        match &self.hir_body().pats[p] {
+            Pat::Missing
+            | Pat::Ctor { res: Res::Err, .. }
+            | Pat::Record {
+                ty: TypeRes::Err, ..
+            } => true,
+            Pat::Ctor { args, .. } | Pat::Tuple(args) | Pat::Or(args) => {
+                args.iter().any(|a| self.unresolved_pat(*a))
+            }
+            Pat::Record { fields, .. } => fields.iter().any(|f| self.unresolved_pat(f.pat)),
+            Pat::List { items, .. } => items.iter().any(|a| self.unresolved_pat(*a)),
+            _ => false,
+        }
+    }
+
+    pub(super) fn contains_error(&mut self, ty: TypeId) -> bool {
         let ty = self.inf.shallow(ty);
         match self.inf.interner.ty(ty).clone() {
             Type::Error => true,
             Type::Tuple(xs) | Type::Con(_, xs) => xs.into_iter().any(|x| self.contains_error(x)),
+            Type::Fn { params, ret, .. } => {
+                params.into_iter().any(|x| self.contains_error(x)) || self.contains_error(ret)
+            }
             _ => false,
         }
     }

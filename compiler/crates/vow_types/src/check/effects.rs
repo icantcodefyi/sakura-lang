@@ -19,7 +19,16 @@ impl Checker<'_> {
     fn report_violation(&mut self, v: RowViolation) {
         let actual = self.inf.zonk_row(v.actual);
         let expected = self.inf.zonk_row(v.expected);
-        let labels: Vec<Label> = v.labels.clone();
+        // Labels mentioning an erroneous type cascade from an earlier diagnostic.
+        let labels: Vec<Label> = v
+            .labels
+            .iter()
+            .filter(|l| !l.args.iter().any(|a| self.contains_error(*a)))
+            .cloned()
+            .collect();
+        if labels.is_empty() && !v.labels.is_empty() {
+            return;
+        }
         let shown: Vec<String> = labels
             .iter()
             .map(|l| format!("`{}`", self.render_label(l)))
