@@ -34,6 +34,11 @@ impl Checked {
                 .unwrap_or_default();
             out.push_str(&format!("{} {pos} {}\n", d.code.0, d.message));
             for s in d.spans.iter().skip(1) {
+                if s.file != FileId(0) {
+                    let label = s.label.clone().unwrap_or_default();
+                    out.push_str(&format!("  {:?} in std {label}\n", s.role));
+                    continue;
+                }
                 let text = &self.src[s.start as usize..s.end as usize];
                 out.push_str(&format!(
                     "  {:?} {} `{text}` {}\n",

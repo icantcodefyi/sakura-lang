@@ -1,0 +1,5 @@
+// milestone: M1
+// expect: V1006
+import std/decimal.{Decimal}
+
+fn whole(d: Decimal) -> Int { d.whole }

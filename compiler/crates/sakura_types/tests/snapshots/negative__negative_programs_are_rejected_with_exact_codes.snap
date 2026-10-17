@@ -1,6 +1,6 @@
 ---
 source: crates/sakura_types/tests/negative.rs
-assertion_line: 283
+assertion_line: 298
 expression: transcript
 ---
 ## wrong result type
@@ -153,6 +153,18 @@ V3001 7:51 handler clause `next` performs `Fail<A>`, which the handler's type do
   Cause 7:60 `fail A` `fail` performs `Fail<A>` here
   expected: {}
   actual: {Fail<A>}
+
+## reading a field of an opaque type outside its module
+V1006 8:27 `Decimal` is opaque: its constructors and fields are private to module `std/decimal`
+  Definition in std declared `pub opaque` here
+
+## updating a field of an opaque type outside its module
+V1006 8:42 `Decimal` is opaque: its constructors and fields are private to module `std/decimal`
+  Definition in std declared `pub opaque` here
+
+## calling a function field of an opaque type outside its module
+V1006 8:28 `Tool` is opaque: its constructors and fields are private to module `std/tool`
+  Definition in std declared `pub opaque` here
 
 ## try body assigns an outer var
 V2041 7:42 this `try` body assigns `n`, a `var` declared outside it; a `try` body's only outputs are its value and its error (design §5.3)

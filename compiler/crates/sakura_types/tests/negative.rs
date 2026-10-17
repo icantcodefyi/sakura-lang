@@ -157,6 +157,21 @@ const CASES: &[(&str, &str, &[&str])] = &[
         &["V3001"],
     ),
     (
+        "reading a field of an opaque type outside its module",
+        "import std/decimal.{Decimal}\nfn f(d: Decimal) -> Int { d.whole }",
+        &["V1006"],
+    ),
+    (
+        "updating a field of an opaque type outside its module",
+        "import std/decimal.{Decimal}\nfn f(d: Decimal) -> Decimal { var x = d; x.whole = 1; x }",
+        &["V1006"],
+    ),
+    (
+        "calling a function field of an opaque type outside its module",
+        "import std/tool.{Tool}\nfn f<F>(t: Tool<F>) -> F { t.run }",
+        &["V1006"],
+    ),
+    (
         "try body assigns an outer var",
         "fn f() -> Int { var n = 0; let _ = try { n = 1 }; n }",
         &["V2041"],

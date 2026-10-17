@@ -818,6 +818,9 @@ impl Checker<'_> {
                 .into_iter()
                 .find(|(n, _)| n == method)
         {
+            if !self.program.constructors_visible(d, self.module()) {
+                self.opaque_field(e, method_range, d);
+            }
             self.b
                 .calls
                 .insert(e, CallTarget::Field(method.to_string()));
@@ -892,6 +895,32 @@ impl Checker<'_> {
         (self.inf.interner.error(), self.seq(&rows, e))
     }
 
+    /// V1006: the fields of a `pub opaque` type are private to its module (design §9, §17.10).
+    /// Field reads and `u.f = …` updates both come here.
+    fn opaque_field(&mut self, at: ExprId, range: text_size::TextRange, ty: DefId) {
+        if !self.b.reported.insert(at) {
+            return;
+        }
+        let def = self.program.def(ty);
+        let module = self.program.module(ty.module);
+        let package = &self.program.packages[module.package.0 as usize].name;
+        let d = Diagnostic::error(
+            sakura_diagnostics::codes::V1006,
+            Phase::Resolve,
+            format!(
+                "`{}` is opaque: its constructors and fields are private to module `{package}/{}`",
+                def.name, module.path
+            ),
+        )
+        .with_span(self.span(range))
+        .with_span(
+            self.span_in(ty.module, def.range)
+                .with_role(sakura_diagnostics::SpanRole::Definition)
+                .with_label("declared `pub opaque` here"),
+        );
+        self.push(d);
+    }
+
     pub(super) fn field_type(
         &mut self,
         at: ExprId,
@@ -917,6 +946,9 @@ impl Checker<'_> {
                 Type::Con(TyCon::Adt(d), args) if self.is_record(d) => {
                     let fields = self.fields_at(d, &args);
                     if let Some((_, t)) = fields.iter().find(|(n, _)| n == name) {
+                        if !self.program.constructors_visible(d, self.module()) {
+                            self.opaque_field(at, range, d);
+                        }
                         return *t;
                     }
                     let shown = self.render(cur);
