@@ -49,4 +49,4 @@ mod lower;
 pub mod prelude;
 
 pub use hir::*;
-pub use lower::{ModuleInput, PackageInput, lower};
+pub use lower::{ModuleInput, PackageInput, lower, lower_reusing};

@@ -131,8 +131,8 @@ impl Analysis {
     /// Every frontend phase over `snapshot`, memoized by snapshot hash: repeated queries on one
     /// snapshot (hover, completion, `hole_context`) share one analysis, files whose text did
     /// not change are not parsed again, and when no module's interface changed since the
-    /// previous analysis only the edited modules are type-checked again (design §14.3 M3).
-    /// ponytail: HIR lowering still runs over the whole program; it is cheap next to checking.
+    /// previous analysis only the edited modules are lowered and type-checked again (design
+    /// §14.3 M3, §17.74).
     pub fn analyze(snapshot: &Snapshot) -> Arc<Analyzed> {
         static CACHE: Mutex<Vec<Arc<Analyzed>>> = Mutex::new(Vec::new());
         const KEEP: usize = 8;
@@ -157,18 +157,22 @@ impl Analysis {
 pub struct Stats {
     pub parses: usize,
     pub analyses: usize,
+    /// Modules whose signatures and bodies were lowered to HIR (not reused).
+    pub lowers: usize,
     /// Modules whose bodies were type-checked (not reused from an earlier analysis).
     pub checked_modules: usize,
 }
 
 static PARSES: AtomicUsize = AtomicUsize::new(0);
 static ANALYSES: AtomicUsize = AtomicUsize::new(0);
+static LOWERS: AtomicUsize = AtomicUsize::new(0);
 static CHECKED_MODULES: AtomicUsize = AtomicUsize::new(0);
 
 pub fn stats() -> Stats {
     Stats {
         parses: PARSES.load(Ordering::Relaxed),
         analyses: ANALYSES.load(Ordering::Relaxed),
+        lowers: LOWERS.load(Ordering::Relaxed),
         checked_modules: CHECKED_MODULES.load(Ordering::Relaxed),
     }
 }
@@ -283,13 +287,14 @@ impl Analyzed {
 /// Every frontend phase: HIR, typed program, symbols, and their diagnostics and holes.
 fn analyze(snapshot: &Snapshot, prev: Option<&Analyzed>) -> Analyzed {
     ANALYSES.fetch_add(1, Ordering::Relaxed);
-    let (parses, mut program, mut diagnostics) = lower(snapshot);
+    let (parses, mut diagnostics) = parse_all(snapshot);
     let interfaces: Vec<Option<u64>> = parses
         .iter()
         .map(|p| p.as_ref().map(|p| interface_hash(&p.syntax())))
         .collect();
     // Reuse `prev` only for the same files with the same interfaces; then a module is reused
-    // when its text is unchanged and none of its diagnostics points into a changed file.
+    // (neither lowered nor checked again) when its text is unchanged and none of its
+    // diagnostics points into a changed file.
     let prev = prev.filter(|p| {
         p.interfaces == interfaces
             && p.snapshot.files.len() == snapshot.files.len()
@@ -301,19 +306,29 @@ fn analyze(snapshot: &Snapshot, prev: Option<&Analyzed>) -> Analyzed {
             .collect(),
         None => vec![true; snapshot.files.len()],
     };
-    let reused: Vec<bool> = program
-        .modules
-        .iter()
-        .map(|m| {
-            let file = m.file.0 as usize;
+    let reused_file: Vec<bool> = (0..snapshot.files.len())
+        .map(|file| {
             prev.is_some_and(|p| {
                 !changed[file]
-                    && !p.type_diags.iter().any(|d| {
+                    && !(p.program.diagnostics.iter().chain(&p.type_diags)).any(|d| {
                         d.spans.iter().any(|s| changed[s.file.0 as usize])
-                            && d.spans.first().is_some_and(|s| s.file == m.file)
+                            && d.spans.first().is_some_and(|s| s.file.0 as usize == file)
                     })
             })
         })
+        .collect();
+    let (mut program, lowered) = lower(
+        snapshot,
+        &parses,
+        prev.map(|p| (&p.program, &reused_file[..])),
+    );
+    LOWERS.fetch_add(lowered, Ordering::Relaxed);
+    // One order whether or not results were reused.
+    program
+        .diagnostics
+        .sort_by_key(|d| d.spans.first().map(|s| s.file));
+    let reused: Vec<bool> = (program.modules.iter())
+        .map(|m| reused_file[m.file.0 as usize])
         .collect();
     let checked = reused.iter().filter(|r| !**r).count();
     CHECKED_MODULES.fetch_add(checked, Ordering::Relaxed);
@@ -322,12 +337,12 @@ fn analyze(snapshot: &Snapshot, prev: Option<&Analyzed>) -> Analyzed {
             let reuse = |m: sakura_hir::ModuleId| reused[m.0 as usize];
             let (typed, mut diags) =
                 sakura_types::check_program_reusing(&program, &diagnostics, &p.typed, &reuse);
-            let reused_file =
+            let in_reused =
                 |f: FileId| (program.modules.iter().zip(&reused)).any(|(m, r)| *r && m.file == f);
             diags.extend(
                 p.type_diags
                     .iter()
-                    .filter(|d| d.spans.first().is_some_and(|s| reused_file(s.file)))
+                    .filter(|d| d.spans.first().is_some_and(|s| in_reused(s.file)))
                     .cloned(),
             );
             (typed, diags)
@@ -361,7 +376,7 @@ fn analyze(snapshot: &Snapshot, prev: Option<&Analyzed>) -> Analyzed {
             contracts_in_scope: vec![],
         })
         .collect();
-    diagnostics.append(&mut program.diagnostics);
+    diagnostics.extend(program.diagnostics.iter().cloned());
     diagnostics.extend(type_diags.iter().cloned());
     let roots: Vec<Option<sakura_syntax::SyntaxNode>> = parses
         .iter()
@@ -537,29 +552,35 @@ fn module_of(uri: &str) -> (&'static str, String) {
     ("main", rel.to_owned())
 }
 
-/// Parses every Sakura Lang file and lowers the snapshot to HIR. Returns the parses (by `FileId`) and
-/// the parse diagnostics separately.
-#[allow(clippy::type_complexity)]
+/// Parses every Sakura Lang file: the parses by `FileId` (`None` for other files) and their
+/// diagnostics.
+fn parse_all(snapshot: &Snapshot) -> (Vec<Option<sakura_syntax::Parse>>, Vec<Diagnostic>) {
+    let mut diagnostics = Vec::new();
+    let parses = snapshot
+        .file_ids()
+        .map(|file| {
+            let source = snapshot.file(file);
+            let parse = is_module(&source.uri)
+                .then(|| parse_cached(file, &source.text, &source.content_hash))?;
+            diagnostics.extend(parse.errors.iter().cloned());
+            Some(parse)
+        })
+        .collect();
+    (parses, diagnostics)
+}
+
+/// Lowers the parsed snapshot to HIR, keeping `prev`'s lowering of the files marked reusable;
+/// also how many modules were lowered.
 fn lower(
     snapshot: &Snapshot,
-) -> (
-    Vec<Option<sakura_syntax::Parse>>,
-    sakura_hir::Program,
-    Vec<Diagnostic>,
-) {
-    let mut diagnostics = Vec::new();
-    let mut parses = Vec::new();
+    parses: &[Option<sakura_syntax::Parse>],
+    prev: Option<(&sakura_hir::Program, &[bool])>,
+) -> (sakura_hir::Program, usize) {
     let mut std = Vec::new();
     let mut user = Vec::new();
-    for file in snapshot.file_ids() {
-        let source = snapshot.file(file);
-        if !is_module(&source.uri) {
-            parses.push(None);
-            continue;
-        }
-        let parse = parse_cached(file, &source.text, &source.content_hash);
-        diagnostics.extend(parse.errors.iter().cloned());
-        let (package, path) = module_of(&source.uri);
+    for (file, parse) in snapshot.file_ids().zip(parses) {
+        let Some(parse) = parse else { continue };
+        let (package, path) = module_of(&snapshot.file(file).uri);
         let input = sakura_hir::ModuleInput {
             file,
             path,
@@ -571,7 +592,6 @@ fn lower(
             &mut user
         }
         .push(input);
-        parses.push(Some(parse));
     }
     let packages = [
         sakura_hir::PackageInput {
@@ -585,7 +605,19 @@ fn lower(
             modules: user,
         },
     ];
-    (parses, sakura_hir::lower(&packages), diagnostics)
+    match prev {
+        Some((program, reuse)) => {
+            let reuse = |m: sakura_hir::ModuleId| {
+                (program.modules.get(m.0 as usize)).is_some_and(|m| reuse[m.file.0 as usize])
+            };
+            sakura_hir::lower_reusing(&packages, program, &reuse)
+        }
+        None => {
+            let program = sakura_hir::lower(&packages);
+            let n = program.modules.len();
+            (program, n)
+        }
+    }
 }
 
 /// Whether a snapshot file is a Sakura Lang module (other files, like `sakura.toml`, ride along for

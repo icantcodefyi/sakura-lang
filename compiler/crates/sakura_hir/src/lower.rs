@@ -40,6 +40,27 @@ pub struct ModuleInput {
 
 /// Lowers and resolves a whole snapshot. Never panics; see the crate docs for invariants.
 pub fn lower(packages: &[PackageInput<'_>]) -> Program {
+    lower_with(packages, None).0
+}
+
+/// [`lower`], where `prev` is the lowering of an earlier snapshot with the same files and the
+/// same interfaces (items, signatures and imports in the same order): every module for which
+/// `reuse` holds keeps `prev`'s signatures, bodies and diagnostics (those whose primary span is
+/// in its file), so only the other modules are lowered again (design §17.74). Item collection
+/// and import binding (phases 1–3) still run over every module; they read no bodies. Also
+/// returns how many modules were lowered.
+pub fn lower_reusing(
+    packages: &[PackageInput<'_>],
+    prev: &Program,
+    reuse: &dyn Fn(ModuleId) -> bool,
+) -> (Program, usize) {
+    lower_with(packages, Some((prev, reuse)))
+}
+
+fn lower_with(
+    packages: &[PackageInput<'_>],
+    prev: Option<(&Program, &dyn Fn(ModuleId) -> bool)>,
+) -> (Program, usize) {
     let mut cx = Cx::default();
     cx.setup(packages);
     for m in 0..cx.program.modules.len() {
@@ -53,11 +74,46 @@ pub fn lower(packages: &[PackageInput<'_>]) -> Program {
     }
     cx.lang_items();
     cx.tool_args();
-    for m in 0..cx.program.modules.len() {
-        cx.lower_items(ModuleId(m as u32));
+    // In module order either way, so a module being lowered sees the others in the same state.
+    let mut reused = vec![false; cx.program.modules.len()];
+    for (m, reused) in reused.iter_mut().enumerate() {
+        let id = ModuleId(m as u32);
+        let earlier = prev
+            .filter(|(_, reuse)| reuse(id))
+            .and_then(|(p, _)| p.modules.get(m))
+            .filter(|p| {
+                let now = &cx.program.modules[m];
+                p.file == now.file && p.defs.len() >= now.defs.len()
+            });
+        match earlier {
+            Some(p) => {
+                let now = &mut cx.program.modules[m];
+                now.defs = p.defs.clone();
+                now.bodies = p.bodies.clone();
+                *reused = true;
+            }
+            None => cx.lower_items(id),
+        }
     }
     cx.check_main_rows();
-    cx.program
+    if let Some((p, _)) = prev {
+        let modules = &cx.program.modules;
+        let in_reused = |d: &Diagnostic| {
+            d.spans
+                .first()
+                .is_some_and(|s| (modules.iter().zip(&reused)).any(|(m, r)| *r && m.file == s.file))
+        };
+        let earlier: Vec<Diagnostic> = p
+            .diagnostics
+            .iter()
+            .filter(|d| in_reused(d))
+            .cloned()
+            .collect();
+        cx.program.diagnostics.retain(|d| !in_reused(d));
+        cx.program.diagnostics.extend(earlier);
+    }
+    let lowered = reused.iter().filter(|r| !**r).count();
+    (cx.program, lowered)
 }
 
 // ---- Syntax helpers --------------------------------------------------------------------------

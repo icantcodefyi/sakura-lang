@@ -6,10 +6,12 @@ use sakura_analysis::{Analysis, BuildOptions, Snapshot, stats};
 const LIB: &str =
     "pub fn twice(x: Int) -> Int { helper(x) * 2 }\n\nfn helper(x: Int) -> Int { x }\n";
 const APP: &str = "import main/lib\n\npub fn four() -> Int { lib.twice(2) }\n\nfn bad() -> Int { \"no\" }\n\nfn hole() -> Int { ?todo }\n";
+const GEN: &str = "pub fn id<A>(a: A) -> A { a }\n";
 
 fn snap(lib: &str, extra: bool) -> Snapshot {
     let mut files = vec![
         ("file:///p/src/app.sakura".to_owned(), APP.to_owned()),
+        ("file:///p/src/gen.sakura".to_owned(), GEN.to_owned()),
         ("file:///p/src/lib.sakura".to_owned(), lib.to_owned()),
     ];
     // A file that is not a module, sorted last: no reuse (the file set differs), same `FileId`s.
@@ -40,11 +42,10 @@ fn a_private_body_edit_rechecks_only_its_module() {
     let edited = LIB.replace("{ x }", "{ x + \"1\" }");
     let warm = Analysis::analyze(&snap(&edited, false));
     let after = stats();
-    assert_eq!(
-        after.checked_modules - cold.checked_modules,
-        1,
-        "only lib.sakura"
-    );
+    // Only lib.sakura of the three user modules (and none of std) is parsed, lowered and checked.
+    assert_eq!(after.parses - cold.parses, 1, "parses");
+    assert_eq!(after.lowers - cold.lowers, 1, "lowers");
+    assert_eq!(after.checked_modules - cold.checked_modules, 1, "checks");
 
     // Same diagnostics and holes as checking everything: app's error and hole carry over.
     let full = Analysis::analyze(&snap(&edited, true));
@@ -83,10 +84,7 @@ fn a_private_body_edit_rechecks_only_its_module() {
         let mut files = vec![
             ("file:///p/src/app.sakura".to_owned(), app),
             ("file:///p/src/lib.sakura".to_owned(), lib.to_owned()),
-            (
-                "file:///p/src/gen.sakura".to_owned(),
-                "pub fn id<A>(a: A) -> A { a }\n".to_owned(),
-            ),
+            ("file:///p/src/gen.sakura".to_owned(), GEN.to_owned()),
         ];
         if extra {
             files.push(("zzz:///notes.txt".to_owned(), String::new()));
@@ -113,7 +111,8 @@ fn a_private_body_edit_rechecks_only_its_module() {
         "pub fn twice(x: Int) -> Int",
         "pub fn twice(x: Int) -> Float",
     );
-    let checked = stats().checked_modules;
+    let before = stats();
     let _ = Analysis::analyze(&snap(&sig, false));
-    assert!(stats().checked_modules - checked > 2);
+    assert!(stats().checked_modules - before.checked_modules > 2);
+    assert!(stats().lowers - before.lowers > 2);
 }
