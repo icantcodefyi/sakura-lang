@@ -5,12 +5,13 @@ import {
   Funnel_Display,
 } from "next/font/google";
 import { RootProvider } from "fumadocs-ui/provider/next";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { site } from "@/lib/site";
 import "./globals.css";
 
 const display = Funnel_Display({
   subsets: ["latin"],
+  // Every display setting is 600; one static instance is half the variable font's bytes.
+  weight: "600",
   variable: "--font-sakura-display",
   display: "swap",
 });
@@ -73,9 +74,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${display.variable} ${body.variable} ${code.variable}`}
     >
       <body className="flex min-h-dvh flex-col font-sans">
-        <RootProvider>
-          <TooltipProvider delayDuration={400}>{children}</TooltipProvider>
-        </RootProvider>
+        <RootProvider>{children}</RootProvider>
       </body>
     </html>
   );

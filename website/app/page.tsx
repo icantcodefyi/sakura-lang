@@ -1,4 +1,5 @@
 import { SiteFooter } from "@/components/site-footer";
+import { HeaderControls } from "@/components/header-controls";
 import { SiteHeader } from "@/components/site-header";
 import { AgentView } from "@/components/landing/agent-view";
 import { Anatomy } from "@/components/landing/anatomy";
@@ -15,7 +16,9 @@ import { Roadmap } from "@/components/landing/roadmap";
 export default function Home() {
   return (
     <>
-      <SiteHeader />
+      <SiteHeader>
+        <HeaderControls />
+      </SiteHeader>
       <main id="main" className="flex-1">
         <Hero />
         <Anatomy />
