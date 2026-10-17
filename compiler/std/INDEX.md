@@ -593,7 +593,7 @@ effect Serve {
   fn listen<e>(router: Router<fn(Request) -> Response ! e>, addr: Address) -> Never ! {Fail<ServeError> | e}
 }
 fn of(host: String, port: Int) -> Address requires port >= 0 && port <= 65_535
-fn host() -> Handler<Serve>    // @external
+fn host() -> Handler<Serve>
 fn scripted(requests: List<Request>) -> Handler<Serve, {Test}>
 ```
 

@@ -1,5 +1,5 @@
 // milestone: M3
-// needs: @llm desugaring and schemas inside generic operation clauses (D090) in runtime/js, Fail escaping a test (§17.30)
+// needs: @llm bodies (§11.1), Fail escaping a test (§17.30)
 // mode: test
 // covers: Attribute TypeDecl RecordType FieldDecl WithExpr Lambda MatchExpr
 

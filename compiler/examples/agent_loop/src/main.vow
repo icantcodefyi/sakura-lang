@@ -1,5 +1,5 @@
 // milestone: M3
-// needs: Tool.of on a @tool function (compiler intrinsic), json_schema and llm_anthropic in runtime/js
+// needs: Tool.of on a @tool function (compiler intrinsic)
 // mode: check
 // covers: Attribute ErrorDecl TaggedStr Lambda RecordLit
 

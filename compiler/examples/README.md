@@ -15,8 +15,8 @@ whose milestone has landed.
 | `typed_errors` | §15.4 | M2 | run + test | `try`/`catch`, `Fail` ops, `Log` |
 | `json_api` | §15.5 | M3 | test | `SqlValue.from` in `sql"…"` (C), `Sql.memory` (D), `Fail` escaping a test (§17.30, C) |
 | `word_count` | §15.6 | M3 | run + test | nothing (runs and passes) |
-| `llm_extract` | §15.7 | M3 | test | `@llm` desugaring (D), generic-operation schemas (D090, D), `Fail` escaping a test (§17.30, C) |
-| `agent_loop` | §15.8 | M3 | check | `Tool.of` intrinsic (B/C); `json_schema` (D) to run |
+| `llm_extract` | §15.7 | M3 | test | `@llm` bodies (B or D), `Fail` escaping a test (§17.30, C) |
+| `agent_loop` | §15.8 | M3 | check | `Tool.of` intrinsic (B/C) |
 | `property` | §15.9 | M2 | test | runner: snapshot path, generating inputs from `requires` (E) |
 | `concurrency` | §15.10 | M3 | test | `Fail` escaping a test (§17.30, C) |
 | `secrets` | §15.11 | M3 | check | nothing (checks clean) |
