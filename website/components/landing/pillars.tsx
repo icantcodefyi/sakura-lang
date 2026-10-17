@@ -20,9 +20,9 @@ export function Pillars() {
         <div className="border-t border-line pt-14 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-14">
           <Heading href="/docs/stdlib">One binary for the whole loop.</Heading>
           <p className="mt-4 max-w-[30rem] text-[16px] leading-relaxed text-pretty text-fg-muted">
-            CLI, formatter, tests, packages, LSP and MCP over one compiler library. The standard
-            library covers HTTP, SQLite, JSON with schemas, CLIs, and typed LLM calls with tools and
-            budgets.
+            Checker, runner, formatter and test runner already share one compiler library; packages,
+            LSP and MCP join them in M3, with a standard library for HTTP, SQLite, JSON schemas,
+            CLIs and typed LLM calls.
           </p>
           <div className="mt-8">
             <Toolchain />
@@ -104,27 +104,35 @@ function ReuseDiagram() {
   );
 }
 
+// The first six exist in the compiler today; the rest are planned for M3.
 const COMMANDS = [
-  ["new", "api, cli, agent or lib"],
-  ["check", "types, effects, contracts"],
-  ["test", "deterministic tests, properties"],
-  ["run", "under vow.toml permissions"],
-  ["build", "JS first; WASM, native later"],
-  ["fmt", "one canonical format"],
-  ["fix", "fixes gated by impact class"],
-  ["mcp serve", "the compiler as MCP tools"],
+  ["check", "types, effects, exhaustiveness, holes", ""],
+  ["run", "build to JavaScript and run main", ""],
+  ["test", "deterministic handlers, properties, snapshots", ""],
+  ["fmt", "one canonical format", ""],
+  ["explain", "any code, with a wrong and a fixed program", ""],
+  ["prompt", "the language guide for agents", ""],
+  ["fix", "fixes gated by impact class", "planned"],
+  ["mcp serve", "the compiler as MCP tools", "planned"],
 ] as const;
 
 function Toolchain() {
   return (
     <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 border-t border-line font-mono text-[13px]">
-      {COMMANDS.map(([cmd, what]) => (
+      {COMMANDS.map(([cmd, what, planned]) => (
         <div key={cmd} className="col-span-2 grid grid-cols-subgrid border-b border-line py-2">
           <dt className="whitespace-nowrap">
             <span className="text-fg-faint">vow </span>
-            <span className="text-seal-text">{cmd}</span>
+            <span className={planned ? "text-fg-muted" : "text-seal-text"}>{cmd}</span>
           </dt>
-          <dd className="font-sans text-[13.5px] text-fg-muted">{what}</dd>
+          <dd className="font-sans text-[13.5px] text-fg-muted">
+            {what}
+            {planned ? (
+              <span className="ml-2 rounded-full border border-dashed border-line-strong px-1.5 py-px font-mono text-[11px] text-fg-muted">
+                {planned}
+              </span>
+            ) : null}
+          </dd>
         </div>
       ))}
     </dl>

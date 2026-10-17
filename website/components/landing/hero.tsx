@@ -22,7 +22,7 @@ export async function Hero() {
               Pre-alpha
             </span>
             <span>
-              Compiler under construction
+              M0 to M2 run on JavaScript
               <span className="hidden sm:inline">, no release yet</span>
             </span>
             <ArrowRight className="size-3 transition-transform duration-200 group-hover:translate-x-0.5" />

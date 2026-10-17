@@ -1,99 +1,102 @@
 ---
 title: Quickstart
-description: A preview of the planned Vow workflow, from creating a project to checking, testing, and running it.
+description: Build the Vow compiler from source, then check, test and run a first program.
 ---
 
-<Callout type="warn" title="Preview: none of these commands work yet">
-  There is no `vow` binary to install. The compiler is under construction in [compiler/](https://github.com/icantcodefyi/vow/tree/master/compiler), and milestone M0 (`vow run` and `vow check --json` for an effectful hello world) is in progress. This page shows the workflow the toolchain is designed to provide, following [design §12.1](https://github.com/icantcodefyi/vow/blob/master/docs/design.md). Follow the [roadmap](/docs/roadmap) for progress.
+<Callout type="warn" title="Pre-alpha: build from source">
+  There is no release and no installer. The compiler in [compiler/](https://github.com/icantcodefyi/vow/tree/master/compiler) parses, resolves, type- and effect-checks and runs M0 to M2 programs on JavaScript: effects and handlers, typed errors, exhaustive `match`, tests and typed holes. The M3 standard library (`std/http`, `std/sql`, `std/fs`, `std/cli`, `std/ai`, `std/task`), `[permissions]` enforcement, `vow new`, `vow fix`, the LSP and the MCP server are not built yet. See the [roadmap](/docs/roadmap).
 </Callout>
 
-## The toolchain
+## Install from source
 
-Vow is designed as a single binary, `vow`, that contains the compiler, formatter, test runner, package manager, LSP server, and MCP server. All of them share one Rust compiler library. How the binary will be distributed is not decided.
+You need [rustup](https://rustup.rs) and [Node.js](https://nodejs.org) (`vow run` and `vow test` execute the generated JavaScript with `node`; CI uses Node 26). The repository pins its Rust toolchain in `compiler/rust-toolchain.toml`, so rustup fetches the right version on first build.
+
+```bash
+git clone https://github.com/icantcodefyi/vow
+cd vow
+cargo install --locked --path compiler/crates/vow_cli
+vow --version
+```
+
+```text
+vow 0.0.0
+```
+
+The standard library is embedded in the binary, so `vow` works from any directory. To try it without installing, run `cargo run -p vow_cli -- <command>` inside `compiler/`.
+
+## Run an example
+
+`compiler/examples/` holds the design's example programs as projects. Those from milestones M0 to M2 run today:
+
+```bash
+vow run compiler/examples/counter
+vow test compiler/examples/typed_errors
+```
+
+```text
+1. milk
+2. eggs
+1. bread
+```
+
+`counter` is a user-defined effect whose handler keeps state; `typed_errors` recovers from typed failures with `try`/`catch`. The examples README lists which ones are still blocked on M3.
 
 ## Create a project
 
-`vow new` takes a template (`api`, `cli`, `agent`, or `lib`) and a name. `vow init` does the same in an existing directory.
+There is no `vow new` yet, so write the two files by hand. A project is a `vow.toml` manifest and a `src/` directory, and one file is one module.
 
-```bash
-vow new cli hello
-cd hello
-```
-
-The scaffold contains a manifest with a `[permissions]` section, a lockfile, `src/main.vow`, and one test. With a small `greet` module added, the project looks like this:
-
-```text
-hello/
-  vow.toml        # package manifest and permissions
-  vow.lock        # exact versions and content hashes
-  src/
-    main.vow      # entry point: pub fn main
-    greet.vow     # module greet, imported as hello/greet
-```
-
-One file is one module. The module path is the file path relative to `src/`, and the first segment of an import is the package name.
-
-```toml title="vow.toml"
+```toml title="hello/vow.toml"
 [package]
 name = "hello"
 version = "0.1.0"
 edition = "2026"
 
-[dependencies]
-
 [permissions]
-fs.read  = []
-fs.write = []
-net      = []
-env      = []
-process  = []
 ```
 
-`[permissions]` is the ceiling on what the program may do. `vow run` builds the root handlers for `main` from this table. This program only prints to the console, so every list is empty. The exact layout of the other manifest tables is not final.
+`[permissions]` is the ceiling on what the program may do (design §6). This program only prints, so it is empty. Enforcement arrives with M3; today the table is not checked.
 
-```vow title="src/greet.vow"
+```vow title="hello/src/main.vow"
 /// Build a greeting for a person.
-pub fn greet(name: String) -> String {
-  "Hello, {name}"
-}
+fn greet(name: String) -> String { "Hello, {name}" }
 
-test "greets by name" {
-  expect_eq(greet("Ada"), "Hello, Ada")
-}
+pub fn main() -> Unit ! {Console} { Console.print(greet("world")) }
+
+test "greets by name" { expect_eq(greet("Ada"), "Hello, Ada") }
 
 property "always starts with Hello"(name: String) {
   expect(String.starts_with(greet(name), "Hello, "))
 }
 ```
 
-```vow title="src/main.vow"
-import hello/greet.{greet}
+`greet` has no `!`, so it is pure. `main` declares `Console`, the only effect the program performs. This is the canonical layout: `vow fmt` keeps a short body on its signature's line.
 
-pub fn main() -> Unit ! {Console} {
-  Console.print(greet("world"))
-}
-```
+## Check, test and run
 
-`greet` has no `!`, so it is pure. `main` declares `Console`, the only effect this program performs. Only std effects may appear in `main`'s row, because only they have host root handlers.
-
-## Check it
+Run these from `hello/`. With no path, each command uses `src/`.
 
 ```bash
 vow check
 ```
 
-`vow check` parses, resolves names, checks types and effects, checks that contracts are in the contract subset, and checks exhaustiveness. It does no code generation, and it accepts typed holes (`?name`), reporting what fits each one.
+```text
+no problems
+```
 
-## Test it
+`vow check` parses, resolves names, checks types and effects, and checks that every `match` is exhaustive. It generates no code, and it accepts typed holes.
 
 ```bash
 vow test
-vow test --seed 7 --filter greets
 ```
 
-`vow test` runs every `test` and `property` block. Tests run under deterministic default handlers (`Clock.fixed`, `Random.seeded`, `Env.of`, `Console.captured`, `Log.captured`), with the network denied and per-test time and memory limits. `--seed` makes property tests reproducible, `--contracts` also generates property tests from refinements and `requires` clauses, and `--json` emits one record per test.
+```text
+test greets by name ... ok
+test always starts with Hello ... ok
 
-## Run it
+2 passed, 0 failed, 0 skipped (seed 0)
+```
+
+`vow test` runs every `test` and `property` block under deterministic handlers (a fixed clock, a seeded random source, captured console output) with the network denied. `--seed 7` changes the property inputs, `--filter greets` runs matching tests only, and `--json` writes one record per test.
 
 ```bash
 vow run
@@ -103,42 +106,61 @@ vow run
 Hello, world
 ```
 
-`vow run` checks, builds, and executes `main` under root handlers built from `[permissions]`. If `main` declared `Fs` while `fs.read` was empty, it would stop at startup with exit code 75, not at the first file access. Arguments after `--` go to the program: `vow run -- --input notes.txt`.
+`vow run` checks the program, compiles it to JavaScript under `target/vow/js/`, and runs `main` with `node`. Arguments after `--` go to the program. The exit code is the program's: `0` for success, `1` when `main` fails with an uncaught typed error, `70` for a defect such as integer overflow, with one JSON `defect` record on stderr.
 
-The first backend emits JavaScript. WASM is planned for M4 and a native backend (Cranelift) for M5.
+`vow fmt` rewrites files in the one canonical format; `vow fmt --check` changes nothing and exits `1` if a file is not formatted.
 
 ## Check it, as an agent would
 
 Suppose `greet` starts printing without declaring it:
 
-```vow title="src/greet.vow"
+```vow title="hello/src/main.vow"
 /// Build a greeting for a person.
-pub fn greet(name: String) -> String {
+fn greet(name: String) -> String {
   Console.print("greeting {name}")
   "Hello, {name}"
 }
+
+pub fn main() -> Unit ! {Console} { Console.print(greet("world")) }
 ```
 
-`vow check --json` writes JSON Lines, one record per line. The `diagnostic` record for this error (shown pretty-printed, with hashes shortened) is:
+```text
+error[V3001]: function `greet` performs `Console`, which its signature does not allow (allowed: `{}`)
+  ┌─ src/main.vow:2:4
+  │
+2 │ fn greet(name: String) -> String {
+  │    ^^^^^
+3 │   Console.print("greeting {name}")
+  │   -------------------------------- `Console.print` performs `Console` here
+  │
+  = expected: {}
+  =    found: {Console}
+  = help: Add `Console` to the signature
+  = help: Handle the effect locally with `with`
+  = see `vow explain V3001`
+
+1 error
+```
+
+`vow check --json` writes the same error as JSON Lines, one record per line, followed by a `summary` record. The `diagnostic` record, pretty-printed with hashes shortened:
 
 ```json
 {
   "schema_version": "1.0",
   "kind": "diagnostic",
-  "id": "d:1",
+  "id": "d:e8f9a0e1d729d3d1",
   "code": "V3001",
   "severity": "error",
   "phase": "effect",
-  "message": "function `greet` performs `Console`, which its signature does not allow",
-  "snapshot": "sha256:…",
-  "symbol_id": "hello::greet::greet",
+  "message": "function `greet` performs `Console`, which its signature does not allow (allowed: `{}`)",
+  "snapshot": "sha256:9470da24…",
+  "symbol_id": null,
   "spans": [
-    { "uri": "file:///…/hello/src/greet.vow", "content_hash": "sha256:…",
-      "start_byte": 42, "end_byte": 47, "role": "primary",
-      "label": "`greet` is declared pure" },
-    { "uri": "file:///…/hello/src/greet.vow", "content_hash": "sha256:…",
-      "start_byte": 76, "end_byte": 108, "role": "cause",
-      "label": "`Console.print` introduces `Console` here" }
+    { "uri": "file:///…/hello/src/main.vow", "content_hash": "sha256:f1ee9f10…",
+      "start_byte": 38, "end_byte": 43, "role": "primary" },
+    { "uri": "file:///…/hello/src/main.vow", "content_hash": "sha256:f1ee9f10…",
+      "start_byte": 72, "end_byte": 104, "role": "cause",
+      "label": "`Console.print` performs `Console` here" }
   ],
   "related_ids": [],
   "expected": { "render": "{}", "row": { "labels": [], "tail": null } },
@@ -147,37 +169,45 @@ pub fn greet(name: String) -> String {
   "counterexample": null,
   "explanation_uri": "vow://explain/V3001",
   "fixes": [
-    { "id": "f:1", "title": "Add `Console` to the signature of `greet`",
+    { "id": "f:e8f9a0e1d729d3d1.0", "title": "Add `Console` to the signature",
       "applicability": "suggested", "impact": "interface_change",
-      "edits": [ { "span": { "uri": "file:///…/hello/src/greet.vow", "content_hash": "sha256:…",
-                             "start_byte": 71, "end_byte": 71, "role": "primary", "label": "" },
-                   "replacement": " ! {Console}" } ] }
+      "edits": [{ "span": { "uri": "file:///…/hello/src/main.vow", "content_hash": "sha256:f1ee9f10…",
+                            "start_byte": 67, "end_byte": 67, "role": "primary" },
+                  "replacement": " ! {Console}" }] },
+    { "id": "f:e8f9a0e1d729d3d1.1", "title": "Handle the effect locally with `with`",
+      "applicability": "incomplete", "impact": "local",
+      "edits": [/* wraps the body in `with ?handler { … }` */] }
   ]
 }
 ```
 
-Spans are zero-based, half-open UTF-8 byte offsets, and an edit is applied only if `content_hash` still matches. The fix changes the function's interface, so it is `suggested`, not `machine_applicable`: `vow fix` will not apply it unless its id is given. The other repair is to handle `Console` locally with `with`. `vow explain V3001` prints the rationale. See [Diagnostics](/docs/agents/diagnostics) for the full format.
+Spans are zero-based, half-open UTF-8 byte offsets, and an edit applies only while `content_hash` still matches. The first fix changes the function's interface, so it is `suggested`, never `machine_applicable`: an agent must not widen a signature silently. `vow explain V3001` prints the rationale with a wrong and a fixed program. See [Diagnostics](/docs/agents/diagnostics) for the format.
+
+A typed hole is how an agent asks the compiler what fits:
+
+```vow
+fn unfinished(x: Int) -> Int { ?result }
+```
+
+```text
+hole ?result: expected Int, effects {}; locals [x: Int]; candidates [x, Int.abs(?i), Int.clamp(?i, ?lo, ?hi), …]
+```
+
+`vow check` accepts holes; `vow build` and `vow run` reject them with `V2050`. See [Typed holes](/docs/agents/typed-holes).
 
 ## Commands
 
-| Command | Purpose |
+| Command | Today |
 | --- | --- |
-| `vow new <api\|cli\|agent\|lib> name`, `vow init` | Scaffold a project with `vow.toml`, lockfile, `src/main.vow`, one test, and `[permissions]` |
-| `vow check [--json] [--frozen-specs …] [paths]` | Parse, resolve, type and effect check, contract subset, exhaustiveness. Holes allowed |
-| `vow build [--target js] [--release] [--manifest]` | Check and generate code. Holes rejected (`V2050`). Contracts stay on in `--release` |
-| `vow run [file] [-- args]` | Check, build, and run under root handlers from `[permissions]` |
-| `vow test [--json] [--seed N] [--contracts] [--filter pat] [--update-snapshots]` | Run tests and properties with deterministic handlers |
-| `vow fmt [--check]` | Canonical format. There are no options |
-| `vow fix [--preview] [--apply id,…]` | Apply compiler fixes. Never applies `contract_change` or `authority_change` fixes |
-| `vow explain V3001` | Rationale, causes, and repairs for a diagnostic code |
-| `vow doc [--search "…"] [symbol]` | Offline docs and signature search |
-| `vow prompt [--budget tokens]` | Emit `llms.txt` plus requested library signatures |
-| `vow add`, `remove`, `update`, `sync`, `deps`, `audit` | Package operations. No scripts run on install |
-| `vow lsp`, `vow mcp serve` | Protocol adapters over the same analysis library |
-| `vow ai preview\|replay`, `vow db prepare\|migrate` | Inspect LLM payloads; SQLite migrations |
-| `vow verify` | M4 and later: per-obligation proof statuses |
+| `vow check [--json] [paths]` | Parse, resolve, type and effect check, exhaustiveness. Holes allowed |
+| `vow build [paths]` | Check, then generate JavaScript. Holes rejected (`V2050`) |
+| `vow run [path] [-- args]` | Build and run `main` with `node` |
+| `vow test [--json] [--seed N] [--filter text] [--update-snapshots]` | Run tests and properties with deterministic handlers |
+| `vow fmt [--check] [paths]` | Canonical format. There are no options |
+| `vow explain V3001` | Rationale, causes and repairs for a diagnostic code |
+| `vow prompt` | Print the language guide for agents ([llms.txt](https://github.com/icantcodefyi/vow/blob/master/docs/llms.txt)) |
 
-Exit codes: `0` ok, `1` errors, `2` usage, `3` test failures, `70` defect at runtime, `75` permission denied at startup.
+Planned for M3 and later (design §12.1): `vow new` and `vow init`, `vow fix` with impact classes, `vow doc`, package commands (`add`, `remove`, `update`, `audit`), `vow lsp`, `vow mcp serve`, `vow verify` (M4), and WASM (M4) and native (M5) backends.
 
 ## Next
 
