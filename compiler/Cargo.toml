@@ -1,0 +1,46 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.99"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/icantcodefyi/vow"
+publish = false
+
+[workspace.dependencies]
+# Internal crates. Dependency direction (docs/design.md §14.1):
+# vow_cli → vow_analysis → {vow_codegen_js, vow_core, vow_types, vow_hir, vow_syntax, vow_fmt} → vow_diagnostics
+vow_syntax = { path = "crates/vow_syntax" }
+vow_diagnostics = { path = "crates/vow_diagnostics" }
+vow_hir = { path = "crates/vow_hir" }
+vow_types = { path = "crates/vow_types" }
+vow_core = { path = "crates/vow_core" }
+vow_codegen_js = { path = "crates/vow_codegen_js" }
+vow_analysis = { path = "crates/vow_analysis" }
+vow_fmt = { path = "crates/vow_fmt" }
+
+# External crates. Add new ones here and use `dep.workspace = true` in crates.
+rowan = "0.16.1"
+text-size = "1.1.1"
+la-arena = "0.3.1"
+codespan-reporting = "0.13.1"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+sha2 = "0.11.1"
+clap = { version = "4.6.7", features = ["derive"] }
+pretty = "0.12.5"
+insta = { version = "1.49.0", features = ["json"] }
+proptest = "1.12.0"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+
+[profile.dev.package.insta]
+opt-level = 3
