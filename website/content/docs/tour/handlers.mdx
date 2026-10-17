@@ -1,168 +1,182 @@
 ---
 title: Handlers
-description: How handlers give effects their meaning, how to install them, how inline handlers resume, and how to handle failure.
+description: How handlers give effects their meaning, how to install them with `with`, handler state, and how tests swap handlers.
 ---
 
-<Callout type="warn" title="Design draft">
-  Handler syntax is a draft. The standard handler names on this page are planned, not final.
+<Callout type="warn" title="Designed for v0, not implemented yet">
+  This page describes the v0 design in [design §5.5–§5.9](https://github.com/icantcodefyi/vow/blob/master/docs/design.md). The compiler is under construction (milestone M0), so none of this code can be run yet.
 </Callout>
 
-An [effect](/docs/tour/effects) declares operations. A **handler** gives them meaning. The same code can run against Postgres in production and an in-memory table in a test, because the code names the effect and the caller picks the handler.
+An [effect](/docs/tour/effects) declares operations. A **handler** gives them meaning. Code names the effect; the caller picks the handler. The same function can run against SQLite in production and an in-memory table in a test.
+
+## Writing a handler
+
+`handler Eff { … }` is an expression. It produces a value of type `Handler<Eff, r>`, where `r` is the row its clauses perform. `Handler<Eff>` is short for `Handler<Eff, {}>`.
+
+```vow
+effect Counter {
+  fn next() -> Int
+  fn reset() -> Unit
+}
+
+fn memory_counter(start: Int) -> Handler<Counter> {
+  handler Counter {
+    var n: Int = start
+    fn next() { n = n + 1; n }
+    fn reset() { n = start }
+  }
+}
+```
+
+- There is exactly one clause per operation (`V3011`), with the same number of parameters.
+- Clause parameters are not annotated. Their types come from the `effect` declaration.
+- `var` members are **handler state**. They are visible only inside the clauses, initialized once per installation, and updated by assignment. The runtime runs clauses of one instance one at a time.
 
 ## Installing handlers with `with`
 
-Handlers are values. `with h1, h2 { body }` runs `body` with those handlers installed. Inside the block, the handled effects are satisfied, so they disappear from the block's row.
+`with h1, h2 { body }` runs `body` with the handlers installed. Handlers are installed innermost-last: `h2` sits inside `h1`. The `with` expression's row is the body's row minus each handled effect, plus each handler's `r`.
 
 ```vow
-test "signup stores the user" {
-  with Db.memory(), Clock.fixed("2026-01-01"), Random.seeded(1) {
-    let user = signup("a@b.co", "correct horse battery")
-    expect Db.exists(users, user.email)
+fn label_all(items: List<String>) -> List<String> ! {Counter} {
+  List.map(items, fn(item) { "{Counter.next()}. {item}" })
+}
+
+test "labels count from the handler's start" {
+  let out = with memory_counter(0) { label_all(["a", "b"]) }
+  expect_eq(out, ["1. a", "2. b"])
+}
+```
+
+`label_all` requires `Counter`. The `with` satisfies it, so the test body has no `Counter` left in its row. Using `with` on a value that is not a handler is `V3012`.
+
+## Resumption without `resume`
+
+A clause runs in place of the operation call. Its return value is the operation's result. This happens exactly once, in tail position, by construction. Handlers are **tail-resumptive**: there is no `resume`, no multi-shot resumption, and no first-class continuations. `resume` is a reserved keyword (`V0007`).
+
+This keeps handlers cheap and predictable. A handler is a service the body calls, not a construct that can rewind or duplicate the body. Generators and backtracking would need non-tail `control` operations; design §16 lists them as a possible later edition, not v0.
+
+## Nesting and shadowing
+
+For the same effect, the innermost handler wins. There is no masking or injection.
+
+```vow
+test "inner handler shadows outer" {
+  let out = with memory_counter(0) {
+    with memory_counter(100) { Counter.next() }
+  }
+  expect_eq(out, 101)
+}
+```
+
+## Clauses that perform effects
+
+A clause may perform other effects. They go to the handlers installed **outside** the `with`. Calling the same effect inside its own clause reaches the next outer handler, which is how wrappers work:
+
+```vow
+fn prefixed(prefix: String) -> Handler<Log, {Log}> {
+  handler Log {
+    fn event(level, message, fields) { Log.event(level, "{prefix}{message}", fields) }
   }
 }
 ```
 
-The same function in production:
+`prefixed` handles `Log` and performs `Log` on the outer handler, so its type is `Handler<Log, {Log}>`. A `Db` handler whose clauses call `Http` has type `Handler<Db, {Http}>`, and installing it adds `Http` to the surrounding row. A handler cannot create authority from nothing.
+
+A clause may `fail` only with tags declared on its operation. Given this declaration:
 
 ```vow
-fn main() ! {Net, Env, Log, Clock, Random, Async} {
-  let url = Env.secret("DATABASE_URL")
-  with Db.postgres(url) {
-    Http.serve(8080, routes())
+error DbUnavailable(reason: String)
+
+effect Db {
+  fn exists(table: Table, key: String) -> Bool
+  fn insert(table: Table, row: Json) -> Unit ! {Fail<DbUnavailable>}
+}
+
+fn memory_db() -> Handler<Db> {
+  handler Db {
+    var rows: Map<String, Json> = Map.empty()
+    fn exists(table, key) { Map.contains(rows, "{table}/{key}") }
+    fn insert(table, row) {
+      rows = Map.insert(rows, "{table}/{Json.get_string(row, "id")}", row)
+    }
   }
 }
 ```
 
-`Db.postgres(url)` is itself implemented with `Net`, so installing it requires `Net` in the surrounding row. Handlers cannot create authority from nothing. See [Capabilities and security](/docs/tour/capabilities).
+the `insert` clause may `fail DbUnavailable { … }`, and `exists` may not fail at all.
 
-`main` declares the root effects the program needs, and the runtime provides real handlers for exactly those. Its signature is a summary of everything the program can do.
+## Failure is not handled with handlers
+
+`Fail<E>` is the one compiler-known effect. You recover from it with `try`/`catch`, not with a handler. See [Failure](/docs/tour/effects#failure-faile-and-error-unions).
+
+## Handlers are values
+
+Handlers are first-class. A function can return one, and a record can store one. A handler that captured a capability is a scoped value: it cannot outlive the `with` that produced the capability (`V6002`). When a `with` exits, by normal return, `fail`, defect, or cancellation, its handler state and captured resources are released.
+
+## Root handlers come from the host
+
+`main` declares the std effects the program needs. The host supplies root handlers for exactly those, limited by `[permissions]` in `vow.toml`. Only std effects may appear in `main`'s row (`V6010`); user effects such as `Counter` must be handled inside the program. From design §15.6 (abridged):
+
+```vow
+pub fn main() -> Unit ! {Console, Env, Fs, Fail<CliError | FsError>} {
+  let args = Cli.parse<Args>(Cli.args())
+  // Narrow the root Fs handler to the data directory before touching files.
+  with Fs.rooted(Dir.subdir(Fs.root(), "data")) {
+    let text = Fs.read_text(args.input).trust(@trust("word counting cannot be influenced by content"))
+    let top = List.slice(List.sort_by(Map.entries(word_counts(text)), fn(e) { 0 - e.1 }), 0, args.top)
+    for (word, n) in top { Console.print("{word}: {n}") }
+  }
+}
+```
+
+Effects are requirements; handlers are authority. See [Capabilities and security](/docs/tour/capabilities).
 
 ## Standard handlers
 
-| Effect | Handlers (planned) |
+From design §10.2:
+
+| Effect | Handlers |
 | --- | --- |
-| `Db` | `Db.postgres(url)`, `Db.sqlite(path)`, `Db.memory()` |
-| `Clock` | real clock in `main`, `Clock.fixed("2026-01-01")`, `Sim.world(...)` |
-| `Random` | real source in `main`, `Random.seeded(1)` |
-| `Net` | real network in `main`, `Net.only(["api.stripe.com"])`, `Net.deny()` |
-| `Log` | real log in `main`, `Log.silent()`, `Log.capture()` |
-| `Async` | real scheduler in `main`, `Timeout.after(2.s)`, `Sim.world(...)` |
-| `Llm` | `Llm.provider(config)`, `Llm.replay(file)`, `Budget.tokens(n)`, `Budget.usd(x)` |
+| `Console` | `Console.host()`, `Console.captured()` |
+| `Clock` | `Clock.host()`, `Clock.fixed(instant)`, `Clock.virtual()` |
+| `Random` | `Random.host()`, `Random.seeded(seed)` |
+| `Env` | `Env.host(scope)`, `Env.of(map)` |
+| `Log` | `Log.stderr()`, `Log.json()`, `Log.captured()` |
+| `Fs` | `Fs.rooted(dir)`, `Fs.memory(files)` |
+| `Http` | `Http.host(scope)`, `Http.scripted(script)`, `Http.recording(path)` |
+| `Serve` | `Serve.node()` |
+| `Sql` | `Sql.sqlite(path)`, `Sql.memory()`, `Sql.postgres(url)` (v1) |
+| `Budget` | `Budget.limits(...)`, `Budget.unlimited()` |
+| `Llm` | `Llm.anthropic(key, model)`, `Llm.scripted(responses)`, `Llm.replay(path)` |
+| `Task` | `Task.deterministic(seed)` for tests |
 
-A handler value has type `Handler<E>`. Some handlers, such as `Net.only(...)` and `Timeout.after(...)`, do not remove an effect: they wrap it with a restriction and pass it on.
+## Tests swap handlers
 
-## Order and nesting
-
-Handlers listed in one `with` are installed left to right, so the leftmost is outermost. Nesting is equivalent:
+A `test` runs under deterministic default handlers: `Clock.fixed(epoch)`, `Random.seeded(seed)` (from `vow test --seed`), `Env.of(map)`, `Console.captured()`, and `Log.captured()`. Any other effect must be handled inside the test. Otherwise `vow check` reports `V3020` ("test uses Db; install a handler with `with`").
 
 ```vow
-with Db.memory() {
-  with Clock.fixed("2026-01-01") {
-    run_report()
+test "deterministic under virtual time" {
+  with Http.scripted([(Any, Response.status(200, "x"))]), Clock.virtual(), Random.seeded(1), Task.deterministic(1) {
+    expect_eq(fetch_both(Url.from("https://a"), Url.from("https://b")), ("x", "x"))
   }
 }
 ```
 
-The innermost handler for an effect wins. A test can override one effect inside a larger setup without repeating the rest.
+`fetch_both` is the example on the [Concurrency](/docs/tour/concurrency#timeouts-retries-and-budgets) page. Because time, randomness, scheduling, and the network are all handlers, a test controls every one of them.
 
-## Inline handlers with `handle`
+## Retry, timeout, budget
 
-`handle expr { arms }` evaluates `expr` and intercepts its effect operations. Each arm matches one operation. `resume(v)` continues the computation from the point where the operation was performed, with `v` as the operation's result.
-
-```vow
-fn silently<T, e>(body: () -> T ! {Log | e}) -> T ! e {
-  handle body() {
-    Log.info(msg) => resume(())
-  }
-}
-```
-
-Read the signature: `body` may log and do anything else (`e`). `silently` handles `Log` and passes the rest through, so the result has row `e`. The compiler checks that the arms really cover `Log`.
-
-A handler can answer an operation with a value:
-
-```vow
-fn at_noon<T, e>(body: () -> T ! {Clock | e}) -> T ! e {
-  handle body() {
-    Clock.now() => resume(Instant.parse("2026-01-01T12:00:00Z"))
-  }
-}
-```
-
-A `return` arm transforms the final value when the body finishes normally. This lets a handler collect what happened:
-
-```vow
-fn collect_logs<T, e>(body: () -> T ! {Log | e}) -> Pair<T, List<String>> ! e {
-  handle body() {
-    Log.info(msg) => {
-      let rest = resume(())
-      { rest with right: rest.right.prepend(msg) }
-    }
-    return value => Pair { left: value, right: [] }
-  }
-}
-```
-
-`resume` returns whatever the rest of the handled computation produces, after the `return` arm. That is why the `Log.info` arm can prepend to the list.
-
-## Handling failure
-
-`Fail<E>` is an ordinary effect, so failure is handled like any other. An arm that does not call `resume` stops the computation and its value becomes the result:
-
-```vow
-fn age_or_default(s: String) -> Age {
-  handle parse_age(s) {
-    fail Invalid => Age.default
-  }
-}
-```
-
-The signature of `age_or_default` has no `Fail<Invalid>`: it was handled. If `parse_age` could fail in more ways, each needs an arm or stays in the row.
-
-Arms can match specific variants:
-
-```vow
-fn signup_status(email: Email, pw: Password) -> Int ! {Db, Clock, Random} {
-  handle signup(email, pw) {
-    fail EmailTaken => 409
-    fail Banned => 403
-    return _ => 201
-  }
-}
-```
-
-To keep the outcome as data instead, use `Fail.catch`, which returns a `Result`:
-
-```vow
-let outcome = Fail.catch(() => parse_age(input))   // Result<Age, Invalid>
-
-match outcome {
-  Ok(age) => Log.info("age {age}")
-  Err(Invalid) => Log.warn("bad age: {input}")
-}
-```
-
-In tests, `expect` compares outcomes directly, without catching first:
-
-```vow
-expect signup("a@b.co", "another long password") == Fail(EmailTaken)
-```
-
-## Writing reusable handlers
-
-A function shaped like `silently` above is a handler: it takes a body and returns its result with one effect removed. `Handler<E>` is the standard name for that shape, and `with` accepts any value of it. `with silently { ... }` is the same as `silently(() => ...)`.
-
-## One-shot resumption
-
-`resume` may be called at most once per operation. Multi-shot continuations (resuming twice) are powerful but make reference counting and resource safety much harder to reason about. Vow leaves them out by design.
+`retry` and `timeout` are ordinary std functions over thunks, not handlers. `Budget` is an effect, and `Budget.limits(...)` is its handler. See [Concurrency](/docs/tour/concurrency#timeouts-retries-and-budgets).
 
 ## What the compiler checks
 
-- A `with` or `handle` removes exactly the effects its handlers cover. The remaining row is computed and checked against the signature.
-- Every arm matches an operation of a handled effect, with the declared parameter and return types.
-- `resume` is called at most once in each arm, and only inside a `handle`.
-- Installing a handler requires the effects the handler itself uses, such as `Net` for `Db.postgres`.
-- `fail` arms cover the variants they name. Unhandled variants stay in the row.
+- A `handler` has exactly one clause per operation, with matching parameter counts (`V3011`).
+- `with` is applied only to handler values (`V3012`).
+- A `with` removes the effects it handles and adds each handler's row. The result is checked against the signature (`V3001`, reported at the clause when a clause performs an undeclared effect).
+- A clause fails only with tags declared on its operation.
+- A test installs a handler for every effect outside the deterministic defaults (`V3020`).
+- A handler that captured a capability does not escape its scope (`V6002`).
+- `main`'s row contains only std effects (`V6010`).
 
 ## Next
 

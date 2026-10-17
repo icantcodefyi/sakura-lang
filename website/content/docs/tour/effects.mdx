@@ -1,204 +1,318 @@
 ---
 title: Effects
-description: How Vow records every side effect and every error in the function signature, and how effect rows compose.
+description: How Vow records every side effect and every expected failure in the function signature, and how effect rows compose.
 ---
 
-<Callout type="warn" title="Design draft">
-  The effect system is the center of Vow's design. Its syntax is a draft and may change.
+<Callout type="warn" title="Designed for v0, not implemented yet">
+  This page describes the v0 design in [design §5](https://github.com/icantcodefyi/vow/blob/master/docs/design.md). The compiler is under construction (milestone M0), so none of this code can be run yet.
 </Callout>
 
-An effect is anything a function does besides compute its return value: read the clock, query a database, call the network, log, fail. In Vow, every effect a function may perform is listed in its signature, after `!`.
+An effect is anything a function does besides compute its return value: read the clock, print, query a database, call the network, fail. In Vow, every effect a function may perform is listed in its signature, after `!`.
 
 ```vow
 fn signup(email: Email, pw: Password) -> User ! {Db, Clock, Random, Fail<SignupError>}
 ```
 
-The braces hold the function's **effect row**. Read `!` as "and may also". `signup` returns a `User` and may also use the database, the clock, and randomness, and may fail with a `SignupError`. It cannot do anything else.
+The braces hold the function's **effect row**. `signup` returns a `User` and may also use `Db` (a user-defined effect, declared below), the clock, and randomness, and may fail with a `SignupError`. The row is an upper bound: the body may do less, never more.
 
 ## Pure functions
 
-A function with no row is pure. It always returns the same output for the same input, cannot fail, and cannot perform IO.
+A signature with no `!` is pure: `! {}`. This is the one meaning of omission, for top-level signatures and for written function types alike.
 
 ```vow
 fn total(prices: List<Int>) -> Int {
-  prices.fold(0, (acc, p) => acc + p)
+  List.fold(prices, 0, fn(acc, p) { acc + p })
 }
 ```
 
-Most code in a well-structured Vow program is pure. Effects stay at the edges, where they are visible.
+`! {}` means "no declared operations and no expected failures". It does not mean "cannot crash": overflow and contract violations are [defects](#defects-are-not-effects), which are not effects.
 
 ## Performing effects
 
-An effect is performed by calling one of its operations, written `Effect.operation(args)`:
+An operation is performed with `Effect.op(args)`. Calling a function performs that function's row. Creating a closure performs nothing; calling it performs its row.
 
 ```vow
-fn stamp(msg: String) -> String ! {Clock} {
-  "[{Clock.now()}] {msg}"
+fn greet(name: String) -> Unit ! {Console, Clock} {
+  let now = Clock.now()
+  Console.print("hello, {name}; it is {Instant.format_iso(now)}")
 }
 
-fn roll() -> Int ! {Random} {
-  Random.int(1..=6)
-}
+pub fn main() -> Unit ! {Console, Clock} { greet("Vow") }
 ```
 
-Calling a function also performs its effects. If `notify` uses `Log`, then anything that calls `notify` uses `Log` too, and must say so.
-
-```vow
-fn notify(user: User) ! {Log} {
-  Log.info("notifying {user.email}")
-}
-
-fn signup_and_notify(email: Email, pw: Password) -> User ! {Db, Clock, Random, Log, Fail<SignupError>} {
-  let user = signup(email, pw)
-  notify(user)
-  user
-}
-```
+`main` calls `greet`, so `main`'s row must include `Console` and `Clock`.
 
 ## Declaring effects
 
-Effects are declared with `effect`. Each operation is a signature without a body:
+An `effect` declares operations as function signatures, with no bodies:
 
 ```vow
-effect Clock {
-  fn now() -> Instant
-}
+error DbUnavailable(reason: String)
 
-effect Mailer {
-  fn send(to: Email, subject: String, body: String) -> ()
+effect Db {
+  fn exists(table: Table, key: String) -> Bool
+  fn insert(table: Table, row: Json) -> Unit ! {Fail<DbUnavailable>}
 }
 ```
 
-A declaration says what operations exist. It does not say what they do. That is the job of a [handler](/docs/tour/handlers), which is chosen by the caller.
+An operation's row may contain `Fail<…>` and nothing else (`V3010`). The declaration says what operations exist, not what they do. That is the job of a [handler](/docs/tour/handlers), chosen by the caller.
 
-## Failure is an effect
+## Rows are sets
 
-There are no exceptions. A function that can fail declares `Fail<E>`, where `E` is the error type, and fails with `fail`:
-
-```vow
-type WithdrawError = Insufficient | Frozen
-
-fn withdraw(account: Account, amount: Cents) -> Account ! {Fail<WithdrawError>} {
-  if account.frozen { fail Frozen }
-  if amount > account.balance { fail Insufficient }
-  { account with balance: account.balance - amount }
-}
-```
-
-`fail X` performs the single operation of the standard `Fail<E>` effect:
-
-```vow
-effect Fail<E> {
-  fn fail(error: E) -> Never
-}
-```
-
-`Never` is the type with no values: `fail` does not return to the code after it. A function can declare several failure types, for example `! {Fail<Invalid>, Fail<SignupError>}`. Each must be handled or passed on.
-
-## Standard effects
-
-| Effect | Operations (examples) | Purpose |
-| --- | --- | --- |
-| `Db` | `Db.query`, `Db.insert`, `Db.exists` | Database access |
-| `Clock` | `Clock.now()` | Current time |
-| `Random` | `Random.int(range)`, `Uuid.new()` | Randomness |
-| `Net` | `Http.get`, `Http.post` | Network access |
-| `Env` | `Env.get`, `Env.secret` | Environment variables |
-| `Fs` | `Fs.read`, `Fs.write` | File system |
-| `Log` | `Log.info`, `Log.warn` | Structured logging |
-| `Async` | `Task.both`, `Task.all`, `Chan.new` | Concurrency |
-| `Llm` | `Llm.ask` | Calls to a language model |
-| `Workflow` | `Workflow.sleep`, `Workflow.start` | Durable, resumable execution |
-| `Fail<E>` | `fail` | Typed failure |
-
-`Uuid.new()` is listed under `Random` because it uses randomness. That is why `signup` declares `Random`.
+A row is a set of unique labels plus an optional open tail: `{Db, Clock | e}`. A label is an effect plus its type arguments, such as `Fail<SignupError>`. Order does not matter; the formatter sorts labels alphabetically with `Fail<…>` last. Sequencing two expressions takes the union of their rows. See design §5.2 for the unification rules.
 
 ## Effect polymorphism
 
-A higher-order function should not fix the effects of the function it receives. A lowercase row variable stands for "whatever effects the argument has":
+A higher-order function should not fix the effects of the function it receives. A lowercase type parameter is an **effect-row variable**:
 
 ```vow
-fn map<T, U, e>(xs: List<T>, f: (T) -> U ! e) -> List<U> ! e
+fn map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! e
 ```
 
-If `f` is pure, `map` is pure. If `f` logs and may fail, `map` logs and may fail. The compiler computes the actual row at each call site.
-
-An **open row** names some effects and leaves the rest to a variable. `! {Log | e}` means "`Log`, plus whatever `e` is":
+If `f` is pure, the call is pure. If `f` logs and may fail, the call logs and may fail. An **open row** names some labels and leaves the rest to a variable:
 
 ```vow
-fn traced<T, e>(name: String, body: () -> T ! {Log | e}) -> T ! {Log | e} {
-  Log.info("start {name}")
+fn traced<T, e>(name: String, body: fn() -> T ! e) -> T ! {Log | e} {
+  Log.event(Level.Info, "start {name}", [])
   let value = body()
-  Log.info("end {name}")
+  Log.event(Level.Info, "end {name}", [])
   value
 }
 ```
 
-Open rows are how [handlers](/docs/tour/handlers) remove one effect and pass the rest through.
+A top-level function must declare its row variables (`<e>`). A function value with a closed row is accepted where a larger row is expected: `fn() -> Int ! {Clock}` can be passed where `fn() -> Int ! e` is expected, and `e` becomes `{Clock}`. This widening is one of the three places Vow has subtyping, with error unions and refinement-to-base.
 
-## Inference stops at the signature
+## Failure: `Fail<E>` and error unions
 
-Inside a body, the compiler infers the effects of every expression, including lambdas. It never infers the row of a top-level function. Every top-level `fn` states its row (or states nothing, meaning pure), so a change in a callee's effects cannot silently change a caller's contract.
+There are no exceptions. Expected failure is `Fail<E>`, the one compiler-known effect. `E` is an **error union**: a set of nominal `error` tags.
+
+```vow
+error EmailTaken(email: Email)
+error Banned
+type SignupError = EmailTaken | Banned           // union alias: tags only
+```
+
+`fail EmailTaken { email }` has type `Never` and adds `Fail<EmailTaken>` to the current row. `Fail` occurs at most once in a row. When two failing expressions are sequenced, their unions join: `Fail<A> ∪ Fail<B> = Fail<A | B>`.
+
+Propagation is automatic. Calling a function with `Fail<A>` adds `Fail<A>` to the caller's row, with no operator needed. A union `U` is accepted where `V` is expected if `U ⊆ V`. When two different unions meet with no expected type, the compiler asks for an annotation (`V2015`).
+
+Recovery uses `try`/`catch`. Arms are patterns over the body's tags. Tags matched by an unguarded arm are removed from the row; unmatched tags propagate:
+
+```vow
+error NotFound(id: String)
+error Forbidden
+error Unavailable(reason: String)
+type UserError = NotFound | Forbidden
+type User = { id: String, owner: String, name: String }
+
+effect Users {
+  fn get(id: String) -> Option<User> ! {Fail<Unavailable>}
+}
+
+pub fn view_user(caller: String, id: String) -> User ! {Users, Log, Fail<UserError>} {
+  let user = try {
+    Users.get(id)
+  } catch {
+    Unavailable { reason } => {
+      Log.event(Level.Warn, "users backend unavailable", [("reason", Json.String(reason))])
+      None
+    }
+  }
+  match user {
+    None => fail NotFound { id },
+    Some(u) if u.owner != caller => fail Forbidden,
+    Some(u) => u,
+  }
+}
+```
+
+The internal `Unavailable` tag is translated at the boundary, so the public union stays small and stable. Other ways to move between failure and data:
+
+| Form | Result |
+| --- | --- |
+| `try { body }` with no `catch` | `Result<T, E>` with the body's full union; `Fail` leaves the row |
+| `r?` on `r: Result<T, E>` | `T`, and adds `Fail<E>` to the row |
+| `Option.or_fail(o, err)` | the value, or `fail err` on `None` |
+
+There is no implicit conversion between error types. A catch-all `_ => …` arm is allowed but discouraged on open unions (`W4010`).
+
+## Defects are not effects
+
+A **defect** is a bug, not an expected failure. It terminates the current task after running resource finalizers. `try` cannot catch it. `Task.scope` and the test runner observe it as `Outcome.Defect(info)`, and `main` ending in a defect exits with status 70.
+
+| Code | Defect |
+| --- | --- |
+| `D001` | `Int` overflow |
+| `D002` | division by zero |
+| `D010` | failed checked introduction, such as `Email.from(s)` |
+| `D020` / `D021` | `requires` violated (caller blamed) / `ensures` violated (callee blamed) |
+| `D030` | `Option.expect` on `None` |
+
+## Standard effects
+
+From design §10.2. The first six are in the prelude.
+
+| Effect | Operations | Purpose |
+| --- | --- | --- |
+| `Console` | `print`, `read_line` | Terminal IO |
+| `Clock` | `now`, `monotonic`, `sleep` | Time |
+| `Random` | `int`, `float`, `bytes`, `uuid` | Randomness |
+| `Env` | `get`, `secret` | Environment variables |
+| `Log` | `event` | Structured logging |
+| `Task` | `scope`, `spawn`, `join`, `all`, `race`, `yield_now` | [Structured concurrency](/docs/tour/concurrency) |
+| `Fs` | `read`, `read_text`, `write`, `list`, `exists`, `with_file` | Files |
+| `Http` | `send` | HTTP client |
+| `Serve` | `listen` | HTTP server |
+| `Sql` | `query`, `execute`, `transaction` | SQL database |
+| `Budget` | `reserve`, `settle` | Token, cost, and call limits |
+| `Llm` | `generate`, `generate_text`, `stream` | Language model calls |
+| `Fail<E>` | `fail` | Expected failure |
+
+There is no `Async` effect. Every Vow function may suspend; whether a call suspends is decided by its handler (design §5.6). See [Concurrency](/docs/tour/concurrency).
+
+## Inference
+
+Inside a body, the checker infers a row for every expression together with its type (design §5.7):
+
+| Form | Row |
+| --- | --- |
+| literal, variable, lambda, constructor, `handler {…}` | `{}` |
+| `f(a1..an)` | rows of `f` and the arguments, plus `f`'s latent row |
+| `Eff.op(args)` | rows of the arguments, plus `{Eff}` and the op's declared `Fail` |
+| `fail e` | row of `e`, plus `Fail<tag(e)>` |
+| `if` / `match` | condition or scrutinee, plus the union of all branches |
+| `with h1..hn { b }` | row of `b` minus the handled effects, plus each handler's row |
+| `try { b } catch { arms }` | row of `b` with matched tags removed, plus the arms' rows |
+| `try { b }` | row of `b` minus `Fail` |
+| `r?` | row of `r`, plus `Fail<E>` |
+
+Branch rows join conservatively: an effect in an unreachable branch still counts. Evaluation is strict and left to right.
+
+Top-level rows are never inferred. Every top-level `fn` states its row, so a change in a callee's effects cannot silently change a caller's contract.
 
 ## Undeclared effects
 
-If a body performs an effect that its signature does not declare, `vow check` rejects it. Suppose an agent adds a webhook call to `signup`:
+If a body performs an effect its signature does not allow, `vow check` reports `V3001`:
 
-```vow title="src/users.vow"
-type Email = String where is_email(it)
-type Password = String where it.len >= 12
-type SignupError = EmailTaken | Banned
+```vow title="src/users/repo.vow"
+type User = { id: String, name: String, seen: Instant }
 
-fn signup(email: Email, pw: Password) -> User ! {Db, Clock, Random, Fail<SignupError>}
-  ensures result.email == email
-{
-  if Db.exists(users, email) { fail EmailTaken }
-  Http.post(webhook_url, Json.of(email))
-  let user = User { id: Uuid.new(), email, created: Clock.now() }
-  Db.insert(users, user)
-  user
+effect Db {
+  fn get_user(id: String) -> Option<User>
+}
+
+pub fn load_user(id: String) -> Option<User> ! {Clock} {
+  let now = Clock.now()
+  let found = Db.get_user(id)
+  Option.map(found, fn(u) { User { ..u, seen: now } })
 }
 ```
 
-The diagnostic, in JSON form:
+`vow check --json` emits one JSON Lines record per diagnostic, in the design §12.2 shape. Pretty-printed, with hashes shortened:
 
 ```json
 {
-  "code": "E0402",
+  "schema_version": "1.0",
+  "kind": "diagnostic",
+  "id": "d:7f3a…",
+  "code": "V3001",
   "severity": "error",
-  "message": "effect `Net` is performed but not declared in the signature of `signup`",
-  "span": { "file": "src/users.vow", "start": { "line": 9, "col": 3 }, "end": { "line": 9, "col": 41 } },
-  "expected": "! {Db, Clock, Random, Fail<SignupError>}",
-  "found": "! {Db, Clock, Random, Net, Fail<SignupError>}",
-  "fixes": [
+  "phase": "effect",
+  "message": "function `load_user` performs `Db`, which its signature does not allow",
+  "snapshot": "sha256:…",
+  "symbol_id": "pkg::users/repo::load_user",
+  "spans": [
     {
-      "title": "Declare `Net` in the signature of `signup`",
-      "safety": "changes-signature",
-      "edits": [{ "file": "src/users.vow", "line": 5, "col": 67, "insert": ", Net" }]
+      "uri": "file:///…/src/users/repo.vow",
+      "content_hash": "sha256:…",
+      "start_byte": 159,
+      "end_byte": 168,
+      "role": "primary",
+      "label": "allowed here: `{Clock}`"
     },
     {
-      "title": "Remove the call to `Http.post`",
-      "safety": "changes-behaviour",
-      "edits": [{ "file": "src/users.vow", "start": { "line": 9, "col": 3 }, "end": { "line": 9, "col": 41 }, "replace": "" }]
+      "uri": "file:///…/src/users/repo.vow",
+      "content_hash": "sha256:…",
+      "start_byte": 209,
+      "end_byte": 224,
+      "role": "cause",
+      "label": "`Db.get_user` introduces `Db` here"
     }
   ],
-  "docs": "/docs/tour/effects.md#undeclared-effects"
+  "related_ids": [],
+  "expected": {
+    "render": "{Clock}",
+    "row": { "labels": [{ "effect": "std::Clock", "args": [] }], "tail": null }
+  },
+  "actual": {
+    "render": "{Clock, Db}",
+    "row": {
+      "labels": [
+        { "effect": "std::Clock", "args": [] },
+        { "effect": "pkg::users/repo::Db", "args": [] }
+      ],
+      "tail": null
+    }
+  },
+  "obligation": null,
+  "counterexample": null,
+  "explanation_uri": "vow://explain/V3001",
+  "fixes": [
+    {
+      "id": "f:1",
+      "title": "Add `Db` to the signature of `load_user`",
+      "applicability": "suggested",
+      "impact": "interface_change",
+      "edits": [
+        {
+          "span": {
+            "uri": "file:///…/src/users/repo.vow",
+            "content_hash": "sha256:…",
+            "start_byte": 159,
+            "end_byte": 168,
+            "role": "primary",
+            "label": "signature row"
+          },
+          "replacement": "! {Clock, Db}"
+        }
+      ]
+    },
+    {
+      "id": "f:2",
+      "title": "Handle `Db` locally by installing a handler around the call",
+      "applicability": "incomplete",
+      "impact": "local",
+      "edits": [
+        {
+          "span": {
+            "uri": "file:///…/src/users/repo.vow",
+            "content_hash": "sha256:…",
+            "start_byte": 209,
+            "end_byte": 224,
+            "role": "cause",
+            "label": "call to `Db.get_user`"
+          },
+          "replacement": "with ?db_handler { Db.get_user(id) }"
+        }
+      ]
+    }
+  ]
 }
 ```
 
-There are two honest ways out. Either the function really should touch the network, in which case the signature changes and a human reviews it, or it should not, in which case the call goes. An agent can apply neither fix silently: the first is flagged `changes-signature` and the second `changes-behaviour`. See [Diagnostics](/docs/agents/diagnostics).
+Byte offsets are zero-based and half-open. There are two honest ways out. If `load_user` really should touch the database, the signature changes; that fix is an `interface_change`, so it is never `machine_applicable` and a reviewer sees it. If it should not, the call is handled locally; that fix leaves a typed hole for the handler, so it is `incomplete`. See [Diagnostics](/docs/agents/diagnostics).
 
-## Effects are capabilities
+## Effects are requirements
 
-Because every effect is in the signature, a function without `Net` in its row cannot reach the network, however deep the call goes. Vow uses this as its security model: see [Capabilities and security](/docs/tour/capabilities).
+`Fs` in a row says "may perform filesystem operations". It does not say which files. The installed handler decides that, and handlers are built from capability values the program cannot forge. See [Capabilities and security](/docs/tour/capabilities).
 
 ## What the compiler checks
 
-- The inferred effects of a body are a subset of the declared row. Extra declared effects produce a warning, since they widen the contract for no reason.
-- Every `Fail<E>` in a body is either declared or handled. There is no unchecked failure.
-- Effect-polymorphic functions are checked once, for all rows.
-- Operations are called with the types their `effect` declaration specifies.
-- Top-level rows are never inferred.
+- The inferred row of a body is a subset of the declared row. Each extra label is `V3001`, with the call that introduced it.
+- A label that a closed row does not permit is `V3002`.
+- Every `Fail` tag is either caught or declared. Union mismatches without an expected type are `V2015`.
+- Effect operations may declare only `Fail` in their rows (`V3010`).
+- Top-level rows and row variables are declared, never inferred.
 
 ## Next
 
