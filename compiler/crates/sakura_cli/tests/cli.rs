@@ -328,3 +328,189 @@ pub fn main() -> Unit ! {Console, Fs} { Console.print("{probe("data/a.txt")} {pr
     assert_eq!(out.code, Some(0), "{}", out.stderr);
     assert_eq!(out.stdout, "read denied\n");
 }
+
+const AUDITED: &str = r#"import std/untrusted
+
+type Percent = Int where it >= 0 && it <= 100
+
+@total
+fn half(x: Int) -> Int { x / 2 }
+
+pub fn scale(p: Percent, total: Int) -> Int
+  requires total >= 0
+  ensures bounded: result <= total
+{
+  total * p / 100
+}
+
+pub fn main() -> Unit ! {Console} {
+  let p = Percent.from(50)
+  let n = Untrusted.trust(Untrusted.of(scale(p, half(8))), @trust("computed locally"))
+  Console.print("{n}")
+}
+"#;
+
+/// Design §17.78 (gate 6): `sakura audit --json` lists every user site, then one summary.
+#[test]
+fn audit_json_lists_user_sites_then_a_summary() {
+    let dir = tmp("audit", AUDITED);
+    let out = sakura(&["audit", "--json", "main.sakura"], &dir);
+    assert_eq!(out.code, Some(0), "{}", out.stderr);
+    let recs = common::json_lines(&out.stdout).unwrap();
+    let (summary, sites) = recs.split_last().unwrap();
+    let kinds: Vec<&str> = sites.iter().map(|r| r["site"].as_str().unwrap()).collect();
+    assert_eq!(kinds, ["total", "from", "trust"], "{recs:#?}");
+    assert!(sites.iter().all(|r| r["kind"] == "audit"
+        && r["schema_version"] == "1.0"
+        && r["span"]["uri"].as_str().unwrap().ends_with("/main.sakura")));
+    assert_eq!(sites[2]["reason"], "computed locally");
+    assert_eq!(sites[2]["sink"], "std::untrusted::trust");
+    assert_eq!(summary["kind"], "summary");
+    assert_eq!(summary["sites"], 3);
+    assert_eq!(summary["by_site"]["trust"], 1);
+    // A report, not a check: errors elsewhere do not change the exit code.
+    let broken = tmp(
+        "audit-broken",
+        &format!("{AUDITED}fn bad() -> Int {{ \"no\" }}\n"),
+    );
+    assert_eq!(sakura(&["audit", "main.sakura"], &broken).code, Some(0));
+}
+
+/// Gate 6: `sakura doc --search` finds functions by type shape, user and std alike.
+#[test]
+fn doc_searches_by_type_pattern() {
+    let dir = tmp(
+        "doc",
+        "/// How many there are.\npub fn count<A>(xs: List<A>) -> Int { List.len(xs) }\n",
+    );
+    let json = sakura(&["doc", "--json", "--search", "fn(List<A>) -> Int"], &dir);
+    assert_eq!(json.code, Some(0), "{}", json.stderr);
+    let result: serde_json::Value = serde_json::from_str(json.stdout.trim()).unwrap();
+    let ids: Vec<&str> = result["symbols"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s["id"].as_str().unwrap())
+        .collect();
+    assert!(
+        ids.contains(&"main::main::count") && ids.contains(&"std::list::len"),
+        "{ids:?}"
+    );
+    assert_eq!(result["total"], ids.len());
+    let human = sakura(&["doc", "--search", "fn(List<A>) -> Int"], &dir);
+    assert!(
+        human
+            .stdout
+            .contains("main::main::count\npub fn count<A>(xs: List<A>) -> Int\neffects: {}\nHow many there are."),
+        "{}",
+        human.stdout
+    );
+}
+
+/// Design §17.76 (gate 6): `sakura build --manifest` writes the trusted base and one
+/// `runtime_checked` obligation per contract clause, with ids that survive body edits.
+#[test]
+fn build_manifest_lists_trusted_base_and_obligations() {
+    let dir = tmp("manifest", AUDITED);
+    let read = |dir: &Path| -> serde_json::Value {
+        let text = std::fs::read_to_string(dir.join("target/sakura/manifest.json")).unwrap();
+        serde_json::from_str(&text).unwrap()
+    };
+    let out = sakura(&["build", "--manifest", "main.sakura"], &dir);
+    assert_eq!(out.code, Some(0), "{}", out.stderr);
+    let m = read(&dir);
+    let keys = |v: &serde_json::Value| -> Vec<String> {
+        let mut k: Vec<String> = v.as_object().unwrap().keys().cloned().collect();
+        k.sort();
+        k
+    };
+    assert_eq!(
+        keys(&m),
+        [
+            "compiler",
+            "obligations",
+            "schema_version",
+            "snapshot",
+            "trusted"
+        ]
+    );
+    assert_eq!(m["schema_version"], "1.0");
+    assert!(m["snapshot"].as_str().unwrap().starts_with("sha256:"));
+    assert_eq!(keys(&m["compiler"]), ["git", "version"]);
+
+    let trusted = m["trusted"].as_array().unwrap();
+    assert_eq!(trusted[0]["kind"], "compiler");
+    let runtime = std::fs::read(dir.join("target/sakura/js/sakura_runtime.js")).unwrap();
+    assert_eq!(trusted[1]["kind"], "runtime");
+    assert_eq!(trusted[1]["sha256"], sakura_diagnostics::sha256(&runtime));
+    let user: Vec<(&str, &str)> = trusted
+        .iter()
+        .filter(|t| t["id"].as_str().unwrap().starts_with("main::"))
+        .map(|t| (t["kind"].as_str().unwrap(), t["id"].as_str().unwrap()))
+        .collect();
+    assert_eq!(
+        user,
+        [("total", "main::main::half"), ("trust", "main::main::main")]
+    );
+    assert!(trusted.iter().any(|t| t["kind"] == "std_host"));
+    for t in trusted {
+        assert!(
+            [
+                "compiler", "runtime", "std_host", "external", "trust", "total"
+            ]
+            .contains(&t["kind"].as_str().unwrap()),
+            "{t}"
+        );
+    }
+
+    let obligations = m["obligations"].as_array().unwrap();
+    let user: Vec<(&str, &str)> = obligations
+        .iter()
+        .filter(|o| o["symbol_id"].as_str().unwrap().starts_with("main::"))
+        .map(|o| {
+            (
+                o["symbol_id"].as_str().unwrap(),
+                o["clause"].as_str().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        user,
+        [
+            ("main::main::Percent", "where"),
+            ("main::main::scale", "requires"),
+            ("main::main::scale", "ensures bounded"),
+        ]
+    );
+    for o in obligations {
+        assert_eq!(keys(o), ["clause", "id", "span", "status", "symbol_id"]);
+        assert_eq!(o["status"], "runtime_checked");
+        let id = o["id"].as_str().unwrap();
+        assert!(id.starts_with("o:") && id.len() == 66, "{id}");
+    }
+
+    // A body edit keeps every id; a failed build writes no manifest.
+    let ids = |m: &serde_json::Value| -> Vec<serde_json::Value> {
+        m["obligations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|o| o["id"].clone())
+            .collect()
+    };
+    let edited = tmp(
+        "manifest-edited",
+        &AUDITED.replace("total * p / 100", "(total * p) / 100"),
+    );
+    assert_eq!(
+        sakura(&["build", "--manifest", "main.sakura"], &edited).code,
+        Some(0)
+    );
+    assert_eq!(ids(&read(&edited)), ids(&m));
+    let broken = tmp("manifest-broken", "fn bad() -> Int { \"no\" }\n");
+    assert_eq!(
+        sakura(&["build", "--manifest", "main.sakura"], &broken).code,
+        Some(1)
+    );
+    assert!(!broken.join("target/sakura/manifest.json").exists());
+}

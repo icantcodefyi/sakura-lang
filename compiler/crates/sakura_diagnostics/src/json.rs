@@ -77,6 +77,11 @@ fn span_record<'a>(span: &'a Span, files: &'a [SourceFile]) -> SpanRecord<'a> {
     }
 }
 
+/// A span as the `spans` entries of §12.2 records write it, for other record kinds.
+pub fn span_json(span: &Span, files: &[SourceFile]) -> Value {
+    serde_json::to_value(span_record(span, files)).unwrap_or(Value::Null)
+}
+
 fn rendered(r: &Rendered) -> Value {
     let mut map = Map::new();
     map.insert("render".into(), Value::String(r.render.clone()));

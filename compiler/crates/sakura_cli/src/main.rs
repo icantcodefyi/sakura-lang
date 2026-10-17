@@ -16,6 +16,7 @@ use sakura_diagnostics::{
 mod audit;
 mod doc;
 mod fix;
+mod manifest;
 mod new;
 mod testing;
 
@@ -89,6 +90,11 @@ enum Command {
         /// Where to write the JS modules.
         #[arg(long, default_value = "target/sakura/js")]
         out_dir: PathBuf,
+        /// Also write `target/sakura/manifest.json`: the trusted base (compiler, runtime, std
+        /// host bindings, `@external`, `@trust`, `@total`) and every contract obligation with
+        /// its status.
+        #[arg(long)]
+        manifest: bool,
         paths: Vec<PathBuf>,
     },
     /// Build and run `main` with node. The exit code is the program's: 0 ok, 1 `main` failed,
@@ -250,12 +256,16 @@ fn dispatch(command: Command) -> ExitCode {
             json,
             target: _,
             out_dir,
+            manifest,
             paths,
-        } => match load(&paths)
-            .map_err(usage_error)
-            .and_then(|snapshot| build(json, &snapshot, &out_dir, BuildOptions::default(), false))
-        {
-            Ok(_) => ExitCode::SUCCESS,
+        } => match load(&paths).map_err(usage_error).and_then(|snapshot| {
+            let dir = build(json, &snapshot, &out_dir, BuildOptions::default(), false)?;
+            if manifest {
+                write_manifest(&snapshot, &dir).map_err(usage_error)?;
+            }
+            Ok(())
+        }) {
+            Ok(()) => ExitCode::SUCCESS,
             Err(code) => code,
         },
         Command::Run {
@@ -435,6 +445,18 @@ fn build(
         }
         Err(Err(e)) => Err(usage_error(e)),
     }
+}
+
+/// Writes `target/sakura/manifest.json` for a build emitted into `dir`.
+fn write_manifest(snapshot: &Snapshot, dir: &Path) -> Result<(), String> {
+    let runtime = dir.join("sakura_runtime.js");
+    let runtime =
+        std::fs::read_to_string(&runtime).map_err(|e| format!("{}: {e}", runtime.display()))?;
+    let value = manifest::manifest(&Analysis::analyze(snapshot), &runtime);
+    let path = Path::new("target/sakura/manifest.json");
+    std::fs::create_dir_all("target/sakura").map_err(|e| format!("target/sakura: {e}"))?;
+    let text = serde_json::to_string_pretty(&value).unwrap_or_default() + "\n";
+    std::fs::write(path, text).map_err(|e| format!("{}: {e}", path.display()))
 }
 
 fn run(path: Option<PathBuf>, out_dir: &Path, args: &[String]) -> ExitCode {

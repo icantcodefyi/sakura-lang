@@ -52,11 +52,16 @@ fn symbol_id(a: &Analyzed, def: DefId) -> String {
 /// `sakura build --manifest`. A record's `symbol_id` is its enclosing declaration; `sink` is
 /// the resolved callee of a `@trust` or the refined type's `from`.
 pub(crate) fn records(a: &Analyzed) -> Vec<Value> {
-    let is_std = |m: sakura_hir::ModuleId| {
-        a.program.packages[a.program.module(m).package.0 as usize].name == "std"
+    sites(a, false)
+}
+
+/// [`records`], with std's sites too when `with_std`.
+pub(crate) fn sites(a: &Analyzed, with_std: bool) -> Vec<Value> {
+    let skip = |m: sakura_hir::ModuleId| {
+        !with_std && a.program.packages[a.program.module(m).package.0 as usize].name == "std"
     };
     let mut sites = Vec::new();
-    for symbol in a.symbols().iter().filter(|s| !is_std(s.def.module)) {
+    for symbol in a.symbols().iter().filter(|s| !skip(s.def.module)) {
         let def = a.program.def(symbol.def);
         for attr in &def.attrs {
             if matches!(attr.name.as_str(), "total" | "external" | "resource") {
@@ -74,7 +79,7 @@ pub(crate) fn records(a: &Analyzed) -> Vec<Value> {
     }
     for (mi, module) in a.program.modules.iter().enumerate() {
         let mid = sakura_hir::ModuleId(mi as u32);
-        if is_std(mid) {
+        if skip(mid) {
             continue;
         }
         for (bid, body) in module.bodies.iter() {

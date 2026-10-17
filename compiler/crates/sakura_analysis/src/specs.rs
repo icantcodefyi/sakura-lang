@@ -54,6 +54,54 @@ fn entry(s: &Symbol) -> InterfaceEntry {
     }
 }
 
+/// One contract clause to discharge (design §17.76): every `requires`/`ensures` of a function or
+/// operation and every type or field `where`. Property `requires` are filters, not obligations.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct Obligation {
+    /// `o:` + sha256 of the symbol id, clause name and normalised predicate, so `sakura verify`
+    /// (M4) can update the same record.
+    pub id: String,
+    pub symbol_id: String,
+    /// `requires`, `requires <name>`, `ensures`, `where` or `where <field>`.
+    pub clause: String,
+    pub predicate: String,
+    #[serde(skip)]
+    pub file: sakura_diagnostics::FileId,
+    pub range: [u32; 2],
+}
+
+impl Analyzed {
+    /// Every obligation of the snapshot, std included, in symbol order.
+    pub fn obligations(&self) -> Vec<Obligation> {
+        let mut out = Vec::new();
+        for s in self.symbols() {
+            if matches!(s.kind, "test" | "property") || s.contracts.is_empty() {
+                continue;
+            }
+            let Some(parse) = self.parse(s.file) else {
+                continue;
+            };
+            for (clause, predicate, range) in
+                crate::symbols::clauses(&parse.syntax(), s.name_range[0])
+            {
+                let material = format!("{}\0{clause}\0{predicate}", s.id);
+                out.push(Obligation {
+                    id: format!(
+                        "o:{}",
+                        &sakura_diagnostics::sha256(material.as_bytes())[7..]
+                    ),
+                    symbol_id: s.id.clone(),
+                    clause,
+                    predicate,
+                    file: s.file,
+                    range,
+                });
+            }
+        }
+        out
+    }
+}
+
 fn user_symbols(a: &Analyzed) -> impl Iterator<Item = &Symbol> {
     a.symbols().iter().filter(|s| s.package != "std")
 }
@@ -309,6 +357,53 @@ mod tests {
         // Only the named symbols are frozen.
         let only = Frozen::parse("helper");
         assert!(weakened.frozen_spec_violations(&base, &only).is_empty());
+    }
+
+    #[test]
+    fn obligations_name_their_clauses_and_keep_ids_across_body_edits() {
+        let text = "type Percent = Int where it >= 0 && it <= 100\n\ntype Range = { lo: Int, hi: Int where hi >= 0 }\n\npub fn scale(p: Percent, total: Int) -> Int\n  requires total >= 0\n  ensures bounded: result <= total\n{ total * p / 100 }\n\nproperty \"p\"(x: Int) requires x > 0 { expect(x > 0) }\n";
+        let a = analyze(text);
+        let user: Vec<Obligation> = a
+            .obligations()
+            .into_iter()
+            .filter(|o| o.symbol_id.starts_with("main::"))
+            .collect();
+        let got: Vec<(&str, &str, &str)> = user
+            .iter()
+            .map(|o| {
+                (
+                    o.symbol_id.as_str(),
+                    o.clause.as_str(),
+                    o.predicate.as_str(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            got,
+            [
+                ("main::app::Percent", "where", "it >= 0 && it <= 100"),
+                ("main::app::Range", "where hi", "hi >= 0"),
+                ("main::app::scale", "requires", "total >= 0"),
+                ("main::app::scale", "ensures bounded", "result <= total"),
+            ]
+        );
+        for o in &user {
+            assert_eq!(
+                &text[o.range[0] as usize..o.range[1] as usize]
+                    .split_whitespace()
+                    .next(),
+                &o.clause.split(' ').next()
+            );
+            assert!(o.id.starts_with("o:") && o.id.len() == 66, "{}", o.id);
+        }
+        let edited = analyze(&text.replace("{ total * p / 100 }", "{\n  total * p / 100\n}"));
+        let ids = |a: &Analyzed| {
+            a.obligations()
+                .into_iter()
+                .map(|o| o.id)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(ids(&a), ids(&edited));
     }
 
     #[test]

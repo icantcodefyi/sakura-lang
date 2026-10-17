@@ -238,15 +238,56 @@ fn effects_text(node: &SyntaxNode) -> Option<String> {
 }
 
 fn contracts_text(node: &SyntaxNode) -> Vec<String> {
+    contract_nodes(node)
+        .map(|n| join_tokens(n.children_with_tokens()))
+        .collect()
+}
+
+/// `requires`/`ensures` clauses and `where` refinements of `node` itself: not those of an op
+/// nested in an effect.
+fn contract_nodes(node: &SyntaxNode) -> impl Iterator<Item = SyntaxNode> + '_ {
     node.descendants()
         .filter(|n| matches!(n.kind(), K::CONTRACT | K::WHERE_CLAUSE))
-        // Only this item's own clauses: not those of an op nested in an effect.
-        .filter(|n| {
+        .filter(move |n| {
             n.ancestors()
                 .find(|a| ITEM_KINDS.contains(&a.kind()))
                 .is_some_and(|a| &a == node)
         })
-        .map(|n| join_tokens(n.children_with_tokens()))
+}
+
+/// Each contract clause of the item whose name starts at `name_start`: its clause name
+/// (`requires`, `requires ordered`, `ensures`, `where`, `where <field>`), its predicate on one
+/// line, and its byte range.
+pub(crate) fn clauses(root: &SyntaxNode, name_start: u32) -> Vec<(String, String, [u32; 2])> {
+    let Some(item) = item_node(root, name_start.into()) else {
+        return Vec::new();
+    };
+    contract_nodes(&item)
+        .map(|n| {
+            let words: Vec<sakura_syntax::SyntaxToken> = n
+                .children_with_tokens()
+                .filter_map(NodeOrToken::into_token)
+                .filter(|t| !t.kind().is_trivia() && t.kind() != K::NEWLINE)
+                .collect();
+            let mut clause = words.first().map_or("", |t| t.text()).to_owned();
+            if let [_, name, colon, ..] = &words[..]
+                && name.kind() == K::IDENT
+                && colon.kind() == K::COLON
+            {
+                clause = format!("{clause} {}", name.text());
+            }
+            if let Some(field) = n.parent().filter(|p| p.kind() == K::FIELD_DECL) {
+                let name = field
+                    .children_with_tokens()
+                    .filter_map(NodeOrToken::into_token)
+                    .find(|t| t.kind() == K::IDENT);
+                let name = name.map(|t| t.text().to_owned()).unwrap_or_default();
+                clause = format!("{clause} {name}");
+            }
+            let predicate = join_tokens(n.children().map(NodeOrToken::Node));
+            let r = n.text_range();
+            (clause, predicate, [r.start().into(), r.end().into()])
+        })
         .collect()
 }
 

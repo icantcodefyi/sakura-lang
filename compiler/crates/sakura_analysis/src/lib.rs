@@ -25,7 +25,7 @@ pub use edit::{Conflict, FileEdit};
 pub use manifest::{FsPermissions, Manifest, Package, Permissions};
 pub use nav::{Completion, Hover, Location};
 pub use query::SymbolQuery;
-pub use specs::{Frozen, InterfaceChange, InterfaceDelta, InterfaceEntry};
+pub use specs::{Frozen, InterfaceChange, InterfaceDelta, InterfaceEntry, Obligation};
 pub use symbols::Symbol;
 
 mod std_files {

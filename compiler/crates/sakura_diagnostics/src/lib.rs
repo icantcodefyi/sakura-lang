@@ -13,7 +13,7 @@ mod json;
 pub use human::render_human;
 pub use json::{
     MAX_DIAGNOSTICS, SCHEMA_VERSION, diagnostic_records, hole_records, render_json_lines,
-    summary_record,
+    span_json, summary_record,
 };
 
 /// One file of a workspace snapshot as the renderers see it. `FileId(n)` indexes the `n`th entry
