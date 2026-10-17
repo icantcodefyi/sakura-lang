@@ -166,7 +166,7 @@ pub fn codes_bytes(codes: &[Option<CodeDesc>]) -> Vec<u8> {
 pub fn rt_with(types: &[Ty], known: Known) -> Rt {
     let mut rt = Rt::new(64 << 20).unwrap();
     let table = rt.install(&layout_bytes(types, known)).unwrap();
-    rt.set_layout(table);
+    rt.set_layout(table).unwrap();
     rt
 }
 

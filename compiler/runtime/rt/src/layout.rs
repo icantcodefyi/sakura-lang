@@ -1,6 +1,6 @@
 //! The layout table (ABI §3.4) and the code descriptor table, as `sakura_lir` emits them into
-//! the data segment. The byte format is this crate's reading of §3.4, recorded in ABI.md
-//! "Questions and errata" (E3, E4); all offsets are relative to the table's start, 0 = absent.
+//! the data segment, in the byte format of ABI 1.0.1 §3.4 (plus the effect table, ABI P3); all
+//! offsets are relative to the table's start, 0 = absent.
 //!
 //! Layout table:
 //! ```text
@@ -24,7 +24,7 @@
 //! entry: u32 name, u32 n_frame_slots, u32 frame_kinds, u32 n_captures, u32 capture_kinds
 //! ```
 
-use crate::Rt;
+use crate::{Res, Rt};
 
 /// Scalar kinds of a slot (ABI §3.4). A `Unit` slot is a `WORD` holding the `Unit` immediate.
 pub const WORD: u32 = 0;
@@ -71,16 +71,35 @@ fn kind_at(rt: &Rt, kinds: u32, i: u32) -> u32 {
 
 impl Rt {
     /// Use the layout table at `addr` (the module's data segment; host tests use `install`).
-    pub fn set_layout(&mut self, addr: u32) {
+    pub fn set_layout(&mut self, addr: u32) -> Res<()> {
         self.layout = addr;
+        if self.option_id() != NONE_ID {
+            let none = self.new_variant(self.option_id(), 0)?;
+            self.make_static(none);
+            self.none = none;
+        }
+        Ok(())
     }
 
     pub fn set_codes(&mut self, addr: u32) {
         self.codes = addr;
     }
 
+    /// Use the effect table at `addr`: `u32 n`, then `n` name offsets (ABI P3).
+    pub fn set_effects(&mut self, addr: u32) {
+        self.effects = addr;
+    }
+
+    /// The qualified name of effect `id` (address of `u32 len`, bytes), 0 when unknown.
+    pub fn effect_name(&self, id: u32) -> u32 {
+        if self.effects == 0 || id >= self.heap.mem.u32(self.effects) {
+            return 0;
+        }
+        self.table_at(self.effects, self.effects + 4 + 4 * id)
+    }
+
     /// The table offset stored at `addr`, as an absolute address in `table` (0 stays 0).
-    fn at(&self, table: u32, addr: u32) -> u32 {
+    fn table_at(&self, table: u32, addr: u32) -> u32 {
         let v = self.heap.mem.u32(addr);
         if v == 0 { 0 } else { table + v }
     }
@@ -88,7 +107,7 @@ impl Rt {
     fn entry(&self, type_id: u32) -> u32 {
         let n = self.heap.mem.u32(self.layout);
         assert!(type_id < n, "type id {type_id} outside the layout table");
-        self.at(self.layout, self.layout + 20 + 4 * type_id)
+        self.table_at(self.layout, self.layout + 20 + 4 * type_id)
     }
 
     /// Well-known ids from the table header (`NONE_ID` when the program has no such type).
@@ -111,7 +130,7 @@ impl Rt {
 
     /// The type's name (address of `u32 len`, bytes), 0 when none.
     pub fn type_name(&self, type_id: u32) -> u32 {
-        self.at(self.layout, self.entry(type_id) + 4)
+        self.table_at(self.layout, self.entry(type_id) + 4)
     }
 
     pub fn n_rows(&self, type_id: u32) -> u32 {
@@ -124,7 +143,7 @@ impl Rt {
             ctor < self.heap.mem.u32(e + 8),
             "constructor {ctor} outside type {type_id}"
         );
-        let r = self.at(self.layout, e + 12 + 4 * ctor);
+        let r = self.table_at(self.layout, e + 12 + 4 * ctor);
         let m = &self.heap.mem;
         let n_slots = m.u32(r + 4);
         let w = n_slots.div_ceil(32).max(1);
@@ -132,9 +151,9 @@ impl Rt {
             size: m.u32(r),
             n_slots,
             bitmap: r + 8,
-            kinds: self.at(self.layout, r + 8 + 4 * w),
-            name: self.at(self.layout, r + 12 + 4 * w),
-            fields: self.at(self.layout, r + 16 + 4 * w),
+            kinds: self.table_at(self.layout, r + 8 + 4 * w),
+            name: self.table_at(self.layout, r + 12 + 4 * w),
+            fields: self.table_at(self.layout, r + 16 + 4 * w),
         }
     }
 
@@ -152,7 +171,7 @@ impl Rt {
         if row.fields == 0 {
             0
         } else {
-            self.at(self.layout, row.fields + 4 * i)
+            self.table_at(self.layout, row.fields + 4 * i)
         }
     }
 
@@ -160,17 +179,17 @@ impl Rt {
         if self.codes == 0 || code >= self.heap.mem.u32(self.codes) {
             return None;
         }
-        let e = self.at(self.codes, self.codes + 4 + 4 * code);
+        let e = self.table_at(self.codes, self.codes + 4 + 4 * code);
         if e == 0 {
             return None;
         }
         let m = &self.heap.mem;
         Some(Code {
-            name: self.at(self.codes, e),
+            name: self.table_at(self.codes, e),
             n_frame_slots: m.u32(e + 4),
-            frame_kinds: self.at(self.codes, e + 8),
+            frame_kinds: self.table_at(self.codes, e + 8),
             n_captures: m.u32(e + 12),
-            capture_kinds: self.at(self.codes, e + 16),
+            capture_kinds: self.table_at(self.codes, e + 16),
         })
     }
 

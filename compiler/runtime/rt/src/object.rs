@@ -2,7 +2,7 @@
 //!
 //! Destruction never recurses and never allocates: an object whose count reaches zero has no
 //! further use for its `rc` field, so the worklist is a stack threaded through those fields
-//! (ABI.md errata E1). Popping an object decrements its owned children, pushes the ones that
+//! (ABI §3.5). Popping an object decrements its owned children, pushes the ones that
 //! reach zero, runs the tag's destructor and frees the block.
 
 use crate::layout::WORD;
@@ -28,6 +28,8 @@ pub fn bool_word(b: bool) -> u32 {
 
 /// Payload offsets shared by constructors, collections and destruction.
 pub const SLOTS: u32 = 16;
+/// First state slot of a `Handler` (after `effect_id`, `type_id`, `n_state`, `n_clauses`).
+pub const HANDLER_STATE: u32 = 24;
 
 impl Rt {
     /// A fresh object: zeroed payload, `rc = 1`, no flags.
@@ -118,12 +120,7 @@ impl Rt {
         let m = |rt: &Rt, off: u32| rt.heap.mem.u32(obj + off);
         match self.tag(obj) {
             tag::TUPLE | tag::RECORD | tag::VARIANT => {
-                let (type_id, ctor) = match self.tag(obj) {
-                    tag::TUPLE => (m(self, 12), 0),
-                    tag::RECORD => (m(self, 8), 0),
-                    _ => (m(self, 8), m(self, 12)),
-                };
-                let row = self.row(type_id, ctor);
+                let row = self.obj_row(obj);
                 for i in 0..row.n_slots {
                     if self.owns(&row, i) {
                         self.dec_slot(obj + SLOTS + 8 * i, head);
@@ -160,12 +157,16 @@ impl Rt {
                 }
             }
             tag::HANDLER => {
-                let (n_state, n_clauses) = (m(self, 12), m(self, 16));
+                // ABI 1.0.1 §3.2: state slots are described by the handler's layout row.
+                let row = self.row(m(self, 12), 0);
+                let (n_state, n_clauses) = (m(self, 16), m(self, 20));
                 for i in 0..n_state {
-                    self.dec_slot(obj + 24 + 8 * i, head);
+                    if self.owns(&row, i) {
+                        self.dec_slot(obj + HANDLER_STATE + 8 * i, head);
+                    }
                 }
                 for i in 0..n_clauses {
-                    self.dec(m(self, 24 + 8 * n_state + 4 * i), head);
+                    self.dec(m(self, HANDLER_STATE + 8 * n_state + 4 * i), head);
                 }
             }
             tag::SECRET => {

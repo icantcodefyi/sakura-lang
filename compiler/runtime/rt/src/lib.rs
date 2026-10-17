@@ -1,6 +1,6 @@
-//! `sakura_rt`, the Sakura Lang WASM runtime. The contract is `ABI.md` next to this crate (v1);
-//! its "Questions and errata" section records every place where this code had to choose a
-//! reading. `no_std`: on wasm32 the linear memory is the module's own (`mem`), on the host a
+//! `sakura_rt`, the Sakura Lang WASM runtime. The contract is `ABI.md` next to this crate
+//! (1.0.1); its "Open questions" are the readings this code chose where the ABI is still
+//! silent. `no_std`: on wasm32 the linear memory is the module's own (`mem`), on the host a
 //! `Vec<u8>` with the same addresses, which is how `cargo test` and Miri exercise the runtime.
 
 #![no_std]
@@ -8,10 +8,15 @@
 #[cfg(not(target_arch = "wasm32"))]
 extern crate alloc;
 
+pub mod cmp;
 pub mod heap;
 pub mod layout;
+pub mod list;
+pub mod map;
 pub mod mem;
 pub mod object;
+pub mod scratch;
+pub mod show;
 pub mod value;
 #[cfg(target_arch = "wasm32")]
 mod wasm;
@@ -19,7 +24,7 @@ mod wasm;
 pub use heap::{Heap, Stats};
 
 /// `sakura_abi_version` (ABI §0): `MAJOR << 16 | MINOR << 8 | PATCH`.
-pub const ABI_VERSION: u32 = 1 << 16;
+pub const ABI_VERSION: u32 = 1 << 16 | 1;
 
 /// A defect raised by the runtime: the `D` registry number and a fixed message (ABI §6.5).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -52,6 +57,22 @@ impl Defect {
     pub const HEAP_EXHAUSTED: Defect = Defect {
         code: 96,
         message: "heap exhausted",
+    };
+    pub const INT_OVERFLOW: Defect = Defect {
+        code: 1,
+        message: "integer overflow",
+    };
+    pub const BYTES_FROM_LIST: Defect = Defect {
+        code: 20,
+        message: "precondition of Bytes.from_list violated: every element in 0..=255",
+    };
+    pub const NOT_ORD: Defect = Defect {
+        code: 90,
+        message: "value is not Ord",
+    };
+    pub const NOT_HASH: Defect = Defect {
+        code: 90,
+        message: "value is not Hash",
     };
 }
 
@@ -93,6 +114,15 @@ pub struct Rt {
     pub layout: u32,
     /// Address of the code descriptor table (frames and closure captures), 0 before `set_codes`.
     pub codes: u32,
+    /// Address of the effect table (qualified effect names, ABI P3), 0 when none.
+    pub effects: u32,
+    /// Runtime singletons (static objects): `None` of the program's `Option`, the empty
+    /// `List`, `Map` and `Set`, and the hole marker of map and set logs.
+    pub none: u32,
+    pub empty_list: u32,
+    pub empty_map: u32,
+    pub empty_set: u32,
+    pub hole: u32,
     /// Host imports the runtime called, for tests (on wasm32 they go to `sakura_host`).
     #[cfg(not(target_arch = "wasm32"))]
     pub host_log: alloc::vec::Vec<HostCall>,
@@ -111,13 +141,21 @@ pub enum HostCall {
 
 impl Rt {
     pub fn new(max_heap: u64) -> Res<Rt> {
-        Ok(Rt {
+        let mut rt = Rt {
             heap: Heap::new(max_heap)?,
             layout: 0,
             codes: 0,
+            effects: 0,
+            none: 0,
+            empty_list: 0,
+            empty_map: 0,
+            empty_set: 0,
+            hole: 0,
             #[cfg(not(target_arch = "wasm32"))]
             host_log: alloc::vec::Vec::new(),
-        })
+        };
+        rt.statics()?;
+        Ok(rt)
     }
 
     pub fn stats(&self) -> Stats {

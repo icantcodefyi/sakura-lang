@@ -52,6 +52,7 @@ fn size_class_boundaries() {
 #[test]
 fn page_runs_are_reused_and_coalesced() {
     let mut rt = Rt::new(64 << 20).unwrap();
+    let base = rt.stats();
     let a = rt.heap.alloc(5_000).unwrap();
     let b = rt.heap.alloc(5_000).unwrap();
     let c = rt.heap.alloc(5_000).unwrap();
@@ -66,8 +67,8 @@ fn page_runs_are_reused_and_coalesced() {
     rt.heap.free(c);
     rt.heap.free(d);
     let s = rt.stats();
-    assert_eq!(s.live_objects, 0);
-    assert_eq!(s.live, 0);
+    assert_eq!(s.live_objects, base.live_objects);
+    assert_eq!(s.live, base.live);
 }
 
 #[test]
@@ -216,4 +217,29 @@ fn handles_retire_and_secrets_zero_on_destruction() {
     rt.heap.mem.set_u32(secret + 8, inner);
     rt.drop(secret);
     assert_eq!(rt.heap.mem.bytes(inner + 12, 4), [0; 4]);
+}
+
+#[test]
+fn handler_state_is_described_by_its_layout_row() {
+    use common::Ty;
+    use sakura_rt::layout::{I64, WORD};
+    // Handler state `{ count: Int, last: String }` (ABI 1.0.1 §3.2, design §17.108).
+    let types = [Ty::Record(
+        "Counter$state",
+        &[("count", I64), ("last", WORD)],
+    )];
+    let mut rt = rt_with(&types, Known::default());
+    let base = rt.stats().live_objects;
+    let h = rt.new_handler(3, 0, 1).unwrap();
+    // A count that looks like an address must not be dropped as one.
+    let decoy = rt.new_int(1).unwrap();
+    rt.heap.mem.set_u64(rt.handler_state(h, 0), decoy as u64);
+    let last = rt.new_bytes(4).unwrap();
+    rt.heap.mem.set_u64(rt.handler_state(h, 1), last as u64);
+    let clause = rt.new_object(tag::CLOSURE, 16).unwrap();
+    rt.heap.mem.set_u32(rt.handler_clause(h, 0), clause);
+    rt.drop(h);
+    assert_eq!(rt.rc(decoy), 1, "the Int slot was not treated as a pointer");
+    rt.drop(decoy);
+    assert_eq!(rt.stats().live_objects, base);
 }

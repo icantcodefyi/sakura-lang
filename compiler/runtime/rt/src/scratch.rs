@@ -1,0 +1,135 @@
+//! Scratch structures in linear memory for the runtime's own loops: a growable `u32` stack (the
+//! explicit stacks that keep `Show`, `Eq`, `Ord` and `Hash` free of recursion, so deep values
+//! cannot exhaust the native stack, which on wasm32 has no guard) and a string builder.
+//! Blocks come from the heap like any object; failure is `D096` and the caller frees.
+
+use crate::{Defect, Res, Rt, tag};
+
+/// A growable array of `u32` in one heap block.
+#[derive(Clone, Copy, Debug)]
+pub struct Stack {
+    block: u32,
+    pub len: u32,
+    cap: u32,
+}
+
+impl Stack {
+    /// A stack with no storage, for paths that never push (leaf comparisons).
+    pub const NONE: Stack = Stack {
+        block: 0,
+        len: 0,
+        cap: 0,
+    };
+}
+
+impl Rt {
+    pub fn stack(&mut self) -> Res<Stack> {
+        let block = self.heap.alloc(8 + 4 * 30)?;
+        Ok(Stack {
+            block,
+            len: 0,
+            cap: 30,
+        })
+    }
+
+    pub fn stack_free(&mut self, s: Stack) {
+        self.heap.free(s.block);
+    }
+
+    pub fn push(&mut self, s: &mut Stack, v: u32) -> Res<()> {
+        if s.len == s.cap {
+            let cap = s.cap.checked_mul(2).ok_or(Defect::HEAP_EXHAUSTED)?;
+            let size = cap.checked_mul(4).and_then(|b| b.checked_add(8));
+            let block = self.heap.alloc(size.ok_or(Defect::HEAP_EXHAUSTED)?)?;
+            self.heap.mem.copy(block + 8, s.block + 8, 4 * s.len);
+            self.heap.free(s.block);
+            *s = Stack {
+                block,
+                len: s.len,
+                cap,
+            };
+        }
+        self.heap.mem.set_u32(s.block + 8 + 4 * s.len, v);
+        s.len += 1;
+        Ok(())
+    }
+
+    pub fn pop(&mut self, s: &mut Stack) -> Option<u32> {
+        if s.len == 0 {
+            return None;
+        }
+        s.len -= 1;
+        Some(self.heap.mem.u32(s.block + 8 + 4 * s.len))
+    }
+
+    pub fn stack_set(&mut self, s: &Stack, i: u32, v: u32) {
+        self.heap.mem.set_u32(s.block + 8 + 4 * i, v);
+    }
+
+    /// Element `i` from the bottom.
+    pub fn stack_at(&self, s: &Stack, i: u32) -> u32 {
+        self.heap.mem.u32(s.block + 8 + 4 * i)
+    }
+}
+
+/// A `String` under construction: the object grows by copying until `finish`.
+pub struct StrBuf {
+    obj: u32,
+    len: u32,
+    cap: u32,
+}
+
+impl Rt {
+    pub fn strbuf(&mut self) -> Res<StrBuf> {
+        let obj = self.new_object(tag::STRING, 64)?;
+        Ok(StrBuf {
+            obj,
+            len: 0,
+            cap: 64 - 16,
+        })
+    }
+
+    fn reserve(&mut self, b: &mut StrBuf, more: u32) -> Res<()> {
+        let need = b.len.checked_add(more).ok_or(Defect::HEAP_EXHAUSTED)?;
+        if need <= b.cap {
+            return Ok(());
+        }
+        let cap = need.max(b.cap.saturating_mul(2));
+        let obj = self.new_object(
+            tag::STRING,
+            cap.checked_add(16).ok_or(Defect::HEAP_EXHAUSTED)?,
+        )?;
+        self.heap.mem.copy(obj + 16, b.obj + 16, b.len);
+        self.heap.free(b.obj);
+        b.obj = obj;
+        b.cap = self.heap.block_size(obj) - 16;
+        Ok(())
+    }
+
+    pub fn put(&mut self, b: &mut StrBuf, bytes: &[u8]) -> Res<()> {
+        self.reserve(b, bytes.len() as u32)?;
+        self.heap
+            .mem
+            .bytes_mut(b.obj + 16 + b.len, bytes.len() as u32)
+            .copy_from_slice(bytes);
+        b.len += bytes.len() as u32;
+        Ok(())
+    }
+
+    /// Append `len` bytes of linear memory at `addr`.
+    pub fn put_mem(&mut self, b: &mut StrBuf, addr: u32, len: u32) -> Res<()> {
+        self.reserve(b, len)?;
+        self.heap.mem.copy(b.obj + 16 + b.len, addr, len);
+        b.len += len;
+        Ok(())
+    }
+
+    pub fn finish(&mut self, b: StrBuf) -> u32 {
+        self.heap.mem.set_u32(b.obj + 8, b.len);
+        b.obj
+    }
+
+    pub fn strbuf_free(&mut self, b: StrBuf) {
+        self.heap.free(b.obj);
+    }
+}
