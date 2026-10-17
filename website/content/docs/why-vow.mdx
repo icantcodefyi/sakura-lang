@@ -12,7 +12,7 @@ The usual answer is code review, but reviewing diffs line by line does not scale
 Four properties of mainstream languages make agent-written code risky to accept:
 
 - **Exceptions.** Any call can throw, and nothing in the signature says what. A reviewer cannot tell which failures are handled without reading every callee.
-- **Null.** A value that may be absent looks the same as one that is always present. The type checker either ignores it or the codebase opts out of checking.
+- **Null.** A value that may be absent looks the same as one that is always present.
 - **Ambient authority.** Any function in any dependency can open a socket, read an environment variable, or write a file. Supply-chain attacks rely on this.
 - **Hidden IO.** A function named `format_price` might call a currency API. Nothing stops it, and nothing in the signature reveals it.
 
@@ -22,50 +22,80 @@ Agents make these problems sharper, not different. An agent will happily add a n
 
 Make the signature the contract, and make the compiler enforce it.
 
-In Vow, a function signature states what the function takes, what it returns, every effect it may perform, every error it may raise, and the guarantees it makes about its result:
+In Vow, a function signature states what the function takes, what it returns, every effect it may perform, every error it may fail with, and the guarantees it makes about its result:
 
 ```vow
-fn signup(email: Email, pw: Password) -> User ! {Db, Clock, Random, Fail<SignupError>}
+fn signup(email: Email) -> User ! {Users, Clock, Random, Fail<SignupError>}
   ensures result.email == email
 ```
 
-The body cannot perform an effect that is not listed, cannot fail in a way that is not listed, and cannot return a value that breaks the `ensures` clause without the compiler or the test runner reporting it.
+The body cannot perform an effect that is not listed or fail with a tag that is not listed; both are compile errors. The `ensures` clause is checked at runtime on every normal return, in every build mode.
 
-This changes what review means. A human reviews the signatures, which are short and change rarely. The compiler checks the bodies, which are long and change constantly. When an agent's change needs a new capability, the signature has to change, and a signature change is exactly the thing a reviewer looks for.
+This changes what review means. A human reviews the signatures, which are short and change rarely. The compiler checks the bodies, which are long and change constantly. When an agent's change needs a new effect, the signature has to change, and a signature change is exactly the thing a reviewer looks for. Compiler fixes that would widen authority or weaken a contract are never applied automatically.
 
 ## Why not an existing language
 
-Every language below is excellent at what it was designed for. None was designed for this workflow, and each shapes Vow in some way.
+Every language below is excellent at what it was designed for. None was designed for this workflow, and each shapes Vow in some way. The [prior art](/docs/prior-art) page lists, language by language, what Vow takes and what it rejects.
 
-**TypeScript.** Huge ecosystem, fast feedback, and the language most agents write best today. But exceptions are untyped, any function can perform any IO, `any` and type assertions are one keystroke away, and there are several ways to do almost everything (classes or closures, promises or callbacks, `null` or `undefined`). Each choice multiplies what a reviewer must check.
+**TypeScript.** Huge ecosystem, fast feedback, and the language most agents write best today. But exceptions are untyped, any function can perform any IO, `any` and type assertions are one keystroke away, and there are several ways to do almost everything.
 
 **Python.** The most readable mainstream language and a strong fit for scripts and data work. Types are optional and unchecked at runtime, exceptions and IO are invisible in signatures, and dependencies run with full authority at import time.
 
-**Rust.** Proves that a language can be fast and memory safe without a garbage collector, and that a strict compiler with excellent diagnostics changes how people work. The cost is lifetimes and the borrow checker. Agents spend a large share of their effort satisfying ownership rules that are unrelated to the task, and IO and panics are still not tracked in signatures.
+**Rust.** Proves that a language can be fast and memory safe without a garbage collector, and that a strict compiler with good diagnostics changes how people work. The cost is lifetimes and the borrow checker. Agents spend effort satisfying ownership rules unrelated to the task, and IO and panics are not tracked in signatures.
 
-**Go.** Small, consistent, and quick to compile, with errors as values. That simplicity is a direct inspiration. But errors are not typed by kind, nil remains, effects are untracked, and any package can reach the network.
+**Go.** Small, consistent, and quick to compile, with one toolchain and a formatter with no options. That simplicity is a direct inspiration. But errors can be discarded, nil remains, effects are untracked, and any package can reach the network.
 
-**Effect-TS.** Brings typed effects and typed errors to TypeScript, and shows that the model works for real services. It is a library on top of a language that cannot enforce it: plain TypeScript code can still throw, still perform IO directly, and still escape the effect system. Vow takes the model and makes it the only way to write code.
+**Effect-TS.** Brings typed errors and typed requirements to TypeScript, and shows that the model works for real services. It is a library on top of a language that cannot enforce it: plain TypeScript can still throw and still perform IO directly. Vow's `! {Users, Fail<E>}` is that model with no wrapper type, and it is the only way to write code.
 
-**Koka, Unison, and Roc.** Vow borrows directly from all three. Koka pioneered row-typed algebraic effects and Perceus reference counting with in-place reuse. Unison showed that content-addressed code removes whole classes of merge and rename problems. Roc showed that a functional language can aim at application performance with a small, friendly surface. Vow's contribution is to combine these ideas with contracts, capabilities, taint tracking, and machine-readable tooling, and to aim the whole design at agents writing code for humans to review.
+**Koka, Unison, and Roc.** Koka contributed row-typed effects, effect-polymorphic higher-order functions, and Perceus reference counting. Unison contributed domain-named abilities with plain handlers and a compiler that speaks MCP; Vow keeps ordinary files and Git rather than a codebase database. Roc contributed platform-owned authority and in-place updates behind a value interface. Vow combines these with contracts, capabilities, `Untrusted`/`Secret` types, and machine-readable tooling, aimed at agents writing code for humans to review.
 
 ## Design principles
 
-### One way to do things
+These follow [design §1](https://github.com/icantcodefyi/vow/blob/master/docs/design.md).
 
-The grammar is small enough to fit in a single `llms.txt`. There is one way to bind a value (`let`), one way to branch on data (`match`), one way to handle errors (the `Fail` effect), and one formatter with no options. Agents produce more consistent code when there is less to choose from, and reviewers read faster when every file looks alike.
+### The signature is the contract
 
-### Everything visible in the signature
+Parameter types with refinements, result type, effect row, error union, and `requires`/`ensures`: a reader can review a function from its signature alone. Every top-level function has a full signature; only local bindings are inferred.
 
-Effects, errors, capabilities, refinements, and contracts are all part of the signature. If it matters for review, it is written where reviewers look. Nothing is inferred across a public boundary.
+### One way
 
-### Machine-readable everything
+One function syntax, one call syntax, one recovery construct (`try`/`catch`), one handler syntax (`with`), one absence type (`Option`), one failure protocol (`Fail<E>`), one formatter. No operator overloading, implicit conversions, macros, user-defined operators, or inheritance.
 
-Diagnostics are JSON with spans, expected and found types, and ranked fixes. Typed holes report what fits. The compiler runs as an MCP server. Documentation is served as Markdown. An agent never has to scrape human-formatted output.
+### Omission has one meaning
 
-### Safe by default, explicit escape hatches
+A function type without `!` is pure. Missing cases, missing effects, and missing error handling are compile errors, never defaults.
 
-Data from outside is `Untrusted` until validated. Secrets cannot be printed. Dependencies have no authority until granted. When you need to override a rule, the escape hatch is a named, greppable call such as `.trust_because("reason")`, and it shows up in review.
+### Diagnostics are an API
+
+Every diagnostic has a stable code, byte spans, structured expected and actual values, causal links, and fixes that declare their impact. See [Diagnostics](/docs/agents/diagnostics).
+
+### Honest guarantees
+
+The compiler never prints "verified" for a program that merely compiled. Every claim about a program has exactly one status:
+
+| Status | Meaning | Established by |
+| --- | --- | --- |
+| `proved` | Holds on all executions under the stated assumptions. | The type and effect checker; later, SMT-discharged contracts. |
+| `runtime_checked` | Violations are detected at the boundary and become a defect. | Contract lowering, checked arithmetic, checked refinements. |
+| `tested` | Held on the executed inputs. | `vow test`. |
+| `trusted` | Assumed. | FFI, host handlers, `@trust` sites, the toolchain itself. |
+
+The type system proves that every performed effect has a handler, every `Fail` tag is caught or declared, every `match` is exhaustive, no value is null, no index is unchecked, a `Secret` is never shown, and a capability cannot be forged. It does not prove business correctness, termination, or that the specification is the right one.
+
+### Compiler owns memory
+
+No lifetimes, borrow annotations, or `Rc` in user code. The price is a restricted data model (no aliasable mutation, no cycles) and explicit resource scopes.
+
+## Non-goals for v0
+
+- Multi-shot or non-tail-resumptive handlers, `resume`, first-class continuations.
+- An `Async` effect or a sync/async split in source.
+- User-defined traits or interfaces. A fixed set of derived constraints (`Eq`, `Ord`, `Hash`, `Show`, `Schema`) covers v0.
+- Higher-rank types, GADTs, type-level computation.
+- Information-flow control. `Secret<T>` prevents accidental disclosure, not deliberate leakage.
+- Automatic termination proofs.
+- Durable workflows, a distributed runtime, or a UI engine. These are later packages.
+- A tracing GC on native or WASM.
 
 ## Next
 
