@@ -957,3 +957,49 @@ pub fn main() -> Unit ! {Console} {
         r.stderr
     );
 }
+
+/// `clock_virtual_sleep` (behind `Clock.virtual`) parks a sleeping fiber until nothing else
+/// can run, then wakes sleepers in virtual-time order: a timer loses to work that takes less
+/// virtual time whatever the start order, and `Task.all` children finish by their sleeps.
+#[test]
+fn virtual_sleeps_wake_in_virtual_time_order() {
+    let src = r#"import std/task.{Task, Timeout, timeout}
+@external(js, "sakura_runtime", "clock_virtual_sleep")
+fn clock_virtual_sleep(now: Int, ms: Int) -> Int
+fn virt() -> Handler<Clock> {
+  handler Clock {
+    var elapsed = 0
+    fn now() { Instant.from_unix_millis(elapsed) }
+    fn monotonic() { Duration.millis(elapsed) }
+    fn sleep(d) { elapsed = clock_virtual_sleep(elapsed, d.to_millis()) }
+  }
+}
+fn nap(ms: Int, name: String) -> Unit ! {Clock, Console} {
+  Clock.sleep(Duration.millis(ms))
+  Console.print("{name} at {Clock.monotonic().to_millis()}")
+}
+pub fn main() -> Unit ! {Console} {
+  for seed in 0..4 {
+    with virt(), Task.deterministic(seed) {
+      let fast = try { timeout(Duration.seconds(5), fn() { nap(200, "work") }) }
+      let slow = try { timeout(Duration.millis(100), fn() { nap(1_000, "never") }) }
+      Console.print("{fast.is_ok()} {slow.is_err()}")
+    }
+  }
+  with virt(), Task.deterministic(7) {
+    let done = Task.all([fn() { nap(300, "c") }, fn() { nap(100, "a") }, fn() { nap(200, "b") }])
+    Console.print("{List.len(done)}")
+  }
+}
+"#;
+    let r = common::run("virtual_sleep", src).unwrap();
+    let one = "work at 200\ntrue true\n";
+    let mut want = one.repeat(4);
+    want.push_str("a at 100\nb at 200\nc at 300\n3\n");
+    assert_eq!(
+        (r.stdout.as_str(), r.code),
+        (want.as_str(), 0),
+        "{}",
+        r.stderr
+    );
+}

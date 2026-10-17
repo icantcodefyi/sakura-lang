@@ -1881,6 +1881,40 @@ export function clock_sleep_ms(ms, _ctx, k) {
   return suspend(done, k, () => clearTimeout(timer));
 }
 
+// Virtual time (`Clock.virtual`, design §5.8): a sleeping task waits until no other work is
+// pending (one macrotask, after every resumed task's microtasks), then the earliest wake-up
+// runs, so concurrent fibers see virtual time in order and a 5 s timer loses to work that takes
+// none. ponytail: one queue for every virtual clock; tests run one at a time.
+const sleepers = [];
+let sleeperSeq = 0;
+let ticking = false;
+function virtualTick() {
+  ticking = false;
+  if (sleepers.length === 0) return;
+  sleepers.sort((a, b) => a.at - b.at || a.seq - b.seq);
+  const s = sleepers.shift();
+  s.resolve(s.at);
+  scheduleVirtualTick();
+}
+function scheduleVirtualTick() {
+  if (ticking || sleepers.length === 0) return;
+  ticking = true;
+  (globalThis.setImmediate ?? setTimeout)(virtualTick);
+}
+/** Suspends until virtual time `now + max(ms, 0)` comes up, then returns it. */
+export function clock_virtual_sleep(now, ms, _ctx, k) {
+  const s = { at: add(now, Math.max(0, ms)), seq: sleeperSeq++, resolve: null };
+  const woken = new Promise((resolve) => {
+    s.resolve = resolve;
+  });
+  sleepers.push(s);
+  scheduleVirtualTick();
+  return suspend(woken, k, () => {
+    const i = sleepers.indexOf(s);
+    if (i >= 0) sleepers.splice(i, 1);
+  });
+}
+
 const crypto = globalThis.crypto;
 /** Uniform in [lo, hi], without modulo bias. */
 export function random_int(lo, hi) {

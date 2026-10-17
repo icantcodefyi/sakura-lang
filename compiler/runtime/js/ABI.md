@@ -184,7 +184,10 @@ and a scope cancel the other children on the first failure or defect and propaga
 propagates the first outcome and cancels the rest; `scope` joins every child before returning
 (a child's failure surfaces at its `join`, or at scope end if never joined) and cancels them if
 its body fails. `Task.deterministic` starts children in a seeded order and `yield_now` does not
-suspend; `timeout` is std code over `race`.
+suspend; `timeout` is std code over `race`. `clock_virtual_sleep(now, ms, $ctx, $k)` (behind
+`Clock.virtual`) suspends until no other task can run and then wakes sleepers in order of
+`now + ms` (ties first come, first served), returning that time, so under virtual time a
+`timeout` loses to work that needs less virtual time whatever the start order.
 
 ## 7. Values (design §13.4)
 

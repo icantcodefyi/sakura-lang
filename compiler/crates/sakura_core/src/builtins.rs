@@ -60,6 +60,7 @@ table! {
     // Host primitives behind the std effects (design §10.2) and deterministic generators
     Direct console_host/0, Direct console_print/1, Direct console_read_line/0,
     Direct clock_now_ms/0, Direct clock_monotonic_ms/0, Cps clock_sleep_ms/1,
+    Cps clock_virtual_sleep/2,
     Direct random_int/2, Direct random_float/0, Direct random_bytes/1, Direct random_uuid/0,
     Direct env_get/1, Direct log_write/1,
     Direct clock_host/0, Direct random_host/0, Direct log_stderr/0, Direct log_json/0,
