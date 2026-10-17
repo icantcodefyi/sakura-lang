@@ -1,0 +1,107 @@
+// Request routing (design §10.4, M3). A router is data: routes are matched in the order they
+// were added, and `handle` is an ordinary function, so route handlers are tested by calling
+// them or the router directly, without a server.
+// needs M3: effect-row parameters on types, after which `Router<F>` is `Router<e>`.
+
+import std/request.{Delete, Get, Method, Patch, Post, Put, Request}
+import std/response.{Response, Status}
+import std/url.{Url}
+
+/// `F` is `fn(Request) -> Response ! e`, with `e` what the route handlers perform (see
+/// `std/tool` for why it is a type parameter). Inference names it.
+pub opaque type Router<F> = { routes: List<Route<F>> }
+
+type Route<F> = { method: Method, pattern: List<String>, run: F }
+
+pub fn new<F>() -> Router<F> { Router { routes: [] } }
+
+/// Adds a route. A `pattern` segment `:name` matches any one segment and is available to the
+/// handler as `Request.param(req, "name")`.
+pub fn route<e>(
+  r: Router<fn(Request) -> Response ! e>,
+  method: Method,
+  pattern: String,
+  h: fn(Request) -> Response ! e,
+) -> Router<fn(Request) -> Response ! e> {
+  Router { routes: r.routes.push(Route { method, pattern: segments(pattern), run: h }) }
+}
+
+pub fn get<e>(r: Router<fn(Request) -> Response ! e>, pattern: String, h: fn(Request) -> Response ! e)
+  -> Router<fn(Request) -> Response ! e>
+{
+  route(r, Get, pattern, h)
+}
+
+pub fn post<e>(r: Router<fn(Request) -> Response ! e>, pattern: String, h: fn(Request) -> Response ! e)
+  -> Router<fn(Request) -> Response ! e>
+{
+  route(r, Post, pattern, h)
+}
+
+pub fn put<e>(r: Router<fn(Request) -> Response ! e>, pattern: String, h: fn(Request) -> Response ! e)
+  -> Router<fn(Request) -> Response ! e>
+{
+  route(r, Put, pattern, h)
+}
+
+pub fn delete<e>(r: Router<fn(Request) -> Response ! e>, pattern: String, h: fn(Request) -> Response ! e)
+  -> Router<fn(Request) -> Response ! e>
+{
+  route(r, Delete, pattern, h)
+}
+
+/// The response of the first route matching `req`'s method and path, with its path
+/// parameters set; 405 when only the method differs, 404 when no path matches.
+pub fn handle<e>(r: Router<fn(Request) -> Response ! e>, req: Request) -> Response ! e {
+  let path = segments(Url.path(req.url))
+  var path_matched = false
+  for rt in r.routes {
+    match bind(rt.pattern, path) {
+      Some(params) if rt.method == req.method => {
+        let h = rt.run
+        return h(Request { ..req, params })
+      },
+      Some(_) => { path_matched = true },
+      None => (),
+    }
+  }
+  if path_matched {
+    Response.status(405, "method not allowed")
+  } else {
+    Response.status(404, "not found")
+  }
+}
+
+fn segments(path: String) -> List<String> { List.filter(String.split(path, "/"), fn(s) { s != "" }) }
+
+/// The parameters if `path` matches `pattern`.
+fn bind(pattern: List<String>, path: List<String>) -> Option<List<(String, String)>> {
+  if List.len(pattern) != List.len(path) {
+    None
+  } else {
+    var params: List<(String, String)> = []
+    var ok = true
+    for pair in List.zip(pattern, path) {
+      if String.starts_with(pair.0, ":") {
+        params = params.push((String.slice(pair.0, 1, String.len(pair.0)), pair.1))
+      } else if pair.0 != pair.1 {
+        ok = false
+      }
+    }
+    if ok { Some(params) } else { None }
+  }
+}
+
+fn show_user(req: Request) -> Response ! {Console} {
+  Console.print("user {Request.param(req, "id").unwrap_or("?")}")
+  Response.status(200, "user")
+}
+
+test "routes match by method and path, with parameters" {
+  let r = new().get("/users/:id", show_user).post("/users", fn(_) { Response.status(201, "made") })
+  expect_eq(handle(r, Request.of(Get, Url.from("/users/7?x=1"))).status, Status.from(200))
+  expect_output(["user 7"])
+  expect_eq(handle(r, Request.post("/users", "")).status, Status.from(201))
+  expect_eq(handle(r, Request.of(Patch, Url.from("/users"))).status, Status.from(405))
+  expect_eq(handle(r, Request.of(Get, Url.from("/nope"))).status, Status.from(404))
+}
