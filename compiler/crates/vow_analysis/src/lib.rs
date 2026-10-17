@@ -103,37 +103,56 @@ pub struct Analysis;
 impl Analysis {
     /// Parse, resolve, type and effect check. Holes are allowed. No code generation.
     pub fn check(snapshot: &Snapshot) -> CheckResult {
-        let (program, mut diagnostics) = lower(snapshot);
-        let (typed, type_diags) = vow_types::check_program(&program);
-        let holes = typed
-            .holes
-            .iter()
-            .map(|h| HoleReport {
-                name: h.name.clone(),
-                span: Span::primary(
-                    program.module(h.module).file,
-                    h.range.start().into(),
-                    h.range.end().into(),
-                ),
-                expected_type: Rendered::text(&h.expected_render),
-                allowed_effects: Rendered::text(&h.allowed_effects),
-                locals: h
-                    .locals
-                    .iter()
-                    .map(|(n, t)| (n.clone(), Rendered::text(t)))
-                    .collect(),
-                candidates: h
-                    .candidates
-                    .iter()
-                    .map(|c| (c.expr.clone(), c.fit.as_str().to_owned()))
-                    .collect(),
-                contracts_in_scope: vec![],
-            })
-            .collect();
-        diagnostics.extend(program.diagnostics);
-        diagnostics.extend(type_diags);
-        CheckResult { diagnostics, holes }
+        analyze(snapshot).2
     }
+}
+
+/// Every frontend phase: HIR, typed program, and their diagnostics and holes.
+fn analyze(snapshot: &Snapshot) -> (vow_hir::Program, vow_types::TypedProgram, CheckResult) {
+    let (mut program, mut diagnostics) = lower(snapshot);
+    let (typed, type_diags) = vow_types::check_program(&program);
+    let holes = typed
+        .holes
+        .iter()
+        .map(|h| HoleReport {
+            name: h.name.clone(),
+            span: Span::primary(
+                program.module(h.module).file,
+                h.range.start().into(),
+                h.range.end().into(),
+            ),
+            expected_type: Rendered::text(&h.expected_render),
+            allowed_effects: Rendered::text(&h.allowed_effects),
+            locals: h
+                .locals
+                .iter()
+                .map(|(n, t)| (n.clone(), Rendered::text(t)))
+                .collect(),
+            candidates: h
+                .candidates
+                .iter()
+                .map(|c| (c.expr.clone(), c.fit.as_str().to_owned()))
+                .collect(),
+            contracts_in_scope: vec![],
+        })
+        .collect();
+    diagnostics.append(&mut program.diagnostics);
+    diagnostics.extend(type_diags);
+    (program, typed, CheckResult { diagnostics, holes })
+}
+
+/// Whether the user package has a `pub fn main`.
+fn has_entry(program: &vow_hir::Program) -> bool {
+    program
+        .packages
+        .iter()
+        .filter(|p| p.name == "main")
+        .flat_map(|p| &p.modules)
+        .filter_map(|&m| program.lookup(m, "main"))
+        .any(|d| {
+            let def = program.def(d);
+            def.is_pub && matches!(def.kind, vow_hir::DefKind::Fn(_))
+        })
 }
 
 /// The result of [`Analysis::build_js`]: every diagnostic, and the emitted files if there were no
@@ -147,10 +166,20 @@ pub struct BuildResult {
 }
 
 impl Analysis {
-    /// Check, then generate JS. Holes are rejected with `V2050`.
-    pub fn build_js(snapshot: &Snapshot) -> BuildResult {
-        let check = Analysis::check(snapshot);
+    /// Check, then generate JS. Holes are rejected with `V2050`; with `need_entry` (for
+    /// `vow run`) a missing `pub fn main` is `V8001`.
+    pub fn build_js(snapshot: &Snapshot, need_entry: bool) -> BuildResult {
+        let (program, _typed, check) = analyze(snapshot);
         let mut diagnostics = check.diagnostics;
+        if need_entry
+            && !has_entry(&program)
+            && let Some(file) = snapshot.user_files().next()
+        {
+            diagnostics.push(
+                Diagnostic::error(codes::V8001, Phase::Package, "no `pub fn main` to run")
+                    .with_span(Span::primary(file, 0, 0)),
+            );
+        }
         for h in &check.holes {
             diagnostics.push(
                 Diagnostic::error(

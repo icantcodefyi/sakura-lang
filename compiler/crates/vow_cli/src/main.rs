@@ -100,7 +100,7 @@ fn main() -> ExitCode {
             target: _,
             out_dir,
             paths,
-        } => match build(json, &paths, &out_dir) {
+        } => match build(json, &paths, &out_dir, false) {
             Ok(_) => ExitCode::SUCCESS,
             Err(code) => code,
         },
@@ -248,9 +248,14 @@ fn report(json: bool, snapshot: &Snapshot, diags: &[Diagnostic], holes: &[HoleRe
 }
 
 /// Checks and emits JS into `out_dir`. On failure the diagnostics are already reported.
-fn build(json: bool, paths: &[PathBuf], out_dir: &Path) -> Result<PathBuf, ExitCode> {
+fn build(
+    json: bool,
+    paths: &[PathBuf],
+    out_dir: &Path,
+    need_entry: bool,
+) -> Result<PathBuf, ExitCode> {
     let snapshot = load(paths).map_err(usage_error)?;
-    let result = Analysis::build_js(&snapshot);
+    let result = Analysis::build_js(&snapshot, need_entry);
     let failed = result.diagnostics.iter().any(Diagnostic::is_error);
     if json || !result.diagnostics.is_empty() {
         report(json, &snapshot, &result.diagnostics, &[]);
@@ -279,20 +284,11 @@ fn node() -> std::process::Command {
 
 fn run(path: Option<PathBuf>, out_dir: &Path, args: &[String]) -> ExitCode {
     let paths: Vec<PathBuf> = path.into_iter().collect();
-    let dir = match build(false, &paths, out_dir) {
+    let dir = match build(false, &paths, out_dir, true) {
         Ok(d) => d,
         Err(code) => return code,
     };
     let main = dir.join("__main__.js");
-    if !main.exists() {
-        let msg = Diagnostic::error(
-            codes::V8001,
-            vow_diagnostics::Phase::Package,
-            "no `pub fn main` to run",
-        );
-        eprint!("{}", render_human(&[msg], &[]));
-        return ExitCode::from(EXIT_ERRORS);
-    }
     match node().arg(&main).args(args).status() {
         Ok(status) => ExitCode::from(status.code().map_or(EXIT_DEFECT, |c| c as u8)),
         Err(e) => usage_error(format!("cannot start node: {e}")),
@@ -300,7 +296,7 @@ fn run(path: Option<PathBuf>, out_dir: &Path, args: &[String]) -> ExitCode {
 }
 
 fn test(json: bool, seed: u64, filter: &str, out_dir: &Path, paths: &[PathBuf]) -> ExitCode {
-    let dir = match build(json, paths, out_dir) {
+    let dir = match build(json, paths, out_dir, false) {
         Ok(d) => d,
         Err(code) => return code,
     };
