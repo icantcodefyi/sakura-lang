@@ -1,5 +1,6 @@
 // milestone: M1
 // expect: V0013
+// known-bug: V2001 cascade from the invalid assignment target (REQUESTS.md, E to C)
 fn first_to_zero() -> List<Int> {
   var xs = [1, 2]
   xs[0] = Some(0)

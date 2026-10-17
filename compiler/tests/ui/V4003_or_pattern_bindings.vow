@@ -1,5 +1,6 @@
 // milestone: M1
 // expect: V4003
+// known-bug: V4003 is reported twice (REQUESTS.md, E to B and C)
 fn pick(p: (Int, Int)) -> Int {
   match p {
     (x, 0) | (0, _) => 1,

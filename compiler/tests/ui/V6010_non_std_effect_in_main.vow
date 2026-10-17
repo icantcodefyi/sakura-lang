@@ -1,5 +1,6 @@
 // milestone: M2
 // expect: V6010
+// known-bug: not reported yet (REQUESTS.md, E to B and C)
 effect Db {
   fn count() -> Int
 }

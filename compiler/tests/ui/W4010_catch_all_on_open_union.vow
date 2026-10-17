@@ -1,5 +1,6 @@
 // milestone: M1
 // expect: W4010
+// known-bug: not reported yet (REQUESTS.md, E to C)
 fn or_default<T, E>(body: fn() -> T ! {Fail<E>}, default: T) -> T {
   try { body() } catch { _ => default }
 }

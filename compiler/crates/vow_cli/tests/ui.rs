@@ -15,14 +15,18 @@ fn line_col(text: &str, byte: usize) -> String {
     format!("{line}:{col}")
 }
 
-/// `// command: run`: the codes in `vow run`'s terminal diagnostics (`error[V8001]: …`).
-fn run_codes(path: &Path) -> Result<Vec<String>, String> {
+/// `// command: run|build`: the codes in that command's terminal diagnostics
+/// (`error[V8001]: …`).
+fn command_codes(path: &Path, command: &str) -> Result<Vec<String>, String> {
     let dir = path.parent().unwrap();
     let name = path.file_name().unwrap().to_str().unwrap();
     let out_dir = std::env::temp_dir().join(format!("vow-ui-{}-{name}", std::process::id()));
-    let out = vow(&["run", name, "--out-dir", out_dir.to_str().unwrap()], dir);
+    let out = vow(
+        &[command, name, "--out-dir", out_dir.to_str().unwrap()],
+        dir,
+    );
     if out.timed_out {
-        return Err("`vow run` timed out".into());
+        return Err(format!("`vow {command}` timed out"));
     }
     let mut codes = Vec::new();
     for line in out.stderr.lines() {
@@ -44,16 +48,24 @@ fn run(path: &Path) -> Result<(), String> {
         .get("expect")
         .map_or(vec![], |e| e.split_whitespace().collect());
     expected.sort();
-    if d.get("command").map(String::as_str) == Some("run") {
-        let mut actual = run_codes(path)?;
-        actual.sort();
-        return if actual == expected {
-            Ok(())
-        } else {
-            Err(format!(
-                "`vow run`: expected codes {expected:?}, got {actual:?}"
-            ))
-        };
+    match d.get("command").map(String::as_str) {
+        None | Some("check") => {}
+        Some(command @ ("run" | "build")) => {
+            let mut actual = command_codes(path, command)?;
+            actual.sort();
+            return if actual == expected {
+                Ok(())
+            } else {
+                Err(format!(
+                    "`vow {command}`: expected codes {expected:?}, got {actual:?}"
+                ))
+            };
+        }
+        Some(other) => {
+            return Err(format!(
+                "the ui harness does not support `command: {other}`"
+            ));
+        }
     }
     let (recs, stdout) = check_never_crashes(path)?;
     let mut actual: Vec<&str> = recs

@@ -1,5 +1,6 @@
 // milestone: M1
 // expect: V2010
+// known-bug: `var xs = []` with no later use is not reported (REQUESTS.md, E to C)
 fn nothing() -> Unit {
   var xs = []
 }
