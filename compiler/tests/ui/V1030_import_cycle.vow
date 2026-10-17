@@ -1,6 +1,0 @@
-// milestone: M1
-// needs: module graph; a single-file program is module `main` of package `main`, so a self-import is the smallest cycle
-// expect: V1030
-import main/main
-
-fn one() -> Int { 1 }

@@ -1,0 +1,3 @@
+import main/a
+
+pub fn two() -> Int { a.one() + 1 }

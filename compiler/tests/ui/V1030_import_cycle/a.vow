@@ -1,0 +1,6 @@
+// milestone: M1
+// needs: directory fixtures in tests/ui (a cycle needs two modules)
+// expect: V1030
+import main/b
+
+pub fn one() -> Int { b.two() - 1 }
