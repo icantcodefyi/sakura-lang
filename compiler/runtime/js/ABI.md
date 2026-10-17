@@ -263,6 +263,14 @@ ordinary error. Unset means no limits.
 stay inside the directory after symlinks are resolved (`escapes the directory` otherwise).
 `Untrusted<T>` is `$rt.Untrusted { v }`, shown as `Untrusted.of(…)`.
 
+**Open files.** `file_open(dir, path, mode)` (same path rules; `Read` needs `fs.read`, `Write`
+and `Append` `fs.write`) and `file_buffer(initial)` return an `Int` id into one open-file table.
+`file_closing(id, body, $ctx, $k)` registers a finalizer (section 4) that closes the file on
+return, `fail`, defect or cancellation. `file_read(id, max)` reads from the current position
+(empty at the end), `file_write(id, data)` appends; both return `Err("the file is closed")`
+after closing. Host writes are immediate; `file_contents(id)` takes a buffer's bytes, open or
+closed, and releases it.
+
 **Http.** `http_send(req, $ctx, $k)` suspends on `fetch`: `Ok(Response)` for every status,
 `Err(reason)` when no response arrives; `req.bearer` is sent only as `Authorization: Bearer …`;
 cancelling the task aborts the request.

@@ -361,3 +361,45 @@ test("a race cancels the loser, whose finalizer runs before the race returns", a
   assert.deepEqual(log, ["loser finalized", "won w"]);
   assert.ok(Date.now() - t0 < 1_000);
 });
+
+test("with_file host files: chunked reads, appends, closed on fail, no escapes", async () => {
+  const fs = await import("node:fs");
+  const os = await import("node:os");
+  const path = await import("node:path");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sakura-file-"));
+  const cwd = process.cwd();
+  process.chdir(dir);
+  try {
+    const root = rt.fs_root();
+    const [READ, WRITE, APPEND] = [{ tag: 0 }, { tag: 1 }, { tag: 2 }];
+    const bytes = (s) => rt.string_to_bytes(s);
+    const id = rt.file_open(root, "log.txt", WRITE).fields[0];
+    // try { file_closing(id) { write "ab"; fail "boom" } }
+    const o = rt.runTask(($ctx, $k) => {
+      const c = rt.catcher($ctx, (e) => ret($k, rt.Err(e)));
+      return rt.file_closing(id, (c1, k1) => (rt.file_write(id, bytes("ab")), rt.fail(c1, "boom")), c, $k);
+    });
+    assert.deepEqual(o, ok(rt.Err("boom")));
+    assert.deepEqual(rt.file_write(id, bytes("x")), rt.Err("the file is closed"));
+    const app = rt.file_open(root, "log.txt", APPEND).fields[0];
+    rt.runTask(($ctx, $k) => rt.file_closing(app, (c, k) => ret(k, rt.file_write(app, bytes("c"))), $ctx, $k));
+    const rd = rt.file_open(root, "log.txt", READ).fields[0];
+    assert.deepEqual(rt.file_read(rd, 2), rt.Ok(bytes("ab")));
+    assert.deepEqual(rt.file_read(rd, 10), rt.Ok(bytes("c")));
+    assert.deepEqual(rt.file_read(rd, 10), rt.Ok(bytes("")));
+    assert.equal(rt.file_open(root, "../out.txt", WRITE).tag, 1);
+    assert.equal(rt.file_open(root, "missing.txt", READ).fields[0], "not found");
+  } finally {
+    process.chdir(cwd);
+    fs.rmSync(dir, { recursive: true });
+  }
+});
+
+test("with_file buffers keep their contents after closing", () => {
+  const id = rt.file_buffer(rt.string_to_bytes("ab"));
+  assert.deepEqual(rt.file_read(id, 1), rt.Ok(rt.string_to_bytes("a")));
+  for (let i = 0; i < 100; i++) rt.file_write(id, rt.string_to_bytes("x"));
+  rt.runTask(($ctx, $k) => rt.file_closing(id, (c, k) => ret(k, undefined), $ctx, $k));
+  assert.deepEqual(rt.file_read(id, 1), rt.Err("the file is closed"));
+  assert.equal(rt.file_contents(id).length, 102);
+});

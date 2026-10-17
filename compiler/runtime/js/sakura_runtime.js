@@ -2390,6 +2390,97 @@ export function fs_exists(d, rel) {
   return r.err === undefined;
 }
 
+// Open files behind `Fs.with_file` (std/fs): ids index this table. A host file is
+// `{ fd, pos }`, an in-memory one `{ buf, len, pos }`; `closed` stops reads and writes, and a
+// closed buffer stays until `file_contents` takes it.
+const files = new Map();
+let nextFile = 1;
+
+function addFile(f) {
+  const id = nextFile++;
+  files.set(id, { ...f, pos: 0, closed: false });
+  return id;
+}
+
+/** `mode` is `std::fs::Mode`: `Read | Write | Append` (tags 0, 1, 2). */
+export function file_open(d, rel, mode) {
+  return fsResult(d, rel, mode.tag !== 0, (p) => addFile({ fd: nodeFs().openSync(p, "rwa"[mode.tag]) }));
+}
+export function file_buffer(initial) {
+  return addFile({ buf: initial.slice(), len: initial.length });
+}
+
+/** Runs `body($ctx, $k)` and closes file `id` on return, fail, defect or cancellation. */
+export function file_closing(id, body, ctx, k) {
+  return finalize(
+    ctx,
+    () => {
+      const f = files.get(id);
+      if (f === undefined || f.closed) return;
+      f.closed = true;
+      if (f.fd !== undefined) {
+        files.delete(id);
+        nodeFs().closeSync(f.fd);
+      }
+    },
+    body,
+    k,
+  );
+}
+
+function openFile(id) {
+  const f = files.get(id);
+  return f === undefined || f.closed ? null : f;
+}
+
+export function file_read(id, max) {
+  const f = openFile(id);
+  if (f === null) return Err("the file is closed");
+  if (f.fd === undefined) {
+    const out = f.buf.slice(f.pos, Math.min(f.len, f.pos + max));
+    f.pos += out.length;
+    return Ok(out);
+  }
+  try {
+    const out = new Uint8Array(max);
+    const n = nodeFs().readSync(f.fd, out, 0, max, f.pos);
+    f.pos += n;
+    return Ok(out.slice(0, n));
+  } catch (e) {
+    return Err(hostMessage(e));
+  }
+}
+
+/** Appends `data` at the end of the file. */
+export function file_write(id, data) {
+  const f = openFile(id);
+  if (f === null) return Err("the file is closed");
+  if (f.fd !== undefined) {
+    try {
+      nodeFs().writeSync(f.fd, data);
+      return Ok(undefined);
+    } catch (e) {
+      return Err(hostMessage(e));
+    }
+  }
+  if (f.len + data.length > f.buf.length) {
+    const grown = new Uint8Array(Math.max(f.len + data.length, f.buf.length * 2));
+    grown.set(f.buf.subarray(0, f.len));
+    f.buf = grown;
+  }
+  f.buf.set(data, f.len);
+  f.len += data.length;
+  return Ok(undefined);
+}
+
+/** The whole contents of buffer `id`, open or closed; the buffer is then released. */
+export function file_contents(id) {
+  const f = files.get(id);
+  if (f === undefined || f.buf === undefined) throw internal(`file ${id} is not a buffer`);
+  files.delete(id);
+  return f.buf.slice(0, f.len);
+}
+
 // ---------------------------------------------------------------------------------------------
 // Cli (design §10.5, §17.38)
 
