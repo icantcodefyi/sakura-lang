@@ -1,0 +1,4 @@
+fn f() -> Unit {
+  let resume = 9223372036854775808 + 0x + 12ab
+  let s = "bad \q escape \u{110000}" # & é
+}

@@ -1,0 +1,66 @@
+fn exprs(a: Bool, b: Bool, xs: List<Int>, u: User) -> Unit {
+  let p = a || b && x == y + z * -w % 2 - 1 / v
+  let n = !a
+  let r = 0..List.len(xs)
+  let chain = foo.bar(1)[0]?.baz.0.1
+  let unit = ()
+  let grouped = (1 + 2) * 3
+  let pair = (1, "two")
+  let single = (1,)
+  let list = [1, 2, 3,]
+  let empty = []
+  let rec = User { ..u, email: e, name }
+  let qualified = users.User { id: 1 }
+  let nested = Retry.Policy { max_attempts: 3 }
+  let lam = fn(x: Int) -> Int { x + 1 }
+  let lam2 = fn(_, y) { y }
+  let call = f<Int>(x)
+  let named = Budget.limits(tokens: 20_000, usd: 0.50)
+  let t = Untrusted.of("x").trust(@trust("reviewed"))
+  let v = if a { 1 } else if b { 2 } else { 3 }
+  let blockv = { let x = 1; x + 1 }
+  let handled = with h1(), h2 { body() }
+  let caught = try { risky()? } catch { E1 => 0, E2 { .. } => 1 }
+  let uncaught = try { risky() }
+  var total = 0
+  total = total + 1
+  u.name = "new"
+  for x in xs { if x == 0 { continue }; if x > 10 { break } }
+  while total < 10 { total = total + 1 }
+  let _ = fail NotFound { id: "x" }
+  let _ = (match a { true => 1, false => 0 }) + 1
+  return
+}
+
+fn patterns(v: Value) -> Int {
+  match v {
+    _ => 0
+    x => 1
+    None | Some(0) => 2
+    Some(Some(x)) if x > 0 => 3
+    Shape.Circle(r) => 4
+    User { name: "bob", age, .. } => 5
+    Empty { .. } => 6
+    (a, (b, _)) => 7
+    [] => 8
+    [x] => 9
+    [first, second, ..] => 10
+    [head, ..rest] => 11
+    -5 => 12
+    1.5 => 13
+    "str" => 14
+    true => 15
+    () => 16
+  }
+}
+
+fn handler_forms() -> Handler<Db> {
+  handler Db {
+    var rows: Map<String, Json> = Map.empty()
+    var count = 0
+    fn exists(table, key) { Map.contains(rows, "{table}/{key}") }
+    fn insert(table, row) {
+      rows = Map.insert(rows, "{table}", row)
+    }
+  }
+}

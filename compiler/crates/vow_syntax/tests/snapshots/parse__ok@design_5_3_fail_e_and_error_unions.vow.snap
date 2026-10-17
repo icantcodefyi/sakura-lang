@@ -1,0 +1,62 @@
+---
+source: crates/vow_syntax/tests/parse.rs
+assertion_line: 28
+expression: out
+input_file: crates/vow_syntax/tests/data/ok/design_5_3_fail_e_and_error_unions.vow
+---
+SOURCE_FILE@0..144
+  ERROR_DECL@0..30
+    ERROR_KW@0..5 "error"
+    WHITESPACE@5..6 " "
+    TYPE_NAME@6..16 "EmailTaken"
+    FIELD_LIST@16..30
+      L_PAREN@16..17 "("
+      FIELD_DECL@17..29
+        IDENT@17..22 "email"
+        COLON@22..23 ":"
+        WHITESPACE@23..24 " "
+        NAMED_TYPE@24..29
+          PATH@24..29
+            TYPE_NAME@24..29 "Email"
+      R_PAREN@29..30 ")"
+  NEWLINE@30..31 "\n"
+  ERROR_DECL@31..43
+    ERROR_KW@31..36 "error"
+    WHITESPACE@36..37 " "
+    TYPE_NAME@37..43 "Banned"
+  NEWLINE@43..44 "\n"
+  ERROR_DECL@44..79
+    ERROR_KW@44..49 "error"
+    WHITESPACE@49..50 " "
+    TYPE_NAME@50..63 "DbUnavailable"
+    FIELD_LIST@63..79
+      L_PAREN@63..64 "("
+      FIELD_DECL@64..78
+        IDENT@64..70 "reason"
+        COLON@70..71 ":"
+        WHITESPACE@71..72 " "
+        NAMED_TYPE@72..78
+          PATH@72..78
+            TYPE_NAME@72..78 "String"
+      R_PAREN@78..79 ")"
+  NEWLINE@79..80 "\n"
+  TYPE_DECL@80..118
+    TYPE_KW@80..84 "type"
+    WHITESPACE@84..85 " "
+    TYPE_NAME@85..96 "SignupError"
+    WHITESPACE@96..97 " "
+    EQ@97..98 "="
+    WHITESPACE@98..99 " "
+    VARIANT_LIST@99..118
+      VARIANT@99..109
+        PATH@99..109
+          TYPE_NAME@99..109 "EmailTaken"
+      WHITESPACE@109..110 " "
+      PIPE@110..111 "|"
+      WHITESPACE@111..112 " "
+      VARIANT@112..118
+        PATH@112..118
+          TYPE_NAME@112..118 "Banned"
+  WHITESPACE@118..129 "           "
+  COMMENT@129..143 "// union alias"
+  NEWLINE@143..144 "\n"

@@ -1,0 +1,11 @@
+fn f() -> Bool {
+  let a = x < y < z
+  let b = 0..1..2
+  let c = List<Int>.empty()
+  let d = match x { _ => 1 }.len()
+  let e = 1 + if c { 1 } else { 2 }
+  let f = foo ?bar
+  let g = foo bar
+  f() = 1
+  let h = a +
+}

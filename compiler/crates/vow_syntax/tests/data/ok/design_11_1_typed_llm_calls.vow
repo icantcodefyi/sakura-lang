@@ -1,0 +1,3 @@
+@llm(system: "Extract only facts present in the text.")
+fn extract_ticket(text: Untrusted<String>) -> Ticket ! {Llm, Budget, Fail<LlmError | BudgetExceeded>}
+// body omitted: the compiler generates Llm.generate(Llm.request<Ticket>(system, Prompt.of([Untrusted(text)])))

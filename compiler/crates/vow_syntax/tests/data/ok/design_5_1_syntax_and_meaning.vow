@@ -1,0 +1,3 @@
+fn signup(email: Email, pw: Password) -> User ! {Db, Clock, Random, Fail<SignupError>}
+fn map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! e
+fn pure_len(s: String) -> Int                       // ! {} implied

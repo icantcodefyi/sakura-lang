@@ -1,0 +1,4 @@
+error EmailTaken(email: Email)
+error Banned
+error DbUnavailable(reason: String)
+type SignupError = EmailTaken | Banned           // union alias

@@ -1,0 +1,15 @@
+// line comment
+/* block /* nested */ comment */
+/// Doc comment for `f`.
+/// Second line.
+fn f() -> Unit {
+  let ints = [0, 1_000, 0xFF_ff, 0b1010]
+  let floats = [1.5, 2.0e-3, 6.02E+23]
+  let s = "tab\t quote\" brace\{ \} unicode \u{1F600} nul\0"
+  let multi = "line one
+line two {ints}"
+  let nested = "outer {"inner {s}"} done"
+  let q = sql"select * from t where a = {s} and b = {multi}"
+  let h = html"<p>{s}</p>"
+  ?todo
+}

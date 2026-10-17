@@ -1,0 +1,44 @@
+fn layout(x: Int, lo: Int, hi: Int) -> Int
+  ! {Console}
+  requires ordered: lo <= hi
+  ensures result >= lo
+{
+  let router = Router.new()
+    .post("/users", handle)
+    .get("/health", fn(_req) { ok() })
+  let total = 1
+    + 2
+    * 3
+  let longer = a &&
+    b ||
+    c
+  if x < lo {
+    lo
+  }
+  else {
+    x
+  }
+  let args = f(
+    1,
+    2,
+  )
+  match x {
+    0 => "zero",
+    1 => "one"
+    _ => "many",
+  }
+  foo
+  (bar)
+  foo
+  -1
+  let r = Point {
+    x: 1,
+    y: 2
+  }
+  x;;
+}
+
+fn allman() -> Int
+{
+  1
+}

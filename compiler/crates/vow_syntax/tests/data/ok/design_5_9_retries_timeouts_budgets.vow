@@ -1,0 +1,3 @@
+fn retry<T, e>(policy: Retry.Policy, action: fn() -> T ! e) -> T ! {Clock, Random | e}
+fn timeout<T, e>(limit: Duration, action: fn() -> T ! e) -> T ! {Clock, Task, Fail<Timeout> | e}
+fn with_budget<T, e>(b: Budget.Limits, action: fn() -> T ! {Budget | e}) -> T ! {Fail<BudgetExceeded> | e}

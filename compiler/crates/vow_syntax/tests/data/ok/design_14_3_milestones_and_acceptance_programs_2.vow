@@ -1,0 +1,6 @@
+effect Counter { fn next() -> Int }
+fn counter() -> Handler<Counter> { handler Counter { var n = 0; fn next() { n = n + 1; n } } }
+fn twice<e>(f: fn() -> Int ! e) -> Int ! e { f() + f() }
+fn answer() -> Int { with counter() { twice(fn() { Counter.next() }) } }
+test "handler state advances" { expect_eq(answer(), 3) }
+fn unfinished(x: Int) -> Int { ?result }

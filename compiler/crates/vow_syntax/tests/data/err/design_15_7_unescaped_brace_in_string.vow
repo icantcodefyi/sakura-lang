@@ -1,0 +1,34 @@
+import std/ai
+
+type Priority = Low | Normal | High
+type Ticket = {
+  title: String where String.len(it) > 0 && String.len(it) <= 120,
+  priority: Priority,
+  evidence: List<String>,
+}
+
+@llm(system: "Extract a support ticket. Use only facts present in the message.")
+fn extract_ticket(message: Untrusted<String>) -> Ticket
+  ! {Llm, Budget, Fail<LlmError | BudgetExceeded>}
+
+pub fn main() -> Unit ! {Console, Env, Http, Fail<LlmError | BudgetExceeded>} {
+  let key = Env.secret("ANTHROPIC_API_KEY").expect("set ANTHROPIC_API_KEY")
+  with Llm.anthropic(key, Model.of("claude-sonnet-5-5")), Budget.limits(tokens: 20_000, usd: 0.50) {
+    let t = extract_ticket(Untrusted.of("Login page 500s since 9am, blocking all customers"))
+    Console.print("{t.priority}: {t.title}")
+  }
+}
+
+test "scripted model output is validated against Ticket" {
+  with Llm.scripted([Json.encode(Ticket { title: "Login 500s", priority: High, evidence: ["since 9am"] })]),
+       Budget.unlimited() {
+    let t = extract_ticket(Untrusted.of("anything"))
+    expect_eq(t.priority, High)
+  }
+}
+
+test "invalid output is a typed failure, not a crash" {
+  with Llm.scripted(["{\"title\": \"\", \"priority\": \"Urgent\"}"]), Budget.unlimited() {
+    expect_fails_with(fn() { extract_ticket(Untrusted.of("x")) }, fn(e) { match e { InvalidOutput { .. } => true, _ => false } })
+  }
+}

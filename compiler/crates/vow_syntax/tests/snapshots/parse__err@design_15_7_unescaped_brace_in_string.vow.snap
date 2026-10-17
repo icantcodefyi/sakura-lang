@@ -1,0 +1,699 @@
+---
+source: crates/vow_syntax/tests/parse.rs
+assertion_line: 38
+expression: out
+input_file: crates/vow_syntax/tests/data/err/design_15_7_unescaped_brace_in_string.vow
+---
+V0002 1142..1348: unterminated string literal
+V0004 1144..1145: unexpected character `\`
+V0001 1145..1146: expected `}` to close the interpolation (write `\{` for a literal brace), found string literal
+V0001 1348..1348: expected `]`, found end of file
+
+SOURCE_FILE@0..1348
+  IMPORT@0..13
+    IMPORT_KW@0..6 "import"
+    WHITESPACE@6..7 " "
+    MOD_PATH@7..13
+      IDENT@7..10 "std"
+      SLASH@10..11 "/"
+      IDENT@11..13 "ai"
+  NEWLINE@13..14 "\n"
+  WHITESPACE@14..15 "\n"
+  TYPE_DECL@15..50
+    TYPE_KW@15..19 "type"
+    WHITESPACE@19..20 " "
+    TYPE_NAME@20..28 "Priority"
+    WHITESPACE@28..29 " "
+    EQ@29..30 "="
+    WHITESPACE@30..31 " "
+    VARIANT_LIST@31..50
+      VARIANT@31..34
+        PATH@31..34
+          TYPE_NAME@31..34 "Low"
+      WHITESPACE@34..35 " "
+      PIPE@35..36 "|"
+      WHITESPACE@36..37 " "
+      VARIANT@37..43
+        PATH@37..43
+          TYPE_NAME@37..43 "Normal"
+      WHITESPACE@43..44 " "
+      PIPE@44..45 "|"
+      WHITESPACE@45..46 " "
+      VARIANT@46..50
+        PATH@46..50
+          TYPE_NAME@46..50 "High"
+  NEWLINE@50..51 "\n"
+  TYPE_DECL@51..183
+    TYPE_KW@51..55 "type"
+    WHITESPACE@55..56 " "
+    TYPE_NAME@56..62 "Ticket"
+    WHITESPACE@62..63 " "
+    EQ@63..64 "="
+    WHITESPACE@64..65 " "
+    RECORD_TYPE@65..183
+      L_BRACE@65..66 "{"
+      WHITESPACE@66..69 "\n  "
+      FIELD_DECL@69..132
+        IDENT@69..74 "title"
+        COLON@74..75 ":"
+        WHITESPACE@75..76 " "
+        NAMED_TYPE@76..82
+          PATH@76..82
+            TYPE_NAME@76..82 "String"
+        WHITESPACE@82..83 " "
+        WHERE_CLAUSE@83..132
+          WHERE_KW@83..88 "where"
+          WHITESPACE@88..89 " "
+          BIN_EXPR@89..132
+            BIN_EXPR@89..107
+              CALL_EXPR@89..103
+                FIELD_EXPR@89..99
+                  PATH_EXPR@89..95
+                    PATH@89..95
+                      TYPE_NAME@89..95 "String"
+                  DOT@95..96 "."
+                  IDENT@96..99 "len"
+                ARG_LIST@99..103
+                  L_PAREN@99..100 "("
+                  PATH_EXPR@100..102
+                    PATH@100..102
+                      IDENT@100..102 "it"
+                  R_PAREN@102..103 ")"
+              WHITESPACE@103..104 " "
+              GT@104..105 ">"
+              WHITESPACE@105..106 " "
+              LITERAL@106..107
+                INT@106..107 "0"
+            WHITESPACE@107..108 " "
+            AMP2@108..110 "&&"
+            WHITESPACE@110..111 " "
+            BIN_EXPR@111..132
+              CALL_EXPR@111..125
+                FIELD_EXPR@111..121
+                  PATH_EXPR@111..117
+                    PATH@111..117
+                      TYPE_NAME@111..117 "String"
+                  DOT@117..118 "."
+                  IDENT@118..121 "len"
+                ARG_LIST@121..125
+                  L_PAREN@121..122 "("
+                  PATH_EXPR@122..124
+                    PATH@122..124
+                      IDENT@122..124 "it"
+                  R_PAREN@124..125 ")"
+              WHITESPACE@125..126 " "
+              LTEQ@126..128 "<="
+              WHITESPACE@128..129 " "
+              LITERAL@129..132
+                INT@129..132 "120"
+      COMMA@132..133 ","
+      WHITESPACE@133..136 "\n  "
+      FIELD_DECL@136..154
+        IDENT@136..144 "priority"
+        COLON@144..145 ":"
+        WHITESPACE@145..146 " "
+        NAMED_TYPE@146..154
+          PATH@146..154
+            TYPE_NAME@146..154 "Priority"
+      COMMA@154..155 ","
+      WHITESPACE@155..158 "\n  "
+      FIELD_DECL@158..180
+        IDENT@158..166 "evidence"
+        COLON@166..167 ":"
+        WHITESPACE@167..168 " "
+        NAMED_TYPE@168..180
+          PATH@168..172
+            TYPE_NAME@168..172 "List"
+          GENERIC_ARG_LIST@172..180
+            LT@172..173 "<"
+            NAMED_TYPE@173..179
+              PATH@173..179
+                TYPE_NAME@173..179 "String"
+            GT@179..180 ">"
+      COMMA@180..181 ","
+      WHITESPACE@181..182 "\n"
+      R_BRACE@182..183 "}"
+  NEWLINE@183..184 "\n"
+  WHITESPACE@184..185 "\n"
+  FN_DECL@185..372
+    ATTRIBUTE@185..265
+      AT@185..186 "@"
+      IDENT@186..189 "llm"
+      ARG_LIST@189..265
+        L_PAREN@189..190 "("
+        NAMED_ARG@190..264
+          IDENT@190..196 "system"
+          COLON@196..197 ":"
+          WHITESPACE@197..198 " "
+          STRING_LIT@198..264
+            STRING_START@198..199 "\""
+            STRING_TEXT@199..263 "Extract a support ticket. Use only facts present in the message."
+            STRING_END@263..264 "\""
+        R_PAREN@264..265 ")"
+    NEWLINE@265..266 "\n"
+    FN_KW@266..268 "fn"
+    WHITESPACE@268..269 " "
+    IDENT@269..283 "extract_ticket"
+    PARAM_LIST@283..311
+      L_PAREN@283..284 "("
+      PARAM@284..310
+        IDENT@284..291 "message"
+        COLON@291..292 ":"
+        WHITESPACE@292..293 " "
+        NAMED_TYPE@293..310
+          PATH@293..302
+            TYPE_NAME@293..302 "Untrusted"
+          GENERIC_ARG_LIST@302..310
+            LT@302..303 "<"
+            NAMED_TYPE@303..309
+              PATH@303..309
+                TYPE_NAME@303..309 "String"
+            GT@309..310 ">"
+      R_PAREN@310..311 ")"
+    WHITESPACE@311..312 " "
+    RET_TYPE@312..321
+      THIN_ARROW@312..314 "->"
+      WHITESPACE@314..315 " "
+      NAMED_TYPE@315..321
+        PATH@315..321
+          TYPE_NAME@315..321 "Ticket"
+    NEWLINE@321..322 "\n"
+    WHITESPACE@322..324 "  "
+    BANG@324..325 "!"
+    WHITESPACE@325..326 " "
+    EFFECT_ROW@326..372
+      L_BRACE@326..327 "{"
+      NAMED_TYPE@327..330
+        PATH@327..330
+          TYPE_NAME@327..330 "Llm"
+      COMMA@330..331 ","
+      WHITESPACE@331..332 " "
+      NAMED_TYPE@332..338
+        PATH@332..338
+          TYPE_NAME@332..338 "Budget"
+      COMMA@338..339 ","
+      WHITESPACE@339..340 " "
+      NAMED_TYPE@340..371
+        PATH@340..344
+          TYPE_NAME@340..344 "Fail"
+        GENERIC_ARG_LIST@344..371
+          LT@344..345 "<"
+          UNION_TYPE@345..370
+            NAMED_TYPE@345..353
+              PATH@345..353
+                TYPE_NAME@345..353 "LlmError"
+            WHITESPACE@353..354 " "
+            PIPE@354..355 "|"
+            WHITESPACE@355..356 " "
+            NAMED_TYPE@356..370
+              PATH@356..370
+                TYPE_NAME@356..370 "BudgetExceeded"
+          GT@370..371 ">"
+      R_BRACE@371..372 "}"
+  NEWLINE@372..373 "\n"
+  WHITESPACE@373..374 "\n"
+  FN_DECL@374..775
+    PUB_KW@374..377 "pub"
+    WHITESPACE@377..378 " "
+    FN_KW@378..380 "fn"
+    WHITESPACE@380..381 " "
+    IDENT@381..385 "main"
+    PARAM_LIST@385..387
+      L_PAREN@385..386 "("
+      R_PAREN@386..387 ")"
+    WHITESPACE@387..388 " "
+    RET_TYPE@388..395
+      THIN_ARROW@388..390 "->"
+      WHITESPACE@390..391 " "
+      NAMED_TYPE@391..395
+        PATH@391..395
+          TYPE_NAME@391..395 "Unit"
+    WHITESPACE@395..396 " "
+    BANG@396..397 "!"
+    WHITESPACE@397..398 " "
+    EFFECT_ROW@398..451
+      L_BRACE@398..399 "{"
+      NAMED_TYPE@399..406
+        PATH@399..406
+          TYPE_NAME@399..406 "Console"
+      COMMA@406..407 ","
+      WHITESPACE@407..408 " "
+      NAMED_TYPE@408..411
+        PATH@408..411
+          TYPE_NAME@408..411 "Env"
+      COMMA@411..412 ","
+      WHITESPACE@412..413 " "
+      NAMED_TYPE@413..417
+        PATH@413..417
+          TYPE_NAME@413..417 "Http"
+      COMMA@417..418 ","
+      WHITESPACE@418..419 " "
+      NAMED_TYPE@419..450
+        PATH@419..423
+          TYPE_NAME@419..423 "Fail"
+        GENERIC_ARG_LIST@423..450
+          LT@423..424 "<"
+          UNION_TYPE@424..449
+            NAMED_TYPE@424..432
+              PATH@424..432
+                TYPE_NAME@424..432 "LlmError"
+            WHITESPACE@432..433 " "
+            PIPE@433..434 "|"
+            WHITESPACE@434..435 " "
+            NAMED_TYPE@435..449
+              PATH@435..449
+                TYPE_NAME@435..449 "BudgetExceeded"
+          GT@449..450 ">"
+      R_BRACE@450..451 "}"
+    WHITESPACE@451..452 " "
+    BLOCK@452..775
+      L_BRACE@452..453 "{"
+      WHITESPACE@453..456 "\n  "
+      LET_STMT@456..529
+        LET_KW@456..459 "let"
+        WHITESPACE@459..460 " "
+        BIND_PAT@460..463
+          IDENT@460..463 "key"
+        WHITESPACE@463..464 " "
+        EQ@464..465 "="
+        WHITESPACE@465..466 " "
+        CALL_EXPR@466..529
+          FIELD_EXPR@466..504
+            CALL_EXPR@466..497
+              FIELD_EXPR@466..476
+                PATH_EXPR@466..469
+                  PATH@466..469
+                    TYPE_NAME@466..469 "Env"
+                DOT@469..470 "."
+                IDENT@470..476 "secret"
+              ARG_LIST@476..497
+                L_PAREN@476..477 "("
+                STRING_LIT@477..496
+                  STRING_START@477..478 "\""
+                  STRING_TEXT@478..495 "ANTHROPIC_API_KEY"
+                  STRING_END@495..496 "\""
+                R_PAREN@496..497 ")"
+            DOT@497..498 "."
+            IDENT@498..504 "expect"
+          ARG_LIST@504..529
+            L_PAREN@504..505 "("
+            STRING_LIT@505..528
+              STRING_START@505..506 "\""
+              STRING_TEXT@506..527 "set ANTHROPIC_API_KEY"
+              STRING_END@527..528 "\""
+            R_PAREN@528..529 ")"
+      NEWLINE@529..530 "\n"
+      WHITESPACE@530..532 "  "
+      EXPR_STMT@532..773
+        WITH_EXPR@532..773
+          WITH_KW@532..536 "with"
+          WHITESPACE@536..537 " "
+          CALL_EXPR@537..586
+            FIELD_EXPR@537..550
+              PATH_EXPR@537..540
+                PATH@537..540
+                  TYPE_NAME@537..540 "Llm"
+              DOT@540..541 "."
+              IDENT@541..550 "anthropic"
+            ARG_LIST@550..586
+              L_PAREN@550..551 "("
+              PATH_EXPR@551..554
+                PATH@551..554
+                  IDENT@551..554 "key"
+              COMMA@554..555 ","
+              WHITESPACE@555..556 " "
+              CALL_EXPR@556..585
+                FIELD_EXPR@556..564
+                  PATH_EXPR@556..561
+                    PATH@556..561
+                      TYPE_NAME@556..561 "Model"
+                  DOT@561..562 "."
+                  IDENT@562..564 "of"
+                ARG_LIST@564..585
+                  L_PAREN@564..565 "("
+                  STRING_LIT@565..584
+                    STRING_START@565..566 "\""
+                    STRING_TEXT@566..583 "claude-sonnet-5-5"
+                    STRING_END@583..584 "\""
+                  R_PAREN@584..585 ")"
+              R_PAREN@585..586 ")"
+          COMMA@586..587 ","
+          WHITESPACE@587..588 " "
+          CALL_EXPR@588..628
+            FIELD_EXPR@588..601
+              PATH_EXPR@588..594
+                PATH@588..594
+                  TYPE_NAME@588..594 "Budget"
+              DOT@594..595 "."
+              IDENT@595..601 "limits"
+            ARG_LIST@601..628
+              L_PAREN@601..602 "("
+              NAMED_ARG@602..616
+                IDENT@602..608 "tokens"
+                COLON@608..609 ":"
+                WHITESPACE@609..610 " "
+                LITERAL@610..616
+                  INT@610..616 "20_000"
+              COMMA@616..617 ","
+              WHITESPACE@617..618 " "
+              NAMED_ARG@618..627
+                IDENT@618..621 "usd"
+                COLON@621..622 ":"
+                WHITESPACE@622..623 " "
+                LITERAL@623..627
+                  FLOAT@623..627 "0.50"
+              R_PAREN@627..628 ")"
+          WHITESPACE@628..629 " "
+          BLOCK@629..773
+            L_BRACE@629..630 "{"
+            WHITESPACE@630..635 "\n    "
+            LET_STMT@635..724
+              LET_KW@635..638 "let"
+              WHITESPACE@638..639 " "
+              BIND_PAT@639..640
+                IDENT@639..640 "t"
+              WHITESPACE@640..641 " "
+              EQ@641..642 "="
+              WHITESPACE@642..643 " "
+              CALL_EXPR@643..724
+                PATH_EXPR@643..657
+                  PATH@643..657
+                    IDENT@643..657 "extract_ticket"
+                ARG_LIST@657..724
+                  L_PAREN@657..658 "("
+                  CALL_EXPR@658..723
+                    FIELD_EXPR@658..670
+                      PATH_EXPR@658..667
+                        PATH@658..667
+                          TYPE_NAME@658..667 "Untrusted"
+                      DOT@667..668 "."
+                      IDENT@668..670 "of"
+                    ARG_LIST@670..723
+                      L_PAREN@670..671 "("
+                      STRING_LIT@671..722
+                        STRING_START@671..672 "\""
+                        STRING_TEXT@672..721 "Login page 500s since 9am, blocking all customers"
+                        STRING_END@721..722 "\""
+                      R_PAREN@722..723 ")"
+                  R_PAREN@723..724 ")"
+            NEWLINE@724..725 "\n"
+            WHITESPACE@725..729 "    "
+            EXPR_STMT@729..769
+              CALL_EXPR@729..769
+                FIELD_EXPR@729..742
+                  PATH_EXPR@729..736
+                    PATH@729..736
+                      TYPE_NAME@729..736 "Console"
+                  DOT@736..737 "."
+                  IDENT@737..742 "print"
+                ARG_LIST@742..769
+                  L_PAREN@742..743 "("
+                  STRING_LIT@743..768
+                    STRING_START@743..744 "\""
+                    INTERPOLATION@744..756
+                      INTERP_START@744..745 "{"
+                      FIELD_EXPR@745..755
+                        PATH_EXPR@745..746
+                          PATH@745..746
+                            IDENT@745..746 "t"
+                        DOT@746..747 "."
+                        IDENT@747..755 "priority"
+                      INTERP_END@755..756 "}"
+                    STRING_TEXT@756..758 ": "
+                    INTERPOLATION@758..767
+                      INTERP_START@758..759 "{"
+                      FIELD_EXPR@759..766
+                        PATH_EXPR@759..760
+                          PATH@759..760
+                            IDENT@759..760 "t"
+                        DOT@760..761 "."
+                        IDENT@761..766 "title"
+                      INTERP_END@766..767 "}"
+                    STRING_END@767..768 "\""
+                  R_PAREN@768..769 ")"
+            WHITESPACE@769..772 "\n  "
+            R_BRACE@772..773 "}"
+      WHITESPACE@773..774 "\n"
+      R_BRACE@774..775 "}"
+  NEWLINE@775..776 "\n"
+  WHITESPACE@776..777 "\n"
+  TEST_DECL@777..1063
+    TEST_KW@777..781 "test"
+    WHITESPACE@781..782 " "
+    STRING_LIT@782..833
+      STRING_START@782..783 "\""
+      STRING_TEXT@783..832 "scripted model output is validated against Ticket"
+      STRING_END@832..833 "\""
+    WHITESPACE@833..834 " "
+    BLOCK@834..1063
+      L_BRACE@834..835 "{"
+      WHITESPACE@835..838 "\n  "
+      EXPR_STMT@838..1061
+        WITH_EXPR@838..1061
+          WITH_KW@838..842 "with"
+          WHITESPACE@842..843 " "
+          CALL_EXPR@843..943
+            FIELD_EXPR@843..855
+              PATH_EXPR@843..846
+                PATH@843..846
+                  TYPE_NAME@843..846 "Llm"
+              DOT@846..847 "."
+              IDENT@847..855 "scripted"
+            ARG_LIST@855..943
+              L_PAREN@855..856 "("
+              LIST_EXPR@856..942
+                L_BRACKET@856..857 "["
+                CALL_EXPR@857..941
+                  FIELD_EXPR@857..868
+                    PATH_EXPR@857..861
+                      PATH@857..861
+                        TYPE_NAME@857..861 "Json"
+                    DOT@861..862 "."
+                    IDENT@862..868 "encode"
+                  ARG_LIST@868..941
+                    L_PAREN@868..869 "("
+                    RECORD_EXPR@869..940
+                      PATH@869..875
+                        TYPE_NAME@869..875 "Ticket"
+                      WHITESPACE@875..876 " "
+                      L_BRACE@876..877 "{"
+                      WHITESPACE@877..878 " "
+                      FIELD_INIT@878..897
+                        IDENT@878..883 "title"
+                        COLON@883..884 ":"
+                        WHITESPACE@884..885 " "
+                        STRING_LIT@885..897
+                          STRING_START@885..886 "\""
+                          STRING_TEXT@886..896 "Login 500s"
+                          STRING_END@896..897 "\""
+                      COMMA@897..898 ","
+                      WHITESPACE@898..899 " "
+                      FIELD_INIT@899..913
+                        IDENT@899..907 "priority"
+                        COLON@907..908 ":"
+                        WHITESPACE@908..909 " "
+                        PATH_EXPR@909..913
+                          PATH@909..913
+                            TYPE_NAME@909..913 "High"
+                      COMMA@913..914 ","
+                      WHITESPACE@914..915 " "
+                      FIELD_INIT@915..938
+                        IDENT@915..923 "evidence"
+                        COLON@923..924 ":"
+                        WHITESPACE@924..925 " "
+                        LIST_EXPR@925..938
+                          L_BRACKET@925..926 "["
+                          STRING_LIT@926..937
+                            STRING_START@926..927 "\""
+                            STRING_TEXT@927..936 "since 9am"
+                            STRING_END@936..937 "\""
+                          R_BRACKET@937..938 "]"
+                      WHITESPACE@938..939 " "
+                      R_BRACE@939..940 "}"
+                    R_PAREN@940..941 ")"
+                R_BRACKET@941..942 "]"
+              R_PAREN@942..943 ")"
+          COMMA@943..944 ","
+          WHITESPACE@944..952 "\n       "
+          CALL_EXPR@952..970
+            FIELD_EXPR@952..968
+              PATH_EXPR@952..958
+                PATH@952..958
+                  TYPE_NAME@952..958 "Budget"
+              DOT@958..959 "."
+              IDENT@959..968 "unlimited"
+            ARG_LIST@968..970
+              L_PAREN@968..969 "("
+              R_PAREN@969..970 ")"
+          WHITESPACE@970..971 " "
+          BLOCK@971..1061
+            L_BRACE@971..972 "{"
+            WHITESPACE@972..977 "\n    "
+            LET_STMT@977..1025
+              LET_KW@977..980 "let"
+              WHITESPACE@980..981 " "
+              BIND_PAT@981..982
+                IDENT@981..982 "t"
+              WHITESPACE@982..983 " "
+              EQ@983..984 "="
+              WHITESPACE@984..985 " "
+              CALL_EXPR@985..1025
+                PATH_EXPR@985..999
+                  PATH@985..999
+                    IDENT@985..999 "extract_ticket"
+                ARG_LIST@999..1025
+                  L_PAREN@999..1000 "("
+                  CALL_EXPR@1000..1024
+                    FIELD_EXPR@1000..1012
+                      PATH_EXPR@1000..1009
+                        PATH@1000..1009
+                          TYPE_NAME@1000..1009 "Untrusted"
+                      DOT@1009..1010 "."
+                      IDENT@1010..1012 "of"
+                    ARG_LIST@1012..1024
+                      L_PAREN@1012..1013 "("
+                      STRING_LIT@1013..1023
+                        STRING_START@1013..1014 "\""
+                        STRING_TEXT@1014..1022 "anything"
+                        STRING_END@1022..1023 "\""
+                      R_PAREN@1023..1024 ")"
+                  R_PAREN@1024..1025 ")"
+            NEWLINE@1025..1026 "\n"
+            WHITESPACE@1026..1030 "    "
+            EXPR_STMT@1030..1057
+              CALL_EXPR@1030..1057
+                PATH_EXPR@1030..1039
+                  PATH@1030..1039
+                    IDENT@1030..1039 "expect_eq"
+                ARG_LIST@1039..1057
+                  L_PAREN@1039..1040 "("
+                  FIELD_EXPR@1040..1050
+                    PATH_EXPR@1040..1041
+                      PATH@1040..1041
+                        IDENT@1040..1041 "t"
+                    DOT@1041..1042 "."
+                    IDENT@1042..1050 "priority"
+                  COMMA@1050..1051 ","
+                  WHITESPACE@1051..1052 " "
+                  PATH_EXPR@1052..1056
+                    PATH@1052..1056
+                      TYPE_NAME@1052..1056 "High"
+                  R_PAREN@1056..1057 ")"
+            WHITESPACE@1057..1060 "\n  "
+            R_BRACE@1060..1061 "}"
+      WHITESPACE@1061..1062 "\n"
+      R_BRACE@1062..1063 "}"
+  NEWLINE@1063..1064 "\n"
+  WHITESPACE@1064..1065 "\n"
+  TEST_DECL@1065..1348
+    TEST_KW@1065..1069 "test"
+    WHITESPACE@1069..1070 " "
+    STRING_LIT@1070..1118
+      STRING_START@1070..1071 "\""
+      STRING_TEXT@1071..1117 "invalid output is a typed failure, not a crash"
+      STRING_END@1117..1118 "\""
+    WHITESPACE@1118..1119 " "
+    BLOCK@1119..1348
+      L_BRACE@1119..1120 "{"
+      WHITESPACE@1120..1123 "\n  "
+      EXPR_STMT@1123..1348
+        WITH_EXPR@1123..1348
+          WITH_KW@1123..1127 "with"
+          WHITESPACE@1127..1128 " "
+          CALL_EXPR@1128..1348
+            FIELD_EXPR@1128..1140
+              PATH_EXPR@1128..1131
+                PATH@1128..1131
+                  TYPE_NAME@1128..1131 "Llm"
+              DOT@1131..1132 "."
+              IDENT@1132..1140 "scripted"
+            ARG_LIST@1140..1348
+              L_PAREN@1140..1141 "("
+              LIST_EXPR@1141..1348
+                L_BRACKET@1141..1142 "["
+                STRING_LIT@1142..1348
+                  STRING_START@1142..1143 "\""
+                  INTERPOLATION@1143..1347
+                    INTERP_START@1143..1144 "{"
+                    ERROR@1144..1145
+                      ERROR_TOKEN@1144..1145 "\\"
+                    ERROR@1145..1345
+                      STRING_START@1145..1146 "\""
+                      STRING_TEXT@1146..1186 "title\\\": \\\"\\\", \\\"priority\\\": \\\"Urgent\\\"}"
+                      STRING_END@1186..1187 "\""
+                      R_BRACKET@1187..1188 "]"
+                      R_PAREN@1188..1189 ")"
+                      COMMA@1189..1190 ","
+                      WHITESPACE@1190..1191 " "
+                      TYPE_NAME@1191..1197 "Budget"
+                      DOT@1197..1198 "."
+                      IDENT@1198..1207 "unlimited"
+                      L_PAREN@1207..1208 "("
+                      R_PAREN@1208..1209 ")"
+                      WHITESPACE@1209..1210 " "
+                      L_BRACE@1210..1211 "{"
+                      WHITESPACE@1211..1216 "\n    "
+                      IDENT@1216..1233 "expect_fails_with"
+                      L_PAREN@1233..1234 "("
+                      FN_KW@1234..1236 "fn"
+                      L_PAREN@1236..1237 "("
+                      R_PAREN@1237..1238 ")"
+                      WHITESPACE@1238..1239 " "
+                      L_BRACE@1239..1240 "{"
+                      WHITESPACE@1240..1241 " "
+                      IDENT@1241..1255 "extract_ticket"
+                      L_PAREN@1255..1256 "("
+                      TYPE_NAME@1256..1265 "Untrusted"
+                      DOT@1265..1266 "."
+                      IDENT@1266..1268 "of"
+                      L_PAREN@1268..1269 "("
+                      STRING_START@1269..1270 "\""
+                      STRING_TEXT@1270..1271 "x"
+                      STRING_END@1271..1272 "\""
+                      R_PAREN@1272..1273 ")"
+                      R_PAREN@1273..1274 ")"
+                      WHITESPACE@1274..1275 " "
+                      R_BRACE@1275..1276 "}"
+                      COMMA@1276..1277 ","
+                      WHITESPACE@1277..1278 " "
+                      FN_KW@1278..1280 "fn"
+                      L_PAREN@1280..1281 "("
+                      IDENT@1281..1282 "e"
+                      R_PAREN@1282..1283 ")"
+                      WHITESPACE@1283..1284 " "
+                      L_BRACE@1284..1285 "{"
+                      WHITESPACE@1285..1286 " "
+                      MATCH_KW@1286..1291 "match"
+                      WHITESPACE@1291..1292 " "
+                      IDENT@1292..1293 "e"
+                      WHITESPACE@1293..1294 " "
+                      L_BRACE@1294..1295 "{"
+                      WHITESPACE@1295..1296 " "
+                      TYPE_NAME@1296..1309 "InvalidOutput"
+                      WHITESPACE@1309..1310 " "
+                      L_BRACE@1310..1311 "{"
+                      WHITESPACE@1311..1312 " "
+                      DOT2@1312..1314 ".."
+                      WHITESPACE@1314..1315 " "
+                      R_BRACE@1315..1316 "}"
+                      WHITESPACE@1316..1317 " "
+                      FAT_ARROW@1317..1319 "=>"
+                      WHITESPACE@1319..1320 " "
+                      TRUE_KW@1320..1324 "true"
+                      COMMA@1324..1325 ","
+                      WHITESPACE@1325..1326 " "
+                      UNDERSCORE@1326..1327 "_"
+                      WHITESPACE@1327..1328 " "
+                      FAT_ARROW@1328..1330 "=>"
+                      WHITESPACE@1330..1331 " "
+                      FALSE_KW@1331..1336 "false"
+                      WHITESPACE@1336..1337 " "
+                      R_BRACE@1337..1338 "}"
+                      WHITESPACE@1338..1339 " "
+                      R_BRACE@1339..1340 "}"
+                      R_PAREN@1340..1341 ")"
+                      WHITESPACE@1341..1344 "\n  "
+                      R_BRACE@1344..1345 "}"
+                    WHITESPACE@1345..1346 "\n"
+                    INTERP_END@1346..1347 "}"
+                  STRING_TEXT@1347..1348 "\n"

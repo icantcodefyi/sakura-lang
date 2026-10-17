@@ -1,0 +1,21 @@
+effect Db {
+  fn exists(table: Table, key: String) -> Bool
+  fn insert(table: Table, row: Json) -> Unit ! {Fail<DbUnavailable>}
+}
+
+fn memory_db() -> Handler<Db> {
+  handler Db {
+    var rows: Map<String, Json> = Map.empty()
+    fn exists(table, key) { Map.contains(rows, "{table}/{key}") }
+    fn insert(table, row) {
+      rows = Map.insert(rows, "{table}/{Json.get_string(row, "id")}", row)
+    }
+  }
+}
+
+fn main() -> Unit ! {Console} {
+  with memory_db(), Clock.fixed("2026-01-01T00:00:00Z") {
+    let u = signup(Email.from("a@b.co"), Password.from("hunter22"))
+    Console.print("{u.id}")
+  }
+}

@@ -1,0 +1,49 @@
+---
+source: crates/vow_syntax/tests/parse.rs
+assertion_line: 38
+expression: out
+input_file: crates/vow_syntax/tests/data/err/m0_unterminated_call.vow
+---
+V0001 49..50: expected `)`, found `}`
+
+SOURCE_FILE@0..51
+  FN_DECL@0..50
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    IDENT@3..7 "main"
+    PARAM_LIST@7..9
+      L_PAREN@7..8 "("
+      R_PAREN@8..9 ")"
+    WHITESPACE@9..10 " "
+    RET_TYPE@10..17
+      THIN_ARROW@10..12 "->"
+      WHITESPACE@12..13 " "
+      NAMED_TYPE@13..17
+        PATH@13..17
+          TYPE_NAME@13..17 "Unit"
+    WHITESPACE@17..18 " "
+    BANG@18..19 "!"
+    WHITESPACE@19..20 " "
+    EFFECT_ROW@20..29
+      L_BRACE@20..21 "{"
+      NAMED_TYPE@21..28
+        PATH@21..28
+          TYPE_NAME@21..28 "Console"
+      R_BRACE@28..29 "}"
+    WHITESPACE@29..30 " "
+    BLOCK@30..50
+      L_BRACE@30..31 "{"
+      WHITESPACE@31..34 "\n  "
+      EXPR_STMT@34..48
+        CALL_EXPR@34..48
+          FIELD_EXPR@34..47
+            PATH_EXPR@34..41
+              PATH@34..41
+                TYPE_NAME@34..41 "Console"
+            DOT@41..42 "."
+            IDENT@42..47 "print"
+          ARG_LIST@47..48
+            L_PAREN@47..48 "("
+      WHITESPACE@48..49 "\n"
+      R_BRACE@49..50 "}"
+  NEWLINE@50..51 "\n"

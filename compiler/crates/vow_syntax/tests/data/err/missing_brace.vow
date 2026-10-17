@@ -1,0 +1,4 @@
+fn a() -> Int {
+  let x = 1
+
+fn b() -> Int { 2 }

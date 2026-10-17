@@ -1,0 +1,9 @@
+error ParseError(input: String)
+fn parse_age(s: String) -> Int ! {Fail<ParseError>} {
+  match String.parse_int(s) { Some(n) if n >= 0 => n, _ => fail ParseError { input: s } }
+}
+test "bad age is a typed failure" {
+  let r = try { parse_age("x") }
+  expect_eq(r, Err(ParseError { input: "x" }))
+}
+test "local polymorphism" { let id = fn(x) { x }; expect_eq(id(3), 3); expect(id(true)) }

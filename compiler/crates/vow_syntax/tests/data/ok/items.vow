@@ -1,0 +1,42 @@
+import std/http
+import std/http.{Request, Response, serve}
+import acme/billing/invoices as inv
+import std/json.{
+  Json,
+  decode,
+}
+
+@server
+@deprecated("use g")
+pub fn f<A: Ord + Show, B, e>(xs: List<A>, g: fn(A) -> B ! e) -> List<B> ! {Console | e} {
+  List.map(xs, g)
+}
+
+pub type Html
+type Pair<A, B> = (A, B)
+type Callback = fn(Int) -> Unit ! {Console}
+type Shape = Circle(Float) | Rect(Float, Float) | Empty
+type Alias = Map<String, List<Int>>
+type Positive = Int where it > 0
+type Account = {
+  id: Int,
+  owner: users.User,
+  name: String where String.len(it) > 0,
+}
+pub error NotFound(id: String, kind: String,)
+error Forbidden
+pub type AccessError = NotFound | Forbidden
+effect Store<K> {
+  fn get(key: K) -> Option<String> ! {Fail<Unavailable>}
+  fn put(key: K, value: String) -> Unit; fn size() -> Int
+}
+let max_items: Int = 100
+pub let greeting = "hi"
+test "addition" { expect_eq(1 + 1, 2) }
+property "reverse twice"(xs: List<Int>)
+  requires List.len(xs) < 100
+{
+  expect_eq(List.reverse(List.reverse(xs)), xs)
+}
+@external(js, "npm:left-pad", "pad")
+fn pad(s: String, n: Int) -> String ! {Foreign, Fail<ForeignError>}

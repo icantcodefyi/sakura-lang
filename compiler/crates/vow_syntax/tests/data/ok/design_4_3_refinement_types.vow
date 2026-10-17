@@ -1,0 +1,3 @@
+type Email = String where String.len(it) <= 254 && Email.is_valid(it)
+type Percent = Int where it >= 0 && it <= 100
+type NonEmpty<T> = List<T> where List.len(it) > 0

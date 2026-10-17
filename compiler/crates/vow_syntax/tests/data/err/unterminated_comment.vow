@@ -1,0 +1,3 @@
+fn f() -> Int { 1 }
+/* never /* closed */
+fn g() -> Int { 2 }

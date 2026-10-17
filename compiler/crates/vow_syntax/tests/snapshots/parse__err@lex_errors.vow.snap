@@ -1,0 +1,83 @@
+---
+source: crates/vow_syntax/tests/parse.rs
+assertion_line: 38
+expression: out
+input_file: crates/vow_syntax/tests/data/err/lex_errors.vow
+---
+V0007 23..29: `resume` is reserved for a later edition
+V0003 32..51: integer literal does not fit in a signed 64-bit `Int`
+V0006 54..56: expected digits after the radix prefix
+V0006 59..63: malformed numeric literal `12ab`
+V0005 79..81: unknown escape `\q`
+V0005 89..99: `\u{…}` must hold 1 to 6 hex digits naming a Unicode scalar value
+V0004 101..102: unexpected character `#`
+V0004 103..104: unexpected character `&`
+V0004 105..107: unexpected character `é`
+
+SOURCE_FILE@0..110
+  FN_DECL@0..109
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    IDENT@3..4 "f"
+    PARAM_LIST@4..6
+      L_PAREN@4..5 "("
+      R_PAREN@5..6 ")"
+    WHITESPACE@6..7 " "
+    RET_TYPE@7..14
+      THIN_ARROW@7..9 "->"
+      WHITESPACE@9..10 " "
+      NAMED_TYPE@10..14
+        PATH@10..14
+          TYPE_NAME@10..14 "Unit"
+    WHITESPACE@14..15 " "
+    BLOCK@15..109
+      L_BRACE@15..16 "{"
+      WHITESPACE@16..19 "\n  "
+      LET_STMT@19..63
+        LET_KW@19..22 "let"
+        WHITESPACE@22..23 " "
+        BIND_PAT@23..29
+          IDENT@23..29 "resume"
+        WHITESPACE@29..30 " "
+        EQ@30..31 "="
+        WHITESPACE@31..32 " "
+        BIN_EXPR@32..63
+          BIN_EXPR@32..56
+            LITERAL@32..51
+              INT@32..51 "9223372036854775808"
+            WHITESPACE@51..52 " "
+            PLUS@52..53 "+"
+            WHITESPACE@53..54 " "
+            LITERAL@54..56
+              INT@54..56 "0x"
+          WHITESPACE@56..57 " "
+          PLUS@57..58 "+"
+          WHITESPACE@58..59 " "
+          LITERAL@59..63
+            INT@59..63 "12ab"
+      NEWLINE@63..64 "\n"
+      WHITESPACE@64..66 "  "
+      LET_STMT@66..100
+        LET_KW@66..69 "let"
+        WHITESPACE@69..70 " "
+        BIND_PAT@70..71
+          IDENT@70..71 "s"
+        WHITESPACE@71..72 " "
+        EQ@72..73 "="
+        WHITESPACE@73..74 " "
+        STRING_LIT@74..100
+          STRING_START@74..75 "\""
+          STRING_TEXT@75..99 "bad \\q escape \\u{110000}"
+          STRING_END@99..100 "\""
+      WHITESPACE@100..101 " "
+      ERROR@101..102
+        ERROR_TOKEN@101..102 "#"
+      WHITESPACE@102..103 " "
+      ERROR@103..104
+        ERROR_TOKEN@103..104 "&"
+      WHITESPACE@104..105 " "
+      ERROR@105..107
+        ERROR_TOKEN@105..107 "é"
+      WHITESPACE@107..108 "\n"
+      R_BRACE@108..109 "}"
+  NEWLINE@109..110 "\n"

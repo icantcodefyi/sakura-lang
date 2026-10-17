@@ -1,0 +1,8 @@
+effect Task {
+  fn scope<T, e>(body: fn(Scope) -> T ! e) -> T ! e
+  fn spawn<T, e>(s: Scope, body: fn() -> T ! e) -> Fiber<T> ! e
+  fn join<T>(f: Fiber<T>) -> T
+  fn all<T, e>(bodies: List<fn() -> T ! e>) -> List<T> ! e
+  fn race<T, e>(bodies: List<fn() -> T ! e>) -> T ! e
+  fn yield_now() -> Unit
+}

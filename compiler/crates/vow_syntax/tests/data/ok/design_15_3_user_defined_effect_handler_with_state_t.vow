@@ -1,0 +1,28 @@
+effect Counter {
+  fn next() -> Int
+  fn reset() -> Unit
+}
+
+fn memory_counter(start: Int) -> Handler<Counter> {
+  handler Counter {
+    var n: Int = start
+    fn next() { n = n + 1; n }
+    fn reset() { n = start }
+  }
+}
+
+fn label_all(items: List<String>) -> List<String> ! {Counter} {
+  List.map(items, fn(item) { "{Counter.next()}. {item}" })
+}
+
+test "labels count from the handler's start" {
+  let out = with memory_counter(0) { label_all(["a", "b"]) }
+  expect_eq(out, ["1. a", "2. b"])
+}
+
+test "inner handler shadows outer" {
+  let out = with memory_counter(0) {
+    with memory_counter(100) { Counter.next() }
+  }
+  expect_eq(out, 101)
+}

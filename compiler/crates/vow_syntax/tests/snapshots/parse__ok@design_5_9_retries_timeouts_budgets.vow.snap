@@ -1,0 +1,247 @@
+---
+source: crates/vow_syntax/tests/parse.rs
+assertion_line: 28
+expression: out
+input_file: crates/vow_syntax/tests/data/ok/design_5_9_retries_timeouts_budgets.vow
+---
+SOURCE_FILE@0..291
+  FN_DECL@0..86
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    IDENT@3..8 "retry"
+    TYPE_PARAM_LIST@8..14
+      LT@8..9 "<"
+      TYPE_PARAM@9..10
+        TYPE_NAME@9..10 "T"
+      COMMA@10..11 ","
+      WHITESPACE@11..12 " "
+      TYPE_PARAM@12..13
+        IDENT@12..13 "e"
+      GT@13..14 ">"
+    PARAM_LIST@14..59
+      L_PAREN@14..15 "("
+      PARAM@15..35
+        IDENT@15..21 "policy"
+        COLON@21..22 ":"
+        WHITESPACE@22..23 " "
+        NAMED_TYPE@23..35
+          PATH@23..35
+            TYPE_NAME@23..28 "Retry"
+            DOT@28..29 "."
+            TYPE_NAME@29..35 "Policy"
+      COMMA@35..36 ","
+      WHITESPACE@36..37 " "
+      PARAM@37..58
+        IDENT@37..43 "action"
+        COLON@43..44 ":"
+        WHITESPACE@44..45 " "
+        FN_TYPE@45..58
+          FN_KW@45..47 "fn"
+          TYPE_LIST@47..49
+            L_PAREN@47..48 "("
+            R_PAREN@48..49 ")"
+          WHITESPACE@49..50 " "
+          RET_TYPE@50..54
+            THIN_ARROW@50..52 "->"
+            WHITESPACE@52..53 " "
+            NAMED_TYPE@53..54
+              PATH@53..54
+                TYPE_NAME@53..54 "T"
+          WHITESPACE@54..55 " "
+          BANG@55..56 "!"
+          WHITESPACE@56..57 " "
+          EFFECT_ROW@57..58
+            IDENT@57..58 "e"
+      R_PAREN@58..59 ")"
+    WHITESPACE@59..60 " "
+    RET_TYPE@60..64
+      THIN_ARROW@60..62 "->"
+      WHITESPACE@62..63 " "
+      NAMED_TYPE@63..64
+        PATH@63..64
+          TYPE_NAME@63..64 "T"
+    WHITESPACE@64..65 " "
+    BANG@65..66 "!"
+    WHITESPACE@66..67 " "
+    EFFECT_ROW@67..86
+      L_BRACE@67..68 "{"
+      NAMED_TYPE@68..73
+        PATH@68..73
+          TYPE_NAME@68..73 "Clock"
+      COMMA@73..74 ","
+      WHITESPACE@74..75 " "
+      NAMED_TYPE@75..81
+        PATH@75..81
+          TYPE_NAME@75..81 "Random"
+      WHITESPACE@81..82 " "
+      PIPE@82..83 "|"
+      WHITESPACE@83..84 " "
+      IDENT@84..85 "e"
+      R_BRACE@85..86 "}"
+  NEWLINE@86..87 "\n"
+  FN_DECL@87..183
+    FN_KW@87..89 "fn"
+    WHITESPACE@89..90 " "
+    IDENT@90..97 "timeout"
+    TYPE_PARAM_LIST@97..103
+      LT@97..98 "<"
+      TYPE_PARAM@98..99
+        TYPE_NAME@98..99 "T"
+      COMMA@99..100 ","
+      WHITESPACE@100..101 " "
+      TYPE_PARAM@101..102
+        IDENT@101..102 "e"
+      GT@102..103 ">"
+    PARAM_LIST@103..143
+      L_PAREN@103..104 "("
+      PARAM@104..119
+        IDENT@104..109 "limit"
+        COLON@109..110 ":"
+        WHITESPACE@110..111 " "
+        NAMED_TYPE@111..119
+          PATH@111..119
+            TYPE_NAME@111..119 "Duration"
+      COMMA@119..120 ","
+      WHITESPACE@120..121 " "
+      PARAM@121..142
+        IDENT@121..127 "action"
+        COLON@127..128 ":"
+        WHITESPACE@128..129 " "
+        FN_TYPE@129..142
+          FN_KW@129..131 "fn"
+          TYPE_LIST@131..133
+            L_PAREN@131..132 "("
+            R_PAREN@132..133 ")"
+          WHITESPACE@133..134 " "
+          RET_TYPE@134..138
+            THIN_ARROW@134..136 "->"
+            WHITESPACE@136..137 " "
+            NAMED_TYPE@137..138
+              PATH@137..138
+                TYPE_NAME@137..138 "T"
+          WHITESPACE@138..139 " "
+          BANG@139..140 "!"
+          WHITESPACE@140..141 " "
+          EFFECT_ROW@141..142
+            IDENT@141..142 "e"
+      R_PAREN@142..143 ")"
+    WHITESPACE@143..144 " "
+    RET_TYPE@144..148
+      THIN_ARROW@144..146 "->"
+      WHITESPACE@146..147 " "
+      NAMED_TYPE@147..148
+        PATH@147..148
+          TYPE_NAME@147..148 "T"
+    WHITESPACE@148..149 " "
+    BANG@149..150 "!"
+    WHITESPACE@150..151 " "
+    EFFECT_ROW@151..183
+      L_BRACE@151..152 "{"
+      NAMED_TYPE@152..157
+        PATH@152..157
+          TYPE_NAME@152..157 "Clock"
+      COMMA@157..158 ","
+      WHITESPACE@158..159 " "
+      NAMED_TYPE@159..163
+        PATH@159..163
+          TYPE_NAME@159..163 "Task"
+      COMMA@163..164 ","
+      WHITESPACE@164..165 " "
+      NAMED_TYPE@165..178
+        PATH@165..169
+          TYPE_NAME@165..169 "Fail"
+        GENERIC_ARG_LIST@169..178
+          LT@169..170 "<"
+          NAMED_TYPE@170..177
+            PATH@170..177
+              TYPE_NAME@170..177 "Timeout"
+          GT@177..178 ">"
+      WHITESPACE@178..179 " "
+      PIPE@179..180 "|"
+      WHITESPACE@180..181 " "
+      IDENT@181..182 "e"
+      R_BRACE@182..183 "}"
+  NEWLINE@183..184 "\n"
+  FN_DECL@184..290
+    FN_KW@184..186 "fn"
+    WHITESPACE@186..187 " "
+    IDENT@187..198 "with_budget"
+    TYPE_PARAM_LIST@198..204
+      LT@198..199 "<"
+      TYPE_PARAM@199..200
+        TYPE_NAME@199..200 "T"
+      COMMA@200..201 ","
+      WHITESPACE@201..202 " "
+      TYPE_PARAM@202..203
+        IDENT@202..203 "e"
+      GT@203..204 ">"
+    PARAM_LIST@204..256
+      L_PAREN@204..205 "("
+      PARAM@205..221
+        IDENT@205..206 "b"
+        COLON@206..207 ":"
+        WHITESPACE@207..208 " "
+        NAMED_TYPE@208..221
+          PATH@208..221
+            TYPE_NAME@208..214 "Budget"
+            DOT@214..215 "."
+            TYPE_NAME@215..221 "Limits"
+      COMMA@221..222 ","
+      WHITESPACE@222..223 " "
+      PARAM@223..255
+        IDENT@223..229 "action"
+        COLON@229..230 ":"
+        WHITESPACE@230..231 " "
+        FN_TYPE@231..255
+          FN_KW@231..233 "fn"
+          TYPE_LIST@233..235
+            L_PAREN@233..234 "("
+            R_PAREN@234..235 ")"
+          WHITESPACE@235..236 " "
+          RET_TYPE@236..240
+            THIN_ARROW@236..238 "->"
+            WHITESPACE@238..239 " "
+            NAMED_TYPE@239..240
+              PATH@239..240
+                TYPE_NAME@239..240 "T"
+          WHITESPACE@240..241 " "
+          BANG@241..242 "!"
+          WHITESPACE@242..243 " "
+          EFFECT_ROW@243..255
+            L_BRACE@243..244 "{"
+            NAMED_TYPE@244..250
+              PATH@244..250
+                TYPE_NAME@244..250 "Budget"
+            WHITESPACE@250..251 " "
+            PIPE@251..252 "|"
+            WHITESPACE@252..253 " "
+            IDENT@253..254 "e"
+            R_BRACE@254..255 "}"
+      R_PAREN@255..256 ")"
+    WHITESPACE@256..257 " "
+    RET_TYPE@257..261
+      THIN_ARROW@257..259 "->"
+      WHITESPACE@259..260 " "
+      NAMED_TYPE@260..261
+        PATH@260..261
+          TYPE_NAME@260..261 "T"
+    WHITESPACE@261..262 " "
+    BANG@262..263 "!"
+    WHITESPACE@263..264 " "
+    EFFECT_ROW@264..290
+      L_BRACE@264..265 "{"
+      NAMED_TYPE@265..285
+        PATH@265..269
+          TYPE_NAME@265..269 "Fail"
+        GENERIC_ARG_LIST@269..285
+          LT@269..270 "<"
+          NAMED_TYPE@270..284
+            PATH@270..284
+              TYPE_NAME@270..284 "BudgetExceeded"
+          GT@284..285 ">"
+      WHITESPACE@285..286 " "
+      PIPE@286..287 "|"
+      WHITESPACE@287..288 " "
+      IDENT@288..289 "e"
+      R_BRACE@289..290 "}"
+  NEWLINE@290..291 "\n"

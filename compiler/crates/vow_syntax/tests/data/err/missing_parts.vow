@@ -1,0 +1,20 @@
+fn () -> Int { 1 }
+fn no_ret() { 1 }
+fn untyped(x) -> Int { x }
+fn Main() -> Unit {}
+type lower = Int
+type = Int
+let = 5
+let Foo = 1
+error
+effect E { garbage fn op() -> Int }
+test { }
+fn body() -> Int {
+  let = 1
+  let x = 
+  var Y = 2
+  for in xs { }
+  if { }
+  match x { a b => 1, c => }
+  fn nested() -> Int { 1 }
+}

@@ -1,0 +1,6 @@
+import std/graph
+
+type Person = { name: String }
+fn friends_of_friends(g: Graph<Person>, id: NodeId) -> List<Person> {
+  List.flat_map(Graph.neighbors(g, id), fn(f) { List.filter_map(Graph.neighbors(g, f), fn(ff) { Graph.get(g, ff) }) })
+}
