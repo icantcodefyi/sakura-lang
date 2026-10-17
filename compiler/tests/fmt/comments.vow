@@ -41,3 +41,8 @@ fn call() -> Unit {
   )
 }
 // final comment
+
+// attached to the effect, not its first operation
+effect Log2 {
+  fn write(line: String) -> Unit
+}

@@ -178,7 +178,17 @@ fn seq(container: &SyntaxNode, is_entry: impl Fn(SyntaxKind) -> bool) -> Seq {
     let mut pending: Vec<Comment> = Vec::new();
     let mut newlines = 0usize;
     let mut blank_before_pending = false;
-    for element in container.children_with_tokens() {
+    // The container's own leading comments are emitted by `Fmt::node` (except at file level,
+    // where nothing precedes them).
+    let skip = if container.kind() == SOURCE_FILE {
+        0
+    } else {
+        container
+            .children_with_tokens()
+            .take_while(|e| e.as_token().is_some_and(|t| t.kind().is_trivia()))
+            .count()
+    };
+    for element in container.children_with_tokens().skip(skip) {
         match element {
             NodeOrToken::Node(node) if is_entry(node.kind()) => {
                 let blank = if pending.is_empty() {
