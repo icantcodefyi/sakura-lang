@@ -45,6 +45,8 @@ pub struct TypedProgram {
     pub bodies: HashMap<(ModuleId, BodyId), TypedBody>,
     /// Typed holes in source order (design §12.4).
     pub holes: Vec<Hole>,
+    /// The checker's declaration caches, for [`check_program_reusing`].
+    pub(crate) decls: check::DeclCache,
 }
 
 impl TypedProgram {
@@ -151,7 +153,7 @@ impl Fit {
 pub fn check_program(
     program: &sakura_hir::Program,
 ) -> (TypedProgram, Vec<sakura_diagnostics::Diagnostic>) {
-    check::check(program, &[])
+    check::check(program, &[], None)
 }
 
 /// Like [`check_program`], given the lex/parse diagnostics of the same snapshot: type
@@ -161,5 +163,20 @@ pub fn check_program_with(
     program: &sakura_hir::Program,
     syntax_errors: &[sakura_diagnostics::Diagnostic],
 ) -> (TypedProgram, Vec<sakura_diagnostics::Diagnostic>) {
-    check::check(program, syntax_errors)
+    check::check(program, syntax_errors, None)
+}
+
+/// Like [`check_program_with`], reusing `prev` (the result for an earlier version of the same
+/// program) for every module where `reuse` holds: their bodies, holes and schemes are copied,
+/// not checked again, and diagnostics whose primary span is in their files are left out (the
+/// caller keeps its earlier ones). Sound when those modules' text and every module's interface
+/// (items, signatures, type definitions, constants) are unchanged, so their `DefId`s, bodies
+/// and dependencies are the same.
+pub fn check_program_reusing(
+    program: &sakura_hir::Program,
+    syntax_errors: &[sakura_diagnostics::Diagnostic],
+    prev: &TypedProgram,
+    reuse: &dyn Fn(ModuleId) -> bool,
+) -> (TypedProgram, Vec<sakura_diagnostics::Diagnostic>) {
+    check::check(program, syntax_errors, Some((prev, reuse)))
 }

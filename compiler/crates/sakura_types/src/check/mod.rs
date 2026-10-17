@@ -156,6 +156,15 @@ struct BodyState {
     try_checks: Vec<(ExprId, ExprId)>,
 }
 
+/// Generic parameters, aliases and fields per definition. A reused module keeps its entries,
+/// so every `ParamId` its bodies and schemes mention stays the same.
+#[derive(Debug, Default, Clone)]
+pub(crate) struct DeclCache {
+    generics: HashMap<DefId, Vec<GenericSlot>>,
+    aliases: HashMap<DefId, TypeId>,
+    fields: HashMap<DefId, Vec<(String, TypeId)>>,
+}
+
 pub(crate) struct Checker<'p> {
     program: &'p Program,
     inf: Infer,
@@ -179,6 +188,7 @@ pub(crate) struct Checker<'p> {
 pub(crate) fn check(
     program: &Program,
     syntax_errors: &[Diagnostic],
+    reuse: Option<(&TypedProgram, &dyn Fn(ModuleId) -> bool)>,
 ) -> (TypedProgram, Vec<Diagnostic>) {
     let syntax_errors = syntax_errors
         .iter()
@@ -202,6 +212,26 @@ pub(crate) fn check(
         b: BodyState::default(),
         body: None,
     };
+    let reused = |m: ModuleId| reuse.is_some_and(|(_, keep)| keep(m));
+    if let Some((prev, _)) = reuse {
+        // Reused bodies hold the previous `TypeId`s and their defs' `ParamId`s, so start from
+        // the previous interner and declarations, and never check those defs again.
+        cx.inf.interner = prev.interner.clone();
+        for (def, s) in prev.defs.iter().filter(|(d, _)| reused(d.module)) {
+            cx.schemes.insert(*def, s.clone());
+            cx.checked.insert(*def);
+        }
+        let keep = |d: &&DefId| reused(d.module);
+        for (d, g) in prev.decls.generics.iter().filter(|(d, _)| keep(d)) {
+            cx.generics.insert(*d, g.clone());
+        }
+        for (d, t) in prev.decls.aliases.iter().filter(|(d, _)| keep(d)) {
+            cx.aliases.insert(*d, *t);
+        }
+        for (d, f) in prev.decls.fields.iter().filter(|(d, _)| keep(d)) {
+            cx.fields.insert(*d, f.clone());
+        }
+    }
     cx.prepare();
     for (mi, module) in program.modules.iter().enumerate() {
         let mid = ModuleId(mi as u32);
@@ -212,11 +242,33 @@ pub(crate) fn check(
             });
         }
     }
+    if let Some((prev, _)) = reuse {
+        let reused_file = |f| {
+            program
+                .modules
+                .iter()
+                .enumerate()
+                .any(|(i, m)| m.file == f && reused(ModuleId(i as u32)))
+        };
+        cx.diags
+            .retain(|d| d.spans.first().is_none_or(|s| !reused_file(s.file)));
+        for (key, body) in prev.bodies.iter().filter(|((m, _), _)| reused(*m)) {
+            cx.out.bodies.insert(*key, body.clone());
+        }
+        let holes = prev.holes.iter().filter(|h| reused(h.module)).cloned();
+        cx.out.holes.extend(holes);
+        cx.out.holes.sort_by_key(|h| h.module);
+    }
     let mut out = std::mem::take(&mut cx.out);
     for (def, s) in &cx.schemes {
         out.defs.insert(*def, s.clone());
     }
     out.interner = std::mem::take(&mut cx.inf.interner);
+    out.decls = DeclCache {
+        generics: std::mem::take(&mut cx.generics),
+        aliases: std::mem::take(&mut cx.aliases),
+        fields: std::mem::take(&mut cx.fields),
+    };
     (out, cx.diags)
 }
 

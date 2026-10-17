@@ -155,7 +155,7 @@ pub struct ParamInfo {
 }
 
 /// Hash-consing store for types and rows, plus names of parameters.
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Interner {
     types: Vec<Type>,
     type_ids: HashMap<Type, TypeId>,
