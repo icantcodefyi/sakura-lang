@@ -5,3 +5,9 @@ target/
 .DS_Store
 .env*
 !.env.example
+
+# Local tooling and build artifacts
+*.tsbuildinfo
+coverage/
+playwright-report/
+test-results/
