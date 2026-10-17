@@ -256,6 +256,24 @@ stay inside the directory after symlinks are resolved (`escapes the directory` o
 `Err(reason)` when no response arrives; `req.bearer` is sent only as `Authorization: Bearer …`;
 cancelling the task aborts the request. The manifest's `net` list is not applied yet.
 
+**Sql.** `sql_memory()` and `sql_sqlite(path)` (a file inside the installed `Fs` handler's
+`root`, opened on first use) are `std::sql::Sql` handlers over `node:sqlite`. `Query` params
+are always bound. Rows decode by `R`'s schema: records by column name, tuples by position,
+other types from the first column (`Bool` from 0/1, `Option` from NULL, refinements checked,
+other structured types from JSON text). `transaction` is a savepoint (nests), released when
+the body returns and rolled back when it fails, defects or is cancelled.
+
+**Generic operations.** An operation whose type parameters are bounded by `Show`/`Schema`
+(`Sql.query<R: Schema>`, `Llm.generate<T: Schema>`) takes one trailing schema argument per
+such parameter (`OpDef::params` lists them as `Opaque("Schema")`); clauses receive them after
+the declared parameters. Inside a clause (and in **dictionary-passing copies** `f$dict` of
+generic functions, which take schemas as leading parameters), schemas of types mentioning those
+parameters are built at runtime (`PrimOp::SchemaOf`, `PrimOp::ShowWith`). Lowering uses a
+dictionary copy when a call's `Show`/`Schema` type arguments mention runtime schema parameters
+and a specialized copy when they are concrete.
+
+**Tagged templates.** `tag"a{x}b"` lowers to the tag module's `template(["a", "b"], [x])`.
+
 ## 8. Builtins
 
 `vow_core::builtins::BUILTINS` lists every runtime function Core may call

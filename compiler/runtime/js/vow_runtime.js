@@ -558,6 +558,10 @@ Untrusted.prototype.$t = recordType("Untrusted", "std::untrusted", [["value", "v
 export function untrusted_of(v) {
   return new Untrusted(v);
 }
+/** The wrapped value; backs `Untrusted.trust`, `check` and `len` (std/untrusted). */
+export function untrusted_value(u) {
+  return u.v;
+}
 
 // ---------------------------------------------------------------------------------------------
 // Show (design §4.8). `h` is the value's schema (ABI.md §7) or null when unknown; it tells
@@ -2606,4 +2610,135 @@ export function http_send(req, _ctx, k) {
     (e) => Err(String(e?.cause?.message ?? e?.message ?? e)),
   );
   return suspend(response, k, () => abort.abort());
+}
+
+// ---------------------------------------------------------------------------------------------
+// Sql (design §10.2, §4.11) over `node:sqlite`. Ops: query(q, schemaR), execute(q),
+// transaction(body). `Query { text, params }` comes only from the `sql` template, so values are
+// always bound parameters. Rows decode by `R`'s schema: a record by column name, a tuple by
+// position, anything else from the first column; `Bool` from 0/1, `Option` from NULL,
+// refinements checked. Transactions are savepoints, so they nest.
+
+const SQL = "std::sql::Sql";
+
+/** A `SqlValue` (Null | Int | Float | Text | Blob) as a bound parameter. */
+function sqlValue(v) {
+  return v.tag === 0 ? null : v.fields[0];
+}
+
+function fromSql(x, s, col) {
+  const bad = (what) => {
+    throw new DecodeFailure(col, `expected ${what}, found ${x === null ? "NULL" : typeof x}`);
+  };
+  if (s === "B") return x === 0 || x === 1 ? x === 1 : bad("0 or 1");
+  if (s === "I") return typeof x === "bigint" ? Number(x) : Number.isSafeInteger(x) ? x : bad("an integer");
+  if (s === "F") return typeof x === "number" ? x : bad("a number");
+  if (s === "S") return typeof x === "string" ? x : bad("text");
+  if (s === "Y") return x instanceof Uint8Array ? new Uint8Array(x) : bad("a blob");
+  if (s === "U") return undefined;
+  if (s !== null && s[0] === "A") {
+    if (s[1] === OPTION) return x === null ? None : Some(fromSql(x, s[2][0], col));
+    const r = refinements.get(s[1]);
+    if (r !== undefined) {
+      const v = fromSql(x, bindVars(r.base, s[2]), col);
+      if (!satisfies(r, v)) throw new DecodeFailure(col, `does not satisfy the where clause of ${r.name}`);
+      return v;
+    }
+  }
+  // Anything else is stored as JSON text.
+  if (typeof x !== "string") bad("JSON text");
+  return fromJs(JSON.parse(x), s, col);
+}
+
+function rowOf(row, s) {
+  const cols = Object.keys(row);
+  if (s !== null && s[0] === "A" && !refinements.has(s[1]) && s[1] !== OPTION) {
+    const cls = std(s[1]);
+    const t = cls.prototype.$t;
+    if (t.kind === "record") {
+      return new cls(
+        ...t.fields.map((name, i) => {
+          if (!Object.hasOwn(row, name)) throw new DecodeFailure(name, "no such column");
+          return fromSql(row[name], bindVars(t.h[i], s[2]), name);
+        }),
+      );
+    }
+  }
+  if (s !== null && s[0] === "T") return s.slice(1).map((c, i) => fromSql(row[cols[i]], c, cols[i]));
+  return fromSql(row[cols[0]], s, cols[0]);
+}
+
+/** A `Sql` handler over `open()`, which returns a `DatabaseSync` (called on first use). */
+function sqlHandler(open) {
+  let db = null;
+  let depth = 0;
+  const err = (e) => new (std("std::sql::SqlError"))(e instanceof DecodeFailure ? `column ${e.path}: ${e.message}` : String(e.message ?? e));
+  const run = (ctx, k, f) => {
+    try {
+      db ??= open(ctx);
+      return ret(k, f(db));
+    } catch (e) {
+      if (e instanceof Defect || e instanceof Exit || e === CANCEL) throw e;
+      return fail(ctx, err(e));
+    }
+  };
+  const params = (q) => items(q.params).map(sqlValue);
+  const query = (_i, q, schema, ctx, k) =>
+    run(ctx, k, (d) => list(d.prepare(q.text).all(...params(q)).map((row) => rowOf(row, schema))));
+  const execute = (_i, q, ctx, k) => run(ctx, k, (d) => Number(d.prepare(q.text).run(...params(q)).changes));
+  const transaction = (_i, body, ctx, k) => {
+    // The body runs under the performer's handlers (it performs `Sql` itself).
+    const pc = { h: ctx.p ?? ctx.h, c: ctx.c, t: ctx.t };
+    let name;
+    try {
+      db ??= open(ctx);
+      name = `vow_tx${depth}`;
+      db.exec(`SAVEPOINT ${name}`);
+      depth++;
+    } catch (e) {
+      if (e instanceof Defect || e instanceof Exit || e === CANCEL) throw e;
+      return fail(ctx, err(e));
+    }
+    let live = true;
+    const end = (sql) => {
+      if (!live) return;
+      live = false;
+      depth--;
+      db.exec(sql);
+    };
+    const rollback = () => end(`ROLLBACK TO ${name}; RELEASE ${name}`);
+    const run = (c, kk) =>
+      body(
+        catcher(c, (e) => {
+          rollback();
+          return fail(ctx, e);
+        }),
+        (v) => {
+          end(`RELEASE ${name}`);
+          return ret(kk, v);
+        },
+      );
+    return finalize(pc, rollback, run, k);
+  };
+  return new Handler(SQL, [query, execute, transaction], []);
+}
+
+/** `Sql.memory()`: a fresh in-memory database. */
+export function sql_memory() {
+  return sqlHandler(() => new (proc.getBuiltinModule("node:sqlite").DatabaseSync)(":memory:"));
+}
+
+/**
+ * `Sql.sqlite(path)`: a database file inside the installed `Fs` handler's directory (its
+ * `root`, op 0 of std/fs's `Fs`), opened on first use.
+ */
+export function sql_sqlite(path) {
+  const rel = items(path.fields[0]).join("/");
+  return sqlHandler((ctx) => {
+    const o = runTask((c, k) => perform(c, "std::fs::Fs", 0, [], (d) => ret(k, d)), [], ctx.p ?? ctx.h);
+    if (o instanceof Promise || o.kind !== "ok") throw new Error("Fs.root() is not available");
+    const r = inside(o.value, rel, true);
+    if (r.err !== undefined) throw new Error(`${rel}: ${r.err}`);
+    return new (proc.getBuiltinModule("node:sqlite").DatabaseSync)(r.path);
+  });
 }

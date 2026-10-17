@@ -510,6 +510,11 @@ pub enum PrimOp {
     /// The runtime schema of a type (ABI.md §7), passed to builtins whose type parameters are
     /// bounded by `Show` or `Schema` (`json_encode`, `json_decode`).
     Schema(Ty),
+    /// A schema built at runtime: like `Schema`, but type parameter `vars[i]` is the schema
+    /// value `args[i]` (dictionary-passing code, see `lower::Lower::def_dict`).
+    SchemaOf(Ty, Vec<u32>),
+    /// `Show` of `args[0]` with the runtime schema `args[1]`.
+    ShowWith,
 }
 
 impl PrimOp {
@@ -518,6 +523,8 @@ impl PrimOp {
         match self {
             IntNeg | FloatNeg | Not | Show(_) => 1,
             Schema(_) => 0,
+            SchemaOf(_, vars) => vars.len(),
+            ShowWith => 2,
             _ => 2,
         }
     }

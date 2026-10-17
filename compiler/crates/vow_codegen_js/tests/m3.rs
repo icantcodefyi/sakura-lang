@@ -494,3 +494,91 @@ pub fn main() -> Unit ! {Console, Env, Http} {
     assert!(req.contains("authorization: bearer s3cret"), "{req}");
     assert!(req.contains("x-test: 1"), "{req}");
 }
+
+#[test]
+fn sql_memory_queries_rows_by_schema_and_rolls_back_failed_transactions() {
+    let src = r#"import std/sql.{Sql, SqlError, SqlValue}
+type Age = Int where it >= 0
+type User = { id: Int, name: String, age: Age, admin: Bool, nick: Option<String> }
+error Abort
+fn setup() -> Unit ! {Sql, Fail<SqlError>} {
+  let _ = Sql.execute(sql"create table users (id integer, name text, age integer, admin integer, nick text)")
+  let n = SqlValue.Text("ann")
+  let _ = Sql.execute(sql"insert into users values (1, {n}, 30, 1, null)")
+}
+pub fn main() -> Unit ! {Console} {
+  with Sql.memory() {
+    let r = try { setup() }
+    Console.print("{r}")
+    let t = try {
+      Sql.transaction(fn() {
+        let _ = Sql.execute(sql"insert into users values (2, 'bob', 5, 0, 'b')")
+        fail Abort
+      })
+    }
+    Console.print("{t}")
+    let rows = try { let us: List<User> = Sql.query(sql"select * from users order by id"); us }
+    Console.print("{rows}")
+    let id = SqlValue.Int(1)
+    let names = try { let ns: List<String> = Sql.query(sql"select name from users where id = {id}"); ns }
+    Console.print("{names}")
+    let bad = try { let xs: List<Age> = Sql.query(sql"select -1"); xs }
+    Console.print("{bad}")
+  }
+}
+"#;
+    let r = common::run("sql_memory", src).unwrap();
+    assert_eq!(
+        (r.stdout.as_str(), r.code),
+        (
+            concat!(
+                "Ok(())\nErr(Abort)\n",
+                "Ok([User { id: 1, name: \"ann\", age: 30, admin: true, nick: None }])\n",
+                "Ok([\"ann\"])\n",
+                "Err(SqlError { message: \"column -1: does not satisfy the where clause of Age\" })\n"
+            ),
+            0
+        ),
+        "{}",
+        r.stderr
+    );
+}
+
+#[test]
+fn sql_sqlite_opens_its_file_inside_the_fs_directory() {
+    let src = r#"import std/fs.{Fs}
+import std/path.{Path}
+import std/sql.{Sql, SqlError}
+pub fn main() -> Unit ! {Console, Fs} {
+  with Sql.sqlite(Path.of("app.db")) {
+    let r = try {
+      let _ = Sql.execute(sql"create table if not exists hits (n integer)")
+      let _ = Sql.execute(sql"insert into hits values (1)")
+      let ns: List<Int> = Sql.query(sql"select count(*) from hits")
+      ns
+    }
+    Console.print("{r}")
+  }
+}
+"#;
+    let (m, sources) = common::build("sql_sqlite", src, false).unwrap();
+    let base = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("sql-sqlite");
+    common::write(&m, sources, &base.join("js"));
+    let work = base.join("work");
+    let _ = std::fs::remove_dir_all(&work);
+    std::fs::create_dir_all(&work).unwrap();
+    for want in ["Ok([1])\n", "Ok([2])\n"] {
+        let out = std::process::Command::new("node")
+            .arg(base.join("js/__main__.js"))
+            .current_dir(&work)
+            .output()
+            .unwrap();
+        assert_eq!(
+            String::from_utf8_lossy(&out.stdout),
+            want,
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+    assert!(work.join("app.db").exists());
+}

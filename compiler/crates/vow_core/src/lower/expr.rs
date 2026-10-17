@@ -40,6 +40,17 @@ pub(crate) struct FnLower<'a, 'p> {
     row_vars: Vec<u32>,
     /// Type arguments of a specialized copy (see [`Lower::def_spec`]).
     subst: Subst,
+    /// Type parameters whose schema is a runtime value (dictionary passing): the local
+    /// holding it. See [`Lower::def_dict`].
+    reps: Vec<(u32, Local)>,
+}
+
+/// How to call a function: its atom, schema types for leading parameters (dictionary
+/// passing) and for trailing parameters (builtins).
+struct Callee {
+    f: Atom,
+    leading: Vec<Ty>,
+    trailing: Vec<Ty>,
 }
 
 static EMPTY: std::sync::LazyLock<TypedBody> = std::sync::LazyLock::new(TypedBody::default);
@@ -77,6 +88,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
             lambdas: 0,
             row_vars: Vec::new(),
             subst: Vec::new(),
+            reps: Vec::new(),
         }
     }
 
@@ -87,12 +99,24 @@ impl<'a, 'p> FnLower<'a, 'p> {
         body_id: hir::BodyId,
         id: DefId,
         subst: Subst,
+        dict: bool,
     ) -> FnDef {
         let hdef = l.p.def(def);
         let pos = l.pos(def.module, hdef.range);
         let scheme = l.t.defs.get(&def).cloned();
+        let rep_params = if dict {
+            l.runtime_typed_params(def)
+        } else {
+            Vec::new()
+        };
         let mut s = FnLower::new(l, def.module, body_id, l_name(hdef));
         s.subst = subst;
+        let mut params: Vec<Local> = Vec::new();
+        for (i, p) in rep_params {
+            let r = s.b.local(format!("schema{i}"), Ty::Opaque("Schema".into()));
+            s.reps.push((p, r));
+            params.push(r);
+        }
         let (ret, row) = match &scheme {
             Some(sc) => match s.l.t.interner.ty(sc.ty).clone() {
                 vow_types::Type::Fn { ret, row, .. } => (s.conv(ret), s.l.row(row)),
@@ -103,7 +127,13 @@ impl<'a, 'p> FnLower<'a, 'p> {
         if let Some(sc) = &scheme {
             s.row_vars = sc.row_params.iter().map(|p| p.0).collect();
         }
-        let params: Vec<Local> = s.body.params.iter().map(|&p| s.param(p)).collect();
+        params.extend(
+            s.body
+                .params
+                .iter()
+                .map(|&p| s.param(p))
+                .collect::<Vec<_>>(),
+        );
         s.contracts(&ret);
         let value = s.body.value;
         let r = value.and_then(|v| s.expr(v));
@@ -603,29 +633,93 @@ impl<'a, 'p> FnLower<'a, 'p> {
     }
 
     /// How to call or reference function `d` at `at` (the path or method-call expression the
-    /// checker recorded the instantiation on): a specialized copy when `d` has `Show`/`Schema`
-    /// type parameters, plus the types to pass as runtime schemas when `d` is a builtin.
-    fn callee_at(&mut self, d: hir::DefId, at: ExprId) -> (Atom, Vec<Ty>) {
-        let params = self.l.runtime_typed_params(d);
-        let inst = self.typed.instantiations.get(at).cloned();
-        let (Some(inst), false) = (inst, params.is_empty()) else {
-            return (self.l.callee(d), Vec::new());
+    /// checker recorded the instantiation on). When `d` has `Show`/`Schema` type parameters:
+    /// a builtin gets their schemas as trailing arguments; with concrete type arguments the
+    /// call goes to a specialized copy; with type arguments known only at runtime (they
+    /// mention this function's schema parameters) to the dictionary-passing copy.
+    fn callee_at(&mut self, d: hir::DefId, at: ExprId) -> Callee {
+        let plain = |s: &mut Self| Callee {
+            f: s.l.callee(d),
+            leading: vec![],
+            trailing: vec![],
         };
-        let mut subst = Vec::new();
-        for (i, p) in params {
-            let Some(&t) = inst.get(i) else {
-                return (self.l.callee(d), Vec::new());
+        let Some(tys) = self.schema_args(d, at) else {
+            return plain(self);
+        };
+        if let Atom::Builtin(name) = self.l.callee(d) {
+            return Callee {
+                f: Atom::Builtin(name),
+                leading: vec![],
+                trailing: tys,
             };
-            subst.push((p, self.schema_conv(t)));
         }
-        match self.l.callee(d) {
-            Atom::Builtin(name) => (
-                Atom::Builtin(name),
-                subst.into_iter().map(|(_, t)| t).collect(),
-            ),
-            _ if subst.iter().any(|(_, t)| super::has_unknown(t)) => (self.l.callee(d), Vec::new()),
-            _ => (Atom::Global(self.l.def_spec(d, subst)), Vec::new()),
+        let mut vars = Vec::new();
+        tys.iter().for_each(|t| super::vars_of(t, &mut vars));
+        if vars.is_empty() {
+            let params = self.l.runtime_typed_params(d);
+            let subst = params.iter().map(|(_, p)| *p).zip(tys).collect();
+            return Callee {
+                f: Atom::Global(self.l.def_spec(d, subst)),
+                leading: vec![],
+                trailing: vec![],
+            };
         }
+        if vars.iter().all(|v| self.reps.iter().any(|(p, _)| p == v)) {
+            return Callee {
+                f: Atom::Global(self.l.def_dict(d)),
+                leading: tys,
+                trailing: vec![],
+            };
+        }
+        plain(self)
+    }
+
+    /// The schema types of `d`'s `Show`/`Schema`-bounded type arguments at `at`.
+    fn schema_args(&mut self, d: hir::DefId, at: ExprId) -> Option<Vec<Ty>> {
+        let params = self.l.runtime_typed_params(d);
+        if params.is_empty() {
+            return None;
+        }
+        let inst = self.typed.instantiations.get(at).cloned()?;
+        params
+            .iter()
+            .map(|&(i, _)| inst.get(i).map(|&t| self.schema_conv(t)))
+            .collect()
+    }
+
+    /// The runtime schema of `ty`, built from schema parameters when it mentions them.
+    fn schema_atom(&mut self, ty: Ty, pos: Option<Pos>) -> Atom {
+        let mut vars = Vec::new();
+        super::vars_of(&ty, &mut vars);
+        let (ids, args): (Vec<u32>, Vec<Atom>) = self
+            .reps
+            .iter()
+            .filter(|(p, _)| vars.contains(p))
+            .map(|(p, l)| (*p, local(*l)))
+            .unzip();
+        let op = if ids.is_empty() {
+            PrimOp::Schema(ty)
+        } else {
+            PrimOp::SchemaOf(ty, ids)
+        };
+        self.bind(
+            "schema",
+            Ty::Opaque("Schema".into()),
+            Bind::Prim(op, args),
+            pos,
+        )
+    }
+
+    /// `Show` of `v`: static when the type is known, with a runtime schema in
+    /// dictionary-passing code.
+    fn show_bind(&mut self, ty: Ty, v: Atom, pos: Option<Pos>) -> Bind {
+        let mut vars = Vec::new();
+        super::vars_of(&ty, &mut vars);
+        if vars.iter().any(|v| self.reps.iter().any(|(p, _)| p == v)) {
+            let s = self.schema_atom(ty, pos);
+            return Bind::Prim(PrimOp::ShowWith, vec![v, s]);
+        }
+        Bind::Prim(PrimOp::Show(ty), vec![v])
     }
 
     fn pos(&self, e: ExprId) -> Option<Pos> {
@@ -664,14 +758,53 @@ impl<'a, 'p> FnLower<'a, 'p> {
                 for (i, a) in args.iter().enumerate() {
                     let v = self.expr(*a)?;
                     let ty = self.ty_of(*a);
-                    let s = self.bind("s", Ty::String, Bind::Prim(PrimOp::Show(ty), vec![v]), pos);
+                    let show = self.show_bind(ty, v, pos);
+                    let s = self.bind("s", Ty::String, show, pos);
                     acc = self.concat(acc, s, pos);
                     let part = Atom::Lit(Lit::String(parts[i + 1].clone()));
                     acc = self.concat(acc, part, pos);
                 }
                 Some(acc)
             }
-            hir::Expr::Template { .. } => self.unsupported(e, "a tagged template"),
+            hir::Expr::Template { parts, args, .. } => {
+                // `tag"a{x}b"` is the tag's `template(["a", "b"], [x])` (design §4.11).
+                let Some(vow_types::CallTarget::Def(d)) = self.typed.calls.get(e).cloned() else {
+                    return self.unsupported(e, "this tagged template");
+                };
+                let vs = self.exprs(args)?;
+                let lits = parts
+                    .iter()
+                    .map(|p| Atom::Lit(Lit::String(p.clone())))
+                    .collect();
+                let ps = self.bind(
+                    "parts",
+                    Ty::List(Box::new(Ty::String)),
+                    Bind::Alloc(Alloc::List, lits),
+                    pos,
+                );
+                let arg_ty = args.first().map_or(Ty::Var(u32::MAX), |a| self.ty_of(*a));
+                let xs = self.bind(
+                    "args",
+                    Ty::List(Box::new(arg_ty)),
+                    Bind::Alloc(Alloc::List, vs),
+                    pos,
+                );
+                let Callee {
+                    f,
+                    leading,
+                    trailing,
+                } = self.callee_at(d, e);
+                let mut all = Vec::new();
+                for t in leading {
+                    all.push(self.schema_atom(t, pos));
+                }
+                all.extend([ps, xs]);
+                for t in trailing {
+                    all.push(self.schema_atom(t, pos));
+                }
+                let ty = self.ty_of(e);
+                Some(self.bind("tmpl", ty, Bind::Call(f, all), pos))
+            }
             hir::Expr::Path(res) => self.path(e, *res),
             hir::Expr::Call { callee, args, .. } => self.call(e, Some(*callee), None, args),
             hir::Expr::MethodCall { receiver, args, .. } => {
@@ -842,6 +975,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
                 let (d, caps) = self.lift(
                     FnKind::Lambda,
                     &ps,
+                    &[],
                     *lb,
                     ret,
                     row,
@@ -1002,8 +1136,12 @@ impl<'a, 'p> FnLower<'a, 'p> {
                 let ty = self.ty_of(e);
                 match &self.l.p.def(d).kind {
                     hir::DefKind::Fn(_) => match self.callee_at(d, e) {
-                        (f, reps) if reps.is_empty() => Some(f),
-                        _ => self.unsupported(e, "a schema-typed builtin as a value"),
+                        Callee {
+                            f,
+                            leading,
+                            trailing,
+                        } if leading.is_empty() && trailing.is_empty() => Some(f),
+                        _ => self.unsupported(e, "a `Schema`-generic function as a value here"),
                     },
                     hir::DefKind::Const(c) => {
                         let cbody = self.l.p.body(d.module, c.body);
@@ -1022,6 +1160,9 @@ impl<'a, 'p> FnLower<'a, 'p> {
                     hir::DefKind::Error(er) if er.fields.is_empty() => {
                         let b = self.l.ctor_bind(d, vec![]);
                         Some(self.bind("err", ty, b, pos))
+                    }
+                    hir::DefKind::Op(_) if !self.l.runtime_typed_params(d).is_empty() => {
+                        self.unsupported(e, "a `Schema`-generic operation as a value")
                     }
                     hir::DefKind::Variant(_) | hir::DefKind::Error(_) | hir::DefKind::Op(_) => {
                         Some(Atom::Global(self.l.ctor_fn(d, &ty)))
@@ -1064,22 +1205,41 @@ impl<'a, 'p> FnLower<'a, 'p> {
                     .collect();
                 let bind = match &self.l.p.def(d).kind {
                     hir::DefKind::Fn(_) => match self.callee_at(d, callee.unwrap_or(e)) {
-                        (Atom::Builtin(name), _) if name == "show" && vs.len() == 1 => {
-                            Bind::Prim(PrimOp::Show(arg_tys[0].clone()), vs)
+                        Callee {
+                            f: Atom::Builtin(name),
+                            ..
+                        } if name == "show" && vs.len() == 1 => {
+                            let v = vs.remove(0);
+                            self.show_bind(arg_tys[0].clone(), v, pos)
                         }
-                        (f, reps) => {
-                            for t in reps {
-                                let r = self.bind(
-                                    "schema",
-                                    Ty::Unit,
-                                    Bind::Prim(PrimOp::Schema(t), vec![]),
-                                    pos,
-                                );
-                                vs.push(r);
+                        Callee {
+                            f,
+                            leading,
+                            trailing,
+                        } => {
+                            let mut all = Vec::new();
+                            for t in leading {
+                                all.push(self.schema_atom(t, pos));
                             }
-                            Bind::Call(f, vs)
+                            all.append(&mut vs);
+                            for t in trailing {
+                                all.push(self.schema_atom(t, pos));
+                            }
+                            Bind::Call(f, all)
                         }
                     },
+                    hir::DefKind::Op(_) => {
+                        // Schema-bounded type arguments travel as trailing schema arguments.
+                        let n = self.l.runtime_typed_params(d).len();
+                        let tys = self
+                            .schema_args(d, callee.unwrap_or(e))
+                            .unwrap_or_else(|| vec![Ty::Var(u32::MAX); n]);
+                        for t in tys {
+                            let a = self.schema_atom(t, pos);
+                            vs.push(a);
+                        }
+                        self.l.ctor_bind(d, vs)
+                    }
                     _ => self.l.ctor_bind(d, vs),
                 };
                 Some(self.bind("r", ty, bind, pos))
@@ -1515,9 +1675,16 @@ impl<'a, 'p> FnLower<'a, 'p> {
                 effect: eff,
                 op: op_index as u32,
             };
+            let schemas: Vec<u32> = self
+                .l
+                .runtime_typed_params(op_def)
+                .into_iter()
+                .map(|(_, p)| p)
+                .collect();
             let (d, caps) = self.lift(
                 kind,
                 &c.params,
+                &schemas,
                 c.body,
                 opd.ret.clone(),
                 Row::empty(),
@@ -1551,6 +1718,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
         &mut self,
         kind: FnKind,
         params: &[LocalId],
+        schema_params: &[u32],
         body: ExprId,
         ret: Ty,
         row: Row,
@@ -1586,6 +1754,8 @@ impl<'a, 'p> FnLower<'a, 'p> {
             };
             caps.push(v);
         }
+        // Schema parameters in scope are captured too.
+        caps.extend(self.reps.iter().map(|(_, l)| local(*l)));
         let module = self.l.module_name(self.module);
         let id = self.l.push_placeholder(&name, module.clone());
         let body_ref = self.body;
@@ -1611,8 +1781,9 @@ impl<'a, 'p> FnLower<'a, 'p> {
             lambdas: 0,
             row_vars,
             subst: self.subst.clone(),
+            reps: Vec::new(),
         };
-        let captures: Vec<Local> = free
+        let mut captures: Vec<Local> = free
             .iter()
             .map(|l| {
                 let ty = s.local_ty(*l);
@@ -1621,6 +1792,11 @@ impl<'a, 'p> FnLower<'a, 'p> {
                 c
             })
             .collect();
+        for (p, _) in &self.reps {
+            let c = s.b.local("schema", Ty::Opaque("Schema".into()));
+            s.reps.push((*p, c));
+            captures.push(c);
+        }
         let mut ps = Vec::new();
         if let Some(e) = instance_of {
             let inst = s.b.local("inst", Ty::Instance(e));
@@ -1629,6 +1805,11 @@ impl<'a, 'p> FnLower<'a, 'p> {
         }
         for p in params {
             ps.push(s.param(*p));
+        }
+        for &p in schema_params {
+            let r = s.b.local("schema", Ty::Opaque("Schema".into()));
+            s.reps.push((p, r));
+            ps.push(r);
         }
         let v = s.expr(body);
         let code = s.finish_body(v);

@@ -389,7 +389,7 @@ impl<'a> Printer<'a> {
             Bind::Prim(op, args) => {
                 let name = match op {
                     PrimOp::Show(t) => format!("show<{}>", self.ty(t)),
-                    PrimOp::Schema(t) => format!("schema<{}>", self.ty(t)),
+                    PrimOp::Schema(t) | PrimOp::SchemaOf(t, _) => format!("schema<{}>", self.ty(t)),
                     other => format!("{other:?}").to_lowercase(),
                 };
                 format!("{name}({})", self.atoms(args))

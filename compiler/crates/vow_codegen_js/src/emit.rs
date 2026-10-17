@@ -249,6 +249,12 @@ fn prop(field: &str) -> String {
 /// by qualified name), `["W", [id…]]` (error union), `["V", i]` (a type parameter of the
 /// enclosing type), `["X", name]` (opaque), `null` (functions, unknown).
 pub(crate) fn schema(m: &Module, ty: &Ty) -> String {
+    schema_with(m, ty, &[])
+}
+
+/// [`schema`] with type parameter `vars[i].0` replaced by the JS expression `vars[i].1`.
+fn schema_with(m: &Module, ty: &Ty, vars: &[(u32, String)]) -> String {
+    let schema = |m: &Module, t: &Ty| schema_with(m, t, vars);
     let all = |ts: &[Ty]| {
         ts.iter()
             .map(|t| schema(m, t))
@@ -283,6 +289,7 @@ pub(crate) fn schema(m: &Module, ty: &Ty) -> String {
             js_string(&m.refinements[r.index()].qualified_name()),
             all(args)
         ),
+        Ty::Var(i) if let Some((_, js)) = vars.iter().find(|(v, _)| v == i) => js.clone(),
         Ty::Var(i) if *i != u32::MAX => format!("[\"V\", {i}]"),
         Ty::Opaque(name) => format!("[\"X\", {}]", js_string(name)),
         Ty::Never | Ty::Fn(_) | Ty::Handler(_) | Ty::Instance(_) | Ty::Var(_) => "null".into(),
@@ -1055,6 +1062,11 @@ impl<'a> FnEmit<'a> {
             PrimOp::Gt(t) => cmp(t, ">"),
             PrimOp::Ge(t) => cmp(t, ">="),
             PrimOp::Schema(ty) => self.schema(ty),
+            PrimOp::SchemaOf(ty, ids) => {
+                let vars: Vec<(u32, String)> = ids.iter().copied().zip(a.iter().cloned()).collect();
+                schema_with(self.cx.m, ty, &vars)
+            }
+            PrimOp::ShowWith => format!("$rt.show({}, {})", a[0], a[1]),
             PrimOp::Show(ty) => match ty {
                 Ty::String => a[0].clone(),
                 Ty::Int | Ty::Bool => format!("String({})", a[0]),

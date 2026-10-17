@@ -46,6 +46,7 @@ pub fn lower(program: &hir::Program, typed: &TypedProgram, opts: &LowerOptions) 
         ctor_fns: HashMap::new(),
         specs: HashMap::new(),
         spec_count: HashMap::new(),
+        dicts: HashMap::new(),
         schema_cache: HashMap::new(),
         refinements: HashMap::new(),
     };
@@ -107,8 +108,11 @@ pub(crate) struct Lower<'p> {
     ty_cache: HashMap<types::TypeId, Ty>,
     /// Refined type → its generated `from` def.
     refined: HashMap<(hir::DefId, hir::RefinementIntro), DefId>,
-    /// Defs allocated but not yet lowered, with the type arguments they are specialized to.
-    queue: Vec<(hir::DefId, DefId, Subst)>,
+    /// Defs allocated but not yet lowered, with the type arguments they are specialized to and
+    /// whether they take schemas as leading parameters (dictionary passing).
+    queue: Vec<(hir::DefId, DefId, Subst, bool)>,
+    /// Dictionary-passing copies of `Show`/`Schema`-generic functions.
+    dicts: HashMap<hir::DefId, DefId>,
     /// Constructor/op used as a function value → wrapper lambda.
     ctor_fns: HashMap<hir::DefId, DefId>,
     /// Copies of generic functions specialized to their `Show`/`Schema` type arguments.
@@ -179,7 +183,23 @@ impl<'p> Lower<'p> {
         let def = self.p.def(d);
         let id = self.push_placeholder(&def.name, self.module_name(d.module));
         self.defs.insert(d, id);
-        self.queue.push((d, id, Vec::new()));
+        self.queue.push((d, id, Vec::new(), false));
+        id
+    }
+
+    /// A copy of HIR function `d` taking one schema per `Show`/`Schema`-bounded type
+    /// parameter as leading parameters, for calls whose type arguments are only known at
+    /// runtime (inside other dictionary-passing code or a generic operation's clause).
+    pub fn def_dict(&mut self, d: hir::DefId) -> DefId {
+        if let Some(&id) = self.dicts.get(&d) {
+            return id;
+        }
+        let id = self.push_placeholder(
+            &format!("{}$dict", self.p.def(d).name),
+            self.module_name(d.module),
+        );
+        self.dicts.insert(d, id);
+        self.queue.push((d, id, Vec::new(), true));
         id
     }
 
@@ -201,7 +221,7 @@ impl<'p> Lower<'p> {
         }
         let id = self.push_placeholder(&self.p.def(d).name, self.module_name(d.module));
         self.specs.insert((d, subst.clone()), id);
-        self.queue.push((d, id, subst));
+        self.queue.push((d, id, subst, false));
         id
     }
 
@@ -246,7 +266,7 @@ impl<'p> Lower<'p> {
     }
 
     fn drain(&mut self) {
-        while let Some((hd, id, subst)) = self.queue.pop() {
+        while let Some((hd, id, subst, dict)) = self.queue.pop() {
             let def = self.p.def(hd);
             match &def.kind {
                 hir::DefKind::Fn(f) => {
@@ -255,15 +275,15 @@ impl<'p> Lower<'p> {
                         self.unsupported(hd.module, def.range, "a bodiless function");
                         continue;
                     }
-                    let export = def.is_pub && subst.is_empty();
-                    let fd = expr::FnLower::lower_fn(self, hd, f.body, id, subst);
+                    let export = def.is_pub && subst.is_empty() && !dict;
+                    let fd = expr::FnLower::lower_fn(self, hd, f.body, id, subst, dict);
                     self.m.defs[id.index()] = FnDef {
                         kind: FnKind::Top { export },
                         ..fd
                     };
                 }
                 hir::DefKind::Const(c) => {
-                    let fd = expr::FnLower::lower_fn(self, hd, c.body, id, subst);
+                    let fd = expr::FnLower::lower_fn(self, hd, c.body, id, subst, false);
                     self.m.defs[id.index()] = FnDef {
                         kind: FnKind::Const,
                         ..fd
@@ -328,7 +348,7 @@ impl<'p> Lower<'p> {
         let body_id = self.push_placeholder(&format!("test${n}"), module.clone());
         let mut fd = match &def.kind {
             hir::DefKind::Test(td) => {
-                expr::FnLower::lower_fn(self, t, td.body, body_id, Vec::new())
+                expr::FnLower::lower_fn(self, t, td.body, body_id, Vec::new(), false)
             }
             hir::DefKind::Property(pd) => expr::FnLower::lower_property(self, t, pd.body, body_id),
             _ => return,
@@ -793,6 +813,10 @@ impl<'p> Lower<'p> {
             for &op in &e.ops {
                 let od = &self.p.module(d.module).defs[op];
                 if let hir::DefKind::Op(o) = &od.kind {
+                    let schemas = self.runtime_typed_params(hir::DefId {
+                        module: d.module,
+                        index: op,
+                    });
                     let sig = o.sig.clone();
                     let fail = sig.row.as_ref().and_then(|r| {
                         r.labels
@@ -800,9 +824,13 @@ impl<'p> Lower<'p> {
                             .find(|l| l.effect == hir::TypeRes::Builtin(hir::Builtin::Fail))
                             .and_then(|l| l.args.first().cloned())
                     });
+                    // Schema-bounded type parameters arrive as trailing schema arguments.
+                    let mut params: Vec<Ty> =
+                        sig.params.iter().map(|p| self.ty_ref(&p.ty, &[])).collect();
+                    params.extend(schemas.iter().map(|_| Ty::Opaque("Schema".into())));
                     ops.push(OpDef {
                         name: od.name.clone(),
-                        params: sig.params.iter().map(|p| self.ty_ref(&p.ty, &[])).collect(),
+                        params,
                         ret: self.ty_ref(&sig.ret, &[]),
                         fail: fail.map(|t| self.ty_ref(&t, &[])),
                     });
@@ -949,14 +977,26 @@ fn map_vars(ty: &Ty, f: &dyn Fn(u32) -> Option<Ty>) -> Ty {
     }
 }
 
-/// Whether `ty` still mentions an unknown type (`Var(u32::MAX)`).
-pub(crate) fn has_unknown(ty: &Ty) -> bool {
+/// The type parameters `ty` mentions (`u32::MAX` for unknown types).
+pub(crate) fn vars_of(ty: &Ty, out: &mut Vec<u32>) {
     match ty {
-        Ty::Var(i) => *i == u32::MAX,
-        Ty::Tuple(ts) | Ty::Adt(_, ts) => ts.iter().any(has_unknown),
-        Ty::Fn(f) => f.params.iter().any(has_unknown) || has_unknown(&f.ret),
-        Ty::List(t) | Ty::Set(t) => has_unknown(t),
-        Ty::Map(k, v) => has_unknown(k) || has_unknown(v),
-        _ => false,
+        Ty::Var(i) => {
+            if !out.contains(i) {
+                out.push(*i);
+            }
+        }
+        Ty::Tuple(ts) | Ty::Adt(_, ts) | Ty::Refined(_, ts) => {
+            ts.iter().for_each(|t| vars_of(t, out))
+        }
+        Ty::Fn(f) => {
+            f.params.iter().for_each(|t| vars_of(t, out));
+            vars_of(&f.ret, out);
+        }
+        Ty::List(t) | Ty::Set(t) => vars_of(t, out),
+        Ty::Map(k, v) => {
+            vars_of(k, out);
+            vars_of(v, out);
+        }
+        _ => {}
     }
 }
