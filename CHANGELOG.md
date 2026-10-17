@@ -26,6 +26,18 @@ published yet.
   revision as `V8020`.
 - `sakura new <cli|lib|agent|api> <name>` and `sakura init` scaffold a project, and `sakura run` exits
   75 when `main` declares an effect that `[permissions]` does not grant.
+- `sakura audit [--json] [paths]` lists every `@trust` (with its reason and sink), `@total`,
+  `@external`, `@resource` and refined-type `T.from` site in your packages, as a table by file
+  or as JSON Lines `audit` records plus a `summary`. It is a report and always exits 0.
+- `sakura doc [--search "fn(List<A>) -> Int"] [symbol] [--json]` prints signatures, effect
+  rows, contracts and doc comments offline; `--json` returns the records of MCP `symbol_query`.
+- The `sakura explain` pages for `V5002`, `V5003`, `V6002`, `V6003`, `W5005` and `W7001`
+  describe the M3 rules with minimal pairs.
+- Test fixtures accept backend-suffixed expectations (`// expect-defect@js: D003`,
+  `// expect-exit@wasm: …`) beside the unsuffixed default; the M4 harness will use them.
+- `compiler/fuzz`: cargo-fuzz targets for parsing, checking, formatter idempotence and row
+  unification laws, run nightly for ten minutes each, with minimized failing inputs uploaded as
+  workflow artifacts.
 
 - `Tool.of` lowers a named `@tool` function through `Tool.from` with synthesized argument schema.
 - Effect-row parameters on types, including `Tool<e>`, `Agent<T, e>` and `Router<e>`.
