@@ -1,0 +1,52 @@
+# ADR 0002: Single monorepo with Rust compiler and Bun website
+
+- Date: 2026-10-17
+- Status: Accepted
+- Decision owner: @icantcodefyi
+
+## Context
+
+Vow needs language research, accepted design, an implementation, and documentation
+that evolve together. The website already uses Bun, Next.js, and Fumadocs.
+The Rust compiler workspace does not exist yet. We need boundaries that support
+small coordinated changes without prematurely creating many packages or repos.
+
+## Decision
+
+Use one repository with these responsibilities:
+
+- `research/`: evidence and prior-art studies, not normative language authority.
+- `docs/`: language design, future specification/reference material, RFCs, and ADRs.
+- `compiler/` (planned): Rust implementation, initially core phases as modules in
+  `vow-core` and CLI orchestration in `vow-cli`.
+- `website/`: Bun-managed Next.js/Fumadocs website and documentation presentation.
+
+When implementation begins, use a root Cargo workspace with `compiler/vow-core`,
+`compiler/vow-cli`, and `xtask`, a single committed root `Cargo.lock`, inherited
+workspace metadata/lints, Rust edition 2024, and resolver 3. Choose and test the
+MSRV, pin the development toolchain, and exclude any future nightly fuzz workspace.
+Do not create empty crates to imply implementation exists.
+
+Keep `website/bun.lock` committed and its package-manager version pinned in the
+website manifest. Documentation should share canonical language sources rather
+than silently introduce a second specification in the website.
+
+## Consequences
+
+Language, compiler, docs, and site can change atomically. CI can keep website and
+Rust checks separate under one aggregate result. Contributors must respect scoped
+ownership and guidance; a monorepo does not make all components one stable API.
+Register root integration tests explicitly because a virtual Cargo workspace
+will not discover them automatically. Add crates only when real boundaries emerge.
+
+## Alternatives
+
+Separate repositories make independent permissions/releases easier but complicate
+coordinated design and documentation changes during bootstrap. A crate per compiler
+phase creates coupling and overhead before boundaries are known. Replacing Bun
+would discard the existing website workflow without a demonstrated benefit.
+
+## Evidence
+
+See [the engineering research](../../research/07-oss-best-practices.md),
+[the design](../design.md), and [ADR 0001](0001-record-architecture-decisions.md).
