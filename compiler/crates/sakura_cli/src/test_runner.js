@@ -19,13 +19,16 @@ const path = process.getBuiltinModule("node:path");
 // checks this list against the std source.
 export const OPS = ["record_failure", "failures", "output", "output_lines", "snapshot"];
 
-/** `tests/__snapshots__/<module>/<name>.snap` holds `rendered` plus a newline. */
+/**
+ * `tests/__snapshots__/<module>/<name>.snap` holds `rendered` plus a newline; `<module>` is the
+ * module path inside the package (design §5.8), so `module`'s leading package segment is dropped.
+ */
 function snapshot(module, name, rendered) {
   if (snapshotDir === "") return "snapshots need a project directory";
   if (!/^[A-Za-z0-9_.-]+$/.test(name) || name.startsWith(".")) {
     return `snapshot name ${JSON.stringify(name)} must be letters, digits, '_', '-' or '.'`;
   }
-  const file = path.join(snapshotDir, ...module.split("::"), `${name}.snap`);
+  const file = path.join(snapshotDir, ...module.split("::").slice(1), `${name}.snap`);
   const want = `${rendered}\n`;
   let have = null;
   try {

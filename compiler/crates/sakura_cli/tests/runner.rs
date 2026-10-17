@@ -19,7 +19,7 @@ export const tests = [
   { name: "captures output", module: "main", run: ($ctx, $k) =>
       op($ctx, 2, ["one"], () => op($ctx, 3, [], (lines) =>
         op($ctx, 0, [`lines=${lines.n}`], $k))) },
-  { name: "snapshot", module: "app::view", run: ($ctx, $k) => op($ctx, 4, ["page", "<h1>hi</h1>"], $k) },
+  { name: "snapshot", module: "app::ui::view", run: ($ctx, $k) => op($ctx, 4, ["page", "<h1>hi</h1>"], $k) },
   { name: "uncaught fail", module: "main", run: ($ctx, $k) => $rt.fail($ctx, $rt.Some(3)) },
 ];
 "#;
@@ -114,7 +114,7 @@ fn snapshots_are_written_only_on_update_then_compared() {
     let dir = setup("snapshots");
     let (_, recs) = run(&dir, "snapshot", true);
     assert_eq!(recs[0]["status"], "passed", "{recs:?}");
-    let file = dir.join("snaps/app/view/page.snap");
+    let file = dir.join("snaps/ui/view/page.snap");
     assert_eq!(std::fs::read_to_string(&file).unwrap(), "<h1>hi</h1>\n");
     let (code, recs) = run(&dir, "snapshot", false);
     assert_eq!(
