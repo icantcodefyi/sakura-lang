@@ -280,12 +280,23 @@ Rule: before the §4 gates pass, M4 work may create new crates and `compiler/run
 | **L3** | M4-LIR | after the gates | live dependency on `sakura_core`; `sakura build --emit lir`; the `--layout=niche` flag plumbed but off | `cargo test -p sakura_eval --test differential` with the LIR interpreter as a third evaluator |
 | **V1** | M4-VERIFY | now | `sakura_verify` crate: Core → VC IR with definedness and feasibility, SMT-LIB2 printer, the research/09 §6 helpers, status and record types; input as L1 (Core snapshot) | the 50-obligation corpus of research/09-evidence reproduced from Core, not hand-transcribed; the `scale` split (§17.84) as fixtures with the expected statuses per profile |
 | **V2** | M4-VERIFY | after V1 | Z3 worker with limits, fresh context, structured `unknown` reasons, cvc5 cross-check mode, cache digest and MAC record format | worker tests with a fake solver (crash, garbage, timeout, slow); replay of `disproved` models through `sakura_eval` |
-| **V3** | M4-VERIFY | after the gates | `sakura verify` in `sakura_cli`, manifest integration, the `sakura_core::opt` removal hook, `W7001` registration | §14.3 acceptance as corrected by §17.84; a body-only edit invalidates its proof; an unauthenticated record never removes a check |
+| **V3** | M4-VERIFY | after the gates | `sakura verify` in `sakura_cli`, manifest integration, the `sakura_core::opt` removal hook, `W7002 vacuous_obligation` registration (§17.105) | §14.3 acceptance as corrected by §17.84; a body-only edit invalidates its proof; an unauthenticated record never removes a check |
 | **W1** | M4-WASM | after the gates, L2, R2 | LIR → `wasm-encoder`, validator with the ABI §1 features and structural checks, names and `sakura.debug`, host adapter | the pure corpus on Wasmtime; `hello` through `word_count` on Node |
 
 Owner's decision carried from §6 item 2: `sakura verify` needs a `z3` binary on `PATH` or `--solver`; V2 pins Z3 5.3.1 and cvc5 1.4.2 (research/09 versions) and refuses others with a diagnostic, nothing is downloaded.
 
 ---
+
+### 3.6 Round-5 M4 items (§17.104–§17.108)
+
+| Item | Owner | May start | Content | Done when |
+|---|---|---|---|---|
+| V2a | M4-VERIFY | now | per-query `rlimit 10^7`, `timeout` 2 s, deadline 5 s (§17.106); `vacuous_obligation` reported as `W7002` (§17.105) | `scale.tsv` re-blessed with the division `proved` on both profiles; a test asserts no expected record has `reason: timeout` |
+| V2b | M4-VERIFY | now | `crates/sakura_core_snapshot` holds `sakura-core-snapshot-v1` and the converter (§17.107); `sakura_verify` depends on it | `tests/bless.rs` unchanged in behaviour; the crate has no `sakura_core` dependency outside the `SAKURA_BLESS=1` converter |
+| L1a | M4-LIR | after V2b | `sakura_lir` reads the shared snapshot crate; the `Handler` payload gets `type_id` and a layout row per handler def (§17.108 E6) | validator checks `StateGet`/`StateSet` kinds against the handler row |
+| R1a | M4-RT | now | fold E1–E12 into ABI.md as 1.0.1 with the E6 handler amendment; `Handler` object carries `type_id` (§17.108) | ABI.md sections agree with `layout.rs`; the errata list stays as history |
+| C1 | WS2 (`sakura_core`) | after the gates | `FnDef::refined_params`, every signature-named refinement lowered with its `T$check`, `Display` prints `@name#id` (§17.107); the snapshot converter then copies the field from Core and drops its HIR fallback | `sakura_verify` fixtures unchanged; `--dump core` is unambiguous on a program with two `run` defs |
+| V3 | M4-VERIFY | after the gates | `sakura verify --rlimit N` and `[verify] rlimit` (§17.106), `W7002` registration | the flag value appears in every record and in the cache key |
 
 ## 4. M3 exit gates
 
