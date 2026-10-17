@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Code } from "@/components/code";
-import { docsLlms } from "@/lib/source";
+import { llmsTxt } from "@/lib/source";
 import { Tabs } from "./tabs";
 
 const MCP = `// → tools/call
@@ -41,7 +41,7 @@ const HOLE_REPLY = `hole at src/cart.vow:3:17
   fits      Payments.charge(card, total)`;
 
 export async function AgentView() {
-  const index = docsLlms.index().split("\n").filter(Boolean).slice(0, 14).join("\n");
+  const index = llmsTxt().split("\n").slice(0, 18).join("\n");
   return (
     <section id="agents" className="border-b border-line">
       <div className="mx-auto grid max-w-6xl gap-12 px-5 py-24 sm:px-8 md:py-32 lg:grid-cols-[0.75fr_1.25fr] lg:gap-16">
@@ -76,7 +76,7 @@ export async function AgentView() {
                 label: "llms.txt",
                 panel: (
                   <div>
-                    <Code code={index} lang="md" title={<span>GET /llms.txt</span>} numbers />
+                    <Code code={index} lang="md" title={<span>GET /llms.txt</span>} wrap />
                     <p className="mt-3 text-[13px] text-fg-muted">
                       Live from this site.{" "}
                       <a href="/llms.txt" className="font-medium text-fg underline decoration-seal underline-offset-4">

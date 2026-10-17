@@ -10,6 +10,8 @@ type CodeProps = {
   mark?: Record<number, "add" | "del" | "seal" | "fail" | "ok">;
   className?: string;
   numbers?: boolean;
+  /** soft-wrap long lines instead of scrolling */
+  wrap?: boolean;
 };
 
 const markClass = {
@@ -21,7 +23,7 @@ const markClass = {
 } as const;
 
 /** Static, server-highlighted code block in the site's code style. */
-export async function Code({ code, lang = "vow", title, mark, className, numbers = false }: CodeProps) {
+export async function Code({ code, lang = "vow", title, mark, className, numbers = false, wrap = false }: CodeProps) {
   const lines = await tokenize(code.replace(/\n$/, ""), lang);
   return (
     <figure className={`overflow-hidden rounded-xl border border-line bg-code ${className ?? ""}`}>
@@ -31,7 +33,7 @@ export async function Code({ code, lang = "vow", title, mark, className, numbers
         </figcaption>
       ) : null}
       <pre className="overflow-x-auto py-3 font-mono text-[12.5px] leading-[1.7]">
-        <code className="grid min-w-max">
+        <code className={`grid ${wrap ? "whitespace-pre-wrap [overflow-wrap:anywhere]" : "min-w-max"}`}>
           {lines.map((line, i) => (
             <span key={i} className={`flex px-4 ${mark?.[i] ? markClass[mark[i]] : ""}`}>
               {numbers ? (
