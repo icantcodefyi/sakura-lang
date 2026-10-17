@@ -1,7 +1,7 @@
-//! Derived `Show` (design §4.8): strings are raw at the top level of an interpolation and quoted
-//! inside structures; floats use the shortest round-trip form, printed like JS `Number#toString`
-//! but always with a `.` or exponent (`2.0`). Containers render as Vow syntax (`[1, 2]`,
-//! `Map.of([("a", 1)])`, `Set.of([1])`), following std's proposal in `compiler/REQUESTS.md`.
+//! Derived `Show` (design §4.8), matching `$rt.show` in `runtime/js/vow_runtime.js`: strings
+//! are raw at the top level of an interpolation and Vow literals inside structures; floats
+//! always carry a `.` (`2.0`, `1.0e21`); containers render as Vow syntax (`[1, 2]`, `(1,)`,
+//! `Map.of([("a", 1)])`, `Set.of([1])`).
 
 use vow_core::{Module, TypeKind};
 
@@ -29,16 +29,10 @@ fn write(module: &Module, v: &Value, quoted: bool, out: &mut String) {
         Value::Unit => out.push_str("()"),
         Value::Bool(b) => out.push_str(if *b { "true" } else { "false" }),
         Value::Int(i) => out.push_str(&i.to_string()),
-        Value::Float(f) => {
-            let s = js_number(*f);
-            let plain = s.bytes().all(|b| b.is_ascii_digit() || b == b'-');
-            out.push_str(&s);
-            if plain {
-                out.push_str(".0");
-            }
-        }
-        Value::Str(s) if quoted => out.push_str(&format!("{:?}", &**s)),
+        Value::Float(f) => out.push_str(&show_float(*f)),
+        Value::Str(s) if quoted => quote(s, out),
         Value::Str(s) => out.push_str(s),
+        Value::Tuple(xs) if xs.len() == 1 => list(module, xs, "(", ",)", out),
         Value::Tuple(xs) => list(module, xs, "(", ")", out),
         Value::List(xs) => list(module, xs, "[", "]", out),
         Value::Set(xs) => list(module, xs, "Set.of([", "])", out),
@@ -59,7 +53,9 @@ fn write(module: &Module, v: &Value, quoted: bool, out: &mut String) {
         Value::Record(t, fields) => {
             let def = module.ty(*t);
             out.push_str(&def.name);
-            if !fields.is_empty() {
+            if fields.is_empty() && !matches!(def.kind, TypeKind::Record { error: true, .. }) {
+                out.push_str(" {}");
+            } else if !fields.is_empty() {
                 out.push_str(" { ");
                 for (i, (f, v)) in def.fields().iter().zip(fields.iter()).enumerate() {
                     if i > 0 {
@@ -83,7 +79,57 @@ fn write(module: &Module, v: &Value, quoted: bool, out: &mut String) {
             }
         }
         Value::Fn(_) => out.push_str("<fn>"),
-        Value::Handler(_) | Value::Instance(_) => out.push_str("<handler>"),
+        Value::Handler(h) => {
+            let e = module.effects.get(h.effect.index());
+            let name = e.map(|e| e.qualified_name()).unwrap_or_default();
+            out.push_str(&format!("<handler {name}>"));
+        }
+        Value::Instance(_) => out.push_str("<handler>"),
+    }
+}
+
+/// `$rt.quote`: a Vow string literal.
+fn quote(s: &str, out: &mut String) {
+    out.push('"');
+    for ch in s.chars() {
+        match ch {
+            '"' | '\\' | '{' | '}' => {
+                out.push('\\');
+                out.push(ch);
+            }
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            '\0' => out.push_str("\\0"),
+            c if (c as u32) < 0x20 || c as u32 == 0x7f => {
+                out.push_str(&format!("\\u{{{:x}}}", c as u32));
+            }
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+}
+
+/// `$rt.showFloat`: JS number formatting, always with a `.` in the mantissa.
+pub fn show_float(f: f64) -> String {
+    if f == 0.0 && f.is_sign_negative() {
+        return "-0.0".into();
+    }
+    let s = js_number(f);
+    if f.is_nan() || f.is_infinite() {
+        return s;
+    }
+    match s.split_once('e') {
+        None if s.contains('.') => s,
+        None => format!("{s}.0"),
+        Some((m, e)) => {
+            let m = if m.contains('.') {
+                m.to_owned()
+            } else {
+                format!("{m}.0")
+            };
+            format!("{m}e{}", e.replace('+', ""))
+        }
     }
 }
 
@@ -140,8 +186,20 @@ mod tests {
         assert_eq!(show(&m, &map, false), "Map.of([(\"a\", 2.0)])");
         let set = Value::Set(Rc::new(vec![Value::Int(1)]));
         assert_eq!(show(&m, &set, false), "Set.of([1])");
-        let tup = Value::Tuple(Rc::new([Value::Float(-0.5), s("x"), Value::Unit]));
-        assert_eq!(show(&m, &tup, false), "(-0.5, \"x\", ())");
+        let tup = Value::Tuple(Rc::new([Value::Float(-0.5), s("x{\n"), Value::Unit]));
+        assert_eq!(show(&m, &tup, false), "(-0.5, \"x\\{\\n\", ())");
+        assert_eq!(
+            show(&m, &Value::Tuple(Rc::new([Value::Int(1)])), false),
+            "(1,)"
+        );
+        for (f, s) in [
+            (1e21, "1.0e21"),
+            (1.5e-7, "1.5e-7"),
+            (-0.0, "-0.0"),
+            (3.0, "3.0"),
+        ] {
+            assert_eq!(show_float(f), s);
+        }
         assert_eq!(show(&m, &s("raw"), false), "raw");
     }
 

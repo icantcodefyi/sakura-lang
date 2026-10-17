@@ -346,18 +346,22 @@ impl<'m> Machine<'m> {
         }
     }
 
+    /// A `Console.print` line: stdout under `run_main`, the test's captured output under tests.
+    pub(crate) fn print(&mut self, line: &str) {
+        if self.testing {
+            self.test_output.push(line.to_owned());
+        } else {
+            self.stdout.push_str(line);
+            self.stdout.push('\n');
+        }
+    }
+
     fn native(&mut self, n: Native, args: Vec<Value>) -> R<Value> {
         // args[0] is the handler instance.
         let arg = |i: usize| args.get(i).cloned().unwrap_or(Value::Unit);
         match n {
             Native::ConsolePrint => {
-                let line = str_of(&arg(1))?;
-                if self.testing {
-                    self.test_output.push(line.to_string());
-                } else {
-                    self.stdout.push_str(&line);
-                    self.stdout.push('\n');
-                }
+                self.print(&str_of(&arg(1))?);
                 Ok(Value::Unit)
             }
             Native::ConsoleReadLine => builtins::option(self.module, None),

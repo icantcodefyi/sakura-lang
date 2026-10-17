@@ -196,6 +196,28 @@ pub(crate) fn call(m: &mut Machine, name: &str, args: Vec<Value>, hs: &Rc<Handle
         ("int_max", [Int(a), Int(b)]) => Int(*a.max(b)),
         ("float_sqrt", [Float(f)]) => Float(f.sqrt()),
         ("float_is_nan", [Float(f)]) => Bool(f.is_nan()),
+        ("console_print", [Str(line)]) => {
+            m.print(line);
+            Unit
+        }
+        ("console_host" | "console_captured", []) => {
+            let effect = module
+                .effects
+                .iter()
+                .position(|e| e.qualified_name() == "std::console::Console")
+                .ok_or_else(|| {
+                    Stop::Unsupported("std::console::Console is not in this module".into())
+                })?;
+            let native = |n| Fn(Rc::new(crate::Callable::Native(n)));
+            Handler(Rc::new(crate::HandlerValue {
+                effect: vow_core::EffectId(effect as u32),
+                state: vec![],
+                clauses: vec![
+                    native(crate::Native::ConsolePrint),
+                    native(crate::Native::ConsoleReadLine),
+                ],
+            }))
+        }
         ("option_expect", [Variant(_, c, payload), Str(msg)]) => match (c, payload.first()) {
             (1, Some(v)) => v.clone(),
             _ => return Err(defect("D030", format!("Option.expect on None: {msg}"))),
