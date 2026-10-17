@@ -1126,54 +1126,24 @@ pub fn main() -> Unit ! {Console, Fs} {
     );
 }
 
-/// Design §17.73: a cassette handler over the `http_recording_*` externals records through the
-/// outer `Http` under `SAKURA_RECORD=1`, then replays with every outer send failing (the network
+/// Design §17.73: std's `Http.recording` over the `http_recording_*` externals records through
+/// the outer `Http` under `SAKURA_RECORD=1`, then replays with every outer send failing (the network
 /// denied); the secret header is neither written nor part of the key.
 #[test]
 fn cassettes_record_then_replay_with_the_network_denied() {
     let program = |outer: &str| {
         format!(
-            r#"import std/fs.{{Dir, Fs}}
+            r#"import std/fs.{{Fs}}
 import std/http.{{Any, Http}}
 import std/request.{{Method, Request}}
 import std/response.{{HttpError, Response}}
 import std/url.{{Url}}
-@external(js, "sakura_runtime", "http_recording_open")
-fn http_recording_open(dir: Dir, path: String) -> Result<Int, String>
-@external(js, "sakura_runtime", "http_recording_lookup")
-fn http_recording_lookup(id: Int, req: Request) -> Result<Option<Response>, String>
-@external(js, "sakura_runtime", "http_recording_append")
-fn http_recording_append(id: Int, req: Request, resp: Response) -> Result<Unit, String>
-fn recording(path: String) -> Handler<Http, {{Http, Fs}}> {{
-  handler Http {{
-    var id = 0
-    fn send(req) {{
-      if id == 0 {{
-        id = match http_recording_open(Fs.root(), path) {{
-          Ok(i) => i,
-          Err(reason) => fail HttpError {{ status: None, reason }},
-        }}
-      }}
-      match http_recording_lookup(id, req) {{
-        Ok(Some(resp)) => resp,
-        Ok(None) => {{
-          let resp = Http.send(req)
-          match http_recording_append(id, req, resp) {{
-            Ok(_) => resp,
-            Err(reason) => fail HttpError {{ status: None, reason }},
-          }}
-        }}
-        Err(reason) => fail HttpError {{ status: None, reason }},
-      }}
-    }}
-  }}
-}}
 fn get(path: String) -> String ! {{Http, Fail<HttpError>}} {{
   let req = Http.bearer(Request.of(Method.Get, Url.from("https://api.example/{{path}}")), Secret.of("sk-live"))
   Http.send(req).body
 }}
 test "replays" {{
-  with Fs.rooted(Test.fixtures()), {outer}, recording("api.jsonl") {{
+  with Fs.rooted(Test.fixtures()), {outer}, Http.recording("api.jsonl") {{
     expect_eq(try {{ get("a") }}, Ok("live"))
     expect_eq(try {{ get("a") }}, Ok("live"))
   }}
