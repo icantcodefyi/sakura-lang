@@ -141,3 +141,81 @@ fn width_is_measured_in_chars() {
     let once = sakura_fmt::format(&fits).unwrap();
     assert!(once.contains(&format!("  g({arg})\n")), "{once}");
 }
+
+/// Every comment survives formatting: a block comment before each token and a line comment at
+/// each line end of the corpus (every third spot, rotating by file to bound debug-build time),
+/// one at a time, wherever it leaves the program's shape unchanged.
+/// The output keeps it exactly once, keeps every other token, reparses and is a fixed point.
+#[test]
+fn every_comment_survives() {
+    let shape = |text: &str| -> Vec<SyntaxKind> {
+        parse(text)
+            .syntax()
+            .descendants_with_tokens()
+            .map(|e| e.kind())
+            .filter(|k| !k.is_trivia() && *k != SyntaxKind::NEWLINE)
+            .collect()
+    };
+    let mut files = Vec::new();
+    for dir in ["../sakura_syntax/tests/data/ok", "../../tests/fmt"] {
+        for entry in std::fs::read_dir(dir).unwrap() {
+            files.push(entry.unwrap().path());
+        }
+    }
+    files.sort();
+    let mut cases = 0;
+    for (i, path) in files.iter().enumerate() {
+        let text = std::fs::read_to_string(path).unwrap();
+        let base = shape(&text);
+        let mut spots = Vec::new();
+        for tok in parse(&text)
+            .syntax()
+            .descendants_with_tokens()
+            .filter_map(|e| e.into_token())
+        {
+            if tok
+                .parent_ancestors()
+                .any(|a| a.kind() == SyntaxKind::STRING_LIT)
+            {
+                continue;
+            }
+            let at = usize::from(tok.text_range().start());
+            if matches!(tok.kind(), SyntaxKind::WHITESPACE | SyntaxKind::NEWLINE) {
+                if tok.text().contains('\n') {
+                    spots.push((at, " // probe"));
+                }
+            } else if !tok.kind().is_trivia() {
+                spots.push((at, " /* probe */ "));
+            }
+        }
+        for (at, comment) in spots.into_iter().skip(i % 3).step_by(3) {
+            let mut m = text.clone();
+            m.insert_str(at, comment);
+            if !parse(&m).errors.is_empty() || shape(&m) != base {
+                continue;
+            }
+            cases += 1;
+            let out = sakura_fmt::format(&m)
+                .unwrap_or_else(|e| panic!("{}: {}\n{m}", path.display(), e[0].message));
+            assert_eq!(
+                out.matches("probe").count(),
+                1,
+                "{}:\n{m}\n---\n{out}",
+                path.display()
+            );
+            assert_eq!(
+                tokens(&m),
+                tokens(&out),
+                "{}:\n{m}\n---\n{out}",
+                path.display()
+            );
+            assert_eq!(
+                sakura_fmt::format(&out).unwrap(),
+                out,
+                "{}: not idempotent:\n{out}",
+                path.display()
+            );
+        }
+    }
+    assert!(cases > 2_000, "only {cases} cases");
+}

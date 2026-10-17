@@ -35,5 +35,9 @@ published yet.
 
 - `Llm.stream` under `Llm.anthropic` requests server-sent events and calls `on_partial` once per
   text delta instead of once with the whole reply.
+- `sakura fmt` no longer drops comments in import lists, after `where`, or before a binary `-`,
+  keeps one-line block comments inline in lists and statements, and lays out comments after
+  `=` and `=>` instead of copying the statement verbatim. If formatting would still lose a
+  comment or produce code that does not parse, the file is left unchanged and `V9001` reported.
 
 [Unreleased]: https://github.com/icantcodefyi/sakura-lang/commits/master

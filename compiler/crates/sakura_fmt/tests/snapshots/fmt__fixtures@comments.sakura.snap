@@ -1,6 +1,5 @@
 ---
 source: crates/sakura_fmt/tests/fmt.rs
-assertion_line: 66
 expression: "check(path, &text)"
 input_file: tests/fmt/comments.sakura
 ---
@@ -20,8 +19,7 @@ fn main() -> Unit ! {Console} {
   // leading comment
   let a = 1 // trailing comment
 
-  /* block */
-  let b = 2
+  /* block */ let b = 2
   match a {
     // first arm
     1 => Console.print("one"), // after arm

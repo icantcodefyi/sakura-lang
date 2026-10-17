@@ -1088,6 +1088,7 @@ dependencies = [
  "insta",
  "pretty",
  "proptest",
+ "sakura_diagnostics",
  "sakura_syntax",
 ]
 

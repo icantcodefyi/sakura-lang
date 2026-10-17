@@ -29,15 +29,19 @@
 //!   `fn() -> A ! {E}`).
 //! - **Not reformatted:** string text (interpolated expressions are formatted on one line) and
 //!   the order of variants in `type` declarations, which is part of the program.
-//! - **Comments inside expressions** are laid out around binary operators and before the `.` of
-//!   a method chain: block comments stay inline, a line comment ends its line and breaks the
-//!   chain. A node with a comment anywhere else (a `let` before its value, a signature, a match
-//!   arm after `=>`) is kept verbatim, re-indented as a block.
+//! - **Comments inside expressions** are laid out around binary operators, before the `.` of a
+//!   method chain, after the `=` of a binding and the `=>` of a match arm, and between the
+//!   entries of argument lists, literals, blocks and arms: a one-line block comment stays inline,
+//!   a line comment ends its line (and breaks the chain or list). A node with a comment anywhere
+//!   else (a signature, a pattern) is kept verbatim, re-indented as a block.
+//! - **No comment is ever dropped.** `format` reparses its output; if a comment is missing or
+//!   the output does not parse, it returns a `V9001` instead and the caller keeps the original.
 
 use pretty::RcDoc;
+use sakura_diagnostics::{Phase, Span, codes};
 use sakura_syntax::SyntaxKind::{self, *};
 use sakura_syntax::ast::{self, AstNode, HasAttrs};
-use sakura_syntax::{Diagnostic, NodeOrToken, SyntaxNode, SyntaxToken};
+use sakura_syntax::{Diagnostic, FileId, NodeOrToken, SyntaxNode, SyntaxToken};
 
 type Doc = RcDoc<'static, ()>;
 
@@ -48,7 +52,9 @@ const INDENT: isize = 2;
 /// trimming is skipped.
 const RAW_NL: char = '\u{FDD0}';
 
-/// Format a whole module. Returns the parse errors instead if the file does not parse cleanly.
+/// Format a whole module. Returns the parse errors instead if the file does not parse cleanly,
+/// and a `V9001` instead of output that would lose a comment or not parse (a formatter bug: the
+/// caller keeps the original text).
 pub fn format(text: &str) -> Result<String, Vec<Diagnostic>> {
     let parse = sakura_syntax::parse(text);
     if !parse.errors.is_empty() {
@@ -62,7 +68,57 @@ pub fn format(text: &str) -> Result<String, Vec<Diagnostic>> {
         result.push('\n');
     }
     result.pop();
-    Ok(result.replace(RAW_NL, "\n"))
+    let result = result.replace(RAW_NL, "\n");
+    match guard(&parse, &result) {
+        Some(d) => Err(vec![d]),
+        None => Ok(result),
+    }
+}
+
+/// The diagnostic for output that drops a comment of `input` or does not parse, if any.
+fn guard(input: &sakura_syntax::Parse, output: &str) -> Option<Diagnostic> {
+    let comments = |p: &sakura_syntax::Parse| -> Vec<SyntaxToken> {
+        p.syntax()
+            .descendants_with_tokens()
+            .filter_map(|e| e.into_token())
+            .filter(|t| is_comment(t.kind()))
+            .collect()
+    };
+    let reparsed = sakura_syntax::parse(output);
+    let bug = |message: String, start: u32, end: u32| {
+        Diagnostic::error(codes::V9001, Phase::Internal, message).with_span(Span::primary(
+            FileId(0),
+            start,
+            end,
+        ))
+    };
+    if let Some(e) = reparsed.errors.first() {
+        let message = format!(
+            "the formatter produced code that does not parse ({}); the file is left unchanged. \
+             This is a formatter bug; please report it",
+            e.message
+        );
+        return Some(bug(message, 0, 0));
+    }
+    let mut kept: Vec<String> = comments(&reparsed)
+        .iter()
+        .map(|t| t.text().trim_end().to_string())
+        .collect();
+    for c in comments(input) {
+        let text = c.text().trim_end();
+        match kept.iter().position(|k| k == text) {
+            Some(i) => {
+                kept.swap_remove(i);
+            }
+            None => {
+                let r = c.text_range();
+                let message = "the formatter would drop this comment; the file is left unchanged. \
+                     This is a formatter bug; please report it";
+                return Some(bug(message.into(), r.start().into(), r.end().into()));
+            }
+        }
+    }
+    None
 }
 
 // ---- Document helpers ----
@@ -181,6 +237,11 @@ fn handles_comments(kind: SyntaxKind) -> bool {
             | FIELD_EXPR
             | INDEX_EXPR
             | RAISE_EXPR
+            | CONST_DECL
+            | LET_STMT
+            | VAR_STMT
+            | ASSIGN_STMT
+            | MATCH_ARM
     )
 }
 
@@ -194,6 +255,8 @@ struct Comment {
 struct Entry {
     node: SyntaxNode,
     leading: Vec<Comment>,
+    /// A one-line block comment just before the node on the same line (`/* c */ x`).
+    inline: Option<String>,
     trailing: Option<String>,
     blank_before: bool,
 }
@@ -205,6 +268,7 @@ struct Seq {
 }
 
 impl Seq {
+    /// Whether a comment needs a line of its own or ends one: inline comments do not.
     fn has_comments(&self) -> bool {
         !self.dangling.is_empty()
             || self
@@ -215,8 +279,9 @@ impl Seq {
 }
 
 /// Split the children of `container` into entries (nodes accepted by `is_entry`) with the
-/// comments around them. A comment on the same line as the previous entry trails it; any other
-/// comment leads the next entry.
+/// comments around them. A one-line block comment on the same line as the next entry stays
+/// inline before it; otherwise a comment on the same line as the previous entry trails it, and
+/// any other comment leads the next entry.
 fn seq(container: &SyntaxNode, is_entry: impl Fn(SyntaxKind) -> bool) -> Seq {
     let mut entries: Vec<Entry> = Vec::new();
     let mut pending: Vec<Comment> = Vec::new();
@@ -243,9 +308,21 @@ fn seq(container: &SyntaxNode, is_entry: impl Fn(SyntaxKind) -> bool) -> Seq {
                 if let Some(last) = pending.last_mut() {
                     last.blank_after = newlines >= 2;
                 }
+                let mut inline = None;
+                if newlines == 0 {
+                    if pending.last().is_some_and(|c| is_inline(&c.text)) {
+                        inline = pending.pop().map(|c| c.text);
+                    } else if pending.is_empty()
+                        && let Some(last) = entries.last_mut()
+                        && last.trailing.as_deref().is_some_and(is_inline)
+                    {
+                        inline = last.trailing.take();
+                    }
+                }
                 entries.push(Entry {
                     node,
                     leading: std::mem::take(&mut pending),
+                    inline,
                     trailing: None,
                     blank_before: blank && !entries.is_empty(),
                 });
@@ -286,6 +363,11 @@ fn seq(container: &SyntaxNode, is_entry: impl Fn(SyntaxKind) -> bool) -> Seq {
     }
 }
 
+/// A block comment without line breaks.
+fn is_inline(text: &str) -> bool {
+    text.starts_with("/*") && !text.contains('\n')
+}
+
 fn comments_doc(comments: &[Comment]) -> Doc {
     let mut parts = Vec::new();
     for c in comments {
@@ -304,6 +386,14 @@ struct Fmt<'a> {
 impl Fmt<'_> {
     // ---- Lines and lists ----
 
+    /// An entry's node with its inline comment.
+    fn entry(&self, e: &Entry) -> Doc {
+        e.inline
+            .as_ref()
+            .map_or_else(nil, |c| raw(c).append(t(" ")))
+            .append(self.node(&e.node))
+    }
+
     /// Entries one per line with their comments; `sep` follows each entry.
     fn lines(&self, s: &Seq, sep: &str, keep_blanks: bool) -> Doc {
         let mut parts = Vec::new();
@@ -314,7 +404,7 @@ impl Fmt<'_> {
                     parts.push(nl());
                 }
             }
-            parts.extend([comments_doc(&e.leading), self.node(&e.node), t(sep)]);
+            parts.extend([comments_doc(&e.leading), self.entry(e), t(sep)]);
             if let Some(c) = &e.trailing {
                 parts.extend([t(" "), raw(c)]);
             }
@@ -353,7 +443,7 @@ impl Fmt<'_> {
         }
         let edge = if spaced { line() } else { line_() };
         let items = join(
-            s.entries.iter().map(|e| self.node(&e.node)),
+            s.entries.iter().map(|e| self.entry(e)),
             t(",").append(line()),
         );
         t(open)
@@ -373,7 +463,9 @@ impl Fmt<'_> {
     fn node(&self, n: &SyntaxNode) -> Doc {
         let lead = leading_comments(n);
         let body = if !handles_comments(n.kind()) && has_inner_comments(n) {
-            self.verbatim(n)
+            // These nodes print the space before their keyword themselves.
+            let space = matches!(n.kind(), WHERE_CLAUSE | RET_TYPE | MATCH_GUARD);
+            if space { t(" ") } else { nil() }.append(self.verbatim(n))
         } else {
             let parens = type_parens(n);
             if parens == 0 {
@@ -384,18 +476,16 @@ impl Fmt<'_> {
                     .append(t(")".repeat(parens)))
             }
         };
-        if lead.is_empty() {
-            body
-        } else {
-            let comments = lead
-                .into_iter()
-                .map(|text| Comment {
-                    text,
-                    blank_after: false,
-                })
-                .collect::<Vec<_>>();
-            comments_doc(&comments).append(body)
+        let mut parts = Vec::new();
+        for (text, newline_after) in lead {
+            let sep = if is_inline(&text) && !newline_after {
+                t(" ")
+            } else {
+                nl()
+            };
+            parts.extend([raw(&text), sep]);
         }
+        concat(parts).append(body)
     }
 
     fn opt(&self, n: Option<impl AstNode>) -> Doc {
@@ -472,15 +562,15 @@ impl Fmt<'_> {
             }
             CONST_DECL => {
                 let d = ast::ConstDecl::cast(n.clone()).expect("kind checked");
-                self.item_prefix(&d)
+                let lhs = self
+                    .item_prefix(&d)
                     .append(t("let "))
                     .append(name(d.name()))
                     .append(
                         d.ty()
                             .map_or_else(nil, |ty| t(": ").append(self.node(ty.syntax()))),
-                    )
-                    .append(t(" = "))
-                    .append(self.opt(d.value()))
+                    );
+                self.binding(n, lhs, self.opt(d.value()))
             }
             TEST_DECL => {
                 let d = ast::TestDecl::cast(n.clone()).expect("kind checked");
@@ -593,31 +683,23 @@ impl Fmt<'_> {
             BLOCK => self.block(n),
             LET_STMT => {
                 let s = ast::LetStmt::cast(n.clone()).expect("kind checked");
-                t("let ")
-                    .append(self.opt(s.pat()))
-                    .append(
-                        s.ty()
-                            .map_or_else(nil, |ty| t(": ").append(self.node(ty.syntax()))),
-                    )
-                    .append(t(" = "))
-                    .append(self.opt(s.value()))
+                let lhs = t("let ").append(self.opt(s.pat())).append(
+                    s.ty()
+                        .map_or_else(nil, |ty| t(": ").append(self.node(ty.syntax()))),
+                );
+                self.binding(n, lhs, self.opt(s.value()))
             }
             VAR_STMT => {
                 let s = ast::VarStmt::cast(n.clone()).expect("kind checked");
-                t("var ")
-                    .append(name(s.name()))
-                    .append(
-                        s.ty()
-                            .map_or_else(nil, |ty| t(": ").append(self.node(ty.syntax()))),
-                    )
-                    .append(t(" = "))
-                    .append(self.opt(s.value()))
+                let lhs = t("var ").append(name(s.name())).append(
+                    s.ty()
+                        .map_or_else(nil, |ty| t(": ").append(self.node(ty.syntax()))),
+                );
+                self.binding(n, lhs, self.opt(s.value()))
             }
             ASSIGN_STMT => {
                 let s = ast::AssignStmt::cast(n.clone()).expect("kind checked");
-                self.opt(s.target())
-                    .append(t(" = "))
-                    .append(self.opt(s.value()))
+                self.binding(n, self.opt(s.target()), self.opt(s.value()))
             }
             FOR_STMT => {
                 let s = ast::ForStmt::cast(n.clone()).expect("kind checked");
@@ -681,7 +763,7 @@ impl Fmt<'_> {
             TUPLE_EXPR => {
                 let s = seq(n, is_expr);
                 if s.entries.len() == 1 && !s.has_comments() {
-                    t("(").append(self.node(&s.entries[0].node)).append(t(",)"))
+                    t("(").append(self.entry(&s.entries[0])).append(t(",)"))
                 } else {
                     self.comma_list("(", ")", &s, false)
                 }
@@ -837,6 +919,14 @@ impl Fmt<'_> {
 
     fn import(&self, n: &SyntaxNode) -> Doc {
         let d = ast::Import::cast(n.clone()).expect("kind checked");
+        // Sorting the names would separate a comment from its name.
+        if d.names().is_some_and(|l| {
+            l.syntax()
+                .descendants_with_tokens()
+                .any(|e| is_comment(e.kind()))
+        }) {
+            return self.verbatim(n);
+        }
         let path = d.path().map_or_else(nil, |p| self.tight(p.syntax()));
         let names = d.names().map_or_else(nil, |list| {
             let mut names: Vec<String> = list.names().map(|t| t.text().to_string()).collect();
@@ -962,7 +1052,7 @@ impl Fmt<'_> {
         let s = seq(n, is_stmt);
         if s.entries.len() == 1 && !s.has_comments() {
             return t("{")
-                .append(line().append(self.node(&s.entries[0].node)).nest(INDENT))
+                .append(line().append(self.entry(&s.entries[0])).nest(INDENT))
                 .append(line())
                 .append(t("}"))
                 .group();
@@ -970,12 +1060,40 @@ impl Fmt<'_> {
         self.braced_lines(&s, "", true)
     }
 
+    /// `lhs = value`. Comments after `=` are kept: block comments inline, a line comment ends
+    /// the line and the value goes on the next one; a comment before `=` keeps the node verbatim.
+    fn binding(&self, n: &SyntaxNode, lhs: Doc, value: Doc) -> Doc {
+        let (before, after) = inner_comments(n, |k| k == EQ);
+        if !before.is_empty() {
+            return self.verbatim(n);
+        }
+        let gap = Gap::of(&after);
+        let rest = if gap.broken {
+            concat([concat(gap.parts), nl(), value]).nest(INDENT)
+        } else {
+            concat([concat(gap.parts), t(" "), value])
+        };
+        lhs.append(t(" =")).append(rest)
+    }
+
     fn arm(&self, n: &SyntaxNode) -> Doc {
         let a = ast::MatchArm::cast(n.clone()).expect("kind checked");
+        let (before, after) = inner_comments(n, |k| k == FAT_ARROW);
+        if !before.is_empty() {
+            return self.verbatim(n);
+        }
         let head = self
             .opt(a.pat())
             .append(self.opt(a.guard()))
             .append(t(" =>"));
+        if !after.is_empty() {
+            let gap = Gap::of(&after);
+            let brk = gap.brk(line());
+            let body = a.expr().map_or_else(nil, |e| self.node(e.syntax()));
+            return head
+                .append(concat([concat(gap.parts), brk, body]).nest(INDENT))
+                .group();
+        }
         match a.expr() {
             Some(e) if braced(e.syntax().kind()) => {
                 head.append(t(" ")).append(self.node(e.syntax()))
@@ -1016,9 +1134,19 @@ impl Fmt<'_> {
             let (before, after) = inner_comments(link, |k| ast::BINARY_OPS.contains(&k));
             let mut gap = Gap::default();
             if op == "-" {
-                // Block comments after `-` stay with the operand, past the break, unless a line
-                // break separates them from it.
-                for c in &before {
+                // Block comments on the operator's line stay before it; the rest follow it, as a
+                // line may not start with `-`. Block comments after `-` stay with the operand,
+                // past the break, unless a line break separates them from it.
+                let same_line = before
+                    .iter()
+                    .take_while(|c| c.block && !c.newline_before)
+                    .count();
+                let pre = concat(
+                    before[..same_line]
+                        .iter()
+                        .flat_map(|c| [t(" "), raw(&c.text)]),
+                );
+                for c in &before[same_line..] {
                     gap.add(c);
                 }
                 let attached = !gap.broken
@@ -1035,6 +1163,7 @@ impl Fmt<'_> {
                 let brk = gap.brk(line());
                 parts.push(
                     concat([
+                        pre,
                         t(" -"),
                         concat(gap.parts),
                         brk,
@@ -1162,7 +1291,7 @@ impl Fmt<'_> {
             && !s.has_comments()
             && matches!(only.node.kind(), LIST_EXPR | RECORD_EXPR)
         {
-            return t("(").append(self.node(&only.node)).append(t(")"));
+            return t("(").append(self.entry(only)).append(t(")"));
         }
         if let Some(last) = s.entries.last()
             && !s.has_comments()
@@ -1170,7 +1299,7 @@ impl Fmt<'_> {
         {
             let before: Vec<Doc> = s.entries[..s.entries.len() - 1]
                 .iter()
-                .map(|e| self.node(&e.node))
+                .map(|e| self.entry(e))
                 .collect();
             let prefix = join(before, t(", "));
             if flat(&prefix).is_some_and(|f| f.chars().count() <= 40) {
@@ -1178,7 +1307,7 @@ impl Fmt<'_> {
                 return t("(")
                     .append(prefix)
                     .append(sep)
-                    .append(self.node(&last.node))
+                    .append(self.entry(last))
                     .append(t(")"));
             }
         }
@@ -1209,8 +1338,11 @@ impl Fmt<'_> {
             .descendants_with_tokens()
             .filter_map(|e| e.into_token())
             .peekable();
-        // Leading comments were already emitted by `node`.
-        while tokens.peek().is_some_and(|t| t.kind().is_trivia()) {
+        // Leading comments that are the node's own children were already emitted by `node`;
+        // one inside a first child (`where /* c */ it`) is not.
+        while tokens.peek().is_some_and(|t| {
+            t.kind().is_trivia() && !(is_comment(t.kind()) && t.parent().as_ref() != Some(n))
+        }) {
             tokens.next();
         }
         let Some(first) = tokens.peek() else {
@@ -1279,7 +1411,7 @@ impl Fmt<'_> {
         let mut out = String::new();
         let mut prev: Option<(SyntaxKind, bool, bool)> = None; // kind, single-line, std import
         for (i, e) in s.entries.iter().enumerate() {
-            let mut doc = comments_doc(&e.leading).append(self.node(&e.node));
+            let mut doc = comments_doc(&e.leading).append(self.entry(e));
             if let Some(c) = &e.trailing {
                 doc = doc.append(t(" ")).append(raw(c));
             }
@@ -1367,12 +1499,18 @@ fn type_parens(n: &SyntaxNode) -> usize {
     leading - usize::from(n.kind() == TUPLE_TYPE)
 }
 
-/// Comments among the trivia before the node's first token (attached by the parser).
-fn leading_comments(n: &SyntaxNode) -> Vec<String> {
+/// Comments among the trivia before the node's first token (attached by the parser), each with
+/// whether a line break follows it.
+fn leading_comments(n: &SyntaxNode) -> Vec<(String, bool)> {
     n.children_with_tokens()
         .map_while(|e| e.into_token().filter(|t| t.kind().is_trivia()))
         .filter(|t| is_comment(t.kind()))
-        .map(|t| t.text().trim_end().to_string())
+        .map(|t| {
+            let newline = t.next_token().is_some_and(|next| {
+                next.kind() == NEWLINE || (next.kind() == WHITESPACE && next.text().contains('\n'))
+            });
+            (t.text().trim_end().to_string(), newline)
+        })
         .collect()
 }
 
@@ -1448,6 +1586,14 @@ struct Gap {
 }
 
 impl Gap {
+    fn of(comments: &[InnerComment]) -> Self {
+        let mut gap = Gap::default();
+        for c in comments {
+            gap.add(c);
+        }
+        gap
+    }
+
     fn add(&mut self, c: &InnerComment) {
         if self.broken || c.newline_before {
             self.add_on_own_line(c);
@@ -1464,5 +1610,21 @@ impl Gap {
 
     fn brk(&self, soft: Doc) -> Doc {
         if self.broken { nl() } else { soft }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn guard_reports_a_dropped_comment_or_broken_output() {
+        let input = sakura_syntax::parse("fn f() -> Int { 1 } // keep\n");
+        assert!(guard(&input, "fn f() -> Int { 1 } // keep\n").is_none());
+        let dropped = guard(&input, "fn f() -> Int { 1 }\n").expect("comment dropped");
+        assert_eq!(dropped.code, codes::V9001);
+        assert_eq!((dropped.spans[0].start, dropped.spans[0].end), (20, 27));
+        let broken = guard(&input, "fn f( -> Int { 1 } // keep\n").expect("output does not parse");
+        assert_eq!(broken.code, codes::V9001);
     }
 }

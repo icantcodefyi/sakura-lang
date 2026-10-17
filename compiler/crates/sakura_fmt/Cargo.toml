@@ -9,6 +9,7 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
+sakura_diagnostics.workspace = true
 sakura_syntax.workspace = true
 pretty.workspace = true
 

@@ -1,0 +1,65 @@
+---
+source: crates/sakura_fmt/tests/fmt.rs
+expression: "check(path, &text)"
+input_file: tests/fmt/comment_positions.sakura
+---
+fn calls() -> Int {
+  let a = f(
+    // leading arg comment
+    1, // trailing arg comment
+    2, /* after two */
+    /* before three */ 3,
+  )
+  let b = g(x, /* inline */ y)
+  a + b
+}
+
+fn literals() -> List<Int> {
+  let r = Point {
+    x: 1, // the x
+    // the y
+    y: 2,
+  }
+  let r2 = Point { x: /* zero */ 0, y: 0 }
+  [
+    1, // one
+    /* two */ 2,
+    3,
+    // dangling at end
+  ]
+}
+
+fn arms(x: Int) -> Int {
+  match x {
+    // before an arm
+    1 => 10, // after an arm
+    2 => // after the arrow
+      20,
+    3 => /* inline after arrow */ 30,
+    _ => {
+      // in a block arm
+      0
+    },
+    // dangling after the last arm
+  }
+}
+
+fn chains(a: Int, b: Int) -> Int {
+  let s = a // first
+    + b /* second */ * 2
+  let t = a /* before minus */ - b
+  s + t
+}
+
+fn statements() -> Int {
+  // first statement
+  let x = 1 // trailing x
+
+  /* block comment between statements */
+  let y = // before value
+    2
+  let z: Int = /* typed */ 3
+  // before the tail
+  x + y + z // trailing tail
+  // last in block
+}
