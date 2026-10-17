@@ -1,0 +1,479 @@
+{
+  "checked_utc": "2026-10-17T22:45:42.017779+00:00",
+  "local": [
+    {
+      "target": "10-evidence/results.json",
+      "exists": true
+    },
+    {
+      "target": "10-evidence/README.md",
+      "exists": true
+    },
+    {
+      "target": "10-evidence/micro.sakura",
+      "exists": true
+    },
+    {
+      "target": "10-evidence/bench.mjs",
+      "exists": true
+    },
+    {
+      "target": "10-evidence/native.mjs",
+      "exists": true
+    },
+    {
+      "target": "10-evidence/reference.mjs",
+      "exists": true
+    },
+    {
+      "target": "10-evidence/summarize.py",
+      "exists": true
+    },
+    {
+      "target": "10-evidence/summary.md",
+      "exists": true
+    },
+    {
+      "target": "10-evidence/stability.json",
+      "exists": true
+    },
+    {
+      "target": "../compiler/runtime/js/bench/collections.js",
+      "exists": true
+    },
+    {
+      "target": "../compiler/runtime/js/ABI.md",
+      "exists": true
+    },
+    {
+      "target": "../docs/design.md",
+      "exists": true
+    },
+    {
+      "target": "../compiler/runtime/js/ABI.md",
+      "exists": true
+    },
+    {
+      "target": "../compiler/runtime/js/sakura_runtime.js",
+      "exists": true
+    },
+    {
+      "target": "../compiler/crates/sakura_codegen_js/src/direct.rs",
+      "exists": true
+    },
+    {
+      "target": "../compiler/crates/sakura_codegen_js/src/emit.rs",
+      "exists": true
+    },
+    {
+      "target": "../compiler/crates/sakura_core/src/opt.rs",
+      "exists": true
+    },
+    {
+      "target": "../compiler/std/list.sakura",
+      "exists": true
+    },
+    {
+      "target": "../compiler/runtime/rt/ABI.md",
+      "exists": true
+    },
+    {
+      "target": "10-evidence/generated-micro.js.txt",
+      "exists": true
+    },
+    {
+      "target": "10-evidence/versions.py",
+      "exists": true
+    },
+    {
+      "target": "10-evidence/versions.json",
+      "exists": true
+    }
+  ],
+  "remote": [
+    {
+      "url": "https://anil.recoil.org/papers/2021-pldi-retroeff.pdf",
+      "status": 200,
+      "final_url": "https://anil.recoil.org/papers/2021-pldi-retroeff.pdf",
+      "sha256_prefix_up_to_4mb": "7c1ed8c00cab120d68f927a6eb02c32829c858e2028daca13e08a8cf20722efc"
+    },
+    {
+      "url": "https://bencher.dev/docs/explanation/thresholds/",
+      "status": 200,
+      "final_url": "https://bencher.dev/docs/explanation/thresholds/",
+      "sha256_prefix_up_to_4mb": "bab7c17b50f1f503068681bb18c650121a2b7b9a2bf5d254f74ca32d1785d291"
+    },
+    {
+      "url": "https://benchmarksgame-team.pages.debian.net/benchmarksgame/why-measure-toy-benchmark-programs.html",
+      "status": 200,
+      "final_url": "https://benchmarksgame-team.pages.debian.net/benchmarksgame/why-measure-toy-benchmark-programs.html",
+      "sha256_prefix_up_to_4mb": "62ea0489a9e2adc98262c7a89815f068c6c0897d4ad63c3a9fa511c76b47c27d"
+    },
+    {
+      "url": "https://bheisler.github.io/criterion.rs/book/faq.html",
+      "status": 200,
+      "final_url": "https://bheisler.github.io/criterion.rs/book/faq.html",
+      "sha256_prefix_up_to_4mb": "3e6f8eed87a79f16778015d6fd59c17a16cb89cc194e9439645ec185850c3228"
+    },
+    {
+      "url": "https://biomejs.dev/introduction/why-biome/",
+      "status": 200,
+      "final_url": "https://biomejs.dev/introduction/why-biome/",
+      "sha256_prefix_up_to_4mb": "b96558a96570208a3565759b60a116e0030bda970793351e034d31333a99e6e1"
+    },
+    {
+      "url": "https://codspeed.io/docs/instruments/cpu",
+      "status": 200,
+      "final_url": "https://codspeed.io/docs/instruments/cpu",
+      "sha256_prefix_up_to_4mb": "271b19e86aa5cc4691efcd82dccb9527981d518e107d29976b4d1aa294de42a5"
+    },
+    {
+      "url": "https://cranelift.dev/",
+      "status": 200,
+      "final_url": "https://cranelift.dev/",
+      "sha256_prefix_up_to_4mb": "89e3182c108ab680bae0b1f009b7de294ffcf318081465deb901e3756d29a522"
+    },
+    {
+      "url": "https://dafny.org/dafny/DafnyRef/DafnyRef.html",
+      "status": 200,
+      "final_url": "https://dafny.org/dafny/DafnyRef/DafnyRef.html",
+      "sha256_prefix_up_to_4mb": "af4e2ed239eae8da74f8babc2fb0e5212a45f07c6f11b8b89cafe07e0614f3d9"
+    },
+    {
+      "url": "https://docs.adacore.com/live/wave/spark2014/html/spark2014_rm/introduction.html",
+      "status": 200,
+      "final_url": "https://docs.adacore.com/live/wave/spark2014/html/spark2014_rm/introduction.html",
+      "sha256_prefix_up_to_4mb": "8a8d947af573ef4f2df258cdec016f01f7aa742bca20e8a7afdfba4e5c10b64c"
+    },
+    {
+      "url": "https://effekt-lang.org/docs/implementation",
+      "status": 200,
+      "final_url": "https://effekt-lang.org/docs/implementation",
+      "sha256_prefix_up_to_4mb": "368fc98cb795f02fed58b09e66b9d38fb974876fef508d2cbe0262f3786719bb"
+    },
+    {
+      "url": "https://github.com/Kotlin/kotlinx-benchmark",
+      "status": 200,
+      "final_url": "https://github.com/Kotlin/kotlinx-benchmark",
+      "sha256_prefix_up_to_4mb": "62669373bf18648fd83f5b11aaedc5e6e5eff11bc7189e94244be8485aee9264"
+    },
+    {
+      "url": "https://github.com/WebAssembly/proposals",
+      "status": 200,
+      "final_url": "https://github.com/WebAssembly/proposals",
+      "sha256_prefix_up_to_4mb": "87c0f16c5d9b477469f01ecf91403dcb57231baf476f4152f2c1889e39384fbe"
+    },
+    {
+      "url": "https://github.com/biomejs/biome/releases/tag/%40biomejs/biome%402.5.15",
+      "status": 200,
+      "final_url": "https://github.com/biomejs/biome/releases/tag/%40biomejs/biome%402.5.15",
+      "sha256_prefix_up_to_4mb": "2bb85717b3ccdbcb23700fd8c2e39151477cdb51830344df0ad8173dbb281596"
+    },
+    {
+      "url": "https://github.com/effekt-lang/effekt/blob/v0.82.0/effekt/shared/src/main/scala/effekt/generator/js/JavaScript.scala",
+      "status": 200,
+      "final_url": "https://github.com/effekt-lang/effekt/blob/v0.82.0/effekt/shared/src/main/scala/effekt/generator/js/JavaScript.scala",
+      "sha256_prefix_up_to_4mb": "46f966ea3856f83dae53b665948895d849f774045faa5b8cdac4e1619b23d083"
+    },
+    {
+      "url": "https://github.com/effekt-lang/effekt/blob/v0.82.0/effekt/shared/src/main/scala/effekt/generator/js/TransformerCps.scala",
+      "status": 200,
+      "final_url": "https://github.com/effekt-lang/effekt/blob/v0.82.0/effekt/shared/src/main/scala/effekt/generator/js/TransformerCps.scala",
+      "sha256_prefix_up_to_4mb": "461119174c64eb2ec7726cb4a06efceb8ea9bb26b499289c3631af12b78660e9"
+    },
+    {
+      "url": "https://github.com/effekt-lang/effekt/releases/tag/v0.82.0",
+      "status": 200,
+      "final_url": "https://github.com/effekt-lang/effekt/releases/tag/v0.82.0",
+      "sha256_prefix_up_to_4mb": "f8336e374ae4acce09bd352a938b82b02f65cb00f2a2a6d9ac3cf1615582976e"
+    },
+    {
+      "url": "https://github.com/elm/compiler/releases/tag/0.19.3",
+      "status": 200,
+      "final_url": "https://github.com/elm/compiler/releases/tag/0.19.3",
+      "sha256_prefix_up_to_4mb": "8d3558fa711ef9e7971d09efdbe6f364852fa45508616f7c9a3db5e856f3851d"
+    },
+    {
+      "url": "https://github.com/gleam-lang/gleam/releases/tag/v1.19.2",
+      "status": 200,
+      "final_url": "https://github.com/gleam-lang/gleam/releases/tag/v1.19.2",
+      "sha256_prefix_up_to_4mb": "3643f5b6e9b9c09e92cc623bb3f46a1669c244789309a55dfdf78cd9491c65db"
+    },
+    {
+      "url": "https://github.com/gungraun/gungraun",
+      "status": 200,
+      "final_url": "https://github.com/gungraun/gungraun",
+      "sha256_prefix_up_to_4mb": "79d838d30f53813ef233500d382596d48688203c7dfa1f502e94ffb3e109c5b1"
+    },
+    {
+      "url": "https://github.com/koka-lang/koka/blob/v3.2.9/lib/std/core/hnd.kk",
+      "status": 200,
+      "final_url": "https://github.com/koka-lang/koka/blob/v3.2.9/lib/std/core/hnd.kk",
+      "sha256_prefix_up_to_4mb": "75c975c97f138e3d5d970e599431a7ab787c07d1bdcd1fba79fae5f1f74306fc"
+    },
+    {
+      "url": "https://github.com/koka-lang/koka/blob/v3.2.9/src/Backend/JavaScript/FromCore.hs",
+      "status": 200,
+      "final_url": "https://github.com/koka-lang/koka/blob/v3.2.9/src/Backend/JavaScript/FromCore.hs",
+      "sha256_prefix_up_to_4mb": "6de484ce4382f2cea6eb7a89953ed84b0b2b42f08bade286029a0357b8999cd3"
+    },
+    {
+      "url": "https://github.com/koka-lang/koka/releases/tag/v3.2.9",
+      "status": 200,
+      "final_url": "https://github.com/koka-lang/koka/releases/tag/v3.2.9",
+      "sha256_prefix_up_to_4mb": "b1104379cc4a2a1a53f1caffa61e4d06296eb0d5d3efb0c83319a906243d40bc"
+    },
+    {
+      "url": "https://github.com/koka-lang/koka/tree/v3.2.9/test/bench",
+      "status": 200,
+      "final_url": "https://github.com/koka-lang/koka/tree/v3.2.9/test/bench",
+      "sha256_prefix_up_to_4mb": "d6f2d900d918818d8df241511b7635b86839a622d443081e0bd9afcc3179d479"
+    },
+    {
+      "url": "https://github.com/leanprover/lean4/releases/tag/v4.35.0",
+      "status": 200,
+      "final_url": "https://github.com/leanprover/lean4/releases/tag/v4.35.0",
+      "sha256_prefix_up_to_4mb": "d2c48790a4b2c1b1bfe88997704d0f006fa17fe17f1c8d5c0a1e651b7ba5e569"
+    },
+    {
+      "url": "https://github.com/matijapretnar/eff/releases/tag/oopsla-2021Artifact",
+      "status": 200,
+      "final_url": "https://github.com/matijapretnar/eff/releases/tag/oopsla-2021Artifact",
+      "sha256_prefix_up_to_4mb": "51ff680505a0ca82a34e0fe95160f39050c894907670453452069d09312f08b4"
+    },
+    {
+      "url": "https://github.com/ocaml/ocaml/releases/tag/5.5.1",
+      "status": 200,
+      "final_url": "https://github.com/ocaml/ocaml/releases/tag/5.5.1",
+      "sha256_prefix_up_to_4mb": "593596a85a5ac06f917b0be8a2f1f23af77e8bc84281117705f645d74afad6f3"
+    },
+    {
+      "url": "https://github.com/oxc-project/oxc/blob/main/ARCHITECTURE.md",
+      "status": 200,
+      "final_url": "https://github.com/oxc-project/oxc/blob/main/ARCHITECTURE.md",
+      "sha256_prefix_up_to_4mb": "687b8de33a4d13d1440c5dad082650f94fb0d4c5d0a826af367d82a267fd2555"
+    },
+    {
+      "url": "https://github.com/oxc-project/oxc/releases/tag/oxlint_v1.88.0",
+      "status": 200,
+      "final_url": "https://github.com/oxc-project/oxc/releases/tag/oxlint_v1.88.0",
+      "sha256_prefix_up_to_4mb": "bb337c0cf72749a11ec1062f29c84ffb94f7e4ee688f93479c248af33c969294"
+    },
+    {
+      "url": "https://github.com/purescript/purescript/releases/tag/v0.15.16",
+      "status": 200,
+      "final_url": "https://github.com/purescript/purescript/releases/tag/v0.15.16",
+      "sha256_prefix_up_to_4mb": "192f6affa77b6d50e8deb336c5efda82a2dfa212c878f624c67c7dc27ce63188"
+    },
+    {
+      "url": "https://github.com/purescript/purescript/tree/v0.15.16/src/Language/PureScript/CoreImp/Optimizer",
+      "status": 200,
+      "final_url": "https://github.com/purescript/purescript/tree/v0.15.16/src/Language/PureScript/CoreImp/Optimizer",
+      "sha256_prefix_up_to_4mb": "3c2ff7509e300a23ed0caacbee252f9cf145fdafe950e1e2f7d9e3587ff22f8b"
+    },
+    {
+      "url": "https://github.com/rescript-lang/rescript/releases/tag/v12.3.1",
+      "status": 200,
+      "final_url": "https://github.com/rescript-lang/rescript/releases/tag/v12.3.1",
+      "sha256_prefix_up_to_4mb": "c8a0fff176fb0582553d0df4366063e97008a0ef61ca4ea2a8b719bf9ee6d540"
+    },
+    {
+      "url": "https://github.com/roc-lang/roc/releases/tag/alpha4-rolling",
+      "status": 200,
+      "final_url": "https://github.com/roc-lang/roc/releases/tag/alpha4-rolling",
+      "sha256_prefix_up_to_4mb": "2847ecd1946ab8d1ede94743640ef8bbe0b37eb6f895e10160bb26eea7d95c4d"
+    },
+    {
+      "url": "https://github.com/rust-lang/rust/releases/tag/1.99.1",
+      "status": 200,
+      "final_url": "https://github.com/rust-lang/rust/releases/tag/1.99.1",
+      "sha256_prefix_up_to_4mb": "4466dd66001b8e54a57c53d01e08a624bd208457f0c2247f9d4d14c858efb56d"
+    },
+    {
+      "url": "https://github.com/scala-js/scala-js/releases/tag/v1.22.0",
+      "status": 200,
+      "final_url": "https://github.com/scala-js/scala-js/releases/tag/v1.22.0",
+      "sha256_prefix_up_to_4mb": "8e4c04cc166ad03fe0f76b074803d85427ea702285ab402530add8863b4ed836"
+    },
+    {
+      "url": "https://github.com/sharkdp/hyperfine",
+      "status": 200,
+      "final_url": "https://github.com/sharkdp/hyperfine",
+      "sha256_prefix_up_to_4mb": "8699b974d87ae083183802a1e84810b8bee4026e1ddeda9152b2e7f329cc497f"
+    },
+    {
+      "url": "https://github.com/sharkdp/hyperfine/releases/tag/v2.0.0",
+      "status": 200,
+      "final_url": "https://github.com/sharkdp/hyperfine/releases/tag/v2.0.0",
+      "sha256_prefix_up_to_4mb": "545f8a835601e85573a84576974099350d79fca2133ab2242d082936a040aed1"
+    },
+    {
+      "url": "https://github.com/smarr/are-we-fast-yet",
+      "status": 200,
+      "final_url": "https://github.com/smarr/are-we-fast-yet",
+      "sha256_prefix_up_to_4mb": "db43d36d2d700ad268c564ae786e51c5bf692dbe6cdc81b85bc8c3de60839dcf"
+    },
+    {
+      "url": "https://github.com/swiftlang/swift/blob/main/benchmark/README.md",
+      "status": 200,
+      "final_url": "https://github.com/swiftlang/swift/blob/main/benchmark/README.md",
+      "sha256_prefix_up_to_4mb": "47f7b9877988ff29977cf0674a742b5771ce35187e4b74ac26324a7fbdf19001"
+    },
+    {
+      "url": "https://github.com/unisonweb/unison/blob/release/1.5.0/unison-runtime/src/Unison/Runtime/Stack.hs",
+      "status": 200,
+      "final_url": "https://github.com/unisonweb/unison/blob/release/1.5.0/unison-runtime/src/Unison/Runtime/Stack.hs",
+      "sha256_prefix_up_to_4mb": "681af14cfe847912717d09df63e54f8ef45fec6c5308e3120f06377c4709499b"
+    },
+    {
+      "url": "https://github.com/unisonweb/unison/releases/tag/release/1.5.0",
+      "status": 200,
+      "final_url": "https://github.com/unisonweb/unison/releases/tag/release/1.5.0",
+      "sha256_prefix_up_to_4mb": "36b58fd87b571c850601e9d1624aaabf1272af6069fd387f51b1fa9d8cbd6e76"
+    },
+    {
+      "url": "https://gleam.run/news/v0.26-incremental-compilation-and-deno/",
+      "status": 200,
+      "final_url": "https://gleam.run/news/v0.26-incremental-compilation-and-deno/",
+      "sha256_prefix_up_to_4mb": "b9a78b1a3923fa4f17888398e3a707bcdde9537ad70b5de9e7cae7642525cbd8"
+    },
+    {
+      "url": "https://go.dev/doc/devel/release#go1.27.2",
+      "status": 200,
+      "final_url": "https://go.dev/doc/devel/release#go1.27.2",
+      "sha256_prefix_up_to_4mb": "b78db54843bd88dd2d4a1412abcb369e8031ed5f1e3508ffadebbb7020107d8e"
+    },
+    {
+      "url": "https://guide.elm-lang.org/optimization/asset_size",
+      "status": 200,
+      "final_url": "https://guide.elm-lang.org/optimization/asset_size",
+      "sha256_prefix_up_to_4mb": "7d65236d55fac0652dc719e7f8d85bbab2d00f2ac7b18b981a14f3056a54a3e1"
+    },
+    {
+      "url": "https://koka-lang.github.io/koka/doc/book.html",
+      "status": 200,
+      "final_url": "https://koka-lang.github.io/koka/doc/book.html",
+      "sha256_prefix_up_to_4mb": "e2120c53355550fb5e38712f19b5d286ca9ea499a2da8399f1c98a8174f58622"
+    },
+    {
+      "url": "https://lean-lang.org/doc/api/Lean/Compiler/LCNF/InferBorrow.html",
+      "status": 200,
+      "final_url": "https://lean-lang.org/doc/api/Lean/Compiler/LCNF/InferBorrow.html",
+      "sha256_prefix_up_to_4mb": "9999b3fe053d3274ff07271d480d0e588cf861490a844a6bcebca4997058f482"
+    },
+    {
+      "url": "https://lean-lang.org/doc/reference/latest/Run-Time-Code/Reference-Counting/",
+      "status": 200,
+      "final_url": "https://lean-lang.org/doc/reference/latest/Run-Time-Code/Reference-Counting/",
+      "sha256_prefix_up_to_4mb": "bc8e95dd2cda2a8e0d0d37dbf168e24a0ba67e954abdd6333b53e4f3952187e6"
+    },
+    {
+      "url": "https://matija.pretnar.info/talks/2021-07-dagstuhl.pdf",
+      "status": 200,
+      "final_url": "https://matija.pretnar.info/talks/2021-07-dagstuhl.pdf",
+      "sha256_prefix_up_to_4mb": "1d85d13e744f93ef09fc7681fcd2e46bdc3df42a8c1f8fb4b376dd73062ee3ee"
+    },
+    {
+      "url": "https://ps.informatik.uni-tuebingen.de/publications/brachthaeuser18effect.pdf",
+      "status": 200,
+      "final_url": "https://pl.cs.uni-tuebingen.de/publications/brachthaeuser18effect.pdf",
+      "sha256_prefix_up_to_4mb": "a6e8fb823f77c3cf860949e88f958226cfdb9c156762f8fe56dfab02194b1825"
+    },
+    {
+      "url": "https://rescript-lang.org/blog/uncurried-mode/",
+      "status": 200,
+      "final_url": "https://rescript-lang.org/blog/uncurried-mode/",
+      "sha256_prefix_up_to_4mb": "0971db476e167ad3a646e1d65ad72593643ebbf0164e4f965f0abcab35796405"
+    },
+    {
+      "url": "https://stefan-marr.de/papers/dls-marr-et-al-cross-language-compiler-benchmarking-are-we-fast-yet/",
+      "status": 200,
+      "final_url": "https://stefan-marr.de/papers/dls-marr-et-al-cross-language-compiler-benchmarking-are-we-fast-yet/",
+      "sha256_prefix_up_to_4mb": "e28e6d633404ef130760019cb5f253a55bff8e302db292a89e7775fcbacaf1bb"
+    },
+    {
+      "url": "https://tour.gleam.run/flow-control/tail-calls/",
+      "status": 200,
+      "final_url": "https://tour.gleam.run/flow-control/tail-calls/",
+      "sha256_prefix_up_to_4mb": "1c72898a3995b33c14488a9bcead6793e591b8b48af46aaef12a95203b0085f1"
+    },
+    {
+      "url": "https://ucsd-progsys.github.io/liquidhaskell/specifications/",
+      "status": 200,
+      "final_url": "https://ucsd-progsys.github.io/liquidhaskell/specifications/",
+      "sha256_prefix_up_to_4mb": "027fbc544d60cb15fa194bd1b88056ea735d37a902a053057f7091bb54feb574"
+    },
+    {
+      "url": "https://v8.dev/blog/elements-kinds",
+      "status": 200,
+      "final_url": "https://v8.dev/blog/elements-kinds",
+      "sha256_prefix_up_to_4mb": "997de56e11d33445da04c20fb819052b9d5046fb1e0a5e770eb14069d8e5d39b"
+    },
+    {
+      "url": "https://v8.dev/blog/fast-properties",
+      "status": 200,
+      "final_url": "https://v8.dev/blog/fast-properties",
+      "sha256_prefix_up_to_4mb": "6989cfe37c95fdc0c2c33c955e27476c9c2e62c2dab4132c91f183031b79d042"
+    },
+    {
+      "url": "https://v8.dev/blog/jspi",
+      "status": 200,
+      "final_url": "https://v8.dev/blog/jspi",
+      "sha256_prefix_up_to_4mb": "919d26e2f27706243ffae04a3c45c22463bdb8740e175cbfbf02a66c6f2e92d7"
+    },
+    {
+      "url": "https://webkit.org/blog/10308/speculation-in-javascriptcore/",
+      "status": 200,
+      "final_url": "https://webkit.org/blog/10308/speculation-in-javascriptcore/",
+      "sha256_prefix_up_to_4mb": "dc89385074ad3810d770018fbdfb33645a303ca32749f57a548b0b01d0116211"
+    },
+    {
+      "url": "https://www.eff-lang.org/",
+      "status": 200,
+      "final_url": "https://www.eff-lang.org/",
+      "sha256_prefix_up_to_4mb": "b74ce207f2a2968eb16db2b1407984f22176d33c5f833fabd1663a4fdf0a1124"
+    },
+    {
+      "url": "https://www.eiffel.org/doc/eiffel/ET-_Design_by_Contract_%28tm%29%2C_Assertions_and_Exceptions",
+      "status": 200,
+      "final_url": "https://www.eiffel.org/doc/eiffel/ET-_Design_by_Contract_%28tm%29%2C_Assertions_and_Exceptions",
+      "sha256_prefix_up_to_4mb": "c7749462e12b00947a5f595049b8f39a56d35bc1c35ce081d921120b2280035e"
+    },
+    {
+      "url": "https://www.microsoft.com/en-us/research/publication/perceus-garbage-free-reference-counting-with-reuse/",
+      "status": 200,
+      "final_url": "https://www.microsoft.com/en-us/research/publication/perceus-garbage-free-reference-counting-with-reuse/",
+      "sha256_prefix_up_to_4mb": "2b3bf47c292a200d2cf58c71160142c460ce934937d7ed0d8c87e8feb3e98a6c"
+    },
+    {
+      "url": "https://www.microsoft.com/en-us/research/wp-content/uploads/2021/03/multip-tr-v2.pdf",
+      "status": 200,
+      "final_url": "https://www.microsoft.com/en-us/research/wp-content/uploads/2021/03/multip-tr-v2.pdf",
+      "sha256_prefix_up_to_4mb": "f1372debf8eca82f2fdf96b166b09d660fe6833fc9df06af0786c14f7ca07c83"
+    },
+    {
+      "url": "https://www.python.org/downloads/release/python-3150/",
+      "status": 200,
+      "final_url": "https://www.python.org/downloads/release/python-3150/",
+      "sha256_prefix_up_to_4mb": "87faad477191d13df323b78c0c74cffe6a452ceefce4661a102194a536c4092d"
+    },
+    {
+      "url": "https://www.roc-lang.org/faq",
+      "status": 200,
+      "final_url": "https://www.roc-lang.org/faq",
+      "sha256_prefix_up_to_4mb": "383d921460ba1756230911df1dede004d4827913a44572438021e4ddec621508"
+    },
+    {
+      "url": "https://www.scala-js.org/doc/project/building.html",
+      "status": 200,
+      "final_url": "https://www.scala-js.org/doc/project/building.html",
+      "sha256_prefix_up_to_4mb": "176a1e902cb9ef7d9f288c0bc5885efcd6f903e88904562c03f67b9b6bc78850"
+    },
+    {
+      "url": "https://www.unison-lang.org/blog/jit-announce/",
+      "status": 200,
+      "final_url": "https://www.unison-lang.org/blog/jit-announce/",
+      "sha256_prefix_up_to_4mb": "70f171b03fe246eeae31d05c8f3e7ba0e94dcd7af7e8037a821c82a58a5574a7"
+    }
+  ]
+}

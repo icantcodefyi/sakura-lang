@@ -1,0 +1,128 @@
+{
+  "retrieved_utc": "2026-10-17T22:32:05.706588+00:00",
+  "cutoff": "2026-10-18T23:59:59Z",
+  "releases": [
+    {
+      "repo": "koka-lang/koka",
+      "query_url": "https://api.github.com/repos/koka-lang/koka/releases?per_page=30",
+      "version": "v3.2.9",
+      "published_at": "2026-09-18T05:46:36Z",
+      "url": "https://github.com/koka-lang/koka/releases/tag/v3.2.9"
+    },
+    {
+      "repo": "effekt-lang/effekt",
+      "query_url": "https://api.github.com/repos/effekt-lang/effekt/releases?per_page=30",
+      "version": "v0.82.0",
+      "published_at": "2026-09-28T09:54:13Z",
+      "url": "https://github.com/effekt-lang/effekt/releases/tag/v0.82.0"
+    },
+    {
+      "repo": "ocaml/ocaml",
+      "query_url": "https://api.github.com/repos/ocaml/ocaml/releases?per_page=30",
+      "version": "5.5.1",
+      "published_at": "2026-09-04T12:49:26Z",
+      "url": "https://github.com/ocaml/ocaml/releases/tag/5.5.1"
+    },
+    {
+      "repo": "matijapretnar/eff",
+      "query_url": "https://api.github.com/repos/matijapretnar/eff/releases?per_page=30",
+      "version": "oopsla-2021Artifact",
+      "published_at": "2021-10-19T13:18:15Z",
+      "url": "https://github.com/matijapretnar/eff/releases/tag/oopsla-2021Artifact"
+    },
+    {
+      "repo": "leanprover/lean4",
+      "query_url": "https://api.github.com/repos/leanprover/lean4/releases?per_page=30",
+      "version": "v4.35.0",
+      "published_at": "2026-10-12T18:13:12Z",
+      "url": "https://github.com/leanprover/lean4/releases/tag/v4.35.0"
+    },
+    {
+      "repo": "unisonweb/unison",
+      "query_url": "https://api.github.com/repos/unisonweb/unison/releases?per_page=30",
+      "version": "release/1.5.0",
+      "published_at": "2026-10-02T16:21:51Z",
+      "url": "https://github.com/unisonweb/unison/releases/tag/release/1.5.0"
+    },
+    {
+      "repo": "rescript-lang/rescript",
+      "query_url": "https://api.github.com/repos/rescript-lang/rescript/releases?per_page=30",
+      "version": "v12.3.1",
+      "published_at": "2026-08-24T07:29:24Z",
+      "url": "https://github.com/rescript-lang/rescript/releases/tag/v12.3.1"
+    },
+    {
+      "repo": "elm/compiler",
+      "query_url": "https://api.github.com/repos/elm/compiler/releases?per_page=30",
+      "version": "0.19.3",
+      "published_at": "2026-10-02T13:57:22Z",
+      "url": "https://github.com/elm/compiler/releases/tag/0.19.3"
+    },
+    {
+      "repo": "purescript/purescript",
+      "query_url": "https://api.github.com/repos/purescript/purescript/releases?per_page=30",
+      "version": "v0.15.16",
+      "published_at": "2026-03-15T10:27:30Z",
+      "url": "https://github.com/purescript/purescript/releases/tag/v0.15.16"
+    },
+    {
+      "repo": "gleam-lang/gleam",
+      "query_url": "https://api.github.com/repos/gleam-lang/gleam/releases?per_page=30",
+      "version": "v1.19.2",
+      "published_at": "2026-10-12T10:30:24Z",
+      "url": "https://github.com/gleam-lang/gleam/releases/tag/v1.19.2"
+    },
+    {
+      "repo": "scala-js/scala-js",
+      "query_url": "https://api.github.com/repos/scala-js/scala-js/releases?per_page=30",
+      "version": "v1.22.0",
+      "published_at": "2026-06-20T14:18:38Z",
+      "url": "https://github.com/scala-js/scala-js/releases/tag/v1.22.0"
+    },
+    {
+      "repo": "oxc-project/oxc",
+      "query_url": "https://api.github.com/repos/oxc-project/oxc/releases?per_page=30",
+      "version": "oxlint_v1.88.0",
+      "published_at": "2026-10-13T09:47:50Z",
+      "url": "https://github.com/oxc-project/oxc/releases/tag/oxlint_v1.88.0"
+    },
+    {
+      "repo": "biomejs/biome",
+      "query_url": "https://api.github.com/repos/biomejs/biome/releases?per_page=30",
+      "version": "@biomejs/biome@2.5.15",
+      "published_at": "2026-09-30T15:23:21Z",
+      "url": "https://github.com/biomejs/biome/releases/tag/%40biomejs/biome%402.5.15"
+    },
+    {
+      "repo": "roc-lang/roc",
+      "query_url": "https://api.github.com/repos/roc-lang/roc/releases?per_page=30",
+      "version": "alpha4-rolling",
+      "published_at": "2025-08-26T12:28:38Z",
+      "url": "https://github.com/roc-lang/roc/releases/tag/alpha4-rolling"
+    },
+    {
+      "repo": "sharkdp/hyperfine",
+      "query_url": "https://api.github.com/repos/sharkdp/hyperfine/releases?per_page=30",
+      "version": "v2.0.0",
+      "published_at": "2026-10-07T21:13:36Z",
+      "url": "https://github.com/sharkdp/hyperfine/releases/tag/v2.0.0"
+    },
+    {
+      "repo": "rust-lang/rust",
+      "query_url": "https://api.github.com/repos/rust-lang/rust/releases?per_page=30",
+      "version": "1.99.1",
+      "published_at": "2026-10-16T04:47:44Z",
+      "url": "https://github.com/rust-lang/rust/releases/tag/1.99.1"
+    },
+    {
+      "repo": "golang/go",
+      "query_url": "https://api.github.com/repos/golang/go/releases?per_page=30",
+      "status": "no stable release in first 30; version unverified"
+    },
+    {
+      "repo": "python/cpython",
+      "query_url": "https://api.github.com/repos/python/cpython/releases?per_page=30",
+      "status": "no stable release in first 30; version unverified"
+    }
+  ]
+}

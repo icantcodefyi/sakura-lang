@@ -1,0 +1,71 @@
+// Performance workloads, not conformance tests. Inputs/results stay in JS's safe Int range.
+pub fn fib(n: Int) -> Int {
+  if n < 2 { n } else { fib(n - 1) + fib(n - 2) }
+}
+fn sum_tail(n: Int, acc: Int) -> Int {
+  if n == 0 { acc } else { sum_tail(n - 1, acc + n) }
+}
+pub fn tail_sum(n: Int) -> Int { sum_tail(n, 0) }
+pub fn loop_sum(n: Int) -> Int {
+  var i = 0
+  var acc = 0
+  while i < n { acc = acc + i; i = i + 1 }
+  acc
+}
+pub fn list_map_fold(n: Int) -> Int {
+  let xs = List.range(0, n)
+  let ys = List.map(xs, fn(x) { x + 1 })
+  List.fold(ys, 0, fn(acc, x) { acc + x })
+}
+type Point = { x: Int, y: Int }
+pub fn records(n: Int) -> Int {
+  var p = Point { x: 0, y: 1 }
+  var i = 0
+  while i < n { p = Point { x: p.x + 1, y: p.y + p.x }; i = i + 1 }
+  p.x + p.y
+}
+pub fn strings(n: Int) -> Int {
+  var s = ""
+  var i = 0
+  while i < n { s = "{s}x"; i = i + 1 }
+  String.len(s)
+}
+effect Tick { fn next() -> Int }
+fn counter() -> Handler<Tick> {
+  handler Tick {
+    var value = 0
+    fn next() { value = value + 1; value }
+  }
+}
+pub fn effects(n: Int) -> Int {
+  with counter() {
+    var i = 0
+    var acc = 0
+    while i < n { acc = acc + Tick.next(); i = i + 1 }
+    acc
+  }
+}
+fn increment(x: Int) -> Int requires x >= 0 ensures result > x { x + 1 }
+fn increment_plain(x: Int) -> Int { x + 1 }
+pub fn contracts(n: Int) -> Int {
+  var i = 0
+  while i < n { i = increment(i) }
+  i
+}
+pub fn contracts_plain(n: Int) -> Int {
+  var i = 0
+  while i < n { i = increment_plain(i) }
+  i
+}
+pub fn main() -> Unit ! {Console} {
+  Console.print("{fib(3)}")
+  Console.print("{tail_sum(3)}")
+  Console.print("{loop_sum(3)}")
+  Console.print("{list_map_fold(3)}")
+  Console.print("{records(3)}")
+  Console.print("{strings(3)}")
+  Console.print("{effects(3)}")
+  Console.print("{contracts(3)}")
+  Console.print("{contracts_plain(3)}")
+}
+
