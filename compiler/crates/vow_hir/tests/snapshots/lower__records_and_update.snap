@@ -1,0 +1,28 @@
+---
+source: crates/vow_hir/tests/lower.rs
+expression: "check(&\n[(\"main\",\nr#\"\ntype User = { id: Int, email: String }\nfn rename(u: User, email: String) -> User { User { ..u, email } }\nfn id_of(u: User) -> Int { u.id }\nfn make() -> User { User { id: 1, email: \"a@b\" } }\n\"#)])"
+---
+== main
+type User = record
+  id: Int
+  email: String
+fn rename(u: app/main::User, email: String) -> app/main::User
+  params u#0 email#1
+  block
+    record app/main::User
+      ..
+        local u#0
+      email:
+        local email#1
+fn id_of(u: app/main::User) -> Int
+  params u#0
+  block
+    field .id
+      local u#0
+fn make() -> app/main::User
+  block
+    record app/main::User
+      id:
+        int 1
+      email:
+        string "a@b"

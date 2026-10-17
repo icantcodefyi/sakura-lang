@@ -1,0 +1,22 @@
+---
+source: crates/vow_hir/tests/lower.rs
+expression: "check(&\n[(\"main\",\nr#\"\nfn f() -> Int { Greet() }\nfn greet() -> Int { 1 }\nfn g() -> Option<Int> { none }\n\"#)])"
+---
+== main
+fn f() -> Int
+  block
+    call
+      <err>
+fn greet() -> Int
+  block
+    int 1
+fn g() -> std/option::Option<Int>
+  block
+    <err>
+== diagnostics
+V1004 cannot find `Greet`; `greet` exists but names differ in case (values are lowercase, types are uppercase)
+  Primary file0 2:17 `Greet`
+  fix: Use `greet` -> `greet`
+V1004 cannot find `none`; `None` exists but names differ in case (values are lowercase, types are uppercase)
+  Primary file0 4:25 `none`
+  fix: Use `None` -> `None`

@@ -1,0 +1,38 @@
+---
+source: crates/vow_hir/tests/lower.rs
+expression: "check(&\n[(\"main\",\nr#\"\ntype Shape = Circle(Float) | Rect(Float, Float) | Empty\nfn area(s: Shape) -> Float {\n  match s {\n    Circle(r) => r * r,\n    Rect(w, h) if w > 0.0 => w * h,\n    Shape.Empty | Rect(_, _) => 0.0,\n  }\n}\n\"#)])"
+---
+== main
+type Shape = variants
+  Circle(Float)
+  Rect(Float, Float)
+  Empty()
+fn area(s: app/main::Shape) -> Float
+  params s#0
+  block
+    match
+      local s#0
+      arm
+        pat ctor def app/main::Shape.Circle
+          pat bind r#1
+        Mul
+          local r#1
+          local r#1
+      arm
+        pat ctor def app/main::Shape.Rect
+          pat bind w#2
+          pat bind h#3
+        guard
+          Gt
+            local w#2
+            float 0.0
+        Mul
+          local w#2
+          local h#3
+      arm
+        pat or
+          pat ctor def app/main::Shape.Empty
+          pat ctor def app/main::Shape.Rect
+            pat _
+            pat _
+        float 0.0

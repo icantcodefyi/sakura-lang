@@ -813,6 +813,7 @@ dependencies = [
 name = "vow_hir"
 version = "0.0.0"
 dependencies = [
+ "insta",
  "la-arena",
  "rowan",
  "text-size",

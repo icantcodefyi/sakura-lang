@@ -1,0 +1,19 @@
+---
+source: crates/vow_hir/tests/lower.rs
+expression: "check(&\n[(\"main\",\nr#\"\nfn f(o: Option<Int>) -> Int { match o { Some(x) | None => 1 } }\n\"#)])"
+---
+== main
+fn f(o: std/option::Option<Int>) -> Int
+  params o#0
+  block
+    match
+      local o#0
+      arm
+        pat or
+          pat ctor def std/option::Option.Some
+            pat bind x#1
+          pat ctor def std/option::Option.None
+        int 1
+== diagnostics
+V4003 alternatives of an or-pattern must bind the same names: the first binds {x}, this one binds {}
+  Primary file0 2:51 `None`

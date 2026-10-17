@@ -420,7 +420,9 @@ impl Cx {
 
     fn placeholder_body(&mut self, m: ModuleId) -> BodyId {
         let owner = Idx::from_raw(la_arena::RawIdx::from(u32::MAX));
-        self.program.modules[m.0 as usize].bodies.alloc(Body::empty(owner))
+        self.program.modules[m.0 as usize]
+            .bodies
+            .alloc(Body::empty(owner))
     }
 
     fn lower_attr(&mut self, m: ModuleId, a: &SyntaxNode) -> Attr {
@@ -488,7 +490,8 @@ impl Cx {
                                 "unknown constraint `{}`; constraints are Eq, Ord, Hash, Show and Schema",
                                 b.text()
                             );
-                            let mut d = diag::error(diag::UNRESOLVED_TYPE, file, b.text_range(), msg);
+                            let mut d =
+                                diag::error(diag::UNRESOLVED_TYPE, file, b.text_range(), msg);
                             if let Some(s) = did_you_mean(
                                 b.text(),
                                 ["Eq", "Ord", "Hash", "Show", "Schema"].into_iter(),
@@ -643,7 +646,12 @@ impl Cx {
         }
     }
 
-    fn find_import_target(&mut self, m: ModuleId, path: &[String], range: TextRange) -> Option<ModuleId> {
+    fn find_import_target(
+        &mut self,
+        m: ModuleId,
+        path: &[String],
+        range: TextRange,
+    ) -> Option<ModuleId> {
         let file = self.file(m);
         let own = self.program.module(m).package;
         let pkg_name = &path[0];
@@ -698,7 +706,9 @@ impl Cx {
             .map(|&t| self.program.module(t).path.as_str())
             .collect();
         let mut msg = if rest.is_empty() {
-            format!("`{pkg_name}` is a package; import one of its modules, e.g. `import {pkg_name}/<module>`")
+            format!(
+                "`{pkg_name}` is a package; import one of its modules, e.g. `import {pkg_name}/<module>`"
+            )
         } else {
             format!("package `{pkg_name}` has no module `{rest}`")
         };
@@ -722,7 +732,9 @@ impl Cx {
         let imports = self.program.module(m).imports.clone();
         let mut resolved = imports.clone();
         for (ii, import) in imports.iter().enumerate() {
-            let Some(target) = import.target else { continue };
+            let Some(target) = import.target else {
+                continue;
+            };
             if let Some(b) = &import.binding {
                 self.bind_import_name(m, b.clone(), Binding::Module(target), import.range);
             }
@@ -737,10 +749,20 @@ impl Cx {
         self.program.modules[m.0 as usize].imports = resolved;
     }
 
-    fn import_item(&mut self, m: ModuleId, target: ModuleId, name: &str, range: TextRange, file: FileId) -> Option<DefId> {
+    fn import_item(
+        &mut self,
+        m: ModuleId,
+        target: ModuleId,
+        name: &str,
+        range: TextRange,
+        file: FileId,
+    ) -> Option<DefId> {
         let tm = self.program.module(target);
         if let Some(&idx) = tm.exports.get(name) {
-            return Some(DefId { module: target, index: idx });
+            return Some(DefId {
+                module: target,
+                index: idx,
+            });
         }
         let module_name = self.module_name(target);
         if let Some(&idx) = tm.scope.get(name) {
@@ -868,7 +890,8 @@ impl Cx {
                 && alts[0].qualifier.is_none()
                 && alts[0].name != self.program.module(m).defs[idx].name
                 && self.lookup_ns(m, &alts[0].name, Ns::Type).is_some();
-            if alts.len() == 1 && (alts[0].payload.is_none() && alts[0].qualifier.is_some() || alts[0].has_args)
+            if alts.len() == 1
+                && (alts[0].payload.is_none() && alts[0].qualifier.is_some() || alts[0].has_args)
                 || single_existing
             {
                 TypeDefBody::Alias(TypeRef {
@@ -909,7 +932,10 @@ impl Cx {
                             }),
                         },
                     );
-                    self.declare(m, v);
+                    // In a mixed union the error alternatives already exist (V1012 above).
+                    if !is_err[i] {
+                        self.declare(m, v);
+                    }
                     vars.push(v);
                 }
                 TypeDefBody::Variants(vars)
@@ -945,12 +971,14 @@ impl Cx {
     ) -> bool {
         let b = match &alt.qualifier {
             Some(q) => match self.lookup_module_name(m, q) {
-                Some(Binding::Module(t)) => self
-                    .program
-                    .module(t)
-                    .exports
-                    .get(&alt.name)
-                    .map(|&i| Binding::Def(DefId { module: t, index: i })),
+                Some(Binding::Module(t)) => {
+                    self.program.module(t).exports.get(&alt.name).map(|&i| {
+                        Binding::Def(DefId {
+                            module: t,
+                            index: i,
+                        })
+                    })
+                }
                 _ => None,
             },
             None => self.lookup_ns(m, &alt.name, Ns::Type),
@@ -1139,7 +1167,13 @@ impl Cx {
         }
     }
 
-    fn lower_fields(&mut self, m: ModuleId, owner: Idx<Def>, list: &SyntaxNode, generics: &[TypeParam]) -> Vec<FieldDef> {
+    fn lower_fields(
+        &mut self,
+        m: ModuleId,
+        owner: Idx<Def>,
+        list: &SyntaxNode,
+        generics: &[TypeParam],
+    ) -> Vec<FieldDef> {
         let mut out: Vec<FieldDef> = Vec::new();
         for f in children(list, FIELD_DECL) {
             let (name, range) = name_token(&f, IDENT);
@@ -1167,7 +1201,12 @@ impl Cx {
         out
     }
 
-    fn lower_params(&mut self, m: ModuleId, node: &SyntaxNode, generics: &[TypeParam]) -> Vec<Param> {
+    fn lower_params(
+        &mut self,
+        m: ModuleId,
+        node: &SyntaxNode,
+        generics: &[TypeParam],
+    ) -> Vec<Param> {
         let Some(list) = child(node, PARAM_LIST) else {
             return Vec::new();
         };
@@ -1208,14 +1247,21 @@ impl Cx {
 
     // ---- Types ----
 
-    pub(crate) fn lower_type(&mut self, m: ModuleId, node: &SyntaxNode, generics: &[TypeParam]) -> TypeRef {
+    pub(crate) fn lower_type(
+        &mut self,
+        m: ModuleId,
+        node: &SyntaxNode,
+        generics: &[TypeParam],
+    ) -> TypeRef {
         let range = node.text_range();
         let kind = match node.kind() {
-            NAMED_TYPE | PATH => {
-                let args = child(node, GENERIC_ARG_LIST)
-                    .map(|l| self.lower_generic_args(m, &l, generics))
-                    .unwrap_or_default();
+            NAMED_TYPE | PATH | VARIANT => {
                 let res = self.resolve_type_path(m, node, generics, TypeNs::Type);
+                // `Handler<Eff, r>`: the first argument names an effect.
+                let effect_first = res == TypeRes::Builtin(Builtin::Handler);
+                let args = child(node, GENERIC_ARG_LIST)
+                    .map(|l| self.lower_generic_args(m, &l, generics, effect_first))
+                    .unwrap_or_default();
                 TypeRefKind::Named { res, args }
             }
             TUPLE_TYPE => TypeRefKind::Tuple(self.lower_type_list(m, node, generics)),
@@ -1251,14 +1297,31 @@ impl Cx {
     }
 
     /// `<T, {E}>`: types, and effect rows used as type arguments (`Handler<Db, {Http}>`).
-    pub(crate) fn lower_generic_args(&mut self, m: ModuleId, list: &SyntaxNode, generics: &[TypeParam]) -> Vec<TypeRef> {
+    pub(crate) fn lower_generic_args(
+        &mut self,
+        m: ModuleId,
+        list: &SyntaxNode,
+        generics: &[TypeParam],
+        effect_first: bool,
+    ) -> Vec<TypeRef> {
         list.children()
             .filter(|c| is_type(c.kind()) || c.kind() == EFFECT_ROW)
-            .map(|c| {
+            .enumerate()
+            .map(|(i, c)| {
+                let range = c.text_range();
                 if c.kind() == EFFECT_ROW {
                     TypeRef {
                         kind: TypeRefKind::Row(self.lower_row(m, &c, generics)),
-                        range: c.text_range(),
+                        range,
+                    }
+                } else if i == 0 && effect_first && c.kind() == NAMED_TYPE {
+                    let res = self.resolve_type_path(m, &c, generics, TypeNs::Effect);
+                    let args = child(&c, GENERIC_ARG_LIST)
+                        .map(|l| self.lower_generic_args(m, &l, generics, false))
+                        .unwrap_or_default();
+                    TypeRef {
+                        kind: TypeRefKind::Named { res, args },
+                        range,
                     }
                 } else {
                     self.lower_type(m, &c, generics)
@@ -1267,7 +1330,12 @@ impl Cx {
             .collect()
     }
 
-    fn lower_type_list(&mut self, m: ModuleId, node: &SyntaxNode, generics: &[TypeParam]) -> Vec<TypeRef> {
+    fn lower_type_list(
+        &mut self,
+        m: ModuleId,
+        node: &SyntaxNode,
+        generics: &[TypeParam],
+    ) -> Vec<TypeRef> {
         let list = child(node, TYPE_LIST).unwrap_or_else(|| node.clone());
         list.children()
             .filter(|c| is_type(c.kind()))
@@ -1275,12 +1343,20 @@ impl Cx {
             .collect()
     }
 
-    pub(crate) fn lower_row(&mut self, m: ModuleId, node: &SyntaxNode, generics: &[TypeParam]) -> RowRef {
+    pub(crate) fn lower_row(
+        &mut self,
+        m: ModuleId,
+        node: &SyntaxNode,
+        generics: &[TypeParam],
+    ) -> RowRef {
         let mut labels = Vec::new();
-        for l in node.children().filter(|c| matches!(c.kind(), NAMED_TYPE | PATH)) {
+        for l in node
+            .children()
+            .filter(|c| matches!(c.kind(), NAMED_TYPE | PATH))
+        {
             let res = self.resolve_type_path(m, &l, generics, TypeNs::Effect);
             let args = child(&l, GENERIC_ARG_LIST)
-                .map(|a| self.lower_generic_args(m, &a, generics))
+                .map(|a| self.lower_generic_args(m, &a, generics, false))
                 .unwrap_or_default();
             labels.push(EffectRef {
                 effect: res,
@@ -1330,10 +1406,19 @@ impl Cx {
                 diag::CASE_MISMATCH,
                 file,
                 range,
-                format!("`{name}` is lowercase, so it cannot name a type; type names start with an uppercase letter"),
+                format!(
+                    "`{name}` is lowercase, so it cannot name a type; type names start with an uppercase letter"
+                ),
             );
-            if self.lookup_module_name(m, &upper).is_some() || generics.iter().any(|g| g.name == upper) {
-                d = d.with_fix(diag::replace_fix(file, range, format!("Use `{upper}`"), &upper));
+            if self.lookup_module_name(m, &upper).is_some()
+                || generics.iter().any(|g| g.name == upper)
+            {
+                d = d.with_fix(diag::replace_fix(
+                    file,
+                    range,
+                    format!("Use `{upper}`"),
+                    &upper,
+                ));
             }
             self.report(d);
             return TypeRes::Err;
@@ -1369,20 +1454,32 @@ impl Cx {
         let what = self.describe_binding(binding);
         let msg = match ns {
             TypeNs::Type => format!("`{name}` is {what}, not a type"),
-            TypeNs::Effect => format!("`{name}` is {what}, not an effect; effect rows list effects such as `Console` or `Fail<E>`"),
-            TypeNs::Handler => format!("`{name}` is {what}, not an effect; `handler` takes the effect it handles"),
+            TypeNs::Effect => format!(
+                "`{name}` is {what}, not an effect; effect rows list effects such as `Console` or `Fail<E>`"
+            ),
+            TypeNs::Handler => {
+                format!("`{name}` is {what}, not an effect; `handler` takes the effect it handles")
+            }
         };
         self.report(diag::error(diag::WRONG_KIND, file, range, msg));
         TypeRes::Err
     }
 
-    fn report_unresolved_type(&mut self, m: ModuleId, name: &str, range: TextRange, generics: &[TypeParam]) {
+    fn report_unresolved_type(
+        &mut self,
+        m: ModuleId,
+        name: &str,
+        range: TextRange,
+        generics: &[TypeParam],
+    ) {
         let file = self.file(m);
         let mut cands = self.module_candidates(m);
         cands.extend(generics.iter().map(|g| g.name.clone()));
         let mut msg = format!("cannot find type `{name}` in this scope");
         if let Some(p) = prelude::lookup(name) {
-            msg = format!("`{name}` is in the prelude but std module `std/{p}` is not part of this build");
+            msg = format!(
+                "`{name}` is in the prelude but std module `std/{p}` is not part of this build"
+            );
         }
         let mut d = diag::error(diag::UNRESOLVED_TYPE, file, range, msg);
         if let Some(s) = did_you_mean(name, cands.iter().map(String::as_str)) {
@@ -1442,7 +1539,12 @@ impl Cx {
     /// Qualifiers are modules or types (a type qualifier looks in the type's home module).
     /// `Err(false)`: a single segment that does not resolve, not yet reported, so the caller can
     /// report with its own candidates; `Err(true)`: already reported.
-    pub(crate) fn resolve_path(&mut self, m: ModuleId, segs: &[SyntaxToken], ns: Ns) -> Result<Binding, bool> {
+    pub(crate) fn resolve_path(
+        &mut self,
+        m: ModuleId,
+        segs: &[SyntaxToken],
+        ns: Ns,
+    ) -> Result<Binding, bool> {
         let Some(first) = segs.first() else {
             return Err(true);
         };
@@ -1457,7 +1559,12 @@ impl Cx {
                     "cannot find module `{0}`; import it first, e.g. `import std/{0}`",
                     first.text()
                 );
-                self.report(diag::error(diag::UNRESOLVED_MODULE, file, first.text_range(), msg));
+                self.report(diag::error(
+                    diag::UNRESOLVED_MODULE,
+                    file,
+                    first.text_range(),
+                    msg,
+                ));
             } else {
                 self.report_unresolved_type(m, first.text(), first.text_range(), &[]);
             }
@@ -1475,20 +1582,30 @@ impl Cx {
     }
 
     /// `T.Name` in a path: a variant of `T` or a type declared in `T`'s home module.
-    fn home_member(&mut self, m: ModuleId, owner: Binding, owner_name: &str, seg: &SyntaxToken) -> Result<Binding, bool> {
+    fn home_member(
+        &mut self,
+        m: ModuleId,
+        owner: Binding,
+        owner_name: &str,
+        seg: &SyntaxToken,
+    ) -> Result<Binding, bool> {
         let file = self.file(m);
         let ty = match owner {
             Binding::Builtin(b) => TypeRes::Builtin(b),
-            Binding::Def(d) if matches!(
-                self.program.def(d).kind,
-                DefKind::Type(_) | DefKind::Error(_) | DefKind::Effect(_)
-            ) =>
+            Binding::Def(d)
+                if matches!(
+                    self.program.def(d).kind,
+                    DefKind::Type(_) | DefKind::Error(_) | DefKind::Effect(_)
+                ) =>
             {
                 TypeRes::Def(d)
             }
             _ => {
                 let what = self.describe_binding(owner);
-                let msg = format!("`{owner_name}` is {what}, so `{owner_name}.{}` names nothing", seg.text());
+                let msg = format!(
+                    "`{owner_name}` is {what}, so `{owner_name}.{}` names nothing",
+                    seg.text()
+                );
                 self.report(diag::error(diag::WRONG_KIND, file, seg.text_range(), msg));
                 return Err(true);
             }
@@ -1511,7 +1628,10 @@ impl Cx {
                 return Ok(Binding::Def(def));
             }
             if ok {
-                let msg = format!("`{owner_name}.{name}` is private to module `{}`", self.module_name(home));
+                let msg = format!(
+                    "`{owner_name}.{name}` is private to module `{}`",
+                    self.module_name(home)
+                );
                 self.report(diag::error(diag::PRIVATE_ITEM, file, seg.text_range(), msg));
                 return Err(true);
             }
@@ -1530,7 +1650,12 @@ impl Cx {
         let mut fix = None;
         if let Some(s) = did_you_mean(name, cands.iter().map(String::as_str)) {
             msg.push_str(&format!("; did you mean `{owner_name}.{s}`?"));
-            fix = Some(diag::replace_fix(file, seg.text_range(), format!("Use `{s}`"), s));
+            fix = Some(diag::replace_fix(
+                file,
+                seg.text_range(),
+                format!("Use `{s}`"),
+                s,
+            ));
         }
         let mut d = diag::error(diag::UNRESOLVED_NAME, file, seg.text_range(), msg);
         if let Some(f) = fix {
@@ -1541,9 +1666,16 @@ impl Cx {
     }
 
     /// `target.name` from module `m`: an exported item, else `V1006`/`V1002`.
-    pub(crate) fn module_member(&mut self, m: ModuleId, target: ModuleId, name: &str, range: TextRange) -> Option<Binding> {
+    pub(crate) fn module_member(
+        &mut self,
+        m: ModuleId,
+        target: ModuleId,
+        name: &str,
+        range: TextRange,
+    ) -> Option<Binding> {
         let file = self.file(m);
-        self.import_item(m, target, name, range, file).map(Binding::Def)
+        self.import_item(m, target, name, range, file)
+            .map(Binding::Def)
     }
 }
 
@@ -1576,9 +1708,13 @@ struct Alt {
 /// `VARIANT_LIST`, a `UNION_TYPE`, a single `VARIANT`, or a single bare `NAMED_TYPE`).
 fn alternatives(node: &SyntaxNode) -> Option<Vec<Alt>> {
     let alt_nodes: Vec<SyntaxNode> = if let Some(l) = child(node, VARIANT_LIST) {
-        l.children().filter(|c| matches!(c.kind(), VARIANT | NAMED_TYPE)).collect()
+        l.children()
+            .filter(|c| matches!(c.kind(), VARIANT | NAMED_TYPE))
+            .collect()
     } else if let Some(u) = child(node, UNION_TYPE) {
-        u.children().filter(|c| matches!(c.kind(), VARIANT | NAMED_TYPE)).collect()
+        u.children()
+            .filter(|c| matches!(c.kind(), VARIANT | NAMED_TYPE))
+            .collect()
     } else if let Some(v) = child(node, VARIANT) {
         vec![v]
     } else if child(node, WHERE_CLAUSE).is_none()

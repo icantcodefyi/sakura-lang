@@ -1,0 +1,31 @@
+---
+source: crates/vow_hir/tests/lower.rs
+expression: "check(&\n[(\"main\",\nr#\"\nfn a() -> Int { 1 }\nfn a() -> Int { 2 }\ntype T = { x: Int, x: Int }\nfn b() -> Int { let (y, y) = (1, 2); y }\n\"#)])"
+---
+== main
+fn a() -> Int
+  block
+    int 1
+fn a() -> Int
+  block
+    int 2
+type T = record
+  x: Int
+fn b() -> Int
+  block
+    let
+      pat tuple
+        pat bind y#0
+        pat bind y#0
+      tuple
+        int 1
+        int 2
+    local y#0
+== diagnostics
+V1001 `a` is defined more than once in this module
+  Primary file0 3:4 `a`
+  Definition file0 2:4 `a` (first defined here)
+V1001 field `x` is declared twice
+  Primary file0 4:20 `x`
+V1001 `y` is bound more than once in this pattern
+  Primary file0 5:25 `y`

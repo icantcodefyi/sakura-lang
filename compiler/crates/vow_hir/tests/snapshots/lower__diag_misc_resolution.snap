@@ -1,0 +1,31 @@
+---
+source: crates/vow_hir/tests/lower.rs
+expression: "check(&\n[(\"main\",\nr#\"\n@deprecatd(\"x\")\nfn f<A: Equ>(x: A) -> Int ! e { 1 }\nfn g() -> Int\nfn h() -> Strin { sql\"select 1\" }\n\"#)])"
+---
+== main
+@deprecatd("x")
+fn f<A>(x: $0) -> Int ! {| <err>}
+  params x#0
+  block
+    int 1
+fn g() -> Int
+  <missing>
+fn h() -> <err>
+  block
+    template <err> ["select 1"]
+== diagnostics
+V1010 unknown attribute `@deprecatd`
+  Primary file0 2:2 `deprecatd`
+  fix: Use `@deprecated` -> `deprecated`
+V1003 unknown constraint `Equ`; constraints are Eq, Ord, Hash, Show and Schema
+  Primary file0 3:9 `Equ`
+  fix: Use `Eq` -> `Eq`
+V1003 unknown effect-row variable `e`; declare it as a lowercase type parameter, e.g. `fn f<e>(…)`
+  Primary file0 3:29 `e`
+V1011 function `g` has no body; only `@external` and `@llm` declarations may omit it
+  Primary file0 4:4 `g`
+V1003 cannot find type `Strin` in this scope; did you mean `String`?
+  Primary file0 5:11 `Strin`
+  fix: Use `String` -> `String`
+V1002 unknown template tag `sql`; a tag is a module exporting `template`, e.g. `import std/sql`
+  Primary file0 5:19 `sql`

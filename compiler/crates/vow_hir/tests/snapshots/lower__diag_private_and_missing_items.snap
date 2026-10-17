@@ -1,0 +1,41 @@
+---
+source: crates/vow_hir/tests/lower.rs
+expression: "check(&\n[(\"main\",\nr#\"\nimport app/lib.{hidden, nope}\nimport std/list\nfn f(xs: List<Int>) -> Int { list.secret() + List.secret() + List.lenn(xs) }\n\"#),\n(\"lib\", \"fn hidden() -> Int { 1 }\\npub fn shown() -> Int { 2 }\\n\")])"
+---
+== main
+import app/lib hidden=<err> nope=<err>
+import std/list as list
+fn f(xs: List<Int>) -> Int
+  params xs#0
+  block
+    Add
+      Add
+        call
+          <err>
+        call
+          <err>
+      call
+        <err>
+        local xs#0
+== lib
+fn hidden() -> Int
+  block
+    int 1
+pub fn shown() -> Int
+  block
+    int 2
+== diagnostics
+V1006 `hidden` is private to module `app/lib`
+  Primary file0 2:17 `hidden`
+  Definition file1 1:4 `hidden` (declared here without `pub`; add `pub` to export it)
+V1002 module `app/lib` has no exported item `nope`
+  Primary file0 2:25 `nope`
+V1006 `secret` is private to module `std/list`
+  Primary file0 4:35 `secret`
+  Definition file5 3:4 `secret` (declared here without `pub`; add `pub` to export it)
+V1006 `List.secret` is private to module `std/list`
+  Primary file0 4:51 `secret`
+  Definition file5 3:4 `secret` (declared here without `pub`)
+V1002 `List` has no function or variant `lenn` in its home module `std/list`; did you mean `len`?
+  Primary file0 4:67 `lenn`
+  fix: Use `List.len` -> `len`

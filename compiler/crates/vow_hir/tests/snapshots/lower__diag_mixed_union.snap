@@ -1,0 +1,12 @@
+---
+source: crates/vow_hir/tests/lower.rs
+expression: "check(& [(\"main\", r#\"\nerror A\ntype T = A | B\n\"#)])"
+---
+== main
+error A()
+type T = variants
+  A()
+  B()
+== diagnostics
+V1012 this type mixes existing error tags (A) with new variants; an error union lists only error tags, a variant type declares only new variants
+  Primary file0 3:1 `type T = A | B`

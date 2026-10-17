@@ -8,13 +8,16 @@ use std::fmt::Write;
 use crate::hir::*;
 
 impl Program {
-    /// `pkg/module::name`; ops print as `pkg/module::Effect.op`.
+    /// `pkg/module::name`; ops and variants print as `pkg/module::Parent.name`.
     pub fn def_path(&self, def: DefId) -> String {
         let m = self.module(def.module);
         let pkg = &self.packages[m.package.0 as usize].name;
         let d = &m.defs[def.index];
         match &d.kind {
             DefKind::Op(op) => format!("{pkg}/{}::{}.{}", m.path, m.defs[op.effect].name, d.name),
+            DefKind::Variant(v) => {
+                format!("{pkg}/{}::{}.{}", m.path, m.defs[v.parent].name, d.name)
+            }
             _ => format!("{pkg}/{}::{}", m.path, d.name),
         }
     }
@@ -54,7 +57,10 @@ impl<'a> Printer<'a> {
             let target = match import.target {
                 Some(t) => {
                     let tm = self.program.module(t);
-                    format!("{}/{}", self.program.packages[tm.package.0 as usize].name, tm.path)
+                    format!(
+                        "{}/{}",
+                        self.program.packages[tm.package.0 as usize].name, tm.path
+                    )
                 }
                 None => "<unresolved>".into(),
             };
@@ -92,7 +98,10 @@ impl<'a> Printer<'a> {
             }
             DefKind::Const(c) => {
                 let ty = c.ty.as_ref().map(|t| format!(": {}", self.ty(t)));
-                self.line(0, format!("{vis}let {}{}", def.name, ty.unwrap_or_default()));
+                self.line(
+                    0,
+                    format!("{vis}let {}{}", def.name, ty.unwrap_or_default()),
+                );
                 self.body(1, c.body);
             }
             DefKind::Type(t) => {
@@ -110,14 +119,18 @@ impl<'a> Printer<'a> {
                         for &v in vs {
                             let vd = &m.defs[v];
                             if let DefKind::Variant(var) = &vd.kind {
-                                let fields: Vec<_> = var.fields.iter().map(|t| self.ty(t)).collect();
+                                let fields: Vec<_> =
+                                    var.fields.iter().map(|t| self.ty(t)).collect();
                                 self.line(1, format!("{}({})", vd.name, fields.join(", ")));
                             }
                         }
                     }
                     TypeDefBody::ErrorUnion(ts) => {
                         let ts: Vec<_> = ts.iter().map(|t| self.ty(t)).collect();
-                        self.line(0, format!("{vis}type {}{g} = errors {}", def.name, ts.join(" | ")));
+                        self.line(
+                            0,
+                            format!("{vis}type {}{g} = errors {}", def.name, ts.join(" | ")),
+                        );
                     }
                     TypeDefBody::Alias(t) => {
                         let t = self.ty(t);
@@ -128,11 +141,17 @@ impl<'a> Printer<'a> {
                         self.line(0, format!("{vis}type {}{g} = refined {t}", def.name));
                         self.body(1, *pred);
                     }
-                    TypeDefBody::Missing => self.line(0, format!("{vis}type {}{g} = <missing>", def.name)),
+                    TypeDefBody::Missing => {
+                        self.line(0, format!("{vis}type {}{g} = <missing>", def.name))
+                    }
                 }
             }
             DefKind::Error(e) => {
-                let fields: Vec<_> = e.fields.iter().map(|f| format!("{}: {}", f.name, self.ty(&f.ty))).collect();
+                let fields: Vec<_> = e
+                    .fields
+                    .iter()
+                    .map(|f| format!("{}: {}", f.name, self.ty(&f.ty)))
+                    .collect();
                 self.line(0, format!("{vis}error {}({})", def.name, fields.join(", ")));
             }
             DefKind::Effect(e) => {
@@ -154,7 +173,11 @@ impl<'a> Printer<'a> {
                 self.body(1, t.body);
             }
             DefKind::Property(p) => {
-                let params: Vec<_> = p.params.iter().map(|p| format!("{}: {}", p.name, self.ty(&p.ty))).collect();
+                let params: Vec<_> = p
+                    .params
+                    .iter()
+                    .map(|p| format!("{}: {}", p.name, self.ty(&p.ty)))
+                    .collect();
                 self.line(0, format!("property {:?}({})", def.name, params.join(", ")));
                 self.body(1, p.body);
             }
@@ -181,7 +204,11 @@ impl<'a> Printer<'a> {
     }
 
     fn sig(&self, sig: &Signature) -> String {
-        let params: Vec<_> = sig.params.iter().map(|p| format!("{}: {}", p.name, self.ty(&p.ty))).collect();
+        let params: Vec<_> = sig
+            .params
+            .iter()
+            .map(|p| format!("{}: {}", p.name, self.ty(&p.ty)))
+            .collect();
         let row = sig.row.as_ref().map(|r| format!(" ! {}", self.row(r)));
         format!(
             "{}({}) -> {}{}",
@@ -218,7 +245,12 @@ impl<'a> Printer<'a> {
             TypeRefKind::Fn { params, ret, row } => {
                 let a: Vec<_> = params.iter().map(|a| self.ty(a)).collect();
                 let row = row.as_ref().map(|r| format!(" ! {}", self.row(r)));
-                format!("fn({}) -> {}{}", a.join(", "), self.ty(ret), row.unwrap_or_default())
+                format!(
+                    "fn({}) -> {}{}",
+                    a.join(", "),
+                    self.ty(ret),
+                    row.unwrap_or_default()
+                )
             }
             TypeRefKind::Union(ts) => {
                 let a: Vec<_> = ts.iter().map(|a| self.ty(a)).collect();
@@ -257,7 +289,11 @@ impl<'a> Printer<'a> {
         }
         for (kw, cs) in [("requires", &body.requires), ("ensures", &body.ensures)] {
             for c in cs {
-                let label = c.label.as_deref().map(|l| format!(" {l}:")).unwrap_or_default();
+                let label = c
+                    .label
+                    .as_deref()
+                    .map(|l| format!(" {l}:"))
+                    .unwrap_or_default();
                 self.line(depth, format!("{kw}{label}"));
                 self.expr(depth + 1, c.expr);
             }
@@ -309,7 +345,11 @@ impl<'a> Printer<'a> {
                     self.expr(d + 1, a);
                 }
             }
-            Expr::Template { template, parts, args } => {
+            Expr::Template {
+                template,
+                parts,
+                args,
+            } => {
                 let t = self.res(*template);
                 self.line(d, format!("template {t} {parts:?}"));
                 for &a in args {
@@ -382,7 +422,11 @@ impl<'a> Printer<'a> {
                     self.expr(d + 1, *t);
                 }
             }
-            Expr::If { cond, then_branch, else_branch } => {
+            Expr::If {
+                cond,
+                then_branch,
+                else_branch,
+            } => {
                 self.line(d, "if");
                 self.expr(d + 1, *cond);
                 self.expr(d + 1, *then_branch);
@@ -399,7 +443,11 @@ impl<'a> Printer<'a> {
                 self.line(d, "loop");
                 self.expr(d + 1, *body);
             }
-            Expr::For { pat, iterable, body } => {
+            Expr::For {
+                pat,
+                iterable,
+                body,
+            } => {
                 self.line(d, "for");
                 self.pat(d + 1, *pat);
                 self.expr(d + 1, *iterable);
@@ -426,7 +474,10 @@ impl<'a> Printer<'a> {
                     })
                     .collect();
                 let ret = ret.as_ref().map(|t| format!(" -> {}", self.ty(t)));
-                self.line(d, format!("lambda ({}){}", ps.join(", "), ret.unwrap_or_default()));
+                self.line(
+                    d,
+                    format!("lambda ({}){}", ps.join(", "), ret.unwrap_or_default()),
+                );
                 self.expr(d + 1, *body);
             }
             Expr::With { handlers, body } => {
@@ -520,7 +571,12 @@ impl<'a> Printer<'a> {
                 self.line(d, line);
                 self.expr(d + 1, *init);
             }
-            Stmt::Assign { target, fields, value, .. } => {
+            Stmt::Assign {
+                target,
+                fields,
+                value,
+                ..
+            } => {
                 let t = target.map_or("<err>".into(), |l| self.local(l));
                 let path: String = fields.iter().map(|f| format!(".{f}")).collect();
                 self.line(d, format!("assign {t}{path}"));

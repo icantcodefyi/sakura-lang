@@ -1,0 +1,26 @@
+---
+source: crates/vow_hir/tests/lower.rs
+expression: "check(&\n[(\"main\",\nr#\"\nimport app/users/repo.{User, find}\nimport app/util as u\nfn main_user() -> User { find(u.answer()) }\n\"#),\n(\"users/repo\",\nr#\"\npub type User = { id: Int }\npub fn find(id: Int) -> User { User { id } }\n\"#),\n(\"util\", \"pub fn answer() -> Int { 42 }\\n\")])"
+---
+== main
+import app/users/repo User=app/users/repo::User find=app/users/repo::find
+import app/util as u
+fn main_user() -> app/users/repo::User
+  block
+    call
+      def app/users/repo::find
+      call
+        def app/util::answer
+== users/repo
+pub type User = record
+  id: Int
+pub fn find(id: Int) -> app/users/repo::User
+  params id#0
+  block
+    record app/users/repo::User
+      id:
+        local id#0
+== util
+pub fn answer() -> Int
+  block
+    int 42

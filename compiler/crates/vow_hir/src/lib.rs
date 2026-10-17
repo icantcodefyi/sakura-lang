@@ -29,8 +29,9 @@
 //!   `-<literal>` in patterns is folded. Method calls on values stay [`Expr::MethodCall`]
 //!   because they need the receiver's type (§4.9 rules 1 and 5; see
 //!   [`Program::resolve_home`]).
-//! - **Deterministic.** Arena order is source order; the same snapshot always produces the
-//!   same ids, diagnostics and dumps.
+//! - **Deterministic.** Modules and defs are numbered in input/source order; body arenas in
+//!   lowering order (an initializer before the binding it initializes). The same snapshot
+//!   always produces the same ids, diagnostics and dumps.
 
 mod body;
 mod diag;

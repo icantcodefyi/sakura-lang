@@ -1,0 +1,42 @@
+---
+source: crates/vow_hir/tests/lower.rs
+expression: "check(&\n[(\"main\",\nr#\"\nfn unfinished(x: Int) -> Int { ?result }\nfn s(n: Int) -> String { \"n = {n}, tab:\\t, brace: \\{\" }\nfn t() -> (Int, Bool, Unit) { (0x1F, true, ()) }\nfn idx(xs: List<Int>) -> Option<Int> { xs[0] }\nfn r() -> Range { 0..10 }\nfn early(x: Int) -> Int { if x > 0 { return 1 }; 2 }\n\"#)])"
+---
+== main
+fn unfinished(x: Int) -> Int
+  params x#0
+  block
+    hole ?result
+fn s(n: Int) -> String
+  params n#0
+  block
+    interpolate ["n = ", ", tab:\t, brace: {"]
+      local n#0
+fn t() -> (Int, Bool, Unit)
+  block
+    tuple
+      int 31
+      bool true
+      unit
+fn idx(xs: List<Int>) -> std/option::Option<Int>
+  params xs#0
+  block
+    index
+      local xs#0
+      int 0
+fn r() -> Range
+  block
+    Range
+      int 0
+      int 10
+fn early(x: Int) -> Int
+  params x#0
+  block
+    if
+      Gt
+        local x#0
+        int 0
+      block
+        return
+          int 1
+    int 2

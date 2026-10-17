@@ -37,7 +37,11 @@ impl Cx {
             None if node.kind() == OP_SIG => None,
             None if node.kind() == FN_DECL => {
                 let def = &b.cx.program.module(m).defs[owner];
-                if def.attrs.iter().any(|a| a.name == "external" || a.name == "llm") {
+                if def
+                    .attrs
+                    .iter()
+                    .any(|a| a.name == "external" || a.name == "llm")
+                {
                     None
                 } else {
                     let file = b.file();
@@ -341,7 +345,9 @@ impl<'a> BodyCx<'a> {
             }
             RAISE_EXPR => Expr::Raise(self.opt_expr(exprs(n).next(), range)),
             ATTR_EXPR => {
-                let name = token(n, IDENT).map(|t| t.text().to_string()).unwrap_or_default();
+                let name = token(n, IDENT)
+                    .map(|t| t.text().to_string())
+                    .unwrap_or_default();
                 let (args, _) = self.args(n);
                 Expr::Attr { name, args }
             }
@@ -407,7 +413,12 @@ impl<'a> BodyCx<'a> {
                         self.cx.module_name(t),
                         tag.text()
                     );
-                    self.cx.report(diag::error(diag::UNRESOLVED_NAME, file, tag.text_range(), msg));
+                    self.cx.report(diag::error(
+                        diag::UNRESOLVED_NAME,
+                        file,
+                        tag.text_range(),
+                        msg,
+                    ));
                     Res::Err
                 }
             },
@@ -416,7 +427,12 @@ impl<'a> BodyCx<'a> {
                     "unknown template tag `{0}`; a tag is a module exporting `template`, e.g. `import std/{0}`",
                     tag.text()
                 );
-                self.cx.report(diag::error(diag::UNRESOLVED_NAME, file, tag.text_range(), msg));
+                self.cx.report(diag::error(
+                    diag::UNRESOLVED_NAME,
+                    file,
+                    tag.text_range(),
+                    msg,
+                ));
                 Res::Err
             }
         };
@@ -467,7 +483,7 @@ impl<'a> BodyCx<'a> {
 
     fn type_args(&mut self, n: &SyntaxNode) -> Vec<TypeRef> {
         match child(n, GENERIC_ARG_LIST) {
-            Some(l) => self.cx.lower_generic_args(self.m, &l, self.generics),
+            Some(l) => self.cx.lower_generic_args(self.m, &l, self.generics, false),
             None => Vec::new(),
         }
     }
@@ -596,12 +612,20 @@ impl<'a> BodyCx<'a> {
                 _ => String::new(),
             };
             let msg = format!("`{type_name}` has no function `{member}`{hint}");
-            self.cx.report(diag::error(diag::UNRESOLVED_NAME, file, name.text_range(), msg));
+            self.cx.report(diag::error(
+                diag::UNRESOLVED_NAME,
+                file,
+                name.text_range(),
+                msg,
+            ));
             return Some(Res::Err);
         };
         // Private but present: say so instead of "not found".
         if let Some(def) = self.cx.program.lookup(home, member)
-            && matches!(self.cx.program.def(def).kind, DefKind::Fn(_) | DefKind::Const(_))
+            && matches!(
+                self.cx.program.def(def).kind,
+                DefKind::Fn(_) | DefKind::Const(_)
+            )
         {
             let def_range = self.cx.program.def(def).range;
             let def_file = self.cx.program.module(home).file;
@@ -697,7 +721,8 @@ impl<'a> BodyCx<'a> {
                     self.cx.module_name(t),
                     last.text()
                 );
-                self.cx.report(diag::error(diag::WRONG_KIND, file, last.text_range(), msg));
+                self.cx
+                    .report(diag::error(diag::WRONG_KIND, file, last.text_range(), msg));
                 Res::Err
             }
             _ => self.constructor(binding, &last),
@@ -733,7 +758,8 @@ impl<'a> BodyCx<'a> {
             _ => String::new(),
         };
         let msg = format!("`{}` is {what}, not a value{hint}", name.text());
-        self.cx.report(diag::error(diag::WRONG_KIND, file, name.text_range(), msg));
+        self.cx
+            .report(diag::error(diag::WRONG_KIND, file, name.text_range(), msg));
         Res::Err
     }
 
@@ -745,7 +771,8 @@ impl<'a> BodyCx<'a> {
             let msg = format!(
                 "local lambda `{text}` cannot call itself; lift it to a top-level `fn` (design §4.5)"
             );
-            self.cx.report(diag::error(diag::RECURSIVE_LAMBDA, file, range, msg));
+            self.cx
+                .report(diag::error(diag::RECURSIVE_LAMBDA, file, range, msg));
             return;
         }
         let flipped = if name.kind() == IDENT {
@@ -806,7 +833,8 @@ impl<'a> BodyCx<'a> {
                 let msg = format!(
                     "`{name}` is not a record type or error tag, so it has no `{{ field: … }}` form"
                 );
-                self.cx.report(diag::error(diag::WRONG_KIND, file, path.text_range(), msg));
+                self.cx
+                    .report(diag::error(diag::WRONG_KIND, file, path.text_range(), msg));
                 return TypeRes::Err;
             }
         }
@@ -815,10 +843,13 @@ impl<'a> BodyCx<'a> {
 
     fn record(&mut self, n: &SyntaxNode) -> Expr {
         let ty = self.record_type(n);
-        let spread = child(n, RECORD_SPREAD).map(|s| self.opt_expr(exprs(&s).next(), s.text_range()));
+        let spread =
+            child(n, RECORD_SPREAD).map(|s| self.opt_expr(exprs(&s).next(), s.text_range()));
         let mut fields = Vec::new();
         for f in children(n, FIELD_INIT) {
-            let Some(name) = token(&f, IDENT) else { continue };
+            let Some(name) = token(&f, IDENT) else {
+                continue;
+            };
             let value = match exprs(&f).next() {
                 Some(e) => self.expr(&e),
                 None => {
@@ -919,7 +950,9 @@ impl<'a> BodyCx<'a> {
         }
         let mut clauses = Vec::new();
         for c in children(n, HANDLER_CLAUSE) {
-            let Some(name) = token(&c, IDENT) else { continue };
+            let Some(name) = token(&c, IDENT) else {
+                continue;
+            };
             let op = ops.iter().find(|(o, _)| o == name.text()).map(|&(_, d)| d);
             if op.is_none() && effect != TypeRes::Err {
                 let file = self.file();
@@ -976,7 +1009,8 @@ impl<'a> BodyCx<'a> {
         for a in children(list, MATCH_ARM) {
             self.push_scope();
             let pat = self.pattern_opt(a.children().find(|c| is_pat(c.kind())), a.text_range());
-            let guard = child(&a, MATCH_GUARD).map(|g| self.opt_expr(exprs(&g).next(), g.text_range()));
+            let guard =
+                child(&a, MATCH_GUARD).map(|g| self.opt_expr(exprs(&g).next(), g.text_range()));
             let body = self.opt_expr(exprs(&a).next(), a.text_range());
             self.pop_scope();
             arms.push(MatchArm { pat, guard, body });
@@ -1112,9 +1146,14 @@ impl<'a> BodyCx<'a> {
                     let file = self.file();
                     let kw = if is_break { "break" } else { "continue" };
                     let msg = format!("`{kw}` outside of a `for` or `while` loop");
-                    self.cx.report(diag::error(diag::JUMP_OUTSIDE_LOOP, file, range, msg));
+                    self.cx
+                        .report(diag::error(diag::JUMP_OUTSIDE_LOOP, file, range, msg));
                 }
-                let e = if is_break { Expr::Break } else { Expr::Continue };
+                let e = if is_break {
+                    Expr::Break
+                } else {
+                    Expr::Continue
+                };
                 Stmt::Expr(self.alloc(e, range))
             }
             EXPR_STMT => Stmt::Expr(self.opt_expr(exprs(s).next(), range)),
@@ -1177,7 +1216,12 @@ impl<'a> BodyCx<'a> {
                             "cannot assign to `{}`: only local `var` bindings and handler state can be assigned",
                             first.text()
                         );
-                        self.cx.report(diag::error(diag::ASSIGN_IMMUTABLE, file, first.text_range(), msg));
+                        self.cx.report(diag::error(
+                            diag::ASSIGN_IMMUTABLE,
+                            file,
+                            first.text_range(),
+                            msg,
+                        ));
                     } else {
                         self.unresolved(first);
                     }
@@ -1256,7 +1300,9 @@ impl<'a> BodyCx<'a> {
                 let rest = token(n, DOT2).is_some() || child(n, REST_PAT).is_some();
                 let mut fields = Vec::new();
                 for f in children(n, FIELD_PAT) {
-                    let Some(name) = token(&f, IDENT) else { continue };
+                    let Some(name) = token(&f, IDENT) else {
+                        continue;
+                    };
                     let pat = match f.children().find(|c| is_pat(c.kind())) {
                         Some(p) => self.pattern(&p, bound),
                         None => {
@@ -1340,7 +1386,8 @@ impl<'a> BodyCx<'a> {
         if let Some(&(_, l)) = bound.iter().find(|(n, _)| n == name) {
             let file = self.file();
             let msg = format!("`{name}` is bound more than once in this pattern");
-            self.cx.report(diag::error(diag::DUPLICATE, file, t.text_range(), msg));
+            self.cx
+                .report(diag::error(diag::DUPLICATE, file, t.text_range(), msg));
             return l;
         }
         let l = match self.shared_or.iter().find(|(n, _)| n == name) {

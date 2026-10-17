@@ -1,0 +1,17 @@
+---
+source: crates/vow_hir/tests/lower.rs
+expression: "check(&\n[(\"main\",\nr#\"\nfn greet(name: String) -> Unit ! {Console} {\n  Console.print(\"hello, {name}\")\n}\npub fn main() -> Unit ! {Console} { greet(\"Vow\") }\n\"#)])"
+---
+== main
+fn greet(name: String) -> Unit ! {std/console::Console}
+  params name#0
+  block
+    call
+      def std/console::Console.print
+      interpolate ["hello, ", ""]
+        local name#0
+pub fn main() -> Unit ! {std/console::Console}
+  block
+    call
+      def app/main::greet
+      string "Vow"

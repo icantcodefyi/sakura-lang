@@ -1,0 +1,19 @@
+---
+source: crates/vow_hir/tests/lower.rs
+expression: "check(&\n[(\"main\",\nr#\"\nimport std/lsit\nimport nopkg/thing\nimport std\nfn f() -> Int { 1 }\n\"#)])"
+---
+== main
+import <unresolved> as lsit
+import <unresolved> as thing
+import <unresolved> as std
+fn f() -> Int
+  block
+    int 1
+== diagnostics
+V1005 package `std` has no module `lsit`; did you mean `std/list`?
+  Primary file0 2:8 `std/lsit`
+  fix: Import `std/list` -> `std/list`
+V1005 unknown package `nopkg` in import; add it to `[dependencies]` in vow.toml
+  Primary file0 3:8 `nopkg/thing`
+V1005 `std` is a package; import one of its modules, e.g. `import std/<module>`
+  Primary file0 4:8 `std`

@@ -1,0 +1,54 @@
+---
+source: crates/vow_hir/tests/lower.rs
+expression: "check(&\n[(\"main\",\nr#\"\nimport std/list\ntype User = { id: Int }\neffect E { fn op() -> Int }\nfn f() -> Int ! {User} { let a = User; let b = E; let c = list; 1 }\nfn g(x: E) -> Int { 1 }\nfn h() -> Handler<E> { handler User { fn op() { 1 } } }\nfn k() -> Handler<E> { handler E { fn opp() { 1 } } }\n\"#)])"
+---
+== main
+import std/list as list
+type User = record
+  id: Int
+effect E
+  op op() -> Int
+fn f() -> Int ! {<err>}
+  block
+    let
+      pat bind a#0
+      <err>
+    let
+      pat bind b#1
+      <err>
+    let
+      pat bind c#2
+      <err>
+    int 1
+fn g(x: <err>) -> Int
+  params x#0
+  block
+    int 1
+fn h() -> Handler<app/main::E>
+  block
+    handler <err>
+      clause op -> <err> ()
+        block
+          int 1
+fn k() -> Handler<app/main::E>
+  block
+    handler app/main::E
+      clause opp -> <err> ()
+        block
+          int 1
+== diagnostics
+V1007 `User` is a type, not an effect; effect rows list effects such as `Console` or `Fail<E>`
+  Primary file0 5:18 `User`
+V1007 `User` is a type, not a value; construct it with `User { … }`
+  Primary file0 5:34 `User`
+V1007 `E` is an effect, not a value; perform an operation such as `E.op(…)`
+  Primary file0 5:48 `E`
+V1007 `list` is the module `std/list`, not a value; use one of its items, e.g. `list.f(…)`
+  Primary file0 5:59 `list`
+V1007 `E` is an effect, not a type
+  Primary file0 6:9 `E`
+V1007 `User` is a type, not an effect; `handler` takes the effect it handles
+  Primary file0 7:32 `User`
+V1002 effect `E` has no operation `opp`; did you mean `op`?
+  Primary file0 8:39 `opp`
+  fix: Use `op` -> `op`

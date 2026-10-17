@@ -1,0 +1,46 @@
+---
+source: crates/vow_hir/tests/lower.rs
+expression: "check(&\n[(\"main\",\nr#\"\nfn f() -> Int {\n  let fact = fn(n) { if n == 0 { 1 } else { n * fact(n - 1) } }\n  break\n  for x in [1] { let g = fn() { continue } }\n  fact(3)\n}\n\"#)])"
+---
+== main
+fn f() -> Int
+  block
+    let
+      pat bind fact#1
+      lambda (n#0)
+        block
+          if
+            Eq
+              local n#0
+              int 0
+            block
+              int 1
+            block
+              Mul
+                local n#0
+                call
+                  <err>
+                  Sub
+                    local n#0
+                    int 1
+    break
+    for
+      pat bind x#2
+      list
+        int 1
+      block
+        let
+          pat bind g#3
+          lambda ()
+            block
+              continue
+    call
+      local fact#1
+      int 3
+== diagnostics
+V1020 local lambda `fact` cannot call itself; lift it to a top-level `fn` (design §4.5)
+  Primary file0 3:49 `fact`
+V1041 `break` outside of a `for` or `while` loop
+  Primary file0 4:3 `break`
+V1041 `continue` outside of a `for` or `while` loop
+  Primary file0 5:33 `continue`

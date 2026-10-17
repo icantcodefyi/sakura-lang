@@ -1,0 +1,35 @@
+---
+source: crates/vow_hir/tests/lower.rs
+expression: "check(&\n[(\"main\",\nr#\"\nimport std/list\nfn n(xs: List<Int>) -> Int { List.len(xs) + list.len(xs) + xs.len() }\nfn opt(o: Option<Int>) -> Int { Option.unwrap_or(o, 0) + o.unwrap_or(1) }\nfn some() -> Option<Int> { Option.Some(1) }\n\"#)])"
+---
+== main
+import std/list as list
+fn n(xs: List<Int>) -> Int
+  params xs#0
+  block
+    Add
+      Add
+        call
+          def std/list::len
+          local xs#0
+        call
+          def std/list::len
+          local xs#0
+      method .len
+        local xs#0
+fn opt(o: std/option::Option<Int>) -> Int
+  params o#0
+  block
+    Add
+      call
+        def std/option::unwrap_or
+        local o#0
+        int 0
+      method .unwrap_or
+        local o#0
+        int 1
+fn some() -> std/option::Option<Int>
+  block
+    call
+      def std/option::Option.Some
+      int 1
