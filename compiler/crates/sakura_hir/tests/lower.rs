@@ -29,6 +29,10 @@ const STD: &[(&str, &str)] = &[
         "pub effect Http {\n  fn get(url: Int) -> Int\n}\npub type Request = { url: Int }\npub fn host() -> Handler<Http> { handler Http { fn get(url) { url } } }\n",
     ),
     (
+        "tool",
+        "pub opaque type Tool<F> = { run: F }\npub fn from<F>(name: String, description: String, f: F) -> Tool<F> { Tool { run: f } }\n",
+    ),
+    (
         "test",
         "pub effect Test {\n  fn record(ok: Bool) -> Unit\n}\npub fn expect_eq<A: Eq + Show>(a: A, b: A) -> Unit ! {Test} { Test.record(a == b) }\n",
     ),
@@ -148,6 +152,26 @@ macro_rules! snap {
 }
 
 // ---- Constructs ----
+
+snap!(tool_of, "main" => r#"
+import std/tool.{Tool}
+@tool("Adds two numbers.")
+pub fn add(a: Int, b: Int) -> Int { a + b }
+@tool("Unquoted {a}")
+fn templated(a: Int) -> Int { a }
+@tool("Identity.")
+fn generic<A>(a: A) -> A { a }
+fn plain() -> Int { 1 }
+pub fn tools() -> Unit {
+  let ok = Tool.of(add)
+  let no_attr = Tool.of(plain)
+  let lambda = Tool.of(fn() { 1 })
+  let local = Tool.of(ok)
+  let not_literal = Tool.of(templated)
+  let generic = Tool.of(generic)
+  let unresolved = Tool.of(nope)
+}
+"#);
 
 snap!(hello_world, "main" => r#"
 fn greet(name: String) -> Unit ! {Console} {

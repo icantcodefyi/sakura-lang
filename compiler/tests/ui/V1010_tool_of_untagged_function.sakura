@@ -1,0 +1,11 @@
+// milestone: M1
+// expect: V1010
+// covers: CallExpr Attribute
+
+import std/tool.{Tool}
+
+fn add(a: Int, b: Int) -> Int { a + b }
+
+pub fn tools() -> Unit {
+  let _ = Tool.of(add)
+}

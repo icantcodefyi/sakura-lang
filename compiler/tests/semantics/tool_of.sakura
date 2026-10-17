@@ -1,0 +1,34 @@
+// milestone: M3
+// mode: test
+// covers: Attribute CallExpr
+
+// Design §11.2: `Tool.of(f)` is `Tool.from("f", "<description>", fn(args: f$Args) { f(args.a, …) })`.
+
+import std/tool.{Tool, ToolError}
+
+error Negative(value: Int)
+
+@tool("Adds two non-negative numbers.")
+fn add(a: Int, b: Int) -> Int ! {Fail<Negative>} {
+  if a < 0 { fail Negative { value: a } }
+  a + b
+}
+
+@tool("Greets someone.")
+fn greet(name: String) -> String { "hello, {name}" }
+
+fn input(text: String) -> Json { Json.parse(text).unwrap_or(Json.Null) }
+
+test "the tool takes the function's name, description and parameters" {
+  let t = Tool.of(add)
+  expect_eq(Tool.name(t), "add")
+  expect_eq(Tool.spec(t).description, "Adds two non-negative numbers.")
+  expect_eq(try { Tool.call(t, input("\{\"a\": 1, \"b\": 2\}")) }, Ok(Json.Number(3.0)))
+  let negative = ToolError { tool: "add", tag: "Negative", payload: input("\{\"value\": -1\}") }
+  expect_eq(try { Tool.call(t, input("\{\"a\": -1, \"b\": 2\}")) }, Err(negative))
+}
+
+test "a tool that cannot fail" {
+  let t = Tool.of(greet)
+  expect_eq(try { Tool.call(t, input("\{\"name\": \"Sakura\"\}")) }, Ok(Json.String("hello, Sakura")))
+}

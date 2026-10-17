@@ -1,0 +1,9 @@
+// milestone: M1
+// expect: V1010
+// covers: CallExpr Lambda
+
+import std/tool.{Tool}
+
+pub fn tools() -> Unit {
+  let _ = Tool.of(fn(a: Int) { a })
+}

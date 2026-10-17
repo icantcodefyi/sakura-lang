@@ -1,0 +1,72 @@
+---
+source: crates/sakura_hir/tests/lower.rs
+expression: "check(&\n[(\"main\",\nr#\"\nimport std/tool.{Tool}\n@tool(\"Adds two numbers.\")\npub fn add(a: Int, b: Int) -> Int { a + b }\n@tool(\"Unquoted {a}\")\nfn templated(a: Int) -> Int { a }\n@tool(\"Identity.\")\nfn generic<A>(a: A) -> A { a }\nfn plain() -> Int { 1 }\npub fn tools() -> Unit {\n  let ok = Tool.of(add)\n  let no_attr = Tool.of(plain)\n  let lambda = Tool.of(fn() { 1 })\n  let local = Tool.of(ok)\n  let not_literal = Tool.of(templated)\n  let generic = Tool.of(generic)\n  let unresolved = Tool.of(nope)\n}\n\"#)])"
+---
+== main
+import std/tool Tool=std/tool::Tool
+@tool("Adds two numbers.")
+pub fn add(a: Int, b: Int) -> Int
+  params a#0 b#1
+  block
+    Add
+      local a#0
+      local b#1
+@tool("Unquoted {a}")
+fn templated(a: Int) -> Int
+  params a#0
+  block
+    local a#0
+@tool("Identity.")
+fn generic<A>(a: $0) -> $0
+  params a#0
+  block
+    local a#0
+fn plain() -> Int
+  block
+    int 1
+pub fn tools() -> Unit
+  block
+    let
+      pat bind ok#1
+      call
+        def std/tool::from
+        string "add"
+        string "Adds two numbers."
+        lambda (args#0: app/main::add$Args)
+          call
+            def app/main::add
+            field .a
+              local args#0
+            field .b
+              local args#0
+    let
+      pat bind no_attr#2
+      <missing>
+    let
+      pat bind lambda#3
+      <missing>
+    let
+      pat bind local#4
+      <missing>
+    let
+      pat bind not_literal#5
+      <missing>
+    let
+      pat bind generic#6
+      <missing>
+    let
+      pat bind unresolved#7
+      <missing>
+== diagnostics
+V1010 `Tool.of` takes a function declared with `@tool`
+  Primary file0 12:17 `Tool.of(plain)`
+V1010 `Tool.of` takes a function declared with `@tool`
+  Primary file0 13:16 `Tool.of(fn() { 1 })`
+V1010 `Tool.of` takes a function declared with `@tool`
+  Primary file0 14:15 `Tool.of(ok)`
+V1010 `@tool` on `templated` needs its description as one string literal
+  Primary file0 15:21 `Tool.of(templated)`
+V1010 `Tool.of` takes a non-generic function; `generic` has type parameters
+  Primary file0 16:17 `Tool.of(generic)`
+V1002 cannot find `nope` in this scope
+  Primary file0 17:28 `nope`

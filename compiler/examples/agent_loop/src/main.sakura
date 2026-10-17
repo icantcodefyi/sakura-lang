@@ -1,7 +1,6 @@
 // milestone: M3
-// needs: Tool.of on a @tool function (compiler intrinsic)
+// needs: none (checks clean)
 // mode: check
-// known-bug: `Tool.of` (B, docs/plans/sugar-and-driver-r3.md §2)
 // covers: Attribute ErrorDecl TaggedStr Lambda RecordLit
 
 // Design §15.8. Checked only: `main` calls a real model; the offline agent-loop tests are

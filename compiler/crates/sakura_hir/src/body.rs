@@ -522,6 +522,11 @@ impl<'a> BodyCx<'a> {
             && c.kind() == FIELD_EXPR
             && let Some((base, name)) = field_parts(c)
         {
+            if name.text() == "of"
+                && let Some(from) = self.tool_from(&base)
+            {
+                return self.tool_of(n, c.text_range(), from);
+            }
             if let Some(res) = self.static_member(&base, &name) {
                 let callee = self.alloc(Expr::Path(res), c.text_range());
                 let type_args = self.type_args(n);
@@ -556,6 +561,117 @@ impl<'a> BodyCx<'a> {
             type_args,
             arg_names,
         }
+    }
+
+    /// `Tool.from` when `base` names `std/tool`'s `Tool` (the receiver of the `Tool.of` sugar).
+    fn tool_from(&self, base: &SyntaxNode) -> Option<DefId> {
+        let segs = path_segments(base);
+        let [seg] = segs.as_slice() else {
+            return None;
+        };
+        let p = &self.cx.program;
+        let module = p.find_module("std", "tool")?;
+        let tool = p.lookup(module, "Tool")?;
+        let named = base.kind() == PATH_EXPR
+            && self.lookup_local(seg.text()).is_none()
+            && self.cx.lookup_ns(self.m, seg.text(), Ns::Type) == Some(Binding::Def(tool));
+        named.then(|| p.lookup(module, "from")).flatten()
+    }
+
+    /// `Tool.of(f)` for a `@tool("description")` function `f(p1: T1, …)` (design §11.2) is
+    /// `Tool.from("f", "description", fn(args: f$Args) { f(args.p1, …) })`.
+    fn tool_of(&mut self, n: &SyntaxNode, callee_range: TextRange, from: DefId) -> Expr {
+        let range = n.text_range();
+        let (args, _) = self.args(n);
+        let target = match args.as_slice() {
+            [a] => match self.body.exprs[*a] {
+                // Already reported: an unresolved name or a parse error.
+                Expr::Path(Res::Err) | Expr::Missing => return Expr::Missing,
+                Expr::Path(Res::Def(d)) => Some((*a, d)),
+                _ => None,
+            },
+            _ => None,
+        };
+        let def = target.map(|(_, f)| self.cx.program.def(f));
+        let attr = def.and_then(|d| match d.kind {
+            DefKind::Fn(_) => d.attrs.iter().find(|a| a.name == "tool"),
+            _ => None,
+        });
+        let (Some((callee, f)), Some(def), Some(attr)) = (target, def, attr) else {
+            return self.tool_of_error(range, "`Tool.of` takes a function declared with `@tool`");
+        };
+        let description = match attr.args.as_slice() {
+            [raw] => raw
+                .strip_prefix('"')
+                .and_then(|r| r.strip_suffix('"'))
+                .filter(|r| !r.contains('{'))
+                .map(unescape),
+            _ => None,
+        };
+        let name = def.name.clone();
+        let Some(description) = description else {
+            let msg = format!("`@tool` on `{name}` needs its description as one string literal");
+            return self.tool_of_error(range, &msg);
+        };
+        let Some((record, params)) = self.cx.tool_args.get(&f).cloned() else {
+            let msg =
+                format!("`Tool.of` takes a non-generic function; `{name}` has type parameters");
+            return self.tool_of_error(range, &msg);
+        };
+        let at = self.body.source_map.expr(callee);
+        let local = self.alloc_local("args", at, false);
+        let fields = params
+            .into_iter()
+            .map(|p| {
+                let base = self.alloc(Expr::Path(Res::Local(local)), at);
+                self.alloc(Expr::Field { base, name: p }, at)
+            })
+            .collect();
+        let call = Expr::Call {
+            callee,
+            args: fields,
+            type_args: Vec::new(),
+            arg_names: Vec::new(),
+        };
+        let body = self.alloc(call, at);
+        let ty = TypeRef {
+            kind: TypeRefKind::Named {
+                res: TypeRes::Def(record),
+                args: Vec::new(),
+            },
+            range: at,
+        };
+        let params = vec![LambdaParam {
+            local,
+            ty: Some(ty),
+        }];
+        let lambda = self.alloc(
+            Expr::Lambda {
+                params,
+                ret: None,
+                body,
+            },
+            at,
+        );
+        let name = self.alloc(Expr::Lit(Literal::String(name)), at);
+        let description = self.alloc(Expr::Lit(Literal::String(description)), at);
+        Expr::Call {
+            callee: self.alloc(Expr::Path(Res::Def(from)), callee_range),
+            args: vec![name, description, lambda],
+            type_args: Vec::new(),
+            arg_names: Vec::new(),
+        }
+    }
+
+    fn tool_of_error(&mut self, range: TextRange, msg: &str) -> Expr {
+        let file = self.file();
+        self.cx.report(diag::error(
+            diag::UNKNOWN_ATTRIBUTE,
+            file,
+            range,
+            msg.to_string(),
+        ));
+        Expr::Missing
     }
 
     fn field(&mut self, n: &SyntaxNode) -> Expr {

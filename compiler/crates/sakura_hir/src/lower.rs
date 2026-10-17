@@ -52,6 +52,7 @@ pub fn lower(packages: &[PackageInput<'_>]) -> Program {
         cx.compute_exports(m);
     }
     cx.lang_items();
+    cx.tool_args();
     for m in 0..cx.program.modules.len() {
         cx.lower_items(ModuleId(m as u32));
     }
@@ -212,6 +213,8 @@ pub(crate) struct ModCx {
 pub(crate) struct Cx {
     pub program: Program,
     pub mods: Vec<ModCx>,
+    /// `@tool` function → its argument record `f$Args` and parameter names (design §11.2).
+    pub tool_args: BTreeMap<DefId, (DefId, Vec<String>)>,
 }
 
 impl Cx {
@@ -1165,6 +1168,58 @@ impl Cx {
 
     // ---- Phase 4: signatures and bodies ----
 
+    /// Lowers `@tool` signatures before any body, so `Tool.of(f)` in any module can rewrite to
+    /// `Tool.from` over `f$Args` (design §11.2): a record of `f`'s parameters, synthesized here
+    /// once per function under a name no source can write, in neither scope nor exports.
+    /// Generic `@tool` functions get none; `Tool.of` rejects them.
+    fn tool_args(&mut self) {
+        for mi in 0..self.program.modules.len() {
+            let m = ModuleId(mi as u32);
+            for (idx, node) in self.mods[mi].items.clone() {
+                let def = &self.program.module(m).defs[idx];
+                let DefKind::Fn(f) = &def.kind else {
+                    continue;
+                };
+                if !def.attrs.iter().any(|a| a.name == "tool") || !f.sig.generics.is_empty() {
+                    continue;
+                }
+                let (body, name, range, is_pub) = (f.body, def.name.clone(), def.range, def.is_pub);
+                let sig = self.lower_sig(m, &node, &[], Vec::new());
+                let fields = sig
+                    .params
+                    .iter()
+                    .map(|p| FieldDef {
+                        name: p.name.clone(),
+                        range: p.range,
+                        ty: p.ty.clone(),
+                        refinement: None,
+                    })
+                    .collect();
+                let names = sig.params.iter().map(|p| p.name.clone()).collect();
+                self.set_kind(m, idx, DefKind::Fn(FnDef { sig, body }));
+                let record = Def {
+                    name: format!("{name}$Args"),
+                    range,
+                    is_pub,
+                    attrs: Vec::new(),
+                    doc: None,
+                    kind: DefKind::Type(TypeDef {
+                        generics: Vec::new(),
+                        body: TypeDefBody::Record(fields),
+                        opaque: false,
+                    }),
+                };
+                let index = self.alloc_def(m, record);
+                let f = DefId {
+                    module: m,
+                    index: idx,
+                };
+                self.tool_args
+                    .insert(f, (DefId { module: m, index }, names));
+            }
+        }
+    }
+
     fn lower_items(&mut self, m: ModuleId) {
         let items = self.mods[m.0 as usize].items.clone();
         for (idx, node) in items {
@@ -1197,7 +1252,14 @@ impl Cx {
         let generics = self.generics_of(m, idx);
         match kind {
             DefKind::Fn(f) => {
-                let sig = self.lower_sig(m, node, &generics, f.sig.generics);
+                let sig = if self.tool_args.contains_key(&DefId {
+                    module: m,
+                    index: idx,
+                }) {
+                    f.sig
+                } else {
+                    self.lower_sig(m, node, &generics, f.sig.generics)
+                };
                 let body = self.lower_fn_body(m, idx, f.body, node, &sig.params, &generics);
                 self.set_kind(m, idx, DefKind::Fn(FnDef { sig, body }));
             }
