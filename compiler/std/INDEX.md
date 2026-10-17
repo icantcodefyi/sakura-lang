@@ -425,3 +425,8 @@ fn len<N>(g: Graph<N>) -> Int
    `from_list` (`Random.bytes`), `Uuid.Uuid` constructor, `Gen.*` combinators and
    `Gen.for_all`, `Console.captured`/`Log.captured` forwarding to `Test.output`.
 8. **`List.par_map`** lives in `std/task` until `Task` exists, so `std/list` stays M1.
+9. **`Log.host()` and `Env.host()`** exist because the JS entry point installs each declared
+   std effect's `host()`; `Log.host()` is `stderr()`. `Env.host()` reads the whole process
+   environment until `[permissions]` scoping lands (M3).
+10. **`String.parse_int`/`parse_float`** follow Rust's `str::parse` (a leading `+` is accepted;
+    floats accept `NaN`/`inf`), matching the runtime.
