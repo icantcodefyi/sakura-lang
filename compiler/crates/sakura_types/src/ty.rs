@@ -70,6 +70,9 @@ pub enum Type {
     Never,
     Var(TyVar),
     Param(ParamId),
+    /// An effect row in argument position of a type with row parameters (`Tool<{Http}>`,
+    /// §4.4, §17.49). Appears only inside `Con` arguments, at the row parameter's position.
+    RowArg(RowId),
     /// Poison: the type of an erroneous expression. Unifies with everything so one mistake
     /// yields one diagnostic.
     Error,

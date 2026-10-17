@@ -528,6 +528,9 @@ impl<'p> Lower<'p> {
             types::Type::Param(p) => Ty::Var(p.0),
             types::Type::Var(_) => Ty::Var(u32::MAX),
             types::Type::Error => Ty::Var(u32::MAX),
+            // A row argument (`Tool<{Http}>`) has no runtime representation (§17.49); it keeps
+            // its position so arguments line up with the type's generics.
+            types::Type::RowArg(_) => Ty::Unit,
         }
     }
 

@@ -1914,17 +1914,13 @@ impl Checker<'_> {
                 return (self.inf.interner.error(), self.seq(&rows, e));
             }
         };
-        let n = self
-            .generics_of(def)
-            .iter()
-            .filter(|g| matches!(g, super::GenericSlot::Ty(_)))
-            .count();
+        let n = self.generics_of(def).len();
         let args: Vec<TypeId> = match exp
             .map(|x| self.inf.shallow(x))
             .map(|x| self.inf.interner.ty(x).clone())
         {
             Some(Type::Con(TyCon::Adt(d), a)) if d == def && a.len() == n => a,
-            _ => (0..n).map(|_| self.inf.fresh_var()).collect(),
+            _ => self.fresh_args(def),
         };
         let rec_ty = self.inf.interner.con(TyCon::Adt(def), args.clone());
         let declared = self.fields_at(def, &args);

@@ -600,7 +600,8 @@ impl<'p> Checker<'p> {
                 vars.push(ty);
                 true
             }
-            Type::Error | Type::Never => true,
+            // Derived constraints ignore row arguments (§17.49).
+            Type::Error | Type::Never | Type::RowArg(_) => true,
             Type::Param(p) => {
                 let bounds = &self.inf.interner.param(p).bounds;
                 bounds.contains(&c)

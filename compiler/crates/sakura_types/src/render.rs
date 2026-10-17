@@ -119,6 +119,7 @@ impl Infer {
             Type::Var(v) => out.push_str(&format!("?T{}", v.0)),
             Type::Param(p) => out.push_str(&self.interner.param(*p).name),
             Type::Error => out.push_str("{unknown}"),
+            Type::RowArg(r) => self.write_row(*r, names, out),
         }
     }
 

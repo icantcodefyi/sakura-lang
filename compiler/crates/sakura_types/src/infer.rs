@@ -718,6 +718,8 @@ impl Infer {
                 self.relate(r1, r2, mode)?;
                 self.relate_rows_err(w1, w2, mode)
             }
+            // Row arguments of a type are unified, never widened (§17.49).
+            (Type::RowArg(r1), Type::RowArg(r2)) => self.unify_rows(r1, r2),
             (Type::Handler { label: l1, row: w1 }, Type::Handler { label: l2, row: w2 }) => {
                 if l1.effect != l2.effect {
                     return mismatch;
@@ -808,6 +810,7 @@ impl Infer {
                     .any(|x| self.occurs_adjust(v, level, x))
                     || self.row_occurs_adjust(Some(v), None, level, row)
             }
+            Type::RowArg(row) => self.row_occurs_adjust(Some(v), None, level, row),
             Type::Union(_) | Type::Never | Type::Param(_) | Type::Error => false,
         }
     }
@@ -868,6 +871,7 @@ impl Infer {
                     .any(|x| self.type_mentions_row_var(rv, level, x))
                     || self.row_occurs_adjust(None, rv, level, row)
             }
+            Type::RowArg(row) => self.row_occurs_adjust(None, rv, level, row),
             _ => false,
         }
     }
@@ -1385,6 +1389,10 @@ impl Infer {
                 let row = self.zonk_row_with(row, resolve);
                 self.interner.intern(Type::Handler { label, row })
             }
+            Type::RowArg(row) => {
+                let row = self.zonk_row_with(row, resolve);
+                self.interner.intern(Type::RowArg(row))
+            }
             _ => ty,
         }
     }
@@ -1462,6 +1470,7 @@ impl Infer {
                 label.args.into_iter().for_each(|x| self.default_rows_in(x));
                 self.default_row(row);
             }
+            Type::RowArg(row) => self.default_row(row),
             _ => {}
         }
     }
@@ -1497,6 +1506,7 @@ impl Infer {
                 .into_iter()
                 .find_map(|x| self.inexpressible_err(x))
                 .or_else(|| self.inexpressible_row(row)),
+            Type::RowArg(row) => self.inexpressible_row(row),
             _ => None,
         }
     }
@@ -1546,12 +1556,8 @@ impl Infer {
             s.params.iter().map(|p| (*p, self.fresh_var())).collect();
         let mut rows = HashMap::new();
         for p in &s.row_params {
-            let tail = Tail::Var(self.fresh_row_var());
-            let fail = self
-                .interner
-                .row_param_fail(*p)
-                .map(|_| self.fresh_err_var());
-            rows.insert(*p, (tail, fail));
+            let row = self.fresh_row_for(*p);
+            rows.insert(*p, row);
         }
         let ty = self.substitute(s.ty, &tys, &rows);
         let mut subst: Vec<(ParamId, TypeId)> = tys.into_iter().collect();
@@ -1559,13 +1565,27 @@ impl Infer {
         (ty, subst)
     }
 
-    /// Replaces parameters by types and row parameters by tails (plus, for a
-    /// failure-carrying parameter, the `Fail` label standing for its hidden failures).
+    /// A fresh row standing for row parameter `p`: `{| ?r}`, or `{Fail<?ε> | ?r}` when `p`
+    /// carries failures (one `?ε` per instantiation).
+    pub fn fresh_row_for(&mut self, p: RowParamId) -> RowId {
+        let tail = Tail::Var(self.fresh_row_var());
+        let mut labels = Vec::new();
+        if self.interner.row_param_fail(p).is_some() {
+            labels.push(Label {
+                effect: Effect::Fail,
+                args: vec![self.fresh_err_var()],
+            });
+        }
+        self.make_row(labels, tail)
+    }
+
+    /// Replaces parameters by types and row parameters by rows (which bring their own `Fail`
+    /// label in place of a failure-carrying parameter's hidden failures).
     pub fn substitute(
         &mut self,
         ty: TypeId,
         tys: &HashMap<ParamId, TypeId>,
-        rows: &HashMap<RowParamId, (Tail, Option<TypeId>)>,
+        rows: &HashMap<RowParamId, RowId>,
     ) -> TypeId {
         let ty = self.shallow(ty);
         match self.interner.ty(ty).clone() {
@@ -1605,6 +1625,10 @@ impl Infer {
                 let row = self.substitute_row(row, tys, rows);
                 self.interner.intern(Type::Handler { label, row })
             }
+            Type::RowArg(row) => {
+                let row = self.substitute_row(row, tys, rows);
+                self.interner.intern(Type::RowArg(row))
+            }
             _ => ty,
         }
     }
@@ -1613,7 +1637,7 @@ impl Infer {
         &mut self,
         row: RowId,
         tys: &HashMap<ParamId, TypeId>,
-        rows: &HashMap<RowParamId, (Tail, Option<TypeId>)>,
+        rows: &HashMap<RowParamId, RowId>,
     ) -> RowId {
         let r = self.flatten_row(row);
         let mut labels: Vec<Label> = r
@@ -1630,14 +1654,10 @@ impl Infer {
             .collect();
         let tail = match r.tail {
             Tail::Param(p) => match rows.get(&p) {
-                Some(&(tail, fail)) => {
-                    if let Some(f) = fail {
-                        labels.push(Label {
-                            effect: Effect::Fail,
-                            args: vec![f],
-                        });
-                    }
-                    tail
+                Some(&with) => {
+                    let w = self.flatten_row(with);
+                    labels.extend(w.labels);
+                    w.tail
                 }
                 None => r.tail,
             },
@@ -1741,6 +1761,7 @@ impl Infer {
                     .for_each(|x| self.collect_general(x, tys, rows, order));
                 self.collect_general_row(row, tys, rows, order);
             }
+            Type::RowArg(row) => self.collect_general_row(row, tys, rows, order),
             _ => {}
         }
     }
@@ -1821,6 +1842,10 @@ impl Infer {
                 let row = self.replace_row_vars(row, tys, rows);
                 self.interner.intern(Type::Handler { label, row })
             }
+            Type::RowArg(row) => {
+                let row = self.replace_row_vars(row, tys, rows);
+                self.interner.intern(Type::RowArg(row))
+            }
             _ => ty,
         }
     }
@@ -1873,6 +1898,12 @@ impl Infer {
             }
             Type::Handler { label, .. } => {
                 label.args.into_iter().for_each(|x| self.free_vars(x, out))
+            }
+            Type::RowArg(row) => {
+                let r = self.flatten_row(row);
+                for l in r.labels {
+                    l.args.into_iter().for_each(|x| self.free_vars(x, out));
+                }
             }
             _ => {}
         }

@@ -12,6 +12,9 @@ use sakura_hir::{
 use super::{Checker, constraint_of};
 use crate::ty::{Effect, Label, ParamId, RowId, RowParamId, Scheme, Tail, TyCon, Type, TypeId};
 
+/// Type and row substitutions for a type definition's generics.
+pub(super) type AdtSubst = (HashMap<ParamId, TypeId>, HashMap<RowParamId, RowId>);
+
 /// One generic parameter of a definition, indexed by `TypeRes::Param(n)`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum GenericSlot {
@@ -102,6 +105,36 @@ impl Checker<'_> {
             .collect()
     }
 
+    /// Positional arguments naming a definition's own generics: `Param` for a type slot,
+    /// `RowArg({| p})` for a row slot (§17.49).
+    pub(super) fn generic_args(&mut self, slots: &[GenericSlot]) -> Vec<TypeId> {
+        slots
+            .iter()
+            .map(|s| match s {
+                GenericSlot::Ty(p) => self.inf.interner.intern(Type::Param(*p)),
+                GenericSlot::Row(p) => {
+                    let row = self.inf.make_row(Vec::new(), Tail::Param(*p));
+                    self.inf.interner.intern(Type::RowArg(row))
+                }
+            })
+            .collect()
+    }
+
+    /// Fresh positional arguments for type `def`: a variable per type slot, an open row per
+    /// row slot.
+    pub(super) fn fresh_args(&mut self, def: DefId) -> Vec<TypeId> {
+        self.generics_of(def)
+            .iter()
+            .map(|s| match s {
+                GenericSlot::Ty(_) => self.inf.fresh_var(),
+                GenericSlot::Row(p) => {
+                    let row = self.inf.fresh_row_for(*p);
+                    self.inf.interner.intern(Type::RowArg(row))
+                }
+            })
+            .collect()
+    }
+
     /// The type of each generic slot (`Param`), skipping row slots.
     pub(super) fn generic_types(&mut self, slots: &[GenericSlot]) -> Vec<TypeId> {
         slots
@@ -177,7 +210,7 @@ impl Checker<'_> {
                 self.lower_named(module, tref, *res, args, generics)
             }
             TypeRefKind::Row(_) => {
-                self.decl_error(module, tref.range, V2001, "an effect row is not a type; rows go after `!` or as the second argument of `Handler`".into());
+                self.decl_kind_error(module, tref.range, "an effect row is not a type; rows go after `!`, as the second argument of `Handler`, or fill a type's row parameter (`Tool<{Http}>`)".into());
                 self.inf.interner.error()
             }
         }
@@ -206,11 +239,10 @@ impl Checker<'_> {
                 match generics.get(n as usize) {
                     Some(GenericSlot::Ty(p)) => self.inf.interner.intern(Type::Param(*p)),
                     Some(GenericSlot::Row(_)) => {
-                        self.decl_error(
+                        self.decl_kind_error(
                             module,
                             tref.range,
-                            V2001,
-                            "a lowercase row variable is not a type; use it after `!` in a function type".into(),
+                            "a lowercase row variable is not a type; use it after `!` in a function type or as a type's row argument".into(),
                         );
                         self.inf.interner.error()
                     }
@@ -274,10 +306,18 @@ impl Checker<'_> {
             TypeRes::Def(def) => {
                 let program = self.program;
                 let d = program.def(def);
-                let lowered: Vec<TypeId> = args
-                    .iter()
-                    .map(|a| self.lower_type(module, a, generics))
-                    .collect();
+                let lowered: Vec<TypeId> = match &d.kind {
+                    DefKind::Type(_) => {
+                        match self.lower_type_args(module, tref, def, args, generics) {
+                            Some(a) => a,
+                            None => return self.inf.interner.error(),
+                        }
+                    }
+                    _ => args
+                        .iter()
+                        .map(|a| self.lower_type(module, a, generics))
+                        .collect(),
+                };
                 match &d.kind {
                     DefKind::Error(_) => {
                         if !lowered.is_empty() {
@@ -290,35 +330,13 @@ impl Checker<'_> {
                         }
                         self.inf.interner.con(TyCon::Adt(def), Vec::new())
                     }
-                    DefKind::Type(td) => {
-                        let want = td
-                            .generics
-                            .iter()
-                            .filter(|g| matches!(g.kind, TypeParamKind::Type(_)))
-                            .count();
-                        if lowered.len() != want {
-                            self.decl_error(
-                                module,
-                                tref.range,
-                                V2002,
-                                format!(
-                                    "`{}` takes {want} type argument{}, found {}",
-                                    d.name,
-                                    if want == 1 { "" } else { "s" },
-                                    lowered.len()
-                                ),
-                            );
-                            return self.inf.interner.error();
+                    DefKind::Type(td) => match &td.body {
+                        TypeDefBody::Alias(_) | TypeDefBody::ErrorUnion(_) => {
+                            let body = self.alias_body(def);
+                            self.at_args(def, &lowered, body)
                         }
-                        match &td.body {
-                            TypeDefBody::Alias(_) | TypeDefBody::ErrorUnion(_) => {
-                                let body = self.alias_body(def);
-                                let subst = self.adt_subst(def, &lowered);
-                                self.inf.substitute(body, &subst, &HashMap::new())
-                            }
-                            _ => self.inf.interner.con(TyCon::Adt(def), lowered),
-                        }
-                    }
+                        _ => self.inf.interner.con(TyCon::Adt(def), lowered),
+                    },
                     _ => {
                         self.decl_error(
                             module,
@@ -331,6 +349,80 @@ impl Checker<'_> {
                 }
             }
         }
+    }
+
+    /// The positional arguments of type `def`: a type for each type parameter, a row (`{…}`
+    /// or a bare row variable) for each row parameter (§4.4, §17.49). Wrong count is `V2002`,
+    /// a type where a row belongs or a row where a type belongs is `V1007`.
+    fn lower_type_args(
+        &mut self,
+        module: ModuleId,
+        tref: &TypeRef,
+        def: DefId,
+        args: &[TypeRef],
+        generics: &[GenericSlot],
+    ) -> Option<Vec<TypeId>> {
+        let slots = self.generics_of(def);
+        let name = self.program.def(def).name.clone();
+        if args.len() != slots.len() {
+            let want = slots.len();
+            self.decl_error(
+                module,
+                tref.range,
+                V2002,
+                format!(
+                    "`{name}` takes {want} type argument{}, found {}",
+                    if want == 1 { "" } else { "s" },
+                    args.len()
+                ),
+            );
+            return None;
+        }
+        let mut out = Vec::with_capacity(args.len());
+        let mut ok = true;
+        for (slot, a) in slots.iter().zip(args) {
+            // A bare lowercase name parsed as a type still names a row variable.
+            let as_row = match &a.kind {
+                TypeRefKind::Row(r) => Some(self.lower_row(module, r, generics)),
+                TypeRefKind::Named {
+                    res: TypeRes::Param(n),
+                    args,
+                } if args.is_empty()
+                    && matches!(generics.get(*n as usize), Some(GenericSlot::Row(_))) =>
+                {
+                    let Some(GenericSlot::Row(p)) = generics.get(*n as usize) else {
+                        unreachable!()
+                    };
+                    Some(self.inf.make_row(Vec::new(), Tail::Param(*p)))
+                }
+                _ => None,
+            };
+            match (slot, as_row) {
+                (GenericSlot::Row(_), Some(r)) => {
+                    out.push(self.inf.interner.intern(Type::RowArg(r)))
+                }
+                (GenericSlot::Ty(_), None) => out.push(self.lower_type(module, a, generics)),
+                (GenericSlot::Row(_), None) => {
+                    self.decl_kind_error(module, a.range, format!("`{name}` expects an effect row here (`{{…}}` or a row variable), not a type"));
+                    ok = false;
+                }
+                (GenericSlot::Ty(_), Some(_)) => {
+                    self.decl_kind_error(
+                        module,
+                        a.range,
+                        format!("`{name}` expects a type here, not an effect row"),
+                    );
+                    ok = false;
+                }
+            }
+        }
+        ok.then_some(out)
+    }
+
+    fn decl_kind_error(&mut self, module: ModuleId, range: text_size::TextRange, msg: String) {
+        let d = Diagnostic::error(sakura_diagnostics::codes::V1007, Phase::Resolve, msg)
+            .with_span(self.span_in(module, range));
+        self.push(d);
     }
 
     fn lower_handler(
@@ -436,17 +528,28 @@ impl Checker<'_> {
         ty
     }
 
-    /// Substitution from a type definition's params to `args`.
-    pub(super) fn adt_subst(&mut self, def: DefId, args: &[TypeId]) -> HashMap<ParamId, TypeId> {
+    /// Substitution from a type definition's params to its positional `args`.
+    pub(super) fn adt_subst(&mut self, def: DefId, args: &[TypeId]) -> AdtSubst {
         let slots = self.generics_of(def);
-        slots
-            .iter()
-            .filter_map(|s| match s {
-                GenericSlot::Ty(p) => Some(*p),
-                GenericSlot::Row(_) => None,
-            })
-            .zip(args.iter().copied())
-            .collect()
+        let mut out = AdtSubst::default();
+        for (s, &a) in slots.iter().zip(args) {
+            match (s, self.inf.interner.ty(a)) {
+                (GenericSlot::Row(p), Type::RowArg(r)) => {
+                    out.1.insert(*p, *r);
+                }
+                (GenericSlot::Ty(p), _) => {
+                    out.0.insert(*p, a);
+                }
+                (GenericSlot::Row(_), _) => {}
+            }
+        }
+        out
+    }
+
+    /// `ty` (in terms of `def`'s params) at `def`'s positional `args`.
+    pub(super) fn at_args(&mut self, def: DefId, args: &[TypeId], ty: TypeId) -> TypeId {
+        let (tys, rows) = self.adt_subst(def, args);
+        self.inf.substitute(ty, &tys, &rows)
     }
 
     pub(super) fn lower_row(
@@ -609,7 +712,7 @@ impl Checker<'_> {
                     module,
                     index: v.parent,
                 };
-                let args = self.generic_types(&g);
+                let args = self.generic_args(&g);
                 let parent_ty = self.inf.interner.con(TyCon::Adt(parent), args);
                 let fields: Vec<TypeId> = v
                     .fields
@@ -706,13 +809,14 @@ impl Checker<'_> {
         let Some(scheme) = self.scheme_of(variant) else {
             return Vec::new();
         };
-        let subst: HashMap<ParamId, TypeId> = scheme
-            .params
-            .iter()
-            .copied()
-            .zip(parent_args.iter().copied())
-            .collect();
-        let ty = self.inf.substitute(scheme.ty, &subst, &HashMap::new());
+        let parent = match &self.program.def(variant).kind {
+            DefKind::Variant(v) => DefId {
+                module: variant.module,
+                index: v.parent,
+            },
+            _ => return Vec::new(),
+        };
+        let ty = self.at_args(parent, parent_args, scheme.ty);
         match self.inf.interner.ty(ty) {
             Type::Fn { params, .. } => params.clone(),
             _ => Vec::new(),
@@ -722,10 +826,9 @@ impl Checker<'_> {
     /// Record fields instantiated at the record's arguments.
     pub(super) fn fields_at(&mut self, def: DefId, args: &[TypeId]) -> Vec<(String, TypeId)> {
         let fields = self.record_fields(def);
-        let subst = self.adt_subst(def, args);
         fields
             .into_iter()
-            .map(|(n, t)| (n, self.inf.substitute(t, &subst, &HashMap::new())))
+            .map(|(n, t)| (n, self.at_args(def, args, t)))
             .collect()
     }
 }
@@ -734,7 +837,20 @@ impl Checker<'_> {
 /// parameter `E` (`{Fail<E> | e}`): those are Fail-free; the others carry failures (§5.2
 /// rule 8). Indices are `TypeRes::Param` indices (an op's index space starts with its
 /// effect's generics).
-fn fail_free_row_params<'a>(program: &'a sakura_hir::Program, def: DefId) -> HashSet<u32> {
+fn fail_free_row_params(program: &sakura_hir::Program, def: DefId) -> HashSet<u32> {
+    fail_free_in(program, def, &mut HashSet::new())
+}
+
+/// [`fail_free_row_params`], with the type definitions already being walked in `visiting`.
+/// A row parameter written as the row argument of a type's Fail-free row parameter
+/// (`x: Wrap<E, e>` with `type Wrap<E, e> = { f: fn() -> Int ! {Fail<E> | e} }`) is
+/// Fail-free too: the type's body writes it next to `Fail<E>` (§17.49).
+fn fail_free_in<'a>(
+    program: &'a sakura_hir::Program,
+    def: DefId,
+    visiting: &mut HashSet<DefId>,
+) -> HashSet<u32> {
+    visiting.insert(def);
     fn sig<'a>(s: &'a Signature, refs: &mut Vec<&'a TypeRef>, rows: &mut Vec<&'a RowRef>) {
         refs.extend(s.params.iter().map(|p| &p.ty));
         refs.push(&s.ret);
@@ -814,7 +930,24 @@ fn fail_free_row_params<'a>(program: &'a sakura_hir::Program, def: DefId) -> Has
         if let Some(t) = refs.pop() {
             match &t.kind {
                 TypeRefKind::Tuple(xs) | TypeRefKind::Union(xs) => refs.extend(xs),
-                TypeRefKind::Named { args, .. } => refs.extend(args),
+                TypeRefKind::Named { res, args } => {
+                    if let TypeRes::Def(d) = res
+                        && matches!(program.def(*d).kind, DefKind::Type(_))
+                        && !visiting.contains(d)
+                        && args.iter().any(|a| matches!(a.kind, TypeRefKind::Row(_)))
+                    {
+                        let inner = fail_free_in(program, *d, visiting);
+                        for (i, a) in args.iter().enumerate() {
+                            if let TypeRefKind::Row(r) = &a.kind
+                                && inner.contains(&(i as u32))
+                                && let Some(TypeRes::Param(n)) = r.tail
+                            {
+                                out.insert(n);
+                            }
+                        }
+                    }
+                    refs.extend(args)
+                }
                 TypeRefKind::Fn { params, ret, row } => {
                     refs.extend(params);
                     refs.push(ret);

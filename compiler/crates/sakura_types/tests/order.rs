@@ -15,15 +15,17 @@ error C
 fn both<e>(f: fn() -> Int ! e, g: fn() -> Int ! e) -> Int ! e { f() + g() }
 fn use_clock(k: fn() -> Int ! {Clock}) -> Int ! {Clock} { k() }
 fn pure_only(k: fn() -> Int) -> Int { k() }
+type Box<e> = { run: fn() -> Int ! e }
 "#;
 
-const POOL: [&str; 6] = [
+const POOL: [&str; 7] = [
     "let _ = use_clock(h)",
     "let _ = both(h, fn() { fail B })",
     "let _ = both(fn() { fail A }, h)",
     "let r = try { h() }",
     "let _ = if c { h } else { fn() { 1 } }",
     "let _ = pure_only(h)",
+    "let _ = [Box { run: h }, Box { run: fn() { 1 } }]",
 ];
 
 const LEAVES: [&str; 4] = ["1", "fail A", "fail B", "Clock.now().to_unix_millis()"];

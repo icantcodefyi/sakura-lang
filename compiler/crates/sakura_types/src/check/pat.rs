@@ -220,12 +220,9 @@ impl Checker<'_> {
         if matches!(self.inf.interner.ty(s), Type::Error) {
             return None;
         }
-        let n = self
-            .generics_of(def)
-            .iter()
-            .filter(|g| matches!(g, super::GenericSlot::Ty(_)))
-            .count();
-        let args: Vec<TypeId> = (0..n).map(|_| self.inf.fresh_var()).collect();
+        let n = self.generics_of(def).len();
+        let _ = n;
+        let args = self.fresh_args(def);
         let t = self.inf.interner.con(TyCon::Adt(def), args.clone());
         if self.inf.unify(ty, t).is_ok() {
             Some(args)
