@@ -1,15 +1,19 @@
 // milestone: M3
-// needs: @llm bodies (§11.1)
+// needs: none (tests pass today)
 // mode: test
 // covers: Attribute TypeDecl RecordType FieldDecl WithExpr Lambda MatchExpr
 
-// Design §15.7. `main` calls a real model, so CI runs the offline tests only. Difference
+// Design §15.7. `main` calls a real model, so CI runs the offline tests only: two under
+// `Llm.scripted` and one replaying `tests/fixtures/extract_ticket.jsonl` through
+// `Llm.anthropic` (a synthetic cassette, see `tests/fixtures/README.md`). Difference
 // from the design text: `Budget.limits` is installed outside `Llm.anthropic`, whose handler
 // performs `Budget` (the first handler in a `with` list is the outermost).
 
 import std/budget.{Budget, Limits}
+import std/fs.{Fs}
 import std/http.{Http}
 import std/llm.{InvalidOutput, Llm, LlmError, Model}
+import std/path.{Path}
 
 type Priority = Low | Normal | High
 
@@ -53,5 +57,14 @@ test "invalid output is a typed failure, not a crash" {
         }
       },
     )
+  }
+}
+
+test "a recorded Messages API exchange replays offline" {
+  with Fs.rooted(Test.fixtures()), Budget.unlimited(), Llm.replay(Path.of("extract_ticket.jsonl")) {
+    let t = extract_ticket(Untrusted.of("Login page 500s since 9am, blocking all customers"))
+    expect_eq(t.priority, High)
+    expect(t.title == "Login page returns 500 errors")
+    expect_eq(t.evidence, ["Login page 500s since 9am", "blocking all customers"])
   }
 }

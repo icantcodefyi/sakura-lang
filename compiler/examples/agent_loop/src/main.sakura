@@ -1,19 +1,23 @@
 // milestone: M3
-// needs: none (checks clean)
-// mode: check
+// needs: none (tests pass today)
+// mode: test
 // covers: Attribute ErrorDecl TaggedStr Lambda RecordLit
 
-// Design §15.8. Checked only: `main` calls a real model; the offline agent-loop tests are
-// `tests/semantics/std_agent.sakura`. Difference from the design text: `Prompt`
+// Design §15.8. `main` calls a real model, so CI runs the offline test only: `research`
+// replays `tests/fixtures/research.jsonl` (a synthetic two-step cassette, see
+// `tests/fixtures/README.md`) through `Llm.anthropic`, with the knowledge base scripted; the
+// scripted agent-loop tests are `tests/semantics/std_agent.sakura`. Difference from the design text: `Prompt`
 // comes from `std/prompt` and `HttpError`, `Response`, `Status` from `std/response` (one
 // home module per type, see compiler/std/INDEX.md), and `Budget.limits` is installed outside
 // `Llm.anthropic`, whose handler performs `Budget`.
 
 import std/agent.{Agent}
 import std/budget.{Budget, Limits}
-import std/http.{Http, RateLimited}
+import std/fs.{Fs}
+import std/http.{Any, Http, RateLimited}
 import std/json.{DecodeError}
 import std/llm.{Llm, LlmError, Model, Request}
+import std/path.{Path}
 import std/prompt.{Prompt, PromptPart}
 import std/response.{HttpError, Response, Status}
 import std/tool.{Tool, ToolError}
@@ -54,5 +58,17 @@ pub fn main() -> Unit ! {Console, Env, Http, Fail<LlmError | ToolError>} {
   with Budget.limits(limits), Llm.anthropic(key, Model.default()) {
     let a = research(Untrusted.of("What is our refund policy for annual plans?"))
     Console.print(a.summary)
+  }
+}
+
+test "a recorded agent run replays offline" {
+  let kb = Response.status(200, "[\"Annual plans are refundable within 30 days of purchase.\"]")
+  with Fs.rooted(Test.fixtures()),
+      Budget.unlimited(),
+      Http.scripted([(Any, kb)]),
+      Llm.replay(Path.of("research.jsonl")) {
+    let a = research(Untrusted.of("What is our refund policy for annual plans?"))
+    expect(a.summary == "Annual plans can be refunded within 30 days of purchase.")
+    expect_eq(List.len(a.sources), 1)
   }
 }
