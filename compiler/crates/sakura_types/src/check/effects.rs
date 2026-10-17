@@ -92,13 +92,6 @@ impl Checker<'_> {
                     "handler clause `{op}` performs {list}, which the handler's type does not allow (allowed: `{allowed}`)"
                 ),
             ),
-            ViolationKind::Test if labels.iter().all(|l| l.effect == Effect::Fail) => (
-                V3020,
-                Phase::Effect,
-                format!(
-                    "test may fail with {list}, which nothing catches; recover with `try`/`catch` or assert it with `expect_fail`"
-                ),
-            ),
             ViolationKind::Test => (
                 V3020,
                 Phase::Effect,

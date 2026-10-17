@@ -272,9 +272,18 @@ Fixed:
     xs = List.push(xs, 1)      // or: let _ = …";
 
     V2041 "assign_captured_var" TYPE,
-"A lambda assigns to a `var` from an enclosing scope. Closures capture `var`s by value, so the
-assignment would be lost (design §8.1). Use a loop with the `var` in the same function, or
-return the new value.";
+"A lambda, or a `try` body, assigns to a `var` declared outside it. Closures capture `var`s by
+value, so the assignment would be lost (design §8.1); a `try` body's only outputs are its value
+and its error (design §5.3). Use a loop with the `var` in the same function, or return the new
+value and assign it afterwards.
+
+Wrong:
+    var n = 0
+    let r = try { n = parse(s)? }
+Fixed:
+    var n = 0
+    let r = try { parse(s)? }
+    n = r.unwrap_or(0)";
 
     V2050 "hole_in_build" TYPE,
 "`sakura build`, `sakura run` and `sakura test` reject typed holes (`?name`). `sakura check` allows them and

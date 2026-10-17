@@ -24,6 +24,15 @@ fn m0_missing_console_is_v3001_with_cause() {
         1,
     );
     let c = check(&src);
+    // §17.1: adding an effect to a signature changes the interface; never machine-applicable.
+    assert!(
+        c.render()
+            .lines()
+            .find(|l| l.trim_start().starts_with("fix"))
+            .is_some_and(|l| l.contains("(Suggested, InterfaceChange)")),
+        "{}",
+        c.render()
+    );
     insta::assert_snapshot!(c.render());
 }
 
@@ -215,4 +224,43 @@ fn let_polymorphism_carries_constraints() {
 "#;
     let c = check(src);
     insta::assert_snapshot!(c.render());
+}
+
+/// §17.30: a test may fail with a typed error; the runner reports it as a failed test.
+#[test]
+fn tests_may_fail_with_typed_errors() {
+    let src = format!(
+        r#"{M1}error A
+test "typed failures escape" {{ let x = parse_age("x"); expect_eq(x, 1) }}
+property "p"(n: Int) {{ if n < 0 {{ fail A }} }}
+"#
+    );
+    let c = check(&src);
+    assert!(c.diags.is_empty(), "{}", c.render());
+}
+
+/// The allowed effects of a hole inside a test include `Fail<E>` (§17.30).
+#[test]
+fn hole_in_test_allows_typed_failures() {
+    let c = check("test \"t\" { let x: Int = ?h; expect_eq(x, 1) }\n");
+    let h = c.typed.holes.first().expect("hole");
+    assert_eq!(
+        h.allowed_effects,
+        "{Clock, Console, Env, Log, Random, Test, Fail<E>}"
+    );
+}
+
+/// §17.43: a `try` body's only outputs are its value and its error.
+#[test]
+fn try_bodies_assign_only_their_own_vars() {
+    let ok = r#"error A
+fn f(s: String) -> Int {
+  var n = 0
+  let r = try { var m = 1; m = m + 1; if s == "" { fail A } else { m } }
+  n = Result.unwrap_or(r, 0)
+  n
+}
+"#;
+    let c = check(ok);
+    assert!(c.diags.is_empty(), "{}", c.render());
 }

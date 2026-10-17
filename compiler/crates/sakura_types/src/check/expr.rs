@@ -549,6 +549,7 @@ impl Checker<'_> {
                     } else {
                         self.b.locals.insert(local, LocalTy::Poly(scheme));
                         self.b.local_depth.insert(local, self.b.lambda_depth);
+                        self.b.local_try_depth.insert(local, self.b.try_depth);
                         self.b.scope.push(local);
                     }
                     return r;
@@ -592,6 +593,27 @@ impl Checker<'_> {
                             "this function value assigns `{name}`, a `var` of the enclosing function; closures capture variables by value, so the assignment would be lost"
                         ),
                     );
+                } else if self.b.local_try_depth.get(*local).copied().unwrap_or(0)
+                    < self.b.try_depth
+                {
+                    let name = self.hir_body().locals[*local].name.clone();
+                    let fix = |title: &str| sakura_diagnostics::Fix {
+                        title: title.into(),
+                        applicability: sakura_diagnostics::Applicability::Incomplete,
+                        impact: sakura_diagnostics::Impact::Local,
+                        edits: Vec::new(),
+                    };
+                    let d = Diagnostic::error(
+                        V2041,
+                        Phase::Type,
+                        format!(
+                            "this `try` body assigns `{name}`, a `var` declared outside it; a `try` body's only outputs are its value and its error (design §5.3)"
+                        ),
+                    )
+                    .with_span(self.span(*range))
+                    .with_fix(fix("Assign after the `try` from its result"))
+                    .with_fix(fix("Declare the `var` inside the `try`"));
+                    self.push(d);
                 }
                 for f in fields {
                     t = self.field_type(*value, *range, t, f);
@@ -1347,10 +1369,12 @@ impl Checker<'_> {
             }
             _ => None,
         };
+        self.b.try_depth += 1;
         let (bt, br) = match body_exp {
             Some(x) => (x, self.check(body, x)),
             None => self.synth(body),
         };
+        self.b.try_depth -= 1;
         let flat = self.inf.flatten_row(br);
         // The failures of `b` hidden in a failure-carrying rigid tail cannot be named (§5.3).
         let hidden = self

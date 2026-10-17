@@ -157,6 +157,11 @@ const CASES: &[(&str, &str, &[&str])] = &[
         &["V3001"],
     ),
     (
+        "try body assigns an outer var",
+        "fn f() -> Int { var n = 0; let _ = try { n = 1 }; n }",
+        &["V2041"],
+    ),
+    (
         "test uses an effect without a handler",
         "test \"t\" { let _ = Counter.next() }",
         &["V3020"],

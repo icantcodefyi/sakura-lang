@@ -1,6 +1,6 @@
 ---
 source: crates/sakura_types/tests/negative.rs
-assertion_line: 278
+assertion_line: 283
 expression: transcript
 ---
 ## wrong result type
@@ -153,6 +153,11 @@ V3001 7:51 handler clause `next` performs `Fail<A>`, which the handler's type do
   Cause 7:60 `fail A` `fail` performs `Fail<A>` here
   expected: {}
   actual: {Fail<A>}
+
+## try body assigns an outer var
+V2041 7:42 this `try` body assigns `n`, a `var` declared outside it; a `try` body's only outputs are its value and its error (design §5.3)
+  fix (Incomplete, Local): Assign after the `try` from its result 
+  fix (Incomplete, Local): Declare the `var` inside the `try` 
 
 ## test uses an effect without a handler
 V3020 7:6 test uses `Counter` without a handler; install one with `with` (std ships fake handlers for its own effects)

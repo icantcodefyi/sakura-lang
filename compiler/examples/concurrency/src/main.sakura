@@ -1,5 +1,5 @@
 // milestone: M3
-// needs: Fail escaping a test (§17.30)
+// needs: `timeout` under `Clock.virtual` and `Task.deterministic` raises `Timeout` in runtime/js (D)
 // mode: test
 // covers: Import NameList RecordLit TupleLit Lambda WithExpr
 

@@ -266,7 +266,6 @@ fn externals_work_as_function_values() {
 
 /// Design §17.30: a test body may fail; an uncaught failure fails the test with its `Show`.
 #[test]
-#[ignore = "needs sakura_types to allow Fail in test rows (design §17.30); un-ignore when C lands it"]
 fn uncaught_fail_in_a_test_is_a_test_failure() {
     let src = r#"
 error Nope(why: String)

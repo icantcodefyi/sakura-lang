@@ -1,5 +1,5 @@
 // milestone: M3
-// needs: SqlValue.from for sql"…" arguments, Sql.memory and serve_host in runtime/js, Fail escaping a test (§17.30)
+// needs: SqlValue.from for sql"…" arguments, Sql.memory and serve_host in runtime/js
 // mode: test
 // covers: Import NameList TypeDecl RecordType TryExpr Lambda
 

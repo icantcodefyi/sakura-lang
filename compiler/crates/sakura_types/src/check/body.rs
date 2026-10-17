@@ -219,15 +219,25 @@ impl<'p> Checker<'p> {
             })
             .collect();
         let allowed = self.inf.closed_row(labels);
+        // A test may fail with any typed error (§17.30): the runner reports it as a failure.
+        let any_error = self.fresh_param_like("E", Vec::new());
+        let any_error = self.inf.interner.intern(crate::ty::Type::Param(any_error));
+        let mut shown = self.inf.flatten_row(allowed).labels;
+        shown.push(crate::ty::Label {
+            effect: Effect::Fail,
+            args: vec![any_error],
+        });
+        let shown = self.inf.closed_row(shown);
         let range = program.def(def).range;
         self.with_body(module, bid, Vec::new(), |cx| {
             cx.bind_params(body, params);
-            cx.b.allowed_row = Some(allowed);
+            cx.b.allowed_row = Some(shown);
             let unit = cx.inf.interner.unit();
             cx.b.frames.push(FnFrame { ret: unit });
             let row = cx.check(value, unit);
             cx.contracts(body, unit);
-            cx.bound_row(value, row, allowed, range, ViolationKind::Test);
+            let checked = cx.inf.remove_labels(row, |l| l.effect != Effect::Fail);
+            cx.bound_row(value, checked, allowed, range, ViolationKind::Test);
         });
     }
 
@@ -240,6 +250,7 @@ impl<'p> Checker<'p> {
     pub(super) fn bind_local(&mut self, local: sakura_hir::LocalId, ty: TypeId) {
         self.b.locals.insert(local, LocalTy::Mono(ty));
         self.b.local_depth.insert(local, self.b.lambda_depth);
+        self.b.local_try_depth.insert(local, self.b.try_depth);
         self.b.scope.push(local);
     }
 
