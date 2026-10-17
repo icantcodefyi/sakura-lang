@@ -1,18 +1,26 @@
 #!/bin/sh
-# Refuse to push a commit whose compiler/Cargo.lock doesn't match its Cargo.toml files.
-# Several agents share one checkout, so the working-tree lockfile can contain dependencies
-# from someone else's uncommitted work. Check the pushed commits, not the working tree.
+# Check the commits being pushed, not the working tree. Several agents share one checkout, so the
+# working tree can hide problems: uncommitted files that the build needs, or lockfile entries from
+# someone else's unfinished work. Build an export of the pushed commit instead.
 set -e
+root=$(git rev-parse --show-toplevel)
 while read -r _local_ref local_sha _remote_ref _remote_sha; do
   [ "$local_sha" = 0000000000000000000000000000000000000000 ] && continue
   git cat-file -e "$local_sha:compiler/Cargo.toml" 2>/dev/null || continue
-  tmp=$(mktemp -d)
-  git archive "$local_sha" compiler | tar -x -C "$tmp"
-  if ! (cd "$tmp/compiler" && cargo metadata --locked --offline --format-version 1 >/dev/null 2>&1); then
-    rm -rf "$tmp"
+  # A fixed export path keeps incremental builds fast between pushes.
+  src="$root/compiler/target/pre-push/src"
+  rm -rf "$src" && mkdir -p "$src"
+  git archive "$local_sha" compiler docs | tar -x -C "$src"
+  cd "$src/compiler"
+  if ! cargo metadata --locked --offline --format-version 1 >/dev/null 2>&1; then
     echo "pre-push: compiler/Cargo.lock in $local_sha does not match its Cargo.toml files." >&2
-    echo "Commit the lockfile together with the Cargo.toml change that needs it, and only your own entries." >&2
+    echo "Commit the lockfile with the Cargo.toml change that needs it, and only your own entries." >&2
     exit 1
   fi
-  rm -rf "$tmp"
+  if ! CARGO_TARGET_DIR="$root/compiler/target/pre-push/target" \
+      cargo check --workspace --all-targets --locked --offline --quiet; then
+    echo "pre-push: $local_sha does not compile on its own (missing or uncommitted file?)." >&2
+    exit 1
+  fi
+  cd "$root"
 done
