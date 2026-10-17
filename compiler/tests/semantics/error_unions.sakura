@@ -2,11 +2,13 @@
 // covers: ErrorDecl TypeDecl UnionType TryExpr
 
 error NotFound
+
 error Forbidden
 error Timeout
+
 type AccessError = NotFound | Forbidden
 
-fn fetch(id: Int) -> String ! {Fail<NotFound | Forbidden | Timeout>} {
+fn fetch(id: Int) -> String ! {Fail<Forbidden | NotFound | Timeout>} {
   match id {
     1 => "doc",
     2 => fail Forbidden,
@@ -17,7 +19,9 @@ fn fetch(id: Int) -> String ! {Fail<NotFound | Forbidden | Timeout>} {
 
 // Timeout is recovered here; the remaining tags match the declared union.
 fn fetch_retrying(id: Int) -> String ! {Fail<AccessError>} {
-  try { fetch(id) } catch { Timeout => "doc (after retry)" }
+  try { fetch(id) } catch {
+    Timeout => "doc (after retry)",
+  }
 }
 
 fn report(id: Int) -> String {
@@ -29,6 +33,4 @@ fn report(id: Int) -> String {
   }
 }
 
-pub fn main() -> Unit ! {Console} {
-  for id in 1..5 { Console.print(report(id)) }
-}
+pub fn main() -> Unit ! {Console} { for id in 1..5 { Console.print(report(id)) } }

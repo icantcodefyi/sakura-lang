@@ -2,6 +2,7 @@
 // covers: TypeParams TypeParam NamedType TypeList
 
 type Pair<A, B> = { left: A, right: B }
+
 type Tree<A> = Leaf | Node(Tree<A>, A, Tree<A>)
 
 fn flip<A, B>(p: Pair<A, B>) -> Pair<B, A> { Pair { left: p.right, right: p.left } }

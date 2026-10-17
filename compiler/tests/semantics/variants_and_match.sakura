@@ -13,10 +13,10 @@ fn area(s: Shape) -> Int {
 
 fn describe(n: Int) -> String {
   match n {
-    0 => "zero"
-    1 | 2 | 3 => "small"
-    k if k < 0 => "negative"
-    _ => "large"
+    0 => "zero",
+    1 | 2 | 3 => "small",
+    k if k < 0 => "negative",
+    _ => "large",
   }
 }
 

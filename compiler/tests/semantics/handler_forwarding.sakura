@@ -1,13 +1,21 @@
 // milestone: M2
 // covers: HandlerExpr WithExpr
 
-effect Greeter { fn greet(name: String) -> String }
+effect Greeter {
+  fn greet(name: String) -> String
+}
 
-fn plain() -> Handler<Greeter> { handler Greeter { fn greet(name) { "hello, {name}" } } }
+fn plain() -> Handler<Greeter> {
+  handler Greeter {
+    fn greet(name) { "hello, {name}" }
+  }
+}
 
 // A clause that performs its own effect reaches the next handler out.
 fn loud() -> Handler<Greeter, {Greeter}> {
-  handler Greeter { fn greet(name) { String.to_upper(Greeter.greet(name)) + "!" } }
+  handler Greeter {
+    fn greet(name) { String.to_upper(Greeter.greet(name)) + "!" }
+  }
 }
 
 pub fn main() -> Unit ! {Console} {

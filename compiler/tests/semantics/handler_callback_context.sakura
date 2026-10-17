@@ -39,8 +39,6 @@ fn doubled() -> Handler<Store, {Store}> {
 pub fn main() -> Unit ! {Console} {
   with memory() {
     Store.with_default("a", 1, fn() { Store.put("a", 5) })
-    with doubled() {
-      Store.with_default("b", 1, fn() { Store.put("b", 5) })
-    }
+    with doubled() { Store.with_default("b", 1, fn() { Store.put("b", 5) }) }
   }
 }

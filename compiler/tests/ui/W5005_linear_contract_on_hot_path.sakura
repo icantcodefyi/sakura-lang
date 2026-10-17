@@ -2,9 +2,8 @@
 // expect: W5005
 fn count_positive(xs: List<Int>) -> Int
   requires List.all(xs, fn(x) { x > 0 })
-{
-  List.len(xs)
-}
+{ List.len(xs) }
+
 fn many(xs: List<Int>) -> Int {
   var n = 0
   for _ in 0..1000 { n = n + count_positive(xs) }

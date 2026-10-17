@@ -1,8 +1,10 @@
 // milestone: M2
 // expect: V3002
 fn apply(f: fn() -> Int) -> Int { f() }
+
 fn loud_one() -> Int ! {Console} {
   Console.print("side effect")
   1
 }
+
 fn noisy() -> Int ! {Console} { apply(loud_one) }

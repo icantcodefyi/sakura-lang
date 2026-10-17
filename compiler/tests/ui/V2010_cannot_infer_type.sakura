@@ -1,5 +1,3 @@
 // milestone: M1
 // expect: V2010
-fn nothing() -> Unit {
-  var xs = []
-}
+fn nothing() -> Unit { var xs = [] }

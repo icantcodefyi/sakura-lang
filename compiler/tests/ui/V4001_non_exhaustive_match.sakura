@@ -1,6 +1,10 @@
 // milestone: M1
 // expect: V4001
 error ParseError(input: String)
+
 fn parse_age(s: String) -> Int ! {Fail<ParseError>} {
-  match String.parse_int(s) { Some(n) if n >= 0 => n, Some(_) => fail ParseError { input: s } }
+  match String.parse_int(s) {
+    Some(n) if n >= 0 => n,
+    Some(_) => fail ParseError { input: s },
+  }
 }

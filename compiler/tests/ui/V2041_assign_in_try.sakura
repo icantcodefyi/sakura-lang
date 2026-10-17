@@ -1,6 +1,7 @@
 // milestone: M1
 // expect: V2041
 error Empty
+
 fn count(s: String) -> Int {
   var n = 0
   let r = try { if s == "" { fail Empty } else { n = 1 } }

@@ -2,26 +2,23 @@
 // covers: ErrorDecl TryExpr MatchArm Postfix
 
 error ParseError(input: String)
+
 error Negative(value: Int)
 
-fn parse_age(s: String) -> Int ! {Fail<ParseError | Negative>} {
+fn parse_age(s: String) -> Int ! {Fail<Negative | ParseError>} {
   let n = String.parse_int(s).or_fail(ParseError { input: s })
   if n < 0 { fail Negative { value: n } }
   n
 }
 
 fn show_age(s: String) -> String {
-  try {
-    "age {parse_age(s)}"
-  } catch {
+  try { "age {parse_age(s)}" } catch {
     ParseError { input } => "not a number: {input}",
     Negative { value } => "negative: {value}",
   }
 }
 
-fn ages(xs: List<String>) -> List<Int> ! {Fail<ParseError | Negative>} {
-  List.map(xs, parse_age)
-}
+fn ages(xs: List<String>) -> List<Int> ! {Fail<Negative | ParseError>} { List.map(xs, parse_age) }
 
 pub fn main() -> Unit ! {Console} {
   Console.print(show_age("42"))

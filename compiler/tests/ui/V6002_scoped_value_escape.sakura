@@ -3,7 +3,5 @@
 import std/fs
 
 fn leak() -> Handler<Fs> ! {Fs} {
-  with Fs.rooted(Dir.subdir(Fs.root(), "data")) {
-    Fs.rooted(Dir.subdir(Fs.root(), "data"))
-  }
+  with Fs.rooted(Dir.subdir(Fs.root(), "data")) { Fs.rooted(Dir.subdir(Fs.root(), "data")) }
 }

@@ -1,5 +1,7 @@
 // milestone: M1
 // expect: W4010
 fn or_default<T, E>(body: fn() -> T ! {Fail<E>}, default: T) -> T {
-  try { body() } catch { _ => default }
+  try { body() } catch {
+    _ => default,
+  }
 }

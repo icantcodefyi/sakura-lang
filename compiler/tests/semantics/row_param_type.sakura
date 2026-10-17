@@ -13,14 +13,17 @@ fn apply<e>(b: Box<e>, x: Int) -> Int ! e {
 }
 
 pub fn main() -> Unit ! {Console} {
-  let loud: Box<{Console}> = Box { run: fn(x) { Console.print("run {x}"); x + 1 } }
+  let loud: Box<{Console}> = Box {
+    run: fn(x) {
+      Console.print("run {x}")
+      x + 1
+    },
+  }
   let quiet = Box { run: fn(x) { x * 2 } }
   let empty: Box<{}> = Box { run: fn(x) { x } }
   let both = [loud, quiet]
   Console.print("{apply(loud, 1)}")
   Console.print("{apply(quiet, 2)}")
   Console.print("{apply(empty, 3)}")
-  for b in both {
-    Console.print("{apply(b, 10)}")
-  }
+  for b in both { Console.print("{apply(b, 10)}") }
 }

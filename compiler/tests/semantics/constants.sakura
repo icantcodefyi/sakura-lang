@@ -2,6 +2,7 @@
 // covers: ConstDecl
 
 let greeting = "hello"
+
 pub let max_retries: Int = 3
 let primes = [2, 3, 5]
 

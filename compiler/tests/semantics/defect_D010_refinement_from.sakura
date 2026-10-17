@@ -5,6 +5,7 @@
 // covers: Defect
 
 type Percent = Int where it >= 0 && it <= 100
+
 pub fn main() -> Unit ! {Console} {
   Console.print("before")
   Console.print("{Percent.from(101)}")

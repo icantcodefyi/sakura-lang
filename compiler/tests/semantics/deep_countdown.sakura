@@ -4,4 +4,5 @@
 fn countdown(n: Int) -> Unit ! {Console} {
   if n == 0 { Console.print("liftoff") } else { countdown(n - 1) }
 }
+
 pub fn main() -> Unit ! {Console} { countdown(1000000) }

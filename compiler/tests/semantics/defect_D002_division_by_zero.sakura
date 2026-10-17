@@ -4,6 +4,7 @@
 // covers: Defect
 
 fn zero() -> Int { List.len([]) }
+
 pub fn main() -> Unit ! {Console} {
   Console.print("before")
   Console.print("{10 / zero()}")

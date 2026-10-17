@@ -3,6 +3,5 @@
 effect Db {
   fn count() -> Int
 }
-pub fn main() -> Unit ! {Db} {
-  let _ = Db.count()
-}
+
+pub fn main() -> Unit ! {Db} { let _ = Db.count() }

@@ -4,6 +4,4 @@
 // command: test --contracts
 pub fn exact(x: Int) -> Int
   requires x == 123_456
-{
-  x
-}
+{ x }

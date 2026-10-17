@@ -4,6 +4,7 @@
 // covers: Defect
 
 fn missing() -> Option<Int> { None }
+
 pub fn main() -> Unit ! {Console} {
   Console.print("before")
   Console.print("{missing().expect("value must be present")}")

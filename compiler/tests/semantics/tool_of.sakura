@@ -30,5 +30,8 @@ test "the tool takes the function's name, description and parameters" {
 
 test "a tool that cannot fail" {
   let t = Tool.of(greet)
-  expect_eq(try { Tool.call(t, input("\{\"name\": \"Sakura\"\}")) }, Ok(Json.String("hello, Sakura")))
+  expect_eq(
+    try { Tool.call(t, input("\{\"name\": \"Sakura\"\}")) },
+    Ok(Json.String("hello, Sakura")),
+  )
 }

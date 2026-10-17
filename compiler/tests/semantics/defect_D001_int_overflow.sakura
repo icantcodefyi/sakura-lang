@@ -5,6 +5,7 @@
 // covers: Defect
 
 fn big() -> Int { 4_611_686_018_427_387_904 }
+
 pub fn main() -> Unit ! {Console} {
   Console.print("before")
   Console.print("{big() * 2}")

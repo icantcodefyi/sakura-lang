@@ -20,8 +20,7 @@ type Ticket = {
 }
 
 @llm(system: "Extract a support ticket. Use only facts present in the message.")
-fn extract_ticket(message: Untrusted<String>) -> Ticket
-  ! {Budget, Llm, Fail<LlmError>}
+fn extract_ticket(message: Untrusted<String>) -> Ticket ! {Budget, Llm, Fail<LlmError>}
 
 pub fn main() -> Unit ! {Console, Env, Http, Fail<LlmError>} {
   let key = Env.secret("ANTHROPIC_API_KEY").expect("set ANTHROPIC_API_KEY")

@@ -7,6 +7,7 @@
 fn grow(x: Int) -> Int
   ensures result > x
 { x }
+
 pub fn main() -> Unit ! {Console} {
   Console.print("before")
   Console.print("{grow(1)}")

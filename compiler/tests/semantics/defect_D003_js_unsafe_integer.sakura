@@ -5,6 +5,7 @@
 // covers: Defect
 
 fn edge() -> Int { 9_007_199_254_740_991 }
+
 pub fn main() -> Unit ! {Console} {
   Console.print("before")
   Console.print("{edge() + 1}")

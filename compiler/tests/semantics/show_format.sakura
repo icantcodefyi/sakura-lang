@@ -2,10 +2,17 @@
 // covers: TypeDecl Literal
 
 type Color = Red | Rgb(Int, Int, Int)
+
 type Item = { name: String, tags: List<String>, color: Color, price: Float, stock: Option<Int> }
 
 pub fn main() -> Unit ! {Console} {
-  let item = Item { name: "lamp", tags: ["home", "light"], color: Rgb(1, 2, 3), price: 19.5, stock: None }
+  let item = Item {
+    name: "lamp",
+    tags: ["home", "light"],
+    color: Rgb(1, 2, 3),
+    price: 19.5,
+    stock: None,
+  }
   Console.print("{item}")
   Console.print("{[Some(1), None]} {(Red, "x")} {Set.of([3, 1])}")
   Console.print("{"top-level strings are raw"} {["nested strings are quoted"]}")

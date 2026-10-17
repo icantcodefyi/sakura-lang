@@ -1,5 +1,3 @@
 // milestone: M1
 // expect: V2005
-fn omega() -> Unit {
-  let _ = fn(x) { x(x) }
-}
+fn omega() -> Unit { let _ = fn(x) { x(x) } }

@@ -4,6 +4,4 @@
 
 import std/tool.{Tool}
 
-pub fn tools() -> Unit {
-  let _ = Tool.of(fn(a: Int) { a })
-}
+pub fn tools() -> Unit { let _ = Tool.of(fn(a: Int) { a }) }
