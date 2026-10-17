@@ -1,6 +1,6 @@
 # Vow language design (v0)
 
-Status: **authoritative design for v0**. Date: 2026-10-17. Owner: language design.
+Status: **authoritative design for v0**. Date: 2026-10-17, revised the same day for round 2 (see §17 for every decision taken against implementer questions). Owner: language design.
 Change process: edits to syntax, semantics, effects, module/package rules, or the diagnostic protocol go through `docs/rfcs/NNNN-title.md` with a seven-day final comment period (`research/07 §3`); the normative `docs/spec/` is extracted from this document once M1 lands.
 Research inputs: `research/01` (effects), `02` (memory), `03` (verification), `04` (agent ergonomics), `05` (platform), `06` (compiler). Section references below like `R01 §4.2` point into those files.
 
@@ -83,10 +83,10 @@ Keywords (reserved, cannot be identifiers):
 
 ```
 fn let var type error effect handler with try catch fail if else match for in while
-return break continue import pub as test property requires ensures where true false
+return break continue import pub opaque as test property requires ensures where true false
 ```
 
-Reserved for later (rejected today with code `V0007`): `verify proof ghost control resume region spawn actor interface impl`.
+Reserved for later (rejected with code `V0007`): `verify proof ghost control resume region spawn actor interface impl`. A reserved word **is** accepted directly after `.` (member or operation access) and directly after `fn` (an operation or clause name), so `Task.spawn(s, body)` and `fn spawn(s, body)` inside an `effect`/`handler` are legal; those positions can never become keyword positions. A keyword may also appear as a module-path segment after `/` (`import std/test.{Test}`, §3).
 
 Punctuation and operators:
 
@@ -114,7 +114,7 @@ Multi-line strings: a string literal may contain raw newlines. The formatter kee
 
 Vow has no mandatory semicolons. Statements end at a line break according to one rule, applied by the lexer, which emits a `NEWLINE` token only when **both** hold:
 
-1. The previous significant token is one of: `Ident`, `TypeName`, `Hole`, a literal, `)`, `]`, `}`, postfix `?`, `true`, `false`, `break`, `continue`, `return`.
+1. The previous significant token is one of: `Ident`, `TypeName`, `Hole`, a literal, `)`, `]`, `}`, `>`, postfix `?`, `true`, `false`, `break`, `continue`, `return`.
 2. The next significant token is **not** one of: `.`, `else`, `catch`, `)`, `]`, `}`, `,`, `=>`, `=`, `->`, `|`, `..`, or a binary operator that cannot begin an expression: `+ * / % == != < <= > >= && ||`.
 
 Consequences, stated so nobody has to guess:
@@ -124,38 +124,54 @@ Consequences, stated so nobody has to guess:
 - `if c {\n} else {\n}` and `if c {\n}\nelse {\n}` are both one `if`.
 - Inside `(`, `[`, and string interpolations, newlines are never significant. Inside `{` blocks, they are. Inside `match` braces, arms may end with `NEWLINE` or `,`.
 - `;` is always accepted as an explicit terminator; the formatter removes redundant ones.
+- `>` is in rule 1 so that a declaration ending in a type argument list (`type Ids = List<Int>`) terminates at the line break. Consequently `a >\n  b` is two statements; write the operator at the start of the continuation line (`a\n  > b`), which is the formatter's style for every binary operator.
+- The parser **ignores** `NEWLINE` tokens in four places where the lexer still emits them: between items and after an `@attr(…)` line; inside a signature between the parameter list and the body `{` (so `-> Int\n  requires lo <= hi\n{` and `-> Ticket\n  ! {Llm}` are one signature); between the `var` members and clauses of a `handler` block; and between the operations of an `effect` block.
 
 ### 2.5 Comments and attributes
 
-`///` doc comments attach to the next item and are exported in signatures. `@name(args)` attributes precede items; unknown attributes are errors `V1010`. v0 attributes: `@tool(description)`, `@llm(...)`, `@external(target, module, name)`, `@trust(reason)`, `@deprecated(message)`, `@server`, `@test_only`.
+`///` doc comments attach to the next item and are exported in signatures. `@name(args)` attributes precede items; unknown attributes are errors `V1010`. Attribute arguments are positional or `name: value` (`@llm(system: "…")`); they are interpreted by the attribute, never resolved as ordinary expressions. v0 attributes:
+
+| Attribute | On | Meaning |
+|---|---|---|
+| `@tool(description)` | `fn` | Exported as an LLM tool (§11.2). |
+| `@llm(system: …)` | bodiless `fn` | Prompt-defined function (§11.1). |
+| `@external(target, module, name)` | bodiless `fn`, `type` | Host binding (§13.6). |
+| `@total` | `fn` with row `{}` | Trusted claim that the function terminates on every input; admits it to the contract subset (§7.1). Listed by `vow audit`. |
+| `@contract_test(handlers: […])` | `fn` | Handlers for `vow test --contracts` (§7.4). |
+| `@deprecated(message)` | any item | Warning at use sites. |
+| `@server`, `@test_only` | `fn`, items | Build-target and test-visibility markers (M3). |
+
+`@trust(reason)` is the one attribute that is an **expression** (§6.4): its value has the compiler-known type `Trust`, `reason` must be a string literal, and the only functions accepting a `Trust` are the audited sinks `Untrusted.trust` and `Secret.expose`. Any other attribute in expression position is `V1010`. A `fn` without a body and without `@external`/`@llm` is `V1011`.
 
 ---
 
 ## 3. Grammar (v0, complete)
 
-The v0 grammar has **73 named productions** (counted as left-hand sides below; tokens from §2 are terminals). It is LL-parsable by recursive descent with a Pratt loop for `BinExpr`/`PostfixExpr`. `Term`, `ArmTerm`, `NEWLINE` are the only layout-sensitive pieces (§2.4).
+The v0 grammar has **77 named productions** (counted as left-hand sides below; tokens from §2 are terminals, `Keyword` is any word from the §2.1 keyword list). It is LL(2)-parsable by recursive descent with a Pratt loop for `BinExpr`/`PostfixExpr`. `Term`, `ArmTerm`, `NEWLINE` are the only layout-sensitive pieces (§2.4).
 
 ```ebnf
 (* ---- Items ---- *)
 File         = { Item } EOF ;
-Item         = { Attribute } [ "pub" ] ItemBody ;
-Attribute    = "@" Ident [ "(" [ ArgList ] ")" ] ;
+Item         = { Attribute } [ "pub" [ "opaque" ] ] ItemBody ;
+Attribute    = "@" Ident [ "(" [ AttrArgs ] ")" ] ;
+AttrArgs     = AttrArg { "," AttrArg } [ "," ] ;
+AttrArg      = [ Ident ":" ] Expr ;
 ItemBody     = Import | TypeDecl | ErrorDecl | EffectDecl | FnDecl
              | ConstDecl | TestDecl | PropertyDecl ;
 Import       = "import" ModPath [ "." "{" NameList "}" ] [ "as" Ident ] Term ;
-ModPath      = Ident { "/" Ident } ;
+ModPath      = Ident { "/" ( Ident | Keyword ) } ;
 NameList     = Name { "," Name } [ "," ] ;
 Name         = Ident | TypeName ;
-TypeDecl     = "type" TypeName [ TypeParams ] "=" TypeBody Term ;
+TypeDecl     = "type" TypeName [ TypeParams ] [ "=" TypeBody ] Term ;
 TypeBody     = RecordType | Variant { "|" Variant } | Type [ "where" Expr ] ;
 RecordType   = "{" [ FieldDecl { "," FieldDecl } [ "," ] ] "}" ;
-FieldDecl    = Ident ":" Type ;
+FieldDecl    = Ident ":" Type [ "where" Expr ] ;
 Variant      = TypeName [ "(" TypeList ")" ] ;
 ErrorDecl    = "error" TypeName [ "(" [ FieldDecl { "," FieldDecl } [ "," ] ] ")" ] Term ;
 EffectDecl   = "effect" TypeName [ TypeParams ] "{" { OpSig Term } "}" ;
-OpSig        = "fn" Ident "(" [ Params ] ")" "->" Type [ "!" EffectRow ] { Contract } ;
+OpSig        = "fn" Ident [ TypeParams ] "(" [ Params ] ")" "->" Type [ "!" EffectRow ] { Contract } ;
 FnDecl       = "fn" Ident [ TypeParams ] "(" [ Params ] ")" "->" Type [ "!" EffectRow ]
-               { Contract } Block ;
+               { Contract } ( Block | Term ) ;
 TypeParams   = "<" TypeParam { "," TypeParam } ">" ;
 TypeParam    = TypeName [ ":" TypeName { "+" TypeName } ] | Ident ;
 Params       = Param { "," Param } [ "," ] ;
@@ -166,12 +182,14 @@ TestDecl     = "test" String Block ;
 PropertyDecl = "property" String "(" [ Params ] ")" { Contract } Block ;
 
 (* ---- Types ---- *)
-Type         = FnType | TupleType | UnionType ;
+Type         = FnType | TupleType | UnionType | "(" Type ")" ;
 FnType       = "fn" "(" [ TypeList ] ")" "->" Type [ "!" EffectRow ] ;
-TupleType    = "(" [ TypeList ] ")" ;
+TupleType    = "(" ")" | "(" Type "," [ TypeList ] ")" ;
 UnionType    = NamedType { "|" NamedType } ;
-NamedType    = TypePath [ "<" TypeList ">" ] ;
-TypePath     = [ Ident "." ] TypeName ;
+NamedType    = TypePath [ "<" TypeArgs ">" ] ;
+TypePath     = [ Ident "." ] TypeName [ "." TypeName ] ;
+TypeArgs     = TypeArg { "," TypeArg } [ "," ] ;
+TypeArg      = Type | EffectRow ;
 TypeList     = Type { "," Type } [ "," ] ;
 EffectRow    = "{" [ NamedType { "," NamedType } ] [ "|" Ident ] "}" | Ident ;
 
@@ -197,7 +215,7 @@ WithExpr     = "with" Expr { "," Expr } Block ;
 TryExpr      = "try" Block [ "catch" "{" { MatchArm } "}" ] ;
 Lambda       = "fn" "(" [ LambdaParams ] ")" [ "->" Type ] Block ;
 LambdaParams = LambdaParam { "," LambdaParam } [ "," ] ;
-LambdaParam  = Ident [ ":" Type ] ;
+LambdaParam  = ( Ident | "_" ) [ ":" Type ] ;
 HandlerExpr  = "handler" TypePath "{" { VarStmt | HandlerClause } "}" ;
 HandlerClause= "fn" Ident "(" [ LambdaParams ] ")" Block ;
 BinExpr      = UnaryExpr { BinOp UnaryExpr } ;
@@ -207,7 +225,7 @@ UnaryExpr    = ( "-" | "!" ) UnaryExpr | PostfixExpr ;
 PostfixExpr  = PrimaryExpr { Postfix } ;
 Postfix      = "(" [ ArgList ] ")" | "." Ident | "." Int | "[" Expr "]" | "?" ;
 ArgList      = Expr { "," Expr } [ "," ] ;
-PrimaryExpr  = Literal | Ident | Hole | TypePath [ RecordLit ] | "(" Expr ")"
+PrimaryExpr  = Literal | Ident | Hole | TypePath [ RecordLit ] | Attribute | "(" Expr ")"
              | TupleLit | ListLit | Block ;
 Literal      = Int | Float | String | TaggedStr | "true" | "false" ;
 TupleLit     = "(" ")" | "(" Expr "," [ ArgList ] ")" ;
@@ -220,7 +238,7 @@ Pattern      = SimplePat { "|" SimplePat } ;
 SimplePat    = "_" | Ident | Literal | TypePath [ "(" [ PatList ] ")" | RecordPat ]
              | TuplePat | ListPat ;
 PatList      = Pattern { "," Pattern } [ "," ] ;
-RecordPat    = "{" [ FieldPat { "," FieldPat } ] [ "," ".." ] "}" ;
+RecordPat    = "{" ( ".." | FieldPat { "," FieldPat } [ "," ".." ] [ "," ] ) "}" ;
 FieldPat     = Ident [ ":" Pattern ] ;
 TuplePat     = "(" [ PatList ] ")" ;
 ListPat      = "[" [ PatList ] [ ".." [ Ident ] ] "]" ;
@@ -243,8 +261,8 @@ ListPat      = "[" [ PatList ] [ ".." [ Ident ] ] "]" ;
 
 ### 3.2 Ambiguities, resolved
 
-1. **Generics vs comparison.** `<`/`>` denote type arguments **only inside type positions** (after `:`, `->`, `type … =`, inside `fn name<…>`, in effect rows). In expression position `<` is always comparison. There are **no call-site type arguments** in v0; write a binding annotation instead: `let xs: List<Int> = List.empty()`. `List<Int>.empty()` is a parse error `V0011` with that fix suggested.
-2. **Record literal vs block in headers.** In the header expression of `if`, `while`, `for … in`, `match`, and `with`, a `TypePath` followed by `{` is never a record literal (the parser runs with a `no_record_literal` flag, cleared inside parentheses). `if Config { debug: true } == c {}` must be parenthesized.
+1. **Generics vs comparison.** `<`/`>` denote type arguments **only inside type positions** (after `:`, `->`, `type … =`, inside `fn name<…>`, in effect rows). In expression position `<` is always comparison. There are **no call-site type arguments** in v0 (reaffirmed in §17.20); write a binding annotation instead: `let xs: List<Int> = List.empty()`, `let rows: List<User> = Sql.query(q)`, `let u: User = Json.decode(text)?`. Both `List<Int>.empty()` and `f<T>(x)` are the parse error `V0011` with that fix suggested; the parser still consumes the `<…>` list so it recovers at the call. Inference from later uses covers most cases; `V2010` names the binding to annotate when it cannot.
+2. **Record literal vs block in headers.** In the header expression of `if`, `while`, `for … in`, `match`, and `with`, and in `requires`/`ensures`/`where` predicates (a block follows), a `TypePath` followed by `{` is never a record literal (the parser runs with a `no_record_literal` flag, cleared inside parentheses). `if Config { debug: true } == c {}` must be parenthesized.
 3. **Keyword expressions as operands.** `if`, `match`, `with`, `try`, `fn`, `handler`, `fail` expressions are complete `Expr`s and never operands of a binary or postfix operator without parentheses. `(match x { … }).len()` is required; `match x {…}.len()` is a parse error `V0012`.
 4. **Lambda vs function type.** `fn` in expression position starts a `Lambda`; in type position a `FnType`. The two never appear in the same position.
 5. **Variant declaration vs error union.** `type X = A | B` parses as a list of alternatives. The resolver decides: if every alternative names an existing `error` tag (or error-union alias), `X` is an **error union alias**; if none does, each alternative **declares a new variant** of `X`; mixing is error `V1012`. A single bare alternative that resolves to an existing type is a type alias.
@@ -254,7 +272,13 @@ ListPat      = "[" [ PatList ] [ ".." [ Ident ] ] "]" ;
 9. **Statement vs expression.** Every statement except `let`/`var`/assignment/`for`/`while`/jumps is an expression statement. The value of a `Block` is the value of its final statement if that statement is an expression statement; otherwise `Unit`. A non-`Unit` value produced by a non-final expression statement is error `V2040` (use `let _ = …`). Explicit `return e` exits the innermost `fn`/lambda body.
 10. **Negative literals.** `-5` is unary minus applied to `5`; constant-folded in Core. Patterns accept `-5` as a literal pattern via the same folding.
 11. **Trailing commas** are accepted everywhere a list is delimited, and the formatter emits them in multi-line lists only.
-12. **`|` in patterns vs types.** Or-patterns bind loosest within a pattern; `Some(1 | 2)` is `Some(1) | Some(2)` semantically; all alternatives must bind the same names with the same types (`V4003`).
+12. **`|` in patterns vs types.** Or-patterns bind loosest within a pattern; `Some(1 | 2)` is `Some(1) | Some(2)` semantically; all alternatives must bind the same names with the same types (`V4003`). A variant list never starts with a leading `|`; a multi-line declaration puts `|` at the start of each continuation line, which §2.4 rule 2 joins.
+13. **No named arguments.** `ArgList` entries are expressions only. `f(name: v)` is the parse error `V0014` with the fix "pass the value positionally or as a record" (§16.6 keeps v0 positional). The `name: value` form exists only inside `Attribute` arguments.
+14. **Parenthesized types.** `(T)` is the type `T`; `(T,)` is a one-element tuple type and `(A, B)` a pair, mirroring `TupleLit`. `()` is `Unit`.
+15. **Bodiless declarations.** A `type` without `= …` declares an **external type** (§4.2): no constructors, no fields, no derived constraints; its values come only from `@external` functions. A `fn` without a block needs `@external` or `@llm` (`V1011` otherwise).
+16. **Qualified type paths.** `TypePath` allows one qualifier and one nested name: `http.Request`, `Json.String`, `Level.Warn`, `Task.Fiber<T>`, `m.Json.String`. Resolution is §4.9/§9: the nested `TypeName` is a variant of, or a type declared in the home module of, the first.
+17. **`_` parameters.** `fn(_) { … }` and `fn(_req) { … }` are accepted in lambdas and handler clauses; `_` binds nothing.
+18. **Jumps.** `break`/`continue` outside a loop, including inside a lambda written in a loop body, is `V1041`; assignment to a `let` binding or a module constant is `V1040`; a `TypeName` used as a value or a module used as a type is `V1007`.
 
 ---
 
@@ -283,8 +307,9 @@ There are **no implicit conversions**. `Int.to_float(i)`, `Float.round(f) -> Int
 - **Lists** `List<T>` (ordered, immutable, O(1) amortized append in native via reuse), **Maps** `Map<K, V>` with `K: Hash`, **Sets** `Set<T>` with `T: Hash`, **Option** `Option<T> = None | Some(T)`, **Result** `Result<T, E> = Ok(T) | Err(E)`, **Range** (`0..n`, exclusive end).
 - **Functions** `fn(A, B) -> C ! {E}`; omitted `!` means pure `! {}`.
 - **Handlers** `Handler<Eff, r>`: a handler for effect `Eff` whose clauses perform row `r`. `Handler<Eff>` abbreviates `Handler<Eff, {}>`.
-- **Resources** (`Fs.File`, `Sql.Conn`, `Http.Body`, `Task.Fiber<T>`): affine, scope-bound values (§8.4). Not `Eq`/`Show`/`Schema`.
-- **Secret<T>**, **Untrusted<T>** (§6.4).
+- **External types** are declared without a body (`pub type Scope`, `pub type Fiber<T>`, §3.2 rule 15): their representation belongs to the host runtime, they have no constructors and derive no constraint, and only `@external` functions produce them. Resources (`Fs.File`, `Sql.Conn`, `Http.Body`, `Task.Fiber<T>`) and capabilities (`Dir`, `NetScope`, `EnvScope`) are external types; both are **scoped values** (§6.3), and resources are additionally affine (§8.4).
+- **Opaque types** (`pub opaque type Uuid = Uuid(String)`, §9) are ordinary data whose constructors and fields are private to the declaring module; they derive constraints normally.
+- **Secret<T>**, **Untrusted<T>**, **Trust** (§6.4).
 - **Graph<N>** with `NodeId` keys for cyclic structures (§8.3).
 
 ### 4.3 Refinement types
@@ -299,7 +324,7 @@ type NonEmpty<T> = List<T> where List.len(it) > 0
 
 - `Email.validate(s) -> Result<Email, Violation>` — generated for every refined type; `Violation { type_name, clause, value_summary }`.
 - `Email.from(s) -> Email` — checked introduction; failure is a **Defect** `D010`. Use at trusted boundaries only (`vow audit` lists uses).
-- Decoding: `Json.decode<User>(bytes)` checks all refinements of nested fields and reports typed `DecodeError`s, never Defects.
+- Decoding: `let u: User = Json.decode(text)?` checks all refinements of nested fields and reports typed `DecodeError`s, never Defects.
 - Literals: `let e: Email = "a@b.co"` is checked at compile time when the predicate is in the SMT fragment, otherwise at program start (`V5002` warning: "checked at runtime").
 
 A refined type coerces **implicitly to its base** in all positions (`Email` is usable as `String`). The reverse never happens implicitly. Refinements never alias with mutation because there is no aliasable mutation (§8): a validated value cannot be invalidated later, which is what makes refinement types sound without a heap logic (`R03 §5.2`).
@@ -316,7 +341,7 @@ Rank-1 parametric polymorphism. Type variables are declared on functions and typ
 | `Show` | all data types; records print as `User { id: 1, email: "a@b" }` | functions, handlers, resources, `Secret` |
 | `Schema` | all data types made of `Schema` parts, refinements included; produces JSON Schema + codec | functions, handlers, resources, `Secret`, `Graph` |
 
-A type parameter with no constraint supports only passing around, pattern matching through concrete constructors, and `==` if `A: Eq` is declared. `fn sort<A: Ord>(xs: List<A>) -> List<A>`. Multiple constraints: `A: Eq + Show`.
+A type parameter with no constraint supports only passing around and pattern matching through concrete constructors. Constraints are the **only** way to use an operation on a type variable, and each one unlocks a fixed set: `A: Eq` enables `==`/`!=`; `A: Ord` enables `<`, `<=`, `>`, `>=` (and implies `Eq`); `A: Hash` makes `A` usable as a `Map` key or `Set` element (and implies `Eq`); `A: Show` enables interpolation and `show`; `A: Schema` enables `Json.encode`/`Json.decode`. `fn sort<A: Ord>(xs: List<A>) -> List<A>`, `fn sort_by<A, K: Ord>(xs: List<A>, key: fn(A) -> K)`. Multiple constraints: `A: Eq + Show`. A concrete type that does not satisfy a required constraint is `V2032` (`V2031` for `Show` on `Secret`, which has its own explanation).
 
 ### 4.5 Inference
 
@@ -339,17 +364,33 @@ All `Int` operations are checked; `Int.wrapping_add` etc. exist for hashing. Com
 
 ### 4.8 Show and interpolation
 
-`"{x}"` calls the derived `Show`. Output format is stable across backends and is the same format `vow test` snapshots use. `Float` shows with the shortest round-trip representation; `String` shows quoted inside records and raw at top level of an interpolation.
+`"{x}"` calls the derived `Show`. Output is **valid Vow expression syntax**, stable across backends, and the same format `vow test` snapshots use:
+
+| Value | Shows as |
+|---|---|
+| `Int`, `Bool`, `Unit` | `42`, `true`, `()` |
+| `Float` | shortest round-trip digits, always with `.` or an exponent: `2.0`, `0.1`, `1.0e21`, `-0.0`, `NaN`, `Infinity`, `-Infinity` |
+| `String` | raw at the top level of an interpolation; quoted with escapes (`\"`, `\\`, `\n`, `\{`, `\u{…}`) inside any container |
+| tuple | `(1, "a")`, one-element `(1,)` |
+| `List`, `Bytes` | `[1, 2]`, `Bytes.of([1, 2])` |
+| `Map`, `Set` | `Map.of([("a", 1)])`, `Set.of([1])`, insertion order |
+| record | `User { id: 1, email: "a@b" }`; an empty record `Point {}` |
+| variant | constructor name unqualified: `None`, `Some("x")`, `Warn`, `String("x")` (never `Json.String`) |
+| error tag | like a record without braces when nullary: `Forbidden`, `NotFound { id: "u1" }` |
+
+Functions, handlers, resources and `Secret` are not `Show`; interpolating one is a type error, so the runtime never has to render them.
 
 ### 4.9 Method-call resolution (UFCS, home module)
 
 `e.f(args)` resolves in this order, and the first match wins; ambiguity is impossible because the namespaces are disjoint:
 
 1. If `e` is a record and `f` is a field: field access (then any call applies to the field's function value).
-2. If `e` is a `TypePath` naming an **effect**: `Eff.op(args)` performs operation `op` on the innermost installed handler.
-3. If `e` is a `TypePath` naming a type: `Type.f` is function `f` in the type's **home module** (the module that declared the type; for std types, the std module of the same name: `List.map`, `String.len`, `Option.unwrap_or`), or a variant constructor of that type.
-4. If `e` is an `Ident` naming an imported module: `mod.f` is that module's exported `f`.
-5. Otherwise `e` is a value of type `T`; `e.f(args)` means `T.f(e, args)` where `f` is looked up in `T`'s home module. For generic `T` with no constraint, only the constraint's operations exist.
+2. If `e` is a `TypePath` naming an **effect**: `Eff.op(args)` performs operation `op` on the innermost installed handler when `op` is an operation of `Eff`; otherwise `Eff.f` is the function or constant `f` exported by the effect's **home module** (`Console.host()`, `Clock.fixed(t)`, `Random.seeded(1)`, `Users.memory([])`). An operation and a home-module function with the same name is `V1001`.
+3. If `e` is a `TypePath` naming a type: `Type.f` is the function or constant `f` exported by the type's **home module** (the module that declared the type; for compiler-known types, `std/<lowercase name>`: `List.map` is `std/list.map`, `String.len` is `std/string.len`, `Option.unwrap_or` is `std/option.unwrap_or`). `Type.Name` is a variant of `Type` or a type declared in its home module (`Json.String(s)`, `Level.Warn`, `Task.Fiber<T>`).
+4. If `e` is an `Ident` naming an imported module: `mod.f` is that module's exported `f`, `mod.T` its exported type.
+5. Otherwise `e` is a value of type `T`; `e.f(args)` means `T.f(e, args)` where `f` is looked up in `T`'s home module. For generic `T`, only the operations of its declared constraints exist (§4.4).
+
+A `TypeName` that is the head of a path (`String.len`) resolves as a type or effect; a `TypeName` used directly as a value or pattern, or as the last segment of a path, resolves as a variant or error tag (`String("x")`, `Json.String(s)`). This is why `std/json` can declare a variant `String` and still call `String.len`.
 
 There are no methods, `self`, or extension methods. A library adds "methods" to a type only by living in the type's module. This is the whole rule (`R04 §5`).
 
@@ -405,6 +446,7 @@ type SignupError = EmailTaken | Banned           // union alias
 - Propagation is automatic: calling `f() ! {Fail<A>}` inside `g` adds `Fail<A>` to `g`'s inferred row. There is no `?` needed for effectful failure.
 - `try { body } catch { P1 => e1, P2 => e2 }`: the arms match tags of `body`'s error union. Tags matched by an unguarded arm with irrefutable sub-patterns are **removed** from the row; unmatched tags propagate. The arms' own effects are added. `catch` arms are patterns, so `EmailTaken { email } => …`, `Banned | Suspended => …`, `_ => …` (catches all; discouraged on open unions, lint `W4010`).
 - `try { body }` without `catch` evaluates to `Result<T, E>` where `E` is the full error union of `body`, removing `Fail` from the row entirely.
+- A `try` body cannot assign to a `var` declared outside it (`V2041`, §8.1); its value and its error are the only things that leave it.
 - Postfix `r?` on `r: Result<T, E>` yields `T` and adds `Fail<E>`. Also `Option.or_fail(o, err)`.
 - There is no implicit conversion between error types. Public functions should translate internal tags to stable domain tags with `catch` (`R01 §4.1`).
 
@@ -418,22 +460,20 @@ A **Defect** is a violated contract (`requires`/`ensures`/`where` at a trusted i
 
 ```vow
 effect Db {
-  fn exists(table: Table, key: String) -> Bool
-  fn insert(table: Table, row: Json) -> Unit ! {Fail<DbUnavailable>}
+  fn exists(table: String, key: String) -> Bool
+  fn insert(table: String, key: String, row: Json) -> Unit ! {Fail<DbUnavailable>}
 }
 
 fn memory_db() -> Handler<Db> {
   handler Db {
     var rows: Map<String, Json> = Map.empty()
     fn exists(table, key) { Map.contains(rows, "{table}/{key}") }
-    fn insert(table, row) {
-      rows = Map.insert(rows, "{table}/{Json.get_string(row, "id")}", row)
-    }
+    fn insert(table, key, row) { rows = Map.insert(rows, "{table}/{key}", row) }
   }
 }
 
-fn main() -> Unit ! {Console} {
-  with memory_db(), Clock.fixed("2026-01-01T00:00:00Z") {
+pub fn main() -> Unit ! {Console} {
+  with memory_db(), Clock.fixed(Instant.from_unix_millis(0)) {
     let u = signup(Email.from("a@b.co"), Password.from("hunter22"))
     Console.print("{u.id}")
   }
@@ -442,7 +482,7 @@ fn main() -> Unit ! {Console} {
 
 Rules:
 
-- An `effect` declares operations as function signatures. Operation rows may contain `Fail<…>` (the operation may fail) and nothing else in v0 (`V3010`).
+- An `effect` declares operations as function signatures. An operation may have its own type parameters (`fn scope<T, e>(body: fn(Scope) -> T ! e) -> T ! e`). Its row may contain `Fail<…>` (the operation may fail) and row variables bound by the operation's own type parameters that also appear in a function-typed parameter (the operation performs whatever the callback it runs performs). Any other label in an operation row is `V3010`.
 - `handler Eff { … }` is an **expression** producing `Handler<Eff, r>`. It must provide exactly one clause per operation (`V3011`), with parameter counts matching (types come from the declaration, so clause params are unannotated). `r` is the union of the clauses' rows minus nothing: a live `Db` handler whose clauses call `Http` has type `Handler<Db, {Http}>`.
 - `var` members are **handler state**: visible only inside clauses, initialized once per `with` installation, updated by assignment. State is confined to the handler instance; the runtime serializes clause execution per instance (JS v0 is single-threaded; native uses a per-instance lock — `ponytail:` a global-per-handler lock, replace with per-operation design when contention is measured). Child tasks that perform the effect go through the same instance.
 - `with h1, h2, … { body }` installs handlers innermost-last (`h2` inside `h1`). Body row minus each handled effect, plus each handler's `r`, is the `with` expression's row. Each `hN` must have type `Handler<E, r>`; `with` on a non-handler is `V3012`.
@@ -477,20 +517,26 @@ Branch rows join conservatively; reachability of a branch is never used to drop 
 
 ### 5.8 Tests swap handlers
 
-A `test` block is a function `fn() -> Unit ! {Test}` where `Test` provides `expect`. Tests run under **deterministic default handlers**: `Clock.fixed(epoch)`, `Random.seeded(seed from --seed)`, `Env.of(map)`, `Console.captured()`, `Log.captured()`. Any other effect used in a test body must be handled explicitly inside the test (`V3020`: "test uses Db; install a handler with `with`"). Std fake handlers: `Db.memory()`, `Http.scripted([(request_matcher, response)])`, `Fs.memory([(path, bytes)])`, `Llm.scripted([...])`, `Clock.virtual()` (advance explicitly), `Task.deterministic(seed)`.
+A `test` block is a function `fn() -> Unit ! {Test, Fail<E>}` for any error union `E`: the `Test` effect (§10.6) records expectations, and a body may let typed failures escape (`let u = parse(s)?`), which the runner reports as a test failure `failed with <Show of the error>`. Tests run under **deterministic default handlers**, installed by the compiled test wrapper for exactly the std effects the body uses: `Clock.fixed(Instant.from_unix_millis(0))`, `Random.seeded(seed)` (from `--seed`), `Env.of(Map.empty())`, `Console.captured()`, `Log.captured()`. Captured output is observable with `expect_output(lines)`. Any other effect used in a test body must be handled explicitly inside the test (`V3020`: "test uses Db; install a handler with `with`"). Std fake handlers: `Sql.memory()`, `Http.scripted([(matcher, response)])`, `Fs.memory([(path, bytes)])`, `Llm.scripted([...])`, `Clock.virtual()` (time advances only when `sleep` is called), `Task.deterministic(seed)`.
 
 ### 5.9 Retries, timeouts, budgets
 
 All three are ordinary std functions over thunks (`R01 §4.5`):
 
 ```vow
-fn retry<T, e>(policy: Retry.Policy, action: fn() -> T ! e) -> T ! {Clock, Random | e}
+// std/retry
+type Policy<E> = { retry_on: fn(E) -> Bool, max_attempts: Int, backoff: Duration, jitter: Bool, deadline: Option<Duration> }
+fn policy<E>(retry_on: fn(E) -> Bool, max_attempts: Int) -> Policy<E> requires max_attempts >= 1
+fn retry<T, E, e>(p: Policy<E>, action: fn() -> T ! {Fail<E> | e}) -> T ! {Clock, Random, Fail<E> | e}
+// std/task
+error Timeout(limit: Duration)
 fn timeout<T, e>(limit: Duration, action: fn() -> T ! e) -> T ! {Clock, Task, Fail<Timeout> | e}
-fn with_budget<T, e>(b: Budget.Limits, action: fn() -> T ! {Budget | e}) -> T ! {Fail<BudgetExceeded> | e}
+// std/budget: a handler, not a wrapper function
+fn limits(l: Limits) -> Handler<Budget>
 ```
 
-- `retry` starts a **new invocation** per attempt; it never resumes a failed one. `Policy { retry_on: fn(E) -> Bool, max_attempts, backoff, jitter, deadline }`. The policy's `retry_on` is a pure predicate over the action's error union. The action's error union is preserved; `Retry.Exhausted` is **not** added (the last error propagates). Writes with external side effects need an explicit idempotency key in the request; the std HTTP client refuses to retry non-idempotent methods without one (`Fail<RetryRefused>` at policy construction).
-- `timeout` cancels the action's task cooperatively at its next effect operation and joins it before failing with `Timeout`. Finalizers run.
+- `retry` starts a **new invocation** per attempt; it never resumes a failed one. `retry_on` is a pure predicate over the action's error union `E`, which is why the error type is a parameter of `Policy`. The action's error union is preserved; no `Exhausted` tag is added (the last error propagates). The first retry waits `backoff`, each later wait doubles; `jitter` draws a uniform wait up to that bound from `Random`; `deadline` bounds the total time measured with `Clock.monotonic`. Writes with external side effects need an explicit idempotency key in the request; the std HTTP client refuses to retry non-idempotent methods without one (`Fail<RetryRefused>` at policy construction).
+- `timeout` cancels the action's task cooperatively at its next effect operation and joins it before failing with `Timeout`. Finalizers run. `Timeout(limit: Duration)` is the **only** timeout tag in std; `LlmError` reuses it (§11.1).
 - `Budget` is an effect: `Budget.reserve(estimate) -> Reservation`, `Budget.settle(reservation, actual)`. `Llm.generate` and `Http` handlers consume it when installed. Exceeding fails with `BudgetExceeded { kind: Tokens | Usd | Calls | Bytes | Time }`. Budgets are inherited by child tasks and split atomically.
 
 ---
@@ -515,18 +561,19 @@ env      = ["DATABASE_URL", "ANTHROPIC_API_KEY"]
 process  = []          # no subprocesses
 ```
 
-- `vow run` builds root handlers from this table. A `main` that declares `Net` with an empty `net` list fails at startup with `PermissionDenied`, not at first use.
-- **Capability values** (`Dir`, `NetScope`, `EnvScope`, `SecretStore`) are opaque; user code cannot construct them (no public constructor; `V6001` if attempted via FFI tricks on supported targets). They are obtained only from `Host` operations available inside root handlers, or by **attenuating** an existing one: `Dir.subdir(d, "uploads")`, `NetScope.restrict(n, hosts: […])`.
-- Attenuation handlers are std functions: `Fs.rooted(dir) -> Handler<Fs>`, `Net.scoped(scope) -> Handler<Net, {Net}>` (its clauses forward to the outer `Net` after checking), `Env.only(keys) -> Handler<Env, {Env}>`.
+- `vow run` builds root handlers from this table. The `net` list limits the network effects (`Http`, `Serve`, `Sql.postgres`); a `main` that declares `Http` with an empty `net` list fails at startup with exit code 75, not at first use.
+- **Capability values** (`Dir`, `NetScope`, `EnvScope`, `SecretStore`) are external types (§4.2); user code cannot construct them (`V6001` if attempted via FFI tricks on supported targets). They are obtained only from operations of the installed handler (`Fs.root() -> Dir`), or by **attenuating** an existing one: `Dir.subdir(d, "uploads")`, `NetScope.restrict(n, ["api.example.com:443"])`.
+- Attenuation handlers are std functions: `Fs.rooted(dir) -> Handler<Fs>`, `Http.scoped(scope) -> Handler<Http, {Http}>` (its clauses forward to the outer `Http` after checking), `Env.only(keys) -> Handler<Env, {Env}>`.
 
 ### 6.3 Capability scope check
 
-A capability or a handler that captured one is a **scoped value**: it may be passed down the call stack, stored in records that are themselves scoped, and returned from functions, but it may not be captured by a value that outlives the `with` scope that produced it. The check is a simple escape analysis on scoped types: a scoped value may not flow into (a) a `Task.spawn` closure that outlives the current scope (detached tasks require `Task.Supervisor`), (b) a top-level `let`, (c) a value returned from the `with` body that introduced the scope. Violation: `V6002`. This is the Bluefin-style discipline chosen in `R01 §4.2`, narrower than borrowing and sufficient for v0.
+A capability or a handler that captured one is a **scoped value**: it may be passed down the call stack, stored in records that are themselves scoped, and returned from functions, but it may not be captured by a value that outlives the `with` scope that produced it. The check is a simple escape analysis on scoped types: a scoped value may not flow into (a) a `Task.spawn` closure whose `Scope` outlives the `with` that produced the value (there are no detached tasks in v0), (b) a top-level `let`, (c) a value returned from the `with` body that introduced the scope. Violation: `V6002`. This is the Bluefin-style discipline chosen in `R01 §4.2`, narrower than borrowing and sufficient for v0.
 
 ### 6.4 `Secret<T>` and `Untrusted<T>`
 
-- `Secret<T>` wraps credentials. It is not `Show`, `Eq`, `Schema`, or `Ord`; it cannot be interpolated, logged, snapshotted, or serialized (`V2031`). `Env.secret("KEY") -> Secret<String>`. Only std sinks accept it: `Http.bearer(secret)`, `Sql.connect(url: Secret<String>)`, `Crypto.hmac(key: Secret<Bytes>, …)`. `Secret.expose(s, @trust("reason")) -> T` exists for adapters; `vow audit` lists each use with its reason. This prevents accidental disclosure only (`R03 §2.12`).
-- `Untrusted<T>` wraps data from outside the trust boundary: raw request bodies, raw env strings, free-text LLM output, file contents read as text. It supports `.validate<V>() -> Result<V, Violation>` (into any refined type), `.check(pred) -> Result<T, Violation>`, `.len()`, `.trust(@trust("reason")) -> T`. It is `Show` (so it can be logged) but it is **not** accepted by raw-splice positions of `sql`/`html`/`shell`/`url` templates (those accept it only as a bound parameter or escaped text, which is always safe). Schema-decoded values (`Http.json<T>`, `Json.decode<T>`, `Llm.generate<T>`) are already validated against `T`'s refinements and are returned as `T`, not `Untrusted<T>` (`R03 §2.11`).
+- `Secret<T>` wraps credentials. It is not `Show`, `Eq`, `Schema`, or `Ord`; it cannot be interpolated, logged, snapshotted, or serialized (`V2031`). `Env.secret("KEY") -> Option<Secret<String>>` (`None` when the variable is unset or outside the manifest's `env` list). Only std sinks accept it: `Http.bearer(req, secret)`, `Sql.postgres(url: Secret<String>)`, `Crypto.hmac(key: Secret<Bytes>, …)`. `Secret.expose(s, @trust("reason")) -> T` exists for adapters; `vow audit` lists each use with its reason. This prevents accidental disclosure only (`R03 §2.12`).
+- `Untrusted<T>` wraps data from **outside the deployment**: raw request bodies, free-text LLM output, file contents read as text. Environment variables are operator-controlled and permission-gated, so `Env.get` returns a plain `Option<String>` (§17.15). `Untrusted` supports `Untrusted.validate(u) -> Result<V, Violation>` (into any refined type `V`, named by annotation: `let e: Email = Untrusted.validate(body)?`), `Untrusted.check(u, pred) -> Result<T, Violation>`, `Untrusted.len(u)`, `Untrusted.trust(u, @trust("reason")) -> T`, and `Untrusted.of(t)` for tests. It is `Show` (so it can be logged) but it is **not** accepted by raw-splice positions of `sql`/`html`/`shell`/`url` templates (those accept it only as a bound parameter or escaped text, which is always safe). Schema-decoded values (`Response.json`, `Json.decode`, `Llm.generate`) are already validated against the target type's refinements and are returned as that type, not `Untrusted<T>` (`R03 §2.11`).
+- `Trust` is the type of the expression `@trust("reason")` (§2.5). It cannot be stored, returned or constructed any other way (`V6001`), so every trust decision is a literal at the sink, and `vow audit` lists them all.
 
 ### 6.5 Package-level authority
 
@@ -542,7 +589,9 @@ Compiler, runtime, std root handlers, FFI bindings marked `@external`, `@trust` 
 
 ### 7.1 The contract subset
 
-Predicates in `where`, `requires`, `ensures`, and `property` bodies must be **pure (`! {}`), terminating, and deterministic**. v0 enforces this syntactically: no loops, no recursion, calls only to functions whose row is `{}` and that are either std-marked `@total` or themselves in the subset (checked transitively; `V5001` otherwise). Comparison, arithmetic (checked, so a predicate itself can defect — reported as `D011 contract_evaluation_failed`), boolean operators, field access, tuple access, pattern `match` on finite variants, `List.len`, `String.len`, and bounded quantifiers `List.all(xs, fn(x) {…})`/`List.any` over list values are in the subset.
+Predicates in `where`, `requires`, `ensures`, and `property` `requires` clauses must be **pure (`! {}`), terminating, and deterministic**. v0 enforces this syntactically: no loops, no recursion, calls only to functions whose row is `{}` and that are either marked `@total` or themselves in the subset (checked transitively; `V5001` otherwise). Comparison, arithmetic (checked, so a predicate itself can defect — reported as `D011 contract_evaluation_failed`), boolean operators, field access, tuple access, pattern `match` on finite variants, and lambdas passed to `@total` functions are in the subset.
+
+`@total` (§2.5) is a **trusted** claim (status `trusted`, §1.2) that a `{}`-row function terminates on every input; it is how loops and recursion inside std reach contracts. Std marks exactly: `List.len`, `List.get`, `List.all`, `List.any`, `List.contains`, `List.first`, `List.last`, `Map.len`, `Map.get`, `Map.contains`, `Set.len`, `Set.contains`, `String.len`, `String.contains`, `String.starts_with`, `String.ends_with`, `Bytes.len`, `Bytes.get`, `Option.is_some`, `Result.is_ok`, `Result.is_err`, `Int.abs`, `Int.min`, `Int.max`, `Graph.get`. User code may use `@total` too; `vow audit` lists every site, like `@trust`.
 
 ### 7.2 Syntax and semantics
 
@@ -568,7 +617,7 @@ fn clamp(x: Int, lo: Int, hi: Int) -> Int
 
 ### 7.4 Property tests from refinements
 
-`vow test --contracts` synthesizes a property test for every `pub` function with at least one refined parameter or `requires` clause: inputs are generated **jointly** from parameter refinements and `requires` (constructive generators for ranges, lengths, enums, non-empty lists; filter-based fallback with a discard budget of 90%, reported as `W7001` when exceeded), the function is run under test default handlers, and `ensures` plus result refinements are checked. Failures are shrunk and stored under `tests/regressions/<fn>.json` (`R03 §2.5`). Functions with effects other than `Fail`, `Clock`, `Random` are skipped unless a `@contract_test(handlers = …)` attribute supplies handlers.
+`vow test --contracts` synthesizes a property test for every `pub` function with at least one refined parameter or `requires` clause: inputs are generated **jointly** from parameter refinements and `requires` (constructive generators for ranges, lengths, enums, non-empty lists; filter-based fallback with a discard budget of 90%, reported as `W7001` when exceeded), the function is run under test default handlers, and `ensures` plus result refinements are checked. Failures are shrunk and stored under `tests/regressions/<fn>.json` (`R03 §2.5`). Functions with effects other than `Fail`, `Clock`, `Random` are skipped unless a `@contract_test(handlers: [Sql.memory(), Log.captured()])` attribute supplies handlers.
 
 ### 7.5 Upgrade path to SMT (not v0)
 
@@ -582,8 +631,8 @@ M4 adds `vow verify`: obligations from `requires`/`ensures`/`where`/overflow/div
 
 Every Vow value behaves as an independent value. Assignment, passing, capturing, and returning never create observable aliases. Physical sharing (RC, copy-on-write) is an optimization the compiler owns and the program cannot detect (`R02 §4.1`). Consequences:
 
-- `let` bindings are immutable. `var` bindings may be **reassigned**; reassignment changes the binding, not any value seen elsewhere. `u.email = e` on `var u` is sugar for `u = User { ..u, email: e }`; `xs = List.push(xs, 1)` is how collections grow. An unused non-`Unit` result (e.g. `List.push(xs, 1)` as a statement) is error `V2040`, which catches the forgotten reassignment.
-- Closures capture `var` bindings **by value at creation**. A lambda cannot assign to an outer `var` (`V2041`); loops that accumulate use a `var` in the same function body.
+- `let` bindings are immutable (assigning to one, or to a module constant, is `V1040`). `var` bindings may be **reassigned**; reassignment changes the binding, not any value seen elsewhere. `u.email = e` on `var u` is sugar for `u = User { ..u, email: e }`; `xs = List.push(xs, 1)` is how collections grow. An unused non-`Unit` result (e.g. `List.push(xs, 1)` as a statement) is error `V2040`, which catches the forgotten reassignment.
+- Closures capture `var` bindings **by value at creation**. A lambda cannot assign to an outer `var` (`V2041`); loops that accumulate use a `var` in the same function body. The body of a `try` cannot assign to a `var` declared outside it either (also `V2041`): a `try` body may stop at any failing call, so an assignment inside it would have to be either transactional or partially applied, and both are surprises. Assign after the `try` (`let v = try { … } catch { … }; total = total + v`) or declare the `var` inside it.
 - There are no reference cells, no mutable fields, no pointers. Handler `var` state (§5.5) and `Graph` (§8.3) are the only stateful constructs, and both are confined.
 - Records, variants, lists, maps, strings are deeply immutable from the program's point of view.
 
@@ -610,7 +659,10 @@ Not in v0. The `region` keyword is reserved. Request-scoped arenas arrive with t
 ### 8.6 Structured concurrency (`std/task`)
 
 ```vow
-effect Task {
+// std/task (M3)
+pub type Scope          // external, scoped
+pub type Fiber<T>       // external, scoped, affine
+pub effect Task {
   fn scope<T, e>(body: fn(Scope) -> T ! e) -> T ! e
   fn spawn<T, e>(s: Scope, body: fn() -> T ! e) -> Fiber<T> ! e
   fn join<T>(f: Fiber<T>) -> T
@@ -618,12 +670,15 @@ effect Task {
   fn race<T, e>(bodies: List<fn() -> T ! e>) -> T ! e
   fn yield_now() -> Unit
 }
+pub fn host() -> Handler<Task>
+pub fn deterministic(seed: Int) -> Handler<Task>
+pub fn par_map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! {Task | e}
 ```
 
 - Children never outlive their `Scope`. If a child fails or defects, the scope cancels siblings, joins them, and propagates the first failure (others are attached as `suppressed` in the outcome). Cancellation is cooperative: it is observed at the next effect operation or `Task.yield_now()`; pure loops are not interruptible (`R01 §4.5`).
 - Children inherit the handler environment at spawn time; a handler's `var` state is accessed serially (§5.5).
-- Data-race freedom follows from §8.1: closures capture values; there is no shared mutable memory. Communication uses `Channel<T>` (bounded, `Channel.send`/`recv` as `Task` ops) and handler state. On native, values sent across worker threads are **promoted** to atomic RC on send (`R02 §4.4`); v0 JS is single-threaded.
-- Detached work needs `Task.Supervisor`, a capability obtained from `main`'s root handlers only.
+- Data-race freedom follows from §8.1: closures capture values; there is no shared mutable memory. Children communicate through their results (`join`, `all`, `race`) and through handler state; there is **no channel type in v0** (§16.13). On native, values sent across worker threads are **promoted** to atomic RC on send (`R02 §4.4`); v0 JS is single-threaded.
+- There is no detached work in v0: every fiber belongs to a scope (`Task.Supervisor` is deferred, §16.14).
 
 ### 8.7 Evaluation order and determinism
 
@@ -634,11 +689,11 @@ Strict, left-to-right, arguments before call. `Map`/`Set` iteration order is ins
 ## 9. Modules, visibility, packages
 
 - **One file = one module.** The module path is the file path relative to the package's `src/` directory: `src/users/repo.vow` is module `users/repo` in its package. Directories are not modules; there are no `mod.vow` files.
-- **Imports**: `import std/http` binds `http`; `import std/http.{Request, serve}` binds names directly; `import acme/billing/invoices as inv` renames. The first segment is a package name (`std`, the current package's name, or a dependency listed in `vow.toml`). No wildcard imports, no relative imports, no re-exports in v0, **no import cycles** (`V1030`).
-- **Visibility**: items are private unless `pub`. Record fields are visible wherever the type is; a type with private construction uses a refined or single-variant wrapper whose constructor module exposes `validate`/`from` only (idiom documented in std).
-- **Namespaces**: values (functions, constants, modules) are `Ident`s; types, variants, error tags, effects are `TypeName`s. Variants and error tags live in the namespace of their declaring module directly (`Some`, `EmailTaken`), not nested under the type (`Option.Some` is also accepted for disambiguation). Conflicts within a module are errors `V1001`; shadowing an import by a local is allowed and warned (`W1002`).
-- **Prelude** (always in scope): `Unit Bool Int Float String Bytes Never List Map Set Option Result Range Some None Ok Err Handler Secret Untrusted`, the modules `List Map Set String Int Float Option Result Bytes`, effects `Fail Console Clock Random Env Log Task` and the tags `sql html url shell` (resolved lazily; using `sql` requires `std/sql` in the lockfile).
-- **Entry point**: `pub fn main() -> Unit ! {…}` in `src/main.vow`. Only std effects may appear in `main`'s row (`V6010`), because only they have host root handlers.
+- **Imports**: `import std/http` binds the module name `http` and nothing else; `import std/http.{Http, Request, Response}` binds the listed names (types, effects, error tags, functions, constants) directly; `import acme/billing/invoices as inv` renames. Effects and types are **never** brought into scope implicitly, so a row like `! {Http, Sql}` needs `.{Http}`/`.{Sql}` imports or qualified paths (`http.Request`). `V1002` on an unresolved std name carries the `machine_applicable` fix that adds the import. The first segment is a package name (`std`, the current package's name, or a dependency listed in `vow.toml`); a later segment may be a keyword (`std/test`), and such a module can only be imported with `.{…}` or `as`. No wildcard imports, no relative imports, no re-exports in v0, **no import cycles** (`V1030`, counting only names a module actually references). Using an item that is not `pub` is `V1006`.
+- **Visibility**: items are private unless `pub`. `pub type` exports the type **with** its constructors and fields. `pub opaque type` exports the type name only: constructors and fields are usable in the declaring module alone (`V1006` elsewhere), which is how std keeps `Query<R>` buildable only by the `sql` template, `Html` only by escaping code, and `Uuid` only by `Uuid.parse`. Predicate validation uses a refinement type instead (`type Email = String where …` gets `validate`/`from` generated). Opaque types still derive `Eq`/`Show`/`Hash`/`Ord`/`Schema` structurally; `Show` prints them like any record or variant.
+- **Namespaces**: values (functions, constants, modules) are `Ident`s. `TypeName`s split into a **type level** (types, effects, error tags) and a **value level** (variants, error tags as constructors); an error tag occupies both, a variant only the value level, a type or effect only the type level. Variants and error tags live in the namespace of their declaring module directly (`Some`, `EmailTaken`); `Option.Some` and `Json.String` are the qualified forms. A variant may share its own type's name (`type Meters = Meters(Float)`): the type owns the scope entry and a value or pattern use resolves to the variant. Any other conflict within one level of a module is `V1001`; shadowing an import by a local is allowed and warned (`W1002`). A `TypeName` in type position never resolves to a variant, so `std/json` declares a variant `String` while `String` in its signatures stays the prelude type.
+- **Prelude** (always in scope, no import): compiler-known types `Unit Bool Int Float String Bytes Never List Map Set Range Handler Secret Untrusted Trust`; std types `Option Result Duration Instant Uuid Json Level`; constructors `Some None Ok Err`; effects `Fail Console Clock Random Env Log Task Test`; functions `show expect expect_eq expect_fail expect_fails_with expect_defect expect_output expect_snapshot`; the tags `sql html url shell` (module aliases, resolved lazily; using `sql` requires `std/sql` in the lockfile). `Type.f` for a prelude type resolves through its home module (`std/list`, `std/option`, …), so no module names are in the prelude.
+- **Entry point**: `pub fn main() -> Unit ! {…}` in `src/main.vow`. Only std effects may appear in `main`'s row (`V6010`), because only they have host root handlers; the driver installs `<module>.host()` for each (§13.3).
 - **Packages**: `vow.toml` (name, version, edition `2026`, dependencies with lower bounds, `[permissions]`, `[targets]`), `vow.lock` (exact versions + content hashes, committed). Resolution is MVS within a major (`R05 §3`). Registry packages are immutable; `vow publish` computes the API/effect/error/schema diff and enforces the version bump (Elm rule, extended to effect rows and error unions).
 - **Editions**: `vow.toml` carries `edition = "2026"` so every project is self-describing, but v0 ships exactly one edition and no multi-edition support; pre-1.0, minor releases may break the language deliberately and patch releases may not (`research/07 §3`, release and stability plan).
 
@@ -646,34 +701,45 @@ Strict, left-to-right, arguments before call. `Map`/`Set` iteration order is ins
 
 ## 10. Standard library v0
 
-Everything below ships with the compiler, has one canonical API per task, and is searchable with `vow doc --search` / MCP `symbol_query`. Signatures are the contract; bodies are Vow (`std/`) or `@external` host adapters (`platform/js/`). `e` is an effect-row variable.
+Everything below ships with the compiler, has one canonical API per task, and is searchable with `vow doc --search` / MCP `symbol_query`. Signatures are the contract; bodies are Vow (`compiler/std/*.vow`) or bodiless `@external` host adapters bound to `runtime/js`. `e` is an effect-row variable. The generated index `compiler/std/INDEX.md` is the exact surface; this section lists the same signatures in call form (`List.map` is `std/list.map`).
 
-### 10.1 Core (`std/core`, prelude)
+**Layout rule: one std module per effect, and one per compiler-known or prelude type** (`std/console` declares `Console` and its handlers, `std/list` declares the `List` functions). The home-module rule (§4.9) makes `Console.host()` and `Clock.host()` distinct names, and the driver can install `<module>.host()` for every effect in `main`'s row. A module may declare the helper types of its effect or type alongside it (`std/log` declares `Level` and `Log`; `std/json` declares `Json` and `DecodeError`).
+
+### 10.1 Core data (one module per type; all in the prelude)
 
 ```vow
-// Option
+// std/core, std/unit
+fn show<A: Show>(a: A) -> String
+fn Unit.ignore<A>(a: A) -> Unit                                 // explicit discard
+// std/option
+type Option<A> = None | Some(A)
 fn Option.map<A, B, e>(o: Option<A>, f: fn(A) -> B ! e) -> Option<B> ! e
 fn Option.unwrap_or<A>(o: Option<A>, default: A) -> A
 fn Option.or_fail<A, E>(o: Option<A>, err: E) -> A ! {Fail<E>}
 fn Option.expect<A>(o: Option<A>, msg: String) -> A          // Defect D030 on None
-fn Option.is_some<A>(o: Option<A>) -> Bool
-// Result
+fn Option.is_some<A>(o: Option<A>) -> Bool                    // @total
+// std/result
+type Result<A, E> = Ok(A) | Err(E)
 fn Result.map<A, B, E, e>(r: Result<A, E>, f: fn(A) -> B ! e) -> Result<B, E> ! e
 fn Result.map_err<A, E, F>(r: Result<A, E>, f: fn(E) -> F) -> Result<A, F>
 fn Result.unwrap_or<A, E>(r: Result<A, E>, default: A) -> A
 fn Result.raise<A, E>(r: Result<A, E>) -> A ! {Fail<E>}       // same as r?
-// List
+fn Result.is_ok<A, E>(r: Result<A, E>) -> Bool                 // @total
+fn Result.is_err<A, E>(r: Result<A, E>) -> Bool                // @total
+// std/list
 fn List.empty<A>() -> List<A>
-fn List.len<A>(xs: List<A>) -> Int
-fn List.get<A>(xs: List<A>, i: Int) -> Option<A>              // xs[i] is sugar for this
+fn List.len<A>(xs: List<A>) -> Int                              // @total
+fn List.get<A>(xs: List<A>, i: Int) -> Option<A>              // xs[i] is sugar for this; @total
 fn List.push<A>(xs: List<A>, x: A) -> List<A>
 fn List.concat<A>(a: List<A>, b: List<A>) -> List<A>
 fn List.map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! e
 fn List.filter<A, e>(xs: List<A>, f: fn(A) -> Bool ! e) -> List<A> ! e
+fn List.filter_map<A, B, e>(xs: List<A>, f: fn(A) -> Option<B> ! e) -> List<B> ! e
+fn List.flat_map<A, B, e>(xs: List<A>, f: fn(A) -> List<B> ! e) -> List<B> ! e
 fn List.fold<A, B, e>(xs: List<A>, init: B, f: fn(B, A) -> B ! e) -> B ! e
 fn List.find<A, e>(xs: List<A>, f: fn(A) -> Bool ! e) -> Option<A> ! e
-fn List.all<A, e>(xs: List<A>, f: fn(A) -> Bool ! e) -> Bool ! e
-fn List.any<A, e>(xs: List<A>, f: fn(A) -> Bool ! e) -> Bool ! e
+fn List.all<A, e>(xs: List<A>, f: fn(A) -> Bool ! e) -> Bool ! e   // @total
+fn List.any<A, e>(xs: List<A>, f: fn(A) -> Bool ! e) -> Bool ! e   // @total
 fn List.sort<A: Ord>(xs: List<A>) -> List<A>
 fn List.sort_by<A, K: Ord>(xs: List<A>, key: fn(A) -> K) -> List<A>
 fn List.zip<A, B>(a: List<A>, b: List<B>) -> List<(A, B)>
@@ -682,90 +748,111 @@ fn List.slice<A>(xs: List<A>, start: Int, end: Int) -> List<A>   // clamped, nev
 fn List.reverse<A>(xs: List<A>) -> List<A>
 fn List.join(xs: List<String>, sep: String) -> String
 fn List.sum(xs: List<Int>) -> Int                               // checked
-fn List.first<A>(xs: List<A>) -> Option<A>
-fn List.last<A>(xs: List<A>) -> Option<A>
-fn List.contains<A: Eq>(xs: List<A>, x: A) -> Bool
+fn List.first<A>(xs: List<A>) -> Option<A>                      // @total
+fn List.last<A>(xs: List<A>) -> Option<A>                       // @total
+fn List.contains<A: Eq>(xs: List<A>, x: A) -> Bool              // @total
 fn List.unique<A: Hash>(xs: List<A>) -> List<A>
-fn List.flat_map<A, B, e>(xs: List<A>, f: fn(A) -> List<B> ! e) -> List<B> ! e
 fn List.range(start: Int, end: Int) -> List<Int>
-fn List.par_map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! {Task | e}
-// Map / Set
+// std/map, std/set
 fn Map.empty<K: Hash, V>() -> Map<K, V>
 fn Map.of<K: Hash, V>(pairs: List<(K, V)>) -> Map<K, V>
-fn Map.get<K: Hash, V>(m: Map<K, V>, k: K) -> Option<V>
-fn Map.insert<K: Hash, V>(m: Map<K, V>, k: K, v: V) -> Map<K, V>
+fn Map.get<K: Hash, V>(m: Map<K, V>, k: K) -> Option<V>        // @total
+fn Map.insert<K: Hash, V>(m: Map<K, V>, k: K, v: V) -> Map<K, V>   // existing key keeps its position
 fn Map.remove<K: Hash, V>(m: Map<K, V>, k: K) -> Map<K, V>
-fn Map.contains<K: Hash, V>(m: Map<K, V>, k: K) -> Bool
+fn Map.contains<K: Hash, V>(m: Map<K, V>, k: K) -> Bool        // @total
 fn Map.update<K: Hash, V, e>(m: Map<K, V>, k: K, f: fn(Option<V>) -> V ! e) -> Map<K, V> ! e
 fn Map.entries<K: Hash, V>(m: Map<K, V>) -> List<(K, V)>      // insertion order
 fn Map.keys<K: Hash, V>(m: Map<K, V>) -> List<K>
 fn Map.values<K: Hash, V>(m: Map<K, V>) -> List<V>
-fn Map.len<K: Hash, V>(m: Map<K, V>) -> Int
+fn Map.len<K: Hash, V>(m: Map<K, V>) -> Int                    // @total
 fn Set.empty<A: Hash>() -> Set<A>
 fn Set.of<A: Hash>(xs: List<A>) -> Set<A>
 fn Set.insert<A: Hash>(s: Set<A>, x: A) -> Set<A>
-fn Set.contains<A: Hash>(s: Set<A>, x: A) -> Bool
+fn Set.contains<A: Hash>(s: Set<A>, x: A) -> Bool              // @total
+fn Set.len<A: Hash>(s: Set<A>) -> Int                          // @total
 fn Set.to_list<A: Hash>(s: Set<A>) -> List<A>
-// String
-fn String.len(s: String) -> Int                                 // bytes
+// std/string
+error Utf8Error(offset: Int)
+fn String.len(s: String) -> Int                                 // bytes; @total
 fn String.chars(s: String) -> List<String>                      // Unicode scalar values
 fn String.graphemes(s: String) -> List<String>
 fn String.split(s: String, sep: String) -> List<String>
 fn String.trim(s: String) -> String
-fn String.starts_with(s: String, prefix: String) -> Bool
-fn String.ends_with(s: String, suffix: String) -> Bool
-fn String.contains(s: String, needle: String) -> Bool
+fn String.starts_with(s: String, prefix: String) -> Bool        // @total
+fn String.ends_with(s: String, suffix: String) -> Bool          // @total
+fn String.contains(s: String, needle: String) -> Bool           // @total
 fn String.replace(s: String, from: String, to: String) -> String
 fn String.to_lower(s: String) -> String
 fn String.to_upper(s: String) -> String
-fn String.parse_int(s: String) -> Option<Int>
+fn String.parse_int(s: String) -> Option<Int>                  // None when unparsable or outside the backend's Int range (§16.3)
 fn String.parse_float(s: String) -> Option<Float>
 fn String.to_bytes(s: String) -> Bytes
 fn String.from_bytes(b: Bytes) -> Result<String, Utf8Error>
-fn String.repeat(s: String, n: Int) -> String                   // requires n >= 0
-fn String.pad_left(s: String, width: Int, fill: String) -> String
-fn String.slice(s: String, start: Int, end: Int) -> String      // byte offsets, char-boundary checked -> Defect D031 off boundary
-// Int / Float
+fn String.repeat(s: String, n: Int) -> String requires n >= 0
+fn String.pad_left(s: String, width: Int, fill: String) -> String requires String.len(fill) > 0
+fn String.slice(s: String, start: Int, end: Int) -> String      // byte offsets, clamped; Defect D031 off a char boundary
+// std/int, std/float, std/bytes
 fn Int.to_float(i: Int) -> Float
 fn Int.to_string(i: Int) -> String
-fn Int.abs(i: Int) -> Int                                       // checked
-fn Int.min(a: Int, b: Int) -> Int
-fn Int.max(a: Int, b: Int) -> Int
+fn Int.abs(i: Int) -> Int                                       // checked; @total
+fn Int.min(a: Int, b: Int) -> Int                               // @total
+fn Int.max(a: Int, b: Int) -> Int                               // @total
 fn Int.clamp(i: Int, lo: Int, hi: Int) -> Int requires lo <= hi
 fn Int.pow(base: Int, exp: Int) -> Int requires exp >= 0       // checked
 fn Int.checked_add(a: Int, b: Int) -> Option<Int>
 fn Int.wrapping_add(a: Int, b: Int) -> Int
-fn Float.round(f: Float) -> Int                                 // Defect on NaN/out of range
+fn Float.round(f: Float) -> Int                                 // ties away from zero; Defect D004 on NaN/±∞, D003 beyond range
 fn Float.to_int_checked(f: Float) -> Option<Int>
 fn Float.sqrt(f: Float) -> Float
 fn Float.is_nan(f: Float) -> Bool
 fn Float.format(f: Float, decimals: Int) -> String requires decimals >= 0
-// Show / misc
-fn show<A: Show>(a: A) -> String
-fn Unit.ignore<A>(a: A) -> Unit                                 // explicit discard
+fn Bytes.len(b: Bytes) -> Int                                   // @total
+fn Bytes.get(b: Bytes, i: Int) -> Option<Int>                   // @total
+fn Bytes.from_list(xs: List<Int>) -> Bytes requires List.all(xs, fn(x) { x >= 0 && x <= 255 })
 ```
 
-### 10.2 Effects (`std/effects`, prelude for the first six)
+### 10.2 Effects (one module each; the first seven are in the prelude)
 
 ```vow
+// std/console
 effect Console { fn print(line: String) -> Unit; fn read_line() -> Option<String> }
+fn Console.host() -> Handler<Console>
+fn Console.captured() -> Handler<Console, {Test}>              // test default: lines go to Test.output
+// std/clock
 effect Clock {
-  fn now() -> Instant                 // wall clock
-  fn monotonic() -> Duration          // since process start
-  fn sleep(d: Duration) -> Unit
+  fn now() -> Instant                 // wall clock, UTC
+  fn monotonic() -> Duration          // since the handler was installed; never decreases
+  fn sleep(d: Duration) -> Unit       // returns at once for d <= 0
 }
+fn Clock.host() -> Handler<Clock>
+fn Clock.fixed(at: Instant) -> Handler<Clock>                  // time stands still; test default at the epoch
+fn Clock.virtual() -> Handler<Clock>                           // starts at the epoch; sleep(d) advances now and monotonic by d
+// std/random
 effect Random {
   fn int(lo: Int, hi: Int) -> Int requires lo <= hi      // inclusive
   fn float() -> Float                 // [0, 1)
   fn bytes(n: Int) -> Bytes requires n >= 0
   fn uuid() -> Uuid
 }
+fn Random.host() -> Handler<Random>
+fn Random.seeded(seed: Int) -> Handler<Random>                 // test default with --seed
+// std/env
 effect Env { fn get(key: String) -> Option<String>; fn secret(key: String) -> Option<Secret<String>> }
-effect Log {
-  fn event(level: Level, message: String, fields: List<(String, Json)>) -> Unit
-}
-effect Task { /* see §8.6 */ }
+fn Env.host(scope: EnvScope) -> Handler<Env>                   // keys from [permissions] env only
+fn Env.of(vars: Map<String, String>) -> Handler<Env>           // test default with Map.empty()
+fn Env.only(keys: List<String>) -> Handler<Env, {Env}>         // attenuates the enclosing Env
+// std/log
+type Level = Debug | Info | Warn | Error
+effect Log { fn event(level: Level, message: String, fields: List<(String, Json)>) -> Unit }
+fn Log.stderr() -> Handler<Log>
+fn Log.json() -> Handler<Log>
+fn Log.captured() -> Handler<Log, {Test}>                      // "Warn message key=value" lines to Test.output
+// std/task: see §8.6
+// std/test: see §10.6
+// std/fs (M3)
+pub type Dir                                                   // external capability
 effect Fs {
+  fn root() -> Dir                                             // the handler's directory, for attenuation
   fn read(path: Path) -> Bytes ! {Fail<FsError>}
   fn read_text(path: Path) -> Untrusted<String> ! {Fail<FsError>}
   fn write(path: Path, data: Bytes) -> Unit ! {Fail<FsError>}
@@ -773,102 +860,167 @@ effect Fs {
   fn exists(path: Path) -> Bool
   fn with_file<T, e>(path: Path, mode: Mode, body: fn(File) -> T ! e) -> T ! {Fail<FsError> | e}
 }
-effect Http {   // client
-  fn send(req: Request) -> Response ! {Fail<HttpError>}
-}
-effect Serve {  // server; one per process
-  fn listen(router: Router, addr: Address) -> Never ! {Fail<ServeError>}
-}
+fn Fs.host(dir: Dir) -> Handler<Fs>
+fn Fs.rooted(dir: Dir) -> Handler<Fs>
+fn Fs.memory(files: List<(Path, Bytes)>) -> Handler<Fs>
+fn Dir.subdir(d: Dir, name: String) -> Dir ! {Fail<FsError>}
+// std/http (M3), client
+effect Http { fn send(req: Request) -> Response ! {Fail<HttpError>} }
+fn Http.host(scope: NetScope) -> Handler<Http, {Budget}>
+fn Http.scoped(scope: NetScope) -> Handler<Http, {Http}>
+fn Http.scripted(script: List<(Matcher, Response)>) -> Handler<Http>
+fn Http.recording(path: Path) -> Handler<Http, {Http, Fs}>
+// std/serve (M3), server; one per process
+effect Serve { fn listen(router: Router, addr: Address) -> Never ! {Fail<ServeError>} }
+fn Serve.host(scope: NetScope) -> Handler<Serve>
+// std/sql (M3)
 effect Sql {
   fn query<R: Schema>(q: Query<R>) -> List<R> ! {Fail<SqlError>}
   fn execute(q: Query<Unit>) -> Int ! {Fail<SqlError>}            // rows affected
   fn transaction<T, e>(body: fn() -> T ! {Sql | e}) -> T ! {Fail<SqlError> | e}
 }
+fn Sql.sqlite(path: Path) -> Handler<Sql, {Fs}>
+fn Sql.memory() -> Handler<Sql>
+fn Sql.postgres(url: Secret<String>) -> Handler<Sql, {Http}>   // v1
+// std/budget (M3)
+type Limits = { tokens: Option<Int>, usd: Option<Float>, calls: Option<Int> }   // None = unlimited
 effect Budget { fn reserve(est: Cost) -> Reservation ! {Fail<BudgetExceeded>}; fn settle(r: Reservation, actual: Cost) -> Unit }
+fn Budget.limits(l: Limits) -> Handler<Budget>
+fn Budget.unlimited() -> Handler<Budget>
+// std/llm (M3)
 effect Llm {
   fn generate<T: Schema>(req: Request<T>) -> T ! {Fail<LlmError>}
   fn generate_text(req: Request<String>) -> Untrusted<String> ! {Fail<LlmError>}
   fn stream<T: Schema>(req: Request<T>, on_partial: fn(Partial<T>) -> Unit) -> T ! {Fail<LlmError>}
 }
+fn Llm.anthropic(key: Secret<String>, model: Model) -> Handler<Llm, {Http, Budget}>
+fn Llm.scripted(responses: List<String>) -> Handler<Llm>       // raw model outputs, in order
+fn Llm.replay(path: Path) -> Handler<Llm, {Fs}>
 ```
 
-Handlers shipped: `Console.host()`, `Console.captured()`; `Clock.host()`, `Clock.fixed(instant)`, `Clock.virtual()`; `Random.host()`, `Random.seeded(seed)`; `Env.host(scope)`, `Env.of(map)`; `Log.stderr()`, `Log.json()`, `Log.captured()`; `Fs.rooted(dir)`, `Fs.memory(files)`; `Http.host(scope)`, `Http.scripted(script)`, `Http.recording(path)`; `Serve.node()`; `Sql.sqlite(path)`, `Sql.memory()`, `Sql.postgres(url)` (v1); `Budget.limits(...)`, `Budget.unlimited()`; `Llm.anthropic(key, model)`, `Llm.scripted(responses)`, `Llm.replay(path)`.
+Every `host` handler is built by the driver from the manifest's `[permissions]`; user code installs the others with `with`.
 
-### 10.3 Data (`std/json`, `std/time`, `std/url`, `std/decimal`, `std/bytes`)
+### 10.3 Data (`std/json`, `std/duration`, `std/instant`, `std/uuid`, `std/url`, `std/path`, `std/decimal`)
 
 ```vow
 type Json = Null | Bool(Bool) | Number(Float) | String(String) | Array(List<Json>) | Object(Map<String, Json>)
+error DecodeError(path: String, message: String)                        // path is a JSON Pointer
 fn Json.encode<T: Schema>(value: T) -> String
-fn Json.decode<T: Schema>(text: String) -> Result<T, DecodeError>      // checks refinements
+fn Json.decode<T: Schema>(text: String) -> Result<T, DecodeError>      // checks refinements; name T by annotation
 fn Json.parse(text: String) -> Result<Json, DecodeError>
 fn Json.get(j: Json, key: String) -> Option<Json>
 fn Json.get_string(j: Json, key: String) -> Option<String>
-fn Schema.of<T: Schema>() -> JsonSchema                                 // compiler intrinsic
-type Instant   // UTC nanoseconds; Instant.parse(iso) -> Result<Instant, TimeError>; Instant.add(i, d); Instant.diff(a, b) -> Duration; Instant.format_iso(i)
-type Duration  // Duration.seconds(n), .millis(n), .minutes(n); Duration.to_millis(d)
-type Url       // Url.parse(s) -> Result<Url, UrlError>; Url.host(u); url"https://{host}/x?q={q}" percent-encodes parts
-type Decimal   // Decimal.parse, add, sub, mul, div_checked -> Option, round(places), to_string
-type Uuid      // Uuid.to_string, Uuid.parse
-type Path      // relative paths only; Path.join(p, seg) rejects ".." (Fail<FsError>)
+type Duration = Duration(Int)   // whole milliseconds; Duration.millis(n), .seconds(n), .minutes(n), Duration.to_millis(d)
+type Instant = Instant(Int)     // milliseconds since 1970-01-01T00:00:00Z; Instant.from_unix_millis(ms), .to_unix_millis(i),
+                                // .add(i, d), .diff(a, b) -> Duration, .format_iso(i) (RFC 3339 UTC), .parse(iso) -> Result<Instant, TimeError>
+pub opaque type Uuid = Uuid(String)   // canonical lowercase; Uuid.to_string(u), Uuid.parse(s) -> Result<Uuid, UuidError>
+type Url = String where Url.is_valid(it)   // Url.parse(s) -> Result<Url, UrlError> is validate; Url.host(u); url"https://{host}/x?q={q}" percent-encodes parts (M3)
+pub opaque type Path = Path(List<String>)  // relative paths only; Path.of(s) -> Path requires Path.is_relative(s); Path.join(p, seg) -> Path requires seg != ".." (M3)
+pub opaque type Decimal = { units: Int, scale: Int }   // fixed-point base-10 money; Decimal.parse, add, sub, mul, div_checked -> Option, round(places), to_string (M3)
 ```
 
-### 10.4 Web (`std/http`, `std/router`, `std/html`)
+Milliseconds, not nanoseconds: a nanosecond `Instant` is already past 2^53 and would defect on the JS backend (§17.7). Sub-millisecond time is not in v0.
+
+### 10.4 Web (`std/http`, `std/router`, `std/html`, M3)
 
 ```vow
 type Request  = { method: Method, url: Url, headers: Headers, body: Body }
 type Response = { status: Status, headers: Headers, body: Body }
-fn Http.get(url: Url) -> Response ! {Http, Fail<HttpError>}
-fn Http.post_json<T: Schema>(url: Url, body: T) -> Response ! {Http, Fail<HttpError>}
+type Status = Int where it >= 100 && it <= 599                            // Status.from(200), Status.validate(code)
+type Matcher = Any | Path(String) | Method(Method)                        // for Http.scripted
+error HttpError(status: Option<Status>, reason: String)
+error RateLimited(retry_after: Option<Duration>)                          // shared with LlmError (§11.1)
+error BadRequest(detail: String)
+fn Http.get(url: Url) -> Response ! {Http, Fail<HttpError | RateLimited>}
+fn Http.post_json<T: Schema>(url: Url, body: T) -> Response ! {Http, Fail<HttpError | RateLimited>}
+fn Http.bearer(req: Request, token: Secret<String>) -> Request
+fn Request.post(path: String, body: String) -> Request                   // builds a request for route handlers and tests
+fn Request.post_json<T: Schema>(url: Url, body: T) -> Request
+fn Request.json<T: Schema>(req: Request, limit: Int) -> T ! {Fail<BadRequest>}   // name T by annotation
+fn Request.param(req: Request, name: String) -> Option<String>
 fn Response.json<T: Schema>(r: Response, limit: Int) -> T ! {Fail<HttpError | DecodeError>}
 fn Response.text(r: Response, limit: Int) -> Untrusted<String> ! {Fail<HttpError>}
-fn Http.bearer(req: Request, token: Secret<String>) -> Request
-fn Router.new() -> Router
-fn Router.get<e>(r: Router, path: String, h: fn(Request) -> Response ! e) -> Router       // e must be ⊆ the row given to Serve.listen's handler table
-fn Router.post<e>(r: Router, path: String, h: fn(Request) -> Response ! e) -> Router
-fn Request.json<T: Schema>(req: Request, limit: Int) -> T ! {Fail<BadRequest>}
-fn Request.param(req: Request, name: String) -> Option<String>           // path params as Untrusted-free refined-at-use strings
 fn Response.ok_json<T: Schema>(value: T) -> Response
 fn Response.status(code: Int, body: String) -> Response requires code >= 100 && code <= 599
 fn Response.html(h: Html) -> Response
-type Html      // html"..." builds; Html.text(s) escapes; Html.raw(s: TrustedHtml)
-fn Serve.listen(router: Router, addr: Address) -> Never ! {Serve, Fail<ServeError>}
+fn Router.new() -> Router
+fn Router.get<e>(r: Router, path: String, h: fn(Request) -> Response ! e) -> Router       // e must be ⊆ the row given to Serve.listen's handler table
+fn Router.post<e>(r: Router, path: String, h: fn(Request) -> Response ! e) -> Router
+pub opaque type Html = Html(String)   // html"..." builds; Html.text(s) escapes; Html.raw(s: TrustedHtml)
 ```
 
 Route handlers run per request in their own task with the handler environment captured at `Serve.listen`; a handler's defect becomes a 500 with a redacted report, never a crashed server.
 
-### 10.5 CLI (`std/cli`)
+### 10.5 CLI (`std/cli`, M3)
 
 ```vow
-fn Cli.args() -> List<String> ! {Env}
-fn Cli.parse<T: Schema>(args: List<String>) -> T ! {Fail<CliError>}  // derives flags from record fields; `--help` text generated
-fn Cli.exit(code: Int) -> Never ! {Console} requires code >= 0 && code <= 255
+effect Cli {
+  fn args() -> List<String>                                             // after `--`
+  fn exit(code: Int) -> Never requires code >= 0 && code <= 255
+}
+fn Cli.host() -> Handler<Cli>
+fn Cli.of(args: List<String>) -> Handler<Cli>                         // for tests
+fn Cli.parse<T: Schema>(args: List<String>) -> T ! {Fail<CliError>}  // flags from record fields; `--help` generated; name T by annotation
 ```
 
-### 10.6 Testing (`std/test`)
+### 10.6 Testing (`std/test`, `std/gen`)
 
 ```vow
+effect Test {
+  fn record_failure(message: String) -> Unit   // expectations record and continue; the runner fails the test at the end
+  fn failures() -> Int
+  fn output(line: String) -> Unit              // Console.captured() and Log.captured() write here
+  fn output_lines() -> List<String>
+  fn snapshot(name: String, rendered: String) -> Unit   // tests/__snapshots__/<module>/<name>.snap
+}
 fn expect(cond: Bool) -> Unit ! {Test}
 fn expect_eq<A: Eq + Show>(actual: A, expected: A) -> Unit ! {Test}
 fn expect_fail<T, E: Eq + Show, e>(body: fn() -> T ! {Fail<E> | e}, err: E) -> Unit ! {Test | e}
-fn expect_fails_with<T, E, e>(body: fn() -> T ! {Fail<E> | e}, pred: fn(E) -> Bool) -> Unit ! {Test | e}
+fn expect_fails_with<T, E: Show, e>(body: fn() -> T ! {Fail<E> | e}, pred: fn(E) -> Bool) -> Unit ! {Test | e}
 fn expect_defect<T, e>(body: fn() -> T ! e) -> Unit ! {Test | e}     // body runs in a child task
-fn expect_snapshot<A: Show>(name: String, value: A) -> Unit ! {Test}  // tests/__snapshots__/<module>/<name>.snap
-fn Gen.int(lo: Int, hi: Int) -> Gen<Int>  // explicit generators for property tests when inference is insufficient
+fn expect_output(lines: List<String>) -> Unit ! {Test}               // the test's captured output so far
+fn expect_snapshot<A: Show>(name: String, value: A) -> Unit ! {Test}
+// std/gen: explicit generators, driven inside a `test`; `property` parameters always use type-derived generators
+type Gen<A> = { sample: fn(Int) -> A ! {Random} }                    // size grows from 0 per case
+fn gen.int(lo: Int, hi: Int) -> Gen<Int> requires lo <= hi
+fn gen.bool() -> Gen<Bool>
+fn gen.one_of<A>(choices: List<A>) -> Gen<A> requires List.len(choices) > 0
+fn gen.list<A>(item: Gen<A>, max_len: Int) -> Gen<List<A>> requires max_len >= 0
+fn gen.string(max_len: Int) -> Gen<String> requires max_len >= 0
+fn gen.map<A, B>(g: Gen<A>, f: fn(A) -> B) -> Gen<B>
+fn gen.pair<A, B>(a: Gen<A>, b: Gen<B>) -> Gen<(A, B)>
+fn gen.for_all<A: Show, e>(g: Gen<A>, runs: Int, prop: fn(A) -> Unit ! {Test | e}) -> Unit ! {Random, Test | e}
 ```
 
-### 10.7 AI (`std/ai`)
+The module is `std/test` (a keyword segment, §9); its names are in the prelude, so it is imported only inside std. `std/gen` is imported as `import std/gen` and used as `gen.int(0, 9)`.
+
+### 10.7 AI (`std/llm`, `std/tool`, `std/agent`, M3)
 
 ```vow
-type Request<T> = { system: String, user: Prompt, model: ModelRef, max_tokens: Int, temperature: Float }
-fn Prompt.of(parts: List<PromptPart>) -> Prompt     // PromptPart = Text(String) | Untrusted(Untrusted<String>) | Image(Bytes)
-fn Llm.request<T: Schema>(system: String, user: String) -> Request<T>   // ModelRef.default resolved by the handler
-type Tool = { name: String, description: String, schema: JsonSchema, call: fn(Json) -> Json ! {Fail<ToolError>} }
-fn Tool.of(f: /* @tool fn */) -> Tool                                   // compiler intrinsic; argument must name a @tool function
-fn Llm.with_tools<T: Schema>(req: Request<T>, tools: List<Tool>, max_steps: Int) -> Request<T>
-fn Agent.run<T: Schema>(req: Request<T>, tools: List<Tool>, stop: fn(Partial<T>) -> Bool) -> T ! {Llm, Budget, Fail<LlmError | ToolError | BudgetExceeded>}
+// std/llm
+type Request<T> = { system: String, user: Prompt, model: Model, max_tokens: Int, temperature: Float, tools: List<Tool>, max_steps: Int }
+type PromptPart = Text(String) | Untrusted(Untrusted<String>) | Image(Bytes)
+pub opaque type Prompt = Prompt(List<PromptPart>)
+fn Prompt.of(parts: List<PromptPart>) -> Prompt
+fn Prompt.text(s: String) -> Prompt
+fn Model.of(name: String) -> Model
+fn Model.default() -> Model                                              // resolved by the handler
+fn Llm.request<T: Schema>(system: String, user: Prompt) -> Request<T>    // name T by annotation; model: Model.default(), no tools
+type LlmError = Refused | InvalidOutput | Truncated | RateLimited | Timeout | ProviderError
+error Refused
+error InvalidOutput(violations: List<Violation>)
+error Truncated
+error ProviderError(status: Int)
+// std/tool
+pub opaque type Tool = { name: String, description: String, schema: JsonSchema, call: fn(Json) -> Json ! {Fail<ToolError>} }
+error ToolError(tool: String, tag: String, payload: Json)
+fn Tool.of(f: /* @tool fn */) -> Tool                                   // compiler intrinsic; the argument must name a @tool function
+// std/agent
+type Agent<T> = { request: Request<T>, tools: List<Tool>, max_steps: Int, stop: fn(Partial<T>) -> Bool }
+fn Agent.run<T: Schema>(a: Agent<T>) -> T ! {Llm, Budget, Fail<LlmError | ToolError | BudgetExceeded>}
 ```
 
-See §11 for semantics.
+`RateLimited` is `std/http.RateLimited` and `Timeout` is `std/task.Timeout` (§5.9): one tag per concept, shared across unions. A request is modified with a record update (`Request { ..req, user: Prompt.text("…") }`); there are no builder functions. See §11 for semantics.
 
 ---
 
@@ -876,14 +1028,16 @@ See §11 for semantics.
 
 ### 11.1 Typed LLM calls
 
-`Llm.generate<T: Schema>(req)` sends the prompt with `T`'s derived JSON Schema as the structured-output constraint, decodes the response with `Json.decode<T>` (so **all refinements are checked**), and returns `T`. Failures are typed: `LlmError = Refused | InvalidOutput { violations } | Truncated | RateLimited { retry_after } | Timeout | ProviderError { status }`. Schema-valid output is not truth; the docs and `vow doc` say so on every `Llm` entry (`R05 §2.6`). Repair/retry is explicit: `retry(Retry.on(fn(e) { e is InvalidOutput }, max_attempts: 3), fn() { Llm.generate(req) })`, charged to the same `Budget`.
+`Llm.generate(req)` with `req: Request<T>` sends the prompt with `T`'s derived JSON Schema as the structured-output constraint, decodes the response as `Json.decode` would (so **all refinements are checked**), and returns `T`. Failures are typed: `LlmError = Refused | InvalidOutput | Truncated | RateLimited | Timeout | ProviderError` (§10.7; `RateLimited` and `Timeout` are the std-wide tags). Schema-valid output is not truth; the docs and `vow doc` say so on every `Llm` entry (`R05 §2.6`). Repair/retry is explicit: `retry(retry.policy(fn(e) { match e { InvalidOutput { .. } => true, _ => false } }, 3), fn() { Llm.generate(req) })`, charged to the same `Budget`.
 
 `@llm` sugar on a function declares the prompt in place and desugars to the above:
 
 ```vow
 @llm(system: "Extract only facts present in the text.")
 fn extract_ticket(text: Untrusted<String>) -> Ticket ! {Llm, Budget, Fail<LlmError | BudgetExceeded>}
-// body omitted: the compiler generates Llm.generate(Llm.request<Ticket>(system, Prompt.of([Untrusted(text)])))
+// body omitted: the compiler generates
+//   let req: Request<Ticket> = Llm.request(system, Prompt.of([Untrusted(text)]))
+//   Llm.generate(req)
 ```
 
 The parameter list becomes the user prompt (each parameter rendered by `Show` or as an `Untrusted` part, which the handler marks as data, never instructions, in the provider payload). `vow ai preview extract_ticket --arg text=…` prints the exact provider payload with secrets redacted. `Llm.scripted`/`Llm.replay` handlers make tests deterministic and offline.
@@ -894,7 +1048,7 @@ A `@tool("description")` function must have `Schema` parameters and result, and 
 
 ### 11.3 Agent loop and budgets
 
-`Agent.run` is an ordinary loop in std (readable, not magic): generate → if the model requested tool calls, validate and execute each via `Tool.call` → append results → repeat until `stop(partial)` or `max_steps`; every step reserves against `Budget` first and settles after. `BudgetExceeded` ends the loop with the partial trace attached. Durable/resumable agents are a v1 package (`std/workflow`), not v0.
+`Agent.run(a)` is an ordinary loop in std (readable, not magic): generate → if the model requested tool calls, validate and execute each via `Tool.call` → append results → repeat until `a.stop(partial)` or `a.max_steps`; every step reserves against `Budget` first and settles after. `BudgetExceeded` ends the loop with the partial trace attached. The configuration is data (`Agent { request, tools, max_steps, stop }`), so tests build it with record literals. A scripted format for tool calls in `Llm.scripted` is not defined in v0 (§16.15); agent loops are tested against `Llm.replay` recordings. Durable/resumable agents are a v1 package (`std/workflow`), not v0.
 
 ---
 
@@ -919,11 +1073,11 @@ A `@tool("description")` function must have `Schema` parameters and result, and 
 | `vow ai preview|replay`, `vow db prepare|migrate plan|migrate apply` | v0 for SQLite/one model provider. |
 | `vow verify` | M4+. Per-obligation statuses. |
 
-Exit codes: 0 ok; 1 diagnostics with errors; 2 usage; 3 test failures; 70 defect at runtime; 75 permission denied at startup.
+Exit codes: 0 ok; 1 diagnostics with errors, or `main` ended with an uncaught `Fail` (stderr: `error: main failed with <Show of the error>`); 2 usage; 3 test failures; 70 defect at runtime (stderr: one `defect` record, §12.2); 75 permission denied at startup.
 
 ### 12.2 JSON diagnostics (`--json`: JSON Lines, one record per line)
 
-Record kinds: `diagnostic`, `hole`, `obligation`, `progress`, `summary`. The `diagnostic` record is exactly:
+Record kinds on stdout: `diagnostic`, `hole`, `obligation`, `progress`, `summary`. A program that defects writes one `defect` record to stderr: `{"schema_version":"1.0","kind":"defect","code":"D002","message":"division by zero"}`. The `diagnostic` record is exactly:
 
 ```json
 {
@@ -952,11 +1106,44 @@ Record kinds: `diagnostic`, `hole`, `obligation`, `progress`, `summary`. The `di
 }
 ```
 
-Rules: byte offsets are zero-based half-open UTF-8; `content_hash` must match before any edit is applied; edits in one fix are applied atomically and rejected on overlap; diagnostics are ordered by root cause first (`related_ids` empty) then by position; output is capped at 200 per run with a `summary.truncated: true` flag (`R04 §4.2`). The `hole` record carries `expected_type`, `allowed_effects`, `locals` (name, type), `candidates` (ranked expressions with the fit kind), and `contracts_in_scope`.
+Rules: byte offsets are zero-based half-open UTF-8; `content_hash` must match before any edit is applied; edits in one fix are applied atomically and rejected on overlap; diagnostics are ordered by root cause first (`related_ids` empty) then by position; output is capped at 200 per run with a `summary.truncated: true` flag (`R04 §4.2`).
+
+The `hole` record is exactly:
+
+```json
+{
+  "schema_version": "1.0",
+  "kind": "hole",
+  "id": "h:3f9c…",                          // sha256 of name, content hash and span; stable across runs on unchanged text
+  "name": "result",                          // the identifier after `?`
+  "snapshot": "sha256:…",
+  "span": { …same span shape as diagnostics, "role": "primary" },
+  "expected_type": { "render": "Int", "structured": null },
+  "allowed_effects": { "render": "{Console}", "row": { … } },
+  "locals": [ { "name": "x", "type": { "render": "Int" } } ],           // innermost last
+  "candidates": [ { "expr": "x", "fit": "exact_local" } ],              // ranked, at most 10
+  "contracts_in_scope": [ "requires lo <= hi" ]
+}
+```
 
 ### 12.3 Error code scheme
 
-`V` + phase digit + three digits; `W` for warnings; `D` for runtime defects. Phases: `0` lex/parse, `1` resolve/modules, `2` types, `3` effects/handlers, `4` patterns, `5` contracts/refinements, `6` capabilities/resources/escape, `7` tests/verification, `8` packages/build/frozen specs, `9` internal. Codes are never reused or renumbered; retired codes stay documented. Every code has an `explain` page with a minimal pair (wrong program → diagnostic → fixed program).
+`V` + phase digit + three digits; `W` for warnings; `D` for runtime defects. Phases: `0` lex/parse, `1` resolve/modules, `2` types, `3` effects/handlers, `4` patterns, `5` contracts/refinements, `6` capabilities/resources/escape, `7` tests/verification, `8` packages/build/frozen specs, `9` internal. Codes are never reused or renumbered; retired codes stay documented. Every code has an `explain` page with a minimal pair (wrong program → diagnostic → fixed program). The registry is `vow_diagnostics::codes`.
+
+Defect codes in v0:
+
+| Code | Raised by |
+|---|---|
+| `D001` | `Int` overflow |
+| `D002` | `/` or `%` by zero |
+| `D003` | `Int` beyond ±(2^53−1) on the JS backend |
+| `D004` | `Float.round`/`Float.to_int_checked` of NaN or ±∞ |
+| `D010` | refinement violated at a checked introduction (`T.from`) |
+| `D011` | a contract predicate itself defected |
+| `D020`, `D021` | `requires` (caller blamed), `ensures` (callee blamed) |
+| `D030` | `Option.expect` on `None` |
+| `D031` | `String.slice` off a character boundary |
+| `D090`, `D091` | runtime-internal error (never a user error), host operation failed |
 
 ### 12.4 Typed holes
 
@@ -964,7 +1151,13 @@ Rules: byte offsets are zero-based half-open UTF-8; `content_hash` must match be
 
 ### 12.5 Formatter rules
 
-One canonical style, no options: 2-space indentation; max width 100; trailing commas in multi-line lists, none in single-line; `{` on the same line; `else` on the same line as `}`; one blank line between items; signature on one line when it fits, otherwise params one per line and `->`/`!`/contracts each on their own indented line; `match` arms one per line; effect rows sorted alphabetically with `Fail<…>` last; error-union members sorted; imports sorted and grouped (std, deps, local); comments preserved and attached to the following item or trailing token. The formatter is idempotent and syntax-preserving; it refuses files with parse errors and formats around error nodes otherwise (`R06 §4.6`).
+One canonical style, no options: 2-space indentation; max width 100; trailing commas in multi-line lists, none in single-line; `{` on the same line; `else` on the same line as `}`; `match` arms one per line; single-statement blocks stay on one line when they fit (`if x < lo { lo } else { x }`); comments preserved and attached to the following item or trailing token. Rules settled in round 2 (§17.40–§17.42):
+
+- **Signatures.** One line when it fits. Otherwise `! row` and each contract go on their own line indented by 2 and the body `{` on its own line, with the parameters kept on one line; parameters break one per line only when `fn name(params) -> T` alone does not fit. A signature with contracts always uses the broken layout (§7.2, §15.2).
+- **Blank lines.** One blank line between items, except that consecutive one-line items of the same kind that were adjacent in the source stay adjacent (the `error` blocks of §15.4). Variant lists are never reordered (order is meaning for `Ord` and `Show`); type-position unions and effect rows are sorted alphabetically with `Fail<…>` last.
+- **Imports.** Two groups, `std/…` then everything else, each sorted; a third group for local modules arrives when the formatter is given the package name.
+
+The formatter is idempotent and syntax-preserving; it refuses files with parse errors and formats around error nodes otherwise (`R06 §4.6`).
 
 ### 12.6 Compiler MCP tools (same analysis library as CLI and LSP)
 
@@ -993,14 +1186,18 @@ Core module   = { defs: [FnDef], types: [TypeDef], effects: [EffectDef], tests: 
 FnDef         = { id: DefId, params: [Local], row: Row, ret: Type, contracts: [Check], body: Expr }
 Expr (ANF)    = Let(Local, Bind, Expr) | Ret(Atom) | Jump(Label, [Atom]) | LetJoin(Label, [Local], Expr, Expr)
               | Switch(Atom, [(Tag, Expr)], default: Expr?) | If(Atom, Expr, Expr)
+              | Handle { handler: Atom, body: Expr } | Try { on_fail: Label, body: Expr } | Fail(Atom)
 Bind          = Atom | Prim(op, [Atom]) | Call(Atom, [Atom]) | Closure(DefId, captures: [Atom])
               | Alloc(ctor, [Atom]) | Proj(Atom, index) | Perform(EffectId, op, [Atom])
-              | Handle(handler: Atom, body: Label) | Fail(Atom) | Check(ContractId, Atom, blame)
-              | MakeHandler(EffectId, state_inits: [Atom], clauses: [DefId]) | Hole(id)
-Atom          = Local(Local) | Lit | Global(DefId)
+              | Check(ContractId, cond: Atom, blame)
+              | MakeHandler(EffectId, state_inits: [Atom], clauses: [Atom]) | StateGet(inst, i) | StateSet(inst, i, Atom)
+              | Hole(id)
+Atom          = Local(Local) | Lit | Global(DefId) | Builtin(name)
 ```
 
-Invariants checked by `vow_core::validate` after every pass: every `Local` is bound once and used only in scope; `Perform` targets a declared operation with matching arity; `Check` precedes any use of the checked value; `Switch` tags are exhaustive or carry a default; rows on `Call` targets are closed or variables bound by the enclosing def. Decision trees come from a Maranget-style compiler that shares normalized patterns with the usefulness checker but is a separate module (`R06 §4.3`).
+`Handle`, `Try` and `Fail` are **expressions**, not bindings: their bodies live in the same function, so `return`/`break`/`continue` inside `with` and `try` are ordinary jumps and the region's context is lexical (no thunks, no unwinding tables). Handler state is explicit (`StateGet`/`StateSet` on the clause's instance parameter) and clauses are closures because they capture the enclosing function's variables. Locals carry types; `Switch` names the variant type or error union it discriminates. `vow_core::ir` and `runtime/js/ABI.md` are normative for field names.
+
+Invariants checked by `vow_core::validate` after every pass: every `Local` is bound once and used only in scope; `Perform` targets a declared operation with matching arity; `Check` precedes any use of the checked value; `Switch` tags are exhaustive or carry a default; rows on `Call` targets are closed or variables bound by the enclosing def. Decision trees come from a Maranget-style compiler in `vow_core` that shares normalized patterns with the usefulness checker in `vow_types` but is a separate module (`R06 §4.3`).
 
 ### 13.3 JS backend strategy (v0)
 
@@ -1009,6 +1206,7 @@ Invariants checked by `vow_core::validate` after every pass: every `Local` is bo
 - **Suspension** (live `Clock.sleep`, `Http.send`, `Task`): a host handler returns a `Suspend(promise)` step; the driver awaits it and resumes `k`. The handler environment is captured in `ctx`, never read from a global (`R01 §4.5`).
 - **Direct-style fast path (M2):** functions whose row is `{}` and whose callees are all direct are emitted as plain JS functions; adapters bridge the two ABIs at calls from CPS code. Measured, not assumed (`R01 §3.2`).
 - Output is readable ES2022 modules with original names, one file per Vow module, source maps, and a `vow_runtime.js` (handler stack, trampoline, collections, `Show`, `Eq`, hashing, decimal, JSON Schema codecs).
+- **Entry.** The emitter generates `$entry`, which builds a root handler for each effect in `main`'s row by calling `<effect module>.host()` with the host capabilities derived from `[permissions]`, installs them, and calls `main`. For `vow test` each `test` becomes a wrapper `fn(seed: Int)` that installs the §5.8 defaults for the std effects the body uses; the runner installs `Test` outermost. Exit codes are §12.1; an uncaught `Fail` from `main` is exit 1, a defect exit 70 with the `defect` record on stderr.
 
 ### 13.4 Runtime representation of values (JS)
 
@@ -1071,8 +1269,8 @@ Dependency direction is strict: `vow_cli → vow_analysis → {vow_codegen_js, v
 | Producer → consumer | Type | Stable fields |
 |---|---|---|
 | `vow_syntax` → `vow_hir`, `vow_fmt` | `Parse { root: SyntaxNode, errors: Vec<Diagnostic> }` with typed views `ast::FnDecl::name()/params()/ret()/row()/body()` returning `Option<_>` | `SyntaxKind` enum frozen at M0 |
-| `vow_hir` → `vow_types` | `Module { defs: Arena<Def>, bodies: Arena<Body>, imports, exports }`, `Body { exprs: Arena<Expr>, pats: Arena<Pat>, locals }`, `DefId`, `LocalId`, `ExprId`, `SourceMap: ExprId → TextRange` | HIR `Expr` enum (`design.md §3` forms, desugared: `for`→`List.fold`-style loop node, `x?`→`Raise`, `e.f(a)`→`Call(Resolved, [e, a])`) |
-| `vow_types` → `vow_core` | `TypedBody { types: ExprId → TypeId, rows: ExprId → RowId, resolved_calls: ExprId → CallTarget, match_trees: ExprId → DecisionTree, holes: Vec<Hole> }`, `Interner` for `Type`/`Row` | `Type`, `Row`, `Scheme` enums |
+| `vow_hir` → `vow_types` | `lower(&[PackageInput]) -> Program` with `Program::diagnostics`; `Module { defs: Arena<Def>, bodies: Arena<Body>, imports, exports }`, `Body { exprs: Arena<Expr>, pats: Arena<Pat>, locals }`, `DefId`, `LocalId`, `ExprId`, `SourceMap: ExprId → TextRange`, `Program::home_module`/`resolve_home` for §4.9 | HIR `Expr` enum (`design.md §3` forms, desugared: `for`→`List.fold`-style loop node, `x?`→`Raise`, `e.f(a)`→`Call(Resolved, [e, a])`) |
+| `vow_types` → `vow_core` | `check_program(&Program) -> (TypedProgram, Vec<Diagnostic>)`; `TypedProgram { interner, defs: DefId → Scheme, bodies: (ModuleId, BodyId) → TypedBody, holes }`, `TypedBody { types, rows, pat_types, locals, local_schemes, calls: ExprId → CallTarget, instantiations }` (zonked; leftover row tails closed). Exhaustiveness is reported here; decision trees are built in `vow_core`. | `Type`, `Row`, `Scheme` enums |
 | `vow_core` → `vow_codegen_js` | `core::Module` (§13.2) + `validate()` | Core enum |
 | everything → `vow_diagnostics` | `Diagnostic { code: Code, severity, message, spans: Vec<Span>, expected, actual, fixes, related }` | JSON schema §12.2 |
 | `vow_analysis` → CLI/LSP/MCP | `Analysis::check(&Snapshot) -> CheckResult { diagnostics, holes, interfaces }`, `::build_js`, `::format`, `::symbol_query`, `::hole_context` | function signatures, not internals |
@@ -1089,7 +1287,7 @@ fn greet(name: String) -> Unit ! {Console} {
 }
 pub fn main() -> Unit ! {Console} { greet("Vow") }
 ```
-Acceptance: prints exactly `hello, Vow`; removing `Console` from `greet`'s row yields `V3001` with a `cause` span on `Console.print`; `Console.print(` unterminated yields a CST, `V0001`, and no hang; a 1,000,000-iteration recursive countdown does not overflow the JS stack.
+Acceptance: prints exactly `hello, Vow`; removing `Console` from `greet`'s row yields `V3001` with a `cause` span on `Console.print` and a `suggested` fix of impact `interface_change` that adds the label (never `machine_applicable`, §7.3); `Console.print(` unterminated yields a CST, `V0001`, and no hang; a 1,000,000-iteration recursive countdown does not overflow the JS stack.
 
 **M1 — the pure language and typed errors.** Records, variants, error tags and unions, `match` with exhaustiveness, closures, let-polymorphism, `var`/`for`/`while`, `Fail`/`try`/`catch`/`?`, `Option`/`Result`/`List`/`Map`/`String` std in Vow, `test` blocks with `expect`, `vow fmt` idempotent on the corpus.
 
@@ -1245,6 +1443,13 @@ effect Users {
 
 type User = { id: String, owner: String, name: String }
 
+// `Users.memory(…)` resolves here: a non-operation name after an effect is a function of its home module (§4.9).
+fn memory(users: List<User>) -> Handler<Users> {
+  handler Users {
+    fn get(id) { List.find(users, fn(u) { u.id == id }) }
+  }
+}
+
 // Internal failure (Unavailable) is translated; the public union stays stable.
 pub fn view_user(caller: String, id: String) -> User ! {Users, Log, Fail<UserError>} {
   let user = try {
@@ -1272,8 +1477,11 @@ test "missing user is NotFound" {
 ### 15.5 JSON HTTP API with a database
 
 ```vow
-import std/http.{Request, Response, Router}
-import std/sql
+import std/http.{Request, Response, Status, BadRequest}
+import std/router.{Router}
+import std/serve.{Serve, Address}
+import std/sql.{Sql, SqlError}
+import std/path.{Path}
 
 type Email = String where String.len(it) <= 254 && String.contains(it, "@")
 type NewUser = { email: Email, name: String }
@@ -1282,9 +1490,9 @@ error EmailTaken(email: Email)
 
 fn create_user(input: NewUser) -> User ! {Sql, Fail<EmailTaken | SqlError>} {
   Sql.transaction(fn() {
-    let existing = Sql.query<User>(sql"select id, email, name from users where email = {input.email}")
+    let existing: List<User> = Sql.query(sql"select id, email, name from users where email = {input.email}")
     if List.len(existing) > 0 { fail EmailTaken { email: input.email } }
-    let rows = Sql.query<User>(
+    let rows: List<User> = Sql.query(
       sql"insert into users (email, name) values ({input.email}, {input.name}) returning id, email, name")
     List.first(rows).expect("insert returning yields one row")
   })
@@ -1292,13 +1500,16 @@ fn create_user(input: NewUser) -> User ! {Sql, Fail<EmailTaken | SqlError>} {
 
 fn handle_create(req: Request) -> Response ! {Sql, Log} {
   try {
-    let input = Request.json<NewUser>(req, 64_000)      // validates Email refinement
+    let input: NewUser = Request.json(req, 64_000)      // validates the Email refinement
     let user = create_user(input)
     Response.ok_json(user)
   } catch {
     BadRequest { detail } => Response.status(400, detail),
     EmailTaken { email } => Response.status(409, "email already registered"),
-    SqlError { .. } => { Log.event(Level.Error, "db error", []); Response.status(503, "try again") },
+    SqlError { .. } => {
+      Log.event(Level.Error, "db error", [])
+      Response.status(503, "try again")
+    }
   }
 }
 
@@ -1317,8 +1528,8 @@ test "duplicate email is 409" {
     let body = Json.encode(NewUser { email: Email.from("a@b.co"), name: "A" })
     let first = handle_create(Request.post("/users", body))
     let second = handle_create(Request.post("/users", body))
-    expect_eq(first.status, Status.of(200))
-    expect_eq(second.status, Status.of(409))
+    expect_eq(first.status, Status.from(200))
+    expect_eq(second.status, Status.from(409))
   }
 }
 ```
@@ -1326,8 +1537,9 @@ test "duplicate email is 409" {
 ### 15.6 CLI tool with file IO and attenuated authority
 
 ```vow
-import std/cli
-import std/fs
+import std/cli.{Cli, CliError}
+import std/fs.{Fs, FsError, Dir}
+import std/path.{Path}
 
 type Args = { input: Path, top: Int }   // `vow run -- --input notes.txt --top 5`
 
@@ -1337,8 +1549,8 @@ fn word_counts(text: String) -> Map<String, Int> {
   })
 }
 
-pub fn main() -> Unit ! {Console, Env, Fs, Fail<CliError | FsError>} {
-  let args = Cli.parse<Args>(Cli.args())
+pub fn main() -> Unit ! {Console, Cli, Fs, Fail<CliError | FsError>} {
+  let args: Args = Cli.parse(Cli.args())
   // Narrow the root Fs handler to the data directory before touching files.
   with Fs.rooted(Dir.subdir(Fs.root(), "data")) {
     let text = Fs.read_text(args.input).trust(@trust("word counting cannot be influenced by content"))
@@ -1351,7 +1563,9 @@ pub fn main() -> Unit ! {Console, Env, Fs, Fail<CliError | FsError>} {
 ### 15.7 Typed LLM extraction with budget and offline test
 
 ```vow
-import std/ai
+import std/llm.{Llm, LlmError, InvalidOutput, Model}
+import std/budget.{Budget, BudgetExceeded, Limits}
+import std/http.{Http}
 
 type Priority = Low | Normal | High
 type Ticket = {
@@ -1366,7 +1580,8 @@ fn extract_ticket(message: Untrusted<String>) -> Ticket
 
 pub fn main() -> Unit ! {Console, Env, Http, Fail<LlmError | BudgetExceeded>} {
   let key = Env.secret("ANTHROPIC_API_KEY").expect("set ANTHROPIC_API_KEY")
-  with Llm.anthropic(key, Model.of("claude-sonnet-5-5")), Budget.limits(tokens: 20_000, usd: 0.50) {
+  let limits = Limits { tokens: Some(20_000), usd: Some(0.50), calls: None }
+  with Llm.anthropic(key, Model.of("claude-sonnet-5-5")), Budget.limits(limits) {
     let t = extract_ticket(Untrusted.of("Login page 500s since 9am, blocking all customers"))
     Console.print("{t.priority}: {t.title}")
   }
@@ -1381,7 +1596,8 @@ test "scripted model output is validated against Ticket" {
 }
 
 test "invalid output is a typed failure, not a crash" {
-  with Llm.scripted(["{\"title\": \"\", \"priority\": \"Urgent\"}"]), Budget.unlimited() {
+  // `\{` is a literal brace; a bare `{` would start an interpolation (§2.3).
+  with Llm.scripted(["\{\"title\": \"\", \"priority\": \"Urgent\"\}"]), Budget.unlimited() {
     expect_fails_with(fn() { extract_ticket(Untrusted.of("x")) }, fn(e) { match e { InvalidOutput { .. } => true, _ => false } })
   }
 }
@@ -1390,29 +1606,36 @@ test "invalid output is a typed failure, not a crash" {
 ### 15.8 Agent loop with tools and a budget
 
 ```vow
-import std/ai
+import std/llm.{Llm, LlmError, Request, Prompt, Model}
+import std/tool.{Tool, ToolError}
+import std/agent.{Agent}
+import std/budget.{Budget, BudgetExceeded, Limits}
+import std/http.{Http, HttpError, RateLimited, Response, Status}
+import std/json.{DecodeError}
+import std/url.{Url}
 
 type Answer = { summary: String, sources: List<Url> }
 error SearchDown
 
 @tool("Search the internal knowledge base; returns up to 5 snippets")
-fn kb_search(query: String) -> List<String> ! {Http, Fail<SearchDown>} {
+fn kb_search(query: String) -> List<String> ! {Http, Fail<SearchDown | HttpError | RateLimited | DecodeError>} {
   let resp = Http.get(url"https://kb.internal/search?q={query}")
-  if resp.status != Status.of(200) { fail SearchDown }
-  Response.json<List<String>>(resp, 100_000)
+  if resp.status != Status.from(200) { fail SearchDown }
+  let snippets: List<String> = Response.json(resp, 100_000)
+  snippets
 }
 
 pub fn research(question: Untrusted<String>) -> Answer
   ! {Llm, Http, Budget, Fail<LlmError | ToolError | BudgetExceeded>}
 {
-  let req = Llm.request<Answer>("Answer with cited sources only.", "")
-    .with_user(Prompt.of([Untrusted(question)]))
-  Agent.run(Llm.with_tools(req, [Tool.of(kb_search)], 8), [Tool.of(kb_search)], fn(_partial) { false })
+  let req: Request<Answer> = Llm.request("Answer with cited sources only.", Prompt.of([Untrusted(question)]))
+  Agent.run(Agent { request: req, tools: [Tool.of(kb_search)], max_steps: 8, stop: fn(_partial) { false } })
 }
 
 pub fn main() -> Unit ! {Console, Env, Http, Fail<LlmError | ToolError | BudgetExceeded>} {
   let key = Env.secret("ANTHROPIC_API_KEY").expect("set ANTHROPIC_API_KEY")
-  with Llm.anthropic(key, Model.default()), Budget.limits(tokens: 60_000, usd: 2.0, calls: 20) {
+  let limits = Limits { tokens: Some(60_000), usd: Some(2.0), calls: Some(20) }
+  with Llm.anthropic(key, Model.default()), Budget.limits(limits) {
     let a = research(Untrusted.of("What is our refund policy for annual plans?"))
     Console.print(a.summary)
   }
@@ -1438,12 +1661,14 @@ test "rendering is stable" { expect_snapshot("normalize_doc", normalize([3, 1, 3
 ### 15.10 Structured concurrency, timeout, retry
 
 ```vow
-import std/http
+import std/http.{Http, HttpError, RateLimited, Response, Any}
+import std/url.{Url}
+import std/retry.{Policy, retry}
+import std/task.{Timeout, timeout}
 
-error Timeout
-fn fetch_both(a: Url, b: Url) -> (String, String) ! {Http, Task, Clock, Random, Fail<HttpError | Timeout>} {
-  let policy = Retry.Policy { retry_on: fn(e) { match e { RateLimited { .. } => true, _ => false } },
-                              max_attempts: 3, backoff: Duration.millis(200), jitter: true, deadline: None }
+fn fetch_both(a: Url, b: Url) -> (String, String) ! {Http, Task, Clock, Random, Fail<HttpError | RateLimited | Timeout>} {
+  let policy = Policy { retry_on: fn(e) { match e { RateLimited { .. } => true, _ => false } },
+                        max_attempts: 3, backoff: Duration.millis(200), jitter: true, deadline: None }
   timeout(Duration.seconds(5), fn() {
     Task.scope(fn(s) {
       let fa = Task.spawn(s, fn() { retry(policy, fn() { Response.text(Http.get(a), 1_000_000).trust(@trust("display only")) }) })
@@ -1463,6 +1688,10 @@ test "deterministic under virtual time" {
 ### 15.11 Secrets and sinks
 
 ```vow
+import std/http.{Http, HttpError, Request}
+import std/url.{Url}
+import std/decimal.{Decimal}
+
 pub fn call_billing(amount: Decimal) -> Unit ! {Env, Http, Log, Fail<HttpError>} {
   let token = Env.secret("BILLING_TOKEN").expect("BILLING_TOKEN")
   let req = Http.bearer(Request.post_json(Url.from("https://billing/charge"), amount), token)
@@ -1475,7 +1704,7 @@ pub fn call_billing(amount: Decimal) -> Unit ! {Env, Http, Log, Fail<HttpError>}
 ### 15.12 Graph without cycles in the heap
 
 ```vow
-import std/graph
+import std/graph.{Graph, NodeId}
 
 type Person = { name: String }
 fn friends_of_friends(g: Graph<Person>, id: NodeId) -> List<Person> {
@@ -1489,13 +1718,72 @@ fn friends_of_friends(g: Graph<Person>, id: NodeId) -> List<Person> {
 
 1. **Row widening at function-value use sites (§5.2 rule 4).** Subset acceptance of closed rows is a subtyping rule inside an otherwise unification-based checker. Default: ship it, restricted to argument and annotation positions; if principal types break on adversarial higher-order cases, fall back to requiring open-tail annotations on top-level HOF parameters.
 2. **Error-union subsumption in synthesis mode.** Requiring equality when two unions meet without an expected type may annoy agents (`if c { try f() } else { try g() }`). Default: equality plus a fix that inserts the join as an annotation; revisit after measuring repair rounds.
-3. **`Int` on JavaScript.** 53-bit trap vs. BigInt everywhere. Default: trap (never wrong, sometimes early); provide `BigInt` as a std type; revisit when WASM lands.
+3. **`Int` on JavaScript.** 53-bit trap vs. BigInt everywhere. Default: trap (`D003`, never wrong, sometimes early) for arithmetic and literals; parsing is the exception: `String.parse_int` and `Float.to_int_checked` return `None` for a value the backend cannot represent, because parsing is where untrusted input enters and a defect there is a denial-of-service vector (§17.44). This is the one place where JS and native observably differ in v0; provide `BigInt` as a std type; revisit when WASM lands.
 4. **Handler state under native parallelism.** Per-instance lock (default) vs. forbidding stateful handlers across threads. Decide with M5 measurements.
 5. **Tail-resumptive-only handlers.** Generators, async iterators, and backtracking need `control` operations later. Default: add `control` ops (one-shot, non-tail, explicit `resume`) in a later edition behind a different keyword, keeping ordinary `handler` clauses as they are.
-6. **Positional-only arguments.** Records cover option bags, but call sites like `clamp(x, 0, 10)` lose names. Default: positional only; consider named arguments in edition 2027 if agent-written code shows argument-order bugs.
+6. **Positional-only arguments.** Records cover option bags, but call sites like `clamp(x, 0, 10)` lose names. Default: positional only (reaffirmed in §17.21: `f(name: v)` is `V0014`); consider named arguments in edition 2027 if agent-written code shows argument-order bugs.
 7. **Automatic `Schema` for every data type.** Convenient but exposes internal types over the wire accidentally. Default: derive for all; `@no_schema` opt-out; `vow publish` warns on `pub` functions whose wire types are not `pub`.
-8. **Refinement predicates calling user functions.** The `@total` requirement is syntactic and may be too strict. Default: keep strict; add termination checking for structural recursion in M4.
-9. **`Untrusted<T>` scope.** Whether raw strings from `Env.get` should also be `Untrusted`. Default: yes for `Env.get`, `Fs.read_text`, `Response.text`, LLM text; no for schema-decoded values.
+8. **Refinement predicates calling user functions.** The contract subset is syntactic and `@total` is a trusted claim (§7.1). Default: keep both; add termination checking for structural recursion in M4 so `@total` can be `proved` for common shapes.
+9. **`Untrusted<T>` scope.** Decided in §17.15: `Env.get` returns a plain `Option<String>`; `Fs.read_text`, `Response.text` and LLM text are `Untrusted`. Revisit only if a deployment story appears where the environment is not operator-controlled.
 10. **Method resolution for generic receivers.** `xs.len()` with `xs: A` and no constraint is an error; agents may expect duck typing. Default: error with a fix suggesting the constraint; no structural lookup.
 11. **Package capability declarations.** Computed from code vs. declared in `vow.toml` and checked. Default: computed and shown; declared ceilings in `vow.toml` become mandatory for published packages at v1.
 12. **Formatter width and style details.** Default: 100 columns, 2 spaces, no configuration. Not revisited without measured evidence.
+13. **Channels.** `Channel<T>` was mentioned without an API and is removed from v0 (§17.29). Fibers communicate through results and handler state. Add bounded channels as `Task` operations when a concrete program needs streaming between fibers.
+14. **Detached tasks.** `Task.Supervisor` is deferred: every fiber belongs to a scope in v0. Revisit with the first long-running service example.
+15. **Scripted tool calls.** `Llm.scripted` replays raw outputs only; a format for scripted tool-call turns is undefined, so agent loops are tested with `Llm.replay` recordings. Define it with the first offline agent test (M3).
+16. **Type-directed functions without a value argument.** `Schema.of<T>()` was removed because there is no call-site type argument to name `T` (§17.20). If a real need appears, prefer a type-witness value (`Schema.of(Ticket.schema)`) over reopening call-site type arguments.
+17. **Finer visibility than `opaque`.** `pub opaque type` hides every constructor and field. Per-field or per-constructor `pub` (Rust style) is not planned; revisit if std needs a type with one public and one private constructor.
+18. **Affinity of external types.** External types are scoped (§6.3); which ones are also affine (resources, §8.4) is decided when the M3 escape check lands, likely by a `@resource` marker on the std declaration.
+
+---
+
+## 17. Decision log (round 2)
+
+Each entry answers one `design-question` from `compiler/REQUESTS.md` or one contradiction found while publishing the site. Format: question → decision → why → sections changed → impact on implementers (none / small / requires change in crate X). "Endorsed" means the implementer's choice stands as built.
+
+1. **V3001 fix applicability (C).** §7.3 forbids `machine_applicable` for `interface_change` fixes, while the M0 brief asked for an auto-applicable "add `Console` to the signature". Decision: §7.3 stands; the fix is `suggested` + `interface_change`. Why: an agent running `vow fix` must never widen a public signature silently; `--apply <id>` is one step away. Changed: §14.3 M0 acceptance. Impact: none (endorsed).
+2. **`Eff.name` for non-operations (F, B).** Decision: endorsed. `Eff.op` performs when `op` is an operation, otherwise resolves to the function or constant `op` of the effect's home module; a clash is `V1001`. Why: handler constructors (`Console.host()`, `Users.memory([])`) need a home. Changed: §4.9 rule 2. Impact: none.
+3. **One std module per type and effect (F).** Decision: endorsed; §10 is rewritten to the `std/<lowercase>` layout and `std/INDEX.md` is the generated surface. Why: `host()` of two effects in one module would collide under §4.9. Changed: §9 prelude, §10 throughout, §13.3 entry. Impact: none.
+4. **Qualified type paths (F, A, B).** `TypePath = [Ident "."] TypeName ["." TypeName]`; the nested name is a variant of the first type or a type declared in its home module (`Json.String(s)`, `Level.Warn`, `Task.Fiber<T>`). `Retry.Policy` does not exist: `Retry` is neither a type nor an effect, so the policy is `std/retry.Policy<E>` imported by name. Changed: §3 EBNF, §3.2 rule 16, §4.9 rule 3. Impact: none (A parses it, B resolves it).
+5. **`retry` typing (F).** Decision: endorsed: `retry<T, E, e>(p: Policy<E>, action: fn() -> T ! {Fail<E> | e}) -> T ! {Clock, Random, Fail<E> | e}`, `Policy<E>` record plus `retry.policy(retry_on, max_attempts)`. Why: `retry_on: fn(E) -> Bool` needs the error type as a parameter. Changed: §5.9, §15.10. Impact: none.
+6. **One `Timeout` tag (F).** Decision: `std/task.Timeout(limit: Duration)` is the only timeout tag; `LlmError` reuses it (instead of F's `LlmTimeout`); §15.10 no longer declares its own. Why: one tag per concept, shared across unions, keeps `catch` arms and docs uniform. Changed: §5.9, §10.7, §11.1, §15.10. Impact: none now; `std/llm` (M3) imports the tag.
+7. **Milliseconds (F).** Decision: endorsed. `Instant` and `Duration` are whole milliseconds; `Instant.from_unix_millis`/`to_unix_millis` added. Why: nanoseconds since 1970 exceed 2^53 and would be `D003` on JS. Changed: §10.3, §5.5 example, §5.8 defaults. Impact: none.
+8. **`@total` (F).** Decision: `@total` is a v0 attribute (§2.5): a trusted claim of termination on a `{}`-row function, listed by `vow audit`; std marks the fixed list in §7.1 (`List.len/get/all/any/contains/first/last`, `Map.len/get/contains`, `Set.len/contains`, `String.len/contains/starts_with/ends_with`, `Bytes.len/get`, `Option.is_some`, `Result.is_ok/is_err`, `Int.abs/min/max`, `Graph.get`). `@contract_test` is listed too. Changed: §2.5, §7.1, §7.4. Impact: small for F (add `@total` to those std functions); B already accepts the name, must add `contract_test` to the known list.
+9. **No `defect()` intrinsic (F).** Decision: none in v0; programming errors are expressed with `requires` (`D020`) or `Option.expect` (`D030`); std raises other defects through externals. Why: a user-callable defect invites exception-style control flow. Changed: nothing. Impact: none.
+10. **Private construction (F).** Decision: `pub opaque type` (Gleam's `pub opaque type`): the type name is exported, constructors and fields are usable only in the declaring module (`V1006` elsewhere); constraints still derive. Refinement types stay the way to validate by predicate. Why: §9 promised private construction and §4.11/§10.4 safety (`Query<R>` only from `sql"…"`, `Html` only escaped) depends on it; constructor-level visibility would be a larger feature. Changed: §2.1 keyword `opaque`, §3 `Item`, §4.2, §9, §10.3/§10.4/§10.7, §16.17. Impact: small for A (keyword + `Item`), small for B (constructor/field visibility check); F may make `Uuid` opaque when convenient.
+11. **Operation type parameters and rows (F).** Decision: `OpSig` has `[TypeParams]`; an operation row may contain `Fail<…>` and row variables of its own type parameters that occur in a function-typed parameter; anything else is `V3010`. Why: `Task`, `Sql.transaction`, `Fs.with_file` are effects whose operations run callbacks. Changed: §3, §5.5. Impact: C at M3 (generic operations); A/B done.
+12. **`Show` format (F).** Decision: endorsed and specified as valid Vow syntax (table in §4.8): `[1, 2]`, `(1, "a")`, `Some("x")`, unqualified variants, `Map.of([...])`, `Set.of([...])`, `Bytes.of([...])`, floats always with `.` or exponent, `NaN`/`Infinity`/`-Infinity`/`-0.0`, strings quoted only inside containers. Changed: §4.8. Impact: none (matches `runtime/js`).
+13. **Constraints and operators (F).** Decision: stated in §4.4: `Eq` unlocks `==`/`!=`, `Ord` the comparisons (and implies `Eq`), `Hash` map keys (implies `Eq`), `Show` interpolation, `Schema` codecs; `V2032` for an unsatisfied constraint. Changed: §4.4. Impact: none (C registered `V2032`).
+14. **Explicit generators (F).** Decision: endorsed: `property` parameters always use type-derived generators; explicit generators are `std/gen` values driven by `gen.for_all` inside a `test`. Changed: §10.6, §15.9 unchanged. Impact: none.
+15. **`Env.get` and `Untrusted` (F).** Decision: `Env.get -> Option<String>`, not `Untrusted`. Why: environment variables are operator-controlled and gated by `[permissions] env`; `Untrusted` marks data from outside the deployment. Changed: §6.4, §16.9. Impact: none.
+16. **`@trust` in expression position (F, A, B, C).** Decision: endorsed. `Attribute` is a `PrimaryExpr`; only `@trust("literal")` is valid there and has the compiler-known type `Trust`, accepted only by `Untrusted.trust` and `Secret.expose`. Why: keeps every trust decision a literal at the sink for `vow audit`. Changed: §2.5, §3, §6.4, §9 prelude. Impact: C at M3 (type `Expr::Attr` as `Trust`).
+17. **Core IR shape and uncaught `Fail` (D).** Decision: endorsed. `Handle`/`Try`/`Fail` are expressions, handler state is `StateGet`/`StateSet`, clauses are closures; an uncaught `Fail` from `main` exits 1 with `error: main failed with <Show>`, a defect exits 70 with a `defect` record on stderr. Runtime codes `D004`, `D090`, `D091` are adopted. Changed: §12.1, §12.2, §12.3 table, §13.2, §13.3. Impact: none.
+18. **Variant sharing its type's name (B).** Decision: endorsed: `type Meters = Meters(Float)` is legal; the type owns the scope entry and value/pattern uses resolve to the variant. Changed: §9. Impact: none.
+19. **Variants and the type namespace (B).** Decision: endorsed and stated: `TypeName`s split into a type level (types, effects, tags) and a value level (variants, tags); type positions never see variants; a `TypeName` at the head of a path resolves as a type or effect, elsewhere as a variant or tag. Changed: §4.9, §9. Impact: small for B (confirm `String.len` resolves inside `std/json`).
+20. **Call-site type arguments (F, A).** Decision: **none in v0**; §3.2 rule 1 stands and `f<T>(…)` is `V0011` with the "annotate the binding" fix. All §15 examples and §10/§11 text use annotations (`let rows: List<User> = Sql.query(q)`); `Schema.of<T>()` is removed (§16.16). Why: one way to name a type; no whitespace-sensitive `f<T>(` adjacency rule beyond §2.4; the acceptance corpus already uses annotations. Changed: §3.2, §4.3, §6.4, §10, §11, §15. Impact: small for A (report `V0011` for `f<T>(` instead of building a call; keep consuming the list for recovery); B's `type_args` and C's `explicit_type_args` become dead and may be deleted at leisure.
+21. **Named arguments (F, A, C).** Decision: **none in v0** (§16.6 stands); `f(name: v)` is `V0014` with the fix "pass positionally or as a record". `name: value` survives only inside `Attribute` arguments. `Budget.limits` takes `Limits { tokens: Option<Int>, usd: Option<Float>, calls: Option<Int> }`, `None` meaning unlimited. Why: one call syntax; the examples were the only users. Changed: §3 (`AttrArgs`), §3.2 rule 13, §5.9, §10.2, §15.7, §15.8. Impact: small for A (`NamedArg` only inside attributes, `V0014` in `ArgList`); E registers `V0014 named_argument PARSE`; B's `arg_names` and C's `order_args` become dead and may be deleted at leisure; F updates the two M3 examples to `Some(…)` fields.
+22. **`Request.with_user` and the agent API (F).** Decision: `Llm.request(system: String, user: Prompt) -> Request<T>` takes the prompt directly, so no `with_user`; requests are modified by record update; `Agent.run(a: Agent<T>)` takes a configuration record (`request`, `tools`, `max_steps`, `stop`) and `Llm.with_tools` is removed. Changed: §10.7, §11.1, §11.3, §15.8. Impact: small for F (M3 `agent_loop` example).
+23. **Observing captured output (F).** Decision: endorsed: `Test.output_lines()` and `expect_output(lines)`; the `Test` effect's operations are as in `std/test`. Changed: §5.8, §9 prelude, §10.6. Impact: small for B (add `expect_output` to the prelude table).
+24. **Brace in §15.7 (A).** Decision: the example now writes `\{ … \}`. Changed: §15.7. Impact: none.
+25. **Reserved words after `.`/`fn` (A).** Decision: endorsed: reserved words are accepted directly after `.` and `fn`, so `Task.spawn` is legal and `spawn` stays reserved. Changed: §2.1. Impact: small for A (the `V0007` fixture must use a non-member position, e.g. `let spawn = 1`).
+26. **`>` and statement termination (A).** Decision: `>` joins §2.4 rule 1 instead of a parser-side "declaration ends at a line start" rule. Why: one newline rule in one place; the formatter never ends a line with a binary operator. Changed: §2.4. Impact: small for A (lexer list; delete the parser special case).
+27. **`(T)` and leading `|` (A).** Decision: `(T)` is the type `T`, `(T,)` a one-element tuple, `()` is `Unit`; no leading `|` in variant lists. Changed: §3, §3.2 rules 12 and 14. Impact: small for A (emit the inner type for `(T)`).
+28. **Bodiless `type` (A, B, F).** Decision: a `type` without a body is an **external type** (host representation, no constructors, no derived constraints, scoped); std declares `Scope`, `Fiber<T>`, `Dir`, `EnvScope`, `NetScope`, `File` this way, and FFI packages may too. Changed: §3, §3.2 rule 15, §4.2, §6.2, §8.6, §10.2. Impact: small for B (lower bodiless `TypeDecl` to an external type), small for F (declare `Scope`/`Fiber` in `std/task`); C at M3.
+29. **`Channel<T>` (website, B).** Decision: removed from v0; fibers communicate through results and handler state. Changed: §8.6, §16.13. Impact: none (F drops the comment in `std/task`).
+30. **Typed failures escaping a test (C).** Decision: a `test` or `property` body has row `{Test, Fail<E>}` for any `E`; an uncaught failure is a test failure with the error's `Show`. Why: agents write `let x = f()?` in tests; wrapping everything in `try` is noise and `expect_fail` remains for asserting failures. Changed: §5.8. Impact: small for C (allow `Fail` in test rows; `V3020` is for other effects), small for D/E (report a `fail` outcome of a test wrapper as a failure).
+31. **Hole record (website).** Decision: documented exactly as E emits it (`id`, `name`, `snapshot`, `span`, `expected_type`, `allowed_effects`, `locals`, `candidates`, `contracts_in_scope`). Changed: §12.2. Impact: none.
+32. **`Net` (website).** Decision: there is no `Net` effect; the manifest's `net` list limits `Http`, `Serve` and `Sql.postgres`, the capability is `NetScope`, and the attenuator is `Http.scoped`. Changed: §6.2, §10.2. Impact: none.
+33. **`Db.memory()` (website).** Decision: `Sql.memory()`; `Db` is only the §5.5 teaching example. Changed: §5.8. Impact: none.
+34. **`Env.secret` (website).** Decision: `Option<Secret<String>>` everywhere. Changed: §6.4. Impact: none.
+35. **Attribute list (website).** Decision: §2.5 is now a table including `@total` and `@contract_test(handlers: […])`. Impact: small for B (`contract_test`).
+36. **Imports of effects and types (consistency).** §15 used `Http`, `Sql`, `HttpError`, … after a bare `import std/http`, which §9 never allowed. Decision: imports stay explicit (`import std/http.{Http, Request}`); nothing is brought into scope implicitly; `V1002` on a std name carries a `machine_applicable` import fix. Why: agents and `symbol_query` can see where every name comes from; the alternative (implicitly importing every `pub` TypeName) is a second import rule. Changed: §9, every §15 example. Impact: small for F (import lists in the M3 examples and `graph`).
+37. **Keyword module segments (B, A).** Decision: endorsed: a `ModPath` segment after `/` may be a keyword, so `std/test` keeps its name; such a module can be imported only with `.{…}` or `as` (it has no bindable name). Changed: §2.1, §3, §9, §10.6. Impact: none.
+38. **`Cli` (consistency).** `Cli.args()`/`Cli.exit()` are host interactions, so `Cli` is an effect with a root handler and `Cli.parse` is a home-module function; `main` in §15.6 declares `Cli` instead of `Env`. Changed: §10.5, §15.6. Impact: none (M3).
+39. **Codes adopted from implementers.** `V1007 wrong_kind`, `V1011 missing_body`, `V1040 assign_immutable`, `V1041 jump_outside_loop` (B), `V2032 constraint_not_satisfied` (C), `D004`, `D090`, `D091` (D) are design-level codes now referenced in §3.2, §4.4, §8.1 and §12.3. New: `V0014 named_argument` (E to register). Impact: small for E.
+40. **Signature layout (A, `vow_fmt`).** Decision: endorsed as built: one line when it fits; otherwise `! row`, each contract and the `{` on their own lines with parameters kept together; parameters break one per line only when the head alone does not fit; contracts force the broken layout. Changed: §12.5. Impact: none.
+41. **Import groups (A, `vow_fmt`).** Decision: endorsed: two groups (`std/…`, then the rest), each sorted; a third group when the package name is available. Changed: §12.5. Impact: none.
+42. **Blank lines and ordering (A, `vow_fmt`).** Decision: endorsed: adjacent one-line items of the same kind stay together; variant lists are never reordered; type-position unions and effect rows are sorted. Changed: §12.5. Impact: none.
+43. **`var` assigned inside a failing `try` (D).** Decision: a `try` body may not assign to a `var` declared outside it (`V2041`, the same code as for lambdas) with the fix "assign after the `try` or declare the `var` inside". Why: SSA lowering would make such assignments transactional, the imperative reading would need boxing, and either is a surprise; the restriction makes the value and the error the only outputs of a `try`. Changed: §5.3, §8.1. Impact: small for C (extend the `V2041` check to `try` bodies); D's lowering stands.
+44. **`String.parse_int` beyond 2^53 on JS (F).** Decision: `None`, not `D003`, for a value the backend cannot represent (`Float.to_int_checked` likewise); arithmetic and literals keep trapping. Why: parsing is the untrusted boundary and a defect there is a denial-of-service vector; §16.3 records the resulting JS/native divergence as the known cost of the trap decision. Changed: §10.1, §16.3. Impact: small for D (`string_parse_int` returns `None` instead of raising `D003`).
+
+Open after this round: §16.13–§16.18.
