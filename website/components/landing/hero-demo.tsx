@@ -19,7 +19,7 @@ type Note = { kind: "ok" | "fail" | "seal"; text: string };
 
 const NOTES: Record<number, Note> = {
   2: { kind: "ok", text: "error union" },
-  5: { kind: "seal", text: "4 effects declared" },
+  5: { kind: "seal", text: "4 effects" },
   8: { kind: "ok", text: "Db, Fail" },
   9: { kind: "ok", text: "Random" },
   10: { kind: "ok", text: "Clock" },
@@ -179,7 +179,7 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
               return (
                 <span
                   key={i}
-                  className={`grid grid-cols-[2.25rem_1fr] transition-colors duration-300 sm:grid-cols-[2.25rem_1fr_auto] ${
+                  className={`grid grid-cols-[2.25rem_1fr] transition-colors duration-300 sm:grid-cols-[2.25rem_1fr_7.5rem] ${
                     bad ? "bg-fail-wash" : proved ? "bg-ok-wash" : ""
                   } ${visible ? "" : "invisible"}`}
                 >
