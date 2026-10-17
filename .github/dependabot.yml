@@ -1,0 +1,17 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+    open-pull-requests-limit: 5
+  - package-ecosystem: bun
+    directory: "/website"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
+    open-pull-requests-limit: 5
+# Add weekly cargo updates at / when the root Cargo.toml exists; see CONTRIBUTING.md.
