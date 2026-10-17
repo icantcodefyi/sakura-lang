@@ -11,5 +11,8 @@ publish.workspace = true
 [dependencies]
 vow_core.workspace = true
 
+[dev-dependencies]
+vow_analysis.workspace = true
+
 [lints]
 workspace = true

@@ -864,6 +864,7 @@ dependencies = [
 name = "vow_eval"
 version = "0.0.0"
 dependencies = [
+ "vow_analysis",
  "vow_core",
 ]
 
