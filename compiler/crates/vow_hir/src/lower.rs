@@ -124,6 +124,7 @@ pub(crate) fn is_expr(k: SyntaxKind) -> bool {
             | FIELD_EXPR
             | INDEX_EXPR
             | RAISE_EXPR
+            | ATTR_EXPR
             | BLOCK
     )
 }
@@ -439,6 +440,7 @@ impl Cx {
             "server",
             "test_only",
             "total",
+            "contract_test",
         ];
         if !name.is_empty() && !KNOWN.contains(&name.as_str()) {
             let file = self.file(m);

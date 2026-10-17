@@ -392,6 +392,13 @@ fn g() -> Int
 fn h() -> Strin { sql"select 1" }
 "#);
 
+snap!(diag_attributes, "main" => r#"
+@contract_test(handlers: [1])
+@total
+fn f(x: Int) -> Int { x }
+fn g(x: Int) -> Int { let a = @trust("ok"); let b = @total; f(x, @trust("y")) }
+"#);
+
 snap!(diag_shadowed_import,
     "main" => "import app/lib.{value}\nfn f() -> Int { let value = 2; value }\n",
     "lib" => "pub fn value() -> Int { 1 }\n",

@@ -1,0 +1,29 @@
+---
+source: crates/vow_hir/tests/lower.rs
+expression: "check(&\n[(\"main\",\nr#\"\n@contract_test(handlers: [1])\n@total\nfn f(x: Int) -> Int { x }\nfn g(x: Int) -> Int { let a = @trust(\"ok\"); let b = @total; f(x, @trust(\"y\")) }\n\"#)])"
+---
+== main
+@contract_test(handlers: [1])
+@total()
+fn f(x: Int) -> Int
+  params x#0
+  block
+    local x#0
+fn g(x: Int) -> Int
+  params x#0
+  block
+    let
+      pat bind a#1
+      attr @trust
+        string "ok"
+    let
+      pat bind b#2
+      attr @total
+    call
+      def app/main::f
+      local x#0
+      attr @trust
+        string "y"
+== diagnostics
+V1010 `@total` cannot be used as an expression; only `@trust("reason")` can
+  Primary file0 5:54 `total`

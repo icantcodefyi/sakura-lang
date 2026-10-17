@@ -1,24 +1,25 @@
 //! Resolution diagnostics (`V1xxx`, design §12.3) and the "did you mean" helper.
 
 use text_size::TextRange;
+use vow_diagnostics::codes;
 use vow_diagnostics::{Applicability, Code, Diagnostic, Edit, FileId, Fix, Impact, Phase, Span};
 
-pub const DUPLICATE: Code = Code("V1001");
-pub const SHADOWED_IMPORT: Code = Code("W1002");
-pub const UNRESOLVED_NAME: Code = Code("V1002");
-pub const UNRESOLVED_TYPE: Code = Code("V1003");
-pub const CASE_MISMATCH: Code = Code("V1004");
-pub const UNRESOLVED_MODULE: Code = Code("V1005");
-pub const PRIVATE_ITEM: Code = Code("V1006");
-pub const WRONG_KIND: Code = Code("V1007");
-pub const UNKNOWN_ATTRIBUTE: Code = Code("V1010");
-pub const MISSING_BODY: Code = Code("V1011");
-pub const MIXED_UNION: Code = Code("V1012");
-pub const RECURSIVE_LAMBDA: Code = Code("V1020");
-pub const IMPORT_CYCLE: Code = Code("V1030");
-pub const ASSIGN_IMMUTABLE: Code = Code("V1040");
-pub const JUMP_OUTSIDE_LOOP: Code = Code("V1041");
-pub const OR_PATTERN_BINDINGS: Code = Code("V4003");
+pub const DUPLICATE: Code = codes::V1001;
+pub const SHADOWED_IMPORT: Code = codes::W1002;
+pub const UNRESOLVED_NAME: Code = codes::V1002;
+pub const UNRESOLVED_TYPE: Code = codes::V1003;
+pub const CASE_MISMATCH: Code = codes::V1004;
+pub const UNRESOLVED_MODULE: Code = codes::V1005;
+pub const PRIVATE_ITEM: Code = codes::V1006;
+pub const WRONG_KIND: Code = codes::V1007;
+pub const UNKNOWN_ATTRIBUTE: Code = codes::V1010;
+pub const MISSING_BODY: Code = codes::V1011;
+pub const MIXED_UNION: Code = codes::V1012;
+pub const RECURSIVE_LAMBDA: Code = codes::V1020;
+pub const IMPORT_CYCLE: Code = codes::V1030;
+pub const ASSIGN_IMMUTABLE: Code = codes::V1040;
+pub const JUMP_OUTSIDE_LOOP: Code = codes::V1041;
+pub const OR_PATTERN_BINDINGS: Code = codes::V4003;
 
 pub fn span(file: FileId, range: TextRange) -> Span {
     Span::primary(file, range.start().into(), range.end().into())

@@ -345,9 +345,24 @@ impl<'a> BodyCx<'a> {
             }
             RAISE_EXPR => Expr::Raise(self.opt_expr(exprs(n).next(), range)),
             ATTR_EXPR => {
-                let name = token(n, IDENT)
-                    .map(|t| t.text().to_string())
-                    .unwrap_or_default();
+                let name = token(n, IDENT);
+                // §2.5: `@trust(…)` is the only attribute that is an expression.
+                if let Some(t) = &name
+                    && t.text() != "trust"
+                {
+                    let file = self.file();
+                    let msg = format!(
+                        "`@{}` cannot be used as an expression; only `@trust(\"reason\")` can",
+                        t.text()
+                    );
+                    self.cx.report(diag::error(
+                        diag::UNKNOWN_ATTRIBUTE,
+                        file,
+                        t.text_range(),
+                        msg,
+                    ));
+                }
+                let name = name.map(|t| t.text().to_string()).unwrap_or_default();
                 let (args, _) = self.args(n);
                 Expr::Attr { name, args }
             }
