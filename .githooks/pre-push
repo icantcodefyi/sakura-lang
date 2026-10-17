@@ -17,6 +17,10 @@ while read -r _local_ref local_sha _remote_ref _remote_sha; do
     echo "Commit the lockfile with the Cargo.toml change that needs it, and only your own entries." >&2
     exit 1
   fi
+  if ! cargo fmt --all -- --check >/dev/null 2>&1; then
+    echo "pre-push: $local_sha is not formatted. Run \`cargo fmt --all\` in compiler/ and commit." >&2
+    exit 1
+  fi
   if ! CARGO_TARGET_DIR="$root/compiler/target/pre-push/target" \
       cargo check --workspace --all-targets --locked --offline --quiet; then
     echo "pre-push: $local_sha does not compile on its own (missing or uncommitted file?)." >&2
