@@ -17,6 +17,9 @@ vow_core.workspace = true
 vow_codegen_js.workspace = true
 vow_fmt.workspace = true
 sha2.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
 
 [lints]
 workspace = true
