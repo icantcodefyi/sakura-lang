@@ -804,19 +804,24 @@ impl Checker<'_> {
         let given = args.len() + usize::from(recv.is_some());
         match self.inf.interner.ty(ft).clone() {
             Type::Fn { params, ret, row } => {
+                let body = self.hir_body();
+                let broken = args.iter().any(|a| matches!(body.exprs[*a], Expr::Missing));
                 if params.len() != given {
+                    // A `Missing` argument means a parse error already explains the call.
                     let range = self.expr_range(e);
                     let shown = self.render(ft);
-                    self.error(
-                        V2002,
-                        Phase::Type,
-                        range,
-                        format!(
-                            "this call passes {given} argument{} to a function of type `{shown}`, which takes {}",
-                            if given == 1 { "" } else { "s" },
-                            params.len()
-                        ),
-                    );
+                    if !broken {
+                        self.error(
+                            V2002,
+                            Phase::Type,
+                            range,
+                            format!(
+                                "this call passes {given} argument{} to a function of type `{shown}`, which takes {}",
+                                if given == 1 { "" } else { "s" },
+                                params.len()
+                            ),
+                        );
+                    }
                     for &a in args {
                         rows.push(self.synth(a).1);
                     }

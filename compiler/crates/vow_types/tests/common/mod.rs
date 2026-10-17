@@ -152,3 +152,41 @@ pub fn check(src: &str) -> Checked {
         src: src.to_string(),
     }
 }
+
+impl Checked {
+    /// The main module.
+    pub fn main_module(&self) -> vow_hir::ModuleId {
+        self.program
+            .find_module("main", "main")
+            .expect("main module")
+    }
+
+    /// Body of the top-level item `name` in the user module.
+    pub fn body_of(&self, name: &str) -> (vow_hir::BodyId, &vow_hir::Body, &vow_types::TypedBody) {
+        let m = self.main_module();
+        let def = self.program.lookup(m, name).expect("def");
+        let bid = match &self.program.def(def).kind {
+            vow_hir::DefKind::Fn(f) => f.body,
+            vow_hir::DefKind::Const(c) => c.body,
+            _ => panic!("not a body"),
+        };
+        (
+            bid,
+            self.program.body(m, bid),
+            self.typed.body(m, bid).expect("typed body"),
+        )
+    }
+
+    /// Rendered row and type of the body expression of `name`.
+    pub fn value_row(&mut self, name: &str) -> (String, String) {
+        let (_, body, typed) = self.body_of(name);
+        let v = body.value.expect("value");
+        let (row, ty) = (typed.rows[v], typed.types[v]);
+        let mut inf = vow_types::Infer::new();
+        std::mem::swap(&mut inf.interner, &mut self.typed.interner);
+        let names = |d: vow_hir::DefId| self.program.def(d).name.clone();
+        let out = (inf.render_row(row, &names), inf.render(ty, &names));
+        std::mem::swap(&mut inf.interner, &mut self.typed.interner);
+        out
+    }
+}

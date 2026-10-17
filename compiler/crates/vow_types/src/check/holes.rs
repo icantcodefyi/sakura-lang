@@ -3,7 +3,7 @@
 use vow_hir::{DefId, DefKind, ModuleId};
 
 use super::{Checker, LocalTy};
-use crate::ty::{Scheme, TyCon, Type, TypeId};
+use crate::ty::{TyCon, Type, TypeId};
 use crate::{Fit, Hole, HoleCandidate};
 
 const MAX_CANDIDATES: usize = 10;
@@ -103,15 +103,13 @@ impl Checker<'_> {
             && let Some(vs) = self.variants(d)
         {
             for v in vs {
-                if let Some(s) = self.scheme_of(v)
-                    && let Some(c) = self.fit_callable(
-                        &s,
-                        expected,
-                        None,
-                        &self.program.def(v).name.clone(),
-                        Fit::Constructor,
-                    )
-                {
+                if let Some(c) = self.fit_callable(
+                    v,
+                    expected,
+                    None,
+                    &self.program.def(v).name.clone(),
+                    Fit::Constructor,
+                ) {
                     out.push(c);
                 }
             }
@@ -165,8 +163,7 @@ impl Checker<'_> {
             if out.len() >= MAX_CANDIDATES * 2 {
                 break;
             }
-            if let Some(s) = self.scheme_of(id)
-                && let Some(c) = self.fit_callable(&s, expected, allowed, &shown, Fit::Function)
+            if let Some(c) = self.fit_callable(id, expected, allowed, &shown, Fit::Function)
                 && !out.iter().any(|o| o.expr == c.expr)
             {
                 out.push(c);
@@ -195,14 +192,19 @@ impl Checker<'_> {
     /// A constructor or function whose result fits `expected` and whose row fits `allowed`.
     fn fit_callable(
         &mut self,
-        s: &Scheme,
+        def: DefId,
         expected: TypeId,
         allowed: Option<crate::ty::RowId>,
         name: &str,
         fit: Fit,
     ) -> Option<HoleCandidate> {
+        let s = self.scheme_of(def)?;
+        let names: Vec<String> = match &self.program.def(def).kind {
+            DefKind::Fn(f) => f.sig.params.iter().map(|p| p.name.clone()).collect(),
+            _ => Vec::new(),
+        };
         let snap = self.inf.snapshot();
-        let (t, _) = self.inf.instantiate(s);
+        let (t, _) = self.inf.instantiate(&s);
         let t = self.inf.shallow(t);
         let result = match self.inf.interner.ty(t).clone() {
             Type::Fn { params, ret, row } => {
@@ -210,7 +212,10 @@ impl Checker<'_> {
                     && allowed.is_none_or(|a| self.inf.subsume_rows(row, a).is_ok());
                 ok.then(|| {
                     let args: Vec<String> = (0..params.len())
-                        .map(|i| format!("?arg{}", i + 1))
+                        .map(|i| match names.get(i) {
+                            Some(n) => format!("?{n}"),
+                            None => format!("?arg{}", i + 1),
+                        })
                         .collect();
                     format!("{name}({})", args.join(", "))
                 })

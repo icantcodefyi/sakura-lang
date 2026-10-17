@@ -142,3 +142,78 @@ fn m2_closed_callback_widens_twice_row() {
     let c = check(&src);
     insta::assert_snapshot!(c.render());
 }
+
+#[test]
+#[ignore = "needs vow_hir to lower a broken argument list with a trailing Missing (REQUESTS.md)"]
+fn m0_unterminated_call_reports_only_the_parse_error() {
+    let c = check("pub fn main() -> Unit ! {Console} {\n  Console.print(\n}\n");
+    assert!(
+        c.codes().iter().all(|c| c.starts_with("V0")),
+        "{}",
+        c.render()
+    );
+}
+
+#[test]
+fn m2_typed_rows_are_resolved_for_core() {
+    let src = format!(
+        "{M2}fn now_twice() -> Int ! {{Clock}} {{ twice(fn() {{ let _ = Clock.now(); 1 }}) }}\n"
+    );
+    let mut c = check(&src);
+    assert!(c.diags.is_empty(), "{}", c.render());
+    assert_eq!(c.value_row("answer"), ("{}".into(), "Int".into()));
+    assert_eq!(c.value_row("now_twice"), ("{Clock}".into(), "Int".into()));
+    assert_eq!(c.value_row("twice"), ("e".into(), "Int".into()));
+    // No inference variable survives in any row of any user body.
+    let m = c.main_module();
+    for ((module, _), body) in &c.typed.bodies {
+        if *module != m {
+            continue;
+        }
+        for (_, r) in body.rows.iter() {
+            let row = c.typed.interner.row_data(*r);
+            assert!(
+                !matches!(row.tail, vow_types::Tail::Var(_)),
+                "open row var left"
+            );
+        }
+    }
+}
+
+#[test]
+fn hole_candidates_snapshot() {
+    let src = r#"type Shape = Circle(Float) | Square(Float)
+fn area(s: Shape) -> Float { match s { Circle(r) => r * r * 3.14, Square(w) => w * w } }
+fn pick(xs: List<Int>, n: Int) -> Int ! {Console} { let total = List.sum(xs); ?answer }
+fn shape(f: Float) -> Shape { ?make }
+"#;
+    let c = check(src);
+    assert!(c.diags.is_empty(), "{}", c.render());
+    let mut out = String::new();
+    for h in &c.typed.holes {
+        out.push_str(&format!(
+            "?{} : {} ! {}\n",
+            h.name, h.expected_render, h.allowed_effects
+        ));
+        for (n, t) in &h.locals {
+            out.push_str(&format!("  local {n}: {t}\n"));
+        }
+        for cand in &h.candidates {
+            out.push_str(&format!("  {} ({})\n", cand.expr, cand.fit.as_str()));
+        }
+    }
+    insta::assert_snapshot!(out);
+}
+
+#[test]
+fn let_polymorphism_carries_constraints() {
+    let src = r#"fn f() -> String {
+  let show_it = fn(x) { "<{x}>" }
+  let a = show_it(1)
+  let b = show_it(fn() { 1 })
+  a
+}
+"#;
+    let c = check(src);
+    insta::assert_snapshot!(c.render());
+}

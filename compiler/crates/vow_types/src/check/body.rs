@@ -96,6 +96,7 @@ impl<'p> Checker<'p> {
             }
             DefKind::Type(td) => {
                 let _ = self.record_fields(def);
+                self.field_refinements(def);
                 if let Some(vs) = self.variants(def) {
                     for v in vs {
                         let _ = self.scheme_of(v);
@@ -167,7 +168,40 @@ impl<'p> Checker<'p> {
             }
             DefKind::Variant(_) | DefKind::Error(_) => {
                 let _ = self.scheme_of(def);
+                self.field_refinements(def);
             }
+        }
+    }
+
+    /// `name: T where pred` on record and error fields: `pred` is a pure `Bool` over `it: T`.
+    fn field_refinements(&mut self, def: DefId) {
+        let program = self.program;
+        let fields = match &program.def(def).kind {
+            DefKind::Type(td) => match &td.body {
+                TypeDefBody::Record(fs) => fs.as_slice(),
+                _ => return,
+            },
+            DefKind::Error(e) => e.fields.as_slice(),
+            _ => return,
+        };
+        let types = self.record_fields(def);
+        let generics = self.generics_of(def);
+        for (f, (_, ty)) in fields.iter().zip(types) {
+            let Some(bid) = f.refinement else { continue };
+            let body = program.body(def.module, bid);
+            let Some(value) = body.value else { continue };
+            self.with_body(def.module, bid, generics.clone(), |cx| {
+                cx.bind_params(body, &[ty]);
+                let pure = cx.inf.interner.empty_row();
+                cx.b.allowed_row = Some(pure);
+                let bool_ty = cx.inf.interner.prim(TyCon::Bool);
+                let row = cx.check(value, bool_ty);
+                let kind = ViolationKind::Pure {
+                    what: "a refinement predicate",
+                    code: V5001,
+                };
+                cx.bound_row(value, row, pure, cx.expr_range(value), kind);
+            });
         }
     }
 

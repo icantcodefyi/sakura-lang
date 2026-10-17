@@ -1,0 +1,20 @@
+---
+source: crates/vow_types/tests/acceptance.rs
+expression: out
+---
+?answer : Int ! {Console}
+  local xs: List<Int>
+  local n: Int
+  local total: Int
+  total (exact_local)
+  n (exact_local)
+  Int.abs(?i) (function)
+  Int.clamp(?i, ?lo, ?hi) (function)
+  Int.max(?a, ?b) (function)
+  Int.min(?a, ?b) (function)
+  Int.pow(?base, ?exp) (function)
+  Int.wrapping_add(?a, ?b) (function)
+?make : Shape ! {}
+  local f: Float
+  Circle(?arg1) (constructor)
+  Square(?arg1) (constructor)
