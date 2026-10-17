@@ -83,7 +83,7 @@ region uses the outer variable, so leaving a region by falling through, `return`
 - Handler state: `inst.s[i]` (read) and `inst.s[i] = v` (write), only inside clauses.
 - `Eff.op(args)`:
   ```js
-  const $f = $rt.find($ctx, E);                       // innermost frame for E
+  const $f = $rt.find($ctx, E, op);                   // innermost frame for E
   return $f.i.c[op]($f.i, args…, $rt.cctx($ctx, $f), $k);
   ```
   `cctx` gives the clause the handlers **outside** the frame (performing the same effect inside
@@ -159,8 +159,9 @@ caller. `std/test`'s `expect_defect` is built on it.
   name and pass it as `frames` to `runTask(run, [seed], frames)`.
 - Programs: the emitter writes `__main__.js`:
   ```js
-  import { runMain } from "./sakura_runtime.js";
+  import { registerOps, runMain } from "./sakura_runtime.js";
   import { $entry } from "./main.js";
+  registerOps({ "std::console::Console": ["print", "read_line"], … });
   runMain($entry);
   ```
   The entry files (`__main__.js`, `__tests__.js`) also import every emitted module, so each
@@ -178,6 +179,14 @@ caller. `std/test`'s `expect_defect` is built on it.
   `runMain` flushes and exits with `code`. `Cli.args()` is `process.argv` after the script.
 - `Console` output is buffered and flushed before suspending, before writing to stderr, and at
   task end.
+
+- Effect traces (design §17.80): with `SAKURA_TRACE=<path>` the runtime appends one JSON line
+  per performed operation, `{"seq":0,"task":0,"effect":"std::console::Console","op":"print"}`
+  (emitted code passes the op index to `$rt.find(ctx, effect, op)`; the entry files call
+  `$rt.registerOps({effect: [opName, …]})` so the trace names it), and one per finalizer run,
+  cancellation and defect, `{"seq","task","event":"finalizer"|"cancel"|"defect"[,"code"]}`.
+  `seq` counts records; tasks are numbered in creation order (the root task is 0), so traces of
+  one program under one handler set can be compared line by line across backends.
 
 ### Structured concurrency (design §8.6)
 

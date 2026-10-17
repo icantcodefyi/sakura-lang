@@ -9,7 +9,7 @@ const { G: $G, LIMIT: $L, bounce: $b, ret: $ret, S: $S } = $rt;
 export function greet(name, $ctx, $k) {
   if (++$G.d > $L) return $b(greet, [name, $ctx, $k]);
   const line = ("hello, " + name);
-  const $f2 = $rt.find($ctx, "std::console::Console");
+  const $f2 = $rt.find($ctx, "std::console::Console", 0);
   return $f2.i.c[0]($f2.i, line, $rt.cctx($ctx, $f2), $k);
 }
 

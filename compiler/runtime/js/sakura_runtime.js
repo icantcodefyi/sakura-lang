@@ -134,13 +134,33 @@ export function install(ctx, h) {
   return { h: { e: h.e, i, n: ctx.h }, c: ctx.c, t: ctx.t };
 }
 
-/** The innermost frame handling effect `e`. */
-export function find(ctx, e) {
+/** The innermost frame handling effect `e`, for performing its operation `op`. */
+export function find(ctx, e, op) {
   if (ctx.t.cancelled) throw CANCEL;
   let f = ctx.h;
   while (f !== null && f.e !== e) f = f.n;
   if (f === null) throw internal(`no handler installed for ${e}`);
+  if (traceFd !== null) trace(ctx.t, { effect: e, op: opNames.get(e)?.[op] ?? op });
   return f;
+}
+
+// Effect traces (design §17.80): with `SAKURA_TRACE=<path>`, one JSON line per performed
+// operation `{"seq","task","effect","op"}` and per finalizer run, cancellation and defect
+// `{"seq","task","event"[,"code"]}`, so backends can be compared by more than stdout. Tasks are
+// numbered in creation order; `seq` counts every record.
+const opNames = new Map();
+/** Operation names per effect id, in clause order (registered by the emitted entry files). */
+export function registerOps(effects) {
+  for (const [e, ops] of Object.entries(effects)) opNames.set(e, ops);
+}
+const traceFd = (() => {
+  const path = globalThis.process?.env?.SAKURA_TRACE;
+  return path ? globalThis.process.getBuiltinModule("node:fs").openSync(path, "a") : null;
+})();
+let traceSeq = 0;
+function trace(t, record) {
+  const line = JSON.stringify({ seq: traceSeq++, task: t.id, ...record });
+  globalThis.process.getBuiltinModule("node:fs").writeSync(traceFd, `${line}\n`);
 }
 
 /**
@@ -167,7 +187,7 @@ export function callback(f, pctx) {
 
 /** `Perform` for code that does not inline it (runtime and tests); passes no callbacks. */
 export function perform(ctx, e, op, args, k) {
-  const f = find(ctx, e);
+  const f = find(ctx, e, op);
   return f.i.c[op](f.i, ...args, cctx(ctx, f), k);
 }
 
@@ -184,7 +204,10 @@ export function fail(ctx, e) {
 }
 
 function runFins(t, mark) {
-  while (t.fins.length > mark) t.fins.pop()();
+  while (t.fins.length > mark) {
+    if (traceFd !== null) trace(t, { event: "finalizer" });
+    t.fins.pop()();
+  }
 }
 
 /**
@@ -197,7 +220,10 @@ export function finalize(ctx, fin, body, k) {
   fins.push(fin);
   const mark = fins.length;
   return body(ctx, (v) => {
-    if (fins.length === mark) fins.pop()(true);
+    if (fins.length === mark) {
+      if (traceFd !== null) trace(ctx.t, { event: "finalizer" });
+      fins.pop()(true);
+    }
     return ret(k, v);
   });
 }
@@ -246,6 +272,7 @@ function drive(t, start) {
     if (err instanceof Exit) throw err;
     if (err === CANCEL) return { kind: "cancelled" };
     const d = err instanceof Defect ? err : asDefect(err);
+    if (traceFd !== null) trace(t, { event: "defect", code: d.code });
     return { kind: "defect", code: d.code, message: d.detail, spans: d.spans, error: d };
   }
 }
@@ -2692,14 +2719,16 @@ function cliValue(text, s) {
 
 const TASK = "std::task::Task";
 
+let nextTask = 0;
 function newTask() {
-  return { fins: [], cancelled: false, wake: null, kids: new Set() };
+  return { id: nextTask++, fins: [], cancelled: false, wake: null, kids: new Set() };
 }
 
 /** Cancel `t` and its descendants; a suspended task unwinds (finalizers run) before return. */
 function cancelTask(t) {
   if (t.cancelled) return;
   t.cancelled = true;
+  if (traceFd !== null) trace(t, { event: "cancel" });
   for (const kid of t.kids) cancelTask(kid);
   if (t.wake !== null) t.wake();
 }

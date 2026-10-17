@@ -756,7 +756,7 @@ impl<'a> FnEmit<'a> {
             Bind::Perform(e, op, args) => {
                 let f = format!("$f{}", x.0);
                 let eff = js_string(&self.cx.m.effect(*e).qualified_name());
-                w.line(&format!("const {f} = $rt.find({ctx}, {eff});"));
+                w.line(&format!("const {f} = $rt.find({ctx}, {eff}, {op});"));
                 let mut a = vec![format!("{f}.i")];
                 // Function-typed arguments are callbacks: they run under the perform site's
                 // handlers wherever the clause calls them (design §5.5, ABI.md §3).

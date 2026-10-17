@@ -80,6 +80,19 @@ pub fn emit(m: &Module, opts: &Options) -> Vec<OutputFile> {
     for module in &modules {
         let _ = writeln!(all_modules, "import \"./{}\";", module_path(module));
     }
+    // Operation names per effect, in clause order: runners build handlers by name and effect
+    // traces (`SAKURA_TRACE`) name operations.
+    let mut effects = String::from("{\n");
+    for e in &m.effects {
+        let ops: Vec<String> = e.ops.iter().map(|o| js_string(&o.name)).collect();
+        let _ = writeln!(
+            effects,
+            "  {}: [{}],",
+            js_string(&e.qualified_name()),
+            ops.join(", ")
+        );
+    }
+    effects.push('}');
     for module in modules {
         let (text, map) = emit::module(&cx, module);
         let path = module_path(module);
@@ -94,7 +107,7 @@ pub fn emit(m: &Module, opts: &Options) -> Vec<OutputFile> {
         files.push(OutputFile {
             path: "__main__.js".into(),
             text: format!(
-                "import {{ runMain }} from \"./{RUNTIME_FILE}\";\n{all_modules}import {{ {name} }} from \"./{}\";\n\nrunMain({name});\n",
+                "import {{ registerOps, runMain }} from \"./{RUNTIME_FILE}\";\n{all_modules}import {{ {name} }} from \"./{}\";\n\nregisterOps({effects});\nrunMain({name});\n",
                 module_path(&d.module),
                 name = cx.def_names[entry.index()]
             ),
@@ -114,7 +127,8 @@ pub fn emit(m: &Module, opts: &Options) -> Vec<OutputFile> {
                 js_string(&d.module)
             );
         }
-        let mut text = all_modules.clone();
+        let mut text =
+            format!("import {{ registerOps }} from \"./{RUNTIME_FILE}\";\n{all_modules}");
         for (module, names) in imports {
             let _ = writeln!(
                 text,
@@ -124,18 +138,10 @@ pub fn emit(m: &Module, opts: &Options) -> Vec<OutputFile> {
             );
         }
         let _ = write!(text, "\nexport const tests = [\n{list}];\n");
-        // Operation names per effect, in clause order, so runners can build handlers by name.
-        let _ = writeln!(text, "\nexport const effects = {{");
-        for e in &m.effects {
-            let ops: Vec<String> = e.ops.iter().map(|o| js_string(&o.name)).collect();
-            let _ = writeln!(
-                text,
-                "  {}: [{}],",
-                js_string(&e.qualified_name()),
-                ops.join(", ")
-            );
-        }
-        text.push_str("};\n");
+        let _ = writeln!(
+            text,
+            "\nexport const effects = {effects};\nregisterOps(effects);"
+        );
         files.push(OutputFile {
             path: "__tests__.js".into(),
             text,

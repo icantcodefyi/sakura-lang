@@ -57,7 +57,7 @@ export function counter($ctx, $k) {
 
 function answer$1($ctx, $k) {
   if (++$G.d > $L) return $b(answer$1, [$ctx, $k]);
-  const $f0 = $rt.find($ctx, "main::main::Counter");
+  const $f0 = $rt.find($ctx, "main::main::Counter", 0);
   return $f0.i.c[0]($f0.i, $rt.cctx($ctx, $f0), $k);
 }
 
