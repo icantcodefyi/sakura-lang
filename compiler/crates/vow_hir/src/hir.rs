@@ -127,14 +127,35 @@ impl Program {
         (ok_kind && (home == from || self.is_visible(def))).then_some(def)
     }
 
-    /// Whether `def` is visible outside its module (`pub`, or a variant of a `pub` type).
+    /// Whether `def` is visible outside its module (`pub`, or a variant of a `pub` type that
+    /// is not opaque).
     pub fn is_visible(&self, def: DefId) -> bool {
         let d = self.def(def);
         match &d.kind {
-            DefKind::Variant(v) => self.module(def.module).defs[v.parent].is_pub,
+            DefKind::Variant(v) => {
+                let parent = DefId {
+                    module: def.module,
+                    index: v.parent,
+                };
+                self.def(parent).is_pub && !self.is_opaque(parent)
+            }
             DefKind::Op(o) => self.module(def.module).defs[o.effect].is_pub,
             _ => d.is_pub,
         }
+    }
+}
+
+impl Program {
+    /// Whether `ty` is a `pub opaque type`.
+    pub fn is_opaque(&self, ty: DefId) -> bool {
+        matches!(&self.def(ty).kind, DefKind::Type(t) if t.opaque)
+    }
+
+    /// Whether code in module `from` may use the constructors, fields and record syntax of
+    /// type `ty` (design §9): always in the declaring module, elsewhere unless `ty` is opaque.
+    /// `vow_types` checks field access and record update with this; violations are `V1006`.
+    pub fn constructors_visible(&self, ty: DefId, from: ModuleId) -> bool {
+        ty.module == from || !self.is_opaque(ty)
     }
 }
 
@@ -292,6 +313,9 @@ pub struct ConstDef {
 pub struct TypeDef {
     pub generics: Vec<TypeParam>,
     pub body: TypeDefBody,
+    /// `pub opaque type`: constructors and fields are usable only in the declaring module
+    /// (design §9); see [`Program::constructors_visible`].
+    pub opaque: bool,
 }
 
 /// Right-hand side of `type X = …`, classified per design §3.2 rule 5.
@@ -313,6 +337,9 @@ pub enum TypeDefBody {
         from: Idx<Def>,
         validate: Idx<Def>,
     },
+    /// Bodiless `type T` (design §3.2 rule 15, §4.2): a host type with no constructors, no
+    /// fields and no derived constraints; its values come only from `@external` functions.
+    External,
     Missing,
 }
 

@@ -116,6 +116,7 @@ impl<'a> Printer<'a> {
             }
             DefKind::Type(t) => {
                 let g = self.generics(&t.generics);
+                let vis = if t.opaque { "pub opaque " } else { vis };
                 match &t.body {
                     TypeDefBody::Record(fields) => {
                         self.line(0, format!("{vis}type {}{g} = record", def.name));
@@ -150,6 +151,9 @@ impl<'a> Printer<'a> {
                         let t = self.ty(base);
                         self.line(0, format!("{vis}type {}{g} = refined {t}", def.name));
                         self.body(1, *pred);
+                    }
+                    TypeDefBody::External => {
+                        self.line(0, format!("{vis}type {}{g} = external", def.name))
                     }
                     TypeDefBody::Missing => {
                         self.line(0, format!("{vis}type {}{g} = <missing>", def.name))

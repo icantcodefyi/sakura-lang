@@ -643,7 +643,14 @@ impl<'a> BodyCx<'a> {
             ));
             return Some(Res::Err);
         };
-        // Private but present: say so instead of "not found".
+        // A variant of an opaque type, or a private function: say so instead of "not found".
+        if let Some(def) = self.cx.program.lookup(home, member)
+            && let Some(parent) = self.cx.opaque_parent(def)
+            && ty == TypeRes::Def(parent)
+        {
+            self.cx.report_opaque(self.m, parent, name.text_range());
+            return Some(Res::Err);
+        }
         if let Some(def) = self.cx.program.lookup(home, member)
             && matches!(
                 self.cx.program.def(def).kind,
@@ -759,6 +766,10 @@ impl<'a> BodyCx<'a> {
                 DefKind::Variant(_) | DefKind::Error(_) => return Res::Def(d),
                 DefKind::Type(t) => {
                     if let Some(v) = same_named_variant(&self.cx.program, d, t) {
+                        if !self.cx.program.constructors_visible(d, self.m) {
+                            self.cx.report_opaque(self.m, d, name.text_range());
+                            return Res::Err;
+                        }
                         return Res::Def(v);
                     }
                 }
@@ -775,6 +786,13 @@ impl<'a> BodyCx<'a> {
                 }) => format!("; construct it with `{} {{ … }}`", name.text()),
                 DefKind::Effect(_) => {
                     format!("; perform an operation such as `{}.op(…)`", name.text())
+                }
+                DefKind::Type(TypeDef {
+                    body: TypeDefBody::External,
+                    ..
+                }) => {
+                    "; it is an external type, so its values come only from `@external` functions"
+                        .to_string()
                 }
                 _ => String::new(),
             },
@@ -861,6 +879,10 @@ impl<'a> BodyCx<'a> {
                 );
                 self.cx
                     .report(diag::error(diag::WRONG_KIND, file, path.text_range(), msg));
+                return TypeRes::Err;
+            }
+            if !self.cx.program.constructors_visible(d, self.m) {
+                self.cx.report_opaque(self.m, d, path.text_range());
                 return TypeRes::Err;
             }
         }

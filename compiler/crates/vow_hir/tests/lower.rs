@@ -1,7 +1,9 @@
 //! HIR lowering and resolution: snapshot tests of HIR dumps and diagnostics.
 
+use rowan::{GreenNode, GreenToken, Language, NodeOrToken};
 use vow_diagnostics::{Diagnostic, FileId};
 use vow_hir::{ModuleId, ModuleInput, PackageInput, Program, lower};
+use vow_syntax::{SyntaxKind, SyntaxNode, VowLanguage};
 
 /// A minimal std for unit tests, so snapshots do not churn with `compiler/std`.
 const STD: &[(&str, &str)] = &[
@@ -24,6 +26,53 @@ const STD: &[(&str, &str)] = &[
     ),
 ];
 
+/// Parses `text`, returning the root and the number of parse errors. ponytail: until
+/// `vow_syntax` parses `pub opaque type`, the word is cut from the text before parsing and
+/// spliced back into the tree as an `IDENT` token; delete this once the parser has it.
+fn parse_root(file: FileId, text: &str) -> (SyntaxNode, usize) {
+    const OPAQUE: &str = "opaque ";
+    let stripped = text.replace(OPAQUE, "");
+    let parse = vow_syntax::parse_file(file, &stripped);
+    let errors = parse.errors.len();
+    if stripped == text || vow_syntax::parse("pub opaque type T\n").errors.is_empty() {
+        let parse = vow_syntax::parse_file(file, text);
+        return (parse.syntax(), parse.errors.len());
+    }
+    // Offsets in `stripped` where an `opaque ` was cut out.
+    let cuts: Vec<usize> = text
+        .match_indices(OPAQUE)
+        .enumerate()
+        .map(|(i, (o, _))| o - i * OPAQUE.len())
+        .collect();
+    let root = parse.syntax();
+    let raw = |k: SyntaxKind| VowLanguage::kind_to_raw(k);
+    let mut green: GreenNode = root.green().into_owned();
+    for (i, decl) in root.children_with_tokens().enumerate() {
+        let NodeOrToken::Node(decl) = decl else {
+            continue;
+        };
+        let Some(k) = decl.children_with_tokens().position(|e| {
+            e.kind() == SyntaxKind::TYPE_KW && cuts.contains(&usize::from(e.text_range().start()))
+        }) else {
+            continue;
+        };
+        let d = decl
+            .green()
+            .insert_child(
+                k,
+                NodeOrToken::Token(GreenToken::new(raw(SyntaxKind::WHITESPACE), " ")),
+            )
+            .insert_child(
+                k,
+                NodeOrToken::Token(GreenToken::new(raw(SyntaxKind::IDENT), "opaque")),
+            );
+        green = green.replace_child(i, NodeOrToken::Node(d));
+    }
+    let root = SyntaxNode::new_root(green);
+    assert_eq!(root.text().to_string(), text);
+    (root, errors)
+}
+
 struct Out {
     program: Program,
     texts: Vec<(FileId, String)>,
@@ -40,7 +89,7 @@ fn build(files: &[(&str, &str)], with_std: bool) -> Out {
         ModuleInput {
             file,
             path: path.to_string(),
-            root: vow_syntax::parse_file(file, text).syntax(),
+            root: parse_root(file, text).0,
         }
     };
     let app: Vec<ModuleInput> = files
@@ -102,13 +151,8 @@ fn render(out: &Out, d: &Diagnostic) -> String {
 /// stub shows up).
 fn check(files: &[(&str, &str)]) -> String {
     let out = build(files, true);
-    for (_, text) in &out.texts {
-        let parse = vow_syntax::parse(text);
-        assert!(
-            parse.errors.is_empty(),
-            "parse errors in {text}:\n{:?}",
-            parse.errors
-        );
+    for (file, text) in &out.texts {
+        assert_eq!(parse_root(*file, text).1, 0, "parse errors in {text}");
     }
     let mut s = String::new();
     for (i, m) in out.program.modules.iter().enumerate() {
@@ -301,6 +345,39 @@ fn idx(xs: List<Int>) -> Option<Int> { xs[0] }
 fn r() -> Range { 0..10 }
 fn early(x: Int) -> Int { if x > 0 { return 1 }; 2 }
 "#);
+
+snap!(external_types, "main" => r#"
+pub type Scope
+@external(js, "vow_runtime", "scope_open")
+fn open() -> Scope
+fn use_it(s: Scope, f: Fiber<Int>) -> Scope { s }
+fn bad() -> Int { let a = Scope; let b = Scope { }; 1 }
+pub type Fiber<T>
+"#);
+
+snap!(opaque_types,
+    "main" => r#"
+import app/ids.{Id, Pair}
+fn ok(i: Id) -> Id { Id.make(1) }
+fn bad(i: Id, p: Pair) -> Int {
+  let a = Id(1)
+  let b = Id.Id(2)
+  let c = Pair { x: 1 }
+  match i { Id(n) => n }
+}
+"#,
+    "ids" => r#"
+pub opaque type Id = Id(Int)
+pub opaque type Pair = { x: Int }
+pub fn make(n: Int) -> Id { Id(n) }
+fn inside(p: Pair) -> Pair { Pair { x: p.x } }
+"#,
+);
+
+snap!(diag_opaque_variant_import,
+    "main" => "import app/ids.{Id, A}\nfn f(x: Id) -> Int { match x { Id.B => 1, _ => 2 } }\n",
+    "ids" => "pub opaque type Id = A | B\n",
+);
 
 // ---- Diagnostics ----
 
@@ -499,9 +576,6 @@ fn real_std_resolves() {
             })
         })
         .collect();
-    // `std/task` is M3: it uses the resource types `Scope`/`Fiber` that nothing declares yet
-    // (compiler/REQUESTS.md).
-    sources.retain(|(name, _)| name != "task");
     sources.sort();
     let modules = sources
         .iter()
@@ -541,8 +615,6 @@ fn real_std_resolves() {
                 .first()
                 .is_some_and(|s| parses_cleanly(s.file.0 as usize))
         })
-        // Pending in std (compiler/REQUESTS.md): `env.host` uses `EnvScope`, which is undeclared.
-        .filter(|d| !d.message.contains("`EnvScope`"))
         .map(|d| {
             let f = d.spans.first().map_or(0, |s| s.file.0 as usize);
             format!("{}: {}", sources[f].0, render(&out, d))

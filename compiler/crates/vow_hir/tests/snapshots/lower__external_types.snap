@@ -1,0 +1,27 @@
+---
+source: crates/vow_hir/tests/lower.rs
+expression: "check(&\n[(\"main\",\nr#\"\npub type Scope\n@external(js, \"vow_runtime\", \"scope_open\")\nfn open() -> Scope\nfn use_it(s: Scope, f: Fiber<Int>) -> Scope { s }\nfn bad() -> Int { let a = Scope; let b = Scope { }; 1 }\npub type Fiber<T>\n\"#)])"
+---
+== main
+pub type Scope = external
+@external(js, "vow_runtime", "scope_open")
+fn open() -> app/main::Scope
+fn use_it(s: app/main::Scope, f: app/main::Fiber<Int>) -> app/main::Scope
+  params s#0 f#1
+  block
+    local s#0
+fn bad() -> Int
+  block
+    let
+      pat bind a#0
+      <err>
+    let
+      pat bind b#1
+      record <err>
+    int 1
+pub type Fiber<T> = external
+== diagnostics
+V1007 `Scope` is a type, not a value; it is an external type, so its values come only from `@external` functions
+  Primary file0 6:27 `Scope`
+V1007 `Scope` is not a record type or error tag, so it has no `{ field: … }` form
+  Primary file0 6:42 `Scope`

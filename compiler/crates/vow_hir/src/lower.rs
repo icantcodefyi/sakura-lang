@@ -348,6 +348,12 @@ impl Cx {
             TYPE_DECL => DefKind::Type(TypeDef {
                 generics,
                 body: TypeDefBody::Missing,
+                // Matched by text so it holds whether `opaque` lexes as a keyword or an ident.
+                opaque: item
+                    .children_with_tokens()
+                    .filter_map(|e| e.into_token())
+                    .take_while(|t| t.kind() != TYPE_KW)
+                    .any(|t| t.text() == "opaque"),
             }),
             ERROR_DECL => DefKind::Error(ErrorDef { fields: Vec::new() }),
             EFFECT_DECL => DefKind::Effect(EffectDef {
@@ -780,6 +786,15 @@ impl Cx {
             });
         }
         let module_name = self.module_name(target);
+        if let Some(&idx) = tm.scope.get(name)
+            && let Some(ty) = self.opaque_parent(DefId {
+                module: target,
+                index: idx,
+            })
+        {
+            self.report_opaque(m, ty, range);
+            return None;
+        }
         if let Some(&idx) = tm.scope.get(name) {
             let def_range = tm.defs[idx].range;
             let def_file = tm.file;
@@ -802,9 +817,55 @@ impl Cx {
         if let Some(f) = d {
             diag = diag.with_fix(f);
         }
-        let _ = m;
         self.report(diag);
         None
+    }
+
+    /// The variant `def`'s opaque parent type, if it has one.
+    pub(crate) fn opaque_parent(&self, def: DefId) -> Option<DefId> {
+        let DefKind::Variant(v) = &self.program.def(def).kind else {
+            return None;
+        };
+        let parent = DefId {
+            module: def.module,
+            index: v.parent,
+        };
+        self.program.is_opaque(parent).then_some(parent)
+    }
+
+    /// `V1006` for constructing, matching or spelling the record of opaque type `ty` outside
+    /// its module, naming a `pub fn` of the home module that returns `ty` if there is one.
+    pub(crate) fn report_opaque(&mut self, m: ModuleId, ty: DefId, range: TextRange) {
+        let file = self.file(m);
+        let name = self.program.def(ty).name.clone();
+        let home = self.program.module(ty.module);
+        let maker = self.mods[ty.module.0 as usize]
+            .items
+            .iter()
+            .find(|(_, node)| {
+                node.kind() == FN_DECL
+                    && token(node, PUB_KW).is_some()
+                    && child(node, RET_TYPE).is_some_and(|r| {
+                        r.descendants_with_tokens()
+                            .filter_map(|e| e.into_token())
+                            .any(|t| t.kind() == TYPE_NAME && t.text() == name)
+                    })
+            })
+            .map(|(idx, _)| home.defs[*idx].name.clone());
+        let hint = match maker {
+            Some(f) => format!("; create one with `{name}.{f}(…)`"),
+            None => String::new(),
+        };
+        let msg = format!(
+            "`{name}` is opaque: its constructors and fields are private to module `{}`{hint}",
+            self.module_name(ty.module)
+        );
+        let d = diag::error(diag::PRIVATE_ITEM, file, range, msg).with_span(
+            diag::span(home.file, self.program.def(ty).range)
+                .with_role(vow_diagnostics::SpanRole::Definition)
+                .with_label("declared `pub opaque` here"),
+        );
+        self.report(d);
     }
 
     fn bind_import_name(&mut self, m: ModuleId, name: String, b: Binding, range: TextRange) {
@@ -974,6 +1035,8 @@ impl Cx {
                 kind: TypeRefKind::Missing,
                 range: node.text_range(),
             })
+        } else if token(node, EQ).is_none() {
+            TypeDefBody::External
         } else {
             TypeDefBody::Missing
         };
@@ -1187,16 +1250,9 @@ impl Cx {
                             validate,
                         }
                     }
-                    TypeDefBody::Missing => TypeDefBody::Missing,
+                    b @ (TypeDefBody::External | TypeDefBody::Missing) => b,
                 };
-                self.set_kind(
-                    m,
-                    idx,
-                    DefKind::Type(TypeDef {
-                        generics: t.generics,
-                        body,
-                    }),
-                );
+                self.set_kind(m, idx, DefKind::Type(TypeDef { body, ..t }));
             }
             DefKind::Variant(_) | DefKind::Op(_) => {}
         }
@@ -1748,6 +1804,10 @@ impl Cx {
             };
             if ok && (home == m || self.program.is_visible(def)) {
                 return Ok(Binding::Def(def));
+            }
+            if ok && let Some(ty) = self.opaque_parent(def) {
+                self.report_opaque(m, ty, seg.text_range());
+                return Err(true);
             }
             if ok {
                 let msg = format!(

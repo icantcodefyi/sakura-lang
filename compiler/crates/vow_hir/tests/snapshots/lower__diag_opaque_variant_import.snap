@@ -1,0 +1,28 @@
+---
+source: crates/vow_hir/tests/lower.rs
+expression: "check(&\n[(\"main\",\n\"import app/ids.{Id, A}\\nfn f(x: Id) -> Int { match x { Id.B => 1, _ => 2 } }\\n\"),\n(\"ids\", \"pub opaque type Id = A | B\\n\")])"
+---
+== main
+import app/ids Id=app/ids::Id A=<err>
+fn f(x: app/ids::Id) -> Int
+  params x#0
+  block
+    match
+      local x#0
+      arm
+        pat ctor <err>
+        int 1
+      arm
+        pat _
+        int 2
+== ids
+pub opaque type Id = variants
+  A()
+  B()
+== diagnostics
+V1006 `Id` is opaque: its constructors and fields are private to module `app/ids`
+  Primary file0 1:21 `A`
+  Definition file1 1:17 `Id` (declared `pub opaque` here)
+V1006 `Id` is opaque: its constructors and fields are private to module `app/ids`
+  Primary file0 2:35 `B`
+  Definition file1 1:17 `Id` (declared `pub opaque` here)
