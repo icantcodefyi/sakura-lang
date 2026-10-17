@@ -122,7 +122,7 @@ function Toolchain() {
       {COMMANDS.map(([cmd, what, planned]) => (
         <div key={cmd} className="col-span-2 grid grid-cols-subgrid border-b border-line py-2">
           <dt className="whitespace-nowrap">
-            <span className="text-fg-faint">vow </span>
+            <span className="text-fg-faint">sakura </span>
             <span className={planned ? "text-fg-muted" : "text-seal-text"}>{cmd}</span>
           </dt>
           <dd className="font-sans text-[13.5px] text-fg-muted">

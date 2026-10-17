@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { GitHubIcon } from "@/components/github-icon";
-import { tokenize } from "@/lib/vow/highlight";
+import { tokenize } from "@/lib/sakura/highlight";
 import { site } from "@/lib/site";
 import { HERO_CODE } from "./hero-code";
 import { HeroDemo } from "./hero-demo";
@@ -38,8 +38,8 @@ export async function Hero() {
             className="rise-text mt-6 max-w-[34rem] text-[clamp(1.05rem,1.4vw,1.2rem)] leading-relaxed text-pretty text-fg-muted"
             style={{ "--i": 2 } as CSSProperties}
           >
-            Vow is the language agents write. Every signature declares its effects, errors and
-            contracts, and the compiler holds the code to them.
+            Sakura Lang is the language agents write. Every signature declares its effects, errors
+            and contracts, and the compiler holds the code to them.
           </p>
           <div
             className="rise mt-9 flex flex-wrap items-center gap-3"

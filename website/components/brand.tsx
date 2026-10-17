@@ -1,7 +1,7 @@
 import type { SVGProps } from "react";
 
 /**
- * The mark: a V that is also a check. The compiler checks the vow.
+ * The mark: a V that is also a check. The compiler seals the signature.
  * Short left arm, long right arm, one continuous solid stroke.
  */
 export const MARK_PATH = "M7.5 15.5 13.6 24 25 7.5";
@@ -28,7 +28,9 @@ export function Wordmark({ className }: { className?: string }) {
   return (
     <span className={`inline-flex items-center gap-2 ${className ?? ""}`}>
       <BrandMark className="size-[1.15em] -translate-y-px" />
-      <span className="font-display text-[1.05em] font-semibold tracking-[-0.03em]">vow</span>
+      <span className="font-display text-[1.05em] font-semibold tracking-[-0.03em]">
+        Sakura Lang
+      </span>
     </span>
   );
 }

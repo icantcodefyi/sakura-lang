@@ -1,13 +1,13 @@
 ---
 title: Types
-description: Primitive types, records, variants, refinements, generics with derived constraints, inference, method-call resolution, and exhaustive pattern matching in Vow.
+description: Primitive types, records, variants, refinements, generics with derived constraints, inference, method-call resolution, and exhaustive pattern matching in Sakura Lang.
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  This page describes the v0 design ([design §4](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)). The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet.
+  This page describes the v0 design ([design §4](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)). The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet.
 </Callout>
 
-Vow is statically typed with Hindley-Milner inference inside bodies. Top-level signatures are always explicit. There are no implicit conversions, no null, and no subtyping except three narrow cases: refined types coerce to their base, smaller error unions fit larger ones, and closed effect rows widen at function-value use sites.
+Sakura Lang is statically typed with Hindley-Milner inference inside bodies. Top-level signatures are always explicit. There are no implicit conversions, no null, and no subtyping except three narrow cases: refined types coerce to their base, smaller error unions fit larger ones, and closed effect rows widen at function-value use sites.
 
 ## Primitive types
 
@@ -27,7 +27,7 @@ Conversions are explicit functions: `Int.to_float`, `Float.round` (defect on NaN
 
 Records are nominal. Construction names the type, and a field whose value is a same-named local can be written once (punning). Update copies a record and overrides the listed fields.
 
-```vow
+```sakura
 type User = { id: Int, email: String, name: String }
 
 test "records" {
@@ -49,7 +49,7 @@ Every field must be supplied at construction. Every field named in an update mus
 
 A variant type is a nominal sum. Payloads are positional. Constructors are functions: `Circle` has type `fn(Float) -> Shape`.
 
-```vow
+```sakura
 type Shape = Circle(Float) | Rect(Float, Float) | Empty
 
 fn area(s: Shape) -> Float {
@@ -67,7 +67,7 @@ Adding a variant makes every `match` on `Shape` that does not handle it a compil
 
 A value that may be absent has type `Option<T> = None | Some(T)`.
 
-```vow
+```sakura
 fn find_user(users: List<User>, email: String) -> Option<User> {
   List.find(users, fn(u) { u.email == email })
 }
@@ -83,7 +83,7 @@ The `Option` module has `map`, `unwrap_or`, `is_some`, `or_fail` (turns `None` i
 
 `Result<T, E> = Ok(T) | Err(E)` exists, but a function that can fail declares `Fail<E>` in its effect row instead of returning `Result`. `E` is a union of nominal `error` tags.
 
-```vow
+```sakura
 error ParseError(input: String)
 
 fn parse_age(s: String) -> Int ! {Fail<ParseError>} {
@@ -115,16 +115,16 @@ test "bad age is a typed failure" {
 
 A refinement narrows a base type with a predicate. `it` is the value being checked.
 
-```vow
+```sakura
 type Email = String where String.len(it) <= 254 && String.contains(it, "@")
 type Percent = Int where it >= 0 && it <= 100
 type NonEmpty<T> = List<T> where List.len(it) > 0
 ```
 
-The predicate must be in the contract subset: pure, terminating, no loops or recursion ([design §7.1](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)). A refined type is a distinct nominal type with the same representation as its base. Values enter it through:
+The predicate must be in the contract subset: pure, terminating, no loops or recursion ([design §7.1](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)). A refined type is a distinct nominal type with the same representation as its base. Values enter it through:
 
 - `Percent.validate(n) -> Result<Percent, Violation>`, generated for every refined type. Use it for external input.
-- `Percent.from(n) -> Percent`, a checked introduction that is defect `D010` on failure. Use it at trusted boundaries only; `vow audit` lists each use.
+- `Percent.from(n) -> Percent`, a checked introduction that is defect `D010` on failure. Use it at trusted boundaries only; `sakura audit` lists each use.
 - Schema decoding (`Json.decode`, `Request.json`, `Llm.generate`), which checks nested refinements and reports a typed `DecodeError`, never a defect.
 - Literals: `let p: Percent = 50` is checked at compile time where possible, otherwise at program start (warning `V5002`).
 
@@ -134,7 +134,7 @@ A refined value coerces implicitly to its base: a `Percent` works anywhere an `I
 
 Generics are rank-1. Uppercase type parameters are type variables; lowercase ones are effect-row variables ([Effects](/docs/tour/effects)).
 
-```vow
+```sakura
 type Pair<A, B> = { left: A, right: B }
 
 fn swap<A, B>(p: Pair<A, B>) -> Pair<B, A> {
@@ -164,7 +164,7 @@ An unconstrained type parameter can only be passed around and matched through co
 
 ### Show output
 
-Interpolation uses `Show`. Its output is valid Vow expression syntax, stable across backends, and the format `vow test` snapshots use ([design §4.8](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
+Interpolation uses `Show`. Its output is valid Sakura Lang expression syntax, stable across backends, and the format `sakura test` snapshots use ([design §4.8](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)):
 
 | Value | Shows as |
 | --- | --- |
@@ -187,7 +187,7 @@ So `"{name}"` with `name = "Ada"` prints `Ada`, while `"{[name]}"` prints `["Ada
 - Top-level functions may be mutually recursive. Local lambdas may not recurse (`V1020`).
 - You must also annotate `pub let` constants, `property` parameters, and empty collections whose element type cannot be inferred (`V2010`). There are no call-site type arguments (`V0011`); a type-directed function gets its type from a binding annotation:
 
-```vow
+```sakura
 import std/json.{DecodeError}
 
 fn start() -> List<Int> {
@@ -205,7 +205,7 @@ fn load(text: String) -> User ! {Fail<DecodeError>} {
 
 `type Meters = Float` is a transparent alias: `Meters` and `Float` are the same type. For a distinct type, use a refinement or a single-variant type:
 
-```vow
+```sakura
 import std/http.{Request, Response}
 import std/sql.{Sql}
 
@@ -220,8 +220,8 @@ A variant may share its type's name, as `UserId` does. Two refined types with id
 
 `pub type` exports a type together with its constructors and fields. `pub opaque type` exports only the name: other modules can hold, pass, compare, and show its values, but constructing one or reading its fields outside the declaring module is `V1006`.
 
-```vow
-// src/tokens.vow
+```sakura
+// src/tokens.sakura
 pub opaque type Token = Token(String)
 
 pub fn issue(user: Int) -> Token ! {Random} {
@@ -233,7 +233,7 @@ Other modules can only get a `Token` from `tokens.issue`. Std uses the same mech
 
 ## Method-call resolution
 
-`e.f(args)` is resolved in this order; the first match wins ([design §4.9](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
+`e.f(args)` is resolved in this order; the first match wins ([design §4.9](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)):
 
 1. `e` is a record and `f` is a field: field access.
 2. `e` names an effect: `Eff.op(args)` performs the operation on the innermost installed handler. If `op` is not an operation, `Eff.f` is a function of the effect's home module, which is how handler constructors such as `Console.host()`, `Clock.fixed(t)`, and `Users.memory([])` are found.
@@ -243,8 +243,8 @@ Other modules can only get a `Token` from `tokens.issue`. Std uses the same mech
 
 There are no methods, no `self`, and no extension methods. A function becomes callable with dot syntax on a type only by living in that type's module:
 
-```vow
-// src/shapes.vow, the home module of Shape
+```sakura
+// src/shapes.sakura, the home module of Shape
 pub type Shape = Circle(Float) | Rect(Float, Float) | Empty
 
 pub fn area(s: Shape) -> Float {
@@ -256,8 +256,8 @@ pub fn area(s: Shape) -> Float {
 }
 ```
 
-```vow
-// src/report.vow, in package `app`
+```sakura
+// src/report.sakura, in package `app`
 import app/shapes.{Shape}
 
 fn total_area(xs: List<Shape>) -> Float {
@@ -271,7 +271,7 @@ On a generic `A` with no constraint, `x.len()` is an error with a fix suggesting
 
 `match` must be exhaustive. A missing case is `V4001` with a witness value; a redundant arm is `V4002`. Guards never count toward coverage.
 
-```vow
+```sakura
 fn summary(xs: List<Int>) -> String {
   match xs {
     [] => "empty"
@@ -308,7 +308,7 @@ fn is_admin(u: User) -> Bool {
 
 A tagged string `tag"…"` desugars to `tag.template(parts, values)`, where `tag` resolves to a module that exports `template`. Each interpolated value is checked against the tag's argument type, and the tag receives it as a value, never as spliced text.
 
-```vow
+```sakura
 import std/sql.{Sql, SqlError}
 
 fn find_by_email(email: Email) -> List<User> ! {Sql, Fail<SqlError>} {
@@ -329,4 +329,4 @@ Here `{email}` becomes a bound parameter. For `sql`, an `Untrusted<String>` or a
 
 ## Next
 
-[Effects](/docs/tour/effects): how Vow puts every side effect and error in the signature.
+[Effects](/docs/tour/effects): how Sakura Lang puts every side effect and error in the signature.

@@ -1,10 +1,10 @@
 ---
 title: Memory model
-description: Value semantics, var rebinding, compiler-inserted reference counting with Perceus reuse, cycles through Graph, scope-bound resources, and backends in Vow.
+description: Value semantics, var rebinding, compiler-inserted reference counting with Perceus reuse, cycles through Graph, scope-bound resources, and backends in Sakura Lang.
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  This page describes the v0 design ([design §8](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)). The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet. Reference counting and reuse are planned for the native backend (M5); nothing here has been measured.
+  This page describes the v0 design ([design §8](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)). The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet. Reference counting and reuse are planned for the native backend (M5); nothing here has been measured.
 </Callout>
 
 The compiler owns memory. There are no lifetimes, no borrow annotations, no `Rc`/`Arc`, no pointers, and no reference cells in user code. The price is a restricted data model: no aliasable mutation, no cycles in the heap, and explicit scopes for resources.
@@ -15,7 +15,7 @@ Every value behaves as an independent value. Assigning, passing, capturing, and 
 
 `let` bindings are immutable. A `var` binding can be **reassigned**, which changes the binding and nothing else:
 
-```vow
+```sakura
 type User = { id: Int, name: String, handle: String }
 
 fn rename(u: User, name: String) -> User {
@@ -34,7 +34,7 @@ test "updates never alias" {
 
 Collections grow the same way: `xs = List.push(xs, 1)`. `List.push` returns a new list, so calling it as a statement and dropping the result is error `V2040`, which catches the forgotten reassignment:
 
-```vow
+```sakura
 fn evens(n: Int) -> List<Int> {
   var xs: List<Int> = []
   for i in 0..n {
@@ -48,7 +48,7 @@ fn evens(n: Int) -> List<Int> {
 
 A closure captures `var` bindings **by value at creation**. It cannot assign to an outer `var` (`V2041`); accumulate with a `var` in the same function body, or with `List.fold`. A `try` body follows the same rule: it may stop at any failing call, so it cannot assign to a `var` declared outside it either (`V2041`). Assign after the `try` instead: `let v = try { … } catch { … }` and then `total = total + v`.
 
-```vow
+```sakura
 test "closures see the value at creation" {
   var greeting = "hello"
   let say = fn() { greeting }
@@ -59,7 +59,7 @@ test "closures see the value at creation" {
 
 The only stateful constructs are handler `var` state and `Graph`, and both are confined. Shared mutable state, such as a counter or a cache, lives in a handler instance:
 
-```vow
+```sakura
 effect Counter { fn next() -> Int }
 
 fn counter() -> Handler<Counter> {
@@ -74,13 +74,13 @@ The state is private to the instance, initialized once per `with`, and released 
 
 ## Reference counting and reuse
 
-With no aliasable mutation and strict evaluation, the heap is an acyclic graph: a value can only reference values that existed before it. That makes reference counting complete without a cycle collector. The plan for native and WASM ([design §8.2](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
+With no aliasable mutation and strict evaluation, the heap is an acyclic graph: a value can only reference values that existed before it. That makes reference counting complete without a cycle collector. The plan for native and WASM ([design §8.2](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)):
 
 - **Non-atomic counts per task.** The compiler inserts `dup`/`drop` after Core lowering (Perceus). Values sent across worker threads are promoted to atomic counts on send.
 - **Same-constructor reuse.** When a value is uniquely referenced, an update or a `match` that rebuilds a value of the same shape reuses its memory.
 - **Copy-on-write buffers** for `List`, `Map`, and `String`. A `var xs` whose last use is `List.push(xs, v)` appends in place when the count is one, which gives amortized O(1) appends without exposing uniqueness in the language.
 
-```vow
+```sakura
 type Tree = Leaf | Node(Tree, Int, Tree)
 
 fn increment(t: Tree) -> Tree {
@@ -99,9 +99,9 @@ The JavaScript backend ignores all of this and uses the host's garbage collector
 
 ## Cycles: use Graph
 
-Reference counting cannot free cycles, and Vow's data model cannot build them. Cyclic structures use `std/graph`: a `Graph<N>` owns a table of nodes, and edges are `NodeId`s (slot plus generation) validated against the graph. There are no weak pointers in v0.
+Reference counting cannot free cycles, and Sakura Lang's data model cannot build them. Cyclic structures use `std/graph`: a `Graph<N>` owns a table of nodes, and edges are `NodeId`s (slot plus generation) validated against the graph. There are no weak pointers in v0.
 
-```vow
+```sakura
 import std/graph.{Graph, NodeId}
 
 type Person = { name: String }
@@ -119,13 +119,13 @@ fn befriend(g: Graph<Person>, a: Person, b: Person) -> (Graph<Person>, NodeId, N
 
 Files, sockets, database connections, HTTP bodies, and fibers are **resource types**: external types, declared without a body, whose representation belongs to the host. They are affine (used at most once as a whole), are not `Eq`, `Show`, or `Schema`, and are bound to a scope provided by their effect:
 
-```vow
+```sakura
 effect Fs {
   fn with_file<T, e>(path: Path, mode: Mode, body: fn(File) -> T ! e) -> T ! {Fail<FsError> | e}
 }
 ```
 
-The excerpt above is from the std `Fs` declaration ([design §10.2](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)). `Sql.transaction(fn() { … })` follows the same pattern. The closure's result may not contain the resource (`V6003`, the same escape check that keeps capabilities in scope). Resources are released on normal exit, `fail`, defect, and cancellation, in reverse order of acquisition. A failed release is logged as a defect, never ignored.
+The excerpt above is from the std `Fs` declaration ([design §10.2](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)). `Sql.transaction(fn() { … })` follows the same pattern. The closure's result may not contain the resource (`V6003`, the same escape check that keeps capabilities in scope). Resources are released on normal exit, `fail`, defect, and cancellation, in reverse order of acquisition. A failed release is logged as a defect, never ignored.
 
 ## Regions
 
@@ -146,7 +146,7 @@ There is no shared mutable memory, so tasks cannot race on data. Tasks communica
 In v0 the only build target is JavaScript:
 
 ```bash
-vow build --target js
+sakura build --target js
 ```
 
 ## Costs and limits
@@ -155,7 +155,7 @@ vow build --target js
 - Sharing a large value and then updating it copies. `W8001` points at loops where this happens.
 - Cyclic data needs `Graph` and `NodeId`s instead of direct references.
 - On the JS backend, `Int` arithmetic and literals beyond ±(2^53−1) are defect `D003` until a wider representation lands. Parsing is the exception: `String.parse_int` returns `None` for such a value, because parsing is where untrusted input enters.
-- Native handler state uses a per-instance lock. Whether that holds up under parallelism is an open question ([design §16](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)).
+- Native handler state uses a per-instance lock. Whether that holds up under parallelism is an open question ([design §16](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)).
 
 ## What the compiler checks
 

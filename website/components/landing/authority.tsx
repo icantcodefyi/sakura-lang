@@ -7,7 +7,7 @@ const SCOPES: { code: ReactNode; note: string }[] = [
   {
     code: (
       <>
-        vow.toml <span className="text-fg-muted">[permissions]</span>
+        sakura.toml <span className="text-fg-muted">[permissions]</span>
       </>
     ),
     note: 'fs.read = ["./data"], net = [], the ceiling',
@@ -91,7 +91,7 @@ export function Authority() {
           <p className="mt-5 max-w-[30rem] text-[17px] leading-relaxed text-pretty text-fg-muted">
             An effect says what a function needs. The handler around it decides how much it gets.
             Root handlers come from the host, capped by{" "}
-            <code className="font-mono text-[15px] text-fg">vow.toml</code>; every{" "}
+            <code className="font-mono text-[15px] text-fg">sakura.toml</code>; every{" "}
             <code className="font-mono text-[15px] text-fg">with</code> below can narrow that, and
             nothing can widen it. There is no ambient authority to import.
           </p>

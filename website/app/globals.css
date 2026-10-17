@@ -5,7 +5,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * Vow design tokens.
+ * Sakura Lang design tokens.
  * Graphite neutrals tinted toward hue 255, one saffron "seal" accent (hue 78).
  * Effects are saffron, failures coral, contracts mint, in code and in UI.
  */
@@ -83,9 +83,9 @@
   --color-ok-wash: var(--ok-wash);
   --color-code: var(--code-bg);
 
-  --font-sans: var(--font-vow-body), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-vow-display), var(--font-vow-body), ui-sans-serif, sans-serif;
-  --font-mono: var(--font-vow-code), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: var(--font-sakura-body), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-sakura-display), var(--font-sakura-body), ui-sans-serif, sans-serif;
+  --font-mono: var(--font-sakura-code), ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* Fumadocs UI adopts the same tokens, so docs and landing are one system. */
   --color-fd-background: var(--bg);
@@ -160,7 +160,7 @@
 }
 
 .prose :where(h1, h2, h3, h4):not(:where(.not-prose *)) {
-  font-family: var(--font-vow-display);
+  font-family: var(--font-sakura-display);
   letter-spacing: -0.015em;
 }
 

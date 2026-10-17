@@ -6,11 +6,11 @@ import type { ComponentProps } from "react";
 import type { MDXComponents } from "mdx/types";
 
 /** Callouts are tinted panels in the callout colour, without the default side stripe. */
-function VowCallout({ className, ...props }: ComponentProps<typeof Callout>) {
+function SakuraCallout({ className, ...props }: ComponentProps<typeof Callout>) {
   return (
     <Callout
       {...props}
-      className={`vow-callout ps-3.5 border-[color-mix(in_oklch,var(--callout-color)_35%,var(--line))] bg-[color-mix(in_oklch,var(--callout-color)_7%,var(--surface))] [&>[role=none]]:hidden ${className ?? ""}`}
+      className={`sakura-callout ps-3.5 border-[color-mix(in_oklch,var(--callout-color)_35%,var(--line))] bg-[color-mix(in_oklch,var(--callout-color)_7%,var(--surface))] [&>[role=none]]:hidden ${className ?? ""}`}
     />
   );
 }
@@ -18,7 +18,7 @@ function VowCallout({ className, ...props }: ComponentProps<typeof Callout>) {
 export function getMDXComponents(components?: MDXComponents) {
   return {
     ...defaultMdxComponents,
-    Callout: VowCallout,
+    Callout: SakuraCallout,
     Step,
     Steps,
     Tab,

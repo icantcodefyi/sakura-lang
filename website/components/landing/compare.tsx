@@ -1,10 +1,10 @@
 type Mark = "yes" | "partial" | "no";
 type Cell = [Mark, string?];
 
-const LANGS = ["Vow", "TypeScript", "Python", "Rust", "Effect-TS"] as const;
+const LANGS = ["Sakura Lang", "TypeScript", "Python", "Rust", "Effect-TS"] as const;
 /** Column heads for the phone matrix, where five full names do not fit. */
 const SHORT: Record<(typeof LANGS)[number], string> = {
-  Vow: "Vow",
+  "Sakura Lang": "Sakura Lang",
   TypeScript: "TS",
   Python: "Python",
   Rust: "Rust",
@@ -151,7 +151,7 @@ export function Compare() {
         <div className="relative mt-12 hidden overflow-x-auto rounded-2xl border border-line bg-surface sm:block">
           <table className="w-full min-w-[50rem] sm:min-w-[54rem] border-collapse text-left text-[14px]">
             <caption className="sr-only">
-              Comparison of language defaults relevant to agent-written code. The Vow column
+              Comparison of language defaults relevant to agent-written code. The Sakura Lang column
               describes design goals.
             </caption>
             <thead>
@@ -221,7 +221,7 @@ export function Compare() {
           <span className="inline-flex items-center gap-1.5">
             <Glyph mark="no" /> not provided
           </span>
-          <span>The Vow column states design goals; the M0 to M2 parts run today.</span>
+          <span>The Sakura Lang column states design goals; the M0 to M2 parts run today.</span>
         </p>
       </div>
     </section>

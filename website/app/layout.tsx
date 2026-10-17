@@ -10,31 +10,31 @@ import "./globals.css";
 
 const display = Funnel_Display({
   subsets: ["latin"],
-  variable: "--font-vow-display",
+  variable: "--font-sakura-display",
   display: "swap",
 });
 
 const body = Atkinson_Hyperlegible_Next({
   subsets: ["latin"],
-  variable: "--font-vow-body",
+  variable: "--font-sakura-body",
   adjustFontFallback: false,
   display: "swap",
 });
 
 const code = Atkinson_Hyperlegible_Mono({
   subsets: ["latin"],
-  variable: "--font-vow-code",
+  variable: "--font-sakura-code",
   adjustFontFallback: false,
   display: "swap",
 });
 
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
-  title: { default: site.title, template: "%s · Vow" },
+  title: { default: site.title, template: "%s · Sakura Lang" },
   description: site.description,
   applicationName: site.name,
   keywords: [
-    "Vow",
+    "Sakura Lang",
     "programming language",
     "AI agents",
     "effects",

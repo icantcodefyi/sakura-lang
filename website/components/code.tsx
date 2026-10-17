@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { tokenize } from "@/lib/vow/highlight";
+import { tokenize } from "@/lib/sakura/highlight";
 import { TokenSpans } from "./token-spans";
 
 type CodeProps = {
@@ -25,7 +25,7 @@ const markClass = {
 /** Static, server-highlighted code block in the site's code style. */
 export async function Code({
   code,
-  lang = "vow",
+  lang = "sakura",
   title,
   mark,
   className,

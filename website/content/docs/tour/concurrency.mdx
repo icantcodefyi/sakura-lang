@@ -1,19 +1,19 @@
 ---
 title: Concurrency
-description: Structured concurrency with the Task effect, cooperative cancellation, timeouts, retries, budgets, and deterministic scheduling in Vow.
+description: Structured concurrency with the Task effect, cooperative cancellation, timeouts, retries, budgets, and deterministic scheduling in Sakura Lang.
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  This page describes the v0 design in [design §8.6–§8.7 and §5.9](https://github.com/icantcodefyi/vow/blob/master/docs/design.md). The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet, so the `std/task` and `std/http` code below is planned.
+  This page describes the v0 design in [design §8.6–§8.7 and §5.9](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md). The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet, so the `std/task` and `std/http` code below is planned.
 </Callout>
 
-Vow has no `async`/`await` keywords and no `Async` effect. Every Vow function may suspend, and nothing in application code can observe whether a call did. Suspension is a property of **handlers**: `Clock.sleep` suspends under the host clock and returns immediately under `Clock.fixed` (design §5.6).
+Sakura Lang has no `async`/`await` keywords and no `Async` effect. Every Sakura Lang function may suspend, and nothing in application code can observe whether a call did. Suspension is a property of **handlers**: `Clock.sleep` suspends under the host clock and returns immediately under `Clock.fixed` (design §5.6).
 
 Running work concurrently is a different matter. That uses the `Task` effect from `std/task`, which is in the prelude.
 
 ## The `Task` effect
 
-```vow
+```sakura
 // std/task
 pub type Scope          // external, scoped
 pub type Fiber<T>       // external, scoped, affine
@@ -36,7 +36,7 @@ pub fn par_map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! {Task | e}
 
 `Task.scope` opens a scope. `Task.spawn` starts a child in it and returns a `Fiber<T>`. `Task.join` waits for the child's result.
 
-```vow
+```sakura
 import std/http.{Http, HttpError, RateLimited, Response}
 import std/url.{Url}
 
@@ -57,7 +57,7 @@ Children never outlive their `Scope`. This gives three rules:
 
 `Task.all` runs a list of thunks and returns their results in order. `Task.race` returns the result of the first to finish. `Task.par_map`, a function of the `std/task` module, maps in parallel:
 
-```vow
+```sakura
 fn fetch_all(urls: List<Url>) -> List<Response> ! {Http, Task, Fail<HttpError | RateLimited>} {
   Task.par_map(urls, fn(u) { Http.get(u) })
 }
@@ -67,7 +67,7 @@ fn fetch_all(urls: List<Url>) -> List<Response> ! {Http, Task, Fail<HttpError | 
 
 A cancelled task stops at its next effect operation or at `Task.yield_now()`. Pure loops are not interruptible. A long pure computation that should respond to cancellation calls `Task.yield_now()` now and then:
 
-```vow
+```sakura
 fn total_size(chunks: List<List<Int>>) -> Int ! {Task} {
   var total = 0
   for chunk in chunks {
@@ -96,7 +96,7 @@ There is no fire-and-forget spawn and no detached work in v0: every fiber belong
 
 All three are ordinary std functions over thunks (design §5.9):
 
-```vow
+```sakura
 // std/retry
 type Policy<E> = { retry_on: fn(E) -> Bool, max_attempts: Int, backoff: Duration, jitter: Bool, deadline: Option<Duration> }
 fn policy<E>(retry_on: fn(E) -> Bool, max_attempts: Int) -> Policy<E> requires max_attempts >= 1
@@ -115,7 +115,7 @@ fn limits(l: Limits) -> Handler<Budget>
 
 Together, from design §15.10:
 
-```vow
+```sakura
 import std/http.{Http, HttpError, RateLimited, Response, Any}
 import std/url.{Url}
 import std/retry.{Policy, retry}
@@ -136,7 +136,7 @@ fn fetch_both(a: Url, b: Url) -> (String, String) ! {Http, Task, Clock, Random, 
 
 A budget is installed as a handler and configured with a `Limits` record. From `main` in design §15.7:
 
-```vow
+```sakura
 let limits = Limits { tokens: Some(20_000), usd: Some(0.50), calls: None }
 with Llm.anthropic(key, Model.of("claude-sonnet-5-5")), Budget.limits(limits) {
   let t = extract_ticket(Untrusted.of("Login page 500s since 9am, blocking all customers"))
@@ -148,7 +148,7 @@ with Llm.anthropic(key, Model.of("claude-sonnet-5-5")), Budget.limits(limits) {
 
 Evaluation is strict and left to right, arguments before the call. `Map` and `Set` iterate in insertion order on every backend. `Clock`, `Random`, and `Task` are effects, so a test can replace all three (design §8.7):
 
-```vow
+```sakura
 test "deterministic under virtual time" {
   with Http.scripted([(Any, Response.status(200, "x"))]), Clock.virtual(), Random.seeded(1), Task.deterministic(1) {
     expect_eq(fetch_both(Url.from("https://a"), Url.from("https://b")), ("x", "x"))
@@ -156,7 +156,7 @@ test "deterministic under virtual time" {
 }
 ```
 
-Under `Task.deterministic(seed)` scheduling is reproducible. `Clock.virtual()` advances only when told to. This is how `with` doubles as Vow's deterministic-simulation mechanism. See [Testing](/docs/tour/testing).
+Under `Task.deterministic(seed)` scheduling is reproducible. `Clock.virtual()` advances only when told to. This is how `with` doubles as Sakura Lang's deterministic-simulation mechanism. See [Testing](/docs/tour/testing).
 
 ## Runtime model
 

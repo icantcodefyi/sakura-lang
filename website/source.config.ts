@@ -1,12 +1,12 @@
 import { defineConfig } from "fumadocs-mdx/config";
-import { vowGrammar } from "./lib/vow/grammar";
-import { vowDark, vowLight } from "./lib/vow/themes";
+import { sakuraGrammar } from "./lib/sakura/grammar";
+import { sakuraDark, sakuraLight } from "./lib/sakura/themes";
 
 export default defineConfig({
   mdxOptions: {
     rehypeCodeOptions: {
-      themes: { light: vowLight, dark: vowDark },
-      langs: [vowGrammar, "ts", "tsx", "json", "bash", "toml", "diff", "sql", "md"],
+      themes: { light: sakuraLight, dark: sakuraDark },
+      langs: [sakuraGrammar, "ts", "tsx", "json", "bash", "toml", "diff", "sql", "md"],
     },
   },
 });

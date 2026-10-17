@@ -1,15 +1,15 @@
 ---
 title: Overview
-description: How an AI agent is expected to work with Vow, from reading the docs to handing signature changes to a human.
+description: How an AI agent is expected to work with Sakura Lang, from reading the docs to handing signature changes to a human.
 ---
 
 <Callout type="warn" title="Pre-alpha">
   The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http,
   sql, fs, cli, ai, task) are not implemented yet. The Markdown docs exports and the repository's `docs/llms.txt` exist
-  today. `vow fix`, frozen specs, and the MCP server are designed for milestone M3 and are planned.
+  today. `sakura fix`, frozen specs, and the MCP server are designed for milestone M3 and are planned.
 </Callout>
 
-Vow is designed to be written by agents and reviewed by humans. The signature is the contract: parameter types with refinements, result type, effect row, error union, and `requires`/`ensures`. Agents write bodies against it; humans review signatures and the diff of signatures.
+Sakura Lang is designed to be written by agents and reviewed by humans. The signature is the contract: parameter types with refinements, result type, effect row, error union, and `requires`/`ensures`. Agents write bodies against it; humans review signatures and the diff of signatures.
 
 ## Available today
 
@@ -19,8 +19,8 @@ Vow is designed to be written by agents and reviewed by humans. The signature is
 | [`/llms-full.txt`](/llms-full.txt) | Every page on this site concatenated into one Markdown file. |
 | `/docs/<page>.md` | Any page on this site as Markdown. Append `.md` to its URL; the docs root is `/docs.md`. |
 | Copy as Markdown | A button at the top of every page, next to a menu with the `.md` link and the GitHub source. |
-| [`docs/llms.txt`](https://github.com/icantcodefyi/vow/blob/master/docs/llms.txt) | The language reference for agents: the whole core language in one file of about 4,500 tokens. Lives in the repository. |
-| [`docs/design.md`](https://github.com/icantcodefyi/vow/blob/master/docs/design.md) | The authoritative v0 design. When anything else disagrees with it, it wins. |
+| [`docs/llms.txt`](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/llms.txt) | The language reference for agents: the whole core language in one file of about 4,500 tokens. Lives in the repository. |
+| [`docs/design.md`](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md) | The authoritative v0 design. When anything else disagrees with it, it wins. |
 
 The two `llms.txt` files are different things. See [llms.txt](/docs/agents/llms-txt).
 
@@ -28,31 +28,31 @@ The two `llms.txt` files are different things. See [llms.txt](/docs/agents/llms-
 
 | Tool | Purpose | Design |
 | --- | --- | --- |
-| `vow check --json` | Diagnostics, holes, and obligations as JSON Lines. | design §12.2, M0 |
+| `sakura check --json` | Diagnostics, holes, and obligations as JSON Lines. | design §12.2, M0 |
 | `?name` typed holes | Placeholders the checker reports with expected type, effects, locals, and candidates. | design §12.4, M2 |
-| `vow prompt` | Emits `docs/llms.txt` matched to the compiler's edition, plus requested library signatures. | design §12.1, M2 |
-| `vow fix`, `--frozen-specs` | Applies compiler fixes by impact class and rejects patches that touch frozen specs. | design §7.3, M3 |
-| `vow mcp serve` | The compiler as Model Context Protocol tools. | design §12.6, M3 |
+| `sakura prompt` | Emits `docs/llms.txt` matched to the compiler's edition, plus requested library signatures. | design §12.1, M2 |
+| `sakura fix`, `--frozen-specs` | Applies compiler fixes by impact class and rejects patches that touch frozen specs. | design §7.3, M3 |
+| `sakura mcp serve` | The compiler as Model Context Protocol tools. | design §12.6, M3 |
 
-Milestones are defined in [design §14.3](https://github.com/icantcodefyi/vow/blob/master/docs/design.md). See also the [roadmap](/docs/roadmap).
+Milestones are defined in [design §14.3](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md). See also the [roadmap](/docs/roadmap).
 
 ## The intended loop
 
-This is how an agent is expected to work with the full v0 toolchain. Steps that rely on M3 tooling (`vow fix`, `--frozen-specs`, the MCP server) are planned.
+This is how an agent is expected to work with the full v0 toolchain. Steps that rely on M3 tooling (`sakura fix`, `--frozen-specs`, the MCP server) are planned.
 
 <Steps>
 <Step>
 
 ### Load the language
 
-Read `docs/llms.txt` once per session (later: the output of `vow prompt`). It is the entire core language. Look up library signatures with `vow doc --search` or the MCP `symbol_query` tool instead of guessing.
+Read `docs/llms.txt` once per session (later: the output of `sakura prompt`). It is the entire core language. Look up library signatures with `sakura doc --search` or the MCP `symbol_query` tool instead of guessing.
 
 </Step>
 <Step>
 
 ### Write signatures first, bodies as holes
 
-```vow
+```sakura
 fn clamp(x: Int, lo: Int, hi: Int) -> Int
   requires ordered: lo <= hi
   ensures bounded: lo <= result && result <= hi
@@ -61,28 +61,28 @@ fn clamp(x: Int, lo: Int, hi: Int) -> Int
 }
 ```
 
-`vow check` accepts holes. Signatures are what a human reviews, so get them right first.
+`sakura check` accepts holes. Signatures are what a human reviews, so get them right first.
 
 </Step>
 <Step>
 
 ### Check
 
-Run `vow check --json`, or call the MCP `check` tool. Each [typed hole](/docs/agents/typed-holes) comes back as a `hole` record with its expected type, allowed effects, locals, and ranked candidates.
+Run `sakura check --json`, or call the MCP `check` tool. Each [typed hole](/docs/agents/typed-holes) comes back as a `hole` record with its expected type, allowed effects, locals, and ranked candidates.
 
 </Step>
 <Step>
 
 ### Fill holes and fix diagnostics
 
-Each problem is a `diagnostic` record with a stable code, byte spans, structured expected/actual, and fixes. See [Diagnostics](/docs/agents/diagnostics). `vow explain V3001` gives the rationale for a code.
+Each problem is a `diagnostic` record with a stable code, byte spans, structured expected/actual, and fixes. See [Diagnostics](/docs/agents/diagnostics). `sakura explain V3001` gives the rationale for a code.
 
 </Step>
 <Step>
 
 ### Apply fixes by impact class
 
-`local` fixes that are `machine_applicable` are safe to apply. `interface_change`, `contract_change`, and `authority_change` fixes are never `machine_applicable`; `vow fix` never applies the last two. Run `vow test --json`, then `vow fmt`.
+`local` fixes that are `machine_applicable` are safe to apply. `interface_change`, `contract_change`, and `authority_change` fixes are never `machine_applicable`; `sakura fix` never applies the last two. Run `sakura test --json`, then `sakura fmt`.
 
 </Step>
 <Step>
@@ -99,7 +99,7 @@ If the task really needs a new effect, error tag, permission, or a changed contr
 - Add an effect, error tag, or `[permissions]` entry without flagging it.
 - Weaken or delete a `requires`, `ensures`, or `where` clause, or edit a `test` body, to make a check pass. Contract violations (`D020`, `D021`) mean the caller or callee is wrong, not the spec.
 - Use `.trust(@trust("..."))`, `Secret.expose`, `.expect`, or `Email.from` outside trusted boundaries, or without a true reason.
-- Leave a `?hole` in code meant to build. `vow build` and `vow run` reject it with `V2050`.
+- Leave a `?hole` in code meant to build. `sakura build` and `sakura run` reject it with `V2050`.
 - Borrow syntax from other languages: call-site type arguments (`f<T>(x)`, `V0011`) and named arguments (`f(name: v)`, `V0014`) do not exist. Annotate the binding (`let rows: List<User> = Sql.query(q)`) and pass a record for options. Import every non-prelude name explicitly (`import std/http.{Http, Request}`).
 
 ## Pages in this section
@@ -109,7 +109,7 @@ If the task really needs a new effect, error tag, permission, or a changed contr
     The site's Markdown exports and the language's `docs/llms.txt`.
   </Card>
   <Card title="MCP server" href="/docs/agents/mcp">
-    The planned `vow mcp serve` compiler tools and `@tool` export.
+    The planned `sakura mcp serve` compiler tools and `@tool` export.
   </Card>
   <Card title="Diagnostics" href="/docs/agents/diagnostics">
     The JSON Lines format, error codes, and fix impact classes.

@@ -1,13 +1,13 @@
 ---
 title: Standard library
-description: The v0 Vow standard library, module by module, with real signatures from the design and the handlers each effect ships with.
+description: The v0 Sakura Lang standard library, module by module, with real signatures from the design and the handlers each effect ships with.
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  This page mirrors [design §10](https://github.com/icantcodefyi/vow/blob/master/docs/design.md). The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet. Signatures are the design contract; bodies are Vow source in `compiler/std/` or `@external` host adapters, and the generated [`compiler/std/INDEX.md`](https://github.com/icantcodefyi/vow/blob/master/compiler/std/INDEX.md) is the exact surface.
+  This page mirrors [design §10](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md). The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet. Signatures are the design contract; bodies are Sakura Lang source in `compiler/std/` or `@external` host adapters, and the generated [`compiler/std/INDEX.md`](https://github.com/icantcodefyi/sakura-lang/blob/master/compiler/std/INDEX.md) is the exact surface.
 </Callout>
 
-The std library ships with the compiler and has one canonical API per task. All of it will be searchable by signature with `vow doc --search` and the MCP `symbol_query` tool. Every effectful module is an ordinary [effect](/docs/tour/effects) with swappable [handlers](/docs/tour/handlers), which is what makes it testable and what lets [capabilities](/docs/tour/capabilities) restrict it.
+The std library ships with the compiler and has one canonical API per task. All of it will be searchable by signature with `sakura doc --search` and the MCP `symbol_query` tool. Every effectful module is an ordinary [effect](/docs/tour/effects) with swappable [handlers](/docs/tour/handlers), which is what makes it testable and what lets [capabilities](/docs/tour/capabilities) restrict it.
 
 The layout rule is one std module per effect and one per compiler-known or prelude type: `std/console` declares `Console` and its handlers, `std/list` declares the `List` functions. Signatures below are written in call form, so `List.map` is `std/list.map`. In signatures, a lowercase type parameter such as `e` is an effect-row variable. Functions marked `@total` may be called from contracts.
 
@@ -15,7 +15,7 @@ The layout rule is one std module per effect and one per compiler-known or prelu
 
 `Option`, `Result`, `List`, `Map`, `Set`, `String`, `Int`, `Float`, and `Bytes` are in the prelude; no import is needed. Calls can use either form: `List.map(xs, f)` or `xs.map(f)`.
 
-```vow
+```sakura
 fn Option.map<A, B, e>(o: Option<A>, f: fn(A) -> B ! e) -> Option<B> ! e
 fn Option.unwrap_or<A>(o: Option<A>, default: A) -> A
 fn Option.or_fail<A, E>(o: Option<A>, err: E) -> A ! {Fail<E>}
@@ -45,7 +45,7 @@ This is a selection. The full list in design §10.1 also covers `List.filter`, `
 
 `Console`, `Clock`, `Random`, `Env`, `Log`, `Task`, and `Test` are in the prelude. `Fs`, `Http`, `Serve`, `Sql`, `Cli`, `Budget`, and `Llm` are imported by name from their modules, for example `import std/http.{Http}`; a bare `import std/http` binds only the module name `http`.
 
-```vow
+```sakura
 effect Console { fn print(line: String) -> Unit; fn read_line() -> Option<String> }
 effect Clock {
   fn now() -> Instant                 // wall clock, UTC
@@ -116,9 +116,9 @@ Each constructor is a function of the effect's home module (`Console.host()` is 
 
 ### Retries, timeouts, budgets
 
-These are ordinary functions over thunks ([design §5.9](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
+These are ordinary functions over thunks ([design §5.9](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)):
 
-```vow
+```sakura
 // std/retry
 type Policy<E> = { retry_on: fn(E) -> Bool, max_attempts: Int, backoff: Duration, jitter: Bool, deadline: Option<Duration> }
 fn policy<E>(retry_on: fn(E) -> Bool, max_attempts: Int) -> Policy<E> requires max_attempts >= 1
@@ -135,7 +135,7 @@ fn Budget.limits(l: Limits) -> Handler<Budget>
 
 ## Data (`std/json`, `std/duration`, `std/instant`, `std/uuid`, `std/url`, `std/path`, `std/decimal`)
 
-```vow
+```sakura
 type Json = Null | Bool(Bool) | Number(Float) | String(String) | Array(List<Json>) | Object(Map<String, Json>)
 error DecodeError(path: String, message: String)                        // path is a JSON Pointer
 fn Json.encode<T: Schema>(value: T) -> String
@@ -151,7 +151,7 @@ Also `Instant` and `Duration` (whole milliseconds; `Instant.from_unix_millis`, `
 
 ## Web (`std/http`, `std/router`, `std/html`)
 
-```vow
+```sakura
 error HttpError(status: Option<Status>, reason: String)
 error RateLimited(retry_after: Option<Duration>)                          // shared with LlmError
 error BadRequest(detail: String)
@@ -172,7 +172,7 @@ Each route handler runs per request in its own task. A defect in a handler becom
 
 ## CLI (`std/cli`)
 
-```vow
+```sakura
 effect Cli {
   fn args() -> List<String>                                             // after `--`
   fn exit(code: Int) -> Never requires code >= 0 && code <= 255
@@ -186,7 +186,7 @@ fn Cli.parse<T: Schema>(args: List<String>) -> T ! {Fail<CliError>}  // flags fr
 
 ## Testing (`std/test`, `std/gen`)
 
-```vow
+```sakura
 effect Test {
   fn record_failure(message: String) -> Unit   // expectations record and continue
   fn failures() -> Int
@@ -211,7 +211,7 @@ The `std/test` names are in the prelude. `std/gen` is imported as `import std/ge
 
 ## AI (`std/llm`, `std/tool`, `std/agent`)
 
-```vow
+```sakura
 // std/llm
 type Request<T> = { system: String, user: Prompt, model: Model, max_tokens: Int, temperature: Float, tools: List<Tool>, max_steps: Int }
 type PromptPart = Text(String) | Untrusted(Untrusted<String>) | Image(Bytes)
@@ -231,9 +231,9 @@ fn Agent.run<T: Schema>(a: Agent<T>) -> T ! {Llm, Budget, Fail<LlmError | ToolEr
 
 ## Example: JSON API with a database
 
-From [design §15.5](https://github.com/icantcodefyi/vow/blob/master/docs/design.md):
+From [design §15.5](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md):
 
-```vow title="src/main.vow"
+```sakura title="src/main.sakura"
 import std/http.{Request, Response, BadRequest}
 import std/router.{Router}
 import std/serve.{Serve, Address}
@@ -281,9 +281,9 @@ Interpolations in `sql"..."` are always bound parameters, never spliced text. `S
 
 ## Example: typed LLM extraction
 
-From [design §15.7](https://github.com/icantcodefyi/vow/blob/master/docs/design.md):
+From [design §15.7](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md):
 
-```vow
+```sakura
 import std/llm.{Llm, LlmError}
 import std/budget.{Budget, BudgetExceeded}
 
@@ -313,7 +313,7 @@ test "scripted model output is validated against Ticket" {
 
 These appeared in earlier drafts and are not part of the v0 design:
 
-- Durable workflows. A `std/workflow` package is planned for v1 ([design §1.1, §11.3](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)).
+- Durable workflows. A `std/workflow` package is planned for v1 ([design §1.1, §11.3](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)).
 - Typed RPC between browser and server, and SQL checked against a schema file at compile time.
 - An `Async` effect, a raw `Net` effect, a `Channel<T>` type, shared mutable cells, and a `Sim` simulation module. Deterministic simulation is done by installing fake handlers with `with`.
 - `Schema.of<T>()` and other call-site type arguments, request builders such as `with_user` and `with_tools`, and a separate `LlmTimeout` tag.

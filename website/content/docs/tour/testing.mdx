@@ -1,6 +1,6 @@
 ---
 title: Testing
-description: Unit tests, property tests, contract-generated tests, snapshots, and deterministic handlers in Vow.
+description: Unit tests, property tests, contract-generated tests, snapshots, and deterministic handlers in Sakura Lang.
 ---
 
 <Callout type="warn" title="Pre-alpha">
@@ -10,13 +10,13 @@ description: Unit tests, property tests, contract-generated tests, snapshots, an
   M3. See the [roadmap](/docs/roadmap).
 </Callout>
 
-Tests are part of the language. `test` and `property` are top-level items, so they live next to the code they test, use the same handlers as production code, and run with `vow test`. Assertions come from `std/test`, whose names are in the prelude ([design §10.6](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)).
+Tests are part of the language. `test` and `property` are top-level items, so they live next to the code they test, use the same handlers as production code, and run with `sakura test`. Assertions come from `std/test`, whose names are in the prelude ([design §10.6](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)).
 
 ## Unit tests
 
 A `test` has a name and a block. It behaves like a function `fn() -> Unit ! {Test, Fail<E>}` for any error union `E`. The `Test` effect provides the assertions; an assertion that does not hold records a failure and lets the test continue, and the runner fails the test at the end.
 
-```vow
+```sakura
 fn greet(name: String) -> String { "Hello, {name}" }
 
 test "greets by name" {
@@ -38,7 +38,7 @@ test "greets by name" {
 
 Expected failures are values in the error union, so tests can compare them directly. `try` without `catch` turns a failing call into a `Result`:
 
-```vow
+```sakura
 error ParseError(input: String)
 
 fn parse_age(s: String) -> Int ! {Fail<ParseError>} {
@@ -71,7 +71,7 @@ Because a test's row includes `Fail<E>`, a test can call failing functions direc
 
 [Contract](/docs/tour/contracts) violations are defects, not failures, so `try` cannot catch them. Use `expect_defect`:
 
-```vow
+```sakura
 test "precondition is a caller defect" {
   expect_defect(fn() { clamp(1, 5, 0) })
 }
@@ -79,7 +79,7 @@ test "precondition is a caller defect" {
 
 ## Tests swap handlers
 
-Tests run under deterministic default handlers ([design §5.8](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
+Tests run under deterministic default handlers ([design §5.8](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)):
 
 | Effect    | Default handler in tests          |
 | --------- | --------------------------------- |
@@ -91,14 +91,14 @@ Tests run under deterministic default handlers ([design §5.8](https://github.co
 
 `Console.captured()` and `Log.captured()` send each line to the test's output, which `Test.output_lines()` returns and `expect_output` checks. A `Log.captured()` line looks like `Warn message key=value`:
 
-```vow
+```sakura
 fn announce(name: String) -> Unit ! {Console} {
   Console.print("hello, {name}")
 }
 
 test "prints a greeting" {
-  announce("Vow")
-  expect_output(["hello, Vow"])
+  announce("Sakura Lang")
+  expect_output(["hello, Sakura Lang"])
 }
 ```
 
@@ -106,7 +106,7 @@ Any other effect the test body performs must be handled inside the test with `wi
 
 No mocking framework is needed, because an effect is already an interface. Here a user-defined effect gets a stateful in-memory handler:
 
-```vow
+```sakura
 effect Counter {
   fn next() -> Int
   fn reset() -> Unit
@@ -152,9 +152,9 @@ See [Handlers](/docs/tour/handlers) for how `with` and handler state work.
 
 ## Deterministic simulation
 
-Every source of nondeterminism in Vow is an effect: time, randomness, scheduling, network. Installing deterministic handlers for all of them makes a concurrent test reproducible from its seeds. There is no separate simulator; `with` is the mechanism ([design §8.7](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)).
+Every source of nondeterminism in Sakura Lang is an effect: time, randomness, scheduling, network. Installing deterministic handlers for all of them makes a concurrent test reproducible from its seeds. There is no separate simulator; `with` is the mechanism ([design §8.7](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)).
 
-```vow
+```sakura
 test "deterministic under virtual time" {
   with Http.scripted([(Any, Response.status(200, "x"))]), Clock.virtual(), Random.seeded(1), Task.deterministic(1) {
     expect_eq(fetch_both(Url.from("https://a"), Url.from("https://b")), ("x", "x"))
@@ -162,13 +162,13 @@ test "deterministic under virtual time" {
 }
 ```
 
-`fetch_both` spawns two tasks, retries with backoff, and wraps everything in a timeout ([design §15.10](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)). Under these handlers, sleeps and timeouts use virtual time and task interleavings follow the seed. See [Concurrency](/docs/tour/concurrency).
+`fetch_both` spawns two tasks, retries with backoff, and wraps everything in a timeout ([design §15.10](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)). Under these handlers, sleeps and timeouts use virtual time and task interleavings follow the seed. See [Concurrency](/docs/tour/concurrency).
 
 ## Property tests
 
 A `property` takes typed parameters. The runner generates values for them and runs the body many times. Parameter types must be written out.
 
-```vow
+```sakura
 fn normalize(xs: List<Int>) -> List<Int> { List.unique(List.sort(xs)) }
 
 property "normalize is idempotent"(xs: List<Int>) {
@@ -182,7 +182,7 @@ property "normalize preserves membership"(xs: List<Int>, x: Int)
 
 A `requires` clause on a property restricts the generated inputs. Like every contract, it must be in the [contract subset](/docs/tour/contracts#the-contract-subset). `property` parameters always use generators derived from their types. When that is not enough, write a `test` that drives explicit generators from `std/gen`:
 
-```vow
+```sakura
 import std/gen
 
 test "normalize output is strictly ascending" {
@@ -193,11 +193,11 @@ test "normalize output is strictly ascending" {
 }
 ```
 
-Runs are seeded. `vow test --json` reports one record per test with its seed, and `vow test --seed N --filter "normalize"` reruns a case.
+Runs are seeded. `sakura test --json` reports one record per test with its seed, and `sakura test --seed N --filter "normalize"` reruns a case.
 
 ## Property tests from contracts
 
-`vow test --contracts` writes property tests you did not write ([design §7.4](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)). For every `pub` function with at least one refined parameter or `requires` clause, it:
+`sakura test --contracts` writes property tests you did not write ([design §7.4](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)). For every `pub` function with at least one refined parameter or `requires` clause, it:
 
 1. Generates inputs jointly from the parameter refinements and `requires`. It uses constructive generators for ranges, lengths, enums, and non-empty lists, and falls back to filtering.
 2. Runs the function under the test default handlers.
@@ -205,32 +205,32 @@ Runs are seeded. `vow test --json` reports one record per test with its seed, an
 
 Failures are shrunk and stored under `tests/regressions/<fn>.json`. If filtering discards more than 90% of candidates, the runner warns with `W7001`. Functions that use effects other than `Fail`, `Clock`, and `Random` are skipped unless handlers are supplied with a `@contract_test(handlers: [Sql.memory(), Log.captured()])` attribute.
 
-Given `clamp` from [Contracts](/docs/tour/contracts), `vow test --contracts` generates `(x, lo, hi)` with `lo <= hi` and checks `lo <= result && result <= hi` on each run.
+Given `clamp` from [Contracts](/docs/tour/contracts), `sakura test --contracts` generates `(x, lo, hi)` with `lo <= hi` and checks `lo <= result && result <= hi` on each run.
 
 ## Snapshot tests
 
 `expect_snapshot` compares a value's [`Show` output](/docs/tour/types#show-output) with a stored file at `tests/__snapshots__/<module>/<name>.snap`. Here the stored snapshot is `[1, 2, 3]`:
 
-```vow
+```sakura
 test "rendering is stable" {
   expect_snapshot("normalize_doc", normalize([3, 1, 3, 2]))
 }
 ```
 
-The `Show` format is the same on every backend, so snapshots do not depend on the target. `Secret<T>` is not `Show`, so a secret cannot end up in a snapshot. After a reviewed change, `vow test --update-snapshots` rewrites the stored files.
+The `Show` format is the same on every backend, so snapshots do not depend on the target. `Secret<T>` is not `Show`, so a secret cannot end up in a snapshot. After a reviewed change, `sakura test --update-snapshots` rewrites the stored files.
 
 ## Running tests
 
 ```bash
-vow test                                  # all tests and properties
-vow test --filter "normalize"             # tests whose name matches
-vow test --seed 42                        # fix the seed
-vow test --contracts                      # also run contract-generated property tests
-vow test --json                           # JSON Lines records for agents
-vow test --update-snapshots               # rewrite snapshot files
+sakura test                                  # all tests and properties
+sakura test --filter "normalize"             # tests whose name matches
+sakura test --seed 42                        # fix the seed
+sakura test --contracts                      # also run contract-generated property tests
+sakura test --json                           # JSON Lines records for agents
+sakura test --update-snapshots               # rewrite snapshot files
 ```
 
-The runner applies per-test time and memory limits and denies network access. `vow test` exits with `3` when tests fail and `1` when the program has compile errors. A passing test gives its claims the `tested` status in the [guarantee model](/docs/tour/contracts#the-guarantee-model), never `proved`.
+The runner applies per-test time and memory limits and denies network access. `sakura test` exits with `3` when tests fail and `1` when the program has compile errors. A passing test gives its claims the `tested` status in the [guarantee model](/docs/tour/contracts#the-guarantee-model), never `proved`.
 
 ## What the compiler and runner check
 

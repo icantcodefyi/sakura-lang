@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 import { site } from "@/lib/site";
 
-export const alt = "Vow: code that keeps its promises";
+export const alt = "Sakura Lang: code that keeps its promises";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -21,7 +21,7 @@ async function font(family: string, weight: number, text: string) {
 export default async function OpengraphImage() {
   const host = new URL(site.url).host;
   const [display, mono] = await Promise.all([
-    font("Funnel Display", 600, "vowCode that keeps its promises."),
+    font("Funnel Display", 600, "Sakura Lang Code that keeps its promises."),
     font(
       "Atkinson Hyperlegible Mono",
       400,
@@ -61,7 +61,9 @@ export default async function OpengraphImage() {
             fill="none"
           />
         </svg>
-        <span style={{ fontFamily: "Display", fontSize: 44, letterSpacing: "-0.03em" }}>vow</span>
+        <span style={{ fontFamily: "Display", fontSize: 44, letterSpacing: "-0.03em" }}>
+          Sakura Lang
+        </span>
       </div>
       <div style={{ display: "flex", flexDirection: "column" }}>
         <div

@@ -4,7 +4,7 @@ description: The v0 milestones M0 to M5 from the design, what each one delivers,
 ---
 
 <Callout type="info" title="Where things stand">
-  The v0 language design is written ([docs/design.md](https://github.com/icantcodefyi/vow/blob/master/docs/design.md), revised in round 2). The compiler in `compiler/` parses, resolves, type- and effect-checks and runs the M0 to M2 programs below on JavaScript; you can [build it from source](/docs/quickstart). M3 is in progress: runtime contracts already work, its standard library modules do not exist yet. Nothing is released, and the milestones are ordered but not dated.
+  The v0 language design is written ([docs/design.md](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md), revised in round 2). The compiler in `compiler/` parses, resolves, type- and effect-checks and runs the M0 to M2 programs below on JavaScript; you can [build it from source](/docs/quickstart). M3 is in progress: runtime contracts already work, its standard library modules do not exist yet. Nothing is released, and the milestones are ordered but not dated.
 </Callout>
 
 The milestones come from design §14.3. Each one has executable acceptance tests under `compiler/tests/`, and a milestone is done only when they pass in CI on macOS and Linux.
@@ -27,25 +27,25 @@ The milestones come from design §14.3. Each one has executable acceptance tests
 
 ### M0: effectful hello world (runs today)
 
-A lexer with the newline rule, a parser for functions, imports, calls, literals, interpolated strings, blocks and `let`, `Console` as a std effect with a host handler, inference for monomorphic code with closed rows, the Core IR, CPS JavaScript emission, `vow run` and `vow check --json`.
+A lexer with the newline rule, a parser for functions, imports, calls, literals, interpolated strings, blocks and `let`, `Console` as a std effect with a host handler, inference for monomorphic code with closed rows, the Core IR, CPS JavaScript emission, `sakura run` and `sakura check --json`.
 
-```vow
+```sakura
 fn greet(name: String) -> Unit ! {Console} {
   Console.print("hello, {name}")
 }
-pub fn main() -> Unit ! {Console} { greet("Vow") }
+pub fn main() -> Unit ! {Console} { greet("Sakura Lang") }
 ```
 
-Accepted when it prints exactly `hello, Vow`; removing `Console` from `greet`'s row gives `V3001` with a cause span on `Console.print`; an unterminated `Console.print(` gives a syntax tree, `V0001` and no hang; and a 1,000,000-step recursive countdown does not overflow the JavaScript stack.
+Accepted when it prints exactly `hello, Sakura Lang`; removing `Console` from `greet`'s row gives `V3001` with a cause span on `Console.print`; an unterminated `Console.print(` gives a syntax tree, `V0001` and no hang; and a 1,000,000-step recursive countdown does not overflow the JavaScript stack.
 
 </Step>
 <Step>
 
 ### M1: the pure language and typed errors (runs today)
 
-Records, variants, error tags and unions, exhaustive `match`, closures, let-polymorphism, `var`, `for` and `while`, `Fail` with `try`, `catch` and `?`, the `Option`, `Result`, `List`, `Map` and `String` std written in Vow, `test` blocks with `expect`, and an idempotent `vow fmt`.
+Records, variants, error tags and unions, exhaustive `match`, closures, let-polymorphism, `var`, `for` and `while`, `Fail` with `try`, `catch` and `?`, the `Option`, `Result`, `List`, `Map` and `String` std written in Sakura Lang, `test` blocks with `expect`, and an idempotent `sakura fmt`.
 
-```vow
+```sakura
 error ParseError(input: String)
 fn parse_age(s: String) -> Int ! {Fail<ParseError>} {
   match String.parse_int(s) { Some(n) if n >= 0 => n, _ => fail ParseError { input: s } }
@@ -56,7 +56,7 @@ test "bad age is a typed failure" {
 }
 ```
 
-Accepted when deleting the `_` arm gives `V4001` with the witness `None`, an arm after `_` gives `V4002`, formatting twice equals formatting once on 200 fixture files, and `vow test --json` reports one record per test with its seed.
+Accepted when deleting the `_` arm gives `V4001` with the witness `None`, an arm after `_` gives `V4002`, formatting twice equals formatting once on 200 fixture files, and `sakura test --json` reports one record per test with its seed.
 
 </Step>
 <Step>
@@ -65,7 +65,7 @@ Accepted when deleting the `_` arm gives `V4001` with the witness `None`, an arm
 
 `effect`, `handler` and `with`, row variables and widening, handler state, `Clock`, `Random`, `Env` and `Log` with host and fake handlers, deterministic test defaults, typed holes, a reference evaluator for differential tests, and direct-style emission for pure code.
 
-```vow
+```sakura
 effect Counter { fn next() -> Int }
 fn counter() -> Handler<Counter> { handler Counter { var n = 0; fn next() { n = n + 1; n } } }
 fn twice<e>(f: fn() -> Int ! e) -> Int ! e { f() + f() }
@@ -75,16 +75,16 @@ fn unfinished(x: Int) -> Int { ?result }
 
 Accepted when `answer()` compiles with a pure signature, the hole reports expected type `Int`, local `x: Int` and candidate `x`, nested handlers use the inner instance, 1,000,000 handled operations run without stack growth, and the reference evaluator agrees on 500 generated programs.
 
-Today `vow check` on the program above reports exactly that hole: `hole ?result: expected Int, effects {}; locals [x: Int]; candidates [x, …]`. The `vow_eval` reference evaluator runs differential tests against the JavaScript backend.
+Today `sakura check` on the program above reports exactly that hole: `hole ?result: expected Int, effects {}; locals [x: Int]; candidates [x, …]`. The `sakura_eval` reference evaluator runs differential tests against the JavaScript backend.
 
 </Step>
 <Step>
 
 ### M3: agent loop and contracts (in progress)
 
-Runtime-checked `requires`, `ensures` and `where`, refined-type `validate` and `from`, capabilities and `[permissions]`, `Secret` and `Untrusted`, resources and the escape check, `Task` structured concurrency, `Http`, `Fs`, `Sql.sqlite` and `Serve`, `Json` with `Schema`, `Cli`, the LSP and MCP servers, `vow fix` with impact classes, and `--frozen-specs`.
+Runtime-checked `requires`, `ensures` and `where`, refined-type `validate` and `from`, capabilities and `[permissions]`, `Secret` and `Untrusted`, resources and the escape check, `Task` structured concurrency, `Http`, `Fs`, `Sql.sqlite` and `Serve`, `Json` with `Schema`, `Cli`, the LSP and MCP servers, `sakura fix` with impact classes, and `--frozen-specs`.
 
-```vow
+```sakura
 type Percent = Int where it >= 0 && it <= 100
 fn scale(p: Percent, total: Int) -> Int
   requires total >= 0
@@ -92,7 +92,7 @@ fn scale(p: Percent, total: Int) -> Int
 { total * p / 100 }
 ```
 
-Done so far: `requires`, `ensures` and `where` are checked at runtime (`D010`, `D011`, `D020`, `D021`), and the `contracts` example runs. Still to come: the `std/http`, `std/sql`, `std/fs`, `std/cli`, `std/task` and `std/ai` modules, `[permissions]` enforcement, typed failures escaping a test body (design §17.30; the checker still reports `V3020`), `vow fix`, and the LSP and MCP servers.
+Done so far: `requires`, `ensures` and `where` are checked at runtime (`D010`, `D011`, `D020`, `D021`), and the `contracts` example runs. Still to come: the `std/http`, `std/sql`, `std/fs`, `std/cli`, `std/task` and `std/ai` modules, `[permissions]` enforcement, typed failures escaping a test body (design §17.30; the checker still reports `V3020`), `sakura fix`, and the LSP and MCP servers.
 
 Accepted when `scale(Percent.from(50), -1)` reports `D020` at the call, `Percent.from(101)` is `D010`, a `main` that declares `Fs` with an empty `fs.read` exits with 75 at startup, a route handler returning a file handle is `V6003`, and the LSP and MCP `hole_context` agree byte for byte.
 
@@ -101,7 +101,7 @@ Accepted when `scale(Percent.from(50), -1)` reports `D020` at the call, `Percent
 
 ### M4: WASM and verification
 
-A WASM backend with the runtime in linear memory, the M0 to M3 corpus passing on JavaScript and WASM with identical output, and `vow verify` discharging contract obligations through a Z3 worker. A `proved` obligation removes its runtime check; anything else keeps it.
+A WASM backend with the runtime in linear memory, the M0 to M3 corpus passing on JavaScript and WASM with identical output, and `sakura verify` discharging contract obligations through a Z3 worker. A `proved` obligation removes its runtime check; anything else keeps it.
 
 Accepted when the `ensures` of `scale` above is `proved` under its `requires`, and a wrong body (`total * p / 50`) is `disproved` with a counterexample.
 
@@ -123,4 +123,4 @@ Some things are deliberately outside v0 (design §1.1 and §16): non-tail-resump
 
 ## Follow progress
 
-Development happens in the open at [github.com/icantcodefyi/vow](https://github.com/icantcodefyi/vow). Language changes go through RFCs in `docs/rfcs/`, and architecture decisions through ADRs in `docs/adr/`. Feedback on the design is most useful now, while the compiler is young: [build it](/docs/quickstart), write a program, and open an issue where it surprises you. See the [FAQ](/docs/faq) for ways to help.
+Development happens in the open at [github.com/icantcodefyi/sakura-lang](https://github.com/icantcodefyi/sakura-lang). Language changes go through RFCs in `docs/rfcs/`, and architecture decisions through ADRs in `docs/adr/`. Feedback on the design is most useful now, while the compiler is young: [build it](/docs/quickstart), write a program, and open an issue where it surprises you. See the [FAQ](/docs/faq) for ways to help.

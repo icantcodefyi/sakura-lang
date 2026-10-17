@@ -5,13 +5,13 @@ const PHASES: { id: string; name: string; body: string; status?: "works" | "now"
   {
     id: "M0",
     name: "Hello, effects",
-    body: "Lexer, parser, Console, inference, CPS JavaScript, vow run and vow check --json.",
+    body: "Lexer, parser, Console, inference, CPS JavaScript, sakura run and sakura check --json.",
     status: "works",
   },
   {
     id: "M1",
     name: "Pure language, typed errors",
-    body: "Records, variants, exhaustive match, Fail with try/catch, std in Vow, tests, vow fmt.",
+    body: "Records, variants, exhaustive match, Fail with try/catch, std in Sakura Lang, tests, sakura fmt.",
     status: "works",
   },
   {
@@ -29,7 +29,7 @@ const PHASES: { id: string; name: string; body: string; status?: "works" | "now"
   {
     id: "M4",
     name: "WASM and verify",
-    body: "WASM backend; vow verify discharges contracts with Z3 and drops proved checks.",
+    body: "WASM backend; sakura verify discharges contracts with Z3 and drops proved checks.",
   },
   {
     id: "M5",

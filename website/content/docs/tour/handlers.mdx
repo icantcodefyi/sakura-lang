@@ -4,7 +4,7 @@ description: How handlers give effects their meaning, how to install them with `
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  This page describes the v0 design in [design §5.5–§5.9](https://github.com/icantcodefyi/vow/blob/master/docs/design.md). The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet.
+  This page describes the v0 design in [design §5.5–§5.9](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md). The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet.
 </Callout>
 
 An [effect](/docs/tour/effects) declares operations. A **handler** gives them meaning. Code names the effect; the caller picks the handler. The same function can run against SQLite in production and an in-memory table in a test.
@@ -13,7 +13,7 @@ An [effect](/docs/tour/effects) declares operations. A **handler** gives them me
 
 `handler Eff { … }` is an expression. It produces a value of type `Handler<Eff, r>`, where `r` is the row its clauses perform. `Handler<Eff>` is short for `Handler<Eff, {}>`.
 
-```vow
+```sakura
 effect Counter {
   fn next() -> Int
   fn reset() -> Unit
@@ -36,7 +36,7 @@ fn memory_counter(start: Int) -> Handler<Counter> {
 
 `with h1, h2 { body }` runs `body` with the handlers installed. Handlers are installed innermost-last: `h2` sits inside `h1`. The `with` expression's row is the body's row minus each handled effect, plus each handler's `r`.
 
-```vow
+```sakura
 fn label_all(items: List<String>) -> List<String> ! {Counter} {
   List.map(items, fn(item) { "{Counter.next()}. {item}" })
 }
@@ -59,7 +59,7 @@ This keeps handlers cheap and predictable. A handler is a service the body calls
 
 For the same effect, the innermost handler wins. There is no masking or injection.
 
-```vow
+```sakura
 test "inner handler shadows outer" {
   let out = with memory_counter(0) {
     with memory_counter(100) { Counter.next() }
@@ -72,7 +72,7 @@ test "inner handler shadows outer" {
 
 A clause may perform other effects. They go to the handlers installed **outside** the `with`. Calling the same effect inside its own clause reaches the next outer handler, which is how wrappers work:
 
-```vow
+```sakura
 fn prefixed(prefix: String) -> Handler<Log, {Log}> {
   handler Log {
     fn event(level, message, fields) { Log.event(level, "{prefix}{message}", fields) }
@@ -84,7 +84,7 @@ fn prefixed(prefix: String) -> Handler<Log, {Log}> {
 
 A clause may `fail` only with tags declared on its operation. Given this declaration:
 
-```vow
+```sakura
 error DbUnavailable(reason: String)
 
 effect Db {
@@ -115,9 +115,9 @@ Handlers are first-class. A function can return one, and a record can store one.
 
 ## Root handlers come from the host
 
-`main` declares the std effects the program needs. The host supplies root handlers for exactly those, limited by `[permissions]` in `vow.toml`. Only std effects may appear in `main`'s row (`V6010`); user effects such as `Counter` must be handled inside the program. This program reads its arguments, so it declares `Cli`. From design §15.6 (abridged):
+`main` declares the std effects the program needs. The host supplies root handlers for exactly those, limited by `[permissions]` in `sakura.toml`. Only std effects may appear in `main`'s row (`V6010`); user effects such as `Counter` must be handled inside the program. This program reads its arguments, so it declares `Cli`. From design §15.6 (abridged):
 
-```vow
+```sakura
 import std/cli.{Cli, CliError}
 import std/fs.{Fs, FsError, Dir}
 
@@ -156,9 +156,9 @@ From design §10.2. Each constructor is a function of the effect's home module, 
 
 ## Tests swap handlers
 
-A `test` runs under deterministic default handlers: `Clock.fixed(Instant.from_unix_millis(0))`, `Random.seeded(seed)` (from `vow test --seed`), `Env.of(Map.empty())`, `Console.captured()`, and `Log.captured()`. Captured output can be checked with `expect_output(lines)`. Any other effect must be handled inside the test. Otherwise `vow check` reports `V3020` ("test uses Db; install a handler with `with`"). Typed failures are the exception: by design a test body may let `Fail<E>` escape, and the test then fails with the error's `Show`. The current compiler does not implement that yet and still reports `V3020` for it.
+A `test` runs under deterministic default handlers: `Clock.fixed(Instant.from_unix_millis(0))`, `Random.seeded(seed)` (from `sakura test --seed`), `Env.of(Map.empty())`, `Console.captured()`, and `Log.captured()`. Captured output can be checked with `expect_output(lines)`. Any other effect must be handled inside the test. Otherwise `sakura check` reports `V3020` ("test uses Db; install a handler with `with`"). Typed failures are the exception: by design a test body may let `Fail<E>` escape, and the test then fails with the error's `Show`. The current compiler does not implement that yet and still reports `V3020` for it.
 
-```vow
+```sakura
 test "deterministic under virtual time" {
   with Http.scripted([(Any, Response.status(200, "x"))]), Clock.virtual(), Random.seeded(1), Task.deterministic(1) {
     expect_eq(fetch_both(Url.from("https://a"), Url.from("https://b")), ("x", "x"))

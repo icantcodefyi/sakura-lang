@@ -1,15 +1,15 @@
 ---
 title: Effects
-description: How Vow records every side effect and every expected failure in the function signature, and how effect rows compose.
+description: How Sakura Lang records every side effect and every expected failure in the function signature, and how effect rows compose.
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  This page describes the v0 design in [design §5](https://github.com/icantcodefyi/vow/blob/master/docs/design.md). The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet.
+  This page describes the v0 design in [design §5](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md). The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet.
 </Callout>
 
-An effect is anything a function does besides compute its return value: read the clock, print, query a database, call the network, fail. In Vow, every effect a function may perform is listed in its signature, after `!`.
+An effect is anything a function does besides compute its return value: read the clock, print, query a database, call the network, fail. In Sakura Lang, every effect a function may perform is listed in its signature, after `!`.
 
-```vow
+```sakura
 fn signup(email: Email, pw: Password) -> User ! {Db, Clock, Random, Fail<SignupError>}
 ```
 
@@ -19,7 +19,7 @@ The braces hold the function's **effect row**. `signup` returns a `User` and may
 
 A signature with no `!` is pure: `! {}`. This is the one meaning of omission, for top-level signatures and for written function types alike.
 
-```vow
+```sakura
 fn total(prices: List<Int>) -> Int {
   List.fold(prices, 0, fn(acc, p) { acc + p })
 }
@@ -31,13 +31,13 @@ fn total(prices: List<Int>) -> Int {
 
 An operation is performed with `Effect.op(args)`. Calling a function performs that function's row. Creating a closure performs nothing; calling it performs its row.
 
-```vow
+```sakura
 fn greet(name: String) -> Unit ! {Console, Clock} {
   let now = Clock.now()
   Console.print("hello, {name}; it is {Instant.format_iso(now)}")
 }
 
-pub fn main() -> Unit ! {Console, Clock} { greet("Vow") }
+pub fn main() -> Unit ! {Console, Clock} { greet("Sakura Lang") }
 ```
 
 `main` calls `greet`, so `main`'s row must include `Console` and `Clock`.
@@ -46,7 +46,7 @@ pub fn main() -> Unit ! {Console, Clock} { greet("Vow") }
 
 An `effect` declares operations as function signatures, with no bodies:
 
-```vow
+```sakura
 error DbUnavailable(reason: String)
 
 effect Db {
@@ -65,13 +65,13 @@ A row is a set of unique labels plus an optional open tail: `{Db, Clock | e}`. A
 
 A higher-order function should not fix the effects of the function it receives. A lowercase type parameter is an **effect-row variable**:
 
-```vow
+```sakura
 fn map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! e
 ```
 
 If `f` is pure, the call is pure. If `f` logs and may fail, the call logs and may fail. An **open row** names some labels and leaves the rest to a variable:
 
-```vow
+```sakura
 fn traced<T, e>(name: String, body: fn() -> T ! e) -> T ! {Log | e} {
   Log.event(Level.Info, "start {name}", [])
   let value = body()
@@ -80,13 +80,13 @@ fn traced<T, e>(name: String, body: fn() -> T ! e) -> T ! {Log | e} {
 }
 ```
 
-A top-level function must declare its row variables (`<e>`). A function value with a closed row is accepted where a larger row is expected: `fn() -> Int ! {Clock}` can be passed where `fn() -> Int ! e` is expected, and `e` becomes `{Clock}`. This widening is one of the three places Vow has subtyping, with error unions and refinement-to-base.
+A top-level function must declare its row variables (`<e>`). A function value with a closed row is accepted where a larger row is expected: `fn() -> Int ! {Clock}` can be passed where `fn() -> Int ! e` is expected, and `e` becomes `{Clock}`. This widening is one of the three places Sakura Lang has subtyping, with error unions and refinement-to-base.
 
 ## Failure: `Fail<E>` and error unions
 
 There are no exceptions. Expected failure is `Fail<E>`, the one compiler-known effect. `E` is an **error union**: a set of nominal `error` tags.
 
-```vow
+```sakura
 error EmailTaken(email: Email)
 error Banned
 type SignupError = EmailTaken | Banned           // union alias: tags only
@@ -98,7 +98,7 @@ Propagation is automatic. Calling a function with `Fail<A>` adds `Fail<A>` to th
 
 Recovery uses `try`/`catch`. Arms are patterns over the body's tags. Tags matched by an unguarded arm are removed from the row; unmatched tags propagate:
 
-```vow
+```sakura
 error NotFound(id: String)
 error Forbidden
 error Unavailable(reason: String)
@@ -177,7 +177,7 @@ From design §10.2. Each effect lives in its own std module (`std/console`, `std
 | `Llm` | `generate`, `generate_text`, `stream` | Language model calls |
 | `Fail<E>` | `fail` | Expected failure |
 
-There is no `Async` effect. Every Vow function may suspend; whether a call suspends is decided by its handler (design §5.6). See [Concurrency](/docs/tour/concurrency).
+There is no `Async` effect. Every Sakura Lang function may suspend; whether a call suspends is decided by its handler (design §5.6). See [Concurrency](/docs/tour/concurrency).
 
 ## Inference
 
@@ -201,9 +201,9 @@ Top-level rows are never inferred. Every top-level `fn` states its row, so a cha
 
 ## Undeclared effects
 
-If a body performs an effect its signature does not allow, `vow check` reports `V3001`:
+If a body performs an effect its signature does not allow, `sakura check` reports `V3001`:
 
-```vow title="src/users/repo.vow"
+```sakura title="src/users/repo.sakura"
 type User = { id: String, name: String, seen: Instant }
 
 effect Db {
@@ -217,7 +217,7 @@ pub fn load_user(id: String) -> Option<User> ! {Clock} {
 }
 ```
 
-`vow check --json` emits one JSON Lines record per diagnostic, in the design §12.2 shape. Pretty-printed, with hashes shortened:
+`sakura check --json` emits one JSON Lines record per diagnostic, in the design §12.2 shape. Pretty-printed, with hashes shortened:
 
 ```json
 {
@@ -232,7 +232,7 @@ pub fn load_user(id: String) -> Option<User> ! {Clock} {
   "symbol_id": "pkg::users/repo::load_user",
   "spans": [
     {
-      "uri": "file:///…/src/users/repo.vow",
+      "uri": "file:///…/src/users/repo.sakura",
       "content_hash": "sha256:…",
       "start_byte": 159,
       "end_byte": 168,
@@ -240,7 +240,7 @@ pub fn load_user(id: String) -> Option<User> ! {Clock} {
       "label": "allowed here: `{Clock}`"
     },
     {
-      "uri": "file:///…/src/users/repo.vow",
+      "uri": "file:///…/src/users/repo.sakura",
       "content_hash": "sha256:…",
       "start_byte": 209,
       "end_byte": 224,
@@ -265,7 +265,7 @@ pub fn load_user(id: String) -> Option<User> ! {Clock} {
   },
   "obligation": null,
   "counterexample": null,
-  "explanation_uri": "vow://explain/V3001",
+  "explanation_uri": "sakura://explain/V3001",
   "fixes": [
     {
       "id": "f:1",
@@ -275,7 +275,7 @@ pub fn load_user(id: String) -> Option<User> ! {Clock} {
       "edits": [
         {
           "span": {
-            "uri": "file:///…/src/users/repo.vow",
+            "uri": "file:///…/src/users/repo.sakura",
             "content_hash": "sha256:…",
             "start_byte": 159,
             "end_byte": 168,
@@ -294,7 +294,7 @@ pub fn load_user(id: String) -> Option<User> ! {Clock} {
       "edits": [
         {
           "span": {
-            "uri": "file:///…/src/users/repo.vow",
+            "uri": "file:///…/src/users/repo.sakura",
             "content_hash": "sha256:…",
             "start_byte": 209,
             "end_byte": 224,

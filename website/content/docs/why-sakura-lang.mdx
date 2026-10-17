@@ -1,5 +1,5 @@
 ---
-title: Why Vow
+title: Why Sakura Lang
 description: The problem with reviewing agent-written code, the thesis that the signature should be the contract, and the principles that follow from it.
 ---
 
@@ -22,9 +22,9 @@ Agents make these problems sharper, not different. An agent will happily add a n
 
 Make the signature the contract, and make the compiler enforce it.
 
-In Vow, a function signature states what the function takes, what it returns, every effect it may perform, every error it may fail with, and the guarantees it makes about its result:
+In Sakura Lang, a function signature states what the function takes, what it returns, every effect it may perform, every error it may fail with, and the guarantees it makes about its result:
 
-```vow
+```sakura
 fn signup(email: Email) -> User ! {Users, Clock, Random, Fail<SignupError>}
   ensures result.email == email
 ```
@@ -35,7 +35,7 @@ This changes what review means. A human reviews the signatures, which are short 
 
 ## Why not an existing language
 
-Every language below is excellent at what it was designed for. None was designed for this workflow, and each shapes Vow in some way. The [prior art](/docs/prior-art) page lists, language by language, what Vow takes and what it rejects.
+Every language below is excellent at what it was designed for. None was designed for this workflow, and each shapes Sakura Lang in some way. The [prior art](/docs/prior-art) page lists, language by language, what Sakura Lang takes and what it rejects.
 
 **TypeScript.** Huge ecosystem, fast feedback, and the language most agents write best today. But exceptions are untyped, any function can perform any IO, `any` and type assertions are one keystroke away, and there are several ways to do almost everything.
 
@@ -45,13 +45,13 @@ Every language below is excellent at what it was designed for. None was designed
 
 **Go.** Small, consistent, and quick to compile, with one toolchain and a formatter with no options. That simplicity is a direct inspiration. But errors can be discarded, nil remains, effects are untracked, and any package can reach the network.
 
-**Effect-TS.** Brings typed errors and typed requirements to TypeScript, and shows that the model works for real services. It is a library on top of a language that cannot enforce it: plain TypeScript can still throw and still perform IO directly. Vow's `! {Users, Fail<E>}` is that model with no wrapper type, and it is the only way to write code.
+**Effect-TS.** Brings typed errors and typed requirements to TypeScript, and shows that the model works for real services. It is a library on top of a language that cannot enforce it: plain TypeScript can still throw and still perform IO directly. Sakura Lang's `! {Users, Fail<E>}` is that model with no wrapper type, and it is the only way to write code.
 
-**Koka, Unison, and Roc.** Koka contributed row-typed effects, effect-polymorphic higher-order functions, and Perceus reference counting. Unison contributed domain-named abilities with plain handlers and a compiler that speaks MCP; Vow keeps ordinary files and Git rather than a codebase database. Roc contributed platform-owned authority and in-place updates behind a value interface. Vow combines these with contracts, capabilities, `Untrusted`/`Secret` types, and machine-readable tooling, aimed at agents writing code for humans to review.
+**Koka, Unison, and Roc.** Koka contributed row-typed effects, effect-polymorphic higher-order functions, and Perceus reference counting. Unison contributed domain-named abilities with plain handlers and a compiler that speaks MCP; Sakura Lang keeps ordinary files and Git rather than a codebase database. Roc contributed platform-owned authority and in-place updates behind a value interface. Sakura Lang combines these with contracts, capabilities, `Untrusted`/`Secret` types, and machine-readable tooling, aimed at agents writing code for humans to review.
 
 ## Design principles
 
-These follow [design §1](https://github.com/icantcodefyi/vow/blob/master/docs/design.md).
+These follow [design §1](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md).
 
 ### The signature is the contract
 
@@ -77,7 +77,7 @@ The compiler never prints "verified" for a program that merely compiled. Every c
 | --- | --- | --- |
 | `proved` | Holds on all executions under the stated assumptions. | The type and effect checker; later, SMT-discharged contracts. |
 | `runtime_checked` | Violations are detected at the boundary and become a defect. | Contract lowering, checked arithmetic, checked refinements. |
-| `tested` | Held on the executed inputs. | `vow test`. |
+| `tested` | Held on the executed inputs. | `sakura test`. |
 | `trusted` | Assumed. | FFI, host handlers, `@trust` sites, the toolchain itself. |
 
 The type system proves that every performed effect has a handler, every `Fail` tag is caught or declared, every `match` is exhaustive, no value is null, no index is unchecked, a `Secret` is never shown, and a capability cannot be forged. It does not prove business correctness, termination, or that the specification is the right one.

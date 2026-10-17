@@ -1,13 +1,13 @@
 import { Check } from "lucide-react";
 import { TokenSpans } from "@/components/token-spans";
-import { tokenize } from "@/lib/vow/highlight";
+import { tokenize } from "@/lib/sakura/highlight";
 
 const FILES = [
-  { path: "src/billing/retry.vow", add: 214, del: 90 },
-  { path: "src/billing/ledger.vow", add: 131, del: 122 },
-  { path: "src/billing/charge.vow", add: 38, del: 11, signature: true },
-  { path: "src/billing/webhooks.vow", add: 156, del: 104 },
-  { path: "test/billing_test.vow", add: 73, del: 61 },
+  { path: "src/billing/retry.sakura", add: 214, del: 90 },
+  { path: "src/billing/ledger.sakura", add: 131, del: 122 },
+  { path: "src/billing/charge.sakura", add: 38, del: 11, signature: true },
+  { path: "src/billing/webhooks.sakura", add: 156, del: 104 },
+  { path: "test/billing_test.sakura", add: 73, del: 61 },
 ];
 
 const BEFORE =
@@ -30,8 +30,8 @@ export async function Review() {
           </h2>
           <p className="mt-5 max-w-[30rem] text-[17px] leading-relaxed text-pretty text-fg-muted">
             An agent can rewrite six hundred lines before you finish your coffee. Nobody reviews
-            that well. In Vow, everything a function is allowed to do lives in its signature, so
-            review shrinks to the lines that change a promise.
+            that well. In Sakura Lang, everything a function is allowed to do lives in its
+            signature, so review shrinks to the lines that change a promise.
           </p>
         </div>
 

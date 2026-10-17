@@ -7,7 +7,7 @@ import { Code } from "@/components/code";
 import { llmsTxt } from "@/lib/source";
 import { Tabs } from "./tabs";
 
-const MCP = `// → tools/call (planned for M3; vow check --json emits the same record today)
+const MCP = `// → tools/call (planned for M3; sakura check --json emits the same record today)
 { "name": "hole_context", "arguments": { "snapshot": "sha256:41c2…", "hole_id": "h:9b07…" } }
 
 // ← result: the hole record of design §12.2
@@ -17,7 +17,7 @@ const MCP = `// → tools/call (planned for M3; vow check --json emits the same 
   "id": "h:9b07…",
   "name": "receipt",
   "snapshot": "sha256:41c2…",
-  "span": { "uri": "file:///app/src/cart.vow", "start_byte": 142, "end_byte": 150, "role": "primary" },
+  "span": { "uri": "file:///app/src/cart.sakura", "start_byte": 142, "end_byte": 150, "role": "primary" },
   "expected_type": { "render": "Receipt" },
   "allowed_effects": { "render": "{Payments, Fail<CheckoutError>}" },
   "locals": [
@@ -40,7 +40,7 @@ const DIAGNOSTIC = `{
   "snapshot": "sha256:9c1e…",
   "symbol_id": "app::users::signup",
   "spans": [{
-    "uri": "file:///app/src/users.vow", "content_hash": "sha256:52b0…",
+    "uri": "file:///app/src/users.sakura", "content_hash": "sha256:52b0…",
     "start_byte": 431, "end_byte": 461, "role": "cause",
     "label": "\`Http.post_json\` introduces \`Http\` here"
   }],
@@ -49,7 +49,7 @@ const DIAGNOSTIC = `{
   "actual": { "render": "{Clock, Db, Http, Random, Fail<SignupError>}", "row": { /* … */ } },
   "obligation": null,
   "counterexample": null,
-  "explanation_uri": "vow://explain/V3001",
+  "explanation_uri": "sakura://explain/V3001",
   "fixes": [
     { "id": "f:1", "title": "Add \`Http\` to the signature",
       "applicability": "suggested", "impact": "interface_change", "edits": [/* … */] },
@@ -85,7 +85,7 @@ export async function AgentView() {
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 px-5 pt-24 sm:px-8 md:pt-32 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
         <div>
           <h2 className="font-display text-[clamp(2rem,3.6vw,2.9rem)] leading-[1.04] font-semibold tracking-[-0.03em] text-balance">
-            How an agent works with Vow.
+            How an agent works with Sakura Lang.
           </h2>
           <p className="mt-5 max-w-[30rem] text-[17px] leading-relaxed text-pretty text-fg-muted">
             The compiler is the agent&apos;s other half. Every answer it gives is data a model can
@@ -125,12 +125,14 @@ export async function AgentView() {
               },
               {
                 label: "MCP",
-                panel: <Code code={MCP} lang="jsonc" title={<span>vow mcp serve</span>} />,
+                panel: <Code code={MCP} lang="jsonc" title={<span>sakura mcp serve</span>} />,
               },
               {
                 label: "Diagnostics",
                 short: "Errors",
-                panel: <Code code={DIAGNOSTIC} lang="json" title={<span>vow check --json</span>} />,
+                panel: (
+                  <Code code={DIAGNOSTIC} lang="json" title={<span>sakura check --json</span>} />
+                ),
               },
               {
                 label: "Holes",
@@ -138,19 +140,20 @@ export async function AgentView() {
                   <div className="grid gap-3">
                     <Code
                       code={HOLE}
-                      title={<span>src/cart.vow</span>}
+                      title={<span>src/cart.sakura</span>}
                       numbers
                       mark={{ 2: "seal" }}
                     />
-                    <Code code={HOLE_REPLY} lang="text" title={<span>vow check</span>} />
+                    <Code code={HOLE_REPLY} lang="text" title={<span>sakura check</span>} />
                   </div>
                 ),
               },
             ]}
           />
           <p className="mt-3 text-[12.5px] text-fg-faint">
-            Diagnostic and hole records are what <code className="font-mono">vow check --json</code>{" "}
-            emits today; the MCP server is planned for M3.
+            Diagnostic and hole records are what{" "}
+            <code className="font-mono">sakura check --json</code> emits today; the MCP server is
+            planned for M3.
           </p>
         </div>
       </div>
@@ -204,13 +207,21 @@ const LOOP = [
       </>
     ),
   },
-  { cmd: "vow check --json", who: "compiler", what: "diagnostics and hole records as JSON Lines" },
+  {
+    cmd: "sakura check --json",
+    who: "compiler",
+    what: "diagnostics and hole records as JSON Lines",
+  },
   {
     cmd: "apply fixes",
     who: "agent",
     what: "local fixes go in; signature changes go to a person",
   },
-  { cmd: "vow test", who: "compiler", what: "deterministic handlers, fixed seed, shrunk failures" },
+  {
+    cmd: "sakura test",
+    who: "compiler",
+    what: "deterministic handlers, fixed seed, shrunk failures",
+  },
 ];
 
 /** The agent ⇄ compiler loop: four stations around one orbit (a list on phones). */

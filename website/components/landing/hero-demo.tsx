@@ -154,7 +154,7 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
         className="overflow-hidden rounded-2xl border border-line bg-code shadow-[0_1px_0_oklch(1_0_0/0.04)_inset,0_30px_80px_-30px_oklch(0.2_0.02_255/0.35)]"
         // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- animated composite figure; an <img> can't hold it
         role="img"
-        aria-label="Animation: an agent writes a Vow function. The compiler checks each effect against the signature, flags an HTTP call the signature does not allow, and the agent removes it so the signature's promise holds."
+        aria-label="Animation: an agent writes a Sakura Lang function. The compiler checks each effect against the signature, flags an HTTP call the signature does not allow, and the agent removes it so the signature's promise holds."
       >
         {/* window chrome; its right end stays empty for the seal */}
         <div className="flex items-center gap-3 border-b border-line px-4 py-2.5 font-mono text-[11.5px] text-fg-muted">
@@ -163,7 +163,7 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
             <span className="size-2.5 rounded-full bg-line-strong" />
             <span className="size-2.5 rounded-full bg-line-strong" />
           </span>
-          src/users.vow
+          src/users.sakura
         </div>
 
         <pre
@@ -324,7 +324,7 @@ function Diagnostic() {
     <div className="border-t border-line px-4 py-3.5 font-mono text-[11.5px] leading-relaxed @min-[38rem]:px-5">
       <p className="text-fg">
         <span className="font-semibold text-fail">error V3001</span>{" "}
-        <span className="text-fg-muted">src/users.vow:12:11</span>
+        <span className="text-fg-muted">src/users.sakura:12:11</span>
       </p>
       <p className="mt-1 font-sans text-[13px] text-fg">
         function <code className="font-mono">signup</code> performs{" "}
@@ -348,7 +348,7 @@ function Diagnostic() {
 }
 
 const STATUS: Record<Phase, { text: string; tone: string }> = {
-  idle: { text: "vow check --json", tone: "text-fg-faint" },
+  idle: { text: "sakura check --json", tone: "text-fg-faint" },
   typing: { text: "agent is writing, checker is following", tone: "text-fg-muted" },
   caught: { text: "1 error: effect not in signature", tone: "text-fail" },
   fixing: { text: "agent edit: remove the call", tone: "text-fg-muted" },

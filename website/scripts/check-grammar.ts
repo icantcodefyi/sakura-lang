@@ -1,7 +1,7 @@
-// Smoke check for the Vow grammar against docs/design.md §2–§3: key tokens must get the expected scopes.
+// Smoke check for the Sakura Lang grammar against docs/design.md §2–§3: key tokens must get the expected scopes.
 import { createHighlighter } from "shiki";
-import { vowGrammar } from "../lib/vow/grammar";
-import { vowDark, vowLight } from "../lib/vow/themes";
+import { sakuraGrammar } from "../lib/sakura/grammar";
+import { sakuraDark, sakuraLight } from "../lib/sakura/themes";
 
 const code = `/// Doc comment
 import std/test.{Test}
@@ -25,11 +25,11 @@ effect Task { fn spawn<T, e>(s: Scope, body: fn() -> T ! e) -> Fiber<T> ! e }
 @total
 fn len(xs: List<Int>) -> Int { List.len(xs) }`;
 
-const hl = await createHighlighter({ langs: [vowGrammar], themes: [vowDark, vowLight] });
+const hl = await createHighlighter({ langs: [sakuraGrammar], themes: [sakuraDark, sakuraLight] });
 const tokens = hl
   .codeToTokens(code, {
-    lang: vowGrammar.name as "text",
-    theme: "vow-dark",
+    lang: sakuraGrammar.name as "text",
+    theme: "sakura-dark",
     includeExplanation: true,
   })
   .tokens.flat()
@@ -38,41 +38,41 @@ const scopeOf = (text: string, nth = 0) =>
   tokens.filter((t) => t.content.trim() === text)[nth]?.scopes.at(-1)?.scopeName;
 
 const expect: [string, string, number?][] = [
-  ["/// Doc comment", "comment.line.documentation.vow"],
-  ["still comment", "comment.block.vow"],
-  ["where", "keyword.other.contract.vow"],
-  ["it", "variable.language.vow"],
-  ["&&", "keyword.operator.logical.vow"],
-  ["error", "storage.type.vow"],
-  ["EmailTaken", "entity.name.type.vow"],
-  ["signup", "entity.name.function.vow"],
-  ["Clock", "support.type.effect.vow"],
-  ["Password", "entity.name.type.vow"],
-  ["Fail", "support.type.effect.fail.vow"],
-  ["Banned", "entity.name.type.vow"],
-  ["ensures", "keyword.other.contract.vow"],
-  ["result", "variable.language.vow"],
-  ["fail", "keyword.control.vow"],
-  ["exists", "entity.name.function.call.vow"],
-  ["||", "keyword.operator.logical.vow"],
-  ["var", "storage.type.let.vow"],
-  ["0b1010", "constant.numeric.binary.vow"],
-  ["sql", "entity.name.function.tagged.vow"],
-  ["and x", "string.quoted.tagged.vow"],
-  ["try", "keyword.control.vow"],
-  ["catch", "keyword.control.vow"],
-  ["?fallback", "keyword.other.hole.vow"],
-  ["resume", "invalid.illegal.reserved.vow"],
-  ["Percent", "entity.name.type.vow"],
-  ["e", "variable.parameter.row.vow", 1],
-  ["handler", "keyword.other.effect.vow"],
-  ["Counter", "support.type.effect.vow"],
-  ["spawn", "entity.name.function.call.vow"],
-  ["spawn", "entity.name.function.vow", 1],
-  ["opaque", "keyword.other.vow"],
-  ["Email", "entity.name.type.vow"],
-  ["test", "source.vow"], // a module segment, not the keyword,
-  ["total", "entity.other.attribute-name.vow"],
+  ["/// Doc comment", "comment.line.documentation.sakura"],
+  ["still comment", "comment.block.sakura"],
+  ["where", "keyword.other.contract.sakura"],
+  ["it", "variable.language.sakura"],
+  ["&&", "keyword.operator.logical.sakura"],
+  ["error", "storage.type.sakura"],
+  ["EmailTaken", "entity.name.type.sakura"],
+  ["signup", "entity.name.function.sakura"],
+  ["Clock", "support.type.effect.sakura"],
+  ["Password", "entity.name.type.sakura"],
+  ["Fail", "support.type.effect.fail.sakura"],
+  ["Banned", "entity.name.type.sakura"],
+  ["ensures", "keyword.other.contract.sakura"],
+  ["result", "variable.language.sakura"],
+  ["fail", "keyword.control.sakura"],
+  ["exists", "entity.name.function.call.sakura"],
+  ["||", "keyword.operator.logical.sakura"],
+  ["var", "storage.type.let.sakura"],
+  ["0b1010", "constant.numeric.binary.sakura"],
+  ["sql", "entity.name.function.tagged.sakura"],
+  ["and x", "string.quoted.tagged.sakura"],
+  ["try", "keyword.control.sakura"],
+  ["catch", "keyword.control.sakura"],
+  ["?fallback", "keyword.other.hole.sakura"],
+  ["resume", "invalid.illegal.reserved.sakura"],
+  ["Percent", "entity.name.type.sakura"],
+  ["e", "variable.parameter.row.sakura", 1],
+  ["handler", "keyword.other.effect.sakura"],
+  ["Counter", "support.type.effect.sakura"],
+  ["spawn", "entity.name.function.call.sakura"],
+  ["spawn", "entity.name.function.sakura", 1],
+  ["opaque", "keyword.other.sakura"],
+  ["Email", "entity.name.type.sakura"],
+  ["test", "source.sakura"], // a module segment, not the keyword,
+  ["total", "entity.other.attribute-name.sakura"],
 ];
 let bad = 0;
 for (const [text, scope, nth] of expect) {

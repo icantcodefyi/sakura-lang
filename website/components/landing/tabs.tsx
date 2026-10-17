@@ -35,7 +35,7 @@ export function Tabs({
     <div>
       <div
         role="tablist"
-        aria-label="How an agent sees Vow"
+        aria-label="How an agent sees Sakura Lang"
         className="relative grid rounded-full border border-line bg-bg-sunk p-1"
         style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
       >

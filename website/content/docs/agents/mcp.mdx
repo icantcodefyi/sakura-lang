@@ -1,19 +1,19 @@
 ---
 title: MCP server
-description: The planned vow mcp serve server, which exposes the compiler to agents as Model Context Protocol tools, and @tool export of your own functions.
+description: The planned sakura mcp serve server, which exposes the compiler to agents as Model Context Protocol tools, and @tool export of your own functions.
 ---
 
 <Callout type="warn" title="Planned">
-  `vow mcp serve` is designed for v0 (milestone M3) and is planned. The compiler parses, resolves, type- and
+  `sakura mcp serve` is designed for v0 (milestone M3) and is planned. The compiler parses, resolves, type- and
   effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented
   yet, so the `@tool` example below cannot run either. Tool names and
-  parameters follow [design §12.6](https://github.com/icantcodefyi/vow/blob/master/docs/design.md); result shapes beyond
+  parameters follow [design §12.6](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md); result shapes beyond
   what is stated there are not fixed.
 </Callout>
 
-`vow mcp serve` runs the compiler as a [Model Context Protocol](https://modelcontextprotocol.io) server. An agent calls compiler functions directly instead of running shell commands and parsing their output.
+`sakura mcp serve` runs the compiler as a [Model Context Protocol](https://modelcontextprotocol.io) server. An agent calls compiler functions directly instead of running shell commands and parsing their output.
 
-The CLI, the language server (`vow lsp`), and the MCP server are thin adapters over one Rust analysis library (`vow_analysis`). They report the same diagnostics, in the same [JSON format](/docs/agents/diagnostics), for the same input.
+The CLI, the language server (`sakura lsp`), and the MCP server are thin adapters over one Rust analysis library (`sakura_analysis`). They report the same diagnostics, in the same [JSON format](/docs/agents/diagnostics), for the same input.
 
 ## Client configuration
 
@@ -22,8 +22,8 @@ A client entry would look like this. The transport options are not fixed yet.
 ```json
 {
   "mcpServers": {
-    "vow": {
-      "command": "vow",
+    "sakura": {
+      "command": "sakura",
       "args": ["mcp", "serve"]
     }
   }
@@ -43,7 +43,7 @@ The compiler never reads the filesystem during analysis. It works on an immutabl
 | `symbol_query` | `name`, `id`, or `type_pattern` | Matching symbols with full signatures, including effect rows, error unions, and contracts. |
 | `hole_context` | `snapshot`, `hole_id` | One [typed hole](/docs/agents/typed-holes) record. |
 | `docs_query` | `topic` or `symbol`, `budget_tokens` | Documentation text within a token budget. |
-| `explain_diagnostic` | `code` or `id` | The explanation for a code such as `V3001`, the same as `vow explain`. |
+| `explain_diagnostic` | `code` or `id` | The explanation for a code such as `V3001`, the same as `sakura explain`. |
 | `format` | `snapshot`, `paths` | A patch with the canonical formatting. |
 | `check_patch` | `snapshot`, `edits` | Diagnostics for the patched code, plus the interface delta: which signatures the patch changes. |
 | `apply_patch` | `snapshot`, `patch_id` | A new snapshot, or a conflict. |
@@ -55,7 +55,7 @@ Planned for v1: `verify`, `refactor`, `impact`.
 
 `check_patch` lets an agent try an edit without changing anything. The interface delta tells the agent, and the reviewer, whether the edit changes a public signature, effect row, or error union. `apply_patch` then commits it and returns the new snapshot.
 
-`apply_patch` enforces **frozen specs** (design §7.3). It rejects any patch that modifies a frozen symbol's signature, effect row, error union, `requires`/`ensures`/`where` clauses, or any `test`/`property` body, with diagnostic `V8020 spec_frozen` naming the clause. The CLI equivalent is `vow check --frozen-specs <symbols|all>`.
+`apply_patch` enforces **frozen specs** (design §7.3). It rejects any patch that modifies a frozen symbol's signature, effect row, error union, `requires`/`ensures`/`where` clauses, or any `test`/`property` body, with diagnostic `V8020 spec_frozen` naming the clause. The CLI equivalent is `sakura check --frozen-specs <symbols|all>`.
 
 ### Authority
 
@@ -63,11 +63,11 @@ Tools that execute code, such as `test`, run with capabilities issued by the hos
 
 ## Exporting your own functions as tools
 
-Separately from the compiler tools, `vow mcp serve --tools a,b` exports functions from your program as MCP tools (design §11.2).
+Separately from the compiler tools, `sakura mcp serve --tools a,b` exports functions from your program as MCP tools (design §11.2).
 
 A tool function is marked `@tool("description")`. Its parameters and result must be `Schema` types, and its error union must be made of `Schema` tags. From design §15.8:
 
-```vow
+```sakura
 import std/http.{Http, HttpError, RateLimited, Response, Status}
 import std/json.{DecodeError}
 

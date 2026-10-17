@@ -1,23 +1,23 @@
 ---
 title: Introduction
-description: Vow is an agent-first, general-purpose programming language in which the signature is the contract.
+description: Sakura Lang is an agent-first, general-purpose programming language in which the signature is the contract.
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  The v0 language is specified in [docs/design.md](https://github.com/icantcodefyi/vow/blob/master/docs/design.md). The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet. Details may still change through the RFC process.
+  The v0 language is specified in [docs/design.md](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md). The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet. Details may still change through the RFC process.
 </Callout>
 
-Vow is the language agents write: code that keeps its promises.
+Sakura Lang is the language agents write: code that keeps its promises.
 
-Most new code is now written by AI agents. Reviewing every line of that code does not scale, and the parts that matter most (what a function touches, how it can fail, what it guarantees) are usually invisible in mainstream languages. Vow is designed so that those parts are always written down, in one place, and checked by the compiler.
+Most new code is now written by AI agents. Reviewing every line of that code does not scale, and the parts that matter most (what a function touches, how it can fail, what it guarantees) are usually invisible in mainstream languages. Sakura Lang is designed so that those parts are always written down, in one place, and checked by the compiler.
 
 ## The core idea
 
-**The signature is the contract.** Humans review signatures. The compiler checks that the code keeps its vows.
+**The signature is the contract.** Humans review signatures. The compiler checks that the code keeps its promises.
 
-A Vow signature states the inputs (with refinements), the output, every effect the function may perform, every way it can fail, and its `requires`/`ensures` clauses. The body cannot do anything the signature does not allow.
+A Sakura Lang signature states the inputs (with refinements), the output, every effect the function may perform, every way it can fail, and its `requires`/`ensures` clauses. The body cannot do anything the signature does not allow.
 
-```vow title="src/users.vow"
+```sakura title="src/users.sakura"
 type Email = String where String.len(it) <= 254 && String.contains(it, "@")
 type User = { id: Uuid, email: Email, created: Instant }
 
@@ -73,18 +73,18 @@ The test installs an in-memory handler for `Users`. `Clock` and `Random` need no
 
 **2. Memory without a borrow checker.** Every value has value semantics: no aliasable mutation, no reference cells, no cycles in the safe heap, no lifetimes. The first backend is JavaScript and uses the host GC. The native backend (milestone M5) inserts reference counting at compile time with Perceus-style reuse and has no tracing GC. Speed is a design goal; nothing has been measured. See [Memory model](/docs/tour/memory).
 
-**3. Contracts, always checked.** Refinement types (`where`), `requires`, and `ensures` are checked at runtime in every build mode, including `--release`. `vow test --contracts` generates property tests from them. Later, `vow verify` (M4) uses an SMT solver to prove individual obligations and remove only those checks. See [Contracts](/docs/tour/contracts) and [Testing](/docs/tour/testing).
+**3. Contracts, always checked.** Refinement types (`where`), `requires`, and `ensures` are checked at runtime in every build mode, including `--release`. `sakura test --contracts` generates property tests from them. Later, `sakura verify` (M4) uses an SMT solver to prove individual obligations and remove only those checks. See [Contracts](/docs/tour/contracts) and [Testing](/docs/tour/testing).
 
-**4. Secure by construction.** Effects are requirements; handlers are authority. The host supplies root handlers only for the std effects `main` declares, limited by `[permissions]` in `vow.toml`, and code can only narrow that authority. `Untrusted<T>` marks outside data, `Secret<T>` cannot be shown or serialized, and tagged templates such as `sql"..."` never splice raw text. See [Capabilities and security](/docs/tour/capabilities).
+**4. Secure by construction.** Effects are requirements; handlers are authority. The host supplies root handlers only for the std effects `main` declares, limited by `[permissions]` in `sakura.toml`, and code can only narrow that authority. `Untrusted<T>` marks outside data, `Secret<T>` cannot be shown or serialized, and tagged templates such as `sql"..."` never splice raw text. See [Capabilities and security](/docs/tour/capabilities).
 
 **5. Built for agents.** A grammar that fits on one page, one way to do each thing, typed holes (`?name`), JSON Lines diagnostics with byte spans and fixes labelled by impact, specs frozen during agent repair, and a compiler MCP server. See [For Agents](/docs/agents).
 
-**6. Batteries included.** One `vow` binary for `new`, `check`, `build`, `run`, `test`, `fmt`, `fix`, `doc`, packages, LSP, and MCP. The v0 standard library covers HTTP client and server, routing, SQL (SQLite first), JSON with derived schemas, CLI parsing, testing, and typed LLM calls with tools and budgets. See [Standard library](/docs/stdlib).
+**6. Batteries included.** One `sakura` binary for `new`, `check`, `build`, `run`, `test`, `fmt`, `fix`, `doc`, packages, LSP, and MCP. The v0 standard library covers HTTP client and server, routing, SQL (SQLite first), JSON with derived schemas, CLI parsing, testing, and typed LLM calls with tools and budgets. See [Standard library](/docs/stdlib).
 
 ## Status
 
-- **Design:** [docs/design.md](https://github.com/icantcodefyi/vow/blob/master/docs/design.md) is the authoritative v0 design. Anything it does not specify is not in v0.
-- **Compiler:** a Rust workspace in [compiler/](https://github.com/icantcodefyi/vow/tree/master/compiler). It parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet.
+- **Design:** [docs/design.md](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md) is the authoritative v0 design. Anything it does not specify is not in v0.
+- **Compiler:** a Rust workspace in [compiler/](https://github.com/icantcodefyi/sakura-lang/tree/master/compiler). It parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet.
 - **Code on this site** follows the v0 design. Examples that need M3 or later features (contracts, capabilities, the M3 std modules) do not run yet.
 
 The [roadmap](/docs/roadmap) lists every milestone, M0 to M5.
@@ -92,8 +92,8 @@ The [roadmap](/docs/roadmap) lists every milestone, M0 to M5.
 ## Where to go next
 
 <Cards>
-  <Card title="Why Vow" href="/docs/why-vow">
-    The problem with agent-written code and the design principles behind Vow.
+  <Card title="Why Sakura Lang" href="/docs/why-sakura-lang">
+    The problem with agent-written code and the design principles behind Sakura Lang.
   </Card>
   <Card title="Language Tour" href="/docs/tour/basics">
     Nine short pages covering the whole language, from bindings to concurrency.
@@ -102,6 +102,6 @@ The [roadmap](/docs/roadmap) lists every milestone, M0 to M5.
     llms.txt, the MCP server, JSON diagnostics, and typed holes.
   </Card>
   <Card title="Prior art" href="/docs/prior-art">
-    What Vow takes from other languages, and what it rejects.
+    What Sakura Lang takes from other languages, and what it rejects.
   </Card>
 </Cards>

@@ -1,11 +1,11 @@
 ---
 title: Diagnostics
-description: Reference for the JSON Lines diagnostics produced by vow check --json, including record kinds, error codes, and fix impact classes.
+description: Reference for the JSON Lines diagnostics produced by sakura check --json, including record kinds, error codes, and fix impact classes.
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  This is the v0 diagnostic protocol from [design §12.2](https://github.com/icantcodefyi/vow/blob/master/docs/design.md);
-  `vow check --json` is part of milestone M0. The compiler parses, resolves, type- and effect-checks and runs M0–M2
+  This is the v0 diagnostic protocol from [design §12.2](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md);
+  `sakura check --json` is part of milestone M0. The compiler parses, resolves, type- and effect-checks and runs M0–M2
   programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet. Changes to the protocol
   go through an RFC.
 </Callout>
@@ -13,8 +13,8 @@ description: Reference for the JSON Lines diagnostics produced by vow check --js
 Diagnostics are an API. Every diagnostic has a stable code, byte spans, structured expected and actual values, causal links, and fixes that declare their impact. The CLI, the LSP server, and the [MCP server](/docs/agents/mcp) share one analysis library and one format.
 
 ```bash
-vow check --json
-vow test --json
+sakura check --json
+sakura test --json
 ```
 
 `--json` writes **JSON Lines**: one record per line. Human-readable output is rendered from the same data.
@@ -33,13 +33,13 @@ vow test --json
 
 The program below omits `Console` from `greet`'s effect row:
 
-```vow
+```sakura
 fn greet(name: String) -> Unit {
   Console.print("hello, {name}")
 }
 ```
 
-`vow check --json` would report it as one line, shown here pretty-printed. Hashes and ids are shortened.
+`sakura check --json` would report it as one line, shown here pretty-printed. Hashes and ids are shortened.
 
 ```json
 {
@@ -53,9 +53,9 @@ fn greet(name: String) -> Unit {
   "snapshot": "sha256:91c0",
   "symbol_id": "hello::main::greet",
   "spans": [
-    { "uri": "file:///work/hello/src/main.vow", "content_hash": "sha256:4be2",
+    { "uri": "file:///work/hello/src/main.sakura", "content_hash": "sha256:4be2",
       "start_byte": 3, "end_byte": 8, "role": "primary", "label": "`greet` is declared pure" },
-    { "uri": "file:///work/hello/src/main.vow", "content_hash": "sha256:4be2",
+    { "uri": "file:///work/hello/src/main.sakura", "content_hash": "sha256:4be2",
       "start_byte": 35, "end_byte": 65, "role": "cause", "label": "`Console.print` introduces `Console` here" }
   ],
   "related_ids": [],
@@ -63,11 +63,11 @@ fn greet(name: String) -> Unit {
   "actual": { "render": "{Console}", "row": { "labels": [{ "effect": "std::Console", "args": [] }], "tail": null } },
   "obligation": null,
   "counterexample": null,
-  "explanation_uri": "vow://explain/V3001",
+  "explanation_uri": "sakura://explain/V3001",
   "fixes": [
     { "id": "f:01", "title": "Add `Console` to the signature of `greet`",
       "applicability": "suggested", "impact": "interface_change",
-      "edits": [ { "span": { "uri": "file:///work/hello/src/main.vow", "content_hash": "sha256:4be2",
+      "edits": [ { "span": { "uri": "file:///work/hello/src/main.sakura", "content_hash": "sha256:4be2",
                              "start_byte": 30, "end_byte": 30, "role": "primary", "label": "" },
                    "replacement": " ! {Console}" } ] }
   ]
@@ -95,7 +95,7 @@ For `V3001`, the design specifies two fixes: add the effect to the signature (`i
 | `actual` | object or null | What was found, in the same shape. |
 | `obligation` | object or null | `id`, `clause` (for example `"ensures bounded"`), and `status`. |
 | `counterexample` | object or null | `inputs` and a `trace`, when one is known. |
-| `explanation_uri` | string | `vow://explain/<code>`. Same content as `vow explain <code>` and the MCP `explain_diagnostic` tool. |
+| `explanation_uri` | string | `sakura://explain/<code>`. Same content as `sakura explain <code>` and the MCP `explain_diagnostic` tool. |
 | `fixes` | array | Zero or more fixes. See below. |
 
 Span `role` is one of `primary`, `cause`, `definition`, or `use`.
@@ -112,7 +112,7 @@ Span `role` is one of `primary`, `cause`, `definition`, or `use`.
 
 | Field | Meaning |
 | --- | --- |
-| `id` | Fix id, accepted by `vow fix --apply`. |
+| `id` | Fix id, accepted by `sakura fix --apply`. |
 | `title` | Short imperative description. |
 | `applicability` | `machine_applicable`, `suggested`, or `incomplete`. |
 | `impact` | What the fix changes. See below. |
@@ -130,11 +130,11 @@ Span `role` is one of `primary`, `cause`, `definition`, or `use`.
 
 Compiler fixes with `interface_change`, `contract_change`, or `authority_change` impact are never `machine_applicable`. No fix ever widens authority or weakens a contract by itself.
 
-`vow fix` lists fixes with their impact class. It applies only `machine_applicable` fixes unless given ids with `--apply id,…`, and it never applies `contract_change` or `authority_change`. `--preview` shows the edits without writing.
+`sakura fix` lists fixes with their impact class. It applies only `machine_applicable` fixes unless given ids with `--apply id,…`, and it never applies `contract_change` or `authority_change`. `--preview` shows the edits without writing.
 
 ### Frozen specs
 
-`vow check --frozen-specs <symbols|all>`, `vow fix`, and the MCP `apply_patch` tool reject any patch that changes a frozen symbol's signature, effect row, error union, `requires`/`ensures`/`where` clauses, or any `test`/`property` body. The diagnostic is `V8020 spec_frozen` and names the clause. This stops an agent from passing a check by editing the spec.
+`sakura check --frozen-specs <symbols|all>`, `sakura fix`, and the MCP `apply_patch` tool reject any patch that changes a frozen symbol's signature, effect row, error union, `requires`/`ensures`/`where` clauses, or any `test`/`property` body. The diagnostic is `V8020 spec_frozen` and names the clause. This stops an agent from passing a check by editing the spec.
 
 ## Error codes
 
@@ -155,7 +155,7 @@ Codes are `V` + a phase digit + three digits for errors, `W` for warnings, and `
 
 Warnings named in the design include `W1002` (a local shadows an import), `W4010` (catch-all `_` on an open error union), `W5005` (an O(n) contract on a hot path), `W7001` (property generator discard budget exceeded), and `W8001` (a collection update copies in a loop).
 
-Runtime defects are not diagnostics from `vow check`. They terminate the task; if `main` defects, the program writes one `defect` record to stderr and exits with status 70:
+Runtime defects are not diagnostics from `sakura check`. They terminate the task; if `main` defects, the program writes one `defect` record to stderr and exits with status 70:
 
 ```json
 {"schema_version":"1.0","kind":"defect","code":"D002","message":"division by zero"}

@@ -1,36 +1,36 @@
 ---
 title: Quickstart
-description: Build the Vow compiler from source, then check, test and run a first program.
+description: Build the Sakura Lang compiler from source, then check, test and run a first program.
 ---
 
 <Callout type="warn" title="Pre-alpha: build from source">
-  There is no release and no installer. The compiler in [compiler/](https://github.com/icantcodefyi/vow/tree/master/compiler) parses, resolves, type- and effect-checks and runs M0 to M2 programs on JavaScript: effects and handlers, typed errors, exhaustive `match`, tests and typed holes. The M3 standard library (`std/http`, `std/sql`, `std/fs`, `std/cli`, `std/ai`, `std/task`), `[permissions]` enforcement, `vow new`, `vow fix`, the LSP and the MCP server are not built yet. See the [roadmap](/docs/roadmap).
+  There is no release and no installer. The compiler in [compiler/](https://github.com/icantcodefyi/sakura-lang/tree/master/compiler) parses, resolves, type- and effect-checks and runs M0 to M2 programs on JavaScript: effects and handlers, typed errors, exhaustive `match`, tests and typed holes. The M3 standard library (`std/http`, `std/sql`, `std/fs`, `std/cli`, `std/ai`, `std/task`), `[permissions]` enforcement, `sakura new`, `sakura fix`, the LSP and the MCP server are not built yet. See the [roadmap](/docs/roadmap).
 </Callout>
 
 ## Install from source
 
-You need [rustup](https://rustup.rs) and [Node.js](https://nodejs.org) (`vow run` and `vow test` execute the generated JavaScript with `node`; CI uses Node 26). The repository pins its Rust toolchain in `compiler/rust-toolchain.toml`, so rustup fetches the right version on first build.
+You need [rustup](https://rustup.rs) and [Node.js](https://nodejs.org) (`sakura run` and `sakura test` execute the generated JavaScript with `node`; CI uses Node 26). The repository pins its Rust toolchain in `compiler/rust-toolchain.toml`, so rustup fetches the right version on first build.
 
 ```bash
-git clone https://github.com/icantcodefyi/vow
-cd vow
-cargo install --locked --path compiler/crates/vow_cli
-vow --version
+git clone https://github.com/icantcodefyi/sakura-lang
+cd sakura-lang
+cargo install --locked --path compiler/crates/sakura_cli
+sakura --version
 ```
 
 ```text
-vow 0.0.0
+sakura 0.0.0
 ```
 
-The standard library is embedded in the binary, so `vow` works from any directory. To try it without installing, run `cargo run -p vow_cli -- <command>` inside `compiler/`.
+The standard library is embedded in the binary, so `sakura` works from any directory. To try it without installing, run `cargo run -p sakura_cli -- <command>` inside `compiler/`.
 
 ## Run an example
 
 `compiler/examples/` holds the design's example programs as projects. Those from milestones M0 to M2 run today:
 
 ```bash
-vow run compiler/examples/counter
-vow test compiler/examples/typed_errors
+sakura run compiler/examples/counter
+sakura test compiler/examples/typed_errors
 ```
 
 ```text
@@ -43,9 +43,9 @@ vow test compiler/examples/typed_errors
 
 ## Create a project
 
-There is no `vow new` yet, so write the two files by hand. A project is a `vow.toml` manifest and a `src/` directory, and one file is one module.
+There is no `sakura new` yet, so write the two files by hand. A project is a `sakura.toml` manifest and a `src/` directory, and one file is one module.
 
-```toml title="hello/vow.toml"
+```toml title="hello/sakura.toml"
 [package]
 name = "hello"
 version = "0.1.0"
@@ -56,7 +56,7 @@ edition = "2026"
 
 `[permissions]` is the ceiling on what the program may do (design §6). This program only prints, so it is empty. Enforcement arrives with M3; today the table is not checked.
 
-```vow title="hello/src/main.vow"
+```sakura title="hello/src/main.sakura"
 /// Build a greeting for a person.
 fn greet(name: String) -> String { "Hello, {name}" }
 
@@ -69,24 +69,24 @@ property "always starts with Hello"(name: String) {
 }
 ```
 
-`greet` has no `!`, so it is pure. `main` declares `Console`, the only effect the program performs. This is the canonical layout: `vow fmt` keeps a short body on its signature's line.
+`greet` has no `!`, so it is pure. `main` declares `Console`, the only effect the program performs. This is the canonical layout: `sakura fmt` keeps a short body on its signature's line.
 
 ## Check, test and run
 
 Run these from `hello/`. With no path, each command uses `src/`.
 
 ```bash
-vow check
+sakura check
 ```
 
 ```text
 no problems
 ```
 
-`vow check` parses, resolves names, checks types and effects, and checks that every `match` is exhaustive. It generates no code, and it accepts typed holes.
+`sakura check` parses, resolves names, checks types and effects, and checks that every `match` is exhaustive. It generates no code, and it accepts typed holes.
 
 ```bash
-vow test
+sakura test
 ```
 
 ```text
@@ -96,25 +96,25 @@ test always starts with Hello ... ok
 2 passed, 0 failed, 0 skipped (seed 0)
 ```
 
-`vow test` runs every `test` and `property` block under deterministic handlers (a fixed clock, a seeded random source, captured console output) with the network denied. `--seed 7` changes the property inputs, `--filter greets` runs matching tests only, and `--json` writes one record per test.
+`sakura test` runs every `test` and `property` block under deterministic handlers (a fixed clock, a seeded random source, captured console output) with the network denied. `--seed 7` changes the property inputs, `--filter greets` runs matching tests only, and `--json` writes one record per test.
 
 ```bash
-vow run
+sakura run
 ```
 
 ```text
 Hello, world
 ```
 
-`vow run` checks the program, compiles it to JavaScript under `target/vow/js/`, and runs `main` with `node`. Arguments after `--` go to the program. The exit code is the program's: `0` for success, `1` when `main` fails with an uncaught typed error, `70` for a defect such as integer overflow, with one JSON `defect` record on stderr.
+`sakura run` checks the program, compiles it to JavaScript under `target/sakura/js/`, and runs `main` with `node`. Arguments after `--` go to the program. The exit code is the program's: `0` for success, `1` when `main` fails with an uncaught typed error, `70` for a defect such as integer overflow, with one JSON `defect` record on stderr.
 
-`vow fmt` rewrites files in the one canonical format; `vow fmt --check` changes nothing and exits `1` if a file is not formatted.
+`sakura fmt` rewrites files in the one canonical format; `sakura fmt --check` changes nothing and exits `1` if a file is not formatted.
 
 ## Check it, as an agent would
 
 Suppose `greet` starts printing without declaring it:
 
-```vow title="hello/src/main.vow"
+```sakura title="hello/src/main.sakura"
 /// Build a greeting for a person.
 fn greet(name: String) -> String {
   Console.print("greeting {name}")
@@ -126,7 +126,7 @@ pub fn main() -> Unit ! {Console} { Console.print(greet("world")) }
 
 ```text
 error[V3001]: function `greet` performs `Console`, which its signature does not allow (allowed: `{}`)
-  ┌─ src/main.vow:2:4
+  ┌─ src/main.sakura:2:4
   │
 2 │ fn greet(name: String) -> String {
   │    ^^^^^
@@ -137,12 +137,12 @@ error[V3001]: function `greet` performs `Console`, which its signature does not 
   =    found: {Console}
   = help: Add `Console` to the signature
   = help: Handle the effect locally with `with`
-  = see `vow explain V3001`
+  = see `sakura explain V3001`
 
 1 error
 ```
 
-`vow check --json` writes the same error as JSON Lines, one record per line, followed by a `summary` record. The `diagnostic` record, pretty-printed with hashes shortened:
+`sakura check --json` writes the same error as JSON Lines, one record per line, followed by a `summary` record. The `diagnostic` record, pretty-printed with hashes shortened:
 
 ```json
 {
@@ -156,9 +156,9 @@ error[V3001]: function `greet` performs `Console`, which its signature does not 
   "snapshot": "sha256:9470da24…",
   "symbol_id": null,
   "spans": [
-    { "uri": "file:///…/hello/src/main.vow", "content_hash": "sha256:f1ee9f10…",
+    { "uri": "file:///…/hello/src/main.sakura", "content_hash": "sha256:f1ee9f10…",
       "start_byte": 38, "end_byte": 43, "role": "primary" },
-    { "uri": "file:///…/hello/src/main.vow", "content_hash": "sha256:f1ee9f10…",
+    { "uri": "file:///…/hello/src/main.sakura", "content_hash": "sha256:f1ee9f10…",
       "start_byte": 72, "end_byte": 104, "role": "cause",
       "label": "`Console.print` performs `Console` here" }
   ],
@@ -167,11 +167,11 @@ error[V3001]: function `greet` performs `Console`, which its signature does not 
   "actual": { "render": "{Console}", "row": { "labels": [{ "effect": "std::Console", "args": [] }], "tail": null } },
   "obligation": null,
   "counterexample": null,
-  "explanation_uri": "vow://explain/V3001",
+  "explanation_uri": "sakura://explain/V3001",
   "fixes": [
     { "id": "f:e8f9a0e1d729d3d1.0", "title": "Add `Console` to the signature",
       "applicability": "suggested", "impact": "interface_change",
-      "edits": [{ "span": { "uri": "file:///…/hello/src/main.vow", "content_hash": "sha256:f1ee9f10…",
+      "edits": [{ "span": { "uri": "file:///…/hello/src/main.sakura", "content_hash": "sha256:f1ee9f10…",
                             "start_byte": 67, "end_byte": 67, "role": "primary" },
                   "replacement": " ! {Console}" }] },
     { "id": "f:e8f9a0e1d729d3d1.1", "title": "Handle the effect locally with `with`",
@@ -181,11 +181,11 @@ error[V3001]: function `greet` performs `Console`, which its signature does not 
 }
 ```
 
-Spans are zero-based, half-open UTF-8 byte offsets, and an edit applies only while `content_hash` still matches. The first fix changes the function's interface, so it is `suggested`, never `machine_applicable`: an agent must not widen a signature silently. `vow explain V3001` prints the rationale with a wrong and a fixed program. See [Diagnostics](/docs/agents/diagnostics) for the format.
+Spans are zero-based, half-open UTF-8 byte offsets, and an edit applies only while `content_hash` still matches. The first fix changes the function's interface, so it is `suggested`, never `machine_applicable`: an agent must not widen a signature silently. `sakura explain V3001` prints the rationale with a wrong and a fixed program. See [Diagnostics](/docs/agents/diagnostics) for the format.
 
 A typed hole is how an agent asks the compiler what fits:
 
-```vow
+```sakura
 fn unfinished(x: Int) -> Int { ?result }
 ```
 
@@ -193,21 +193,21 @@ fn unfinished(x: Int) -> Int { ?result }
 hole ?result: expected Int, effects {}; locals [x: Int]; candidates [x, Int.abs(?i), Int.clamp(?i, ?lo, ?hi), …]
 ```
 
-`vow check` accepts holes; `vow build` and `vow run` reject them with `V2050`. See [Typed holes](/docs/agents/typed-holes).
+`sakura check` accepts holes; `sakura build` and `sakura run` reject them with `V2050`. See [Typed holes](/docs/agents/typed-holes).
 
 ## Commands
 
 | Command | Today |
 | --- | --- |
-| `vow check [--json] [paths]` | Parse, resolve, type and effect check, exhaustiveness. Holes allowed |
-| `vow build [paths]` | Check, then generate JavaScript. Holes rejected (`V2050`) |
-| `vow run [path] [-- args]` | Build and run `main` with `node` |
-| `vow test [--json] [--seed N] [--filter text] [--update-snapshots]` | Run tests and properties with deterministic handlers |
-| `vow fmt [--check] [paths]` | Canonical format. There are no options |
-| `vow explain V3001` | Rationale, causes and repairs for a diagnostic code |
-| `vow prompt` | Print the language guide for agents ([llms.txt](https://github.com/icantcodefyi/vow/blob/master/docs/llms.txt)) |
+| `sakura check [--json] [paths]` | Parse, resolve, type and effect check, exhaustiveness. Holes allowed |
+| `sakura build [paths]` | Check, then generate JavaScript. Holes rejected (`V2050`) |
+| `sakura run [path] [-- args]` | Build and run `main` with `node` |
+| `sakura test [--json] [--seed N] [--filter text] [--update-snapshots]` | Run tests and properties with deterministic handlers |
+| `sakura fmt [--check] [paths]` | Canonical format. There are no options |
+| `sakura explain V3001` | Rationale, causes and repairs for a diagnostic code |
+| `sakura prompt` | Print the language guide for agents ([llms.txt](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/llms.txt)) |
 
-Planned for M3 and later (design §12.1): `vow new` and `vow init`, `vow fix` with impact classes, `vow doc`, package commands (`add`, `remove`, `update`, `audit`), `vow lsp`, `vow mcp serve`, `vow verify` (M4), and WASM (M4) and native (M5) backends.
+Planned for M3 and later (design §12.1): `sakura new` and `sakura init`, `sakura fix` with impact classes, `sakura doc`, package commands (`add`, `remove`, `update`, `audit`), `sakura lsp`, `sakura mcp serve`, `sakura verify` (M4), and WASM (M4) and native (M5) backends.
 
 ## Next
 

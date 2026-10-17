@@ -7,7 +7,7 @@ const COLUMNS = [
     title: "Learn",
     links: [
       { href: "/docs", label: "Introduction" },
-      { href: "/docs/why-vow", label: "Why Vow" },
+      { href: "/docs/why-sakura-lang", label: "Why Sakura Lang" },
       { href: "/docs/tour/basics", label: "Language tour" },
       { href: "/docs/stdlib", label: "Standard library" },
     ],
@@ -36,7 +36,7 @@ export function SiteFooter() {
     <footer className="border-t border-line">
       <div className="mx-auto grid max-w-6xl gap-10 px-5 py-14 sm:px-8 md:grid-cols-[1.4fr_repeat(3,1fr)]">
         <div>
-          <Link href="/" aria-label="Vow home" className="text-[19px]">
+          <Link href="/" aria-label="Sakura Lang home" className="text-[19px]">
             <Wordmark />
           </Link>
           <p className="mt-4 max-w-[17rem] text-[14px] leading-relaxed text-fg-muted">

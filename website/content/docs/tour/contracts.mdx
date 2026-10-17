@@ -14,13 +14,13 @@ Types say what shape a value has. Refinements and contracts say what is true abo
 
 ## The guarantee model
 
-Every claim Vow makes about a program has exactly one of four statuses ([design §1.2](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
+Every claim Sakura Lang makes about a program has exactly one of four statuses ([design §1.2](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)):
 
 | Status            | Meaning                                                                                | Who establishes it                                                            |
 | ----------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
 | `proved`          | Holds on all executions under the stated assumptions.                                  | The type and effect checker; later, SMT-discharged contracts.                 |
 | `runtime_checked` | A violation is detected at the boundary and becomes a defect. The bad value never escapes. | Contract lowering (`requires`, `ensures`, `where`), checked arithmetic.        |
-| `tested`          | Held on the inputs that were executed.                                                 | `vow test` (unit, property, snapshot, simulation).                            |
+| `tested`          | Held on the inputs that were executed.                                                 | `sakura test` (unit, property, snapshot, simulation).                            |
 | `trusted`         | Assumed.                                                                               | FFI declarations, host handlers, `@trust` sites, the toolchain itself.        |
 
 In v0, every contract is `runtime_checked`. The compiler never prints "verified" for a program that merely compiled.
@@ -29,7 +29,7 @@ In v0, every contract is `runtime_checked`. The compiler never prints "verified"
 
 A refinement is a base type plus a predicate, written with `where`. Inside the predicate, `it` is the value.
 
-```vow
+```sakura
 type Email = String where String.len(it) <= 254 && Email.is_valid(it)
 type Percent = Int where it >= 0 && it <= 100
 type NonEmpty<T> = List<T> where List.len(it) > 0
@@ -39,7 +39,7 @@ A refined type is a distinct nominal type with the same representation as its ba
 
 Record fields can carry a refinement inline:
 
-```vow
+```sakura
 type Priority = Low | Normal | High
 type Ticket = {
   title: String where String.len(it) > 0 && String.len(it) <= 120,
@@ -51,18 +51,18 @@ Field refinements are checked when the record is constructed.
 
 ## How values enter a refined type
 
-There is no silent conversion. A value becomes a `Percent` in one of four ways ([design §4.3](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
+There is no silent conversion. A value becomes a `Percent` in one of four ways ([design §4.3](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)):
 
 | Entry point                               | On failure                                                        |
 | ----------------------------------------- | ----------------------------------------------------------------- |
 | `Percent.validate(n) -> Result<Percent, Violation>` | Returns `Err(Violation { type_name, clause, value_summary })`. |
-| `Percent.from(n) -> Percent`               | Defect `D010`. Use at trusted boundaries only; `vow audit` lists every use. |
+| `Percent.from(n) -> Percent`               | Defect `D010`. Use at trusted boundaries only; `sakura audit` lists every use. |
 | `let p: T = Json.decode(text)?` and other schema decoding, with the target named by annotation | Typed `DecodeError`, never a defect. Nested field refinements are checked. |
 | A literal, `let p: Percent = 50`          | Checked at compile time when the predicate is in the SMT fragment, otherwise at program start (warning `V5002`). |
 
 `validate` is the normal path for input you do not control:
 
-```vow
+```sakura
 fn describe(input: Int) -> String {
   match Percent.validate(input) {
     Ok(p) => "{p}%",
@@ -71,11 +71,11 @@ fn describe(input: Int) -> String {
 }
 ```
 
-Once a value has type `Percent`, nothing downstream re-checks it. Vow has no aliasable mutation, so a validated value cannot be invalidated later. Record update `Ticket { ..t, title: x }` with `x` already refined needs no re-check.
+Once a value has type `Percent`, nothing downstream re-checks it. Sakura Lang has no aliasable mutation, so a validated value cannot be invalidated later. Record update `Ticket { ..t, title: x }` with `x` already refined needs no re-check.
 
 ## The contract subset
 
-Predicates in `where`, `requires`, `ensures`, and `property` clauses must be pure (`! {}`), terminating, and deterministic. v0 enforces this syntactically ([design §7.1](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
+Predicates in `where`, `requires`, `ensures`, and `property` clauses must be pure (`! {}`), terminating, and deterministic. v0 enforces this syntactically ([design §7.1](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)):
 
 - No loops and no recursion.
 - Calls only to functions with row `{}` that are marked `@total` or are themselves in the subset, checked transitively. Anything else is `V5001`.
@@ -83,9 +83,9 @@ Predicates in `where`, `requires`, `ensures`, and `property` clauses must be pur
 
 Arithmetic in a predicate is checked, so a predicate can itself defect. That is reported as `D011` (contract evaluation failed).
 
-`@total` is how a function with recursion or a loop reaches a contract. It is a **trusted** claim that a `{}`-row function terminates on every input; the compiler does not prove it. Std marks a fixed list (`List.len`, `List.get`, `List.all`, `List.any`, `List.contains`, `Map.get`, `String.len`, `String.contains`, `Option.is_some`, `Int.abs`, and a few more). User code may mark its own functions, and `vow audit` lists every `@total` site, like every `@trust`:
+`@total` is how a function with recursion or a loop reaches a contract. It is a **trusted** claim that a `{}`-row function terminates on every input; the compiler does not prove it. Std marks a fixed list (`List.len`, `List.get`, `List.all`, `List.any`, `List.contains`, `Map.get`, `String.len`, `String.contains`, `Option.is_some`, `Int.abs`, and a few more). User code may mark its own functions, and `sakura audit` lists every `@total` site, like every `@trust`:
 
-```vow
+```sakura
 @total   // trusted: n / 10 moves toward 0 on every call
 fn digits(n: Int) -> Int {
   if n > -10 && n < 10 { 1 } else { 1 + digits(n / 10) }
@@ -98,7 +98,7 @@ type Pin = Int where it >= 0 && digits(it) == 4
 
 `requires` states what must hold for the arguments. `ensures` states what holds for the result, which is bound to `result`. Both go between the signature and the body, and each clause may have a name.
 
-```vow
+```sakura
 fn clamp(x: Int, lo: Int, hi: Int) -> Int
   requires ordered: lo <= hi
   ensures bounded: lo <= result && result <= hi
@@ -113,7 +113,7 @@ fn clamp(x: Int, lo: Int, hi: Int) -> Int
 
 Contracts compose with typed errors:
 
-```vow
+```sakura
 error Insufficient
 error Frozen
 type WithdrawError = Insufficient | Frozen
@@ -136,7 +136,7 @@ fn withdraw(from: Account, amount: Int) -> Account ! {Fail<WithdrawError>}
 
 Bounded quantifiers are allowed in contracts:
 
-```vow
+```sakura
 fn top_score(scores: NonEmpty<Int>) -> Int
   ensures List.all(scores, fn(s) { s <= result })
 {
@@ -149,25 +149,25 @@ A clause the compiler estimates as O(n), like this one, triggers warning `W5005`
 
 ## Contracts are always checked
 
-Contract checks run in **all build modes**. `vow build --release` keeps them. The only way a check is removed is a `proved` status from `vow verify` (M4 and later), recorded per obligation.
+Contract checks run in **all build modes**. `sakura build --release` keeps them. The only way a check is removed is a `proved` status from `sakura verify` (M4 and later), recorded per obligation.
 
 Contract violations are [defects](/docs/tour/effects), not effects. A defect terminates the current task after resource finalizers run. `try` cannot catch it. `Task.scope` and the test runner observe it as an outcome, and a defect in `main` exits with status 70 and a structured report.
 
-Contracts on `pub` functions are part of the signature shown by `vow doc`, the MCP `symbol_query` tool, and editor hover.
+Contracts on `pub` functions are part of the signature shown by `sakura doc`, the MCP `symbol_query` tool, and editor hover.
 
 ## Frozen specs during agent repair
 
-An agent fixing a failing build must not "fix" it by weakening the specification. `vow fix`, the MCP `apply_patch` tool, and `vow check --frozen-specs <symbols|all>` reject any patch that changes a frozen symbol's signature, effect row, error union, `requires`/`ensures`/`where` clauses, or any `test` or `property` body. The diagnostic is `V8020` (spec frozen) and names the clause.
+An agent fixing a failing build must not "fix" it by weakening the specification. `sakura fix`, the MCP `apply_patch` tool, and `sakura check --frozen-specs <symbols|all>` reject any patch that changes a frozen symbol's signature, effect row, error union, `requires`/`ensures`/`where` clauses, or any `test` or `property` body. The diagnostic is `V8020` (spec frozen) and names the clause.
 
 Compiler fixes that touch a contract carry `impact: contract_change` and are never `machine_applicable`. See [Diagnostics](/docs/agents/diagnostics).
 
 ## Property tests from contracts
 
-`vow test --contracts` synthesizes a property test for every `pub` function that has a refined parameter or a `requires` clause. Inputs are generated from the refinements and `requires` together, the function runs under the test handlers, and `ensures` and result refinements are checked. Failures are shrunk and saved. A function with effects other than `Fail`, `Clock`, and `Random` is tested only when it names handlers with `@contract_test(handlers: [Sql.memory(), Log.captured()])`. See [Testing](/docs/tour/testing#property-tests-from-contracts).
+`sakura test --contracts` synthesizes a property test for every `pub` function that has a refined parameter or a `requires` clause. Inputs are generated from the refinements and `requires` together, the function runs under the test handlers, and `ensures` and result refinements are checked. Failures are shrunk and saved. A function with effects other than `Fail`, `Clock`, and `Random` is tested only when it names handlers with `@contract_test(handlers: [Sql.memory(), Log.captured()])`. See [Testing](/docs/tour/testing#property-tests-from-contracts).
 
 ## Not in v0
 
-- **Static proof.** M4 adds `vow verify`, which sends obligations in the QF_LIA, QF_BV, and EUF fragments to Z3 and reports `proved`, `disproved` (with a counterexample), `unknown`, or `unsupported`. Only `proved` removes a runtime check. Termination is never implied ([design §7.5](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)).
+- **Static proof.** M4 adds `sakura verify`, which sends obligations in the QF_LIA, QF_BV, and EUF fragments to Z3 and reports `proved`, `disproved` (with a counterexample), `unknown`, or `unsupported`. Only `proved` removes a runtime check. Termination is never implied ([design §7.5](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)).
 - **Flow-sensitive refinement.** An `if n >= 0` does not turn `n` into a refined type. Use `validate` or `from`.
 - **`old(expr)`** in postconditions. There is no mutation to snapshot.
 - **Proof-oriented syntax.** The keywords `verify`, `proof`, and `ghost` are reserved and rejected today with `V0007`.

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Seal } from "@/components/seal";
 import { TokenSpans } from "@/components/token-spans";
-import { tokenize } from "@/lib/vow/highlight";
+import { tokenize } from "@/lib/sakura/highlight";
 
 // One signature, in the formatter's multi-line form (design §12.5), read clause by clause.
 const SIGNATURE = `fn withdraw(acct: Account, amount: Cents)
@@ -67,7 +67,7 @@ export async function Anatomy() {
         {/* The contract, on ruled paper, with the compiler's seal on the signature line. */}
         <figure className="relative mt-12 overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_24px_60px_-40px_oklch(0.2_0.02_255/0.4)]">
           <div className="flex items-center justify-between border-b border-line px-5 py-3 font-mono text-[11.5px] text-fg-faint sm:px-8">
-            <span>src/accounts.vow</span>
+            <span>src/accounts.sakura</span>
             <span className="hidden sm:inline">hover a clause</span>
           </div>
           <ol className="py-3 sm:py-5">
@@ -113,7 +113,7 @@ export async function Anatomy() {
               <dd className="font-medium">a person, reading five lines</dd>
               <dt className="text-fg-faint">Held by</dt>
               <dd className="font-medium">
-                <code className="font-mono text-[0.92em]">vow check</code>, on every change
+                <code className="font-mono text-[0.92em]">sakura check</code>, on every change
               </dd>
             </dl>
             <Seal className="size-16 shrink-0 -rotate-12 sm:mr-2 sm:size-24" />

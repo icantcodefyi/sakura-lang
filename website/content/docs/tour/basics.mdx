@@ -1,13 +1,13 @@
 ---
 title: Basics
-description: Lexical rules, bindings, functions, control flow, operators, strings, lambdas, loops, and modules in Vow.
+description: Lexical rules, bindings, functions, control flow, operators, strings, lambdas, loops, and modules in Sakura Lang.
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  This page describes the v0 design ([design §2, §3, §9](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)). The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet.
+  This page describes the v0 design ([design §2, §3, §9](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)). The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet.
 </Callout>
 
-Vow has a small surface: braces, `fn`, `let`/`var`, `match`, `if`/`else`. The keywords are:
+Sakura Lang has a small surface: braces, `fn`, `let`/`var`, `match`, `if`/`else`. The keywords are:
 
 ```text
 fn let var type error effect handler with try catch fail if else match for in while
@@ -22,7 +22,7 @@ Casing is part of the grammar. Values, functions, modules, fields, and effect-ro
 
 ## Comments and attributes
 
-```vow
+```sakura
 // A line comment. /* Block comments */ nest.
 
 /// A doc comment. It attaches to the next item and is exported with its signature.
@@ -35,7 +35,7 @@ pub fn double(n: Int) -> Int {
 
 ## Statements and newlines
 
-There are no mandatory semicolons. The lexer ends a statement at a line break only when **both** hold ([design §2.4](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
+There are no mandatory semicolons. The lexer ends a statement at a line break only when **both** hold ([design §2.4](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)):
 
 1. The previous token can end an expression: a name, a hole, a literal, `)`, `]`, `}`, `>`, postfix `?`, `true`, `false`, `break`, `continue`, or `return`.
 2. The next token cannot continue one: it is not `.`, `else`, `catch`, `)`, `]`, `}`, `,`, `=>`, `=`, `->`, `|`, `..`, or a binary operator other than `-`.
@@ -45,13 +45,13 @@ In practice:
 - A line ending in an operator other than `>`, or in `(`, `[`, `{`, or `,`, continues. `>` ends a line so that `type Ids = List<Int>` terminates; write a continued comparison with `>` at the start of the next line.
 - A line starting with `.`, `else`, or `catch` continues the previous one, so method chains and `} else {` work across lines.
 - `foo` followed by `(bar)` on the next line is **two** statements. So is `foo` followed by `-1`.
-- Newlines inside `(` and `[` are never significant. `;` is always accepted; `vow fmt` removes redundant ones.
+- Newlines inside `(` and `[` are never significant. `;` is always accepted; `sakura fmt` removes redundant ones.
 
 ## Bindings
 
 `let` binds an immutable name. `var` binds a name that can be reassigned. Local types are inferred.
 
-```vow
+```sakura
 fn bindings() -> Int {
   let big = 20_000          // underscores between digits
   let mask = 0xFF           // also 0b1010
@@ -70,7 +70,7 @@ fn bindings() -> Int {
 
 Every top-level function has a full signature: parameter types, `-> Result`, and an effect row unless it is pure.
 
-```vow
+```sakura
 fn add(a: Int, b: Int) -> Int {
   a + b
 }
@@ -96,7 +96,7 @@ pub fn greet(name: String) -> Unit ! {Console} {
 
 `if` is an expression. With `else`, both branches must have the same type. Without `else`, its type is `Unit`.
 
-```vow
+```sakura
 fn label(score: Int) -> String {
   if score >= 90 { "excellent" } else if score >= 50 { "pass" } else { "keep going" }
 }
@@ -108,7 +108,7 @@ fn can_vote(age: Int, registered: Bool, suspended: Bool) -> Bool {
 
 `match` branches on the shape of a value. Arms end with a newline or `,`. Guards use `if`. A match must be exhaustive, and a literal pattern on `Int`, `String`, or `Float` needs a `_` arm. See [Types](/docs/tour/types#pattern-matching).
 
-```vow
+```sakura
 fn describe(n: Option<Int>) -> String {
   match n {
     Some(0) => "zero"
@@ -121,7 +121,7 @@ fn describe(n: Option<Int>) -> String {
 
 ## Operators
 
-Tightest first ([design §3.1](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
+Tightest first ([design §3.1](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)):
 
 | Level | Operators | Associativity |
 | --- | --- | --- |
@@ -140,7 +140,7 @@ Tightest first ([design §3.1](https://github.com/icantcodefyi/vow/blob/master/d
 - `a < b < c` is `V0010`. `&&` and `||` short-circuit.
 - `xs[i]` is `List.get(xs, i)` and returns `Option`.
 
-Four parsing rules remove guesswork ([design §3.2](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
+Four parsing rules remove guesswork ([design §3.2](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)):
 
 - In expressions, `<` is always comparison. There are no call-site type arguments: `List<Int>.empty()` and `f<T>(x)` are `V0011`. Name the type with a binding annotation instead: `let xs: List<Int> = List.empty()`, `let rows: List<User> = Sql.query(q)`.
 - There are no named arguments: `f(name: v)` is `V0014`. Pass values positionally, or pass a record when there are many options (`Budget.limits(Limits { tokens: Some(20_000), usd: None, calls: None })`).
@@ -151,7 +151,7 @@ Four parsing rules remove guesswork ([design §3.2](https://github.com/icantcode
 
 Strings are UTF-8 and may span lines. `{expr}` interpolates any expression whose type is `Show`. Escapes are `\\ \" \n \r \t \0 \{ \}` and `\u{…}`; write `\{` for a literal brace.
 
-```vow
+```sakura
 fn inbox(name: String, unread: List<String>) -> String {
   "Hello, {name}. You have {List.len(unread)} messages. \{not interpolated\}"
 }
@@ -163,7 +163,7 @@ Interpolating a `Secret<T>` is a compile error (`V2031`). Tagged strings `sql"�
 
 There is one lambda form: `fn(params) { body }`, with optional parameter and result annotations.
 
-```vow
+```sakura
 fn twice<e>(f: fn(Int) -> Int ! e, x: Int) -> Int ! e {
   f(f(x))
 }
@@ -182,7 +182,7 @@ A function type is `fn(A, B) -> C ! row`; without `!` it is pure. The lowercase 
 
 `x.f(a)` means `T.f(x, a)`, where `T` is the type of `x` and `f` is looked up in `T`'s home module. So `xs.map(f)` is `List.map(xs, f)` and `s.len()` is `String.len(s)`. There are no methods, no `self`, and no pipe operator. Chains continue across lines with a leading `.`:
 
-```vow
+```sakura
 type User = { name: String, active: Bool }
 
 fn names(users: List<User>) -> List<String> {
@@ -198,7 +198,7 @@ The full lookup order is in [Types](/docs/tour/types#method-call-resolution).
 
 `for pattern in expr { }` iterates a `List`, `Range`, `Set`, or `Map` (as `(key, value)` pairs). `while cond { }` loops while a condition holds. `break` and `continue` work in both. Loops are statements and produce no value; accumulate in a `var`, or use `List.fold`.
 
-```vow
+```sakura
 fn total(xs: List<Int>) -> Int {
   var sum = 0
   for x in xs {
@@ -221,17 +221,17 @@ fn countdown(n: Int) -> Unit ! {Console} {
 
 ## Holes
 
-`?name` is a typed hole: an unfinished expression. `vow check` accepts holes and reports each one's expected type, the locals in scope, and ranked candidates. `vow build` and `vow run` reject them (`V2050`). See [Typed holes](/docs/agents/typed-holes).
+`?name` is a typed hole: an unfinished expression. `sakura check` accepts holes and reports each one's expected type, the locals in scope, and ranked candidates. `sakura build` and `sakura run` reject them (`V2050`). See [Typed holes](/docs/agents/typed-holes).
 
-```vow
+```sakura
 fn unfinished(x: Int) -> Int { ?result }
 ```
 
 ## Modules
 
-One file is one module. The module path is the file path under the package's `src/`: `src/users/repo.vow` is module `users/repo`. The first import segment is a package name (`std`, the current package, or a dependency in `vow.toml`).
+One file is one module. The module path is the file path under the package's `src/`: `src/users/repo.sakura` is module `users/repo`. The first import segment is a package name (`std`, the current package, or a dependency in `sakura.toml`).
 
-```vow
+```sakura
 import std/http.{Http, Request, Response}    // bind names directly
 import std/sql                               // bind only the module name `sql`
 import acme/billing/invoices as inv          // rename
@@ -242,7 +242,7 @@ import acme/billing/invoices as inv          // rename
 - Variants and error tags live directly in their module's namespace (`Some`, `EmailTaken`); `Option.Some` is also accepted.
 - `pub type` exports a type with its constructors and fields. `pub opaque type` exports only the name: other modules can use its values but not construct or destructure them (`V1006`).
 - The prelude needs no import: the built-in types (`Int`, `String`, `List`, `Map`, `Set`, `Secret`, `Untrusted`, …), `Option`, `Result`, `Duration`, `Instant`, `Uuid`, `Json`, `Level`, the constructors `Some None Ok Err`, the effects `Fail Console Clock Random Env Log Task Test`, `show` and the `expect…` test functions, and the tags `sql html url shell`.
-- The entry point is `pub fn main() -> Unit ! {…}` in `src/main.vow`.
+- The entry point is `pub fn main() -> Unit ! {…}` in `src/main.sakura`.
 
 ## What the compiler checks
 
@@ -251,7 +251,7 @@ import acme/billing/invoices as inv          // rename
 - Unused non-`Unit` results are errors (`V2040`).
 - Name conflicts within a module are errors (`V1001`). A local shadowing an import is a warning (`W1002`).
 - Every `match` is exhaustive (`V4001`). Unreachable arms are reported (`V4002`).
-- `vow fmt` has no options: 2-space indent, width 100, one canonical layout.
+- `sakura fmt` has no options: 2-space indent, width 100, one canonical layout.
 
 ## Next
 

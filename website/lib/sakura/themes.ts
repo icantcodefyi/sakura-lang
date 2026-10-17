@@ -148,7 +148,7 @@ function makeTheme(name: string, type: "light" | "dark", p: Palette): ThemeRegis
   };
 }
 
-export const vowDark = makeTheme("vow-dark", "dark", {
+export const sakuraDark = makeTheme("sakura-dark", "dark", {
   bg: "#131518",
   fg: "#dde1e7",
   punct: "#8a919c",
@@ -167,7 +167,7 @@ export const vowDark = makeTheme("vow-dark", "dark", {
   lineHighlight: "#ffffff0a",
 });
 
-export const vowLight = makeTheme("vow-light", "light", {
+export const sakuraLight = makeTheme("sakura-light", "light", {
   bg: "#f7f8fa",
   fg: "#23272e",
   punct: "#636a75",

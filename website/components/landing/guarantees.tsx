@@ -22,8 +22,8 @@ const ROWS = [
   {
     status: "tested",
     tone: "text-fg border-line-strong bg-bg-sunk",
-    by: "vow test, on the inputs that ran",
-    examples: ['property "normalize is idempotent"', "vow test --contracts", "snapshots"],
+    by: "sakura test, on the inputs that ran",
+    examples: ['property "normalize is idempotent"', "sakura test --contracts", "snapshots"],
   },
   {
     status: "trusted",
@@ -42,8 +42,8 @@ export function Guarantees() {
             Every claim says how it is known.
           </h2>
           <p className="text-[17px] leading-relaxed text-pretty text-fg-muted">
-            Vow never calls a program verified because it compiled. Each obligation gets exactly one
-            status, and the tools report it.
+            Sakura Lang never calls a program verified because it compiled. Each obligation gets
+            exactly one status, and the tools report it.
           </p>
         </div>
 
@@ -80,7 +80,7 @@ export function Guarantees() {
         <p className="mt-6 max-w-[44rem] text-[14.5px] leading-relaxed text-fg-muted">
           In v0 every contract is <code className="font-mono text-fg">runtime_checked</code>, in
           every build including <code className="font-mono text-fg">--release</code>. From M4,{" "}
-          <code className="font-mono text-fg">vow verify</code> can move a single obligation to{" "}
+          <code className="font-mono text-fg">sakura verify</code> can move a single obligation to{" "}
           <code className="font-mono text-fg">proved</code> and drop only that check.{" "}
           <Link
             href="/docs/tour/contracts"

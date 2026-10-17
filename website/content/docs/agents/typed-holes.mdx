@@ -1,21 +1,21 @@
 ---
 title: Typed holes
-description: How ?name holes let agents write a Vow program incrementally, with the checker reporting what fits in each gap.
+description: How ?name holes let agents write a Sakura Lang program incrementally, with the checker reporting what fits in each gap.
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  Typed holes are part of milestone M2 in [design §12.4](https://github.com/icantcodefyi/vow/blob/master/docs/design.md).
+  Typed holes are part of milestone M2 in [design §12.4](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md).
   The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http,
   sql, fs, cli, ai, task) are not implemented yet. The `hole_context` MCP tool is planned for M3.
 </Callout>
 
-A typed hole is a placeholder for code you have not written yet. In Vow it is written `?name`: a `?` immediately followed by an identifier, with no space. A hole is an expression of a fresh type, so a program with holes can be checked before it is finished.
+A typed hole is a placeholder for code you have not written yet. In Sakura Lang it is written `?name`: a `?` immediately followed by an identifier, with no space. A hole is an expression of a fresh type, so a program with holes can be checked before it is finished.
 
 Holes turn "write the whole function and hope it compiles" into small steps, each with precise feedback.
 
 ## Writing a hole
 
-```vow
+```sakura
 fn clamp(x: Int, lo: Int, hi: Int) -> Int
   requires ordered: lo <= hi
   ensures bounded: lo <= result && result <= hi
@@ -24,7 +24,7 @@ fn clamp(x: Int, lo: Int, hi: Int) -> Int
 }
 ```
 
-`vow check` accepts this program and reports one `hole` record. `vow build` and `vow run` reject it with `V2050`, so a hole cannot reach a build by accident.
+`sakura check` accepts this program and reports one `hole` record. `sakura build` and `sakura run` reject it with `V2050`, so a hole cannot reach a build by accident.
 
 The name is for you and for tooling. Use one that says what belongs there: `?body`, `?user`, `?retry_policy`.
 
@@ -32,7 +32,7 @@ The name is for you and for tooling. Use one that says what belongs there: `?bod
 
 ## What a hole reports
 
-After solving the enclosing body, `vow check --json` emits one `hole` record per hole, on its own line. The record is exactly this shape ([design §12.2](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
+After solving the enclosing body, `sakura check --json` emits one `hole` record per hole, on its own line. The record is exactly this shape ([design §12.2](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)):
 
 | Field | Meaning |
 | --- | --- |
@@ -46,7 +46,7 @@ After solving the enclosing body, `vow check --json` emits one `hole` record per
 | `candidates` | Up to 10 ranked expressions that fit, each with `expr` and its `fit` kind. |
 | `contracts_in_scope` | The refinements and contracts assumed at this point. |
 
-For the `clamp` program above, saved as `src/main.vow`, the record looks like this, pretty-printed, with hashes shortened:
+For the `clamp` program above, saved as `src/main.sakura`, the record looks like this, pretty-printed, with hashes shortened:
 
 ```json
 {
@@ -55,7 +55,7 @@ For the `clamp` program above, saved as `src/main.vow`, the record looks like th
   "id": "h:5d0c8e2b1a7f4396",
   "name": "body",
   "snapshot": "sha256:…",
-  "span": { "uri": "file:///…/src/main.vow", "content_hash": "sha256:…",
+  "span": { "uri": "file:///…/src/main.sakura", "content_hash": "sha256:…",
             "start_byte": 123, "end_byte": 128, "role": "primary" },
   "expected_type": { "render": "Int", "structured": null },
   "allowed_effects": { "render": "{}", "row": { "labels": [], "tail": null } },
@@ -90,7 +90,7 @@ A hole never affects inference of other bindings beyond its own fresh type varia
 
 Following the report, an agent fills the hole:
 
-```vow
+```sakura
 fn clamp(x: Int, lo: Int, hi: Int) -> Int
   requires ordered: lo <= hi
   ensures bounded: lo <= result && result <= hi
@@ -105,7 +105,7 @@ The `ensures` clause is checked at runtime on every normal return, in every buil
 
 A hole takes its expected type from context. An annotation gives a hole a type when the context does not:
 
-```vow
+```sakura
 fn greet(name: String) -> Unit ! {Console, Clock} {
   let now: Instant = ?now
   Console.print("hello, {name}; it is {Instant.format_iso(now)}")
@@ -121,12 +121,12 @@ The planned [MCP server](/docs/agents/mcp) has a `hole_context(snapshot, hole_id
 ## Recommended agent workflow
 
 1. Write every signature the task needs: types, effect rows, `Fail<...>` unions, and contracts. Bodies are holes.
-2. Run `vow check --json`. Fix signature-level errors first; these are what a human reviews.
+2. Run `sakura check --json`. Fix signature-level errors first; these are what a human reviews.
 3. Write tests for the behavior the task asks for.
 4. Fill holes one at a time, using `candidates`, `locals`, and `contracts_in_scope`. Re-check after each.
-5. When no `hole` records remain, run `vow test --json`, then summarize any signature changes for review.
+5. When no `hole` records remain, run `sakura test --json`, then summarize any signature changes for review.
 
-The design does not yet say whether `vow test` runs a program that still contains holes. Assume it does not.
+The design does not yet say whether `sakura test` runs a program that still contains holes. Assume it does not.
 
 ## Next
 
