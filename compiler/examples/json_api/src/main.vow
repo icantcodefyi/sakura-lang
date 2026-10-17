@@ -1,33 +1,44 @@
 // milestone: M3
-// needs: std/http, std/sql with Sql.memory and sqlite, Json Schema codecs, refinements
+// needs: std/router, std/serve, SqlValue.from for sql"…" arguments, Schema codecs and Sql.memory in runtime/js
 // mode: test
 // covers: Import NameList TypeDecl RecordType TryExpr Lambda
 
-// Design §15.5. `main` serves forever, so CI runs the tests only. Differences from the
-// design text: no call-site type arguments (§3.2 rule 1), so `Sql.query<User>(…)` and
-// `Request.json<NewUser>(…)` become annotated bindings.
+// Design §15.5. `main` serves forever, so CI runs the tests only. Difference from the
+// design text: `Request` and `BadRequest` come from `std/request`, `Response` and `Status`
+// from `std/response` (one home module per type, see compiler/std/INDEX.md), and `main`
+// declares `Fs` (which `Sql.sqlite` needs) instead of `Sql`, `Log` and `Env`, which it
+// handles or never uses.
 
-import std/http.{Request, Response, Router, Status}
-import std/sql
+import std/fs.{Fs}
+import std/path.{Path}
+import std/request.{BadRequest, Request}
+import std/response.{Response, Status}
+import std/router.{Router}
+import std/serve.{Address, Serve}
+import std/sql.{Sql, SqlError}
 
 type Email = String where String.len(it) <= 254 && String.contains(it, "@")
 type NewUser = { email: Email, name: String }
 type User = { id: Int, email: Email, name: String }
+
 error EmailTaken(email: Email)
 
 fn create_user(input: NewUser) -> User ! {Sql, Fail<EmailTaken | SqlError>} {
   Sql.transaction(fn() {
-    let existing: List<User> = Sql.query(sql"select id, email, name from users where email = {input.email}")
+    let existing: List<User> = Sql.query(
+      sql"select id, email, name from users where email = {input.email}",
+    )
     if List.len(existing) > 0 { fail EmailTaken { email: input.email } }
     let rows: List<User> = Sql.query(
-      sql"insert into users (email, name) values ({input.email}, {input.name}) returning id, email, name")
+      sql"insert into users (email, name) values ({input.email}, {input.name}) returning id, email, name",
+    )
     List.first(rows).expect("insert returning yields one row")
   })
 }
 
-fn handle_create(req: Request) -> Response ! {Sql, Log} {
+fn handle_create(req: Request) -> Response ! {Log, Sql} {
   try {
-    let input: NewUser = Request.json(req, 64_000)      // validates the Email refinement
+    let input: NewUser = Request.json(req, 64_000) // validates the Email refinement
     let user = create_user(input)
     Response.ok_json(user)
   } catch {
@@ -36,11 +47,11 @@ fn handle_create(req: Request) -> Response ! {Sql, Log} {
     SqlError { .. } => {
       Log.event(Level.Error, "db error", [])
       Response.status(503, "try again")
-    }
+    },
   }
 }
 
-pub fn main() -> Unit ! {Serve, Sql, Log, Env} {
+pub fn main() -> Unit ! {Fs, Serve} {
   let router = Router.new()
     .post("/users", handle_create)
     .get("/health", fn(_req) { Response.status(200, "ok") })
@@ -55,14 +66,14 @@ test "duplicate email is 409" {
     let body = Json.encode(NewUser { email: Email.from("a@b.co"), name: "A" })
     let first = handle_create(Request.post("/users", body))
     let second = handle_create(Request.post("/users", body))
-    expect_eq(first.status, Status.of(200))
-    expect_eq(second.status, Status.of(409))
+    expect_eq(first.status, Status.from(200))
+    expect_eq(second.status, Status.from(409))
   }
 }
 
 test "an invalid email is a 400, not a crash" {
   with Sql.memory(), Log.captured() {
     let resp = handle_create(Request.post("/users", "\{\"email\": \"nope\", \"name\": \"A\"\}"))
-    expect_eq(resp.status, Status.of(400))
+    expect_eq(resp.status, Status.from(400))
   }
 }

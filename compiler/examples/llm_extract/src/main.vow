@@ -1,15 +1,18 @@
 // milestone: M3
-// needs: std/ai with @llm, Llm.scripted, Budget; Schema-derived decoding with refinements
+// needs: @llm desugaring, Schema codecs (Json.encode/decode) and Untrusted.of in runtime/js
 // mode: test
 // covers: Attribute TypeDecl RecordType FieldDecl WithExpr Lambda MatchExpr
 
-// Design §15.7. `main` calls a real model, so CI runs the offline tests only. Differences
-// from the design text: `Budget.limits(tokens: …, usd: …)` used named arguments, which v0
-// does not have (§16.6); it takes a `Limits` record here.
+// Design §15.7. `main` calls a real model, so CI runs the offline tests only. Difference
+// from the design text: `Budget.limits` is installed outside `Llm.anthropic`, whose handler
+// performs `Budget` (the first handler in a `with` list is the outermost).
 
-import std/ai.{Limits, Model}
+import std/budget.{Budget, BudgetExceeded, Limits}
+import std/http.{Http}
+import std/llm.{InvalidOutput, Llm, LlmError, Model}
 
 type Priority = Low | Normal | High
+
 type Ticket = {
   title: String where String.len(it) > 0 && String.len(it) <= 120,
   priority: Priority,
@@ -18,26 +21,38 @@ type Ticket = {
 
 @llm(system: "Extract a support ticket. Use only facts present in the message.")
 fn extract_ticket(message: Untrusted<String>) -> Ticket
-  ! {Llm, Budget, Fail<LlmError | BudgetExceeded>}
+  ! {Budget, Llm, Fail<BudgetExceeded | LlmError>}
 
-pub fn main() -> Unit ! {Console, Env, Http, Fail<LlmError | BudgetExceeded>} {
+pub fn main() -> Unit ! {Console, Env, Http, Fail<BudgetExceeded | LlmError>} {
   let key = Env.secret("ANTHROPIC_API_KEY").expect("set ANTHROPIC_API_KEY")
-  with Llm.anthropic(key, Model.of("claude-sonnet-5-5")), Budget.limits(Limits { tokens: 20_000, usd: 0.50, calls: 10 }) {
+  let limits = Limits { tokens: Some(20_000), usd: Some(0.50), calls: None }
+  with Budget.limits(limits), Llm.anthropic(key, Model.of("claude-sonnet-5-5")) {
     let t = extract_ticket(Untrusted.of("Login page 500s since 9am, blocking all customers"))
     Console.print("{t.priority}: {t.title}")
   }
 }
 
 test "scripted model output is validated against Ticket" {
-  with Llm.scripted([Json.encode(Ticket { title: "Login 500s", priority: High, evidence: ["since 9am"] })]),
-       Budget.unlimited() {
+  with Llm.scripted([
+        Json.encode(Ticket { title: "Login 500s", priority: High, evidence: ["since 9am"] }),
+      ]),
+      Budget.unlimited() {
     let t = extract_ticket(Untrusted.of("anything"))
     expect_eq(t.priority, High)
   }
 }
 
 test "invalid output is a typed failure, not a crash" {
+  // `\{` is a literal brace; a bare `{` would start an interpolation (§2.3).
   with Llm.scripted(["\{\"title\": \"\", \"priority\": \"Urgent\"\}"]), Budget.unlimited() {
-    expect_fails_with(fn() { extract_ticket(Untrusted.of("x")) }, fn(e) { match e { InvalidOutput { .. } => true, _ => false } })
+    expect_fails_with(
+      fn() { extract_ticket(Untrusted.of("x")) },
+      fn(e) {
+        match e {
+          InvalidOutput { .. } => true,
+          _ => false,
+        }
+      },
+    )
   }
 }
