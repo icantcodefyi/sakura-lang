@@ -202,3 +202,21 @@ fn rendered_row_has_the_schema_shape() {
     );
     assert_eq!(rec["actual"], serde_json::json!({"render": "{}"}));
 }
+
+#[test]
+fn hole_record_shape() {
+    let files = hello();
+    let at = files[0].text.find("name}").unwrap() as u32;
+    let hole = HoleReport {
+        name: "result".into(),
+        span: Span::primary(FileId(0), at, at + 4),
+        expected_type: Rendered::text("Int"),
+        allowed_effects: Rendered::row("{}", vec![], None),
+        locals: vec![("x".into(), Rendered::text("Int"))],
+        candidates: vec![("x".into(), "exact_local".into())],
+        contracts_in_scope: vec![],
+    };
+    let recs = hole_records(&[hole], &files, "sha256:snap");
+    insta::assert_json_snapshot!(recs);
+    assert!(recs[0]["id"].as_str().unwrap().starts_with("h:"));
+}

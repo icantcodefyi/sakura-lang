@@ -12,7 +12,8 @@ mod json;
 
 pub use human::render_human;
 pub use json::{
-    MAX_DIAGNOSTICS, SCHEMA_VERSION, diagnostic_records, render_json_lines, summary_record,
+    MAX_DIAGNOSTICS, SCHEMA_VERSION, diagnostic_records, hole_records, render_json_lines,
+    summary_record,
 };
 
 /// One file of a workspace snapshot as the renderers see it. `FileId(n)` indexes the `n`th entry
@@ -194,6 +195,22 @@ impl Rendered {
             structured: Some(serde_json::json!({"row": {"labels": labels, "tail": tail}})),
         }
     }
+}
+
+/// A typed hole `?name` as reported by `vow check` (design §12.4), rendered for the `hole` record.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct HoleReport {
+    pub name: String,
+    pub span: Span,
+    pub expected_type: Rendered,
+    /// The full effect row allowed at the hole.
+    pub allowed_effects: Rendered,
+    /// `(name, type)` of every local in scope, innermost last.
+    pub locals: Vec<(String, Rendered)>,
+    /// Ranked candidates: `(source text, fit kind)`, e.g. `("x", "exact_local")`.
+    pub candidates: Vec<(String, String)>,
+    /// `requires`/`where` clauses assumed at the hole, rendered as source.
+    pub contracts_in_scope: Vec<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]

@@ -4,8 +4,8 @@ use serde::Serialize;
 use serde_json::{Map, Value, json};
 
 use crate::{
-    Applicability, Diagnostic, Impact, Phase, Rendered, Severity, SourceFile, Span, SpanRole,
-    sha256,
+    Applicability, Diagnostic, HoleReport, Impact, Phase, Rendered, Severity, SourceFile, Span,
+    SpanRole, sha256,
 };
 
 pub const SCHEMA_VERSION: &str = "1.0";
@@ -189,6 +189,50 @@ pub fn diagnostic_records(
                 fixes,
             };
             serde_json::to_value(record).expect("diagnostic record serializes")
+        })
+        .collect()
+}
+
+/// One `hole` record per hole, in source order. Ids hash the file content and position like
+/// diagnostic ids, so an agent can ask for the same hole again (`hole_context`).
+pub fn hole_records(holes: &[HoleReport], files: &[SourceFile], snapshot: &str) -> Vec<Value> {
+    let mut order: Vec<&HoleReport> = holes.iter().collect();
+    order.sort_by_key(|h| {
+        let r = span_record(&h.span, files);
+        (r.uri, r.start_byte, r.end_byte)
+    });
+    order
+        .into_iter()
+        .map(|h| {
+            let span = span_record(&h.span, files);
+            let material = format!(
+                "{}\0{}\0{}\0{}",
+                h.name, span.content_hash, span.start_byte, span.end_byte
+            );
+            let id = format!("h:{}", &sha256(material.as_bytes())[7..23]);
+            let locals: Vec<Value> = h
+                .locals
+                .iter()
+                .map(|(name, ty)| json!({"name": name, "type": rendered(ty)}))
+                .collect();
+            let candidates: Vec<Value> = h
+                .candidates
+                .iter()
+                .map(|(expr, fit)| json!({"expr": expr, "fit": fit}))
+                .collect();
+            json!({
+                "schema_version": SCHEMA_VERSION,
+                "kind": "hole",
+                "id": id,
+                "name": h.name,
+                "snapshot": snapshot,
+                "span": span,
+                "expected_type": rendered(&h.expected_type),
+                "allowed_effects": rendered(&h.allowed_effects),
+                "locals": locals,
+                "candidates": candidates,
+                "contracts_in_scope": h.contracts_in_scope,
+            })
         })
         .collect()
 }
