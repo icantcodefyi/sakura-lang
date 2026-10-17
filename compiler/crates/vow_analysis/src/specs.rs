@@ -151,17 +151,28 @@ impl Analyzed {
                     ),
                 );
             }
-            for clause in old.contracts.iter().filter(|c| !new.contracts.contains(c)) {
-                report(
-                    at(Some(new)),
-                    &old.id,
-                    format!(
-                        "frozen clause `{clause}` of `{}` was changed or removed",
+            let removed: Vec<&String> = old
+                .contracts
+                .iter()
+                .filter(|c| !new.contracts.contains(c))
+                .collect();
+            let added: Vec<&String> = new
+                .contracts
+                .iter()
+                .filter(|c| !old.contracts.contains(c))
+                .collect();
+            // A named clause whose condition changed is one change, not a removal and an addition.
+            for clause in &removed {
+                let message = match counterpart(clause, &added) {
+                    Some(now) => format!(
+                        "frozen clause `{clause}` of `{}` was changed to `{now}`",
                         old.name
                     ),
-                );
+                    None => format!("frozen clause `{clause}` of `{}` was removed", old.name),
+                };
+                report(at(Some(new)), &old.id, message);
             }
-            for clause in new.contracts.iter().filter(|c| !old.contracts.contains(c)) {
+            for clause in added.iter().filter(|c| counterpart(c, &removed).is_none()) {
                 report(
                     at(Some(new)),
                     &old.id,
@@ -194,6 +205,24 @@ impl Analyzed {
         }
         out
     }
+}
+
+/// The clause in `others` with the same kind and name as `clause`.
+fn counterpart<'a>(clause: &str, others: &[&'a String]) -> Option<&'a String> {
+    let key = clause_key(clause)?;
+    others.iter().find(|o| clause_key(o) == Some(key)).copied()
+}
+
+/// `requires ordered` for `requires ordered: lo <= hi`; `None` for an unnamed clause.
+fn clause_key(clause: &str) -> Option<&str> {
+    let (key, _) = clause.split_once(':')?;
+    let mut words = key.split(' ');
+    let named = matches!(words.next(), Some("requires" | "ensures" | "where"))
+        && words
+            .next()
+            .is_some_and(|n| !n.is_empty() && n.chars().all(|c| c.is_alphanumeric() || c == '_'))
+        && words.next().is_none();
+    named.then_some(key)
 }
 
 /// Which specs `--frozen-specs` / `apply_patch` protect.

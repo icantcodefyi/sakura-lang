@@ -150,3 +150,73 @@ fn std_tests_pass() {
     assert_eq!(out.code, Some(0));
     assert!(recs.last().unwrap()["passed"].as_u64().unwrap() > 0);
 }
+
+#[test]
+fn fix_previews_then_applies_machine_applicable_fixes() {
+    let src = "fn count() -> Int { list.len([1, 2]) }\n";
+    let dir = tmp("fix", src);
+    let preview = vow(&["fix", "--preview", "main.vow"], &dir);
+    assert_eq!(preview.code, Some(0), "{}", preview.stderr);
+    assert!(preview.stdout.contains("V1004") && preview.stdout.contains("would apply"));
+    assert_eq!(std::fs::read_to_string(dir.join("main.vow")).unwrap(), src);
+
+    let out = vow(&["fix", "main.vow"], &dir);
+    assert_eq!(out.code, Some(0), "{}", out.stderr);
+    let fixed = std::fs::read_to_string(dir.join("main.vow")).unwrap();
+    assert_eq!(fixed, "fn count() -> Int { List.len([1, 2]) }\n");
+    assert_eq!(
+        vow(&["fix", "--apply", "f:nope", "main.vow"], &dir).code,
+        Some(2)
+    );
+}
+
+#[test]
+fn frozen_specs_compare_with_git_head() {
+    let dir = tmp(
+        "frozen",
+        "pub fn clamp(x: Int, lo: Int, hi: Int) -> Int\n  requires ordered: lo <= hi\n{\n  \
+         if x < lo { lo } else if x > hi { hi } else { x }\n}\n",
+    );
+    let git = |args: &[&str]| {
+        let ok = std::process::Command::new("git")
+            .args([
+                "-c",
+                "user.email=t@t",
+                "-c",
+                "user.name=t",
+                "-c",
+                "commit.gpgsign=false",
+            ])
+            .args(args)
+            .current_dir(&dir)
+            .status()
+            .unwrap()
+            .success();
+        assert!(ok, "git {args:?}");
+    };
+    git(&["init", "-q"]);
+    git(&["add", "main.vow"]);
+    git(&["commit", "-qm", "base"]);
+    let text = std::fs::read_to_string(dir.join("main.vow")).unwrap();
+    std::fs::write(dir.join("main.vow"), text.replace("lo <= hi", "lo < hi")).unwrap();
+
+    let out = vow(
+        &["check", "--json", "--frozen-specs", "all", "main.vow"],
+        &dir,
+    );
+    assert_eq!(out.code, Some(1), "{}", out.stderr);
+    let recs = common::json_lines(&out.stdout).unwrap();
+    let v8020: Vec<_> = recs.iter().filter(|r| r["code"] == "V8020").collect();
+    assert_eq!(v8020.len(), 1, "{recs:?}");
+    assert!(
+        v8020[0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("was changed to")
+    );
+
+    // Other symbols frozen, or no flag: the edit is allowed.
+    let other = vow(&["check", "--frozen-specs", "helper", "main.vow"], &dir);
+    assert_eq!(other.code, Some(0), "{}", other.stderr);
+    assert_eq!(vow(&["check", "main.vow"], &dir).code, Some(0));
+}

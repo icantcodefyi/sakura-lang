@@ -7,12 +7,13 @@ use std::process::ExitCode;
 use std::time::Duration;
 
 use clap::{Parser, Subcommand};
-use vow_analysis::{Analysis, BuildOptions, Snapshot, disk};
+use vow_analysis::{Analysis, BuildOptions, Frozen, Snapshot, disk};
 use vow_diagnostics::{
     Diagnostic, HoleReport, SourceFile, codes, diagnostic_records, hole_records, render_human,
     summary_record,
 };
 
+mod fix;
 mod testing;
 
 const EXIT_ERRORS: u8 = 1;
@@ -38,7 +39,32 @@ enum Command {
         /// Emit JSON Lines records (design §12.2) on stdout instead of terminal output.
         #[arg(long)]
         json: bool,
+        /// `all`, or comma-separated symbol names/ids (and `permissions`) whose specs must not
+        /// differ from git revision `--since`: signatures, effect rows, contracts, tests and
+        /// `[permissions]`. Each change is a `V8020` error.
+        #[arg(long, value_name = "SYMBOLS|all")]
+        frozen_specs: Option<String>,
+        /// The git revision `--frozen-specs` compares with.
+        #[arg(long, default_value = "HEAD", requires = "frozen_specs")]
+        since: String,
         /// Files or directories to check (default: `src/` if present, else `.`).
+        paths: Vec<PathBuf>,
+    },
+    /// Apply compiler fixes: the `machine_applicable` ones, or exactly the ids given. Fixes
+    /// with impact `contract_change` or `authority_change` are never applied.
+    Fix {
+        /// List every fix with its id, impact and whether it would be applied; write nothing.
+        #[arg(long)]
+        preview: bool,
+        /// Comma-separated fix ids (`f:…`) to apply instead of the machine-applicable ones.
+        #[arg(long, value_name = "IDS")]
+        apply: Option<String>,
+        /// As in `vow check`: refuse fixes that change these specs.
+        #[arg(long, value_name = "SYMBOLS|all")]
+        frozen_specs: Option<String>,
+        /// The diagnostics after fixing as JSON Lines on stdout.
+        #[arg(long)]
+        json: bool,
         paths: Vec<PathBuf>,
     },
     /// Check, then generate JavaScript. Holes are rejected (V2050).
@@ -157,7 +183,25 @@ fn main() -> ExitCode {
 
 fn dispatch(command: Command) -> ExitCode {
     match command {
-        Command::Check { json, paths } => check(json, &paths),
+        Command::Check {
+            json,
+            frozen_specs,
+            since,
+            paths,
+        } => check(json, frozen_specs.as_deref(), &since, &paths),
+        Command::Fix {
+            preview,
+            apply,
+            frozen_specs,
+            json,
+            paths,
+        } => fix::fix(
+            json,
+            preview,
+            apply.as_deref(),
+            frozen_specs.as_deref(),
+            &paths,
+        ),
         Command::Build {
             json,
             target: _,
@@ -241,14 +285,27 @@ fn load(paths: &[PathBuf]) -> Result<Snapshot, String> {
     }
 }
 
-fn check(json: bool, paths: &[PathBuf]) -> ExitCode {
+fn check(json: bool, frozen: Option<&str>, since: &str, paths: &[PathBuf]) -> ExitCode {
     let snapshot = match load(paths) {
         Ok(s) => s,
         Err(e) => return usage_error(e),
     };
-    let result = Analysis::check(&snapshot);
-    report(json, &snapshot, &result.diagnostics, &result.holes, true);
-    if result.has_errors() {
+    let a = Analysis::analyze(&snapshot);
+    let mut diags = a.check.diagnostics.clone();
+    if let Some(frozen) = frozen {
+        let roots = if paths.is_empty() {
+            disk::default_roots(Path::new("."))
+        } else {
+            paths.to_vec()
+        };
+        let base = match fix::git_base(since, &roots) {
+            Ok(b) => b,
+            Err(e) => return usage_error(format!("--frozen-specs: {e}")),
+        };
+        diags.extend(a.frozen_spec_violations(&Analysis::analyze(&base), &Frozen::parse(frozen)));
+    }
+    report(json, &snapshot, &diags, &a.check.holes, true);
+    if diags.iter().any(Diagnostic::is_error) {
         ExitCode::from(EXIT_ERRORS)
     } else {
         ExitCode::SUCCESS

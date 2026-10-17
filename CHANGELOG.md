@@ -21,5 +21,8 @@ published yet.
   docs, formatting, checked patches and test runs. Setup: [docs/mcp.md](docs/mcp.md).
 - `vow lsp`: a language server with diagnostics, hover, go to definition, completion,
   formatting and quick fixes.
+- `vow fix [--preview] [--apply ids]` applies compiler fixes by impact class, and
+  `vow check --frozen-specs <symbols|all> [--since rev]` reports spec changes since a git
+  revision as `V8020`.
 
 [Unreleased]: https://github.com/icantcodefyi/vow/commits/master
