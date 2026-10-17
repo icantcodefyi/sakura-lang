@@ -1,0 +1,18 @@
+---
+source: crates/vow_diagnostics/tests/render.rs
+assertion_line: 169
+expression: "render_human(&[v3001(&files)], &files)"
+---
+error[V3001]: function `greet` performs `Console`, which its signature does not allow
+  ┌─ /work/main.vow:2:3
+  │
+2 │   Console.print("héllo, {name}")
+  │   ^^^^^^^^^^^^^-----------------
+  │   │
+  │   `Console.print` introduces `Console` here
+  │   `Console` performed here
+  │
+  = expected: {}
+  =    found: {Console}
+  = help: Add `Console` to the signature of `greet`
+  = see `vow explain V3001`

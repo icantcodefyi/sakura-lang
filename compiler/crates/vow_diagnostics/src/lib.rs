@@ -6,6 +6,49 @@
 
 use serde::Serialize;
 
+pub mod codes;
+mod human;
+mod json;
+
+pub use human::render_human;
+pub use json::{
+    MAX_DIAGNOSTICS, SCHEMA_VERSION, diagnostic_records, render_json_lines, summary_record,
+};
+
+/// One file of a workspace snapshot as the renderers see it. `FileId(n)` indexes the `n`th entry
+/// of the `&[SourceFile]` slice handed to a renderer.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SourceFile {
+    /// `file:///abs/path.vow` for files on disk, `vow:///std/...` for embedded std sources.
+    pub uri: String,
+    pub text: String,
+    /// `sha256:<hex>` of `text`'s UTF-8 bytes.
+    pub content_hash: String,
+}
+
+impl SourceFile {
+    pub fn new(uri: impl Into<String>, text: impl Into<String>) -> Self {
+        let text = text.into();
+        SourceFile {
+            uri: uri.into(),
+            content_hash: sha256(text.as_bytes()),
+            text,
+        }
+    }
+}
+
+/// `sha256:<lowercase hex>` of `bytes`, the hash format used throughout the JSON contract.
+pub fn sha256(bytes: &[u8]) -> String {
+    use sha2::Digest;
+    let digest = sha2::Sha256::digest(bytes);
+    let mut out = String::with_capacity(7 + 64);
+    out.push_str("sha256:");
+    for b in digest.iter() {
+        out.push_str(&format!("{b:02x}"));
+    }
+    out
+}
+
 /// Identifies a source file inside one workspace snapshot.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 pub struct FileId(pub u32);
@@ -118,7 +161,8 @@ pub struct Fix {
 }
 
 /// A rendered type or effect row for `expected` / `actual`. `structured` holds the
-/// machine-readable form (e.g. a row's labels and tail) when the phase provides one.
+/// machine-readable form when the phase provides one; it must be a JSON object, whose keys are
+/// merged next to `render` in the JSON record (e.g. `{"row": {"labels": [...], "tail": null}}`).
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub struct Rendered {
     pub render: String,
@@ -128,6 +172,8 @@ pub struct Rendered {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub struct Diagnostic {
     pub code: Code,
+    /// Stable path of the item the diagnostic is about, e.g. `pkg::users/repo::load_user`.
+    pub symbol_id: Option<String>,
     pub severity: Severity,
     pub phase: Phase,
     pub message: String,
@@ -148,9 +194,14 @@ impl Diagnostic {
         Self::new(code, Severity::Warning, phase, message)
     }
 
+    pub fn note(code: Code, phase: Phase, message: impl Into<String>) -> Self {
+        Self::new(code, Severity::Note, phase, message)
+    }
+
     fn new(code: Code, severity: Severity, phase: Phase, message: impl Into<String>) -> Self {
         Diagnostic {
             code,
+            symbol_id: None,
             severity,
             phase,
             message: message.into(),
@@ -164,6 +215,17 @@ impl Diagnostic {
 
     pub fn with_span(mut self, span: Span) -> Self {
         self.spans.push(span);
+        self
+    }
+
+    pub fn with_symbol(mut self, symbol_id: impl Into<String>) -> Self {
+        self.symbol_id = Some(symbol_id.into());
+        self
+    }
+
+    /// Marks this diagnostic as a cascade of `cause`, an index into the same diagnostic list.
+    pub fn with_related(mut self, cause: usize) -> Self {
+        self.related.push(cause);
         self
     }
 
