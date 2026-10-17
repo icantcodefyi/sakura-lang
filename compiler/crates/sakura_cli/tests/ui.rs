@@ -15,16 +15,15 @@ fn line_col(text: &str, byte: usize) -> String {
     format!("{line}:{col}")
 }
 
-/// `// command: run|build`: the codes in that command's terminal diagnostics
-/// (`error[V8001]: …`).
+/// `// command: run|build|test --contracts`: the codes in that command's terminal diagnostics
+/// (`error[V8001]: …`, `warning[W7001]: …`).
 fn command_codes(path: &Path, command: &str) -> Result<Vec<String>, String> {
     let dir = path.parent().unwrap();
     let name = path.file_name().unwrap().to_str().unwrap();
     let out_dir = std::env::temp_dir().join(format!("sakura-ui-{}-{name}", std::process::id()));
-    let out = sakura(
-        &[command, name, "--out-dir", out_dir.to_str().unwrap()],
-        dir,
-    );
+    let mut args: Vec<&str> = command.split_whitespace().collect();
+    args.extend([name, "--out-dir", out_dir.to_str().unwrap()]);
+    let out = sakura(&args, dir);
     if out.timed_out {
         return Err(format!("`sakura {command}` timed out"));
     }
@@ -50,7 +49,7 @@ fn run(path: &Path) -> Result<(), String> {
     expected.sort();
     match d.get("command").map(String::as_str) {
         None | Some("check") => {}
-        Some(command @ ("run" | "build")) => {
+        Some(command @ ("run" | "build" | "test --contracts")) => {
             let mut actual = command_codes(path, command)?;
             actual.sort();
             return if actual == expected {

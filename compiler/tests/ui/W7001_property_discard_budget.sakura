@@ -2,6 +2,7 @@
 // needs: `sakura test --contracts` with filter-based generation
 // expect: W7001
 // command: test --contracts
+// known-bug: `sakura test --contracts` is not implemented yet (plan WS2 item 4, WS3 item 3)
 pub fn exact(x: Int) -> Int
   requires x == 123_456
 { x }

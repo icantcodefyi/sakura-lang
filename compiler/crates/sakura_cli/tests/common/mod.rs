@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 
 /// Per suite, fixtures whose `// milestone:` is above these are skipped (and still must not crash
 /// `sakura check`). Raised as each milestone's pipeline lands; -1 means none is enforced yet.
-pub const UI_MILESTONE: i8 = 2;
+pub const UI_MILESTONE: i8 = 3;
 /// Waits for Core lowering (`sakura run` needs it).
 pub const SEMANTICS_MILESTONE: i8 = 3;
 
