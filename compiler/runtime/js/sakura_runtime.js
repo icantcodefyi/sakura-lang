@@ -1501,13 +1501,23 @@ function satisfies(r, v) {
 const CHARS = [..."abcxyz AZ09_-é€😀\n"];
 
 /** A pseudo-random value of schema `s` for (seed, run, param); throws DISCARD when a refined
- * type finds no satisfying value. */
-function arbitrary(s, seed, run, param) {
+ * type finds no satisfying value. `pool` holds the case's earlier Int, Float and String values;
+ * a quarter of new ones repeat one, so `requires List.contains(xs, x)` is often satisfiable. */
+function arbitrary(s, seed, run, param, pool = new Map()) {
   let state = Math.imul(seed ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(run + 1, 0xc2b2ae35) ^ param;
   const next = () => mulberry((state = (state + 0x6d2b79f5) | 0));
   const below = (n) => Math.floor(next() * n);
   const len = (size) => below(Math.min(size, 24) + 1);
   const gen = (s, size) => {
+    if (s !== "I" && s !== "F" && s !== "S") return compound(s, size);
+    const seen = pool.get(s);
+    if (seen !== undefined && next() < 0.25) return seen[below(seen.length)];
+    const v = compound(s, size);
+    if (seen === undefined) pool.set(s, [v]);
+    else seen.push(v);
+    return v;
+  };
+  const compound = (s, size) => {
     if (s === "U") return undefined;
     if (s === "B") return next() < 0.5;
     if (s === "I") return next() < 0.1 ? [0, 1, -1][below(3)] : below(20 * size + 1) - 10 * size;
@@ -1727,7 +1737,8 @@ export function property_run(seed, schemas, names, kase, rec, fails, nops, ctx, 
     }
     let values;
     try {
-      values = schemas.map((s, p) => arbitrary(s, seed, i, p));
+      const pool = new Map();
+      values = schemas.map((s, p) => arbitrary(s, seed, i, p, pool));
     } catch (e) {
       if (e !== DISCARD) throw e;
       discards++;

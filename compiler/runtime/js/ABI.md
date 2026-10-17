@@ -331,7 +331,9 @@ cases, each as a child task under a `Test` handler that collects that case's fai
 (section 7): primitives, collections, tuples, records, variants (constructors without fields
 are preferred as the size runs out, so recursive types stay finite), error unions, and refined
 types, whose `where` is checked by running the emitted `T$check` (`$rt.refined(id, name, base,
-check)`; values are retried up to 100 times, then the case is discarded). The first failing case
+check)`; values are retried up to 100 times, then the case is discarded). A quarter of a case's
+`Int`, `Float` and `String` values repeat one drawn earlier in the same case, so
+`requires List.contains(xs, x)` is satisfiable. The first failing case
 (a recorded failure, an uncaught `Fail` or a defect) is shrunk greedily (integers toward 0,
 sequences shorter then element-wise, earlier field-less constructors and same-type payloads for
 variants, field-wise for records, candidates of refined types filtered by `where`; at most 2,000

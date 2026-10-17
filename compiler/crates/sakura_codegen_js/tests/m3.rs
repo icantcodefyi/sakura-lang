@@ -241,6 +241,9 @@ fn refined_parameters_respect_where_and_shrink_inside_it() {
     let src = r#"type Percent = Int where it >= 0 && it <= 100
 property "in range"(p: Percent) { expect(p >= 0 && p <= 100) }
 property "requires discards"(x: Int) requires x > 0 { expect(x > 0) }
+property "membership"(xs: List<Int>, x: Int) requires List.contains(xs, x) {
+  expect(List.contains(List.sort(xs), x))
+}
 "#;
     let r = common::test("refined_ok", src).unwrap();
     assert_eq!(r.code, 0, "{}{}", r.stdout, r.stderr);
