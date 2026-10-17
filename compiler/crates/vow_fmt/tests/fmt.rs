@@ -81,3 +81,38 @@ fn refuses_parse_errors() {
     let errors = vow_fmt::format("fn main( {").unwrap_err();
     assert!(!errors.is_empty());
 }
+
+#[test]
+fn deepest_accepted_input_formats() {
+    // Just under the parser's nesting limit, on the default 2 MiB test-thread stack.
+    let depth = 100;
+    let cases = [
+        format!(
+            "fn f() -> Int {{ {}1{} }}\n",
+            "(".repeat(depth),
+            ")".repeat(depth)
+        ),
+        format!(
+            "fn f() -> Int {{ {}1{} }}\n",
+            "[".repeat(depth),
+            "]".repeat(depth)
+        ),
+        format!(
+            "fn f() -> Int {{ {}1{} }}\n",
+            "{ ".repeat(depth),
+            " }".repeat(depth)
+        ),
+        format!("fn f() -> Int {{ 1{} }}\n", " + 1".repeat(depth)),
+        format!("fn f() -> Int {{ x{} }}\n", ".f()".repeat(depth / 2)),
+        format!(
+            "fn f() -> {}Int{} {{ 1 }}\n",
+            "List<".repeat(depth),
+            ">".repeat(depth)
+        ),
+    ];
+    for text in &cases {
+        let once = vow_fmt::format(text)
+            .unwrap_or_else(|e| panic!("{:?} for {}…", e[0].message, &text[..30]));
+        assert_eq!(vow_fmt::format(&once).unwrap(), once);
+    }
+}
