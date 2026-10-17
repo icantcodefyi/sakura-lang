@@ -3,8 +3,8 @@ title: Handlers
 description: How handlers give effects their meaning, how to install them with `with`, handler state, and how tests swap handlers.
 ---
 
-<Callout type="warn" title="Designed for v0, not implemented yet">
-  This page describes the v0 design in [design §5.5–§5.9](https://github.com/icantcodefyi/vow/blob/master/docs/design.md). The compiler is under construction (milestone M0), so none of this code can be run yet.
+<Callout type="warn" title="Pre-alpha">
+  This page describes the v0 design in [design §5.5–§5.9](https://github.com/icantcodefyi/vow/blob/master/docs/design.md). The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet.
 </Callout>
 
 An [effect](/docs/tour/effects) declares operations. A **handler** gives them meaning. Code names the effect; the caller picks the handler. The same function can run against SQLite in production and an in-memory table in a test.
@@ -115,11 +115,14 @@ Handlers are first-class. A function can return one, and a record can store one.
 
 ## Root handlers come from the host
 
-`main` declares the std effects the program needs. The host supplies root handlers for exactly those, limited by `[permissions]` in `vow.toml`. Only std effects may appear in `main`'s row (`V6010`); user effects such as `Counter` must be handled inside the program. From design §15.6 (abridged):
+`main` declares the std effects the program needs. The host supplies root handlers for exactly those, limited by `[permissions]` in `vow.toml`. Only std effects may appear in `main`'s row (`V6010`); user effects such as `Counter` must be handled inside the program. This program reads its arguments, so it declares `Cli`. From design §15.6 (abridged):
 
 ```vow
-pub fn main() -> Unit ! {Console, Env, Fs, Fail<CliError | FsError>} {
-  let args = Cli.parse<Args>(Cli.args())
+import std/cli.{Cli, CliError}
+import std/fs.{Fs, FsError, Dir}
+
+pub fn main() -> Unit ! {Console, Cli, Fs, Fail<CliError | FsError>} {
+  let args: Args = Cli.parse(Cli.args())
   // Narrow the root Fs handler to the data directory before touching files.
   with Fs.rooted(Dir.subdir(Fs.root(), "data")) {
     let text = Fs.read_text(args.input).trust(@trust("word counting cannot be influenced by content"))
@@ -133,26 +136,27 @@ Effects are requirements; handlers are authority. See [Capabilities and security
 
 ## Standard handlers
 
-From design §10.2:
+From design §10.2. Each constructor is a function of the effect's home module, so `Console.host()` is `std/console.host`.
 
 | Effect | Handlers |
 | --- | --- |
 | `Console` | `Console.host()`, `Console.captured()` |
 | `Clock` | `Clock.host()`, `Clock.fixed(instant)`, `Clock.virtual()` |
 | `Random` | `Random.host()`, `Random.seeded(seed)` |
-| `Env` | `Env.host(scope)`, `Env.of(map)` |
+| `Env` | `Env.host(scope)`, `Env.of(map)`, `Env.only(keys)` |
 | `Log` | `Log.stderr()`, `Log.json()`, `Log.captured()` |
-| `Fs` | `Fs.rooted(dir)`, `Fs.memory(files)` |
-| `Http` | `Http.host(scope)`, `Http.scripted(script)`, `Http.recording(path)` |
-| `Serve` | `Serve.node()` |
+| `Fs` | `Fs.host(dir)`, `Fs.rooted(dir)`, `Fs.memory(files)` |
+| `Http` | `Http.host(scope)`, `Http.scoped(scope)`, `Http.scripted(script)`, `Http.recording(path)` |
+| `Serve` | `Serve.host(scope)` |
 | `Sql` | `Sql.sqlite(path)`, `Sql.memory()`, `Sql.postgres(url)` (v1) |
-| `Budget` | `Budget.limits(...)`, `Budget.unlimited()` |
+| `Cli` | `Cli.host()`, `Cli.of(args)` |
+| `Budget` | `Budget.limits(limits)`, `Budget.unlimited()` |
 | `Llm` | `Llm.anthropic(key, model)`, `Llm.scripted(responses)`, `Llm.replay(path)` |
-| `Task` | `Task.deterministic(seed)` for tests |
+| `Task` | `Task.host()`, `Task.deterministic(seed)` |
 
 ## Tests swap handlers
 
-A `test` runs under deterministic default handlers: `Clock.fixed(epoch)`, `Random.seeded(seed)` (from `vow test --seed`), `Env.of(map)`, `Console.captured()`, and `Log.captured()`. Any other effect must be handled inside the test. Otherwise `vow check` reports `V3020` ("test uses Db; install a handler with `with`").
+A `test` runs under deterministic default handlers: `Clock.fixed(Instant.from_unix_millis(0))`, `Random.seeded(seed)` (from `vow test --seed`), `Env.of(Map.empty())`, `Console.captured()`, and `Log.captured()`. Captured output can be checked with `expect_output(lines)`. Any other effect must be handled inside the test. Otherwise `vow check` reports `V3020` ("test uses Db; install a handler with `with`"). Typed failures are the exception: by design a test body may let `Fail<E>` escape, and the test then fails with the error's `Show`. The current compiler does not implement that yet and still reports `V3020` for it.
 
 ```vow
 test "deterministic under virtual time" {
@@ -166,7 +170,7 @@ test "deterministic under virtual time" {
 
 ## Retry, timeout, budget
 
-`retry` and `timeout` are ordinary std functions over thunks, not handlers. `Budget` is an effect, and `Budget.limits(...)` is its handler. See [Concurrency](/docs/tour/concurrency#timeouts-retries-and-budgets).
+`retry` and `timeout` are ordinary std functions over thunks, not handlers. `Budget` is an effect, and `Budget.limits(limits)` is its handler, configured with a `Limits { tokens, usd, calls }` record. See [Concurrency](/docs/tour/concurrency#timeouts-retries-and-budgets).
 
 ## What the compiler checks
 

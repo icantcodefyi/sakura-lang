@@ -39,10 +39,10 @@ Use `/llms.txt` to choose pages when context is tight. Use a per-page `.md` URL 
 
 ## The language reference: `docs/llms.txt`
 
-[`docs/llms.txt`](https://github.com/icantcodefyi/vow/blob/master/docs/llms.txt) is the one-file reference an agent needs to write correct Vow. It is about 11 KB, roughly 3,000 tokens, and covers:
+[`docs/llms.txt`](https://github.com/icantcodefyi/vow/blob/master/docs/llms.txt) is the one-file reference an agent needs to write correct Vow. It is about 16 KB, roughly 4,500 tokens, and covers:
 
 - the toolchain loop (`vow check --json`, `vow test --json`, `vow run`) and fix impact rules;
-- the syntax on one screen, plus the rules agents get wrong (newlines, casing, no call-site type arguments, one lambda form);
+- the syntax on one screen, plus the rules agents get wrong (newlines, casing, no call-site type arguments, no named arguments, explicit imports, one lambda form);
 - types, refinements, and the derived constraints `Eq`, `Ord`, `Hash`, `Show`, `Schema`;
 - effects, `Fail<E>`, `try`/`catch`, defects, handlers, and authority;
 - concurrency and memory;
@@ -66,7 +66,7 @@ curl https://raw.githubusercontent.com/icantcodefyi/vow/master/docs/llms.txt
 
 ## System prompt snippet
 
-A starting point for an agent that writes Vow. Commands in it do not run yet.
+A starting point for an agent that writes Vow. Some commands in it, such as `vow prompt`, are planned.
 
 ```text
 You write code in Vow. Before writing code, read the Vow language reference
@@ -83,6 +83,9 @@ borrow syntax from other languages.
   "interface_change" in your summary for human review.
 - Never weaken or delete requires/ensures/where clauses or test bodies to pass
   a check. Never use .trust(@trust(...)) or Secret.expose without a true reason.
+- No call-site type arguments and no named arguments: annotate the binding
+  (`let rows: List<User> = Sql.query(q)`) and pass records for options.
+  Import every non-prelude name explicitly (`import std/http.{Http, Request}`).
 - Use `vow explain <code>` before guessing at a fix.
 ```
 

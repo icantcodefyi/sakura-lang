@@ -3,10 +3,11 @@ title: Diagnostics
 description: Reference for the JSON Lines diagnostics produced by vow check --json, including record kinds, error codes, and fix impact classes.
 ---
 
-<Callout type="warn" title="Designed, not implemented">
-  This is the v0 diagnostic protocol from [design §12.2](https://github.com/icantcodefyi/vow/blob/master/docs/design.md).
-  The compiler that emits it is under construction; `vow check --json` is part of milestone M0. Changes to the protocol go
-  through an RFC.
+<Callout type="warn" title="Pre-alpha">
+  This is the v0 diagnostic protocol from [design §12.2](https://github.com/icantcodefyi/vow/blob/master/docs/design.md);
+  `vow check --json` is part of milestone M0. The compiler parses, resolves, type- and effect-checks and runs M0–M2
+  programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet. Changes to the protocol
+  go through an RFC.
 </Callout>
 
 Diagnostics are an API. Every diagnostic has a stable code, byte spans, structured expected and actual values, causal links, and fixes that declare their impact. The CLI, the LSP server, and the [MCP server](/docs/agents/mcp) share one analysis library and one format.
@@ -141,9 +142,9 @@ Codes are `V` + a phase digit + three digits for errors, `W` for warnings, and `
 
 | Phase digit | Area | Examples |
 | --- | --- | --- |
-| `0` | Lexing and parsing | `V0001` syntax error, `V0007` reserved keyword, `V0010` chained comparison |
-| `1` | Resolution and modules | `V1004` wrong casing, `V1010` unknown attribute, `V1030` import cycle |
-| `2` | Types | `V2031` `Secret` is not `Show`, `V2040` unused value, `V2050` hole in build |
+| `0` | Lexing and parsing | `V0001` syntax error, `V0007` reserved keyword, `V0010` chained comparison, `V0011` call-site type arguments, `V0014` named argument |
+| `1` | Resolution and modules | `V1002` unresolved name (offers the import as a fix), `V1004` wrong casing, `V1006` item not `pub` or opaque constructor, `V1007` wrong kind of name, `V1010` unknown attribute, `V1030` import cycle, `V1040` assignment to a `let`, `V1041` jump outside a loop |
+| `2` | Types | `V2031` `Secret` is not `Show`, `V2032` constraint not satisfied, `V2040` unused value, `V2041` lambda or `try` body assigns an outer `var`, `V2050` hole in build |
 | `3` | Effects and handlers | `V3001` effect not allowed, `V3011` handler clauses do not match the operations, `V3020` test needs a handler |
 | `4` | Patterns | `V4001` non-exhaustive match, `V4002` redundant arm |
 | `5` | Contracts and refinements | `V5001` predicate outside the contract subset |
@@ -154,14 +155,31 @@ Codes are `V` + a phase digit + three digits for errors, `W` for warnings, and `
 
 Warnings named in the design include `W1002` (a local shadows an import), `W4010` (catch-all `_` on an open error union), `W5005` (an O(n) contract on a hot path), `W7001` (property generator discard budget exceeded), and `W8001` (a collection update copies in a loop).
 
-Runtime defects are not diagnostics from `vow check`. They terminate the task, and `main` exits with status 70. Examples: `D001` integer overflow, `D002` division by zero, `D010` failed refinement in `T.from`, `D020` `requires` violated (caller blamed), `D021` `ensures` violated (callee blamed), `D030` `Option.expect` on `None`.
+Runtime defects are not diagnostics from `vow check`. They terminate the task; if `main` defects, the program writes one `defect` record to stderr and exits with status 70:
+
+```json
+{"schema_version":"1.0","kind":"defect","code":"D002","message":"division by zero"}
+```
+
+| Code | Raised by |
+| --- | --- |
+| `D001` | `Int` overflow |
+| `D002` | `/` or `%` by zero |
+| `D003` | `Int` beyond ±(2^53−1) on the JavaScript backend |
+| `D004` | `Float.round` or `Float.to_int_checked` of NaN or ±∞ |
+| `D010` | failed refinement in a checked introduction (`T.from`) |
+| `D011` | a contract predicate itself defected |
+| `D020`, `D021` | `requires` violated (caller blamed), `ensures` violated (callee blamed) |
+| `D030` | `Option.expect` on `None` |
+| `D031` | `String.slice` off a character boundary |
+| `D090`, `D091` | runtime-internal error, host operation failed |
 
 ## Exit codes
 
 | Code | Meaning |
 | --- | --- |
 | `0` | OK. |
-| `1` | Diagnostics with errors. |
+| `1` | Diagnostics with errors, or `main` ended with an uncaught `Fail` (stderr: `error: main failed with <Show of the error>`). |
 | `2` | Usage error. |
 | `3` | Test failures. |
 | `70` | Defect at runtime. |

@@ -3,10 +3,11 @@ title: Contracts and refinements
 description: Refinement types, requires and ensures clauses, and the honest guarantee model behind them.
 ---
 
-<Callout type="warn" title="Designed, not implemented">
-  This page describes the v0 design. The compiler is under construction (milestone M0), so none of
-  this code can be run yet. Contracts and refinements are scheduled for M3; static proof is M4. See
-  the [roadmap](/docs/roadmap).
+<Callout type="warn" title="Pre-alpha">
+  This page describes the v0 design. The compiler parses, resolves, type- and effect-checks and runs
+  M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented
+  yet. Contracts and refinements belong to milestone M3 in the design; static proof is M4. See the
+  [roadmap](/docs/roadmap).
 </Callout>
 
 Types say what shape a value has. Refinements and contracts say what is true about it. Both are part of the signature, so both are what a reviewer reads.
@@ -56,7 +57,7 @@ There is no silent conversion. A value becomes a `Percent` in one of four ways (
 | ----------------------------------------- | ----------------------------------------------------------------- |
 | `Percent.validate(n) -> Result<Percent, Violation>` | Returns `Err(Violation { type_name, clause, value_summary })`. |
 | `Percent.from(n) -> Percent`               | Defect `D010`. Use at trusted boundaries only; `vow audit` lists every use. |
-| `Json.decode<T>(text)` and other schema decoding | Typed `DecodeError`, never a defect. Nested field refinements are checked. |
+| `let p: T = Json.decode(text)?` and other schema decoding, with the target named by annotation | Typed `DecodeError`, never a defect. Nested field refinements are checked. |
 | A literal, `let p: Percent = 50`          | Checked at compile time when the predicate is in the SMT fragment, otherwise at program start (warning `V5002`). |
 
 `validate` is the normal path for input you do not control:
@@ -77,10 +78,21 @@ Once a value has type `Percent`, nothing downstream re-checks it. Vow has no ali
 Predicates in `where`, `requires`, `ensures`, and `property` clauses must be pure (`! {}`), terminating, and deterministic. v0 enforces this syntactically ([design §7.1](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
 
 - No loops and no recursion.
-- Calls only to functions with row `{}` that are std-marked `@total` or are themselves in the subset, checked transitively. Anything else is `V5001`.
+- Calls only to functions with row `{}` that are marked `@total` or are themselves in the subset, checked transitively. Anything else is `V5001`.
 - Allowed: comparison, checked arithmetic, `&&`, `||`, `!`, field and tuple access, `match` on finite variants, `List.len`, `String.len`, and bounded quantifiers `List.all(xs, fn(x) { … })` and `List.any`.
 
 Arithmetic in a predicate is checked, so a predicate can itself defect. That is reported as `D011` (contract evaluation failed).
+
+`@total` is how a function with recursion or a loop reaches a contract. It is a **trusted** claim that a `{}`-row function terminates on every input; the compiler does not prove it. Std marks a fixed list (`List.len`, `List.get`, `List.all`, `List.any`, `List.contains`, `Map.get`, `String.len`, `String.contains`, `Option.is_some`, `Int.abs`, and a few more). User code may mark its own functions, and `vow audit` lists every `@total` site, like every `@trust`:
+
+```vow
+@total   // trusted: n / 10 moves toward 0 on every call
+fn digits(n: Int) -> Int {
+  if n > -10 && n < 10 { 1 } else { 1 + digits(n / 10) }
+}
+
+type Pin = Int where it >= 0 && digits(it) == 4
+```
 
 ## Preconditions and postconditions
 
@@ -151,7 +163,7 @@ Compiler fixes that touch a contract carry `impact: contract_change` and are nev
 
 ## Property tests from contracts
 
-`vow test --contracts` synthesizes a property test for every `pub` function that has a refined parameter or a `requires` clause. Inputs are generated from the refinements and `requires` together, the function runs under the test handlers, and `ensures` and result refinements are checked. Failures are shrunk and saved. See [Testing](/docs/tour/testing#property-tests-from-contracts).
+`vow test --contracts` synthesizes a property test for every `pub` function that has a refined parameter or a `requires` clause. Inputs are generated from the refinements and `requires` together, the function runs under the test handlers, and `ensures` and result refinements are checked. Failures are shrunk and saved. A function with effects other than `Fail`, `Clock`, and `Random` is tested only when it names handlers with `@contract_test(handlers: [Sql.memory(), Log.captured()])`. See [Testing](/docs/tour/testing#property-tests-from-contracts).
 
 ## Not in v0
 

@@ -3,10 +3,11 @@ title: Capabilities and security
 description: How Vow separates effects from authority, limits root handlers with vow.toml, narrows authority for dependencies, and blocks injection and secret leaks.
 ---
 
-<Callout type="warn" title="Designed, not implemented">
-  This page describes the v0 design. The compiler is under construction (milestone M0), so none of
-  this code can be run yet. Capabilities, `[permissions]`, `Secret`, and `Untrusted` are scheduled
-  for M3. See the [roadmap](/docs/roadmap).
+<Callout type="warn" title="Pre-alpha">
+  This page describes the v0 design. The compiler parses, resolves, type- and effect-checks and runs
+  M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented
+  yet. Capabilities, `[permissions]`, `Secret`, and `Untrusted` belong to milestone M3 in the
+  design. See the [roadmap](/docs/roadmap).
 </Callout>
 
 Most supply-chain attacks and injection bugs rely on code doing more than it should: a dependency that reads files it was never meant to see, a string from a request that reaches a SQL query, a token that ends up in a log. Vow's design makes each of these either impossible or a visible, reviewable decision.
@@ -34,17 +35,18 @@ env      = ["DATABASE_URL", "ANTHROPIC_API_KEY"]
 process  = []          # no subprocesses
 ```
 
-`vow run` builds root handlers from this table. A `main` that declares an effect whose permission list is empty fails at **startup**, not at first use, and exits with status `75` (permission denied).
+`vow run` builds root handlers from this table. There is no separate `Net` effect: the `net` list limits the network effects `Http`, `Serve`, and `Sql.postgres`, and `env` limits which variables `Env` can read. A `main` that declares an effect whose permission list is empty, such as `Http` with an empty `net` list, fails at **startup**, not at first use, and exits with status `75` (permission denied).
 
 ## Narrowing authority
 
-Code can narrow authority before passing it down, never widen it. Capability values (`Dir`, `NetScope`, `EnvScope`, `SecretStore`) are opaque. User code cannot construct them; attempting it through FFI tricks is `V6001`. New capabilities come only from attenuating an existing one, for example `Dir.subdir(d, "uploads")` or `NetScope.restrict(n, hosts: […])`.
+Code can narrow authority before passing it down, never widen it. Capability values (`Dir`, `NetScope`, `EnvScope`, `SecretStore`) are external types, declared without a body: they have no constructors at all. User code cannot construct them; attempting it through FFI tricks is `V6001`. New capabilities come only from an operation of the installed handler (`Fs.root() -> Dir`) or from attenuating an existing one, for example `Dir.subdir(d, "uploads")` or `NetScope.restrict(n, ["api.example.com:443"])`.
 
-Attenuating handlers are ordinary std functions: `Fs.rooted(dir) -> Handler<Fs>` and `Env.only(keys)`. This CLI tool narrows the root filesystem to `data/` before reading anything ([design §15.6](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
+Attenuating handlers are ordinary std functions: `Fs.rooted(dir) -> Handler<Fs>`, `Http.scoped(scope) -> Handler<Http, {Http}>` (its clauses check the scope and forward to the outer `Http`), and `Env.only(keys) -> Handler<Env, {Env}>`. This CLI tool narrows the root filesystem to `data/` before reading anything ([design §15.6](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
 
 ```vow title="src/main.vow"
-import std/cli
-import std/fs
+import std/cli.{Cli, CliError}
+import std/fs.{Fs, FsError, Dir}
+import std/path.{Path}
 
 type Args = { input: Path, top: Int }   // `vow run -- --input notes.txt --top 5`
 
@@ -54,7 +56,7 @@ fn word_counts(text: String) -> Map<String, Int> {
   })
 }
 
-pub fn main() -> Unit ! {Console, Env, Fs, Fail<CliError | FsError>} {
+pub fn main() -> Unit ! {Console, Cli, Fs, Fail<CliError | FsError>} {
   let args: Args = Cli.parse(Cli.args())
   // Narrow the root Fs handler to the data directory before touching files.
   with Fs.rooted(Dir.subdir(Fs.root(), "data")) {
@@ -65,13 +67,13 @@ pub fn main() -> Unit ! {Console, Env, Fs, Fail<CliError | FsError>} {
 }
 ```
 
-Inside the `with` block, every `Fs` operation, including those performed by functions it calls, resolves against `data/`.
+`Cli` is an effect: `Cli.args()` reads the command line through the root handler, and `Cli.parse` turns the arguments into the record type named by the annotation on `args`. Inside the `with` block, every `Fs` operation, including those performed by functions it calls, resolves against `data/`.
 
 ## Capabilities cannot escape their scope
 
 A capability, or a handler that captured one, is a **scoped value** ([design §6.3](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)). It may be passed down the call stack, stored in records that are themselves scoped, and returned from functions. It may not flow into:
 
-- a `Task.spawn` closure that outlives the current scope (detached work needs `Task.Supervisor`, which only `main`'s root handlers provide),
+- a `Task.spawn` closure whose `Scope` outlives the `with` that produced the value (there are no detached tasks in v0),
 - a top-level `let`,
 - a value returned from the `with` body that introduced the scope.
 
@@ -84,6 +86,8 @@ A package's effects are computed from its code, not hand-written. `vow deps capa
 There is no ambient authority and no `import` that grants anything. You grant a dependency authority by installing a handler around the calls you make to it. In this sketch, `acme/thumbnails` is a hypothetical package whose `render` declares `! {Fs, Fail<FsError>}`:
 
 ```vow
+import std/fs.{Fs, FsError, Dir}
+import std/path.{Path}
 import acme/thumbnails
 
 fn make_thumbnail(name: Path) -> Unit ! {Fs, Fail<FsError>} {
@@ -98,14 +102,15 @@ If an update adds `Http` to `render`'s row, `make_thumbnail` no longer type chec
 
 ## Untrusted data
 
-`Untrusted<T>` wraps data from outside the trust boundary: raw request bodies, raw environment strings, file contents read as text (`Fs.read_text`), response text (`Response.text`), and free-text LLM output (`Llm.generate_text`). It supports:
+`Untrusted<T>` wraps data from outside the deployment: raw request bodies, file contents read as text (`Fs.read_text`), response text (`Response.text`), and free-text LLM output (`Llm.generate_text`). Environment variables are not in that list: they are set by the operator and gated by the manifest's `env` list, so `Env.get(key)` returns a plain `Option<String>`. `Untrusted<T>` supports:
 
 | Operation                        | Result                                                            |
 | -------------------------------- | ----------------------------------------------------------------- |
-| `.validate()`                    | `Result<V, Violation>` for any refined type `V`.                  |
+| `.validate()`                    | `Result<V, Violation>` for any refined type `V`, named by annotation: `let e: Email = Untrusted.validate(u)?`. |
 | `.check(pred)`                   | `Result<T, Violation>`.                                           |
 | `.len()`                         | The length, without trusting the content.                         |
 | `.trust(@trust("reason"))`       | `T`. An explicit, greppable escape hatch.                         |
+| `Untrusted.of(t)`                | Wraps a value, for tests.                                         |
 
 Validating against a refinement is the normal path:
 
@@ -135,7 +140,7 @@ sql"select * from users where email = {email}"
 Interpolated values are **never spliced raw**. Each one is type checked against the tag's parameter type. For `sql` that is `SqlValue`, which becomes a bound parameter. `html` escapes text by construction. So untrusted input is safe in a template:
 
 ```vow
-import std/sql
+import std/sql.{Sql, SqlError}
 
 type Post = { id: Int, title: String }
 
@@ -146,11 +151,17 @@ fn search(q: Untrusted<String>) -> List<Post> ! {Sql, Fail<SqlError>} {
 
 `q` reaches the database as a parameter value, never as SQL text. Raw-text APIs such as `Html.raw`, which takes a `TrustedHtml`, do not accept `Untrusted<T>`.
 
+This holds because the template's result types are `pub opaque type`s. `Query<R>` and `Html` are exported by name only: other modules can pass them around, but constructing one outside its declaring module is `V1006`, so the template is the only way to build a query and escaping code the only way to build HTML.
+
 ## Secrets
 
 `Secret<T>` wraps credentials. `Env.secret("KEY")` returns `Option<Secret<String>>`. A secret is not `Show`, `Eq`, `Ord`, or `Schema`, so it cannot be interpolated, logged, snapshotted, or serialized. Interpolating one is `V2031`. Only std sinks accept it, such as `Http.bearer`:
 
 ```vow
+import std/http.{Http, HttpError, Request}
+import std/url.{Url}
+import std/decimal.{Decimal}
+
 pub fn call_billing(amount: Decimal) -> Unit ! {Env, Http, Log, Fail<HttpError>} {
   let token = Env.secret("BILLING_TOKEN").expect("BILLING_TOKEN")
   let req = Http.bearer(Request.post_json(Url.from("https://billing/charge"), amount), token)

@@ -3,53 +3,54 @@ title: Standard library
 description: The v0 Vow standard library, module by module, with real signatures from the design and the handlers each effect ships with.
 ---
 
-<Callout type="warn" title="Designed for v0, not implemented yet">
-  This page mirrors [design §10](https://github.com/icantcodefyi/vow/blob/master/docs/design.md). None of it exists in code yet, and nothing here can be run. Signatures are the design contract; bodies will be Vow source in `std/` or `@external` host adapters.
+<Callout type="warn" title="Pre-alpha">
+  This page mirrors [design §10](https://github.com/icantcodefyi/vow/blob/master/docs/design.md). The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet. Signatures are the design contract; bodies are Vow source in `compiler/std/` or `@external` host adapters, and the generated [`compiler/std/INDEX.md`](https://github.com/icantcodefyi/vow/blob/master/compiler/std/INDEX.md) is the exact surface.
 </Callout>
 
 The std library ships with the compiler and has one canonical API per task. All of it will be searchable by signature with `vow doc --search` and the MCP `symbol_query` tool. Every effectful module is an ordinary [effect](/docs/tour/effects) with swappable [handlers](/docs/tour/handlers), which is what makes it testable and what lets [capabilities](/docs/tour/capabilities) restrict it.
 
-In signatures, a lowercase type parameter such as `e` is an effect-row variable.
+The layout rule is one std module per effect and one per compiler-known or prelude type: `std/console` declares `Console` and its handlers, `std/list` declares the `List` functions. Signatures below are written in call form, so `List.map` is `std/list.map`. In signatures, a lowercase type parameter such as `e` is an effect-row variable. Functions marked `@total` may be called from contracts.
 
-## Core (`std/core`, prelude)
+## Core data (`std/option`, `std/list`, `std/string`, …, prelude)
 
-`Option`, `Result`, `List`, `Map`, `Set`, `String`, `Int`, and `Float` are in the prelude; no import is needed. Calls can use either form: `List.map(xs, f)` or `xs.map(f)`.
+`Option`, `Result`, `List`, `Map`, `Set`, `String`, `Int`, `Float`, and `Bytes` are in the prelude; no import is needed. Calls can use either form: `List.map(xs, f)` or `xs.map(f)`.
 
 ```vow
 fn Option.map<A, B, e>(o: Option<A>, f: fn(A) -> B ! e) -> Option<B> ! e
 fn Option.unwrap_or<A>(o: Option<A>, default: A) -> A
 fn Option.or_fail<A, E>(o: Option<A>, err: E) -> A ! {Fail<E>}
 fn Option.expect<A>(o: Option<A>, msg: String) -> A          // Defect D030 on None
+fn Option.is_some<A>(o: Option<A>) -> Bool                    // @total
 fn Result.map_err<A, E, F>(r: Result<A, E>, f: fn(E) -> F) -> Result<A, F>
 fn Result.raise<A, E>(r: Result<A, E>) -> A ! {Fail<E>}       // same as r?
 fn List.push<A>(xs: List<A>, x: A) -> List<A>
-fn List.get<A>(xs: List<A>, i: Int) -> Option<A>              // xs[i] is sugar for this
+fn List.get<A>(xs: List<A>, i: Int) -> Option<A>              // xs[i] is sugar for this; @total
+fn List.len<A>(xs: List<A>) -> Int                              // @total
 fn List.map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! e
 fn List.fold<A, B, e>(xs: List<A>, init: B, f: fn(B, A) -> B ! e) -> B ! e
 fn List.sort_by<A, K: Ord>(xs: List<A>, key: fn(A) -> K) -> List<A>
-fn List.par_map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! {Task | e}
 fn Map.update<K: Hash, V, e>(m: Map<K, V>, k: K, f: fn(Option<V>) -> V ! e) -> Map<K, V> ! e
 fn Map.entries<K: Hash, V>(m: Map<K, V>) -> List<(K, V)>      // insertion order
 fn String.split(s: String, sep: String) -> List<String>
-fn String.parse_int(s: String) -> Option<Int>
+fn String.parse_int(s: String) -> Option<Int>                  // None when unparsable or beyond the backend's Int range
 fn String.slice(s: String, start: Int, end: Int) -> String      // Defect D031 off a char boundary
 fn Int.pow(base: Int, exp: Int) -> Int requires exp >= 0       // checked
 fn Float.to_int_checked(f: Float) -> Option<Int>
 fn show<A: Show>(a: A) -> String
 ```
 
-This is a selection. The full list in design §10.1 also covers `List.filter`, `find`, `all`, `any`, `zip`, `slice`, `unique`, `flat_map`, `range`, `Map`/`Set` construction and lookup, string search and case, and checked `Int` helpers. `Int` arithmetic is always checked; overflow is defect `D001`.
+This is a selection. The full list in design §10.1 also covers `List.filter`, `find`, `all`, `any`, `zip`, `slice`, `unique`, `flat_map`, `range`, `Map`/`Set` construction and lookup, string search and case, and checked `Int` helpers. `Int` arithmetic is always checked; overflow is defect `D001`. On JavaScript, `String.parse_int` and `Float.to_int_checked` return `None` beyond ±(2^53−1) instead of defecting.
 
-## Effects (`std/effects`)
+## Effects (`std/console`, `std/clock`, …, one module each)
 
-`Console`, `Clock`, `Random`, `Env`, `Log`, and `Task` are in the prelude. `Fs`, `Http`, `Serve`, `Sql`, `Budget`, and `Llm` are imported from their modules.
+`Console`, `Clock`, `Random`, `Env`, `Log`, `Task`, and `Test` are in the prelude. `Fs`, `Http`, `Serve`, `Sql`, `Cli`, `Budget`, and `Llm` are imported by name from their modules, for example `import std/http.{Http}`; a bare `import std/http` binds only the module name `http`.
 
 ```vow
 effect Console { fn print(line: String) -> Unit; fn read_line() -> Option<String> }
 effect Clock {
-  fn now() -> Instant                 // wall clock
-  fn monotonic() -> Duration          // since process start
-  fn sleep(d: Duration) -> Unit
+  fn now() -> Instant                 // wall clock, UTC
+  fn monotonic() -> Duration          // since the handler was installed; never decreases
+  fn sleep(d: Duration) -> Unit       // returns at once for d <= 0
 }
 effect Random {
   fn int(lo: Int, hi: Int) -> Int requires lo <= hi      // inclusive
@@ -62,6 +63,7 @@ effect Log {
   fn event(level: Level, message: String, fields: List<(String, Json)>) -> Unit
 }
 effect Fs {
+  fn root() -> Dir                    // the handler's directory, for attenuation
   fn read(path: Path) -> Bytes ! {Fail<FsError>}
   fn read_text(path: Path) -> Untrusted<String> ! {Fail<FsError>}
   fn write(path: Path, data: Bytes) -> Unit ! {Fail<FsError>}
@@ -69,10 +71,10 @@ effect Fs {
   fn exists(path: Path) -> Bool
   fn with_file<T, e>(path: Path, mode: Mode, body: fn(File) -> T ! e) -> T ! {Fail<FsError> | e}
 }
-effect Http {   // client
+effect Http {   // client; std/http
   fn send(req: Request) -> Response ! {Fail<HttpError>}
 }
-effect Serve {  // server; one per process
+effect Serve {  // server; std/serve, one per process
   fn listen(router: Router, addr: Address) -> Never ! {Fail<ServeError>}
 }
 effect Sql {
@@ -88,7 +90,9 @@ effect Llm {
 }
 ```
 
-`Task` (structured concurrency: `scope`, `spawn`, `join`, `all`, `race`, `yield_now`) is described in [Concurrency](/docs/tour/concurrency).
+`Cli` is listed under [CLI](#cli-stdcli). `Task` (structured concurrency: `scope`, `spawn`, `join`, `all`, `race`, `yield_now`, plus `Task.par_map`) is described in [Concurrency](/docs/tour/concurrency). `Test` is described in [Testing](#testing-stdtest-stdgen).
+
+There is no `Net` effect. The manifest's `net` permission list limits `Http`, `Serve`, and `Sql.postgres`; the capability is `NetScope`, and `Http.scoped(scope)` narrows it.
 
 ### Handlers shipped
 
@@ -99,95 +103,142 @@ effect Llm {
 | `Random` | `Random.host()` | `Random.seeded(seed)` |
 | `Env` | `Env.host(scope)` | `Env.of(map)`, `Env.only(keys)` |
 | `Log` | `Log.stderr()`, `Log.json()` | `Log.captured()` |
-| `Fs` | `Fs.rooted(dir)` | `Fs.memory(files)` |
-| `Http` | `Http.host(scope)` | `Http.scripted(script)`, `Http.recording(path)` |
-| `Serve` | `Serve.node()` | |
+| `Fs` | `Fs.host(dir)` | `Fs.rooted(dir)`, `Fs.memory(files)` |
+| `Http` | `Http.host(scope)` | `Http.scoped(scope)`, `Http.scripted(script)`, `Http.recording(path)` |
+| `Serve` | `Serve.host(scope)` | |
 | `Sql` | `Sql.sqlite(path)`; `Sql.postgres(url)` in v1 | `Sql.memory()` |
-| `Budget` | `Budget.limits(...)` | `Budget.unlimited()` |
+| `Cli` | `Cli.host()` | `Cli.of(args)` |
+| `Budget` | `Budget.limits(limits)` | `Budget.unlimited()` |
 | `Llm` | `Llm.anthropic(key, model)` | `Llm.scripted(responses)`, `Llm.replay(path)` |
-| `Task` | | `Task.deterministic(seed)` |
+| `Task` | `Task.host()` | `Task.deterministic(seed)` |
+
+Each constructor is a function of the effect's home module (`Console.host()` is `std/console.host`). The driver installs the `host` handler for every std effect in `main`'s row, built from the manifest's `[permissions]`; user code installs the others with `with`.
 
 ### Retries, timeouts, budgets
 
 These are ordinary functions over thunks ([design §5.9](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
 
 ```vow
-fn retry<T, e>(policy: Retry.Policy, action: fn() -> T ! e) -> T ! {Clock, Random | e}
+// std/retry
+type Policy<E> = { retry_on: fn(E) -> Bool, max_attempts: Int, backoff: Duration, jitter: Bool, deadline: Option<Duration> }
+fn policy<E>(retry_on: fn(E) -> Bool, max_attempts: Int) -> Policy<E> requires max_attempts >= 1
+fn retry<T, E, e>(p: Policy<E>, action: fn() -> T ! {Fail<E> | e}) -> T ! {Clock, Random, Fail<E> | e}
+// std/task
+error Timeout(limit: Duration)
 fn timeout<T, e>(limit: Duration, action: fn() -> T ! e) -> T ! {Clock, Task, Fail<Timeout> | e}
-fn with_budget<T, e>(b: Budget.Limits, action: fn() -> T ! {Budget | e}) -> T ! {Fail<BudgetExceeded> | e}
+// std/budget: a handler, not a wrapper function
+type Limits = { tokens: Option<Int>, usd: Option<Float>, calls: Option<Int> }   // None = unlimited
+fn Budget.limits(l: Limits) -> Handler<Budget>
 ```
 
-`retry` starts a new invocation per attempt and preserves the action's error union. `timeout` cancels cooperatively and runs finalizers.
+`retry` starts a new invocation per attempt and preserves the action's error union; the last error propagates. `timeout` cancels cooperatively, runs finalizers, and fails with `Timeout`, the only timeout tag in std. `std/retry` and `std/task` names are imported explicitly: `import std/retry.{Policy, retry}`, `import std/task.{Timeout, timeout}`.
 
-## Data (`std/json`, `std/time`, `std/url`, `std/decimal`, `std/bytes`)
+## Data (`std/json`, `std/duration`, `std/instant`, `std/uuid`, `std/url`, `std/path`, `std/decimal`)
 
 ```vow
 type Json = Null | Bool(Bool) | Number(Float) | String(String) | Array(List<Json>) | Object(Map<String, Json>)
+error DecodeError(path: String, message: String)                        // path is a JSON Pointer
 fn Json.encode<T: Schema>(value: T) -> String
-fn Json.decode<T: Schema>(text: String) -> Result<T, DecodeError>      // checks refinements
+fn Json.decode<T: Schema>(text: String) -> Result<T, DecodeError>      // checks refinements; name T by annotation
 fn Json.parse(text: String) -> Result<Json, DecodeError>
-fn Schema.of<T: Schema>() -> JsonSchema                                 // compiler intrinsic
+fn Json.get(j: Json, key: String) -> Option<Json>
+pub opaque type Uuid = Uuid(String)   // Uuid.parse(s) -> Result<Uuid, UuidError>, Uuid.to_string(u)
 ```
 
-Also `Instant` and `Duration` (time), `Url` (with the `url"..."` template, which percent-encodes interpolated parts), `Decimal` (fixed-point base 10 for money, no operators in v0), `Uuid`, and `Path` (relative paths only; `..` is rejected). Cyclic data uses `Graph<N>` and `NodeId` from `std/graph`; see [Memory model](/docs/tour/memory).
+A type-directed function takes its type from the binding: `let u: User = Json.decode(text)?`. There is no call-site type argument and no `Schema.of<T>()`.
+
+Also `Instant` and `Duration` (whole milliseconds; `Instant.from_unix_millis`, `Duration.seconds`), `Url` (with the `url"..."` template, which percent-encodes interpolated parts), `Decimal` (an opaque fixed-point base-10 type for money, no operators in v0), and `Path` (opaque, relative paths only; `..` is rejected). Cyclic data uses `Graph<N>` and `NodeId` from `std/graph`; see [Memory model](/docs/tour/memory).
 
 ## Web (`std/http`, `std/router`, `std/html`)
 
 ```vow
-fn Http.get(url: Url) -> Response ! {Http, Fail<HttpError>}
+error HttpError(status: Option<Status>, reason: String)
+error RateLimited(retry_after: Option<Duration>)                          // shared with LlmError
+error BadRequest(detail: String)
+fn Http.get(url: Url) -> Response ! {Http, Fail<HttpError | RateLimited>}
 fn Http.bearer(req: Request, token: Secret<String>) -> Request
 fn Response.json<T: Schema>(r: Response, limit: Int) -> T ! {Fail<HttpError | DecodeError>}
 fn Response.text(r: Response, limit: Int) -> Untrusted<String> ! {Fail<HttpError>}
 fn Router.new() -> Router
 fn Router.post<e>(r: Router, path: String, h: fn(Request) -> Response ! e) -> Router
-fn Request.json<T: Schema>(req: Request, limit: Int) -> T ! {Fail<BadRequest>}
+fn Request.json<T: Schema>(req: Request, limit: Int) -> T ! {Fail<BadRequest>}   // name T by annotation
+fn Request.post(path: String, body: String) -> Request                   // for route handlers and tests
 fn Response.ok_json<T: Schema>(value: T) -> Response
 fn Response.status(code: Int, body: String) -> Response requires code >= 100 && code <= 599
-fn Serve.listen(router: Router, addr: Address) -> Never ! {Serve, Fail<ServeError>}
+pub opaque type Html = Html(String)   // html"..." builds; Html.text(s) escapes; Html.raw(s: TrustedHtml)
 ```
 
-Each route handler runs per request in its own task. A defect in a handler becomes a 500 with a redacted report, never a crashed server. `html"..."` escapes interpolated text by construction.
+Each route handler runs per request in its own task. A defect in a handler becomes a 500 with a redacted report, never a crashed server. `html"..."` escapes interpolated text by construction, and because `Html` is opaque, no other module can build one from a raw string.
 
 ## CLI (`std/cli`)
 
 ```vow
-fn Cli.args() -> List<String> ! {Env}
-fn Cli.parse<T: Schema>(args: List<String>) -> T ! {Fail<CliError>}  // flags derived from record fields
-fn Cli.exit(code: Int) -> Never ! {Console} requires code >= 0 && code <= 255
+effect Cli {
+  fn args() -> List<String>                                             // after `--`
+  fn exit(code: Int) -> Never requires code >= 0 && code <= 255
+}
+fn Cli.host() -> Handler<Cli>
+fn Cli.of(args: List<String>) -> Handler<Cli>                         // for tests
+fn Cli.parse<T: Schema>(args: List<String>) -> T ! {Fail<CliError>}  // flags from record fields; `--help` generated
 ```
 
-## Testing (`std/test`)
+`Cli` is an effect, so a program that reads its arguments declares `Cli` in `main`'s row. `Cli.parse` is an ordinary function that takes its target type from the binding: `let args: Args = Cli.parse(Cli.args())`.
+
+## Testing (`std/test`, `std/gen`)
 
 ```vow
+effect Test {
+  fn record_failure(message: String) -> Unit   // expectations record and continue
+  fn failures() -> Int
+  fn output(line: String) -> Unit              // Console.captured() and Log.captured() write here
+  fn output_lines() -> List<String>
+  fn snapshot(name: String, rendered: String) -> Unit
+}
 fn expect(cond: Bool) -> Unit ! {Test}
 fn expect_eq<A: Eq + Show>(actual: A, expected: A) -> Unit ! {Test}
 fn expect_fail<T, E: Eq + Show, e>(body: fn() -> T ! {Fail<E> | e}, err: E) -> Unit ! {Test | e}
-fn expect_fails_with<T, E, e>(body: fn() -> T ! {Fail<E> | e}, pred: fn(E) -> Bool) -> Unit ! {Test | e}
+fn expect_fails_with<T, E: Show, e>(body: fn() -> T ! {Fail<E> | e}, pred: fn(E) -> Bool) -> Unit ! {Test | e}
 fn expect_defect<T, e>(body: fn() -> T ! e) -> Unit ! {Test | e}     // body runs in a child task
+fn expect_output(lines: List<String>) -> Unit ! {Test}               // the test's captured output so far
 fn expect_snapshot<A: Show>(name: String, value: A) -> Unit ! {Test}
-fn Gen.int(lo: Int, hi: Int) -> Gen<Int>
+// std/gen: explicit generators, driven inside a `test`
+fn gen.int(lo: Int, hi: Int) -> Gen<Int> requires lo <= hi
+fn gen.list<A>(item: Gen<A>, max_len: Int) -> Gen<List<A>> requires max_len >= 0
+fn gen.for_all<A: Show, e>(g: Gen<A>, runs: Int, prop: fn(A) -> Unit ! {Test | e}) -> Unit ! {Random, Test | e}
 ```
 
-See [Testing](/docs/tour/testing).
+The `std/test` names are in the prelude. `std/gen` is imported as `import std/gen` and used as `gen.int(0, 9)`; `property` parameters always use type-derived generators. See [Testing](/docs/tour/testing).
 
-## AI (`std/ai`)
+## AI (`std/llm`, `std/tool`, `std/agent`)
 
 ```vow
-fn Llm.request<T: Schema>(system: String, user: String) -> Request<T>
-fn Prompt.of(parts: List<PromptPart>) -> Prompt     // PromptPart = Text(String) | Untrusted(Untrusted<String>) | Image(Bytes)
-fn Llm.with_tools<T: Schema>(req: Request<T>, tools: List<Tool>, max_steps: Int) -> Request<T>
-fn Agent.run<T: Schema>(req: Request<T>, tools: List<Tool>, stop: fn(Partial<T>) -> Bool) -> T ! {Llm, Budget, Fail<LlmError | ToolError | BudgetExceeded>}
+// std/llm
+type Request<T> = { system: String, user: Prompt, model: Model, max_tokens: Int, temperature: Float, tools: List<Tool>, max_steps: Int }
+type PromptPart = Text(String) | Untrusted(Untrusted<String>) | Image(Bytes)
+pub opaque type Prompt = Prompt(List<PromptPart>)
+fn Prompt.of(parts: List<PromptPart>) -> Prompt
+fn Prompt.text(s: String) -> Prompt
+fn Llm.request<T: Schema>(system: String, user: Prompt) -> Request<T>    // name T by annotation; default model, no tools
+type LlmError = Refused | InvalidOutput | Truncated | RateLimited | Timeout | ProviderError
+// std/tool
+fn Tool.of(f: /* @tool fn */) -> Tool                                   // compiler intrinsic
+// std/agent
+type Agent<T> = { request: Request<T>, tools: List<Tool>, max_steps: Int, stop: fn(Partial<T>) -> Bool }
+fn Agent.run<T: Schema>(a: Agent<T>) -> T ! {Llm, Budget, Fail<LlmError | ToolError | BudgetExceeded>}
 ```
 
-`Tool.of(f)` builds a `Tool` from a function marked `@tool("description")`. `Llm.generate<T>` decodes the model output with `Json.decode<T>`, so every refinement is checked. Schema-valid output is not truth.
+`Tool.of(f)` builds a `Tool` from a function marked `@tool("description")`. A request is modified with a record update (`Request { ..req, user: Prompt.text("…") }`); there are no builder functions. `Agent.run` takes its whole configuration as an `Agent` record. `RateLimited` and `Timeout` in `LlmError` are the same tags `std/http` and `std/task` use. `Llm.generate(req)` decodes the model output as `Json.decode` would, so every refinement is checked. Schema-valid output is not truth.
 
 ## Example: JSON API with a database
 
 From [design §15.5](https://github.com/icantcodefyi/vow/blob/master/docs/design.md):
 
 ```vow title="src/main.vow"
-import std/http.{Request, Response, Router}
-import std/sql
+import std/http.{Request, Response, BadRequest}
+import std/router.{Router}
+import std/serve.{Serve, Address}
+import std/sql.{Sql, SqlError}
+import std/path.{Path}
 
 type Email = String where String.len(it) <= 254 && String.contains(it, "@")
 type NewUser = { email: Email, name: String }
@@ -196,9 +247,9 @@ error EmailTaken(email: Email)
 
 fn create_user(input: NewUser) -> User ! {Sql, Fail<EmailTaken | SqlError>} {
   Sql.transaction(fn() {
-    let existing = Sql.query<User>(sql"select id, email, name from users where email = {input.email}")
+    let existing: List<User> = Sql.query(sql"select id, email, name from users where email = {input.email}")
     if List.len(existing) > 0 { fail EmailTaken { email: input.email } }
-    let rows = Sql.query<User>(
+    let rows: List<User> = Sql.query(
       sql"insert into users (email, name) values ({input.email}, {input.name}) returning id, email, name")
     List.first(rows).expect("insert returning yields one row")
   })
@@ -206,7 +257,7 @@ fn create_user(input: NewUser) -> User ! {Sql, Fail<EmailTaken | SqlError>} {
 
 fn handle_create(req: Request) -> Response ! {Sql, Log} {
   try {
-    let input = Request.json<NewUser>(req, 64_000)      // validates Email refinement
+    let input: NewUser = Request.json(req, 64_000)      // validates the Email refinement
     let user = create_user(input)
     Response.ok_json(user)
   } catch {
@@ -226,14 +277,15 @@ pub fn main() -> Unit ! {Serve, Sql, Log, Env} {
 }
 ```
 
-Interpolations in `sql"..."` are always bound parameters, never spliced text. `handle_create` catches every tag, so its row has no `Fail`.
+Interpolations in `sql"..."` are always bound parameters, never spliced text. `Sql.query` and `Request.json` are type-directed, so the bindings name their types. `handle_create` catches every tag, so its row has no `Fail`.
 
 ## Example: typed LLM extraction
 
 From [design §15.7](https://github.com/icantcodefyi/vow/blob/master/docs/design.md):
 
 ```vow
-import std/ai
+import std/llm.{Llm, LlmError}
+import std/budget.{Budget, BudgetExceeded}
 
 type Priority = Low | Normal | High
 type Ticket = {
@@ -255,7 +307,7 @@ test "scripted model output is validated against Ticket" {
 }
 ```
 
-`@llm` generates the body: a call to `Llm.generate` with `Ticket`'s schema, where the `Untrusted` parameter is sent as data, never as instructions. Output that fails the schema or a refinement is `InvalidOutput`, a typed failure.
+`@llm` generates the body: `let req: Request<Ticket> = Llm.request(system, Prompt.of([Untrusted(message)]))` followed by `Llm.generate(req)`, so the model output is checked against `Ticket`'s schema and the `Untrusted` parameter is sent as data, never as instructions. Output that fails the schema or a refinement is `InvalidOutput`, a typed failure.
 
 ## Not in v0
 
@@ -263,7 +315,8 @@ These appeared in earlier drafts and are not part of the v0 design:
 
 - Durable workflows. A `std/workflow` package is planned for v1 ([design §1.1, §11.3](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)).
 - Typed RPC between browser and server, and SQL checked against a schema file at compile time.
-- An `Async` effect, a raw `Net` effect, shared mutable cells, and a `Sim` simulation module. Deterministic simulation is done by installing fake handlers with `with`.
+- An `Async` effect, a raw `Net` effect, a `Channel<T>` type, shared mutable cells, and a `Sim` simulation module. Deterministic simulation is done by installing fake handlers with `with`.
+- `Schema.of<T>()` and other call-site type arguments, request builders such as `with_user` and `with_tools`, and a separate `LlmTimeout` tag.
 - `Sql.postgres` is v1; v0 targets SQLite.
 
 ## Next

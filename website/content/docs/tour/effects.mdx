@@ -3,8 +3,8 @@ title: Effects
 description: How Vow records every side effect and every expected failure in the function signature, and how effect rows compose.
 ---
 
-<Callout type="warn" title="Designed for v0, not implemented yet">
-  This page describes the v0 design in [design §5](https://github.com/icantcodefyi/vow/blob/master/docs/design.md). The compiler is under construction (milestone M0), so none of this code can be run yet.
+<Callout type="warn" title="Pre-alpha">
+  This page describes the v0 design in [design §5](https://github.com/icantcodefyi/vow/blob/master/docs/design.md). The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet.
 </Callout>
 
 An effect is anything a function does besides compute its return value: read the clock, print, query a database, call the network, fail. In Vow, every effect a function may perform is listed in its signature, after `!`.
@@ -55,7 +55,7 @@ effect Db {
 }
 ```
 
-An operation's row may contain `Fail<…>` and nothing else (`V3010`). The declaration says what operations exist, not what they do. That is the job of a [handler](/docs/tour/handlers), chosen by the caller.
+An operation's row may contain `Fail<…>`, plus row variables of the operation's own type parameters that also appear in a function-typed parameter, so an operation that runs a callback performs what the callback performs (`fn scope<T, e>(body: fn(Scope) -> T ! e) -> T ! e`). Any other label is `V3010`. The declaration says what operations exist, not what they do. That is the job of a [handler](/docs/tour/handlers), chosen by the caller.
 
 ## Rows are sets
 
@@ -134,36 +134,45 @@ The internal `Unavailable` tag is translated at the boundary, so the public unio
 | `r?` on `r: Result<T, E>` | `T`, and adds `Fail<E>` to the row |
 | `Option.or_fail(o, err)` | the value, or `fail err` on `None` |
 
+`?` applies only to a `Result`. A call to a function with `Fail<E>` in its row needs no operator; its failure propagates on its own.
+
+A `try` body cannot assign to a `var` declared outside it (`V2041`), because the body may stop at any failing call and leave the assignment half done. Its value and its error are the only things that leave it: assign after the `try`, or declare the `var` inside.
+
 There is no implicit conversion between error types. A catch-all `_ => …` arm is allowed but discouraged on open unions (`W4010`).
 
 ## Defects are not effects
 
-A **defect** is a bug, not an expected failure. It terminates the current task after running resource finalizers. `try` cannot catch it. `Task.scope` and the test runner observe it as `Outcome.Defect(info)`, and `main` ending in a defect exits with status 70.
+A **defect** is a bug, not an expected failure. It terminates the current task after running resource finalizers. `try` cannot catch it. `Task.scope` and the test runner observe it as `Outcome.Defect(info)`, and `main` ending in a defect exits with status 70 and writes a `defect` record to stderr. By contrast, a typed failure that escapes `main` exits with status 1 and prints `error: main failed with <Show of the error>`.
 
 | Code | Defect |
 | --- | --- |
 | `D001` | `Int` overflow |
 | `D002` | division by zero |
+| `D003` | `Int` beyond ±(2^53−1) on the JavaScript backend |
 | `D010` | failed checked introduction, such as `Email.from(s)` |
 | `D020` / `D021` | `requires` violated (caller blamed) / `ensures` violated (callee blamed) |
 | `D030` | `Option.expect` on `None` |
 
+There is no user-callable way to raise a defect. Express a programming error with `requires` or `Option.expect`.
+
 ## Standard effects
 
-From design §10.2. The first six are in the prelude.
+From design §10.2. Each effect lives in its own std module (`std/console`, `std/http`, …). The first seven are in the prelude; the rest must be imported by name, for example `import std/http.{Http}`.
 
 | Effect | Operations | Purpose |
 | --- | --- | --- |
 | `Console` | `print`, `read_line` | Terminal IO |
 | `Clock` | `now`, `monotonic`, `sleep` | Time |
 | `Random` | `int`, `float`, `bytes`, `uuid` | Randomness |
-| `Env` | `get`, `secret` | Environment variables |
+| `Env` | `get`, `secret` | Environment variables: `get` returns `Option<String>`, `secret` returns `Option<Secret<String>>` |
 | `Log` | `event` | Structured logging |
 | `Task` | `scope`, `spawn`, `join`, `all`, `race`, `yield_now` | [Structured concurrency](/docs/tour/concurrency) |
+| `Test` | `record_failure`, `output_lines`, `snapshot`, … | Assertions inside `test` and `property` bodies |
 | `Fs` | `read`, `read_text`, `write`, `list`, `exists`, `with_file` | Files |
 | `Http` | `send` | HTTP client |
 | `Serve` | `listen` | HTTP server |
 | `Sql` | `query`, `execute`, `transaction` | SQL database |
+| `Cli` | `args`, `exit` | Command-line arguments and exit status |
 | `Budget` | `reserve`, `settle` | Token, cost, and call limits |
 | `Llm` | `generate`, `generate_text`, `stream` | Language model calls |
 | `Fail<E>` | `fail` | Expected failure |
@@ -311,7 +320,7 @@ Byte offsets are zero-based and half-open. There are two honest ways out. If `lo
 - The inferred row of a body is a subset of the declared row. Each extra label is `V3001`, with the call that introduced it.
 - A label that a closed row does not permit is `V3002`.
 - Every `Fail` tag is either caught or declared. Union mismatches without an expected type are `V2015`.
-- Effect operations may declare only `Fail` in their rows (`V3010`).
+- Effect operations declare only `Fail` and their callbacks' row variables in their rows (`V3010`).
 - Top-level rows and row variables are declared, never inferred.
 
 ## Next

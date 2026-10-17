@@ -3,8 +3,8 @@ title: Memory model
 description: Value semantics, var rebinding, compiler-inserted reference counting with Perceus reuse, cycles through Graph, scope-bound resources, and backends in Vow.
 ---
 
-<Callout type="warn" title="Designed for v0, not implemented yet">
-  This page describes the v0 design ([design §8](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)). The compiler is under construction (milestone M0), so none of this code can be run yet. Reference counting and reuse arrive with the native backend (M5); nothing here has been measured.
+<Callout type="warn" title="Pre-alpha">
+  This page describes the v0 design ([design §8](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)). The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet. Reference counting and reuse are planned for the native backend (M5); nothing here has been measured.
 </Callout>
 
 The compiler owns memory. There are no lifetimes, no borrow annotations, no `Rc`/`Arc`, no pointers, and no reference cells in user code. The price is a restricted data model: no aliasable mutation, no cycles in the heap, and explicit scopes for resources.
@@ -46,7 +46,7 @@ fn evens(n: Int) -> List<Int> {
 
 ## Closures capture values
 
-A closure captures `var` bindings **by value at creation**. It cannot assign to an outer `var` (`V2041`); accumulate with a `var` in the same function body, or with `List.fold`.
+A closure captures `var` bindings **by value at creation**. It cannot assign to an outer `var` (`V2041`); accumulate with a `var` in the same function body, or with `List.fold`. A `try` body follows the same rule: it may stop at any failing call, so it cannot assign to a `var` declared outside it either (`V2041`). Assign after the `try` instead: `let v = try { … } catch { … }` and then `total = total + v`.
 
 ```vow
 test "closures see the value at creation" {
@@ -102,7 +102,7 @@ The JavaScript backend ignores all of this and uses the host's garbage collector
 Reference counting cannot free cycles, and Vow's data model cannot build them. Cyclic structures use `std/graph`: a `Graph<N>` owns a table of nodes, and edges are `NodeId`s (slot plus generation) validated against the graph. There are no weak pointers in v0.
 
 ```vow
-import std/graph
+import std/graph.{Graph, NodeId}
 
 type Person = { name: String }
 
@@ -117,7 +117,7 @@ fn befriend(g: Graph<Person>, a: Person, b: Person) -> (Graph<Person>, NodeId, N
 
 ## Resources
 
-Files, sockets, database connections, HTTP bodies, and fibers are **resource types**. They are affine (used at most once as a whole), are not `Eq`, `Show`, or `Schema`, and are bound to a scope provided by their effect:
+Files, sockets, database connections, HTTP bodies, and fibers are **resource types**: external types, declared without a body, whose representation belongs to the host. They are affine (used at most once as a whole), are not `Eq`, `Show`, or `Schema`, and are bound to a scope provided by their effect:
 
 ```vow
 effect Fs {
@@ -133,7 +133,7 @@ Not in v0. The `region` keyword is reserved. Request-scoped arenas may arrive wi
 
 ## Concurrency and determinism
 
-There is no shared mutable memory, so tasks cannot race on data. Tasks communicate through `Channel<T>` and handler state, whose clauses run one at a time per instance. Evaluation is strict and left to right, arguments before the call, and `Map`/`Set` iterate in insertion order on every backend. See [Concurrency](/docs/tour/concurrency).
+There is no shared mutable memory, so tasks cannot race on data. Tasks communicate through their results (`Task.join`, `Task.all`, `Task.race`) and through handler state, whose clauses run one at a time per instance. There is no channel type in v0. Evaluation is strict and left to right, arguments before the call, and `Map`/`Set` iterate in insertion order on every backend. See [Concurrency](/docs/tour/concurrency).
 
 ## Backends
 
@@ -154,17 +154,17 @@ vow build --target js
 - Reference counting costs something on every `dup` and `drop`. Reuse is what makes it competitive; how well it works is unmeasured.
 - Sharing a large value and then updating it copies. `W8001` points at loops where this happens.
 - Cyclic data needs `Graph` and `NodeId`s instead of direct references.
-- On the JS backend, `Int` values beyond ±(2^53−1) are defect `D003` until a wider representation lands.
+- On the JS backend, `Int` arithmetic and literals beyond ±(2^53−1) are defect `D003` until a wider representation lands. Parsing is the exception: `String.parse_int` returns `None` for such a value, because parsing is where untrusted input enters.
 - Native handler state uses a per-instance lock. Whether that holds up under parallelism is an open question ([design §16](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)).
 
 ## What the compiler checks
 
 - There is no syntax for mutation of shared values or pointer identity, so aliasing bugs cannot be written.
 - A dropped non-`Unit` result is an error (`V2040`), which catches `List.push(xs, v)` without reassignment.
-- A lambda cannot assign an outer `var` (`V2041`).
+- Neither a lambda nor a `try` body can assign an outer `var` (`V2041`).
 - A resource cannot escape its scope (`V6003`).
 - Reference counting is inserted automatically and is never visible in source. Reuse is an optimization only.
 
 ## Next
 
-[Concurrency](/docs/tour/concurrency): structured tasks, cancellation, timeouts, and channels.
+[Concurrency](/docs/tour/concurrency): structured tasks, cancellation, timeouts, and retries.

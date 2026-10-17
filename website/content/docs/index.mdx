@@ -3,8 +3,8 @@ title: Introduction
 description: Vow is an agent-first, general-purpose programming language in which the signature is the contract.
 ---
 
-<Callout type="warn" title="Pre-alpha: designed, not implemented">
-  The v0 language is specified in [docs/design.md](https://github.com/icantcodefyi/vow/blob/master/docs/design.md). The compiler is under construction and nothing on this site can be run yet. Details may still change through the RFC process.
+<Callout type="warn" title="Pre-alpha">
+  The v0 language is specified in [docs/design.md](https://github.com/icantcodefyi/vow/blob/master/docs/design.md). The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet. Details may still change through the RFC process.
 </Callout>
 
 Vow is the language agents write: code that keeps its promises.
@@ -84,8 +84,8 @@ The test installs an in-memory handler for `Users`. `Clock` and `Random` need no
 ## Status
 
 - **Design:** [docs/design.md](https://github.com/icantcodefyi/vow/blob/master/docs/design.md) is the authoritative v0 design. Anything it does not specify is not in v0.
-- **Compiler:** under construction as a Rust workspace in [compiler/](https://github.com/icantcodefyi/vow/tree/master/compiler). Milestone M0 (an effectful hello world, end to end on the JavaScript backend) is in progress.
-- **Code on this site** follows the v0 design. It cannot be run yet.
+- **Compiler:** a Rust workspace in [compiler/](https://github.com/icantcodefyi/vow/tree/master/compiler). It parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet.
+- **Code on this site** follows the v0 design. Examples that need M3 or later features (contracts, capabilities, the M3 std modules) do not run yet.
 
 The [roadmap](/docs/roadmap) lists every milestone, M0 to M5.
 

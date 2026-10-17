@@ -3,8 +3,8 @@ title: Types
 description: Primitive types, records, variants, refinements, generics with derived constraints, inference, method-call resolution, and exhaustive pattern matching in Vow.
 ---
 
-<Callout type="warn" title="Designed for v0, not implemented yet">
-  This page describes the v0 design ([design §4](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)). The compiler is under construction (milestone M0), so none of this code can be run yet.
+<Callout type="warn" title="Pre-alpha">
+  This page describes the v0 design ([design §4](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)). The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet.
 </Callout>
 
 Vow is statically typed with Hindley-Milner inference inside bodies. Top-level signatures are always explicit. There are no implicit conversions, no null, and no subtyping except three narrow cases: refined types coerce to their base, smaller error unions fit larger ones, and closed effect rows widen at function-value use sites.
@@ -21,7 +21,7 @@ Vow is statically typed with Hindley-Milner inference inside bodies. Top-level s
 | `Bytes` | immutable bytes | `Bytes.get(b, i) -> Option<Int>`. |
 | `Never` | none | Type of `fail e`, `return e`, `break`, `continue`. |
 
-Conversions are explicit functions: `Int.to_float`, `Float.round` (defect on NaN or out of range), `Float.to_int_checked -> Option<Int>`, `Int.to_string`, `String.parse_int -> Option<Int>`. `Decimal` (std) is a library type for money with `Decimal.add` and friends; it has no operators in v0.
+Conversions are explicit functions: `Int.to_float`, `Float.round` (defect on NaN or out of range), `Float.to_int_checked -> Option<Int>`, `Int.to_string`, `String.parse_int -> Option<Int>`. Parsing never defects: `String.parse_int` returns `None` for text that is not a number and for a number the backend cannot represent, which on JavaScript means beyond ±(2^53−1). `Decimal` (std) is a library type for money with `Decimal.add` and friends; it has no operators in v0.
 
 ## Records
 
@@ -106,7 +106,8 @@ test "bad age is a typed failure" {
 - **Collections**: `List<T>` (`[1, 2, 3]`), `Map<K, V>` and `Set<T>` (keys need `Hash`, iteration is insertion order), and `Range` (`0..n`, exclusive end).
 - **Functions**: `fn(A, B) -> C ! row`. Without `!` the function is pure.
 - **Handlers**: `Handler<Eff, r>`, a handler for `Eff` whose clauses perform `r`. See [Handlers](/docs/tour/handlers).
-- **Resources**: `Fs.File`, `Sql.Conn`, `Http.Body`, `Task.Fiber<T>`. Affine and scope-bound; see [Memory model](/docs/tour/memory#resources).
+- **External types**: a `type` declared without a body, such as `pub type Scope`, has a host representation, no constructors, and no derived constraints. Only `@external` functions produce its values.
+- **Resources**: `Fs.File`, `Sql.Conn`, `Http.Body`, `Task.Fiber<T>`. External types that are affine and scope-bound; see [Memory model](/docs/tour/memory#resources). Capabilities such as `Dir` and `NetScope` are external types too.
 - **`Secret<T>` and `Untrusted<T>`**: see [Capabilities](/docs/tour/capabilities).
 - **`Graph<N>`** with `NodeId` keys, for cyclic data; see [Memory model](/docs/tour/memory#cycles-use-graph).
 
@@ -159,7 +160,24 @@ Constraints come from a fixed set that the compiler derives structurally. There 
 | `Show` | all data types; records print as `User { id: 1, email: "a@b" }` | functions, handlers, resources, `Secret` |
 | `Schema` | data types made of `Schema` parts, refinements included (JSON Schema plus codec) | functions, handlers, resources, `Secret`, `Graph` |
 
-An unconstrained type parameter can only be passed around and matched through concrete constructors. Interpolation uses `Show`; its output is stable across backends and is the format `vow test` snapshots use.
+An unconstrained type parameter can only be passed around and matched through concrete constructors. Each constraint unlocks a fixed set of operations: `Eq` gives `==` and `!=`; `Ord` gives `<`, `<=`, `>`, `>=` and implies `Eq`; `Hash` makes a type usable as a `Map` key or `Set` element; `Show` allows interpolation and `show`; `Schema` allows `Json.encode` and `Json.decode`. A concrete type that lacks a required constraint is `V2032`.
+
+### Show output
+
+Interpolation uses `Show`. Its output is valid Vow expression syntax, stable across backends, and the format `vow test` snapshots use ([design §4.8](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
+
+| Value | Shows as |
+| --- | --- |
+| `Int`, `Bool`, `Unit` | `42`, `true`, `()` |
+| `Float` | always with `.` or an exponent: `2.0`, `0.1`, `1.0e21`, `-0.0`, `NaN`, `Infinity` |
+| `String` | raw at the top level of an interpolation, quoted with escapes inside any container |
+| tuple, `List` | `(1, "a")`, `(1,)`, `[1, 2]` |
+| `Map`, `Set`, `Bytes` | `Map.of([("a", 1)])`, `Set.of([1])`, `Bytes.of([1, 2])` |
+| record | `User { id: 1, email: "a@b" }` |
+| variant | unqualified constructor: `None`, `Some("x")`, `Warn`, `String("x")` |
+| error tag | `Forbidden`, `NotFound { id: "u1" }` |
+
+So `"{name}"` with `name = "Ada"` prints `Ada`, while `"{[name]}"` prints `["Ada"]`.
 
 ## Inference
 
@@ -167,12 +185,19 @@ An unconstrained type parameter can only be passed around and matched through co
 - `let`, `var`, and lambda parameters are inferred. Only syntactic values (lambdas, literals, constructors) are generalized; an effectful expression never is.
 - A lambda is checked against the expected `fn` type when one is known, such as an argument position.
 - Top-level functions may be mutually recursive. Local lambdas may not recurse (`V1020`).
-- You must also annotate `pub let` constants, `property` parameters, and empty collections whose element type cannot be inferred (`V2010`). There are no call-site type arguments:
+- You must also annotate `pub let` constants, `property` parameters, and empty collections whose element type cannot be inferred (`V2010`). There are no call-site type arguments (`V0011`); a type-directed function gets its type from a binding annotation:
 
 ```vow
+import std/json.{DecodeError}
+
 fn start() -> List<Int> {
-  let xs: List<Int> = List.empty()   // not List<Int>.empty() (V0011)
+  let xs: List<Int> = List.empty()   // not List<Int>.empty()
   List.push(xs, 1)
+}
+
+fn load(text: String) -> User ! {Fail<DecodeError>} {
+  let u: User = Json.decode(text)?   // not Json.decode<User>(text)
+  u
 }
 ```
 
@@ -182,21 +207,37 @@ fn start() -> List<Int> {
 
 ```vow
 import std/http.{Request, Response}
+import std/sql.{Sql}
 
 type Meters = Float                              // alias
 type UserId = UserId(Int)                        // distinct: UserId(7) is not an Int
 type Route = fn(Request) -> Response ! {Sql, Log} // alias for a function type
 ```
 
-Two refined types with identical predicates are still different types. Tuples, functions, lists, maps, sets, options, results, and ranges are structural in their parameters; everything else is nominal.
+A variant may share its type's name, as `UserId` does. Two refined types with identical predicates are still different types. Tuples, functions, lists, maps, sets, options, results, and ranges are structural in their parameters; everything else is nominal.
+
+## Opaque types
+
+`pub type` exports a type together with its constructors and fields. `pub opaque type` exports only the name: other modules can hold, pass, compare, and show its values, but constructing one or reading its fields outside the declaring module is `V1006`.
+
+```vow
+// src/tokens.vow
+pub opaque type Token = Token(String)
+
+pub fn issue(user: Int) -> Token ! {Random} {
+  Token("{user}-{Random.uuid()}")
+}
+```
+
+Other modules can only get a `Token` from `tokens.issue`. Std uses the same mechanism: `Uuid` comes only from `Uuid.parse` or `Random.uuid`, a SQL `Query<R>` only from the `sql"…"` template, and `Html` only from escaping code. Opaque types still derive `Eq`, `Ord`, `Hash`, `Show`, and `Schema`. To validate by predicate rather than by construction, use a refinement type.
 
 ## Method-call resolution
 
 `e.f(args)` is resolved in this order; the first match wins ([design §4.9](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
 
 1. `e` is a record and `f` is a field: field access.
-2. `e` names an effect: `Eff.op(args)` performs the operation on the innermost installed handler.
-3. `e` names a type: `Type.f` is function `f` in the type's **home module** (the module that declared it; for std types, the std module of the same name, such as `List.map`), or a variant constructor.
+2. `e` names an effect: `Eff.op(args)` performs the operation on the innermost installed handler. If `op` is not an operation, `Eff.f` is a function of the effect's home module, which is how handler constructors such as `Console.host()`, `Clock.fixed(t)`, and `Users.memory([])` are found.
+3. `e` names a type: `Type.f` is function `f` in the type's **home module** (the module that declared it; for compiler-known types, `std/<lowercase name>`, so `List.map` is `std/list.map`). `Type.Name` is a variant of the type or a type declared in its home module: `Json.String(s)`, `Level.Warn`, `Task.Fiber<T>`.
 4. `e` names an imported module: `mod.f` is that module's exported `f`.
 5. Otherwise `e` is a value of type `T`, and `e.f(args)` means `T.f(e, args)` with `f` looked up in `T`'s home module.
 
@@ -268,14 +309,14 @@ fn is_admin(u: User) -> Bool {
 A tagged string `tag"…"` desugars to `tag.template(parts, values)`, where `tag` resolves to a module that exports `template`. Each interpolated value is checked against the tag's argument type, and the tag receives it as a value, never as spliced text.
 
 ```vow
-import std/sql
+import std/sql.{Sql, SqlError}
 
 fn find_by_email(email: Email) -> List<User> ! {Sql, Fail<SqlError>} {
   Sql.query(sql"select id, email, name from users where email = {email}")
 }
 ```
 
-Here `{email}` becomes a bound parameter. For `sql`, an `Untrusted<String>` or a refined string converts to `SqlValue`, but a raw table name does not. `html"<p>{name}</p>"` escapes text by construction. The prelude tags are `sql`, `html`, `url`, and `shell`. See [Capabilities](/docs/tour/capabilities).
+Here `{email}` becomes a bound parameter. For `sql`, an `Untrusted<String>` or a refined string converts to `SqlValue`, but a raw table name does not. `html"<p>{name}</p>"` escapes text by construction. Because `Query<R>` and `Html` are opaque types, a template is the only way to build one. The prelude tags are `sql`, `html`, `url`, and `shell`. See [Capabilities](/docs/tour/capabilities).
 
 ## What the compiler checks
 

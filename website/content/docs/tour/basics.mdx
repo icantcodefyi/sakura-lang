@@ -3,18 +3,18 @@ title: Basics
 description: Lexical rules, bindings, functions, control flow, operators, strings, lambdas, loops, and modules in Vow.
 ---
 
-<Callout type="warn" title="Designed for v0, not implemented yet">
-  This page describes the v0 design ([design §2, §3, §9](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)). The compiler is under construction (milestone M0), so none of this code can be run yet.
+<Callout type="warn" title="Pre-alpha">
+  This page describes the v0 design ([design §2, §3, §9](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)). The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet.
 </Callout>
 
 Vow has a small surface: braces, `fn`, `let`/`var`, `match`, `if`/`else`. The keywords are:
 
 ```text
 fn let var type error effect handler with try catch fail if else match for in while
-return break continue import pub as test property requires ensures where true false
+return break continue import pub opaque as test property requires ensures where true false
 ```
 
-`verify proof ghost control resume region spawn actor interface impl` are reserved for later and rejected today (`V0007`). Two names are special only in one place: `it` inside a `where` refinement and `result` inside an `ensures` clause. There is no `null`, no `class`, no `self`, no exceptions, no `async`/`await`, no macros, and no operator overloading.
+`verify proof ghost control resume region spawn actor interface impl` are reserved for later and rejected today (`V0007`). A reserved word is still accepted directly after `.` or `fn`, so `Task.spawn(s, body)` is legal. Two names are special only in one place: `it` inside a `where` refinement and `result` inside an `ensures` clause. There is no `null`, no `class`, no `self`, no exceptions, no `async`/`await`, no macros, and no operator overloading.
 
 ## Names and casing
 
@@ -31,18 +31,18 @@ pub fn double(n: Int) -> Int {
 }
 ```
 
-`@name(args)` attributes precede items. The v0 set is `@tool`, `@llm`, `@external`, `@trust`, `@deprecated`, `@server`, and `@test_only`. An unknown attribute is `V1010`.
+`@name(args)` attributes precede items. The v0 set is `@tool`, `@llm`, `@external`, `@total`, `@contract_test`, `@deprecated`, `@server`, and `@test_only`. Attribute arguments are positional or `name: value`, as in `@llm(system: "…")` or `@contract_test(handlers: [Sql.memory()])`; this is the only place `name: value` appears in an argument list. `@trust("reason")` is the one attribute written as an expression, at a trust sink. An unknown attribute is `V1010`.
 
 ## Statements and newlines
 
 There are no mandatory semicolons. The lexer ends a statement at a line break only when **both** hold ([design §2.4](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
 
-1. The previous token can end an expression: a name, a hole, a literal, `)`, `]`, `}`, postfix `?`, `true`, `false`, `break`, `continue`, or `return`.
+1. The previous token can end an expression: a name, a hole, a literal, `)`, `]`, `}`, `>`, postfix `?`, `true`, `false`, `break`, `continue`, or `return`.
 2. The next token cannot continue one: it is not `.`, `else`, `catch`, `)`, `]`, `}`, `,`, `=>`, `=`, `->`, `|`, `..`, or a binary operator other than `-`.
 
 In practice:
 
-- A line ending in an operator, `(`, `[`, `{`, or `,` continues.
+- A line ending in an operator other than `>`, or in `(`, `[`, `{`, or `,`, continues. `>` ends a line so that `type Ids = List<Int>` terminates; write a continued comparison with `>` at the start of the next line.
 - A line starting with `.`, `else`, or `catch` continues the previous one, so method chains and `} else {` work across lines.
 - `foo` followed by `(bar)` on the next line is **two** statements. So is `foo` followed by `-1`.
 - Newlines inside `(` and `[` are never significant. `;` is always accepted; `vow fmt` removes redundant ones.
@@ -140,9 +140,10 @@ Tightest first ([design §3.1](https://github.com/icantcodefyi/vow/blob/master/d
 - `a < b < c` is `V0010`. `&&` and `||` short-circuit.
 - `xs[i]` is `List.get(xs, i)` and returns `Option`.
 
-Three parsing rules remove guesswork ([design §3.2](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
+Four parsing rules remove guesswork ([design §3.2](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
 
-- In expressions, `<` is always comparison. There are no call-site type arguments: write `let xs: List<Int> = List.empty()`, not `List<Int>.empty()` (`V0011`).
+- In expressions, `<` is always comparison. There are no call-site type arguments: `List<Int>.empty()` and `f<T>(x)` are `V0011`. Name the type with a binding annotation instead: `let xs: List<Int> = List.empty()`, `let rows: List<User> = Sql.query(q)`.
+- There are no named arguments: `f(name: v)` is `V0014`. Pass values positionally, or pass a record when there are many options (`Budget.limits(Limits { tokens: Some(20_000), usd: None, calls: None })`).
 - In the header of `if`, `while`, `for`, `match`, and `with`, `Name {` starts the block, not a record literal. Parenthesize record literals there.
 - `if`, `match`, `with`, `try`, `fn`, `handler`, and `fail` expressions are never operands without parentheses: `(match x { … }).len()`, not `match x { … }.len()` (`V0012`).
 
@@ -231,14 +232,16 @@ fn unfinished(x: Int) -> Int { ?result }
 One file is one module. The module path is the file path under the package's `src/`: `src/users/repo.vow` is module `users/repo`. The first import segment is a package name (`std`, the current package, or a dependency in `vow.toml`).
 
 ```vow
-import std/http.{Request, Response, Router}   // bind names directly
-import std/sql                                 // bind the module as `sql`
-import acme/billing/invoices as inv            // rename
+import std/http.{Http, Request, Response}    // bind names directly
+import std/sql                               // bind only the module name `sql`
+import acme/billing/invoices as inv          // rename
 ```
 
+- Nothing outside the prelude is in scope implicitly. `import std/sql` binds `sql` and nothing else, so a row that mentions `Sql` needs `import std/sql.{Sql}`. On an unresolved std name, `V1002` offers the import as a machine-applicable fix.
 - No wildcard imports, no relative imports, no re-exports, and no import cycles (`V1030`).
 - Variants and error tags live directly in their module's namespace (`Some`, `EmailTaken`); `Option.Some` is also accepted.
-- The prelude needs no import: `Option`, `Result`, `List`, `Map`, `Set`, `String`, `Int`, `Float`, `Bytes`, the effects `Fail Console Clock Random Env Log Task`, and the tags `sql html url shell`.
+- `pub type` exports a type with its constructors and fields. `pub opaque type` exports only the name: other modules can use its values but not construct or destructure them (`V1006`).
+- The prelude needs no import: the built-in types (`Int`, `String`, `List`, `Map`, `Set`, `Secret`, `Untrusted`, …), `Option`, `Result`, `Duration`, `Instant`, `Uuid`, `Json`, `Level`, the constructors `Some None Ok Err`, the effects `Fail Console Clock Random Env Log Task Test`, `show` and the `expect…` test functions, and the tags `sql html url shell`.
 - The entry point is `pub fn main() -> Unit ! {…}` in `src/main.vow`.
 
 ## What the compiler checks

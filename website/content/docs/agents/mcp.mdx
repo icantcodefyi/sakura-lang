@@ -4,7 +4,9 @@ description: The planned vow mcp serve server, which exposes the compiler to age
 ---
 
 <Callout type="warn" title="Planned">
-  `vow mcp serve` is designed for v0 (milestone M3) but not implemented. Nothing on this page runs yet. Tool names and
+  `vow mcp serve` is designed for v0 (milestone M3) and is planned. The compiler parses, resolves, type- and
+  effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented
+  yet, so the `@tool` example below cannot run either. Tool names and
   parameters follow [design §12.6](https://github.com/icantcodefyi/vow/blob/master/docs/design.md); result shapes beyond
   what is stated there are not fixed.
 </Callout>
@@ -66,19 +68,21 @@ Separately from the compiler tools, `vow mcp serve --tools a,b` exports function
 A tool function is marked `@tool("description")`. Its parameters and result must be `Schema` types, and its error union must be made of `Schema` tags. From design §15.8:
 
 ```vow
-import std/ai
+import std/http.{Http, HttpError, RateLimited, Response, Status}
+import std/json.{DecodeError}
 
 error SearchDown
 
 @tool("Search the internal knowledge base; returns up to 5 snippets")
-fn kb_search(query: String) -> List<String> ! {Http, Fail<SearchDown>} {
+fn kb_search(query: String) -> List<String> ! {Http, Fail<SearchDown | HttpError | RateLimited | DecodeError>} {
   let resp = Http.get(url"https://kb.internal/search?q={query}")
-  if resp.status != Status.of(200) { fail SearchDown }
-  Response.json<List<String>>(resp, 100_000)
+  if resp.status != Status.from(200) { fail SearchDown }
+  let snippets: List<String> = Response.json(resp, 100_000)
+  snippets
 }
 ```
 
-`Tool.of(kb_search)` builds a `Tool` value. Its JSON Schema comes from the parameter types, refinements included. When called, it validates the JSON arguments, runs the function under the caller's current handlers, and maps failures to a public `ToolError` with the tag name and payload. The same `Tool` values are used in-process by `Agent.run` (see the [standard library](/docs/stdlib)).
+`Tool.of(kb_search)` builds a `Tool` value. Its JSON Schema comes from the parameter types, refinements included. When called, it validates the JSON arguments, runs the function under the caller's current handlers, and maps failures to a public `ToolError` with the tag name and payload. The same `Tool` values are used in-process by `Agent.run`, which takes them in the `tools` field of its `Agent` configuration record (see the [standard library](/docs/stdlib)).
 
 When exported over MCP, the model never supplies authority. The handlers installed by the serving program decide what `Http` can reach, and the manifest's `[permissions]` table is the ceiling.
 

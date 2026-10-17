@@ -3,9 +3,10 @@ title: Typed holes
 description: How ?name holes let agents write a Vow program incrementally, with the checker reporting what fits in each gap.
 ---
 
-<Callout type="warn" title="Designed, not implemented">
+<Callout type="warn" title="Pre-alpha">
   Typed holes are part of milestone M2 in [design §12.4](https://github.com/icantcodefyi/vow/blob/master/docs/design.md).
-  The compiler is under construction, and nothing on this page runs yet.
+  The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http,
+  sql, fs, cli, ai, task) are not implemented yet. The `hole_context` MCP tool is planned for M3.
 </Callout>
 
 A typed hole is a placeholder for code you have not written yet. In Vow it is written `?name`: a `?` immediately followed by an identifier, with no space. A hole is an expression of a fresh type, so a program with holes can be checked before it is finished.
@@ -31,42 +32,50 @@ The name is for you and for tooling. Use one that says what belongs there: `?bod
 
 ## What a hole reports
 
-After solving the enclosing body, `vow check --json` emits a `hole` record. Design §12.2 specifies five fields:
+After solving the enclosing body, `vow check --json` emits one `hole` record per hole, on its own line. The record is exactly this shape ([design §12.2](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
 
 | Field | Meaning |
 | --- | --- |
-| `expected_type` | The type the hole must produce, fully solved where possible. |
-| `allowed_effects` | The full effect row allowed at this point. Effects already used elsewhere in the body are not subtracted. |
-| `locals` | Every local in scope, with its name and type. |
-| `candidates` | Up to 10 ranked expressions that fit, each with its fit kind. |
+| `id` | `h:` plus a hash of the name, the file's content hash, and the span. Stable across runs while the text is unchanged. |
+| `name` | The identifier after `?`. |
+| `snapshot` | Hash of the workspace snapshot that was checked. |
+| `span` | Where the hole is, in the same shape as a diagnostic span, with `role` `primary`. |
+| `expected_type` | The type the hole must produce, fully solved where possible, as `{ "render", "structured" }`. |
+| `allowed_effects` | The full effect row allowed at this point, as `{ "render", "row" }`. Effects already used elsewhere in the body are not subtracted. |
+| `locals` | Every local in scope, innermost last, each with `name` and `type`. |
+| `candidates` | Up to 10 ranked expressions that fit, each with `expr` and its `fit` kind. |
 | `contracts_in_scope` | The refinements and contracts assumed at this point. |
 
-The design does not yet fix the nested shapes, or how a hole record carries its id and location. The example below assumes it reuses the diagnostic record's `id` and `spans` shape and the `{render, row}` form for effect rows. Treat those parts as illustrative.
+For the `clamp` program above, saved as `src/main.vow`, the record looks like this, pretty-printed, with hashes shortened:
 
 ```json
 {
   "schema_version": "1.0",
   "kind": "hole",
-  "id": "h:2c71",
-  "spans": [
-    { "uri": "file:///work/demo/src/main.vow", "content_hash": "sha256:a0d4",
-      "start_byte": 123, "end_byte": 128, "role": "primary", "label": "?body" }
-  ],
-  "expected_type": "Int",
+  "id": "h:5d0c8e2b1a7f4396",
+  "name": "body",
+  "snapshot": "sha256:…",
+  "span": { "uri": "file:///…/src/main.vow", "content_hash": "sha256:…",
+            "start_byte": 123, "end_byte": 128, "role": "primary" },
+  "expected_type": { "render": "Int", "structured": null },
   "allowed_effects": { "render": "{}", "row": { "labels": [], "tail": null } },
   "locals": [
-    { "name": "x", "type": "Int" },
-    { "name": "lo", "type": "Int" },
-    { "name": "hi", "type": "Int" }
+    { "name": "x", "type": { "render": "Int" } },
+    { "name": "lo", "type": { "render": "Int" } },
+    { "name": "hi", "type": { "render": "Int" } }
   ],
   "candidates": [
-    { "expression": "x", "fit": "local" },
-    { "expression": "lo", "fit": "local" },
-    { "expression": "hi", "fit": "local" }
+    { "expr": "x", "fit": "exact_local" },
+    { "expr": "lo", "fit": "exact_local" },
+    { "expr": "hi", "fit": "exact_local" },
+    { "expr": "Int.min(?a, ?b)", "fit": "function" },
+    { "expr": "Int.max(?a, ?b)", "fit": "function" }
   ],
   "contracts_in_scope": ["requires ordered: lo <= hi"]
 }
 ```
+
+A function candidate carries holes for its own arguments, named after its parameters, so filling the hole with it leaves smaller holes to fill next.
 
 ## How candidates are ranked
 

@@ -3,17 +3,18 @@ title: Testing
 description: Unit tests, property tests, contract-generated tests, snapshots, and deterministic handlers in Vow.
 ---
 
-<Callout type="warn" title="Designed, not implemented">
-  This page describes the v0 design. The compiler is under construction (milestone M0), so none of
-  this code can be run yet. `test` blocks arrive in M1, deterministic handlers in M2, and
-  contract-generated tests in M3. See the [roadmap](/docs/roadmap).
+<Callout type="warn" title="Pre-alpha">
+  This page describes the v0 design. The compiler parses, resolves, type- and effect-checks and runs
+  M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented
+  yet. In the design, `test` blocks are M1, deterministic handlers M2, and contract-generated tests
+  M3. See the [roadmap](/docs/roadmap).
 </Callout>
 
-Tests are part of the language. `test` and `property` are top-level items, so they live next to the code they test, use the same handlers as production code, and run with `vow test`. Assertions come from `std/test` ([design §10.6](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)).
+Tests are part of the language. `test` and `property` are top-level items, so they live next to the code they test, use the same handlers as production code, and run with `vow test`. Assertions come from `std/test`, whose names are in the prelude ([design §10.6](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)).
 
 ## Unit tests
 
-A `test` has a name and a block. It behaves like a function `fn() -> Unit ! {Test}`, where the `Test` effect provides the assertions.
+A `test` has a name and a block. It behaves like a function `fn() -> Unit ! {Test, Fail<E>}` for any error union `E`. The `Test` effect provides the assertions; an assertion that does not hold records a failure and lets the test continue, and the runner fails the test at the end.
 
 ```vow
 fn greet(name: String) -> String { "Hello, {name}" }
@@ -30,6 +31,7 @@ test "greets by name" {
 | `expect_fail(fn() { … }, err)`  | The body fails with exactly `err`.                                    |
 | `expect_fails_with(fn() { … }, pred)` | The body fails with an error for which `pred` returns `true`.   |
 | `expect_defect(fn() { … })`     | The body defects. It runs in a child task.                            |
+| `expect_output(lines)`          | The test's captured `Console` and `Log` output so far is exactly `lines`. |
 | `expect_snapshot(name, value)`  | `value` renders the same as the stored snapshot.                      |
 
 ## Testing typed errors and defects
@@ -54,7 +56,18 @@ test "bad age is a typed failure" {
 test "same check with expect_fail" {
   expect_fail(fn() { parse_age("x") }, ParseError { input: "x" })
 }
+
+test "a typed failure that escapes fails the test" {
+  let age = parse_age("41")    // a ParseError here fails the test with its Show
+  expect_eq(age, 41)
+}
 ```
+
+Because a test's row includes `Fail<E>`, a test can call failing functions directly, and postfix `?` works on a `Result` as it does anywhere else. A failure that escapes the body fails the test and reports `failed with <Show of the error>`, for example `failed with ParseError { input: "x" }`. `expect_fail` remains the way to assert that a failure happens.
+
+<Callout type="info" title="Pending in the compiler">
+  Letting a typed failure escape a test body is design §17.30. The current compiler does not implement it yet and still reports `V3020` for such a test; wrap the call in `try` or `expect_fail` until it lands.
+</Callout>
 
 [Contract](/docs/tour/contracts) violations are defects, not failures, so `try` cannot catch them. Use `expect_defect`:
 
@@ -70,11 +83,24 @@ Tests run under deterministic default handlers ([design §5.8](https://github.co
 
 | Effect    | Default handler in tests          |
 | --------- | --------------------------------- |
-| `Clock`   | `Clock.fixed(epoch)`              |
+| `Clock`   | `Clock.fixed(Instant.from_unix_millis(0))` |
 | `Random`  | `Random.seeded(seed)`, seed from `--seed` |
-| `Env`     | `Env.of(map)`                     |
+| `Env`     | `Env.of(Map.empty())`             |
 | `Console` | `Console.captured()`              |
 | `Log`     | `Log.captured()`                  |
+
+`Console.captured()` and `Log.captured()` send each line to the test's output, which `Test.output_lines()` returns and `expect_output` checks. A `Log.captured()` line looks like `Warn message key=value`:
+
+```vow
+fn announce(name: String) -> Unit ! {Console} {
+  Console.print("hello, {name}")
+}
+
+test "prints a greeting" {
+  announce("Vow")
+  expect_output(["hello, Vow"])
+}
+```
 
 Any other effect the test body performs must be handled inside the test with `with`. Otherwise the compiler reports `V3020` (for example, "test uses Sql; install a handler with `with`"). A unit test cannot reach a real database or network by accident; the runner also denies network access.
 
@@ -154,7 +180,18 @@ property "normalize preserves membership"(xs: List<Int>, x: Int)
 { expect(List.contains(normalize(xs), x)) }
 ```
 
-A `requires` clause on a property restricts the generated inputs. Like every contract, it must be in the [contract subset](/docs/tour/contracts#the-contract-subset). Generators are derived from the parameter types. When that is not enough, `std/test` provides explicit generators such as `Gen.int(lo, hi)`.
+A `requires` clause on a property restricts the generated inputs. Like every contract, it must be in the [contract subset](/docs/tour/contracts#the-contract-subset). `property` parameters always use generators derived from their types. When that is not enough, write a `test` that drives explicit generators from `std/gen`:
+
+```vow
+import std/gen
+
+test "normalize output is strictly ascending" {
+  gen.for_all(gen.list(gen.int(-5, 5), 20), 200, fn(xs) {
+    let ys = normalize(xs)
+    expect(List.zip(ys, List.slice(ys, 1, List.len(ys))).all(fn(p) { p.0 < p.1 }))
+  })
+}
+```
 
 Runs are seeded. `vow test --json` reports one record per test with its seed, and `vow test --seed N --filter "normalize"` reruns a case.
 
@@ -166,13 +203,13 @@ Runs are seeded. `vow test --json` reports one record per test with its seed, an
 2. Runs the function under the test default handlers.
 3. Checks every `ensures` clause and the result's refinements.
 
-Failures are shrunk and stored under `tests/regressions/<fn>.json`. If filtering discards more than 90% of candidates, the runner warns with `W7001`. Functions that use effects other than `Fail`, `Clock`, and `Random` are skipped unless handlers are supplied with a `@contract_test(handlers = …)` attribute.
+Failures are shrunk and stored under `tests/regressions/<fn>.json`. If filtering discards more than 90% of candidates, the runner warns with `W7001`. Functions that use effects other than `Fail`, `Clock`, and `Random` are skipped unless handlers are supplied with a `@contract_test(handlers: [Sql.memory(), Log.captured()])` attribute.
 
 Given `clamp` from [Contracts](/docs/tour/contracts), `vow test --contracts` generates `(x, lo, hi)` with `lo <= hi` and checks `lo <= result && result <= hi` on each run.
 
 ## Snapshot tests
 
-`expect_snapshot` compares a value's `Show` output with a stored file at `tests/__snapshots__/<module>/<name>.snap`:
+`expect_snapshot` compares a value's [`Show` output](/docs/tour/types#show-output) with a stored file at `tests/__snapshots__/<module>/<name>.snap`. Here the stored snapshot is `[1, 2, 3]`:
 
 ```vow
 test "rendering is stable" {
@@ -198,7 +235,7 @@ The runner applies per-test time and memory limits and denies network access. `v
 ## What the compiler and runner check
 
 - Tests and properties are type and effect checked like any other code.
-- Every effect a test uses is handled, by a default or by a `with` in the test (`V3020`).
+- Every effect a test uses, other than `Fail`, is handled by a default or by a `with` in the test (`V3020`).
 - Generated arguments satisfy parameter types, refinements, and `requires`.
 - Test and property bodies are part of the frozen spec during agent repair (`V8020`), so an agent cannot edit a test to make it pass.
 

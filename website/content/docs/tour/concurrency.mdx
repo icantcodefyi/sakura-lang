@@ -3,18 +3,21 @@ title: Concurrency
 description: Structured concurrency with the Task effect, cooperative cancellation, timeouts, retries, budgets, and deterministic scheduling in Vow.
 ---
 
-<Callout type="warn" title="Designed for v0, not implemented yet">
-  This page describes the v0 design in [design §8.6–§8.7 and §5.9](https://github.com/icantcodefyi/vow/blob/master/docs/design.md). The compiler is under construction (milestone M0), so none of this code can be run yet.
+<Callout type="warn" title="Pre-alpha">
+  This page describes the v0 design in [design §8.6–§8.7 and §5.9](https://github.com/icantcodefyi/vow/blob/master/docs/design.md). The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet, so the `std/task` and `std/http` code below is planned.
 </Callout>
 
 Vow has no `async`/`await` keywords and no `Async` effect. Every Vow function may suspend, and nothing in application code can observe whether a call did. Suspension is a property of **handlers**: `Clock.sleep` suspends under the host clock and returns immediately under `Clock.fixed` (design §5.6).
 
-Running work concurrently is a different matter. That uses the `Task` effect, which is in the prelude.
+Running work concurrently is a different matter. That uses the `Task` effect from `std/task`, which is in the prelude.
 
 ## The `Task` effect
 
 ```vow
-effect Task {
+// std/task
+pub type Scope          // external, scoped
+pub type Fiber<T>       // external, scoped, affine
+pub effect Task {
   fn scope<T, e>(body: fn(Scope) -> T ! e) -> T ! e
   fn spawn<T, e>(s: Scope, body: fn() -> T ! e) -> Fiber<T> ! e
   fn join<T>(f: Fiber<T>) -> T
@@ -22,16 +25,22 @@ effect Task {
   fn race<T, e>(bodies: List<fn() -> T ! e>) -> T ! e
   fn yield_now() -> Unit
 }
+pub fn host() -> Handler<Task>
+pub fn deterministic(seed: Int) -> Handler<Task>
+pub fn par_map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! {Task | e}
 ```
 
-A function that uses these operations has `Task` in its row. The child bodies' rows flow into the caller's row through `e`.
+`Scope` and `Fiber<T>` are external types: the host runtime owns their representation and user code cannot construct them. A function that uses these operations has `Task` in its row. The child bodies' rows flow into the caller's row through `e`.
 
 ## Scopes
 
 `Task.scope` opens a scope. `Task.spawn` starts a child in it and returns a `Fiber<T>`. `Task.join` waits for the child's result.
 
 ```vow
-fn load_both(a: Url, b: Url) -> (Response, Response) ! {Http, Task, Fail<HttpError>} {
+import std/http.{Http, HttpError, RateLimited, Response}
+import std/url.{Url}
+
+fn load_both(a: Url, b: Url) -> (Response, Response) ! {Http, Task, Fail<HttpError | RateLimited>} {
   Task.scope(fn(s) {
     let fa = Task.spawn(s, fn() { Http.get(a) })
     let fb = Task.spawn(s, fn() { Http.get(b) })
@@ -46,11 +55,11 @@ Children never outlive their `Scope`. This gives three rules:
 - **Defects are observed, not caught.** `Task.scope` observes a child's defect as `Outcome.Defect(info)`. `try` cannot catch it (design §5.4).
 - **Resources are released.** A `Fiber<T>` is a resource: affine and bound to its scope (design §8.4).
 
-`Task.all` runs a list of thunks and returns their results in order. `Task.race` returns the result of the first to finish. `List.par_map` maps in parallel:
+`Task.all` runs a list of thunks and returns their results in order. `Task.race` returns the result of the first to finish. `Task.par_map`, a function of the `std/task` module, maps in parallel:
 
 ```vow
-fn fetch_all(urls: List<Url>) -> List<Response> ! {Http, Task, Fail<HttpError>} {
-  List.par_map(urls, fn(u) { Http.get(u) })
+fn fetch_all(urls: List<Url>) -> List<Response> ! {Http, Task, Fail<HttpError | RateLimited>} {
+  Task.par_map(urls, fn(u) { Http.get(u) })
 }
 ```
 
@@ -75,37 +84,46 @@ Children inherit the handler environment at spawn time. A handler's `var` state 
 
 ## No data races
 
-Values have value semantics and closures capture by value (design §8.1). There is no shared mutable memory, so data races cannot occur. Tasks communicate through `Channel<T>` (bounded; `send` and `recv` are `Task` operations) and through handler state. The full `Channel` API is not yet specified in design.md.
+Values have value semantics and closures capture by value (design §8.1). There is no shared mutable memory, so data races cannot occur. Tasks communicate through their results (`join`, `all`, `race`) and through handler state. There is no channel type in v0; bounded channels may be added as `Task` operations when a program needs streaming between fibers (design §16.13).
 
 Logical races with the outside world, such as two tasks reading and then writing the same database row, are still possible. The type system does not prove their absence.
 
 ## Detached work
 
-There is no fire-and-forget spawn. Work that must outlive its caller needs `Task.Supervisor`, a capability obtained only from `main`'s root handlers. A capability, or a handler that captured one, may not flow into a `Task.spawn` closure that outlives the current scope (`V6002`).
+There is no fire-and-forget spawn and no detached work in v0: every fiber belongs to a scope. A supervisor for long-running work is deferred (design §16.14). A capability, or a handler that captured one, may not flow into a `Task.spawn` closure whose scope outlives the `with` that produced it (`V6002`).
 
 ## Timeouts, retries, and budgets
 
 All three are ordinary std functions over thunks (design §5.9):
 
 ```vow
-fn retry<T, e>(policy: Retry.Policy, action: fn() -> T ! e) -> T ! {Clock, Random | e}
+// std/retry
+type Policy<E> = { retry_on: fn(E) -> Bool, max_attempts: Int, backoff: Duration, jitter: Bool, deadline: Option<Duration> }
+fn policy<E>(retry_on: fn(E) -> Bool, max_attempts: Int) -> Policy<E> requires max_attempts >= 1
+fn retry<T, E, e>(p: Policy<E>, action: fn() -> T ! {Fail<E> | e}) -> T ! {Clock, Random, Fail<E> | e}
+// std/task
+error Timeout(limit: Duration)
 fn timeout<T, e>(limit: Duration, action: fn() -> T ! e) -> T ! {Clock, Task, Fail<Timeout> | e}
-fn with_budget<T, e>(b: Budget.Limits, action: fn() -> T ! {Budget | e}) -> T ! {Fail<BudgetExceeded> | e}
+// std/budget: a handler, not a wrapper function
+type Limits = { tokens: Option<Int>, usd: Option<Float>, calls: Option<Int> }   // None = unlimited
+fn limits(l: Limits) -> Handler<Budget>
 ```
 
-- `retry` starts a **new invocation** per attempt. It never resumes a failed one. `retry_on` in the policy is a pure predicate over the action's error union. When attempts run out, the last error propagates; no extra "exhausted" tag is added. The std HTTP client refuses to retry non-idempotent methods without an idempotency key.
-- `timeout` cancels the action's task at its next effect operation, joins it, then fails with `Timeout`. Finalizers run.
+- `retry` starts a **new invocation** per attempt. It never resumes a failed one. `retry_on` is a pure predicate over the action's error union `E`, which is why `Policy` takes the error type as a parameter. `retry.policy(retry_on, max_attempts)` builds a policy with default backoff; the record fields can also be set directly. The first retry waits `backoff`, each later wait doubles, `jitter` randomizes the wait, and `deadline` bounds the total time. When attempts run out, the last error propagates; no extra "exhausted" tag is added. The std HTTP client refuses to retry non-idempotent methods without an idempotency key.
+- `timeout` cancels the action's task at its next effect operation, joins it, then fails with `Timeout { limit }`. Finalizers run. `std/task.Timeout` is the only timeout tag in std; `LlmError` reuses it.
 - `Budget` is an effect with `reserve` and `settle`. `Llm` and `Http` handlers consume it when it is installed. Exceeding it fails with `BudgetExceeded`, whose `kind` is `Tokens`, `Usd`, `Calls`, `Bytes`, or `Time`. Child tasks inherit the budget, split atomically.
 
 Together, from design §15.10:
 
 ```vow
-import std/http
+import std/http.{Http, HttpError, RateLimited, Response, Any}
+import std/url.{Url}
+import std/retry.{Policy, retry}
+import std/task.{Timeout, timeout}
 
-error Timeout
-fn fetch_both(a: Url, b: Url) -> (String, String) ! {Http, Task, Clock, Random, Fail<HttpError | Timeout>} {
-  let policy = Retry.Policy { retry_on: fn(e) { match e { RateLimited { .. } => true, _ => false } },
-                              max_attempts: 3, backoff: Duration.millis(200), jitter: true, deadline: None }
+fn fetch_both(a: Url, b: Url) -> (String, String) ! {Http, Task, Clock, Random, Fail<HttpError | RateLimited | Timeout>} {
+  let policy = Policy { retry_on: fn(e) { match e { RateLimited { .. } => true, _ => false } },
+                        max_attempts: 3, backoff: Duration.millis(200), jitter: true, deadline: None }
   timeout(Duration.seconds(5), fn() {
     Task.scope(fn(s) {
       let fa = Task.spawn(s, fn() { retry(policy, fn() { Response.text(Http.get(a), 1_000_000).trust(@trust("display only")) }) })
@@ -116,10 +134,11 @@ fn fetch_both(a: Url, b: Url) -> (String, String) ! {Http, Task, Clock, Random, 
 }
 ```
 
-A budget is installed as a handler. From `main` in design §15.7:
+A budget is installed as a handler and configured with a `Limits` record. From `main` in design §15.7:
 
 ```vow
-with Llm.anthropic(key, Model.of("claude-sonnet-5-5")), Budget.limits(tokens: 20_000, usd: 0.50) {
+let limits = Limits { tokens: Some(20_000), usd: Some(0.50), calls: None }
+with Llm.anthropic(key, Model.of("claude-sonnet-5-5")), Budget.limits(limits) {
   let t = extract_ticket(Untrusted.of("Login page 500s since 9am, blocking all customers"))
   Console.print("{t.priority}: {t.title}")
 }
@@ -147,7 +166,8 @@ The first backend compiles to JavaScript with a CPS trampoline and is single-thr
 
 - An `Async` effect, `async`/`await`, or colored functions (design §5.6).
 - Durable workflows. They are a later official package, not part of the language (design §1.1, §11.3).
-- Actors. `spawn` and `actor` are reserved keywords.
+- Actors. `spawn` and `actor` are reserved keywords (`Task.spawn` is legal because a reserved word is accepted after `.`).
+- Channels, and detached or supervised tasks.
 - Shared mutable state or locks in user code.
 
 ## What the compiler checks
