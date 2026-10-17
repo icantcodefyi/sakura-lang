@@ -1,0 +1,7 @@
+// milestone: M3
+// expect: V5004
+// expect-span: V5004 7:18
+// spec: §4.3, §17.87
+type Percent = Int where it >= 0 && it <= 100
+
+let p: Percent = 150

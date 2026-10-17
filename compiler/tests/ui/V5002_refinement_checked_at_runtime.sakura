@@ -1,6 +1,0 @@
-// milestone: M3
-// expect: V5002
-// spec: §4.3, §17.71
-type Email = String where it != ""
-
-let support: Email = "help@sakura.dev"

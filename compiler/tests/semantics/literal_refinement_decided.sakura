@@ -1,0 +1,14 @@
+// milestone: M3
+// covers: TypeDecl LetStmt
+// spec: §4.3, §17.87
+import std/path.{Path}
+import std/response.{Status}
+
+type Email = String where String.len(it) <= 254 && String.contains(it, "@")
+
+pub fn main() -> Unit ! {Console} {
+  let notes: Path = "notes/today.txt"
+  let missing: Status = 404
+  let owner: Email = "ada@example.com"
+  Console.print("{Path.to_string(notes)} {missing} {owner}")
+}
