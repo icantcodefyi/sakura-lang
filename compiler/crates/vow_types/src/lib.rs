@@ -77,7 +77,9 @@ pub struct TypedBody {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CallTarget {
     /// A top-level function, constructor or effect operation called by name (the callee
-    /// expression is a `Path`). Arguments are exactly the call's arguments.
+    /// expression is a `Path`). Arguments are exactly the call's arguments. On `Index` it is
+    /// `List.get` applied to `[base, index]`; on `Template` the tag's `template` applied to
+    /// `[parts, args]` (§4.11).
     Def(DefId),
     /// `recv.f(args)` resolved through the receiver type's home module (§4.9 rule 5): call
     /// `def` with `[recv, args..]`.
