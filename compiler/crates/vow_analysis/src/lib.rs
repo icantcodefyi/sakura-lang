@@ -6,6 +6,18 @@
 
 use vow_diagnostics::{Diagnostic, FileId, Phase, SourceFile, Span, codes, sha256};
 
+mod std_files {
+    include!(concat!(env!("OUT_DIR"), "/std_files.rs"));
+}
+
+/// The std library sources (`compiler/std`, embedded at build time) as `(uri, text)` pairs with
+/// URIs `vow:///std/<path>`.
+pub fn std_sources() -> impl Iterator<Item = (String, String)> {
+    std_files::STD_FILES
+        .iter()
+        .map(|(path, text)| (format!("vow:///std/{path}"), (*text).to_owned()))
+}
+
 /// An immutable set of source files plus the hash that identifies it (`snapshot` in JSON).
 #[derive(Clone, Debug)]
 pub struct Snapshot {
@@ -99,6 +111,12 @@ fn unavailable(file: FileId, phase: &str) -> Diagnostic {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn std_is_embedded() {
+        let std: Vec<_> = std_sources().collect();
+        assert!(std.iter().any(|(uri, _)| uri == "vow:///std/core.vow"));
+    }
 
     #[test]
     fn snapshot_is_order_independent_and_content_addressed() {
