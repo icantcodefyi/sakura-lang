@@ -21,6 +21,17 @@ export const OPS = ["record_failure", "failures", "output", "output_lines", "sna
 // `Test.fixtures()`: `tests/fixtures` next to the snapshot directory, writable only under
 // `SAKURA_RECORD=1` (`sakura test --record`, design §17.73).
 const fixtures = snapshotDir === "" ? "" : path.join(snapshotDir, "..", "fixtures");
+// `sakura test --contracts` (design §7.4): `tests/regressions/<fn>.json` is replayed first; a new
+// shrunk failure goes to the CLI as a `regression` record, and the CLI writes the file.
+const regressions = snapshotDir === "" ? "" : path.join(snapshotDir, "..", "regressions");
+$rt.regressions.load = (name) => {
+  try {
+    return regressions === "" ? null : fs.readFileSync(path.join(regressions, `${name}.json`), "utf8");
+  } catch {
+    return null;
+  }
+};
+$rt.regressions.save = (name, text) => emit({ kind: "regression", name, text });
 
 /**
  * `tests/__snapshots__/<module>/<name>.snap` holds `rendered` plus a newline; `<module>` is the

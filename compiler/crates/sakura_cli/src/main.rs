@@ -193,6 +193,10 @@ struct TestFlags {
     /// cassettes.
     #[arg(long)]
     record: bool,
+    /// Also run a synthesized property for every `pub fn` with a refined parameter or a
+    /// `requires` clause (design §7.4); shrunk failures go to `tests/regressions/<fn>.json`.
+    #[arg(long)]
+    contracts: bool,
 }
 
 #[derive(Subcommand)]
@@ -469,7 +473,7 @@ fn run(path: Option<PathBuf>, out_dir: &Path, args: &[String]) -> ExitCode {
     };
     let opts = BuildOptions {
         need_entry: true,
-        std_tests: false,
+        ..BuildOptions::default()
     };
     let dir = match build(false, &snapshot, out_dir, opts, true) {
         Ok(d) => d,
@@ -527,6 +531,7 @@ fn test(
         ref filter,
         update_snapshots,
         record,
+        contracts,
     } = *flags;
     let filter = filter.as_deref().unwrap_or("");
     let net = if record {
@@ -548,6 +553,7 @@ fn test(
     let opts = BuildOptions {
         need_entry: false,
         std_tests: std_tests || testing::only_std(snapshot),
+        contract_tests: contracts,
     };
     let dir = match build(json, snapshot, out_dir, opts, true) {
         Ok(d) => d,
@@ -574,10 +580,28 @@ fn test(
         Ok(run) => run,
         Err(e) => return usage_error(e),
     };
+    let regressions = snapshots.with_file_name("regressions");
+    let (stdout, warnings) = match testing::contract_outcomes(snapshot, &run.stdout, &regressions) {
+        Ok(r) => r,
+        Err(e) => return usage_error(e),
+    };
     if json {
-        print!("{}", run.stdout);
+        // `W7001` records go before the runner's closing `summary` record.
+        let records = diagnostic_records(&warnings, snapshot.files(), snapshot.hash());
+        for line in stdout.lines() {
+            if line.contains(r#""kind":"summary""#) {
+                for r in &records {
+                    println!("{r}");
+                }
+            }
+            println!("{line}");
+        }
     } else {
-        print_test_results(&run.stdout);
+        print_test_results(&stdout);
+        eprint!(
+            "{}",
+            render_human(&warnings, &display_files(snapshot.files()))
+        );
     }
     match run.status {
         None => {

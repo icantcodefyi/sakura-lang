@@ -35,6 +35,9 @@ pub fn emit(
         }
         std::fs::write(&path, text).map_err(|e| format!("{}: {e}", path.display()))
     };
+    // A build without tests emits no `__tests__.js`; one from an earlier build (say with
+    // `--contracts`) must not run instead.
+    let _ = std::fs::remove_file(out_dir.join("__tests__.js"));
     for (rel, text) in &files {
         write(rel, text).map_err(Err)?;
     }
@@ -70,6 +73,11 @@ pub fn run_node_tests(
         .arg(format!(
             "--allow-fs-read={}",
             snapshots.with_file_name("fixtures").display()
+        ))
+        // Contract regressions (design §7.4), replayed first; the CLI writes new ones.
+        .arg(format!(
+            "--allow-fs-read={}",
+            snapshots.with_file_name("regressions").display()
         ));
     // Node's permission model cannot create a granted directory itself.
     let writable = |cmd: &mut std::process::Command, d: &Path| {
@@ -135,8 +143,8 @@ pub fn mcp_run_tests(
         &snapshot.hash()[7..23]
     ));
     let opts = BuildOptions {
-        need_entry: false,
         std_tests: only_std(snapshot),
+        ..BuildOptions::default()
     };
     let built = match emit(snapshot, &dir, &opts) {
         Err(Err(e)) => return Err(e),
@@ -179,6 +187,71 @@ pub fn mcp_run_tests(
             .collect(),
         timed_out: run.status.is_none(),
     })
+}
+
+/// `sakura test --contracts` (design §7.4) over the runner's output: writes each `regression`
+/// record to `<regressions>/<fn>.json` and drops it, and turns a synthesized `contract: <fn>`
+/// test that gave up on its discard budget into `W7001` at the function's name.
+pub fn contract_outcomes(
+    snapshot: &Snapshot,
+    stdout: &str,
+    regressions: &Path,
+) -> Result<(String, Vec<Diagnostic>), String> {
+    let mut kept = String::new();
+    let mut gave_up = Vec::new();
+    for line in stdout.lines() {
+        let r: serde_json::Value = serde_json::from_str(line).unwrap_or_default();
+        let s = |k: &str| r[k].as_str().unwrap_or("");
+        if r["kind"] == "regression" {
+            let path = regressions.join(format!("{}.json", s("name")));
+            std::fs::create_dir_all(regressions)
+                .and_then(|()| std::fs::write(&path, s("text")))
+                .map_err(|e| format!("{}: {e}", path.display()))?;
+            continue;
+        }
+        if r["kind"] == "test"
+            && let Some(name) = s("name").strip_prefix("contract: ")
+            && let Some(why) = r["failures"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .find_map(|f| f.as_str()?.strip_prefix("property gave up: "))
+        {
+            gave_up.push((s("module").to_owned(), name.to_owned(), why.to_owned()));
+        }
+        kept.push_str(line);
+        kept.push('\n');
+    }
+    if gave_up.is_empty() {
+        return Ok((kept, Vec::new()));
+    }
+    let analyzed = Analysis::analyze(snapshot);
+    let program = &analyzed.program;
+    let warnings = gave_up
+        .into_iter()
+        .filter_map(|(module, name, why)| {
+            let m = program.modules.iter().enumerate().find(|(_, m)| {
+                format!(
+                    "{}::{}",
+                    program.packages[m.package.0 as usize].name, m.path
+                ) == module
+            })?;
+            let def = program.lookup(sakura_hir::ModuleId(m.0 as u32), &name)?;
+            let range = program.def(def).range;
+            let d = Diagnostic::warning(
+                sakura_diagnostics::codes::W7001,
+                sakura_diagnostics::Phase::Verify,
+                format!("the contract property of `{name}` gave up: {why}"),
+            )
+            .with_span(sakura_diagnostics::Span::primary(
+                m.1.file,
+                range.start().into(),
+                range.end().into(),
+            ));
+            Some(d)
+        })
+        .collect();
+    Ok((kept, warnings))
 }
 
 /// Whether `snapshot` holds only std modules (`sakura test std/list.sakura`, or a std checkout as the

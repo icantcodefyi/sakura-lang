@@ -10,6 +10,7 @@ use sakura_analysis::{Analysis, BuildOptions, Snapshot};
 const ENTRY: BuildOptions = BuildOptions {
     need_entry: true,
     std_tests: false,
+    contract_tests: false,
 };
 use sakura_eval::{Limits, Stop, run_main};
 

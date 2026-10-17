@@ -498,6 +498,8 @@ pub struct BuildOptions {
     pub need_entry: bool,
     /// Also compile std's own `test` blocks (for `sakura test --std`).
     pub std_tests: bool,
+    /// Synthesize a property per contracted `pub fn` (`sakura test --contracts`, design §7.4).
+    pub contract_tests: bool,
 }
 
 /// The result of [`Analysis::build_js`]: every diagnostic, and the emitted files if there were no
@@ -569,7 +571,7 @@ impl Analysis {
         }
         let lower = sakura_core::LowerOptions {
             std_tests: opts.std_tests,
-            ..Default::default()
+            contract_tests: opts.contract_tests,
         };
         let lowered = sakura_core::lower(program, typed, &lower);
         diagnostics.extend(lowered.diagnostics);

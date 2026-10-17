@@ -572,3 +572,78 @@ test "fixtures are writable while recording" {
         "x"
     );
 }
+
+/// Design §7.4 (gate 6): `sakura test --contracts` runs a synthesized property per contracted
+/// `pub fn`, reports one that gives up as a `W7001` record before the summary, writes a shrunk
+/// failure to `tests/regressions/<fn>.json`, and replays that file first on the next run.
+#[test]
+fn test_contracts_report_w7001_and_replay_regressions() {
+    let dir = tmp(
+        "contracts",
+        r#"type Percent = Int where it >= 0 && it <= 100
+
+pub fn scale(total: Int, p: Percent) -> Int
+  requires total >= 0
+  ensures result <= total
+{
+  total * p / 50
+}
+
+pub fn exact(x: Int) -> Int
+  requires x == 123_456
+{ x }
+"#,
+    );
+    let _ = std::fs::remove_dir_all(dir.join("tests"));
+    let out = sakura(&["test", "--contracts", "--json", "main.sakura"], &dir);
+    assert_eq!(out.code, Some(3), "{}{}", out.stdout, out.stderr);
+    let recs = common::json_lines(&out.stdout).unwrap();
+    let kinds: Vec<&str> = recs.iter().map(|r| r["kind"].as_str().unwrap()).collect();
+    assert_eq!(
+        kinds,
+        ["test", "test", "diagnostic", "summary"],
+        "{}",
+        out.stdout
+    );
+    assert_eq!(recs[0]["name"], "contract: scale");
+    let failure = recs[0]["failures"][0].as_str().unwrap();
+    assert!(
+        failure.starts_with("property falsified by total = ") && failure.contains("defect D021"),
+        "{failure}"
+    );
+    let w = &recs[2];
+    assert_eq!(
+        (w["code"].as_str(), w["severity"].as_str()),
+        (Some("W7001"), Some("warning"))
+    );
+    let text = std::fs::read_to_string(dir.join("main.sakura")).unwrap();
+    let start = w["spans"][0]["start_byte"].as_u64().unwrap() as usize;
+    let end = w["spans"][0]["end_byte"].as_u64().unwrap() as usize;
+    assert_eq!(&text[start..end], "exact");
+
+    let file = dir.join("tests/regressions/scale.json");
+    let stored: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&file).unwrap()).unwrap();
+    assert_eq!(stored["function"], "scale");
+    assert!(stored["inputs"]["total"].is_i64() && stored["inputs"]["p"].is_i64());
+
+    // The stored input runs first: an edited regression is the reported counterexample.
+    std::fs::write(&file, r#"{"inputs": {"total": 1, "p": 100}}"#).unwrap();
+    let again = sakura(&["test", "--contracts", "main.sakura"], &dir);
+    assert_eq!(again.code, Some(3), "{}{}", again.stdout, again.stderr);
+    assert!(
+        again
+            .stdout
+            .contains("property falsified by total = 1, p = 100: defect D021")
+            && again.stdout.contains("(stored regression replayed)"),
+        "{}",
+        again.stdout
+    );
+    assert!(again.stderr.contains("warning[W7001]"), "{}", again.stderr);
+
+    // Without the flag there are no synthesized tests (and no stale ones from the last build).
+    let plain = sakura(&["test", "main.sakura"], &dir);
+    assert_eq!(plain.code, Some(0), "{}{}", plain.stdout, plain.stderr);
+    assert!(plain.stderr.contains("no tests"), "{}", plain.stderr);
+}
+
