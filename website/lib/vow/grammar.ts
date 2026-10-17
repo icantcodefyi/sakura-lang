@@ -180,28 +180,30 @@ export const vowGrammar: LanguageRegistration = {
       patterns: [{ include: "#nested-braces" }, { include: "$self" }],
     },
     // §2.1 keywords, grouped by role. Reserved words (`V0007`) are marked invalid.
+    // A keyword directly after `.` or `/` is a member or module segment (`Task.spawn`,
+    // `std/test`), and a reserved word directly after `fn` is an operation name.
     keywords: {
       patterns: [
         {
           name: "keyword.control.vow",
-          match: "\\b(if|else|match|for|in|while|return|break|continue|fail|try|catch)\\b",
+          match: "(?<![./])\\b(if|else|match|for|in|while|return|break|continue|fail|try|catch)\\b",
         },
         {
           name: "keyword.other.effect.vow",
-          match: "\\b(with|handler|effect)\\b",
+          match: "(?<![./])\\b(with|handler|effect)\\b",
         },
         {
           name: "keyword.other.contract.vow",
-          match: "\\b(requires|ensures|where)\\b",
+          match: "(?<![./])\\b(requires|ensures|where)\\b",
         },
         {
           name: "keyword.other.vow",
-          match: "\\b(fn|let|var|type|error|test|property|import|pub|as)\\b",
+          match: "(?<![./])\\b(fn|let|var|type|error|test|property|import|pub|opaque|as)\\b",
         },
         {
           name: "invalid.illegal.reserved.vow",
           match:
-            "\\b(verify|proof|ghost|control|resume|region|spawn|actor|interface|impl)\\b(?!\\s*\\()",
+            "(?<![./])\\b(verify|proof|ghost|control|resume|region|spawn|actor|interface|impl)\\b(?!\\s*\\()",
         },
         {
           // Bound by `where` (it) and `ensures` (result).

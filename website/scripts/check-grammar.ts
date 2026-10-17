@@ -4,6 +4,8 @@ import { vowGrammar } from "../lib/vow/grammar";
 import { vowDark, vowLight } from "../lib/vow/themes";
 
 const code = `/// Doc comment
+import std/test.{Test}
+pub opaque type Email = Email(String)
 /* outer /* nested */ still comment */
 type Percent = Int where it >= 0 && it <= 100
 error EmailTaken(email: Email)
@@ -18,7 +20,10 @@ fn signup(email: Email, pw: Password) -> User ! {Db, Clock, Fail<EmailTaken | Ba
 }
 fn map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! e {
   with handler Counter { var n = 0; fn next() { n = n + 1; n } } { Task.spawn(s, f) }
-}`;
+}
+effect Task { fn spawn<T, e>(s: Scope, body: fn() -> T ! e) -> Fiber<T> ! e }
+@total
+fn len(xs: List<Int>) -> Int { List.len(xs) }`;
 
 const hl = await createHighlighter({ langs: [vowGrammar], themes: [vowDark, vowLight] });
 const tokens = hl
@@ -63,6 +68,11 @@ const expect: [string, string, number?][] = [
   ["handler", "keyword.other.effect.vow"],
   ["Counter", "support.type.effect.vow"],
   ["spawn", "entity.name.function.call.vow"],
+  ["spawn", "entity.name.function.vow", 1],
+  ["opaque", "keyword.other.vow"],
+  ["Email", "entity.name.type.vow"],
+  ["test", "source.vow"], // a module segment, not the keyword,
+  ["total", "entity.other.attribute-name.vow"],
 ];
 let bad = 0;
 for (const [text, scope, nth] of expect) {
