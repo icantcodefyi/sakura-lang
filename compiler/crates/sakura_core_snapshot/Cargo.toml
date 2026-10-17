@@ -1,0 +1,23 @@
+[package]
+name = "sakura_core_snapshot"
+description = "sakura-core-snapshot-v1: the committed, lossless copy of Core that M4 crates read before the M3 gates."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[features]
+# The converter from live Core; only the `SAKURA_BLESS=1` tests enable it (as a dev-dependency).
+convert = ["dep:sakura_analysis", "dep:sakura_core", "dep:sakura_hir"]
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+sakura_analysis = { workspace = true, optional = true }
+sakura_core = { workspace = true, optional = true }
+sakura_hir = { workspace = true, optional = true }
+
+[lints]
+workspace = true

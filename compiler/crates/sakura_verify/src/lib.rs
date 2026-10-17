@@ -2,11 +2,12 @@
 //! Core contract checks and checked arithmetic, their SMT-LIB2 encoding, and the status record of
 //! each obligation.
 //!
-//! Before the M3 gates this crate reads committed Core snapshots ([`core`]) instead of
-//! `sakura_core`; nothing here can remove a runtime check (the removal hook is V3).
+//! Before the M3 gates this crate reads committed Core snapshots ([`core`], the
+//! `sakura_core_snapshot` crate) instead of `sakura_core`; nothing here can remove a runtime
+//! check (the removal hook is V3).
 
 pub mod cache;
-pub mod core;
+pub use sakura_core_snapshot as core;
 pub mod record;
 pub mod smt;
 pub mod solver;

@@ -387,12 +387,6 @@ fn has_loop(b: &Block) -> bool {
     any(b)
 }
 
-impl Def {
-    pub fn local(&self, l: Local) -> &LocalDecl {
-        &self.locals[l as usize]
-    }
-}
-
 #[derive(Clone, Debug, PartialEq)]
 enum Val {
     Int(Term),

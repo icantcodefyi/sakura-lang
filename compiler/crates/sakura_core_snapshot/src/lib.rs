@@ -1,12 +1,16 @@
-//! A committed, lossless copy of Core (`sakura_core::ir`) that the verifier reads instead of a
-//! live `sakura_core` dependency (plan §3.5: M4 work before the M3 gates must not follow M0–M3
-//! churn). The JSON form is `sakura-core-snapshot-v1`; `tests/bless.rs` writes it from the real
+//! `sakura-core-snapshot-v1` (design §17.107): a committed, lossless copy of Core
+//! (`sakura_core::ir`) that M4 crates (`sakura_verify`, `sakura_lir`) read instead of a live
+//! `sakura_core` dependency (plan §3.5: M4 work before the M3 gates must not follow M0–M3 churn).
+//! [`convert`] (feature `convert`, enabled only by `SAKURA_BLESS=1` tests) writes it from the real
 //! frontend.
 //!
 //! The data mirrors `sakura_core::ir` field by field, with two changes. Expressions are flattened
 //! into blocks (a list of statements and one terminator) so a long `let` chain does not nest, and
 //! the snapshot adds what Core erases but the verifier needs: each def's refined parameters
 //! ([`Def::refined_params`]), taken from the HIR signature.
+
+#[cfg(feature = "convert")]
+pub mod convert;
 
 use serde::{Deserialize, Serialize};
 
@@ -379,6 +383,10 @@ pub struct RefinedParam {
 }
 
 impl Def {
+    pub fn local(&self, l: Local) -> &LocalDecl {
+        &self.locals[l as usize]
+    }
+
     pub fn symbol_id(&self) -> String {
         format!("{}::{}", self.module, self.name)
     }
