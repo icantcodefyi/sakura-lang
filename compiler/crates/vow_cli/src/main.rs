@@ -100,7 +100,38 @@ const LLMS_TXT: &str = include_str!("../../../../docs/llms.txt");
 
 fn main() -> ExitCode {
     let cli = Cli::parse();
-    match cli.command {
+    let json = matches!(
+        cli.command,
+        Command::Check { json: true, .. }
+            | Command::Build { json: true, .. }
+            | Command::Test { json: true, .. }
+    );
+    // A compiler bug must still produce a diagnostic (and valid JSON Lines), never a bare panic.
+    std::panic::catch_unwind(move || dispatch(cli.command)).unwrap_or_else(|panic| {
+        let what = panic
+            .downcast_ref::<&str>()
+            .map(|s| s.to_string())
+            .or_else(|| panic.downcast_ref::<String>().cloned())
+            .unwrap_or_default();
+        let d = Diagnostic::error(
+            codes::V9001,
+            vow_diagnostics::Phase::Internal,
+            format!("internal compiler error: {what}"),
+        );
+        if json {
+            println!(
+                "{}",
+                vow_diagnostics::render_json_lines(&[d], &[], "sha256:unknown").trim_end()
+            );
+        } else {
+            eprint!("{}", render_human(&[d], &[]));
+        }
+        ExitCode::from(EXIT_ERRORS)
+    })
+}
+
+fn dispatch(command: Command) -> ExitCode {
+    match command {
         Command::Check { json, paths } => check(json, &paths),
         Command::Build {
             json,
