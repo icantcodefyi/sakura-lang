@@ -61,10 +61,15 @@ table! {
     Direct console_host/0, Direct console_print/1, Direct console_read_line/0,
     Direct clock_now_ms/0, Direct clock_monotonic_ms/0, Cps clock_sleep_ms/1,
     Direct random_int/2, Direct random_float/0, Direct random_bytes/1, Direct random_uuid/0,
-    Direct prng_next/1, Direct prng_float/1, Direct prng_int/3,
     Direct env_get/1, Direct log_write/1,
-    // Tasks
-    Cps defect_catch/1,
+    Direct clock_host/0, Direct random_host/0, Direct log_stderr/0, Direct log_json/0,
+    // Show (dynamic; calls with a known type lower to `PrimOp::Show`)
+    Direct show/1,
+    // Bytes
+    Direct bytes_len/1, Direct bytes_get/2, Direct bytes_from_list/1, Direct string_from_bytes/1,
+    Direct set_len/1,
+    // Tasks and tests
+    Cps defect_catch/1, Cps test_expect_defect/1,
 }
 
 pub fn lookup(name: &str) -> Option<&'static Builtin> {

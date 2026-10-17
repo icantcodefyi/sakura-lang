@@ -406,6 +406,23 @@ export function Err(e) {
   return new Result(1, [e]);
 }
 
+/**
+ * Classes of Vow-declared types, by qualified name, registered by emitted modules so host
+ * functions can build std values (`Instant`, `Uuid`, `Utf8Error`, …).
+ */
+const types = new Map();
+export function def(id, cls) {
+  types.set(id, cls);
+}
+function std(id) {
+  const cls = types.get(id);
+  if (cls === undefined) throw internal(`std type ${id} is not loaded`);
+  return cls;
+}
+function variant(id, tag, fields) {
+  return new (std(id))(tag, fields);
+}
+
 // ---------------------------------------------------------------------------------------------
 // Show (design §4.8). `h` is a type hint built from Core types: "F" Float, "I" Int,
 // ["T", h…] tuple, ["L", h] list, ["M", hk, hv] map, ["S", h] set, ["A", [args]] named type,
@@ -415,7 +432,7 @@ export function Err(e) {
 // reps for Show-constrained parameters if that shows up in practice.
 
 /** Interpolation and `show`: top-level strings are raw. */
-export function show(v, h) {
+export function show(v, h = null) {
   return typeof v === "string" ? v : showIn(v, h, null);
 }
 
@@ -990,6 +1007,52 @@ function unitIndex(s, byte) {
 export function string_to_bytes(s) {
   return new TextEncoder().encode(s);
 }
+let utf8;
+/** `Err(Utf8Error { offset })` at the first invalid byte. */
+export function string_from_bytes(b) {
+  utf8 ??= new TextDecoder("utf-8", { fatal: true });
+  try {
+    return Ok(utf8.decode(b));
+  } catch {
+    const offset = validUtf8Prefix(b);
+    const E = std("std::string::Utf8Error");
+    return Err(new E(offset));
+  }
+}
+function validUtf8Prefix(b) {
+  const loose = new TextDecoder("utf-8");
+  let lo = 0;
+  let hi = b.length;
+  // The longest prefix that decodes without U+FFFD replacements ends at the first bad byte.
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (!loose.decode(b.subarray(0, mid), { stream: true }).includes("\ufffd")) lo = mid;
+    else hi = mid - 1;
+  }
+  return lo;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Bytes, Set extras
+
+export function bytes_len(b) {
+  return b.length;
+}
+export function bytes_get(b, i) {
+  return i >= 0 && i < b.length ? Some(b[i]) : None;
+}
+export function bytes_from_list(xs) {
+  const b = new Uint8Array(xs.n);
+  for (let i = 0; i < xs.n; i++) {
+    const x = xs.a[i];
+    requires(x >= 0 && x <= 255, "Bytes.from_list", "every element in 0..=255");
+    b[i] = x;
+  }
+  return b;
+}
+export function set_len(s) {
+  return s.m.size;
+}
 
 // ---------------------------------------------------------------------------------------------
 // Option
@@ -1122,26 +1185,80 @@ function uniformBelow(range, draw) {
   }
 }
 
-/**
- * Deterministic generator for `Random.seeded` (mulberry32): `prng_next` advances a 32-bit
- * state; `prng_float` / `prng_int` derive an output from a state.
- */
-export function prng_next(state) {
-  return (state + 0x6d2b79f5) >>> 0;
+/** Root handler for `std::clock::Clock` (now, monotonic, sleep); times in milliseconds. */
+export function clock_host() {
+  return new Handler(
+    "std::clock::Clock",
+    [
+      (_i, _ctx, k) => ret(k, variant("std::instant::Instant", 0, [clock_now_ms()])),
+      (_i, _ctx, k) => ret(k, variant("std::duration::Duration", 0, [clock_monotonic_ms()])),
+      (_i, d, ctx, k) => clock_sleep_ms(d.fields[0], ctx, k),
+    ],
+    [],
+  );
 }
-function mulberry(state) {
-  let t = Math.imul(state ^ (state >>> 15), 1 | state);
-  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+
+/** Root handler for `std::random::Random` (int, float, bytes, uuid). */
+export function random_host() {
+  return new Handler(
+    "std::random::Random",
+    [
+      (_i, lo, hi, _ctx, k) => ret(k, random_int(lo, hi)),
+      (_i, _ctx, k) => ret(k, random_float()),
+      (_i, n, _ctx, k) => ret(k, random_bytes(n)),
+      (_i, _ctx, k) => ret(k, variant("std::uuid::Uuid", 0, [random_uuid()])),
+    ],
+    [],
+  );
 }
-/** A float in [0, 1). */
-export function prng_float(state) {
-  return mulberry(state);
+
+/** `std::log::Log` to stderr: `Warn message key=value…` per event. */
+export function log_stderr() {
+  const event = (_i, level, message, fields, _ctx, k) => {
+    const kv = items(fields).map(([key, j]) => ` ${key}=${show(j)}`);
+    writeErr(`${show(level)} ${message}${kv.join("")}`);
+    return ret(k, undefined);
+  };
+  return new Handler("std::log::Log", [event], []);
 }
-/** An int in [lo, hi]. ponytail: 32 bits of entropy, slightly biased for huge ranges. */
-export function prng_int(state, lo, hi) {
-  requires(lo <= hi, "Random.int", "lo <= hi");
-  return lo + Math.floor(mulberry(state) * (hi - lo + 1));
+
+/** `std::log::Log` as JSON lines on stderr: {"level","message","fields"}. */
+export function log_json() {
+  const event = (_i, level, message, fields, _ctx, k) => {
+    const f = {};
+    for (const [key, j] of items(fields)) f[key] = jsonToJs(j);
+    writeErr(JSON.stringify({ level: show(level), message, fields: f }));
+    return ret(k, undefined);
+  };
+  return new Handler("std::log::Log", [event], []);
+}
+
+/** std/json `Json` (Null | Bool | Number | String | Array | Object) to a plain JS value. */
+function jsonToJs(j) {
+  switch (j.tag) {
+    case 0:
+      return null;
+    case 1:
+    case 2:
+    case 3:
+      return j.fields[0];
+    case 4:
+      return items(j.fields[0]).map(jsonToJs);
+    default: {
+      const o = {};
+      for (const [k, v] of j.fields[0].m.values()) o[k] = jsonToJs(v);
+      return o;
+    }
+  }
+}
+
+/** `expect_defect` for std/test: records a failure through `Test.record_failure` (op 0). */
+export function test_expect_defect(body, ctx, k) {
+  return defect_catch(body, ctx, (r) =>
+    r.tag === 1
+      ? ret(k, undefined)
+      : perform(ctx, "std::test::Test", 0, ["expected a defect, but the body returned"], k),
+  );
 }
 
 export function env_get(key) {

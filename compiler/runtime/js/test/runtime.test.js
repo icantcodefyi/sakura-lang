@@ -250,14 +250,16 @@ test("String lengths and offsets are UTF-8 bytes", () => {
   assert.equal(rt.quote('a"\n'), '"a\\"\\n"');
 });
 
-test("seeded generator is deterministic", () => {
-  let s = 42;
-  const draws = [];
-  for (let i = 0; i < 3; i++) {
-    s = rt.prng_next(s);
-    draws.push(rt.prng_int(s, 1, 6));
+test("host-built std values use registered classes", () => {
+  class Utf8Error {
+    constructor(offset) {
+      this.offset = offset;
+    }
   }
-  assert.deepEqual(draws, [draws[0], draws[1], draws[2]]);
-  assert.ok(draws.every((d) => d >= 1 && d <= 6));
-  assert.equal(rt.prng_next(1), rt.prng_next(1));
+  Utf8Error.prototype.$t = rt.recordType("Utf8Error", "std::string", [["offset", "offset", "I"]], true);
+  rt.def("std::string::Utf8Error", Utf8Error);
+  assert.deepEqual(rt.string_from_bytes(rt.string_to_bytes("hé")), rt.Ok("hé"));
+  const bad = rt.string_from_bytes(new Uint8Array([104, 105, 0xff, 33]));
+  assert.equal(rt.show(bad), "Err(Utf8Error { offset: 2 })");
+  assert.throws(() => rt.bytes_from_list(rt.list([256])), { code: "D020" });
 });

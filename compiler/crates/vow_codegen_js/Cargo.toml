@@ -10,6 +10,10 @@ publish.workspace = true
 
 [dependencies]
 vow_core.workspace = true
+vow_diagnostics.workspace = true
+
+[dev-dependencies]
+insta.workspace = true
 
 [lints]
 workspace = true

@@ -830,7 +830,9 @@ dependencies = [
 name = "vow_codegen_js"
 version = "0.0.0"
 dependencies = [
+ "insta",
  "vow_core",
+ "vow_diagnostics",
 ]
 
 [[package]]
