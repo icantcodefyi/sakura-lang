@@ -211,6 +211,15 @@ const CASES: &[(&str, &str, &[&str])] = &[
         "fn f(c: Bool) -> Int { if c { 1 } }",
         &["V2001"],
     ),
+    // Cascades: an unresolved name is reported once, by name resolution.
+    ("unresolved tag in fail", "fn f() -> Int { fail Nope }", &["V1002"]),
+    (
+        "unresolved constructor pattern",
+        "fn f(o: Option<Int>) -> Int { match o { Nope(x) => x, None => 0, Some(y) => y } }",
+        &["V1002"],
+    ),
+    ("unresolved callee", "fn f() -> Int { nope(1) + 2 }", &["V1002"]),
+    ("unresolved type", "fn f(x: Nope) -> Int { x.size }", &["V1003"]),
 ];
 
 #[test]

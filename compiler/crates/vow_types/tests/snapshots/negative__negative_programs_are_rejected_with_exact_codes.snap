@@ -205,3 +205,18 @@ V2015 7:61 expected `Result<Never, A>`, found `Result<Never, B>` (`B` is not `A`
 V2001 7:31 expected `Unit`, found `Int`
   expected: Unit
   actual: Int
+
+## unresolved tag in fail
+V1002 7:22 cannot find `Nope` in this scope; did you mean `None`?
+  fix (MachineApplicable, Local): Use `None` "None"
+
+## unresolved constructor pattern
+V1002 7:41 cannot find `Nope` in this scope; did you mean `None`?
+  fix (MachineApplicable, Local): Use `None` "None"
+
+## unresolved callee
+V1002 7:17 cannot find `nope` in this scope
+
+## unresolved type
+V1003 7:9 cannot find type `Nope` in this scope; did you mean `None`?
+  fix (MachineApplicable, Local): Use `None` "None"
