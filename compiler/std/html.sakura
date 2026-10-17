@@ -4,7 +4,6 @@
 // needs M3: `html"…"` template arguments of type `Html` inserted as markup (a conversion like
 // `SqlValue.from` for `sql"…"`); today every interpolated value is escaped text.
 
-import std/core.{Trust}
 
 pub opaque type Html = Html(String)
 

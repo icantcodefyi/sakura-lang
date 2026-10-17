@@ -9,7 +9,7 @@ pub fn show<A: Show>(a: A) -> String
 /// `clause` is the source text of the failing conjunct.
 pub type Violation = { type_name: String, clause: String, value_summary: String }
 
-/// The type of `@trust("reason")` (design §6.4, §17.16), accepted only by `Untrusted.trust`
-/// and `Secret.expose`. External: it has no constructor, so the attribute is the only way to
-/// make one.
+/// The type of `@trust("reason")` (design §6.4, §17.16), accepted only by `Untrusted.trust`,
+/// `Secret.expose` and `Html.raw`. Compiler-known and in the prelude; declared here only as
+/// its home. It has no constructor, and a `Trust` cannot be stored or returned (`V6001`).
 pub type Trust

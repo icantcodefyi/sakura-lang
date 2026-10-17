@@ -3,7 +3,7 @@
 // can be logged, but templates accept it only as a bound parameter or escaped text.
 // needs M3: `validate` into a refined type (a compiler intrinsic, design §6.4).
 
-import std/core.{Trust, Violation}
+import std/core.{Violation}
 
 /// Marks `value` as untrusted. For tests and host adapters.
 @external(js, "sakura_runtime", "untrusted_of")
