@@ -16,7 +16,7 @@ fn floor_char_boundary(text: &str, i: usize) -> usize {
     i
 }
 
-/// Renders diagnostics in the same order as the JSON output, each followed by a blank line.
+/// Renders diagnostics in the same order as the JSON output.
 pub fn render_human(diags: &[Diagnostic], files: &[SourceFile]) -> String {
     let mut db = SimpleFiles::new();
     for f in files {
@@ -78,7 +78,6 @@ pub fn render_human(diags: &[Diagnostic], files: &[SourceFile]) -> String {
                 d.message
             )),
         }
-        out.push('\n');
     }
     out
 }

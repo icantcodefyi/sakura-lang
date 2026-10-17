@@ -7,7 +7,7 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
 use vow_analysis::{Analysis, Snapshot};
-use vow_diagnostics::{codes, render_human, render_json_lines};
+use vow_diagnostics::{SourceFile, codes, render_human, render_json_lines};
 
 const EXIT_ERRORS: u8 = 1;
 const EXIT_USAGE: u8 = 2;
@@ -31,13 +31,25 @@ enum Command {
     },
     /// Explain a diagnostic code: rationale, causes, repairs.
     Explain { code: String },
+    /// Print the language guide for agents (`docs/llms.txt`, matched to this compiler).
+    Prompt {
+        /// Approximate token budget (4 bytes per token); whole sections are dropped from the end.
+        #[arg(long)]
+        budget: Option<usize>,
+    },
 }
+
+const LLMS_TXT: &str = include_str!("../../../../docs/llms.txt");
 
 fn main() -> ExitCode {
     let cli = Cli::parse();
     match cli.command {
         Command::Check { json, paths } => check(json, &paths),
         Command::Explain { code } => explain(&code),
+        Command::Prompt { budget } => {
+            print!("{}", prompt(budget));
+            ExitCode::SUCCESS
+        }
     }
 }
 
@@ -120,7 +132,11 @@ fn check(json: bool, paths: &[PathBuf]) -> ExitCode {
             render_json_lines(&result.diagnostics, files, snapshot.hash())
         );
     } else {
-        eprint!("{}", render_human(&result.diagnostics, files));
+        eprint!(
+            "{}",
+            render_human(&result.diagnostics, &display_files(files))
+        );
+        eprintln!("{}", tally(&result.diagnostics));
     }
     let _ = std::io::stdout().flush();
     if result.has_errors() {
@@ -128,6 +144,54 @@ fn check(json: bool, paths: &[PathBuf]) -> ExitCode {
     } else {
         ExitCode::SUCCESS
     }
+}
+
+/// `2 errors, 1 warning` (or `no problems`) for the end of terminal output.
+fn tally(diags: &[vow_diagnostics::Diagnostic]) -> String {
+    use vow_diagnostics::Severity;
+    let count = |s| diags.iter().filter(|d| d.severity == s).count();
+    let plural = |n: usize, word: &str| format!("{n} {word}{}", if n == 1 { "" } else { "s" });
+    match (count(Severity::Error), count(Severity::Warning)) {
+        (0, 0) => "no problems".into(),
+        (e, 0) => plural(e, "error"),
+        (0, w) => plural(w, "warning"),
+        (e, w) => format!("{}, {}", plural(e, "error"), plural(w, "warning")),
+    }
+}
+
+/// Files with `file://` URIs replaced by paths relative to the working directory, for humans.
+fn display_files(files: &[SourceFile]) -> Vec<SourceFile> {
+    let cwd = std::env::current_dir()
+        .map(|d| file_uri(&d) + "/")
+        .unwrap_or_default();
+    files
+        .iter()
+        .map(|f| SourceFile {
+            uri: f.uri.strip_prefix(&cwd).unwrap_or(&f.uri).to_owned(),
+            ..f.clone()
+        })
+        .collect()
+}
+
+/// `docs/llms.txt`, cut at the last `## ` section boundary that fits `budget` tokens.
+fn prompt(budget: Option<usize>) -> String {
+    let Some(tokens) = budget else {
+        return LLMS_TXT.to_owned();
+    };
+    let max = tokens.saturating_mul(4);
+    if LLMS_TXT.len() <= max {
+        return LLMS_TXT.to_owned();
+    }
+    let cut = LLMS_TXT
+        .match_indices("\n## ")
+        .map(|(i, _)| i + 1)
+        .take_while(|&i| i <= max)
+        .last()
+        .unwrap_or(0);
+    format!(
+        "{}\n[truncated to a budget of {tokens} tokens; rerun with a larger --budget for the rest]\n",
+        &LLMS_TXT[..cut]
+    )
 }
 
 fn explain(code: &str) -> ExitCode {

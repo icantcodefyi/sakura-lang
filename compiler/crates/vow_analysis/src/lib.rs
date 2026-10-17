@@ -79,7 +79,9 @@ impl Analysis {
     pub fn check(snapshot: &Snapshot) -> CheckResult {
         let mut diagnostics = Vec::new();
         for file in snapshot.file_ids() {
-            diagnostics.push(unavailable(file, "parser"));
+            let parse = vow_syntax::parse_file(file, &snapshot.file(file).text);
+            diagnostics.extend(parse.errors);
+            diagnostics.push(unavailable(file, "name resolution phase"));
         }
         CheckResult { diagnostics }
     }
