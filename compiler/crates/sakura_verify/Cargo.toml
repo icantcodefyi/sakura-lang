@@ -1,0 +1,23 @@
+[package]
+name = "sakura_verify"
+description = "Verification conditions from Core contract checks, SMT-LIB2 encoding, solver worker and proof records."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+
+[dev-dependencies]
+insta.workspace = true
+sakura_analysis.workspace = true
+sakura_core.workspace = true
+sakura_hir.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,153 @@
+# profile	symbol	site	status	clause
+i64	main::main::agent_steps_0	r%5	disproved	requires run
+i64	main::main::agent_steps_0	t%2	proved	overflow t%2 = -1
+i64	main::main::agent_steps_1	r%4	disproved	requires run
+i64	main::main::agent_steps_2	r%4	proved	requires run
+i64	main::main::agent_steps_3	r%4	proved	requires run
+i64	main::main::agent_steps_4	r%4	proved	requires run
+i64	main::main::clamp_0	post%7	proved	ensures clamp_0
+i64	main::main::clamp_0	r%8	proved	requires clamp
+i64	main::main::clamp_1	post%7	proved	ensures clamp_1
+i64	main::main::clamp_1	r%8	proved	requires clamp
+i64	main::main::clamp_2	post%7	proved	ensures clamp_2
+i64	main::main::clamp_2	r%8	proved	requires clamp
+i64	main::main::clamp_3	post%7	proved	ensures clamp_3
+i64	main::main::clamp_3	r%8	proved	requires clamp
+i64	main::main::clamp_4	post%7	proved	ensures clamp_4
+i64	main::main::clamp_4	r%8	proved	requires clamp
+i64	main::main::decimal_0	r%3	disproved	requires div_checked
+i64	main::main::decimal_0	t%2	proved	overflow t%2 = -1
+i64	main::main::decimal_1	r%2	proved	requires div_checked
+i64	main::main::decimal_2	r%2	proved	requires div_checked
+i64	main::main::decimal_3	r%2	proved	requires div_checked
+i64	main::main::decimal_4	r%2	proved	requires div_checked
+i64	main::main::discount_0	post%9	proved	ensures discount_0
+i64	main::main::discount_0	t%10	proved	overflow t%10 = price * 0
+i64	main::main::discount_0	t%11	proved	division t%11 = t%10 / 100
+i64	main::main::discount_0	t%12	proved	overflow t%12 = price - t%11
+i64	main::main::discount_1	post%9	proved	ensures discount_1
+i64	main::main::discount_1	t%10	proved	overflow t%10 = price * 1
+i64	main::main::discount_1	t%11	proved	division t%11 = t%10 / 100
+i64	main::main::discount_1	t%12	proved	overflow t%12 = price - t%11
+i64	main::main::discount_2	post%9	proved	ensures discount_2
+i64	main::main::discount_2	t%10	disproved	overflow t%10 = price * 25
+i64	main::main::discount_2	t%11	proved	division t%11 = t%10 / 100
+i64	main::main::discount_2	t%12	proved	overflow t%12 = price - t%11
+i64	main::main::discount_3	post%9	proved	ensures discount_3
+i64	main::main::discount_3	t%10	disproved	overflow t%10 = price * 50
+i64	main::main::discount_3	t%11	proved	division t%11 = t%10 / 100
+i64	main::main::discount_3	t%12	proved	overflow t%12 = price - t%11
+i64	main::main::discount_4	post%9	proved	ensures discount_4
+i64	main::main::discount_4	t%10	disproved	overflow t%10 = price * 100
+i64	main::main::discount_4	t%11	proved	division t%11 = t%10 / 100
+i64	main::main::discount_4	t%12	proved	overflow t%12 = price - t%11
+i64	main::main::gen_list_0	r%0	proved	requires int
+i64	main::main::gen_list_0	r%2	disproved	requires list
+i64	main::main::gen_list_0	t%1	proved	overflow t%1 = -1
+i64	main::main::gen_list_1	r%0	proved	requires int
+i64	main::main::gen_list_1	r%1	proved	requires list
+i64	main::main::gen_list_2	r%0	proved	requires int
+i64	main::main::gen_list_2	r%1	proved	requires list
+i64	main::main::gen_list_3	r%0	proved	requires int
+i64	main::main::gen_list_3	r%1	proved	requires list
+i64	main::main::gen_list_4	r%0	proved	requires int
+i64	main::main::gen_list_4	r%1	proved	requires list
+i64	main::main::percent_0	r%1	disproved	where Percent
+i64	main::main::percent_0	t%0	proved	overflow t%0 = -1
+i64	main::main::percent_1	r%0	proved	where Percent
+i64	main::main::percent_2	r%0	proved	where Percent
+i64	main::main::percent_3	r%0	proved	where Percent
+i64	main::main::percent_4	r%0	disproved	where Percent
+i64	main::main::pow_domain_0	r%1	disproved	requires pow
+i64	main::main::pow_domain_0	t%0	proved	overflow t%0 = -1
+i64	main::main::pow_domain_1	r%0	proved	requires pow
+i64	main::main::pow_domain_2	r%0	proved	requires pow
+i64	main::main::pow_domain_3	r%0	proved	requires pow
+i64	main::main::pow_domain_4	r%0	proved	requires pow
+i64	main::main::repeat_0	r%1	disproved	requires repeat
+i64	main::main::repeat_0	t%0	proved	overflow t%0 = -1
+i64	main::main::repeat_1	r%0	proved	requires repeat
+i64	main::main::repeat_2	r%0	proved	requires repeat
+i64	main::main::repeat_3	r%0	proved	requires repeat
+i64	main::main::repeat_4	r%0	proved	requires repeat
+i64	main::main::status_0	r%0	disproved	requires status
+i64	main::main::status_1	r%0	proved	requires status
+i64	main::main::status_2	r%0	proved	requires status
+i64	main::main::status_3	r%0	proved	requires status
+i64	main::main::status_4	r%0	disproved	requires status
+js	main::main::agent_steps_0	r%5	disproved	requires run
+js	main::main::agent_steps_0	t%2	proved	overflow t%2 = -1
+js	main::main::agent_steps_1	r%4	disproved	requires run
+js	main::main::agent_steps_2	r%4	proved	requires run
+js	main::main::agent_steps_3	r%4	proved	requires run
+js	main::main::agent_steps_4	r%4	proved	requires run
+js	main::main::clamp_0	post%7	proved	ensures clamp_0
+js	main::main::clamp_0	r%8	proved	requires clamp
+js	main::main::clamp_1	post%7	proved	ensures clamp_1
+js	main::main::clamp_1	r%8	proved	requires clamp
+js	main::main::clamp_2	post%7	proved	ensures clamp_2
+js	main::main::clamp_2	r%8	proved	requires clamp
+js	main::main::clamp_3	post%7	proved	ensures clamp_3
+js	main::main::clamp_3	r%8	proved	requires clamp
+js	main::main::clamp_4	post%7	proved	ensures clamp_4
+js	main::main::clamp_4	r%8	proved	requires clamp
+js	main::main::decimal_0	r%3	disproved	requires div_checked
+js	main::main::decimal_0	t%2	proved	overflow t%2 = -1
+js	main::main::decimal_1	r%2	proved	requires div_checked
+js	main::main::decimal_2	r%2	proved	requires div_checked
+js	main::main::decimal_3	r%2	proved	requires div_checked
+js	main::main::decimal_4	r%2	proved	requires div_checked
+js	main::main::discount_0	post%9	proved	ensures discount_0
+js	main::main::discount_0	t%10	proved	overflow t%10 = price * 0
+js	main::main::discount_0	t%11	proved	division t%11 = t%10 / 100
+js	main::main::discount_0	t%12	proved	overflow t%12 = price - t%11
+js	main::main::discount_1	post%9	proved	ensures discount_1
+js	main::main::discount_1	t%10	proved	overflow t%10 = price * 1
+js	main::main::discount_1	t%11	proved	division t%11 = t%10 / 100
+js	main::main::discount_1	t%12	proved	overflow t%12 = price - t%11
+js	main::main::discount_2	post%9	proved	ensures discount_2
+js	main::main::discount_2	t%10	disproved	overflow t%10 = price * 25
+js	main::main::discount_2	t%11	proved	division t%11 = t%10 / 100
+js	main::main::discount_2	t%12	proved	overflow t%12 = price - t%11
+js	main::main::discount_3	post%9	proved	ensures discount_3
+js	main::main::discount_3	t%10	disproved	overflow t%10 = price * 50
+js	main::main::discount_3	t%11	proved	division t%11 = t%10 / 100
+js	main::main::discount_3	t%12	proved	overflow t%12 = price - t%11
+js	main::main::discount_4	post%9	proved	ensures discount_4
+js	main::main::discount_4	t%10	disproved	overflow t%10 = price * 100
+js	main::main::discount_4	t%11	proved	division t%11 = t%10 / 100
+js	main::main::discount_4	t%12	proved	overflow t%12 = price - t%11
+js	main::main::gen_list_0	r%0	proved	requires int
+js	main::main::gen_list_0	r%2	disproved	requires list
+js	main::main::gen_list_0	t%1	proved	overflow t%1 = -1
+js	main::main::gen_list_1	r%0	proved	requires int
+js	main::main::gen_list_1	r%1	proved	requires list
+js	main::main::gen_list_2	r%0	proved	requires int
+js	main::main::gen_list_2	r%1	proved	requires list
+js	main::main::gen_list_3	r%0	proved	requires int
+js	main::main::gen_list_3	r%1	proved	requires list
+js	main::main::gen_list_4	r%0	proved	requires int
+js	main::main::gen_list_4	r%1	proved	requires list
+js	main::main::percent_0	r%1	disproved	where Percent
+js	main::main::percent_0	t%0	proved	overflow t%0 = -1
+js	main::main::percent_1	r%0	proved	where Percent
+js	main::main::percent_2	r%0	proved	where Percent
+js	main::main::percent_3	r%0	proved	where Percent
+js	main::main::percent_4	r%0	disproved	where Percent
+js	main::main::pow_domain_0	r%1	disproved	requires pow
+js	main::main::pow_domain_0	t%0	proved	overflow t%0 = -1
+js	main::main::pow_domain_1	r%0	proved	requires pow
+js	main::main::pow_domain_2	r%0	proved	requires pow
+js	main::main::pow_domain_3	r%0	proved	requires pow
+js	main::main::pow_domain_4	r%0	proved	requires pow
+js	main::main::repeat_0	r%1	disproved	requires repeat
+js	main::main::repeat_0	t%0	proved	overflow t%0 = -1
+js	main::main::repeat_1	r%0	proved	requires repeat
+js	main::main::repeat_2	r%0	proved	requires repeat
+js	main::main::repeat_3	r%0	proved	requires repeat
+js	main::main::repeat_4	r%0	proved	requires repeat
+js	main::main::status_0	r%0	disproved	requires status
+js	main::main::status_1	r%0	proved	requires status
+js	main::main::status_2	r%0	proved	requires status
+js	main::main::status_3	r%0	proved	requires status
+js	main::main::status_4	r%0	disproved	requires status

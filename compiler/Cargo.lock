@@ -1166,6 +1166,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "sakura_verify"
+version = "0.0.0"
+dependencies = [
+ "insta",
+ "sakura_analysis",
+ "sakura_core",
+ "sakura_hir",
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
 name = "same-file"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"

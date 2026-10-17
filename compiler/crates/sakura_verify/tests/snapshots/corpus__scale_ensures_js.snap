@@ -1,0 +1,32 @@
+---
+source: crates/sakura_verify/tests/corpus.rs
+expression: text
+---
+(set-option :produce-models true)
+(set-logic QF_NIA)
+(define-fun in_js ((x Int)) Bool (and (<= (- 9007199254740991) x) (<= x 9007199254740991)))
+(define-fun abs_i ((x Int)) Int (ite (< x 0) (- x) x))
+(define-fun tdiv ((a Int) (b Int)) Int
+  (ite (= (< a 0) (< b 0)) (div (abs_i a) (abs_i b)) (- (div (abs_i a) (abs_i b)))))
+(define-fun trem ((a Int) (b Int)) Int (- a (* b (tdiv a b))))
+(declare-const |p| Int)
+(define-fun |Percent$from.t%2| () Bool (<= 0 |p|))
+(define-fun |Percent$from.t%4| () Bool (<= |p| 100))
+(define-fun |Percent$from.v%3| () Bool (ite |Percent$from.t%2| |Percent$from.t%4| false))
+(declare-const |total| Int)
+(define-fun |t%3| () Bool (<= 0 |total|))
+(define-fun |t%11| () Int (* |total| |p|))
+(define-fun |t%12| () Int (tdiv |t%11| 100))
+(define-fun |t%8| () Bool (<= |t%12| |total|))
+(assert (in_js |p|))
+(assert (in_js |total|))
+(assert |Percent$from.v%3|)
+(assert |t%3|)
+(assert (in_js |t%11|))
+(assert (in_js |t%12|))
+; query: holds
+(assert (not |t%8|))
+(check-sat)
+(get-info :reason-unknown)
+(get-model)
+(exit)

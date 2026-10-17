@@ -1,0 +1,24 @@
+// Design §14.3 M4 acceptance as split by §17.84.
+type Percent = Int where it >= 0 && it <= 100
+
+fn scale(p: Percent, total: Int) -> Int
+  requires total >= 0
+  ensures result <= total
+{ total * p / 100 }
+
+// The wrong body of the acceptance: disproved with p = 100, total = 1.
+fn scale_wrong(p: Percent, total: Int) -> Int
+  requires total >= 0
+  ensures result <= total
+{ total * p / 50 }
+
+// A caller that uses only `scale`'s contract.
+fn half(total: Int) -> Int
+  requires total >= 0
+  ensures result <= total
+{ scale(Percent.from(50), total) }
+
+pub fn main() -> Unit {
+  let _a = scale_wrong(Percent.from(50), 10)
+  let _b = half(10)
+}
