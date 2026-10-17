@@ -1080,6 +1080,7 @@ name = "sakura_eval"
 version = "0.0.0"
 dependencies = [
  "sakura_analysis",
+ "sakura_codegen_js",
  "sakura_core",
 ]
 
