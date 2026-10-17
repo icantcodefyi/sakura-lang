@@ -220,3 +220,20 @@ addr)`; `examples/json_api` is unchanged.
 `tests/semantics/std_fs_with_file.sakura` (M3): read, write and append through `with_file` under
 `Fs.memory`, a body that performs `Fs.read` on a second path, a body that fails (the file is still
 closed: a second `with_file` on the same path works), and `Fs.read_all`. Expected stdout checked in.
+
+## Deviations (C, §2)
+
+1. **Effect generics are the handler's arguments, not rigid.** §2.1 says to make the effect's and
+   the operation's generics rigid; an effect generic (`State<T>`) is fixed per handler
+   (`handler State { var n = 0 … }` is a `Handler<State<Int>>`), so it keeps being substituted by the
+   handler's (expected or inferred) arguments. Only the operation's own type and row parameters are
+   rigid.
+2. **A callback call keeps its `Fail` label.** "Contributes only its tail" drops the callback's
+   concrete effect labels; its explicit `Fail<…>` stays, because §17.48 says the callback's failures
+   pass through the clause as the operation's own (they are then checked against the operation's
+   declared `Fail` like any other failure of the clause).
+3. **Only direct calls of a callback parameter** (`body(x)`) are recognised, not `let` aliases;
+   an alias is an ordinary function value whose full row counts (conservative).
+4. **`sakura_core`**: a lifted clause now has its operation's row parameters in scope
+   (`row_vars`), so rigid tails in the clause validate; the old matching of inference variables
+   stays for type parameters (D may delete it).

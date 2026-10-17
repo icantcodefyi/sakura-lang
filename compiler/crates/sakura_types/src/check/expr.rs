@@ -205,7 +205,14 @@ impl Checker<'_> {
             }
             Expr::Path(res) => (self.path_type(e, *res), pure, false),
             Expr::Call { callee, args, .. } => {
-                let (ft, fr) = self.synth(*callee);
+                let (mut ft, fr) = self.synth(*callee);
+                // Calling a clause's callback adds only its tail (and failures), not the
+                // labels the performer's handlers serve (§17.48).
+                if let Expr::Path(Res::Local(l)) = &body.exprs[*callee]
+                    && self.b.callbacks.contains(l)
+                {
+                    ft = self.callback_view(ft);
+                }
                 let target = match &body.exprs[*callee] {
                     Expr::Path(Res::Def(d)) => CallTarget::Def(*d),
                     _ => CallTarget::Value,
@@ -893,6 +900,21 @@ impl Checker<'_> {
             rows.push(self.synth(a).1);
         }
         (self.inf.interner.error(), self.seq(&rows, e))
+    }
+
+    /// `fn(P) -> T ! {Fail<E> | e}` for a callback of type `fn(P) -> T ! {L…, Fail<E> | e}`.
+    fn callback_view(&mut self, ft: TypeId) -> TypeId {
+        let Type::Fn { params, ret, row } = self.inf.interner.ty(ft).clone() else {
+            return ft;
+        };
+        let r = self.inf.flatten_row(row);
+        let fails = r
+            .labels
+            .into_iter()
+            .filter(|l| l.effect == Effect::Fail)
+            .collect();
+        let row = self.inf.make_row(fails, r.tail);
+        self.inf.interner.func(params, ret, row)
     }
 
     /// V1006: the fields of a `pub opaque` type are private to its module (design §9, §17.10).
@@ -1738,20 +1760,17 @@ impl Checker<'_> {
                 continue;
             };
             // Effect generics come first in the op's scheme; fix them to this handler's args.
-            // The op's own type parameters stay rigid: a clause must work for every `T`, as
-            // the body of a generic function does (and `sakura_core` sees them by name).
+            // The op's own type and row parameters stay rigid: a clause must work for every
+            // `T` and `e`, as the body of a generic function does (§17.67; `sakura_core` sees
+            // them by name).
             let subst: std::collections::HashMap<_, _> = scheme
                 .params
                 .iter()
                 .copied()
                 .zip(eff_args.iter().copied())
                 .collect();
-            let partial = crate::ty::Scheme {
-                params: Vec::new(),
-                row_params: scheme.row_params.clone(),
-                ty: self.inf.substitute(scheme.ty, &subst, &Default::default()),
-            };
-            let (ft, _) = self.inf.instantiate(&partial);
+            let ft = self.inf.substitute(scheme.ty, &subst, &Default::default());
+            let op_rows = scheme.row_params.clone();
             let Type::Fn {
                 params,
                 ret,
@@ -1783,6 +1802,9 @@ impl Checker<'_> {
                     .chain(std::iter::repeat(&self.inf.interner.error())),
             ) {
                 self.bind_local(*l, *t);
+                if matches!(self.inf.interner.ty(*t), Type::Fn { .. }) {
+                    self.b.callbacks.insert(*l);
+                }
             }
             // Handler state locals were bound one level up; clauses may assign them.
             for s in &h.state {
@@ -1812,7 +1834,7 @@ impl Checker<'_> {
                     fl_row,
                     decl_row,
                     c.range,
-                    ViolationKind::Clause { op: c.name.clone() },
+                    ViolationKind::ClauseFail { op: c.name.clone() },
                 );
             }
             let rest: Vec<Label> = flat
@@ -1820,7 +1842,13 @@ impl Checker<'_> {
                 .into_iter()
                 .filter(|l| l.effect != Effect::Fail)
                 .collect();
-            let crow = self.inf.make_row(rest, flat.tail);
+            // A callback's row belongs to the performer (§17.48): the operation's row
+            // parameters, with their hidden failures, leave the clause row here.
+            let tail = match self.inf.tail_param(body_row) {
+                Some(p) if op_rows.contains(&p) => Tail::Closed,
+                _ => flat.tail,
+            };
+            let crow = self.inf.make_row(rest, tail);
             clause_rows.push((c, crow));
         }
         self.b.scope.truncate(mark);
@@ -1838,7 +1866,10 @@ impl Checker<'_> {
                         crow,
                         erow,
                         c.range,
-                        ViolationKind::Clause { op: c.name.clone() },
+                        ViolationKind::Clause {
+                            op: c.name.clone(),
+                            eff: eff_name.clone(),
+                        },
                     );
                 }
                 let ty = self.inf.interner.intern(Type::Handler { label, row: erow });

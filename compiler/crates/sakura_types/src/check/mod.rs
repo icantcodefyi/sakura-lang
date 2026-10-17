@@ -85,9 +85,10 @@ enum ViolationKind {
     },
     /// A lambda passed or annotated with a narrower function type.
     Lambda,
-    /// A handler clause performs an effect its handler type does not allow, or fails with a
-    /// tag its operation does not declare.
-    Clause { op: String },
+    /// A handler clause performs an effect its handler type does not allow.
+    Clause { op: String, eff: String },
+    /// A handler clause fails with a tag its operation does not declare (§5.5).
+    ClauseFail { op: String },
     /// A test body uses an effect without a handler (V3020).
     Test,
     /// A constant initializer, refinement predicate or contract must be pure.
@@ -142,6 +143,8 @@ struct BodyState {
     coverage: Vec<CoverageCheck>,
     /// Expressions already reported, to avoid a second diagnostic on the same node.
     reported: HashSet<ExprId>,
+    /// Clause parameters that are callbacks (§17.48): calling one adds only its row's tail.
+    callbacks: HashSet<LocalId>,
     /// The body contains a syntax error: its type diagnostics would be cascades.
     suppress: bool,
     /// Empty list literals, checked for an inferable element type (V2010).

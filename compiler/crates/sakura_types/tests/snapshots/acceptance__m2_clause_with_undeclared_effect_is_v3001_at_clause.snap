@@ -1,8 +1,9 @@
 ---
 source: crates/sakura_types/tests/acceptance.rs
+assertion_line: 143
 expression: c.render()
 ---
-V3001 2:68 handler clause `next` performs `Console`, which the handler's type does not allow (allowed: `{}`)
+V3001 2:68 clause `next` of `Counter` performs `Console`, which must be handled outside the `with` (the handler's type allows `{}`)
   Cause 2:77 `Console.print("tick")` `Console.print` performs `Console` here
   expected: {}
   actual: {Console}

@@ -1888,6 +1888,12 @@ impl<'a, 'p> FnLower<'a, 'p> {
                     super::match_vars(i, *ret, t, &mut vars);
                 }
             }
+            // The clause is checked with the op's row parameters rigid (§17.67): they are in
+            // scope in the lifted clause like a function's own.
+            let outer_rows = self.row_vars.clone();
+            if let Some(sc) = self.l.t.defs.get(&op_def) {
+                self.row_vars.extend(sc.row_params.iter().map(|p| p.0));
+            }
             let (d, caps) = self.lift_with(
                 vars,
                 kind,
@@ -1900,6 +1906,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
                 Some(eff),
                 pos,
             );
+            self.row_vars = outer_rows;
             let fty = Ty::Fn(Box::new(FnTy {
                 params: opd.params.clone(),
                 ret: opd.ret.clone(),

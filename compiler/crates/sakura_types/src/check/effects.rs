@@ -85,7 +85,14 @@ impl Checker<'_> {
                     ),
                 )
             }
-            ViolationKind::Clause { op } => (
+            ViolationKind::Clause { op, eff } => (
+                V3001,
+                Phase::Effect,
+                format!(
+                    "clause `{op}` of `{eff}` performs {list}, which must be handled outside the `with` (the handler's type allows `{allowed}`)"
+                ),
+            ),
+            ViolationKind::ClauseFail { op } => (
                 V3001,
                 Phase::Effect,
                 format!(
