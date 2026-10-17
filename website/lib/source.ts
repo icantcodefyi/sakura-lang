@@ -58,7 +58,7 @@ export function llmsTxt() {
 
 > ${site.description}
 
-Vow is pre-alpha. The v0 language design is written (docs/design.md in the repository); the compiler is under construction and nothing is released. Code on this site cannot be run yet.
+Vow is pre-alpha and nothing is released. The v0 language design is written (docs/design.md in the repository). The compiler builds from source and checks and runs M0 to M2 programs (effects, handlers, typed errors, holes) on JavaScript; the M3 standard library (http, sql, fs, cli, ai, task) is not built yet, so examples that use it do not run. Build it: ${site.url}/docs/quickstart
 
 - The core language for agents, in one file: ${site.github}/blob/master/docs/llms.txt
 - Every docs page is available as Markdown: append \`.md\` to its URL (for example ${site.url}/docs/tour/effects.md).
