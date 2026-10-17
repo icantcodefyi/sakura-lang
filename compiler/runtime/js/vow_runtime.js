@@ -56,8 +56,23 @@ export class Defect extends Error {
   }
 }
 
+let contractDepth = 0;
+
+/** A defect while evaluating a contract predicate is `D011` (design §7.1). */
 export function defect(code, message) {
+  if (contractDepth > 0) {
+    contractDepth = 0;
+    throw new Defect("D011", `contract evaluation failed: ${code}: ${message}`);
+  }
   throw new Defect(code, message);
+}
+
+/** Bracket the evaluation of a `requires`/`ensures`/`where` predicate. */
+export function contract_enter() {
+  contractDepth++;
+}
+export function contract_exit() {
+  contractDepth--;
 }
 
 function internal(message) {
@@ -185,6 +200,7 @@ function drive(t, start) {
       }
     }
   } catch (err) {
+    contractDepth = 0;
     runFins(t, 0);
     const d = err instanceof Defect ? err : asDefect(err);
     return { kind: "defect", code: d.code, message: d.detail, error: d };

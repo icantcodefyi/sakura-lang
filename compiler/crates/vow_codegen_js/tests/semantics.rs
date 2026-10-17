@@ -43,7 +43,15 @@ fn semantics_corpus() {
         let exit: i32 = directive(&src, "expect-exit").map_or(0, |c| c.trim().parse().unwrap());
         match common::run(&name, &src) {
             Err(e) => failures.push(format!("{name}: does not build:\n{e}")),
-            Ok(r) if r.stdout == expected && r.code == exit => passed += 1,
+            Ok(r)
+                if r.stdout == expected
+                    && r.code == exit
+                    && directive(&src, "expect-defect").is_none_or(|d| {
+                        r.stderr.contains(&format!("\"code\":\"{}\"", d.trim()))
+                    }) =>
+            {
+                passed += 1
+            }
             Ok(r) => failures.push(format!(
                 "{name}: exit {} (want {exit})\n--- stdout\n{}--- want\n{expected}--- stderr\n{}",
                 r.code, r.stdout, r.stderr

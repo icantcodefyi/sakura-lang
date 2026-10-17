@@ -244,3 +244,15 @@ fn env_root_handler_reads_the_process_environment() {
         .unwrap();
     assert_eq!(String::from_utf8_lossy(&out.stdout), "Some(\"yes\") None\n");
 }
+
+#[test]
+fn externals_work_as_function_values() {
+    let src = r#"pub fn main() -> Unit ! {Console} { Console.print("{List.map(["a", "bb", "ccc"], String.len)}") }"#;
+    let r = common::run("extern_value", src).unwrap();
+    assert_eq!(
+        (r.stdout.as_str(), r.code),
+        ("[1, 2, 3]\n", 0),
+        "{}",
+        r.stderr
+    );
+}

@@ -73,7 +73,7 @@ table! {
     // Secret, Json
     Direct secret_wrap/1, Direct secret_expose/1, Direct json_parse/1,
     // Compiler support
-    Direct match_failure/0,
+    Direct match_failure/0, Direct contract_enter/0, Direct contract_exit/0,
 }
 
 pub fn lookup(name: &str) -> Option<&'static Builtin> {

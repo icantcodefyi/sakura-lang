@@ -318,7 +318,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
         let params: Vec<Local> = it.iter().map(|&p| s.param(p)).collect();
         let x = params.first().map(|p| local(*p)).unwrap_or(unit());
         let base = params.first().map_or(Ty::Unit, |p| s.b.ty(*p).clone());
-        let cond = s.body.value.and_then(|v| s.expr(v));
+        let cond = s.body.value.and_then(|v| s.predicate(v));
         let ret_ty;
         let r = match (cond, intro) {
             (Some(c), hir::RefinementIntro::From) => {
@@ -433,7 +433,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
         for c in &body.requires {
             let pos = self.pos(c.expr);
             let name = c.label.clone().unwrap_or_else(|| self.name.clone());
-            if let Some(cond) = self.expr(c.expr) {
+            if let Some(cond) = self.predicate(c.expr) {
                 let id = self.contract(ContractKind::Requires, name, pos);
                 self.bind("pre", Ty::Unit, Bind::Check(id, cond), pos);
             }
@@ -450,7 +450,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
             for c in &body.ensures {
                 let pos = s.pos(c.expr);
                 let name = c.label.clone().unwrap_or_else(|| s.name.clone());
-                if let Some(cond) = s.expr(c.expr) {
+                if let Some(cond) = s.predicate(c.expr) {
                     let id = s.contract(ContractKind::Ensures, name, pos);
                     s.bind("post", Ty::Unit, Bind::Check(id, cond), pos);
                 }
@@ -459,6 +459,24 @@ impl<'a, 'p> FnLower<'a, 'p> {
         });
         self.blk.join(label, vec![result], code);
         self.ret_label = Some(label);
+    }
+
+    /// A contract predicate; defects raised while evaluating it become `D011`.
+    fn predicate(&mut self, e: ExprId) -> Option<Atom> {
+        self.bind(
+            "enter",
+            Ty::Unit,
+            Bind::Call(builtin("contract_enter"), vec![]),
+            None,
+        );
+        let c = self.expr(e)?;
+        self.bind(
+            "exit",
+            Ty::Unit,
+            Bind::Call(builtin("contract_exit"), vec![]),
+            None,
+        );
+        Some(c)
     }
 
     fn finish_body(&mut self, r: Option<Atom>) -> Expr {
