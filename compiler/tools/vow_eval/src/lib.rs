@@ -326,7 +326,7 @@ impl<'m> Machine<'m> {
             {
                 env[l.index()] = Some(v);
             }
-            match self.eval(fd, &mut env, &fd.body, hs, true)? {
+            match self.eval(&mut env, &fd.body, hs, true)? {
                 Flow::Ret(v) => return Ok(Ok(v)),
                 Flow::Fail(e) => return Ok(Err(e)),
                 Flow::Jump(l, _) => {
@@ -397,7 +397,6 @@ impl<'m> Machine<'m> {
 
     fn eval(
         &mut self,
-        fd: &FnDef,
         env: &mut [Option<Value>],
         mut expr: &Expr,
         hs: &Rc<Handlers>,
@@ -433,7 +432,7 @@ impl<'m> Machine<'m> {
                     join,
                     body,
                 } => {
-                    let mut flow = self.eval(fd, env, body, hs, tail)?;
+                    let mut flow = self.eval(env, body, hs, tail)?;
                     loop {
                         match flow {
                             Flow::Jump(l, args) if l == *label => {
@@ -441,7 +440,7 @@ impl<'m> Machine<'m> {
                                 for (p, v) in params.iter().zip(args) {
                                     env[p.index()] = Some(v);
                                 }
-                                flow = self.eval(fd, env, join, hs, tail)?;
+                                flow = self.eval(env, join, hs, tail)?;
                             }
                             other => return Ok(other),
                         }
@@ -487,10 +486,10 @@ impl<'m> Machine<'m> {
                         clauses: h.clauses.clone().into(),
                     };
                     let inner = Rc::new(Handlers::Frame(Rc::new(inst), hs.clone()));
-                    return self.eval(fd, env, body, &inner, false);
+                    return self.eval(env, body, &inner, false);
                 }
                 Expr::Try { on_fail, body } => {
-                    return Ok(match self.eval(fd, env, body, hs, false)? {
+                    return Ok(match self.eval(env, body, hs, false)? {
                         Flow::Fail(e) => Flow::Jump(*on_fail, vec![e]),
                         other => other,
                     });
