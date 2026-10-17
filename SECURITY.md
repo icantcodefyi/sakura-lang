@@ -9,19 +9,13 @@ Future supported release lines will be listed here before publication.
 
 ## Report privately
 
-When available, use [GitHub private vulnerability reporting](https://github.com/icantcodefyi/vow/security/advisories/new)
+Use [GitHub private vulnerability reporting](https://github.com/icantcodefyi/vow/security/advisories/new)
 from the repository's **Security → Advisories → Report a vulnerability** page.
 The initial security contact and triage owner is
 [@icantcodefyi](https://github.com/icantcodefyi).
 
-Private vulnerability reporting is **currently unavailable**: enabling it for this
-private repository returned HTTP 404 on 2026-10-17. GitHub documents this feature
-for [public repositories](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/configure-for-a-repository).
-Recheck and enable it if repository visibility changes; no setting was enabled by
-the failed request. Until then, request a private security conversation with the
-maintainer on GitHub; never put exploit details, secrets, or personal data in a
-public issue. Maintainers can coordinate a draft repository security advisory
-when the repository supports it. Do not use ordinary issue forms for disclosures.
+Never put exploit details, secrets, or personal data in a public issue, and do
+not use ordinary issue forms for disclosures.
 
 Include the affected revision/component, reproduction steps, impact, environment,
 and any suggested fix or mitigation. Use minimal synthetic data; avoid testing
