@@ -1,0 +1,15 @@
+---
+title: Introduction
+description: Vow is an agent-first programming language where the signature is the contract.
+---
+
+## Hello
+
+```vow
+fn signup(email: Email, pw: Password) -> User ! {Db, Clock, Random, Fail<SignupError>}
+  ensures result.email == email
+{
+  if Db.exists(users, email) { fail EmailTaken }
+  user
+}
+```

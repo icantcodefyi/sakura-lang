@@ -13,7 +13,7 @@ fn signup(email: Email, pw: Password) -> User ! {Db, Clock, Fail<SignupError>}
 }`;
 
 const hl = await createHighlighter({ langs: [vowGrammar], themes: [vowDark, vowLight] });
-const lines = hl.codeToTokens(code, { lang: "vow", theme: "vow-dark", includeExplanation: true }).tokens;
+const lines = hl.codeToTokens(code, { lang: vowGrammar.name as "text", theme: "vow-dark", includeExplanation: true }).tokens;
 const scopeOf = (text: string) =>
   lines.flat().find((t) => t.content.trim() === text)?.explanation?.[0]?.scopes.at(-1)?.scopeName;
 

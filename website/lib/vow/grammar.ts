@@ -4,7 +4,7 @@ import type { LanguageRegistration } from "shiki";
  * TextMate grammar for Vow. Shared by the docs (rehype-code) and the
  * landing page (codeToTokens), so ```vow blocks highlight identically.
  */
-export const vowGrammar = {
+export const vowGrammar: LanguageRegistration = {
   name: "vow",
   displayName: "Vow",
   scopeName: "source.vow",
@@ -262,4 +262,4 @@ export const vowGrammar = {
       ],
     },
   },
-} satisfies LanguageRegistration;
+};

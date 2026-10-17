@@ -1,26 +1,244 @@
 @import "tailwindcss";
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Vow design tokens.
+ * Graphite neutrals tinted toward hue 255, one saffron "seal" accent (hue 78).
+ * Effects are saffron, failures coral, contracts mint, in code and in UI.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: oklch(0.985 0.003 255);
+  --bg-sunk: oklch(0.962 0.005 255);
+  --surface: oklch(0.995 0.002 255);
+  --fg: oklch(0.21 0.014 255);
+  --fg-muted: oklch(0.46 0.016 255);
+  --fg-faint: oklch(0.6 0.014 255);
+  --line: oklch(0.9 0.007 255);
+  --line-strong: oklch(0.82 0.01 255);
+
+  --seal: oklch(0.81 0.155 78);
+  --seal-ink: oklch(0.24 0.04 70);
+  --seal-text: oklch(0.52 0.12 70);
+  --seal-wash: oklch(0.81 0.155 78 / 0.14);
+
+  --fail: oklch(0.55 0.19 32);
+  --fail-wash: oklch(0.63 0.19 32 / 0.1);
+  --ok: oklch(0.5 0.1 172);
+  --ok-wash: oklch(0.6 0.1 172 / 0.12);
+
+  --code-bg: #fafaf9;
+  --shadow-tint: 255;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  --fd-layout-width: 1440px;
+}
+
+.dark {
+  --bg: oklch(0.165 0.008 255);
+  --bg-sunk: oklch(0.145 0.008 255);
+  --surface: oklch(0.192 0.009 255);
+  --fg: oklch(0.945 0.006 255);
+  --fg-muted: oklch(0.72 0.012 255);
+  --fg-faint: oklch(0.58 0.012 255);
+  --line: oklch(0.27 0.01 255);
+  --line-strong: oklch(0.34 0.012 255);
+
+  --seal: oklch(0.82 0.15 78);
+  --seal-ink: oklch(0.22 0.035 70);
+  --seal-text: oklch(0.84 0.14 80);
+  --seal-wash: oklch(0.82 0.15 78 / 0.12);
+
+  --fail: oklch(0.74 0.15 32);
+  --fail-wash: oklch(0.7 0.16 32 / 0.13);
+  --ok: oklch(0.8 0.1 172);
+  --ok-wash: oklch(0.75 0.1 172 / 0.12);
+
+  --code-bg: #131518;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-bg-sunk: var(--bg-sunk);
+  --color-surface: var(--surface);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-faint: var(--fg-faint);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-seal: var(--seal);
+  --color-seal-ink: var(--seal-ink);
+  --color-seal-text: var(--seal-text);
+  --color-seal-wash: var(--seal-wash);
+  --color-fail: var(--fail);
+  --color-fail-wash: var(--fail-wash);
+  --color-ok: var(--ok);
+  --color-ok-wash: var(--ok-wash);
+  --color-code: var(--code-bg);
+
+  --font-sans: var(--font-vow-body), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-vow-display), var(--font-vow-body), ui-sans-serif, sans-serif;
+  --font-mono: var(--font-vow-code), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Fumadocs UI adopts the same tokens, so docs and landing are one system. */
+  --color-fd-background: var(--bg);
+  --color-fd-foreground: var(--fg);
+  --color-fd-muted: var(--bg-sunk);
+  --color-fd-muted-foreground: var(--fg-muted);
+  --color-fd-popover: var(--surface);
+  --color-fd-popover-foreground: var(--fg);
+  --color-fd-card: var(--surface);
+  --color-fd-card-foreground: var(--fg);
+  --color-fd-border: var(--line);
+  --color-fd-primary: var(--seal-text);
+  --color-fd-primary-foreground: var(--seal-ink);
+  --color-fd-secondary: var(--bg-sunk);
+  --color-fd-secondary-foreground: var(--fg);
+  --color-fd-accent: var(--seal-wash);
+  --color-fd-accent-foreground: var(--fg);
+  --color-fd-ring: var(--seal);
+  --color-fd-overlay: oklch(0.15 0.01 255 / 0.35);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "kern";
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+  }
+
+  ::selection {
+    background: var(--seal-wash);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--seal);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  code,
+  kbd,
+  pre {
+    font-variant-ligatures: none;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ---------- Docs (Fumadocs) customisation ---------- */
+
+#nd-docs-layout,
+#nd-notebook-layout {
+  --fd-sidebar-width: 272px;
+}
+
+.prose {
+  --tw-prose-body: var(--fg);
+  --tw-prose-headings: var(--fg);
+  --tw-prose-links: var(--fg);
+  --tw-prose-bold: var(--fg);
+  --tw-prose-counters: var(--fg-muted);
+  --tw-prose-bullets: var(--line-strong);
+  --tw-prose-quotes: var(--fg);
+  --tw-prose-code: var(--fg);
+  --tw-prose-th-borders: var(--line);
+  --tw-prose-td-borders: var(--line);
+}
+
+.prose :where(h1, h2, h3, h4):not(:where(.not-prose *)) {
+  font-family: var(--font-vow-display);
+  letter-spacing: -0.015em;
+}
+
+.prose :where(h2):not(:where(.not-prose *)) {
+  font-weight: 600;
+}
+
+.prose :where(a):not(:where(.not-prose *)) {
+  text-decoration-color: var(--seal);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+  font-weight: 500;
+  transition: text-decoration-color 150ms ease;
+}
+
+.prose :where(a):not(:where(.not-prose *)):hover {
+  text-decoration-color: var(--fg);
+}
+
+.prose :where(:not(pre) > code):not(:where(.not-prose *)) {
+  background: var(--bg-sunk);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 0.1em 0.35em;
+  font-size: 0.88em;
+}
+
+/* Code blocks: shiki carries both themes; switch with .dark */
+.shiki,
+.shiki span {
+  color: var(--shiki-light);
+}
+.dark .shiki,
+.dark .shiki span {
+  color: var(--shiki-dark);
+}
+.shiki span[style*="font-style:italic"],
+.shiki span[style*="--shiki-light-font-style:italic"] {
+  font-style: italic;
+}
+
+figure.shiki {
+  background: var(--code-bg) !important;
+  border-color: var(--line) !important;
+}
+
+/* ---------- Motion ---------- */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .rise {
+    animation: rise 700ms var(--ease-out) both;
+    animation-delay: calc(var(--i, 0) * 70ms);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* neutral.css tints the dark sidebar with hsl greys; keep it on our graphite scale */
+.dark #nd-sidebar {
+  --color-fd-muted: var(--surface);
+  --color-fd-secondary: var(--line);
+  --color-fd-muted-foreground: var(--fg-muted);
 }
