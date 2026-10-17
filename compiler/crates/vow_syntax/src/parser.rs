@@ -5,8 +5,9 @@
 use crate::SyntaxKind::{self, *};
 use crate::codes;
 use crate::lexer::Token;
-use rowan::{GreenNode, GreenNodeBuilder};
+use rowan::{GreenNode, GreenToken, NodeOrToken};
 use std::cell::Cell;
+use std::collections::HashMap;
 use vow_diagnostics::Code;
 
 /// A set of token kinds (all token kinds fit in 128 bits).
@@ -443,18 +444,18 @@ fn attaches_comments(kind: SyntaxKind) -> bool {
 }
 
 /// Replay parser events over the full token stream (with trivia) into a green tree.
-pub(crate) fn build_tree(text: &str, tokens: &[Token], mut events: Vec<Event>) -> GreenNode {
-    let mut b = GreenNodeBuilder::new();
+pub(crate) fn build_tree<'t>(text: &'t str, tokens: &[Token], mut events: Vec<Event>) -> GreenNode {
+    let mut b = Builder::default();
     let mut cursor = 0usize; // index into `tokens`
     let mut depth = 0usize;
     let mut chain = Vec::new();
 
-    let emit = |b: &mut GreenNodeBuilder, cursor: &mut usize| {
+    let emit = |b: &mut Builder<'t>, cursor: &mut usize| {
         let t = tokens[*cursor];
-        b.token(t.kind.into(), &text[t.start as usize..t.end as usize]);
+        b.token(t.kind, &text[t.start as usize..t.end as usize]);
         *cursor += 1;
     };
-    let flush_trivia = |b: &mut GreenNodeBuilder, cursor: &mut usize, upto: usize| {
+    let flush_trivia = |b: &mut Builder<'t>, cursor: &mut usize, upto: usize| {
         while *cursor < upto {
             emit(b, cursor);
         }
@@ -501,7 +502,7 @@ pub(crate) fn build_tree(text: &str, tokens: &[Token], mut events: Vec<Event>) -
                         };
                         flush_trivia(&mut b, &mut cursor, split);
                     }
-                    b.start_node(kind.into());
+                    b.start_node(kind);
                     depth += 1;
                 }
             }
@@ -520,6 +521,42 @@ pub(crate) fn build_tree(text: &str, tokens: &[Token], mut events: Vec<Event>) -
         }
     }
     b.finish()
+}
+
+/// `rowan::GreenNodeBuilder` without its node cache, whose hash-of-child-hashes degenerates on
+/// long postfix chains (seconds for `x.f()` × 10k). Tokens are still shared.
+#[derive(Default)]
+struct Builder<'t> {
+    open: Vec<(SyntaxKind, usize)>,
+    children: Vec<NodeOrToken<GreenNode, GreenToken>>,
+    tokens: HashMap<(SyntaxKind, &'t str), GreenToken>,
+}
+
+impl<'t> Builder<'t> {
+    fn token(&mut self, kind: SyntaxKind, text: &'t str) {
+        let token = self
+            .tokens
+            .entry((kind, text))
+            .or_insert_with(|| GreenToken::new(kind.into(), text));
+        self.children.push(NodeOrToken::Token(token.clone()));
+    }
+
+    fn start_node(&mut self, kind: SyntaxKind) {
+        self.open.push((kind, self.children.len()));
+    }
+
+    fn finish_node(&mut self) {
+        let (kind, first) = self.open.pop().expect("balanced start/finish events");
+        let node = GreenNode::new(kind.into(), self.children.drain(first..));
+        self.children.push(NodeOrToken::Node(node));
+    }
+
+    fn finish(mut self) -> GreenNode {
+        match self.children.pop() {
+            Some(NodeOrToken::Node(root)) if self.children.is_empty() => root,
+            _ => unreachable!("events build exactly one root node"),
+        }
+    }
 }
 
 /// Index into `trivia` where the comments attached to the following node begin.

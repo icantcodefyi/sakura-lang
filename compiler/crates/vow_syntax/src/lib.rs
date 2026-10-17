@@ -42,6 +42,9 @@
 //!   with no space before `<` or after `>`) become an `ERROR` node holding the
 //!   `GenericArgList`; `name: value` in a call (`V0014`) stays a `NamedArg`; `opaque` without
 //!   `pub` becomes an `ERROR` node.
+//! - Operator and postfix chains are not nesting (see [`MAX_DEPTH`]): a chain of any length
+//!   parses into a tree as deep as the chain. Consumers must walk such spines iteratively;
+//!   [`Parse`] frees its tree iteratively, so drop red roots before the `Parse` that made them.
 //!
 //! # Deviation from design §3
 //!
@@ -65,7 +68,9 @@ pub type SyntaxElement = rowan::SyntaxElement<VowLanguage>;
 pub use rowan::{GreenNode, NodeOrToken, TextRange, TextSize};
 
 /// Maximum nesting depth of expressions, types, patterns and blocks before the parser reports
-/// `V0008` and skips the over-deep group.
+/// `V0008` and skips the over-deep group. Operator and postfix chains (`a + b + …`,
+/// `x.f().g()…`) are loops, not nesting: they never count, so a chain of any length parses and
+/// its tree is as deep as the chain is long. Walk `BIN_EXPR`/postfix spines iteratively.
 pub const MAX_DEPTH: u32 = 128;
 
 /// The result of parsing one file: a lossless tree plus syntax diagnostics.
@@ -73,6 +78,46 @@ pub const MAX_DEPTH: u32 = 128;
 pub struct Parse {
     pub green: GreenNode,
     pub errors: Vec<Diagnostic>,
+    teardown: Teardown,
+}
+
+/// A second reference to the root that frees the tree after `Parse::green` is dropped. rowan
+/// frees a green tree recursively, which overflows the stack on a long chain; this holds every
+/// node, then releases them parents first, so each free only decrements children that are
+/// still held. It only helps when the `Parse` is the last owner: drop red roots
+/// ([`Parse::syntax`]) first.
+#[derive(Clone)]
+struct Teardown(Option<GreenNode>);
+
+impl Drop for Teardown {
+    fn drop(&mut self) {
+        let mut held: Vec<GreenNode> = self.0.take().into_iter().collect();
+        let mut i = 0;
+        while i < held.len() {
+            let children: Vec<GreenNode> = held[i]
+                .children()
+                .filter_map(NodeOrToken::into_node)
+                .map(ToOwned::to_owned)
+                .collect();
+            held.extend(children);
+            i += 1;
+        }
+        // `Vec` drops its elements front to back: breadth-first order, parents first.
+    }
+}
+
+impl PartialEq for Teardown {
+    fn eq(&self, _: &Self) -> bool {
+        true // `Parse::green` already compares the tree
+    }
+}
+
+impl Eq for Teardown {}
+
+impl std::fmt::Debug for Teardown {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("..")
+    }
 }
 
 impl Parse {
@@ -126,6 +171,7 @@ pub fn parse_file(file: FileId, text: &str) -> Parse {
         .collect();
     errors.sort_by_key(|(start, _)| *start);
     Parse {
+        teardown: Teardown(Some(green.clone())),
         green,
         errors: errors.into_iter().map(|(_, d)| d).collect(),
     }

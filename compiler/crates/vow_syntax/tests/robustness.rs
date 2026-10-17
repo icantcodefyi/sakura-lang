@@ -1,5 +1,5 @@
 //! The parser is total: any input yields a lossless tree, never a panic or hang, and nesting is
-//! bounded by `MAX_DEPTH`.
+//! bounded by `MAX_DEPTH`. Operator and postfix chains are not nesting and have no limit.
 
 use proptest::prelude::*;
 use vow_syntax::{SyntaxKind, parse};
@@ -151,8 +151,6 @@ fn deep_nesting_is_bounded() {
         format!("fn f() -> Int {{ {}1 }}", "-".repeat(n)),
         format!("fn f() -> Int {{ {}1 }}", "!".repeat(n)),
         format!("fn f() -> Int {{ {} }}", "\"{".repeat(n)),
-        format!("fn f() -> Int {{ 1{} }}", " + 1".repeat(n)),
-        format!("fn f() -> Int {{ x{} }}", ".f()".repeat(n)),
         format!("fn f() -> Int {{ {} }}", "fail ".repeat(n)),
         format!("fn f() -> Int {{ {} }}", "if ".repeat(n)),
         format!("fn f() -> {} {{ 1 }}", "List<".repeat(n)),
@@ -210,4 +208,30 @@ fn long_flat_input_is_linear() {
         200_000
     );
     assert!(start.elapsed().as_secs() < 20, "took {:?}", start.elapsed());
+}
+
+#[test]
+fn long_chains_are_not_nesting() {
+    let n = 10_000;
+    let cases = [
+        format!("fn f() -> Int {{ 1{} }}\n", " + 1".repeat(n)),
+        format!("fn f() -> Int {{ x{} }}\n", ".f()".repeat(n)),
+        format!("fn f() -> Int {{ x{} }}\n", "[0]?.y(1)".repeat(n)),
+        format!("fn f() -> Bool {{ a{} }}\n", " && b || c".repeat(n)),
+        format!("fn f() -> Int {{ a{} }}\n", "\n  + b.c(d)\n  * e".repeat(n)),
+    ];
+    for text in &cases {
+        let parse = check(text);
+        assert!(parse.errors.is_empty(), "{:?}", parse.errors.first());
+        // The spine really is as deep as the chain; dropping it must not overflow either.
+        let (mut depth, mut max) = (0usize, 0usize);
+        for event in parse.syntax().preorder() {
+            match event {
+                rowan::WalkEvent::Enter(_) => depth += 1,
+                rowan::WalkEvent::Leave(_) => depth -= 1,
+            }
+            max = max.max(depth);
+        }
+        assert!(max >= n, "spine depth {max}");
+    }
 }

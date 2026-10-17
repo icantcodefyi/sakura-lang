@@ -312,17 +312,12 @@ fn bin_loop(
     min_bp: u8,
     no_record: bool,
 ) -> CompletedMarker {
-    let saved = p.depth;
+    // A chain is a loop, not nesting: `a + b + … + z` does not count toward `MAX_DEPTH`, so
+    // tree consumers must walk left-nested chains iteratively.
     while let Some((l_bp, r_bp)) = infix_bp(p.current()) {
         if l_bp < min_bp {
             break;
         }
-        if p.depth >= MAX_DEPTH {
-            too_deep(p);
-            break;
-        }
-        // Each link deepens the tree; count it so recursive consumers stay within the limit.
-        p.depth += 1;
         let m = lhs.precede(p);
         p.bump();
         bin_expr(p, r_bp, no_record);
@@ -336,7 +331,6 @@ fn bin_loop(
             p.error(codes::CHAINED_COMPARISON, what);
         }
     }
-    p.depth = saved;
     lhs
 }
 
@@ -357,8 +351,8 @@ fn unary(p: &mut Parser<'_>, no_record: bool) -> Option<CompletedMarker> {
     Some(postfix_loop(p, primary))
 }
 
+/// Postfix operators in a loop; like `bin_loop`, chain length is not nesting depth.
 fn postfix_loop(p: &mut Parser<'_>, mut lhs: CompletedMarker) -> CompletedMarker {
-    let saved = p.depth;
     loop {
         let kind = match p.current() {
             L_PAREN => CALL_EXPR,
@@ -384,11 +378,6 @@ fn postfix_loop(p: &mut Parser<'_>, mut lhs: CompletedMarker) -> CompletedMarker
             }
             _ => break,
         };
-        if p.depth >= MAX_DEPTH {
-            too_deep(p);
-            break;
-        }
-        p.depth += 1;
         let m = lhs.precede(p);
         match kind {
             CALL_EXPR => arg_list(p, false),
@@ -410,7 +399,6 @@ fn postfix_loop(p: &mut Parser<'_>, mut lhs: CompletedMarker) -> CompletedMarker
         }
         lhs = m.complete(p, kind);
     }
-    p.depth = saved;
     lhs
 }
 
