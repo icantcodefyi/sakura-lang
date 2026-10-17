@@ -270,6 +270,9 @@ impl<'p> Checker<'p> {
         primary: text_size::TextRange,
         kind: ViolationKind,
     ) {
+        let flat = self.inf.flatten_row(bound);
+        let fail_free_tail = matches!(flat.tail, crate::ty::Tail::Var(_))
+            && !flat.labels.iter().any(|l| l.effect == Effect::Fail);
         if let Err((labels, tails)) = self.inf.subsume_rows(actual, bound) {
             if labels.is_empty() && !tails {
                 return;
@@ -281,6 +284,7 @@ impl<'p> Checker<'p> {
                 actual,
                 expected: bound,
                 kind,
+                fail_free_tail,
             });
         }
     }

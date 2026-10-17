@@ -730,9 +730,10 @@ impl Checker<'_> {
     }
 }
 
-/// Row parameters some row of `def`'s declaration writes next to `Fail<…>` (`{Fail<E> | e}`):
-/// those are Fail-free; the others carry failures (§5.2 rule 8). Indices are
-/// `TypeRes::Param` indices (an op's index space starts with its effect's generics).
+/// Row parameters some row of `def`'s declaration writes next to `Fail<E>` with a type
+/// parameter `E` (`{Fail<E> | e}`): those are Fail-free; the others carry failures (§5.2
+/// rule 8). Indices are `TypeRes::Param` indices (an op's index space starts with its
+/// effect's generics).
 fn fail_free_row_params<'a>(program: &'a vow_hir::Program, def: DefId) -> HashSet<u32> {
     fn sig<'a>(s: &'a Signature, refs: &mut Vec<&'a TypeRef>, rows: &mut Vec<&'a RowRef>) {
         refs.extend(s.params.iter().map(|p| &p.ty));
@@ -783,10 +784,28 @@ fn fail_free_row_params<'a>(program: &'a vow_hir::Program, def: DefId) -> HashSe
     let mut out = HashSet::new();
     while !refs.is_empty() || !rows.is_empty() {
         if let Some(r) = rows.pop() {
-            let fail = r
-                .labels
-                .iter()
-                .any(|l| l.effect == TypeRes::Builtin(Builtin::Fail));
+            // `{Fail<E> | e}` with a type parameter `E` names the callback's failures, so `e`
+            // is the rest. Next to a concrete `Fail<Timeout>` the row is
+            // `{Fail<Timeout ∪ e.Fail> | e}` (see the plan's Deviations).
+            let names_param = |t: &TypeRef| match &t.kind {
+                TypeRefKind::Named {
+                    res: TypeRes::Param(_),
+                    ..
+                } => true,
+                TypeRefKind::Union(xs) => xs.iter().any(|x| {
+                    matches!(
+                        x.kind,
+                        TypeRefKind::Named {
+                            res: TypeRes::Param(_),
+                            ..
+                        }
+                    )
+                }),
+                _ => false,
+            };
+            let fail = r.labels.iter().any(|l| {
+                l.effect == TypeRes::Builtin(Builtin::Fail) && l.args.iter().any(names_param)
+            });
             if fail && let Some(TypeRes::Param(n)) = r.tail {
                 out.insert(n);
             }

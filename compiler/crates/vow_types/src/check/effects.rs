@@ -71,13 +71,20 @@ impl Checker<'_> {
                     )
                 }
             }
-            ViolationKind::Lambda => (
-                V3001,
-                Phase::Effect,
-                format!(
-                    "this function value performs {list}, but the expected function type allows only `{allowed}`"
-                ),
-            ),
+            ViolationKind::Lambda => {
+                let why = if v.fail_free_tail && labels.iter().all(|l| l.effect == Effect::Fail) {
+                    "; its row variable is declared next to `Fail<E>`, so `E` names every failure and the variable itself cannot fail"
+                } else {
+                    ""
+                };
+                (
+                    V3001,
+                    Phase::Effect,
+                    format!(
+                        "this function value performs {list}, but the expected function type allows only `{allowed}`{why}"
+                    ),
+                )
+            }
             ViolationKind::Clause { op } => (
                 V3001,
                 Phase::Effect,

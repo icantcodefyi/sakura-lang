@@ -797,3 +797,24 @@ Each commit: fmt, clippy `-D warnings`, full workspace tests, rebase, push.
    mid-body diagnostics show `?e1` rather than `{Fail<?A> | ?e1}`.
 6. **Catch coverage**: a catch-all arm over a body whose tail hides failures is reachable (no
    `V4002` next to the `W4010`).
+7. **Inspecting a value settles its error union.** A field read, method call, tuple access or
+   operator on a value whose type is an error-union variable (`fn(e) { e.tag }` passed as
+   `pred: fn(E) -> Bool` after `body` failed with `ToolError`, std `tool.vow`) fixes the
+   variable to its current union (`Infer::settle`); later failures must fit it, as with an
+   ordinary type variable. Without this the field read is `V2010`.
+8. **Kind rule refined: Fail-free iff next to `Fail<E>` with a type parameter `E`** (1.5.1,
+   risks 1 and 6). Upstream added a D test (`vow_codegen_js` m3
+   `sql_memory_queries_rows_by_schema_and_rolls_back_failed_transactions`) whose
+   `Sql.transaction<T, e>(body: fn() -> T ! {Sql | e}) -> T ! {Fail<SqlError> | e}` body fails
+   with `Abort`; under the plan's rule `e` is Fail-free there and the test is rejected (the
+   risk-1 premise "no program passes a failing callback" no longer holds). Both readings are
+   sound: a failure-carrying `e` next to a concrete `Fail<SqlError>` reads
+   `{Fail<SqlError ∪ e.Fail> | e}`, and every instantiation joins the callback's tags with
+   `SqlError` into a concrete union. The plan's reason for Fail-free `e` — a `try` in the body
+   must see exactly `E` (`retry`, `expect_fail`, `expect_fails_with`, `tool`/`invoke`) — only
+   applies when the `Fail` argument is a type parameter, so that is the rule now (`TypeRes::Param`
+   at the top of the argument or inside a union). Consequences: `timeout`'s and
+   `transaction`'s callbacks may fail and their failures reach the caller joined with
+   `Timeout`/`SqlError` (§15.10 intent, §16.19 partly resolved); risk 6's example uses `Fail<E>`.
+   Needs the designer's endorsement (REQUESTS.md); design §5.2 rule 8 and §17.45 still state the
+   plan's rule.

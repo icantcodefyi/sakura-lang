@@ -77,3 +77,38 @@ fn catch_all_over_hidden_failures_is_only_w4010() {
         check("fn swallow<e>(f: fn() -> Int ! e) -> Int ! e { try { f() } catch { _ => 0 } }\n");
     assert_eq!(c.codes(), ["W4010"], "{}", c.render());
 }
+
+#[test]
+fn an_inspected_error_value_settles_its_union() {
+    let src = r#"error Tagged(tag: String)
+fn expect<T, E, e>(body: fn() -> T ! {Fail<E> | e}, pred: fn(E) -> Bool) -> Bool ! e {
+  match try { body() } { Ok(_) => false, Err(x) => pred(x) }
+}
+fn t() -> Bool { expect(fn() { fail Tagged { tag: "x" } }, fn(e) { e.tag == "x" }) }
+"#;
+    let c = check(src);
+    assert!(c.diags.is_empty(), "{}", c.render());
+}
+
+/// Row-parameter kinds (§5.2 rule 8 and the plan's Deviations): `e` next to `Fail<E>` with a
+/// type parameter `E` is Fail-free; next to a concrete tag it still carries the callback's
+/// failures, joined with the tag at each call site.
+#[test]
+fn row_parameter_kinds() {
+    let src = r#"error A
+error B
+fn guard<T, e>(body: fn() -> T ! e) -> T ! {Fail<A> | e} { body() }
+fn joined() -> Result<Int, A | B> { try { guard(fn() { fail B }) } }
+fn named<E, e>(f: fn() -> Int ! {Fail<E> | e}, h: fn() -> Int ! e) -> Int ! {Fail<E> | e} { f() + h() }
+fn ok() -> Int ! {Fail<A>} { named(fn() { fail A }, fn() { 1 }) }
+"#;
+    let mut c = check(src);
+    assert!(c.diags.is_empty(), "{}", c.render());
+    assert_eq!(c.value_row("joined").0, "{}");
+    assert_eq!(c.value_row("ok").0, "{Fail<A>}");
+    let bad = format!(
+        "{src}fn bad() -> Int ! {{Fail<A | B>}} {{ named(fn() {{ fail A }}, fn() {{ fail B }}) }}\n"
+    );
+    let c = check(&bad);
+    insta::assert_snapshot!(c.render());
+}

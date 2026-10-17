@@ -64,6 +64,8 @@ struct RowViolation {
     actual: RowId,
     expected: RowId,
     kind: ViolationKind,
+    /// The bound was an open row without `Fail`: a Fail-free row variable (§5.2 rule 8).
+    fail_free_tail: bool,
 }
 
 #[derive(Clone, Debug)]

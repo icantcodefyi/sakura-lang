@@ -785,7 +785,7 @@ impl Checker<'_> {
         args: &[ExprId],
     ) -> (TypeId, RowId) {
         let (rt, rr) = self.synth(receiver);
-        let srt = self.inf.shallow(rt);
+        let srt = self.inf.settle(rt);
         // §4.9 rule 1: a record field holding a function.
         if let Type::Con(TyCon::Adt(d), targs) = self.inf.interner.ty(srt).clone()
             && self.is_record(d)
@@ -873,7 +873,7 @@ impl Checker<'_> {
         bt: TypeId,
         name: &str,
     ) -> TypeId {
-        let mut cur = self.inf.shallow(bt);
+        let mut cur = self.inf.settle(bt);
         loop {
             match self.inf.interner.ty(cur).clone() {
                 Type::Error => return cur,
@@ -928,7 +928,7 @@ impl Checker<'_> {
     }
 
     fn tuple_field(&mut self, e: ExprId, base: ExprId, bt: TypeId, index: u32) -> TypeId {
-        let bt = self.inf.shallow(bt);
+        let bt = self.inf.settle(bt);
         let range = self.expr_range(e);
         match self.inf.interner.ty(bt).clone() {
             Type::Tuple(xs) => match xs.get(index as usize) {
@@ -965,7 +965,7 @@ impl Checker<'_> {
 
     /// Strips refinements to the base type (refined values coerce to their base, §4.3).
     fn base_of(&mut self, t: TypeId) -> TypeId {
-        let mut t = self.inf.shallow(t);
+        let mut t = self.inf.settle(t);
         while let Type::Con(TyCon::Adt(d), _) = self.inf.interner.ty(t) {
             match self.inf.refined_bases.get(d) {
                 Some(b) => t = self.inf.shallow(*b),

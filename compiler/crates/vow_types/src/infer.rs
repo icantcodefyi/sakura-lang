@@ -360,6 +360,23 @@ impl Infer {
         }
     }
 
+    /// `shallow`, but an error-union variable whose value is about to be inspected (a field
+    /// read, a method call) is settled to its current union: later failures must fit it.
+    pub fn settle(&mut self, ty: TypeId) -> TypeId {
+        let ty = self.shallow(ty);
+        if let Type::Var(v) = *self.interner.ty(ty)
+            && let Some(s) = self.err_slot(v)
+            && !s.lower.is_empty()
+        {
+            let lower = s.lower.clone();
+            if let Some(t) = lower.expressible(&mut self.interner) {
+                self.ty_vars[v.0 as usize] = TySlot::Link(t);
+                return t;
+            }
+        }
+        ty
+    }
+
     /// The current lower bound of an error-union variable (∅ for anything else).
     pub fn err_lower_bound(&mut self, ty: TypeId) -> ErrSet {
         let ty = self.shallow(ty);
