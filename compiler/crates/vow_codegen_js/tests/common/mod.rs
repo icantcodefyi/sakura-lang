@@ -181,3 +181,34 @@ pub fn test(name: &str, src: &str) -> Result<Run, String> {
     .unwrap();
     Ok(node(&dir, "__vow_test__.js", &["0", ""]))
 }
+
+/// Snapshot text without ids that shift whenever std changes: global def and contract ids
+/// (`#37` → `#_`) and the numeric suffix of specialized std functions (`$std_test.expect_eq$2`
+/// → `$std_test.expect_eq$_`).
+pub fn stable(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut chars = text.char_indices().peekable();
+    while let Some((i, c)) = chars.next() {
+        out.push(c);
+        let qualified_std = || {
+            let word_start = text[..i]
+                .rfind(|ch: char| {
+                    !(ch.is_ascii_alphanumeric() || ch == '_' || ch == '$' || ch == '.')
+                })
+                .map_or(0, |p| p + 1);
+            text[word_start..i].starts_with("$std_") && text[word_start..i].contains('.')
+        };
+        let redact = match c {
+            '#' => true,
+            '$' => qualified_std(),
+            _ => false,
+        };
+        if redact && chars.peek().is_some_and(|(_, d)| d.is_ascii_digit()) {
+            while chars.peek().is_some_and(|(_, d)| d.is_ascii_digit()) {
+                chars.next();
+            }
+            out.push('_');
+        }
+    }
+    out
+}

@@ -200,12 +200,15 @@ test "handler state advances" { expect_eq(answer(), 3) }
         let r = common::test(name, src).unwrap();
         assert_eq!(r.code, 0, "{}{}", r.stdout, r.stderr);
         let (m, sources) = common::build(name, src, false).unwrap();
-        insta::assert_snapshot!(format!("{name}_core"), m.display_module("main::main"));
+        insta::assert_snapshot!(
+            format!("{name}_core"),
+            common::stable(&m.display_module("main::main"))
+        );
         let js = vow_codegen_js::emit(&m, &vow_codegen_js::Options::new(sources))
             .into_iter()
             .find(|f| f.path == "main/main.js")
             .unwrap();
-        insta::assert_snapshot!(format!("{name}_js"), js.text);
+        insta::assert_snapshot!(format!("{name}_js"), common::stable(&js.text));
     }
 }
 
