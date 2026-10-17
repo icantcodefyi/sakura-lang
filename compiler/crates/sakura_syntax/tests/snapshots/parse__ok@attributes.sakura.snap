@@ -1,0 +1,244 @@
+---
+source: crates/sakura_syntax/tests/parse.rs
+expression: out
+input_file: crates/sakura_syntax/tests/data/ok/attributes.sakura
+---
+SOURCE_FILE@0..358
+  FN_DECL@0..38
+    ATTRIBUTE@0..7
+      AT@0..1 "@"
+      IDENT@1..7 "server"
+    NEWLINE@7..8 "\n"
+    PUB_KW@8..11 "pub"
+    WHITESPACE@11..12 " "
+    FN_KW@12..14 "fn"
+    WHITESPACE@14..15 " "
+    IDENT@15..25 "serve_root"
+    PARAM_LIST@25..27
+      L_PAREN@25..26 "("
+      R_PAREN@26..27 ")"
+    WHITESPACE@27..28 " "
+    RET_TYPE@28..35
+      THIN_ARROW@28..30 "->"
+      WHITESPACE@30..31 " "
+      NAMED_TYPE@31..35
+        PATH@31..35
+          TYPE_NAME@31..35 "Unit"
+    WHITESPACE@35..36 " "
+    BLOCK@36..38
+      L_BRACE@36..37 "{"
+      R_BRACE@37..38 "}"
+  NEWLINE@38..39 "\n"
+  WHITESPACE@39..40 "\n"
+  FN_DECL@40..150
+    ATTRIBUTE@40..63
+      AT@40..41 "@"
+      IDENT@41..45 "tool"
+      ARG_LIST@45..63
+        L_PAREN@45..46 "("
+        STRING_LIT@46..62
+          STRING_START@46..47 "\""
+          STRING_TEXT@47..61 "Look up a user"
+          STRING_END@61..62 "\""
+        R_PAREN@62..63 ")"
+    NEWLINE@63..64 "\n"
+    ATTRIBUTE@64..92
+      AT@64..65 "@"
+      IDENT@65..75 "deprecated"
+      ARG_LIST@75..92
+        L_PAREN@75..76 "("
+        STRING_LIT@76..91
+          STRING_START@76..77 "\""
+          STRING_TEXT@77..90 "use lookup_v2"
+          STRING_END@90..91 "\""
+        R_PAREN@91..92 ")"
+    NEWLINE@92..93 "\n"
+    FN_KW@93..95 "fn"
+    WHITESPACE@95..96 " "
+    IDENT@96..102 "lookup"
+    PARAM_LIST@102..114
+      L_PAREN@102..103 "("
+      PARAM@103..113
+        IDENT@103..105 "id"
+        COLON@105..106 ":"
+        WHITESPACE@106..107 " "
+        NAMED_TYPE@107..113
+          PATH@107..113
+            TYPE_NAME@107..113 "String"
+      R_PAREN@113..114 ")"
+    WHITESPACE@114..115 " "
+    RET_TYPE@115..124
+      THIN_ARROW@115..117 "->"
+      WHITESPACE@117..118 " "
+      NAMED_TYPE@118..124
+        PATH@118..124
+          TYPE_NAME@118..124 "String"
+    WHITESPACE@124..125 " "
+    BANG@125..126 "!"
+    WHITESPACE@126..127 " "
+    EFFECT_ROW@127..143
+      L_BRACE@127..128 "{"
+      NAMED_TYPE@128..142
+        PATH@128..132
+          TYPE_NAME@128..132 "Fail"
+        GENERIC_ARG_LIST@132..142
+          LT@132..133 "<"
+          NAMED_TYPE@133..141
+            PATH@133..141
+              TYPE_NAME@133..141 "NotFound"
+          GT@141..142 ">"
+      R_BRACE@142..143 "}"
+    WHITESPACE@143..144 " "
+    BLOCK@144..150
+      L_BRACE@144..145 "{"
+      WHITESPACE@145..146 " "
+      EXPR_STMT@146..148
+        PATH_EXPR@146..148
+          PATH@146..148
+            IDENT@146..148 "id"
+      WHITESPACE@148..149 " "
+      R_BRACE@149..150 "}"
+  NEWLINE@150..151 "\n"
+  WHITESPACE@151..152 "\n"
+  FN_DECL@152..188
+    ATTRIBUTE@152..162
+      AT@152..153 "@"
+      IDENT@153..162 "test_only"
+    NEWLINE@162..163 "\n"
+    FN_KW@163..165 "fn"
+    WHITESPACE@165..166 " "
+    IDENT@166..173 "fixture"
+    PARAM_LIST@173..175
+      L_PAREN@173..174 "("
+      R_PAREN@174..175 ")"
+    WHITESPACE@175..176 " "
+    RET_TYPE@176..182
+      THIN_ARROW@176..178 "->"
+      WHITESPACE@178..179 " "
+      NAMED_TYPE@179..182
+        PATH@179..182
+          TYPE_NAME@179..182 "Int"
+    WHITESPACE@182..183 " "
+    BLOCK@183..188
+      L_BRACE@183..184 "{"
+      WHITESPACE@184..185 " "
+      EXPR_STMT@185..186
+        LITERAL@185..186
+          INT@185..186 "1"
+      WHITESPACE@186..187 " "
+      R_BRACE@187..188 "}"
+  NEWLINE@188..189 "\n"
+  WHITESPACE@189..190 "\n"
+  FN_DECL@190..267
+    ATTRIBUTE@190..233
+      AT@190..191 "@"
+      IDENT@191..199 "external"
+      ARG_LIST@199..233
+        L_PAREN@199..200 "("
+        PATH_EXPR@200..202
+          PATH@200..202
+            IDENT@200..202 "js"
+        COMMA@202..203 ","
+        WHITESPACE@203..204 " "
+        STRING_LIT@204..220
+          STRING_START@204..205 "\""
+          STRING_TEXT@205..219 "sakura_runtime"
+          STRING_END@219..220 "\""
+        COMMA@220..221 ","
+        WHITESPACE@221..222 " "
+        STRING_LIT@222..232
+          STRING_START@222..223 "\""
+          STRING_TEXT@223..231 "list_len"
+          STRING_END@231..232 "\""
+        R_PAREN@232..233 ")"
+    NEWLINE@233..234 "\n"
+    PUB_KW@234..237 "pub"
+    WHITESPACE@237..238 " "
+    FN_KW@238..240 "fn"
+    WHITESPACE@240..241 " "
+    IDENT@241..244 "len"
+    TYPE_PARAM_LIST@244..247
+      LT@244..245 "<"
+      TYPE_PARAM@245..246
+        TYPE_NAME@245..246 "A"
+      GT@246..247 ">"
+    PARAM_LIST@247..260
+      L_PAREN@247..248 "("
+      PARAM@248..259
+        IDENT@248..250 "xs"
+        COLON@250..251 ":"
+        WHITESPACE@251..252 " "
+        NAMED_TYPE@252..259
+          PATH@252..256
+            TYPE_NAME@252..256 "List"
+          GENERIC_ARG_LIST@256..259
+            LT@256..257 "<"
+            NAMED_TYPE@257..258
+              PATH@257..258
+                TYPE_NAME@257..258 "A"
+            GT@258..259 ">"
+      R_PAREN@259..260 ")"
+    WHITESPACE@260..261 " "
+    RET_TYPE@261..267
+      THIN_ARROW@261..263 "->"
+      WHITESPACE@263..264 " "
+      NAMED_TYPE@264..267
+        PATH@264..267
+          TYPE_NAME@264..267 "Int"
+  NEWLINE@267..268 "\n"
+  WHITESPACE@268..269 "\n"
+  FN_DECL@269..357
+    FN_KW@269..271 "fn"
+    WHITESPACE@271..272 " "
+    IDENT@272..280 "trusting"
+    PARAM_LIST@280..304
+      L_PAREN@280..281 "("
+      PARAM@281..303
+        IDENT@281..284 "raw"
+        COLON@284..285 ":"
+        WHITESPACE@285..286 " "
+        NAMED_TYPE@286..303
+          PATH@286..295
+            TYPE_NAME@286..295 "Untrusted"
+          GENERIC_ARG_LIST@295..303
+            LT@295..296 "<"
+            NAMED_TYPE@296..302
+              PATH@296..302
+                TYPE_NAME@296..302 "String"
+            GT@302..303 ">"
+      R_PAREN@303..304 ")"
+    WHITESPACE@304..305 " "
+    RET_TYPE@305..314
+      THIN_ARROW@305..307 "->"
+      WHITESPACE@307..308 " "
+      NAMED_TYPE@308..314
+        PATH@308..314
+          TYPE_NAME@308..314 "String"
+    WHITESPACE@314..315 " "
+    BLOCK@315..357
+      L_BRACE@315..316 "{"
+      WHITESPACE@316..317 " "
+      EXPR_STMT@317..355
+        CALL_EXPR@317..355
+          FIELD_EXPR@317..326
+            PATH_EXPR@317..320
+              PATH@317..320
+                IDENT@317..320 "raw"
+            DOT@320..321 "."
+            IDENT@321..326 "trust"
+          ARG_LIST@326..355
+            L_PAREN@326..327 "("
+            ATTR_EXPR@327..354
+              AT@327..328 "@"
+              IDENT@328..333 "trust"
+              ARG_LIST@333..354
+                L_PAREN@333..334 "("
+                STRING_LIT@334..353
+                  STRING_START@334..335 "\""
+                  STRING_TEXT@335..352 "checked by caller"
+                  STRING_END@352..353 "\""
+                R_PAREN@353..354 ")"
+            R_PAREN@354..355 ")"
+      WHITESPACE@355..356 " "
+      R_BRACE@356..357 "}"
+  NEWLINE@357..358 "\n"

@@ -1,5 +1,0 @@
----
-source: crates/vow_types/tests/acceptance.rs
-expression: c.render()
----
-V4002 3:90 this arm is unreachable: earlier arms already match every value it matches

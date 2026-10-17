@@ -1,0 +1,18 @@
+[package]
+name = "sakura_eval"
+description = "Reference interpreter over Core, for differential testing of the backends."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+sakura_core.workspace = true
+
+[dev-dependencies]
+sakura_analysis.workspace = true
+
+[lints]
+workspace = true

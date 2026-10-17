@@ -1,0 +1,108 @@
+---
+source: crates/sakura_syntax/tests/parse.rs
+expression: out
+input_file: crates/sakura_syntax/tests/data/ok/design_14_3_milestones_and_acceptance_programs_0.sakura
+---
+SOURCE_FILE@0..139
+  FN_DECL@0..79
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    IDENT@3..8 "greet"
+    PARAM_LIST@8..22
+      L_PAREN@8..9 "("
+      PARAM@9..21
+        IDENT@9..13 "name"
+        COLON@13..14 ":"
+        WHITESPACE@14..15 " "
+        NAMED_TYPE@15..21
+          PATH@15..21
+            TYPE_NAME@15..21 "String"
+      R_PAREN@21..22 ")"
+    WHITESPACE@22..23 " "
+    RET_TYPE@23..30
+      THIN_ARROW@23..25 "->"
+      WHITESPACE@25..26 " "
+      NAMED_TYPE@26..30
+        PATH@26..30
+          TYPE_NAME@26..30 "Unit"
+    WHITESPACE@30..31 " "
+    BANG@31..32 "!"
+    WHITESPACE@32..33 " "
+    EFFECT_ROW@33..42
+      L_BRACE@33..34 "{"
+      NAMED_TYPE@34..41
+        PATH@34..41
+          TYPE_NAME@34..41 "Console"
+      R_BRACE@41..42 "}"
+    WHITESPACE@42..43 " "
+    BLOCK@43..79
+      L_BRACE@43..44 "{"
+      WHITESPACE@44..47 "\n  "
+      EXPR_STMT@47..77
+        CALL_EXPR@47..77
+          FIELD_EXPR@47..60
+            PATH_EXPR@47..54
+              PATH@47..54
+                TYPE_NAME@47..54 "Console"
+            DOT@54..55 "."
+            IDENT@55..60 "print"
+          ARG_LIST@60..77
+            L_PAREN@60..61 "("
+            STRING_LIT@61..76
+              STRING_START@61..62 "\""
+              STRING_TEXT@62..69 "hello, "
+              INTERPOLATION@69..75
+                INTERP_START@69..70 "{"
+                PATH_EXPR@70..74
+                  PATH@70..74
+                    IDENT@70..74 "name"
+                INTERP_END@74..75 "}"
+              STRING_END@75..76 "\""
+            R_PAREN@76..77 ")"
+      WHITESPACE@77..78 "\n"
+      R_BRACE@78..79 "}"
+  NEWLINE@79..80 "\n"
+  FN_DECL@80..138
+    PUB_KW@80..83 "pub"
+    WHITESPACE@83..84 " "
+    FN_KW@84..86 "fn"
+    WHITESPACE@86..87 " "
+    IDENT@87..91 "main"
+    PARAM_LIST@91..93
+      L_PAREN@91..92 "("
+      R_PAREN@92..93 ")"
+    WHITESPACE@93..94 " "
+    RET_TYPE@94..101
+      THIN_ARROW@94..96 "->"
+      WHITESPACE@96..97 " "
+      NAMED_TYPE@97..101
+        PATH@97..101
+          TYPE_NAME@97..101 "Unit"
+    WHITESPACE@101..102 " "
+    BANG@102..103 "!"
+    WHITESPACE@103..104 " "
+    EFFECT_ROW@104..113
+      L_BRACE@104..105 "{"
+      NAMED_TYPE@105..112
+        PATH@105..112
+          TYPE_NAME@105..112 "Console"
+      R_BRACE@112..113 "}"
+    WHITESPACE@113..114 " "
+    BLOCK@114..138
+      L_BRACE@114..115 "{"
+      WHITESPACE@115..116 " "
+      EXPR_STMT@116..136
+        CALL_EXPR@116..136
+          PATH_EXPR@116..121
+            PATH@116..121
+              IDENT@116..121 "greet"
+          ARG_LIST@121..136
+            L_PAREN@121..122 "("
+            STRING_LIT@122..135
+              STRING_START@122..123 "\""
+              STRING_TEXT@123..134 "Sakura Lang"
+              STRING_END@134..135 "\""
+            R_PAREN@135..136 ")"
+      WHITESPACE@136..137 " "
+      R_BRACE@137..138 "}"
+  NEWLINE@138..139 "\n"

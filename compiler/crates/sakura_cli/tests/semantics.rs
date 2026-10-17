@@ -1,0 +1,68 @@
+//! `compiler/tests/semantics`: programs run end to end. `// mode: run` (default) compares stdout
+//! with `<name>.stdout` and the exit code with `// expect-exit:` (default 0); `// mode: test`
+//! requires `sakura test` to pass; `// mode: check` requires a clean `sakura check`.
+
+mod common;
+
+use common::*;
+use std::path::Path;
+
+fn run(path: &Path, d: &std::collections::BTreeMap<String, String>) -> Result<(), String> {
+    let dir = path.parent().unwrap();
+    let name = path.file_name().unwrap().to_str().unwrap();
+    let seed = d.get("seed").map(String::as_str);
+    let mode = d.get("mode").map_or("run", String::as_str);
+    let mut args = vec![mode, name];
+    if let (Some(seed), "run" | "test") = (seed, mode) {
+        args.extend(["--seed", seed]);
+    }
+    let out = sakura(&args, dir);
+    if out.timed_out {
+        return Err(format!("`sakura {mode}` timed out"));
+    }
+    let want: i32 = d
+        .get("expect-exit")
+        .and_then(|c| c.parse().ok())
+        .unwrap_or(0);
+    if out.code != Some(want) {
+        return Err(format!(
+            "`sakura {mode}` exited {:?}, expected {want}\nstdout:\n{}\nstderr:\n{}",
+            out.code, out.stdout, out.stderr
+        ));
+    }
+    if let Some(defect) = d.get("expect-defect")
+        && !out.stderr.contains(defect.as_str())
+    {
+        return Err(format!(
+            "expected defect {defect} on stderr:\n{}",
+            out.stderr
+        ));
+    }
+    if mode == "run" {
+        compare_file(&path.with_extension("stdout"), &out.stdout)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn semantics() {
+    let mut report = Report::default();
+    for path in fixtures("semantics") {
+        let name = path.file_name().unwrap().to_string_lossy().into_owned();
+        let d = directives(&std::fs::read_to_string(&path).unwrap());
+        let result = match skip_reason(&d, SEMANTICS_MILESTONE) {
+            Some(why) => {
+                report.skip(&name, why);
+                check_never_crashes(&path).map(|_| ())
+            }
+            None => {
+                report.settle(&name, &d, run(&path, &d));
+                Ok(())
+            }
+        };
+        if let Err(e) = result {
+            report.fail(&name, e);
+        }
+    }
+    report.finish("semantics");
+}

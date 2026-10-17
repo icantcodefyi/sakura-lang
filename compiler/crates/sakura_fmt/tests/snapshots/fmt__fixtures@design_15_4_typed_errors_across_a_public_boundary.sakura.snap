@@ -1,0 +1,43 @@
+---
+source: crates/sakura_fmt/tests/fmt.rs
+assertion_line: 66
+expression: "check(path, &text)"
+input_file: tests/fmt/design_15_4_typed_errors_across_a_public_boundary.sakura
+---
+error NotFound(id: String)
+error Forbidden
+error Unavailable(reason: String)
+
+type UserError = NotFound | Forbidden
+
+effect Users {
+  fn get(id: String) -> Option<User> ! {Fail<Unavailable>}
+}
+
+type User = { id: String, owner: String, name: String }
+
+// `Users.memory(…)` resolves here: a non-operation name after an effect is a function of its home module (§4.9).
+fn memory(users: List<User>) -> Handler<Users> {
+  handler Users {
+    fn get(id) { List.find(users, fn(u) { u.id == id }) }
+  }
+}
+
+// Internal failure (Unavailable) is translated; the public union stays stable.
+pub fn view_user(caller: String, id: String) -> User ! {Log, Users, Fail<UserError>} {
+  let user = try { Users.get(id) } catch {
+    Unavailable { reason } => {
+      Log.event(Level.Warn, "users backend unavailable", [("reason", Json.String(reason))])
+      None
+    },
+  }
+  match user {
+    None => fail NotFound { id },
+    Some(u) if u.owner != caller => fail Forbidden,
+    Some(u) => u,
+  }
+}
+
+test "missing user is NotFound" {
+  with Users.memory([]) { expect_fail(fn() { view_user("alice", "u1") }, NotFound { id: "u1" }) }
+}

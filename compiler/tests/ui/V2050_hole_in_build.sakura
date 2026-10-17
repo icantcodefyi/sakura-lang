@@ -1,0 +1,5 @@
+// milestone: M2
+// needs: typed holes; `sakura build` rejects them (`sakura check` allows them)
+// expect: V2050
+// command: build
+fn unfinished(x: Int) -> Int { ?result }

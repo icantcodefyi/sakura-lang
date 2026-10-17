@@ -1,0 +1,70 @@
+/// Optional values. `Option` is the only absence type; there is no null.
+pub type Option<A> = None | Some(A)
+
+/// Applies `f` to the value inside `Some`; `None` stays `None`.
+pub fn map<A, B, e>(o: Option<A>, f: fn(A) -> B ! e) -> Option<B> ! e {
+  match o {
+    Some(a) => Some(f(a)),
+    None => None,
+  }
+}
+
+/// The value inside `Some`, or `default`.
+pub fn unwrap_or<A>(o: Option<A>, default: A) -> A {
+  match o {
+    Some(a) => a,
+    None => default,
+  }
+}
+
+/// The value inside `Some`; `None` becomes the typed failure `err`.
+pub fn or_fail<A, E>(o: Option<A>, err: E) -> A ! {Fail<E>} {
+  match o {
+    Some(a) => a,
+    None => fail err,
+  }
+}
+
+/// The value inside `Some`; `None` is Defect `D030` carrying `msg`.
+/// Use only where `None` is a bug, never on external input.
+@external(js, "sakura_runtime", "option_expect")
+pub fn expect<A>(o: Option<A>, msg: String) -> A
+
+@total
+pub fn is_some<A>(o: Option<A>) -> Bool {
+  match o {
+    Some(_) => true,
+    None => false,
+  }
+}
+
+test "map transforms Some and keeps None" {
+  expect_eq(Some(2).map(fn(x) { x * 10 }), Some(20))
+  let none: Option<Int> = None
+  expect_eq(none.map(fn(x) { x * 10 }), None)
+}
+
+test "unwrap_or falls back on None" {
+  let none: Option<String> = None
+  expect_eq(none.unwrap_or("fallback"), "fallback")
+  expect_eq(Some("x").unwrap_or("fallback"), "x")
+}
+
+test "is_some" {
+  let none: Option<Int> = None
+  expect_eq(Some(1).is_some(), true)
+  expect_eq(none.is_some(), false)
+}
+
+error Missing
+
+test "or_fail turns None into a typed failure" {
+  let none: Option<Int> = None
+  expect_eq(try { none.or_fail(Missing) }, Err(Missing))
+  expect_eq(try { Some(3).or_fail(Missing) }, Ok(3))
+}
+
+test "expect on None is a defect" {
+  let none: Option<Int> = None
+  expect_defect(fn() { none.expect("must be present") })
+}

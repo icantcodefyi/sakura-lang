@@ -1,5 +1,0 @@
-// milestone: M2
-// needs: typed holes; `vow build` rejects them (`vow check` allows them)
-// expect: V2050
-// command: build
-fn unfinished(x: Int) -> Int { ?result }

@@ -1,0 +1,22 @@
+---
+source: crates/sakura_hir/tests/lower.rs
+expression: "check(&\n[(\"a\", \"import app/b\\npub fn fa() -> Int { 1 }\\n\"),\n(\"b\", \"import app/c\\npub fn fb() -> Int { 1 }\\n\"),\n(\"c\", \"import app/a\\npub fn fc() -> Int { 1 }\\n\")])"
+---
+== a
+import app/b as b
+pub fn fa() -> Int
+  block
+    int 1
+== b
+import app/c as c
+pub fn fb() -> Int
+  block
+    int 1
+== c
+import app/a as a
+pub fn fc() -> Int
+  block
+    int 1
+== diagnostics
+V1030 import cycle: app/a → app/b → app/c → app/a; imports must form a DAG (design §9) — move the shared items into a module both can import
+  Primary file2 1:8 `app/a`

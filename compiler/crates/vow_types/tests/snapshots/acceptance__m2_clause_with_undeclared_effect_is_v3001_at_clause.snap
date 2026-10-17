@@ -1,8 +1,0 @@
----
-source: crates/vow_types/tests/acceptance.rs
-expression: c.render()
----
-V3001 2:68 handler clause `next` performs `Console`, which the handler's type does not allow (allowed: `{}`)
-  Cause 2:77 `Console.print("tick")` `Console.print` performs `Console` here
-  expected: {}
-  actual: {Console}

@@ -1,0 +1,46 @@
+---
+source: crates/sakura_diagnostics/tests/render.rs
+assertion_line: 220
+expression: recs
+---
+[
+  {
+    "schema_version": "1.0",
+    "kind": "hole",
+    "id": "h:a070bf6957cc75b5",
+    "name": "result",
+    "snapshot": "sha256:snap",
+    "span": {
+      "uri": "file:///work/main.sakura",
+      "content_hash": "sha256:ec3588ff2edf0796d65d68df71928d166a05a98c8a3a04c39169f14e61a1880b",
+      "start_byte": 59,
+      "end_byte": 63,
+      "role": "primary"
+    },
+    "expected_type": {
+      "render": "Int"
+    },
+    "allowed_effects": {
+      "render": "{}",
+      "row": {
+        "labels": [],
+        "tail": null
+      }
+    },
+    "locals": [
+      {
+        "name": "x",
+        "type": {
+          "render": "Int"
+        }
+      }
+    ],
+    "candidates": [
+      {
+        "expr": "x",
+        "fit": "exact_local"
+      }
+    ],
+    "contracts_in_scope": []
+  }
+]

@@ -1,4 +1,4 @@
-hi, Vow!
-nested: hi, Vow 2!
+hi, Sakura Lang!
+nested: hi, Sakura Lang 2!
 braces: {literal} tab:	| quote: "q" backslash: \
 unicode: 😀

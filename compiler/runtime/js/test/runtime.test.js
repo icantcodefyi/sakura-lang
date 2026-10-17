@@ -3,7 +3,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import * as rt from "../vow_runtime.js";
+import * as rt from "../sakura_runtime.js";
 
 const { G, LIMIT, bounce, ret } = rt;
 const ok = (value) => ({ kind: "ok", value });

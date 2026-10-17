@@ -1,15 +1,15 @@
-# Vow JS runtime ABI (v0)
+# Sakura Lang JS runtime ABI (v0)
 
-Status: provisional, owned by Engineer D (`vow_core`, `vow_codegen_js`, `runtime/js`). It
+Status: provisional, owned by Engineer D (`sakura_core`, `sakura_codegen_js`, `runtime/js`). It
 implements design §13.3–§13.4. Change it only together with the emitter and
 `runtime/js/test`.
 
-The runtime is one dependency-free ES2022 module, `vow_runtime.js`. Every emitted module does
-`import * as $rt from "./vow_runtime.js"`. Tests: `node --test compiler/runtime/js/test`.
+The runtime is one dependency-free ES2022 module, `sakura_runtime.js`. Every emitted module does
+`import * as $rt from "./sakura_runtime.js"`. Tests: `node --test compiler/runtime/js/test`.
 
 ## 1. Calling convention (CPS)
 
-Every Vow function value and every non-direct top-level function is
+Every Sakura Lang function value and every non-direct top-level function is
 
 ```js
 function f(a1, …, an, $ctx, $k) → Step
@@ -45,12 +45,12 @@ emitted as a plain function `f$d(a1, …, an) → value`. CPS callers call `f$d`
 name `f` stays exported as an adapter `(…, $ctx, $k) => $rt.ret($k, f$d(…))` for uses as a
 value. Direct functions may throw a defect (below) and nothing else.
 
-Before emission, `vow_core::opt` threads jumps to join points that only return, and turns self
+Before emission, `sakura_core::opt` threads jumps to join points that only return, and turns self
 tail calls (outside `with`/`try` regions) into loops. Join points whose jumps all stay in one JS
 function are emitted as labelled blocks and `for (;;)` loops in both ABIs, so tail-recursive and
 `while`/`for` loops never touch the trampoline unless their body makes a CPS call.
 
-Measured (node 26, `cargo test -p vow_codegen_js --test source bench -- --ignored`, wall
+Measured (node 26, `cargo test -p sakura_codegen_js --test source bench -- --ignored`, wall
 time including ~40 ms startup): a pure helper called 10M times from a loop, 204 ms CPS vs
 106 ms direct; a 30M-iteration tail loop, 125 ms either way (it is a JS loop in both); `fib 27`
 (non-tail recursion stays CPS), 100 ms.
@@ -105,7 +105,7 @@ region uses the outer variable, so leaving a region by falling through, `return`
 ## 5. Defects (design §5.4)
 
 A defect is `throw new $rt.Defect(code, message)` (`$rt.defect(code, message)`). Defects are not
-Vow control flow: nothing in Vow can catch them. The driver catches them at the **task
+Sakura Lang control flow: nothing in Sakura Lang can catch them. The driver catches them at the **task
 boundary**, runs the task's pending finalizers, and ends the task with
 `{ kind: "defect", code, message }`. Any other JS exception (a runtime bug, an exhausted stack)
 becomes defect `D090`; a rejected host promise becomes `D091`.
@@ -146,7 +146,7 @@ caller. `std/test`'s `expect_defect` is built on it.
   name and pass it as `frames` to `runTask(run, [seed], frames)`.
 - Programs: the emitter writes `__main__.js`:
   ```js
-  import { runMain } from "./vow_runtime.js";
+  import { runMain } from "./sakura_runtime.js";
   import { $entry } from "./main.js";
   runMain($entry);
   ```
@@ -183,7 +183,7 @@ suspend; `timeout` is std code over `race`.
 
 ## 7. Values (design §13.4)
 
-| Vow | JS |
+| Sakura Lang | JS |
 |---|---|
 | `Unit` | `undefined` |
 | `Bool`, `Float` | boolean, number |
@@ -215,7 +215,7 @@ receive the schema as an extra trailing argument (`PrimOp::Schema`).
 `Show` (`$rt.show(v, schema)`) is structural and uses the `$t` descriptors; the schema
 distinguishes `Float` from `Int` (`2.0` vs `2`), also through `A: Show`. `Eq` (`$rt.eq`, iterative), `Ord` (`$rt.cmp`) and `Hash` (`$rt.keyOf`) are
 structural over the same representation. Field names that are not safe JS property names
-(`__proto__`) get a `$` suffix in the emitted class; `$t` keeps the Vow name.
+(`__proto__`) get a `$` suffix in the emitted class; `$t` keeps the Sakura Lang name.
 
 Collections, measured with `node runtime/js/bench/collections.js 100000` (node 26, Apple
 silicon, best of 3; ns per operation at n = 100,000):
@@ -252,7 +252,7 @@ stated). A type parameter left unsolved in code has schema `null`: encoding then
 value's runtime shape, decoding fails with "the target type is not known".
 
 **Permissions.** The driver passes the manifest's `[permissions]` as JSON in
-`VOW_PERMISSIONS`: `{"fs": {"read": […], "write": […]}, "net": ["host:port", …], "env": […]}`
+`SAKURA_PERMISSIONS`: `{"fs": {"read": […], "write": […]}, "net": ["host:port", …], "env": […]}`
 (paths relative to the working directory). When it is set, `fs_root()`'s `Dir` (and its
 subdirectories) reads only under `fs.read` and writes only under `fs.write`, `http_send` only
 reaches `net` hosts, and `env_get` only sees `env` keys; each refusal is the operation's
@@ -310,9 +310,9 @@ and a specialized copy when they are concrete.
 
 ## 8. Builtins
 
-`vow_core::builtins::BUILTINS` lists every runtime function Core may call
+`sakura_core::builtins::BUILTINS` lists every runtime function Core may call
 (`Atom::Builtin(name)`) with its arity and ABI (`Direct` or `Cps`). A test in
-`vow_codegen_js` checks the table against this module's exports. Host effects are handlers
+`sakura_codegen_js` checks the table against this module's exports. Host effects are handlers
 written in std over primitives (`console_print`, `clock_now_ms`, `clock_sleep_ms` (suspends),
 `random_int`, `env_get`, `log_write`, …) except `console_host`, which is a handler value.
 A `property` lowers to `case(params…) -> Bool` (`false`: a `requires` clause discarded the

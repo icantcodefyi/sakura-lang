@@ -1,0 +1,24 @@
+[package]
+name = "sakura_cli"
+description = "The `sakura` command-line tool."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "sakura"
+path = "src/main.rs"
+
+[dependencies]
+sakura_analysis.workspace = true
+sakura_diagnostics.workspace = true
+sakura_lsp.workspace = true
+sakura_mcp.workspace = true
+clap.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

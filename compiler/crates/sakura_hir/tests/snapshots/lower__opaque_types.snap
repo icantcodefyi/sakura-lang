@@ -1,0 +1,67 @@
+---
+source: crates/sakura_hir/tests/lower.rs
+expression: "check(&\n[(\"main\",\nr#\"\nimport app/ids.{Id, Pair}\nfn ok(i: Id) -> Id { Id.make(1) }\nfn bad(i: Id, p: Pair) -> Int {\n  let a = Id(1)\n  let b = Id.Id(2)\n  let c = Pair { x: 1 }\n  match i { Id(n) => n }\n}\n\"#),\n(\"ids\",\nr#\"\npub opaque type Id = Id(Int)\npub opaque type Pair = { x: Int }\npub fn make(n: Int) -> Id { Id(n) }\nfn inside(p: Pair) -> Pair { Pair { x: p.x } }\n\"#)])"
+---
+== main
+import app/ids Id=app/ids::Id Pair=app/ids::Pair
+fn ok(i: app/ids::Id) -> app/ids::Id
+  params i#0
+  block
+    call
+      def app/ids::make
+      int 1
+fn bad(i: app/ids::Id, p: app/ids::Pair) -> Int
+  params i#0 p#1
+  block
+    let
+      pat bind a#2
+      call
+        <err>
+        int 1
+    let
+      pat bind b#3
+      call
+        <err>
+        int 2
+    let
+      pat bind c#4
+      record <err>
+        x:
+          int 1
+    match
+      local i#0
+      arm
+        pat ctor <err>
+          pat bind n#5
+        local n#5
+== ids
+pub opaque type Id = variants
+  Id(Int)
+pub opaque type Pair = record
+  x: Int
+pub fn make(n: Int) -> app/ids::Id
+  params n#0
+  block
+    call
+      def app/ids::Id.Id
+      local n#0
+fn inside(p: app/ids::Pair) -> app/ids::Pair
+  params p#0
+  block
+    record app/ids::Pair
+      x:
+        field .x
+          local p#0
+== diagnostics
+V1006 `Id` is opaque: its constructors and fields are private to module `app/ids`; create one with `Id.make(…)`
+  Primary file0 5:11 `Id`
+  Definition file1 2:17 `Id` (declared `pub opaque` here)
+V1006 `Id` is opaque: its constructors and fields are private to module `app/ids`; create one with `Id.make(…)`
+  Primary file0 6:14 `Id`
+  Definition file1 2:17 `Id` (declared `pub opaque` here)
+V1006 `Pair` is opaque: its constructors and fields are private to module `app/ids`
+  Primary file0 7:11 `Pair`
+  Definition file1 3:17 `Pair` (declared `pub opaque` here)
+V1006 `Id` is opaque: its constructors and fields are private to module `app/ids`; create one with `Id.make(…)`
+  Primary file0 8:13 `Id`
+  Definition file1 2:17 `Id` (declared `pub opaque` here)

@@ -1,0 +1,440 @@
+---
+source: crates/sakura_syntax/tests/parse.rs
+assertion_line: 32
+expression: out
+input_file: crates/sakura_syntax/tests/data/ok/design_5_5_user_defined_effects_and_handlers.sakura
+---
+SOURCE_FILE@0..594
+  EFFECT_DECL@0..144
+    EFFECT_KW@0..6 "effect"
+    WHITESPACE@6..7 " "
+    TYPE_NAME@7..9 "Db"
+    WHITESPACE@9..10 " "
+    L_BRACE@10..11 "{"
+    WHITESPACE@11..14 "\n  "
+    OP_SIG@14..59
+      FN_KW@14..16 "fn"
+      WHITESPACE@16..17 " "
+      IDENT@17..23 "exists"
+      PARAM_LIST@23..51
+        L_PAREN@23..24 "("
+        PARAM@24..37
+          IDENT@24..29 "table"
+          COLON@29..30 ":"
+          WHITESPACE@30..31 " "
+          NAMED_TYPE@31..37
+            PATH@31..37
+              TYPE_NAME@31..37 "String"
+        COMMA@37..38 ","
+        WHITESPACE@38..39 " "
+        PARAM@39..50
+          IDENT@39..42 "key"
+          COLON@42..43 ":"
+          WHITESPACE@43..44 " "
+          NAMED_TYPE@44..50
+            PATH@44..50
+              TYPE_NAME@44..50 "String"
+        R_PAREN@50..51 ")"
+      WHITESPACE@51..52 " "
+      RET_TYPE@52..59
+        THIN_ARROW@52..54 "->"
+        WHITESPACE@54..55 " "
+        NAMED_TYPE@55..59
+          PATH@55..59
+            TYPE_NAME@55..59 "Bool"
+    NEWLINE@59..60 "\n"
+    WHITESPACE@60..62 "  "
+    OP_SIG@62..142
+      FN_KW@62..64 "fn"
+      WHITESPACE@64..65 " "
+      IDENT@65..71 "insert"
+      PARAM_LIST@71..110
+        L_PAREN@71..72 "("
+        PARAM@72..85
+          IDENT@72..77 "table"
+          COLON@77..78 ":"
+          WHITESPACE@78..79 " "
+          NAMED_TYPE@79..85
+            PATH@79..85
+              TYPE_NAME@79..85 "String"
+        COMMA@85..86 ","
+        WHITESPACE@86..87 " "
+        PARAM@87..98
+          IDENT@87..90 "key"
+          COLON@90..91 ":"
+          WHITESPACE@91..92 " "
+          NAMED_TYPE@92..98
+            PATH@92..98
+              TYPE_NAME@92..98 "String"
+        COMMA@98..99 ","
+        WHITESPACE@99..100 " "
+        PARAM@100..109
+          IDENT@100..103 "row"
+          COLON@103..104 ":"
+          WHITESPACE@104..105 " "
+          NAMED_TYPE@105..109
+            PATH@105..109
+              TYPE_NAME@105..109 "Json"
+        R_PAREN@109..110 ")"
+      WHITESPACE@110..111 " "
+      RET_TYPE@111..118
+        THIN_ARROW@111..113 "->"
+        WHITESPACE@113..114 " "
+        NAMED_TYPE@114..118
+          PATH@114..118
+            TYPE_NAME@114..118 "Unit"
+      WHITESPACE@118..119 " "
+      BANG@119..120 "!"
+      WHITESPACE@120..121 " "
+      EFFECT_ROW@121..142
+        L_BRACE@121..122 "{"
+        NAMED_TYPE@122..141
+          PATH@122..126
+            TYPE_NAME@122..126 "Fail"
+          GENERIC_ARG_LIST@126..141
+            LT@126..127 "<"
+            NAMED_TYPE@127..140
+              PATH@127..140
+                TYPE_NAME@127..140 "DbUnavailable"
+            GT@140..141 ">"
+        R_BRACE@141..142 "}"
+    WHITESPACE@142..143 "\n"
+    R_BRACE@143..144 "}"
+  NEWLINE@144..145 "\n"
+  WHITESPACE@145..146 "\n"
+  FN_DECL@146..391
+    FN_KW@146..148 "fn"
+    WHITESPACE@148..149 " "
+    IDENT@149..158 "memory_db"
+    PARAM_LIST@158..160
+      L_PAREN@158..159 "("
+      R_PAREN@159..160 ")"
+    WHITESPACE@160..161 " "
+    RET_TYPE@161..175
+      THIN_ARROW@161..163 "->"
+      WHITESPACE@163..164 " "
+      NAMED_TYPE@164..175
+        PATH@164..171
+          TYPE_NAME@164..171 "Handler"
+        GENERIC_ARG_LIST@171..175
+          LT@171..172 "<"
+          NAMED_TYPE@172..174
+            PATH@172..174
+              TYPE_NAME@172..174 "Db"
+          GT@174..175 ">"
+    WHITESPACE@175..176 " "
+    BLOCK@176..391
+      L_BRACE@176..177 "{"
+      WHITESPACE@177..180 "\n  "
+      EXPR_STMT@180..389
+        HANDLER_EXPR@180..389
+          HANDLER_KW@180..187 "handler"
+          WHITESPACE@187..188 " "
+          PATH@188..190
+            TYPE_NAME@188..190 "Db"
+          WHITESPACE@190..191 " "
+          L_BRACE@191..192 "{"
+          WHITESPACE@192..197 "\n    "
+          VAR_STMT@197..238
+            VAR_KW@197..200 "var"
+            WHITESPACE@200..201 " "
+            IDENT@201..205 "rows"
+            COLON@205..206 ":"
+            WHITESPACE@206..207 " "
+            NAMED_TYPE@207..224
+              PATH@207..210
+                TYPE_NAME@207..210 "Map"
+              GENERIC_ARG_LIST@210..224
+                LT@210..211 "<"
+                NAMED_TYPE@211..217
+                  PATH@211..217
+                    TYPE_NAME@211..217 "String"
+                COMMA@217..218 ","
+                WHITESPACE@218..219 " "
+                NAMED_TYPE@219..223
+                  PATH@219..223
+                    TYPE_NAME@219..223 "Json"
+                GT@223..224 ">"
+            WHITESPACE@224..225 " "
+            EQ@225..226 "="
+            WHITESPACE@226..227 " "
+            CALL_EXPR@227..238
+              FIELD_EXPR@227..236
+                PATH_EXPR@227..230
+                  PATH@227..230
+                    TYPE_NAME@227..230 "Map"
+                DOT@230..231 "."
+                IDENT@231..236 "empty"
+              ARG_LIST@236..238
+                L_PAREN@236..237 "("
+                R_PAREN@237..238 ")"
+          NEWLINE@238..239 "\n"
+          WHITESPACE@239..243 "    "
+          HANDLER_CLAUSE@243..304
+            FN_KW@243..245 "fn"
+            WHITESPACE@245..246 " "
+            IDENT@246..252 "exists"
+            PARAM_LIST@252..264
+              L_PAREN@252..253 "("
+              PARAM@253..258
+                IDENT@253..258 "table"
+              COMMA@258..259 ","
+              WHITESPACE@259..260 " "
+              PARAM@260..263
+                IDENT@260..263 "key"
+              R_PAREN@263..264 ")"
+            WHITESPACE@264..265 " "
+            BLOCK@265..304
+              L_BRACE@265..266 "{"
+              WHITESPACE@266..267 " "
+              EXPR_STMT@267..302
+                CALL_EXPR@267..302
+                  FIELD_EXPR@267..279
+                    PATH_EXPR@267..270
+                      PATH@267..270
+                        TYPE_NAME@267..270 "Map"
+                    DOT@270..271 "."
+                    IDENT@271..279 "contains"
+                  ARG_LIST@279..302
+                    L_PAREN@279..280 "("
+                    PATH_EXPR@280..284
+                      PATH@280..284
+                        IDENT@280..284 "rows"
+                    COMMA@284..285 ","
+                    WHITESPACE@285..286 " "
+                    STRING_LIT@286..301
+                      STRING_START@286..287 "\""
+                      INTERPOLATION@287..294
+                        INTERP_START@287..288 "{"
+                        PATH_EXPR@288..293
+                          PATH@288..293
+                            IDENT@288..293 "table"
+                        INTERP_END@293..294 "}"
+                      STRING_TEXT@294..295 "/"
+                      INTERPOLATION@295..300
+                        INTERP_START@295..296 "{"
+                        PATH_EXPR@296..299
+                          PATH@296..299
+                            IDENT@296..299 "key"
+                        INTERP_END@299..300 "}"
+                      STRING_END@300..301 "\""
+                    R_PAREN@301..302 ")"
+              WHITESPACE@302..303 " "
+              R_BRACE@303..304 "}"
+          NEWLINE@304..305 "\n"
+          WHITESPACE@305..309 "    "
+          HANDLER_CLAUSE@309..385
+            FN_KW@309..311 "fn"
+            WHITESPACE@311..312 " "
+            IDENT@312..318 "insert"
+            PARAM_LIST@318..335
+              L_PAREN@318..319 "("
+              PARAM@319..324
+                IDENT@319..324 "table"
+              COMMA@324..325 ","
+              WHITESPACE@325..326 " "
+              PARAM@326..329
+                IDENT@326..329 "key"
+              COMMA@329..330 ","
+              WHITESPACE@330..331 " "
+              PARAM@331..334
+                IDENT@331..334 "row"
+              R_PAREN@334..335 ")"
+            WHITESPACE@335..336 " "
+            BLOCK@336..385
+              L_BRACE@336..337 "{"
+              WHITESPACE@337..338 " "
+              ASSIGN_STMT@338..383
+                PATH_EXPR@338..342
+                  PATH@338..342
+                    IDENT@338..342 "rows"
+                WHITESPACE@342..343 " "
+                EQ@343..344 "="
+                WHITESPACE@344..345 " "
+                CALL_EXPR@345..383
+                  FIELD_EXPR@345..355
+                    PATH_EXPR@345..348
+                      PATH@345..348
+                        TYPE_NAME@345..348 "Map"
+                    DOT@348..349 "."
+                    IDENT@349..355 "insert"
+                  ARG_LIST@355..383
+                    L_PAREN@355..356 "("
+                    PATH_EXPR@356..360
+                      PATH@356..360
+                        IDENT@356..360 "rows"
+                    COMMA@360..361 ","
+                    WHITESPACE@361..362 " "
+                    STRING_LIT@362..377
+                      STRING_START@362..363 "\""
+                      INTERPOLATION@363..370
+                        INTERP_START@363..364 "{"
+                        PATH_EXPR@364..369
+                          PATH@364..369
+                            IDENT@364..369 "table"
+                        INTERP_END@369..370 "}"
+                      STRING_TEXT@370..371 "/"
+                      INTERPOLATION@371..376
+                        INTERP_START@371..372 "{"
+                        PATH_EXPR@372..375
+                          PATH@372..375
+                            IDENT@372..375 "key"
+                        INTERP_END@375..376 "}"
+                      STRING_END@376..377 "\""
+                    COMMA@377..378 ","
+                    WHITESPACE@378..379 " "
+                    PATH_EXPR@379..382
+                      PATH@379..382
+                        IDENT@379..382 "row"
+                    R_PAREN@382..383 ")"
+              WHITESPACE@383..384 " "
+              R_BRACE@384..385 "}"
+          WHITESPACE@385..388 "\n  "
+          R_BRACE@388..389 "}"
+      WHITESPACE@389..390 "\n"
+      R_BRACE@390..391 "}"
+  NEWLINE@391..392 "\n"
+  WHITESPACE@392..393 "\n"
+  FN_DECL@393..593
+    PUB_KW@393..396 "pub"
+    WHITESPACE@396..397 " "
+    FN_KW@397..399 "fn"
+    WHITESPACE@399..400 " "
+    IDENT@400..404 "main"
+    PARAM_LIST@404..406
+      L_PAREN@404..405 "("
+      R_PAREN@405..406 ")"
+    WHITESPACE@406..407 " "
+    RET_TYPE@407..414
+      THIN_ARROW@407..409 "->"
+      WHITESPACE@409..410 " "
+      NAMED_TYPE@410..414
+        PATH@410..414
+          TYPE_NAME@410..414 "Unit"
+    WHITESPACE@414..415 " "
+    BANG@415..416 "!"
+    WHITESPACE@416..417 " "
+    EFFECT_ROW@417..426
+      L_BRACE@417..418 "{"
+      NAMED_TYPE@418..425
+        PATH@418..425
+          TYPE_NAME@418..425 "Console"
+      R_BRACE@425..426 "}"
+    WHITESPACE@426..427 " "
+    BLOCK@427..593
+      L_BRACE@427..428 "{"
+      WHITESPACE@428..431 "\n  "
+      EXPR_STMT@431..591
+        WITH_EXPR@431..591
+          WITH_KW@431..435 "with"
+          WHITESPACE@435..436 " "
+          CALL_EXPR@436..447
+            PATH_EXPR@436..445
+              PATH@436..445
+                IDENT@436..445 "memory_db"
+            ARG_LIST@445..447
+              L_PAREN@445..446 "("
+              R_PAREN@446..447 ")"
+          COMMA@447..448 ","
+          WHITESPACE@448..449 " "
+          CALL_EXPR@449..489
+            FIELD_EXPR@449..460
+              PATH_EXPR@449..454
+                PATH@449..454
+                  TYPE_NAME@449..454 "Clock"
+              DOT@454..455 "."
+              IDENT@455..460 "fixed"
+            ARG_LIST@460..489
+              L_PAREN@460..461 "("
+              CALL_EXPR@461..488
+                FIELD_EXPR@461..485
+                  PATH_EXPR@461..468
+                    PATH@461..468
+                      TYPE_NAME@461..468 "Instant"
+                  DOT@468..469 "."
+                  IDENT@469..485 "from_unix_millis"
+                ARG_LIST@485..488
+                  L_PAREN@485..486 "("
+                  LITERAL@486..487
+                    INT@486..487 "0"
+                  R_PAREN@487..488 ")"
+              R_PAREN@488..489 ")"
+          WHITESPACE@489..490 " "
+          BLOCK@490..591
+            L_BRACE@490..491 "{"
+            WHITESPACE@491..496 "\n    "
+            LET_STMT@496..559
+              LET_KW@496..499 "let"
+              WHITESPACE@499..500 " "
+              BIND_PAT@500..501
+                IDENT@500..501 "u"
+              WHITESPACE@501..502 " "
+              EQ@502..503 "="
+              WHITESPACE@503..504 " "
+              CALL_EXPR@504..559
+                PATH_EXPR@504..510
+                  PATH@504..510
+                    IDENT@504..510 "signup"
+                ARG_LIST@510..559
+                  L_PAREN@510..511 "("
+                  CALL_EXPR@511..531
+                    FIELD_EXPR@511..521
+                      PATH_EXPR@511..516
+                        PATH@511..516
+                          TYPE_NAME@511..516 "Email"
+                      DOT@516..517 "."
+                      IDENT@517..521 "from"
+                    ARG_LIST@521..531
+                      L_PAREN@521..522 "("
+                      STRING_LIT@522..530
+                        STRING_START@522..523 "\""
+                        STRING_TEXT@523..529 "a@b.co"
+                        STRING_END@529..530 "\""
+                      R_PAREN@530..531 ")"
+                  COMMA@531..532 ","
+                  WHITESPACE@532..533 " "
+                  CALL_EXPR@533..558
+                    FIELD_EXPR@533..546
+                      PATH_EXPR@533..541
+                        PATH@533..541
+                          TYPE_NAME@533..541 "Password"
+                      DOT@541..542 "."
+                      IDENT@542..546 "from"
+                    ARG_LIST@546..558
+                      L_PAREN@546..547 "("
+                      STRING_LIT@547..557
+                        STRING_START@547..548 "\""
+                        STRING_TEXT@548..556 "hunter22"
+                        STRING_END@556..557 "\""
+                      R_PAREN@557..558 ")"
+                  R_PAREN@558..559 ")"
+            NEWLINE@559..560 "\n"
+            WHITESPACE@560..564 "    "
+            EXPR_STMT@564..587
+              CALL_EXPR@564..587
+                FIELD_EXPR@564..577
+                  PATH_EXPR@564..571
+                    PATH@564..571
+                      TYPE_NAME@564..571 "Console"
+                  DOT@571..572 "."
+                  IDENT@572..577 "print"
+                ARG_LIST@577..587
+                  L_PAREN@577..578 "("
+                  STRING_LIT@578..586
+                    STRING_START@578..579 "\""
+                    INTERPOLATION@579..585
+                      INTERP_START@579..580 "{"
+                      FIELD_EXPR@580..584
+                        PATH_EXPR@580..581
+                          PATH@580..581
+                            IDENT@580..581 "u"
+                        DOT@581..582 "."
+                        IDENT@582..584 "id"
+                      INTERP_END@584..585 "}"
+                    STRING_END@585..586 "\""
+                  R_PAREN@586..587 ")"
+            WHITESPACE@587..590 "\n  "
+            R_BRACE@590..591 "}"
+      WHITESPACE@591..592 "\n"
+      R_BRACE@592..593 "}"
+  NEWLINE@593..594 "\n"

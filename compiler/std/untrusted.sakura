@@ -1,0 +1,27 @@
+// Data from outside the deployment: request bodies, file text, free-text model output
+// (design §6.4). `Untrusted` is compiler-known; this module is its home. It is `Show`, so it
+// can be logged, but templates accept it only as a bound parameter or escaped text.
+// needs M3: `validate` into a refined type (a compiler intrinsic, design §6.4).
+
+import std/core.{Trust, Violation}
+
+/// Marks `value` as untrusted. For tests and host adapters.
+@external(js, "sakura_runtime", "untrusted_of")
+pub fn of<T>(value: T) -> Untrusted<T>
+
+/// Releases the value without checking it. `sakura audit` lists every `@trust` reason.
+pub fn trust<T>(u: Untrusted<T>, reason: Trust) -> T { inner(u) }
+
+/// The value if `pred` holds; otherwise a `Violation` naming `clause`.
+pub fn check<T>(u: Untrusted<T>, clause: String, pred: fn(T) -> Bool) -> Result<T, Violation> {
+  let v = inner(u)
+  if pred(v) { Ok(v) } else {
+    Err(Violation { type_name: "Untrusted", clause, value_summary: "<untrusted>" })
+  }
+}
+
+/// `String.len` of the value, so a size limit can be checked before validating.
+pub fn len(u: Untrusted<String>) -> Int { String.len(inner(u)) }
+
+@external(js, "sakura_runtime", "untrusted_value")
+fn inner<T>(u: Untrusted<T>) -> T

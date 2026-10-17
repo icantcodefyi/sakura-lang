@@ -1,0 +1,22 @@
+---
+source: crates/sakura_hir/tests/lower.rs
+expression: "check(&\n[(\"main\",\nr#\"\ntype Meters = Meters(Float)\nfn m(x: Float) -> Meters { Meters(x) }\nfn get(m: Meters) -> Float { match m { Meters(x) => x } }\n\"#)])"
+---
+== main
+type Meters = variants
+  Meters(Float)
+fn m(x: Float) -> app/main::Meters
+  params x#0
+  block
+    call
+      def app/main::Meters.Meters
+      local x#0
+fn get(m: app/main::Meters) -> Float
+  params m#0
+  block
+    match
+      local m#0
+      arm
+        pat ctor def app/main::Meters.Meters
+          pat bind x#1
+        local x#1

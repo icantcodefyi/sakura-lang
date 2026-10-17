@@ -1,0 +1,9 @@
+---
+source: crates/sakura_types/tests/rows.rs
+assertion_line: 111
+expression: c.render()
+---
+V3001 7:58 this function value performs `Fail<B>`, but the expected function type allows only `{}`; its row variable is declared next to `Fail<E>`, so `E` names every failure and the variable itself cannot fail
+  Cause 7:65 `fail B` `fail` performs `Fail<B>` here
+  expected: {}
+  actual: {Fail<B>}

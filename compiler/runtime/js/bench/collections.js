@@ -2,7 +2,7 @@
 // Prints one line per case: name, total ms, ns per operation (best of 3 runs). Results are
 // recorded in ABI.md §7.
 
-import * as rt from "../vow_runtime.js";
+import * as rt from "../sakura_runtime.js";
 
 const n = Number(process.argv[2] ?? 100_000);
 

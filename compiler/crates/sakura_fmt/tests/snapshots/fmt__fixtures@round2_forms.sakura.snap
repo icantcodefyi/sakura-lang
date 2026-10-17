@@ -1,0 +1,25 @@
+---
+source: crates/sakura_fmt/tests/fmt.rs
+assertion_line: 66
+expression: "check(path, &text)"
+input_file: tests/fmt/round2_forms.sakura
+---
+// §17 forms: `pub opaque`, parenthesized types, external types, and operator line breaks.
+pub opaque type Email = { address: String }
+
+type Id = (Int)
+type One = (Int,)
+type Outer = fn(Int) -> (fn() -> Int) ! {Console}
+type Fiber<T>
+
+fn compare(first_operand_name: Int, second_operand_name: Int) -> Bool {
+  first_operand_name * first_operand_name + second_operand_name
+    > second_operand_name * 1000 + first_operand_name
+}
+
+fn subtract(first_operand_name: Int, second_operand_name: Int) -> Int {
+  first_operand_name * first_operand_name -
+    second_operand_name -
+    second_operand_name * 1000 -
+    first_operand_name
+}

@@ -1009,6 +1009,150 @@ dependencies = [
 ]
 
 [[package]]
+name = "sakura_analysis"
+version = "0.0.0"
+dependencies = [
+ "sakura_codegen_js",
+ "sakura_core",
+ "sakura_diagnostics",
+ "sakura_fmt",
+ "sakura_hir",
+ "sakura_syntax",
+ "sakura_types",
+ "serde",
+ "serde_json",
+ "sha2",
+ "toml",
+]
+
+[[package]]
+name = "sakura_cli"
+version = "0.0.0"
+dependencies = [
+ "clap",
+ "sakura_analysis",
+ "sakura_diagnostics",
+ "sakura_lsp",
+ "sakura_mcp",
+ "serde_json",
+]
+
+[[package]]
+name = "sakura_codegen_js"
+version = "0.0.0"
+dependencies = [
+ "insta",
+ "sakura_core",
+ "sakura_diagnostics",
+ "sakura_hir",
+ "sakura_syntax",
+ "sakura_types",
+ "serde_json",
+]
+
+[[package]]
+name = "sakura_core"
+version = "0.0.0"
+dependencies = [
+ "insta",
+ "sakura_diagnostics",
+ "sakura_hir",
+ "sakura_types",
+ "text-size",
+]
+
+[[package]]
+name = "sakura_diagnostics"
+version = "0.0.0"
+dependencies = [
+ "codespan-reporting",
+ "insta",
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
+name = "sakura_eval"
+version = "0.0.0"
+dependencies = [
+ "sakura_analysis",
+ "sakura_core",
+]
+
+[[package]]
+name = "sakura_fmt"
+version = "0.0.0"
+dependencies = [
+ "insta",
+ "pretty",
+ "proptest",
+ "sakura_syntax",
+]
+
+[[package]]
+name = "sakura_hir"
+version = "0.0.0"
+dependencies = [
+ "insta",
+ "la-arena",
+ "rowan",
+ "sakura_diagnostics",
+ "sakura_syntax",
+ "stacker",
+ "text-size",
+]
+
+[[package]]
+name = "sakura_lsp"
+version = "0.0.0"
+dependencies = [
+ "lsp-server",
+ "lsp-types",
+ "sakura_analysis",
+ "sakura_diagnostics",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "sakura_mcp"
+version = "0.0.0"
+dependencies = [
+ "rmcp",
+ "sakura_analysis",
+ "sakura_diagnostics",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "sakura_syntax"
+version = "0.0.0"
+dependencies = [
+ "insta",
+ "proptest",
+ "rowan",
+ "sakura_diagnostics",
+ "text-size",
+]
+
+[[package]]
+name = "sakura_types"
+version = "0.0.0"
+dependencies = [
+ "insta",
+ "la-arena",
+ "proptest",
+ "sakura_diagnostics",
+ "sakura_hir",
+ "sakura_syntax",
+ "text-size",
+]
+
+[[package]]
 name = "same-file"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1414,150 +1558,6 @@ dependencies = [
  "getrandom",
  "js-sys",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "vow_analysis"
-version = "0.0.0"
-dependencies = [
- "serde",
- "serde_json",
- "sha2",
- "toml",
- "vow_codegen_js",
- "vow_core",
- "vow_diagnostics",
- "vow_fmt",
- "vow_hir",
- "vow_syntax",
- "vow_types",
-]
-
-[[package]]
-name = "vow_cli"
-version = "0.0.0"
-dependencies = [
- "clap",
- "serde_json",
- "vow_analysis",
- "vow_diagnostics",
- "vow_lsp",
- "vow_mcp",
-]
-
-[[package]]
-name = "vow_codegen_js"
-version = "0.0.0"
-dependencies = [
- "insta",
- "serde_json",
- "vow_core",
- "vow_diagnostics",
- "vow_hir",
- "vow_syntax",
- "vow_types",
-]
-
-[[package]]
-name = "vow_core"
-version = "0.0.0"
-dependencies = [
- "insta",
- "text-size",
- "vow_diagnostics",
- "vow_hir",
- "vow_types",
-]
-
-[[package]]
-name = "vow_diagnostics"
-version = "0.0.0"
-dependencies = [
- "codespan-reporting",
- "insta",
- "serde",
- "serde_json",
- "sha2",
-]
-
-[[package]]
-name = "vow_eval"
-version = "0.0.0"
-dependencies = [
- "vow_analysis",
- "vow_core",
-]
-
-[[package]]
-name = "vow_fmt"
-version = "0.0.0"
-dependencies = [
- "insta",
- "pretty",
- "proptest",
- "vow_syntax",
-]
-
-[[package]]
-name = "vow_hir"
-version = "0.0.0"
-dependencies = [
- "insta",
- "la-arena",
- "rowan",
- "stacker",
- "text-size",
- "vow_diagnostics",
- "vow_syntax",
-]
-
-[[package]]
-name = "vow_lsp"
-version = "0.0.0"
-dependencies = [
- "lsp-server",
- "lsp-types",
- "serde",
- "serde_json",
- "vow_analysis",
- "vow_diagnostics",
-]
-
-[[package]]
-name = "vow_mcp"
-version = "0.0.0"
-dependencies = [
- "rmcp",
- "schemars",
- "serde",
- "serde_json",
- "tokio",
- "vow_analysis",
- "vow_diagnostics",
-]
-
-[[package]]
-name = "vow_syntax"
-version = "0.0.0"
-dependencies = [
- "insta",
- "proptest",
- "rowan",
- "text-size",
- "vow_diagnostics",
-]
-
-[[package]]
-name = "vow_types"
-version = "0.0.0"
-dependencies = [
- "insta",
- "la-arena",
- "proptest",
- "text-size",
- "vow_diagnostics",
- "vow_hir",
- "vow_syntax",
 ]
 
 [[package]]

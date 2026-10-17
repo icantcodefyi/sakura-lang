@@ -1,0 +1,54 @@
+// Structured concurrency (design §8.6). Prelude effect. Milestone M3: needs generic
+// operations and operation rows beyond `Fail` (see compiler/REQUESTS.md).
+
+import std/duration.{Duration}
+
+/// A region that owns child fibers; children never outlive it. External and scoped.
+pub type Scope
+
+/// A running child task. External, scoped and affine: join it once.
+pub type Fiber<T>
+
+pub effect Task {
+  /// Runs `body` with a fresh scope and joins every child spawned in it before returning.
+  fn scope<T, e>(body: fn(Scope) -> T ! e) -> T ! e
+  /// Starts `body` as a child of `s`; it inherits the current handlers.
+  fn spawn<T, e>(s: Scope, body: fn() -> T ! e) -> Fiber<T> ! e
+  /// Waits for `f` and returns its result.
+  fn join<T>(f: Fiber<T>) -> T
+  /// Runs `bodies` concurrently; results in input order.
+  fn all<T, e>(bodies: List<fn() -> T ! e>) -> List<T> ! e
+  /// The first body to finish wins; the others are cancelled and joined.
+  fn race<T, e>(bodies: List<fn() -> T ! e>) -> T ! e
+  /// A cancellation point for long pure loops.
+  fn yield_now() -> Unit
+}
+
+/// Root handler on the host event loop.
+@external(js, "sakura_runtime", "task_host")
+pub fn host() -> Handler<Task>
+
+/// Reproducible scheduling: interleavings depend only on `seed`.
+@external(js, "sakura_runtime", "task_deterministic")
+pub fn deterministic(seed: Int) -> Handler<Task>
+
+pub error Timeout(limit: Duration)
+
+/// Runs `action`, cancelling it and failing with `Timeout` if it has not finished within
+/// `limit`. Cancellation is cooperative (observed at `action`'s next effect operation),
+/// and `action` is joined, with finalizers run, before `Timeout` is raised.
+pub fn timeout<T, e>(limit: Duration, action: fn() -> T ! e) -> T ! {Clock, Task, Fail<Timeout> | e} {
+  let bodies: List<fn() -> T ! {Clock, Fail<Timeout> | e}> = [
+    fn() { action() },
+    fn() {
+      Clock.sleep(limit)
+      fail Timeout { limit }
+    },
+  ]
+  Task.race(bodies)
+}
+
+/// `List.map` with each call in its own child task; results in input order.
+pub fn par_map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! {Task | e} {
+  Task.all(List.map(xs, fn(x) { fn() { f(x) } }))
+}

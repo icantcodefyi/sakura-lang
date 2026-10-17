@@ -1,12 +1,12 @@
-# Vow standard library index (v0)
+# Sakura Lang standard library index (v0)
 
 Every public std signature, one module per file in `compiler/std/`. The signature listing
 below the "Signatures" heading is extracted from the source; regenerate it after editing a
-module (until `vow doc --index` exists, F regenerates it by hand from the source). The design
+module (until `sakura doc --index` exists, F regenerates it by hand from the source). The design
 reference is `docs/design.md` §10; deviations are listed at the end and filed as
 `design-question` entries in `compiler/REQUESTS.md`.
 
-Status: every module checks clean and its `test` blocks pass under `vow test --std`.
+Status: every module checks clean and its `test` blocks pass under `sakura test --std`.
 Modules marked M3 type-check but need features from design §14.3 M3 to run.
 
 ## Prelude
@@ -33,8 +33,8 @@ when `f` is not an operation (`Console.captured()`, `Clock.fixed(t)`, `Random.se
 ## Conventions
 
 - **Externals.** Functions marked `// @external` are bodyless and bound by
-  `@external(js, "vow_runtime", "<module>_<fn>")` to `compiler/runtime/js`. Everything else is
-  Vow. Externals are part of the trusted base (§6.6).
+  `@external(js, "sakura_runtime", "<module>_<fn>")` to `compiler/runtime/js`. Everything else is
+  Sakura Lang. Externals are part of the trusted base (§6.6).
 - **Defects, not failures,** for programming errors: `Option.expect` (`D030`),
   `String.slice` off a character boundary (`D031`), checked arithmetic (`D001`–`D003`), and
   `requires` clauses (`D020`, caller blamed).
@@ -46,7 +46,7 @@ when `f` is not an operation (`Console.captured()`, `Clock.fixed(t)`, `Random.se
   `Env.of(Map.empty())`, `Console.captured()`, `Log.captured()`. Expectations record a
   failure and let the test continue; the runner fails the test at the end.
 - **Show format** assumed by the std tests and the example outputs (pending a spec, see the
-  design questions): valid Vow expression syntax — `[1, 2]`, `(1, "a")`, `Some("x")`,
+  design questions): valid Sakura Lang expression syntax — `[1, 2]`, `(1, "a")`, `Some("x")`,
   `User { id: 1, name: "a" }`, `Map.of([("a", 1)])`, `Set.of([1])`, floats always with a
   `.` or exponent (`2.0`); strings are quoted inside containers and raw at the top level of
   an interpolation.
@@ -74,7 +74,7 @@ llm → budget, core, http, prompt, task, untrusted [M3]          sql → fs, pa
 tool → llm [M3]         agent → budget, core, llm, prompt, tool [M3]
 ```
 
-M3 modules type-check today. Their test handlers written in Vow (`Http.scripted`,
+M3 modules type-check today. Their test handlers written in Sakura Lang (`Http.scripted`,
 `Budget.limits`, `Cli.of`, `Fs.memory`, `Llm.scripted`) run as soon as the runtime has the
 externals they touch; their host handlers and `Schema` codecs are runtime externals (M3).
 
@@ -90,7 +90,7 @@ and `Env.host(scope)`. Their signatures are the ones in design §10.2–§10.7. 
 
 ### `std/core`
 
-```vow
+```sakura
 fn show<A: Show>(a: A) -> String    // @external
 type Violation = { type_name: String, clause: String, value_summary: String }
 type Trust
@@ -98,13 +98,13 @@ type Trust
 
 ### `std/unit`
 
-```vow
+```sakura
 fn ignore<A>(a: A) -> Unit
 ```
 
 ### `std/option`
 
-```vow
+```sakura
 type Option<A> = None | Some(A)
 fn map<A, B, e>(o: Option<A>, f: fn(A) -> B ! e) -> Option<B> ! e
 fn unwrap_or<A>(o: Option<A>, default: A) -> A
@@ -115,7 +115,7 @@ fn is_some<A>(o: Option<A>) -> Bool    // @total
 
 ### `std/result`
 
-```vow
+```sakura
 type Result<A, E> = Ok(A) | Err(E)
 fn map<A, B, E, e>(r: Result<A, E>, f: fn(A) -> B ! e) -> Result<B, E> ! e
 fn map_err<A, E, F>(r: Result<A, E>, f: fn(E) -> F) -> Result<A, F>
@@ -127,7 +127,7 @@ fn is_err<A, E>(r: Result<A, E>) -> Bool    // @total
 
 ### `std/list`
 
-```vow
+```sakura
 fn len<A>(xs: List<A>) -> Int    // @external, @total
 fn get<A>(xs: List<A>, i: Int) -> Option<A>    // @external, @total
 fn push<A>(xs: List<A>, x: A) -> List<A>    // @external
@@ -158,7 +158,7 @@ fn range(start: Int, end: Int) -> List<Int>
 
 ### `std/map`
 
-```vow
+```sakura
 fn empty<K: Hash, V>() -> Map<K, V>    // @external
 fn get<K: Hash, V>(m: Map<K, V>, k: K) -> Option<V>    // @external, @total
 fn insert<K: Hash, V>(m: Map<K, V>, k: K, v: V) -> Map<K, V>    // @external
@@ -174,7 +174,7 @@ fn values<K: Hash, V>(m: Map<K, V>) -> List<V>
 
 ### `std/set`
 
-```vow
+```sakura
 fn empty<A: Hash>() -> Set<A>    // @external
 fn insert<A: Hash>(s: Set<A>, x: A) -> Set<A>    // @external
 fn contains<A: Hash>(s: Set<A>, x: A) -> Bool    // @external, @total
@@ -185,7 +185,7 @@ fn of<A: Hash>(xs: List<A>) -> Set<A>
 
 ### `std/string`
 
-```vow
+```sakura
 error Utf8Error(offset: Int)
 fn len(s: String) -> Int    // @external, @total
 fn chars(s: String) -> List<String>    // @external
@@ -209,7 +209,7 @@ fn pad_left(s: String, width: Int, fill: String) -> String requires len(fill) > 
 
 ### `std/int`
 
-```vow
+```sakura
 fn to_float(i: Int) -> Float    // @external
 fn to_string(i: Int) -> String    // @external
 fn checked_add(a: Int, b: Int) -> Option<Int>    // @external
@@ -223,7 +223,7 @@ fn pow(base: Int, exp: Int) -> Int requires exp >= 0
 
 ### `std/float`
 
-```vow
+```sakura
 fn round(f: Float) -> Int    // @external
 fn to_int_checked(f: Float) -> Option<Int>    // @external
 fn sqrt(f: Float) -> Float    // @external
@@ -233,7 +233,7 @@ fn is_nan(f: Float) -> Bool
 
 ### `std/bytes`
 
-```vow
+```sakura
 fn len(b: Bytes) -> Int    // @external, @total
 fn get(b: Bytes, i: Int) -> Option<Int>    // @external, @total
 fn from_list(xs: List<Int>) -> Bytes requires List.all(xs, fn(x) { x >= 0 && x <= 255 })    // @external
@@ -241,7 +241,7 @@ fn from_list(xs: List<Int>) -> Bytes requires List.all(xs, fn(x) { x >= 0 && x <
 
 ### `std/duration`
 
-```vow
+```sakura
 type Duration = Duration(Int)
 fn millis(n: Int) -> Duration
 fn seconds(n: Int) -> Duration
@@ -251,7 +251,7 @@ fn to_millis(d: Duration) -> Int
 
 ### `std/instant`
 
-```vow
+```sakura
 type Instant = Instant(Int)
 error TimeError(input: String)
 fn from_unix_millis(ms: Int) -> Instant
@@ -264,7 +264,7 @@ fn parse(text: String) -> Result<Instant, TimeError>
 
 ### `std/uuid`
 
-```vow
+```sakura
 opaque type Uuid = Uuid(String)
 error UuidError(input: String)
 fn to_string(u: Uuid) -> String
@@ -275,7 +275,7 @@ fn is_canonical(text: String) -> Bool    // @total
 
 ### `std/json`
 
-```vow
+```sakura
 type Json = Null | Bool(Bool) | Number(Float) | String(String) | Array(List<Json>) | Object(Map<String, Json>)
 error DecodeError(path: String, message: String)
 fn encode<T: Schema>(value: T) -> String    // @external
@@ -288,7 +288,7 @@ fn get_string(j: Json, key: String) -> Option<String>
 
 ### `std/test`
 
-```vow
+```sakura
 effect Test {
   fn record_failure(message: String) -> Unit
   fn failures() -> Int
@@ -307,7 +307,7 @@ fn expect_snapshot<A: Show>(name: String, value: A) -> Unit ! {Test}
 
 ### `std/console`
 
-```vow
+```sakura
 effect Console {
   fn print(line: String) -> Unit
   fn read_line() -> Option<String>
@@ -318,7 +318,7 @@ fn captured() -> Handler<Console, {Test}>
 
 ### `std/clock`
 
-```vow
+```sakura
 effect Clock {
   fn now() -> Instant
   fn monotonic() -> Duration
@@ -331,7 +331,7 @@ fn virtual() -> Handler<Clock>
 
 ### `std/random`
 
-```vow
+```sakura
 effect Random {
   fn int(lo: Int, hi: Int) -> Int requires lo <= hi
   fn float() -> Float
@@ -344,7 +344,7 @@ fn seeded(seed: Int) -> Handler<Random>
 
 ### `std/env`
 
-```vow
+```sakura
 effect Env {
   fn get(key: String) -> Option<String>
   fn secret(key: String) -> Option<Secret<String>>
@@ -356,7 +356,7 @@ fn only(keys: List<String>) -> Handler<Env, {Env}>
 
 ### `std/log`
 
-```vow
+```sakura
 type Level = Debug | Info | Warn | Error
 effect Log {
   fn event(level: Level, message: String, fields: List<(String, Json)>) -> Unit
@@ -369,7 +369,7 @@ fn captured() -> Handler<Log, {Test}>
 
 ### `std/gen`
 
-```vow
+```sakura
 type Gen<A> = { sample: fn(Int) -> A ! {Random} }
 fn int(lo: Int, hi: Int) -> Gen<Int> requires lo <= hi
 fn bool() -> Gen<Bool>
@@ -383,7 +383,7 @@ fn for_all<A: Show, e>(g: Gen<A>, runs: Int, prop: fn(A) -> Unit ! {Test | e}) -
 
 ### `std/retry`
 
-```vow
+```sakura
 type Policy<E> = { retry_on: fn(E) -> Bool, max_attempts: Int, backoff: Duration, jitter: Bool, deadline: Option<Duration> }
 fn policy<E>(retry_on: fn(E) -> Bool, max_attempts: Int) -> Policy<E> requires max_attempts >= 1
 fn retry<T, E, e>(p: Policy<E>, action: fn() -> T ! {Fail<E> | e}) -> T ! {Clock, Random, Fail<E> | e}
@@ -391,7 +391,7 @@ fn retry<T, E, e>(p: Policy<E>, action: fn() -> T ! {Fail<E> | e}) -> T ! {Clock
 
 ### `std/task`
 
-```vow
+```sakura
 type Scope
 type Fiber<T>
 effect Task {
@@ -411,7 +411,7 @@ fn par_map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! {Task | e}
 
 ### `std/graph`
 
-```vow
+```sakura
 type NodeId = NodeId(Int)
 type Graph<N> = { nodes: Map<Int, N>, edges: Map<Int, List<NodeId>>, next: Int }
 fn empty<N>() -> Graph<N>
@@ -424,7 +424,7 @@ fn len<N>(g: Graph<N>) -> Int
 
 ### `std/untrusted`
 
-```vow
+```sakura
 fn of<T>(value: T) -> Untrusted<T>    // @external
 fn trust<T>(u: Untrusted<T>, reason: Trust) -> T
 fn check<T>(u: Untrusted<T>, clause: String, pred: fn(T) -> Bool) -> Result<T, Violation>
@@ -433,7 +433,7 @@ fn len(u: Untrusted<String>) -> Int
 
 ### `std/secret`
 
-```vow
+```sakura
 fn of<T>(value: T) -> Secret<T>    // @external
 fn expose<T>(s: Secret<T>, reason: Trust) -> T
 fn map<T, U>(s: Secret<T>, f: fn(T) -> U) -> Secret<U>
@@ -441,7 +441,7 @@ fn map<T, U>(s: Secret<T>, f: fn(T) -> U) -> Secret<U>
 
 ### `std/decimal`
 
-```vow
+```sakura
 opaque type Decimal = { whole: Int, frac: List<Int> }
 error DecimalError(input: String)
 fn from_int(n: Int) -> Decimal
@@ -458,7 +458,7 @@ fn round(d: Decimal, places: Int) -> Decimal requires places >= 0
 
 ### `std/path`
 
-```vow
+```sakura
 type Path = String where is_relative(it)
 fn is_relative(s: String) -> Bool    // @total
 fn of(s: String) -> Path requires is_relative(s)
@@ -468,7 +468,7 @@ fn to_string(p: Path) -> String
 
 ### `std/fs`
 
-```vow
+```sakura
 type Dir
 type Entry = { name: String, is_dir: Bool }
 type Mode = Read | Write | Append
@@ -494,7 +494,7 @@ fn read_all(file: File) -> Bytes ! {Fail<FsError>}
 
 ### `std/cli`
 
-```vow
+```sakura
 effect Cli {
   fn args() -> List<String>
   fn exit(code: Int) -> Never requires code >= 0 && code <= 255
@@ -507,7 +507,7 @@ fn parse<T: Schema>(args: List<String>) -> T ! {Fail<CliError>}    // @external
 
 ### `std/url`
 
-```vow
+```sakura
 type Url = String where is_valid(it)
 fn is_valid(s: String) -> Bool    // @total
 fn host(u: Url) -> Option<String>
@@ -519,7 +519,7 @@ fn encode_component(s: String) -> String
 
 ### `std/request`
 
-```vow
+```sakura
 type Method = Get | Head | Post | Put | Patch | Delete
 type Request = { method: Method, url: Url, headers: List<(String, String)>, body: String, bearer: Option<Secret<String>>, params: List<(String, String)> }
 error BadRequest(detail: String)
@@ -533,7 +533,7 @@ fn header(req: Request, name: String) -> Option<String>
 
 ### `std/response`
 
-```vow
+```sakura
 type Status = Int where it >= 100 && it <= 599
 type Response = { status: Status, headers: List<(String, String)>, body: String }
 error HttpError(status: Option<Status>, reason: String)
@@ -546,7 +546,7 @@ fn text(r: Response, limit: Int) -> Untrusted<String> ! {Fail<HttpError>}
 
 ### `std/http`
 
-```vow
+```sakura
 type Matcher = Any | Path(String) | Method(Method)
 error RateLimited(retry_after: Option<Duration>)
 effect Http {
@@ -561,7 +561,7 @@ fn scripted(script: List<(Matcher, Response)>) -> Handler<Http>
 
 ### `std/html`
 
-```vow
+```sakura
 opaque type Html = Html(String)
 fn text(s: String) -> Html
 fn untrusted(u: Untrusted<String>) -> Html
@@ -573,7 +573,7 @@ fn template(parts: List<String>, args: List<String>) -> Html
 
 ### `std/router`
 
-```vow
+```sakura
 opaque type Router<F> = { routes: List<Route<F>> }
 fn new<F>() -> Router<F>
 fn route<e>(r: Router<fn(Request) -> Response ! e>, method: Method, pattern: String, h: fn(Request) -> Response ! e) -> Router<fn(Request) -> Response ! e>
@@ -586,7 +586,7 @@ fn handle<e>(r: Router<fn(Request) -> Response ! e>, req: Request) -> Response !
 
 ### `std/serve`
 
-```vow
+```sakura
 type Address = { host: String, port: Int }
 error ServeError(reason: String)
 effect Serve {
@@ -599,7 +599,7 @@ fn scripted(requests: List<Request>) -> Handler<Serve, {Test}>
 
 ### `std/budget`
 
-```vow
+```sakura
 type Limits = { tokens: Option<Int>, usd: Option<Float>, calls: Option<Int> }
 type Cost = { tokens: Int, usd: Float, calls: Int }
 type Reservation = { estimate: Cost }
@@ -616,7 +616,7 @@ fn zero() -> Cost
 
 ### `std/prompt`
 
-```vow
+```sakura
 type PromptPart = Text(String) | Untrusted(Untrusted<String>) | Image(Bytes)
 opaque type Prompt = Prompt(List<PromptPart>)
 fn of(parts: List<PromptPart>) -> Prompt
@@ -626,7 +626,7 @@ fn parts(p: Prompt) -> List<PromptPart>
 
 ### `std/llm`
 
-```vow
+```sakura
 type Model = Model(String)
 type Request<T> = { system: String, user: Prompt, model: Model, max_tokens: Int, temperature: Float }
 error Refused
@@ -655,7 +655,7 @@ fn scripted(responses: List<String>) -> Handler<Llm>
 
 ### `std/tool`
 
-```vow
+```sakura
 opaque type Tool<F> = { spec: ToolSpec, run: F }
 error ToolError(tool: String, tag: String, payload: Json)
 fn from<A: Schema, R: Schema, E: Schema + Show, e>(name: String, description: String, f: fn(A) -> R ! {Fail<E> | e}) -> Tool<fn(Json) -> Json ! {Fail<ToolError> | e}>
@@ -666,14 +666,14 @@ fn call<e>(t: Tool<fn(Json) -> Json ! {Fail<ToolError> | e}>, input: Json) -> Js
 
 ### `std/agent`
 
-```vow
+```sakura
 type Agent<T, F> = { request: Request<T>, tools: List<Tool<F>>, max_steps: Int, stop: fn(Partial<T>) -> Bool }
 fn run<T: Schema, e>(a: Agent<T, fn(Json) -> Json ! {Fail<ToolError> | e}>) -> T ! {Budget, Llm, Fail<BudgetExceeded | LlmError | ToolError> | e} requires a.max_steps > 0
 ```
 
 ### `std/sql`
 
-```vow
+```sakura
 type SqlValue = Null | Int(Int) | Float(Float) | Text(String) | Blob(Bytes)
 opaque type Query<R> = { text: String, params: List<SqlValue> }
 error SqlError(message: String)

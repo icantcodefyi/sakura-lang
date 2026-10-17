@@ -1,0 +1,47 @@
+---
+source: crates/sakura_fmt/tests/fmt.rs
+assertion_line: 66
+expression: "check(path, &text)"
+input_file: tests/fmt/design_15_10_structured_concurrency_timeout_retry.sakura
+---
+import std/http.{Any, Http, HttpError, RateLimited, Response}
+import std/retry.{Policy, retry}
+import std/task.{Timeout, timeout}
+import std/url.{Url}
+
+fn fetch_both(a: Url, b: Url) -> (String, String)
+  ! {Clock, Http, Random, Task, Fail<HttpError | RateLimited | Timeout>}
+{
+  let policy = Policy {
+    retry_on: fn(e) {
+      match e {
+        RateLimited { .. } => true,
+        _ => false,
+      }
+    },
+    max_attempts: 3,
+    backoff: Duration.millis(200),
+    jitter: true,
+    deadline: None,
+  }
+  timeout(Duration.seconds(5), fn() {
+    Task.scope(fn(s) {
+      let fa = Task.spawn(s, fn() {
+        retry(policy, fn() { Response.text(Http.get(a), 1_000_000).trust(@trust("display only")) })
+      })
+      let fb = Task.spawn(s, fn() {
+        retry(policy, fn() { Response.text(Http.get(b), 1_000_000).trust(@trust("display only")) })
+      })
+      (Task.join(fa), Task.join(fb))
+    })
+  })
+}
+
+test "deterministic under virtual time" {
+  with Http.scripted([(Any, Response.status(200, "x"))]),
+      Clock.virtual(),
+      Random.seeded(1),
+      Task.deterministic(1) {
+    expect_eq(fetch_both(Url.from("https://a"), Url.from("https://b")), ("x", "x"))
+  }
+}

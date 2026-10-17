@@ -1,0 +1,129 @@
+---
+source: crates/sakura_syntax/tests/parse.rs
+assertion_line: 42
+expression: out
+input_file: crates/sakura_syntax/tests/data/err/effect_rows.sakura
+---
+V0001 29..30: expected a row variable after `|`, found `}`
+V0001 62..63: expected a row variable after `|`, found type name
+V0001 85..86: expected an effect row `{…}` or a row variable, found `(`
+V0001 116..117: expected an effect
+
+SOURCE_FILE@0..122
+  FN_DECL@0..33
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    IDENT@3..4 "a"
+    PARAM_LIST@4..6
+      L_PAREN@4..5 "("
+      R_PAREN@5..6 ")"
+    WHITESPACE@6..7 " "
+    RET_TYPE@7..14
+      THIN_ARROW@7..9 "->"
+      WHITESPACE@9..10 " "
+      NAMED_TYPE@10..14
+        PATH@10..14
+          TYPE_NAME@10..14 "Unit"
+    WHITESPACE@14..15 " "
+    BANG@15..16 "!"
+    WHITESPACE@16..17 " "
+    EFFECT_ROW@17..30
+      L_BRACE@17..18 "{"
+      NAMED_TYPE@18..25
+        PATH@18..25
+          TYPE_NAME@18..25 "Console"
+      COMMA@25..26 ","
+      WHITESPACE@26..27 " "
+      PIPE@27..28 "|"
+      WHITESPACE@28..29 " "
+      R_BRACE@29..30 "}"
+    WHITESPACE@30..31 " "
+    BLOCK@31..33
+      L_BRACE@31..32 "{"
+      R_BRACE@32..33 "}"
+  NEWLINE@33..34 "\n"
+  FN_DECL@34..61
+    FN_KW@34..36 "fn"
+    WHITESPACE@36..37 " "
+    IDENT@37..38 "b"
+    PARAM_LIST@38..40
+      L_PAREN@38..39 "("
+      R_PAREN@39..40 ")"
+    WHITESPACE@40..41 " "
+    RET_TYPE@41..48
+      THIN_ARROW@41..43 "->"
+      WHITESPACE@43..44 " "
+      NAMED_TYPE@44..48
+        PATH@44..48
+          TYPE_NAME@44..48 "Unit"
+    WHITESPACE@48..49 " "
+    BANG@49..50 "!"
+    WHITESPACE@50..51 " "
+    EFFECT_ROW@51..61
+      L_BRACE@51..52 "{"
+      NAMED_TYPE@52..59
+        PATH@52..59
+          TYPE_NAME@52..59 "Console"
+      WHITESPACE@59..60 " "
+      PIPE@60..61 "|"
+  WHITESPACE@61..62 " "
+  ERROR@62..68
+    TYPE_NAME@62..63 "E"
+    R_BRACE@63..64 "}"
+    WHITESPACE@64..65 " "
+    L_BRACE@65..66 "{"
+    R_BRACE@66..67 "}"
+    NEWLINE@67..68 "\n"
+  FN_DECL@68..85
+    FN_KW@68..70 "fn"
+    WHITESPACE@70..71 " "
+    IDENT@71..72 "c"
+    PARAM_LIST@72..74
+      L_PAREN@72..73 "("
+      R_PAREN@73..74 ")"
+    WHITESPACE@74..75 " "
+    RET_TYPE@75..82
+      THIN_ARROW@75..77 "->"
+      WHITESPACE@77..78 " "
+      NAMED_TYPE@78..82
+        PATH@78..82
+          TYPE_NAME@78..82 "Unit"
+    WHITESPACE@82..83 " "
+    BANG@83..84 "!"
+    WHITESPACE@84..85 " "
+    EFFECT_ROW@85..85
+  ERROR@85..98
+    L_PAREN@85..86 "("
+    TYPE_NAME@86..93 "Console"
+    R_PAREN@93..94 ")"
+    WHITESPACE@94..95 " "
+    L_BRACE@95..96 "{"
+    R_BRACE@96..97 "}"
+    NEWLINE@97..98 "\n"
+  FN_DECL@98..121
+    FN_KW@98..100 "fn"
+    WHITESPACE@100..101 " "
+    IDENT@101..102 "d"
+    PARAM_LIST@102..104
+      L_PAREN@102..103 "("
+      R_PAREN@103..104 ")"
+    WHITESPACE@104..105 " "
+    RET_TYPE@105..112
+      THIN_ARROW@105..107 "->"
+      WHITESPACE@107..108 " "
+      NAMED_TYPE@108..112
+        PATH@108..112
+          TYPE_NAME@108..112 "Unit"
+    WHITESPACE@112..113 " "
+    BANG@113..114 "!"
+    WHITESPACE@114..115 " "
+    EFFECT_ROW@115..118
+      L_BRACE@115..116 "{"
+      ERROR@116..117
+        INT@116..117 "1"
+      R_BRACE@117..118 "}"
+    WHITESPACE@118..119 " "
+    BLOCK@119..121
+      L_BRACE@119..120 "{"
+      R_BRACE@120..121 "}"
+  NEWLINE@121..122 "\n"

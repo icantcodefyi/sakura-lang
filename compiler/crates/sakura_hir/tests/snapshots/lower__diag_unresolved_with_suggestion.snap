@@ -1,0 +1,23 @@
+---
+source: crates/sakura_hir/tests/lower.rs
+expression: "check(&\n[(\"main\",\nr#\"\nfn main() -> Unit ! {Console} {\n  let greeting = \"hi\"\n  Console.print(greting)\n  Console.prnt(greeting)\n}\n\"#)])"
+---
+== main
+fn main() -> Unit ! {std/console::Console}
+  block
+    let
+      pat bind greeting#0
+      string "hi"
+    call
+      def std/console::Console.print
+      <err>
+    call
+      <err>
+      local greeting#0
+== diagnostics
+V1002 cannot find `greting` in this scope; did you mean `greeting`?
+  Primary file0 4:17 `greting`
+  fix: Use `greeting` -> `greeting`
+V1002 effect `Console` has no operation or function `prnt`; did you mean `print`?
+  Primary file0 5:11 `prnt`
+  fix: Use `Console.print` -> `print`

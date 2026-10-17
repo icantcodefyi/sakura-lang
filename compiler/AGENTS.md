@@ -1,6 +1,6 @@
 # Compiler agents guide
 
-The Vow compiler is a Cargo workspace. `docs/design.md` is the authority for syntax and semantics;
+The Sakura Lang compiler is a Cargo workspace. `docs/design.md` is the authority for syntax and semantics;
 §13 (compilation model) and §14 (crates, interfaces, milestones) are the implementation plan.
 
 ## Commands (run from `compiler/`)
@@ -31,11 +31,11 @@ against your own temporary adapter until it lands. Never rewrite another owner's
 
 ## Rules
 
-- Dependency direction is strict (design §14.1). `vow_types` never depends on rowan or serde_json.
+- Dependency direction is strict (design §14.1). `sakura_types` never depends on rowan or serde_json.
 - No phase reads the filesystem; inputs arrive as an in-memory snapshot.
 - Every diagnostic uses a stable code from design §12.3 with a primary span. Never renumber codes.
 - Malformed input must produce diagnostics, never a panic or a hang.
-- Tests: `insta` snapshots for trees, diagnostics, IR and emitted JS; `.vow` programs in
+- Tests: `insta` snapshots for trees, diagnostics, IR and emitted JS; `.sakura` programs in
   `compiler/tests/ui` (expected diagnostics) and `compiler/tests/semantics` (expected stdout).
   Review every snapshot diff; never bulk-accept.
 - Commits: small Conventional Commits scoped by crate, e.g. `feat(syntax): parse match arms`.

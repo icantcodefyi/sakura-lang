@@ -1,0 +1,165 @@
+---
+source: crates/sakura_syntax/tests/parse.rs
+assertion_line: 28
+expression: out
+input_file: crates/sakura_syntax/tests/data/ok/design_7_2_syntax_and_semantics.sakura
+---
+SOURCE_FILE@0..175
+  FN_DECL@0..174
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    IDENT@3..8 "clamp"
+    PARAM_LIST@8..34
+      L_PAREN@8..9 "("
+      PARAM@9..15
+        IDENT@9..10 "x"
+        COLON@10..11 ":"
+        WHITESPACE@11..12 " "
+        NAMED_TYPE@12..15
+          PATH@12..15
+            TYPE_NAME@12..15 "Int"
+      COMMA@15..16 ","
+      WHITESPACE@16..17 " "
+      PARAM@17..24
+        IDENT@17..19 "lo"
+        COLON@19..20 ":"
+        WHITESPACE@20..21 " "
+        NAMED_TYPE@21..24
+          PATH@21..24
+            TYPE_NAME@21..24 "Int"
+      COMMA@24..25 ","
+      WHITESPACE@25..26 " "
+      PARAM@26..33
+        IDENT@26..28 "hi"
+        COLON@28..29 ":"
+        WHITESPACE@29..30 " "
+        NAMED_TYPE@30..33
+          PATH@30..33
+            TYPE_NAME@30..33 "Int"
+      R_PAREN@33..34 ")"
+    WHITESPACE@34..35 " "
+    RET_TYPE@35..41
+      THIN_ARROW@35..37 "->"
+      WHITESPACE@37..38 " "
+      NAMED_TYPE@38..41
+        PATH@38..41
+          TYPE_NAME@38..41 "Int"
+    NEWLINE@41..42 "\n"
+    WHITESPACE@42..44 "  "
+    CONTRACT@44..70
+      REQUIRES_KW@44..52 "requires"
+      WHITESPACE@52..53 " "
+      IDENT@53..60 "ordered"
+      COLON@60..61 ":"
+      WHITESPACE@61..62 " "
+      BIN_EXPR@62..70
+        PATH_EXPR@62..64
+          PATH@62..64
+            IDENT@62..64 "lo"
+        WHITESPACE@64..65 " "
+        LTEQ@65..67 "<="
+        WHITESPACE@67..68 " "
+        PATH_EXPR@68..70
+          PATH@68..70
+            IDENT@68..70 "hi"
+    NEWLINE@70..71 "\n"
+    WHITESPACE@71..73 "  "
+    CONTRACT@73..118
+      ENSURES_KW@73..80 "ensures"
+      WHITESPACE@80..81 " "
+      IDENT@81..88 "bounded"
+      COLON@88..89 ":"
+      WHITESPACE@89..90 " "
+      BIN_EXPR@90..118
+        BIN_EXPR@90..102
+          PATH_EXPR@90..92
+            PATH@90..92
+              IDENT@90..92 "lo"
+          WHITESPACE@92..93 " "
+          LTEQ@93..95 "<="
+          WHITESPACE@95..96 " "
+          PATH_EXPR@96..102
+            PATH@96..102
+              IDENT@96..102 "result"
+        WHITESPACE@102..103 " "
+        AMP2@103..105 "&&"
+        WHITESPACE@105..106 " "
+        BIN_EXPR@106..118
+          PATH_EXPR@106..112
+            PATH@106..112
+              IDENT@106..112 "result"
+          WHITESPACE@112..113 " "
+          LTEQ@113..115 "<="
+          WHITESPACE@115..116 " "
+          PATH_EXPR@116..118
+            PATH@116..118
+              IDENT@116..118 "hi"
+    NEWLINE@118..119 "\n"
+    BLOCK@119..174
+      L_BRACE@119..120 "{"
+      WHITESPACE@120..123 "\n  "
+      EXPR_STMT@123..172
+        IF_EXPR@123..172
+          IF_KW@123..125 "if"
+          WHITESPACE@125..126 " "
+          BIN_EXPR@126..132
+            PATH_EXPR@126..127
+              PATH@126..127
+                IDENT@126..127 "x"
+            WHITESPACE@127..128 " "
+            LT@128..129 "<"
+            WHITESPACE@129..130 " "
+            PATH_EXPR@130..132
+              PATH@130..132
+                IDENT@130..132 "lo"
+          WHITESPACE@132..133 " "
+          BLOCK@133..139
+            L_BRACE@133..134 "{"
+            WHITESPACE@134..135 " "
+            EXPR_STMT@135..137
+              PATH_EXPR@135..137
+                PATH@135..137
+                  IDENT@135..137 "lo"
+            WHITESPACE@137..138 " "
+            R_BRACE@138..139 "}"
+          WHITESPACE@139..140 " "
+          ELSE_KW@140..144 "else"
+          WHITESPACE@144..145 " "
+          IF_EXPR@145..172
+            IF_KW@145..147 "if"
+            WHITESPACE@147..148 " "
+            BIN_EXPR@148..154
+              PATH_EXPR@148..149
+                PATH@148..149
+                  IDENT@148..149 "x"
+              WHITESPACE@149..150 " "
+              GT@150..151 ">"
+              WHITESPACE@151..152 " "
+              PATH_EXPR@152..154
+                PATH@152..154
+                  IDENT@152..154 "hi"
+            WHITESPACE@154..155 " "
+            BLOCK@155..161
+              L_BRACE@155..156 "{"
+              WHITESPACE@156..157 " "
+              EXPR_STMT@157..159
+                PATH_EXPR@157..159
+                  PATH@157..159
+                    IDENT@157..159 "hi"
+              WHITESPACE@159..160 " "
+              R_BRACE@160..161 "}"
+            WHITESPACE@161..162 " "
+            ELSE_KW@162..166 "else"
+            WHITESPACE@166..167 " "
+            BLOCK@167..172
+              L_BRACE@167..168 "{"
+              WHITESPACE@168..169 " "
+              EXPR_STMT@169..170
+                PATH_EXPR@169..170
+                  PATH@169..170
+                    IDENT@169..170 "x"
+              WHITESPACE@170..171 " "
+              R_BRACE@171..172 "}"
+      WHITESPACE@172..173 "\n"
+      R_BRACE@173..174 "}"
+  NEWLINE@174..175 "\n"

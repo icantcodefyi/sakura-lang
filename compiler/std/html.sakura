@@ -1,0 +1,53 @@
+// HTML built so that text is always escaped (design §4.11, §10.4, M3). An `Html` value is
+// only made by escaping text, by joining other `Html` values, or by `raw` with a `@trust`
+// reason, so markup from outside the program cannot reach a page unescaped.
+// needs M3: `html"…"` template arguments of type `Html` inserted as markup (a conversion like
+// `SqlValue.from` for `sql"…"`); today every interpolated value is escaped text.
+
+import std/core.{Trust}
+
+pub opaque type Html = Html(String)
+
+/// `s` as text: `& < > " '` are escaped.
+pub fn text(s: String) -> Html { Html(escape(s)) }
+
+/// Untrusted text, escaped; the safe way to show it.
+pub fn untrusted(u: Untrusted<String>) -> Html { text(Untrusted.trust(u, @trust("escaped as HTML text"))) }
+
+/// Markup inserted as it is. `sakura audit` lists every `@trust` reason.
+pub fn raw(markup: String, reason: Trust) -> Html { Html(markup) }
+
+pub fn concat(parts: List<Html>) -> Html { Html(List.join(List.map(parts, to_string), "")) }
+
+pub fn to_string(h: Html) -> String {
+  match h {
+    Html(s) => s,
+  }
+}
+
+/// `html"<p>Hello, {name}</p>"`: the literal parts are markup, each interpolated value is
+/// escaped text.
+pub fn template(parts: List<String>, args: List<String>) -> Html {
+  var out = parts.first().unwrap_or("")
+  for pair in List.enumerate(args) {
+    out = out + escape(pair.1) + parts[pair.0 + 1].unwrap_or("")
+  }
+  Html(out)
+}
+
+fn escape(s: String) -> String {
+  let amp = String.replace(s, "&", "&amp;")
+  let lt = String.replace(amp, "<", "&lt;")
+  let gt = String.replace(lt, ">", "&gt;")
+  let quot = String.replace(gt, "\"", "&quot;")
+  String.replace(quot, "'", "&#39;")
+}
+
+test "text is escaped, markup is kept" {
+  let name = "<script>alert('x') & \"y\"</script>"
+  // What `html"<p>Hi, {name}</p>"` calls; tagged templates do not run on JS yet.
+  let page = template(["<p>Hi, ", "</p>"], [name])
+  expect_eq(to_string(page), "<p>Hi, &lt;script&gt;alert(&#39;x&#39;) &amp; &quot;y&quot;&lt;/script&gt;</p>")
+  let list = concat([raw("<ul>", @trust("constant markup")), text("a<b"), raw("</ul>", @trust("constant markup"))])
+  expect_eq(to_string(list), "<ul>a&lt;b</ul>")
+}

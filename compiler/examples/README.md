@@ -1,10 +1,10 @@
 # Example corpus
 
-The design §15 programs as runnable projects (`vow.toml`, `src/main.vow`, and
-`expected.stdout` for `mode: run`). Header directives in `src/main.vow` follow the fixture
+The design §15 programs as runnable projects (`sakura.toml`, `src/main.sakura`, and
+`expected.stdout` for `mode: run`). Header directives in `src/main.sakura` follow the fixture
 format in `compiler/REQUESTS.md` (F → E), plus `// args:` (arguments after `--`) and
 `// stdout-regex: true` (each line of `expected.stdout` is a regex for the matching
-stdout line). Programs also carry `test` blocks; CI runs `vow test` on every project
+stdout line). Programs also carry `test` blocks; CI runs `sakura test` on every project
 whose milestone has landed.
 
 | Example | Design | Milestone | Mode | Blocked on |

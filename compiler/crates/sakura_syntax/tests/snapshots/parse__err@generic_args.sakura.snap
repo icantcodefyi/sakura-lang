@@ -1,0 +1,71 @@
+---
+source: crates/sakura_syntax/tests/parse.rs
+assertion_line: 42
+expression: out
+input_file: crates/sakura_syntax/tests/data/err/generic_args.sakura
+---
+V0001 17..18: expected `>`, found `)`
+V0001 52..53: expected `,` or `>`, found `=`
+V0001 58..58: expected `>`, found end of file
+
+SOURCE_FILE@0..58
+  FN_DECL@0..42
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    IDENT@3..4 "f"
+    PARAM_LIST@4..18
+      L_PAREN@4..5 "("
+      PARAM@5..17
+        IDENT@5..7 "xs"
+        COLON@7..8 ":"
+        WHITESPACE@8..9 " "
+        NAMED_TYPE@9..17
+          PATH@9..13
+            TYPE_NAME@9..13 "List"
+          GENERIC_ARG_LIST@13..17
+            LT@13..14 "<"
+            NAMED_TYPE@14..17
+              PATH@14..17
+                TYPE_NAME@14..17 "Int"
+      R_PAREN@17..18 ")"
+    WHITESPACE@18..19 " "
+    RET_TYPE@19..35
+      THIN_ARROW@19..21 "->"
+      WHITESPACE@21..22 " "
+      NAMED_TYPE@22..35
+        PATH@22..25
+          TYPE_NAME@22..25 "Map"
+        GENERIC_ARG_LIST@25..35
+          LT@25..26 "<"
+          NAMED_TYPE@26..32
+            PATH@26..32
+              TYPE_NAME@26..32 "String"
+          COMMA@32..33 ","
+          WHITESPACE@33..34 " "
+          GT@34..35 ">"
+    WHITESPACE@35..36 " "
+    BLOCK@36..42
+      L_BRACE@36..37 "{"
+      WHITESPACE@37..38 " "
+      EXPR_STMT@38..40
+        PATH_EXPR@38..40
+          PATH@38..40
+            IDENT@38..40 "xs"
+      WHITESPACE@40..41 " "
+      R_BRACE@41..42 "}"
+  NEWLINE@42..43 "\n"
+  TYPE_DECL@43..58
+    TYPE_KW@43..47 "type"
+    WHITESPACE@47..48 " "
+    TYPE_NAME@48..49 "T"
+    TYPE_PARAM_LIST@49..58
+      LT@49..50 "<"
+      TYPE_PARAM@50..51
+        TYPE_NAME@50..51 "A"
+      WHITESPACE@51..52 " "
+      ERROR@52..53
+        EQ@52..53 "="
+      WHITESPACE@53..54 " "
+      TYPE_PARAM@54..57
+        TYPE_NAME@54..57 "Int"
+      NEWLINE@57..58 "\n"

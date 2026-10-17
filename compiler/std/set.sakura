@@ -1,0 +1,42 @@
+// Immutable hash sets with insertion-order iteration. `Set<A>` is a compiler-known
+// type; this module is its home. Elements need `Hash`.
+
+@external(js, "sakura_runtime", "set_empty")
+pub fn empty<A: Hash>() -> Set<A>
+
+/// A new set containing `x`; an element already present keeps its position.
+@external(js, "sakura_runtime", "set_insert")
+pub fn insert<A: Hash>(s: Set<A>, x: A) -> Set<A>
+
+@external(js, "sakura_runtime", "set_contains")
+@total
+pub fn contains<A: Hash>(s: Set<A>, x: A) -> Bool
+
+@external(js, "sakura_runtime", "set_len")
+@total
+pub fn len<A: Hash>(s: Set<A>) -> Int
+
+/// Elements in insertion order.
+@external(js, "sakura_runtime", "set_to_list")
+pub fn to_list<A: Hash>(s: Set<A>) -> List<A>
+
+pub fn of<A: Hash>(xs: List<A>) -> Set<A> {
+  var s: Set<A> = empty()
+  for x in xs { s = insert(s, x) }
+  s
+}
+
+test "of deduplicates in insertion order" {
+  let s = Set.of([3, 1, 3, 2])
+  expect_eq(s.to_list(), [3, 1, 2])
+  expect_eq(s.len(), 3)
+  expect_eq(s.contains(2), true)
+  expect_eq(s.contains(9), false)
+}
+
+test "insert returns a new set" {
+  let s = Set.of(["a"])
+  let t = s.insert("b")
+  expect_eq(s.len(), 1)
+  expect_eq(t.to_list(), ["a", "b"])
+}

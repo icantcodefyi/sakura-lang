@@ -1,0 +1,200 @@
+---
+source: crates/sakura_syntax/tests/parse.rs
+assertion_line: 32
+expression: out
+input_file: crates/sakura_syntax/tests/data/ok/design_15_12_graph_without_cycles_in_the_heap.sakura
+---
+SOURCE_FILE@0..256
+  IMPORT@0..32
+    IMPORT_KW@0..6 "import"
+    WHITESPACE@6..7 " "
+    MOD_PATH@7..16
+      IDENT@7..10 "std"
+      SLASH@10..11 "/"
+      IDENT@11..16 "graph"
+    IMPORT_LIST@16..32
+      DOT@16..17 "."
+      L_BRACE@17..18 "{"
+      TYPE_NAME@18..23 "Graph"
+      COMMA@23..24 ","
+      WHITESPACE@24..25 " "
+      TYPE_NAME@25..31 "NodeId"
+      R_BRACE@31..32 "}"
+  NEWLINE@32..33 "\n"
+  WHITESPACE@33..34 "\n"
+  TYPE_DECL@34..64
+    TYPE_KW@34..38 "type"
+    WHITESPACE@38..39 " "
+    TYPE_NAME@39..45 "Person"
+    WHITESPACE@45..46 " "
+    EQ@46..47 "="
+    WHITESPACE@47..48 " "
+    RECORD_TYPE@48..64
+      L_BRACE@48..49 "{"
+      WHITESPACE@49..50 " "
+      FIELD_DECL@50..62
+        IDENT@50..54 "name"
+        COLON@54..55 ":"
+        WHITESPACE@55..56 " "
+        NAMED_TYPE@56..62
+          PATH@56..62
+            TYPE_NAME@56..62 "String"
+      WHITESPACE@62..63 " "
+      R_BRACE@63..64 "}"
+  NEWLINE@64..65 "\n"
+  FN_DECL@65..255
+    FN_KW@65..67 "fn"
+    WHITESPACE@67..68 " "
+    IDENT@68..86 "friends_of_friends"
+    PARAM_LIST@86..116
+      L_PAREN@86..87 "("
+      PARAM@87..103
+        IDENT@87..88 "g"
+        COLON@88..89 ":"
+        WHITESPACE@89..90 " "
+        NAMED_TYPE@90..103
+          PATH@90..95
+            TYPE_NAME@90..95 "Graph"
+          GENERIC_ARG_LIST@95..103
+            LT@95..96 "<"
+            NAMED_TYPE@96..102
+              PATH@96..102
+                TYPE_NAME@96..102 "Person"
+            GT@102..103 ">"
+      COMMA@103..104 ","
+      WHITESPACE@104..105 " "
+      PARAM@105..115
+        IDENT@105..107 "id"
+        COLON@107..108 ":"
+        WHITESPACE@108..109 " "
+        NAMED_TYPE@109..115
+          PATH@109..115
+            TYPE_NAME@109..115 "NodeId"
+      R_PAREN@115..116 ")"
+    WHITESPACE@116..117 " "
+    RET_TYPE@117..132
+      THIN_ARROW@117..119 "->"
+      WHITESPACE@119..120 " "
+      NAMED_TYPE@120..132
+        PATH@120..124
+          TYPE_NAME@120..124 "List"
+        GENERIC_ARG_LIST@124..132
+          LT@124..125 "<"
+          NAMED_TYPE@125..131
+            PATH@125..131
+              TYPE_NAME@125..131 "Person"
+          GT@131..132 ">"
+    WHITESPACE@132..133 " "
+    BLOCK@133..255
+      L_BRACE@133..134 "{"
+      WHITESPACE@134..137 "\n  "
+      EXPR_STMT@137..253
+        CALL_EXPR@137..253
+          FIELD_EXPR@137..150
+            PATH_EXPR@137..141
+              PATH@137..141
+                TYPE_NAME@137..141 "List"
+            DOT@141..142 "."
+            IDENT@142..150 "flat_map"
+          ARG_LIST@150..253
+            L_PAREN@150..151 "("
+            CALL_EXPR@151..173
+              FIELD_EXPR@151..166
+                PATH_EXPR@151..156
+                  PATH@151..156
+                    TYPE_NAME@151..156 "Graph"
+                DOT@156..157 "."
+                IDENT@157..166 "neighbors"
+              ARG_LIST@166..173
+                L_PAREN@166..167 "("
+                PATH_EXPR@167..168
+                  PATH@167..168
+                    IDENT@167..168 "g"
+                COMMA@168..169 ","
+                WHITESPACE@169..170 " "
+                PATH_EXPR@170..172
+                  PATH@170..172
+                    IDENT@170..172 "id"
+                R_PAREN@172..173 ")"
+            COMMA@173..174 ","
+            WHITESPACE@174..175 " "
+            LAMBDA_EXPR@175..252
+              FN_KW@175..177 "fn"
+              PARAM_LIST@177..180
+                L_PAREN@177..178 "("
+                PARAM@178..179
+                  IDENT@178..179 "f"
+                R_PAREN@179..180 ")"
+              WHITESPACE@180..181 " "
+              BLOCK@181..252
+                L_BRACE@181..182 "{"
+                WHITESPACE@182..183 " "
+                EXPR_STMT@183..250
+                  CALL_EXPR@183..250
+                    FIELD_EXPR@183..198
+                      PATH_EXPR@183..187
+                        PATH@183..187
+                          TYPE_NAME@183..187 "List"
+                      DOT@187..188 "."
+                      IDENT@188..198 "filter_map"
+                    ARG_LIST@198..250
+                      L_PAREN@198..199 "("
+                      CALL_EXPR@199..220
+                        FIELD_EXPR@199..214
+                          PATH_EXPR@199..204
+                            PATH@199..204
+                              TYPE_NAME@199..204 "Graph"
+                          DOT@204..205 "."
+                          IDENT@205..214 "neighbors"
+                        ARG_LIST@214..220
+                          L_PAREN@214..215 "("
+                          PATH_EXPR@215..216
+                            PATH@215..216
+                              IDENT@215..216 "g"
+                          COMMA@216..217 ","
+                          WHITESPACE@217..218 " "
+                          PATH_EXPR@218..219
+                            PATH@218..219
+                              IDENT@218..219 "f"
+                          R_PAREN@219..220 ")"
+                      COMMA@220..221 ","
+                      WHITESPACE@221..222 " "
+                      LAMBDA_EXPR@222..249
+                        FN_KW@222..224 "fn"
+                        PARAM_LIST@224..228
+                          L_PAREN@224..225 "("
+                          PARAM@225..227
+                            IDENT@225..227 "ff"
+                          R_PAREN@227..228 ")"
+                        WHITESPACE@228..229 " "
+                        BLOCK@229..249
+                          L_BRACE@229..230 "{"
+                          WHITESPACE@230..231 " "
+                          EXPR_STMT@231..247
+                            CALL_EXPR@231..247
+                              FIELD_EXPR@231..240
+                                PATH_EXPR@231..236
+                                  PATH@231..236
+                                    TYPE_NAME@231..236 "Graph"
+                                DOT@236..237 "."
+                                IDENT@237..240 "get"
+                              ARG_LIST@240..247
+                                L_PAREN@240..241 "("
+                                PATH_EXPR@241..242
+                                  PATH@241..242
+                                    IDENT@241..242 "g"
+                                COMMA@242..243 ","
+                                WHITESPACE@243..244 " "
+                                PATH_EXPR@244..246
+                                  PATH@244..246
+                                    IDENT@244..246 "ff"
+                                R_PAREN@246..247 ")"
+                          WHITESPACE@247..248 " "
+                          R_BRACE@248..249 "}"
+                      R_PAREN@249..250 ")"
+                WHITESPACE@250..251 " "
+                R_BRACE@251..252 "}"
+            R_PAREN@252..253 ")"
+      WHITESPACE@253..254 "\n"
+      R_BRACE@254..255 "}"
+  NEWLINE@255..256 "\n"

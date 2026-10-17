@@ -7,23 +7,23 @@ version = "0.0.0"
 edition = "2024"
 rust-version = "1.99"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/icantcodefyi/vow"
+repository = "https://github.com/icantcodefyi/sakura-lang"
 publish = false
 
 [workspace.dependencies]
 # Internal crates. Dependency direction (docs/design.md §14.1):
-# vow_cli → vow_analysis → {vow_codegen_js, vow_core, vow_types, vow_hir, vow_syntax, vow_fmt} → vow_diagnostics
-vow_syntax = { path = "crates/vow_syntax" }
-vow_diagnostics = { path = "crates/vow_diagnostics" }
-vow_hir = { path = "crates/vow_hir" }
-vow_types = { path = "crates/vow_types" }
-vow_core = { path = "crates/vow_core" }
-vow_codegen_js = { path = "crates/vow_codegen_js" }
-vow_analysis = { path = "crates/vow_analysis" }
-vow_fmt = { path = "crates/vow_fmt" }
-vow_eval = { path = "tools/vow_eval" }
-vow_mcp = { path = "crates/vow_mcp" }
-vow_lsp = { path = "crates/vow_lsp" }
+# sakura_cli → sakura_analysis → {sakura_codegen_js, sakura_core, sakura_types, sakura_hir, sakura_syntax, sakura_fmt} → sakura_diagnostics
+sakura_syntax = { path = "crates/sakura_syntax" }
+sakura_diagnostics = { path = "crates/sakura_diagnostics" }
+sakura_hir = { path = "crates/sakura_hir" }
+sakura_types = { path = "crates/sakura_types" }
+sakura_core = { path = "crates/sakura_core" }
+sakura_codegen_js = { path = "crates/sakura_codegen_js" }
+sakura_analysis = { path = "crates/sakura_analysis" }
+sakura_fmt = { path = "crates/sakura_fmt" }
+sakura_eval = { path = "tools/sakura_eval" }
+sakura_mcp = { path = "crates/sakura_mcp" }
+sakura_lsp = { path = "crates/sakura_lsp" }
 
 # External crates. Add new ones here and use `dep.workspace = true` in crates.
 rowan = "0.16.1"

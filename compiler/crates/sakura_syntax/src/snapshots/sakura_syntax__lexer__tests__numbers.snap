@@ -1,0 +1,41 @@
+---
+source: crates/sakura_syntax/src/lexer.rs
+assertion_line: 615
+expression: "dump(\"0 1_000 0xFF_ff 0b1010 1.5 2.0e-3 1..10 t.0.1 9223372036854775807 9223372036854775808 0x 1.e5 12ab\")"
+---
+INT "0"
+WHITESPACE " "
+INT "1_000"
+WHITESPACE " "
+INT "0xFF_ff"
+WHITESPACE " "
+INT "0b1010"
+WHITESPACE " "
+FLOAT "1.5"
+WHITESPACE " "
+FLOAT "2.0e-3"
+WHITESPACE " "
+INT "1"
+DOT2 ".."
+INT "10"
+WHITESPACE " "
+IDENT "t"
+DOT "."
+INT "0"
+DOT "."
+INT "1"
+WHITESPACE " "
+INT "9223372036854775807"
+WHITESPACE " "
+INT "9223372036854775808"
+WHITESPACE " "
+INT "0x"
+WHITESPACE " "
+INT "1"
+DOT "."
+IDENT "e5"
+WHITESPACE " "
+INT "12ab"
+error V0003 66..85: integer literal does not fit in a signed 64-bit `Int`
+error V0006 86..88: expected digits after the radix prefix
+error V0006 94..98: malformed numeric literal `12ab`

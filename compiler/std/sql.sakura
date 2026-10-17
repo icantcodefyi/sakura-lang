@@ -1,0 +1,49 @@
+// SQL databases as an effect (design §10.2, §4.11, M3). A `Query<R>` comes from the
+// `sql"…"` template, which sends every interpolated value as a bound parameter, never as
+// SQL text. `R` is the row type, decoded by its `Schema` (named by the binding's annotation).
+// needs M3: template arguments converted with `SqlValue.from`
+// (design §4.11; today each must already be a `SqlValue`), and the `sql_*` externals.
+
+import std/fs.{Fs}
+import std/path.{Path}
+
+pub type SqlValue = Null | Int(Int) | Float(Float) | Text(String) | Blob(Bytes)
+
+/// Built only by `template`, so a query's text never contains an interpolated value.
+pub opaque type Query<R> = { text: String, params: List<SqlValue> }
+
+pub error SqlError(message: String)
+
+pub effect Sql {
+  fn query<R: Schema>(q: Query<R>) -> List<R> ! {Fail<SqlError>}
+  /// Rows affected.
+  fn execute(q: Query<Unit>) -> Int ! {Fail<SqlError>}
+  /// Runs `body` in a transaction: committed when it returns, rolled back when it fails.
+  fn transaction<T, e>(body: fn() -> T ! {Sql | e}) -> T ! {Fail<SqlError> | e}
+}
+
+/// The `sql"…"` tag: the literal `parts` joined by `?` placeholders, one per argument.
+pub fn template<R>(parts: List<String>, args: List<SqlValue>) -> Query<R> {
+  Query { text: List.join(parts, "?"), params: args }
+}
+
+/// Executes each statement in order.
+pub fn migrate(statements: List<Query<Unit>>) -> Unit ! {Sql, Fail<SqlError>} {
+  for s in statements {
+    let _ = Sql.execute(s)
+  }
+}
+
+/// SQLite database file at `path`, through the installed `Fs` handler's directory.
+@external(js, "sakura_runtime", "sql_sqlite")
+pub fn sqlite(path: Path) -> Handler<Sql, {Fs}>
+
+/// A fresh in-memory SQLite database; the test default.
+@external(js, "sakura_runtime", "sql_memory")
+pub fn memory() -> Handler<Sql>
+
+test "template binds arguments as parameters" {
+  let q: Query<Unit> = template(["select * from users where id = ", " and name = ", ""], [Int(1), Text("a")])
+  expect_eq(q.text, "select * from users where id = ? and name = ?")
+  expect_eq(q.params, [Int(1), Text("a")])
+}

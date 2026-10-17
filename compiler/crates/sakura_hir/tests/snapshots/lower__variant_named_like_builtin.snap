@@ -1,0 +1,28 @@
+---
+source: crates/sakura_hir/tests/lower.rs
+expression: "check(&\n[(\"json\",\nr#\"\npub type Json = Null | String(String)\nfn size(j: Json) -> Int { match j { String(s) => String.len(s), Null => 0 } }\nfn wrap(s: String) -> Json { String(s) }\n\"#)])"
+---
+== json
+pub type Json = variants
+  Null()
+  String(String)
+fn size(j: app/json::Json) -> Int
+  params j#0
+  block
+    match
+      local j#0
+      arm
+        pat ctor def app/json::Json.String
+          pat bind s#1
+        call
+          def std/string::len
+          local s#1
+      arm
+        pat ctor def app/json::Json.Null
+        int 0
+fn wrap(s: String) -> app/json::Json
+  params s#0
+  block
+    call
+      def app/json::Json.String
+      local s#0

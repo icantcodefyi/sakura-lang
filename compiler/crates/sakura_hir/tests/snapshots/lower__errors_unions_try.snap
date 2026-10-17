@@ -1,0 +1,50 @@
+---
+source: crates/sakura_hir/tests/lower.rs
+expression: "check(&\n[(\"main\",\nr#\"\nerror EmailTaken(email: String)\nerror Banned\ntype SignupError = EmailTaken | Banned\nfn signup(email: String) -> Int ! {Fail<SignupError>} {\n  if email == \"\" { fail Banned }\n  fail EmailTaken { email }\n}\nfn safe() -> Int {\n  try { signup(\"x\") } catch {\n    EmailTaken { email } => 1,\n    Banned => 2,\n  }\n}\nfn wrapped() -> Result<Int, SignupError> { try { signup(\"y\") } }\nfn reraise(r: Result<Int, Banned>) -> Int ! {Fail<Banned>} { r? }\n\"#)])"
+---
+== main
+error EmailTaken(email: String)
+error Banned()
+type SignupError = errors app/main::EmailTaken | app/main::Banned
+fn signup(email: String) -> Int ! {Fail<app/main::SignupError>}
+  params email#0
+  block
+    if
+      Eq
+        local email#0
+        string ""
+      block
+        fail
+          def app/main::Banned
+    fail
+      record app/main::EmailTaken
+        email:
+          local email#0
+fn safe() -> Int
+  block
+    try
+      block
+        call
+          def app/main::signup
+          string "x"
+    catch
+      arm
+        pat record app/main::EmailTaken
+          email:
+            pat bind email#0
+        int 1
+      arm
+        pat ctor def app/main::Banned
+        int 2
+fn wrapped() -> std/result::Result<Int, app/main::SignupError>
+  block
+    try
+      block
+        call
+          def app/main::signup
+          string "y"
+fn reraise(r: std/result::Result<Int, app/main::Banned>) -> Int ! {Fail<app/main::Banned>}
+  params r#0
+  block
+    raise
+      local r#0

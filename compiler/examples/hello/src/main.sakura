@@ -1,0 +1,20 @@
+// milestone: M2
+// needs: Clock with host and fixed handlers, Instant formatting in std
+// mode: run
+// stdout-regex: true
+// covers: FnDecl EffectRow WithExpr TestDecl
+
+// Design §15.1. `sakura run` uses the host clock, so expected.stdout is a regex; the test
+// pins the clock.
+
+fn greet(name: String) -> Unit ! {Clock, Console} {
+  let now = Clock.now()
+  Console.print("hello, {name}; it is {Instant.format_iso(now)}")
+}
+
+pub fn main() -> Unit ! {Clock, Console} { greet("Sakura Lang") }
+
+test "greets with the time from the clock" {
+  with Clock.fixed(Instant.from_unix_millis(1_767_225_600_000)) { greet("Sakura Lang") }
+  expect_output(["hello, Sakura Lang; it is 2026-01-01T00:00:00Z"])
+}

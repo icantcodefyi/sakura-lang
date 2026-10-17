@@ -1,0 +1,43 @@
+---
+source: crates/sakura_hir/tests/lower.rs
+expression: "check(&\n[(\"main\",\nr#\"\neffect Counter { fn next() -> Int }\nfn counter() -> Handler<Counter> {\n  handler Counter {\n    var n = 0\n    fn next() { n = n + 1; n }\n  }\n}\nfn answer() -> Int { with counter() { Counter.next() + Counter.next() } }\nfn console_and_counter() -> Unit ! {Console} {\n  with counter(), Console.host() { Console.print(\"{Counter.next()}\") }\n}\n\"#)])"
+---
+== main
+effect Counter
+  op next() -> Int
+fn counter() -> Handler<app/main::Counter>
+  block
+    handler app/main::Counter
+      state mut n#0
+        int 0
+      clause next -> app/main::Counter.next ()
+        block
+          assign mut n#0
+            Add
+              local mut n#0
+              int 1
+          local mut n#0
+fn answer() -> Int
+  block
+    with
+      call
+        def app/main::counter
+      block
+        Add
+          call
+            def app/main::Counter.next
+          call
+            def app/main::Counter.next
+fn console_and_counter() -> Unit ! {std/console::Console}
+  block
+    with
+      call
+        def app/main::counter
+      call
+        def std/console::host
+      block
+        call
+          def std/console::Console.print
+          interpolate ["", ""]
+            call
+              def app/main::Counter.next

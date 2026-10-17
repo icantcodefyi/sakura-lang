@@ -1,0 +1,9 @@
+// milestone: M3
+// needs: `sakura test --contracts` with filter-based generation
+// expect: W7001
+// command: test --contracts
+pub fn exact(x: Int) -> Int
+  requires x == 123_456
+{
+  x
+}

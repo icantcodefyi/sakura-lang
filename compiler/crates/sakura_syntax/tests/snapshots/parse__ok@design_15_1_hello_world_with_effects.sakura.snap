@@ -1,0 +1,158 @@
+---
+source: crates/sakura_syntax/tests/parse.rs
+expression: out
+input_file: crates/sakura_syntax/tests/data/ok/design_15_1_hello_world_with_effects.sakura
+---
+SOURCE_FILE@0..245
+  FN_DECL@0..177
+    COMMENT@0..33 "// examples/hello/src/main.sakura"
+    WHITESPACE@33..34 "\n"
+    FN_KW@34..36 "fn"
+    WHITESPACE@36..37 " "
+    IDENT@37..42 "greet"
+    PARAM_LIST@42..56
+      L_PAREN@42..43 "("
+      PARAM@43..55
+        IDENT@43..47 "name"
+        COLON@47..48 ":"
+        WHITESPACE@48..49 " "
+        NAMED_TYPE@49..55
+          PATH@49..55
+            TYPE_NAME@49..55 "String"
+      R_PAREN@55..56 ")"
+    WHITESPACE@56..57 " "
+    RET_TYPE@57..64
+      THIN_ARROW@57..59 "->"
+      WHITESPACE@59..60 " "
+      NAMED_TYPE@60..64
+        PATH@60..64
+          TYPE_NAME@60..64 "Unit"
+    WHITESPACE@64..65 " "
+    BANG@65..66 "!"
+    WHITESPACE@66..67 " "
+    EFFECT_ROW@67..83
+      L_BRACE@67..68 "{"
+      NAMED_TYPE@68..75
+        PATH@68..75
+          TYPE_NAME@68..75 "Console"
+      COMMA@75..76 ","
+      WHITESPACE@76..77 " "
+      NAMED_TYPE@77..82
+        PATH@77..82
+          TYPE_NAME@77..82 "Clock"
+      R_BRACE@82..83 "}"
+    WHITESPACE@83..84 " "
+    BLOCK@84..177
+      L_BRACE@84..85 "{"
+      WHITESPACE@85..88 "\n  "
+      LET_STMT@88..109
+        LET_KW@88..91 "let"
+        WHITESPACE@91..92 " "
+        BIND_PAT@92..95
+          IDENT@92..95 "now"
+        WHITESPACE@95..96 " "
+        EQ@96..97 "="
+        WHITESPACE@97..98 " "
+        CALL_EXPR@98..109
+          FIELD_EXPR@98..107
+            PATH_EXPR@98..103
+              PATH@98..103
+                TYPE_NAME@98..103 "Clock"
+            DOT@103..104 "."
+            IDENT@104..107 "now"
+          ARG_LIST@107..109
+            L_PAREN@107..108 "("
+            R_PAREN@108..109 ")"
+      NEWLINE@109..110 "\n"
+      WHITESPACE@110..112 "  "
+      EXPR_STMT@112..175
+        CALL_EXPR@112..175
+          FIELD_EXPR@112..125
+            PATH_EXPR@112..119
+              PATH@112..119
+                TYPE_NAME@112..119 "Console"
+            DOT@119..120 "."
+            IDENT@120..125 "print"
+          ARG_LIST@125..175
+            L_PAREN@125..126 "("
+            STRING_LIT@126..174
+              STRING_START@126..127 "\""
+              STRING_TEXT@127..134 "hello, "
+              INTERPOLATION@134..140
+                INTERP_START@134..135 "{"
+                PATH_EXPR@135..139
+                  PATH@135..139
+                    IDENT@135..139 "name"
+                INTERP_END@139..140 "}"
+              STRING_TEXT@140..148 "; it is "
+              INTERPOLATION@148..173
+                INTERP_START@148..149 "{"
+                CALL_EXPR@149..172
+                  FIELD_EXPR@149..167
+                    PATH_EXPR@149..156
+                      PATH@149..156
+                        TYPE_NAME@149..156 "Instant"
+                    DOT@156..157 "."
+                    IDENT@157..167 "format_iso"
+                  ARG_LIST@167..172
+                    L_PAREN@167..168 "("
+                    PATH_EXPR@168..171
+                      PATH@168..171
+                        IDENT@168..171 "now"
+                    R_PAREN@171..172 ")"
+                INTERP_END@172..173 "}"
+              STRING_END@173..174 "\""
+            R_PAREN@174..175 ")"
+      WHITESPACE@175..176 "\n"
+      R_BRACE@176..177 "}"
+  NEWLINE@177..178 "\n"
+  WHITESPACE@178..179 "\n"
+  FN_DECL@179..244
+    PUB_KW@179..182 "pub"
+    WHITESPACE@182..183 " "
+    FN_KW@183..185 "fn"
+    WHITESPACE@185..186 " "
+    IDENT@186..190 "main"
+    PARAM_LIST@190..192
+      L_PAREN@190..191 "("
+      R_PAREN@191..192 ")"
+    WHITESPACE@192..193 " "
+    RET_TYPE@193..200
+      THIN_ARROW@193..195 "->"
+      WHITESPACE@195..196 " "
+      NAMED_TYPE@196..200
+        PATH@196..200
+          TYPE_NAME@196..200 "Unit"
+    WHITESPACE@200..201 " "
+    BANG@201..202 "!"
+    WHITESPACE@202..203 " "
+    EFFECT_ROW@203..219
+      L_BRACE@203..204 "{"
+      NAMED_TYPE@204..211
+        PATH@204..211
+          TYPE_NAME@204..211 "Console"
+      COMMA@211..212 ","
+      WHITESPACE@212..213 " "
+      NAMED_TYPE@213..218
+        PATH@213..218
+          TYPE_NAME@213..218 "Clock"
+      R_BRACE@218..219 "}"
+    WHITESPACE@219..220 " "
+    BLOCK@220..244
+      L_BRACE@220..221 "{"
+      WHITESPACE@221..222 " "
+      EXPR_STMT@222..242
+        CALL_EXPR@222..242
+          PATH_EXPR@222..227
+            PATH@222..227
+              IDENT@222..227 "greet"
+          ARG_LIST@227..242
+            L_PAREN@227..228 "("
+            STRING_LIT@228..241
+              STRING_START@228..229 "\""
+              STRING_TEXT@229..240 "Sakura Lang"
+              STRING_END@240..241 "\""
+            R_PAREN@241..242 ")"
+      WHITESPACE@242..243 " "
+      R_BRACE@243..244 "}"
+  NEWLINE@244..245 "\n"

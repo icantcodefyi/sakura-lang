@@ -1,0 +1,38 @@
+---
+source: crates/sakura_fmt/tests/fmt.rs
+expression: "check(path, &text)"
+input_file: tests/fmt/expression_comments.sakura
+---
+// Comments inside expressions: around binary operators and before the `.` of a chain.
+fn total(order: Order) -> Int {
+  let a = order.base + /* tax */ order.tax
+  let b = order.base // the base
+    + order.shipping
+  let c = order.base
+    // shipping is waived over 100
+    + order.shipping -
+    /* discount */ order.discount
+  let f = order.base -
+    // a line comment after `-` keeps the break after it
+    order.discount
+  let d = items.filter(fn(i) { i.active }) // only active ones
+    .map(fn(i) { i.price })
+    /* then */
+    .sum()
+  let e = Router.new() // keeps the type on the first line
+    .route("/a", a)
+  a + b + c + d + e + f
+}
+
+fn names() -> List<String> {
+  // a long chain with no comments still breaks before each `.`
+  users.filter(fn(u) { u.active && u.verified })
+    .map(fn(u) { u.display_name_for_the_listing })
+    .sort()
+}
+
+fn widths() -> String {
+  // 92 chars, 174 bytes: fits in 100
+  let s = "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé"
+  s
+}

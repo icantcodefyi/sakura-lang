@@ -1,0 +1,20 @@
+[package]
+name = "sakura_fmt"
+description = "Canonical formatter: syntax tree to pretty document."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+sakura_syntax.workspace = true
+pretty.workspace = true
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+insta = { workspace = true, features = ["glob"] }
+proptest.workspace = true

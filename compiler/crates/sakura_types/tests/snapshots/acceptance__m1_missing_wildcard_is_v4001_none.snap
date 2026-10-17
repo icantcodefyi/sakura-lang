@@ -1,0 +1,7 @@
+---
+source: crates/sakura_types/tests/acceptance.rs
+expression: c.render()
+---
+V4001 3:3 non-exhaustive match: `None`, `Some(_)` not covered
+  actual: None
+  fix (Incomplete, BehaviorChange): Add an arm for `None`

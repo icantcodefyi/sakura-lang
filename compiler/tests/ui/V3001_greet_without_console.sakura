@@ -1,0 +1,7 @@
+// milestone: M0
+// expect: V3001
+// expect-span: V3001 cause 5:3
+fn greet(name: String) -> Unit {
+  Console.print("hello, {name}")
+}
+pub fn main() -> Unit ! {Console} { greet("Sakura Lang") }

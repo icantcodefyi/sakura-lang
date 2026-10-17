@@ -1,0 +1,7 @@
+---
+source: crates/sakura_types/tests/acceptance.rs
+expression: c.render()
+---
+V2031 4:11 `fn() -> Int` is not `Show`, so it cannot be interpolated or printed
+  expected: Show
+  actual: fn() -> Int

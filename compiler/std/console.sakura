@@ -1,0 +1,21 @@
+// Line-oriented terminal IO. Prelude effect.
+
+pub effect Console {
+  /// Writes `line` and a newline to standard output.
+  fn print(line: String) -> Unit
+  /// The next line of standard input without its newline; `None` at end of input.
+  fn read_line() -> Option<String>
+}
+
+/// Root handler over the process's stdout/stdin. The host installs it for a `main`
+/// that declares `Console`; user code rarely calls it.
+@external(js, "sakura_runtime", "console_host")
+pub fn host() -> Handler<Console>
+
+/// Test default: printed lines go to the test's captured output; input is empty.
+pub fn captured() -> Handler<Console, {Test}> {
+  handler Console {
+    fn print(line) { Test.output(line) }
+    fn read_line() { None }
+  }
+}

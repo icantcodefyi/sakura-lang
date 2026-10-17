@@ -1,0 +1,7 @@
+---
+source: crates/sakura_diagnostics/tests/render.rs
+assertion_line: 58
+expression: out
+---
+{"schema_version":"1.0","kind":"diagnostic","id":"d:4e8a2b0c9c6f78aa","code":"V3001","severity":"error","phase":"effect","message":"function `greet` performs `Console`, which its signature does not allow","snapshot":"sha256:snap","symbol_id":"main::greet","spans":[{"uri":"file:///work/main.sakura","content_hash":"sha256:ec3588ff2edf0796d65d68df71928d166a05a98c8a3a04c39169f14e61a1880b","start_byte":35,"end_byte":48,"role":"primary","label":"`Console` performed here"},{"uri":"file:///work/main.sakura","content_hash":"sha256:ec3588ff2edf0796d65d68df71928d166a05a98c8a3a04c39169f14e61a1880b","start_byte":35,"end_byte":66,"role":"cause","label":"`Console.print` introduces `Console` here"}],"related_ids":[],"expected":{"render":"{}","row":{"labels":[],"tail":null}},"actual":{"render":"{Console}"},"obligation":null,"counterexample":null,"explanation_uri":"sakura://explain/V3001","fixes":[{"id":"f:4e8a2b0c9c6f78aa.0","title":"Add `Console` to the signature of `greet`","applicability":"machine_applicable","impact":"interface_change","edits":[{"span":{"uri":"file:///work/main.sakura","content_hash":"sha256:ec3588ff2edf0796d65d68df71928d166a05a98c8a3a04c39169f14e61a1880b","start_byte":30,"end_byte":30,"role":"primary"},"replacement":" ! {Console}"}]}]}
+{"schema_version":"1.0","kind":"summary","snapshot":"sha256:snap","errors":1,"warnings":0,"notes":0,"total":1,"emitted":1,"truncated":false}

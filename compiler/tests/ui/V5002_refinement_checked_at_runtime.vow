@@ -1,4 +1,0 @@
-// milestone: M3
-// expect: V5002
-type Email = String where String.contains(it, "@")
-let support: Email = "help@vow.dev"

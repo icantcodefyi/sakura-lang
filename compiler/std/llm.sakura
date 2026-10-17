@@ -1,0 +1,171 @@
+// Typed LLM calls as an effect (design §10.7, §11.1, M3). `Llm.generate` decodes the output
+// as `Json.decode` would, so every refinement of `T` is checked. Schema-valid output is not
+// truth: check what matters before acting on it.
+// needs M3: `@llm` bodies (§11.1), `Llm.replay(path)`.
+
+import std/budget.{Budget}
+import std/core.{Violation}
+import std/http.{Http, RateLimited}
+import std/prompt.{Prompt}
+import std/task.{Timeout}
+import std/untrusted
+
+/// A provider model name; `Model.default()` lets the handler choose.
+pub type Model = Model(String)
+
+/// `T` is the output type, named by the binding's annotation
+/// (`let req: Request<Ticket> = Llm.request(system, user)`). Change fields with a record
+/// update: `Request { ..req, max_tokens: 4_000 }`.
+pub type Request<T> = { system: String, user: Prompt, model: Model, max_tokens: Int, temperature: Float }
+
+/// The provider declined to answer.
+pub error Refused
+/// The output did not decode as the requested type; one violation per failed check.
+pub error InvalidOutput(violations: List<Violation>)
+/// The output hit `max_tokens`.
+pub error Truncated
+/// The provider answered with an unexpected HTTP status.
+pub error ProviderError(status: Int)
+
+/// `RateLimited` is `std/http.RateLimited` and `Timeout` is `std/task.Timeout` (§5.9).
+pub type LlmError = Refused | InvalidOutput | Truncated | RateLimited | Timeout | ProviderError
+
+/// What the provider sees of a tool: `schema` is the JSON Schema of its arguments.
+pub type ToolSpec = { name: String, description: String, schema: Json }
+
+/// A call the model asked for; `id` pairs it with its result.
+pub type ToolCall = { id: String, name: String, input: Json }
+
+pub type ToolResult = { id: String, output: Json }
+
+/// The conversation after the user prompt, in order: the model's calls, then their results.
+pub type Turn = Asked(List<ToolCall>) | Answered(List<ToolResult>)
+
+/// One model turn of an agent loop: the final output, or tool calls to run first.
+pub type Step<T> = Answer(T) | Use(List<ToolCall>)
+
+/// An unfinished call: the output text so far (`stream`), and in an agent loop the number of
+/// steps taken and every tool call made. `T` is the final output type.
+pub type Partial<T> = { text: String, step: Int, calls: List<ToolCall> }
+
+pub effect Llm {
+  fn generate<T: Schema>(req: Request<T>) -> T ! {Fail<LlmError>}
+  fn generate_text(req: Request<String>) -> Untrusted<String> ! {Fail<LlmError>}
+  /// Like `generate`, calling `on_partial` as output arrives.
+  fn stream<T: Schema, e>(req: Request<T>, on_partial: fn(Partial<T>) -> Unit ! e) -> T
+    ! {Fail<LlmError> | e}
+  /// One agent turn: the model sees `tools` and the `transcript` so far. With no tools it
+  /// must answer. `Agent.run` drives this; most code calls `generate`.
+  fn step<T: Schema>(req: Request<T>, tools: List<ToolSpec>, transcript: List<Turn>) -> Step<T>
+    ! {Fail<LlmError>}
+}
+
+/// A request with the default model, 1024 output tokens and temperature 0.
+pub fn request<T: Schema>(system: String, user: Prompt) -> Request<T> {
+  Request { system, user, model: default(), max_tokens: 1_024, temperature: 0.0 }
+}
+
+pub fn of(name: String) -> Model { Model(name) }
+
+pub fn default() -> Model { Model("default") }
+
+/// Anthropic's Messages API with `T`'s JSON Schema as the output format. Each call reserves
+/// against the installed `Budget` first and settles the reported usage after.
+@external(js, "sakura_runtime", "llm_anthropic")
+pub fn anthropic(key: Secret<String>, model: Model) -> Handler<Llm, {Http, Budget}>
+
+/// Test handler: each call consumes the next raw model output, in order. Running out is a
+/// defect (the test is wrong, not the program). For `step`, an output that is a JSON object
+/// with a `tool_use` array is a tool-call turn (design §16.15):
+/// `{"tool_use": [{"name": "kb_search", "input": {"query": "refunds"}}]}`; anything else is
+/// the answer. `stream` reports the whole output as one partial.
+pub fn scripted(responses: List<String>) -> Handler<Llm> {
+  handler Llm {
+    var rest = responses
+    fn generate(req) {
+      let next = Option.expect(List.first(rest), "Llm.scripted ran out of responses")
+      rest = List.slice(rest, 1, List.len(rest))
+      decode_output(next)
+    }
+    fn generate_text(req) {
+      let next = Option.expect(List.first(rest), "Llm.scripted ran out of responses")
+      rest = List.slice(rest, 1, List.len(rest))
+      untrusted.of(next)
+    }
+    fn stream(req, on_partial) {
+      let next = Option.expect(List.first(rest), "Llm.scripted ran out of responses")
+      rest = List.slice(rest, 1, List.len(rest))
+      on_partial(Partial { text: next, step: 0, calls: [] })
+      decode_output(next)
+    }
+    fn step(req, tools, transcript) {
+      let next = Option.expect(List.first(rest), "Llm.scripted ran out of responses")
+      rest = List.slice(rest, 1, List.len(rest))
+      scripted_step(next, List.len(transcript))
+    }
+  }
+}
+
+fn scripted_step<T: Schema>(text: String, turn: Int) -> Step<T> ! {Fail<LlmError>} {
+  let uses = match Json.parse(text) {
+    Ok(j) => Json.get(j, "tool_use"),
+    Err(_) => None,
+  }
+  match uses {
+    Some(Json.Array(items)) => Use(List.map(List.enumerate(items), fn(p) {
+      ToolCall {
+        id: "call_" + Int.to_string(turn) + "_" + Int.to_string(p.0),
+        name: Json.get_string(p.1, "name").unwrap_or(""),
+        input: Json.get(p.1, "input").unwrap_or(Json.Null),
+      }
+    })),
+    _ => Answer(decode_output(text)),
+  }
+}
+
+fn decode_output<T: Schema>(text: String) -> T ! {Fail<LlmError>} {
+  match Json.decode(text) {
+    Ok(value) => value,
+    Err(e) => fail InvalidOutput { violations: [Violation { type_name: "output", clause: e.message, value_summary: e.path }] },
+  }
+}
+
+test "scripted generate decodes and checks the output" {
+  let req: Request<List<Int>> = request("Numbers only.", Prompt.text("three numbers"))
+  with scripted(["[1, 2, 3]", "not json"]) {
+    expect_eq(try { Llm.generate(req) }, Ok([1, 2, 3]))
+    expect((try { Llm.generate(req) }).is_err())
+  }
+}
+
+test "scripted step tells tool calls from answers" {
+  let req: Request<Int> = request("Count.", Prompt.text("how many?"))
+  with scripted([
+        "\{\"tool_use\": [\{\"name\": \"count\", \"input\": \{\"of\": \"a\"\}\}]\}",
+        "7",
+      ]) {
+    let first = try { Llm.step(req, [], []) }
+    expect_eq(
+      first,
+      Ok(
+        Use([
+          ToolCall {
+            id: "call_0_0",
+            name: "count",
+            input: Json.Object(Map.of([("of", Json.String("a"))])),
+          },
+        ]),
+      ),
+    )
+    expect_eq(try { Llm.step(req, [], []) }, Ok(Answer(7)))
+  }
+}
+
+test "scripted stream reports a partial, then the value" {
+  let req: Request<Int> = request("Count.", Prompt.text("how many?"))
+  with scripted(["5"]) {
+    let n = try { Llm.stream(req, fn(p) { Console.print(p.text) }) }
+    expect_eq(n, Ok(5))
+    expect_output(["5"])
+  }
+}

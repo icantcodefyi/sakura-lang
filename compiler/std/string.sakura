@@ -1,0 +1,144 @@
+// Immutable UTF-8 text. `String` is a compiler-known type; this module is its home.
+// There is no integer indexing. Lengths and `slice` offsets are in bytes; use `chars`
+// or `graphemes` for text positions.
+
+pub error Utf8Error(offset: Int)
+
+/// Length in UTF-8 bytes.
+@external(js, "sakura_runtime", "string_len")
+@total
+pub fn len(s: String) -> Int
+
+/// Unicode scalar values, each as a one-character string.
+@external(js, "sakura_runtime", "string_chars")
+pub fn chars(s: String) -> List<String>
+
+/// Extended grapheme clusters (what a reader counts as characters).
+@external(js, "sakura_runtime", "string_graphemes")
+pub fn graphemes(s: String) -> List<String>
+
+/// Splits on every occurrence of `sep`. `split("a,,b", ",") == ["a", "", "b"]`;
+/// an empty `sep` splits into `chars(s)`.
+@external(js, "sakura_runtime", "string_split")
+pub fn split(s: String, sep: String) -> List<String>
+
+/// Removes leading and trailing Unicode whitespace.
+@external(js, "sakura_runtime", "string_trim")
+pub fn trim(s: String) -> String
+
+@external(js, "sakura_runtime", "string_starts_with")
+@total
+pub fn starts_with(s: String, prefix: String) -> Bool
+
+@external(js, "sakura_runtime", "string_ends_with")
+@total
+pub fn ends_with(s: String, suffix: String) -> Bool
+
+@external(js, "sakura_runtime", "string_contains")
+@total
+pub fn contains(s: String, needle: String) -> Bool
+
+/// Replaces every non-overlapping occurrence of `from`, left to right.
+@external(js, "sakura_runtime", "string_replace")
+pub fn replace(s: String, from: String, to: String) -> String
+
+@external(js, "sakura_runtime", "string_to_lower")
+pub fn to_lower(s: String) -> String
+
+@external(js, "sakura_runtime", "string_to_upper")
+pub fn to_upper(s: String) -> String
+
+/// Decimal integer: optional sign, then ASCII digits only (no `_`, whitespace, or `0x`
+/// prefixes), as Rust's `str::parse`. `None` when malformed or outside the range the
+/// backend can represent (±(2^53 − 1) on JS), never a defect (design §16.3).
+@external(js, "sakura_runtime", "string_parse_int")
+pub fn parse_int(s: String) -> Option<Int>
+
+/// Decimal float such as `-1.5`, `2`, `.5`, `1e3`, plus `NaN`, `inf`, `+inf`, `-inf`.
+/// `None` when malformed. Check `Float.is_nan` on untrusted input.
+@external(js, "sakura_runtime", "string_parse_float")
+pub fn parse_float(s: String) -> Option<Float>
+
+@external(js, "sakura_runtime", "string_to_bytes")
+pub fn to_bytes(s: String) -> Bytes
+
+@external(js, "sakura_runtime", "string_from_bytes")
+pub fn from_bytes(b: Bytes) -> Result<String, Utf8Error>
+
+/// Bytes `[start, end)`. Out-of-range or reversed bounds are clamped like `List.slice`;
+/// an offset inside a multi-byte character is Defect `D031`.
+@external(js, "sakura_runtime", "string_slice")
+pub fn slice(s: String, start: Int, end: Int) -> String
+
+pub fn repeat(s: String, n: Int) -> String
+  requires n >= 0
+{
+  var out = ""
+  for _ in 0..n { out = out + s }
+  out
+}
+
+/// Prepends `fill` until `s` has at least `width` characters (Unicode scalars).
+pub fn pad_left(s: String, width: Int, fill: String) -> String
+  requires len(fill) > 0
+{
+  var out = s
+  while List.len(chars(out)) < width { out = fill + out }
+  out
+}
+
+test "len counts bytes, chars counts scalars" {
+  expect_eq(len("héllo"), 6)
+  expect_eq(chars("héllo"), ["h", "é", "l", "l", "o"])
+}
+
+test "split, trim, case" {
+  expect_eq(split("a,,b", ","), ["a", "", "b"])
+  expect_eq(trim("  hi \n"), "hi")
+  expect_eq(to_upper("abc"), "ABC")
+  expect_eq(to_lower("ABC"), "abc")
+}
+
+test "search and replace" {
+  expect_eq(starts_with("vowel", "vow"), true)
+  expect_eq(ends_with("vowel", "el"), true)
+  expect_eq(contains("vowel", "owe"), true)
+  expect_eq(replace("a-b-c", "-", "+"), "a+b+c")
+}
+
+test "parse_int is strict" {
+  expect_eq(parse_int("42"), Some(42))
+  expect_eq(parse_int("-7"), Some(-7))
+  expect_eq(parse_int("+7"), Some(7))
+  expect_eq(parse_int(" 7"), None)
+  expect_eq(parse_int("1_000"), None)
+  expect_eq(parse_int(""), None)
+  expect_eq(parse_int("99999999999999999999999"), None)
+  expect_eq(parse_int("9007199254740991"), Some(9007199254740991))
+}
+
+test "parse_float" {
+  expect_eq(parse_float("1.5"), Some(1.5))
+  expect_eq(parse_float("x"), None)
+}
+
+test "bytes round trip" {
+  expect_eq(from_bytes(to_bytes("hé")), Ok("hé"))
+}
+
+test "slice by bytes, defect inside a character" {
+  expect_eq(slice("hello", 1, 3), "el")
+  expect_eq(slice("hello", 3, 99), "lo")
+  expect_defect(fn() { slice("é", 0, 1) })
+}
+
+test "repeat and pad_left" {
+  expect_eq(repeat("ab", 3), "ababab")
+  expect_eq(repeat("ab", 0), "")
+  expect_eq(pad_left("7", 3, "0"), "007")
+  expect_eq(pad_left("1234", 3, "0"), "1234")
+}
+
+test "repeat with a negative count blames the caller" {
+  expect_defect(fn() { repeat("x", -1) })
+}

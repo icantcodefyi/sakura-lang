@@ -1,0 +1,44 @@
+---
+source: crates/sakura_hir/tests/lower.rs
+expression: "check(&\n[(\"main\",\nr#\"\nfn twice<e>(f: fn() -> Int ! e) -> Int ! e { f() + f() }\nfn apply<A, B>(x: A, f: fn(A) -> B) -> B { f(x) }\nfn use_it() -> Int {\n  let id = fn(x) { x }\n  let add = fn(a: Int, b: Int) -> Int { a + b }\n  apply(id(3), fn(n) { add(n, 1) })\n}\n\"#)])"
+---
+== main
+fn twice<e>(f: fn() -> Int ! {| $0}) -> Int ! {| $0}
+  params f#0
+  block
+    Add
+      call
+        local f#0
+      call
+        local f#0
+fn apply<A, B>(x: $0, f: fn($0) -> $1) -> $1
+  params x#0 f#1
+  block
+    call
+      local f#1
+      local x#0
+fn use_it() -> Int
+  block
+    let
+      pat bind id#1
+      lambda (x#0)
+        block
+          local x#0
+    let
+      pat bind add#4
+      lambda (a#2: Int, b#3: Int) -> Int
+        block
+          Add
+            local a#2
+            local b#3
+    call
+      def app/main::apply
+      call
+        local id#1
+        int 3
+      lambda (n#5)
+        block
+          call
+            local add#4
+            local n#5
+            int 1

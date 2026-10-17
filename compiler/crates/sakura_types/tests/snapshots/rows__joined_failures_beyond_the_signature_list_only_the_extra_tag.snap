@@ -1,0 +1,11 @@
+---
+source: crates/sakura_types/tests/rows.rs
+assertion_line: 36
+expression: c.render()
+---
+V3001 4:4 function `bad` performs `Fail<B>`, which its signature does not allow (allowed: `{Fail<A>}`)
+  Cause 4:60 `fail B` `fail` performs `Fail<B>` here
+  expected: {Fail<A>}
+  actual: {Fail<A | B>}
+  fix (Suggested, InterfaceChange): Add `Fail<B>` to the signature "{Fail<A | B>}"
+  fix (Incomplete, Local): Recover from the failure locally with `try`/`catch` "{ try " " catch { _ => ?recover } }"

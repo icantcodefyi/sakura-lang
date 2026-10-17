@@ -1,0 +1,67 @@
+---
+source: crates/sakura_syntax/tests/parse.rs
+assertion_line: 38
+expression: out
+input_file: crates/sakura_syntax/tests/data/err/record_in_header.sakura
+---
+V0001 38..39: a record literal in an `if`/`while`/`for`/`match`/`with` header or a contract must be parenthesized: `(Name { … })`
+
+SOURCE_FILE@0..65
+  FN_DECL@0..64
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    IDENT@3..4 "f"
+    PARAM_LIST@4..15
+      L_PAREN@4..5 "("
+      PARAM@5..14
+        IDENT@5..6 "c"
+        COLON@6..7 ":"
+        WHITESPACE@7..8 " "
+        NAMED_TYPE@8..14
+          PATH@8..14
+            TYPE_NAME@8..14 "Config"
+      R_PAREN@14..15 ")"
+    WHITESPACE@15..16 " "
+    RET_TYPE@16..23
+      THIN_ARROW@16..18 "->"
+      WHITESPACE@18..19 " "
+      NAMED_TYPE@19..23
+        PATH@19..23
+          TYPE_NAME@19..23 "Unit"
+    WHITESPACE@23..24 " "
+    BLOCK@24..64
+      L_BRACE@24..25 "{"
+      WHITESPACE@25..28 "\n  "
+      EXPR_STMT@28..62
+        IF_EXPR@28..62
+          IF_KW@28..30 "if"
+          WHITESPACE@30..31 " "
+          BIN_EXPR@31..58
+            RECORD_EXPR@31..53
+              PATH@31..37
+                TYPE_NAME@31..37 "Config"
+              WHITESPACE@37..38 " "
+              L_BRACE@38..39 "{"
+              WHITESPACE@39..40 " "
+              FIELD_INIT@40..51
+                IDENT@40..45 "debug"
+                COLON@45..46 ":"
+                WHITESPACE@46..47 " "
+                LITERAL@47..51
+                  TRUE_KW@47..51 "true"
+              WHITESPACE@51..52 " "
+              R_BRACE@52..53 "}"
+            WHITESPACE@53..54 " "
+            EQ2@54..56 "=="
+            WHITESPACE@56..57 " "
+            PATH_EXPR@57..58
+              PATH@57..58
+                IDENT@57..58 "c"
+          WHITESPACE@58..59 " "
+          BLOCK@59..62
+            L_BRACE@59..60 "{"
+            WHITESPACE@60..61 " "
+            R_BRACE@61..62 "}"
+      WHITESPACE@62..63 "\n"
+      R_BRACE@63..64 "}"
+  NEWLINE@64..65 "\n"

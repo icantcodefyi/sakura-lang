@@ -1,0 +1,14 @@
+@server
+pub fn serve_root() -> Unit {}
+
+@tool("Look up a user")
+@deprecated("use lookup_v2")
+fn lookup(id: String) -> String ! {Fail<NotFound>} { id }
+
+@test_only
+fn fixture() -> Int { 1 }
+
+@external(js, "sakura_runtime", "list_len")
+pub fn len<A>(xs: List<A>) -> Int
+
+fn trusting(raw: Untrusted<String>) -> String { raw.trust(@trust("checked by caller")) }

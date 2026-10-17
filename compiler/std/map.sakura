@@ -1,0 +1,78 @@
+// Immutable hash maps with insertion-order iteration (deterministic on every backend).
+// `Map<K, V>` is a compiler-known type; this module is its home. Keys need `Hash`
+// (every `Eq` type except `Float`, `Map`, `Set`).
+
+@external(js, "sakura_runtime", "map_empty")
+pub fn empty<K: Hash, V>() -> Map<K, V>
+
+@external(js, "sakura_runtime", "map_get")
+@total
+pub fn get<K: Hash, V>(m: Map<K, V>, k: K) -> Option<V>
+
+/// A new map with `k` bound to `v`. A key already present keeps its original position.
+@external(js, "sakura_runtime", "map_insert")
+pub fn insert<K: Hash, V>(m: Map<K, V>, k: K, v: V) -> Map<K, V>
+
+/// A new map without `k`; unchanged when `k` is absent.
+@external(js, "sakura_runtime", "map_remove")
+pub fn remove<K: Hash, V>(m: Map<K, V>, k: K) -> Map<K, V>
+
+@external(js, "sakura_runtime", "map_len")
+@total
+pub fn len<K: Hash, V>(m: Map<K, V>) -> Int
+
+/// Key/value pairs in insertion order.
+@external(js, "sakura_runtime", "map_entries")
+pub fn entries<K: Hash, V>(m: Map<K, V>) -> List<(K, V)>
+
+/// Builds a map from pairs; a later pair for the same key overwrites the value.
+pub fn of<K: Hash, V>(pairs: List<(K, V)>) -> Map<K, V> {
+  var m: Map<K, V> = empty()
+  for (k, v) in pairs { m = insert(m, k, v) }
+  m
+}
+
+@total
+pub fn contains<K: Hash, V>(m: Map<K, V>, k: K) -> Bool {
+  get(m, k).is_some()
+}
+
+/// Sets `k` to `f(current)`, where `current` is `None` when `k` is absent.
+pub fn update<K: Hash, V, e>(m: Map<K, V>, k: K, f: fn(Option<V>) -> V ! e) -> Map<K, V> ! e {
+  insert(m, k, f(get(m, k)))
+}
+
+/// Keys in insertion order.
+pub fn keys<K: Hash, V>(m: Map<K, V>) -> List<K> {
+  List.map(entries(m), fn(kv) { kv.0 })
+}
+
+/// Values in key insertion order.
+pub fn values<K: Hash, V>(m: Map<K, V>) -> List<V> {
+  List.map(entries(m), fn(kv) { kv.1 })
+}
+
+test "insert, get, contains, len" {
+  let m = Map.of([("a", 1), ("b", 2)])
+  expect_eq(m.get("a"), Some(1))
+  expect_eq(m.get("z"), None)
+  expect_eq(m.contains("b"), true)
+  expect_eq(m.len(), 2)
+  expect_eq(m.insert("c", 3).len(), 3)
+  expect_eq(m.len(), 2)
+}
+
+test "insertion order is kept, overwrite keeps position" {
+  let m = Map.of([("b", 1), ("a", 2), ("b", 3)])
+  expect_eq(m.entries(), [("b", 3), ("a", 2)])
+  expect_eq(m.keys(), ["b", "a"])
+  expect_eq(m.values(), [3, 2])
+}
+
+test "remove and update" {
+  let m = Map.of([("a", 1)])
+  expect_eq(m.remove("a").len(), 0)
+  expect_eq(m.remove("zzz"), m)
+  let counted = m.update("a", fn(n) { n.unwrap_or(0) + 1 }).update("b", fn(n) { n.unwrap_or(0) + 1 })
+  expect_eq(counted.entries(), [("a", 2), ("b", 1)])
+}

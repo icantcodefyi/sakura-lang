@@ -1,0 +1,36 @@
+---
+source: crates/sakura_fmt/tests/fmt.rs
+assertion_line: 66
+expression: "check(path, &text)"
+input_file: tests/fmt/design_15_6_cli_tool_with_file_io_and_attenuated_aut.sakura
+---
+import std/cli.{Cli, CliError}
+import std/fs.{Dir, Fs, FsError}
+import std/path.{Path}
+
+type Args = { input: Path, top: Int } // `sakura run -- --input notes.txt --top 5`
+
+fn word_counts(text: String) -> Map<String, Int> {
+  List.fold(
+    String.split(String.to_lower(text), " "),
+    Map.empty(),
+    fn(acc, w) {
+      if w == "" { acc } else { Map.update(acc, w, fn(n) { Option.unwrap_or(n, 0) + 1 }) }
+    },
+  )
+}
+
+pub fn main() -> Unit ! {Cli, Console, Fs, Fail<CliError | FsError>} {
+  let args: Args = Cli.parse(Cli.args())
+  // Narrow the root Fs handler to the data directory before touching files.
+  with Fs.rooted(Dir.subdir(Fs.root(), "data")) {
+    let text = Fs.read_text(args.input)
+      .trust(@trust("word counting cannot be influenced by content"))
+    let top = List.slice(
+      List.sort_by(Map.entries(word_counts(text)), fn(e) { 0 - e.1 }),
+      0,
+      args.top,
+    )
+    for (word, n) in top { Console.print("{word}: {n}") }
+  }
+}

@@ -1,0 +1,51 @@
+---
+source: crates/sakura_fmt/tests/fmt.rs
+assertion_line: 66
+expression: "check(path, &text)"
+input_file: tests/fmt/design_15_8_agent_loop_with_tools_and_a_budget.sakura
+---
+import std/agent.{Agent}
+import std/budget.{Budget, BudgetExceeded, Limits}
+import std/http.{Http, HttpError, RateLimited, Response, Status}
+import std/json.{DecodeError}
+import std/llm.{Llm, LlmError, Model, Prompt, Request}
+import std/tool.{Tool, ToolError}
+import std/url.{Url}
+
+type Answer = { summary: String, sources: List<Url> }
+
+error SearchDown
+
+@tool("Search the internal knowledge base; returns up to 5 snippets")
+fn kb_search(query: String) -> List<String>
+  ! {Http, Fail<DecodeError | HttpError | RateLimited | SearchDown>}
+{
+  let resp = Http.get(url"https://kb.internal/search?q={query}")
+  if resp.status != Status.from(200) { fail SearchDown }
+  let snippets: List<String> = Response.json(resp, 100_000)
+  snippets
+}
+
+pub fn research(question: Untrusted<String>) -> Answer
+  ! {Budget, Http, Llm, Fail<BudgetExceeded | LlmError | ToolError>}
+{
+  let req: Request<Answer> = Llm.request(
+    "Answer with cited sources only.",
+    Prompt.of([Untrusted(question)]),
+  )
+  Agent.run(Agent {
+    request: req,
+    tools: [Tool.of(kb_search)],
+    max_steps: 8,
+    stop: fn(_partial) { false },
+  })
+}
+
+pub fn main() -> Unit ! {Console, Env, Http, Fail<BudgetExceeded | LlmError | ToolError>} {
+  let key = Env.secret("ANTHROPIC_API_KEY").expect("set ANTHROPIC_API_KEY")
+  let limits = Limits { tokens: Some(60_000), usd: Some(2.0), calls: Some(20) }
+  with Llm.anthropic(key, Model.default()), Budget.limits(limits) {
+    let a = research(Untrusted.of("What is our refund policy for annual plans?"))
+    Console.print(a.summary)
+  }
+}

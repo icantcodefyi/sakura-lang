@@ -1,0 +1,623 @@
+---
+source: crates/sakura_syntax/tests/parse.rs
+assertion_line: 32
+expression: out
+input_file: crates/sakura_syntax/tests/data/ok/design_15_4_typed_errors_across_a_public_boundary.sakura
+---
+SOURCE_FILE@0..1126
+  ERROR_DECL@0..26
+    ERROR_KW@0..5 "error"
+    WHITESPACE@5..6 " "
+    TYPE_NAME@6..14 "NotFound"
+    FIELD_LIST@14..26
+      L_PAREN@14..15 "("
+      FIELD_DECL@15..25
+        IDENT@15..17 "id"
+        COLON@17..18 ":"
+        WHITESPACE@18..19 " "
+        NAMED_TYPE@19..25
+          PATH@19..25
+            TYPE_NAME@19..25 "String"
+      R_PAREN@25..26 ")"
+  NEWLINE@26..27 "\n"
+  ERROR_DECL@27..42
+    ERROR_KW@27..32 "error"
+    WHITESPACE@32..33 " "
+    TYPE_NAME@33..42 "Forbidden"
+  NEWLINE@42..43 "\n"
+  ERROR_DECL@43..76
+    ERROR_KW@43..48 "error"
+    WHITESPACE@48..49 " "
+    TYPE_NAME@49..60 "Unavailable"
+    FIELD_LIST@60..76
+      L_PAREN@60..61 "("
+      FIELD_DECL@61..75
+        IDENT@61..67 "reason"
+        COLON@67..68 ":"
+        WHITESPACE@68..69 " "
+        NAMED_TYPE@69..75
+          PATH@69..75
+            TYPE_NAME@69..75 "String"
+      R_PAREN@75..76 ")"
+  NEWLINE@76..77 "\n"
+  TYPE_DECL@77..114
+    TYPE_KW@77..81 "type"
+    WHITESPACE@81..82 " "
+    TYPE_NAME@82..91 "UserError"
+    WHITESPACE@91..92 " "
+    EQ@92..93 "="
+    WHITESPACE@93..94 " "
+    VARIANT_LIST@94..114
+      VARIANT@94..102
+        PATH@94..102
+          TYPE_NAME@94..102 "NotFound"
+      WHITESPACE@102..103 " "
+      PIPE@103..104 "|"
+      WHITESPACE@104..105 " "
+      VARIANT@105..114
+        PATH@105..114
+          TYPE_NAME@105..114 "Forbidden"
+  NEWLINE@114..115 "\n"
+  WHITESPACE@115..116 "\n"
+  EFFECT_DECL@116..191
+    EFFECT_KW@116..122 "effect"
+    WHITESPACE@122..123 " "
+    TYPE_NAME@123..128 "Users"
+    WHITESPACE@128..129 " "
+    L_BRACE@129..130 "{"
+    WHITESPACE@130..133 "\n  "
+    OP_SIG@133..189
+      FN_KW@133..135 "fn"
+      WHITESPACE@135..136 " "
+      IDENT@136..139 "get"
+      PARAM_LIST@139..151
+        L_PAREN@139..140 "("
+        PARAM@140..150
+          IDENT@140..142 "id"
+          COLON@142..143 ":"
+          WHITESPACE@143..144 " "
+          NAMED_TYPE@144..150
+            PATH@144..150
+              TYPE_NAME@144..150 "String"
+        R_PAREN@150..151 ")"
+      WHITESPACE@151..152 " "
+      RET_TYPE@152..167
+        THIN_ARROW@152..154 "->"
+        WHITESPACE@154..155 " "
+        NAMED_TYPE@155..167
+          PATH@155..161
+            TYPE_NAME@155..161 "Option"
+          GENERIC_ARG_LIST@161..167
+            LT@161..162 "<"
+            NAMED_TYPE@162..166
+              PATH@162..166
+                TYPE_NAME@162..166 "User"
+            GT@166..167 ">"
+      WHITESPACE@167..168 " "
+      BANG@168..169 "!"
+      WHITESPACE@169..170 " "
+      EFFECT_ROW@170..189
+        L_BRACE@170..171 "{"
+        NAMED_TYPE@171..188
+          PATH@171..175
+            TYPE_NAME@171..175 "Fail"
+          GENERIC_ARG_LIST@175..188
+            LT@175..176 "<"
+            NAMED_TYPE@176..187
+              PATH@176..187
+                TYPE_NAME@176..187 "Unavailable"
+            GT@187..188 ">"
+        R_BRACE@188..189 "}"
+    WHITESPACE@189..190 "\n"
+    R_BRACE@190..191 "}"
+  NEWLINE@191..192 "\n"
+  WHITESPACE@192..193 "\n"
+  TYPE_DECL@193..248
+    TYPE_KW@193..197 "type"
+    WHITESPACE@197..198 " "
+    TYPE_NAME@198..202 "User"
+    WHITESPACE@202..203 " "
+    EQ@203..204 "="
+    WHITESPACE@204..205 " "
+    RECORD_TYPE@205..248
+      L_BRACE@205..206 "{"
+      WHITESPACE@206..207 " "
+      FIELD_DECL@207..217
+        IDENT@207..209 "id"
+        COLON@209..210 ":"
+        WHITESPACE@210..211 " "
+        NAMED_TYPE@211..217
+          PATH@211..217
+            TYPE_NAME@211..217 "String"
+      COMMA@217..218 ","
+      WHITESPACE@218..219 " "
+      FIELD_DECL@219..232
+        IDENT@219..224 "owner"
+        COLON@224..225 ":"
+        WHITESPACE@225..226 " "
+        NAMED_TYPE@226..232
+          PATH@226..232
+            TYPE_NAME@226..232 "String"
+      COMMA@232..233 ","
+      WHITESPACE@233..234 " "
+      FIELD_DECL@234..246
+        IDENT@234..238 "name"
+        COLON@238..239 ":"
+        WHITESPACE@239..240 " "
+        NAMED_TYPE@240..246
+          PATH@240..246
+            TYPE_NAME@240..246 "String"
+      WHITESPACE@246..247 " "
+      R_BRACE@247..248 "}"
+  NEWLINE@248..249 "\n"
+  WHITESPACE@249..250 "\n"
+  FN_DECL@250..497
+    COMMENT@250..366 "// `Users.memory(…)` resolves here: a non-operation name after an effect is a function of its home module (§4.9)."
+    WHITESPACE@366..367 "\n"
+    FN_KW@367..369 "fn"
+    WHITESPACE@369..370 " "
+    IDENT@370..376 "memory"
+    PARAM_LIST@376..395
+      L_PAREN@376..377 "("
+      PARAM@377..394
+        IDENT@377..382 "users"
+        COLON@382..383 ":"
+        WHITESPACE@383..384 " "
+        NAMED_TYPE@384..394
+          PATH@384..388
+            TYPE_NAME@384..388 "List"
+          GENERIC_ARG_LIST@388..394
+            LT@388..389 "<"
+            NAMED_TYPE@389..393
+              PATH@389..393
+                TYPE_NAME@389..393 "User"
+            GT@393..394 ">"
+      R_PAREN@394..395 ")"
+    WHITESPACE@395..396 " "
+    RET_TYPE@396..413
+      THIN_ARROW@396..398 "->"
+      WHITESPACE@398..399 " "
+      NAMED_TYPE@399..413
+        PATH@399..406
+          TYPE_NAME@399..406 "Handler"
+        GENERIC_ARG_LIST@406..413
+          LT@406..407 "<"
+          NAMED_TYPE@407..412
+            PATH@407..412
+              TYPE_NAME@407..412 "Users"
+          GT@412..413 ">"
+    WHITESPACE@413..414 " "
+    BLOCK@414..497
+      L_BRACE@414..415 "{"
+      WHITESPACE@415..418 "\n  "
+      EXPR_STMT@418..495
+        HANDLER_EXPR@418..495
+          HANDLER_KW@418..425 "handler"
+          WHITESPACE@425..426 " "
+          PATH@426..431
+            TYPE_NAME@426..431 "Users"
+          WHITESPACE@431..432 " "
+          L_BRACE@432..433 "{"
+          WHITESPACE@433..438 "\n    "
+          HANDLER_CLAUSE@438..491
+            FN_KW@438..440 "fn"
+            WHITESPACE@440..441 " "
+            IDENT@441..444 "get"
+            PARAM_LIST@444..448
+              L_PAREN@444..445 "("
+              PARAM@445..447
+                IDENT@445..447 "id"
+              R_PAREN@447..448 ")"
+            WHITESPACE@448..449 " "
+            BLOCK@449..491
+              L_BRACE@449..450 "{"
+              WHITESPACE@450..451 " "
+              EXPR_STMT@451..489
+                CALL_EXPR@451..489
+                  FIELD_EXPR@451..460
+                    PATH_EXPR@451..455
+                      PATH@451..455
+                        TYPE_NAME@451..455 "List"
+                    DOT@455..456 "."
+                    IDENT@456..460 "find"
+                  ARG_LIST@460..489
+                    L_PAREN@460..461 "("
+                    PATH_EXPR@461..466
+                      PATH@461..466
+                        IDENT@461..466 "users"
+                    COMMA@466..467 ","
+                    WHITESPACE@467..468 " "
+                    LAMBDA_EXPR@468..488
+                      FN_KW@468..470 "fn"
+                      PARAM_LIST@470..473
+                        L_PAREN@470..471 "("
+                        PARAM@471..472
+                          IDENT@471..472 "u"
+                        R_PAREN@472..473 ")"
+                      WHITESPACE@473..474 " "
+                      BLOCK@474..488
+                        L_BRACE@474..475 "{"
+                        WHITESPACE@475..476 " "
+                        EXPR_STMT@476..486
+                          BIN_EXPR@476..486
+                            FIELD_EXPR@476..480
+                              PATH_EXPR@476..477
+                                PATH@476..477
+                                  IDENT@476..477 "u"
+                              DOT@477..478 "."
+                              IDENT@478..480 "id"
+                            WHITESPACE@480..481 " "
+                            EQ2@481..483 "=="
+                            WHITESPACE@483..484 " "
+                            PATH_EXPR@484..486
+                              PATH@484..486
+                                IDENT@484..486 "id"
+                        WHITESPACE@486..487 " "
+                        R_BRACE@487..488 "}"
+                    R_PAREN@488..489 ")"
+              WHITESPACE@489..490 " "
+              R_BRACE@490..491 "}"
+          WHITESPACE@491..494 "\n  "
+          R_BRACE@494..495 "}"
+      WHITESPACE@495..496 "\n"
+      R_BRACE@496..497 "}"
+  NEWLINE@497..498 "\n"
+  WHITESPACE@498..499 "\n"
+  FN_DECL@499..984
+    COMMENT@499..578 "// Internal failure (Unavailable) is translated; the public union stays stable."
+    WHITESPACE@578..579 "\n"
+    PUB_KW@579..582 "pub"
+    WHITESPACE@582..583 " "
+    FN_KW@583..585 "fn"
+    WHITESPACE@585..586 " "
+    IDENT@586..595 "view_user"
+    PARAM_LIST@595..623
+      L_PAREN@595..596 "("
+      PARAM@596..610
+        IDENT@596..602 "caller"
+        COLON@602..603 ":"
+        WHITESPACE@603..604 " "
+        NAMED_TYPE@604..610
+          PATH@604..610
+            TYPE_NAME@604..610 "String"
+      COMMA@610..611 ","
+      WHITESPACE@611..612 " "
+      PARAM@612..622
+        IDENT@612..614 "id"
+        COLON@614..615 ":"
+        WHITESPACE@615..616 " "
+        NAMED_TYPE@616..622
+          PATH@616..622
+            TYPE_NAME@616..622 "String"
+      R_PAREN@622..623 ")"
+    WHITESPACE@623..624 " "
+    RET_TYPE@624..631
+      THIN_ARROW@624..626 "->"
+      WHITESPACE@626..627 " "
+      NAMED_TYPE@627..631
+        PATH@627..631
+          TYPE_NAME@627..631 "User"
+    WHITESPACE@631..632 " "
+    BANG@632..633 "!"
+    WHITESPACE@633..634 " "
+    EFFECT_ROW@634..663
+      L_BRACE@634..635 "{"
+      NAMED_TYPE@635..640
+        PATH@635..640
+          TYPE_NAME@635..640 "Users"
+      COMMA@640..641 ","
+      WHITESPACE@641..642 " "
+      NAMED_TYPE@642..645
+        PATH@642..645
+          TYPE_NAME@642..645 "Log"
+      COMMA@645..646 ","
+      WHITESPACE@646..647 " "
+      NAMED_TYPE@647..662
+        PATH@647..651
+          TYPE_NAME@647..651 "Fail"
+        GENERIC_ARG_LIST@651..662
+          LT@651..652 "<"
+          NAMED_TYPE@652..661
+            PATH@652..661
+              TYPE_NAME@652..661 "UserError"
+          GT@661..662 ">"
+      R_BRACE@662..663 "}"
+    WHITESPACE@663..664 " "
+    BLOCK@664..984
+      L_BRACE@664..665 "{"
+      WHITESPACE@665..668 "\n  "
+      LET_STMT@668..859
+        LET_KW@668..671 "let"
+        WHITESPACE@671..672 " "
+        BIND_PAT@672..676
+          IDENT@672..676 "user"
+        WHITESPACE@676..677 " "
+        EQ@677..678 "="
+        WHITESPACE@678..679 " "
+        TRY_EXPR@679..859
+          TRY_KW@679..682 "try"
+          WHITESPACE@682..683 " "
+          BLOCK@683..706
+            L_BRACE@683..684 "{"
+            WHITESPACE@684..689 "\n    "
+            EXPR_STMT@689..702
+              CALL_EXPR@689..702
+                FIELD_EXPR@689..698
+                  PATH_EXPR@689..694
+                    PATH@689..694
+                      TYPE_NAME@689..694 "Users"
+                  DOT@694..695 "."
+                  IDENT@695..698 "get"
+                ARG_LIST@698..702
+                  L_PAREN@698..699 "("
+                  PATH_EXPR@699..701
+                    PATH@699..701
+                      IDENT@699..701 "id"
+                  R_PAREN@701..702 ")"
+            WHITESPACE@702..705 "\n  "
+            R_BRACE@705..706 "}"
+          WHITESPACE@706..707 " "
+          CATCH_KW@707..712 "catch"
+          WHITESPACE@712..713 " "
+          MATCH_ARM_LIST@713..859
+            L_BRACE@713..714 "{"
+            WHITESPACE@714..719 "\n    "
+            MATCH_ARM@719..855
+              RECORD_PAT@719..741
+                PATH@719..730
+                  TYPE_NAME@719..730 "Unavailable"
+                WHITESPACE@730..731 " "
+                L_BRACE@731..732 "{"
+                WHITESPACE@732..733 " "
+                FIELD_PAT@733..739
+                  IDENT@733..739 "reason"
+                WHITESPACE@739..740 " "
+                R_BRACE@740..741 "}"
+              WHITESPACE@741..742 " "
+              FAT_ARROW@742..744 "=>"
+              WHITESPACE@744..745 " "
+              BLOCK@745..855
+                L_BRACE@745..746 "{"
+                WHITESPACE@746..753 "\n      "
+                EXPR_STMT@753..838
+                  CALL_EXPR@753..838
+                    FIELD_EXPR@753..762
+                      PATH_EXPR@753..756
+                        PATH@753..756
+                          TYPE_NAME@753..756 "Log"
+                      DOT@756..757 "."
+                      IDENT@757..762 "event"
+                    ARG_LIST@762..838
+                      L_PAREN@762..763 "("
+                      PATH_EXPR@763..773
+                        PATH@763..773
+                          TYPE_NAME@763..768 "Level"
+                          DOT@768..769 "."
+                          TYPE_NAME@769..773 "Warn"
+                      COMMA@773..774 ","
+                      WHITESPACE@774..775 " "
+                      STRING_LIT@775..802
+                        STRING_START@775..776 "\""
+                        STRING_TEXT@776..801 "users backend unavailable"
+                        STRING_END@801..802 "\""
+                      COMMA@802..803 ","
+                      WHITESPACE@803..804 " "
+                      LIST_EXPR@804..837
+                        L_BRACKET@804..805 "["
+                        TUPLE_EXPR@805..836
+                          L_PAREN@805..806 "("
+                          STRING_LIT@806..814
+                            STRING_START@806..807 "\""
+                            STRING_TEXT@807..813 "reason"
+                            STRING_END@813..814 "\""
+                          COMMA@814..815 ","
+                          WHITESPACE@815..816 " "
+                          CALL_EXPR@816..835
+                            PATH_EXPR@816..827
+                              PATH@816..827
+                                TYPE_NAME@816..820 "Json"
+                                DOT@820..821 "."
+                                TYPE_NAME@821..827 "String"
+                            ARG_LIST@827..835
+                              L_PAREN@827..828 "("
+                              PATH_EXPR@828..834
+                                PATH@828..834
+                                  IDENT@828..834 "reason"
+                              R_PAREN@834..835 ")"
+                          R_PAREN@835..836 ")"
+                        R_BRACKET@836..837 "]"
+                      R_PAREN@837..838 ")"
+                NEWLINE@838..839 "\n"
+                WHITESPACE@839..845 "      "
+                EXPR_STMT@845..849
+                  PATH_EXPR@845..849
+                    PATH@845..849
+                      TYPE_NAME@845..849 "None"
+                WHITESPACE@849..854 "\n    "
+                R_BRACE@854..855 "}"
+            WHITESPACE@855..858 "\n  "
+            R_BRACE@858..859 "}"
+      NEWLINE@859..860 "\n"
+      WHITESPACE@860..862 "  "
+      EXPR_STMT@862..982
+        MATCH_EXPR@862..982
+          MATCH_KW@862..867 "match"
+          WHITESPACE@867..868 " "
+          PATH_EXPR@868..872
+            PATH@868..872
+              IDENT@868..872 "user"
+          WHITESPACE@872..873 " "
+          MATCH_ARM_LIST@873..982
+            L_BRACE@873..874 "{"
+            WHITESPACE@874..879 "\n    "
+            MATCH_ARM@879..907
+              PATH_PAT@879..883
+                PATH@879..883
+                  TYPE_NAME@879..883 "None"
+              WHITESPACE@883..884 " "
+              FAT_ARROW@884..886 "=>"
+              WHITESPACE@886..887 " "
+              FAIL_EXPR@887..907
+                FAIL_KW@887..891 "fail"
+                WHITESPACE@891..892 " "
+                RECORD_EXPR@892..907
+                  PATH@892..900
+                    TYPE_NAME@892..900 "NotFound"
+                  WHITESPACE@900..901 " "
+                  L_BRACE@901..902 "{"
+                  WHITESPACE@902..903 " "
+                  FIELD_INIT@903..905
+                    IDENT@903..905 "id"
+                  WHITESPACE@905..906 " "
+                  R_BRACE@906..907 "}"
+            COMMA@907..908 ","
+            WHITESPACE@908..913 "\n    "
+            MATCH_ARM@913..959
+              VARIANT_PAT@913..920
+                PATH@913..917
+                  TYPE_NAME@913..917 "Some"
+                L_PAREN@917..918 "("
+                BIND_PAT@918..919
+                  IDENT@918..919 "u"
+                R_PAREN@919..920 ")"
+              WHITESPACE@920..921 " "
+              MATCH_GUARD@921..941
+                IF_KW@921..923 "if"
+                WHITESPACE@923..924 " "
+                BIN_EXPR@924..941
+                  FIELD_EXPR@924..931
+                    PATH_EXPR@924..925
+                      PATH@924..925
+                        IDENT@924..925 "u"
+                    DOT@925..926 "."
+                    IDENT@926..931 "owner"
+                  WHITESPACE@931..932 " "
+                  NEQ@932..934 "!="
+                  WHITESPACE@934..935 " "
+                  PATH_EXPR@935..941
+                    PATH@935..941
+                      IDENT@935..941 "caller"
+              WHITESPACE@941..942 " "
+              FAT_ARROW@942..944 "=>"
+              WHITESPACE@944..945 " "
+              FAIL_EXPR@945..959
+                FAIL_KW@945..949 "fail"
+                WHITESPACE@949..950 " "
+                PATH_EXPR@950..959
+                  PATH@950..959
+                    TYPE_NAME@950..959 "Forbidden"
+            COMMA@959..960 ","
+            WHITESPACE@960..965 "\n    "
+            MATCH_ARM@965..977
+              VARIANT_PAT@965..972
+                PATH@965..969
+                  TYPE_NAME@965..969 "Some"
+                L_PAREN@969..970 "("
+                BIND_PAT@970..971
+                  IDENT@970..971 "u"
+                R_PAREN@971..972 ")"
+              WHITESPACE@972..973 " "
+              FAT_ARROW@973..975 "=>"
+              WHITESPACE@975..976 " "
+              PATH_EXPR@976..977
+                PATH@976..977
+                  IDENT@976..977 "u"
+            COMMA@977..978 ","
+            WHITESPACE@978..981 "\n  "
+            R_BRACE@981..982 "}"
+      WHITESPACE@982..983 "\n"
+      R_BRACE@983..984 "}"
+  NEWLINE@984..985 "\n"
+  WHITESPACE@985..986 "\n"
+  TEST_DECL@986..1125
+    TEST_KW@986..990 "test"
+    WHITESPACE@990..991 " "
+    STRING_LIT@991..1017
+      STRING_START@991..992 "\""
+      STRING_TEXT@992..1016 "missing user is NotFound"
+      STRING_END@1016..1017 "\""
+    WHITESPACE@1017..1018 " "
+    BLOCK@1018..1125
+      L_BRACE@1018..1019 "{"
+      WHITESPACE@1019..1022 "\n  "
+      EXPR_STMT@1022..1123
+        WITH_EXPR@1022..1123
+          WITH_KW@1022..1026 "with"
+          WHITESPACE@1026..1027 " "
+          CALL_EXPR@1027..1043
+            FIELD_EXPR@1027..1039
+              PATH_EXPR@1027..1032
+                PATH@1027..1032
+                  TYPE_NAME@1027..1032 "Users"
+              DOT@1032..1033 "."
+              IDENT@1033..1039 "memory"
+            ARG_LIST@1039..1043
+              L_PAREN@1039..1040 "("
+              LIST_EXPR@1040..1042
+                L_BRACKET@1040..1041 "["
+                R_BRACKET@1041..1042 "]"
+              R_PAREN@1042..1043 ")"
+          WHITESPACE@1043..1044 " "
+          BLOCK@1044..1123
+            L_BRACE@1044..1045 "{"
+            WHITESPACE@1045..1050 "\n    "
+            EXPR_STMT@1050..1119
+              CALL_EXPR@1050..1119
+                PATH_EXPR@1050..1061
+                  PATH@1050..1061
+                    IDENT@1050..1061 "expect_fail"
+                ARG_LIST@1061..1119
+                  L_PAREN@1061..1062 "("
+                  LAMBDA_EXPR@1062..1095
+                    FN_KW@1062..1064 "fn"
+                    PARAM_LIST@1064..1066
+                      L_PAREN@1064..1065 "("
+                      R_PAREN@1065..1066 ")"
+                    WHITESPACE@1066..1067 " "
+                    BLOCK@1067..1095
+                      L_BRACE@1067..1068 "{"
+                      WHITESPACE@1068..1069 " "
+                      EXPR_STMT@1069..1093
+                        CALL_EXPR@1069..1093
+                          PATH_EXPR@1069..1078
+                            PATH@1069..1078
+                              IDENT@1069..1078 "view_user"
+                          ARG_LIST@1078..1093
+                            L_PAREN@1078..1079 "("
+                            STRING_LIT@1079..1086
+                              STRING_START@1079..1080 "\""
+                              STRING_TEXT@1080..1085 "alice"
+                              STRING_END@1085..1086 "\""
+                            COMMA@1086..1087 ","
+                            WHITESPACE@1087..1088 " "
+                            STRING_LIT@1088..1092
+                              STRING_START@1088..1089 "\""
+                              STRING_TEXT@1089..1091 "u1"
+                              STRING_END@1091..1092 "\""
+                            R_PAREN@1092..1093 ")"
+                      WHITESPACE@1093..1094 " "
+                      R_BRACE@1094..1095 "}"
+                  COMMA@1095..1096 ","
+                  WHITESPACE@1096..1097 " "
+                  RECORD_EXPR@1097..1118
+                    PATH@1097..1105
+                      TYPE_NAME@1097..1105 "NotFound"
+                    WHITESPACE@1105..1106 " "
+                    L_BRACE@1106..1107 "{"
+                    WHITESPACE@1107..1108 " "
+                    FIELD_INIT@1108..1116
+                      IDENT@1108..1110 "id"
+                      COLON@1110..1111 ":"
+                      WHITESPACE@1111..1112 " "
+                      STRING_LIT@1112..1116
+                        STRING_START@1112..1113 "\""
+                        STRING_TEXT@1113..1115 "u1"
+                        STRING_END@1115..1116 "\""
+                    WHITESPACE@1116..1117 " "
+                    R_BRACE@1117..1118 "}"
+                  R_PAREN@1118..1119 ")"
+            WHITESPACE@1119..1122 "\n  "
+            R_BRACE@1122..1123 "}"
+      WHITESPACE@1123..1124 "\n"
+      R_BRACE@1124..1125 "}"
+  NEWLINE@1125..1126 "\n"

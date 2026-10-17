@@ -1,0 +1,140 @@
+---
+source: crates/sakura_syntax/tests/parse.rs
+assertion_line: 28
+expression: out
+input_file: crates/sakura_syntax/tests/data/ok/design_4_3_refinement_types.sakura
+---
+SOURCE_FILE@0..166
+  TYPE_DECL@0..69
+    TYPE_KW@0..4 "type"
+    WHITESPACE@4..5 " "
+    TYPE_NAME@5..10 "Email"
+    WHITESPACE@10..11 " "
+    EQ@11..12 "="
+    WHITESPACE@12..13 " "
+    NAMED_TYPE@13..19
+      PATH@13..19
+        TYPE_NAME@13..19 "String"
+    WHITESPACE@19..20 " "
+    WHERE_CLAUSE@20..69
+      WHERE_KW@20..25 "where"
+      WHITESPACE@25..26 " "
+      BIN_EXPR@26..69
+        BIN_EXPR@26..47
+          CALL_EXPR@26..40
+            FIELD_EXPR@26..36
+              PATH_EXPR@26..32
+                PATH@26..32
+                  TYPE_NAME@26..32 "String"
+              DOT@32..33 "."
+              IDENT@33..36 "len"
+            ARG_LIST@36..40
+              L_PAREN@36..37 "("
+              PATH_EXPR@37..39
+                PATH@37..39
+                  IDENT@37..39 "it"
+              R_PAREN@39..40 ")"
+          WHITESPACE@40..41 " "
+          LTEQ@41..43 "<="
+          WHITESPACE@43..44 " "
+          LITERAL@44..47
+            INT@44..47 "254"
+        WHITESPACE@47..48 " "
+        AMP2@48..50 "&&"
+        WHITESPACE@50..51 " "
+        CALL_EXPR@51..69
+          FIELD_EXPR@51..65
+            PATH_EXPR@51..56
+              PATH@51..56
+                TYPE_NAME@51..56 "Email"
+            DOT@56..57 "."
+            IDENT@57..65 "is_valid"
+          ARG_LIST@65..69
+            L_PAREN@65..66 "("
+            PATH_EXPR@66..68
+              PATH@66..68
+                IDENT@66..68 "it"
+            R_PAREN@68..69 ")"
+  NEWLINE@69..70 "\n"
+  TYPE_DECL@70..115
+    TYPE_KW@70..74 "type"
+    WHITESPACE@74..75 " "
+    TYPE_NAME@75..82 "Percent"
+    WHITESPACE@82..83 " "
+    EQ@83..84 "="
+    WHITESPACE@84..85 " "
+    NAMED_TYPE@85..88
+      PATH@85..88
+        TYPE_NAME@85..88 "Int"
+    WHITESPACE@88..89 " "
+    WHERE_CLAUSE@89..115
+      WHERE_KW@89..94 "where"
+      WHITESPACE@94..95 " "
+      BIN_EXPR@95..115
+        BIN_EXPR@95..102
+          PATH_EXPR@95..97
+            PATH@95..97
+              IDENT@95..97 "it"
+          WHITESPACE@97..98 " "
+          GTEQ@98..100 ">="
+          WHITESPACE@100..101 " "
+          LITERAL@101..102
+            INT@101..102 "0"
+        WHITESPACE@102..103 " "
+        AMP2@103..105 "&&"
+        WHITESPACE@105..106 " "
+        BIN_EXPR@106..115
+          PATH_EXPR@106..108
+            PATH@106..108
+              IDENT@106..108 "it"
+          WHITESPACE@108..109 " "
+          LTEQ@109..111 "<="
+          WHITESPACE@111..112 " "
+          LITERAL@112..115
+            INT@112..115 "100"
+  NEWLINE@115..116 "\n"
+  TYPE_DECL@116..165
+    TYPE_KW@116..120 "type"
+    WHITESPACE@120..121 " "
+    TYPE_NAME@121..129 "NonEmpty"
+    TYPE_PARAM_LIST@129..132
+      LT@129..130 "<"
+      TYPE_PARAM@130..131
+        TYPE_NAME@130..131 "T"
+      GT@131..132 ">"
+    WHITESPACE@132..133 " "
+    EQ@133..134 "="
+    WHITESPACE@134..135 " "
+    NAMED_TYPE@135..142
+      PATH@135..139
+        TYPE_NAME@135..139 "List"
+      GENERIC_ARG_LIST@139..142
+        LT@139..140 "<"
+        NAMED_TYPE@140..141
+          PATH@140..141
+            TYPE_NAME@140..141 "T"
+        GT@141..142 ">"
+    WHITESPACE@142..143 " "
+    WHERE_CLAUSE@143..165
+      WHERE_KW@143..148 "where"
+      WHITESPACE@148..149 " "
+      BIN_EXPR@149..165
+        CALL_EXPR@149..161
+          FIELD_EXPR@149..157
+            PATH_EXPR@149..153
+              PATH@149..153
+                TYPE_NAME@149..153 "List"
+            DOT@153..154 "."
+            IDENT@154..157 "len"
+          ARG_LIST@157..161
+            L_PAREN@157..158 "("
+            PATH_EXPR@158..160
+              PATH@158..160
+                IDENT@158..160 "it"
+            R_PAREN@160..161 ")"
+        WHITESPACE@161..162 " "
+        GT@162..163 ">"
+        WHITESPACE@163..164 " "
+        LITERAL@164..165
+          INT@164..165 "0"
+  NEWLINE@165..166 "\n"

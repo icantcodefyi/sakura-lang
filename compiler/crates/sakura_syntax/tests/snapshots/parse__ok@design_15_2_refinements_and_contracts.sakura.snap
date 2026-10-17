@@ -1,0 +1,470 @@
+---
+source: crates/sakura_syntax/tests/parse.rs
+assertion_line: 28
+expression: out
+input_file: crates/sakura_syntax/tests/data/ok/design_15_2_refinements_and_contracts.sakura
+---
+SOURCE_FILE@0..622
+  TYPE_DECL@0..45
+    TYPE_KW@0..4 "type"
+    WHITESPACE@4..5 " "
+    TYPE_NAME@5..12 "Percent"
+    WHITESPACE@12..13 " "
+    EQ@13..14 "="
+    WHITESPACE@14..15 " "
+    NAMED_TYPE@15..18
+      PATH@15..18
+        TYPE_NAME@15..18 "Int"
+    WHITESPACE@18..19 " "
+    WHERE_CLAUSE@19..45
+      WHERE_KW@19..24 "where"
+      WHITESPACE@24..25 " "
+      BIN_EXPR@25..45
+        BIN_EXPR@25..32
+          PATH_EXPR@25..27
+            PATH@25..27
+              IDENT@25..27 "it"
+          WHITESPACE@27..28 " "
+          GTEQ@28..30 ">="
+          WHITESPACE@30..31 " "
+          LITERAL@31..32
+            INT@31..32 "0"
+        WHITESPACE@32..33 " "
+        AMP2@33..35 "&&"
+        WHITESPACE@35..36 " "
+        BIN_EXPR@36..45
+          PATH_EXPR@36..38
+            PATH@36..38
+              IDENT@36..38 "it"
+          WHITESPACE@38..39 " "
+          LTEQ@39..41 "<="
+          WHITESPACE@41..42 " "
+          LITERAL@42..45
+            INT@42..45 "100"
+  NEWLINE@45..46 "\n"
+  WHITESPACE@46..47 "\n"
+  FN_DECL@47..221
+    FN_KW@47..49 "fn"
+    WHITESPACE@49..50 " "
+    IDENT@50..55 "clamp"
+    PARAM_LIST@55..81
+      L_PAREN@55..56 "("
+      PARAM@56..62
+        IDENT@56..57 "x"
+        COLON@57..58 ":"
+        WHITESPACE@58..59 " "
+        NAMED_TYPE@59..62
+          PATH@59..62
+            TYPE_NAME@59..62 "Int"
+      COMMA@62..63 ","
+      WHITESPACE@63..64 " "
+      PARAM@64..71
+        IDENT@64..66 "lo"
+        COLON@66..67 ":"
+        WHITESPACE@67..68 " "
+        NAMED_TYPE@68..71
+          PATH@68..71
+            TYPE_NAME@68..71 "Int"
+      COMMA@71..72 ","
+      WHITESPACE@72..73 " "
+      PARAM@73..80
+        IDENT@73..75 "hi"
+        COLON@75..76 ":"
+        WHITESPACE@76..77 " "
+        NAMED_TYPE@77..80
+          PATH@77..80
+            TYPE_NAME@77..80 "Int"
+      R_PAREN@80..81 ")"
+    WHITESPACE@81..82 " "
+    RET_TYPE@82..88
+      THIN_ARROW@82..84 "->"
+      WHITESPACE@84..85 " "
+      NAMED_TYPE@85..88
+        PATH@85..88
+          TYPE_NAME@85..88 "Int"
+    NEWLINE@88..89 "\n"
+    WHITESPACE@89..91 "  "
+    CONTRACT@91..117
+      REQUIRES_KW@91..99 "requires"
+      WHITESPACE@99..100 " "
+      IDENT@100..107 "ordered"
+      COLON@107..108 ":"
+      WHITESPACE@108..109 " "
+      BIN_EXPR@109..117
+        PATH_EXPR@109..111
+          PATH@109..111
+            IDENT@109..111 "lo"
+        WHITESPACE@111..112 " "
+        LTEQ@112..114 "<="
+        WHITESPACE@114..115 " "
+        PATH_EXPR@115..117
+          PATH@115..117
+            IDENT@115..117 "hi"
+    NEWLINE@117..118 "\n"
+    WHITESPACE@118..120 "  "
+    CONTRACT@120..165
+      ENSURES_KW@120..127 "ensures"
+      WHITESPACE@127..128 " "
+      IDENT@128..135 "bounded"
+      COLON@135..136 ":"
+      WHITESPACE@136..137 " "
+      BIN_EXPR@137..165
+        BIN_EXPR@137..149
+          PATH_EXPR@137..139
+            PATH@137..139
+              IDENT@137..139 "lo"
+          WHITESPACE@139..140 " "
+          LTEQ@140..142 "<="
+          WHITESPACE@142..143 " "
+          PATH_EXPR@143..149
+            PATH@143..149
+              IDENT@143..149 "result"
+        WHITESPACE@149..150 " "
+        AMP2@150..152 "&&"
+        WHITESPACE@152..153 " "
+        BIN_EXPR@153..165
+          PATH_EXPR@153..159
+            PATH@153..159
+              IDENT@153..159 "result"
+          WHITESPACE@159..160 " "
+          LTEQ@160..162 "<="
+          WHITESPACE@162..163 " "
+          PATH_EXPR@163..165
+            PATH@163..165
+              IDENT@163..165 "hi"
+    NEWLINE@165..166 "\n"
+    BLOCK@166..221
+      L_BRACE@166..167 "{"
+      WHITESPACE@167..170 "\n  "
+      EXPR_STMT@170..219
+        IF_EXPR@170..219
+          IF_KW@170..172 "if"
+          WHITESPACE@172..173 " "
+          BIN_EXPR@173..179
+            PATH_EXPR@173..174
+              PATH@173..174
+                IDENT@173..174 "x"
+            WHITESPACE@174..175 " "
+            LT@175..176 "<"
+            WHITESPACE@176..177 " "
+            PATH_EXPR@177..179
+              PATH@177..179
+                IDENT@177..179 "lo"
+          WHITESPACE@179..180 " "
+          BLOCK@180..186
+            L_BRACE@180..181 "{"
+            WHITESPACE@181..182 " "
+            EXPR_STMT@182..184
+              PATH_EXPR@182..184
+                PATH@182..184
+                  IDENT@182..184 "lo"
+            WHITESPACE@184..185 " "
+            R_BRACE@185..186 "}"
+          WHITESPACE@186..187 " "
+          ELSE_KW@187..191 "else"
+          WHITESPACE@191..192 " "
+          IF_EXPR@192..219
+            IF_KW@192..194 "if"
+            WHITESPACE@194..195 " "
+            BIN_EXPR@195..201
+              PATH_EXPR@195..196
+                PATH@195..196
+                  IDENT@195..196 "x"
+              WHITESPACE@196..197 " "
+              GT@197..198 ">"
+              WHITESPACE@198..199 " "
+              PATH_EXPR@199..201
+                PATH@199..201
+                  IDENT@199..201 "hi"
+            WHITESPACE@201..202 " "
+            BLOCK@202..208
+              L_BRACE@202..203 "{"
+              WHITESPACE@203..204 " "
+              EXPR_STMT@204..206
+                PATH_EXPR@204..206
+                  PATH@204..206
+                    IDENT@204..206 "hi"
+              WHITESPACE@206..207 " "
+              R_BRACE@207..208 "}"
+            WHITESPACE@208..209 " "
+            ELSE_KW@209..213 "else"
+            WHITESPACE@213..214 " "
+            BLOCK@214..219
+              L_BRACE@214..215 "{"
+              WHITESPACE@215..216 " "
+              EXPR_STMT@216..217
+                PATH_EXPR@216..217
+                  PATH@216..217
+                    IDENT@216..217 "x"
+              WHITESPACE@217..218 " "
+              R_BRACE@218..219 "}"
+      WHITESPACE@219..220 "\n"
+      R_BRACE@220..221 "}"
+  NEWLINE@221..222 "\n"
+  WHITESPACE@222..223 "\n"
+  FN_DECL@223..351
+    FN_KW@223..225 "fn"
+    WHITESPACE@225..226 " "
+    IDENT@226..240 "apply_discount"
+    PARAM_LIST@240..266
+      L_PAREN@240..241 "("
+      PARAM@241..251
+        IDENT@241..246 "price"
+        COLON@246..247 ":"
+        WHITESPACE@247..248 " "
+        NAMED_TYPE@248..251
+          PATH@248..251
+            TYPE_NAME@248..251 "Int"
+      COMMA@251..252 ","
+      WHITESPACE@252..253 " "
+      PARAM@253..265
+        IDENT@253..256 "pct"
+        COLON@256..257 ":"
+        WHITESPACE@257..258 " "
+        NAMED_TYPE@258..265
+          PATH@258..265
+            TYPE_NAME@258..265 "Percent"
+      R_PAREN@265..266 ")"
+    WHITESPACE@266..267 " "
+    RET_TYPE@267..273
+      THIN_ARROW@267..269 "->"
+      WHITESPACE@269..270 " "
+      NAMED_TYPE@270..273
+        PATH@270..273
+          TYPE_NAME@270..273 "Int"
+    NEWLINE@273..274 "\n"
+    WHITESPACE@274..276 "  "
+    CONTRACT@276..295
+      REQUIRES_KW@276..284 "requires"
+      WHITESPACE@284..285 " "
+      BIN_EXPR@285..295
+        PATH_EXPR@285..290
+          PATH@285..290
+            IDENT@285..290 "price"
+        WHITESPACE@290..291 " "
+        GTEQ@291..293 ">="
+        WHITESPACE@293..294 " "
+        LITERAL@294..295
+          INT@294..295 "0"
+    NEWLINE@295..296 "\n"
+    WHITESPACE@296..298 "  "
+    CONTRACT@298..321
+      ENSURES_KW@298..305 "ensures"
+      WHITESPACE@305..306 " "
+      BIN_EXPR@306..321
+        PATH_EXPR@306..312
+          PATH@306..312
+            IDENT@306..312 "result"
+        WHITESPACE@312..313 " "
+        LTEQ@313..315 "<="
+        WHITESPACE@315..316 " "
+        PATH_EXPR@316..321
+          PATH@316..321
+            IDENT@316..321 "price"
+    NEWLINE@321..322 "\n"
+    BLOCK@322..351
+      L_BRACE@322..323 "{"
+      WHITESPACE@323..324 " "
+      EXPR_STMT@324..349
+        BIN_EXPR@324..349
+          PATH_EXPR@324..329
+            PATH@324..329
+              IDENT@324..329 "price"
+          WHITESPACE@329..330 " "
+          MINUS@330..331 "-"
+          WHITESPACE@331..332 " "
+          BIN_EXPR@332..349
+            BIN_EXPR@332..343
+              PATH_EXPR@332..337
+                PATH@332..337
+                  IDENT@332..337 "price"
+              WHITESPACE@337..338 " "
+              STAR@338..339 "*"
+              WHITESPACE@339..340 " "
+              PATH_EXPR@340..343
+                PATH@340..343
+                  IDENT@340..343 "pct"
+            WHITESPACE@343..344 " "
+            SLASH@344..345 "/"
+            WHITESPACE@345..346 " "
+            LITERAL@346..349
+              INT@346..349 "100"
+      WHITESPACE@349..350 " "
+      R_BRACE@350..351 "}"
+  NEWLINE@351..352 "\n"
+  WHITESPACE@352..353 "\n"
+  TEST_DECL@353..407
+    TEST_KW@353..357 "test"
+    WHITESPACE@357..358 " "
+    STRING_LIT@358..371
+      STRING_START@358..359 "\""
+      STRING_TEXT@359..370 "clamp upper"
+      STRING_END@370..371 "\""
+    WHITESPACE@371..372 " "
+    BLOCK@372..407
+      L_BRACE@372..373 "{"
+      WHITESPACE@373..374 " "
+      EXPR_STMT@374..405
+        CALL_EXPR@374..405
+          PATH_EXPR@374..383
+            PATH@374..383
+              IDENT@374..383 "expect_eq"
+          ARG_LIST@383..405
+            L_PAREN@383..384 "("
+            CALL_EXPR@384..400
+              PATH_EXPR@384..389
+                PATH@384..389
+                  IDENT@384..389 "clamp"
+              ARG_LIST@389..400
+                L_PAREN@389..390 "("
+                LITERAL@390..392
+                  INT@390..392 "12"
+                COMMA@392..393 ","
+                WHITESPACE@393..394 " "
+                LITERAL@394..395
+                  INT@394..395 "0"
+                COMMA@395..396 ","
+                WHITESPACE@396..397 " "
+                LITERAL@397..399
+                  INT@397..399 "10"
+                R_PAREN@399..400 ")"
+            COMMA@400..401 ","
+            WHITESPACE@401..402 " "
+            LITERAL@402..404
+              INT@402..404 "10"
+            R_PAREN@404..405 ")"
+      WHITESPACE@405..406 " "
+      R_BRACE@406..407 "}"
+  NEWLINE@407..408 "\n"
+  TEST_DECL@408..489
+    TEST_KW@408..412 "test"
+    WHITESPACE@412..413 " "
+    STRING_LIT@413..446
+      STRING_START@413..414 "\""
+      STRING_TEXT@414..445 "precondition is a caller defect"
+      STRING_END@445..446 "\""
+    WHITESPACE@446..447 " "
+    BLOCK@447..489
+      L_BRACE@447..448 "{"
+      WHITESPACE@448..449 " "
+      EXPR_STMT@449..487
+        CALL_EXPR@449..487
+          PATH_EXPR@449..462
+            PATH@449..462
+              IDENT@449..462 "expect_defect"
+          ARG_LIST@462..487
+            L_PAREN@462..463 "("
+            LAMBDA_EXPR@463..486
+              FN_KW@463..465 "fn"
+              PARAM_LIST@465..467
+                L_PAREN@465..466 "("
+                R_PAREN@466..467 ")"
+              WHITESPACE@467..468 " "
+              BLOCK@468..486
+                L_BRACE@468..469 "{"
+                WHITESPACE@469..470 " "
+                EXPR_STMT@470..484
+                  CALL_EXPR@470..484
+                    PATH_EXPR@470..475
+                      PATH@470..475
+                        IDENT@470..475 "clamp"
+                    ARG_LIST@475..484
+                      L_PAREN@475..476 "("
+                      LITERAL@476..477
+                        INT@476..477 "1"
+                      COMMA@477..478 ","
+                      WHITESPACE@478..479 " "
+                      LITERAL@479..480
+                        INT@479..480 "5"
+                      COMMA@480..481 ","
+                      WHITESPACE@481..482 " "
+                      LITERAL@482..483
+                        INT@482..483 "0"
+                      R_PAREN@483..484 ")"
+                WHITESPACE@484..485 " "
+                R_BRACE@485..486 "}"
+            R_PAREN@486..487 ")"
+      WHITESPACE@487..488 " "
+      R_BRACE@488..489 "}"
+  NEWLINE@489..490 "\n"
+  TEST_DECL@490..621
+    TEST_KW@490..494 "test"
+    WHITESPACE@494..495 " "
+    STRING_LIT@495..514
+      STRING_START@495..496 "\""
+      STRING_TEXT@496..513 "percent validates"
+      STRING_END@513..514 "\""
+    WHITESPACE@514..515 " "
+    BLOCK@515..621
+      L_BRACE@515..516 "{"
+      WHITESPACE@516..519 "\n  "
+      EXPR_STMT@519..563
+        CALL_EXPR@519..563
+          PATH_EXPR@519..525
+            PATH@519..525
+              IDENT@519..525 "expect"
+          ARG_LIST@525..563
+            L_PAREN@525..526 "("
+            CALL_EXPR@526..562
+              FIELD_EXPR@526..539
+                PATH_EXPR@526..532
+                  PATH@526..532
+                    TYPE_NAME@526..532 "Result"
+                DOT@532..533 "."
+                IDENT@533..539 "is_err"
+              ARG_LIST@539..562
+                L_PAREN@539..540 "("
+                CALL_EXPR@540..561
+                  FIELD_EXPR@540..556
+                    PATH_EXPR@540..547
+                      PATH@540..547
+                        TYPE_NAME@540..547 "Percent"
+                    DOT@547..548 "."
+                    IDENT@548..556 "validate"
+                  ARG_LIST@556..561
+                    L_PAREN@556..557 "("
+                    LITERAL@557..560
+                      INT@557..560 "101"
+                    R_PAREN@560..561 ")"
+                R_PAREN@561..562 ")"
+            R_PAREN@562..563 ")"
+      NEWLINE@563..564 "\n"
+      WHITESPACE@564..566 "  "
+      EXPR_STMT@566..619
+        CALL_EXPR@566..619
+          PATH_EXPR@566..575
+            PATH@566..575
+              IDENT@566..575 "expect_eq"
+          ARG_LIST@575..619
+            L_PAREN@575..576 "("
+            CALL_EXPR@576..613
+              PATH_EXPR@576..590
+                PATH@576..590
+                  IDENT@576..590 "apply_discount"
+              ARG_LIST@590..613
+                L_PAREN@590..591 "("
+                LITERAL@591..594
+                  INT@591..594 "200"
+                COMMA@594..595 ","
+                WHITESPACE@595..596 " "
+                CALL_EXPR@596..612
+                  FIELD_EXPR@596..608
+                    PATH_EXPR@596..603
+                      PATH@596..603
+                        TYPE_NAME@596..603 "Percent"
+                    DOT@603..604 "."
+                    IDENT@604..608 "from"
+                  ARG_LIST@608..612
+                    L_PAREN@608..609 "("
+                    LITERAL@609..611
+                      INT@609..611 "25"
+                    R_PAREN@611..612 ")"
+                R_PAREN@612..613 ")"
+            COMMA@613..614 ","
+            WHITESPACE@614..615 " "
+            LITERAL@615..618
+              INT@615..618 "150"
+            R_PAREN@618..619 ")"
+      WHITESPACE@619..620 "\n"
+      R_BRACE@620..621 "}"
+  NEWLINE@621..622 "\n"

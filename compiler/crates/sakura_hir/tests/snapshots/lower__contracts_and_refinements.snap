@@ -1,0 +1,66 @@
+---
+source: crates/sakura_hir/tests/lower.rs
+expression: "check(&\n[(\"main\",\nr#\"\ntype Percent = Int where it >= 0 && it <= 100\nfn clamp(x: Int, lo: Int, hi: Int) -> Int\n  requires ordered: lo <= hi\n  ensures lo <= result && result <= hi\n{\n  if x < lo { lo } else if x > hi { hi } else { x }\n}\nproperty \"clamp is bounded\" (x: Int) { expect_eq(clamp(x, 0, 1) <= 1, true) }\ntest \"clamp\" { expect_eq(clamp(5, 0, 1), 1) }\n\"#)])"
+---
+== main
+type Percent = refined Int
+  params it#0
+  And
+    Ge
+      local it#0
+      int 0
+    Le
+      local it#0
+      int 100
+fn clamp(x: Int, lo: Int, hi: Int) -> Int
+  params x#0 lo#1 hi#2
+  requires ordered:
+    Le
+      local lo#1
+      local hi#2
+  ensures
+    And
+      Le
+        local lo#1
+        local result#3
+      Le
+        local result#3
+        local hi#2
+  block
+    if
+      Lt
+        local x#0
+        local lo#1
+      block
+        local lo#1
+      if
+        Gt
+          local x#0
+          local hi#2
+        block
+          local hi#2
+        block
+          local x#0
+property "clamp is bounded"(x: Int)
+  params x#0
+  block
+    call
+      def std/test::expect_eq
+      Le
+        call
+          def app/main::clamp
+          local x#0
+          int 0
+          int 1
+        int 1
+      bool true
+test "clamp"
+  block
+    call
+      def std/test::expect_eq
+      call
+        def app/main::clamp
+        int 5
+        int 0
+        int 1
+      int 1
