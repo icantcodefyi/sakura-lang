@@ -1,5 +1,5 @@
 // milestone: M3
-// needs: std/cli, std/fs with Fs.rooted and Dir capabilities, Untrusted.trust, [permissions]
+// needs: Untrusted.trust with @trust (design §17.16), Cli.parse via Schema, std/fs host externals, [permissions]
 // mode: run
 // args: --input notes.txt --top 3
 // covers: Import ForStmt TuplePat Lambda
@@ -7,8 +7,9 @@
 // Design §15.6. Differences from the design text: `Cli.parse<Args>(…)` becomes an annotated
 // binding (no call-site type arguments, §3.2 rule 1).
 
-import std/cli
-import std/fs
+import std/cli.{Cli, CliError}
+import std/fs.{Dir, Fs, FsError}
+import std/path.{Path}
 
 type Args = { input: Path, top: Int }   // `vow run -- --input notes.txt --top 3`
 
@@ -18,7 +19,7 @@ fn word_counts(text: String) -> Map<String, Int> {
   })
 }
 
-pub fn main() -> Unit ! {Console, Env, Fs, Fail<CliError | FsError>} {
+pub fn main() -> Unit ! {Cli, Console, Fs, Fail<CliError | FsError>} {
   let args: Args = Cli.parse(Cli.args())
   // Narrow the root Fs handler to the data directory before touching files.
   with Fs.rooted(Dir.subdir(Fs.root(), "data")) {
