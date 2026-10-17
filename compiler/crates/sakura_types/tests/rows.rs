@@ -151,3 +151,56 @@ fn row_mismatch_names_the_side_with_the_extra_label() {
     );
     insta::assert_snapshot!(format!("{}---\n{}", performed.render(), allowed.render()));
 }
+
+const CATCH_POLY: &str = r#"error A
+error B
+fn twice<e>(f: fn() -> Int ! e) -> Int ! e { f() + f() }
+"#;
+
+/// WS6's differential finding (REQUESTS.md, 2026-10-18): a row-polymorphic call inside a
+/// `try … catch` body brings `Fail<?ε>` with an error-union variable; the catch must subtract
+/// its tags from the body's failures, not keep `?ε` (a false `V3001`).
+#[test]
+fn catch_around_row_polymorphic_calls_discharges_the_caught_tags() {
+    let src = format!(
+        r#"{CATCH_POLY}fn before() -> Int {{ try {{ if false {{ fail A }}; twice(fn() {{ 1 }}) }} catch {{ A => 0 }} }}
+fn after() -> Int {{ try {{ let n = twice(fn() {{ 1 }}); if n > 1 {{ fail A }}; n }} catch {{ A => 0 }} }}
+fn inner() -> Int {{ try {{ twice(fn() {{ fail A }}) }} catch {{ A => 0 }} }}
+fn lists(xs: List<Int>) -> Int {{
+  try {{
+    let ys = List.map(xs, fn(x) {{ if x < 0 {{ fail A }} else {{ x }} }})
+    let zs = List.filter(ys, fn(y) {{ y > 1 }})
+    if List.any(zs, fn(z) {{ z > 9 }}) {{ fail B }}
+    List.fold(zs, 0, fn(acc, z) {{ acc + z }})
+  }} catch {{
+    A => 0
+    B => 1
+  }}
+}}
+fn partly() -> Int ! {{Fail<B>}} {{ try {{ twice(fn() {{ if true {{ fail A }} else {{ fail B }} }}) }} catch {{ A => 0 }} }}
+"#
+    );
+    let mut c = check(&src);
+    assert!(c.diags.is_empty(), "{}", c.render());
+    for f in ["before", "after", "inner", "lists"] {
+        assert_eq!(c.value_row(f).0, "{}", "{f}");
+    }
+    assert_eq!(c.value_row("partly").0, "{Fail<B>}");
+}
+
+#[test]
+fn catch_around_row_polymorphic_calls_still_reports_uncaught_and_impossible_tags() {
+    let src = format!(
+        r#"{CATCH_POLY}fn leaks() -> Int {{ try {{ twice(fn() {{ if true {{ fail A }} else {{ fail B }} }}) }} catch {{ A => 0 }} }}
+fn never() -> Int {{ try {{ twice(fn() {{ 1 }}) }} catch {{ A => 0 }} }}
+"#
+    );
+    let c = check(&src);
+    let r = c.render();
+    assert_eq!(c.codes(), ["V3001", "V2001"], "{r}");
+    assert!(r.contains("performs `Fail<B>`"), "{r}");
+    assert!(
+        r.contains("this pattern matches `A`, but the value has type `Never`"),
+        "{r}"
+    );
+}

@@ -381,6 +381,20 @@ impl Infer {
         ty
     }
 
+    /// [`Self::settle`] for an error type about to be caught: a variable with no failures
+    /// yet settles to `Never`.
+    pub fn settle_failures(&mut self, ty: TypeId) -> TypeId {
+        let ty = self.settle(ty);
+        if let Type::Var(v) = *self.interner.ty(ty)
+            && self.err_slot(v).is_some_and(|s| s.lower.is_empty())
+        {
+            let never = self.interner.never();
+            self.ty_vars[v.0 as usize] = TySlot::Link(never);
+            return never;
+        }
+        ty
+    }
+
     /// The current lower bound of an error-union variable (∅ for anything else).
     pub fn err_lower_bound(&mut self, ty: TypeId) -> ErrSet {
         let ty = self.shallow(ty);

@@ -1581,6 +1581,11 @@ impl Checker<'_> {
             let ty = self.result_of(bt, err_ty);
             return (ty, without, false);
         };
+        // A row-polymorphic call in the body brings `Fail<?ε>` with an error-union variable
+        // (`fresh_row_for`). The body is checked, so its failures are known: settle `?ε` to
+        // them, so the arms subtract tags from a known union instead of adding their own
+        // tags to it (later failures must fit, as for a field read).
+        let err_ty = self.inf.settle_failures(err_ty);
         let (ty, mut rows, done) = match exp {
             Some(x) => self.arms(arms, err_ty, Some(x)),
             None => {
