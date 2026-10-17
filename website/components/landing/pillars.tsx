@@ -4,11 +4,11 @@ import { ArrowUpRight } from "lucide-react";
 /** Memory and toolchain, side by side: the parts underneath the promises. */
 export function Pillars() {
   return (
-    <section id="pillars" className="border-b border-line">
+    <section id="pillars" className="border-b border-border">
       <div className="mx-auto grid max-w-6xl px-5 py-24 sm:px-8 md:py-28 lg:grid-cols-2">
         <div className="pb-14 lg:pr-14 lg:pb-0">
           <Heading href="/docs/tour/memory">Values, without a borrow checker.</Heading>
-          <p className="mt-4 max-w-[30rem] text-[16px] leading-relaxed text-pretty text-fg-muted">
+          <p className="mt-4 max-w-[30rem] text-[16px] leading-relaxed text-pretty text-muted-foreground">
             Every value is independent: no aliasing, no lifetimes, no cycles. Native code (M5)
             counts references at compile time and updates a uniquely owned value in place. The
             JavaScript backend uses the host GC; the semantics are the same.
@@ -17,9 +17,9 @@ export function Pillars() {
             <ReuseDiagram />
           </div>
         </div>
-        <div className="border-t border-line pt-14 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-14">
+        <div className="border-t border-border pt-14 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-14">
           <Heading href="/docs/stdlib">One binary for the whole loop.</Heading>
-          <p className="mt-4 max-w-[30rem] text-[16px] leading-relaxed text-pretty text-fg-muted">
+          <p className="mt-4 max-w-[30rem] text-[16px] leading-relaxed text-pretty text-muted-foreground">
             Checker, runner, formatter and test runner already share one compiler library; packages,
             LSP and MCP join them in M3, with a standard library for HTTP, SQLite, JSON schemas,
             CLIs and typed LLM calls.
@@ -40,7 +40,7 @@ function Heading({ href, children }: { href: string; children: string }) {
         {children.split(" ").slice(0, -1).join(" ")}{" "}
         <span className="whitespace-nowrap">
           {children.split(" ").at(-1)}
-          <ArrowUpRight className="ml-1 inline-block size-5 align-[-2px] text-fg-faint transition-[transform,color] duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-seal-text" />
+          <ArrowUpRight className="ml-1 inline-block size-5 align-[-2px] text-faint transition-[transform,color] duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-sakura-text" />
         </span>
       </Link>
     </h2>
@@ -52,7 +52,7 @@ function ReuseDiagram() {
   const cells = ["1", "2", "3"];
   return (
     <svg viewBox="0 0 260 136" className="mx-auto w-full max-w-[18rem]" role="presentation">
-      <text x="0" y="16" className="fill-fg-faint font-mono text-[10px]">
+      <text x="0" y="16" className="fill-faint font-mono text-[10px]">
         xs = List.push(xs, 4)
       </text>
       {/* rc badge */}
@@ -63,10 +63,15 @@ function ReuseDiagram() {
               width="40"
               height="40"
               rx="7"
-              className="fill-surface stroke-line-strong"
+              className="fill-card stroke-strong"
               strokeWidth="1"
             />
-            <text x="20" y="25" textAnchor="middle" className="fill-fg font-mono text-[13px]">
+            <text
+              x="20"
+              y="25"
+              textAnchor="middle"
+              className="fill-foreground font-mono text-[13px]"
+            >
               {c}
             </text>
           </g>
@@ -76,7 +81,7 @@ function ReuseDiagram() {
             width="40"
             height="40"
             rx="7"
-            className="fill-seal-wash stroke-seal"
+            className="fill-sakura-wash stroke-sakura"
             strokeWidth="1.5"
             strokeDasharray="0"
           />
@@ -84,7 +89,7 @@ function ReuseDiagram() {
             x="20"
             y="25"
             textAnchor="middle"
-            className="fill-seal-text font-mono text-[13px] font-semibold"
+            className="fill-sakura-text font-mono text-[13px] font-semibold"
           >
             4
           </text>
@@ -94,10 +99,10 @@ function ReuseDiagram() {
           rc = 1
         </text>
       </g>
-      <text x="0" y="112" className="fill-fg-muted font-sans text-[11px]">
+      <text x="0" y="112" className="fill-muted-foreground font-sans text-[11px]">
         unique, so the buffer is
       </text>
-      <text x="0" y="128" className="fill-fg font-sans text-[11px] font-semibold">
+      <text x="0" y="128" className="fill-foreground font-sans text-[11px] font-semibold">
         reused in place: no copy
       </text>
     </svg>
@@ -118,17 +123,17 @@ const COMMANDS = [
 
 function Toolchain() {
   return (
-    <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 border-t border-line font-mono text-[13px]">
+    <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 border-t border-border font-mono text-[13px]">
       {COMMANDS.map(([cmd, what, planned]) => (
-        <div key={cmd} className="col-span-2 grid grid-cols-subgrid border-b border-line py-2">
+        <div key={cmd} className="col-span-2 grid grid-cols-subgrid border-b border-border py-2">
           <dt className="whitespace-nowrap">
-            <span className="text-fg-faint">sakura </span>
-            <span className={planned ? "text-fg-muted" : "text-seal-text"}>{cmd}</span>
+            <span className="text-faint">sakura </span>
+            <span className={planned ? "text-muted-foreground" : "text-sakura-text"}>{cmd}</span>
           </dt>
-          <dd className="font-sans text-[13.5px] text-fg-muted">
+          <dd className="font-sans text-[13.5px] text-muted-foreground">
             {what}
             {planned ? (
-              <span className="ml-2 rounded-full border border-dashed border-line-strong px-1.5 py-px font-mono text-[11px] text-fg-muted">
+              <span className="ml-2 rounded-full border border-dashed border-strong px-1.5 py-px font-mono text-[11px] text-muted-foreground">
                 {planned}
               </span>
             ) : null}

@@ -7,7 +7,7 @@ import { site } from "@/lib/site";
 export function Closing() {
   return (
     <section className="px-5 py-24 sm:px-8 md:py-28">
-      <div className="relative mx-auto max-w-6xl overflow-hidden rounded-[1.75rem] bg-[oklch(0.19_0.012_255)] px-6 py-14 text-[oklch(0.95_0.006_255)] ring-1 ring-white/10 sm:px-12 md:py-20 dark:bg-surface">
+      <div className="relative mx-auto max-w-6xl overflow-hidden rounded-[1.75rem] bg-[oklch(0.19_0.012_255)] px-6 py-14 text-[oklch(0.95_0.006_255)] ring-1 ring-white/10 sm:px-12 md:py-20 dark:bg-card">
         <div className="relative max-w-2xl">
           <h2 className="font-display text-[clamp(2rem,4.2vw,3.3rem)] leading-[1.02] font-semibold tracking-[-0.03em] text-balance">
             Read the design. Then hold us to it.
@@ -19,10 +19,10 @@ export function Closing() {
           <div className="mt-9 flex flex-wrap items-center gap-3">
             <Link
               href="/docs"
-              className="group inline-flex h-11 items-center gap-2 rounded-full bg-seal pr-2 pl-5 text-[15px] font-semibold text-seal-ink transition-transform duration-150 active:scale-[0.97]"
+              className="group inline-flex h-11 items-center gap-2 rounded-full bg-sakura pr-2 pl-5 text-[15px] font-semibold text-ink transition-transform duration-150 active:scale-[0.97]"
             >
               Read the docs
-              <span className="grid size-7 place-items-center rounded-full bg-seal-ink/10 transition-transform duration-200 group-hover:translate-x-0.5">
+              <span className="grid size-7 place-items-center rounded-full bg-ink/10 transition-transform duration-200 group-hover:translate-x-0.5">
                 <ArrowRight className="size-3.5" />
               </span>
             </Link>

@@ -1,124 +1,211 @@
 @import "tailwindcss";
-@import "fumadocs-ui/css/neutral.css";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+/* Fumadocs' own shadcn preset: --color-fd-* read the shadcn variables below, sidebar included. */
+@import "fumadocs-ui/css/shadcn.css";
 @import "fumadocs-ui/css/preset.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * Sakura Lang design tokens.
- * Graphite neutrals tinted toward hue 255, one saffron "seal" accent (hue 78).
- * Effects are saffron, failures coral, contracts mint, in code and in UI.
+ * Sakura Lang "sakura": ink on paper with one sakura accent (design/BRAND.md).
+ *
+ * The shadcn variables are the single source of truth. The landing page uses them through
+ * Tailwind (bg-background, text-muted-foreground, ...) and shadcn components; Fumadocs reads
+ * them through fumadocs-ui/css/shadcn.css. Brand extensions follow the shadcn names.
+ *
+ * Primary is ink: buttons are ink blocks. Sakura is the accent: marks, fills, washes, and as
+ * text only in its darkened `--sakura-text` form (6.2:1 on paper). Effects are sakura, failures
+ * coral, contracts and checks mint, in code and in UI.
  */
 :root {
-  --bg: oklch(0.985 0.003 255);
-  --bg-sunk: oklch(0.962 0.005 255);
-  --surface: oklch(0.995 0.002 255);
-  --fg: oklch(0.21 0.014 255);
-  --fg-muted: oklch(0.46 0.016 255);
-  --fg-faint: oklch(0.53 0.014 255); /* 4.5:1 on --bg-sunk */
-  --line: oklch(0.9 0.007 255);
-  --line-strong: oklch(0.82 0.01 255);
+  --background: #fefefe;
+  --foreground: #1e1e1e;
+  --card: #fefefe;
+  --card-foreground: #1e1e1e;
+  --popover: #fefefe;
+  --popover-foreground: #1e1e1e;
+  --primary: #1e1e1e;
+  --primary-foreground: #fefefe;
+  --secondary: #f6f4f4;
+  --secondary-foreground: #1e1e1e;
+  --muted: #f6f4f4;
+  --muted-foreground: #5f5f5f; /* 5.8:1 on muted */
+  --accent: #fce7ee;
+  --accent-foreground: #1e1e1e;
+  --destructive: #b8321f;
+  --border: #dedede;
+  --input: #c4c4c4;
+  --ring: #b4245f;
+  --radius: 0.5rem;
 
-  --seal: oklch(0.81 0.155 78);
-  --seal-ink: oklch(0.24 0.04 70);
-  --seal-text: oklch(0.52 0.12 70);
-  --seal-wash: oklch(0.81 0.155 78 / 0.14);
+  --sidebar: #fefefe;
+  --sidebar-foreground: #1e1e1e;
+  --sidebar-primary: #b4245f;
+  --sidebar-primary-foreground: #fefefe;
+  --sidebar-accent: #f6f4f4;
+  --sidebar-accent-foreground: #1e1e1e;
+  --sidebar-border: #dedede;
+  --sidebar-ring: #b4245f;
 
-  --fail: oklch(0.52 0.19 32); /* 4.5:1 on --fail-wash */
-  --fail-wash: oklch(0.63 0.19 32 / 0.1);
-  --ok: oklch(0.5 0.1 172);
-  --ok-wash: oklch(0.6 0.1 172 / 0.12);
+  /* Extensions */
+  --faint-foreground: #686868; /* 4.7:1 on blush, 5.1:1 on muted */
+  --border-strong: #c4c4c4;
+  --sakura: #f386a1;
+  --sakura-text: #b4245f;
+  --sakura-wash: #fce7ee;
+  --magenta: #d45bb6;
+  --sky: #9fc3e7;
+  --blush: #fce7ee;
+  --fail: #b8321f;
+  --fail-wash: color-mix(in oklab, #e0533a 10%, transparent);
+  --ok: #0b6e5a;
+  --ok-wash: color-mix(in oklab, #1f9e7f 11%, transparent);
+  --code: #f8f6f6;
+  --shadow-color: 350 30% 30%;
 
-  --code-bg: #f7f8fa;
-  --mark: oklch(0.66 0.16 66);
-  --shadow-tint: 255;
+  /* Sakura Seal (components/seal.tsx) */
+  --seal-disc: #fce7ee;
+  --seal-line: color-mix(in oklab, #b4245f 45%, transparent);
+  --seal-ink: #8c1d4b;
 
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 
   --fd-layout-width: 1440px;
-
-  /* Sakura Seal (design/BRAND.md) */
-  --sakura: #f386a1;
-  --magenta: #d45bb6;
-  --seal-disc: #fce7ee;
-  --seal-line: color-mix(in oklab, #b4245f 45%, transparent);
-  --seal-ink: #8c1d4b;
 }
 
 .dark {
-  --bg: oklch(0.165 0.008 255);
-  --bg-sunk: oklch(0.145 0.008 255);
-  --surface: oklch(0.192 0.009 255);
-  --fg: oklch(0.945 0.006 255);
-  --fg-muted: oklch(0.72 0.012 255);
-  --fg-faint: oklch(0.63 0.012 255); /* 4.5:1 on --surface */
-  --line: oklch(0.27 0.01 255);
-  --line-strong: oklch(0.34 0.012 255);
+  --background: #1e1e1e;
+  --foreground: #ededed;
+  --card: #262626;
+  --card-foreground: #ededed;
+  --popover: #262626;
+  --popover-foreground: #ededed;
+  --primary: #f4f4f4;
+  --primary-foreground: #1e1e1e;
+  --secondary: #262626;
+  --secondary-foreground: #ededed;
+  --muted: #181818;
+  --muted-foreground: #a8a8a8; /* 6.4:1 on card */
+  --accent: color-mix(in oklab, #f386a1 14%, #1e1e1e);
+  --accent-foreground: #ededed;
+  --destructive: #ff8a78;
+  --border: #333333;
+  --input: #474747;
+  --ring: #f386a1;
 
-  --seal: oklch(0.82 0.15 78);
-  --seal-ink: oklch(0.22 0.035 70);
-  --seal-text: oklch(0.84 0.14 80);
-  --seal-wash: oklch(0.82 0.15 78 / 0.12);
+  --sidebar: #1e1e1e;
+  --sidebar-foreground: #ededed;
+  --sidebar-primary: #f386a1;
+  --sidebar-primary-foreground: #1e1e1e;
+  --sidebar-accent: #262626;
+  --sidebar-accent-foreground: #ededed;
+  --sidebar-border: #333333;
+  --sidebar-ring: #f386a1;
 
-  --fail: oklch(0.74 0.15 32);
-  --fail-wash: oklch(0.7 0.16 32 / 0.13);
-  --ok: oklch(0.8 0.1 172);
-  --ok-wash: oklch(0.75 0.1 172 / 0.12);
-
-  --code-bg: #131518;
-  --mark: var(--seal);
+  --faint-foreground: #949494; /* 5:1 on card */
+  --border-strong: #474747;
+  --sakura-text: #f386a1; /* 6.3:1 on card */
+  --sakura-wash: color-mix(in oklab, #f386a1 14%, #1e1e1e);
+  --fail: #ff8a78;
+  --fail-wash: color-mix(in oklab, #ff8a78 13%, transparent);
+  --ok: #7fd3b8;
+  --ok-wash: color-mix(in oklab, #7fd3b8 11%, transparent);
+  --code: #161616;
+  --shadow-color: 0 0% 0%;
 
   --seal-disc: color-mix(in oklab, #f386a1 16%, #1e1e1e);
   --seal-line: color-mix(in oklab, #f386a1 45%, transparent);
   --seal-ink: #f7a9bc;
 }
 
+/*
+ * Fumadocs: on top of its shadcn preset, the docs accent is sakura, not ink. Active sidebar
+ * items, the TOC marker, links and focus use --sakura-text; washes are blush.
+ */
+:root,
+.dark {
+  --color-fd-primary: var(--sakura-text);
+  --color-fd-primary-foreground: var(--primary-foreground);
+  --color-fd-ring: var(--ring);
+  --color-fd-overlay: color-mix(in oklab, #1e1e1e 40%, transparent);
+  --color-fd-info: var(--muted-foreground);
+  --color-fd-warning: var(--sakura-text);
+  --color-fd-idea: var(--magenta);
+  --color-fd-error: var(--fail);
+  --color-fd-success: var(--ok);
+  --color-fd-diff-add: var(--ok-wash);
+  --color-fd-diff-add-symbol: var(--ok);
+  --color-fd-diff-remove: var(--fail-wash);
+  --color-fd-diff-remove-symbol: var(--fail);
+}
+#nd-sidebar {
+  --color-fd-primary-foreground: var(--sidebar-primary-foreground);
+}
+
 @theme inline {
-  --color-bg: var(--bg);
-  --color-bg-sunk: var(--bg-sunk);
-  --color-surface: var(--surface);
-  --color-fg: var(--fg);
-  --color-fg-muted: var(--fg-muted);
-  --color-fg-faint: var(--fg-faint);
-  --color-line: var(--line);
-  --color-line-strong: var(--line-strong);
-  --color-seal: var(--seal);
-  --color-seal-ink: var(--seal-ink);
-  --color-seal-text: var(--seal-text);
-  --color-seal-wash: var(--seal-wash);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-ink: #1e1e1e;
+  --color-paper: #fefefe;
+  --color-faint: var(--faint-foreground);
+  --color-strong: var(--border-strong);
+  --color-sakura: var(--sakura);
+  --color-sakura-text: var(--sakura-text);
+  --color-sakura-wash: var(--sakura-wash);
+  --color-magenta: var(--magenta);
+  --color-sky: var(--sky);
+  --color-blush: var(--blush);
   --color-fail: var(--fail);
   --color-fail-wash: var(--fail-wash);
   --color-ok: var(--ok);
   --color-ok-wash: var(--ok-wash);
-  --color-code: var(--code-bg);
+  --color-code: var(--code);
 
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+
+  /* next/font sets the --font-sakura-* variables on <html>. */
   --font-sans: var(--font-sakura-body), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-sakura-display), var(--font-sakura-body), ui-sans-serif, sans-serif;
   --font-mono: var(--font-sakura-code), ui-monospace, SFMono-Regular, Menlo, monospace;
-
-  /* Fumadocs UI adopts the same tokens, so docs and landing are one system. */
-  --color-fd-background: var(--bg);
-  --color-fd-foreground: var(--fg);
-  --color-fd-muted: var(--bg-sunk);
-  --color-fd-muted-foreground: var(--fg-muted);
-  --color-fd-popover: var(--surface);
-  --color-fd-popover-foreground: var(--fg);
-  --color-fd-card: var(--surface);
-  --color-fd-card-foreground: var(--fg);
-  --color-fd-border: var(--line);
-  --color-fd-primary: var(--seal-text);
-  --color-fd-primary-foreground: var(--seal-ink);
-  --color-fd-secondary: var(--bg-sunk);
-  --color-fd-secondary-foreground: var(--fg);
-  --color-fd-accent: var(--seal-wash);
-  --color-fd-accent-foreground: var(--fg);
-  --color-fd-ring: var(--seal);
-  --color-fd-overlay: oklch(0.15 0.01 255 / 0.35);
 }
 
 @layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -127,16 +214,15 @@
   }
 
   body {
-    background: var(--bg);
-    color: var(--fg);
+    @apply bg-background text-foreground;
   }
 
   ::selection {
-    background: var(--seal-wash);
+    background: color-mix(in oklab, var(--sakura) 32%, transparent);
   }
 
   :focus-visible {
-    outline: 2px solid var(--seal);
+    outline: 2px solid var(--ring);
     outline-offset: 2px;
     border-radius: 4px;
   }
@@ -155,51 +241,89 @@
   top: 0;
 }
 
-/* ---------- Docs (Fumadocs) customisation ---------- */
+/* ---------- Docs (Fumadocs) ---------- */
 
 .prose {
-  --tw-prose-body: var(--fg);
-  --tw-prose-headings: var(--fg);
-  --tw-prose-links: var(--fg);
-  --tw-prose-bold: var(--fg);
-  --tw-prose-counters: var(--fg-muted);
-  --tw-prose-bullets: var(--line-strong);
-  --tw-prose-quotes: var(--fg);
-  --tw-prose-code: var(--fg);
-  --tw-prose-th-borders: var(--line);
-  --tw-prose-td-borders: var(--line);
+  --tw-prose-body: var(--foreground);
+  --tw-prose-headings: var(--foreground);
+  --tw-prose-links: var(--foreground);
+  --tw-prose-bold: var(--foreground);
+  --tw-prose-counters: var(--muted-foreground);
+  --tw-prose-bullets: var(--sakura);
+  --tw-prose-quotes: var(--foreground);
+  --tw-prose-code: var(--foreground);
+  --tw-prose-hr: var(--border);
+  --tw-prose-th-borders: var(--border-strong);
+  --tw-prose-td-borders: var(--border);
+  font-size: 1rem;
+  line-height: 1.72;
 }
 
 .prose :where(h1, h2, h3, h4):not(:where(.not-prose *)) {
   font-family: var(--font-sakura-display);
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
 }
 
 .prose :where(h2):not(:where(.not-prose *)) {
   font-weight: 600;
+  font-size: 1.6em;
+  line-height: 1.15;
+  margin-top: 2.2em;
+}
+
+.prose :where(h3):not(:where(.not-prose *)) {
+  font-weight: 600;
+  font-size: 1.22em;
+  letter-spacing: -0.012em;
+}
+
+.prose :where(p, li):not(:where(.not-prose *)) {
+  text-wrap: pretty;
 }
 
 .prose :where(a):not(:where(.not-prose *)) {
-  text-decoration-color: var(--seal);
+  color: var(--foreground);
+  text-decoration-color: var(--sakura);
   text-decoration-thickness: 1.5px;
   text-underline-offset: 3px;
   font-weight: 500;
-  transition: text-decoration-color 150ms ease;
+  transition:
+    text-decoration-color 150ms ease,
+    color 150ms ease;
 }
 
 .prose :where(a):not(:where(.not-prose *)):hover {
-  text-decoration-color: var(--fg);
+  color: var(--sakura-text);
+  text-decoration-color: currentColor;
 }
 
 .prose :where(:not(pre) > code):not(:where(.not-prose *)) {
-  background: color-mix(in oklch, var(--fg) 6%, transparent);
-  border: 0;
+  background: var(--muted);
+  border: 1px solid var(--border);
   border-radius: 4px;
-  padding: 0.12em 0.32em;
+  padding: 0.08em 0.32em;
   font-size: 0.86em;
 }
 
-/* Code blocks: shiki carries both themes; switch with .dark */
+.prose :where(blockquote):not(:where(.not-prose *)) {
+  border-inline-start: 1px solid var(--sakura);
+  font-style: normal;
+  color: var(--muted-foreground);
+}
+
+.prose :where(table):not(:where(.not-prose *)) {
+  font-size: 0.92em;
+}
+
+.prose :where(thead th):not(:where(.not-prose *)) {
+  font-family: var(--font-sakura-code);
+  font-size: 0.8em;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+
+/* Code blocks: the Sakura Lang themes carry both modes; shiki switches with .dark */
 .shiki,
 .shiki span {
   color: var(--shiki-light);
@@ -214,8 +338,99 @@
 }
 
 figure.shiki {
-  background: var(--code-bg) !important;
-  border-color: var(--line) !important;
+  background: var(--code) !important;
+  border-color: var(--border) !important;
+  box-shadow: none;
+}
+
+/* The code block's title bar reads as a mono label, like the landing page's panels. */
+figure.shiki > div:first-child:has(> figcaption) {
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in oklab, var(--muted) 60%, var(--code));
+}
+figure.shiki figcaption {
+  font-family: var(--font-sakura-code);
+  font-size: 0.78rem;
+  color: var(--muted-foreground);
+}
+
+/* ---------- Landing ---------- */
+
+/*
+ * The hero sky: sakura, sky and magenta blooms over paper, with a grain tile, fading out before
+ * the copy so body text stays on paper. Static: painted once, never animated. On ink the blooms
+ * drop to a glow.
+ */
+.sakura-sky {
+  --bloom-sakura: var(--sakura);
+  --bloom-deep: color-mix(in oklab, var(--magenta) 72%, transparent);
+  --bloom-sky: var(--sky);
+  --bloom-blush: var(--blush);
+  --grain-opacity: 0.6;
+  position: absolute;
+  inset: 0 0 auto;
+  height: min(100%, 52rem);
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      22% 34% at 6% 8%,
+      var(--bloom-sakura),
+      color-mix(in oklab, var(--bloom-sakura) 80%, transparent) 30%,
+      transparent 72%
+    ),
+    radial-gradient(
+      30% 44% at -4% 34%,
+      var(--bloom-sakura),
+      color-mix(in oklab, var(--bloom-sakura) 66%, transparent) 35%,
+      transparent 72%
+    ),
+    radial-gradient(16% 26% at 24% 2%, var(--bloom-deep), transparent 72%),
+    radial-gradient(
+      30% 34% at 40% -10%,
+      var(--bloom-sky),
+      color-mix(in oklab, var(--bloom-sky) 80%, transparent) 35%,
+      transparent 74%
+    ),
+    radial-gradient(
+      24% 30% at 60% 2%,
+      var(--bloom-sky),
+      color-mix(in oklab, var(--bloom-sky) 66%, transparent) 30%,
+      transparent 72%
+    ),
+    radial-gradient(20% 34% at 80% -2%, var(--bloom-deep), transparent 72%),
+    radial-gradient(
+      30% 50% at 102% 16%,
+      var(--bloom-sakura),
+      color-mix(in oklab, var(--bloom-sakura) 80%, transparent) 35%,
+      transparent 72%
+    ),
+    radial-gradient(
+      22% 30% at 90% 46%,
+      color-mix(in oklab, var(--bloom-sakura) 50%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(70% 50% at 50% 20%, var(--bloom-blush), transparent 80%);
+  mask-image: linear-gradient(to bottom, black 30%, rgb(0 0 0 / 0.55) 55%, transparent 82%);
+}
+.sakura-sky::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: var(--grain-opacity);
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .47 0 0 0 0 .12 0 0 0 0 .3 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.dark .sakura-sky {
+  --bloom-sakura: color-mix(in oklab, var(--sakura) 30%, transparent);
+  --bloom-deep: color-mix(in oklab, var(--magenta) 26%, transparent);
+  --bloom-sky: color-mix(in oklab, var(--sky) 7%, transparent);
+  --bloom-blush: transparent;
+  --grain-opacity: 0.5;
+  mask-image: linear-gradient(to bottom, black 8%, rgb(0 0 0 / 0.4) 40%, transparent 66%);
+}
+.dark .sakura-sky::after {
+  mix-blend-mode: soft-light;
 }
 
 /* ---------- Motion ---------- */
@@ -261,13 +476,6 @@ figure.shiki {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-}
-
-/* neutral.css tints the dark sidebar with hsl greys; keep it on our graphite scale */
-.dark #nd-sidebar {
-  --color-fd-muted: var(--surface);
-  --color-fd-secondary: var(--line);
-  --color-fd-muted-foreground: var(--fg-muted);
 }
 
 /* Server-tokenized code on the landing page */
@@ -392,13 +600,4 @@ figure.shiki {
     opacity: 0;
     transform: translateY(-5.5rem);
   }
-}
-
-/* Callout palette follows the site: drafts/warnings use the seal, errors the fail colour */
-:root,
-.dark {
-  --color-fd-warning: var(--seal);
-  --color-fd-error: var(--fail);
-  --color-fd-success: var(--ok);
-  --color-fd-info: var(--fg-muted);
 }

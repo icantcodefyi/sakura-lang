@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { WINDOW, WindowBar } from "./window";
 
 type Mode = "run" | "test";
 
@@ -34,36 +36,33 @@ const WITH = {
 export function HandlersDiagram() {
   const [mode, setMode] = useState<Mode>("run");
   return (
-    <div className="overflow-hidden rounded-2xl border border-line bg-surface">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-6">
+    <div className={WINDOW}>
+      <WindowBar className="flex-wrap justify-between gap-x-3 gap-y-2 py-2 sm:px-4">
         <code
           key={mode}
-          className="min-w-0 font-mono text-[11.5px] text-fg-muted sm:truncate sm:text-[12px] motion-safe:animate-[note-in_260ms_var(--ease-out)_both]"
+          className="min-w-0 text-muted-foreground sm:truncate sm:text-[12px] motion-safe:animate-[note-in_260ms_var(--ease-out)_both]"
         >
           {WITH[mode]}
         </code>
-        <fieldset className="relative grid grid-cols-2 rounded-full border border-line bg-bg-sunk p-0.5 text-[12.5px] font-medium">
-          <legend className="sr-only">Where signup runs</legend>
-          <span
-            aria-hidden
-            className="absolute inset-y-0.5 left-0.5 w-[calc(50%-0.125rem)] rounded-full bg-surface shadow-[0_1px_2px_oklch(0.2_0.02_255/0.14),0_0_0_1px_var(--line)] transition-transform duration-[250ms] ease-[var(--ease-out)]"
-            style={{ transform: mode === "test" ? "translateX(100%)" : "none" }}
-          />
+        <ToggleGroup
+          type="single"
+          value={mode}
+          onValueChange={(v) => v && setMode(v as Mode)}
+          aria-label="Where signup runs"
+          spacing={0}
+          className="rounded-md border border-border bg-background p-0.5 font-sans"
+        >
           {(["run", "test"] as const).map((m) => (
-            <button
+            <ToggleGroupItem
               key={m}
-              type="button"
-              aria-pressed={mode === m}
-              onClick={() => setMode(m)}
-              className={`relative z-10 h-9 rounded-full px-3.5 transition-colors duration-200 ${
-                mode === m ? "text-fg" : "text-fg-muted hover:text-fg"
-              }`}
+              value={m}
+              className="h-8 rounded-[5px]! px-3 text-[12.5px] text-muted-foreground data-[state=on]:bg-paper data-[state=on]:text-ink"
             >
               {m === "run" ? "In production" : "In a test"}
-            </button>
+            </ToggleGroupItem>
           ))}
-        </fieldset>
-      </div>
+        </ToggleGroup>
+      </WindowBar>
 
       <div className="grid grid-cols-3 gap-2 px-3 pt-6 sm:gap-6 sm:px-6 sm:pt-8">
         {LANES.map((lane, i) => {
@@ -73,24 +72,24 @@ export function HandlersDiagram() {
               {/* the handler: the only thing that changes */}
               <div
                 key={mode}
-                className="w-full rounded-xl border border-seal/45 bg-seal-wash px-2 py-2.5 motion-safe:animate-[swap-in_320ms_var(--ease-out)_both] sm:px-3"
+                className="w-full rounded-md border border-sakura/60 bg-sakura-wash px-2 py-2.5 motion-safe:animate-[swap-in_320ms_var(--ease-out)_both] sm:px-3"
                 style={{ animationDelay: `${i * 50}ms` }}
               >
-                <p className="font-mono text-[11px] font-medium text-fg sm:text-[12.5px]">
+                <p className="font-mono text-[11px] font-medium text-foreground sm:text-[12.5px]">
                   {/* a zero-width space lets Clock.fixed(t0) break after the dot on phones */}
                   {h.handler.replace(".", ".\u200b")}
                 </p>
-                <p className="mt-0.5 text-[11px] leading-snug text-fg-muted sm:text-[12.5px]">
+                <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground sm:text-[12.5px]">
                   {h.does}
                 </p>
               </div>
               {/* the operation travels up to the innermost handler */}
-              <div className="relative h-24 w-px bg-line-strong">
+              <div className="relative h-24 w-px bg-strong">
                 <span
-                  className="lane-dot absolute -left-1 size-2 rounded-full bg-seal"
+                  className="lane-dot absolute -left-1 size-2 rounded-full bg-sakura"
                   style={{ animationDelay: `${i * 700}ms` }}
                 />
-                <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded bg-surface px-1.5 py-0.5 font-mono text-[10.5px] whitespace-nowrap text-fg-muted sm:text-[11.5px]">
+                <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded bg-card px-1.5 py-0.5 font-mono text-[10.5px] whitespace-nowrap text-muted-foreground sm:text-[11.5px]">
                   {lane.op}
                 </span>
               </div>
@@ -100,17 +99,17 @@ export function HandlersDiagram() {
       </div>
 
       {/* the function and its row: identical in both modes */}
-      <div className="mx-3 mb-3 rounded-xl border border-line bg-code px-3 py-3 sm:mx-6 sm:mb-6 sm:px-5">
+      <div className="mx-3 mb-3 rounded-md border border-border bg-code px-3 py-3 sm:mx-6 sm:mb-6 sm:px-5">
         <div className="grid grid-cols-3 gap-2 font-mono text-[11px] sm:gap-6 sm:text-[12.5px]">
           {LANES.map((lane) => (
-            <span key={lane.effect} className="truncate text-center text-seal-text">
+            <span key={lane.effect} className="truncate text-center text-sakura-text">
               {lane.effect.replace(/<.*/, "")}
               <span className="hidden sm:inline">{lane.effect.match(/<.*/)?.[0]}</span>
             </span>
           ))}
         </div>
-        <p className="mt-2 border-t border-line pt-2 text-center font-mono text-[11.5px] text-fg-muted sm:text-[12.5px]">
-          signup(email, pw) <span className="text-fg-faint">· the body is the same in both</span>
+        <p className="mt-2 border-t border-border pt-2 text-center font-mono text-[11.5px] text-muted-foreground sm:text-[12.5px]">
+          signup(email, pw) <span className="text-faint">· the body is the same in both</span>
         </p>
       </div>
     </div>

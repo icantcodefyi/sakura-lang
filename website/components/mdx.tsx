@@ -10,7 +10,7 @@ function SakuraCallout({ className, ...props }: ComponentProps<typeof Callout>) 
   return (
     <Callout
       {...props}
-      className={`sakura-callout ps-3.5 border-[color-mix(in_oklch,var(--callout-color)_35%,var(--line))] bg-[color-mix(in_oklch,var(--callout-color)_7%,var(--surface))] [&>[role=none]]:hidden ${className ?? ""}`}
+      className={`sakura-callout ps-3.5 border-[color-mix(in_oklch,var(--callout-color)_35%,var(--border))] bg-[color-mix(in_oklch,var(--callout-color)_7%,var(--card))] [&>[role=none]]:hidden ${className ?? ""}`}
     />
   );
 }

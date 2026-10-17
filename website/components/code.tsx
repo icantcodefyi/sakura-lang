@@ -17,7 +17,7 @@ type CodeProps = {
 const markClass = {
   add: "bg-ok-wash",
   del: "bg-fail-wash",
-  seal: "bg-seal-wash",
+  seal: "bg-sakura-wash",
   fail: "bg-fail-wash",
   ok: "bg-ok-wash",
 } as const;
@@ -34,9 +34,11 @@ export async function Code({
 }: CodeProps) {
   const lines = await tokenize(code.replace(/\n$/, ""), lang);
   return (
-    <figure className={`overflow-hidden rounded-xl border border-line bg-code ${className ?? ""}`}>
+    <figure
+      className={`overflow-hidden rounded-xl border border-border bg-code ${className ?? ""}`}
+    >
       {title ? (
-        <figcaption className="flex items-center gap-2 border-b border-line px-4 py-2 font-mono text-[11.5px] text-fg-muted">
+        <figcaption className="flex items-center gap-2 border-b border-border px-4 py-2 font-mono text-[11.5px] text-muted-foreground">
           {title}
         </figcaption>
       ) : null}
@@ -49,7 +51,7 @@ export async function Code({
               {numbers ? (
                 <span
                   aria-hidden
-                  className="mr-4 w-5 shrink-0 text-right text-fg-faint tabular-nums select-none"
+                  className="mr-4 w-5 shrink-0 text-right text-faint tabular-nums select-none"
                 >
                   {i + 1}
                 </span>

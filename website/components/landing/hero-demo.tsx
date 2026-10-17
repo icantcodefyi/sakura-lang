@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
+import { SakuraMark } from "@/components/brand";
 import { Seal } from "@/components/seal";
+import { cn } from "@/lib/utils";
+import { WINDOW, WindowBar } from "./window";
 import { TokenSpans, type TokenLine } from "@/components/token-spans";
 
 /*
@@ -151,20 +154,16 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
   return (
     <div ref={root} className="@container relative">
       <div
-        className="overflow-hidden rounded-2xl border border-line bg-code shadow-[0_1px_0_oklch(1_0_0/0.04)_inset,0_30px_80px_-30px_oklch(0.2_0.02_255/0.35)]"
+        className={cn(WINDOW, "bg-code")}
         // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- animated composite figure; an <img> can't hold it
         role="img"
         aria-label="Animation: an agent writes a Sakura Lang function. The compiler checks each effect against the signature, flags an HTTP call the signature does not allow, and the agent removes it so the signature's promise holds."
       >
-        {/* window chrome; its right end stays empty for the seal */}
-        <div className="flex items-center gap-3 border-b border-line px-4 py-2.5 font-mono text-[11.5px] text-fg-muted">
-          <span className="flex gap-1.5" aria-hidden>
-            <span className="size-2.5 rounded-full bg-line-strong" />
-            <span className="size-2.5 rounded-full bg-line-strong" />
-            <span className="size-2.5 rounded-full bg-line-strong" />
-          </span>
+        {/* window chrome: an ink title bar; its right end stays empty for the seal */}
+        <WindowBar>
+          <SakuraMark cut="small" className="size-3.5" />
           src/users.sakura
-        </div>
+        </WindowBar>
 
         <pre
           aria-hidden
@@ -186,7 +185,7 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
                     bad ? "bg-fail-wash" : proved ? "bg-ok-wash" : ""
                   } ${visible ? "" : "invisible"}`}
                 >
-                  <span className="relative pr-2.5 text-right text-fg-faint tabular-nums select-none @min-[38rem]:pr-3">
+                  <span className="relative pr-2.5 text-right text-faint tabular-nums select-none @min-[38rem]:pr-3">
                     {showNote || proved ? (
                       <GutterMark kind={proved ? "ok" : (note?.kind ?? "ok")} />
                     ) : null}
@@ -252,7 +251,7 @@ const LINE =
 
 /** A narrow window has no margin for notes; a colored tick in the gutter stands in for them. */
 function GutterMark({ kind }: { kind: Note["kind"] }) {
-  const tone = kind === "fail" ? "bg-fail" : kind === "seal" ? "bg-seal" : "bg-ok";
+  const tone = kind === "fail" ? "bg-fail" : kind === "seal" ? "bg-sakura" : "bg-ok";
   return (
     <span
       aria-hidden
@@ -265,7 +264,7 @@ function Caret() {
   return (
     <span
       aria-hidden
-      className="ml-px inline-block h-[1.15em] w-[0.5ch] translate-y-[0.2em] bg-seal motion-safe:animate-[caret_1s_steps(1)_infinite]"
+      className="ml-px inline-block h-[1.15em] w-[0.5ch] translate-y-[0.2em] bg-sakura motion-safe:animate-[caret_1s_steps(1)_infinite]"
     />
   );
 }
@@ -275,7 +274,7 @@ function MarginNote({ note }: { note: Note }) {
     note.kind === "fail"
       ? "text-fail border-fail/40"
       : note.kind === "seal"
-        ? "text-seal-text border-seal/50"
+        ? "text-sakura-text border-sakura/50"
         : "text-ok border-ok/35";
   return (
     <span
@@ -318,26 +317,27 @@ function Cross() {
 
 function Diagnostic() {
   return (
-    <div className="border-t border-line px-4 py-3.5 font-mono text-[11.5px] leading-relaxed @min-[38rem]:px-5">
-      <p className="text-fg">
+    <div className="border-t border-border px-4 py-3.5 font-mono text-[11.5px] leading-relaxed @min-[38rem]:px-5">
+      <p className="text-foreground">
         <span className="font-semibold text-fail">error V3001</span>{" "}
-        <span className="text-fg-muted">src/users.sakura:12:11</span>
+        <span className="text-muted-foreground">src/users.sakura:12:11</span>
       </p>
-      <p className="mt-1 font-sans text-[13px] text-fg">
+      <p className="mt-1 font-sans text-[13px] text-foreground">
         function <code className="font-mono">signup</code> performs{" "}
-        <code className="font-mono text-seal-text">Http</code>, which its signature does not allow.
+        <code className="font-mono text-sakura-text">Http</code>, which its signature does not
+        allow.
       </p>
       <ul className="mt-3 grid gap-1.5">
         <li className="flex flex-wrap items-baseline gap-x-2">
-          <span className="rounded border border-line px-1.5 text-[10.5px] text-fg-muted">
+          <span className="rounded border border-border px-1.5 text-[10.5px] text-muted-foreground">
             interface_change
           </span>
-          <span className="text-fg-muted">add Http to the signature: needs review</span>
+          <span className="text-muted-foreground">add Http to the signature: needs review</span>
         </li>
         <li className="flex flex-wrap items-baseline gap-x-2">
           <span className="rounded border border-ok/40 px-1.5 text-[10.5px] text-ok">agent</span>
-          <span className="text-fg">removes the call instead</span>
-          <span className="text-seal-text">← keeps the promise</span>
+          <span className="text-foreground">removes the call instead</span>
+          <span className="text-sakura-text">← keeps the promise</span>
         </li>
       </ul>
     </div>
@@ -345,10 +345,10 @@ function Diagnostic() {
 }
 
 const STATUS: Record<Phase, { text: string; tone: string }> = {
-  idle: { text: "sakura check --json", tone: "text-fg-faint" },
-  typing: { text: "agent is writing, checker is following", tone: "text-fg-muted" },
+  idle: { text: "sakura check --json", tone: "text-faint" },
+  typing: { text: "agent is writing, checker is following", tone: "text-muted-foreground" },
   caught: { text: "1 error: effect not in signature", tone: "text-fail" },
-  fixing: { text: "agent edit: remove the call", tone: "text-fg-muted" },
+  fixing: { text: "agent edit: remove the call", tone: "text-muted-foreground" },
   kept: { text: "0 errors · signature kept", tone: "text-ok" },
 };
 
@@ -365,14 +365,14 @@ function StatusBar({
   const s = STATUS[phase];
   const kept = phase === "kept";
   return (
-    <div className="flex min-h-10 items-center justify-between gap-3 border-t border-line bg-bg-sunk/60 px-4 font-mono text-[11.5px]">
+    <div className="flex min-h-10 items-center justify-between gap-3 border-t border-border bg-muted/60 px-4 font-mono text-[11.5px]">
       <span className="flex min-w-0 items-center gap-2" aria-live="polite">
         {kept ? (
           <Seal bloom rim={false} className="-my-2 -ml-1 size-8 shrink-0 @min-[38rem]:hidden" />
         ) : null}
         <span
           aria-hidden
-          className={`size-1.5 shrink-0 rounded-full ${kept ? "bg-ok @max-[38rem]:hidden" : phase === "caught" ? "bg-fail" : "bg-seal motion-safe:animate-pulse"}`}
+          className={`size-1.5 shrink-0 rounded-full ${kept ? "bg-ok @max-[38rem]:hidden" : phase === "caught" ? "bg-fail" : "bg-sakura motion-safe:animate-pulse"}`}
         />
         <span
           key={phase}
@@ -388,12 +388,12 @@ function StatusBar({
               ticker.note.kind === "fail"
                 ? "text-fail"
                 : ticker.note.kind === "seal"
-                  ? "text-seal-text"
+                  ? "text-sakura-text"
                   : "text-ok"
             }`}
           >
             {ticker.note.kind === "fail" ? <Cross /> : <Tick />} {ticker.note.text}{" "}
-            <span className="text-fg-faint">on line {ticker.line}</span>
+            <span className="text-faint">on line {ticker.line}</span>
           </span>
         ) : null}
       </span>
@@ -401,7 +401,7 @@ function StatusBar({
         <button
           type="button"
           onClick={onReplay}
-          className="-mr-2 h-10 shrink-0 rounded-md px-3 font-sans text-[12px] text-fg-muted transition-[color,transform] duration-150 hover:text-fg active:scale-[0.97]"
+          className="-mr-2 h-10 shrink-0 rounded-md px-3 font-sans text-[12px] text-muted-foreground transition-[color,transform] duration-150 hover:text-foreground active:scale-[0.97]"
         >
           Replay
         </button>
