@@ -17,6 +17,9 @@ use crate::ty::{Constraint, Effect, Label, RowId, Tail, TyCon, Type, TypeId};
 impl Checker<'_> {
     /// Checks `e` against `expected` (subsumption) and returns its row.
     pub(super) fn check(&mut self, e: ExprId, expected: TypeId) -> RowId {
+        if let Some(row) = self.literal_into_refined(e, expected) {
+            return row;
+        }
         let before = self.diags.len();
         let (ty, row, done) = self.infer(e, Some(expected));
         if !done {
@@ -206,6 +209,12 @@ impl Checker<'_> {
             Expr::Path(res) => (self.path_type(e, *res), pure, false),
             Expr::Call { callee, args, .. } => {
                 self.allow_trust_args(args);
+                if let Expr::Path(Res::Def(d)) = &body.exprs[*callee]
+                    && self.is_validate(*d)
+                {
+                    self.b.validate_callees.insert(*callee);
+                    self.b.validates.push((e, *callee));
+                }
                 let (mut ft, fr) = self.synth(*callee);
                 // Calling a clause's callback adds only its tail (and failures), not the
                 // labels the performer's handlers serve (§17.48).
@@ -709,7 +718,12 @@ impl Checker<'_> {
                     | DefKind::Variant(_)
                     | DefKind::Error(_)
                     | DefKind::Const(_) => match self.scheme_of(d) {
-                        Some(s) => self.instantiate_at(&s, e),
+                        Some(s) => {
+                            if self.is_validate(d) && !self.b.validate_callees.contains(&e) {
+                                self.validate_as_value(e);
+                            }
+                            self.instantiate_at(&s, e)
+                        }
                         None => {
                             let range = self.expr_range(e);
                             let name = program.def(d).name.clone();
@@ -896,6 +910,9 @@ impl Checker<'_> {
                     CallTarget::Method(def)
                 };
                 let with_recv = matches!(target, CallTarget::Method(_));
+                if self.is_validate(def) {
+                    self.b.validates.push((e, e));
+                }
                 self.b.calls.insert(e, target);
                 let recv = with_recv.then_some((receiver, rt));
                 return self.apply(e, ft, vec![rr], recv, args);

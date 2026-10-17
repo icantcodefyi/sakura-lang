@@ -119,6 +119,7 @@ impl<'p> Checker<'p> {
                                 code: V5001,
                             };
                             cx.bound_row(value, row, pure, cx.expr_range(value), kind);
+                            cx.linear_clauses(&[value], &body.params);
                         });
                     }
                 }
@@ -202,6 +203,7 @@ impl<'p> Checker<'p> {
                     code: V5001,
                 };
                 cx.bound_row(value, row, pure, cx.expr_range(value), kind);
+                cx.linear_clauses(&[value], &body.params);
             });
         }
     }
@@ -271,6 +273,13 @@ impl<'p> Checker<'p> {
             let range = self.expr_range(c.expr);
             self.bound_row(c.expr, row, pure, range, kind);
         }
+        let clauses: Vec<ExprId> = body
+            .requires
+            .iter()
+            .chain(&body.ensures)
+            .map(|c| c.expr)
+            .collect();
+        self.linear_clauses(&clauses, &body.params);
     }
 
     /// Requires `actual ⊆ bound`; a violation is reported once the body is solved.
@@ -412,6 +421,7 @@ impl<'p> Checker<'p> {
             let v = v.into_iter().map(|t| self.inf.zonk(t)).collect();
             out.conversions.insert(e, (d, v));
         }
+        self.finish_validates(&mut out);
         out.calls = std::mem::take(&mut self.b.calls);
         self.b.types = out.types.clone();
         self.b.rows = out.rows.clone();

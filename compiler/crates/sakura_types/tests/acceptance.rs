@@ -300,7 +300,7 @@ fn scripted(next: String) -> Handler<Gen> {
 #[test]
 fn sql_template_arguments_convert_with_sql_value_from() {
     let src = r#"import std/sql.{Query, SqlValue}
-type Email = String where String.contains(it, "@")
+type Email = String where String.len(it) <= 254
 fn q(e: Email, n: Int, v: SqlValue) -> Query<Unit> { sql"select {e}, {n}, {v}" }
 "#;
     let c = check(src);

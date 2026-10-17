@@ -16,6 +16,7 @@ mod escape;
 mod expr;
 mod holes;
 mod pat;
+mod refine;
 
 use std::collections::{HashMap, HashSet};
 
@@ -149,6 +150,11 @@ struct BodyState {
     /// `@trust(…)` expressions passed directly as call arguments (the only place a `Trust`
     /// may appear, §6.4).
     trust_args: HashSet<ExprId>,
+    /// `(call, expression holding its instantiation)` of every `Untrusted.validate` call
+    /// (§17.71), resolved once the body is solved.
+    validates: Vec<(ExprId, ExprId)>,
+    /// `Untrusted.validate` paths in callee position.
+    validate_callees: HashSet<ExprId>,
     /// The body contains a syntax error: its type diagnostics would be cascades.
     suppress: bool,
     /// Empty list literals, checked for an inferable element type (V2010).
