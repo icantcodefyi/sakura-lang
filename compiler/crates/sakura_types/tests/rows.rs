@@ -112,3 +112,28 @@ fn ok() -> Int ! {Fail<A>} { named(fn() { fail A }, fn() { 1 }) }
     let c = check(&bad);
     insta::assert_snapshot!(c.render());
 }
+
+/// §17.46: a flexible tail checked against a closed row is bounded, not solved, so the
+/// statement order inside `pick` does not matter.
+#[test]
+fn bounded_tails_do_not_depend_on_statement_order() {
+    let src = r#"fn use_clock(k: fn() -> Int ! {Clock}) -> Int ! {Clock} { k() }
+fn f(c: Bool) -> Int ! {Clock} {
+  let pick = fn(k) { let _ = use_clock(k); if c { k } else { fn() { Clock.now().to_unix_millis() } } }
+  pick(fn() { 1 })()
+}
+fn g(c: Bool) -> Int ! {Clock} {
+  let pick = fn(k) { let x = if c { k } else { fn() { Clock.now().to_unix_millis() } }; let _ = use_clock(k); x }
+  pick(fn() { 1 })()
+}
+fn diverges(c: Bool) -> Int ! {Fail<A>} {
+  let h = fn(c) { if c { fail A } else { 1 } }
+  h(c)
+}
+error A
+"#;
+    let mut c = check(src);
+    assert!(c.diags.is_empty(), "{}", c.render());
+    assert_eq!(c.value_row("f").0, "{Clock}");
+    assert_eq!(c.value_row("g").0, "{Clock}");
+}

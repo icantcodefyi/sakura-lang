@@ -1,0 +1,12 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc b80d89ed812ed4a05529a97f0917b4f4c4134fd210cf4d0ed5195d0a9bfcece1 # shrinks to (steps, order) = ([Subsume(ScriptRow { labels: {0}, fail: 2, tags: {2, 3}, tail: 0 }, ScriptRow { labels: {}, fail: 1, tags: {1, 2}, tail: 1 }), Union(ScriptRow { labels: {2, 3}, fail: 0, tags: {3}, tail: 4 }, ScriptRow { labels: {1}, fail: 0, tags: {3}, tail: 1 })], [1, 0])
+cc af3bff0a028deca8cee5aaba7c7504eb8ba2ef7764546ec8a94d9bc90a484b3b # shrinks to (steps, order) = ([Unify(ScriptRow { labels: {2}, fail: 2, tags: {2}, tail: 1 }, ScriptRow { labels: {2, 3}, fail: 2, tags: {1, 2}, tail: 1 }), Unify(ScriptRow { labels: {1}, fail: 0, tags: {2}, tail: 1 }, ScriptRow { labels: {0, 3}, fail: 0, tags: {2, 3}, tail: 2 })], [1, 0])
+cc e8971f1e31bff0d22d6932523b22928b9874c86cdc65d1d9ff2f09d13cbfd1eb # shrinks to (steps, order) = ([Subsume(ScriptRow { labels: {0}, fail: 2, tags: {1}, tail: 0 }, ScriptRow { labels: {}, fail: 0, tags: {1}, tail: 2 }), Subsume(ScriptRow { labels: {}, fail: 0, tags: {3}, tail: 3 }, ScriptRow { labels: {0}, fail: 1, tags: {3}, tail: 2 })], [1, 0])
+cc 0fb07d2af22fe7ac5e6bdd772a28c48185a4768f3a096c614be5a40c7ef551bf # shrinks to (steps, order) = ([Unify(ScriptRow { labels: {3}, fail: 2, tags: {3}, tail: 2 }, ScriptRow { labels: {2, 3}, fail: 1, tags: {3}, tail: 0 }), Subsume(ScriptRow { labels: {3}, fail: 0, tags: {1}, tail: 0 }, ScriptRow { labels: {}, fail: 0, tags: {3}, tail: 2 })], [1, 0])
+cc eedcdfa93a0223cc9e66dd26085dede2708c45ee679c9cb57ffc6772897c835f # shrinks to a = RowSpec { labels: {}, tail: 4 }, b = RowSpec { labels: {}, tail: 1 }
+cc 0a3f16427cb0cf6dc1129c22508bd6ee1c21e39600bc27fceada4bae89054183 # shrinks to (steps, order) = ([Union(ScriptRow { labels: {}, fail: 0, tags: {1}, tail: 5 }, ScriptRow { labels: {1}, fail: 1, tags: {2, 3}, tail: 1 }), Subsume(ScriptRow { labels: {0}, fail: 2, tags: {3}, tail: 5 }, ScriptRow { labels: {1, 3}, fail: 0, tags: {2}, tail: 1 })], [1, 0])

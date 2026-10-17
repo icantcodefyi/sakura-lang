@@ -818,3 +818,28 @@ Each commit: fmt, clippy `-D warnings`, full workspace tests, rebase, push.
    `Timeout`/`SqlError` (§15.10 intent, §16.19 partly resolved); risk 6's example uses `Fail<E>`.
    Needs the designer's endorsement (REQUESTS.md); design §5.2 rule 8 and §17.45 still state the
    plan's rule.
+9. **A flexible tail that meets a rigid one is bounded, not solved** (3.2 `(Param p, Var s)`
+   and `union_rows`). Binding `s := {extra | p}` closes `s` to exactly `p`, so a later lower
+   bound on `s` fails in one statement order and not the other. Instead `s := {extra | t}`
+   where `t` *ends in* `p` (`RowSlot::Unbound.ends`): `t` may still gain labels, any rigid tail
+   other than `p` or a closed row is a `Tails` mismatch, and body-end defaulting closes `t` to
+   `p`. Sequencing a flexible tail with a rigid one records the same fact. The hidden `e.Fail`
+   of a failure-carrying `p` already counts for a tail that ends in `p` (`fail_part`, `try`,
+   `V3003`, `zonk_row`), which is why `relate_rows` relates failure parts *after* the tails.
+10. **`{A | r} ~ {B | r}` grows `r`** with both differences (labels are a set) instead of
+    failing; `{A | r} ⊆ {| r}` likewise grows `r` by `A`.
+11. **A variable related by subsumption to a function type gets its own row.** `?h ⊆ fn() -> T
+    ! R` binds `?h := fn() -> T ! {Fail<ε'> | ρ}` with `{Fail<ε'> | ρ} ⊆ R` (and symmetrically
+    for `fn… ⊆ ?h`), instead of `?h := fn() -> T ! R`. Without it `let _ = use_clock(h); let _ =
+    pure_only(h)` is rejected while the reverse order is accepted (`tests/order.rs`). Parameter
+    and result types stay equal. A mid-body diagnostic may now render such a value as `fn() ->
+    Int ! ?e1` (snapshot `acceptance__let_polymorphism_carries_constraints`).
+12. **Order independence holds outside one fragment.** Relating two *different* flexible tails
+    (`r ⊆ s`, `r ~ s`) is solved by equality (`s := {extra | r}`), as the plan's 3.2 states; a
+    later constraint that closes `r` can then fail where the other order succeeds. The
+    `script_is_order_independent` proptest therefore excludes steps that relate two different
+    flexible tails; the program-level `tests/order.rs` covers the statement pool of 3.5 in full.
+13. **No `seq` diagnostic split** (3.2 last paragraph): with deferred bounds `union_rows` never
+    returns `Rows { extra }` (it only relates tails), so the existing "different row variables"
+    message is the only case; deferred violations surface through `unify_rows`/`subsume_rows`
+    and `mismatch_at`, which already report `V3002`.

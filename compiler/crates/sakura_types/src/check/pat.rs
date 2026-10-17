@@ -6,7 +6,7 @@ use sakura_hir::{DefKind, Literal, LocalId, Pat, PatId, Res, TypeRes};
 
 use super::{Checker, CoverageKind, LocalTy};
 use crate::exhaust::{self, Ctor, Space, Usefulness, Witness};
-use crate::ty::{Tail, TyCon, Type, TypeId};
+use crate::ty::{TyCon, Type, TypeId};
 
 impl Checker<'_> {
     pub(super) fn bind_pat(&mut self, p: PatId, ty: TypeId) {
@@ -291,10 +291,10 @@ impl Checker<'_> {
                 .collect();
             // Failures hidden in the body's tail reach the first unguarded catch-all arm.
             let mut hidden = match c.kind {
-                CoverageKind::Catch { body_row } => match self.inf.flatten_row(body_row).tail {
-                    Tail::Param(p) => self.inf.interner.row_param_fail(p).is_some(),
-                    _ => false,
-                },
+                CoverageKind::Catch { body_row } => self
+                    .inf
+                    .tail_param(body_row)
+                    .is_some_and(|p| self.inf.interner.row_param_fail(p).is_some()),
                 _ => false,
             };
             let mut space = CheckSpace { cx: self };

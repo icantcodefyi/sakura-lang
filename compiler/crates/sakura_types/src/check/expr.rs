@@ -1353,10 +1353,10 @@ impl Checker<'_> {
         };
         let flat = self.inf.flatten_row(br);
         // The failures of `b` hidden in a failure-carrying rigid tail cannot be named (§5.3).
-        let hidden = match flat.tail {
-            Tail::Param(p) => self.inf.interner.row_param_fail(p).is_some(),
-            _ => false,
-        };
+        let hidden = self
+            .inf
+            .tail_param(br)
+            .is_some_and(|p| self.inf.interner.row_param_fail(p).is_some());
         // Only the explicit `Fail` argument, never the hidden part (it stays in the tail).
         let err_ty = flat
             .labels
@@ -1400,8 +1400,8 @@ impl Checker<'_> {
         if catch_all {
             remaining = None;
             // W4010: `_` on an error type the function does not know swallows future tags.
-            let open = if hidden {
-                let only = self.inf.make_row(Vec::new(), flat.tail);
+            let open = if let Some(p) = self.inf.tail_param(br).filter(|_| hidden) {
+                let only = self.inf.make_row(Vec::new(), Tail::Param(p));
                 Some(format!(
                     "including the failures of the row variable `{}`",
                     self.render_row(only)
@@ -1460,8 +1460,13 @@ impl Checker<'_> {
         if !self.b.reported.insert(e) {
             return;
         }
-        let flat = self.inf.flatten_row(body_row);
+        // A flexible tail known to end in `e` renders as `e`.
+        let mut flat = self.inf.flatten_row(body_row);
+        if let Some(p) = self.inf.tail_param(body_row) {
+            flat.tail = Tail::Param(p);
+        }
         let only = self.inf.make_row(Vec::new(), flat.tail);
+        let actual = self.inf.make_row(flat.labels, flat.tail);
         let tail = self.render_row(only);
         let range = self.expr_range(e);
         let d = Diagnostic::error(
@@ -1472,7 +1477,7 @@ impl Checker<'_> {
             ),
         )
         .with_span(self.span(range))
-        .with_actual(self.rendered_row(body_row))
+        .with_actual(self.rendered_row(actual))
         .with_fix(sakura_diagnostics::Fix {
             title: format!("Declare the failures of `{tail}` as `Fail<E>` in the signature"),
             applicability: sakura_diagnostics::Applicability::Incomplete,

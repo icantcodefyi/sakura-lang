@@ -119,9 +119,21 @@ fn open_row_against_empty_reports_the_label() {
 }
 
 #[test]
-fn same_tail_with_different_labels_fails() {
+fn same_tail_with_different_labels_needs_both_in_the_tail() {
+    // Labels are a set: `{E1 | r} ~ {E2 | r}` holds iff `r` contains E1 and E2.
     let mut inf = Infer::new();
     let r = var_tail(&mut inf);
+    let a = row(&mut inf, &[1], r);
+    let b = row(&mut inf, &[2], r);
+    inf.unify_rows(a, b).unwrap();
+    inf.default_row(a);
+    assert_eq!(show_row(&mut inf, a), "{E1, E2}");
+    assert_eq!(show_row(&mut inf, b), "{E1, E2}");
+    // …unless a bound forbids it.
+    let r = var_tail(&mut inf);
+    let open = row(&mut inf, &[], r);
+    let only1 = inf.closed_row(vec![label(1)]);
+    inf.subsume_rows(open, only1).unwrap();
     let a = row(&mut inf, &[1], r);
     let b = row(&mut inf, &[2], r);
     assert!(inf.unify_rows(a, b).is_err());
@@ -143,6 +155,7 @@ fn rigid_tails_must_match() {
     let flex = row(&mut inf, &[], r);
     let rigid = row(&mut inf, &[3], e);
     inf.unify_rows(flex, rigid).unwrap();
+    inf.default_row(flex);
     assert_eq!(show_row(&mut inf, flex), "{E3 | e}");
 }
 
@@ -309,6 +322,73 @@ fn hidden_failures_of_a_row_parameter() {
 }
 
 #[test]
+fn upper_bound_is_deferred() {
+    // §5.2 rule 9: `{| r} ⊆ {E1, E2}` bounds `r` instead of closing it.
+    let mut inf = Infer::new();
+    let r = var_tail(&mut inf);
+    let open = row(&mut inf, &[], r);
+    let bound = inf.closed_row(vec![label(1), label(2)]);
+    inf.subsume_rows(open, bound).unwrap();
+    let one = inf.closed_row(vec![label(1)]);
+    inf.unify_rows(open, one).unwrap();
+    inf.default_row(open);
+    assert_eq!(show_row(&mut inf, open), "{E1}");
+
+    let mut inf = Infer::new();
+    let r = var_tail(&mut inf);
+    let open = row(&mut inf, &[], r);
+    let bound = inf.closed_row(vec![label(1), label(2)]);
+    inf.subsume_rows(open, bound).unwrap();
+    let three = inf.closed_row(vec![label(3)]);
+    match inf.unify_rows(open, three) {
+        Err(UnifyError::Rows { extra, .. }) => assert_eq!(extra, vec![label(3)]),
+        other => panic!("{other:?}"),
+    }
+}
+
+#[test]
+fn bounds_intersect() {
+    for (want, ok) in [(2, false), (1, true)] {
+        let mut inf = Infer::new();
+        let r = var_tail(&mut inf);
+        let open = row(&mut inf, &[], r);
+        let b1 = inf.closed_row(vec![label(1), label(2)]);
+        let b2 = inf.closed_row(vec![label(1), label(3)]);
+        inf.subsume_rows(open, b1).unwrap();
+        inf.subsume_rows(open, b2).unwrap();
+        let w = inf.closed_row(vec![label(want)]);
+        assert_eq!(inf.unify_rows(open, w).is_ok(), ok, "E{want}");
+    }
+}
+
+#[test]
+fn bound_flows_to_fresh_tails() {
+    let mut inf = Infer::new();
+    let (r, s) = (var_tail(&mut inf), var_tail(&mut inf));
+    let (ro, so) = (row(&mut inf, &[], r), row(&mut inf, &[], s));
+    let clock = inf.closed_row(vec![label(1)]);
+    inf.subsume_rows(ro, clock).unwrap();
+    inf.unify_rows(ro, so).unwrap();
+    let db = inf.closed_row(vec![label(2)]);
+    assert!(inf.unify_rows(so, db).is_err());
+}
+
+#[test]
+fn rigid_bound() {
+    let mut inf = Infer::new();
+    let e = Tail::Param(inf.interner.new_row_param("e", false));
+    let f = Tail::Param(inf.interner.new_row_param("f", false));
+    for (tail, ok) in [(e, true), (f, false)] {
+        let r = var_tail(&mut inf);
+        let open = row(&mut inf, &[], r);
+        let bound = row(&mut inf, &[1], e);
+        inf.subsume_rows(open, bound).unwrap();
+        let want = row(&mut inf, &[1], tail);
+        assert_eq!(inf.unify_rows(open, want).is_ok(), ok);
+    }
+}
+
+#[test]
 fn never_and_refinements_subsume() {
     let mut inf = Infer::new();
     let never = inf.interner.never();
@@ -450,6 +530,9 @@ proptest! {
         let mut env = env();
         let (ra, rb) = (build(&mut env, &a), build(&mut env, &b));
         if env.inf.unify_rows(ra, rb).is_ok() {
+            // Bounded tails stay open until the body ends (§5.2 rule 9).
+            env.inf.default_row(ra);
+            env.inf.default_row(rb);
             prop_assert_eq!(label_set(&mut env.inf, ra), label_set(&mut env.inf, rb));
         }
     }
@@ -509,4 +592,188 @@ fn env_pair(a: &RowSpec, b: &RowSpec) -> (Env, RowId, RowId) {
     let ra = build(&mut env, a);
     let rb = build(&mut env, b);
     (env, ra, rb)
+}
+
+// ---- order independence (design §5.2 rule 9, §17.46) ----
+
+/// A row in a constraint script: labels, a `Fail` part and a tail.
+#[derive(Clone, Debug)]
+struct ScriptRow {
+    labels: BTreeSet<u32>,
+    /// 0 no `Fail`, 1 `Fail<tags>`, 2 `Fail<ε>` with the script's shared error variable.
+    fail: u8,
+    tags: BTreeSet<u32>,
+    /// 0 closed, 1 shared x, 2 shared y, 3 fresh, 4 rigid Fail-free e, 5 rigid carrying g.
+    tail: u8,
+}
+
+#[derive(Clone, Debug)]
+enum Step {
+    Subsume(ScriptRow, ScriptRow),
+    Unify(ScriptRow, ScriptRow),
+    Union(ScriptRow, ScriptRow),
+}
+
+fn script_row() -> impl Strategy<Value = ScriptRow> {
+    (
+        prop::collection::btree_set(0u32..4, 0..3),
+        0u8..3,
+        prop::collection::btree_set(1u32..4, 1..3),
+        0u8..6,
+    )
+        .prop_map(|(labels, fail, tags, tail)| ScriptRow {
+            labels,
+            fail,
+            tags,
+            tail,
+        })
+}
+
+/// Steps inside the fragment §5.2 rule 9 makes order independent: everything except relating
+/// two *different* flexible tails, which is solved by equality (rules 1 and 5; see the plan's
+/// Deviations).
+fn step() -> impl Strategy<Value = Step> {
+    let flex = |t: u8| (1..=3).contains(&t);
+    (0u8..3, script_row(), script_row())
+        .prop_filter("two different flexible tails", move |(_, a, b)| {
+            !(flex(a.tail) && flex(b.tail) && (a.tail != b.tail || a.tail == 3))
+        })
+        .prop_map(|(k, a, b)| match k {
+            0 => Step::Subsume(a, b),
+            1 => Step::Unify(a, b),
+            _ => Step::Union(a, b),
+        })
+}
+
+struct ScriptEnv {
+    inf: Infer,
+    x: Tail,
+    y: Tail,
+    e: Tail,
+    g: Tail,
+    eps: TypeId,
+}
+
+fn script_env() -> ScriptEnv {
+    let mut inf = Infer::new();
+    let x = Tail::Var(inf.fresh_row_var());
+    let y = Tail::Var(inf.fresh_row_var());
+    let e = Tail::Param(inf.interner.new_row_param("e", false));
+    let g = Tail::Param(inf.interner.new_row_param("g", true));
+    let eps = inf.fresh_err_var();
+    ScriptEnv {
+        inf,
+        x,
+        y,
+        e,
+        g,
+        eps,
+    }
+}
+
+fn build_script_row(env: &mut ScriptEnv, s: &ScriptRow) -> RowId {
+    let tail = match s.tail {
+        0 => Tail::Closed,
+        1 => env.x,
+        2 => env.y,
+        3 => Tail::Var(env.inf.fresh_row_var()),
+        4 => env.e,
+        _ => env.g,
+    };
+    let mut labels: Vec<Label> = s.labels.iter().map(|i| label(*i)).collect();
+    match s.fail {
+        1 => {
+            let tags: Vec<u32> = s.tags.iter().copied().collect();
+            labels.push(fail(&mut env.inf, &tags));
+        }
+        2 => labels.push(Label {
+            effect: Effect::Fail,
+            args: vec![env.eps],
+        }),
+        _ => {}
+    }
+    env.inf.make_row(labels, tail)
+}
+
+/// Runs the steps in `order`; returns whether all succeeded and, if so, every row of the
+/// script (and every union result) rendered after body-end defaulting.
+fn run_script(steps: &[Step], order: &[usize]) -> (bool, Vec<String>) {
+    let mut env = script_env();
+    let rows: Vec<(RowId, RowId)> = steps
+        .iter()
+        .map(|s| {
+            let (a, b) = match s {
+                Step::Subsume(a, b) | Step::Unify(a, b) | Step::Union(a, b) => (a, b),
+            };
+            (build_script_row(&mut env, a), build_script_row(&mut env, b))
+        })
+        .collect();
+    let mut unions = vec![None; steps.len()];
+    let mut ok = true;
+    for &i in order {
+        let (a, b) = rows[i];
+        ok &= match &steps[i] {
+            Step::Subsume(..) => env.inf.subsume_rows(a, b).is_ok(),
+            Step::Unify(..) => env.inf.unify_rows(a, b).is_ok(),
+            Step::Union(..) => match env.inf.union_rows(a, b) {
+                Ok(u) => {
+                    unions[i] = Some(u);
+                    true
+                }
+                Err(_) => false,
+            },
+        };
+    }
+    if !ok {
+        return (false, Vec::new());
+    }
+    let mut all: Vec<RowId> = rows.iter().flat_map(|(a, b)| [*a, *b]).collect();
+    all.extend(unions.into_iter().flatten());
+    for r in &all {
+        env.inf.default_row(*r);
+    }
+    let shown = all.iter().map(|r| show_row(&mut env.inf, *r)).collect();
+    (true, shown)
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(4096))]
+
+    #[test]
+    fn script_is_order_independent(
+        (steps, order) in prop::collection::vec(step(), 2..=6).prop_flat_map(|steps| {
+            let n = steps.len();
+            (Just(steps), Just((0..n).collect::<Vec<usize>>()).prop_shuffle())
+        })
+    ) {
+        let identity: Vec<usize> = (0..steps.len()).collect();
+        let (ok1, rows1) = run_script(&steps, &identity);
+        let (ok2, rows2) = run_script(&steps, &order);
+        prop_assert_eq!(ok1, ok2);
+        prop_assert_eq!(rows1, rows2);
+    }
+
+    #[test]
+    fn fail_lub_is_commutative_and_idempotent(
+        a in prop::collection::btree_set(1u32..6, 0..4),
+        b in prop::collection::btree_set(1u32..6, 0..4),
+    ) {
+        let set = |xs: &BTreeSet<u32>| ErrSet {
+            tags: xs.iter().map(|t| test_def(100 + t)).collect(),
+            params: BTreeSet::new(),
+        };
+        let lub = |sets: &[&BTreeSet<u32>]| {
+            let mut inf = Infer::new();
+            let eps = inf.fresh_err_var();
+            let Type::Var(v) = *inf.interner.ty(eps) else { unreachable!() };
+            for s in sets {
+                inf.err_lower(v, &set(s)).unwrap();
+            }
+            inf.err_lower_bound(eps)
+        };
+        let ab: BTreeSet<u32> = a.union(&b).copied().collect();
+        prop_assert_eq!(lub(&[&a, &b]), lub(&[&b, &a]));
+        prop_assert_eq!(lub(&[&a, &b]), lub(&[&ab]));
+        prop_assert_eq!(lub(&[&a, &a]), lub(&[&a]));
+    }
 }

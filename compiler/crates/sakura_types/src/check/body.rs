@@ -334,7 +334,7 @@ impl<'p> Checker<'p> {
             let Some(&r) = self.b.rows.get(b) else {
                 continue;
             };
-            if let crate::ty::Tail::Param(p) = self.inf.flatten_row(r).tail
+            if let Some(p) = self.inf.tail_param(r)
                 && self.inf.interner.row_param_fail(p).is_some()
             {
                 self.unknown_failures(e, r);

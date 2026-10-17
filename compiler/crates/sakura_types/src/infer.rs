@@ -42,9 +42,12 @@ struct ErrSlot {
 #[derive(Clone, Copy, Debug)]
 enum RowSlot {
     /// `upper` (§5.2 rule 9) is a flattened, Fail-free row whose tail is closed or rigid.
+    /// `ends`: the variable contains the rigid row parameter (its tail will be it); it may
+    /// still gain labels. An unconstrained variable closes to `{}`, or to `ends`, at body end.
     Unbound {
         level: u32,
         upper: Option<RowId>,
+        ends: Option<RowParamId>,
     },
     Link(RowId),
 }
@@ -216,6 +219,7 @@ impl Infer {
         self.row_vars.push(RowSlot::Unbound {
             level: self.level,
             upper: None,
+            ends: None,
         });
         v
     }
@@ -390,12 +394,14 @@ impl Infer {
     }
 
     /// `atoms ⊆ v`: adds `atoms` to the lower bound of `v` and every variable above it.
-    /// Returns the atoms some upper bound does not permit.
+    /// Returns the atoms some upper bound does not permit; then nothing changes (a failed
+    /// constraint leaves no trace, so it is reported once).
     fn err_lower(&mut self, v: TyVar, atoms: &ErrSet) -> Result<(), ErrSet> {
         if atoms.is_empty() {
             return Ok(());
         }
         let mut bad = ErrSet::default();
+        let mut reached = Vec::new();
         let mut stack = vec![v];
         let mut seen = HashSet::new();
         while let Some(w) = stack.pop() {
@@ -406,21 +412,29 @@ impl Infer {
             match self.err_view(ty) {
                 Some(ErrView::Var(x)) => {
                     let s = self.err_slot(x).expect("error-union variable");
-                    s.lower.union(atoms);
                     if let Some(u) = &s.upper {
                         bad.union(&atoms.difference(u));
                     }
                     stack.extend(s.sups.iter().copied());
+                    reached.push(x);
                 }
                 // Defaulted at body end: the atoms must already be in its solution.
                 Some(ErrView::Set(set)) => bad.union(&atoms.difference(&set)),
                 Some(ErrView::Poison) | None => {}
             }
         }
-        if bad.is_empty() { Ok(()) } else { Err(bad) }
+        if !bad.is_empty() {
+            return Err(bad);
+        }
+        for x in reached {
+            if let Some(s) = self.err_slot(x) {
+                s.lower.union(atoms);
+            }
+        }
+        Ok(())
     }
 
-    /// `v ⊆ atoms`: intersects the upper bound of `v` with `atoms`.
+    /// `v ⊆ atoms`: intersects the upper bound of `v` with `atoms` (unless that fails).
     fn err_upper(&mut self, v: TyVar, atoms: &ErrSet) -> Result<(), ErrSet> {
         let ty = self.interner.intern(Type::Var(v));
         match self.err_view(ty) {
@@ -431,8 +445,11 @@ impl Infer {
                     Some(u) => u.intersection(atoms),
                 };
                 let bad = s.lower.difference(&upper);
+                if !bad.is_empty() {
+                    return Err(bad);
+                }
                 s.upper = Some(upper);
-                if bad.is_empty() { Ok(()) } else { Err(bad) }
+                Ok(())
             }
             Some(ErrView::Set(set)) => {
                 let bad = set.difference(atoms);
@@ -447,21 +464,21 @@ impl Infer {
         if sub == sup {
             return Ok(());
         }
-        let lower = {
-            let Some(s) = self.err_slot(sub) else {
-                return Ok(());
-            };
-            if !s.sups.contains(&sup) {
-                s.sups.push(sup);
-            }
-            s.lower.clone()
+        let Some(lower) = self.err_slot(sub).map(|s| s.lower.clone()) else {
+            return Ok(());
         };
+        self.err_lower(sup, &lower)?;
+        if let Some(s) = self.err_slot(sub)
+            && !s.sups.contains(&sup)
+        {
+            s.sups.push(sup);
+        }
         if let Some(s) = self.err_slot(sup)
             && !s.subs.contains(&sub)
         {
             s.subs.push(sub);
         }
-        self.err_lower(sup, &lower)
+        Ok(())
     }
 
     /// `a ⊆ e` on error sides.
@@ -512,7 +529,7 @@ impl Infer {
                 Some(ErrView::Poison) | None => fp.poison = true,
             }
         }
-        if let Tail::Param(p) = row.tail
+        if let Some(p) = self.tail_param_of(row.tail)
             && let Some(q) = self.interner.row_param_fail(p)
         {
             fp.atoms.params.insert(q);
@@ -651,6 +668,17 @@ impl Infer {
             (Type::Never, _) if matches!(mode, Mode::Subsume) => Ok(()),
             (Type::Var(v), _) if self.is_err(v) => self.relate_err(a, e, mode),
             (_, Type::Var(v)) if self.is_err(v) => self.relate_err(a, e, mode),
+            // `?h ⊆ fn() ! R` is `?h := fn() ! {Fail<ε'> | ρ}` with `{Fail<ε'> | ρ} ⊆ R`.
+            (Type::Var(v), _) if matches!(mode, Mode::Subsume) => {
+                let own = self.own_row(e);
+                self.bind_var(v, a, own)?;
+                self.relate(own, e, mode)
+            }
+            (_, Type::Var(v)) if matches!(mode, Mode::Subsume) => {
+                let own = self.own_row(a);
+                self.bind_var(v, e, own)?;
+                self.relate(a, own, mode)
+            }
             (Type::Var(v), _) => self.bind_var(v, a, e),
             (_, Type::Var(v)) => self.bind_var(v, e, a),
             (Type::Tuple(xs), Type::Tuple(ys)) => {
@@ -716,6 +744,18 @@ impl Infer {
             }
             _ => mismatch,
         }
+    }
+
+    /// `ty` with a fresh open row `{Fail<ε'> | ρ}` if it is a function type: a variable
+    /// related to it by subsumption gets its own row, bounded by (or bounding) `ty`'s row
+    /// rather than equal to it (§5.2 rule 9), so a later `use(h)` with a smaller row and
+    /// failures flowing into `ty` from elsewhere are not attributed to the variable.
+    fn own_row(&mut self, ty: TypeId) -> TypeId {
+        let Type::Fn { params, ret, .. } = self.interner.ty(ty).clone() else {
+            return ty;
+        };
+        let row = self.fresh_row();
+        self.interner.func(params, ret, row)
     }
 
     fn bind_var(&mut self, v: TyVar, var_ty: TypeId, to: TypeId) -> UResult {
@@ -797,11 +837,8 @@ impl Infer {
             if Some(w) == rv {
                 return true;
             }
-            if let RowSlot::Unbound { level: l, upper } = self.row_vars[w.0 as usize] {
-                self.row_vars[w.0 as usize] = RowSlot::Unbound {
-                    level: l.min(level),
-                    upper,
-                };
+            if let RowSlot::Unbound { level: l, .. } = &mut self.row_vars[w.0 as usize] {
+                *l = (*l).min(level);
             }
         }
         false
@@ -836,16 +873,144 @@ impl Infer {
     }
 
     /// Binds `v := {labels | tail}`. `labels` never contain `Fail` (tails are Fail-free).
+    /// The binding must respect `v`'s upper bound and `ends` (§5.2 rule 9), which pass to a
+    /// flexible `tail`.
     fn bind_row_var(&mut self, v: RowVar, labels: Vec<Label>, tail: Tail) -> Result<(), RowErr> {
-        let RowSlot::Unbound { level, .. } = self.row_vars[v.0 as usize] else {
+        let RowSlot::Unbound { level, upper, ends } = self.row_vars[v.0 as usize] else {
             unreachable!("bind_row_var on a bound variable");
         };
         let row = self.make_row(labels, tail);
         if self.row_occurs_adjust(None, Some(v), level, row) {
             return Err(RowErr::Tails);
         }
+        let r = self.flatten_row(row);
+        if let Some(u) = upper {
+            let bound = self.interner.row_data(u).clone();
+            for l in r.labels.iter().filter(|l| l.effect != Effect::Fail) {
+                let Some(b) = bound.labels.iter().find(|b| b.effect == l.effect) else {
+                    return Err(RowErr::Labels(vec![l.clone()]));
+                };
+                for (x, y) in l.args.iter().zip(&b.args) {
+                    if self.unify(*x, *y).is_err() {
+                        return Err(RowErr::Labels(vec![l.clone()]));
+                    }
+                }
+            }
+        }
+        match r.tail {
+            Tail::Var(t) => {
+                if let Some(u) = upper {
+                    self.bound_row_var(t, u)?;
+                }
+                if let Some(p) = ends {
+                    self.end_row_var(t, p)?;
+                }
+            }
+            Tail::Param(q) => {
+                let fits = upper.is_none_or(|u| self.interner.row_data(u).tail == Tail::Param(q));
+                if !fits || ends.is_some_and(|p| p != q) {
+                    return Err(RowErr::Tails);
+                }
+            }
+            Tail::Closed if ends.is_some() => return Err(RowErr::Tails),
+            Tail::Closed => {}
+        }
         self.row_vars[v.0 as usize] = RowSlot::Link(row);
         Ok(())
+    }
+
+    fn row_upper(&self, v: RowVar) -> Option<RowId> {
+        match self.row_vars[v.0 as usize] {
+            RowSlot::Unbound { upper, .. } => upper,
+            RowSlot::Link(_) => None,
+        }
+    }
+
+    fn row_ends(&self, v: RowVar) -> Option<RowParamId> {
+        match self.row_vars[v.0 as usize] {
+            RowSlot::Unbound { ends, .. } => ends,
+            RowSlot::Link(_) => None,
+        }
+    }
+
+    /// `v ⊆ bound`: intersects `v`'s upper bound with `bound`.
+    fn bound_row_var(&mut self, v: RowVar, bound: RowId) -> Result<(), RowErr> {
+        let m = self.meet(self.row_upper(v), bound);
+        if let Some(p) = self.row_ends(v)
+            && self.interner.row_data(m).tail != Tail::Param(p)
+        {
+            return Err(RowErr::Tails);
+        }
+        if let RowSlot::Unbound { upper, .. } = &mut self.row_vars[v.0 as usize] {
+            *upper = Some(m);
+        }
+        Ok(())
+    }
+
+    /// `v ⊇ p`: `v`'s tail is the rigid `p`.
+    fn end_row_var(&mut self, v: RowVar, p: RowParamId) -> Result<(), RowErr> {
+        let upper_tail = self.row_upper(v).map(|u| self.interner.row_data(u).tail);
+        if self.row_ends(v).is_some_and(|q| q != p)
+            || upper_tail.is_some_and(|t| t != Tail::Param(p))
+        {
+            return Err(RowErr::Tails);
+        }
+        if let RowSlot::Unbound { ends, .. } = &mut self.row_vars[v.0 as usize] {
+            *ends = Some(p);
+        }
+        Ok(())
+    }
+
+    /// The rigid row parameter `row` ends in: its tail, or what its flexible tail must end in.
+    pub fn tail_param(&mut self, row: RowId) -> Option<RowParamId> {
+        let tail = self.flatten_row(row).tail;
+        self.tail_param_of(tail)
+    }
+
+    fn tail_param_of(&self, tail: Tail) -> Option<RowParamId> {
+        match tail {
+            Tail::Param(p) => Some(p),
+            Tail::Var(v) => self.row_ends(v),
+            Tail::Closed => None,
+        }
+    }
+
+    /// A fresh row variable at `v`'s level.
+    fn fresh_row_var_like(&mut self, v: RowVar) -> RowVar {
+        let t = self.fresh_row_var();
+        self.set_row_level(t, self.row_level(v));
+        t
+    }
+
+    /// The intersection of two upper bounds: labels in both whose arguments unify, and a
+    /// rigid tail only if both have it.
+    fn meet(&mut self, a: Option<RowId>, b: RowId) -> RowId {
+        let Some(a) = a else {
+            return b;
+        };
+        if a == b {
+            return a;
+        }
+        let (ra, rb) = (
+            self.interner.row_data(a).clone(),
+            self.interner.row_data(b).clone(),
+        );
+        let mut labels = Vec::new();
+        for l in ra.labels {
+            if let Some(m) = rb.labels.iter().find(|m| m.effect == l.effect)
+                && l.args
+                    .iter()
+                    .zip(&m.args)
+                    .all(|(x, y)| self.unify(*x, *y).is_ok())
+            {
+                labels.push(l);
+            }
+        }
+        let tail = match (ra.tail, rb.tail) {
+            (Tail::Param(p), Tail::Param(q)) if p == q => Tail::Param(p),
+            _ => Tail::Closed,
+        };
+        self.make_row(labels, tail)
     }
 
     /// Row unification, design §5.2 rules 1–3.
@@ -894,22 +1059,6 @@ impl Infer {
     fn relate_rows(&mut self, actual: RowId, expected: RowId, mode: Mode) -> Result<(), RowErr> {
         let a = self.flatten_row(actual);
         let e = self.flatten_row(expected);
-        let (fa, fe) = (self.fail_part(&a), self.fail_part(&e));
-        // Hidden `e.Fail` atoms are part of a tail: a mismatch only there is a tail mismatch.
-        let mut tails_only = false;
-        if let Err(mut extra) = self.relate_fail(&fa, &fe, mode) {
-            for t in [a.tail, e.tail] {
-                if let Tail::Param(p) = t
-                    && let Some(h) = self.interner.row_param_fail(p)
-                {
-                    extra.params.remove(&h);
-                }
-            }
-            if !extra.is_empty() {
-                return Err(RowErr::Labels(vec![self.fail_label(&extra)]));
-            }
-            tails_only = true;
-        }
         let la: Vec<Label> = a
             .labels
             .into_iter()
@@ -921,34 +1070,70 @@ impl Infer {
             .filter(|l| l.effect != Effect::Fail)
             .collect();
         let (only_a, only_e) = self.unify_common(&la, &le, mode)?;
-        match mode {
-            Mode::Unify => self.unify_tails(a.tail, e.tail, only_a, only_e)?,
-            Mode::Subsume => self.subsume_tails(a.tail, e.tail, only_a)?,
+        // The Fail-free rows, as upper bounds for a flexible tail facing a rigid one.
+        let bound_a = self.interner.row(Row {
+            labels: la,
+            tail: a.tail,
+        });
+        let bound_e = self.interner.row(Row {
+            labels: le,
+            tail: e.tail,
+        });
+        let tails = match mode {
+            Mode::Unify => self.unify_tails(a.tail, e.tail, only_a, only_e, bound_a, bound_e),
+            Mode::Subsume => self.subsume_tails(a.tail, e.tail, only_a, bound_e),
+        };
+        // Failure parts last: a flexible tail may just have learned the rigid tail it ends in,
+        // whose hidden failures it then contains.
+        let a = self.flatten_row(actual);
+        let e = self.flatten_row(expected);
+        let (fa, fe) = (self.fail_part(&a), self.fail_part(&e));
+        let mut fail_extra = Vec::new();
+        let mut hidden_only = false;
+        if let Err(mut extra) = self.relate_fail(&fa, &fe, mode) {
+            // Hidden `e.Fail` atoms belong to a tail: a mismatch only there is a tail mismatch.
+            for t in [a.tail, e.tail] {
+                if let Some(p) = self.tail_param_of(t)
+                    && let Some(h) = self.interner.row_param_fail(p)
+                {
+                    extra.params.remove(&h);
+                }
+            }
+            if extra.is_empty() {
+                hidden_only = true;
+            } else {
+                fail_extra.push(self.fail_label(&extra));
+            }
         }
-        if tails_only {
-            Err(RowErr::Tails)
-        } else {
-            Ok(())
+        match tails {
+            Err(RowErr::Labels(mut extra)) => {
+                extra.extend(fail_extra);
+                Err(RowErr::Labels(extra))
+            }
+            _ if !fail_extra.is_empty() => Err(RowErr::Labels(fail_extra)),
+            Err(RowErr::Tails) => Err(RowErr::Tails),
+            Ok(()) if hidden_only => Err(RowErr::Tails),
+            Ok(()) => Ok(()),
         }
     }
 
-    /// Unifies two tails given the (Fail-free) labels only one side has.
+    /// Unifies two tails given the (Fail-free) labels only one side has. `bound_a`/`bound_e`
+    /// are the Fail-free rows themselves.
     fn unify_tails(
         &mut self,
         ta: Tail,
         te: Tail,
         only_a: Vec<Label>,
         only_e: Vec<Label>,
+        bound_a: RowId,
+        bound_e: RowId,
     ) -> Result<(), RowErr> {
         match (ta, te) {
+            // `{A | r} ~ {B | r}` holds iff `r` contains both differences (labels are a set).
             (Tail::Var(r), Tail::Var(s)) if r == s => {
-                if !only_a.is_empty() {
-                    return Err(RowErr::Labels(only_a));
-                }
-                if !only_e.is_empty() {
-                    return Err(RowErr::Labels(only_e));
-                }
-                Ok(())
+                let mut both = only_a;
+                both.extend(only_e);
+                self.grow(r, both)
             }
             (Tail::Var(r), Tail::Var(s)) => {
                 let level = self.row_level(r).min(self.row_level(s));
@@ -957,17 +1142,17 @@ impl Infer {
                 self.bind_row_var(r, only_e, Tail::Var(t))?;
                 self.bind_row_var(s, only_a, Tail::Var(t))
             }
-            (Tail::Var(r), rigid) => {
+            (Tail::Var(r), _) => {
                 if !only_a.is_empty() {
                     return Err(RowErr::Labels(only_a));
                 }
-                self.bind_row_var(r, only_e, rigid)
+                self.pin(r, only_e, bound_e)
             }
-            (rigid, Tail::Var(s)) => {
+            (_, Tail::Var(s)) => {
                 if !only_e.is_empty() {
                     return Err(RowErr::Labels(only_e));
                 }
-                self.bind_row_var(s, only_a, rigid)
+                self.pin(s, only_a, bound_a)
             }
             (x, y) => {
                 if !only_a.is_empty() {
@@ -984,18 +1169,38 @@ impl Infer {
         }
     }
 
-    /// `{extra-free part | ta} ⊆ {… | te}` given `extra`, the labels of the actual row the
-    /// expected labels do not contain.
-    fn subsume_tails(&mut self, ta: Tail, te: Tail, extra: Vec<Label>) -> Result<(), RowErr> {
+    /// `{… | r} ~ other` where `other` (Fail-free, closed or rigid tail) has the extra labels
+    /// `missing`: `r` contains `missing`, may contain any other label of `other`, and ends in
+    /// `other`'s rigid tail (bounded, not solved: §5.2 rule 9).
+    fn pin(&mut self, r: RowVar, missing: Vec<Label>, other: RowId) -> Result<(), RowErr> {
+        let t = self.fresh_row_var_like(r);
+        self.bound_row_var(t, other)?;
+        if let Tail::Param(p) = self.interner.row_data(other).tail {
+            self.end_row_var(t, p)?;
+        }
+        self.bind_row_var(r, missing, Tail::Var(t))
+    }
+
+    /// Adds `labels` to the unbound row variable `r` as lower bounds: `r := {labels | t}`.
+    fn grow(&mut self, r: RowVar, labels: Vec<Label>) -> Result<(), RowErr> {
+        if labels.is_empty() {
+            return Ok(());
+        }
+        let t = self.fresh_row_var_like(r);
+        self.bind_row_var(r, labels, Tail::Var(t))
+    }
+
+    /// `{… | ta} ⊆ {… | te}` given `extra`, the labels of the actual row the expected labels
+    /// do not contain, and `bound`, the expected row without `Fail`.
+    fn subsume_tails(
+        &mut self,
+        ta: Tail,
+        te: Tail,
+        extra: Vec<Label>,
+        bound: RowId,
+    ) -> Result<(), RowErr> {
         match (ta, te) {
-            (Tail::Closed, Tail::Var(s)) => {
-                if !extra.is_empty() {
-                    let t = self.fresh_row_var();
-                    self.set_row_level(t, self.row_level(s));
-                    self.bind_row_var(s, extra, Tail::Var(t))?;
-                }
-                Ok(())
-            }
+            (Tail::Closed, Tail::Var(s)) => self.grow(s, extra),
             (Tail::Closed, _) => {
                 if extra.is_empty() {
                     Ok(())
@@ -1003,23 +1208,21 @@ impl Infer {
                     Err(RowErr::Labels(extra))
                 }
             }
-            (Tail::Var(r), Tail::Var(s)) if r == s => {
-                if extra.is_empty() {
-                    Ok(())
-                } else {
-                    Err(RowErr::Labels(extra))
-                }
-            }
+            (Tail::Var(r), Tail::Var(s)) if r == s => self.grow(r, extra),
             (Tail::Var(r), Tail::Var(s)) => self.bind_row_var(s, extra, Tail::Var(r)),
-            (Tail::Var(r), rigid) => {
+            (Tail::Var(r), _) => {
                 if !extra.is_empty() {
                     return Err(RowErr::Labels(extra));
                 }
-                // ponytail: picks the smallest solution for `r` (the expected tail); a later
-                // demand for more labels in `r` fails rather than backtracking.
-                self.bind_row_var(r, Vec::new(), rigid)
+                // Bounded, not solved (§5.2 rule 9): `r` may still gain labels within `bound`.
+                self.bound_row_var(r, bound)
             }
-            (Tail::Param(p), Tail::Var(s)) => self.bind_row_var(s, extra, Tail::Param(p)),
+            // `s` contains `extra` and `p`, and may still gain labels.
+            (Tail::Param(p), Tail::Var(s)) => {
+                let t = self.fresh_row_var_like(s);
+                self.bind_row_var(s, extra, Tail::Var(t))?;
+                self.end_row_var(t, p)
+            }
             (Tail::Param(p), Tail::Param(q)) if p == q => {
                 if extra.is_empty() {
                     Ok(())
@@ -1094,15 +1297,22 @@ impl Infer {
     pub fn union_rows(&mut self, a: RowId, b: RowId) -> Result<RowId, UnifyError> {
         let ra = self.flatten_row(a);
         let rb = self.flatten_row(b);
+        let tails_err = UnifyError::Tails {
+            actual: a,
+            expected: b,
+        };
         let tail = match (ra.tail, rb.tail) {
             (Tail::Closed, t) | (t, Tail::Closed) => t,
             (x, y) if x == y => x,
+            // The flexible side contains `p` from now on (it may still gain labels).
+            (Tail::Var(x), Tail::Param(p)) | (Tail::Param(p), Tail::Var(x)) => {
+                self.end_row_var(x, p).map_err(|_| tails_err)?;
+                Tail::Var(x)
+            }
             (x, y) => {
-                self.unify_tails(x, y, Vec::new(), Vec::new())
-                    .map_err(|_| UnifyError::Tails {
-                        actual: a,
-                        expected: b,
-                    })?;
+                let empty = self.interner.empty_row();
+                self.unify_tails(x, y, Vec::new(), Vec::new(), empty, empty)
+                    .map_err(|_| tails_err)?;
                 let rx = self.interner.row(Row {
                     labels: Vec::new(),
                     tail: x,
@@ -1183,10 +1393,9 @@ impl Infer {
     /// a failure-carrying tail (`{Fail<e.Fail> | e}` is `e`) and `Fail<Never>` disappears.
     fn zonk_row_with(&mut self, row: RowId, resolve: bool) -> RowId {
         let r = self.flatten_row(row);
-        let hidden = match r.tail {
-            Tail::Param(p) => self.interner.row_param_fail(p),
-            _ => None,
-        };
+        let hidden = self
+            .tail_param_of(r.tail)
+            .and_then(|p| self.interner.row_param_fail(p));
         let mut labels = Vec::with_capacity(r.labels.len());
         for l in r.labels {
             if resolve && l.effect == Effect::Fail {
@@ -1263,7 +1472,8 @@ impl Infer {
             l.args.into_iter().for_each(|x| self.default_rows_in(x));
         }
         if let Tail::Var(v) = r.tail {
-            let _ = self.bind_row_var(v, Vec::new(), Tail::Closed);
+            let tail = self.row_ends(v).map_or(Tail::Closed, Tail::Param);
+            let _ = self.bind_row_var(v, Vec::new(), tail);
         }
     }
 
@@ -1293,10 +1503,9 @@ impl Infer {
 
     fn inexpressible_row(&mut self, row: RowId) -> Option<(TyVar, ErrSet)> {
         let r = self.flatten_row(row);
-        let hidden = match r.tail {
-            Tail::Param(p) => self.interner.row_param_fail(p),
-            _ => None,
-        };
+        let hidden = self
+            .tail_param_of(r.tail)
+            .and_then(|p| self.interner.row_param_fail(p));
         r.labels.into_iter().find_map(|l| {
             if l.effect == Effect::Fail {
                 let a = self.shallow(l.args[0]);
@@ -1553,7 +1762,11 @@ impl Infer {
                 .for_each(|x| self.collect_general(x, tys, rows, order));
         }
         if let Tail::Var(v) = r.tail
-            && let RowSlot::Unbound { level, upper: None } = self.row_vars[v.0 as usize]
+            && let RowSlot::Unbound {
+                level,
+                upper: None,
+                ends: None,
+            } = self.row_vars[v.0 as usize]
             && level > self.level
             && !rows.contains_key(&v)
         {
