@@ -141,7 +141,7 @@ Consequences, stated so nobody has to guess:
 | `@deprecated(message)` | any item | Warning at use sites. |
 | `@server`, `@test_only` | `fn`, items | Build-target and test-visibility markers (M3). |
 
-`@trust(reason)` is the one attribute that is an **expression** (§6.4): its value has the compiler-known type `Trust`, `reason` must be a string literal, and the only functions accepting a `Trust` are the audited sinks `Untrusted.trust` and `Secret.expose`. Any other attribute in expression position is `V1010`. A `fn` without a body and without `@external`/`@llm` is `V1011`.
+`@trust(reason)` is the one attribute that is an **expression** (§6.4): its value has the compiler-known type `Trust`, `reason` must be a string literal, and the only functions accepting a `Trust` are the audited sinks `Untrusted.trust`, `Secret.expose` and `Html.raw`. Any other attribute in expression position is `V1010`. A `fn` without a body and without `@external`/`@llm` is `V1011`.
 
 ---
 
@@ -307,7 +307,7 @@ There are **no implicit conversions**. `Int.to_float(i)`, `Float.round(f) -> Int
 - **Lists** `List<T>` (ordered, immutable, O(1) amortized append in native via reuse), **Maps** `Map<K, V>` with `K: Hash`, **Sets** `Set<T>` with `T: Hash`, **Option** `Option<T> = None | Some(T)`, **Result** `Result<T, E> = Ok(T) | Err(E)`, **Range** (`0..n`, exclusive end).
 - **Functions** `fn(A, B) -> C ! {E}`; omitted `!` means pure `! {}`.
 - **Handlers** `Handler<Eff, r>`: a handler for effect `Eff` whose clauses perform row `r`. `Handler<Eff>` abbreviates `Handler<Eff, {}>`.
-- **External types** are declared without a body (`pub type Scope`, `pub type Fiber<T>`, §3.2 rule 15): their representation belongs to the host runtime, they have no constructors and derive no constraint, and only `@external` functions produce them. Resources (`Fs.File`, `Sql.Conn`, `Http.Body`, `Task.Fiber<T>`) and capabilities (`Dir`, `NetScope`, `EnvScope`) are external types; both are **scoped values** (§6.3), and resources are additionally affine (§8.4).
+- **External types** are declared without a body (`pub type Scope`, `pub type Fiber<T>`, §3.2 rule 15): their representation belongs to the host runtime, they have no constructors and derive no constraint, and only `@external` functions produce them. Resources (`Fs.File`, `Task.Fiber<T>`) and capabilities (`Dir`) are external types; both are **scoped values** (§6.3), and resources are additionally affine (§8.4). Network and environment authority is plain data checked by attenuating handlers (§6.2), not a capability value.
 - **Opaque types** (`pub opaque type Uuid = Uuid(String)`, §9) are ordinary data whose constructors and fields are private to the declaring module; they derive constraints normally.
 - **Secret<T>**, **Untrusted<T>**, **Trust** (§6.4).
 - **Graph<N>** with `NodeId` keys for cyclic structures (§8.3).
@@ -342,6 +342,8 @@ Rank-1 parametric polymorphism. Type variables are declared on functions and typ
 | `Schema` | all data types made of `Schema` parts, refinements included; produces JSON Schema + codec | functions, handlers, resources, `Secret`, `Graph` |
 
 A type parameter with no constraint supports only passing around and pattern matching through concrete constructors. Constraints are the **only** way to use an operation on a type variable, and each one unlocks a fixed set: `A: Eq` enables `==`/`!=`; `A: Ord` enables `<`, `<=`, `>`, `>=` (and implies `Eq`); `A: Hash` makes `A` usable as a `Map` key or `Set` element (and implies `Eq`); `A: Show` enables interpolation and `show`; `A: Schema` enables `Json.encode`/`Json.decode`. `fn sort<A: Ord>(xs: List<A>) -> List<A>`, `fn sort_by<A, K: Ord>(xs: List<A>, key: fn(A) -> K)`. Multiple constraints: `A: Eq + Show`. A concrete type that does not satisfy a required constraint is `V2032` (`V2031` for `Show` on `Secret`, which has its own explanation).
+
+**Effect-row parameters on types** (§17.49). A `type` declares row parameters next to type parameters (`type Tool<e> = { spec: ToolSpec, run: fn(Json) -> Json ! {Fail<ToolError> | e} }`, `type Agent<T, e> = …`), and `TypeArg` admits a row wherever such a parameter is instantiated: `Tool<{Http}>`, `Tool<{Http | e}>`, `Tool<e>`, `Tool<{}>`. Rules: a row argument must fill a row parameter and a type argument a type parameter (`V1007 wrong_kind`); the count is `V1004`. Row arguments are **unified, never widened**: §5.2 rule 4 applies to function values only, so two `Tool<…>` types meet by unifying their rows (open tails join as usual; two different closed rows do not match). A row parameter of a type has a kind under §5.2 rule 8 exactly as on a function: Fail-free iff a row in the body writes it next to `Fail<E>` with `E` a type parameter of the same type, otherwise failure-carrying. Derived constraints ignore row parameters (a function-typed field already removes `Eq`/`Show`/`Schema`). `Handler<Eff, r>` is the compiler-known instance of the same feature. Std uses it for `Tool<e>`, `Agent<T, e>` and `Router<e>` (§10.4, §10.7).
 
 ### 4.5 Inference
 
@@ -429,8 +431,8 @@ Unification rules (implemented in `sakura_types::rows`):
 5. Sequencing two expressions with rows `R1`, `R2` yields `R1 ∪ R2`; both tails, if present, are unified.
 6. A top-level signature's row is an **upper bound**: the inferred body row must be a subset (`V3001` lists each extra label with its originating call site, the "allowed here" set, and two fixes: add the label to the signature (`interface_change`) or handle it locally (`local`)).
 7. Generalization quantifies over tail variables of local lambdas; a top-level function's tail variables must be declared (`<e>`).
-8. **Tails never hide `Fail`** (§17.45). A flexible tail ranges over Fail-free rows; a row that may fail says so with an explicit `Fail<E>` whose `E` may be an error-union inference variable (it collects the tags that flow into it and resolves to their union). A declared row parameter `e` is Fail-free iff some row of its declaration writes it next to `Fail<…>` (`{Fail<E> | e}`: unique labels leave no room for another); otherwise `{… | e}` stands for `{…, Fail<e.Fail> | e}` with an unnamed error type `e.Fail` that only `e`'s instantiation can fill. Row parameters introduced by generalization are Fail-free.
-9. **Flexible tails are bounded, not solved** (§17.46). Checking an open row against a closed or rigid one records an upper bound on its tail; labels may still be added later within that bound. At the end of a body an unconstrained tail is `{}`. Checking is therefore independent of statement and argument order.
+8. **Tails never hide `Fail`** (§17.45, refined in §17.50). A flexible tail ranges over Fail-free rows; a row that may fail says so with an explicit `Fail<E>` whose `E` may be an error-union inference variable (it collects the tags that flow into it and resolves to their union). A declared row parameter `e` (on a function, an operation or a type) is **Fail-free** iff some row of its declaration writes it next to `Fail<E>` where `E` is a type parameter of the same declaration (`{Fail<E> | e}`: `e` may not hide what `E` is there to name). Otherwise `e` **carries failures**: `{… | e}` stands for `{…, Fail<e.Fail> | e}` with an unnamed error type `e.Fail` that only `e`'s instantiation can fill, and next to a concrete tag `{Fail<SqlError> | e}` reads `{Fail<SqlError | e.Fail> | e}`, so a callback given to `Sql.transaction` or `timeout` may fail and the caller sees its tags joined with the function's own. Row parameters introduced by generalization are Fail-free.
+9. **Flexible tails are bounded, not solved** (§17.46). Checking an open row against a closed or rigid one records an upper bound on its tail; labels may still be added later within that bound. At the end of a body an unconstrained tail is `{}`. Checking is therefore independent of statement and argument order within a body, with one documented edge: two *distinct* flexible tails that meet are joined by equality, so a later constraint that closes one of them can still depend on order (plan r2, deviation 12).
 
 ### 5.3 `Fail<E>` and error unions
 
@@ -448,7 +450,8 @@ type SignupError = EmailTaken | Banned           // union alias
 - Propagation is automatic: calling `f() ! {Fail<A>}` inside `g` adds `Fail<A>` to `g`'s inferred row. There is no `?` needed for effectful failure.
 - `try { body } catch { P1 => e1, P2 => e2 }`: the arms match tags of `body`'s error union. Tags matched by an unguarded arm with irrefutable sub-patterns are **removed** from the row; unmatched tags propagate. The arms' own effects are added. `catch` arms are patterns, so `EmailTaken { email } => …`, `Banned | Suspended => …`, `_ => …` (catches all; discouraged on open unions, lint `W4010`).
 - `try { body }` without `catch` evaluates to `Result<T, E>` where `E` is the full error union of `body`, removing `Fail` from the row entirely.
-- The failures of a `try` body must be nameable: if the body's row ends in a row parameter that may hide failures (§5.2 rule 8), `try` without `catch` is `V3003` with the fix "declare them: `fn f<E, e>(g: fn() -> T ! {Fail<E> | e}) -> Result<T, E> ! e`". With `catch`, arms match the explicit tags and the hidden part stays in the row; a catch-all arm also catches it and is `W4010`.
+- The failures of a `try` body must be nameable: if the body's row ends in a row parameter that may hide failures (§5.2 rule 8), `try` without `catch` is `V3003` with the fix "declare them: `fn f<E, e>(g: fn() -> T ! {Fail<E> | e}) -> Result<T, E> ! e`" (or, when the tail sits next to concrete tags, "catch those tags and let the rest propagate"). With `catch`, arms match the explicit tags and the hidden part stays in the row; a catch-all arm also catches it and is `W4010`.
+- An error value whose union is still being inferred (the argument of a `retry_on` predicate, the `e` of `expect_fails_with`) is settled at its first inspection (field access, `match`, `==`): tags that flow into it later must fit, or the binding needs an annotation (`let policy: Policy<HttpError | RateLimited> = …`, §15.10).
 - A `try` body cannot assign to a `var` declared outside it (`V2041`, §8.1); its value and its error are the only things that leave it.
 - Postfix `r?` on `r: Result<T, E>` yields `T` and adds `Fail<E>`. Also `Option.or_fail(o, err)`.
 - There is no implicit conversion between error types. Public functions should translate internal tags to stable domain tags with `catch` (`R01 §4.1`).
@@ -490,6 +493,7 @@ Rules:
 - `var` members are **handler state**: visible only inside clauses, initialized once per `with` installation, updated by assignment. State is confined to the handler instance; the runtime serializes clause execution per instance (JS v0 is single-threaded; native uses a per-instance lock — `ponytail:` a global-per-handler lock, replace with per-operation design when contention is measured). Child tasks that perform the effect go through the same instance.
 - `with h1, h2, … { body }` installs handlers innermost-last (`h2` inside `h1`). Body row minus each handled effect, plus each handler's `r`, is the `with` expression's row. Each `hN` must have type `Handler<E, r>`; `with` on a non-handler is `V3012`.
 - **Resumption**: a clause runs in place of the operation call and its return value is the operation's result. Exactly once, in tail position, by construction. There is no `resume`. A clause may `fail` only with tags declared on the operation. A clause may perform other effects, which go to the handlers installed **outside** the `with` (clause bodies see the outer handler environment; calling the same effect inside its own clause reaches the next outer handler, enabling wrappers, `R01 §4.2`).
+- **Callbacks run where they were performed** (§17.48). A function value passed as a function-typed argument of an operation is a *callback*: whenever the clause, or anything the clause hands it to, calls it, it runs under the handler environment of the **perform site**, not the clause's. `Fs.with_file(p, m, fn(f) { Fs.read_chunk(f, n) })` therefore reaches the handler that opened the file, `Task.spawn(s, body)` inherits the performer's handlers, and an attenuating handler (`Fs.rooted(sub)`) cannot be bypassed by performing inside a callback. Only function-typed parameters are callbacks: a function nested inside another argument (a list or record of functions) is called as an ordinary value under the clause's environment, so std declares such operations over one function (`Serve.serve(handle, addr)` is the operation; `Serve.listen(router, addr)` is the function that builds `handle`). Inside a clause the operation's type and row parameters are rigid; a callback's row (`e` in `body: fn(File) -> T ! e`) belongs to the performer, so it is removed from the clause's row `r` (the operation's declared row already charges it to the perform site), while the callback's failures pass through the clause as the operation's own. A callback may perform the effect being handled: the clause is then re-entered on the same instance, and handler state read after the callback returns sees the writes it made.
 - Nested handlers for the same effect: innermost wins; there is no masking or injection.
 - Handlers are first-class values but **cannot escape the scope of the capabilities they captured** (§6.3). Returning a handler from a function is fine; storing one in a record is fine; the capability-scope check is what matters.
 - Handler state and resources captured by a handler are released when `with` exits (normal, fail, defect, cancel).
@@ -540,7 +544,7 @@ fn limits(l: Limits) -> Handler<Budget>
 
 - `retry` starts a **new invocation** per attempt; it never resumes a failed one. `retry_on` is a pure predicate over the action's error union `E`, which is why the error type is a parameter of `Policy`. The action's error union is preserved; no `Exhausted` tag is added (the last error propagates). The first retry waits `backoff`, each later wait doubles; `jitter` draws a uniform wait up to that bound from `Random`; `deadline` bounds the total time measured with `Clock.monotonic`. Writes with external side effects need an explicit idempotency key in the request; the std HTTP client refuses to retry non-idempotent methods without one (`Fail<RetryRefused>` at policy construction).
 - `timeout` cancels the action's task cooperatively at its next effect operation and joins it before failing with `Timeout`. Finalizers run. `Timeout(limit: Duration)` is the **only** timeout tag in std; `LlmError` reuses it (§11.1).
-- `Budget` is an effect: `Budget.reserve(estimate) -> Reservation`, `Budget.settle(reservation, actual)`. `Llm.generate` and `Http` handlers consume it when installed. Exceeding fails with `BudgetExceeded { kind: Tokens | Usd | Calls | Bytes | Time }`. Budgets are inherited by child tasks and split atomically.
+- `Budget` is an effect: `Budget.reserve(estimate: Cost) -> Reservation ! {Fail<BudgetExceeded>}`, `Budget.settle(reservation, actual: Cost)`, with `Cost = { tokens: Int, usd: Float, calls: Int }`. `Llm` provider handlers consume it when installed (`Http.host()` does not in v0) and `Agent.run` reserves each step's headroom itself. Exceeding fails with `BudgetExceeded { kind: Tokens | Usd | Calls }`; because a clause may fail only with the operation's declared tags (§5.5), `BudgetExceeded` is a member of `LlmError` (§17.69), so `Llm.generate` under a budget needs no extra tag in the caller's row. Budgets are inherited by child tasks and split atomically.
 
 ---
 
@@ -564,9 +568,9 @@ env      = ["DATABASE_URL", "ANTHROPIC_API_KEY"]
 process  = []          # no subprocesses
 ```
 
-- `sakura run` builds root handlers from this table. The `net` list limits the network effects (`Http`, `Serve`, `Sql.postgres`); a `main` that declares `Http` with an empty `net` list fails at startup with exit code 75, not at first use.
-- **Capability values** (`Dir`, `NetScope`, `EnvScope`, `SecretStore`) are external types (§4.2); user code cannot construct them (`V6001` if attempted via FFI tricks on supported targets). They are obtained only from operations of the installed handler (`Fs.root() -> Dir`), or by **attenuating** an existing one: `Dir.subdir(d, "uploads")`, `NetScope.restrict(n, ["api.example.com:443"])`.
-- Attenuation handlers are std functions: `Fs.rooted(dir) -> Handler<Fs>`, `Http.scoped(scope) -> Handler<Http, {Http}>` (its clauses forward to the outer `Http` after checking), `Env.only(keys) -> Handler<Env, {Env}>`.
+- `sakura run` builds root handlers from this table (§17.59): the driver passes it to the runtime as JSON in `SAKURA_PERMISSIONS` (the shape of the TOML table, paths relative to the package root) and the entry point calls the parameterless `host()` of every effect `main` declares (§13.3). `Fs.host()` reads only under `fs.read` and writes only under `fs.write`, `Http.host()` and `Serve.host()` reach only `net` hosts, `Env.host()` sees only `env` keys; a refusal is the operation's ordinary error (`FsError`, `HttpError`, `None`). The `net` list limits the network effects (`Http`, `Serve`, `Sql.postgres`); a `main` that declares `Http` with an empty `net` list fails at startup with exit code 75, not at first use. An unset table means no host limits (`sakura test` never sets it: tests use fake handlers, §5.8).
+- **Capability values** are external types (§4.2): in v0 the directory `Dir` and the resource `File`. User code cannot construct them (`V6001` if attempted via FFI tricks on supported targets). They are obtained only from operations of the installed handler (`Fs.root() -> Dir`, `Fs.with_file`), or by **attenuating** an existing one: `Dir.subdir(d, "uploads")`.
+- Attenuation handlers are std functions over a capability or plain data: `Fs.rooted(dir) -> Handler<Fs>`, `Http.scoped(hosts: List<String>) -> Handler<Http, {Http}>` (its clause forwards to the outer `Http` after checking the host against `host:port` entries), `Env.only(keys) -> Handler<Env, {Env}>`. There is no `NetScope` or `EnvScope` value: network and environment authority is data checked by the wrapper.
 
 ### 6.3 Capability scope check
 
@@ -576,7 +580,7 @@ A capability or a handler that captured one is a **scoped value**: it may be pas
 
 - `Secret<T>` wraps credentials. It is not `Show`, `Eq`, `Schema`, or `Ord`; it cannot be interpolated, logged, snapshotted, or serialized (`V2031`). `Env.secret("KEY") -> Option<Secret<String>>` (`None` when the variable is unset or outside the manifest's `env` list). Only std sinks accept it: `Http.bearer(req, secret)`, `Sql.postgres(url: Secret<String>)`, `Crypto.hmac(key: Secret<Bytes>, …)`. `Secret.expose(s, @trust("reason")) -> T` exists for adapters; `sakura audit` lists each use with its reason. This prevents accidental disclosure only (`R03 §2.12`).
 - `Untrusted<T>` wraps data from **outside the deployment**: raw request bodies, free-text LLM output, file contents read as text. Environment variables are operator-controlled and permission-gated, so `Env.get` returns a plain `Option<String>` (§17.15). `Untrusted` supports `Untrusted.validate(u) -> Result<V, Violation>` (into any refined type `V`, named by annotation: `let e: Email = Untrusted.validate(body)?`), `Untrusted.check(u, pred) -> Result<T, Violation>`, `Untrusted.len(u)`, `Untrusted.trust(u, @trust("reason")) -> T`, and `Untrusted.of(t)` for tests. It is `Show` (so it can be logged) but it is **not** accepted by raw-splice positions of `sql`/`html`/`shell`/`url` templates (those accept it only as a bound parameter or escaped text, which is always safe). Schema-decoded values (`Response.json`, `Json.decode`, `Llm.generate`) are already validated against the target type's refinements and are returned as that type, not `Untrusted<T>` (`R03 §2.11`).
-- `Trust` is the type of the expression `@trust("reason")` (§2.5). It cannot be stored, returned or constructed any other way (`V6001`), so every trust decision is a literal at the sink, and `sakura audit` lists them all.
+- `Trust` is the type of the expression `@trust("reason")` (§2.5). It cannot be stored, returned or constructed any other way (`V6001`), so every trust decision is a literal at the sink, and `sakura audit` lists them all. The sinks are `Untrusted.trust`, `Secret.expose` and `Html.raw` (markup inserted unescaped, §10.4).
 
 ### 6.5 Package-level authority
 
@@ -622,6 +626,8 @@ fn clamp(x: Int, lo: Int, hi: Int) -> Int
 
 `sakura test --contracts` synthesizes a property test for every `pub` function with at least one refined parameter or `requires` clause: inputs are generated **jointly** from parameter refinements and `requires` (constructive generators for ranges, lengths, enums, non-empty lists; filter-based fallback with a discard budget of 90%, reported as `W7001` when exceeded), the function is run under test default handlers, and `ensures` plus result refinements are checked. Failures are shrunk and stored under `tests/regressions/<fn>.json` (`R03 §2.5`). Functions with effects other than `Fail`, `Clock`, `Random` are skipped unless a `@contract_test(handlers: [Sql.memory(), Log.captured()])` attribute supplies handlers.
 
+A `property` block's own `requires` is a **filter** over the type-derived generators, not a constraint the generator solves: a quarter of a case's `Int`/`Float`/`String` values repeat one drawn earlier in the same case (so `requires List.contains(xs, x)` is usually satisfiable), inputs that still fail it are discarded, and a property whose discards exceed 90% of its runs fails with `gave up: N of M inputs discarded by requires`, because a property that barely ran is a false green (§17.64). Write the property so the generator makes the precondition hold (§15.9) or drive it with `std/gen` inside a `test`.
+
 ### 7.5 Upgrade path to SMT (not v0)
 
 M4 adds `sakura verify`: obligations from `requires`/`ensures`/`where`/overflow/division in the QF_LIA + QF_BV + EUF fragment are discharged by Z3 via SMT-LIB in a worker process; statuses `proved | disproved(counterexample) | unknown | unsupported`. Only `proved` removes a runtime check; `unknown` keeps it. `verify fn` (reserved keyword) later requests hard verification. Termination proofs are never implied (`R03 §4`).
@@ -653,7 +659,7 @@ Cyclic structures use `std/graph`: `Graph<N>` owns a table of nodes; edges are `
 
 ### 8.4 Resources
 
-Files, sockets, DB connections, HTTP bodies, fibers are **resource types**: affine (use at most once as a whole, no `Eq`/`Show`/`Schema`) and scope-bound. They are acquired through `with`-style scoping provided by the effect: `Fs.with_file(path, fn(file) { … })`, `Sql.transaction(fn(tx) { … })`. The closure's result may not contain the resource (`V6003`, same escape check as §6.3). Release happens on normal exit, `fail`, defect, and cancellation, in reverse acquisition order. Release failures are logged defects, never silent (`R02 §4.5`).
+Files, sockets, DB connections, HTTP bodies, fibers are **resource types**: affine (use at most once as a whole, no `Eq`/`Show`/`Schema`) and scope-bound. They are acquired through `with`-style scoping provided by the effect: `Fs.with_file(path, mode, fn(file) { … })`, `Sql.transaction(fn() { … })`; the body is a callback and runs under the performer's handlers (§5.5), so `Fs.read_chunk(file, n)` inside it reaches the handler that opened the file. The closure's result may not contain the resource (`V6003`, same escape check as §6.3). Release happens on normal exit, `fail`, defect, and cancellation, in reverse acquisition order. Release failures are logged defects, never silent (`R02 §4.5`).
 
 ### 8.5 Regions
 
@@ -841,7 +847,7 @@ fn Random.host() -> Handler<Random>
 fn Random.seeded(seed: Int) -> Handler<Random>                 // test default with --seed
 // std/env
 effect Env { fn get(key: String) -> Option<String>; fn secret(key: String) -> Option<Secret<String>> }
-fn Env.host(scope: EnvScope) -> Handler<Env>                   // keys from [permissions] env only
+fn Env.host() -> Handler<Env>                                 // the process environment, limited to [permissions] env
 fn Env.of(vars: Map<String, String>) -> Handler<Env>           // test default with Map.empty()
 fn Env.only(keys: List<String>) -> Handler<Env, {Env}>         // attenuates the enclosing Env
 // std/log
@@ -853,55 +859,56 @@ fn Log.captured() -> Handler<Log, {Test}>                      // "Warn message 
 // std/task: see §8.6
 // std/test: see §10.6
 // std/fs (M3)
-pub type Dir                                                   // external capability
+pub type Dir                                                   // external capability: Fs.root(), Dir.subdir
+pub opaque type File = { id: Int, path: Path, mode: Mode }    // a resource, valid only inside the with_file body that received it; external once the M3 escape check lands (§16.18)
+type Entry = { name: String, is_dir: Bool }
+type Mode = Read | Write | Append                              // Write creates or truncates, Append creates or extends
+error FsError(path: String, reason: String)
 effect Fs {
   fn root() -> Dir                                             // the handler's directory, for attenuation
   fn read(path: Path) -> Bytes ! {Fail<FsError>}
-  fn read_text(path: Path) -> Untrusted<String> ! {Fail<FsError>}
+  fn read_text(path: Path) -> Untrusted<String> ! {Fail<FsError>}   // invalid UTF-8 is an FsError
   fn write(path: Path, data: Bytes) -> Unit ! {Fail<FsError>}
-  fn list(dir: Path) -> List<Entry> ! {Fail<FsError>}
+  fn list(dir: Path) -> List<Entry> ! {Fail<FsError>}         // sorted by name
   fn exists(path: Path) -> Bool
-  fn with_file<T, e>(path: Path, mode: Mode, body: fn(File) -> T ! e) -> T ! {Fail<FsError> | e}
+  fn with_file<T, e>(path: Path, mode: Mode, body: fn(File) -> T ! e) -> T ! {Fail<FsError> | e}   // closes on return, fail, defect, cancel
+  fn read_chunk(file: File, max: Int) -> Bytes ! {Fail<FsError>} requires max > 0   // empty at the end
+  fn write_chunk(file: File, data: Bytes) -> Unit ! {Fail<FsError>}                // at the end; FsError on a Read file
 }
-fn Fs.host(dir: Dir) -> Handler<Fs>
+fn Fs.read_all(file: File) -> Bytes ! {Fs, Fail<FsError>}      // chunks until the end
+fn Fs.host() -> Handler<Fs>                                    // the package directory within [permissions] fs
 fn Fs.rooted(dir: Dir) -> Handler<Fs>
-fn Fs.memory(files: List<(Path, Bytes)>) -> Handler<Fs>
+fn Fs.memory(files: List<(Path, Bytes)>) -> Handler<Fs>        // test handler; root() has no host access; with_file writes back on return
 fn Dir.subdir(d: Dir, name: String) -> Dir ! {Fail<FsError>}
-// std/http (M3), client
-effect Http { fn send(req: Request) -> Response ! {Fail<HttpError>} }
-fn Http.host(scope: NetScope) -> Handler<Http, {Budget}>
-fn Http.scoped(scope: NetScope) -> Handler<Http, {Http}>
-fn Http.scripted(script: List<(Matcher, Response)>) -> Handler<Http>
-fn Http.recording(path: Path) -> Handler<Http, {Http, Fs}>
-// std/serve (M3), server; one per process
-effect Serve { fn listen(router: Router, addr: Address) -> Never ! {Fail<ServeError>} }
-fn Serve.host(scope: NetScope) -> Handler<Serve>
+// std/http, std/serve (M3): §10.4
 // std/sql (M3)
+type SqlValue = Null | Int(Int) | Float(Float) | Text(String) | Blob(Bytes)
+pub opaque type Query<R>                                       // only sql"…" builds one; parameters are always bound
+error SqlError(message: String)
 effect Sql {
   fn query<R: Schema>(q: Query<R>) -> List<R> ! {Fail<SqlError>}
   fn execute(q: Query<Unit>) -> Int ! {Fail<SqlError>}            // rows affected
-  fn transaction<T, e>(body: fn() -> T ! {Sql | e}) -> T ! {Fail<SqlError> | e}
+  fn transaction<T, e>(body: fn() -> T ! {Sql | e}) -> T ! {Fail<SqlError> | e}   // body is a callback (§5.5); nests as savepoints
 }
-fn Sql.sqlite(path: Path) -> Handler<Sql, {Fs}>
+fn sql.migrate(statements: List<Query<Unit>>) -> Unit ! {Sql, Fail<SqlError>}
+fn Sql.sqlite(path: Path) -> Handler<Sql, {Fs}>                // the file lives inside the installed Fs handler's root
 fn Sql.memory() -> Handler<Sql>
 fn Sql.postgres(url: Secret<String>) -> Handler<Sql, {Http}>   // v1
 // std/budget (M3)
 type Limits = { tokens: Option<Int>, usd: Option<Float>, calls: Option<Int> }   // None = unlimited
+type Cost = { tokens: Int, usd: Float, calls: Int }
+type Reservation = { estimate: Cost }
+type BudgetKind = Tokens | Usd | Calls
+error BudgetExceeded(kind: BudgetKind)
 effect Budget { fn reserve(est: Cost) -> Reservation ! {Fail<BudgetExceeded>}; fn settle(r: Reservation, actual: Cost) -> Unit }
-fn Budget.limits(l: Limits) -> Handler<Budget>
+fn Budget.limits(l: Limits) -> Handler<Budget>                 // fails the reservation that would pass a limit
 fn Budget.unlimited() -> Handler<Budget>
-// std/llm (M3)
-effect Llm {
-  fn generate<T: Schema>(req: Request<T>) -> T ! {Fail<LlmError>}
-  fn generate_text(req: Request<String>) -> Untrusted<String> ! {Fail<LlmError>}
-  fn stream<T: Schema>(req: Request<T>, on_partial: fn(Partial<T>) -> Unit) -> T ! {Fail<LlmError>}
-}
-fn Llm.anthropic(key: Secret<String>, model: Model) -> Handler<Llm, {Http, Budget}>
-fn Llm.scripted(responses: List<String>) -> Handler<Llm>       // raw model outputs, in order
-fn Llm.replay(path: Path) -> Handler<Llm, {Fs}>
+fn Budget.zero() -> Cost
+// std/llm (M3): §10.7
+// std/cli (M3): §10.5
 ```
 
-Every `host` handler is built by the driver from the manifest's `[permissions]`; user code installs the others with `with`.
+Every `host()` is parameterless: the driver installs one per effect in `main`'s row and the host handlers read the manifest's `[permissions]` from `SAKURA_PERMISSIONS` (§6.2, §17.59); user code installs the others with `with`.
 
 ### 10.3 Data (`std/json`, `std/duration`, `std/instant`, `std/uuid`, `std/url`, `std/path`, `std/decimal`)
 
@@ -918,41 +925,72 @@ type Instant = Instant(Int)     // milliseconds since 1970-01-01T00:00:00Z; Inst
                                 // .add(i, d), .diff(a, b) -> Duration, .format_iso(i) (RFC 3339 UTC), .parse(iso) -> Result<Instant, TimeError>
 pub opaque type Uuid = Uuid(String)   // canonical lowercase; Uuid.to_string(u), Uuid.parse(s) -> Result<Uuid, UuidError>
 type Url = String where Url.is_valid(it)   // Url.parse(s) -> Result<Url, UrlError> is validate; Url.host(u); url"https://{host}/x?q={q}" percent-encodes parts (M3)
-pub opaque type Path = Path(List<String>)  // relative paths only; Path.of(s) -> Path requires Path.is_relative(s); Path.join(p, seg) -> Path requires seg != ".." (M3)
-pub opaque type Decimal = { units: Int, scale: Int }   // fixed-point base-10 money; Decimal.parse, add, sub, mul, div_checked -> Option, round(places), to_string (M3)
+type Path = String where Path.is_relative(it)   // no leading "/", no ".." segment (§17.54); Path.of(s) normalizes "." and empty segments (requires is_relative(s): D020, so untrusted input goes through Path.validate), Path.join(p, rest), Path.to_string(p); Cli.parse and Json.decode read it as a refined String
+pub opaque type Decimal = { whole: Int, frac: List<Int> }   // exact base-10 (§17.53): floor plus fractional digits without trailing zeros, so the derived Eq/Ord are numeric; Decimal.parse, from_int, zero, add, sub, neg, mul (exact), div_checked(a, b, places) -> Option, round(places) (half to even), to_string ("-12.34"; interpolation shows the record form); more digits than Int holds is a defect like any overflow
 ```
 
 Milliseconds, not nanoseconds: a nanosecond `Instant` is already past 2^53 and would defect on the JS backend (§17.7). Sub-millisecond time is not in v0.
 
-### 10.4 Web (`std/http`, `std/router`, `std/html`, M3)
+### 10.4 Web (`std/request`, `std/response`, `std/http`, `std/router`, `std/html`, `std/serve`, M3)
+
+One home module per type (§4.9, §17.56): `Request.json` and `Response.json`, or `Request.post_json` and `Http.post_json`, would otherwise be one name.
 
 ```sakura
-type Request  = { method: Method, url: Url, headers: Headers, body: Body }
-type Response = { status: Status, headers: Headers, body: Body }
-type Status = Int where it >= 100 && it <= 599                            // Status.from(200), Status.validate(code)
-type Matcher = Any | Path(String) | Method(Method)                        // for Http.scripted
-error HttpError(status: Option<Status>, reason: String)
-error RateLimited(retry_after: Option<Duration>)                          // shared with LlmError (§11.1)
-error BadRequest(detail: String)
-fn Http.get(url: Url) -> Response ! {Http, Fail<HttpError | RateLimited>}
-fn Http.post_json<T: Schema>(url: Url, body: T) -> Response ! {Http, Fail<HttpError | RateLimited>}
-fn Http.bearer(req: Request, token: Secret<String>) -> Request
-fn Request.post(path: String, body: String) -> Request                   // builds a request for route handlers and tests
+// std/request
+type Method = Get | Head | Post | Put | Patch | Delete
+type Request = { method: Method, url: Url, headers: List<(String, String)>, body: String,
+                 secret_headers: List<(String, Secret<String>)>,          // sent by host handlers; never shown, matched or recorded (§17.57)
+                 params: List<(String, String)> }                         // path parameters a Router matched
+error BadRequest(detail: String)                                          // detail is safe to return to the client
+fn Request.of(method: Method, url: Url) -> Request
+fn Request.post(path: String, body: String) -> Request                    // for route handlers and their tests
 fn Request.post_json<T: Schema>(url: Url, body: T) -> Request
-fn Request.json<T: Schema>(req: Request, limit: Int) -> T ! {Fail<BadRequest>}   // name T by annotation
-fn Request.param(req: Request, name: String) -> Option<String>
+fn Request.json<T: Schema>(req: Request, limit: Int) -> T ! {Fail<BadRequest>}   // name T by annotation; refinements checked
+fn Request.param(req: Request, name: String) -> Option<String>            // path parameter, then query parameter
+fn Request.header(req: Request, name: String) -> Option<String>           // case-insensitive
+// std/response
+type Status = Int where it >= 100 && it <= 599                            // Status.from(200), Status.validate(code)
+type Response = { status: Status, headers: List<(String, String)>, body: String }
+error HttpError(status: Option<Status>, reason: String)                   // no response (None), a non-2xx body read, or a body over its limit
+fn Response.status(code: Int, body: String) -> Response requires code >= 100 && code <= 599
+fn Response.ok_json<T: Schema>(value: T) -> Response
+fn Response.html(h: Html) -> Response
 fn Response.json<T: Schema>(r: Response, limit: Int) -> T ! {Fail<HttpError | DecodeError>}
 fn Response.text(r: Response, limit: Int) -> Untrusted<String> ! {Fail<HttpError>}
-fn Response.ok_json<T: Schema>(value: T) -> Response
-fn Response.status(code: Int, body: String) -> Response requires code >= 100 && code <= 599
-fn Response.html(h: Html) -> Response
-fn Router.new() -> Router
-fn Router.get<e>(r: Router, path: String, h: fn(Request) -> Response ! e) -> Router       // e must be ⊆ the row given to Serve.listen's handler table
-fn Router.post<e>(r: Router, path: String, h: fn(Request) -> Response ! e) -> Router
-pub opaque type Html = Html(String)   // html"..." builds; Html.text(s) escapes; Html.raw(s: TrustedHtml)
+// std/http, client
+type Matcher = Any | Path(String) | Method(Method)                        // for Http.scripted
+error RateLimited(retry_after: Option<Duration>)                          // a 429; shared with LlmError (§11.1)
+effect Http { fn send(req: Request) -> Response ! {Fail<HttpError>} }     // any status is a response; fails only without one
+fn Http.get(url: Url) -> Response ! {Http, Fail<HttpError | RateLimited>}
+fn Http.post_json<T: Schema>(url: Url, body: T) -> Response ! {Http, Fail<HttpError | RateLimited>}
+fn Http.bearer(req: Request, token: Secret<String>) -> Request            // adds ("authorization", "Bearer …") to secret_headers
+fn Http.host() -> Handler<Http>                                           // fetch, within [permissions] net
+fn Http.scoped(hosts: List<String>) -> Handler<Http, {Http}>             // forwards to the outer Http for the listed host:port entries only
+fn Http.scripted(script: List<(Matcher, Response)>) -> Handler<Http>     // first match; no match is an HttpError
+fn Http.recording(path: Path) -> Handler<Http, {Http, Fs}>                // planned; records headers and bodies, never secret_headers
+// std/router: data; routes match in insertion order; handle is an ordinary function, so routes are tested without a server
+pub opaque type Router<e>                                                 // e = what the route handlers perform
+fn Router.new<e>() -> Router<e>
+fn Router.route<e>(r: Router<e>, method: Method, pattern: String, h: fn(Request) -> Response ! e) -> Router<e>   // ":name" segments fill Request.params
+fn Router.get<e>(r: Router<e>, pattern: String, h: fn(Request) -> Response ! e) -> Router<e>   // likewise post, put, delete
+fn Router.handle<e>(r: Router<e>, req: Request) -> Response ! e          // 405 when only the method differs, 404 when no path matches
+// std/html
+pub opaque type Html = Html(String)                                       // html"…" builds; every interpolated value is escaped text
+fn Html.text(s: String) -> Html                                           // escapes & < > " '
+fn Html.untrusted(u: Untrusted<String>) -> Html                           // escaped; the safe way to show it
+fn Html.raw(markup: String, reason: Trust) -> Html                        // unescaped; sakura audit lists the reason (§17.52)
+fn Html.concat(parts: List<Html>) -> Html
+fn Html.to_string(h: Html) -> String
+// std/serve, server; one per process
+type Address = { host: String, port: Int }                                // Address.of(host, port) requires 0 <= port <= 65_535
+error ServeError(reason: String)                                          // could not start, or a scripted server ran out of requests
+effect Serve { fn serve<e>(handle: fn(Request) -> Response ! e, addr: Address) -> Never ! {Fail<ServeError> | e} }
+fn Serve.listen<e>(router: Router<e>, addr: Address) -> Never ! {Serve, Fail<ServeError> | e}   // Serve.serve(fn(req) { Router.handle(router, req) }, addr)
+fn Serve.host() -> Handler<Serve>                                         // listens within [permissions] net
+fn Serve.scripted(requests: List<Request>) -> Handler<Serve, {Test}>      // answers each request, writes "Method /path -> status body" to Test.output, then fails ServeError
 ```
 
-Route handlers run per request in their own task with the handler environment captured at `Serve.listen`; a handler's defect becomes a 500 with a redacted report, never a crashed server.
+`handle` is a callback (§5.5): every request runs in its own task under the handlers installed around `Serve.listen`, so `with Sql.sqlite(…), Log.json() { Serve.listen(router, addr) }` serves every route with that database and log. A route handler's failure or defect becomes a 500 with a redacted report, never a crashed server. Listening can fail (a port in use), so a `main` that serves declares `Fail<ServeError>` (§15.5, §17.55).
 
 ### 10.5 CLI (`std/cli`, M3)
 
@@ -965,6 +1003,8 @@ fn Cli.host() -> Handler<Cli>
 fn Cli.of(args: List<String>) -> Handler<Cli>                         // for tests
 fn Cli.parse<T: Schema>(args: List<String>) -> T ! {Fail<CliError>}  // flags from record fields; `--help` generated; name T by annotation
 ```
+
+`Cli.exit` under `Cli.of` is the defect `D030` (a clause cannot abort its performer, §5.5), so a test asserts an exit with `expect_defect` (§17.60).
 
 ### 10.6 Testing (`std/test`, `std/gen`)
 
@@ -997,33 +1037,53 @@ fn gen.for_all<A: Show, e>(g: Gen<A>, runs: Int, prop: fn(A) -> Unit ! {Test | e
 
 The module is `std/test` (a keyword segment, §9); its names are in the prelude, so it is imported only inside std. `std/gen` is imported as `import std/gen` and used as `gen.int(0, 9)`.
 
-### 10.7 AI (`std/llm`, `std/tool`, `std/agent`, M3)
+### 10.7 AI (`std/prompt`, `std/llm`, `std/tool`, `std/agent`, M3)
 
 ```sakura
-// std/llm
-type Request<T> = { system: String, user: Prompt, model: Model, max_tokens: Int, temperature: Float, tools: List<Tool>, max_steps: Int }
-type PromptPart = Text(String) | Untrusted(Untrusted<String>) | Image(Bytes)
+// std/prompt
+type PromptPart = Text(String) | Untrusted(Untrusted<String>) | Image(Bytes)   // Untrusted parts reach the provider marked as data, never instructions
 pub opaque type Prompt = Prompt(List<PromptPart>)
 fn Prompt.of(parts: List<PromptPart>) -> Prompt
 fn Prompt.text(s: String) -> Prompt
-fn Model.of(name: String) -> Model
-fn Model.default() -> Model                                              // resolved by the handler
-fn Llm.request<T: Schema>(system: String, user: Prompt) -> Request<T>    // name T by annotation; model: Model.default(), no tools
-type LlmError = Refused | InvalidOutput | Truncated | RateLimited | Timeout | ProviderError
-error Refused
-error InvalidOutput(violations: List<Violation>)
-error Truncated
+fn Prompt.parts(p: Prompt) -> List<PromptPart>
+// std/llm
+type Model = Model(String)                                                // Model.of(name); Model.default() lets the handler choose
+type Request<T> = { system: String, user: Prompt, model: Model, max_tokens: Int, temperature: Float }
+fn Llm.request<T: Schema>(system: String, user: Prompt) -> Request<T>     // name T by annotation; default model, 1024 tokens, temperature 0
+error Refused                                                             // the provider declined
+error InvalidOutput(violations: List<Violation>)                          // the output did not decode as T; one violation per failed check
+error Truncated                                                           // hit max_tokens
 error ProviderError(status: Int)
+type LlmError = Refused | InvalidOutput | Truncated | RateLimited | Timeout | ProviderError | BudgetExceeded
+type ToolSpec = { name: String, description: String, schema: Json }     // what the provider sees of a tool: the JSON Schema of its arguments
+type ToolCall = { id: String, name: String, input: Json }
+type ToolResult = { id: String, output: Json }
+type Turn = Asked(List<ToolCall>) | Answered(List<ToolResult>)            // the transcript after the user prompt, in order
+type Step<T> = Answer(T) | Use(List<ToolCall>)                            // one model turn of an agent loop
+type Partial<T> = { text: String, step: Int, calls: List<ToolCall> }      // output so far (stream); steps taken and calls made (agent loop)
+effect Llm {
+  fn generate<T: Schema>(req: Request<T>) -> T ! {Fail<LlmError>}
+  fn generate_text(req: Request<String>) -> Untrusted<String> ! {Fail<LlmError>}
+  fn stream<T: Schema, e>(req: Request<T>, on_partial: fn(Partial<T>) -> Unit ! e) -> T ! {Fail<LlmError> | e}
+  fn step<T: Schema>(req: Request<T>, tools: List<ToolSpec>, transcript: List<Turn>) -> Step<T> ! {Fail<LlmError>}   // with no tools the model must answer
+}
+fn Llm.anthropic(key: Secret<String>, model: Model) -> Handler<Llm, {Http, Budget}>   // reserves against Budget before each call, settles actual usage after
+fn Llm.scripted(responses: List<String>) -> Handler<Llm>                 // raw model outputs in order; running out is a defect; tool calls below
+fn Llm.replay(path: Path) -> Handler<Llm, {Fs}>                          // planned
 // std/tool
-pub opaque type Tool = { name: String, description: String, schema: JsonSchema, call: fn(Json) -> Json ! {Fail<ToolError>} }
-error ToolError(tool: String, tag: String, payload: Json)
-fn Tool.of(f: /* @tool fn */) -> Tool                                   // compiler intrinsic; the argument must name a @tool function
+pub opaque type Tool<e> = { spec: ToolSpec, run: fn(Json) -> Json ! {Fail<ToolError> | e} }   // e = what the tool performs
+error ToolError(tool: String, tag: String, payload: Json)               // tag: the function's error tag, "DecodeError" (bad arguments) or "UnknownTool"
+fn Tool.from<A: Schema, R: Schema, E: Schema + Show, e>(name: String, description: String, f: fn(A) -> R ! {Fail<E> | e}) -> Tool<e>   // A: one field per argument
+fn Tool.of(f: /* @tool fn */) -> Tool<e>                                  // compiler sugar over Tool.from (§11.2)
+fn Tool.call<e>(t: Tool<e>, input: Json) -> Json ! {Fail<ToolError> | e}   // under the caller's handlers
+fn Tool.name<e>(t: Tool<e>) -> String
+fn Tool.spec<e>(t: Tool<e>) -> ToolSpec
 // std/agent
-type Agent<T> = { request: Request<T>, tools: List<Tool>, max_steps: Int, stop: fn(Partial<T>) -> Bool }
-fn Agent.run<T: Schema>(a: Agent<T>) -> T ! {Llm, Budget, Fail<LlmError | ToolError | BudgetExceeded>}
+type Agent<T, e> = { request: Request<T>, tools: List<Tool<e>>, max_steps: Int, stop: fn(Partial<T>) -> Bool }
+fn Agent.run<T: Schema, e>(a: Agent<T, e>) -> T ! {Budget, Llm, Fail<BudgetExceeded | LlmError | ToolError> | e} requires a.max_steps > 0
 ```
 
-`RateLimited` is `std/http.RateLimited` and `Timeout` is `std/task.Timeout` (§5.9): one tag per concept, shared across unions. A request is modified with a record update (`Request { ..req, user: Prompt.text("…") }`); there are no builder functions. See §11 for semantics.
+`RateLimited` is `std/http.RateLimited`, `Timeout` is `std/task.Timeout` and `BudgetExceeded` is `std/budget.BudgetExceeded` (§5.9): one tag per concept, shared across unions. A request is modified with a record update (`Request { ..req, max_tokens: 4_000 }`); there are no builder functions. **Scripted tool calls** (§17.51): under `Llm.scripted`, an output for `step` that is a JSON object with a `tool_use` array, `{"tool_use": [{"name": "kb_search", "input": {"query": "refunds"}}]}`, is a tool-call turn (ids `call_<turn>_<index>`); any other output is the answer. `stream` reports the whole output as one partial. See §11 for semantics.
 
 ---
 
@@ -1031,27 +1091,27 @@ fn Agent.run<T: Schema>(a: Agent<T>) -> T ! {Llm, Budget, Fail<LlmError | ToolEr
 
 ### 11.1 Typed LLM calls
 
-`Llm.generate(req)` with `req: Request<T>` sends the prompt with `T`'s derived JSON Schema as the structured-output constraint, decodes the response as `Json.decode` would (so **all refinements are checked**), and returns `T`. Failures are typed: `LlmError = Refused | InvalidOutput | Truncated | RateLimited | Timeout | ProviderError` (§10.7; `RateLimited` and `Timeout` are the std-wide tags). Schema-valid output is not truth; the docs and `sakura doc` say so on every `Llm` entry (`R05 §2.6`). Repair/retry is explicit: `retry(retry.policy(fn(e) { match e { InvalidOutput { .. } => true, _ => false } }, 3), fn() { Llm.generate(req) })`, charged to the same `Budget`.
+`Llm.generate(req)` with `req: Request<T>` sends the prompt with `T`'s derived JSON Schema as the structured-output constraint, decodes the response as `Json.decode` would (so **all refinements are checked**), and returns `T`. Failures are typed: `LlmError = Refused | InvalidOutput | Truncated | RateLimited | Timeout | ProviderError | BudgetExceeded` (§10.7; `RateLimited`, `Timeout` and `BudgetExceeded` are the std-wide tags). Schema-valid output is not truth; the docs and `sakura doc` say so on every `Llm` entry (`R05 §2.6`). Repair/retry is explicit: `retry(retry.policy(fn(e) { match e { InvalidOutput { .. } => true, _ => false } }, 3), fn() { Llm.generate(req) })`, charged to the same `Budget`.
 
-`@llm` sugar on a function declares the prompt in place and desugars to the above:
+`@llm` sugar on a bodiless function declares the prompt in place and desugars to the above (§17.65):
 
 ```sakura
 @llm(system: "Extract only facts present in the text.")
-fn extract_ticket(text: Untrusted<String>) -> Ticket ! {Llm, Budget, Fail<LlmError | BudgetExceeded>}
+fn extract_ticket(text: Untrusted<String>) -> Ticket ! {Llm, Fail<LlmError>}
 // body omitted: the compiler generates
-//   let req: Request<Ticket> = Llm.request(system, Prompt.of([Untrusted(text)]))
+//   let req: Request<Ticket> = Llm.request("Extract only facts present in the text.", Prompt.of([PromptPart.Untrusted(text)]))
 //   Llm.generate(req)
 ```
 
-The parameter list becomes the user prompt (each parameter rendered by `Show` or as an `Untrusted` part, which the handler marks as data, never instructions, in the provider payload). `sakura ai preview extract_ticket --arg text=…` prints the exact provider payload with secrets redacted. `Llm.scripted`/`Llm.replay` handlers make tests deterministic and offline.
+The desugaring is fixed: `system` is the attribute's string literal; the user prompt is `Prompt.of` over the parameters in declaration order, a parameter of type `Untrusted<String>` as `PromptPart.Untrusted(p)` (the handler marks it as data, never instructions, in the provider payload) and any other parameter as `PromptPart.Text("<name>: {show(p)}")`, which needs `Show` (`V2032` otherwise); the result type is the declared one, and the declared row must admit `Llm` and `Fail<LlmError>` like any body (`V3001`). The compiler resolves the std names itself, so the function needs no imports beyond those its signature uses. `Budget` is performed by the provider handler, not by the function, so it is not in this row (§5.9). `sakura ai preview extract_ticket --arg text=…` prints the exact provider payload with secrets redacted. `Llm.scripted`/`Llm.replay` handlers make tests deterministic and offline.
 
 ### 11.2 Tools from functions and MCP export
 
-A `@tool("description")` function must have `Schema` parameters and result, and an error union of `Schema` tags. `Tool.of(name)` builds a `Tool` whose `schema` is derived from the parameters and whose `call` validates JSON arguments, runs the function **under the caller's current handlers** (the model never supplies authority; the installing code does), and maps failures to a public `ToolError` with the tag name and payload. `sakura mcp serve --tools a,b` exports the same `Tool` values over MCP stdio/HTTP, with the manifest's `[permissions]` as the ceiling (`R05 §5`).
+A `@tool("description")` function must have `Schema` parameters and result, and an error union of `Schema` tags. `Tool.of(f)` is sugar (§17.66) for `Tool.from("<f>", "<description>", fn(args: <Args>) { f(args.p1, …, args.pn) })`, where `<Args>` is a compiler-synthesized record type with one field per parameter of `f`, in order, that no source can name; its `Schema` is the tool's argument schema. `Tool.from` decodes JSON arguments against that schema (refinements included; a mismatch is `ToolError { tag: "DecodeError" }`), runs the function **under the caller's current handlers** (the model never supplies authority; the installing code does), encodes the result, and maps a failure to `ToolError { tool, tag, payload }` with the tag's name and its fields as JSON. `Tool.of` and `Tool.from` therefore build the same value; `Tool.of` exists so a tool is described once, at its function. `sakura mcp serve --tools a,b` exports the same `Tool` values over MCP stdio/HTTP, with the manifest's `[permissions]` as the ceiling (`R05 §5`).
 
 ### 11.3 Agent loop and budgets
 
-`Agent.run(a)` is an ordinary loop in std (readable, not magic): generate → if the model requested tool calls, validate and execute each via `Tool.call` → append results → repeat until `a.stop(partial)` or `a.max_steps`; every step reserves against `Budget` first and settles after. `BudgetExceeded` ends the loop with the partial trace attached. The configuration is data (`Agent { request, tools, max_steps, stop }`), so tests build it with record literals. A scripted format for tool calls in `Llm.scripted` is not defined in v0 (§16.15); agent loops are tested against `Llm.replay` recordings. Durable/resumable agents are a v1 package (`std/workflow`), not v0.
+`Agent.run(a)` is an ordinary loop in std (readable, not magic) over `Llm.step`: before each step it reserves the request's `max_tokens` and one call against `Budget` (a step that cannot fit never starts; the provider handler charges the actual usage, so the reservation is settled to zero afterwards), then performs `step` with the tools' specs and the transcript so far. `Answer(value)` returns it; `Use(calls)` runs each call through `Tool.call` under the loop's handlers, appends `Asked`/`Answered` turns, and asks `a.stop(partial)`; when `stop` says so, or the step is the last of `a.max_steps`, the model is offered no tools and must answer (a tool call there is `InvalidOutput`). A tool failure ends the loop with its `ToolError`; `BudgetExceeded` ends it at the reservation. The configuration is data (`Agent { request, tools, max_steps, stop }`), so tests build it with record literals and script the model with `Llm.scripted` tool-call turns (§10.7, §16.15 is closed). Durable/resumable agents are a v1 package (`std/workflow`), not v0.
 
 ---
 
@@ -1061,13 +1121,13 @@ A `@tool("description")` function must have `Schema` parameters and result, and 
 
 | Command | Behavior |
 |---|---|
-| `sakura new <api|cli|agent|lib> name`, `sakura init` | Scaffold with `sakura.toml`, lockfile, `src/main.sakura`, one test, `[permissions]` section. |
-| `sakura check [--json] [--frozen-specs …] [paths]` | Parse, resolve, type/effect check, contracts subset, exhaustiveness. No codegen. Holes allowed. |
+| `sakura new <api|cli|agent|lib> name`, `sakura init` | Scaffold with `sakura.toml` (including a `[permissions]` section), `sakura.lock`, `src/main.sakura` with one test, and `.gitignore` (`/target/`); `init` keeps existing files; neither runs `git init` (§17.63). The `api` template is a `/health` route under `Serve.listen` with a test that calls the router directly. |
+| `sakura check [--json] [--frozen-specs <symbols|all> [--since <rev>]] [paths]` | Parse, resolve, type/effect check, contracts subset, exhaustiveness. No codegen. Holes allowed. `--frozen-specs` compares the named symbols (names or ids, plus `permissions`) with the git tree at `--since` (default `HEAD`): a changed signature, row, error union, contract, test body or permission is `V8020`; outside a git checkout it is a usage error (§17.62). |
 | `sakura build [--target js] [--release] [--manifest]` | Check + codegen. Holes rejected (`V2050`). `--manifest` writes the trust/assurance manifest. |
-| `sakura run [file] [-- args]` | Check, build, execute under root handlers from `[permissions]`. |
+| `sakura run [file] [-- args]` | Check, build, execute under root handlers from `[permissions]` (passed to the runtime in `SAKURA_PERMISSIONS`); a declared effect with no grant is exit 75 before `main` starts. |
 | `sakura test [--json] [--seed N] [--contracts] [--filter pat] [--update-snapshots]` | Runs `test`/`property`; deterministic default handlers; network denied; per-test time/memory limits. |
 | `sakura fmt [--check]` | Canonical format (§12.5). |
-| `sakura fix [--preview] [--apply id,…]` | Lists compiler fixes with impact class; applies only `machine_applicable` ones unless an id is given. Never applies `contract_change`/`authority_change`. |
+| `sakura fix [--preview] [--apply id,…] [--frozen-specs … [--since <rev>]]` | Lists compiler fixes with impact class; applies only `machine_applicable` ones unless an id is given. Never applies `contract_change`/`authority_change`; with `--frozen-specs` a fix set that changes a frozen spec is rejected whole. |
 | `sakura explain V3001` | Rationale, causes, repair alternatives. |
 | `sakura doc [--search "fn(List<A>) -> Int"] [symbol]` | Offline docs and signature search. |
 | `sakura prompt [--budget tokens]` | Emits `docs/llms.txt` (compiler-matched edition) plus requested library signatures. |
@@ -1121,8 +1181,8 @@ The `hole` record is exactly:
   "name": "result",                          // the identifier after `?`
   "snapshot": "sha256:…",
   "span": { …same span shape as diagnostics, "role": "primary" },
-  "expected_type": { "render": "Int", "structured": null },
-  "allowed_effects": { "render": "{Console}", "row": { … } },
+  "expected_type": { "render": "Int" },                         // structured keys beside `render` when known, as in `expected`
+  "allowed_effects": { "render": "{Console}", "row": { … } },   // `row` present once the checker exposes it (§17.61)
   "locals": [ { "name": "x", "type": { "render": "Int" } } ],           // innermost last
   "candidates": [ { "expr": "x", "fit": "exact_local" } ],              // ranked, at most 10
   "contracts_in_scope": [ "requires lo <= hi" ]
@@ -1209,7 +1269,7 @@ Invariants checked by `sakura_core::validate` after every pass: every `Local` is
 - **Suspension** (live `Clock.sleep`, `Http.send`, `Task`): a host handler returns a `Suspend(promise)` step; the driver awaits it and resumes `k`. The handler environment is captured in `ctx`, never read from a global (`R01 §4.5`).
 - **Direct-style fast path (M2):** functions whose row is `{}` and whose callees are all direct are emitted as plain JS functions; adapters bridge the two ABIs at calls from CPS code. Measured, not assumed (`R01 §3.2`).
 - Output is readable ES2022 modules with original names, one file per Sakura Lang module, source maps, and a `sakura_runtime.js` (handler stack, trampoline, collections, `Show`, `Eq`, hashing, decimal, JSON Schema codecs).
-- **Entry.** The emitter generates `$entry`, which builds a root handler for each effect in `main`'s row by calling `<effect module>.host()` with the host capabilities derived from `[permissions]`, installs them, and calls `main`. For `sakura test` each `test` becomes a wrapper `fn(seed: Int)` that installs the §5.8 defaults for the std effects the body uses; the runner installs `Test` outermost. Exit codes are §12.1; an uncaught `Fail` from `main` is exit 1, a defect exit 70 with the `defect` record on stderr.
+- **Entry.** The emitter generates `$entry`, which builds a root handler for each effect in `main`'s row by calling the parameterless `<effect module>.host()`, installs them, and calls `main`; the host handlers read the manifest's `[permissions]` from `SAKURA_PERMISSIONS`, which `sakura run` sets (§6.2). `Perform` re-binds every function-typed operation argument to the performer's handler stack before the clause runs (§5.5). For `sakura test` each `test` becomes a wrapper `fn(seed: Int)` that installs the §5.8 defaults for the std effects the body uses; the runner installs `Test` outermost. Exit codes are §12.1; an uncaught `Fail` from `main` is exit 1, a defect exit 70 with the `defect` record on stderr.
 
 ### 13.4 Runtime representation of values (JS)
 
@@ -1480,11 +1540,13 @@ test "missing user is NotFound" {
 ### 15.5 JSON HTTP API with a database
 
 ```sakura
-import std/http.{Request, Response, Status, BadRequest}
-import std/router.{Router}
-import std/serve.{Serve, Address}
-import std/sql.{Sql, SqlError}
+import std/fs.{Fs}
 import std/path.{Path}
+import std/request.{BadRequest, Request}
+import std/response.{Response, Status}
+import std/router.{Router}
+import std/serve.{Address, Serve, ServeError}
+import std/sql.{Sql, SqlError}
 
 type Email = String where String.len(it) <= 254 && String.contains(it, "@")
 type NewUser = { email: Email, name: String }
@@ -1512,11 +1574,12 @@ fn handle_create(req: Request) -> Response ! {Sql, Log} {
     SqlError { .. } => {
       Log.event(Level.Error, "db error", [])
       Response.status(503, "try again")
-    }
+    },
   }
 }
 
-pub fn main() -> Unit ! {Serve, Sql, Log, Env} {
+// `Sql.sqlite` needs `Fs`; `Sql` and `Log` are handled below; listening can fail.
+pub fn main() -> Unit ! {Fs, Serve, Fail<ServeError>} {
   let router = Router.new()
     .post("/users", handle_create)
     .get("/health", fn(_req) { Response.status(200, "ok") })
@@ -1566,9 +1629,9 @@ pub fn main() -> Unit ! {Console, Cli, Fs, Fail<CliError | FsError>} {
 ### 15.7 Typed LLM extraction with budget and offline test
 
 ```sakura
-import std/llm.{Llm, LlmError, InvalidOutput, Model}
-import std/budget.{Budget, BudgetExceeded, Limits}
+import std/budget.{Budget, Limits}
 import std/http.{Http}
+import std/llm.{InvalidOutput, Llm, LlmError, Model}
 
 type Priority = Low | Normal | High
 type Ticket = {
@@ -1577,22 +1640,22 @@ type Ticket = {
   evidence: List<String>,
 }
 
+// The function performs `Llm`; the provider handler performs `Budget` (§5.9). `BudgetExceeded` is an `LlmError`.
 @llm(system: "Extract a support ticket. Use only facts present in the message.")
-fn extract_ticket(message: Untrusted<String>) -> Ticket
-  ! {Llm, Budget, Fail<LlmError | BudgetExceeded>}
+fn extract_ticket(message: Untrusted<String>) -> Ticket ! {Llm, Fail<LlmError>}
 
-pub fn main() -> Unit ! {Console, Env, Http, Fail<LlmError | BudgetExceeded>} {
+pub fn main() -> Unit ! {Console, Env, Http, Fail<LlmError>} {
   let key = Env.secret("ANTHROPIC_API_KEY").expect("set ANTHROPIC_API_KEY")
   let limits = Limits { tokens: Some(20_000), usd: Some(0.50), calls: None }
-  with Llm.anthropic(key, Model.of("claude-sonnet-5-5")), Budget.limits(limits) {
+  // The first handler of a `with` list is the outermost: the budget wraps the provider that charges it.
+  with Budget.limits(limits), Llm.anthropic(key, Model.of("claude-sonnet-5-5")) {
     let t = extract_ticket(Untrusted.of("Login page 500s since 9am, blocking all customers"))
     Console.print("{t.priority}: {t.title}")
   }
 }
 
 test "scripted model output is validated against Ticket" {
-  with Llm.scripted([Json.encode(Ticket { title: "Login 500s", priority: High, evidence: ["since 9am"] })]),
-       Budget.unlimited() {
+  with Llm.scripted([Json.encode(Ticket { title: "Login 500s", priority: High, evidence: ["since 9am"] })]) {
     let t = extract_ticket(Untrusted.of("anything"))
     expect_eq(t.priority, High)
   }
@@ -1600,7 +1663,7 @@ test "scripted model output is validated against Ticket" {
 
 test "invalid output is a typed failure, not a crash" {
   // `\{` is a literal brace; a bare `{` would start an interpolation (§2.3).
-  with Llm.scripted(["\{\"title\": \"\", \"priority\": \"Urgent\"\}"]), Budget.unlimited() {
+  with Llm.scripted(["\{\"title\": \"\", \"priority\": \"Urgent\"\}"]) {
     expect_fails_with(fn() { extract_ticket(Untrusted.of("x")) }, fn(e) { match e { InvalidOutput { .. } => true, _ => false } })
   }
 }
@@ -1609,36 +1672,37 @@ test "invalid output is a typed failure, not a crash" {
 ### 15.8 Agent loop with tools and a budget
 
 ```sakura
-import std/llm.{Llm, LlmError, Request, Prompt, Model}
-import std/tool.{Tool, ToolError}
 import std/agent.{Agent}
-import std/budget.{Budget, BudgetExceeded, Limits}
-import std/http.{Http, HttpError, RateLimited, Response, Status}
+import std/budget.{Budget, Limits}
+import std/http.{Http, RateLimited}
 import std/json.{DecodeError}
+import std/llm.{Llm, LlmError, Model, Request}
+import std/prompt.{Prompt, PromptPart}
+import std/response.{HttpError, Response, Status}
+import std/tool.{Tool, ToolError}
 import std/url.{Url}
 
 type Answer = { summary: String, sources: List<Url> }
 error SearchDown
 
 @tool("Search the internal knowledge base; returns up to 5 snippets")
-fn kb_search(query: String) -> List<String> ! {Http, Fail<SearchDown | HttpError | RateLimited | DecodeError>} {
+fn kb_search(query: String) -> List<String> ! {Http, Fail<DecodeError | HttpError | RateLimited | SearchDown>} {
   let resp = Http.get(url"https://kb.internal/search?q={query}")
   if resp.status != Status.from(200) { fail SearchDown }
   let snippets: List<String> = Response.json(resp, 100_000)
   snippets
 }
 
-pub fn research(question: Untrusted<String>) -> Answer
-  ! {Llm, Http, Budget, Fail<LlmError | ToolError | BudgetExceeded>}
-{
-  let req: Request<Answer> = Llm.request("Answer with cited sources only.", Prompt.of([Untrusted(question)]))
+// `Agent.run` performs `Budget` itself and the tools perform `Http`.
+pub fn research(question: Untrusted<String>) -> Answer ! {Budget, Http, Llm, Fail<LlmError | ToolError>} {
+  let req: Request<Answer> = Llm.request("Answer with cited sources only.", Prompt.of([PromptPart.Untrusted(question)]))
   Agent.run(Agent { request: req, tools: [Tool.of(kb_search)], max_steps: 8, stop: fn(_partial) { false } })
 }
 
-pub fn main() -> Unit ! {Console, Env, Http, Fail<LlmError | ToolError | BudgetExceeded>} {
+pub fn main() -> Unit ! {Console, Env, Http, Fail<LlmError | ToolError>} {
   let key = Env.secret("ANTHROPIC_API_KEY").expect("set ANTHROPIC_API_KEY")
   let limits = Limits { tokens: Some(60_000), usd: Some(2.0), calls: Some(20) }
-  with Llm.anthropic(key, Model.default()), Budget.limits(limits) {
+  with Budget.limits(limits), Llm.anthropic(key, Model.default()) {
     let a = research(Untrusted.of("What is our refund policy for annual plans?"))
     Console.print(a.summary)
   }
@@ -1654,9 +1718,10 @@ property "normalize is idempotent"(xs: List<Int>) {
   expect_eq(normalize(normalize(xs)), normalize(xs))
 }
 
-property "normalize preserves membership"(xs: List<Int>, x: Int)
-  requires List.contains(xs, x)
-{ expect(List.contains(normalize(xs), x)) }
+// Build the precondition into the input: a `requires` that discards most generated inputs fails the property (§7.4).
+property "normalize preserves membership"(xs: List<Int>, x: Int) {
+  expect(List.contains(normalize(List.push(xs, x)), x))
+}
 
 test "rendering is stable" { expect_snapshot("normalize_doc", normalize([3, 1, 3, 2])) }
 ```
@@ -1664,14 +1729,17 @@ test "rendering is stable" { expect_snapshot("normalize_doc", normalize([3, 1, 3
 ### 15.10 Structured concurrency, timeout, retry
 
 ```sakura
-import std/http.{Http, HttpError, RateLimited, Response, Any}
-import std/url.{Url}
+import std/http.{Any, Http, RateLimited}
+import std/response.{HttpError, Response}
 import std/retry.{Policy, retry}
 import std/task.{Timeout, timeout}
+import std/url.{Url}
 
-fn fetch_both(a: Url, b: Url) -> (String, String) ! {Http, Task, Clock, Random, Fail<HttpError | RateLimited | Timeout>} {
-  let policy = Policy { retry_on: fn(e) { match e { RateLimited { .. } => true, _ => false } },
-                        max_attempts: 3, backoff: Duration.millis(200), jitter: true, deadline: None }
+fn fetch_both(a: Url, b: Url) -> (String, String) ! {Clock, Http, Random, Task, Fail<HttpError | RateLimited | Timeout>} {
+  // Annotated: from the lambda alone the policy's error type would be just `RateLimited` (§5.3).
+  let policy: Policy<HttpError | RateLimited> = Policy {
+    retry_on: fn(e) { match e { RateLimited { .. } => true, _ => false } },
+    max_attempts: 3, backoff: Duration.millis(200), jitter: true, deadline: None }
   timeout(Duration.seconds(5), fn() {
     Task.scope(fn(s) {
       let fa = Task.spawn(s, fn() { retry(policy, fn() { Response.text(Http.get(a), 1_000_000).trust(@trust("display only")) }) })
@@ -1691,14 +1759,16 @@ test "deterministic under virtual time" {
 ### 15.11 Secrets and sinks
 
 ```sakura
-import std/http.{Http, HttpError, Request}
-import std/url.{Url}
 import std/decimal.{Decimal}
+import std/http.{Http}
+import std/request.{Request}
+import std/response.{HttpError}
+import std/url.{Url}
 
 pub fn call_billing(amount: Decimal) -> Unit ! {Env, Http, Log, Fail<HttpError>} {
   let token = Env.secret("BILLING_TOKEN").expect("BILLING_TOKEN")
-  let req = Http.bearer(Request.post_json(Url.from("https://billing/charge"), amount), token)
-  Log.event(Level.Info, "charging {amount}", [])          // ok: Decimal is Show
+  let req = Http.bearer(Request.post_json(Url.from("https://billing/charge"), amount), token)   // the token travels in secret_headers
+  Log.event(Level.Info, "charging {Decimal.to_string(amount)}", [])   // ok: Decimal is Show, to_string is its display form
   // Log.event(Level.Info, "token {token}", [])            // V2031: Secret<String> is not Show
   let _ = Http.send(req)
 }
@@ -1733,17 +1803,18 @@ fn friends_of_friends(g: Graph<Person>, id: NodeId) -> List<Person> {
 12. **Formatter width and style details.** Default: 100 columns, 2 spaces, no configuration. Not revisited without measured evidence.
 13. **Channels.** `Channel<T>` was mentioned without an API and is removed from v0 (§17.29). Fibers communicate through results and handler state. Add bounded channels as `Task` operations when a concrete program needs streaming between fibers.
 14. **Detached tasks.** `Task.Supervisor` is deferred: every fiber belongs to a scope in v0. Revisit with the first long-running service example.
-15. **Scripted tool calls.** `Llm.scripted` replays raw outputs only; a format for scripted tool-call turns is undefined, so agent loops are tested with `Llm.replay` recordings. Define it with the first offline agent test (M3).
+15. **Scripted tool calls.** Closed (§17.51): under `Llm.scripted`, a `step` output that is a JSON object with a `tool_use` array is a tool-call turn; anything else is the answer. `Llm.replay` recordings remain the way to test against real provider payloads.
 16. **Type-directed functions without a value argument.** `Schema.of<T>()` was removed because there is no call-site type argument to name `T` (§17.20). If a real need appears, prefer a type-witness value (`Schema.of(Ticket.schema)`) over reopening call-site type arguments.
 17. **Finer visibility than `opaque`.** `pub opaque type` hides every constructor and field. Per-field or per-constructor `pub` (Rust style) is not planned; revisit if std needs a type with one public and one private constructor.
 18. **Affinity of external types.** External types are scoped (§6.3); which ones are also affine (resources, §8.4) is decided when the M3 escape check lands, likely by a `@resource` marker on the std declaration.
-19. **Error unions over a type parameter (`Fail<E | Timeout>`).** `Type::Union` holds tags only, so a function cannot say "fails with whatever its callback fails with, plus `Timeout`". Under §5.2 rule 8, `std/task.timeout<T, e>(action: fn() -> T ! e) -> T ! {Clock, Task, Fail<Timeout> | e}` therefore makes `e` Fail-free: `action` cannot fail (the §15.10 example assumes it can). Default: ship as is for M0–M2; add parameter-bearing unions (representation shared with `sakura_core`) with M3 and then change `timeout` to `<T, E, e>` with `Fail<E | Timeout>`.
+19. **Error unions over a type parameter (`Fail<E | Timeout>`).** `Type::Union` holds tags only, so a function cannot *name* its callback's failures as a parameter and add its own. Under the refined §5.2 rule 8 (§17.50) this no longer blocks std: `timeout<T, e>(…, action: fn() -> T ! e) -> T ! {Clock, Task, Fail<Timeout> | e}` lets `action` fail and the caller sees `Fail<Timeout | X>` after instantiation; only a function that must both name `E` and add a tag of its own is still inexpressible, and none in std needs to. Default: ship as is; add parameter-bearing unions only if such a function appears.
+20. **Callbacks nested in data.** The runtime re-binds function-typed operation arguments to the performer's handlers (§5.5); a function inside a list or record argument runs under the clause's environment when a Sakura-written clause calls it. Default: std declares callback-taking operations over one function (`Serve.serve`, `Fs.with_file`, `Sql.transaction`); `Task.all`/`race` take lists but are runtime handlers that already use the performer's environment. A check that an operation's row parameter occurs only as the row of a function-typed parameter (which would move `Task.all`/`race` to functions over `spawn`/`join`) is deferred until a user-written handler needs it.
 
 ---
 
-## 17. Decision log (round 2)
+## 17. Decision log (rounds 2 and 3)
 
-Each entry answers one `design-question` from `compiler/REQUESTS.md` or one contradiction found while publishing the site. Format: question → decision → why → sections changed → impact on implementers (none / small / requires change in crate X). "Endorsed" means the implementer's choice stands as built.
+Each entry answers one `design-question` from `compiler/REQUESTS.md` or one contradiction found while publishing the site. Entries 48 onwards are round 3 (2026-10-18). Format: question → decision → why → sections changed → impact on implementers (none / small / requires change in crate X). "Endorsed" means the implementer's choice stands as built.
 
 1. **V3001 fix applicability (C).** §7.3 forbids `machine_applicable` for `interface_change` fixes, while the M0 brief asked for an auto-applicable "add `Console` to the signature". Decision: §7.3 stands; the fix is `suggested` + `interface_change`. Why: an agent running `sakura fix` must never widen a public signature silently; `--apply <id>` is one step away. Changed: §14.3 M0 acceptance. Impact: none (endorsed).
 2. **`Eff.name` for non-operations (F, B).** Decision: endorsed. `Eff.op` performs when `op` is an operation, otherwise resolves to the function or constant `op` of the effect's home module; a clash is `V1001`. Why: handler constructors (`Console.host()`, `Users.memory([])`) need a home. Changed: §4.9 rule 2. Impact: none.
@@ -1794,4 +1865,27 @@ Each entry answers one `design-question` from `compiler/REQUESTS.md` or one cont
 46. **Order-independent row solving (C).** Question: checking an open row against a closed one solved its tail minimally (`e := {}`), so a later demand for a label inside the bound failed and acceptance depended on statement order. Decision: flexible tails carry deferred upper bounds (§5.2 rule 9); bounds intersect, flow to fresh tails, and an unconstrained tail closes at body end. `Never` checked against an inference variable constrains nothing (it is a lower bound of everything), so `fn(c) { if c { fail A } else { 1 } }` checks in either branch order. Bounded variables are not generalized (v0 has no bounded quantification): they default to `{}` / `Never`. Why: constraints must accumulate commutatively for agents to repair programs locally; the research note's "union is not equality" (R01 §3.1) applies equally to subset constraints. Changed: §5.2 rule 9. Impact: `sakura_types` only; proptests over permuted statements and arguments are part of the plan.
 47. **Rename to Sakura Lang (owner, 2026-10-18).** Question: the working name Vow is replaced. Decision: the language is **Sakura Lang**, written as both words in prose with no short form; where a short label is needed the Sakura Seal mark stands in. Code identifier `sakura`: binary `sakura`, sources `.sakura`, manifest `sakura.toml` and lockfile `sakura.lock`, crates `sakura_*`, runtime `sakura_runtime.js`, env `SAKURA_*`, URIs `sakura://explain/…` and `sakura:///std/…`, MCP and LSP server name and language id `sakura`, TextMate scope `source.sakura`, repo `icantcodefyi/sakura-lang`, site `sakura-lang.vercel.app`. Diagnostic codes keep their letters and numbers (§12.3 states the letter reading); symbol ids never carried the name. The word "vow" leaves our prose entirely; the voice keeps promise, contract, signature and seal ("Code that keeps its promises." stays the tagline). Why: owner decision; `.sakura` because every shorter extension is a short form and nothing else uses it; codes kept because they are opaque identifiers and §12.3 forbids renumbering. Changed: title, §12.3, every command and path in this document. Impact: requires the mechanical rename in `docs/plans/rename-sakura-lang.md` across every crate; no semantic change. <!-- rename:keep -->
 
-Open after this round: §16.13–§16.19.
+48. **Callbacks and the clause environment (F, round 3).** Question: §5.5 ran a clause under the handlers outside its `with`, so a Sakura-written `Fs.with_file` could not reach its own handler from the body, and std made `File` a handler-free capability with `File.read_chunk` as plain functions. Decision: a function-typed operation argument is a *callback* and runs under the performer's handlers wherever the clause calls it (§5.5); file access is the `Fs` operations `read_chunk`/`write_chunk` on an external `File`, with `Fs.read_all` as a function; `Serve` has one operation `serve(handle, addr)` and `listen(router, addr)` is the function that builds `handle`. Why: under the old reading, a body given to `with_file` under `Fs.rooted(sub)` that performed `Fs.read` reached the *outer* handler, an authority escalation that attenuation exists to prevent; the operation's row already charges the callback's effects to the perform site, so the performer's environment is the only reading consistent with the types; the runtime's external handlers (`Task`, `Sql`, `serve_listen`) already behave this way; and rows stay honest (`Fs` appears wherever file I/O happens). Changed: §5.5, §6.2, §8.4, §10.2, §10.4, §13.3, §16.20. Impact: requires change in `runtime/js` and `sakura_codegen_js` (re-bind at `Perform`), `sakura_types` (clause rows), `std/fs` and `std/serve`: `docs/plans/perform-callbacks-r3.md`. D's `file_*` externals (`15816f7`, `Int` ids) stay as built; `File` remains F's opaque record until the M3 escape check makes it external (§16.18).
+49. **Effect-row parameters on types (F, A, B, C).** Question: §4.4 promised row variables on types, the compiler rejected `type Box<e>`, and std wrote `Tool<F>`, `Agent<T, F>`, `Router<F>` over the callback's function type. Decision: specified in §4.4 (`TypeArg` rows, `V1004`/`V1007`, unification without widening, kinds by rule 8); std becomes `Tool<e>`, `Agent<T, e>`, `Router<e>`. Why: `Tool<F>` means the same (a function type carries its row) but is unreadable in docs and hover, and the grammar already admits the form. Changed: §4.4, §10.4, §10.7, §15.8. Impact: requires change in `sakura_hir` and `sakura_types` (`docs/plans/row-params-on-types-r3.md`); small for F (parameter rename; call sites unchanged).
+50. **Fail-free kind refined (C, plan deviation 8).** Question: the round-2 plan made `e` Fail-free next to any `Fail<…>`, so the callbacks of `Sql.transaction` and `timeout` could not fail. Decision: endorsed: `e` is Fail-free iff it is written next to `Fail<E>` with `E` a type parameter of the same declaration; next to a concrete tag it carries failures and the tags join. Also endorsed as built: a `try` over a flexible tail keeps that tail monomorphic, error-union variables generalize per connected component, inspecting an error value settles its union (§5.3), a hidden-failure mismatch reports as a tail mismatch, a catch-all over a hidden tail is reachable, and the round-2 plan's deviations 9–14 (a flexible tail meeting a rigid one is bounded, shared tails grow, a variable met by a function type gets its own row, the stated fragment of order independence, stack growth instead of an iterative spine). Why: the Fail-free reading exists so a `try` inside `retry`/`expect_fail` sees exactly `E`, which only matters when `E` is a parameter; the refined rule keeps `{Fail<SqlError> | e}` meaning what it says. Changed: §5.2 rule 8, §5.3, §16.19; supersedes that point of §17.45. Impact: none (matches `wt/types`); `timeout` and `transaction` need no edit.
+51. **`Llm.step`, `Partial<T>`, scripted tool calls, effectful `stream` (F, round 3).** Decision: endorsed as built (§10.7): `Step<T>`, `Turn`, `ToolSpec`, `ToolCall`, `ToolResult`, `Partial<T> = { text, step, calls }`, `stream<T, e>` whose `on_partial` may perform `e`, `Request<T>` without `tools`/`max_steps` (they belong to `Agent`), the `{"tool_use": […]}` scripted turn, and `Agent.run`'s headroom reservation. Why: an agent loop needs an operation that returns either an answer or calls; the scripted format reuses the provider's vocabulary; a partial that cannot perform effects cannot be observed. Changed: §10.7, §11.3, §16.15 (closed). Impact: none.
+52. **`Html.raw` takes `Trust` (F).** Decision: endorsed: `Html.raw(markup, @trust("…"))`; `TrustedHtml` does not exist; `Html.untrusted(u)` escapes. Why: one trust type for every sink, all listed by `sakura audit`. Changed: §2.5, §6.4, §10.4. Impact: none now; C adds `Html.raw` to the `Trust`-accepting sinks when `Trust` becomes compiler-known.
+53. **`Decimal` representation (F).** Decision: endorsed: `{ whole: Int, frac: List<Int> }` in canonical form, so the derived `Eq`/`Ord` are numeric; `to_string` is the display form and interpolation shows the record; more digits than `Int` holds is a defect. Why: `{ units, scale }` makes `1.50 != 1.5` and `Ord` lexicographic. Changed: §10.3, §15.11. Impact: none.
+54. **`Path` as a refined `String` (F).** Decision: endorsed: `type Path = String where is_relative(it)`; `Path.of` normalizes and `requires`; `Path.validate` is the entry for untrusted input. Why: `Cli.parse` and `Json.decode` read refined strings; an opaque variant has no string form. Changed: §10.3. Impact: none.
+55. **`ServeError` in `main` and the serve surface (F, round 3 (4)).** Decision: endorsed: §15.5's `main` is `! {Fs, Serve, Fail<ServeError>}` (`Sql.sqlite` needs `Fs`; `Sql` and `Log` are handled inside; `Env` was unused); `Serve.scripted(requests) -> Handler<Serve, {Test}>`; `Address.of`; `Router.route/put/delete/handle` and `:name` parameters through `Request.params`. Why: listening can fail, and the checked example is the reference. Changed: §10.4, §15.5. Impact: none.
+56. **Home modules for the web and AI types (F, round 2 (1)).** Decision: endorsed: `std/request`, `std/response`, `std/prompt`, `std/budget`; `std/http` keeps `Http`, `Matcher`, `RateLimited`; `std/llm` keeps `Llm`, `Request<T>`, `Model` and its errors. Why: §4.9 makes `Request.json` and `Response.json` one name in one module, and `std/http` cannot import from modules that import it (`V1030`). Changed: §10.4, §10.7, §15.5, §15.8, §15.10, §15.11. Impact: none.
+57. **Secret headers on `Request` (F round 2 (2), D).** Question: F added `bearer: Option<Secret<String>>` so a token never enters the `Show`-able header list; D's Anthropic handler then had nowhere for `x-api-key` but `headers`. Decision: `Request.secret_headers: List<(String, Secret<String>)>`, sent by host handlers (`http_send`, `llm_anthropic`), never shown, never matched by `Http.scripted`, never written by `Http.recording`; `Http.bearer` adds the `authorization` entry. Why: any wrapper or recording handler would otherwise disclose provider keys. Changed: §10.4, §15.11. Impact: small for F (field, `bearer` body) and D (`http_send` sends every entry; `llm_anthropic` puts its key there).
+58. **Handler order and annotations in §15 (F, round 2 (4)).** Decision: §15.7 and §15.8 install `Budget.limits` before (outside) `Llm.anthropic`, whose row performs `Budget`; §15.10 annotates `policy: Policy<HttpError | RateLimited>`; `extract_ticket`'s row is `{Llm, Fail<LlmError>}` because the function itself performs no `Budget`. Why: the first handler of a `with` list is the outermost; from the lambda alone the policy's error type is `RateLimited`. Changed: §15.7, §15.8, §15.10. Impact: small for E (the `agent` template's row).
+59. **Parameterless `host()` and `[permissions]` delivery (F round 2 (5), E, D).** Decision: endorsed as built: every root handler is `host()` with no parameters; `sakura run` passes the parsed table as JSON in `SAKURA_PERMISSIONS`; `Fs.host()` confines reads and writes, `Http.host()`/`Serve.host()` the hosts, `Env.host()` the keys, each refusing with the operation's ordinary error; startup denial (exit 75) stays in the driver. `NetScope`, `EnvScope` and `SecretStore` are removed; `Http.scoped(hosts: List<String>)` and `Env.only(keys)` attenuate by data; `Http.host()` is `Handler<Http>` (no `Budget` in v0). Why: capability values the driver would mint only to pass through `host(cap)` buy nothing over a table the runtime reads once; `Dir` and `File` stay the only capability values. Changed: §4.2, §6.2, §10.2, §10.4, §13.3. Impact: none (E and D already agree; F drops the `EnvScope` placeholder).
+60. **`Cli.exit` under `Cli.of` (F, round 2 (6)).** Decision: endorsed: it is the defect `D030`; no dedicated code; tests use `expect_defect`. Why: a clause cannot abort its performer, and a dedicated code would only rename the same outcome. Changed: §10.5. Impact: none.
+61. **Hole record (E, round 2).** Decision: `expected_type` is a rendering object like `expected` (`render` plus structured keys when known; no `"structured": null`); `allowed_effects.row` is present once `sakura_types` exposes a structured row on holes. Why: documented as emitted; one shape for every rendered type. Changed: §12.2. Impact: small for C (fill `Hole.allowed_effects` with the `{"row": …}` form, E's request), none for E.
+62. **`--frozen-specs` baseline (E).** Decision: endorsed: the baseline is the git tree at `--since <rev>` (default `HEAD`) for the checked roots plus `sakura.toml`; names, ids and `permissions` are freezable; outside git or for an unknown revision it is a usage error; `sakura fix --frozen-specs` rejects a fix set whole on any `V8020`; the MCP `apply_patch` baseline is the snapshot the patch was computed against. Why: the committed specs are what an agent's repair must not weaken. Changed: §12.1. Impact: none.
+63. **Templates (E).** Decision: endorsed: `sakura new` and `sakura init` write `.gitignore` (`/target/`) and never run `git init`; the `api` template is a `/health` route served by `Serve.listen` with `net = ["127.0.0.1:8080"]` and a test that calls `Router.handle` directly. Changed: §12.1. Impact: small for E (the `api` template now that `std/serve` exists; the `agent` template's row per §17.58).
+64. **Property discards (F examples, E).** Question: §15.9's `requires List.contains(xs, x)` discards every generated input, and the runner only fails at 100% discards. Decision: a `property`'s `requires` is a filter; D's generator reuses a quarter of a case's earlier scalar values (endorsed, `877deae`), so membership-style preconditions are usually satisfiable; discards over 90% of the runs still fail the property (`gave up: N of M inputs discarded by requires`); joint generation from `requires` belongs to `sakura test --contracts` only; §15.9 builds the precondition into the input anyway. Why: a property that barely ran is a false green; constructive generation from arbitrary predicates is not v0. Changed: §7.4, §15.9. Impact: small for D (the 90% threshold), small for F (`examples/property`).
+65. **`@llm` bodies (F to B).** Decision: the desugaring in §11.1 is normative (`Untrusted<String>` parameters as `PromptPart.Untrusted`, others as `PromptPart.Text("<name>: {show(p)}")`, std names resolved by the compiler); D's `sakura_core` lowering (`ed3d2d9`) matches it and is endorsed, so B has nothing to do; `Budget` is not part of the function's row. Why: a fixed, readable expansion keeps `@llm` a convenience, not a second calling convention. Changed: §11.1, §15.7. Impact: none (a missing `system:` literal is rejected at lowering today; `V1010` from attribute validation may replace that later).
+66. **`Tool.of` (F to A, B, C).** Decision: sugar for `Tool.from` with a compiler-synthesized argument record that no source can name (§11.2); the argument must name a `@tool` function (`V1010` with the message "`Tool.of` takes a function declared with `@tool`"). Why: one primitive (`Tool.from`), one place to describe a tool (its declaration). Changed: §10.7, §11.2. Impact: requires change in `sakura_hir` (same plan); none for F.
+67. **Rigid operation parameters in clauses (D to C).** Decision: endorsed: a clause is checked against its operation's signature with the operation's type and row parameters rigid, so `req: Request<T>` inside `generate`'s clause names `T` directly, and under §17.48 the callback rows are removed from the clause's row. Why: inference variables there made lowering recover the parameters by matching and produced a false `V4002` in a generic clause (F, round 2). Changed: §5.5. Impact: C landed rigid type parameters (`dcf2b0f`); rigid row parameters and the clause-row rule follow in `docs/plans/perform-callbacks-r3.md` §2; D's matching becomes a fallback it may delete.
+68. **Std surface endorsements (F, INDEX deviations 5–14, 18).** Decision: endorsed as built and reflected in §10: `Clock.virtual()`, the five `Test` operations, `Console.captured`/`Log.captured` forwarding to `Test.output`, `Log.host()` as `stderr()`, `Secret.of`/`Secret.map`, `Untrusted.check(u, clause, pred)`, `Trust` and `Violation` declared in `std/core` (external until compiler-known), `BudgetKind = Tokens | Usd | Calls`, `Budget.zero`, `Request.post`/`param`/`header`, `Llm.scripted`'s `InvalidOutput` violation shape. Impact: none.
+69. **`BudgetExceeded` is an `LlmError` (consistency).** Question: `Llm.anthropic: Handler<Llm, {Http, Budget}>` raises `BudgetExceeded` from `Budget.reserve` inside the `generate` clause, but a clause may fail only with the operation's declared tags (§5.5), so `try { Llm.generate(req) }` could receive a tag its `Result` cannot name, the §17.45 class of hole. Decision: `LlmError` includes `BudgetExceeded`; a handler's row never adds `Fail` tags to the body; the `main` rows of §15.7 and §15.8 lose the separate tag. Why: the performer must be able to see every failure a clause can raise, and a shared tag costs nothing. Changed: §5.9, §10.7, §11.1, §15.7, §15.8. Impact: small for F (one union member), none for D (same error value).
+
+Open after this round: §16.13, §16.14, §16.16–§16.18, §16.20.
