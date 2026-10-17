@@ -252,6 +252,10 @@ fields optional, `List` fields repeat, refinements are checked; `--help` fails w
 stay inside the directory after symlinks are resolved (`escapes the directory` otherwise).
 `Untrusted<T>` is `$rt.Untrusted { v }`, shown as `Untrusted.of(…)`.
 
+**Http.** `http_send(req, $ctx, $k)` suspends on `fetch`: `Ok(Response)` for every status,
+`Err(reason)` when no response arrives; `req.bearer` is sent only as `Authorization: Bearer …`;
+cancelling the task aborts the request. The manifest's `net` list is not applied yet.
+
 ## 8. Builtins
 
 `vow_core::builtins::BUILTINS` lists every runtime function Core may call

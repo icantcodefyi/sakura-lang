@@ -439,3 +439,58 @@ fn deterministic_tasks_give_input_order_results() {
     let r = common::test("tasks_det", src).unwrap();
     assert_eq!(r.code, 0, "{}{}", r.stdout, r.stderr);
 }
+
+#[test]
+fn http_send_uses_fetch_and_sends_the_bearer_only_as_a_header() {
+    use std::io::{Read, Write};
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let server = std::thread::spawn(move || {
+        let (mut conn, _) = listener.accept().unwrap();
+        let mut buf = vec![0u8; 4096];
+        let mut req = String::new();
+        while !req.contains("\r\n\r\nping") {
+            let n = conn.read(&mut buf).unwrap();
+            if n == 0 {
+                break;
+            }
+            req.push_str(&String::from_utf8_lossy(&buf[..n]));
+        }
+        conn.write_all(b"HTTP/1.1 201 Created\r\ncontent-length: 4\r\nx-reply: yes\r\nconnection: close\r\n\r\npong")
+            .unwrap();
+        req
+    });
+    let src = r#"import std/http.{Http}
+import std/request.{Method, Request}
+import std/url.{Url}
+pub fn main() -> Unit ! {Console, Env, Http} {
+  let url = Url.from(Env.get("TEST_URL").unwrap_or("/"))
+  let base = Request { ..Request.of(Method.Post, url), body: "ping", headers: [("x-test", "1")] }
+  let req = match Env.secret("TEST_TOKEN") { Some(t) => Http.bearer(base, t), None => base }
+  let r = try { Http.send(req) }
+  match r {
+    Ok(resp) => Console.print("{resp.status} {resp.body} {List.contains(resp.headers, ("x-reply", "yes"))}"),
+    Err(e) => Console.print("error {e}"),
+  }
+}
+"#;
+    let (m, sources) = common::build("http_send", src, false).unwrap();
+    let dir = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("http-send");
+    common::write(&m, sources, &dir);
+    let out = std::process::Command::new("node")
+        .arg(dir.join("__main__.js"))
+        .env("TEST_URL", format!("http://127.0.0.1:{port}/hook"))
+        .env("TEST_TOKEN", "s3cret")
+        .output()
+        .unwrap();
+    assert_eq!(
+        String::from_utf8_lossy(&out.stdout),
+        "201 pong true\n",
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let req = server.join().unwrap().to_lowercase();
+    assert!(req.starts_with("post /hook http/1.1"), "{req}");
+    assert!(req.contains("authorization: bearer s3cret"), "{req}");
+    assert!(req.contains("x-test: 1"), "{req}");
+}

@@ -79,6 +79,8 @@ table! {
     Cps cli_parse/2,
     // Task
     Direct task_host/0, Direct task_deterministic/1,
+    // Http
+    Cps http_send/1,
     // Compiler support
     Direct match_failure/0, Direct contract_enter/0, Direct contract_exit/0,
 }

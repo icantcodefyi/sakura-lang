@@ -2583,3 +2583,27 @@ export function task_deterministic(seed) {
   const rng = () => mulberry((state = (state + 0x6d2b79f5) | 0));
   return taskHandler(rng, (_i, _ctx, k) => ret(k, undefined));
 }
+
+// ---------------------------------------------------------------------------------------------
+// Http client (design §10.4) over `fetch`. ponytail: the manifest's `net` list is not applied
+// yet (E passes `[permissions]`); any reachable URL is allowed.
+
+/**
+ * `http_send(req)`: suspends until the response arrives; `Ok(Response)` for any status,
+ * `Err(reason)` when no response arrives. `req.bearer` becomes `Authorization: Bearer …` and
+ * is readable nowhere else. Cancelling the task aborts the request.
+ */
+export function http_send(req, _ctx, k) {
+  const Response = std("std::response::Response");
+  const method = req.method.$t.ctors[req.method.tag].name.toUpperCase();
+  const headers = new Headers();
+  for (const [name, value] of items(req.headers)) headers.append(name, value);
+  if (req.bearer.tag === 1) headers.set("authorization", `Bearer ${Secret.expose(req.bearer.fields[0])}`);
+  const abort = new AbortController();
+  const body = method === "GET" || method === "HEAD" ? undefined : req.body;
+  const response = fetch(req.url, { method, headers, body, signal: abort.signal }).then(
+    async (r) => Ok(new Response(r.status, list([...r.headers]), await r.text())),
+    (e) => Err(String(e?.cause?.message ?? e?.message ?? e)),
+  );
+  return suspend(response, k, () => abort.abort());
+}
