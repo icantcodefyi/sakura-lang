@@ -208,3 +208,39 @@ test "handler state advances" { expect_eq(answer(), 3) }
         insta::assert_snapshot!(format!("{name}_js"), js.text);
     }
 }
+
+#[test]
+fn host_handlers_suspend_and_resume() {
+    let src = r#"
+pub fn main() -> Unit ! {Console, Clock, Random, Log} {
+  let t0 = Clock.monotonic()
+  Clock.sleep(Duration.millis(30))
+  let waited = Duration.to_millis(Clock.monotonic()) - Duration.to_millis(t0)
+  let d = Random.int(1, 6)
+  Log.event(Level.Info, "slept", [])
+  Console.print("{waited >= 25} {d >= 1 && d <= 6} {Instant.to_unix_millis(Clock.now()) > 0}")
+}
+"#;
+    let r = common::run("hosts", src).unwrap();
+    assert_eq!(
+        (r.stdout.as_str(), r.code),
+        ("true true true\n", 0),
+        "{}",
+        r.stderr
+    );
+    assert!(r.stderr.contains("Info slept"), "{}", r.stderr);
+}
+
+#[test]
+fn env_root_handler_reads_the_process_environment() {
+    let src = r#"pub fn main() -> Unit ! {Console, Env} { Console.print("{Env.get("VOW_TEST_VAR")} {Env.get("VOW_UNSET_VAR")}") }"#;
+    let (m, sources) = common::build("env_root", src, false).unwrap();
+    let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("env-root");
+    common::write(&m, sources, &dir);
+    let out = std::process::Command::new("node")
+        .arg(dir.join("__main__.js"))
+        .env("VOW_TEST_VAR", "yes")
+        .output()
+        .unwrap();
+    assert_eq!(String::from_utf8_lossy(&out.stdout), "Some(\"yes\") None\n");
+}

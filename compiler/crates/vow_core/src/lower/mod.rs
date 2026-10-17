@@ -222,13 +222,17 @@ impl<'p> Lower<'p> {
             let types::Effect::Def(eff) = label.effect else {
                 continue;
             };
-            let Some(host) = self.p.lookup(eff.module, "host") else {
+            let host = self.p.lookup(eff.module, "host").filter(
+                |&h| matches!(&self.p.def(h).kind, hir::DefKind::Fn(f) if f.sig.params.is_empty()),
+            );
+            let Some(host) = host else {
                 let range = self.p.def(main).range;
-                self.unsupported(
-                    main.module,
-                    range,
-                    "an effect without a std `host()` handler",
+                let what = format!(
+                    "a root `{}` handler (no parameterless std `host()`; capability scopes from \
+                     `[permissions]` arrive in M3)",
+                    self.p.def(eff).name
                 );
+                self.unsupported(main.module, range, &what);
                 continue;
             };
             let e = self.effect(eff);
