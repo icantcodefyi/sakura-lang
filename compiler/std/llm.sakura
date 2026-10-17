@@ -3,7 +3,7 @@
 // truth: check what matters before acting on it.
 // needs M3: `@llm` bodies (§11.1), `Llm.replay(path)`.
 
-import std/budget.{Budget}
+import std/budget.{Budget, BudgetExceeded}
 import std/core.{Violation}
 import std/http.{Http, RateLimited}
 import std/prompt.{Prompt}
@@ -27,8 +27,9 @@ pub error Truncated
 /// The provider answered with an unexpected HTTP status.
 pub error ProviderError(status: Int)
 
-/// `RateLimited` is `std/http.RateLimited` and `Timeout` is `std/task.Timeout` (§5.9).
-pub type LlmError = Refused | InvalidOutput | Truncated | RateLimited | Timeout | ProviderError
+/// `RateLimited` is `std/http.RateLimited`, `Timeout` is `std/task.Timeout` (§5.9) and
+/// `BudgetExceeded` is `std/budget`'s, raised by handlers that reserve against `Budget` (§17.69).
+pub type LlmError = Refused | InvalidOutput | Truncated | RateLimited | Timeout | ProviderError | BudgetExceeded
 
 /// What the provider sees of a tool: `schema` is the JSON Schema of its arguments.
 pub type ToolSpec = { name: String, description: String, schema: Json }

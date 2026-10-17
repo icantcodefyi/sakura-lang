@@ -35,7 +35,7 @@ pub type Agent<T, F> = {
 /// At most `max_steps` model turns; the last one offers no tools, so the model must answer.
 /// A tool failure ends the loop with its `ToolError`.
 pub fn run<T: Schema, e>(a: Agent<T, fn(Json) -> Json ! {Fail<ToolError> | e}>) -> T
-  ! {Budget, Llm, Fail<BudgetExceeded | LlmError | ToolError> | e}
+  ! {Budget, Llm, Fail<LlmError | ToolError> | e}
   requires a.max_steps > 0
 {
   let specs = List.map(a.tools, Tool.spec)

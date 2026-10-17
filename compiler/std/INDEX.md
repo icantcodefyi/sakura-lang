@@ -635,7 +635,7 @@ error Refused
 error InvalidOutput(violations: List<Violation>)
 error Truncated
 error ProviderError(status: Int)
-type LlmError = Refused | InvalidOutput | Truncated | RateLimited | Timeout | ProviderError
+type LlmError = Refused | InvalidOutput | Truncated | RateLimited | Timeout | ProviderError | BudgetExceeded
 type ToolSpec = { name: String, description: String, schema: Json }
 type ToolCall = { id: String, name: String, input: Json }
 type ToolResult = { id: String, output: Json }
@@ -670,7 +670,7 @@ fn call<e>(t: Tool<fn(Json) -> Json ! {Fail<ToolError> | e}>, input: Json) -> Js
 
 ```sakura
 type Agent<T, F> = { request: Request<T>, tools: List<Tool<F>>, max_steps: Int, stop: fn(Partial<T>) -> Bool }
-fn run<T: Schema, e>(a: Agent<T, fn(Json) -> Json ! {Fail<ToolError> | e}>) -> T ! {Budget, Llm, Fail<BudgetExceeded | LlmError | ToolError> | e} requires a.max_steps > 0
+fn run<T: Schema, e>(a: Agent<T, fn(Json) -> Json ! {Fail<ToolError> | e}>) -> T ! {Budget, Llm, Fail<LlmError | ToolError> | e} requires a.max_steps > 0
 ```
 
 ### `std/sql`

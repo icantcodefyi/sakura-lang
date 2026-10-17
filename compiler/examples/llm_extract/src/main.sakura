@@ -7,7 +7,7 @@
 // from the design text: `Budget.limits` is installed outside `Llm.anthropic`, whose handler
 // performs `Budget` (the first handler in a `with` list is the outermost).
 
-import std/budget.{Budget, BudgetExceeded, Limits}
+import std/budget.{Budget, Limits}
 import std/http.{Http}
 import std/llm.{InvalidOutput, Llm, LlmError, Model}
 
@@ -21,9 +21,9 @@ type Ticket = {
 
 @llm(system: "Extract a support ticket. Use only facts present in the message.")
 fn extract_ticket(message: Untrusted<String>) -> Ticket
-  ! {Budget, Llm, Fail<BudgetExceeded | LlmError>}
+  ! {Budget, Llm, Fail<LlmError>}
 
-pub fn main() -> Unit ! {Console, Env, Http, Fail<BudgetExceeded | LlmError>} {
+pub fn main() -> Unit ! {Console, Env, Http, Fail<LlmError>} {
   let key = Env.secret("ANTHROPIC_API_KEY").expect("set ANTHROPIC_API_KEY")
   let limits = Limits { tokens: Some(20_000), usd: Some(0.50), calls: None }
   with Budget.limits(limits), Llm.anthropic(key, Model.of("claude-sonnet-5-5")) {
