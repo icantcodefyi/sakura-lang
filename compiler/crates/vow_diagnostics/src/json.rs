@@ -111,24 +111,18 @@ pub(crate) fn output_order(diags: &[Diagnostic], files: &[SourceFile]) -> Vec<us
     order
 }
 
-/// Deterministic per-occurrence ids: a hash of the snapshot, code, primary position and message,
-/// with a `-n` suffix for exact duplicates. Ids stay stable when unrelated diagnostics change.
-fn occurrence_ids(
-    diags: &[Diagnostic],
-    order: &[usize],
-    files: &[SourceFile],
-    snapshot: &str,
-) -> Vec<String> {
+/// Deterministic per-occurrence ids: a hash of the code, the primary span's file content hash and
+/// offsets, and the message, with a `-n` suffix for exact duplicates. Ids stay stable when
+/// unrelated diagnostics or files change and do not depend on where the workspace lives on disk.
+fn occurrence_ids(diags: &[Diagnostic], order: &[usize], files: &[SourceFile]) -> Vec<String> {
     let mut ids = vec![String::new(); diags.len()];
     let mut seen = std::collections::HashMap::<String, usize>::new();
     for &i in order {
         let d = &diags[i];
         let pos = primary(d).map(|s| span_record(s, files));
-        let (uri, start, end) = pos.map_or(("", 0, 0), |r| (r.uri, r.start_byte, r.end_byte));
-        let material = format!(
-            "{snapshot}\0{}\0{uri}\0{start}\0{end}\0{}",
-            d.code.0, d.message
-        );
+        let (hash, start, end) =
+            pos.map_or(("", 0, 0), |r| (r.content_hash, r.start_byte, r.end_byte));
+        let material = format!("{}\0{hash}\0{start}\0{end}\0{}", d.code.0, d.message);
         let base = format!("d:{}", &sha256(material.as_bytes())[7..23]);
         let n = seen.entry(base.clone()).or_insert(0);
         ids[i] = if *n == 0 { base } else { format!("{base}-{n}") };
@@ -145,7 +139,7 @@ pub fn diagnostic_records(
     snapshot: &str,
 ) -> Vec<Value> {
     let order = output_order(diags, files);
-    let ids = occurrence_ids(diags, &order, files, snapshot);
+    let ids = occurrence_ids(diags, &order, files);
     order
         .iter()
         .take(MAX_DIAGNOSTICS)
