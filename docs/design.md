@@ -429,6 +429,8 @@ Unification rules (implemented in `vow_types::rows`):
 5. Sequencing two expressions with rows `R1`, `R2` yields `R1 ∪ R2`; both tails, if present, are unified.
 6. A top-level signature's row is an **upper bound**: the inferred body row must be a subset (`V3001` lists each extra label with its originating call site, the "allowed here" set, and two fixes: add the label to the signature (`interface_change`) or handle it locally (`local`)).
 7. Generalization quantifies over tail variables of local lambdas; a top-level function's tail variables must be declared (`<e>`).
+8. **Tails never hide `Fail`** (§17.45). A flexible tail ranges over Fail-free rows; a row that may fail says so with an explicit `Fail<E>` whose `E` may be an error-union inference variable (it collects the tags that flow into it and resolves to their union). A declared row parameter `e` is Fail-free iff some row of its declaration writes it next to `Fail<…>` (`{Fail<E> | e}`: unique labels leave no room for another); otherwise `{… | e}` stands for `{…, Fail<e.Fail> | e}` with an unnamed error type `e.Fail` that only `e`'s instantiation can fill. Row parameters introduced by generalization are Fail-free.
+9. **Flexible tails are bounded, not solved** (§17.46). Checking an open row against a closed or rigid one records an upper bound on its tail; labels may still be added later within that bound. At the end of a body an unconstrained tail is `{}`. Checking is therefore independent of statement and argument order.
 
 ### 5.3 `Fail<E>` and error unions
 
@@ -446,6 +448,7 @@ type SignupError = EmailTaken | Banned           // union alias
 - Propagation is automatic: calling `f() ! {Fail<A>}` inside `g` adds `Fail<A>` to `g`'s inferred row. There is no `?` needed for effectful failure.
 - `try { body } catch { P1 => e1, P2 => e2 }`: the arms match tags of `body`'s error union. Tags matched by an unguarded arm with irrefutable sub-patterns are **removed** from the row; unmatched tags propagate. The arms' own effects are added. `catch` arms are patterns, so `EmailTaken { email } => …`, `Banned | Suspended => …`, `_ => …` (catches all; discouraged on open unions, lint `W4010`).
 - `try { body }` without `catch` evaluates to `Result<T, E>` where `E` is the full error union of `body`, removing `Fail` from the row entirely.
+- The failures of a `try` body must be nameable: if the body's row ends in a row parameter that may hide failures (§5.2 rule 8), `try` without `catch` is `V3003` with the fix "declare them: `fn f<E, e>(g: fn() -> T ! {Fail<E> | e}) -> Result<T, E> ! e`". With `catch`, arms match the explicit tags and the hidden part stays in the row; a catch-all arm also catches it and is `W4010`.
 - A `try` body cannot assign to a `var` declared outside it (`V2041`, §8.1); its value and its error are the only things that leave it.
 - Postfix `r?` on `r: Result<T, E>` yields `T` and adds `Fail<E>`. Also `Option.or_fail(o, err)`.
 - There is no implicit conversion between error types. Public functions should translate internal tags to stable domain tags with `catch` (`R01 §4.1`).
@@ -508,7 +511,7 @@ For an expression `e` the checker computes `(type, row)`:
 | `if`/`match` | condition/scrutinee ∪ union of branch rows |
 | `with h1..hn { b }` | (row(b) − {E1..En}) ∪ r1 ∪ … ∪ rn ∪ rows of `h1..hn` expressions |
 | `try { b } catch {arms}` | (row(b) with `Fail` tags reduced by matched tags) ∪ arm rows |
-| `try { b }` | row(b) − `Fail` |
+| `try { b }` | row(b) − `Fail`; the body's tail must not hide failures (`V3003`, §5.3) |
 | `r?` | row(r) ∪ `Fail<E>` |
 | `let`/`var`/`=`/block | union of components in order |
 | `for`/`while` | header ∪ body |
@@ -1734,6 +1737,7 @@ fn friends_of_friends(g: Graph<Person>, id: NodeId) -> List<Person> {
 16. **Type-directed functions without a value argument.** `Schema.of<T>()` was removed because there is no call-site type argument to name `T` (§17.20). If a real need appears, prefer a type-witness value (`Schema.of(Ticket.schema)`) over reopening call-site type arguments.
 17. **Finer visibility than `opaque`.** `pub opaque type` hides every constructor and field. Per-field or per-constructor `pub` (Rust style) is not planned; revisit if std needs a type with one public and one private constructor.
 18. **Affinity of external types.** External types are scoped (§6.3); which ones are also affine (resources, §8.4) is decided when the M3 escape check lands, likely by a `@resource` marker on the std declaration.
+19. **Error unions over a type parameter (`Fail<E | Timeout>`).** `Type::Union` holds tags only, so a function cannot say "fails with whatever its callback fails with, plus `Timeout`". Under §5.2 rule 8, `std/task.timeout<T, e>(action: fn() -> T ! e) -> T ! {Clock, Task, Fail<Timeout> | e}` therefore makes `e` Fail-free: `action` cannot fail (the §15.10 example assumes it can). Default: ship as is for M0–M2; add parameter-bearing unions (representation shared with `vow_core`) with M3 and then change `timeout` to `<T, E, e>` with `Fail<E | Timeout>`.
 
 ---
 
@@ -1786,4 +1790,7 @@ Each entry answers one `design-question` from `compiler/REQUESTS.md` or one cont
 43. **`var` assigned inside a failing `try` (D).** Decision: a `try` body may not assign to a `var` declared outside it (`V2041`, the same code as for lambdas) with the fix "assign after the `try` or declare the `var` inside". Why: SSA lowering would make such assignments transactional, the imperative reading would need boxing, and either is a surprise; the restriction makes the value and the error the only outputs of a `try`. Changed: §5.3, §8.1. Impact: small for C (extend the `V2041` check to `try` bodies); D's lowering stands.
 44. **`String.parse_int` beyond 2^53 on JS (F).** Decision: `None`, not `D003`, for a value the backend cannot represent (`Float.to_int_checked` likewise); arithmetic and literals keep trapping. Why: parsing is the untrusted boundary and a defect there is a denial-of-service vector; §16.3 records the resulting JS/native divergence as the known cost of the trap decision. Changed: §10.1, §16.3. Impact: small for D (`string_parse_int` returns `None` instead of raising `D003`).
 
-Open after this round: §16.13–§16.18.
+45. **`try` over an open row (C, round 2 soundness).** Question: `try { f() }` with `f: fn() -> Int ! e` (or an unsolved tail) typed its result from the `Fail` label visible at that moment, so a failure hidden in the tail escaped as `Err` inside a `Result<_, Never>`. Decision: tails never hide `Fail` (§5.2 rule 8). Flexible tails are Fail-free and an open row that may fail carries `Fail<ε>` with `ε` an error-union variable that accumulates lower bounds and resolves to their union; two callbacks sharing one row variable therefore join their tags (`Fail<A | B>`), while two *closed* unions met in synthesis must still be equal (`V2015`). A declared row parameter is Fail-free iff it appears next to `Fail<…>` in its declaration, otherwise it hides an unnamed `e.Fail`; `try` without `catch` over such a tail is `V3003`, `try … catch` matches only explicit tags and a catch-all over it is `W4010`. Why: this is the unique-label reading of `{Fail<E> | e}`, it keeps `retry`/`expect_fail` sound (their `try` sees exactly `E`), it lets `List.map`-style callbacks fail freely, and it needs no new syntax. Changed: §5.2 rule 8, §5.3, §5.7, §16.19. Impact: requires change in `vow_types` (`docs/plans/types-soundness-r2.md`); none for `vow_core`; std's `timeout` becomes Fail-free in `e` (§16.19), no std edit now.
+46. **Order-independent row solving (C).** Question: checking an open row against a closed one solved its tail minimally (`e := {}`), so a later demand for a label inside the bound failed and acceptance depended on statement order. Decision: flexible tails carry deferred upper bounds (§5.2 rule 9); bounds intersect, flow to fresh tails, and an unconstrained tail closes at body end. `Never` checked against an inference variable constrains nothing (it is a lower bound of everything), so `fn(c) { if c { fail A } else { 1 } }` checks in either branch order. Bounded variables are not generalized (v0 has no bounded quantification): they default to `{}` / `Never`. Why: constraints must accumulate commutatively for agents to repair programs locally; the research note's "union is not equality" (R01 §3.1) applies equally to subset constraints. Changed: §5.2 rule 9. Impact: `vow_types` only; proptests over permuted statements and arguments are part of the plan.
+
+Open after this round: §16.13–§16.19.
