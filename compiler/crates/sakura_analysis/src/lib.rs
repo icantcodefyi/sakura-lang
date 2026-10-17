@@ -129,10 +129,10 @@ impl Analysis {
     }
 
     /// Every frontend phase over `snapshot`, memoized by snapshot hash: repeated queries on one
-    /// snapshot (hover, completion, `hole_context`) share one analysis, and files whose text did
-    /// not change are not parsed again. ponytail: the type checker still runs over the whole
-    /// program; per-module rechecking needs module-level entry points in `sakura_hir`/`sakura_types`
-    /// (REQUESTS.md, E → B, C).
+    /// snapshot (hover, completion, `hole_context`) share one analysis, files whose text did
+    /// not change are not parsed again, and when no module's interface changed since the
+    /// previous analysis only the edited modules are type-checked again (design §14.3 M3).
+    /// ponytail: HIR lowering still runs over the whole program; it is cheap next to checking.
     pub fn analyze(snapshot: &Snapshot) -> Arc<Analyzed> {
         static CACHE: Mutex<Vec<Arc<Analyzed>>> = Mutex::new(Vec::new());
         const KEEP: usize = 8;
@@ -142,7 +142,8 @@ impl Analysis {
             cache.push(hit.clone());
             return hit;
         }
-        let analyzed = Arc::new(analyze(snapshot));
+        // The latest analysis is usually the previous edit of this snapshot.
+        let analyzed = Arc::new(analyze(snapshot, cache.last().map(|a| &**a)));
         if cache.len() == KEEP {
             cache.remove(0);
         }
@@ -156,16 +157,47 @@ impl Analysis {
 pub struct Stats {
     pub parses: usize,
     pub analyses: usize,
+    /// Modules whose bodies were type-checked (not reused from an earlier analysis).
+    pub checked_modules: usize,
 }
 
 static PARSES: AtomicUsize = AtomicUsize::new(0);
 static ANALYSES: AtomicUsize = AtomicUsize::new(0);
+static CHECKED_MODULES: AtomicUsize = AtomicUsize::new(0);
 
 pub fn stats() -> Stats {
     Stats {
         parses: PARSES.load(Ordering::Relaxed),
         analyses: ANALYSES.load(Ordering::Relaxed),
+        checked_modules: CHECKED_MODULES.load(Ordering::Relaxed),
     }
+}
+
+/// A hash of what other modules can depend on: every token except comments, whitespace and the
+/// bodies of functions, tests and properties. Equal hashes mean the same items in the same
+/// order with the same signatures, so `DefId`s, `BodyId`s and dependents' results carry over.
+fn interface_hash(root: &sakura_syntax::SyntaxNode) -> u64 {
+    use sakura_syntax::SyntaxKind::{BLOCK, FN_DECL, PROPERTY_DECL, TEST_DECL};
+    use std::hash::{Hash, Hasher};
+    let mut h = std::hash::DefaultHasher::new();
+    for item in root.children() {
+        let body = matches!(item.kind(), FN_DECL | TEST_DECL | PROPERTY_DECL)
+            .then(|| item.children().find(|c| c.kind() == BLOCK))
+            .flatten()
+            .map(|b| b.text_range());
+        let tokens = item
+            .descendants_with_tokens()
+            .filter_map(|e| e.into_token());
+        for t in tokens.filter(|t| !t.kind().is_trivia()) {
+            if body.is_some_and(|b| b.contains_range(t.text_range())) {
+                continue;
+            }
+            (t.kind() as u16).hash(&mut h);
+            t.text().hash(&mut h);
+        }
+        item.kind().hash(&mut h);
+    }
+    h.finish()
 }
 
 /// Parses `text` as file `file`, reusing the tree of an earlier parse of the same content.
@@ -212,6 +244,10 @@ pub struct Analyzed {
     /// Parse trees by `FileId`; `None` for files that are not Sakura Lang modules (`sakura.toml`).
     parses: Vec<Option<sakura_syntax::Parse>>,
     symbols: Vec<Symbol>,
+    /// `sakura_types` diagnostics alone, and per file its interface hash (`None` for files that
+    /// are not modules): what the next analysis needs to reuse this one.
+    type_diags: Vec<Diagnostic>,
+    interfaces: Vec<Option<u64>>,
 }
 
 impl Analyzed {
@@ -245,10 +281,61 @@ impl Analyzed {
 }
 
 /// Every frontend phase: HIR, typed program, symbols, and their diagnostics and holes.
-fn analyze(snapshot: &Snapshot) -> Analyzed {
+fn analyze(snapshot: &Snapshot, prev: Option<&Analyzed>) -> Analyzed {
     ANALYSES.fetch_add(1, Ordering::Relaxed);
     let (parses, mut program, mut diagnostics) = lower(snapshot);
-    let (typed, type_diags) = sakura_types::check_program_with(&program, &diagnostics);
+    let interfaces: Vec<Option<u64>> = parses
+        .iter()
+        .map(|p| p.as_ref().map(|p| interface_hash(&p.syntax())))
+        .collect();
+    // Reuse `prev` only for the same files with the same interfaces; then a module is reused
+    // when its text is unchanged and none of its diagnostics points into a changed file.
+    let prev = prev.filter(|p| {
+        p.interfaces == interfaces
+            && p.snapshot.files.len() == snapshot.files.len()
+            && (p.snapshot.files.iter().zip(&snapshot.files)).all(|(a, b)| a.uri == b.uri)
+    });
+    let changed: Vec<bool> = match prev {
+        Some(p) => (p.snapshot.files.iter().zip(&snapshot.files))
+            .map(|(a, b)| a.content_hash != b.content_hash)
+            .collect(),
+        None => vec![true; snapshot.files.len()],
+    };
+    let reused: Vec<bool> = program
+        .modules
+        .iter()
+        .map(|m| {
+            let file = m.file.0 as usize;
+            prev.is_some_and(|p| {
+                !changed[file]
+                    && !p.type_diags.iter().any(|d| {
+                        d.spans.iter().any(|s| changed[s.file.0 as usize])
+                            && d.spans.first().is_some_and(|s| s.file == m.file)
+                    })
+            })
+        })
+        .collect();
+    let checked = reused.iter().filter(|r| !**r).count();
+    CHECKED_MODULES.fetch_add(checked, Ordering::Relaxed);
+    let (typed, mut type_diags) = match prev {
+        Some(p) => {
+            let reuse = |m: sakura_hir::ModuleId| reused[m.0 as usize];
+            let (typed, mut diags) =
+                sakura_types::check_program_reusing(&program, &diagnostics, &p.typed, &reuse);
+            let reused_file =
+                |f: FileId| (program.modules.iter().zip(&reused)).any(|(m, r)| *r && m.file == f);
+            diags.extend(
+                p.type_diags
+                    .iter()
+                    .filter(|d| d.spans.first().is_some_and(|s| reused_file(s.file)))
+                    .cloned(),
+            );
+            (typed, diags)
+        }
+        None => sakura_types::check_program_with(&program, &diagnostics),
+    };
+    // One order whether or not results were reused.
+    type_diags.sort_by_key(|d| d.spans.first().map(|s| s.file));
     let holes = typed
         .holes
         .iter()
@@ -275,7 +362,7 @@ fn analyze(snapshot: &Snapshot) -> Analyzed {
         })
         .collect();
     diagnostics.append(&mut program.diagnostics);
-    diagnostics.extend(type_diags);
+    diagnostics.extend(type_diags.iter().cloned());
     let roots: Vec<Option<sakura_syntax::SyntaxNode>> = parses
         .iter()
         .map(|p| p.as_ref().map(sakura_syntax::Parse::syntax))
@@ -292,6 +379,8 @@ fn analyze(snapshot: &Snapshot) -> Analyzed {
         },
         parses,
         symbols,
+        type_diags,
+        interfaces,
     };
     // `symbol_id` (§12.2): the innermost item containing the primary span.
     for d in &mut diagnostics {
