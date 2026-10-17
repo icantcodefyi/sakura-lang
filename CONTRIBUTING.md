@@ -25,11 +25,11 @@ it with another package manager's lockfile.
 From `website/`, the current checks are:
 
 ```sh
-bun run lint
+bun run fmt:check   # oxfmt (run `bun run fmt` to fix)
+bun run lint        # oxlint, warnings denied
+bun run typecheck
 bun run build
 ```
-
-There is no separate `typecheck` script today. Add one before making it a CI step.
 For browser behavior, also exercise the affected route, navigation, and responsive
 states and describe what you actually checked.
 

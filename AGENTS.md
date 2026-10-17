@@ -10,8 +10,9 @@ Vow is an agent-first language in **pre-alpha / design phase**. Read
   Inspect helpers before adding code; preserve others' work and stay in scope.
   Avoid speculative features, abstractions, and dependencies.
 - Website: Bun **1.4.3** (manifest pin). In `website/`, run
-  `bun install --frozen-lockfile`, then `bun run lint` and `bun run build`;
-  `bun run dev` serves locally. There is no `typecheck` script yet.
+  `bun install --frozen-lockfile`, then `bun run fmt:check`, `bun run lint`
+  (oxlint), `bun run typecheck` and `bun run build`; `bun run fmt` formats
+  (oxfmt) and `bun run dev` serves locally.
 - Compiler: no workspace/toolchain/MSRV exists yet. When introduced, use the
   pinned toolchain and root `cargo fmt --all -- --check`,
   `cargo clippy --workspace --all-targets --locked -- -D warnings`, and

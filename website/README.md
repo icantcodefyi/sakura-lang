@@ -8,7 +8,9 @@ The landing page and documentation for Vow, built with Next.js (App Router), Tai
 bun install
 bun run dev      # http://localhost:3000
 bun run build    # production build (type-checks)
-bun run lint
+bun run lint     # oxlint
+bun run fmt      # oxfmt (fmt:check in CI)
+bun run typecheck
 bun scripts/check-grammar.ts   # smoke test for the Vow syntax grammar
 ```
 
