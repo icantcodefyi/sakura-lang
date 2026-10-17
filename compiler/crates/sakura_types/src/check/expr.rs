@@ -1221,7 +1221,55 @@ impl Checker<'_> {
                 (er, er, p)
             }
         };
-        let mut rows: Vec<RowId> = args.iter().map(|&a| self.check(a, arg_ty)).collect();
+        // §4.11: a value of another type goes through the element type's home-module `from`
+        // when it has one (`sql` → `SqlValue.from`); otherwise it must have the element type.
+        let arg_ty = self.inf.shallow(arg_ty);
+        let (elem, from) = match self.inf.interner.ty(arg_ty).clone() {
+            Type::Con(TyCon::Adt(d), _) => (
+                Some(d),
+                self.program
+                    .resolve_home(TypeRes::Def(d), "from", self.module())
+                    .and_then(|f| Some((f, self.scheme_of(f)?))),
+            ),
+            _ => (None, None),
+        };
+        let mut rows = Vec::new();
+        for &a in args {
+            if from.is_none() {
+                rows.push(self.check(a, arg_ty));
+                continue;
+            }
+            let (t, r) = self.synth(a);
+            rows.push(r);
+            let st = self.inf.shallow(t);
+            if matches!(self.inf.interner.ty(st), Type::Con(TyCon::Adt(d), _) if Some(*d) == elem) {
+                self.coerce(a, t, arg_ty);
+                continue;
+            }
+            let conv = from.as_ref().and_then(|(f, s)| {
+                let (ft, subst) = self.inf.instantiate(s);
+                let Type::Fn { params, ret, row } = self.inf.interner.ty(ft).clone() else {
+                    return None;
+                };
+                (params.len() == 1 && self.inf.unify(ret, arg_ty).is_ok())
+                    .then_some((*f, params[0], row, subst))
+            });
+            match conv {
+                Some((f, param, frow, subst)) => {
+                    for (p, v) in &subst {
+                        let bounds = self.inf.interner.param(*p).bounds.clone();
+                        for b in bounds {
+                            self.obligation(*v, b, a);
+                        }
+                    }
+                    let vars = subst.into_iter().map(|(_, v)| v).collect();
+                    self.b.conversions.insert(a, (f, vars));
+                    self.coerce(a, t, param);
+                    rows.push(frow);
+                }
+                None => self.coerce(a, t, arg_ty),
+            }
+        }
         rows.push(row);
         (ret, self.seq(&rows, e), false)
     }

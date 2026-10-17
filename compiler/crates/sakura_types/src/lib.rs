@@ -71,6 +71,10 @@ pub struct TypedBody {
     /// Type arguments of every instantiation of a polymorphic definition at a `Path`
     /// expression, in the scheme's parameter order.
     pub instantiations: ArenaMap<ExprId, Vec<TypeId>>,
+    /// Tagged-template arguments converted before the call (§4.11): the argument `e` is
+    /// passed through `def` (the template element type's home-module `from`, e.g.
+    /// `SqlValue.from`) instantiated with these type arguments.
+    pub conversions: ArenaMap<ExprId, (DefId, Vec<TypeId>)>,
 }
 
 /// The resolved target of a call-like expression.

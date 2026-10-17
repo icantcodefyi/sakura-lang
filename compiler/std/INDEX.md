@@ -682,6 +682,7 @@ effect Sql {
   fn execute(q: Query<Unit>) -> Int ! {Fail<SqlError>}
   fn transaction<T, e>(body: fn() -> T ! {Sql | e}) -> T ! {Fail<SqlError> | e}
 }
+fn from<T: Schema>(value: T) -> SqlValue    // each sql"…" value goes through it (§4.11)
 fn template<R>(parts: List<String>, args: List<SqlValue>) -> Query<R>
 fn migrate(statements: List<Query<Unit>>) -> Unit ! {Sql, Fail<SqlError>}
 fn sqlite(path: Path) -> Handler<Sql, {Fs}>    // @external

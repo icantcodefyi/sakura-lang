@@ -13,7 +13,7 @@ whose milestone has landed.
 | `contracts` | §15.2 | M3 | run + test | contract checks, refined types |
 | `counter` | §15.3 | M2 | run + test | user effects, handler state |
 | `typed_errors` | §15.4 | M2 | run + test | `try`/`catch`, `Fail` ops, `Log` |
-| `json_api` | §15.5 | M3 | test | `SqlValue.from` in `sql"…"` (C), `Sql.memory` (D) |
+| `json_api` | §15.5 | M3 | test | nothing (tests pass) |
 | `word_count` | §15.6 | M3 | run + test | nothing (runs and passes) |
 | `llm_extract` | §15.7 | M3 | test | `@llm` bodies (B or D) |
 | `agent_loop` | §15.8 | M3 | check | `Tool.of` intrinsic (B/C) |

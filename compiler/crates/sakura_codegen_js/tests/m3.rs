@@ -923,3 +923,37 @@ property "small"(o: Order) { expect(o.qty < 5) }"#,
         "{line}"
     );
 }
+
+/// Design §4.11: `sql"…"` converts each interpolated value with `SqlValue.from`; a
+/// `SqlValue` is passed as is.
+#[test]
+fn sql_template_arguments_are_converted_with_sql_value_from() {
+    let src = r#"import std/sql.{Sql, SqlValue}
+type Name = String where String.len(it) > 0
+pub fn main() -> Unit ! {Console} {
+  with Sql.memory() {
+    let r = try {
+      let _ = Sql.execute(sql"create table t (id integer, name text, score real, ok integer)")
+      let name = Name.from("ann")
+      let id = 7
+      let _ = Sql.execute(sql"insert into t values ({id}, {name}, {2.5}, {true})")
+      let v = SqlValue.Text("bob")
+      let _ = Sql.execute(sql"insert into t values ({8}, {v}, {1.0}, {false})")
+      let rows: List<(Int, String, Float, Bool)> = Sql.query(sql"select id, name, score, ok from t where id >= {id} order by id")
+      rows
+    }
+    Console.print("{r}")
+  }
+}
+"#;
+    let r = common::run("sql_template_from", src).unwrap();
+    assert_eq!(
+        (r.stdout.as_str(), r.code),
+        (
+            "Ok([(7, \"ann\", 2.5, true), (8, \"bob\", 1.0, false)])\n",
+            0
+        ),
+        "{}",
+        r.stderr
+    );
+}

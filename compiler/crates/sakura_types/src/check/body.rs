@@ -401,6 +401,16 @@ impl<'p> Checker<'p> {
             let v = v.into_iter().map(|t| self.inf.zonk(t)).collect();
             out.instantiations.insert(e, v);
         }
+        let convs: Vec<_> = self
+            .b
+            .conversions
+            .iter()
+            .map(|(e, (d, v))| (e, (*d, v.clone())))
+            .collect();
+        for (e, (d, v)) in convs {
+            let v = v.into_iter().map(|t| self.inf.zonk(t)).collect();
+            out.conversions.insert(e, (d, v));
+        }
         out.calls = std::mem::take(&mut self.b.calls);
         self.b.types = out.types.clone();
         self.b.rows = out.rows.clone();

@@ -774,12 +774,18 @@ impl<'a, 'p> FnLower<'a, 'p> {
     /// call goes to a specialized copy; with type arguments known only at runtime (they
     /// mention this function's schema parameters) to the dictionary-passing copy.
     fn callee_at(&mut self, d: hir::DefId, at: ExprId) -> Callee {
+        let inst = self.typed.instantiations.get(at).cloned();
+        self.callee_inst(d, inst)
+    }
+
+    /// Like [`Self::callee_at`], given the instantiation's type arguments.
+    fn callee_inst(&mut self, d: hir::DefId, inst: Option<Vec<sakura_types::TypeId>>) -> Callee {
         let plain = |s: &mut Self| Callee {
             f: s.l.callee(d),
             leading: vec![],
             trailing: vec![],
         };
-        let Some(tys) = self.schema_args(d, at) else {
+        let Some(tys) = inst.and_then(|inst| self.schema_args_of(d, &inst)) else {
             return plain(self);
         };
         if let Atom::Builtin(name) = self.l.callee(d) {
@@ -812,11 +818,15 @@ impl<'a, 'p> FnLower<'a, 'p> {
 
     /// The schema types of `d`'s `Show`/`Schema`-bounded type arguments at `at`.
     fn schema_args(&mut self, d: hir::DefId, at: ExprId) -> Option<Vec<Ty>> {
+        let inst = self.typed.instantiations.get(at).cloned()?;
+        self.schema_args_of(d, &inst)
+    }
+
+    fn schema_args_of(&mut self, d: hir::DefId, inst: &[sakura_types::TypeId]) -> Option<Vec<Ty>> {
         let params = self.l.runtime_typed_params(d);
         if params.is_empty() {
             return None;
         }
-        let inst = self.typed.instantiations.get(at).cloned()?;
         params
             .iter()
             .map(|&(i, _)| inst.get(i).map(|&t| self.schema_conv(t)))
@@ -908,7 +918,39 @@ impl<'a, 'p> FnLower<'a, 'p> {
                 else {
                     return self.unsupported(e, "this tagged template");
                 };
-                let vs = self.exprs(args)?;
+                let mut vs = Vec::with_capacity(args.len());
+                let mut elem = None;
+                for &a in args {
+                    let v = self.expr(a)?;
+                    // `SqlValue.from(x)` and the like, recorded by the checker (§4.11).
+                    let Some((from, inst)) = self.typed.conversions.get(a).cloned() else {
+                        vs.push(v);
+                        continue;
+                    };
+                    let Callee {
+                        f,
+                        leading,
+                        trailing,
+                    } = self.callee_inst(from, Some(inst));
+                    let mut all = Vec::new();
+                    for t in leading {
+                        all.push(self.schema_atom(t, pos));
+                    }
+                    all.push(v);
+                    for t in trailing {
+                        all.push(self.schema_atom(t, pos));
+                    }
+                    // The element type is `from`'s (monomorphic) result type.
+                    let ret = match self.l.t.defs.get(&from).map(|s| s.ty) {
+                        Some(t) => match self.l.t.interner.ty(t) {
+                            sakura_types::Type::Fn { ret, .. } => self.conv(*ret),
+                            _ => Ty::Var(u32::MAX),
+                        },
+                        None => Ty::Var(u32::MAX),
+                    };
+                    elem = Some(ret.clone());
+                    vs.push(self.bind("conv", ret, Bind::Call(f, all), pos));
+                }
                 let lits = parts
                     .iter()
                     .map(|p| Atom::Lit(Lit::String(p.clone())))
@@ -919,7 +961,10 @@ impl<'a, 'p> FnLower<'a, 'p> {
                     Bind::Alloc(Alloc::List, lits),
                     pos,
                 );
-                let arg_ty = args.first().map_or(Ty::Var(u32::MAX), |a| self.ty_of(*a));
+                let arg_ty = match elem {
+                    Some(t) => t,
+                    None => args.first().map_or(Ty::Var(u32::MAX), |a| self.ty_of(*a)),
+                };
                 let xs = self.bind(
                     "args",
                     Ty::List(Box::new(arg_ty)),

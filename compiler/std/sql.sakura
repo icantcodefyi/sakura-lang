@@ -1,13 +1,29 @@
 // SQL databases as an effect (design §10.2, §4.11, M3). A `Query<R>` comes from the
 // `sql"…"` template, which sends every interpolated value as a bound parameter, never as
 // SQL text. `R` is the row type, decoded by its `Schema` (named by the binding's annotation).
-// needs M3: template arguments converted with `SqlValue.from`
-// (design §4.11; today each must already be a `SqlValue`), and the `sql_*` externals.
+// Each interpolated value is converted with `SqlValue.from` (design §4.11).
 
 import std/fs.{Fs}
 import std/path.{Path}
 
 pub type SqlValue = Null | Int(Int) | Float(Float) | Text(String) | Blob(Bytes)
+
+/// The parameter for a value interpolated into `sql"…"` (design §4.11): its JSON form as a
+/// SQL value. Strings, refined strings and `Untrusted<String>` are `Text`, whole numbers
+/// `Int`, other numbers `Float`, `Bool` is `0`/`1`, `None` is `Null`; anything else is its
+/// JSON text. A `SqlValue` is passed as is.
+pub fn from<T: Schema>(value: T) -> SqlValue {
+  match Json.parse(Json.encode(value)) {
+    Ok(Json.Null) => Null,
+    Ok(Json.Bool(b)) => Int(if b { 1 } else { 0 }),
+    Ok(Json.Number(n)) => match Float.to_int_checked(n) {
+      Some(i) if Int.to_float(i) == n => Int(i),
+      _ => Float(n),
+    },
+    Ok(Json.String(s)) => Text(s),
+    _ => Text(Json.encode(value)),
+  }
+}
 
 /// Built only by `template`, so a query's text never contains an interpolated value.
 pub opaque type Query<R> = { text: String, params: List<SqlValue> }

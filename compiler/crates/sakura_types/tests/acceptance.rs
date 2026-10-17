@@ -295,3 +295,20 @@ fn scripted(next: String) -> Handler<Gen> {
     let c = check(src);
     assert!(c.diags.is_empty(), "{}", c.render());
 }
+
+/// §4.11: `sql"…"` passes each value through `SqlValue.from`, except a `SqlValue`.
+#[test]
+fn sql_template_arguments_convert_with_sql_value_from() {
+    let src = r#"import std/sql.{Query, SqlValue}
+type Email = String where String.contains(it, "@")
+fn q(e: Email, n: Int, v: SqlValue) -> Query<Unit> { sql"select {e}, {n}, {v}" }
+"#;
+    let c = check(src);
+    assert!(c.diags.is_empty(), "{}", c.render());
+    let (_, body, typed) = c.body_of("q");
+    let converted = typed.conversions.iter().count();
+    assert_eq!(converted, 2, "{body:?}");
+    let bad =
+        check("import std/sql.{Query}\nfn q() -> Query<Unit> { sql\"select {fn() { 1 }}\" }\n");
+    assert_eq!(bad.codes(), vec!["V2032"], "{}", bad.render());
+}

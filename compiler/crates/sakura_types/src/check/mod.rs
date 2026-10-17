@@ -129,6 +129,7 @@ struct BodyState {
     local_try_depth: ArenaMap<LocalId, u32>,
     calls: ArenaMap<ExprId, CallTarget>,
     instantiations: ArenaMap<ExprId, Vec<TypeId>>,
+    conversions: ArenaMap<ExprId, (DefId, Vec<TypeId>)>,
     scope: Vec<LocalId>,
     frames: Vec<FnFrame>,
     lambda_depth: u32,
