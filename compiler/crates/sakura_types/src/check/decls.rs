@@ -37,6 +37,9 @@ impl Checker<'_> {
                     index: idx,
                 };
                 self.trust_positions(id, is_std);
+                if !is_std {
+                    self.forged_capabilities(id);
+                }
                 match &def.kind {
                     DefKind::Type(td) => {
                         if let TypeDefBody::Refined { base, .. } = &td.body {
@@ -94,6 +97,41 @@ impl Checker<'_> {
                 .with_span(self.span_in(def.module, range));
                 self.push(d);
             }
+        }
+    }
+
+    /// V6001 (§6.2, §17.91): a user `@external` whose signature mentions, at any depth, an
+    /// external or `@resource` type declared in another package, or a `Handler<…>`, would mint
+    /// a capability the checker cannot see. Reported once per outermost offending type.
+    fn forged_capabilities(&mut self, def: DefId) {
+        let program = self.program;
+        let d = program.def(def);
+        let DefKind::Fn(f) = &d.kind else {
+            return;
+        };
+        if !d.attrs.iter().any(|a| a.name == "external") {
+            return;
+        }
+        let package = program.module(def.module).package;
+        let mut sites = Vec::new();
+        for t in f.sig.params.iter().map(|p| &p.ty).chain([&f.sig.ret]) {
+            capability_sites(program, t, package, &mut sites);
+        }
+        for (range, outer, culprit) in sites {
+            let home = |d: DefId| {
+                let m = program.module(d.module);
+                let pkg = &program.packages[m.package.0 as usize].name;
+                format!("`{}` ({pkg}/{})", program.def(d).name, m.path)
+            };
+            const CAP: &str = "a capability of another package: a user `@external` cannot construct or receive it; obtain it from a handler (design §6.2)";
+            let msg = match (outer, culprit) {
+                (_, None) => "a `Handler<…>` cannot cross a user `@external`: handlers come only from `handler` expressions and std (design §6.2)".to_string(),
+                (Some(o), Some(c)) if o != c => format!("{} contains {}, {CAP}", home(o), home(c)),
+                (_, Some(c)) => format!("{} is {CAP}", home(c)),
+            };
+            let d = Diagnostic::error(sakura_diagnostics::codes::V6001, Phase::Capability, msg)
+                .with_span(self.span_in(def.module, range));
+            self.push(d);
         }
     }
 
@@ -1006,6 +1044,111 @@ fn fail_free_in<'a>(
 }
 
 /// The range of the first reference to type `def` inside `t`.
+/// The outermost types in `t` that hold a capability foreign to `package` (§17.91):
+/// `(range, the named type, the capability inside it)`; the capability is `None` for a
+/// `Handler<…>`, the named type `None` when the handler is written directly.
+fn capability_sites(
+    program: &sakura_hir::Program,
+    t: &TypeRef,
+    package: sakura_hir::PackageId,
+    out: &mut Vec<(text_size::TextRange, Option<DefId>, Option<DefId>)>,
+) {
+    match &t.kind {
+        TypeRefKind::Named {
+            res: TypeRes::Builtin(Builtin::Handler),
+            ..
+        } => out.push((t.range, None, None)),
+        TypeRefKind::Named {
+            res: TypeRes::Def(d),
+            args,
+        } => match def_capability(program, *d, package, &mut HashSet::new()) {
+            Some(c) => out.push((t.range, Some(*d), c)),
+            None => args
+                .iter()
+                .for_each(|a| capability_sites(program, a, package, out)),
+        },
+        _ => type_ref_children(t)
+            .into_iter()
+            .for_each(|c| capability_sites(program, c, package, out)),
+    }
+}
+
+/// Whether nominal type `def` is or holds a capability foreign to `package`: `Some(Some(c))`
+/// for an external or `@resource` type `c` of another package, `Some(None)` for a handler.
+/// `Trust` has its own rule (`trust_positions`). Recursive types are coinductive.
+fn def_capability(
+    program: &sakura_hir::Program,
+    def: DefId,
+    package: sakura_hir::PackageId,
+    seen: &mut HashSet<DefId>,
+) -> Option<Option<DefId>> {
+    if !seen.insert(def) || program.lang.trust == Some(def) {
+        return None;
+    }
+    let d = program.def(def);
+    let mut parts: Vec<&TypeRef> = Vec::new();
+    match &d.kind {
+        DefKind::Type(td) => {
+            if td.body == TypeDefBody::External || d.attrs.iter().any(|a| a.name == "resource") {
+                let foreign = program.module(def.module).package != package;
+                return foreign.then_some(Some(def));
+            }
+            match &td.body {
+                TypeDefBody::Record(fs) => parts.extend(fs.iter().map(|f| &f.ty)),
+                TypeDefBody::Alias(t) | TypeDefBody::Refined { base: t, .. } => parts.push(t),
+                TypeDefBody::ErrorUnion(ts) => parts.extend(ts),
+                TypeDefBody::Variants(vs) => {
+                    for &v in vs {
+                        if let DefKind::Variant(vd) = &program.module(def.module).defs[v].kind {
+                            parts.extend(&vd.fields);
+                        }
+                    }
+                }
+                TypeDefBody::External | TypeDefBody::Missing => {}
+            }
+        }
+        DefKind::Error(e) => parts.extend(e.fields.iter().map(|f| &f.ty)),
+        _ => {}
+    }
+    let mut stack = parts;
+    while let Some(t) = stack.pop() {
+        match &t.kind {
+            TypeRefKind::Named {
+                res: TypeRes::Builtin(Builtin::Handler),
+                ..
+            } => return Some(None),
+            TypeRefKind::Named { res, args } => {
+                if let TypeRes::Def(x) = res
+                    && let Some(c) = def_capability(program, *x, package, seen)
+                {
+                    return Some(c);
+                }
+                stack.extend(args);
+            }
+            _ => stack.extend(type_ref_children(t)),
+        }
+    }
+    None
+}
+
+/// The type references directly inside `t` (row label arguments included).
+fn type_ref_children(t: &TypeRef) -> Vec<&TypeRef> {
+    match &t.kind {
+        TypeRefKind::Named { args, .. } => args.iter().collect(),
+        TypeRefKind::Tuple(xs) | TypeRefKind::Union(xs) => xs.iter().collect(),
+        TypeRefKind::Fn { params, ret, row } => params
+            .iter()
+            .chain([&**ret])
+            .chain(
+                row.iter()
+                    .flat_map(|r| r.labels.iter().flat_map(|l| &l.args)),
+            )
+            .collect(),
+        TypeRefKind::Row(r) => r.labels.iter().flat_map(|l| &l.args).collect(),
+        TypeRefKind::Missing => Vec::new(),
+    }
+}
+
 fn mentions_def(t: &TypeRef, def: DefId) -> Option<text_size::TextRange> {
     let mut stack = vec![t];
     while let Some(t) = stack.pop() {

@@ -210,3 +210,68 @@ fn a_route_handler_returning_a_file_is_v6003() {
     let src = "import std/router.{Router}\nimport std/response.{Response}\nfn routes(r: Router<{Fs, Fail<FsError>}>) -> Router<{Fs, Fail<FsError>}> {\n  Router.get(r, \"/file\", fn(req) {\n    let _ = Fs.with_file(Path.of(\"a.txt\"), Mode.Read, fn(f) { f })\n    Response.status(200, \"opened\")\n  })\n}\n";
     assert_eq!(codes(src), ["V6003"]);
 }
+
+// ---- §17.91: V6001 on a user `@external` that mints a capability ----
+
+#[test]
+fn a_user_external_returning_a_std_capability_is_v6001() {
+    let c = check(&format!(
+        "{FS}@external(js, \"./forge.js\", \"root\")\nfn forge() -> Dir\n"
+    ));
+    assert_eq!(c.codes(), ["V6001"], "{}", c.render());
+    let r = c.render();
+    assert!(
+        r.contains("V6001 4:15 `Dir` (std/fs) is a capability of another package"),
+        "{r}"
+    );
+}
+
+#[test]
+fn a_user_external_mentioning_a_capability_at_any_depth_is_v6001() {
+    // Inside `Option`, a function type, a user record, a std resource and a handler.
+    let src = "type Wrap = { dir: Dir }\n@external(js, \"./f.js\", \"a\")\nfn a(f: fn(Option<Dir>) -> Int) -> Int\n@external(js, \"./f.js\", \"b\")\nfn b() -> Wrap\n@external(js, \"./f.js\", \"c\")\nfn c(file: File) -> Int\n@external(js, \"./f.js\", \"d\")\nfn d() -> Handler<Fs>\n";
+    let c = check(&format!("{FS}{src}"));
+    let r = c.render();
+    assert_eq!(c.codes(), ["V6001", "V6001", "V6001", "V6001"], "{r}");
+    assert!(
+        r.contains("`Wrap` (main/main) contains `Dir` (std/fs)"),
+        "{r}"
+    );
+    assert!(r.contains("`File` (std/fs) is a capability"), "{r}");
+    assert!(
+        r.contains("a `Handler<…>` cannot cross a user `@external`"),
+        "{r}"
+    );
+}
+
+#[test]
+fn a_package_may_declare_externals_over_its_own_external_types() {
+    clean(
+        "@resource\ntype Conn\ntype Pool = { conns: List<Conn> }\n@external(js, \"./db.js\", \"open\")\nfn open(url: String) -> Conn\n@external(js, \"./db.js\", \"pool\")\nfn pool(n: Int) -> Pool\nfn plain(d: Dir) -> Dir { d }\n",
+    );
+}
+
+// ---- §17.88, §17.89: the callback rule on a parameter that *contains* a resource ----
+
+const STREAM: &str = "@resource\ntype Body\ntype Incoming = { status: Int, body: Body }\neffect Net {\n  fn stream<T, e>(body: fn(Incoming) -> T ! e) -> T ! e\n  fn read(b: Body) -> Int\n}\n";
+
+#[test]
+fn a_callback_returning_a_record_holding_a_resource_is_v6003() {
+    let src = format!(
+        "{STREAM}fn whole() -> Incoming ! {{Net}} {{ Net.stream(fn(r) {{ r }}) }}\nfn body() -> Body ! {{Net}} {{ Net.stream(fn(r) {{ r.body }}) }}\n"
+    );
+    let c = check(&format!("{FS}{src}"));
+    assert_eq!(c.codes(), ["V6003", "V6003"], "{}", c.render());
+    assert!(
+        c.render().contains("escapes the callback of `stream`"),
+        "{}",
+        c.render()
+    );
+}
+
+#[test]
+fn reading_a_streamed_body_inside_the_callback_is_fine() {
+    clean(&format!(
+        "{STREAM}fn size() -> Int ! {{Net}} {{ Net.stream(fn(r) {{ r.status + Net.read(r.body) }}) }}\n"
+    ));
+}

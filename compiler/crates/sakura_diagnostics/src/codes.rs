@@ -424,6 +424,19 @@ Fixed:
 "Capability values (`Dir`, `NetScope`, `EnvScope`, `SecretStore`) cannot be constructed by user
 code. Obtain one from a root handler or attenuate an existing one (design §6.2).
 
+An `@external` declaration outside std is the one door the checker cannot see through, so
+its parameter and result types may not mention, at any depth, an external or `@resource`
+type declared in another package (`Dir`, `File`, `Body`, …) or a `Handler<…>` (design
+§17.91). A package may declare externals over external types it declares itself.
+
+Wrong:
+    import std/fs.{Dir}
+    @external(js, \"./forge.js\", \"root\")
+    fn forge() -> Dir
+Fixed:
+    import std/fs.{Fs, Dir}
+    fn root() -> Dir ! {Fs} { Fs.root() }
+
 A `Trust` is a capability too (design §6.4): it exists only as the literal `@trust(\"reason\")`
 passed directly to a sink (`Untrusted.trust`, `Secret.expose`, `Html.raw`), so every trust
 decision is visible at the sink and listed by `sakura audit`. It cannot be stored in a
