@@ -1,0 +1,18 @@
+#!/bin/sh
+# Refuse to push a commit whose compiler/Cargo.lock doesn't match its Cargo.toml files.
+# Several agents share one checkout, so the working-tree lockfile can contain dependencies
+# from someone else's uncommitted work. Check the pushed commits, not the working tree.
+set -e
+while read -r _local_ref local_sha _remote_ref _remote_sha; do
+  [ "$local_sha" = 0000000000000000000000000000000000000000 ] && continue
+  git cat-file -e "$local_sha:compiler/Cargo.toml" 2>/dev/null || continue
+  tmp=$(mktemp -d)
+  git archive "$local_sha" compiler | tar -x -C "$tmp"
+  if ! (cd "$tmp/compiler" && cargo metadata --locked --offline --format-version 1 >/dev/null 2>&1); then
+    rm -rf "$tmp"
+    echo "pre-push: compiler/Cargo.lock in $local_sha does not match its Cargo.toml files." >&2
+    echo "Commit the lockfile together with the Cargo.toml change that needs it, and only your own entries." >&2
+    exit 1
+  fi
+  rm -rf "$tmp"
+done

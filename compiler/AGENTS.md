@@ -21,6 +21,10 @@ Each crate has one owner at a time. Edit only crates you own. If you need a chan
 crate's public interface, append a dated entry to `compiler/REQUESTS.md` (who, what, why) and code
 against your own temporary adapter until it lands. Never rewrite another owner's code.
 
+- A pre-push hook (`.githooks/pre-push`, enabled with `git config core.hooksPath .githooks`)
+  rejects pushes whose `compiler/Cargo.lock` doesn't match the committed `Cargo.toml` files. The
+  working-tree lockfile may hold other agents' uncommitted dependencies: stage only your own hunks
+  (`git add -p compiler/Cargo.lock`).
 - Shared files (`Cargo.toml`, `Cargo.lock`): add workspace dependencies under
   `[workspace.dependencies]` with the latest stable version from crates.io, then reference them as
   `dep.workspace = true`. Keep edits minimal; re-read the file right before editing it.

@@ -6,6 +6,11 @@ installable Vow toolchain, supported release, or measured performance guarantee 
 Start with the [design](docs/design.md), [research](research/),
 [stability policy](STABILITY.md), and [Code of Conduct](CODE_OF_CONDUCT.md).
 
+## Git hooks
+
+Run `git config core.hooksPath .githooks` once after cloning. The pre-push hook checks that
+`compiler/Cargo.lock` matches the committed manifests, the same check CI runs with `--locked`.
+
 ## Set up the checkout
 
 ```sh
