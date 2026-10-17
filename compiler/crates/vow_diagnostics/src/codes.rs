@@ -216,6 +216,15 @@ Wrong:
 Fixed:
     Log.event(Level.Info, \"token set\", [])";
 
+    V2032 "constraint_not_satisfied" TYPE,
+"A type does not satisfy a constraint the operation requires: `Eq`, `Ord`, `Hash` or `Schema`
+(`Show` is `V2031`). Functions, handlers, resources and secrets have none of them (design §4.4).
+
+Wrong:
+    let same = handler_a == handler_b
+Fixed:
+    compare the data the handlers were built from instead";
+
     V2040 "unused_value" TYPE,
 "A non-final expression statement produces a non-`Unit` value that is dropped. This catches
 forgotten reassignments such as `List.push(xs, 1)` (design §8.1).

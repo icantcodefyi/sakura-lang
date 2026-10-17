@@ -169,6 +169,33 @@ pub struct Rendered {
     pub structured: Option<serde_json::Value>,
 }
 
+impl Rendered {
+    /// A rendering with no structured form.
+    pub fn text(render: impl Into<String>) -> Self {
+        Rendered {
+            render: render.into(),
+            structured: None,
+        }
+    }
+
+    /// An effect row: `labels` are `(effect path, rendered type args)`, `tail` the row variable's
+    /// name if open. Produces `{"row": {"labels": [{"effect", "args"}], "tail"}}` (design §12.2).
+    pub fn row(
+        render: impl Into<String>,
+        labels: Vec<(String, Vec<String>)>,
+        tail: Option<String>,
+    ) -> Self {
+        let labels: Vec<_> = labels
+            .into_iter()
+            .map(|(effect, args)| serde_json::json!({"effect": effect, "args": args}))
+            .collect();
+        Rendered {
+            render: render.into(),
+            structured: Some(serde_json::json!({"row": {"labels": labels, "tail": tail}})),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub struct Diagnostic {
     pub code: Code,

@@ -178,3 +178,27 @@ fn every_registry_code_explains_itself() {
         assert_eq!(codes::lookup(info.code.0).unwrap().code, info.code);
     }
 }
+
+#[test]
+fn rendered_row_has_the_schema_shape() {
+    let r = Rendered::row(
+        "{Clock, Db | e}",
+        vec![
+            ("std::Clock".into(), vec![]),
+            ("app::Db".into(), vec!["Int".into()]),
+        ],
+        Some("e".into()),
+    );
+    let d = Diagnostic::error(V3001, Phase::Effect, "m")
+        .with_span(Span::primary(FileId(0), 0, 1))
+        .with_expected(r)
+        .with_actual(Rendered::text("{}"));
+    let rec = &lines(&render_json_lines(&[d], &hello(), "s"))[0];
+    assert_eq!(
+        rec["expected"],
+        serde_json::json!({"render": "{Clock, Db | e}", "row": {
+            "labels": [{"effect": "std::Clock", "args": []}, {"effect": "app::Db", "args": ["Int"]}],
+            "tail": "e"}})
+    );
+    assert_eq!(rec["actual"], serde_json::json!({"render": "{}"}));
+}
