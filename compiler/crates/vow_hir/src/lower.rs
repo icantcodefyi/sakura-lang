@@ -13,7 +13,7 @@ use std::collections::BTreeMap;
 
 use la_arena::Idx;
 use text_size::TextRange;
-use vow_diagnostics::{Diagnostic, FileId};
+use vow_diagnostics::{Diagnostic, FileId, Phase, codes};
 use vow_syntax::ast::AstNode;
 use vow_syntax::{SyntaxKind, SyntaxKind::*, SyntaxNode, SyntaxToken};
 
@@ -55,6 +55,7 @@ pub fn lower(packages: &[PackageInput<'_>]) -> Program {
     for m in 0..cx.program.modules.len() {
         cx.lower_items(ModuleId(m as u32));
     }
+    cx.check_main_rows();
     cx.program
 }
 
@@ -1114,6 +1115,44 @@ impl Cx {
             err: get(p, "result", "Err"),
             violation: get(p, "core", "Violation"),
         };
+    }
+
+    /// `V6010` (design §9): only std effects, which have host root handlers, may appear in
+    /// the row of a `pub fn main` outside std.
+    fn check_main_rows(&mut self) {
+        let is_std =
+            |p: &Program, m: ModuleId| p.packages[p.module(m).package.0 as usize].name == "std";
+        let mut found = Vec::new();
+        for m in (0..self.program.modules.len() as u32).map(ModuleId) {
+            if is_std(&self.program, m) {
+                continue;
+            }
+            let Some(main) = self.program.lookup(m, "main") else {
+                continue;
+            };
+            let def = self.program.def(main);
+            let DefKind::Fn(f) = &def.kind else { continue };
+            if !def.is_pub {
+                continue;
+            }
+            for label in f.sig.row.iter().flat_map(|r| &r.labels) {
+                if let TypeRes::Def(e) = label.effect
+                    && !is_std(&self.program, e.module)
+                {
+                    found.push((m, e, label.range));
+                }
+            }
+        }
+        for (m, e, range) in found {
+            let name = &self.program.def(e).name;
+            let msg = format!(
+                "only std effects may appear in `main`'s row, because only they have host handlers; handle `{name}` (from `{}`) inside `main` with `with` and remove it from the row",
+                self.module_name(e.module)
+            );
+            let d = Diagnostic::error(codes::V6010, Phase::Capability, msg)
+                .with_span(diag::span(self.file(m), range));
+            self.report(d);
+        }
     }
 
     // ---- Phase 4: signatures and bodies ----

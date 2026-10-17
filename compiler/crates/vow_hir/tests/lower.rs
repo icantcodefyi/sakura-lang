@@ -492,6 +492,15 @@ fn parse_error_cascades() {
     );
 }
 
+snap!(diag_non_std_effect_in_main,
+    "main" => r#"
+import app/db.{Db}
+effect Local { fn op() -> Int }
+pub fn main() -> Unit ! {Console, Db, Local, Fail<Int>} { () }
+"#,
+    "db" => "pub effect Db { fn count() -> Int }\nfn main() -> Unit ! {Db} { () }\n",
+);
+
 snap!(diag_shadowed_import,
     "main" => "import app/lib.{value}\nfn f() -> Int { let value = 2; value }\n",
     "lib" => "pub fn value() -> Int { 1 }\n",
