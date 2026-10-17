@@ -20,6 +20,7 @@ export const tests = [
       op($ctx, 2, ["one"], () => op($ctx, 3, [], (lines) =>
         op($ctx, 0, [`lines=${lines.n}`], $k))) },
   { name: "snapshot", module: "app::view", run: ($ctx, $k) => op($ctx, 4, ["page", "<h1>hi</h1>"], $k) },
+  { name: "uncaught fail", module: "main", run: ($ctx, $k) => $rt.fail($ctx, $rt.Some(3)) },
 ];
 "#;
 
@@ -80,7 +81,7 @@ fn records_per_test_and_summary() {
         .collect();
     assert_eq!(
         status,
-        ["passed", "failed", "defect", "failed", "failed", "summary"]
+        ["passed", "failed", "defect", "failed", "failed", "failed", "summary"]
     );
     assert_eq!(recs[1]["failures"][0], "expected 1, got 2");
     assert_eq!(recs[2]["defect"]["code"], "D002");
@@ -92,12 +93,14 @@ fn records_per_test_and_summary() {
             .unwrap()
             .contains("does not exist yet")
     );
+    // §17.30: a `Fail` escaping the test body fails the test with the error's Show.
+    assert_eq!(recs[5]["failures"][0], "test failed with Some(3)");
     for r in &recs {
         assert_eq!(r["schema_version"], "1.0");
         assert_eq!(r["seed"], 7);
     }
-    assert_eq!(recs[5]["passed"], 1);
-    assert_eq!(recs[5]["failed"], 4);
+    assert_eq!(recs[6]["passed"], 1);
+    assert_eq!(recs[6]["failed"], 5);
 }
 
 #[test]
@@ -124,7 +127,7 @@ fn filter_selects_tests() {
     let (code, recs) = run(&dir, "passes", false);
     assert_eq!(code, Some(0));
     assert_eq!(recs.len(), 2);
-    assert_eq!(recs[1]["skipped"], 4);
+    assert_eq!(recs[1]["skipped"], 5);
 }
 
 /// The runner's clause order must match `effect Test` in std, or clauses get the wrong arguments.
