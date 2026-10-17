@@ -1,6 +1,7 @@
 # Vow language design (v0)
 
 Status: **authoritative design for v0**. Date: 2026-10-17. Owner: language design.
+Change process: edits to syntax, semantics, effects, module/package rules, or the diagnostic protocol go through `docs/rfcs/NNNN-title.md` with a seven-day final comment period (`research/07 §3`); the normative `docs/spec/` is extracted from this document once M1 lands.
 Research inputs: `research/01` (effects), `02` (memory), `03` (verification), `04` (agent ergonomics), `05` (platform), `06` (compiler). Section references below like `R01 §4.2` point into those files.
 
 This document is written so that several engineers can implement the compiler in parallel without asking questions. Where the research left a choice open, this document picks one way and says why. Anything not specified here is **not in v0**.
@@ -639,7 +640,7 @@ Strict, left-to-right, arguments before call. `Map`/`Set` iteration order is ins
 - **Prelude** (always in scope): `Unit Bool Int Float String Bytes Never List Map Set Option Result Range Some None Ok Err Handler Secret Untrusted`, the modules `List Map Set String Int Float Option Result Bytes`, effects `Fail Console Clock Random Env Log Task` and the tags `sql html url shell` (resolved lazily; using `sql` requires `std/sql` in the lockfile).
 - **Entry point**: `pub fn main() -> Unit ! {…}` in `src/main.vow`. Only std effects may appear in `main`'s row (`V6010`), because only they have host root handlers.
 - **Packages**: `vow.toml` (name, version, edition `2026`, dependencies with lower bounds, `[permissions]`, `[targets]`), `vow.lock` (exact versions + content hashes, committed). Resolution is MVS within a major (`R05 §3`). Registry packages are immutable; `vow publish` computes the API/effect/error/schema diff and enforces the version bump (Elm rule, extended to effect rows and error unions).
-- **Editions**: the `edition` field pins syntax/semantics; the compiler supports the current and previous edition.
+- **Editions**: `vow.toml` carries `edition = "2026"` so every project is self-describing, but v0 ships exactly one edition and no multi-edition support; pre-1.0, minor releases may break the language deliberately and patch releases may not (`research/07 §3`, release and stability plan).
 
 ---
 
