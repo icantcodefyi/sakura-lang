@@ -1,226 +1,87 @@
 ---
 title: MCP server
-description: The planned vow mcp server, which exposes the compiler to agents as Model Context Protocol tools.
+description: The planned vow mcp serve server, which exposes the compiler to agents as Model Context Protocol tools, and @tool export of your own functions.
 ---
 
 <Callout type="warn" title="Planned">
-  `vow mcp` does not exist yet. Tool names, inputs, and outputs on this page are the current design and may change.
+  `vow mcp serve` is designed for v0 (milestone M3) but not implemented. Nothing on this page runs yet. Tool names and
+  parameters follow [design §12.6](https://github.com/icantcodefyi/vow/blob/master/docs/design.md); result shapes beyond
+  what is stated there are not fixed.
 </Callout>
 
-`vow mcp` runs the compiler as a [Model Context Protocol](https://modelcontextprotocol.io) server over stdio. An agent calls compiler functions directly instead of running shell commands and parsing their output. The server keeps the project loaded between calls, so repeated checks are incremental.
+`vow mcp serve` runs the compiler as a [Model Context Protocol](https://modelcontextprotocol.io) server. An agent calls compiler functions directly instead of running shell commands and parsing their output.
+
+The CLI, the language server (`vow lsp`), and the MCP server are thin adapters over one Rust analysis library (`vow_analysis`). They report the same diagnostics, in the same [JSON format](/docs/agents/diagnostics), for the same input.
 
 ## Client configuration
+
+A client entry would look like this. The transport options are not fixed yet.
 
 ```json
 {
   "mcpServers": {
     "vow": {
       "command": "vow",
-      "args": ["mcp"]
+      "args": ["mcp", "serve"]
     }
   }
 }
 ```
 
-The server uses the project in its working directory, found by walking up to the nearest `vow.toml`.
+## Snapshots
 
-## Tools
+The compiler never reads the filesystem during analysis. It works on an immutable **workspace snapshot**. Every tool returns a `snapshot` id, and tools that read or change code take one. This makes results reproducible and lets the server detect stale edits: a patch built against an old snapshot conflicts instead of applying to the wrong text.
 
-| Tool | Purpose |
-| --- | --- |
-| `check` | Type, effect, and contract check the project or one file. Returns diagnostics. |
-| `hole` | Describe one typed hole: expected type, allowed effects, bindings, candidates. |
-| `explain` | Explain an error code, with the relevant docs section. |
-| `signature` | Return the signature and contracts of a symbol. |
-| `find` | Search definitions by name or by type. |
-| `test` | Run tests, optionally filtered, with simulation seeds. |
-| `apply_fix` | Apply one fix from a diagnostic, by diagnostic id and fix index. |
-| `format` | Format a file or a snippet. |
-| `docs` | Return a docs page as Markdown. |
+## Tools in v0
 
-Every tool returns JSON. Diagnostics use the same format as `vow check --format json`, documented in [Diagnostics](/docs/agents/diagnostics).
+| Tool | Parameters | Returns |
+| --- | --- | --- |
+| `compiler_info` | none | Information about the running compiler. Exact fields are not specified yet. |
+| `check` | `snapshot`, `paths`, `budget_ms` | Diagnostic, hole, and obligation records ([Diagnostics](/docs/agents/diagnostics)). |
+| `symbol_query` | `name`, `id`, or `type_pattern` | Matching symbols with full signatures, including effect rows, error unions, and contracts. |
+| `hole_context` | `snapshot`, `hole_id` | One [typed hole](/docs/agents/typed-holes) record. |
+| `docs_query` | `topic` or `symbol`, `budget_tokens` | Documentation text within a token budget. |
+| `explain_diagnostic` | `code` or `id` | The explanation for a code such as `V3001`, the same as `vow explain`. |
+| `format` | `snapshot`, `paths` | A patch with the canonical formatting. |
+| `check_patch` | `snapshot`, `edits` | Diagnostics for the patched code, plus the interface delta: which signatures the patch changes. |
+| `apply_patch` | `snapshot`, `patch_id` | A new snapshot, or a conflict. |
+| `test` | `snapshot`, `selectors`, `seed`, `budget` | Test results under deterministic handlers. |
 
-## check
+Planned for v1: `verify`, `refactor`, `impact`.
 
-Input:
+### Checking a patch before applying it
 
-```json
-{ "path": "src/users.vow" }
-```
+`check_patch` lets an agent try an edit without changing anything. The interface delta tells the agent, and the reviewer, whether the edit changes a public signature, effect row, or error union. `apply_patch` then commits it and returns the new snapshot.
 
-Output:
+`apply_patch` enforces **frozen specs** (design §7.3). It rejects any patch that modifies a frozen symbol's signature, effect row, error union, `requires`/`ensures`/`where` clauses, or any `test`/`property` body, with diagnostic `V8020 spec_frozen` naming the clause. The CLI equivalent is `vow check --frozen-specs <symbols|all>`.
 
-```json
-{
-  "ok": false,
-  "diagnostics": [
-    {
-      "id": "d1",
-      "code": "E0402",
-      "severity": "error",
-      "message": "effect `Net` is performed but not declared in the signature of `signup`",
-      "span": { "file": "src/users.vow", "start": { "line": 9, "col": 3 }, "end": { "line": 9, "col": 41 } },
-      "expected": "! {Db, Clock, Random, Fail<SignupError>}",
-      "found": "! {Db, Clock, Random, Net, Fail<SignupError>}",
-      "fixes": [
-        { "title": "Declare `Net` in the signature of `signup`", "safety": "changes-signature" },
-        { "title": "Remove the call to `Http.post`", "safety": "changes-behaviour" }
-      ],
-      "docs": "/docs/tour/effects.md#undeclared-effects"
-    }
-  ],
-  "holes": 0
-}
-```
+### Authority
 
-The `fixes` above are abbreviated; the full objects include `edits`. The `id` field is per-session and is what `apply_fix` takes.
+Tools that execute code, such as `test`, run with capabilities issued by the host. A caller cannot name authority in a tool call. Tests run with deterministic default handlers and network access denied.
 
-## hole
+## Exporting your own functions as tools
 
-Input:
+Separately from the compiler tools, `vow mcp serve --tools a,b` exports functions from your program as MCP tools (design §11.2).
 
-```json
-{ "file": "src/users.vow", "line": 9, "col": 3 }
-```
-
-Output:
-
-```json
-{
-  "expected": "User",
-  "effects": "! {Db, Clock, Random, Fail<SignupError>}",
-  "bindings": [
-    { "name": "email", "type": "Email" },
-    { "name": "pw", "type": "Password" }
-  ],
-  "facts": ["not Db.exists(users, email)"],
-  "contracts": ["ensures result.email == email"],
-  "candidates": [
-    { "name": "User", "kind": "record", "signature": "User { id: Uuid, email: Email, created: Instant }" },
-    { "name": "app/users.create_user", "kind": "function", "signature": "fn create_user(email: Email) -> User ! {Db, Clock, Random}" }
-  ]
-}
-```
-
-See [Typed holes](/docs/agents/typed-holes) for how candidates are ranked.
-
-## explain
-
-Input:
-
-```json
-{ "code": "E0510" }
-```
-
-Output:
-
-```json
-{
-  "code": "E0510",
-  "title": "Untrusted value flows into a raw sink",
-  "summary": "A value of type `Untrusted<T>` reached a function that interprets its argument, such as `Sql.raw`, `Shell.run`, or `Html.raw`.",
-  "usual_fix": "Use a tagged literal (`sql\"...\"`, `html\"...\"`) or validate the value with `.validate(Type)`.",
-  "docs": "/docs/tour/capabilities.md#untrusted-data"
-}
-```
-
-## signature
-
-Input:
-
-```json
-{ "symbol": "app/users.signup" }
-```
-
-Output:
-
-```json
-{
-  "symbol": "app/users.signup",
-  "signature": "pub fn signup(email: Email, pw: Password) -> User ! {Db, Clock, Random, Fail<SignupError>}",
-  "requires": [],
-  "ensures": ["result.email == email"],
-  "doc": "Create a user account.",
-  "hash": "#k3f9a1c2"
-}
-```
-
-The `hash` is the definition's planned content address. It changes only when the definition's normalized syntax tree changes, not when it is renamed or moved.
-
-## find
-
-Search by name, or by type with `_` as a wildcard:
-
-```json
-{ "type": "(List<_>) -> Int" }
-```
-
-```json
-{
-  "results": [
-    { "symbol": "std/list.len", "signature": "fn len<T>(xs: List<T>) -> Int" },
-    { "symbol": "std/list.sum", "signature": "fn sum(xs: List<Int>) -> Int" }
-  ]
-}
-```
-
-## test
-
-```json
-{ "filter": "duplicate email", "sim": true, "seeds": 100 }
-```
-
-```json
-{
-  "passed": 1,
-  "failed": 0,
-  "results": [{ "name": "duplicate email fails", "status": "ok", "seeds": 100 }]
-}
-```
-
-A failure includes the seed, the shrunk counterexample, and the `expect` that failed.
-
-## apply_fix
-
-```json
-{ "diagnostic": "d1", "fix": 1 }
-```
-
-```json
-{ "applied": true, "safety": "changes-behaviour", "files": ["src/users.vow"] }
-```
-
-`apply_fix` refuses a `changes-signature` fix unless the call sets `"confirm_signature_change": true`. That flag exists so an agent harness can require human approval before setting it.
-
-## format and docs
-
-```json
-{ "path": "src/users.vow" }
-```
-
-```json
-{ "page": "/docs/tour/handlers" }
-```
-
-`format` returns the formatted text or writes it in place. `docs` returns the same Markdown as the page's `.md` URL (see [llms.txt](/docs/agents/llms-txt)), so it works offline.
-
-## Exporting your own tools
-
-`vow mcp` serves the compiler. A separate planned command, `vow mcp export`, serves your program's functions as MCP tools. Annotate a function with `@tool`, and its `///` doc comment becomes the tool description and its signature becomes the input schema:
+A tool function is marked `@tool("description")`. Its parameters and result must be `Schema` types, and its error union must be made of `Schema` tags. From design §15.8:
 
 ```vow
-/// Look up the current status of an order by its id.
-@tool
-pub fn order_status(id: OrderId) -> OrderStatus ! {Db, Fail<NotFound>} {
-  match Db.query_one<OrderStatus>(sql"select status from orders where id = {id}") {
-    Some(status) => status
-    None => fail NotFound
-  }
+import std/ai
+
+error SearchDown
+
+@tool("Search the internal knowledge base; returns up to 5 snippets")
+fn kb_search(query: String) -> List<String> ! {Http, Fail<SearchDown>} {
+  let resp = Http.get(url"https://kb.internal/search?q={query}")
+  if resp.status != Status.of(200) { fail SearchDown }
+  Response.json<List<String>>(resp, 100_000)
 }
 ```
 
-Refinements become JSON Schema constraints, and tool inputs are validated as `Untrusted` data before the function runs. See the [standard library](/docs/stdlib) for details.
+`Tool.of(kb_search)` builds a `Tool` value. Its JSON Schema comes from the parameter types, refinements included. When called, it validates the JSON arguments, runs the function under the caller's current handlers, and maps failures to a public `ToolError` with the tag name and payload. The same `Tool` values are used in-process by `Agent.run` (see the [standard library](/docs/stdlib)).
+
+When exported over MCP, the model never supplies authority. The handlers installed by the serving program decide what `Http` can reach, and the manifest's `[permissions]` table is the ceiling.
 
 ## Next
 
-[Diagnostics](/docs/agents/diagnostics): the full JSON format reference.
+[Diagnostics](/docs/agents/diagnostics): the JSON format every tool returns.

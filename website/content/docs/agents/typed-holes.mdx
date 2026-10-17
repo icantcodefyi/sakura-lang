@@ -1,138 +1,124 @@
 ---
 title: Typed holes
-description: How todo() lets agents write a Vow program incrementally, with the compiler reporting what fits in each gap.
+description: How ?name holes let agents write a Vow program incrementally, with the checker reporting what fits in each gap.
 ---
 
-<Callout type="warn" title="Design draft">
-  Typed holes are planned for the first checker prototype. The report format below is the current design.
+<Callout type="warn" title="Designed, not implemented">
+  Typed holes are part of milestone M2 in [design §12.4](https://github.com/icantcodefyi/vow/blob/master/docs/design.md).
+  The compiler is under construction, and nothing on this page runs yet.
 </Callout>
 
-A typed hole is a placeholder for code you have not written yet. In Vow it is written `todo()`. A hole type checks anywhere, as any type, so a program with holes can be checked and tested before it is finished.
+A typed hole is a placeholder for code you have not written yet. In Vow it is written `?name`: a `?` immediately followed by an identifier, with no space. A hole is an expression of a fresh type, so a program with holes can be checked before it is finished.
 
-Holes turn "write the whole function and hope it compiles" into a sequence of small steps, each with precise feedback.
+Holes turn "write the whole function and hope it compiles" into small steps, each with precise feedback.
 
 ## Writing a hole
 
-```vow title="src/users.vow"
-type Email = String where is_email(it)
-type Password = String where it.len >= 12
-type SignupError = EmailTaken | Banned
-
-fn signup(email: Email, pw: Password) -> User ! {Db, Clock, Random, Fail<SignupError>}
-  ensures result.email == email
+```vow
+fn clamp(x: Int, lo: Int, hi: Int) -> Int
+  requires ordered: lo <= hi
+  ensures bounded: lo <= result && result <= hi
 {
-  if Db.exists(users, email) { fail EmailTaken }
-  todo()
+  ?body
 }
 ```
 
-`vow check` accepts this program and reports one `hole` diagnostic.
+`vow check` accepts this program and reports one `hole` record. `vow build` and `vow run` reject it with `V2050`, so a hole cannot reach a build by accident.
+
+The name is for you and for tooling. Use one that says what belongs there: `?body`, `?user`, `?retry_policy`.
+
+`?` also appears as postfix raise on a `Result` (`r?`). The two never clash: `?name` with no space before the identifier is always a hole, and `?` after an operand is always raise.
 
 ## What a hole reports
 
-```json
-{
-  "code": "H0001",
-  "severity": "hole",
-  "message": "hole of type `User`",
-  "span": { "file": "src/users.vow", "start": { "line": 9, "col": 3 }, "end": { "line": 9, "col": 9 } },
-  "expected": "User",
-  "hole": {
-    "expected": "User",
-    "effects": "! {Db, Clock, Random, Fail<SignupError>}",
-    "bindings": [
-      { "name": "email", "type": "Email" },
-      { "name": "pw", "type": "Password" }
-    ],
-    "facts": ["not Db.exists(users, email)"],
-    "contracts": ["ensures result.email == email"],
-    "candidates": [
-      { "name": "User", "kind": "record", "signature": "User { id: Uuid, email: Email, created: Instant }" },
-      { "name": "app/users.create_user", "kind": "function", "signature": "fn create_user(email: Email) -> User ! {Db, Clock, Random}" }
-    ]
-  },
-  "fixes": [],
-  "docs": "/docs/agents/typed-holes.md#what-a-hole-reports"
-}
-```
+After solving the enclosing body, `vow check --json` emits a `hole` record. Design §12.2 specifies five fields:
 
 | Field | Meaning |
 | --- | --- |
-| `hole.expected` | The type the hole must produce. |
-| `hole.effects` | The effects code in the hole may perform. Anything else is an error. |
-| `hole.bindings` | Every name in scope, with its type. |
-| `hole.facts` | Conditions known to be true at this point, from enclosing `if`s and matches. |
-| `hole.contracts` | Contracts the value in the hole must satisfy. |
-| `hole.candidates` | Functions and constructors whose result type fits, ranked. |
+| `expected_type` | The type the hole must produce, fully solved where possible. |
+| `allowed_effects` | The full effect row allowed at this point. Effects already used elsewhere in the body are not subtracted. |
+| `locals` | Every local in scope, with its name and type. |
+| `candidates` | Up to 10 ranked expressions that fit, each with its fit kind. |
+| `contracts_in_scope` | The refinements and contracts assumed at this point. |
 
-Candidates are ranked by how well they fit: exact result type first, then functions whose arguments can be filled from bindings in scope, then functions whose effects are within the allowed row. A candidate that would need an effect outside `hole.effects` is never listed.
+The design does not yet fix the nested shapes, or how a hole record carries its id and location. The example below assumes it reuses the diagnostic record's `id` and `spans` shape and the `{render, row}` form for effect rows. Treat those parts as illustrative.
+
+```json
+{
+  "schema_version": "1.0",
+  "kind": "hole",
+  "id": "h:2c71",
+  "spans": [
+    { "uri": "file:///work/demo/src/main.vow", "content_hash": "sha256:a0d4",
+      "start_byte": 123, "end_byte": 128, "role": "primary", "label": "?body" }
+  ],
+  "expected_type": "Int",
+  "allowed_effects": { "render": "{}", "row": { "labels": [], "tail": null } },
+  "locals": [
+    { "name": "x", "type": "Int" },
+    { "name": "lo", "type": "Int" },
+    { "name": "hi", "type": "Int" }
+  ],
+  "candidates": [
+    { "expression": "x", "fit": "local" },
+    { "expression": "lo", "fit": "local" },
+    { "expression": "hi", "fit": "local" }
+  ],
+  "contracts_in_scope": ["requires ordered: lo <= hi"]
+}
+```
+
+## How candidates are ranked
+
+- Exact fits from locals come first.
+- Then constructors and functions whose result type unifies with the expected type, such as `Int.min` or `Int.max` here. Each is tried in a rollback snapshot, so trying a candidate never changes the inference state.
+- Candidates that would need an effect outside the allowed row are filtered out.
+- At most 10 candidates are reported.
+
+A hole never affects inference of other bindings beyond its own fresh type variable. The rest of the body, including effects and contracts, is checked normally around it.
 
 ## Filling a hole
 
 Following the report, an agent fills the hole:
 
 ```vow
-fn signup(email: Email, pw: Password) -> User ! {Db, Clock, Random, Fail<SignupError>}
-  ensures result.email == email
+fn clamp(x: Int, lo: Int, hi: Int) -> Int
+  requires ordered: lo <= hi
+  ensures bounded: lo <= result && result <= hi
 {
-  if Db.exists(users, email) { fail EmailTaken }
-  let user = User { id: Uuid.new(), email, created: Clock.now() }
-  Db.insert(users, user)
-  user
+  if x < lo { lo } else if x > hi { hi } else { x }
 }
 ```
 
-## Holes with a type
+The `ensures` clause is checked at runtime on every normal return, in every build mode, including `--release`. A wrong fill is a `D021` defect blamed on `clamp`, not a silent wrong answer.
 
-A hole can also be narrower than its context, by giving it a type:
+## Narrower holes
+
+A hole takes its expected type from context. An annotation gives a hole a type when the context does not:
 
 ```vow
-let created: Instant = todo()
+fn greet(name: String) -> Unit ! {Console, Clock} {
+  let now: Instant = ?now
+  Console.print("hello, {name}; it is {Instant.format_iso(now)}")
+}
 ```
 
-This is useful when you know what a sub-expression should be but not how to compute it yet. The report then lists candidates for `Instant` given the effects allowed here: `Clock.now()` appears, because `Clock` is in the row.
+Here the report expects `Instant`, and `allowed_effects` is `{Console, Clock}`. A function such as `Clock.now` fits on both counts.
 
-## Holes and tests
+## Holes in the MCP server
 
-A program with holes can run its tests. A test that reaches a hole fails with the hole's location and expected type. Tests that never reach it run normally.
-
-```bash
-$ vow test
-ok    rejects short passwords
-fail  duplicate email fails
-      reached hole at src/users.vow:9:3 (expected `User`)
-1 passed, 1 failed, 1 hole
-```
-
-This lets an agent work test by test: write signatures with holes, write tests, then fill the holes that the failing tests reach.
-
-## Holes block release builds
-
-```bash
-$ vow build --target native
-error  cannot build for release: 1 hole remaining
-       src/users.vow:9:3  hole of type `User`
-```
-
-`vow check` and `vow test` accept holes. `vow build` for release does not. A hole can never reach production by accident.
+The planned [MCP server](/docs/agents/mcp) has a `hole_context(snapshot, hole_id)` tool. It returns the same record for one hole, which is cheaper than re-checking the project. The M3 acceptance tests in design §14.3 require the language server, after replaying the same edits, to match `hole_context` byte for byte.
 
 ## Recommended agent workflow
 
-1. Write every signature the task needs, with effects, errors, and contracts. Bodies are `todo()`.
-2. Run `vow check`. Fix signature-level errors first; these are the ones a human will review.
-3. Write tests for the behavior the task asks for. They fail at holes.
-4. Fill holes one at a time, using `hole.candidates` and `hole.bindings`. Re-check after each.
-5. When `vow check` reports no holes and `vow test` passes, summarize any signature changes for review.
+1. Write every signature the task needs: types, effect rows, `Fail<...>` unions, and contracts. Bodies are holes.
+2. Run `vow check --json`. Fix signature-level errors first; these are what a human reviews.
+3. Write tests for the behavior the task asks for.
+4. Fill holes one at a time, using `candidates`, `locals`, and `contracts_in_scope`. Re-check after each.
+5. When no `hole` records remain, run `vow test --json`, then summarize any signature changes for review.
 
-With the [MCP server](/docs/agents/mcp), the `hole` tool returns the same report for one hole by position, which is cheaper than re-checking the whole project.
-
-## What the compiler checks
-
-- `todo()` has whatever type its context requires, and performs no effects.
-- Every hole is reported with its full context, so no hole is silent.
-- The rest of the program is checked normally around holes, including effects and contracts.
-- Release builds reject any remaining hole.
+The design does not yet say whether `vow test` runs a program that still contains holes. Assume it does not.
 
 ## Next
 
-Back to the [For Agents overview](/docs/agents), or see the planned [standard library](/docs/stdlib).
+Back to the [For Agents overview](/docs/agents), or see the [standard library](/docs/stdlib).

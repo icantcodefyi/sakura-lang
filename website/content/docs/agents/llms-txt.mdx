@@ -1,70 +1,89 @@
 ---
 title: llms.txt and Markdown exports
-description: How agents can load these docs as plain Markdown through llms.txt, llms-full.txt, and per-page .md URLs.
+description: The two llms.txt files for Vow - this site's Markdown exports, and the language reference in docs/llms.txt that vow prompt will emit.
 ---
 
+There are two different `llms.txt` files in the Vow project. Do not confuse them.
+
+| | Site exports | Language reference |
+| --- | --- | --- |
+| Where | This website: `/llms.txt`, `/llms-full.txt`, `/docs/<page>.md` | The repository: [`docs/llms.txt`](https://github.com/icantcodefyi/vow/blob/master/docs/llms.txt) |
+| Contents | These docs pages, as Markdown | The whole core language in one file, written for a model's context |
+| Status | Live today | Exists today as a file; `vow prompt` will emit it (planned) |
+| Use it for | Explanations, the tour, agent tooling docs | Writing Vow code |
+
+## Site exports
+
 <Callout type="info" title="Available today">
-  Unlike the compiler, the Markdown exports on this page are live on this site now.
+  These endpoints are served by this site now. They export the docs, not a compiler.
 </Callout>
-
-Agents read Markdown more reliably than rendered HTML. This site serves every page in a form that is easy to fetch and cheap to put in a context window.
-
-## Endpoints
 
 | URL | Contents |
 | --- | --- |
-| [`/llms.txt`](/llms.txt) | An index of every docs page with its title, description, and URL, following the [llms.txt](https://llmstxt.org) convention. |
+| [`/llms.txt`](/llms.txt) | An index of every docs page with title, description, and URL, grouped by sidebar section, following the [llms.txt](https://llmstxt.org) convention. |
 | [`/llms-full.txt`](/llms-full.txt) | Every docs page concatenated into one Markdown file. |
-| `/docs.md` | The docs root (this site's introduction) as Markdown. |
-| `/docs/<path>.md` | Any docs page as Markdown. Append `.md` to its URL. |
-
-Examples:
+| `/docs.md` | The docs root as Markdown. |
+| `/docs/<path>.md` | Any docs page as Markdown. Append `.md` to its URL. `.mdx` works too. |
 
 ```bash
 curl https://<this-site>/llms.txt
 curl https://<this-site>/llms-full.txt
-curl https://<this-site>/docs.md
 curl https://<this-site>/docs/tour/effects.md
 ```
 
-Diagnostics link to these Markdown URLs directly. The `docs` field of an `E0402` diagnostic is `/docs/tour/effects.md#undeclared-effects`, which points at the [Undeclared effects](/docs/tour/effects#undeclared-effects) section.
+Each exported page starts with its title, its URL, its Markdown URL, and its description. Components are flattened to plain Markdown: callouts become blockquotes and card grids become link lists.
 
-Every rendered page also has a **Copy as Markdown** button and a link to its `.md` version.
+Every rendered page also has a **Copy as Markdown** button and a menu linking to its `.md` version and its source on GitHub.
 
-## What to fetch
+Use `/llms.txt` to choose pages when context is tight. Use a per-page `.md` URL to refresh one topic. `/llms-full.txt` is the whole site, including design rationale and planned tooling, so it is larger than the language reference.
 
-**Fetch `/llms-full.txt` once at the start of a session.** The language tour, the agent docs, and the standard library overview together are the whole language as currently designed. Loading all of it avoids guessing at syntax, and guessing is a common source of invalid code when a model works in an unfamiliar language.
+## The language reference: `docs/llms.txt`
 
-Use per-page `.md` URLs when you need to refresh one topic or follow a link from a diagnostic.
+[`docs/llms.txt`](https://github.com/icantcodefyi/vow/blob/master/docs/llms.txt) is the one-file reference an agent needs to write correct Vow. It is about 11 KB, roughly 3,000 tokens, and covers:
 
-Use `/llms.txt` when context is tight and you want to choose which pages to load.
+- the toolchain loop (`vow check --json`, `vow test --json`, `vow run`) and fix impact rules;
+- the syntax on one screen, plus the rules agents get wrong (newlines, casing, no call-site type arguments, one lambda form);
+- types, refinements, and the derived constraints `Eq`, `Ord`, `Hash`, `Show`, `Schema`;
+- effects, `Fail<E>`, `try`/`catch`, defects, handlers, and authority;
+- concurrency and memory;
+- the most used standard library names;
+- common diagnostics and their fixes.
 
-## The size budget
+It is kept in sync with [`docs/design.md`](https://github.com/icantcodefyi/vow/blob/master/docs/design.md), which is authoritative if they ever disagree. Library signatures are deliberately not in it; look them up with `vow doc --search` or the MCP `symbol_query` tool once those exist.
 
-Vow's grammar is deliberately small: 26 keywords, one way to bind, one way to branch, one way to fail. A design goal is that a complete language reference, enough to write correct Vow without other sources, fits in a few thousand tokens. When the reference exists, it will be served from this site alongside the docs.
+### `vow prompt` (planned)
+
+```bash
+vow prompt
+vow prompt --budget 8000
+```
+
+`vow prompt [--budget tokens]` will print `docs/llms.txt` for the edition the installed compiler implements, plus requested library signatures within the token budget (design §12.1). Until it exists, fetch the file from the repository:
+
+```bash
+curl https://raw.githubusercontent.com/icantcodefyi/vow/master/docs/llms.txt
+```
 
 ## System prompt snippet
 
-A starting point for an agent that writes Vow:
+A starting point for an agent that writes Vow. Commands in it do not run yet.
 
-```md
-You write code in Vow, an agent-first language. Before writing code, load
-https://<this-site>/llms-full.txt and follow it exactly. Do not borrow syntax
-from other languages.
+```text
+You write code in Vow. Before writing code, read the Vow language reference
+(docs/llms.txt, or the output of `vow prompt`) and follow it exactly. Do not
+borrow syntax from other languages.
 
-Rules:
-- Write signatures first: parameter types, return type, effect row after `!`,
-  and `requires`/`ensures` contracts. Leave bodies as `todo()` and run
-  `vow check --format json`.
-- Every effect and error goes in the signature. There are no exceptions, no
-  null, no `mut`, no `async`/`await`, no `try`/`catch`, no `?` operator.
-- Fail with `fail X` and declare `Fail<E>`. Absence is `Option<T>`.
-- Validate outside data with `.validate(Type)`. Never use `.trust_because`
-  without a specific, true reason.
-- Apply fixes with "safety": "safe" automatically. Apply "changes-behaviour"
-  fixes only when they match the task. Never apply "changes-signature" fixes
-  silently: list every signature change in your summary for human review.
-- When a diagnostic has a "docs" URL, fetch it before guessing.
+- Write full signatures first: parameter types, `-> T`, the effect row after
+  `!`, the `Fail<...>` error union, and `requires`/`ensures`. Leave bodies as
+  typed holes (`?body`) and run `vow check --json`.
+- Fill holes using the `hole` records: expected_type, allowed_effects, locals,
+  candidates, contracts_in_scope.
+- Apply only fixes with "impact": "local". Never apply a fix whose impact is
+  "contract_change" or "authority_change" unless asked. List every
+  "interface_change" in your summary for human review.
+- Never weaken or delete requires/ensures/where clauses or test bodies to pass
+  a check. Never use .trust(@trust(...)) or Secret.expose without a true reason.
+- Use `vow explain <code>` before guessing at a fix.
 ```
 
 ## Next

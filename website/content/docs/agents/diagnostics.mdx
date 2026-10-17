@@ -1,215 +1,172 @@
 ---
 title: Diagnostics
-description: Reference for the JSON diagnostic format produced by vow check --format json, including codes, severities, and fix safety levels.
+description: Reference for the JSON Lines diagnostics produced by vow check --json, including record kinds, error codes, and fix impact classes.
 ---
 
-<Callout type="warn" title="Format draft">
-  This format is the current design. It will be versioned once the checker exists, and fields may be added before then.
+<Callout type="warn" title="Designed, not implemented">
+  This is the v0 diagnostic protocol from [design §12.2](https://github.com/icantcodefyi/vow/blob/master/docs/design.md).
+  The compiler that emits it is under construction; `vow check --json` is part of milestone M0. Changes to the protocol go
+  through an RFC.
 </Callout>
 
-Every problem the compiler finds is reported as a JSON object. The format is the same from the command line, the [MCP server](/docs/agents/mcp), and editor integrations.
+Diagnostics are an API. Every diagnostic has a stable code, byte spans, structured expected and actual values, causal links, and fixes that declare their impact. The CLI, the LSP server, and the [MCP server](/docs/agents/mcp) share one analysis library and one format.
 
 ```bash
-vow check --format json
+vow check --json
+vow test --json
 ```
 
-The output is a JSON array of diagnostics. Human-readable output (the default) is rendered from the same objects.
+`--json` writes **JSON Lines**: one record per line. Human-readable output is rendered from the same data.
 
-## A complete example
+## Record kinds
 
-```json
-{
-  "code": "E0402",
-  "severity": "error",
-  "message": "effect `Net` is performed but not declared in the signature of `signup`",
-  "span": { "file": "src/users.vow", "start": { "line": 9, "col": 3 }, "end": { "line": 9, "col": 41 } },
-  "expected": "! {Db, Clock, Random, Fail<SignupError>}",
-  "found": "! {Db, Clock, Random, Net, Fail<SignupError>}",
-  "fixes": [
-    {
-      "title": "Declare `Net` in the signature of `signup`",
-      "safety": "changes-signature",
-      "edits": [{ "file": "src/users.vow", "line": 5, "col": 67, "insert": ", Net" }]
-    },
-    {
-      "title": "Remove the call to `Http.post`",
-      "safety": "changes-behaviour",
-      "edits": [{ "file": "src/users.vow", "start": { "line": 9, "col": 3 }, "end": { "line": 9, "col": 41 }, "replace": "" }]
-    }
-  ],
-  "docs": "/docs/tour/effects.md#undeclared-effects"
+| `kind` | Meaning |
+| --- | --- |
+| `diagnostic` | An error, warning, or note. Shape below. |
+| `hole` | A [typed hole](/docs/agents/typed-holes) with its context. |
+| `obligation` | A claim about the program and its status: `proved`, `runtime_checked`, `tested`, or `trusted`. |
+| `progress` | Progress of a long run. |
+| `summary` | End of run. `summary.truncated` is `true` if output hit the cap. |
+
+## The diagnostic record
+
+The program below omits `Console` from `greet`'s effect row:
+
+```vow
+fn greet(name: String) -> Unit {
+  Console.print("hello, {name}")
 }
 ```
 
-The source this refers to is shown in [Effects: Undeclared effects](/docs/tour/effects#undeclared-effects).
+`vow check --json` would report it as one line, shown here pretty-printed. Hashes and ids are shortened.
+
+```json
+{
+  "schema_version": "1.0",
+  "kind": "diagnostic",
+  "id": "d:7f3a",
+  "code": "V3001",
+  "severity": "error",
+  "phase": "effect",
+  "message": "function `greet` performs `Console`, which its signature does not allow",
+  "snapshot": "sha256:91c0",
+  "symbol_id": "hello::main::greet",
+  "spans": [
+    { "uri": "file:///work/hello/src/main.vow", "content_hash": "sha256:4be2",
+      "start_byte": 3, "end_byte": 8, "role": "primary", "label": "`greet` is declared pure" },
+    { "uri": "file:///work/hello/src/main.vow", "content_hash": "sha256:4be2",
+      "start_byte": 35, "end_byte": 65, "role": "cause", "label": "`Console.print` introduces `Console` here" }
+  ],
+  "related_ids": [],
+  "expected": { "render": "{}", "row": { "labels": [], "tail": null } },
+  "actual": { "render": "{Console}", "row": { "labels": [{ "effect": "std::Console", "args": [] }], "tail": null } },
+  "obligation": null,
+  "counterexample": null,
+  "explanation_uri": "vow://explain/V3001",
+  "fixes": [
+    { "id": "f:01", "title": "Add `Console` to the signature of `greet`",
+      "applicability": "suggested", "impact": "interface_change",
+      "edits": [ { "span": { "uri": "file:///work/hello/src/main.vow", "content_hash": "sha256:4be2",
+                             "start_byte": 30, "end_byte": 30, "role": "primary", "label": "" },
+                   "replacement": " ! {Console}" } ] }
+  ]
+}
+```
+
+For `V3001`, the design specifies two fixes: add the effect to the signature (`interface_change`) or handle it locally with `with` (`local`). Only the first is shown.
 
 ## Fields
 
-| Field | Type | Required | Meaning |
-| --- | --- | --- | --- |
-| `code` | string | yes | Stable identifier, such as `E0402`. Never reused for a different problem. |
-| `severity` | string | yes | `error`, `warning`, `info`, or `hole`. |
-| `message` | string | yes | One sentence, in plain English, naming the symbols involved in backticks. |
-| `span` | object | yes | Where the problem is: `file`, `start`, and `end`. |
-| `expected` | string | no | What the compiler needed: a type, an effect row, or a refinement. |
-| `found` | string | no | What it got instead, in the same notation as `expected`. |
-| `fixes` | array | yes | Zero or more fixes, best first. May be empty. |
-| `docs` | string | yes | Markdown URL of the docs section that explains the rule. |
-| `related` | array | no | Other spans involved, each with a `span` and a `message`, such as the declaration a call refers to. |
-| `hole` | object | no | Present when `severity` is `hole`. See [Typed holes](/docs/agents/typed-holes). |
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `schema_version` | string | Version of this format. `"1.0"` in v0. |
+| `kind` | string | `"diagnostic"`. |
+| `id` | string | Unique per occurrence in this run. |
+| `code` | string | Stable class, such as `V3001`. See [codes](#error-codes). |
+| `severity` | string | `error`, `warning`, or `note`. |
+| `phase` | string | `lex`, `parse`, `resolve`, `type`, `effect`, `pattern`, `contract`, `capability`, `verify`, `package`, or `internal`. |
+| `message` | string | One sentence naming the symbols involved in backticks. |
+| `snapshot` | string | Hash of the workspace snapshot that was checked. |
+| `symbol_id` | string or null | The symbol the diagnostic is about. |
+| `spans` | array | Source locations, each with `uri`, `content_hash`, `start_byte`, `end_byte`, `role`, `label`. |
+| `related_ids` | array | Ids of root-cause diagnostics this one cascades from. Empty for a root cause. |
+| `expected` | object or null | What was required: a `render` string, and a structured `row` for effect rows. |
+| `actual` | object or null | What was found, in the same shape. |
+| `obligation` | object or null | `id`, `clause` (for example `"ensures bounded"`), and `status`. |
+| `counterexample` | object or null | `inputs` and a `trace`, when one is known. |
+| `explanation_uri` | string | `vow://explain/<code>`. Same content as `vow explain <code>` and the MCP `explain_diagnostic` tool. |
+| `fixes` | array | Zero or more fixes. See below. |
 
-### Spans
+Span `role` is one of `primary`, `cause`, `definition`, or `use`.
 
-Lines and columns are 1-based. Columns count Unicode scalar values, not bytes. `start` is inclusive and `end` is exclusive, so a span covers the characters from `start` up to but not including `end`.
+### Rules
 
-### Fixes
+- Byte offsets are zero-based, half-open, and count UTF-8 bytes. There are no line or column numbers.
+- `content_hash` must match the file before any edit is applied.
+- The edits in one fix are applied atomically and rejected if they overlap.
+- Records are ordered root causes first (empty `related_ids`), then by position.
+- Output is capped at 200 diagnostics per run, with `summary.truncated: true`.
+
+## Fixes
 
 | Field | Meaning |
 | --- | --- |
-| `title` | Short imperative description, suitable for a menu or a commit message. |
-| `safety` | `safe`, `changes-behaviour`, or `changes-signature`. |
-| `edits` | Text edits to apply, all in one step. |
+| `id` | Fix id, accepted by `vow fix --apply`. |
+| `title` | Short imperative description. |
+| `applicability` | `machine_applicable`, `suggested`, or `incomplete`. |
+| `impact` | What the fix changes. See below. |
+| `edits` | List of `{ span, replacement }`. A span with equal start and end is an insertion. |
 
-Each edit is either an insertion (`file`, `line`, `col`, `insert`) or a replacement (`file`, `start`, `end`, `replace`). An empty `replace` deletes the range. All positions in one fix refer to the file before any of its edits are applied.
+### Impact classes
 
-## Severity
-
-| Severity | Blocks `vow check` | Blocks `vow build` | Meaning |
-| --- | --- | --- | --- |
-| `error` | yes | yes | The program is wrong. |
-| `warning` | no | no | The program is valid but probably not what was meant, such as an unused declared effect. |
-| `info` | no | no | Context, such as which contracts were proven. |
-| `hole` | no | yes | A `todo()` that still needs filling. Tests can run; release builds cannot. |
-
-## Fix safety levels
-
-The `safety` field tells an agent whether it can apply a fix on its own.
-
-| Level | Meaning | Agent policy |
+| `impact` | Changes | Suggested agent policy |
 | --- | --- | --- |
-| `safe` | Machine-applicable with no semantic change: formatting, adding an import, removing an unused binding. | Apply automatically. |
-| `changes-behaviour` | Changes what the code does, but not its signature. | Apply only if it matches the task. |
-| `changes-signature` | Changes a contract: parameter or return types, the effect row, `requires`/`ensures`, refinements, `pub` visibility, or capability grants in `vow.toml`. | Never apply silently. Always flag for human review. |
+| `local` | Code inside one body; no signature changes. | Apply if `machine_applicable`. |
+| `behavior_change` | What the code does, without changing its signature. | Apply only if it matches the task. |
+| `interface_change` | A signature, effect row, or error union. | Apply only if the task needs it, and report it for review. |
+| `contract_change` | A `requires`, `ensures`, or `where` clause. | Never apply unless a human asks. |
+| `authority_change` | Permissions or capabilities. | Never apply unless a human asks. |
 
-`changes-signature` is the most important level. The signature is the contract that humans review, so any fix that alters it must reach a human, even when it is obviously correct.
+Compiler fixes with `interface_change`, `contract_change`, or `authority_change` impact are never `machine_applicable`. No fix ever widens authority or weakens a contract by itself.
 
-## Code namespaces
+`vow fix` lists fixes with their impact class. It applies only `machine_applicable` fixes unless given ids with `--apply id,…`, and it never applies `contract_change` or `authority_change`. `--preview` shows the edits without writing.
 
-| Range | Area |
+### Frozen specs
+
+`vow check --frozen-specs <symbols|all>`, `vow fix`, and the MCP `apply_patch` tool reject any patch that changes a frozen symbol's signature, effect row, error union, `requires`/`ensures`/`where` clauses, or any `test`/`property` body. The diagnostic is `V8020 spec_frozen` and names the clause. This stops an agent from passing a check by editing the spec.
+
+## Error codes
+
+Codes are `V` + a phase digit + three digits for errors, `W` for warnings, and `D` for runtime defects. Codes are never reused or renumbered; retired codes stay documented. Every code has an explain page with a minimal pair: wrong program, diagnostic, fixed program.
+
+| Phase digit | Area | Examples |
+| --- | --- | --- |
+| `0` | Lexing and parsing | `V0001` syntax error, `V0007` reserved keyword, `V0010` chained comparison |
+| `1` | Resolution and modules | `V1004` wrong casing, `V1010` unknown attribute, `V1030` import cycle |
+| `2` | Types | `V2031` `Secret` is not `Show`, `V2040` unused value, `V2050` hole in build |
+| `3` | Effects and handlers | `V3001` effect not allowed, `V3011` handler clauses do not match the operations, `V3020` test needs a handler |
+| `4` | Patterns | `V4001` non-exhaustive match, `V4002` redundant arm |
+| `5` | Contracts and refinements | `V5001` predicate outside the contract subset |
+| `6` | Capabilities, resources, escape | `V6002` capability escapes its scope, `V6003` resource escapes, `V6010` non-std effect in `main` |
+| `7` | Tests and verification | None named in the design yet |
+| `8` | Packages, build, frozen specs | `V8020` spec frozen |
+| `9` | Internal | Compiler bugs |
+
+Warnings named in the design include `W1002` (a local shadows an import), `W4010` (catch-all `_` on an open error union), `W5005` (an O(n) contract on a hot path), `W7001` (property generator discard budget exceeded), and `W8001` (a collection update copies in a loop).
+
+Runtime defects are not diagnostics from `vow check`. They terminate the task, and `main` exits with status 70. Examples: `D001` integer overflow, `D002` division by zero, `D010` failed refinement in `T.from`, `D020` `requires` violated (caller blamed), `D021` `ensures` violated (callee blamed), `D030` `Option.expect` on `None`.
+
+## Exit codes
+
+| Code | Meaning |
 | --- | --- |
-| `E00xx` | Syntax and parsing |
-| `E01xx` | Names, modules, imports, visibility |
-| `E02xx` | Types and pattern matching (including exhaustiveness) |
-| `E03xx` | Refinements and contracts |
-| `E04xx` | Effects and handlers |
-| `E05xx` | Capabilities, taint, and secrets |
-| `E06xx` | Packages and `vow.toml` |
-| `Wxxxx` | Warnings, numbered in parallel with the error ranges |
-| `H0001` | Typed hole |
-
-Codes are stable across releases. `vow explain E0402`, or the `explain` MCP tool, prints the full explanation.
-
-## Example: refinement violation
-
-```vow title="src/config.vow"
-type Port = Int where 1..=65535
-
-let default_port: Port = 70000
-```
-
-```json
-{
-  "code": "E0301",
-  "severity": "error",
-  "message": "value `70000` does not satisfy the refinement of `Port` (`Int where 1..=65535`)",
-  "span": { "file": "src/config.vow", "start": { "line": 3, "col": 26 }, "end": { "line": 3, "col": 31 } },
-  "expected": "Port",
-  "found": "Int (70000)",
-  "related": [
-    { "span": { "file": "src/config.vow", "start": { "line": 1, "col": 1 }, "end": { "line": 1, "col": 32 } }, "message": "`Port` is defined here" }
-  ],
-  "fixes": [],
-  "docs": "/docs/tour/contracts.md#where-refinements-are-checked"
-}
-```
-
-No fix is offered, because the compiler cannot know which port was intended.
-
-## Example: unproven precondition
-
-```json
-{
-  "code": "E0310",
-  "severity": "error",
-  "message": "cannot show that `requires b != 0` of `divide` holds for this call",
-  "span": { "file": "src/stats.vow", "start": { "line": 4, "col": 3 }, "end": { "line": 4, "col": 29 } },
-  "expected": "count != 0",
-  "found": "count: Int (unconstrained)",
-  "fixes": [
-    {
-      "title": "Return early when `count == 0`",
-      "safety": "changes-behaviour",
-      "edits": [{ "file": "src/stats.vow", "line": 4, "col": 3, "insert": "if count == 0 { return 0 }\n  " }]
-    },
-    {
-      "title": "Add `requires count != 0` to `average`",
-      "safety": "changes-signature",
-      "edits": [{ "file": "src/stats.vow", "line": 2, "col": 1, "insert": "  requires count != 0\n" }]
-    }
-  ],
-  "docs": "/docs/tour/contracts.md#preconditions-requires"
-}
-```
-
-## Example: capability violation
-
-A dependency update starts using the network, but `vow.toml` grants it nothing:
-
-```json
-{
-  "code": "E0501",
-  "severity": "error",
-  "message": "dependency `markdown` 2.2.0 requires effect `Net` in `markdown.render`, which is not granted in vow.toml",
-  "span": { "file": "vow.toml", "start": { "line": 2, "col": 1 }, "end": { "line": 2, "col": 31 } },
-  "expected": "! {}",
-  "found": "! {Net}",
-  "fixes": [
-    {
-      "title": "Grant `Net` to `markdown`",
-      "safety": "changes-signature",
-      "edits": [{ "file": "vow.toml", "line": 2, "col": 29, "insert": ", grants = [\"Net\"]" }]
-    },
-    {
-      "title": "Pin `markdown` to 2.1.x",
-      "safety": "changes-behaviour",
-      "edits": [{ "file": "vow.toml", "start": { "line": 2, "col": 25 }, "end": { "line": 2, "col": 28 }, "replace": "=2.1" }]
-    }
-  ],
-  "docs": "/docs/tour/capabilities.md#granting-capabilities-to-dependencies"
-}
-```
-
-## Example: secret leak
-
-```json
-{
-  "code": "E0520",
-  "severity": "error",
-  "message": "`Secret<String>` has no `Show` instance and cannot be interpolated into a string",
-  "span": { "file": "src/payments.vow", "start": { "line": 12, "col": 27 }, "end": { "line": 12, "col": 32 } },
-  "expected": "a type with `Show`",
-  "found": "Secret<String>",
-  "fixes": [
-    {
-      "title": "Remove `{key}` from the log message",
-      "safety": "changes-behaviour",
-      "edits": [{ "file": "src/payments.vow", "start": { "line": 12, "col": 26 }, "end": { "line": 12, "col": 33 }, "replace": "" }]
-    }
-  ],
-  "docs": "/docs/tour/capabilities.md#secrets"
-}
-```
+| `0` | OK. |
+| `1` | Diagnostics with errors. |
+| `2` | Usage error. |
+| `3` | Test failures. |
+| `70` | Defect at runtime. |
+| `75` | Permission denied at startup. |
 
 ## Next
 
-[Typed holes](/docs/agents/typed-holes): writing a program one `todo()` at a time.
+[Typed holes](/docs/agents/typed-holes): writing a program one `?hole` at a time.
