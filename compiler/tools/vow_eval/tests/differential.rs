@@ -121,6 +121,8 @@ impl Gen<'_> {
 
     fn leaf(&mut self, ty: Ty) -> String {
         match ty {
+            // 2^52: a few doublings away from the JS safe-range defect D003.
+            Ty::Int if self.rng.chance(4) => "4503599627370496".into(),
             Ty::Int => {
                 let n = self.rng.below(21) as i64 - 10;
                 if n < 0 {
