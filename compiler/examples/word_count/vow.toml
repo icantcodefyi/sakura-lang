@@ -1,0 +1,8 @@
+[package]
+name = "word_count"
+version = "0.1.0"
+edition = "2026"
+
+[permissions]
+fs.read = ["./data"]
+env = []

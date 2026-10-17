@@ -1,0 +1,34 @@
+// milestone: M1
+// needs: records, generics, closures, imports, std/graph
+// mode: run
+// covers: Import NameList TypeDecl RecordType LetStmt TuplePat Lambda
+
+// Design §15.12: cyclic relationships through `NodeId`s, never through heap pointers.
+
+import std/graph.{Graph, NodeId}
+
+type Person = { name: String }
+
+fn friends_of_friends(g: Graph<Person>, id: NodeId) -> List<Person> {
+  List.flat_map(Graph.neighbors(g, id), fn(f) { List.filter_map(Graph.neighbors(g, f), fn(ff) { Graph.get(g, ff) }) })
+}
+
+pub fn main() -> Unit ! {Console} {
+  let (g1, ann) = Graph.empty().insert(Person { name: "ann" })
+  let (g2, bob) = g1.insert(Person { name: "bob" })
+  let (g3, cat) = g2.insert(Person { name: "cat" })
+  let (g4, dan) = g3.insert(Person { name: "dan" })
+  let (g5, eve) = g4.insert(Person { name: "eve" })
+  let g = g5.connect(ann, bob).connect(bob, ann).connect(bob, cat).connect(bob, dan)
+    .connect(ann, eve).connect(eve, cat)
+  let names = List.map(List.unique(friends_of_friends(g, ann)), fn(p) { p.name })
+  Console.print("friends of friends of ann: {List.join(names, ", ")}")
+  Console.print("people: {Graph.len(g)}")
+}
+
+test "a cycle does not loop" {
+  let (g1, a) = Graph.empty().insert(Person { name: "a" })
+  let (g2, b) = g1.insert(Person { name: "b" })
+  let g = g2.connect(a, b).connect(b, a)
+  expect_eq(friends_of_friends(g, a), [Person { name: "a" }])
+}

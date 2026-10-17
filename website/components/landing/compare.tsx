@@ -140,7 +140,7 @@ export function Compare() {
         </p>
 
         <div className="relative mt-12 overflow-x-auto rounded-2xl border border-line bg-surface">
-          <table className="w-full min-w-[54rem] border-collapse text-left text-[14px]">
+          <table className="w-full min-w-[50rem] sm:min-w-[54rem] border-collapse text-left text-[14px]">
             <caption className="sr-only">
               Comparison of language defaults relevant to agent-written code. The Vow column
               describes design goals.
@@ -149,7 +149,7 @@ export function Compare() {
               <tr className="border-b border-line">
                 <th
                   scope="col"
-                  className="sticky left-0 z-10 w-[15rem] bg-surface px-5 py-4 font-medium text-fg-muted"
+                  className="sticky left-0 z-10 w-[9.5rem] bg-surface px-3 py-4 font-medium text-fg-muted sm:w-[15rem] sm:px-5"
                 >
                   By default
                 </th>
@@ -174,7 +174,7 @@ export function Compare() {
                 <tr key={row.label}>
                   <th
                     scope="row"
-                    className="sticky left-0 z-10 bg-surface px-5 py-3.5 align-top font-medium"
+                    className="sticky left-0 z-10 bg-surface px-3 py-3.5 align-top text-[13px] font-medium sm:px-5 sm:text-[14px]"
                   >
                     {row.label}
                   </th>
@@ -213,6 +213,7 @@ export function Compare() {
             <Glyph mark="no" /> not provided
           </span>
           <span>The Vow column states design goals; nothing is shipped yet.</span>
+          <span className="sm:hidden">Scroll the table sideways for the other languages.</span>
         </p>
       </div>
     </section>

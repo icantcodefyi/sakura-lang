@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { GitHubIcon } from "@/components/github-icon";
 import { tokenize } from "@/lib/vow/highlight";
 import { site } from "@/lib/site";
@@ -12,20 +12,23 @@ export async function Hero() {
   return (
     <section className="relative overflow-hidden border-b border-line">
       <Ledger />
-      <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-5 pt-14 pb-20 sm:px-8 md:pt-20 lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1fr)] lg:gap-10 lg:pb-28">
+      <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-5 pt-14 pb-20 sm:px-8 md:pt-20 lg:grid-cols-[minmax(0,0.76fr)_minmax(0,1fr)] lg:gap-10 lg:pb-28">
         <div>
           <Link
             href="/docs/roadmap"
             className="rise group inline-flex items-center gap-2 rounded-full border border-line bg-surface/70 py-1 pr-3 pl-1 text-[12.5px] text-fg-muted transition-colors duration-150 hover:border-line-strong hover:text-fg"
           >
-            <span className="rounded-full bg-seal-wash px-2 py-0.5 font-medium text-seal-text">
+            <span className="rounded-full bg-seal-wash px-2 py-0.5 font-medium whitespace-nowrap text-seal-text">
               Pre-alpha
             </span>
-            Compiler under construction, no release yet
+            <span>
+              Compiler under construction
+              <span className="hidden sm:inline">, no release yet</span>
+            </span>
             <ArrowRight className="size-3 transition-transform duration-200 group-hover:translate-x-0.5" />
           </Link>
           <h1
-            className="rise mt-7 font-display text-[clamp(2.6rem,4.7vw,3.75rem)] leading-[1.02] font-semibold tracking-[-0.035em] text-balance"
+            className="rise mt-7 font-display text-[clamp(2.6rem,4.4vw,3.5rem)] leading-[1.02] font-semibold tracking-[-0.035em] text-balance"
             style={{ "--i": 1 } as CSSProperties}
           >
             Code that keeps <br className="hidden sm:block" />
@@ -51,14 +54,35 @@ export async function Hero() {
                 <ArrowRight className="size-3.5" />
               </span>
             </Link>
+            <Link
+              href="/docs/agents"
+              className="inline-flex h-11 items-center gap-2 rounded-full border border-line-strong bg-surface/60 px-5 text-[15px] font-medium text-fg transition-[background-color,border-color,transform] duration-150 hover:border-fg-faint hover:bg-surface active:scale-[0.97]"
+            >
+              For agents
+            </Link>
             <a
               href={site.github}
-              className="inline-flex h-11 items-center gap-2 rounded-full border border-line-strong px-5 text-[15px] font-medium text-fg transition-[background-color,transform] duration-150 hover:bg-bg-sunk active:scale-[0.97]"
+              className="group inline-flex h-11 items-center justify-center gap-2 rounded-full px-3 text-[15px] max-sm:w-11 max-sm:border max-sm:border-line-strong max-sm:px-0 font-medium text-fg-muted transition-colors duration-150 hover:text-fg"
             >
               <GitHubIcon className="size-4" />
-              View on GitHub
+              <span className="sr-only sm:not-sr-only">GitHub</span>
+              <ArrowUpRight className="hidden size-3.5 text-fg-faint sm:block transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
             </a>
           </div>
+          <p
+            className="rise mt-6 font-mono text-[12.5px] text-fg-faint"
+            style={{ "--i": 4 } as CSSProperties}
+          >
+            <span className="text-fg-muted">agents:</span> GET{" "}
+            {/* oxlint-disable-next-line nextjs/no-html-link-for-pages -- plain-text route, not a page */}
+            <a
+              href="/llms.txt"
+              className="text-fg-muted underline decoration-line-strong underline-offset-4 transition-colors duration-150 hover:text-fg hover:decoration-seal"
+            >
+              /llms.txt
+            </a>
+            , or any page + <span className="text-fg-muted">.md</span>
+          </p>
         </div>
 
         <div className="rise lg:-mr-6" style={{ "--i": 2 } as CSSProperties}>

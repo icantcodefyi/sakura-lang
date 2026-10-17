@@ -1,0 +1,30 @@
+// milestone: M3
+// needs: Task structured concurrency, std/http with Http.scripted, Untrusted.trust
+// mode: test
+// covers: Import NameList RecordLit TupleLit Lambda WithExpr
+
+// Design §15.10. Differences from the design text: `Retry.Policy` is `std/retry.Policy`
+// (a `TypePath` qualifier must be a module), and `Timeout` is `std/task.Timeout` rather
+// than a local `error Timeout` that would clash with it.
+
+import std/http
+import std/retry.{Policy, retry}
+import std/task.{Timeout, timeout}
+
+fn fetch_both(a: Url, b: Url) -> (String, String) ! {Http, Task, Clock, Random, Fail<HttpError | Timeout>} {
+  let policy = Policy { retry_on: fn(e) { match e { RateLimited { .. } => true, _ => false } },
+                        max_attempts: 3, backoff: Duration.millis(200), jitter: true, deadline: None }
+  timeout(Duration.seconds(5), fn() {
+    Task.scope(fn(s) {
+      let fa = Task.spawn(s, fn() { retry(policy, fn() { Response.text(Http.get(a), 1_000_000).trust(@trust("display only")) }) })
+      let fb = Task.spawn(s, fn() { retry(policy, fn() { Response.text(Http.get(b), 1_000_000).trust(@trust("display only")) }) })
+      (Task.join(fa), Task.join(fb))
+    })
+  })
+}
+
+test "deterministic under virtual time" {
+  with Http.scripted([(Any, Response.status(200, "x"))]), Clock.virtual(), Random.seeded(1), Task.deterministic(1) {
+    expect_eq(fetch_both(Url.from("https://a"), Url.from("https://b")), ("x", "x"))
+  }
+}

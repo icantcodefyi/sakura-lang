@@ -1,0 +1,79 @@
+// milestone: M2
+// needs: error unions, try/catch row arithmetic, user effects with Fail ops, Log
+// mode: run
+// covers: ErrorDecl TypeDecl EffectDecl TryExpr MatchArm RecordLit FieldInit
+
+// Design §15.4: internal failures are translated so the public error union stays stable.
+
+error NotFound(id: String)
+error Forbidden
+error Unavailable(reason: String)
+type UserError = NotFound | Forbidden
+
+type User = { id: String, owner: String, name: String }
+
+effect Users {
+  fn get(id: String) -> Option<User> ! {Fail<Unavailable>}
+}
+
+/// An in-memory `Users` backend.
+fn memory(users: List<User>) -> Handler<Users> {
+  handler Users {
+    fn get(id) { List.find(users, fn(u) { u.id == id }) }
+  }
+}
+
+/// A backend that is always down.
+fn down(reason: String) -> Handler<Users> {
+  handler Users {
+    fn get(id) { fail Unavailable { reason } }
+  }
+}
+
+// Internal failure (Unavailable) is translated; the public union stays stable.
+pub fn view_user(caller: String, id: String) -> User ! {Users, Log, Fail<UserError>} {
+  let user = try {
+    Users.get(id)
+  } catch {
+    Unavailable { reason } => {
+      Log.event(Level.Warn, "users backend unavailable", [("reason", Json.String(reason))])
+      None
+    }
+  }
+  match user {
+    None => fail NotFound { id },
+    Some(u) if u.owner != caller => fail Forbidden,
+    Some(u) => u,
+  }
+}
+
+fn describe(caller: String, id: String) -> String ! {Users, Log} {
+  let outcome = try { view_user(caller, id) }
+  match outcome {
+    Ok(u) => "{caller} sees {u.name}",
+    Err(NotFound { id }) => "{caller}: no user {id}",
+    Err(Forbidden) => "{caller}: forbidden",
+  }
+}
+
+pub fn main() -> Unit ! {Console, Log} {
+  let ann = User { id: "u1", owner: "ann", name: "Ann" }
+  with memory([ann]) {
+    Console.print(describe("ann", "u1"))
+    Console.print(describe("bob", "u1"))
+    Console.print(describe("ann", "u2"))
+  }
+}
+
+test "missing user is NotFound" {
+  with memory([]) {
+    expect_fail(fn() { view_user("alice", "u1") }, NotFound { id: "u1" })
+  }
+}
+
+test "an unavailable backend is logged and reported as NotFound" {
+  with down("maintenance") {
+    expect_fail(fn() { view_user("alice", "u1") }, NotFound { id: "u1" })
+  }
+  expect_output(["Warn users backend unavailable reason=String(\"maintenance\")"])
+}

@@ -1,0 +1,8 @@
+[package]
+name = "llm_extract"
+version = "0.1.0"
+edition = "2026"
+
+[permissions]
+net = ["api.anthropic.com:443"]
+env = ["ANTHROPIC_API_KEY"]

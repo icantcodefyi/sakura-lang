@@ -1,4 +1,8 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
+import { ArrowUpRight } from "lucide-react";
+import { Seal } from "@/components/seal";
+import { site } from "@/lib/site";
 import { Code } from "@/components/code";
 import { llmsTxt } from "@/lib/source";
 import { Tabs } from "./tabs";
@@ -59,55 +63,32 @@ const HOLE_REPLY = `hole ?receipt at src/cart.vow:3:3
   locals    cart: Cart, card: Card, total: Int
   fits      Payments.charge(card, total)`;
 
+const PATHS = [
+  { href: "/llms.txt", path: "/llms.txt", what: "Index of every docs page, with summaries." },
+  { href: "/llms-full.txt", path: "/llms-full.txt", what: "All of the docs in one file." },
+  { href: "/docs/tour/effects.md", path: "/docs/<page>.md", what: "Any page as plain Markdown." },
+  {
+    href: `${site.github}/blob/master/docs/llms.txt`,
+    path: "docs/llms.txt",
+    what: "The whole core language, in one file.",
+  },
+];
+
 export async function AgentView() {
-  const index = llmsTxt().split("\n").slice(0, 18).join("\n");
+  const index = llmsTxt().split("\n").slice(0, 12).join("\n");
   return (
-    <section id="agents" className="border-b border-line">
-      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 px-5 py-24 sm:px-8 md:py-32 lg:grid-cols-[0.75fr_1.25fr] lg:gap-16">
+    <section id="agents" className="border-b border-line bg-bg-sunk/50">
+      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 px-5 pt-24 sm:px-8 md:pt-32 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
         <div>
           <h2 className="font-display text-[clamp(2rem,3.6vw,2.9rem)] leading-[1.04] font-semibold tracking-[-0.03em] text-balance">
-            How an agent sees Vow.
+            How an agent works with Vow.
           </h2>
           <p className="mt-5 max-w-[30rem] text-[17px] leading-relaxed text-pretty text-fg-muted">
-            Every surface of the language is something a model can read, query and act on without
-            guessing.
+            The compiler is the agent&apos;s other half. Every answer it gives is data a model can
+            act on, and every change it would make says how far it reaches.
           </p>
-          <ul className="mt-10 grid max-w-[30rem] gap-px overflow-hidden rounded-xl border border-line bg-line text-[15px]">
-            {[
-              [
-                "/docs/agents/llms-txt",
-                "The whole language fits in context",
-                "llms.txt, llms-full.txt, and every page as Markdown.",
-              ],
-              [
-                "/docs/agents/mcp",
-                "The compiler is an MCP server",
-                "check, symbol_query, hole_context, check_patch and test as tools.",
-              ],
-              [
-                "/docs/agents/diagnostics",
-                "Errors are data",
-                "JSON Lines with byte spans, expected and actual, and fixes with an impact class.",
-              ],
-              [
-                "/docs/agents/typed-holes",
-                "Holes, not hallucinations",
-                "?name reports the expected type, allowed effects, locals and what fits.",
-              ],
-            ].map(([href, title, body]) => (
-              <li key={href} className="bg-bg">
-                <Link
-                  href={href}
-                  className="block px-5 py-4 transition-colors duration-150 hover:bg-bg-sunk"
-                >
-                  <span className="block font-medium">{title}</span>
-                  <span className="mt-0.5 block text-[14px] text-fg-muted">{body}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <AgentLoop />
         </div>
-
         <div className="min-w-0">
           <Tabs
             items={[
@@ -147,7 +128,7 @@ export async function AgentView() {
                 panel: <Code code={DIAGNOSTIC} lang="json" title={<span>vow check --json</span>} />,
               },
               {
-                label: "Typed holes",
+                label: "Holes",
                 panel: (
                   <div className="grid gap-3">
                     <Code
@@ -167,6 +148,118 @@ export async function AgentView() {
           </p>
         </div>
       </div>
+      <div className="mx-auto max-w-6xl px-5 pt-16 pb-24 sm:px-8 md:pb-32">
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <h3 className="font-display text-[1.25rem] font-semibold tracking-[-0.015em]">
+            Start here if you are an agent
+          </h3>
+          <Link
+            href="/docs/agents"
+            className="text-[14.5px] font-medium underline decoration-seal underline-offset-4"
+          >
+            For agents docs
+          </Link>
+        </div>
+        <ul className="mt-5 grid border-t border-fg/80 sm:grid-cols-2 lg:grid-cols-4">
+          {PATHS.map((p) => (
+            <li
+              key={p.path}
+              className="border-b border-line sm:odd:border-r lg:border-r lg:last:border-r-0"
+            >
+              {/* oxlint-disable-next-line nextjs/no-html-link-for-pages -- plain-text routes, not pages */}
+              <a
+                href={p.href}
+                className="group block h-full px-1 py-5 transition-colors duration-150 hover:bg-bg-sunk sm:px-5"
+              >
+                <code className="font-mono text-[14px] text-fg">
+                  {p.path}
+                  <ArrowUpRight className="ml-1 inline size-3.5 align-[-1px] text-fg-faint transition-[transform,color] duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-seal-text" />
+                </code>
+                <span className="mt-1.5 block text-[14px] leading-snug text-fg-muted">
+                  {p.what}
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
     </section>
+  );
+}
+
+const LOOP = [
+  {
+    cmd: "write",
+    who: "agent",
+    what: (
+      <>
+        drafts the body, leaves <code className="font-mono whitespace-nowrap">?holes</code> where it
+        is unsure
+      </>
+    ),
+  },
+  { cmd: "vow check --json", who: "compiler", what: "diagnostics and hole records as JSON Lines" },
+  {
+    cmd: "vow fix",
+    who: "compiler",
+    what: "applies local fixes; signature changes go to a person",
+  },
+  { cmd: "vow test", who: "compiler", what: "deterministic handlers, fixed seed, shrunk failures" },
+];
+
+/** The agent ⇄ compiler loop: four stations around one orbit (a list on phones). */
+function AgentLoop() {
+  return (
+    <div className="mt-10">
+      <ol className="relative grid gap-5 pl-7 sm:hidden">
+        <span aria-hidden className="absolute top-2 bottom-2 left-[5px] w-px bg-line-strong" />
+        {LOOP.map((s) => (
+          <li key={s.cmd} className="relative">
+            <span
+              aria-hidden
+              className="absolute top-1.5 -left-7 size-[11px] rounded-full border-2 border-seal bg-bg"
+            />
+            <Station {...s} />
+          </li>
+        ))}
+        <li className="text-[13px] text-fg-faint">↺ until check and test are clean</li>
+      </ol>
+      <div className="relative hidden grid-cols-2 gap-x-14 gap-y-24 py-2 sm:grid">
+        {/* the ring the loop runs on, with the seal it is working towards */}
+        <div
+          aria-hidden
+          className="absolute top-1/2 left-1/2 size-44 -translate-x-1/2 -translate-y-1/2"
+        >
+          <span className="absolute inset-0 rounded-full border border-dashed border-line-strong" />
+          <span className="absolute inset-0 motion-safe:animate-[spin_9s_linear_infinite]">
+            <span className="absolute -top-[5px] left-1/2 size-2.5 -translate-x-1/2 rounded-full bg-seal shadow-[0_0_0_4px_var(--seal-wash)]" />
+          </span>
+          <Seal className="absolute top-1/2 left-1/2 size-16 -translate-x-1/2 -translate-y-1/2 -rotate-12" />
+        </div>
+        {[0, 1, 3, 2].map((i) => (
+          <div
+            key={LOOP[i].cmd}
+            className="relative rounded-xl border border-line bg-surface px-3.5 py-3 shadow-[0_8px_24px_-16px_oklch(0.2_0.02_255/0.4)]"
+          >
+            <span className="mb-1.5 block font-mono text-[11px] text-fg-faint tabular-nums">
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            <Station {...LOOP[i]} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Station({ cmd, who, what }: { cmd: string; who: string; what: ReactNode }) {
+  return (
+    <>
+      <code className="block font-mono text-[12.5px] font-medium whitespace-nowrap text-fg">
+        {cmd}
+        <span className="ml-2 font-sans text-[11px] font-normal text-fg-faint">{who}</span>
+      </code>
+      <p className="mt-1 text-[12.5px] leading-snug text-fg-muted">{what}</p>
+    </>
   );
 }

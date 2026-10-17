@@ -1,0 +1,36 @@
+// milestone: M3
+// needs: std/cli, std/fs with Fs.rooted and Dir capabilities, Untrusted.trust, [permissions]
+// mode: run
+// args: --input notes.txt --top 3
+// covers: Import ForStmt TuplePat Lambda
+
+// Design §15.6. Differences from the design text: `Cli.parse<Args>(…)` becomes an annotated
+// binding (no call-site type arguments, §3.2 rule 1).
+
+import std/cli
+import std/fs
+
+type Args = { input: Path, top: Int }   // `vow run -- --input notes.txt --top 3`
+
+fn word_counts(text: String) -> Map<String, Int> {
+  List.fold(String.split(String.to_lower(text), " "), Map.empty(), fn(acc, w) {
+    if w == "" { acc } else { Map.update(acc, w, fn(n) { Option.unwrap_or(n, 0) + 1 }) }
+  })
+}
+
+pub fn main() -> Unit ! {Console, Env, Fs, Fail<CliError | FsError>} {
+  let args: Args = Cli.parse(Cli.args())
+  // Narrow the root Fs handler to the data directory before touching files.
+  with Fs.rooted(Dir.subdir(Fs.root(), "data")) {
+    let text = Fs.read_text(args.input).trust(@trust("word counting cannot be influenced by content"))
+    let top = List.slice(List.sort_by(Map.entries(word_counts(text)), fn(e) { 0 - e.1 }), 0, args.top)
+    for (word, n) in top { Console.print("{word}: {n}") }
+  }
+}
+
+test "counts are case-insensitive and skip empty words" {
+  let counts = word_counts("The cat  the HAT")
+  expect_eq(Map.get(counts, "the"), Some(2))
+  expect_eq(Map.get(counts, ""), None)
+  expect_eq(Map.len(counts), 3)
+}

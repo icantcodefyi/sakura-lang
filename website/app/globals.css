@@ -274,6 +274,46 @@ figure.shiki {
   }
 }
 
+@keyframes swap-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+/* An effect operation travelling from the function up to its handler (landing diagram). */
+.lane-dot {
+  top: 50%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .lane-dot {
+    top: auto;
+    bottom: 0;
+    opacity: 0;
+    animation: lane-up 2.1s var(--ease-in-out) infinite;
+  }
+}
+@keyframes lane-up {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  15%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-5.5rem);
+  }
+}
+
 /* Callout palette follows the site: drafts/warnings use the seal, errors the fail colour */
 :root,
 .dark {

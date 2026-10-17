@@ -8,7 +8,8 @@ fn signup(email: Email, pw: Password)
   ensures result.email == email
 {
   if Db.exists(users, email) { fail EmailTaken { email } }
-  let user = User { id: Random.uuid(), email, joined: Clock.now() }
+  let id = Random.uuid()
+  let user = User { id, email, joined: Clock.now() }
   Db.insert(users, user)
   let _ = Http.post_json(crm_hook, user)
   user

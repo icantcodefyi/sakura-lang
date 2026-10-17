@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
+import { Seal } from "@/components/seal";
 import { TokenSpans, type TokenLine } from "@/components/token-spans";
 
 /*
@@ -12,16 +13,17 @@ import { TokenSpans, type TokenLine } from "@/components/token-spans";
  * 5. the signature is unchanged; its `ensures` stays a runtime check (design §7.2).
  */
 
-const BAD_LINE = 11;
+const BAD_LINE = 12;
 
 type Note = { kind: "ok" | "fail" | "seal"; text: string };
 
 const NOTES: Record<number, Note> = {
   2: { kind: "ok", text: "error union" },
-  5: { kind: "seal", text: "4 effects promised" },
+  5: { kind: "seal", text: "4 effects declared" },
   8: { kind: "ok", text: "Db, Fail" },
-  9: { kind: "ok", text: "Random, Clock" },
-  10: { kind: "ok", text: "Db" },
+  9: { kind: "ok", text: "Random" },
+  10: { kind: "ok", text: "Clock" },
+  11: { kind: "ok", text: "Db" },
   [BAD_LINE]: { kind: "fail", text: "Http not allowed" },
 };
 
@@ -165,7 +167,7 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
           aria-hidden
           className="overflow-x-auto py-4 font-mono text-[12px] leading-[1.75] sm:text-[12.25px]"
         >
-          <code className="grid min-h-[calc(14*1.75em)] min-w-max content-start">
+          <code className="grid min-h-[calc(15*1.75em)] min-w-max content-start">
             {rows.map((r, i) => {
               if (i === BAD_LINE && removed) return null;
               const visible = r.started;
@@ -177,20 +179,20 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
               return (
                 <span
                   key={i}
-                  className={`grid grid-cols-[2.25rem_1fr] transition-colors duration-300 sm:grid-cols-[2.25rem_1fr_9.75rem] ${
+                  className={`grid grid-cols-[2.25rem_1fr] transition-colors duration-300 sm:grid-cols-[2.25rem_1fr_auto] ${
                     bad ? "bg-fail-wash" : proved ? "bg-ok-wash" : ""
                   } ${visible ? "" : "invisible"}`}
                 >
                   <span className="pr-3 text-right text-fg-faint tabular-nums select-none">
                     {visible ? i + 1 - (removed && i > BAD_LINE ? 1 : 0) : ""}
                   </span>
-                  <span className="pr-6 whitespace-pre">
+                  <span className="pr-4 whitespace-pre">
                     <TokenSpans line={r.line} upTo={upTo} />
                     {cursorLine === i && !done ? <Caret /> : null}
                   </span>
                   <span className="hidden pr-4 sm:block">
                     {proved ? (
-                      <MarginNote note={{ kind: "ok", text: "ensures: checked" }} />
+                      <MarginNote note={{ kind: "ok", text: "runtime check" }} />
                     ) : showNote ? (
                       <MarginNote note={note} />
                     ) : null}
@@ -214,6 +216,14 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
 
         <StatusBar phase={state.phase} onReplay={done ? play : undefined} />
       </div>
+      {/* The compiler's seal lands on the kept signature. */}
+      <Seal
+        className={`pointer-events-none absolute -top-8 -right-2 size-[5.5rem] drop-shadow-[0_6px_10px_oklch(0.45_0.12_70/0.35)] transition-[opacity,transform] sm:-top-10 sm:-right-3 sm:size-[6.5rem] lg:-right-7 ${
+          done
+            ? "rotate-[-14deg] scale-100 opacity-100 duration-[420ms] ease-[var(--ease-out)]"
+            : "rotate-[-30deg] scale-[1.6] opacity-0 duration-0"
+        }`}
+      />
     </div>
   );
 }
@@ -306,7 +316,7 @@ const STATUS: Record<Phase, { text: string; tone: string }> = {
   typing: { text: "agent is writing, checker is following", tone: "text-fg-muted" },
   caught: { text: "1 error: effect not in signature", tone: "text-fail" },
   fixing: { text: "agent edit: remove the call", tone: "text-fg-muted" },
-  kept: { text: "0 errors, signature unchanged", tone: "text-ok" },
+  kept: { text: "0 errors · signature kept", tone: "text-ok" },
 };
 
 function StatusBar({ phase, onReplay }: { phase: Phase; onReplay?: () => void }) {

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { BrandMark } from "@/components/brand";
+import { Seal } from "@/components/seal";
 import { GitHubIcon } from "@/components/github-icon";
 import { site } from "@/lib/site";
 
@@ -8,14 +8,9 @@ export function Closing() {
   return (
     <section className="px-5 py-24 sm:px-8 md:py-28">
       <div className="relative mx-auto max-w-6xl overflow-hidden rounded-[1.75rem] bg-[oklch(0.19_0.012_255)] px-6 py-14 text-[oklch(0.95_0.006_255)] ring-1 ring-white/10 sm:px-12 md:py-20 dark:bg-surface">
-        <BrandMark
-          aria-hidden
-          className="pointer-events-none absolute -right-10 -bottom-16 size-[22rem] opacity-[0.07] md:size-[28rem]"
-        />
         <div className="relative max-w-2xl">
-          <BrandMark className="size-10" />
-          <h2 className="mt-8 font-display text-[clamp(2rem,4.2vw,3.3rem)] leading-[1.02] font-semibold tracking-[-0.03em] text-balance">
-            Read the design. Watch it get built.
+          <h2 className="font-display text-[clamp(2rem,4.2vw,3.3rem)] leading-[1.02] font-semibold tracking-[-0.03em] text-balance">
+            Read the design. Then hold us to it.
           </h2>
           <p className="mt-5 max-w-[34rem] text-[17px] leading-relaxed text-[oklch(0.78_0.012_255)]">
             The docs are written for people and for the agents that work with them. Every page is
@@ -40,6 +35,7 @@ export function Closing() {
             </a>
           </div>
         </div>
+        <Seal className="pointer-events-none mt-10 ml-auto block size-28 rotate-[-14deg] lg:absolute lg:top-1/2 lg:right-12 lg:mt-0 lg:size-[17rem] lg:-translate-y-1/2" />
       </div>
     </section>
   );

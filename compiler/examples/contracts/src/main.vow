@@ -1,0 +1,36 @@
+// milestone: M3
+// needs: requires/ensures/where runtime checks, refined-type validate/from
+// mode: run
+// covers: TypeDecl Contract IfExpr TestDecl
+
+// Design §15.2.
+
+type Percent = Int where it >= 0 && it <= 100
+
+fn clamp(x: Int, lo: Int, hi: Int) -> Int
+  requires ordered: lo <= hi
+  ensures bounded: lo <= result && result <= hi
+{
+  if x < lo { lo } else if x > hi { hi } else { x }
+}
+
+fn apply_discount(price: Int, pct: Percent) -> Int
+  requires price >= 0
+  ensures result <= price
+{ price - price * pct / 100 }
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("clamp(12, 0, 10) = {clamp(12, 0, 10)}")
+  Console.print("25% off 200 = {apply_discount(200, Percent.from(25))}")
+  match Percent.validate(101) {
+    Ok(p) => Console.print("unexpected {p}"),
+    Err(v) => Console.print("101 is not a {v.type_name}"),
+  }
+}
+
+test "clamp upper" { expect_eq(clamp(12, 0, 10), 10) }
+test "precondition is a caller defect" { expect_defect(fn() { clamp(1, 5, 0) }) }
+test "percent validates" {
+  expect(Result.is_err(Percent.validate(101)))
+  expect_eq(apply_discount(200, Percent.from(25)), 150)
+}

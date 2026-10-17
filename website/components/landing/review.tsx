@@ -18,32 +18,17 @@ const AFTER =
 export async function Review() {
   const [before, after] = await Promise.all([tokenize(BEFORE), tokenize(AFTER)]);
   return (
-    <section className="border-b border-line">
+    <section className="border-b border-line bg-bg-sunk/50">
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-14 px-5 py-24 sm:px-8 md:py-32 lg:grid-cols-[minmax(0,25rem)_minmax(0,1fr)] lg:gap-16">
         <div className="lg:sticky lg:top-28 lg:self-start">
           <h2 className="font-display text-[clamp(2rem,3.6vw,2.9rem)] leading-[1.04] font-semibold tracking-[-0.03em] text-balance">
-            The signature is the contract.
+            Review promises, not diffs.
           </h2>
           <p className="mt-5 max-w-[30rem] text-[17px] leading-relaxed text-pretty text-fg-muted">
             An agent can rewrite six hundred lines before you finish your coffee. Nobody reviews
             that well. In Vow, everything a function is allowed to do lives in its signature, so
             review shrinks to the lines that change a promise.
           </p>
-          <dl className="mt-10 grid max-w-[30rem] gap-5 text-[15px]">
-            <div className="grid grid-cols-[7.5rem_1fr] gap-4 border-t border-line pt-5">
-              <dt className="font-medium">Humans</dt>
-              <dd className="text-fg-muted">
-                read signatures: inputs, outputs, effects, errors, contracts.
-              </dd>
-            </div>
-            <div className="grid grid-cols-[7.5rem_1fr] gap-4 border-t border-line pt-5">
-              <dt className="font-medium">The compiler</dt>
-              <dd className="text-fg-muted">
-                checks every body against its signature, and refuses to build if one breaks its
-                word.
-              </dd>
-            </div>
-          </dl>
         </div>
 
         <figure>
@@ -63,8 +48,8 @@ export async function Review() {
                   <li key={f.path} className="bg-seal-wash/60">
                     <div className="flex items-center justify-between gap-3 px-5 py-3">
                       <span className="font-mono text-[12.5px]">{f.path}</span>
-                      <span className="rounded-full bg-seal px-2.5 py-0.5 text-[11.5px] font-semibold text-seal-ink">
-                        Review: promise changed
+                      <span className="rounded-full bg-seal px-2.5 py-0.5 text-[11.5px] font-semibold whitespace-nowrap text-seal-ink">
+                        <span className="hidden sm:inline">Review: </span>promise changed
                       </span>
                     </div>
                     <div className="relative overflow-x-auto border-y border-line bg-code py-2 font-mono text-[11.5px] leading-[1.8] sm:text-[12px]">
@@ -106,7 +91,9 @@ export async function Review() {
                       </span>
                       <span className="inline-flex items-center gap-1 text-ok">
                         <Check className="size-3.5" strokeWidth={2.25} aria-hidden />
-                        signatures kept
+                        <span className="whitespace-nowrap">
+                          <span className="hidden sm:inline">signatures </span>kept
+                        </span>
                       </span>
                     </span>
                   </li>

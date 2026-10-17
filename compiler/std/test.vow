@@ -10,6 +10,8 @@ pub effect Test {
   fn failures() -> Int
   /// Captured output (from `Console.captured()` and `Log.captured()`), shown on failure.
   fn output(line: String) -> Unit
+  /// Every captured output line of this test so far, oldest first.
+  fn output_lines() -> List<String>
   /// Compares `rendered` with `tests/__snapshots__/<module>/<name>.snap`; records a
   /// failure on mismatch, writes the file under `--update-snapshots`.
   fn snapshot(name: String, rendered: String) -> Unit
@@ -47,6 +49,11 @@ pub fn expect_fails_with<T, E: Show, e>(body: fn() -> T ! {Fail<E> | e}, pred: f
 /// The runtime runs it in a child task so the defect does not end the test.
 @external(js, "vow_runtime", "test_expect_defect")
 pub fn expect_defect<T, e>(body: fn() -> T ! e) -> Unit ! {Test | e}
+
+/// The test's captured output (`Console.print`, `Log.event`) must equal `lines`.
+pub fn expect_output(lines: List<String>) -> Unit ! {Test} {
+  expect_eq(Test.output_lines(), lines)
+}
 
 /// Compares `show(value)` with the stored snapshot `name`.
 pub fn expect_snapshot<A: Show>(name: String, value: A) -> Unit ! {Test} {
