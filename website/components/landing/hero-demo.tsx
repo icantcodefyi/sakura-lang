@@ -251,7 +251,7 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
 
 /** In a narrow window, wrap with a hanging indent; from 38rem up, one unbroken line. */
 const LINE =
-  "whitespace-pre-wrap pl-[2ch] -indent-[2ch] [overflow-wrap:anywhere] @min-[38rem]:whitespace-pre @min-[38rem]:pl-0 @min-[38rem]:indent-0";
+  "whitespace-pre-wrap pl-[4ch] -indent-[4ch] [overflow-wrap:anywhere] @min-[38rem]:whitespace-pre @min-[38rem]:pl-0 @min-[38rem]:indent-0";
 
 /** A narrow window has no margin for notes; a colored tick in the gutter stands in for them. */
 function GutterMark({ kind }: { kind: Note["kind"] }) {

@@ -17,7 +17,7 @@ const AFTER =
 
 /** One unbroken line from `sm` up; on phones, wrap with a hanging indent. */
 const WRAP =
-  "min-w-0 whitespace-pre-wrap pl-[2ch] -indent-[2ch] [overflow-wrap:anywhere] sm:whitespace-pre sm:pl-0 sm:indent-0";
+  "min-w-0 whitespace-pre-wrap pl-[4ch] -indent-[4ch] [overflow-wrap:anywhere] sm:whitespace-pre sm:pl-0 sm:indent-0";
 
 export async function Review() {
   const [before, after] = await Promise.all([tokenize(BEFORE), tokenize(AFTER)]);

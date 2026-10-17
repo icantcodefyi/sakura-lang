@@ -82,7 +82,7 @@ export async function Anatomy() {
                 >
                   {i + 1}
                 </span>
-                <code className="pl-[2ch] -indent-[2ch] font-mono text-[12.5px] leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap sm:pl-0 sm:indent-0 sm:text-[14.5px] sm:whitespace-pre">
+                <code className="pl-[4ch] -indent-[4ch] font-mono text-[12.5px] leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap sm:pl-0 sm:indent-0 sm:text-[14.5px] sm:whitespace-pre">
                   <TokenSpans line={line} />
                 </code>
                 <p className="mt-1 text-[14px] leading-snug text-fg-muted lg:mt-0 lg:flex lg:items-baseline lg:gap-3">
