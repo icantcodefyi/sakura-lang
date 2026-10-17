@@ -1,0 +1,76 @@
+// Typed LLM calls as an effect (design §10.7, §11.1, M3). `Llm.generate` decodes the output
+// as `Json.decode` would, so every refinement of `T` is checked. Schema-valid output is not
+// truth: check what matters before acting on it.
+// needs M3: `@llm` desugaring, `Schema` codecs and the `llm_anthropic` adapter in
+// runtime/js, `Llm.stream`, `Llm.replay(path)`.
+
+import std/budget.{Budget}
+import std/core.{Violation}
+import std/http.{Http, RateLimited}
+import std/prompt.{Prompt}
+import std/task.{Timeout}
+import std/untrusted
+
+/// A provider model name; `Model.default()` lets the handler choose.
+pub type Model = Model(String)
+
+/// `T` is the output type, named by the binding's annotation
+/// (`let req: Request<Ticket> = Llm.request(system, user)`). Change fields with a record
+/// update: `Request { ..req, max_tokens: 4_000 }`.
+pub type Request<T> = { system: String, user: Prompt, model: Model, max_tokens: Int, temperature: Float }
+
+/// The provider declined to answer.
+pub error Refused
+/// The output did not decode as the requested type; one violation per failed check.
+pub error InvalidOutput(violations: List<Violation>)
+/// The output hit `max_tokens`.
+pub error Truncated
+/// The provider answered with an unexpected HTTP status.
+pub error ProviderError(status: Int)
+
+/// `RateLimited` is `std/http.RateLimited` and `Timeout` is `std/task.Timeout` (§5.9).
+pub type LlmError = Refused | InvalidOutput | Truncated | RateLimited | Timeout | ProviderError
+
+pub effect Llm {
+  fn generate<T: Schema>(req: Request<T>) -> T ! {Fail<LlmError>}
+  fn generate_text(req: Request<String>) -> Untrusted<String> ! {Fail<LlmError>}
+}
+
+/// A request with the default model, 1024 output tokens and temperature 0.
+pub fn request<T: Schema>(system: String, user: Prompt) -> Request<T> {
+  Request { system, user, model: default(), max_tokens: 1_024, temperature: 0.0 }
+}
+
+pub fn of(name: String) -> Model { Model(name) }
+
+pub fn default() -> Model { Model("default") }
+
+/// Anthropic's Messages API with `T`'s JSON Schema as the output format. Each call reserves
+/// against the installed `Budget` first and settles the reported usage after.
+@external(js, "vow_runtime", "llm_anthropic")
+pub fn anthropic(key: Secret<String>, model: Model) -> Handler<Llm, {Http, Budget}>
+
+/// Test handler: each call consumes the next raw model output, in order. Running out is a
+/// defect (the test is wrong, not the program).
+pub fn scripted(responses: List<String>) -> Handler<Llm> {
+  handler Llm {
+    var rest = responses
+    fn generate(req) {
+      let next = Option.expect(List.first(rest), "Llm.scripted ran out of responses")
+      rest = List.slice(rest, 1, List.len(rest))
+      decode_output(next)
+    }
+    fn generate_text(req) {
+      let next = Option.expect(List.first(rest), "Llm.scripted ran out of responses")
+      rest = List.slice(rest, 1, List.len(rest))
+      untrusted.of(next)
+    }
+  }
+}
+
+fn decode_output<T: Schema>(text: String) -> T ! {Fail<LlmError>} {
+  match Json.decode(text) {
+    Ok(value) => value,
+    Err(e) => fail InvalidOutput { violations: [Violation { type_name: "output", clause: e.message, value_summary: e.path }] },
+  }
+}

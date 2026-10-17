@@ -1,0 +1,86 @@
+// Spending limits as an effect (design §5.9, §10.2, M3). `Llm` and `Http` provider handlers
+// reserve an estimate before each call and settle the actual cost after it.
+// needs M3: splitting a budget across child tasks.
+
+/// `None` means unlimited in that dimension.
+pub type Limits = { tokens: Option<Int>, usd: Option<Float>, calls: Option<Int> }
+
+pub type Cost = { tokens: Int, usd: Float, calls: Int }
+
+/// What `settle` needs to replace an estimate with the actual cost.
+pub type Reservation = { estimate: Cost }
+
+pub type BudgetKind = Tokens | Usd | Calls
+
+pub error BudgetExceeded(kind: BudgetKind)
+
+pub effect Budget {
+  /// Counts `est` against the limits, or fails without counting it.
+  fn reserve(est: Cost) -> Reservation ! {Fail<BudgetExceeded>}
+  /// Replaces the reservation's estimate with `actual`.
+  fn settle(r: Reservation, actual: Cost) -> Unit
+}
+
+/// A budget that fails a reservation that would take any dimension past its limit.
+pub fn limits(l: Limits) -> Handler<Budget> {
+  handler Budget {
+    var spent = zero()
+    fn reserve(est) {
+      let next = add(spent, est)
+      match over(l, next) {
+        Some(kind) => fail BudgetExceeded { kind },
+        None => {
+          spent = next
+          Reservation { estimate: est }
+        },
+      }
+    }
+    fn settle(r, actual) { spent = add(sub(spent, r.estimate), actual) }
+  }
+}
+
+/// No limits; the default for tests that do not exercise budgets.
+pub fn unlimited() -> Handler<Budget> { limits(Limits { tokens: None, usd: None, calls: None }) }
+
+pub fn zero() -> Cost { Cost { tokens: 0, usd: 0.0, calls: 0 } }
+
+fn add(a: Cost, b: Cost) -> Cost {
+  Cost { tokens: a.tokens + b.tokens, usd: a.usd + b.usd, calls: a.calls + b.calls }
+}
+
+fn sub(a: Cost, b: Cost) -> Cost {
+  Cost { tokens: a.tokens - b.tokens, usd: a.usd - b.usd, calls: a.calls - b.calls }
+}
+
+fn over(l: Limits, c: Cost) -> Option<BudgetKind> {
+  if l.tokens.map(fn(t) { c.tokens > t }).unwrap_or(false) {
+    Some(Tokens)
+  } else if l.usd.map(fn(u) { c.usd > u }).unwrap_or(false) {
+    Some(Usd)
+  } else if l.calls.map(fn(n) { c.calls > n }).unwrap_or(false) {
+    Some(Calls)
+  } else {
+    None
+  }
+}
+
+test "limits fail the reservation that would exceed them" {
+  let call = Cost { tokens: 400, usd: 0.25, calls: 1 }
+  with limits(Limits { tokens: Some(10_000), usd: Some(0.5), calls: None }) {
+    let first = try { Budget.reserve(call) }
+    let second = try { Budget.reserve(call) }
+    expect(first.is_ok() && second.is_ok())
+    expect_fail(fn() { Budget.reserve(call) }, BudgetExceeded { kind: Usd })
+  }
+}
+
+test "settle replaces the estimate with the actual cost" {
+  with limits(Limits { tokens: Some(1_000), usd: None, calls: None }) {
+    let r = try { Budget.reserve(Cost { tokens: 900, usd: 0.0, calls: 1 }) }
+    match r {
+      Ok(res) => Budget.settle(res, Cost { tokens: 100, usd: 0.0, calls: 1 }),
+      Err(_) => expect(false),
+    }
+    expect_eq(try { Budget.reserve(Cost { tokens: 800, usd: 0.0, calls: 1 }) }, Ok(Reservation { estimate: Cost { tokens: 800, usd: 0.0, calls: 1 } }))
+  }
+}

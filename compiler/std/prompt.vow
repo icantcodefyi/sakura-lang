@@ -1,0 +1,16 @@
+// Prompts for `std/llm` (design §10.7, M3), the home module of `Prompt`. A separate module
+// from `std/llm` because `Prompt.of` and `Model.of` would otherwise be one name (§4.9).
+// needs M3: `pub opaque` (design §17.10).
+
+/// `Untrusted` parts are sent to the provider marked as data, never as instructions.
+pub type PromptPart = Text(String) | Untrusted(Untrusted<String>) | Image(Bytes)
+
+pub type Prompt = Prompt(List<PromptPart>)
+
+pub fn of(parts: List<PromptPart>) -> Prompt { Prompt(parts) }
+
+pub fn text(s: String) -> Prompt { Prompt([Text(s)]) }
+
+pub fn parts(p: Prompt) -> List<PromptPart> {
+  match p { Prompt(ps) => ps }
+}
