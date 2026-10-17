@@ -1,0 +1,7 @@
+// milestone: M1
+// expect: V1002
+// A header directly above the imports stays at the top when the first import sorts below.
+import std/untrusted
+import std/core.{Violation}
+
+fn f() -> Int { 1 }

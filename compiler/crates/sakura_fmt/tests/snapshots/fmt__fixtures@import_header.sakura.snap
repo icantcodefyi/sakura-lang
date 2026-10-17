@@ -1,0 +1,12 @@
+---
+source: crates/sakura_fmt/tests/fmt.rs
+expression: "check(path, &text)"
+input_file: tests/fmt/import_header.sakura
+---
+// milestone: M1
+// expect: V1002
+// A header directly above the imports stays at the top when the first import sorts below.
+import std/core.{Violation}
+import std/untrusted
+
+fn f() -> Int { 1 }

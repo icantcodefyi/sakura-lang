@@ -142,10 +142,63 @@ fn width_is_measured_in_chars() {
     assert!(once.contains(&format!("  g({arg})\n")), "{once}");
 }
 
+#[test]
+fn import_sorting_keeps_the_header_on_top() {
+    // compiler/REQUESTS.md (WS5): the header used to move below the first sorted import.
+    let out = sakura_fmt::format("// header\nimport std/untrusted\nimport std/core.{Violation}\n");
+    assert_eq!(
+        out.unwrap(),
+        "// header\nimport std/core.{Violation}\nimport std/untrusted\n"
+    );
+    // A group set off from the header by a blank line belongs to the import below it.
+    let out = sakura_fmt::format("// header\n\n// b\nimport b\nimport a\n");
+    assert_eq!(out.unwrap(), "// header\n\nimport a\n// b\nimport b\n");
+}
+
+/// The file's header: the comments on their own lines before the first token, except a last
+/// group set off from them by a blank line.
+fn header(text: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut blank = None;
+    for tok in parse(text)
+        .syntax()
+        .descendants_with_tokens()
+        .filter_map(|e| e.into_token())
+    {
+        match tok.kind() {
+            SyntaxKind::COMMENT | SyntaxKind::DOC_COMMENT => {
+                if tok.next_token().is_none_or(|n| n.text().contains('\n')) {
+                    out.push(tok.text().trim_end().to_string());
+                }
+            }
+            k if k.is_trivia() || k == SyntaxKind::NEWLINE => {
+                if tok.text().matches('\n').count() > 1 {
+                    blank = Some(out.len());
+                }
+            }
+            _ => break,
+        }
+    }
+    out.truncate(blank.unwrap_or(out.len()));
+    out
+}
+
+/// The characters of the line holding the probe comment, without the probe or any whitespace,
+/// sorted (an import's names are sorted too).
+fn probe_line(text: &str) -> Option<String> {
+    let line = text.lines().find(|l| l.contains("probe"))?;
+    let line = line.replace("/* probe */", "").replace("// probe", "");
+    let mut chars: Vec<char> = line.chars().filter(|c| !c.is_whitespace()).collect();
+    chars.sort_unstable();
+    Some(chars.into_iter().collect())
+}
+
 /// Every comment survives formatting: a block comment before each token and a line comment at
 /// each line end of the corpus (every third spot, rotating by file to bound debug-build time),
 /// one at a time, wherever it leaves the program's shape unchanged.
-/// The output keeps it exactly once, keeps every other token, reparses and is a fixed point.
+/// The output keeps it exactly once, keeps every other token, reparses and is a fixed point. A
+/// comment on an import's line stays on that import's line when imports are sorted, and the
+/// comments heading the file stay at its top.
 #[test]
 fn every_comment_survives() {
     let shape = |text: &str| -> Vec<SyntaxKind> {
@@ -215,6 +268,23 @@ fn every_comment_survives() {
                 "{}: not idempotent:\n{out}",
                 path.display()
             );
+            assert!(
+                header(&out).starts_with(&header(&m)),
+                "{}: header moved:\n{m}\n---\n{out}",
+                path.display()
+            );
+            let on_import = m
+                .lines()
+                .find(|l| l.contains("probe"))
+                .is_some_and(|l| l.trim_start().starts_with("import") && !l.ends_with('{'));
+            if let Some(line) = probe_line(&m).filter(|_| on_import) {
+                assert_eq!(
+                    probe_line(&out),
+                    Some(line),
+                    "{}: comment left its import:\n{m}\n---\n{out}",
+                    path.display()
+                );
+            }
         }
     }
     assert!(cases > 2_000, "only {cases} cases");

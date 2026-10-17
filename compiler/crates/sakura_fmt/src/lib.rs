@@ -21,7 +21,9 @@
 //!   kind that were adjacent in the source (an `error` block, a run of `type` aliases). Inside
 //!   bodies, at most one blank line is kept where the source had one.
 //! - **Imports** form two groups, `std/…` then everything else, because the formatter does not
-//!   know the package name that would separate dependencies from local modules.
+//!   know the package name that would separate dependencies from local modules. A comment
+//!   directly above or after an import moves with it; the comments before the first import stay
+//!   at the top of the file (a header), except a last group set off from them by a blank line.
 //! - **Ranges** are tight (`0..n`, as in §4); other binary operators are spaced.
 //! - **Line breaks** are only introduced where §2.4 cannot turn them into a statement end: after
 //!   `(`, `[`, `{`, `,`, `=>` and `-`, and before `.`, `|`, `)`, `]`, `}` and the other binary
@@ -380,6 +382,21 @@ fn comments_doc(comments: &[Comment]) -> Doc {
     concat(parts)
 }
 
+/// Comments before a node, each followed by a line break, or by a space if it is a one-line
+/// block comment on the node's line.
+fn lead_doc(comments: Vec<(String, bool)>) -> Doc {
+    let mut parts = Vec::new();
+    for (text, newline_after) in comments {
+        let sep = if is_inline(&text) && !newline_after {
+            t(" ")
+        } else {
+            nl()
+        };
+        parts.extend([raw(&text), sep]);
+    }
+    concat(parts)
+}
+
 struct Fmt<'a> {
     src: &'a str,
 }
@@ -462,8 +479,12 @@ impl Fmt<'_> {
     // ---- Dispatch ----
 
     fn node(&self, n: &SyntaxNode) -> Doc {
-        let lead = leading_comments(n);
-        let body = if !handles_comments(n.kind()) && has_inner_comments(n) {
+        lead_doc(leading_comments(n)).append(self.bare(n))
+    }
+
+    /// A node without its leading comments.
+    fn bare(&self, n: &SyntaxNode) -> Doc {
+        if !handles_comments(n.kind()) && has_inner_comments(n) {
             // These nodes print the space before their keyword themselves.
             let space = matches!(n.kind(), WHERE_CLAUSE | RET_TYPE | MATCH_GUARD);
             if space { t(" ") } else { nil() }.append(self.verbatim(n))
@@ -476,17 +497,7 @@ impl Fmt<'_> {
                     .append(self.node_body(n))
                     .append(t(")".repeat(parens)))
             }
-        };
-        let mut parts = Vec::new();
-        for (text, newline_after) in lead {
-            let sep = if is_inline(&text) && !newline_after {
-                t(" ")
-            } else {
-                nl()
-            };
-            parts.extend([raw(&text), sep]);
         }
-        concat(parts).append(body)
     }
 
     fn opt(&self, n: Option<impl AstNode>) -> Doc {
@@ -1413,11 +1424,40 @@ impl Fmt<'_> {
             .iter()
             .take_while(|e| e.node.kind() == IMPORT)
             .count();
+        // The comments before the first import are the file's header (a licence, test
+        // directives) and stay at the top when it sorts below another import; only a group set
+        // off from them by a blank line, directly above the import, moves with it. The parser
+        // attaches that group to the import itself, so when nothing sets it off it is the header.
+        let mut header = nil();
+        let mut headless = None;
+        if let Some(first) = s.entries.first_mut().filter(|_| imports > 0) {
+            let split = first
+                .leading
+                .iter()
+                .rposition(|c| c.blank_after)
+                .map_or(first.leading.len(), |i| i + 1);
+            let detached: Vec<Comment> = first.leading.drain(..split).collect();
+            header = comments_doc(&detached);
+            let own = leading_comments(&first.node);
+            // `/* c */ import a` on one line stays with its import.
+            if detached.is_empty() && own.iter().all(|c| c.1) {
+                header = lead_doc(own);
+                headless = Some(first.node.clone());
+            }
+        }
         s.entries[..imports].sort_by_key(|e| import_key(&e.node));
-        let mut out = String::new();
+        let mut out = render(&header, WIDTH);
         let mut prev: Option<(SyntaxKind, bool, bool)> = None; // kind, single-line, std import
         for (i, e) in s.entries.iter().enumerate() {
-            let mut doc = comments_doc(&e.leading).append(self.entry(e));
+            let entry = if headless.as_ref() == Some(&e.node) {
+                e.inline
+                    .as_ref()
+                    .map_or_else(nil, |c| raw(c).append(t(" ")))
+                    .append(self.bare(&e.node))
+            } else {
+                self.entry(e)
+            };
+            let mut doc = comments_doc(&e.leading).append(entry);
             if let Some(c) = &e.trailing {
                 doc = doc.append(t(" ")).append(raw(c));
             }

@@ -1,0 +1,16 @@
+---
+source: crates/sakura_fmt/tests/fmt.rs
+expression: "check(path, &text)"
+input_file: tests/fmt/import_comments.sakura
+---
+// Licence header: stays at the top of the file.
+
+// Before std/core: moves with it.
+import std/core.{Violation}
+import std/list.{List} // trailing: moves with std/list
+
+/* inline */ import alpha/a
+// About the zebra import: moves with it.
+import zebra/z
+
+fn f() -> Int { 1 }
