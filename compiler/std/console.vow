@@ -1,7 +1,5 @@
 // Line-oriented terminal IO. Prelude effect.
 
-import std/test.{Test}
-
 pub effect Console {
   /// Writes `line` and a newline to standard output.
   fn print(line: String) -> Unit

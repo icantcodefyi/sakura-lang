@@ -1,15 +1,11 @@
 // Structured concurrency (design §8.6). Prelude effect. Milestone M3: needs generic
 // operations and operation rows beyond `Fail` (see compiler/REQUESTS.md).
-// `Scope`, `Fiber<T>` and `Channel<T>` are compiler-known resource types.
+// `scope`, `spawn` and `join` (design §8.6) return here once `Scope` and `Fiber<T>` exist
+// as compiler-known resource types (compiler/REQUESTS.md, F to B).
 
 import std/duration.{Duration}
 
 pub effect Task {
-  /// Runs `body` with a scope; returns after every child spawned in it has finished.
-  /// The first child failure or defect cancels the siblings and propagates.
-  fn scope<T, e>(body: fn(Scope) -> T ! e) -> T ! e
-  fn spawn<T, e>(s: Scope, body: fn() -> T ! e) -> Fiber<T> ! e
-  fn join<T>(f: Fiber<T>) -> T
   /// Runs `bodies` concurrently; results in input order.
   fn all<T, e>(bodies: List<fn() -> T ! e>) -> List<T> ! e
   /// The first body to finish wins; the others are cancelled and joined.

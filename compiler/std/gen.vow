@@ -3,8 +3,6 @@
 // with `for_all` inside a `test`. Generators draw from `Random`, so a run is
 // reproducible from `vow test --seed N`.
 
-import std/test.{Test}
-
 /// `sample(size)` produces one value; `size` grows from 0 with each case so early cases
 /// are small.
 pub type Gen<A> = { sample: fn(Int) -> A ! {Random} }

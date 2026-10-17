@@ -82,10 +82,10 @@ fn flaky_until(ok_at: Int) -> String ! {Attempts, Fail<Flaky>} {
 test "retries until success, sleeping with backoff" {
   let p = Policy { ..policy(fn(e) { true }, 5), jitter: false }
   let out = with Clock.virtual(), attempts() {
-    let v = retry(p, fn() { flaky_until(3) })
+    let v = try { retry(p, fn() { flaky_until(3) }) }
     (v, Clock.monotonic())
   }
-  expect_eq(out, ("ok after 3", Duration.millis(300)))
+  expect_eq(out, (Ok("ok after 3"), Duration.millis(300)))
 }
 
 test "the last error propagates after max_attempts" {
@@ -113,7 +113,7 @@ test "deadline stops retrying early" {
 test "jittered waits stay within the backoff" {
   let p = Policy { ..policy(fn(e) { true }, 4), backoff: Duration.millis(100) }
   let spent = with Clock.virtual(), Random.seeded(3), attempts() {
-    let _ = retry(p, fn() { flaky_until(4) })
+    let _ = try { retry(p, fn() { flaky_until(4) }) }
     Clock.monotonic().to_millis()
   }
   expect(spent >= 0 && spent <= 700)

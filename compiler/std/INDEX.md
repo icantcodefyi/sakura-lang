@@ -71,7 +71,7 @@ graph → map, list
 `std/fs`, `std/http`, `std/router`, `std/html`, `std/sql`, `std/cli`, `std/ai` (`Llm`,
 `Budget`, `Prompt`, `Tool`, `Agent`), `std/decimal`, `std/url`, `std/path`, `Secret.expose`,
 `Untrusted.validate/check/trust`, `Json` `Schema` codecs (declared as externals, need M3),
-`List.par_map` (written as `std/task.par_map` until `Task` exists). Their signatures are the
+`List.par_map` (written as `std/task.par_map` until `Task` exists), `Env.host(scope)`, `Task.scope`/`spawn`/`join` (need the `EnvScope`, `Scope`, `Fiber` builtins). Their signatures are the
 ones in design §10.2–§10.7.
 
 ## Signatures
@@ -332,7 +332,6 @@ effect Env {
   fn get(key: String) -> Option<String>
   fn secret(key: String) -> Option<Secret<String>>
 }
-fn host(scope: EnvScope) -> Handler<Env>    // @external
 fn of(vars: Map<String, String>) -> Handler<Env>
 fn only(keys: List<String>) -> Handler<Env, {Env}>
 ```
@@ -375,9 +374,6 @@ fn retry<T, E, e>(p: Policy<E>, action: fn() -> T ! {Fail<E> | e}) -> T ! {Clock
 
 ```vow
 effect Task {
-  fn scope<T, e>(body: fn(Scope) -> T ! e) -> T ! e
-  fn spawn<T, e>(s: Scope, body: fn() -> T ! e) -> Fiber<T> ! e
-  fn join<T>(f: Fiber<T>) -> T
   fn all<T, e>(bodies: List<fn() -> T ! e>) -> List<T> ! e
   fn race<T, e>(bodies: List<fn() -> T ! e>) -> T ! e
   fn yield_now() -> Unit
