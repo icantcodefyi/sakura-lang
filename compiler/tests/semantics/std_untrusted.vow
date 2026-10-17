@@ -1,0 +1,17 @@
+// milestone: M3
+// needs: runtime externals `untrusted_of` and `untrusted_value` (std/untrusted)
+// mode: test
+// covers: Attribute Lambda
+
+test "check releases a value that passes" {
+  let u = Untrusted.of("ann@example.com")
+  expect_eq(
+    Untrusted.check(u, "contains @", fn(s) { String.contains(s, "@") }),
+    Ok("ann@example.com"),
+  )
+  expect(
+    Untrusted.check(Untrusted.of("nope"), "contains @", fn(s) { String.contains(s, "@") }).is_err(),
+  )
+  expect_eq(Untrusted.len(u), 15)
+  expect_eq(Untrusted.trust(u, @trust("test")), "ann@example.com")
+}

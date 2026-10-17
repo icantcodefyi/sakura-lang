@@ -8,3 +8,8 @@ pub fn show<A: Show>(a: A) -> String
 /// `Err(Violation { type_name: "Percent", clause: "it <= 100", value_summary: "101" })`.
 /// `clause` is the source text of the failing conjunct.
 pub type Violation = { type_name: String, clause: String, value_summary: String }
+
+/// The type of `@trust("reason")` (design §6.4, §17.16), accepted only by `Untrusted.trust`
+/// and `Secret.expose`. External: it has no constructor, so the attribute is the only way to
+/// make one.
+pub type Trust
