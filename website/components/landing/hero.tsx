@@ -18,7 +18,9 @@ export async function Hero() {
             href="/docs/roadmap"
             className="rise group inline-flex items-center gap-2 rounded-full border border-line bg-surface/70 py-1 pr-3 pl-1 text-[12.5px] text-fg-muted transition-colors duration-150 hover:border-line-strong hover:text-fg"
           >
-            <span className="rounded-full bg-seal-wash px-2 py-0.5 font-medium text-seal-text">Pre-alpha</span>
+            <span className="rounded-full bg-seal-wash px-2 py-0.5 font-medium text-seal-text">
+              Pre-alpha
+            </span>
             In early design, no release yet
             <ArrowRight className="size-3 transition-transform duration-200 group-hover:translate-x-0.5" />
           </Link>
@@ -33,10 +35,13 @@ export async function Hero() {
             className="rise mt-6 max-w-[34rem] text-[clamp(1.05rem,1.4vw,1.2rem)] leading-relaxed text-pretty text-fg-muted"
             style={{ "--i": 2 } as CSSProperties}
           >
-            Vow is the language agents write. Every signature declares its effects, errors and contracts, and the
-            compiler holds the code to them.
+            Vow is the language agents write. Every signature declares its effects, errors and
+            contracts, and the compiler holds the code to them.
           </p>
-          <div className="rise mt-9 flex flex-wrap items-center gap-3" style={{ "--i": 3 } as CSSProperties}>
+          <div
+            className="rise mt-9 flex flex-wrap items-center gap-3"
+            style={{ "--i": 3 } as CSSProperties}
+          >
             <Link
               href="/docs"
               className="group inline-flex h-11 items-center gap-2 rounded-full bg-seal pr-2 pl-5 text-[15px] font-semibold text-seal-ink shadow-[inset_0_1px_0_oklch(1_0_0/0.35),0_8px_24px_-10px_oklch(0.7_0.15_70/0.7)] transition-transform duration-150 active:scale-[0.97]"

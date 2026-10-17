@@ -71,7 +71,8 @@ function buildFrames(lines: TokenLine[]) {
   const starts = lens.map((_, i) => lens.slice(0, i).reduce((a, b) => a + b, 0));
   const badLen = lens[BAD_LINE];
   frames.push({ delay: 2600, patch: { phase: "fixing" } });
-  for (let d = 0; d < badLen; d += 3) frames.push({ delay: 16, patch: { deleted: Math.min(badLen, d + 3) } });
+  for (let d = 0; d < badLen; d += 3)
+    frames.push({ delay: 16, patch: { deleted: Math.min(badLen, d + 3) } });
   frames.push({ delay: 260, patch: { deleted: badLen, diagnostic: false } });
   frames.push({ delay: 380, patch: { phase: "kept" } });
   return { frames, total: typed, badLen, lens, starts };
@@ -79,7 +80,12 @@ function buildFrames(lines: TokenLine[]) {
 
 export function HeroDemo({ lines }: { lines: TokenLine[] }) {
   const { frames, total, badLen, lens, starts } = useMemo(() => buildFrames(lines), [lines]);
-  const [state, set] = useReducer(reducer, { phase: "idle", typed: 0, deleted: 0, diagnostic: false });
+  const [state, set] = useReducer(reducer, {
+    phase: "idle",
+    typed: 0,
+    deleted: 0,
+    diagnostic: false,
+  });
   const root = useRef<HTMLDivElement>(null);
   const run = useRef(0);
 
@@ -156,7 +162,10 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
           <span className="font-mono text-[11px] text-fg-faint">agent session</span>
         </div>
 
-        <pre aria-hidden className="overflow-x-auto py-4 font-mono text-[12px] leading-[1.75] sm:text-[12.25px]">
+        <pre
+          aria-hidden
+          className="overflow-x-auto py-4 font-mono text-[12px] leading-[1.75] sm:text-[12.25px]"
+        >
           <code className="grid min-h-[calc(14*1.75em)] min-w-max content-start">
             {rows.map((r, i) => {
               if (i === BAD_LINE && removed) return null;
@@ -173,7 +182,9 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
                     bad ? "bg-fail-wash" : proved ? "bg-ok-wash" : ""
                   } ${visible ? "" : "invisible"}`}
                 >
-                  <span className="pr-3 text-right text-fg-faint tabular-nums select-none">{visible ? i + 1 - (removed && i > BAD_LINE ? 1 : 0) : ""}</span>
+                  <span className="pr-3 text-right text-fg-faint tabular-nums select-none">
+                    {visible ? i + 1 - (removed && i > BAD_LINE ? 1 : 0) : ""}
+                  </span>
                   <span className="pr-6 whitespace-pre">
                     <TokenSpans line={r.line} upTo={upTo} />
                     {cursorLine === i && !done ? <Caret /> : null}
@@ -237,7 +248,14 @@ function MarginNote({ note }: { note: Note }) {
 function Tick() {
   return (
     <svg viewBox="0 0 12 12" className="size-2.5" aria-hidden>
-      <path d="M2.5 6.3 5 8.6l4.5-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M2.5 6.3 5 8.6l4.5-5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -245,7 +263,13 @@ function Tick() {
 function Cross() {
   return (
     <svg viewBox="0 0 12 12" className="size-2.5" aria-hidden>
-      <path d="m3 3 6 6M9 3 3 9" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path
+        d="m3 3 6 6M9 3 3 9"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -258,16 +282,20 @@ function Diagnostic() {
         <span className="text-fg-muted">src/users.vow:12:3</span>
       </p>
       <p className="mt-1 font-sans text-[13px] text-fg">
-        <code className="font-mono">signup</code> performs <code className="font-mono text-seal-text">Net</code> but its
-        signature never promised it.
+        <code className="font-mono">signup</code> performs{" "}
+        <code className="font-mono text-seal-text">Net</code> but its signature never promised it.
       </p>
       <ul className="mt-3 grid gap-1.5">
         <li className="flex flex-wrap items-baseline gap-x-2">
-          <span className="rounded border border-line px-1.5 text-[10.5px] text-fg-muted">changes-signature</span>
+          <span className="rounded border border-line px-1.5 text-[10.5px] text-fg-muted">
+            changes-signature
+          </span>
           <span className="text-fg-muted">declare Net: needs human review</span>
         </li>
         <li className="flex flex-wrap items-baseline gap-x-2">
-          <span className="rounded border border-ok/40 px-1.5 text-[10.5px] text-ok">changes-behaviour</span>
+          <span className="rounded border border-ok/40 px-1.5 text-[10.5px] text-ok">
+            changes-behaviour
+          </span>
           <span className="text-fg">remove the call to Http.post</span>
           <span className="text-seal-text">← agent applies</span>
         </li>
@@ -292,10 +320,17 @@ function StatusBar({ phase, onReplay }: { phase: Phase; onReplay?: () => void })
         <span
           aria-hidden
           className={`size-1.5 rounded-full ${
-            phase === "kept" ? "bg-ok" : phase === "caught" ? "bg-fail" : "bg-seal motion-safe:animate-pulse"
+            phase === "kept"
+              ? "bg-ok"
+              : phase === "caught"
+                ? "bg-fail"
+                : "bg-seal motion-safe:animate-pulse"
           }`}
         />
-        <span key={phase} className={`${s.tone} motion-safe:animate-[note-in_220ms_var(--ease-out)_both]`}>
+        <span
+          key={phase}
+          className={`${s.tone} motion-safe:animate-[note-in_220ms_var(--ease-out)_both]`}
+        >
           {s.text}
         </span>
       </span>

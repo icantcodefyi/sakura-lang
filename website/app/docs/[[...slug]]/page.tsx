@@ -63,6 +63,10 @@ export async function generateMetadata(props: PageProps<"/docs/[[...slug]]">): P
       url: page.url,
       images: ["/opengraph-image"],
     },
-    twitter: { card: "summary_large_image", title: page.data.title, description: page.data.description },
+    twitter: {
+      card: "summary_large_image",
+      title: page.data.title,
+      description: page.data.description,
+    },
   };
 }

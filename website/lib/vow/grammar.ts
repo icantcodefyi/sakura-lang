@@ -92,7 +92,7 @@ export const vowGrammar: LanguageRegistration = {
           },
         },
         {
-          match: "\\b(test|property)\\s+(?=\")",
+          match: '\\b(test|property)\\s+(?=")',
           captures: {
             1: { name: "keyword.other.test.vow" },
           },
@@ -103,12 +103,12 @@ export const vowGrammar: LanguageRegistration = {
       patterns: [
         {
           // Tagged literals: sql"…", html"…" are parsed and checked.
-          begin: "\\b([a-z][a-z0-9_]*)(\")",
+          begin: '\\b([a-z][a-z0-9_]*)(")',
           beginCaptures: {
             1: { name: "entity.name.function.tagged.vow" },
             2: { name: "punctuation.definition.string.begin.vow" },
           },
-          end: "\"",
+          end: '"',
           endCaptures: {
             0: { name: "punctuation.definition.string.end.vow" },
           },
@@ -116,11 +116,11 @@ export const vowGrammar: LanguageRegistration = {
           patterns: [{ include: "#string-escape" }, { include: "#interpolation" }],
         },
         {
-          begin: "\"",
+          begin: '"',
           beginCaptures: {
             0: { name: "punctuation.definition.string.begin.vow" },
           },
-          end: "\"",
+          end: '"',
           endCaptures: {
             0: { name: "punctuation.definition.string.end.vow" },
           },
@@ -131,7 +131,7 @@ export const vowGrammar: LanguageRegistration = {
     },
     "string-escape": {
       name: "constant.character.escape.vow",
-      match: "\\\\(?:[\\\\\"nrt{}0]|u\\{[0-9A-Fa-f]{1,6}\\})",
+      match: '\\\\(?:[\\\\"nrt{}0]|u\\{[0-9A-Fa-f]{1,6}\\})',
     },
     interpolation: {
       begin: "\\{",

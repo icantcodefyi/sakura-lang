@@ -1,5 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Atkinson_Hyperlegible_Mono, Atkinson_Hyperlegible_Next, Funnel_Display } from "next/font/google";
+import {
+  Atkinson_Hyperlegible_Mono,
+  Atkinson_Hyperlegible_Next,
+  Funnel_Display,
+} from "next/font/google";
 import { RootProvider } from "fumadocs-ui/provider/next";
 import { site } from "@/lib/site";
 import "./globals.css";
@@ -29,7 +33,16 @@ export const metadata: Metadata = {
   title: { default: site.title, template: "%s · Vow" },
   description: site.description,
   applicationName: site.name,
-  keywords: ["Vow", "programming language", "AI agents", "effects", "refinement types", "contracts", "llms.txt", "MCP"],
+  keywords: [
+    "Vow",
+    "programming language",
+    "AI agents",
+    "effects",
+    "refinement types",
+    "contracts",
+    "llms.txt",
+    "MCP",
+  ],
   openGraph: {
     type: "website",
     siteName: site.name,

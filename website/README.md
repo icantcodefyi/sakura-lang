@@ -16,17 +16,17 @@ Set `NEXT_PUBLIC_SITE_URL` to the deployed origin so OG images, the sitemap and 
 
 ## Layout
 
-| Path | What it is |
-| --- | --- |
-| `app/page.tsx`, `components/landing/` | Landing page sections |
-| `app/docs/` | Fumadocs docs routes (`/docs/...`) |
-| `content/docs/` | Docs content (MDX); order lives in `meta.json` files |
-| `app/llms.txt`, `app/llms-full.txt` | Agent-readable index and full text |
-| `app/llms.mdx/docs/[[...slug]]` | One page as Markdown; `/docs/<page>.md` is rewritten here |
-| `lib/vow/grammar.ts`, `lib/vow/themes.ts` | TextMate grammar and Shiki themes for `vow` code |
-| `lib/vow/highlight.ts` | Build-time tokenizer used by the landing page |
-| `lib/source.ts` | Fumadocs source, `llms.txt` builder and Markdown rendering of MDX components |
-| `app/globals.css` | Design tokens (OKLCH) shared by landing and docs |
+| Path                                      | What it is                                                                   |
+| ----------------------------------------- | ---------------------------------------------------------------------------- |
+| `app/page.tsx`, `components/landing/`     | Landing page sections                                                        |
+| `app/docs/`                               | Fumadocs docs routes (`/docs/...`)                                           |
+| `content/docs/`                           | Docs content (MDX); order lives in `meta.json` files                         |
+| `app/llms.txt`, `app/llms-full.txt`       | Agent-readable index and full text                                           |
+| `app/llms.mdx/docs/[[...slug]]`           | One page as Markdown; `/docs/<page>.md` is rewritten here                    |
+| `lib/vow/grammar.ts`, `lib/vow/themes.ts` | TextMate grammar and Shiki themes for `vow` code                             |
+| `lib/vow/highlight.ts`                    | Build-time tokenizer used by the landing page                                |
+| `lib/source.ts`                           | Fumadocs source, `llms.txt` builder and Markdown rendering of MDX components |
+| `app/globals.css`                         | Design tokens (OKLCH) shared by landing and docs                             |
 
 ## Writing docs
 

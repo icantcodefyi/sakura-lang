@@ -120,7 +120,6 @@
     color: var(--fg);
   }
 
-
   ::selection {
     background: var(--seal-wash);
   }

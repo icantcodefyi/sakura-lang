@@ -15,7 +15,13 @@ export function TokenSpans({ line, upTo }: { line: TokenLine; upTo?: number }) {
       <span
         key={i}
         className="tk"
-        style={{ "--l": t.light, "--d": t.dark, fontStyle: t.italic ? "italic" : undefined } as CSSProperties}
+        style={
+          {
+            "--l": t.light,
+            "--d": t.dark,
+            fontStyle: t.italic ? "italic" : undefined,
+          } as CSSProperties
+        }
       >
         {text}
       </span>,

@@ -11,11 +11,15 @@ export function Tabs({ items }: { items: { label: string; panel: ReactNode }[] }
   const onKey = (e: KeyboardEvent) => {
     const last = items.length - 1;
     const next =
-      e.key === "ArrowRight" ? (active + 1) % items.length
-      : e.key === "ArrowLeft" ? (active + last) % items.length
-      : e.key === "Home" ? 0
-      : e.key === "End" ? last
-      : -1;
+      e.key === "ArrowRight"
+        ? (active + 1) % items.length
+        : e.key === "ArrowLeft"
+          ? (active + last) % items.length
+          : e.key === "Home"
+            ? 0
+            : e.key === "End"
+              ? last
+              : -1;
     if (next < 0) return;
     e.preventDefault();
     setActive(next);

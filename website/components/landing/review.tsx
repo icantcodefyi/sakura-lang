@@ -10,8 +10,10 @@ const FILES = [
   { path: "test/billing_test.vow", add: 73, del: 61 },
 ];
 
-const BEFORE = "pub fn charge(card: Card, amount: Cents) -> Receipt ! {Payments, Fail<ChargeError>}";
-const AFTER = "pub fn charge(card: Card, amount: Cents) -> Receipt ! {Payments, Net, Fail<ChargeError>}";
+const BEFORE =
+  "pub fn charge(card: Card, amount: Cents) -> Receipt ! {Payments, Fail<ChargeError>}";
+const AFTER =
+  "pub fn charge(card: Card, amount: Cents) -> Receipt ! {Payments, Net, Fail<ChargeError>}";
 
 export async function Review() {
   const [before, after] = await Promise.all([tokenize(BEFORE), tokenize(AFTER)]);
@@ -23,18 +25,23 @@ export async function Review() {
             The signature is the contract.
           </h2>
           <p className="mt-5 max-w-[30rem] text-[17px] leading-relaxed text-pretty text-fg-muted">
-            An agent can rewrite six hundred lines before you finish your coffee. Nobody reviews that well. In Vow,
-            everything a function is allowed to do lives in its signature, so review shrinks to the lines that change a
-            promise.
+            An agent can rewrite six hundred lines before you finish your coffee. Nobody reviews
+            that well. In Vow, everything a function is allowed to do lives in its signature, so
+            review shrinks to the lines that change a promise.
           </p>
           <dl className="mt-10 grid max-w-[30rem] gap-5 text-[15px]">
             <div className="grid grid-cols-[7.5rem_1fr] gap-4 border-t border-line pt-5">
               <dt className="font-medium">Humans</dt>
-              <dd className="text-fg-muted">read signatures: inputs, outputs, effects, errors, contracts.</dd>
+              <dd className="text-fg-muted">
+                read signatures: inputs, outputs, effects, errors, contracts.
+              </dd>
             </div>
             <div className="grid grid-cols-[7.5rem_1fr] gap-4 border-t border-line pt-5">
               <dt className="font-medium">The compiler</dt>
-              <dd className="text-fg-muted">checks every body against its signature, and refuses to build if one breaks its word.</dd>
+              <dd className="text-fg-muted">
+                checks every body against its signature, and refuses to build if one breaks its
+                word.
+              </dd>
             </div>
           </dl>
         </div>
@@ -46,7 +53,8 @@ export async function Review() {
                 <span className="text-fg-muted">agent/</span>billing-retries
               </p>
               <p className="font-mono text-[12px] text-fg-muted tabular-nums">
-                5 files <span className="text-ok">+612</span> <span className="text-fail">−388</span>
+                5 files <span className="text-ok">+612</span>{" "}
+                <span className="text-fail">−388</span>
               </p>
             </div>
             <ul className="divide-y divide-line">
@@ -62,20 +70,30 @@ export async function Review() {
                     <div className="relative overflow-x-auto border-y border-line bg-code py-2 font-mono text-[11.5px] leading-[1.8] sm:text-[12px]">
                       <div className="min-w-max">
                         <p className="flex bg-fail-wash pr-5 whitespace-pre">
-                          <span aria-hidden className="w-8 shrink-0 text-center text-fail select-none">−</span>
+                          <span
+                            aria-hidden
+                            className="w-8 shrink-0 text-center text-fail select-none"
+                          >
+                            −
+                          </span>
                           <span className="sr-only">Removed: </span>
                           <TokenSpans line={before[0]} />
                         </p>
                         <p className="flex bg-ok-wash pr-5 whitespace-pre">
-                          <span aria-hidden className="w-8 shrink-0 text-center text-ok select-none">+</span>
+                          <span
+                            aria-hidden
+                            className="w-8 shrink-0 text-center text-ok select-none"
+                          >
+                            +
+                          </span>
                           <span className="sr-only">Added: </span>
                           <TokenSpans line={after[0]} />
                         </p>
                       </div>
                     </div>
                     <p className="px-5 py-3 text-[13.5px] leading-relaxed text-fg">
-                      <span className="font-semibold">charge</span> now talks to the network. That is a decision for a
-                      person, so the diff surfaces it, and nothing else.
+                      <span className="font-semibold">charge</span> now talks to the network. That
+                      is a decision for a person, so the diff surfaces it, and nothing else.
                     </p>
                   </li>
                 ) : (
@@ -83,7 +101,8 @@ export async function Review() {
                     <span className="font-mono text-[12.5px] text-fg-muted">{f.path}</span>
                     <span className="flex items-center gap-3 font-mono text-[11.5px] tabular-nums">
                       <span className="hidden text-fg-faint sm:inline">
-                        <span className="text-ok">+{f.add}</span> <span className="text-fail">−{f.del}</span>
+                        <span className="text-ok">+{f.add}</span>{" "}
+                        <span className="text-fail">−{f.del}</span>
                       </span>
                       <span className="inline-flex items-center gap-1 text-ok">
                         <Check className="size-3.5" strokeWidth={2.25} aria-hidden />
@@ -96,7 +115,8 @@ export async function Review() {
             </ul>
           </div>
           <figcaption className="mt-3 text-[12.5px] text-fg-faint">
-            Illustrative review of an agent&apos;s change. The tooling is part of the design, not a shipped product.
+            Illustrative review of an agent&apos;s change. The tooling is part of the design, not a
+            shipped product.
           </figcaption>
         </figure>
       </div>

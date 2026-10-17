@@ -1,4 +1,14 @@
 {
   "title": "Language Tour",
-  "pages": ["basics", "types", "effects", "handlers", "contracts", "testing", "capabilities", "memory", "concurrency"]
+  "pages": [
+    "basics",
+    "types",
+    "effects",
+    "handlers",
+    "contracts",
+    "testing",
+    "capabilities",
+    "memory",
+    "concurrency"
+  ]
 }

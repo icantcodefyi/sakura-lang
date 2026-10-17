@@ -23,7 +23,15 @@ const markClass = {
 } as const;
 
 /** Static, server-highlighted code block in the site's code style. */
-export async function Code({ code, lang = "vow", title, mark, className, numbers = false, wrap = false }: CodeProps) {
+export async function Code({
+  code,
+  lang = "vow",
+  title,
+  mark,
+  className,
+  numbers = false,
+  wrap = false,
+}: CodeProps) {
   const lines = await tokenize(code.replace(/\n$/, ""), lang);
   return (
     <figure className={`overflow-hidden rounded-xl border border-line bg-code ${className ?? ""}`}>
@@ -33,11 +41,16 @@ export async function Code({ code, lang = "vow", title, mark, className, numbers
         </figcaption>
       ) : null}
       <pre className="overflow-x-auto py-3 font-mono text-[12.5px] leading-[1.7]">
-        <code className={`grid ${wrap ? "whitespace-pre-wrap [overflow-wrap:anywhere]" : "min-w-max"}`}>
+        <code
+          className={`grid ${wrap ? "whitespace-pre-wrap [overflow-wrap:anywhere]" : "min-w-max"}`}
+        >
           {lines.map((line, i) => (
             <span key={i} className={`flex px-4 ${mark?.[i] ? markClass[mark[i]] : ""}`}>
               {numbers ? (
-                <span aria-hidden className="mr-4 w-5 shrink-0 text-right text-fg-faint tabular-nums select-none">
+                <span
+                  aria-hidden
+                  className="mr-4 w-5 shrink-0 text-right text-fg-faint tabular-nums select-none"
+                >
                   {i + 1}
                 </span>
               ) : null}

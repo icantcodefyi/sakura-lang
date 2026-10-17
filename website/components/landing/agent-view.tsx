@@ -50,17 +50,37 @@ export async function AgentView() {
             How an agent sees Vow.
           </h2>
           <p className="mt-5 max-w-[30rem] text-[17px] leading-relaxed text-pretty text-fg-muted">
-            Every surface of the language is something a model can read, query and act on without guessing.
+            Every surface of the language is something a model can read, query and act on without
+            guessing.
           </p>
           <ul className="mt-10 grid max-w-[30rem] gap-px overflow-hidden rounded-xl border border-line bg-line text-[15px]">
             {[
-              ["/docs/agents/llms-txt", "The whole language fits in context", "llms.txt, llms-full.txt, and every page as Markdown."],
-              ["/docs/agents/mcp", "The compiler is an MCP server", "Check, explain, find, test and fix as tool calls."],
-              ["/docs/agents/diagnostics", "Errors are data", "JSON with spans, expected and found, and ranked fixes."],
-              ["/docs/agents/typed-holes", "Holes, not hallucinations", "todo() returns the type, the effects and what fits."],
+              [
+                "/docs/agents/llms-txt",
+                "The whole language fits in context",
+                "llms.txt, llms-full.txt, and every page as Markdown.",
+              ],
+              [
+                "/docs/agents/mcp",
+                "The compiler is an MCP server",
+                "Check, explain, find, test and fix as tool calls.",
+              ],
+              [
+                "/docs/agents/diagnostics",
+                "Errors are data",
+                "JSON with spans, expected and found, and ranked fixes.",
+              ],
+              [
+                "/docs/agents/typed-holes",
+                "Holes, not hallucinations",
+                "todo() returns the type, the effects and what fits.",
+              ],
             ].map(([href, title, body]) => (
               <li key={href} className="bg-bg">
-                <Link href={href} className="block px-5 py-4 transition-colors duration-150 hover:bg-bg-sunk">
+                <Link
+                  href={href}
+                  className="block px-5 py-4 transition-colors duration-150 hover:bg-bg-sunk"
+                >
                   <span className="block font-medium">{title}</span>
                   <span className="mt-0.5 block text-[14px] text-fg-muted">{body}</span>
                 </Link>
@@ -80,12 +100,18 @@ export async function AgentView() {
                     <p className="mt-3 text-[13px] text-fg-muted">
                       Live from this site.{" "}
                       {/* oxlint-disable-next-line nextjs/no-html-link-for-pages -- plain-text route, not a page */}
-                      <a href="/llms.txt" className="font-medium text-fg underline decoration-seal underline-offset-4">
+                      <a
+                        href="/llms.txt"
+                        className="font-medium text-fg underline decoration-seal underline-offset-4"
+                      >
                         Open llms.txt
                       </a>{" "}
                       or{" "}
                       {/* oxlint-disable-next-line nextjs/no-html-link-for-pages -- plain-text route, not a page */}
-                      <a href="/llms-full.txt" className="font-medium text-fg underline decoration-seal underline-offset-4">
+                      <a
+                        href="/llms-full.txt"
+                        className="font-medium text-fg underline decoration-seal underline-offset-4"
+                      >
                         llms-full.txt
                       </a>
                       .
@@ -99,20 +125,33 @@ export async function AgentView() {
               },
               {
                 label: "Diagnostics",
-                panel: <Code code={DIAGNOSTIC} lang="json" title={<span>vow check --format json</span>} />,
+                panel: (
+                  <Code
+                    code={DIAGNOSTIC}
+                    lang="json"
+                    title={<span>vow check --format json</span>}
+                  />
+                ),
               },
               {
                 label: "Typed holes",
                 panel: (
                   <div className="grid gap-3">
-                    <Code code={HOLE} title={<span>src/cart.vow</span>} numbers mark={{ 2: "seal" }} />
+                    <Code
+                      code={HOLE}
+                      title={<span>src/cart.vow</span>}
+                      numbers
+                      mark={{ 2: "seal" }}
+                    />
                     <Code code={HOLE_REPLY} lang="text" title={<span>vow check</span>} />
                   </div>
                 ),
               },
             ]}
           />
-          <p className="mt-3 text-[12.5px] text-fg-faint">Tool output shapes follow the design docs; the compiler is not released.</p>
+          <p className="mt-3 text-[12.5px] text-fg-faint">
+            Tool output shapes follow the design docs; the compiler is not released.
+          </p>
         </div>
       </div>
     </section>

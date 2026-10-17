@@ -6,7 +6,10 @@ import type { SVGProps } from "react";
  */
 export const MARK_PATH = "M7.5 15.5 13.6 24 25 7.5";
 
-export function BrandMark({ tile = false, ...props }: SVGProps<SVGSVGElement> & { tile?: boolean }) {
+export function BrandMark({
+  tile = false,
+  ...props
+}: SVGProps<SVGSVGElement> & { tile?: boolean }) {
   return (
     <svg viewBox="0 0 32 32" fill="none" aria-hidden="true" {...props}>
       {tile ? <rect width="32" height="32" rx="8" fill="var(--mark-tile, #1a1d22)" /> : null}

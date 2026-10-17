@@ -13,9 +13,16 @@ fn signup(email: Email, pw: Password) -> User ! {Db, Clock, Fail<SignupError>}
 }`;
 
 const hl = await createHighlighter({ langs: [vowGrammar], themes: [vowDark, vowLight] });
-const lines = hl.codeToTokens(code, { lang: vowGrammar.name as "text", theme: "vow-dark", includeExplanation: true }).tokens;
+const lines = hl.codeToTokens(code, {
+  lang: vowGrammar.name as "text",
+  theme: "vow-dark",
+  includeExplanation: true,
+}).tokens;
 const scopeOf = (text: string) =>
-  lines.flat().find((t) => t.content.trim() === text)?.explanation?.[0]?.scopes.at(-1)?.scopeName;
+  lines
+    .flat()
+    .find((t) => t.content.trim() === text)
+    ?.explanation?.[0]?.scopes.at(-1)?.scopeName;
 
 const expect: Record<string, string> = {
   where: "keyword.other.contract.vow",
@@ -34,7 +41,10 @@ const expect: Record<string, string> = {
 let bad = 0;
 for (const [text, scope] of Object.entries(expect)) {
   const got = scopeOf(text);
-  if (got !== scope) { bad++; console.error(`✗ ${text}: expected ${scope}, got ${got}`); }
+  if (got !== scope) {
+    bad++;
+    console.error(`✗ ${text}: expected ${scope}, got ${got}`);
+  }
 }
 console.log(bad ? `${bad} grammar checks failed` : "grammar ok");
 process.exit(bad ? 1 : 0);
