@@ -82,7 +82,8 @@ table! {
     // Task
     Direct task_host/0, Direct task_deterministic/1,
     // Http
-    Cps http_send/1,
+    Cps http_send/1, Direct http_recording_open/2, Direct http_recording_lookup/2,
+    Direct http_recording_append/3,
     // Sql
     Direct sql_memory/0, Direct sql_sqlite/1,
     // Llm

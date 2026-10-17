@@ -3,6 +3,8 @@
 // design §5.8. A failed expectation is recorded and the test keeps running, so one run
 // reports every failed check (the runner marks the test failed at the end).
 
+import std/fs.{Dir}
+
 pub effect Test {
   /// Records a failed check with a human-readable message.
   fn record_failure(message: String) -> Unit
@@ -15,6 +17,9 @@ pub effect Test {
   /// Compares `rendered` with `tests/__snapshots__/<module>/<name>.snap`; records a
   /// failure on mismatch, writes the file under `--update-snapshots`.
   fn snapshot(name: String, rendered: String) -> Unit
+  /// `<package>/tests/fixtures`, read-only (writable under `sakura test --record`), for
+  /// `with Fs.rooted(Test.fixtures())` around `Http.recording` and `Llm.replay`.
+  fn fixtures() -> Dir
 }
 
 pub fn expect(cond: Bool) -> Unit ! {Test} {

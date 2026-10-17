@@ -2378,6 +2378,21 @@ export function fs_root() {
 export function fs_detached_root() {
   return new Dir(DIR_BRAND, null, null);
 }
+/**
+ * `Test.fixtures()` for the `sakura test` runner (design §17.73): `dir` (`<package>/tests/fixtures`),
+ * readable, and writable only when `writable` (`sakura test --record`), which also creates it;
+ * `""` (no package) is a directory without host access.
+ */
+export function fixtures_dir(dir, writable) {
+  if (dir === "") return fs_detached_root();
+  const fs = nodeFs();
+  if (writable) fs.mkdirSync(dir, { recursive: true });
+  let root = nodePath().resolve(dir);
+  try {
+    root = fs.realpathSync(root);
+  } catch {}
+  return new Dir(DIR_BRAND, root, { read: [root], write: writable ? [root] : [] });
+}
 
 /** The host path of `rel` inside `d`, or an error message; `forWrite` allows a missing file. */
 function inside(d, rel, forWrite) {
@@ -2823,6 +2838,92 @@ export function http_send(req, _ctx, k) {
     (e) => Err(String(e?.cause?.message ?? e?.message ?? e)),
   );
   return suspend(response, k, () => abort.abort());
+}
+
+// Cassettes behind `Http.recording(path)` (design §17.73): JSON Lines of
+// `{method, url, headers, body, status, response_headers, response_body}` in a `Dir`. The key is
+// (method, url, headers, body); `secret_headers` are never read here, so they are neither
+// written nor matched. `SAKURA_RECORD=1` (set only by `sakura test --record`) allows appends.
+const cassettes = new Map();
+let nextCassette = 1;
+const recording = () => proc?.env?.SAKURA_RECORD === "1";
+
+function exchangeKey(method, url, headers, body) {
+  return JSON.stringify([method, url, headers, body]);
+}
+function requestKey(req) {
+  const method = req.method.$t.ctors[req.method.tag].name.toUpperCase();
+  return exchangeKey(method, req.url, items(req.headers).map(([n, v]) => [n, v]), req.body);
+}
+
+/** Reads `path` inside `dir` (a missing file is empty); `Ok(id)` or `Err(reason)`. */
+export function http_recording_open(dir, path) {
+  const r = inside(dir, path, recording());
+  let text = "";
+  if (r.err !== undefined && r.err !== "not found") return Err(`${path}: ${r.err}`);
+  try {
+    if (r.err === undefined) text = nodeFs().readFileSync(r.path, "utf8");
+  } catch (e) {
+    if (e.code !== "ENOENT") return Err(`${path}: ${hostMessage(e)}`);
+  }
+  // Each key's exchanges replay in recorded order; the last one repeats.
+  const byKey = new Map();
+  const lines = text.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].trim() === "") continue;
+    let x;
+    try {
+      x = JSON.parse(lines[i]);
+    } catch (e) {
+      return Err(`${path}:${i + 1}: ${e.message}`);
+    }
+    const key = exchangeKey(x.method, x.url, x.headers, x.body);
+    if (!byKey.has(key)) byKey.set(key, { next: 0, exchanges: [] });
+    byKey.get(key).exchanges.push(x);
+  }
+  const id = nextCassette++;
+  cassettes.set(id, { dir, path, byKey });
+  return Ok(id);
+}
+
+/**
+ * `Ok(Some(response))` replays a recorded exchange, `Ok(None)` is a miss while recording (the
+ * caller forwards and appends), `Err(reason)` a miss otherwise.
+ */
+export function http_recording_lookup(id, req) {
+  const c = cassettes.get(id);
+  const key = requestKey(req);
+  const hit = c.byKey.get(key);
+  if (hit === undefined) {
+    if (recording()) return Ok(None);
+    const method = req.method.$t.ctors[req.method.tag].name.toUpperCase();
+    return Err(`no recording for ${method} ${req.url} in ${c.path}; run sakura test --record`);
+  }
+  const x = hit.exchanges[Math.min(hit.next++, hit.exchanges.length - 1)];
+  const Response = std("std::response::Response");
+  return Ok(Some(new Response(x.status, list(x.response_headers.map(([n, v]) => [n, v])), x.response_body)));
+}
+
+/** Appends one exchange to the file and to the open cassette; only under `SAKURA_RECORD=1`. */
+export function http_recording_append(id, req, resp) {
+  const c = cassettes.get(id);
+  if (!recording()) return Err(`${c.path}: recording needs sakura test --record`);
+  const [method, url, headers, body] = JSON.parse(requestKey(req));
+  const x = {
+    method,
+    url,
+    headers,
+    body,
+    status: resp.status,
+    response_headers: items(resp.headers).map(([n, v]) => [n, v]),
+    response_body: resp.body,
+  };
+  const r = fsResult(c.dir, c.path, true, (p) => nodeFs().appendFileSync(p, `${JSON.stringify(x)}\n`));
+  if (r.tag !== 0) return Err(`${c.path}: ${r.fields[0]}`);
+  const key = requestKey(req);
+  if (!c.byKey.has(key)) c.byKey.set(key, { next: 1, exchanges: [] });
+  c.byKey.get(key).exchanges.push(x);
+  return Ok(undefined);
 }
 
 // ---------------------------------------------------------------------------------------------

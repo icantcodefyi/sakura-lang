@@ -17,7 +17,10 @@ const path = process.getBuiltinModule("node:path");
 
 // `std::test::Test` operations in declaration order (compiler/std/test.sakura); a test in sakura_cli
 // checks this list against the std source.
-export const OPS = ["record_failure", "failures", "output", "output_lines", "snapshot"];
+export const OPS = ["record_failure", "failures", "output", "output_lines", "snapshot", "fixtures"];
+// `Test.fixtures()`: `tests/fixtures` next to the snapshot directory, writable only under
+// `SAKURA_RECORD=1` (`sakura test --record`, design §17.73).
+const fixtures = snapshotDir === "" ? "" : path.join(snapshotDir, "..", "fixtures");
 
 /**
  * `tests/__snapshots__/<module>/<name>.snap` holds `rendered` plus a newline; `<module>` is the
@@ -71,6 +74,7 @@ for (const t of tests) {
       if (problem !== null) failures.push(problem);
       return $rt.ret(k, undefined);
     },
+    fixtures: (_i, _ctx, k) => $rt.ret(k, $rt.fixtures_dir(fixtures, process.env.SAKURA_RECORD === "1")),
   };
   const handler = new $rt.Handler("std::test::Test", OPS.map((op) => clauses[op]), []);
   const frames = $rt.install({ h: null, c: null, t: null }, handler).h;

@@ -1093,3 +1093,108 @@ pub fn main() -> Unit ! {Console, Fs} {
         String::from_utf8_lossy(&out.stderr)
     );
 }
+
+/// Design §17.73: a cassette handler over the `http_recording_*` externals records through the
+/// outer `Http` under `SAKURA_RECORD=1`, then replays with every outer send failing (the network
+/// denied); the secret header is neither written nor part of the key.
+#[test]
+fn cassettes_record_then_replay_with_the_network_denied() {
+    let program = |outer: &str| {
+        format!(
+            r#"import std/fs.{{Dir, Fs}}
+import std/http.{{Any, Http}}
+import std/request.{{Method, Request}}
+import std/response.{{HttpError, Response}}
+import std/url.{{Url}}
+@external(js, "sakura_runtime", "http_recording_open")
+fn http_recording_open(dir: Dir, path: String) -> Result<Int, String>
+@external(js, "sakura_runtime", "http_recording_lookup")
+fn http_recording_lookup(id: Int, req: Request) -> Result<Option<Response>, String>
+@external(js, "sakura_runtime", "http_recording_append")
+fn http_recording_append(id: Int, req: Request, resp: Response) -> Result<Unit, String>
+fn recording(path: String) -> Handler<Http, {{Http, Fs}}> {{
+  handler Http {{
+    var id = 0
+    fn send(req) {{
+      if id == 0 {{
+        id = match http_recording_open(Fs.root(), path) {{
+          Ok(i) => i,
+          Err(reason) => fail HttpError {{ status: None, reason }},
+        }}
+      }}
+      match http_recording_lookup(id, req) {{
+        Ok(Some(resp)) => resp,
+        Ok(None) => {{
+          let resp = Http.send(req)
+          match http_recording_append(id, req, resp) {{
+            Ok(_) => resp,
+            Err(reason) => fail HttpError {{ status: None, reason }},
+          }}
+        }}
+        Err(reason) => fail HttpError {{ status: None, reason }},
+      }}
+    }}
+  }}
+}}
+fn get(path: String) -> String ! {{Http, Fail<HttpError>}} {{
+  let req = Http.bearer(Request.of(Method.Get, Url.from("https://api.example/{{path}}")), Secret.of("sk-live"))
+  Http.send(req).body
+}}
+test "replays" {{
+  with Fs.rooted(Test.fixtures()), {outer}, recording("api.jsonl") {{
+    expect_eq(try {{ get("a") }}, Ok("live"))
+    expect_eq(try {{ get("a") }}, Ok("live"))
+  }}
+}}
+"#
+        )
+    };
+    let fixtures = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("cassette-fixtures");
+    let _ = std::fs::remove_dir_all(&fixtures);
+    let run = |name: &str, outer: &str, record: bool| {
+        let (m, sources) = common::build(name, &program(outer), false).unwrap();
+        let dir =
+            std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(format!("test-{name}"));
+        common::write(&m, sources, &dir);
+        std::fs::write(
+            dir.join("__sakura_test__.js"),
+            include_str!("test_runner.js"),
+        )
+        .unwrap();
+        let mut cmd = std::process::Command::new("node");
+        cmd.arg(dir.join("__sakura_test__.js"))
+            .arg("0")
+            .env("SAKURA_FIXTURES", &fixtures)
+            .env_remove("SAKURA_RECORD");
+        if record {
+            cmd.env("SAKURA_RECORD", "1");
+        }
+        let out = cmd.output().unwrap();
+        (
+            out.status.code(),
+            String::from_utf8_lossy(&out.stdout).into_owned(),
+        )
+    };
+    let live = r#"Http.scripted([(Any, Response.status(200, "live"))])"#;
+    let denied = "Http.scripted([])";
+    // Without --record and without a cassette, the miss names the fix.
+    let (code, out) = run("cassette_miss", denied, false);
+    assert_eq!(code, Some(3));
+    assert!(
+        out.contains(
+            "no recording for GET https://api.example/a in api.jsonl; run sakura test --record"
+        ),
+        "{out}"
+    );
+    assert_eq!(run("cassette_record", live, true), (Some(0), String::new()));
+    let text = std::fs::read_to_string(fixtures.join("api.jsonl")).unwrap();
+    assert_eq!(text.lines().count(), 1, "{text}");
+    assert!(
+        !text.contains("sk-live") && !text.contains("authorization"),
+        "{text}"
+    );
+    assert_eq!(
+        run("cassette_replay", denied, false),
+        (Some(0), String::new())
+    );
+}

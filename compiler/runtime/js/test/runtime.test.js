@@ -444,3 +444,72 @@ test("sseMessage rebuilds a Messages API stream and the text after each delta", 
   assert.equal(rt.sseMessage(head), null, "cut off before message_stop");
   assert.equal(rt.sseMessage(head + ev("error", { error: { type: "overloaded_error" } })), null);
 });
+
+test("cassettes record, replay in order and never touch secret headers", async () => {
+  const fs = await import("node:fs");
+  const os = await import("node:os");
+  const path = await import("node:path");
+  class Response {
+    constructor(status, headers, body) {
+      this.status = status;
+      this.headers = headers;
+      this.body = body;
+    }
+  }
+  rt.def("std::response::Response", Response);
+  class Method extends rt.Variant {}
+  Method.prototype.$t = rt.variantType("Method", "std::request", [["Get", []], ["Post", []]]);
+  const req = (url, body = "") => ({
+    method: new Method(body === "" ? 0 : 1, []),
+    url,
+    headers: rt.list([["accept", "text/plain"]]),
+    body,
+    secret_headers: rt.list([["authorization", rt.secret_wrap("Bearer sk-live")]]),
+  });
+  const dir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "sakura-cassette-")), "fixtures");
+  const saved = process.env.SAKURA_RECORD;
+  try {
+    // Without --record the fixtures directory is read-only and a miss names the fix.
+    delete process.env.SAKURA_RECORD;
+    const ro = rt.fixtures_dir(dir, false);
+    const empty = rt.http_recording_open(ro, "api.jsonl").fields[0];
+    const miss = rt.http_recording_lookup(empty, req("https://x/a"));
+    assert.equal(miss.tag, 1);
+    assert.equal(miss.fields[0], "no recording for GET https://x/a in api.jsonl; run sakura test --record");
+    assert.equal(rt.http_recording_append(empty, req("https://x/a"), new Response(200, rt.list([]), "")).tag, 1);
+    assert.equal(rt.fs_write(ro, "x.txt", rt.string_to_bytes("x")).tag, 1);
+
+    process.env.SAKURA_RECORD = "1";
+    const rw = rt.fixtures_dir(dir, true);
+    const id = rt.http_recording_open(rw, "api.jsonl").fields[0];
+    assert.deepEqual(rt.http_recording_lookup(id, req("https://x/a")), rt.Ok(rt.None));
+    for (const body of ["one", "two"]) {
+      const resp = new Response(200, rt.list([["content-type", "text/plain"]]), body);
+      assert.deepEqual(rt.http_recording_append(id, req("https://x/a"), resp), rt.Ok(undefined));
+    }
+    const text = fs.readFileSync(path.join(dir, "api.jsonl"), "utf8");
+    assert.ok(!text.includes("sk-live") && !text.includes("authorization"));
+    assert.deepEqual(JSON.parse(text.split("\n")[0]), {
+      method: "GET",
+      url: "https://x/a",
+      headers: [["accept", "text/plain"]],
+      body: "",
+      status: 200,
+      response_headers: [["content-type", "text/plain"]],
+      response_body: "one",
+    });
+
+    // Replay: a fresh open consumes the exchanges in order, then repeats the last.
+    delete process.env.SAKURA_RECORD;
+    const again = rt.http_recording_open(rt.fixtures_dir(dir, false), "api.jsonl").fields[0];
+    const bodies = [1, 2, 3].map(() => rt.http_recording_lookup(again, req("https://x/a")).fields[0].fields[0].body);
+    assert.deepEqual(bodies, ["one", "two", "two"]);
+    assert.equal(rt.http_recording_lookup(again, req("https://x/a", "{}")).tag, 1);
+    fs.writeFileSync(path.join(dir, "bad.jsonl"), "{\n");
+    assert.match(rt.http_recording_open(rt.fixtures_dir(dir, false), "bad.jsonl").fields[0], /^bad\.jsonl:1: /);
+  } finally {
+    if (saved === undefined) delete process.env.SAKURA_RECORD;
+    else process.env.SAKURA_RECORD = saved;
+    fs.rmSync(path.dirname(dir), { recursive: true });
+  }
+});

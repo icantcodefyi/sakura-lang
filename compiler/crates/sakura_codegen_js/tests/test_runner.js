@@ -15,6 +15,8 @@ for (const t of tests) {
     output: (_i, line, _c, k) => (output.push(line), $rt.ret(k, undefined)),
     output_lines: (_i, _c, k) => $rt.ret(k, $rt.list(output.slice())),
     snapshot: (_i, _n, _r, _c, k) => $rt.ret(k, undefined),
+    fixtures: (_i, _c, k) =>
+      $rt.ret(k, $rt.fixtures_dir(process.env.SAKURA_FIXTURES ?? "", process.env.SAKURA_RECORD === "1")),
   };
   const ops = effects["std::test::Test"] ?? [];
   const h = new $rt.Handler("std::test::Test", ops.map((op) => clauses[op]), []);

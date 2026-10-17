@@ -62,7 +62,12 @@ pub fn run_node_tests(
     let mut cmd = node();
     cmd.arg("--permission")
         .arg(format!("--allow-fs-read={}", dir.display()))
-        .arg(format!("--allow-fs-read={}", snapshots.display()));
+        .arg(format!("--allow-fs-read={}", snapshots.display()))
+        // `Test.fixtures()` (design §17.73): `tests/fixtures`, next to the snapshots.
+        .arg(format!(
+            "--allow-fs-read={}",
+            snapshots.with_file_name("fixtures").display()
+        ));
     if update {
         // Node's permission model cannot create the granted directory itself.
         std::fs::create_dir_all(snapshots).map_err(|e| format!("{}: {e}", snapshots.display()))?;

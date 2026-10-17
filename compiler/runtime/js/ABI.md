@@ -293,6 +293,21 @@ cancelled is released when it closes.
 `authorization`) is sent as a header and exposed nowhere else (§17.57); cancelling the task
 aborts the request.
 
+**Cassettes** (design §17.73, behind std's `Http.recording`). A cassette is a JSON Lines file
+inside a `Dir`, one exchange per line:
+`{"method","url","headers","body","status","response_headers","response_body"}` (`method`
+upper-case, headers `[[name, value], …]`). The key is (`method`, `url`, `headers`, `body`);
+`secret_headers` are never read, so they are neither written nor matched.
+`http_recording_open(dir, path) -> Result<Int, String>` reads the file (missing is empty) and
+returns a fresh cursor; `http_recording_lookup(id, req) -> Result<Option<Response>, String>` is
+`Ok(Some(r))` for the next recorded exchange with `req`'s key (in file order; the last one
+repeats), `Ok(None)` for a miss under `SAKURA_RECORD=1` (the caller forwards to the outer `Http`
+and appends), and `Err("no recording for GET <url> in <path>; run sakura test --record")`
+otherwise; `http_recording_append(id, req, resp) -> Result<Unit, String>` appends a line (only
+under `SAKURA_RECORD=1`, and only where `dir` grants writing). `fixtures_dir(path, writable)`
+is the `Dir` a test runner returns from `Test.fixtures()`: `<package>/tests/fixtures`, readable,
+writable (and created) only when `writable` (`sakura test --record`); `""` has no host access.
+
 **Sql.** `sql_memory()` and `sql_sqlite(path)` (a file inside the installed `Fs` handler's
 `root`, opened on first use) are `std::sql::Sql` handlers over `node:sqlite`. `Query` params
 are always bound. Rows decode by `R`'s schema: records by column name, tuples by position,

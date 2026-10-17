@@ -312,3 +312,8 @@ All must pass on `origin/master`, on ubuntu and macos, before M4 backend coding 
 11. **`W5005` on `where String.contains(it, …)`** fires as §17.72 says, including `examples/json_api`'s `Email` and the canonical `Email` of the website tour; the ui fixture `V5002_refinement_checked_at_runtime.sakura` reports `W5005` too until its predicate changes (WS5).
 
 **Design review (round 4, §17.89):** items 1–10 endorsed as built; item 4 widened to a callback parameter whose type *contains* a `@resource` type; item 11 resolved by §17.90 (`String.contains` is no longer a `W5005` trigger); `V5002` itself is retired by §17.87. Follow-ups are WS1b.
+
+### WS2 (runtime, lowering, record/replay)
+
+1. **Cassette externals take the `Request`, not a key.** `http_recording_lookup(id, req) -> Result<Option<Response>, String>` and `http_recording_append(id, req, resp) -> Result<Unit, String>`: the runtime builds the key (method, url, headers, body), so std computes nothing and `secret_headers` never reach the cassette code. The `Result` on lookup tells std whether a miss may be forwarded (`Ok(None)` under `SAKURA_RECORD=1`) or must fail (`Err(reason)`), so std needs no `Env` access. Repeated identical requests replay their recorded responses in order, the last one repeating.
+2. **`Test.fixtures()` touched two non-WS2 files.** The op is the last one of `std/test`'s `Test` (WS4's file) and the runner's `OPS` list in `sakura_cli/src/test_runner.js` must change in the same commit (a test compares them); `run_node_tests` grants read access to `tests/fixtures`. `--record` itself is left to WS3 (REQUESTS).
