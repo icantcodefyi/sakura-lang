@@ -12,6 +12,7 @@
 mod body;
 mod decls;
 mod effects;
+mod escape;
 mod expr;
 mod holes;
 mod pat;
@@ -186,6 +187,8 @@ pub(crate) struct Checker<'p> {
     out: TypedProgram,
     b: BodyState,
     body: Option<&'p Body>,
+    /// Which nominal types hold scoped values, resources or closures (`escape.rs`).
+    escape_memo: HashMap<(DefId, escape::Holds), bool>,
 }
 
 pub(crate) fn check(
@@ -214,6 +217,7 @@ pub(crate) fn check(
         out: TypedProgram::default(),
         b: BodyState::default(),
         body: None,
+        escape_memo: HashMap::new(),
     };
     let reused = |m: ModuleId| reuse.is_some_and(|(_, keep)| keep(m));
     if let Some((prev, _)) = reuse {

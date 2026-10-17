@@ -82,6 +82,7 @@ impl<'p> Checker<'p> {
                 });
                 self.in_progress.remove(&def);
                 if let Some(s) = scheme {
+                    self.check_const_escape(def, s.ty);
                     self.schemes.insert(def, s);
                 }
             }
@@ -421,6 +422,7 @@ impl<'p> Checker<'p> {
         self.check_empty_lists();
         self.report_violations();
         self.report_holes();
+        self.check_escapes(&out);
 
         let key = (self.module(), self.b.body_id.expect("body id"));
         self.out.bodies.insert(key, out);
