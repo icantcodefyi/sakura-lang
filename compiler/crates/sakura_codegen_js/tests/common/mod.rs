@@ -24,6 +24,19 @@ pub fn build(
     src: &str,
     std_tests: bool,
 ) -> Result<(sakura_core::Module, Vec<Source>), String> {
+    let opts = sakura_core::LowerOptions {
+        std_tests,
+        ..Default::default()
+    };
+    build_with(name, src, &opts)
+}
+
+/// [`build`] with explicit lowering options.
+pub fn build_with(
+    name: &str,
+    src: &str,
+    opts: &sakura_core::LowerOptions,
+) -> Result<(sakura_core::Module, Vec<Source>), String> {
     let mut sources = Vec::new();
     let mut std_mods = Vec::new();
     let mut files: Vec<PathBuf> = std::fs::read_dir(compiler_dir().join("std"))
@@ -92,7 +105,7 @@ pub fn build(
     if !errors.is_empty() {
         return Err(errors.join("\n"));
     }
-    let lowered = sakura_core::lower(&program, &typed, &sakura_core::LowerOptions { std_tests });
+    let lowered = sakura_core::lower(&program, &typed, opts);
     if !lowered.diagnostics.is_empty() {
         let msgs: Vec<String> = lowered
             .diagnostics
@@ -172,14 +185,19 @@ pub fn run(name: &str, src: &str) -> Result<Run, String> {
 /// Build with tests and run them with `sakura_cli`'s runner (seed 0); exit 0 when all pass.
 pub fn test(name: &str, src: &str) -> Result<Run, String> {
     let (m, sources) = build(name, src, false)?;
+    Ok(run_tests(name, &m, sources))
+}
+
+/// Run the tests of a built module with the codegen runner (seed 0).
+pub fn run_tests(name: &str, m: &sakura_core::Module, sources: Vec<Source>) -> Run {
     let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(format!("test-{name}"));
-    write(&m, sources, &dir);
+    write(m, sources, &dir);
     std::fs::write(
         dir.join("__sakura_test__.js"),
         include_str!("../test_runner.js"),
     )
     .unwrap();
-    Ok(node(&dir, "__sakura_test__.js", &["0", ""]))
+    node(&dir, "__sakura_test__.js", &["0", ""])
 }
 
 /// Snapshot text without ids that shift whenever std changes: global def and contract ids

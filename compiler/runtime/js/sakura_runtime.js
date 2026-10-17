@@ -1687,12 +1687,32 @@ function shrinkSeq(xs, e) {
 }
 
 /**
+ * Contract regressions (`sakura test --contracts`, design §7.4): the test runner reads and
+ * writes `tests/regressions/<name>.json` through these; by default nothing is stored.
+ */
+export const regressions = { load: (_name) => null, save: (_name, _text) => {} };
+
+/** The stored inputs of regression `name` decoded by `schemas`, or null (none, or stale). */
+function loadRegression(name, schemas, names) {
+  const text = name === "" ? null : regressions.load(name);
+  if (text === null) return null;
+  try {
+    const inputs = JSON.parse(text).inputs;
+    return schemas.map((s, p) => fromJs(inputs[names[p]], s, names[p]));
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Run a `property` (lowered to `case(params…) -> Bool`, false when `requires` discards the
  * input): RUNS generated cases, each as a child task under a `Test` handler that collects its
  * failures (ops `rec`/`fails` of `nops`; the others forward to the outer `Test`). The first
  * failing case (a recorded failure, an uncaught `Fail` or a defect) is shrunk and reported once.
+ * A non-empty `regression` names a stored failure that runs before the generated cases and is
+ * overwritten by a new shrunk one.
  */
-export function property_run(seed, schemas, names, kase, rec, fails, nops, ctx, k) {
+export function property_run(seed, schemas, names, kase, rec, fails, nops, regression, ctx, k) {
   const TEST = "std::test::Test";
   const exec = (values, then) => {
     const msgs = [];
@@ -1722,8 +1742,15 @@ export function property_run(seed, schemas, names, kase, rec, fails, nops, ctx, 
   };
   const shown = (vs) => vs.map((v, i) => `${names[i]} = ${showIn(v, schemas[i], null)}`).join(", ");
   const report = (msg) => perform(ctx, TEST, rec, [msg], k);
+  const save = (vs, why) => {
+    if (regression === "") return;
+    const inputs = Object.fromEntries(vs.map((v, i) => [names[i], toJs(v, schemas[i])]));
+    const record = { schema_version: "1.0", function: regression, seed, inputs, failure: why };
+    regressions.save(regression, `${JSON.stringify(record, null, 2)}\n`);
+  };
   let discards = 0;
   let tries = 0;
+  let replayed = "";
   const shrink = (first, best, why, shrunk) => {
     const cands = [];
     for (let p = 0; p < best.length; p++) {
@@ -1733,7 +1760,8 @@ export function property_run(seed, schemas, names, kase, rec, fails, nops, ctx, 
       if (j >= cands.length || tries >= MAX_SHRINK_TRIES) {
         const steps = `${shrunk} step${shrunk === 1 ? "" : "s"}`;
         const from = shrunk === 0 ? "" : ` (shrunk in ${steps} from ${shown(first)})`;
-        return report(`property falsified by ${shown(best)}: ${why}${from}`);
+        save(best, why);
+        return report(`property falsified by ${shown(best)}: ${why}${from}${replayed}`);
       }
       tries++;
       return exec(cands[j], (r) =>
@@ -1765,7 +1793,13 @@ export function property_run(seed, schemas, names, kase, rec, fails, nops, ctx, 
       return bounce(run, [i + 1]);
     });
   };
-  return run(0);
+  const stored = loadRegression(regression, schemas, names);
+  if (stored === null) return run(0);
+  return exec(stored, (r) => {
+    if (r.kind !== "fail") return bounce(run, [0]);
+    replayed = " (stored regression replayed)";
+    return shrink(stored, stored, r.why, 0);
+  });
 }
 
 // ---------------------------------------------------------------------------------------------

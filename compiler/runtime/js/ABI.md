@@ -377,7 +377,7 @@ written in std over primitives (`console_print`, `clock_now_ms`, `clock_sleep_ms
 `random_int`, `env_get`, `log_write`, …) except `console_host`, which is a handler value.
 A `property` lowers to `case(params…) -> Bool` (`false`: a `requires` clause discarded the
 input, the body did not run) and a test body calling
-`$rt.property_run(seed, schemas, names, case, record_op, failures_op, op_count)`. It runs 100
+`$rt.property_run(seed, schemas, names, case, record_op, failures_op, op_count, regression)`. It runs 100
 cases, each as a child task under a `Test` handler that collects that case's failures (other
 `Test` operations forward to the runner's handler). Inputs come from the parameters' schemas
 (section 7): primitives, collections, tuples, records, variants (constructors without fields
@@ -391,7 +391,12 @@ sequences shorter then element-wise, earlier field-less constructors and same-ty
 variants, field-wise for records, candidates of refined types filtered by `where`; at most 2,000
 attempts) and reported once: `property falsified by x = 50: expected true, got false (shrunk in
 2 steps from x = 132)`. If more than 90% of the cases are discarded the property fails with
-`property gave up: N of 100 inputs discarded by requires` (design §17.64).
+`property gave up: N of 100 inputs discarded by requires` (design §17.64). A non-empty
+`regression` (the function name of a property synthesized by `sakura test --contracts`, design
+§7.4) is read through `$rt.regressions.load(name)` and its stored inputs (JSON by parameter name,
+decoded by the schemas; ignored when they no longer decode) run before the generated cases; a
+shrunk failure is passed to `$rt.regressions.save(name, text)` as `{schema_version, function,
+seed, inputs, failure}`. The `sakura test` runner backs these with `tests/regressions/<fn>.json`.
 
 ## 9. Core deviations from design §13.2
 

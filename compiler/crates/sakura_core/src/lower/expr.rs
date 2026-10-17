@@ -15,6 +15,8 @@ use super::{Lower, Subst, walk};
 use crate::build::*;
 use crate::ir::*;
 
+mod contract_tests;
+
 pub(crate) struct FnLower<'a, 'p> {
     pub l: &'a mut Lower<'p>,
     pub module: hir::ModuleId,
@@ -297,10 +299,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
     ) -> FnDef {
         let hdef = l.p.def(def);
         let pos = l.pos(def.module, hdef.range);
-        let test_eff =
-            l.p.find_module("std", "test")
-                .and_then(|m| l.p.lookup(m, "Test"))
-                .map(|d| l.effect(d));
+        let test_eff = l.test_effect();
         let module = l.module_name(def.module);
         let case_name = format!("{}$case", l.m.defs[id.index()].name);
         let case = l.push_placeholder(&case_name, module);
@@ -348,12 +347,28 @@ impl<'a, 'p> FnLower<'a, 'p> {
         let code = c.finish_body(ran);
         let case_def = c.into_def(case, params, Ty::Bool, code, pos);
         l.m.defs[case.index()] = case_def;
+        let ctx = (def.module, hdef.range, test_eff);
+        Self::property_runner(l, ctx, id, case, schemas, names, "")
+    }
 
+    /// The `fn(seed)` body of a property: `$rt.property_run` over `case` with one schema and
+    /// name per parameter. A non-empty `regression` names the `tests/regressions/<name>.json`
+    /// the runtime replays first and writes a shrunk failure to (`sakura test --contracts`).
+    pub(crate) fn property_runner(
+        l: &mut Lower<'p>,
+        (module, range, test_eff): (hir::ModuleId, TextRange, Option<EffectId>),
+        id: DefId,
+        case: DefId,
+        schemas: Vec<Ty>,
+        names: Vec<String>,
+        regression: &str,
+    ) -> FnDef {
+        let pos = l.pos(module, range);
         let mut b = FnBuilder::new();
         let seed = b.local("seed", Ty::Int);
         let mut blk = Block::new();
         let Some(test_eff) = test_eff else {
-            l.unsupported(def.module, hdef.range, "a property without std/test");
+            l.unsupported(module, range, "a property without std/test");
             return FnDef {
                 params: vec![seed],
                 locals: b.locals,
@@ -389,13 +404,14 @@ impl<'a, 'p> FnLower<'a, 'p> {
                     record,
                     failures,
                     int(nops),
+                    str_(regression),
                 ],
             ),
             pos,
         );
         FnDef {
             name: l.m.defs[id.index()].name.clone(),
-            module: l.module_name(def.module),
+            module: l.module_name(module),
             kind: FnKind::Top { export: false },
             captures: vec![],
             params: vec![seed],

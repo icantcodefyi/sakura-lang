@@ -23,6 +23,8 @@ use crate::ir::*;
 pub struct LowerOptions {
     /// Also lower the `test` blocks of std modules (for testing std itself).
     pub std_tests: bool,
+    /// Synthesize a property per contracted `pub fn` (`sakura test --contracts`, design §7.4).
+    pub contract_tests: bool,
 }
 
 pub struct Lowered {
@@ -89,6 +91,9 @@ pub fn lower(program: &hir::Program, typed: &TypedProgram, opts: &LowerOptions) 
                 l.test(id);
             }
         }
+    }
+    if opts.contract_tests {
+        l.contract_tests();
     }
     l.drain();
     l.init_literals();
@@ -416,14 +421,28 @@ impl<'p> Lower<'p> {
         let def = self.p.def(t);
         let n = self.m.tests.len();
         let module = self.module_name(t.module);
-        let body_id = self.push_placeholder(&format!("test${n}"), module.clone());
-        let mut fd = match &def.kind {
+        let body_id = self.push_placeholder(&format!("test${n}"), module);
+        let fd = match &def.kind {
             hir::DefKind::Test(td) => {
                 expr::FnLower::lower_fn(self, t, td.body, body_id, Vec::new(), false)
             }
             hir::DefKind::Property(pd) => expr::FnLower::lower_property(self, t, pd.body, body_id),
             _ => return,
         };
+        self.wrap_test(def.name.clone(), t.module, def.range, body_id, fd);
+    }
+
+    /// Store test body `fd` at `body_id` and add the wrapper that installs the test defaults.
+    fn wrap_test(
+        &mut self,
+        name: String,
+        module_id: hir::ModuleId,
+        range: text_size::TextRange,
+        body_id: DefId,
+        mut fd: FnDef,
+    ) {
+        let n = self.m.tests.len();
+        let module = self.module_name(module_id);
         let takes_seed = !fd.params.is_empty();
         fd.kind = FnKind::Top { export: false };
         fd.row = Row::empty();
@@ -481,17 +500,14 @@ impl<'p> Lower<'p> {
         blk.push(r, Bind::Call(Atom::Global(body_id), args));
         let body = blk.finish(Expr::Ret(local(r)));
         let wrapper = self.push_placeholder(&format!("test${n}$run"), module);
-        let pos = self.pos(t.module, def.range);
+        let pos = self.pos(module_id, range);
         let w = &mut self.m.defs[wrapper.index()];
         w.kind = FnKind::Test;
         w.params = vec![seed];
         w.locals = b.locals;
         w.body = body;
         w.pos = pos;
-        self.m.tests.push(Test {
-            name: def.name.clone(),
-            def: wrapper,
-        });
+        self.m.tests.push(Test { name, def: wrapper });
     }
 
     /// How to call HIR function `f` by name: a Core global or a runtime builtin for

@@ -569,6 +569,7 @@ impl Analysis {
         }
         let lower = sakura_core::LowerOptions {
             std_tests: opts.std_tests,
+            ..Default::default()
         };
         let lowered = sakura_core::lower(program, typed, &lower);
         diagnostics.extend(lowered.diagnostics);
