@@ -1590,7 +1590,24 @@ impl Cx {
             .enumerate()
             .map(|(i, c)| {
                 let range = c.text_range();
-                if c.kind() == EFFECT_ROW {
+                // A bare lowercase name that is not a row parameter is a mistyped type name
+                // (`List<int>`): report it as one.
+                let bare = c.kind() == EFFECT_ROW && tokens(&c, L_BRACE).next().is_none();
+                if bare
+                    && let Some(t) = tokens(&c, IDENT).next()
+                    && !generics
+                        .iter()
+                        .any(|g| g.name == t.text() && g.kind == TypeParamKind::Row)
+                {
+                    let res = self.resolve_type_path(m, &c, generics, TypeNs::Type);
+                    TypeRef {
+                        kind: TypeRefKind::Named {
+                            res,
+                            args: Vec::new(),
+                        },
+                        range,
+                    }
+                } else if c.kind() == EFFECT_ROW {
                     TypeRef {
                         kind: TypeRefKind::Row(self.lower_row(m, &c, generics)),
                         range,
