@@ -1,25 +1,25 @@
 //! The `vow` command-line tool (design §12.1). Exit codes: 0 ok, 1 diagnostics with errors,
 //! 2 usage, 3 test failures, 70 runtime defect, 75 permission denied at startup.
 
-use std::io::{Read, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::{ExitCode, Stdio};
-use std::time::{Duration, Instant};
+use std::process::ExitCode;
+use std::time::Duration;
 
 use clap::{Parser, Subcommand};
-use vow_analysis::{Analysis, BuildOptions, Snapshot};
+use vow_analysis::{Analysis, BuildOptions, Snapshot, disk};
 use vow_diagnostics::{
     Diagnostic, HoleReport, SourceFile, codes, diagnostic_records, hole_records, render_human,
     summary_record,
 };
+
+mod testing;
 
 const EXIT_ERRORS: u8 = 1;
 const EXIT_USAGE: u8 = 2;
 const EXIT_TEST_FAILURES: u8 = 3;
 const EXIT_DEFECT: u8 = 70;
 
-/// The `vow test` driver (`node __vow_test__.js <seed> <filter>`).
-const TEST_RUNNER: &str = include_str!("test_runner.js");
 /// Wall-clock limit for one `vow test` run. ponytail: whole-process, not per test; add a
 /// per-test watchdog (worker threads) when long suites need it.
 const TEST_TIME_LIMIT: Duration = Duration::from_secs(120);
@@ -99,6 +99,22 @@ enum Command {
         /// Approximate token budget (4 bytes per token); whole sections are dropped from the end.
         #[arg(long)]
         budget: Option<usize>,
+    },
+    /// The compiler as an MCP server for agents (design §12.6).
+    Mcp {
+        #[command(subcommand)]
+        action: McpAction,
+    },
+}
+
+#[derive(Subcommand)]
+enum McpAction {
+    /// Serve MCP on stdin/stdout. Tools: compiler_info, check, symbol_query, hole_context,
+    /// docs_query, explain_diagnostic, format, check_patch, apply_patch, test.
+    Serve {
+        /// The workspace (default: the current directory). Patches are written only inside it.
+        #[arg(long)]
+        root: Option<PathBuf>,
     },
 }
 
@@ -189,6 +205,18 @@ fn dispatch(command: Command) -> ExitCode {
             print!("{}", prompt(budget));
             ExitCode::SUCCESS
         }
+        Command::Mcp {
+            action: McpAction::Serve { root },
+        } => {
+            let config = vow_mcp::Config {
+                root: root.unwrap_or_else(|| PathBuf::from(".")),
+                run_tests: Some(testing::mcp_run_tests),
+            };
+            match vow_mcp::serve(config) {
+                Ok(()) => ExitCode::SUCCESS,
+                Err(e) => usage_error(format!("mcp: {e}")),
+            }
+        }
     }
 }
 
@@ -197,65 +225,13 @@ fn usage_error(message: impl std::fmt::Display) -> ExitCode {
     ExitCode::from(EXIT_USAGE)
 }
 
-/// Reads every `.vow` file under `paths` into a snapshot. URIs are `file://` + absolute path.
+/// Reads `paths` (default: `src/` if present, else `.`) into a snapshot.
 fn load(paths: &[PathBuf]) -> Result<Snapshot, String> {
-    let default = if Path::new("src").is_dir() {
-        "src"
+    if paths.is_empty() {
+        disk::load(&disk::default_roots(Path::new(".")))
     } else {
-        "."
-    };
-    let roots: Vec<PathBuf> = if paths.is_empty() {
-        vec![PathBuf::from(default)]
-    } else {
-        paths.to_vec()
-    };
-    let mut files = Vec::new();
-    for root in &roots {
-        collect(root, &mut files).map_err(|e| format!("{}: {e}", root.display()))?;
+        disk::load(paths)
     }
-    if files.is_empty() {
-        return Err("no .vow files found".into());
-    }
-    let mut sources = Vec::new();
-    for path in files {
-        let abs = std::path::absolute(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-        let text = std::fs::read_to_string(&abs).map_err(|e| format!("{}: {e}", path.display()))?;
-        sources.push((file_uri(&abs), text));
-    }
-    Ok(Snapshot::with_std(sources))
-}
-
-/// `file://` URI for an absolute path, percent-encoding the bytes that are not URI-safe.
-fn file_uri(path: &Path) -> String {
-    let mut uri = String::from("file://");
-    for b in path.to_string_lossy().bytes() {
-        if b.is_ascii_alphanumeric() || b"/-._~:".contains(&b) {
-            uri.push(b as char);
-        } else {
-            uri.push_str(&format!("%{b:02X}"));
-        }
-    }
-    uri
-}
-
-fn collect(path: &Path, out: &mut Vec<PathBuf>) -> std::io::Result<()> {
-    if path.is_file() {
-        out.push(path.to_path_buf());
-        return Ok(());
-    }
-    for entry in std::fs::read_dir(path)? {
-        let path = entry?.path();
-        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-        if name.starts_with('.') || name == "target" || name == "node_modules" {
-            continue;
-        }
-        if path.is_dir() {
-            collect(&path, out)?;
-        } else if path.extension().is_some_and(|e| e == "vow") {
-            out.push(path);
-        }
-    }
-    Ok(())
 }
 
 fn check(json: bool, paths: &[PathBuf]) -> ExitCode {
@@ -329,32 +305,19 @@ fn build(
     opts: BuildOptions,
     then: bool,
 ) -> Result<PathBuf, ExitCode> {
-    let result = Analysis::build_js(snapshot, &opts);
-    let failed = result.diagnostics.iter().any(Diagnostic::is_error);
-    let summary = failed || !then;
-    if (json && summary) || !result.diagnostics.is_empty() {
-        report(json, snapshot, &result.diagnostics, &[], summary);
-    }
-    let Some(files) = result.files.filter(|_| !failed) else {
-        return Err(ExitCode::from(EXIT_ERRORS));
-    };
-    let write = |rel: &str, text: &str| -> std::io::Result<()> {
-        let path = out_dir.join(rel);
-        if let Some(dir) = path.parent() {
-            std::fs::create_dir_all(dir)?;
+    match testing::emit(snapshot, out_dir, &opts) {
+        Ok((dir, diags)) => {
+            if (json && !then) || !diags.is_empty() {
+                report(json, snapshot, &diags, &[], !then);
+            }
+            Ok(dir)
         }
-        std::fs::write(path, text)
-    };
-    for (rel, text) in &files {
-        write(rel, text).map_err(|e| usage_error(format!("{}: {e}", out_dir.display())))?;
+        Err(Ok(diags)) => {
+            report(json, snapshot, &diags, &[], true);
+            Err(ExitCode::from(EXIT_ERRORS))
+        }
+        Err(Err(e)) => Err(usage_error(e)),
     }
-    write("__vow_test__.js", TEST_RUNNER)
-        .map_err(|e| usage_error(format!("{}: {e}", out_dir.display())))?;
-    Ok(out_dir.to_path_buf())
-}
-
-fn node() -> std::process::Command {
-    std::process::Command::new(std::env::var_os("VOW_NODE").unwrap_or_else(|| "node".into()))
 }
 
 fn run(path: Option<PathBuf>, out_dir: &Path, args: &[String]) -> ExitCode {
@@ -372,7 +335,7 @@ fn run(path: Option<PathBuf>, out_dir: &Path, args: &[String]) -> ExitCode {
         Err(code) => return code,
     };
     let main = dir.join("__main__.js");
-    match node().arg(&main).args(args).status() {
+    match testing::node().arg(&main).args(args).status() {
         Ok(status) => ExitCode::from(status.code().map_or(EXIT_DEFECT, |c| c as u8)),
         Err(e) => usage_error(format!("cannot start node: {e}")),
     }
@@ -389,7 +352,7 @@ fn test(
 ) -> ExitCode {
     let opts = BuildOptions {
         need_entry: false,
-        std_tests,
+        std_tests: std_tests || testing::only_std(snapshot),
     };
     let dir = match build(json, snapshot, out_dir, opts, true) {
         Ok(d) => d,
@@ -397,66 +360,30 @@ fn test(
     };
     if !dir.join("__tests__.js").exists() {
         if json {
-            println!(
-                r#"{{"schema_version":"1.0","kind":"summary","passed":0,"failed":0,"skipped":0,"total":0,"seed":{seed}}}"#
-            );
+            println!("{}", testing::no_tests_summary(seed));
         } else {
             eprintln!("no tests");
         }
         return ExitCode::SUCCESS;
     }
-    let dir = std::fs::canonicalize(&dir).unwrap_or(dir);
     let snapshots = std::path::absolute("tests/__snapshots__").unwrap_or_default();
-    // Tests read only their build output and snapshots: no network, no child processes, and
-    // writes only to snapshots under --update-snapshots.
-    let mut cmd = node();
-    cmd.arg("--permission")
-        .arg(format!("--allow-fs-read={}", dir.display()))
-        .arg(format!("--allow-fs-read={}", snapshots.display()));
-    if update_snapshots {
-        // Node's permission model cannot create the granted directory itself.
-        if let Err(e) = std::fs::create_dir_all(&snapshots) {
-            return usage_error(format!("{}: {e}", snapshots.display()));
-        }
-        cmd.arg(format!("--allow-fs-write={}", snapshots.display()));
-    }
-    cmd.arg("--max-old-space-size=1024")
-        .arg(dir.join("__vow_test__.js"))
-        .arg(seed.to_string())
-        .arg(filter)
-        .arg(&snapshots)
-        .arg(if update_snapshots { "1" } else { "0" })
-        .stdout(Stdio::piped());
-    let mut child = match cmd.spawn() {
-        Ok(c) => c,
-        Err(e) => return usage_error(format!("cannot start node: {e}")),
+    let run = match testing::run_node_tests(
+        &dir,
+        seed,
+        filter,
+        &snapshots,
+        update_snapshots,
+        TEST_TIME_LIMIT,
+    ) {
+        Ok(run) => run,
+        Err(e) => return usage_error(e),
     };
-    let mut stdout = child.stdout.take().unwrap();
-    let reader = std::thread::spawn(move || {
-        let mut s = String::new();
-        let _ = stdout.read_to_string(&mut s);
-        s
-    });
-    let start = Instant::now();
-    let status = loop {
-        match child.try_wait() {
-            Ok(Some(status)) => break Some(status),
-            Ok(None) if start.elapsed() > TEST_TIME_LIMIT => {
-                let _ = child.kill();
-                let _ = child.wait();
-                break None;
-            }
-            Ok(None) => std::thread::sleep(Duration::from_millis(10)),
-            Err(e) => return usage_error(format!("waiting for node: {e}")),
-        }
-    };
-    let out = reader.join().unwrap_or_default();
     if json {
-        print!("{out}");
+        print!("{}", run.stdout);
     } else {
-        print_test_results(&out);
+        print_test_results(&run.stdout);
     }
-    match status {
+    match run.status {
         None => {
             eprintln!(
                 "error: tests exceeded the {}s time limit",
@@ -534,7 +461,9 @@ fn fmt(check: bool, paths: &[PathBuf]) -> ExitCode {
         if formatted == source.text {
             continue;
         }
-        let path = uri_path(&source.uri);
+        let Some(path) = disk::uri_path(&source.uri) else {
+            continue;
+        };
         if check {
             println!("{}", path.display());
             failed = true;
@@ -559,29 +488,6 @@ fn fmt(check: bool, paths: &[PathBuf]) -> ExitCode {
     }
 }
 
-/// The path of a `file://` URI built by [`file_uri`].
-fn uri_path(uri: &str) -> PathBuf {
-    let raw = uri.strip_prefix("file://").unwrap_or(uri).as_bytes();
-    let mut bytes = Vec::with_capacity(raw.len());
-    let mut i = 0;
-    while i < raw.len() {
-        let hex = raw
-            .get(i + 1..i + 3)
-            .and_then(|h| std::str::from_utf8(h).ok());
-        match (raw[i], hex.and_then(|h| u8::from_str_radix(h, 16).ok())) {
-            (b'%', Some(b)) => {
-                bytes.push(b);
-                i += 3;
-            }
-            (b, _) => {
-                bytes.push(b);
-                i += 1;
-            }
-        }
-    }
-    PathBuf::from(String::from_utf8_lossy(&bytes).into_owned())
-}
-
 /// `2 errors, 1 warning` (or `no problems`) for the end of terminal output.
 fn tally(diags: &[vow_diagnostics::Diagnostic]) -> String {
     use vow_diagnostics::Severity;
@@ -598,7 +504,7 @@ fn tally(diags: &[vow_diagnostics::Diagnostic]) -> String {
 /// Files with `file://` URIs replaced by paths relative to the working directory, for humans.
 fn display_files(files: &[SourceFile]) -> Vec<SourceFile> {
     let cwd = std::env::current_dir()
-        .map(|d| file_uri(&d) + "/")
+        .map(|d| disk::file_uri(&d) + "/")
         .unwrap_or_default();
     files
         .iter()

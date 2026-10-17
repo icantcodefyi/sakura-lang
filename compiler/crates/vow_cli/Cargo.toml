@@ -15,6 +15,7 @@ path = "src/main.rs"
 [dependencies]
 vow_analysis.workspace = true
 vow_diagnostics.workspace = true
+vow_mcp.workspace = true
 clap.workspace = true
 serde_json.workspace = true
 

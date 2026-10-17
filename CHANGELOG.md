@@ -17,5 +17,7 @@ published yet.
   and dual MIT OR Apache-2.0 licensing.
 - RFC and architecture decision records, compatibility policy, GitHub contribution
   forms, and bootstrap CI/dependency automation.
+- `vow mcp serve`: the compiler as an MCP server with check, symbol and hole queries,
+  docs, formatting, checked patches and test runs. Setup: [docs/mcp.md](docs/mcp.md).
 
 [Unreleased]: https://github.com/icantcodefyi/vow/commits/master

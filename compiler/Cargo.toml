@@ -22,6 +22,7 @@ vow_codegen_js = { path = "crates/vow_codegen_js" }
 vow_analysis = { path = "crates/vow_analysis" }
 vow_fmt = { path = "crates/vow_fmt" }
 vow_eval = { path = "tools/vow_eval" }
+vow_mcp = { path = "crates/vow_mcp" }
 
 # External crates. Add new ones here and use `dep.workspace = true` in crates.
 rowan = "0.16.1"
@@ -37,6 +38,11 @@ insta = { version = "1.49.0", features = ["json"] }
 proptest = "1.12.0"
 stacker = "0.1.25"
 toml = "1.1.8"
+rmcp = { version = "3.5.1", default-features = false, features = ["server", "macros", "transport-io"] }
+schemars = "1.2.3"
+tokio = { version = "1.53.3", features = ["rt-multi-thread", "macros", "io-std", "process", "time"] }
+lsp-server = "0.10.0"
+lsp-types = "0.97.0"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

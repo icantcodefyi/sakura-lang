@@ -12,9 +12,11 @@ use vow_diagnostics::{
 };
 use vow_hir::DefId;
 
+pub mod disk;
 mod edit;
 mod manifest;
 mod nav;
+mod query;
 mod render;
 mod specs;
 mod symbols;
@@ -22,6 +24,7 @@ mod symbols;
 pub use edit::{Conflict, FileEdit};
 pub use manifest::{FsPermissions, Manifest, Package, Permissions};
 pub use nav::{Completion, Hover, Location};
+pub use query::SymbolQuery;
 pub use specs::{Frozen, InterfaceChange, InterfaceDelta, InterfaceEntry};
 pub use symbols::Symbol;
 
