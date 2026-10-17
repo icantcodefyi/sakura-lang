@@ -78,16 +78,32 @@ impl Checker<'_> {
                     format!("this expression would need an infinite type: `{v}` = `{t}`"),
                 )
             }
-            UnifyError::Rows { extra, .. } if !extra.is_empty() => {
+            UnifyError::Rows {
+                extra, actual: row, ..
+            } if !extra.is_empty() => {
                 let labels: Vec<String> = extra
                     .iter()
                     .map(|l| format!("`{}`", self.render_label(l)))
                     .collect();
+                let (effect, is) = match labels.len() {
+                    1 => ("effect", "is"),
+                    _ => ("effects", "are"),
+                };
+                // Unification reports the labels only one side has; say which side.
+                let in_actual = self.inf.flatten_row(row).labels;
+                let side = if extra
+                    .iter()
+                    .all(|l| in_actual.iter().any(|a| a.effect == l.effect))
+                {
+                    "performed by this value but not allowed by the expected type"
+                } else {
+                    "allowed by the expected type but not performed by this value, and the rows must be equal here"
+                };
                 Diagnostic::error(
                     V3002,
                     Phase::Effect,
                     format!(
-                        "expected `{exp_s}`, found `{act_s}`: effect {} is not permitted here",
+                        "expected `{exp_s}`, found `{act_s}`: {effect} {} {is} {side}",
                         labels.join(", ")
                     ),
                 )

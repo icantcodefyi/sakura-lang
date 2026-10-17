@@ -137,3 +137,17 @@ error A
     assert_eq!(c.value_row("f").0, "{Clock}");
     assert_eq!(c.value_row("g").0, "{Clock}");
 }
+
+#[test]
+fn row_mismatch_names_the_side_with_the_extra_label() {
+    // The value performs `Console`; the expected function type does not allow it.
+    let performed = check(
+        "fn apply(f: fn() -> Int) -> Int { f() }\nfn loud() -> Int ! {Console} {\n  Console.print(\"x\")\n  1\n}\nfn noisy() -> Int ! {Console} { apply(loud) }\n",
+    );
+    // Branches must agree exactly: the first branch allows `Console`, the second does not
+    // perform it.
+    let allowed = check(
+        "fn loud() -> Int ! {Console} {\n  Console.print(\"x\")\n  1\n}\nfn quiet() -> Int { 1 }\nfn pick(b: Bool) -> Int ! {Console} {\n  let f = if b { loud } else { quiet }\n  f()\n}\n",
+    );
+    insta::assert_snapshot!(format!("{}---\n{}", performed.render(), allowed.render()));
+}

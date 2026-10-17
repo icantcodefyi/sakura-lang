@@ -1,0 +1,11 @@
+---
+source: crates/sakura_types/tests/rows.rs
+expression: "format!(\"{}---\\n{}\", performed.render(), allowed.render())"
+---
+V3002 6:39 expected `fn() -> Int`, found `fn() -> Int ! {Console}`: effect `Console` is performed by this value but not allowed by the expected type
+  expected: fn() -> Int
+  actual: fn() -> Int ! {Console}
+---
+V3002 7:30 expected `fn() -> Int ! {Console}`, found `fn() -> Int`: effect `Console` is allowed by the expected type but not performed by this value, and the rows must be equal here
+  expected: fn() -> Int ! {Console}
+  actual: fn() -> Int
