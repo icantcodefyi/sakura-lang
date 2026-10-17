@@ -21,6 +21,10 @@ const STD: &[(&str, &str)] = &[
         "@external(js, \"vow_runtime\", \"list_len\")\npub fn len<A>(xs: List<A>) -> Int\nfn secret() -> Int { 1 }\n",
     ),
     (
+        "string",
+        "@external(js, \"vow_runtime\", \"string_len\")\npub fn len(s: String) -> Int\n",
+    ),
+    (
         "http",
         "pub effect Http {\n  fn get(url: Int) -> Int\n}\npub type Request = { url: Int }\npub fn host() -> Handler<Http> { handler Http { fn get(url) { url } } }\n",
     ),
@@ -382,6 +386,14 @@ snap!(diag_opaque_variant_import,
     "main" => "import app/ids.{Id, A}\nfn f(x: Id) -> Int { match x { Id.B => 1, _ => 2 } }\n",
     "ids" => "pub opaque type Id = A | B\n",
 );
+
+// Design §17.19: inside a module declaring a variant `String`, `String.len` and type
+// positions still mean the builtin type; a value use means the variant.
+snap!(variant_named_like_builtin, "json" => r#"
+pub type Json = Null | String(String)
+fn size(j: Json) -> Int { match j { String(s) => String.len(s), Null => 0 } }
+fn wrap(s: String) -> Json { String(s) }
+"#);
 
 // ---- Diagnostics ----
 
