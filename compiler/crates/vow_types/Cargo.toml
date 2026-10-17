@@ -12,6 +12,11 @@ publish.workspace = true
 vow_diagnostics.workspace = true
 vow_hir.workspace = true
 la-arena.workspace = true
+text-size.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+insta.workspace = true
 
 [lints]
 workspace = true
