@@ -62,6 +62,10 @@ fn reaches(from: usize, target: usize, callees: &[Vec<DefId>], direct: &[bool]) 
 }
 
 fn body_ok(e: &Expr, callees: &mut Vec<DefId>) -> bool {
+    sakura_core::ensure_stack(|| body_ok_inner(e, callees))
+}
+
+fn body_ok_inner(e: &Expr, callees: &mut Vec<DefId>) -> bool {
     match e {
         Expr::Let { bind, body, .. } => {
             let ok = match bind {

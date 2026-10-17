@@ -291,6 +291,10 @@ impl<'a> Printer<'a> {
     }
 
     fn expr(&mut self, e: &Expr) {
+        crate::ensure_stack(|| self.expr_inner(e))
+    }
+
+    fn expr_inner(&mut self, e: &Expr) {
         match e {
             Expr::Let {
                 local, bind, body, ..

@@ -206,6 +206,10 @@ impl<'a> Cx<'a> {
 }
 
 fn blames_caller(m: &Module, e: &Expr) -> bool {
+    sakura_core::ensure_stack(|| blames_caller_inner(m, e))
+}
+
+fn blames_caller_inner(m: &Module, e: &Expr) -> bool {
     match e {
         Expr::Let { bind, body, .. } => {
             matches!(bind, Bind::Check(c, _) if m.contracts[c.index()].kind != ContractKind::Ensures)

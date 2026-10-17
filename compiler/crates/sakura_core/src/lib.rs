@@ -13,4 +13,7 @@ mod validate;
 
 pub use ir::*;
 pub use lower::{LowerOptions, Lowered, lower};
+/// Recursive walks over Core expressions run under this, so deep `Let` chains cannot
+/// overflow the stack.
+pub use sakura_hir::ensure_stack;
 pub use validate::{ValidationError, validate};

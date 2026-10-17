@@ -887,6 +887,10 @@ impl<'a, 'p> FnLower<'a, 'p> {
     }
 
     pub(crate) fn expr(&mut self, e: ExprId) -> Option<Atom> {
+        crate::ensure_stack(|| self.expr_inner(e))
+    }
+
+    fn expr_inner(&mut self, e: ExprId) -> Option<Atom> {
         let body = self.body;
         let pos = self.pos(e);
         if let Some((from, lit)) = self.refined_literal(e) {

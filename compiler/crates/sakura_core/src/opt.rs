@@ -22,6 +22,10 @@ pub fn optimize(m: &mut Module) {
 }
 
 fn label_uses(e: &Expr, out: &mut HashMap<Label, usize>) {
+    crate::ensure_stack(|| label_uses_inner(e, out))
+}
+
+fn label_uses_inner(e: &Expr, out: &mut HashMap<Label, usize>) {
     match e {
         Expr::Jump(l, _) => *out.entry(*l).or_default() += 1,
         Expr::Try { on_fail, body } => {
@@ -51,6 +55,10 @@ fn label_uses(e: &Expr, out: &mut HashMap<Label, usize>) {
 
 /// Replace `LetJoin`s nothing jumps to by their body.
 fn drop_dead_joins(e: &mut Expr, used: &HashMap<Label, usize>) {
+    crate::ensure_stack(|| drop_dead_joins_inner(e, used))
+}
+
+fn drop_dead_joins_inner(e: &mut Expr, used: &HashMap<Label, usize>) {
     if let Expr::LetJoin { label, body, .. } = e
         && !used.contains_key(label)
     {
@@ -84,6 +92,10 @@ fn drop_dead_joins(e: &mut Expr, used: &HashMap<Label, usize>) {
 
 /// Join points whose code is `ret p` for one of their parameters `p` (by index).
 fn return_joins(e: &Expr, out: &mut HashMap<Label, usize>) {
+    crate::ensure_stack(|| return_joins_inner(e, out))
+}
+
+fn return_joins_inner(e: &Expr, out: &mut HashMap<Label, usize>) {
     match e {
         Expr::LetJoin {
             label,
@@ -119,6 +131,10 @@ fn return_joins(e: &Expr, out: &mut HashMap<Label, usize>) {
 }
 
 fn thread_jumps(e: &mut Expr, returns: &HashMap<Label, usize>) {
+    crate::ensure_stack(|| thread_jumps_inner(e, returns))
+}
+
+fn thread_jumps_inner(e: &mut Expr, returns: &HashMap<Label, usize>) {
     match e {
         Expr::Jump(l, args) => {
             if let Some(&i) = returns.get(l) {
@@ -188,6 +204,10 @@ fn is_self_tail(e: &Expr, me: DefId) -> Option<&[Atom]> {
 
 /// Visit tail positions outside `Handle`/`Try` regions.
 fn has_self_tail_call(e: &Expr, me: DefId) -> bool {
+    crate::ensure_stack(|| has_self_tail_call_inner(e, me))
+}
+
+fn has_self_tail_call_inner(e: &Expr, me: DefId) -> bool {
     if is_self_tail(e, me).is_some() {
         return true;
     }
@@ -208,6 +228,10 @@ fn has_self_tail_call(e: &Expr, me: DefId) -> bool {
 }
 
 fn rewrite(e: &mut Expr, me: DefId, label: Label) {
+    crate::ensure_stack(|| rewrite_inner(e, me, label))
+}
+
+fn rewrite_inner(e: &mut Expr, me: DefId, label: Label) {
     if let Some(args) = is_self_tail(e, me) {
         *e = Expr::Jump(label, args.to_vec());
         return;
@@ -235,6 +259,10 @@ fn rewrite(e: &mut Expr, me: DefId, label: Label) {
 }
 
 fn max_label(e: &Expr) -> Option<u32> {
+    crate::ensure_stack(|| max_label_inner(e))
+}
+
+fn max_label_inner(e: &Expr) -> Option<u32> {
     let m = |a: Option<u32>, b: Option<u32>| a.max(b);
     match e {
         Expr::Let { body, .. } | Expr::Handle { body, .. } => max_label(body),

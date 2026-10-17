@@ -411,6 +411,46 @@ pub enum Expr {
     Fail(Atom),
 }
 
+/// Frees nested expressions with a worklist: a 100,000-binding `Let` chain would overflow the
+/// stack with the derived, recursive drop.
+impl Drop for Expr {
+    fn drop(&mut self) {
+        fn take(e: &mut Expr, out: &mut Vec<Expr>) {
+            let mut push = |b: &mut Expr| {
+                if !matches!(b, Expr::Ret(_) | Expr::Jump(..) | Expr::Fail(_)) {
+                    out.push(std::mem::replace(b, Expr::Ret(Atom::Lit(Lit::Unit))));
+                }
+            };
+            match e {
+                Expr::Let { body, .. } | Expr::Handle { body, .. } | Expr::Try { body, .. } => {
+                    push(body)
+                }
+                Expr::LetJoin { join, body, .. }
+                | Expr::If {
+                    then: join,
+                    els: body,
+                    ..
+                } => {
+                    push(join);
+                    push(body);
+                }
+                Expr::Switch { arms, default, .. } => {
+                    arms.iter_mut().for_each(|(_, a)| push(a));
+                    if let Some(d) = default {
+                        push(d);
+                    }
+                }
+                Expr::Ret(_) | Expr::Jump(..) | Expr::Fail(_) => {}
+            }
+        }
+        let mut todo = Vec::new();
+        take(self, &mut todo);
+        while let Some(mut e) = todo.pop() {
+            take(&mut e, &mut todo);
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum SwitchOn {
     Variant(TypeId),

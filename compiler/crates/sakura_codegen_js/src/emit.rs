@@ -348,17 +348,24 @@ impl<'a> FnEmit<'a> {
         let def = cx.m.def(id);
         let mut taken: HashSet<String> = module_defs.iter().map(|s| (*s).to_owned()).collect();
         taken.extend(module_defs.iter().map(|s| format!("{s}$d")));
+        // The next suffix to try per base name, so 100,000 locals called `t` stay linear.
+        let mut next: HashMap<String, u32> = HashMap::new();
         let names = def
             .locals
             .iter()
             .map(|l| {
                 let base = ident(&l.name);
-                let mut name = base.clone();
-                let mut n = 1;
+                let n = next.entry(base.clone()).or_insert(0);
+                let mut name = if *n == 0 {
+                    base.clone()
+                } else {
+                    format!("{base}_{n}")
+                };
                 while taken.contains(&name) || RESERVED.contains(&name.as_str()) {
+                    *n += 1;
                     name = format!("{base}_{n}");
-                    n += 1;
                 }
+                *n += 1;
                 taken.insert(name.clone());
                 name
             })
@@ -539,6 +546,10 @@ impl<'a> FnEmit<'a> {
     }
 
     fn frames(&self, e: &Expr, frame: u32, f: &mut Frames) {
+        sakura_core::ensure_stack(|| self.frames_inner(e, frame, f))
+    }
+
+    fn frames_inner(&self, e: &Expr, frame: u32, f: &mut Frames) {
         match e {
             Expr::Let { bind, body, .. } => {
                 let inner = if self.is_cps(bind) { f.fresh() } else { frame };
@@ -607,6 +618,10 @@ impl<'a> FnEmit<'a> {
     }
 
     fn expr(&mut self, w: &mut W, e: &Expr, ctx: &str) {
+        sakura_core::ensure_stack(|| self.expr_inner(w, e, ctx))
+    }
+
+    fn expr_inner(&mut self, w: &mut W, e: &Expr, ctx: &str) {
         match e {
             Expr::Let {
                 local,
@@ -1117,6 +1132,10 @@ impl Frames {
 
 /// Every join point with its parameters, and whether it is jumped to from its own body.
 fn collect_labels(e: &Expr, infos: &mut HashMap<Label, LabelInfo>, inside: &mut Vec<Label>) {
+    sakura_core::ensure_stack(|| collect_labels_inner(e, infos, inside))
+}
+
+fn collect_labels_inner(e: &Expr, infos: &mut HashMap<Label, LabelInfo>, inside: &mut Vec<Label>) {
     match e {
         Expr::Let { body, .. } | Expr::Handle { body, .. } | Expr::Try { body, .. } => {
             collect_labels(body, infos, inside)
