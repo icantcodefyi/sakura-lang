@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { Button } from "@/components/ui/button";
 
 export default function NotFound() {
   return (
@@ -17,13 +18,13 @@ export default function NotFound() {
         <p className="mt-5 max-w-[34rem] text-[17px] leading-relaxed text-muted-foreground">
           The link may be out of date, or the page has not been written yet.
         </p>
-        <div className="mt-8 flex flex-wrap gap-3 text-[15px]">
-          <Link href="/docs" className="rounded-full bg-sakura px-5 py-2.5 font-semibold text-ink">
-            Read the docs
-          </Link>
-          <Link href="/" className="rounded-full border border-strong px-5 py-2.5 font-medium">
-            Home
-          </Link>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Button asChild size="lg">
+            <Link href="/docs">Read the docs</Link>
+          </Button>
+          <Button asChild size="lg" variant="outline">
+            <Link href="/">Home</Link>
+          </Button>
         </div>
       </main>
       <SiteFooter />

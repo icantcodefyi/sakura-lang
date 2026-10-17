@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { Wordmark } from "@/components/brand";
 import { GitHubIcon } from "@/components/github-icon";
+import { MobileNav } from "@/components/mobile-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { site } from "@/lib/site";
 
 const links = [
@@ -43,20 +45,20 @@ export function SiteHeader() {
             >
               llms.txt
             </Link>
-            <a
-              href={site.github}
-              className="grid size-9 place-items-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground"
-              aria-label="Sakura Lang on GitHub"
-            >
-              <GitHubIcon className="size-[18px]" />
-            </a>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <a
+                  href={site.github}
+                  className="grid size-9 place-items-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground"
+                  aria-label="Sakura Lang on GitHub"
+                >
+                  <GitHubIcon className="size-[18px]" />
+                </a>
+              </TooltipTrigger>
+              <TooltipContent sideOffset={6}>GitHub</TooltipContent>
+            </Tooltip>
             <ThemeToggle />
-            <Link
-              href="/docs"
-              className="ml-1 rounded-full bg-foreground px-3.5 py-1.5 text-[13.5px] font-medium text-background transition-transform duration-150 active:scale-[0.97] md:hidden"
-            >
-              Docs
-            </Link>
+            <MobileNav links={links} />
           </div>
         </div>
       </header>
