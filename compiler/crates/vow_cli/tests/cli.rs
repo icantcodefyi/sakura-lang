@@ -109,3 +109,20 @@ fn fmt_refuses_files_that_do_not_parse() {
         broken
     );
 }
+
+#[test]
+fn test_json_has_exactly_one_summary_at_the_end() {
+    let dir = tmp(
+        "test-json",
+        "test \"adds\" { expect_eq(1 + 1, 2) }\ntest \"fails\" { expect_eq(1, 2) }\n",
+    );
+    let out = vow(&["test", "--json", "main.vow", "--seed", "3"], &dir);
+    assert_eq!(out.code, Some(3), "{}{}", out.stdout, out.stderr);
+    let recs = common::json_lines(&out.stdout).unwrap();
+    let kinds: Vec<&str> = recs.iter().map(|r| r["kind"].as_str().unwrap()).collect();
+    assert_eq!(kinds, ["test", "test", "summary"]);
+    assert_eq!(recs[0]["status"], "passed");
+    assert_eq!(recs[1]["status"], "failed");
+    assert_eq!(recs[1]["seed"], 3);
+    assert_eq!(recs[2]["failed"], 1);
+}

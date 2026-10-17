@@ -141,7 +141,7 @@ fn dispatch(command: Command) -> ExitCode {
             target: _,
             out_dir,
             paths,
-        } => match build(json, &paths, &out_dir, false) {
+        } => match build(json, &paths, &out_dir, false, false) {
             Ok(_) => ExitCode::SUCCESS,
             Err(code) => code,
         },
@@ -246,7 +246,7 @@ fn check(json: bool, paths: &[PathBuf]) -> ExitCode {
         Err(e) => return usage_error(e),
     };
     let result = Analysis::check(&snapshot);
-    report(json, &snapshot, &result.diagnostics, &result.holes);
+    report(json, &snapshot, &result.diagnostics, &result.holes, true);
     if result.has_errors() {
         ExitCode::from(EXIT_ERRORS)
     } else {
@@ -254,8 +254,15 @@ fn check(json: bool, paths: &[PathBuf]) -> ExitCode {
     }
 }
 
-/// Diagnostics and holes as JSON Lines on stdout, or for humans on stderr.
-fn report(json: bool, snapshot: &Snapshot, diags: &[Diagnostic], holes: &[HoleReport]) {
+/// Diagnostics and holes as JSON Lines on stdout (ending with a `summary` record unless another
+/// step will write it), or for humans on stderr.
+fn report(
+    json: bool,
+    snapshot: &Snapshot,
+    diags: &[Diagnostic],
+    holes: &[HoleReport],
+    summary: bool,
+) {
     let files = snapshot.files();
     if json {
         let mut out = String::new();
@@ -267,10 +274,13 @@ fn report(json: bool, snapshot: &Snapshot, diags: &[Diagnostic], holes: &[HoleRe
             out.push_str(&r.to_string());
             out.push('\n');
         }
-        let mut summary = summary_record(diags, snapshot.hash());
-        summary.insert("holes".into(), holes.len().into());
-        out.push_str(&serde_json::Value::Object(summary).to_string());
-        println!("{out}");
+        if summary {
+            let mut record = summary_record(diags, snapshot.hash());
+            record.insert("holes".into(), holes.len().into());
+            out.push_str(&serde_json::Value::Object(record).to_string());
+            out.push('\n');
+        }
+        print!("{out}");
         let _ = std::io::stdout().flush();
     } else {
         eprint!("{}", render_human(diags, &display_files(files)));
@@ -292,17 +302,21 @@ fn report(json: bool, snapshot: &Snapshot, diags: &[Diagnostic], holes: &[HoleRe
 }
 
 /// Checks and emits JS into `out_dir`. On failure the diagnostics are already reported.
+/// `then` is the command that continues after a successful build (`run`/`test`) and writes the
+/// final summary itself.
 fn build(
     json: bool,
     paths: &[PathBuf],
     out_dir: &Path,
     need_entry: bool,
+    then: bool,
 ) -> Result<PathBuf, ExitCode> {
     let snapshot = load(paths).map_err(usage_error)?;
     let result = Analysis::build_js(&snapshot, need_entry);
     let failed = result.diagnostics.iter().any(Diagnostic::is_error);
-    if json || !result.diagnostics.is_empty() {
-        report(json, &snapshot, &result.diagnostics, &[]);
+    let summary = failed || !then;
+    if (json && summary) || !result.diagnostics.is_empty() {
+        report(json, &snapshot, &result.diagnostics, &[], summary);
     }
     let Some(files) = result.files.filter(|_| !failed) else {
         return Err(ExitCode::from(EXIT_ERRORS));
@@ -328,7 +342,7 @@ fn node() -> std::process::Command {
 
 fn run(path: Option<PathBuf>, out_dir: &Path, args: &[String]) -> ExitCode {
     let paths: Vec<PathBuf> = path.into_iter().collect();
-    let dir = match build(false, &paths, out_dir, true) {
+    let dir = match build(false, &paths, out_dir, true, true) {
         Ok(d) => d,
         Err(code) => return code,
     };
@@ -347,7 +361,7 @@ fn test(
     out_dir: &Path,
     paths: &[PathBuf],
 ) -> ExitCode {
-    let dir = match build(json, paths, out_dir, false) {
+    let dir = match build(json, paths, out_dir, false, true) {
         Ok(d) => d,
         Err(code) => return code,
     };
