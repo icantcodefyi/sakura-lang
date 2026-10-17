@@ -181,7 +181,10 @@ fn import(p: &mut Parser<'_>) -> bool {
         p.bump();
         while p.at(SLASH) {
             p.bump();
-            if !p.eat(IDENT) {
+            // Keywords are valid module names after `/` (`std/test`).
+            if p.current().is_keyword() {
+                p.bump();
+            } else if !p.eat(IDENT) {
                 p.error_expected("a module name");
                 break;
             }

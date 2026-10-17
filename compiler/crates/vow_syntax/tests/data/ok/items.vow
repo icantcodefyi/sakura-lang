@@ -40,3 +40,6 @@ property "reverse twice"(xs: List<Int>)
 }
 @external(js, "npm:left-pad", "pad")
 fn pad(s: String, n: Int) -> String ! {Foreign, Fail<ForeignError>}
+import std/test.{Test, expect_eq}
+fn host() -> Handler<Console, {Test}> { Console.captured() }
+fn wrap(h: Handler<Db, {Http | e}>) -> Handler<Db, {}> { h }

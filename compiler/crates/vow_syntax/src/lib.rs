@@ -51,6 +51,17 @@
 //! 8. **Contracts** parse their expression without record literals (like `if` headers), since
 //!    the body block follows.
 //! 9. **`_` parameters** are accepted in lambdas and handler clauses.
+//! 10. **Item terminators.** A declaration also ends when the next token starts a new line, since
+//!     a type ending in `>` (`type A = List<Int>`) does not end a line under §2.4.
+//! 11. **Opaque types.** `type Html` without `= …` declares an opaque std/host type (§10.4).
+//! 12. **Operation type parameters.** `OpSig` accepts `TypeParams` (§8.6 `Task.scope<T, e>`).
+//! 13. **Rows as type arguments.** `GenericArgList` accepts `EffectRow`s
+//!     (`Handler<Db, {Http}>`, §4.2, §6.2); see [`ast::GenericArg`].
+//! 14. **Keyword module segments.** `ModPath` accepts keywords after `/` (`import std/test`).
+//! 15. **Reserved words** (`V0007`) are allowed directly after `.` or `fn`, so std can name the
+//!     operation `Task.spawn` (§8.6, §15.10).
+//! 16. **Type arguments need adjacency.** `f<T>(…)` is recognized only with no space before `<`
+//!     and none between `>` and `(`, so `f(a < B, c > (d))` stays two comparisons.
 
 pub mod ast;
 pub mod codes;

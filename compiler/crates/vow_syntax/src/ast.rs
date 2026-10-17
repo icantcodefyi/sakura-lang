@@ -156,7 +156,7 @@ nodes! {
     Path = PATH;
     /// `Path [ GenericArgList ]`
     NamedType = NAMED_TYPE;
-    /// `< Type, … >`
+    /// `< ( Type | EffectRow ), … >`
     GenericArgList = GENERIC_ARG_LIST;
     /// `fn TypeList [ RetType ] [ ! EffectRow ]`
     FnType = FN_TYPE;
@@ -294,6 +294,8 @@ enums! {
     }
     /// A call argument.
     Arg { NamedArg, Expr }
+    /// A type argument: a type, or an effect row in `Handler<Db, {Http}>`.
+    GenericArg { Type, EffectRow }
     /// The `else` part of an `if`.
     ElseBranch { IfExpr, Block }
     /// An entry of a handler expression body.
@@ -373,8 +375,12 @@ impl Import {
 }
 
 impl ModPath {
+    /// Segment tokens: `IDENT`, or a keyword after `/` (`std/test`).
     pub fn segments(&self) -> impl Iterator<Item = SyntaxToken> + use<> {
-        tokens_of(&self.0, &[IDENT])
+        self.0
+            .children_with_tokens()
+            .filter_map(NodeOrToken::into_token)
+            .filter(|t| t.kind() == IDENT || t.kind().is_keyword())
     }
 }
 
@@ -652,6 +658,11 @@ impl NamedType {
 }
 
 impl GenericArgList {
+    /// Type and effect-row arguments in order.
+    pub fn args(&self) -> AstChildren<GenericArg> {
+        children(&self.0)
+    }
+    /// Only the type arguments.
     pub fn types(&self) -> AstChildren<Type> {
         children(&self.0)
     }

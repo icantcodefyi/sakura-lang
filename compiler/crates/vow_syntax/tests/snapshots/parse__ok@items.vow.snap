@@ -1,10 +1,10 @@
 ---
 source: crates/vow_syntax/tests/parse.rs
-assertion_line: 28
+assertion_line: 32
 expression: out
 input_file: crates/vow_syntax/tests/data/ok/items.vow
 ---
-SOURCE_FILE@0..1132
+SOURCE_FILE@0..1288
   IMPORT@0..15
     IMPORT_KW@0..6 "import"
     WHITESPACE@6..7 " "
@@ -809,3 +809,126 @@ SOURCE_FILE@0..1132
           GT@1129..1130 ">"
       R_BRACE@1130..1131 "}"
   NEWLINE@1131..1132 "\n"
+  IMPORT@1132..1165
+    IMPORT_KW@1132..1138 "import"
+    WHITESPACE@1138..1139 " "
+    MOD_PATH@1139..1147
+      IDENT@1139..1142 "std"
+      SLASH@1142..1143 "/"
+      TEST_KW@1143..1147 "test"
+    IMPORT_LIST@1147..1165
+      DOT@1147..1148 "."
+      L_BRACE@1148..1149 "{"
+      TYPE_NAME@1149..1153 "Test"
+      COMMA@1153..1154 ","
+      WHITESPACE@1154..1155 " "
+      IDENT@1155..1164 "expect_eq"
+      R_BRACE@1164..1165 "}"
+  NEWLINE@1165..1166 "\n"
+  FN_DECL@1166..1226
+    FN_KW@1166..1168 "fn"
+    WHITESPACE@1168..1169 " "
+    IDENT@1169..1173 "host"
+    PARAM_LIST@1173..1175
+      L_PAREN@1173..1174 "("
+      R_PAREN@1174..1175 ")"
+    WHITESPACE@1175..1176 " "
+    RET_TYPE@1176..1203
+      THIN_ARROW@1176..1178 "->"
+      WHITESPACE@1178..1179 " "
+      NAMED_TYPE@1179..1203
+        PATH@1179..1186
+          TYPE_NAME@1179..1186 "Handler"
+        GENERIC_ARG_LIST@1186..1203
+          LT@1186..1187 "<"
+          NAMED_TYPE@1187..1194
+            PATH@1187..1194
+              TYPE_NAME@1187..1194 "Console"
+          COMMA@1194..1195 ","
+          WHITESPACE@1195..1196 " "
+          EFFECT_ROW@1196..1202
+            L_BRACE@1196..1197 "{"
+            NAMED_TYPE@1197..1201
+              PATH@1197..1201
+                TYPE_NAME@1197..1201 "Test"
+            R_BRACE@1201..1202 "}"
+          GT@1202..1203 ">"
+    WHITESPACE@1203..1204 " "
+    BLOCK@1204..1226
+      L_BRACE@1204..1205 "{"
+      WHITESPACE@1205..1206 " "
+      EXPR_STMT@1206..1224
+        CALL_EXPR@1206..1224
+          FIELD_EXPR@1206..1222
+            PATH_EXPR@1206..1213
+              PATH@1206..1213
+                TYPE_NAME@1206..1213 "Console"
+            DOT@1213..1214 "."
+            IDENT@1214..1222 "captured"
+          ARG_LIST@1222..1224
+            L_PAREN@1222..1223 "("
+            R_PAREN@1223..1224 ")"
+      WHITESPACE@1224..1225 " "
+      R_BRACE@1225..1226 "}"
+  NEWLINE@1226..1227 "\n"
+  FN_DECL@1227..1287
+    FN_KW@1227..1229 "fn"
+    WHITESPACE@1229..1230 " "
+    IDENT@1230..1234 "wrap"
+    PARAM_LIST@1234..1262
+      L_PAREN@1234..1235 "("
+      PARAM@1235..1261
+        IDENT@1235..1236 "h"
+        COLON@1236..1237 ":"
+        WHITESPACE@1237..1238 " "
+        NAMED_TYPE@1238..1261
+          PATH@1238..1245
+            TYPE_NAME@1238..1245 "Handler"
+          GENERIC_ARG_LIST@1245..1261
+            LT@1245..1246 "<"
+            NAMED_TYPE@1246..1248
+              PATH@1246..1248
+                TYPE_NAME@1246..1248 "Db"
+            COMMA@1248..1249 ","
+            WHITESPACE@1249..1250 " "
+            EFFECT_ROW@1250..1260
+              L_BRACE@1250..1251 "{"
+              NAMED_TYPE@1251..1255
+                PATH@1251..1255
+                  TYPE_NAME@1251..1255 "Http"
+              WHITESPACE@1255..1256 " "
+              PIPE@1256..1257 "|"
+              WHITESPACE@1257..1258 " "
+              IDENT@1258..1259 "e"
+              R_BRACE@1259..1260 "}"
+            GT@1260..1261 ">"
+      R_PAREN@1261..1262 ")"
+    WHITESPACE@1262..1263 " "
+    RET_TYPE@1263..1281
+      THIN_ARROW@1263..1265 "->"
+      WHITESPACE@1265..1266 " "
+      NAMED_TYPE@1266..1281
+        PATH@1266..1273
+          TYPE_NAME@1266..1273 "Handler"
+        GENERIC_ARG_LIST@1273..1281
+          LT@1273..1274 "<"
+          NAMED_TYPE@1274..1276
+            PATH@1274..1276
+              TYPE_NAME@1274..1276 "Db"
+          COMMA@1276..1277 ","
+          WHITESPACE@1277..1278 " "
+          EFFECT_ROW@1278..1280
+            L_BRACE@1278..1279 "{"
+            R_BRACE@1279..1280 "}"
+          GT@1280..1281 ">"
+    WHITESPACE@1281..1282 " "
+    BLOCK@1282..1287
+      L_BRACE@1282..1283 "{"
+      WHITESPACE@1283..1284 " "
+      EXPR_STMT@1284..1285
+        PATH_EXPR@1284..1285
+          PATH@1284..1285
+            IDENT@1284..1285 "h"
+      WHITESPACE@1285..1286 " "
+      R_BRACE@1286..1287 "}"
+  NEWLINE@1287..1288 "\n"

@@ -115,12 +115,23 @@ pub(crate) fn named_type(p: &mut Parser<'_>) -> CompletedMarker {
     m.complete(p, NAMED_TYPE)
 }
 
+/// `< Type | EffectRow, … >`; rows appear as arguments of `Handler<Db, {Http}>` (§4.2, §6.2).
 pub(crate) fn generic_arg_list(p: &mut Parser<'_>) {
     let m = p.start();
     p.bump();
-    list(p, GT, TYPE_FIRST, "a type", |p| {
-        ty(p);
-    });
+    list(
+        p,
+        GT,
+        TYPE_FIRST.union(TokenSet::new(&[L_BRACE])),
+        "a type",
+        |p| {
+            if p.at(L_BRACE) {
+                effect_row(p);
+            } else {
+                ty(p);
+            }
+        },
+    );
     m.complete(p, GENERIC_ARG_LIST);
 }
 
