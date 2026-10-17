@@ -2,8 +2,9 @@ import type { MetadataRoute } from "next";
 import { site } from "@/lib/site";
 import { source } from "@/lib/source";
 
+const url = (path: string) => new URL(path, site.url).toString();
+
 export default function sitemap(): MetadataRoute.Sitemap {
-  const url = (path: string) => new URL(path, site.url).toString();
   return [
     { url: url("/"), changeFrequency: "weekly", priority: 1 },
     ...source.getPages().map((page) => ({

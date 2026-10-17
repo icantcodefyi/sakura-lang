@@ -139,6 +139,7 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
     <div ref={root} className="relative">
       <div
         className="overflow-hidden rounded-2xl border border-line bg-code shadow-[0_1px_0_oklch(1_0_0/0.04)_inset,0_30px_80px_-30px_oklch(0.2_0.02_255/0.35)]"
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- animated composite figure; an <img> can't hold it
         role="img"
         aria-label="Animation: an agent writes a Vow function. The compiler checks each effect against the signature, flags an undeclared network call, and the agent removes it so the signature's promise holds."
       >

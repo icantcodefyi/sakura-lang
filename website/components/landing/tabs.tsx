@@ -9,10 +9,15 @@ export function Tabs({ items }: { items: { label: string; panel: ReactNode }[] }
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const onKey = (e: KeyboardEvent) => {
-    const dir = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
-    if (!dir) return;
+    const last = items.length - 1;
+    const next =
+      e.key === "ArrowRight" ? (active + 1) % items.length
+      : e.key === "ArrowLeft" ? (active + last) % items.length
+      : e.key === "Home" ? 0
+      : e.key === "End" ? last
+      : -1;
+    if (next < 0) return;
     e.preventDefault();
-    const next = (active + dir + items.length) % items.length;
     setActive(next);
     refs.current[next]?.focus();
   };
@@ -22,7 +27,6 @@ export function Tabs({ items }: { items: { label: string; panel: ReactNode }[] }
       <div
         role="tablist"
         aria-label="How an agent sees Vow"
-        onKeyDown={onKey}
         className="relative grid rounded-full border border-line bg-bg-sunk p-1"
         style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
       >
@@ -47,6 +51,7 @@ export function Tabs({ items }: { items: { label: string; panel: ReactNode }[] }
             aria-controls={`${id}-panel-${i}`}
             tabIndex={active === i ? 0 : -1}
             onClick={() => setActive(i)}
+            onKeyDown={onKey}
             className={`relative z-10 truncate rounded-full px-2 py-2 text-[13px] font-medium transition-colors duration-200 sm:text-[14px] ${
               active === i ? "text-fg" : "text-fg-muted hover:text-fg"
             }`}

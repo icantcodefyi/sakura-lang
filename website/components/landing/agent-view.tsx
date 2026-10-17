@@ -79,10 +79,12 @@ export async function AgentView() {
                     <Code code={index} lang="md" title={<span>GET /llms.txt</span>} wrap />
                     <p className="mt-3 text-[13px] text-fg-muted">
                       Live from this site.{" "}
+                      {/* oxlint-disable-next-line nextjs/no-html-link-for-pages -- plain-text route, not a page */}
                       <a href="/llms.txt" className="font-medium text-fg underline decoration-seal underline-offset-4">
                         Open llms.txt
                       </a>{" "}
                       or{" "}
+                      {/* oxlint-disable-next-line nextjs/no-html-link-for-pages -- plain-text route, not a page */}
                       <a href="/llms-full.txt" className="font-medium text-fg underline decoration-seal underline-offset-4">
                         llms-full.txt
                       </a>
