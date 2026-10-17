@@ -233,19 +233,19 @@ distinguishes `Float` from `Int` (`2.0` vs `2`), also through `A: Show`. `Eq` (`
 structural over the same representation. Field names that are not safe JS property names
 (`__proto__`) get a `$` suffix in the emitted class; `$t` keeps the Sakura Lang name.
 
-Collections, measured with `node runtime/js/bench/collections.js 100000` (node 26, Apple
-silicon, best of 3; ns per operation at n = 100,000):
+Collections, measured with `node runtime/js/bench/collections.js 100000` (Apple silicon, best
+of 3; ns per operation at n = 100,000). The last column is a re-run on node 26.11 on 2026-10-18.
 
-| Case | Before (copying `Map`, array list) | Persistent HAMT / vector |
-|---|---|---|
-| `List.push`, linear | 20 | 31 |
-| `List.push` onto an older version | 1,486 at n = 20k, O(n) | 51 |
-| `List.get` / loop `list_at` | 11 / 2 | 46 / 4 |
-| `Map.insert`, new Int / String / tuple keys | ~368,000 at n = 20k, O(n) | 1,003 / 965 / 1,660 |
-| `Map.insert`, existing key | ~805,000 at n = 20k | 941 |
-| `Map.get` | 22 | 128 |
-| `Map.remove`, every key | ~366,000 at n = 20k | 1,831 |
-| `Set.insert`, Int | ~376,000 at n = 20k | 663 |
+| Case | Before (copying `Map`, array list) | Persistent HAMT / vector | Re-run, node 26.11 |
+|---|---|---|---|
+| `List.push`, linear | 20 | 31 | 13 |
+| `List.push` onto an older version | 1,486 at n = 20k, O(n) | 51 | 19 |
+| `List.get` / loop `list_at` | 11 / 2 | 46 / 4 | 10 / 4 |
+| `Map.insert`, new Int / String / tuple keys | ~368,000 at n = 20k, O(n) | 1,003 / 965 / 1,660 | 233 / 260 / 412 |
+| `Map.insert`, existing key | ~805,000 at n = 20k | 941 | 179 |
+| `Map.get` | 22 | 128 | 66 |
+| `Map.remove`, every key | ~366,000 at n = 20k | 1,831 | 516 |
+| `Set.insert`, Int | ~376,000 at n = 20k | 663 | 242 |
 
 The old maps copied on every update, so 100k inserts took minutes; the "before" column is
 therefore measured at n = 20,000.
