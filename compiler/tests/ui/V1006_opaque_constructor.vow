@@ -1,0 +1,4 @@
+// milestone: M1
+// expect: V1006
+// known-bug: `Uuid` becomes `pub opaque` once the parser accepts `opaque` (design §17.10; REQUESTS.md, F to A)
+fn forged() -> Uuid { Uuid("not-a-uuid") }

@@ -1,0 +1,6 @@
+// milestone: M1
+// expect: V0014
+// known-bug: `f(name: v)` is accepted instead of reported (design §17.21; REQUESTS.md, F to A)
+fn double(n: Int) -> Int { n * 2 }
+
+fn four() -> Int { double(n: 2) }
