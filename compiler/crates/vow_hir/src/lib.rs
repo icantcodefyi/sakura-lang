@@ -32,6 +32,12 @@
 //! - **Deterministic.** Arena order is source order; the same snapshot always produces the
 //!   same ids, diagnostics and dumps.
 
+mod body;
+mod diag;
+mod dump;
 mod hir;
+mod lower;
+pub mod prelude;
 
 pub use hir::*;
+pub use lower::{ModuleInput, PackageInput, lower};

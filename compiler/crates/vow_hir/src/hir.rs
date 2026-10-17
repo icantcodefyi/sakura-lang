@@ -272,6 +272,8 @@ pub struct FieldDef {
     pub name: String,
     pub range: TextRange,
     pub ty: TypeRef,
+    /// `name: T where pred` (field refinement): `pred.params == [it]`.
+    pub refinement: Option<BodyId>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -365,6 +367,8 @@ pub enum TypeRefKind {
     },
     /// `A | B` in type position: an error union (alternatives are error tags or unions).
     Union(Vec<TypeRef>),
+    /// An effect row used as a type argument: `Handler<Console, {Test}>`.
+    Row(RowRef),
     Missing,
 }
 
@@ -495,7 +499,8 @@ pub struct Body {
     pub owner: Idx<Def>,
     /// Parameter locals in order (fn/property params; `it` for refinement predicates).
     pub params: Vec<LocalId>,
-    /// The body expression. `None` only for op-contract bodies.
+    /// The body expression. `None` for op-contract bodies and bodiless `@external`/`@llm`
+    /// functions.
     pub value: Option<ExprId>,
     pub requires: Vec<Contract>,
     pub ensures: Vec<Contract>,
@@ -609,6 +614,10 @@ pub enum Expr {
     Call {
         callee: ExprId,
         args: Vec<ExprId>,
+        /// Explicit type arguments `f<T>(…)` (empty when absent).
+        type_args: Vec<TypeRef>,
+        /// `name: value` argument names, parallel to `args`; empty when all are positional.
+        arg_names: Vec<Option<String>>,
     },
     /// `receiver.method(args)` where `receiver` is a value: resolved by the type checker as a
     /// field holding a function (§4.9 rule 1) or `T.method(receiver, args)` in `T`'s home
@@ -618,6 +627,8 @@ pub enum Expr {
         method: String,
         method_range: TextRange,
         args: Vec<ExprId>,
+        type_args: Vec<TypeRef>,
+        arg_names: Vec<Option<String>>,
     },
     /// Record field access `e.name`.
     Field {
@@ -697,6 +708,12 @@ pub enum Expr {
     },
     Tuple(Vec<ExprId>),
     List(Vec<ExprId>),
+    /// An attribute in expression position, e.g. the `@trust("reason")` argument of
+    /// `Untrusted.trust` / `Secret.expose` (design §6.4). `args` are the attribute arguments.
+    Attr {
+        name: String,
+        args: Vec<ExprId>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]

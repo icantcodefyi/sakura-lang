@@ -814,6 +814,7 @@ name = "vow_hir"
 version = "0.0.0"
 dependencies = [
  "la-arena",
+ "rowan",
  "text-size",
  "vow_diagnostics",
  "vow_syntax",
