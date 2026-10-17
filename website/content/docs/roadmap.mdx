@@ -1,95 +1,122 @@
 ---
 title: Roadmap
-description: The planned phases of Vow, from language design to a 1.0 release, and how to follow progress.
+description: The v0 milestones M0 to M5 from the design, what each one delivers, and how each is accepted.
 ---
 
-<Callout type="info" title="No dates">
-  Vow is pre-alpha. The phases below are ordered but not scheduled, and their scope will change as the design meets an implementation.
+<Callout type="info" title="Where things stand">
+  The v0 language design is written ([docs/design.md](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)). The compiler is under construction in the repository's `compiler/` workspace, starting with M0. Nothing is released, and no milestone below is done. The milestones are ordered but not dated.
 </Callout>
+
+The milestones come from design §14.3. Each one has executable acceptance tests under `compiler/tests/`, and a milestone is done only when they pass in CI on macOS and Linux.
 
 ## Summary
 
-| Phase | Name | Status |
+| Milestone | Delivers | Status |
 | --- | --- | --- |
-| 0 | Design | In progress |
-| 1 | Checker prototype | Not started |
-| 2 | Verification | Not started |
-| 3 | Code generation | Not started |
-| 4 | Batteries | Not started |
-| 5 | Toward 1.0 | Not started |
+| M0 | Effectful hello world, end to end | In progress |
+| M1 | The pure language and typed errors | Not started |
+| M2 | General rows, user handlers, typed holes | Not started |
+| M3 | Agent loop, contracts and capabilities | Not started |
+| M4 | WASM backend and verification | Not started |
+| M5 | Native backend with Perceus | Not started |
 
-## Phases
+## Milestones
 
 <Steps>
 <Step>
 
-### Phase 0: Design (in progress)
+### M0: effectful hello world (in progress)
 
-- The language design document: syntax, type system, effects, handlers, contracts, memory model.
-- Research into prior art: effect systems, reference counting, refinement types, capability security, deterministic simulation.
-- This website, including the Markdown exports for agents.
+A lexer with the newline rule, a parser for functions, imports, calls, literals, interpolated strings, blocks and `let`, `Console` as a std effect with a host handler, inference for monomorphic code with closed rows, the Core IR, CPS JavaScript emission, `vow run` and `vow check --json`.
 
-</Step>
-<Step>
+```vow
+fn greet(name: String) -> Unit ! {Console} {
+  Console.print("hello, {name}")
+}
+pub fn main() -> Unit ! {Console} { greet("Vow") }
+```
 
-### Phase 1: Checker prototype
-
-- Parser and formatter (`vow fmt`).
-- Type checker and effect checker, including row polymorphism and handlers.
-- JSON diagnostics with fixes (`vow check --format json`).
-- Typed holes.
-- A tree-walking interpreter so programs can run (`vow run`).
-
-The goal of this phase is to test the design: whether the syntax is as easy for agents to write as intended, and whether effect rows stay readable in real code.
+Accepted when it prints exactly `hello, Vow`; removing `Console` from `greet`'s row gives `V3001` with a cause span on `Console.print`; an unterminated `Console.print(` gives a syntax tree, `V0001` and no hang; and a 1,000,000-step recursive countdown does not overflow the JavaScript stack.
 
 </Step>
 <Step>
 
-### Phase 2: Verification
+### M1: the pure language and typed errors
 
-- `requires` and `ensures` contracts.
-- Refinement checking with an SMT solver, with runtime checks where proofs fail.
-- Property tests, including tests generated from contracts.
-- Deterministic simulation testing (`Sim.world`).
+Records, variants, error tags and unions, exhaustive `match`, closures, let-polymorphism, `var`, `for` and `while`, `Fail` with `try`, `catch` and `?`, the `Option`, `Result`, `List`, `Map` and `String` std written in Vow, `test` blocks with `expect`, and an idempotent `vow fmt`.
 
-</Step>
-<Step>
+```vow
+error ParseError(input: String)
+fn parse_age(s: String) -> Int ! {Fail<ParseError>} {
+  match String.parse_int(s) { Some(n) if n >= 0 => n, _ => fail ParseError { input: s } }
+}
+test "bad age is a typed failure" {
+  let r = try { parse_age("x") }
+  expect_eq(r, Err(ParseError { input: "x" }))
+}
+```
 
-### Phase 3: Code generation
-
-- An intermediate representation with Perceus reference counting and reuse analysis.
-- Native backend via LLVM.
-- WASM backend.
-- JavaScript backend.
-
-</Step>
-<Step>
-
-### Phase 4: Batteries
-
-- The [standard library](/docs/stdlib).
-- HTTP client and server.
-- Typed SQL checked against `schema.sql`.
-- Full-stack web with typed RPC.
-- Durable workflows.
-- `Llm` effect, budgets, and tools from functions.
-- The compiler MCP server (`vow mcp`) and `vow mcp export`.
-- Content-addressed codebase and per-definition merge.
+Accepted when deleting the `_` arm gives `V4001` with the witness `None`, an arm after `_` gives `V4002`, formatting twice equals formatting once on 200 fixture files, and `vow test --json` reports one record per test with its seed.
 
 </Step>
 <Step>
 
-### Phase 5: Toward 1.0
+### M2: general rows, user handlers, holes
 
-- A stability policy for syntax, semantics, and diagnostic codes.
-- A package registry with capability grants.
-- Documentation and the complete language reference.
+`effect`, `handler` and `with`, row variables and widening, handler state, `Clock`, `Random`, `Env` and `Log` with host and fake handlers, deterministic test defaults, typed holes, a reference evaluator for differential tests, and direct-style emission for pure code.
+
+```vow
+effect Counter { fn next() -> Int }
+fn counter() -> Handler<Counter> { handler Counter { var n = 0; fn next() { n = n + 1; n } } }
+fn twice<e>(f: fn() -> Int ! e) -> Int ! e { f() + f() }
+fn answer() -> Int { with counter() { twice(fn() { Counter.next() }) } }
+fn unfinished(x: Int) -> Int { ?result }
+```
+
+Accepted when `answer()` compiles with a pure signature, the hole reports expected type `Int`, local `x: Int` and candidate `x`, nested handlers use the inner instance, 1,000,000 handled operations run without stack growth, and the reference evaluator agrees on 500 generated programs.
+
+</Step>
+<Step>
+
+### M3: agent loop and contracts
+
+Runtime-checked `requires`, `ensures` and `where`, refined-type `validate` and `from`, capabilities and `[permissions]`, `Secret` and `Untrusted`, resources and the escape check, `Task` structured concurrency, `Http`, `Fs`, `Sql.sqlite` and `Serve`, `Json` with `Schema`, `Cli`, the LSP and MCP servers, `vow fix` with impact classes, and `--frozen-specs`.
+
+```vow
+type Percent = Int where it >= 0 && it <= 100
+fn scale(p: Percent, total: Int) -> Int
+  requires total >= 0
+  ensures result <= total
+{ total * p / 100 }
+```
+
+Accepted when `scale(Percent.from(50), -1)` reports `D020` at the call, `Percent.from(101)` is `D010`, a `main` that declares `Fs` with an empty `fs.read` exits with 75 at startup, a route handler returning a file handle is `V6003`, and the LSP and MCP `hole_context` agree byte for byte.
+
+</Step>
+<Step>
+
+### M4: WASM and verification
+
+A WASM backend with the runtime in linear memory, the M0 to M3 corpus passing on JavaScript and WASM with identical output, and `vow verify` discharging contract obligations through a Z3 worker. A `proved` obligation removes its runtime check; anything else keeps it.
+
+Accepted when the `ensures` of `scale` above is `proved` under its `requires`, and a wrong body (`total * p / 50`) is `disproved` with a counterexample.
+
+</Step>
+<Step>
+
+### M5: native with Perceus
+
+A Cranelift backend, the reference-counting runtime with in-place reuse, `W8001` copy diagnostics, and regions as an internal optimization.
+
+Accepted when mapping over a list leaves the original intact, the same program reuses the buffer when the original is dead, cancellation and handler state run sanitizer-clean, and JavaScript, WASM and native agree on the corpus.
 
 </Step>
 </Steps>
 
+## Later than v0
+
+Some things are deliberately outside v0 (design §1.1 and §16): non-tail-resumptive handlers (`control` operations), durable workflows (`std/workflow`), `Sql.postgres`, named arguments, and a package registry. The [FAQ](/docs/faq) and [Prior art](/docs/prior-art) explain several of these choices.
+
 ## Follow progress
 
-Development happens in the open at [github.com/icantcodefyi/vow](https://github.com/icantcodefyi/vow). Watch the repository for releases, and read the design notes there as they are written.
-
-Feedback on the design is most useful now, before anything is implemented. See the [FAQ](/docs/faq#how-can-i-help) for ways to help.
+Development happens in the open at [github.com/icantcodefyi/vow](https://github.com/icantcodefyi/vow). Language changes go through RFCs in `docs/rfcs/`, and architecture decisions through ADRs in `docs/adr/`. Feedback on the design is most useful now, while the compiler is young. See the [FAQ](/docs/faq) for ways to help.

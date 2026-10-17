@@ -1,0 +1,79 @@
+---
+title: Prior art
+description: What Vow takes from Koka, Effect-TS, Rust, Lean, Dafny, Elm, Gleam and others, what it rejects, and why.
+---
+
+Vow invents very little. Most of the design is borrowed from languages and systems that already proved an idea works. The new part is the combination, and the decision to make all of it the default for code an agent writes.
+
+This page summarizes [`docs/prior-art.md`](https://github.com/icantcodefyi/vow/blob/master/docs/prior-art.md), which gives, for every entry, what Vow takes, what it rejects, why, and links to primary sources. The design itself is [`docs/design.md`](https://github.com/icantcodefyi/vow/blob/master/docs/design.md).
+
+## The short version
+
+- **Effects and handlers** come from Koka, Effect-TS and Unison: inferred effect rows, effect-polymorphic `map`, handlers as plain values, tests that swap handlers instead of mocking. Vow ships only tail-resumptive handlers (no `resume`), as Koka's `fun` operations, and keeps rows as sets of unique labels.
+- **Typed errors** come from Rust, Zig, Swift and ZIO: errors as data with payloads, error sets that grow by union, `Never` as the bottom, and a hard line between expected failures (`Fail<E>`) and defects.
+- **Memory** comes from Lean 4, Koka's Perceus, Swift and Hylo: value semantics, compile-time reference counting, and in-place reuse of unshared buffers. Rust's guarantees without Rust's lifetimes is a design bet, not a measured result.
+- **Contracts** come from Dafny, Eiffel, Racket and the refinement-type family (F\*, Liquid Haskell, Flux): `requires`/`ensures` in the signature, blame on the caller or the callee, named refinements, and checks that are never switched off in release.
+- **Authority** comes from Austral, Pony, Roc, Deno and LavaMoat: no ambient authority, root capabilities handed to `main` by the host, deny-by-default permissions, and authority graphs a person can review.
+- **Agent tooling** comes from Elm, Haskell, Hazel, Go and Gleam: typed holes as a normal editing state, diagnostics with expected and actual types and fixes, one formatter with no options, and one compiler-owned CLI.
+
+## What Vow leaves out
+
+Several popular features are rejected on purpose, each because it is a common source of silent bugs or of code that is hard to review:
+
+- `null`, exceptions, `any` and implicit conversions (TypeScript, Python, Go).
+- User-visible lifetimes and borrows (Rust), and manual `free` (Zig).
+- Laziness, type classes and monad transformers (Haskell).
+- Multi-shot handlers, effect masking and first-class continuations (Koka, Eff, Frank).
+- `async` coloring (TypeScript, Kotlin, Swift). Every Vow function may suspend.
+- Macros, operator overloading, inheritance and significant indentation.
+- A codebase database instead of files and Git (Unison).
+
+## Summary table
+
+| Language / system | Vow takes | Vow rejects |
+|---|---|---|
+| Koka | inferred effect rows, effect-polymorphic HOFs, tail-resumptive ops, Perceus, dot-call | duplicate-label rows, `ctl`/multi-shot, masking |
+| Effect-TS | typed errors + requirements, layers, schedules, schema, fibers, test clocks | wrapper type, generators, combinator sprawl |
+| Unison | abilities with plain handlers, content-hashed artifacts, compiler MCP | implicit ability variables, codebase database |
+| OCaml 5 | one-shot continuations for native runtime | unchecked effects |
+| Flix | purity requirements, subeffecting precedent | Boolean effect formulas |
+| Eff / Frank / Links | op/handler split, auto effect polymorphism, row theory, CPS reference | multi-shot, instances, multihandlers, `wild` |
+| Effekt | Core → CPS → JS pipeline with trampoline | capability-passing surface types |
+| effectful / Polysemy / Bluefin | fast service dispatch, test interpreters, scoped capability values | type-level machinery, manual capability threading |
+| ZIO | failures vs defects vs interruption, concurrent causes | `Nothing` as termination proof |
+| Swift | typed throws, `Never`, value semantics + COW, ownership modifiers (internal) | `any Error`, classes, retain cycles |
+| Rust | `Result`/`?`, exhaustiveness, affine resources, performance baseline, workspace model | lifetimes, borrows, traits, macros, `unwrap` culture |
+| Zig | inferred error sets, explicit costs, no build scripts | manual free, payload-less errors |
+| Gleam | small language, no null/exceptions, compiler CLI, readable JS | `use` sugar |
+| Roc | platform authority, in-place mutation behind values, compact strings | no effect polymorphism |
+| Lean 4 | borrowed/owned conventions, reset/reuse, uniqueness diagnostics; optional proofs | dependent types everywhere |
+| Hylo | mutable value semantics | `inout` projections |
+| Vale | generational IDs for graphs | traps as lifetime strategy |
+| Lobster | RC elision by inferred borrows | acceptance tied to optimization |
+| Mojo | inferred lifetimes, explicit transfer for resources | lifetime checker, `^`, Python superset |
+| Austral | linear capabilities, root capability to `main` | linear collections |
+| Pony | object vs reference capabilities, share-immutable/transfer-isolated | capability lattice in syntax, actor GC |
+| Go | one toolchain, `fmt` without options, MVS, cost model | nil, ignorable errors, shared mutation |
+| Dafny / Verus | `requires`/`ensures` in signatures, modular proofs, frozen specs for agents | mandatory invariants/frames in v0 |
+| F* / Liquid Haskell / Flux | named refinement types, aliasing factored out of logic | string predicates, dependent effects |
+| Eiffel / Racket | contracts with blame | disable-in-release |
+| QuickCheck / Hypothesis / TARGET | properties, shrinking, refinement-derived generators | filter-only generation |
+| FoundationDB / TigerBeetle | deterministic simulation via swapped handlers | exhaustiveness claims |
+| Elm | `Option`/`Result`, humane diagnostics, computed semver, MVU | browser-only scope |
+| Haskell | typed holes, purity default, HM + signatures | laziness, type classes, transformers |
+| OCaml | HM with levels, value restriction, match compilation | objects, functors, structural subtyping |
+| TypeScript | familiar syntax, discriminated unions, type-aware decoding evidence, ESM output | `any`, null, exceptions, async coloring |
+| Python | readability, batteries, structured-output libraries | dynamic typing, indentation syntax |
+| Elixir / Erlang | supervision shape, config split, integrated tooling | dynamic typing, BEAM-only semantics |
+| Kotlin | structured concurrency, newline rule | `suspend` coloring, nullable absence, extensions |
+| MoonBit | definition-sized edits, fast checks, doc tests | unmeasured token claims |
+| BAML | typed LLM functions, prompt preview, partial types, output checks | separate DSL, silent coercion |
+| Deno / Bun / LavaMoat | deny-by-default grants, single distribution, lockfiles, authority graphs | process-wide-only permissions |
+| Hazel | holes as normal state, hole context for agents | structure editing only |
+| Vera / Magpie / Mog / AILANG | assurance statuses, MCP tooling, no ambient authority, compiler-emitted prompt | SSA surface, provider syntax, self-reported benchmarks |
+
+## Read more
+
+- [`docs/prior-art.md`](https://github.com/icantcodefyi/vow/blob/master/docs/prior-art.md): the full entry for each language, with sources.
+- [Why Vow](/docs/why-vow): the problem these borrowings are meant to solve.
+- [FAQ](/docs/faq): short answers to common comparisons.
