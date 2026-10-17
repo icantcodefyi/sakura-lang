@@ -26,7 +26,7 @@ pub mod render;
 pub mod ty;
 
 pub use infer::{Infer, UnifyError};
-pub use render::{Names, StructuredRow};
+pub use render::{Names, StructuredRow, render_row, render_type};
 pub use sakura_hir::DefId;
 pub use ty::{
     Constraint, Effect, Interner, Label, ParamId, ParamInfo, Row, RowId, RowParamId, RowVar,
@@ -105,8 +105,9 @@ pub struct Hole {
     pub range: TextRange,
     pub expected_type: TypeId,
     pub expected_render: String,
-    /// The full effect row allowed at the hole (the enclosing signature's row).
-    pub allowed_effects: String,
+    /// The full effect row allowed at the hole (the enclosing signature's row), rendered and
+    /// structured (§12.2, §17.61).
+    pub allowed_effects: sakura_diagnostics::Rendered,
     /// `(name, rendered type)` of every local in scope, innermost last.
     pub locals: Vec<(String, String)>,
     /// Up to 10 ranked candidates.

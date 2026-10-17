@@ -260,7 +260,7 @@ fn analyze(snapshot: &Snapshot) -> Analyzed {
                 h.range.end().into(),
             ),
             expected_type: Rendered::text(&h.expected_render),
-            allowed_effects: Rendered::text(&h.allowed_effects),
+            allowed_effects: h.allowed_effects.clone(),
             locals: h
                 .locals
                 .iter()

@@ -121,7 +121,7 @@ fn m2_hole_reports_expected_type_locals_and_candidates() {
     assert_eq!(h.locals, vec![("x".to_string(), "Int".to_string())]);
     assert_eq!(h.candidates[0].expr, "x");
     assert_eq!(h.candidates[0].fit, sakura_types::Fit::ExactLocal);
-    assert_eq!(h.allowed_effects, "{}");
+    assert_eq!(h.allowed_effects.render, "{}");
 }
 
 #[test]
@@ -201,7 +201,7 @@ fn shape(f: Float) -> Shape { ?make }
     for h in &c.typed.holes {
         out.push_str(&format!(
             "?{} : {} ! {}\n",
-            h.name, h.expected_render, h.allowed_effects
+            h.name, h.expected_render, h.allowed_effects.render
         ));
         for (n, t) in &h.locals {
             out.push_str(&format!("  local {n}: {t}\n"));
@@ -245,7 +245,7 @@ fn hole_in_test_allows_typed_failures() {
     let c = check("test \"t\" { let x: Int = ?h; expect_eq(x, 1) }\n");
     let h = c.typed.holes.first().expect("hole");
     assert_eq!(
-        h.allowed_effects,
+        h.allowed_effects.render,
         "{Clock, Console, Env, Log, Random, Test, Fail<E>}"
     );
 }
@@ -311,4 +311,17 @@ fn q(e: Email, n: Int, v: SqlValue) -> Query<Unit> { sql"select {e}, {n}, {v}" }
     let bad =
         check("import std/sql.{Query}\nfn q() -> Query<Unit> { sql\"select {fn() { 1 }}\" }\n");
     assert_eq!(bad.codes(), vec!["V2032"], "{}", bad.render());
+}
+
+/// §17.61: a hole carries its allowed row in structured form too.
+#[test]
+fn hole_allowed_effects_are_structured() {
+    let c = check("fn f() -> Int ! {Console} { ?h }\n");
+    let h = c.typed.holes.first().expect("hole");
+    assert_eq!(h.allowed_effects.render, "{Console}");
+    let row = &h.allowed_effects.structured.as_ref().expect("structured")["row"];
+    assert_eq!(row["labels"][0]["effect"], "std::Console");
+    assert!(row["tail"].is_null());
+    let t = sakura_types::render_type(&c.typed.interner, &c.program, h.expected_type);
+    assert_eq!(t, "Int");
 }

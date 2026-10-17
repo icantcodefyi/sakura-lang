@@ -2,7 +2,7 @@
 
 use crate::DefId;
 use crate::infer::Infer;
-use crate::ty::{Effect, Label, RowId, Tail, TyCon, Type, TypeId};
+use crate::ty::{Effect, Interner, Label, RowId, Tail, TyCon, Type, TypeId};
 
 /// Supplies display names for nominal declarations (types, effects, error tags).
 pub trait Names {
@@ -27,21 +27,21 @@ impl Infer {
     pub fn render(&mut self, ty: TypeId, names: &dyn Names) -> String {
         let ty = self.zonk(ty);
         let mut out = String::new();
-        self.write_ty(ty, names, &mut out);
+        Writer(&self.interner).write_ty(ty, names, &mut out);
         out
     }
 
     pub fn render_row(&mut self, row: RowId, names: &dyn Names) -> String {
         let row = self.zonk_row(row);
         let mut out = String::new();
-        self.write_row(row, names, &mut out);
+        Writer(&self.interner).write_row(row, names, &mut out);
         out
     }
 
     pub fn render_label(&mut self, label: &Label, names: &dyn Names) -> String {
         let mut out = String::new();
         let args: Vec<TypeId> = label.args.iter().map(|a| self.zonk(*a)).collect();
-        self.write_label(label.effect, &args, names, &mut out);
+        Writer(&self.interner).write_label(label.effect, &args, names, &mut out);
         out
     }
 
@@ -58,20 +58,25 @@ impl Infer {
             .collect();
         StructuredRow {
             labels,
-            tail: self.tail_name(r.tail),
+            tail: Writer(&self.interner).tail_name(r.tail),
         }
     }
+}
 
+/// Writes finished types and rows; needs only the interner.
+struct Writer<'a>(&'a Interner);
+
+impl Writer<'_> {
     fn tail_name(&self, tail: Tail) -> Option<String> {
         match tail {
             Tail::Closed => None,
             Tail::Var(v) => Some(format!("?e{}", v.0)),
-            Tail::Param(p) => Some(self.interner.row_param_name(p).to_string()),
+            Tail::Param(p) => Some(self.0.row_param_name(p).to_string()),
         }
     }
 
     fn write_ty(&self, ty: TypeId, names: &dyn Names, out: &mut String) {
-        match self.interner.ty(ty) {
+        match self.0.ty(ty) {
             Type::Tuple(xs) if xs.is_empty() => out.push_str("Unit"),
             Type::Tuple(xs) => {
                 out.push('(');
@@ -94,7 +99,7 @@ impl Infer {
                 self.write_list(params, names, out);
                 out.push_str(") -> ");
                 self.write_ty(*ret, names, out);
-                let r = self.interner.row_data(*row);
+                let r = self.0.row_data(*row);
                 if !r.labels.is_empty() || r.tail != Tail::Closed {
                     out.push_str(" ! ");
                     self.write_row(*row, names, out);
@@ -103,7 +108,7 @@ impl Infer {
             Type::Handler { label, row } => {
                 out.push_str("Handler<");
                 self.write_label(label.effect, &label.args, names, out);
-                let r = self.interner.row_data(*row);
+                let r = self.0.row_data(*row);
                 if !r.labels.is_empty() || r.tail != Tail::Closed {
                     out.push_str(", ");
                     self.write_row(*row, names, out);
@@ -117,7 +122,7 @@ impl Infer {
             }
             Type::Never => out.push_str("Never"),
             Type::Var(v) => out.push_str(&format!("?T{}", v.0)),
-            Type::Param(p) => out.push_str(&self.interner.param(*p).name),
+            Type::Param(p) => out.push_str(&self.0.param(*p).name),
             Type::Error => out.push_str("{unknown}"),
             Type::RowArg(r) => self.write_row(*r, names, out),
         }
@@ -133,7 +138,7 @@ impl Infer {
     }
 
     fn write_row(&self, row: RowId, names: &dyn Names, out: &mut String) {
-        let r = self.interner.row_data(row);
+        let r = self.0.row_data(row);
         if r.labels.is_empty()
             && let Some(t) = self.tail_name(r.tail)
         {
@@ -169,6 +174,23 @@ impl Infer {
             out.push('>');
         }
     }
+}
+
+/// `ty` from a finished program (a [`crate::TypedProgram`]'s interner) in surface syntax,
+/// for hover and completion: the same text the checker's diagnostics use.
+pub fn render_type(interner: &Interner, program: &sakura_hir::Program, ty: TypeId) -> String {
+    let names = |d: DefId| program.def(d).name.clone();
+    let mut out = String::new();
+    Writer(interner).write_ty(ty, &names, &mut out);
+    out
+}
+
+/// `row` from a finished program, as [`render_type`] does for types.
+pub fn render_row(interner: &Interner, program: &sakura_hir::Program, row: RowId) -> String {
+    let names = |d: DefId| program.def(d).name.clone();
+    let mut out = String::new();
+    Writer(interner).write_row(row, &names, &mut out);
+    out
 }
 
 pub fn effect_name(effect: Effect, names: &dyn Names) -> String {

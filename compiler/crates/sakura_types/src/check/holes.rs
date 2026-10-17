@@ -15,8 +15,8 @@ impl Checker<'_> {
             let expected_render = self.render(expected);
             let allowed_row = self.b.allowed_row;
             let allowed_effects = match allowed_row {
-                Some(r) => self.render_row(r),
-                None => "{}".into(),
+                Some(r) => self.rendered_row(r),
+                None => sakura_diagnostics::Rendered::row("{}", Vec::new(), None),
             };
             let mut locals = Vec::new();
             let mut seen = Vec::new();
