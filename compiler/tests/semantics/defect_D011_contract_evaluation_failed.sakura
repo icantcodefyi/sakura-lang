@@ -2,7 +2,6 @@
 // needs: contract checks; the predicate itself divides by zero
 // expect-exit: 70
 // expect-defect: D011
-// known-bug: a defect inside a contract predicate surfaces as its own code (D002), not D011 (design §7.1; REQUESTS.md, F to D)
 // covers: Defect
 
 fn ratio(x: Int) -> Int
