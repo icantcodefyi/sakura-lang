@@ -1,5 +1,4 @@
 // URLs (design §10.3). `Url.from(s)` and `Url.validate(s)` are generated from the refinement.
-// needs M3: the `url"…"` template, which percent-encodes interpolated parts.
 
 /// An absolute `http://` or `https://` URL, or an origin-form path such as `/users?id=1`.
 pub type Url = String where is_valid(it)
@@ -39,6 +38,37 @@ pub fn query_param(u: Url, name: String) -> Option<String> {
   List.first(values)
 }
 
+/// `url"https://api.example.com/search?q={query}"` (design §4.11): each interpolated value is
+/// percent-encoded, so it cannot add a path segment, a query parameter or a fragment. The
+/// literal text must make a valid `Url`.
+pub fn template(parts: List<String>, args: List<String>) -> Url {
+  var text = parts.first().unwrap_or("")
+  for pair in List.enumerate(args) {
+    text = text + encode_component(pair.1) + parts[pair.0 + 1].unwrap_or("")
+  }
+  Url.from(text)
+}
+
+/// Percent-encodes the UTF-8 bytes of every character except `A–Z a–z 0–9 - . _ ~`.
+pub fn encode_component(s: String) -> String {
+  let unreserved = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
+  var out = ""
+  for c in String.chars(s) {
+    if String.contains(unreserved, c) {
+      out = out + c
+    } else {
+      let b = String.to_bytes(c)
+      for i in 0..Bytes.len(b) {
+        let byte = Bytes.get(b, i).unwrap_or(0)
+        out = out + "%" + hex_digit(byte / 16) + hex_digit(byte % 16)
+      }
+    }
+  }
+  out
+}
+
+fn hex_digit(n: Int) -> String { String.chars("0123456789ABCDEF")[n].unwrap_or("0") }
+
 test "host, path and query" {
   let u = Url.from("https://example.com:8080/a/b?q=1&r=two")
   expect_eq(host(u), Some("example.com:8080"))
@@ -48,4 +78,11 @@ test "host, path and query" {
   expect_eq(query_param(u, "r"), Some("two"))
   expect_eq(query_param(u, "s"), None)
   expect(Url.validate("ftp://x").is_err())
+}
+
+test "template percent-encodes interpolated values" {
+  // What `url"https://x.test/search?q={q}"` calls; tagged templates do not run on JS yet.
+  let q = "a b&c=d/é"
+  expect_eq(template(["https://x.test/search?q=", ""], [q]), Url.from("https://x.test/search?q=a%20b%26c%3Dd%2F%C3%A9"))
+  expect_eq(template(["/users/", "/posts"], ["7"]), Url.from("/users/7/posts"))
 }
