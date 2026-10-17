@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 /// `vow check`). Raised as each milestone's pipeline lands; -1 means none is enforced yet.
 pub const UI_MILESTONE: i8 = 2;
 /// Waits for Core lowering (`vow run` needs it).
-pub const SEMANTICS_MILESTONE: i8 = -1;
+pub const SEMANTICS_MILESTONE: i8 = 2;
 
 /// Every invocation is killed after this; a hang is a test failure, not a stuck CI job.
 pub const TIME_LIMIT: Duration = Duration::from_secs(30);
