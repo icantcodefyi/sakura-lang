@@ -514,3 +514,61 @@ fn build_manifest_lists_trusted_base_and_obligations() {
     );
     assert!(!broken.join("target/sakura/manifest.json").exists());
 }
+
+/// Design §17.73 (gate 6): `sakura test --record` needs `net` hosts in the manifest, and only
+/// then makes `Test.fixtures()` writable for the cassettes.
+#[test]
+fn test_record_needs_net_and_makes_fixtures_writable() {
+    let dir = tmp(
+        "record",
+        r#"import std/fs.{Fs, FsError}
+import std/path.{Path}
+
+fn probe() -> String ! {Fs} {
+  try {
+    Fs.write(Path.of("probe.txt"), String.to_bytes("x"))
+    "wrote"
+  } catch {
+    FsError { .. } => "read-only",
+  }
+}
+
+test "fixtures are writable while recording" {
+  expect_eq(with Fs.rooted(Test.fixtures()) { probe() }, "wrote")
+}
+"#,
+    );
+    let manifest = "[package]\nname = \"record\"\n\n[permissions]\n";
+    std::fs::write(dir.join("sakura.toml"), manifest).unwrap();
+    let refused = sakura(&["test", "--record", "main.sakura"], &dir);
+    assert_eq!(refused.code, Some(75), "{}", refused.stderr);
+    assert!(
+        refused.stderr.contains("[permissions] net"),
+        "{}",
+        refused.stderr
+    );
+    assert!(refused.stdout.is_empty());
+
+    // Without `--record` the fixtures are read-only.
+    let plain = sakura(&["test", "main.sakura"], &dir);
+    assert_eq!(plain.code, Some(3), "{}{}", plain.stdout, plain.stderr);
+    assert!(plain.stdout.contains("read-only"), "{}", plain.stdout);
+
+    std::fs::write(
+        dir.join("sakura.toml"),
+        format!("{manifest}net = [\"api.example.com:443\"]\n"),
+    )
+    .unwrap();
+    let recorded = sakura(&["test", "--record", "main.sakura"], &dir);
+    assert_eq!(
+        recorded.code,
+        Some(0),
+        "{}{}",
+        recorded.stdout,
+        recorded.stderr
+    );
+    assert_eq!(
+        std::fs::read_to_string(dir.join("tests/fixtures/probe.txt")).unwrap(),
+        "x"
+    );
+}

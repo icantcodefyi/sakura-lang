@@ -114,15 +114,8 @@ enum Command {
         /// One JSON `test` record per test, then a `summary` record.
         #[arg(long)]
         json: bool,
-        /// Seed for `Random.seeded` and property generators.
-        #[arg(long, default_value_t = 0)]
-        seed: u64,
-        /// Run only tests whose name contains this text.
-        #[arg(long)]
-        filter: Option<String>,
-        /// Write `tests/__snapshots__/<module>/<name>.snap` files instead of comparing them.
-        #[arg(long)]
-        update_snapshots: bool,
+        #[command(flatten)]
+        flags: TestFlags,
         /// Run the embedded std library's own tests instead of a project's.
         #[arg(long, conflicts_with = "paths")]
         std: bool,
@@ -181,6 +174,25 @@ enum Command {
     /// Language server on stdin/stdout: diagnostics, hover, go to definition, completion,
     /// formatting and quick fixes. The workspace is the client's first workspace folder.
     Lsp,
+}
+
+/// `sakura test` options that shape the run (besides what to build and where).
+#[derive(clap::Args)]
+struct TestFlags {
+    /// Seed for `Random.seeded` and property generators.
+    #[arg(long, default_value_t = 0)]
+    seed: u64,
+    /// Run only tests whose name contains this text.
+    #[arg(long)]
+    filter: Option<String>,
+    /// Write `tests/__snapshots__/<module>/<name>.snap` files instead of comparing them.
+    #[arg(long)]
+    update_snapshots: bool,
+    /// Let `Http.recording`/`Llm.replay` forward misses to the network (only the hosts in
+    /// the manifest's `[permissions] net`) and append them to their `tests/fixtures`
+    /// cassettes.
+    #[arg(long)]
+    record: bool,
 }
 
 #[derive(Subcommand)]
@@ -275,9 +287,7 @@ fn dispatch(command: Command) -> ExitCode {
         } => run(path, &out_dir, &args),
         Command::Test {
             json,
-            seed,
-            filter,
-            update_snapshots,
+            flags,
             std,
             out_dir,
             paths,
@@ -288,15 +298,7 @@ fn dispatch(command: Command) -> ExitCode {
                 load(&paths)
             };
             match snapshot {
-                Ok(snapshot) => test(
-                    json,
-                    seed,
-                    filter.as_deref().unwrap_or(""),
-                    update_snapshots,
-                    &out_dir,
-                    &snapshot,
-                    std,
-                ),
+                Ok(snapshot) => test(json, &flags, &out_dir, &snapshot, std),
                 Err(e) => usage_error(e),
             }
         }
@@ -514,13 +516,35 @@ fn run(path: Option<PathBuf>, out_dir: &Path, args: &[String]) -> ExitCode {
 
 fn test(
     json: bool,
-    seed: u64,
-    filter: &str,
-    update_snapshots: bool,
+    flags: &TestFlags,
     out_dir: &Path,
     snapshot: &Snapshot,
     std_tests: bool,
 ) -> ExitCode {
+    // Design §17.73: recording reaches exactly the manifest's `net` hosts, so it needs some.
+    let TestFlags {
+        seed,
+        ref filter,
+        update_snapshots,
+        record,
+    } = *flags;
+    let filter = filter.as_deref().unwrap_or("");
+    let net = if record {
+        let net = match Analysis::analyze(snapshot).manifest() {
+            Some(Ok(m)) => m.permissions.net,
+            Some(Err(e)) => return usage_error(format!("sakura.toml: {e}")),
+            None => Vec::new(),
+        };
+        if net.is_empty() {
+            eprintln!(
+                "error: permission denied: `sakura test --record` reaches only the hosts in sakura.toml's `[permissions] net`, and it lists none"
+            );
+            return ExitCode::from(EXIT_PERMISSION);
+        }
+        Some(net)
+    } else {
+        None
+    };
     let opts = BuildOptions {
         need_entry: false,
         std_tests: std_tests || testing::only_std(snapshot),
@@ -544,6 +568,7 @@ fn test(
         filter,
         &snapshots,
         update_snapshots,
+        net.as_deref(),
         TEST_TIME_LIMIT,
     ) {
         Ok(run) => run,

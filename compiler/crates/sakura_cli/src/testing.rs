@@ -48,14 +48,17 @@ pub struct NodeRun {
     pub status: Option<ExitStatus>,
 }
 
-/// Runs the tests in a build directory. Tests read only their build output and snapshots: no
-/// network, no child processes, and writes only to snapshots under `update`.
+/// Runs the tests in a build directory. Tests read only their build output, snapshots and
+/// fixtures: no network, no child processes, and writes only to snapshots under `update`.
+/// `record` (`sakura test --record`, design §17.73) lists the `net` hosts the tests may reach,
+/// and makes `tests/fixtures` writable so `Http.recording` can append to its cassettes.
 pub fn run_node_tests(
     dir: &Path,
     seed: u64,
     filter: &str,
     snapshots: &Path,
     update: bool,
+    record: Option<&[String]>,
     limit: Duration,
 ) -> Result<NodeRun, String> {
     let dir = std::fs::canonicalize(dir).unwrap_or_else(|_| dir.to_path_buf());
@@ -68,10 +71,23 @@ pub fn run_node_tests(
             "--allow-fs-read={}",
             snapshots.with_file_name("fixtures").display()
         ));
+    // Node's permission model cannot create a granted directory itself.
+    let writable = |cmd: &mut std::process::Command, d: &Path| {
+        std::fs::create_dir_all(d).map_err(|e| format!("{}: {e}", d.display()))?;
+        cmd.arg(format!("--allow-fs-write={}", d.display()));
+        Ok::<(), String>(())
+    };
     if update {
-        // Node's permission model cannot create the granted directory itself.
-        std::fs::create_dir_all(snapshots).map_err(|e| format!("{}: {e}", snapshots.display()))?;
-        cmd.arg(format!("--allow-fs-write={}", snapshots.display()));
+        writable(&mut cmd, snapshots)?;
+    }
+    if let Some(net) = record {
+        writable(&mut cmd, &snapshots.with_file_name("fixtures"))?;
+        // Only the hosts: the runtime's `http_send` checks them (runtime/js/ABI.md §7).
+        let permissions =
+            serde_json::json!({"fs": {"read": [], "write": []}, "net": net, "env": []});
+        cmd.arg("--allow-net")
+            .env("SAKURA_RECORD", "1")
+            .env("SAKURA_PERMISSIONS", permissions.to_string());
     }
     cmd.arg("--max-old-space-size=1024")
         .arg(dir.join("__sakura_test__.js"))
@@ -144,6 +160,7 @@ pub fn mcp_run_tests(
             &req.filter,
             &req.root.join("tests/__snapshots__"),
             false,
+            None,
             req.budget,
         )
     } else {
