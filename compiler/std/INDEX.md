@@ -80,6 +80,7 @@ ones in design §10.2–§10.7.
 
 ```vow
 fn show<A: Show>(a: A) -> String    // @external
+type Violation = { type_name: String, clause: String, value_summary: String }
 ```
 
 ### `std/unit`
