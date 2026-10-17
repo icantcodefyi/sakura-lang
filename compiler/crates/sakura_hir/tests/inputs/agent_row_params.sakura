@@ -1,0 +1,33 @@
+// Input for the `sakura_hir` lowering snapshot of a type with a row parameter (plan
+// m3-completion-and-m4 WS4.9): the shapes of `std/tool.Tool<e>` and `std/agent.Agent<T, e>`,
+// self-contained so the snapshot does not depend on the real std.
+
+pub type Tool<e> = { name: String, run: fn(Int) -> Int ! e }
+
+pub type Agent<T, e> = { goal: T, tools: List<Tool<e>>, max_steps: Int }
+
+pub fn tool<e>(name: String, run: fn(Int) -> Int ! e) -> Tool<e> { Tool { name, run } }
+
+pub fn run<T, e>(a: Agent<T, e>, input: Int) -> Int ! e {
+  var acc = input
+  for t in a.tools { acc = t.run(acc) }
+  acc
+}
+
+pub fn pure_agent() -> Agent<String, {}> {
+  Agent { goal: "double", tools: [tool("double", fn(x) { x * 2 })], max_steps: 1 }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let loud: Agent<String, {Console}> = Agent {
+    goal: "print",
+    tools: [
+      tool("print", fn(x) {
+        Console.print("{x}")
+        x
+      }),
+    ],
+    max_steps: 1,
+  }
+  let _ = run(loud, run(pure_agent(), 1))
+}
