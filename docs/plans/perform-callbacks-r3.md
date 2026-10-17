@@ -39,8 +39,9 @@ Commits scoped `runtime`/`codegen`/`core`/`types`/`std`, each message ending wit
    callback parameter contributes only the *tail* of the callback's declared row (never its concrete
    labels); at the handler boundary the operation's row parameters are removed from the clause row.
    The clause's `Fail` tags must still be ⊆ the operation's declared `Fail` (existing rule).
-4. Std: file access is `Fs.read_chunk`/`Fs.write_chunk` operations on an external `File`;
-   `Serve` has one operation `serve(handle, addr)` and `Serve.listen(router, addr)` is a function.
+4. Std: file access is the `Fs` operations `read_chunk`/`write_chunk` on the `File` resource (F's
+   opaque record over D's `Int` file ids, landed in `15816f7`); `Serve` has one operation
+   `serve(handle, addr)` and `Serve.listen(router, addr)` is a function.
 
 ## 1. D — runtime, codegen, core
 
@@ -75,32 +76,18 @@ list-nested closures, §16.20).
 
 ### 1.2 `sakura_core`: rigid operation parameters in clauses
 
-When C lands §2.1 the typed clause body names the operation's generics as `Type::Param`/rigid
-tails instead of inference variables. Lowering (`compiler/crates/sakura_core/src/lower/`, the
+C made the operation's *type* parameters rigid in clauses (`dcf2b0f`); §2.1 does the same for
+its row parameters. The typed clause body then names every generic as `Type::Param`/rigid tails
+instead of inference variables. Lowering (`compiler/crates/sakura_core/src/lower/`, the
 "recovers them by matching the operation's scheme" path D described in REQUESTS.md) must accept
 rigid params directly and keep the matching only as a fallback until C's change is on master,
 then delete it. Schema arguments for `Show`/`Schema`-bounded operation parameters keep arriving
 after the declared parameters (ABI §7 "Generic operations").
 
-### 1.3 `file_*` externals for `std/fs` (ABI §8)
+### 1.3 `file_*` externals for `std/fs`
 
-`File` is an external value (`$rt.File`, private fields `{ kind: "host" | "buffer", fd | bytes,
-pos, path, mode }`), only built by `file_open` and `file_buffer`. Signatures F declares (replacing
-the `Int`-id versions in `std/fs.sakura`):
-
-```sakura
-@external(js, "sakura_runtime", "file_open")     fn file_open(d: Dir, path: String, mode: Mode) -> Result<File, String>  // inside d, same escape rules as fs_read
-@external(js, "sakura_runtime", "file_buffer")   fn file_buffer(initial: Bytes) -> File                                   // in-memory, positioned at 0
-@external(js, "sakura_runtime", "file_closing")  fn file_closing<T, e>(f: File, body: fn() -> T ! e) -> T ! e             // CPS; closes f via finalize on return, fail, defect, cancel
-@external(js, "sakura_runtime", "file_read")     fn file_read(f: File, max: Int) -> Result<Bytes, String>                 // empty at end; Err after close
-@external(js, "sakura_runtime", "file_write")    fn file_write(f: File, data: Bytes) -> Result<Unit, String>              // at the end; Err("opened for reading") for Read
-@external(js, "sakura_runtime", "file_contents") fn file_contents(f: File) -> Bytes                                       // whole buffer, open or closed; releases it
-@external(js, "sakura_runtime", "file_path")     fn file_path(f: File) -> String                                          // for FsError messages
-```
-
-`file_closing` runs `body` with `ctx` as given (it is called from the clause with a lambda that
-calls the already re-bound callback, so no `p` handling is needed here). Permissions: `file_open`
-with `Write`/`Append` needs the path under `fs.write`, `Read` under `fs.read`, as `fs_read`/`fs_write`.
+Landed in `15816f7` with `Int` file ids (ABI §7 "Open files"); nothing further. `file_closing`
+receives a lambda that calls the already re-bound callback, so it needs no `p` handling.
 
 ### 1.4 Tests (D)
 
@@ -145,21 +132,21 @@ with `Write`/`Append` needs the path under `fs.write`, `Read` under `fs.read`, a
   Expected stdout: `a = 5` then `b = 10`. Under the old semantics the callback ran outside the
   clause's frame, so its `Store.put` found no handler at all (`D090`) in the first `with` and only
   `memory()` (printing `b = 5`) in the second.
-- `tests/semantics/std_fs_with_file.sakura` (M3, F's fixture) passes with `Fs.rooted` and
-  `Fs.memory`, including a body that performs `Fs.read` on another path and one that fails.
+- `tests/semantics/std_fs_with_file.sakura` (M3, F's fixture) keeps passing after §3.1, including
+  a body that performs `Fs.read` on another path and one that fails.
 - An attenuation test in `sakura_codegen_js` e2e: `with Fs.rooted(Dir.subdir(Fs.root(), "data")) {
   Fs.with_file(p, Read, fn(f) { Fs.read(Path.of("secret.txt")) }) }` reads `data/secret.txt`, not the
   package root's.
-- ABI.md §3 and §8 updated (callback binding, `File`, `file_*`).
+- ABI.md §3 updated (callback binding).
 
 ## 2. C — `sakura_types`
 
 ### 2.1 Clauses are checked against the operation with rigid parameters
 
-In the handler-expression checker (`src/check/`, the code path that today instantiates the
-operation's scheme with fresh variables for each clause): instantiate the effect's and the
-operation's generics (the same index space `generics_of` builds: effect generics then op
-generics) as **rigid** `Type::Param`/`Tail::Param` for the duration of the clause, with the row
+`dcf2b0f` already checks a clause with the operation's type parameters rigid; extend it to the
+row parameters: instantiate the effect's and the operation's generics (the same index space
+`generics_of` builds: effect generics then op generics) as **rigid** `Type::Param`/`Tail::Param`
+for the duration of the clause, with the row
 kinds computed by `fail_free_row_params` on the operation declaration (plan r2 §1.5.1). Clause
 parameters take the declared parameter types; the body is checked against the declared result type.
 `Show`/`Schema` bounds on those params behave as in any generic function body (dictionary passing
@@ -199,18 +186,22 @@ keeps its existing code; `handler_callback_context.sakura` above type-checks wit
 
 ### 3.1 `std/fs`
 
-- `pub type File` (external; delete the opaque record). Operations added to `Fs`:
+- `File` stays `pub opaque type File = { id: Int, path: Path, mode: Mode }` over D's `Int` ids
+  (`15816f7`; it becomes external with the M3 escape check, §16.18). Operations added to `Fs`:
   `read_chunk(file: File, max: Int) -> Bytes ! {Fail<FsError>} requires max > 0` and
   `write_chunk(file: File, data: Bytes) -> Unit ! {Fail<FsError>}`; `pub fn read_all(file: File) ->
   Bytes ! {Fs, Fail<FsError>}` over `Fs.read_chunk`. Delete the `File.read_chunk`/`write_chunk`
   functions and `awaiting_runtime`.
-- `rooted(dir)`: `fn with_file(path, mode, body) { let f = ok_or_fail(path, file_open(dir,
-  Path.to_string(path), mode)); file_closing(f, fn() { body(f) }) }`, `fn read_chunk(f, max) {
-  ok_or_fail(Path.of(file_path(f)), file_read(f, max)) }`, `fn write_chunk(f, data)` likewise.
-- `memory(files)`: compute `initial` from `store` and `mode`, `let f = file_buffer(initial)`, `let
-  r = file_closing(f, fn() { body(f) })`, then `if mode != Read { store = Map.insert(store, key,
-  file_contents(f)) }` **after** the body (the body may have written other paths through this same
-  instance), return `r`; `read_chunk`/`write_chunk` clauses are the same one-liners as in `rooted`.
+- `rooted(dir)`: `fn with_file(path, mode, body) { let id = ok_or_fail(path, file_open(dir,
+  Path.to_string(path), mode)); file_closing(id, fn() { body(File { id, path, mode }) }) }` (the
+  prepared `host_file` helper is fine too), `fn read_chunk(f, max) { ok_or_fail(f.path,
+  file_read(f.id, max)) }`, `fn write_chunk(f, data)` likewise, keeping the `Read`-mode check.
+- `memory(files)`: compute `initial` from `store` and `mode`, `let id = file_buffer(initial)`, `let
+  r = file_closing(id, fn() { body(File { id, path, mode }) })`, then `if mode != Read { store =
+  Map.insert(store, key, file_contents(id)) }` **after** the body, reading `store` afresh (the body
+  may have written other paths through this same instance; the prepared `buffer_file` threads a
+  stale store and must go), return `r`; `read_chunk`/`write_chunk` clauses are the same one-liners
+  as in `rooted`.
 - Docs: the module comment and `Fs` doc comments per design §10.2; INDEX deviation 20 becomes a
   one-line "resolved (§17.48)" note or is deleted.
 

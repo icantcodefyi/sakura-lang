@@ -8,34 +8,12 @@ sakura_cli --locked` runs `sakura test --std` and the example corpus).
 
 ---
 
-## 1. B — `@llm` bodies (`sakura_hir`, §11.1)
+## 1. `@llm` bodies (§11.1): done
 
-Desugar at lowering, from the declared signature alone:
-
-```sakura
-@llm(system: S)
-fn f(p1: T1, …, pn: Tn) -> R ! Row
-// becomes
-fn f(p1: T1, …, pn: Tn) -> R ! Row {
-  let req: Request<R> = Llm.request(S, Prompt.of([part1, …, partn]))
-  Llm.generate(req)
-}
-```
-
-- `parti` is `PromptPart.Untrusted(pi)` when `Ti` resolves to the builtin `Untrusted` applied to the
-  builtin `String` (after alias resolution of the `TypeRef`), otherwise
-  `PromptPart.Text("<pi>: {show(pi)}")` (an interpolated string: literal `"<name>: "` plus `show(pi)`;
-  the `Show` requirement surfaces as `V2032` from C, which is the intended error).
-- `S` must be the attribute's `system:` string literal; a missing or non-literal `system` is `V1010`
-  with the message "`@llm` needs `system: \"…\"`"; a `@llm` function with a body is `V1010`.
-- Std names are resolved by DefId through the std package regardless of the module's imports:
-  `std/llm.request`, operation `generate` of `std/llm.Llm`, `std/prompt.of`, variants `Untrusted`
-  and `Text` of `std/prompt.PromptPart`, `std/core.show`; the annotation `Request<R>` names
-  `std/llm.Request`. If the program has no std (`--no-std` tests), report `V1010` "needs std/llm".
-- Nothing bodiless but `@external` reaches `sakura_core` afterwards; D's `V9002 a bodiless function
-  is not supported` becomes unreachable for `@llm` (keep it for safety).
-- Tests: a lowering snapshot of `examples/llm_extract`'s `extract_ticket`; `examples/llm_extract`
-  (mode `test`) passes end to end under `Llm.scripted`; `tests/ui/V1010_llm_without_system.sakura`.
+D lowered bodiless `@llm` functions in `sakura_core` (`ed3d2d9`, ABI §7 "`@llm` functions"); it
+matches §11.1 and §17.65 endorses it. Nothing for B. Optional later: report a missing or non-literal
+`system:` and a `@llm` function with a body as `V1010` from attribute validation in `sakura_hir`
+(today the lowering rejects them as unsupported).
 
 ## 2. B — `Tool.of(f)` (`sakura_hir`, §11.2)
 
@@ -101,10 +79,11 @@ fn f(p1: T1, …, pn: Tn) -> R ! Row {
 
 ## 4. D — runtime
 
-- Property runner (`sakura_runtime.js`, the `run(i)` loop): a property fails when `discards >
-  Math.floor(0.9 * RUNS)` after the loop, with the message `property gave up: N of M inputs
-  discarded by requires` (keep the all-discarded wording as the same message). Covered by a
-  `sakura_codegen_js` test with a property whose `requires` holds for about 5% of inputs.
+- Property runner (`sakura_runtime.js`, the `run(i)` loop): the value-reuse heuristic (`877deae`)
+  stays; additionally a property fails when `discards > Math.floor(0.9 * RUNS)` after the loop,
+  with the message `property gave up: N of M inputs discarded by requires` (the all-discarded case
+  uses the same message). Covered by a `sakura_codegen_js` test with a property whose `requires`
+  holds for about 5% of inputs.
 - `http_send`: send every `req.secret_headers` entry as a header (value exposed from the `Secret`
   at send time), after the plain headers; never log them. `llm_anthropic`: build its internal
   `Request` with `x-api-key` in `secret_headers`, not `headers`. `Http.scripted` runs in Sakura and

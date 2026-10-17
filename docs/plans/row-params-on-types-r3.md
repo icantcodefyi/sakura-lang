@@ -106,9 +106,9 @@ for a closed `{Http, Fail<…>}` callback and the enclosing signature closes `?t
 
 ## 4. C — rigid operation parameters in clauses and callback rows
 
-Specified in `docs/plans/perform-callbacks-r3.md` §2 (rigid generics per clause, callback calls
-contribute only their tail, operation row parameters removed at the clause boundary). Land it in
-the same round; it removes the inference-variable workaround D described in REQUESTS.md.
+Rigid *type* parameters landed in `dcf2b0f`; rigid *row* parameters, callback calls contributing
+only their tail, and the removal of operation row parameters at the clause boundary are specified
+in `docs/plans/perform-callbacks-r3.md` §2. Land them in the same round.
 
 ## 5. C — structured row on holes (§17.61)
 
