@@ -397,7 +397,7 @@ fn never_and_refinements_subsume() {
     assert!(inf.subsume(never, int).is_ok());
     assert!(inf.unify(never, int).is_err());
     let email = inf.interner.con(TyCon::Adt(test_def(42)), vec![]);
-    inf.refined_bases.insert(test_def(42), string);
+    inf.refined_bases.insert(test_def(42), (string, vec![]));
     assert!(inf.subsume(email, string).is_ok());
     assert!(inf.subsume(string, email).is_err());
     let lists = (

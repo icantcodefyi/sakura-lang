@@ -942,8 +942,8 @@ impl Checker<'_> {
                 return self.apply(e, ft, vec![rr], recv, args);
             }
             // A refined type falls back to its base type's home module (§4.3).
-            if let Type::Con(TyCon::Adt(d), _) = self.inf.interner.ty(cur)
-                && let Some(base) = self.inf.refined_bases.get(d).copied()
+            if let Type::Con(TyCon::Adt(d), args) = self.inf.interner.ty(cur).clone()
+                && let Some(base) = self.inf.refined_base(d, &args)
             {
                 cur = self.inf.shallow(base);
                 continue;
@@ -1059,8 +1059,9 @@ impl Checker<'_> {
                     }
                     return self.inf.interner.error();
                 }
-                Type::Con(TyCon::Adt(d), _) if self.inf.refined_bases.contains_key(&d) => {
-                    cur = self.inf.shallow(self.inf.refined_bases[&d]);
+                Type::Con(TyCon::Adt(d), args) if self.inf.refined_bases.contains_key(&d) => {
+                    let base = self.inf.refined_base(d, &args).expect("refined");
+                    cur = self.inf.shallow(base);
                 }
                 _ => {
                     let shown = self.render(cur);
@@ -1117,9 +1118,9 @@ impl Checker<'_> {
     /// Strips refinements to the base type (refined values coerce to their base, §4.3).
     fn base_of(&mut self, t: TypeId) -> TypeId {
         let mut t = self.inf.settle(t);
-        while let Type::Con(TyCon::Adt(d), _) = self.inf.interner.ty(t) {
-            match self.inf.refined_bases.get(d) {
-                Some(b) => t = self.inf.shallow(*b),
+        while let Type::Con(TyCon::Adt(d), args) = self.inf.interner.ty(t).clone() {
+            match self.inf.refined_base(d, &args) {
+                Some(b) => t = self.inf.shallow(b),
                 None => break,
             }
         }

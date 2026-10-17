@@ -1,0 +1,35 @@
+// milestone: M3
+// covers: TypeDecl TypeParams
+// spec: §4.3, §4.4
+
+// A generic refined type is its base at its own arguments: `NonEmpty<Int>` is a `List<Int>`
+// for calls, methods, constraints and patterns, and its `from`/`validate` check the `where`.
+import std/core.{Violation}
+
+type NonEmpty<T> = List<T> where List.len(it) > 0
+type Box<T> = { item: T }
+type Full<T> = Box<T> where true
+
+fn top(xs: NonEmpty<Int>) -> Int {
+  let first = match xs {
+    [x, ..] => x,
+    [] => 0,
+  }
+  List.fold(xs, first, fn(best, s) { Int.max(best, s) })
+}
+
+fn check(xs: List<String>) -> String {
+  let r: Result<NonEmpty<String>, Violation> = NonEmpty.validate(xs)
+  match r {
+    Ok(ok) => "{ok.len()} {ok == ok}",
+    Err(v) => "rejected {v.type_name}",
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let scores = NonEmpty.from([3, 9, 4])
+  Console.print("{top(scores)} {scores}")
+  Console.print(check(["a", "b"]))
+  Console.print(check([]))
+  Console.print("{Full.from(Box { item: 41 }).item + 1}")
+}

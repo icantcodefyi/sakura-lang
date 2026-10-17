@@ -165,8 +165,10 @@ pub struct Infer {
     ty_vars: Vec<TySlot>,
     row_vars: Vec<RowSlot>,
     level: u32,
-    /// Refined type → its base type, for the implicit refinement-to-base coercion (§4.3).
-    pub refined_bases: HashMap<DefId, TypeId>,
+    /// Refined type → its base type, in terms of the type's own parameters, and the parameter
+    /// of each positional argument slot (`None` for a row slot). Read it through
+    /// [`Infer::refined_base`], which takes the base at a use's arguments (§4.3).
+    pub refined_bases: HashMap<DefId, (TypeId, Vec<Option<ParamId>>)>,
 }
 
 #[derive(Clone, Copy)]
@@ -178,6 +180,19 @@ enum Mode {
 impl Infer {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// The base of refined type `def` at its positional `args` (`NonEmpty<Int>` → `List<Int>`).
+    // ponytail: row arguments are not substituted; a refined type over an effectful function
+    // type would keep its row parameter. Carry row slots here if one ever appears.
+    pub fn refined_base(&mut self, def: DefId, args: &[TypeId]) -> Option<TypeId> {
+        let (base, params) = self.refined_bases.get(&def)?.clone();
+        let tys = params
+            .iter()
+            .zip(args)
+            .filter_map(|(p, a)| Some(((*p)?, *a)))
+            .collect();
+        Some(self.substitute(base, &tys, &HashMap::new()))
     }
 
     // ---- variables and levels ----
@@ -743,10 +758,10 @@ impl Infer {
                 }
                 self.relate_rows_err(w1, w2, mode)
             }
-            (Type::Con(TyCon::Adt(def), _), _)
+            (Type::Con(TyCon::Adt(def), args), _)
                 if matches!(mode, Mode::Subsume) && self.refined_bases.contains_key(&def) =>
             {
-                let base = self.refined_bases[&def];
+                let base = self.refined_base(def, &args).expect("refined");
                 self.relate(base, e, mode).map_err(|_| UnifyError::Types {
                     actual: a,
                     expected: e,

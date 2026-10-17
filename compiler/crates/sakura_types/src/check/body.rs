@@ -104,7 +104,7 @@ impl<'p> Checker<'p> {
                     }
                 }
                 if let TypeDefBody::Refined { pred, .. } = &td.body {
-                    let base = self.inf.refined_bases.get(&def).copied();
+                    let base = self.inf.refined_bases.get(&def).map(|r| r.0);
                     let body = program.body(module, *pred);
                     if let (Some(base), Some(value)) = (base, body.value) {
                         let generics = self.generics_of(def);
@@ -654,7 +654,7 @@ impl<'p> Checker<'p> {
         vars: &mut Vec<TypeId>,
         seen: &mut HashSet<TypeId>,
     ) -> bool {
-        if let Some(base) = self.inf.refined_bases.get(&def).copied() {
+        if let Some(base) = self.inf.refined_base(def, args) {
             return self.holds(base, c, vars, seen);
         }
         if self.is_record(def) {

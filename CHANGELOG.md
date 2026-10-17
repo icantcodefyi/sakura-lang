@@ -90,5 +90,8 @@ published yet.
   keeps one-line block comments inline in lists and statements, and lays out comments after
   `=` and `=>` instead of copying the statement verbatim. If formatting would still lose a
   comment or produce code that does not parse, the file is left unchanged and `V9001` reported.
+- A generic refined type such as `type NonEmpty<T> = List<T> where List.len(it) > 0` is its
+  base at its own arguments: `NonEmpty<Int>` now coerces to `List<Int>` for calls, methods,
+  fields, patterns and constraints instead of reporting `V2032`/`V2001` about `T`.
 
 [Unreleased]: https://github.com/icantcodefyi/sakura-lang/commits/master

@@ -341,3 +341,22 @@ fn std_contracts_are_exempt() {
     let c = check("fn f() -> Int { 1 }\n");
     assert!(c.std_diags.is_empty(), "{:?}", c.std_diags);
 }
+
+// ---- §4.3: a generic refined type's base is taken at its arguments ----
+
+const GENERIC: &str = "import std/core.{Violation}\ntype NonEmpty<T> = List<T> where List.len(it) > 0\ntype Box<T> = { item: T }\ntype Full<T> = Box<T> where true\ntype Small<T> = Int where it < 10\n";
+
+#[test]
+fn generic_refinements_coerce_to_their_base_at_the_arguments() {
+    let src = "fn top(xs: NonEmpty<Int>) -> Int { List.fold(xs, 0, fn(best, s) { Int.max(best, s) }) }\nfn count(xs: NonEmpty<String>) -> Int { xs.len() }\nfn shown(xs: NonEmpty<Int>) -> String { \"{xs}\" }\nfn same(xs: NonEmpty<Int>) -> Bool { xs == xs }\nfn item(b: Full<Int>) -> Int { b.item + 1 }\nfn head(xs: NonEmpty<Int>) -> Int {\n  match xs {\n    [x, ..] => x,\n    [] => 0,\n  }\n}\nfn wrap() -> NonEmpty<Int> { NonEmpty.from([1, 2]) }\nfn checked() -> Result<NonEmpty<Int>, Violation> { NonEmpty.validate([1]) }\nfn small() -> Small<String> { 3 }\n";
+    let c = check(&format!("{GENERIC}{src}"));
+    assert!(c.diags.is_empty(), "{}", c.render());
+}
+
+#[test]
+fn generic_refinements_keep_their_arguments_and_decide_literals() {
+    let c = check(&format!(
+        "{GENERIC}fn wrong(xs: NonEmpty<Int>) -> List<String> {{ xs }}\nfn big() -> Small<String> {{ 11 }}\n"
+    ));
+    assert_eq!(c.codes(), ["V2001", "V5004"], "{}", c.render());
+}

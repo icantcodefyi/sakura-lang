@@ -45,8 +45,7 @@ impl Checker<'_> {
         let Type::Con(TyCon::Adt(r), args) = self.inf.interner.ty(ty).clone() else {
             return None;
         };
-        let base = *self.inf.refined_bases.get(&r)?;
-        let base = self.at_args(r, &args, base);
+        let base = self.inf.refined_base(r, &args)?;
         let DefKind::Type(td) = &self.program.def(r).kind else {
             return None;
         };

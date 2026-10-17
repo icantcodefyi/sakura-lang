@@ -45,7 +45,14 @@ impl Checker<'_> {
                         if let TypeDefBody::Refined { base, .. } = &td.body {
                             let generics = self.generics_of(id);
                             let base = self.lower_type(mid, base, &generics);
-                            self.inf.refined_bases.insert(id, base);
+                            let params = generics
+                                .iter()
+                                .map(|g| match g {
+                                    GenericSlot::Ty(p) => Some(*p),
+                                    GenericSlot::Row(_) => None,
+                                })
+                                .collect();
+                            self.inf.refined_bases.insert(id, (base, params));
                         }
                     }
                     DefKind::Effect(_) if is_std && TEST_DEFAULTS.contains(&def.name.as_str()) => {

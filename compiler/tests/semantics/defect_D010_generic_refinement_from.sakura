@@ -1,0 +1,16 @@
+// milestone: M3
+// needs: refined-type from
+// expect-exit: 70
+// expect-defect: D010
+// covers: Defect TypeParams
+// spec: §4.3
+
+// `from` of a generic refined type checks the `where` at the type's arguments.
+type NonEmpty<T> = List<T> where List.len(it) > 0
+
+pub fn main() -> Unit ! {Console} {
+  let empty: List<Int> = []
+  Console.print("before")
+  Console.print("{NonEmpty.from(empty)}")
+  Console.print("never printed")
+}

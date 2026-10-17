@@ -573,12 +573,12 @@ impl Space for CheckSpace<'_, '_> {
             Type::Con(TyCon::List, _) => Some(vec![Ctor::Nil, Ctor::Cons]),
             Type::Never => Some(Vec::new()),
             Type::Union(tags) => Some(tags.into_iter().map(Ctor::Record).collect()),
-            Type::Con(TyCon::Adt(d), _) => {
+            Type::Con(TyCon::Adt(d), args) => {
                 if let Some(vs) = cx.variants(d) {
                     Some(vs.into_iter().map(Ctor::Variant).collect())
                 } else if cx.is_record(d) {
                     Some(vec![Ctor::Record(d)])
-                } else if let Some(base) = cx.inf.refined_bases.get(&d).copied() {
+                } else if let Some(base) = cx.inf.refined_base(d, &args) {
                     self.ctors(base)
                 } else {
                     None

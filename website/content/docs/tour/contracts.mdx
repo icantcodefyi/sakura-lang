@@ -169,9 +169,9 @@ fn withdraw(from: Account, amount: Int) -> Account ! {Fail<WithdrawError>}
 Bounded quantifiers are allowed in contracts:
 
 ```sakura
-type NonEmptyScores = List<Int> where List.len(it) > 0
+type NonEmpty<T> = List<T> where List.len(it) > 0
 
-fn top_score(scores: NonEmptyScores) -> Int
+fn top_score(scores: NonEmpty<Int>) -> Int
   ensures List.all(scores, fn(s) { s <= result })
 {
   let first = List.first(scores).expect("NonEmpty has a first element")

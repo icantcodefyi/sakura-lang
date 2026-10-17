@@ -82,7 +82,7 @@ impl Checker<'_> {
                             parts.extend(params.iter().copied());
                         }
                     }
-                } else if let Some(&base) = self.inf.refined_bases.get(&def) {
+                } else if let Some(&(base, _)) = self.inf.refined_bases.get(&def) {
                     parts.push(base);
                 }
                 parts.into_iter().any(|t| self.type_holds(t, k))
