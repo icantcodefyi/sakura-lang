@@ -349,12 +349,7 @@ impl Cx {
             TYPE_DECL => DefKind::Type(TypeDef {
                 generics,
                 body: TypeDefBody::Missing,
-                // Matched by text so it holds whether `opaque` lexes as a keyword or an ident.
-                opaque: item
-                    .children_with_tokens()
-                    .filter_map(|e| e.into_token())
-                    .take_while(|t| t.kind() != TYPE_KW)
-                    .any(|t| t.text() == "opaque"),
+                opaque: item.children_with_tokens().any(|e| e.kind() == OPAQUE_KW),
             }),
             ERROR_DECL => DefKind::Error(ErrorDef { fields: Vec::new() }),
             EFFECT_DECL => DefKind::Effect(EffectDef {

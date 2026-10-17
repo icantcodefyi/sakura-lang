@@ -34,51 +34,10 @@ const STD: &[(&str, &str)] = &[
     ),
 ];
 
-/// Parses `text`, returning the root and the number of parse errors. ponytail: until
-/// `vow_syntax` parses `pub opaque type`, the word is cut from the text before parsing and
-/// spliced back into the tree as an `IDENT` token; delete this once the parser has it.
+/// Parses `text`, returning the root and the number of parse errors.
 fn parse_root(file: FileId, text: &str) -> (SyntaxNode, usize) {
-    const OPAQUE: &str = "opaque ";
-    let stripped = text.replace(OPAQUE, "");
-    let parse = vow_syntax::parse_file(file, &stripped);
-    let errors = parse.errors.len();
-    if stripped == text || vow_syntax::parse("pub opaque type T\n").errors.is_empty() {
-        let parse = vow_syntax::parse_file(file, text);
-        return (parse.syntax(), parse.errors.len());
-    }
-    // Offsets in `stripped` where an `opaque ` was cut out.
-    let cuts: Vec<usize> = text
-        .match_indices(OPAQUE)
-        .enumerate()
-        .map(|(i, (o, _))| o - i * OPAQUE.len())
-        .collect();
-    let root = parse.syntax();
-    let raw = |k: SyntaxKind| VowLanguage::kind_to_raw(k);
-    let mut green: GreenNode = root.green().into_owned();
-    for (i, decl) in root.children_with_tokens().enumerate() {
-        let NodeOrToken::Node(decl) = decl else {
-            continue;
-        };
-        let Some(k) = decl.children_with_tokens().position(|e| {
-            e.kind() == SyntaxKind::TYPE_KW && cuts.contains(&usize::from(e.text_range().start()))
-        }) else {
-            continue;
-        };
-        let d = decl
-            .green()
-            .insert_child(
-                k,
-                NodeOrToken::Token(GreenToken::new(raw(SyntaxKind::WHITESPACE), " ")),
-            )
-            .insert_child(
-                k,
-                NodeOrToken::Token(GreenToken::new(raw(SyntaxKind::IDENT), "opaque")),
-            );
-        green = green.replace_child(i, NodeOrToken::Node(d));
-    }
-    let root = SyntaxNode::new_root(green);
-    assert_eq!(root.text().to_string(), text);
-    (root, errors)
+    let parse = vow_syntax::parse_file(file, text);
+    (parse.syntax(), parse.errors.len())
 }
 
 struct Out {
@@ -179,27 +138,10 @@ fn check(files: &[(&str, &str)]) -> String {
     s
 }
 
-/// Until `vow_syntax::parse` is more than a stub on master, source-level tests have nothing to
-/// lower. ponytail: remove this gate once the parser lands.
-fn parser_available() -> bool {
-    let available = vow_syntax::parse("fn f() -> Int { 1 }\n")
-        .tree()
-        .items()
-        .next()
-        .is_some();
-    if !available {
-        eprintln!("skipped: vow_syntax::parse is a stub");
-    }
-    available
-}
-
 macro_rules! snap {
     ($name:ident, $($file:expr => $src:expr),+ $(,)?) => {
         #[test]
         fn $name() {
-            if !parser_available() {
-                return;
-            }
             insta::assert_snapshot!(check(&[$(($file, $src)),+]));
         }
     };
@@ -659,9 +601,6 @@ fn long_chains_do_not_overflow() {
 /// Lowering is deterministic: the same snapshot gives the same dump and diagnostics.
 #[test]
 fn deterministic() {
-    if !parser_available() {
-        return;
-    }
     let src = r#"
 import std/list
 type S = A(Int) | B
@@ -673,9 +612,6 @@ fn f(s: S) -> Int { match s { A(n) => List.len([n]), B => 0 } }
 /// The real std (`compiler/std/*.vow`) resolves without errors (in files that parse).
 #[test]
 fn real_std_resolves() {
-    if !parser_available() {
-        return;
-    }
     let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../std");
     let mut sources: Vec<(String, String)> = std::fs::read_dir(dir)
         .unwrap()
