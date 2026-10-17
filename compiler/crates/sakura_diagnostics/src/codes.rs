@@ -370,7 +370,18 @@ program start instead (design §4.3). Severity: warning.";
     // 6: capabilities / resources / escape
     V6001 "capability_construction" CAPABILITY,
 "Capability values (`Dir`, `NetScope`, `EnvScope`, `SecretStore`) cannot be constructed by user
-code. Obtain one from a root handler or attenuate an existing one (design §6.2).";
+code. Obtain one from a root handler or attenuate an existing one (design §6.2).
+
+A `Trust` is a capability too (design §6.4): it exists only as the literal `@trust(\"reason\")`
+passed directly to a sink (`Untrusted.trust`, `Secret.expose`, `Html.raw`), so every trust
+decision is visible at the sink and listed by `sakura audit`. It cannot be stored in a
+binding or field, returned, or accepted by a function outside std.
+
+Wrong:
+    let t = @trust(\"display only\")
+    u.trust(t)
+Fixed:
+    u.trust(@trust(\"display only\"))";
 
     V6002 "scoped_value_escape" CAPABILITY,
 "A capability, or a handler that captured one, escapes the `with` scope that produced it

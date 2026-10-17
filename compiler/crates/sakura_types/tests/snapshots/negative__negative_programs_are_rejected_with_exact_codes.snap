@@ -1,6 +1,6 @@
 ---
 source: crates/sakura_types/tests/negative.rs
-assertion_line: 298
+assertion_line: 313
 expression: transcript
 ---
 ## wrong result type
@@ -165,6 +165,15 @@ V1006 8:42 `Decimal` is opaque: its constructors and fields are private to modul
 ## calling a function field of an opaque type outside its module
 V1006 8:38 `Tool` is opaque: its constructors and fields are private to module `std/tool`
   Definition in std declared `pub opaque` here
+
+## a Trust stored in a binding
+V6001 7:48 `@trust(…)` may only be passed directly to a sink (`Untrusted.trust`, `Secret.expose`, `Html.raw`); a `Trust` cannot be stored or returned
+
+## a Trust accepted outside std
+V6001 7:31 `Trust` cannot be stored, returned or accepted outside the std sinks; pass `@trust("…")` directly to `Untrusted.trust`, `Secret.expose` or `Html.raw`
+
+## a Trust stored in a record field
+V6001 7:20 `Trust` cannot be stored, returned or accepted outside the std sinks; pass `@trust("…")` directly to `Untrusted.trust`, `Secret.expose` or `Html.raw`
 
 ## try body assigns an outer var
 V2041 7:42 this `try` body assigns `n`, a `var` declared outside it; a `try` body's only outputs are its value and its error (design §5.3)

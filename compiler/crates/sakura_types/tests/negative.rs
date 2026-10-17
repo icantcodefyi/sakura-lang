@@ -172,6 +172,21 @@ const CASES: &[(&str, &str, &[&str])] = &[
         &["V1006"],
     ),
     (
+        "a Trust stored in a binding",
+        "fn f(u: Untrusted<String>) -> String { let t = @trust(\"x\"); u.trust(t) }",
+        &["V6001"],
+    ),
+    (
+        "a Trust accepted outside std",
+        "fn f(u: Untrusted<String>, t: Trust) -> String { u.trust(t) }",
+        &["V6001"],
+    ),
+    (
+        "a Trust stored in a record field",
+        "type R = { reason: Trust }",
+        &["V6001"],
+    ),
+    (
         "try body assigns an outer var",
         "fn f() -> Int { var n = 0; let _ = try { n = 1 }; n }",
         &["V2041"],

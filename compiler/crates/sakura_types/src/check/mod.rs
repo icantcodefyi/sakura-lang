@@ -145,6 +145,9 @@ struct BodyState {
     reported: HashSet<ExprId>,
     /// Clause parameters that are callbacks (§17.48): calling one adds only its row's tail.
     callbacks: HashSet<LocalId>,
+    /// `@trust(…)` expressions passed directly as call arguments (the only place a `Trust`
+    /// may appear, §6.4).
+    trust_args: HashSet<ExprId>,
     /// The body contains a syntax error: its type diagnostics would be cascades.
     suppress: bool,
     /// Empty list literals, checked for an inferable element type (V2010).

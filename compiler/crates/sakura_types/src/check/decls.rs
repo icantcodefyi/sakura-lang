@@ -36,6 +36,7 @@ impl Checker<'_> {
                     module: mid,
                     index: idx,
                 };
+                self.trust_positions(id, is_std);
                 match &def.kind {
                     DefKind::Type(td) => {
                         if let TypeDefBody::Refined { base, .. } = &td.body {
@@ -49,6 +50,49 @@ impl Checker<'_> {
                     }
                     _ => {}
                 }
+            }
+        }
+    }
+
+    /// V6001 (§6.4, §17.16): a `Trust` is never stored or returned, so the type may appear
+    /// only as a parameter of a std sink. Its other positions in declarations are reported
+    /// here; `@trust(…)` outside a call argument is reported where it is checked.
+    fn trust_positions(&mut self, def: DefId, is_std: bool) {
+        let program = self.program;
+        let Some(trust) = program.lang.trust else {
+            return;
+        };
+        let mut stored: Vec<&TypeRef> = Vec::new();
+        match &program.def(def).kind {
+            DefKind::Fn(f) => {
+                stored.push(&f.sig.ret);
+                if !is_std {
+                    stored.extend(f.sig.params.iter().map(|p| &p.ty));
+                }
+            }
+            DefKind::Op(o) => {
+                stored.push(&o.sig.ret);
+                stored.extend(o.sig.params.iter().map(|p| &p.ty));
+            }
+            DefKind::Type(td) => match &td.body {
+                TypeDefBody::Record(fs) => stored.extend(fs.iter().map(|f| &f.ty)),
+                TypeDefBody::Alias(t) => stored.push(t),
+                _ => {}
+            },
+            DefKind::Variant(v) => stored.extend(&v.fields),
+            DefKind::Error(e) => stored.extend(e.fields.iter().map(|f| &f.ty)),
+            DefKind::Const(c) => stored.extend(&c.ty),
+            _ => {}
+        }
+        for t in stored {
+            if let Some(range) = mentions_def(t, trust) {
+                let d = Diagnostic::error(
+                    sakura_diagnostics::codes::V6001,
+                    Phase::Capability,
+                    "`Trust` cannot be stored, returned or accepted outside the std sinks; pass `@trust(\"…\")` directly to `Untrusted.trust`, `Secret.expose` or `Html.raw`",
+                )
+                .with_span(self.span_in(def.module, range));
+                self.push(d);
             }
         }
     }
@@ -959,4 +1003,31 @@ fn fail_free_in<'a>(
         }
     }
     out
+}
+
+/// The range of the first reference to type `def` inside `t`.
+fn mentions_def(t: &TypeRef, def: DefId) -> Option<text_size::TextRange> {
+    let mut stack = vec![t];
+    while let Some(t) = stack.pop() {
+        match &t.kind {
+            TypeRefKind::Named { res, args } => {
+                if *res == TypeRes::Def(def) {
+                    return Some(t.range);
+                }
+                stack.extend(args);
+            }
+            TypeRefKind::Tuple(xs) | TypeRefKind::Union(xs) => stack.extend(xs),
+            TypeRefKind::Fn { params, ret, row } => {
+                stack.extend(params);
+                stack.push(ret);
+                stack.extend(
+                    row.iter()
+                        .flat_map(|r| r.labels.iter().flat_map(|l| &l.args)),
+                );
+            }
+            TypeRefKind::Row(r) => stack.extend(r.labels.iter().flat_map(|l| &l.args)),
+            TypeRefKind::Missing => {}
+        }
+    }
+    None
 }

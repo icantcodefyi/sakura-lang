@@ -1,7 +1,7 @@
 //! Expressions and statements: `synth` and `check` (design §4.5, §5.7).
 
 use sakura_diagnostics::codes::{
-    V2001, V2002, V2003, V2004, V2005, V2010, V2015, V2041, V3002, V3003, V3011, V3012,
+    V2001, V2002, V2003, V2004, V2005, V2010, V2015, V2041, V3002, V3003, V3011, V3012, V6001,
 };
 use sakura_diagnostics::{Diagnostic, Phase, Rendered};
 use sakura_hir::{
@@ -205,6 +205,7 @@ impl Checker<'_> {
             }
             Expr::Path(res) => (self.path_type(e, *res), pure, false),
             Expr::Call { callee, args, .. } => {
+                self.allow_trust_args(args);
                 let (mut ft, fr) = self.synth(*callee);
                 // Calling a clause's callback adds only its tail (and failures), not the
                 // labels the performer's handlers serve (§17.48).
@@ -228,6 +229,7 @@ impl Checker<'_> {
                 args,
                 ..
             } => {
+                self.allow_trust_args(args);
                 let (t, r) = self.method_call(e, *receiver, method, *method_range, args);
                 (t, r, false)
             }
@@ -444,11 +446,30 @@ impl Checker<'_> {
                     done,
                 )
             }
-            Expr::Attr { args, .. } => {
-                // `@trust("reason")` style arguments: typed by the parameter they are passed to.
+            Expr::Attr { name, args } => {
                 let rows: Vec<RowId> = args.iter().map(|&a| self.synth(a).1).collect();
-                let ty = exp.unwrap_or_else(|| self.inf.fresh_var());
-                (ty, self.seq(&rows, e), true)
+                let row = self.seq(&rows, e);
+                match self.program.lang.trust {
+                    // `@trust("reason")` has type `Trust` and is valid only as a direct call
+                    // argument: it is never stored or returned (§6.4, V6001).
+                    Some(trust) if name == "trust" => {
+                        if !self.b.trust_args.contains(&e) {
+                            let range = self.expr_range(e);
+                            self.error(
+                                V6001,
+                                Phase::Capability,
+                                range,
+                                "`@trust(…)` may only be passed directly to a sink (`Untrusted.trust`, `Secret.expose`, `Html.raw`); a `Trust` cannot be stored or returned",
+                            );
+                        }
+                        (
+                            self.inf.interner.con(TyCon::Adt(trust), Vec::new()),
+                            row,
+                            false,
+                        )
+                    }
+                    _ => (exp.unwrap_or_else(|| self.inf.fresh_var()), row, true),
+                }
             }
             Expr::List(xs) => {
                 let expected = exp.and_then(|x| {
@@ -900,6 +921,15 @@ impl Checker<'_> {
             rows.push(self.synth(a).1);
         }
         (self.inf.interner.error(), self.seq(&rows, e))
+    }
+
+    fn allow_trust_args(&mut self, args: &[ExprId]) {
+        let body = self.hir_body();
+        for &a in args {
+            if matches!(&body.exprs[a], Expr::Attr { name, .. } if name == "trust") {
+                self.b.trust_args.insert(a);
+            }
+        }
     }
 
     /// `fn(P) -> T ! {Fail<E> | e}` for a callback of type `fn(P) -> T ! {L…, Fail<E> | e}`.

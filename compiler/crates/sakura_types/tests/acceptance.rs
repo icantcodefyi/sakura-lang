@@ -325,3 +325,18 @@ fn hole_allowed_effects_are_structured() {
     let t = sakura_types::render_type(&c.typed.interner, &c.program, h.expected_type);
     assert_eq!(t, "Int");
 }
+
+/// §6.4, §17.16: `Trust` is in the prelude and `@trust("…")` is a `Trust` at a sink.
+#[test]
+fn trust_literals_at_sinks_check() {
+    let c = check(
+        r#"import std/html.{Html}
+fn show_it(u: Untrusted<String>, s: Secret<String>) -> (String, String, Html) {
+  (u.trust(@trust("display only")), Secret.expose(s, @trust("logged")), Html.raw("<b>x</b>", @trust("static")))
+}
+"#,
+    );
+    assert!(c.diags.is_empty(), "{}", c.render());
+    let bad = check("fn f(u: Untrusted<Int>) -> Int { u.trust(@trust(\"x\")) + @trust(\"y\") }\n");
+    assert!(bad.codes().contains(&"V6001"), "{}", bad.render());
+}
