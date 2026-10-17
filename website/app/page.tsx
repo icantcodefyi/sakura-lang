@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { SiteFooter } from "@/components/site-footer";
 import { HeaderControls } from "@/components/header-controls";
 import { SiteHeader } from "@/components/site-header";
@@ -12,6 +13,51 @@ import { Hero } from "@/components/landing/hero";
 import { Pillars } from "@/components/landing/pillars";
 import { Review } from "@/components/landing/review";
 import { Roadmap } from "@/components/landing/roadmap";
+import { homeImageAlt } from "@/lib/og";
+import { absolute, author, ids, JsonLd, pageMetadata } from "@/lib/seo";
+import { site } from "@/lib/site";
+
+export const metadata: Metadata = {
+  // A page-level openGraph drops the layout's file-based image, so name it again.
+  ...pageMetadata({
+    title: site.title,
+    description: site.description,
+    path: "/",
+    image: { url: "/opengraph-image", alt: homeImageAlt },
+  }),
+  title: { absolute: site.title },
+};
+
+const jsonLd = {
+  "@graph": [
+    author,
+    {
+      "@type": "WebSite",
+      "@id": ids.website,
+      url: absolute("/"),
+      name: site.name,
+      description: site.description,
+      inLanguage: "en",
+      publisher: { "@id": ids.author },
+      about: { "@id": ids.language },
+    },
+    {
+      "@type": "SoftwareSourceCode",
+      "@id": ids.language,
+      name: site.name,
+      description: site.description,
+      url: absolute("/"),
+      codeRepository: site.github,
+      programmingLanguage: "Rust",
+      license: ["https://spdx.org/licenses/MIT.html", "https://spdx.org/licenses/Apache-2.0.html"],
+      creativeWorkStatus: "Pre-alpha",
+      author: { "@id": ids.author },
+      maintainer: { "@id": ids.author },
+      image: absolute("/opengraph-image"),
+      sameAs: [site.github],
+    },
+  ],
+};
 
 export default function Home() {
   return (
@@ -33,6 +79,7 @@ export default function Home() {
         <Closing />
       </main>
       <SiteFooter />
+      <JsonLd data={jsonLd} />
     </>
   );
 }

@@ -38,6 +38,10 @@ export const metadata: Metadata = {
   title: { default: site.title, template: "%s · Sakura Lang" },
   description: site.description,
   applicationName: site.name,
+  authors: [{ name: site.author.name, url: site.author.github }],
+  creator: site.author.name,
+  publisher: site.author.name,
+  category: "technology",
   keywords: [
     "Sakura Lang",
     "programming language",
@@ -48,18 +52,9 @@ export const metadata: Metadata = {
     "llms.txt",
     "MCP",
   ],
-  openGraph: {
-    type: "website",
-    siteName: site.name,
-    title: site.title,
-    description: site.description,
-    url: "/",
-  },
-  twitter: { card: "summary_large_image", title: site.title, description: site.description },
-  alternates: {
-    canonical: "/",
-    types: { "text/plain": [{ url: "/llms.txt", title: "llms.txt" }] },
-  },
+  // Pages without their own (the 404 page) still get a share card; pages set canonical themselves.
+  openGraph: { type: "website", siteName: site.name, locale: "en_US" },
+  twitter: { card: "summary_large_image", site: site.author.handle, creator: site.author.handle },
 };
 
 export const viewport: Viewport = {

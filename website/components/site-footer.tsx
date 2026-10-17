@@ -1,5 +1,8 @@
+import { Mail } from "lucide-react";
 import Link from "next/link";
 import { Wordmark } from "@/components/brand";
+import { GitHubIcon } from "@/components/github-icon";
+import { LinkedInIcon, XIcon } from "@/components/social-icons";
 import { site } from "@/lib/site";
 
 const COLUMNS = [
@@ -29,6 +32,12 @@ const COLUMNS = [
       { href: site.github, label: "GitHub" },
     ],
   },
+];
+
+const SOCIAL = [
+  { href: site.author.github, label: "GitHub", Icon: GitHubIcon },
+  { href: site.author.x, label: "X", Icon: XIcon },
+  { href: site.author.linkedin, label: "LinkedIn", Icon: LinkedInIcon },
 ];
 
 export function SiteFooter() {
@@ -61,6 +70,42 @@ export function SiteFooter() {
             </ul>
           </nav>
         ))}
+      </div>
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-border px-5 py-5 text-[13px] text-muted-foreground sm:px-8">
+        <p>
+          Made by{" "}
+          <a
+            href={site.author.github}
+            rel="author me noopener"
+            className="text-foreground underline decoration-sakura underline-offset-4 transition-colors duration-150 hover:text-sakura-text"
+          >
+            {site.author.name}
+          </a>
+          . Dual-licensed {site.license}.
+        </p>
+        <ul className="-mx-2 flex items-center">
+          {SOCIAL.map(({ href, label, Icon }) => (
+            <li key={label}>
+              <a
+                href={href}
+                rel="me noopener"
+                aria-label={`${site.author.name} on ${label}`}
+                className="flex size-9 items-center justify-center rounded-md transition-colors duration-150 hover:text-foreground"
+              >
+                <Icon className="size-4" />
+              </a>
+            </li>
+          ))}
+          <li>
+            <a
+              href={`mailto:${site.author.email}`}
+              aria-label={`Email ${site.author.name}`}
+              className="flex size-9 items-center justify-center rounded-md transition-colors duration-150 hover:text-foreground"
+            >
+              <Mail className="size-4" aria-hidden />
+            </a>
+          </li>
+        </ul>
       </div>
     </footer>
   );

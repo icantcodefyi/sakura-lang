@@ -1,7 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
+
+// Next adds `noindex` to every not-found response.
+export const metadata: Metadata = { title: "Page not found" };
 
 export default function NotFound() {
   return (

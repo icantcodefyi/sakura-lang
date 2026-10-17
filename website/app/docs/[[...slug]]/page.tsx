@@ -11,9 +11,10 @@ import {
 } from "fumadocs-ui/layouts/docs/page";
 import { createRelativeLink } from "fumadocs-ui/mdx";
 import { getMDXComponents } from "@/components/mdx";
+import { absolute, author, ids, JsonLd, pageMetadata } from "@/lib/seo";
 import { getPageMarkdownUrl } from "@/lib/shared";
 import { site } from "@/lib/site";
-import { source } from "@/lib/source";
+import { docsImageUrl, docsSection, source } from "@/lib/source";
 
 export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
   const params = await props.params;
@@ -23,6 +24,12 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
   const MDX = page.data.body;
   const markdownUrl = getPageMarkdownUrl(page);
   const githubUrl = `${site.github}/blob/master/website/content/docs/${page.path}`;
+  const url = absolute(page.url);
+  const crumbs = [
+    { name: site.name, url: absolute("/") },
+    { name: "Docs", url: absolute("/docs") },
+    ...(page.url === "/docs" ? [] : [{ name: page.data.title, url }]),
+  ];
 
   return (
     // 760px keeps body lines near 75 characters at the 17px prose size.
@@ -47,6 +54,37 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
         <MDX components={getMDXComponents({ a: createRelativeLink(source, page) })} />
       </DocsBody>
       <EditOnGitHub href={githubUrl} className="mt-6 self-start" />
+      <JsonLd
+        data={{
+          "@graph": [
+            {
+              "@type": "TechArticle",
+              "@id": `${url}#article`,
+              headline: page.data.title,
+              description: page.data.description,
+              url,
+              mainEntityOfPage: url,
+              image: absolute(docsImageUrl(page)),
+              inLanguage: "en",
+              articleSection: docsSection(page.url),
+              dateModified: page.data.lastModified?.toISOString(),
+              author,
+              publisher: { "@id": ids.author },
+              isPartOf: { "@id": ids.website },
+              about: { "@id": ids.language },
+            },
+            {
+              "@type": "BreadcrumbList",
+              itemListElement: crumbs.map((c, i) => ({
+                "@type": "ListItem",
+                position: i + 1,
+                name: c.name,
+                item: c.url,
+              })),
+            },
+          ],
+        }}
+      />
     </DocsPage>
   );
 }
@@ -60,23 +98,24 @@ export async function generateMetadata(props: PageProps<"/docs/[[...slug]]">): P
   const page = source.getPage(params.slug);
   if (!page) notFound();
 
-  return {
-    title: page.data.title,
-    description: page.data.description,
-    alternates: {
-      canonical: page.url,
-      types: { "text/markdown": getPageMarkdownUrl(page) },
-    },
+  const { description = site.description, lastModified } = page.data;
+  const section = docsSection(page.url);
+  // A section's index page is titled "Overview" in the sidebar; name the section in search results.
+  const title =
+    page.slugs.length > 0 && page.path.endsWith("index.mdx")
+      ? `${section}: ${page.data.title}`
+      : page.data.title;
+  return pageMetadata({
+    title,
+    description,
+    path: page.url,
+    image: { url: docsImageUrl(page), alt: `${page.data.title}: ${section}, Sakura Lang docs` },
+    alternates: { "text/markdown": getPageMarkdownUrl(page) },
     openGraph: {
-      title: page.data.title,
-      description: page.data.description,
-      url: page.url,
-      images: ["/opengraph-image"],
+      type: "article",
+      section,
+      modifiedTime: lastModified?.toISOString(),
+      authors: [site.author.github],
     },
-    twitter: {
-      card: "summary_large_image",
-      title: page.data.title,
-      description: page.data.description,
-    },
-  };
+  });
 }
