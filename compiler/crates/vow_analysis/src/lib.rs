@@ -97,10 +97,6 @@ impl CheckResult {
     }
 }
 
-/// Phases whose crates still return placeholder results. Each is reported once per run as
-/// `V9002` so a clean `check` is never claimed on the strength of a stub. Shrinks as phases land.
-const PENDING_PHASES: &[&str] = &["type checker"];
-
 /// The facade every frontend calls. Stateless until incremental queries arrive (Salsa, M3).
 pub struct Analysis;
 
@@ -136,12 +132,48 @@ impl Analysis {
             .collect();
         diagnostics.extend(program.diagnostics);
         diagnostics.extend(type_diags);
-        if let Some(file) = snapshot.user_files().next() {
-            for phase in PENDING_PHASES {
-                diagnostics.push(unavailable(file, phase));
-            }
-        }
         CheckResult { diagnostics, holes }
+    }
+}
+
+/// The result of [`Analysis::build_js`]: every diagnostic, and the emitted files if there were no
+/// errors.
+#[derive(Clone, Debug, Default)]
+pub struct BuildResult {
+    pub diagnostics: Vec<Diagnostic>,
+    /// `(relative path, text)`: `__main__.js`, `__tests__.js`, `vow_runtime.js`, one module per
+    /// Vow module, source maps.
+    pub files: Option<Vec<(String, String)>>,
+}
+
+impl Analysis {
+    /// Check, then generate JS. Holes are rejected with `V2050`.
+    pub fn build_js(snapshot: &Snapshot) -> BuildResult {
+        let check = Analysis::check(snapshot);
+        let mut diagnostics = check.diagnostics;
+        for h in &check.holes {
+            diagnostics.push(
+                Diagnostic::error(
+                    codes::V2050,
+                    Phase::Type,
+                    format!("hole `?{}` must be filled before building", h.name),
+                )
+                .with_span(
+                    h.span
+                        .clone()
+                        .with_label(format!("expected {}", h.expected_type.render)),
+                ),
+            );
+        }
+        if !diagnostics.iter().any(Diagnostic::is_error)
+            && let Some(file) = snapshot.user_files().next()
+        {
+            diagnostics.push(unavailable(file, "Core lowering"));
+        }
+        BuildResult {
+            diagnostics,
+            files: None,
+        }
     }
 }
 
