@@ -1,0 +1,112 @@
+// Tools an agent may call (design §10.7, §11.2, M3). A tool runs its function under the
+// handlers installed around `Agent.run`: the model chooses arguments, never authority.
+// needs M3: `Tool.of(f)` for a `@tool` function, a compiler intrinsic that builds what `from`
+// builds with the name, description and argument record taken from the declaration; the
+// `json_schema` external; effect-row parameters on types, after which `Tool<F>` is `Tool<e>`.
+
+import std/llm.{ToolSpec}
+
+/// `F` is `fn(Json) -> Json ! {Fail<ToolError> | e}`, with `e` what the tool's function
+/// performs. It is a type parameter only until types take effect-row parameters (design
+/// §4.3); inference names it, so code never writes it.
+pub opaque type Tool<F> = { spec: ToolSpec, run: F }
+
+/// `tag` names the function's error tag and `payload` holds its fields as JSON. `DecodeError`
+/// means the model's arguments did not decode, `UnknownTool` that it named no offered tool.
+pub error ToolError(tool: String, tag: String, payload: Json)
+
+/// A tool calling `f` on arguments decoded from the model's JSON, refinements checked. `A` is
+/// usually a record with one field per argument.
+pub fn from<A: Schema, R: Schema, E: Schema + Show, e>(
+  name: String,
+  description: String,
+  f: fn(A) -> R ! {Fail<E> | e},
+) -> Tool<fn(Json) -> Json ! {Fail<ToolError> | e}> {
+  let witness: Option<A> = None
+  with_schema(name, description, Json.schema(witness), f)
+}
+
+pub fn name<F>(t: Tool<F>) -> String { t.spec.name }
+
+pub fn spec<F>(t: Tool<F>) -> ToolSpec { t.spec }
+
+/// Runs the tool on the model's `input` under the caller's handlers.
+pub fn call<e>(t: Tool<fn(Json) -> Json ! {Fail<ToolError> | e}>, input: Json) -> Json
+  ! {Fail<ToolError> | e}
+{
+  let run = t.run
+  run(input)
+}
+
+fn with_schema<A: Schema, R: Schema, E: Schema + Show, e>(
+  name: String,
+  description: String,
+  schema: Json,
+  f: fn(A) -> R ! {Fail<E> | e},
+) -> Tool<fn(Json) -> Json ! {Fail<ToolError> | e}> {
+  Tool { spec: ToolSpec { name, description, schema }, run: fn(input) { invoke(name, f, input) } }
+}
+
+fn invoke<A: Schema, R: Schema, E: Schema + Show, e>(name: String, f: fn(A) -> R ! {Fail<E> | e}, input: Json) -> Json
+  ! {Fail<ToolError> | e}
+{
+  let args: A = match Json.decode(Json.encode(input)) {
+    Ok(a) => a,
+    Err(bad) => fail ToolError { tool: name, tag: "DecodeError", payload: to_json(bad) },
+  }
+  match try { f(args) } {
+    Ok(r) => to_json(r),
+    Err(failure) => {
+      // A union encodes as `{"Tag": {…}}`, a single tag as its fields.
+      let tag = tag_of(show(failure))
+      let payload = match to_json(failure) {
+        Json.Object(m) if Map.len(m) == 1 && Map.contains(m, tag) => Map.get(m, tag).unwrap_or(Json.Null),
+        j => j,
+      }
+      fail ToolError { tool: name, tag, payload }
+    },
+  }
+}
+
+fn to_json<T: Schema>(value: T) -> Json { Json.parse(Json.encode(value)).unwrap_or(Json.Null) }
+
+/// `Negative { value: -1 }` → `Negative`.
+fn tag_of(shown: String) -> String {
+  let word = List.first(String.split(shown, " ")).unwrap_or(shown)
+  List.first(String.split(word, "(")).unwrap_or(word)
+}
+
+type Sum = { a: Int, b: Int }
+
+error Negative(value: Int)
+
+fn add(s: Sum) -> Int ! {Fail<Negative>} {
+  if s.a < 0 { fail Negative { value: s.a } }
+  s.a + s.b
+}
+
+fn args(text: String) -> Json { Json.parse(text).unwrap_or(Json.Null) }
+
+test "a tool decodes its arguments and encodes its result" {
+  let t = with_schema("add", "Adds two numbers.", Json.Null, add)
+  expect_eq(name(t), "add")
+  expect_eq(try { call(t, args("\{\"a\": 1, \"b\": 2\}")) }, Ok(Json.Number(3.0)))
+}
+
+test "failures become ToolError with the tag and its fields" {
+  let t = with_schema("add", "Adds two numbers.", Json.Null, add)
+  let negative = ToolError { tool: "add", tag: "Negative", payload: args("\{\"value\": -1\}") }
+  expect_eq(try { call(t, args("\{\"a\": -1, \"b\": 2\}")) }, Err(negative))
+  expect_fails_with(fn() { call(t, args("\{\"a\": \"x\"\}")) }, fn(e) { e.tag == "DecodeError" })
+}
+
+fn shout(s: Sum) -> Int ! {Console, Fail<Negative>} {
+  Console.print("a = {s.a}")
+  s.b
+}
+
+test "a tool runs under the caller's handlers" {
+  let t = with_schema("shout", "Prints a and returns b.", Json.Null, shout)
+  expect_eq(try { call(t, args("\{\"a\": 4, \"b\": 5\}")) }, Ok(Json.Number(5.0)))
+  expect_output(["a = 4"])
+}

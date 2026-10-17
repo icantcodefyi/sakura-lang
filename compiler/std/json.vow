@@ -18,6 +18,11 @@ pub fn decode<T: Schema>(text: String) -> Result<T, DecodeError>
 @external(js, "vow_runtime", "json_parse")
 pub fn parse(text: String) -> Result<Json, DecodeError>
 
+/// The JSON Schema (draft 2020-12) of `T`, with the refinements JSON Schema can state.
+/// `witness` only names `T`: `let w: Option<Ticket> = None`, then `Json.schema(w)`.
+@external(js, "vow_runtime", "json_schema")
+pub fn schema<T: Schema>(witness: Option<T>) -> Json
+
 /// The member `key` of an object; `None` for other values or a missing key.
 pub fn get(j: Json, key: String) -> Option<Json> {
   match j {

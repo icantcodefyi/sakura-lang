@@ -1,0 +1,89 @@
+// Agent loops (design §10.7, §11.3, M3): an ordinary loop over `Llm.step`. Before each step
+// it reserves the request's `max_tokens` and one call against `Budget`, so a step that could
+// not fit never starts; the provider handler charges what the step really used, so the
+// reservation is settled to zero afterwards.
+// needs M3: effect-row parameters on types, after which `Agent<T, F>` is `Agent<T, e>`.
+
+import std/budget.{Budget, BudgetExceeded, Cost, Limits, Tokens}
+import std/core.{Violation}
+import std/llm.{
+  Answer,
+  Answered,
+  Asked,
+  InvalidOutput,
+  Llm,
+  LlmError,
+  Partial,
+  Request,
+  ToolCall,
+  ToolResult,
+  Turn,
+  Use,
+}
+import std/prompt.{Prompt}
+import std/tool.{Tool, ToolError}
+
+/// `stop` sees the progress after each step that ran tools; `true` asks the model to answer
+/// with no tools offered. `F` is the tools' function type (see `std/tool`).
+pub type Agent<T, F> = {
+  request: Request<T>,
+  tools: List<Tool<F>>,
+  max_steps: Int,
+  stop: fn(Partial<T>) -> Bool,
+}
+
+/// At most `max_steps` model turns; the last one offers no tools, so the model must answer.
+/// A tool failure ends the loop with its `ToolError`.
+pub fn run<T: Schema, e>(a: Agent<T, fn(Json) -> Json ! {Fail<ToolError> | e}>) -> T
+  ! {Budget, Llm, Fail<BudgetExceeded | LlmError | ToolError> | e}
+  requires a.max_steps > 0
+{
+  let specs = List.map(a.tools, Tool.spec)
+  var transcript: List<Turn> = []
+  var calls: List<ToolCall> = []
+  var stopped = false
+  for step in 0..a.max_steps {
+    let last = stopped || step == a.max_steps - 1
+    let held = Budget.reserve(Cost { tokens: a.request.max_tokens, usd: 0.0, calls: 1 })
+    let out = Llm.step(a.request, if last { [] } else { specs }, transcript)
+    Budget.settle(held, Budget.zero())
+    match out {
+      Answer(value) => { return value },
+      Use(asked) => {
+        if last { fail InvalidOutput { violations: [called_without_tools(asked)] } }
+        let results = List.map(asked, fn(c) { ToolResult { id: c.id, output: call_tool(a.tools, c) } })
+        transcript = transcript.push(Asked(asked)).push(Answered(results))
+        calls = List.concat(calls, asked)
+        stopped = a.stop(Partial { text: "", step: step + 1, calls })
+      },
+    }
+  }
+  // Unreachable: the last step either answers or fails above.
+  fail InvalidOutput { violations: [] }
+}
+
+fn call_tool<e>(tools: List<Tool<fn(Json) -> Json ! {Fail<ToolError> | e}>>, c: ToolCall) -> Json
+  ! {Fail<ToolError> | e}
+{
+  match List.find(tools, fn(t) { Tool.name(t) == c.name }) {
+    Some(t) => Tool.call(t, c.input),
+    None => fail ToolError { tool: c.name, tag: "UnknownTool", payload: Json.Null },
+  }
+}
+
+fn called_without_tools(asked: List<ToolCall>) -> Violation {
+  Violation {
+    type_name: "Step",
+    clause: "the last step offers no tools",
+    value_summary: List.join(List.map(asked, fn(c) { c.name }), ", "),
+  }
+}
+
+test "a step that cannot fit the budget never reaches the model" {
+  let req: Request<Int> = Llm.request("Count.", Prompt.text("how many?"))
+  let limits = Limits { tokens: Some(100), usd: None, calls: None }
+  with Budget.limits(limits), Llm.scripted([]) {
+    let a = Agent { request: req, tools: [], max_steps: 3, stop: fn(_) { false } }
+    expect_fail(fn() { run(a) }, BudgetExceeded { kind: Tokens })
+  }
+}
