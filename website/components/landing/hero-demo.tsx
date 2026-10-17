@@ -15,7 +15,7 @@ import { TokenSpans, type TokenLine } from "@/components/token-spans";
  * A narrow window (phones, and the 1024px two-column layout) tells the same story without
  * sideways scrolling: long lines wrap with a hanging
  * indent, margin notes become gutter marks plus a ticker in the status bar, and the seal
- * stamps the status bar instead of overhanging the window.
+ * presses into the status bar instead of overhanging the window.
  */
 
 const BAD_LINE = 12;
@@ -239,11 +239,8 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
       </div>
       {/* The seal lands on the window's empty corner (in a narrow window, in the status bar). */}
       <Seal
-        className={`pointer-events-none absolute -top-10 -right-3 hidden size-[6.5rem] drop-shadow-[0_6px_10px_oklch(0.45_0.12_70/0.35)] transition-[opacity,transform] @min-[38rem]:block lg:-right-7 ${
-          done
-            ? "rotate-[-14deg] scale-100 opacity-100 duration-[420ms] ease-[var(--ease-out)]"
-            : "rotate-[-30deg] scale-[1.6] opacity-0 duration-0"
-        }`}
+        bloom={done}
+        className="pointer-events-none absolute -top-10 -right-3 hidden size-[6.5rem] rotate-[-14deg] drop-shadow-[0_8px_14px_oklch(0.55_0.14_0/0.28)] @min-[38rem]:block lg:-right-7"
       />
     </div>
   );
@@ -371,7 +368,7 @@ function StatusBar({
     <div className="flex min-h-10 items-center justify-between gap-3 border-t border-line bg-bg-sunk/60 px-4 font-mono text-[11.5px]">
       <span className="flex min-w-0 items-center gap-2" aria-live="polite">
         {kept ? (
-          <Seal className="-my-2 -ml-1 size-8 shrink-0 motion-reduce:rotate-[-14deg] motion-safe:animate-[stamp_420ms_var(--ease-out)_both] @min-[38rem]:hidden" />
+          <Seal bloom rim={false} className="-my-2 -ml-1 size-8 shrink-0 @min-[38rem]:hidden" />
         ) : null}
         <span
           aria-hidden

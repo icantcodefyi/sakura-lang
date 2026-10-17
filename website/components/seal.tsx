@@ -1,59 +1,76 @@
-import { useId, type SVGProps } from "react";
-import { MARK_PATH } from "@/components/brand";
-
-const mid = (p: number[], q: number[]) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
-const fmt = (p: number[]) => `${p[0].toFixed(2)} ${p[1].toFixed(2)}`;
-
-// A wax blob: 20 soft lobes around r≈47, deterministic so server and client agree.
-const BLOB = (() => {
-  const n = 20;
-  const pts = Array.from({ length: n }, (_, i) => {
-    const a = (i / n) * Math.PI * 2;
-    const r = 46 + (i % 2 ? 2.6 : 0) + ((i * 7) % 5) * 0.35;
-    return [50 + r * Math.cos(a), 50 + r * Math.sin(a)];
-  });
-  let d = `M${fmt(mid(pts[n - 1], pts[0]))}`;
-  pts.forEach((p, i) => (d += ` Q${fmt(p)} ${fmt(mid(p, pts[(i + 1) % n]))}`));
-  return `${d}Z`;
-})();
+import { useId, type CSSProperties, type SVGProps } from "react";
+import { PETAL_ANGLES, SAKURA_CUTS } from "@/components/brand";
 
 /**
- * The compiler's seal: wax pressed over a signature it has checked.
- * `label` runs around the rim; the mark is the brand check, embossed.
+ * The compiler's seal, pressed over a signature it has checked: the Sakura Seal on a blush disc,
+ * with `label` running around the rim like a hanko.
+ *
+ * `bloom`: undefined renders it at rest; false hides it; true presses it in (the disc lands, the
+ * petals open from the core one after another, the rim turns into place). Transform and opacity
+ * only, and the global reduced-motion rule turns it into an instant appearance. See globals.css.
  */
 export function Seal({
   label = "signature checked · promise kept · ",
+  rim = true,
+  bloom,
+  className,
   ...props
-}: SVGProps<SVGSVGElement> & { label?: string }) {
-  const rim = `seal-rim-${useId()}`;
+}: SVGProps<SVGSVGElement> & { label?: string; rim?: boolean; bloom?: boolean }) {
+  const id = `seal-rim-${useId()}`;
+  const c = SAKURA_CUTS.main;
+  const state = bloom === undefined ? "" : bloom ? "seal-bloom" : "seal-hidden";
   return (
-    <svg viewBox="0 0 100 100" aria-hidden="true" {...props}>
+    <svg
+      viewBox="0 0 100 100"
+      aria-hidden="true"
+      className={`${state} ${className ?? ""}`}
+      {...props}
+    >
       <defs>
-        <path id={rim} d="M50 50m-36.5 0a36.5 36.5 0 1 1 73 0a36.5 36.5 0 1 1-73 0" />
+        <path id={id} d="M50 50m-38.5 0a38.5 38.5 0 1 1 77 0a38.5 38.5 0 1 1-77 0" />
       </defs>
-      <path d={BLOB} fill="var(--seal)" />
-      <path d={BLOB} fill="none" stroke="var(--seal-ink)" strokeOpacity="0.18" strokeWidth="1.2" />
-      <circle cx="50" cy="50" r="30" fill="none" stroke="var(--seal-ink)" strokeOpacity="0.32" />
-      <circle cx="50" cy="50" r="43" fill="none" stroke="var(--seal-ink)" strokeOpacity="0.14" />
-      <text
-        fill="var(--seal-ink)"
-        fillOpacity="0.62"
-        fontSize="7.4"
-        letterSpacing="2.05"
-        className="font-mono uppercase"
-      >
-        <textPath href={`#${rim}`}>{label}</textPath>
-      </text>
-      <path
-        d={MARK_PATH}
-        transform="translate(30.4 31) scale(1.2)"
+      <circle cx="50" cy="50" r="49" fill="var(--seal-disc)" />
+      <circle
+        cx="50"
+        cy="50"
+        r="46.5"
         fill="none"
-        stroke="var(--seal-ink)"
-        strokeOpacity="0.82"
-        strokeWidth="4.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        stroke="var(--seal-line)"
+        strokeWidth="0.8"
+        strokeDasharray={rim ? undefined : "1.2 2.2"}
       />
+      {rim ? (
+        <g className="seal-rim">
+          <circle
+            cx="50"
+            cy="50"
+            r="31.5"
+            fill="none"
+            stroke="var(--seal-line)"
+            strokeWidth="0.6"
+          />
+          <text
+            fill="var(--seal-ink)"
+            fontSize="7"
+            letterSpacing="1.9"
+            className="font-mono uppercase"
+          >
+            <textPath href={`#${id}`}>{label}</textPath>
+          </text>
+        </g>
+      ) : null}
+      <g
+        transform={`translate(${rim ? 22.4 : 14} ${(rim ? 22.4 : 14) + c.dy * (rim ? 0.552 : 0.72)}) scale(${rim ? 0.552 : 0.72})`}
+      >
+        <g fill="var(--sakura)">
+          {PETAL_ANGLES.map((a, k) => (
+            <g key={a} transform={a ? `rotate(${a} 50 50)` : undefined}>
+              <path className="seal-petal" style={{ "--k": k } as CSSProperties} d={c.petal} />
+            </g>
+          ))}
+        </g>
+        <circle className="seal-core" cx="50" cy="50" r={c.core} fill="var(--magenta)" />
+      </g>
     </svg>
   );
 }

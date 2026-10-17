@@ -38,6 +38,13 @@
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 
   --fd-layout-width: 1440px;
+
+  /* Sakura Seal (design/BRAND.md) */
+  --sakura: #f386a1;
+  --magenta: #d45bb6;
+  --seal-disc: #fce7ee;
+  --seal-line: color-mix(in oklab, #b4245f 45%, transparent);
+  --seal-ink: #8c1d4b;
 }
 
 .dark {
@@ -62,6 +69,10 @@
 
   --code-bg: #131518;
   --mark: var(--seal);
+
+  --seal-disc: color-mix(in oklab, #f386a1 16%, #1e1e1e);
+  --seal-line: color-mix(in oklab, #f386a1 45%, transparent);
+  --seal-ink: #f7a9bc;
 }
 
 @theme inline {
@@ -286,15 +297,60 @@ figure.shiki {
   }
 }
 
-/* The compiler's seal pressed onto the status bar (hero, phones). */
-@keyframes stamp {
+/* The Sakura Seal pressed onto a checked signature (components/seal.tsx). */
+.seal-hidden {
+  opacity: 0;
+}
+.seal-bloom .seal-petal,
+.seal-bloom .seal-core,
+.seal-bloom .seal-rim {
+  transform-box: view-box;
+  transform-origin: 50px 50px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .seal-bloom {
+    animation: seal-press 520ms var(--ease-out) both;
+  }
+  .seal-bloom .seal-petal {
+    animation: petal-open 480ms var(--ease-out) both;
+    animation-delay: calc(120ms + var(--k) * 45ms);
+  }
+  .seal-bloom .seal-core {
+    animation: core-set 320ms var(--ease-out) 300ms both;
+  }
+  .seal-bloom .seal-rim {
+    animation: rim-turn 640ms var(--ease-out) 80ms both;
+  }
+}
+@keyframes seal-press {
+  0% {
+    opacity: 0;
+    transform: scale(1.22);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(0.96);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes petal-open {
   from {
     opacity: 0;
-    transform: rotate(-30deg) scale(1.6);
+    transform: rotate(-28deg) scale(0.4);
   }
-  to {
-    opacity: 1;
-    transform: rotate(-14deg);
+}
+@keyframes core-set {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+}
+@keyframes rim-turn {
+  from {
+    opacity: 0;
+    transform: rotate(-36deg);
   }
 }
 
