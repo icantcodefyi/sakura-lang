@@ -1,0 +1,7 @@
+---
+source: crates/vow_syntax/src/lexer.rs
+assertion_line: 626
+expression: "dump(\"/* a /* b */\")"
+---
+COMMENT "/* a /* b */"
+error V0002 0..12: unterminated block comment
