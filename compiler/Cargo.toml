@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/*", "tools/*"]
+members = ["crates/*", "tools/*", "runtime/rt"]
 
 [workspace.package]
 version = "0.0.0"
@@ -44,6 +44,7 @@ schemars = "1.2.3"
 tokio = { version = "1.53.3", features = ["rt-multi-thread", "macros", "io-std", "process", "time"] }
 lsp-server = "0.10.0"
 lsp-types = "0.97.0"
+wasmparser = { version = "0.262.0", default-features = false, features = ["std", "validate", "features"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

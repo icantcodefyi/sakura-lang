@@ -1,0 +1,23 @@
+[package]
+name = "sakura_rt"
+description = "The Sakura Lang WASM runtime (ABI.md next to this file): allocator, objects, collections, trampoline."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dev-dependencies]
+wasmparser.workspace = true
+insta.workspace = true
+
+# Not `workspace = true`: the workspace forbids `unsafe_code`, and the WASM backend of the linear
+# memory (src/mem.rs) and the exports (src/wasm.rs) need it. Every block carries a `// SAFETY:`.
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+unused_must_use = "deny"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+undocumented_unsafe_blocks = "deny"
