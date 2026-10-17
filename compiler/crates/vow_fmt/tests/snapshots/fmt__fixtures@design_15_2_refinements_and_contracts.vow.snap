@@ -1,0 +1,25 @@
+---
+source: crates/vow_fmt/tests/fmt.rs
+assertion_line: 45
+expression: "check(path, &text)"
+input_file: tests/fmt/design_15_2_refinements_and_contracts.vow
+---
+type Percent = Int where it >= 0 && it <= 100
+
+fn clamp(x: Int, lo: Int, hi: Int) -> Int
+  requires ordered: lo <= hi
+  ensures bounded: lo <= result && result <= hi
+{ if x < lo { lo } else if x > hi { hi } else { x } }
+
+fn apply_discount(price: Int, pct: Percent) -> Int
+  requires price >= 0
+  ensures result <= price
+{ price - price * pct / 100 }
+
+test "clamp upper" { expect_eq(clamp(12, 0, 10), 10) }
+test "precondition is a caller defect" { expect_defect(fn() { clamp(1, 5, 0) }) }
+
+test "percent validates" {
+  expect(Result.is_err(Percent.validate(101)))
+  expect_eq(apply_discount(200, Percent.from(25)), 150)
+}

@@ -1,0 +1,24 @@
+import std/json.{decode, Json}
+import acme/billing as bill
+import std/http
+// the test helpers
+import std/test.{expect_eq}
+
+
+
+fn   spaced ( a : Int,b:Int )->Int!{Log,Clock,Fail<Z|A>,Console}{a+b;}
+fn long_signature_that_needs_breaking(first_parameter: String, second_parameter: List<Int>, third: Map<String, Int>) -> Result<Int, String> {
+  let total = first_parameter_value_with_a_long_name + second_parameter_value_with_a_long_name * third_value
+  total;
+  ;
+}
+type Mixed = Fail<Zeta | Alpha | Mid>
+type Row = fn(Int) -> Unit ! {Random, Clock}
+let   x:Int=1
+let y = 2
+
+
+let z = 3
+fn chained() -> Int { builder.with_a(1).with_b(2).with_c(3).with_d(4).with_e(5).with_f(6).with_g(7).build() }
+fn tuples() -> (Int,) { let one = (1,); let unit = (); let pair = (1,2,); one }
+fn empty() -> Unit {}

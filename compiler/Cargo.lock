@@ -867,7 +867,9 @@ dependencies = [
 name = "vow_fmt"
 version = "0.0.0"
 dependencies = [
+ "insta",
  "pretty",
+ "proptest",
  "vow_syntax",
 ]
 

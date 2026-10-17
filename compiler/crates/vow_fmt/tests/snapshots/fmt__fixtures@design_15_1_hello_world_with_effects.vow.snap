@@ -1,0 +1,13 @@
+---
+source: crates/vow_fmt/tests/fmt.rs
+assertion_line: 45
+expression: "check(path, &text)"
+input_file: tests/fmt/design_15_1_hello_world_with_effects.vow
+---
+// examples/hello/src/main.vow
+fn greet(name: String) -> Unit ! {Clock, Console} {
+  let now = Clock.now()
+  Console.print("hello, {name}; it is {Instant.format_iso(now)}")
+}
+
+pub fn main() -> Unit ! {Clock, Console} { greet("Vow") }

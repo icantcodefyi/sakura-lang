@@ -14,3 +14,7 @@ pretty.workspace = true
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+insta = { workspace = true, features = ["glob"] }
+proptest.workspace = true

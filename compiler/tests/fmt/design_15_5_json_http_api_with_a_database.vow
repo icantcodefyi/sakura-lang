@@ -1,0 +1,49 @@
+import std/http.{Request, Response, Router}
+import std/sql
+
+type Email = String where String.len(it) <= 254 && String.contains(it, "@")
+type NewUser = { email: Email, name: String }
+type User = { id: Int, email: Email, name: String }
+error EmailTaken(email: Email)
+
+fn create_user(input: NewUser) -> User ! {Sql, Fail<EmailTaken | SqlError>} {
+  Sql.transaction(fn() {
+    let existing = Sql.query<User>(sql"select id, email, name from users where email = {input.email}")
+    if List.len(existing) > 0 { fail EmailTaken { email: input.email } }
+    let rows = Sql.query<User>(
+      sql"insert into users (email, name) values ({input.email}, {input.name}) returning id, email, name")
+    List.first(rows).expect("insert returning yields one row")
+  })
+}
+
+fn handle_create(req: Request) -> Response ! {Sql, Log} {
+  try {
+    let input = Request.json<NewUser>(req, 64_000)      // validates Email refinement
+    let user = create_user(input)
+    Response.ok_json(user)
+  } catch {
+    BadRequest { detail } => Response.status(400, detail),
+    EmailTaken { email } => Response.status(409, "email already registered"),
+    SqlError { .. } => { Log.event(Level.Error, "db error", []); Response.status(503, "try again") },
+  }
+}
+
+pub fn main() -> Unit ! {Serve, Sql, Log, Env} {
+  let router = Router.new()
+    .post("/users", handle_create)
+    .get("/health", fn(_req) { Response.status(200, "ok") })
+  with Sql.sqlite(Path.of("data/app.db")), Log.json() {
+    Serve.listen(router, Address.of("127.0.0.1", 8080))
+  }
+}
+
+test "duplicate email is 409" {
+  with Sql.memory(), Log.captured() {
+    sql.migrate([sql"create table users (id integer primary key, email text unique, name text)"])
+    let body = Json.encode(NewUser { email: Email.from("a@b.co"), name: "A" })
+    let first = handle_create(Request.post("/users", body))
+    let second = handle_create(Request.post("/users", body))
+    expect_eq(first.status, Status.of(200))
+    expect_eq(second.status, Status.of(409))
+  }
+}

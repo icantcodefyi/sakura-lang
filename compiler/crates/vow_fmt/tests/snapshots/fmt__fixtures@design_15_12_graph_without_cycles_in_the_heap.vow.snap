@@ -1,0 +1,15 @@
+---
+source: crates/vow_fmt/tests/fmt.rs
+assertion_line: 45
+expression: "check(path, &text)"
+input_file: tests/fmt/design_15_12_graph_without_cycles_in_the_heap.vow
+---
+import std/graph
+
+type Person = { name: String }
+
+fn friends_of_friends(g: Graph<Person>, id: NodeId) -> List<Person> {
+  List.flat_map(Graph.neighbors(g, id), fn(f) {
+    List.filter_map(Graph.neighbors(g, f), fn(ff) { Graph.get(g, ff) })
+  })
+}

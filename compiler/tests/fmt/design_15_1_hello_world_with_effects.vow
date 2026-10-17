@@ -1,0 +1,7 @@
+// examples/hello/src/main.vow
+fn greet(name: String) -> Unit ! {Console, Clock} {
+  let now = Clock.now()
+  Console.print("hello, {name}; it is {Instant.format_iso(now)}")
+}
+
+pub fn main() -> Unit ! {Console, Clock} { greet("Vow") }

@@ -1,0 +1,43 @@
+// File header comment.
+
+/// Doc for Config.
+type Config = {
+  // the port to bind
+  port: Int, // must be > 0
+  host: String,
+  // trailing dangling comment
+}
+
+/* block comment
+   spanning lines */
+fn main() -> Unit ! {Console} {
+  // leading comment
+  let a = 1 // trailing comment
+
+  /* block */ let b = 2
+  match a {
+    // first arm
+    1 => Console.print("one"), // after arm
+    _ => Console.print("other"),
+  }
+  let c = a + /* inline */ b
+  Console.print("{a}{b}{c}")
+  // last comment in block
+}
+
+effect Store {
+  /// Get a value.
+  fn get(key: String) -> Option<String>
+
+  // Put a value.
+  fn put(key: String, value: String) -> Unit
+}
+
+fn call() -> Unit {
+  f(
+    // why one
+    1,
+    2, // why two
+  )
+}
+// final comment

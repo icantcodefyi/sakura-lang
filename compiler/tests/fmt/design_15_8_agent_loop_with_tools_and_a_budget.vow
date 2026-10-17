@@ -1,0 +1,27 @@
+import std/ai
+
+type Answer = { summary: String, sources: List<Url> }
+error SearchDown
+
+@tool("Search the internal knowledge base; returns up to 5 snippets")
+fn kb_search(query: String) -> List<String> ! {Http, Fail<SearchDown>} {
+  let resp = Http.get(url"https://kb.internal/search?q={query}")
+  if resp.status != Status.of(200) { fail SearchDown }
+  Response.json<List<String>>(resp, 100_000)
+}
+
+pub fn research(question: Untrusted<String>) -> Answer
+  ! {Llm, Http, Budget, Fail<LlmError | ToolError | BudgetExceeded>}
+{
+  let req = Llm.request<Answer>("Answer with cited sources only.", "")
+    .with_user(Prompt.of([Untrusted(question)]))
+  Agent.run(Llm.with_tools(req, [Tool.of(kb_search)], 8), [Tool.of(kb_search)], fn(_partial) { false })
+}
+
+pub fn main() -> Unit ! {Console, Env, Http, Fail<LlmError | ToolError | BudgetExceeded>} {
+  let key = Env.secret("ANTHROPIC_API_KEY").expect("set ANTHROPIC_API_KEY")
+  with Llm.anthropic(key, Model.default()), Budget.limits(tokens: 60_000, usd: 2.0, calls: 20) {
+    let a = research(Untrusted.of("What is our refund policy for annual plans?"))
+    Console.print(a.summary)
+  }
+}
