@@ -35,8 +35,9 @@
 
 /// Grows the stack on the heap when fewer than 100 KiB remain, so that recursion over
 /// arbitrarily long expression chains (`a.b.c…`, `1 + 1 + …`) cannot overflow it. Every
-/// recursive walk over expressions goes through this (rustc's `ensure_sufficient_stack`).
-pub(crate) fn ensure_stack<R>(f: impl FnOnce() -> R) -> R {
+/// recursive walk over expressions goes through this (rustc's `ensure_sufficient_stack`);
+/// later phases (`sakura_types`) use it too, so they need no `stacker` dependency of their own.
+pub fn ensure_stack<R>(f: impl FnOnce() -> R) -> R {
     stacker::maybe_grow(100 * 1024, 1024 * 1024, f)
 }
 

@@ -843,3 +843,11 @@ Each commit: fmt, clippy `-D warnings`, full workspace tests, rebase, push.
     returns `Rows { extra }` (it only relates tails), so the existing "different row variables"
     message is the only case; deferred violations surface through `unify_rows`/`subsume_rows`
     and `mismatch_at`, which already report `V3002`.
+14. **Stack safety by growing the stack, not by an iterative spine** (5.2). `sakura_hir`
+    already wraps its own recursion in `ensure_stack` (`stacker::maybe_grow`); making it `pub`
+    lets `infer` and `find_origins` use it without a dependency in `sakura_types` (the crate
+    rule holds) and without the spine pre-pass, so `&&`/`||`/`!` operands are still checked
+    against `Bool` (no behavior change at all). `tests/chains.rs` generates the 10,000-link
+    programs as source text: A's parser now admits such chains, so no green-node splicing is
+    needed; `tests/common` keeps the `Parse` alive past its red roots so it frees the deep tree
+    iteratively.

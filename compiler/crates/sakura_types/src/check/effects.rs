@@ -247,6 +247,10 @@ impl Checker<'_> {
     }
 
     fn find_origins(&mut self, e: ExprId, effect: &Label, out: &mut Vec<ExprId>) {
+        sakura_hir::ensure_stack(|| self.find_origins_inner(e, effect, out))
+    }
+
+    fn find_origins_inner(&mut self, e: ExprId, effect: &Label, out: &mut Vec<ExprId>) {
         if out.len() >= 3 {
             return;
         }

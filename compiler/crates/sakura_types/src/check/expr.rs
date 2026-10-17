@@ -169,7 +169,9 @@ impl Checker<'_> {
     }
 
     fn infer(&mut self, e: ExprId, exp: Option<TypeId>) -> (TypeId, RowId, bool) {
-        let (ty, row, done) = self.infer_inner(e, exp);
+        // Chains (`a.m().m()…`, `1 + 1 + …`) recurse once per link; the parser does not bound
+        // their length, so grow the stack on the heap instead of overflowing it.
+        let (ty, row, done) = sakura_hir::ensure_stack(|| self.infer_inner(e, exp));
         self.b.types.insert(e, ty);
         self.b.rows.insert(e, row);
         (ty, row, done)

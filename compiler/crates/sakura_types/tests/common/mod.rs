@@ -102,10 +102,12 @@ fn walk(root: &Path, dir: &Path, out: &mut Vec<(String, String)>) {
 
 pub fn check(src: &str) -> Checked {
     let user = FileId(0);
+    // The `Parse` outlives every red root so that it frees a deep tree iteratively.
+    let main_parse = sakura_syntax::parse_file(user, src);
     let main = ModuleInput {
         file: user,
         path: "main".into(),
-        root: sakura_syntax::parse_file(user, src).syntax(),
+        root: main_parse.syntax(),
     };
     let std_mods: Vec<ModuleInput> = std_files()
         .into_iter()
@@ -119,7 +121,7 @@ pub fn check(src: &str) -> Checked {
             }
         })
         .collect();
-    let parse_errors = sakura_syntax::parse_file(user, src).errors;
+    let parse_errors = main_parse.errors.clone();
     let program = sakura_hir::lower(&[
         PackageInput {
             name: "std",

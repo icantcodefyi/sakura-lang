@@ -3,6 +3,11 @@
 //! [`Checker`] owns inference state for the whole program. Declarations (signatures, type
 //! definitions, effects) are lowered lazily and cached; bodies are checked one at a time and
 //! their results zonked into [`TypedBody`]s.
+//!
+//! Stack safety: expression chains are as deep as they are long (the parser bounds nesting,
+//! not `a.m().m()…` or `1 + 1 + …`), so the two walks that recurse per link, `infer` and
+//! the `V3001` cause search, run under [`sakura_hir::ensure_stack`]. Pattern, type and
+//! exhaustiveness recursion is bounded by syntactic nesting; `shallow` links to roots.
 
 mod body;
 mod decls;
