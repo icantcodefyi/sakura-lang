@@ -45,5 +45,12 @@ unused_must_use = "deny"
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }
 
+# Debug info dominates target/ size. Keep line tables (backtraces) for our crates, none for deps.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false
+
 [profile.dev.package.insta]
 opt-level = 3
