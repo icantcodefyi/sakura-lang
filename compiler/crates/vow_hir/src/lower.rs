@@ -14,6 +14,7 @@ use std::collections::BTreeMap;
 use la_arena::Idx;
 use text_size::TextRange;
 use vow_diagnostics::{Diagnostic, FileId};
+use vow_syntax::ast::AstNode;
 use vow_syntax::{SyntaxKind, SyntaxKind::*, SyntaxNode, SyntaxToken};
 
 use crate::diag::{self, did_you_mean};
@@ -201,6 +202,8 @@ pub(crate) struct ModCx {
     pub imported: BTreeMap<String, (Binding, TextRange)>,
     /// Import syntax with its resolved target, for phase 3.
     pub import_nodes: Vec<SyntaxNode>,
+    /// Names a failed import would have bound; their uses are not reported again.
+    pub poisoned: std::collections::BTreeSet<String>,
 }
 
 #[derive(Default)]
@@ -602,7 +605,8 @@ impl Cx {
 
     fn resolve_import_target(&mut self, m: ModuleId, node: &SyntaxNode) -> Import {
         let segs: Vec<SyntaxToken> = child(node, MOD_PATH)
-            .map(|p| tokens(&p, IDENT).collect())
+            .and_then(vow_syntax::ast::ModPath::cast)
+            .map(|p| p.segments().collect())
             .unwrap_or_default();
         let path: Vec<String> = segs.iter().map(|t| t.text().to_string()).collect();
         let range = match (segs.first(), segs.last()) {
@@ -733,6 +737,10 @@ impl Cx {
         let mut resolved = imports.clone();
         for (ii, import) in imports.iter().enumerate() {
             let Some(target) = import.target else {
+                // Names this import would have bound are already reported; do not cascade.
+                let poisoned = &mut self.mods[m.0 as usize].poisoned;
+                poisoned.extend(import.binding.iter().cloned());
+                poisoned.extend(import.names.iter().map(|n| n.name.clone()));
                 continue;
             };
             if let Some(b) = &import.binding {
@@ -741,8 +749,13 @@ impl Cx {
             for (ni, n) in import.names.iter().enumerate() {
                 let res = self.import_item(m, target, &n.name, n.range, file);
                 resolved[ii].names[ni].res = res;
-                if let Some(def) = res {
-                    self.bind_import_name(m, n.name.clone(), Binding::Def(def), n.range);
+                match res {
+                    Some(def) => {
+                        self.bind_import_name(m, n.name.clone(), Binding::Def(def), n.range)
+                    }
+                    None => {
+                        self.mods[m.0 as usize].poisoned.insert(n.name.clone());
+                    }
                 }
             }
         }
@@ -824,6 +837,10 @@ impl Cx {
     /// Resolves a `TypeName` at module level: own items, imports, prelude, builtins.
     pub(crate) fn lookup_module_name(&self, m: ModuleId, name: &str) -> Option<Binding> {
         self.lookup_ns(m, name, Ns::Value)
+    }
+
+    pub(crate) fn is_poisoned(&self, m: ModuleId, name: &str) -> bool {
+        self.mods[m.0 as usize].poisoned.contains(name)
     }
 
     pub(crate) fn lookup_prelude(&self, name: &str) -> Option<Binding> {
@@ -941,12 +958,14 @@ impl Cx {
                 TypeDefBody::Variants(vars)
             }
         } else if child(node, WHERE_CLAUSE).is_some() {
+            let pred = self.placeholder_body(m);
+            let from = self.alloc_intro(m, idx, RefinementIntro::From);
+            let validate = self.alloc_intro(m, idx, RefinementIntro::Validate);
             TypeDefBody::Refined {
-                base: TypeRef {
-                    kind: TypeRefKind::Missing,
-                    range: node.text_range(),
-                },
-                pred: self.placeholder_body(m),
+                base: missing_type(node.text_range()),
+                pred,
+                from,
+                validate,
             }
         } else if first_type(node).is_some() {
             TypeDefBody::Alias(TypeRef {
@@ -1028,6 +1047,7 @@ impl Cx {
             result: get(p, "result", "Result"),
             ok: get(p, "result", "Ok"),
             err: get(p, "result", "Err"),
+            violation: get(p, "core", "Violation"),
         };
     }
 
@@ -1143,14 +1163,27 @@ impl Cx {
                         };
                         TypeDefBody::Alias(self.lower_type(m, &t, &generics))
                     }
-                    TypeDefBody::Refined { pred, .. } => {
+                    TypeDefBody::Refined {
+                        pred,
+                        from,
+                        validate,
+                        ..
+                    } => {
                         let base = match first_type(node) {
                             Some(t) => self.lower_type(m, &t, &generics),
                             None => missing_type(node.text_range()),
                         };
                         let where_clause = child(node, WHERE_CLAUSE);
                         let pred = self.lower_refinement(m, idx, pred, where_clause, &generics);
-                        TypeDefBody::Refined { base, pred }
+                        for intro in [from, validate] {
+                            self.lower_intro(m, idx, intro, &base, &generics);
+                        }
+                        TypeDefBody::Refined {
+                            base,
+                            pred,
+                            from,
+                            validate,
+                        }
                     }
                     TypeDefBody::Missing => TypeDefBody::Missing,
                 };
@@ -1165,6 +1198,87 @@ impl Cx {
             }
             DefKind::Variant(_) | DefKind::Op(_) => {}
         }
+    }
+
+    /// Allocates a refined type's generated `from`/`validate` (filled in by `lower_intro`).
+    /// They are not in the module scope: they are reached as `T.from` / `T.validate`.
+    fn alloc_intro(&mut self, m: ModuleId, ty: Idx<Def>, intro: RefinementIntro) -> Idx<Def> {
+        let t = &self.program.module(m).defs[ty];
+        let def = Def {
+            name: intro.name().to_string(),
+            range: t.range,
+            is_pub: t.is_pub,
+            attrs: vec![Attr {
+                name: "refinement".into(),
+                range: t.range,
+                args: vec![intro.name().to_string()],
+            }],
+            doc: None,
+            kind: DefKind::Fn(FnDef {
+                sig: empty_sig(Vec::new()),
+                body: self.placeholder_body(m),
+            }),
+        };
+        self.alloc_def(m, def)
+    }
+
+    fn lower_intro(
+        &mut self,
+        m: ModuleId,
+        ty: Idx<Def>,
+        idx: Idx<Def>,
+        base: &TypeRef,
+        generics: &[TypeParam],
+    ) {
+        let DefKind::Fn(f) = self.program.module(m).defs[idx].kind.clone() else {
+            return;
+        };
+        let range = self.program.module(m).defs[ty].range;
+        let named = |res: TypeRes, args: Vec<TypeRef>| TypeRef {
+            kind: TypeRefKind::Named { res, args },
+            range,
+        };
+        let this = named(
+            TypeRes::Def(DefId {
+                module: m,
+                index: ty,
+            }),
+            (0..generics.len() as u32)
+                .map(|i| named(TypeRes::Param(i), Vec::new()))
+                .collect(),
+        );
+        let ret = match RefinementIntro::of(&self.program.module(m).defs[idx]) {
+            Some(RefinementIntro::Validate) => {
+                let violation = match self.program.lang.violation {
+                    Some(v) => named(TypeRes::Def(v), Vec::new()),
+                    None => missing_type(range),
+                };
+                match self.program.lang.result {
+                    Some(r) => named(TypeRes::Def(r), vec![this, violation]),
+                    None => missing_type(range),
+                }
+            }
+            _ => this,
+        };
+        let sig = Signature {
+            generics: generics.to_vec(),
+            params: vec![Param {
+                name: "value".into(),
+                range,
+                ty: base.clone(),
+            }],
+            ret,
+            row: None,
+        };
+        let mut body = Body::empty(idx);
+        let value = body.locals.alloc(Local {
+            name: "value".into(),
+            mutable: false,
+            range,
+        });
+        body.params.push(value);
+        self.program.modules[m.0 as usize].bodies[f.body] = body;
+        self.set_kind(m, idx, DefKind::Fn(FnDef { sig, body: f.body }));
     }
 
     fn lower_fields(
@@ -1472,6 +1586,9 @@ impl Cx {
         range: TextRange,
         generics: &[TypeParam],
     ) {
+        if self.is_poisoned(m, name) {
+            return;
+        }
         let file = self.file(m);
         let mut cands = self.module_candidates(m);
         cands.extend(generics.iter().map(|g| g.name.clone()));
@@ -1554,6 +1671,9 @@ impl Cx {
                 return Err(false);
             }
             let file = self.file(m);
+            if self.is_poisoned(m, first.text()) {
+                return Err(true);
+            }
             if first.kind() == IDENT {
                 let msg = format!(
                     "cannot find module `{0}`; import it first, e.g. `import std/{0}`",

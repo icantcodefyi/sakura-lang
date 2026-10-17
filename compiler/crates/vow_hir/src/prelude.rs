@@ -36,6 +36,7 @@ pub const PRELUDE: &[(&str, &str)] = &[
     ("expect_fails_with", "test"),
     ("expect_defect", "test"),
     ("expect_snapshot", "test"),
+    ("expect_output", "test"),
     // Template tags resolve to modules (§4.11).
     ("sql", "sql"),
     ("html", "html"),

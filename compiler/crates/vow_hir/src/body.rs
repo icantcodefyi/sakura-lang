@@ -422,6 +422,7 @@ impl<'a> BodyCx<'a> {
                     Res::Err
                 }
             },
+            _ if self.cx.is_poisoned(self.m, tag.text()) => Res::Err,
             _ => {
                 let msg = format!(
                     "unknown template tag `{0}`; a tag is a module exporting `template`, e.g. `import std/{0}`",
@@ -767,6 +768,9 @@ impl<'a> BodyCx<'a> {
         let file = self.file();
         let text = name.text();
         let range = name.text_range();
+        if self.cx.is_poisoned(self.m, text) {
+            return;
+        }
         if self.lambda_lets.iter().any(|l| l == text) {
             let msg = format!(
                 "local lambda `{text}` cannot call itself; lift it to a top-level `fn` (design §4.5)"

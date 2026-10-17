@@ -18,6 +18,16 @@ impl Program {
             DefKind::Variant(v) => {
                 format!("{pkg}/{}::{}.{}", m.path, m.defs[v.parent].name, d.name)
             }
+            DefKind::Fn(_) if RefinementIntro::of(d).is_some() => {
+                let ty = m.defs.iter().find(|(_, t)| {
+                    matches!(&t.kind, DefKind::Type(TypeDef {
+                        body: TypeDefBody::Refined { from, validate, .. },
+                        ..
+                    }) if *from == def.index || *validate == def.index)
+                });
+                let ty = ty.map_or("?", |(_, t)| t.name.as_str());
+                format!("{pkg}/{}::{ty}.{}", m.path, d.name)
+            }
             _ => format!("{pkg}/{}::{}", m.path, d.name),
         }
     }
@@ -136,7 +146,7 @@ impl<'a> Printer<'a> {
                         let t = self.ty(t);
                         self.line(0, format!("{vis}type {}{g} = alias {t}", def.name));
                     }
-                    TypeDefBody::Refined { base, pred } => {
+                    TypeDefBody::Refined { base, pred, .. } => {
                         let t = self.ty(base);
                         self.line(0, format!("{vis}type {}{g} = refined {t}", def.name));
                         self.body(1, *pred);

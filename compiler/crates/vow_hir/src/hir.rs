@@ -87,6 +87,30 @@ impl Program {
     /// `T`'s home module, or a variant `f` of `T`. Returns `None` if there is no such item or it
     /// is private and `from` is a different module.
     pub fn resolve_home(&self, ty: TypeRes, name: &str, from: ModuleId) -> Option<DefId> {
+        if let TypeRes::Def(t) = ty
+            && let DefKind::Type(TypeDef {
+                body:
+                    TypeDefBody::Refined {
+                        from: f,
+                        validate: v,
+                        ..
+                    },
+                ..
+            }) = &self.def(t).kind
+        {
+            let intro = match name {
+                "from" => Some(*f),
+                "validate" => Some(*v),
+                _ => None,
+            };
+            if let Some(index) = intro {
+                let def = DefId {
+                    module: t.module,
+                    index,
+                };
+                return (t.module == from || self.is_visible(def)).then_some(def);
+            }
+        }
         let home = self.home_module(ty)?;
         let def = self.lookup(home, name)?;
         let d = self.def(def);
@@ -178,6 +202,39 @@ pub struct LangItems {
     pub result: Option<DefId>,
     pub ok: Option<DefId>,
     pub err: Option<DefId>,
+    /// `Violation`, the error of a refined type's generated `validate` (design §4.3).
+    pub violation: Option<DefId>,
+}
+
+/// Generated functions of a refined type `T` over base `B` (design §4.3). They are ordinary
+/// `DefKind::Fn` defs with `body.value == None`, generics copied from `T`, and one attribute
+/// `@refinement(from)` / `@refinement(validate)` telling Core what to generate:
+///
+/// - `T.from(value: B) -> T`: checked introduction; a failed predicate is Defect `D010`.
+/// - `T.validate(value: B) -> Result<T, Violation>`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum RefinementIntro {
+    From,
+    Validate,
+}
+
+impl RefinementIntro {
+    pub fn name(self) -> &'static str {
+        match self {
+            RefinementIntro::From => "from",
+            RefinementIntro::Validate => "validate",
+        }
+    }
+
+    /// Which generated function `def` is, if any.
+    pub fn of(def: &Def) -> Option<RefinementIntro> {
+        let a = def.attrs.iter().find(|a| a.name == "refinement")?;
+        match a.args.first().map(String::as_str) {
+            Some("from") => Some(RefinementIntro::From),
+            Some("validate") => Some(RefinementIntro::Validate),
+            _ => None,
+        }
+    }
 }
 
 // ---- Definitions -----------------------------------------------------------------------------
@@ -248,9 +305,13 @@ pub enum TypeDefBody {
     /// Transparent alias (`type Meters = Float`).
     Alias(TypeRef),
     /// Refined type `T where pred`; `pred.params == [it]`, `pred.value` is the predicate.
+    /// `from` and `validate` are the generated introductions of design §4.3
+    /// (see [`RefinementIntro`]); they are reached as `T.from` / `T.validate`.
     Refined {
         base: TypeRef,
         pred: BodyId,
+        from: Idx<Def>,
+        validate: Idx<Def>,
     },
     Missing,
 }
