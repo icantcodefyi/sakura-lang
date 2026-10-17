@@ -78,7 +78,7 @@ Rules you must know:
 - Loops: `for x in xs { }` (List, Range, Map → `(k, v)`, Set), `while c { }`, `break`, `continue` (only inside the loop body, `V1041`).
 - Operators: `+ - * / %` (`Int` with `Int`, `Float` with `Float`; `+` also concatenates `String`), `== != < <= > >=`, `&& || !`. `Int` arithmetic is checked: overflow and `/ 0` are defects (crash the task), not errors. Convert explicitly: `Int.to_float`, `Float.round`; `String.parse_int` gives `None` when unparsable or beyond the backend's `Int` range.
 - Patterns: `_`, `x`, literals, `Some(x)`, `User { id, .. }`, `SqlError { .. }`, `(a, b)`, `[]`, `[x, ..rest]`, `A | B`, guards `if`. Matches must be exhaustive; `_` is required for `Int`/`String` literals.
-- Strings: `"{expr}"` interpolates; a literal brace is `\{`. Multi-line strings are allowed. `sql"..."`, `html"..."`, `url"..."` are tagged templates that bind interpolations safely; an `Untrusted<T>` interpolation converts as its wrapped `T` (a bound parameter, escaped text; planned, design §17.101).
+- Strings: `"{expr}"` interpolates; a literal brace is `\{`. Multi-line strings are allowed. `sql"..."`, `html"..."`, `url"..."` are tagged templates that bind interpolations safely; in `sql`/`html` an `Untrusted<T>` interpolation converts as its wrapped `T` (a bound parameter, escaped text; design §17.101).
 - Reserved for later editions (`V0007`): `verify proof ghost control resume region spawn actor interface impl`, except directly after `.` or `fn` (`Task.spawn` is fine).
 
 ## Types

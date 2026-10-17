@@ -772,7 +772,8 @@ fn memory() -> Handler<Sql>    // @external
 19. **`Html.raw(markup, @trust("…"))`** instead of `Html.raw(s: TrustedHtml)`: one trust type
     for every sink (§6.4). `Html.untrusted(u)` escapes untrusted text. In `html"…"` an `Html`
     value is markup and any other value goes through `Html.from` as escaped text (§17.77); an
-    interpolated `Untrusted<String>` is escaped in its shown form `Untrusted.of("…")`.
+    interpolated `Untrusted<T>` goes through `Html.from` as its wrapped value, so
+    `Untrusted<String>` is the escaped raw text (§17.101).
 20. Resolved (§17.48): `read_chunk`/`write_chunk` are `Fs` operations; a `with_file` body
     runs under its perform site's handlers.
 21. **`Path` is `String where is_relative(it)`**, not `pub opaque type Path = Path(List<String>)`:

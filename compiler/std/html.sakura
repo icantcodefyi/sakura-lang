@@ -17,8 +17,8 @@ pub fn untrusted(u: Untrusted<String>) -> Html { text(Untrusted.trust(u, @trust(
 pub fn raw(markup: String, reason: Trust) -> Html { Html(markup) }
 
 /// `v` shown as escaped text; what `html"…"` applies to an interpolated value that is not
-/// `Html` (design §17.77). `Untrusted<String>` is `Show`, so it is escaped too, in its shown
-/// form `Untrusted.of("…")`; `untrusted(u)` gives just the escaped text.
+/// `Html` (design §17.77). An interpolated `Untrusted<T>` is converted as its wrapped value,
+/// so `html"{u}"` is the escaped raw text, like `untrusted(u)` (design §17.101).
 pub fn from<T: Show>(v: T) -> Html { text(show(v)) }
 
 pub fn concat(parts: List<Html>) -> Html { Html(List.join(List.map(parts, to_string), "")) }
@@ -63,5 +63,12 @@ test "a page composes Html fragments as markup and escapes everything else" {
   let page = html"<main>{title}{banner}<p>{untrusted(body)}</p><p>{count} items</p></main>"
   expect_eq(to_string(page), "<main><h1>Tom &amp; Jerry</h1><hr class=\"x\"><p>&lt;img src=x onerror=alert(1)&gt;</p><p>3 items</p></main>")
   let direct = html"<p>{body}</p>"
-  expect_eq(to_string(direct), "<p>Untrusted.of(&quot;&lt;img src=x onerror=alert(1)&gt;&quot;)</p>")
+  expect_eq(to_string(direct), "<p>&lt;img src=x onerror=alert(1)&gt;</p>")
+}
+
+test "an Untrusted interpolation is escaped text, never markup (design §17.101)" {
+  expect_eq(to_string(html"<p>{Untrusted.of("<b>x")}</p>"), "<p>&lt;b&gt;x</p>")
+  // An `Untrusted<Html>` goes through `from` like any other value: its shown form, escaped.
+  let markup = Untrusted.of(raw("<b>x</b>", @trust("test markup")))
+  expect_eq(to_string(html"<p>{markup}</p>"), "<p>Html(&quot;&lt;b&gt;x&lt;/b&gt;&quot;)</p>")
 }

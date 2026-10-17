@@ -63,3 +63,12 @@ test "template binds arguments as parameters" {
   expect_eq(q.text, "select * from users where id = ? and name = ?")
   expect_eq(q.params, [Int(1), Text("a")])
 }
+
+test "an Untrusted interpolation is a bound parameter (design §17.101)" {
+  with memory() {
+    let _ = Sql.execute(sql"create table users (name text)")
+    let _ = Sql.execute(sql"insert into users (name) values ({"ada"})")
+    expect_eq(Sql.execute(sql"update users set name = name where name = {Untrusted.of("ada")}"), 1)
+    expect_eq(Sql.execute(sql"update users set name = name where name = {Untrusted.of("x' or 1=1 --")}"), 0)
+  }
+}
