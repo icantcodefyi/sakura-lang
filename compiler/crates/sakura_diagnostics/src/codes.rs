@@ -379,20 +379,32 @@ deterministic: no loops, no recursion, and calls only to `@total` functions in t
 subset (design §7.1).";
 
     V5002 "refinement_checked_at_runtime" CONTRACT,
-"A literal assigned to a refined type could not be checked at compile time, so it is checked at
-program start instead (design §4.3). Severity: warning.";
+"A scalar literal (`Int`, `Float`, `String` or `Bool`) stands where a refined type over its base
+is expected. It is accepted and checked once through `T.from` when the module is initialised, so
+a literal that fails the predicate is `D010` before `main` starts (design §4.3, §17.71).
+Severity: warning, until `sakura verify` proves the predicate. Only literals convert implicitly;
+any other value needs `T.from` or `Untrusted.validate`.
+
+Warning:
+    type Port = Int where it >= 1 && it <= 65535
+    let http: Port = 8080
+Fixed (the checked introduction is explicit):
+    let http = Port.from(8080)";
 
     V5003 "validate_target_not_refined" CONTRACT,
-"`Untrusted.validate(u)` checks an untrusted value against a refined type, and that type comes
-from the expected type (design §6.4, §17.71). It must be a refined type whose base is the
-untrusted value's type. Annotate the binding with the refined type you want, or use
-`Untrusted.check(u, clause, pred)` for an ad-hoc predicate.
+"`Untrusted.validate(u)` takes its target `V` from the expected type `Result<V, Violation>`.
+`V` must be a refined type whose base is the type inside the `Untrusted` (design §6.4, §17.71):
+a plain type has no predicate, so nothing would be validated. Annotate the binding or the
+function's return type with a refined type, or use `Untrusted.check(u, clause, pred)` for an
+ad-hoc predicate.
 
 Wrong:
-    let s: String = Untrusted.validate(body)?
+    import std/untrusted
+    import std/core.{Violation}
+    fn port(u: Untrusted<Int>) -> Result<Int, Violation> { Untrusted.validate(u) }
 Fixed:
-    type Email = String where String.len(it) <= 254
-    let e: Email = Untrusted.validate(body)?";
+    type Port = Int where it >= 1 && it <= 65535
+    fn port(u: Untrusted<Int>) -> Result<Port, Violation> { Untrusted.validate(u) }";
 
     // 6: capabilities / resources / escape
     V6001 "capability_construction" CAPABILITY,
@@ -411,12 +423,42 @@ Fixed:
     u.trust(@trust(\"display only\"))";
 
     V6002 "scoped_value_escape" CAPABILITY,
-"A capability, or a handler that captured one, escapes the `with` scope that produced it
-(design §6.3): into a detached task, a top-level `let`, or the result of the `with` body.";
+"A scoped value escapes the `with` that bounds it (design §6.3, §17.70). Scoped types are
+external types (`Dir`, `File`, `Scope`, …), `Handler<…>` and any type containing one; a lambda is
+scoped when its type is, or when it captures a scoped local. This fires when the value of a
+`with` expression is scoped, when a top-level `let` has a scoped type, and when the lambda given
+to `Task.spawn` captures a scoped local bound inside a `with` that encloses the spawn but not the
+binding of its `Scope`. Returning a scoped value from an ordinary function is allowed.
+
+Wrong:
+    import std/fs.{Fs}
+    fn leak() -> Handler<Fs> ! {Fs} {
+      with Fs.rooted(Fs.root()) { Fs.rooted(Fs.root()) }
+    }
+Fixed (use the handler inside the `with` and return data):
+    import std/fs.{Fs, FsError}
+    import std/path.{Path}
+    fn read_config() -> Bytes ! {Fs, Fail<FsError>} {
+      with Fs.rooted(Fs.root()) { Fs.read(Path.of(\"config.toml\")) }
+    }";
 
     V6003 "resource_escape" CAPABILITY,
-"A resource (file, socket, connection, body, fiber) escapes the scope that owns it, for example
-by being returned from the closure passed to `Fs.with_file` (design §8.4).";
+"A `@resource` value (v0: `File`) escapes the callback of the operation that introduced it: the
+callback returns a type containing it (directly, or inside a record, list or closure), or the
+value is stored in handler `var` state (design §8.4, §17.70). The runtime closes the file when
+the callback returns, so an escaped `File` cannot be used. Read or write inside the callback and
+return ordinary data. Use-at-most-once is not checked statically in v0.
+
+Wrong:
+    import std/fs.{Fs, File, Mode, FsError}
+    import std/path.{Path}
+    fn keep_open(p: Path) -> File ! {Fs, Fail<FsError>} {
+      Fs.with_file(p, Mode.Read, fn(file) { file })
+    }
+Fixed:
+    fn first_kb(p: Path) -> Bytes ! {Fs, Fail<FsError>} {
+      Fs.with_file(p, Mode.Read, fn(file) { Fs.read_chunk(file, 1024) })
+    }";
 
     V6010 "non_std_effect_in_main" CAPABILITY,
 "`main`'s effect row may contain only std effects, because only they have host root handlers
@@ -452,12 +494,35 @@ and the output of `sakura --version`.";
 swallowed; list the tags instead (design §5.3).";
 
     W5005 "linear_contract_on_hot_path" CONTRACT,
-"A contract clause is O(n) over an argument (it uses `List.all`/`any`) on a hot path, so every
-call pays for a full scan (design §7.2).";
+"A `requires`, `ensures`, `where` or `property requires` clause calls `List.all`, `List.any`,
+`List.contains` or `String.contains` on a parameter (or `it`), so every check scans the whole
+value (design §7.2, §17.72). One warning per clause; std is exempt. Keep the clause when a linear
+check is what you want, or move the invariant into a refined type so it is checked once, where
+values are introduced.
+
+Warning:
+    fn total(xs: List<Int>) -> Int
+      requires List.all(xs, fn(x) { x > 0 })
+    { List.sum(xs) }
+Fixed (the invariant is a type):
+    type Positive = Int where it > 0
+    fn total(xs: List<Positive>) -> Int { List.fold(xs, 0, fn(acc, x) { acc + x }) }";
 
     W7001 "property_discard_budget" VERIFY,
-"A property test discarded more than 90% of generated inputs, so it tested little. Tighten the
-parameter refinements so generators can build valid inputs directly (design §7.4).";
+"A property discarded more than 90% of its generated inputs, so it tested almost nothing
+(design §7.4, §17.64). For a property synthesized by `sakura test --contracts`, inputs come from
+the parameter types and `requires`: ranges, lengths, enums and non-empty lists are generated
+directly, anything else is a filter. The test fails rather than passing vacuously. Restate the
+parameters so the generator builds valid inputs.
+
+Warning (under `sakura test --contracts`):
+    pub fn sku(code: String) -> String
+      requires String.starts_with(code, \"SKU-\")
+    { code }
+Fixed (a range the generator constructs):
+    pub fn sku(number: Int) -> String
+      requires number >= 0
+    { \"SKU-{number}\" }";
 
     W8001 "copy_on_write" PACKAGE,
 "An update to a shared collection is forced to copy inside a loop because another reference
