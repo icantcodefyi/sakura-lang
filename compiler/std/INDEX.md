@@ -7,7 +7,7 @@ reference is `docs/design.md` §10; deviations are listed at the end and filed a
 `design-question` entries in `compiler/REQUESTS.md`.
 
 Status: every module checks clean and its `test` blocks pass under `sakura test --std`.
-Modules marked M3 type-check but need features from design §14.3 M3 to run.
+Modules marked [M3] are the design §14.3 M3 surface; they run on the JS backend.
 
 ## Prelude
 
@@ -20,7 +20,7 @@ In scope in every module without an import (design §9, with the additions marke
 | Constructors | `Some None Ok Err` (other variants are used qualified: `Level.Warn`, `Json.String(s)`) |
 | Effects | `Fail` (compiler-known) `Console Clock Random Env Log Task` · + `Test` |
 | Functions | `show` · + `expect expect_eq expect_fail expect_fails_with expect_defect expect_output expect_snapshot` (they need `Test`, which only `test`/`property` bodies have; elsewhere they are `V3001`) |
-| Tags (M3) | `sql html url shell` |
+| Tags (M3) | `sql html url` (`shell` is reserved by the prelude; no `std/shell` exists yet) |
 
 Not in the prelude, import them: `import std/retry.{Policy, retry}`, `import std/task.{Timeout, timeout}`,
 `import std/gen` (`gen.int(0, 9)`), `import std/graph.{Graph, NodeId}`, and the M3 modules.
@@ -74,16 +74,14 @@ llm → budget, core, http, prompt, task, untrusted [M3]          sql → fs, pa
 tool → llm [M3]         agent → budget, core, llm, prompt, tool [M3]
 ```
 
-M3 modules type-check today. Their test handlers written in Sakura Lang (`Http.scripted`,
-`Budget.limits`, `Cli.of`, `Fs.memory`, `Llm.scripted`) run as soon as the runtime has the
-externals they touch; their host handlers and `Schema` codecs are runtime externals (M3).
+The M3 modules' test handlers are written in Sakura Lang (`Http.scripted`, `Budget.limits`,
+`Cli.of`, `Fs.memory`, `Llm.scripted`); their host handlers and `Schema` codecs are runtime
+externals.
 
 ## Planned, not yet in source (design §10, milestone M3)
 
-`Untrusted.validate` (a compiler intrinsic into a refined type), `Http.recording`, `Llm.replay`, `Sql.postgres`, `Html`
-values as `html"…"` arguments, `List.par_map` (written as `std/task.par_map` until `Task` runs),
-and `Env.host(scope)`. Their signatures are the ones in design §10.2–§10.7. `Uuid`, `Prompt` and
-`Query` are `pub opaque` (design §17.10).
+`Http.recording`, `Llm.replay` and `Test.fixtures` (cassettes, design §17.73). Their signatures
+are the ones in design §17.73. `Uuid`, `Prompt` and `Query` are `pub opaque` (design §17.10).
 
 ## Signatures
 
@@ -425,6 +423,7 @@ fn len<N>(g: Graph<N>) -> Int
 
 ```sakura
 fn of<T>(value: T) -> Untrusted<T>    // @external
+fn validate<T, V>(u: Untrusted<T>) -> Result<V, Violation>    // @external, compiler-known (§17.71)
 fn trust<T>(u: Untrusted<T>, reason: Trust) -> T
 fn check<T>(u: Untrusted<T>, clause: String, pred: fn(T) -> Bool) -> Result<T, Violation>
 fn len(u: Untrusted<String>) -> Int
@@ -471,7 +470,7 @@ fn to_string(p: Path) -> String
 type Dir
 type Entry = { name: String, is_dir: Bool }
 type Mode = Read | Write | Append
-opaque type File = { id: Int, path: Path, mode: Mode }
+opaque type File = { id: Int, path: Path, mode: Mode }    // @resource (§17.70)
 error FsError(path: String, reason: String)
 effect Fs {
   fn root() -> Dir
@@ -566,9 +565,10 @@ opaque type Html = Html(String)
 fn text(s: String) -> Html
 fn untrusted(u: Untrusted<String>) -> Html
 fn raw(markup: String, reason: Trust) -> Html
+fn from<T: Show>(v: T) -> Html    // each non-`Html` html"…" value goes through it (§17.77)
 fn concat(parts: List<Html>) -> Html
 fn to_string(h: Html) -> String
-fn template(parts: List<String>, args: List<String>) -> Html
+fn template(parts: List<String>, args: List<Html>) -> Html
 ```
 
 ### `std/router`
@@ -713,10 +713,11 @@ fn memory() -> Handler<Sql>    // @external
    `List.filter_map` and `Graph.neighbors` (§15.12), `Graph.empty`/`len`, `Bytes.len`/
    `from_list` (`Random.bytes`), `Uuid.from_canonical`/`is_canonical` (for `Random.uuid()`), `Gen.*` combinators and
    `Gen.for_all`, `Console.captured`/`Log.captured` forwarding to `Test.output`.
-8. **`List.par_map`** lives in `std/task` until `Task` exists, so `std/list` stays M1.
+8. Resolved (§17.79): **`List.par_map`** is `std/task.par_map` permanently: its row performs
+   `Task`, and `std/list` stays pure. `Env.host(scope)` is gone (§17.59).
 9. **`Log.host()` and `Env.host()`** exist because the JS entry point installs each declared
-   std effect's `host()`; `Log.host()` is `stderr()`. `Env.host()` reads the whole process
-   environment until `[permissions]` scoping lands (M3).
+   std effect's `host()`; `Log.host()` is `stderr()`. `Env.host()` exposes only the manifest's
+   `env` keys.
 10. **`String.parse_int`/`parse_float`** follow Rust's `str::parse` (a leading `+` is accepted;
     floats accept `NaN`/`inf`), matching the runtime.
 11. **One home module per type in the web and AI surface:** `std/request` (`Request`,
@@ -731,9 +732,8 @@ fn memory() -> Handler<Sql>    // @external
     `Fs.memory`'s `root()` is a directory without host access. `Cli.exit` under `Cli.of` is
     a defect (`D030`). `Llm.scripted` reports undecodable output as `InvalidOutput` with one
     `Violation` whose `clause` is the decoder's message and `value_summary` its JSON Pointer.
-14. **`Trust` is declared in `std/core`** as an external type until the compiler knows it
-    (§17.16); `@trust("…")` takes its type from the parameter it is passed to, so callers do
-    not change when it moves. `Untrusted.check(u, clause, pred)` takes the clause text for
+14. **`Trust` has its home in `std/core`**; it is compiler-known and in the prelude (§17.16),
+    and `@trust("…")` is accepted only at a `Trust` parameter (`V6001`). `Untrusted.check(u, clause, pred)` takes the clause text for
     its `Violation`; `Secret.of` and `Secret.map` are additions for tests and derived
     credentials.
 15. **`Decimal` is `{ whole: Int, frac: List<Int> }`** (floor and fractional digits, no
@@ -760,9 +760,9 @@ fn memory() -> Handler<Sql>    // @external
     reads before the query. `Serve.scripted(requests)` is the test handler; `Address.of`
     lives in `std/serve`.
 19. **`Html.raw(markup, @trust("…"))`** instead of `Html.raw(s: TrustedHtml)`: one trust type
-    for every sink (§6.4). `Html.untrusted(u)` escapes untrusted text. `html"…"` escapes every
-    interpolated value until template arguments can convert (`Html` as markup, like
-    `SqlValue.from`).
+    for every sink (§6.4). `Html.untrusted(u)` escapes untrusted text. In `html"…"` an `Html`
+    value is markup and any other value goes through `Html.from` as escaped text (§17.77); an
+    interpolated `Untrusted<String>` is escaped in its shown form `Untrusted.of("…")`.
 20. Resolved (§17.48): `read_chunk`/`write_chunk` are `Fs` operations; a `with_file` body
     runs under its perform site's handlers.
 21. **`Path` is `String where is_relative(it)`**, not `pub opaque type Path = Path(List<String>)`:
@@ -770,3 +770,6 @@ fn memory() -> Handler<Sql>    // @external
     opaque variant has no string form (§15.6 parses `--input notes.txt` into a `Path`). The
     guarantee is the same: no leading `/`, no `..` segment. `Path.of` drops `.` and empty
     segments; a decoded `Path` keeps them.
+22. **No `Sql.postgres`**: design §10.2 names it the second provider; it needs a native driver
+    or a runtime dependency and is deferred past M4 (owner decision); `Sql.sqlite` and
+    `Sql.memory` cover the corpus.
