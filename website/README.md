@@ -1,36 +1,35 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Vow website
 
-## Getting Started
+The landing page and documentation for Vow, built with Next.js (App Router), Tailwind CSS v4 and Fumadocs.
 
-First, run the development server:
+## Run it
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+bun install
+bun run dev      # http://localhost:3000
+bun run build    # production build (type-checks)
+bun run lint
+bun scripts/check-grammar.ts   # smoke test for the Vow syntax grammar
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Set `NEXT_PUBLIC_SITE_URL` to the deployed origin so OG images, the sitemap and `llms.txt` use absolute URLs. It defaults to `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Layout
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Path | What it is |
+| --- | --- |
+| `app/page.tsx`, `components/landing/` | Landing page sections |
+| `app/docs/` | Fumadocs docs routes (`/docs/...`) |
+| `content/docs/` | Docs content (MDX); order lives in `meta.json` files |
+| `app/llms.txt`, `app/llms-full.txt` | Agent-readable index and full text |
+| `app/llms.mdx/docs/[[...slug]]` | One page as Markdown; `/docs/<page>.md` is rewritten here |
+| `lib/vow/grammar.ts`, `lib/vow/themes.ts` | TextMate grammar and Shiki themes for `vow` code |
+| `lib/vow/highlight.ts` | Build-time tokenizer used by the landing page |
+| `lib/source.ts` | Fumadocs source, `llms.txt` builder and Markdown rendering of MDX components |
+| `app/globals.css` | Design tokens (OKLCH) shared by landing and docs |
 
-## Learn More
+## Writing docs
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Code fences tagged `vow` are highlighted with the Vow grammar.
+- `Callout`, `Cards`/`Card` and `Steps`/`Step` are rendered to plain Markdown in the `.md` exports. Register any new component in `lib/source.ts` (`mdxAsPlaceholder` and `markdownFor`) so agents never see raw JSX.
+- The language design document will land in `docs/` at the repo root; these pages should be synced to it when it does.

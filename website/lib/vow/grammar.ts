@@ -42,7 +42,7 @@ export const vowGrammar: LanguageRegistration = {
         },
       ],
     },
-    // `! {Db, Clock, Fail<SignupError>}` — the effect row of a signature.
+    // `! {Db, Clock, Fail<SignupError>}`: the effect row of a signature.
     "effect-row": {
       begin: "(!)\\s*(\\{)",
       beginCaptures: {
@@ -204,7 +204,7 @@ export const vowGrammar: LanguageRegistration = {
     calls: {
       patterns: [
         {
-          // Module.op( — namespaced effect/stdlib calls
+          // Module.op(: namespaced effect/stdlib calls
           match: "\\b([A-Z][A-Za-z0-9_]*)(\\.)([a-z_][A-Za-z0-9_]*)(?=\\s*(?:<[^>]*>)?\\()",
           captures: {
             1: { name: "entity.name.type.module.vow" },

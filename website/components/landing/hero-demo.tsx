@@ -19,10 +19,10 @@ type Note = { kind: "ok" | "fail" | "seal"; text: string };
 const NOTES: Record<number, Note> = {
   0: { kind: "ok", text: "refinement" },
   4: { kind: "seal", text: "4 effects promised" },
-  7: { kind: "ok", text: "Db, Fail ✓" },
-  8: { kind: "ok", text: "Random ✓" },
-  9: { kind: "ok", text: "Clock ✓" },
-  10: { kind: "ok", text: "Db ✓" },
+  7: { kind: "ok", text: "Db, Fail" },
+  8: { kind: "ok", text: "Random" },
+  9: { kind: "ok", text: "Clock" },
+  10: { kind: "ok", text: "Db" },
   [BAD_LINE]: { kind: "fail", text: "Net not promised" },
 };
 
@@ -172,7 +172,7 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
                     bad ? "bg-fail-wash" : proved ? "bg-ok-wash" : ""
                   } ${visible ? "" : "invisible"}`}
                 >
-                  <span className="pr-3 text-right text-fg-faint tabular-nums select-none">{visible ? i + 1 : ""}</span>
+                  <span className="pr-3 text-right text-fg-faint tabular-nums select-none">{visible ? i + 1 - (removed && i > BAD_LINE ? 1 : 0) : ""}</span>
                   <span className="pr-6 whitespace-pre">
                     <TokenSpans line={r.line} upTo={upTo} />
                     {cursorLine === i && !done ? <Caret /> : null}

@@ -6,6 +6,7 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 async function font(family: string, weight: number, text: string) {
+  "use cache";
   // Fetch only the glyphs we draw (Google serves those as TrueType); fall back to the default font offline.
   try {
     const url = `https://fonts.googleapis.com/css2?family=${family.replace(/ /g, "+")}:wght@${weight}&text=${encodeURIComponent(text)}`;

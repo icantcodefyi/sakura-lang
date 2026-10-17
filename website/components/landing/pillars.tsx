@@ -139,7 +139,7 @@ export async function Pillars() {
                   code={`[dependencies]\nmarkdown = { version = "2.2" }\ns3 = { version = "0.4", grants = ["Net"] }`}
                 />
                 <p className="rounded-lg border border-fail/35 bg-fail-wash px-3 py-2 font-mono text-[11.5px] leading-relaxed text-fg">
-                  <span className="font-semibold text-fail">E0710</span> markdown 2.2 asks for{" "}
+                  <span className="font-semibold text-fail">E0501</span> markdown 2.2 asks for{" "}
                   <span className="text-seal-text">Net</span>, which was never granted
                 </p>
               </div>
