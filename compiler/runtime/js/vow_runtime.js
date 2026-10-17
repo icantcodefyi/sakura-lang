@@ -1057,6 +1057,11 @@ export function set_len(s) {
 // ---------------------------------------------------------------------------------------------
 // Option
 
+/** A `match` the exhaustiveness checker proved total fell through: a compiler bug. */
+export function match_failure() {
+  throw internal("no match arm applied (exhaustiveness bug)");
+}
+
 export function option_expect(o, msg) {
   return o.tag === 1 ? o.fields[0] : defect("D030", msg);
 }

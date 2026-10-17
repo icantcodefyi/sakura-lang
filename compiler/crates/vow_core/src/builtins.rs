@@ -70,6 +70,8 @@ table! {
     Direct set_len/1,
     // Tasks and tests
     Cps defect_catch/1, Cps test_expect_defect/1,
+    // Compiler support
+    Direct match_failure/0,
 }
 
 pub fn lookup(name: &str) -> Option<&'static Builtin> {

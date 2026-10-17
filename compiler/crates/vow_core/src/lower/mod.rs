@@ -1,0 +1,739 @@
+//! Lowering from typed HIR to Core (design §13.1).
+//!
+//! Lowering is demand-driven: it starts from the program's `main` and its tests and lowers
+//! every definition, type and effect they reach, so unused std code never needs to lower.
+//! Input programs must be free of errors; anything lowering cannot handle becomes a `V9002`
+//! diagnostic instead of a panic.
+
+mod expr;
+mod matchc;
+mod walk;
+
+use std::collections::HashMap;
+
+use vow_diagnostics::{Diagnostic, Phase, Span};
+use vow_hir as hir;
+use vow_types::{self as types, TypedProgram};
+
+use crate::build::*;
+use crate::ir::*;
+
+/// What to lower besides `main`.
+#[derive(Clone, Debug, Default)]
+pub struct LowerOptions {
+    /// Also lower the `test` blocks of std modules (for testing std itself).
+    pub std_tests: bool,
+}
+
+pub struct Lowered {
+    pub module: Module,
+    pub diagnostics: Vec<Diagnostic>,
+}
+
+/// Lower `program` (already checked without errors) to one Core module.
+pub fn lower(program: &hir::Program, typed: &TypedProgram, opts: &LowerOptions) -> Lowered {
+    let mut l = Lower {
+        p: program,
+        t: typed,
+        m: Module::default(),
+        diags: Vec::new(),
+        defs: HashMap::new(),
+        types: HashMap::new(),
+        effects: HashMap::new(),
+        ty_cache: HashMap::new(),
+        refined: HashMap::new(),
+        queue: Vec::new(),
+        ctor_fns: HashMap::new(),
+    };
+    l.builtin_types();
+    let main = program
+        .packages
+        .iter()
+        .position(|p| p.name != "std")
+        .and_then(|pkg| {
+            let pkg = &program.packages[pkg];
+            let mut found = None;
+            for &mid in &pkg.modules {
+                if let Some(d) = program.lookup(mid, "main")
+                    && matches!(program.def(d).kind, hir::DefKind::Fn(_))
+                    && (found.is_none() || program.module(mid).path == "main")
+                {
+                    found = Some(d);
+                }
+            }
+            found
+        });
+    if let Some(main) = main {
+        let entry = l.entry(main);
+        l.m.entry = entry;
+    }
+    for (mi, module) in program.modules.iter().enumerate() {
+        let is_std = program.packages[module.package.0 as usize].name == "std";
+        if is_std && !opts.std_tests {
+            continue;
+        }
+        for &item in &module.items {
+            let id = hir::DefId {
+                module: hir::ModuleId(mi as u32),
+                index: item,
+            };
+            if let hir::DefKind::Test(_) = program.def(id).kind {
+                l.test(id);
+            }
+        }
+    }
+    l.drain();
+    Lowered {
+        module: l.m,
+        diagnostics: l.diags,
+    }
+}
+
+pub(crate) struct Lower<'p> {
+    pub p: &'p hir::Program,
+    pub t: &'p TypedProgram,
+    pub m: Module,
+    pub diags: Vec<Diagnostic>,
+    /// HIR function/const → Core def.
+    defs: HashMap<hir::DefId, DefId>,
+    /// HIR type/error/variant-parent → Core type.
+    types: HashMap<hir::DefId, TypeId>,
+    effects: HashMap<hir::DefId, EffectId>,
+    ty_cache: HashMap<types::TypeId, Ty>,
+    /// Refined type → its generated `from` def.
+    refined: HashMap<(hir::DefId, hir::RefinementIntro), DefId>,
+    /// Defs allocated but not yet lowered.
+    queue: Vec<(hir::DefId, DefId)>,
+    /// Constructor/op used as a function value → wrapper lambda.
+    ctor_fns: HashMap<hir::DefId, DefId>,
+}
+
+impl<'p> Lower<'p> {
+    pub fn unsupported(&mut self, module: hir::ModuleId, range: text_size::TextRange, what: &str) {
+        let file = self.p.module(module).file;
+        self.diags.push(
+            Diagnostic::error(
+                vow_diagnostics::Code("V9002"),
+                Phase::Internal,
+                format!("{what} is not supported by the JS backend yet"),
+            )
+            .with_span(Span::primary(
+                file,
+                range.start().into(),
+                range.end().into(),
+            )),
+        );
+    }
+
+    pub fn module_name(&self, module: hir::ModuleId) -> String {
+        let m = self.p.module(module);
+        format!("{}::{}", self.p.packages[m.package.0 as usize].name, m.path)
+    }
+
+    pub fn pos(&self, module: hir::ModuleId, range: text_size::TextRange) -> Option<Pos> {
+        Some(Pos {
+            file: self.p.module(module).file,
+            offset: range.start().into(),
+        })
+    }
+
+    fn builtin_types(&mut self) {
+        for (def, name) in [
+            (self.p.lang.option, "Option"),
+            (self.p.lang.result, "Result"),
+        ] {
+            if let Some(def) = def {
+                let t = self.type_def(def);
+                self.m.types[t.index()].builtin = Some(name.into());
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Definitions
+
+    /// The Core def for a HIR function or constant, queued for lowering on first use.
+    pub fn def(&mut self, d: hir::DefId) -> DefId {
+        if let Some(&id) = self.defs.get(&d) {
+            return id;
+        }
+        let def = self.p.def(d);
+        let id = self.push_placeholder(&def.name, self.module_name(d.module));
+        self.defs.insert(d, id);
+        self.queue.push((d, id));
+        id
+    }
+
+    pub fn push_placeholder(&mut self, name: &str, module: String) -> DefId {
+        self.m.defs.push(FnDef {
+            name: name.into(),
+            module,
+            kind: FnKind::Top { export: false },
+            captures: vec![],
+            params: vec![],
+            locals: vec![],
+            ret: Ty::Unit,
+            row: Row::empty(),
+            row_vars: vec![],
+            pos: None,
+            body: Expr::Ret(unit()),
+        });
+        DefId(self.m.defs.len() as u32 - 1)
+    }
+
+    fn drain(&mut self) {
+        while let Some((hd, id)) = self.queue.pop() {
+            let def = self.p.def(hd);
+            match &def.kind {
+                hir::DefKind::Fn(f) => {
+                    let body = self.p.body(hd.module, f.body);
+                    if body.value.is_none() {
+                        self.unsupported(hd.module, def.range, "a bodiless function");
+                        continue;
+                    }
+                    let export = def.is_pub;
+                    let fd = expr::FnLower::lower_fn(self, hd, f.body, id);
+                    self.m.defs[id.index()] = FnDef {
+                        kind: FnKind::Top { export },
+                        ..fd
+                    };
+                }
+                hir::DefKind::Const(c) => {
+                    let fd = expr::FnLower::lower_fn(self, hd, c.body, id);
+                    self.m.defs[id.index()] = fd;
+                }
+                _ => self.unsupported(hd.module, def.range, "this kind of definition"),
+            }
+        }
+    }
+
+    /// `$entry`: build each root handler `main` declares, install them, call `main`.
+    fn entry(&mut self, main: hir::DefId) -> Option<DefId> {
+        let main_id = self.def(main);
+        let scheme = self.t.defs.get(&main)?;
+        let row = match self.t.interner.ty(scheme.ty) {
+            types::Type::Fn { row, .. } => *row,
+            _ => return None,
+        };
+        let mut b = FnBuilder::new();
+        let mut blk = Block::new();
+        for label in self.t.interner.row_data(row).labels.clone() {
+            let types::Effect::Def(eff) = label.effect else {
+                continue;
+            };
+            let Some(host) = self.p.lookup(eff.module, "host") else {
+                let range = self.p.def(main).range;
+                self.unsupported(
+                    main.module,
+                    range,
+                    "an effect without a std `host()` handler",
+                );
+                continue;
+            };
+            let e = self.effect(eff);
+            let h = b.local(self.m.effect(e).name.to_lowercase(), Ty::Handler(e));
+            let callee = self.callee(host);
+            blk.push(h, Bind::Call(callee, vec![]));
+            blk.handle(local(h));
+        }
+        let r = b.local("r", Ty::Unit);
+        blk.push(r, Bind::Call(Atom::Global(main_id), vec![]));
+        let body = blk.finish(Expr::Ret(local(r)));
+        let id = self.push_placeholder("$entry", self.module_name(main.module));
+        self.m.defs[id.index()] = FnDef {
+            locals: b.locals,
+            body,
+            ..self.m.defs[id.index()].clone()
+        };
+        Some(id)
+    }
+
+    /// A test body plus its wrapper `fn(seed)` that installs the deterministic defaults of
+    /// design §5.8 (whichever exist in std) and runs the body. The runner installs `Test`.
+    fn test(&mut self, t: hir::DefId) {
+        let def = self.p.def(t);
+        let hir::DefKind::Test(td) = &def.kind else {
+            return;
+        };
+        let n = self.m.tests.len();
+        let module = self.module_name(t.module);
+        let body_id = self.push_placeholder(&format!("test${n}"), module.clone());
+        let mut fd = expr::FnLower::lower_fn(self, t, td.body, body_id);
+        fd.kind = FnKind::Top { export: false };
+        fd.row = Row::empty();
+        self.m.defs[body_id.index()] = fd;
+
+        let mut b = FnBuilder::new();
+        let seed = b.local("seed", Ty::Int);
+        let mut blk = Block::new();
+        let defaults: [(&str, &str, &str, Vec<Atom>); 5] = [
+            ("console", "Console", "captured", vec![]),
+            ("log", "Log", "captured", vec![]),
+            ("clock", "Clock", "fixed", vec![]),
+            ("random", "Random", "seeded", vec![local(seed)]),
+            ("env", "Env", "of", vec![]),
+        ];
+        for (module_path, effect, ctor, mut args) in defaults {
+            let Some(mid) = self.p.find_module("std", module_path) else {
+                continue;
+            };
+            let (Some(f), Some(eff)) = (self.p.lookup(mid, ctor), self.p.lookup(mid, effect))
+            else {
+                continue;
+            };
+            let eff = self.effect(eff);
+            if module_path == "clock" {
+                // Clock.fixed(Instant.from_unix_millis(0))
+                let Some(at) = self
+                    .p
+                    .find_module("std", "instant")
+                    .and_then(|i| self.p.lookup(i, "from_unix_millis"))
+                else {
+                    continue;
+                };
+                let at_fn = self.callee(at);
+                let instant = b.local("epoch", Ty::Unit);
+                blk.push(instant, Bind::Call(at_fn, vec![int(0)]));
+                args.push(local(instant));
+            }
+            if module_path == "env" {
+                let vars = b.local("vars", Ty::Unit);
+                blk.push(vars, Bind::Call(builtin("map_empty"), vec![]));
+                args.push(local(vars));
+            }
+            let callee = self.callee(f);
+            let h = b.local(module_path, Ty::Handler(eff));
+            blk.push(h, Bind::Call(callee, args));
+            blk.handle(local(h));
+        }
+        let r = b.local("r", Ty::Unit);
+        blk.push(r, Bind::Call(Atom::Global(body_id), vec![]));
+        let body = blk.finish(Expr::Ret(local(r)));
+        let wrapper = self.push_placeholder(&format!("test${n}$run"), module);
+        let pos = self.pos(t.module, def.range);
+        let w = &mut self.m.defs[wrapper.index()];
+        w.kind = FnKind::Test;
+        w.params = vec![seed];
+        w.locals = b.locals;
+        w.body = body;
+        w.pos = pos;
+        self.m.tests.push(Test {
+            name: def.name.clone(),
+            def: wrapper,
+        });
+    }
+
+    /// How to call HIR function `f` by name: a Core global or a runtime builtin for
+    /// `@external(js, "vow_runtime", "name")`.
+    pub fn callee(&mut self, f: hir::DefId) -> Atom {
+        let def = self.p.def(f);
+        if let Some(a) = def.attrs.iter().find(|a| a.name == "external") {
+            let arg = |i: usize| a.args.get(i).map(|s| s.trim().trim_matches('"').to_owned());
+            if arg(0).as_deref() == Some("js")
+                && arg(1).as_deref() == Some("vow_runtime")
+                && let Some(name) = arg(2)
+                && crate::builtins::lookup(&name).is_some()
+            {
+                return Atom::Builtin(name);
+            }
+            let range = def.range;
+            self.unsupported(f.module, range, &format!("external `{}`", def.name));
+            return Atom::Lit(Lit::Unit);
+        }
+        if let Some(intro) = hir::RefinementIntro::of(def) {
+            return Atom::Global(self.refinement(f, intro));
+        }
+        Atom::Global(self.def(f))
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Types
+
+    /// Convert a checker type to Core.
+    pub fn ty(&mut self, t: types::TypeId) -> Ty {
+        if let Some(ty) = self.ty_cache.get(&t) {
+            return ty.clone();
+        }
+        let ty = match self.t.interner.ty(t).clone() {
+            types::Type::Tuple(ts) if ts.is_empty() => Ty::Unit,
+            types::Type::Tuple(ts) => Ty::Tuple(ts.into_iter().map(|t| self.ty(t)).collect()),
+            types::Type::Con(con, args) => {
+                let mut args: Vec<Ty> = args.into_iter().map(|t| self.ty(t)).collect();
+                let mut arg = |i: usize| Box::new(std::mem::replace(&mut args[i], Ty::Unit));
+                match con {
+                    types::TyCon::Bool => Ty::Bool,
+                    types::TyCon::Int => Ty::Int,
+                    types::TyCon::Float => Ty::Float,
+                    types::TyCon::String => Ty::String,
+                    types::TyCon::Bytes => Ty::Bytes,
+                    types::TyCon::List => Ty::List(arg(0)),
+                    types::TyCon::Map => Ty::Map(arg(0), arg(1)),
+                    types::TyCon::Set => Ty::Set(arg(0)),
+                    // ponytail: a Range value is the tuple (start, end).
+                    types::TyCon::Range => Ty::Tuple(vec![Ty::Int, Ty::Int]),
+                    types::TyCon::Secret => Ty::Opaque("Secret".into()),
+                    types::TyCon::Untrusted => Ty::Opaque("Untrusted".into()),
+                    types::TyCon::Adt(d) => self.adt(d, args),
+                }
+            }
+            types::Type::Fn { params, ret, row } => Ty::Fn(Box::new(FnTy {
+                params: params.into_iter().map(|t| self.ty(t)).collect(),
+                ret: self.ty(ret),
+                row: self.row(row),
+            })),
+            types::Type::Handler { label, .. } => match label.effect {
+                types::Effect::Def(d) => Ty::Handler(self.effect(d)),
+                types::Effect::Fail => Ty::Unit,
+            },
+            types::Type::Union(tags) => {
+                Ty::Union(tags.into_iter().map(|d| self.type_def(d)).collect())
+            }
+            types::Type::Never => Ty::Never,
+            types::Type::Param(p) => Ty::Var(p.0),
+            types::Type::Var(_) | types::Type::Error => Ty::Var(u32::MAX),
+        };
+        self.ty_cache.insert(t, ty.clone());
+        ty
+    }
+
+    pub fn row(&mut self, r: types::RowId) -> Row {
+        let data = self.t.interner.row_data(r).clone();
+        let mut row = Row::empty();
+        for l in data.labels {
+            match l.effect {
+                types::Effect::Def(d) => row.effects.push(self.effect(d)),
+                types::Effect::Fail => {
+                    row.fail = Some(Box::new(l.args.first().map_or(Ty::Never, |&t| self.ty(t))));
+                }
+            }
+        }
+        if let types::Tail::Param(p) = data.tail {
+            row.tail = Some(p.0);
+        }
+        row
+    }
+
+    /// A nominal type; refined types and aliases erase to their representation.
+    fn adt(&mut self, d: hir::DefId, args: Vec<Ty>) -> Ty {
+        if let hir::DefKind::Type(td) = &self.p.def(d).kind {
+            match &td.body {
+                hir::TypeDefBody::Refined { base, .. } => {
+                    return self.ty_ref(base, &args);
+                }
+                hir::TypeDefBody::Alias(t) => return self.ty_ref(t, &args),
+                hir::TypeDefBody::ErrorUnion(_) => {
+                    let mut tags = Vec::new();
+                    self.union_tags(d, &mut tags);
+                    return Ty::Union(tags);
+                }
+                _ => {}
+            }
+        }
+        Ty::Adt(self.type_def(d), args)
+    }
+
+    fn union_tags(&mut self, d: hir::DefId, out: &mut Vec<TypeId>) {
+        match &self.p.def(d).kind {
+            hir::DefKind::Error(_) => out.push(self.type_def(d)),
+            hir::DefKind::Type(hir::TypeDef {
+                body: hir::TypeDefBody::ErrorUnion(alts),
+                ..
+            }) => {
+                for alt in alts.clone() {
+                    if let hir::TypeRefKind::Named {
+                        res: hir::TypeRes::Def(a),
+                        ..
+                    } = alt.kind
+                    {
+                        self.union_tags(a, out);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// A type reference from a declaration; `Param(i)` becomes `args[i]` (or `Var(i)` when
+    /// `args` is empty, inside the declaring type).
+    pub fn ty_ref(&mut self, t: &hir::TypeRef, args: &[Ty]) -> Ty {
+        match &t.kind {
+            hir::TypeRefKind::Named { res, args: targs } => {
+                let targs: Vec<Ty> = targs.iter().map(|a| self.ty_ref(a, args)).collect();
+                let arg = |i: usize| Box::new(targs.get(i).cloned().unwrap_or(Ty::Var(u32::MAX)));
+                match res {
+                    hir::TypeRes::Builtin(b) => match b {
+                        hir::Builtin::Unit => Ty::Unit,
+                        hir::Builtin::Bool => Ty::Bool,
+                        hir::Builtin::Int => Ty::Int,
+                        hir::Builtin::Float => Ty::Float,
+                        hir::Builtin::String => Ty::String,
+                        hir::Builtin::Bytes => Ty::Bytes,
+                        hir::Builtin::Never => Ty::Never,
+                        hir::Builtin::List => Ty::List(arg(0)),
+                        hir::Builtin::Map => Ty::Map(arg(0), arg(1)),
+                        hir::Builtin::Set => Ty::Set(arg(0)),
+                        hir::Builtin::Range => Ty::Tuple(vec![Ty::Int, Ty::Int]),
+                        hir::Builtin::Handler => match targs.first() {
+                            Some(Ty::Handler(e)) => Ty::Handler(*e),
+                            _ => Ty::Opaque("Handler".into()),
+                        },
+                        other => Ty::Opaque(other.name().into()),
+                    },
+                    hir::TypeRes::Def(d) => match &self.p.def(*d).kind {
+                        hir::DefKind::Effect(_) => Ty::Handler(self.effect(*d)),
+                        _ => self.adt(*d, targs),
+                    },
+                    hir::TypeRes::Param(i) => args.get(*i as usize).cloned().unwrap_or(Ty::Var(*i)),
+                    hir::TypeRes::Err => Ty::Var(u32::MAX),
+                }
+            }
+            hir::TypeRefKind::Tuple(ts) if ts.is_empty() => Ty::Unit,
+            hir::TypeRefKind::Tuple(ts) => {
+                Ty::Tuple(ts.iter().map(|t| self.ty_ref(t, args)).collect())
+            }
+            hir::TypeRefKind::Fn { params, ret, .. } => Ty::Fn(Box::new(FnTy {
+                params: params.iter().map(|t| self.ty_ref(t, args)).collect(),
+                ret: self.ty_ref(ret, args),
+                row: Row::empty(),
+            })),
+            hir::TypeRefKind::Union(alts) => {
+                let mut tags = Vec::new();
+                for a in alts {
+                    if let hir::TypeRefKind::Named {
+                        res: hir::TypeRes::Def(d),
+                        ..
+                    } = a.kind
+                    {
+                        self.union_tags(d, &mut tags);
+                    }
+                }
+                Ty::Union(tags)
+            }
+            hir::TypeRefKind::Row(_) | hir::TypeRefKind::Missing => Ty::Var(u32::MAX),
+        }
+    }
+
+    /// The Core type for a HIR record, variant type or error tag.
+    pub fn type_def(&mut self, d: hir::DefId) -> TypeId {
+        if let Some(&t) = self.types.get(&d) {
+            return t;
+        }
+        let def = self.p.def(d);
+        let id = TypeId(self.m.types.len() as u32);
+        self.m.types.push(TypeDef {
+            name: def.name.clone(),
+            module: self.module_name(d.module),
+            params: 0,
+            kind: TypeKind::Variant { ctors: vec![] },
+            builtin: None,
+        });
+        self.types.insert(d, id);
+        let (params, kind) = match def.kind.clone() {
+            hir::DefKind::Type(td) => {
+                let kind = match &td.body {
+                    hir::TypeDefBody::Record(fields) => TypeKind::Record {
+                        fields: self.fields(fields),
+                        error: false,
+                    },
+                    hir::TypeDefBody::Variants(vs) => TypeKind::Variant {
+                        ctors: vs
+                            .iter()
+                            .map(|&v| {
+                                let vd = &self.p.module(d.module).defs[v];
+                                let hir::DefKind::Variant(var) = &vd.kind else {
+                                    unreachable!("variant def");
+                                };
+                                Ctor {
+                                    name: vd.name.clone(),
+                                    fields: var
+                                        .fields
+                                        .clone()
+                                        .iter()
+                                        .map(|f| self.ty_ref(f, &[]))
+                                        .collect(),
+                                }
+                            })
+                            .collect(),
+                    },
+                    _ => TypeKind::Variant { ctors: vec![] },
+                };
+                (td.generics.len() as u32, kind)
+            }
+            hir::DefKind::Error(e) => (
+                0,
+                TypeKind::Record {
+                    fields: self.fields(&e.fields),
+                    error: true,
+                },
+            ),
+            _ => (0, TypeKind::Variant { ctors: vec![] }),
+        };
+        let td = &mut self.m.types[id.index()];
+        td.params = params;
+        td.kind = kind;
+        id
+    }
+
+    fn fields(&mut self, fields: &[hir::FieldDef]) -> Vec<Field> {
+        fields
+            .iter()
+            .map(|f| Field {
+                name: f.name.clone(),
+                ty: self.ty_ref(&f.ty, &[]),
+            })
+            .collect()
+    }
+
+    pub fn effect(&mut self, d: hir::DefId) -> EffectId {
+        if let Some(&e) = self.effects.get(&d) {
+            return e;
+        }
+        let def = self.p.def(d);
+        let id = EffectId(self.m.effects.len() as u32);
+        self.effects.insert(d, id);
+        let mut ops = Vec::new();
+        if let hir::DefKind::Effect(e) = &def.kind {
+            for &op in &e.ops {
+                let od = &self.p.module(d.module).defs[op];
+                if let hir::DefKind::Op(o) = &od.kind {
+                    let sig = o.sig.clone();
+                    let fail = sig.row.as_ref().and_then(|r| {
+                        r.labels
+                            .iter()
+                            .find(|l| l.effect == hir::TypeRes::Builtin(hir::Builtin::Fail))
+                            .and_then(|l| l.args.first().cloned())
+                    });
+                    ops.push(OpDef {
+                        name: od.name.clone(),
+                        params: sig.params.iter().map(|p| self.ty_ref(&p.ty, &[])).collect(),
+                        ret: self.ty_ref(&sig.ret, &[]),
+                        fail: fail.map(|t| self.ty_ref(&t, &[])),
+                    });
+                }
+            }
+        }
+        self.m.effects.push(EffectDef {
+            name: def.name.clone(),
+            module: self.module_name(d.module),
+            ops,
+        });
+        id
+    }
+
+    /// A refined type's generated `from` (checked introduction, `D010`) or `validate`.
+    fn refinement(&mut self, f: hir::DefId, intro: hir::RefinementIntro) -> DefId {
+        // The refined type is the def whose `from`/`validate` index is `f`.
+        let owner = self
+            .p
+            .module(f.module)
+            .defs
+            .iter()
+            .find_map(|(idx, d)| match &d.kind {
+                hir::DefKind::Type(hir::TypeDef {
+                    body:
+                        hir::TypeDefBody::Refined {
+                            from,
+                            validate,
+                            pred,
+                            ..
+                        },
+                    ..
+                }) if *from == f.index || *validate == f.index => Some((idx, *pred)),
+                _ => None,
+            });
+        let Some((owner, pred)) = owner else {
+            return self.def(f);
+        };
+        let ty_def = hir::DefId {
+            module: f.module,
+            index: owner,
+        };
+        if let Some(&id) = self.refined.get(&(ty_def, intro)) {
+            return id;
+        }
+        let name = format!("{}${}", self.p.def(ty_def).name, intro.name());
+        let id = self.push_placeholder(&name, self.module_name(f.module));
+        self.refined.insert((ty_def, intro), id);
+        let fd = expr::FnLower::lower_refinement(self, ty_def, f, pred, intro, id);
+        self.m.defs[id.index()] = fd;
+        id
+    }
+
+    /// A lambda wrapping a constructor or operation used as a function value.
+    pub fn ctor_fn(&mut self, d: hir::DefId, ty: &Ty) -> DefId {
+        if let Some(&id) = self.ctor_fns.get(&d) {
+            return id;
+        }
+        let Ty::Fn(f) = ty else {
+            return self.def(d);
+        };
+        let mut b = FnBuilder::new();
+        let params: Vec<Local> = f
+            .params
+            .iter()
+            .enumerate()
+            .map(|(i, t)| b.local(format!("a{i}"), t.clone()))
+            .collect();
+        let args: Vec<Atom> = params.iter().map(|p| local(*p)).collect();
+        let r = b.local("r", f.ret.clone());
+        let bind = self.ctor_bind(d, args);
+        let mut blk = Block::new();
+        blk.push(r, bind);
+        let name = format!("{}$fn", self.p.def(d).name);
+        let id = self.push_placeholder(&name, self.module_name(d.module));
+        self.ctor_fns.insert(d, id);
+        let fd = &mut self.m.defs[id.index()];
+        fd.kind = FnKind::Top { export: false };
+        fd.params = params;
+        fd.locals = b.locals;
+        fd.ret = f.ret.clone();
+        fd.row = f.row.clone();
+        fd.body = blk.finish(Expr::Ret(local(r)));
+        id
+    }
+
+    /// Construction or operation for a variant/error/op def applied to `args`.
+    pub fn ctor_bind(&mut self, d: hir::DefId, args: Vec<Atom>) -> Bind {
+        match &self.p.def(d).kind {
+            hir::DefKind::Variant(v) => {
+                let parent = hir::DefId {
+                    module: d.module,
+                    index: v.parent,
+                };
+                let index = v.index;
+                Bind::Alloc(Alloc::Variant(self.type_def(parent), index), args)
+            }
+            hir::DefKind::Error(_) | hir::DefKind::Type(_) => {
+                Bind::Alloc(Alloc::Record(self.type_def(d)), args)
+            }
+            hir::DefKind::Op(o) => {
+                let eff = hir::DefId {
+                    module: d.module,
+                    index: o.effect,
+                };
+                let index = o.index;
+                Bind::Perform(self.effect(eff), index, args)
+            }
+            _ => Bind::Call(Atom::Global(self.def(d)), args),
+        }
+    }
+}
+
+/// Substitute a type's parameters (`Var(i)`) with `args`.
+pub(crate) fn subst(ty: &Ty, args: &[Ty]) -> Ty {
+    let s = |t: &Ty| subst(t, args);
+    match ty {
+        Ty::Var(i) => args.get(*i as usize).cloned().unwrap_or(Ty::Var(*i)),
+        Ty::Tuple(ts) => Ty::Tuple(ts.iter().map(s).collect()),
+        Ty::Fn(f) => Ty::Fn(Box::new(FnTy {
+            params: f.params.iter().map(s).collect(),
+            ret: s(&f.ret),
+            row: f.row.clone(),
+        })),
+        Ty::Adt(t, a) => Ty::Adt(*t, a.iter().map(s).collect()),
+        Ty::List(t) => Ty::List(Box::new(s(t))),
+        Ty::Set(t) => Ty::Set(Box::new(s(t))),
+        Ty::Map(k, v) => Ty::Map(Box::new(s(k)), Box::new(s(v))),
+        other => other.clone(),
+    }
+}

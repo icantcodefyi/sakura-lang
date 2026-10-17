@@ -833,6 +833,9 @@ dependencies = [
  "insta",
  "vow_core",
  "vow_diagnostics",
+ "vow_hir",
+ "vow_syntax",
+ "vow_types",
 ]
 
 [[package]]
@@ -840,6 +843,7 @@ name = "vow_core"
 version = "0.0.0"
 dependencies = [
  "insta",
+ "text-size",
  "vow_diagnostics",
  "vow_hir",
  "vow_types",

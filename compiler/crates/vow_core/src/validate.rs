@@ -132,8 +132,8 @@ impl Validator<'_> {
                 },
             },
         }
-        if def.kind == FnKind::Test && !def.params.is_empty() {
-            self.err("tests take no parameters".into());
+        if def.kind == FnKind::Test && def.params.len() > 1 {
+            self.err("tests take at most one parameter (the seed)".into());
         }
         for l in def.captures.iter().chain(&def.params) {
             self.bind(*l);

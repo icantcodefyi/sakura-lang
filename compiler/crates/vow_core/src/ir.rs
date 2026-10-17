@@ -461,6 +461,7 @@ pub enum PrimOp {
     FloatSub,
     FloatMul,
     FloatDiv,
+    FloatRem,
     FloatNeg,
     /// String `+`.
     Concat,

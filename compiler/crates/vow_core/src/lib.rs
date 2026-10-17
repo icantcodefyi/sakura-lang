@@ -6,8 +6,10 @@
 pub mod build;
 pub mod builtins;
 pub mod ir;
+mod lower;
 mod pretty;
 mod validate;
 
 pub use ir::*;
+pub use lower::{LowerOptions, Lowered, lower};
 pub use validate::{ValidationError, validate};

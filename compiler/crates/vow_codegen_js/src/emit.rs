@@ -399,7 +399,8 @@ impl<'a> FnEmit<'a> {
         }
         assert!(
             self.mode == Mode::Cps || self.labels.values().all(|l| l.inline),
-            "direct-style bodies only use inline join points"
+            "direct-style bodies only use inline join points ({})",
+            self.def.name
         );
     }
 
@@ -901,6 +902,7 @@ impl<'a> FnEmit<'a> {
             PrimOp::FloatSub => bin("-"),
             PrimOp::FloatMul => bin("*"),
             PrimOp::FloatDiv => bin("/"),
+            PrimOp::FloatRem => bin("%"),
             PrimOp::FloatNeg => format!("(-{})", a[0]),
             PrimOp::Not => format!("!{}", a[0]),
             PrimOp::Eq(t) => eq(t, false),

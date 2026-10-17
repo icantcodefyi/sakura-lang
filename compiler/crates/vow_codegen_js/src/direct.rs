@@ -22,7 +22,14 @@ pub(crate) fn analyze(m: &Module) -> Vec<bool> {
         })
         .collect();
 
-    // Drop functions that call a non-direct function, until stable.
+    // Drop recursive functions (any cycle through candidate calls), then functions that call
+    // a non-direct function, until stable.
+    let candidates = direct.clone();
+    for (i, d) in direct.iter_mut().enumerate() {
+        if *d && reaches(i, i, &callees, &candidates) {
+            *d = false;
+        }
+    }
     loop {
         let mut changed = false;
         for i in 0..n {
@@ -33,12 +40,6 @@ pub(crate) fn analyze(m: &Module) -> Vec<bool> {
         }
         if !changed {
             break;
-        }
-    }
-    // Drop recursive functions (any cycle through direct calls).
-    for i in 0..n {
-        if direct[i] && reaches(i, i, &callees, &direct) {
-            direct[i] = false;
         }
     }
     direct
