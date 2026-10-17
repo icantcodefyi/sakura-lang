@@ -99,8 +99,9 @@ fn diagnostics_navigation_and_formatting_over_stdio() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-/// Design §14.3 M3: after an edit replay with non-ASCII text, the LSP `sakura/holeContext` record
-/// equals MCP `hole_context` for the same file byte for byte.
+/// Design §14.3 M3 and §17.75: after an edit replay with non-ASCII text, an out-of-order
+/// (stale) change and a cancelled hover, the LSP `sakura/holeContext` record equals MCP
+/// `hole_context` for the same file byte for byte.
 #[test]
 fn lsp_hole_context_matches_mcp_after_unicode_edits() {
     let dir = std::env::temp_dir().join(format!("sakura-lsp-hole-{}", std::process::id()));
@@ -119,14 +120,20 @@ fn lsp_hole_context_matches_mcp_after_unicode_edits() {
     let (mut c, _) = Lsp::start(&root);
     let doc = json!({"uri": uri, "languageId": "sakura", "version": 1, "text": steps[0]});
     c.notify("textDocument/didOpen", json!({"textDocument": doc}));
-    for (v, text) in steps.iter().enumerate().skip(1) {
-        let change = json!({"textDocument": {"uri": uri, "version": v + 1}, "contentChanges": [{"text": text}]});
-        c.notify("textDocument/didChange", change);
-    }
+    let change = |v: usize, text: &str| json!({"textDocument": {"uri": uri, "version": v}, "contentChanges": [{"text": text}]});
+    c.notify("textDocument/didChange", change(2, steps[1]));
     // UTF-16 column of `?rest`: `é` is one unit, `𝄞` two.
     let line = last.lines().nth(1).unwrap();
     let col: usize = line[..line.find("?rest").unwrap()].encode_utf16().count();
     let at = json!({"textDocument": {"uri": uri}, "position": {"line": 1, "character": col + 1}});
+    // The last edit, then a hover cancelled before the server gets to it (it is still
+    // analyzing the edit), then a change that arrives late with an older version.
+    c.notify("textDocument/didChange", change(3, last));
+    let hover = c.send_request("textDocument/hover", at.clone());
+    c.notify("$/cancelRequest", json!({"id": hover}));
+    c.notify("textDocument/didChange", change(2, steps[0]));
+    let cancelled = c.response(hover);
+    assert_eq!(cancelled["error"]["code"], -32800, "{cancelled}");
     let from_lsp = c.request("sakura/holeContext", at);
     assert!(c.shutdown());
 

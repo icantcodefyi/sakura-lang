@@ -70,14 +70,26 @@ impl Lsp {
     }
 
     pub fn request(&mut self, method: &str, params: Value) -> Value {
+        let id = self.send_request(method, params);
+        let msg = self.response(id);
+        assert!(msg["error"].is_null(), "{method}: {msg}");
+        msg["result"].clone()
+    }
+
+    /// Sends a request without waiting; its id.
+    pub fn send_request(&mut self, method: &str, params: Value) -> u64 {
         self.next_id += 1;
         let id = self.next_id;
         self.send(json!({"jsonrpc": "2.0", "id": id, "method": method, "params": params}));
+        id
+    }
+
+    /// The whole response message to request `id`; anything before it is skipped.
+    pub fn response(&mut self, id: u64) -> Value {
         loop {
             let msg = self.recv();
-            if msg["id"] == id {
-                assert!(msg["error"].is_null(), "{method}: {msg}");
-                return msg["result"].clone();
+            if msg["id"] == id && msg.get("method").is_none() {
+                return msg;
             }
         }
     }

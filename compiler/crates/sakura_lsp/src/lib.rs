@@ -8,7 +8,7 @@ use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use lsp_server::{Connection, ErrorCode, Message, Notification, Request, Response};
+use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
 use lsp_types as lsp;
 use sakura_analysis::{Analysis, Analyzed, Snapshot, disk};
 use sakura_diagnostics::{Diagnostic, FileId, Severity, Span, hole_records};
@@ -78,8 +78,8 @@ struct Server {
     disk: Vec<(String, String)>,
     root: PathBuf,
     utf8: bool,
-    /// Open documents by snapshot URI.
-    open: HashMap<String, String>,
+    /// Open documents by snapshot URI: version and text.
+    open: HashMap<String, (i32, String)>,
     /// Snapshot URI → the URI the client used for it.
     client_uris: HashMap<String, String>,
     /// Client URIs that currently show diagnostics.
@@ -122,30 +122,66 @@ fn materialize_std() -> Option<PathBuf> {
 }
 
 impl Server {
+    /// Design §17.75: everything the client has sent is taken in one pass, so edits apply (and
+    /// diagnostics publish) before any request is answered, every request sees the newest
+    /// snapshot, and a request cancelled by then gets `RequestCancelled` instead of an answer.
     fn main_loop(&mut self, conn: &Connection) -> Result<(), String> {
-        for msg in &conn.receiver {
-            match msg {
-                Message::Request(req) => {
-                    if conn.handle_shutdown(&req).map_err(|e| e.to_string())? {
-                        return Ok(());
+        // `lsp_server` hands messages over one at a time; this queue holds whatever arrived
+        // while an analysis ran, so the pass after it sees the cancellations too.
+        let (tx, rx) = std::sync::mpsc::channel();
+        let incoming = conn.receiver.clone();
+        std::thread::spawn(move || incoming.into_iter().all(|m| tx.send(m).is_ok()));
+        let send = |m: Message| conn.sender.send(m).map_err(|e| e.to_string());
+        let mut shutdown = false;
+        while let Ok(first) = rx.recv() {
+            let mut requests = Vec::new();
+            let mut cancelled = HashSet::new();
+            let mut pending = vec![first];
+            while !pending.is_empty() {
+                let mut dirty = false;
+                for msg in pending {
+                    match msg {
+                        Message::Request(req) => requests.push(req),
+                        Message::Notification(n) if n.method == "exit" => return Ok(()),
+                        Message::Notification(n) if n.method == "$/cancelRequest" => {
+                            cancelled.extend(params::<lsp::CancelParams>(n.params).ok().map(|p| {
+                                match p.id {
+                                    lsp::NumberOrString::Number(n) => RequestId::from(n),
+                                    lsp::NumberOrString::String(s) => RequestId::from(s),
+                                }
+                            }));
+                        }
+                        Message::Notification(n) => dirty |= self.apply(n),
+                        Message::Response(_) => {}
                     }
-                    let id = req.id.clone();
-                    let resp = match contained(|| self.request(req)) {
+                }
+                // A compiler crash keeps the previous analysis; the next edit retries.
+                if dirty && let Ok(out) = contained(|| self.reanalyze()) {
+                    for n in out {
+                        send(n.into())?;
+                    }
+                }
+                pending = rx.try_iter().collect();
+            }
+            for req in requests {
+                let id = req.id.clone();
+                let resp = if cancelled.contains(&id) {
+                    let code = ErrorCode::RequestCanceled as i32;
+                    Response::new_err(id, code, "cancelled".into())
+                } else if shutdown {
+                    let code = ErrorCode::InvalidRequest as i32;
+                    Response::new_err(id, code, "the server is shutting down".into())
+                } else if req.method == "shutdown" {
+                    shutdown = true;
+                    Response::new_ok(id, ())
+                } else {
+                    match contained(|| self.request(req)) {
                         Ok(Ok(v)) => Response::new_ok(id, v),
                         Ok(Err((code, msg))) => Response::new_err(id, code as i32, msg),
                         Err(msg) => Response::new_err(id, ErrorCode::InternalError as i32, msg),
-                    };
-                    conn.sender.send(resp.into()).map_err(|e| e.to_string())?;
-                }
-                Message::Notification(n) => {
-                    // A compiler crash keeps the previous analysis; the next edit retries.
-                    if let Ok(Some(out)) = contained(|| self.notify(n)) {
-                        for n in out {
-                            conn.sender.send(n.into()).map_err(|e| e.to_string())?;
-                        }
                     }
-                }
-                Message::Response(_) => {}
+                };
+                send(resp.into())?;
             }
         }
         Ok(())
@@ -171,28 +207,47 @@ impl Server {
         canon
     }
 
-    /// Re-analyzes disk files overlaid with open documents and publishes diagnostics.
-    fn notify(&mut self, n: Notification) -> Option<Vec<Notification>> {
+    /// Applies a document notification; whether the workspace needs analyzing again. A
+    /// `didChange` whose version is not newer than the document's is stale and dropped.
+    fn apply(&mut self, n: Notification) -> bool {
         match n.method.as_str() {
             "textDocument/didOpen" => {
-                let p: lsp::DidOpenTextDocumentParams = params(n.params).ok()?;
+                let Ok(p) = params::<lsp::DidOpenTextDocumentParams>(n.params) else {
+                    return false;
+                };
                 let uri = self.canonical(&p.text_document.uri);
-                self.open.insert(uri, p.text_document.text);
+                let doc = (p.text_document.version, p.text_document.text);
+                self.open.insert(uri, doc);
             }
             "textDocument/didChange" => {
-                let p: lsp::DidChangeTextDocumentParams = params(n.params).ok()?;
+                let Ok(p) = params::<lsp::DidChangeTextDocumentParams>(n.params) else {
+                    return false;
+                };
                 let uri = self.canonical(&p.text_document.uri);
-                let text = p.content_changes.into_iter().last()?.text;
-                self.open.insert(uri, text);
+                let version = p.text_document.version;
+                let Some(change) = p.content_changes.into_iter().last() else {
+                    return false;
+                };
+                if self.open.get(&uri).is_some_and(|(v, _)| *v >= version) {
+                    return false;
+                }
+                self.open.insert(uri, (version, change.text));
             }
             "textDocument/didSave" | "workspace/didChangeWatchedFiles" => {}
             "textDocument/didClose" => {
-                let p: lsp::DidCloseTextDocumentParams = params(n.params).ok()?;
+                let Ok(p) = params::<lsp::DidCloseTextDocumentParams>(n.params) else {
+                    return false;
+                };
                 let uri = self.canonical(&p.text_document.uri);
                 self.open.remove(&uri);
             }
-            _ => return None,
+            _ => return false,
         }
+        true
+    }
+
+    /// Re-analyzes disk files overlaid with open documents and publishes diagnostics.
+    fn reanalyze(&mut self) -> Vec<Notification> {
         self.reload_disk();
         let mut files: Vec<(String, String)> = self
             .disk
@@ -200,10 +255,10 @@ impl Server {
             .filter(|(uri, _)| !self.open.contains_key(uri))
             .cloned()
             .collect();
-        files.extend(self.open.iter().map(|(u, t)| (u.clone(), t.clone())));
+        files.extend(self.open.iter().map(|(u, (_, t))| (u.clone(), t.clone())));
         let a = Analysis::analyze(&Snapshot::new(files));
         self.current = Some(a.clone());
-        Some(self.publish(&a))
+        self.publish(&a)
     }
 
     fn publish(&mut self, a: &Analyzed) -> Vec<Notification> {
