@@ -1,0 +1,20 @@
+// milestone: M1
+// covers: VarStmt ForStmt WhileStmt JumpStmt AssignStmt
+
+pub fn main() -> Unit ! {Console} {
+  var total = 0
+  for i in 0..5 { total = total + i }
+  Console.print("range sum {total}")
+  var evens: List<Int> = []
+  for x in [1, 2, 3, 4, 5, 6] {
+    if x % 2 == 1 { continue }
+    if x > 4 { break }
+    evens = List.push(evens, x)
+  }
+  Console.print("evens {evens}")
+  var n = 1
+  while n < 100 { n = n * 3 }
+  Console.print("while {n}")
+  for (k, v) in Map.of([("a", 1), ("b", 2)]) { Console.print("{k}={v}") }
+  for s in Set.of(["x", "y", "x"]) { Console.print(s) }
+}

@@ -1,0 +1,23 @@
+// milestone: M2
+// mode: test
+// covers: TestDecl MatchExpr
+
+fn greeting() -> String ! {Env, Log} {
+  match Env.get("USER") {
+    Some(u) => "hi {u}",
+    None => {
+      Log.event(Level.Warn, "USER not set", [("fallback", Json.String("friend"))])
+      "hi friend"
+    }
+  }
+}
+
+test "reads USER from the env handler" {
+  with Env.of(Map.of([("USER", "ann")])) { expect_eq(greeting(), "hi ann") }
+  expect_output([])
+}
+
+test "logs when USER is missing" {
+  expect_eq(greeting(), "hi friend")
+  expect_output(["Warn USER not set fallback=String(\"friend\")"])
+}

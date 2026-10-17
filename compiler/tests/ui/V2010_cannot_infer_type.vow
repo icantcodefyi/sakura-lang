@@ -1,0 +1,5 @@
+// milestone: M1
+// expect: V2010
+fn nothing() -> Unit {
+  let xs = []
+}

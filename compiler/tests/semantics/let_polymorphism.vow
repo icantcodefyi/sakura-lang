@@ -1,0 +1,8 @@
+// milestone: M1
+// covers: Lambda LetStmt
+
+pub fn main() -> Unit ! {Console} {
+  let id = fn(x) { x }
+  let pair = fn(a, b) { (a, b) }
+  Console.print("{id(3)} {id(true)} {id("s")} {pair(1, "x")}")
+}

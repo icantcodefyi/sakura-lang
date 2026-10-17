@@ -1,0 +1,11 @@
+// milestone: M1
+// expect-exit: 70
+// expect-defect: D030
+// covers: Defect
+
+fn missing() -> Option<Int> { None }
+pub fn main() -> Unit ! {Console} {
+  Console.print("before")
+  Console.print("{missing().expect("value must be present")}")
+  Console.print("never printed")
+}

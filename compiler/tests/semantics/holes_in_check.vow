@@ -1,0 +1,6 @@
+// milestone: M2
+// needs: typed holes: `vow check` reports a hole record, not an error
+// mode: check
+// covers: PrimaryExpr Hole
+
+fn unfinished(x: Int) -> Int { ?result }

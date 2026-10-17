@@ -1,0 +1,23 @@
+// milestone: M1
+// covers: Term PostfixExpr Postfix
+
+fn total(xs: List<Int>) -> Int {
+  xs
+    .map(fn(x) { x * 2 })
+    .filter(fn(x) { x > 2 })
+    .fold(0, fn(a, b) { a + b })
+}
+
+pub fn main() -> Unit ! {Console} {
+  let long = 1 +
+    2 +
+    3
+  let more = 10
+    + 5
+  let cond = true &&
+    false
+  let picked = if cond { "a" }
+    else { "b" }
+  Console.print("{total([1, 2, 3])} {long} {more} {cond} {picked}")
+  Console.print("semi"); Console.print("colons");
+}

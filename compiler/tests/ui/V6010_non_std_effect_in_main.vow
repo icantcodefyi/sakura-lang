@@ -1,0 +1,8 @@
+// milestone: M2
+// expect: V6010
+effect Db {
+  fn count() -> Int
+}
+pub fn main() -> Unit ! {Db} {
+  let _ = Db.count()
+}

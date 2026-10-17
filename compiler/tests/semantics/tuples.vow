@@ -1,0 +1,14 @@
+// milestone: M1
+// covers: TupleType TupleLit TuplePat Postfix
+
+fn swap(p: (Int, String)) -> (String, Int) { (p.1, p.0) }
+
+pub fn main() -> Unit ! {Console} {
+  let pair = (1, "one")
+  let (word, n) = swap(pair)
+  Console.print("{word} {n} {swap(pair)}")
+  let unit = ()
+  let nested = ((1, 2), 3)
+  let inner = nested.0
+  Console.print("{unit} {(1,)} {inner.1} {nested.1}")
+}

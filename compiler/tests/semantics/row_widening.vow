@@ -1,0 +1,17 @@
+// milestone: M2
+// covers: EffectRow FnType
+
+fn twice<e>(f: fn() -> Int ! e) -> Int ! e { f() + f() }
+
+fn now_ms() -> Int ! {Clock} { Instant.to_unix_millis(Clock.now()) }
+
+fn seven() -> Int { 7 }
+
+fn run() -> Int ! {Clock} {
+  let tick: fn() -> Int ! {Clock} = now_ms
+  twice(tick) + twice(seven)
+}
+
+pub fn main() -> Unit ! {Console} {
+  with Clock.fixed(Instant.from_unix_millis(5)) { Console.print("{run()}") }
+}

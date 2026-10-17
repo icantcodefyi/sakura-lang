@@ -1,0 +1,5 @@
+// milestone: M2
+// expect: V3010
+effect Store {
+  fn save(key: String) -> Unit ! {Console}
+}

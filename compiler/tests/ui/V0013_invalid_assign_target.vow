@@ -1,0 +1,7 @@
+// milestone: M1
+// expect: V0013
+fn first_to_zero() -> List<Int> {
+  var xs = [1, 2]
+  xs[0] = 0
+  xs
+}

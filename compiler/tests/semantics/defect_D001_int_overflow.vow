@@ -1,0 +1,12 @@
+// milestone: M4
+// needs: 64-bit Int backend (WASM/native); JS reports D003 first
+// expect-exit: 70
+// expect-defect: D001
+// covers: Defect
+
+fn big() -> Int { 4_611_686_018_427_387_904 }
+pub fn main() -> Unit ! {Console} {
+  Console.print("before")
+  Console.print("{big() * 2}")
+  Console.print("never printed")
+}

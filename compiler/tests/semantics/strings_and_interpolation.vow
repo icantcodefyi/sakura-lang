@@ -1,0 +1,12 @@
+// milestone: M0
+// covers: Literal String
+
+fn greet(name: String) -> String { "hi, {name}!" }
+
+pub fn main() -> Unit ! {Console} {
+  let who = "Vow"
+  Console.print(greet(who))
+  Console.print("nested: {greet("{who} {1 + 1}")}")
+  Console.print("braces: \{literal\} tab:\t| quote: \"q\" backslash: \\")
+  Console.print("unicode: \u{1F600}")
+}

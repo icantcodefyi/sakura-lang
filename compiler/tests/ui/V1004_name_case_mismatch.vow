@@ -1,0 +1,3 @@
+// milestone: M1
+// expect: V1004
+fn count() -> Int { list.len([1, 2]) }

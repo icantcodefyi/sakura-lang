@@ -1,0 +1,35 @@
+// milestone: M1
+// covers: ErrorDecl TryExpr MatchArm Postfix
+
+error ParseError(input: String)
+error Negative(value: Int)
+
+fn parse_age(s: String) -> Int ! {Fail<ParseError | Negative>} {
+  let n = String.parse_int(s).or_fail(ParseError { input: s })
+  if n < 0 { fail Negative { value: n } }
+  n
+}
+
+fn show_age(s: String) -> String {
+  try {
+    "age {parse_age(s)}"
+  } catch {
+    ParseError { input } => "not a number: {input}",
+    Negative { value } => "negative: {value}",
+  }
+}
+
+fn ages(xs: List<String>) -> List<Int> ! {Fail<ParseError | Negative>} {
+  List.map(xs, parse_age)
+}
+
+pub fn main() -> Unit ! {Console} {
+  Console.print(show_age("42"))
+  Console.print(show_age("x"))
+  Console.print(show_age("-1"))
+  Console.print("{try { parse_age("7") }}")
+  Console.print("{try { ages(["1", "oops", "3"]) }}")
+  let r: Result<Int, ParseError> = Err(ParseError { input: "q" })
+  let back = try { r? }
+  Console.print("{back}")
+}

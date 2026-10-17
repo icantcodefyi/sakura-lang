@@ -1,0 +1,26 @@
+// milestone: M1
+// covers: ListLit ListPat PatList
+
+fn sum(xs: List<Int>) -> Int {
+  match xs {
+    [] => 0,
+    [x, ..rest] => x + sum(rest),
+  }
+}
+
+fn shape(xs: List<String>) -> String {
+  match xs {
+    [] => "empty",
+    [only] => "one: {only}",
+    [first, second, ..] => "starts {first}, {second}",
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("{sum([1, 2, 3, 4])}")
+  Console.print(shape([]))
+  Console.print(shape(["a"]))
+  Console.print(shape(["a", "b", "c"]))
+  let xs = [10, 20]
+  Console.print("{xs[1]} {xs[5]} {xs}")
+}

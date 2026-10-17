@@ -1,0 +1,12 @@
+// milestone: M1
+// covers: Import ModPath NameList Name TypePath
+
+import std/graph.{Graph, NodeId,}
+import std/retry as r
+
+pub fn main() -> Unit ! {Console} {
+  let (g, a): (Graph<String>, NodeId) = Graph.empty().insert("a")
+  Console.print("{Graph.get(g, a)}")
+  let p: r.Policy<Int> = r.policy(fn(code) { code >= 500 }, 3)
+  Console.print("{p.max_attempts} {p.retry_on(503)} {p.backoff}")
+}

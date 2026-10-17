@@ -1,0 +1,12 @@
+// milestone: M5
+// needs: native backend with Perceus reuse analysis
+// expect: W8001
+fn grow() -> List<Int> {
+  var xs = [1]
+  var kept = xs
+  for i in 0..100 {
+    kept = xs
+    xs = List.push(xs, i)
+  }
+  xs
+}

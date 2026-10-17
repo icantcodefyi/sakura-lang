@@ -1,0 +1,19 @@
+// milestone: M0
+// covers: IfExpr
+
+fn classify(n: Int) -> String {
+  if n < 0 { "negative" } else if n == 0 { "zero" } else { "positive" }
+}
+
+pub fn main() -> Unit ! {Console} {
+  Console.print(classify(-3))
+  Console.print(classify(0))
+  let size = if classify(9) == "positive" {
+    "big"
+  }
+  else {
+    "small"
+  }
+  Console.print(size)
+  if true { Console.print("if without else is Unit") }
+}

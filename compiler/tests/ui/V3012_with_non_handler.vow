@@ -1,0 +1,3 @@
+// milestone: M2
+// expect: V3012
+fn five() -> Int { with 5 { 1 } }

@@ -1,0 +1,4 @@
+// milestone: M0
+// expect: V2002
+fn double(x: Int) -> Int { x * 2 }
+fn four() -> Int { double(2, 2) }

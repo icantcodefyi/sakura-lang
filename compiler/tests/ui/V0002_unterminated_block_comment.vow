@@ -1,0 +1,4 @@
+// milestone: M0
+// expect: V0002
+fn one() -> Int { 1 }
+/* this comment never closes

@@ -1,0 +1,6 @@
+// milestone: M1
+// expect: V2032
+fn same() -> Bool {
+  let f = fn() { 1 }
+  f == f
+}

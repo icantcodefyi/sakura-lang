@@ -1,0 +1,3 @@
+// milestone: M0
+// expect: V0006
+fn mask() -> Int { 0x }

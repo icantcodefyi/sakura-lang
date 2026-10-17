@@ -1,0 +1,3 @@
+// milestone: M0
+// expect: V1002
+fn total() -> Int { subtotal + 1 }

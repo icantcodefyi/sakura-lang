@@ -1,0 +1,9 @@
+// milestone: M1
+// expect: V2015
+error A
+error B
+fn fa() -> Int ! {Fail<A>} { fail A }
+fn fb() -> Int ! {Fail<B>} { fail B }
+fn pick(c: Bool) -> Unit {
+  let _ = if c { try { fa() } } else { try { fb() } }
+}

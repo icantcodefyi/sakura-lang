@@ -1,0 +1,3 @@
+// milestone: M1
+// expect: V0010
+fn between(a: Int, b: Int, c: Int) -> Bool { a < b < c }

@@ -1,0 +1,5 @@
+// milestone: M0
+// needs: `vow run` on a file without `pub fn main`
+// expect: V8001
+// command: run
+fn helper() -> Int { 1 }

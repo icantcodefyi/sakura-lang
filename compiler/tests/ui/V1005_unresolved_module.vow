@@ -1,0 +1,5 @@
+// milestone: M1
+// expect: V1005
+import std/nope
+
+fn one() -> Int { 1 }

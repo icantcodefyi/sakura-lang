@@ -1,0 +1,3 @@
+// milestone: M0
+// expect: V2001
+fn age() -> Int { "forty" }

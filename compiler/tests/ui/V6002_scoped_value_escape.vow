@@ -1,0 +1,9 @@
+// milestone: M3
+// expect: V6002
+import std/fs
+
+fn leak() -> Handler<Fs> ! {Fs} {
+  with Fs.rooted(Dir.subdir(Fs.root(), "data")) {
+    Fs.rooted(Dir.subdir(Fs.root(), "data"))
+  }
+}

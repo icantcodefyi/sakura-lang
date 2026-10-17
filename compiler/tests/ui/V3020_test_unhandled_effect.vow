@@ -1,0 +1,6 @@
+// milestone: M2
+// expect: V3020
+effect Db {
+  fn count() -> Int
+}
+test "counts rows" { expect_eq(Db.count(), 0) }

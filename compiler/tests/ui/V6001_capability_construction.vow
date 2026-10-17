@@ -1,0 +1,4 @@
+// milestone: M3
+// expect: V6001
+@external(js, "./forge.js", "root")
+fn forge() -> Dir

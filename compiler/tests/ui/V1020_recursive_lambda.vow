@@ -1,0 +1,6 @@
+// milestone: M1
+// expect: V1020
+fn fact_of_five() -> Int {
+  let fact = fn(n) { if n == 0 { 1 } else { n * fact(n - 1) } }
+  fact(5)
+}

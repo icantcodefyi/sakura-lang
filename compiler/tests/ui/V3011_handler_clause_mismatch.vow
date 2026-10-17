@@ -1,0 +1,11 @@
+// milestone: M2
+// expect: V3011
+effect Pair {
+  fn left() -> Int
+  fn right() -> Int
+}
+fn only_left() -> Handler<Pair> {
+  handler Pair {
+    fn left() { 1 }
+  }
+}

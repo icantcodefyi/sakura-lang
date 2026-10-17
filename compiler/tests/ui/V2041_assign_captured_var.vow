@@ -1,0 +1,8 @@
+// milestone: M1
+// expect: V2041
+fn total() -> Int {
+  var sum = 0
+  let add = fn(x) { sum = sum + x }
+  add(1)
+  sum
+}

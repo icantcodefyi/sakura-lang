@@ -1,0 +1,19 @@
+// milestone: M1
+// covers: JumpStmt Lambda
+
+fn index_of(xs: List<String>, target: String) -> Int {
+  var i = 0
+  for x in xs {
+    if x == target { return i }
+    i = i + 1
+  }
+  -1
+}
+
+pub fn main() -> Unit ! {Console} {
+  let sign = fn(x: Int) -> String {
+    if x > 0 { return "pos" }
+    "non-pos"
+  }
+  Console.print("{index_of(["a", "b"], "b")} {index_of(["a"], "z")} {sign(1)} {sign(-1)}")
+}

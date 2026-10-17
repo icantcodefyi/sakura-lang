@@ -1,0 +1,4 @@
+// milestone: M1
+// expect: V2004
+type Point = { x: Int, y: Int }
+fn depth(p: Point) -> Int { p.z }

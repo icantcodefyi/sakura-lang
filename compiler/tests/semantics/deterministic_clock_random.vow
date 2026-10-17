@@ -1,0 +1,12 @@
+// milestone: M2
+// covers: WithExpr
+
+pub fn main() -> Unit ! {Console} {
+  with Random.seeded(42) {
+    Console.print("{Random.int(1, 100)} {Random.int(1, 100)} {Random.int(1, 100)}")
+  }
+  with Clock.virtual() {
+    Clock.sleep(Duration.seconds(90))
+    Console.print("{Instant.format_iso(Clock.now())} {Clock.monotonic()}")
+  }
+}

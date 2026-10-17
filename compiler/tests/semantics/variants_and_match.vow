@@ -1,0 +1,30 @@
+// milestone: M1
+// covers: Variant MatchExpr MatchArm ArmTerm Pattern SimplePat PatList
+
+type Shape = Circle(Int) | Rect(Int, Int) | Empty
+
+fn area(s: Shape) -> Int {
+  match s {
+    Circle(r) => 3 * r * r,
+    Rect(w, h) => w * h,
+    Empty => 0,
+  }
+}
+
+fn describe(n: Int) -> String {
+  match n {
+    0 => "zero"
+    1 | 2 | 3 => "small"
+    k if k < 0 => "negative"
+    _ => "large"
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  for s in [Circle(2), Rect(3, 4), Empty] { Console.print("{s} has area {area(s)}") }
+  Console.print("{describe(0)} {describe(2)} {describe(-5)} {describe(10)}")
+  match Some(Rect(1, 2)) {
+    Some(Rect(w, _)) | Some(Circle(w)) => Console.print("width-ish {w}"),
+    _ => Console.print("other"),
+  }
+}

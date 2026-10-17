@@ -1,0 +1,18 @@
+// milestone: M1
+// covers: TypeDecl RecordType FieldDecl RecordLit FieldInit AssignStmt
+
+type User = { id: Int, name: String, admin: Bool }
+
+fn promote(u: User) -> User { User { ..u, admin: true } }
+
+pub fn main() -> Unit ! {Console} {
+  let name = "ann"
+  let u = User { id: 1, name, admin: false }
+  let p = promote(u)
+  Console.print("{u.admin} {p.admin} {p.name}")
+  var v = u
+  v.name = "bea"
+  Console.print("{u.name} {v.name}")
+  Console.print("{p}")
+  Console.print("{u == User { id: 1, name: "ann", admin: false }}")
+}

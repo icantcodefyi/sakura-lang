@@ -1,0 +1,9 @@
+// milestone: M1
+// expect: V4002
+fn sign(n: Int) -> String {
+  match n {
+    0 => "zero",
+    _ => "nonzero",
+    1 => "one",
+  }
+}

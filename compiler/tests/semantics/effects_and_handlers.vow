@@ -1,0 +1,33 @@
+// milestone: M2
+// covers: EffectDecl OpSig HandlerExpr HandlerClause WithExpr
+
+error Full
+
+effect Store {
+  fn put(key: String, value: Int) -> Unit ! {Fail<Full>}
+  fn get(key: String) -> Option<Int>
+}
+
+fn bounded(limit: Int) -> Handler<Store> {
+  handler Store {
+    var data: Map<String, Int> = Map.empty()
+    fn put(key, value) {
+      if Map.len(data) >= limit && !Map.contains(data, key) { fail Full }
+      data = Map.insert(data, key, value)
+    }
+    fn get(key) { Map.get(data, key) }
+  }
+}
+
+fn fill(keys: List<String>) -> Int ! {Store, Fail<Full>} {
+  for (i, k) in List.enumerate(keys) { Store.put(k, i) }
+  List.len(keys)
+}
+
+pub fn main() -> Unit ! {Console} {
+  with bounded(2) {
+    Console.print("{try { fill(["a", "b"]) }}")
+    Console.print("{try { fill(["c"]) }}")
+    Console.print("{Store.get("b")} {Store.get("c")}")
+  }
+}

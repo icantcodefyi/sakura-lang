@@ -1,0 +1,8 @@
+// milestone: M1
+// covers: ConstDecl
+
+let greeting = "hello"
+pub let max_retries: Int = 3
+let primes = [2, 3, 5]
+
+pub fn main() -> Unit ! {Console} { Console.print("{greeting} {max_retries} {List.sum(primes)}") }

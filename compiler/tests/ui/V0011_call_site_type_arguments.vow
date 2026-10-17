@@ -1,0 +1,3 @@
+// milestone: M1
+// expect: V0011
+fn none() -> List<Int> { List<Int>.empty() }

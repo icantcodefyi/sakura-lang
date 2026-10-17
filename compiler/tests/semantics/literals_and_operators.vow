@@ -1,0 +1,8 @@
+// milestone: M0
+// covers: Literal BinExpr BinOp UnaryExpr PrimaryExpr
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("{1 + 2 * 3} {(1 + 2) * 3} {7 / 2} {-7 % 3} {0xff} {0b101} {1_000_000}")
+  Console.print("{1.5 + 2.25} {10.0 / 4.0} {2.0}")
+  Console.print("{true && !false} {false || true} {3 <= 3} {2 != 2} {-(4 - 6)}")
+}

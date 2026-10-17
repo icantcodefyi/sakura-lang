@@ -1,0 +1,14 @@
+// milestone: M3
+// needs: contract checks; the predicate itself overflows
+// expect-exit: 70
+// expect-defect: D011
+// covers: Defect
+
+fn tiny(x: Int) -> Int
+  requires x * 4_611_686_018_427_387_904 > 0
+{ x }
+pub fn main() -> Unit ! {Console} {
+  Console.print("before")
+  Console.print("{tiny(4)}")
+  Console.print("never printed")
+}

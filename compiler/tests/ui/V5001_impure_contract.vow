@@ -1,0 +1,11 @@
+// milestone: M3
+// expect: V5001
+fn noisy_positive(x: Int) -> Bool ! {Console} {
+  Console.print("checking")
+  x > 0
+}
+fn halve(x: Int) -> Int ! {Console}
+  requires noisy_positive(x)
+{
+  x / 2
+}

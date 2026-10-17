@@ -1,0 +1,6 @@
+// milestone: M0
+// expect: V0009
+fn sum() -> Int {
+  let a = 1 let b = 2
+  a + b
+}

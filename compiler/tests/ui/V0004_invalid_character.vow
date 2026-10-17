@@ -1,0 +1,3 @@
+// milestone: M0
+// expect: V0004
+fn price() -> Int { 1 $ 2 }

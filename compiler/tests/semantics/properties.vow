@@ -1,0 +1,14 @@
+// milestone: M2
+// mode: test
+// seed: 7
+// covers: PropertyDecl Contract Params
+
+fn rev<A>(xs: List<A>) -> List<A> { List.reverse(xs) }
+
+property "reverse twice is identity"(xs: List<Int>) { expect_eq(rev(rev(xs)), xs) }
+
+property "reverse keeps the length"(xs: List<String>) { expect_eq(List.len(rev(xs)), List.len(xs)) }
+
+property "abs is non-negative"(x: Int)
+  requires x > -1_000_000
+{ expect(Int.abs(x) >= 0) }

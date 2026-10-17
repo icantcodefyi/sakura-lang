@@ -1,0 +1,34 @@
+// milestone: M1
+// covers: ErrorDecl TypeDecl UnionType TryExpr
+
+error NotFound
+error Forbidden
+error Timeout
+type AccessError = NotFound | Forbidden
+
+fn fetch(id: Int) -> String ! {Fail<NotFound | Forbidden | Timeout>} {
+  match id {
+    1 => "doc",
+    2 => fail Forbidden,
+    3 => fail Timeout,
+    _ => fail NotFound,
+  }
+}
+
+// Timeout is recovered here; the remaining tags match the declared union.
+fn fetch_retrying(id: Int) -> String ! {Fail<AccessError>} {
+  try { fetch(id) } catch { Timeout => "doc (after retry)" }
+}
+
+fn report(id: Int) -> String {
+  let outcome = try { fetch_retrying(id) }
+  match outcome {
+    Ok(d) => d,
+    Err(NotFound) => "missing",
+    Err(Forbidden) => "forbidden",
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  for id in 1..5 { Console.print(report(id)) }
+}

@@ -1,0 +1,8 @@
+// milestone: M1
+// covers: FnDecl
+
+fn is_even(n: Int) -> Bool { if n == 0 { true } else { is_odd(n - 1) } }
+
+fn is_odd(n: Int) -> Bool { if n == 0 { false } else { is_even(n - 1) } }
+
+pub fn main() -> Unit ! {Console} { Console.print("{is_even(10)} {is_odd(7)} {is_even(100001)}") }

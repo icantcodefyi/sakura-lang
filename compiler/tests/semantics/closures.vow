@@ -1,0 +1,16 @@
+// milestone: M1
+// covers: Lambda LambdaParams LambdaParam FnType
+
+fn apply_twice(f: fn(Int) -> Int, x: Int) -> Int { f(f(x)) }
+
+fn adder(n: Int) -> fn(Int) -> Int { fn(x) { x + n } }
+
+pub fn main() -> Unit ! {Console} {
+  let add3 = adder(3)
+  Console.print("{apply_twice(add3, 1)}")
+  var base = 10
+  let captured = fn(x: Int) -> Int { x + base }
+  base = 100
+  Console.print("{captured(1)} {base}")
+  Console.print("{List.map([1, 2], fn(x) { x * x })}")
+}

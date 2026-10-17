@@ -1,0 +1,4 @@
+// milestone: M1
+// expect: V1010
+@inline
+fn one() -> Int { 1 }

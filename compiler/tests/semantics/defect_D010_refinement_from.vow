@@ -1,0 +1,12 @@
+// milestone: M3
+// needs: refined-type from
+// expect-exit: 70
+// expect-defect: D010
+// covers: Defect
+
+type Percent = Int where it >= 0 && it <= 100
+pub fn main() -> Unit ! {Console} {
+  Console.print("before")
+  Console.print("{Percent.from(101)}")
+  Console.print("never printed")
+}

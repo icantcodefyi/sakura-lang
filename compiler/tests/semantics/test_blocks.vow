@@ -1,0 +1,20 @@
+// milestone: M1
+// mode: test
+// covers: TestDecl
+
+error Empty
+
+fn head(xs: List<Int>) -> Int ! {Fail<Empty>} { List.first(xs).or_fail(Empty) }
+
+test "head of a non-empty list" { expect_eq(try { head([4, 5]) }, Ok(4)) }
+
+test "head of empty fails with Empty" { expect_fail(fn() { head([]) }, Empty) }
+
+test "predicate on the failure" { expect_fails_with(fn() { head([]) }, fn(e) { e == Empty }) }
+
+test "overflow is a defect, caught by the runner" { expect_defect(fn() { Int.pow(10, 40) }) }
+
+test "snapshots of output" {
+  Console.print("captured, not printed")
+  expect_output(["captured, not printed"])
+}

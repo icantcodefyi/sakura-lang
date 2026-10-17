@@ -1,0 +1,6 @@
+// milestone: M0
+// expect: V2003
+fn call() -> Int {
+  let x = 1
+  x(2)
+}

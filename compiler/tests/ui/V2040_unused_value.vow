@@ -1,0 +1,7 @@
+// milestone: M1
+// expect: V2040
+fn grow() -> List<Int> {
+  var xs = [1]
+  List.push(xs, 2)
+  xs
+}

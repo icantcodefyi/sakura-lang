@@ -1,0 +1,18 @@
+// milestone: M1
+// covers: RecordPat FieldPat
+
+type Point = { x: Int, y: Int, label: String }
+
+fn where_is(p: Point) -> String {
+  match p {
+    Point { x: 0, y: 0, .. } => "origin",
+    Point { x: 0, label, .. } => "on the y axis: {label}",
+    Point { x, y, label } => "{label} at {x},{y}",
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  Console.print(where_is(Point { x: 0, y: 0, label: "o" }))
+  Console.print(where_is(Point { x: 0, y: 4, label: "up" }))
+  Console.print(where_is(Point { x: 2, y: 3, label: "p" }))
+}

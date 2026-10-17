@@ -1,0 +1,9 @@
+// milestone: M2
+// expect: V3002
+fn apply(f: fn() -> Int) -> Int { f() }
+fn noisy() -> Int ! {Console} {
+  apply(fn() {
+    Console.print("side effect")
+    1
+  })
+}

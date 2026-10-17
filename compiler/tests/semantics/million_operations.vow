@@ -1,0 +1,15 @@
+// milestone: M2
+// needs: 1,000,000 handled operations without stack growth (design §14.3 M2)
+// covers: WithExpr ForStmt
+
+effect Counter { fn next() -> Int }
+
+fn counter() -> Handler<Counter> { handler Counter { var n = 0; fn next() { n = n + 1; n } } }
+
+fn spin(times: Int) -> Int ! {Counter} {
+  var last = 0
+  for _ in 0..times { last = Counter.next() }
+  last
+}
+
+pub fn main() -> Unit ! {Console} { with counter() { Console.print("{spin(1_000_000)}") } }

@@ -1,0 +1,11 @@
+// milestone: M1
+// mode: test
+// covers: Attribute Item
+
+@deprecated("use List.sum")
+fn sum_old(xs: List<Int>) -> Int { List.sum(xs) }
+
+@test_only
+fn fixture() -> List<Int> { [1, 2] }
+
+test "uses the fixture" { expect_eq(sum_old(fixture()), 3) }

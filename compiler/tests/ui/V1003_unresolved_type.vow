@@ -1,0 +1,3 @@
+// milestone: M0
+// expect: V1003
+fn shout(s: Strng) -> Int { 1 }

@@ -1,0 +1,11 @@
+// milestone: M1
+// expect-exit: 70
+// expect-defect: D031
+// covers: Defect
+
+fn accent() -> String { "é" }
+pub fn main() -> Unit ! {Console} {
+  Console.print("before")
+  Console.print(String.slice(accent(), 0, 1))
+  Console.print("never printed")
+}

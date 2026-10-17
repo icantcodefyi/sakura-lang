@@ -1,0 +1,11 @@
+// milestone: M0
+// covers: Block Stmt LetStmt Term
+
+pub fn main() -> Unit ! {Console} {
+  let x = { let a = 2; let b = 3; a * b }
+  let y = {
+    let z = x + 1
+    z * 2
+  }
+  Console.print("{x} {y}"); Console.print("done")
+}

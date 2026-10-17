@@ -1,0 +1,20 @@
+// milestone: M2
+// covers: HandlerExpr VarStmt EffectRow
+
+effect Counter { fn next() -> Int }
+
+fn counter() -> Handler<Counter> { handler Counter { var n = 0; fn next() { n = n + 1; n } } }
+
+fn twice<e>(f: fn() -> Int ! e) -> Int ! e { f() + f() }
+
+// Pure signature: the effect is handled inside.
+fn answer() -> Int { with counter() { twice(fn() { Counter.next() }) } }
+
+fn nested() -> Int {
+  with counter() {
+    let _ = Counter.next()
+    with counter() { Counter.next() }
+  }
+}
+
+pub fn main() -> Unit ! {Console} { Console.print("{answer()} {nested()}") }

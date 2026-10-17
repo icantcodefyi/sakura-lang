@@ -1,0 +1,37 @@
+// milestone: M1
+// covers: TypeParams TypeParam NamedType TypeList
+
+type Pair<A, B> = { left: A, right: B }
+type Tree<A> = Leaf | Node(Tree<A>, A, Tree<A>)
+
+fn flip<A, B>(p: Pair<A, B>) -> Pair<B, A> { Pair { left: p.right, right: p.left } }
+
+fn largest<A: Ord + Show>(xs: List<A>) -> String {
+  match List.last(List.sort(xs)) {
+    Some(x) => "max {x}",
+    None => "empty",
+  }
+}
+
+fn insert<A: Ord>(t: Tree<A>, x: A) -> Tree<A> {
+  match t {
+    Leaf => Node(Leaf, x, Leaf),
+    Node(l, v, r) => if x < v { Node(insert(l, x), v, r) } else { Node(l, v, insert(r, x)) },
+  }
+}
+
+fn to_list<A>(t: Tree<A>) -> List<A> {
+  match t {
+    Leaf => [],
+    Node(l, v, r) => List.concat(List.push(to_list(l), v), to_list(r)),
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("{flip(Pair { left: 1, right: "a" })}")
+  Console.print(largest([3, 9, 2]))
+  Console.print(largest(["b", "a"]))
+  let none: List<Int> = []
+  Console.print(largest(none))
+  Console.print("{to_list(List.fold([5, 1, 4, 2], Leaf, insert))}")
+}

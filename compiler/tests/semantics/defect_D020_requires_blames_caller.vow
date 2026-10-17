@@ -1,0 +1,14 @@
+// milestone: M3
+// needs: requires checks
+// expect-exit: 70
+// expect-defect: D020
+// covers: Defect
+
+fn clamp(x: Int, lo: Int, hi: Int) -> Int
+  requires ordered: lo <= hi
+{ Int.max(lo, Int.min(x, hi)) }
+pub fn main() -> Unit ! {Console} {
+  Console.print("before")
+  Console.print("{clamp(1, 5, 0)}")
+  Console.print("never printed")
+}

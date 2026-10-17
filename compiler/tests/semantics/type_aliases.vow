@@ -1,0 +1,13 @@
+// milestone: M1
+// covers: TypeDecl TypeBody
+
+type Meters = Float
+type UserId = UserId(Int)
+
+fn double(m: Meters) -> Float { m * 2.0 }
+
+fn next_id(id: UserId) -> UserId {
+  match id { UserId(n) => UserId(n + 1) }
+}
+
+pub fn main() -> Unit ! {Console} { Console.print("{double(1.5)} {next_id(UserId(41))}") }

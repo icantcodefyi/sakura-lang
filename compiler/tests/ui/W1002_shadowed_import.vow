@@ -1,0 +1,8 @@
+// milestone: M1
+// expect: W1002
+import std/retry.{retry}
+
+fn attempts() -> Int {
+  let retry = 3
+  retry
+}

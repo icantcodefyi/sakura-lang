@@ -1,0 +1,12 @@
+// milestone: M1
+// covers: FnType RecordType Postfix
+
+type Op = { name: String, run: fn(Int, Int) -> Int }
+
+fn table() -> List<Op> {
+  [Op { name: "add", run: fn(a, b) { a + b } }, Op { name: "mul", run: fn(a, b) { a * b } }]
+}
+
+pub fn main() -> Unit ! {Console} {
+  for op in table() { Console.print("{op.name} {op.run(6, 7)}") }
+}
