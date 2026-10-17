@@ -154,9 +154,22 @@ dependencies. The first path segment is a package name (`std`, this package, or 
 "The item exists but is not `pub`, so other modules cannot use it. Mark it `pub` (an interface
 change) or use a public API.";
 
+    V1007 "wrong_kind" RESOLVE,
+"A name resolved to the wrong kind of item for where it is used: an effect where a type is
+expected, a type where a value is expected, and so on.
+
+Wrong:
+    fn log(c: Console) -> Unit { … }
+Fixed:
+    fn log(line: String) -> Unit ! {Console} { … }";
+
     V1010 "unknown_attribute" RESOLVE,
 "Only these attributes exist in v0: `@tool`, `@llm`, `@external`, `@trust`, `@deprecated`,
 `@server`, `@test_only` (design §2.5).";
+
+    V1011 "missing_body" RESOLVE,
+"A function has no body. Only `@external` and `@llm` declarations may omit it (design §11.1,
+§13.6).";
 
     V1012 "mixed_union_alternatives" RESOLVE,
 "`type X = A | B` must be either all existing error tags (an error-union alias) or all new
@@ -169,6 +182,19 @@ may be mutually recursive.";
     V1030 "import_cycle" RESOLVE,
 "Modules import each other in a cycle; v0 forbids import cycles (design §9). Move the shared
 items into a third module.";
+
+    V1040 "assign_immutable" RESOLVE,
+"Only `var` bindings can be assigned; `let` bindings and parameters are immutable (design §8.1).
+
+Wrong:
+    let n = 0
+    n = n + 1
+Fixed:
+    var n = 0
+    n = n + 1";
+
+    V1041 "jump_outside_loop" RESOLVE,
+"`break` or `continue` appears outside a `for` or `while` loop (or crosses a function boundary).";
 
     // 2: types
     V2001 "type_mismatch" TYPE,
@@ -379,6 +405,9 @@ effect row and cannot be caught by `try`.";
 "On the JS backend, an `Int` left the exactly representable range ±(2^53−1). v0 traps instead of
 computing a silently wrong value (design §4.1).";
 
+    D004 "float_not_finite" RUNTIME,
+"`Float.round` or a float-to-int conversion was given NaN or ±∞.";
+
     D010 "refinement_violated" RUNTIME,
 "A checked introduction such as `Email.from(s)` received a value that fails the refinement.
 Use `validate` (which returns a typed error) at untrusted boundaries.";
@@ -397,6 +426,13 @@ Use `validate` (which returns a typed error) at untrusted boundaries.";
 
     D031 "string_slice_not_char_boundary" RUNTIME,
 "`String.slice` was given a byte offset that is not on a UTF-8 character boundary.";
+
+    D090 "runtime_internal_error" RUNTIME,
+"The runtime hit a bug or an exhausted host resource (for example a JS exception that is not a
+Vow defect). Never your program's fault; please report it.";
+
+    D091 "host_failure" RUNTIME,
+"A host operation failed outside Vow's control (for example a rejected host promise).";
 }
 
 #[cfg(test)]
@@ -451,6 +487,38 @@ mod tests {
                 _ => false,
             };
             assert!(ok, "{} has phase {phase:?}", info.code.0);
+        }
+    }
+
+    /// Every `Code("…")` literal in the compiler's crates must be registered here.
+    #[test]
+    fn every_code_used_in_the_workspace_is_registered() {
+        fn scan(dir: &std::path::Path, out: &mut Vec<(String, String)>) {
+            for entry in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    scan(&path, out);
+                } else if path.extension().is_some_and(|e| e == "rs") {
+                    let text = std::fs::read_to_string(&path).unwrap_or_default();
+                    for (i, _) in text.match_indices("Code(\"") {
+                        let code: String =
+                            text[i + 6..].chars().take_while(|c| *c != '"').collect();
+                        out.push((code, path.display().to_string()));
+                    }
+                }
+            }
+        }
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+        let mut used = Vec::new();
+        scan(&root, &mut used);
+        for (code, file) in used {
+            let looks_like_code = code.len() >= 4 && code[1..].bytes().all(|b| b.is_ascii_digit());
+            if looks_like_code {
+                assert!(
+                    lookup(&code).is_some(),
+                    "{code} used in {file} is not registered"
+                );
+            }
         }
     }
 
