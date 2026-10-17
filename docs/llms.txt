@@ -5,11 +5,16 @@
 ## Toolchain loop
 `vow check --json` (types/effects, holes allowed) → `vow test --json` → `vow run`. Diagnostics have stable codes (`V3001`), byte spans, and `fixes[]` with an `impact` class; never apply a fix whose impact is `contract_change` or `authority_change` without being asked, and know that `interface_change` fixes are only ever `suggested`. `vow fmt` is canonical. `vow explain V3001` gives the rationale. Holes `?name` compile under `check` and report expected type, locals, and candidates. Exit codes: 0 ok, 1 errors or `main` failed with an uncaught error, 3 test failures, 70 defect, 75 permission denied.
 
+## Status in this compiler
+- Works (check, run and test on the JS backend): the core language below, refinements and contracts (checked at run time), user effects and handlers with state, `Fail`/`try`/`catch`, tests, properties and snapshots; std core data, `Console Clock Random Env Log Test`, `std/retry`, `std/gen`, `std/graph`, `std/url`, `std/path`, and the fakes `Http.scripted`, `Budget.limits`/`unlimited`, `Cli.of`.
+- Type-checks, runs at M3 (runtime pending): `Task` (`scope spawn join all race`, `timeout`), `Fs`, `Cli.host`/`parse`, `Http.host`, `Request.json`, `Response.json`/`text`, `Json.encode`/`decode`, `Sql`, `Llm` (`@llm`, `Llm.scripted`), tagged templates (`sql"…"`), `Untrusted.of`.
+- Not yet (M3): `pub opaque type` (parser), `Untrusted.trust`/`validate` and `Secret.expose` (the `Trust` type), `SqlValue.from` for `sql"…"` arguments, `url"…"`/`html"…"`, `Fs.with_file`, `Llm.stream`/`replay`, `std/router`, `std/serve`, `std/html`, `std/tool`, `std/agent`, `std/decimal`. `V0011` on `f<T>(…)` and `V0014` are specified but not reported yet.
+
 ## Syntax in one screen
 ```vow
-import std/http.{Request, Response}        // first segment = package; names must be listed; no wildcards
+import std/request.{Request}               // first segment = package; names must be listed; no wildcards
 import std/sql.{Sql, SqlError}             // effects and types are never imported implicitly
-import std/decimal as money                // `money.Decimal`, `money.add(...)`
+import std/json as js                      // `js.Json`, `js.parse(...)`
 
 type Email = String where String.len(it) <= 254 && String.contains(it, "@")   // refinement, `it` = value
 type User = { id: Int, email: Email, name: String }                            // nominal record
@@ -60,7 +65,7 @@ Rules you must know:
 - `<...>` is type arguments only in type positions. No call-site type args (`V0011`): `let xs: List<Int> = List.empty()`, `let u: User = Json.decode(text)?`. In expressions `<` is comparison.
 - No named arguments (`V0014`): pass a record (`Budget.limits(Limits { tokens: Some(20_000), usd: None, calls: None })`). `name: value` appears only inside attributes (`@llm(system: "...")`).
 - `e.f(a)` means `T.f(e, a)` where `T` is `e`'s type and `f` lives in `T`'s module (`List.map`, `String.len`, your own module for your types). `Type.f` is a module function or constructor; `Type.Variant` a qualified constructor (`Json.String(s)`, `Level.Warn`); `Effect.op(...)` performs an operation, and `Effect.f(...)` for a non-operation `f` calls the effect's module (`Console.captured()`, `Clock.fixed(t)`).
-- `import std/http` binds only the module name `http`. To use `Http` in a row or `Request` in a type, import them: `import std/http.{Http, Request}`. `V1002` on a std name offers the import as a machine-applicable fix.
+- `import std/http` binds only the module name `http`. To use `Http` in a row or `Request` in a type, import them: `import std/http.{Http}`, `import std/request.{Request}`. Each type's functions live in its own module: `std/request` (`Request`, `Method`, `BadRequest`), `std/response` (`Response`, `Status`, `HttpError`), `std/prompt` (`Prompt`), `std/llm` (`Llm`, `Request<T>`, `Model`, `LlmError`), `std/budget` (`Budget`, `Limits`, `BudgetExceeded`). `V1002` on a std name offers the import as a machine-applicable fix.
 - `pub type` exports constructors and fields; `pub opaque type` exports the name only. A `type` with no `=` is an external host type (resources, capabilities): no constructors, not `Eq`/`Show`.
 - No `null`, no exceptions, no implicit conversions, no overloading, no methods/classes/traits, no macros, no mutable references, no globals.
 - Record literal: `User { id: 1, email, name: "x" }` (punning ok). Update: `User { ..u, name: "y" }`. Not allowed unparenthesized in `if`/`match`/`with`/`for`/`while` headers or contract predicates.
@@ -87,7 +92,7 @@ Primitives `Unit Bool Int(i64) Float(f64) String(UTF-8) Bytes Never`. Data `List
 - Authority: `main` gets root handlers for the std effects it declares, limited by `vow.toml [permissions]` (`fs.read`, `net`, `env`, ...). Narrow before passing down: `with Fs.rooted(Dir.subdir(Fs.root(), "data")) { ... }`. Capability values (`Dir`, `NetScope`) are external types that cannot be forged or escape their `with` scope. `Env.get(key) -> Option<String>` is plain; `Env.secret(key) -> Option<Secret<String>>` cannot be shown/logged/serialized. `Untrusted<String>` (request bodies, file text, LLM text) must be validated into a refined type (`let e: Email = Untrusted.validate(u)?`) or released with `Untrusted.trust(u, @trust("why"))`; `@trust("...")` is the only attribute usable as an expression and `vow audit` lists every use. `sql"..."`/`html"..."` templates bind interpolations safely and never splice raw.
 
 ## Concurrency and memory
-`Task.scope(fn(s) { let f = Task.spawn(s, fn() {...}); Task.join(f) })`; children cannot outlive the scope; first failure cancels siblings; cancellation is cooperative at effect operations. No shared mutable state exists, so there are no data races; fibers communicate through results (`join`, `all`, `race`) and handler state, there is no channel type. Values have value semantics; the compiler owns copying/reference counting; `W8001` tells you when a loop copies a collection because an older value is still used. Cyclic data: `import std/graph.{Graph, NodeId}`. Resources (files, connections) are scope-bound: `Fs.with_file(path, mode, fn(file) {...})`; returning the resource is an error.
+`Task.scope(fn(s) { let f = Task.spawn(s, fn() {...}); Task.join(f) })`; children cannot outlive the scope; first failure cancels siblings; cancellation is cooperative at effect operations. No shared mutable state exists, so there are no data races; fibers communicate through results (`join`, `all`, `race`) and handler state, there is no channel type. Values have value semantics; the compiler owns copying/reference counting; `W8001` tells you when a loop copies a collection because an older value is still used. Cyclic data: `import std/graph.{Graph, NodeId}`. Resources (files, connections) are scope-bound (`Fs.with_file`, M3); returning the resource is an error.
 
 ## Standard library, most used
 ```
@@ -98,9 +103,10 @@ Option.map unwrap_or or_fail expect is_some      Result.map map_err unwrap_or ra
 Int.to_float to_string abs min max clamp pow checked_add    Float.round to_int_checked sqrt is_nan format
 Json.encode decode parse get get_string      Instant.from_unix_millis to_unix_millis parse add diff format_iso   Duration.millis seconds minutes to_millis
 Console.print read_line   Clock.now monotonic sleep   Random.int float bytes uuid   Env.get secret   Log.event
-Fs.root read read_text write list exists with_file   Http.get post_json send bearer   Response.json text ok_json status html
-Router.new get post   Request.json param post post_json   Serve.listen   Sql.query execute transaction   Cli.args parse exit
-Llm.request generate generate_text stream   Tool.of(@tool fn)   Agent.run(Agent { request, tools, max_steps, stop })   Budget.limits unlimited
+Fs.root read read_text write list exists rooted memory   Dir.subdir   Path.of join to_string   Url.from validate host path query_param
+Http.get post_json send bearer scripted   Request.of post post_json json param header   Response.status ok_json json text
+Sql.query execute transaction memory sqlite   sql.migrate   Cli.args exit parse of   Budget.limits unlimited reserve settle
+Llm.request generate generate_text scripted anthropic   Prompt.of text   Model.of default   Untrusted.of
 expect expect_eq expect_fail expect_fails_with expect_defect expect_output expect_snapshot   gen.int bool one_of list string map pair for_all
 ```
 Type-directed results are named by annotation: `let rows: List<User> = Sql.query(q)`, `let args: Args = Cli.parse(Cli.args())`, `let req: Request<Answer> = Llm.request(system, Prompt.text("..."))`.
