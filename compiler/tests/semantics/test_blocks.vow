@@ -1,7 +1,7 @@
 // milestone: M1
 // mode: test
 // covers: TestDecl
-// known-bug: `vow test` needs the `wrap_secret` external in the JS runtime (REQUESTS.md, E to D)
+// known-bug: the `vow test` runner's Test handler predates `output_lines` (op 3; `snapshot` is op 4) (REQUESTS.md, F to E)
 
 error Empty
 

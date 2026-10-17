@@ -333,6 +333,7 @@ effect Env {
   fn get(key: String) -> Option<String>
   fn secret(key: String) -> Option<Secret<String>>
 }
+fn host() -> Handler<Env>
 fn of(vars: Map<String, String>) -> Handler<Env>
 fn only(keys: List<String>) -> Handler<Env, {Env}>
 ```
@@ -345,6 +346,7 @@ effect Log {
   fn event(level: Level, message: String, fields: List<(String, Json)>) -> Unit
 }
 fn stderr() -> Handler<Log>    // @external
+fn host() -> Handler<Log>
 fn json() -> Handler<Log>    // @external
 fn captured() -> Handler<Log, {Test}>
 ```

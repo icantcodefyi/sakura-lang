@@ -44,13 +44,14 @@ pub fn to_lower(s: String) -> String
 @external(js, "vow_runtime", "string_to_upper")
 pub fn to_upper(s: String) -> String
 
-/// Decimal integer: optional leading `-`, then ASCII digits only (no `+`, `_`,
-/// whitespace, or prefixes). `None` when malformed or outside the backend's `Int` range.
+/// Decimal integer: optional sign, then ASCII digits only (no `_`, whitespace, or `0x`
+/// prefixes), as Rust's `str::parse`. `None` when malformed or outside the `Int` range.
+/// On JS a value beyond ±(2^53 − 1) is Defect `D003`.
 @external(js, "vow_runtime", "string_parse_int")
 pub fn parse_int(s: String) -> Option<Int>
 
-/// Decimal float such as `-1.5`, `2`, `1e3`. `None` when malformed. `NaN` and
-/// infinities are not accepted.
+/// Decimal float such as `-1.5`, `2`, `.5`, `1e3`, plus `NaN`, `inf`, `+inf`, `-inf`.
+/// `None` when malformed. Check `Float.is_nan` on untrusted input.
 @external(js, "vow_runtime", "string_parse_float")
 pub fn parse_float(s: String) -> Option<Float>
 
@@ -104,7 +105,7 @@ test "search and replace" {
 test "parse_int is strict" {
   expect_eq(parse_int("42"), Some(42))
   expect_eq(parse_int("-7"), Some(-7))
-  expect_eq(parse_int("+7"), None)
+  expect_eq(parse_int("+7"), Some(7))
   expect_eq(parse_int(" 7"), None)
   expect_eq(parse_int("1_000"), None)
   expect_eq(parse_int(""), None)

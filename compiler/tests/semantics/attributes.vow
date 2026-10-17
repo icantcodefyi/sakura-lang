@@ -1,7 +1,6 @@
 // milestone: M1
 // mode: test
 // covers: Attribute Item
-// known-bug: `vow test` needs the `wrap_secret` external in the JS runtime (REQUESTS.md, E to D)
 
 @deprecated("use List.sum")
 fn sum_old(xs: List<Int>) -> Int { List.sum(xs) }

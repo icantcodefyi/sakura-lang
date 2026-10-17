@@ -1,14 +1,15 @@
 // milestone: M3
-// needs: contract checks; the predicate itself overflows
+// needs: contract checks; the predicate itself divides by zero
 // expect-exit: 70
 // expect-defect: D011
+// known-bug: a defect inside a contract predicate surfaces as its own code (D002), not D011 (design §7.1; REQUESTS.md, F to D)
 // covers: Defect
 
-fn tiny(x: Int) -> Int
-  requires x * 4_611_686_018_427_387_904 > 0
+fn ratio(x: Int) -> Int
+  requires 100 / x > 1
 { x }
 pub fn main() -> Unit ! {Console} {
   Console.print("before")
-  Console.print("{tiny(4)}")
+  Console.print("{ratio(0)}")
   Console.print("never printed")
 }

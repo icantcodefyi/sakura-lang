@@ -11,6 +11,9 @@ pub effect Log {
 @external(js, "vow_runtime", "log_stderr")
 pub fn stderr() -> Handler<Log>
 
+/// The root handler the host installs for a `main` that declares `Log`: same as `stderr()`.
+pub fn host() -> Handler<Log> { stderr() }
+
 /// Root handler: one JSON object per line on stderr (`level`, `message`, then fields).
 @external(js, "vow_runtime", "log_json")
 pub fn json() -> Handler<Log>
