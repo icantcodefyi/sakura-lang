@@ -202,25 +202,14 @@ impl Checker<'_> {
                 (ty, pure, true)
             }
             Expr::Path(res) => (self.path_type(e, *res), pure, false),
-            Expr::Call {
-                callee,
-                args,
-                type_args,
-                arg_names,
-            } => {
+            Expr::Call { callee, args, .. } => {
                 let (ft, fr) = self.synth(*callee);
                 let target = match &body.exprs[*callee] {
                     Expr::Path(Res::Def(d)) => CallTarget::Def(*d),
                     _ => CallTarget::Value,
                 };
-                self.explicit_type_args(*callee, type_args);
-                let def = match target {
-                    CallTarget::Def(d) => Some(d),
-                    _ => None,
-                };
-                let args = self.order_args(e, def, 0, args, arg_names);
                 self.b.calls.insert(e, target);
-                let (t, r) = self.apply(e, ft, vec![fr], None, &args);
+                let (t, r) = self.apply(e, ft, vec![fr], None, args);
                 (t, r, false)
             }
             Expr::MethodCall {
@@ -228,18 +217,9 @@ impl Checker<'_> {
                 method,
                 method_range,
                 args,
-                type_args,
-                arg_names,
+                ..
             } => {
-                let (t, r) = self.method_call(
-                    e,
-                    *receiver,
-                    method,
-                    *method_range,
-                    args,
-                    type_args,
-                    arg_names,
-                );
+                let (t, r) = self.method_call(e, *receiver, method, *method_range, args);
                 (t, r, false)
             }
             Expr::Field { base, name } => {
@@ -478,97 +458,6 @@ impl Checker<'_> {
                 (ty, self.seq(&rows, e), expected.is_some())
             }
         }
-    }
-
-    /// `f<T>(…)`: fixes the leading type parameters of the instantiation recorded at `at`.
-    fn explicit_type_args(&mut self, at: ExprId, type_args: &[TypeRef]) {
-        if type_args.is_empty() {
-            return;
-        }
-        let vars = self.b.instantiations.get(at).cloned().unwrap_or_default();
-        if type_args.len() > vars.len() {
-            let range = self.expr_range(at);
-            self.error(
-                V2002,
-                Phase::Type,
-                range,
-                format!(
-                    "{} explicit type argument{} given, but the function has {} type parameter{}",
-                    type_args.len(),
-                    if type_args.len() == 1 { "" } else { "s" },
-                    vars.len(),
-                    if vars.len() == 1 { "" } else { "s" }
-                ),
-            );
-        }
-        for (t, v) in type_args.iter().zip(vars) {
-            let t = self.lower_local_type(t);
-            let _ = self.inf.unify(v, t);
-        }
-    }
-
-    /// Reorders `name: value` arguments into parameter order (`skip` = receiver slots).
-    fn order_args(
-        &mut self,
-        e: ExprId,
-        def: Option<DefId>,
-        skip: usize,
-        args: &[ExprId],
-        names: &[Option<String>],
-    ) -> Vec<ExprId> {
-        if names.iter().all(|n| n.is_none()) {
-            return args.to_vec();
-        }
-        let program = self.program;
-        let params: Vec<String> = match def.map(|d| &program.def(d).kind) {
-            Some(DefKind::Fn(f)) => f.sig.params.iter().map(|p| p.name.clone()).collect(),
-            Some(DefKind::Op(o)) => o.sig.params.iter().map(|p| p.name.clone()).collect(),
-            _ => {
-                let range = self.expr_range(e);
-                self.error(
-                    V2002,
-                    Phase::Type,
-                    range,
-                    "named arguments need a function called by name",
-                );
-                return args.to_vec();
-            }
-        };
-        let params = &params[skip.min(params.len())..];
-        let mut slots: Vec<Option<ExprId>> = vec![None; params.len().max(args.len())];
-        let mut next = 0;
-        for (a, n) in args
-            .iter()
-            .zip(names.iter().chain(std::iter::repeat(&None)))
-        {
-            let at = match n {
-                Some(n) => match params.iter().position(|p| p == n) {
-                    Some(i) => i,
-                    None => {
-                        let range = self.expr_range(*a);
-                        self.error(
-                            V2004,
-                            Phase::Type,
-                            range,
-                            format!("the function has no parameter `{n}`"),
-                        );
-                        return args.to_vec();
-                    }
-                },
-                None => next,
-            };
-            if slots[at].is_some() {
-                let range = self.expr_range(*a);
-                self.error(V2002, Phase::Type, range, "this argument is given twice");
-                return args.to_vec();
-            }
-            slots[at] = Some(*a);
-            next = at + 1;
-        }
-        if slots.iter().any(|s| s.is_none()) {
-            return args.to_vec(); // arity error reported by `apply`
-        }
-        slots.into_iter().flatten().collect()
     }
 
     fn lit_type(&mut self, l: &Literal) -> TypeId {
@@ -887,7 +776,6 @@ impl Checker<'_> {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn method_call(
         &mut self,
         e: ExprId,
@@ -895,8 +783,6 @@ impl Checker<'_> {
         method: &str,
         method_range: text_size::TextRange,
         args: &[ExprId],
-        type_args: &[TypeRef],
-        arg_names: &[Option<String>],
     ) -> (TypeId, RowId) {
         let (rt, rr) = self.synth(receiver);
         let srt = self.inf.shallow(rt);
@@ -947,7 +833,6 @@ impl Checker<'_> {
                 && let Some(scheme) = self.scheme_of(def)
             {
                 let ft = self.instantiate_at(&scheme, e);
-                self.explicit_type_args(e, type_args);
                 let target = if matches!(self.program.def(def).kind, DefKind::Variant(_)) {
                     CallTarget::Def(def)
                 } else {
@@ -956,8 +841,7 @@ impl Checker<'_> {
                 let with_recv = matches!(target, CallTarget::Method(_));
                 self.b.calls.insert(e, target);
                 let recv = with_recv.then_some((receiver, rt));
-                let args = self.order_args(e, Some(def), usize::from(with_recv), args, arg_names);
-                return self.apply(e, ft, vec![rr], recv, &args);
+                return self.apply(e, ft, vec![rr], recv, args);
             }
             // A refined type falls back to its base type's home module (§4.3).
             if let Type::Con(TyCon::Adt(d), _) = self.inf.interner.ty(cur)
