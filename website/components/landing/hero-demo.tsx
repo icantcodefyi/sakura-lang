@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useReducer, useRef } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import { TokenSpans, type TokenLine } from "@/components/token-spans";
 
 /*
@@ -43,7 +43,7 @@ const reducer = (s: State, a: Action): State => ({ ...s, ...a });
 
 type Frame = { delay: number; patch: Action };
 
-function buildFrames(lines: TokenLine[]): { frames: Frame[]; total: number; badLen: number } {
+function buildFrames(lines: TokenLine[]) {
   const frames: Frame[] = [{ delay: 450, patch: { phase: "typing" } }];
   let typed = 0;
   let n = 0;
@@ -67,22 +67,23 @@ function buildFrames(lines: TokenLine[]): { frames: Frame[]; total: number; badL
     else frames.push({ delay: line.length === 0 ? 60 : 110, patch: {} });
   });
   frames.push({ delay: 500, patch: { diagnostic: true } });
-  const badLen = lines[BAD_LINE].reduce((a, t) => a + t.text.length, 0);
+  const lens = lines.map((l) => l.reduce((a, t) => a + t.text.length, 0));
+  const starts = lens.map((_, i) => lens.slice(0, i).reduce((a, b) => a + b, 0));
+  const badLen = lens[BAD_LINE];
   frames.push({ delay: 2600, patch: { phase: "fixing" } });
   for (let d = 0; d < badLen; d += 3) frames.push({ delay: 16, patch: { deleted: Math.min(badLen, d + 3) } });
   frames.push({ delay: 260, patch: { deleted: badLen, diagnostic: false } });
   frames.push({ delay: 380, patch: { phase: "kept" } });
-  return { frames, total: typed, badLen };
+  return { frames, total: typed, badLen, lens, starts };
 }
 
 export function HeroDemo({ lines }: { lines: TokenLine[] }) {
-  const { frames, total, badLen } = useMemo(() => buildFrames(lines), [lines]);
-  const finalState: State = { phase: "kept", typed: total, deleted: badLen, diagnostic: false };
+  const { frames, total, badLen, lens, starts } = useMemo(() => buildFrames(lines), [lines]);
   const [state, set] = useReducer(reducer, { phase: "idle", typed: 0, deleted: 0, diagnostic: false });
   const root = useRef<HTMLDivElement>(null);
   const run = useRef(0);
 
-  const play = () => {
+  const play = useCallback(() => {
     const id = ++run.current;
     set({ phase: "idle", typed: 0, deleted: 0, diagnostic: false });
     let i = 0;
@@ -96,13 +97,14 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
       }, f.delay);
     };
     step();
-  };
+  }, [frames]);
 
   useEffect(() => {
     const el = root.current;
+    const runs = run;
     if (!el) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      set(finalState);
+      set({ phase: "kept", typed: total, deleted: badLen, diagnostic: false });
       return;
     }
     const io = new IntersectionObserver(
@@ -117,21 +119,15 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
     io.observe(el);
     return () => {
       io.disconnect();
-      run.current++;
+      runs.current++; // cancels any pending frames
     };
-    // play/finalState are stable for a given `frames`
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frames]);
+  }, [play, total, badLen]);
 
   // Map the global typed counter onto each line.
-  let offset = 0;
   const rows = lines.map((line, i) => {
-    const len = line.reduce((a, t) => a + t.text.length, 0);
-    const start = offset;
-    offset += len;
-    const shown = Math.max(0, Math.min(len, state.typed - start));
-    const started = state.typed > 0 && state.typed >= start;
-    const complete = started && state.typed >= start + len;
+    const shown = Math.max(0, Math.min(lens[i], state.typed - starts[i]));
+    const started = state.typed > 0 && state.typed >= starts[i];
+    const complete = started && state.typed >= starts[i] + lens[i];
     return { line, shown, started, complete };
   });
 
