@@ -247,6 +247,19 @@ property "membership"(xs: List<Int>, x: Int) requires List.contains(xs, x) {
 "#;
     let r = common::test("refined_ok", src).unwrap();
     assert_eq!(r.code, 0, "{}{}", r.stdout, r.stderr);
+    // Design §17.64: discarding more than 90% of the inputs fails the property.
+    let r = common::test(
+        "mostly_discarded",
+        r#"property "rare"(x: Int) requires x == 7 { expect(x == 7) }"#,
+    )
+    .unwrap();
+    assert_eq!(r.code, 3, "{}{}", r.stdout, r.stderr);
+    assert!(
+        r.stdout.contains("property gave up: ")
+            && r.stdout.contains(" of 100 inputs discarded by requires"),
+        "{}",
+        r.stdout
+    );
     let line = falsified(
         "refined_shrink",
         r#"type Percent = Int where it >= 0 && it <= 100

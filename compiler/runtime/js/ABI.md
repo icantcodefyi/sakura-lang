@@ -361,7 +361,8 @@ check)`; values are retried up to 100 times, then the case is discarded). A quar
 sequences shorter then element-wise, earlier field-less constructors and same-type payloads for
 variants, field-wise for records, candidates of refined types filtered by `where`; at most 2,000
 attempts) and reported once: `property falsified by x = 50: expected true, got false (shrunk in
-2 steps from x = 132)`. If every case is discarded the property fails with "gave up".
+2 steps from x = 132)`. If more than 90% of the cases are discarded the property fails with
+`property gave up: N of 100 inputs discarded by requires` (design §17.64).
 
 ## 9. Core deviations from design §13.2
 

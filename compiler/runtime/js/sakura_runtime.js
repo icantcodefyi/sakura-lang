@@ -1745,8 +1745,9 @@ export function property_run(seed, schemas, names, kase, rec, fails, nops, ctx, 
   };
   const run = (i) => {
     if (i >= RUNS) {
-      if (discards < RUNS) return ret(k, undefined);
-      return report(`property gave up: all ${RUNS} generated inputs were discarded by requires or where`);
+      // A property that barely ran is a false green (design §17.64).
+      if (discards * 10 <= RUNS * 9) return ret(k, undefined);
+      return report(`property gave up: ${discards} of ${RUNS} inputs discarded by requires`);
     }
     let values;
     try {
