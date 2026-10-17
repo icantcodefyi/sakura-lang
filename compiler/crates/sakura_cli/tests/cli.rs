@@ -647,3 +647,80 @@ pub fn exact(x: Int) -> Int
     assert!(plain.stderr.contains("no tests"), "{}", plain.stderr);
 }
 
+/// Design §17.73 (gate 6): `sakura test --record` writes a cassette through std `Http.recording`
+/// from a scripted outer `Http`; a plain `sakura test` then replays it with the network denied.
+#[test]
+fn test_record_then_replay_through_http_recording() {
+    let program = |outer: &str| {
+        format!(
+            r#"import std/fs.{{Fs}}
+import std/http.{{Any, Http}}
+import std/request.{{Method, Request}}
+import std/response.{{HttpError, Response}}
+import std/url.{{Url}}
+
+fn get(path: String) -> String ! {{Http, Fail<HttpError>}} {{
+  let req = Http.bearer(Request.of(Method.Get, Url.from("https://api.example/{{path}}")), Secret.of("sk-live"))
+  Http.send(req).body
+}}
+
+test "replays" {{
+  with Fs.rooted(Test.fixtures()), {outer}, Http.recording("api.jsonl") {{
+    expect_eq(try {{ get("a") }}, Ok("live"))
+  }}
+}}
+"#
+        )
+    };
+    let dir = tmp(
+        "record-replay",
+        &program(r#"Http.scripted([(Any, Response.status(200, "live"))])"#),
+    );
+    let _ = std::fs::remove_dir_all(dir.join("tests"));
+    std::fs::write(
+        dir.join("sakura.toml"),
+        "[package]\nname = \"record_replay\"\n\n[permissions]\nnet = [\"api.example:443\"]\n",
+    )
+    .unwrap();
+    let recorded = sakura(&["test", "--record", "main.sakura"], &dir);
+    assert_eq!(
+        recorded.code,
+        Some(0),
+        "{}{}",
+        recorded.stdout,
+        recorded.stderr
+    );
+    let cassette = std::fs::read_to_string(dir.join("tests/fixtures/api.jsonl")).unwrap();
+    assert_eq!(cassette.lines().count(), 1, "{cassette}");
+    assert!(
+        cassette.contains("live") && !cassette.contains("sk-live"),
+        "{cassette}"
+    );
+
+    // The real host handler under the test runner's denied network: only the cassette answers.
+    std::fs::write(dir.join("main.sakura"), program("Http.host()")).unwrap();
+    let replayed = sakura(&["test", "main.sakura"], &dir);
+    assert_eq!(
+        replayed.code,
+        Some(0),
+        "{}{}",
+        replayed.stdout,
+        replayed.stderr
+    );
+    std::fs::remove_file(dir.join("tests/fixtures/api.jsonl")).unwrap();
+    let missing = sakura(&["test", "main.sakura"], &dir);
+    assert_eq!(
+        missing.code,
+        Some(3),
+        "{}{}",
+        missing.stdout,
+        missing.stderr
+    );
+    assert!(
+        missing
+            .stdout
+            .contains("no recording for GET https://api.example/a"),
+        "{}",
+        missing.stdout
+    );
+}
