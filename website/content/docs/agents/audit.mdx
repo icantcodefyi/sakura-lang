@@ -31,6 +31,6 @@ JSON output is JSON Lines: each site has `schema_version: "1.0"`, `kind: "audit"
 
 An audit is an inventory, not a successful type check or a security certification. It exits 0 regardless of the sites found; loading and usage errors can still fail. Run `sakura check` separately.
 
-## Literal conversion limitation
+## Literal conversions
 
-A literal whose refinement succeeds at compile time needs no startup conversion and does not appear in the report. An undecided literal still has a startup check, but the current audit also omits that conversion. Design §17.78 requires a `from` record with `reason: "literal"`; that part has not landed. Do not use an empty audit to infer that there are no runtime refinement checks. See [contracts](/docs/tour/contracts#literal-refinements-at-compile-time).
+A literal whose refinement succeeds at compile time needs no startup conversion and does not appear in the report. A literal the checker cannot decide keeps a startup check, listed as a `from` record with `reason: "literal"` at the literal and the refined type's `from` as its `sink` (design §17.78, §17.87). See [contracts](/docs/tour/contracts#literal-refinements-at-compile-time).

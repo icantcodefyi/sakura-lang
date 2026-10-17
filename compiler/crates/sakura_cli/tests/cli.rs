@@ -376,6 +376,39 @@ fn audit_json_lists_user_sites_then_a_summary() {
     assert_eq!(sakura(&["audit", "main.sakura"], &broken).code, Some(0));
 }
 
+/// Design §17.78, §17.87: a literal whose refinement the checker cannot decide keeps a
+/// start-up `from` and is listed with `reason: "literal"`; a decided literal is not listed.
+#[test]
+fn audit_lists_undecided_literal_conversions() {
+    let dir = tmp(
+        "audit-literal",
+        "type Slug = String where List.len(String.split(it, \" \")) == 1\n\
+         type Percent = Int where it >= 0 && it <= 100\n\
+         pub fn main() -> Unit ! {Console} {\n  let s: Slug = \"sakura\"\n  let p: Percent = 50\n  Console.print(\"{s} {p}\")\n}\n",
+    );
+    let out = sakura(&["audit", "--json", "main.sakura"], &dir);
+    assert_eq!(out.code, Some(0), "{}", out.stderr);
+    let recs = common::json_lines(&out.stdout).unwrap();
+    let (summary, sites) = recs.split_last().unwrap();
+    assert_eq!(sites.len(), 1, "{recs:#?}");
+    assert_eq!(sites[0]["site"], "from");
+    assert_eq!(sites[0]["reason"], "literal");
+    assert_eq!(sites[0]["symbol_id"], "main::main::main");
+    assert_eq!(sites[0]["sink"], "main::main::from");
+    assert_eq!(summary["by_site"]["from"], 1);
+    let human = sakura(&["audit", "main.sakura"], &dir);
+    assert_eq!(human.code, Some(0), "{}", human.stderr);
+    assert!(
+        human
+            .stdout
+            .contains("4:17      from      main::main::main -> ")
+            && human.stdout.contains("\"literal\"")
+            && human.stdout.contains("1 audit site(s)"),
+        "{}",
+        human.stdout
+    );
+}
+
 /// Gate 6: `sakura doc --search` finds functions by type shape, user and std alike.
 #[test]
 fn doc_searches_by_type_pattern() {

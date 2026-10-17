@@ -139,6 +139,22 @@ pub(crate) fn sites(a: &Analyzed, with_std: bool) -> Vec<Value> {
                     ));
                 }
             }
+            // An undecided literal into a refined type runs `V.from` at start-up (§17.87);
+            // `conversions` is its whole contract, and only that case maps to a generated `from`.
+            for (eid, (def, _)) in typed.into_iter().flat_map(|t| t.conversions.iter()) {
+                if RefinementIntro::of(a.program.def(*def)) == Some(RefinementIntro::From) {
+                    let range = body.source_map.expr(eid);
+                    sites.push(site(
+                        a,
+                        owner,
+                        "from",
+                        range.start().into(),
+                        range.end().into(),
+                        Some("literal"),
+                        Some(&symbol_id(a, *def)),
+                    ));
+                }
+            }
         }
     }
     sites.sort_by(|a, b| {

@@ -29,7 +29,8 @@ published yet.
 - `sakura audit [--json] [paths]` lists every `@trust` (with its reason and sink), `@total`,
   `@external`, `@resource` and refined-type `T.from` site in your packages, as a table by file
   or as JSON Lines `audit` records plus a `summary`. It exits 0 after reporting sites;
-  loading/usage failures remain errors. Undecided literal conversions are not yet inventoried.
+  loading/usage failures remain errors. A literal whose refinement is undecidable at compile
+  time is listed as a `from` site with `reason: "literal"`.
 - `sakura doc [--search "fn(List<A>) -> Int"] [symbol] [--json]` prints signatures, effect
   rows, contracts and doc comments offline; `--json` returns the records of MCP `symbol_query`.
 - `sakura test --contracts` also runs one property per `pub fn` with a refined parameter or a

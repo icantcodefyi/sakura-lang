@@ -82,7 +82,7 @@ The checker evaluates scalar `Int`, `Float`, `String` and `Bool` literals agains
 
 The evaluator is deliberately smaller than the contract subset. `match`, collection operations such as `String.split`, and exceeding the step budget leave a runtime check. An intermediate integer beyond JS's safe range but within i64 is also undecidable because backends differ. `V5002` is retired and never emitted; its explain page remains for old reports.
 
-Current audit output omits undecided literal conversions too, although the design requires `reason: "literal"` records. See the [audit limitation](/docs/agents/audit#literal-conversion-limitation).
+`sakura audit` lists each undecidable literal as a `from` site with `reason: "literal"`. See [audit literal conversions](/docs/agents/audit#literal-conversions).
 
 ## Validating untrusted input
 
