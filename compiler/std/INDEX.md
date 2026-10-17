@@ -69,6 +69,7 @@ url → string, list      cli [M3]                fs → path, untrusted, map [M
 request → url, json [M3]                       response → json, untrusted [M3]
 http → request, response, url, duration [M3]  budget [M3]      prompt [M3]
 llm → budget, core, http, prompt, task, untrusted [M3]          sql → fs, path [M3]
+tool → llm [M3]         agent → budget, core, llm, prompt, tool [M3]
 ```
 
 M3 modules type-check today. Their test handlers written in Vow (`Http.scripted`,
@@ -77,9 +78,9 @@ externals they touch; their host handlers and `Schema` codecs are runtime extern
 
 ## Planned, not yet in source (design §10, milestone M3)
 
-`std/router`, `std/serve`, `std/html`, `std/tool`, `std/agent`, `Untrusted.validate` (a
-compiler intrinsic into a refined type), `Fs.with_file`/`File`, `Http.scoped`/`recording`, `Llm.stream`/`replay`, `Sql.postgres`, the
-`url"…"`/`html"…"` tags, `List.par_map` (written as `std/task.par_map` until `Task` runs),
+`std/router`, `std/serve`, `std/html`, `Tool.of` (a compiler intrinsic on a `@tool`
+function), `Untrusted.validate` (a compiler intrinsic into a refined type), `Fs.with_file`/`File`, `Http.scoped`/`recording`, `Llm.replay`, `Sql.postgres`, the `html"…"`
+tag, `List.par_map` (written as `std/task.par_map` until `Task` runs),
 and `Env.host(scope)`. Their signatures are the ones in design §10.2–§10.7. `Uuid`, `Path`,
 `Prompt` and `Query` are `pub opaque` (design §17.10).
 
@@ -278,6 +279,7 @@ error DecodeError(path: String, message: String)
 fn encode<T: Schema>(value: T) -> String    // @external
 fn decode<T: Schema>(text: String) -> Result<T, DecodeError>    // @external
 fn parse(text: String) -> Result<Json, DecodeError>    // @external
+fn schema<T: Schema>(witness: Option<T>) -> Json    // @external
 fn get(j: Json, key: String) -> Option<Json>
 fn get_string(j: Json, key: String) -> Option<String>
 ```
@@ -503,6 +505,8 @@ fn is_valid(s: String) -> Bool    // @total
 fn host(u: Url) -> Option<String>
 fn path(u: Url) -> String
 fn query_param(u: Url, name: String) -> Option<String>
+fn template(parts: List<String>, args: List<String>) -> Url
+fn encode_component(s: String) -> String
 ```
 
 ### `std/request`
@@ -583,15 +587,41 @@ error InvalidOutput(violations: List<Violation>)
 error Truncated
 error ProviderError(status: Int)
 type LlmError = Refused | InvalidOutput | Truncated | RateLimited | Timeout | ProviderError
+type ToolSpec = { name: String, description: String, schema: Json }
+type ToolCall = { id: String, name: String, input: Json }
+type ToolResult = { id: String, output: Json }
+type Turn = Asked(List<ToolCall>) | Answered(List<ToolResult>)
+type Step<T> = Answer(T) | Use(List<ToolCall>)
+type Partial<T> = { text: String, step: Int, calls: List<ToolCall> }
 effect Llm {
   fn generate<T: Schema>(req: Request<T>) -> T ! {Fail<LlmError>}
   fn generate_text(req: Request<String>) -> Untrusted<String> ! {Fail<LlmError>}
+  fn stream<T: Schema, e>(req: Request<T>, on_partial: fn(Partial<T>) -> Unit ! e) -> T ! {Fail<LlmError> | e}
+  fn step<T: Schema>(req: Request<T>, tools: List<ToolSpec>, transcript: List<Turn>) -> Step<T> ! {Fail<LlmError>}
 }
 fn request<T: Schema>(system: String, user: Prompt) -> Request<T>
 fn of(name: String) -> Model
 fn default() -> Model
 fn anthropic(key: Secret<String>, model: Model) -> Handler<Llm, {Http, Budget}>    // @external
 fn scripted(responses: List<String>) -> Handler<Llm>
+```
+
+### `std/tool`
+
+```vow
+opaque type Tool<F> = { spec: ToolSpec, run: F }
+error ToolError(tool: String, tag: String, payload: Json)
+fn from<A: Schema, R: Schema, E: Schema + Show, e>(name: String, description: String, f: fn(A) -> R ! {Fail<E> | e}) -> Tool<fn(Json) -> Json ! {Fail<ToolError> | e}>
+fn name<F>(t: Tool<F>) -> String
+fn spec<F>(t: Tool<F>) -> ToolSpec
+fn call<e>(t: Tool<fn(Json) -> Json ! {Fail<ToolError> | e}>, input: Json) -> Json ! {Fail<ToolError> | e}
+```
+
+### `std/agent`
+
+```vow
+type Agent<T, F> = { request: Request<T>, tools: List<Tool<F>>, max_steps: Int, stop: fn(Partial<T>) -> Bool }
+fn run<T: Schema, e>(a: Agent<T, fn(Json) -> Json ! {Fail<ToolError> | e}>) -> T ! {Budget, Llm, Fail<BudgetExceeded | LlmError | ToolError> | e} requires a.max_steps > 0
 ```
 
 ### `std/sql`
@@ -661,3 +691,18 @@ fn memory() -> Handler<Sql>    // @external
     trailing zeros), not `{ units: Int, scale: Int }`: derived `Ord` compares fields in order,
     which is numeric only for this form. `div_checked(a, b, places)` and `round` round half to
     even. Interpolation shows the record form; `Decimal.to_string` gives `-12.34`.
+16. **`Tool<F>` and `Agent<T, F>`** instead of `Tool` and `Agent<T>`: a tool runs under the
+    caller's handlers (§11.2), so its function type carries the effects it performs, and the
+    compiler does not accept effect-row parameters on types yet (§4.3 allows them). `F` is
+    `fn(Json) -> Json ! {Fail<ToolError> | e}`; inference names it, and call sites do not
+    change when it becomes `Tool<e>`. `Agent.run`'s row gains the tools' `e` (§15.8's
+    `research` already declares `Http` for that reason). `Tool.from(name, description, f)`
+    is what `Tool.of` will build; `ToolError` is also raised as `DecodeError` (bad
+    arguments) and `UnknownTool`.
+17. **`Llm.step` and the scripted tool-call format** (§16.15): the agent loop needs an
+    operation that returns either the answer or tool calls (`Step<T> = Answer(T) |
+    Use(List<ToolCall>)`), given the tool specs and the transcript so far. A scripted output
+    that is a JSON object with a `tool_use` array is a tool-call turn. `Partial<T>` is
+    `{ text, step, calls }`. `Llm.stream`'s callback may perform effects (`! e`), otherwise
+    a partial could not be observed. `Agent.run` reserves `max_tokens` and one call per step
+    and settles to zero, as a headroom check; provider handlers charge actual use.

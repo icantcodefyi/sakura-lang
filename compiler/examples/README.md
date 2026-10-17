@@ -16,7 +16,7 @@ whose milestone has landed.
 | `json_api` | §15.5 | M3 | test | `std/router`, `std/serve`, `SqlValue.from` in `sql"…"`, `Schema` codecs |
 | `word_count` | §15.6 | M3 | run + test | `Cli.parse`, `cli_*`/`fs_*`/`untrusted_*` runtime externals |
 | `llm_extract` | §15.7 | M3 | test | `@llm` desugaring, `Schema` codecs, `Untrusted.of` in the runtime |
-| `agent_loop` | §15.8 | M3 | check | `std/agent`, `std/tool`, `url"…"`; scripted tool calls unspecified |
+| `agent_loop` | §15.8 | M3 | check | `Tool.of` intrinsic (B/C) |
 | `property` | §15.9 | M2 | test | `property` blocks, snapshots |
 | `concurrency` | §15.10 | M3 | test | `Task` handlers in the runtime, `Fail` escaping a test (§17.30) |
 | `secrets` | §15.11 | M3 | check | `Schema` codecs, `http_send` |

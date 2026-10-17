@@ -1,10 +1,10 @@
 // milestone: M3
-// needs: std/agent (Agent.run), std/tool (@tool, Tool.of), url"…" templates
+// needs: Tool.of on a @tool function (compiler intrinsic), json_schema and llm_anthropic in runtime/js
 // mode: check
 // covers: Attribute ErrorDecl TaggedStr Lambda RecordLit
 
-// Design §15.8. Checked only: an offline test needs a scripted tool-call format for
-// `Llm.scripted`, which design §16.15 leaves open. Difference from the design text: `Prompt`
+// Design §15.8. Checked only: `main` calls a real model; the offline agent-loop tests are
+// `tests/semantics/std_agent.vow`. Difference from the design text: `Prompt`
 // comes from `std/prompt` and `HttpError`, `Response`, `Status` from `std/response` (one
 // home module per type, see compiler/std/INDEX.md), and `Budget.limits` is installed outside
 // `Llm.anthropic`, whose handler performs `Budget`.
