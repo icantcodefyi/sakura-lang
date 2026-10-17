@@ -1,5 +1,6 @@
 // milestone: M3
 // expect: V5001
+// spec: §7.1 (Console is a prelude effect)
 fn noisy_positive(x: Int) -> Bool ! {Console} {
   Console.print("checking")
   x > 0

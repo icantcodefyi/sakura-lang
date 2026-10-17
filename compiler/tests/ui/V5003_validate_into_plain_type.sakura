@@ -1,0 +1,7 @@
+// milestone: M3
+// expect: V5003
+// spec: §6.4, §17.71
+import std/core.{Violation}
+import std/untrusted
+
+fn plain() -> Result<Int, Violation> { Untrusted.validate(Untrusted.of(1)) }

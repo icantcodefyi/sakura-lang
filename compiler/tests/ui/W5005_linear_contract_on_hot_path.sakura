@@ -1,5 +1,6 @@
 // milestone: M3
 // expect: W5005
+// spec: §7.2, §17.72 (List is in the prelude)
 fn count_positive(xs: List<Int>) -> Int
   requires List.all(xs, fn(x) { x > 0 })
 { List.len(xs) }

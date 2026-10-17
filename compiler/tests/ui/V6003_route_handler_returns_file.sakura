@@ -1,0 +1,18 @@
+// milestone: M3
+// expect: V6003
+// spec: §14.3 M3 acceptance, §17.70
+import std/fs.{Fs, FsError, Mode}
+import std/path.{Path}
+import std/response.{Response}
+import std/router.{Router}
+
+// The handler reads from a `File` after `with_file` has closed it; the escape is the callback's
+// result, and the handler itself still returns a `Response`.
+fn route() -> Router<{Fs, Fail<FsError>}> {
+  Router.new()
+    .get("/file", fn(_request) {
+      let file = Fs.with_file(Path.of("data.txt"), Mode.Read, fn(f) { f })
+      let chunk = Fs.read_chunk(file, 1024)
+      Response.status(200, "read {Bytes.len(chunk)} bytes")
+    })
+}

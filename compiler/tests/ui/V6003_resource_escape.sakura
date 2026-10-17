@@ -1,6 +1,8 @@
 // milestone: M3
 // expect: V6003
-import std/fs
+// spec: §8.4, §17.70
+import std/fs.{File, Fs, FsError, Mode}
+import std/path.{Path}
 
 fn keep_open(p: Path) -> File ! {Fs, Fail<FsError>} {
   Fs.with_file(p, Mode.Read, fn(file) { file })

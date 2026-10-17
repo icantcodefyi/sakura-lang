@@ -1,4 +1,7 @@
 // milestone: M3
 // expect: V6001
+// spec: §6.2
+import std/fs.{Dir}
+
 @external(js, "./forge.js", "root")
 fn forge() -> Dir
