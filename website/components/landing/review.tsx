@@ -15,6 +15,10 @@ const BEFORE =
 const AFTER =
   "pub fn charge(card: Card, amount: Cents) -> Receipt ! {Http, Payments, Fail<ChargeError>}";
 
+/** One unbroken line from `sm` up; on phones, wrap with a hanging indent. */
+const WRAP =
+  "min-w-0 whitespace-pre-wrap pl-[2ch] -indent-[2ch] [overflow-wrap:anywhere] sm:whitespace-pre sm:pl-0 sm:indent-0";
+
 export async function Review() {
   const [before, after] = await Promise.all([tokenize(BEFORE), tokenize(AFTER)]);
   return (
@@ -53,8 +57,8 @@ export async function Review() {
                       </span>
                     </div>
                     <div className="relative overflow-x-auto border-y border-line bg-code py-2 font-mono text-[11.5px] leading-[1.8] sm:text-[12px]">
-                      <div className="min-w-max">
-                        <p className="flex bg-fail-wash pr-5 whitespace-pre">
+                      <div className="sm:min-w-max">
+                        <p className="flex bg-fail-wash pr-4 sm:pr-5">
                           <span
                             aria-hidden
                             className="w-8 shrink-0 text-center text-fail select-none"
@@ -62,9 +66,11 @@ export async function Review() {
                             −
                           </span>
                           <span className="sr-only">Removed: </span>
-                          <TokenSpans line={before[0]} />
+                          <span className={WRAP}>
+                            <TokenSpans line={before[0]} />
+                          </span>
                         </p>
-                        <p className="flex bg-ok-wash pr-5 whitespace-pre">
+                        <p className="flex bg-ok-wash pr-4 sm:pr-5">
                           <span
                             aria-hidden
                             className="w-8 shrink-0 text-center text-ok select-none"
@@ -72,7 +78,9 @@ export async function Review() {
                             +
                           </span>
                           <span className="sr-only">Added: </span>
-                          <TokenSpans line={after[0]} />
+                          <span className={WRAP}>
+                            <TokenSpans line={after[0]} />
+                          </span>
                         </p>
                       </div>
                     </div>

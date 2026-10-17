@@ -2,6 +2,14 @@ type Mark = "yes" | "partial" | "no";
 type Cell = [Mark, string?];
 
 const LANGS = ["Vow", "TypeScript", "Python", "Rust", "Effect-TS"] as const;
+/** Column heads for the phone matrix, where five full names do not fit. */
+const SHORT: Record<(typeof LANGS)[number], string> = {
+  Vow: "Vow",
+  TypeScript: "TS",
+  Python: "Python",
+  Rust: "Rust",
+  "Effect-TS": "Effect",
+};
 
 const ROWS: { label: string; cells: Cell[] }[] = [
   {
@@ -139,7 +147,8 @@ export function Compare() {
           being careful: what the compiler enforces by default.
         </p>
 
-        <div className="relative mt-12 overflow-x-auto rounded-2xl border border-line bg-surface">
+        <PhoneMatrix />
+        <div className="relative mt-12 hidden overflow-x-auto rounded-2xl border border-line bg-surface sm:block">
           <table className="w-full min-w-[50rem] sm:min-w-[54rem] border-collapse text-left text-[14px]">
             <caption className="sr-only">
               Comparison of language defaults relevant to agent-written code. The Vow column
@@ -212,10 +221,51 @@ export function Compare() {
           <span className="inline-flex items-center gap-1.5">
             <Glyph mark="no" /> not provided
           </span>
-          <span>The Vow column states design goals; nothing is shipped yet.</span>
-          <span className="sm:hidden">Scroll the table sideways for the other languages.</span>
+          <span>The Vow column states design goals; the M0 to M2 parts run today.</span>
         </p>
       </div>
     </section>
+  );
+}
+
+/**
+ * Phones: the same answers as a glyph matrix. The language row sticks under the site header
+ * so every column stays labelled while the rows scroll; the notes live in the table above `sm`.
+ */
+function PhoneMatrix() {
+  return (
+    <div className="mt-10 sm:hidden">
+      <div
+        aria-hidden
+        className="sticky top-14 z-10 grid grid-cols-5 border-b border-line bg-bg/90 py-2.5 text-center font-display text-[13px] font-semibold tracking-[-0.01em] backdrop-blur-md"
+      >
+        {LANGS.map((l, i) => (
+          <span key={l} className={i === 0 ? "text-seal-text" : ""}>
+            {SHORT[l]}
+          </span>
+        ))}
+      </div>
+      <ul className="divide-y divide-line">
+        {ROWS.map((row) => (
+          <li key={row.label} className="pt-3.5 pb-3">
+            <p className="text-[14px] leading-snug font-medium">{row.label}</p>
+            <div className="mt-2.5 grid grid-cols-5">
+              {row.cells.map(([mark, note], i) => (
+                <span
+                  key={i}
+                  className={`grid place-items-center py-1.5 ${i === 0 ? "rounded-full bg-seal-wash" : ""}`}
+                >
+                  <Glyph mark={mark} />
+                  <span className="sr-only">
+                    {LANGS[i]}: {MARK_LABEL[mark]}
+                    {note ? `, ${note}` : ""}
+                  </span>
+                </span>
+              ))}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
