@@ -144,5 +144,15 @@ impl Fit {
 pub fn check_program(
     program: &vow_hir::Program,
 ) -> (TypedProgram, Vec<vow_diagnostics::Diagnostic>) {
-    check::check(program)
+    check::check(program, &[])
+}
+
+/// Like [`check_program`], given the lex/parse diagnostics of the same snapshot: type
+/// diagnostics inside a body that contains a syntax error are suppressed, because the syntax
+/// error is their root cause (§12.2 "no cascades").
+pub fn check_program_with(
+    program: &vow_hir::Program,
+    syntax_errors: &[vow_diagnostics::Diagnostic],
+) -> (TypedProgram, Vec<vow_diagnostics::Diagnostic>) {
+    check::check(program, syntax_errors)
 }

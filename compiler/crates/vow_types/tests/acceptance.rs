@@ -144,7 +144,6 @@ fn m2_closed_callback_widens_twice_row() {
 }
 
 #[test]
-#[ignore = "needs vow_hir to lower a broken argument list with a trailing Missing (REQUESTS.md)"]
 fn m0_unterminated_call_reports_only_the_parse_error() {
     let c = check("pub fn main() -> Unit ! {Console} {\n  Console.print(\n}\n");
     assert!(

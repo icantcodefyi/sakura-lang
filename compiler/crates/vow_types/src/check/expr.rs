@@ -469,6 +469,9 @@ impl Checker<'_> {
                         _ => None,
                     }
                 });
+                if xs.is_empty() && expected.is_none() {
+                    self.b.empty_lists.push(e);
+                }
                 let elem = expected.unwrap_or_else(|| self.inf.fresh_var());
                 let rows: Vec<RowId> = xs.iter().map(|&x| self.check(x, elem)).collect();
                 let ty = self.inf.interner.con(TyCon::List, vec![elem]);
@@ -643,10 +646,14 @@ impl Checker<'_> {
                 if let Pat::Bind(local) = body.pats[*pat]
                     && self.is_value(*init)
                 {
+                    let lists_before = self.b.empty_lists.len();
                     self.inf.enter_level();
                     let (t, r) = self.synth(*init);
                     self.inf.exit_level();
                     let scheme = self.generalize_with_bounds(t);
+                    // Empty lists inside a generalized value are polymorphic, not unknown.
+                    let inner: Vec<ExprId> = self.b.empty_lists[lists_before..].to_vec();
+                    self.b.generalized.extend(inner);
                     self.b.pat_types.insert(*pat, t);
                     if scheme.params.is_empty() && scheme.row_params.is_empty() {
                         self.bind_local(local, t);
@@ -1493,6 +1500,22 @@ impl Checker<'_> {
             .any(|a| a.guard.is_none() && self.catches_all(a.pat));
         if catch_all {
             remaining = None;
+            // W4010: `_` on an error type the function does not know swallows future tags.
+            if matches!(self.inf.interner.ty(err_s), Type::Param(_))
+                && let Some(a) = arms
+                    .iter()
+                    .find(|a| a.guard.is_none() && self.catches_all(a.pat))
+            {
+                let shown = self.render(err_s);
+                let range = self.pat_range(a.pat);
+                let d = Diagnostic::warning(
+                    vow_diagnostics::Code("W4010"),
+                    Phase::Pattern,
+                    format!("this catch-all arm catches every error of the open type `{shown}`, including ones callers add later; match specific tags where you can"),
+                )
+                .with_span(self.span(range));
+                self.push(d);
+            }
         } else if let Some(tags) = tags {
             let mut caught = Vec::new();
             for a in arms.iter().filter(|a| a.guard.is_none()) {

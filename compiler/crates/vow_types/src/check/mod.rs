@@ -127,6 +127,12 @@ struct BodyState {
     coverage: Vec<CoverageCheck>,
     /// Expressions already reported, to avoid a second diagnostic on the same node.
     reported: HashSet<ExprId>,
+    /// The body contains a syntax error: its type diagnostics would be cascades.
+    suppress: bool,
+    /// Empty list literals, checked for an inferable element type (V2010).
+    empty_lists: Vec<ExprId>,
+    /// Initializers of generalized `let`s (their leftover variables are quantified).
+    generalized: HashSet<ExprId>,
 }
 
 pub(crate) struct Checker<'p> {
@@ -142,13 +148,25 @@ pub(crate) struct Checker<'p> {
     checked: HashSet<DefId>,
     /// Effects every test may use without a handler (design §5.8).
     test_defaults: Vec<DefId>,
+    /// `(file, offset)` of every lex/parse error.
+    syntax_errors: Vec<(vow_diagnostics::FileId, u32)>,
     out: TypedProgram,
     b: BodyState,
     body: Option<&'p Body>,
 }
 
-pub(crate) fn check(program: &Program) -> (TypedProgram, Vec<Diagnostic>) {
+pub(crate) fn check(
+    program: &Program,
+    syntax_errors: &[Diagnostic],
+) -> (TypedProgram, Vec<Diagnostic>) {
+    let syntax_errors = syntax_errors
+        .iter()
+        .chain(&program.diagnostics)
+        .filter(|d| matches!(d.phase, Phase::Lex | Phase::Parse))
+        .filter_map(|d| d.spans.first().map(|s| (s.file, s.start)))
+        .collect();
     let mut cx = Checker {
+        syntax_errors,
         program,
         inf: Infer::new(),
         diags: Vec::new(),
@@ -273,6 +291,9 @@ impl<'p> Checker<'p> {
     }
 
     fn push(&mut self, mut d: Diagnostic) {
+        if self.body.is_some() && self.b.suppress {
+            return;
+        }
         let mut texts: Vec<&mut String> = vec![&mut d.message];
         if let Some(e) = d.expected.as_mut() {
             texts.push(&mut e.render);

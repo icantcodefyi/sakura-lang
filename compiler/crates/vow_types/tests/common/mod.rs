@@ -6,7 +6,7 @@ use std::path::Path;
 
 use vow_diagnostics::{Diagnostic, FileId};
 use vow_hir::{ModuleInput, PackageInput, Program};
-use vow_types::{TypedProgram, check_program};
+use vow_types::{TypedProgram, check_program_with};
 
 pub struct Checked {
     pub program: Program,
@@ -132,7 +132,7 @@ pub fn check(src: &str) -> Checked {
             modules: vec![main],
         },
     ]);
-    let (typed, type_diags) = check_program(&program);
+    let (typed, type_diags) = check_program_with(&program, &parse_errors);
     let mut diags: Vec<Diagnostic> = parse_errors;
     let mut std_diags = Vec::new();
     for d in program.diagnostics.iter().cloned().chain(type_diags) {

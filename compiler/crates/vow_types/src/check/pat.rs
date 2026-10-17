@@ -1,7 +1,5 @@
 //! Patterns: binding with types, then coverage (V4001/V4002) and or-pattern checks (V4003).
 
-use std::collections::BTreeSet;
-
 use vow_diagnostics::codes::{V2001, V2002, V2004, V4001, V4002, V4003};
 use vow_diagnostics::{Diagnostic, Phase};
 use vow_hir::{DefKind, Literal, LocalId, Pat, PatId, Res, TypeRes};
@@ -170,22 +168,11 @@ impl Checker<'_> {
                     self.bind_pat_local(*l, list, p);
                 }
             }
+            // Differing binder sets are V4003 from `vow_hir`; differing types are checked in
+            // `bind_pat_local`.
             Pat::Or(alts) => {
-                let mut sets: Vec<BTreeSet<LocalId>> = Vec::new();
                 for a in alts {
                     self.bind_pat(*a, ty);
-                    let mut s = BTreeSet::new();
-                    self.binders(*a, &mut s);
-                    sets.push(s);
-                }
-                if sets.windows(2).any(|w| w[0] != w[1]) {
-                    let range = self.pat_range(p);
-                    self.error(
-                        V4003,
-                        Phase::Pattern,
-                        range,
-                        "every alternative of an or-pattern must bind the same names",
-                    );
                 }
             }
         }
@@ -219,30 +206,6 @@ impl Checker<'_> {
         let err = self.inf.interner.error();
         for x in ps {
             self.bind_pat(*x, err);
-        }
-    }
-
-    fn binders(&self, p: PatId, out: &mut BTreeSet<LocalId>) {
-        match &self.hir_body().pats[p] {
-            Pat::Bind(l) => {
-                out.insert(*l);
-            }
-            Pat::Ctor { args, .. } | Pat::Tuple(args) => {
-                args.iter().for_each(|a| self.binders(*a, out))
-            }
-            Pat::Record { fields, .. } => fields.iter().for_each(|f| self.binders(f.pat, out)),
-            Pat::List { items, rest } => {
-                items.iter().for_each(|a| self.binders(*a, out));
-                if let Some(Some(l)) = rest {
-                    out.insert(*l);
-                }
-            }
-            Pat::Or(alts) => {
-                if let Some(a) = alts.first() {
-                    self.binders(*a, out);
-                }
-            }
-            _ => {}
         }
     }
 

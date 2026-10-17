@@ -303,7 +303,17 @@ impl<'p> Checker<'p> {
                 ..BodyState::default()
             },
         );
-        let saved_body = self.body.replace(self.program.body(module, bid));
+        let body = self.program.body(module, bid);
+        let file = self.program.module(module).file;
+        let ranges = body.source_map.exprs.iter().map(|(_, r)| *r);
+        let (lo, hi) = ranges.fold((u32::MAX, 0u32), |(lo, hi), r| {
+            (lo.min(r.start().into()), hi.max(r.end().into()))
+        });
+        self.b.suppress = self
+            .syntax_errors
+            .iter()
+            .any(|(f, at)| *f == file && lo <= *at && *at <= hi);
+        let saved_body = self.body.replace(body);
         let saved_level = self.inf.level();
         self.inf.set_level(0);
         f(self);
@@ -371,11 +381,34 @@ impl<'p> Checker<'p> {
 
         self.check_coverage();
         self.check_unused();
+        self.check_empty_lists();
         self.report_violations();
         self.report_holes();
 
         let key = (self.module(), self.b.body_id.expect("body id"));
         self.out.bodies.insert(key, out);
+    }
+
+    /// V2010: an empty `[]` whose element type nothing determined.
+    fn check_empty_lists(&mut self) {
+        for e in std::mem::take(&mut self.b.empty_lists) {
+            let Some(&t) = self.b.types.get(e) else {
+                continue;
+            };
+            let mut free = Vec::new();
+            self.inf.free_vars(t, &mut free);
+            if free.is_empty() || self.b.generalized.contains(&e) {
+                continue;
+            }
+            let range = self.expr_range(e);
+            let d = Diagnostic::error(
+                vow_diagnostics::codes::V2010,
+                Phase::Type,
+                "cannot infer the element type of this empty list; annotate the binding, e.g. `let xs: List<Int> = []`",
+            )
+            .with_span(self.span(range));
+            self.push(d);
+        }
     }
 
     fn check_unused(&mut self) {
