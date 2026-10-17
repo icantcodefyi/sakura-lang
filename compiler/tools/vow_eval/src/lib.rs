@@ -326,7 +326,7 @@ impl<'m> Machine<'m> {
             {
                 env[l.index()] = Some(v);
             }
-            match self.eval(&mut env, &fd.body, hs, true)? {
+            match self.eval(&mut env, &fd.body, hs, true, &[])? {
                 Flow::Ret(v) => return Ok(Ok(v)),
                 Flow::Fail(e) => return Ok(Err(e)),
                 Flow::Jump(l, _) => {
@@ -405,6 +405,7 @@ impl<'m> Machine<'m> {
         mut expr: &Expr,
         hs: &Rc<Handlers>,
         tail: bool,
+        rets: &[Label],
     ) -> R<Flow> {
         loop {
             match expr {
@@ -413,7 +414,7 @@ impl<'m> Machine<'m> {
                     bind: Bind::Call(f, args),
                     body,
                     ..
-                } if tail && **body == Expr::Ret(Atom::Local(*local)) => {
+                } if tail && returns(body, *local, rets) => {
                     self.tick()?;
                     return Ok(Flow::TailCall(self.atom(env, f)?, self.atoms(env, args)?));
                 }
@@ -436,7 +437,15 @@ impl<'m> Machine<'m> {
                     join,
                     body,
                 } => {
-                    let mut flow = self.eval(env, body, hs, tail)?;
+                    // A join point that only returns its argument: jumping there is a return.
+                    let is_ret =
+                        matches!(&**join, Expr::Ret(Atom::Local(l)) if params.as_slice() == [*l]);
+                    let inner: Vec<Label> = if tail && is_ret {
+                        rets.iter().copied().chain([*label]).collect()
+                    } else {
+                        rets.to_vec()
+                    };
+                    let mut flow = self.eval(env, body, hs, tail, &inner)?;
                     loop {
                         match flow {
                             Flow::Jump(l, args) if l == *label => {
@@ -444,7 +453,7 @@ impl<'m> Machine<'m> {
                                 for (p, v) in params.iter().zip(args) {
                                     env[p.index()] = Some(v);
                                 }
-                                flow = self.eval(env, join, hs, tail)?;
+                                flow = self.eval(env, join, hs, tail, rets)?;
                             }
                             other => return Ok(other),
                         }
@@ -490,10 +499,10 @@ impl<'m> Machine<'m> {
                         clauses: h.clauses.clone().into(),
                     };
                     let inner = Rc::new(Handlers::Frame(Rc::new(inst), hs.clone()));
-                    return self.eval(env, body, &inner, false);
+                    return self.eval(env, body, &inner, false, &[]);
                 }
                 Expr::Try { on_fail, body } => {
-                    return Ok(match self.eval(env, body, hs, false)? {
+                    return Ok(match self.eval(env, body, hs, false, &[])? {
                         Flow::Fail(e) => Flow::Jump(*on_fail, vec![e]),
                         other => other,
                     });
@@ -604,6 +613,15 @@ impl<'m> Machine<'m> {
             }
             Bind::Hole(id) => return Err(Stop::Hole(*id)),
         }))
+    }
+}
+
+/// Whether `body` just returns `local`, directly or through a return-only join point.
+fn returns(body: &Expr, local: Local, rets: &[Label]) -> bool {
+    match body {
+        Expr::Ret(Atom::Local(l)) => *l == local,
+        Expr::Jump(label, args) => rets.contains(label) && args.as_slice() == [Atom::Local(local)],
+        _ => false,
     }
 }
 

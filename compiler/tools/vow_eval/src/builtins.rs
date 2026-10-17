@@ -29,6 +29,32 @@ fn index(i: i64, len: usize) -> Option<usize> {
     usize::try_from(i).ok().filter(|&i| i < len)
 }
 
+/// The runtime's `requires`: a std precondition failure is a caller defect.
+fn requires(cond: bool, function: &str, clause: &str) -> R<()> {
+    if cond {
+        Ok(())
+    } else {
+        Err(defect(
+            "D020",
+            format!("precondition of {function} violated: {clause}"),
+        ))
+    }
+}
+
+/// The runtime's `floatToInt`: NaN/±∞ is `D004`, beyond the safe range `D003` (or `D001`).
+fn float_to_int(f: f64, what: &str) -> R<Value> {
+    if !f.is_finite() {
+        return Err(defect(
+            "D004",
+            format!("{what} of {} is not an integer", crate::show::show_float(f)),
+        ));
+    }
+    if f.abs() >= 9.223_372_036_854_775_808e18 {
+        return Err(defect("D001", "integer overflow"));
+    }
+    int(f as i64)
+}
+
 pub(crate) fn call(m: &mut Machine, name: &str, args: Vec<Value>, hs: &Rc<Handlers>) -> R<Called> {
     use Value::*;
     let module = m.module;
@@ -78,6 +104,24 @@ pub(crate) fn call(m: &mut Machine, name: &str, args: Vec<Value>, hs: &Rc<Handle
                     .ok_or_else(|| defect("D001", "integer overflow in List.sum"))?;
             }
             int(total)?
+        }
+        ("list_at", [List(xs), Int(i)]) => index(*i, xs.len())
+            .map(|i| xs[i].clone())
+            .ok_or_else(|| bad(name, &args))?,
+        ("list_slice", [List(xs), Int(a), Int(b)]) => {
+            let n = xs.len() as i64;
+            let s = (*a).clamp(0, n);
+            let e = (*b).clamp(s, n);
+            list(xs[s as usize..e as usize].to_vec())
+        }
+        ("list_unique", [List(xs)]) => {
+            let mut out: Vec<Value> = Vec::new();
+            for x in xs.iter() {
+                if !out.iter().any(|y| equal(x, y)) {
+                    out.push(x.clone());
+                }
+            }
+            list(out)
         }
         ("list_first", [List(xs)]) => option(module, xs.first().cloned())?,
         ("list_last", [List(xs)]) => option(module, xs.last().cloned())?,
@@ -152,6 +196,70 @@ pub(crate) fn call(m: &mut Machine, name: &str, args: Vec<Value>, hs: &Rc<Handle
             }
             Bool(any)
         }
+        ("list_flat_map", [List(xs), f]) => {
+            let mut out = Vec::new();
+            for x in xs.iter() {
+                match cb!(f, x.clone()) {
+                    List(ys) => out.extend(ys.iter().cloned()),
+                    _ => return Err(bad(name, &args)),
+                }
+            }
+            list(out)
+        }
+        ("list_sort_by", [List(xs), f]) => {
+            let mut keyed = Vec::with_capacity(xs.len());
+            for x in xs.iter() {
+                keyed.push((cb!(f, x.clone()), x.clone()));
+            }
+            // Stable, like the runtime's index tie-break.
+            keyed.sort_by(|(a, _), (b, _)| compare(a, b).unwrap_or(std::cmp::Ordering::Equal));
+            list(keyed.into_iter().map(|(_, x)| x).collect())
+        }
+        ("set_empty", []) => Set(Rc::new(vec![])),
+        ("set_of", [List(xs)]) => {
+            let mut out: Vec<Value> = Vec::new();
+            for x in xs.iter() {
+                if !out.iter().any(|y| equal(x, y)) {
+                    out.push(x.clone());
+                }
+            }
+            Set(Rc::new(out))
+        }
+        ("set_insert", [Set(xs), x]) if xs.iter().any(|y| equal(x, y)) => Set(xs.clone()),
+        ("set_insert", [Set(xs), x]) => {
+            let mut ys = (**xs).clone();
+            ys.push(x.clone());
+            Set(Rc::new(ys))
+        }
+        ("set_contains", [Set(xs), x]) => Bool(xs.iter().any(|y| equal(x, y))),
+        ("set_to_list", [Set(xs)]) => list((**xs).clone()),
+        ("map_of", [List(pairs)]) => {
+            let mut es: Vec<(Value, Value)> = Vec::new();
+            for p in pairs.iter() {
+                let Tuple(kv) = p else {
+                    return Err(bad(name, &args));
+                };
+                let (k, v) = (kv[0].clone(), kv[1].clone());
+                match es.iter_mut().find(|(k2, _)| equal(&k, k2)) {
+                    Some(e) => e.1 = v,
+                    None => es.push((k, v)),
+                }
+            }
+            Map(Rc::new(es))
+        }
+        ("map_entries", [Map(es)]) => list(
+            es.iter()
+                .map(|(k, v)| Tuple(Rc::new([k.clone(), v.clone()])))
+                .collect(),
+        ),
+        ("map_update", [Map(es), k, f]) => {
+            let old = es
+                .iter()
+                .find(|(k2, _)| equal(k, k2))
+                .map(|(_, v)| v.clone());
+            let v = cb!(f, option(module, old)?);
+            return call(m, "map_insert", vec![Map(es.clone()), k.clone(), v], hs);
+        }
         ("map_empty", []) => Map(Rc::new(vec![])),
         ("map_get", [Map(es), k]) => option(
             module,
@@ -181,8 +289,38 @@ pub(crate) fn call(m: &mut Machine, name: &str, args: Vec<Value>, hs: &Rc<Handle
         ("string_ends_with", [Str(s), Str(t)]) => Bool(s.ends_with(&**t)),
         ("string_to_lower", [Str(s)]) => Str(s.to_lowercase().into()),
         ("string_to_upper", [Str(s)]) => Str(s.to_uppercase().into()),
+        ("string_split", [Str(s), Str(sep)]) if sep.is_empty() => {
+            list(s.chars().map(|c| Str(c.to_string().into())).collect())
+        }
         ("string_split", [Str(s), Str(sep)]) => {
             list(s.split(&**sep).map(|p| Str(p.into())).collect())
+        }
+        ("string_repeat", [Str(s), Int(n)]) => {
+            requires(*n >= 0, "String.repeat", "n >= 0")?;
+            Str(s.repeat(*n as usize).into())
+        }
+        ("string_replace", [Str(s), Str(from), Str(to)]) if from.is_empty() => {
+            let mut out = to.to_string();
+            for c in s.chars() {
+                out.push(c);
+                out.push_str(to);
+            }
+            Str(out.into())
+        }
+        ("string_replace", [Str(s), Str(from), Str(to)]) => Str(s.replace(&**from, to).into()),
+        ("string_slice", [Str(s), Int(a), Int(b)]) => {
+            let len = s.len() as i64;
+            let b0 = (*a).clamp(0, len) as usize;
+            let b1 = (*b).clamp(b0 as i64, len) as usize;
+            for byte in [b0, b1] {
+                if !s.is_char_boundary(byte) {
+                    return Err(defect(
+                        "D031",
+                        format!("byte offset {byte} is not on a character boundary"),
+                    ));
+                }
+            }
+            Str(s[b0..b1].into())
         }
         ("string_chars", [Str(s)]) => list(s.chars().map(|c| Str(c.to_string().into())).collect()),
         ("string_parse_int", [Str(s)]) => {
@@ -192,6 +330,27 @@ pub(crate) fn call(m: &mut Machine, name: &str, args: Vec<Value>, hs: &Rc<Handle
         ("int_to_string", [Int(i)]) => Str(i.to_string().into()),
         ("int_to_float", [Int(i)]) => Float(*i as f64),
         ("int_abs", [Int(i)]) => int(i.abs())?,
+        ("int_clamp", [Int(i), Int(lo), Int(hi)]) => {
+            requires(lo <= hi, "Int.clamp", "lo <= hi")?;
+            Int(*i.clamp(lo, hi))
+        }
+        ("int_pow", [Int(b), Int(e)]) => {
+            requires(*e >= 0, "Int.pow", "exp >= 0")?;
+            match u32::try_from(*e).ok().and_then(|e| b.checked_pow(e)) {
+                Some(r) => int(r)?,
+                None => return Err(defect("D001", "integer overflow")),
+            }
+        }
+        ("int_checked_add", [Int(a), Int(b)]) => match a.checked_add(*b) {
+            Some(r) => option(module, Some(int(r)?))?,
+            None => option(module, None)?,
+        },
+        ("float_round", [Float(f)]) => float_to_int(f.signum() * f.abs().round(), "Float.round")?,
+        ("float_to_int_checked", [Float(f)]) if f.is_finite() => option(
+            module,
+            Some(float_to_int(f.trunc(), "Float.to_int_checked")?),
+        )?,
+        ("float_to_int_checked", [Float(_)]) => option(module, None)?,
         ("int_min", [Int(a), Int(b)]) => Int(*a.min(b)),
         ("int_max", [Int(a), Int(b)]) => Int(*a.max(b)),
         ("float_sqrt", [Float(f)]) => Float(f.sqrt()),
