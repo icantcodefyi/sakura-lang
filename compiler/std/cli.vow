@@ -1,0 +1,50 @@
+// Command-line programs (design §10.5, §17.38, M3). `Cli` is an effect because reading the
+// arguments and exiting are host interactions; `parse` is a home-module function.
+// needs M3: `Schema`-driven `parse` and the `cli_*` externals in runtime/js.
+
+pub effect Cli {
+  /// The arguments after `--` in `vow run -- …`.
+  fn args() -> List<String>
+  /// Ends the process with `code`; finalizers run first.
+  fn exit(code: Int) -> Never
+    requires code >= 0 && code <= 255
+}
+
+/// Why the arguments do not fit the target record; `message` is ready to print.
+pub error CliError(message: String)
+
+/// The root handler the host installs for a `main` that declares `Cli`.
+pub fn host() -> Handler<Cli> {
+  handler Cli {
+    fn args() { cli_args() }
+    fn exit(code) { cli_exit(code) }
+  }
+}
+
+/// Test handler with fixed arguments. `exit` under it is a defect, so a test can assert
+/// it with `expect_defect`.
+pub fn of(args: List<String>) -> Handler<Cli> {
+  handler Cli {
+    fn args() { args }
+    fn exit(code) { Option.expect(None, "Cli.exit({code}) under Cli.of") }
+  }
+}
+
+/// Decodes `--field value` flags into the record `T` named by the binding's annotation
+/// (`let a: Args = Cli.parse(Cli.args())`): kebab-case flags, `Bool` fields as switches,
+/// `Option` fields optional, refinements checked. `--help` fails with the generated usage.
+@external(js, "vow_runtime", "cli_parse")
+pub fn parse<T: Schema>(args: List<String>) -> T ! {Fail<CliError>}
+
+@external(js, "vow_runtime", "cli_args")
+fn cli_args() -> List<String>
+
+@external(js, "vow_runtime", "cli_exit")
+fn cli_exit(code: Int) -> Never
+
+test "of serves the given arguments" {
+  with of(["--top", "3"]) {
+    expect_eq(Cli.args(), ["--top", "3"])
+    expect_defect(fn() { Cli.exit(0) })
+  }
+}

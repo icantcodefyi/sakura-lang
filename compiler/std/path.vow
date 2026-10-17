@@ -1,0 +1,50 @@
+// Relative filesystem paths (design §10.3). A `Path` has no leading `/` and no `..`
+// segment, so a handler rooted at a directory cannot be escaped through one.
+// needs M3: `pub opaque` (design §17.10), so that only `of` and `join` build a `Path`.
+
+pub type Path = Path(List<String>)
+
+/// Non-empty, no leading `/`, and no `..` segment.
+@total
+pub fn is_relative(s: String) -> Bool {
+  s != "" && !String.starts_with(s, "/") && !List.contains(String.split(s, "/"), "..")
+}
+
+/// `"data/./notes.txt"` is the path with segments `data` and `notes.txt`.
+pub fn of(s: String) -> Path
+  requires is_relative(s)
+{
+  Path(segments(s))
+}
+
+/// `p` followed by the segments of `rest`.
+pub fn join(p: Path, rest: String) -> Path
+  requires is_relative(rest)
+{
+  match p { Path(segs) => Path(List.concat(segs, segments(rest))) }
+}
+
+/// The segments joined by `/`; `.` for the empty path.
+pub fn to_string(p: Path) -> String {
+  match p {
+    Path([]) => ".",
+    Path(segs) => List.join(segs, "/"),
+  }
+}
+
+fn segments(s: String) -> List<String> {
+  List.filter(String.split(s, "/"), fn(seg) { seg != "" && seg != "." })
+}
+
+test "of drops empty and dot segments" {
+  expect_eq(to_string(of("data/./notes.txt")), "data/notes.txt")
+  expect_eq(to_string(of("./")), ".")
+  expect_eq(to_string(join(of("data"), "a/b.txt")), "data/a/b.txt")
+}
+
+test "absolute paths and parent segments are not relative" {
+  expect(!is_relative("/etc/passwd"))
+  expect(!is_relative("data/../../etc"))
+  expect(!is_relative(""))
+  expect_defect(fn() { of("../x") })
+}

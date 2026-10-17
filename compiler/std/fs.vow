@@ -1,0 +1,119 @@
+// Files as an effect (design §10.2, M3). Authority is the handler's directory: every path
+// is relative to it (`Path` cannot hold `..` or a leading `/`) and the host rejects
+// symlinks that escape it (design §6.1).
+// needs M3: `with_file` and `File` operations (unspecified), host externals in runtime/js.
+
+import std/path.{Path}
+import std/untrusted
+
+/// A directory capability. External: only `Fs.root()` and `Dir.subdir` produce one.
+pub type Dir
+
+pub type Entry = { name: String, is_dir: Bool }
+
+/// `path` is relative to the handler's directory; `reason` is the host's message.
+pub error FsError(path: String, reason: String)
+
+pub effect Fs {
+  /// The handler's directory, for attenuation with `Dir.subdir` and `Fs.rooted`.
+  fn root() -> Dir
+  fn read(path: Path) -> Bytes ! {Fail<FsError>}
+  /// The file as UTF-8 text; invalid UTF-8 is an `FsError`.
+  fn read_text(path: Path) -> Untrusted<String> ! {Fail<FsError>}
+  /// Creates or replaces the file.
+  fn write(path: Path, data: Bytes) -> Unit ! {Fail<FsError>}
+  /// Entries sorted by name.
+  fn list(dir: Path) -> List<Entry> ! {Fail<FsError>}
+  fn exists(path: Path) -> Bool
+}
+
+/// The root handler the host installs for a `main` that declares `Fs`: the package
+/// directory, limited to the manifest's `fs.read`/`fs.write` lists.
+pub fn host() -> Handler<Fs> { rooted(fs_root()) }
+
+/// A handler confined to `dir`.
+pub fn rooted(dir: Dir) -> Handler<Fs> {
+  handler Fs {
+    fn root() { dir }
+    fn read(path) { ok_or_fail(path, fs_read(dir, Path.to_string(path))) }
+    fn read_text(path) {
+      let bytes = ok_or_fail(path, fs_read(dir, Path.to_string(path)))
+      untrusted.of(ok_or_fail(path, String.from_bytes(bytes).map_err(fn(e) { "invalid UTF-8 at byte {e.offset}" })))
+    }
+    fn write(path, data) { ok_or_fail(path, fs_write(dir, Path.to_string(path), data)) }
+    fn list(p) { ok_or_fail(p, fs_list(dir, Path.to_string(p))) }
+    fn exists(path) { fs_exists(dir, Path.to_string(path)) }
+  }
+}
+
+/// The directory `name` inside `d`; fails if it is missing or a symlink out of `d`.
+pub fn subdir(d: Dir, name: String) -> Dir ! {Fail<FsError>} {
+  match fs_subdir(d, name) {
+    Ok(sub) => sub,
+    Err(reason) => fail FsError { path: name, reason },
+  }
+}
+
+/// Test handler over in-memory files; `write` updates them. `root()` is a directory with
+/// no host access, so `Fs.rooted(Fs.root())` inside it fails every operation.
+pub fn memory(files: List<(Path, Bytes)>) -> Handler<Fs> {
+  handler Fs {
+    var store = Map.of(List.map(files, fn(f) { (Path.to_string(f.0), f.1) }))
+    fn root() { fs_detached_root() }
+    fn read(path) { found(path, Map.get(store, Path.to_string(path))) }
+    fn read_text(path) {
+      let bytes = found(path, Map.get(store, Path.to_string(path)))
+      untrusted.of(ok_or_fail(path, String.from_bytes(bytes).map_err(fn(e) { "invalid UTF-8 at byte {e.offset}" })))
+    }
+    fn write(path, data) { store = Map.insert(store, Path.to_string(path), data) }
+    fn list(dir) {
+      let prefix = if Path.to_string(dir) == "." { "" } else { "{Path.to_string(dir)}/" }
+      let names = List.filter_map(Map.keys(store), fn(k) {
+        if String.starts_with(k, prefix) { Some(String.slice(k, String.len(prefix), String.len(k))) } else { None }
+      })
+      let entries = List.map(names, fn(n) {
+        match String.split(n, "/") {
+          [file] => Entry { name: file, is_dir: false },
+          parts => Entry { name: List.first(parts).unwrap_or(n), is_dir: true },
+        }
+      })
+      List.sort_by(List.unique(entries), fn(e) { e.name })
+    }
+    fn exists(path) { Map.contains(store, Path.to_string(path)) }
+  }
+}
+
+fn ok_or_fail<T>(path: Path, r: Result<T, String>) -> T ! {Fail<FsError>} {
+  match r {
+    Ok(v) => v,
+    Err(reason) => fail FsError { path: Path.to_string(path), reason },
+  }
+}
+
+fn found(path: Path, o: Option<Bytes>) -> Bytes ! {Fail<FsError>} {
+  match o {
+    Some(b) => b,
+    None => fail FsError { path: Path.to_string(path), reason: "not found" },
+  }
+}
+
+@external(js, "vow_runtime", "fs_root")
+fn fs_root() -> Dir
+
+@external(js, "vow_runtime", "fs_detached_root")
+fn fs_detached_root() -> Dir
+
+@external(js, "vow_runtime", "fs_subdir")
+fn fs_subdir(d: Dir, name: String) -> Result<Dir, String>
+
+@external(js, "vow_runtime", "fs_read")
+fn fs_read(d: Dir, path: String) -> Result<Bytes, String>
+
+@external(js, "vow_runtime", "fs_write")
+fn fs_write(d: Dir, path: String, data: Bytes) -> Result<Unit, String>
+
+@external(js, "vow_runtime", "fs_list")
+fn fs_list(d: Dir, path: String) -> Result<List<Entry>, String>
+
+@external(js, "vow_runtime", "fs_exists")
+fn fs_exists(d: Dir, path: String) -> Bool

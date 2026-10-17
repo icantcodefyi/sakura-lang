@@ -408,6 +408,55 @@ fn neighbors<N>(g: Graph<N>, id: NodeId) -> List<NodeId>
 fn len<N>(g: Graph<N>) -> Int
 ```
 
+### `std/untrusted`
+
+```vow
+fn of<T>(value: T) -> Untrusted<T>    // @external
+```
+
+### `std/path`
+
+```vow
+type Path = Path(List<String>)
+fn is_relative(s: String) -> Bool    // @total
+fn of(s: String) -> Path requires is_relative(s)
+fn join(p: Path, rest: String) -> Path requires is_relative(rest)
+fn to_string(p: Path) -> String
+```
+
+### `std/fs`
+
+```vow
+type Dir
+type Entry = { name: String, is_dir: Bool }
+error FsError(path: String, reason: String)
+effect Fs {
+  fn root() -> Dir
+  fn read(path: Path) -> Bytes ! {Fail<FsError>}
+  fn read_text(path: Path) -> Untrusted<String> ! {Fail<FsError>}
+  fn write(path: Path, data: Bytes) -> Unit ! {Fail<FsError>}
+  fn list(dir: Path) -> List<Entry> ! {Fail<FsError>}
+  fn exists(path: Path) -> Bool
+}
+fn host() -> Handler<Fs>
+fn rooted(dir: Dir) -> Handler<Fs>
+fn subdir(d: Dir, name: String) -> Dir ! {Fail<FsError>}
+fn memory(files: List<(Path, Bytes)>) -> Handler<Fs>
+```
+
+### `std/cli`
+
+```vow
+effect Cli {
+  fn args() -> List<String>
+  fn exit(code: Int) -> Never requires code >= 0 && code <= 255
+}
+error CliError(message: String)
+fn host() -> Handler<Cli>
+fn of(args: List<String>) -> Handler<Cli>
+fn parse<T: Schema>(args: List<String>) -> T ! {Fail<CliError>}    // @external
+```
+
 
 ## Deviations from design §10 (each has a `design-question` in `compiler/REQUESTS.md`)
 

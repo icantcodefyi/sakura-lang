@@ -1,0 +1,24 @@
+// milestone: M3
+// needs: runtime externals `untrusted_of` and `fs_detached_root` (std/fs, std/untrusted)
+// mode: test
+// covers: Import NameList WithExpr TryExpr
+
+import std/fs.{Fs, FsError}
+import std/path.{Path}
+
+test "memory reads, writes and lists" {
+  let files = [(Path.of("data/a.txt"), String.to_bytes("hi")), (Path.of("data/sub/b.txt"), String.to_bytes(""))]
+  with Fs.memory(files) {
+    expect_eq(try { Bytes.len(Fs.read(Path.of("data/a.txt"))) }, Ok(2))
+    expect(!Fs.exists(Path.of("data/c.txt")))
+    expect_eq(try { Fs.write(Path.of("data/c.txt"), String.to_bytes("new")) }, Ok(()))
+    expect(Fs.exists(Path.of("data/c.txt")))
+    expect_eq(try { List.map(Fs.list(Path.of("data")), fn(e) { e.name }) }, Ok(["a.txt", "c.txt", "sub"]))
+  }
+}
+
+test "a missing file is a typed failure" {
+  with Fs.memory([]) {
+    expect_fail(fn() { Fs.read(Path.of("nope.txt")) }, FsError { path: "nope.txt", reason: "not found" })
+  }
+}
