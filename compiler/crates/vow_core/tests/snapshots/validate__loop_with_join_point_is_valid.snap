@@ -1,0 +1,18 @@
+---
+source: crates/vow_core/tests/validate.rs
+assertion_line: 104
+expression: m.to_string()
+---
+
+fn count#0(n%0: Int) -> Int {
+  join j0(i%1: Int) {
+    let c%2: Bool = lt(int)(i%1, n%0)
+    if c%2 {
+      let i%3: Int = intadd(i%1, 1)
+      jump j0(i%3)
+    } else {
+      ret i%1
+    }
+  }
+  jump j0(0)
+}

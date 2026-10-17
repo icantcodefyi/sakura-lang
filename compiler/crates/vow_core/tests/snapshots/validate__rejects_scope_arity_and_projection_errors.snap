@@ -1,0 +1,13 @@
+---
+source: crates/vow_core/tests/validate.rs
+assertion_line: 162
+expression: errors(&m)
+---
+[
+    "def #2: perform print with 0 args, op takes 1",
+    "def #2: local %1 used out of scope",
+    "def #3: payload projection of ctor 1 before its tag test",
+    "def #3: switch is not exhaustive and has no default",
+    "def #4: call with 0 args, callee takes 1",
+    "def #4: jump to j7 out of scope",
+]

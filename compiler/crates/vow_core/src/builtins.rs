@@ -1,0 +1,75 @@
+//! Runtime functions callable from Core as `Atom::Builtin(name)`.
+//!
+//! Every entry is an export of `compiler/runtime/js/vow_runtime.js` with the same name. `Direct`
+//! builtins are plain JS functions `f(args…) -> value` (they may throw a defect); `Cps` builtins
+//! take callbacks and follow the CPS ABI `f(args…, ctx, k) -> step` (see `runtime/js/ABI.md`).
+//! A conformance test checks this table against the runtime's exports and arities.
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Abi {
+    Direct,
+    Cps,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Builtin {
+    pub name: &'static str,
+    /// Vow-level arity (excluding `ctx`, `k`).
+    pub arity: usize,
+    pub abi: Abi,
+}
+
+macro_rules! table {
+    ($($abi:ident $name:ident / $arity:literal),* $(,)?) => {
+        pub const BUILTINS: &[Builtin] = &[
+            $(Builtin { name: stringify!($name), arity: $arity, abi: Abi::$abi }),*
+        ];
+    };
+}
+
+table! {
+    // List (persistent, design §13.4)
+    Direct list_empty/0, Direct list_len/1, Direct list_get/2, Direct list_at/2, Direct list_push/2,
+    Direct list_concat/2, Direct list_range/2, Direct list_reverse/1, Direct list_join/2,
+    Direct list_sum/1, Direct list_first/1, Direct list_last/1, Direct list_contains/2,
+    Direct list_slice/3, Direct list_sort/1, Direct list_zip/2, Direct list_enumerate/1,
+    Direct list_unique/1,
+    Cps list_map/2, Cps list_filter/2, Cps list_fold/3, Cps list_find/2, Cps list_all/2,
+    Cps list_any/2, Cps list_flat_map/2, Cps list_sort_by/2,
+    // Map / Set (insertion-ordered)
+    Direct map_empty/0, Direct map_of/1, Direct map_get/2, Direct map_insert/3, Direct map_remove/2,
+    Direct map_contains/2, Direct map_entries/1, Direct map_keys/1, Direct map_values/1,
+    Direct map_len/1, Cps map_update/3,
+    Direct set_empty/0, Direct set_of/1, Direct set_insert/2, Direct set_contains/2,
+    Direct set_to_list/1,
+    // String
+    Direct string_len/1, Direct string_chars/1, Direct string_graphemes/1, Direct string_split/2,
+    Direct string_trim/1, Direct string_starts_with/2, Direct string_ends_with/2,
+    Direct string_contains/2, Direct string_replace/3, Direct string_to_lower/1,
+    Direct string_to_upper/1, Direct string_parse_int/1, Direct string_parse_float/1,
+    Direct string_repeat/2, Direct string_pad_left/3, Direct string_slice/3,
+    Direct string_to_bytes/1,
+    // Int / Float
+    Direct int_to_float/1, Direct int_to_string/1, Direct int_abs/1, Direct int_min/2,
+    Direct int_max/2, Direct int_clamp/3, Direct int_pow/2, Direct int_checked_add/2,
+    Direct int_wrapping_add/2,
+    Direct float_round/1, Direct float_to_int_checked/1, Direct float_sqrt/1,
+    Direct float_is_nan/1, Direct float_format/2,
+    // Option
+    Direct option_expect/2,
+    // Time
+    Direct duration_seconds/1, Direct duration_millis/1, Direct duration_minutes/1,
+    Direct duration_to_millis/1, Direct instant_format_iso/1, Direct instant_add/2,
+    Direct instant_diff/2, Direct instant_of_iso/1,
+    Direct uuid_to_string/1,
+    // Handlers for std effects (design §10.2): host and deterministic fakes
+    Direct console_host/0, Direct console_captured/0,
+    Direct clock_host/0, Direct clock_fixed/1, Direct clock_virtual/1,
+    Direct random_host/0, Direct random_seeded/1,
+    Direct env_host/0, Direct env_of/1,
+    Direct log_stderr/0, Direct log_json/0, Direct log_captured/0,
+}
+
+pub fn lookup(name: &str) -> Option<&'static Builtin> {
+    BUILTINS.iter().find(|b| b.name == name)
+}
