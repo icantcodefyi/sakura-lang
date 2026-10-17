@@ -432,6 +432,7 @@ name = "vow_hir"
 version = "0.0.0"
 dependencies = [
  "la-arena",
+ "text-size",
  "vow_diagnostics",
  "vow_syntax",
 ]
