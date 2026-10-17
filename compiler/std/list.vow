@@ -1,0 +1,280 @@
+// Immutable ordered sequences. `List<A>` is a compiler-known type; this module is its
+// home (`List.map(xs, f)` and `xs.map(f)` both call `map` here). Indexing never
+// defects: `xs[i]` is `List.get(xs, i)` and returns `Option<A>`.
+
+/// Number of elements.
+@external(js, "vow_runtime", "list_len")
+pub fn len<A>(xs: List<A>) -> Int
+
+/// The element at zero-based index `i`, or `None` when `i < 0` or `i >= len(xs)`.
+@external(js, "vow_runtime", "list_get")
+pub fn get<A>(xs: List<A>, i: Int) -> Option<A>
+
+/// A new list with `x` appended. Amortized O(1) when `xs` is not used again.
+@external(js, "vow_runtime", "list_push")
+pub fn push<A>(xs: List<A>, x: A) -> List<A>
+
+/// Elements in `[start, end)`. Both bounds are clamped to `[0, len(xs)]`; never defects.
+@external(js, "vow_runtime", "list_slice")
+pub fn slice<A>(xs: List<A>, start: Int, end: Int) -> List<A>
+
+pub fn empty<A>() -> List<A> { [] }
+
+pub fn concat<A>(a: List<A>, b: List<A>) -> List<A> {
+  var out = a
+  for x in b { out = push(out, x) }
+  out
+}
+
+pub fn map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! e {
+  var out: List<B> = []
+  for x in xs { out = push(out, f(x)) }
+  out
+}
+
+pub fn filter<A, e>(xs: List<A>, f: fn(A) -> Bool ! e) -> List<A> ! e {
+  var out: List<A> = []
+  for x in xs {
+    if f(x) { out = push(out, x) }
+  }
+  out
+}
+
+/// Maps and keeps only the `Some` results, in order.
+pub fn filter_map<A, B, e>(xs: List<A>, f: fn(A) -> Option<B> ! e) -> List<B> ! e {
+  var out: List<B> = []
+  for x in xs {
+    match f(x) {
+      Some(y) => { out = push(out, y) }
+      None => {}
+    }
+  }
+  out
+}
+
+pub fn flat_map<A, B, e>(xs: List<A>, f: fn(A) -> List<B> ! e) -> List<B> ! e {
+  var out: List<B> = []
+  for x in xs { out = concat(out, f(x)) }
+  out
+}
+
+/// Left fold: `f(f(f(init, x0), x1), x2)`.
+pub fn fold<A, B, e>(xs: List<A>, init: B, f: fn(B, A) -> B ! e) -> B ! e {
+  var acc = init
+  for x in xs { acc = f(acc, x) }
+  acc
+}
+
+/// The first element for which `f` is true. Stops calling `f` after the first match.
+pub fn find<A, e>(xs: List<A>, f: fn(A) -> Bool ! e) -> Option<A> ! e {
+  for x in xs {
+    if f(x) { return Some(x) }
+  }
+  None
+}
+
+/// True when `f` holds for every element (true for `[]`). In the contract subset.
+pub fn all<A, e>(xs: List<A>, f: fn(A) -> Bool ! e) -> Bool ! e {
+  for x in xs {
+    if !f(x) { return false }
+  }
+  true
+}
+
+/// True when `f` holds for some element (false for `[]`). In the contract subset.
+pub fn any<A, e>(xs: List<A>, f: fn(A) -> Bool ! e) -> Bool ! e {
+  for x in xs {
+    if f(x) { return true }
+  }
+  false
+}
+
+/// Stable ascending sort.
+pub fn sort<A: Ord>(xs: List<A>) -> List<A> {
+  sort_by(xs, fn(x) { x })
+}
+
+/// Stable ascending sort by `key` (merge sort, O(n log n) key calls).
+pub fn sort_by<A, K: Ord>(xs: List<A>, key: fn(A) -> K) -> List<A> {
+  let n = len(xs)
+  if n <= 1 { return xs }
+  let mid = n / 2
+  merge(sort_by(slice(xs, 0, mid), key), sort_by(slice(xs, mid, n), key), key)
+}
+
+fn merge<A, K: Ord>(a: List<A>, b: List<A>, key: fn(A) -> K) -> List<A> {
+  var out: List<A> = []
+  var i = 0
+  var j = 0
+  while i < len(a) && j < len(b) {
+    match (a[i], b[j]) {
+      (Some(x), Some(y)) if key(y) < key(x) => {
+        out = push(out, y)
+        j = j + 1
+      }
+      (Some(x), _) => {
+        out = push(out, x)
+        i = i + 1
+      }
+      _ => { i = len(a) }
+    }
+  }
+  concat(concat(out, slice(a, i, len(a))), slice(b, j, len(b)))
+}
+
+/// Pairs elements by index; the result is as long as the shorter list.
+pub fn zip<A, B>(a: List<A>, b: List<B>) -> List<(A, B)> {
+  var out: List<(A, B)> = []
+  for (i, x) in enumerate(a) {
+    match b[i] {
+      Some(y) => { out = push(out, (x, y)) }
+      None => { return out }
+    }
+  }
+  out
+}
+
+/// Pairs each element with its zero-based index.
+pub fn enumerate<A>(xs: List<A>) -> List<(Int, A)> {
+  var out: List<(Int, A)> = []
+  var i = 0
+  for x in xs {
+    out = push(out, (i, x))
+    i = i + 1
+  }
+  out
+}
+
+pub fn reverse<A>(xs: List<A>) -> List<A> {
+  var out: List<A> = []
+  var i = len(xs)
+  while i > 0 {
+    i = i - 1
+    match xs[i] {
+      Some(x) => { out = push(out, x) }
+      None => {}
+    }
+  }
+  out
+}
+
+/// Concatenates with `sep` between elements.
+pub fn join(xs: List<String>, sep: String) -> String {
+  var out = ""
+  for (i, s) in enumerate(xs) {
+    if i > 0 { out = out + sep }
+    out = out + s
+  }
+  out
+}
+
+/// Sum with checked arithmetic: overflow is Defect `D001`.
+pub fn sum(xs: List<Int>) -> Int {
+  fold(xs, 0, fn(acc, x) { acc + x })
+}
+
+pub fn first<A>(xs: List<A>) -> Option<A> { get(xs, 0) }
+
+pub fn last<A>(xs: List<A>) -> Option<A> { get(xs, len(xs) - 1) }
+
+pub fn contains<A: Eq>(xs: List<A>, x: A) -> Bool {
+  any(xs, fn(y) { y == x })
+}
+
+/// Drops later duplicates, keeping first occurrences in order.
+pub fn unique<A: Hash>(xs: List<A>) -> List<A> {
+  var seen: Set<A> = Set.empty()
+  var out: List<A> = []
+  for x in xs {
+    if !Set.contains(seen, x) {
+      seen = Set.insert(seen, x)
+      out = push(out, x)
+    }
+  }
+  out
+}
+
+/// `[start, start + 1, …, end - 1]`; empty when `end <= start`.
+pub fn range(start: Int, end: Int) -> List<Int> {
+  var out: List<Int> = []
+  var i = start
+  while i < end {
+    out = push(out, i)
+    i = i + 1
+  }
+  out
+}
+
+test "len, get and indexing never defect" {
+  let xs = [10, 20, 30]
+  expect_eq(len(xs), 3)
+  expect_eq(xs[0], Some(10))
+  expect_eq(xs[3], None)
+  expect_eq(xs.get(-1), None)
+}
+
+test "push and concat build new lists, old values unchanged" {
+  let xs = [1, 2]
+  let ys = xs.push(3)
+  expect_eq(xs, [1, 2])
+  expect_eq(ys, [1, 2, 3])
+  expect_eq(concat(xs, ys), [1, 2, 1, 2, 3])
+}
+
+test "slice clamps" {
+  let xs = [1, 2, 3, 4]
+  expect_eq(xs.slice(1, 3), [2, 3])
+  expect_eq(xs.slice(-5, 99), [1, 2, 3, 4])
+  expect_eq(xs.slice(3, 1), [])
+}
+
+test "map, filter, filter_map, flat_map, fold" {
+  let xs = [1, 2, 3, 4]
+  expect_eq(xs.map(fn(x) { x * x }), [1, 4, 9, 16])
+  expect_eq(xs.filter(fn(x) { x % 2 == 0 }), [2, 4])
+  expect_eq(xs.filter_map(fn(x) { if x > 2 { Some(x * 10) } else { None } }), [30, 40])
+  expect_eq(xs.flat_map(fn(x) { [x, x] }), [1, 1, 2, 2, 3, 3, 4, 4])
+  expect_eq(xs.fold("", fn(acc, x) { acc + "{x}" }), "1234")
+}
+
+test "find, all, any" {
+  let xs = [3, 8, 11]
+  expect_eq(xs.find(fn(x) { x > 5 }), Some(8))
+  expect_eq(xs.find(fn(x) { x > 50 }), None)
+  expect_eq(xs.all(fn(x) { x > 0 }), true)
+  expect_eq(xs.any(fn(x) { x > 10 }), true)
+  let none: List<Int> = []
+  expect_eq(none.all(fn(x) { x > 0 }), true)
+  expect_eq(none.any(fn(x) { x > 0 }), false)
+}
+
+test "sort is ascending and sort_by is stable" {
+  expect_eq(sort([5, 3, 9, 1, 3]), [1, 3, 3, 5, 9])
+  expect_eq(sort(["pear", "apple", "fig"]), ["apple", "fig", "pear"])
+  let pairs = [(2, "a"), (1, "b"), (2, "c"), (1, "d")]
+  expect_eq(pairs.sort_by(fn(p) { p.0 }), [(1, "b"), (1, "d"), (2, "a"), (2, "c")])
+}
+
+test "zip, enumerate, reverse" {
+  expect_eq(zip([1, 2, 3], ["a", "b"]), [(1, "a"), (2, "b")])
+  expect_eq(enumerate(["x", "y"]), [(0, "x"), (1, "y")])
+  expect_eq(reverse([1, 2, 3]), [3, 2, 1])
+}
+
+test "join, sum, first, last, contains, unique, range" {
+  expect_eq(join(["a", "b", "c"], ", "), "a, b, c")
+  expect_eq(join([], ", "), "")
+  expect_eq(sum([1, 2, 3]), 6)
+  expect_eq(first([7, 8]), Some(7))
+  expect_eq(last([7, 8]), Some(8))
+  let none: List<Int> = []
+  expect_eq(last(none), None)
+  expect_eq(contains([1, 2], 2), true)
+  expect_eq(unique([3, 1, 3, 2, 1]), [3, 1, 2])
+  expect_eq(range(2, 5), [2, 3, 4])
+  expect_eq(range(5, 2), [])
+}
+
+test "sum overflow is a defect" {
+  expect_defect(fn() { sum([9_223_372_036_854_775_807, 1]) })
+}

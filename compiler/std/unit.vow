@@ -1,0 +1,2 @@
+/// Discards a value on purpose, where `let _ = a` reads worse (`V2040` otherwise).
+pub fn ignore<A>(a: A) -> Unit {}

@@ -1,0 +1,42 @@
+// IEEE-754 binary64. `==` is IEEE equality (`NaN != NaN`). `Float` is compiler-known;
+// this module is its home. No implicit conversion to or from `Int`.
+
+/// Nearest `Int`, ties away from zero. `NaN` or out of range is a defect.
+@external(js, "vow_runtime", "float_round")
+pub fn round(f: Float) -> Int
+
+/// Truncates toward zero; `None` for `NaN`, infinities, or out of range.
+@external(js, "vow_runtime", "float_to_int_checked")
+pub fn to_int_checked(f: Float) -> Option<Int>
+
+@external(js, "vow_runtime", "float_sqrt")
+pub fn sqrt(f: Float) -> Float
+
+/// Fixed-point text with exactly `decimals` digits after the dot, rounded half to even.
+@external(js, "vow_runtime", "float_format")
+pub fn format(f: Float, decimals: Int) -> String
+  requires decimals >= 0
+
+pub fn is_nan(f: Float) -> Bool { f != f }
+
+test "round and to_int_checked" {
+  expect_eq(round(2.5), 3)
+  expect_eq(round(-2.5), -3)
+  expect_eq(to_int_checked(9.99), Some(9))
+  expect_eq(to_int_checked(sqrt(-1.0)), None)
+}
+
+test "nan is not equal to itself" {
+  let nan = sqrt(-1.0)
+  expect_eq(is_nan(nan), true)
+  expect_eq(is_nan(1.0), false)
+}
+
+test "format" {
+  expect_eq(format(3.14159, 2), "3.14")
+  expect_eq(format(2.0, 0), "2")
+}
+
+test "round of nan is a defect" {
+  expect_defect(fn() { round(sqrt(-1.0)) })
+}

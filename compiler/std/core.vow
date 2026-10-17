@@ -1,0 +1,5 @@
+/// Renders any `Show` value in the stable format used by interpolation and snapshots:
+/// valid Vow expression syntax (`User { id: 1, name: "a" }`, `Some([1, 2])`,
+/// `Map.of([("a", 1)])`). Compiler intrinsic.
+@external(js, "vow_runtime", "show")
+pub fn show<A: Show>(a: A) -> String

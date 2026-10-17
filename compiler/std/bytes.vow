@@ -1,0 +1,24 @@
+// Immutable byte sequences. `Bytes` is compiler-known; this module is its home.
+
+@external(js, "vow_runtime", "bytes_len")
+pub fn len(b: Bytes) -> Int
+
+/// The byte at index `i` as `0..=255`, or `None` out of range.
+@external(js, "vow_runtime", "bytes_get")
+pub fn get(b: Bytes, i: Int) -> Option<Int>
+
+/// Bytes from integers in `0..=255`.
+@external(js, "vow_runtime", "bytes_from_list")
+pub fn from_list(xs: List<Int>) -> Bytes
+  requires List.all(xs, fn(x) { x >= 0 && x <= 255 })
+
+test "from_list, len, get" {
+  let b = from_list([0, 127, 255])
+  expect_eq(len(b), 3)
+  expect_eq(get(b, 2), Some(255))
+  expect_eq(get(b, 3), None)
+}
+
+test "bytes outside 0..=255 blame the caller" {
+  expect_defect(fn() { from_list([256]) })
+}
