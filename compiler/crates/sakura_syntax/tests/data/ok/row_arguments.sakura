@@ -1,0 +1,4 @@
+type Tool<e> = { run: fn(Int) -> Int ! {Fail<ToolError> | e} }
+type Agent<T, e> = { tools: List<Tool<e>>, stop: fn(T) -> Bool }
+fn call<e>(t: Tool<e>, x: Int) -> Int ! {Fail<ToolError> | e} { (t.run)(x) }
+fn pick(a: Tool<{Http}>, b: Tool<{Http | e}>, c: Tool<{}>, d: Handler<Console, r>) -> Unit { () }

@@ -141,7 +141,9 @@ pub(crate) fn named_type(p: &mut Parser<'_>) -> CompletedMarker {
     m.complete(p, NAMED_TYPE)
 }
 
-/// `< Type | EffectRow, … >`; rows appear as arguments of `Handler<Db, {Http}>` (§4.2, §6.2).
+/// `< Type | EffectRow, … >`; rows appear as arguments of `Handler<Db, {Http}>` and fill a
+/// type's row parameters (`Tool<{Http}>`, `Tool<e>`; §3, §4.4). A lowercase name not followed
+/// by `.` is a row variable.
 pub(crate) fn generic_arg_list(p: &mut Parser<'_>) {
     let m = p.start();
     p.bump();
@@ -151,7 +153,7 @@ pub(crate) fn generic_arg_list(p: &mut Parser<'_>) {
         TYPE_FIRST.union(TokenSet::new(&[L_BRACE])),
         "a type",
         |p| {
-            if p.at(L_BRACE) {
+            if p.at(L_BRACE) || (p.at(IDENT) && p.peek_raw(1) != DOT) {
                 effect_row(p);
             } else {
                 ty(p);
