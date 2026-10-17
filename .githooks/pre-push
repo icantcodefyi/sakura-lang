@@ -7,9 +7,10 @@ root=$(git rev-parse --show-toplevel)
 while read -r _local_ref local_sha _remote_ref _remote_sha; do
   [ "$local_sha" = 0000000000000000000000000000000000000000 ] && continue
   git cat-file -e "$local_sha:compiler/Cargo.toml" 2>/dev/null || continue
-  # A fixed export path keeps incremental builds fast between pushes.
-  src="$root/compiler/target/pre-push/src"
-  rm -rf "$src" && mkdir -p "$src"
+  # One export per push so concurrent pushes don't clobber each other; the shared target dir
+  # keeps dependency builds cached, and cargo's lock on it serializes concurrent checks.
+  src=$(mktemp -d "${TMPDIR:-/tmp}/vow-pre-push.XXXXXX")
+  trap 'rm -rf "$src"' EXIT
   git archive "$local_sha" compiler docs | tar -x -C "$src"
   cd "$src/compiler"
   if ! cargo metadata --locked --offline --format-version 1 >/dev/null 2>&1; then
