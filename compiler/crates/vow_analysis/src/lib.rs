@@ -66,6 +66,17 @@ impl Snapshot {
             .map(|i| FileId(i as u32))
     }
 
+    /// A snapshot of `files` plus the embedded std library.
+    pub fn with_std(files: impl IntoIterator<Item = (String, String)>) -> Self {
+        Snapshot::new(files.into_iter().chain(std_sources()))
+    }
+
+    /// Files that are not part of the embedded std library.
+    pub fn user_files(&self) -> impl Iterator<Item = FileId> + '_ {
+        self.file_ids()
+            .filter(|&f| !self.file(f).uri.starts_with("vow:///std/"))
+    }
+
     /// `sha256:<hex>` over every file's URI and content hash.
     pub fn hash(&self) -> &str {
         &self.hash
@@ -83,20 +94,77 @@ impl CheckResult {
     }
 }
 
+/// Phases whose crates still return placeholder results. Each is reported once per run as
+/// `V9002` so a clean `check` is never claimed on the strength of a stub. Shrinks as phases land.
+const PENDING_PHASES: &[&str] = &["parser", "type checker"];
+
 /// The facade every frontend calls. Stateless until incremental queries arrive (Salsa, M3).
 pub struct Analysis;
 
 impl Analysis {
     /// Parse, resolve, type and effect check. Holes are allowed. No code generation.
     pub fn check(snapshot: &Snapshot) -> CheckResult {
-        let mut diagnostics = Vec::new();
-        for file in snapshot.file_ids() {
-            let parse = vow_syntax::parse_file(file, &snapshot.file(file).text);
-            diagnostics.extend(parse.errors);
-            diagnostics.push(unavailable(file, "name resolution phase"));
+        let (program, mut diagnostics) = lower(snapshot);
+        let (_typed, type_diags) = vow_types::check_program(&program);
+        diagnostics.extend(program.diagnostics);
+        diagnostics.extend(type_diags);
+        if let Some(file) = snapshot.user_files().next() {
+            for phase in PENDING_PHASES {
+                diagnostics.push(unavailable(file, phase));
+            }
         }
         CheckResult { diagnostics }
     }
+}
+
+/// Where a snapshot file belongs: `("std", "list")` for `vow:///std/list.vow`; user files are
+/// package `main` with the path relative to the last `src/` (`users/repo`), or the file stem.
+fn module_of(uri: &str) -> (&'static str, String) {
+    let path = uri.strip_suffix(".vow").unwrap_or(uri);
+    if let Some(rest) = path.strip_prefix("vow:///std/") {
+        return ("std", rest.to_owned());
+    }
+    let rel = match path.rfind("/src/") {
+        Some(i) => &path[i + 5..],
+        None => path.rsplit('/').next().unwrap_or(path),
+    };
+    ("main", rel.to_owned())
+}
+
+/// Parses every file and lowers the snapshot to HIR. Returns parse diagnostics separately.
+fn lower(snapshot: &Snapshot) -> (vow_hir::Program, Vec<Diagnostic>) {
+    let mut diagnostics = Vec::new();
+    let mut std = Vec::new();
+    let mut user = Vec::new();
+    for file in snapshot.file_ids() {
+        let parse = vow_syntax::parse_file(file, &snapshot.file(file).text);
+        diagnostics.extend(parse.errors.iter().cloned());
+        let (package, path) = module_of(&snapshot.file(file).uri);
+        let input = vow_hir::ModuleInput {
+            file,
+            path,
+            root: parse.syntax(),
+        };
+        if package == "std" {
+            &mut std
+        } else {
+            &mut user
+        }
+        .push(input);
+    }
+    let packages = [
+        vow_hir::PackageInput {
+            name: "std",
+            deps: vec![],
+            modules: std,
+        },
+        vow_hir::PackageInput {
+            name: "main",
+            deps: vec![],
+            modules: user,
+        },
+    ];
+    (vow_hir::lower(&packages), diagnostics)
 }
 
 fn unavailable(file: FileId, phase: &str) -> Diagnostic {
@@ -111,6 +179,16 @@ fn unavailable(file: FileId, phase: &str) -> Diagnostic {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn module_paths() {
+        assert_eq!(module_of("vow:///std/list.vow"), ("std", "list".into()));
+        assert_eq!(
+            module_of("file:///p/src/users/repo.vow"),
+            ("main", "users/repo".into())
+        );
+        assert_eq!(module_of("file:///tmp/hello.vow"), ("main", "hello".into()));
+    }
 
     #[test]
     fn std_is_embedded() {

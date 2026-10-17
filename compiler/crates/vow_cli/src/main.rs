@@ -83,7 +83,7 @@ fn load(paths: &[PathBuf]) -> Result<Snapshot, String> {
         let text = std::fs::read_to_string(&abs).map_err(|e| format!("{}: {e}", path.display()))?;
         sources.push((file_uri(&abs), text));
     }
-    Ok(Snapshot::new(sources))
+    Ok(Snapshot::with_std(sources))
 }
 
 /// `file://` URI for an absolute path, percent-encoding the bytes that are not URI-safe.
