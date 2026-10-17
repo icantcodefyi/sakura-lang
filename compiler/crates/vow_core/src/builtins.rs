@@ -57,17 +57,14 @@ table! {
     Direct float_is_nan/1, Direct float_format/2,
     // Option
     Direct option_expect/2,
-    // Time
-    Direct duration_seconds/1, Direct duration_millis/1, Direct duration_minutes/1,
-    Direct duration_to_millis/1, Direct instant_format_iso/1, Direct instant_add/2,
-    Direct instant_diff/2, Direct instant_of_iso/1,
-    Direct uuid_to_string/1,
-    // Handlers for std effects (design §10.2): host and deterministic fakes
-    Direct console_host/0, Direct console_captured/0,
-    Direct clock_host/0, Direct clock_fixed/1, Direct clock_virtual/1,
-    Direct random_host/0, Direct random_seeded/1,
-    Direct env_host/0, Direct env_of/1,
-    Direct log_stderr/0, Direct log_json/0, Direct log_captured/0,
+    // Host primitives behind the std effects (design §10.2) and deterministic generators
+    Direct console_host/0, Direct console_print/1, Direct console_read_line/0,
+    Direct clock_now_ms/0, Direct clock_monotonic_ms/0, Cps clock_sleep_ms/1,
+    Direct random_int/2, Direct random_float/0, Direct random_bytes/1, Direct random_uuid/0,
+    Direct prng_next/1, Direct prng_float/1, Direct prng_int/3,
+    Direct env_get/1, Direct log_write/1,
+    // Tasks
+    Cps defect_catch/1,
 }
 
 pub fn lookup(name: &str) -> Option<&'static Builtin> {
