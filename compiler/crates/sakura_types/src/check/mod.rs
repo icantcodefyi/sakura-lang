@@ -134,6 +134,7 @@ struct BodyState {
     calls: ArenaMap<ExprId, CallTarget>,
     instantiations: ArenaMap<ExprId, Vec<TypeId>>,
     conversions: ArenaMap<ExprId, (DefId, Vec<TypeId>)>,
+    unwrapped: HashSet<ExprId>,
     scope: Vec<LocalId>,
     frames: Vec<FnFrame>,
     lambda_depth: u32,

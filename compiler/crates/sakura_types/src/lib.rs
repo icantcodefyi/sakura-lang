@@ -13,7 +13,7 @@
 //! element type of an unused `[]`) and may be treated as any type. `Type::Error` marks an
 //! expression that already has a diagnostic; codegen must not run on a program with errors.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use la_arena::ArenaMap;
 use sakura_hir::{BodyId, ExprId, LocalId, ModuleId, PatId};
@@ -87,6 +87,10 @@ pub struct TypedBody {
     ///   (`def`, at `V`'s arguments) applied to `untrusted_value(u)`; std's external is never
     ///   called.
     pub conversions: ArenaMap<ExprId, (DefId, Vec<TypeId>)>,
+    /// Tagged-template arguments of type `Untrusted<T>` (§17.101): each also has a
+    /// [`TypedBody::conversions`] entry, `X.from` at `T`, and is lowered as
+    /// `X.from(untrusted_value(a))`, never passed through even when `T` is `X`.
+    pub unwrapped: HashSet<ExprId>,
 }
 
 /// The resolved target of a call-like expression.

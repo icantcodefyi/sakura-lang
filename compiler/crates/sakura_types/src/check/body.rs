@@ -421,6 +421,7 @@ impl<'p> Checker<'p> {
             let v = v.into_iter().map(|t| self.inf.zonk(t)).collect();
             out.conversions.insert(e, (d, v));
         }
+        out.unwrapped = self.b.unwrapped.clone();
         self.finish_validates(&mut out);
         out.calls = std::mem::take(&mut self.b.calls);
         self.b.types = out.types.clone();

@@ -1339,7 +1339,14 @@ impl Checker<'_> {
             let (t, r) = self.synth(a);
             rows.push(r);
             let st = self.inf.shallow(t);
-            if matches!(self.inf.interner.ty(st), Type::Con(TyCon::Adt(d), _) if Some(*d) == elem) {
+            // §17.101: an `Untrusted<T>` is checked as its wrapped `T`, always through `from`.
+            let inner = match self.inf.interner.ty(st) {
+                Type::Con(TyCon::Untrusted, xs) => xs.first().copied(),
+                _ => None,
+            };
+            if inner.is_none()
+                && matches!(self.inf.interner.ty(st), Type::Con(TyCon::Adt(d), _) if Some(*d) == elem)
+            {
                 self.coerce(a, t, arg_ty);
                 continue;
             }
@@ -1361,7 +1368,10 @@ impl Checker<'_> {
                     }
                     let vars = subst.into_iter().map(|(_, v)| v).collect();
                     self.b.conversions.insert(a, (f, vars));
-                    self.coerce(a, t, param);
+                    if inner.is_some() {
+                        self.b.unwrapped.insert(a);
+                    }
+                    self.coerce(a, inner.unwrap_or(t), param);
                     rows.push(frow);
                 }
                 None => self.coerce(a, t, arg_ty),

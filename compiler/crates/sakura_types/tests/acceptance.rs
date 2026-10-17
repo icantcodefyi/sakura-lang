@@ -313,6 +313,39 @@ fn q(e: Email, n: Int, v: SqlValue) -> Query<Unit> { sql"select {e}, {n}, {v}" }
     assert_eq!(bad.codes(), vec!["V2032"], "{}", bad.render());
 }
 
+/// §17.101: a template sees through `Untrusted<T>`: the wrapped value goes through `from`,
+/// marked in `TypedBody::unwrapped`, even when it already is the element type.
+#[test]
+fn template_arguments_see_through_untrusted() {
+    let src = r#"import std/sql.{Query}
+import std/html.{Html}
+type User = { name: String, age: Int }
+fn q(s: Untrusted<String>, n: Untrusted<Int>, u: Untrusted<User>) -> Query<Unit> { sql"select {s}, {n}, {u}" }
+fn h(s: Untrusted<String>, m: Untrusted<Html>) -> Html { html"<p>{s}{m}</p>" }
+"#;
+    let c = check(src);
+    assert!(c.diags.is_empty(), "{}", c.render());
+    for (f, n) in [("q", 3), ("h", 2)] {
+        let (_, _, typed) = c.body_of(f);
+        let marked: Vec<_> = typed
+            .conversions
+            .iter()
+            .filter(|(e, _)| typed.unwrapped.contains(e))
+            .map(|(_, (d, _))| c.program.def(*d).name.clone())
+            .collect();
+        assert_eq!(marked, vec!["from"; n], "{f}");
+        assert_eq!(typed.unwrapped.len(), n, "{f}");
+    }
+    let secret = check(
+        "import std/sql.{Query}\nfn q(s: Untrusted<Secret<String>>) -> Query<Unit> { sql\"select {s}\" }\n",
+    );
+    assert_eq!(secret.codes(), vec!["V2032"], "{}", secret.render());
+    let plain = check(
+        "import std/sql.{Query}\nfn q(s: Secret<String>) -> Query<Unit> { sql\"select {s}\" }\n",
+    );
+    assert_eq!(plain.codes(), vec!["V2032"], "{}", plain.render());
+}
+
 /// §17.61: a hole carries its allowed row in structured form too.
 #[test]
 fn hole_allowed_effects_are_structured() {
