@@ -80,8 +80,7 @@ externals they touch; their host handlers and `Schema` codecs are runtime extern
 
 ## Planned, not yet in source (design §10, milestone M3)
 
-`Tool.of` (a compiler intrinsic on a `@tool`
-function), `Untrusted.validate` (a compiler intrinsic into a refined type), `Http.recording`, `Llm.replay`, `Sql.postgres`, `Html`
+`Untrusted.validate` (a compiler intrinsic into a refined type), `Http.recording`, `Llm.replay`, `Sql.postgres`, `Html`
 values as `html"…"` arguments, `List.par_map` (written as `std/task.par_map` until `Task` runs),
 and `Env.host(scope)`. Their signatures are the ones in design §10.2–§10.7. `Uuid`, `Prompt` and
 `Query` are `pub opaque` (design §17.10).
@@ -747,7 +746,7 @@ fn memory() -> Handler<Sql>    // @external
     `fn(Json) -> Json ! {Fail<ToolError> | e}`; inference names it, and call sites do not
     change when it becomes `Tool<e>`. `Agent.run`'s row gains the tools' `e` (§15.8's
     `research` already declares `Http` for that reason). `Tool.from(name, description, f)`
-    is what `Tool.of` will build; `ToolError` is also raised as `DecodeError` (bad
+    is what `Tool.of` builds (§17.66); `ToolError` is also raised as `DecodeError` (bad
     arguments) and `UnknownTool`.
 17. **`Llm.step` and the scripted tool-call format** (§16.15): the agent loop needs an
     operation that returns either the answer or tool calls (`Step<T> = Answer(T) |

@@ -1,8 +1,8 @@
 // Tools an agent may call (design §10.7, §11.2, M3). A tool runs its function under the
 // handlers installed around `Agent.run`: the model chooses arguments, never authority.
-// needs M3: `Tool.of(f)` for a `@tool` function, a compiler intrinsic that builds what `from`
-// builds with the name, description and argument record taken from the declaration;
-// effect-row parameters on types, after which `Tool<F>` is `Tool<e>`.
+// `Tool.of(f)` on a `@tool("…")` function is compiler sugar for `from` with the function's
+// name, description and a synthesized argument record (§11.2).
+// needs M3: effect-row parameters on types, after which `Tool<F>` is `Tool<e>`.
 
 import std/llm.{ToolSpec}
 
