@@ -1,7 +1,10 @@
 // milestone: M3
-// needs: the `file_buffer`, `file_closing`, `file_read`, `file_write` and `file_contents` externals (std/fs)
 // mode: test
 // covers: WithExpr TryExpr Lambda
+
+// Design §10.2, §5.5 (§17.48): the `with_file` body runs under the perform site's handlers,
+// so `Fs.read_chunk`/`Fs.write_chunk` and other `Fs` operations inside it reach the handler
+// that opened the file.
 
 import std/fs.{Append, File, Fs, Read, Write}
 import std/path.{Path}
@@ -11,31 +14,46 @@ test "with_file writes when the body returns and reads back in chunks" {
   with Fs.memory([]) {
     let r = try {
       Fs.with_file(log, Write, fn(f) {
-        File.write_chunk(f, String.to_bytes("ab"))
-        File.write_chunk(f, String.to_bytes("cd"))
+        Fs.write_chunk(f, String.to_bytes("ab"))
+        Fs.write_chunk(f, String.to_bytes("cd"))
       })
-      Fs.with_file(log, Append, fn(f) { File.write_chunk(f, String.to_bytes("e")) })
-      Fs.with_file(log, Read, fn(f) { (File.read_chunk(f, 2), File.read_all(f)) })
+      Fs.with_file(log, Append, fn(f) { Fs.write_chunk(f, String.to_bytes("e")) })
+      Fs.with_file(log, Read, fn(f) { (Fs.read_chunk(f, 2), Fs.read_all(f)) })
     }
     expect_eq(r, Ok((String.to_bytes("ab"), String.to_bytes("cde"))))
   }
 }
 
+test "the body reaches the same handler for other paths" {
+  let a = Path.of("a.txt")
+  let b = Path.of("b.txt")
+  with Fs.memory([(a, String.to_bytes("from a"))]) {
+    let r = try {
+      Fs.with_file(b, Write, fn(f) {
+        Fs.write_chunk(f, Fs.read(a))
+        Fs.write(Path.of("c.txt"), String.to_bytes("side"))
+      })
+      (Fs.read(b), Fs.read(Path.of("c.txt")))
+    }
+    expect_eq(r, Ok((String.to_bytes("from a"), String.to_bytes("side"))))
+  }
+}
+
 error Abort
 
-test "a failing body writes nothing" {
+test "a failing body writes nothing and closes the file" {
   let a = Path.of("a.txt")
   with Fs.memory([(a, String.to_bytes("old"))]) {
     let r = try {
       Fs.with_file(a, Write, fn(f) {
-        File.write_chunk(f, String.to_bytes("new"))
+        Fs.write_chunk(f, String.to_bytes("new"))
         fail Abort
       })
     }
     expect(r.is_err())
-    expect_eq(try { Fs.read(a) }, Ok(String.to_bytes("old")))
+    expect_eq(try { Fs.with_file(a, Read, fn(f) { Fs.read_all(f) }) }, Ok(String.to_bytes("old")))
     expect_fails_with(
-      fn() { Fs.with_file(a, Read, fn(f) { File.write_chunk(f, String.to_bytes("x")) }) },
+      fn() { Fs.with_file(a, Read, fn(f) { Fs.write_chunk(f, String.to_bytes("x")) }) },
       fn(e) { e.reason == "opened for reading" },
     )
   }

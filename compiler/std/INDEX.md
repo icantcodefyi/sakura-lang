@@ -482,14 +482,14 @@ effect Fs {
   fn list(dir: Path) -> List<Entry> ! {Fail<FsError>}
   fn exists(path: Path) -> Bool
   fn with_file<T, e>(path: Path, mode: Mode, body: fn(File) -> T ! e) -> T ! {Fail<FsError> | e}
+  fn read_chunk(file: File, max: Int) -> Bytes ! {Fail<FsError>} requires max > 0
+  fn write_chunk(file: File, data: Bytes) -> Unit ! {Fail<FsError>}
 }
 fn host() -> Handler<Fs>
 fn rooted(dir: Dir) -> Handler<Fs>
 fn subdir(d: Dir, name: String) -> Dir ! {Fail<FsError>}
 fn memory(files: List<(Path, Bytes)>) -> Handler<Fs>
-fn read_chunk(file: File, max: Int) -> Bytes ! {Fail<FsError>} requires max > 0
-fn write_chunk(file: File, data: Bytes) -> Unit ! {Fail<FsError>}
-fn read_all(file: File) -> Bytes ! {Fail<FsError>}
+fn read_all(file: File) -> Bytes ! {Fs, Fail<FsError>}
 ```
 
 ### `std/cli`
@@ -764,13 +764,8 @@ fn memory() -> Handler<Sql>    // @external
     for every sink (§6.4). `Html.untrusted(u)` escapes untrusted text. `html"…"` escapes every
     interpolated value until template arguments can convert (`Html` as markup, like
     `SqlValue.from`).
-20. **`File.read_chunk`/`File.write_chunk`/`File.read_all` are functions on the `File`, not
-    `Fs` operations** (the design leaves them unspecified): a clause sees the handlers
-    outside its `with` (§5.5), so the `with_file` body, run by the clause, could not reach
-    the handler that opened the file. The `File` is the capability; `Fs.with_file` is
-    where authority is used. `Mode = Read | Write | Append`. Until the `file_*` externals
-    exist, `with_file` fails with `FsError` in `Fs.rooted` and `Fs.memory` (see the
-    `ponytail:` note in `std/fs`).
+20. Resolved (§17.48): `read_chunk`/`write_chunk` are `Fs` operations; a `with_file` body
+    runs under its perform site's handlers.
 21. **`Path` is `String where is_relative(it)`**, not `pub opaque type Path = Path(List<String>)`:
     `Cli.parse` and `Json.decode` read a refined type from a string and check it, while an
     opaque variant has no string form (§15.6 parses `--input notes.txt` into a `Path`). The

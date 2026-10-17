@@ -1003,3 +1003,54 @@ pub fn main() -> Unit ! {Console} {
         r.stderr
     );
 }
+
+/// Design §17.48: a `with_file` body runs under its perform site's handlers, so under an
+/// attenuating `Fs.rooted(data)` an `Fs.read` inside it reads `data/secret.txt`, never the
+/// package root's; host files are written through `Fs.write_chunk` and closed on failure.
+#[test]
+fn with_file_bodies_cannot_bypass_an_attenuating_handler() {
+    let src = r#"import std/fs.{Append, Fs, FsError, Read, Write}
+import std/path.{Path}
+error Abort
+pub fn main() -> Unit ! {Console, Fs} {
+  let r = try {
+    let data = Fs.subdir(Fs.root(), "data")
+    with Fs.rooted(data) {
+      let seen = Fs.with_file(Path.of("log.txt"), Write, fn(f) {
+        Fs.write_chunk(f, String.to_bytes("one"))
+        Fs.read(Path.of("secret.txt"))
+      })
+      let failed = try {
+        Fs.with_file(Path.of("log.txt"), Append, fn(f) {
+          Fs.write_chunk(f, String.to_bytes("+two"))
+          fail Abort
+        })
+      }
+      let log = Fs.with_file(Path.of("log.txt"), Read, fn(f) { Fs.read_all(f) })
+      (String.from_bytes(seen), failed.is_err(), String.from_bytes(log))
+    }
+  }
+  Console.print("{r}")
+}
+"#;
+    let (m, sources) = common::build("fs_attenuate", src, false).unwrap();
+    let base = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("fs-attenuate");
+    let dir = base.join("js");
+    common::write(&m, sources, &dir);
+    let work = base.join("work");
+    let _ = std::fs::remove_dir_all(&work);
+    std::fs::create_dir_all(work.join("data")).unwrap();
+    std::fs::write(work.join("secret.txt"), "root").unwrap();
+    std::fs::write(work.join("data/secret.txt"), "data").unwrap();
+    let out = std::process::Command::new("node")
+        .arg(dir.join("__main__.js"))
+        .current_dir(&work)
+        .output()
+        .unwrap();
+    assert_eq!(
+        String::from_utf8_lossy(&out.stdout),
+        "Ok((Ok(\"data\"), true, Ok(\"one+two\")))\n",
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}

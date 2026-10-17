@@ -1,7 +1,6 @@
 // Files as an effect (design §10.2, M3). Authority is the handler's directory: every path
 // is relative to it (`Path` cannot hold `..` or a leading `/`) and the host rejects
 // symlinks that escape it (design §6.1).
-// needs M3: the `file_*` externals behind `with_file` and `File`.
 
 import std/path.{Path}
 import std/untrusted
@@ -14,9 +13,9 @@ pub type Entry = { name: String, is_dir: Bool }
 /// `Write` creates or truncates the file, `Append` creates it or writes after its end.
 pub type Mode = Read | Write | Append
 
-/// An open file, valid only inside the `with_file` body that received it (design §6.7). It is
-/// the capability: `File.read_chunk` and `File.write_chunk` need no `Fs` handler, because a
-/// clause's callback cannot reach the clause's own handler (design §5.5).
+/// An open file, valid only inside the `with_file` body that received it (design §6.7). The
+/// body runs under the handlers of its perform site (design §5.5), so `Fs.read_chunk` and
+/// `Fs.write_chunk` inside it reach the handler that opened the file.
 pub opaque type File = { id: Int, path: Path, mode: Mode }
 
 /// `path` is relative to the handler's directory; `reason` is the host's message.
@@ -36,6 +35,11 @@ pub effect Fs {
   /// Opens `path`, runs `body` with the file and closes it on every exit: return, `fail`,
   /// defect or cancellation.
   fn with_file<T, e>(path: Path, mode: Mode, body: fn(File) -> T ! e) -> T ! {Fail<FsError> | e}
+  /// Up to `max` bytes from the current position; empty at the end of the file.
+  fn read_chunk(file: File, max: Int) -> Bytes ! {Fail<FsError>}
+    requires max > 0
+  /// Writes at the end of the file; fails for a file opened with `Read`.
+  fn write_chunk(file: File, data: Bytes) -> Unit ! {Fail<FsError>}
 }
 
 /// The root handler the host installs for a `main` that declares `Fs`: the package
@@ -54,7 +58,12 @@ pub fn rooted(dir: Dir) -> Handler<Fs> {
     fn write(path, data) { ok_or_fail(path, fs_write(dir, Path.to_string(path), data)) }
     fn list(p) { ok_or_fail(p, fs_list(dir, Path.to_string(p))) }
     fn exists(path) { fs_exists(dir, Path.to_string(path)) }
-    fn with_file(path, mode, body) { awaiting_runtime(path) }
+    fn with_file(path, mode, body) {
+      let id = ok_or_fail(path, file_open(dir, Path.to_string(path), mode))
+      file_closing(id, fn() { body(File { id, path, mode }) })
+    }
+    fn read_chunk(file, max) { read_file(file, max) }
+    fn write_chunk(file, data) { write_file(file, data) }
   }
 }
 
@@ -93,59 +102,41 @@ pub fn memory(files: List<(Path, Bytes)>) -> Handler<Fs> {
       List.sort_by(List.unique(entries), fn(e) { e.name })
     }
     fn exists(path) { Map.contains(store, Path.to_string(path)) }
-    fn with_file(path, mode, body) { awaiting_runtime(path) }
+    fn with_file(path, mode, body) {
+      let key = Path.to_string(path)
+      let initial = match mode {
+        Read => found(path, Map.get(store, key)),
+        Write => Bytes.from_list([]),
+        Append => Map.get(store, key).unwrap_or(Bytes.from_list([])),
+      }
+      let id = file_buffer(initial)
+      let r = file_closing(id, fn() { body(File { id, path, mode }) })
+      // The body may have written other paths through this instance: read `store` afresh.
+      let contents = file_contents(id)
+      if mode != Read { store = Map.insert(store, key, contents) }
+      r
+    }
+    fn read_chunk(file, max) { read_file(file, max) }
+    fn write_chunk(file, data) { write_file(file, data) }
   }
 }
 
-// ponytail: until runtime/js has the `file_*` externals, `with_file` fails in both handlers;
-// then `Fs.rooted`'s clause becomes `host_file(dir, path, mode, body)` and `Fs.memory`'s
-// `let r = buffer_file(store, path, mode, body)`, `store = r.1`, `r.0`.
-fn awaiting_runtime<T>(path: Path) -> T ! {Fail<FsError>} {
-  fail FsError { path: Path.to_string(path), reason: "with_file needs runtime support (M3)" }
-}
-
-fn host_file<T, e>(dir: Dir, path: Path, mode: Mode, body: fn(File) -> T ! e) -> T ! {Fail<FsError> | e} {
-  let id = ok_or_fail(path, file_open(dir, Path.to_string(path), mode))
-  file_closing(id, fn() { body(File { id, path, mode }) })
-}
-
-/// `body`'s result and the store with the file written back (unchanged for `Read`).
-fn buffer_file<T, e>(store: Map<String, Bytes>, path: Path, mode: Mode, body: fn(File) -> T ! e)
-  -> (T, Map<String, Bytes>)
-  ! {Fail<FsError> | e}
-{
-  let key = Path.to_string(path)
-  let initial = match mode {
-    Read => found(path, Map.get(store, key)),
-    Write => Bytes.from_list([]),
-    Append => Map.get(store, key).unwrap_or(Bytes.from_list([])),
-  }
-  let id = file_buffer(initial)
-  let result = file_closing(id, fn() { body(File { id, path, mode }) })
-  let contents = file_contents(id)
-  (result, if mode == Read { store } else { Map.insert(store, key, contents) })
-}
-
-/// Up to `max` bytes from the current position; empty at the end of the file.
-pub fn read_chunk(file: File, max: Int) -> Bytes ! {Fail<FsError>}
-  requires max > 0
-{
+fn read_file(file: File, max: Int) -> Bytes ! {Fail<FsError>} {
   ok_or_fail(file.path, file_read(file.id, max))
 }
 
-/// Writes at the end of the file; fails for a file opened with `Read`.
-pub fn write_chunk(file: File, data: Bytes) -> Unit ! {Fail<FsError>} {
+fn write_file(file: File, data: Bytes) -> Unit ! {Fail<FsError>} {
   if file.mode == Read { fail FsError { path: Path.to_string(file.path), reason: "opened for reading" } }
   ok_or_fail(file.path, file_write(file.id, data))
 }
 
 /// Every chunk from the current position to the end.
-pub fn read_all(file: File) -> Bytes ! {Fail<FsError>} {
+pub fn read_all(file: File) -> Bytes ! {Fs, Fail<FsError>} {
   var out: List<Int> = []
-  var chunk = read_chunk(file, 65_536)
+  var chunk = Fs.read_chunk(file, 65_536)
   while Bytes.len(chunk) > 0 {
     out = List.concat(out, to_list(chunk))
-    chunk = read_chunk(file, 65_536)
+    chunk = Fs.read_chunk(file, 65_536)
   }
   Bytes.from_list(out)
 }
