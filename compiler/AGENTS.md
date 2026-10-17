@@ -35,5 +35,6 @@ against your own temporary adapter until it lands. Never rewrite another owner's
   `compiler/tests/ui` (expected diagnostics) and `compiler/tests/semantics` (expected stdout).
   Review every snapshot diff; never bulk-accept.
 - Commits: small Conventional Commits scoped by crate, e.g. `feat(syntax): parse match arms`.
-  Only `git add` paths you changed. Before pushing: `git pull --rebase --autostash`, then rerun
-  the tests you own.
+  Only `git add` paths you changed. Before pushing: `git fetch origin master && git rebase
+  --autostash origin/master` (plain `git pull` can fail while other agents fetch), then rerun the
+  tests you own.
