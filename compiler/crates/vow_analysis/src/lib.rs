@@ -1,8 +1,7 @@
 //! Workspace snapshot and the analysis facade used by CLI, LSP and MCP.
 //!
 //! No phase reads the filesystem: frontends build a [`Snapshot`] from in-memory text and hand it
-//! to [`Analysis`]. Phases are wired in as their crates land; a phase that does not exist yet is
-//! reported as `V9002 phase_unavailable` rather than silently skipped.
+//! to [`Analysis`].
 
 use vow_diagnostics::{
     Diagnostic, FileId, HoleReport, Phase, Rendered, SourceFile, Span, codes, sha256,
@@ -187,7 +186,32 @@ impl Analysis {
     /// Check, then generate JS. Holes are rejected with `V2050`; with `need_entry` (for
     /// `vow run`) a missing `pub fn main` is `V8001`.
     pub fn build_js(snapshot: &Snapshot, need_entry: bool) -> BuildResult {
-        let (program, _typed, check) = analyze(snapshot);
+        let (module, diagnostics) = Analysis::lower_core(snapshot, need_entry);
+        let files = module.map(|m| {
+            let sources = snapshot
+                .file_ids()
+                .map(|f| vow_codegen_js::Source {
+                    file: f,
+                    name: snapshot.file(f).uri.clone(),
+                    text: snapshot.file(f).text.clone(),
+                })
+                .collect();
+            vow_codegen_js::emit(&m, &vow_codegen_js::Options::new(sources))
+                .into_iter()
+                .map(|f| (f.path, f.text))
+                .collect()
+        });
+        BuildResult { diagnostics, files }
+    }
+
+    /// Check and lower to validated Core (the input of every backend and of `vow_eval`). The
+    /// module is `None` if there were errors. Holes are rejected with `V2050`; with `need_entry`
+    /// a missing `pub fn main` is `V8001`.
+    pub fn lower_core(
+        snapshot: &Snapshot,
+        need_entry: bool,
+    ) -> (Option<vow_core::Module>, Vec<Diagnostic>) {
+        let (program, typed, check) = analyze(snapshot);
         let mut diagnostics = check.diagnostics;
         if need_entry
             && !has_entry(&program)
@@ -212,15 +236,28 @@ impl Analysis {
                 ),
             );
         }
-        if !diagnostics.iter().any(Diagnostic::is_error)
-            && let Some(file) = snapshot.user_files().next()
-        {
-            diagnostics.push(unavailable(file, "Core lowering"));
+        if diagnostics.iter().any(Diagnostic::is_error) {
+            return (None, diagnostics);
         }
-        BuildResult {
-            diagnostics,
-            files: None,
+        let lowered = vow_core::lower(&program, &typed, &vow_core::LowerOptions::default());
+        diagnostics.extend(lowered.diagnostics);
+        if diagnostics.iter().any(Diagnostic::is_error) {
+            return (None, diagnostics);
         }
+        if let Err(errors) = vow_core::validate(&lowered.module) {
+            let list: Vec<String> = errors.iter().map(|e| e.to_string()).collect();
+            let mut d = Diagnostic::error(
+                codes::V9001,
+                Phase::Internal,
+                format!("Core lowering produced invalid Core: {}", list.join("; ")),
+            );
+            if let Some(file) = snapshot.user_files().next() {
+                d = d.with_span(Span::primary(file, 0, 0));
+            }
+            diagnostics.push(d);
+            return (None, diagnostics);
+        }
+        (Some(lowered.module), diagnostics)
     }
 }
 
@@ -272,15 +309,6 @@ fn lower(snapshot: &Snapshot) -> (vow_hir::Program, Vec<Diagnostic>) {
         },
     ];
     (vow_hir::lower(&packages), diagnostics)
-}
-
-fn unavailable(file: FileId, phase: &str) -> Diagnostic {
-    Diagnostic::error(
-        codes::V9002,
-        Phase::Internal,
-        format!("the {phase} is not implemented yet in this pre-alpha build"),
-    )
-    .with_span(Span::primary(file, 0, 0))
 }
 
 #[cfg(test)]
