@@ -344,7 +344,7 @@ impl Gen<'_> {
             if self.cx.acc {
                 ops.push(11);
             }
-            if self.cx.around && self.poly() {
+            if self.cx.around {
                 ops.extend([14, 14]);
             }
         }
@@ -374,14 +374,14 @@ impl Gen<'_> {
                 9 => format!("Int.abs({})", self.expr(Ty::Int, d)),
                 10 if self.cx.counter => "Counter.next()".into(),
                 // The callback runs under this perform site's handlers (design §17.48).
-                14 if self.cx.around && self.poly() => {
+                14 if self.cx.around => {
                     let x = self.expr(Ty::Int, d);
                     let f = self.lambda(&[Ty::Int], Ty::Int, d, false);
                     format!("Around.around({x}, {f})")
                 }
                 11 if self.cx.acc => "Acc.total()".into(),
                 12 if !contract => format!("List.sum({})", self.expr(Ty::List, d)),
-                13 if !contract && self.poly() => {
+                13 if !contract => {
                     let xs = self.expr(Ty::List, d);
                     let init = self.expr(Ty::Int, d);
                     let f = self.lambda(&[Ty::Int, Ty::Int], Ty::Int, d, false);
@@ -406,7 +406,7 @@ impl Gen<'_> {
                     self.expr(Ty::List, d),
                     self.expr(Ty::Int, d)
                 ),
-                7 if self.poly() => {
+                7 => {
                     let f = self.rng.pick(&["any", "all"]);
                     let xs = self.expr(Ty::List, d);
                     let p = self.lambda(&[Ty::Int], Ty::Bool, d, false);
@@ -435,7 +435,7 @@ impl Gen<'_> {
                     let t = self.any_ty();
                     format!("\"{{{}}}\"", self.expr(t, d))
                 }
-                5 if !contract && self.poly() => {
+                5 if !contract => {
                     let xs = self.expr(Ty::List, d);
                     let f = self.lambda(&[Ty::Int], Ty::Str, d, false);
                     let sep = self.expr(Ty::Str, d);
@@ -454,10 +454,7 @@ impl Gen<'_> {
             },
             Ty::List if contract => self.leaf(Ty::List),
             Ty::List => {
-                let mut form = self.rng.below(14);
-                if !self.poly() && matches!(form, 1 | 2 | 9 | 11 | 12) {
-                    form = 13;
-                }
+                let form = self.rng.below(14);
                 // Only generate what the form uses: a dropped operand could still record a tag
                 // in `raised`.
                 let xs = match form {
@@ -578,13 +575,6 @@ impl Gen<'_> {
         }
         self.cx.in_loop = false;
         self.cx.ret = (!outer.contract).then_some(ret);
-    }
-
-    /// Whether a call to an effect-polymorphic function (`List.map`, …) may go here. Not directly
-    /// in a `try … catch` body: sakura_types then leaks the caught tags into the enclosing row
-    /// (V3001, REQUESTS.md 2026-10-18 WS6).
-    fn poly(&self) -> bool {
-        self.cx.fails != Fails::Catch
     }
 
     fn lambda(&mut self, params: &[Ty], ret: Ty, d: u32, pure: bool) -> String {
