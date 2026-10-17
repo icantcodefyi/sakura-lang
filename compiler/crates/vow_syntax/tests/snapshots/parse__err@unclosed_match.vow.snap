@@ -1,0 +1,90 @@
+---
+source: crates/vow_syntax/tests/parse.rs
+assertion_line: 42
+expression: out
+input_file: crates/vow_syntax/tests/data/err/unclosed_match.vow
+---
+V0001 58..60: expected `}`, found `fn`
+
+SOURCE_FILE@0..78
+  FN_DECL@0..57
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    IDENT@3..4 "f"
+    PARAM_LIST@4..12
+      L_PAREN@4..5 "("
+      PARAM@5..11
+        IDENT@5..6 "x"
+        COLON@6..7 ":"
+        WHITESPACE@7..8 " "
+        NAMED_TYPE@8..11
+          PATH@8..11
+            TYPE_NAME@8..11 "Int"
+      R_PAREN@11..12 ")"
+    WHITESPACE@12..13 " "
+    RET_TYPE@13..19
+      THIN_ARROW@13..15 "->"
+      WHITESPACE@15..16 " "
+      NAMED_TYPE@16..19
+        PATH@16..19
+          TYPE_NAME@16..19 "Int"
+    WHITESPACE@19..20 " "
+    BLOCK@20..57
+      L_BRACE@20..21 "{"
+      WHITESPACE@21..24 "\n  "
+      EXPR_STMT@24..57
+        MATCH_EXPR@24..57
+          MATCH_KW@24..29 "match"
+          WHITESPACE@29..30 " "
+          PATH_EXPR@30..31
+            PATH@30..31
+              IDENT@30..31 "x"
+          WHITESPACE@31..32 " "
+          MATCH_ARM_LIST@32..57
+            L_BRACE@32..33 "{"
+            WHITESPACE@33..38 "\n    "
+            MATCH_ARM@38..44
+              LITERAL_PAT@38..39
+                LITERAL@38..39
+                  INT@38..39 "0"
+              WHITESPACE@39..40 " "
+              FAT_ARROW@40..42 "=>"
+              WHITESPACE@42..43 " "
+              LITERAL@43..44
+                INT@43..44 "1"
+            COMMA@44..45 ","
+            WHITESPACE@45..50 "\n    "
+            MATCH_ARM@50..56
+              WILDCARD_PAT@50..51
+                UNDERSCORE@50..51 "_"
+              WHITESPACE@51..52 " "
+              FAT_ARROW@52..54 "=>"
+              WHITESPACE@54..55 " "
+              LITERAL@55..56
+                INT@55..56 "2"
+            NEWLINE@56..57 "\n"
+  WHITESPACE@57..58 "\n"
+  FN_DECL@58..77
+    FN_KW@58..60 "fn"
+    WHITESPACE@60..61 " "
+    IDENT@61..62 "g"
+    PARAM_LIST@62..64
+      L_PAREN@62..63 "("
+      R_PAREN@63..64 ")"
+    WHITESPACE@64..65 " "
+    RET_TYPE@65..71
+      THIN_ARROW@65..67 "->"
+      WHITESPACE@67..68 " "
+      NAMED_TYPE@68..71
+        PATH@68..71
+          TYPE_NAME@68..71 "Int"
+    WHITESPACE@71..72 " "
+    BLOCK@72..77
+      L_BRACE@72..73 "{"
+      WHITESPACE@73..74 " "
+      EXPR_STMT@74..75
+        LITERAL@74..75
+          INT@74..75 "3"
+      WHITESPACE@75..76 " "
+      R_BRACE@76..77 "}"
+  NEWLINE@77..78 "\n"

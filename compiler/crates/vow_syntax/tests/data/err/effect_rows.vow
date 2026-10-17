@@ -1,0 +1,4 @@
+fn a() -> Unit ! {Console, | } {}
+fn b() -> Unit ! {Console | E} {}
+fn c() -> Unit ! (Console) {}
+fn d() -> Unit ! {1} {}

@@ -1,0 +1,4 @@
+fn greet(name: String) -> Unit ! {Console} {
+  Console.print("hello, {name}")
+}
+pub fn main() -> Unit ! {Console} { greet("Vow") }

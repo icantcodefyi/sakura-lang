@@ -38,8 +38,10 @@ pub(crate) const ITEM_ONLY: TokenSet = TokenSet::new(&[
 ]);
 
 /// Tokens a list never swallows during recovery: closers and starts of outer constructs.
-pub(crate) const LIST_RECOVERY: TokenSet =
-    TokenSet::new(&[R_PAREN, R_BRACKET, R_BRACE, INTERP_END, LET_KW, VAR_KW]).union(ITEM_ONLY);
+pub(crate) const LIST_RECOVERY: TokenSet = TokenSet::new(&[
+    R_PAREN, R_BRACKET, L_BRACE, R_BRACE, INTERP_END, LET_KW, VAR_KW,
+])
+.union(ITEM_ONLY);
 
 pub(crate) fn source_file(p: &mut Parser<'_>) {
     let m = p.start();
@@ -395,7 +397,10 @@ fn effect_decl(p: &mut Parser<'_>) -> bool {
                 member_term(p, "operation");
             }
             _ if p.at_set(ITEM_ONLY) => break,
-            _ => p.err_and_bump("expected an operation `fn name(…) -> Type`"),
+            _ => p.err_skip_line(
+                "expected an operation `fn name(…) -> Type`",
+                TokenSet::new(&[FN_KW]),
+            ),
         }
     }
     p.expect(R_BRACE);

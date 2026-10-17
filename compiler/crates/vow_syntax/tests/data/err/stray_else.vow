@@ -1,0 +1,4 @@
+fn f(c: Bool) -> Int {
+  else { 1 }
+  if c { 1 } else
+}

@@ -213,7 +213,11 @@ fn match_arm_list(p: &mut Parser<'_>) {
                 }
             }
             _ if p.at_set(ITEM_ONLY) => break,
-            _ => p.err_and_bump("expected a match arm `pattern => expression`"),
+            FN_KW if p.peek_raw(1) == IDENT => break, // the closing `}` is missing
+            _ => p.err_skip_line(
+                "expected a match arm `pattern => expression`",
+                types::PAT_FIRST,
+            ),
         }
     }
     p.expect(R_BRACE);
@@ -268,9 +272,10 @@ fn handler_expr(p: &mut Parser<'_>) -> CompletedMarker {
                     member_term(p, "operation clause");
                 }
                 _ if p.at_set(ITEM_ONLY) => break,
-                _ => {
-                    p.err_and_bump("expected `var` state or an operation clause `fn name(…) { … }`")
-                }
+                _ => p.err_skip_line(
+                    "expected `var` state or an operation clause `fn name(…) { … }`",
+                    TokenSet::new(&[FN_KW, VAR_KW]),
+                ),
             }
         }
         p.expect(R_BRACE);

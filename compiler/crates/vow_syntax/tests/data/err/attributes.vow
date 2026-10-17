@@ -1,0 +1,4 @@
+@ fn a() -> Unit {}
+@Tool("x") fn b() -> Unit {}
+@tool("x"
+fn c() -> Unit {}

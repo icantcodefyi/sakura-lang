@@ -1,0 +1,2 @@
+fn f(xs: List<Int) -> Map<String, > { xs }
+type T<A = Int

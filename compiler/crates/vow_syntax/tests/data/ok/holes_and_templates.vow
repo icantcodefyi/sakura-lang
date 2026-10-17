@@ -1,0 +1,8 @@
+fn unfinished(x: Int, name: String) -> Int ! {Console} {
+  let a = ?first
+  Console.print(html"<p>{name}</p>")
+  let q = sql"select * from t where id = {x} and n = {?second}"
+  let u = url"https://example.com/{name}?q={x}"
+  let s = shell"ls {name}"
+  f(?arg, ?_other)
+}

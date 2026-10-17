@@ -1,0 +1,184 @@
+---
+source: crates/vow_syntax/tests/parse.rs
+assertion_line: 32
+expression: out
+input_file: crates/vow_syntax/tests/data/ok/holes_and_templates.vow
+---
+SOURCE_FILE@0..271
+  FN_DECL@0..270
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    IDENT@3..13 "unfinished"
+    PARAM_LIST@13..35
+      L_PAREN@13..14 "("
+      PARAM@14..20
+        IDENT@14..15 "x"
+        COLON@15..16 ":"
+        WHITESPACE@16..17 " "
+        NAMED_TYPE@17..20
+          PATH@17..20
+            TYPE_NAME@17..20 "Int"
+      COMMA@20..21 ","
+      WHITESPACE@21..22 " "
+      PARAM@22..34
+        IDENT@22..26 "name"
+        COLON@26..27 ":"
+        WHITESPACE@27..28 " "
+        NAMED_TYPE@28..34
+          PATH@28..34
+            TYPE_NAME@28..34 "String"
+      R_PAREN@34..35 ")"
+    WHITESPACE@35..36 " "
+    RET_TYPE@36..42
+      THIN_ARROW@36..38 "->"
+      WHITESPACE@38..39 " "
+      NAMED_TYPE@39..42
+        PATH@39..42
+          TYPE_NAME@39..42 "Int"
+    WHITESPACE@42..43 " "
+    BANG@43..44 "!"
+    WHITESPACE@44..45 " "
+    EFFECT_ROW@45..54
+      L_BRACE@45..46 "{"
+      NAMED_TYPE@46..53
+        PATH@46..53
+          TYPE_NAME@46..53 "Console"
+      R_BRACE@53..54 "}"
+    WHITESPACE@54..55 " "
+    BLOCK@55..270
+      L_BRACE@55..56 "{"
+      WHITESPACE@56..59 "\n  "
+      LET_STMT@59..73
+        LET_KW@59..62 "let"
+        WHITESPACE@62..63 " "
+        BIND_PAT@63..64
+          IDENT@63..64 "a"
+        WHITESPACE@64..65 " "
+        EQ@65..66 "="
+        WHITESPACE@66..67 " "
+        HOLE_EXPR@67..73
+          HOLE@67..73 "?first"
+      NEWLINE@73..74 "\n"
+      WHITESPACE@74..76 "  "
+      EXPR_STMT@76..110
+        CALL_EXPR@76..110
+          FIELD_EXPR@76..89
+            PATH_EXPR@76..83
+              PATH@76..83
+                TYPE_NAME@76..83 "Console"
+            DOT@83..84 "."
+            IDENT@84..89 "print"
+          ARG_LIST@89..110
+            L_PAREN@89..90 "("
+            TAGGED_STRING@90..109
+              IDENT@90..94 "html"
+              STRING_LIT@94..109
+                STRING_START@94..95 "\""
+                STRING_TEXT@95..98 "<p>"
+                INTERPOLATION@98..104
+                  INTERP_START@98..99 "{"
+                  PATH_EXPR@99..103
+                    PATH@99..103
+                      IDENT@99..103 "name"
+                  INTERP_END@103..104 "}"
+                STRING_TEXT@104..108 "</p>"
+                STRING_END@108..109 "\""
+            R_PAREN@109..110 ")"
+      NEWLINE@110..111 "\n"
+      WHITESPACE@111..113 "  "
+      LET_STMT@113..174
+        LET_KW@113..116 "let"
+        WHITESPACE@116..117 " "
+        BIND_PAT@117..118
+          IDENT@117..118 "q"
+        WHITESPACE@118..119 " "
+        EQ@119..120 "="
+        WHITESPACE@120..121 " "
+        TAGGED_STRING@121..174
+          IDENT@121..124 "sql"
+          STRING_LIT@124..174
+            STRING_START@124..125 "\""
+            STRING_TEXT@125..152 "select * from t where id = "
+            INTERPOLATION@152..155
+              INTERP_START@152..153 "{"
+              PATH_EXPR@153..154
+                PATH@153..154
+                  IDENT@153..154 "x"
+              INTERP_END@154..155 "}"
+            STRING_TEXT@155..164 " and n = "
+            INTERPOLATION@164..173
+              INTERP_START@164..165 "{"
+              HOLE_EXPR@165..172
+                HOLE@165..172 "?second"
+              INTERP_END@172..173 "}"
+            STRING_END@173..174 "\""
+      NEWLINE@174..175 "\n"
+      WHITESPACE@175..177 "  "
+      LET_STMT@177..222
+        LET_KW@177..180 "let"
+        WHITESPACE@180..181 " "
+        BIND_PAT@181..182
+          IDENT@181..182 "u"
+        WHITESPACE@182..183 " "
+        EQ@183..184 "="
+        WHITESPACE@184..185 " "
+        TAGGED_STRING@185..222
+          IDENT@185..188 "url"
+          STRING_LIT@188..222
+            STRING_START@188..189 "\""
+            STRING_TEXT@189..209 "https://example.com/"
+            INTERPOLATION@209..215
+              INTERP_START@209..210 "{"
+              PATH_EXPR@210..214
+                PATH@210..214
+                  IDENT@210..214 "name"
+              INTERP_END@214..215 "}"
+            STRING_TEXT@215..218 "?q="
+            INTERPOLATION@218..221
+              INTERP_START@218..219 "{"
+              PATH_EXPR@219..220
+                PATH@219..220
+                  IDENT@219..220 "x"
+              INTERP_END@220..221 "}"
+            STRING_END@221..222 "\""
+      NEWLINE@222..223 "\n"
+      WHITESPACE@223..225 "  "
+      LET_STMT@225..249
+        LET_KW@225..228 "let"
+        WHITESPACE@228..229 " "
+        BIND_PAT@229..230
+          IDENT@229..230 "s"
+        WHITESPACE@230..231 " "
+        EQ@231..232 "="
+        WHITESPACE@232..233 " "
+        TAGGED_STRING@233..249
+          IDENT@233..238 "shell"
+          STRING_LIT@238..249
+            STRING_START@238..239 "\""
+            STRING_TEXT@239..242 "ls "
+            INTERPOLATION@242..248
+              INTERP_START@242..243 "{"
+              PATH_EXPR@243..247
+                PATH@243..247
+                  IDENT@243..247 "name"
+              INTERP_END@247..248 "}"
+            STRING_END@248..249 "\""
+      NEWLINE@249..250 "\n"
+      WHITESPACE@250..252 "  "
+      EXPR_STMT@252..268
+        CALL_EXPR@252..268
+          PATH_EXPR@252..253
+            PATH@252..253
+              IDENT@252..253 "f"
+          ARG_LIST@253..268
+            L_PAREN@253..254 "("
+            HOLE_EXPR@254..258
+              HOLE@254..258 "?arg"
+            COMMA@258..259 ","
+            WHITESPACE@259..260 " "
+            HOLE_EXPR@260..267
+              HOLE@260..267 "?_other"
+            R_PAREN@267..268 ")"
+      WHITESPACE@268..269 "\n"
+      R_BRACE@269..270 "}"
+  NEWLINE@270..271 "\n"

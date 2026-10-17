@@ -1,0 +1,8 @@
+fn h() -> Handler<Counter> {
+  handler Counter {
+    let x = 1
+    fn next( { 1 }
+    fn () { 2 }
+  }
+}
+fn i() -> Handler<Counter> { handler { } }

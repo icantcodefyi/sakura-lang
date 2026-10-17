@@ -5,3 +5,4 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc 039d0058325c715c67c55c1cd1009990cdef0c1f3b3d42cbde41c2a1348d9e9c # shrinks to text = "type<;"
+cc 449f13c8f92e67e2bb3e5fcef05481b4b878fd12f38cfde8b45af5885eee80f5 # shrinks to text = "effect { handler ,"

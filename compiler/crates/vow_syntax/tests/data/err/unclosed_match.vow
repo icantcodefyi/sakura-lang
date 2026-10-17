@@ -1,0 +1,6 @@
+fn f(x: Int) -> Int {
+  match x {
+    0 => 1,
+    _ => 2
+
+fn g() -> Int { 3 }

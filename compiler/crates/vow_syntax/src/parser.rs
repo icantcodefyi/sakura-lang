@@ -269,6 +269,31 @@ impl<'t> Parser<'t> {
         true
     }
 
+    /// Report once and wrap the current token plus what follows it in one `ERROR` node, up to
+    /// `NEWLINE`, `;`, `,`, the enclosing `}` or a token in `stop` (skipping balanced brackets).
+    /// Callers must not be at `}` or EOF, so at least one token is consumed.
+    pub(crate) fn err_skip_line(&mut self, message: impl Into<String>, stop: TokenSet) {
+        self.error(codes::EXPECTED, message);
+        let m = self.start();
+        let mut balance = 0u32;
+        loop {
+            match self.current() {
+                L_PAREN | L_BRACKET | L_BRACE | INTERP_START => balance += 1,
+                R_PAREN | R_BRACKET | R_BRACE | INTERP_END => balance = balance.saturating_sub(1),
+                _ => {}
+            }
+            self.bump();
+            let k = self.current();
+            if k == EOF
+                || (balance == 0
+                    && (matches!(k, NEWLINE | SEMICOLON | COMMA | R_BRACE) || self.at_set(stop)))
+            {
+                break;
+            }
+        }
+        m.complete(self, ERROR);
+    }
+
     /// Wrap the current token in an `ERROR` node with a diagnostic.
     pub(crate) fn err_and_bump(&mut self, message: impl Into<String>) {
         self.error(codes::EXPECTED, message);
