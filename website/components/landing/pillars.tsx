@@ -53,8 +53,11 @@ function Cell({
       <div className={`p-5 sm:p-6 ${wide ? "lg:flex lg:flex-1 lg:flex-col lg:justify-center" : ""}`}>
         <h3 className="font-display text-[1.3rem] leading-tight font-semibold tracking-[-0.02em]">
           <Link href={href} className="rounded-sm after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-seal">
-            {title}
-            <ArrowUpRight className="ml-1 inline-block size-4 align-[-1px] text-fg-faint transition-[transform,color] duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-seal-text" />
+            {title.split(" ").slice(0, -1).join(" ")}{" "}
+            <span className="whitespace-nowrap">
+              {title.split(" ").at(-1)}
+              <ArrowUpRight className="ml-1 inline-block size-4 align-[-1px] text-fg-faint transition-[transform,color] duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-seal-text" />
+            </span>
           </Link>
         </h3>
         <p className="mt-2 max-w-[46ch] text-[15px] leading-relaxed text-pretty text-fg-muted">{children}</p>

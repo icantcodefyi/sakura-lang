@@ -104,7 +104,7 @@ export const vowDark = makeTheme("vow-dark", "dark", {
 });
 
 export const vowLight = makeTheme("vow-light", "light", {
-  bg: "#fafaf9",
+  bg: "#f7f8fa",
   fg: "#23272e",
   punct: "#636a75",
   comment: "#6f7580",

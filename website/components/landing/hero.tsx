@@ -12,7 +12,7 @@ export async function Hero() {
   return (
     <section className="relative overflow-hidden border-b border-line">
       <Ledger />
-      <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-5 pt-14 pb-20 sm:px-8 md:pt-20 lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1fr)] lg:gap-10 lg:pb-28">
+      <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-5 pt-14 pb-20 sm:px-8 md:pt-20 lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1fr)] lg:gap-10 lg:pb-28">
         <div>
           <Link
             href="/docs/roadmap"

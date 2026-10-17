@@ -12,7 +12,7 @@ export function BrandMark({ tile = false, ...props }: SVGProps<SVGSVGElement> & 
       {tile ? <rect width="32" height="32" rx="8" fill="var(--mark-tile, #1a1d22)" /> : null}
       <path
         d={MARK_PATH}
-        stroke="var(--seal)"
+        stroke={tile ? "var(--seal)" : "var(--mark, var(--seal))"}
         strokeWidth={tile ? 4.6 : 5}
         strokeLinecap="round"
         strokeLinejoin="round"

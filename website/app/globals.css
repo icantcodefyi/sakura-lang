@@ -29,7 +29,8 @@
   --ok: oklch(0.5 0.1 172);
   --ok-wash: oklch(0.6 0.1 172 / 0.12);
 
-  --code-bg: #fafaf9;
+  --code-bg: #f7f8fa;
+  --mark: oklch(0.66 0.16 66);
   --shadow-tint: 255;
 
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
@@ -60,6 +61,7 @@
   --ok-wash: oklch(0.75 0.1 172 / 0.12);
 
   --code-bg: #131518;
+  --mark: var(--seal);
 }
 
 @theme inline {
@@ -118,6 +120,7 @@
     color: var(--fg);
   }
 
+
   ::selection {
     background: var(--seal-wash);
   }
@@ -135,12 +138,14 @@
   }
 }
 
-/* ---------- Docs (Fumadocs) customisation ---------- */
-
-#nd-docs-layout,
-#nd-notebook-layout {
-  --fd-sidebar-width: 272px;
+/* sr-only text sits at its static position by default; past a line end that widens the page on phones.
+   Unlayered so it wins over the utilities layer. */
+.sr-only {
+  left: 0;
+  top: 0;
 }
+
+/* ---------- Docs (Fumadocs) customisation ---------- */
 
 .prose {
   --tw-prose-body: var(--fg);
@@ -268,4 +273,13 @@ figure.shiki {
     transform: none;
     filter: none;
   }
+}
+
+/* Callout palette follows the site: drafts/warnings use the seal, errors the fail colour */
+:root,
+.dark {
+  --color-fd-warning: var(--seal);
+  --color-fd-error: var(--fail);
+  --color-fd-success: var(--ok);
+  --color-fd-info: var(--fg-muted);
 }

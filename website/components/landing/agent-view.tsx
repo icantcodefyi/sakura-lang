@@ -44,7 +44,7 @@ export async function AgentView() {
   const index = llmsTxt().split("\n").slice(0, 18).join("\n");
   return (
     <section id="agents" className="border-b border-line">
-      <div className="mx-auto grid max-w-6xl gap-12 px-5 py-24 sm:px-8 md:py-32 lg:grid-cols-[0.75fr_1.25fr] lg:gap-16">
+      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 px-5 py-24 sm:px-8 md:py-32 lg:grid-cols-[0.75fr_1.25fr] lg:gap-16">
         <div>
           <h2 className="font-display text-[clamp(2rem,3.6vw,2.9rem)] leading-[1.04] font-semibold tracking-[-0.03em] text-balance">
             How an agent sees Vow.

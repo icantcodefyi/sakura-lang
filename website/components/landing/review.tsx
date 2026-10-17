@@ -17,7 +17,7 @@ export async function Review() {
   const [before, after] = await Promise.all([tokenize(BEFORE), tokenize(AFTER)]);
   return (
     <section className="border-b border-line">
-      <div className="mx-auto grid max-w-6xl gap-14 px-5 py-24 sm:px-8 md:py-32 lg:grid-cols-[minmax(0,25rem)_minmax(0,1fr)] lg:gap-16">
+      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-14 px-5 py-24 sm:px-8 md:py-32 lg:grid-cols-[minmax(0,25rem)_minmax(0,1fr)] lg:gap-16">
         <div className="lg:sticky lg:top-28 lg:self-start">
           <h2 className="font-display text-[clamp(2rem,3.6vw,2.9rem)] leading-[1.04] font-semibold tracking-[-0.03em] text-balance">
             The signature is the contract.
@@ -59,7 +59,7 @@ export async function Review() {
                         Review: promise changed
                       </span>
                     </div>
-                    <div className="overflow-x-auto border-y border-line bg-code py-2 font-mono text-[11.5px] leading-[1.8] sm:text-[12px]">
+                    <div className="relative overflow-x-auto border-y border-line bg-code py-2 font-mono text-[11.5px] leading-[1.8] sm:text-[12px]">
                       <div className="min-w-max">
                         <p className="flex bg-fail-wash pr-5 whitespace-pre">
                           <span aria-hidden className="w-8 shrink-0 text-center text-fail select-none">−</span>

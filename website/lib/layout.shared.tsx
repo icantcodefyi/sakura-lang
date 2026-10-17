@@ -10,8 +10,8 @@ export function baseOptions(): BaseLayoutProps {
     },
     githubUrl: site.github,
     links: [
-      { text: "Docs", url: "/docs", active: "nested-url" },
       { text: "llms.txt", url: "/llms.txt", external: true },
+      { text: "llms-full.txt", url: "/llms-full.txt", external: true },
     ],
   };
 }
