@@ -274,6 +274,27 @@ other types from the first column (`Bool` from 0/1, `Option` from NULL, refineme
 other structured types from JSON text). `transaction` is a savepoint (nests), released when
 the body returns and rolled back when it fails, defects or is cancelled.
 
+**Llm.** `llm_anthropic(key, model)` is a `std::llm::Llm` handler over Anthropic's Messages
+API that performs `Http.send` and `Budget.reserve`/`settle` on the handlers outside it
+(`ANTHROPIC_BASE_URL` overrides the endpoint, for tests). `Model("default")` is
+`claude-opus-5-5`; no `temperature` is sent (current models reject sampling parameters).
+Requests carry `x-api-key`, `anthropic-version: 2023-06-01`, server-side refusal fallbacks
+(`fallbacks: "default"`, `anthropic-beta: server-side-fallback-2026-07-01`) and structured
+outputs (`output_config.format` `json_schema` of `{"value": T}`, keywords the API rejects
+removed; the output is decoded and refinement-checked like `Json.decode`). `Untrusted` prompt
+parts are fenced in `<untrusted_data>` with a system note; images are base64 blocks.
+`stop_reason` `refusal` is `Refused`, `max_tokens` `Truncated`, HTTP 429 `RateLimited`
+(`retry-after`), other failures `ProviderError(status)`, an undecodable answer `InvalidOutput`.
+`step` sends `ToolSpec`s as `tools` and the transcript as `tool_use`/`tool_result` blocks and
+returns `Use(calls)` when the reply has tool calls. ponytail: `stream` reports the whole text
+as one partial (incremental delivery needs a streaming `Http` operation).
+
+**Serve.** `serve_listen(addr, handle, $ctx, $k)` serves HTTP on `addr` (within `net`) until
+the process stops; each request is a child task running `handle(req)` under the caller's
+handlers; a failure or defect is a 500 `internal error` (a defect record or `error:` line on
+stderr) and the server continues. `std/serve`'s `host()` is meant to be
+`handler Serve { fn listen(router, addr) { serve_listen(addr, fn(req) { Router.handle(router, req) }) } }`.
+
 **Generic operations.** The checker leaves an operation's type parameters as inference
 variables inside a clause, so lowering matches the operation's scheme against the clause's
 typed parameters and result to find which variables they are. An operation whose type parameters are bounded by `Show`/`Schema`

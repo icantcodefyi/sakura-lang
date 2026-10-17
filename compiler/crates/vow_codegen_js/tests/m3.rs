@@ -632,3 +632,195 @@ pub fn main() -> Unit ! {Console, Fs, Env, Http} {
         String::from_utf8_lossy(&out.stderr)
     );
 }
+
+/// `Llm.anthropic` against a local stand-in for the Messages API: the request carries the
+/// structured-output schema and the key header; refusals, 429s and usage map to Vow values.
+#[test]
+fn llm_anthropic_speaks_the_messages_api_through_http_and_budget() {
+    use std::io::{Read, Write};
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let replies = [
+        (
+            "200 OK",
+            r#"{"content":[{"type":"thinking","thinking":""},{"type":"text","text":"{\"value\":{\"title\":\"login\",\"priority\":2}}"}],"stop_reason":"end_turn","usage":{"input_tokens":10,"output_tokens":5}}"#,
+        ),
+        (
+            "200 OK",
+            r#"{"content":[],"stop_reason":"refusal","usage":{"input_tokens":3,"output_tokens":0}}"#,
+        ),
+        (
+            "429 Too Many Requests\r\nretry-after: 7",
+            r#"{"type":"error"}"#,
+        ),
+    ];
+    let server = std::thread::spawn(move || {
+        let mut seen = Vec::new();
+        for (status, body) in replies {
+            let (mut conn, _) = listener.accept().unwrap();
+            let mut req = Vec::new();
+            let mut buf = [0u8; 8192];
+            loop {
+                let n = conn.read(&mut buf).unwrap();
+                req.extend_from_slice(&buf[..n]);
+                let text = String::from_utf8_lossy(&req).to_string();
+                if let Some(h) = text.find("\r\n\r\n") {
+                    let len: usize = text
+                        .lines()
+                        .find_map(|l| {
+                            l.to_lowercase()
+                                .strip_prefix("content-length: ")
+                                .map(|v| v.trim().parse().unwrap())
+                        })
+                        .unwrap_or(0);
+                    if req.len() >= h + 4 + len {
+                        break;
+                    }
+                }
+            }
+            seen.push(String::from_utf8_lossy(&req).to_string());
+            let resp = format!(
+                "HTTP/1.1 {status}\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
+                body.len()
+            );
+            conn.write_all(resp.as_bytes()).unwrap();
+        }
+        seen
+    });
+    let src = r#"import std/llm
+import std/llm.{Llm}
+import std/prompt.{Prompt}
+import std/budget.{Budget}
+import std/http.{Http}
+type Ticket = { title: String, priority: Int }
+pub fn main() -> Unit ! {Console, Env, Http} {
+  let key = Option.expect(Env.secret("TEST_KEY"), "no key")
+  with Budget.unlimited(), Llm.anthropic(key, Llm.default()) {
+    let req: llm.Request<Ticket> = Llm.request("Extract a ticket.", Prompt.text("login is broken"))
+    let a = try { Llm.generate(req) }
+    Console.print("{a}")
+    let b = try { Llm.generate(req) }
+    Console.print("{b}")
+    let c = try { Llm.generate(req) }
+    Console.print("{c}")
+  }
+}
+"#;
+    let (m, sources) = common::build("llm_anthropic", src, false).unwrap();
+    let dir = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("llm-anthropic");
+    common::write(&m, sources, &dir);
+    let out = std::process::Command::new("node")
+        .arg(dir.join("__main__.js"))
+        .env("ANTHROPIC_BASE_URL", format!("http://127.0.0.1:{port}"))
+        .env("TEST_KEY", "sk-test")
+        .output()
+        .unwrap();
+    assert_eq!(
+        String::from_utf8_lossy(&out.stdout),
+        concat!(
+            "Ok(Ticket { title: \"login\", priority: 2 })\n",
+            "Err(Refused)\n",
+            "Err(RateLimited { retry_after: Some(Duration(7000)) })\n"
+        ),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let seen = server.join().unwrap();
+    let first = seen[0].to_lowercase();
+    assert!(first.starts_with("post /v1/messages"), "{first}");
+    assert!(first.contains("x-api-key: sk-test"), "{first}");
+    assert!(first.contains("anthropic-version: 2023-06-01"), "{first}");
+    let body = &seen[0][seen[0].find("\r\n\r\n").unwrap() + 4..];
+    let json: serde_json::Value = serde_json::from_str(body).unwrap();
+    assert_eq!(json["model"], "claude-opus-5-5", "{json}");
+    assert_eq!(
+        json["output_config"]["format"]["type"], "json_schema",
+        "{json}"
+    );
+    assert_eq!(
+        json["output_config"]["format"]["schema"]["properties"]["value"]["required"],
+        serde_json::json!(["title", "priority"]),
+        "{json}"
+    );
+    assert_eq!(json["messages"][0]["content"][0]["text"], "login is broken");
+}
+
+/// `serve_listen` (what `Serve.host()` is built on) answers each request in its own task; a
+/// defect in a route is a 500 and the server keeps going.
+#[test]
+fn serve_listen_answers_requests_and_survives_defects() {
+    use std::io::{Read, Write};
+    let port = std::net::TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let src = format!(
+        r#"import std/serve.{{Serve, ServeError, Address}}
+import std/router.{{Router}}
+import std/request.{{Request}}
+import std/response.{{Response}}
+@external(js, "vow_runtime", "serve_listen")
+fn serve_listen<e>(addr: Address, handle: fn(Request) -> Response ! e) -> Never ! {{Fail<ServeError> | e}}
+fn host() -> Handler<Serve> {{
+  handler Serve {{ fn listen(router, addr) {{ serve_listen(addr, fn(req) {{ Router.handle(router, req) }}) }} }}
+}}
+pub fn main() -> Unit ! {{Console}} {{
+  let r = Router.new()
+    .get("/health", fn(_) {{ Response.status(200, "ok") }})
+    .get("/boom", fn(_) {{ Response.status(200, "{{1 / (1 - 1)}}") }})
+    .post("/echo", fn(req) {{ Response.status(201, req.body) }})
+  let s = try {{ with host() {{ Serve.listen(r, Address {{ host: "127.0.0.1", port: {port} }}) }} }}
+  Console.print("{{s}}")
+}}
+"#
+    );
+    let (m, sources) = common::build("serve", &src, false).unwrap();
+    let dir = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("serve");
+    common::write(&m, sources, &dir);
+    let mut child = std::process::Command::new("node")
+        .arg(dir.join("__main__.js"))
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    let request = |raw: &str| -> String {
+        for _ in 0..100 {
+            if let Ok(mut s) = std::net::TcpStream::connect(("127.0.0.1", port)) {
+                s.write_all(raw.as_bytes()).unwrap();
+                let mut out = String::new();
+                s.read_to_string(&mut out).unwrap();
+                return out;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+        panic!("server did not start");
+    };
+    let health = request("GET /health HTTP/1.1\r\nhost: x\r\nconnection: close\r\n\r\n");
+    let boom = request("GET /boom HTTP/1.1\r\nhost: x\r\nconnection: close\r\n\r\n");
+    let echo = request(
+        "POST /echo HTTP/1.1\r\nhost: x\r\ncontent-length: 2\r\nconnection: close\r\n\r\nhi",
+    );
+    child.kill().unwrap();
+    child.wait().unwrap();
+    let mut err = String::new();
+    child
+        .stderr
+        .take()
+        .unwrap()
+        .read_to_string(&mut err)
+        .unwrap();
+    assert!(
+        health.starts_with("HTTP/1.1 200") && health.ends_with("ok"),
+        "{health}"
+    );
+    assert!(
+        boom.starts_with("HTTP/1.1 500") && boom.ends_with("internal error"),
+        "{boom}"
+    );
+    assert!(
+        echo.starts_with("HTTP/1.1 201") && echo.ends_with("hi"),
+        "{echo}"
+    );
+    assert!(err.contains("\"code\":\"D002\""), "{err}");
+}

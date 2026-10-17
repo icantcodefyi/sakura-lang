@@ -83,6 +83,10 @@ table! {
     Cps http_send/1,
     // Sql
     Direct sql_memory/0, Direct sql_sqlite/1,
+    // Llm
+    Direct llm_anthropic/2,
+    // Serve
+    Cps serve_listen/2,
     // Compiler support
     Direct match_failure/0, Direct contract_enter/0, Direct contract_exit/0,
 }
