@@ -1,26 +1,30 @@
 # Vow — edition 2026 (v0)
 
-> Vow is a strict, typed language for code written by agents. Every function signature states its parameter types (with refinements), result, effects, and error union; the compiler checks the body against it. Read this whole file; it is the entire core language. Library signatures: `vow doc --search` or the `symbol_query` tool.
+> Vow is a strict, typed language for code written by agents. Every function signature states its parameter types (with refinements), result, effects, and error union; the compiler checks the body against it. Read this whole file; it is the entire core language. Library signatures: `vow doc --search` or the `symbol_query` tool. The full design is `docs/design.md`; its §17 lists every decision taken in round 2.
 
 ## Toolchain loop
-`vow check --json` (types/effects, holes allowed) → `vow test --json` → `vow run`. Diagnostics have stable codes (`V3001`), byte spans, and `fixes[]` with an `impact` class; never apply a fix whose impact is `contract_change` or `authority_change` without being asked. `vow fmt` is canonical. `vow explain V3001` gives the rationale. Holes `?name` compile under `check` and report expected type, locals, and candidates.
-
-Status (pre-alpha): `vow check` parses, resolves, and type/effect-checks; `vow run`/`vow test` are not wired yet. `std/fs`, `http`, `sql`, `cli`, `ai`, `decimal` are designed, not written.
+`vow check --json` (types/effects, holes allowed) → `vow test --json` → `vow run`. Diagnostics have stable codes (`V3001`), byte spans, and `fixes[]` with an `impact` class; never apply a fix whose impact is `contract_change` or `authority_change` without being asked, and know that `interface_change` fixes are only ever `suggested`. `vow fmt` is canonical. `vow explain V3001` gives the rationale. Holes `?name` compile under `check` and report expected type, locals, and candidates. Exit codes: 0 ok, 1 errors or `main` failed with an uncaught error, 3 test failures, 70 defect, 75 permission denied.
 
 ## Syntax in one screen
 ```vow
-import std/http.{Request, Response}        // first segment = package; no wildcards
-import std/sql as db
+import std/http.{Request, Response}        // first segment = package; names must be listed; no wildcards
+import std/sql.{Sql, SqlError}             // effects and types are never imported implicitly
+import std/decimal as money                // `money.Decimal`, `money.add(...)`
 
 type Email = String where String.len(it) <= 254 && String.contains(it, "@")   // refinement, `it` = value
 type User = { id: Int, email: Email, name: String }                            // nominal record
 type Shape = Circle(Float) | Rect(Float, Float) | Empty                        // variants, positional fields
+pub opaque type Token = Token(String)                                          // constructor private to this module
 error NotFound(id: Int)                                                        // error tag with payload
 error Forbidden
 type UserError = NotFound | Forbidden                                          // error union (tags only)
 
 effect Users {                                                                 // user-defined effect
   fn get(id: Int) -> Option<User> ! {Fail<SqlError>}
+}
+
+fn memory(users: List<User>) -> Handler<Users> {                              // `Users.memory(...)`: non-operation names
+  handler Users { fn get(id) { List.find(users, fn(u) { u.id == id }) } }    // resolve to this module's functions
 }
 
 pub fn view(caller: String, id: Int) -> User ! {Users, Log, Fail<UserError>} // signature = contract
@@ -36,7 +40,7 @@ pub fn view(caller: String, id: Int) -> User ! {Users, Log, Fail<UserError>} // 
 }
 
 pub fn main() -> Unit ! {Console, Sql, Log} {
-  with Users.sql(), Log.json() {                                             // install handlers (innermost last)
+  with Users.memory([]), Log.json() {                                        // install handlers (innermost last)
     let u = view("ann", 7)
     Console.print("hello {u.name}")                                          // interpolation needs Show
   }
@@ -45,66 +49,73 @@ pub fn main() -> Unit ! {Console, Sql, Log} {
 test "missing user" {
   with Users.memory([]) { expect_fail(fn() { view("ann", 1) }, NotFound { id: 1 }) }
 }
-property "clamp bounded"(x: Int, lo: Int, hi: Int) requires lo <= hi { expect(clamp(x, lo, hi) <= hi) }
+property "clamp bounded"(x: Int, lo: Int, hi: Int) requires lo <= hi { expect(Int.clamp(x, lo, hi) <= hi) }
 ```
 
 Rules you must know:
 - Casing is enforced: `snake_case` values/functions/modules/effect-row variables (`e`); `PascalCase` types, variants, error tags, effects, type variables (`A`).
-- Statements end at newline. A line continues only if it ends with an operator/`(`/`[`/`{`/`,`/`=`/`->`/`=>`/`.` or the next line starts with `.`, `else`, `catch`, a closing bracket, or a binary operator other than `-`. `foo\n(bar)` is two statements. `;` is allowed.
+- Statements end at newline. A line continues when it ends with `(`, `[`, `{`, `,`, `=`, `->`, `=>`, `.`, `|`, `..` or a binary operator other than `>`, or when the next line starts with `.`, `else`, `catch`, a closing bracket, `|`, `..`, `=`, `->`, `=>`, or a binary operator other than `-`. `foo\n(bar)` is two statements; so is `a >\n b` (put the operator first on the next line). `;` is allowed. Signatures may break before `!`, `requires`, `ensures` and the body `{`.
 - Blocks are expressions; the value is the final expression. `return e` exits the function early. `if` without `else` is `Unit`. An unused non-`Unit` value is an error (`V2040`): write `let _ = e`.
 - Top-level `fn` must be fully annotated. Omitted `!` means pure `! {}`. Inside bodies everything is inferred.
-- `<...>` is type arguments only in type positions. No call-site type args: `let xs: List<Int> = List.empty()`. In expressions `<` is comparison.
-- `e.f(a)` means `T.f(e, a)` where `T` is `e`'s type and `f` lives in `T`'s module (`List.map`, `String.len`, your own module for your types). `Type.f` is a module function or constructor; `Effect.op(...)` performs an operation.
+- `<...>` is type arguments only in type positions. No call-site type args (`V0011`): `let xs: List<Int> = List.empty()`, `let u: User = Json.decode(text)?`. In expressions `<` is comparison.
+- No named arguments (`V0014`): pass a record (`Budget.limits(Limits { tokens: Some(20_000), usd: None, calls: None })`). `name: value` appears only inside attributes (`@llm(system: "...")`).
+- `e.f(a)` means `T.f(e, a)` where `T` is `e`'s type and `f` lives in `T`'s module (`List.map`, `String.len`, your own module for your types). `Type.f` is a module function or constructor; `Type.Variant` a qualified constructor (`Json.String(s)`, `Level.Warn`); `Effect.op(...)` performs an operation, and `Effect.f(...)` for a non-operation `f` calls the effect's module (`Console.captured()`, `Clock.fixed(t)`).
+- `import std/http` binds only the module name `http`. To use `Http` in a row or `Request` in a type, import them: `import std/http.{Http, Request}`. `V1002` on a std name offers the import as a machine-applicable fix.
+- `pub type` exports constructors and fields; `pub opaque type` exports the name only. A `type` with no `=` is an external host type (resources, capabilities): no constructors, not `Eq`/`Show`.
 - No `null`, no exceptions, no implicit conversions, no overloading, no methods/classes/traits, no macros, no mutable references, no globals.
-- Record literal: `User { id: 1, email, name: "x" }` (punning ok). Update: `User { ..u, name: "y" }`. Not allowed unparenthesized in `if`/`match`/`with`/`for`/`while` headers.
+- Record literal: `User { id: 1, email, name: "x" }` (punning ok). Update: `User { ..u, name: "y" }`. Not allowed unparenthesized in `if`/`match`/`with`/`for`/`while` headers or contract predicates.
 - Tuples `(a, b)`, `.0`/`.1`; lists `[1, 2]`; `xs[i]` is `List.get(xs, i) -> Option<T>`; ranges `0..n` (exclusive).
-- Lambdas: `fn(x) { x + 1 }` or `fn(x: Int) -> Int { x + 1 }`. One form.
-- `var` locals can be reassigned (`total = total + x`; `u.name = "y"` means `u = User { ..u, name: "y" }`; `xs = List.push(xs, 1)`). Closures capture by value and cannot assign outer vars. `let` is immutable.
-- Loops: `for x in xs { }` (List, Range, Map → `(k, v)`, Set), `while c { }`, `break`, `continue`.
-- Operators: `+ - * / %` (`Int` with `Int`, `Float` with `Float`; `+` also concatenates `String`), `== != < <= > >=`, `&& || !`. `Int` arithmetic is checked: overflow and `/ 0` are defects (crash the task), not errors. Convert explicitly: `Int.to_float`, `Float.round`.
-- Patterns: `_`, `x`, literals, `Some(x)`, `User { id, .. }`, `(a, b)`, `[]`, `[x, ..rest]`, `A | B`, guards `if`. Matches must be exhaustive; `_` is required for `Int`/`String` literals.
+- Lambdas: `fn(x) { x + 1 }`, `fn(x: Int) -> Int { x + 1 }`, `fn(_) { 0 }`. One form.
+- `var` locals can be reassigned (`total = total + x`; `u.name = "y"` means `u = User { ..u, name: "y" }`; `xs = List.push(xs, 1)`). Closures capture by value; neither a lambda nor a `try` body may assign to an outer `var` (`V2041`: assign after the `try`). `let` is immutable (`V1040`).
+- Loops: `for x in xs { }` (List, Range, Map → `(k, v)`, Set), `while c { }`, `break`, `continue` (only inside the loop body, `V1041`).
+- Operators: `+ - * / %` (`Int` with `Int`, `Float` with `Float`; `+` also concatenates `String`), `== != < <= > >=`, `&& || !`. `Int` arithmetic is checked: overflow and `/ 0` are defects (crash the task), not errors. Convert explicitly: `Int.to_float`, `Float.round`; `String.parse_int` gives `None` when unparsable or beyond the backend's `Int` range.
+- Patterns: `_`, `x`, literals, `Some(x)`, `User { id, .. }`, `SqlError { .. }`, `(a, b)`, `[]`, `[x, ..rest]`, `A | B`, guards `if`. Matches must be exhaustive; `_` is required for `Int`/`String` literals.
+- Strings: `"{expr}"` interpolates; a literal brace is `\{`. Multi-line strings are allowed. `sql"..."`, `html"..."`, `url"..."` are tagged templates that bind interpolations safely.
+- Reserved for later editions (`V0007`): `verify proof ghost control resume region spawn actor interface impl`, except directly after `.` or `fn` (`Task.spawn` is fine).
 
 ## Types
-Primitives `Unit Bool Int(i64) Float(f64) String(UTF-8) Bytes Never`. Data `List<T> Map<K,V> Set<T> Option<T>(None|Some) Result<T,E>(Ok|Err) Range (A,B)`. Everything is immutable and compared structurally. Built-in constraints (derived automatically, not user-definable): `Eq Ord Hash Show Schema` — `fn sort<A: Ord>(xs: List<A>)`. Functions, handlers, resources, and `Secret<T>` are not `Eq`/`Show`/`Schema`. `Schema` types get JSON codecs, JSON Schema, decoding that checks refinements. Refined types coerce to their base implicitly; enter them via `Email.validate(s) -> Result<Email, Violation>` (external input) or `Email.from(s)` (defect on failure; trusted literals only).
+Primitives `Unit Bool Int(i64) Float(f64) String(UTF-8) Bytes Never`. Data `List<T> Map<K,V> Set<T> Option<T>(None|Some) Result<T,E>(Ok|Err) Range (A,B)`. Everything is immutable and compared structurally. Built-in constraints (derived automatically, not user-definable): `Eq Ord Hash Show Schema` — `fn sort<A: Ord>(xs: List<A>)`. On a type variable, `A: Eq` is the only way to use `==`, `A: Ord` the only way to use `<`, `A: Show` to interpolate (`V2032` when a concrete type lacks a constraint). Functions, handlers, resources, and `Secret<T>` are not `Eq`/`Show`/`Schema`. `Schema` types get JSON codecs, JSON Schema, decoding that checks refinements. Refined types coerce to their base implicitly; enter them via `Email.validate(s) -> Result<Email, Violation>` (external input) or `Email.from(s)` (defect on failure; trusted literals only). `Show` prints valid Vow syntax: `[1, 2]`, `(1, "a")`, `Some("x")`, `User { id: 1 }`, `Map.of([("a", 1)])`, `2.0`; strings are quoted inside containers, raw at the top level. Time is whole milliseconds: `Instant` (since the epoch, UTC) and `Duration`.
 
 ## Effects and errors
-- Row `! {A, B | e}` = effects a call may perform. Effects are **requirements**; handlers give **authority**. Std effects: `Console Clock Random Env Log Task Fs Http Serve Sql Budget Llm`.
+- Row `! {A, B | e}` = effects a call may perform. Effects are **requirements**; handlers give **authority**. Std effects, one module each: `Console Clock Random Env Log Task Test` (prelude) and `Fs Http Serve Sql Cli Budget Llm` (import them).
 - `Fail<E>` is the built-in abortive effect; `fail Tag { field }` has type `Never`. `E` is a union of error tags; calling a failing function adds its tags to your row automatically (no `?` needed). Public signatures are upper bounds; the compiler reports extra tags with the call that introduced them.
 - Recover: `try { body } catch { Tag { f } => e, Other | More => e2 }` — matched tags are removed, unmatched propagate, arms need not be exhaustive. `try { body }` alone gives `Result<T, E>`. `r?` turns `Result<T,E>` back into `Fail<E>`. `Option.or_fail(o, Tag)`.
-- Defects (contract violations, overflow, `Option.expect`) are not catchable; `Task.scope` and tests observe them. `! {}` means "no declared operations", not "cannot crash".
-- Handlers: `handler Eff { var state = init; fn op(args) { ...; value } }` is an expression of type `Handler<Eff, r>` (`r` = effects its clauses use). Clauses return the operation's result exactly once (no `resume`). `with h1, h2 { body }` installs them; the body's row loses `Eff` and gains `r`. Inner `with` shadows outer. Handler `var` state is private to the instance.
-- Tests run under deterministic defaults (`Clock.fixed(Instant.from_unix_millis(0))`, `Random.seeded(seed)`, `Env.of(Map.empty())`, `Console.captured()`, `Log.captured()`; no network/fs); any other effect must be installed in the test with `with` (fakes: your own `handler`, `Clock.virtual()` (sleep advances time), `Env.of(map)`; M3: `Sql.memory()`, `Http.scripted(...)`, `Fs.memory(...)`, `Llm.scripted(...)`, `Task.deterministic(seed)`). A `Fail` escaping a test body is `V3020`: wrap the call in `try { ... }` or use `expect_fail`. Assert printed/logged lines with `expect_output([...])`.
-- `retry(policy, fn() {...})` (`import std/retry.{Policy, policy, retry}`; `policy(retry_on, max_attempts)` or a `Policy { retry_on, max_attempts, backoff, jitter, deadline }` record; the last error propagates), `timeout(d, fn() {...})` failing with `Timeout` (`import std/task.{Timeout, timeout}`), and `Budget.limits(...)` are ordinary functions over thunks.
-- Authority: `main` gets root handlers for the std effects it declares, limited by `vow.toml [permissions]` (`fs.read`, `net`, `env`, ...). Narrow before passing down: `with Fs.rooted(Dir.subdir(Fs.root(), "data")) { ... }`. Capability values (`Dir`, `NetScope`) cannot be forged or escape their `with` scope. `Secret<T>` cannot be shown/logged/serialized. `Untrusted<String>` (raw bodies, env, LLM text) must be `.validate<Refined>()`'d or `.trust(@trust("why"))`'d; `sql"..."`/`html"..."` templates bind interpolations safely and never splice raw.
+- Defects (contract violations, overflow, `Option.expect`) are not catchable; `Task.scope` and tests observe them. `! {}` means "no declared operations", not "cannot crash". There is no way to raise a defect from user code; use `requires`.
+- Handlers: `handler Eff { var state = init; fn op(args) { ...; value } }` is an expression of type `Handler<Eff, r>` (`r` = effects its clauses use). Clauses return the operation's result exactly once (no `resume`). `with h1, h2 { body }` installs them; the body's row loses `Eff` and gains `r`. Inner `with` shadows outer. Handler `var` state is private to the instance. Operations may be generic and may carry the row of a callback parameter (`fn scope<T, e>(body: fn(Scope) -> T ! e) -> T ! e`); otherwise an operation row holds only `Fail<...>`.
+- Tests are `fn() -> Unit ! {Test, Fail<E>}`: typed failures may escape and count as a failed test. They run under deterministic defaults (`Clock.fixed(Instant.from_unix_millis(0))`, `Random.seeded(seed)`, `Env.of(Map.empty())`, `Console.captured()`, `Log.captured()`; no network/fs); any other effect must be installed in the test with `with` (`V3020`; std fakes: `Sql.memory()`, `Http.scripted(...)`, `Fs.memory(...)`, `Llm.scripted(...)`, `Clock.virtual()` where `sleep` advances time, `Task.deterministic(seed)`). `expect_output(lines)` checks captured `Console`/`Log` lines. Explicit generators: `import std/gen` then `gen.for_all(gen.list(gen.int(0, 9), 20), 100, fn(xs) { ... })` inside a `test`; `property` parameters always use type-derived generators.
+- `retry(policy, fn() {...})` with `policy: Policy<E>` from `std/retry` (`retry.policy(retry_on, max_attempts)`), `timeout(d, fn() {...})` from `std/task` adding `Fail<Timeout>`, and `with Budget.limits(Limits { tokens: Some(n), usd: None, calls: None }) {...}` are ordinary functions and handlers over thunks.
+- Authority: `main` gets root handlers for the std effects it declares, limited by `vow.toml [permissions]` (`fs.read`, `net`, `env`, ...). Narrow before passing down: `with Fs.rooted(Dir.subdir(Fs.root(), "data")) { ... }`. Capability values (`Dir`, `NetScope`) are external types that cannot be forged or escape their `with` scope. `Env.get(key) -> Option<String>` is plain; `Env.secret(key) -> Option<Secret<String>>` cannot be shown/logged/serialized. `Untrusted<String>` (request bodies, file text, LLM text) must be validated into a refined type (`let e: Email = Untrusted.validate(u)?`) or released with `Untrusted.trust(u, @trust("why"))`; `@trust("...")` is the only attribute usable as an expression and `vow audit` lists every use. `sql"..."`/`html"..."` templates bind interpolations safely and never splice raw.
 
 ## Concurrency and memory
-`Task.scope(fn(s) { let f = Task.spawn(s, fn() {...}); Task.join(f) })`; children cannot outlive the scope; first failure cancels siblings; cancellation is cooperative at effect operations. No shared mutable state exists, so there are no data races. Values have value semantics; the compiler owns copying/reference counting; `W8001` tells you when a loop copies a collection because an older value is still used. Cyclic data: `std/graph` with `NodeId`s. Resources (files, connections) are scope-bound: `Fs.with_file(path, mode, fn(file) {...})`; returning the resource is an error.
+`Task.scope(fn(s) { let f = Task.spawn(s, fn() {...}); Task.join(f) })`; children cannot outlive the scope; first failure cancels siblings; cancellation is cooperative at effect operations. No shared mutable state exists, so there are no data races; fibers communicate through results (`join`, `all`, `race`) and handler state, there is no channel type. Values have value semantics; the compiler owns copying/reference counting; `W8001` tells you when a loop copies a collection because an older value is still used. Cyclic data: `import std/graph.{Graph, NodeId}`. Resources (files, connections) are scope-bound: `Fs.with_file(path, mode, fn(file) {...})`; returning the resource is an error.
 
 ## Standard library, most used
-Schema-directed functions (`Json.decode`, `Sql.query`, `Request.json`, `Cli.parse`, `Llm.generate`) take their type from the binding: `let users: List<User> = Sql.query(q)`, never `Sql.query<User>(q)` (`V0011`). Every signature: `compiler/std/INDEX.md`.
 ```
 List.map filter filter_map fold find all any len get push concat sort sort_by zip enumerate slice reverse join sum first last contains unique flat_map range
-Map.empty of get insert remove contains update entries keys values len      Set.empty of insert contains to_list
-String.len chars graphemes split trim starts_with ends_with contains replace to_lower to_upper parse_int parse_float slice repeat
+Map.empty of get insert remove contains update entries keys values len      Set.empty of insert contains len to_list
+String.len chars graphemes split trim starts_with ends_with contains replace to_lower to_upper parse_int parse_float slice repeat pad_left
 Option.map unwrap_or or_fail expect is_some      Result.map map_err unwrap_or raise is_ok is_err
 Int.to_float to_string abs min max clamp pow checked_add    Float.round to_int_checked sqrt is_nan format
-Json.encode decode parse get get_string      Instant.parse add diff format_iso from_unix_millis   Duration.seconds millis minutes to_millis (whole ms)
-Console.print read_line   Clock.now monotonic sleep fixed virtual   Random.int float bytes uuid seeded   Env.get secret of only   Log.event captured
-Fs.read read_text write list exists with_file   Http.get post_json send bearer   Response.json text ok_json status html
-Router.new get post   Request.json param   Serve.listen   Sql.query execute transaction   Cli.args parse exit
-Llm.generate generate_text stream request with_tools   Tool.of(@tool fn)   Agent.run   Budget.limits unlimited
-expect expect_eq expect_fail expect_fails_with expect_defect expect_output expect_snapshot   gen.int bool one_of list string map pair for_all (import std/gen)   Graph.empty insert get connect neighbors (import std/graph.{Graph, NodeId})
+Json.encode decode parse get get_string      Instant.from_unix_millis to_unix_millis parse add diff format_iso   Duration.millis seconds minutes to_millis
+Console.print read_line   Clock.now monotonic sleep   Random.int float bytes uuid   Env.get secret   Log.event
+Fs.root read read_text write list exists with_file   Http.get post_json send bearer   Response.json text ok_json status html
+Router.new get post   Request.json param post post_json   Serve.listen   Sql.query execute transaction   Cli.args parse exit
+Llm.request generate generate_text stream   Tool.of(@tool fn)   Agent.run(Agent { request, tools, max_steps, stop })   Budget.limits unlimited
+expect expect_eq expect_fail expect_fails_with expect_defect expect_output expect_snapshot   gen.int bool one_of list string map pair for_all
 ```
+Type-directed results are named by annotation: `let rows: List<User> = Sql.query(q)`, `let args: Args = Cli.parse(Cli.args())`, `let req: Request<Answer> = Llm.request(system, Prompt.text("..."))`.
 
 ## Common diagnostics → fix
+- `V0011 call-site type arguments` / `V0014 named argument` — annotate the binding; pass positionally or as a record.
+- `V1002 unresolved name` — accept the offered `import std/<module>.{Name}` fix; effects and types are never implicit.
 - `V3001 effect not allowed` — add the effect to the signature (interface change) or handle it with `with` locally.
 - `V3002`/`V2015 error union mismatch` — widen the declared `Fail<...>` or translate with `try/catch` at the boundary.
 - `V4001 non-exhaustive match` — add the listed witness case; do not add `_` on closed unions unless intended.
 - `V2040 unused value` — you forgot `xs = List.push(xs, v)` or `let _ =`.
-- `V2031 Secret is not Show` — pass the secret to a sink (`Http.bearer`), never into text.
+- `V2031 Secret is not Show` / `V2032 constraint not satisfied` — pass the secret to a sink (`Http.bearer`), never into text; add the constraint or use a type that has it.
 - `V6002/V6003 escapes scope` — return data, not the capability/resource/handler.
 - `V3020 test uses effect without handler` — wrap the test body in `with <fake handler>`.
 - `D020/D021 contract violated` — the caller (requires) or callee (ensures) is wrong; never delete the clause to pass (specs are frozen under repair).
 
 ## Writing good Vow
-Put refinements on domain types (`Email`, `Percent`, `NonEmpty<T>`) and let decoding validate. Keep public error unions small and stable; translate internal tags at the boundary. Declare the narrowest effect row that compiles. Prefer `match` over nested `if`. Prefer `List.fold`/`map` over `var` loops unless a loop is clearer. Write tests with fake handlers next to the code. Never use `.expect` or `.trust` outside startup/trusted boundaries, and always give the reason.
+Put refinements on domain types (`Email`, `Percent`, `NonEmpty<T>`) and let decoding validate. Make invariant-carrying types `pub opaque`. Keep public error unions small and stable; translate internal tags at the boundary; reuse std tags (`Timeout`, `RateLimited`) instead of declaring look-alikes. Declare the narrowest effect row that compiles. Prefer `match` over nested `if`. Prefer `List.fold`/`map` over `var` loops unless a loop is clearer. Write tests with fake handlers next to the code. Never use `.expect` or `.trust` outside startup/trusted boundaries, and always give the reason.
