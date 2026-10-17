@@ -11,6 +11,10 @@ import { TokenSpans, type TokenLine } from "@/components/token-spans";
  * 3. line 12 performs `Http`, which the signature never allowed: V3001,
  * 4. the agent declines the signature change and deletes the call,
  * 5. the signature is unchanged; its `ensures` stays a runtime check (design §7.2).
+ *
+ * Phones get the same story without sideways scrolling: long lines wrap with a hanging
+ * indent, margin notes become gutter marks plus a ticker in the status bar, and the seal
+ * stamps the status bar instead of overhanging the window.
  */
 
 const BAD_LINE = 12;
@@ -141,6 +145,7 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
   const removed = state.deleted >= badLen;
   const cursorLine = state.phase === "fixing" ? BAD_LINE : rows.findLastIndex((r) => r.started);
   const done = state.phase === "kept";
+  const tickerLine = rows.findLastIndex((r, i) => NOTES[i] && r.complete);
 
   return (
     <div ref={root} className="relative">
@@ -150,24 +155,21 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
         role="img"
         aria-label="Animation: an agent writes a Vow function. The compiler checks each effect against the signature, flags an HTTP call the signature does not allow, and the agent removes it so the signature's promise holds."
       >
-        {/* window chrome */}
-        <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
-          <div className="flex items-center gap-3 font-mono text-[11.5px] text-fg-muted">
-            <span className="flex gap-1.5" aria-hidden>
-              <span className="size-2.5 rounded-full bg-line-strong" />
-              <span className="size-2.5 rounded-full bg-line-strong" />
-              <span className="size-2.5 rounded-full bg-line-strong" />
-            </span>
-            src/users.vow
-          </div>
-          <span className="font-mono text-[11px] text-fg-faint">agent session</span>
+        {/* window chrome; its right end stays empty for the seal */}
+        <div className="flex items-center gap-3 border-b border-line px-4 py-2.5 font-mono text-[11.5px] text-fg-muted">
+          <span className="flex gap-1.5" aria-hidden>
+            <span className="size-2.5 rounded-full bg-line-strong" />
+            <span className="size-2.5 rounded-full bg-line-strong" />
+            <span className="size-2.5 rounded-full bg-line-strong" />
+          </span>
+          src/users.vow
         </div>
 
         <pre
           aria-hidden
           className="overflow-x-auto py-4 font-mono text-[12px] leading-[1.75] sm:text-[12.25px]"
         >
-          <code className="grid min-h-[calc(15*1.75em)] min-w-max content-start">
+          <code className="grid content-start sm:min-w-max">
             {rows.map((r, i) => {
               if (i === BAD_LINE && removed) return null;
               const visible = r.started;
@@ -179,16 +181,26 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
               return (
                 <span
                   key={i}
-                  className={`grid grid-cols-[2.25rem_1fr] transition-colors duration-300 sm:grid-cols-[2.25rem_1fr_7.5rem] ${
+                  className={`grid grid-cols-[2rem_minmax(0,1fr)] transition-colors duration-300 sm:grid-cols-[2.25rem_1fr_7.5rem] ${
                     bad ? "bg-fail-wash" : proved ? "bg-ok-wash" : ""
                   } ${visible ? "" : "invisible"}`}
                 >
-                  <span className="pr-3 text-right text-fg-faint tabular-nums select-none">
+                  <span className="relative pr-2.5 text-right text-fg-faint tabular-nums select-none sm:pr-3">
+                    {showNote || proved ? (
+                      <GutterMark kind={proved ? "ok" : (note?.kind ?? "ok")} />
+                    ) : null}
                     {visible ? i + 1 - (removed && i > BAD_LINE ? 1 : 0) : ""}
                   </span>
-                  <span className="pr-4 whitespace-pre">
-                    <TokenSpans line={r.line} upTo={upTo} />
-                    {cursorLine === i && !done ? <Caret /> : null}
+                  {/* The invisible full line reserves the final height, so wrapped lines never
+                      push the window taller while the agent types. */}
+                  <span className="grid pr-3 sm:pr-4">
+                    <span className={`invisible col-start-1 row-start-1 ${LINE}`}>
+                      <TokenSpans line={r.line} />
+                    </span>
+                    <span className={`col-start-1 row-start-1 ${LINE}`}>
+                      <TokenSpans line={r.line} upTo={upTo} />
+                      {cursorLine === i && !done ? <Caret /> : null}
+                    </span>
                   </span>
                   <span className="hidden pr-4 sm:block">
                     {proved ? (
@@ -214,17 +226,40 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
           </div>
         </div>
 
-        <StatusBar phase={state.phase} onReplay={done ? play : undefined} />
+        <StatusBar
+          phase={state.phase}
+          ticker={
+            state.phase === "typing" && tickerLine >= 0
+              ? { line: tickerLine + 1, note: NOTES[tickerLine] }
+              : undefined
+          }
+          onReplay={done ? play : undefined}
+        />
       </div>
-      {/* The compiler's seal lands on the kept signature. */}
+      {/* The compiler's seal lands on the window's empty corner (on phones, in the status bar). */}
       <Seal
-        className={`pointer-events-none absolute -top-8 -right-2 size-[5.5rem] drop-shadow-[0_6px_10px_oklch(0.45_0.12_70/0.35)] transition-[opacity,transform] sm:-top-10 sm:-right-3 sm:size-[6.5rem] lg:-right-7 ${
+        className={`pointer-events-none absolute -top-10 -right-3 hidden size-[6.5rem] drop-shadow-[0_6px_10px_oklch(0.45_0.12_70/0.35)] transition-[opacity,transform] sm:block lg:-right-7 ${
           done
             ? "rotate-[-14deg] scale-100 opacity-100 duration-[420ms] ease-[var(--ease-out)]"
             : "rotate-[-30deg] scale-[1.6] opacity-0 duration-0"
         }`}
       />
     </div>
+  );
+}
+
+/** Wrap with a hanging indent on phones; one unbroken line from `sm` up. */
+const LINE =
+  "whitespace-pre-wrap pl-[2ch] -indent-[2ch] [overflow-wrap:anywhere] sm:whitespace-pre sm:pl-0 sm:indent-0";
+
+/** On phones the margin notes are hidden; a colored tick in the gutter stands in for them. */
+function GutterMark({ kind }: { kind: Note["kind"] }) {
+  const tone = kind === "fail" ? "bg-fail" : kind === "seal" ? "bg-seal" : "bg-ok";
+  return (
+    <span
+      aria-hidden
+      className={`absolute inset-y-[0.35em] left-0 w-[3px] rounded-r-full sm:hidden motion-safe:animate-[note-in_260ms_var(--ease-out)_both] ${tone}`}
+    />
   );
 }
 
@@ -319,33 +354,56 @@ const STATUS: Record<Phase, { text: string; tone: string }> = {
   kept: { text: "0 errors · signature kept", tone: "text-ok" },
 };
 
-function StatusBar({ phase, onReplay }: { phase: Phase; onReplay?: () => void }) {
+function StatusBar({
+  phase,
+  ticker,
+  onReplay,
+}: {
+  phase: Phase;
+  /** phones only: the latest margin note, which has no margin to sit in */
+  ticker?: { line: number; note: Note };
+  onReplay?: () => void;
+}) {
   const s = STATUS[phase];
+  const kept = phase === "kept";
   return (
     <div className="flex min-h-10 items-center justify-between gap-3 border-t border-line bg-bg-sunk/60 px-4 font-mono text-[11.5px]">
-      <span className="flex items-center gap-2" aria-live="polite">
+      <span className="flex min-w-0 items-center gap-2" aria-live="polite">
+        {kept ? (
+          <Seal className="-my-2 -ml-1 size-8 shrink-0 motion-reduce:rotate-[-14deg] motion-safe:animate-[stamp_420ms_var(--ease-out)_both] sm:hidden" />
+        ) : null}
         <span
           aria-hidden
-          className={`size-1.5 rounded-full ${
-            phase === "kept"
-              ? "bg-ok"
-              : phase === "caught"
-                ? "bg-fail"
-                : "bg-seal motion-safe:animate-pulse"
-          }`}
+          className={`size-1.5 shrink-0 rounded-full ${kept ? "bg-ok max-sm:hidden" : phase === "caught" ? "bg-fail" : "bg-seal motion-safe:animate-pulse"}`}
         />
         <span
           key={phase}
-          className={`${s.tone} motion-safe:animate-[note-in_220ms_var(--ease-out)_both]`}
+          className={`${s.tone} truncate motion-safe:animate-[note-in_220ms_var(--ease-out)_both] ${ticker ? "max-sm:hidden" : ""}`}
         >
           {s.text}
         </span>
+        {ticker ? (
+          <span
+            key={ticker.line}
+            aria-hidden
+            className={`truncate motion-safe:animate-[note-in_220ms_var(--ease-out)_both] sm:hidden ${
+              ticker.note.kind === "fail"
+                ? "text-fail"
+                : ticker.note.kind === "seal"
+                  ? "text-seal-text"
+                  : "text-ok"
+            }`}
+          >
+            {ticker.note.kind === "fail" ? <Cross /> : <Tick />} {ticker.note.text}{" "}
+            <span className="text-fg-faint">on line {ticker.line}</span>
+          </span>
+        ) : null}
       </span>
       {onReplay ? (
         <button
           type="button"
           onClick={onReplay}
-          className="rounded-md px-2 py-1 font-sans text-[12px] text-fg-muted transition-[color,transform] duration-150 hover:text-fg active:scale-[0.97]"
+          className="-mr-2 h-10 shrink-0 rounded-md px-3 font-sans text-[12px] text-fg-muted transition-[color,transform] duration-150 hover:text-fg active:scale-[0.97]"
         >
           Replay
         </button>

@@ -274,6 +274,18 @@ figure.shiki {
   }
 }
 
+/* The compiler's seal pressed onto the status bar (hero, phones). */
+@keyframes stamp {
+  from {
+    opacity: 0;
+    transform: rotate(-30deg) scale(1.6);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(-14deg);
+  }
+}
+
 @keyframes swap-in {
   from {
     opacity: 0;
