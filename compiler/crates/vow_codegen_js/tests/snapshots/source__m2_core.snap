@@ -1,6 +1,5 @@
 ---
 source: crates/vow_codegen_js/tests/source.rs
-assertion_line: 203
 expression: "m.display_module(\"main::main\")"
 ---
 fn test$0#0() -> Unit {
@@ -51,7 +50,7 @@ lambda answer$1#34() -> Int ! {Counter} {
   ret r%0
 }
 
-fn twice#35(f%0: fn() -> Int ! r21) -> Int ! r21 {
+fn twice#35(f%0: fn() -> Int ! r23) -> Int ! r23 {
   let r%1: Int = call f%0()
   let r%2: Int = call f%0()
   let t%3: Int = intadd(r%1, r%2)

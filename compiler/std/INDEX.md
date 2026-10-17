@@ -6,8 +6,8 @@ module (until `vow doc --index` exists, F regenerates it by hand from the source
 reference is `docs/design.md` §10; deviations are listed at the end and filed as
 `design-question` entries in `compiler/REQUESTS.md`.
 
-Status: **source only.** No compiler milestone can check or run these files yet. Modules
-marked M3 also need features from design §14.3 M3.
+Status: every module checks clean and its `test` blocks pass under `vow test --std`.
+Modules marked M3 type-check but need features from design §14.3 M3 to run.
 
 ## Prelude
 
@@ -71,8 +71,10 @@ graph → map, list
 `std/fs`, `std/http`, `std/router`, `std/html`, `std/sql`, `std/cli`, `std/ai` (`Llm`,
 `Budget`, `Prompt`, `Tool`, `Agent`), `std/decimal`, `std/url`, `std/path`, `Secret.expose`,
 `Untrusted.validate/check/trust`, `Json` `Schema` codecs (declared as externals, need M3),
-`List.par_map` (written as `std/task.par_map` until `Task` exists), `Env.host(scope)`, `Task.scope`/`spawn`/`join` (need the `EnvScope`, `Scope`, `Fiber` builtins). Their signatures are the
-ones in design §10.2–§10.7.
+`List.par_map` (written as `std/task.par_map` until `Task` runs), `Env.host(scope)`. Their
+signatures are the ones in design §10.2–§10.7. `std/task` declares the external types `Scope`
+and `Fiber<T>` (design §17.28); `Fiber<T>` is the last item of the file because a line ending
+in `>` continues onto the next one (§2.4).
 
 ## Signatures
 
@@ -97,7 +99,7 @@ fn map<A, B, e>(o: Option<A>, f: fn(A) -> B ! e) -> Option<B> ! e
 fn unwrap_or<A>(o: Option<A>, default: A) -> A
 fn or_fail<A, E>(o: Option<A>, err: E) -> A ! {Fail<E>}
 fn expect<A>(o: Option<A>, msg: String) -> A    // @external
-fn is_some<A>(o: Option<A>) -> Bool
+fn is_some<A>(o: Option<A>) -> Bool    // @total
 ```
 
 ### `std/result`
@@ -108,15 +110,15 @@ fn map<A, B, E, e>(r: Result<A, E>, f: fn(A) -> B ! e) -> Result<B, E> ! e
 fn map_err<A, E, F>(r: Result<A, E>, f: fn(E) -> F) -> Result<A, F>
 fn unwrap_or<A, E>(r: Result<A, E>, default: A) -> A
 fn raise<A, E>(r: Result<A, E>) -> A ! {Fail<E>}
-fn is_ok<A, E>(r: Result<A, E>) -> Bool
-fn is_err<A, E>(r: Result<A, E>) -> Bool
+fn is_ok<A, E>(r: Result<A, E>) -> Bool    // @total
+fn is_err<A, E>(r: Result<A, E>) -> Bool    // @total
 ```
 
 ### `std/list`
 
 ```vow
-fn len<A>(xs: List<A>) -> Int    // @external
-fn get<A>(xs: List<A>, i: Int) -> Option<A>    // @external
+fn len<A>(xs: List<A>) -> Int    // @external, @total
+fn get<A>(xs: List<A>, i: Int) -> Option<A>    // @external, @total
 fn push<A>(xs: List<A>, x: A) -> List<A>    // @external
 fn slice<A>(xs: List<A>, start: Int, end: Int) -> List<A>    // @external
 fn empty<A>() -> List<A>
@@ -127,8 +129,8 @@ fn filter_map<A, B, e>(xs: List<A>, f: fn(A) -> Option<B> ! e) -> List<B> ! e
 fn flat_map<A, B, e>(xs: List<A>, f: fn(A) -> List<B> ! e) -> List<B> ! e
 fn fold<A, B, e>(xs: List<A>, init: B, f: fn(B, A) -> B ! e) -> B ! e
 fn find<A, e>(xs: List<A>, f: fn(A) -> Bool ! e) -> Option<A> ! e
-fn all<A, e>(xs: List<A>, f: fn(A) -> Bool ! e) -> Bool ! e
-fn any<A, e>(xs: List<A>, f: fn(A) -> Bool ! e) -> Bool ! e
+fn all<A, e>(xs: List<A>, f: fn(A) -> Bool ! e) -> Bool ! e    // @total
+fn any<A, e>(xs: List<A>, f: fn(A) -> Bool ! e) -> Bool ! e    // @total
 fn sort<A: Ord>(xs: List<A>) -> List<A>
 fn sort_by<A, K: Ord>(xs: List<A>, key: fn(A) -> K) -> List<A>
 fn zip<A, B>(a: List<A>, b: List<B>) -> List<(A, B)>
@@ -136,9 +138,9 @@ fn enumerate<A>(xs: List<A>) -> List<(Int, A)>
 fn reverse<A>(xs: List<A>) -> List<A>
 fn join(xs: List<String>, sep: String) -> String
 fn sum(xs: List<Int>) -> Int
-fn first<A>(xs: List<A>) -> Option<A>
-fn last<A>(xs: List<A>) -> Option<A>
-fn contains<A: Eq>(xs: List<A>, x: A) -> Bool
+fn first<A>(xs: List<A>) -> Option<A>    // @total
+fn last<A>(xs: List<A>) -> Option<A>    // @total
+fn contains<A: Eq>(xs: List<A>, x: A) -> Bool    // @total
 fn unique<A: Hash>(xs: List<A>) -> List<A>
 fn range(start: Int, end: Int) -> List<Int>
 ```
@@ -147,13 +149,13 @@ fn range(start: Int, end: Int) -> List<Int>
 
 ```vow
 fn empty<K: Hash, V>() -> Map<K, V>    // @external
-fn get<K: Hash, V>(m: Map<K, V>, k: K) -> Option<V>    // @external
+fn get<K: Hash, V>(m: Map<K, V>, k: K) -> Option<V>    // @external, @total
 fn insert<K: Hash, V>(m: Map<K, V>, k: K, v: V) -> Map<K, V>    // @external
 fn remove<K: Hash, V>(m: Map<K, V>, k: K) -> Map<K, V>    // @external
-fn len<K: Hash, V>(m: Map<K, V>) -> Int    // @external
+fn len<K: Hash, V>(m: Map<K, V>) -> Int    // @external, @total
 fn entries<K: Hash, V>(m: Map<K, V>) -> List<(K, V)>    // @external
 fn of<K: Hash, V>(pairs: List<(K, V)>) -> Map<K, V>
-fn contains<K: Hash, V>(m: Map<K, V>, k: K) -> Bool
+fn contains<K: Hash, V>(m: Map<K, V>, k: K) -> Bool    // @total
 fn update<K: Hash, V, e>(m: Map<K, V>, k: K, f: fn(Option<V>) -> V ! e) -> Map<K, V> ! e
 fn keys<K: Hash, V>(m: Map<K, V>) -> List<K>
 fn values<K: Hash, V>(m: Map<K, V>) -> List<V>
@@ -164,8 +166,8 @@ fn values<K: Hash, V>(m: Map<K, V>) -> List<V>
 ```vow
 fn empty<A: Hash>() -> Set<A>    // @external
 fn insert<A: Hash>(s: Set<A>, x: A) -> Set<A>    // @external
-fn contains<A: Hash>(s: Set<A>, x: A) -> Bool    // @external
-fn len<A: Hash>(s: Set<A>) -> Int    // @external
+fn contains<A: Hash>(s: Set<A>, x: A) -> Bool    // @external, @total
+fn len<A: Hash>(s: Set<A>) -> Int    // @external, @total
 fn to_list<A: Hash>(s: Set<A>) -> List<A>    // @external
 fn of<A: Hash>(xs: List<A>) -> Set<A>
 ```
@@ -174,14 +176,14 @@ fn of<A: Hash>(xs: List<A>) -> Set<A>
 
 ```vow
 error Utf8Error(offset: Int)
-fn len(s: String) -> Int    // @external
+fn len(s: String) -> Int    // @external, @total
 fn chars(s: String) -> List<String>    // @external
 fn graphemes(s: String) -> List<String>    // @external
 fn split(s: String, sep: String) -> List<String>    // @external
 fn trim(s: String) -> String    // @external
-fn starts_with(s: String, prefix: String) -> Bool    // @external
-fn ends_with(s: String, suffix: String) -> Bool    // @external
-fn contains(s: String, needle: String) -> Bool    // @external
+fn starts_with(s: String, prefix: String) -> Bool    // @external, @total
+fn ends_with(s: String, suffix: String) -> Bool    // @external, @total
+fn contains(s: String, needle: String) -> Bool    // @external, @total
 fn replace(s: String, from: String, to: String) -> String    // @external
 fn to_lower(s: String) -> String    // @external
 fn to_upper(s: String) -> String    // @external
@@ -201,9 +203,9 @@ fn to_float(i: Int) -> Float    // @external
 fn to_string(i: Int) -> String    // @external
 fn checked_add(a: Int, b: Int) -> Option<Int>    // @external
 fn wrapping_add(a: Int, b: Int) -> Int    // @external
-fn abs(i: Int) -> Int
-fn min(a: Int, b: Int) -> Int
-fn max(a: Int, b: Int) -> Int
+fn abs(i: Int) -> Int    // @total
+fn min(a: Int, b: Int) -> Int    // @total
+fn max(a: Int, b: Int) -> Int    // @total
 fn clamp(i: Int, lo: Int, hi: Int) -> Int requires lo <= hi
 fn pow(base: Int, exp: Int) -> Int requires exp >= 0
 ```
@@ -221,8 +223,8 @@ fn is_nan(f: Float) -> Bool
 ### `std/bytes`
 
 ```vow
-fn len(b: Bytes) -> Int    // @external
-fn get(b: Bytes, i: Int) -> Option<Int>    // @external
+fn len(b: Bytes) -> Int    // @external, @total
+fn get(b: Bytes, i: Int) -> Option<Int>    // @external, @total
 fn from_list(xs: List<Int>) -> Bytes requires List.all(xs, fn(x) { x >= 0 && x <= 255 })    // @external
 ```
 
@@ -368,7 +370,7 @@ fn for_all<A: Show, e>(g: Gen<A>, runs: Int, prop: fn(A) -> Unit ! {Test | e}) -
 ### `std/retry`
 
 ```vow
-type Policy<E> = {
+type Policy<E> = { retry_on: fn(E) -> Bool, max_attempts: Int, backoff: Duration, jitter: Bool, deadline: Option<Duration> }
 fn policy<E>(retry_on: fn(E) -> Bool, max_attempts: Int) -> Policy<E> requires max_attempts >= 1
 fn retry<T, E, e>(p: Policy<E>, action: fn() -> T ! {Fail<E> | e}) -> T ! {Clock, Random, Fail<E> | e}
 ```
@@ -376,7 +378,11 @@ fn retry<T, E, e>(p: Policy<E>, action: fn() -> T ! {Fail<E> | e}) -> T ! {Clock
 ### `std/task`
 
 ```vow
+type Scope
 effect Task {
+  fn scope<T, e>(body: fn(Scope) -> T ! e) -> T ! e
+  fn spawn<T, e>(s: Scope, body: fn() -> T ! e) -> Fiber<T> ! e
+  fn join<T>(f: Fiber<T>) -> T
   fn all<T, e>(bodies: List<fn() -> T ! e>) -> List<T> ! e
   fn race<T, e>(bodies: List<fn() -> T ! e>) -> T ! e
   fn yield_now() -> Unit
@@ -386,6 +392,7 @@ fn deterministic(seed: Int) -> Handler<Task>    // @external
 error Timeout(limit: Duration)
 fn timeout<T, e>(limit: Duration, action: fn() -> T ! e) -> T ! {Clock, Task, Fail<Timeout> | e}
 fn par_map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! {Task | e}
+type Fiber<T>
 ```
 
 ### `std/graph`
@@ -395,7 +402,7 @@ type NodeId = NodeId(Int)
 type Graph<N> = { nodes: Map<Int, N>, edges: Map<Int, List<NodeId>>, next: Int }
 fn empty<N>() -> Graph<N>
 fn insert<N>(g: Graph<N>, n: N) -> (Graph<N>, NodeId)
-fn get<N>(g: Graph<N>, id: NodeId) -> Option<N>
+fn get<N>(g: Graph<N>, id: NodeId) -> Option<N>    // @total
 fn connect<N>(g: Graph<N>, a: NodeId, b: NodeId) -> Graph<N> requires get(g, a).is_some() && get(g, b).is_some()
 fn neighbors<N>(g: Graph<N>, id: NodeId) -> List<NodeId>
 fn len<N>(g: Graph<N>) -> Int

@@ -1,11 +1,18 @@
 // Structured concurrency (design §8.6). Prelude effect. Milestone M3: needs generic
 // operations and operation rows beyond `Fail` (see compiler/REQUESTS.md).
-// `scope`, `spawn` and `join` (design §8.6) return here once `Scope` and `Fiber<T>` exist
-// as compiler-known resource types (compiler/REQUESTS.md, F to B).
 
 import std/duration.{Duration}
 
+/// A region that owns child fibers; children never outlive it. External and scoped.
+pub type Scope
+
 pub effect Task {
+  /// Runs `body` with a fresh scope and joins every child spawned in it before returning.
+  fn scope<T, e>(body: fn(Scope) -> T ! e) -> T ! e
+  /// Starts `body` as a child of `s`; it inherits the current handlers.
+  fn spawn<T, e>(s: Scope, body: fn() -> T ! e) -> Fiber<T> ! e
+  /// Waits for `f` and returns its result.
+  fn join<T>(f: Fiber<T>) -> T
   /// Runs `bodies` concurrently; results in input order.
   fn all<T, e>(bodies: List<fn() -> T ! e>) -> List<T> ! e
   /// The first body to finish wins; the others are cancelled and joined.
@@ -42,3 +49,7 @@ pub fn timeout<T, e>(limit: Duration, action: fn() -> T ! e) -> T ! {Clock, Task
 pub fn par_map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! {Task | e} {
   Task.all(List.map(xs, fn(x) { fn() { f(x) } }))
 }
+
+/// A running child task. External, scoped and affine: join it once. Declared last because
+/// a line ending in `>` continues onto the next line (design §2.4).
+pub type Fiber<T>
