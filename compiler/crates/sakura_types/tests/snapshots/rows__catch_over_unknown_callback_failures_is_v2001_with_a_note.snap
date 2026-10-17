@@ -1,0 +1,23 @@
+---
+source: crates/sakura_types/tests/rows.rs
+expression: "format!(\"{}---\\n{}---\\n{}\", unannotated.render(), reassigned.render(),\nhidden.render())"
+---
+V2001 4:44 this pattern matches `Oops`, but the value has type `Never`: the failures of `g` are not known here; annotate its type
+  expected: Never
+  actual: Oops
+V3001 5:5 this function value performs `Fail<Oops>`, but the expected function type allows only `{}`
+  Cause 5:12 `fail Oops { code: 1 }` `fail` performs `Fail<Oops>` here
+  expected: {}
+  actual: {Fail<Oops>}
+---
+V2001 5:31 this pattern matches `Oops`, but the value has type `Never`
+  expected: Never
+  actual: Oops
+V3001 6:7 this function value performs `Fail<Oops>`, but the expected function type allows only `{}`
+  Cause 6:14 `fail Oops { code: 1 }` `fail` performs `Fail<Oops>` here
+  expected: {}
+  actual: {Fail<Oops>}
+---
+V2001 2:65 this pattern matches `Oops`, but the failures of `e` cannot be named: the body's row ends in `e`, which may hide `Fail<…>`; declare them with a type parameter (`fn f<E, e>(g: fn() -> T ! {Fail<E> | e}) -> Result<T, E> ! e`)
+  expected: Never
+  actual: Oops

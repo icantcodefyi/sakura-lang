@@ -204,3 +204,57 @@ fn never() -> Int {{ try {{ twice(fn() {{ 1 }}) }} catch {{ A => 0 }} }}
         "{r}"
     );
 }
+
+const CATCH_CB: &str = r#"error Oops(code: Int)
+fn twice<e>(f: fn() -> Int ! e) -> Int ! e { f() + f() }
+"#;
+
+/// §17.100: the arms match the tags the body is known to raise once it is checked.
+#[test]
+fn catch_over_known_callback_failures_checks() {
+    let src = format!(
+        r#"{CATCH_CB}fn annotated(g: fn() -> Int ! {{Fail<Oops>}}) -> Int {{ try {{ twice(g) }} catch {{ Oops {{ code: c }} => c }} }}
+fn run(h: fn(fn() -> Int ! {{Fail<Oops>}}) -> Int) -> Int {{ h(fn() {{ fail Oops {{ code: 1 }} }}) }}
+fn expected() -> Int {{ run(fn(g) {{ try {{ twice(g) }} catch {{ Oops {{ code: c }} => c }} }}) }}
+fn general() -> Int {{
+  let app = fn(g) {{ g() }}
+  let a = try {{ app(fn() {{ fail Oops {{ code: 1 }} }}) }} catch {{ Oops {{ code: c }} => c }}
+  let b = try {{ app(fn() {{ fail Oops {{ code: 2 }} }}) }} catch {{ Oops {{ code: c }} => c }}
+  a + b
+}}
+fn deep(n: Int) -> Int ! {{Fail<Oops>}} {{ if n == 0 {{ fail Oops {{ code: 0 }} }} else {{ twice(fn() {{ deep(n - 1) }}) }} }}
+fn recursive() -> Int {{ try {{ deep(3) }} catch {{ Oops {{ code: c }} => c }} }}
+"#
+    );
+    let c = check(&src);
+    assert!(c.diags.is_empty(), "{}", c.render());
+}
+
+#[test]
+fn catch_over_unknown_callback_failures_is_v2001_with_a_note() {
+    let unannotated = check(&format!(
+        r#"{CATCH_CB}fn f() -> Int {{
+  let h = fn(g) {{ try {{ twice(g) }} catch {{ Oops {{ code: c }} => c }} }}
+  h(fn() {{ fail Oops {{ code: 1 }} }})
+}}
+"#
+    ));
+    let reassigned = check(&format!(
+        r#"{CATCH_CB}fn f() -> Int {{
+  var g = fn() {{ 1 }}
+  let n = try {{ g() }} catch {{ Oops {{ code: c }} => c }}
+  g = fn() {{ fail Oops {{ code: 1 }} }}
+  n
+}}
+"#
+    ));
+    let hidden = check(
+        "error Oops(code: Int)\nfn wrap<e>(f: fn() -> Int ! e) -> Int ! e { try { f() } catch { Oops { .. } => 0 } }\n",
+    );
+    insta::assert_snapshot!(format!(
+        "{}---\n{}---\n{}",
+        unannotated.render(),
+        reassigned.render(),
+        hidden.render()
+    ));
+}

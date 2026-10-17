@@ -165,6 +165,9 @@ struct BodyState {
     /// `(try, body)` of every `try` without `catch` whose body row ended in a flexible tail:
     /// if the tail later turns out to hide failures, the `try` is `V3003` (§5.3).
     try_checks: Vec<(ExprId, ExprId)>,
+    /// `(error type, rest of the message)` for a `catch` arm pattern that matches nothing
+    /// the body is known to raise (§17.100), set while the arm patterns are bound.
+    catch_note: Option<(TypeId, String)>,
 }
 
 /// Generic parameters, aliases and fields per definition. A reused module keeps its entries,

@@ -253,10 +253,14 @@ impl Checker<'_> {
         let a = self.render(pat_ty);
         let b = self.render(value_ty);
         let range = self.pat_range(p);
+        let rest = match &self.b.catch_note {
+            Some((t, rest)) if *t == value_ty => rest.clone(),
+            _ => format!("but the value has type `{b}`"),
+        };
         let d = Diagnostic::error(
             V2001,
             Phase::Type,
-            format!("this pattern matches `{a}`, but the value has type `{b}`"),
+            format!("this pattern matches `{a}`, {rest}"),
         )
         .with_span(self.span(range))
         .with_expected(sakura_diagnostics::Rendered::text(b))

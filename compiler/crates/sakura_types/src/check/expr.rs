@@ -550,9 +550,12 @@ impl Checker<'_> {
     ) -> (TypeId, Vec<RowId>, bool) {
         let mut rows = Vec::new();
         let mut ty: Option<TypeId> = None;
+        let note = self.b.catch_note.take();
         for arm in arms {
             let mark = self.b.scope.len();
+            self.b.catch_note.clone_from(&note);
             self.bind_pat(arm.pat, scrutinee);
+            self.b.catch_note = None;
             if let Some(g) = arm.guard {
                 let b = self.inf.interner.prim(TyCon::Bool);
                 rows.push(self.check(g, b));
@@ -1586,7 +1589,23 @@ impl Checker<'_> {
         // (`fresh_row_for`). The body is checked, so its failures are known: settle `?ε` to
         // them, so the arms subtract tags from a known union instead of adding their own
         // tags to it (later failures must fit, as for a field read).
+        let unknown = self.unknown_callback(err_ty);
         let err_ty = self.inf.settle_failures(err_ty);
+        // §17.100: an arm that matches nothing the body is known to raise says why.
+        let note = if let Some(p) = self.inf.tail_param(br).filter(|_| hidden) {
+            let only = self.inf.make_row(Vec::new(), Tail::Param(p));
+            let tail = self.render_row(only);
+            Some(format!(
+                "but the failures of `{tail}` cannot be named: the body's row ends in `{tail}`, which may hide `Fail<…>`; declare them with a type parameter (`fn f<E, {tail}>(g: fn() -> T ! {{Fail<E> | {tail}}}) -> Result<T, E> ! {tail}`)"
+            ))
+        } else {
+            unknown.map(|g| {
+                format!(
+                    "but the value has type `Never`: the failures of `{g}` are not known here; annotate its type"
+                )
+            })
+        };
+        self.b.catch_note = note.map(|n| (err_ty, n));
         let (ty, mut rows, done) = match exp {
             Some(x) => self.arms(arms, err_ty, Some(x)),
             None => {
@@ -1658,6 +1677,28 @@ impl Checker<'_> {
             kind: CoverageKind::Catch { body_row: br },
         });
         (ty, self.seq(&rows, e), done)
+    }
+
+    /// When nothing in a `try` body raises a known tag but its error union is still a
+    /// variable (§17.100): the innermost local in scope whose function type was only
+    /// inferred (its row ends in a flexible tail), i.e. an unannotated callback parameter.
+    fn unknown_callback(&mut self, err_ty: TypeId) -> Option<String> {
+        if !self.inf.is_err_var(err_ty) || !self.inf.err_lower_bound(err_ty).is_empty() {
+            return None;
+        }
+        for i in (0..self.b.scope.len()).rev() {
+            let l = self.b.scope[i];
+            let Some(LocalTy::Mono(t)) = self.b.locals.get(l).cloned() else {
+                continue;
+            };
+            let t = self.inf.shallow(t);
+            if let Type::Fn { row, .. } = self.inf.interner.ty(t).clone()
+                && matches!(self.inf.flatten_row(row).tail, Tail::Var(_))
+            {
+                return Some(self.hir_body().locals[l].name.clone());
+            }
+        }
+        None
     }
 
     /// V3003: `try` without `catch` over a row whose tail hides failures (§5.3).
