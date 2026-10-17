@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <!-- Draft of the chosen Vow mark ("Sakura Seal"). Petal gaps are strokes in the background colour. -->
+  <!-- Draft of the chosen mark, the Sakura Seal. Petal gaps are strokes in the background colour. -->
   <g fill="#F386A1" stroke="#FEFEFE" stroke-width="2.4" stroke-linejoin="round">
     <path id="pt" d="M50 50 C39 44 31 31 36 19 Q40 12 45 15 L50 22 L55 15 Q60 12 64 19 C69 31 61 44 50 50Z"/>
     <use href="#pt" transform="rotate(72 50 50)"/>
