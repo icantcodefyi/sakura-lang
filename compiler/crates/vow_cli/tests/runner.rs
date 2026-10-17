@@ -81,7 +81,9 @@ fn records_per_test_and_summary() {
         .collect();
     assert_eq!(
         status,
-        ["passed", "failed", "defect", "failed", "failed", "failed", "summary"]
+        [
+            "passed", "failed", "defect", "failed", "failed", "failed", "summary"
+        ]
     );
     assert_eq!(recs[1]["failures"][0], "expected 1, got 2");
     assert_eq!(recs[2]["defect"]["code"], "D002");
