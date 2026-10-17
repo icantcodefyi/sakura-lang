@@ -168,7 +168,7 @@ const CASES: &[(&str, &str, &[&str])] = &[
     ),
     (
         "calling a function field of an opaque type outside its module",
-        "import std/tool.{Tool}\nfn f<F>(t: Tool<F>) -> F { t.run }",
+        "import std/tool.{Tool}\nfn f<e>(t: Tool<e>) -> Int { let _ = t.run; 1 }",
         &["V1006"],
     ),
     (

@@ -1,58 +1,56 @@
 // Request routing (design §10.4, M3). A router is data: routes are matched in the order they
 // were added, and `handle` is an ordinary function, so route handlers are tested by calling
 // them or the router directly, without a server.
-// needs M3: effect-row parameters on types, after which `Router<F>` is `Router<e>`.
 
 import std/request.{Delete, Get, Method, Patch, Post, Put, Request}
 import std/response.{Response, Status}
 import std/url.{Url}
 
-/// `F` is `fn(Request) -> Response ! e`, with `e` what the route handlers perform (see
-/// `std/tool` for why it is a type parameter). Inference names it.
-pub opaque type Router<F> = { routes: List<Route<F>> }
+/// `e` is what the route handlers perform (design §4.4).
+pub opaque type Router<e> = { routes: List<Route<e>> }
 
-type Route<F> = { method: Method, pattern: List<String>, run: F }
+type Route<e> = { method: Method, pattern: List<String>, run: fn(Request) -> Response ! e }
 
-pub fn new<F>() -> Router<F> { Router { routes: [] } }
+pub fn new<e>() -> Router<e> { Router { routes: [] } }
 
 /// Adds a route. A `pattern` segment `:name` matches any one segment and is available to the
 /// handler as `Request.param(req, "name")`.
 pub fn route<e>(
-  r: Router<fn(Request) -> Response ! e>,
+  r: Router<e>,
   method: Method,
   pattern: String,
   h: fn(Request) -> Response ! e,
-) -> Router<fn(Request) -> Response ! e> {
+) -> Router<e> {
   Router { routes: r.routes.push(Route { method, pattern: segments(pattern), run: h }) }
 }
 
-pub fn get<e>(r: Router<fn(Request) -> Response ! e>, pattern: String, h: fn(Request) -> Response ! e)
-  -> Router<fn(Request) -> Response ! e>
+pub fn get<e>(r: Router<e>, pattern: String, h: fn(Request) -> Response ! e)
+  -> Router<e>
 {
   route(r, Get, pattern, h)
 }
 
-pub fn post<e>(r: Router<fn(Request) -> Response ! e>, pattern: String, h: fn(Request) -> Response ! e)
-  -> Router<fn(Request) -> Response ! e>
+pub fn post<e>(r: Router<e>, pattern: String, h: fn(Request) -> Response ! e)
+  -> Router<e>
 {
   route(r, Post, pattern, h)
 }
 
-pub fn put<e>(r: Router<fn(Request) -> Response ! e>, pattern: String, h: fn(Request) -> Response ! e)
-  -> Router<fn(Request) -> Response ! e>
+pub fn put<e>(r: Router<e>, pattern: String, h: fn(Request) -> Response ! e)
+  -> Router<e>
 {
   route(r, Put, pattern, h)
 }
 
-pub fn delete<e>(r: Router<fn(Request) -> Response ! e>, pattern: String, h: fn(Request) -> Response ! e)
-  -> Router<fn(Request) -> Response ! e>
+pub fn delete<e>(r: Router<e>, pattern: String, h: fn(Request) -> Response ! e)
+  -> Router<e>
 {
   route(r, Delete, pattern, h)
 }
 
 /// The response of the first route matching `req`'s method and path, with its path
 /// parameters set; 405 when only the method differs, 404 when no path matches.
-pub fn handle<e>(r: Router<fn(Request) -> Response ! e>, req: Request) -> Response ! e {
+pub fn handle<e>(r: Router<e>, req: Request) -> Response ! e {
   let path = segments(Url.path(req.url))
   var path_matched = false
   for rt in r.routes {

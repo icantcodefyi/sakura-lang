@@ -2,7 +2,6 @@
 // it reserves the request's `max_tokens` and one call against `Budget`, so a step that could
 // not fit never starts; the provider handler charges what the step really used, so the
 // reservation is settled to zero afterwards.
-// needs M3: effect-row parameters on types, after which `Agent<T, F>` is `Agent<T, e>`.
 
 import std/budget.{Budget, BudgetExceeded, Cost, Limits, Tokens}
 import std/core.{Violation}
@@ -24,17 +23,17 @@ import std/prompt.{Prompt}
 import std/tool.{Tool, ToolError}
 
 /// `stop` sees the progress after each step that ran tools; `true` asks the model to answer
-/// with no tools offered. `F` is the tools' function type (see `std/tool`).
-pub type Agent<T, F> = {
+/// with no tools offered. `e` is what the tools perform.
+pub type Agent<T, e> = {
   request: Request<T>,
-  tools: List<Tool<F>>,
+  tools: List<Tool<e>>,
   max_steps: Int,
   stop: fn(Partial<T>) -> Bool,
 }
 
 /// At most `max_steps` model turns; the last one offers no tools, so the model must answer.
 /// A tool failure ends the loop with its `ToolError`.
-pub fn run<T: Schema, e>(a: Agent<T, fn(Json) -> Json ! {Fail<ToolError> | e}>) -> T
+pub fn run<T: Schema, e>(a: Agent<T, e>) -> T
   ! {Budget, Llm, Fail<LlmError | ToolError> | e}
   requires a.max_steps > 0
 {
@@ -62,7 +61,7 @@ pub fn run<T: Schema, e>(a: Agent<T, fn(Json) -> Json ! {Fail<ToolError> | e}>) 
   fail InvalidOutput { violations: [] }
 }
 
-fn call_tool<e>(tools: List<Tool<fn(Json) -> Json ! {Fail<ToolError> | e}>>, c: ToolCall) -> Json
+fn call_tool<e>(tools: List<Tool<e>>, c: ToolCall) -> Json
   ! {Fail<ToolError> | e}
 {
   match List.find(tools, fn(t) { Tool.name(t) == c.name }) {
@@ -101,7 +100,7 @@ fn lookup(q: Lookup) -> Int ! {Console, Fail<Missing>} {
   }
 }
 
-fn agent(script_steps: Int) -> Agent<Int, fn(Json) -> Json ! {Console, Fail<ToolError>}> {
+fn agent(script_steps: Int) -> Agent<Int, {Console}> {
   let req: Request<Int> = Llm.request("Add the values of a and b.", Prompt.text("a + b?"))
   Agent {
     request: req,

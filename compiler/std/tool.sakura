@@ -2,14 +2,11 @@
 // handlers installed around `Agent.run`: the model chooses arguments, never authority.
 // `Tool.of(f)` on a `@tool("…")` function is compiler sugar for `from` with the function's
 // name, description and a synthesized argument record (§11.2).
-// needs M3: effect-row parameters on types, after which `Tool<F>` is `Tool<e>`.
 
 import std/llm.{ToolSpec}
 
-/// `F` is `fn(Json) -> Json ! {Fail<ToolError> | e}`, with `e` what the tool's function
-/// performs. It is a type parameter only until types take effect-row parameters (design
-/// §4.3); inference names it, so code never writes it.
-pub opaque type Tool<F> = { spec: ToolSpec, run: F }
+/// `e` is what the tool's function performs (design §4.4); its failures become `ToolError`s.
+pub opaque type Tool<e> = { spec: ToolSpec, run: fn(Json) -> Json ! {Fail<ToolError> | e} }
 
 /// `tag` names the function's error tag and `payload` holds its fields as JSON. `DecodeError`
 /// means the model's arguments did not decode, `UnknownTool` that it named no offered tool.
@@ -21,17 +18,17 @@ pub fn from<A: Schema, R: Schema, E: Schema + Show, e>(
   name: String,
   description: String,
   f: fn(A) -> R ! {Fail<E> | e},
-) -> Tool<fn(Json) -> Json ! {Fail<ToolError> | e}> {
+) -> Tool<e> {
   let witness: Option<A> = None
   with_schema(name, description, Json.schema(witness), f)
 }
 
-pub fn name<F>(t: Tool<F>) -> String { t.spec.name }
+pub fn name<e>(t: Tool<e>) -> String { t.spec.name }
 
-pub fn spec<F>(t: Tool<F>) -> ToolSpec { t.spec }
+pub fn spec<e>(t: Tool<e>) -> ToolSpec { t.spec }
 
 /// Runs the tool on the model's `input` under the caller's handlers.
-pub fn call<e>(t: Tool<fn(Json) -> Json ! {Fail<ToolError> | e}>, input: Json) -> Json
+pub fn call<e>(t: Tool<e>, input: Json) -> Json
   ! {Fail<ToolError> | e}
 {
   let run = t.run
@@ -43,7 +40,7 @@ fn with_schema<A: Schema, R: Schema, E: Schema + Show, e>(
   description: String,
   schema: Json,
   f: fn(A) -> R ! {Fail<E> | e},
-) -> Tool<fn(Json) -> Json ! {Fail<ToolError> | e}> {
+) -> Tool<e> {
   Tool { spec: ToolSpec { name, description, schema }, run: fn(input) { invoke(name, f, input) } }
 }
 

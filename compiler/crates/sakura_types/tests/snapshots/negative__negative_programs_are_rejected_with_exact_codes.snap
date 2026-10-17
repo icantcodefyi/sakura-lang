@@ -163,7 +163,7 @@ V1006 8:42 `Decimal` is opaque: its constructors and fields are private to modul
   Definition in std declared `pub opaque` here
 
 ## calling a function field of an opaque type outside its module
-V1006 8:28 `Tool` is opaque: its constructors and fields are private to module `std/tool`
+V1006 8:38 `Tool` is opaque: its constructors and fields are private to module `std/tool`
   Definition in std declared `pub opaque` here
 
 ## try body assigns an outer var

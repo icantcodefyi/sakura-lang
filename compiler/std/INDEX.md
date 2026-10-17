@@ -574,14 +574,14 @@ fn template(parts: List<String>, args: List<String>) -> Html
 ### `std/router`
 
 ```sakura
-opaque type Router<F> = { routes: List<Route<F>> }
-fn new<F>() -> Router<F>
-fn route<e>(r: Router<fn(Request) -> Response ! e>, method: Method, pattern: String, h: fn(Request) -> Response ! e) -> Router<fn(Request) -> Response ! e>
-fn get<e>(r: Router<fn(Request) -> Response ! e>, pattern: String, h: fn(Request) -> Response ! e) -> Router<fn(Request) -> Response ! e>
-fn post<e>(r: Router<fn(Request) -> Response ! e>, pattern: String, h: fn(Request) -> Response ! e) -> Router<fn(Request) -> Response ! e>
-fn put<e>(r: Router<fn(Request) -> Response ! e>, pattern: String, h: fn(Request) -> Response ! e) -> Router<fn(Request) -> Response ! e>
-fn delete<e>(r: Router<fn(Request) -> Response ! e>, pattern: String, h: fn(Request) -> Response ! e) -> Router<fn(Request) -> Response ! e>
-fn handle<e>(r: Router<fn(Request) -> Response ! e>, req: Request) -> Response ! e
+opaque type Router<e> = { routes: List<Route<e>> }
+fn new<e>() -> Router<e>
+fn route<e>(r: Router<e>, method: Method, pattern: String, h: fn(Request) -> Response ! e) -> Router<e>
+fn get<e>(r: Router<e>, pattern: String, h: fn(Request) -> Response ! e) -> Router<e>
+fn post<e>(r: Router<e>, pattern: String, h: fn(Request) -> Response ! e) -> Router<e>
+fn put<e>(r: Router<e>, pattern: String, h: fn(Request) -> Response ! e) -> Router<e>
+fn delete<e>(r: Router<e>, pattern: String, h: fn(Request) -> Response ! e) -> Router<e>
+fn handle<e>(r: Router<e>, req: Request) -> Response ! e
 ```
 
 ### `std/serve`
@@ -592,7 +592,7 @@ error ServeError(reason: String)
 effect Serve {
   fn serve<e>(handle: fn(Request) -> Response ! e, addr: Address) -> Never ! {Fail<ServeError> | e}
 }
-fn listen<e>(router: Router<fn(Request) -> Response ! e>, addr: Address) -> Never ! {Serve, Fail<ServeError> | e}
+fn listen<e>(router: Router<e>, addr: Address) -> Never ! {Serve, Fail<ServeError> | e}
 fn of(host: String, port: Int) -> Address requires port >= 0 && port <= 65_535
 fn host() -> Handler<Serve>
 fn scripted(requests: List<Request>) -> Handler<Serve, {Test}>
@@ -657,19 +657,19 @@ fn scripted(responses: List<String>) -> Handler<Llm>
 ### `std/tool`
 
 ```sakura
-opaque type Tool<F> = { spec: ToolSpec, run: F }
+opaque type Tool<e> = { spec: ToolSpec, run: fn(Json) -> Json ! {Fail<ToolError> | e} }
 error ToolError(tool: String, tag: String, payload: Json)
-fn from<A: Schema, R: Schema, E: Schema + Show, e>(name: String, description: String, f: fn(A) -> R ! {Fail<E> | e}) -> Tool<fn(Json) -> Json ! {Fail<ToolError> | e}>
-fn name<F>(t: Tool<F>) -> String
-fn spec<F>(t: Tool<F>) -> ToolSpec
-fn call<e>(t: Tool<fn(Json) -> Json ! {Fail<ToolError> | e}>, input: Json) -> Json ! {Fail<ToolError> | e}
+fn from<A: Schema, R: Schema, E: Schema + Show, e>(name: String, description: String, f: fn(A) -> R ! {Fail<E> | e}) -> Tool<e>
+fn name<e>(t: Tool<e>) -> String
+fn spec<e>(t: Tool<e>) -> ToolSpec
+fn call<e>(t: Tool<e>, input: Json) -> Json ! {Fail<ToolError> | e}
 ```
 
 ### `std/agent`
 
 ```sakura
-type Agent<T, F> = { request: Request<T>, tools: List<Tool<F>>, max_steps: Int, stop: fn(Partial<T>) -> Bool }
-fn run<T: Schema, e>(a: Agent<T, fn(Json) -> Json ! {Fail<ToolError> | e}>) -> T ! {Budget, Llm, Fail<LlmError | ToolError> | e} requires a.max_steps > 0
+type Agent<T, e> = { request: Request<T>, tools: List<Tool<e>>, max_steps: Int, stop: fn(Partial<T>) -> Bool }
+fn run<T: Schema, e>(a: Agent<T, e>) -> T ! {Budget, Llm, Fail<LlmError | ToolError> | e} requires a.max_steps > 0
 ```
 
 ### `std/sql`
@@ -740,11 +740,9 @@ fn memory() -> Handler<Sql>    // @external
     trailing zeros), not `{ units: Int, scale: Int }`: derived `Ord` compares fields in order,
     which is numeric only for this form. `div_checked(a, b, places)` and `round` round half to
     even. Interpolation shows the record form; `Decimal.to_string` gives `-12.34`.
-16. **`Tool<F>` and `Agent<T, F>`** instead of `Tool` and `Agent<T>`: a tool runs under the
-    caller's handlers (§11.2), so its function type carries the effects it performs, and the
-    compiler does not accept effect-row parameters on types yet (§4.3 allows them). `F` is
-    `fn(Json) -> Json ! {Fail<ToolError> | e}`; inference names it, and call sites do not
-    change when it becomes `Tool<e>`. `Agent.run`'s row gains the tools' `e` (§15.8's
+16. **`Tool<e>` and `Agent<T, e>`** (resolved, §17.49): a tool runs under the caller's
+    handlers (§11.2), so its type carries the effects its function performs as a row
+    parameter. `Agent.run`'s row gains the tools' `e` (§15.8's
     `research` already declares `Http` for that reason). `Tool.from(name, description, f)`
     is what `Tool.of` builds (§17.66); `ToolError` is also raised as `DecodeError` (bad
     arguments) and `UnknownTool`.
@@ -755,8 +753,7 @@ fn memory() -> Handler<Sql>    // @external
     `{ text, step, calls }`. `Llm.stream`'s callback may perform effects (`! e`), otherwise
     a partial could not be observed. `Agent.run` reserves `max_tokens` and one call per step
     and settles to zero, as a headroom check; the provider charges actual use.
-18. **`Router<F>`** for the same reason as `Tool<F>` (`F` is `fn(Request) -> Response ! e`),
-    and `Serve.listen<e>` (a function over the one operation `Serve.serve(handle, addr)`,
+18. **`Router<e>`** (resolved, §17.49) for the same reason as `Tool<e>`, and `Serve.listen<e>` (a function over the one operation `Serve.serve(handle, addr)`,
     §17.48) performs what the routes perform, so what is installed around `listen` serves
     every request (§10.4). `Router.route`, `put`, `delete` and `handle` are
     additions; `:name` path segments fill the new `Request.params`, which `Request.param`

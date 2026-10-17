@@ -63,8 +63,8 @@ import std/router.{Router}
 import std/serve.{Address, Serve, ServeError}
 import std/url.{Url}
 
-/// The routes of this service. (`Router<{}>` once types take row parameters.)
-pub fn routes() -> Router<fn(Request) -> Response ! {}> {
+/// The routes of this service; `{}`: its handlers perform no effects.
+pub fn routes() -> Router<{}> {
   Router.new().get("/health", fn(_req) { Response.status(200, "ok") })
 }
 

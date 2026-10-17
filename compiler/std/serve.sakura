@@ -20,7 +20,7 @@ pub effect Serve {
 }
 
 /// Serves `router` on `addr`: `Serve.serve` with the router's dispatch as the handler.
-pub fn listen<e>(router: Router<fn(Request) -> Response ! e>, addr: Address) -> Never
+pub fn listen<e>(router: Router<e>, addr: Address) -> Never
   ! {Serve, Fail<ServeError> | e}
 {
   Serve.serve(fn(req) { Router.handle(router, req) }, addr)
