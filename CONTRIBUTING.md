@@ -129,8 +129,8 @@ job evaluates `hashFiles('Cargo.toml')` after checkout and passes the result to
 the Rust job: GitHub does not support `hashFiles` directly in a job-level `if`.
 
 During bootstrap, direct pushes are allowed: **PR reviews and required status
-checks are not enforced**. The intended branch rules block force pushes and
-branch deletion where the repository plan supports them. When the project leaves
+checks are not enforced**. The active `Protect master during bootstrap` branch ruleset blocks force pushes
+and deletion of `master`, with no bypass actors. When the project leaves
 bootstrap, enable required `ci-required` checks and PR reviews before accepting
 routine changes. A green gate is still expected now; investigate failures.
 
