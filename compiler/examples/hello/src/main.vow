@@ -7,12 +7,12 @@
 // Design §15.1. `vow run` uses the host clock, so expected.stdout is a regex; the test
 // pins the clock.
 
-fn greet(name: String) -> Unit ! {Console, Clock} {
+fn greet(name: String) -> Unit ! {Clock, Console} {
   let now = Clock.now()
   Console.print("hello, {name}; it is {Instant.format_iso(now)}")
 }
 
-pub fn main() -> Unit ! {Console, Clock} { greet("Vow") }
+pub fn main() -> Unit ! {Clock, Console} { greet("Vow") }
 
 test "greets with the time from the clock" {
   with Clock.fixed(Instant.from_unix_millis(1_767_225_600_000)) { greet("Vow") }

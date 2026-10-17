@@ -13,7 +13,10 @@ effect Counter {
 fn memory_counter(start: Int) -> Handler<Counter> {
   handler Counter {
     var n: Int = start
-    fn next() { n = n + 1; n }
+    fn next() {
+      n = n + 1
+      n
+    }
     fn reset() { n = start }
   }
 }
@@ -37,8 +40,6 @@ test "labels count from the handler's start" {
 }
 
 test "inner handler shadows outer" {
-  let out = with memory_counter(0) {
-    with memory_counter(100) { Counter.next() }
-  }
+  let out = with memory_counter(0) { with memory_counter(100) { Counter.next() } }
   expect_eq(out, 101)
 }

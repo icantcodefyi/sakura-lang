@@ -10,7 +10,9 @@ import std/graph.{Graph, NodeId}
 type Person = { name: String }
 
 fn friends_of_friends(g: Graph<Person>, id: NodeId) -> List<Person> {
-  List.flat_map(Graph.neighbors(g, id), fn(f) { List.filter_map(Graph.neighbors(g, f), fn(ff) { Graph.get(g, ff) }) })
+  List.flat_map(Graph.neighbors(g, id), fn(f) {
+    List.filter_map(Graph.neighbors(g, f), fn(ff) { Graph.get(g, ff) })
+  })
 }
 
 pub fn main() -> Unit ! {Console} {
@@ -19,8 +21,12 @@ pub fn main() -> Unit ! {Console} {
   let (g3, cat) = g2.insert(Person { name: "cat" })
   let (g4, dan) = g3.insert(Person { name: "dan" })
   let (g5, eve) = g4.insert(Person { name: "eve" })
-  let g = g5.connect(ann, bob).connect(bob, ann).connect(bob, cat).connect(bob, dan)
-    .connect(ann, eve).connect(eve, cat)
+  let g = g5.connect(ann, bob)
+    .connect(bob, ann)
+    .connect(bob, cat)
+    .connect(bob, dan)
+    .connect(ann, eve)
+    .connect(eve, cat)
   let names = List.map(List.unique(friends_of_friends(g, ann)), fn(p) { p.name })
   Console.print("friends of friends of ann: {List.join(names, ", ")}")
   Console.print("people: {Graph.len(g)}")

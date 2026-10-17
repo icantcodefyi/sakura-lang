@@ -6,8 +6,10 @@
 // Design §15.4: internal failures are translated so the public error union stays stable.
 
 error NotFound(id: String)
+
 error Forbidden
 error Unavailable(reason: String)
+
 type UserError = NotFound | Forbidden
 
 type User = { id: String, owner: String, name: String }
@@ -31,14 +33,12 @@ fn down(reason: String) -> Handler<Users> {
 }
 
 // Internal failure (Unavailable) is translated; the public union stays stable.
-pub fn view_user(caller: String, id: String) -> User ! {Users, Log, Fail<UserError>} {
-  let user = try {
-    Users.get(id)
-  } catch {
+pub fn view_user(caller: String, id: String) -> User ! {Log, Users, Fail<UserError>} {
+  let user = try { Users.get(id) } catch {
     Unavailable { reason } => {
       Log.event(Level.Warn, "users backend unavailable", [("reason", Json.String(reason))])
       None
-    }
+    },
   }
   match user {
     None => fail NotFound { id },
@@ -47,7 +47,7 @@ pub fn view_user(caller: String, id: String) -> User ! {Users, Log, Fail<UserErr
   }
 }
 
-fn describe(caller: String, id: String) -> String ! {Users, Log} {
+fn describe(caller: String, id: String) -> String ! {Log, Users} {
   let outcome = try { view_user(caller, id) }
   match outcome {
     Ok(u) => "{caller} sees {u.name}",
@@ -66,14 +66,10 @@ pub fn main() -> Unit ! {Console, Log} {
 }
 
 test "missing user is NotFound" {
-  with memory([]) {
-    expect_fail(fn() { view_user("alice", "u1") }, NotFound { id: "u1" })
-  }
+  with memory([]) { expect_fail(fn() { view_user("alice", "u1") }, NotFound { id: "u1" }) }
 }
 
 test "an unavailable backend is logged and reported as NotFound" {
-  with down("maintenance") {
-    expect_fail(fn() { view_user("alice", "u1") }, NotFound { id: "u1" })
-  }
+  with down("maintenance") { expect_fail(fn() { view_user("alice", "u1") }, NotFound { id: "u1" }) }
   expect_output(["Warn users backend unavailable reason=String(\"maintenance\")"])
 }
