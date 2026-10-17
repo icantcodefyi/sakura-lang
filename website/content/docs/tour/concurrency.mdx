@@ -1,0 +1,163 @@
+---
+title: Concurrency
+description: Structured concurrency with the Async effect, timeouts, channels, and durable workflows in Vow.
+---
+
+<Callout type="warn" title="Design draft">
+  The concurrency API is a draft. Function names in `Task`, `Chan`, and `Workflow` may change.
+</Callout>
+
+Concurrency in Vow is an effect, `Async`, like any other. There are no `async` or `await` keywords and no colored functions: a function that runs tasks declares `Async` in its row, and that is all.
+
+## Running tasks together
+
+`Task.both` runs two computations concurrently and returns both results as a `Pair` (the standard record `{ left: A, right: B }`):
+
+```vow
+fn dashboard(user: UserId) -> Dashboard ! {Async, Db, Net, Fail<FetchError>} {
+  let both = Task.both(() => load_orders(user), () => load_recommendations(user))
+  Dashboard { orders: both.left, recommendations: both.right }
+}
+```
+
+`Task.all` runs a list of computations and returns their results in order:
+
+```vow
+fn fetch_all(ids: List<UserId>) -> List<Profile> ! {Async, Net, Fail<FetchError>} {
+  Task.all(ids.map(id => () => fetch_profile(id)))
+}
+```
+
+`Task.race` returns the first result to finish and cancels the rest:
+
+```vow
+fn fastest_quote(symbol: Symbol) -> Quote ! {Async, Net, Fail<FetchError>} {
+  Task.race([() => quote_from_a(symbol), () => quote_from_b(symbol)])
+}
+```
+
+Each task's effects flow into the caller's row. If `fetch_profile` uses `Net` and may fail, so does `fetch_all`.
+
+## Structured concurrency
+
+Tasks cannot outlive the scope that started them. When `Task.all` returns, every task it started has finished. There is no detached background task that keeps running after its caller is gone, and no "fire and forget".
+
+This gives three properties for free:
+
+- **Errors propagate.** If one task fails, the others are cancelled and the failure is raised in the parent.
+- **Cancellation propagates.** If the parent is cancelled, every child is cancelled.
+- **Resources are released.** A scope cannot return while one of its tasks still holds a resource.
+
+```vow
+fn first_two(ids: List<UserId>) -> List<Profile> ! {Async, Net, Fail<FetchError>} {
+  // If fetching ids[0] fails, the fetch of ids[1] is cancelled
+  // and `first_two` fails with the same error.
+  Task.all(ids.take(2).map(id => () => fetch_profile(id)))
+}
+```
+
+## Timeouts
+
+`Timeout.after` is a handler. Any work inside the block that is still running when the time is up is cancelled, and the block fails with `TimedOut`. The handler adds `Fail<TimedOut>` to the row:
+
+```vow
+fn with_deadline(id: UserId) -> Profile ! {Async, Net, Fail<FetchError>, Fail<TimedOut>} {
+  with Timeout.after(2.s) {
+    fetch_profile(id)
+  }
+}
+```
+
+Handle the timeout like any other failure:
+
+```vow
+fn profile_or_default(id: UserId) -> Profile ! {Async, Net, Fail<FetchError>} {
+  handle with_deadline(id) {
+    fail TimedOut => Profile.placeholder(id)
+  }
+}
+```
+
+Durations are written as numbers with a unit: `500.ms`, `2.s`, `5.min`, `3.days`.
+
+## Channels
+
+`Chan<T>` passes values between tasks. A channel has a capacity, and `send` waits when it is full.
+
+```vow
+fn pipeline(urls: List<Url>) -> Int ! {Async, Net, Log, Fail<FetchError>} {
+  let ch = Chan.new<Page>(capacity: 16)
+  let both = Task.both(
+    () => produce(urls, ch),
+    () => consume(ch, 0),
+  )
+  both.right
+}
+
+fn produce(urls: List<Url>, ch: Chan<Page>) ! {Async, Net, Fail<FetchError>} {
+  for url in urls {
+    ch.send(Http.get_page(url))
+  }
+  ch.close()
+}
+
+fn consume(ch: Chan<Page>, count: Int) -> Int ! {Async, Log} {
+  match ch.receive() {
+    Some(page) => {
+      Log.info("got {page.title}")
+      consume(ch, count + 1)
+    }
+    None => count
+  }
+}
+```
+
+`receive` returns `None` once the channel is closed and drained. The recursive call in `consume` is a tail call, so it runs as a loop.
+
+## No data races
+
+Values are immutable, so sharing one between tasks is always safe. Mutable shared state lives behind effects (`State` atoms, `Db`), whose handlers serialize access. There is no way to write two tasks that mutate the same memory, so data races cannot occur.
+
+Logical races, such as two tasks reading and then writing the same database row, are still possible. [Deterministic simulation](/docs/tour/testing#deterministic-simulation) is how Vow plans to find them: `Sim.world` replaces the `Async` scheduler and explores different interleavings by seed.
+
+## Durable workflows
+
+Some processes run for days: onboarding sequences, payment retries, approval flows. The `Workflow` effect makes a function durable. Its progress is recorded, and it resumes where it left off after a crash, deploy, or restart.
+
+```vow
+effect Mailer {
+  fn send(to: Email, subject: String, body: String) -> ()
+}
+
+pub fn onboarding(user: User) ! {Workflow, Mailer} {
+  Mailer.send(user.email, "Welcome", "Thanks for signing up.")
+  Workflow.sleep(3.days)
+  Mailer.send(user.email, "Getting started", "Here are three things to try.")
+  Workflow.sleep(7.days)
+  Mailer.send(user.email, "How is it going?", "Reply to this email with feedback.")
+}
+```
+
+`Workflow.sleep(3.days)` survives restarts: the runtime records that the step was reached and wakes the workflow when the time is up. Effects performed inside a workflow are recorded, so on replay the first `Mailer.send` is not repeated.
+
+Starting one:
+
+```vow
+fn on_signup(user: User) ! {Workflow} {
+  Workflow.start("onboarding-{user.id}", () => onboarding(user))
+}
+```
+
+The string is an idempotency key: starting the same workflow twice has no effect.
+
+## What the compiler checks
+
+- Concurrent code declares `Async`. Pure code cannot spawn tasks.
+- Every task is scoped. There is no API that returns a running task to a caller outside its scope.
+- Effects of tasks are part of the parent's row.
+- Values sent over `Chan<T>` have type `T`, and values are immutable, so sharing is safe.
+- Inside a workflow, every effect goes through the `Workflow` handler, so it can be recorded and replayed.
+
+## Next
+
+That is the end of the tour. Continue with [For Agents](/docs/agents) to see how agents work with the toolchain, or the planned [Standard library](/docs/stdlib).

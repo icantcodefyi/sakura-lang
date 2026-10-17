@@ -1,15 +1,86 @@
 ---
 title: Introduction
-description: Vow is an agent-first programming language where the signature is the contract.
+description: Vow is an agent-first, general-purpose programming language in which the signature is the contract.
 ---
 
-## Hello
+<Callout type="warn" title="Pre-alpha design">
+  Vow is in early design. There is no compiler, interpreter, or release yet. These docs describe the language as it is being designed, and details will change.
+</Callout>
 
-```vow
+Vow is the language agents write: code that keeps its promises.
+
+Most new code is now written by AI agents. Reviewing every line of that code does not scale, and the parts that matter most (what a function touches, how it can fail, what it guarantees) are usually invisible in mainstream languages. Vow is designed so that those parts are always written down, in one place, and checked by the compiler.
+
+## The core idea
+
+**The signature is the contract.** Humans review signatures. The compiler checks that the code keeps its vows.
+
+A Vow signature states the inputs, the output, every side effect the function may perform, every way it can fail, and any guarantees about the result. The body cannot do anything the signature does not allow.
+
+```vow title="src/users.vow"
+type Email = String where is_email(it)
+type Password = String where it.len >= 12
+type SignupError = EmailTaken | Banned
+
 fn signup(email: Email, pw: Password) -> User ! {Db, Clock, Random, Fail<SignupError>}
   ensures result.email == email
 {
   if Db.exists(users, email) { fail EmailTaken }
+  let user = User { id: Uuid.new(), email, created: Clock.now() }
+  Db.insert(users, user)
   user
 }
+
+test "duplicate email fails" {
+  with Db.memory(), Clock.fixed("2026-01-01"), Random.seeded(1) {
+    signup("a@b.co", "correct horse battery")
+    expect signup("a@b.co", "another long password") == Fail(EmailTaken)
+  }
+}
 ```
+
+Reading only the signature of `signup`, a reviewer learns that it:
+
+- accepts only a well-formed email and a password of at least 12 characters,
+- touches the database, reads the clock, and uses randomness, and nothing else (no network, no file system, no environment),
+- can fail only with `EmailTaken` or `Banned`,
+- returns a user whose email is the one passed in.
+
+The test swaps the real database, clock, and random source for in-memory, fixed, and seeded versions. No mocking library is involved: those are just different handlers for the same effects.
+
+## Six pillars
+
+**1. Effects you can see.** Every side effect and every error appears in the signature after `!`. There are no exceptions and no null. Handlers decide what an effect means, so tests can replace a real database with an in-memory one. See [Effects](/docs/tour/effects) and [Handlers](/docs/tour/handlers).
+
+**2. Rust-fast, without the borrow checker.** Everything is an immutable value. The compiler inserts reference counting at compile time and reuses memory in place when a value has a single owner. No tracing garbage collector, no lifetimes. Speed in the same league as Rust and Go is a design goal, not a measured result. Planned targets are native, WASM, and JavaScript. See [Memory model](/docs/tour/memory).
+
+**3. Verified by default.** Refinement types such as `type Age = Int where 0..=150`, `requires` and `ensures` contracts, property tests generated from those contracts, and deterministic simulation testing. See [Contracts](/docs/tour/contracts) and [Testing](/docs/tour/testing).
+
+**4. Secure by construction.** Effects double as capabilities, so a dependency cannot touch the network or environment unless you grant it. `Untrusted<T>` blocks injection at compile time and `Secret<T>` cannot be logged or serialized. See [Capabilities and security](/docs/tour/capabilities).
+
+**5. Built for agents.** A small grammar that fits in a single `llms.txt`, one way to do each thing, typed holes, JSON diagnostics with ranked fixes, a compiler MCP server, and content-addressed code so parallel agents do not conflict. See [For Agents](/docs/agents).
+
+**6. Batteries included.** One `vow` binary for new, check, test, run, build, fmt, and mcp. A planned standard library with HTTP, SQL checked against your schema, typed RPC, durable workflows, and LLM calls as typed effects. See [Standard library](/docs/stdlib).
+
+## Status
+
+Vow is a design. The current work is the language design document, research into prior art, and this website. The next phase is a checker prototype with a parser, a type and effect checker, JSON diagnostics, typed holes, and an interpreter. The [roadmap](/docs/roadmap) lists every phase.
+
+Code on this site is written to the current draft of the syntax. It cannot be run yet.
+
+## Where to go next
+
+<Cards>
+  <Card title="Why Vow" href="/docs/why-vow">
+    The problem with agent-written code and the design principles behind Vow.
+  </Card>
+  <Card title="Language Tour" href="/docs/tour/basics">
+    Nine short pages covering the whole language, from bindings to concurrency.
+  </Card>
+  <Card title="For Agents" href="/docs/agents">
+    llms.txt, the MCP server, JSON diagnostics, and typed holes.
+  </Card>
+  <Card title="Roadmap" href="/docs/roadmap">
+    What exists today, what comes next, and how to follow progress.
+  </Card>
+</Cards>

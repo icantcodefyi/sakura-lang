@@ -1,0 +1,4 @@
+{
+  "title": "For Agents",
+  "pages": ["index", "llms-txt", "mcp", "diagnostics", "typed-holes"]
+}

@@ -1,0 +1,68 @@
+---
+title: FAQ
+description: Honest answers to common questions about Vow's status, design choices, and relationship to other languages.
+---
+
+## Is Vow usable today?
+
+No. There is no compiler, interpreter, or package. Vow is in the design phase: the language design document, research, and this website. The next step is a [checker prototype](/docs/roadmap). Code on this site cannot be run yet.
+
+## Why not just use TypeScript with Effect-TS?
+
+Effect-TS is excellent and shows that typed effects and errors work for real services. Vow takes direct inspiration from it. The difference is enforcement. In TypeScript, the effect system is a library: any function can still throw, call `fetch` directly, read `process.env`, or cast to `any`, and nothing in the language stops it. An agent under pressure to make a test pass will find those exits.
+
+In Vow, effects are the only way to do IO and `Fail` is the only way to fail, so the signature is a guarantee rather than a convention. Vow also adds things a library cannot: refinement types checked by the compiler, capability grants for dependencies, taint tracking, and compile-time memory management.
+
+## Why reference counting? What about cycles?
+
+Reference counting inserted at compile time gives predictable memory use and no collector pauses, without asking the programmer to reason about lifetimes. With Perceus-style reuse, functional updates on uniquely owned values become in-place writes.
+
+Cycles cannot occur, because values are immutable: a value can only refer to values that existed before it. Mutable state lives behind effects (`State` atoms, `Db`), not inside values. See [Memory model](/docs/tour/memory).
+
+## Why `!` for effects?
+
+It reads as "and also": `-> User ! {Db, Clock}` returns a `User` and also uses the database and the clock. It is short, it separates the return type from the effect row visually, and it echoes the "this does something" meaning `!` has in many languages. Koka uses a similar arrow-and-row notation.
+
+## Will humans enjoy writing Vow?
+
+That is a goal, but not the primary one. Vow is designed first to be easy for agents to write correctly and for humans to review. In practice those overlap a lot: a small grammar, no null, no exceptions, and signatures that say what a function does are pleasant for people too. Whether the effect rows stay readable in large programs is one of the things the checker prototype is meant to find out.
+
+## Is Vow tied to one AI vendor?
+
+No. The interfaces are open formats: Markdown docs and `llms.txt`, JSON diagnostics, and the Model Context Protocol. Any agent that can run a command or speak MCP can use the toolchain. The `Llm` effect is provider-neutral: the handler chooses the provider.
+
+## How does Vow relate to Koka, Roc, and Unison?
+
+Vow borrows from all three and credits them openly:
+
+- **Koka**: row-typed algebraic effects and handlers, and Perceus reference counting with reuse.
+- **Roc**: the aim of a fast, friendly functional language for applications, and the platform idea of keeping IO at the edge.
+- **Unison**: content-addressed definitions, which make renames free and merges per-definition.
+
+Vow combines these with contracts, refinements, capabilities, taint and secret types, and agent tooling. It is a new language, not a fork of any of them.
+
+## Are there performance numbers?
+
+No. There is no compiler, so there is nothing to measure. Performance in the same league as Rust and Go for typical services is a design goal, based on published results for Perceus-style reference counting. Benchmarks will be published when there is something real to benchmark, with the code to reproduce them.
+
+## Why no `mut`?
+
+Mutation and aliasing together are the source of many hard bugs, and they are what forces Rust to have a borrow checker. With immutable values and in-place reuse, Vow aims to get most of the performance of mutation without its hazards. Shared mutable state still exists, but behind effects where it is visible in the signature.
+
+## What happens when a contract cannot be proven?
+
+It becomes a runtime check at the function boundary and a generated property test. Nothing is silently assumed. `vow check --contracts` is planned to show which contracts were proven and which were not. See [Contracts](/docs/tour/contracts#how-each-contract-is-discharged).
+
+## Can Vow call existing libraries in other languages?
+
+Not decided yet. A foreign function interface is needed, especially for the JavaScript and native targets, and it will have to fit the capability model: foreign calls will be effects that must be granted. The design is open.
+
+## What is the license?
+
+To be decided. A license will be chosen before the first code release and stated in the repository.
+
+## How can I help?
+
+- Read the [Language Tour](/docs/tour/basics) and open issues on [GitHub](https://github.com/icantcodefyi/vow) where the design is unclear, inconsistent, or wrong.
+- Try writing a small program you know well in Vow syntax, by hand or with an agent, and report what was awkward.
+- Point out prior art the design should learn from.

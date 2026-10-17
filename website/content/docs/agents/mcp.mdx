@@ -1,0 +1,226 @@
+---
+title: MCP server
+description: The planned `vow mcp` server, which exposes the compiler to agents as Model Context Protocol tools.
+---
+
+<Callout type="warn" title="Planned">
+  `vow mcp` does not exist yet. Tool names, inputs, and outputs on this page are the current design and may change.
+</Callout>
+
+`vow mcp` runs the compiler as a [Model Context Protocol](https://modelcontextprotocol.io) server over stdio. An agent calls compiler functions directly instead of running shell commands and parsing their output. The server keeps the project loaded between calls, so repeated checks are incremental.
+
+## Client configuration
+
+```json
+{
+  "mcpServers": {
+    "vow": {
+      "command": "vow",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+The server uses the project in its working directory, found by walking up to the nearest `vow.toml`.
+
+## Tools
+
+| Tool | Purpose |
+| --- | --- |
+| `check` | Type, effect, and contract check the project or one file. Returns diagnostics. |
+| `hole` | Describe one typed hole: expected type, allowed effects, bindings, candidates. |
+| `explain` | Explain an error code, with the relevant docs section. |
+| `signature` | Return the signature and contracts of a symbol. |
+| `find` | Search definitions by name or by type. |
+| `test` | Run tests, optionally filtered, with simulation seeds. |
+| `apply_fix` | Apply one fix from a diagnostic, by diagnostic id and fix index. |
+| `format` | Format a file or a snippet. |
+| `docs` | Return a docs page as Markdown. |
+
+Every tool returns JSON. Diagnostics use the same format as `vow check --format json`, documented in [Diagnostics](/docs/agents/diagnostics).
+
+## check
+
+Input:
+
+```json
+{ "path": "src/users.vow" }
+```
+
+Output:
+
+```json
+{
+  "ok": false,
+  "diagnostics": [
+    {
+      "id": "d1",
+      "code": "E0402",
+      "severity": "error",
+      "message": "effect `Net` is performed but not declared in the signature of `signup`",
+      "span": { "file": "src/users.vow", "start": { "line": 9, "col": 3 }, "end": { "line": 9, "col": 41 } },
+      "expected": "! {Db, Clock, Random, Fail<SignupError>}",
+      "found": "! {Db, Clock, Random, Net, Fail<SignupError>}",
+      "fixes": [
+        { "title": "Declare `Net` in the signature of `signup`", "safety": "changes-signature" },
+        { "title": "Remove the call to `Http.post`", "safety": "changes-behaviour" }
+      ],
+      "docs": "/docs/tour/effects.md#undeclared-effects"
+    }
+  ],
+  "holes": 0
+}
+```
+
+The `fixes` above are abbreviated; the full objects include `edits`. The `id` field is per-session and is what `apply_fix` takes.
+
+## hole
+
+Input:
+
+```json
+{ "file": "src/users.vow", "line": 9, "col": 3 }
+```
+
+Output:
+
+```json
+{
+  "expected": "User",
+  "effects": "! {Db, Clock, Random, Fail<SignupError>}",
+  "bindings": [
+    { "name": "email", "type": "Email" },
+    { "name": "pw", "type": "Password" }
+  ],
+  "facts": ["not Db.exists(users, email)"],
+  "contracts": ["ensures result.email == email"],
+  "candidates": [
+    { "name": "User", "kind": "record", "signature": "User { id: Uuid, email: Email, created: Instant }" },
+    { "name": "app/users.create_user", "kind": "function", "signature": "fn create_user(email: Email) -> User ! {Db, Clock, Random}" }
+  ]
+}
+```
+
+See [Typed holes](/docs/agents/typed-holes) for how candidates are ranked.
+
+## explain
+
+Input:
+
+```json
+{ "code": "E0510" }
+```
+
+Output:
+
+```json
+{
+  "code": "E0510",
+  "title": "Untrusted value flows into a raw sink",
+  "summary": "A value of type `Untrusted<T>` reached a function that interprets its argument, such as `Sql.raw`, `Shell.run`, or `Html.raw`.",
+  "usual_fix": "Use a tagged literal (`sql\"...\"`, `html\"...\"`) or validate the value with `.validate(Type)`.",
+  "docs": "/docs/tour/capabilities.md#untrusted-data"
+}
+```
+
+## signature
+
+Input:
+
+```json
+{ "symbol": "app/users.signup" }
+```
+
+Output:
+
+```json
+{
+  "symbol": "app/users.signup",
+  "signature": "pub fn signup(email: Email, pw: Password) -> User ! {Db, Clock, Random, Fail<SignupError>}",
+  "requires": [],
+  "ensures": ["result.email == email"],
+  "doc": "Create a user account.",
+  "hash": "#k3f9a1c2"
+}
+```
+
+The `hash` is the definition's planned content address. It changes only when the definition's normalized syntax tree changes, not when it is renamed or moved.
+
+## find
+
+Search by name, or by type with `_` as a wildcard:
+
+```json
+{ "type": "(List<_>) -> Int" }
+```
+
+```json
+{
+  "results": [
+    { "symbol": "std/list.len", "signature": "fn len<T>(xs: List<T>) -> Int" },
+    { "symbol": "std/list.sum", "signature": "fn sum(xs: List<Int>) -> Int" }
+  ]
+}
+```
+
+## test
+
+```json
+{ "filter": "duplicate email", "sim": true, "seeds": 100 }
+```
+
+```json
+{
+  "passed": 1,
+  "failed": 0,
+  "results": [{ "name": "duplicate email fails", "status": "ok", "seeds": 100 }]
+}
+```
+
+A failure includes the seed, the shrunk counterexample, and the `expect` that failed.
+
+## apply_fix
+
+```json
+{ "diagnostic": "d1", "fix": 1 }
+```
+
+```json
+{ "applied": true, "safety": "changes-behaviour", "files": ["src/users.vow"] }
+```
+
+`apply_fix` refuses a `changes-signature` fix unless the call sets `"confirm_signature_change": true`. That flag exists so an agent harness can require human approval before setting it.
+
+## format and docs
+
+```json
+{ "path": "src/users.vow" }
+```
+
+```json
+{ "page": "/docs/tour/handlers" }
+```
+
+`format` returns the formatted text or writes it in place. `docs` returns the same Markdown as the page's `.md` URL (see [llms.txt](/docs/agents/llms-txt)), so it works offline.
+
+## Exporting your own tools
+
+`vow mcp` serves the compiler. A separate planned command, `vow mcp export`, serves your program's functions as MCP tools. Annotate a function with `@tool`, and its `///` doc comment becomes the tool description and its signature becomes the input schema:
+
+```vow
+/// Look up the current status of an order by its id.
+@tool
+pub fn order_status(id: OrderId) -> OrderStatus ! {Db, Fail<NotFound>} {
+  match Db.query_one<OrderStatus>(sql"select status from orders where id = {id}") {
+    Some(status) => status
+    None => fail NotFound
+  }
+}
+```
+
+Refinements become JSON Schema constraints, and tool inputs are validated as `Untrusted` data before the function runs. See the [standard library](/docs/stdlib) for details.
+
+## Next
+
+[Diagnostics](/docs/agents/diagnostics): the full JSON format reference.

@@ -1,0 +1,95 @@
+---
+title: Roadmap
+description: The planned phases of Vow, from language design to a 1.0 release, and how to follow progress.
+---
+
+<Callout type="info" title="No dates">
+  Vow is pre-alpha. The phases below are ordered but not scheduled, and their scope will change as the design meets an implementation.
+</Callout>
+
+## Summary
+
+| Phase | Name | Status |
+| --- | --- | --- |
+| 0 | Design | In progress |
+| 1 | Checker prototype | Not started |
+| 2 | Verification | Not started |
+| 3 | Code generation | Not started |
+| 4 | Batteries | Not started |
+| 5 | Toward 1.0 | Not started |
+
+## Phases
+
+<Steps>
+<Step>
+
+### Phase 0: Design (in progress)
+
+- The language design document: syntax, type system, effects, handlers, contracts, memory model.
+- Research into prior art: effect systems, reference counting, refinement types, capability security, deterministic simulation.
+- This website, including the Markdown exports for agents.
+
+</Step>
+<Step>
+
+### Phase 1: Checker prototype
+
+- Parser and formatter (`vow fmt`).
+- Type checker and effect checker, including row polymorphism and handlers.
+- JSON diagnostics with fixes (`vow check --format json`).
+- Typed holes.
+- A tree-walking interpreter so programs can run (`vow run`).
+
+The goal of this phase is to test the design: whether the syntax is as easy for agents to write as intended, and whether effect rows stay readable in real code.
+
+</Step>
+<Step>
+
+### Phase 2: Verification
+
+- `requires` and `ensures` contracts.
+- Refinement checking with an SMT solver, with runtime checks where proofs fail.
+- Property tests, including tests generated from contracts.
+- Deterministic simulation testing (`Sim.world`).
+
+</Step>
+<Step>
+
+### Phase 3: Code generation
+
+- An intermediate representation with Perceus reference counting and reuse analysis.
+- Native backend via LLVM.
+- WASM backend.
+- JavaScript backend.
+
+</Step>
+<Step>
+
+### Phase 4: Batteries
+
+- The [standard library](/docs/stdlib).
+- HTTP client and server.
+- Typed SQL checked against `schema.sql`.
+- Full-stack web with typed RPC.
+- Durable workflows.
+- `Llm` effect, budgets, and tools from functions.
+- The compiler MCP server (`vow mcp`) and `vow mcp export`.
+- Content-addressed codebase and per-definition merge.
+
+</Step>
+<Step>
+
+### Phase 5: Toward 1.0
+
+- A stability policy for syntax, semantics, and diagnostic codes.
+- A package registry with capability grants.
+- Documentation and the complete language reference.
+
+</Step>
+</Steps>
+
+## Follow progress
+
+Development happens in the open at [github.com/icantcodefyi/vow](https://github.com/icantcodefyi/vow). Watch the repository for releases, and read the design notes there as they are written.
+
+Feedback on the design is most useful now, before anything is implemented. See the [FAQ](/docs/faq#how-can-i-help) for ways to help.

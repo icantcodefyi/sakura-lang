@@ -1,0 +1,191 @@
+---
+title: Standard library
+description: An overview of the planned Vow standard library, its modules, their handlers, and a few end-to-end examples.
+---
+
+<Callout type="warn" title="Planned standard library">
+  None of these modules exist yet. This page is the plan for what ships with the `vow` binary, and module names and APIs will change.
+</Callout>
+
+Vow aims to include what a typical service needs, so that an agent does not have to choose between five HTTP libraries. Every effectful module below is an [effect](/docs/tour/effects) with swappable [handlers](/docs/tour/handlers), which is what makes it testable and what lets [capabilities](/docs/tour/capabilities) restrict it.
+
+## Core
+
+| Module | Purpose |
+| --- | --- |
+| `Int` | 64-bit integers: arithmetic, parsing (`Int.parse`), ranges |
+| `Float` | 64-bit floats: arithmetic, rounding, parsing |
+| `String` | UTF-8 strings: slicing, search, case, interpolation helpers |
+| `List` | Immutable lists: `map`, `filter`, `fold`, `sort`, `push`, `get` |
+| `Map` | Immutable hash maps |
+| `Set` | Immutable hash sets |
+| `Option` | `Some(T)` or `None`: `map`, `or`, `unwrap_or`, `is_some` |
+| `Result` | `Ok(T)` or `Err(E)`, for storing outcomes as data |
+| `Pair` | The two-field record `{ left: A, right: B }` |
+| `Json` | Encoding and decoding, derived from types and checked against refinements |
+
+## Effects
+
+| Module | Purpose | Handlers |
+| --- | --- | --- |
+| `Clock` | Current time, `Instant`, `Duration` | real clock in `main`, `Clock.fixed("2026-01-01")` |
+| `Random` | Random numbers, `Uuid.new()` | real source in `main`, `Random.seeded(1)` |
+| `Log` | Structured logging | real log in `main`, `Log.silent()`, `Log.capture()` |
+| `Env` | Environment variables, `Env.secret` | real environment in `main`, `Env.only([...])`, `Env.fixed(map)` |
+| `Fs` | Files and directories | real file system in `main`, `Fs.only([...])`, `Fs.memory()` |
+| `Net` | Raw network access | real network in `main`, `Net.only([...])`, `Net.deny()` |
+| `Db` | Database access | `Db.postgres(url)`, `Db.sqlite(path)`, `Db.memory()` |
+| `Async` | Concurrency runtime | real scheduler in `main`, `Timeout.after(2.s)` |
+| `Task` | Structured tasks: `Task.both`, `Task.all`, `Task.race` | uses `Async` |
+| `Chan` | Bounded channels between tasks | uses `Async` |
+| `State` | Shared mutable cells, `Atom<T>` | `State.local()` |
+| `Workflow` | Durable execution: `Workflow.sleep`, `Workflow.start` | `Workflow.postgres(url)`, `Workflow.memory()` |
+| `Llm` | Typed calls to language models | `Llm.provider(config)`, `Llm.replay(file)` |
+| `Budget` | Token and cost limits for `Llm` | `Budget.tokens(n)`, `Budget.usd(x)` |
+
+## Web
+
+| Module | Purpose |
+| --- | --- |
+| `Http` | HTTP client and server: `Http.get`, `Http.post`, `Http.serve`, `Http.bearer` |
+| `Router` | Request routing with typed path parameters |
+| `Rpc` | Typed calls from a browser client to server functions |
+| `Html` | `html"..."` templates with escaping; `Html.raw` for trusted markup |
+
+## Data
+
+| Module | Purpose |
+| --- | --- |
+| `Sql` | `sql"..."` queries checked against `schema.sql` at compile time; `Sql.raw` for trusted strings |
+
+## Testing
+
+| Module | Purpose |
+| --- | --- |
+| `Sim` | Deterministic simulation: `Sim.world(seed: 7)`, `Sim.partition`, `Sim.crash` |
+| `Gen` | Generators for property tests |
+| `Snapshot` | Snapshot comparisons: `Snapshot.matches(name, value)` |
+
+## Example: typed SQL
+
+Queries are checked against the project's `schema.sql`. Column names, column types, and the result type must agree, or `vow check` fails.
+
+```sql title="schema.sql"
+create table users (
+  id uuid primary key,
+  email text not null unique,
+  created timestamptz not null
+);
+```
+
+```vow title="src/users.vow"
+type User = { id: Uuid, email: Email, created: Instant }
+
+pub fn find_by_email(email: Email) -> Option<User> ! {Db} {
+  Db.query_one<User>(sql"select id, email, created from users where email = {email}")
+}
+
+pub fn recent(limit: Int) -> List<User> ! {Db} {
+  Db.query<User>(sql"select id, email, created from users order by created desc limit {limit}")
+}
+```
+
+`{email}` and `{limit}` are bound parameters, never spliced text. If the `email` column were renamed in `schema.sql`, both queries would fail to check. `users` in `Db.exists(users, email)` refers to the same table, generated from the schema.
+
+## Example: HTTP route with typed RPC
+
+```vow title="src/routes.vow"
+import std/http.{Request, Response, Router}
+import app/users.{signup, User}
+
+type SignupForm = { email: Email, password: Password }
+
+pub fn routes() -> Router<{Db, Clock, Random}> {
+  Router.new()
+    |> Router.post("/signup", on_signup)
+}
+
+fn on_signup(req: Request) -> Response ! {Db, Clock, Random} {
+  handle create(req) {
+    fail Invalid => Response.text(400, "invalid input")
+    fail EmailTaken => Response.text(409, "email already registered")
+    fail Banned => Response.text(403, "not allowed")
+  }
+}
+
+fn create(req: Request) -> Response ! {Db, Clock, Random, Fail<Invalid>, Fail<SignupError>} {
+  let form = req.json().validate(SignupForm)
+  let user = signup(form.email, form.password)
+  Response.json(201, user)
+}
+```
+
+`routes` is pure: building a router performs no effects. Its type records the effects its handlers will perform when a request arrives, and `Http.serve` requires the caller to handle them. `req.json()` is `Untrusted<Json>`. `.validate(SignupForm)` decodes it and checks every refinement, so `form.email` is an `Email`.
+
+For a browser client, `@rpc` exports a server function with its types:
+
+```vow
+/// Return the profile of the signed-in user.
+@rpc
+pub fn me(session: Session) -> Profile ! {Db, Fail<Unauthorized>} {
+  load_profile(session.user_id)
+}
+```
+
+The `js` build target generates a client function with the same signature, so a type change on the server is a compile error in the client.
+
+## Example: an LLM call as a typed effect
+
+```vow
+type Cents = Int where it >= 0
+type Invoice = { vendor: String, total: Cents, due: Date }
+
+fn extract_invoice(text: String) -> Invoice ! {Llm, Fail<LlmError>} {
+  Llm.ask<Invoice>("Extract the invoice fields from this text:\n{text}")
+}
+
+fn process(inbox: List<String>) -> List<Invoice> ! {Llm, Fail<LlmError>} {
+  with Budget.tokens(20_000), Budget.usd(0.50) {
+    inbox.map(extract_invoice)
+  }
+}
+```
+
+`Llm.ask<Invoice>` returns a value validated against `Invoice`, refinements included: `total` is never negative. If the model's output does not fit after the configured retries, the call fails with `LlmError`. If a budget is exhausted, the call fails instead of spending more. In tests, `Llm.replay(file)` returns recorded responses.
+
+### Tools from functions
+
+```vow
+/// Look up the current status of an order by its id.
+@tool
+pub fn order_status(id: OrderId) -> OrderStatus ! {Db, Fail<NotFound>} {
+  match Db.query_one<OrderStatus>(sql"select status from orders where id = {id}") {
+    Some(status) => status
+    None => fail NotFound
+  }
+}
+```
+
+The `///` comment becomes the tool description and the signature becomes its schema. Functions marked `@tool` can be passed to `Llm.ask` as tools, and `vow mcp export` serves them over MCP.
+
+## Example: a durable workflow
+
+```vow
+effect Mailer {
+  fn send(to: Email, subject: String, body: String) -> ()
+}
+
+pub fn trial(user: User) ! {Workflow, Mailer, Db} {
+  Mailer.send(user.email, "Your trial has started", "You have 14 days.")
+  Workflow.sleep(11.days)
+  if not is_subscribed(user.id) {
+    Mailer.send(user.email, "3 days left", "Your trial ends soon.")
+  }
+}
+```
+
+`Workflow.sleep(11.days)` survives restarts and deploys. Effects inside the workflow are recorded, so a replay after a crash does not send the first email twice. See [Concurrency](/docs/tour/concurrency#durable-workflows).
+
+## Next
+
+See the [roadmap](/docs/roadmap) for when each part is planned.

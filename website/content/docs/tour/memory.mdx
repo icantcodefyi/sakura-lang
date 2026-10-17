@@ -1,0 +1,150 @@
+---
+title: Memory model
+description: Values, compile-time reference counting with in-place reuse, why cycles cannot occur, and where mutable state lives in Vow.
+---
+
+<Callout type="warn" title="Design draft">
+  The memory model follows published work (Perceus, as used in Koka and Roc). Vow's implementation does not exist yet, and all performance statements here are design goals.
+</Callout>
+
+Vow aims for the predictability of manual memory management without asking anyone, human or agent, to manage memory. There is no tracing garbage collector, no lifetime annotations, and no borrow checker.
+
+## Everything is a value
+
+Every value in Vow is immutable. Records, lists, maps, and strings cannot be changed after they are created. Operations that look like updates return new values:
+
+```vow
+let xs = [1, 2, 3]
+let ys = xs.push(4)      // [1, 2, 3, 4]
+// xs is still [1, 2, 3]
+```
+
+Values have no identity. Two lists with the same elements are equal, and there is no way to ask whether they are "the same object". This is what makes the rest of the model work.
+
+## Compile-time reference counting
+
+Each heap value carries a reference count. The compiler, not the programmer, inserts the increments and decrements, using the Perceus algorithm:
+
+- **Precise.** A value is freed as soon as its last reference is gone, not at the end of a scope and not at the next collection. Memory use follows the program's live data closely.
+- **Borrow inference.** When a function only reads an argument, the compiler passes it without touching the count.
+- **Drop specialization.** When the compiler knows the shape of a value being freed, it emits specialized code instead of a generic traversal.
+
+There are no pauses. Freeing work happens at predictable points in the program, in proportion to what is being freed.
+
+## In-place reuse
+
+If a value is uniquely owned (its reference count is one) when it is "updated", the compiler reuses its memory instead of allocating a new value. The update becomes a mutation that nobody can observe.
+
+```vow
+fn add_all(xs: List<Int>, more: List<Int>) -> List<Int> {
+  more.fold(xs, (acc, x) => acc.push(x))
+}
+```
+
+`acc` is never shared, so each `push` writes into the same buffer. The code is written in a functional style and runs like an imperative loop.
+
+When a value is shared, the update copies, and the original is unchanged:
+
+```vow
+let xs = [1, 2, 3]
+let ys = xs.push(4)      // xs is still used below, so this copies
+Log.info("{xs.len} {ys.len}")
+```
+
+The same applies to records. `{ user with email: new_email }` overwrites `user`'s memory when `user` is not used afterwards:
+
+```vow
+fn normalize(user: User) -> User {
+  let user = { user with email: user.email.lower() }
+  { user with name: user.name.trim() }
+}
+```
+
+If the caller passes its last reference to `user`, both updates happen in place.
+
+Reuse also applies to pattern matching. A `match` that takes apart a value and builds one of the same size reuses the old cell:
+
+```vow
+type Tree = Leaf | Node(left: Tree, value: Int, right: Tree)
+
+fn increment(t: Tree) -> Tree {
+  match t {
+    Leaf => Leaf
+    Node(l, v, r) => Node(increment(l), v + 1, increment(r))
+  }
+}
+```
+
+With a unique tree, `increment` allocates nothing.
+
+## Why there are no cycles
+
+Reference counting cannot free cycles on its own, which is why most RC languages add a cycle collector or weak references. Vow does not need either.
+
+A cycle requires a value that points, directly or indirectly, to itself. With immutable values, a value can only point to values that existed before it was created, so a cycle cannot be built. Reference counting is complete: every unreachable value is freed.
+
+Graph-shaped data uses identifiers instead of pointers:
+
+```vow
+type NodeId = Int
+type Graph = { edges: Map<NodeId, List<NodeId>> }
+
+fn neighbors(g: Graph, n: NodeId) -> List<NodeId> {
+  g.edges.get(n).unwrap_or([])
+}
+```
+
+## Where mutable state lives
+
+Some state really is shared and changes over time: a counter, a cache, a connection pool. In Vow it lives behind effects, not inside values.
+
+```vow
+fn count_visits(paths: List<String>) -> Int ! {State} {
+  let visits = State.atom(0)               // Atom<Int>
+  for p in paths {
+    visits.update(n => n + 1)
+  }
+  visits.get()
+}
+```
+
+An `Atom<T>` is a handle managed by the `State` effect's handler. It holds a value and swaps it atomically. Because an atom is a handle rather than a pointer inside a value, it does not participate in reference-count cycles, and its storage is released when the handler's scope ends.
+
+Larger shared state belongs in `Db`, whose handler might be Postgres, SQLite, or an in-memory table in tests.
+
+## Performance
+
+Vow's design goal is performance in the same league as Rust and Go for typical services: no GC pauses, predictable memory, and native code. That is a goal, not a measurement. There are no benchmarks because there is no compiler yet.
+
+Planned backends:
+
+| Target | Planned via | Use |
+| --- | --- | --- |
+| `native` | LLVM | Servers, CLIs |
+| `wasm` | WebAssembly | Edge, browser, plugins |
+| `js` | JavaScript | Browser front ends, Node-compatible runtimes |
+
+```bash
+vow build --target native
+vow build --target wasm
+vow build --target js
+```
+
+## Costs and limits
+
+Being honest about the trade-offs:
+
+- Reference counting has a per-operation cost that a tracing GC avoids. Borrow inference and reuse are what make it competitive, and how well they work in practice remains to be measured.
+- Sharing a large value and then updating it copies. A planned warning will point at hot loops where uniqueness is lost.
+- Atomic counts are needed for values shared across threads. The compiler plans to use non-atomic counts for values it can show are thread-local.
+
+## What the compiler checks
+
+- There is no syntax for mutation or pointer identity, so aliasing bugs cannot be written.
+- Reference counting is inserted automatically and is never visible in source.
+- Reuse is an optimization only: whether an update reuses memory or copies, the program's behavior is the same.
+- Mutable shared state requires the `State` or `Db` effect, so it is visible in the signature.
+
+## Next
+
+[Concurrency](/docs/tour/concurrency): structured tasks, channels, and durable workflows.

@@ -1,0 +1,72 @@
+---
+title: Why Vow
+description: The problem with reviewing agent-written code, the thesis that the signature should be the contract, and the principles that follow from it.
+---
+
+## The problem
+
+AI agents now write a large share of new code, and that share is growing. The bottleneck has moved from writing code to trusting it.
+
+The usual answer is code review, but reviewing diffs line by line does not scale when an agent can produce thousands of lines an hour. Reviewers skim. Skimming works only if the important facts about a change are easy to find, and in most languages they are not.
+
+Four properties of mainstream languages make agent-written code risky to accept:
+
+- **Exceptions.** Any call can throw, and nothing in the signature says what. A reviewer cannot tell which failures are handled without reading every callee.
+- **Null.** A value that may be absent looks the same as one that is always present. The type checker either ignores it or the codebase opts out of checking.
+- **Ambient authority.** Any function in any dependency can open a socket, read an environment variable, or write a file. Supply-chain attacks rely on this.
+- **Hidden IO.** A function named `format_price` might call a currency API. Nothing stops it, and nothing in the signature reveals it.
+
+Agents make these problems sharper, not different. An agent will happily add a network call to a helper to make a test pass, catch and ignore an exception to silence an error, or interpolate a request parameter into a SQL string. Each change is small and plausible in a diff.
+
+## The thesis
+
+Make the signature the contract, and make the compiler enforce it.
+
+In Vow, a function signature states what the function takes, what it returns, every effect it may perform, every error it may raise, and the guarantees it makes about its result:
+
+```vow
+fn signup(email: Email, pw: Password) -> User ! {Db, Clock, Random, Fail<SignupError>}
+  ensures result.email == email
+```
+
+The body cannot perform an effect that is not listed, cannot fail in a way that is not listed, and cannot return a value that breaks the `ensures` clause without the compiler or the test runner reporting it.
+
+This changes what review means. A human reviews the signatures, which are short and change rarely. The compiler checks the bodies, which are long and change constantly. When an agent's change needs a new capability, the signature has to change, and a signature change is exactly the thing a reviewer looks for.
+
+## Why not an existing language
+
+Every language below is excellent at what it was designed for. None was designed for this workflow, and each shapes Vow in some way.
+
+**TypeScript.** Huge ecosystem, fast feedback, and the language most agents write best today. But exceptions are untyped, any function can perform any IO, `any` and type assertions are one keystroke away, and there are several ways to do almost everything (classes or closures, promises or callbacks, `null` or `undefined`). Each choice multiplies what a reviewer must check.
+
+**Python.** The most readable mainstream language and a strong fit for scripts and data work. Types are optional and unchecked at runtime, exceptions and IO are invisible in signatures, and dependencies run with full authority at import time.
+
+**Rust.** Proves that a language can be fast and memory safe without a garbage collector, and that a strict compiler with excellent diagnostics changes how people work. The cost is lifetimes and the borrow checker. Agents spend a large share of their effort satisfying ownership rules that are unrelated to the task, and IO and panics are still not tracked in signatures.
+
+**Go.** Small, consistent, and quick to compile, with errors as values. That simplicity is a direct inspiration. But errors are not typed by kind, nil remains, effects are untracked, and any package can reach the network.
+
+**Effect-TS.** Brings typed effects and typed errors to TypeScript, and shows that the model works for real services. It is a library on top of a language that cannot enforce it: plain TypeScript code can still throw, still perform IO directly, and still escape the effect system. Vow takes the model and makes it the only way to write code.
+
+**Koka, Unison, and Roc.** Vow borrows directly from all three. Koka pioneered row-typed algebraic effects and Perceus reference counting with in-place reuse. Unison showed that content-addressed code removes whole classes of merge and rename problems. Roc showed that a functional language can aim at application performance with a small, friendly surface. Vow's contribution is to combine these ideas with contracts, capabilities, taint tracking, and machine-readable tooling, and to aim the whole design at agents writing code for humans to review.
+
+## Design principles
+
+### One way to do things
+
+The grammar is small enough to fit in a single `llms.txt`. There is one way to bind a value (`let`), one way to branch on data (`match`), one way to handle errors (the `Fail` effect), and one formatter with no options. Agents produce more consistent code when there is less to choose from, and reviewers read faster when every file looks alike.
+
+### Everything visible in the signature
+
+Effects, errors, capabilities, refinements, and contracts are all part of the signature. If it matters for review, it is written where reviewers look. Nothing is inferred across a public boundary.
+
+### Machine-readable everything
+
+Diagnostics are JSON with spans, expected and found types, and ranked fixes. Typed holes report what fits. The compiler runs as an MCP server. Documentation is served as Markdown. An agent never has to scrape human-formatted output.
+
+### Safe by default, explicit escape hatches
+
+Data from outside is `Untrusted` until validated. Secrets cannot be printed. Dependencies have no authority until granted. When you need to override a rule, the escape hatch is a named, greppable call such as `.trust_because("reason")`, and it shows up in review.
+
+## Next
+
+Read the [Quickstart](/docs/quickstart) preview, or go straight to the [Language Tour](/docs/tour/basics).

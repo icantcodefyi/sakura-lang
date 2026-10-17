@@ -1,0 +1,148 @@
+---
+title: Quickstart
+description: A preview of installing the Vow toolchain and creating a first project, for when a compiler exists.
+---
+
+<Callout type="warn" title="Coming soon: there is no installable compiler yet">
+  Everything on this page is a preview of the planned workflow. None of these commands work today. Follow the [roadmap](/docs/roadmap) to see when the first checker prototype lands.
+</Callout>
+
+## Install (preview)
+
+Vow is planned as a single binary called `vow` that contains the compiler, test runner, formatter, package manager, and MCP server.
+
+The distribution method (installer script, package managers, or both) is not decided. Once installed, the binary is all you need:
+
+```bash
+# Preview only: there is no binary to install yet.
+vow --version
+```
+
+## Create a project (preview)
+
+```bash
+vow new hello
+cd hello
+```
+
+`vow new` creates a small project:
+
+```md
+hello/
+  vow.toml          # package manifest and capability grants
+  src/
+    main.vow        # entry point: fn main
+    greet.vow       # module hello/greet
+  tests/
+    greet_test.vow
+```
+
+One module per file. The module name is the path, so `src/greet.vow` is imported as `import hello/greet`.
+
+```toml title="vow.toml"
+[package]
+name = "hello"
+version = "0.1.0"
+
+[dependencies]
+```
+
+```vow title="src/greet.vow"
+/// Build a greeting for a person.
+pub fn greet(name: String) -> String {
+  "Hello, {name}"
+}
+```
+
+```vow title="src/main.vow"
+import hello/greet.{greet}
+
+fn main() ! {Log} {
+  Log.info(greet("world"))
+}
+```
+
+`greet` is pure, so its signature has no effect row. `main` declares `Log`, the only capability this program uses.
+
+## Run it (preview)
+
+```bash
+$ vow run
+info  Hello, world
+```
+
+## Test it (preview)
+
+```vow title="tests/greet_test.vow"
+import hello/greet.{greet}
+
+test "greets by name" {
+  expect greet("Ada") == "Hello, Ada"
+}
+
+property "always starts with Hello" (name: String) {
+  expect greet(name).starts_with("Hello, ")
+}
+```
+
+```bash
+$ vow test
+ok    greets by name
+ok    always starts with Hello (100 cases)
+2 passed, 0 failed
+```
+
+## Check it, as an agent would (preview)
+
+Suppose `greet` starts logging without declaring it:
+
+```vow title="src/greet.vow"
+pub fn greet(name: String) -> String {
+  Log.info("greeting {name}")
+  "Hello, {name}"
+}
+```
+
+`vow check --format json` reports one diagnostic per problem, with fixes:
+
+```json
+{
+  "code": "E0402",
+  "severity": "error",
+  "message": "effect `Log` is performed but not declared in the signature of `greet`",
+  "span": { "file": "src/greet.vow", "start": { "line": 2, "col": 3 }, "end": { "line": 2, "col": 30 } },
+  "expected": "(no effects)",
+  "found": "! {Log}",
+  "fixes": [
+    {
+      "title": "Declare `Log` in the signature of `greet`",
+      "safety": "changes-signature",
+      "edits": [{ "file": "src/greet.vow", "line": 1, "col": 37, "insert": " ! {Log}" }]
+    },
+    {
+      "title": "Remove the call to `Log.info`",
+      "safety": "changes-behaviour",
+      "edits": [{ "file": "src/greet.vow", "start": { "line": 2, "col": 3 }, "end": { "line": 2, "col": 30 }, "replace": "" }]
+    }
+  ],
+  "docs": "/docs/tour/effects.md#undeclared-effects"
+}
+```
+
+The first fix changes the signature, so it is marked for human review. See [Diagnostics](/docs/agents/diagnostics) for the full format.
+
+## Other commands (preview)
+
+| Command | Purpose |
+| --- | --- |
+| `vow new <name>` | Create a project |
+| `vow check` | Parse, type check, effect check, and verify contracts |
+| `vow test` | Run tests, property tests, and contract-generated tests |
+| `vow run` | Run `main` |
+| `vow build --target native` | Build a release binary (also `wasm`, `js`) |
+| `vow fmt` | Format code. There are no options. |
+| `vow mcp` | Start the compiler MCP server for agents |
+
+## Next
+
+Start the [Language Tour](/docs/tour/basics).

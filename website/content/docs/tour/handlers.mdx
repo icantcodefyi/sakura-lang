@@ -1,0 +1,169 @@
+---
+title: Handlers
+description: Installing handlers with `with`, writing inline handlers with `handle` and `resume`, and handling failure.
+---
+
+<Callout type="warn" title="Design draft">
+  Handler syntax is a draft. The standard handler names on this page are planned, not final.
+</Callout>
+
+An [effect](/docs/tour/effects) declares operations. A **handler** gives them meaning. The same code can run against Postgres in production and an in-memory table in a test, because the code names the effect and the caller picks the handler.
+
+## Installing handlers with `with`
+
+Handlers are values. `with h1, h2 { body }` runs `body` with those handlers installed. Inside the block, the handled effects are satisfied, so they disappear from the block's row.
+
+```vow
+test "signup stores the user" {
+  with Db.memory(), Clock.fixed("2026-01-01"), Random.seeded(1) {
+    let user = signup("a@b.co", "correct horse battery")
+    expect Db.exists(users, user.email)
+  }
+}
+```
+
+The same function in production:
+
+```vow
+fn main() ! {Net, Env, Log, Clock, Random, Async} {
+  let url = Env.secret("DATABASE_URL")
+  with Db.postgres(url) {
+    Http.serve(8080, routes())
+  }
+}
+```
+
+`Db.postgres(url)` is itself implemented with `Net`, so installing it requires `Net` in the surrounding row. Handlers cannot create authority from nothing. See [Capabilities and security](/docs/tour/capabilities).
+
+`main` declares the root effects the program needs, and the runtime provides real handlers for exactly those. Its signature is a summary of everything the program can do.
+
+## Standard handlers
+
+| Effect | Handlers (planned) |
+| --- | --- |
+| `Db` | `Db.postgres(url)`, `Db.sqlite(path)`, `Db.memory()` |
+| `Clock` | real clock in `main`, `Clock.fixed("2026-01-01")`, `Sim.world(...)` |
+| `Random` | real source in `main`, `Random.seeded(1)` |
+| `Net` | real network in `main`, `Net.only(["api.stripe.com"])`, `Net.deny()` |
+| `Log` | real log in `main`, `Log.silent()`, `Log.capture()` |
+| `Async` | real scheduler in `main`, `Timeout.after(2.s)`, `Sim.world(...)` |
+| `Llm` | `Llm.provider(config)`, `Llm.replay(file)`, `Budget.tokens(n)`, `Budget.usd(x)` |
+
+A handler value has type `Handler<E>`. Some handlers, such as `Net.only(...)` and `Timeout.after(...)`, do not remove an effect: they wrap it with a restriction and pass it on.
+
+## Order and nesting
+
+Handlers listed in one `with` are installed left to right, so the leftmost is outermost. Nesting is equivalent:
+
+```vow
+with Db.memory() {
+  with Clock.fixed("2026-01-01") {
+    run_report()
+  }
+}
+```
+
+The innermost handler for an effect wins. A test can override one effect inside a larger setup without repeating the rest.
+
+## Inline handlers with `handle`
+
+`handle expr { arms }` evaluates `expr` and intercepts its effect operations. Each arm matches one operation. `resume(v)` continues the computation from the point where the operation was performed, with `v` as the operation's result.
+
+```vow
+fn silently<T, e>(body: () -> T ! {Log | e}) -> T ! e {
+  handle body() {
+    Log.info(msg) => resume(())
+  }
+}
+```
+
+Read the signature: `body` may log and do anything else (`e`). `silently` handles `Log` and passes the rest through, so the result has row `e`. The compiler checks that the arms really cover `Log`.
+
+A handler can answer an operation with a value:
+
+```vow
+fn at_noon<T, e>(body: () -> T ! {Clock | e}) -> T ! e {
+  handle body() {
+    Clock.now() => resume(Instant.parse("2026-01-01T12:00:00Z"))
+  }
+}
+```
+
+A `return` arm transforms the final value when the body finishes normally. This lets a handler collect what happened:
+
+```vow
+fn collect_logs<T, e>(body: () -> T ! {Log | e}) -> Pair<T, List<String>> ! e {
+  handle body() {
+    Log.info(msg) => {
+      let rest = resume(())
+      { rest with right: rest.right.prepend(msg) }
+    }
+    return value => Pair { left: value, right: [] }
+  }
+}
+```
+
+`resume` returns whatever the rest of the handled computation produces, after the `return` arm. That is why the `Log.info` arm can prepend to the list.
+
+## Handling failure
+
+`Fail<E>` is an ordinary effect, so failure is handled like any other. An arm that does not call `resume` stops the computation and its value becomes the result:
+
+```vow
+fn age_or_default(s: String) -> Age {
+  handle parse_age(s) {
+    fail Invalid => Age.default
+  }
+}
+```
+
+The signature of `age_or_default` has no `Fail<Invalid>`: it was handled. If `parse_age` could fail in more ways, each needs an arm or stays in the row.
+
+Arms can match specific variants:
+
+```vow
+fn signup_status(email: Email, pw: Password) -> Int ! {Db, Clock, Random} {
+  handle signup(email, pw) {
+    fail EmailTaken => 409
+    fail Banned => 403
+    return _ => 201
+  }
+}
+```
+
+To keep the outcome as data instead, use `Fail.catch`, which returns a `Result`:
+
+```vow
+let outcome = Fail.catch(() => parse_age(input))   // Result<Age, Invalid>
+
+match outcome {
+  Ok(age) => Log.info("age {age}")
+  Err(Invalid) => Log.warn("bad age: {input}")
+}
+```
+
+In tests, `expect` compares outcomes directly, without catching first:
+
+```vow
+expect signup("a@b.co", "another long password") == Fail(EmailTaken)
+```
+
+## Writing reusable handlers
+
+A function shaped like `silently` above is a handler: it takes a body and returns its result with one effect removed. `Handler<E>` is the standard name for that shape, and `with` accepts any value of it. `with silently { ... }` is the same as `silently(() => ...)`.
+
+## One-shot resumption
+
+`resume` may be called at most once per operation. Multi-shot continuations (resuming twice) are powerful but make reference counting and resource safety much harder to reason about. Vow leaves them out by design.
+
+## What the compiler checks
+
+- A `with` or `handle` removes exactly the effects its handlers cover. The remaining row is computed and checked against the signature.
+- Every arm matches an operation of a handled effect, with the declared parameter and return types.
+- `resume` is called at most once in each arm, and only inside a `handle`.
+- Installing a handler requires the effects the handler itself uses, such as `Net` for `Db.postgres`.
+- `fail` arms cover the variants they name. Unhandled variants stay in the row.
+
+## Next
+
+[Contracts](/docs/tour/contracts): refinement types, `requires`, and `ensures`.

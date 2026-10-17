@@ -1,0 +1,190 @@
+---
+title: Basics
+description: Bindings, functions, control flow, strings, lambdas, pipes, loops, and modules in Vow.
+---
+
+<Callout type="warn" title="Design draft">
+  Syntax and semantics on this page are a draft and may change before the first release.
+</Callout>
+
+Vow has a deliberately small surface. The complete keyword list is:
+
+```md
+fn let type match if else with handle effect test property requires ensures
+where fail return import pub for in resume as and or not expect
+```
+
+The literals are `true` and `false`. Three names have special meaning in specific places: `it` inside a `where` refinement, `result` inside an `ensures` clause, and `self`. There is no `mut`, no `null`, no `class`, no exceptions, no `try`/`catch`, no `async`/`await`, and no `?` operator. Each of those jobs is done by something on this page or in the rest of the tour.
+
+## Comments
+
+```vow
+// A line comment.
+
+/// A doc comment. It attaches to the next definition and becomes
+/// hover documentation and, for tools, the tool description.
+pub fn double(n: Int) -> Int {
+  n * 2
+}
+```
+
+## Bindings
+
+`let` binds a name to a value. Bindings are immutable. Shadowing a name with a new `let` is allowed and is the idiomatic way to build up a value step by step.
+
+```vow
+let total = 10
+let total = total + 1      // a new binding that shadows the old one
+let name = "Ada"
+let big = 20_000           // underscores are allowed in number literals
+let ratio = 0.75
+let primes = [2, 3, 5, 7]  // List<Int>
+let nothing = ()           // the unit value
+```
+
+Types of local bindings are inferred. Types of top-level functions are always written out, because the signature is the contract.
+
+## Functions
+
+```vow
+fn add(a: Int, b: Int) -> Int {
+  a + b
+}
+
+pub fn area(w: Float, h: Float) -> Float {
+  w * h
+}
+```
+
+- The last expression of the body is the return value.
+- `return` exists only for early exit.
+- `pub` exports a definition from its module. Everything else is private to the module.
+- A function with no `! {...}` row is pure: it performs no effects and cannot fail. Effects are covered in [Effects](/docs/tour/effects).
+- A function with no `-> R` returns `()`.
+
+```vow
+fn clamp(n: Int, lo: Int, hi: Int) -> Int {
+  if n < lo { return lo }
+  if n > hi { return hi }
+  n
+}
+```
+
+## Control flow
+
+`if` is an expression. Both branches must have the same type, and `else` is required when the value is used.
+
+```vow
+let label = if score >= 90 { "excellent" } else { "keep going" }
+```
+
+Boolean operators are words: `and`, `or`, `not`. Comparison uses `==`, `!=`, `<`, `<=`, `>`, `>=`.
+
+```vow
+fn can_vote(age: Int, registered: Bool, suspended: Bool) -> Bool {
+  age >= 18 and registered and not suspended
+}
+```
+
+`match` branches on the shape of a value. Arms go one per line, with no commas. Guards use `if`, `_` matches anything, and the match must be exhaustive.
+
+```vow
+fn describe(n: Option<Int>) -> String {
+  match n {
+    Some(0) => "zero"
+    Some(x) if x > 0 => "positive"
+    Some(_) => "negative"
+    None => "missing"
+  }
+}
+```
+
+## Strings
+
+Braces inside a string interpolate any expression.
+
+```vow
+let greeting = "Hello, {name}. You have {inbox.len} messages."
+```
+
+Tagged string literals are checked by the compiler. Interpolations inside `sql"..."` become bound parameters, and interpolations inside `html"..."` are escaped. This is covered in [Capabilities and security](/docs/tour/capabilities).
+
+```vow
+let query = sql"select * from users where email = {email}"
+let page = html"<p>Welcome, {name}</p>"
+```
+
+## Lambdas
+
+```vow
+let inc = x => x + 1
+let add = (a, b) => a + b
+let hello = () => "hello"
+```
+
+Function types are written `(A, B) -> R`, with an effect row when the function performs effects: `(String) -> () ! {Log}`.
+
+```vow
+fn twice(f: (Int) -> Int, x: Int) -> Int {
+  f(f(x))
+}
+
+let nine = twice(x => x + 3, 3)
+```
+
+## Pipes and method-call sugar
+
+`x |> f(a)` means `f(x, a)`. `x.f(a)` means `T.f(x, a)` where `T` is the module of `x`'s type, so `xs.map(f)` is `List.map(xs, f)`. Both forms exist so that long chains read left to right.
+
+```vow
+let positive_total = xs
+  |> List.filter(x => x > 0)
+  |> List.sum
+
+let names = users.map(u => u.name).sort()
+```
+
+## Loops
+
+Prefer `map`, `filter`, and `fold` for computing values:
+
+```vow
+let sum = xs.fold(0, (acc, x) => acc + x)
+let squares = xs.map(x => x * x)
+```
+
+`for x in xs { ... }` exists for effectful iteration. It always returns `()`, so it cannot be used to compute a value by accident.
+
+```vow
+fn print_all(xs: List<Int>) ! {Log} {
+  for x in xs {
+    Log.info("{x}")
+  }
+}
+```
+
+## Modules
+
+One module per file. The path is the module name: `src/users.vow` in package `app` is the module `app/users`.
+
+```vow
+import std/http
+import app/users.{signup, User}
+import std/json as json
+```
+
+- `import std/http` makes `http.Request` and friends available under the module's last segment.
+- `import app/users.{signup, User}` brings specific names into scope.
+- `import std/json as json` renames the module.
+
+## What the compiler checks
+
+- Every top-level function has a complete signature. Local `let` types are inferred.
+- Every `match` is exhaustive, and every `if` used as a value has an `else`.
+- Names are not reassigned. Shadowing creates a new binding; it never mutates the old one.
+- `pub` controls exports. Using a private name from another module is an error (`E01xx` codes, see [Diagnostics](/docs/agents/diagnostics)).
+- `vow fmt` has no options, so every Vow file is formatted the same way.
+
+## Next
+
+[Types](/docs/tour/types): records, sum types, generics, and why there is no null.

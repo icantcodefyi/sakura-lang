@@ -1,0 +1,187 @@
+---
+title: Types
+description: Primitive types, records, sum types, generics, Option and Result, and exhaustive pattern matching in Vow.
+---
+
+<Callout type="warn" title="Design draft">
+  The type system described here is a draft. Names of built-in types may change.
+</Callout>
+
+Vow is statically typed with local type inference. Top-level signatures are always explicit. Inside a body, the compiler infers types for `let` bindings and lambdas.
+
+## Primitive types
+
+| Type | Example | Notes |
+| --- | --- | --- |
+| `Int` | `42`, `20_000` | 64-bit signed integer. Overflow never wraps silently; whether it traps or must be handled is an open design question. |
+| `Float` | `3.14` | 64-bit IEEE 754. |
+| `Bool` | `true`, `false` | |
+| `String` | `"Hello, {name}"` | UTF-8, immutable. |
+| `()` | `()` | The unit type, returned by functions that only perform effects. |
+| `List<T>` | `[1, 2, 3]` | Immutable list. Updates reuse memory in place when unshared. |
+| `Map<K, V>` | `Map.empty()` | Immutable map. |
+| `Set<T>` | `Set.empty()` | Immutable set. |
+
+Standard library types such as `Uuid`, `Instant`, `Duration`, and `Json` are ordinary types defined in Vow.
+
+## Records
+
+A record type lists named fields:
+
+```vow
+type User = { id: Uuid, email: Email, created: Instant }
+```
+
+Construct a record with its type name. If a local binding has the same name as a field, write it once (field punning):
+
+```vow
+let user = User { id: Uuid.new(), email, created: Clock.now() }
+```
+
+Records are values. "Updating" one produces a new record with some fields changed:
+
+```vow
+let moved = { user with email: new_email }
+let email = moved.email
+```
+
+When the original `user` is not used again, the compiler reuses its memory for `moved`, so the update costs the same as an in-place write. See [Memory model](/docs/tour/memory).
+
+## Sum types
+
+A sum type is one of several variants. Variants can carry named fields:
+
+```vow
+type Shape = Circle(radius: Float) | Rect(w: Float, h: Float)
+
+fn area(s: Shape) -> Float {
+  match s {
+    Circle(r) => 3.14 * r * r
+    Rect(w, h) => w * h
+  }
+}
+```
+
+Variants without fields are written by name. These are typical error types:
+
+```vow
+type SignupError = EmailTaken | Banned
+type Weekday = Mon | Tue | Wed | Thu | Fri | Sat | Sun
+```
+
+## No null: Option
+
+There is no `null`. A value that may be absent has type `Option<T>`:
+
+```vow
+type Option<T> = Some(T) | None
+
+fn find_user(users: List<User>, email: Email) -> Option<User> {
+  users.find(u => u.email == email)
+}
+
+fn greeting(users: List<User>, email: Email) -> String {
+  match find_user(users, email) {
+    Some(user) => "Welcome back, {user.email}"
+    None => "Welcome"
+  }
+}
+```
+
+`Option` has the usual helpers: `map`, `or`, `is_some`, `unwrap_or`. There is no `unwrap` that crashes.
+
+```vow
+let name = find_user(users, email).map(u => u.email).unwrap_or("guest")
+```
+
+## Errors: Fail, not Result
+
+The standard library defines `Result`:
+
+```vow
+type Result<T, E> = Ok(T) | Err(E)
+```
+
+Idiomatic Vow does not return `Result` from functions that can fail. It declares the `Fail<E>` effect instead, which keeps the happy path free of wrapping and unwrapping and keeps the error type in the signature:
+
+```vow
+fn parse_port(s: String) -> Port ! {Fail<Invalid>} {
+  Port.from(Int.parse(s))
+}
+```
+
+`Result` is useful when you want to store an outcome as data, for example in a list of per-item results. `Fail.catch` converts a failing computation into a `Result`. See [Handlers](/docs/tour/handlers).
+
+## Generics
+
+Type parameters go in angle brackets after the name:
+
+```vow
+fn first<T>(xs: List<T>) -> Option<T> {
+  match xs {
+    [] => None
+    _ => xs.get(0)
+  }
+}
+
+type Pair<A, B> = { left: A, right: B }
+
+fn swap<A, B>(p: Pair<A, B>) -> Pair<B, A> {
+  Pair { left: p.right, right: p.left }
+}
+```
+
+`Pair` is the standard library's two-field record, defined exactly as above. Vow has no separate tuple type: `Pair` and named records cover the same ground with field names that read well in review.
+
+Functions can also be generic over effects. That uses a lowercase row variable and is covered in [Effects](/docs/tour/effects).
+
+## Refinement types
+
+A refinement narrows an existing type with a predicate. `it` is the value being checked.
+
+```vow
+type Age = Int where 0..=150
+type Port = Int where 1..=65535
+type Email = String where is_email(it)
+type NonEmpty<T> = List<T> where it.len > 0
+```
+
+Refined values are still their base type: an `Age` can be passed anywhere an `Int` is expected. Going the other way requires a check, either proven at compile time or performed at the boundary. Refinements and contracts have their own page: [Contracts](/docs/tour/contracts).
+
+## Pattern matching
+
+Patterns destructure records, variants, literals, and lists. A match must cover every case.
+
+```vow
+fn summary(xs: List<Int>) -> String {
+  match xs {
+    [] => "empty"
+    [x] => "one item: {x}"
+    [x, y] => "two items: {x}, {y}"
+    _ => "{xs.len} items"
+  }
+}
+```
+
+If a variant is added to `Shape`, every `match` on `Shape` that does not handle it becomes a compile error, so the change cannot be half applied.
+
+## Type aliases
+
+Without `where` or variants, `type` creates an alias:
+
+```vow
+type UserId = Uuid
+type RouteFn = (Request) -> Response ! {Db, Log}
+```
+
+## What the compiler checks
+
+- Every expression has exactly one type. There are no implicit conversions between `Int` and `Float`.
+- Matches are exhaustive. A missing case is an error that names the missing pattern.
+- There is no null and no uninitialized value. Absence is always `Option`.
+- Record construction must supply every field.
+- Refined types are checked at compile time when the value is known or provable, otherwise at an explicit conversion. They are never silently trusted.
+
+## Next
+
+[Effects](/docs/tour/effects): how Vow puts every side effect and error in the signature.

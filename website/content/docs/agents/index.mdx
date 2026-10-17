@@ -1,0 +1,116 @@
+---
+title: Overview
+description: How an AI agent is expected to work with Vow, from reading the docs to handing signature changes to a human.
+---
+
+<Callout type="warn" title="Planned tooling">
+  The compiler, MCP server, and diagnostics described in this section are designed but not built. The docs and Markdown exports are live today.
+</Callout>
+
+Vow is designed to be written by agents and reviewed by humans. Every part of the toolchain has a machine-readable interface, and the language is small enough to load into a model's context in full.
+
+This section is written for two readers: engineers building agent workflows, and agents themselves. Every page is available as Markdown (see [llms.txt](/docs/agents/llms-txt)).
+
+## The agent loop
+
+The intended loop has six steps.
+
+<Steps>
+<Step>
+
+### Read the language
+
+Fetch [`/llms-full.txt`](/llms-full.txt) once per session. It contains these docs, including the full language tour, as plain Markdown. The language reference is planned to fit in a few thousand tokens.
+
+</Step>
+<Step>
+
+### Write signatures first, with holes
+
+Write the signatures the task needs, with effects, errors, and contracts. Leave bodies as `todo()`:
+
+```vow
+fn signup(email: Email, pw: Password) -> User ! {Db, Clock, Random, Fail<SignupError>}
+  ensures result.email == email
+{
+  todo()
+}
+```
+
+The program already type checks. Signatures are the part a human reviews, so getting them right first is the highest-value step.
+
+</Step>
+<Step>
+
+### Check
+
+Run `vow check --format json`, or call the `check` tool on the [MCP server](/docs/agents/mcp). Each [typed hole](/docs/agents/typed-holes) reports the expected type, the effects allowed at that point, the bindings in scope, and candidate functions.
+
+</Step>
+<Step>
+
+### Fill holes and read diagnostics
+
+Replace holes one at a time. Each error comes back as a JSON object with a stable code, a precise span, the expected and found types or effects, and a list of fixes. See [Diagnostics](/docs/agents/diagnostics).
+
+</Step>
+<Step>
+
+### Apply safe fixes, propose the rest
+
+Fixes carry a `safety` level:
+
+- `safe` fixes (formatting, imports) can be applied automatically.
+- `changes-behaviour` fixes change what the code does. Apply them only when they match the task.
+- `changes-signature` fixes change the contract. Never apply them silently.
+
+</Step>
+<Step>
+
+### Flag signature changes for human review
+
+If the task genuinely needs a new effect, a new error, a weaker contract, or a new capability grant, make the change and say so explicitly in the summary for the reviewer. The signature is the contract, and humans own the contract.
+
+</Step>
+</Steps>
+
+## Why this loop works
+
+- **Small search space.** One way to do each thing means fewer plausible-but-wrong programs.
+- **Errors are local.** Effects and errors are in signatures, so a mistake shows up at the function that made it, not three modules away.
+- **Feedback is structured.** No regular expressions over human-formatted compiler output.
+- **Review is bounded.** A human reads signatures and the diff of signatures. The compiler and tests cover the bodies.
+- **Parallel work does not collide.** Code is planned to be content-addressed, so two agents editing different definitions never produce a merge conflict.
+
+## Content-addressed code (planned)
+
+Inspired by Unison, every definition is planned to be identified by a hash of its normalized syntax tree. Names are metadata attached to hashes.
+
+- Renaming a function does not touch its callers.
+- Two agents editing different definitions in the same file never conflict.
+- `vow merge` merges per definition, not per line.
+- Files remain the human interface: you read and edit ordinary `.vow` files, and the toolchain keeps the hash index in sync.
+
+## What an agent should never do
+
+- Add an effect, error, or capability grant without flagging it.
+- Use `.trust_because(...)` to silence a taint error without a real reason in the string.
+- Weaken a `requires` or `ensures` clause to make a test pass.
+- Leave a `todo()` in code meant for release. `vow build` refuses to build it anyway.
+
+## Pages in this section
+
+<Cards>
+  <Card title="llms.txt" href="/docs/agents/llms-txt">
+    Markdown exports of these docs and a system-prompt snippet.
+  </Card>
+  <Card title="MCP server" href="/docs/agents/mcp">
+    The planned `vow mcp` tools with input and output examples.
+  </Card>
+  <Card title="Diagnostics" href="/docs/agents/diagnostics">
+    The JSON diagnostic format, codes, and fix safety levels.
+  </Card>
+  <Card title="Typed holes" href="/docs/agents/typed-holes">
+    Writing programs incrementally with `todo()`.
+  </Card>
+</Cards>

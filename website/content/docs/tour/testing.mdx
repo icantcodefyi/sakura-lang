@@ -1,0 +1,201 @@
+---
+title: Testing
+description: Unit tests, property tests that respect refinements, contract-generated tests, and deterministic simulation in Vow.
+---
+
+<Callout type="warn" title="Design draft">
+  The test runner is planned for the verification phase of the [roadmap](/docs/roadmap). Command output on this page is illustrative.
+</Callout>
+
+Testing is part of the language, not a library. Tests live next to the code or in `tests/`, use the same handlers as production code, and run with `vow test`.
+
+## Unit tests
+
+```vow
+test "greets by name" {
+  expect greet("Ada") == "Hello, Ada"
+}
+```
+
+A `test` block has a name and a body. `expect cond` records a failure when `cond` is false and reports both sides of a comparison.
+
+```bash
+$ vow test
+fail  greets by name
+      src/greet.vow:2  expect greet("Ada") == "Hello, Ada"
+        left:  "Hello Ada"
+        right: "Hello, Ada"
+0 passed, 1 failed
+```
+
+## Testing effectful code
+
+Tests swap in handlers. No mocking framework is needed because effects are already an interface.
+
+```vow
+test "duplicate email fails" {
+  with Db.memory(), Clock.fixed("2026-01-01"), Random.seeded(1) {
+    signup("a@b.co", "correct horse battery")
+    expect signup("a@b.co", "another long password") == Fail(EmailTaken)
+  }
+}
+```
+
+`expect f(x) == Fail(EmailTaken)` compares the outcome of the call. If `signup` succeeds, or fails with `Banned`, the test fails and shows what happened instead.
+
+A test body has an empty row by default. Any effect the code under test performs must be handled inside the test, so a unit test cannot reach the real network by accident.
+
+```vow
+test "welcome mail is sent once" {
+  with Db.memory(), Clock.fixed("2026-01-01"), Random.seeded(1), Mailer.capture() {
+    signup_and_welcome("a@b.co", "correct horse battery")
+    expect Mailer.sent().len == 1
+  }
+}
+```
+
+## Property tests
+
+A `property` takes typed arguments. The runner generates values for them and runs the body many times.
+
+```vow
+property "sorting keeps every element" (xs: List<Int>) {
+  expect xs.sort().len == xs.len
+}
+
+property "sorted output" (xs: List<Int>) {
+  expect xs.sort().is_sorted()
+}
+```
+
+Generated values respect refinements. An `Age` argument is always in `0..=150`, and an `Email` is always well formed:
+
+```vow
+property "age round-trips through text" (age: Age) {
+  expect parse_age("{age}") == age
+}
+
+property "signup keeps the email" (email: Email, pw: Password) {
+  with Db.memory(), Clock.fixed("2026-01-01"), Random.seeded(1) {
+    expect signup(email, pw).email == email
+  }
+}
+```
+
+When a property fails, the runner shrinks the input to a minimal counterexample and prints the seed that reproduces it:
+
+```vow
+property "slug is never empty" (title: String) {
+  expect slugify(title).len > 0
+}
+```
+
+```bash
+$ vow test
+fail  slug is never empty
+      counterexample: title = ""
+      seed: 4189275
+      replay: vow test "slug is never empty" --seed 4189275
+```
+
+The fix is either in `slugify` or in the type: `(title: NonEmptyText)` with a refinement states the assumption where reviewers can see it.
+
+### Custom generators
+
+The preferred way to constrain generated input is a refinement, because it documents the constraint in the type as well:
+
+```vow
+type LargeOrder = Int where 1_000..=100_000
+
+property "large orders get a discount" (n: LargeOrder) {
+  expect discount(n) > 0
+}
+```
+
+For shapes a predicate cannot express efficiently, the planned `Gen` module provides generator combinators (`Gen.one_of`, `Gen.list_of`, `Gen.map`). How a custom generator is attached to a property is not designed yet.
+
+## Tests generated from contracts
+
+Every `requires`/`ensures` contract that the checker does not prove statically becomes a property test. Given:
+
+```vow
+fn sort(xs: List<Int>) -> List<Int>
+  ensures result.len == xs.len
+  ensures result.is_sorted()
+{
+  xs.sort()
+}
+```
+
+`vow test` generates arguments that satisfy the `requires` clauses and refinements, calls the function, and checks every `ensures`. You do not write these tests. They appear in the output under the function name:
+
+```bash
+$ vow test
+ok    contract sort: ensures result.len == xs.len (100 cases)
+ok    contract sort: ensures result.is_sorted() (100 cases)
+```
+
+## Deterministic simulation
+
+Distributed and concurrent bugs are hard to reproduce because timing, ordering, and failures differ between runs. Vow's design removes the nondeterminism: `Sim.world` replaces `Clock`, `Random`, `Net`, and the `Async` scheduler with simulated versions driven by one seed.
+
+```vow
+test "transfer survives a partition" {
+  with Sim.world(seed: 7), Db.memory() {
+    let a = start_node("a")
+    let b = start_node("b")
+    Sim.partition([a], [b], duration: 5.s)
+    transfer(a, b, 100)
+    Sim.crash(b, at: 2.s)
+    Sim.run_until_idle()
+    expect total_balance([a, b]) == 1_000
+  }
+}
+```
+
+- `Sim.partition(...)` cuts network links between groups of nodes for a duration.
+- `Sim.crash(...)` stops a node and later restarts it from its durable state.
+- Simulated time is instant: a five-second partition takes no wall-clock time.
+
+Run many seeds to search for failures:
+
+```bash
+$ vow test --sim --seeds 1000
+ok    transfer survives a partition (1000 seeds)
+```
+
+A failing seed replays exactly, with the same schedule, message order, and faults, every time:
+
+```bash
+$ vow test --sim --seed 7 "transfer survives a partition"
+```
+
+This works because every source of nondeterminism is an effect. Code that does not declare `Clock`, `Random`, `Net`, or `Async` cannot observe the outside world, so the simulator controls everything the code can see.
+
+## Snapshot tests
+
+`Snapshot` compares a value with a stored copy, which is useful for HTML, JSON, and diagnostics:
+
+```vow
+test "profile page" {
+  expect Snapshot.matches("profile", render_profile(sample_user))
+}
+```
+
+`vow test --update-snapshots` rewrites stored copies after a reviewed change.
+
+## Holes in tests
+
+A program with [typed holes](/docs/agents/typed-holes) can be checked and tested. A test that reaches a `todo()` fails with the hole's location and expected type. Tests that do not reach it run normally. This lets an agent fill a program in one function at a time.
+
+## What the compiler and runner check
+
+- Tests and properties are type checked like any other code, with an empty effect row unless effects are handled inside.
+- Generated arguments satisfy refinements and `requires` clauses.
+- Every contract the solver does not prove has a generated property test.
+- Simulated runs are fully determined by their seed.
+- `vow build` for release refuses to build a program that still contains holes. `vow test` allows them.
+
+## Next
+
+[Capabilities and security](/docs/tour/capabilities): how effects become permissions.
