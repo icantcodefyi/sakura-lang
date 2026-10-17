@@ -1,0 +1,174 @@
+// Exact base-10 numbers for money and quantities (design §10.3). Values are kept in a
+// canonical form, so the derived `Eq` and `Ord` are numeric: `1.50 == 1.5`, `-1.5 < -1.25`.
+// `add`, `sub`, `neg` and `mul` are exact; `div_checked` and `round` round half to even.
+// Digits are held in `Int`, so a value with more digits than `Int` holds is a defect like any
+// `Int` overflow. Interpolation shows the record form; use `to_string` for display.
+
+/// `whole` is the floor of the value and `frac` the digits of the rest, which lies in [0, 1),
+/// without trailing zeros: -1.25 is `{ whole: -2, frac: [7, 5] }`. This field order is what
+/// makes the derived `Ord` numeric.
+pub opaque type Decimal = { whole: Int, frac: List<Int> }
+
+pub error DecimalError(input: String)
+
+pub fn from_int(n: Int) -> Decimal { Decimal { whole: n, frac: [] } }
+
+pub fn zero() -> Decimal { from_int(0) }
+
+/// Accepts `7`, `-12.340` and `0.5`; no exponent, no `+`, no grouping separators.
+pub fn parse(text: String) -> Result<Decimal, DecimalError> {
+  let negative = String.starts_with(text, "-")
+  let body = if negative { String.slice(text, 1, String.len(text)) } else { text }
+  let parts = String.split(body, ".")
+  let well_formed = List.len(parts) <= 2
+    && List.all(parts, fn(p) {
+      p != "" && List.all(String.chars(p), fn(c) { String.contains("0123456789", c) })
+    })
+  let int_part = parts.first().unwrap_or("")
+  let frac_part = if List.len(parts) == 2 { parts.last().unwrap_or("") } else { "" }
+  match String.parse_int(int_part + frac_part) {
+    Some(u) if well_formed =>
+      Ok(from_units(if negative { 0 - u } else { u }, String.len(frac_part))),
+    _ => Err(DecimalError { input: text }),
+  }
+}
+
+/// `-12.34`, `7`, `0.5`: the shortest form that `parse` reads back to the same value.
+pub fn to_string(d: Decimal) -> String {
+  let scale = List.len(d.frac)
+  let u = units(d, scale)
+  let digits = Int.to_string(Int.abs(u))
+  let sign = if u < 0 { "-" } else { "" }
+  if scale == 0 { sign + digits } else {
+    let padded = String.pad_left(digits, scale + 1, "0")
+    let cut = String.len(padded) - scale
+    sign + String.slice(padded, 0, cut) + "." + String.slice(padded, cut, String.len(padded))
+  }
+}
+
+pub fn add(a: Decimal, b: Decimal) -> Decimal {
+  let s = Int.max(List.len(a.frac), List.len(b.frac))
+  from_units(units(a, s) + units(b, s), s)
+}
+
+pub fn sub(a: Decimal, b: Decimal) -> Decimal {
+  let s = Int.max(List.len(a.frac), List.len(b.frac))
+  from_units(units(a, s) - units(b, s), s)
+}
+
+pub fn neg(a: Decimal) -> Decimal {
+  let s = List.len(a.frac)
+  from_units(0 - units(a, s), s)
+}
+
+pub fn mul(a: Decimal, b: Decimal) -> Decimal {
+  let sa = List.len(a.frac)
+  let sb = List.len(b.frac)
+  from_units(units(a, sa) * units(b, sb), sa + sb)
+}
+
+/// `a / b` rounded half to even at `places` fractional digits; `None` when `b` is zero.
+pub fn div_checked(a: Decimal, b: Decimal, places: Int) -> Option<Decimal>
+  requires places >= 0
+{
+  if b == zero() { None } else {
+    let sa = List.len(a.frac)
+    let sb = List.len(b.frac)
+    let n = units(a, sa) * Int.pow(10, sb + places)
+    let m = units(b, sb) * Int.pow(10, sa)
+    let num = if m < 0 { 0 - n } else { n }
+    Some(from_units(round_quotient(num, Int.abs(m)), places))
+  }
+}
+
+/// Rounded half to even at `places` fractional digits: `round(2.5, 0)` is 2, `round(-2.6, 0)`
+/// is -3.
+pub fn round(d: Decimal, places: Int) -> Decimal
+  requires places >= 0
+{
+  let s = List.len(d.frac)
+  if s <= places { d } else {
+    from_units(round_quotient(units(d, s), Int.pow(10, s - places)), places)
+  }
+}
+
+/// `n / m` rounded half to even, for `m > 0`.
+fn round_quotient(n: Int, m: Int) -> Int {
+  let q = floor_div(n, m)
+  let r = n - q * m
+  if 2 * r > m || (2 * r == m && q % 2 != 0) { q + 1 } else { q }
+}
+
+fn floor_div(n: Int, m: Int) -> Int {
+  let q = n / m
+  if n % m < 0 { q - 1 } else { q }
+}
+
+/// The value times 10^scale, for `scale >= List.len(d.frac)`.
+fn units(d: Decimal, scale: Int) -> Int {
+  let f = List.fold(d.frac, 0, fn(acc, digit) { acc * 10 + digit })
+  d.whole * Int.pow(10, scale) + f * Int.pow(10, scale - List.len(d.frac))
+}
+
+/// `u / 10^scale` in canonical form.
+fn from_units(u: Int, scale: Int) -> Decimal {
+  let p = Int.pow(10, scale)
+  let whole = floor_div(u, p)
+  let rest = u - whole * p
+  var frac: List<Int> = []
+  if scale > 0 {
+    frac = List.map(
+      String.chars(String.pad_left(Int.to_string(rest), scale, "0")),
+      fn(c) { String.parse_int(c).unwrap_or(0) },
+    )
+  }
+  while List.last(frac) == Some(0) { frac = List.slice(frac, 0, List.len(frac) - 1) }
+  Decimal { whole, frac }
+}
+
+fn d(text: String) -> Decimal {
+  match parse(text) {
+    Ok(v) => v,
+    Err(_) => from_int(-999_999),
+  }
+}
+
+test "parse and to_string round-trip in canonical form" {
+  expect_eq(to_string(d("-12.340")), "-12.34")
+  expect_eq(to_string(d("0.05")), "0.05")
+  expect_eq(to_string(d("-0.5")), "-0.5")
+  expect_eq(to_string(d("7")), "7")
+  expect(
+    parse("1.").is_err() && parse(".5").is_err() && parse("+1").is_err() && parse("1e3").is_err(),
+  )
+  expect(parse("1.2.3").is_err() && parse("").is_err() && parse("-").is_err())
+}
+
+test "Eq and Ord are numeric" {
+  expect_eq(d("1.50"), d("1.5"))
+  expect(d("-1.5") < d("-1.25"))
+  expect(d("-1.25") < zero())
+  expect(d("0.5") < d("0.51"))
+  expect(d("0.51") < d("1"))
+  expect(d("1.5") < d("2"))
+}
+
+test "add, sub and mul are exact" {
+  expect_eq(add(d("0.1"), d("0.2")), d("0.3"))
+  expect_eq(to_string(sub(d("1"), d("1.01"))), "-0.01")
+  expect_eq(to_string(mul(d("19.99"), d("3"))), "59.97")
+  expect_eq(to_string(mul(d("-0.5"), d("0.5"))), "-0.25")
+  expect_eq(neg(d("2.5")), d("-2.5"))
+}
+
+test "round and div_checked round half to even" {
+  expect_eq(to_string(round(d("2.5"), 0)), "2")
+  expect_eq(to_string(round(d("3.5"), 0)), "4")
+  expect_eq(to_string(round(d("-2.5"), 0)), "-2")
+  expect_eq(to_string(round(d("-2.6"), 0)), "-3")
+  expect_eq(to_string(round(d("1.005"), 2)), "1")
+  expect_eq(div_checked(d("1"), d("3"), 4).map(to_string), Some("0.3333"))
+  expect_eq(div_checked(d("2"), d("-3"), 2).map(to_string), Some("-0.67"))
+  expect_eq(div_checked(d("10"), d("0.25"), 0).map(to_string), Some("40"))
+  expect_eq(div_checked(d("1"), zero(), 2), None)
+}
