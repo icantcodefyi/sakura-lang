@@ -590,7 +590,8 @@ impl Space for CheckSpace<'_, '_> {
 
     fn fields(&mut self, ty: TypeId, ctor: &Ctor) -> Vec<TypeId> {
         let cx = &mut *self.cx;
-        let ty = cx.inf.shallow(ty);
+        // A refined type has its base's constructors (`ctors`), so their fields too.
+        let ty = cx.base_of(ty);
         match ctor {
             Ctor::Variant(v) => match cx.inf.interner.ty(ty).clone() {
                 Type::Con(TyCon::Adt(_), args) => cx.variant_fields(*v, &args),

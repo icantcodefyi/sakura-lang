@@ -93,5 +93,7 @@ published yet.
 - A generic refined type such as `type NonEmpty<T> = List<T> where List.len(it) > 0` is its
   base at its own arguments: `NonEmpty<Int>` now coerces to `List<Int>` for calls, methods,
   fields, patterns and constraints instead of reporting `V2032`/`V2001` about `T`.
+- A non-exhaustive `match` on a refined list type reports `V4001` with the missing case instead
+  of an internal compiler error.
 
 [Unreleased]: https://github.com/icantcodefyi/sakura-lang/commits/master

@@ -1116,7 +1116,7 @@ impl Checker<'_> {
     }
 
     /// Strips refinements to the base type (refined values coerce to their base, §4.3).
-    fn base_of(&mut self, t: TypeId) -> TypeId {
+    pub(super) fn base_of(&mut self, t: TypeId) -> TypeId {
         let mut t = self.inf.settle(t);
         while let Type::Con(TyCon::Adt(d), args) = self.inf.interner.ty(t).clone() {
             match self.inf.refined_base(d, &args) {

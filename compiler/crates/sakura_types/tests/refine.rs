@@ -360,3 +360,16 @@ fn generic_refinements_keep_their_arguments_and_decide_literals() {
     ));
     assert_eq!(c.codes(), ["V2001", "V5004"], "{}", c.render());
 }
+
+#[test]
+fn matches_on_a_refined_list_name_the_missing_case() {
+    let c = check(&format!(
+        "{GENERIC}fn f(xs: NonEmpty<Int>) -> Int {{\n  match xs {{\n    [] => 0,\n  }}\n}}\n"
+    ));
+    assert_eq!(c.codes(), ["V4001"], "{}", c.render());
+    assert!(
+        c.render().contains("`[_, ..]` not covered"),
+        "{}",
+        c.render()
+    );
+}
