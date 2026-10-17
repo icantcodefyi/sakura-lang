@@ -4,10 +4,7 @@ description: Refinement types, requires and ensures clauses, and the honest guar
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  This page describes the v0 design. The compiler parses, resolves, type- and effect-checks and runs
-  M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented
-  yet. Contracts and refinements belong to milestone M3 in the design; static proof is M4. See the
-  [roadmap](/docs/roadmap).
+  The source-built compiler runs the core language and much of M3 on JavaScript: contracts, typed effects and failures, std handlers, permissions, LSP and MCP. M3 is still in progress; no release or stable compatibility contract exists. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
 </Callout>
 
 Types say what shape a value has. Refinements and contracts say what is true about it. Both are part of the signature, so both are what a reviewer reads.
@@ -56,7 +53,7 @@ There is no silent conversion. A value becomes a `Percent` in one of four ways (
 | Entry point                               | On failure                                                        |
 | ----------------------------------------- | ----------------------------------------------------------------- |
 | `Percent.validate(n) -> Result<Percent, Violation>` | Returns `Err(Violation { type_name, clause, value_summary })`. |
-| `Percent.from(n) -> Percent`               | Defect `D010`. Use at trusted boundaries only; `sakura audit` lists every use. |
+| `Percent.from(n) -> Percent`               | Defect `D010`. Use at trusted boundaries only; the planned `sakura audit` will list every use. |
 | `let p: T = Json.decode(text)?` and other schema decoding, with the target named by annotation | Typed `DecodeError`, never a defect. Nested field refinements are checked. |
 | A literal, `let p: Percent = 50`          | Checked at compile time when the predicate is in the SMT fragment, otherwise at program start (warning `V5002`). |
 
@@ -83,7 +80,7 @@ Predicates in `where`, `requires`, `ensures`, and `property` clauses must be pur
 
 Arithmetic in a predicate is checked, so a predicate can itself defect. That is reported as `D011` (contract evaluation failed).
 
-`@total` is how a function with recursion or a loop reaches a contract. It is a **trusted** claim that a `{}`-row function terminates on every input; the compiler does not prove it. Std marks a fixed list (`List.len`, `List.get`, `List.all`, `List.any`, `List.contains`, `Map.get`, `String.len`, `String.contains`, `Option.is_some`, `Int.abs`, and a few more). User code may mark its own functions, and `sakura audit` lists every `@total` site, like every `@trust`:
+`@total` is how a function with recursion or a loop reaches a contract. It is a **trusted** claim that a `{}`-row function terminates on every input; the compiler does not prove it. Std marks a fixed list (`List.len`, `List.get`, `List.all`, `List.any`, `List.contains`, `Map.get`, `String.len`, `String.contains`, `Option.is_some`, `Int.abs`, and a few more). User code may mark its own functions, and the planned `sakura audit` will list every `@total` site, like every `@trust`:
 
 ```sakura
 @total   // trusted: n / 10 moves toward 0 on every call
@@ -153,7 +150,7 @@ Contract checks run in **all build modes**. `sakura build --release` keeps them.
 
 Contract violations are [defects](/docs/tour/effects), not effects. A defect terminates the current task after resource finalizers run. `try` cannot catch it. `Task.scope` and the test runner observe it as an outcome, and a defect in `main` exits with status 70 and a structured report.
 
-Contracts on `pub` functions are part of the signature shown by `sakura doc`, the MCP `symbol_query` tool, and editor hover.
+Contracts on `pub` functions are part of the signature shown by the planned `sakura doc`, the MCP `symbol_query` tool, and editor hover.
 
 ## Frozen specs during agent repair
 
@@ -163,7 +160,7 @@ Compiler fixes that touch a contract carry `impact: contract_change` and are nev
 
 ## Property tests from contracts
 
-`sakura test --contracts` synthesizes a property test for every `pub` function that has a refined parameter or a `requires` clause. Inputs are generated from the refinements and `requires` together, the function runs under the test handlers, and `ensures` and result refinements are checked. Failures are shrunk and saved. A function with effects other than `Fail`, `Clock`, and `Random` is tested only when it names handlers with `@contract_test(handlers: [Sql.memory(), Log.captured()])`. See [Testing](/docs/tour/testing#property-tests-from-contracts).
+The planned `sakura test --contracts` will synthesize a property test for every `pub` function that has a refined parameter or a `requires` clause. Inputs are generated from the refinements and `requires` together, the function runs under the test handlers, and `ensures` and result refinements are checked. Failures are shrunk and saved. A function with effects other than `Fail`, `Clock`, and `Random` is tested only when it names handlers with `@contract_test(handlers: [Sql.memory(), Log.captured()])`. See [Testing](/docs/tour/testing#property-tests-from-contracts-planned).
 
 ## Not in v0
 

@@ -5,7 +5,7 @@ description: Honest answers to common questions about Sakura Lang's status, desi
 
 ## Is Sakura Lang usable today?
 
-Not for real work yet. The v0 language is fully specified in [docs/design.md](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md), and the compiler is a Rust workspace in [compiler/](https://github.com/icantcodefyi/sakura-lang/tree/master/compiler). It parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet, so examples that use them cannot run. See the [roadmap](/docs/roadmap).
+Not for real work yet. The v0 language is fully specified in [docs/design.md](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md), and the compiler is a Rust workspace in [compiler/](https://github.com/icantcodefyi/sakura-lang/tree/master/compiler). It parses, resolves, type- and effect-checks and runs the core language and substantial M3 functionality on JavaScript. All twelve examples pass their configured modes, with `agent_loop` and `secrets` still check-only. M3 completion, WASM/static verification and native execution remain ahead. See the [roadmap](/docs/roadmap).
 
 ## Why not just use TypeScript with Effect-TS?
 
@@ -49,7 +49,7 @@ Mutation plus aliasing is the source of many hard bugs, and it is what forces Ru
 
 ## What happens when a contract cannot be proven?
 
-In v0, nothing is proven by a solver: every `requires`, `ensures`, and `where` clause is checked at runtime in every build mode, including `--release`. A violation is a defect that terminates the task. `sakura test --contracts` also generates property tests from contracts. From milestone M4, `sakura verify` tries to prove each obligation with an SMT solver; only a `proved` status removes that one check, and `unknown` keeps it. See [Contracts](/docs/tour/contracts).
+In v0, nothing is proven by a solver: every `requires`, `ensures`, and `where` clause is checked at runtime in every build mode, including `--release`. A violation is a defect that terminates the task. The planned `sakura test --contracts` will also generate property tests from contracts. From milestone M4, `sakura verify` tries to prove each obligation with an SMT solver; only a `proved` status removes that one check, and `unknown` keeps it. See [Contracts](/docs/tour/contracts).
 
 ## Can Sakura Lang call existing libraries in other languages?
 

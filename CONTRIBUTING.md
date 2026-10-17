@@ -1,8 +1,8 @@
 # Contributing to Sakura Lang
 
 Sakura Lang is in **pre-alpha / design phase**. Research, design discussion, documentation,
-and the website are useful contributions today. There is no compiler workspace,
-installable Sakura Lang toolchain, supported release, or measured performance guarantee yet.
+and the website are useful contributions today. The Rust compiler workspace in `compiler/` builds from source and executes on JavaScript.
+There is no supported release or stable compatibility guarantee yet.
 Start with the [design](docs/design.md), [research](research/),
 [stability policy](STABILITY.md), and [Code of Conduct](CODE_OF_CONDUCT.md).
 
@@ -46,8 +46,8 @@ states and describe what you actually checked.
 - `docs/adr/`: internal engineering decisions and their rationale.
 - `website/`: Bun / Next.js / Fumadocs website and documentation presentation.
 - `.github/`: CI, contribution forms, ownership, and dependency automation.
-- `compiler/` (planned): Rust compiler, initially `sakura_core` and a thin `sakura_cli`.
-  A root Cargo workspace and `xtask` will be introduced with implementation.
+- `compiler/`: Rust compiler workspace, CLI, JS runtime, std and example corpus.
+  The pinned toolchain is `compiler/rust-toolchain.toml`; run Cargo commands there.
 
 The design is provisional. Future `docs/spec/` text will define normative grammar
 and semantics; do not claim research or a website example is already a conformance
@@ -74,21 +74,22 @@ Internal architecture/build decisions use an [ADR](docs/adr/README.md).
 Match checks to the behavior changed. Documentation changes need accurate links,
 examples, and explicit pseudocode labels; website changes need lint/build plus
 relevant manual checks. Workflow changes need YAML validation and `actionlint`.
-Do not invent compiler tests while no compiler exists.
+Use the existing compiler test targets; do not claim a milestone is complete from one suite.
 
-When the root Cargo workspace lands, install its pinned development toolchain
-with rustfmt and Clippy and run from the repository root:
+Install rustup and Node 26, then use the pinned development toolchain:
 
 ```sh
+cd compiler
+cargo build -p sakura_cli
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 ```
 
-These are the configured future CI interfaces, **not runnable setup steps today**.
-The initial tested MSRV and pinned development version remain undecided; record
-both with the first implementation instead of guessing. Register root integration
-tests explicitly in the CLI crate, and test the newly built compiler.
+The lockfile is `compiler/Cargo.lock`. For documentation claims, also exercise the
+newly built `target/debug/sakura` and `cargo test -p sakura_cli --test examples`.
+The twelve examples have distinct run/test/check modes; passing the corpus does
+not imply every example executes. See the [completion plan](docs/plans/m3-completion-and-m4.md).
 
 Compiler changes should cover positive, rejection, boundary, and cross-feature
 cases tied to the relevant spec section. Add deterministic regression cases for
@@ -99,7 +100,7 @@ Review **every snapshot diff** before accepting it. Explain intentional output
 changes in the PR. Normalize only irrelevant nondeterminism such as temporary
 paths, never semantic content or diagnostic codes. New snapshots must fail CI
 until reviewed and committed. Use the repository's snapshot harness when it exists;
-no snapshot acceptance command or conformance suite is implemented yet.
+the compiler uses checked-in fixtures and snapshots.
 
 ## Commits and pull request titles
 
@@ -129,9 +130,7 @@ effects, or grant capabilities merely to silence a compiler error.
 ## Automation and bootstrap policy
 
 CI runs on pushes to `master`, PRs, and merge groups. `ci-required` aggregates
-website checks and the Rust job when a root `Cargo.toml` exists. The checkout
-job evaluates `hashFiles('Cargo.toml')` after checkout and passes the result to
-the Rust job: GitHub does not support `hashFiles` directly in a job-level `if`.
+website checks and the Rust job, which runs in `compiler/` using its pinned toolchain.
 
 During bootstrap, direct pushes are allowed: **PR reviews and required status
 checks are not enforced**. The active `Protect master during bootstrap` branch ruleset blocks force pushes
@@ -143,10 +142,9 @@ Actions are pinned to major versions for bootstrap; **reviewed full commit SHA
 pinning is required before the first release**. Dependabot checks Actions and the
 website's native Bun ecosystem weekly. GitHub supports the text `bun.lock` file
 ([supported ecosystems](https://docs.github.com/en/code-security/reference/supply-chain-security/supported-ecosystems-and-repositories)).
-Cargo dependency updates are deliberately omitted while no manifest exists; add
-a weekly `cargo` entry with `directory: "/"` to `.github/dependabot.yml` when the
-root workspace is introduced. Also pin the Rust development toolchain, commit the
-root lockfile, and add MSRV/platform coverage as implementation becomes runnable.
+Cargo dependency updates are not yet configured in `.github/dependabot.yml`.
+When added, they must target `/compiler`, where the manifest and lockfile live.
+Do not assume the pinned development toolchain establishes a separately tested MSRV.
 
 ## License for contributions
 

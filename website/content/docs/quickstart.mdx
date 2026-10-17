@@ -4,7 +4,7 @@ description: Build the Sakura Lang compiler from source, then check, test and ru
 ---
 
 <Callout type="warn" title="Pre-alpha: build from source">
-  There is no release and no installer. The compiler in [compiler/](https://github.com/icantcodefyi/sakura-lang/tree/master/compiler) parses, resolves, type- and effect-checks and runs M0 to M2 programs on JavaScript: effects and handlers, typed errors, exhaustive `match`, tests and typed holes. The M3 standard library (`std/http`, `std/sql`, `std/fs`, `std/cli`, `std/ai`, `std/task`), `[permissions]` enforcement, `sakura new`, `sakura fix`, the LSP and the MCP server are not built yet. See the [roadmap](/docs/roadmap).
+  The compiler runs the core language and substantial M3 functionality on JavaScript, including contracts, std handlers, permissions, scaffolding, LSP and MCP. No release or installer is published. See the [roadmap](/docs/roadmap) for remaining M3 gates and planned M4/M5 work.
 </Callout>
 
 ## Install from source
@@ -13,8 +13,8 @@ You need [rustup](https://rustup.rs) and [Node.js](https://nodejs.org) (`sakura 
 
 ```bash
 git clone https://github.com/icantcodefyi/sakura-lang
-cd sakura-lang
-cargo install --locked --path compiler/crates/sakura_cli
+cd sakura-lang/compiler
+cargo install --locked --path crates/sakura_cli
 sakura --version
 ```
 
@@ -26,7 +26,7 @@ The standard library is embedded in the binary, so `sakura` works from any direc
 
 ## Run an example
 
-`compiler/examples/` holds the design's example programs as projects. Those from milestones M0 to M2 run today:
+`compiler/examples/` holds the design's example programs as projects. All twelve pass the configured run/test/check modes listed on the [roadmap](/docs/roadmap):
 
 ```bash
 sakura run compiler/examples/counter
@@ -39,11 +39,11 @@ sakura test compiler/examples/typed_errors
 1. bread
 ```
 
-`counter` is a user-defined effect whose handler keeps state; `typed_errors` recovers from typed failures with `try`/`catch`. The examples README lists which ones are still blocked on M3.
+`counter` is a user-defined effect whose handler keeps state; `typed_errors` recovers from typed failures with `try`/`catch`. The examples README records each mode; `agent_loop` and `secrets` currently have check-only coverage.
 
 ## Create a project
 
-There is no `sakura new` yet, so write the two files by hand. A project is a `sakura.toml` manifest and a `src/` directory, and one file is one module.
+Run `sakura new cli hello` to scaffold a project (`lib`, `agent`, and `api` templates also exist), or write the two files below by hand. A project is a `sakura.toml` manifest and a `src/` directory, and one file is one module.
 
 ```toml title="hello/sakura.toml"
 [package]
@@ -54,7 +54,7 @@ edition = "2026"
 [permissions]
 ```
 
-`[permissions]` is the ceiling on what the program may do (design §6). This program only prints, so it is empty. Enforcement arrives with M3; today the table is not checked.
+`[permissions]` is the ceiling on what the program may do (design §6). This program only prints, so it is empty. `sakura run` enforces startup grants and passes the table as `SAKURA_PERMISSIONS` for host-handler enforcement. Missing required root authority exits with 75.
 
 ```sakura title="hello/src/main.sakura"
 /// Build a greeting for a person.
@@ -207,7 +207,7 @@ hole ?result: expected Int, effects {}; locals [x: Int]; candidates [x, Int.abs(
 | `sakura explain V3001` | Rationale, causes and repairs for a diagnostic code |
 | `sakura prompt` | Print the language guide for agents ([llms.txt](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/llms.txt)) |
 
-Planned for M3 and later (design §12.1): `sakura new` and `sakura init`, `sakura fix` with impact classes, `sakura doc`, package commands (`add`, `remove`, `update`, `audit`), `sakura lsp`, `sakura mcp serve`, `sakura verify` (M4), and WASM (M4) and native (M5) backends.
+Also available: `sakura new`, `sakura init`, `sakura fix`, `sakura check --frozen-specs all [--since rev]`, `sakura lsp`, and `sakura mcp serve`. `sakura doc` and trust-site `sakura audit` are M3 completion work. Package commands remain planned; verification/WASM are M4 and native is M5.
 
 ## Next
 

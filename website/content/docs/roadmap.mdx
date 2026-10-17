@@ -1,126 +1,62 @@
 ---
 title: Roadmap
-description: The v0 milestones M0 to M5 from the design, what each one delivers, and how each is accepted.
+description: Finish M3, establish WASM and verification in M4, then add native code and Perceus in M5.
 ---
 
 <Callout type="info" title="Where things stand">
-  The v0 language design is written ([docs/design.md](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md), revised in round 2). The compiler in `compiler/` parses, resolves, type- and effect-checks and runs the M0 to M2 programs below on JavaScript; you can [build it from source](/docs/quickstart). M3 is in progress: runtime contracts already work, its standard library modules do not exist yet. Nothing is released, and the milestones are ordered but not dated.
+  Sakura Lang is pre-alpha and builds from source. The core language and substantial M3 functionality run on JavaScript. M3 is not complete, and neither WASM nor static contract verification is implemented. There are no milestone dates or published releases.
 </Callout>
 
-The milestones come from design §14.3. Each one has executable acceptance tests under `compiler/tests/`, and a milestone is done only when they pass in CI on macOS and Linux.
+The sequence is **M3 → M4 → M5**. The [completion plan](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/plans/m3-completion-and-m4.md) defines the gates; [design §17.81–§17.86](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md) defines the provisional M4 decisions. M0–M2 provide the existing parser, type/effect checker, JS backend, handlers, typed holes, formatter and test runner.
 
-## Summary
+## M3: finish the JS language and agent tooling
 
-| Milestone | Delivers | Status |
-| --- | --- | --- |
-| M0 | Effectful hello world, end to end | Runs today |
-| M1 | The pure language and typed errors | Runs today |
-| M2 | General rows, user handlers, typed holes | Runs today |
-| M3 | Agent loop, contracts and capabilities | In progress |
-| M4 | WASM backend and verification | Not started |
-| M5 | Native backend with Perceus | Not started |
+Working today:
 
-## Milestones
+- Runtime contracts and refinements; opaque constructors and fields rejected outside their module with `V1006`; compiler-known prelude `Trust`, with `@trust("reason")` restricted to trusted sink arguments (`V6001`).
+- Std data, JSON schemas and codecs, SQLite and memory SQL, filesystem and file callbacks, HTTP, serving, CLI, structured tasks, budgets, tools and agent loops. `sql"…"` arguments use `SqlValue.from` conversions and become bound parameters.
+- `Tool.of` on a named `@tool` function, `@llm` body generation, and effect-row parameters on types: `Tool<e>`, `Agent<T, e>`, `Router<e>`.
+- `sakura new <cli|lib|agent|api> <name>`, `init`, LSP, compiler MCP, impact-aware fixes and frozen-spec checks. Analysis rechecks an edited module alone when its public interface is unchanged; interface changes invalidate dependents. Whole-program lowering remains.
+- `sakura run` checks declared root permissions (exit 75 on denial) and passes `[permissions]` as `SAKURA_PERMISSIONS`; host handlers enforce filesystem, network and environment grants. This is not an OS sandbox for arbitrary JS or trusted FFI.
+- Tests accept escaping typed failures and report them as failed tests. `Llm.anthropic` requests SSE and delivers one partial callback per text delta; local mock tests cover this, not a live-provider guarantee.
 
-<Steps>
-<Step>
+All twelve repository examples pass their current harness modes: six run plus test (`hello`, `contracts`, `counter`, `typed_errors`, `word_count`, `graph`), four test (`json_api`, `llm_extract`, `property`, `concurrency`), and two check only (`agent_loop`, `secrets`). Passing that harness does **not** yet satisfy the execution/replay gate below.
 
-### M0: effectful hello world (runs today)
+### M3 exit gates
 
-A lexer with the newline rule, a parser for functions, imports, calls, literals, interpolated strings, blocks and `let`, `Console` as a std effect with a host handler, inference for monomorphic code with closed rows, the Core IR, CPS JavaScript emission, `sakura run` and `sakura check --json`.
+All ten gates must pass on `origin/master` on Ubuntu and macOS before M4 backend coding starts. Commands are run in `compiler/` unless stated otherwise. These are acceptance requirements, not a claim that every command or flag is available today.
 
-```sakura
-fn greet(name: String) -> Unit ! {Console} {
-  Console.print("hello, {name}")
-}
-pub fn main() -> Unit ! {Console} { greet("Sakura Lang") }
-```
+1. `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, and `cargo test --workspace --locked` pass with both `UI_MILESTONE` and `SEMANTICS_MILESTONE` at 3.
+2. Every registered diagnostic except `V9999` and M5's `W8001` is constructed by a crate and has a passing UI fixture. `W8001` has a fixture skipped by milestone. Compare `grep -rhoE '\b[VWD][0-9]{3,4}\b' crates --exclude-dir=sakura_diagnostics | sort -u` against the registry.
+3. M3 acceptance tests cover contract blame (`m3.rs::m3_acceptance_contracts`, `D020`/`D010`), CLI exit 75, `tests/ui/V6003_route_handler_returns_file.sakura`, stale/Unicode LSP replay matching MCP `hole_context`, and `recheck.rs` counters.
+4. `cargo test -p sakura_cli --test examples`: all twelve examples execute in run or test mode, none only check. `llm_extract`, `agent_loop` and `secrets` replay committed cassettes with network denied.
+5. `sakura test --std` passes; `std/INDEX.md` has no Planned section; `docs/llms.txt` has no remaining M3 items except `Sql.postgres` if the owner defers it.
+6. CLI integration tests cover the planned `sakura audit --json`, `sakura doc --search "fn(List<A>) -> Int"`, `sakura build --manifest`, `sakura test --contracts`, and `sakura test --record`.
+7. `SAKURA_DIFF_PROGRAMS=2000 cargo test -p sakura_eval --test differential` passes with the expanded generator. Each of `parse`, `check`, `fmt_idempotent`, and `row_unify` runs clean via `cargo fuzz run <target> -- -max_total_time=600` on the gate-review day.
+8. `cargo test -p sakura_fmt --test props` and the formatter corpus pass; `sakura fmt --check` is clean on `std/`, `examples/`, and `tests/`.
+9. In `website/`, `bun run fmt:check`, `bun run lint`, `bun run typecheck`, and `bun run build` pass; documentation matches the implemented behavior and this plan.
+10. The named CODEOWNERS maintainer reviews the escape rules and cassette format because both affect security.
 
-Accepted when it prints exactly `hello, Sakura Lang`; removing `Console` from `greet`'s row gives `V3001` with a cause span on `Console.print`; an unterminated `Console.print(` gives a syntax tree, `V0001` and no hang; and a 1,000,000-step recursive countdown does not overflow the JavaScript stack.
+The remaining completion work includes escape/validation rules, offline recordings, audit/doc/manifest and contract-test tooling, diagnostics and fuzzing. See the plan for ownership; those planned interfaces are not setup instructions for today's binary.
 
-</Step>
-<Step>
+## M4: WASM and contract verification
 
-### M1: the pure language and typed errors (runs today)
+Backend coding starts after the M3 gates and the [ABI and encoding research](https://github.com/icantcodefyi/sakura-lang/blob/master/research/09-m4-abi-and-encoding.md). The obligation generator can be explored earlier; M4 implementation remains gated as described in the plan.
 
-Records, variants, error tags and unions, exhaustive `match`, closures, let-polymorphism, `var`, `for` and `while`, `Fail` with `try`, `catch` and `?`, the `Option`, `Result`, `List`, `Map` and `String` std written in Sakura Lang, `test` blocks with `expect`, and an idempotent `sakura fmt`.
+- **LIR:** closure conversion, explicit continuations and handler environments, boxing at polymorphic boundaries, conservative balanced `Dup`/`Drop`, and a layout table. An interpreter must agree with Core on the differential corpus.
+- **Runtime:** a bounded `no_std` wasm32 runtime, size-class allocator, conservative reference counting, non-recursive destruction, persistent collections, scheduler and explicit value/fail/defect/cancel/pending outcomes. Agree the ownership graph and versioned ABI before implementation.
+- **WASM emission:** one bounded, non-shared linear memory, tables, multi-value and bulk memory, validated against an explicit feature allowlist. Node imports reuse the JS host handlers through copies. Wasmtime is an additional gate for pure and fake-handler programs.
+- **Verification:** bounded Z3 workers generate definedness and predicate obligations from Core. Only a matching `proved` result permits removal of that individual runtime check. `disproved`, `unknown` and `unsupported` keep checks; cvc5 cross-checks every corpus `unsat`. Body edits invalidate the function's own proofs, even when its signature stays unchanged.
+- **Parity and layout:** compare stdout and effect/finalizer/cancellation traces across JS and WASM on Ubuntu and macOS. JS's safe-integer range and WASM's i64 range have explicit backend-specific fixtures. Tagged `Option` is the baseline; niche layout remains opt-in until nested options and generic calls preserve values, traces and ownership.
 
-```sakura
-error ParseError(input: String)
-fn parse_age(s: String) -> Int ! {Fail<ParseError>} {
-  match String.parse_int(s) { Some(n) if n >= 0 => n, _ => fail ParseError { input: s } }
-}
-test "bad age is a typed failure" {
-  let r = try { parse_age("x") }
-  expect_eq(r, Err(ParseError { input: "x" }))
-}
-```
+For `scale(p, total) = total * p / 100`, proving `ensures result <= total` on normal return does not prove the multiplication cannot overflow. Overflow is a separate obligation. The wrong `/ 50` body has the counterexample `p = 100, total = 1`.
 
-Accepted when deleting the `_` arm gives `V4001` with the witness `None`, an arm after `_` gives `V4002`, formatting twice equals formatting once on 200 fixture files, and `sakura test --json` reports one record per test with its seed.
+M4 excludes WasmGC, JSPI, typed continuations, WASI components, browser std support, threads, Perceus reuse/borrow inference, loop/recursion proofs, Float/String solver theories and proof certificates.
 
-</Step>
-<Step>
+## M5: native code and Perceus
 
-### M2: general rows, user handlers, holes (runs today)
+A Cranelift backend adds native execution, borrow inference and reference-counted in-place reuse, `W8001` copy diagnostics, and internal region optimizations. Acceptance requires that live aliases preserve values, dead aliases allow reuse, cancellation and handler state pass sanitizer checks, and JS, WASM and native agree on the applicable corpus. No native performance claim is established yet.
 
-`effect`, `handler` and `with`, row variables and widening, handler state, `Clock`, `Random`, `Env` and `Log` with host and fake handlers, deterministic test defaults, typed holes, a reference evaluator for differential tests, and direct-style emission for pure code.
+## Decisions still open
 
-```sakura
-effect Counter { fn next() -> Int }
-fn counter() -> Handler<Counter> { handler Counter { var n = 0; fn next() { n = n + 1; n } } }
-fn twice<e>(f: fn() -> Int ! e) -> Int ! e { f() + f() }
-fn answer() -> Int { with counter() { twice(fn() { Counter.next() }) } }
-fn unfinished(x: Int) -> Int { ?result }
-```
-
-Accepted when `answer()` compiles with a pure signature, the hole reports expected type `Int`, local `x: Int` and candidate `x`, nested handlers use the inner instance, 1,000,000 handled operations run without stack growth, and the reference evaluator agrees on 500 generated programs.
-
-Today `sakura check` on the program above reports exactly that hole: `hole ?result: expected Int, effects {}; locals [x: Int]; candidates [x, …]`. The `sakura_eval` reference evaluator runs differential tests against the JavaScript backend.
-
-</Step>
-<Step>
-
-### M3: agent loop and contracts (in progress)
-
-Runtime-checked `requires`, `ensures` and `where`, refined-type `validate` and `from`, capabilities and `[permissions]`, `Secret` and `Untrusted`, resources and the escape check, `Task` structured concurrency, `Http`, `Fs`, `Sql.sqlite` and `Serve`, `Json` with `Schema`, `Cli`, the LSP and MCP servers, `sakura fix` with impact classes, and `--frozen-specs`.
-
-```sakura
-type Percent = Int where it >= 0 && it <= 100
-fn scale(p: Percent, total: Int) -> Int
-  requires total >= 0
-  ensures result <= total
-{ total * p / 100 }
-```
-
-Done so far: `requires`, `ensures` and `where` are checked at runtime (`D010`, `D011`, `D020`, `D021`), and the `contracts` example runs. Still to come: the `std/http`, `std/sql`, `std/fs`, `std/cli`, `std/task` and `std/ai` modules, `[permissions]` enforcement, typed failures escaping a test body (design §17.30; the checker still reports `V3020`), `sakura fix`, and the LSP and MCP servers.
-
-Accepted when `scale(Percent.from(50), -1)` reports `D020` at the call, `Percent.from(101)` is `D010`, a `main` that declares `Fs` with an empty `fs.read` exits with 75 at startup, a route handler returning a file handle is `V6003`, and the LSP and MCP `hole_context` agree byte for byte.
-
-</Step>
-<Step>
-
-### M4: WASM and verification
-
-A WASM backend with the runtime in linear memory, the M0 to M3 corpus passing on JavaScript and WASM with identical output, and `sakura verify` discharging contract obligations through a Z3 worker. A `proved` obligation removes its runtime check; anything else keeps it.
-
-Accepted when the `ensures` of `scale` above is `proved` under its `requires`, and a wrong body (`total * p / 50`) is `disproved` with a counterexample.
-
-</Step>
-<Step>
-
-### M5: native with Perceus
-
-A Cranelift backend, the reference-counting runtime with in-place reuse, `W8001` copy diagnostics, and regions as an internal optimization.
-
-Accepted when mapping over a list leaves the original intact, the same program reuses the buffer when the original is dead, cancellation and handler state run sanitizer-clean, and JavaScript, WASM and native agree on the corpus.
-
-</Step>
-</Steps>
-
-## Later than v0
-
-Some things are deliberately outside v0 (design §1.1 and §16): non-tail-resumptive handlers (`control` operations), durable workflows (`std/workflow`), `Sql.postgres`, named arguments, and a package registry. The [FAQ](/docs/faq) and [Prior art](/docs/prior-art) explain several of these choices.
-
-## Follow progress
-
-Development happens in the open at [github.com/icantcodefyi/sakura-lang](https://github.com/icantcodefyi/sakura-lang). Language changes go through RFCs in `docs/rfcs/`, and architecture decisions through ADRs in `docs/adr/`. Feedback on the design is most useful now, while the compiler is young: [build it](/docs/quickstart), write a program, and open an issue where it surprises you. See the [FAQ](/docs/faq) for ways to help.
+Package-management placement, external solver distribution, PostgreSQL timing, ownership of real-provider cassette recording, and Windows coverage remain owner decisions in plan §6. SQLite is implemented; `Sql.postgres` is not. Do not treat these open items as promised releases.

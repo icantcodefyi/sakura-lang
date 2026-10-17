@@ -4,10 +4,7 @@ description: Unit tests, property tests, contract-generated tests, snapshots, an
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  This page describes the v0 design. The compiler parses, resolves, type- and effect-checks and runs
-  M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented
-  yet. In the design, `test` blocks are M1, deterministic handlers M2, and contract-generated tests
-  M3. See the [roadmap](/docs/roadmap).
+  The source-built compiler runs the core language and much of M3 on JavaScript: contracts, typed effects and failures, std handlers, permissions, LSP and MCP. M3 is still in progress; no release or stable compatibility contract exists. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
 </Callout>
 
 Tests are part of the language. `test` and `property` are top-level items, so they live next to the code they test, use the same handlers as production code, and run with `sakura test`. Assertions come from `std/test`, whose names are in the prelude ([design §10.6](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)).
@@ -65,8 +62,8 @@ test "a typed failure that escapes fails the test" {
 
 Because a test's row includes `Fail<E>`, a test can call failing functions directly, and postfix `?` works on a `Result` as it does anywhere else. A failure that escapes the body fails the test and reports `failed with <Show of the error>`, for example `failed with ParseError { input: "x" }`. `expect_fail` remains the way to assert that a failure happens.
 
-<Callout type="info" title="Pending in the compiler">
-  Letting a typed failure escape a test body is design §17.30. The current compiler does not implement it yet and still reports `V3020` for such a test; wrap the call in `try` or `expect_fail` until it lands.
+<Callout type="info" title="Typed failures in tests">
+  A typed failure may escape a test body. The runner reports it as a failed test; `V3020` is for other unhandled effects. Use `expect_fail` when the failure is the expected result.
 </Callout>
 
 [Contract](/docs/tour/contracts) violations are defects, not failures, so `try` cannot catch them. Use `expect_defect`:
@@ -195,9 +192,9 @@ test "normalize output is strictly ascending" {
 
 Runs are seeded. `sakura test --json` reports one record per test with its seed, and `sakura test --seed N --filter "normalize"` reruns a case.
 
-## Property tests from contracts
+## Property tests from contracts (planned)
 
-`sakura test --contracts` writes property tests you did not write ([design §7.4](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)). For every `pub` function with at least one refined parameter or `requires` clause, it:
+The planned `sakura test --contracts` will write property tests you did not write ([design §7.4](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)). For every `pub` function with at least one refined parameter or `requires` clause, it:
 
 1. Generates inputs jointly from the parameter refinements and `requires`. It uses constructive generators for ranges, lengths, enums, and non-empty lists, and falls back to filtering.
 2. Runs the function under the test default handlers.
@@ -205,7 +202,7 @@ Runs are seeded. `sakura test --json` reports one record per test with its seed,
 
 Failures are shrunk and stored under `tests/regressions/<fn>.json`. If filtering discards more than 90% of candidates, the runner warns with `W7001`. Functions that use effects other than `Fail`, `Clock`, and `Random` are skipped unless handlers are supplied with a `@contract_test(handlers: [Sql.memory(), Log.captured()])` attribute.
 
-Given `clamp` from [Contracts](/docs/tour/contracts), `sakura test --contracts` generates `(x, lo, hi)` with `lo <= hi` and checks `lo <= result && result <= hi` on each run.
+Given `clamp` from [Contracts](/docs/tour/contracts), The planned `sakura test --contracts` will generate `(x, lo, hi)` with `lo <= hi` and checks `lo <= result && result <= hi` on each run.
 
 ## Snapshot tests
 
@@ -225,7 +222,7 @@ The `Show` format is the same on every backend, so snapshots do not depend on th
 sakura test                                  # all tests and properties
 sakura test --filter "normalize"             # tests whose name matches
 sakura test --seed 42                        # fix the seed
-sakura test --contracts                      # also run contract-generated property tests
+# Planned M3 completion: sakura test --contracts
 sakura test --json                           # JSON Lines records for agents
 sakura test --update-snapshots               # rewrite snapshot files
 ```

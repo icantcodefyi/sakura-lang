@@ -24,12 +24,27 @@ published yet.
 - `sakura fix [--preview] [--apply ids]` applies compiler fixes by impact class, and
   `sakura check --frozen-specs <symbols|all> [--since rev]` reports spec changes since a git
   revision as `V8020`.
-- `sakura new <cli|lib|agent> <name>` and `sakura init` scaffold a project, and `sakura run` exits
+- `sakura new <cli|lib|agent|api> <name>` and `sakura init` scaffold a project, and `sakura run` exits
   75 when `main` declares an effect that `[permissions]` does not grant.
+
+- `Tool.of` lowers a named `@tool` function through `Tool.from` with synthesized argument schema.
+- Effect-row parameters on types, including `Tool<e>`, `Agent<T, e>` and `Router<e>`.
+- Opaque constructor/field access outside the defining module is rejected with `V1006`;
+  compiler-known prelude `Trust` restricts `@trust("reason")` to trusted sink arguments (`V6001`).
+- `sql"…"` interpolations convert through `SqlValue.from` and remain bound parameters.
+- Typed failures escaping test bodies are reported as test failures.
+- All twelve examples pass their configured harness modes (six run plus test, four test,
+  two check-only); full execution/replay remains an M3 exit gate.
 
 ### Changed
 
 - Renamed the language from Vow to Sakura Lang: binary `sakura`, sources `.sakura`, manifest `sakura.toml`, crates `sakura_*`, env `SAKURA_*`, URIs `sakura://`, repo `icantcodefyi/sakura-lang`. Diagnostic codes are unchanged. <!-- rename:keep -->
+
+- Host handlers enforce manifest grants delivered by `sakura run` in `SAKURA_PERMISSIONS`.
+- Analysis rechecks only edited modules when public interfaces are unchanged; interface
+  changes invalidate dependents. Lowering still processes the whole program.
+- Roadmap and source-build documentation now distinguish implemented M3 behavior from
+  M3 exit gates, planned M4 WASM/verification and M5 native execution.
 
 ### Fixed
 

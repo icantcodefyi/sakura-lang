@@ -9,7 +9,7 @@ There are two different `llms.txt` files in the Sakura Lang project. Do not conf
 | --- | --- | --- |
 | Where | This website: `/llms.txt`, `/llms-full.txt`, `/docs/<page>.md` | The repository: [`docs/llms.txt`](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/llms.txt) |
 | Contents | These docs pages, as Markdown | The whole core language in one file, written for a model's context |
-| Status | Live today | Exists today as a file; `sakura prompt` will emit it (planned) |
+| Status | Live today | Exists today as a file; `sakura prompt` emits it |
 | Use it for | Explanations, the tour, agent tooling docs | Writing Sakura Lang code |
 
 ## Site exports
@@ -49,9 +49,9 @@ Use `/llms.txt` to choose pages when context is tight. Use a per-page `.md` URL 
 - the most used standard library names;
 - common diagnostics and their fixes.
 
-It is kept in sync with [`docs/design.md`](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md), which is authoritative if they ever disagree. Library signatures are deliberately not in it; look them up with `sakura doc --search` or the MCP `symbol_query` tool once those exist.
+It is kept in sync with [`docs/design.md`](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md), which is authoritative if they ever disagree. Library signatures are deliberately not in it; look them up with the implemented MCP `symbol_query` tool; `sakura doc --search` is planned.
 
-### `sakura prompt` (planned)
+### `sakura prompt`
 
 ```bash
 sakura prompt
@@ -66,7 +66,7 @@ curl https://raw.githubusercontent.com/icantcodefyi/sakura-lang/master/docs/llms
 
 ## System prompt snippet
 
-A starting point for an agent that writes Sakura Lang. Some commands in it, such as `sakura prompt`, are planned.
+A starting point for an agent that writes Sakura Lang. `sakura prompt` is available; consult its status section for planned interfaces.
 
 ```text
 You write code in Sakura Lang. Before writing code, read the Sakura Lang language reference
@@ -91,4 +91,4 @@ borrow syntax from other languages.
 
 ## Next
 
-[MCP server](/docs/agents/mcp): the planned compiler tools agents call directly.
+[MCP server](/docs/agents/mcp): the compiler tools agents call directly.

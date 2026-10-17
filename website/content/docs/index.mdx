@@ -4,7 +4,7 @@ description: Sakura Lang is an agent-first, general-purpose programming language
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  The v0 language is specified in [docs/design.md](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md). The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet. Details may still change through the RFC process.
+  The source-built compiler runs the core language and much of M3 on JavaScript: contracts, typed effects and failures, std handlers, permissions, LSP and MCP. M3 is still in progress; no release or stable compatibility contract exists. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
 </Callout>
 
 Sakura Lang is the language agents write: code that keeps its promises.
@@ -73,7 +73,7 @@ The test installs an in-memory handler for `Users`. `Clock` and `Random` need no
 
 **2. Memory without a borrow checker.** Every value has value semantics: no aliasable mutation, no reference cells, no cycles in the safe heap, no lifetimes. The first backend is JavaScript and uses the host GC. The native backend (milestone M5) inserts reference counting at compile time with Perceus-style reuse and has no tracing GC. Speed is a design goal; nothing has been measured. See [Memory model](/docs/tour/memory).
 
-**3. Contracts, always checked.** Refinement types (`where`), `requires`, and `ensures` are checked at runtime in every build mode, including `--release`. `sakura test --contracts` generates property tests from them. Later, `sakura verify` (M4) uses an SMT solver to prove individual obligations and remove only those checks. See [Contracts](/docs/tour/contracts) and [Testing](/docs/tour/testing).
+**3. Contracts, always checked.** Refinement types (`where`), `requires`, and `ensures` are checked at runtime in every build mode, including `--release`. The planned `sakura test --contracts` will generate property tests from them. Later, `sakura verify` (M4) uses an SMT solver to prove individual obligations and remove only those checks. See [Contracts](/docs/tour/contracts) and [Testing](/docs/tour/testing).
 
 **4. Secure by construction.** Effects are requirements; handlers are authority. The host supplies root handlers only for the std effects `main` declares, limited by `[permissions]` in `sakura.toml`, and code can only narrow that authority. `Untrusted<T>` marks outside data, `Secret<T>` cannot be shown or serialized, and tagged templates such as `sql"..."` never splice raw text. See [Capabilities and security](/docs/tour/capabilities).
 
@@ -84,8 +84,8 @@ The test installs an in-memory handler for `Users`. `Clock` and `Random` need no
 ## Status
 
 - **Design:** [docs/design.md](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md) is the authoritative v0 design. Anything it does not specify is not in v0.
-- **Compiler:** a Rust workspace in [compiler/](https://github.com/icantcodefyi/sakura-lang/tree/master/compiler). It parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet.
-- **Code on this site** follows the v0 design. Examples that need M3 or later features (contracts, capabilities, the M3 std modules) do not run yet.
+- **Compiler:** a Rust workspace in [compiler/](https://github.com/icantcodefyi/sakura-lang/tree/master/compiler). It parses, resolves, type- and effect-checks and executes the core language and implemented M3 features on JavaScript.
+- **Code on this site** follows the v0 design. The repository examples have executable coverage; planned features are labeled and the roadmap records the remaining M3 gates.
 
 The [roadmap](/docs/roadmap) lists every milestone, M0 to M5.
 

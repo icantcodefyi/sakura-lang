@@ -1,14 +1,10 @@
 ---
 title: MCP server
-description: The planned sakura mcp serve server, which exposes the compiler to agents as Model Context Protocol tools, and @tool export of your own functions.
+description: The sakura mcp serve server, which exposes the compiler to agents as Model Context Protocol tools, and @tool export of your own functions.
 ---
 
-<Callout type="warn" title="Planned">
-  `sakura mcp serve` is designed for v0 (milestone M3) and is planned. The compiler parses, resolves, type- and
-  effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented
-  yet, so the `@tool` example below cannot run either. Tool names and
-  parameters follow [design §12.6](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md); result shapes beyond
-  what is stated there are not fixed.
+<Callout type="warn" title="Pre-alpha">
+  The source-built compiler runs the core language and much of M3 on JavaScript: contracts, typed effects and failures, std handlers, permissions, LSP and MCP. M3 is still in progress; no release or stable compatibility contract exists. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
 </Callout>
 
 `sakura mcp serve` runs the compiler as a [Model Context Protocol](https://modelcontextprotocol.io) server. An agent calls compiler functions directly instead of running shell commands and parsing their output.
@@ -63,7 +59,7 @@ Tools that execute code, such as `test`, run with capabilities issued by the hos
 
 ## Exporting your own functions as tools
 
-Separately from the compiler tools, `sakura mcp serve --tools a,b` exports functions from your program as MCP tools (design §11.2).
+Planned separately from the implemented compiler tools: `sakura mcp serve --tools a,b` would export functions from your program as MCP tools (design §11.2). `Tool.of` works in-process today; the export flag is not implemented.
 
 A tool function is marked `@tool("description")`. Its parameters and result must be `Schema` types, and its error union must be made of `Schema` tags. From design §15.8:
 

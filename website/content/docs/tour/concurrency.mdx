@@ -4,7 +4,7 @@ description: Structured concurrency with the Task effect, cooperative cancellati
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  This page describes the v0 design in [design §8.6–§8.7 and §5.9](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md). The compiler parses, resolves, type- and effect-checks and runs M0–M2 programs on JavaScript; M3 std modules (http, sql, fs, cli, ai, task) are not implemented yet, so the `std/task` and `std/http` code below is planned.
+  The source-built compiler runs the core language and much of M3 on JavaScript: contracts, typed effects and failures, std handlers, permissions, LSP and MCP. M3 is still in progress; no release or stable compatibility contract exists. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
 </Callout>
 
 Sakura Lang has no `async`/`await` keywords and no `Async` effect. Every Sakura Lang function may suspend, and nothing in application code can observe whether a call did. Suspension is a property of **handlers**: `Clock.sleep` suspends under the host clock and returns immediately under `Clock.fixed` (design §5.6).

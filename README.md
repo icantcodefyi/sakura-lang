@@ -2,11 +2,13 @@
 
 **The signature is the contract.**
 
+Pre-alpha, source-buildable Rust compiler with a JavaScript backend. M3 is in progress; no release or stable language/API contract exists.
+
 ![Status: pre-alpha / design phase](https://img.shields.io/badge/status-pre--alpha%20%2F%20design%20phase-orange)
 
-Sakura Lang is an **agent-first programming language** being designed around explicit,
-reviewable promises. Humans review signatures; the compiler is intended to check
-that implementations keep them.
+Sakura Lang is an **agent-first programming language** built around explicit,
+reviewable promises. Humans review signatures; the compiler checks types and effects,
+and checks contracts at runtime.
 
 The design brings together:
 
@@ -21,13 +23,35 @@ The design brings together:
 - **Batteries included:** one coherent compiler, formatter, test runner, package
   workflow, and standard-library direction rather than assembly from unrelated tools.
 
-These are **design goals**, not shipped capabilities or benchmark claims. There is
-no installable Sakura Lang compiler yet. Syntax, verification boundaries, runtime details,
-and the library surface are still being worked out in [the design](docs/design.md).
+The JS backend implements typed effects/errors, runtime contracts, std handlers,
+permissions, tests, LSP and MCP. WASM/static verification (M4), native Perceus reuse
+(M5), and package management remain planned. See the [roadmap](website/content/docs/roadmap.mdx)
+and [completion plan](docs/plans/m3-completion-and-m4.md); the [design](docs/design.md) remains provisional.
+
+Build with the pinned Rust toolchain and run with Node 26:
+
+```sh
+cd compiler
+cargo build -p sakura_cli
+target/debug/sakura run examples/contracts
+cargo test -p sakura_cli --test examples
+```
+
+All twelve examples pass their configured modes: six run plus test, four test,
+and two check-only (`agent_loop`, `secrets`). This does not yet meet the M3 gate
+requiring execution or offline replay for every example.
+
+Recent additions include `Tool.of` for `@tool` functions, `sakura new api`,
+`SAKURA_PERMISSIONS` enforcement by host handlers, per-module rechecking when public
+interfaces hold, `Tool<e>` / `Agent<T, e>` / `Router<e>` row parameters, opaque access
+diagnostics (`V1006`), prelude `Trust` and sink-only `@trust` (`V6001`), automatic
+`SqlValue.from` conversions in `sql"…"`, escaping typed failures reported as failed
+tests, and one `Llm.anthropic` streaming callback per SSE text delta. Provider behavior
+is covered by local mocks; this is not a claim of live-provider verification.
 
 ## A small promise
 
-Illustrative proposed syntax; this example cannot be compiled yet:
+This pure function checks with the current compiler:
 
 ```sakura
 fn add(a: Int, b: Int) -> Int {
@@ -35,8 +59,7 @@ fn add(a: Int, b: Int) -> Int {
 }
 ```
 
-The direction is to extend signatures with explicit error/effect information,
-contracts, and capability requirements. The exact syntax and guarantees belong
+Signatures can also declare errors/effects, contracts, and capability requirements. The exact syntax and guarantees belong
 in the evolving design, not in assumptions made from this small example.
 
 ## Explore the project
@@ -53,7 +76,7 @@ unresolved tradeoffs are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) to help
 | `docs/` | Evolving language design, RFCs, and architecture decisions |
 | `website/` | Bun / Next.js / Fumadocs website and documentation |
 | `.github/` | CI, dependency updates, issue forms, and review ownership |
-| `compiler/` (planned) | Rust compiler library and CLI in a root Cargo workspace |
+| `compiler/` | Rust compiler workspace, CLI, JS runtime, std and examples |
 
 Run the website with Bun **1.4.3**:
 
@@ -63,7 +86,7 @@ bun install --frozen-lockfile
 bun run dev
 ```
 
-The [contribution guide](CONTRIBUTING.md) covers checks and the planned compiler
+The [contribution guide](CONTRIBUTING.md) covers checks and the compiler
 layout. The initial maintainer is [@icantcodefyi](https://github.com/icantcodefyi);
 see [governance](GOVERNANCE.md), [conduct](CODE_OF_CONDUCT.md), and
 [security reporting](SECURITY.md).
