@@ -275,3 +275,21 @@ All must pass on `origin/master`, on ubuntu and macos, before M4 backend coding 
 3. **`Sql.postgres`.** Design §10.2 names it the second provider; it needs a native driver or a JS dependency in the runtime. Recommendation: defer past M4 (SQLite covers the corpus). Confirm.
 4. **Recording cassettes.** Someone with `ANTHROPIC_API_KEY` must run `sakura test --record` once for `examples/llm_extract`, `agent_loop` and `secrets` and commit `tests/fixtures/*.jsonl`. Who, and is committing recorded provider responses to the public repository acceptable (they contain no secrets by construction)?
 5. **Windows.** CI runs ubuntu and macos. §14.3 says “macOS and Linux”; research/07 wants Windows at first release. Keep M3/M4 on two platforms?
+
+---
+
+## 7. Deviations recorded during implementation
+
+### WS1 (escape check, refinements, contracts in the checker)
+
+1. **`@resource` placement.** `std/fs.File` is an `opaque` record (the handler builds it), not a bodiless type, so `@resource` is accepted on any type declaration. A `@resource` type is also *scoped* (§8.4 "scope-bound"): a `File` returned from a `with` is `V6002` unless the same expression is already `V6003`.
+2. **`return` out of a `with`** is checked like the `with`'s value (`V6002`); §17.70 names only the value, but a `return` leaves the scope the same way.
+3. **Calls carry captures conservatively.** A call whose result type contains a function is treated as holding any scoped argument (it may return a closure over it).
+4. **`V6003` on every callback taking a resource**, not only on the introducing operation: a call of any function or operation whose parameter is a callback taking a `@resource` value is checked, so a wrapper `fn open<T>(p, body: fn(File) -> T)` is checked at its callers.
+5. **`Task.spawn`.** A `Scope` that is not a local (or a field of one) is treated as bound outside every `with`. For a non-lambda task body only the locals it reads directly are candidates (nested lambdas inside a call argument are not walked; noted in `escape.rs`).
+6. **Literals.** `-` applied to an `Int`/`Float` literal counts as a literal for `V5002`.
+7. **`Untrusted.validate`** is declared in std as `@external(js, "sakura_runtime", "untrusted_validate")`; the external is never emitted because every call is recorded in `TypedBody::conversions` (keyed by the call expression) for `sakura_core` to lower (WS2), and a non-call use (`let f = Untrusted.validate`) is `V5003`. A target that is unknown, unrefined, or refines another base is `V5003` with an `incomplete` fix.
+8. **Std lines written by WS1.** WS4 was not active and the tests need them, so WS1 added `@resource` on `File` and the `Untrusted.validate` declaration (WS4 items 1 and 2, compiler/REQUESTS.md).
+9. **`V5003`** was registered by WS1 (with its explain page) because the registry test requires every constructed code; WS5.3 has only the remaining explain pages.
+10. **Row-mismatch wording** (WS1.5): “effect `L` is performed by this value but not allowed by the expected type” or “… is allowed by the expected type but not performed by this value, and the rows must be equal here” (the second only from unification, e.g. `if` branches); `tests/ui/V3002_effect_label_not_permitted.jsonl` re-blessed for the new message.
+11. **`W5005` on `where String.contains(it, …)`** fires as §17.72 says, including `examples/json_api`'s `Email` and the canonical `Email` of the website tour; the ui fixture `V5002_refinement_checked_at_runtime.sakura` reports `W5005` too until its predicate changes (WS5).
