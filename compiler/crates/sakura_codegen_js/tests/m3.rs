@@ -60,6 +60,38 @@ pub fn main() -> Unit ! {Console} {
     assert_eq!(d["spans"][0]["start_byte"].as_u64(), Some(start), "{d}");
 }
 
+/// Design §17.71: an undecided literal in a refined position is `V.from(lit)` evaluated once
+/// before `main`; a failure is `D010` with the literal as primary span and the type as definition.
+#[test]
+fn refined_literals_are_checked_before_main() {
+    let src = r#"type Low = Int where List.len(List.range(0, it)) < 3
+fn pick(flag: Bool) -> Low {
+  if flag { -1 } else { 7 }
+}
+pub fn main() -> Unit ! {Console} {
+  Console.print("started")
+  Console.print("{pick(true)}")
+}
+"#;
+    let r = common::run("refined_literal", src).unwrap();
+    assert_eq!((r.stdout.as_str(), r.code), ("", 70), "{}", r.stderr);
+    let d = defect_record(&r.stderr);
+    assert_eq!(d["code"], "D010", "{d}");
+    let at = |k: usize| d["spans"][k]["start_byte"].as_u64().unwrap() as usize;
+    assert!(src[at(0)..].starts_with("7 }"), "{d}");
+    assert_eq!(d["spans"][1]["role"], "definition", "{d}");
+    assert!(src[at(1)..].starts_with("Low"), "{d}");
+    // Without the failing literal, `-1` passes and the program runs.
+    let ok = src.replace("{ 7 }", "{ 2 }");
+    let r = common::run("refined_literal_ok", &ok).unwrap();
+    assert_eq!(
+        (r.stdout.as_str(), r.code),
+        ("started\n-1\n", 0),
+        "{}",
+        r.stderr
+    );
+}
+
 #[test]
 fn ensures_blames_the_callee_clause() {
     let src = r#"fn half(x: Int) -> Int

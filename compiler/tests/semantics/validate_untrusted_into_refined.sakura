@@ -1,0 +1,28 @@
+// milestone: M3
+// covers: CallExpr MatchExpr
+// spec: §6.4, §17.71
+
+// `Untrusted.validate` runs the expected refined type's `where` on the value.
+import std/core.{Violation}
+import std/untrusted
+
+type Percent = Int where it >= 0 && it <= 100
+
+type Slug = String where List.len(String.split(it, " ")) == 1
+
+fn percent(u: Untrusted<Int>) -> Result<Percent, Violation> { Untrusted.validate(u) }
+
+fn slug(raw: String) -> Slug ! {Fail<Violation>} {
+  let s: Slug = Untrusted.validate(Untrusted.of(raw))?
+  s
+}
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("{percent(Untrusted.of(50))}")
+  match percent(Untrusted.of(150)) {
+    Ok(p) => Console.print("unexpected {p}"),
+    Err(v) => Console.print("{v.type_name} {v.clause}"),
+  }
+  Console.print("{try { slug("sakura-lang") }}")
+  Console.print("{(try { slug("two words") }).is_err()}")
+}

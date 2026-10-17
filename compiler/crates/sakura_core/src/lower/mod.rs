@@ -51,6 +51,7 @@ pub fn lower(program: &hir::Program, typed: &TypedProgram, opts: &LowerOptions) 
         refinements: HashMap::new(),
         field_checks: HashMap::new(),
         record_news: HashMap::new(),
+        literal_inits: Vec::new(),
     };
     l.builtin_types();
     let main = program
@@ -90,6 +91,7 @@ pub fn lower(program: &hir::Program, typed: &TypedProgram, opts: &LowerOptions) 
         }
     }
     l.drain();
+    l.init_literals();
     crate::opt::optimize(&mut l.m);
     Lowered {
         module: l.m,
@@ -128,6 +130,8 @@ pub(crate) struct Lower<'p> {
     field_checks: HashMap<TypeId, Vec<(usize, RefinementId, Option<Pos>)>>,
     /// Record/error type with field refinements → its checked constructor `T$new`.
     record_news: HashMap<TypeId, DefId>,
+    /// Constants `V.from(lit)` for literals coerced into refined types, in lowering order.
+    literal_inits: Vec<DefId>,
 }
 
 /// A field's `where`: its predicate body, the field name and its range.
@@ -346,6 +350,64 @@ impl<'p> Lower<'p> {
             ..self.m.defs[id.index()].clone()
         };
         Some(id)
+    }
+
+    /// The constant `V.from(lit)` (`V$lit`) for a literal coerced into refined type `V` at
+    /// `pos`; `$entry` evaluates every one before `main` (design §17.71: a failing literal is
+    /// `D010` at start-up, primary span the literal, definition span the type). Tests evaluate
+    /// it on first use.
+    pub fn literal_init(
+        &mut self,
+        from: hir::DefId,
+        lit: Lit,
+        ty: Ty,
+        pos: Option<Pos>,
+        module: hir::ModuleId,
+    ) -> DefId {
+        let f = self.callee(from);
+        let name = match &f {
+            Atom::Global(g) => format!("{}$lit", self.m.def(*g).name),
+            _ => "lit".into(),
+        };
+        let mut b = FnBuilder::new();
+        let r = b.local("v", ty.clone());
+        let mut blk = Block::new();
+        blk.push_at(r, Bind::Call(f, vec![Atom::Lit(lit)]), pos);
+        let id = self.push_placeholder(&name, self.module_name(module));
+        let d = &mut self.m.defs[id.index()];
+        d.kind = FnKind::Const;
+        d.locals = b.locals;
+        d.ret = ty;
+        d.pos = pos;
+        d.body = blk.finish(Expr::Ret(local(r)));
+        self.literal_inits.push(id);
+        id
+    }
+
+    /// Prefix `$entry` with a call of every literal constant, so they run before any root
+    /// handler is built or `main` starts.
+    fn init_literals(&mut self) {
+        let Some(entry) = self.m.entry else {
+            return;
+        };
+        let inits = std::mem::take(&mut self.literal_inits);
+        let d = &mut self.m.defs[entry.index()];
+        let mut body = std::mem::replace(&mut d.body, Expr::Ret(unit()));
+        for c in inits.into_iter().rev() {
+            let ty = self.m.defs[c.index()].ret.clone();
+            let d = &mut self.m.defs[entry.index()];
+            d.locals.push(LocalDecl {
+                name: "lit".into(),
+                ty,
+            });
+            body = Expr::Let {
+                local: Local(d.locals.len() as u32 - 1),
+                bind: Bind::Call(Atom::Global(c), vec![]),
+                pos: None,
+                body: Box::new(body),
+            };
+        }
+        self.m.defs[entry.index()].body = body;
     }
 
     /// A test body plus its wrapper `fn(seed)` that installs the deterministic defaults of

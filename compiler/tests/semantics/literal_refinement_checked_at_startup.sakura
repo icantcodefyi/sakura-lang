@@ -1,0 +1,20 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D010
+// covers: LetStmt
+// spec: §17.71, §17.87
+
+// A literal whose `where` the checker cannot decide (it calls `String.split`) is checked once
+// before `main` starts: nothing is printed, even though the literal sits in a function `main`
+// would call only after printing.
+type Slug = String where List.len(String.split(it, " ")) == 1
+
+fn title() -> Slug {
+  let s: Slug = "two words"
+  s
+}
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("started")
+  Console.print("{title()}")
+}

@@ -889,6 +889,11 @@ impl<'a, 'p> FnLower<'a, 'p> {
     pub(crate) fn expr(&mut self, e: ExprId) -> Option<Atom> {
         let body = self.body;
         let pos = self.pos(e);
+        if let Some((from, lit)) = self.refined_literal(e) {
+            let ty = self.ty_of(e);
+            let c = self.l.literal_init(from, lit, ty.clone(), pos, self.module);
+            return Some(self.bind("lit", ty, Bind::Call(Atom::Global(c), vec![]), pos));
+        }
         match &body.exprs[e] {
             hir::Expr::Missing => self.unsupported(e, "erroneous code"),
             hir::Expr::Lit(lit) => Some(Atom::Lit(lit_of(lit))),
@@ -919,8 +924,11 @@ impl<'a, 'p> FnLower<'a, 'p> {
                 let mut elem = None;
                 for &a in args {
                     let v = self.expr(a)?;
-                    // `SqlValue.from(x)` and the like, recorded by the checker (§4.11).
-                    let Some((from, inst)) = self.typed.conversions.get(a).cloned() else {
+                    // `SqlValue.from(x)` and the like, recorded by the checker (§4.11); a refined
+                    // literal is already converted.
+                    let conv = self.typed.conversions.get(a).cloned();
+                    let Some((from, inst)) = conv.filter(|_| self.refined_literal(a).is_none())
+                    else {
                         vs.push(v);
                         continue;
                     };
@@ -1354,6 +1362,28 @@ impl<'a, 'p> FnLower<'a, 'p> {
         }
     }
 
+    /// A literal (or negated literal) the checker coerced into a refined type `V` without
+    /// deciding its `where` (design §17.71, §17.87): `V.from` and the literal.
+    fn refined_literal(&self, e: ExprId) -> Option<(hir::DefId, Lit)> {
+        let (from, _) = self.typed.conversions.get(e)?;
+        if hir::RefinementIntro::of(self.l.p.def(*from)) != Some(hir::RefinementIntro::From) {
+            return None;
+        }
+        let lit = match &self.body.exprs[e] {
+            hir::Expr::Lit(l) => lit_of(l),
+            hir::Expr::Unary {
+                op: hir::UnaryOp::Neg,
+                expr,
+            } => match &self.body.exprs[*expr] {
+                hir::Expr::Lit(hir::Literal::Int(i)) => Lit::Int(i.checked_neg()?),
+                hir::Expr::Lit(hir::Literal::Float(f)) => Lit::Float(-f),
+                _ => return None,
+            },
+            _ => return None,
+        };
+        Some((*from, lit))
+    }
+
     fn call(
         &mut self,
         e: ExprId,
@@ -1363,6 +1393,22 @@ impl<'a, 'p> FnLower<'a, 'p> {
     ) -> Option<Atom> {
         let pos = self.pos(e);
         let ty = self.ty_of(e);
+        // `Untrusted.validate(u)` into refined type `V` is `V.validate(untrusted_value(u))`
+        // (design §17.71); std's external is never called.
+        if let Some((v, _)) = self.typed.conversions.get(e).cloned()
+            && hir::RefinementIntro::of(self.l.p.def(v)) == Some(hir::RefinementIntro::Validate)
+        {
+            let u = receiver.or(args.first().copied())?;
+            let u = self.expr(u)?;
+            let raw = self.bind(
+                "raw",
+                Ty::Var(u32::MAX),
+                Bind::Call(builtin("untrusted_value"), vec![u]),
+                pos,
+            );
+            let f = self.l.callee(v);
+            return Some(self.bind("r", ty, Bind::Call(f, vec![raw]), pos));
+        }
         let target = self.typed.calls.get(e).cloned().or_else(|| {
             match callee.map(|c| &self.body.exprs[c]) {
                 Some(hir::Expr::Path(Res::Def(d))) => Some(sakura_types::CallTarget::Def(*d)),

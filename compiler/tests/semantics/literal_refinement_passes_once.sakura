@@ -1,0 +1,14 @@
+// milestone: M3
+// covers: LetStmt ForExpr
+// spec: §17.71, §17.87
+
+// An undecided literal that satisfies its `where` is the refined value; it is converted once,
+// not on every evaluation of the expression.
+type Slug = String where List.len(String.split(it, " ")) == 1
+
+fn tag() -> Slug {
+  let s: Slug = "sakura"
+  s
+}
+
+pub fn main() -> Unit ! {Console} { for _ in 0..3 { Console.print("{tag()}") } }
