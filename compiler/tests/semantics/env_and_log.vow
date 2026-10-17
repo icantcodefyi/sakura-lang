@@ -1,7 +1,6 @@
 // milestone: M2
 // mode: test
 // covers: TestDecl MatchExpr
-// known-bug: the `vow test` runner's Test handler predates `output_lines` (op 3; `snapshot` is op 4) (REQUESTS.md, F to E)
 
 fn greeting() -> String ! {Env, Log} {
   match Env.get("USER") {
