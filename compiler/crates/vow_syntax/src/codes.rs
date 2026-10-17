@@ -23,9 +23,11 @@ pub const TOO_DEEP: Code = codes::V0008;
 pub const EXPECTED_TERMINATOR: Code = codes::V0009;
 /// Chained non-associative operator (`a < b < c`, `a..b..c`).
 pub const CHAINED_COMPARISON: Code = codes::V0010;
-/// Type arguments on a type path in expression position (`List<Int>.empty()`).
+/// Type arguments in expression position (`List<Int>.empty()`, `f<T>(x)`).
 pub const TYPE_ARGS_ON_PATH: Code = codes::V0011;
 /// Keyword expression used as an operand without parentheses (`match x {…}.len()`).
 pub const KEYWORD_EXPR_OPERAND: Code = codes::V0012;
 /// Left side of `=` is not an identifier or field path.
 pub const INVALID_ASSIGN_TARGET: Code = codes::V0013;
+/// `name: value` in a call's argument list; only attributes take named arguments (§3.2 rule 13).
+pub const NAMED_ARGUMENT: Code = codes::V0014;

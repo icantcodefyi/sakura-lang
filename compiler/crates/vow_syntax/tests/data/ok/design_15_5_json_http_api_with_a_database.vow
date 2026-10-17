@@ -1,5 +1,8 @@
-import std/http.{Request, Response, Router}
-import std/sql
+import std/http.{Request, Response, Status, BadRequest}
+import std/router.{Router}
+import std/serve.{Serve, Address}
+import std/sql.{Sql, SqlError}
+import std/path.{Path}
 
 type Email = String where String.len(it) <= 254 && String.contains(it, "@")
 type NewUser = { email: Email, name: String }
@@ -8,9 +11,9 @@ error EmailTaken(email: Email)
 
 fn create_user(input: NewUser) -> User ! {Sql, Fail<EmailTaken | SqlError>} {
   Sql.transaction(fn() {
-    let existing = Sql.query<User>(sql"select id, email, name from users where email = {input.email}")
+    let existing: List<User> = Sql.query(sql"select id, email, name from users where email = {input.email}")
     if List.len(existing) > 0 { fail EmailTaken { email: input.email } }
-    let rows = Sql.query<User>(
+    let rows: List<User> = Sql.query(
       sql"insert into users (email, name) values ({input.email}, {input.name}) returning id, email, name")
     List.first(rows).expect("insert returning yields one row")
   })
@@ -18,13 +21,16 @@ fn create_user(input: NewUser) -> User ! {Sql, Fail<EmailTaken | SqlError>} {
 
 fn handle_create(req: Request) -> Response ! {Sql, Log} {
   try {
-    let input = Request.json<NewUser>(req, 64_000)      // validates Email refinement
+    let input: NewUser = Request.json(req, 64_000)      // validates the Email refinement
     let user = create_user(input)
     Response.ok_json(user)
   } catch {
     BadRequest { detail } => Response.status(400, detail),
     EmailTaken { email } => Response.status(409, "email already registered"),
-    SqlError { .. } => { Log.event(Level.Error, "db error", []); Response.status(503, "try again") },
+    SqlError { .. } => {
+      Log.event(Level.Error, "db error", [])
+      Response.status(503, "try again")
+    }
   }
 }
 
@@ -43,7 +49,7 @@ test "duplicate email is 409" {
     let body = Json.encode(NewUser { email: Email.from("a@b.co"), name: "A" })
     let first = handle_create(Request.post("/users", body))
     let second = handle_create(Request.post("/users", body))
-    expect_eq(first.status, Status.of(200))
-    expect_eq(second.status, Status.of(409))
+    expect_eq(first.status, Status.from(200))
+    expect_eq(second.status, Status.from(409))
   }
 }

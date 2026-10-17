@@ -1,5 +1,6 @@
-import std/cli
-import std/fs
+import std/cli.{Cli, CliError}
+import std/fs.{Fs, FsError, Dir}
+import std/path.{Path}
 
 type Args = { input: Path, top: Int }   // `vow run -- --input notes.txt --top 5`
 
@@ -9,8 +10,8 @@ fn word_counts(text: String) -> Map<String, Int> {
   })
 }
 
-pub fn main() -> Unit ! {Console, Env, Fs, Fail<CliError | FsError>} {
-  let args = Cli.parse<Args>(Cli.args())
+pub fn main() -> Unit ! {Console, Cli, Fs, Fail<CliError | FsError>} {
+  let args: Args = Cli.parse(Cli.args())
   // Narrow the root Fs handler to the data directory before touching files.
   with Fs.rooted(Dir.subdir(Fs.root(), "data")) {
     let text = Fs.read_text(args.input).trust(@trust("word counting cannot be influenced by content"))

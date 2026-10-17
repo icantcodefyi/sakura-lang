@@ -1,0 +1,13 @@
+// Forms §17 rejects; each reports one diagnostic and the rest of the file still parses.
+fn calls() -> Unit {
+  let a = f<Int>(x)
+  let b = Sql.query<List<User>>(q, 1)
+  let c = List<Int>.empty()
+  let d = Budget.limits(tokens: 20_000, usd: 0.50)
+  let e = f(a < B, c > (d))
+}
+@llm(system: "named arguments are fine in attributes")
+fn g() -> Unit
+type Leading = | A | B
+opaque type NoPub = Int
+pub opaque type Fine = Int

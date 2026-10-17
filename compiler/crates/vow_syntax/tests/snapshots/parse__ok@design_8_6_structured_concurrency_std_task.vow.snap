@@ -1,305 +1,473 @@
 ---
 source: crates/vow_syntax/tests/parse.rs
-assertion_line: 28
+assertion_line: 32
 expression: out
 input_file: crates/vow_syntax/tests/data/ok/design_8_6_structured_concurrency_std_task.vow
 ---
-SOURCE_FILE@0..301
-  EFFECT_DECL@0..300
-    EFFECT_KW@0..6 "effect"
-    WHITESPACE@6..7 " "
-    TYPE_NAME@7..11 "Task"
-    WHITESPACE@11..12 " "
-    L_BRACE@12..13 "{"
-    WHITESPACE@13..16 "\n  "
-    OP_SIG@16..65
-      FN_KW@16..18 "fn"
-      WHITESPACE@18..19 " "
-      IDENT@19..24 "scope"
-      TYPE_PARAM_LIST@24..30
-        LT@24..25 "<"
-        TYPE_PARAM@25..26
-          TYPE_NAME@25..26 "T"
-        COMMA@26..27 ","
-        WHITESPACE@27..28 " "
-        TYPE_PARAM@28..29
-          IDENT@28..29 "e"
-        GT@29..30 ">"
-      PARAM_LIST@30..56
-        L_PAREN@30..31 "("
-        PARAM@31..55
-          IDENT@31..35 "body"
-          COLON@35..36 ":"
-          WHITESPACE@36..37 " "
-          FN_TYPE@37..55
-            FN_KW@37..39 "fn"
-            TYPE_LIST@39..46
-              L_PAREN@39..40 "("
-              NAMED_TYPE@40..45
-                PATH@40..45
-                  TYPE_NAME@40..45 "Scope"
-              R_PAREN@45..46 ")"
-            WHITESPACE@46..47 " "
-            RET_TYPE@47..51
-              THIN_ARROW@47..49 "->"
-              WHITESPACE@49..50 " "
-              NAMED_TYPE@50..51
-                PATH@50..51
-                  TYPE_NAME@50..51 "T"
-            WHITESPACE@51..52 " "
-            BANG@52..53 "!"
-            WHITESPACE@53..54 " "
-            EFFECT_ROW@54..55
-              IDENT@54..55 "e"
-        R_PAREN@55..56 ")"
-      WHITESPACE@56..57 " "
-      RET_TYPE@57..61
-        THIN_ARROW@57..59 "->"
-        WHITESPACE@59..60 " "
-        NAMED_TYPE@60..61
-          PATH@60..61
-            TYPE_NAME@60..61 "T"
-      WHITESPACE@61..62 " "
-      BANG@62..63 "!"
-      WHITESPACE@63..64 " "
-      EFFECT_ROW@64..65
-        IDENT@64..65 "e"
-    NEWLINE@65..66 "\n"
-    WHITESPACE@66..68 "  "
-    OP_SIG@68..129
-      FN_KW@68..70 "fn"
-      WHITESPACE@70..71 " "
-      IDENT@71..76 "spawn"
-      TYPE_PARAM_LIST@76..82
-        LT@76..77 "<"
-        TYPE_PARAM@77..78
-          TYPE_NAME@77..78 "T"
-        COMMA@78..79 ","
-        WHITESPACE@79..80 " "
-        TYPE_PARAM@80..81
-          IDENT@80..81 "e"
-        GT@81..82 ">"
-      PARAM_LIST@82..113
-        L_PAREN@82..83 "("
-        PARAM@83..91
-          IDENT@83..84 "s"
-          COLON@84..85 ":"
-          WHITESPACE@85..86 " "
-          NAMED_TYPE@86..91
-            PATH@86..91
-              TYPE_NAME@86..91 "Scope"
-        COMMA@91..92 ","
-        WHITESPACE@92..93 " "
-        PARAM@93..112
-          IDENT@93..97 "body"
-          COLON@97..98 ":"
-          WHITESPACE@98..99 " "
-          FN_TYPE@99..112
-            FN_KW@99..101 "fn"
-            TYPE_LIST@101..103
-              L_PAREN@101..102 "("
-              R_PAREN@102..103 ")"
-            WHITESPACE@103..104 " "
-            RET_TYPE@104..108
-              THIN_ARROW@104..106 "->"
-              WHITESPACE@106..107 " "
-              NAMED_TYPE@107..108
-                PATH@107..108
-                  TYPE_NAME@107..108 "T"
-            WHITESPACE@108..109 " "
-            BANG@109..110 "!"
-            WHITESPACE@110..111 " "
-            EFFECT_ROW@111..112
-              IDENT@111..112 "e"
-        R_PAREN@112..113 ")"
-      WHITESPACE@113..114 " "
-      RET_TYPE@114..125
-        THIN_ARROW@114..116 "->"
-        WHITESPACE@116..117 " "
-        NAMED_TYPE@117..125
-          PATH@117..122
-            TYPE_NAME@117..122 "Fiber"
-          GENERIC_ARG_LIST@122..125
-            LT@122..123 "<"
-            NAMED_TYPE@123..124
-              PATH@123..124
-                TYPE_NAME@123..124 "T"
-            GT@124..125 ">"
-      WHITESPACE@125..126 " "
-      BANG@126..127 "!"
-      WHITESPACE@127..128 " "
-      EFFECT_ROW@128..129
-        IDENT@128..129 "e"
-    NEWLINE@129..130 "\n"
-    WHITESPACE@130..132 "  "
-    OP_SIG@132..160
-      FN_KW@132..134 "fn"
-      WHITESPACE@134..135 " "
-      IDENT@135..139 "join"
-      TYPE_PARAM_LIST@139..142
-        LT@139..140 "<"
-        TYPE_PARAM@140..141
-          TYPE_NAME@140..141 "T"
-        GT@141..142 ">"
-      PARAM_LIST@142..155
-        L_PAREN@142..143 "("
-        PARAM@143..154
-          IDENT@143..144 "f"
-          COLON@144..145 ":"
-          WHITESPACE@145..146 " "
-          NAMED_TYPE@146..154
-            PATH@146..151
-              TYPE_NAME@146..151 "Fiber"
-            GENERIC_ARG_LIST@151..154
-              LT@151..152 "<"
-              NAMED_TYPE@152..153
-                PATH@152..153
-                  TYPE_NAME@152..153 "T"
-              GT@153..154 ">"
-        R_PAREN@154..155 ")"
-      WHITESPACE@155..156 " "
-      RET_TYPE@156..160
-        THIN_ARROW@156..158 "->"
-        WHITESPACE@158..159 " "
-        NAMED_TYPE@159..160
-          PATH@159..160
-            TYPE_NAME@159..160 "T"
-    NEWLINE@160..161 "\n"
-    WHITESPACE@161..163 "  "
-    OP_SIG@163..219
-      FN_KW@163..165 "fn"
-      WHITESPACE@165..166 " "
-      IDENT@166..169 "all"
-      TYPE_PARAM_LIST@169..175
-        LT@169..170 "<"
-        TYPE_PARAM@170..171
-          TYPE_NAME@170..171 "T"
-        COMMA@171..172 ","
-        WHITESPACE@172..173 " "
-        TYPE_PARAM@173..174
-          IDENT@173..174 "e"
-        GT@174..175 ">"
-      PARAM_LIST@175..204
-        L_PAREN@175..176 "("
-        PARAM@176..203
-          IDENT@176..182 "bodies"
-          COLON@182..183 ":"
-          WHITESPACE@183..184 " "
-          NAMED_TYPE@184..203
-            PATH@184..188
-              TYPE_NAME@184..188 "List"
-            GENERIC_ARG_LIST@188..203
-              LT@188..189 "<"
-              FN_TYPE@189..202
-                FN_KW@189..191 "fn"
-                TYPE_LIST@191..193
-                  L_PAREN@191..192 "("
-                  R_PAREN@192..193 ")"
-                WHITESPACE@193..194 " "
-                RET_TYPE@194..198
-                  THIN_ARROW@194..196 "->"
-                  WHITESPACE@196..197 " "
-                  NAMED_TYPE@197..198
-                    PATH@197..198
-                      TYPE_NAME@197..198 "T"
-                WHITESPACE@198..199 " "
-                BANG@199..200 "!"
-                WHITESPACE@200..201 " "
-                EFFECT_ROW@201..202
-                  IDENT@201..202 "e"
-              GT@202..203 ">"
-        R_PAREN@203..204 ")"
-      WHITESPACE@204..205 " "
-      RET_TYPE@205..215
-        THIN_ARROW@205..207 "->"
-        WHITESPACE@207..208 " "
-        NAMED_TYPE@208..215
-          PATH@208..212
-            TYPE_NAME@208..212 "List"
-          GENERIC_ARG_LIST@212..215
-            LT@212..213 "<"
-            NAMED_TYPE@213..214
-              PATH@213..214
-                TYPE_NAME@213..214 "T"
-            GT@214..215 ">"
-      WHITESPACE@215..216 " "
-      BANG@216..217 "!"
-      WHITESPACE@217..218 " "
-      EFFECT_ROW@218..219
-        IDENT@218..219 "e"
-    NEWLINE@219..220 "\n"
-    WHITESPACE@220..222 "  "
-    OP_SIG@222..273
-      FN_KW@222..224 "fn"
-      WHITESPACE@224..225 " "
-      IDENT@225..229 "race"
-      TYPE_PARAM_LIST@229..235
-        LT@229..230 "<"
-        TYPE_PARAM@230..231
-          TYPE_NAME@230..231 "T"
-        COMMA@231..232 ","
-        WHITESPACE@232..233 " "
-        TYPE_PARAM@233..234
-          IDENT@233..234 "e"
-        GT@234..235 ">"
-      PARAM_LIST@235..264
-        L_PAREN@235..236 "("
-        PARAM@236..263
-          IDENT@236..242 "bodies"
-          COLON@242..243 ":"
-          WHITESPACE@243..244 " "
-          NAMED_TYPE@244..263
-            PATH@244..248
-              TYPE_NAME@244..248 "List"
-            GENERIC_ARG_LIST@248..263
-              LT@248..249 "<"
-              FN_TYPE@249..262
-                FN_KW@249..251 "fn"
-                TYPE_LIST@251..253
-                  L_PAREN@251..252 "("
-                  R_PAREN@252..253 ")"
-                WHITESPACE@253..254 " "
-                RET_TYPE@254..258
-                  THIN_ARROW@254..256 "->"
-                  WHITESPACE@256..257 " "
-                  NAMED_TYPE@257..258
-                    PATH@257..258
-                      TYPE_NAME@257..258 "T"
-                WHITESPACE@258..259 " "
-                BANG@259..260 "!"
-                WHITESPACE@260..261 " "
-                EFFECT_ROW@261..262
-                  IDENT@261..262 "e"
-              GT@262..263 ">"
-        R_PAREN@263..264 ")"
-      WHITESPACE@264..265 " "
-      RET_TYPE@265..269
-        THIN_ARROW@265..267 "->"
-        WHITESPACE@267..268 " "
-        NAMED_TYPE@268..269
-          PATH@268..269
-            TYPE_NAME@268..269 "T"
-      WHITESPACE@269..270 " "
-      BANG@270..271 "!"
-      WHITESPACE@271..272 " "
-      EFFECT_ROW@272..273
-        IDENT@272..273 "e"
-    NEWLINE@273..274 "\n"
-    WHITESPACE@274..276 "  "
-    OP_SIG@276..298
-      FN_KW@276..278 "fn"
-      WHITESPACE@278..279 " "
-      IDENT@279..288 "yield_now"
-      PARAM_LIST@288..290
-        L_PAREN@288..289 "("
-        R_PAREN@289..290 ")"
-      WHITESPACE@290..291 " "
-      RET_TYPE@291..298
-        THIN_ARROW@291..293 "->"
-        WHITESPACE@293..294 " "
-        NAMED_TYPE@294..298
-          PATH@294..298
-            TYPE_NAME@294..298 "Unit"
-    WHITESPACE@298..299 "\n"
-    R_BRACE@299..300 "}"
-  NEWLINE@300..301 "\n"
+SOURCE_FILE@0..578
+  TYPE_DECL@0..31
+    COMMENT@0..16 "// std/task (M3)"
+    WHITESPACE@16..17 "\n"
+    PUB_KW@17..20 "pub"
+    WHITESPACE@20..21 " "
+    TYPE_KW@21..25 "type"
+    WHITESPACE@25..26 " "
+    TYPE_NAME@26..31 "Scope"
+  WHITESPACE@31..41 "          "
+  COMMENT@41..60 "// external, scoped"
+  NEWLINE@60..61 "\n"
+  TYPE_DECL@61..78
+    PUB_KW@61..64 "pub"
+    WHITESPACE@64..65 " "
+    TYPE_KW@65..69 "type"
+    WHITESPACE@69..70 " "
+    TYPE_NAME@70..75 "Fiber"
+    TYPE_PARAM_LIST@75..78
+      LT@75..76 "<"
+      TYPE_PARAM@76..77
+        TYPE_NAME@76..77 "T"
+      GT@77..78 ">"
+  WHITESPACE@78..85 "       "
+  COMMENT@85..112 "// external, scoped, affine"
+  NEWLINE@112..113 "\n"
+  EFFECT_DECL@113..417
+    PUB_KW@113..116 "pub"
+    WHITESPACE@116..117 " "
+    EFFECT_KW@117..123 "effect"
+    WHITESPACE@123..124 " "
+    TYPE_NAME@124..128 "Task"
+    WHITESPACE@128..129 " "
+    L_BRACE@129..130 "{"
+    WHITESPACE@130..133 "\n  "
+    OP_SIG@133..182
+      FN_KW@133..135 "fn"
+      WHITESPACE@135..136 " "
+      IDENT@136..141 "scope"
+      TYPE_PARAM_LIST@141..147
+        LT@141..142 "<"
+        TYPE_PARAM@142..143
+          TYPE_NAME@142..143 "T"
+        COMMA@143..144 ","
+        WHITESPACE@144..145 " "
+        TYPE_PARAM@145..146
+          IDENT@145..146 "e"
+        GT@146..147 ">"
+      PARAM_LIST@147..173
+        L_PAREN@147..148 "("
+        PARAM@148..172
+          IDENT@148..152 "body"
+          COLON@152..153 ":"
+          WHITESPACE@153..154 " "
+          FN_TYPE@154..172
+            FN_KW@154..156 "fn"
+            TYPE_LIST@156..163
+              L_PAREN@156..157 "("
+              NAMED_TYPE@157..162
+                PATH@157..162
+                  TYPE_NAME@157..162 "Scope"
+              R_PAREN@162..163 ")"
+            WHITESPACE@163..164 " "
+            RET_TYPE@164..168
+              THIN_ARROW@164..166 "->"
+              WHITESPACE@166..167 " "
+              NAMED_TYPE@167..168
+                PATH@167..168
+                  TYPE_NAME@167..168 "T"
+            WHITESPACE@168..169 " "
+            BANG@169..170 "!"
+            WHITESPACE@170..171 " "
+            EFFECT_ROW@171..172
+              IDENT@171..172 "e"
+        R_PAREN@172..173 ")"
+      WHITESPACE@173..174 " "
+      RET_TYPE@174..178
+        THIN_ARROW@174..176 "->"
+        WHITESPACE@176..177 " "
+        NAMED_TYPE@177..178
+          PATH@177..178
+            TYPE_NAME@177..178 "T"
+      WHITESPACE@178..179 " "
+      BANG@179..180 "!"
+      WHITESPACE@180..181 " "
+      EFFECT_ROW@181..182
+        IDENT@181..182 "e"
+    NEWLINE@182..183 "\n"
+    WHITESPACE@183..185 "  "
+    OP_SIG@185..246
+      FN_KW@185..187 "fn"
+      WHITESPACE@187..188 " "
+      IDENT@188..193 "spawn"
+      TYPE_PARAM_LIST@193..199
+        LT@193..194 "<"
+        TYPE_PARAM@194..195
+          TYPE_NAME@194..195 "T"
+        COMMA@195..196 ","
+        WHITESPACE@196..197 " "
+        TYPE_PARAM@197..198
+          IDENT@197..198 "e"
+        GT@198..199 ">"
+      PARAM_LIST@199..230
+        L_PAREN@199..200 "("
+        PARAM@200..208
+          IDENT@200..201 "s"
+          COLON@201..202 ":"
+          WHITESPACE@202..203 " "
+          NAMED_TYPE@203..208
+            PATH@203..208
+              TYPE_NAME@203..208 "Scope"
+        COMMA@208..209 ","
+        WHITESPACE@209..210 " "
+        PARAM@210..229
+          IDENT@210..214 "body"
+          COLON@214..215 ":"
+          WHITESPACE@215..216 " "
+          FN_TYPE@216..229
+            FN_KW@216..218 "fn"
+            TYPE_LIST@218..220
+              L_PAREN@218..219 "("
+              R_PAREN@219..220 ")"
+            WHITESPACE@220..221 " "
+            RET_TYPE@221..225
+              THIN_ARROW@221..223 "->"
+              WHITESPACE@223..224 " "
+              NAMED_TYPE@224..225
+                PATH@224..225
+                  TYPE_NAME@224..225 "T"
+            WHITESPACE@225..226 " "
+            BANG@226..227 "!"
+            WHITESPACE@227..228 " "
+            EFFECT_ROW@228..229
+              IDENT@228..229 "e"
+        R_PAREN@229..230 ")"
+      WHITESPACE@230..231 " "
+      RET_TYPE@231..242
+        THIN_ARROW@231..233 "->"
+        WHITESPACE@233..234 " "
+        NAMED_TYPE@234..242
+          PATH@234..239
+            TYPE_NAME@234..239 "Fiber"
+          GENERIC_ARG_LIST@239..242
+            LT@239..240 "<"
+            NAMED_TYPE@240..241
+              PATH@240..241
+                TYPE_NAME@240..241 "T"
+            GT@241..242 ">"
+      WHITESPACE@242..243 " "
+      BANG@243..244 "!"
+      WHITESPACE@244..245 " "
+      EFFECT_ROW@245..246
+        IDENT@245..246 "e"
+    NEWLINE@246..247 "\n"
+    WHITESPACE@247..249 "  "
+    OP_SIG@249..277
+      FN_KW@249..251 "fn"
+      WHITESPACE@251..252 " "
+      IDENT@252..256 "join"
+      TYPE_PARAM_LIST@256..259
+        LT@256..257 "<"
+        TYPE_PARAM@257..258
+          TYPE_NAME@257..258 "T"
+        GT@258..259 ">"
+      PARAM_LIST@259..272
+        L_PAREN@259..260 "("
+        PARAM@260..271
+          IDENT@260..261 "f"
+          COLON@261..262 ":"
+          WHITESPACE@262..263 " "
+          NAMED_TYPE@263..271
+            PATH@263..268
+              TYPE_NAME@263..268 "Fiber"
+            GENERIC_ARG_LIST@268..271
+              LT@268..269 "<"
+              NAMED_TYPE@269..270
+                PATH@269..270
+                  TYPE_NAME@269..270 "T"
+              GT@270..271 ">"
+        R_PAREN@271..272 ")"
+      WHITESPACE@272..273 " "
+      RET_TYPE@273..277
+        THIN_ARROW@273..275 "->"
+        WHITESPACE@275..276 " "
+        NAMED_TYPE@276..277
+          PATH@276..277
+            TYPE_NAME@276..277 "T"
+    NEWLINE@277..278 "\n"
+    WHITESPACE@278..280 "  "
+    OP_SIG@280..336
+      FN_KW@280..282 "fn"
+      WHITESPACE@282..283 " "
+      IDENT@283..286 "all"
+      TYPE_PARAM_LIST@286..292
+        LT@286..287 "<"
+        TYPE_PARAM@287..288
+          TYPE_NAME@287..288 "T"
+        COMMA@288..289 ","
+        WHITESPACE@289..290 " "
+        TYPE_PARAM@290..291
+          IDENT@290..291 "e"
+        GT@291..292 ">"
+      PARAM_LIST@292..321
+        L_PAREN@292..293 "("
+        PARAM@293..320
+          IDENT@293..299 "bodies"
+          COLON@299..300 ":"
+          WHITESPACE@300..301 " "
+          NAMED_TYPE@301..320
+            PATH@301..305
+              TYPE_NAME@301..305 "List"
+            GENERIC_ARG_LIST@305..320
+              LT@305..306 "<"
+              FN_TYPE@306..319
+                FN_KW@306..308 "fn"
+                TYPE_LIST@308..310
+                  L_PAREN@308..309 "("
+                  R_PAREN@309..310 ")"
+                WHITESPACE@310..311 " "
+                RET_TYPE@311..315
+                  THIN_ARROW@311..313 "->"
+                  WHITESPACE@313..314 " "
+                  NAMED_TYPE@314..315
+                    PATH@314..315
+                      TYPE_NAME@314..315 "T"
+                WHITESPACE@315..316 " "
+                BANG@316..317 "!"
+                WHITESPACE@317..318 " "
+                EFFECT_ROW@318..319
+                  IDENT@318..319 "e"
+              GT@319..320 ">"
+        R_PAREN@320..321 ")"
+      WHITESPACE@321..322 " "
+      RET_TYPE@322..332
+        THIN_ARROW@322..324 "->"
+        WHITESPACE@324..325 " "
+        NAMED_TYPE@325..332
+          PATH@325..329
+            TYPE_NAME@325..329 "List"
+          GENERIC_ARG_LIST@329..332
+            LT@329..330 "<"
+            NAMED_TYPE@330..331
+              PATH@330..331
+                TYPE_NAME@330..331 "T"
+            GT@331..332 ">"
+      WHITESPACE@332..333 " "
+      BANG@333..334 "!"
+      WHITESPACE@334..335 " "
+      EFFECT_ROW@335..336
+        IDENT@335..336 "e"
+    NEWLINE@336..337 "\n"
+    WHITESPACE@337..339 "  "
+    OP_SIG@339..390
+      FN_KW@339..341 "fn"
+      WHITESPACE@341..342 " "
+      IDENT@342..346 "race"
+      TYPE_PARAM_LIST@346..352
+        LT@346..347 "<"
+        TYPE_PARAM@347..348
+          TYPE_NAME@347..348 "T"
+        COMMA@348..349 ","
+        WHITESPACE@349..350 " "
+        TYPE_PARAM@350..351
+          IDENT@350..351 "e"
+        GT@351..352 ">"
+      PARAM_LIST@352..381
+        L_PAREN@352..353 "("
+        PARAM@353..380
+          IDENT@353..359 "bodies"
+          COLON@359..360 ":"
+          WHITESPACE@360..361 " "
+          NAMED_TYPE@361..380
+            PATH@361..365
+              TYPE_NAME@361..365 "List"
+            GENERIC_ARG_LIST@365..380
+              LT@365..366 "<"
+              FN_TYPE@366..379
+                FN_KW@366..368 "fn"
+                TYPE_LIST@368..370
+                  L_PAREN@368..369 "("
+                  R_PAREN@369..370 ")"
+                WHITESPACE@370..371 " "
+                RET_TYPE@371..375
+                  THIN_ARROW@371..373 "->"
+                  WHITESPACE@373..374 " "
+                  NAMED_TYPE@374..375
+                    PATH@374..375
+                      TYPE_NAME@374..375 "T"
+                WHITESPACE@375..376 " "
+                BANG@376..377 "!"
+                WHITESPACE@377..378 " "
+                EFFECT_ROW@378..379
+                  IDENT@378..379 "e"
+              GT@379..380 ">"
+        R_PAREN@380..381 ")"
+      WHITESPACE@381..382 " "
+      RET_TYPE@382..386
+        THIN_ARROW@382..384 "->"
+        WHITESPACE@384..385 " "
+        NAMED_TYPE@385..386
+          PATH@385..386
+            TYPE_NAME@385..386 "T"
+      WHITESPACE@386..387 " "
+      BANG@387..388 "!"
+      WHITESPACE@388..389 " "
+      EFFECT_ROW@389..390
+        IDENT@389..390 "e"
+    NEWLINE@390..391 "\n"
+    WHITESPACE@391..393 "  "
+    OP_SIG@393..415
+      FN_KW@393..395 "fn"
+      WHITESPACE@395..396 " "
+      IDENT@396..405 "yield_now"
+      PARAM_LIST@405..407
+        L_PAREN@405..406 "("
+        R_PAREN@406..407 ")"
+      WHITESPACE@407..408 " "
+      RET_TYPE@408..415
+        THIN_ARROW@408..410 "->"
+        WHITESPACE@410..411 " "
+        NAMED_TYPE@411..415
+          PATH@411..415
+            TYPE_NAME@411..415 "Unit"
+    WHITESPACE@415..416 "\n"
+    R_BRACE@416..417 "}"
+  NEWLINE@417..418 "\n"
+  FN_DECL@418..448
+    PUB_KW@418..421 "pub"
+    WHITESPACE@421..422 " "
+    FN_KW@422..424 "fn"
+    WHITESPACE@424..425 " "
+    IDENT@425..429 "host"
+    PARAM_LIST@429..431
+      L_PAREN@429..430 "("
+      R_PAREN@430..431 ")"
+    WHITESPACE@431..432 " "
+    RET_TYPE@432..448
+      THIN_ARROW@432..434 "->"
+      WHITESPACE@434..435 " "
+      NAMED_TYPE@435..448
+        PATH@435..442
+          TYPE_NAME@435..442 "Handler"
+        GENERIC_ARG_LIST@442..448
+          LT@442..443 "<"
+          NAMED_TYPE@443..447
+            PATH@443..447
+              TYPE_NAME@443..447 "Task"
+          GT@447..448 ">"
+  NEWLINE@448..449 "\n"
+  FN_DECL@449..497
+    PUB_KW@449..452 "pub"
+    WHITESPACE@452..453 " "
+    FN_KW@453..455 "fn"
+    WHITESPACE@455..456 " "
+    IDENT@456..469 "deterministic"
+    PARAM_LIST@469..480
+      L_PAREN@469..470 "("
+      PARAM@470..479
+        IDENT@470..474 "seed"
+        COLON@474..475 ":"
+        WHITESPACE@475..476 " "
+        NAMED_TYPE@476..479
+          PATH@476..479
+            TYPE_NAME@476..479 "Int"
+      R_PAREN@479..480 ")"
+    WHITESPACE@480..481 " "
+    RET_TYPE@481..497
+      THIN_ARROW@481..483 "->"
+      WHITESPACE@483..484 " "
+      NAMED_TYPE@484..497
+        PATH@484..491
+          TYPE_NAME@484..491 "Handler"
+        GENERIC_ARG_LIST@491..497
+          LT@491..492 "<"
+          NAMED_TYPE@492..496
+            PATH@492..496
+              TYPE_NAME@492..496 "Task"
+          GT@496..497 ">"
+  NEWLINE@497..498 "\n"
+  FN_DECL@498..577
+    PUB_KW@498..501 "pub"
+    WHITESPACE@501..502 " "
+    FN_KW@502..504 "fn"
+    WHITESPACE@504..505 " "
+    IDENT@505..512 "par_map"
+    TYPE_PARAM_LIST@512..521
+      LT@512..513 "<"
+      TYPE_PARAM@513..514
+        TYPE_NAME@513..514 "A"
+      COMMA@514..515 ","
+      WHITESPACE@515..516 " "
+      TYPE_PARAM@516..517
+        TYPE_NAME@516..517 "B"
+      COMMA@517..518 ","
+      WHITESPACE@518..519 " "
+      TYPE_PARAM@519..520
+        IDENT@519..520 "e"
+      GT@520..521 ">"
+    PARAM_LIST@521..553
+      L_PAREN@521..522 "("
+      PARAM@522..533
+        IDENT@522..524 "xs"
+        COLON@524..525 ":"
+        WHITESPACE@525..526 " "
+        NAMED_TYPE@526..533
+          PATH@526..530
+            TYPE_NAME@526..530 "List"
+          GENERIC_ARG_LIST@530..533
+            LT@530..531 "<"
+            NAMED_TYPE@531..532
+              PATH@531..532
+                TYPE_NAME@531..532 "A"
+            GT@532..533 ">"
+      COMMA@533..534 ","
+      WHITESPACE@534..535 " "
+      PARAM@535..552
+        IDENT@535..536 "f"
+        COLON@536..537 ":"
+        WHITESPACE@537..538 " "
+        FN_TYPE@538..552
+          FN_KW@538..540 "fn"
+          TYPE_LIST@540..543
+            L_PAREN@540..541 "("
+            NAMED_TYPE@541..542
+              PATH@541..542
+                TYPE_NAME@541..542 "A"
+            R_PAREN@542..543 ")"
+          WHITESPACE@543..544 " "
+          RET_TYPE@544..548
+            THIN_ARROW@544..546 "->"
+            WHITESPACE@546..547 " "
+            NAMED_TYPE@547..548
+              PATH@547..548
+                TYPE_NAME@547..548 "B"
+          WHITESPACE@548..549 " "
+          BANG@549..550 "!"
+          WHITESPACE@550..551 " "
+          EFFECT_ROW@551..552
+            IDENT@551..552 "e"
+      R_PAREN@552..553 ")"
+    WHITESPACE@553..554 " "
+    RET_TYPE@554..564
+      THIN_ARROW@554..556 "->"
+      WHITESPACE@556..557 " "
+      NAMED_TYPE@557..564
+        PATH@557..561
+          TYPE_NAME@557..561 "List"
+        GENERIC_ARG_LIST@561..564
+          LT@561..562 "<"
+          NAMED_TYPE@562..563
+            PATH@562..563
+              TYPE_NAME@562..563 "B"
+          GT@563..564 ">"
+    WHITESPACE@564..565 " "
+    BANG@565..566 "!"
+    WHITESPACE@566..567 " "
+    EFFECT_ROW@567..577
+      L_BRACE@567..568 "{"
+      NAMED_TYPE@568..572
+        PATH@568..572
+          TYPE_NAME@568..572 "Task"
+      WHITESPACE@572..573 " "
+      PIPE@573..574 "|"
+      WHITESPACE@574..575 " "
+      IDENT@575..576 "e"
+      R_BRACE@576..577 "}"
+  NEWLINE@577..578 "\n"

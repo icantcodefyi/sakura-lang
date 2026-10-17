@@ -496,6 +496,7 @@ fn ends_statement(kind: SyntaxKind) -> bool {
             | R_PAREN
             | R_BRACKET
             | R_BRACE
+            | GT
             | QUESTION
             | TRUE_KW
             | FALSE_KW
@@ -684,6 +685,13 @@ mod tests {
         assert_eq!(kinds("}\nelse {"), [R_BRACE, ELSE_KW, L_BRACE]);
         assert_eq!(kinds("a +\nb"), [IDENT, PLUS, IDENT]);
         assert_eq!(kinds("a\n+ b"), [IDENT, PLUS, IDENT]);
+        // `>` ends a line so `type Ids = List<Int>` terminates; `a >\n b` is two statements.
+        assert_eq!(
+            kinds("List<Int>\nx"),
+            [TYPE_NAME, LT, TYPE_NAME, GT, NEWLINE, IDENT]
+        );
+        assert_eq!(kinds("a >\nb"), [IDENT, GT, NEWLINE, IDENT]);
+        assert_eq!(kinds("a\n> b"), [IDENT, GT, IDENT]);
         assert_eq!(kinds("(a\nb)"), [L_PAREN, IDENT, IDENT, R_PAREN]);
         assert_eq!(kinds("{a\nb}"), [L_BRACE, IDENT, NEWLINE, IDENT, R_BRACE]);
         assert_eq!(

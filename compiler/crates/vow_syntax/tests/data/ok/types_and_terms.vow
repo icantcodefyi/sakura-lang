@@ -1,0 +1,24 @@
+// `(T)` is `T`, `(T,)` a 1-tuple, `()` Unit (§3.2 rule 14).
+type Id = (Int)
+type One = (Int,)
+type Pair = (Int, String)
+type Nothing = ()
+type F = fn((Int)) -> (List<(Int)>)
+type G = (fn() -> Int ! {Console})
+type U = (A | B)
+// `>` ends a line (§2.4 rule 1), so these need no `;`.
+type Ids = List<Int>
+type Rows = Map<String, List<Int>>
+effect Store {
+  fn all() -> List<Int>
+  fn get(key: String) -> Option<String>
+}
+// External (host) type: no body (§3.2 rule 15).
+type Fiber<T>
+pub opaque type Email = { address: String }
+pub type Open = Int
+fn spawn() -> Int { Task.spawn(1) }
+fn compare(a: Int, b: Int) -> Bool {
+  a
+    > b
+}

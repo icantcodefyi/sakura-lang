@@ -1,11 +1,14 @@
 ---
 source: crates/vow_fmt/tests/fmt.rs
-assertion_line: 45
+assertion_line: 66
 expression: "check(path, &text)"
 input_file: tests/fmt/design_15_5_json_http_api_with_a_database.vow
 ---
-import std/http.{Request, Response, Router}
-import std/sql
+import std/http.{BadRequest, Request, Response, Status}
+import std/path.{Path}
+import std/router.{Router}
+import std/serve.{Address, Serve}
+import std/sql.{Sql, SqlError}
 
 type Email = String where String.len(it) <= 254 && String.contains(it, "@")
 type NewUser = { email: Email, name: String }
@@ -15,11 +18,11 @@ error EmailTaken(email: Email)
 
 fn create_user(input: NewUser) -> User ! {Sql, Fail<EmailTaken | SqlError>} {
   Sql.transaction(fn() {
-    let existing = Sql.query<User>(
+    let existing: List<User> = Sql.query(
       sql"select id, email, name from users where email = {input.email}",
     )
     if List.len(existing) > 0 { fail EmailTaken { email: input.email } }
-    let rows = Sql.query<User>(
+    let rows: List<User> = Sql.query(
       sql"insert into users (email, name) values ({input.email}, {input.name}) returning id, email, name",
     )
     List.first(rows).expect("insert returning yields one row")
@@ -28,7 +31,7 @@ fn create_user(input: NewUser) -> User ! {Sql, Fail<EmailTaken | SqlError>} {
 
 fn handle_create(req: Request) -> Response ! {Log, Sql} {
   try {
-    let input = Request.json<NewUser>(req, 64_000) // validates Email refinement
+    let input: NewUser = Request.json(req, 64_000) // validates the Email refinement
     let user = create_user(input)
     Response.ok_json(user)
   } catch {
@@ -56,7 +59,7 @@ test "duplicate email is 409" {
     let body = Json.encode(NewUser { email: Email.from("a@b.co"), name: "A" })
     let first = handle_create(Request.post("/users", body))
     let second = handle_create(Request.post("/users", body))
-    expect_eq(first.status, Status.of(200))
-    expect_eq(second.status, Status.of(409))
+    expect_eq(first.status, Status.from(200))
+    expect_eq(second.status, Status.from(409))
   }
 }

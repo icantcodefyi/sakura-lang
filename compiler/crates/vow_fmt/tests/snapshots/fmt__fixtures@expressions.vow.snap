@@ -1,12 +1,12 @@
 ---
 source: crates/vow_fmt/tests/fmt.rs
-assertion_line: 45
+assertion_line: 66
 expression: "check(path, &text)"
 input_file: tests/fmt/expressions.vow
 ---
 fn exprs(xs: List<Int>, c: Bool) -> Int {
-  let condition = first_long_condition_name && second_long_condition_name ||
-    third_long_condition_name && fourth
+  let condition = first_long_condition_name && second_long_condition_name
+    || third_long_condition_name && fourth
   let nested = if c { if c { 1 } else { 2 } } else { 3 }
   let lam = List.map(xs, fn(x) {
     let y = x * 2

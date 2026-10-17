@@ -351,6 +351,26 @@ impl<'t> Parser<'t> {
         Marker { pos }
     }
 
+    /// Remove the node `cm` just completed (its `Finish` must be the last event) while keeping
+    /// its children, so an enclosing marker can take its kind: `(T)` becomes the node of `T`.
+    /// `outer` is the enclosing marker, started before `cm`.
+    pub(crate) fn dissolve(&mut self, outer: &Marker, cm: CompletedMarker) {
+        assert!(matches!(self.events.last(), Some(Event::Finish)));
+        self.events.pop();
+        // A node made by `precede` is reached through its first child's forward parent.
+        for i in outer.pos as usize..cm.pos as usize {
+            if let Event::Start {
+                forward_parent: fp @ Some(_),
+                ..
+            } = &mut self.events[i]
+                && i + fp.unwrap_or(0) as usize == cm.pos as usize
+            {
+                *fp = None;
+            }
+        }
+        self.events[cm.pos as usize] = Event::Tombstone;
+    }
+
     pub(crate) fn finish(self) -> (Vec<Event>, Vec<ParseError>) {
         (self.events, self.errors)
     }

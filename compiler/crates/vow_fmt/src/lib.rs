@@ -23,7 +23,10 @@
 //! - **Imports** form two groups, `std/…` then everything else, because the formatter does not
 //!   know the package name that would separate dependencies from local modules.
 //! - **Line breaks** are only introduced where §2.4 cannot turn them into a statement end: after
-//!   `(`, `[`, `{`, `,`, `=>` and binary operators, and before `.`, `|`, `)`, `]`, `}`.
+//!   `(`, `[`, `{`, `,`, `=>` and `-`, and before `.`, `|`, `)`, `]`, `}` and the other binary
+//!   operators (a line never ends in `>`, which ends a statement).
+//! - **Parenthesized types** keep their parentheses (`(fn() -> A) ! {E}` differs from
+//!   `fn() -> A ! {E}`).
 //! - **Not reformatted:** string text (interpolated expressions are formatted on one line) and
 //!   the order of variants in `type` declarations, which is part of the program. A node with a comment in a
 //!   position the formatter does not model (inside an expression or a signature) is kept
@@ -334,7 +337,14 @@ impl Fmt<'_> {
         let body = if !handles_comments(n.kind()) && has_inner_comments(n) {
             self.verbatim(n)
         } else {
-            self.node_body(n)
+            let parens = type_parens(n);
+            if parens == 0 {
+                self.node_body(n)
+            } else {
+                t("(".repeat(parens))
+                    .append(self.node_body(n))
+                    .append(t(")".repeat(parens)))
+            }
         };
         if lead.is_empty() {
             body
@@ -779,7 +789,12 @@ impl Fmt<'_> {
             item.attributes()
                 .map(|a| self.node(a.syntax()).append(nl())),
         );
-        attrs.append(if item.is_pub() { t("pub ") } else { nil() })
+        let vis = match (item.is_pub(), item.is_opaque()) {
+            (true, true) => t("pub opaque "),
+            (true, false) => t("pub "),
+            _ => nil(),
+        };
+        attrs.append(vis)
     }
 
     fn import(&self, n: &SyntaxNode) -> Doc {
@@ -961,9 +976,17 @@ impl Fmt<'_> {
                 l => {
                     let mut doc = self.opt(l);
                     for (op, rhs) in rest.into_iter().rev() {
-                        doc = doc
-                            .append(t(format!(" {op}")))
-                            .append(line().append(self.opt(rhs)).nest(INDENT));
+                        // Break before the operator so §2.4 joins the lines; `-` can begin an
+                        // expression, so a line starting with it would be a new statement.
+                        let link = if op == "-" {
+                            t(" -").append(line().append(self.opt(rhs)).nest(INDENT))
+                        } else {
+                            line()
+                                .append(t(format!("{op} ")))
+                                .append(self.opt(rhs))
+                                .nest(INDENT)
+                        };
+                        doc = doc.append(link);
                     }
                     return doc.group();
                 }
@@ -1026,7 +1049,7 @@ impl Fmt<'_> {
             }
             CALL_EXPR => {
                 let c = ast::CallExpr::cast(n.clone()).expect("kind checked");
-                self.opt(c.generic_args()).append(self.opt(c.arg_list()))
+                self.opt(c.arg_list())
             }
             INDEX_EXPR => {
                 let e = ast::IndexExpr::cast(n.clone()).expect("kind checked");
@@ -1234,6 +1257,20 @@ fn precedence(op: SyntaxKind) -> u8 {
         PLUS | MINUS => 5,
         _ => 6,
     }
+}
+
+/// How many parentheses wrap a type node: `(T)` is the node of `T` holding the parentheses.
+fn type_parens(n: &SyntaxNode) -> usize {
+    if !ast::Type::can_cast(n.kind()) {
+        return 0;
+    }
+    let leading = n
+        .children_with_tokens()
+        .take_while(|e| e.as_token().is_some())
+        .filter(|e| e.kind() == L_PAREN)
+        .count();
+    // A tuple's own `(` is laid out by the tuple.
+    leading - usize::from(n.kind() == TUPLE_TYPE)
 }
 
 /// Comments among the trivia before the node's first token (attached by the parser).

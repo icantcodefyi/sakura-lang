@@ -1,4 +1,6 @@
 fn spawn() -> Int { 1 }
+let actor = 1
+fn uses() -> Int { let spawn = 1; Task.spawn(spawn) }
 fn ok() -> Int { Task.spawn(1) }
 effect Task { fn spawn() -> Int }
 fn h() -> Handler<Task> { handler Task { fn spawn() { 1 } } }

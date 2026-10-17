@@ -1,11 +1,12 @@
 ---
 source: crates/vow_fmt/tests/fmt.rs
-assertion_line: 45
+assertion_line: 66
 expression: "check(path, &text)"
 input_file: tests/fmt/design_15_6_cli_tool_with_file_io_and_attenuated_aut.vow
 ---
-import std/cli
-import std/fs
+import std/cli.{Cli, CliError}
+import std/fs.{Dir, Fs, FsError}
+import std/path.{Path}
 
 type Args = { input: Path, top: Int } // `vow run -- --input notes.txt --top 5`
 
@@ -19,8 +20,8 @@ fn word_counts(text: String) -> Map<String, Int> {
   )
 }
 
-pub fn main() -> Unit ! {Console, Env, Fs, Fail<CliError | FsError>} {
-  let args = Cli.parse<Args>(Cli.args())
+pub fn main() -> Unit ! {Cli, Console, Fs, Fail<CliError | FsError>} {
+  let args: Args = Cli.parse(Cli.args())
   // Narrow the root Fs handler to the data directory before touching files.
   with Fs.rooted(Dir.subdir(Fs.root(), "data")) {
     let text = Fs.read_text(args.input)

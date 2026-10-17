@@ -80,6 +80,8 @@ pub enum SyntaxKind {
     WHERE_KW,
     TRUE_KW,
     FALSE_KW,
+    /// `pub opaque type` (§4.2, §17.10).
+    OPAQUE_KW,
 
     // ---- Punctuation and operators ----
     L_PAREN,
@@ -231,7 +233,7 @@ impl SyntaxKind {
     }
 
     pub fn is_keyword(self) -> bool {
-        (FN_KW as u16..=FALSE_KW as u16).contains(&(self as u16))
+        (FN_KW as u16..=OPAQUE_KW as u16).contains(&(self as u16))
     }
 
     pub fn is_token(self) -> bool {
@@ -271,6 +273,7 @@ impl SyntaxKind {
             "where" => WHERE_KW,
             "true" => TRUE_KW,
             "false" => FALSE_KW,
+            "opaque" => OPAQUE_KW,
             _ => return None,
         })
     }
@@ -308,6 +311,7 @@ impl SyntaxKind {
             WHERE_KW => "where",
             TRUE_KW => "true",
             FALSE_KW => "false",
+            OPAQUE_KW => "opaque",
             L_PAREN => "(",
             R_PAREN => ")",
             L_BRACKET => "[",
@@ -437,6 +441,7 @@ const KINDS_IN_ORDER: [SyntaxKind; __LAST as usize] = [
     WHERE_KW,
     TRUE_KW,
     FALSE_KW,
+    OPAQUE_KW,
     L_PAREN,
     R_PAREN,
     L_BRACKET,

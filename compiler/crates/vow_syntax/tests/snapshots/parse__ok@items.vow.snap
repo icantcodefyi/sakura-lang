@@ -337,7 +337,7 @@ SOURCE_FILE@0..1288
                 TYPE_NAME@444..447 "Int"
             GT@447..448 ">"
         GT@448..449 ">"
-  WHITESPACE@449..450 "\n"
+  NEWLINE@449..450 "\n"
   TYPE_DECL@450..482
     TYPE_KW@450..454 "type"
     WHITESPACE@454..455 " "

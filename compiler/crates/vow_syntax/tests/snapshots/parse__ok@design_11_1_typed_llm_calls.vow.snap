@@ -1,10 +1,10 @@
 ---
 source: crates/vow_syntax/tests/parse.rs
-assertion_line: 28
+assertion_line: 32
 expression: out
 input_file: crates/vow_syntax/tests/data/ok/design_11_1_typed_llm_calls.vow
 ---
-SOURCE_FILE@0..270
+SOURCE_FILE@0..303
   FN_DECL@0..157
     ATTRIBUTE@0..55
       AT@0..1 "@"
@@ -80,5 +80,9 @@ SOURCE_FILE@0..270
           GT@155..156 ">"
       R_BRACE@156..157 "}"
   NEWLINE@157..158 "\n"
-  COMMENT@158..269 "// body omitted: the compiler generates Llm.generate(Llm.request<Ticket>(system, Prompt.of([Untrusted(text)])))"
-  WHITESPACE@269..270 "\n"
+  COMMENT@158..197 "// body omitted: the compiler generates"
+  WHITESPACE@197..198 "\n"
+  COMMENT@198..279 "//   let req: Request<Ticket> = Llm.request(system, Prompt.of([Untrusted(text)]))"
+  WHITESPACE@279..280 "\n"
+  COMMENT@280..302 "//   Llm.generate(req)"
+  WHITESPACE@302..303 "\n"

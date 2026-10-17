@@ -9,6 +9,13 @@ effect Users {
 
 type User = { id: String, owner: String, name: String }
 
+// `Users.memory(…)` resolves here: a non-operation name after an effect is a function of its home module (§4.9).
+fn memory(users: List<User>) -> Handler<Users> {
+  handler Users {
+    fn get(id) { List.find(users, fn(u) { u.id == id }) }
+  }
+}
+
 // Internal failure (Unavailable) is translated; the public union stays stable.
 pub fn view_user(caller: String, id: String) -> User ! {Users, Log, Fail<UserError>} {
   let user = try {

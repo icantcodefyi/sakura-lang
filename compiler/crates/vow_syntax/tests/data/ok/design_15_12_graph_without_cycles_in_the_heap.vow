@@ -1,4 +1,4 @@
-import std/graph
+import std/graph.{Graph, NodeId}
 
 type Person = { name: String }
 fn friends_of_friends(g: Graph<Person>, id: NodeId) -> List<Person> {

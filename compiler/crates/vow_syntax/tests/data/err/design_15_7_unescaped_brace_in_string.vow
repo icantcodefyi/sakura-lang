@@ -1,4 +1,6 @@
-import std/ai
+import std/llm.{Llm, LlmError, InvalidOutput, Model}
+import std/budget.{Budget, BudgetExceeded, Limits}
+import std/http.{Http}
 
 type Priority = Low | Normal | High
 type Ticket = {
@@ -13,7 +15,8 @@ fn extract_ticket(message: Untrusted<String>) -> Ticket
 
 pub fn main() -> Unit ! {Console, Env, Http, Fail<LlmError | BudgetExceeded>} {
   let key = Env.secret("ANTHROPIC_API_KEY").expect("set ANTHROPIC_API_KEY")
-  with Llm.anthropic(key, Model.of("claude-sonnet-5-5")), Budget.limits(tokens: 20_000, usd: 0.50) {
+  let limits = Limits { tokens: Some(20_000), usd: Some(0.50), calls: None }
+  with Llm.anthropic(key, Model.of("claude-sonnet-5-5")), Budget.limits(limits) {
     let t = extract_ticket(Untrusted.of("Login page 500s since 9am, blocking all customers"))
     Console.print("{t.priority}: {t.title}")
   }

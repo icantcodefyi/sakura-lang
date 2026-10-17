@@ -34,37 +34,19 @@
 //! - Names in value/type position are `PATH` nodes (`PathExpr`, `NamedType`, `PathPat`).
 //! - Strings are `STRING_LIT` nodes: `STRING_START`, then `STRING_TEXT` tokens and
 //!   `INTERPOLATION` nodes, then `STRING_END` (missing when unterminated).
+//! - `(T)` in type position is the node of `T` itself (a `NamedType`, `FnType`, …) with the
+//!   parentheses as extra leading/trailing tokens; only `()`, `(T,)` and `(A, B)` are
+//!   `TupleType`s (§3.2 rule 14).
+//! - Forms §17 rejects are reported once and kept in the tree so the rest parses: type
+//!   arguments in expression position (`f<T>(x)`, `List<Int>.empty()`, `V0011`, recognized only
+//!   with no space before `<` or after `>`) become an `ERROR` node holding the
+//!   `GenericArgList`; `name: value` in a call (`V0014`) stays a `NamedArg`; `opaque` without
+//!   `pub` becomes an `ERROR` node.
 //!
-//! # Deviations from design §3 (each also logged in `compiler/REQUESTS.md` as a design question)
+//! # Deviation from design §3
 //!
-//! 1. **Bodiless functions.** `FnDecl` may omit its block (§11.1 `@llm`, §13.6 `@external`);
-//!    whether that is allowed is the resolver's call, not the parser's.
-//! 2. **Call-site type arguments.** `f<T>(…)` parses as a `CallExpr` with a `GenericArgList`
-//!    when `<` … `>` is a well-formed type list immediately followed by `(` (used by §15.5,
-//!    §15.6, §15.8: `Sql.query<User>(…)`). Anything else after `>` (`List<Int>.empty()`) is
-//!    still `V0011`.
-//! 3. **Named arguments.** `ArgList` entries may be `name: expr` (`NamedArg`), needed for
-//!    attributes (`@llm(system: …)`) and used by §15.7/§15.8 (`Budget.limits(tokens: …)`).
-//! 4. **Attributes as expressions.** `@trust("…")` is an `AttrExpr` (§6.4, §15.6).
-//! 5. **Paths.** `TypePath` is generalized to `(IDENT | TYPE_NAME) { . TYPE_NAME }` so
-//!    `Retry.Policy { … }` (§15.10) and `Level.Warn` are paths.
-//! 6. **Record patterns** accept `{ .. }` with no fields (§15.5).
-//! 7. **Field refinements.** `FieldDecl` accepts `where Expr` (§15.7 `Ticket.title`).
-//! 8. **Contracts** parse their expression without record literals (like `if` headers), since
-//!    the body block follows.
-//! 9. **`_` parameters** are accepted in lambdas and handler clauses.
-//! 10. **Item terminators.** A declaration also ends when the next token starts a new line, since
-//!     a type ending in `>` (`type A = List<Int>`) does not end a line under §2.4.
-//! 11. **Opaque types.** `type Html` without `= …` declares an opaque std/host type (§10.4).
-//! 12. **Operation type parameters.** `OpSig` accepts `TypeParams` (§8.6 `Task.scope<T, e>`).
-//! 13. **Rows as type arguments.** `GenericArgList` accepts `EffectRow`s
-//!     (`Handler<Db, {Http}>`, §4.2, §6.2); see [`ast::GenericArg`].
-//! 14. **Keyword module segments.** `ModPath` accepts keywords after `/` (`import std/test`).
-//! 15. **Reserved words** (`V0007`, reported by the parser) are allowed as member names after
-//!     `.` and as operation names in `effect` declarations and handlers, so std can name the
-//!     operation `Task.spawn` (§8.6, §15.10). `fn spawn()` as a function is still `V0007`.
-//! 16. **Type arguments need adjacency.** `f<T>(…)` is recognized only with no space before `<`
-//!     and none between `>` and `(`, so `f(a < B, c > (d))` stays two comparisons.
+//! **Paths.** `TypePath` is parsed as `(IDENT | TYPE_NAME) { . TYPE_NAME }`, which accepts more
+//! qualifiers than §3 and §3.2 rule 16 allow (`a.B.C.D`); the resolver rejects the extras.
 
 pub mod ast;
 pub mod codes;

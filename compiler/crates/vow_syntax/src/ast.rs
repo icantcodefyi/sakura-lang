@@ -108,7 +108,8 @@ nodes! {
     ModPath = MOD_PATH;
     /// `. { Name, … }` — names are `IDENT` or `TYPE_NAME` tokens.
     ImportList = IMPORT_LIST;
-    /// `{ Attribute } [pub] type TYPE_NAME [ TypeParamList ] = ( RecordType | VariantList | Type ) [ WhereClause ]`
+    /// `{ Attribute } [pub [opaque]] type TYPE_NAME [ TypeParamList ] [ = ( RecordType | VariantList | Type ) ] [ WhereClause ]`;
+    /// without a body it declares an external (host) type (§3.2 rule 15).
     TypeDecl = TYPE_DECL;
     /// `< TypeParam, … >`
     TypeParamList = TYPE_PARAM_LIST;
@@ -162,7 +163,8 @@ nodes! {
     FnType = FN_TYPE;
     /// `( Type, … )`
     TypeList = TYPE_LIST;
-    /// `( Type, … )` — `()` is `Unit`; `(T)` is a one-element list the checker treats as `T`.
+    /// `()` (`Unit`), `(T,)` or `(A, B, …)`. A parenthesized `(T)` is not a tuple: it is the
+    /// node of `T` with the parentheses as extra tokens (§3.2 rule 14).
     TupleType = TUPLE_TYPE;
     /// `NamedType | NamedType { | NamedType }`
     UnionType = UNION_TYPE;
@@ -238,11 +240,12 @@ nodes! {
     BinExpr = BIN_EXPR;
     /// `( - | ! ) Expr`
     PrefixExpr = PREFIX_EXPR;
-    /// `Expr [ GenericArgList ] ArgList`
+    /// `Expr ArgList`. Rejected type arguments `f<T>(…)` (`V0011`) sit in an `ERROR` node
+    /// between the callee and the `ArgList`.
     CallExpr = CALL_EXPR;
     /// `( Arg, … )` where an argument is an `Expr` or a `NamedArg`.
     ArgList = ARG_LIST;
-    /// `IDENT : Expr`
+    /// `IDENT : Expr`: an attribute argument; in a call it is kept after reporting `V0014`.
     NamedArg = NAMED_ARG;
     /// `Expr . ( IDENT | TYPE_NAME | INT )`
     FieldExpr = FIELD_EXPR;
@@ -312,6 +315,13 @@ pub trait HasAttrs: AstNode {
     }
     fn is_pub(&self) -> bool {
         self.pub_token().is_some()
+    }
+    /// `pub opaque type`: constructors and fields stay private to the module (§4.2, §9).
+    fn opaque_token(&self) -> Option<SyntaxToken> {
+        token(self.syntax(), OPAQUE_KW)
+    }
+    fn is_opaque(&self) -> bool {
+        self.opaque_token().is_some()
     }
     /// `///` comments directly above the item, in source order.
     fn doc_comments(&self) -> Vec<SyntaxToken> {
@@ -1069,10 +1079,6 @@ impl PrefixExpr {
 
 impl CallExpr {
     pub fn callee(&self) -> Option<Expr> {
-        child(&self.0)
-    }
-    /// Explicit type arguments `f<T>(…)` (see crate docs, deviation 2).
-    pub fn generic_args(&self) -> Option<GenericArgList> {
         child(&self.0)
     }
     pub fn arg_list(&self) -> Option<ArgList> {

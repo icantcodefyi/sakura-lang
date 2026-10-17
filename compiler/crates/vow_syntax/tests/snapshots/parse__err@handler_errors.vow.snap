@@ -6,6 +6,7 @@ input_file: crates/vow_syntax/tests/data/err/handler_errors.vow
 ---
 V0001 53..56: expected `var` state or an operation clause `fn name(…) { … }`
 V0001 76..77: expected `)`, found `{`
+V0009 86..88: expected a newline or `;` after the operation clause
 V0001 89..90: expected an operation name, found `(`
 V0001 141..142: expected the handled effect, found `{`
 

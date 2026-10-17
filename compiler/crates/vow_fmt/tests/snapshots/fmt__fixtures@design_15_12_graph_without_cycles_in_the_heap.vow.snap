@@ -1,10 +1,10 @@
 ---
 source: crates/vow_fmt/tests/fmt.rs
-assertion_line: 45
+assertion_line: 66
 expression: "check(path, &text)"
 input_file: tests/fmt/design_15_12_graph_without_cycles_in_the_heap.vow
 ---
-import std/graph
+import std/graph.{Graph, NodeId}
 
 type Person = { name: String }
 

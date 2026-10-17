@@ -1,4 +1,7 @@
-effect Task {
+// std/task (M3)
+pub type Scope          // external, scoped
+pub type Fiber<T>       // external, scoped, affine
+pub effect Task {
   fn scope<T, e>(body: fn(Scope) -> T ! e) -> T ! e
   fn spawn<T, e>(s: Scope, body: fn() -> T ! e) -> Fiber<T> ! e
   fn join<T>(f: Fiber<T>) -> T
@@ -6,3 +9,6 @@ effect Task {
   fn race<T, e>(bodies: List<fn() -> T ! e>) -> T ! e
   fn yield_now() -> Unit
 }
+pub fn host() -> Handler<Task>
+pub fn deterministic(seed: Int) -> Handler<Task>
+pub fn par_map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! {Task | e}

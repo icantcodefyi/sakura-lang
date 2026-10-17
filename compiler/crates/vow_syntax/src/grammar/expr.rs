@@ -365,20 +365,23 @@ fn postfix_loop(p: &mut Parser<'_>, mut lhs: CompletedMarker) -> CompletedMarker
             DOT => FIELD_EXPR,
             L_BRACKET => INDEX_EXPR,
             QUESTION => RAISE_EXPR,
-            LT if p.adjacent(0) => match type_args_follow(p) {
-                Some(L_PAREN) => CALL_EXPR,
-                Some(DOT) if lhs.kind() == PATH_EXPR => {
-                    p.error(
-                        codes::TYPE_ARGS_ON_PATH,
-                        "type arguments are not allowed on a type path; annotate the binding instead, e.g. `let xs: List<Int> = List.empty()`",
-                    );
-                    let e = p.start();
-                    types::generic_arg_list(p);
-                    e.complete(p, ERROR);
-                    continue;
-                }
-                _ => break,
-            },
+            LT if p.adjacent(0) => {
+                let message = match type_args_follow(p) {
+                    Some(L_PAREN) => {
+                        "expressions take no type arguments; annotate the binding instead, e.g. `let rows: List<User> = Sql.query(q)`"
+                    }
+                    Some(DOT) if lhs.kind() == PATH_EXPR => {
+                        "type arguments are not allowed on a type path; annotate the binding instead, e.g. `let xs: List<Int> = List.empty()`"
+                    }
+                    _ => break,
+                };
+                // Consume the list so the call or member access after it still parses (§3.2).
+                p.error(codes::TYPE_ARGS_ON_PATH, message);
+                let e = p.start();
+                types::generic_arg_list(p);
+                e.complete(p, ERROR);
+                continue;
+            }
             _ => break,
         };
         if p.depth >= MAX_DEPTH {
@@ -388,12 +391,7 @@ fn postfix_loop(p: &mut Parser<'_>, mut lhs: CompletedMarker) -> CompletedMarker
         p.depth += 1;
         let m = lhs.precede(p);
         match kind {
-            CALL_EXPR => {
-                if p.at(LT) {
-                    types::generic_arg_list(p);
-                }
-                arg_list(p);
-            }
+            CALL_EXPR => arg_list(p, false),
             FIELD_EXPR => {
                 p.bump();
                 if matches!(p.current(), IDENT | TYPE_NAME | INT) {
@@ -416,8 +414,8 @@ fn postfix_loop(p: &mut Parser<'_>, mut lhs: CompletedMarker) -> CompletedMarker
     lhs
 }
 
-/// If `<` starts call-site type arguments (`f<T>(…)`, no space before `<` or after `>`), the
-/// token after the matching `>`.
+/// If `<` looks like the start of type arguments (`f<T>(…)`, `List<Int>.empty()`, with no space
+/// before `<` or after `>`), the token after the matching `>`. Only used to report `V0011`.
 fn type_args_follow(p: &Parser<'_>) -> Option<SyntaxKind> {
     let first = p.peek_raw(1);
     if !(matches!(first, TYPE_NAME | L_PAREN | FN_KW) || (first == IDENT && p.peek_raw(2) == DOT)) {
@@ -549,11 +547,23 @@ fn record_body(p: &mut Parser<'_>) {
     );
 }
 
-pub(crate) fn arg_list(p: &mut Parser<'_>) {
+/// `( Expr, … )`. `name: value` entries are attribute arguments (`named`); in a call they are
+/// reported as `V0014` and kept as `NAMED_ARG` so the rest of the call still parses.
+pub(crate) fn arg_list(p: &mut Parser<'_>, named: bool) {
     let m = p.start();
     p.bump();
     list(p, R_PAREN, EXPR_FIRST, "an argument", |p| {
         if p.at(IDENT) && p.peek_raw(1) == COLON {
+            if !named {
+                let (start, _) = p.range(0);
+                let (_, end) = p.range(1);
+                p.error_at(
+                    codes::NAMED_ARGUMENT,
+                    "arguments are positional; pass the value positionally or as a record",
+                    start,
+                    end,
+                );
+            }
             let m = p.start();
             p.bump();
             p.bump();

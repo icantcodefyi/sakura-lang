@@ -4,12 +4,14 @@ assertion_line: 42
 expression: out
 input_file: crates/vow_syntax/tests/data/err/reserved_and_invalid.vow
 ---
-V0007 3..8: `spawn` is reserved for a later edition
-V0004 175..176: unexpected character `$`
-V0007 205..211: `resume` is reserved for a later edition
-V0007 217..223: `resume` is reserved for a later edition
+V0007 28..33: `actor` is reserved for a later edition
+V0007 61..66: `spawn` is reserved for a later edition
+V0007 83..88: `spawn` is reserved for a later edition
+V0004 243..244: unexpected character `$`
+V0007 273..279: `resume` is reserved for a later edition
+V0007 285..291: `resume` is reserved for a later edition
 
-SOURCE_FILE@0..226
+SOURCE_FILE@0..294
   FN_DECL@0..23
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
@@ -34,181 +36,238 @@ SOURCE_FILE@0..226
       WHITESPACE@21..22 " "
       R_BRACE@22..23 "}"
   NEWLINE@23..24 "\n"
-  FN_DECL@24..56
-    FN_KW@24..26 "fn"
-    WHITESPACE@26..27 " "
-    IDENT@27..29 "ok"
-    PARAM_LIST@29..31
-      L_PAREN@29..30 "("
-      R_PAREN@30..31 ")"
-    WHITESPACE@31..32 " "
-    RET_TYPE@32..38
-      THIN_ARROW@32..34 "->"
-      WHITESPACE@34..35 " "
-      NAMED_TYPE@35..38
-        PATH@35..38
-          TYPE_NAME@35..38 "Int"
-    WHITESPACE@38..39 " "
-    BLOCK@39..56
-      L_BRACE@39..40 "{"
-      WHITESPACE@40..41 " "
-      EXPR_STMT@41..54
-        CALL_EXPR@41..54
-          FIELD_EXPR@41..51
-            PATH_EXPR@41..45
-              PATH@41..45
-                TYPE_NAME@41..45 "Task"
-            DOT@45..46 "."
-            IDENT@46..51 "spawn"
-          ARG_LIST@51..54
-            L_PAREN@51..52 "("
-            LITERAL@52..53
-              INT@52..53 "1"
-            R_PAREN@53..54 ")"
-      WHITESPACE@54..55 " "
-      R_BRACE@55..56 "}"
-  NEWLINE@56..57 "\n"
-  EFFECT_DECL@57..90
-    EFFECT_KW@57..63 "effect"
-    WHITESPACE@63..64 " "
-    TYPE_NAME@64..68 "Task"
-    WHITESPACE@68..69 " "
-    L_BRACE@69..70 "{"
-    WHITESPACE@70..71 " "
-    OP_SIG@71..88
-      FN_KW@71..73 "fn"
-      WHITESPACE@73..74 " "
-      IDENT@74..79 "spawn"
-      PARAM_LIST@79..81
-        L_PAREN@79..80 "("
-        R_PAREN@80..81 ")"
-      WHITESPACE@81..82 " "
-      RET_TYPE@82..88
-        THIN_ARROW@82..84 "->"
-        WHITESPACE@84..85 " "
-        NAMED_TYPE@85..88
-          PATH@85..88
-            TYPE_NAME@85..88 "Int"
-    WHITESPACE@88..89 " "
-    R_BRACE@89..90 "}"
-  NEWLINE@90..91 "\n"
-  FN_DECL@91..152
-    FN_KW@91..93 "fn"
-    WHITESPACE@93..94 " "
-    IDENT@94..95 "h"
-    PARAM_LIST@95..97
-      L_PAREN@95..96 "("
-      R_PAREN@96..97 ")"
-    WHITESPACE@97..98 " "
-    RET_TYPE@98..114
-      THIN_ARROW@98..100 "->"
-      WHITESPACE@100..101 " "
-      NAMED_TYPE@101..114
-        PATH@101..108
-          TYPE_NAME@101..108 "Handler"
-        GENERIC_ARG_LIST@108..114
-          LT@108..109 "<"
-          NAMED_TYPE@109..113
-            PATH@109..113
-              TYPE_NAME@109..113 "Task"
-          GT@113..114 ">"
-    WHITESPACE@114..115 " "
-    BLOCK@115..152
-      L_BRACE@115..116 "{"
-      WHITESPACE@116..117 " "
-      EXPR_STMT@117..150
-        HANDLER_EXPR@117..150
-          HANDLER_KW@117..124 "handler"
-          WHITESPACE@124..125 " "
-          PATH@125..129
-            TYPE_NAME@125..129 "Task"
-          WHITESPACE@129..130 " "
-          L_BRACE@130..131 "{"
-          WHITESPACE@131..132 " "
-          HANDLER_CLAUSE@132..148
-            FN_KW@132..134 "fn"
-            WHITESPACE@134..135 " "
-            IDENT@135..140 "spawn"
-            PARAM_LIST@140..142
-              L_PAREN@140..141 "("
-              R_PAREN@141..142 ")"
-            WHITESPACE@142..143 " "
-            BLOCK@143..148
-              L_BRACE@143..144 "{"
-              WHITESPACE@144..145 " "
-              EXPR_STMT@145..146
-                LITERAL@145..146
-                  INT@145..146 "1"
-              WHITESPACE@146..147 " "
-              R_BRACE@147..148 "}"
-          WHITESPACE@148..149 " "
-          R_BRACE@149..150 "}"
-      WHITESPACE@150..151 " "
-      R_BRACE@151..152 "}"
-  NEWLINE@152..153 "\n"
-  FN_DECL@153..180
-    FN_KW@153..155 "fn"
-    WHITESPACE@155..156 " "
-    IDENT@156..161 "price"
-    PARAM_LIST@161..163
-      L_PAREN@161..162 "("
-      R_PAREN@162..163 ")"
-    WHITESPACE@163..164 " "
-    RET_TYPE@164..170
-      THIN_ARROW@164..166 "->"
-      WHITESPACE@166..167 " "
-      NAMED_TYPE@167..170
-        PATH@167..170
-          TYPE_NAME@167..170 "Int"
-    WHITESPACE@170..171 " "
-    BLOCK@171..180
-      L_BRACE@171..172 "{"
-      WHITESPACE@172..173 " "
-      EXPR_STMT@173..174
-        LITERAL@173..174
-          INT@173..174 "1"
-      WHITESPACE@174..175 " "
-      ERROR@175..178
-        ERROR_TOKEN@175..176 "$"
-        WHITESPACE@176..177 " "
-        INT@177..178 "2"
-      WHITESPACE@178..179 " "
-      R_BRACE@179..180 "}"
-  NEWLINE@180..181 "\n"
-  FN_DECL@181..225
-    FN_KW@181..183 "fn"
-    WHITESPACE@183..184 " "
-    IDENT@184..189 "after"
-    PARAM_LIST@189..191
-      L_PAREN@189..190 "("
-      R_PAREN@190..191 ")"
-    WHITESPACE@191..192 " "
-    RET_TYPE@192..198
-      THIN_ARROW@192..194 "->"
-      WHITESPACE@194..195 " "
-      NAMED_TYPE@195..198
-        PATH@195..198
-          TYPE_NAME@195..198 "Int"
-    WHITESPACE@198..199 " "
-    BLOCK@199..225
-      L_BRACE@199..200 "{"
-      WHITESPACE@200..201 " "
-      LET_STMT@201..215
-        LET_KW@201..204 "let"
-        WHITESPACE@204..205 " "
-        BIND_PAT@205..211
-          IDENT@205..211 "resume"
-        WHITESPACE@211..212 " "
-        EQ@212..213 "="
-        WHITESPACE@213..214 " "
-        LITERAL@214..215
-          INT@214..215 "1"
-      SEMICOLON@215..216 ";"
-      WHITESPACE@216..217 " "
-      EXPR_STMT@217..223
-        PATH_EXPR@217..223
-          PATH@217..223
-            IDENT@217..223 "resume"
-      WHITESPACE@223..224 " "
-      R_BRACE@224..225 "}"
-  NEWLINE@225..226 "\n"
+  CONST_DECL@24..37
+    LET_KW@24..27 "let"
+    WHITESPACE@27..28 " "
+    IDENT@28..33 "actor"
+    WHITESPACE@33..34 " "
+    EQ@34..35 "="
+    WHITESPACE@35..36 " "
+    LITERAL@36..37
+      INT@36..37 "1"
+  NEWLINE@37..38 "\n"
+  FN_DECL@38..91
+    FN_KW@38..40 "fn"
+    WHITESPACE@40..41 " "
+    IDENT@41..45 "uses"
+    PARAM_LIST@45..47
+      L_PAREN@45..46 "("
+      R_PAREN@46..47 ")"
+    WHITESPACE@47..48 " "
+    RET_TYPE@48..54
+      THIN_ARROW@48..50 "->"
+      WHITESPACE@50..51 " "
+      NAMED_TYPE@51..54
+        PATH@51..54
+          TYPE_NAME@51..54 "Int"
+    WHITESPACE@54..55 " "
+    BLOCK@55..91
+      L_BRACE@55..56 "{"
+      WHITESPACE@56..57 " "
+      LET_STMT@57..70
+        LET_KW@57..60 "let"
+        WHITESPACE@60..61 " "
+        BIND_PAT@61..66
+          IDENT@61..66 "spawn"
+        WHITESPACE@66..67 " "
+        EQ@67..68 "="
+        WHITESPACE@68..69 " "
+        LITERAL@69..70
+          INT@69..70 "1"
+      SEMICOLON@70..71 ";"
+      WHITESPACE@71..72 " "
+      EXPR_STMT@72..89
+        CALL_EXPR@72..89
+          FIELD_EXPR@72..82
+            PATH_EXPR@72..76
+              PATH@72..76
+                TYPE_NAME@72..76 "Task"
+            DOT@76..77 "."
+            IDENT@77..82 "spawn"
+          ARG_LIST@82..89
+            L_PAREN@82..83 "("
+            PATH_EXPR@83..88
+              PATH@83..88
+                IDENT@83..88 "spawn"
+            R_PAREN@88..89 ")"
+      WHITESPACE@89..90 " "
+      R_BRACE@90..91 "}"
+  NEWLINE@91..92 "\n"
+  FN_DECL@92..124
+    FN_KW@92..94 "fn"
+    WHITESPACE@94..95 " "
+    IDENT@95..97 "ok"
+    PARAM_LIST@97..99
+      L_PAREN@97..98 "("
+      R_PAREN@98..99 ")"
+    WHITESPACE@99..100 " "
+    RET_TYPE@100..106
+      THIN_ARROW@100..102 "->"
+      WHITESPACE@102..103 " "
+      NAMED_TYPE@103..106
+        PATH@103..106
+          TYPE_NAME@103..106 "Int"
+    WHITESPACE@106..107 " "
+    BLOCK@107..124
+      L_BRACE@107..108 "{"
+      WHITESPACE@108..109 " "
+      EXPR_STMT@109..122
+        CALL_EXPR@109..122
+          FIELD_EXPR@109..119
+            PATH_EXPR@109..113
+              PATH@109..113
+                TYPE_NAME@109..113 "Task"
+            DOT@113..114 "."
+            IDENT@114..119 "spawn"
+          ARG_LIST@119..122
+            L_PAREN@119..120 "("
+            LITERAL@120..121
+              INT@120..121 "1"
+            R_PAREN@121..122 ")"
+      WHITESPACE@122..123 " "
+      R_BRACE@123..124 "}"
+  NEWLINE@124..125 "\n"
+  EFFECT_DECL@125..158
+    EFFECT_KW@125..131 "effect"
+    WHITESPACE@131..132 " "
+    TYPE_NAME@132..136 "Task"
+    WHITESPACE@136..137 " "
+    L_BRACE@137..138 "{"
+    WHITESPACE@138..139 " "
+    OP_SIG@139..156
+      FN_KW@139..141 "fn"
+      WHITESPACE@141..142 " "
+      IDENT@142..147 "spawn"
+      PARAM_LIST@147..149
+        L_PAREN@147..148 "("
+        R_PAREN@148..149 ")"
+      WHITESPACE@149..150 " "
+      RET_TYPE@150..156
+        THIN_ARROW@150..152 "->"
+        WHITESPACE@152..153 " "
+        NAMED_TYPE@153..156
+          PATH@153..156
+            TYPE_NAME@153..156 "Int"
+    WHITESPACE@156..157 " "
+    R_BRACE@157..158 "}"
+  NEWLINE@158..159 "\n"
+  FN_DECL@159..220
+    FN_KW@159..161 "fn"
+    WHITESPACE@161..162 " "
+    IDENT@162..163 "h"
+    PARAM_LIST@163..165
+      L_PAREN@163..164 "("
+      R_PAREN@164..165 ")"
+    WHITESPACE@165..166 " "
+    RET_TYPE@166..182
+      THIN_ARROW@166..168 "->"
+      WHITESPACE@168..169 " "
+      NAMED_TYPE@169..182
+        PATH@169..176
+          TYPE_NAME@169..176 "Handler"
+        GENERIC_ARG_LIST@176..182
+          LT@176..177 "<"
+          NAMED_TYPE@177..181
+            PATH@177..181
+              TYPE_NAME@177..181 "Task"
+          GT@181..182 ">"
+    WHITESPACE@182..183 " "
+    BLOCK@183..220
+      L_BRACE@183..184 "{"
+      WHITESPACE@184..185 " "
+      EXPR_STMT@185..218
+        HANDLER_EXPR@185..218
+          HANDLER_KW@185..192 "handler"
+          WHITESPACE@192..193 " "
+          PATH@193..197
+            TYPE_NAME@193..197 "Task"
+          WHITESPACE@197..198 " "
+          L_BRACE@198..199 "{"
+          WHITESPACE@199..200 " "
+          HANDLER_CLAUSE@200..216
+            FN_KW@200..202 "fn"
+            WHITESPACE@202..203 " "
+            IDENT@203..208 "spawn"
+            PARAM_LIST@208..210
+              L_PAREN@208..209 "("
+              R_PAREN@209..210 ")"
+            WHITESPACE@210..211 " "
+            BLOCK@211..216
+              L_BRACE@211..212 "{"
+              WHITESPACE@212..213 " "
+              EXPR_STMT@213..214
+                LITERAL@213..214
+                  INT@213..214 "1"
+              WHITESPACE@214..215 " "
+              R_BRACE@215..216 "}"
+          WHITESPACE@216..217 " "
+          R_BRACE@217..218 "}"
+      WHITESPACE@218..219 " "
+      R_BRACE@219..220 "}"
+  NEWLINE@220..221 "\n"
+  FN_DECL@221..248
+    FN_KW@221..223 "fn"
+    WHITESPACE@223..224 " "
+    IDENT@224..229 "price"
+    PARAM_LIST@229..231
+      L_PAREN@229..230 "("
+      R_PAREN@230..231 ")"
+    WHITESPACE@231..232 " "
+    RET_TYPE@232..238
+      THIN_ARROW@232..234 "->"
+      WHITESPACE@234..235 " "
+      NAMED_TYPE@235..238
+        PATH@235..238
+          TYPE_NAME@235..238 "Int"
+    WHITESPACE@238..239 " "
+    BLOCK@239..248
+      L_BRACE@239..240 "{"
+      WHITESPACE@240..241 " "
+      EXPR_STMT@241..242
+        LITERAL@241..242
+          INT@241..242 "1"
+      WHITESPACE@242..243 " "
+      ERROR@243..246
+        ERROR_TOKEN@243..244 "$"
+        WHITESPACE@244..245 " "
+        INT@245..246 "2"
+      WHITESPACE@246..247 " "
+      R_BRACE@247..248 "}"
+  NEWLINE@248..249 "\n"
+  FN_DECL@249..293
+    FN_KW@249..251 "fn"
+    WHITESPACE@251..252 " "
+    IDENT@252..257 "after"
+    PARAM_LIST@257..259
+      L_PAREN@257..258 "("
+      R_PAREN@258..259 ")"
+    WHITESPACE@259..260 " "
+    RET_TYPE@260..266
+      THIN_ARROW@260..262 "->"
+      WHITESPACE@262..263 " "
+      NAMED_TYPE@263..266
+        PATH@263..266
+          TYPE_NAME@263..266 "Int"
+    WHITESPACE@266..267 " "
+    BLOCK@267..293
+      L_BRACE@267..268 "{"
+      WHITESPACE@268..269 " "
+      LET_STMT@269..283
+        LET_KW@269..272 "let"
+        WHITESPACE@272..273 " "
+        BIND_PAT@273..279
+          IDENT@273..279 "resume"
+        WHITESPACE@279..280 " "
+        EQ@280..281 "="
+        WHITESPACE@281..282 " "
+        LITERAL@282..283
+          INT@282..283 "1"
+      SEMICOLON@283..284 ";"
+      WHITESPACE@284..285 " "
+      EXPR_STMT@285..291
+        PATH_EXPR@285..291
+          PATH@285..291
+            IDENT@285..291 "resume"
+      WHITESPACE@291..292 " "
+      R_BRACE@292..293 "}"
+  NEWLINE@293..294 "\n"

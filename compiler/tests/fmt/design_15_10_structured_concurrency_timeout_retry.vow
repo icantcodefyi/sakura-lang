@@ -1,9 +1,11 @@
-import std/http
+import std/http.{Http, HttpError, RateLimited, Response, Any}
+import std/url.{Url}
+import std/retry.{Policy, retry}
+import std/task.{Timeout, timeout}
 
-error Timeout
-fn fetch_both(a: Url, b: Url) -> (String, String) ! {Http, Task, Clock, Random, Fail<HttpError | Timeout>} {
-  let policy = Retry.Policy { retry_on: fn(e) { match e { RateLimited { .. } => true, _ => false } },
-                              max_attempts: 3, backoff: Duration.millis(200), jitter: true, deadline: None }
+fn fetch_both(a: Url, b: Url) -> (String, String) ! {Http, Task, Clock, Random, Fail<HttpError | RateLimited | Timeout>} {
+  let policy = Policy { retry_on: fn(e) { match e { RateLimited { .. } => true, _ => false } },
+                        max_attempts: 3, backoff: Duration.millis(200), jitter: true, deadline: None }
   timeout(Duration.seconds(5), fn() {
     Task.scope(fn(s) {
       let fa = Task.spawn(s, fn() { retry(policy, fn() { Response.text(Http.get(a), 1_000_000).trust(@trust("display only")) }) })

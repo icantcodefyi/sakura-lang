@@ -1,17 +1,18 @@
 ---
 source: crates/vow_fmt/tests/fmt.rs
-assertion_line: 45
+assertion_line: 66
 expression: "check(path, &text)"
 input_file: tests/fmt/design_15_10_structured_concurrency_timeout_retry.vow
 ---
-import std/http
-
-error Timeout
+import std/http.{Any, Http, HttpError, RateLimited, Response}
+import std/retry.{Policy, retry}
+import std/task.{Timeout, timeout}
+import std/url.{Url}
 
 fn fetch_both(a: Url, b: Url) -> (String, String)
-  ! {Clock, Http, Random, Task, Fail<HttpError | Timeout>}
+  ! {Clock, Http, Random, Task, Fail<HttpError | RateLimited | Timeout>}
 {
-  let policy = Retry.Policy {
+  let policy = Policy {
     retry_on: fn(e) {
       match e {
         RateLimited { .. } => true,

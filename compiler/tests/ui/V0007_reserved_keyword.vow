@@ -1,3 +1,7 @@
 // milestone: M0
 // expect: V0007
-fn spawn() -> Int { 1 }
+// `spawn` is reserved (§2.1); it is legal only directly after `.` or `fn` (`Task.spawn`).
+fn price() -> Int {
+  let spawn = 2
+  1
+}

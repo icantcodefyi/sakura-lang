@@ -14,8 +14,9 @@ fn exprs(a: Bool, b: Bool, xs: List<Int>, u: User) -> Unit {
   let nested = Retry.Policy { max_attempts: 3 }
   let lam = fn(x: Int) -> Int { x + 1 }
   let lam2 = fn(_, y) { y }
-  let call = f<Int>(x)
-  let named = Budget.limits(tokens: 20_000, usd: 0.50)
+  let call = f(x)
+  let paren: (Int) = (1)
+  let one: (Int,) = (1,)
   let t = Untrusted.of("x").trust(@trust("reviewed"))
   let v = if a { 1 } else if b { 2 } else { 3 }
   let blockv = { let x = 1; x + 1 }

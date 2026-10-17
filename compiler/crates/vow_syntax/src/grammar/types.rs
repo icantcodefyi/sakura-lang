@@ -77,7 +77,7 @@ pub(crate) fn ty(p: &mut Parser<'_>) -> Option<CompletedMarker> {
             }
             Some(m.complete(p, FN_TYPE))
         }
-        L_PAREN => Some(type_list(p, TUPLE_TYPE)),
+        L_PAREN => Some(paren_type(p)),
         TYPE_NAME | IDENT => {
             let first = named_type(p);
             if p.at(PIPE) {
@@ -104,6 +104,32 @@ pub(crate) fn ty(p: &mut Parser<'_>) -> Option<CompletedMarker> {
     };
     p.depth -= 1;
     result
+}
+
+/// `()` and `(A, …)` are tuple types; `(T)` is `T` itself, its node also holding the
+/// parentheses (§3.2 rule 14).
+fn paren_type(p: &mut Parser<'_>) -> CompletedMarker {
+    let m = p.start();
+    p.bump();
+    if p.eat(R_PAREN) {
+        return m.complete(p, TUPLE_TYPE);
+    }
+    let inner = ty(p);
+    if p.eat(COMMA) {
+        list(p, R_PAREN, TYPE_FIRST, "a type", |p| {
+            ty(p);
+        });
+        return m.complete(p, TUPLE_TYPE);
+    }
+    let kind = match inner {
+        Some(inner) => {
+            p.dissolve(&m, inner);
+            inner.kind()
+        }
+        None => TUPLE_TYPE,
+    };
+    p.expect(R_PAREN);
+    m.complete(p, kind)
 }
 
 pub(crate) fn named_type(p: &mut Parser<'_>) -> CompletedMarker {

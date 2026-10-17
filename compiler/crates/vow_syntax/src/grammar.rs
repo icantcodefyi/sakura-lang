@@ -16,6 +16,7 @@ pub(crate) use types::ty;
 const ITEM_START: TokenSet = TokenSet::new(&[
     AT,
     PUB_KW,
+    OPAQUE_KW,
     IMPORT_KW,
     TYPE_KW,
     ERROR_KW,
@@ -63,7 +64,13 @@ fn item(p: &mut Parser<'_>) {
         p.skip_newlines();
         prefixed = true;
     }
-    prefixed |= p.eat(PUB_KW);
+    if p.eat(PUB_KW) {
+        prefixed = true;
+        p.eat(OPAQUE_KW);
+    } else if p.at(OPAQUE_KW) {
+        p.err_and_bump("`opaque` goes after `pub`: `pub opaque type …`");
+        prefixed = true;
+    }
     let (kind, needs_term) = match p.current() {
         IMPORT_KW => (IMPORT, import(p)),
         TYPE_KW => (TYPE_DECL, type_decl(p)),
@@ -106,14 +113,12 @@ fn skip_to_item(p: &mut Parser<'_>, mut consumed: bool) {
     }
 }
 
-/// `Term` after a declaration or member: `;`, `NEWLINE`, or nothing before `}`/EOF or when the
-/// next token starts a new line (a type ending in `>` does not end a line under §2.4).
+/// `Term` after a declaration or member: `;`, `NEWLINE`, or nothing before `}`/EOF.
 pub(crate) fn member_term(p: &mut Parser<'_>, what: &str) {
     match p.current() {
         NEWLINE | SEMICOLON => p.bump(),
         EOF | R_BRACE => {}
         ERROR_TOKEN => p.skip_after_lex_error(),
-        _ if p.newline_before(0) => {}
         _ => p.error(
             codes::EXPECTED_TERMINATOR,
             format!("expected a newline or `;` after the {what}"),
@@ -131,7 +136,7 @@ pub(crate) fn attribute(p: &mut Parser<'_>, kind: SyntaxKind) -> crate::parser::
         p.error_expected("an attribute name directly after `@`");
     }
     if p.at(L_PAREN) {
-        expr::arg_list(p);
+        expr::arg_list(p, true);
     }
     m.complete(p, kind)
 }
@@ -238,7 +243,7 @@ fn type_decl(p: &mut Parser<'_>) -> bool {
     if p.at(LT) {
         type_param_list(p);
     }
-    // `type Html` with no body declares an opaque type (std/host types, design §10.4).
+    // `type Fiber<T>` with no body declares an external (host) type (§3.2 rule 15).
     if p.eat(EQ) {
         match p.current() {
             L_BRACE => record_type(p),
@@ -246,6 +251,12 @@ fn type_decl(p: &mut Parser<'_>) -> bool {
                 ty(p);
             }
             TYPE_NAME | IDENT => alternatives(p),
+            PIPE => {
+                p.err_and_bump("a variant list does not start with `|` (§3.2 rule 12)");
+                if matches!(p.current(), TYPE_NAME | IDENT) {
+                    alternatives(p);
+                }
+            }
             _ => p.error_expected("a type, a record `{ … }`, or variants"),
         }
     } else if !matches!(p.current(), NEWLINE | SEMICOLON | EOF) {
@@ -414,9 +425,7 @@ fn signature(p: &mut Parser<'_>, allow_body: bool) -> bool {
     p.bump();
     match p.current() {
         IDENT => {
-            if !allow_body {
-                p.allow_reserved_next(); // operation names (`Task.spawn`)
-            }
+            p.allow_reserved_next(); // a reserved word may follow `fn` (§2.1): `fn spawn(…)`
             p.bump();
         }
         TYPE_NAME => {
