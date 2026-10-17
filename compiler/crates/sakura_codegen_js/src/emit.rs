@@ -812,10 +812,12 @@ impl<'a> FnEmit<'a> {
                     ContractKind::Ensures => "postcondition",
                     ContractKind::Where => "refinement",
                 };
-                let msg = js_string(&format!(
-                    "{what} `{}` of {} violated",
-                    decl.name, self.def.name
-                ));
+                // A refinement is named by its type (`Percent`, `Ticket.title`); a clause by its
+                // function.
+                let msg = js_string(&match decl.kind {
+                    ContractKind::Where => format!("{what} `{}` violated", decl.name),
+                    _ => format!("{what} `{}` of {} violated", decl.name, self.def.name),
+                });
                 let site = if decl.kind == ContractKind::Ensures {
                     "null"
                 } else {

@@ -49,6 +49,8 @@ pub fn lower(program: &hir::Program, typed: &TypedProgram, opts: &LowerOptions) 
         dicts: HashMap::new(),
         schema_cache: HashMap::new(),
         refinements: HashMap::new(),
+        field_checks: HashMap::new(),
+        record_news: HashMap::new(),
     };
     l.builtin_types();
     let main = program
@@ -122,7 +124,14 @@ pub(crate) struct Lower<'p> {
     schema_cache: HashMap<types::TypeId, Ty>,
     /// Refined type → its schema entry.
     refinements: HashMap<hir::DefId, RefinementId>,
+    /// Record/error type → (field, its `where` refinement, the clause's position).
+    field_checks: HashMap<TypeId, Vec<(usize, RefinementId, Option<Pos>)>>,
+    /// Record/error type with field refinements → its checked constructor `T$new`.
+    record_news: HashMap<TypeId, DefId>,
 }
+
+/// A field's `where`: its predicate body, the field name and its range.
+type FieldPred = (hir::BodyId, String, text_size::TextRange);
 
 /// Type arguments for a function's type parameters, by `ParamId` index (`Ty::Var(p)`).
 pub(crate) type Subst = Vec<(u32, Ty)>;
@@ -760,37 +769,126 @@ impl<'p> Lower<'p> {
     }
 
     /// Record [`Module::field_schemas`] for type `id` (HIR `d`) when its fields mention a
-    /// refined type.
+    /// refined type or have a `where` of their own. A field `where` becomes the refinement
+    /// `T.field` over the field's type, so decoding and generated inputs check it, and the
+    /// type's literals go through [`Lower::record_bind`].
     fn field_schemas(&mut self, id: TypeId, d: hir::DefId) {
-        let groups: Vec<Vec<hir::TypeRef>> = match &self.p.def(d).kind {
+        let no_preds = |fs: &[hir::TypeRef]| fs.iter().map(|t| (t.clone(), None)).collect();
+        let groups: Vec<Vec<(hir::TypeRef, Option<FieldPred>)>> = match &self.p.def(d).kind {
             hir::DefKind::Type(hir::TypeDef {
                 body: hir::TypeDefBody::Record(fs),
                 ..
-            }) => vec![fs.iter().map(|f| f.ty.clone()).collect()],
-            hir::DefKind::Error(e) => vec![e.fields.iter().map(|f| f.ty.clone()).collect()],
+            })
+            | hir::DefKind::Error(hir::ErrorDef { fields: fs, .. }) => vec![
+                fs.iter()
+                    .map(|f| {
+                        let pred = f.refinement.map(|b| (b, f.name.clone(), f.range));
+                        (f.ty.clone(), pred)
+                    })
+                    .collect(),
+            ],
             hir::DefKind::Type(hir::TypeDef {
                 body: hir::TypeDefBody::Variants(vs),
                 ..
             }) => vs
                 .iter()
                 .map(|&v| match &self.p.module(d.module).defs[v].kind {
-                    hir::DefKind::Variant(var) => var.fields.clone(),
+                    hir::DefKind::Variant(var) => no_preds(&var.fields),
                     _ => vec![],
                 })
                 .collect(),
             _ => return,
         };
-        let schemas: Vec<Vec<Ty>> = groups
-            .iter()
-            .map(|g| g.iter().map(|t| self.ty_ref_k(t, &[], true)).collect())
-            .collect();
+        let params = self.m.ty(id).params;
+        let tname = self.p.def(d).name.clone();
+        let mut checks = Vec::new();
+        let mut schemas: Vec<Vec<Ty>> = Vec::new();
+        for g in &groups {
+            let mut row = Vec::new();
+            for (i, (t, pred)) in g.iter().enumerate() {
+                let base = self.ty_ref_k(t, &[], true);
+                row.push(match pred {
+                    Some((body, field, range)) => {
+                        let module = self.module_name(d.module);
+                        let name = format!("{tname}.{field}");
+                        let check = self.push_placeholder(&format!("{name}$check"), module.clone());
+                        let r = RefinementId(self.m.refinements.len() as u32);
+                        self.m.refinements.push(Refinement {
+                            name: name.clone(),
+                            module,
+                            base,
+                            check,
+                        });
+                        let fd = expr::FnLower::lower_refinement_check(
+                            self, d.module, name, *range, *body, check,
+                        );
+                        let pos = fd.pos;
+                        self.m.defs[check.index()] = fd;
+                        checks.push((i, r, pos));
+                        Ty::Refined(r, (0..params).map(Ty::Var).collect())
+                    }
+                    None => base,
+                });
+            }
+            schemas.push(row);
+        }
         let plain: Vec<Vec<Ty>> = groups
             .iter()
-            .map(|g| g.iter().map(|t| self.ty_ref(t, &[])).collect())
+            .map(|g| g.iter().map(|(t, _)| self.ty_ref(t, &[])).collect())
             .collect();
         if schemas != plain {
             self.m.field_schemas.insert(id, schemas);
         }
+        if !checks.is_empty() {
+            self.field_checks.insert(id, checks);
+        }
+    }
+
+    /// Construction of record or error type `t` from its fields in order: an allocation, or a
+    /// call to `T$new` when fields have a `where` (defect `D010` at the construction's span).
+    pub fn record_bind(&mut self, t: TypeId, args: Vec<Atom>) -> Bind {
+        let Some(checks) = self.field_checks.get(&t).cloned() else {
+            return Bind::Alloc(Alloc::Record(t), args);
+        };
+        if let Some(&f) = self.record_news.get(&t) {
+            return Bind::Call(Atom::Global(f), args);
+        }
+        let td = self.m.ty(t).clone();
+        let id = self.push_placeholder(&format!("{}$new", td.name), td.module.clone());
+        self.record_news.insert(t, id);
+        let mut b = FnBuilder::new();
+        let params: Vec<Local> = td
+            .fields()
+            .iter()
+            .map(|f| b.local(f.name.clone(), f.ty.clone()))
+            .collect();
+        let mut blk = Block::new();
+        for (i, r, pos) in checks {
+            let rf = &self.m.refinements[r.index()];
+            let (check, name) = (rf.check, rf.name.clone());
+            let ok = b.local("ok", Ty::Bool);
+            blk.push(ok, Bind::Call(Atom::Global(check), vec![local(params[i])]));
+            let c = ContractId(self.m.contracts.len() as u32);
+            self.m.contracts.push(ContractDecl {
+                kind: ContractKind::Where,
+                name,
+                pos,
+            });
+            let u = b.local("checked", Ty::Unit);
+            blk.push(u, Bind::Check(c, local(ok)));
+        }
+        let ty = Ty::Adt(t, (0..td.params).map(Ty::Var).collect());
+        let r = b.local("rec", ty.clone());
+        let fields = params.iter().map(|&p| local(p)).collect();
+        blk.push(r, Bind::Alloc(Alloc::Record(t), fields));
+        self.m.defs[id.index()] = FnDef {
+            params,
+            locals: b.locals,
+            ret: ty,
+            body: blk.finish(Expr::Ret(local(r))),
+            ..self.m.defs[id.index()].clone()
+        };
+        Bind::Call(Atom::Global(id), args)
     }
 
     /// The schema entry of refined type `d`, with its `where` lowered to `T$check`.
@@ -818,7 +916,15 @@ impl<'p> Lower<'p> {
         self.refinements.insert(d, r);
         let base = self.ty_ref_k(&base, &[], true);
         self.m.refinements[r.index()].base = base;
-        let fd = expr::FnLower::lower_refinement_check(self, d, pred, check);
+        let range = self.p.def(d).range;
+        let fd = expr::FnLower::lower_refinement_check(
+            self,
+            d.module,
+            self.p.def(d).name.clone(),
+            range,
+            pred,
+            check,
+        );
         self.m.defs[check.index()] = fd;
         r
     }
@@ -951,7 +1057,8 @@ impl<'p> Lower<'p> {
                 Bind::Alloc(Alloc::Variant(self.type_def(parent), index), args)
             }
             hir::DefKind::Error(_) | hir::DefKind::Type(_) => {
-                Bind::Alloc(Alloc::Record(self.type_def(d)), args)
+                let t = self.type_def(d);
+                self.record_bind(t, args)
             }
             hir::DefKind::Op(o) => {
                 let eff = hir::DefId {

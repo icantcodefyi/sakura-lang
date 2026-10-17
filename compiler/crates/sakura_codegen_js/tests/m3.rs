@@ -872,3 +872,54 @@ pub fn main() -> Unit ! {Console} {
         r.stderr
     );
 }
+
+/// A field `where` is the refinement `T.field`: `Json.decode` reports it as a `DecodeError`,
+/// property inputs satisfy it and shrink inside it, and building a record that breaks it is
+/// `D010` at the literal (or the assigned value), with the clause as the definition span.
+#[test]
+fn field_refinements_are_checked_everywhere() {
+    let src = r#"import std/json.{DecodeError}
+type Ticket = { title: String where String.len(it) > 0, n: Int where it >= 0 }
+pub fn main() -> Unit ! {Console} {
+  let d: Result<Ticket, DecodeError> = Json.decode("\{\"title\": \"\", \"n\": 1\}")
+  let ok: Result<Ticket, DecodeError> = Json.decode("\{\"title\": \"a\", \"n\": 1\}")
+  Console.print("{d.is_err()} {ok.is_ok()}")
+  var t = Ticket { title: "a", n: 1 }
+  t.n = 0 - 1
+  Console.print("unreachable {t.n}")
+}
+"#;
+    let r = common::run("field_where", src).unwrap();
+    assert_eq!(
+        (r.stdout.as_str(), r.code),
+        ("true true\n", 70),
+        "{}",
+        r.stderr
+    );
+    let rec = defect_record(&r.stderr);
+    assert_eq!(rec["code"], "D010", "{rec}");
+    assert_eq!(rec["message"], "refinement `Ticket.n` violated", "{rec}");
+    let span = |i: usize| {
+        let s = &rec["spans"][i];
+        let (a, b) = (
+            s["start_byte"].as_u64().unwrap(),
+            s["end_byte"].as_u64().unwrap(),
+        );
+        (
+            &src[a as usize..b as usize],
+            s["role"].as_str().unwrap().to_owned(),
+        )
+    };
+    assert_eq!(span(0), ("0 - 1", "primary".into()));
+    assert_eq!(span(1).1, "definition");
+
+    let line = falsified(
+        "field_where_gen",
+        r#"type Order = { qty: Int where it > 0 && it <= 10, note: String }
+property "small"(o: Order) { expect(o.qty < 5) }"#,
+    );
+    assert!(
+        line.contains(r#"falsified by o = Order { qty: 5, note: "" }"#),
+        "{line}"
+    );
+}

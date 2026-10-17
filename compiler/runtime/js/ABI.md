@@ -130,6 +130,11 @@ A defect carries `spans` (`{ uri, start_byte, end_byte, role }`, `uri` being the
   primary span is the call (`scale(Percent.from(50), -1)`) and the clause is the `definition`
   span. A call through a function value leaves the register `null`; the clause is then primary.
 - `ensures` (`D021`) blames the callee: the clause is the primary span.
+- A record field's `where` (`title: String where …`) is the refinement `T.field` over the
+  field's type: it is the field's schema (so `Json.decode`, property inputs and shrinking
+  check it), and literals, updates and field assignments of the type call a generated
+  `T$new(fields…)`, which raises `D010` with the construction (or assigned value) as the
+  primary span.
 
 `$rt.defect_catch(body, $ctx, $k)` runs `body` as a child task under the current handlers and
 resumes with `Ok(value)` or `Err("Dnnn: message")`; a `Fail` in the child propagates to the

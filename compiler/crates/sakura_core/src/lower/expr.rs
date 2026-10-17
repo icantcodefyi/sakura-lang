@@ -521,13 +521,14 @@ impl<'a, 'p> FnLower<'a, 'p> {
     /// `T$check(it) -> Bool`: refined type `ty_def`'s `where` predicate, for schemas.
     pub(crate) fn lower_refinement_check(
         l: &'a mut Lower<'p>,
-        ty_def: hir::DefId,
+        module: hir::ModuleId,
+        name: String,
+        range: TextRange,
         pred: hir::BodyId,
         id: DefId,
     ) -> FnDef {
-        let pos = l.pos(ty_def.module, l.p.def(ty_def).range);
-        let name = l.p.def(ty_def).name.clone();
-        let mut s = FnLower::new(l, ty_def.module, pred, name);
+        let pos = l.pos(module, range);
+        let mut s = FnLower::new(l, module, pred, name);
         let params: Vec<Local> = s.body.params.clone().iter().map(|&p| s.param(p)).collect();
         let cond = match s.body.value {
             Some(v) => s.predicate(v),
@@ -1187,7 +1188,8 @@ impl<'a, 'p> FnLower<'a, 'p> {
                     args.push(a);
                 }
                 let ty = self.ty_of(e);
-                Some(self.bind("rec", ty, Bind::Alloc(Alloc::Record(t), args), pos))
+                let bind = self.l.record_bind(t, args);
+                Some(self.bind("rec", ty, bind, pos))
             }
             hir::Expr::Tuple(es) => {
                 if es.is_empty() {
@@ -1481,7 +1483,8 @@ impl<'a, 'p> FnLower<'a, 'p> {
                         }
                         _ => self.env.get(&target)?.clone(),
                     };
-                    self.update_path(cur, ty, fields, v)?
+                    let pos = self.pos(*value);
+                    self.update_path(cur, ty, fields, v, pos)?
                 };
                 match (self.state.get(&target), self.inst) {
                     (Some(&slot), Some(inst)) => {
@@ -1505,7 +1508,14 @@ impl<'a, 'p> FnLower<'a, 'p> {
     }
 
     /// `x.a.b = v` → `x = T { ..x, a: A { ..x.a, b: v } }`.
-    fn update_path(&mut self, cur: Atom, ty: Ty, fields: &[String], v: Atom) -> Option<Atom> {
+    fn update_path(
+        &mut self,
+        cur: Atom,
+        ty: Ty,
+        fields: &[String],
+        v: Atom,
+        pos: Option<Pos>,
+    ) -> Option<Atom> {
         let Some((first, rest)) = fields.split_first() else {
             return Some(v);
         };
@@ -1524,7 +1534,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
                 Bind::Proj(cur.clone(), Proj::Field(t, i as u32)),
                 None,
             );
-            self.update_path(old, fty, rest, v)?
+            self.update_path(old, fty, rest, v, pos)?
         };
         let mut vals = Vec::new();
         for (j, f) in decl.iter().enumerate() {
@@ -1539,7 +1549,8 @@ impl<'a, 'p> FnLower<'a, 'p> {
                 )
             });
         }
-        Some(self.bind("rec", ty, Bind::Alloc(Alloc::Record(t), vals), None))
+        let bind = self.l.record_bind(t, vals);
+        Some(self.bind("rec", ty, bind, pos))
     }
 
     /// Bind a `let` / `for` pattern; refutable shapes go through the match compiler.
