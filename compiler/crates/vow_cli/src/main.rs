@@ -79,6 +79,13 @@ enum Command {
         out_dir: PathBuf,
         paths: Vec<PathBuf>,
     },
+    /// Rewrite files in the canonical format (design §12.5).
+    Fmt {
+        /// Change nothing; list unformatted files and exit 1 if there are any.
+        #[arg(long)]
+        check: bool,
+        paths: Vec<PathBuf>,
+    },
     /// Explain a diagnostic code: rationale, causes, repairs.
     Explain { code: String },
     /// Print the language guide for agents (`docs/llms.txt`, matched to this compiler).
@@ -122,6 +129,7 @@ fn main() -> ExitCode {
             &out_dir,
             &paths,
         ),
+        Command::Fmt { check, paths } => fmt(check, &paths),
         Command::Explain { code } => explain(&code),
         Command::Prompt { budget } => {
             print!("{}", prompt(budget));
@@ -406,6 +414,73 @@ fn print_test_results(jsonl: &str) {
             _ => {}
         }
     }
+}
+
+fn fmt(check: bool, paths: &[PathBuf]) -> ExitCode {
+    let snapshot = match load(paths) {
+        Ok(s) => s,
+        Err(e) => return usage_error(e),
+    };
+    let mut failed = false;
+    let mut errors = Vec::new();
+    for file in snapshot.user_files() {
+        let source = snapshot.file(file);
+        let formatted = match Analysis::format(&snapshot, file) {
+            Ok(f) => f,
+            Err(diags) => {
+                errors.extend(diags);
+                continue;
+            }
+        };
+        if formatted == source.text {
+            continue;
+        }
+        let path = uri_path(&source.uri);
+        if check {
+            println!("{}", path.display());
+            failed = true;
+        } else if let Err(e) = std::fs::write(&path, formatted) {
+            return usage_error(format!("{}: {e}", path.display()));
+        }
+    }
+    if !errors.is_empty() {
+        eprint!(
+            "{}",
+            render_human(&errors, &display_files(snapshot.files()))
+        );
+        eprintln!(
+            "{} (files with parse errors are left unchanged)",
+            tally(&errors)
+        );
+    }
+    if failed || !errors.is_empty() {
+        ExitCode::from(EXIT_ERRORS)
+    } else {
+        ExitCode::SUCCESS
+    }
+}
+
+/// The path of a `file://` URI built by [`file_uri`].
+fn uri_path(uri: &str) -> PathBuf {
+    let raw = uri.strip_prefix("file://").unwrap_or(uri).as_bytes();
+    let mut bytes = Vec::with_capacity(raw.len());
+    let mut i = 0;
+    while i < raw.len() {
+        let hex = raw
+            .get(i + 1..i + 3)
+            .and_then(|h| std::str::from_utf8(h).ok());
+        match (raw[i], hex.and_then(|h| u8::from_str_radix(h, 16).ok())) {
+            (b'%', Some(b)) => {
+                bytes.push(b);
+                i += 3;
+            }
+            (b, _) => {
+                bytes.push(b);
+                i += 1;
+            }
+        }
+    }
+    PathBuf::from(String::from_utf8_lossy(&bytes).into_owned())
 }
 
 /// `2 errors, 1 warning` (or `no problems`) for the end of terminal output.

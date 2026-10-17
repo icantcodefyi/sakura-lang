@@ -141,6 +141,24 @@ fn analyze(snapshot: &Snapshot) -> (vow_hir::Program, vow_types::TypedProgram, C
     (program, typed, CheckResult { diagnostics, holes })
 }
 
+impl Analysis {
+    /// The canonical formatting of one file (design §12.5), or its parse errors: the formatter
+    /// refuses files that do not parse.
+    pub fn format(snapshot: &Snapshot, file: FileId) -> Result<String, Vec<Diagnostic>> {
+        vow_fmt::format(&snapshot.file(file).text).map_err(|mut diags| {
+            for d in &mut diags {
+                for s in &mut d.spans {
+                    s.file = file;
+                }
+                for e in d.fixes.iter_mut().flat_map(|f| &mut f.edits) {
+                    e.span.file = file;
+                }
+            }
+            diags
+        })
+    }
+}
+
 /// Whether the user package has a `pub fn main`.
 fn has_entry(program: &vow_hir::Program) -> bool {
     program

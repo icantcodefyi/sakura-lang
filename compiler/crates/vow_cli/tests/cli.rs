@@ -74,3 +74,38 @@ fn prompt_prints_llms_txt_within_budget() {
             .contains("[truncated to a budget of 500 tokens")
     );
 }
+
+#[test]
+fn fmt_check_then_rewrite() {
+    let messy = "fn   add(a: Int,b: Int) -> Int {a+b}\n";
+    let dir = tmp("fmt dir", messy);
+    let check = vow(&["fmt", "--check", "main.vow"], &dir);
+    assert_eq!(check.code, Some(1), "{}", check.stderr);
+    assert!(
+        check.stdout.trim_end().ends_with("main.vow"),
+        "{}",
+        check.stdout
+    );
+    assert_eq!(
+        std::fs::read_to_string(dir.join("main.vow")).unwrap(),
+        messy
+    );
+    let fix = vow(&["fmt", "main.vow"], &dir);
+    assert_eq!(fix.code, Some(0), "{}", fix.stderr);
+    let formatted = std::fs::read_to_string(dir.join("main.vow")).unwrap();
+    assert_ne!(formatted, messy);
+    assert_eq!(vow(&["fmt", "--check", "main.vow"], &dir).code, Some(0));
+}
+
+#[test]
+fn fmt_refuses_files_that_do_not_parse() {
+    let broken = "fn main( -> Unit {}\n";
+    let dir = tmp("fmt-broken", broken);
+    let out = vow(&["fmt", "main.vow"], &dir);
+    assert_eq!(out.code, Some(1));
+    assert!(out.stderr.contains("error[V0001]"), "{}", out.stderr);
+    assert_eq!(
+        std::fs::read_to_string(dir.join("main.vow")).unwrap(),
+        broken
+    );
+}
