@@ -1,0 +1,20 @@
+[package]
+name = "vow_lsp"
+description = "`vow lsp`: the Language Server Protocol over the analysis facade (design §12.6)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+vow_analysis.workspace = true
+vow_diagnostics.workspace = true
+lsp-server.workspace = true
+lsp-types.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

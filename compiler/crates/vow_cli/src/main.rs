@@ -105,6 +105,9 @@ enum Command {
         #[command(subcommand)]
         action: McpAction,
     },
+    /// Language server on stdin/stdout: diagnostics, hover, go to definition, completion,
+    /// formatting and quick fixes. The workspace is the client's first workspace folder.
+    Lsp,
 }
 
 #[derive(Subcommand)]
@@ -205,6 +208,10 @@ fn dispatch(command: Command) -> ExitCode {
             print!("{}", prompt(budget));
             ExitCode::SUCCESS
         }
+        Command::Lsp => match vow_lsp::serve() {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(e) => usage_error(format!("lsp: {e}")),
+        },
         Command::Mcp {
             action: McpAction::Serve { root },
         } => {

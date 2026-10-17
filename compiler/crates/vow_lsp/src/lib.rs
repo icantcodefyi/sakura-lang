@@ -1,0 +1,521 @@
+//! `vow lsp`: the Language Server Protocol on stdio over the analysis facade (design §12.6):
+//! diagnostics, hover, go to definition, completion, formatting and quick fixes. Positions are
+//! UTF-8 when the client offers it, else UTF-16; the facade itself only sees byte offsets.
+
+use std::collections::{HashMap, HashSet};
+use std::path::PathBuf;
+use std::sync::Arc;
+
+use lsp_server::{Connection, ErrorCode, Message, Notification, Request, Response};
+use lsp_types as lsp;
+use serde::de::DeserializeOwned;
+use serde_json::{Value, json};
+use vow_analysis::{Analysis, Analyzed, Snapshot, disk};
+use vow_diagnostics::{Diagnostic, FileId, Severity, Span};
+
+pub fn serve() -> Result<(), String> {
+    let (conn, io) = Connection::stdio();
+    let (id, params) = conn.initialize_start().map_err(|e| e.to_string())?;
+    let params: lsp::InitializeParams =
+        serde_json::from_value(params).map_err(|e| e.to_string())?;
+    let utf8 = params
+        .capabilities
+        .general
+        .as_ref()
+        .and_then(|g| g.position_encodings.as_ref())
+        .is_some_and(|e| e.contains(&lsp::PositionEncodingKind::UTF8));
+    let root = params
+        .workspace_folders
+        .as_ref()
+        .and_then(|f| f.first())
+        .and_then(|f| disk::uri_path(f.uri.as_str()))
+        .or_else(|| std::env::current_dir().ok())
+        .unwrap_or_default();
+    let caps = lsp::ServerCapabilities {
+        position_encoding: Some(if utf8 {
+            lsp::PositionEncodingKind::UTF8
+        } else {
+            lsp::PositionEncodingKind::UTF16
+        }),
+        text_document_sync: Some(lsp::TextDocumentSyncKind::FULL.into()),
+        hover_provider: Some(true.into()),
+        definition_provider: Some(lsp::OneOf::Left(true)),
+        completion_provider: Some(lsp::CompletionOptions {
+            trigger_characters: Some(vec![".".into()]),
+            ..Default::default()
+        }),
+        document_formatting_provider: Some(lsp::OneOf::Left(true)),
+        code_action_provider: Some(true.into()),
+        ..Default::default()
+    };
+    let init = json!({
+        "capabilities": caps,
+        "serverInfo": {"name": "vow", "version": env!("CARGO_PKG_VERSION")},
+    });
+    conn.initialize_finish(id, init)
+        .map_err(|e| e.to_string())?;
+    let mut server = Server {
+        disk: Vec::new(),
+        root,
+        utf8,
+        open: HashMap::new(),
+        client_uris: HashMap::new(),
+        published: HashSet::new(),
+        current: None,
+    };
+    server.reload_disk();
+    server.main_loop(&conn)?;
+    drop(conn);
+    io.join().map_err(|e| e.to_string())
+}
+
+struct Server {
+    /// Workspace files as last read from disk. ponytail: re-read on save and close only; watch
+    /// files (`workspace/didChangeWatchedFiles`) when edits outside the editor matter.
+    disk: Vec<(String, String)>,
+    root: PathBuf,
+    utf8: bool,
+    /// Open documents by snapshot URI.
+    open: HashMap<String, String>,
+    /// Snapshot URI → the URI the client used for it.
+    client_uris: HashMap<String, String>,
+    /// Client URIs that currently show diagnostics.
+    published: HashSet<String>,
+    current: Option<Arc<Analyzed>>,
+}
+
+impl Server {
+    fn main_loop(&mut self, conn: &Connection) -> Result<(), String> {
+        for msg in &conn.receiver {
+            match msg {
+                Message::Request(req) => {
+                    if conn.handle_shutdown(&req).map_err(|e| e.to_string())? {
+                        return Ok(());
+                    }
+                    let id = req.id.clone();
+                    let resp = match contained(|| self.request(req)) {
+                        Ok(Ok(v)) => Response::new_ok(id, v),
+                        Ok(Err((code, msg))) => Response::new_err(id, code as i32, msg),
+                        Err(msg) => Response::new_err(id, ErrorCode::InternalError as i32, msg),
+                    };
+                    conn.sender.send(resp.into()).map_err(|e| e.to_string())?;
+                }
+                Message::Notification(n) => {
+                    // A compiler crash keeps the previous analysis; the next edit retries.
+                    if let Ok(Some(out)) = contained(|| self.notify(n)) {
+                        for n in out {
+                            conn.sender.send(n.into()).map_err(|e| e.to_string())?;
+                        }
+                    }
+                }
+                Message::Response(_) => {}
+            }
+        }
+        Ok(())
+    }
+
+    fn reload_disk(&mut self) {
+        self.disk = match disk::load(&disk::default_roots(&self.root)) {
+            Ok(s) => s
+                .files()
+                .iter()
+                .map(|f| (f.uri.clone(), f.text.clone()))
+                .collect(),
+            Err(_) => vow_analysis::std_sources().collect(),
+        };
+    }
+
+    /// The snapshot URI of a client URI: the same scheme `disk::load` uses, so an open file
+    /// replaces its disk copy (and an open std checkout file replaces the embedded one).
+    fn canonical(&mut self, uri: &lsp::Uri) -> String {
+        let canon = canonical(uri);
+        self.client_uris
+            .insert(canon.clone(), uri.as_str().to_owned());
+        canon
+    }
+
+    /// Re-analyzes disk files overlaid with open documents and publishes diagnostics.
+    fn notify(&mut self, n: Notification) -> Option<Vec<Notification>> {
+        match n.method.as_str() {
+            "textDocument/didOpen" => {
+                let p: lsp::DidOpenTextDocumentParams = params(n.params).ok()?;
+                let uri = self.canonical(&p.text_document.uri);
+                self.open.insert(uri, p.text_document.text);
+            }
+            "textDocument/didChange" => {
+                let p: lsp::DidChangeTextDocumentParams = params(n.params).ok()?;
+                let uri = self.canonical(&p.text_document.uri);
+                let text = p.content_changes.into_iter().last()?.text;
+                self.open.insert(uri, text);
+            }
+            "textDocument/didSave" => self.reload_disk(),
+            "textDocument/didClose" => {
+                let p: lsp::DidCloseTextDocumentParams = params(n.params).ok()?;
+                let uri = self.canonical(&p.text_document.uri);
+                self.open.remove(&uri);
+                self.reload_disk();
+            }
+            _ => return None,
+        }
+        let mut files: Vec<(String, String)> = self
+            .disk
+            .iter()
+            .filter(|(uri, _)| !self.open.contains_key(uri))
+            .cloned()
+            .collect();
+        files.extend(self.open.iter().map(|(u, t)| (u.clone(), t.clone())));
+        let a = Analysis::analyze(&Snapshot::new(files));
+        self.current = Some(a.clone());
+        Some(self.publish(&a))
+    }
+
+    fn publish(&mut self, a: &Analyzed) -> Vec<Notification> {
+        let s = &a.snapshot;
+        let mut by_file: HashMap<FileId, Vec<lsp::Diagnostic>> = HashMap::new();
+        for d in &a.check.diagnostics {
+            if let Some(span) = d.spans.first() {
+                by_file
+                    .entry(span.file)
+                    .or_default()
+                    .push(self.diagnostic(s, d, span));
+            }
+        }
+        let mut now = HashSet::new();
+        let mut out = Vec::new();
+        for f in s.file_ids() {
+            let Some(client) = self.client_uri(&s.file(f).uri) else {
+                continue;
+            };
+            let diagnostics = by_file.remove(&f).unwrap_or_default();
+            if diagnostics.is_empty() && !self.published.contains(&client) {
+                continue;
+            }
+            if !diagnostics.is_empty() {
+                now.insert(client.clone());
+            }
+            out.push(publish(&client, diagnostics));
+        }
+        for gone in self.published.difference(&now) {
+            if !out.iter().any(|n| n.params["uri"] == gone.as_str()) {
+                out.push(publish(gone, Vec::new()));
+            }
+        }
+        self.published = now;
+        out
+    }
+
+    /// The URI to show `uri` under: the client's own spelling, or a `file://` URI. Embedded std
+    /// files (`vow:///std/…`) cannot be opened by an editor.
+    fn client_uri(&self, uri: &str) -> Option<String> {
+        self.client_uris
+            .get(uri)
+            .cloned()
+            .or_else(|| uri.starts_with("file://").then(|| uri.to_owned()))
+    }
+
+    fn diagnostic(&self, s: &Snapshot, d: &Diagnostic, span: &Span) -> lsp::Diagnostic {
+        let mut message = d.message.clone();
+        if let (Some(e), Some(a)) = (&d.expected, &d.actual) {
+            message.push_str(&format!("\nexpected: {}\n  actual: {}", e.render, a.render));
+        }
+        let related = d
+            .spans
+            .iter()
+            .skip(1)
+            .filter_map(|sp| {
+                let uri = self.client_uri(&s.file(sp.file).uri)?.parse().ok()?;
+                Some(lsp::DiagnosticRelatedInformation {
+                    location: lsp::Location {
+                        uri,
+                        range: self.range(s, sp.file, sp.start, sp.end),
+                    },
+                    message: sp.label.clone().unwrap_or_default(),
+                })
+            })
+            .collect::<Vec<_>>();
+        lsp::Diagnostic {
+            range: self.range(s, span.file, span.start, span.end),
+            severity: Some(match d.severity {
+                Severity::Error => lsp::DiagnosticSeverity::ERROR,
+                Severity::Warning => lsp::DiagnosticSeverity::WARNING,
+                Severity::Note => lsp::DiagnosticSeverity::INFORMATION,
+            }),
+            code: Some(lsp::NumberOrString::String(d.code.0.to_owned())),
+            source: Some("vow".into()),
+            message,
+            related_information: (!related.is_empty()).then_some(related),
+            ..Default::default()
+        }
+    }
+
+    fn range(&self, s: &Snapshot, file: FileId, start: u32, end: u32) -> lsp::Range {
+        let lines = Lines::new(&s.file(file).text, self.utf8);
+        lsp::Range::new(lines.position(start), lines.position(end))
+    }
+
+    fn request(&self, req: Request) -> Result<Value, (ErrorCode, String)> {
+        let bad = |e: String| (ErrorCode::InvalidParams, e);
+        match req.method.as_str() {
+            "textDocument/hover" => {
+                let p: lsp::HoverParams = params(req.params).map_err(bad)?;
+                let r = self.at(&p.text_document_position_params, |a, f, o| {
+                    let h = a.hover(f, o)?;
+                    Some(json!(lsp::Hover {
+                        contents: lsp::HoverContents::Markup(lsp::MarkupContent {
+                            kind: lsp::MarkupKind::Markdown,
+                            value: h.markdown,
+                        }),
+                        range: Some(self.range(&a.snapshot, f, h.range[0], h.range[1])),
+                    }))
+                });
+                Ok(r.unwrap_or(Value::Null))
+            }
+            "textDocument/definition" => {
+                let p: lsp::GotoDefinitionParams = params(req.params).map_err(bad)?;
+                let r = self.at(&p.text_document_position_params, |a, f, o| {
+                    let l = a.definition(f, o)?;
+                    let uri: lsp::Uri = self.client_uri(&l.uri)?.parse().ok()?;
+                    let range = self.range(&a.snapshot, l.file, l.range[0], l.range[1]);
+                    Some(json!(lsp::Location { uri, range }))
+                });
+                Ok(r.unwrap_or(Value::Null))
+            }
+            "textDocument/completion" => {
+                let p: lsp::CompletionParams = params(req.params).map_err(bad)?;
+                let r = self.at(&p.text_document_position, |a, f, o| {
+                    let items: Vec<lsp::CompletionItem> = a
+                        .completions(f, o)
+                        .into_iter()
+                        .map(|c| lsp::CompletionItem {
+                            label: c.label,
+                            kind: Some(completion_kind(c.kind)),
+                            detail: c.detail,
+                            ..Default::default()
+                        })
+                        .collect();
+                    Some(json!(items))
+                });
+                Ok(r.unwrap_or(json!([])))
+            }
+            "textDocument/formatting" => {
+                let p: lsp::DocumentFormattingParams = params(req.params).map_err(bad)?;
+                let r = self.document(&p.text_document.uri, |a, f| {
+                    let old = &a.snapshot.file(f).text;
+                    let new = Analysis::format(&a.snapshot, f).ok()?;
+                    let edits = if new == *old {
+                        vec![]
+                    } else {
+                        let end = old.len() as u32;
+                        vec![lsp::TextEdit::new(self.range(&a.snapshot, f, 0, end), new)]
+                    };
+                    Some(json!(edits))
+                });
+                Ok(r.unwrap_or(Value::Null))
+            }
+            "textDocument/codeAction" => {
+                let p: lsp::CodeActionParams = params(req.params).map_err(bad)?;
+                let r = self.document(&p.text_document.uri, |a, f| {
+                    Some(json!(self.code_actions(a, f, p.range)))
+                });
+                Ok(r.unwrap_or(json!([])))
+            }
+            m => Err((ErrorCode::MethodNotFound, format!("unsupported method {m}"))),
+        }
+    }
+
+    /// Runs `f` on the current analysis and the snapshot file of `uri`.
+    fn document<T>(
+        &self,
+        uri: &lsp::Uri,
+        f: impl FnOnce(&Analyzed, FileId) -> Option<T>,
+    ) -> Option<T> {
+        let a = self.current.clone()?;
+        let file = a.snapshot.file_id(&canonical(uri))?;
+        f(&a, file)
+    }
+
+    /// Runs `f` on the current analysis at the byte offset of `pos`.
+    fn at<T>(
+        &self,
+        pos: &lsp::TextDocumentPositionParams,
+        f: impl FnOnce(&Analyzed, FileId, u32) -> Option<T>,
+    ) -> Option<T> {
+        let utf8 = self.utf8;
+        self.document(&pos.text_document.uri, |a, file| {
+            let offset = Lines::new(&a.snapshot.file(file).text, utf8).offset(pos.position);
+            f(a, file, offset)
+        })
+    }
+
+    /// One quick fix per fix of each diagnostic overlapping `range` in `file`.
+    // `lsp::Uri` caches parse data in a `Cell`; the map's keys are never mutated.
+    #[allow(clippy::mutable_key_type)]
+    fn code_actions(&self, a: &Analyzed, file: FileId, range: lsp::Range) -> Vec<lsp::CodeAction> {
+        let s = &a.snapshot;
+        let mut actions = Vec::new();
+        for d in &a.check.diagnostics {
+            let Some(span) = d.spans.first().filter(|sp| sp.file == file) else {
+                continue;
+            };
+            let at = self.range(s, file, span.start, span.end);
+            if at.end < range.start || range.end < at.start {
+                continue;
+            }
+            let lsp_diag = self.diagnostic(s, d, span);
+            for (i, fix) in d.fixes.iter().enumerate() {
+                let mut changes: HashMap<lsp::Uri, Vec<lsp::TextEdit>> = HashMap::new();
+                for e in &fix.edits {
+                    let Some(uri) = self
+                        .client_uri(&s.file(e.span.file).uri)
+                        .and_then(|u| u.parse().ok())
+                    else {
+                        continue;
+                    };
+                    let r = self.range(s, e.span.file, e.span.start, e.span.end);
+                    changes
+                        .entry(uri)
+                        .or_default()
+                        .push(lsp::TextEdit::new(r, e.replacement.clone()));
+                }
+                actions.push(lsp::CodeAction {
+                    title: fix.title.clone(),
+                    kind: Some(lsp::CodeActionKind::QUICKFIX),
+                    diagnostics: Some(vec![lsp_diag.clone()]),
+                    edit: Some(lsp::WorkspaceEdit {
+                        changes: Some(changes),
+                        ..Default::default()
+                    }),
+                    is_preferred: Some(i == 0),
+                    ..Default::default()
+                });
+            }
+        }
+        actions
+    }
+}
+
+fn canonical(uri: &lsp::Uri) -> String {
+    let uri = uri.as_str();
+    disk::uri_path(uri)
+        .map(|p| disk::std_uri(&p).unwrap_or_else(|| disk::file_uri(&p)))
+        .unwrap_or_else(|| uri.to_owned())
+}
+
+fn publish(uri: &str, diagnostics: Vec<lsp::Diagnostic>) -> Notification {
+    Notification::new(
+        "textDocument/publishDiagnostics".into(),
+        json!({"uri": uri, "diagnostics": diagnostics}),
+    )
+}
+
+fn params<T: DeserializeOwned>(v: Value) -> Result<T, String> {
+    serde_json::from_value(v).map_err(|e| e.to_string())
+}
+
+/// Runs `f`, turning a compiler panic into an error message instead of ending the session.
+fn contained<T>(f: impl FnOnce() -> T) -> Result<T, String> {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)).map_err(|p| {
+        let what = p
+            .downcast_ref::<&str>()
+            .map(|s| s.to_string())
+            .or_else(|| p.downcast_ref::<String>().cloned())
+            .unwrap_or_default();
+        format!("internal compiler error (V9001): {what}")
+    })
+}
+
+fn completion_kind(kind: &str) -> lsp::CompletionItemKind {
+    use lsp::CompletionItemKind as K;
+    match kind {
+        "fn" | "op" => K::FUNCTION,
+        "const" => K::CONSTANT,
+        "type" | "error" => K::STRUCT,
+        "variant" => K::ENUM_MEMBER,
+        "effect" => K::INTERFACE,
+        "module" => K::MODULE,
+        "local" => K::VARIABLE,
+        "keyword" => K::KEYWORD,
+        _ => K::TEXT,
+    }
+}
+
+/// Line starts of one text, converting byte offsets to protocol positions and back.
+struct Lines<'a> {
+    text: &'a str,
+    starts: Vec<usize>,
+    utf8: bool,
+}
+
+impl<'a> Lines<'a> {
+    fn new(text: &'a str, utf8: bool) -> Self {
+        let starts = std::iter::once(0)
+            .chain(text.match_indices('\n').map(|(i, _)| i + 1))
+            .collect();
+        Lines { text, starts, utf8 }
+    }
+
+    fn position(&self, offset: u32) -> lsp::Position {
+        let mut offset = (offset as usize).min(self.text.len());
+        while !self.text.is_char_boundary(offset) {
+            offset -= 1;
+        }
+        let line = self.starts.partition_point(|&s| s <= offset) - 1;
+        let before = &self.text[self.starts[line]..offset];
+        let character = if self.utf8 {
+            before.len()
+        } else {
+            before.encode_utf16().count()
+        };
+        lsp::Position::new(line as u32, character as u32)
+    }
+
+    /// Clamped to the line's end (before its newline) and to the text.
+    fn offset(&self, pos: lsp::Position) -> u32 {
+        let Some(&start) = self.starts.get(pos.line as usize) else {
+            return self.text.len() as u32;
+        };
+        let line = &self.text[start..];
+        let line = &line[..line.find('\n').unwrap_or(line.len())];
+        let mut units = 0;
+        for (i, c) in line.char_indices() {
+            if units >= pos.character as usize {
+                return (start + i) as u32;
+            }
+            units += if self.utf8 {
+                c.len_utf8()
+            } else {
+                c.len_utf16()
+            };
+        }
+        (start + line.len()) as u32
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn positions_round_trip_in_both_encodings() {
+        let text = "let a = \"é𝄞\"\nb\n";
+        for utf8 in [true, false] {
+            let lines = Lines::new(text, utf8);
+            for (i, _) in text.char_indices() {
+                let p = lines.position(i as u32);
+                assert_eq!(lines.offset(p), i as u32, "utf8={utf8} offset {i} at {p:?}");
+            }
+        }
+        let utf16 = Lines::new(text, false);
+        // `𝄞` is 4 UTF-8 bytes and 2 UTF-16 units.
+        assert_eq!(
+            utf16.position(text.find('"').unwrap() as u32 + 7),
+            lsp::Position::new(0, 12)
+        );
+        assert_eq!(utf16.position(text.len() as u32), lsp::Position::new(2, 0));
+        assert_eq!(
+            utf16.offset(lsp::Position::new(1, 99)),
+            text.find("b\n").unwrap() as u32 + 1
+        );
+        assert_eq!(utf16.offset(lsp::Position::new(9, 0)), text.len() as u32);
+    }
+}

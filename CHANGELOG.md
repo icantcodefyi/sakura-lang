@@ -19,5 +19,7 @@ published yet.
   forms, and bootstrap CI/dependency automation.
 - `vow mcp serve`: the compiler as an MCP server with check, symbol and hole queries,
   docs, formatting, checked patches and test runs. Setup: [docs/mcp.md](docs/mcp.md).
+- `vow lsp`: a language server with diagnostics, hover, go to definition, completion,
+  formatting and quick fixes.
 
 [Unreleased]: https://github.com/icantcodefyi/vow/commits/master
