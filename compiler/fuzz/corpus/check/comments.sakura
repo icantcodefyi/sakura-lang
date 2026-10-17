@@ -1,0 +1,5 @@
+// comment
+fn f() -> Int {
+  let x = /* inline */ 1
+  x + 1 // tail
+}

@@ -1,0 +1,2 @@
+fn id<A>(x: A) -> A { x }
+fn main() -> Unit { let _ = id(1); () }

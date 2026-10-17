@@ -1,0 +1,74 @@
+name: Nightly fuzzing
+
+on:
+  schedule:
+    - cron: "19 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  fuzz:
+    name: Fuzz ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [parse, check, fmt_idempotent, row_unify]
+    defaults:
+      run:
+        working-directory: compiler
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/compiler/target
+      CARGO_INCREMENTAL: "0"
+      FUZZ_TARGET: ${{ matrix.target }}
+      CORPUS: ${{ github.workspace }}/compiler/target/fuzz-corpus/${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Install nightly and cargo-fuzz
+        run: |
+          rustup toolchain install nightly --profile minimal
+          cargo +nightly install cargo-fuzz --version 0.13.2 --locked
+      # cargo-fuzz has no --locked flag; fetching with it first fails on a stale fuzz/Cargo.lock.
+      - name: Check the fuzz lockfile
+        run: cargo +nightly fetch --locked --manifest-path fuzz/Cargo.toml
+      - name: Seed the corpus
+        run: |
+          mkdir -p "$CORPUS"
+          cp fuzz/corpus/"$FUZZ_TARGET"/* "$CORPUS"/
+          if [ "$FUZZ_TARGET" != row_unify ]; then
+            cp tests/ui/*.sakura tests/semantics/*.sakura "$CORPUS"/
+          fi
+      - name: Fuzz for ten minutes
+        run: >-
+          cargo +nightly fuzz run "$FUZZ_TARGET" "$CORPUS" --
+          -max_total_time=600 -max_len=16384 -timeout=10 -rss_limit_mb=2048
+      - name: Minimize failing inputs
+        if: failure()
+        run: |
+          mkdir -p "fuzz/minimized/$FUZZ_TARGET"
+          # The built target itself: `cargo fuzz run` would add the default corpus as an input.
+          bin="$CARGO_TARGET_DIR/$(rustc +nightly -vV | sed -n 's/^host: //p')/release/$FUZZ_TARGET"
+          shopt -s nullglob
+          for input in "fuzz/artifacts/$FUZZ_TARGET/"*; do
+            minimized="fuzz/minimized/$FUZZ_TARGET/$(basename "$input")"
+            "$bin" -minimize_crash=1 -max_total_time=60 -timeout=10 -rss_limit_mb=2048 \
+              "-exact_artifact_path=$minimized" "$input" || true
+            # Hangs and OOMs often cannot be minimized in the budget; keep the original input.
+            if [ ! -f "$minimized" ]; then cp "$input" "$minimized"; fi
+          done
+      - name: Upload minimized failing inputs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fuzz-${{ matrix.target }}-${{ github.run_id }}
+          path: compiler/fuzz/minimized/${{ matrix.target }}/
+          if-no-files-found: ignore

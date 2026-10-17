@@ -1,0 +1,6 @@
+/artifacts/
+/coverage/
+/minimized/
+# Keep reviewed seeds; local runs write discoveries into target/fuzz-corpus instead.
+/corpus/*/[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]*
+/target/

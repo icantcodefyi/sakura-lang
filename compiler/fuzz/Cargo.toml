@@ -1,0 +1,49 @@
+[package]
+name = "sakura-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+# Kept separate from the stable compiler workspace and its lockfile/CI gates.
+[workspace]
+members = ["."]
+
+[dependencies]
+libfuzzer-sys = "=0.4.13"
+sakura_syntax = { path = "../crates/sakura_syntax" }
+sakura_analysis = { path = "../crates/sakura_analysis" }
+sakura_fmt = { path = "../crates/sakura_fmt" }
+sakura_types = { path = "../crates/sakura_types" }
+sakura_hir = { path = "../crates/sakura_hir" }
+la-arena = "0.3.1"
+
+[[bin]]
+name = "parse"
+path = "fuzz_targets/parse.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "check"
+path = "fuzz_targets/check.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fmt_idempotent"
+path = "fuzz_targets/fmt_idempotent.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "row_unify"
+path = "fuzz_targets/row_unify.rs"
+test = false
+doc = false
+bench = false
