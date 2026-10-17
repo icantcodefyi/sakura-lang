@@ -106,3 +106,12 @@ pub fn main() -> Unit ! {Console} {
     let c = check(src);
     assert!(c.diags.is_empty(), "{}", c.render());
 }
+
+#[test]
+fn a_let_alias_of_a_callback_is_a_callback() {
+    // perform-callbacks deviation 3: `let run = body` calls `body` under the performer's
+    // handlers too, so it adds nothing to the handler row.
+    clean(
+        "fn h() -> Handler<Db> { handler Db { fn transaction(body) {\n  let run = body\n  let again = run\n  again()\n} } }\n",
+    );
+}

@@ -580,6 +580,14 @@ impl Checker<'_> {
         match s {
             Stmt::Let { pat, ty, init } => {
                 let body = self.hir_body();
+                // `let g = body` aliases a clause's callback: calling `g` is calling `body`
+                // (§17.48; a `let` is never reassigned).
+                if let (Pat::Bind(alias), Expr::Path(Res::Local(l))) =
+                    (&body.pats[*pat], &body.exprs[*init])
+                    && self.b.callbacks.contains(l)
+                {
+                    self.b.callbacks.insert(*alias);
+                }
                 if let Some(t) = ty {
                     let t = self.lower_local_type(t);
                     let r = self.check(*init, t);
