@@ -77,7 +77,7 @@ pub fn lower(program: &hir::Program, typed: &TypedProgram, opts: &LowerOptions) 
                 module: hir::ModuleId(mi as u32),
                 index: item,
             };
-            if let hir::DefKind::Test(_) = program.def(id).kind {
+            if let hir::DefKind::Test(_) | hir::DefKind::Property(_) = program.def(id).kind {
                 l.test(id);
             }
         }
@@ -252,13 +252,15 @@ impl<'p> Lower<'p> {
     /// design §5.8 (whichever exist in std) and runs the body. The runner installs `Test`.
     fn test(&mut self, t: hir::DefId) {
         let def = self.p.def(t);
-        let hir::DefKind::Test(td) = &def.kind else {
-            return;
-        };
         let n = self.m.tests.len();
         let module = self.module_name(t.module);
         let body_id = self.push_placeholder(&format!("test${n}"), module.clone());
-        let mut fd = expr::FnLower::lower_fn(self, t, td.body, body_id);
+        let mut fd = match &def.kind {
+            hir::DefKind::Test(td) => expr::FnLower::lower_fn(self, t, td.body, body_id),
+            hir::DefKind::Property(pd) => expr::FnLower::lower_property(self, t, pd.body, body_id),
+            _ => return,
+        };
+        let takes_seed = !fd.params.is_empty();
         fd.kind = FnKind::Top { export: false };
         fd.row = Row::empty();
         self.m.defs[body_id.index()] = fd;
@@ -307,7 +309,12 @@ impl<'p> Lower<'p> {
             blk.handle(local(h));
         }
         let r = b.local("r", Ty::Unit);
-        blk.push(r, Bind::Call(Atom::Global(body_id), vec![]));
+        let args = if takes_seed {
+            vec![local(seed)]
+        } else {
+            vec![]
+        };
+        blk.push(r, Bind::Call(Atom::Global(body_id), args));
         let body = blk.finish(Expr::Ret(local(r)));
         let wrapper = self.push_placeholder(&format!("test${n}$run"), module);
         let pos = self.pos(t.module, def.range);

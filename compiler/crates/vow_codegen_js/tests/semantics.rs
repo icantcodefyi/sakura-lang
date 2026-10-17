@@ -24,7 +24,19 @@ fn semantics_corpus() {
         let src = std::fs::read_to_string(&path).unwrap();
         let name = path.file_stem().unwrap().to_string_lossy().into_owned();
         let milestone = directive(&src, "milestone").unwrap_or("M0");
-        if directive(&src, "mode").unwrap_or("run") != "run" || milestone > "M2" {
+        let mode = directive(&src, "mode").unwrap_or("run");
+        if milestone > "M2" || mode == "check" {
+            continue;
+        }
+        if mode == "test" {
+            match common::test(&name, &src) {
+                Err(e) => failures.push(format!("{name}: does not build:\n{e}")),
+                Ok(r) if r.code == 0 => passed += 1,
+                Ok(r) => failures.push(format!(
+                    "{name}: tests failed (exit {})\n{}{}",
+                    r.code, r.stdout, r.stderr
+                )),
+            }
             continue;
         }
         let expected = std::fs::read_to_string(path.with_extension("stdout")).unwrap_or_default();

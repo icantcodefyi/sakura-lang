@@ -911,6 +911,13 @@ impl<'a> FnEmit<'a> {
             PrimOp::Le(t) => cmp(t, "<="),
             PrimOp::Gt(t) => cmp(t, ">"),
             PrimOp::Ge(t) => cmp(t, ">="),
+            PrimOp::Arbitrary(ty) => format!(
+                "$rt.arbitrary({}, {}, {}, {})",
+                gen_rep(self.cx.m, ty),
+                a[0],
+                a[1],
+                a[2]
+            ),
             PrimOp::Show(ty) => match ty {
                 Ty::String => a[0].clone(),
                 Ty::Int | Ty::Bool => format!("String({})", a[0]),
@@ -921,6 +928,35 @@ impl<'a> FnEmit<'a> {
                 },
             },
         }
+    }
+}
+
+/// A generator description for `$rt.arbitrary` (ABI.md §7); `null` when none is derivable.
+fn gen_rep(m: &Module, ty: &Ty) -> String {
+    let r = |t: &Ty| gen_rep(m, t);
+    match ty {
+        Ty::Unit => "\"U\"".into(),
+        Ty::Bool => "\"B\"".into(),
+        Ty::Int => "\"I\"".into(),
+        Ty::Float => "\"F\"".into(),
+        Ty::String => "\"S\"".into(),
+        Ty::List(t) => format!("[\"L\", {}]", r(t)),
+        Ty::Set(t) => format!("[\"E\", {}]", r(t)),
+        Ty::Map(k, v) => format!("[\"M\", {}, {}]", r(k), r(v)),
+        Ty::Tuple(ts) => format!(
+            "[\"T\", {}]",
+            ts.iter().map(r).collect::<Vec<_>>().join(", ")
+        ),
+        Ty::Adt(t, args) => match m.ty(*t).builtin.as_deref() {
+            Some("Option") => format!("[\"O\", {}]", args.first().map_or("null".into(), r)),
+            Some("Result") => format!(
+                "[\"R\", {}, {}]",
+                args.first().map_or("null".into(), r),
+                args.get(1).map_or("null".into(), r)
+            ),
+            _ => "null".into(),
+        },
+        _ => "null".into(),
     }
 }
 

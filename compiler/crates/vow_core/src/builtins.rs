@@ -70,6 +70,8 @@ table! {
     Direct set_len/1,
     // Tasks and tests
     Cps defect_catch/1, Cps test_expect_defect/1,
+    // Secret, Json
+    Direct secret_wrap/1, Direct secret_expose/1, Direct json_parse/1,
     // Compiler support
     Direct match_failure/0,
 }

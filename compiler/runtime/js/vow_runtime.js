@@ -423,6 +423,35 @@ function variant(id, tag, fields) {
   return new (std(id))(tag, fields);
 }
 
+/**
+ * `Secret<T>` (design §6.4): the value is unreachable except through `secret_expose`; any
+ * attempt to print, concatenate or serialize it throws.
+ */
+export class Secret {
+  #value;
+  constructor(value) {
+    this.#value = value;
+  }
+  static expose(s) {
+    return s.#value;
+  }
+  toString() {
+    throw internal("a Secret cannot be converted to a string");
+  }
+  toJSON() {
+    throw internal("a Secret cannot be serialized");
+  }
+  [Symbol.toPrimitive]() {
+    throw internal("a Secret cannot be converted to a primitive");
+  }
+}
+export function secret_wrap(v) {
+  return new Secret(v);
+}
+export function secret_expose(s) {
+  return Secret.expose(s);
+}
+
 // ---------------------------------------------------------------------------------------------
 // Show (design §4.8). `h` is a type hint built from Core types: "F" Float, "I" Int,
 // ["T", h…] tuple, ["L", h] list, ["M", hk, hv] map, ["S", h] set, ["A", [args]] named type,
@@ -473,6 +502,7 @@ function showIn(v, h, env) {
   }
   if (v instanceof Uint8Array) return `Bytes.of([${v.join(", ")}])`;
   if (v instanceof Handler) return `<handler ${v.e}>`;
+  if (v instanceof Secret) return "<secret>";
   const t = v.$t;
   if (t === undefined) return "<js value>";
   // Field hints refer to the type's own parameters; resolve them against this use's arguments.
@@ -1033,6 +1063,52 @@ function validUtf8Prefix(b) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Property-test generation. `rep`: "U" "B" "I" "F" "S", ["L", r] list, ["E", r] set,
+// ["M", rk, rv] map, ["T", r…] tuple, ["O", r] Option, ["R", ra, re] Result; null has no
+// generator. Values grow with `run` (0-based). ponytail: no shrinking, no user types (derive
+// generators from `Schema` in M3).
+
+function mulberry(state) {
+  let t = (state + 0x6d2b79f5) | 0;
+  t = Math.imul(t ^ (t >>> 15), 1 | t);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+export function arbitrary(rep, seed, run, param) {
+  let state = Math.imul(seed ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(run + 1, 0xc2b2ae35) ^ param;
+  const next = () => mulberry((state = (state + 0x6d2b79f5) | 0));
+  const below = (n) => Math.floor(next() * n);
+  const size = run + 1;
+  const chars = "abcxyz AZ09_-é€😀\n";
+  const gen = (r) => {
+    if (r === "U") return undefined;
+    if (r === "B") return next() < 0.5;
+    if (r === "I") return next() < 0.1 ? [0, 1, -1][below(3)] : below(20 * size + 1) - 10 * size;
+    if (r === "F") return next() < 0.1 ? [0, -0.5, 1.5][below(3)] : (next() - 0.5) * 20 * size;
+    if (r === "S") return Array.from({ length: below(Math.min(size, 16) + 1) }, () => [...chars][below([...chars].length)]).join("");
+    if (r === null) throw internal("no generator for this property parameter type (needs Schema, M3)");
+    const len = () => below(Math.min(size, 24) + 1);
+    switch (r[0]) {
+      case "L":
+        return list(Array.from({ length: len() }, () => gen(r[1])));
+      case "E":
+        return set_of(list(Array.from({ length: len() }, () => gen(r[1]))));
+      case "M":
+        return map_of(list(Array.from({ length: len() }, () => [gen(r[1]), gen(r[2])])));
+      case "T":
+        return r.slice(1).map(gen);
+      case "O":
+        return next() < 0.25 ? None : Some(gen(r[1]));
+      case "R":
+        return next() < 0.5 ? Ok(gen(r[1])) : Err(gen(r[2]));
+    }
+    throw internal(`bad generator ${JSON.stringify(r)}`);
+  };
+  return gen(rep);
+}
+
+// ---------------------------------------------------------------------------------------------
 // Bytes, Set extras
 
 export function bytes_len(b) {
@@ -1236,6 +1312,36 @@ export function log_json() {
     return ret(k, undefined);
   };
   return new Handler("std::log::Log", [event], []);
+}
+
+/** `Json.parse`: `Ok(Json)` or `Err(DecodeError { path: "", message })`. */
+export function json_parse(text) {
+  let raw;
+  try {
+    raw = JSON.parse(text);
+  } catch (e) {
+    const E = std("std::json::DecodeError");
+    return Err(new E("", String(e.message)));
+  }
+  return Ok(jsToJson(raw));
+}
+
+/** A plain JS value (from `JSON.parse`) as std/json `Json`. */
+function jsToJson(v) {
+  const J = "std::json::Json";
+  if (v === null) return variant(J, 0, []);
+  switch (typeof v) {
+    case "boolean":
+      return variant(J, 1, [v]);
+    case "number":
+      return variant(J, 2, [v]);
+    case "string":
+      return variant(J, 3, [v]);
+  }
+  if (Array.isArray(v)) return variant(J, 4, [list(v.map(jsToJson))]);
+  const m = new Map();
+  for (const [k, x] of Object.entries(v)) m.set(k, [k, jsToJson(x)]);
+  return variant(J, 5, [new VMap(m)]);
 }
 
 /** std/json `Json` (Null | Bool | Number | String | Array | Object) to a plain JS value. */

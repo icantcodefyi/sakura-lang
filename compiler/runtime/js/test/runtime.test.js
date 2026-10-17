@@ -263,3 +263,24 @@ test("host-built std values use registered classes", () => {
   assert.equal(rt.show(bad), "Err(Utf8Error { offset: 2 })");
   assert.throws(() => rt.bytes_from_list(rt.list([256])), { code: "D020" });
 });
+
+test("Secret never prints; Json.parse builds std values", () => {
+  const s = rt.secret_wrap("hunter2");
+  assert.throws(() => `${s}`);
+  assert.throws(() => JSON.stringify({ s }));
+  assert.equal(rt.show(s), "<secret>");
+  assert.equal(rt.secret_expose(s), "hunter2");
+  class Json extends rt.Variant {}
+  Json.prototype.$t = rt.variantType("Json", "std::json", [["Null", []], ["Bool", [null]], ["Number", ["F"]], ["String", [null]], ["Array", [null]], ["Object", [null]]]);
+  rt.def("std::json::Json", Json);
+  class DecodeError {
+    constructor(path, message) {
+      this.path = path;
+      this.message = message;
+    }
+  }
+  DecodeError.prototype.$t = rt.recordType("DecodeError", "std::json", [["path", "path", null], ["message", "message", null]], true);
+  rt.def("std::json::DecodeError", DecodeError);
+  assert.equal(rt.show(rt.json_parse('{"a": [1, true, null]}')), 'Ok(Object(Map.of([("a", Array([Number(1.0), Bool(true), Null]))])))');
+  assert.equal(rt.json_parse("{").tag, 1);
+});

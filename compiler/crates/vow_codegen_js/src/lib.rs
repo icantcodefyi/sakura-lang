@@ -118,6 +118,18 @@ pub fn emit(m: &Module, opts: &Options) -> Vec<OutputFile> {
             );
         }
         let _ = write!(text, "\nexport const tests = [\n{list}];\n");
+        // Operation names per effect, in clause order, so runners can build handlers by name.
+        let _ = writeln!(text, "\nexport const effects = {{");
+        for e in &m.effects {
+            let ops: Vec<String> = e.ops.iter().map(|o| js_string(&o.name)).collect();
+            let _ = writeln!(
+                text,
+                "  {}: [{}],",
+                js_string(&e.qualified_name()),
+                ops.join(", ")
+            );
+        }
+        text.push_str("};\n");
         files.push(OutputFile {
             path: "__tests__.js".into(),
             text,

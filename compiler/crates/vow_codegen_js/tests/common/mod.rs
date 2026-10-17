@@ -168,3 +168,16 @@ pub fn run(name: &str, src: &str) -> Result<Run, String> {
     write(&m, sources, &dir);
     Ok(node(&dir, "__main__.js", &[]))
 }
+
+/// Build with tests and run them with `vow_cli`'s runner (seed 0); exit 0 when all pass.
+pub fn test(name: &str, src: &str) -> Result<Run, String> {
+    let (m, sources) = build(name, src, false)?;
+    let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(format!("test-{name}"));
+    write(&m, sources, &dir);
+    std::fs::write(
+        dir.join("__vow_test__.js"),
+        include_str!("../test_runner.js"),
+    )
+    .unwrap();
+    Ok(node(&dir, "__vow_test__.js", &["0", ""]))
+}

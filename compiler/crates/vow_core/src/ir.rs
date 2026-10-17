@@ -474,6 +474,8 @@ pub enum PrimOp {
     Ge(CmpTy),
     /// Derived `Show` of the operand, rendered as it appears inside interpolation.
     Show(Ty),
+    /// A pseudo-random value of the type for property tests, from `(seed, run, param)`.
+    Arbitrary(Ty),
 }
 
 impl PrimOp {
@@ -481,6 +483,7 @@ impl PrimOp {
         use PrimOp::*;
         match self {
             IntNeg | FloatNeg | Not | Show(_) => 1,
+            Arbitrary(_) => 3,
             _ => 2,
         }
     }

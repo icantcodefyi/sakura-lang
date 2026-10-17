@@ -119,6 +119,189 @@ impl<'a, 'p> FnLower<'a, 'p> {
         }
     }
 
+    /// A `property` block as `fn(seed)`: 100 runs with generated parameters, skipping runs
+    /// whose `requires` fail, stopping at the first run that records a failure (and recording
+    /// the falsifying input).
+    pub(crate) fn lower_property(
+        l: &'a mut Lower<'p>,
+        def: hir::DefId,
+        body_id: hir::BodyId,
+        id: DefId,
+    ) -> FnDef {
+        const RUNS: i64 = 100;
+        let hdef = l.p.def(def);
+        let pos = l.pos(def.module, hdef.range);
+        let test_eff =
+            l.p.find_module("std", "test")
+                .and_then(|m| l.p.lookup(m, "Test"))
+                .map(|d| l.effect(d));
+        let mut s = FnLower::new(l, def.module, body_id, "property".into());
+        let seed = s.b.local("seed", Ty::Int);
+        let Some(test_eff) = test_eff else {
+            let r = s.unsupported_at(hdef.range, "a property without std/test");
+            let body = s.finish_body(r);
+            return s.into_def(id, vec![seed], Ty::Unit, body, pos);
+        };
+        let op = |s: &Self, name: &str| s.l.m.effect(test_eff).op_index(name).unwrap_or(0);
+        let (failures, record) = (op(&s, "failures"), op(&s, "record_failure"));
+        let head = s.b.label();
+        let exit = s.b.label();
+        let i = s.b.local("run", Ty::Int);
+        let body = s.body;
+        let code = s.scoped(|s| {
+            let more = s.bind(
+                "more",
+                Ty::Bool,
+                Bind::Prim(PrimOp::Lt(CmpTy::Int), vec![local(i), int(RUNS)]),
+                pos,
+            );
+            let then = s.scoped(|s| {
+                let next = s.b.label();
+                let next_code = s.scoped(|s| {
+                    let i2 = s.bind(
+                        "run",
+                        Ty::Int,
+                        Bind::Prim(PrimOp::IntAdd, vec![local(i), int(1)]),
+                        pos,
+                    );
+                    Expr::Jump(head, vec![i2])
+                });
+                s.blk.join(next, vec![], next_code);
+                let mut shown = Vec::new();
+                for (k, &p) in body.params.iter().enumerate() {
+                    let ty = s.local_ty(p);
+                    let v = s.bind(
+                        &body.locals[p].name.clone(),
+                        ty.clone(),
+                        Bind::Prim(
+                            PrimOp::Arbitrary(ty.clone()),
+                            vec![local(seed), local(i), int(k as i64)],
+                        ),
+                        pos,
+                    );
+                    s.env.insert(p, v.clone());
+                    let text = s.bind(
+                        "shown",
+                        Ty::String,
+                        Bind::Prim(PrimOp::Show(ty), vec![v]),
+                        pos,
+                    );
+                    let name = Atom::Lit(Lit::String(format!("{} = ", body.locals[p].name)));
+                    let item = s.concat(name, text, pos);
+                    shown.push(item);
+                }
+                let mut ok = Atom::Lit(Lit::Bool(true));
+                for c in &body.requires {
+                    let e = c.expr;
+                    match s.if_(
+                        ok,
+                        Ty::Bool,
+                        |s| s.expr(e),
+                        |_| Some(Atom::Lit(Lit::Bool(false))),
+                    ) {
+                        Some(v) => ok = v,
+                        None => return Expr::Ret(unit()),
+                    }
+                }
+                let run = s.scoped(|s| {
+                    let n0 = s.bind(
+                        "before",
+                        Ty::Int,
+                        Bind::Perform(test_eff, failures, vec![]),
+                        pos,
+                    );
+                    if let Some(v) = body.value {
+                        s.expr(v);
+                    }
+                    let n1 = s.bind(
+                        "after",
+                        Ty::Int,
+                        Bind::Perform(test_eff, failures, vec![]),
+                        pos,
+                    );
+                    let failed = s.bind(
+                        "failed",
+                        Ty::Bool,
+                        Bind::Prim(PrimOp::Gt(CmpTy::Int), vec![n1, n0]),
+                        pos,
+                    );
+                    let report = s.scoped(|s| {
+                        let mut msg = Atom::Lit(Lit::String("property falsified by ".into()));
+                        for (j, item) in shown.iter().enumerate() {
+                            if j > 0 {
+                                msg = s.concat(msg, Atom::Lit(Lit::String(", ".into())), pos);
+                            }
+                            msg = s.concat(msg, item.clone(), pos);
+                        }
+                        s.bind(
+                            "r",
+                            Ty::Unit,
+                            Bind::Perform(test_eff, record, vec![msg]),
+                            pos,
+                        );
+                        Expr::Jump(exit, vec![])
+                    });
+                    Expr::If {
+                        cond: failed,
+                        then: Box::new(report),
+                        els: Box::new(Expr::Jump(next, vec![])),
+                    }
+                });
+                Expr::If {
+                    cond: ok,
+                    then: Box::new(run),
+                    els: Box::new(Expr::Jump(next, vec![])),
+                }
+            });
+            Expr::If {
+                cond: more,
+                then: Box::new(then),
+                els: Box::new(Expr::Jump(exit, vec![])),
+            }
+        });
+        let loop_ = Expr::LetJoin {
+            label: head,
+            params: vec![i],
+            join: Box::new(code),
+            body: Box::new(Expr::Jump(head, vec![int(0)])),
+        };
+        let body = Expr::LetJoin {
+            label: exit,
+            params: vec![],
+            join: Box::new(Expr::Ret(unit())),
+            body: Box::new(loop_),
+        };
+        s.into_def(id, vec![seed], Ty::Unit, body, pos)
+    }
+
+    fn into_def(
+        self,
+        id: DefId,
+        params: Vec<Local>,
+        ret: Ty,
+        body: Expr,
+        pos: Option<Pos>,
+    ) -> FnDef {
+        FnDef {
+            name: self.l.m.defs[id.index()].name.clone(),
+            module: self.l.module_name(self.module),
+            kind: FnKind::Top { export: false },
+            captures: vec![],
+            params,
+            locals: self.b.locals,
+            ret,
+            row: Row::empty(),
+            row_vars: vec![],
+            pos,
+            body,
+        }
+    }
+
+    fn unsupported_at(&mut self, range: TextRange, what: &str) -> Option<Atom> {
+        self.l.unsupported(self.module, range, what);
+        self.terminate(Expr::Ret(unit()))
+    }
+
     /// `T.from(x)` (defect `D010` unless `where` holds) or `T.validate(x)`.
     pub(crate) fn lower_refinement(
         l: &'a mut Lower<'p>,
