@@ -2,8 +2,9 @@ import type { ThemeRegistration } from "shiki";
 
 /**
  * Two Shiki themes built around one idea: effects are the loudest thing in
- * the code. Effect rows and handlers carry the brand saffron, failures are
- * coral, contracts are mint. Everything else stays quiet.
+ * the code. Effect rows and handlers carry the brand sakura, failures are
+ * coral, contracts are mint, types are sky. Everything else is ink and stays
+ * quiet. Every colour is at least 4.5:1 on its background (design/BRAND.md).
  */
 type Palette = {
   bg: string;
@@ -149,39 +150,39 @@ function makeTheme(name: string, type: "light" | "dark", p: Palette): ThemeRegis
 }
 
 export const sakuraDark = makeTheme("sakura-dark", "dark", {
-  bg: "#131518",
-  fg: "#dde1e7",
-  punct: "#8a919c",
-  comment: "#8b919c",
-  keyword: "#9aa8bc",
-  fnDecl: "#f5f6f8",
-  call: "#cdd5e1",
-  module: "#b3bfd1",
-  type: "#e6d2ab",
-  string: "#a9c799",
-  number: "#eba27c",
-  effect: "#f5b942",
-  fail: "#ff8573",
-  contract: "#7dd4c0",
-  selection: "#f5b94233",
+  bg: "#161616",
+  fg: "#e6e2e4",
+  punct: "#9a9397",
+  comment: "#938d91",
+  keyword: "#b9b0ba",
+  fnDecl: "#fafafa",
+  call: "#d9d3d7",
+  module: "#c8bfc9",
+  type: "#9fc3e7",
+  string: "#e3a6d4",
+  number: "#e3a6d4",
+  effect: "#f386a1",
+  fail: "#ff8a78",
+  contract: "#7fd3b8",
+  selection: "#f386a133",
   lineHighlight: "#ffffff0a",
 });
 
 export const sakuraLight = makeTheme("sakura-light", "light", {
-  bg: "#f7f8fa",
-  fg: "#23272e",
-  punct: "#636a75",
-  comment: "#646a75",
-  keyword: "#46556e",
-  fnDecl: "#0f1216",
-  call: "#2b3749",
-  module: "#3a4860",
-  type: "#74541a",
-  string: "#3c6a2c",
-  number: "#a94c22",
-  effect: "#8f5a00",
+  bg: "#f8f6f6",
+  fg: "#1e1e1e",
+  punct: "#655f63",
+  comment: "#68636a",
+  keyword: "#544c58",
+  fnDecl: "#141414",
+  call: "#363034",
+  module: "#4a4250",
+  type: "#2a5b8c",
+  string: "#8a3f7c",
+  number: "#8a3f7c",
+  effect: "#b4245f",
   fail: "#b8321f",
   contract: "#0b6e5a",
-  selection: "#d9a03a40",
+  selection: "#f386a140",
   lineHighlight: "#0000000a",
 });
