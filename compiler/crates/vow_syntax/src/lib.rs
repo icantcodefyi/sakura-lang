@@ -2,7 +2,7 @@
 //!
 //! # API
 //!
-//! ```no_run
+//! ```
 //! use vow_syntax::{ast, ast::AstNode, parse};
 //!
 //! let parse = parse("fn id(x: Int) -> Int { x }\n");
@@ -54,7 +54,9 @@
 
 pub mod ast;
 pub mod codes;
+mod grammar;
 mod lexer;
+mod parser;
 mod syntax_kind;
 
 pub use lexer::unescape;
@@ -100,16 +102,36 @@ pub fn parse(text: &str) -> Parse {
 
 /// Parse `text` as a module, reporting spans against `file`.
 pub fn parse_file(file: FileId, text: &str) -> Parse {
-    let _ = file;
-    let mut builder = rowan::GreenNodeBuilder::new();
-    builder.start_node(SyntaxKind::SOURCE_FILE.into());
-    if !text.is_empty() {
-        builder.token(SyntaxKind::ERROR_TOKEN.into(), text);
-    }
-    builder.finish_node();
+    use vow_diagnostics::{Phase, Span};
+    let (tokens, lex_errors) = lexer::lex(text);
+    let mut p = parser::Parser::new(text, &tokens);
+    grammar::source_file(&mut p);
+    let (events, parse_errors) = p.finish();
+    let green = parser::build_tree(text, &tokens, events);
+    // A parse error at the position of a lexer error is a cascade of it.
+    let parse_errors = parse_errors
+        .into_iter()
+        .filter(|e| !lex_errors.iter().any(|l| l.start == e.start))
+        .collect::<Vec<_>>();
+    let mut errors: Vec<(u32, Diagnostic)> = lex_errors
+        .into_iter()
+        .map(|e| (e.start, e.code, Phase::Lex, e.message, e.end))
+        .chain(
+            parse_errors
+                .into_iter()
+                .map(|e| (e.start, e.code, Phase::Parse, e.message, e.end)),
+        )
+        .map(|(start, code, phase, message, end)| {
+            (
+                start,
+                Diagnostic::error(code, phase, message).with_span(Span::primary(file, start, end)),
+            )
+        })
+        .collect();
+    errors.sort_by_key(|(start, _)| *start);
     Parse {
-        green: builder.finish(),
-        errors: Vec::new(),
+        green,
+        errors: errors.into_iter().map(|(_, d)| d).collect(),
     }
 }
 
