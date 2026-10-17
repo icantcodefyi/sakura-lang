@@ -31,7 +31,7 @@ impl Checker<'_> {
         let mut causes = Vec::new();
         for l in &labels {
             let label_s = self.render_label(l);
-            for e in self.origins(v.root, l.effect).into_iter().take(3) {
+            for e in self.origins(v.root, l).into_iter().take(3) {
                 let what = self.describe(e);
                 let range = self.expr_range(e);
                 causes.push(self.cause(range, format!("{what} performs `{label_s}` here")));
@@ -42,14 +42,16 @@ impl Checker<'_> {
             ViolationKind::Signature { def, .. } => {
                 let name = self.program.def(*def).name.clone();
                 if labels.is_empty() {
-                    (
-                        V3001,
-                        Phase::Effect,
-                        format!(
-                            "the body of `{name}` performs effects `{}` that its signature `{allowed}` does not allow",
-                            self.render_row(actual)
-                        ),
-                    )
+                    {
+                        let a = self.render_row(actual);
+                        (
+                            V3001,
+                            Phase::Effect,
+                            format!(
+                                "the body of `{name}` performs the effects of `{a}`, which its signature `{allowed}` does not allow"
+                            ),
+                        )
+                    }
                 } else {
                     (
                         V3001,
@@ -81,19 +83,13 @@ impl Checker<'_> {
                     "test may fail with {list}, which nothing catches; recover with `try`/`catch` or assert it with `expect_fail`"
                 ),
             ),
-            ViolationKind::Test => {
-                let first = labels
-                    .first()
-                    .map(|l| self.render_label(l))
-                    .unwrap_or_default();
-                (
-                    V3020,
-                    Phase::Effect,
-                    format!(
-                        "test uses {list} without a handler; install one with `with` (for example a fake `{first}` handler from std)"
-                    ),
-                )
-            }
+            ViolationKind::Test => (
+                V3020,
+                Phase::Effect,
+                format!(
+                    "test uses {list} without a handler; install one with `with` (std ships fake handlers for its own effects)"
+                ),
+            ),
             ViolationKind::Pure { what, code } => (
                 *code,
                 Phase::Effect,
@@ -126,7 +122,9 @@ impl Checker<'_> {
             ..
         } = &v.kind
         {
-            for f in self.signature_fixes(expected, &labels, *row_range, *ret_end, *body_range) {
+            for f in
+                self.signature_fixes(expected, actual, &labels, *row_range, *ret_end, *body_range)
+            {
                 d = d.with_fix(f);
             }
         }
@@ -136,6 +134,7 @@ impl Checker<'_> {
     fn signature_fixes(
         &mut self,
         sig_row: crate::ty::RowId,
+        actual: crate::ty::RowId,
         extra: &[Label],
         row_range: Option<TextRange>,
         ret: TextRange,
@@ -145,12 +144,20 @@ impl Checker<'_> {
         let flat = self.inf.flatten_row(sig_row);
         let mut labels = flat.labels.clone();
         labels.extend(extra.iter().cloned());
-        let widened = self.inf.make_row(labels, flat.tail);
-        let new_row = self.render_row(widened);
-        let names: Vec<String> = extra
+        let mut names: Vec<String> = extra
             .iter()
             .map(|l| format!("`{}`", self.render_label(l)))
             .collect();
+        // A tail-only violation (`! e` missing): adopt the body's row variable.
+        let mut tail = flat.tail;
+        let actual_tail = self.inf.flatten_row(actual).tail;
+        if extra.is_empty() && matches!(actual_tail, Tail::Param(_)) {
+            tail = actual_tail;
+            let only = self.inf.make_row(Vec::new(), actual_tail);
+            names.push(format!("the row variable `{}`", self.render_row(only)));
+        }
+        let widened = self.inf.make_row(labels, tail);
+        let new_row = self.render_row(widened);
         // §7.3: interface-changing fixes are never machine-applicable (see REQUESTS.md).
         let edit = match row_range {
             Some(r) => Edit {
@@ -182,7 +189,7 @@ impl Checker<'_> {
                 "Handle the effect locally with `with`",
             )
         };
-        if body.end() > body.start() {
+        if body.end() > body.start() && !extra.is_empty() {
             fixes.push(Fix {
                 title: title.into(),
                 applicability: Applicability::Incomplete,
@@ -199,31 +206,38 @@ impl Checker<'_> {
                 ],
             });
         }
-        let _ = Tail::Closed;
         fixes
     }
 
-    fn row_has(&mut self, e: ExprId, effect: Effect) -> bool {
-        match self.b.rows.get(e).copied() {
-            Some(r) => self
-                .inf
-                .flatten_row(r)
-                .labels
-                .iter()
-                .any(|l| l.effect == effect),
-            None => false,
+    /// Whether `e`'s row contains `label` (for `Fail`, any of its tags).
+    fn row_has(&mut self, e: ExprId, label: &Label) -> bool {
+        let Some(r) = self.b.rows.get(e).copied() else {
+            return false;
+        };
+        let flat = self.inf.flatten_row(r);
+        let Some(l) = flat.labels.iter().find(|l| l.effect == label.effect) else {
+            return false;
+        };
+        if label.effect != Effect::Fail {
+            return true;
+        }
+        let want = self.inf.interner.error_tags(label.args[0]);
+        let have = self.inf.interner.error_tags(l.args[0]);
+        match (want, have) {
+            (Some(w), Some(h)) => w.iter().any(|t| h.contains(t)),
+            _ => true,
         }
     }
 
     /// The innermost expressions under `root` that introduce `effect` into its row. For a
     /// call whose callback argument is the real source, descends into that lambda.
-    fn origins(&mut self, root: ExprId, effect: Effect) -> Vec<ExprId> {
+    fn origins(&mut self, root: ExprId, label: &Label) -> Vec<ExprId> {
         let mut out = Vec::new();
-        self.find_origins(root, effect, &mut out);
+        self.find_origins(root, label, &mut out);
         out
     }
 
-    fn find_origins(&mut self, e: ExprId, effect: Effect, out: &mut Vec<ExprId>) {
+    fn find_origins(&mut self, e: ExprId, effect: &Label, out: &mut Vec<ExprId>) {
         if out.len() >= 3 {
             return;
         }

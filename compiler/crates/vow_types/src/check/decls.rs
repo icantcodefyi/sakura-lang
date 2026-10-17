@@ -110,7 +110,7 @@ impl Checker<'_> {
         msg: String,
     ) {
         let d = Diagnostic::error(code, Phase::Type, msg).with_span(self.span_in(module, range));
-        self.diags.push(d);
+        self.push(d);
     }
 
     pub(super) fn lower_type(

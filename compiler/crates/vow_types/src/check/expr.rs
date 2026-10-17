@@ -17,9 +17,15 @@ use crate::ty::{Constraint, Effect, Label, RowId, TyCon, Type, TypeId};
 impl Checker<'_> {
     /// Checks `e` against `expected` (subsumption) and returns its row.
     pub(super) fn check(&mut self, e: ExprId, expected: TypeId) -> RowId {
+        let before = self.diags.len();
         let (ty, row, done) = self.infer(e, Some(expected));
         if !done {
-            self.coerce(e, ty, expected);
+            if self.diags.len() > before {
+                // A sub-expression already reported the root cause: no cascade here.
+                let _ = self.inf.subsume(ty, expected);
+            } else {
+                self.coerce(e, ty, expected);
+            }
         }
         row
     }
@@ -92,10 +98,12 @@ impl Checker<'_> {
                 actual: ia,
                 expected: ie,
             } => {
-                let both_unions = self.inf.interner.error_tags(ia).is_some()
-                    && self.inf.interner.error_tags(ie).is_some()
-                    && (matches!(self.inf.interner.ty(ia), Type::Union(_))
-                        || matches!(self.inf.interner.ty(ie), Type::Union(_)));
+                let is_err = |cx: &Self, t: TypeId| match cx.inf.interner.ty(t) {
+                    Type::Union(_) => true,
+                    Type::Con(TyCon::Adt(d), _) => cx.is_error_tag(*d),
+                    _ => false,
+                };
+                let both_unions = is_err(self, ia) && is_err(self, ie);
                 let detail = if ia != self.inf.shallow(actual) || ie != self.inf.shallow(expected) {
                     let a = self.render(ia);
                     let x = self.render(ie);
@@ -301,7 +309,18 @@ impl Checker<'_> {
                         rows.push(r);
                         (ty, false)
                     }
-                    (None, _) => (self.inf.interner.unit(), false),
+                    // A block ending in `return`/`fail`/`break` diverges.
+                    (None, _) => match stmts.last() {
+                        Some(Stmt::Expr(x))
+                            if self.b.types.get(*x).is_some_and(|t| {
+                                let t = self.inf.shallow(*t);
+                                matches!(self.inf.interner.ty(t), Type::Never)
+                            }) =>
+                        {
+                            (self.inf.interner.never(), false)
+                        }
+                        _ => (self.inf.interner.unit(), false),
+                    },
                 };
                 self.b.scope.truncate(mark);
                 (ty, self.seq(&rows, e), done)
@@ -831,7 +850,9 @@ impl Checker<'_> {
                 let ret = self.inf.fresh_var();
                 let row = self.inf.fresh_row();
                 let f = self.inf.interner.func(params, ret, row);
-                let _ = self.inf.unify(ft, f);
+                if let Err(err) = self.inf.unify(ft, f) {
+                    self.mismatch(e, f, ft, err);
+                }
                 rows.push(row);
                 (ret, self.seq(&rows, e))
             }

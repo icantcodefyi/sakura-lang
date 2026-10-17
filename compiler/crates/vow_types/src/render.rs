@@ -194,3 +194,61 @@ pub fn con_name(con: TyCon, names: &dyn Names) -> String {
     }
     .to_string()
 }
+
+/// Renames inference variables (`?T123`, `?e45`) to short names in order of first appearance
+/// (`?A`, `?B`, … and `?e1`, `?e2`, …), consistently across all `texts`.
+pub fn tidy_vars(texts: &mut [&mut String]) {
+    let mut tys: Vec<String> = Vec::new();
+    let mut rows: Vec<String> = Vec::new();
+    for t in texts.iter_mut() {
+        let mut out = String::with_capacity(t.len());
+        let b = t.as_bytes();
+        let mut i = 0;
+        while i < b.len() {
+            if b[i] == b'?' && i + 1 < b.len() && (b[i + 1] == b'T' || b[i + 1] == b'e') {
+                let mut j = i + 2;
+                while j < b.len() && b[j].is_ascii_digit() {
+                    j += 1;
+                }
+                if j > i + 2 {
+                    let key = &t[i..j];
+                    let row = b[i + 1] == b'e';
+                    let list = if row { &mut rows } else { &mut tys };
+                    let n = match list.iter().position(|k| k == key) {
+                        Some(n) => n,
+                        None => {
+                            list.push(key.to_string());
+                            list.len() - 1
+                        }
+                    };
+                    if row {
+                        out.push_str(&format!("?e{}", n + 1));
+                    } else if n < 26 {
+                        out.push('?');
+                        out.push((b'A' + n as u8) as char);
+                    } else {
+                        out.push_str(&format!("?T{n}"));
+                    }
+                    i = j;
+                    continue;
+                }
+            }
+            let ch = t[i..].chars().next().unwrap_or(' ');
+            out.push(ch);
+            i += ch.len_utf8();
+        }
+        **t = out;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn tidy_vars_is_consistent() {
+        let mut a = "fn(?T12) -> ?T7 ! ?e40".to_string();
+        let mut b = "?T7 and ?T12, ?e40".to_string();
+        super::tidy_vars(&mut [&mut a, &mut b]);
+        assert_eq!(a, "fn(?A) -> ?B ! ?e1");
+        assert_eq!(b, "?B and ?A, ?e1");
+    }
+}

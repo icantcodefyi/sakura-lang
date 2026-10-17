@@ -32,6 +32,14 @@ impl Checker<'_> {
                 seen.push(lname);
             }
             let candidates = self.candidates(expected, &scope, allowed_row);
+            let mut expected_render = expected_render;
+            {
+                let mut texts: Vec<&mut String> = vec![&mut expected_render];
+                for l in locals.iter_mut() {
+                    texts.push(&mut l.1);
+                }
+                crate::render::tidy_vars(&mut texts);
+            }
             let range = self.expr_range(e);
             let hole = Hole {
                 name,

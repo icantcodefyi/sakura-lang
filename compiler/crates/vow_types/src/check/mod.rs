@@ -269,10 +269,23 @@ impl<'p> Checker<'p> {
 
     fn error(&mut self, code: Code, phase: Phase, range: TextRange, msg: impl Into<String>) {
         let d = Diagnostic::error(code, phase, msg).with_span(self.span(range));
-        self.diags.push(d);
+        self.push(d);
     }
 
-    fn push(&mut self, d: Diagnostic) {
+    fn push(&mut self, mut d: Diagnostic) {
+        let mut texts: Vec<&mut String> = vec![&mut d.message];
+        if let Some(e) = d.expected.as_mut() {
+            texts.push(&mut e.render);
+        }
+        if let Some(a) = d.actual.as_mut() {
+            texts.push(&mut a.render);
+        }
+        for s in d.spans.iter_mut() {
+            if let Some(l) = s.label.as_mut() {
+                texts.push(l);
+            }
+        }
+        crate::render::tidy_vars(&mut texts);
         self.diags.push(d);
     }
 
