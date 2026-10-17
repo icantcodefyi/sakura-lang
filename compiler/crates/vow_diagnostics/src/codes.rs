@@ -57,9 +57,9 @@ Wrong:
 Fixed:
     fn main() -> Unit ! {Console} { Console.print(\"hi\") }";
 
-    V0002 "unterminated_string" LEX,
-"A string literal or interpolation reaches the end of the line or file without its closing quote
-or `}`.
+    V0002 "unterminated" LEX,
+"A string literal, interpolation or block comment reaches the end of the file without being
+closed.
 
 Wrong:
     let s = \"hello
@@ -71,20 +71,33 @@ Fixed:
 
 Use a smaller value, or `Decimal`/`Float` if you need the magnitude.";
 
-    V0004 "invalid_escape" LEX,
+    V0004 "invalid_character" LEX,
+"The source contains a character that cannot start any token. Remove it, or put it inside a string.";
+
+    V0005 "invalid_escape" LEX,
 "A string contains an escape that is not one of `\\\\ \\\" \\n \\r \\t \\0 \\{ \\}` or
 `\\u{XXXXXX}` (design §2.3). Write a literal `{` as `\\{`.";
 
-    V0005 "unexpected_character" LEX,
-"The source contains a character that cannot start any token. Remove it, or put it inside a string.";
-
-    V0006 "nesting_limit_exceeded" PARSE,
-"Expressions or blocks nest deeper than the parser's limit. The limit keeps the compiler's stack
-bounded on malformed or adversarial input. Split the expression with `let` bindings.";
+    V0006 "malformed_number" LEX,
+"A numeric literal is malformed, such as `0x` with no digits, `1.` or `.5`. Write `1.0` and
+`0.5`.";
 
     V0007 "reserved_keyword" PARSE,
 "The word is reserved for a future edition: `verify proof ghost control resume region spawn actor
 interface impl` (design §2.1). Pick another name.";
+
+    V0008 "nesting_limit_exceeded" PARSE,
+"Expressions, types, patterns or blocks nest deeper than the parser's limit (128). The limit
+keeps the compiler's stack bounded on malformed or adversarial input. Split the expression with
+`let` bindings.";
+
+    V0009 "expected_terminator" PARSE,
+"Two statements are on one line without `;`, or junk follows a complete statement (design §2.4).
+
+Wrong:
+    let a = 1 let b = 2
+Fixed:
+    let a = 1; let b = 2";
 
     V0010 "chained_comparison" PARSE,
 "Comparison operators do not chain (design §3.1).
@@ -110,6 +123,9 @@ Wrong:
     match x { … }.len()
 Fixed:
     (match x { … }).len()";
+
+    V0013 "invalid_assign_target" PARSE,
+"The left side of `=` must be a `var` name or a field path on one (`u.email = e`).";
 
     // 1: resolve / modules
     V1001 "duplicate_definition" RESOLVE,
