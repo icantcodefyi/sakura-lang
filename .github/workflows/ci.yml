@@ -15,23 +15,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  workspace:
-    name: Detect compiler workspace
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      has-cargo: ${{ steps.detect.outputs.has-cargo }}
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-      # hashFiles needs a checked-out runner workspace and is unavailable in jobs.if.
-      - id: detect
-        name: Check root manifest
-        env:
-          HAS_CARGO: ${{ hashFiles('Cargo.toml') != '' }}
-        run: echo "has-cargo=$HAS_CARGO" >> "$GITHUB_OUTPUT"
-
   website:
     name: Website
     runs-on: ubuntu-latest
@@ -60,26 +43,28 @@ jobs:
         run: bun run build
 
   rust:
-    name: Rust
-    needs: workspace
-    if: needs.workspace.outputs.has-cargo == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    name: Rust (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: compiler
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - name: Install Rust tools
-        shell: bash
-        run: |
-          if [[ -f rust-toolchain.toml || -f rust-toolchain ]]; then
-            rustup show active-toolchain
-            rustup component add rustfmt clippy
-          else
-            rustup toolchain install stable --profile minimal --component rustfmt --component clippy
-            rustup default stable
-          fi
+      - name: Install pinned Rust toolchain
+        run: rustup show active-toolchain || rustup toolchain install
       - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: compiler
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
       - name: Check formatting
         run: cargo fmt --all -- --check
       - name: Clippy
@@ -90,22 +75,14 @@ jobs:
   ci-required:
     name: ci-required
     if: always()
-    needs: [workspace, website, rust]
+    needs: [website, rust]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Check all applicable jobs
+      - name: Check all jobs
         env:
-          WORKSPACE_RESULT: ${{ needs.workspace.result }}
           WEBSITE_RESULT: ${{ needs.website.result }}
           RUST_RESULT: ${{ needs.rust.result }}
-          HAS_CARGO: ${{ needs.workspace.outputs.has-cargo }}
         run: |
-          test "$WORKSPACE_RESULT" = success
           test "$WEBSITE_RESULT" = success
-          if [ "$HAS_CARGO" = true ]; then
-            test "$RUST_RESULT" = success
-          else
-            test "$HAS_CARGO" = false
-            test "$RUST_RESULT" = skipped
-          fi
+          test "$RUST_RESULT" = success
