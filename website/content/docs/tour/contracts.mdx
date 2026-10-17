@@ -1,178 +1,165 @@
 ---
 title: Contracts and refinements
-description: Refinement types, requires and ensures clauses, and how Vow plans to prove, check, or test each one.
+description: Refinement types, requires and ensures clauses, and the honest guarantee model behind them.
 ---
 
-<Callout type="warn" title="Design draft">
-  Contracts are a design intention. How much the planned solver proves statically will only be known once it exists.
+<Callout type="warn" title="Designed, not implemented">
+  This page describes the v0 design. The compiler is under construction (milestone M0), so none of
+  this code can be run yet. Contracts and refinements are scheduled for M3; static proof is M4. See
+  the [roadmap](/docs/roadmap).
 </Callout>
 
 Types say what shape a value has. Refinements and contracts say what is true about it. Both are part of the signature, so both are what a reviewer reads.
+
+## The guarantee model
+
+Every claim Vow makes about a program has exactly one of four statuses ([design §1.2](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
+
+| Status            | Meaning                                                                                | Who establishes it                                                            |
+| ----------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `proved`          | Holds on all executions under the stated assumptions.                                  | The type and effect checker; later, SMT-discharged contracts.                 |
+| `runtime_checked` | A violation is detected at the boundary and becomes a defect. The bad value never escapes. | Contract lowering (`requires`, `ensures`, `where`), checked arithmetic.        |
+| `tested`          | Held on the inputs that were executed.                                                 | `vow test` (unit, property, snapshot, simulation).                            |
+| `trusted`         | Assumed.                                                                               | FFI declarations, host handlers, `@trust` sites, the toolchain itself.        |
+
+In v0, every contract is `runtime_checked`. The compiler never prints "verified" for a program that merely compiled.
 
 ## Refinement types
 
 A refinement is a base type plus a predicate, written with `where`. Inside the predicate, `it` is the value.
 
 ```vow
-type Age = Int where 0..=150
-type Port = Int where 1..=65535
-type Percent = Float where 0.0..=100.0
-type Cents = Int where it >= 0
-type Email = String where is_email(it)
-type Password = String where it.len >= 12
-type NonEmpty<T> = List<T> where it.len > 0
+type Email = String where String.len(it) <= 254 && Email.is_valid(it)
+type Percent = Int where it >= 0 && it <= 100
+type NonEmpty<T> = List<T> where List.len(it) > 0
 ```
 
-A range on its own is shorthand for "`it` is in this range". `a..b` excludes `b`, and `a..=b` includes it. Predicates must be pure functions, so checking one never performs an effect.
+A refined type is a distinct nominal type with the same representation as its base. It coerces implicitly to the base, so a `Percent` is usable wherever an `Int` is expected. The reverse never happens implicitly.
 
-A refined value can be used wherever its base type is expected. An `Age` is an `Int`.
+Record fields can carry a refinement inline:
 
 ```vow
-fn next_year(age: Age) -> Int {
-  age + 1
+type Priority = Low | Normal | High
+type Ticket = {
+  title: String where String.len(it) > 0 && String.len(it) <= 120,
+  priority: Priority,
 }
 ```
 
-## Where refinements are checked
+Field refinements are checked when the record is constructed.
 
-A value only becomes refined in one of two ways, and never silently.
+## How values enter a refined type
 
-**At compile time**, when the value is known or provable:
+There is no silent conversion. A value becomes a `Percent` in one of four ways ([design §4.3](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
+
+| Entry point                               | On failure                                                        |
+| ----------------------------------------- | ----------------------------------------------------------------- |
+| `Percent.validate(n) -> Result<Percent, Violation>` | Returns `Err(Violation { type_name, clause, value_summary })`. |
+| `Percent.from(n) -> Percent`               | Defect `D010`. Use at trusted boundaries only; `vow audit` lists every use. |
+| `Json.decode<T>(text)` and other schema decoding | Typed `DecodeError`, never a defect. Nested field refinements are checked. |
+| A literal, `let p: Percent = 50`          | Checked at compile time when the predicate is in the SMT fragment, otherwise at program start (warning `V5002`). |
+
+`validate` is the normal path for input you do not control:
 
 ```vow
-let port: Port = 8080        // literal: checked by the compiler
-let bad: Port = 70000        // compile error E0301
-```
-
-**At the boundary**, when an unrefined value is converted explicitly. Every refined type has a `from` constructor that may fail:
-
-```vow
-fn parse_age(s: String) -> Age ! {Fail<Invalid>} {
-  Age.from(Int.parse(s))
+fn describe(input: Int) -> String {
+  match Percent.validate(input) {
+    Ok(p) => "{p}%",
+    Err(_) => "out of range",
+  }
 }
 ```
 
-`Age.from(n)` has type `Age ! {Fail<Invalid>}`. Values from the outside world use `.validate`, which is the same check applied to an [`Untrusted`](/docs/tour/capabilities) value:
+Once a value has type `Percent`, nothing downstream re-checks it. Vow has no aliasable mutation, so a validated value cannot be invalidated later. Record update `Ticket { ..t, title: x }` with `x` already refined needs no re-check.
+
+## The contract subset
+
+Predicates in `where`, `requires`, `ensures`, and `property` clauses must be pure (`! {}`), terminating, and deterministic. v0 enforces this syntactically ([design §7.1](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
+
+- No loops and no recursion.
+- Calls only to functions with row `{}` that are std-marked `@total` or are themselves in the subset, checked transitively. Anything else is `V5001`.
+- Allowed: comparison, checked arithmetic, `&&`, `||`, `!`, field and tuple access, `match` on finite variants, `List.len`, `String.len`, and bounded quantifiers `List.all(xs, fn(x) { … })` and `List.any`.
+
+Arithmetic in a predicate is checked, so a predicate can itself defect. That is reported as `D011` (contract evaluation failed).
+
+## Preconditions and postconditions
+
+`requires` states what must hold for the arguments. `ensures` states what holds for the result, which is bound to `result`. Both go between the signature and the body, and each clause may have a name.
 
 ```vow
-let email = req.param("email").validate(Email)   // Email ! {Fail<Invalid>}
-```
-
-Once a value has type `Email`, nothing downstream re-checks it. Validation happens once, at the edge, and the type carries the proof.
-
-## Refinements flow through code
-
-The checker tracks facts from conditions, so many conversions need no runtime check:
-
-```vow
-fn to_age(n: Int) -> Option<Age> {
-  if n >= 0 and n <= 150 { Some(n) } else { None }
-}
-```
-
-Inside the `if` branch, `n` is known to satisfy `0..=150`, so `Some(n)` has type `Option<Age>` with no call to `Age.from`.
-
-## Preconditions: requires
-
-`requires` states what must be true of the arguments. It goes between the signature and the body.
-
-```vow
-fn divide(a: Int, b: Int) -> Int
-  requires b != 0
+fn clamp(x: Int, lo: Int, hi: Int) -> Int
+  requires ordered: lo <= hi
+  ensures bounded: lo <= result && result <= hi
 {
-  a / b
+  if x < lo { lo } else if x > hi { hi } else { x }
 }
 ```
 
-Every caller must satisfy the precondition. When the checker can see that it holds (a literal, a refined type, a dominating `if`), there is no runtime cost. When it cannot, the caller gets an error asking it to establish the fact, usually by checking first.
+- `requires` is checked on entry. A violation is a **caller defect** `D020`, with blame on the call site and the clause name in the report.
+- `ensures` is checked once on normal return. A violation is a **callee defect** `D021`. It is never checked when the function fails or defects, because there is no `result`.
+- There is no `old(expr)`. Arguments are immutable values, so a parameter named in `ensures` is exactly the value that was passed in.
 
-## Postconditions: ensures
-
-`ensures` states what is true of the return value. `result` names it.
+Contracts compose with typed errors:
 
 ```vow
-type Account = { id: Uuid, balance: Cents, frozen: Bool }
+error Insufficient
+error Frozen
 type WithdrawError = Insufficient | Frozen
 
-fn withdraw(from: Account, amount: Cents) -> Account ! {Fail<WithdrawError>}
-  requires amount > 0
-  ensures result.balance == from.balance - amount
-  ensures result.id == from.id
+type Account = { id: Uuid, balance: Int, frozen: Bool }
+
+fn withdraw(from: Account, amount: Int) -> Account ! {Fail<WithdrawError>}
+  requires positive: amount > 0
+  ensures same_account: result.id == from.id
+  ensures debited: result.balance == from.balance - amount
+  ensures non_negative: result.balance >= 0
 {
   if from.frozen { fail Frozen }
   if amount > from.balance { fail Insufficient }
-  { from with balance: from.balance - amount }
+  Account { ..from, balance: from.balance - amount }
 }
 ```
 
-Three things are worth noticing:
+`Frozen` and `Insufficient` are expected failures in the error union. A negative `amount` is a bug in the caller, so it is a precondition, not an error tag.
 
-- `ensures` applies to normal returns. If the function fails, there is no `result` to check.
-- `from.balance - amount` must be a `Cents`, so it must be non-negative. The checker knows `amount <= from.balance` after the second `if`, so it can prove this.
-- There is no `old(from.balance)`. Arguments are immutable values, so `from` in the postcondition is exactly the value passed in.
-
-## How each contract is discharged
-
-The design is that each contract is handled in the strongest way available:
-
-1. **Proven statically.** The checker hands simple arithmetic, comparisons, and facts from conditions to an SMT solver. A proven contract costs nothing at runtime.
-2. **Checked at the boundary.** A contract the solver cannot prove becomes an assertion at the function's entry (for `requires`) or exit (for `ensures`).
-3. **Tested.** Every contract that is not proven also becomes a generated property test that `vow test` runs. See [Testing](/docs/tour/testing).
-
-`vow check --contracts` is planned to report which path each contract took:
-
-```bash
-$ vow check --contracts
-src/bank.vow:5   withdraw  requires amount > 0                              proven at all 3 call sites
-src/bank.vow:6   withdraw  ensures result.balance == from.balance - amount  proven
-src/bank.vow:7   withdraw  ensures result.id == from.id                     proven
-src/sort.vow:14  sort      ensures result.is_sorted()                       runtime check, property test
-```
-
-## Contracts on collections
-
-Contracts can call pure functions, which keeps them readable:
+Bounded quantifiers are allowed in contracts:
 
 ```vow
-fn sort(xs: List<Int>) -> List<Int>
-  ensures result.len == xs.len
-  ensures result.is_sorted()
+fn top_score(scores: NonEmpty<Int>) -> Int
+  ensures List.all(scores, fn(s) { s <= result })
 {
-  xs.sort()
-}
-
-fn top<T>(xs: NonEmpty<T>, score: (T) -> Int) -> T
-  ensures xs.all(x => score(x) <= score(result))
-{
-  xs.max_by(score)
+  let first = List.first(scores).expect("NonEmpty has a first element")
+  List.fold(scores, first, fn(best, s) { Int.max(best, s) })
 }
 ```
 
-`top` takes a `NonEmpty<T>`, so it does not need an `Option` return type: the refinement already rules out the empty case.
+A clause the compiler estimates as O(n), like this one, triggers warning `W5005` on hot paths. v0 chooses an honest cost over a silently skipped check.
 
-## A refinement violation
+## Contracts are always checked
 
-```json
-{
-  "code": "E0301",
-  "severity": "error",
-  "message": "value `70000` does not satisfy the refinement of `Port` (`Int where 1..=65535`)",
-  "span": { "file": "src/config.vow", "start": { "line": 3, "col": 26 }, "end": { "line": 3, "col": 31 } },
-  "expected": "Port",
-  "found": "Int (70000)",
-  "fixes": [],
-  "docs": "/docs/tour/contracts.md#where-refinements-are-checked"
-}
-```
+Contract checks run in **all build modes**. `vow build --release` keeps them. The only way a check is removed is a `proved` status from `vow verify` (M4 and later), recorded per obligation.
 
-## What the compiler checks
+Contract violations are [defects](/docs/tour/effects), not effects. A defect terminates the current task after resource finalizers run. `try` cannot catch it. `Task.scope` and the test runner observe it as an outcome, and a defect in `main` exits with status 70 and a structured report.
 
-- Refinement predicates and contract expressions are pure and total.
-- A refined type is never produced from an unrefined value without a proof, a `from`, or a `validate`.
-- `requires` holds at every call site, by proof or by an explicit check.
-- `ensures` holds at every normal return, by proof, by a runtime check, and by a generated property test.
-- Contracts are part of the signature, so changing one is a `changes-signature` edit. See [Diagnostics](/docs/agents/diagnostics).
+Contracts on `pub` functions are part of the signature shown by `vow doc`, the MCP `symbol_query` tool, and editor hover.
+
+## Frozen specs during agent repair
+
+An agent fixing a failing build must not "fix" it by weakening the specification. `vow fix`, the MCP `apply_patch` tool, and `vow check --frozen-specs <symbols|all>` reject any patch that changes a frozen symbol's signature, effect row, error union, `requires`/`ensures`/`where` clauses, or any `test` or `property` body. The diagnostic is `V8020` (spec frozen) and names the clause.
+
+Compiler fixes that touch a contract carry `impact: contract_change` and are never `machine_applicable`. See [Diagnostics](/docs/agents/diagnostics).
+
+## Property tests from contracts
+
+`vow test --contracts` synthesizes a property test for every `pub` function that has a refined parameter or a `requires` clause. Inputs are generated from the refinements and `requires` together, the function runs under the test handlers, and `ensures` and result refinements are checked. Failures are shrunk and saved. See [Testing](/docs/tour/testing#property-tests-from-contracts).
+
+## Not in v0
+
+- **Static proof.** M4 adds `vow verify`, which sends obligations in the QF_LIA, QF_BV, and EUF fragments to Z3 and reports `proved`, `disproved` (with a counterexample), `unknown`, or `unsupported`. Only `proved` removes a runtime check. Termination is never implied ([design §7.5](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)).
+- **Flow-sensitive refinement.** An `if n >= 0` does not turn `n` into a refined type. Use `validate` or `from`.
+- **`old(expr)`** in postconditions. There is no mutation to snapshot.
+- **Proof-oriented syntax.** The keywords `verify`, `proof`, and `ghost` are reserved and rejected today with `V0007`.
 
 ## Next
 
-[Testing](/docs/tour/testing): unit tests, property tests, and deterministic simulation.
+[Testing](/docs/tour/testing): unit tests, property tests, snapshots, and deterministic handlers.

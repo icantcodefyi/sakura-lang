@@ -1,201 +1,207 @@
 ---
 title: Testing
-description: Unit tests, property tests that respect refinements, contract-generated tests, and deterministic simulation in Vow.
+description: Unit tests, property tests, contract-generated tests, snapshots, and deterministic handlers in Vow.
 ---
 
-<Callout type="warn" title="Design draft">
-  The test runner is planned for the verification phase of the [roadmap](/docs/roadmap). Command output on this page is illustrative.
+<Callout type="warn" title="Designed, not implemented">
+  This page describes the v0 design. The compiler is under construction (milestone M0), so none of
+  this code can be run yet. `test` blocks arrive in M1, deterministic handlers in M2, and
+  contract-generated tests in M3. See the [roadmap](/docs/roadmap).
 </Callout>
 
-Testing is part of the language, not a library. Tests live next to the code or in `tests/`, use the same handlers as production code, and run with `vow test`.
+Tests are part of the language. `test` and `property` are top-level items, so they live next to the code they test, use the same handlers as production code, and run with `vow test`. Assertions come from `std/test` ([design §10.6](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)).
 
 ## Unit tests
 
+A `test` has a name and a block. It behaves like a function `fn() -> Unit ! {Test}`, where the `Test` effect provides the assertions.
+
 ```vow
+fn greet(name: String) -> String { "Hello, {name}" }
+
 test "greets by name" {
-  expect greet("Ada") == "Hello, Ada"
+  expect_eq(greet("Ada"), "Hello, Ada")
 }
 ```
 
-A `test` block has a name and a body. `expect cond` records a failure when `cond` is false and reports both sides of a comparison.
+| Assertion                       | Passes when                                                           |
+| ------------------------------- | --------------------------------------------------------------------- |
+| `expect(cond)`                  | `cond` is `true`.                                                     |
+| `expect_eq(actual, expected)`   | The values are equal. Both must be `Eq` and `Show`.                   |
+| `expect_fail(fn() { … }, err)`  | The body fails with exactly `err`.                                    |
+| `expect_fails_with(fn() { … }, pred)` | The body fails with an error for which `pred` returns `true`.   |
+| `expect_defect(fn() { … })`     | The body defects. It runs in a child task.                            |
+| `expect_snapshot(name, value)`  | `value` renders the same as the stored snapshot.                      |
 
-```bash
-$ vow test
-fail  greets by name
-      src/greet.vow:2  expect greet("Ada") == "Hello, Ada"
-        left:  "Hello Ada"
-        right: "Hello, Ada"
-0 passed, 1 failed
-```
+## Testing typed errors and defects
 
-## Testing effectful code
-
-Tests swap in handlers. No mocking framework is needed because effects are already an interface.
+Expected failures are values in the error union, so tests can compare them directly. `try` without `catch` turns a failing call into a `Result`:
 
 ```vow
-test "duplicate email fails" {
-  with Db.memory(), Clock.fixed("2026-01-01"), Random.seeded(1) {
-    signup("a@b.co", "correct horse battery")
-    expect signup("a@b.co", "another long password") == Fail(EmailTaken)
+error ParseError(input: String)
+
+fn parse_age(s: String) -> Int ! {Fail<ParseError>} {
+  match String.parse_int(s) {
+    Some(n) if n >= 0 => n,
+    _ => fail ParseError { input: s },
   }
 }
+
+test "bad age is a typed failure" {
+  let r = try { parse_age("x") }
+  expect_eq(r, Err(ParseError { input: "x" }))
+}
+
+test "same check with expect_fail" {
+  expect_fail(fn() { parse_age("x") }, ParseError { input: "x" })
+}
 ```
 
-`expect f(x) == Fail(EmailTaken)` compares the outcome of the call. If `signup` succeeds, or fails with `Banned`, the test fails and shows what happened instead.
-
-A test body has an empty row by default. Any effect the code under test performs must be handled inside the test, so a unit test cannot reach the real network by accident.
+[Contract](/docs/tour/contracts) violations are defects, not failures, so `try` cannot catch them. Use `expect_defect`:
 
 ```vow
-test "welcome mail is sent once" {
-  with Db.memory(), Clock.fixed("2026-01-01"), Random.seeded(1), Mailer.capture() {
-    signup_and_welcome("a@b.co", "correct horse battery")
-    expect Mailer.sent().len == 1
+test "precondition is a caller defect" {
+  expect_defect(fn() { clamp(1, 5, 0) })
+}
+```
+
+## Tests swap handlers
+
+Tests run under deterministic default handlers ([design §5.8](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
+
+| Effect    | Default handler in tests          |
+| --------- | --------------------------------- |
+| `Clock`   | `Clock.fixed(epoch)`              |
+| `Random`  | `Random.seeded(seed)`, seed from `--seed` |
+| `Env`     | `Env.of(map)`                     |
+| `Console` | `Console.captured()`              |
+| `Log`     | `Log.captured()`                  |
+
+Any other effect the test body performs must be handled inside the test with `with`. Otherwise the compiler reports `V3020` (for example, "test uses Sql; install a handler with `with`"). A unit test cannot reach a real database or network by accident; the runner also denies network access.
+
+No mocking framework is needed, because an effect is already an interface. Here a user-defined effect gets a stateful in-memory handler:
+
+```vow
+effect Counter {
+  fn next() -> Int
+  fn reset() -> Unit
+}
+
+fn memory_counter(start: Int) -> Handler<Counter> {
+  handler Counter {
+    var n: Int = start
+    fn next() { n = n + 1; n }
+    fn reset() { n = start }
   }
 }
-```
 
-## Property tests
-
-A `property` takes typed arguments. The runner generates values for them and runs the body many times.
-
-```vow
-property "sorting keeps every element" (xs: List<Int>) {
-  expect xs.sort().len == xs.len
+fn label_all(items: List<String>) -> List<String> ! {Counter} {
+  List.map(items, fn(item) { "{Counter.next()}. {item}" })
 }
 
-property "sorted output" (xs: List<Int>) {
-  expect xs.sort().is_sorted()
-}
-```
-
-Generated values respect refinements. An `Age` argument is always in `0..=150`, and an `Email` is always well formed:
-
-```vow
-property "age round-trips through text" (age: Age) {
-  expect parse_age("{age}") == age
+test "labels count from the handler's start" {
+  let out = with memory_counter(0) { label_all(["a", "b"]) }
+  expect_eq(out, ["1. a", "2. b"])
 }
 
-property "signup keeps the email" (email: Email, pw: Password) {
-  with Db.memory(), Clock.fixed("2026-01-01"), Random.seeded(1) {
-    expect signup(email, pw).email == email
+test "inner handler shadows outer" {
+  let out = with memory_counter(0) {
+    with memory_counter(100) { Counter.next() }
   }
+  expect_eq(out, 101)
 }
 ```
 
-When a property fails, the runner shrinks the input to a minimal counterexample and prints the seed that reproduces it:
+The standard library ships fakes for its own effects:
 
-```vow
-property "slug is never empty" (title: String) {
-  expect slugify(title).len > 0
-}
-```
+| Fake                          | Replaces                                              |
+| ----------------------------- | ----------------------------------------------------- |
+| `Sql.memory()`                | A database.                                           |
+| `Http.scripted(script)`       | The HTTP client, answering from a list of request matchers and responses. |
+| `Fs.memory(files)`            | The filesystem, from a list of `(path, bytes)` pairs. |
+| `Llm.scripted(responses)`     | A model provider. `Llm.replay(path)` replays a recording. |
+| `Clock.virtual()`             | The clock. Time advances only when told to.           |
+| `Task.deterministic(seed)`    | The task scheduler. Interleavings are reproducible.   |
 
-```bash
-$ vow test
-fail  slug is never empty
-      counterexample: title = ""
-      seed: 4189275
-      replay: vow test "slug is never empty" --seed 4189275
-```
-
-The fix is either in `slugify` or in the type: `(title: NonEmptyText)` with a refinement states the assumption where reviewers can see it.
-
-### Custom generators
-
-The preferred way to constrain generated input is a refinement, because it documents the constraint in the type as well:
-
-```vow
-type LargeOrder = Int where 1_000..=100_000
-
-property "large orders get a discount" (n: LargeOrder) {
-  expect discount(n) > 0
-}
-```
-
-For shapes a predicate cannot express efficiently, the planned `Gen` module provides generator combinators (`Gen.one_of`, `Gen.list_of`, `Gen.map`). How a custom generator is attached to a property is not designed yet.
-
-## Tests generated from contracts
-
-Every `requires`/`ensures` contract that the checker does not prove statically becomes a property test. Given:
-
-```vow
-fn sort(xs: List<Int>) -> List<Int>
-  ensures result.len == xs.len
-  ensures result.is_sorted()
-{
-  xs.sort()
-}
-```
-
-`vow test` generates arguments that satisfy the `requires` clauses and refinements, calls the function, and checks every `ensures`. You do not write these tests. They appear in the output under the function name:
-
-```bash
-$ vow test
-ok    contract sort: ensures result.len == xs.len (100 cases)
-ok    contract sort: ensures result.is_sorted() (100 cases)
-```
+See [Handlers](/docs/tour/handlers) for how `with` and handler state work.
 
 ## Deterministic simulation
 
-Distributed and concurrent bugs are hard to reproduce because timing, ordering, and failures differ between runs. Vow's design removes the nondeterminism: `Sim.world` replaces `Clock`, `Random`, `Net`, and the `Async` scheduler with simulated versions driven by one seed.
+Every source of nondeterminism in Vow is an effect: time, randomness, scheduling, network. Installing deterministic handlers for all of them makes a concurrent test reproducible from its seeds. There is no separate simulator; `with` is the mechanism ([design §8.7](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)).
 
 ```vow
-test "transfer survives a partition" {
-  with Sim.world(seed: 7), Db.memory() {
-    let a = start_node("a")
-    let b = start_node("b")
-    Sim.partition([a], [b], duration: 5.s)
-    transfer(a, b, 100)
-    Sim.crash(b, at: 2.s)
-    Sim.run_until_idle()
-    expect total_balance([a, b]) == 1_000
+test "deterministic under virtual time" {
+  with Http.scripted([(Any, Response.status(200, "x"))]), Clock.virtual(), Random.seeded(1), Task.deterministic(1) {
+    expect_eq(fetch_both(Url.from("https://a"), Url.from("https://b")), ("x", "x"))
   }
 }
 ```
 
-- `Sim.partition(...)` cuts network links between groups of nodes for a duration.
-- `Sim.crash(...)` stops a node and later restarts it from its durable state.
-- Simulated time is instant: a five-second partition takes no wall-clock time.
+`fetch_both` spawns two tasks, retries with backoff, and wraps everything in a timeout ([design §15.10](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)). Under these handlers, sleeps and timeouts use virtual time and task interleavings follow the seed. See [Concurrency](/docs/tour/concurrency).
 
-Run many seeds to search for failures:
+## Property tests
 
-```bash
-$ vow test --sim --seeds 1000
-ok    transfer survives a partition (1000 seeds)
+A `property` takes typed parameters. The runner generates values for them and runs the body many times. Parameter types must be written out.
+
+```vow
+fn normalize(xs: List<Int>) -> List<Int> { List.unique(List.sort(xs)) }
+
+property "normalize is idempotent"(xs: List<Int>) {
+  expect_eq(normalize(normalize(xs)), normalize(xs))
+}
+
+property "normalize preserves membership"(xs: List<Int>, x: Int)
+  requires List.contains(xs, x)
+{ expect(List.contains(normalize(xs), x)) }
 ```
 
-A failing seed replays exactly, with the same schedule, message order, and faults, every time:
+A `requires` clause on a property restricts the generated inputs. Like every contract, it must be in the [contract subset](/docs/tour/contracts#the-contract-subset). Generators are derived from the parameter types. When that is not enough, `std/test` provides explicit generators such as `Gen.int(lo, hi)`.
 
-```bash
-$ vow test --sim --seed 7 "transfer survives a partition"
-```
+Runs are seeded. `vow test --json` reports one record per test with its seed, and `vow test --seed N --filter "normalize"` reruns a case.
 
-This works because every source of nondeterminism is an effect. Code that does not declare `Clock`, `Random`, `Net`, or `Async` cannot observe the outside world, so the simulator controls everything the code can see.
+## Property tests from contracts
+
+`vow test --contracts` writes property tests you did not write ([design §7.4](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)). For every `pub` function with at least one refined parameter or `requires` clause, it:
+
+1. Generates inputs jointly from the parameter refinements and `requires`. It uses constructive generators for ranges, lengths, enums, and non-empty lists, and falls back to filtering.
+2. Runs the function under the test default handlers.
+3. Checks every `ensures` clause and the result's refinements.
+
+Failures are shrunk and stored under `tests/regressions/<fn>.json`. If filtering discards more than 90% of candidates, the runner warns with `W7001`. Functions that use effects other than `Fail`, `Clock`, and `Random` are skipped unless handlers are supplied with a `@contract_test(handlers = …)` attribute.
+
+Given `clamp` from [Contracts](/docs/tour/contracts), `vow test --contracts` generates `(x, lo, hi)` with `lo <= hi` and checks `lo <= result && result <= hi` on each run.
 
 ## Snapshot tests
 
-`Snapshot` compares a value with a stored copy, which is useful for HTML, JSON, and diagnostics:
+`expect_snapshot` compares a value's `Show` output with a stored file at `tests/__snapshots__/<module>/<name>.snap`:
 
 ```vow
-test "profile page" {
-  expect Snapshot.matches("profile", render_profile(sample_user))
+test "rendering is stable" {
+  expect_snapshot("normalize_doc", normalize([3, 1, 3, 2]))
 }
 ```
 
-`vow test --update-snapshots` rewrites stored copies after a reviewed change.
+The `Show` format is the same on every backend, so snapshots do not depend on the target. `Secret<T>` is not `Show`, so a secret cannot end up in a snapshot. After a reviewed change, `vow test --update-snapshots` rewrites the stored files.
 
-## Holes in tests
+## Running tests
 
-A program with [typed holes](/docs/agents/typed-holes) can be checked and tested. A test that reaches a `todo()` fails with the hole's location and expected type. Tests that do not reach it run normally. This lets an agent fill a program in one function at a time.
+```bash
+vow test                                  # all tests and properties
+vow test --filter "normalize"             # tests whose name matches
+vow test --seed 42                        # fix the seed
+vow test --contracts                      # also run contract-generated property tests
+vow test --json                           # JSON Lines records for agents
+vow test --update-snapshots               # rewrite snapshot files
+```
+
+The runner applies per-test time and memory limits and denies network access. `vow test` exits with `3` when tests fail and `1` when the program has compile errors. A passing test gives its claims the `tested` status in the [guarantee model](/docs/tour/contracts#the-guarantee-model), never `proved`.
 
 ## What the compiler and runner check
 
-- Tests and properties are type checked like any other code, with an empty effect row unless effects are handled inside.
-- Generated arguments satisfy refinements and `requires` clauses.
-- Every contract the solver does not prove has a generated property test.
-- Simulated runs are fully determined by their seed.
-- `vow build` for release refuses to build a program that still contains holes. `vow test` allows them.
+- Tests and properties are type and effect checked like any other code.
+- Every effect a test uses is handled, by a default or by a `with` in the test (`V3020`).
+- Generated arguments satisfy parameter types, refinements, and `requires`.
+- Test and property bodies are part of the frozen spec during agent repair (`V8020`), so an agent cannot edit a test to make it pass.
 
 ## Next
 
-[Capabilities and security](/docs/tour/capabilities): how effects become permissions.
+[Capabilities and security](/docs/tour/capabilities): how handlers become authority.

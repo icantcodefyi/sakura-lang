@@ -1,186 +1,186 @@
 ---
 title: Capabilities and security
-description: How Vow uses effects as capabilities, grants them to dependencies, and blocks injection and secret leaks with Untrusted and Secret types.
+description: How Vow separates effects from authority, limits root handlers with vow.toml, narrows authority for dependencies, and blocks injection and secret leaks.
 ---
 
-<Callout type="warn" title="Design draft">
-  The security model below is designed, not implemented. Grant syntax in `vow.toml` may change.
+<Callout type="warn" title="Designed, not implemented">
+  This page describes the v0 design. The compiler is under construction (milestone M0), so none of
+  this code can be run yet. Capabilities, `[permissions]`, `Secret`, and `Untrusted` are scheduled
+  for M3. See the [roadmap](/docs/roadmap).
 </Callout>
 
-Most supply-chain attacks and injection bugs rely on code being able to do more than it should: a dependency that reads environment variables, a helper that opens a socket, a string from a request that reaches a SQL query. Vow's design makes each of these a compile error unless it is stated explicitly.
+Most supply-chain attacks and injection bugs rely on code doing more than it should: a dependency that reads files it was never meant to see, a string from a request that reaches a SQL query, a token that ends up in a log. Vow's design makes each of these either impossible or a visible, reviewable decision.
 
-## Effects are capabilities
+## Effects are requirements, handlers are authority
 
-A function can only perform the effects in its row. A function without `Net` cannot reach the network, however deep the call stack goes, and there is no reflection or global state to get around it.
+`Fs` in a signature says "this function may perform filesystem operations". It does not say which files. The **installed handler** decides that ([design §6.1](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)).
 
-So the effect row is also a permission list. `fn render(md: String) -> Html` is pure: it cannot read files, phone home, or look at your environment, and the compiler guarantees it.
+A handler for `Fs` is built from a `Dir` capability value. Every path is resolved relative to that directory, and symlink escapes are rejected. Authority lives in capability values that handlers close over, not in effect labels.
 
-## The root holds every capability
+The effect row still matters: a function can only perform the effects in its row, and a pure function cannot touch the outside world at all. But the row is what a function *needs*. What it may actually *reach* is set by whoever installs the handler.
 
-Authority starts at `main`. Its row lists the root capabilities the program uses, and the runtime provides real handlers for exactly those:
+## Root authority comes from the host
 
-```vow title="src/main.vow"
-import app/routes.{routes}
+The entry point is `pub fn main() -> Unit ! {…}`. The host supplies root handlers for exactly the std effects `main` declares, and nothing else. Only std effects may appear in `main`'s row (`V6010`), because only they have host root handlers.
 
-fn main() ! {Net, Env, Fs, Log, Clock, Random, Async} {
-  let url = Env.secret("DATABASE_URL")
-  with Db.postgres(url) {
-    Http.serve(8080, routes())
-  }
-}
-```
-
-There is no way for library code to create `Net` or `Fs` on its own. It can only receive them from a caller whose row already has them.
-
-## Granting capabilities to dependencies
-
-Dependencies get no capabilities unless `vow.toml` grants them:
+Root handlers are limited by the `[permissions]` table in the project manifest:
 
 ```toml title="vow.toml"
-[dependencies]
-markdown = { version = "2.1" }                   # pure: no effects granted
-s3 = { version = "0.4", grants = ["Net", "Env"] }
+[permissions]
+fs.read  = ["./data", "./templates"]
+fs.write = ["./data/out"]
+net      = ["api.anthropic.com:443", "localhost:5432"]
+env      = ["DATABASE_URL", "ANTHROPIC_API_KEY"]
+process  = []          # no subprocesses
 ```
 
-If a dependency's public API requires an effect that has not been granted, `vow check` refuses to build. This is checked against the dependency's signatures, so an update that quietly adds `Net` to `markdown` fails the build until someone changes the grant.
+`vow run` builds root handlers from this table. A `main` that declares an effect whose permission list is empty fails at **startup**, not at first use, and exits with status `75` (permission denied).
 
-```json
-{
-  "code": "E0501",
-  "severity": "error",
-  "message": "dependency `markdown` 2.2.0 requires effect `Net` in `markdown.render`, which is not granted in vow.toml",
-  "span": { "file": "vow.toml", "start": { "line": 2, "col": 1 }, "end": { "line": 2, "col": 31 } },
-  "expected": "! {}",
-  "found": "! {Net}",
-  "fixes": [
-    {
-      "title": "Grant `Net` to `markdown`",
-      "safety": "changes-signature",
-      "edits": [{ "file": "vow.toml", "line": 2, "col": 29, "insert": ", grants = [\"Net\"]" }]
-    },
-    {
-      "title": "Pin `markdown` to 2.1.x",
-      "safety": "changes-behaviour",
-      "edits": [{ "file": "vow.toml", "start": { "line": 2, "col": 25 }, "end": { "line": 2, "col": 28 }, "replace": "=2.1" }]
-    }
-  ],
-  "docs": "/docs/tour/capabilities.md#granting-capabilities-to-dependencies"
+## Narrowing authority
+
+Code can narrow authority before passing it down, never widen it. Capability values (`Dir`, `NetScope`, `EnvScope`, `SecretStore`) are opaque. User code cannot construct them; attempting it through FFI tricks is `V6001`. New capabilities come only from attenuating an existing one, for example `Dir.subdir(d, "uploads")` or `NetScope.restrict(n, hosts: […])`.
+
+Attenuating handlers are ordinary std functions: `Fs.rooted(dir) -> Handler<Fs>` and `Env.only(keys)`. This CLI tool narrows the root filesystem to `data/` before reading anything ([design §15.6](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)):
+
+```vow title="src/main.vow"
+import std/cli
+import std/fs
+
+type Args = { input: Path, top: Int }   // `vow run -- --input notes.txt --top 5`
+
+fn word_counts(text: String) -> Map<String, Int> {
+  List.fold(String.split(String.to_lower(text), " "), Map.empty(), fn(acc, w) {
+    if w == "" { acc } else { Map.update(acc, w, fn(n) { Option.unwrap_or(n, 0) + 1 }) }
+  })
 }
-```
 
-Granting a capability is treated as a signature change, so it is always flagged for human review.
-
-## Narrowing capabilities
-
-Some handlers restrict an effect instead of removing it. `Net.only` passes network calls through only to listed hosts:
-
-```vow
-fn charge(card: CardToken, amount: Cents) -> Receipt ! {Net, Env, Fail<PaymentError>} {
-  with Net.only(["api.stripe.com"]) {
-    Stripe.charge(card, amount)
+pub fn main() -> Unit ! {Console, Env, Fs, Fail<CliError | FsError>} {
+  let args: Args = Cli.parse(Cli.args())
+  // Narrow the root Fs handler to the data directory before touching files.
+  with Fs.rooted(Dir.subdir(Fs.root(), "data")) {
+    let text = Fs.read_text(args.input).trust(@trust("word counting cannot be influenced by content"))
+    let top = List.slice(List.sort_by(Map.entries(word_counts(text)), fn(e) { 0 - e.1 }), 0, args.top)
+    for (word, n) in top { Console.print("{word}: {n}") }
   }
 }
 ```
 
-Inside the block, a call to any other host fails with `Fail<NetDenied>`. Similar handlers are planned for files and environment variables: `Fs.only(["./uploads"])`, `Env.only(["STRIPE_KEY"])`.
+Inside the `with` block, every `Fs` operation, including those performed by functions it calls, resolves against `data/`.
+
+## Capabilities cannot escape their scope
+
+A capability, or a handler that captured one, is a **scoped value** ([design §6.3](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)). It may be passed down the call stack, stored in records that are themselves scoped, and returned from functions. It may not flow into:
+
+- a `Task.spawn` closure that outlives the current scope (detached work needs `Task.Supervisor`, which only `main`'s root handlers provide),
+- a top-level `let`,
+- a value returned from the `with` body that introduced the scope.
+
+A violation is `V6002`. Resources such as files and connections follow the same rule: the result of `Fs.with_file(path, mode, fn(file) { … })` may not contain `file` (`V6003`).
+
+## Dependencies get only what you install
+
+A package's effects are computed from its code, not hand-written. `vow deps capabilities` prints the authority graph of your dependencies ([design §6.5](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)).
+
+There is no ambient authority and no `import` that grants anything. You grant a dependency authority by installing a handler around the calls you make to it. In this sketch, `acme/thumbnails` is a hypothetical package whose `render` declares `! {Fs, Fail<FsError>}`:
+
+```vow
+import acme/thumbnails
+
+fn make_thumbnail(name: Path) -> Unit ! {Fs, Fail<FsError>} {
+  // The dependency sees only the uploads directory, whatever it tries to open.
+  with Fs.rooted(Dir.subdir(Fs.root(), "uploads")) {
+    thumbnails.render(name)
+  }
+}
+```
+
+If an update adds `Http` to `render`'s row, `make_thumbnail` no longer type checks until you decide whether to allow it. Packages cannot run code at install time: there are no build scripts in v0. A package that uses `@external` FFI bindings is marked `trusted` in the build manifest.
 
 ## Untrusted data
 
-Data from the outside world arrives as `Untrusted<T>`:
+`Untrusted<T>` wraps data from outside the trust boundary: raw request bodies, raw environment strings, file contents read as text (`Fs.read_text`), response text (`Response.text`), and free-text LLM output (`Llm.generate_text`). It supports:
 
-- HTTP request parameters, headers, and bodies,
-- environment variables read with `Env.get`,
-- file contents,
-- free text from an `Llm` call.
+| Operation                        | Result                                                            |
+| -------------------------------- | ----------------------------------------------------------------- |
+| `.validate()`                    | `Result<V, Violation>` for any refined type `V`.                  |
+| `.check(pred)`                   | `Result<T, Violation>`.                                           |
+| `.len()`                         | The length, without trusting the content.                         |
+| `.trust(@trust("reason"))`       | `T`. An explicit, greppable escape hatch.                         |
 
-Sinks that interpret strings, such as `Sql.raw`, `Shell.run`, and `Html.raw`, accept only trusted values. Passing untrusted data to them is a compile error.
+Validating against a refinement is the normal path:
 
-```vow title="src/search.vow"
-fn search(req: Request) -> Response ! {Db} {
-  let q = req.param("q")       // Untrusted<String>
-  let pattern = "%{q}%"        // still Untrusted<String>: taint propagates through interpolation
-  let rows = Db.query(Sql.raw("select * from posts where title like '{pattern}'"))
-  Response.json(200, rows)
+```vow
+type Email = String where String.len(it) <= 254 && String.contains(it, "@")
+error InvalidEmail
+
+fn read_email(raw: Untrusted<String>) -> Email ! {Fail<InvalidEmail>} {
+  match raw.validate() {      // V = Email, inferred from the return type
+    Ok(email) => email,
+    Err(_) => fail InvalidEmail,
+  }
 }
 ```
 
-```json
-{
-  "code": "E0510",
-  "severity": "error",
-  "message": "`Untrusted<String>` flows into `Sql.raw`, which requires a trusted value",
-  "span": { "file": "src/search.vow", "start": { "line": 4, "col": 23 }, "end": { "line": 4, "col": 82 } },
-  "expected": "String",
-  "found": "Untrusted<String>",
-  "fixes": [
-    {
-      "title": "Use a `sql\"...\"` literal so `pattern` becomes a bound parameter",
-      "safety": "changes-behaviour",
-      "edits": [{ "file": "src/search.vow", "start": { "line": 4, "col": 23 }, "end": { "line": 4, "col": 82 }, "replace": "sql\"select * from posts where title like {pattern}\"" }]
-    }
-  ],
-  "docs": "/docs/tour/capabilities.md#untrusted-data"
+`Untrusted<T>` is `Show`, so it can be logged. Schema-decoded values (`Request.json`, `Json.decode`, `Llm.generate`) are already validated against the target type's refinements and come back as `T`, not `Untrusted<T>`.
+
+## Tagged templates never splice
+
+`sql"…"`, `html"…"`, `url"…"`, and `shell"…"` are tagged templates ([design §4.11](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)). A tagged string desugars to a call to the tag module's `template` function, with the literal parts and the interpolated values passed separately:
+
+```text
+sql"select * from users where email = {email}"
+  ==> sql.template(["select * from users where email = ", ""], [SqlValue.from(email)])
+```
+
+Interpolated values are **never spliced raw**. Each one is type checked against the tag's parameter type. For `sql` that is `SqlValue`, which becomes a bound parameter. `html` escapes text by construction. So untrusted input is safe in a template:
+
+```vow
+import std/sql
+
+type Post = { id: Int, title: String }
+
+fn search(q: Untrusted<String>) -> List<Post> ! {Sql, Fail<SqlError>} {
+  Sql.query(sql"select id, title from posts where title = {q}")
 }
 ```
 
-The fix is the idiomatic version. Tagged literals are safe with untrusted interpolations because they never splice text: `sql"..."` turns each interpolation into a bound parameter, and `html"..."` escapes it.
-
-```vow
-let rows = Db.query(sql"select * from posts where title like {pattern}")
-let page = html"<h1>Results for {q}</h1>"
-```
-
-### Getting a trusted value
-
-There are two ways to turn `Untrusted<T>` into a trusted value.
-
-**Validate it** against a refinement. This is the normal path:
-
-```vow
-let email = req.param("email").validate(Email)   // Email ! {Fail<Invalid>}
-```
-
-**Trust it explicitly**, with a reason. This is the escape hatch:
-
-```vow
-let tag = req.header("X-Internal-Tag").trust_because("set by our own load balancer, stripped from client requests")
-```
-
-`trust_because` is easy to grep for and appears in review tooling, so every escape hatch is visible and has a stated reason.
+`q` reaches the database as a parameter value, never as SQL text. Raw-text APIs such as `Html.raw`, which takes a `TrustedHtml`, do not accept `Untrusted<T>`.
 
 ## Secrets
 
-`Env.secret` returns a `Secret<T>`:
+`Secret<T>` wraps credentials. `Env.secret("KEY")` returns `Option<Secret<String>>`. A secret is not `Show`, `Eq`, `Ord`, or `Schema`, so it cannot be interpolated, logged, snapshotted, or serialized. Interpolating one is `V2031`. Only std sinks accept it, such as `Http.bearer`:
 
 ```vow
-let key = Env.secret("STRIPE_KEY")   // Secret<String> ! {Env}
-```
-
-`Secret<T>` has no `Show`, `Json`, or `Log` instances. It cannot be interpolated into a string, printed, logged, or serialized. It can be passed to APIs that accept a `Secret`:
-
-```vow
-fn stripe_request(key: Secret<String>, body: Json) -> Response ! {Net} {
-  Http.post("https://api.stripe.com/v1/charges", body, auth: Http.bearer(key))
+pub fn call_billing(amount: Decimal) -> Unit ! {Env, Http, Log, Fail<HttpError>} {
+  let token = Env.secret("BILLING_TOKEN").expect("BILLING_TOKEN")
+  let req = Http.bearer(Request.post_json(Url.from("https://billing/charge"), amount), token)
+  Log.event(Level.Info, "charging {amount}", [])          // ok: Decimal is Show
+  // Log.event(Level.Info, "token {token}", [])            // V2031: Secret<String> is not Show
+  let _ = Http.send(req)
 }
 ```
 
-Trying to log it is a compile error:
+Adapters that genuinely need the raw value use `Secret.expose(s, @trust("reason"))`. `vow audit` lists every use with its reason. This prevents accidental disclosure, not deliberate leakage.
 
-```vow
-Log.info("using key {key}")   // E0520: `Secret<String>` cannot be interpolated
-```
+## The trusted computing base
 
-The secret value exists only inside handlers that need it, such as the HTTP client building the `Authorization` header.
+Some things are assumed, and Vow says so. The trusted computing base is the compiler, the runtime, the std root handlers, FFI bindings marked `@external`, every `@trust` site, the host platform, and later the SMT solver ([design §6.6](https://github.com/icantcodefyi/vow/blob/master/docs/design.md)). `vow build --manifest` writes this list with content hashes. Each item has the `trusted` status in the [guarantee model](/docs/tour/contracts#the-guarantee-model).
+
+Compiler fixes never widen authority silently. A fix that would change authority carries `impact: authority_change` and is never applied by `vow fix` automatically. See [Diagnostics](/docs/agents/diagnostics).
 
 ## What the compiler checks
 
-- A function performs only the effects in its row, so the row is its full set of permissions.
-- Dependencies use only granted effects. Grants are checked against every public signature, on every update.
-- Handlers that install real IO require the matching capability in the enclosing row.
-- `Untrusted<T>` never reaches a raw sink without `validate` or `trust_because`.
-- `Secret<T>` is never shown, logged, or serialized.
-- Codes for these checks are in the `E05xx` range. See [Diagnostics](/docs/agents/diagnostics).
+- A function performs only the effects in its row. Every performed operation has an installed handler.
+- `main` declares only std effects (`V6010`). Root handlers are limited by `[permissions]`; a denied permission stops the program at startup (exit `75`).
+- Capability values cannot be forged (`V6001`) or escape their scope (`V6002`). Resources cannot escape theirs (`V6003`).
+- `Secret<T>` is never shown, logged, snapshotted, or serialized (`V2031`).
+- Tagged templates receive interpolations as values, never raw text.
+
+## Not in v0
+
+- **Information-flow control.** `Secret<T>` stops accidents, not a determined leak (design §1.1).
+- **Declared capability ceilings for packages.** v0 computes and shows package authority. Mandatory ceilings in `vow.toml` for published packages are planned for v1 (design §16).
 
 ## Next
 
-[Memory model](/docs/tour/memory): values, reference counting, and in-place reuse.
+[Memory model](/docs/tour/memory): value semantics, reference counting, and in-place reuse.
