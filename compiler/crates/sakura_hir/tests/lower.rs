@@ -173,6 +173,8 @@ pub fn tools() -> Unit {
 }
 "#);
 
+snap!(agent_row_params, "main" => include_str!("inputs/agent_row_params.sakura"));
+
 snap!(hello_world, "main" => r#"
 fn greet(name: String) -> Unit ! {Console} {
   Console.print("hello, {name}")
