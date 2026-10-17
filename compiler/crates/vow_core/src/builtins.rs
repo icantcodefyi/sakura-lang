@@ -69,7 +69,7 @@ table! {
     Direct bytes_len/1, Direct bytes_get/2, Direct bytes_from_list/1, Direct string_from_bytes/1,
     Direct set_len/1,
     // Tasks and tests
-    Cps defect_catch/1, Cps test_expect_defect/1,
+    Cps defect_catch/1, Cps test_expect_defect/1, Cps property_run/7,
     // Secret, Json
     Direct secret_wrap/1, Direct secret_expose/1, Direct json_parse/1,
     // Compiler support

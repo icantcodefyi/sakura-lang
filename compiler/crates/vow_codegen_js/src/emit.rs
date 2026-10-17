@@ -30,6 +30,17 @@ pub(crate) fn module(cx: &Cx, module: &str) -> (String, String) {
             type_class(&mut w, TypeId(i as u32));
         }
     }
+    for r in &cx.m.refinements {
+        if r.module == module {
+            w.line(&format!(
+                "$rt.refined({}, {}, {}, {});",
+                js_string(&r.qualified_name()),
+                js_string(&r.name),
+                schema(cx.m, &r.base),
+                cx.def_names[r.check.index()]
+            ));
+        }
+    }
     let module_defs: Vec<&str> =
         cx.m.defs
             .iter()
@@ -157,14 +168,17 @@ fn type_class(w: &mut W, t: TypeId) {
     let cx = w.cx;
     let td = cx.m.ty(t);
     let name = &cx.type_names[t.index()];
+    let schemas = cx.m.field_schemas.get(&t);
     let module = js_string(&td.module);
     match &td.kind {
         TypeKind::Variant { ctors } => {
             w.line(&format!("export class {name} extends $rt.Variant {{}}"));
             let cs: Vec<String> = ctors
                 .iter()
-                .map(|c| {
-                    let hs: Vec<String> = c.fields.iter().map(|f| schema(cx.m, f)).collect();
+                .enumerate()
+                .map(|(ci, c)| {
+                    let tys = schemas.map_or(&c.fields, |s| &s[ci]);
+                    let hs: Vec<String> = tys.iter().map(|f| schema(cx.m, f)).collect();
                     format!("[{}, [{}]]", js_string(&c.name), hs.join(", "))
                 })
                 .collect();
@@ -197,12 +211,13 @@ fn type_class(w: &mut W, t: TypeId) {
             w.line("}");
             let fs: Vec<String> = fields
                 .iter()
-                .map(|f| {
+                .enumerate()
+                .map(|(fi, f)| {
                     format!(
                         "[{}, {}, {}]",
                         js_string(&f.name),
                         js_string(&prop(&f.name)),
-                        schema(cx.m, &f.ty)
+                        schema(cx.m, schemas.map_or(&f.ty, |s| &s[0][fi]))
                     )
                 })
                 .collect();
@@ -263,6 +278,11 @@ pub(crate) fn schema(m: &Module, ty: &Ty) -> String {
                 .collect();
             format!("[\"W\", [{}]]", ids.join(", "))
         }
+        Ty::Refined(r, args) => format!(
+            "[\"A\", {}, [{}]]",
+            js_string(&m.refinements[r.index()].qualified_name()),
+            all(args)
+        ),
         Ty::Var(i) if *i != u32::MAX => format!("[\"V\", {i}]"),
         Ty::Opaque(name) => format!("[\"X\", {}]", js_string(name)),
         Ty::Never | Ty::Fn(_) | Ty::Handler(_) | Ty::Instance(_) | Ty::Var(_) => "null".into(),
@@ -1034,13 +1054,6 @@ impl<'a> FnEmit<'a> {
             PrimOp::Le(t) => cmp(t, "<="),
             PrimOp::Gt(t) => cmp(t, ">"),
             PrimOp::Ge(t) => cmp(t, ">="),
-            PrimOp::Arbitrary(ty) => format!(
-                "$rt.arbitrary({}, {}, {}, {})",
-                self.schema(ty),
-                a[0],
-                a[1],
-                a[2]
-            ),
             PrimOp::Schema(ty) => self.schema(ty),
             PrimOp::Show(ty) => match ty {
                 Ty::String => a[0].clone(),

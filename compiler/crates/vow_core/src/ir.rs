@@ -48,6 +48,10 @@ id!(
     ContractId
 );
 id!(
+    /// Index into [`Module::refinements`].
+    RefinementId
+);
+id!(
     /// Index into [`FnDef::locals`]. Bound exactly once per function.
     Local
 );
@@ -74,6 +78,11 @@ pub struct Module {
     pub types: Vec<TypeDef>,
     pub effects: Vec<EffectDef>,
     pub contracts: Vec<ContractDecl>,
+    /// Refined types (`type Percent = Int where …`) that appear in schemas.
+    pub refinements: Vec<Refinement>,
+    /// Schema types of a type's fields where they differ from the field types (they mention
+    /// a refined type): a record's fields, or each constructor's payload of a variant.
+    pub field_schemas: std::collections::BTreeMap<TypeId, Vec<Vec<Ty>>>,
     pub tests: Vec<Test>,
     /// `main`, if this unit is a program.
     pub entry: Option<DefId>,
@@ -98,6 +107,23 @@ impl Module {
             .iter()
             .position(|t| t.builtin.as_deref() == Some(name))
             .map(|i| TypeId(i as u32))
+    }
+}
+
+/// A refined type as it appears in schemas (`Ty::Refined`); values are their `base`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Refinement {
+    pub name: String,
+    pub module: String,
+    /// The base type, over the refined type's parameters (`Ty::Var(i)`); may itself be refined.
+    pub base: Ty,
+    /// `fn(base) -> Bool`: the `where` predicate.
+    pub check: DefId,
+}
+
+impl Refinement {
+    pub fn qualified_name(&self) -> String {
+        format!("{}::{}", self.module, self.name)
     }
 }
 
@@ -218,6 +244,9 @@ pub enum Ty {
     Instance(EffectId),
     /// A runtime-provided opaque type (`Instant`, `Duration`, `Uuid`, `Range`).
     Opaque(String),
+    /// A refined type with arguments. Only in schema positions ([`PrimOp::Schema`],
+    /// [`Module::field_schemas`]); everywhere else refined types are their base.
+    Refined(RefinementId, Vec<Ty>),
     /// A type variable (rigid inside its definition).
     Var(u32),
 }
@@ -478,8 +507,6 @@ pub enum PrimOp {
     Ge(CmpTy),
     /// Derived `Show` of the operand, rendered as it appears inside interpolation.
     Show(Ty),
-    /// A pseudo-random value of the type for property tests, from `(seed, run, param)`.
-    Arbitrary(Ty),
     /// The runtime schema of a type (ABI.md §7), passed to builtins whose type parameters are
     /// bounded by `Show` or `Schema` (`json_encode`, `json_decode`).
     Schema(Ty),
@@ -490,7 +517,6 @@ impl PrimOp {
         use PrimOp::*;
         match self {
             IntNeg | FloatNeg | Not | Show(_) => 1,
-            Arbitrary(_) => 3,
             Schema(_) => 0,
             _ => 2,
         }

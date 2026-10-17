@@ -1395,10 +1395,15 @@ function validUtf8Prefix(b) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Property-test generation. `rep`: "U" "B" "I" "F" "S", ["L", r] list, ["E", r] set,
-// ["M", rk, rv] map, ["T", r…] tuple, ["O", r] Option, ["R", ra, re] Result; null has no
-// generator. Values grow with `run` (0-based). ponytail: no shrinking, no user types (derive
-// generators from `Schema` in M3).
+// Property tests (design §7.4, §10.6). Inputs are generated from the parameters' schemas
+// (ABI.md §7), including records, variants, error unions and refined types (whose `where` is
+// checked by running `T$check`); sizes grow with the run number. A failing input is shrunk
+// greedily (classic shrinking: smaller candidates per value, keep the first that still fails)
+// and reported once through `Test.record_failure`.
+
+const RUNS = 100;
+const MAX_SHRINK_TRIES = 2000;
+const DISCARD = Object.freeze({ discard: true });
 
 function mulberry(state) {
   let t = (state + 0x6d2b79f5) | 0;
@@ -1407,36 +1412,271 @@ function mulberry(state) {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 }
 
-export function arbitrary(rep, seed, run, param) {
+/** Substitute type parameters (`["V", i]`) of schema `s` with `env`. */
+function bindVars(s, env) {
+  if (s === null || typeof s === "string") return s;
+  switch (s[0]) {
+    case "V":
+      return env?.[s[1]] ?? null;
+    case "A":
+      return ["A", s[1], s[2].map((a) => bindVars(a, env))];
+    case "W":
+    case "X":
+      return s;
+  }
+  return [s[0], ...s.slice(1).map((a) => bindVars(a, env))];
+}
+
+/** Does `v` satisfy refined type `r`? Runs its pure `where` predicate as a child task. */
+function satisfies(r, v) {
+  const o = runTask(r.check, [v]);
+  if (o instanceof Promise) throw internal(`the where clause of ${r.name} suspended`);
+  if (o.kind === "defect") throw o.error;
+  return o.kind === "ok" && o.value === true;
+}
+
+const CHARS = [..."abcxyz AZ09_-é€😀\n"];
+
+/** A pseudo-random value of schema `s` for (seed, run, param); throws DISCARD when a refined
+ * type finds no satisfying value. */
+function arbitrary(s, seed, run, param) {
   let state = Math.imul(seed ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(run + 1, 0xc2b2ae35) ^ param;
   const next = () => mulberry((state = (state + 0x6d2b79f5) | 0));
   const below = (n) => Math.floor(next() * n);
-  const size = run + 1;
-  const chars = "abcxyz AZ09_-é€😀\n";
-  const gen = (r) => {
-    if (r === "U") return undefined;
-    if (r === "B") return next() < 0.5;
-    if (r === "I") return next() < 0.1 ? [0, 1, -1][below(3)] : below(20 * size + 1) - 10 * size;
-    if (r === "F") return next() < 0.1 ? [0, -0.5, 1.5][below(3)] : (next() - 0.5) * 20 * size;
-    if (r === "S") return Array.from({ length: below(Math.min(size, 16) + 1) }, () => [...chars][below([...chars].length)]).join("");
-    if (r === null) throw internal("no generator for this property parameter type (needs Schema, M3)");
-    const len = () => below(Math.min(size, 24) + 1);
-    switch (r[0]) {
-      case "L":
-        return list(Array.from({ length: len() }, () => gen(r[1])));
-      case "E":
-        return set_of(list(Array.from({ length: len() }, () => gen(r[1]))));
-      case "M":
-        return map_of(list(Array.from({ length: len() }, () => [gen(r[1]), gen(r[2])])));
-      case "T":
-        return r.slice(1).map(gen);
-      case "A":
-        if (r[1] === "std::option::Option") return next() < 0.25 ? None : Some(gen(r[2][0]));
-        if (r[1] === "std::result::Result") return next() < 0.5 ? Ok(gen(r[2][0])) : Err(gen(r[2][1]));
+  const len = (size) => below(Math.min(size, 24) + 1);
+  const gen = (s, size) => {
+    if (s === "U") return undefined;
+    if (s === "B") return next() < 0.5;
+    if (s === "I") return next() < 0.1 ? [0, 1, -1][below(3)] : below(20 * size + 1) - 10 * size;
+    if (s === "F") return next() < 0.1 ? [0, -0.5, 1.5][below(3)] : (next() - 0.5) * 20 * size;
+    if (s === "S") {
+      return Array.from({ length: below(Math.min(size, 16) + 1) }, () => CHARS[below(CHARS.length)]).join("");
     }
-    throw internal(`bad generator ${JSON.stringify(r)}`);
+    if (s === "Y") return Uint8Array.from({ length: len(size) }, () => below(256));
+    if (s === null || typeof s === "string") {
+      throw internal("no generator for this property parameter type");
+    }
+    const inner = Math.max(0, size >> 1);
+    switch (s[0]) {
+      case "L":
+        return list(Array.from({ length: len(size) }, () => gen(s[1], inner)));
+      case "E":
+        return set_of(list(Array.from({ length: len(size) }, () => gen(s[1], inner))));
+      case "M":
+        return map_of(list(Array.from({ length: len(size) }, () => [gen(s[1], inner), gen(s[2], inner)])));
+      case "T":
+        return s.slice(1).map((x) => gen(x, size));
+      case "W":
+        return gen(["A", s[1][below(s[1].length)], []], size);
+      case "A":
+        return named(s[1], s[2], size, inner);
+    }
+    throw internal(`no generator for ${JSON.stringify(s)}`);
   };
-  return gen(rep);
+  const named = (id, args, size, inner) => {
+    const r = refinements.get(id);
+    if (r !== undefined) {
+      const base = bindVars(r.base, args);
+      for (let i = 0; i < 100; i++) {
+        const v = gen(base, size + (i >> 2));
+        if (satisfies(r, v)) return v;
+      }
+      throw DISCARD;
+    }
+    const cls = std(id);
+    const t = cls.prototype.$t;
+    if (t.kind === "record") return new cls(...t.h.map((h) => gen(bindVars(h, args), inner)));
+    // Variants: Option-like types lean to their payload; at size 0 prefer constructors without
+    // fields so recursive types stay finite.
+    let choices = t.ctors.map((_, i) => i);
+    if (size <= 0) {
+      const fewest = Math.min(...t.ctors.map((c) => c.h.length));
+      choices = choices.filter((i) => t.ctors[i].h.length === fewest);
+    }
+    const tag = choices[below(choices.length)];
+    return new cls(tag, t.ctors[tag].h.map((h) => gen(bindVars(h, args), inner)));
+  };
+  return gen(s, run + 1);
+}
+
+/** Candidate simplifications of `v` (each a valid value of schema `s`), simplest first. */
+function shrinks(s, v) {
+  if (s === "I") {
+    if (v === 0) return [];
+    const out = [0];
+    if (v < 0) out.push(-v);
+    for (let i = Math.trunc(v / 2); i !== 0; i = Math.trunc(i / 2)) out.push(v - i);
+    return out;
+  }
+  if (s === "F") {
+    if (v === 0 || !Number.isFinite(v)) return Number.isNaN(v) || v === 0 ? [] : [0];
+    const out = [0];
+    if (Math.trunc(v) !== v) out.push(Math.trunc(v));
+    if (Math.abs(v) > 1) out.push(Math.trunc(v / 2));
+    return out;
+  }
+  if (s === "B") return v ? [false] : [];
+  if (s === "S") return shrinkSeq([...v], null).map((cs) => cs.join(""));
+  if (s === "Y") return shrinkSeq([...v], "I").map((bs) => Uint8Array.from(bs));
+  if (s === null || typeof s === "string") return [];
+  switch (s[0]) {
+    case "L":
+      return shrinkSeq(items(v), s[1]).map(list);
+    case "E":
+      return shrinkSeq(entries(v), null).map((xs) => set_of(list(xs)));
+    case "M": {
+      const es = entries(v);
+      const vals = shrinkSeq(es, null);
+      for (let i = 0; i < Math.min(es.length, 8); i++) {
+        for (const x of shrinks(s[2], es[i][1]).slice(0, 4)) vals.push(replaced(es, i, [es[i][0], x]));
+      }
+      return vals.map((xs) => map_of(list(xs)));
+    }
+    case "T": {
+      const out = [];
+      for (let i = 0; i < v.length; i++) {
+        for (const x of shrinks(s[i + 1], v[i])) out.push(replaced(v, i, x));
+      }
+      return out;
+    }
+    case "W":
+      return shrinks(["A", v.$t.id, []], v);
+    case "A":
+      return shrinkNamed(s[1], s[2], v);
+  }
+  return [];
+}
+
+function shrinkNamed(id, args, v) {
+  const r = refinements.get(id);
+  if (r !== undefined) return shrinks(bindVars(r.base, args), v).filter((x) => satisfies(r, x));
+  const cls = std(id);
+  const t = cls.prototype.$t;
+  const out = [];
+  if (t.kind === "record") {
+    const fs = t.props.map((p) => v[p]);
+    for (let i = 0; i < fs.length; i++) {
+      for (const x of shrinks(bindVars(t.h[i], args), fs[i])) out.push(new cls(...replaced(fs, i, x)));
+    }
+    return out;
+  }
+  // Earlier constructors without fields, then payloads of the same type, then smaller payloads.
+  for (let c = 0; c < v.tag; c++) if (t.ctors[c].h.length === 0) out.push(new cls(c, []));
+  const hs = t.ctors[v.tag].h.map((h) => bindVars(h, args));
+  hs.forEach((h, i) => {
+    if (h !== null && h[0] === "A" && h[1] === id) out.push(v.fields[i]);
+  });
+  for (let i = 0; i < hs.length; i++) {
+    for (const x of shrinks(hs[i], v.fields[i])) out.push(new cls(v.tag, replaced(v.fields, i, x)));
+  }
+  return out;
+}
+
+/** A copy of array `xs` with element `i` replaced by `x` / removed. */
+function replaced(xs, i, x) {
+  const c = xs.slice();
+  c[i] = x;
+  return c;
+}
+function removed(xs, i) {
+  return xs.slice(0, i).concat(xs.slice(i + 1));
+}
+
+/** Shorter sequences (empty, halves, one element removed), then elements shrunk (if `e`). */
+function shrinkSeq(xs, e) {
+  const n = xs.length;
+  if (n === 0) return [];
+  const out = [[]];
+  if (n > 1) out.push(xs.slice(n >> 1), xs.slice(0, n >> 1));
+  for (let i = 0; i < Math.min(n, 32); i++) if (n > 1) out.push(removed(xs, i));
+  if (e !== null) {
+    for (let i = 0; i < Math.min(n, 16); i++) {
+      for (const x of shrinks(e, xs[i]).slice(0, 6)) out.push(replaced(xs, i, x));
+    }
+  } else if (typeof xs[0] === "string") {
+    for (let i = 0; i < Math.min(n, 16); i++) if (xs[i] !== "a") out.push(replaced(xs, i, "a"));
+  }
+  return out;
+}
+
+/**
+ * Run a `property` (lowered to `case(params…) -> Bool`, false when `requires` discards the
+ * input): RUNS generated cases, each as a child task under a `Test` handler that collects its
+ * failures (ops `rec`/`fails` of `nops`; the others forward to the outer `Test`). The first
+ * failing case (a recorded failure, an uncaught `Fail` or a defect) is shrunk and reported once.
+ */
+export function property_run(seed, schemas, names, kase, rec, fails, nops, ctx, k) {
+  const TEST = "std::test::Test";
+  const exec = (values, then) => {
+    const msgs = [];
+    const clauses = Array.from({ length: nops }, (_, j) => {
+      if (j === rec) {
+        return (_i, msg, _c, kk) => {
+          msgs.push(msg);
+          return ret(kk, undefined);
+        };
+      }
+      if (j === fails) return (_i, _c, kk) => ret(kk, msgs.length);
+      return (_i, ...rest) => {
+        const kk = rest.pop();
+        const c = rest.pop();
+        return perform(c, TEST, j, rest, kk);
+      };
+    });
+    const frames = { e: TEST, i: { e: TEST, c: clauses, s: [] }, n: ctx.h };
+    const done = (o) => {
+      if (o.kind === "ok" && o.value === false) return then({ kind: "discard" });
+      if (o.kind === "fail") msgs.push(`failed with ${show(o.error)}`);
+      if (o.kind === "defect") msgs.push(`defect ${o.code}: ${o.message}`);
+      return then(msgs.length === 0 ? { kind: "pass" } : { kind: "fail", why: msgs.join("; ") });
+    };
+    const o = runTask(kase, values, frames);
+    return o instanceof Promise ? suspend(o, done) : done(o);
+  };
+  const shown = (vs) => vs.map((v, i) => `${names[i]} = ${showIn(v, schemas[i], null)}`).join(", ");
+  const report = (msg) => perform(ctx, TEST, rec, [msg], k);
+  let discards = 0;
+  let tries = 0;
+  const shrink = (first, best, why, shrunk) => {
+    const cands = [];
+    for (let p = 0; p < best.length; p++) {
+      for (const c of shrinks(schemas[p], best[p])) cands.push(replaced(best, p, c));
+    }
+    const attempt = (j) => {
+      if (j >= cands.length || tries >= MAX_SHRINK_TRIES) {
+        const steps = `${shrunk} step${shrunk === 1 ? "" : "s"}`;
+        const from = shrunk === 0 ? "" : ` (shrunk in ${steps} from ${shown(first)})`;
+        return report(`property falsified by ${shown(best)}: ${why}${from}`);
+      }
+      tries++;
+      return exec(cands[j], (r) =>
+        r.kind === "fail"
+          ? bounce(shrink, [first, cands[j], r.why, shrunk + 1])
+          : bounce(attempt, [j + 1]),
+      );
+    };
+    return attempt(0);
+  };
+  const run = (i) => {
+    if (i >= RUNS) {
+      if (discards < RUNS) return ret(k, undefined);
+      return report(`property gave up: all ${RUNS} generated inputs were discarded by requires or where`);
+    }
+    let values;
+    try {
+      values = schemas.map((s, p) => arbitrary(s, seed, i, p));
+    } catch (e) {
+      if (e !== DISCARD) throw e;
+      discards++;
+      return bounce(run, [i + 1]);
+    }
+    return exec(values, (r) => {
+      if (r.kind === "fail") return shrink(values, values, r.why, 0);
+      if (r.kind === "discard") discards++;
+      return bounce(run, [i + 1]);
+    });
+  };
+  return run(0);
 }
 
 // ---------------------------------------------------------------------------------------------

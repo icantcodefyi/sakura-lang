@@ -160,3 +160,98 @@ pub fn main() -> Unit ! {Console} {
         "{js}"
     );
 }
+
+/// The single failure line a property test reports (`vow test` stdout).
+fn falsified(name: &str, src: &str) -> String {
+    let r = common::test(name, src).unwrap();
+    assert_eq!(r.code, 3, "{}{}", r.stdout, r.stderr);
+    let line = r
+        .stdout
+        .lines()
+        .find(|l| l.contains("property falsified by"))
+        .unwrap_or_else(|| panic!("no falsified line in {}", r.stdout));
+    line.to_owned()
+}
+
+#[test]
+fn properties_shrink_to_minimal_counterexamples() {
+    let line = falsified(
+        "shrink_int",
+        r#"property "small"(x: Int) { expect(x < 50) }"#,
+    );
+    assert!(line.contains("property falsified by x = 50: "), "{line}");
+    let line = falsified(
+        "shrink_list",
+        r#"property "short"(xs: List<Int>) { expect(List.len(xs) < 3) }"#,
+    );
+    assert!(line.contains("falsified by xs = [0, 0, 0]: "), "{line}");
+    let line = falsified(
+        "shrink_defect",
+        r#"property "no zero"(x: Int, s: String) { expect(100 / x != 1000) }"#,
+    );
+    assert!(
+        line.contains(r#"falsified by x = 0, s = "": defect D002"#),
+        "{line}"
+    );
+}
+
+#[test]
+fn derived_generators_cover_records_variants_and_recursion() {
+    let line = falsified(
+        "gen_record",
+        r#"type Point = { x: Int, y: Int }
+property "near origin"(p: Point) { expect(p.x + p.y < 30) }"#,
+    );
+    let nums: Vec<i64> = line
+        .split("Point { x: ")
+        .nth(1)
+        .and_then(|rest| rest.split(" }").next())
+        .map(|s| {
+            s.split(", y: ")
+                .map(|n| n.trim().parse().unwrap())
+                .collect()
+        })
+        .unwrap_or_else(|| panic!("{line}"));
+    assert_eq!(nums.iter().sum::<i64>(), 30, "{line}");
+
+    let line = falsified(
+        "gen_tree",
+        r#"type Tree = Leaf | Node(Tree, Int, Tree)
+fn depth(t: Tree) -> Int {
+  match t { Leaf => 0, Node(l, _, r) => 1 + Int.max(depth(l), depth(r)) }
+}
+property "shallow"(t: Tree) { expect(depth(t) < 3) }"#,
+    );
+    let shown = line
+        .split("t = ")
+        .nth(1)
+        .unwrap()
+        .split(": ")
+        .next()
+        .unwrap();
+    assert_eq!(shown.matches("Node(").count(), 3, "{line}");
+    assert!(
+        !shown.contains(|c: char| ('1'..='9').contains(&c)),
+        "{line}"
+    );
+}
+
+#[test]
+fn refined_parameters_respect_where_and_shrink_inside_it() {
+    let src = r#"type Percent = Int where it >= 0 && it <= 100
+property "in range"(p: Percent) { expect(p >= 0 && p <= 100) }
+property "requires discards"(x: Int) requires x > 0 { expect(x > 0) }
+"#;
+    let r = common::test("refined_ok", src).unwrap();
+    assert_eq!(r.code, 0, "{}{}", r.stdout, r.stderr);
+    let line = falsified(
+        "refined_shrink",
+        r#"type Percent = Int where it >= 0 && it <= 100
+type Grade = { score: Percent, name: String }
+property "low"(g: Grade) { expect(g.score < 50) }"#,
+    );
+    assert!(
+        line.contains(r#"falsified by g = Grade { score: 50, name: "" }"#),
+        "{line}"
+    );
+}

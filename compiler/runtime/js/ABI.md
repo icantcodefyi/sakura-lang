@@ -138,7 +138,7 @@ caller. `std/test`'s `expect_defect` is built on it.
   returns its outcome, or a `Promise` of it if the task suspended.
 - Tests: `__tests__.js` exports `tests = [{ name, module, run }]` (source order; `run` is a
   CPS function of the seed that installs the deterministic defaults of design §5.8 and runs the
-  body; `property` blocks run 100 generated cases) and `effects = { effectId: [opName, …] }`
+  body) and `effects = { effectId: [opName, …] }`
   (operation names in clause order), so a runner can build the `std::test::Test` handler by
   name and pass it as `frames` to `runTask(run, [seed], frames)`.
 - Programs: the emitter writes `__main__.js`:
@@ -219,9 +219,20 @@ therefore measured at n = 20,000.
 `vow_codegen_js` checks the table against this module's exports. Host effects are handlers
 written in std over primitives (`console_print`, `clock_now_ms`, `clock_sleep_ms` (suspends),
 `random_int`, `env_get`, `log_write`, …) except `console_host`, which is a handler value.
-`$rt.arbitrary(rep, seed, run, param)` generates property-test inputs from a type description
-(`PrimOp::Arbitrary`): primitives, lists, sets, maps, tuples, `Option`, `Result`; no shrinking
-and no user types until `Schema` lands (M3).
+A `property` lowers to `case(params…) -> Bool` (`false`: a `requires` clause discarded the
+input, the body did not run) and a test body calling
+`$rt.property_run(seed, schemas, names, case, record_op, failures_op, op_count)`. It runs 100
+cases, each as a child task under a `Test` handler that collects that case's failures (other
+`Test` operations forward to the runner's handler). Inputs come from the parameters' schemas
+(section 7): primitives, collections, tuples, records, variants (constructors without fields
+are preferred as the size runs out, so recursive types stay finite), error unions, and refined
+types, whose `where` is checked by running the emitted `T$check` (`$rt.refined(id, name, base,
+check)`; values are retried up to 100 times, then the case is discarded). The first failing case
+(a recorded failure, an uncaught `Fail` or a defect) is shrunk greedily (integers toward 0,
+sequences shorter then element-wise, earlier field-less constructors and same-type payloads for
+variants, field-wise for records, candidates of refined types filtered by `where`; at most 2,000
+attempts) and reported once: `property falsified by x = 50: expected true, got false (shrunk in
+2 steps from x = 132)`. If every case is discarded the property fails with "gave up".
 
 ## 9. Core deviations from design §13.2
 

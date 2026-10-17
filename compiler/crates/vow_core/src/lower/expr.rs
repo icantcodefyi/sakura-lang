@@ -124,159 +124,127 @@ impl<'a, 'p> FnLower<'a, 'p> {
         }
     }
 
-    /// A `property` block as `fn(seed)`: 100 runs with generated parameters, skipping runs
-    /// whose `requires` fail, stopping at the first run that records a failure (and recording
-    /// the falsifying input).
+    /// A `property` block as `fn(seed)` calling `$rt.property_run` (ABI.md §6) with each
+    /// parameter's schema and `property$case(params…) -> Bool`, which returns `false` without
+    /// running the body when a `requires` clause does not hold (a discarded case). The runtime
+    /// generates inputs, shrinks a failing one and records one failure through `Test`.
     pub(crate) fn lower_property(
         l: &'a mut Lower<'p>,
         def: hir::DefId,
         body_id: hir::BodyId,
         id: DefId,
     ) -> FnDef {
-        const RUNS: i64 = 100;
         let hdef = l.p.def(def);
         let pos = l.pos(def.module, hdef.range);
         let test_eff =
             l.p.find_module("std", "test")
                 .and_then(|m| l.p.lookup(m, "Test"))
                 .map(|d| l.effect(d));
-        let mut s = FnLower::new(l, def.module, body_id, "property".into());
-        let seed = s.b.local("seed", Ty::Int);
-        let Some(test_eff) = test_eff else {
-            let r = s.unsupported_at(hdef.range, "a property without std/test");
-            let body = s.finish_body(r);
-            return s.into_def(id, vec![seed], Ty::Unit, body, pos);
-        };
-        let op = |s: &Self, name: &str| s.l.m.effect(test_eff).op_index(name).unwrap_or(0);
-        let (failures, record) = (op(&s, "failures"), op(&s, "record_failure"));
-        let head = s.b.label();
-        let exit = s.b.label();
-        let i = s.b.local("run", Ty::Int);
-        let body = s.body;
-        let code = s.scoped(|s| {
-            let more = s.bind(
-                "more",
-                Ty::Bool,
-                Bind::Prim(PrimOp::Lt(CmpTy::Int), vec![local(i), int(RUNS)]),
-                pos,
-            );
-            let then = s.scoped(|s| {
-                let next = s.b.label();
-                let next_code = s.scoped(|s| {
-                    let i2 = s.bind(
-                        "run",
-                        Ty::Int,
-                        Bind::Prim(PrimOp::IntAdd, vec![local(i), int(1)]),
-                        pos,
-                    );
-                    Expr::Jump(head, vec![i2])
-                });
-                s.blk.join(next, vec![], next_code);
-                let mut shown = Vec::new();
-                for (k, &p) in body.params.iter().enumerate() {
-                    let ty = s.local_ty(p);
-                    let v = s.bind(
-                        &body.locals[p].name.clone(),
-                        ty.clone(),
-                        Bind::Prim(
-                            PrimOp::Arbitrary(ty.clone()),
-                            vec![local(seed), local(i), int(k as i64)],
-                        ),
-                        pos,
-                    );
-                    s.env.insert(p, v.clone());
-                    let text = s.bind(
-                        "shown",
-                        Ty::String,
-                        Bind::Prim(PrimOp::Show(ty), vec![v]),
-                        pos,
-                    );
-                    let name = Atom::Lit(Lit::String(format!("{} = ", body.locals[p].name)));
-                    let item = s.concat(name, text, pos);
-                    shown.push(item);
-                }
-                let mut ok = Atom::Lit(Lit::Bool(true));
-                for c in &body.requires {
-                    let e = c.expr;
-                    match s.if_(
-                        ok,
-                        Ty::Bool,
-                        |s| s.expr(e),
-                        |_| Some(Atom::Lit(Lit::Bool(false))),
-                    ) {
-                        Some(v) => ok = v,
-                        None => return Expr::Ret(unit()),
-                    }
-                }
-                let run = s.scoped(|s| {
-                    let n0 = s.bind(
-                        "before",
-                        Ty::Int,
-                        Bind::Perform(test_eff, failures, vec![]),
-                        pos,
-                    );
-                    if let Some(v) = body.value {
-                        s.expr(v);
-                    }
-                    let n1 = s.bind(
-                        "after",
-                        Ty::Int,
-                        Bind::Perform(test_eff, failures, vec![]),
-                        pos,
-                    );
-                    let failed = s.bind(
-                        "failed",
-                        Ty::Bool,
-                        Bind::Prim(PrimOp::Gt(CmpTy::Int), vec![n1, n0]),
-                        pos,
-                    );
-                    let report = s.scoped(|s| {
-                        let mut msg = Atom::Lit(Lit::String("property falsified by ".into()));
-                        for (j, item) in shown.iter().enumerate() {
-                            if j > 0 {
-                                msg = s.concat(msg, Atom::Lit(Lit::String(", ".into())), pos);
-                            }
-                            msg = s.concat(msg, item.clone(), pos);
-                        }
-                        s.bind(
-                            "r",
-                            Ty::Unit,
-                            Bind::Perform(test_eff, record, vec![msg]),
-                            pos,
-                        );
-                        Expr::Jump(exit, vec![])
-                    });
-                    Expr::If {
-                        cond: failed,
-                        then: Box::new(report),
-                        els: Box::new(Expr::Jump(next, vec![])),
-                    }
-                });
-                Expr::If {
-                    cond: ok,
-                    then: Box::new(run),
-                    els: Box::new(Expr::Jump(next, vec![])),
-                }
+        let module = l.module_name(def.module);
+        let case_name = format!("{}$case", l.m.defs[id.index()].name);
+        let case = l.push_placeholder(&case_name, module);
+        let mut c = FnLower::new(l, def.module, body_id, "property".into());
+        let body = c.body;
+        let params: Vec<Local> = body.params.iter().map(|&p| c.param(p)).collect();
+        let schemas: Vec<Ty> = body
+            .params
+            .iter()
+            .map(|&p| match c.typed.locals.get(p) {
+                Some(&t) => c.l.schema_ty(t),
+                None => Ty::Var(u32::MAX),
+            })
+            .collect();
+        let names: Vec<String> = body
+            .params
+            .iter()
+            .map(|&p| body.locals[p].name.clone())
+            .collect();
+        let mut ok = Some(Atom::Lit(Lit::Bool(true)));
+        for cl in &body.requires {
+            let e = cl.expr;
+            ok = ok.and_then(|v| {
+                c.if_(
+                    v,
+                    Ty::Bool,
+                    |s| s.predicate(e),
+                    |_| Some(Atom::Lit(Lit::Bool(false))),
+                )
             });
-            Expr::If {
-                cond: more,
-                then: Box::new(then),
-                els: Box::new(Expr::Jump(exit, vec![])),
-            }
+        }
+        let ran = ok.and_then(|v| {
+            c.if_(
+                v,
+                Ty::Bool,
+                |s| {
+                    if let Some(e) = body.value {
+                        s.expr(e)?;
+                    }
+                    Some(Atom::Lit(Lit::Bool(true)))
+                },
+                |_| Some(Atom::Lit(Lit::Bool(false))),
+            )
         });
-        let loop_ = Expr::LetJoin {
-            label: head,
-            params: vec![i],
-            join: Box::new(code),
-            body: Box::new(Expr::Jump(head, vec![int(0)])),
+        let code = c.finish_body(ran);
+        let case_def = c.into_def(case, params, Ty::Bool, code, pos);
+        l.m.defs[case.index()] = case_def;
+
+        let mut b = FnBuilder::new();
+        let seed = b.local("seed", Ty::Int);
+        let mut blk = Block::new();
+        let Some(test_eff) = test_eff else {
+            l.unsupported(def.module, hdef.range, "a property without std/test");
+            return FnDef {
+                params: vec![seed],
+                locals: b.locals,
+                ..l.m.defs[id.index()].clone()
+            };
         };
-        let body = Expr::LetJoin {
-            label: exit,
-            params: vec![],
-            join: Box::new(Expr::Ret(unit())),
-            body: Box::new(loop_),
-        };
-        s.into_def(id, vec![seed], Ty::Unit, body, pos)
+        let eff = l.m.effect(test_eff);
+        let op = |name: &str| int(eff.op_index(name).map_or(-1, i64::from));
+        let (record, failures, nops) = (op("record_failure"), op("failures"), eff.ops.len() as i64);
+        let mut reps = Vec::new();
+        for ty in &schemas {
+            let r = b.local("schema", Ty::Unit);
+            blk.push(r, Bind::Prim(PrimOp::Schema(ty.clone()), vec![]));
+            reps.push(local(r));
+        }
+        let rs = b.local("schemas", Ty::Tuple(vec![Ty::Unit; reps.len()]));
+        blk.push(rs, Bind::Alloc(Alloc::Tuple, reps));
+        let ns = b.local("names", Ty::Tuple(vec![Ty::String; names.len()]));
+        blk.push(
+            ns,
+            Bind::Alloc(Alloc::Tuple, names.iter().map(|n| str_(n)).collect()),
+        );
+        let r = b.local("r", Ty::Unit);
+        blk.push_at(
+            r,
+            Bind::Call(
+                builtin("property_run"),
+                vec![
+                    local(seed),
+                    local(rs),
+                    local(ns),
+                    Atom::Global(case),
+                    record,
+                    failures,
+                    int(nops),
+                ],
+            ),
+            pos,
+        );
+        FnDef {
+            name: l.m.defs[id.index()].name.clone(),
+            module: l.module_name(def.module),
+            kind: FnKind::Top { export: false },
+            captures: vec![],
+            params: vec![seed],
+            locals: b.locals,
+            ret: Ty::Unit,
+            row: Row::empty(),
+            row_vars: vec![],
+            pos,
+            body: blk.finish(Expr::Ret(local(r))),
+        }
     }
 
     fn into_def(
@@ -300,11 +268,6 @@ impl<'a, 'p> FnLower<'a, 'p> {
             pos,
             body,
         }
-    }
-
-    fn unsupported_at(&mut self, range: TextRange, what: &str) -> Option<Atom> {
-        self.l.unsupported(self.module, range, what);
-        self.terminate(Expr::Ret(unit()))
     }
 
     /// `T.from(x)` (defect `D010` unless `where` holds) or `T.validate(x)`.
@@ -389,6 +352,25 @@ impl<'a, 'p> FnLower<'a, 'p> {
             pos,
             body,
         }
+    }
+
+    /// `T$check(it) -> Bool`: refined type `ty_def`'s `where` predicate, for schemas.
+    pub(crate) fn lower_refinement_check(
+        l: &'a mut Lower<'p>,
+        ty_def: hir::DefId,
+        pred: hir::BodyId,
+        id: DefId,
+    ) -> FnDef {
+        let pos = l.pos(ty_def.module, l.p.def(ty_def).range);
+        let name = l.p.def(ty_def).name.clone();
+        let mut s = FnLower::new(l, ty_def.module, pred, name);
+        let params: Vec<Local> = s.body.params.clone().iter().map(|&p| s.param(p)).collect();
+        let cond = match s.body.value {
+            Some(v) => s.predicate(v),
+            None => Some(Atom::Lit(Lit::Bool(true))),
+        };
+        let body = s.finish_body(cond);
+        s.into_def(id, params, Ty::Bool, body, pos)
     }
 
     /// `Violation { type_name, clause, value_summary }` (design §4.3) for `validate`.
@@ -587,7 +569,16 @@ impl<'a, 'p> FnLower<'a, 'p> {
 
     /// A checker type in this (possibly specialized) function.
     fn conv(&mut self, t: vow_types::TypeId) -> Ty {
-        super::subst_params(&self.l.ty(t), &self.subst)
+        let ty = self.l.ty(t);
+        if self.subst.is_empty() {
+            return ty;
+        }
+        self.l.erase(&super::subst_params(&ty, &self.subst))
+    }
+
+    /// Like [`FnLower::conv`], keeping refined types (for runtime schemas).
+    fn schema_conv(&mut self, t: vow_types::TypeId) -> Ty {
+        super::subst_params(&self.l.schema_ty(t), &self.subst)
     }
 
     pub(crate) fn ty_of(&mut self, e: ExprId) -> Ty {
@@ -625,7 +616,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
             let Some(&t) = inst.get(i) else {
                 return (self.l.callee(d), Vec::new());
             };
-            subst.push((p, self.conv(t)));
+            subst.push((p, self.schema_conv(t)));
         }
         match self.l.callee(d) {
             Atom::Builtin(name) => (

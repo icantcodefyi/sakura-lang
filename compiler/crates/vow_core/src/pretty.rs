@@ -269,6 +269,10 @@ impl<'a> Printer<'a> {
             Ty::Handler(e) => format!("Handler<{}>", self.effect_name(*e)),
             Ty::Instance(e) => format!("Instance<{}>", self.effect_name(*e)),
             Ty::Opaque(n) => n.clone(),
+            Ty::Refined(r, args) if args.is_empty() => self.m.refinements[r.index()].name.clone(),
+            Ty::Refined(r, args) => {
+                format!("{}<{}>", self.m.refinements[r.index()].name, list(args))
+            }
             Ty::Var(u32::MAX) => "_".into(),
             Ty::Var(v) => format!("T{v}"),
         }
@@ -373,7 +377,6 @@ impl<'a> Printer<'a> {
             Bind::Prim(op, args) => {
                 let name = match op {
                     PrimOp::Show(t) => format!("show<{}>", self.ty(t)),
-                    PrimOp::Arbitrary(t) => format!("arbitrary<{}>", self.ty(t)),
                     PrimOp::Schema(t) => format!("schema<{}>", self.ty(t)),
                     other => format!("{other:?}").to_lowercase(),
                 };

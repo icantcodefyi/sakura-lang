@@ -46,6 +46,8 @@ pub fn lower(program: &hir::Program, typed: &TypedProgram, opts: &LowerOptions) 
         ctor_fns: HashMap::new(),
         specs: HashMap::new(),
         spec_count: HashMap::new(),
+        schema_cache: HashMap::new(),
+        refinements: HashMap::new(),
     };
     l.builtin_types();
     let main = program
@@ -112,6 +114,10 @@ pub(crate) struct Lower<'p> {
     /// Copies of generic functions specialized to their `Show`/`Schema` type arguments.
     specs: HashMap<(hir::DefId, Subst), DefId>,
     spec_count: HashMap<hir::DefId, u32>,
+    /// Checker type → schema type (refinements kept).
+    schema_cache: HashMap<types::TypeId, Ty>,
+    /// Refined type → its schema entry.
+    refinements: HashMap<hir::DefId, RefinementId>,
 }
 
 /// Type arguments for a function's type parameters, by `ParamId` index (`Ty::Var(p)`).
@@ -423,16 +429,33 @@ impl<'p> Lower<'p> {
     // -----------------------------------------------------------------------------------------
     // Types
 
-    /// Convert a checker type to Core.
+    /// Convert a checker type to Core (refined types erase to their base).
     pub fn ty(&mut self, t: types::TypeId) -> Ty {
-        if let Some(ty) = self.ty_cache.get(&t) {
+        self.conv_ty(t, false)
+    }
+
+    /// Convert a checker type to a schema type: like [`Lower::ty`], but refined types stay
+    /// `Ty::Refined` so schemas can validate and generate them.
+    pub fn schema_ty(&mut self, t: types::TypeId) -> Ty {
+        self.conv_ty(t, true)
+    }
+
+    fn conv_ty(&mut self, t: types::TypeId, keep: bool) -> Ty {
+        let cache = if keep {
+            &self.schema_cache
+        } else {
+            &self.ty_cache
+        };
+        if let Some(ty) = cache.get(&t) {
             return ty.clone();
         }
         let ty = match self.t.interner.ty(t).clone() {
             types::Type::Tuple(ts) if ts.is_empty() => Ty::Unit,
-            types::Type::Tuple(ts) => Ty::Tuple(ts.into_iter().map(|t| self.ty(t)).collect()),
+            types::Type::Tuple(ts) => {
+                Ty::Tuple(ts.into_iter().map(|t| self.conv_ty(t, keep)).collect())
+            }
             types::Type::Con(con, args) => {
-                let mut args: Vec<Ty> = args.into_iter().map(|t| self.ty(t)).collect();
+                let mut args: Vec<Ty> = args.into_iter().map(|t| self.conv_ty(t, keep)).collect();
                 let mut arg = |i: usize| Box::new(std::mem::replace(&mut args[i], Ty::Unit));
                 match con {
                     types::TyCon::Bool => Ty::Bool,
@@ -447,12 +470,12 @@ impl<'p> Lower<'p> {
                     types::TyCon::Range => Ty::Tuple(vec![Ty::Int, Ty::Int]),
                     types::TyCon::Secret => Ty::Opaque("Secret".into()),
                     types::TyCon::Untrusted => Ty::Opaque("Untrusted".into()),
-                    types::TyCon::Adt(d) => self.adt(d, args),
+                    types::TyCon::Adt(d) => self.adt(d, args, keep),
                 }
             }
             types::Type::Fn { params, ret, row } => Ty::Fn(Box::new(FnTy {
-                params: params.into_iter().map(|t| self.ty(t)).collect(),
-                ret: self.ty(ret),
+                params: params.into_iter().map(|t| self.conv_ty(t, keep)).collect(),
+                ret: self.conv_ty(ret, keep),
                 row: self.row(row),
             })),
             types::Type::Handler { label, .. } => match label.effect {
@@ -466,8 +489,34 @@ impl<'p> Lower<'p> {
             types::Type::Param(p) => Ty::Var(p.0),
             types::Type::Var(_) | types::Type::Error => Ty::Var(u32::MAX),
         };
-        self.ty_cache.insert(t, ty.clone());
+        if keep {
+            self.schema_cache.insert(t, ty.clone());
+        } else {
+            self.ty_cache.insert(t, ty.clone());
+        }
         ty
+    }
+
+    /// A schema type with refined types replaced by their bases.
+    pub fn erase(&self, ty: &Ty) -> Ty {
+        let e = |t: &Ty| self.erase(t);
+        match ty {
+            Ty::Refined(r, args) => {
+                let base = subst(&self.m.refinements[r.index()].base, args);
+                self.erase(&base)
+            }
+            Ty::Tuple(ts) => Ty::Tuple(ts.iter().map(e).collect()),
+            Ty::Fn(f) => Ty::Fn(Box::new(FnTy {
+                params: f.params.iter().map(e).collect(),
+                ret: e(&f.ret),
+                row: f.row.clone(),
+            })),
+            Ty::Adt(t, a) => Ty::Adt(*t, a.iter().map(e).collect()),
+            Ty::List(t) => Ty::List(Box::new(e(t))),
+            Ty::Set(t) => Ty::Set(Box::new(e(t))),
+            Ty::Map(k, v) => Ty::Map(Box::new(e(k)), Box::new(e(v))),
+            other => other.clone(),
+        }
     }
 
     pub fn row(&mut self, r: types::RowId) -> Row {
@@ -487,14 +536,17 @@ impl<'p> Lower<'p> {
         row
     }
 
-    /// A nominal type; refined types and aliases erase to their representation.
-    fn adt(&mut self, d: hir::DefId, args: Vec<Ty>) -> Ty {
+    /// A nominal type; aliases erase to their representation, refined types too unless `keep`.
+    fn adt(&mut self, d: hir::DefId, args: Vec<Ty>, keep: bool) -> Ty {
         if let hir::DefKind::Type(td) = &self.p.def(d).kind {
             match &td.body {
-                hir::TypeDefBody::Refined { base, .. } => {
-                    return self.ty_ref(base, &args);
+                hir::TypeDefBody::Refined { .. } if keep => {
+                    return Ty::Refined(self.refinement_ty(d), args);
                 }
-                hir::TypeDefBody::Alias(t) => return self.ty_ref(t, &args),
+                hir::TypeDefBody::Refined { base, .. } => {
+                    return self.ty_ref_k(base, &args, false);
+                }
+                hir::TypeDefBody::Alias(t) => return self.ty_ref_k(t, &args, keep),
                 hir::TypeDefBody::ErrorUnion(_) => {
                     let mut tags = Vec::new();
                     self.union_tags(d, &mut tags);
@@ -530,9 +582,13 @@ impl<'p> Lower<'p> {
     /// A type reference from a declaration; `Param(i)` becomes `args[i]` (or `Var(i)` when
     /// `args` is empty, inside the declaring type).
     pub fn ty_ref(&mut self, t: &hir::TypeRef, args: &[Ty]) -> Ty {
+        self.ty_ref_k(t, args, false)
+    }
+
+    fn ty_ref_k(&mut self, t: &hir::TypeRef, args: &[Ty], keep: bool) -> Ty {
         match &t.kind {
             hir::TypeRefKind::Named { res, args: targs } => {
-                let targs: Vec<Ty> = targs.iter().map(|a| self.ty_ref(a, args)).collect();
+                let targs: Vec<Ty> = targs.iter().map(|a| self.ty_ref_k(a, args, keep)).collect();
                 let arg = |i: usize| Box::new(targs.get(i).cloned().unwrap_or(Ty::Var(u32::MAX)));
                 match res {
                     hir::TypeRes::Builtin(b) => match b {
@@ -555,7 +611,7 @@ impl<'p> Lower<'p> {
                     },
                     hir::TypeRes::Def(d) => match &self.p.def(*d).kind {
                         hir::DefKind::Effect(_) => Ty::Handler(self.effect(*d)),
-                        _ => self.adt(*d, targs),
+                        _ => self.adt(*d, targs, keep),
                     },
                     hir::TypeRes::Param(i) => args.get(*i as usize).cloned().unwrap_or(Ty::Var(*i)),
                     hir::TypeRes::Err => Ty::Var(u32::MAX),
@@ -563,11 +619,14 @@ impl<'p> Lower<'p> {
             }
             hir::TypeRefKind::Tuple(ts) if ts.is_empty() => Ty::Unit,
             hir::TypeRefKind::Tuple(ts) => {
-                Ty::Tuple(ts.iter().map(|t| self.ty_ref(t, args)).collect())
+                Ty::Tuple(ts.iter().map(|t| self.ty_ref_k(t, args, keep)).collect())
             }
             hir::TypeRefKind::Fn { params, ret, .. } => Ty::Fn(Box::new(FnTy {
-                params: params.iter().map(|t| self.ty_ref(t, args)).collect(),
-                ret: self.ty_ref(ret, args),
+                params: params
+                    .iter()
+                    .map(|t| self.ty_ref_k(t, args, keep))
+                    .collect(),
+                ret: self.ty_ref_k(ret, args, keep),
                 row: Row::empty(),
             })),
             hir::TypeRefKind::Union(alts) => {
@@ -621,7 +680,6 @@ impl<'p> Lower<'p> {
                                     name: vd.name.clone(),
                                     fields: var
                                         .fields
-                                        .clone()
                                         .iter()
                                         .map(|f| self.ty_ref(f, &[]))
                                         .collect(),
@@ -645,6 +703,7 @@ impl<'p> Lower<'p> {
         let td = &mut self.m.types[id.index()];
         td.params = params;
         td.kind = kind;
+        self.field_schemas(id, d);
         id
     }
 
@@ -656,6 +715,70 @@ impl<'p> Lower<'p> {
                 ty: self.ty_ref(&f.ty, &[]),
             })
             .collect()
+    }
+
+    /// Record [`Module::field_schemas`] for type `id` (HIR `d`) when its fields mention a
+    /// refined type.
+    fn field_schemas(&mut self, id: TypeId, d: hir::DefId) {
+        let groups: Vec<Vec<hir::TypeRef>> = match &self.p.def(d).kind {
+            hir::DefKind::Type(hir::TypeDef {
+                body: hir::TypeDefBody::Record(fs),
+                ..
+            }) => vec![fs.iter().map(|f| f.ty.clone()).collect()],
+            hir::DefKind::Error(e) => vec![e.fields.iter().map(|f| f.ty.clone()).collect()],
+            hir::DefKind::Type(hir::TypeDef {
+                body: hir::TypeDefBody::Variants(vs),
+                ..
+            }) => vs
+                .iter()
+                .map(|&v| match &self.p.module(d.module).defs[v].kind {
+                    hir::DefKind::Variant(var) => var.fields.clone(),
+                    _ => vec![],
+                })
+                .collect(),
+            _ => return,
+        };
+        let schemas: Vec<Vec<Ty>> = groups
+            .iter()
+            .map(|g| g.iter().map(|t| self.ty_ref_k(t, &[], true)).collect())
+            .collect();
+        let plain: Vec<Vec<Ty>> = groups
+            .iter()
+            .map(|g| g.iter().map(|t| self.ty_ref(t, &[])).collect())
+            .collect();
+        if schemas != plain {
+            self.m.field_schemas.insert(id, schemas);
+        }
+    }
+
+    /// The schema entry of refined type `d`, with its `where` lowered to `T$check`.
+    fn refinement_ty(&mut self, d: hir::DefId) -> RefinementId {
+        if let Some(&r) = self.refinements.get(&d) {
+            return r;
+        }
+        let hir::DefKind::Type(hir::TypeDef {
+            body: hir::TypeDefBody::Refined { base, pred, .. },
+            ..
+        }) = self.p.def(d).kind.clone()
+        else {
+            unreachable!("refinement_ty on a refined type");
+        };
+        let name = self.p.def(d).name.clone();
+        let module = self.module_name(d.module);
+        let check = self.push_placeholder(&format!("{name}$check"), module.clone());
+        let r = RefinementId(self.m.refinements.len() as u32);
+        self.m.refinements.push(Refinement {
+            name,
+            module,
+            base: Ty::Unit,
+            check,
+        });
+        self.refinements.insert(d, r);
+        let base = self.ty_ref_k(&base, &[], true);
+        self.m.refinements[r.index()].base = base;
+        let fd = expr::FnLower::lower_refinement_check(self, d, pred, check);
+        self.m.defs[check.index()] = fd;
+        r
     }
 
     pub fn effect(&mut self, d: hir::DefId) -> EffectId {
