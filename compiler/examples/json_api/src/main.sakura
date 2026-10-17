@@ -7,7 +7,9 @@
 // design text: `Request` and `BadRequest` come from `std/request`, `Response` and `Status`
 // from `std/response` (one home module per type, see compiler/std/INDEX.md), and `main`
 // declares `Fs` (which `Sql.sqlite` needs) and `Fail<ServeError>` (`listen` can fail to
-// start) instead of `Sql`, `Log` and `Env`, which it handles or never uses.
+// start) instead of `Sql`, `Log` and `Env`, which it handles or never uses. The §14.3
+// negative case, a route handler letting an `Fs.File` escape its `with_file`, is `V6003` and
+// lives in `tests/ui/V6003_route_handler_returns_file.sakura`, not here.
 
 import std/fs.{Fs}
 import std/path.{Path}
