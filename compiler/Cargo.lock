@@ -1057,6 +1057,7 @@ dependencies = [
  "insta",
  "sakura_diagnostics",
  "sakura_hir",
+ "sakura_syntax",
  "sakura_types",
  "text-size",
 ]

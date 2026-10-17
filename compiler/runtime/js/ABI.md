@@ -316,6 +316,11 @@ and a specialized copy when they are concrete.
 
 **Tagged templates.** `tag"a{x}b"` lowers to the tag module's `template(["a", "b"], [x])`.
 
+**`@llm` functions.** A bodiless `@llm(system: "…")` function lowers to
+`Llm.generate(Llm.request(system, Prompt.of([part(p1), …])))` at its declared result type
+(design §11.1): an `Untrusted<String>` parameter is `PromptPart.Untrusted(p)`, any other is
+`PromptPart.Text("p: {show(p)}")`; other `Untrusted<T>` parameters are `V9002`.
+
 ## 8. Builtins
 
 `sakura_core::builtins::BUILTINS` lists every runtime function Core may call

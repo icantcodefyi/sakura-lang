@@ -11,6 +11,7 @@ publish.workspace = true
 [dependencies]
 sakura_diagnostics.workspace = true
 sakura_hir.workspace = true
+sakura_syntax.workspace = true
 sakura_types.workspace = true
 text-size.workspace = true
 

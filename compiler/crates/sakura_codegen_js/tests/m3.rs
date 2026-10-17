@@ -827,3 +827,48 @@ pub fn main() -> Unit ! {{Console}} {{
     );
     assert!(err.contains("\"code\":\"D002\""), "{err}");
 }
+
+/// A bodiless `@llm` function generates `Llm.generate(Llm.request(system, Prompt.of(parts)))`
+/// (design §11.1): `Untrusted<String>` parameters are `Untrusted` parts, the others `Text`
+/// parts shown by name, and the output is decoded at the declared result type.
+#[test]
+fn llm_functions_generate_their_request() {
+    let src = r#"import std/llm.{InvalidOutput, Llm, LlmError}
+import std/prompt.{Prompt}
+
+type Priority = Low | High
+type Ticket = { title: String, priority: Priority }
+
+@llm(system: "Extract a \"ticket\".")
+fn extract(message: Untrusted<String>, hint: Float, tags: List<String>) -> Ticket ! {Llm, Fail<LlmError>}
+
+fn spy() -> Handler<Llm, {Llm, Console}> {
+  handler Llm {
+    fn generate(req) {
+      Console.print(req.system)
+      Console.print("{Prompt.parts(req.user)}")
+      Llm.generate(req)
+    }
+    fn generate_text(req) { Llm.generate_text(req) }
+    fn stream(req, on_partial) { Llm.stream(req, on_partial) }
+    fn step(req, tools, transcript) { Llm.step(req, tools, transcript) }
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  with Llm.scripted(["\{\"title\": \"Login\", \"priority\": \"High\"\}", "\{\"title\": \"x\", \"priority\": \"Urgent\"\}"]), spy() {
+    let t = try { extract(Untrusted.of("Login 500s"), 2.0, ["a"]) }
+    Console.print("{t.map(fn(t) { t.priority })}")
+    let bad = try { extract(Untrusted.of("x"), 1.5, []) }
+    Console.print(match bad { Err(InvalidOutput { .. }) => "invalid output", _ => "other" })
+  }
+}
+"#;
+    let r = common::run("llm_body", src).unwrap();
+    assert_eq!(
+        r.stdout,
+        "Extract a \"ticket\".\n[Untrusted(Untrusted.of(\"Login 500s\")), Text(\"hint: 2.0\"), Text(\"tags: [\\\"a\\\"]\")]\nOk(High)\nExtract a \"ticket\".\n[Untrusted(Untrusted.of(\"x\")), Text(\"hint: 1.5\"), Text(\"tags: []\")]\ninvalid output\n",
+        "{}",
+        r.stderr
+    );
+}

@@ -140,7 +140,10 @@ impl<'a, 'p> FnLower<'a, 'p> {
         );
         s.contracts(&ret);
         let value = s.body.value;
-        let r = value.and_then(|v| s.expr(v));
+        let r = match value {
+            Some(v) => s.expr(v),
+            None => s.llm_body(def, &params[params.len() - s.body.params.len()..], &ret),
+        };
         let body = s.finish_body(r);
         let module = s.l.module_name(def.module);
         FnDef {
@@ -156,6 +159,133 @@ impl<'a, 'p> FnLower<'a, 'p> {
             pos,
             body,
         }
+    }
+
+    /// The generated body of a bodiless `@llm(system: "…")` function (design §11.1):
+    /// `Llm.generate(Llm.request(system, Prompt.of([part(p1), …])))` at the declared result
+    /// type, where `part(p)` is `PromptPart.Untrusted(p)` for an `Untrusted<String>` parameter
+    /// and `PromptPart.Text("p: {show(p)}")` otherwise.
+    fn llm_body(&mut self, def: hir::DefId, params: &[Local], ret: &Ty) -> Option<Atom> {
+        let p = self.l.p;
+        let hdef = p.def(def);
+        let pos = self.l.pos(def.module, hdef.range);
+        let fail = |s: &mut Self, what: &str| {
+            s.l.unsupported(def.module, hdef.range, what);
+            None
+        };
+        let std_def = |m: &str, name: &str| p.find_module("std", m).and_then(|m| p.lookup(m, name));
+        let names = [
+            ("prompt", "Text"),
+            ("prompt", "Untrusted"),
+            ("prompt", "PromptPart"),
+            ("prompt", "Prompt"),
+            ("prompt", "of"),
+            ("llm", "request"),
+            ("llm", "Request"),
+            ("llm", "Llm"),
+        ];
+        let Some(ds) = names
+            .iter()
+            .map(|(m, n)| std_def(m, n))
+            .collect::<Option<Vec<_>>>()
+        else {
+            return fail(
+                self,
+                "an `@llm` function without `std/llm` and `std/prompt`",
+            );
+        };
+        let [text, untrusted, part, prompt, of, request, request_ty, llm] = ds[..] else {
+            unreachable!()
+        };
+        let generate = p
+            .module(llm.module)
+            .defs
+            .iter()
+            .find_map(|(i, d)| match &d.kind {
+                hir::DefKind::Op(o) if o.effect == llm.index && d.name == "generate" => {
+                    Some(hir::DefId {
+                        module: llm.module,
+                        index: i,
+                    })
+                }
+                _ => None,
+            });
+        let system = hdef
+            .attrs
+            .iter()
+            .filter(|a| a.name == "llm")
+            .flat_map(|a| &a.args)
+            .find_map(|arg| {
+                let (key, v) = arg.split_once(':')?;
+                let v = v.trim().strip_prefix('"')?.strip_suffix('"')?;
+                (key.trim() == "system").then(|| sakura_syntax::unescape(v))
+            });
+        let (Some(generate), Some(system)) = (generate, system) else {
+            return fail(self, "an `@llm` attribute without `system: \"…\"`");
+        };
+        let Some(sakura_types::Type::Fn {
+            params: param_tys,
+            ret: ret_t,
+            ..
+        }) = self
+            .l
+            .t
+            .defs
+            .get(&def)
+            .map(|sc| self.l.t.interner.ty(sc.ty).clone())
+        else {
+            return fail(self, "this `@llm` function");
+        };
+        let part_ty = Ty::Adt(self.l.type_def(part), vec![]);
+        let mut parts = Vec::new();
+        for (&l, &t) in params.iter().zip(&param_tys) {
+            let v = local(l);
+            let is_string = |t| {
+                matches!(
+                    self.l.t.interner.ty(t),
+                    sakura_types::Type::Con(sakura_types::TyCon::String, _)
+                )
+            };
+            let bind = match self.l.t.interner.ty(t).clone() {
+                sakura_types::Type::Con(sakura_types::TyCon::Untrusted, args) => {
+                    if !args.first().is_some_and(|&a| is_string(a)) {
+                        return fail(
+                            self,
+                            "an `@llm` parameter of type `Untrusted<T>` other than `Untrusted<String>`",
+                        );
+                    }
+                    self.l.ctor_bind(untrusted, vec![v])
+                }
+                _ => {
+                    let ty = self.conv(t);
+                    let show = self.show_bind(ty, v, pos);
+                    let shown = self.bind("s", Ty::String, show, pos);
+                    let label = format!("{}: ", self.b.locals[l.index()].name);
+                    let s = self.concat(Atom::Lit(Lit::String(label)), shown, pos);
+                    self.l.ctor_bind(text, vec![s])
+                }
+            };
+            parts.push(self.bind("part", part_ty.clone(), bind, pos));
+        }
+        let list_ty = Ty::List(Box::new(part_ty));
+        let parts = self.bind("parts", list_ty, Bind::Alloc(Alloc::List, parts), pos);
+        let prompt_ty = Ty::Adt(self.l.type_def(prompt), vec![]);
+        let of = self.l.callee(of);
+        let user = self.bind("prompt", prompt_ty, Bind::Call(of, vec![parts]), pos);
+        let out = self.schema_conv(ret_t);
+        let subst = self
+            .l
+            .runtime_typed_params(request)
+            .iter()
+            .map(|&(_, p)| (p, out.clone()))
+            .collect();
+        let request = Atom::Global(self.l.def_spec(request, subst));
+        let req_ty = self.l.adt(request_ty, vec![ret.clone()], false);
+        let args = vec![Atom::Lit(Lit::String(system)), user];
+        let req = self.bind("req", req_ty, Bind::Call(request, args), pos);
+        let schema = self.schema_atom(out, pos);
+        let bind = self.l.ctor_bind(generate, vec![req, schema]);
+        Some(self.bind("r", ret.clone(), bind, pos))
     }
 
     /// A `property` block as `fn(seed)` calling `$rt.property_run` (ABI.md §6) with each

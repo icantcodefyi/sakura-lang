@@ -271,7 +271,7 @@ impl<'p> Lower<'p> {
             match &def.kind {
                 hir::DefKind::Fn(f) => {
                     let body = self.p.body(hd.module, f.body);
-                    if body.value.is_none() {
+                    if body.value.is_none() && !def.attrs.iter().any(|a| a.name == "llm") {
                         self.unsupported(hd.module, def.range, "a bodiless function");
                         continue;
                     }
