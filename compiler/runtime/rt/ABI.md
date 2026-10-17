@@ -1,12 +1,13 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.0.0**, agreed before `sakura_lir` or `sakura_rt`
-emits code (plan §3.1). Owned by the designer; implemented jointly by M4-LIR (`crates/sakura_lir`)
+**Status:** design specification, version **1.0.1**, agreed before `sakura_lir` or `sakura_rt`
+emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed (the list is
+kept as history at the end, with the questions still open). Owned by the designer; implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
 (`crates/sakura_codegen_wasm`, `runtime/js/sakura_wasm_host.js`). This document is prose,
 tables and byte layouts; it contains no code and is not itself normative language
 specification (STABILITY.md: pre-alpha). Controlling decisions: design §17.81–§17.83, §17.88,
-§17.92–§17.99. Evidence: [research/08](../../../research/08-m4-wasm-and-verification.md),
+§17.92–§17.99, §17.103 (fast by default), §17.108 (1.0.1). Evidence: [research/08](../../../research/08-m4-wasm-and-verification.md),
 [research/09](../../../research/09-m4-abi-and-encoding.md) with
 [09-evidence](../../../research/09-evidence/). Every section names the research it rests on or
 states its own rationale.
@@ -37,6 +38,9 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
 - `sakura_rt`, std and user code are compiled with the same ABI revision (research/08 §3.4);
   the linker rejects a mismatch of `sakura_abi_version` between the runtime object and the
   emitter's expectation.
+- 1.0.1 changes bytes (the `Handler` payload, the tuple's second word, the table formats) as a
+  PATCH because nothing had been emitted against 1.0.0 (design §17.108); from the first emitted
+  module on, such a change is MAJOR as stated above. `sakura_abi_version` is `0x010001`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -51,12 +55,18 @@ multi-value, bulk memory, mutable globals, floats. Nothing else: no reference ty
 starting from an empty feature set). The emitter validates every module it produces with
 exactly that set and additionally checks structurally (research/09 §1): exactly one memory,
 32-bit, non-shared, declared maximum ≤ the configured heap budget (§10); every import is in the
-§8 tables with the listed signature; no export other than the §9 list. The `sakura_rt` object
-compiled by rustc must pass the same gate; the M4-RT CI job runs it so an LLVM default
-(bulk-memory is fine, `sign-ext` and `nontrapping-fptoint` need to be in the allowlist or
-disabled) cannot widen the profile silently. If `sign-ext`/`nontrapping-fptoint` turn out to be
-needed by rustc output, the allowlist grows by exactly those two with a MINOR bump; they are
-MVP-adjacent and supported by both pinned engines.
+§8 tables with the listed signature; no export other than the §9 list. The gate is normative on
+the **linked** module (runtime, std and user code, §9); the `sakura_rt` object passes the same
+checks on its own first (`runtime/rt/tests/wasm_gate.rs`), so an LLVM default cannot widen the
+profile silently.
+
+**Building the runtime object.** LLVM's default wasm32 features include `reference-types`, whose
+`call_indirect` encoding (a padded multi-byte table index) the MVP validator rejects although no
+reference-typed instruction is used. `sakura_rt` is therefore compiled with
+`-Ctarget-cpu=mvp -Ctarget-feature=+mutable-globals,+multivalue,+bulk-memory`, fat LTO and one
+codegen unit, so libcore's embedded bitcode is recompiled under exactly the profile; M4-WASM
+builds the same way. `sign-ext` and `nontrapping-fptoint` are not needed, so the allowlist stays
+as written.
 
 Trampoline instead of tail calls: research/09 §1 measured 3.9 ms vs 2.0 ms per million steps
 on Node and 1.0 ms vs 1.9 ms on Wasmtime for a pure dispatch loop. The profile keeps the
@@ -91,7 +101,7 @@ and is the only null (research/09 §3 recommendation; needed by the §17.83 nich
 | 0 | `u16` | `tag` | object kind (§3.2). Values ≥ 0x8000 are reserved for the runtime (`SomeBox`, frames, activations) and can never be produced by a user type or by FFI |
 | 2 | `u8` | `class` | size class index (§10) or 0xFF for a page-run allocation |
 | 3 | `u8` | `flags` | bit 0 `static` (RC never changes; literals and nullary constructors in the data segment); bit 1 `scoped` (the object is a `@resource` handle, §8.4); bits 2–7 zero |
-| 4 | `u32` | `rc` | reference count, number of **owning** links (§7). A fresh object has `rc = 1` held by the creating frame's local. Increment is checked: on 2^32 − 1 the runtime defects `D092 rc_overflow` instead of wrapping. Decrement to 0 releases (§3.5) |
+| 4 | `u32` | `rc` | reference count, number of **owning** links (§7). A fresh object has `rc = 1` held by the creating frame's local. Increment is checked: a count may reach 2^32 − 1, and the increment from 2^32 − 1 is `D092 rc_overflow`, leaving the count unchanged. Decrement to 0 releases (§3.5); while an object is being released the field links the destruction worklist |
 | 8 | — | payload | type-specific, below |
 
 Rationale: the 8-byte `{tag, rc}` pair matches Koka's and Grain's prefix size (research/09 §3)
@@ -106,15 +116,15 @@ not need a size lookup, and flags so `Dup`/`Drop` on a static literal is one bra
 | 2 | `FloatBox` | `f64` |
 | 3 | `String` | `u32 byte_len`, `u32 hash` (0 = not computed; a computed 0 is stored as 1), then UTF-8 bytes; no terminator. `String.len` is `byte_len` (as JS) |
 | 4 | `Bytes` | `u32 byte_len`, bytes |
-| 5 | `Tuple` | `u32 arity`, `u32 pointer_bitmap_len`, then `arity` **slots** (§3.3) |
-| 6 | `Record` | `u32 type_id` (layout table index), slots per the layout table, declaration order |
-| 7 | `Variant` | `u32 type_id`, `u32 ctor`, slots of that constructor; a nullary constructor is a static singleton in the data segment, one per `(type_id, ctor)` |
-| 8 | `Closure` | `u32 code` (table index of the entry stub, §5), `u32 n_captures`, slots |
-| 9 | `ListNode` | persistent vector node: `u32 kind` (0 leaf, 1 branch, 2 root), `u32 count`, up to 32 word children, as the JS `$rt.List` trie |
+| 5 | `Tuple` | `u32 arity`, `u32 type_id` of the tuple's **layout row** (one row per tuple *shape* used, §3.4), then `arity` **slots** (§3.3) at offset 16 |
+| 6 | `Record` | `u32 type_id` (layout table index), 4 bytes padding, slots per the layout table, declaration order, at offset 16 |
+| 7 | `Variant` | `u32 type_id`, `u32 ctor`, slots of that constructor at offset 16; a nullary constructor is a static singleton in the data segment, one per `(type_id, ctor)` |
+| 8 | `Closure` | `u32 code` (table index of the entry stub, §5), `u32 n_captures`, slots at offset 16, described by the code descriptor of `code` (§3.4) |
+| 9 | `ListNode` | persistent vector node: `u32 kind` (0 leaf or tail, 1 branch; see P4), `u32 count`, up to 32 word children, as the JS `$rt.List` trie |
 | 10 | `ListRoot` | `u32 len`, `u32 shift`, `ptr root`, `ptr tail`, `u32 tail_len` (JS `$rt.List` shape) |
 | 11 | `MapRoot`, 12 `SetRoot` | `u32 len`, `ptr log` (a `ListRoot` of entries), `ptr hamt`, `u32 holes` (JS `$rt.VMap`/`VSet` shape) |
 | 13 | `HamtNode` | `u32 bitmap`, children |
-| 14 | `Handler` | `u32 effect_id`, `u32 n_state`, `u32 n_clauses`, state slots (initial values), clause closure pointers |
+| 14 | `Handler` | `u32 effect_id`, `u32 type_id` (the layout row of its state), `u32 n_state`, `u32 n_clauses`, state slots (initial values) at offset 24, then `n_clauses` 4-byte clause closure pointers. The state's types are known where the `handler` expression is compiled, so an `Int`/`Float` state is an unboxed slot and `StateGet`/`StateSet` never box (design §17.108); a type-variable state is kind 0 as everywhere |
 | 15 | `Secret` | `ptr inner` (a `String` or `Bytes`), never readable by `Show`, `Eq` (`V2032` already forbids), JSON or the host import copy-out (§8.3: the import kind `secret` is the only way out) |
 | 16 | `Untrusted` | `ptr inner` |
 | 17 | `Handle` | `u32 kind`, `u32 slot`, `u32 generation` (§8.4): `Dir`, `File`, `Body`, socket; `flags.scoped = 1` for `File` and `Body` |
@@ -129,32 +139,49 @@ the same program produce identical bytes (AGENTS.md: deterministic output).
 
 ### 3.3 Slots
 
-A **slot** is 8 bytes. A slot of statically known scalar type holds the scalar directly (`i64`
-or `f64`; `Bool` and `Unit` as `i64` 0/1 and 0); a pointer slot holds the `i32` pointer in the
-low 4 bytes and zero in the high 4; a slot of type-variable type holds a boxed word (§4). The
-layout table says which. Rationale: one slot size keeps projection one load without a
+A **slot** is 8 bytes and starts at an 8-byte boundary of the object (offset 16 for tuples,
+records, variants and closures, 24 for handler state, 32 for frames). A slot of statically known
+scalar type holds the scalar directly (`i64` or `f64`; `Bool` as `i64` 0/1); a `Unit` slot holds
+the `Unit` immediate word (§4), so it is kind 0 and dropping it is a no-op; a pointer slot holds
+the `i32` pointer in the low 4 bytes and zero in the high 4; a slot of type-variable type holds
+a generic word (§4). The layout table says which. Rationale: one slot size keeps projection one load without a
 per-field offset table, and `Int`/`Float` fields never allocate (§17.83 known-type rule).
 Memory cost is accepted for v1; M5 may pack.
 
 ### 3.4 Layout table
 
-One entry per `TypeId` and per tuple arity used: `u32 size_bytes`, `u32 n_slots`, `u32
-pointer_bitmap` (bit *i* set when slot *i* owns a pointer and must be dropped; for n > 32 the
-bitmap continues in following words), `u32 scalar_kinds` offset (2 bits per slot: 0 word/boxed,
-1 `i64`, 2 `f64`, 3 `Bool`/`Unit`), `u32 name_offset` (for `Show` and the debug section), and
-for variants one such row per constructor. `Show`, `Eq`, `Ord`, `Hash`, JSON encode/decode,
+One entry per `TypeId`, per tuple shape used and per handler state shape. Bytes (little-endian
+`u32`; every offset is relative to the table's start, 0 = absent; a name is `u32 len` + UTF-8):
+
+- **Header:** `n_types`, `option_type_id`, `result_type_id`, `pair_type_id` (the tuple row
+  `(word, word)`), `int_pair_type_id` (the tuple row `(i64, word)`); runtime builtins construct
+  these (`list_get`, `map_entries`, `list_zip`, `list_enumerate`); `0xFFFFFFFF` when the program
+  has no such type. Then a directory of `n_types` entry offsets.
+- **Entry:** `kind` (0 record, 1 error record, 2 tuple, 3 variant; `Show` prints a field-less
+  error tag as `Name` and a field-less record as `Name {}`, as JS), `name`, `n_rows`, then
+  `n_rows` row offsets (one row; one per constructor for a variant).
+- **Row:** `u32 size_bytes`, `u32 n_slots`, `u32 pointer_bitmap` (bit *i* set when slot *i*
+  owns a pointer and must be dropped; `max(1, ⌈n/32⌉)` words), `u32 scalar_kinds` offset (2 bits
+  per slot, slot *i* at bits 2·(*i* mod 16) of word *i*/16: 0 word, 1 `i64`, 2 `f64`, 3 `Bool`),
+  `u32 name_offset` (the type, or the constructor, for `Show` and the debug section), `u32
+  field_names` offset (`n_slots` name offsets; 0 for tuples and constructors).
+
+**Code descriptor table** (`code` is the funcref table index, §5): `u32 n_codes`, `n_codes` entry
+offsets (0: none), each entry `name, n_frame_slots, frame_kinds, n_captures, capture_kinds`
+(kinds as above; a kind-0 slot owns its word). Frames (§6.1) and closures (tag 8) are described
+by it. `Show`, `Eq`, `Ord`, `Hash`, JSON encode/decode,
 `Dup`/`Drop` and the schema codecs all read this table and nothing else (research/08 §6.1:
 "centralize layout knowledge"). The LIR validator checks that every `Alloc`/`Proj` agrees
 with the table.
 
 ### 3.5 Destruction
 
-`Drop(p)`: if `flags.static`, return. Decrement `rc`; if nonzero, return. Otherwise push `p`
-on the task's **destruction worklist** (a bounded array in the arena; if full, the runtime
-grows it from the heap and, if that fails, releases in place one object at a time without
-recursion by iterating its pointer bitmap and pushing children back on the same array as
-slots free up). A loop pops, drops each owned child by the bitmap, runs the object's
-runtime destructor for tags 15–17 (`Secret` zeroes its bytes; `Handle` retires the host slot,
+`Drop(p)`: if `p` is not a pointer (an immediate or 0) or `flags.static`, return. Decrement
+`rc`; if nonzero, return. Otherwise push `p` on the **destruction worklist**, a stack threaded
+through the `rc` fields of the objects being released (a count of zero has no other use), so
+destruction never allocates. A loop pops, decrements each owned child by the layout (pushing
+the ones that reach zero), runs the object's runtime destructor for tags 15–17 (`Secret` zeroes
+the bytes of an inner `String`/`Bytes` that dies with it; `Handle` retires the host slot,
 §8.4), then frees the block. No recursion anywhere (§17.82; research/09 §3). The
 million-object linked-list destruction test is an M4-RT gate.
 
@@ -262,7 +289,8 @@ tail call (the Core `opt` loop rewrite, as JS) without the driver's involvement.
 `Handle` (`with h { body }`) creates an **activation**: `effect_id`, `handler` (owned pointer
 to the `Handler` object, whose initial state slots are **copied** into the activation's state
 slots as JS `install` does), `outer` (non-owning id of the enclosing activation), `frame`
-(non-owning id of the frame that installed it), and the live state slots (owned). Performing
+(non-owning id of the frame that installed it), and the live state slots (owned), described by the
+handler's layout row so scalar state stays unboxed here too (P1). Performing
 `E.op(args)` walks `outer` from the frame's `activation` to the first activation with that
 `effect_id` (as JS `find`; after checking `task.cancelled`, §7.4) and calls the clause closure
 with a **clause frame** whose `activation` is the found activation's `outer` (design §5.5:
@@ -450,7 +478,8 @@ remains the std `@resource` opaque record `{ id: Int, path, mode }` (§17.89 ite
   after copying the payload out. The guest checks the request's generation, that `state ==
   pending`, and that `task.epoch == request.task_epoch`; on any mismatch it **discards** the
   payload (drops the `Bytes`), asks the host to close any host resource the completion carried
-  (`retire_handle(kind, slot, generation)`), and returns 0; the host then does nothing else.
+  (the import `retire_handle(kind: i32, slot: i32, generation: i32)`, no result), and returns 0;
+  the host then does nothing else.
   Otherwise it marks the request `completed`, moves the continuation frame back to the task,
   stores the decoded result in the frame's result slot, marks the task runnable and returns 1.
   Completion can win exactly once.
@@ -482,7 +511,11 @@ ledger runs at process exit.
 ptr`, `drop(ptr)`, `layout_table() -> (ptr, len)`, `effect_table() -> (ptr, len)`, `outcome(task)
 -> (kind, ptr, len)` (the outcome encoded as §8.1 transport), `tests() -> (ptr, len)` (the
 test list and `effects` map as JS `__tests__.js`, in transport encoding), `stats() -> (ptr,
-len)` (§10 counters). Nothing else; the validator rejects extra exports (§1).
+len)` (§10 counters). Nothing else; the validator rejects extra exports (§1). The list
+describes the **linked** module: rustc exports a `static` as a global holding its address and
+cannot return several values through `extern "C"`, so the M4-WASM linker synthesises
+`sakura_abi_version` and the multi-value exports over single-value runtime functions. The
+`sakura_rt` object alone exports `memory`, `alloc_bytes` and `drop`.
 
 ## 10. Memory bounds and growth
 
@@ -492,14 +525,18 @@ len)` (§10 counters). Nothing else; the validator rejects extra exports (§1).
   maximum exceeds it. The allocator grows memory in 64 KiB pages on demand up to the limit.
 - Allocator (research/09 §3 recommendation): size classes 16, 32, 48, 64, 96, 128, 192, 256,
   384, 512, 768, 1024, 1536, 2048, 3072, 4096 bytes (geometric, `class` byte in the header),
-  one free list each; larger objects are **page runs** (`class = 0xFF`, size stored in a `u32`
-  before the header at offset −8 with the header then at an 8-aligned address) from a separate
-  bounded region. Every size computation is checked before alignment and growth. Counters:
-  `requested`, `live`, `committed`, `peak`, `free_list_bytes` (reported by `stats()`;
-  `sakura run --stats` prints them). A dlmalloc comparison harness stays in `runtime/rt/bench`.
+  one free list each, carved from 64 KiB runs; larger objects are **page runs** (`class = 0xFF`,
+  run size stored in a `u32` at offset −8 from the 8-aligned header), 4 KiB-granular, first fit
+  over an address-ordered free list, coalesced on free, from the same bounded heap. Every size
+  computation is checked before alignment and growth. Counters (reported by `stats()`;
+  `sakura run --stats` prints them): `requested` (cumulative bytes requested), `live` and
+  `peak` (bytes of live blocks at their class or run size), `live_objects` (live blocks; the
+  §7.5 tests compare it), `committed` (linear memory above the heap base), `free_list_bytes`
+  (small free lists plus free page runs). A dlmalloc comparison harness stays in `runtime/rt/bench`.
 - Failed growth or an exhausted limit is **one defect path**: `D096 heap_exhausted` from the
   allocating site, after which the task unwinds (§6.4). The runtime reserves a fixed emergency
-  region (64 KiB) so unwinding and the destruction worklist never allocate from the exhausted
+  region (64 KiB, committed at start, its own free lists, small blocks only, used only while the
+  runtime has enabled emergency allocation) so unwinding and the destruction worklist never allocate from the exhausted
   heap; if the emergency region is also exhausted the task ends `defect(D096)` without running
   the remaining finalizers and the host ledger (§8.6) closes resources. Test
   `oom_while_unwinding`.
@@ -581,13 +618,49 @@ and lifetime list; and the hostile-host tests from research/09 §5 (wrong-kind, 
 foreign handles; invalid pointer and oversized length slices; non-UTF-8 strings; late and
 double completions; cancellation races; shutdown with pending work).
 
-## Questions and errata (from M4-RT)
+## Open questions (from M4-RT R2)
 
-Recorded by the `sakura_rt` implementer (R1–R3) where this document is ambiguous, silent or
-not implementable as written. Each entry names the reading implemented and why; none changes a
-decision, and each is a question for the designer (`compiler/REQUESTS.md`, 2026-10-18). Where the
-LIR must agree, the entry says so. `compiler/runtime/rt/src/layout.rs` holds the exact table
-formats.
+Readings `sakura_rt` implements where 1.0.1 is still silent; each is a question for the designer
+(`compiler/REQUESTS.md`, 2026-10-18) and, where the LIR must agree, says so.
+
+- **P1 Activation state (§6.3, design §17.108).** §17.108 keeps an activation's live state slots
+  as generic words, but `StateGet`/`StateSet` address the *activation*, so the amendment's goal
+  (no box per `StateSet`) holds only if the activation's state follows its handler's row.
+  Reading: the activation's state slots are described by `handler.type_id` (the activation
+  owns its handler, so the row is one load away). LIR must agree.
+- **P2 Builtin ownership (§5).** Runtime builtins take their arguments owned and return owned
+  results, like every Sakura call, so a builtin may reuse a uniquely owned input (`list_push`
+  updates a unique root in place, §17.103).
+- **P3 Effect table (§3.2 `effect_id`).** No format is given. Reading: `u32 n`, then `n` name
+  offsets (qualified names, as JS effect ids), so `Show` of a handler prints `<handler
+  std::console::Console>` as JS. LIR must emit it.
+- **P4 Collection layouts (tags 9–13).** `ListNode` kind 2 is unused (the trie root is an
+  ordinary branch; JS has no root node). A tail node's capacity is its block's class (at most
+  32); a push appends in place while `count == tail_len < capacity` and the node is not static
+  (JS's "append to the shared tail"). `HamtNode`: `u32 bitmap` @8, `u32 n` @12, `n` 8-byte
+  entries @16, a leaf `(pos << 1 | 1, hash)`, a child `(ptr, 0)`; a collision node has bitmap 0;
+  the root is always a branch (a lone leaf is wrapped where JS keeps the leaf itself). `holes`
+  is `log.len − len`; removed log entries are one static marker object.
+- **P5 Tuples across generic boundaries (§3.3, §4).** A `(Int, String)` built at a known type has
+  an `i64` slot; the same value built by generic code (`list_zip`, the `pair` row) has a boxed
+  one. `Eq`, `Ord`, `Hash` and `Show` read each object's slots through its own row and treat a
+  word pointing at an `IntBox`/`FloatBox` or holding a `Bool` immediate as that scalar, so the
+  two are equal, hash alike and print alike; `map_of` reads its pairs through their row (boxing
+  a scalar slot). Question for M4-LIR: does it coerce tuples at instantiation sites, or project
+  through the row kinds? The runtime accepts both.
+- **P6 `Float` equality (§2).** §2 says `Eq` treats all NaNs as one value "as JS does", but JS
+  `eq` has `NaN != NaN` (its test asserts `!eq(Some(NaN), Some(NaN))`). Implemented as JS: `Eq`
+  is IEEE `==` (`-0.0 == 0.0`); `Ord`, `Hash` and map/set keys treat all NaNs as one value
+  (`cmp(NaN, NaN) = 0`, NaN last; SameValueZero keys). Proposed rewording of §2 accordingly.
+- **P7 Hash function.** Not observable (no std function exposes `Hash`): strings use FNV-1a 32
+  over their UTF-8 bytes (cached in the header, §3.2), composites an FxHash-style mix of their
+  normalised contents finished by murmur3 `fmix32`.
+
+## Errata history (1.0.0 → 1.0.1)
+
+Recorded by the `sakura_rt` implementer during R1 where 1.0.0 was ambiguous, silent or not
+implementable as written; design §17.108 endorsed E1–E12 (E6 amended for handler state) and
+1.0.1 folds them into the sections above. Kept as the record of what changed and why.
 
 - **E1 Destruction worklist (§3.5).** Implemented as a stack threaded through the `rc` fields of
   the dying objects (an object at count zero has no other use for the field), not as an arena
@@ -618,7 +691,7 @@ formats.
 - **E5 `Unit` slots (§3.3, §3.4).** Kind 3 covers `Bool` and `Unit`, so `Show` cannot tell
   `false` from `()`. Read as: kind 3 is `Bool` (`i64` 0/1); a `Unit` slot has kind 0 and holds
   the `Unit` immediate word (dropping an immediate is a no-op). LIR must agree.
-- **E6 Slot alignment and handler state (§3.2 tags 6, 8, 14).** Slots start at the next 8-byte
+- **E6 Slot alignment and handler state (§3.2 tags 6, 8, 14; amended by §17.108: handler state has a layout row, see §3.2).** Slots start at the next 8-byte
   boundary: offset 16 for records, variants, tuples and closures (records pad after
   `type_id`), offset 24 for a handler's state slots, followed by its `n_clauses` 4-byte clause
   closure pointers. A handler's state slots and an activation's live state slots hold **generic
