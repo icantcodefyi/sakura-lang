@@ -143,3 +143,47 @@ fn lsp_hole_context_matches_mcp_after_unicode_edits() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// A definition in the embedded std opens a real, read-only file holding the std source, and a
+/// file changed on disk behind the editor's back is re-read on the next edit, not only on save.
+#[test]
+fn std_definitions_open_and_disk_edits_show_without_save() {
+    let dir = std::env::temp_dir().join(format!("sakura-lsp-std-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let main = "pub fn main() -> Unit ! {Console} { Console.print(\"hi\") }\n";
+    std::fs::write(dir.join("main.sakura"), main).unwrap();
+    std::fs::write(dir.join("other.sakura"), "fn ok() -> Int { 1 }\n").unwrap();
+    let root = format!("file://{}", dir.display());
+    let uri = format!("{root}/main.sakura");
+
+    let (mut c, _) = Lsp::start(&root);
+    let doc = json!({"uri": uri, "languageId": "sakura", "version": 1, "text": main});
+    c.notify("textDocument/didOpen", json!({"textDocument": doc}));
+
+    let col = main.find("print").unwrap() + 1;
+    let at = json!({"textDocument": {"uri": uri}, "position": {"line": 0, "character": col}});
+    let def = c.request("textDocument/definition", at);
+    let target = def["uri"].as_str().unwrap_or_default();
+    assert!(
+        target.starts_with("file://") && target.ends_with("/std/console.sakura"),
+        "{def}"
+    );
+    let path = target.strip_prefix("file://").unwrap();
+    let text = std::fs::read_to_string(path).unwrap();
+    let line = def["range"]["start"]["line"].as_u64().unwrap() as usize;
+    assert!(
+        text.lines().nth(line).unwrap().contains("fn print"),
+        "{def}"
+    );
+    assert!(std::fs::metadata(path).unwrap().permissions().readonly());
+
+    std::fs::write(dir.join("other.sakura"), "fn bad() -> Int { \"no\" }\n").unwrap();
+    let change =
+        json!({"textDocument": {"uri": uri, "version": 2}, "contentChanges": [{"text": main}]});
+    c.notify("textDocument/didChange", change);
+    let other = c.diagnostics(&format!("{root}/other.sakura"));
+    assert!(other.iter().any(|d| d["code"] == "V2001"), "{other:?}");
+    assert!(c.shutdown());
+    let _ = std::fs::remove_dir_all(&dir);
+}

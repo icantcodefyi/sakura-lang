@@ -4,6 +4,7 @@
 //! UTF-8 when the client offers it, else UTF-16; the facade itself only sees byte offsets.
 
 use std::collections::{HashMap, HashSet};
+use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -63,6 +64,7 @@ pub fn serve() -> Result<(), String> {
         client_uris: HashMap::new(),
         published: HashSet::new(),
         current: None,
+        std_dir: materialize_std(),
     };
     server.reload_disk();
     server.main_loop(&conn)?;
@@ -71,8 +73,8 @@ pub fn serve() -> Result<(), String> {
 }
 
 struct Server {
-    /// Workspace files as last read from disk. ponytail: re-read on save and close only; watch
-    /// files (`workspace/didChangeWatchedFiles`) when edits outside the editor matter.
+    /// Workspace files as last read from disk, re-read before every analysis so edits outside
+    /// the editor (an agent, `git checkout`) show up on the next keystroke.
     disk: Vec<(String, String)>,
     root: PathBuf,
     utf8: bool,
@@ -83,6 +85,40 @@ struct Server {
     /// Client URIs that currently show diagnostics.
     published: HashSet<String>,
     current: Option<Arc<Analyzed>>,
+    /// The embedded std as files, so `sakura:///std/…` locations open in an editor.
+    std_dir: Option<PathBuf>,
+}
+
+/// Writes the embedded std (read-only) to `<temp>/sakura-std-<hash of the sources>/std/`, which
+/// `disk::std_uri` maps back to `sakura:///std/…` when the editor opens one of its files.
+/// `None` if it cannot be written; std locations then stay unopenable.
+fn materialize_std() -> Option<PathBuf> {
+    let files: Vec<(String, String)> = sakura_analysis::std_sources().collect();
+    let mut h = std::hash::DefaultHasher::new();
+    files.hash(&mut h);
+    let dir = std::env::temp_dir()
+        .join(format!("sakura-std-{:016x}", h.finish()))
+        .join("std");
+    let index = "Read-only copy of the std embedded in `sakura`; edits here are ignored.\n";
+    let entries = files
+        .iter()
+        .filter_map(|(uri, text)| Some((uri.strip_prefix("sakura:///std/")?, text.as_str())))
+        .chain([("INDEX.md", index)]);
+    for (rel, text) in entries {
+        let path = dir.join(rel);
+        if path.is_file() {
+            continue;
+        }
+        std::fs::create_dir_all(path.parent()?).ok()?;
+        // Write then rename, so a concurrent server never reads a partial file.
+        let tmp = path.with_extension(format!("tmp{}", std::process::id()));
+        std::fs::write(&tmp, text).ok()?;
+        let mut perms = std::fs::metadata(&tmp).ok()?.permissions();
+        perms.set_readonly(true);
+        std::fs::set_permissions(&tmp, perms).ok()?;
+        std::fs::rename(&tmp, &path).ok()?;
+    }
+    Some(dir)
 }
 
 impl Server {
@@ -149,15 +185,15 @@ impl Server {
                 let text = p.content_changes.into_iter().last()?.text;
                 self.open.insert(uri, text);
             }
-            "textDocument/didSave" => self.reload_disk(),
+            "textDocument/didSave" | "workspace/didChangeWatchedFiles" => {}
             "textDocument/didClose" => {
                 let p: lsp::DidCloseTextDocumentParams = params(n.params).ok()?;
                 let uri = self.canonical(&p.text_document.uri);
                 self.open.remove(&uri);
-                self.reload_disk();
             }
             _ => return None,
         }
+        self.reload_disk();
         let mut files: Vec<(String, String)> = self
             .disk
             .iter()
@@ -173,13 +209,24 @@ impl Server {
     fn publish(&mut self, a: &Analyzed) -> Vec<Notification> {
         let s = &a.snapshot;
         let mut by_file: HashMap<FileId, Vec<lsp::Diagnostic>> = HashMap::new();
+        // A diagnostic without a span (a package-level one) goes at the top of `sakura.toml`,
+        // or of the first open document when there is no manifest.
+        let mut open: Vec<&String> = self.open.keys().collect();
+        open.sort();
+        let fallback = s
+            .file_ids()
+            .find(|&f| s.file(f).uri.ends_with("/sakura.toml"))
+            .or_else(|| open.iter().find_map(|u| s.file_id(u)));
         for d in &a.check.diagnostics {
-            if let Some(span) = d.spans.first() {
-                by_file
-                    .entry(span.file)
-                    .or_default()
-                    .push(self.diagnostic(s, d, span));
-            }
+            let span = match (d.spans.first(), fallback) {
+                (Some(span), _) => span.clone(),
+                (None, Some(f)) => Span::primary(f, 0, 0),
+                (None, None) => continue,
+            };
+            by_file
+                .entry(span.file)
+                .or_default()
+                .push(self.diagnostic(s, d, &span));
         }
         let mut now = HashSet::new();
         let mut out = Vec::new();
@@ -205,13 +252,17 @@ impl Server {
         out
     }
 
-    /// The URI to show `uri` under: the client's own spelling, or a `file://` URI. Embedded std
-    /// files (`sakura:///std/…`) cannot be opened by an editor.
+    /// The URI to show `uri` under: the client's own spelling, a `file://` URI, or for an
+    /// embedded std file (`sakura:///std/…`) its materialized copy.
     fn client_uri(&self, uri: &str) -> Option<String> {
-        self.client_uris
-            .get(uri)
-            .cloned()
-            .or_else(|| uri.starts_with("file://").then(|| uri.to_owned()))
+        if let Some(c) = self.client_uris.get(uri) {
+            return Some(c.clone());
+        }
+        if let Some(rel) = uri.strip_prefix("sakura:///std/") {
+            let path = self.std_dir.as_deref().map(|d| d.join(rel))?;
+            return path.is_file().then(|| disk::file_uri(&path));
+        }
+        uri.starts_with("file://").then(|| uri.to_owned())
     }
 
     fn diagnostic(&self, s: &Snapshot, d: &Diagnostic, span: &Span) -> lsp::Diagnostic {
