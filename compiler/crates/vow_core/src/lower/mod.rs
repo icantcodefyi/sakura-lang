@@ -83,6 +83,7 @@ pub fn lower(program: &hir::Program, typed: &TypedProgram, opts: &LowerOptions) 
         }
     }
     l.drain();
+    crate::opt::optimize(&mut l.m);
     Lowered {
         module: l.m,
         diagnostics: l.diags,

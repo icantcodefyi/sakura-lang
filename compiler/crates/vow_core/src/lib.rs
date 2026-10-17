@@ -7,6 +7,7 @@ pub mod build;
 pub mod builtins;
 pub mod ir;
 mod lower;
+pub mod opt;
 mod pretty;
 mod validate;
 

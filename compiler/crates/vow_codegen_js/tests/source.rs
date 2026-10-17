@@ -62,3 +62,77 @@ pub fn main() -> Unit ! {Console} {
     // k=0: -1 +1000; k=1: 700 +1000; k=2: 2 (continue); k=3: 3 +1000
     assert_eq!((r.stdout.as_str(), r.code), ("3704\n", 0), "{}", r.stderr);
 }
+
+#[test]
+fn tail_recursion_becomes_a_direct_style_loop() {
+    let src = r#"
+fn sum_to(n: Int, acc: Int) -> Int { if n == 0 { acc } else { sum_to(n - 1, acc + n) } }
+fn fib(n: Int) -> Int { if n < 2 { n } else { fib(n - 1) + fib(n - 2) } }
+pub fn main() -> Unit ! {Console} { Console.print("{sum_to(10000000, 0)} {fib(20)}") }
+"#;
+    let r = common::run("tail_loop", src).unwrap();
+    assert_eq!(
+        (r.stdout.as_str(), r.code),
+        ("50000005000000 6765\n", 0),
+        "{}",
+        r.stderr
+    );
+    let (m, sources) = common::build("tail_loop", src, false).unwrap();
+    let js = vow_codegen_js::emit(&m, &vow_codegen_js::Options::new(sources))
+        .into_iter()
+        .find(|f| f.path == "main/main.js")
+        .unwrap()
+        .text;
+    let sum = &js[js
+        .find("function sum_to$d")
+        .expect("sum_to is direct-style")..];
+    let sum = &sum[..sum.find("\n}\n").unwrap()];
+    insta::assert_snapshot!(sum);
+    assert!(
+        !js.contains("function fib$d"),
+        "non-tail recursion stays CPS"
+    );
+}
+
+/// `cargo test -p vow_codegen_js --test source bench -- --ignored --nocapture`: wall time of
+/// the same programs with and without the direct-style fast path (design §13.3 "measured").
+#[test]
+#[ignore]
+fn bench_direct_style() {
+    let programs = [
+        (
+            "tail loop 30M",
+            "fn go(n: Int, acc: Int) -> Int { if n == 0 { acc } else { go(n - 1, acc + n % 7) } }\npub fn main() -> Unit ! {Console} { Console.print(\"{go(30000000, 0)}\") }",
+        ),
+        (
+            "pure helper x10M",
+            "fn sq(x: Int) -> Int { x % 7 + 1 }\nfn go(n: Int, acc: Int) -> Int { if n == 0 { acc } else { go(n - 1, acc + sq(n)) } }\npub fn main() -> Unit ! {Console} { Console.print(\"{go(10000000, 0)}\") }",
+        ),
+        (
+            "fib 27 (CPS in both)",
+            "fn fib(n: Int) -> Int { if n < 2 { n } else { fib(n - 1) + fib(n - 2) } }\npub fn main() -> Unit ! {Console} { Console.print(\"{fib(27)}\") }",
+        ),
+    ];
+    for (name, src) in programs {
+        let (m, sources) = common::build("bench", src, false).unwrap();
+        let mut times = Vec::new();
+        for direct in [false, true] {
+            let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(format!("bench-{direct}"));
+            let _ = std::fs::remove_dir_all(&dir);
+            let opts = vow_codegen_js::Options {
+                direct_style: direct,
+                ..vow_codegen_js::Options::new(sources.clone())
+            };
+            for f in vow_codegen_js::emit(&m, &opts) {
+                let p = dir.join(&f.path);
+                std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+                std::fs::write(p, f.text).unwrap();
+            }
+            let start = std::time::Instant::now();
+            let r = common::node(&dir, "__main__.js", &[]);
+            assert_eq!(r.code, 0, "{}", r.stderr);
+            times.push(start.elapsed().as_millis());
+        }
+        eprintln!("{name}: CPS {} ms, direct {} ms", times[0], times[1]);
+    }
+}

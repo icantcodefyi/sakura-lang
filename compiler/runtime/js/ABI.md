@@ -41,6 +41,16 @@ emitted as a plain function `f$d(a1, …, an) → value`. CPS callers call `f$d`
 name `f` stays exported as an adapter `(…, $ctx, $k) => $rt.ret($k, f$d(…))` for uses as a
 value. Direct functions may throw a defect (below) and nothing else.
 
+Before emission, `vow_core::opt` threads jumps to join points that only return, and turns self
+tail calls (outside `with`/`try` regions) into loops. Join points whose jumps all stay in one JS
+function are emitted as labelled blocks and `for (;;)` loops in both ABIs, so tail-recursive and
+`while`/`for` loops never touch the trampoline unless their body makes a CPS call.
+
+Measured (node 26, `cargo test -p vow_codegen_js --test source bench -- --ignored`, wall
+time including ~40 ms startup): a pure helper called 10M times from a loop, 204 ms CPS vs
+106 ms direct; a 30M-iteration tail loop, 125 ms either way (it is a JS loop in both); `fib 27`
+(non-tail recursion stays CPS), 100 ms.
+
 ## 2. Context
 
 ```js
@@ -112,6 +122,11 @@ caller. `std/test`'s `expect_defect` is built on it.
 
 - `$rt.runTask(f, args = [], frames = null)` runs `f(...args, $ctx, $k)` to completion and
   returns its outcome, or a `Promise` of it if the task suspended.
+- Tests: `__tests__.js` exports `tests = [{ name, module, run }]` (source order; `run` is a
+  CPS function of the seed that installs the deterministic defaults of design §5.8 and runs the
+  body; `property` blocks run 100 generated cases) and `effects = { effectId: [opName, …] }`
+  (operation names in clause order), so a runner can build the `std::test::Test` handler by
+  name and pass it as `frames` to `runTask(run, [seed], frames)`.
 - Programs: the emitter writes `__main__.js`:
   ```js
   import { runMain } from "./vow_runtime.js";
@@ -146,6 +161,8 @@ caller. `std/test`'s `expect_defect` is built on it.
 | `Map`, `Set` | `$rt.VMap` / `$rt.VSet` over an insertion-ordered JS `Map` keyed by `$rt.keyOf` (structural). ponytail: updates copy, O(n) |
 | closure | JS function with the CPS ABI |
 | `Handler` | `$rt.Handler { e, c, s }`; instances are `{ e, c, s }` |
+| `Secret` | `$rt.Secret` with a private field; `toString`, `toJSON` and `Symbol.toPrimitive` throw; `Show` prints `<secret>` |
+| `Range` | the tuple `[start, end]` (ponytail: a real type when ranges get methods) |
 
 `Show` (`$rt.show(v, hint)`) is structural and uses the `$t` descriptors. Type hints from Core
 types distinguish `Float` from `Int` (`2.0` vs `2`); see the comment above `show` for the
@@ -160,7 +177,9 @@ structural over the same representation. Field names that are not safe JS proper
 `vow_codegen_js` checks the table against this module's exports. Host effects are handlers
 written in std over primitives (`console_print`, `clock_now_ms`, `clock_sleep_ms` (suspends),
 `random_int`, `env_get`, `log_write`, …) except `console_host`, which is a handler value.
-`prng_next`/`prng_float`/`prng_int` (mulberry32) back `Random.seeded`.
+`$rt.arbitrary(rep, seed, run, param)` generates property-test inputs from a type description
+(`PrimOp::Arbitrary`): primitives, lists, sets, maps, tuples, `Option`, `Result`; no shrinking
+and no user types until `Schema` lands (M3).
 
 ## 9. Core deviations from design §13.2
 
