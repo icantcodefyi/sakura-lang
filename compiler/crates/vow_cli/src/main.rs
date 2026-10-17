@@ -7,7 +7,9 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
 use vow_analysis::{Analysis, Snapshot};
-use vow_diagnostics::{SourceFile, codes, render_human, render_json_lines};
+use vow_diagnostics::{
+    SourceFile, codes, diagnostic_records, hole_records, render_human, summary_record,
+};
 
 const EXIT_ERRORS: u8 = 1;
 const EXIT_USAGE: u8 = 2;
@@ -127,15 +129,37 @@ fn check(json: bool, paths: &[PathBuf]) -> ExitCode {
     let result = Analysis::check(&snapshot);
     let files = snapshot.files();
     if json {
-        print!(
-            "{}",
-            render_json_lines(&result.diagnostics, files, snapshot.hash())
-        );
+        let mut out = String::new();
+        let records = diagnostic_records(&result.diagnostics, files, snapshot.hash());
+        for r in records
+            .iter()
+            .chain(&hole_records(&result.holes, files, snapshot.hash()))
+        {
+            out.push_str(&r.to_string());
+            out.push('\n');
+        }
+        let mut summary = summary_record(&result.diagnostics, snapshot.hash());
+        summary.insert("holes".into(), result.holes.len().into());
+        out.push_str(&serde_json::Value::Object(summary).to_string());
+        println!("{out}");
     } else {
         eprint!(
             "{}",
             render_human(&result.diagnostics, &display_files(files))
         );
+        for h in &result.holes {
+            let local = |(n, t): &(String, vow_diagnostics::Rendered)| format!("{n}: {}", t.render);
+            let locals: Vec<String> = h.locals.iter().map(local).collect();
+            let cands: Vec<&str> = h.candidates.iter().map(|(e, _)| e.as_str()).collect();
+            eprintln!(
+                "hole ?{}: expected {}, effects {}; locals [{}]; candidates [{}]",
+                h.name,
+                h.expected_type.render,
+                h.allowed_effects.render,
+                locals.join(", "),
+                cands.join(", ")
+            );
+        }
         eprintln!("{}", tally(&result.diagnostics));
     }
     let _ = std::io::stdout().flush();

@@ -4,7 +4,9 @@
 //! to [`Analysis`]. Phases are wired in as their crates land; a phase that does not exist yet is
 //! reported as `V9002 phase_unavailable` rather than silently skipped.
 
-use vow_diagnostics::{Diagnostic, FileId, Phase, SourceFile, Span, codes, sha256};
+use vow_diagnostics::{
+    Diagnostic, FileId, HoleReport, Phase, Rendered, SourceFile, Span, codes, sha256,
+};
 
 mod std_files {
     include!(concat!(env!("OUT_DIR"), "/std_files.rs"));
@@ -86,6 +88,7 @@ impl Snapshot {
 #[derive(Clone, Debug, Default)]
 pub struct CheckResult {
     pub diagnostics: Vec<Diagnostic>,
+    pub holes: Vec<HoleReport>,
 }
 
 impl CheckResult {
@@ -105,7 +108,32 @@ impl Analysis {
     /// Parse, resolve, type and effect check. Holes are allowed. No code generation.
     pub fn check(snapshot: &Snapshot) -> CheckResult {
         let (program, mut diagnostics) = lower(snapshot);
-        let (_typed, type_diags) = vow_types::check_program(&program);
+        let (typed, type_diags) = vow_types::check_program(&program);
+        let holes = typed
+            .holes
+            .iter()
+            .map(|h| HoleReport {
+                name: h.name.clone(),
+                span: Span::primary(
+                    program.module(h.module).file,
+                    h.range.start().into(),
+                    h.range.end().into(),
+                ),
+                expected_type: Rendered::text(&h.expected_render),
+                allowed_effects: Rendered::text(&h.allowed_effects),
+                locals: h
+                    .locals
+                    .iter()
+                    .map(|(n, t)| (n.clone(), Rendered::text(t)))
+                    .collect(),
+                candidates: h
+                    .candidates
+                    .iter()
+                    .map(|c| (c.expr.clone(), c.fit.as_str().to_owned()))
+                    .collect(),
+                contracts_in_scope: vec![],
+            })
+            .collect();
         diagnostics.extend(program.diagnostics);
         diagnostics.extend(type_diags);
         if let Some(file) = snapshot.user_files().next() {
@@ -113,7 +141,7 @@ impl Analysis {
                 diagnostics.push(unavailable(file, phase));
             }
         }
-        CheckResult { diagnostics }
+        CheckResult { diagnostics, holes }
     }
 }
 
