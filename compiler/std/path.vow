@@ -1,8 +1,9 @@
 // Relative filesystem paths (design §10.3). A `Path` has no leading `/` and no `..`
-// segment, so a handler rooted at a directory cannot be escaped through one.
+// segment, so a handler rooted at a directory cannot be escaped through one. It is a
+// refinement rather than an opaque type so that `Cli.parse` and `Json.decode` can read one
+// from a string and check it (design §15.6 parses `--input notes.txt` into a `Path`).
 
-/// Built only by `of` and `join`.
-pub opaque type Path = Path(List<String>)
+pub type Path = String where is_relative(it)
 
 /// Non-empty, no leading `/`, and no `..` segment.
 @total
@@ -10,36 +11,33 @@ pub fn is_relative(s: String) -> Bool {
   s != "" && !String.starts_with(s, "/") && !List.contains(String.split(s, "/"), "..")
 }
 
-/// `"data/./notes.txt"` is the path with segments `data` and `notes.txt`.
+/// `s` without `.` and empty segments: `of("data/./notes.txt")` is `data/notes.txt`, and
+/// `of("./")` is `.`.
 pub fn of(s: String) -> Path
   requires is_relative(s)
 {
-  Path(segments(s))
+  Path.from(normalize(s))
 }
 
 /// `p` followed by the segments of `rest`.
 pub fn join(p: Path, rest: String) -> Path
   requires is_relative(rest)
 {
-  match p { Path(segs) => Path(List.concat(segs, segments(rest))) }
+  Path.from(normalize(p + "/" + rest))
 }
 
-/// The segments joined by `/`; `.` for the empty path.
-pub fn to_string(p: Path) -> String {
-  match p {
-    Path([]) => ".",
-    Path(segs) => List.join(segs, "/"),
-  }
-}
+pub fn to_string(p: Path) -> String { p }
 
-fn segments(s: String) -> List<String> {
-  List.filter(String.split(s, "/"), fn(seg) { seg != "" && seg != "." })
+fn normalize(s: String) -> String {
+  let segs = List.filter(String.split(s, "/"), fn(seg) { seg != "" && seg != "." })
+  if segs == [] { "." } else { List.join(segs, "/") }
 }
 
 test "of drops empty and dot segments" {
   expect_eq(to_string(of("data/./notes.txt")), "data/notes.txt")
   expect_eq(to_string(of("./")), ".")
   expect_eq(to_string(join(of("data"), "a/b.txt")), "data/a/b.txt")
+  expect_eq(join(of("."), "x"), of("x"))
 }
 
 test "absolute paths and parent segments are not relative" {

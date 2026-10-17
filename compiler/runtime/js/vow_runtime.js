@@ -2796,7 +2796,7 @@ export function sql_memory() {
  * `root`, op 0 of std/fs's `Fs`), opened on first use.
  */
 export function sql_sqlite(path) {
-  const rel = items(path.fields[0]).join("/");
+  const rel = path; // `std/path.Path` is a refined String
   return sqlHandler((ctx) => {
     const o = runTask((c, k) => perform(c, "std::fs::Fs", 0, [], (d) => ret(k, d)), [], ctx.p ?? ctx.h);
     if (o instanceof Promise || o.kind !== "ok") throw new Error("Fs.root() is not available");
