@@ -19,6 +19,8 @@ const display = Funnel_Display({
 const body = Atkinson_Hyperlegible_Next({
   subsets: ["latin"],
   variable: "--font-sakura-body",
+  // next/font has no metrics for Atkinson; globals.css defines these metric-matched fallbacks.
+  fallback: ["Sakura Body Fallback"],
   adjustFontFallback: false,
   display: "swap",
 });
@@ -26,6 +28,7 @@ const body = Atkinson_Hyperlegible_Next({
 const code = Atkinson_Hyperlegible_Mono({
   subsets: ["latin"],
   variable: "--font-sakura-code",
+  fallback: ["Sakura Code Fallback"],
   adjustFontFallback: false,
   display: "swap",
 });
