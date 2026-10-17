@@ -1125,6 +1125,7 @@ impl Cx {
             ok: get(p, "result", "Ok"),
             err: get(p, "result", "Err"),
             violation: get(p, "core", "Violation"),
+            trust: get(p, "core", "Trust"),
         };
     }
 

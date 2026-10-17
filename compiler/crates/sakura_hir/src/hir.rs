@@ -225,6 +225,8 @@ pub struct LangItems {
     pub err: Option<DefId>,
     /// `Violation`, the error of a refined type's generated `validate` (design §4.3).
     pub violation: Option<DefId>,
+    /// `Trust`, the type of `@trust("reason")` (design §6.4, §17.16), declared in `std/core`.
+    pub trust: Option<DefId>,
 }
 
 /// Generated functions of a refined type `T` over base `B` (design §4.3). They are ordinary

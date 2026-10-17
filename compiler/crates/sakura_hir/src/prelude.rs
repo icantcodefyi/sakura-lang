@@ -22,6 +22,8 @@ pub const PRELUDE: &[(&str, &str)] = &[
     ("Log", "log"),
     ("Task", "task"),
     ("show", "core"),
+    // Compiler-known (§9, §17.16): the type of `@trust("…")`, declared in std/core.
+    ("Trust", "core"),
     // Std types the prelude effects mention (std/INDEX.md).
     ("Duration", "duration"),
     ("Instant", "instant"),
