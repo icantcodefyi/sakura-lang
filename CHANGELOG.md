@@ -24,5 +24,7 @@ published yet.
 - `vow fix [--preview] [--apply ids]` applies compiler fixes by impact class, and
   `vow check --frozen-specs <symbols|all> [--since rev]` reports spec changes since a git
   revision as `V8020`.
+- `vow new <cli|lib|agent> <name>` and `vow init` scaffold a project, and `vow run` exits
+  75 when `main` declares an effect that `[permissions]` does not grant.
 
 [Unreleased]: https://github.com/icantcodefyi/vow/commits/master

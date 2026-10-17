@@ -14,12 +14,14 @@ use vow_diagnostics::{
 };
 
 mod fix;
+mod new;
 mod testing;
 
 const EXIT_ERRORS: u8 = 1;
 const EXIT_USAGE: u8 = 2;
 const EXIT_TEST_FAILURES: u8 = 3;
 const EXIT_DEFECT: u8 = 70;
+const EXIT_PERMISSION: u8 = 75;
 
 /// Wall-clock limit for one `vow test` run. ponytail: whole-process, not per test; add a
 /// per-test watchdog (worker threads) when long suites need it.
@@ -80,7 +82,8 @@ enum Command {
         paths: Vec<PathBuf>,
     },
     /// Build and run `main` with node. The exit code is the program's: 0 ok, 1 `main` failed,
-    /// 70 defect (one JSON `defect` record on stderr).
+    /// 70 defect (one JSON `defect` record on stderr), or 75 before starting when `main`
+    /// declares an effect `vow.toml` grants no `[permissions]` for.
     Run {
         /// A file or directory (default: `src/` if present, else `.`).
         path: Option<PathBuf>,
@@ -130,6 +133,20 @@ enum Command {
     Mcp {
         #[command(subcommand)]
         action: McpAction,
+    },
+    /// Create a project in a new directory: `vow.toml`, `vow.lock`, `src/main.vow` with one
+    /// test, and a `[permissions]` table.
+    New {
+        /// `cli`, `lib` or `agent` (`api` needs `std/serve`).
+        #[arg(value_parser = ["cli", "lib", "agent", "api"])]
+        kind: String,
+        /// Package name and directory: lowercase letters, digits and `_`.
+        name: String,
+    },
+    /// Make the current directory a project, keeping existing files.
+    Init {
+        #[arg(long, default_value = "cli", value_parser = ["cli", "lib", "agent", "api"])]
+        kind: String,
     },
     /// Language server on stdin/stdout: diagnostics, hover, go to definition, completion,
     /// formatting and quick fixes. The workspace is the client's first workspace folder.
@@ -252,6 +269,8 @@ fn dispatch(command: Command) -> ExitCode {
             print!("{}", prompt(budget));
             ExitCode::SUCCESS
         }
+        Command::New { kind, name } => new::new(&kind, &name, Path::new(&name)),
+        Command::Init { kind } => new::init(&kind),
         Command::Lsp => match vow_lsp::serve() {
             Ok(()) => ExitCode::SUCCESS,
             Err(e) => usage_error(format!("lsp: {e}")),
@@ -398,6 +417,21 @@ fn run(path: Option<PathBuf>, out_dir: &Path, args: &[String]) -> ExitCode {
         Ok(d) => d,
         Err(code) => return code,
     };
+    // Design §6.2: a declared effect without its permission stops `main` before it starts.
+    // A program without `vow.toml` gets none of the gated ones.
+    let a = Analysis::analyze(&snapshot);
+    let permissions = match a.manifest() {
+        Some(Ok(m)) => m.permissions,
+        Some(Err(e)) => return usage_error(format!("vow.toml: {e}")),
+        None => Default::default(),
+    };
+    if let Some(why) = a
+        .main_effects()
+        .and_then(|e| permissions.startup_denial(&e))
+    {
+        eprintln!("error: permission denied: {why}");
+        return ExitCode::from(EXIT_PERMISSION);
+    }
     let main = dir.join("__main__.js");
     match testing::node().arg(&main).args(args).status() {
         Ok(status) => ExitCode::from(status.code().map_or(EXIT_DEFECT, |c| c as u8)),

@@ -220,3 +220,51 @@ fn frozen_specs_compare_with_git_head() {
     assert_eq!(other.code, Some(0), "{}", other.stderr);
     assert_eq!(vow(&["check", "main.vow"], &dir).code, Some(0));
 }
+
+#[test]
+fn new_projects_check_and_are_formatted() {
+    let dir = std::env::temp_dir().join(format!("vow-cli-{}-new", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    for kind in ["cli", "lib", "agent"] {
+        let name = format!("p_{kind}");
+        let out = vow(&["new", kind, &name], &dir);
+        assert_eq!(out.code, Some(0), "{}", out.stderr);
+        let project = dir.join(&name);
+        for f in ["vow.toml", "vow.lock", "src/main.vow"] {
+            assert!(project.join(f).is_file(), "{kind}: {f}");
+        }
+        let check = vow(&["check"], &project);
+        assert_eq!(check.code, Some(0), "{kind}: {}", check.stderr);
+        assert_eq!(vow(&["fmt", "--check"], &project).code, Some(0), "{kind}");
+    }
+    let test = vow(&["test"], &dir.join("p_lib"));
+    assert_eq!(test.code, Some(0), "{}", test.stderr);
+    // Refusals: a non-empty directory, a bad name, an existing manifest.
+    assert_eq!(vow(&["new", "lib", "p_lib"], &dir).code, Some(2));
+    assert_eq!(vow(&["new", "lib", "Bad-Name"], &dir).code, Some(2));
+    assert_eq!(vow(&["init"], &dir.join("p_cli")).code, Some(2));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn run_exits_75_when_permissions_do_not_cover_main() {
+    let dir = tmp(
+        "perm",
+        "import std/fs.{Fs}\n\npub fn main() -> Unit ! {Console, Fs} { Console.print(\"started\") }\n",
+    );
+    let manifest = "[package]\nname = \"perm\"\n\n[permissions]\n";
+    std::fs::write(dir.join("vow.toml"), manifest).unwrap();
+    let denied = vow(&["run", "main.vow"], &dir);
+    assert_eq!(denied.code, Some(75), "{}", denied.stderr);
+    assert!(denied.stderr.contains("fs.read") && denied.stdout.is_empty());
+
+    std::fs::write(
+        dir.join("vow.toml"),
+        format!("{manifest}fs.read = [\".\"]\n"),
+    )
+    .unwrap();
+    let allowed = vow(&["run", "main.vow"], &dir);
+    assert_eq!(allowed.code, Some(0), "{}", allowed.stderr);
+    assert_eq!(allowed.stdout, "started\n");
+}
