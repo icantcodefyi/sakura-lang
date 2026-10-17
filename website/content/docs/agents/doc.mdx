@@ -1,0 +1,18 @@
+---
+title: Offline API search
+description: Find signatures, effects, contracts and documentation with sakura doc.
+---
+
+`sakura doc` searches the current project and the embedded std library without contacting a service. Run these commands from a project directory:
+
+```sh
+sakura doc --search "fn(List<A>) -> Int"
+sakura doc std::list::len
+sakura doc --json std::list::len
+```
+
+A symbol argument containing `::` is an exact symbol ID; other arguments search by name. `--search` matches a type pattern. Human output includes the symbol ID, signature, effect row, contracts and doc comment when present.
+
+`--json` prints one JSON object, not JSON Lines: `snapshot`, `total`, `symbols` and `truncated`. The symbol records use the compiler MCP `symbol_query` representation with a `type` field. No matches gives `total: 0` and exit 0; the human command prints “no symbol matches”. Treat that as an empty search result, not a compiler diagnostic.
+
+Use [MCP](/docs/agents/mcp) when an agent needs structured queries alongside checking and edits. The [standard-library index](/docs/stdlib) is a browsable copy of the source signature inventory. `sakura doc --index` is not implemented.

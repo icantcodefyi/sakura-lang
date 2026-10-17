@@ -20,19 +20,19 @@ Every claim Sakura Lang makes about a program has exactly one of four statuses (
 | `tested`          | Held on the inputs that were executed.                                                 | `sakura test` (unit, property, snapshot, simulation).                            |
 | `trusted`         | Assumed.                                                                               | FFI declarations, host handlers, `@trust` sites, the toolchain itself.        |
 
-In v0, every contract is `runtime_checked`. The compiler never prints "verified" for a program that merely compiled.
+The current build manifest labels contract obligations `runtime_checked`. Scalar literals can already be decided at compile time; this is a bounded evaluator, not the planned SMT verifier. The compiler never prints "verified" for a program that merely compiled.
 
 ## Refinement types
 
 A refinement is a base type plus a predicate, written with `where`. Inside the predicate, `it` is the value.
 
 ```sakura
-type Email = String where String.len(it) <= 254 && Email.is_valid(it)
+type Email = String where String.len(it) <= 254 && String.contains(it, "@")
 type Percent = Int where it >= 0 && it <= 100
 type NonEmpty<T> = List<T> where List.len(it) > 0
 ```
 
-A refined type is a distinct nominal type with the same representation as its base. It coerces implicitly to the base, so a `Percent` is usable wherever an `Int` is expected. The reverse never happens implicitly.
+A refined type is a distinct nominal type with the same representation as its base. It coerces implicitly to the base, so a `Percent` is usable wherever an `Int` is expected. The reverse requires validation or `from`, except for scalar literals in a refined position, described below.
 
 Record fields can carry a refinement inline:
 
@@ -48,18 +48,20 @@ Field refinements are checked when the record is constructed.
 
 ## How values enter a refined type
 
-There is no silent conversion. A value becomes a `Percent` in one of four ways ([design §4.3](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)):
+A value becomes a `Percent` in one of four ways ([design §4.3](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)):
 
 | Entry point                               | On failure                                                        |
 | ----------------------------------------- | ----------------------------------------------------------------- |
 | `Percent.validate(n) -> Result<Percent, Violation>` | Returns `Err(Violation { type_name, clause, value_summary })`. |
-| `Percent.from(n) -> Percent`               | Defect `D010`. Use at trusted boundaries only; the planned `sakura audit` will list every use. |
+| `Percent.from(n) -> Percent`               | Defect `D010`. Use at trusted boundaries only; [`sakura audit`](/docs/agents/audit) lists explicit calls. |
 | `let p: T = Json.decode(text)?` and other schema decoding, with the target named by annotation | Typed `DecodeError`, never a defect. Nested field refinements are checked. |
-| A literal, `let p: Percent = 50`          | Checked at compile time when the predicate is in the SMT fragment, otherwise at program start (warning `V5002`). |
+| A literal, `let p: Percent = 50`          | Decided by the bounded scalar evaluator when possible (`V5004` on rejection); otherwise checked once before `main`, without a warning. |
 
 `validate` is the normal path for input you do not control:
 
 ```sakura
+type Percent = Int where it >= 0 && it <= 100
+
 fn describe(input: Int) -> String {
   match Percent.validate(input) {
     Ok(p) => "{p}%",
@@ -69,6 +71,39 @@ fn describe(input: Int) -> String {
 ```
 
 Once a value has type `Percent`, nothing downstream re-checks it. Sakura Lang has no aliasable mutation, so a validated value cannot be invalidated later. Record update `Ticket { ..t, title: x }` with `x` already refined needs no re-check.
+
+## Literal refinements at compile time
+
+The checker evaluates scalar `Int`, `Float`, `String` and `Bool` literals against their target refinement with a deterministic **10,000-step budget per literal** (design §17.87). It supports scalar arithmetic and comparisons, short-circuit booleans, `if`/`let`/blocks, pure functions in that fragment and the string built-ins `len`, `contains`, `starts_with` and `ends_with`. `String.len` counts UTF-8 bytes.
+
+- **True:** the literal is accepted without a startup conversion.
+- **False or an evaluable defect:** `V5004`, with the literal and refinement definition identified. For example, `let p: Percent = 150` is rejected.
+- **Undecidable:** the literal is checked once at module initialization. A failed predicate produces `D010` before `main`, even when the literal is inside a function that would run later. There is no warning.
+
+The evaluator is deliberately smaller than the contract subset. `match`, collection operations such as `String.split`, and exceeding the step budget leave a runtime check. An intermediate integer beyond JS's safe range but within i64 is also undecidable because backends differ. `V5002` is retired and never emitted; its explain page remains for old reports.
+
+Current audit output omits undecided literal conversions too, although the design requires `reason: "literal"` records. See the [audit limitation](/docs/agents/audit#literal-conversion-limitation).
+
+## Validating untrusted input
+
+`Untrusted.validate` is implemented. Its target must be a known refined type over the wrapped base; an unknown target, plain type, wrong base, or using the function as a value produces `V5003`. Name the target with an annotation:
+
+```sakura
+import std/core.{Violation}
+
+type Percent = Int where it >= 0 && it <= 100
+
+fn read_percent(raw: Untrusted<Int>) -> Result<Percent, Violation> {
+  Untrusted.validate(raw)
+}
+
+test "untrusted input is checked" {
+  expect_eq(read_percent(Untrusted.of(50)), Ok(Percent.from(50)))
+  expect(read_percent(Untrusted.of(150)).is_err())
+}
+```
+
+This checks the refinement and returns `Err(Violation)` on failure; it does not silently trust the input.
 
 ## The contract subset
 
@@ -80,7 +115,7 @@ Predicates in `where`, `requires`, `ensures`, and `property` clauses must be pur
 
 Arithmetic in a predicate is checked, so a predicate can itself defect. That is reported as `D011` (contract evaluation failed).
 
-`@total` is how a function with recursion or a loop reaches a contract. It is a **trusted** claim that a `{}`-row function terminates on every input; the compiler does not prove it. Std marks a fixed list (`List.len`, `List.get`, `List.all`, `List.any`, `List.contains`, `Map.get`, `String.len`, `String.contains`, `Option.is_some`, `Int.abs`, and a few more). User code may mark its own functions, and the planned `sakura audit` will list every `@total` site, like every `@trust`:
+`@total` is how a function with recursion or a loop reaches a contract. It is a **trusted** claim that a `{}`-row function terminates on every input; the compiler does not prove it. Std marks a fixed list (`List.len`, `List.get`, `List.all`, `List.any`, `List.contains`, `Map.get`, `String.len`, `String.contains`, `Option.is_some`, `Int.abs`, and a few more). User code may mark its own functions, and [`sakura audit`](/docs/agents/audit) lists every user `@total` site, like every `@trust`:
 
 ```sakura
 @total   // trusted: n / 10 moves toward 0 on every call
@@ -134,7 +169,9 @@ fn withdraw(from: Account, amount: Int) -> Account ! {Fail<WithdrawError>}
 Bounded quantifiers are allowed in contracts:
 
 ```sakura
-fn top_score(scores: NonEmpty<Int>) -> Int
+type NonEmptyScores = List<Int> where List.len(it) > 0
+
+fn top_score(scores: NonEmptyScores) -> Int
   ensures List.all(scores, fn(s) { s <= result })
 {
   let first = List.first(scores).expect("NonEmpty has a first element")
@@ -142,15 +179,15 @@ fn top_score(scores: NonEmpty<Int>) -> Int
 }
 ```
 
-A clause the compiler estimates as O(n), like this one, triggers warning `W5005` on hot paths. v0 chooses an honest cost over a silently skipped check.
+`W5005` warns once per user clause calling `List.all`, `List.any` or `List.contains` on a parameter or `it`. This includes `requires`, `ensures`, `where` and property `requires`; there is no hot-path analysis. Std clauses are exempt. `String.contains` no longer triggers the warning (design §17.90), so the `Email` refinement above is quiet.
 
 ## Contracts are always checked
 
-Contract checks run in **all build modes**. `sakura build --release` keeps them. The only way a check is removed is a `proved` status from `sakura verify` (M4 and later), recorded per obligation.
+The current JS build retains runtime contracts; there is no `--release` flag in the CLI. Decided literal introductions need no runtime conversion. Future `sakura verify` (M4) may remove an individual check only with a matching `proved` result.
 
 Contract violations are [defects](/docs/tour/effects), not effects. A defect terminates the current task after resource finalizers run. `try` cannot catch it. `Task.scope` and the test runner observe it as an outcome, and a defect in `main` exits with status 70 and a structured report.
 
-Contracts on `pub` functions are part of the signature shown by the planned `sakura doc`, the MCP `symbol_query` tool, and editor hover.
+Contracts on `pub` functions are part of the signature shown by [`sakura doc`](/docs/agents/doc), the MCP `symbol_query` tool, and editor hover.
 
 ## Frozen specs during agent repair
 
@@ -160,7 +197,7 @@ Compiler fixes that touch a contract carry `impact: contract_change` and are nev
 
 ## Property tests from contracts
 
-The planned `sakura test --contracts` will synthesize a property test for every `pub` function that has a refined parameter or a `requires` clause. Inputs are generated from the refinements and `requires` together, the function runs under the test handlers, and `ensures` and result refinements are checked. Failures are shrunk and saved. A function with effects other than `Fail`, `Clock`, and `Random` is tested only when it names handlers with `@contract_test(handlers: [Sql.memory(), Log.captured()])`. See [Testing](/docs/tour/testing#property-tests-from-contracts-planned).
+`--contracts` is not present in the current `sakura test --help`. The planned command will synthesize a property test for every `pub` function that has a refined parameter or a `requires` clause. Inputs are generated from the refinements and `requires` together, the function runs under the test handlers, and `ensures` and result refinements are checked. Failures are shrunk and saved. A function with effects other than `Fail`, `Clock`, and `Random` is tested only when it names handlers with `@contract_test(handlers: [Sql.memory(), Log.captured()])`. See [Testing](/docs/tour/testing#property-tests-from-contracts-planned).
 
 ## Not in v0
 

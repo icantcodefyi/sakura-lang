@@ -1,0 +1,36 @@
+---
+title: Trust audit
+description: Inventory trust assumptions and explicit refinement conversions with sakura audit.
+---
+
+`sakura audit` is available in the source-built CLI. Run it from a project directory:
+
+```sh
+sakura audit src
+sakura audit --json src
+```
+
+It lists user-package `@trust` expressions (including reason and resolved sink), `@total` declarations, `@external` declarations, `@resource` types and explicit refined-type `T.from` calls. The human report groups sites by file. Std sites are excluded here; the [build manifest](/docs/agents/build-manifest) includes the std trusted base.
+
+The following program checks and runs; its audit contains one `total`, one `from` and one `trust` site:
+
+```sakura
+@total
+fn identity(n: Int) -> Int { n }
+
+type Positive = Int where it > 0
+
+pub fn main() -> Unit ! {Console} {
+  let n = Positive.from(identity(1))
+  let raw = Untrusted.of(n)
+  Console.print("{Untrusted.trust(raw, @trust("locally constructed positive value"))}")
+}
+```
+
+JSON output is JSON Lines: each site has `schema_version: "1.0"`, `kind: "audit"`, `site`, `symbol_id`, `span` and `reason` (nullable). `trust` and `from` records also identify the resolved `sink`. A final `summary` has the snapshot hash, site count and counts by site kind. Spans identify the source URI, content hash and byte range.
+
+An audit is an inventory, not a successful type check or a security certification. It exits 0 regardless of the sites found; loading and usage errors can still fail. Run `sakura check` separately.
+
+## Literal conversion limitation
+
+A literal whose refinement succeeds at compile time needs no startup conversion and does not appear in the report. An undecided literal still has a startup check, but the current audit also omits that conversion. Design §17.78 requires a `from` record with `reason: "literal"`; that part has not landed. Do not use an empty audit to infer that there are no runtime refinement checks. See [contracts](/docs/tour/contracts#literal-refinements-at-compile-time).

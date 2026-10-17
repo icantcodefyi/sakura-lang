@@ -7,7 +7,7 @@ description: How Sakura Lang separates effects from authority, limits root handl
   The source-built compiler runs the core language and much of M3 on JavaScript: contracts, typed effects and failures, std handlers, permissions, LSP and MCP. M3 is still in progress; no release or stable compatibility contract exists. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
 </Callout>
 
-Most supply-chain attacks and injection bugs rely on code doing more than it should: a dependency that reads files it was never meant to see, a string from a request that reaches a SQL query, a token that ends up in a log. Sakura Lang's design makes each of these either impossible or a visible, reviewable decision.
+Most supply-chain attacks and injection bugs rely on code doing more than it should: a dependency that reads files it was never meant to see, a string from a request that reaches a SQL query, a token that ends up in a log. Sakura Lang uses effect checking, scoped handlers and explicit trust boundaries to make authority reviewable. These are language-level checks, not an OS sandbox for trusted FFI.
 
 ## Effects are requirements, handlers are authority
 
@@ -40,68 +40,72 @@ process  = []          # no subprocesses
 
 Attenuating handlers are ordinary std functions: `Fs.rooted(dir)`, `Http.scoped(hosts)`, and `Env.only(keys)`.
 
-This CLI tool narrows the root filesystem to `data/` before reading anything ([design §15.6](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)):
+This test narrows a scripted HTTP handler to one host, without using the network:
 
-```sakura title="src/main.sakura"
-import std/cli.{Cli, CliError}
-import std/fs.{Fs, FsError, Dir}
-import std/path.{Path}
+```sakura
+import std/http.{Any, Http}
+import std/request.{Method, Request}
+import std/response.{Response}
+import std/url.{Url}
 
-type Args = { input: Path, top: Int }   // `sakura run -- --input notes.txt --top 5`
-
-fn word_counts(text: String) -> Map<String, Int> {
-  List.fold(String.split(String.to_lower(text), " "), Map.empty(), fn(acc, w) {
-    if w == "" { acc } else { Map.update(acc, w, fn(n) { Option.unwrap_or(n, 0) + 1 }) }
-  })
-}
-
-pub fn main() -> Unit ! {Console, Cli, Fs, Fail<CliError | FsError>} {
-  let args: Args = Cli.parse(Cli.args())
-  // Narrow the root Fs handler to the data directory before touching files.
-  with Fs.rooted(Dir.subdir(Fs.root(), "data")) {
-    let text = Fs.read_text(args.input).trust(@trust("word counting cannot be influenced by content"))
-    let top = List.slice(List.sort_by(Map.entries(word_counts(text)), fn(e) { 0 - e.1 }), 0, args.top)
-    for (word, n) in top { Console.print("{word}: {n}") }
+test "only the allowed HTTP host is forwarded" {
+  with Http.scripted([(Any, Response.status(200, "hello"))]),
+      Http.scoped(["example.com:443"]) {
+    let req = Request.of(Method.Get, Url.from("https://example.com/"))
+    expect_eq(Http.send(req).status, 200)
+    let denied = Request.of(Method.Get, Url.from("https://other.example/"))
+    expect((try { Http.send(denied) }).is_err())
   }
 }
 ```
 
-`Cli` is an effect: `Cli.args()` reads the command line through the root handler, and `Cli.parse` turns the arguments into the record type named by the annotation on `args`. Inside the `with` block, every `Fs` operation, including those performed by functions it calls, resolves against `data/`.
+The same attenuation wraps a host HTTP handler, which additionally enforces manifest permissions.
 
-## Scoped escape rules (M3 completion)
+## Forged capabilities are rejected
 
-A capability, or a handler that captured one, is a **scoped value** ([design §6.3](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)). It may be passed down the call stack, stored in records that are themselves scoped, and returned from functions. It may not flow into:
+A user `@external` cannot declare a parameter or result containing a capability from another package, or any `Handler<…>` (`V6001`, design §17.91). The check follows records, collections, options and function types; another package's `@resource` type also counts. An FFI package may declare externals over its own external types.
+
+This declaration is intentionally rejected with `V6001`; no JavaScript is executed:
+
+```sakura
+import std/fs.{Dir}
+
+@external(js, "./forge.js", "root")
+fn forge() -> Dir
+```
+
+## Scoped escape rules
+
+An external type, a handler, an `@resource` type, or a value transitively containing one is **scoped**. Closures also carry the scoped locals they capture ([design §6.3](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)). Scoped values may be passed down the call stack, stored in scoped records, and returned from ordinary functions. They may not flow into:
 
 - a `Task.spawn` closure whose `Scope` outlives the `with` that produced the value (there are no detached tasks in v0),
 - a top-level `let`,
 - a value returned from the `with` body that introduced the scope.
 
-A violation is `V6002`. Resources such as files and connections follow the same rule: the result of `Fs.with_file(path, mode, fn(file) { … })` may not contain `file` (`V6003`).
+A violation is `V6002`, including an explicit `return` out of the `with`. Calls returning function-containing values conservatively retain scoped argument captures.
 
-## Dependency authority (design; package tooling planned)
-
-A package's effects are computed from its code, not hand-written. `sakura deps capabilities` prints the authority graph of your dependencies ([design §6.5](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)).
-
-There is no ambient authority and no `import` that grants anything. You grant a dependency authority by installing a handler around the calls you make to it. In this sketch, `acme/thumbnails` is a hypothetical package whose `render` declares `! {Fs, Fail<FsError>}`:
+`V6003` rejects a resource escaping the callback that borrows it, or being stored in handler `var` state. The callback rule also applies to wrapper functions and to a callback parameter whose type contains a resource, such as a record with a `File` field (design §17.89). This example is intentionally rejected:
 
 ```sakura
-import std/fs.{Fs, FsError, Dir}
+import std/fs.{File, Fs, FsError, Mode}
 import std/path.{Path}
-import acme/thumbnails
 
-fn make_thumbnail(name: Path) -> Unit ! {Fs, Fail<FsError>} {
-  // The dependency sees only the uploads directory, whatever it tries to open.
-  with Fs.rooted(Dir.subdir(Fs.root(), "uploads")) {
-    thumbnails.render(name)
-  }
+fn keep_open(path: Path) -> File ! {Fs, Fail<FsError>} {
+  Fs.with_file(path, Mode.Read, fn(file) { file })
 }
 ```
 
-If an update adds `Http` to `render`'s row, `make_thumbnail` no longer type checks until you decide whether to allow it. Packages cannot run code at install time: there are no build scripts in v0. A package that uses `@external` FFI bindings is marked `trusted` in the build manifest.
+Return ordinary data read inside the callback instead. Files are finalized on callback exit. v0 does not check affine use counts; runtime file operations still reject access after closure.
+
+## Dependency authority (design; package tooling planned)
+
+The design calls for computed package authority and `sakura deps capabilities`; that command and multi-package tooling are not implemented. Imports do not grant authority: callers install handlers around dependency calls. Adding an effect to a dependency's signature requires its callers to account for that effect.
+
+The implemented [build manifest](/docs/agents/build-manifest) inventories user externals alongside other trusted components. It is not yet the planned dependency authority graph.
 
 ## Untrusted data
 
-`of`, `check`, `trust`, and `len` work today. Refined-target `validate` below is planned M3 completion work.
+`of`, `check`, `trust`, `len` and refined-target `validate` work today. A validation target must be a known refinement of the wrapped base; otherwise the compiler reports `V5003`. Using `Untrusted.validate` as a function value is also rejected. See [contracts](/docs/tour/contracts#validating-untrusted-input).
 
 `Untrusted<T>` wraps data from outside the deployment: raw request bodies, file contents read as text (`Fs.read_text`), response text (`Response.text`), and free-text LLM output (`Llm.generate_text`). Environment variables are not in that list: they are set by the operator and gated by the manifest's `env` list, so `Env.get(key)` returns a plain `Option<String>`. `Untrusted<T>` supports:
 
@@ -131,28 +135,44 @@ fn read_email(raw: Untrusted<String>) -> Email ! {Fail<InvalidEmail>} {
 
 ## Tagged templates never splice
 
-`sql"…"`, `html"…"`, `url"…"`, and `shell"…"` are tagged templates ([design §4.11](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)). A tagged string desugars to a call to the tag module's `template` function, with the literal parts and the interpolated values passed separately:
+`sql"…"`, `html"…"` and `url"…"` are implemented tagged templates; `shell` is reserved but has no std module. The design uses tagged templates ([design §4.11](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)). A tagged string desugars to a call to the tag module's `template` function, with the literal parts and the interpolated values passed separately:
 
 ```text
 sql"select * from users where email = {email}"
   ==> sql.template(["select * from users where email = ", ""], [SqlValue.from(email)])
 ```
 
-Interpolated values are **never spliced raw**. Each one is type checked against the tag's parameter type. For `sql` that is `SqlValue`, which becomes a bound parameter. `html` escapes text by construction. So untrusted input is safe in a template:
+Interpolated values are **never spliced raw**. Each one is type checked against the tag's parameter type. For `sql` that is `SqlValue`, which becomes a bound parameter. `html` escapes text by construction. This query binds a string as a parameter:
 
 ```sakura
 import std/sql.{Sql, SqlError}
 
 type Post = { id: Int, title: String }
 
-fn search(q: Untrusted<String>) -> List<Post> ! {Sql, Fail<SqlError>} {
+fn search(q: String) -> List<Post> ! {Sql, Fail<SqlError>} {
   Sql.query(sql"select id, title from posts where title = {q}")
 }
 ```
 
-`q` reaches the database as a parameter value, never as SQL text. Raw-text APIs such as `Html.raw`, which takes a `TrustedHtml`, do not accept `Untrusted<T>`.
+`q` reaches the database as a parameter value, never as SQL text. Direct `Untrusted<String>` SQL interpolation currently fails with `V2032` because `SqlValue.from` requires `Schema`; validate the input into a refined string before passing it here. The source index describes broader support than this binary accepts.
 
-This holds because the template's result types are `pub opaque type`s. `Query<R>` and `Html` are exported by name only: other modules can pass them around, but constructing one outside its declaring module is `V1006`, so the template is the only way to build a query and escaping code the only way to build HTML.
+HTML interpolations have element type `Html`. Existing `Html` values compose as markup; other `Show` values convert through `Html.from` and are escaped text (design §17.77). `Untrusted<String>` interpolated directly is escaped in its shown wrapper form; `Html.untrusted` displays just the escaped contents:
+
+```sakura
+import std/html.{Html}
+
+test "HTML composition keeps text escaped" {
+  let heading = html"<h1>{"Tom & Jerry"}</h1>"
+  let input = Untrusted.of("<script>")
+  let page = html"<main>{heading}{Html.untrusted(input)}</main>"
+  expect_eq(Html.to_string(page), "<main><h1>Tom &amp; Jerry</h1>&lt;script&gt;</main>")
+  expect_eq(Html.to_string(Html.from(3)), "3")
+}
+```
+
+`Html.raw(markup, @trust("reason"))` is the explicit unescaped entry point; there is no `TrustedHtml` type. Its reason is included in the trust audit.
+
+This holds because the template's result types are `pub opaque type`s. `Query<R>` and `Html` are exported by name only: other modules can pass them around, but constructing one outside its declaring module is `V1006`, so callers must use the module APIs. `Html.raw` makes bypassing escaping an explicit trust decision.
 
 ## Secrets
 
@@ -175,11 +195,11 @@ pub fn call_billing(amount: Decimal) -> Unit ! {Env, Http, Log, Fail<HttpError>}
 }
 ```
 
-Adapters that genuinely need the raw value use `Secret.expose(s, @trust("reason"))`. The planned `sakura audit` will list every use with its reason. This prevents accidental disclosure, not deliberate leakage.
+Adapters that genuinely need the raw value use `Secret.expose(s, @trust("reason"))`. [`sakura audit`](/docs/agents/audit) lists every user `@trust` site with its reason. This prevents accidental disclosure, not deliberate leakage.
 
 ## The trusted computing base
 
-Some things are assumed, and Sakura Lang says so. The trusted computing base is the compiler, the runtime, the std root handlers, FFI bindings marked `@external`, every `@trust` site, the host platform, and later the SMT solver ([design §6.6](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)). The planned `sakura build --manifest` will write this list with content hashes. Each item has the `trusted` status in the [guarantee model](/docs/tour/contracts#the-guarantee-model).
+Some things are assumed, and Sakura Lang says so. The trusted computing base is the compiler, the runtime, the std root handlers, FFI bindings marked `@external`, every `@trust` site, the host platform, and later the SMT solver ([design §6.6](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)). [`sakura build --manifest`](/docs/agents/build-manifest) inventories trusted compiler/runtime/std bindings and user trust sites, including a hash of the emitted runtime. It does not hash every trusted component. Each item has the `trusted` status in the [guarantee model](/docs/tour/contracts#the-guarantee-model).
 
 Compiler fixes never widen authority silently. A fix that would change authority carries `impact: authority_change` and is never applied by `sakura fix` automatically. See [Diagnostics](/docs/agents/diagnostics).
 
@@ -188,7 +208,7 @@ Compiler fixes never widen authority silently. A fix that would change authority
 - A function performs only the effects in its row. Every performed operation has an installed handler.
 - `main` declares only std effects (`V6010`). Root handlers are limited by `[permissions]`; a denied permission stops the program at startup (exit `75`).
 - Prelude `Trust` is compiler-known. `@trust("reason")` is accepted only directly in a trusted sink argument; other uses report `V6001`.
-- Full scoped capability/resource escape checks (`V6002`/`V6003`) are M3 completion gates, not a completed security guarantee.
+- Scoped capability/resource escape checks (`V6002`/`V6003`) and foreign-capability FFI checks (`V6001`) are implemented. The broader M3 gates and maintainer security review remain separate requirements.
 - `Secret<T>` is never shown, logged, snapshotted, or serialized (`V2031`).
 - Tagged templates receive interpolations as values, never raw text.
 

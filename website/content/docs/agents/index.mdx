@@ -30,6 +30,9 @@ The two `llms.txt` files are different things. See [llms.txt](/docs/agents/llms-
 | `?name` typed holes | Placeholders the checker reports with expected type, effects, locals, and candidates. | design §12.4, M2 |
 | `sakura prompt` | Emits `docs/llms.txt` matched to the compiler's edition, plus requested library signatures. | design §12.1, M2 |
 | `sakura fix`, `--frozen-specs` | Applies compiler fixes by impact class and rejects patches that touch frozen specs. | design §7.3, M3 |
+| [`sakura audit`](/docs/agents/audit), [`sakura doc`](/docs/agents/doc) | Trust inventory and offline signature search. | design §17.78, M3 |
+| [`sakura build --manifest`](/docs/agents/build-manifest) | Trusted components and runtime contract obligations. | design §17.76, M3 |
+| [`sakura test --record`](/docs/agents/cassettes) | Opt-in cassette recording; ordinary tests replay offline. | design §17.73, M3 |
 | `sakura mcp serve` | The compiler as Model Context Protocol tools. | design §12.6, M3 |
 
 Milestones are defined in [design §14.3](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md). See also the [roadmap](/docs/roadmap).
@@ -43,7 +46,7 @@ This is how an agent is expected to work with the full v0 toolchain. `sakura fix
 
 ### Load the language
 
-Read `docs/llms.txt` once per session (or run `sakura prompt`). It is the entire core language. Look up library signatures with the MCP `symbol_query` tool instead of guessing; `sakura doc --search` is planned.
+Read `docs/llms.txt` once per session (or run `sakura prompt`). It is the entire core language. Look up library signatures with the MCP `symbol_query` tool instead of guessing; [`sakura doc --search`](/docs/agents/doc) is also available offline.
 
 </Step>
 <Step>
@@ -98,7 +101,7 @@ If the task really needs a new effect, error tag, permission, or a changed contr
 - Weaken or delete a `requires`, `ensures`, or `where` clause, or edit a `test` body, to make a check pass. Contract violations (`D020`, `D021`) mean the caller or callee is wrong, not the spec.
 - Use `.trust(@trust("..."))`, `Secret.expose`, `.expect`, or `Email.from` outside trusted boundaries, or without a true reason.
 - Leave a `?hole` in code meant to build. `sakura build` and `sakura run` reject it with `V2050`.
-- Borrow syntax from other languages: call-site type arguments (`f<T>(x)`, `V0011`) and named arguments (`f(name: v)`, `V0014`) do not exist. Annotate the binding (`let rows: List<User> = Sql.query(q)`) and pass a record for options. Import every non-prelude name explicitly (`import std/http.{Http, Request}`).
+- Borrow syntax from other languages: call-site type arguments (`f<T>(x)`, `V0011`) and named arguments (`f(name: v)`, `V0014`) do not exist. Annotate the binding (`let rows: List<User> = Sql.query(q)`) and pass a record for options. Import every non-prelude name explicitly (`import std/http.{Http}` and `import std/request.{Request}`).
 
 ## Pages in this section
 
@@ -114,5 +117,17 @@ If the task really needs a new effect, error tag, permission, or a changed contr
   </Card>
   <Card title="Typed holes" href="/docs/agents/typed-holes">
     Writing programs incrementally with `?name`.
+  </Card>
+  <Card title="Trust audit" href="/docs/agents/audit">
+    Inventory explicit trust, totality and refinement boundaries.
+  </Card>
+  <Card title="Offline API search" href="/docs/agents/doc">
+    Query signatures, effect rows and contracts with sakura doc.
+  </Card>
+  <Card title="Build manifest" href="/docs/agents/build-manifest">
+    Inspect trusted dependencies and runtime contract obligations.
+  </Card>
+  <Card title="Cassettes and recording" href="/docs/agents/cassettes">
+    Replay HTTP and LLM exchanges offline; opt into recording.
   </Card>
 </Cards>
