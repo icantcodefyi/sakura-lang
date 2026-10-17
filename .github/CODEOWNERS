@@ -1,0 +1,15 @@
+# Default ownership
+* @icantcodefyi
+
+# Compiler
+/compiler/ @icantcodefyi
+
+# Language design, RFCs, ADRs, and research
+/docs/ @icantcodefyi
+/research/ @icantcodefyi
+
+# Website
+/website/ @icantcodefyi
+
+# Repository automation
+/.github/ @icantcodefyi

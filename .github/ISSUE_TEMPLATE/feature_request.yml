@@ -1,0 +1,37 @@
+name: Feature request
+description: Suggest a tooling, website, or contributor-workflow improvement.
+title: "feat: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For language syntax, semantics, effects, or compatibility changes, use the language proposal form and [RFC process](https://github.com/icantcodefyi/vow/blob/master/docs/rfcs/README.md).
+        Vow is in the design phase; distinguish existing behavior from proposed behavior.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and affected users
+      description: Describe a concrete workflow and why it is difficult today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Give a small example and observable success criteria.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and costs
+      description: Include the option of leaving things as they are.
+    validations:
+      required: true
+  - type: textarea
+    id: ai
+    attributes:
+      label: AI assistance
+      description: Disclose AI tools and their role, or write none. You remain accountable for the proposal.
+    validations:
+      required: true

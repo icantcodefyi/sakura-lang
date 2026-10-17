@@ -1,0 +1,51 @@
+name: Language proposal
+description: Pitch a language or public compatibility change before drafting an RFC.
+title: "proposal: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Read [the design](https://github.com/icantcodefyi/vow/blob/master/docs/design.md) and [RFC process](https://github.com/icantcodefyi/vow/blob/master/docs/rfcs/README.md).
+        This issue is a pitch, not an accepted RFC. Substantive proposals need a numbered RFC PR and a seven-calendar-day final comment period.
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: State the problem, intended users, and evidence.
+    validations:
+      required: true
+  - type: textarea
+    id: examples
+    attributes:
+      label: Concrete examples and semantics
+      description: Show proposed source, expected results, rejected cases, and relevant design sections.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and prior art
+      description: Link primary sources and explain tradeoffs, including doing nothing.
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Compatibility, tooling, and security impact
+      description: Consider effects, capabilities, resource limits, diagnostics, agent workflows, migration, and tests. State unknowns explicitly.
+    validations:
+      required: true
+  - type: input
+    id: champion
+    attributes:
+      label: Human champion
+      description: GitHub handle of the person accountable for developing and discussing this proposal.
+    validations:
+      required: true
+  - type: textarea
+    id: ai
+    attributes:
+      label: AI assistance
+      description: Disclose tools and their role, or write none. Verify sources and do not invent experiments.
+    validations:
+      required: true

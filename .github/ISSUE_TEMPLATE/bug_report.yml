@@ -1,0 +1,52 @@
+name: Bug report
+description: Report a reproducible problem with the website, docs, or future compiler.
+title: "bug: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Vow is pre-alpha; no compiler is released yet. Search existing issues first.
+        Report security issues privately using [SECURITY.md](https://github.com/icantcodefyi/vow/blob/master/SECURITY.md).
+        Remove secrets and private data from all examples and logs.
+  - type: input
+    id: revision
+    attributes:
+      label: Revision and component
+      description: Commit hash, affected component, and URL or file path.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include the smallest complete example and exact commands.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: Link the design or documented behavior where relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include relevant output and exit codes, without secrets.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, browser, Bun version, and other relevant tool versions.
+    validations:
+      required: true
+  - type: textarea
+    id: ai
+    attributes:
+      label: AI assistance
+      description: Disclose AI tools used to prepare the report, or write none. Verify any claimed reproduction yourself.
+    validations:
+      required: true
