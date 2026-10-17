@@ -99,7 +99,7 @@ impl CheckResult {
 
 /// Phases whose crates still return placeholder results. Each is reported once per run as
 /// `V9002` so a clean `check` is never claimed on the strength of a stub. Shrinks as phases land.
-const PENDING_PHASES: &[&str] = &["parser", "type checker"];
+const PENDING_PHASES: &[&str] = &["type checker"];
 
 /// The facade every frontend calls. Stateless until incremental queries arrive (Salsa, M3).
 pub struct Analysis;
