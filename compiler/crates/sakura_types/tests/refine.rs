@@ -1,5 +1,6 @@
-//! Refined types in the checker (design §4.3, §6.4, §7.2, §17.71, §17.72): literals into a
-//! refined type (`V5002`), `Untrusted.validate` (`V5003`) and linear contracts (`W5005`).
+//! Refined types in the checker (design §4.3, §6.4, §7.2, §17.71, §17.72, §17.87, §17.90):
+//! literals into a refined type decided at compile time (`V5004`), `Untrusted.validate`
+//! (`V5003`) and linear contracts (`W5005`).
 
 mod common;
 
@@ -38,41 +39,213 @@ fn conversions(c: &common::Checked, name: &str) -> Vec<(String, String)> {
     out.into_iter().map(|(_, t, n, _)| (t, n)).collect()
 }
 
-// ---- V5002: literals into refined types ----
+/// Every conversion recorded anywhere in the user module.
+fn all_conversions(c: &common::Checked) -> usize {
+    let m = c.main_module();
+    c.typed
+        .bodies
+        .iter()
+        .filter(|((module, _), _)| *module == m)
+        .map(|(_, b)| b.conversions.iter().count())
+        .sum()
+}
+
+/// Checks `src` (after the `Email`/`Percent` prelude): no diagnostic and no conversion.
+fn decided(src: &str) {
+    let c = check(&format!("{EMAIL}{src}"));
+    assert!(c.std_diags.is_empty(), "std: {:?}", c.std_diags);
+    assert!(c.diags.is_empty(), "{}", c.render());
+    assert_eq!(
+        all_conversions(&c),
+        0,
+        "a decided literal needs no start-up check"
+    );
+}
+
+/// Checks `src`: no diagnostic, and exactly the literal `lit` of `name` is converted.
+fn undecided(src: &str, name: &str, lit: &str) {
+    let c = check(&format!("{EMAIL}{src}"));
+    assert!(c.diags.is_empty(), "{}", c.render());
+    assert_eq!(conversions(&c, name), [(lit.into(), "from".into())]);
+    assert_eq!(all_conversions(&c), 1);
+}
+
+// ---- §17.87: literals into refined types are decided at compile time ----
 
 #[test]
-fn a_literal_into_a_refined_type_is_v5002_and_a_conversion() {
-    let src = format!(
-        "{EMAIL}let support: Email = \"help@sakura.dev\"\nfn half() -> Percent {{ 50 }}\nfn cold() -> Int {{ let p: Percent = -0\n  p }}\n"
+fn literals_that_satisfy_the_predicate_need_no_conversion() {
+    decided(
+        "let support: Email = \"help@sakura.dev\"\nfn half() -> Percent { 50 }\nfn cold() -> Int { let p: Percent = -0\n  p }\n",
     );
-    let c = check(&src);
-    assert_eq!(c.codes(), ["V5002", "V5002", "V5002"], "{}", c.render());
-    assert!(
-        c.diags
-            .iter()
-            .all(|d| d.severity == sakura_diagnostics::Severity::Warning),
-        "{}",
-        c.render()
+}
+
+#[test]
+fn std_status_and_the_tour_email_are_decided() {
+    decided(
+        "import std/response.{Status}\ntype Address = String where String.len(it) <= 254 && String.contains(it, \"@\")\nlet missing: Status = 404\nlet owner: Address = \"ada@example.com\"\n",
     );
-    assert!(
-        c.render().contains(
-            "this literal is checked against the refinement of `Email` when the program starts"
-        ),
-        "{}",
-        c.render()
+}
+
+#[test]
+fn a_user_total_predicate_in_the_fragment_is_decided() {
+    decided(
+        "@total\nfn even(n: Int) -> Bool {\n  if n < 0 { even(-n) } else {\n    let half = n / 2\n    half * 2 == n\n  }\n}\ntype Even = Int where even(it)\ntype Ratio = Float where it >= 0.0 && it <= 1.0\ntype Yes = Bool where it\ntype Word = String where it.len() > 0 && !String.starts_with(it, \" \") && !it.ends_with(\" \")\nlet e: Even = -4\nlet r: Ratio = 0.25\nlet y: Yes = true\nlet w: Word = \"sakura\"\n",
     );
-    assert_eq!(
-        conversions(&c, "support"),
-        [("\"help@sakura.dev\"".into(), "from".into())]
-    );
-    assert_eq!(conversions(&c, "half"), [("50".into(), "from".into())]);
-    assert_eq!(conversions(&c, "cold"), [("-0".into(), "from".into())]);
 }
 
 #[test]
 fn literals_reach_refined_parameters_and_fields() {
-    let src = "type Grade = { score: Percent }\nfn show(p: Percent) -> Int { p }\nfn main() -> Int {\n  let g = Grade { score: 90 }\n  show(10) + g.score\n}\n";
-    assert_eq!(codes(src), ["V5002", "V5002"]);
+    let src = "type Grade = { score: Percent }\nfn show(p: Percent) -> Int { p }\nfn main() -> Int {\n  let g = Grade { score: 90 }\n  show(10) + g.score + show(101)\n}\n";
+    let c = check(&format!("{EMAIL}{src}"));
+    assert_eq!(c.codes(), ["V5004"], "{}", c.render());
+    assert!(
+        c.render().contains("`101` does not satisfy"),
+        "{}",
+        c.render()
+    );
+}
+
+#[test]
+fn a_literal_that_fails_the_predicate_is_v5004_with_the_clause() {
+    let src = format!("{EMAIL}let p: Percent = 150\n");
+    let c = check(&src);
+    let r = c.render();
+    assert_eq!(c.codes(), ["V5004"], "{r}");
+    let d = &c.diags[0];
+    assert_eq!(d.severity, sakura_diagnostics::Severity::Error);
+    assert_eq!(d.phase, sakura_diagnostics::Phase::Contract);
+    assert!(d.fixes.is_empty(), "no mechanical repair");
+    assert!(
+        r.contains("V5004 3:18 `150` does not satisfy the `where` clause of `Percent`"),
+        "{r}"
+    );
+    assert!(
+        r.contains("Definition 2:26 `it >= 0 && it <= 100` the refinement of `Percent`"),
+        "{r}"
+    );
+}
+
+#[test]
+fn the_tour_email_rejects_a_string_without_an_at() {
+    let src = "type Address = String where String.len(it) <= 254 && String.contains(it, \"@\")\nlet a: Address = \"x\"\n";
+    let c = check(&format!("{EMAIL}{src}"));
+    assert_eq!(c.codes(), ["V5004"], "{}", c.render());
+    assert!(
+        c.render().contains("`\"x\"` does not satisfy"),
+        "{}",
+        c.render()
+    );
+}
+
+#[test]
+fn a_defect_in_the_predicate_is_v5004() {
+    // 64-bit overflow, division by zero and a failed `requires` defect on every backend.
+    let src = "type Cube = Int where it * it * it > 0\n@total\nfn inverse(n: Int) -> Int { 100 / n }\ntype Inv = Int where inverse(it) > 0\nfn positive(n: Int) -> Bool\n  requires n > 0\n{\n  true\n}\ntype Pos = Int where positive(it)\nlet c: Cube = 3000000\nlet i: Inv = 0\nlet p: Pos = -1\n";
+    let c = check(&format!("{EMAIL}{src}"));
+    let r = c.render();
+    assert_eq!(c.codes(), ["V5004", "V5004", "V5004"], "{r}");
+    assert_eq!(r.matches(": evaluating it defects").count(), 3, "{r}");
+}
+
+#[test]
+fn a_predicate_outside_the_fragment_keeps_the_start_up_check() {
+    // `String.split` and `List.contains` are outside the scalar fragment (§17.87).
+    undecided(
+        "type Dotted = String where List.len(String.split(it, \".\")) > 1\nlet host: Dotted = \"sakura.dev\"\n",
+        "host",
+        "\"sakura.dev\"",
+    );
+}
+
+#[test]
+fn an_int_beyond_the_js_safe_range_is_undecidable() {
+    // 10^16 fits 64 bits but not ±(2^53−1): JS and WASM disagree, so it is not decided.
+    undecided(
+        "type Wide = Int where it * it > 0\nlet w: Wide = 100000000\n",
+        "w",
+        "100000000",
+    );
+}
+
+#[test]
+fn a_predicate_over_the_step_budget_keeps_the_start_up_check() {
+    let src = "@total\nfn spin(n: Int) -> Bool { if n == 0 { true } else { spin(n + 1) } }\ntype Spun = Int where spin(it)\nlet s: Spun = 1\n";
+    undecided(src, "s", "1");
+}
+
+#[test]
+fn short_circuit_decides_before_reaching_the_undecidable_part() {
+    let src = "type Rel = String where it != \"\" && !String.starts_with(it, \"/\") && !List.contains(String.split(it, \"/\"), \"..\")\nlet bad: Rel = \"/etc\"\nlet good: Rel = \"a.txt\"\n";
+    let c = check(&format!("{EMAIL}{src}"));
+    assert_eq!(c.codes(), ["V5004"], "{}", c.render());
+    assert_eq!(
+        conversions(&c, "good"),
+        [("\"a.txt\"".into(), "from".into())]
+    );
+}
+
+#[test]
+fn std_path_literals_compile_without_a_diagnostic() {
+    // Decided once WS4 rewrites `is_relative` into the fragment; until then a start-up check.
+    let c = check(
+        "import std/path.{Path}\nimport std/response.{Status}\nlet notes: Path = \"notes/today.txt\"\nlet ok: Status = 200\n",
+    );
+    assert!(c.diags.is_empty(), "{}", c.render());
+    assert!(conversions(&c, "ok").is_empty());
+    assert!(conversions(&c, "notes").len() <= 1);
+}
+
+/// The four string built-ins of the fragment agree with the JS runtime's `string_*` on
+/// non-ASCII input: each expected value comes from `sakura_runtime.js`, and the literal is
+/// accepted only if the evaluator computes the same.
+#[test]
+fn string_built_ins_match_the_js_runtime() {
+    let cases = [
+        ("héllo", "é"),
+        ("日本語テキスト", "本語"),
+        ("🌸 sakura", "🌸"),
+        ("a\u{301}b", "\u{301}"),
+        ("naïve café", "café"),
+        ("ß", "s"),
+        ("", ""),
+        ("x🌸", "🌸"),
+    ];
+    let json: Vec<String> = cases
+        .iter()
+        .map(|(s, t)| format!("[{s:?},{t:?}]"))
+        .collect();
+    let script = format!(
+        "const rt = await import('./sakura_runtime.js'); for (const [s, t] of [{}]) \
+         console.log([rt.string_len(s), rt.string_contains(s, t), rt.string_starts_with(s, t), rt.string_ends_with(s, t)].join(' '));",
+        json.join(",")
+    );
+    let runtime = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../runtime/js");
+    let out = std::process::Command::new("node")
+        .args(["--input-type=module", "-e", &script])
+        .current_dir(runtime)
+        .output()
+        .expect("node runs");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let rows: Vec<Vec<String>> = stdout
+        .lines()
+        .map(|l| l.split(' ').map(str::to_owned).collect())
+        .collect();
+    assert_eq!(
+        rows.len(),
+        cases.len(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let mut src = String::new();
+    for (i, ((s, t), row)) in cases.iter().zip(&rows).enumerate() {
+        let [len, contains, starts, ends] = &row[..] else {
+            panic!("{row:?}");
+        };
+        src.push_str(&format!(
+            "type T{i} = String where String.len(it) == {len} && String.contains(it, {t:?}) == {contains} && String.starts_with(it, {t:?}) == {starts} && String.ends_with(it, {t:?}) == {ends}\nlet v{i}: T{i} = {s:?}\n"
+        ));
+    }
+    decided(&src);
 }
 
 #[test]
@@ -146,13 +319,13 @@ fn validate_without_a_target_or_with_the_wrong_base_is_v5003() {
 
 #[test]
 fn a_clause_scanning_a_parameter_is_w5005_once() {
+    // §17.90: `String.contains` is not a trigger; one warning for the `List` clause.
     let src = "fn count(xs: List<Int>, s: String) -> Int\n  requires all_positive: List.all(xs, fn(x) { x > 0 }) && List.any(xs, fn(x) { x > 1 })\n  requires String.contains(s, \"@\")\n  ensures result >= 0\n{\n  List.len(xs)\n}\n";
     let c = check(&format!("{EMAIL}{src}"));
-    assert_eq!(c.codes(), ["W5005", "W5005"], "{}", c.render());
+    assert_eq!(c.codes(), ["W5005"], "{}", c.render());
     assert!(
-        c.render().contains(
-            "this contract calls `String.contains` on `s`, so every check scans all of it"
-        ),
+        c.render()
+            .contains("on `xs`, so every check scans all of it"),
         "{}",
         c.render()
     );

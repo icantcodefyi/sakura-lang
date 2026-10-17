@@ -1,20 +1,46 @@
-//! Refined types in the checker (design §4.3, §6.4, §7.2, §17.71, §17.72): literals coerced
-//! into a refined type (`V5002`), the compiler-known `Untrusted.validate` (`V5003`), and
-//! linear contract clauses (`W5005`).
+//! Refined types in the checker (design §4.3, §6.4, §7.2, §17.71, §17.72, §17.87): literals
+//! into a refined type, decided at compile time where possible (`V5004`), the compiler-known
+//! `Untrusted.validate` (`V5003`), and linear contract clauses (`W5005`).
 
-use sakura_diagnostics::codes::{V5002, V5003, W5005};
-use sakura_diagnostics::{Applicability, Diagnostic, Fix, Impact, Phase, Rendered};
+use sakura_diagnostics::codes::{V5003, V5004, W5005};
+use sakura_diagnostics::{Applicability, Diagnostic, Fix, Impact, Phase, SpanRole};
 use sakura_hir::{
-    Builtin, DefId, DefKind, Expr, ExprId, Literal, LocalId, Res, TypeDefBody, TypeRes, UnaryOp,
+    BodyId, Builtin, DefId, DefKind, Expr, ExprId, Literal, LocalId, ModuleId, Res, TypeDefBody,
+    TypeRes, UnaryOp,
 };
+use text_size::TextRange;
 
 use super::Checker;
+use super::consteval::{Eval, Stop, Value};
 use crate::TypedBody;
 use crate::ty::{RowId, TyCon, Type, TypeId};
 
+/// A refined type at a use: its definition, generated introductions, arguments and base.
+struct Refinement {
+    def: DefId,
+    from: DefId,
+    validate: DefId,
+    pred: BodyId,
+    args: Vec<TypeId>,
+    base: TypeId,
+}
+
+/// A literal coerced into a refined type, decided once every body is checked (§17.87).
+pub(super) struct PendingLiteral {
+    module: ModuleId,
+    body: BodyId,
+    expr: ExprId,
+    range: TextRange,
+    value: Value,
+    ty: DefId,
+    pred: BodyId,
+    shown: String,
+    suppress: bool,
+}
+
 impl Checker<'_> {
-    /// A refined type's generated introduction (`from` or `validate`) and its base at `args`.
-    fn refinement(&mut self, ty: TypeId) -> Option<(DefId, DefId, Vec<TypeId>, TypeId)> {
+    /// A refined type's definition, generated introductions, predicate and base at `args`.
+    fn refinement(&mut self, ty: TypeId) -> Option<Refinement> {
         let ty = self.inf.shallow(ty);
         let Type::Con(TyCon::Adt(r), args) = self.inf.interner.ty(ty).clone() else {
             return None;
@@ -24,62 +50,131 @@ impl Checker<'_> {
         let DefKind::Type(td) = &self.program.def(r).kind else {
             return None;
         };
-        let TypeDefBody::Refined { from, validate, .. } = &td.body else {
+        let TypeDefBody::Refined {
+            from,
+            validate,
+            pred,
+            ..
+        } = &td.body
+        else {
             return None;
         };
         let at = |index| DefId {
             module: r.module,
             index,
         };
-        Some((at(*from), at(*validate), args, base))
+        Some(Refinement {
+            def: r,
+            from: at(*from),
+            validate: at(*validate),
+            pred: *pred,
+            args,
+            base,
+        })
     }
 
     /// A scalar literal (`-` allowed on numbers) where a refined type over its base is
-    /// expected: accepted, recorded as a conversion through the type's `from`, and reported
-    /// as `V5002`, because its predicate runs at program start (§17.71). Returns its row.
+    /// expected: accepted and recorded as a conversion through the type's `from`. Its
+    /// predicate is evaluated on the literal once every body is checked
+    /// ([`Self::decide_literals`]). Returns its row.
     pub(super) fn literal_into_refined(&mut self, e: ExprId, expected: TypeId) -> Option<RowId> {
         let body = self.hir_body();
-        let lit = match &body.exprs[e] {
-            Expr::Lit(l) => l,
+        let (lit, neg) = match &body.exprs[e] {
+            Expr::Lit(l) => (l, false),
             Expr::Unary {
                 op: UnaryOp::Neg,
                 expr,
             } => match &body.exprs[*expr] {
-                Expr::Lit(l @ (Literal::Int(_) | Literal::Float(_))) => l,
+                Expr::Lit(l @ (Literal::Int(_) | Literal::Float(_))) => (l, true),
                 _ => return None,
             },
             _ => return None,
         };
-        let lit_ty = match lit {
-            Literal::Int(_) => TyCon::Int,
-            Literal::Float(_) => TyCon::Float,
-            Literal::String(_) => TyCon::String,
-            Literal::Bool(_) => TyCon::Bool,
+        let (lit_ty, value) = match lit {
+            Literal::Int(i) => (
+                TyCon::Int,
+                if neg { i.checked_neg() } else { Some(*i) }.map(Value::Int),
+            ),
+            Literal::Float(x) => (TyCon::Float, Some(Value::Float(if neg { -x } else { *x }))),
+            Literal::String(s) => (TyCon::String, Some(Value::Str(s.clone()))),
+            Literal::Bool(b) => (TyCon::Bool, Some(Value::Bool(*b))),
             Literal::Unit => return None,
         };
         let lit_ty = self.inf.interner.prim(lit_ty);
-        let (from, _, args, base) = self.refinement(expected)?;
-        if self.inf.shallow(base) != lit_ty {
+        let r = self.refinement(expected)?;
+        if self.inf.shallow(r.base) != lit_ty {
             return None;
         }
         let (_, row) = self.synth(e);
-        self.b.conversions.insert(e, (from, args));
-        let shown = self.render(expected);
-        let range = self.expr_range(e);
-        let d = Diagnostic::warning(
-            V5002,
-            Phase::Contract,
-            format!(
-                "this literal is checked against the refinement of `{shown}` when the program starts, not at compile time (design §4.3)"
-            ),
-        )
-        .with_span(
-            self.span(range)
-                .with_label(format!("checked by `{shown}.from` at start-up")),
-        )
-        .with_expected(Rendered::text(shown));
-        self.push(d);
+        self.b.conversions.insert(e, (r.from, r.args));
+        if let Some(value) = value {
+            let shown = self.render(expected);
+            let pending = PendingLiteral {
+                module: self.module(),
+                body: self.b.body_id.expect("body id"),
+                expr: e,
+                range: self.expr_range(e),
+                value,
+                ty: r.def,
+                pred: r.pred,
+                shown,
+                suppress: self.b.suppress,
+            };
+            self.literals.push(pending);
+        }
         Some(row)
+    }
+
+    /// Decides every literal coerced into a refined type (§17.87) by evaluating the predicate
+    /// on it ([`super::consteval`]): true drops the conversion (nothing runs at start-up),
+    /// false or a defect is `V5004`, undecidable keeps the conversion and reports nothing.
+    /// Runs after every body, so predicates and the functions they call are typed; all
+    /// literals are decided before any conversion is dropped, so the order does not matter.
+    pub(super) fn decide_literals(&mut self) {
+        let pending = std::mem::take(&mut self.literals);
+        let mut eval = Eval::new(self.program, &self.out.bodies);
+        let outcomes: Vec<_> = pending
+            .iter()
+            .map(|p| eval.predicate(p.ty.module, p.pred, p.value.clone()))
+            .collect();
+        for (p, outcome) in pending.into_iter().zip(outcomes) {
+            match outcome {
+                Ok(true) => {
+                    if let Some(b) = self.out.bodies.get_mut(&(p.module, p.body)) {
+                        b.conversions.remove(p.expr);
+                    }
+                }
+                Ok(false) | Err(Stop::Defect) if !p.suppress => {
+                    let pred = self.program.body(p.ty.module, p.pred);
+                    let clause = pred
+                        .value
+                        .map(|v| pred.source_map.expr(v))
+                        .unwrap_or_default();
+                    let how = if outcome.is_ok() {
+                        ""
+                    } else {
+                        ": evaluating it defects"
+                    };
+                    let (lit, shown) = (p.value.show(), p.shown);
+                    let d = Diagnostic::error(
+                        V5004,
+                        Phase::Contract,
+                        format!("`{lit}` does not satisfy the `where` clause of `{shown}`{how}"),
+                    )
+                    .with_span(
+                        self.span_in(p.module, p.range)
+                            .with_label(format!("never a valid `{shown}`")),
+                    )
+                    .with_span(
+                        self.span_in(p.ty.module, clause)
+                            .with_role(SpanRole::Definition)
+                            .with_label(format!("the refinement of `{shown}`")),
+                    );
+                    self.push(d);
+                }
+                _ => {}
+            }
+        }
     }
 
     /// Whether `def` is std's compiler-known `Untrusted.validate` (§17.71).
@@ -98,7 +193,7 @@ impl Checker<'_> {
         );
     }
 
-    fn validate_error(&mut self, range: text_size::TextRange, msg: String) {
+    fn validate_error(&mut self, range: TextRange, msg: String) {
         let fix = Fix {
             title: "Annotate the binding with a refined type, e.g. `let e: Email = Untrusted.validate(u)?`".into(),
             applicability: Applicability::Incomplete,
@@ -126,8 +221,8 @@ impl Checker<'_> {
                 continue;
             }
             match self.refinement(v) {
-                Some((_, validate, args, base)) if self.inf.zonk(base) == t => {
-                    out.conversions.insert(call, (validate, args));
+                Some(r) if self.inf.zonk(r.base) == t => {
+                    out.conversions.insert(call, (r.validate, r.args));
                 }
                 found => {
                     let (target, value) = (self.render(v), self.render(t));
@@ -147,9 +242,8 @@ impl Checker<'_> {
         }
     }
 
-    /// `W5005` (§17.72): one warning per clause that calls `List.all`, `List.any`,
-    /// `List.contains` or `String.contains` on one of `params` (a parameter or `it`), in user
-    /// packages only.
+    /// `W5005` (§17.72, §17.90): one warning per clause that calls `List.all`, `List.any` or
+    /// `List.contains` on one of `params` (a parameter or `it`), in user packages only.
     pub(super) fn linear_clauses(&mut self, clauses: &[ExprId], params: &[LocalId]) {
         let program = self.program;
         let module = self.module();
@@ -158,14 +252,9 @@ impl Checker<'_> {
             return;
         }
         let mut linear = Vec::new();
-        for (ty, home, name) in [
-            (Builtin::List, "List", "all"),
-            (Builtin::List, "List", "any"),
-            (Builtin::List, "List", "contains"),
-            (Builtin::String, "String", "contains"),
-        ] {
-            if let Some(d) = program.resolve_home(TypeRes::Builtin(ty), name, module) {
-                linear.push((d, format!("{home}.{name}")));
+        for name in ["all", "any", "contains"] {
+            if let Some(d) = program.resolve_home(TypeRes::Builtin(Builtin::List), name, module) {
+                linear.push((d, format!("List.{name}")));
             }
         }
         let body = self.hir_body();

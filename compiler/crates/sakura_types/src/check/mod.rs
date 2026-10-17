@@ -10,6 +10,7 @@
 //! exhaustiveness recursion is bounded by syntactic nesting; `shallow` links to roots.
 
 mod body;
+mod consteval;
 mod decls;
 mod effects;
 mod escape;
@@ -195,6 +196,8 @@ pub(crate) struct Checker<'p> {
     body: Option<&'p Body>,
     /// Which nominal types hold scoped values, resources or closures (`escape.rs`).
     escape_memo: HashMap<(DefId, escape::Holds), bool>,
+    /// Literals into refined types, decided after every body (`refine.rs`, §17.87).
+    literals: Vec<refine::PendingLiteral>,
 }
 
 pub(crate) fn check(
@@ -224,6 +227,7 @@ pub(crate) fn check(
         b: BodyState::default(),
         body: None,
         escape_memo: HashMap::new(),
+        literals: Vec::new(),
     };
     let reused = |m: ModuleId| reuse.is_some_and(|(_, keep)| keep(m));
     if let Some((prev, _)) = reuse {
@@ -272,6 +276,7 @@ pub(crate) fn check(
         cx.out.holes.extend(holes);
         cx.out.holes.sort_by_key(|h| h.module);
     }
+    cx.decide_literals();
     let mut out = std::mem::take(&mut cx.out);
     for (def, s) in &cx.schemes {
         out.defs.insert(*def, s.clone());
