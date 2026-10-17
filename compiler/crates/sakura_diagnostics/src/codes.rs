@@ -382,6 +382,18 @@ subset (design §7.1).";
 "A literal assigned to a refined type could not be checked at compile time, so it is checked at
 program start instead (design §4.3). Severity: warning.";
 
+    V5003 "validate_target_not_refined" CONTRACT,
+"`Untrusted.validate(u)` checks an untrusted value against a refined type, and that type comes
+from the expected type (design §6.4, §17.71). It must be a refined type whose base is the
+untrusted value's type. Annotate the binding with the refined type you want, or use
+`Untrusted.check(u, clause, pred)` for an ad-hoc predicate.
+
+Wrong:
+    let s: String = Untrusted.validate(body)?
+Fixed:
+    type Email = String where String.len(it) <= 254
+    let e: Email = Untrusted.validate(body)?";
+
     // 6: capabilities / resources / escape
     V6001 "capability_construction" CAPABILITY,
 "Capability values (`Dir`, `NetScope`, `EnvScope`, `SecretStore`) cannot be constructed by user
