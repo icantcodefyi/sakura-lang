@@ -7,19 +7,25 @@ import { Code } from "@/components/code";
 import { llmsTxt } from "@/lib/source";
 import { Tabs } from "./tabs";
 
-const MCP = `// → tools/call
-{ "name": "hole_context", "arguments": { "snapshot": "s:41c2", "hole_id": "h:receipt" } }
+const MCP = `// → tools/call (planned for M3; vow check --json emits the same record today)
+{ "name": "hole_context", "arguments": { "snapshot": "sha256:41c2…", "hole_id": "h:9b07…" } }
 
-// ← result
+// ← result: the hole record of design §12.2
 {
-  "expected_type": "Receipt",
-  "allowed_effects": "{Payments, Fail<CheckoutError>}",
+  "schema_version": "1.0",
+  "kind": "hole",
+  "id": "h:9b07…",
+  "name": "receipt",
+  "snapshot": "sha256:41c2…",
+  "span": { "uri": "file:///app/src/cart.vow", "start_byte": 142, "end_byte": 150, "role": "primary" },
+  "expected_type": { "render": "Receipt" },
+  "allowed_effects": { "render": "{Payments, Fail<CheckoutError>}" },
   "locals": [
-    { "name": "cart", "type": "Cart" },
-    { "name": "card", "type": "Card" },
-    { "name": "total", "type": "Int" }
+    { "name": "cart", "type": { "render": "Cart" } },
+    { "name": "card", "type": { "render": "Card" } },
+    { "name": "total", "type": { "render": "Int" } }
   ],
-  "candidates": [{ "expr": "Payments.charge(card, total)", "fit": "result_unifies" }],
+  "candidates": [{ "expr": "Payments.charge(card, total)", "fit": "function" }],
   "contracts_in_scope": []
 }`;
 
@@ -45,23 +51,21 @@ const DIAGNOSTIC = `{
   "counterexample": null,
   "explanation_uri": "vow://explain/V3001",
   "fixes": [
-    { "id": "f:1", "title": "Add \`Http\` to the signature of \`signup\`",
+    { "id": "f:1", "title": "Add \`Http\` to the signature",
       "applicability": "suggested", "impact": "interface_change", "edits": [/* … */] },
-    { "id": "f:2", "title": "Handle \`Http\` locally",
-      "applicability": "incomplete", "impact": "local", "edits": [] }
+    { "id": "f:2", "title": "Handle the effect locally with \`with\`",
+      "applicability": "incomplete", "impact": "local", "edits": [/* … */] }
   ]
 }`;
 
 const HOLE = `fn checkout(cart: Cart, card: Card) -> Receipt ! {Payments, Fail<CheckoutError>} {
-  let total = cart.items.map(fn(i) { i.price }).sum()
+  let total = List.fold(cart.items, 0, fn(sum, i) { sum + i.price })
   ?receipt
 }`;
 
-const HOLE_REPLY = `hole ?receipt at src/cart.vow:3:3
-  expected  Receipt
-  effects   {Payments, Fail<CheckoutError>}
-  locals    cart: Cart, card: Card, total: Int
-  fits      Payments.charge(card, total)`;
+const HOLE_REPLY = `hole ?receipt: expected Receipt, effects {Payments, Fail<CheckoutError>};
+  locals [cart: Cart, card: Card, total: Int];
+  candidates [Payments.charge(card, total)]`;
 
 const PATHS = [
   { href: "/llms.txt", path: "/llms.txt", what: "Index of every docs page, with summaries." },
@@ -144,7 +148,8 @@ export async function AgentView() {
             ]}
           />
           <p className="mt-3 text-[12.5px] text-fg-faint">
-            Shapes follow design §12; the compiler is under construction and not released.
+            Diagnostic and hole records are what <code className="font-mono">vow check --json</code>{" "}
+            emits today; the MCP server is planned for M3.
           </p>
         </div>
       </div>
@@ -200,9 +205,9 @@ const LOOP = [
   },
   { cmd: "vow check --json", who: "compiler", what: "diagnostics and hole records as JSON Lines" },
   {
-    cmd: "vow fix",
-    who: "compiler",
-    what: "applies local fixes; signature changes go to a person",
+    cmd: "apply fixes",
+    who: "agent",
+    what: "local fixes go in; signature changes go to a person",
   },
   { cmd: "vow test", who: "compiler", what: "deterministic handlers, fixed seed, shrunk failures" },
 ];

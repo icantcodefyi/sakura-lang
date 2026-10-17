@@ -9,8 +9,8 @@ const LANES = [
   {
     effect: "Db",
     op: "Db.exists(…)",
-    run: { handler: "Db.sql()", does: "queries the SQLite file" },
-    test: { handler: "Db.memory()", does: "reads an in-memory map" },
+    run: { handler: "sql_db()", does: "clauses call Sql.sqlite" },
+    test: { handler: "memory_db()", does: "a Map in handler state" },
   },
   {
     effect: "Clock",
@@ -27,8 +27,8 @@ const LANES = [
 ] as const;
 
 const WITH = {
-  run: "with Db.sql() { Serve.listen(router, addr) }",
-  test: 'test "duplicate email" { with Db.memory() { … } }',
+  run: "with sql_db() { Serve.listen(router, addr) }",
+  test: 'test "duplicate email" { with memory_db() { … } }',
 } as const;
 
 export function HandlersDiagram() {
@@ -55,7 +55,7 @@ export function HandlersDiagram() {
               type="button"
               aria-pressed={mode === m}
               onClick={() => setMode(m)}
-              className={`relative z-10 rounded-full px-3.5 py-1 transition-colors duration-200 ${
+              className={`relative z-10 h-9 rounded-full px-3.5 transition-colors duration-200 ${
                 mode === m ? "text-fg" : "text-fg-muted hover:text-fg"
               }`}
             >
@@ -89,7 +89,7 @@ export function HandlersDiagram() {
                   className="lane-dot absolute -left-1 size-2 rounded-full bg-seal"
                   style={{ animationDelay: `${i * 700}ms` }}
                 />
-                <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded bg-surface px-1.5 py-0.5 font-mono text-[10px] whitespace-nowrap text-fg-muted sm:text-[11.5px]">
+                <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded bg-surface px-1.5 py-0.5 font-mono text-[10.5px] whitespace-nowrap text-fg-muted sm:text-[11.5px]">
                   {lane.op}
                 </span>
               </div>

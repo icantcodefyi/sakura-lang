@@ -15,7 +15,7 @@ const SCOPES: { code: ReactNode; note: string }[] = [
   {
     code: (
       <>
-        main() <span className="text-seal-text">! {"{Console, Env, Fs, …}"}</span>
+        main() <span className="text-seal-text">! {"{Console, Cli, Fs, …}"}</span>
       </>
     ),
     note: "root handlers for these effects only",
