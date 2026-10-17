@@ -185,14 +185,13 @@ fn short_circuit_decides_before_reaching_the_undecidable_part() {
 }
 
 #[test]
-fn std_path_literals_compile_without_a_diagnostic() {
-    // Decided once WS4 rewrites `is_relative` into the fragment; until then a start-up check.
-    let c = check(
-        "import std/path.{Path}\nimport std/response.{Status}\nlet notes: Path = \"notes/today.txt\"\nlet ok: Status = 200\n",
+fn std_path_and_status_literals_are_decided() {
+    // `std/path.is_relative` is in the scalar fragment (§17.87, WS4).
+    decided(
+        "import std/path.{Path}\nimport std/response.{Status}\nlet notes: Path = \"notes/today.txt\"\nlet dots: Path = \"a..b\"\nlet ok: Status = 200\n",
     );
-    assert!(c.diags.is_empty(), "{}", c.render());
-    assert!(conversions(&c, "ok").is_empty());
-    assert!(conversions(&c, "notes").len() <= 1);
+    let c = check("import std/path.{Path}\nlet up: Path = \"a/../b\"\nlet abs: Path = \"/etc\"\n");
+    assert_eq!(c.codes(), ["V5004", "V5004"], "{}", c.render());
 }
 
 /// The four string built-ins of the fragment agree with the JS runtime's `string_*` on

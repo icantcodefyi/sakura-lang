@@ -77,8 +77,12 @@ pub struct TypedBody {
     /// - a tagged-template argument (§4.11) is passed through `def`, the template element
     ///   type's home-module `from` (e.g. `SqlValue.from`);
     /// - a scalar literal (or `-` literal) where a refined type `V` is expected (§17.71,
-    ///   `V5002`): the literal, of its own base type, is passed through `V.from` (`def`), once
-    ///   at module initialisation;
+    ///   §17.87) whose predicate the checker could **not** decide at compile time: the
+    ///   literal, of its own base type, is passed through `V.from` (`def`), once at module
+    ///   initialisation (`D010` before `main`). A literal the checker decided true has **no**
+    ///   entry: it already is a `V` and nothing runs at start-up; one decided false is
+    ///   `V5004`, so no code is generated. Consumers must not re-derive literal conversions
+    ///   from types: this map is the whole contract;
     /// - a call of `Untrusted.validate(u)` (§17.71): the whole call is `V.validate`
     ///   (`def`, at `V`'s arguments) applied to `untrusted_value(u)`; std's external is never
     ///   called.
