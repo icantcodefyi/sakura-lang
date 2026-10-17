@@ -249,12 +249,13 @@ fn prop(field: &str) -> String {
 /// by qualified name), `["W", [id…]]` (error union), `["V", i]` (a type parameter of the
 /// enclosing type), `["X", name]` (opaque), `null` (functions, unknown).
 pub(crate) fn schema(m: &Module, ty: &Ty) -> String {
-    schema_with(m, ty, &[])
+    schema_with(m, ty, &[], false)
 }
 
-/// [`schema`] with type parameter `vars[i].0` replaced by the JS expression `vars[i].1`.
-fn schema_with(m: &Module, ty: &Ty, vars: &[(u32, String)]) -> String {
-    let schema = |m: &Module, t: &Ty| schema_with(m, t, vars);
+/// [`schema`] with type parameter `vars[i].0` replaced by the JS expression `vars[i].1`; in
+/// `code`, other type parameters are unknown (`null`).
+fn schema_with(m: &Module, ty: &Ty, vars: &[(u32, String)], code: bool) -> String {
+    let schema = |m: &Module, t: &Ty| schema_with(m, t, vars, code);
     let all = |ts: &[Ty]| {
         ts.iter()
             .map(|t| schema(m, t))
@@ -290,6 +291,9 @@ fn schema_with(m: &Module, ty: &Ty, vars: &[(u32, String)]) -> String {
             all(args)
         ),
         Ty::Var(i) if let Some((_, js)) = vars.iter().find(|(v, _)| v == i) => js.clone(),
+        // In code, an unsolved type parameter has no runtime schema; in type descriptors
+        // `["V", i]` is the descriptor's own parameter.
+        Ty::Var(_) if code => "null".into(),
         Ty::Var(i) if *i != u32::MAX => format!("[\"V\", {i}]"),
         Ty::Opaque(name) => format!("[\"X\", {}]", js_string(name)),
         Ty::Never | Ty::Fn(_) | Ty::Handler(_) | Ty::Instance(_) | Ty::Var(_) => "null".into(),
@@ -1064,7 +1068,7 @@ impl<'a> FnEmit<'a> {
             PrimOp::Schema(ty) => self.schema(ty),
             PrimOp::SchemaOf(ty, ids) => {
                 let vars: Vec<(u32, String)> = ids.iter().copied().zip(a.iter().cloned()).collect();
-                schema_with(self.cx.m, ty, &vars)
+                schema_with(self.cx.m, ty, &vars, true)
             }
             PrimOp::ShowWith => format!("$rt.show({}, {})", a[0], a[1]),
             PrimOp::Show(ty) => match ty {
@@ -1081,7 +1085,7 @@ impl<'a> FnEmit<'a> {
 
     /// A pooled schema literal for `ty` (`null` stays inline).
     fn schema(&self, ty: &Ty) -> String {
-        match schema(self.cx.m, ty) {
+        match schema_with(self.cx.m, ty, &[], true) {
             s if s == "null" || s.starts_with('"') => s,
             s => self.pool.get(s),
         }

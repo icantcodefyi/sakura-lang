@@ -72,7 +72,7 @@ table! {
     Cps defect_catch/1, Cps test_expect_defect/1, Cps property_run/7,
     // Secret, Json
     Direct secret_wrap/1, Direct secret_expose/1, Direct json_parse/1, Direct json_encode/2,
-    Direct json_decode/2, Direct untrusted_of/1, Direct untrusted_value/1,
+    Direct json_decode/2, Direct json_schema/2, Direct untrusted_of/1, Direct untrusted_value/1,
     // Fs, Cli
     Direct fs_root/0, Direct fs_detached_root/0, Direct fs_subdir/2, Direct fs_read/2,
     Direct fs_write/3, Direct fs_list/2, Direct fs_exists/2, Direct cli_args/0, Direct cli_exit/1,

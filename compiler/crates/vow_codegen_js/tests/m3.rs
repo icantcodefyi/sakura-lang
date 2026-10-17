@@ -582,3 +582,53 @@ pub fn main() -> Unit ! {Console, Fs} {
     }
     assert!(work.join("app.db").exists());
 }
+
+/// The driver passes `[permissions]` as JSON in `VOW_PERMISSIONS`; root handlers apply it.
+#[test]
+fn root_handlers_apply_manifest_permissions() {
+    let src = r#"import std/fs.{Fs}
+import std/path.{Path}
+import std/http.{Http}
+import std/request.{Method, Request}
+import std/url.{Url}
+pub fn main() -> Unit ! {Console, Fs, Env, Http} {
+  Console.print("{try { Bytes.len(Fs.read(Path.of("data/a.txt"))) }}")
+  Console.print("{try { Fs.write(Path.of("data/b.txt"), String.to_bytes("x")) }}")
+  Console.print("{try { Fs.write(Path.of("out/b.txt"), String.to_bytes("x")) }}")
+  Console.print("{Env.get("ALLOWED")} {Env.get("HIDDEN")}")
+  let r = try { Http.send(Request.of(Method.Get, Url.from("http://example.invalid:81/"))) }
+  Console.print("{r.is_err()}")
+}
+"#;
+    let (m, sources) = common::build("permissions", src, false).unwrap();
+    let base = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("permissions");
+    common::write(&m, sources, &base.join("js"));
+    let work = base.join("work");
+    let _ = std::fs::remove_dir_all(&work);
+    std::fs::create_dir_all(work.join("data")).unwrap();
+    std::fs::create_dir_all(work.join("out")).unwrap();
+    std::fs::write(work.join("data/a.txt"), "hi").unwrap();
+    let out = std::process::Command::new("node")
+        .arg(base.join("js/__main__.js"))
+        .current_dir(&work)
+        .env(
+            "VOW_PERMISSIONS",
+            r#"{"fs": {"read": ["./data"], "write": ["./out"]}, "env": ["ALLOWED"], "net": []}"#,
+        )
+        .env("ALLOWED", "a")
+        .env("HIDDEN", "h")
+        .output()
+        .unwrap();
+    assert_eq!(
+        String::from_utf8_lossy(&out.stdout),
+        concat!(
+            "Ok(2)\n",
+            "Err(FsError { path: \"data/b.txt\", reason: \"not in the manifest's fs.write list\" })\n",
+            "Ok(())\n",
+            "Some(\"a\") None\n",
+            "true\n"
+        ),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}

@@ -1995,7 +1995,8 @@ function toJs(v, s) {
   if (s === "I") return v;
   if (s === "F") return Number.isFinite(v) ? v : null;
   if (s === "Y") return base64(v);
-  if (s === null || typeof s === "string") throw internal("value has no Schema");
+  if (s === null) return dynamicJs(v);
+  if (typeof s === "string") throw internal("value has no Schema");
   switch (s[0]) {
     case "L":
       return items(v).map((x) => toJs(x, s[1]));
@@ -2040,6 +2041,26 @@ function namedToJs(v, id, args) {
   return { [c.name]: v.fields.map((x, i) => toJs(x, hs[i])) };
 }
 
+/** Encoding without a schema (an unsolved type parameter): from the value's runtime shape. */
+function dynamicJs(v) {
+  switch (typeof v) {
+    case "number":
+      return Number.isFinite(v) ? v : null;
+    case "string":
+    case "boolean":
+      return v;
+    case "undefined":
+      return null;
+  }
+  if (Array.isArray(v)) return v.map(dynamicJs);
+  if (v instanceof List) return items(v).map(dynamicJs);
+  if (v instanceof VSet) return entries(v).map(dynamicJs);
+  if (v instanceof VMap) return entries(v).map(([k, x]) => [dynamicJs(k), dynamicJs(x)]);
+  if (v instanceof Uint8Array) return base64(v);
+  if (v?.$t === undefined) throw internal("value has no Schema");
+  return toJs(v, ["A", v.$t.id, []]);
+}
+
 /** Vow value of schema `s` from plain JS value `j` (from `JSON.parse`); throws DecodeFailure. */
 function fromJs(j, s, path) {
   const bad = (what) => {
@@ -2055,7 +2076,8 @@ function fromJs(j, s, path) {
     const b = unbase64(j);
     return b === null ? bad("a base64 string") : b;
   }
-  if (s === null || typeof s === "string") throw internal("value has no Schema");
+  if (s === null) throw new DecodeFailure(path, "the target type is not known");
+  if (typeof s === "string") throw internal("value has no Schema");
   const arr = (what) => (Array.isArray(j) ? j : bad(what));
   switch (s[0]) {
     case "L":
@@ -2235,6 +2257,8 @@ export function test_expect_defect(body, ctx, k) {
 }
 
 export function env_get(key) {
+  const allowed = granted()?.env;
+  if (allowed !== undefined && !allowed.includes(key)) return None;
   const v = proc?.env?.[key];
   return v === undefined ? None : Some(v);
 }
@@ -2254,22 +2278,45 @@ const nodePath = () => proc.getBuiltinModule("node:path");
 
 export class Dir {
   #root;
-  constructor(brand, root) {
+  #grants;
+  constructor(brand, root, grants) {
     if (brand !== DIR_BRAND) throw internal("a Dir is only created by the Fs host");
     this.#root = root;
+    this.#grants = grants; // null, or { read: [abs dirs], write: [abs dirs] } from the manifest
   }
   static root(d) {
     return d.#root;
   }
+  static grants(d) {
+    return d.#grants;
+  }
 }
 const DIR_BRAND = Symbol("Dir");
 
-/** The working directory (ponytail: the manifest's `fs.read`/`fs.write` lists are E's to pass). */
+/**
+ * `[permissions]` of the manifest, passed by the driver as JSON in `VOW_PERMISSIONS`
+ * (`{"fs": {"read": […], "write": […]}, "net": […], "env": […]}`); `null` when unset (no
+ * limits: tests and plain `node` runs).
+ */
+let permissions;
+function granted() {
+  if (permissions === undefined) {
+    const raw = proc?.env?.VOW_PERMISSIONS;
+    permissions = raw === undefined ? null : JSON.parse(raw);
+  }
+  return permissions;
+}
+
+/** The working directory, limited to the manifest's `fs.read`/`fs.write` directories. */
 export function fs_root() {
-  return new Dir(DIR_BRAND, nodeFs().realpathSync(proc.cwd()));
+  const root = nodeFs().realpathSync(proc.cwd());
+  const p = granted();
+  const abs = (dirs) => (dirs ?? []).map((d) => nodePath().resolve(root, d));
+  const grants = p === null ? null : { read: abs(p.fs?.read), write: abs(p.fs?.write) };
+  return new Dir(DIR_BRAND, root, grants);
 }
 export function fs_detached_root() {
-  return new Dir(DIR_BRAND, null);
+  return new Dir(DIR_BRAND, null, null);
 }
 
 /** The host path of `rel` inside `d`, or an error message; `forWrite` allows a missing file. */
@@ -2291,7 +2338,12 @@ function inside(d, rel, forWrite) {
       return { err: hostMessage(e2) };
     }
   }
-  if (real !== root && !real.startsWith(root + path.sep)) return { err: "escapes the directory" };
+  const within = (dir) => real === dir || real.startsWith(dir + path.sep);
+  if (!within(root)) return { err: "escapes the directory" };
+  const grants = Dir.grants(d);
+  if (grants !== null && !(forWrite ? grants.write : grants.read).some(within)) {
+    return { err: `not in the manifest's fs.${forWrite ? "write" : "read"} list` };
+  }
   return { path: real };
 }
 
@@ -2312,7 +2364,7 @@ function fsResult(d, rel, forWrite, f) {
 export function fs_subdir(d, name) {
   return fsResult(d, name, false, (p) => {
     if (!nodeFs().statSync(p).isDirectory()) throw new Error("not a directory");
-    return new Dir(DIR_BRAND, p);
+    return new Dir(DIR_BRAND, p, Dir.grants(d));
   });
 }
 export function fs_read(d, rel) {
@@ -2589,8 +2641,8 @@ export function task_deterministic(seed) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Http client (design §10.4) over `fetch`. ponytail: the manifest's `net` list is not applied
-// yet (E passes `[permissions]`); any reachable URL is allowed.
+// Http client (design §10.4) over `fetch`, limited to the manifest's `net` hosts when the
+// driver passes `[permissions]`.
 
 /**
  * `http_send(req)`: suspends until the response arrives; `Ok(Response)` for any status,
@@ -2603,6 +2655,17 @@ export function http_send(req, _ctx, k) {
   const headers = new Headers();
   for (const [name, value] of items(req.headers)) headers.append(name, value);
   if (req.bearer.tag === 1) headers.set("authorization", `Bearer ${Secret.expose(req.bearer.fields[0])}`);
+  const net = granted()?.net;
+  if (net !== undefined) {
+    let host;
+    try {
+      const u = new URL(req.url);
+      host = `${u.hostname}:${u.port || (u.protocol === "https:" ? "443" : "80")}`;
+    } catch {
+      return ret(k, Err(`invalid URL ${req.url}`));
+    }
+    if (!net.includes(host)) return ret(k, Err(`${host} is not in the manifest's net list`));
+  }
   const abort = new AbortController();
   const body = method === "GET" || method === "HEAD" ? undefined : req.body;
   const response = fetch(req.url, { method, headers, body, signal: abort.signal }).then(
@@ -2741,4 +2804,95 @@ export function sql_sqlite(path) {
     if (r.err !== undefined) throw new Error(`${rel}: ${r.err}`);
     return new (proc.getBuiltinModule("node:sqlite").DatabaseSync)(r.path);
   });
+}
+
+// ---------------------------------------------------------------------------------------------
+// JSON Schema (draft 2020-12) of a schema, matching the JSON encoding above. Recursive types go
+// through `$defs`. ponytail: refinements are not stated (their `where` is checked on decode).
+
+/** `Json.schema(witness)`: the JSON Schema of `T` as a `Json` value. */
+export function json_schema(_witness, schema) {
+  const defs = {};
+  const stack = [];
+  const named = (id, args) => {
+    const name = id.split("::").pop();
+    if (stack.includes(id)) {
+      defs[name] ??= null;
+      return { $ref: `#/$defs/${name}` };
+    }
+    stack.push(id);
+    const out = namedSchema(id, args);
+    stack.pop();
+    if (Object.hasOwn(defs, name) && defs[name] === null) defs[name] = out;
+    return out;
+  };
+  const go = (s) => {
+    switch (s) {
+      case "U":
+        return { type: "null" };
+      case "B":
+        return { type: "boolean" };
+      case "I":
+        return { type: "integer" };
+      case "F":
+        return { type: "number" };
+      case "S":
+        return { type: "string" };
+      case "Y":
+        return { type: "string", contentEncoding: "base64" };
+    }
+    if (s === null || typeof s === "string") return {};
+    switch (s[0]) {
+      case "L":
+        return { type: "array", items: go(s[1]) };
+      case "E":
+        return { type: "array", items: go(s[1]), uniqueItems: true };
+      case "M":
+        if (s[1] === "S") return { type: "object", additionalProperties: go(s[2]) };
+        return { type: "array", items: tuple([s[1], s[2]]) };
+      case "T":
+        return tuple(s.slice(1));
+      case "W":
+        return { oneOf: s[1].map((id) => tagged(descriptor(id).name, named(id, []))) };
+      case "A":
+        return named(s[1], s[2]);
+    }
+    return {};
+  };
+  const tuple = (ss) => ({ type: "array", prefixItems: ss.map(go), minItems: ss.length, maxItems: ss.length });
+  const tagged = (name, body) => ({
+    type: "object",
+    properties: { [name]: body },
+    required: [name],
+    additionalProperties: false,
+  });
+  const namedSchema = (id, args) => {
+    const r = refinements.get(id);
+    if (r !== undefined) return go(bindVars(r.base, args));
+    if (id === JSON_ID) return {};
+    if (id === OPTION) return { anyOf: [go(args[0]), { type: "null" }] };
+    const t = descriptor(id);
+    if (t.kind === "record") {
+      const properties = {};
+      const required = [];
+      t.fields.forEach((name, i) => {
+        const fs = bindVars(t.h[i], args);
+        properties[name] = go(fs);
+        if (!(fs !== null && fs[0] === "A" && fs[1] === OPTION)) required.push(name);
+      });
+      return { type: "object", properties, required, additionalProperties: false };
+    }
+    return {
+      oneOf: t.ctors.map((c) => {
+        const hs = c.h.map((h) => bindVars(h, args));
+        if (hs.length === 0) return { const: c.name };
+        return tagged(c.name, hs.length === 1 ? go(hs[0]) : tuple(hs));
+      }),
+    };
+  };
+  const root = go(schema);
+  const live = Object.entries(defs).filter(([, v]) => v !== null);
+  const doc = { $schema: "https://json-schema.org/draft/2020-12/schema", ...root };
+  if (live.length > 0) doc.$defs = Object.fromEntries(live);
+  return jsToJson(doc);
 }

@@ -246,15 +246,26 @@ only when their `where` holds. Decode errors carry a JSON Pointer (`/items/0/ema
 `Cli.parse` reads `--kebab-case value` per record field; `Bool` fields are switches, `Option`
 fields optional, `List` fields repeat, refinements are checked; `--help` fails with the usage.
 
+`json_schema(witness, schema)` returns the JSON Schema (draft 2020-12) of the schema as a
+`Json` value, matching this encoding (recursive types through `$defs`; refinements are not
+stated). A type parameter left unsolved in code has schema `null`: encoding then follows the
+value's runtime shape, decoding fails with "the target type is not known".
+
+**Permissions.** The driver passes the manifest's `[permissions]` as JSON in
+`VOW_PERMISSIONS`: `{"fs": {"read": […], "write": […]}, "net": ["host:port", …], "env": […]}`
+(paths relative to the working directory). When it is set, `fs_root()`'s `Dir` (and its
+subdirectories) reads only under `fs.read` and writes only under `fs.write`, `http_send` only
+reaches `net` hosts, and `env_get` only sees `env` keys; each refusal is the operation's
+ordinary error. Unset means no limits.
+
 **Capabilities.** `$rt.Dir` holds a host directory in a private field and is only built by
-`fs_root()` (the working directory; the manifest's `fs.*` lists are not applied yet) and
-`fs_subdir`. `fs_detached_root()` has no host access. Every `fs_*` path is relative and must
+`fs_root()` (the working directory) and `fs_subdir`. `fs_detached_root()` has no host access. Every `fs_*` path is relative and must
 stay inside the directory after symlinks are resolved (`escapes the directory` otherwise).
 `Untrusted<T>` is `$rt.Untrusted { v }`, shown as `Untrusted.of(…)`.
 
 **Http.** `http_send(req, $ctx, $k)` suspends on `fetch`: `Ok(Response)` for every status,
 `Err(reason)` when no response arrives; `req.bearer` is sent only as `Authorization: Bearer …`;
-cancelling the task aborts the request. The manifest's `net` list is not applied yet.
+cancelling the task aborts the request.
 
 **Sql.** `sql_memory()` and `sql_sqlite(path)` (a file inside the installed `Fs` handler's
 `root`, opened on first use) are `std::sql::Sql` handlers over `node:sqlite`. `Query` params
@@ -263,7 +274,9 @@ other types from the first column (`Bool` from 0/1, `Option` from NULL, refineme
 other structured types from JSON text). `transaction` is a savepoint (nests), released when
 the body returns and rolled back when it fails, defects or is cancelled.
 
-**Generic operations.** An operation whose type parameters are bounded by `Show`/`Schema`
+**Generic operations.** The checker leaves an operation's type parameters as inference
+variables inside a clause, so lowering matches the operation's scheme against the clause's
+typed parameters and result to find which variables they are. An operation whose type parameters are bounded by `Show`/`Schema`
 (`Sql.query<R: Schema>`, `Llm.generate<T: Schema>`) takes one trailing schema argument per
 such parameter (`OpDef::params` lists them as `Opaque("Schema")`); clauses receive them after
 the declared parameters. Inside a clause (and in **dictionary-passing copies** `f$dict` of
