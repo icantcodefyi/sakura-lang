@@ -293,6 +293,16 @@ cancelled is released when it closes.
 `authorization`) is sent as a header and exposed nowhere else (§17.57); cancelling the task
 aborts the request.
 
+**Streaming** (design §17.88, behind `Http.stream`/`Http.read_chunk`). A `Body` is an id into a
+runtime table, like an open file. `http_stream_open(req, $ctx, $k) -> Result<Incoming, String>`
+suspends until the status and headers arrive (same `net` check as `http_send`);
+`http_stream_closing(body, f, $ctx, $k)` runs `f` and closes the body, aborting the fetch,
+when `f` returns, fails, defects or is cancelled; `http_stream_read(body, max, $ctx, $k) ->
+Result<Bytes, String>` suspends for the next chunk (at most `max` bytes, the rest kept for the
+next read; empty at the end; `Err` after closing or when the connection drops; cancelling the
+task aborts the fetch). `http_body_of(bytes)` is a body without a connection, for
+`Http.scripted` and replayed cassettes, which deliver their body in one chunk (cut at `max`).
+
 **Cassettes** (design §17.73, behind std's `Http.recording`). A cassette is a JSON Lines file
 inside a `Dir`, one exchange per line:
 `{"method","url","headers","body","status","response_headers","response_body"}` (`method`
@@ -304,7 +314,10 @@ returns a fresh cursor; `http_recording_lookup(id, req) -> Result<Option<Respons
 repeats), `Ok(None)` for a miss under `SAKURA_RECORD=1` (the caller forwards to the outer `Http`
 and appends), and `Err("no recording for GET <url> in <path>; run sakura test --record")`
 otherwise; `http_recording_append(id, req, resp) -> Result<Unit, String>` appends a line (only
-under `SAKURA_RECORD=1`, and only where `dir` grants writing). `fixtures_dir(path, writable)`
+under `SAKURA_RECORD=1`, and only where `dir` grants writing). `http_recording_lookup_stream`
+and `http_recording_append_stream(id, req, status, headers, bytes)` are the same for
+`Http.stream`: one record shape serves both operations; a body that is not UTF-8 is written as
+`response_body_base64` instead of `response_body`. `fixtures_dir(path, writable)`
 is the `Dir` a test runner returns from `Test.fixtures()`: `<package>/tests/fixtures`, readable,
 writable (and created) only when `writable` (`sakura test --record`); `""` has no host access.
 
@@ -325,10 +338,10 @@ outputs (`output_config.format` `json_schema` of `{"value": T}`, keywords the AP
 removed; the output is decoded and refinement-checked like `Json.decode`). `Untrusted` prompt
 parts are fenced in `<untrusted_data>` with a system note; images are base64 blocks.
 `stop_reason` `refusal` is `Refused`, `max_tokens` `Truncated`, HTTP 429 `RateLimited`
-(`retry-after`), other failures `ProviderError(status)`, an undecodable answer `InvalidOutput`.
+(`retry-after`), other failures `ProviderError(status, reason)` (a transport failure, e.g. a cassette miss, keeps the `HttpError` reason with status 0), an undecodable answer `InvalidOutput`.
 `step` sends `ToolSpec`s as `tools` and the transcript as `tool_use`/`tool_result` blocks and
-returns `Use(calls)` when the reply has tool calls. ponytail: `stream` reports the whole text
-as one partial (incremental delivery needs a streaming `Http` operation).
+returns `Use(calls)` when the reply has tool calls. `stream` performs `Http.stream` and parses the
+event stream as chunks arrive, calling `on_partial` once per `text_delta` before reading on.
 
 **Serve.** `serve_listen(addr, handle, $ctx, $k)` serves HTTP on `addr` (within `net`) until
 the process stops; each request is a child task running `handle(req)` under the caller's

@@ -550,8 +550,13 @@ fn text(r: Response, limit: Int) -> Untrusted<String> ! {Fail<HttpError>}
 ```sakura
 type Matcher = Any | Path(String) | Method(Method)
 error RateLimited(retry_after: Option<Duration>)
+@resource type Body
+type Incoming = { status: Status, headers: List<(String, String)>, body: Body }
 effect Http {
   fn send(req: Request) -> Response ! {Fail<HttpError>}
+  fn stream<T, e>(req: Request, body: fn(Incoming) -> T ! e) -> T ! {Fail<HttpError> | e}
+  fn read_chunk(body: Body, max: Int) -> Bytes ! {Fail<HttpError>}
+    requires max > 0
 }
 fn get(url: Url) -> Response ! {Http, Fail<HttpError | RateLimited>}
 fn post_json<T: Schema>(url: Url, body: T) -> Response ! {Http, Fail<HttpError | RateLimited>}
@@ -637,7 +642,7 @@ type Request<T> = { system: String, user: Prompt, model: Model, max_tokens: Int,
 error Refused
 error InvalidOutput(violations: List<Violation>)
 error Truncated
-error ProviderError(status: Int)
+error ProviderError(status: Int, reason: String)
 type LlmError = Refused | InvalidOutput | Truncated | RateLimited | Timeout | ProviderError | BudgetExceeded
 type ToolSpec = { name: String, description: String, schema: Json }
 type ToolCall = { id: String, name: String, input: Json }

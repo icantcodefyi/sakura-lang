@@ -2809,13 +2809,8 @@ export function task_deterministic(seed) {
 // Http client (design §10.4) over `fetch`, limited to the manifest's `net` hosts when the
 // driver passes `[permissions]`.
 
-/**
- * `http_send(req)`: suspends until the response arrives; `Ok(Response)` for any status,
- * `Err(reason)` when no response arrives. Every `req.secret_headers` entry is sent as a header and
- * is readable nowhere else. Cancelling the task aborts the request.
- */
-export function http_send(req, _ctx, k) {
-  const Response = std("std::response::Response");
+/** `fetch` arguments for `req`, or `{ err }` when its host is outside the manifest's `net`. */
+function fetchArgs(req) {
   const method = req.method.$t.ctors[req.method.tag].name.toUpperCase();
   const headers = new Headers();
   for (const [name, value] of items(req.headers)) headers.append(name, value);
@@ -2827,17 +2822,103 @@ export function http_send(req, _ctx, k) {
       const u = new URL(req.url);
       host = `${u.hostname}:${u.port || (u.protocol === "https:" ? "443" : "80")}`;
     } catch {
-      return ret(k, Err(`invalid URL ${req.url}`));
+      return { err: `invalid URL ${req.url}` };
     }
-    if (!net.includes(host)) return ret(k, Err(`${host} is not in the manifest's net list`));
+    if (!net.includes(host)) return { err: `${host} is not in the manifest's net list` };
   }
   const abort = new AbortController();
   const body = method === "GET" || method === "HEAD" ? undefined : req.body;
-  const response = fetch(req.url, { method, headers, body, signal: abort.signal }).then(
+  return { abort, init: { method, headers, body, signal: abort.signal } };
+}
+
+const failureOf = (e) => String(e?.cause?.message ?? e?.message ?? e);
+
+/**
+ * `http_send(req)`: suspends until the response arrives; `Ok(Response)` for any status,
+ * `Err(reason)` when no response arrives. Every `req.secret_headers` entry is sent as a header and
+ * is readable nowhere else. Cancelling the task aborts the request.
+ */
+export function http_send(req, _ctx, k) {
+  const Response = std("std::response::Response");
+  const a = fetchArgs(req);
+  if (a.err !== undefined) return ret(k, Err(a.err));
+  const response = fetch(req.url, a.init).then(
     async (r) => Ok(new Response(r.status, list([...r.headers]), await r.text())),
-    (e) => Err(String(e?.cause?.message ?? e?.message ?? e)),
+    (e) => Err(failureOf(e)),
   );
-  return suspend(response, k, () => abort.abort());
+  return suspend(response, k, () => a.abort.abort());
+}
+
+// Streamed bodies behind `Http.stream` (design §17.88), mirroring the `file_*` set: a `Body` is
+// an id into this table. A host body is `{ reader, abort, buf }` (`buf`: bytes read but not yet
+// returned), a buffered one (`Http.scripted`, cassettes) `{ reader: null, buf }`.
+// `http_stream_closing` closes it, and aborts the fetch, when its callback leaves.
+export class Body {
+  constructor(id) {
+    this.id = id;
+  }
+}
+const bodies = new Map();
+let nextBody = 1;
+
+function addBody(reader, abort, buf) {
+  const id = nextBody++;
+  bodies.set(id, { reader, abort, buf });
+  return new Body(id);
+}
+
+/** A body that delivers `bytes`, for handlers without a connection. */
+export function http_body_of(bytes) {
+  return addBody(null, null, bytes.slice());
+}
+
+/** Suspends until the status and headers arrive: `Ok(Incoming)` or `Err(reason)`. */
+export function http_stream_open(req, _ctx, k) {
+  const Incoming = std("std::http::Incoming");
+  const a = fetchArgs(req);
+  if (a.err !== undefined) return ret(k, Err(a.err));
+  const head = fetch(req.url, a.init).then(
+    (r) => {
+      const body = addBody(r.body?.getReader() ?? null, a.abort, new Uint8Array(0));
+      return Ok(new Incoming(r.status, list([...r.headers]), body));
+    },
+    (e) => Err(failureOf(e)),
+  );
+  return suspend(head, k, () => a.abort.abort());
+}
+
+/** Runs `f($ctx, $k)` and closes `body` (aborting its fetch) on return, fail, defect or cancel. */
+export function http_stream_closing(body, f, ctx, k) {
+  return finalize(
+    ctx,
+    () => {
+      const b = bodies.get(body.id);
+      bodies.delete(body.id);
+      b?.abort?.abort();
+    },
+    f,
+    k,
+  );
+}
+
+/** Up to `max` bytes; empty at the end; `Err` after the callback left or when the connection drops. */
+export function http_stream_read(body, max, _ctx, k) {
+  const b = bodies.get(body.id);
+  if (b === undefined) return ret(k, Err("the response body is closed"));
+  if (b.buf.length > 0 || b.reader === null) {
+    const out = b.buf.slice(0, max);
+    b.buf = b.buf.subarray(out.length);
+    return ret(k, Ok(out));
+  }
+  const chunk = b.reader.read().then(
+    ({ done, value }) => {
+      if (done) return Ok(new Uint8Array(0));
+      b.buf = value.subarray(Math.min(max, value.length));
+      return Ok(value.slice(0, max));
+    },
+    (e) => Err(failureOf(e)),
+  );
+  return suspend(chunk, k, () => b.abort?.abort());
 }
 
 // Cassettes behind `Http.recording(path)` (design §17.73): JSON Lines of
@@ -2886,37 +2967,66 @@ export function http_recording_open(dir, path) {
   return Ok(id);
 }
 
+/** The next recorded exchange for `req` (`{ x }`), or the `Result` a miss returns. */
+function replayed(id, req) {
+  const c = cassettes.get(id);
+  const hit = c.byKey.get(requestKey(req));
+  if (hit !== undefined) return { x: hit.exchanges[Math.min(hit.next++, hit.exchanges.length - 1)] };
+  if (recording()) return { miss: Ok(None) };
+  const method = req.method.$t.ctors[req.method.tag].name.toUpperCase();
+  return { miss: Err(`no recording for ${method} ${req.url} in ${c.path}; run sakura test --record`) };
+}
+const recordedHeaders = (x) => list(x.response_headers.map(([n, v]) => [n, v]));
+function recordedBytes(x) {
+  return x.response_body_base64 === undefined ? string_to_bytes(x.response_body) : unbase64(x.response_body_base64);
+}
+
 /**
  * `Ok(Some(response))` replays a recorded exchange, `Ok(None)` is a miss while recording (the
  * caller forwards and appends), `Err(reason)` a miss otherwise.
  */
 export function http_recording_lookup(id, req) {
-  const c = cassettes.get(id);
-  const key = requestKey(req);
-  const hit = c.byKey.get(key);
-  if (hit === undefined) {
-    if (recording()) return Ok(None);
-    const method = req.method.$t.ctors[req.method.tag].name.toUpperCase();
-    return Err(`no recording for ${method} ${req.url} in ${c.path}; run sakura test --record`);
-  }
-  const x = hit.exchanges[Math.min(hit.next++, hit.exchanges.length - 1)];
+  const r = replayed(id, req);
+  if (r.miss !== undefined) return r.miss;
   const Response = std("std::response::Response");
-  return Ok(Some(new Response(x.status, list(x.response_headers.map(([n, v]) => [n, v])), x.response_body)));
+  const body = new TextDecoder().decode(recordedBytes(r.x));
+  return Ok(Some(new Response(r.x.status, recordedHeaders(r.x), body)));
+}
+
+/** Like `http_recording_lookup`, for `Http.stream`: the recorded body as one buffered chunk. */
+export function http_recording_lookup_stream(id, req) {
+  const r = replayed(id, req);
+  if (r.miss !== undefined) return r.miss;
+  const Incoming = std("std::http::Incoming");
+  return Ok(Some(new Incoming(r.x.status, recordedHeaders(r.x), http_body_of(recordedBytes(r.x)))));
 }
 
 /** Appends one exchange to the file and to the open cassette; only under `SAKURA_RECORD=1`. */
 export function http_recording_append(id, req, resp) {
+  return appendExchange(id, req, resp.status, resp.headers, { response_body: resp.body });
+}
+
+/** Appends a streamed exchange whose whole body is `bytes` (base64 when not UTF-8). */
+export function http_recording_append_stream(id, req, status, headers, bytes) {
+  let text = null;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {}
+  return appendExchange(id, req, status, headers, text === null ? { response_body_base64: base64(bytes) } : { response_body: text });
+}
+
+function appendExchange(id, req, status, headers, body) {
   const c = cassettes.get(id);
   if (!recording()) return Err(`${c.path}: recording needs sakura test --record`);
-  const [method, url, headers, body] = JSON.parse(requestKey(req));
+  const [method, url, reqHeaders, reqBody] = JSON.parse(requestKey(req));
   const x = {
     method,
     url,
-    headers,
-    body,
-    status: resp.status,
-    response_headers: items(resp.headers).map(([n, v]) => [n, v]),
-    response_body: resp.body,
+    headers: reqHeaders,
+    body: reqBody,
+    status,
+    response_headers: items(headers).map(([n, v]) => [n, v]),
+    ...body,
   };
   const r = fsResult(c.dir, c.path, true, (p) => nodeFs().appendFileSync(p, `${JSON.stringify(x)}\n`));
   if (r.tag !== 0) return Err(`${c.path}: ${r.fields[0]}`);
@@ -3154,13 +3264,12 @@ function jsonSchemaJs(schema) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Llm over Anthropic's Messages API (design §10.7, §11). The handler performs `Http.send` and
+// Llm over Anthropic's Messages API (design §10.7, §11). The handler performs `Http` and
 // `Budget.reserve`/`settle` on the handlers outside it. Requests use structured outputs
 // (`output_config.format`, the schema wrapped as `{"value": T}` since the root must be an
 // object) and server-side refusal fallbacks; `Untrusted` prompt parts are fenced as data.
-// `stream` asks for server-sent events and reports one partial per text delta.
-// ponytail: `Http.send` returns whole bodies, so the partials arrive once the response ends;
-// delivering them as bytes arrive needs a streaming `Http` operation. The key travels as the
+// `stream` asks for server-sent events over `Http.stream` and reports one partial per text delta
+// as the bytes arrive (design §17.88); the other operations use `Http.send`. The key travels as the
 // `x-api-key` entry of the request's `secret_headers` (§17.57), so no `Http` wrapper can show or
 // record it.
 
@@ -3202,36 +3311,54 @@ function imageType(b) {
  * delta (`texts`); null if the stream reports an error or is cut off before `message_stop`.
  */
 export function sseMessage(body) {
-  const msg = { content: [], stop_reason: null, usage: { input_tokens: 0, output_tokens: 0 }, texts: [] };
+  const r = sseParser()(`${body}\n\n`);
+  return r.bad || r.done === null ? null : { ...r.done, texts: r.deltas };
+}
+
+/**
+ * An incremental Messages API event-stream parser: `feed(text)` takes the next decoded text and
+ * returns `{ deltas, done, bad }`: the output text after each `text_delta` completed by it, the
+ * message once `message_stop` arrives, and whether the stream is malformed or an `error` event.
+ */
+function sseParser() {
+  const msg = { content: [], stop_reason: null, usage: { input_tokens: 0, output_tokens: 0 } };
   let text = "";
-  for (const event of body.split(/\r?\n\r?\n/)) {
-    const data = event
-      .split(/\r?\n/)
-      .filter((l) => l.startsWith("data:"))
-      .map((l) => l.slice(5).replace(/^ /, ""))
-      .join("\n");
-    if (data === "") continue;
-    let e;
-    try {
-      e = JSON.parse(data);
-    } catch {
-      return null;
+  let pending = "";
+  return (chunk) => {
+    const deltas = [];
+    const events = (pending + chunk).split(/\r?\n\r?\n/);
+    pending = events.pop();
+    for (const event of events) {
+      const data = event
+        .split(/\r?\n/)
+        .filter((l) => l.startsWith("data:"))
+        .map((l) => l.slice(5).replace(/^ /, ""))
+        .join("\n");
+      if (data === "") continue;
+      let e;
+      try {
+        e = JSON.parse(data);
+      } catch {
+        return { deltas, done: null, bad: true };
+      }
+      if (e.type === "error") return { deltas, done: null, bad: true };
+      if (e.type === "message_start") msg.usage.input_tokens = e.message?.usage?.input_tokens ?? 0;
+      if (e.type === "content_block_start") msg.content[e.index] = { ...e.content_block };
+      if (e.type === "content_block_delta" && e.delta.type === "text_delta" && msg.content[e.index]?.type === "text") {
+        msg.content[e.index].text += e.delta.text;
+        text += e.delta.text;
+        deltas.push(text);
+      }
+      if (e.type === "message_delta") {
+        msg.stop_reason = e.delta?.stop_reason ?? msg.stop_reason;
+        msg.usage.output_tokens = e.usage?.output_tokens ?? msg.usage.output_tokens;
+      }
+      if (e.type === "message_stop") {
+        return { deltas, done: { ...msg, content: msg.content.filter((b) => b !== undefined) }, bad: false };
+      }
     }
-    if (e.type === "error") return null;
-    if (e.type === "message_start") msg.usage.input_tokens = e.message?.usage?.input_tokens ?? 0;
-    if (e.type === "content_block_start") msg.content[e.index] = { ...e.content_block };
-    if (e.type === "content_block_delta" && e.delta.type === "text_delta" && msg.content[e.index]?.type === "text") {
-      msg.content[e.index].text += e.delta.text;
-      text += e.delta.text;
-      msg.texts.push(text);
-    }
-    if (e.type === "message_delta") {
-      msg.stop_reason = e.delta?.stop_reason ?? msg.stop_reason;
-      msg.usage.output_tokens = e.usage?.output_tokens ?? msg.usage.output_tokens;
-    }
-    if (e.type === "message_stop") return { ...msg, content: msg.content.filter((b) => b !== undefined) };
-  }
-  return null;
+    return { deltas, done: null, bad: false };
+  };
 }
 
 function promptContent(prompt) {
@@ -3259,7 +3386,11 @@ export function llm_anthropic(key, handlerModel) {
     const [pi, po] = PRICES[model] ?? PRICES[DEFAULT_MODEL];
     return (input * pi + output * po) / 1e6;
   };
-  /** One Messages API call; `done(message)` gets the parsed response of a 200. */
+  /**
+   * One Messages API call; `done(message)` gets the parsed response of a 200. With
+   * `extra.onPartial` the call performs `Http.stream` and reports the text after each delta as
+   * it arrives; otherwise it performs `Http.send`.
+   */
   const call = (req, extra, ctx, done) => {
     const model = modelOf(req);
     const { blocks, untrusted } = promptContent(req.user);
@@ -3270,7 +3401,7 @@ export function llm_anthropic(key, handlerModel) {
       ...(system === "" ? {} : { system }),
       messages: [{ role: "user", content: blocks }, ...(extra.messages ?? [])],
       ...(extra.tools ? { tools: extra.tools } : {}),
-      ...(extra.stream ? { stream: true } : {}),
+      ...(extra.onPartial ? { stream: true } : {}),
       ...(extra.schema === undefined
         ? {}
         : {
@@ -3301,32 +3432,74 @@ export function llm_anthropic(key, handlerModel) {
     ]);
     const secrets = list([["x-api-key", key]]);
     const request = new Request(post, `${base}/v1/messages`, headers, text, secrets, list([]));
+    // A transport failure (`HttpError`, including a cassette miss) keeps its reason.
     const toLlm = catcher(ctx, (e) =>
-      fail(ctx, e.$t?.id === "std::response::HttpError" ? errorOf("std::llm::ProviderError", e.status.tag === 1 ? e.status.fields[0] : 0) : e),
+      fail(
+        ctx,
+        e.$t?.id === "std::response::HttpError"
+          ? errorOf("std::llm::ProviderError", e.status.tag === 1 ? e.status.fields[0] : 0, e.reason)
+          : e,
+      ),
     );
-    return perform(ctx, BUDGET, 0, [cost(estIn + req.max_tokens, price(model, estIn, req.max_tokens))], (resv) =>
+    const finish = (resv, status, headers, msg) => {
+      const u = msg?.usage ?? { input_tokens: 0, output_tokens: 0 };
+      const actual = cost(u.input_tokens + u.output_tokens, price(model, u.input_tokens, u.output_tokens));
+      return perform(ctx, BUDGET, 1, [resv, actual], () => {
+        if (status === 429) {
+          const after = items(headers).find(([n]) => n.toLowerCase() === "retry-after");
+          const secs = after === undefined ? NaN : Number(after[1]);
+          const D = std("std::duration::Duration");
+          return fail(ctx, errorOf("std::http::RateLimited", Number.isFinite(secs) ? Some(new D(0, [secs * 1000])) : None));
+        }
+        if (msg === null) {
+          const why = status === 200 ? "unreadable response" : `status ${status}`;
+          return fail(ctx, errorOf("std::llm::ProviderError", status, why));
+        }
+        if (msg.stop_reason === "refusal") return fail(ctx, errorOf("std::llm::Refused"));
+        if (msg.stop_reason === "max_tokens") return fail(ctx, errorOf("std::llm::Truncated"));
+        return done(msg);
+      });
+    };
+    const sent = (resv) =>
       perform(toLlm, HTTP, 0, [request], (resp) => {
         let msg = null;
         try {
-          msg = resp.status !== 200 ? null : extra.stream ? sseMessage(resp.body) : JSON.parse(resp.body);
-        } catch {
-          msg = null;
-        }
-        const u = msg?.usage ?? { input_tokens: 0, output_tokens: 0 };
-        const actual = cost(u.input_tokens + u.output_tokens, price(model, u.input_tokens, u.output_tokens));
-        return perform(ctx, BUDGET, 1, [resv, actual], () => {
-          if (resp.status === 429) {
-            const after = items(resp.headers).find(([n]) => n.toLowerCase() === "retry-after");
-            const secs = after === undefined ? NaN : Number(after[1]);
-            const D = std("std::duration::Duration");
-            return fail(ctx, errorOf("std::http::RateLimited", Number.isFinite(secs) ? Some(new D(0, [secs * 1000])) : None));
-          }
-          if (msg === null) return fail(ctx, errorOf("std::llm::ProviderError", resp.status));
-          if (msg.stop_reason === "refusal") return fail(ctx, errorOf("std::llm::Refused"));
-          if (msg.stop_reason === "max_tokens") return fail(ctx, errorOf("std::llm::Truncated"));
-          return done(msg);
-        });
-      }),
+          msg = resp.status === 200 ? JSON.parse(resp.body) : null;
+        } catch {}
+        return finish(resv, resp.status, resp.headers, msg);
+      });
+    // `Http.stream`'s callback: read chunks, emit one partial per text delta, return the head
+    // and the message (`null` for another status or a malformed stream).
+    const streamed = (resv) => {
+      const Partial = std("std::llm::Partial");
+      const pc = { h: ctx.p ?? ctx.h, c: ctx.c, t: ctx.t };
+      const onIncoming = (inc, c, k) => {
+        const head = { status: inc.status, headers: inc.headers };
+        if (inc.status !== 200) return ret(k, { ...head, msg: null });
+        const feed = sseParser();
+        const decoder = new TextDecoder();
+        const more = () =>
+          perform(c, HTTP, 2, [inc.body, 65_536], (bytes) => {
+            const end = bytes.length === 0;
+            const r = feed(end ? `${decoder.decode()}\n\n` : decoder.decode(bytes, { stream: true }));
+            if (r.bad) return ret(k, { ...head, msg: null });
+            const emit = (i) => {
+              if (i < r.deltas.length) {
+                return extra.onPartial(new Partial(r.deltas[i], 0, list([])), pc, () => emit(i + 1));
+              }
+              if (r.done !== null || end) return ret(k, { ...head, msg: r.done });
+              return more();
+            };
+            return emit(0);
+          });
+        return more();
+      };
+      return perform(toLlm, HTTP, 1, [request, callback(onIncoming, toLlm)], (r) =>
+        finish(resv, r.status, r.headers, r.msg),
+      );
+    };
+    return perform(ctx, BUDGET, 0, [cost(estIn + req.max_tokens, price(model, estIn, req.max_tokens))], (resv) =>
+      extra.onPartial ? streamed(resv) : sent(resv),
     );
   };
   const textOf = (msg) => msg.content.filter((b) => b.type === "text").map((b) => b.text).join("");
@@ -3343,15 +3516,7 @@ export function llm_anthropic(key, handlerModel) {
   const generateText = (_i, req, ctx, k) =>
     call(req, {}, ctx, (msg) => ret(k, new Untrusted(textOf(msg))));
   const stream = (_i, req, onPartial, schema, ctx, k) =>
-    call(req, { schema, stream: true }, ctx, (msg) => {
-      const Partial = std("std::llm::Partial");
-      const pc = { h: ctx.p ?? ctx.h, c: ctx.c, t: ctx.t };
-      const emit = (i) =>
-        i === msg.texts.length
-          ? decodeValue(msg, schema, ctx, k)
-          : onPartial(new Partial(msg.texts[i], 0, list([])), pc, () => ret(emit, i + 1));
-      return emit(0);
-    });
+    call(req, { schema, onPartial }, ctx, (msg) => decodeValue(msg, schema, ctx, k));
   const step = (_i, req, tools, transcript, schema, ctx, k) => {
     const specs = items(tools).map((t) => {
       const s = jsonToJs(t.schema);

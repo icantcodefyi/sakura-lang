@@ -26,8 +26,9 @@ pub error Refused
 pub error InvalidOutput(violations: List<Violation>)
 /// The output hit `max_tokens`.
 pub error Truncated
-/// The provider answered with an unexpected HTTP status.
-pub error ProviderError(status: Int)
+/// The provider answered with an unexpected HTTP status, or no answer arrived (`status` 0);
+/// `reason` says which, e.g. a cassette miss naming `sakura test --record`.
+pub error ProviderError(status: Int, reason: String)
 
 /// `RateLimited` is `std/http.RateLimited`, `Timeout` is `std/task.Timeout` (§5.9) and
 /// `BudgetExceeded` is `std/budget`'s, raised by handlers that reserve against `Budget` (§17.69).
@@ -81,7 +82,7 @@ pub fn anthropic(key: Secret<String>, model: Model) -> Handler<Llm, {Http, Budge
 /// replays the recorded Messages API exchange whose request matches, and nothing reaches the
 /// network. The key is a placeholder, which is safe because secret headers are never recorded
 /// or matched; record cassettes with `anthropic` and a real key under `sakura test --record`.
-/// A missing exchange is `ProviderError`.
+/// A missing exchange is `ProviderError` whose `reason` names `sakura test --record`.
 /// ponytail: each call reopens the cassette, so identical requests in one test all replay the
 /// first recorded response; keep one recording handler across calls if a test needs more.
 pub fn replay(path: Path) -> Handler<Llm, {Fs}> {
