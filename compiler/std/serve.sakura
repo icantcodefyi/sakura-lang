@@ -14,8 +14,16 @@ pub type Address = { host: String, port: Int }
 pub error ServeError(reason: String)
 
 pub effect Serve {
-  fn listen<e>(router: Router<fn(Request) -> Response ! e>, addr: Address) -> Never
-    ! {Fail<ServeError> | e}
+  /// Answers requests with `handle` until stopped; `handle` runs under the handlers of this
+  /// perform site (design §5.5).
+  fn serve<e>(handle: fn(Request) -> Response ! e, addr: Address) -> Never ! {Fail<ServeError> | e}
+}
+
+/// Serves `router` on `addr`: `Serve.serve` with the router's dispatch as the handler.
+pub fn listen<e>(router: Router<fn(Request) -> Response ! e>, addr: Address) -> Never
+  ! {Serve, Fail<ServeError> | e}
+{
+  Serve.serve(fn(req) { Router.handle(router, req) }, addr)
 }
 
 pub fn of(host: String, port: Int) -> Address
@@ -27,7 +35,7 @@ pub fn of(host: String, port: Int) -> Address
 /// Listens on the host network, within the manifest's `net` list.
 pub fn host() -> Handler<Serve> {
   handler Serve {
-    fn listen(router, addr) { serve_listen(addr, fn(req) { Router.handle(router, req) }) }
+    fn serve(handle, addr) { serve_listen(addr, handle) }
   }
 }
 
@@ -36,14 +44,14 @@ pub fn host() -> Handler<Serve> {
 @external(js, "sakura_runtime", "serve_listen")
 fn serve_listen<e>(addr: Address, handle: fn(Request) -> Response ! e) -> Never ! {Fail<ServeError> | e}
 
-/// Test handler: `listen` answers each of `requests` in order, writes
+/// Test handler: `serve` answers each of `requests` in order, writes
 /// `"<METHOD> <path> -> <status> <body>"` to the test output, then fails with
 /// `ServeError { reason: "no more requests" }`.
 pub fn scripted(requests: List<Request>) -> Handler<Serve, {Test}> {
   handler Serve {
-    fn listen(router, addr) {
+    fn serve(handle, addr) {
       for req in requests {
-        let resp = Router.handle(router, req)
+        let resp = handle(req)
         Test.output("{req.method} {Url.path(req.url)} -> {resp.status} {resp.body}")
       }
       fail ServeError { reason: "no more requests" }

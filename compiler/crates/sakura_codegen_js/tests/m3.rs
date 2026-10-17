@@ -766,7 +766,7 @@ import std/response.{{Response}}
 @external(js, "sakura_runtime", "serve_listen")
 fn serve_listen<e>(addr: Address, handle: fn(Request) -> Response ! e) -> Never ! {{Fail<ServeError> | e}}
 fn host() -> Handler<Serve> {{
-  handler Serve {{ fn listen(router, addr) {{ serve_listen(addr, fn(req) {{ Router.handle(router, req) }}) }} }}
+  handler Serve {{ fn serve(handle, addr) {{ serve_listen(addr, handle) }} }}
 }}
 pub fn main() -> Unit ! {{Console}} {{
   let r = Router.new()

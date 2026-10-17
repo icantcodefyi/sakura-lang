@@ -590,8 +590,9 @@ fn handle<e>(r: Router<fn(Request) -> Response ! e>, req: Request) -> Response !
 type Address = { host: String, port: Int }
 error ServeError(reason: String)
 effect Serve {
-  fn listen<e>(router: Router<fn(Request) -> Response ! e>, addr: Address) -> Never ! {Fail<ServeError> | e}
+  fn serve<e>(handle: fn(Request) -> Response ! e, addr: Address) -> Never ! {Fail<ServeError> | e}
 }
+fn listen<e>(router: Router<fn(Request) -> Response ! e>, addr: Address) -> Never ! {Serve, Fail<ServeError> | e}
 fn of(host: String, port: Int) -> Address requires port >= 0 && port <= 65_535
 fn host() -> Handler<Serve>
 fn scripted(requests: List<Request>) -> Handler<Serve, {Test}>
@@ -755,8 +756,9 @@ fn memory() -> Handler<Sql>    // @external
     a partial could not be observed. `Agent.run` reserves `max_tokens` and one call per step
     and settles to zero, as a headroom check; the provider charges actual use.
 18. **`Router<F>`** for the same reason as `Tool<F>` (`F` is `fn(Request) -> Response ! e`),
-    and `Serve.listen<e>` performs what the routes perform, so what is installed around `listen`
-    serves every request (§10.4). `Router.route`, `put`, `delete` and `handle` are
+    and `Serve.listen<e>` (a function over the one operation `Serve.serve(handle, addr)`,
+    §17.48) performs what the routes perform, so what is installed around `listen` serves
+    every request (§10.4). `Router.route`, `put`, `delete` and `handle` are
     additions; `:name` path segments fill the new `Request.params`, which `Request.param`
     reads before the query. `Serve.scripted(requests)` is the test handler; `Address.of`
     lives in `std/serve`.

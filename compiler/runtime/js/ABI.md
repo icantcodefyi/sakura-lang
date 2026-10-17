@@ -316,8 +316,9 @@ as one partial (incremental delivery needs a streaming `Http` operation).
 **Serve.** `serve_listen(addr, handle, $ctx, $k)` serves HTTP on `addr` (within `net`) until
 the process stops; each request is a child task running `handle(req)` under the caller's
 handlers; a failure or defect is a 500 `internal error` (a defect record or `error:` line on
-stderr) and the server continues. `std/serve`'s `host()` is meant to be
-`handler Serve { fn listen(router, addr) { serve_listen(addr, fn(req) { Router.handle(router, req) }) } }`.
+stderr) and the server continues. `std/serve`'s `host()` is
+`handler Serve { fn serve(handle, addr) { serve_listen(addr, handle) } }`; `handle` arrives
+as a callback (section 3), so each request runs under the handlers around `Serve.listen`.
 
 **Generic operations.** The checker leaves an operation's type parameters as inference
 variables inside a clause, so lowering matches the operation's scheme against the clause's
