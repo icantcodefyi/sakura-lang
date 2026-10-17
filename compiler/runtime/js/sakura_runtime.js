@@ -152,7 +152,20 @@ export function cctx(ctx, f) {
   return { h: f.n, c: ctx.c, t: ctx.t, p: ctx.h };
 }
 
-/** `Perform` for code that does not inline it (runtime and tests). */
+/**
+ * A callback (a function-typed operation argument) bound to the perform site's handlers: it
+ * runs under `pctx.h` wherever the clause calls it, with the catcher and task of the call
+ * (design §5.5). Re-wrapping keeps the original perform site.
+ */
+export function callback(f, pctx) {
+  return (...a) => {
+    const k = a.pop();
+    const c = a.pop();
+    return f(...a, { h: pctx.h, c: c.c, t: c.t, p: pctx.p }, k);
+  };
+}
+
+/** `Perform` for code that does not inline it (runtime and tests); passes no callbacks. */
 export function perform(ctx, e, op, args, k) {
   const f = find(ctx, e);
   return f.i.c[op](f.i, ...args, cctx(ctx, f), k);

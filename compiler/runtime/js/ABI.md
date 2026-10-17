@@ -89,6 +89,14 @@ region uses the outer variable, so leaving a region by falling through, `return`
   `cctx` gives the clause the handlers **outside** the frame (performing the same effect inside
   its clause reaches the next outer handler) with the performer's catcher and task. Clauses are
   tail-resumptive: the clause's return value, delivered to `$k`, is the operation's result.
+- Callbacks (design §5.5): an argument whose declared operation parameter is a function type
+  (`OpDef::params[i]` is `Ty::Fn`) is passed as `$rt.callback(arg, $ctx)`, so whoever calls it
+  (the clause, a host function, a lambda the clause builds) runs it under the **perform site's**
+  handlers with the catcher and task of the call: a body that performs the handled effect
+  reaches the same instance, and an attenuating handler cannot be bypassed from inside it.
+  Re-wrapping keeps the first perform site. Functions nested in list or record arguments
+  (`Task.all(bodies)`) are ordinary values; host clauses run those under `cctx.p`. `$rt.perform`
+  (performs from runtime code) passes no callbacks and does not wrap.
 - A missing handler cannot happen in checked programs; the runtime reports defect `D090`.
 
 ## 4. Failure (`Fail`, `try`)

@@ -743,7 +743,13 @@ impl<'a> FnEmit<'a> {
                 let eff = js_string(&self.cx.m.effect(*e).qualified_name());
                 w.line(&format!("const {f} = $rt.find({ctx}, {eff});"));
                 let mut a = vec![format!("{f}.i")];
-                a.extend(args.iter().map(|x| self.atom(x)));
+                // Function-typed arguments are callbacks: they run under the perform site's
+                // handlers wherever the clause calls them (design §5.5, ABI.md §3).
+                let params = &self.cx.m.effect(*e).ops[*op as usize].params;
+                a.extend(args.iter().enumerate().map(|(i, x)| match params.get(i) {
+                    Some(Ty::Fn(_)) => format!("$rt.callback({}, {ctx})", self.atom(x)),
+                    _ => self.atom(x),
+                }));
                 a.push(format!("$rt.cctx({ctx}, {f})"));
                 format!("{f}.i.c[{op}]({}, ", a.join(", "))
             }
