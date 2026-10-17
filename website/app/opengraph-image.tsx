@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { PETAL_ANGLES, SAKURA_CUTS } from "@/components/brand";
 import { site } from "@/lib/site";
 
 export const alt = "Sakura Lang: code that keeps its promises";
@@ -33,8 +34,9 @@ export default async function OpengraphImage() {
     mono && { name: "Mono", data: mono, weight: 400 as const },
   ].filter((f): f is NonNullable<typeof f> => Boolean(f));
 
-  const ink = "#16181c";
-  const seal = "#f2b53f";
+  const ink = "#1e1e1e";
+  const quiet = "#5f5f5f";
+  const cut = SAKURA_CUTS.main;
   return new ImageResponse(
     <div
       style={{
@@ -43,31 +45,41 @@ export default async function OpengraphImage() {
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
-        background: ink,
-        color: "#eef0f3",
-        padding: "72px 80px",
-        backgroundImage:
-          "repeating-linear-gradient(to bottom, transparent 0 47px, #1e2126 47px 48px)",
+        background: "#fefefe",
+        color: ink,
+        padding: "64px 80px 60px",
+        // The hero clouds: sakura and magenta blooms at the corners, sky between, fading to paper.
+        backgroundImage: [
+          "radial-gradient(38% 60% at 0% 0%, rgba(243,134,161,0.95), rgba(243,134,161,0) 72%)",
+          "radial-gradient(26% 46% at 24% -6%, rgba(212,91,182,0.6), rgba(212,91,182,0) 72%)",
+          "radial-gradient(40% 58% at 58% -12%, rgba(159,195,231,0.95), rgba(159,195,231,0) 74%)",
+          "radial-gradient(40% 70% at 104% 8%, rgba(243,134,161,0.95), rgba(243,134,161,0) 72%)",
+          "radial-gradient(70% 70% at 50% 10%, rgba(252,231,238,1), rgba(252,231,238,0) 80%)",
+        ].join(", "),
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-        <svg width="56" height="56" viewBox="0 0 32 32">
-          <path
-            d="M7.5 15.5 13.6 24 25 7.5"
-            stroke={seal}
-            strokeWidth="5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            fill="none"
-          />
+        <svg width="60" height="60" viewBox="0 0 100 100">
+          <g transform={`translate(0 ${cut.dy})`}>
+            {PETAL_ANGLES.map((a) => (
+              <path key={a} d={cut.petal} fill="#f386a1" transform={`rotate(${a} 50 50)`} />
+            ))}
+            <circle cx="50" cy="50" r={cut.core} fill="#d45bb6" />
+          </g>
         </svg>
-        <span style={{ fontFamily: "Display", fontSize: 44, letterSpacing: "-0.03em" }}>
+        <span style={{ fontFamily: "Display", fontSize: 46, letterSpacing: "-0.025em" }}>
           Sakura Lang
         </span>
       </div>
       <div style={{ display: "flex", flexDirection: "column" }}>
         <div
-          style={{ fontFamily: "Display", fontSize: 92, lineHeight: 1, letterSpacing: "-0.035em" }}
+          style={{
+            fontFamily: "Display",
+            fontSize: 104,
+            lineHeight: 0.98,
+            letterSpacing: "-0.04em",
+            maxWidth: 900,
+          }}
         >
           Code that keeps its promises.
         </div>
@@ -77,12 +89,12 @@ export default async function OpengraphImage() {
             marginTop: 40,
             fontFamily: "Mono",
             fontSize: 27,
-            color: "#9aa8bc",
+            color: quiet,
           }}
         >
-          <span style={{ color: "#f5f6f8" }}>fn signup</span>
+          <span style={{ color: ink }}>fn signup</span>
           <span>(…) -&gt; User&nbsp;</span>
-          <span style={{ color: seal }}>! {"{Clock, Db, Fail<SignupError>}"}</span>
+          <span style={{ color: "#b4245f" }}>! {"{Clock, Db, Fail<SignupError>}"}</span>
         </div>
       </div>
       <div
@@ -91,7 +103,7 @@ export default async function OpengraphImage() {
           justifyContent: "space-between",
           fontFamily: "Mono",
           fontSize: 22,
-          color: "#8a919c",
+          color: quiet,
         }}
       >
         <span>The language agents write.</span>
