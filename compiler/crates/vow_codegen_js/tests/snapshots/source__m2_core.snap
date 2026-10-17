@@ -50,7 +50,7 @@ lambda answer$1#35() -> Int ! {Counter} {
   ret r%0
 }
 
-fn twice#36(f%0: fn() -> Int ! r23) -> Int ! r23 {
+fn twice#36(f%0: fn() -> Int ! r24) -> Int ! r24 {
   let r%1: Int = call f%0()
   let r%2: Int = call f%0()
   let t%3: Int = intadd(r%1, r%2)

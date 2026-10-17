@@ -457,6 +457,122 @@ fn of(args: List<String>) -> Handler<Cli>
 fn parse<T: Schema>(args: List<String>) -> T ! {Fail<CliError>}    // @external
 ```
 
+### `std/url`
+
+```vow
+type Url = String where is_valid(it)
+fn is_valid(s: String) -> Bool    // @total
+fn host(u: Url) -> Option<String>
+fn path(u: Url) -> String
+fn query_param(u: Url, name: String) -> Option<String>
+```
+
+### `std/request`
+
+```vow
+type Method = Get | Head | Post | Put | Patch | Delete
+type Request = { method: Method, url: Url, headers: List<(String, String)>, body: String, bearer: Option<Secret<String>> }
+error BadRequest(detail: String)
+fn of(method: Method, url: Url) -> Request
+fn post(path: String, body: String) -> Request
+fn post_json<T: Schema>(url: Url, body: T) -> Request
+fn json<T: Schema>(req: Request, limit: Int) -> T ! {Fail<BadRequest>}
+fn param(req: Request, name: String) -> Option<String>
+fn header(req: Request, name: String) -> Option<String>
+```
+
+### `std/response`
+
+```vow
+type Status = Int where it >= 100 && it <= 599
+type Response = { status: Status, headers: List<(String, String)>, body: String }
+error HttpError(status: Option<Status>, reason: String)
+fn status(code: Int, body: String) -> Response requires code >= 100 && code <= 599
+fn ok_json<T: Schema>(value: T) -> Response
+fn json<T: Schema>(r: Response, limit: Int) -> T ! {Fail<HttpError | DecodeError>}
+fn text(r: Response, limit: Int) -> Untrusted<String> ! {Fail<HttpError>}
+```
+
+### `std/http`
+
+```vow
+type Matcher = Any | Path(String) | Method(Method)
+error RateLimited(retry_after: Option<Duration>)
+effect Http {
+  fn send(req: Request) -> Response ! {Fail<HttpError>}
+}
+fn get(url: Url) -> Response ! {Http, Fail<HttpError | RateLimited>}
+fn post_json<T: Schema>(url: Url, body: T) -> Response ! {Http, Fail<HttpError | RateLimited>}
+fn bearer(req: Request, token: Secret<String>) -> Request
+fn host() -> Handler<Http>
+fn scripted(script: List<(Matcher, Response)>) -> Handler<Http>
+```
+
+### `std/budget`
+
+```vow
+type Limits = { tokens: Option<Int>, usd: Option<Float>, calls: Option<Int> }
+type Cost = { tokens: Int, usd: Float, calls: Int }
+type Reservation = { estimate: Cost }
+type BudgetKind = Tokens | Usd | Calls
+error BudgetExceeded(kind: BudgetKind)
+effect Budget {
+  fn reserve(est: Cost) -> Reservation ! {Fail<BudgetExceeded>}
+  fn settle(r: Reservation, actual: Cost) -> Unit
+}
+fn limits(l: Limits) -> Handler<Budget>
+fn unlimited() -> Handler<Budget>
+fn zero() -> Cost
+```
+
+### `std/prompt`
+
+```vow
+type PromptPart = Text(String) | Untrusted(Untrusted<String>) | Image(Bytes)
+type Prompt = Prompt(List<PromptPart>)
+fn of(parts: List<PromptPart>) -> Prompt
+fn text(s: String) -> Prompt
+fn parts(p: Prompt) -> List<PromptPart>
+```
+
+### `std/llm`
+
+```vow
+type Model = Model(String)
+type Request<T> = { system: String, user: Prompt, model: Model, max_tokens: Int, temperature: Float }
+error Refused
+error InvalidOutput(violations: List<Violation>)
+error Truncated
+error ProviderError(status: Int)
+type LlmError = Refused | InvalidOutput | Truncated | RateLimited | Timeout | ProviderError
+effect Llm {
+  fn generate<T: Schema>(req: Request<T>) -> T ! {Fail<LlmError>}
+  fn generate_text(req: Request<String>) -> Untrusted<String> ! {Fail<LlmError>}
+}
+fn request<T: Schema>(system: String, user: Prompt) -> Request<T>
+fn of(name: String) -> Model
+fn default() -> Model
+fn anthropic(key: Secret<String>, model: Model) -> Handler<Llm, {Http, Budget}>    // @external
+fn scripted(responses: List<String>) -> Handler<Llm>
+```
+
+### `std/sql`
+
+```vow
+type SqlValue = Null | Int(Int) | Float(Float) | Text(String) | Blob(Bytes)
+type Query<R> = { text: String, params: List<SqlValue> }
+error SqlError(message: String)
+effect Sql {
+  fn query<R: Schema>(q: Query<R>) -> List<R> ! {Fail<SqlError>}
+  fn execute(q: Query<Unit>) -> Int ! {Fail<SqlError>}
+  fn transaction<T, e>(body: fn() -> T ! {Sql | e}) -> T ! {Fail<SqlError> | e}
+}
+fn template<R>(parts: List<String>, args: List<SqlValue>) -> Query<R>
+fn migrate(statements: List<Query<Unit>>) -> Unit ! {Sql, Fail<SqlError>}
+fn sqlite(path: Path) -> Handler<Sql, {Fs}>    // @external
+fn memory() -> Handler<Sql>    // @external
+```
+
 
 ## Deviations from design §10 (each has a `design-question` in `compiler/REQUESTS.md`)
 
