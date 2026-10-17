@@ -1,5 +1,7 @@
 //! Derived `Show` (design §4.8): strings are raw at the top level of an interpolation and quoted
-//! inside structures; floats use the shortest round-trip form, printed like JS `Number#toString`.
+//! inside structures; floats use the shortest round-trip form, printed like JS `Number#toString`
+//! but always with a `.` or exponent (`2.0`). Containers render as Vow syntax (`[1, 2]`,
+//! `Map.of([("a", 1)])`, `Set.of([1])`), following std's proposal in `compiler/REQUESTS.md`.
 
 use vow_core::{Module, TypeKind};
 
@@ -27,23 +29,32 @@ fn write(module: &Module, v: &Value, quoted: bool, out: &mut String) {
         Value::Unit => out.push_str("()"),
         Value::Bool(b) => out.push_str(if *b { "true" } else { "false" }),
         Value::Int(i) => out.push_str(&i.to_string()),
-        Value::Float(f) => out.push_str(&js_number(*f)),
+        Value::Float(f) => {
+            let s = js_number(*f);
+            let plain = s.bytes().all(|b| b.is_ascii_digit() || b == b'-');
+            out.push_str(&s);
+            if plain {
+                out.push_str(".0");
+            }
+        }
         Value::Str(s) if quoted => out.push_str(&format!("{:?}", &**s)),
         Value::Str(s) => out.push_str(s),
         Value::Tuple(xs) => list(module, xs, "(", ")", out),
         Value::List(xs) => list(module, xs, "[", "]", out),
-        Value::Set(xs) => list(module, xs, "Set([", "])", out),
+        Value::Set(xs) => list(module, xs, "Set.of([", "])", out),
         Value::Map(entries) => {
-            out.push('{');
+            out.push_str("Map.of([");
             for (i, (k, v)) in entries.iter().enumerate() {
                 if i > 0 {
                     out.push_str(", ");
                 }
+                out.push('(');
                 write(module, k, true, out);
-                out.push_str(": ");
+                out.push_str(", ");
                 write(module, v, true, out);
+                out.push(')');
             }
-            out.push('}');
+            out.push_str("])");
         }
         Value::Record(t, fields) => {
             let def = module.ty(*t);
@@ -118,7 +129,21 @@ pub fn js_number(f: f64) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::js_number;
+    use super::*;
+    use std::rc::Rc;
+
+    #[test]
+    fn containers_render_as_vow_syntax() {
+        let m = Module::default();
+        let s = |x: &str| Value::Str(x.into());
+        let map = Value::Map(Rc::new(vec![(s("a"), Value::Float(2.0))]));
+        assert_eq!(show(&m, &map, false), "Map.of([(\"a\", 2.0)])");
+        let set = Value::Set(Rc::new(vec![Value::Int(1)]));
+        assert_eq!(show(&m, &set, false), "Set.of([1])");
+        let tup = Value::Tuple(Rc::new([Value::Float(-0.5), s("x"), Value::Unit]));
+        assert_eq!(show(&m, &tup, false), "(-0.5, \"x\", ())");
+        assert_eq!(show(&m, &s("raw"), false), "raw");
+    }
 
     #[test]
     fn floats_print_like_js() {
