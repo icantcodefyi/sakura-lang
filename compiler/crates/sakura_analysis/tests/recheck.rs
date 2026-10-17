@@ -106,6 +106,27 @@ fn a_private_body_edit_rechecks_only_its_module() {
     };
     assert_eq!(code(reused.files), code(full.files));
 
+    // A function a refinement predicate calls is run on literals at compile time (design
+    // §17.87), so its body is interface: editing it rechecks every module, editing another
+    // body does not.
+    let refined = |positive: &str, other: &str| {
+        let pred = format!(
+            "pub type Pos = Int where positive(it)\n\nfn positive(n: Int) -> Bool {{ {positive} }}\n\npub fn other() -> Int {{ {other} }}\n"
+        );
+        let user = "import main/pred\n\npub fn one() -> Int { pred.other() }\n";
+        Snapshot::with_std([
+            ("file:///q/src/pred.sakura".to_owned(), pred),
+            ("file:///q/src/user.sakura".to_owned(), user.to_owned()),
+        ])
+    };
+    let _ = Analysis::analyze(&refined("n > 0", "1"));
+    let before = stats();
+    let _ = Analysis::analyze(&refined("n > 0", "2"));
+    assert_eq!(stats().checked_modules - before.checked_modules, 1);
+    let before = stats();
+    let _ = Analysis::analyze(&refined("n > 1", "2"));
+    assert!(stats().checked_modules - before.checked_modules > 2);
+
     // A signature change rechecks everything.
     let sig = edited.replace(
         "pub fn twice(x: Int) -> Int",

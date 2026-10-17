@@ -3,7 +3,7 @@
 //! No phase reads the filesystem: frontends build a [`Snapshot`] from in-memory text and hand it
 //! to [`Analysis`].
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -180,12 +180,17 @@ pub fn stats() -> Stats {
 /// A hash of what other modules can depend on: every token except comments, whitespace and the
 /// bodies of functions, tests and properties. Equal hashes mean the same items in the same
 /// order with the same signatures, so `DefId`s, `BodyId`s and dependents' results carry over.
-fn interface_hash(root: &sakura_syntax::SyntaxNode) -> u64 {
+/// The bodies of functions named in `evaluated` count too: the checker runs them on literals.
+fn interface_hash(root: &sakura_syntax::SyntaxNode, evaluated: &HashSet<String>) -> u64 {
     use sakura_syntax::SyntaxKind::{BLOCK, FN_DECL, PROPERTY_DECL, TEST_DECL};
     use std::hash::{Hash, Hasher};
     let mut h = std::hash::DefaultHasher::new();
     for item in root.children() {
-        let body = matches!(item.kind(), FN_DECL | TEST_DECL | PROPERTY_DECL)
+        let skip = match item.kind() {
+            FN_DECL => !fn_name(&item).is_some_and(|n| evaluated.contains(n.text())),
+            k => matches!(k, TEST_DECL | PROPERTY_DECL),
+        };
+        let body = skip
             .then(|| item.children().find(|c| c.kind() == BLOCK))
             .flatten()
             .map(|b| b.text_range());
@@ -202,6 +207,52 @@ fn interface_hash(root: &sakura_syntax::SyntaxNode) -> u64 {
         item.kind().hash(&mut h);
     }
     h.finish()
+}
+
+fn fn_name(item: &sakura_syntax::SyntaxNode) -> Option<sakura_syntax::SyntaxToken> {
+    item.children_with_tokens()
+        .filter_map(|e| e.into_token())
+        .find(|t| t.kind() == sakura_syntax::SyntaxKind::IDENT)
+}
+
+/// The functions the checker may evaluate on a literal (design §17.87), by name over every
+/// module: names in `where` clauses, then, until nothing changes, names in the bodies of
+/// functions so named. By name, so a clash costs only reuse, never soundness.
+fn evaluated_functions(roots: &[sakura_syntax::SyntaxNode]) -> HashSet<String> {
+    use sakura_syntax::SyntaxKind::{BLOCK, FN_DECL, IDENT, WHERE_CLAUSE};
+    let idents = |n: &sakura_syntax::SyntaxNode| -> Vec<String> {
+        n.descendants_with_tokens()
+            .filter_map(|e| e.into_token())
+            .filter(|t| t.kind() == IDENT)
+            .map(|t| t.text().to_owned())
+            .collect()
+    };
+    let mut names: HashSet<String> = roots
+        .iter()
+        .flat_map(|r| r.descendants().filter(|n| n.kind() == WHERE_CLAUSE))
+        .flat_map(|w| idents(&w))
+        .collect();
+    let fns: Vec<(String, sakura_syntax::SyntaxNode)> = roots
+        .iter()
+        .flat_map(|r| r.children().filter(|i| i.kind() == FN_DECL))
+        .filter_map(|f| {
+            let body = f.children().find(|c| c.kind() == BLOCK)?;
+            Some((fn_name(&f)?.text().to_owned(), body))
+        })
+        .collect();
+    let mut expanded = vec![false; fns.len()];
+    let mut grew = true;
+    while grew {
+        grew = false;
+        for ((name, body), done) in fns.iter().zip(&mut expanded) {
+            if !*done && names.contains(name) {
+                *done = true;
+                grew = true;
+                names.extend(idents(body));
+            }
+        }
+    }
+    names
 }
 
 /// Parses `text` as file `file`, reusing the tree of an earlier parse of the same content.
@@ -288,9 +339,12 @@ impl Analyzed {
 fn analyze(snapshot: &Snapshot, prev: Option<&Analyzed>) -> Analyzed {
     ANALYSES.fetch_add(1, Ordering::Relaxed);
     let (parses, mut diagnostics) = parse_all(snapshot);
+    let trees: Vec<sakura_syntax::SyntaxNode> =
+        parses.iter().flatten().map(|p| p.syntax()).collect();
+    let evaluated = evaluated_functions(&trees);
     let interfaces: Vec<Option<u64>> = parses
         .iter()
-        .map(|p| p.as_ref().map(|p| interface_hash(&p.syntax())))
+        .map(|p| p.as_ref().map(|p| interface_hash(&p.syntax(), &evaluated)))
         .collect();
     // Reuse `prev` only for the same files with the same interfaces; then a module is reused
     // (neither lowered nor checked again) when its text is unchanged and none of its
