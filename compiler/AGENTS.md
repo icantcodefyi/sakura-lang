@@ -41,6 +41,8 @@ against your own temporary adapter until it lands. Never rewrite another owner's
 - Commits: small Conventional Commits scoped by crate, e.g. `feat(syntax): parse match arms`.
   All agents share one git index, so always commit with explicit paths:
   `git commit -m "…" -- <your paths>` (this records only those paths even if someone else has
-  staged files), then check `git show --stat HEAD` lists only your files. Before pushing: `git fetch origin master && git rebase
-  --autostash origin/master` (plain `git pull` can fail while other agents fetch), then rerun the
-  tests you own.
+  staged files), then check `git show --stat HEAD` lists only your files. Before pushing, commit
+  your work, then run `git fetch origin master`, `git rebase origin/master` and the gates as
+  separate steps, and push only if each one exited 0 (a piped or chained failure has published
+  untested commits before). Never use `git stash`: `refs/stash` is shared by every worktree, so
+  another agent's `pop` can take your changes; save a patch or commit to a temporary branch.
