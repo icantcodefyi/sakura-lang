@@ -399,6 +399,22 @@ fn f(x: Int) -> Int { x }
 fn g(x: Int) -> Int { let a = @trust("ok"); let b = @total; f(x, @trust("y")) }
 "#);
 
+/// Statements the parser rejected lower without a target or with a trailing `Missing`
+/// argument, so the type checker does not add V2001/V2002 to V0013/V0001.
+#[test]
+fn parse_error_cascades() {
+    let src = "fn f() -> Unit {\n  var xs = [1]\n  xs[0] = 2\n  Console.print(\n}\n";
+    let out = build(&[("main", src)], true);
+    let dump = out.program.dump_module(ModuleId(0));
+    assert!(dump.contains("assign <err>"), "{dump}");
+    assert!(dump.contains("<missing>"), "{dump}");
+    assert!(
+        out.program.diagnostics.is_empty(),
+        "{:?}",
+        out.program.diagnostics
+    );
+}
+
 snap!(diag_shadowed_import,
     "main" => "import app/lib.{value}\nfn f() -> Int { let value = 2; value }\n",
     "lib" => "pub fn value() -> Int { 1 }\n",

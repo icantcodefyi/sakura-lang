@@ -491,6 +491,13 @@ impl<'a> BodyCx<'a> {
                 names.push(token(&c, IDENT).map(|t| t.text().to_string()));
             }
         }
+        // `f(` cut short by a parse error: a trailing `Missing` tells the type checker the
+        // argument count is unknown, so it does not add an arity error (V2002).
+        if token(&list, R_PAREN).is_none() {
+            let end = TextRange::empty(list.text_range().end());
+            args.push(self.missing(end));
+            names.push(None);
+        }
         if names.iter().all(Option::is_none) {
             names.clear();
         }
@@ -1196,6 +1203,17 @@ impl<'a> BodyCx<'a> {
             && all.len() >= 2
             && let Some(target) = all.first()
         {
+            // Only `x` and `x.a.b` are targets; the parser reported anything else (`V0013`),
+            // so such an assignment keeps no target and adds no type error.
+            if !is_place(target) {
+                let value = self.opt_expr(value_node, range);
+                return Stmt::Assign {
+                    target: None,
+                    fields: Vec::new(),
+                    value,
+                    range,
+                };
+            }
             names = target
                 .descendants_with_tokens()
                 .filter_map(|e| e.into_token())
@@ -1430,6 +1448,21 @@ fn same_named_variant(p: &Program, ty: DefId, t: &TypeDef) -> Option<DefId> {
             module: ty.module,
             index,
         })
+}
+
+/// `x` or `x.a.b`: the assignable expressions.
+fn is_place(n: &SyntaxNode) -> bool {
+    let mut n = n.clone();
+    loop {
+        match n.kind() {
+            PATH_EXPR => return path_segments(&n).len() == 1,
+            FIELD_EXPR => match field_parts(&n) {
+                Some((base, name)) if name.kind() == IDENT => n = base,
+                _ => return false,
+            },
+            _ => return false,
+        }
+    }
 }
 
 /// The base expression and member token of a `FIELD_EXPR` (`IDENT`, `TYPE_NAME` or `INT`).
