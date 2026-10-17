@@ -31,4 +31,9 @@ published yet.
 
 - Renamed the language from Vow to Sakura Lang: binary `sakura`, sources `.sakura`, manifest `sakura.toml`, crates `sakura_*`, env `SAKURA_*`, URIs `sakura://`, repo `icantcodefyi/sakura-lang`. Diagnostic codes are unchanged. <!-- rename:keep -->
 
+### Fixed
+
+- `Llm.stream` under `Llm.anthropic` requests server-sent events and calls `on_partial` once per
+  text delta instead of once with the whole reply.
+
 [Unreleased]: https://github.com/icantcodefyi/sakura-lang/commits/master

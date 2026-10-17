@@ -669,6 +669,24 @@ fn llm_anthropic_speaks_the_messages_api_through_http_and_budget() {
             "429 Too Many Requests\r\nretry-after: 7",
             r#"{"type":"error"}"#,
         ),
+        (
+            "200 OK",
+            concat!(
+                "event: message_start\n",
+                r#"data: {"type":"message_start","message":{"content":[],"usage":{"input_tokens":10,"output_tokens":1}}}"#,
+                "\n\nevent: content_block_start\n",
+                r#"data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}"#,
+                "\n\nevent: content_block_delta\n",
+                r#"data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"{\"value\":{\"title\":"}}"#,
+                "\n\nevent: content_block_delta\n",
+                r#"data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"\"crash\",\"priority\":1}}"}}"#,
+                "\n\nevent: message_delta\n",
+                r#"data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":9}}"#,
+                "\n\nevent: message_stop\n",
+                r#"data: {"type":"message_stop"}"#,
+                "\n\n"
+            ),
+        ),
     ];
     let server = std::thread::spawn(move || {
         let mut seen = Vec::new();
@@ -719,6 +737,8 @@ pub fn main() -> Unit ! {Console, Env, Http} {
     Console.print("{b}")
     let c = try { Llm.generate(req) }
     Console.print("{c}")
+    let d = try { Llm.stream(req, fn(p) { Console.print(p.text) }) }
+    Console.print("{d}")
   }
 }
 "#;
@@ -736,7 +756,10 @@ pub fn main() -> Unit ! {Console, Env, Http} {
         concat!(
             "Ok(Ticket { title: \"login\", priority: 2 })\n",
             "Err(Refused)\n",
-            "Err(RateLimited { retry_after: Some(Duration(7000)) })\n"
+            "Err(RateLimited { retry_after: Some(Duration(7000)) })\n",
+            "{\"value\":{\"title\":\n",
+            "{\"value\":{\"title\":\"crash\",\"priority\":1}}\n",
+            "Ok(Ticket { title: \"crash\", priority: 1 })\n"
         ),
         "{}",
         String::from_utf8_lossy(&out.stderr)
@@ -759,6 +782,9 @@ pub fn main() -> Unit ! {Console, Env, Http} {
         "{json}"
     );
     assert_eq!(json["messages"][0]["content"][0]["text"], "login is broken");
+    let body = &seen[3][seen[3].find("\r\n\r\n").unwrap() + 4..];
+    let json: serde_json::Value = serde_json::from_str(body).unwrap();
+    assert_eq!(json["stream"], true, "{json}");
 }
 
 /// `serve_listen` (what `Serve.host()` is built on) answers each request in its own task; a

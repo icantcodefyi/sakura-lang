@@ -422,3 +422,25 @@ test("with_file buffers are released when the body fails, hits a defect or is ca
   assert.deepEqual(await rt.runTask(race, [], frames), ok("w"));
   assert.throws(() => rt.file_contents(cancelled), /is not a buffer/);
 });
+
+test("sseMessage rebuilds a Messages API stream and the text after each delta", () => {
+  const ev = (type, data) => `event: ${type}\r\ndata: ${JSON.stringify({ type, ...data })}\r\n\r\n`;
+  const delta = (text) => ev("content_block_delta", { index: 1, delta: { type: "text_delta", text } });
+  const head = [
+    ev("message_start", { message: { content: [], usage: { input_tokens: 10, output_tokens: 1 } } }),
+    ev("content_block_start", { index: 0, content_block: { type: "thinking", thinking: "" } }),
+    ev("content_block_delta", { index: 0, delta: { type: "thinking_delta", thinking: "hm" } }),
+    ev("content_block_start", { index: 1, content_block: { type: "text", text: "" } }),
+    ev("ping", {}),
+    delta('{"value":'),
+    delta('"hi"}'),
+    ev("message_delta", { delta: { stop_reason: "end_turn" }, usage: { output_tokens: 7 } }),
+  ].join("");
+  const msg = rt.sseMessage(head + ev("message_stop", {}));
+  assert.deepEqual(msg.texts, ['{"value":', '{"value":"hi"}']);
+  assert.deepEqual(msg.content[1], { type: "text", text: '{"value":"hi"}' });
+  assert.equal(msg.stop_reason, "end_turn");
+  assert.deepEqual(msg.usage, { input_tokens: 10, output_tokens: 7 });
+  assert.equal(rt.sseMessage(head), null, "cut off before message_stop");
+  assert.equal(rt.sseMessage(head + ev("error", { error: { type: "overloaded_error" } })), null);
+});

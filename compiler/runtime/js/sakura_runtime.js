@@ -3057,9 +3057,11 @@ function jsonSchemaJs(schema) {
 // `Budget.reserve`/`settle` on the handlers outside it. Requests use structured outputs
 // (`output_config.format`, the schema wrapped as `{"value": T}` since the root must be an
 // object) and server-side refusal fallbacks; `Untrusted` prompt parts are fenced as data.
-// ponytail: `stream` sends one request and reports the whole text as a single partial (true
-// incremental delivery needs a streaming `Http` operation). The key travels as the `x-api-key`
-// entry of the request's `secret_headers` (§17.57), so no `Http` wrapper can show or record it.
+// `stream` asks for server-sent events and reports one partial per text delta.
+// ponytail: `Http.send` returns whole bodies, so the partials arrive once the response ends;
+// delivering them as bytes arrive needs a streaming `Http` operation. The key travels as the
+// `x-api-key` entry of the request's `secret_headers` (§17.57), so no `Http` wrapper can show or
+// record it.
 
 const LLM = "std::llm::Llm";
 const HTTP = "std::http::Http";
@@ -3092,6 +3094,43 @@ function imageType(b) {
   if (b[0] === 0xff && b[1] === 0xd8) return "image/jpeg";
   if (b[0] === 0x47 && b[1] === 0x49) return "image/gif";
   return "image/webp";
+}
+
+/**
+ * A Messages API event stream as the message it builds, plus the text so far after each text
+ * delta (`texts`); null if the stream reports an error or is cut off before `message_stop`.
+ */
+export function sseMessage(body) {
+  const msg = { content: [], stop_reason: null, usage: { input_tokens: 0, output_tokens: 0 }, texts: [] };
+  let text = "";
+  for (const event of body.split(/\r?\n\r?\n/)) {
+    const data = event
+      .split(/\r?\n/)
+      .filter((l) => l.startsWith("data:"))
+      .map((l) => l.slice(5).replace(/^ /, ""))
+      .join("\n");
+    if (data === "") continue;
+    let e;
+    try {
+      e = JSON.parse(data);
+    } catch {
+      return null;
+    }
+    if (e.type === "error") return null;
+    if (e.type === "message_start") msg.usage.input_tokens = e.message?.usage?.input_tokens ?? 0;
+    if (e.type === "content_block_start") msg.content[e.index] = { ...e.content_block };
+    if (e.type === "content_block_delta" && e.delta.type === "text_delta" && msg.content[e.index]?.type === "text") {
+      msg.content[e.index].text += e.delta.text;
+      text += e.delta.text;
+      msg.texts.push(text);
+    }
+    if (e.type === "message_delta") {
+      msg.stop_reason = e.delta?.stop_reason ?? msg.stop_reason;
+      msg.usage.output_tokens = e.usage?.output_tokens ?? msg.usage.output_tokens;
+    }
+    if (e.type === "message_stop") return { ...msg, content: msg.content.filter((b) => b !== undefined) };
+  }
+  return null;
 }
 
 function promptContent(prompt) {
@@ -3130,6 +3169,7 @@ export function llm_anthropic(key, handlerModel) {
       ...(system === "" ? {} : { system }),
       messages: [{ role: "user", content: blocks }, ...(extra.messages ?? [])],
       ...(extra.tools ? { tools: extra.tools } : {}),
+      ...(extra.stream ? { stream: true } : {}),
       ...(extra.schema === undefined
         ? {}
         : {
@@ -3167,7 +3207,7 @@ export function llm_anthropic(key, handlerModel) {
       perform(toLlm, HTTP, 0, [request], (resp) => {
         let msg = null;
         try {
-          msg = resp.status === 200 ? JSON.parse(resp.body) : null;
+          msg = resp.status !== 200 ? null : extra.stream ? sseMessage(resp.body) : JSON.parse(resp.body);
         } catch {
           msg = null;
         }
@@ -3202,10 +3242,14 @@ export function llm_anthropic(key, handlerModel) {
   const generateText = (_i, req, ctx, k) =>
     call(req, {}, ctx, (msg) => ret(k, new Untrusted(textOf(msg))));
   const stream = (_i, req, onPartial, schema, ctx, k) =>
-    call(req, { schema }, ctx, (msg) => {
+    call(req, { schema, stream: true }, ctx, (msg) => {
       const Partial = std("std::llm::Partial");
       const pc = { h: ctx.p ?? ctx.h, c: ctx.c, t: ctx.t };
-      return onPartial(new Partial(textOf(msg), 0, list([])), pc, () => decodeValue(msg, schema, ctx, k));
+      const emit = (i) =>
+        i === msg.texts.length
+          ? decodeValue(msg, schema, ctx, k)
+          : onPartial(new Partial(msg.texts[i], 0, list([])), pc, () => ret(emit, i + 1));
+      return emit(0);
     });
   const step = (_i, req, tools, transcript, schema, ctx, k) => {
     const specs = items(tools).map((t) => {
