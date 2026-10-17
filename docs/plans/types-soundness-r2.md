@@ -761,3 +761,39 @@ finishes in bounded time (`Instant::now()` guard of ~10 s to catch accidental qu
    `compiler/REQUESTS.md` entry for risk 1.
 
 Each commit: fmt, clippy `-D warnings`, full workspace tests, rebase, push.
+
+---
+
+## Deviations (recorded by the implementer)
+
+1. **A `try` over a flexible tail keeps that tail monomorphic** (1.4 generalization, 1.6
+   `local`). Generalizing `k = fn(h) { try { h() } }` to `fn(fn() -> A ! {Fail<B> | e1}) ->
+   Result<A, B> ! e1` is unsound: an instance's copy of `e1` can be bound to a
+   failure-carrying `e` by *sequencing* (`union_rows`, which relates tails only) before the
+   callback's row is related, and then the callback's `e.Fail` lands in the tail instead of
+   `B`; the `try` inside `k` catches it as `Err` while the instance says `Result<_, Never>`
+   (negative case "a generalized try still sees its tail bound by sequencing", accepted
+   without this rule). `generalize_with_bounds` therefore lowers the level of every pending
+   `try`-without-`catch` body tail to the enclosing scope, so the deferred `V3003` check of
+   1.5.4 sees the binding. `k` is still polymorphic in `A` and `B`; its row is shared and
+   closes to `{}` when unconstrained, so `local`'s scheme renders
+   `fn(fn() -> A ! {Fail<B>}) -> Result<A, B>`.
+2. **Error-union variables generalize per connected component** (1.4 `collect_general`).
+   Quantifying each variable separately loses `ε₁ ⊆ ε₂` edges (e.g. `fn(h, g) { h(); g() }`
+   would get an unconstrained result `Fail<D>`). A component of variables linked by subset
+   edges becomes one type parameter iff every member is inner, has no lower bound and no upper
+   bound; otherwise all members stay shared variables. `generalize_mapped` zonks without
+   resolving error-union variables (an outer one may still grow), instead of resolving
+   non-empty lower bounds.
+3. **Hidden `e.Fail` mismatches are tail mismatches.** When `relate_fail` fails only on the
+   hidden atom of a failure-carrying tail, `relate_rows` reports `Tails` (the old "performs the
+   effects of `e`" `V3001` with its "add the row variable" fix) rather than a `Fail<e.Fail>`
+   label nobody can write.
+4. **`V2015` for inexpressible unions walks expression types only**, skipping variables that
+   carry an upper bound: rows are always bounded by a signature or an expected function type,
+   whose violation (`V3001`/`V3002`/`V2001`) already explains the problem; reporting `V2015`
+   too would be a cascade.
+5. **Rendering**: `zonk_row` drops a `Fail<ε>` label whose variable has no lower bound yet, so
+   mid-body diagnostics show `?e1` rather than `{Fail<?A> | ?e1}`.
+6. **Catch coverage**: a catch-all arm over a body whose tail hides failures is reachable (no
+   `V4002` next to the `W4010`).

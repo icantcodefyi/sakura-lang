@@ -6,7 +6,7 @@ use vow_hir::{DefKind, Literal, LocalId, Pat, PatId, Res, TypeRes};
 
 use super::{Checker, CoverageKind, LocalTy};
 use crate::exhaust::{self, Ctor, Space, Usefulness, Witness};
-use crate::ty::{TyCon, Type, TypeId};
+use crate::ty::{Tail, TyCon, Type, TypeId};
 
 impl Checker<'_> {
     pub(super) fn bind_pat(&mut self, p: PatId, ty: TypeId) {
@@ -241,7 +241,8 @@ impl Checker<'_> {
         let tag_ty = self.inf.interner.con(TyCon::Adt(tag), Vec::new());
         match self.inf.interner.ty(s).clone() {
             Type::Error => false,
-            Type::Var(_) => self.inf.unify(s, tag_ty).is_ok(),
+            // An error-union variable gains `tag` as a lower bound; a plain one is bound.
+            Type::Var(_) => self.inf.subsume(tag_ty, s).is_ok(),
             Type::Union(tags) if tags.contains(&tag) => true,
             Type::Con(TyCon::Adt(d), _) if d == tag => true,
             _ => {
@@ -288,19 +289,32 @@ impl Checker<'_> {
                 .iter()
                 .map(|(p, guarded)| (self.lower_pat(*p), *guarded, *p))
                 .collect();
+            // Failures hidden in the body's tail reach the first unguarded catch-all arm.
+            let mut hidden = match c.kind {
+                CoverageKind::Catch { body_row } => match self.inf.flatten_row(body_row).tail {
+                    Tail::Param(p) => self.inf.interner.row_param_fail(p).is_some(),
+                    _ => false,
+                },
+                _ => false,
+            };
             let mut space = CheckSpace { cx: self };
             let mut u = Usefulness::new(&mut space);
             let mut rows: Vec<Vec<exhaust::Pat>> = Vec::new();
             let mut unreachable = Vec::new();
             for (pat, guarded, id) in &pats {
-                if u.useful(&rows, std::slice::from_ref(pat), &[ty]).is_none() && !u.exhausted {
+                let catch_all = hidden && matches!(pat, exhaust::Pat::Wild);
+                if u.useful(&rows, std::slice::from_ref(pat), &[ty]).is_none()
+                    && !u.exhausted
+                    && !catch_all
+                {
                     unreachable.push(*id);
                 }
                 if !guarded {
+                    hidden &= !catch_all;
                     rows.push(vec![pat.clone()]);
                 }
             }
-            let missing = if c.kind == CoverageKind::Catch {
+            let missing = if matches!(c.kind, CoverageKind::Catch { .. }) {
                 Vec::new()
             } else {
                 let flat: Vec<exhaust::Pat> = rows.into_iter().map(|mut r| r.remove(0)).collect();
@@ -313,7 +327,7 @@ impl Checker<'_> {
             for id in unreachable {
                 let range = self.pat_range(id);
                 let msg = match c.kind {
-                    CoverageKind::Catch => {
+                    CoverageKind::Catch { .. } => {
                         "this `catch` arm is unreachable: earlier arms already catch these errors, or the body cannot fail with them"
                     }
                     _ => {

@@ -298,6 +298,18 @@ Fixed:
 "A closed effect row was required to be empty or smaller, but an effect label had to be in it
 (row unification `{A | r} ~ {}` failed, design §5.2).";
 
+    V3003 "try_unknown_failures" EFFECT,
+"`try` without `catch` must name every failure of its body in `Result<T, E>`. When the body's
+row ends in a row variable `e` that is never written next to `Fail<…>` in its declaration, `e`
+may hide failures nobody can name (design §5.2 rule 8, §5.3), so `E` cannot be written.
+Declare the failures with a type parameter, which makes `e` Fail-free. (`try … catch` is fine:
+its arms match the named tags and the hidden failures stay in the row.)
+
+Wrong:
+    fn wrap<e>(f: fn() -> Int ! e) -> Result<Int, Never> ! e { try { f() } }
+Fixed:
+    fn wrap<E, e>(f: fn() -> Int ! {Fail<E> | e}) -> Result<Int, E> ! e { try { f() } }";
+
     V3010 "invalid_operation_row" EFFECT,
 "An effect operation's row may contain only `Fail<…>` in v0 (design §5.5).";
 

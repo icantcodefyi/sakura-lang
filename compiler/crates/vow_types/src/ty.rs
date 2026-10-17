@@ -159,7 +159,15 @@ pub struct Interner {
     rows: Vec<Row>,
     row_ids: HashMap<Row, RowId>,
     params: Vec<ParamInfo>,
-    row_params: Vec<String>,
+    row_params: Vec<RowParamInfo>,
+}
+
+/// A row parameter's name and, if it carries failures, its hidden error type `e.Fail`
+/// (design §5.2 rule 8).
+#[derive(Clone, Debug)]
+struct RowParamInfo {
+    name: String,
+    fail: Option<ParamId>,
 }
 
 impl Interner {
@@ -219,14 +227,23 @@ impl Interner {
         &mut self.params[id.0 as usize]
     }
 
-    pub fn new_row_param(&mut self, name: impl Into<String>) -> RowParamId {
+    /// A row parameter. `carries_fail`: `{… | e}` stands for `{…, Fail<e.Fail> | e}` with a
+    /// hidden error type `e.Fail` (§5.2 rule 8); otherwise `e` ranges over Fail-free rows.
+    pub fn new_row_param(&mut self, name: impl Into<String>, carries_fail: bool) -> RowParamId {
+        let name = name.into();
+        let fail = carries_fail.then(|| self.new_param(format!("{name}.Fail"), Vec::new()));
         let id = RowParamId(self.row_params.len() as u32);
-        self.row_params.push(name.into());
+        self.row_params.push(RowParamInfo { name, fail });
         id
     }
 
     pub fn row_param_name(&self, id: RowParamId) -> &str {
-        &self.row_params[id.0 as usize]
+        &self.row_params[id.0 as usize].name
+    }
+
+    /// The hidden error type `e.Fail` of a failure-carrying row parameter.
+    pub fn row_param_fail(&self, id: RowParamId) -> Option<ParamId> {
+        self.row_params[id.0 as usize].fail
     }
 
     // Convenience constructors.

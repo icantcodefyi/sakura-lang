@@ -99,7 +99,11 @@ struct CoverageCheck {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum CoverageKind {
     Match,
-    Catch,
+    /// `body_row`: the `try` body's row; if its tail hides failures (§5.2 rule 8), a
+    /// catch-all arm also catches those and is reachable.
+    Catch {
+        body_row: RowId,
+    },
     Let,
 }
 
@@ -133,6 +137,9 @@ struct BodyState {
     empty_lists: Vec<ExprId>,
     /// Initializers of generalized `let`s (their leftover variables are quantified).
     generalized: HashSet<ExprId>,
+    /// `(try, body)` of every `try` without `catch` whose body row ended in a flexible tail:
+    /// if the tail later turns out to hide failures, the `try` is `V3003` (§5.3).
+    try_checks: Vec<(ExprId, ExprId)>,
 }
 
 pub(crate) struct Checker<'p> {
@@ -318,8 +325,8 @@ impl<'p> Checker<'p> {
         self.inf.interner.new_param(name, bounds)
     }
 
-    fn fresh_row_param(&mut self, name: &str) -> RowParamId {
-        self.inf.interner.new_row_param(name)
+    fn fresh_row_param(&mut self, name: &str, carries_fail: bool) -> RowParamId {
+        self.inf.interner.new_row_param(name, carries_fail)
     }
 
     fn holes_out(&mut self) -> &mut Vec<Hole> {

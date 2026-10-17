@@ -1,6 +1,6 @@
 //! Declarations: generics, type lowering, rows, schemes of value-level definitions.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use vow_diagnostics::codes::{V2001, V2002, V2005};
 use vow_diagnostics::{Diagnostic, Phase};
@@ -56,16 +56,18 @@ impl Checker<'_> {
         }
         let program = self.program;
         let module = def.module;
+        let fail_free = fail_free_row_params(program, def);
         let slots = match &program.def(def).kind {
-            DefKind::Fn(f) => self.slots(&f.sig.generics),
-            DefKind::Type(t) => self.slots(&t.generics),
-            DefKind::Effect(e) => self.slots(&e.generics),
+            DefKind::Fn(f) => self.slots(&f.sig.generics, &fail_free, 0),
+            DefKind::Type(t) => self.slots(&t.generics, &fail_free, 0),
+            DefKind::Effect(e) => self.slots(&e.generics, &fail_free, 0),
             DefKind::Op(o) => {
                 let mut g = self.generics_of(DefId {
                     module,
                     index: o.effect,
                 });
-                g.extend(self.slots(&o.sig.generics));
+                let offset = g.len() as u32;
+                g.extend(self.slots(&o.sig.generics, &fail_free, offset));
                 g
             }
             DefKind::Variant(v) => self.generics_of(DefId {
@@ -78,15 +80,24 @@ impl Checker<'_> {
         slots
     }
 
-    fn slots(&mut self, params: &[TypeParam]) -> Vec<GenericSlot> {
+    /// `offset`: index of the first of `params` in the definition's generic index space.
+    fn slots(
+        &mut self,
+        params: &[TypeParam],
+        fail_free: &HashSet<u32>,
+        offset: u32,
+    ) -> Vec<GenericSlot> {
         params
             .iter()
-            .map(|p| match &p.kind {
+            .zip(offset..)
+            .map(|(p, i)| match &p.kind {
                 TypeParamKind::Type(bounds) => {
                     let bounds = bounds.iter().map(|b| constraint_of(*b)).collect();
                     GenericSlot::Ty(self.fresh_param_like(&p.name, bounds))
                 }
-                TypeParamKind::Row => GenericSlot::Row(self.fresh_row_param(&p.name)),
+                TypeParamKind::Row => {
+                    GenericSlot::Row(self.fresh_row_param(&p.name, !fail_free.contains(&i)))
+                }
             })
             .collect()
     }
@@ -499,7 +510,15 @@ impl Checker<'_> {
                     Tail::Closed
                 }
             },
-            Some(_) => Tail::Var(self.inf.fresh_row_var()),
+            // Recovery: a row that may do anything (tails never hide `Fail`, §5.2 rule 8).
+            Some(_) => {
+                let err = self.inf.fresh_err_var();
+                labels.push(Label {
+                    effect: Effect::Fail,
+                    args: vec![err],
+                });
+                Tail::Var(self.inf.fresh_row_var())
+            }
         };
         self.inf.make_row(labels, tail)
     }
@@ -709,4 +728,83 @@ impl Checker<'_> {
             .map(|(n, t)| (n, self.inf.substitute(t, &subst, &HashMap::new())))
             .collect()
     }
+}
+
+/// Row parameters some row of `def`'s declaration writes next to `Fail<…>` (`{Fail<E> | e}`):
+/// those are Fail-free; the others carry failures (§5.2 rule 8). Indices are
+/// `TypeRes::Param` indices (an op's index space starts with its effect's generics).
+fn fail_free_row_params<'a>(program: &'a vow_hir::Program, def: DefId) -> HashSet<u32> {
+    fn sig<'a>(s: &'a Signature, refs: &mut Vec<&'a TypeRef>, rows: &mut Vec<&'a RowRef>) {
+        refs.extend(s.params.iter().map(|p| &p.ty));
+        refs.push(&s.ret);
+        rows.extend(&s.row);
+    }
+    let module = def.module;
+    let mut refs: Vec<&'a TypeRef> = Vec::new();
+    let mut rows: Vec<&'a RowRef> = Vec::new();
+    let type_body = |t: DefId, refs: &mut Vec<&'a TypeRef>| {
+        let DefKind::Type(td) = &program.def(t).kind else {
+            return;
+        };
+        match &td.body {
+            TypeDefBody::Record(fs) => refs.extend(fs.iter().map(|f| &f.ty)),
+            TypeDefBody::Variants(vs) => {
+                for v in vs {
+                    if let DefKind::Variant(vd) = &program.def(DefId { module, index: *v }).kind {
+                        refs.extend(&vd.fields);
+                    }
+                }
+            }
+            TypeDefBody::Alias(t) => refs.push(t),
+            _ => {}
+        }
+    };
+    match &program.def(def).kind {
+        DefKind::Fn(f) => sig(&f.sig, &mut refs, &mut rows),
+        DefKind::Op(o) => sig(&o.sig, &mut refs, &mut rows),
+        // An effect's own row parameters: as its operations use them.
+        DefKind::Effect(e) => {
+            for op in &e.ops {
+                if let DefKind::Op(o) = &program.def(DefId { module, index: *op }).kind {
+                    sig(&o.sig, &mut refs, &mut rows);
+                }
+            }
+        }
+        DefKind::Type(_) => type_body(def, &mut refs),
+        DefKind::Variant(v) => type_body(
+            DefId {
+                module,
+                index: v.parent,
+            },
+            &mut refs,
+        ),
+        _ => {}
+    }
+    let mut out = HashSet::new();
+    while !refs.is_empty() || !rows.is_empty() {
+        if let Some(r) = rows.pop() {
+            let fail = r
+                .labels
+                .iter()
+                .any(|l| l.effect == TypeRes::Builtin(Builtin::Fail));
+            if fail && let Some(TypeRes::Param(n)) = r.tail {
+                out.insert(n);
+            }
+            refs.extend(r.labels.iter().flat_map(|l| &l.args));
+        }
+        if let Some(t) = refs.pop() {
+            match &t.kind {
+                TypeRefKind::Tuple(xs) | TypeRefKind::Union(xs) => refs.extend(xs),
+                TypeRefKind::Named { args, .. } => refs.extend(args),
+                TypeRefKind::Fn { params, ret, row } => {
+                    refs.extend(params);
+                    refs.push(ret);
+                    rows.extend(row);
+                }
+                TypeRefKind::Row(r) => rows.push(r),
+                TypeRefKind::Missing => {}
+            }
+        }
+    }
+    out
 }

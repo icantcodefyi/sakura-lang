@@ -1,7 +1,7 @@
 //! Expressions and statements: `synth` and `check` (design §4.5, §5.7).
 
 use vow_diagnostics::codes::{
-    V2001, V2002, V2003, V2004, V2005, V2010, V2015, V2041, V3002, V3011, V3012,
+    V2001, V2002, V2003, V2004, V2005, V2010, V2015, V2041, V3002, V3003, V3011, V3012,
 };
 use vow_diagnostics::{Diagnostic, Phase, Rendered};
 use vow_hir::{
@@ -12,7 +12,7 @@ use vow_hir::{
 use super::{Checker, CoverageCheck, CoverageKind, FnFrame, LocalTy, ViolationKind};
 use crate::CallTarget;
 use crate::infer::UnifyError;
-use crate::ty::{Constraint, Effect, Label, RowId, TyCon, Type, TypeId};
+use crate::ty::{Constraint, Effect, Label, RowId, Tail, TyCon, Type, TypeId};
 
 impl Checker<'_> {
     /// Checks `e` against `expected` (subsumption) and returns its row.
@@ -1350,6 +1350,12 @@ impl Checker<'_> {
             None => self.synth(body),
         };
         let flat = self.inf.flatten_row(br);
+        // The failures of `b` hidden in a failure-carrying rigid tail cannot be named (§5.3).
+        let hidden = match flat.tail {
+            Tail::Param(p) => self.inf.interner.row_param_fail(p).is_some(),
+            _ => false,
+        };
+        // Only the explicit `Fail` argument, never the hidden part (it stays in the tail).
         let err_ty = flat
             .labels
             .iter()
@@ -1364,6 +1370,13 @@ impl Checker<'_> {
             .collect();
         let without = self.inf.make_row(rest, flat.tail);
         let Some(arms) = arms else {
+            if hidden {
+                self.unknown_failures(e, br);
+                return (self.inf.interner.error(), without, false);
+            }
+            if matches!(flat.tail, Tail::Var(_)) {
+                self.b.try_checks.push((e, body));
+            }
             let ty = self.result_of(bt, err_ty);
             return (ty, without, false);
         };
@@ -1385,17 +1398,28 @@ impl Checker<'_> {
         if catch_all {
             remaining = None;
             // W4010: `_` on an error type the function does not know swallows future tags.
-            if matches!(self.inf.interner.ty(err_s), Type::Param(_))
+            let open = if hidden {
+                let only = self.inf.make_row(Vec::new(), flat.tail);
+                Some(format!(
+                    "including the failures of the row variable `{}`",
+                    self.render_row(only)
+                ))
+            } else if matches!(self.inf.interner.ty(err_s), Type::Param(_)) {
+                let shown = self.render(err_s);
+                Some(format!("of the open type `{shown}`"))
+            } else {
+                None
+            };
+            if let Some(what) = open
                 && let Some(a) = arms
                     .iter()
                     .find(|a| a.guard.is_none() && self.catches_all(a.pat))
             {
-                let shown = self.render(err_s);
                 let range = self.pat_range(a.pat);
                 let d = Diagnostic::warning(
                     vow_diagnostics::Code("W4010"),
                     Phase::Pattern,
-                    format!("this catch-all arm catches every error of the open type `{shown}`, including ones callers add later; match specific tags where you can"),
+                    format!("this catch-all arm catches every error {what}, including ones callers add later; match specific tags where you can"),
                 )
                 .with_span(self.span(range));
                 self.push(d);
@@ -1424,9 +1448,36 @@ impl Checker<'_> {
             at: e,
             range,
             arms: arms.iter().map(|a| (a.pat, a.guard.is_some())).collect(),
-            kind: CoverageKind::Catch,
+            kind: CoverageKind::Catch { body_row: br },
         });
         (ty, self.seq(&rows, e), done)
+    }
+
+    /// V3003: `try` without `catch` over a row whose tail hides failures (§5.3).
+    pub(super) fn unknown_failures(&mut self, e: ExprId, body_row: RowId) {
+        if !self.b.reported.insert(e) {
+            return;
+        }
+        let flat = self.inf.flatten_row(body_row);
+        let only = self.inf.make_row(Vec::new(), flat.tail);
+        let tail = self.render_row(only);
+        let range = self.expr_range(e);
+        let d = Diagnostic::error(
+            V3003,
+            Phase::Effect,
+            format!(
+                "`try` cannot name the failures of its body: the row ends in `{tail}`, which may hide `Fail<…>`; declare them with a type parameter (`fn f<E, {tail}>(g: fn() -> T ! {{Fail<E> | {tail}}}) -> Result<T, E> ! {tail}`)"
+            ),
+        )
+        .with_span(self.span(range))
+        .with_actual(self.rendered_row(body_row))
+        .with_fix(vow_diagnostics::Fix {
+            title: format!("Declare the failures of `{tail}` as `Fail<E>` in the signature"),
+            applicability: vow_diagnostics::Applicability::Incomplete,
+            impact: vow_diagnostics::Impact::InterfaceChange,
+            edits: Vec::new(),
+        });
+        self.push(d);
     }
 
     fn catches_all(&self, p: vow_hir::PatId) -> bool {

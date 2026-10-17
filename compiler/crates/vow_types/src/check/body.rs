@@ -325,6 +325,17 @@ impl<'p> Checker<'p> {
 
     fn finish_body(&mut self) {
         self.solve_obligations(true);
+        // A `try` whose flexible tail was later bound to a failure-carrying one (§5.3).
+        for (e, b) in std::mem::take(&mut self.b.try_checks) {
+            let Some(&r) = self.b.rows.get(b) else {
+                continue;
+            };
+            if let crate::ty::Tail::Param(p) = self.inf.flatten_row(r).tail
+                && self.inf.interner.row_param_fail(p).is_some()
+            {
+                self.unknown_failures(e, r);
+            }
+        }
         let body = self.hir_body();
         // Close unconstrained rows, then resolve everything.
         let ids: Vec<ExprId> = body.exprs.iter().map(|(id, _)| id).collect();
@@ -336,6 +347,7 @@ impl<'p> Checker<'p> {
                 self.inf.default_rows_in(t);
             }
         }
+        self.report_inexpressible(&ids);
         let mut out = TypedBody::default();
         for &e in &ids {
             if let Some(&t) = self.b.types.get(e) {
@@ -387,6 +399,43 @@ impl<'p> Checker<'p> {
 
         let key = (self.module(), self.b.body_id.expect("body id"));
         self.out.bodies.insert(key, out);
+    }
+
+    /// V2015: an error union v0 cannot write (a type parameter joined with tags) survived
+    /// into an expression's type. Reported once per variable, at its first expression.
+    fn report_inexpressible(&mut self, ids: &[ExprId]) {
+        let mut seen = HashSet::new();
+        for &e in ids {
+            let Some(&t) = self.b.types.get(e) else {
+                continue;
+            };
+            let Some((v, set)) = self.inf.inexpressible_err(t) else {
+                continue;
+            };
+            if !seen.insert(v) || !self.b.reported.insert(e) {
+                continue;
+            }
+            let program = self.program;
+            let mut atoms: Vec<String> = set
+                .params
+                .iter()
+                .map(|p| self.inf.interner.param(*p).name.clone())
+                .chain(set.tags.iter().map(|d| program.def(*d).name.clone()))
+                .collect();
+            atoms.sort();
+            let shown = atoms.join(" | ");
+            let range = self.expr_range(e);
+            let d = Diagnostic::error(
+                vow_diagnostics::codes::V2015,
+                Phase::Type,
+                format!(
+                    "the error type `{shown}` cannot be written in v0 (a type parameter joined with tags); annotate the function type so the failures are a closed union"
+                ),
+            )
+            .with_span(self.span(range))
+            .with_actual(vow_diagnostics::Rendered::text(shown));
+            self.push(d);
+        }
     }
 
     /// V2010: an empty `[]` whose element type nothing determined.
@@ -592,6 +641,13 @@ impl<'p> Checker<'p> {
     /// the new parameters' bounds.
     pub(super) fn generalize_with_bounds(&mut self, ty: TypeId) -> Scheme {
         self.solve_obligations(false);
+        // A `try` over a flexible tail must see that very tail bound later (V3003 check):
+        // an instance's copy could be bound to a failure-carrying parameter unnoticed.
+        for (_, b) in self.b.try_checks.clone() {
+            if let Some(&r) = self.b.rows.get(b) {
+                self.inf.keep_monomorphic(r);
+            }
+        }
         let (scheme, mapping) = self.inf.generalize_mapped(ty);
         if mapping.is_empty() {
             return scheme;

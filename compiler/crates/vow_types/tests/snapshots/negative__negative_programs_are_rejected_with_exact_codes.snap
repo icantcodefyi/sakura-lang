@@ -1,5 +1,6 @@
 ---
 source: crates/vow_types/tests/negative.rs
+assertion_line: 278
 expression: transcript
 ---
 ## wrong result type
@@ -220,3 +221,23 @@ V1002 7:17 cannot find `nope` in this scope
 ## unresolved type
 V1003 7:9 cannot find type `Nope` in this scope; did you mean `None`?
   fix (MachineApplicable, Local): Use `None` "None"
+
+## try over a failure-carrying row variable needs the failures named
+V3003 7:60 `try` cannot name the failures of its body: the row ends in `e`, which may hide `Fail<…>`; declare them with a type parameter (`fn f<E, e>(g: fn() -> T ! {Fail<E> | e}) -> Result<T, E> ! e`)
+  actual: e
+  fix (Incomplete, InterfaceChange): Declare the failures of `e` as `Fail<E>` in the signature 
+
+## try over a row variable whose tail later becomes failure-carrying
+V3003 7:66 `try` cannot name the failures of its body: the row ends in `e`, which may hide `Fail<…>`; declare them with a type parameter (`fn f<E, e>(g: fn() -> T ! {Fail<E> | e}) -> Result<T, E> ! e`)
+  actual: e
+  fix (Incomplete, InterfaceChange): Declare the failures of `e` as `Fail<E>` in the signature 
+
+## a later-known failure is counted by try
+V2001 8:92 expected `Result<Int, Never>`, found `Result<Int, A>` (`A` is not `Never`)
+  expected: Result<Int, Never>
+  actual: Result<Int, A>
+
+## a generalized try still sees its tail bound by sequencing
+V3003 7:58 `try` cannot name the failures of its body: the row ends in `e`, which may hide `Fail<…>`; declare them with a type parameter (`fn f<E, e>(g: fn() -> T ! {Fail<E> | e}) -> Result<T, E> ! e`)
+  actual: e
+  fix (Incomplete, InterfaceChange): Declare the failures of `e` as `Fail<E>` in the signature

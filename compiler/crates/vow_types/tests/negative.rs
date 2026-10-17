@@ -232,6 +232,27 @@ const CASES: &[(&str, &str, &[&str])] = &[
         "fn f(x: Nope) -> Int { x.size }",
         &["V1003"],
     ),
+    (
+        "try over a failure-carrying row variable needs the failures named",
+        "fn wrap<e>(f: fn() -> Int ! e) -> Result<Int, Never> ! e { try { f() } }",
+        &["V3003"],
+    ),
+    (
+        "try over a row variable whose tail later becomes failure-carrying",
+        "fn g<e>(f: fn() -> Int ! e) -> Int ! e { let k = fn(h) { let r = try { h() }; h() }; k(f) }",
+        &["V3003"],
+    ),
+    (
+        "a later-known failure is counted by try",
+        "fn needs(h: fn() -> Int ! {Fail<A>}) -> Int { try { h() } catch { _ => 0 } }\n\
+         fn f() -> Result<Int, Never> { let k = fn(h) { let r = try { h() }; let _ = needs(h); r }; k(fn() { fail A }) }",
+        &["V2001"],
+    ),
+    (
+        "a generalized try still sees its tail bound by sequencing",
+        "fn g<e>(f: fn() -> Int ! e) -> Int ! e { let k = fn(h) { try { h() } }; let m = fn(x) { let r = k(x); let _ = f(); r }; let _ = m(f); 0 }",
+        &["V3003"],
+    ),
 ];
 
 #[test]

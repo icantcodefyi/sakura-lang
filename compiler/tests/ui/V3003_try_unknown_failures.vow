@@ -1,0 +1,3 @@
+// milestone: M2
+// expect: V3003
+fn wrap<e>(f: fn() -> Int ! e) -> Result<Int, Never> ! e { try { f() } }

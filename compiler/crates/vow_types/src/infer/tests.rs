@@ -130,8 +130,8 @@ fn same_tail_with_different_labels_fails() {
 #[test]
 fn rigid_tails_must_match() {
     let mut inf = Infer::new();
-    let e = Tail::Param(inf.interner.new_row_param("e"));
-    let f = Tail::Param(inf.interner.new_row_param("f"));
+    let e = Tail::Param(inf.interner.new_row_param("e", false));
+    let f = Tail::Param(inf.interner.new_row_param("f", false));
     let a = row(&mut inf, &[], e);
     let b = row(&mut inf, &[], f);
     assert!(inf.unify_rows(a, a).is_ok());
@@ -231,6 +231,81 @@ fn fail_subsumption_is_union_inclusion() {
     assert!(inf.subsume_rows(rab, ra).is_err());
     // Unification (synthesis mode) requires equal unions.
     assert!(inf.unify_rows(ra, rab).is_err());
+}
+
+#[test]
+fn closed_fail_sets_must_be_equal_in_unify() {
+    let mut inf = Infer::new();
+    let fa = fail(&mut inf, &[1]);
+    let fb = fail(&mut inf, &[2]);
+    let ra = inf.closed_row(vec![fa.clone()]);
+    let ra2 = inf.closed_row(vec![fa]);
+    let rb = inf.closed_row(vec![fb]);
+    assert!(inf.unify_rows(ra, ra2).is_ok());
+    assert!(inf.unify_rows(ra, rb).is_err());
+}
+
+#[test]
+fn fail_lower_bounds_join() {
+    // §5.2 rule 8: two callbacks sharing one open row join their tags, in either order.
+    for order in [[1, 2], [2, 1]] {
+        let mut inf = Infer::new();
+        let open = inf.fresh_row();
+        for t in order {
+            let l = fail(&mut inf, &[t]);
+            let r = inf.closed_row(vec![l]);
+            inf.subsume_rows(r, open).unwrap();
+        }
+        inf.default_row(open);
+        assert_eq!(show_row(&mut inf, open), "{Fail<E101 | E102>}");
+    }
+}
+
+#[test]
+fn fail_unify_through_variables_joins() {
+    let mut inf = Infer::new();
+    let (r, s) = (inf.fresh_row(), inf.fresh_row());
+    let (fa, fb) = (fail(&mut inf, &[1]), fail(&mut inf, &[2]));
+    let (ra, rb) = (inf.closed_row(vec![fa]), inf.closed_row(vec![fb]));
+    inf.subsume_rows(ra, r).unwrap();
+    inf.subsume_rows(rb, s).unwrap();
+    inf.unify_rows(r, s).unwrap();
+    inf.default_row(r);
+    inf.default_row(s);
+    assert_eq!(show_row(&mut inf, r), "{Fail<E101 | E102>}");
+    assert_eq!(show_row(&mut inf, s), "{Fail<E101 | E102>}");
+}
+
+#[test]
+fn fail_upper_bound_rejects_later_tags() {
+    let mut inf = Infer::new();
+    let open = inf.fresh_row();
+    let fa = fail(&mut inf, &[1]);
+    let only_a = inf.closed_row(vec![fa]);
+    inf.subsume_rows(open, only_a).unwrap();
+    let fb = fail(&mut inf, &[2]);
+    let rb = inf.closed_row(vec![fb]);
+    let (extra, _) = inf.subsume_rows(rb, open).unwrap_err();
+    assert_eq!(extra.len(), 1);
+    let shown = inf.render_label(&extra[0], &names);
+    assert_eq!(shown, "Fail<E102>");
+}
+
+#[test]
+fn hidden_failures_of_a_row_parameter() {
+    // `{| e}` with a failure-carrying `e` is `{Fail<e.Fail> | e}`: it fits `! e`, not `{}`,
+    // and passing it to an open row hands `e.Fail` over without showing it.
+    let mut inf = Infer::new();
+    let e = Tail::Param(inf.interner.new_row_param("e", true));
+    let re = row(&mut inf, &[], e);
+    let empty = inf.interner.empty_row();
+    assert!(inf.subsume_rows(re, re).is_ok());
+    assert_eq!(inf.subsume_rows(re, empty), Err((vec![], true)));
+    let open = inf.fresh_row();
+    inf.subsume_rows(re, open).unwrap();
+    inf.default_row(open);
+    assert_eq!(show_row(&mut inf, open), "e");
+    assert!(inf.subsume_rows(open, re).is_ok());
 }
 
 #[test]
@@ -334,7 +409,7 @@ fn env() -> Env {
     let mut inf = Infer::new();
     let x = Tail::Var(inf.fresh_row_var());
     let y = Tail::Var(inf.fresh_row_var());
-    let e = Tail::Param(inf.interner.new_row_param("e"));
+    let e = Tail::Param(inf.interner.new_row_param("e", false));
     Env { inf, x, y, e }
 }
 
