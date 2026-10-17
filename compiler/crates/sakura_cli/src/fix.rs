@@ -11,12 +11,13 @@ use crate::{EXIT_ERRORS, load, report, usage_error};
 
 /// Lists fixes (`preview`), or applies the machine-applicable ones (or exactly the ids in
 /// `apply`) and writes the changed files. Fixes with impact `contract_change` or
-/// `authority_change` are never applied; `frozen` rejects the whole patch on a `V8020`.
+/// `authority_change` are never applied; `frozen` (symbols, git revision) rejects the whole
+/// patch on a `V8020` against that revision (design §17.62).
 pub fn fix(
     json: bool,
     preview: bool,
     apply: Option<&str>,
-    frozen: Option<&str>,
+    frozen: Option<&(String, String)>,
     paths: &[PathBuf],
 ) -> ExitCode {
     let base = match load(paths) {
@@ -100,8 +101,17 @@ pub fn fix(
 
     let new = base.apply_edits(&edits).expect("checked above");
     let after = Analysis::analyze(&new);
-    if let Some(f) = frozen {
-        let violations = after.frozen_spec_violations(&a, &Frozen::parse(f));
+    if let Some((f, since)) = frozen {
+        let roots = if paths.is_empty() {
+            disk::default_roots(Path::new("."))
+        } else {
+            paths.to_vec()
+        };
+        let committed = match git_base(since, &roots) {
+            Ok(b) => Analysis::analyze(&b),
+            Err(e) => return usage_error(format!("--frozen-specs: {e}")),
+        };
+        let violations = after.frozen_spec_violations(&committed, &Frozen::parse(f));
         if !violations.is_empty() {
             report(json, &new, &violations, &[], true);
             if !json {

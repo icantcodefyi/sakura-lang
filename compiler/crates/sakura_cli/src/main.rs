@@ -65,9 +65,13 @@ enum Command {
         /// Comma-separated fix ids (`f:…`) to apply instead of the machine-applicable ones.
         #[arg(long, value_name = "IDS")]
         apply: Option<String>,
-        /// As in `sakura check`: refuse fixes that change these specs.
+        /// As in `sakura check`: refuse the whole fix set if the fixed files' specs for these
+        /// symbols differ from git revision `--since`.
         #[arg(long, value_name = "SYMBOLS|all")]
         frozen_specs: Option<String>,
+        /// The git revision `--frozen-specs` compares with.
+        #[arg(long, default_value = "HEAD", requires = "frozen_specs")]
+        since: String,
         /// The diagnostics after fixing as JSON Lines on stdout.
         #[arg(long)]
         json: bool,
@@ -214,13 +218,14 @@ fn dispatch(command: Command) -> ExitCode {
             preview,
             apply,
             frozen_specs,
+            since,
             json,
             paths,
         } => fix::fix(
             json,
             preview,
             apply.as_deref(),
-            frozen_specs.as_deref(),
+            frozen_specs.map(|f| (f, since)).as_ref(),
             &paths,
         ),
         Command::Build {

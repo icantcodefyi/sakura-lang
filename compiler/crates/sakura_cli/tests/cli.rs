@@ -221,6 +221,23 @@ fn frozen_specs_compare_with_git_head() {
             .contains("was changed to")
     );
 
+    // `sakura fix` compares with the same baseline: the fixed files still weaken `clamp`.
+    let fix = sakura(&["fix", "--frozen-specs", "clamp", "main.sakura"], &dir);
+    assert_eq!(fix.code, Some(1), "{}", fix.stderr);
+    assert!(fix.stderr.contains("V8020"), "{}", fix.stderr);
+    let bad_rev = sakura(
+        &[
+            "fix",
+            "--frozen-specs",
+            "all",
+            "--since",
+            "no-such-rev",
+            "main.sakura",
+        ],
+        &dir,
+    );
+    assert_eq!(bad_rev.code, Some(2), "{}", bad_rev.stderr);
+
     // Other symbols frozen, or no flag: the edit is allowed.
     let other = sakura(&["check", "--frozen-specs", "helper", "main.sakura"], &dir);
     assert_eq!(other.code, Some(0), "{}", other.stderr);
