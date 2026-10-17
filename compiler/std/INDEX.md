@@ -81,7 +81,7 @@ externals they touch; their host handlers and `Schema` codecs are runtime extern
 ## Planned, not yet in source (design §10, milestone M3)
 
 `Tool.of` (a compiler intrinsic on a `@tool`
-function), `Untrusted.validate` (a compiler intrinsic into a refined type), `Http.scoped`/`recording`, `Llm.replay`, `Sql.postgres`, `Html`
+function), `Untrusted.validate` (a compiler intrinsic into a refined type), `Http.recording`, `Llm.replay`, `Sql.postgres`, `Html`
 values as `html"…"` arguments, `List.par_map` (written as `std/task.par_map` until `Task` runs),
 and `Env.host(scope)`. Their signatures are the ones in design §10.2–§10.7. `Uuid`, `Prompt` and
 `Query` are `pub opaque` (design §17.10).
@@ -521,7 +521,7 @@ fn encode_component(s: String) -> String
 
 ```sakura
 type Method = Get | Head | Post | Put | Patch | Delete
-type Request = { method: Method, url: Url, headers: List<(String, String)>, body: String, bearer: Option<Secret<String>>, params: List<(String, String)> }
+type Request = { method: Method, url: Url, headers: List<(String, String)>, body: String, secret_headers: List<(String, Secret<String>)>, params: List<(String, String)> }
 error BadRequest(detail: String)
 fn of(method: Method, url: Url) -> Request
 fn post(path: String, body: String) -> Request
@@ -556,6 +556,7 @@ fn get(url: Url) -> Response ! {Http, Fail<HttpError | RateLimited>}
 fn post_json<T: Schema>(url: Url, body: T) -> Response ! {Http, Fail<HttpError | RateLimited>}
 fn bearer(req: Request, token: Secret<String>) -> Request
 fn host() -> Handler<Http>
+fn scoped(hosts: List<String>) -> Handler<Http, {Http}>
 fn scripted(script: List<(Matcher, Response)>) -> Handler<Http>
 ```
 
@@ -725,8 +726,8 @@ fn memory() -> Handler<Sql>    // @external
     `Request.json`/`Response.json`, `Request.post_json`/`Http.post_json` and
     `Prompt.of`/`Model.of` would otherwise be one name (§4.9). `std/budget` and `std/llm`
     replace the `std/ai` placeholder.
-12. **`Request.bearer: Option<Secret<String>>`** keeps a credential added by `Http.bearer`
-    out of the `Show`-able headers; the host handler sends it.
+12. Resolved (§17.57): `Request.secret_headers: List<(String, Secret<String>)>` replaces
+    `bearer`; host handlers send each entry, nothing shows, matches or records it.
 13. **Parameterless `Fs.host()` and `Http.host()`** for the entry point (as item 9);
     `Fs.memory`'s `root()` is a directory without host access. `Cli.exit` under `Cli.of` is
     a defect (`D030`). `Llm.scripted` reports undecodable output as `InvalidOutput` with one

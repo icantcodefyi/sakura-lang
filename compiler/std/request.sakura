@@ -7,15 +7,15 @@ import std/url.{Url}
 
 pub type Method = Get | Head | Post | Put | Patch | Delete
 
-/// `bearer` holds a credential added by `Http.bearer`; the host handler sends it as an
-/// `Authorization` header and nothing else can read it. `params` are the path parameters a
-/// `Router` matched (`:id` in `/users/:id`).
+/// `secret_headers` (`Http.bearer` adds `authorization`) are sent by host handlers as headers
+/// and are never shown, matched by `Http.scripted` or recorded (design §17.57). `params` are
+/// the path parameters a `Router` matched (`:id` in `/users/:id`).
 pub type Request = {
   method: Method,
   url: Url,
   headers: List<(String, String)>,
   body: String,
-  bearer: Option<Secret<String>>,
+  secret_headers: List<(String, Secret<String>)>,
   params: List<(String, String)>,
 }
 
@@ -24,7 +24,7 @@ pub error BadRequest(detail: String)
 
 /// A request with no headers or body.
 pub fn of(method: Method, url: Url) -> Request {
-  Request { method, url, headers: [], body: "", bearer: None, params: [] }
+  Request { method, url, headers: [], body: "", secret_headers: [], params: [] }
 }
 
 /// A `POST` of `body` to `path`, for route handlers and their tests.

@@ -2795,7 +2795,7 @@ export function task_deterministic(seed) {
 
 /**
  * `http_send(req)`: suspends until the response arrives; `Ok(Response)` for any status,
- * `Err(reason)` when no response arrives. `req.bearer` becomes `Authorization: Bearer …` and
+ * `Err(reason)` when no response arrives. Every `req.secret_headers` entry is sent as a header and
  * is readable nowhere else. Cancelling the task aborts the request.
  */
 export function http_send(req, _ctx, k) {
@@ -2803,7 +2803,7 @@ export function http_send(req, _ctx, k) {
   const method = req.method.$t.ctors[req.method.tag].name.toUpperCase();
   const headers = new Headers();
   for (const [name, value] of items(req.headers)) headers.append(name, value);
-  if (req.bearer.tag === 1) headers.set("authorization", `Bearer ${Secret.expose(req.bearer.fields[0])}`);
+  for (const [name, value] of items(req.secret_headers)) headers.set(name, Secret.expose(value));
   const net = granted()?.net;
   if (net !== undefined) {
     let host;
@@ -3057,8 +3057,8 @@ function jsonSchemaJs(schema) {
 // (`output_config.format`, the schema wrapped as `{"value": T}` since the root must be an
 // object) and server-side refusal fallbacks; `Untrusted` prompt parts are fenced as data.
 // ponytail: `stream` sends one request and reports the whole text as a single partial (true
-// incremental delivery needs a streaming `Http` operation); the key travels as an `x-api-key`
-// header of the internal `Request`.
+// incremental delivery needs a streaming `Http` operation). The key travels as the `x-api-key`
+// entry of the request's `secret_headers` (§17.57), so no `Http` wrapper can show or record it.
 
 const LLM = "std::llm::Llm";
 const HTTP = "std::http::Http";
@@ -3154,11 +3154,11 @@ export function llm_anthropic(key, handlerModel) {
     const base = proc?.env?.ANTHROPIC_BASE_URL ?? "https://api.anthropic.com";
     const headers = list([
       ["content-type", "application/json"],
-      ["x-api-key", Secret.expose(key)],
       ["anthropic-version", "2023-06-01"],
       ["anthropic-beta", "server-side-fallback-2026-07-01"],
     ]);
-    const request = new Request(post, `${base}/v1/messages`, headers, text, None);
+    const secrets = list([["x-api-key", key]]);
+    const request = new Request(post, `${base}/v1/messages`, headers, text, secrets, list([]));
     const toLlm = catcher(ctx, (e) =>
       fail(ctx, e.$t?.id === "std::response::HttpError" ? errorOf("std::llm::ProviderError", e.status.tag === 1 ? e.status.fields[0] : 0) : e),
     );
@@ -3269,7 +3269,7 @@ export function serve_listen(addr, handle, ctx, k) {
         const headers = [];
         for (let i = 0; i < req.rawHeaders.length; i += 2) headers.push([req.rawHeaders[i], req.rawHeaders[i + 1]]);
         const body = Buffer.concat(chunks).toString("utf8");
-        const value = new Request(new Method(tag, []), req.url, list(headers), body, None);
+        const value = new Request(new Method(tag, []), req.url, list(headers), body, list([]), list([]));
         const reply = (o) => {
           if (o.kind === "ok") {
             const r = o.value;

@@ -1,6 +1,6 @@
 // HTTP client as an effect (design §10.2, §10.4, M3). The manifest's `net` list limits the
-// host handler (§6.2); there is no `Net` effect.
-// needs M3: the `http_send` external, `Http.scoped(NetScope)`, `Http.recording(path)`.
+// host handler (§6.2); `Http.scoped(hosts)` attenuates by data; there is no `Net` effect.
+// needs M3: `Http.recording(path)`.
 
 import std/duration.{Duration}
 import std/request.{Method, Request}
@@ -27,10 +27,15 @@ pub fn post_json<T: Schema>(url: Url, body: T) -> Response ! {Http, Fail<HttpErr
   rate_limited(Http.send(Request.post_json(url, body)))
 }
 
-/// `req` carrying `token` as its bearer credential.
-pub fn bearer(req: Request, token: Secret<String>) -> Request { Request { ..req, bearer: Some(token) } }
+/// `req` with `("authorization", "Bearer <token>")` added to its `secret_headers`, which host
+/// handlers send and nothing shows, matches or records.
+pub fn bearer(req: Request, token: Secret<String>) -> Request {
+  let value = Secret.map(token, fn(t) { "Bearer " + t })
+  Request { ..req, secret_headers: List.push(req.secret_headers, ("authorization", value)) }
+}
 
-/// The root handler the host installs for a `main` that declares `Http`.
+/// The root handler the host installs for a `main` that declares `Http`: `fetch`, limited
+/// to the manifest's `net` list.
 pub fn host() -> Handler<Http> {
   handler Http {
     fn send(req) {
@@ -39,6 +44,27 @@ pub fn host() -> Handler<Http> {
         Err(reason) => fail HttpError { status: None, reason },
       }
     }
+  }
+}
+
+/// Forwards to the enclosing `Http` only for requests to the listed `host:port` entries (a
+/// URL without a port means 443 for `https` and 80 otherwise); others fail with `HttpError`.
+pub fn scoped(hosts: List<String>) -> Handler<Http, {Http}> {
+  handler Http {
+    fn send(req) {
+      let target = host_port(req.url)
+      if !List.contains(hosts, target) {
+        fail HttpError { status: None, reason: "{target} is outside Http.scoped" }
+      }
+      Http.send(req)
+    }
+  }
+}
+
+fn host_port(u: Url) -> String {
+  match Url.host(u) {
+    None => "",
+    Some(h) => if String.contains(h, ":") { h } else if String.starts_with(u, "https://") { "{h}:443" } else { "{h}:80" },
   }
 }
 
@@ -92,4 +118,20 @@ test "429 is RateLimited with its Retry-After" {
   with scripted([(Any, limited)]) {
     expect_fail(fn() { get(Url.from("/x")) }, RateLimited { retry_after: Some(Duration.seconds(2)) })
   }
+}
+
+test "scoped forwards only listed hosts" {
+  let ok = Response.status(200, "ok")
+  with scripted([(Any, ok)]), scoped(["api.example.com:443", "localhost:8080"]) {
+    expect_eq(try { Http.send(Request.of(Method.Get, Url.from("https://api.example.com/v1"))) }, Ok(ok))
+    expect_eq(try { Http.send(Request.of(Method.Get, Url.from("http://localhost:8080/"))) }, Ok(ok))
+    expect((try { Http.send(Request.of(Method.Get, Url.from("https://evil.example/"))) }).is_err())
+  }
+}
+
+test "bearer adds a secret header and leaves headers alone" {
+  let req = bearer(Request.of(Method.Get, Url.from("https://a/")), Secret.of("t"))
+  expect_eq(req.headers, [])
+  expect_eq(List.len(req.secret_headers), 1)
+  expect_eq(List.map(req.secret_headers, fn(h) { h.0 }), ["authorization"])
 }

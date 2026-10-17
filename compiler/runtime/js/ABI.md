@@ -288,8 +288,9 @@ after closing. Host writes are immediate; `file_contents(id)` takes a buffer's b
 closed, and releases it.
 
 **Http.** `http_send(req, $ctx, $k)` suspends on `fetch`: `Ok(Response)` for every status,
-`Err(reason)` when no response arrives; `req.bearer` is sent only as `Authorization: Bearer …`;
-cancelling the task aborts the request.
+`Err(reason)` when no response arrives; every `req.secret_headers` entry (`Http.bearer` adds
+`authorization`) is sent as a header and exposed nowhere else (§17.57); cancelling the task
+aborts the request.
 
 **Sql.** `sql_memory()` and `sql_sqlite(path)` (a file inside the installed `Fs` handler's
 `root`, opened on first use) are `std::sql::Sql` handlers over `node:sqlite`. `Query` params
@@ -302,7 +303,7 @@ the body returns and rolled back when it fails, defects or is cancelled.
 API that performs `Http.send` and `Budget.reserve`/`settle` on the handlers outside it
 (`ANTHROPIC_BASE_URL` overrides the endpoint, for tests). `Model("default")` is
 `claude-opus-5-5`; no `temperature` is sent (current models reject sampling parameters).
-Requests carry `x-api-key`, `anthropic-version: 2023-06-01`, server-side refusal fallbacks
+Requests carry `x-api-key` (in `secret_headers`), `anthropic-version: 2023-06-01`, server-side refusal fallbacks
 (`fallbacks: "default"`, `anthropic-beta: server-side-fallback-2026-07-01`) and structured
 outputs (`output_config.format` `json_schema` of `{"value": T}`, keywords the API rejects
 removed; the output is decoded and refinement-checked like `Json.decode`). `Untrusted` prompt
