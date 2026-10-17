@@ -4,7 +4,7 @@ Status: **authoritative work plan** for finishing milestone M3 to its §14.3 acc
 
 There is no deadline. The milestone order of `docs/design.md` §14.3 stands: M3 → M4 (WASM + verification) → M5 (native, Perceus). Progress is gated by executable acceptance evidence, never by a date. Release engineering, installers, playground and marketing are out of scope; they get their own plan when M4 is done.
 
-Decisions taken while writing this plan are `docs/design.md` §17.70–§17.86; this document cites them and does not restate rationale.
+Decisions taken while writing this plan are `docs/design.md` §17.70–§17.86, and the round-4 review of WS1 added §17.87–§17.90 (2026-10-18); this document cites them and does not restate rationale.
 
 Roles: **Opus 5.5** writes all substantial compiler/runtime/std code; **GPT-6.1-Sol** writes mechanical code (fixtures, wiring, generated pages, harness glue) to a precise spec; **Astra** writes research and documentation. Each workstream owns a disjoint set of paths; a change outside them goes through `compiler/REQUESTS.md` as today.
 
@@ -96,7 +96,21 @@ Scope:
 
 Tests: `crates/sakura_types/tests/escape.rs` (positive and negative for each rule, including a lambda capturing a `Dir` returned from a `with`, `Task.spawn` capturing an inner-`with` handler, a record containing a `File`); `tests/ui/V6002_*`, `V6003_*`, `V5002_*`, `V5003_*`, `W5005_*` as rewritten by WS5; the §14.3 fixture `tests/ui/V6003_route_handler_returns_file.sakura` (a `Router.get` handler that returns `Fs.with_file(…, fn(f) { f })`).
 
-Waits for: nothing. WS2 and WS4 wait for items 2 and 3.
+Waits for: nothing. WS2 and WS4 wait for items 2 and 3. **Done** (`4f1e470`, `212ea5e`, `7f10ea6`); deviations in §7; follow-ups in WS1b.
+
+### WS1b — Literal evaluation, `W5005` narrowing, streaming-body escape case
+
+Owner: **Opus** (`sakura_types`). Paths: `crates/sakura_types/**` only; `V5004` registration is WS5's, `std/path` is WS4's.
+
+Scope:
+1. **Compile-time evaluation of literals into refined types** (§17.87): a constant evaluator over the scalar fragment of the contract subset (`Bool`/`Int`/`Float`/`String`; literals and `-`; `!`, `&&`, `||`; `==`/`!=` on all four and ordering on `Int`/`Float` only; checked `Int` and `Float` arithmetic; `if`, `let`, blocks; calls to `{}`-row functions whose bodies are in the fragment, recursion included; built-ins `String.len` (UTF-8 bytes), `String.contains`, `String.starts_with`, `String.ends_with` with the runtime's definitions), a budget of 10,000 steps counted deterministically. True: no conversion recorded, no diagnostic. False or a defect in the predicate: `V5004 literal_violates_refinement` (contract phase) at the literal with a `definition` span on the `where` clause, no fix. Undecidable (anything outside the fragment, an intermediate `Int` beyond ±(2^53−1), or the budget): record the conversion as WS1 does, emit nothing. `V5002` is no longer constructed anywhere.
+2. **`W5005`** (§17.90): drop `String.contains` from the trigger list.
+3. **Escape check** (§17.89 item 4, §17.88): the `V6003` callback rule applies to a parameter whose type *contains* a `@resource` type; test with a record `{ status: Int, body: File }`-shaped callback, so `Http.stream`'s `fn(Incoming) -> T` is covered before `std/http` lands it.
+4. **`V6001` on forged capabilities** (§17.91): an `@external` declaration outside std whose signature mentions, at any depth, an external type declared in another package or a `Handler<…>` is `V6001` at that type; `tests/ui/V6001_capability_construction.sakura` as WS5 rewrote it is the fixture.
+
+Tests: `crates/sakura_types/tests/refine.rs` gains positive literals for `Percent`, `Status`, the tour's `Email` and a user `@total` predicate in the fragment (zero diagnostics, zero conversions), negative literals (`V5004` for `150: Percent`, for `"x": Email` under `String.len(it) <= 254 && String.contains(it, "@")`, and for a predicate that overflows on the literal), undecidable literals (a predicate calling `String.split`: one conversion, no diagnostic), a budget case (a recursive `@total` predicate that does not terminate on the literal: conversion, no diagnostic), and the four string built-ins pinned against `sakura_eval` or the JS runtime on non-ASCII input. `tests/ui/V5004_literal_violates_refinement.sakura` (WS5 writes it; WS1b makes it pass) and a `tests/semantics` program whose `Path` and `Status` literals compile without a start-up check (its effect trace shows no `from` call).
+
+Waits for: nothing. WS4's `is_relative` rewrite makes `Path` literals decidable but does not block WS1b.
 
 ### WS2 — Runtime, lowering, record/replay
 
@@ -106,6 +120,7 @@ Scope:
 1. Lower the WS1 conversions: `Untrusted.validate` → `V.validate(untrusted_value(u))`; literal-to-refined → `V.from(lit)` evaluated **once at module initialisation** (a failing literal is `D010` before `main` starts; the `defect` record's `definition` span is the type) (§17.71).
 2. **Cassettes** (§17.73): externals `http_recording_open(dir, path) -> Result<Int, String>`, `http_recording_lookup(id, request_key) -> Option<Response>`, `http_recording_append(id, request_key, response) -> Result<Unit, String>`; the file is JSON Lines of `{method, url, headers, body, status, response_headers, response_body}` with `secret_headers` and `bearer` never written and never part of the key. `Http.recording(path)` (std, WS4) replays a match, otherwise forwards to the outer `Http` and appends when `SAKURA_RECORD=1` (set only by `sakura test --record`); a miss without `SAKURA_RECORD` fails with `HttpError { reason: "no recording for <key> in <path>; run sakura test --record" }`.
 3. **`Test.fixtures()`** operation (§17.73): the test runner's `Test` handler returns a read-only `Dir` rooted at `<package>/tests/fixtures`, so recordings are opened under `with Fs.rooted(Test.fixtures())`; `sakura test --record` additionally grants `fs.write` on that directory and the manifest's `net`.
+3b. **Streaming bodies** (§17.88): externals `http_stream_open(req) -> Result<Incoming, String>` (suspends until status and headers arrive; same `net` check as `http_send`; `Incoming.body` carries the stream id), `http_stream_closing<T, e>(body, k: fn() -> T ! e) -> T ! e` (CPS; aborts the fetch through `finalize` on return, fail, defect or cancel), `http_stream_read(body, max) -> Result<Bytes, String>` (empty at the end; `Err` when the connection drops or after the callback left). `llm_anthropic`'s `stream` clause performs `Http.stream` and parses the event stream incrementally, one `Partial` per `text_delta` as it arrives; the other three clauses keep `Http.send`. Cassettes: a `stream` exchange is recorded whole in the `send` record shape (`response_body`, or `response_body_base64` when not UTF-8) and replayed as one chunk; the key is the same as for `send`. Tests: a local server that writes two chunks with a pause, asserting the first chunk is observed before the second is sent; cancellation mid-body aborts the fetch; `Llm.anthropic` over `Http.scripted` emits one partial per delta of a scripted SSE body.
 4. **Synthesized contract properties** (§7.4): for each `pub fn` with a refined parameter or a `requires`, `sakura_core` emits a `property` into the test module when `sakura test --contracts` (WS3) passes `BuildOptions::contract_tests`; joint generation = the existing derived generators plus the §17.64 reuse rule; `requires` is the filter; over 90% discards → the test fails and the runner emits `W7001` (one JSON `diagnostic` record with the function's span); functions with effects beyond `Fail`/`Clock`/`Random` are skipped unless `@contract_test(handlers: […])` names handlers; shrunk failures are written to `tests/regressions/<fn>.json` and replayed first on the next run.
 5. **Effect traces** (`SAKURA_TRACE=path`, §17.80): the runtime appends one JSON line per `perform` (`{"seq","task","effect","op"}`) and per finalizer/cancel/defect, so M4 can compare backends. Land now; it is also useful for debugging handlers.
 6. Delete the old inference-variable matching for type parameters in lifted clauses (perform-callbacks deviation 4) once rigid parameters have covered every fixture.
@@ -136,6 +151,7 @@ Waits for: WS2 item 4 for `--contracts`; WS5 for the subcommand files.
 Owner: **Opus** (`compiler/std`, `compiler/examples`, `docs/llms.txt`). Paths: `compiler/std/**`, `compiler/examples/**`, `docs/llms.txt`.
 
 Scope:
+0. **`Http.stream`** (§17.88): `pub type Body` (`@resource`, external), `pub type Incoming = { status: Status, headers: List<(String, String)>, body: Body }`, operations `stream<T, e>(req, body: fn(Incoming) -> T ! e)` and `read_chunk(body, max) requires max > 0` on `Http`; `host()` over the WS2 externals, `scoped` forwards after the host check, `scripted` and `recording` deliver the body as one chunk, `recording` records a forwarded stream whole. `std/llm` doc comment on `stream` updated; `std/path.is_relative` rewritten inside the scalar fragment (§17.87: `s != "" && !String.starts_with(s, "/") && s != ".." && !String.starts_with(s, "../") && !String.ends_with(s, "/..") && !String.contains(s, "/../")`, with the existing `std/path` tests plus `"a..b"` accepted and `"a/../b"` rejected).
 1. `@resource` on `File` (§17.70); nothing else is affine in v0.
 2. `Untrusted.validate` declaration (`@external`-style compiler-known, §17.71); remove the “needs M3” header.
 3. **`Html.from<T: Show>(v: T) -> Html`** so the generic template rule (checker: an interpolation whose type is not the template's element type goes through `X.from`) makes `html"…"` take `Html` values as markup and everything else as escaped text; the template's element type becomes `Html` (§17.77). `Untrusted<String>` is `Show`, so it is escaped. Test: a page composed of fragments, an `Untrusted` body, and a `@trust` raw snippet.
@@ -155,8 +171,8 @@ Owner: **Sol**. Paths: `crates/sakura_cli/src/audit.rs`, `crates/sakura_cli/src/
 Scope:
 1. **`sakura audit [--json]`** (§17.78): walk the typed program and list every `@trust` expression (with its literal reason and the sink), `@total` declaration, `T.from` call on a refined type, `@external` declaration and `@resource` type; JSON Lines `{"schema_version":"1.0","kind":"audit","site":"trust"|"total"|"from"|"external"|"resource","symbol_id","span","reason"}` then a `summary`; human table grouped by file. Exit 0 always (it is a report).
 2. **`sakura doc [--search "<type pattern>"] [symbol]`**: over `sakura_analysis::symbol_query`; prints the signature, contracts, effect row and the doc comment; `--search` accepts the `type_pattern` form `symbol_query` already takes; `--json` emits the same records MCP returns.
-3. Register `V5003 validate_target_not_refined` (contract phase) with its explain page (minimal pair); add explain pages for any code whose page predates its behaviour (`V5002`, `W5005`, `W7001`, `V6002`, `V6003`).
-4. Rewrite the seven M3 ui fixtures to §17.36 explicit imports (`import std/fs.{Fs, File, Mode, FsError}`, `import std/path.{Path}`) so each reports exactly its code; add `V6003_route_handler_returns_file.sakura`, `V6002_spawn_captures_inner_with.sakura`, `V5003_validate_into_plain_type.sakura`.
+3. Register `V5004 literal_violates_refinement` (contract phase, error) with its explain page (minimal pair: `let p: Percent = 150` → `V5004` → `let p: Percent = 50`); mark `V5002` retired in its page (never constructed, §17.87, §12.3) and in the registry test's exemption list; add explain pages for any code whose page predates its behaviour (`W5005` per §17.90, `W7001`, `V6002`, `V6003`). `V5003` is already registered (§7, WS1 deviation 9).
+4. Rewrite the seven M3 ui fixtures to §17.36 explicit imports (`import std/fs.{Fs, File, Mode, FsError}`, `import std/path.{Path}`) so each reports exactly its code; add `V6003_route_handler_returns_file.sakura`, `V6002_spawn_captures_inner_with.sakura`, `V5003_validate_into_plain_type.sakura`; replace `V5002_refinement_checked_at_runtime.sakura` with `V5004_literal_violates_refinement.sakura` (`let p: Percent = 150`) and a `tests/semantics` program whose `Path`, `Status` and `Email` literals compile with no diagnostic. `sakura audit` lists undecidable literal conversions as `site: "from"`, `reason: "literal"` (§17.87).
 5. Backend-suffixed directives (§17.80): `// expect-defect@js: D003`, `// expect-defect@wasm: D001`, `// expect-exit@<backend>:`, with the unsuffixed form as default; parsing only now, consumed by M4.
 6. **Fuzzing** (§14.5): `compiler/fuzz` with `cargo-fuzz` targets `parse` (progress and depth limits, no panic), `check` (any input: diagnostics or nothing, never a panic or hang beyond the limits), `fmt_idempotent` (format twice equals once on anything that parses), `row_unify` (laws from §14.5); `.github/workflows/fuzz.yml` runs each for 10 minutes nightly from the corpus in `compiler/fuzz/corpus/<target>` and uploads minimized crashes as artifacts; a found crash becomes a `tests/ui` or `tests/semantics` regression.
 7. CHANGELOG entries for every user-visible item above.
@@ -175,7 +191,7 @@ Waits for: nothing.
 
 Owner: **Astra**. Paths: `website/content/docs/**`, `docs/mcp.md`, `research/**` (new files only), `CONTRIBUTING.md` if commands change.
 
-Scope: `docs/roadmap.mdx` restated as M3 → M4 → M5 with the §4 gates (no dates); `docs/agents/*` pages for `sakura audit`, `sakura doc`, `--manifest`, `--contracts`, `--record`, cassettes and `Test.fixtures`; `docs/tour/capabilities.mdx` and `contracts.mdx` updated for `V6002`/`V6003`/`V5002`/`V5003`; `docs/stdlib.mdx` regenerated from `std/INDEX.md`; website build and link check green. Then the M4 research in §3.4.
+Scope: `docs/roadmap.mdx` restated as M3 → M4 → M5 with the §4 gates (no dates); `docs/agents/*` pages for `sakura audit`, `sakura doc`, `--manifest`, `--contracts`, `--record`, cassettes and `Test.fixtures`; `docs/tour/capabilities.mdx` and `contracts.mdx` updated for `V6002`/`V6003`/`V5003`/`V5004` and the compile-time literal rule (§17.87; `V5002` no longer exists); `Http.stream` and `Body` on the web page (§17.88); `docs/stdlib.mdx` regenerated from `std/INDEX.md`; website build and link check green. Then the M4 research in §3.4.
 
 Waits for: the corresponding workstream to land (write against the plan, verify against the binary before merging).
 
@@ -183,7 +199,8 @@ Waits for: the corresponding workstream to land (write against the plan, verify 
 
 ```
 WS1 ─┬─▶ WS2 ─┬─▶ WS3 (--contracts, UI_MILESTONE=3 last)
-     │        └─▶ WS4 (std handlers, examples, llms.txt)
+     │        └─▶ WS4 (std handlers, Http.stream, examples, llms.txt)
+     ├─▶ WS1b (literal evaluation, W5005, contains-rule; independent of WS2/WS4)
      └─▶ WS5 fixtures green            WS5 audit/doc/fuzz, WS6, WS7 run from day one
 ```
 
@@ -226,7 +243,7 @@ Each question needs sources with dates and a stated recommendation; research/08 
 2. **Boxing at polymorphism boundaries**: how Lean 4 (`box`/`unbox`), Koka and OCaml handle `i64`/`f64` in polymorphic positions; allocation cost of boxing on wasm32; whether small-int tagging (62-bit) is worth it for our full-range `Int`, with the overflow semantics it would force.
 3. **Linear-memory allocator**: dlmalloc vs a size-class allocator in `no_std` Rust on wasm32; memory growth and view invalidation in the JS host; how Grain and Koka-wasm lay out headers and reference counts; recommended header layout and alignment.
 4. **Runtime back-edges**: enumerate the owning and non-owning links in our JS runtime (handler frames, callback contexts, fibers, continuation frames, finalizers) and propose the ownership graph for `sakura_rt` so that RC cannot leak cycles; include the test list.
-5. **Host ABI**: copy-in/copy-out conventions for strings, bytes, JSON and records across the import boundary; handle tables with generations for `Dir`, `File`, sockets; how late host completions after cancellation are discarded safely.
+5. **Host ABI**: copy-in/copy-out conventions for strings, bytes, JSON and records across the import boundary; handle tables with generations for `Dir`, `File`, `Body` (§17.88), sockets; how late host completions after cancellation are discarded safely.
 6. **SMT encoding**: exact SMT-LIB2 for i64-bounded `Int` as `Int` with side conditions versus `(_ BitVec 64)` with widening for multiplication; measured Z3 5.3 and cvc5 1.4 times on a corpus of 50 obligations drawn from `std` contracts and the examples; recommended per-goal timeout and `rlimit`; truncating division encoding checked against the JS and WASM runtimes on negative operands.
 7. **VC generation precedents**: Dafny/Boogie, Verus and Prusti on definedness conditions, short-circuit booleans, call summaries and vacuity detection; what their counterexample rendering looks like and what we should copy for `--json`.
 8. **Proof cache keys**: how Dafny's and Verus's caches key obligations; what must be in ours per research/08 §5.7; how to make cache files tamper-evident.
@@ -241,7 +258,7 @@ Each question needs sources with dates and a stated recommendation; research/08 
 All must pass on `origin/master`, on ubuntu and macos, before M4 backend coding starts. Each gate names its command.
 
 1. `cd compiler && cargo fmt --all -- --check && cargo clippy --workspace --all-targets --locked -- -D warnings && cargo test --workspace --locked` green with `UI_MILESTONE = 3` and `SEMANTICS_MILESTONE = 3`.
-2. Every code in `sakura_diagnostics::codes` except `V9999` and the M5 `W8001` is constructed by some crate and has a passing `tests/ui` fixture; `W8001` has its fixture and is skipped by milestone, not by hand. Check: `grep -rhoE '\b[VWD][0-9]{3,4}\b' crates --exclude-dir=sakura_diagnostics | sort -u` versus the registry.
+2. Every code in `sakura_diagnostics::codes` except `V9999`, the M5 `W8001` and retired codes (`V5002`, §17.87) is constructed by some crate and has a passing `tests/ui` fixture; `W8001` has its fixture and is skipped by milestone, not by hand. Check: `grep -rhoE '\b[VWD][0-9]{3,4}\b' crates --exclude-dir=sakura_diagnostics | sort -u` versus the registry.
 3. The §14.3 M3 acceptance programs exist as tests and pass: `m3.rs::m3_acceptance_contracts` (D020 span, D010), `cli.rs` exit 75, `tests/ui/V6003_route_handler_returns_file.sakura`, `lsp.rs` stale-and-Unicode replay equal to MCP `hole_context`, `recheck.rs` counters.
 4. `cargo test -p sakura_cli --test examples`: all twelve examples are `mode: run` or `mode: test`; none is `check` only; `llm_extract`, `agent_loop` and `secrets` replay committed cassettes with the network denied.
 5. `sakura test --std`: green; `std/INDEX.md` has no “Planned” section; `docs/llms.txt` “Not yet (M3)” is empty (or names only `Sql.postgres` if deferred by the owner).
@@ -293,3 +310,5 @@ All must pass on `origin/master`, on ubuntu and macos, before M4 backend coding 
 9. **`V5003`** was registered by WS1 (with its explain page) because the registry test requires every constructed code; WS5.3 has only the remaining explain pages.
 10. **Row-mismatch wording** (WS1.5): “effect `L` is performed by this value but not allowed by the expected type” or “… is allowed by the expected type but not performed by this value, and the rows must be equal here” (the second only from unification, e.g. `if` branches); `tests/ui/V3002_effect_label_not_permitted.jsonl` re-blessed for the new message.
 11. **`W5005` on `where String.contains(it, …)`** fires as §17.72 says, including `examples/json_api`'s `Email` and the canonical `Email` of the website tour; the ui fixture `V5002_refinement_checked_at_runtime.sakura` reports `W5005` too until its predicate changes (WS5).
+
+**Design review (round 4, §17.89):** items 1–10 endorsed as built; item 4 widened to a callback parameter whose type *contains* a `@resource` type; item 11 resolved by §17.90 (`String.contains` is no longer a `W5005` trigger); `V5002` itself is retired by §17.87. Follow-ups are WS1b.
