@@ -171,6 +171,10 @@ published yet.
   had checked. `sakura verify` solves the obligations of generic definitions once more, since
   their cache keys hash the renumbered Core (design §17.194).
 
+- Terminal output names a source outside the working directory by its OS path
+  (`C:\other\main.sak`, `/other/a b.sak`) instead of the URI's path (`/C:/other/main.sak`,
+  `/other/a%20b.sak`) (design §17.196 (3)).
+
 - `file://` URIs are RFC 8089 on every OS (design §17.180 (4a)): on Windows a source is
   `file:///C:/dir/src/main.sak` instead of `file://C:%5Cdir%5Csrc%5Cmain.sak`, so its module
   name, the `sakura.toml` lookup, terminal paths relative to the working directory and the

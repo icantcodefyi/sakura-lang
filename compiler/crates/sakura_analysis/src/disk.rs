@@ -239,6 +239,19 @@ pub fn uri_below(uri: &str, dir: &str) -> Option<String> {
     (u.len() > d.len() && u.starts_with(&d)).then(|| u[d.len()..].join("/"))
 }
 
+/// How terminal output names `uri`: relative to the directory URI `cwd` when below it, as its
+/// OS path when another `file:` URI (`C:\other\main.sak`, not `/C:/other/main.sak`), as itself
+/// otherwise (`sakura:///std/list.sak`). Design §17.196 (3).
+pub fn display_uri(uri: &str, cwd: &str) -> String {
+    display_uri_on(uri, cwd, cfg!(windows))
+}
+
+fn display_uri_on(uri: &str, cwd: &str, windows: bool) -> String {
+    uri_below(uri, cwd)
+        .or_else(|| uri_file_path(uri, windows))
+        .unwrap_or_else(|| uri.to_owned())
+}
+
 /// Writes the files of `snapshot` that differ from `base` back to disk, all or nothing as far as
 /// the checks go: every target must be a `file://` URI under `root`, and its current disk content
 /// must still be `base`'s version (a new file must not exist yet). Returns the written paths.
@@ -327,6 +340,19 @@ mod tests {
             path_uri(&back("file:///c%3A/a%20b/x.sak"), true),
             "file:///C:/a%20b/x.sak"
         );
+    }
+
+    #[test]
+    fn terminal_output_names_files_by_path() {
+        let cwd = "file:///C:/p";
+        let show = |uri| display_uri_on(uri, cwd, true);
+        assert_eq!(show("file:///C:/p/src/main.sak"), "src/main.sak");
+        assert_eq!(show("file:///C:/other/main.sak"), r"C:\other\main.sak");
+        assert_eq!(show("file://server/share/x.sak"), r"\\server\share\x.sak");
+        assert_eq!(show("sakura:///std/list.sak"), "sakura:///std/list.sak");
+        let show = |uri| display_uri_on(uri, "file:///p", false);
+        assert_eq!(show("file:///other/a%20b.sak"), "/other/a b.sak");
+        assert_eq!(show("file://host/x.sak"), "file://host/x.sak");
     }
 
     #[test]

@@ -1145,7 +1145,7 @@ fn tally(diags: &[sakura_diagnostics::Diagnostic]) -> String {
     }
 }
 
-/// Files with `file://` URIs replaced by paths relative to the working directory, for humans.
+/// Files named as terminal output names them ([`disk::display_uri`]), for humans.
 fn display_files(files: &[SourceFile]) -> Vec<SourceFile> {
     let cwd = std::env::current_dir()
         .map(|d| disk::file_uri(&d))
@@ -1153,7 +1153,7 @@ fn display_files(files: &[SourceFile]) -> Vec<SourceFile> {
     files
         .iter()
         .map(|f| SourceFile {
-            uri: disk::uri_below(&f.uri, &cwd).unwrap_or_else(|| f.uri.clone()),
+            uri: disk::display_uri(&f.uri, &cwd),
             ..f.clone()
         })
         .collect()
