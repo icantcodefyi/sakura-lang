@@ -15,7 +15,7 @@
 - Still planned: `Sql.postgres`, native Perceus reuse, compiler MCP HTTP transport and `sakura mcp serve --tools` function export. `Tool.of` works in-process. Sections below also describe planned interfaces; this status list and `sakura --help` distinguish what the current binary provides.
 
 ## Syntax in one screen
-```sakura
+```sakura test id=llms-syntax-screen
 import std/request.{Request}               // first segment = package (`std`, your sakura.toml `name`, a dependency); names must be listed; no wildcards
 import std/sql.{Sql, SqlError}             // effects and types are never imported implicitly
 import std/json as js                      // `js.Json`, `js.parse(...)`
@@ -48,7 +48,7 @@ pub fn view(caller: String, id: Int) -> User ! {Users, Log, Fail<UserError>} // 
   }
 }
 
-pub fn main() -> Unit ! {Console, Sql, Log} {
+pub fn main() -> Unit ! {Console, Log, Fail<UserError>} {
   with Users.memory([]), Log.json() {                                        // install handlers (innermost last)
     let u = view("ann", 7)
     Console.print("hello {u.name}")                                          // interpolation needs Show
@@ -99,7 +99,7 @@ Primitives `Unit Bool Int(i64) Float(f64) String(UTF-8) Bytes Never`. Data `List
 `Task.scope(fn(s) { let f = Task.spawn(s, fn() {...}); Task.join(f) })`; children cannot outlive the scope; first failure cancels siblings; cancellation is cooperative at effect operations. No shared mutable state exists, so there are no data races; fibers communicate through results (`join`, `all`, `race`) and handler state, there is no channel type. Values have value semantics; the compiler owns copying/reference counting; `W8001` tells you when a loop copies a collection because an older value is still used. Cyclic data: `import std/graph.{Graph, NodeId}`. Resources (files, connections, response bodies) are scope-bound: `Fs.with_file(path, Read, fn(file) { Fs.read_all(file) })`, `Http.stream(req, fn(r) { Http.read_chunk(r.body, 65_536) })`; returning the resource, or a record holding it, is an error (`V6003`).
 
 ## Standard library, most used
-```
+```text
 List.map filter filter_map fold find all any len get push set concat sort sort_by zip enumerate slice reverse join sum first last contains unique flat_map range
 Map.empty of get insert remove contains update entries keys values len      Set.empty of insert contains len to_list
 String.len chars graphemes split trim starts_with ends_with contains replace to_lower to_upper parse_int parse_float slice repeat pad_left
