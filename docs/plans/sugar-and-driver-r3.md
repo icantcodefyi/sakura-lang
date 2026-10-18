@@ -38,7 +38,7 @@ matches §11.1 and §17.65 endorses it. Nothing for B. Optional later: report a 
 
 ## 3. E — driver (`sakura_cli`)
 
-- `sakura new api` (§17.63), `[permissions]`: `net = ["127.0.0.1:8080"]`. `src/main.sakura`:
+- `sakura new api` (§17.63), `[permissions]`: `net = ["127.0.0.1:8080"]`. `src/main.sak`:
 
   ```sakura
   import std/request.{Request}

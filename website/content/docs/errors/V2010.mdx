@@ -22,7 +22,7 @@ let xs: List<Int> = []
 
 ## Wrong program
 
-[`compiler/tests/ui/V2010_cannot_infer_type.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2010_cannot_infer_type.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V2010_cannot_infer_type.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2010_cannot_infer_type.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn nothing() -> Unit { var xs = [] }
@@ -43,7 +43,7 @@ fn nothing() -> Unit { var xs = [] }
   "symbol_id": "main::V2010_cannot_infer_type::nothing",
   "spans": [
     {
-      "uri": "file://$DIR/V2010_cannot_infer_type.sakura",
+      "uri": "file://$DIR/V2010_cannot_infer_type.sak",
       "content_hash": "sha256:7b2a782e8ea86858f4650be47c08d6121626c4ac6afdf02c4dfe137ee29a0cd8",
       "start_byte": 66,
       "end_byte": 68,
@@ -62,7 +62,7 @@ fn nothing() -> Unit { var xs = [] }
 
 ## Fixed program
 
-[`compiler/tests/ui/V2010_cannot_infer_type.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2010_cannot_infer_type.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V2010_cannot_infer_type.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2010_cannot_infer_type.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn nothing() -> List<Int> {

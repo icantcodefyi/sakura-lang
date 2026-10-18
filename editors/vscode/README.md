@@ -3,7 +3,7 @@
 Pre-alpha. A thin client over the compiler's language server, `sakura lsp`: everything it shows
 comes from the compiler you have installed.
 
-- Highlighting for `.sakura` files (the grammar the website uses), comments, brackets and
+- Highlighting for `.sak` files (the grammar the website uses), comments, brackets and
   auto-closing pairs.
 - Diagnostics as you type; each error code links to its page,
   `https://www.sakuralang.com/docs/errors/<code>`.

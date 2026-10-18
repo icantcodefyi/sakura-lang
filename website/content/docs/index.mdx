@@ -17,7 +17,7 @@ Most new code is now written by AI agents. Reviewing every line of that code doe
 
 A Sakura Lang signature states the inputs (with refinements), the output, every effect the function may perform, every way it can fail, and its `requires`/`ensures` clauses. The body cannot do anything the signature does not allow.
 
-```sakura title="src/users.sakura"
+```sakura title="src/users.sak"
 type Email = String where String.len(it) <= 254 && String.contains(it, "@")
 type User = { id: Uuid, email: Email, created: Instant }
 

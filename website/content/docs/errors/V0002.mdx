@@ -23,7 +23,7 @@ let s = "hello"
 
 ## Wrong program
 
-[`compiler/tests/ui/V0002_unterminated_block_comment.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0002_unterminated_block_comment.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V0002_unterminated_block_comment.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0002_unterminated_block_comment.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn one() -> Int { 1 }
@@ -45,7 +45,7 @@ fn one() -> Int { 1 }
   "symbol_id": null,
   "spans": [
     {
-      "uri": "file://$DIR/V0002_unterminated_block_comment.sakura",
+      "uri": "file://$DIR/V0002_unterminated_block_comment.sak",
       "content_hash": "sha256:07a72a6fce2707973062936a0e1963fa5edbb2e766238d9f06335da6403199f7",
       "start_byte": 56,
       "end_byte": 85,
@@ -64,7 +64,7 @@ fn one() -> Int { 1 }
 
 ## Fixed program
 
-[`compiler/tests/ui/V0002_unterminated_block_comment.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0002_unterminated_block_comment.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V0002_unterminated_block_comment.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0002_unterminated_block_comment.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn one() -> Int { 1 }

@@ -30,7 +30,7 @@ rlimit = 20000000
 
 ## A real run
 
-Save this as `main.sakura`:
+Save this as `main.sak`:
 
 ```sakura
 fn clamp(x: Int, lo: Int, hi: Int) -> Int
@@ -45,11 +45,11 @@ pub fn main() -> Unit {
 }
 ```
 
-Running `sakura verify main.sakura` with Z3 5.3.1 produced the following output (obligations on stdout, the summary on stderr), with exit status 0:
+Running `sakura verify main.sak` with Z3 5.3.1 produced the following output (obligations on stdout, the summary on stderr), with exit status 0:
 
 ```text
-proved      main::main::main requires ordered at main.sakura:9:16
-proved      main::main::clamp ensures bounded at main.sakura:3:20
+proved      main::main::main requires ordered at main.sak:9:16
+proved      main::main::clamp ensures bounded at main.sak:3:20
 2 proved, 0 disproved, 0 unknown, 0 unsupported (profile js, z3 5.3.1, rlimit 10000000)
 ```
 
@@ -77,7 +77,7 @@ The verifier first checks whether an obligation's assumptions are feasible. An i
 
 ## JSON Lines
 
-`sakura verify --json main.sakura` writes one `obligation` record per obligation, any `W7002` `diagnostic` records, then a final `summary`. These are separate JSON objects, one per line, with `schema_version: "1.0"`.
+`sakura verify --json main.sak` writes one `obligation` record per obligation, any `W7002` `diagnostic` records, then a final `summary`. These are separate JSON objects, one per line, with `schema_version: "1.0"`.
 
 Obligation records include:
 
@@ -98,7 +98,7 @@ A digest alone cannot authenticate an editable file. Records carry an **HMAC-SHA
 After verification, run:
 
 ```sh
-sakura build --manifest main.sakura
+sakura build --manifest main.sak
 ```
 
 Only JS output from `sakura build` removes checks, and only a function's **own `ensures` and non-entry `where` checks** whose every obligation has an authenticated `proved` record matching the Core being built. **This proof-removal pass retains `requires`, `T.from` entry checks and checked arithmetic.** The separate interval optimization can remove arithmetic guards it proves safe; that is not a solver verdict. In the example, `clamp` can lose its postcondition check, but its entry precondition remains. The predicate is still computed, so a defect during predicate evaluation remains `D011`.

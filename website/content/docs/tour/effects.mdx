@@ -205,7 +205,7 @@ Top-level rows are never inferred. Every top-level `fn` states its row, so a cha
 
 If a body performs an effect its signature does not allow, `sakura check` reports `V3001`:
 
-```sakura title="src/users/repo.sakura"
+```sakura title="src/users/repo.sak"
 type User = { id: String, name: String, seen: Instant }
 
 effect Db {
@@ -234,7 +234,7 @@ pub fn load_user(id: String) -> Option<User> ! {Clock} {
   "symbol_id": "pkg::users/repo::load_user",
   "spans": [
     {
-      "uri": "file:///…/src/users/repo.sakura",
+      "uri": "file:///…/src/users/repo.sak",
       "content_hash": "sha256:…",
       "start_byte": 159,
       "end_byte": 168,
@@ -242,7 +242,7 @@ pub fn load_user(id: String) -> Option<User> ! {Clock} {
       "label": "allowed here: `{Clock}`"
     },
     {
-      "uri": "file:///…/src/users/repo.sakura",
+      "uri": "file:///…/src/users/repo.sak",
       "content_hash": "sha256:…",
       "start_byte": 209,
       "end_byte": 224,
@@ -277,7 +277,7 @@ pub fn load_user(id: String) -> Option<User> ! {Clock} {
       "edits": [
         {
           "span": {
-            "uri": "file:///…/src/users/repo.sakura",
+            "uri": "file:///…/src/users/repo.sak",
             "content_hash": "sha256:…",
             "start_byte": 159,
             "end_byte": 168,
@@ -296,7 +296,7 @@ pub fn load_user(id: String) -> Option<User> ! {Clock} {
       "edits": [
         {
           "span": {
-            "uri": "file:///…/src/users/repo.sakura",
+            "uri": "file:///…/src/users/repo.sak",
             "content_hash": "sha256:…",
             "start_byte": 209,
             "end_byte": 224,

@@ -162,7 +162,7 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
         {/* window chrome: an ink title bar; its right end stays empty for the seal */}
         <WindowBar>
           <SakuraMark cut="small" className="size-3.5" />
-          src/users.sakura
+          src/users.sak
         </WindowBar>
 
         <pre
@@ -329,7 +329,7 @@ function Diagnostic() {
     <div className="border-t border-border px-4 py-3.5 font-mono text-[11.5px] leading-relaxed @min-[38rem]:px-5">
       <p className="text-foreground">
         <span className="font-semibold text-fail">error V3001</span>{" "}
-        <span className="text-muted-foreground">src/users.sakura:12:11</span>
+        <span className="text-muted-foreground">src/users.sak:12:11</span>
       </p>
       <p className="mt-1 font-sans text-[13px] text-foreground">
         function <code className="font-mono">signup</code> performs{" "}

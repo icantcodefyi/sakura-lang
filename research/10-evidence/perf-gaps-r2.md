@@ -74,7 +74,7 @@ a measured regression against those runs or stitch them into a benchmark delta.
 
 ## Sieve: copying the update path is the dominant avoidable cost
 
-[Source](../../bench/programs/sieve/sakura/main.sakura) and
+[Source](../../bench/programs/sieve/sakura/main.sak) and
 [generated JS](perf-gaps-r2/sieve-generated.js.txt) use the same prime/multiple
 indices as the hand control. Each inner iteration calls `std/list.set$d`, which
 checks `0 <= i < len(xs)` and calls runtime `list_set` → `setAt`. For a non-tail
@@ -155,7 +155,7 @@ array or ownership annotation. The `/tmp` mutation has none of these general pro
 
 ## Nbody: first remove slice/concat reconstruction, then address escaping records
 
-[Source](../../bench/programs/nbody/sakura/main.sakura) defines its own `set` as:
+[Source](../../bench/programs/nbody/sakura/main.sak) defines its own `set` as:
 
 ```sakura
 List.concat(List.push(List.slice(bs, 0, i), b), List.slice(bs, i + 1, List.len(bs)))

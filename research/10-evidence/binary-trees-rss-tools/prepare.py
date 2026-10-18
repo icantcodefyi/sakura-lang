@@ -8,12 +8,12 @@ p.mkdir(parents=True,exist_ok=True)
 cli=Path(os.environ['CARGO_TARGET_DIR'])/'release/sakura'
 subprocess.run(['cargo','build','--locked','--release','-p','sakura_cli'],cwd=root/'compiler',check=True)
 for variant,flags in [('direct',[]),('cps',['--no-direct'])]:
- subprocess.run([str(cli),'build',*flags,'--out-dir',str(p/variant),'bench/programs/binary_trees/sakura/main.sakura'],check=True)
+ subprocess.run([str(cli),'build',*flags,'--out-dir',str(p/variant),'bench/programs/binary_trees/sakura/main.sak'],check=True)
  d=p/variant;lines=(d/'__main__.js').read_text().splitlines()
  kept=[l.replace('import { registerOps, runMain }','import { registerOps }') for l in lines if not l.startswith('runMain(') and '$entry' not in l]
  (d/'bench_entry.mjs').write_text('\n'.join(kept+['export * as program from "./main/main.js";', 'export { runTask } from "./sakura_runtime.js";'])+'\n')
 with (p/'direct.txt').open('w') as f:
- subprocess.run([str(cli),'build','--dump','direct','bench/programs/binary_trees/sakura/main.sakura'],stdout=f,check=True)
+ subprocess.run([str(cli),'build','--dump','direct','bench/programs/binary_trees/sakura/main.sak'],stdout=f,check=True)
 for v in ['direct','cps']:
  d=p/(v+'-probe');shutil.copytree(p/v,d,dirs_exist_ok=True)
  f=d/'main/main.js';s=f.read_text()

@@ -229,7 +229,7 @@ fn unfinished(x: Int) -> Int { ?result }
 
 ## Modules
 
-One file is one module. The module path is the file path under the package's `src/`: `src/users/repo.sakura` is module `users/repo`. The first import segment is a package name (`std`, the current package, or a dependency in `sakura.toml`).
+One file is one module. The module path is the file path under the package's `src/`: `src/users/repo.sak` is module `users/repo`. The first import segment is a package name (`std`, the current package, or a dependency in `sakura.toml`).
 
 ```sakura
 import std/http.{Http, Request, Response}    // bind names directly
@@ -242,7 +242,7 @@ import acme/billing/invoices as inv          // rename
 - Variants and error tags live directly in their module's namespace (`Some`, `EmailTaken`); `Option.Some` is also accepted.
 - `pub type` exports a type with its constructors and fields. `pub opaque type` exports only the name: other modules can use its values but not construct or destructure them (`V1006`).
 - The prelude needs no import: the built-in types (`Int`, `String`, `List`, `Map`, `Set`, `Secret`, `Untrusted`, …), `Option`, `Result`, `Duration`, `Instant`, `Uuid`, `Json`, `Level`, the constructors `Some None Ok Err`, the effects `Fail Console Clock Random Env Log Task Test`, `show` and the `expect…` test functions, and the tags `sql html url shell`.
-- The entry point is `pub fn main() -> Unit ! {…}` in `src/main.sakura`.
+- The entry point is `pub fn main() -> Unit ! {…}` in `src/main.sak`.
 
 ## What the compiler checks
 

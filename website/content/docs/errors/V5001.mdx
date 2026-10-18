@@ -27,7 +27,7 @@ fn halve(x: Int) -> Int requires positive(x) { x / 2 }
 
 ## Wrong program
 
-[`compiler/tests/ui/V5001_impure_contract.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V5001_impure_contract.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V5001_impure_contract.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V5001_impure_contract.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn noisy_positive(x: Int) -> Bool ! {Console} {
@@ -56,14 +56,14 @@ fn halve(x: Int) -> Int
   "symbol_id": "main::V5001_impure_contract::halve",
   "spans": [
     {
-      "uri": "file://$DIR/V5001_impure_contract.sakura",
+      "uri": "file://$DIR/V5001_impure_contract.sak",
       "content_hash": "sha256:abfb78d6d4e92f712ea1eac2a86c0d3210e2eae4fc709b49544cfe375024155c",
       "start_byte": 215,
       "end_byte": 232,
       "role": "primary"
     },
     {
-      "uri": "file://$DIR/V5001_impure_contract.sakura",
+      "uri": "file://$DIR/V5001_impure_contract.sak",
       "content_hash": "sha256:abfb78d6d4e92f712ea1eac2a86c0d3210e2eae4fc709b49544cfe375024155c",
       "start_byte": 215,
       "end_byte": 232,
@@ -100,7 +100,7 @@ fn halve(x: Int) -> Int
 
 ## Fixed program
 
-[`compiler/tests/ui/V5001_impure_contract.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V5001_impure_contract.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V5001_impure_contract.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V5001_impure_contract.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 @total

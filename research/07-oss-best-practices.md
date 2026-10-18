@@ -101,7 +101,7 @@ sakura/
     sakura-lsp/                     # add with first IDE milestone
   xtask/                         # portable repository commands
   tests/
-    ui/                          # .sakura inputs and reviewed diagnostics
+    ui/                          # .sak inputs and reviewed diagnostics
     run/                         # executable behavior and exit status
     conformance/                 # normative, backend-independent cases
     fixtures/                    # small complete projects
@@ -158,7 +158,7 @@ Use [Swatinem/rust-cache][rust-cache] with distinct target/toolchain keys; lockf
 
 **Unit and property tests:** cover tokenization, source offsets, parser recovery, unification, scope handling, and IR invariants. Include Unicode, truncated input, nesting limits, and malformed programs. An invalid program should produce an error rather than crash or hang. Formatter idempotence and parse/print/parse equivalence need a defined semantic normalization, not raw AST equality when trivia changes.
 
-**Snapshots and UI tests:** use `insta` for AST/IR and structured diagnostics; run real CLI processes for `.sakura` fixtures with expected stdout, stderr, and exit status. Test stable diagnostic codes, spans, notes, and machine-applicable fixes separately from color/terminal wrapping. Normalize temporary paths, platform separators, and nondeterministic IDs narrowly. Never normalize the error code or semantic content being asserted. CI fails on new snapshots; maintainers inspect every accepted diff. Learn the convention from [Rust UI tests][rust-ui] and [uv's snapshot guidance][uv-agents], without adopting rustc's entire harness. `trybuild` tests Rust compilation; it is not automatically a harness for Sakura Lang source.
+**Snapshots and UI tests:** use `insta` for AST/IR and structured diagnostics; run real CLI processes for `.sak` fixtures with expected stdout, stderr, and exit status. Test stable diagnostic codes, spans, notes, and machine-applicable fixes separately from color/terminal wrapping. Normalize temporary paths, platform separators, and nondeterministic IDs narrowly. Never normalize the error code or semantic content being asserted. CI fails on new snapshots; maintainers inspect every accepted diff. Learn the convention from [Rust UI tests][rust-ui] and [uv's snapshot guidance][uv-agents], without adopting rustc's entire harness. `trybuild` tests Rust compilation; it is not automatically a harness for Sakura Lang source.
 
 **Executable and conformance tests:** give each case a spec-section identifier, expected success/failure phase, required features, and expected values/output. Follow [Test262's metadata approach][test262], but build a Sakura Lang-specific suite: JavaScript conformance cases do not define Sakura Lang semantics. Require positive, rejection, boundary, and cross-feature examples for new syntax/type rules. Keep implementation-specific IR snapshots outside normative conformance. Track skipped cases with reason, owner, and issue.
 

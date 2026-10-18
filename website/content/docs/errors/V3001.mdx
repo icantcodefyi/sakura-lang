@@ -32,7 +32,7 @@ fn greet(name: String) -> Unit ! {Console} { Console.print("hello, {name}") }
 
 ## Wrong program
 
-[`compiler/tests/ui/V3001_greet_without_console.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3001_greet_without_console.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V3001_greet_without_console.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3001_greet_without_console.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn greet(name: String) -> Unit { Console.print("hello, {name}") }
@@ -55,14 +55,14 @@ pub fn main() -> Unit ! {Console} { greet("Sakura Lang") }
   "symbol_id": "main::V3001_greet_without_console::greet",
   "spans": [
     {
-      "uri": "file://$DIR/V3001_greet_without_console.sakura",
+      "uri": "file://$DIR/V3001_greet_without_console.sak",
       "content_hash": "sha256:167ca72fd1e1d0fc9cd0d2f54661186c5db27ec82383560357de1a360f630b68",
       "start_byte": 70,
       "end_byte": 75,
       "role": "primary"
     },
     {
-      "uri": "file://$DIR/V3001_greet_without_console.sakura",
+      "uri": "file://$DIR/V3001_greet_without_console.sak",
       "content_hash": "sha256:167ca72fd1e1d0fc9cd0d2f54661186c5db27ec82383560357de1a360f630b68",
       "start_byte": 100,
       "end_byte": 130,
@@ -102,7 +102,7 @@ pub fn main() -> Unit ! {Console} { greet("Sakura Lang") }
       "edits": [
         {
           "span": {
-            "uri": "file://$DIR/V3001_greet_without_console.sakura",
+            "uri": "file://$DIR/V3001_greet_without_console.sak",
             "content_hash": "sha256:167ca72fd1e1d0fc9cd0d2f54661186c5db27ec82383560357de1a360f630b68",
             "start_byte": 97,
             "end_byte": 97,
@@ -120,7 +120,7 @@ pub fn main() -> Unit ! {Console} { greet("Sakura Lang") }
       "edits": [
         {
           "span": {
-            "uri": "file://$DIR/V3001_greet_without_console.sakura",
+            "uri": "file://$DIR/V3001_greet_without_console.sak",
             "content_hash": "sha256:167ca72fd1e1d0fc9cd0d2f54661186c5db27ec82383560357de1a360f630b68",
             "start_byte": 98,
             "end_byte": 98,
@@ -130,7 +130,7 @@ pub fn main() -> Unit ! {Console} { greet("Sakura Lang") }
         },
         {
           "span": {
-            "uri": "file://$DIR/V3001_greet_without_console.sakura",
+            "uri": "file://$DIR/V3001_greet_without_console.sak",
             "content_hash": "sha256:167ca72fd1e1d0fc9cd0d2f54661186c5db27ec82383560357de1a360f630b68",
             "start_byte": 132,
             "end_byte": 132,
@@ -144,11 +144,11 @@ pub fn main() -> Unit ! {Console} { greet("Sakura Lang") }
 }
 ```
 
-More fixtures for this code: [`compiler/tests/ui/V3001_residual_fail_uses_try.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3001_residual_fail_uses_try.sakura), [`compiler/tests/ui/V3001_with_handler_hole_when_ambiguous.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3001_with_handler_hole_when_ambiguous.sakura), [`compiler/tests/ui/V3001_with_names_std_handler.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3001_with_names_std_handler.sakura).
+More fixtures for this code: [`compiler/tests/ui/V3001_residual_fail_uses_try.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3001_residual_fail_uses_try.sak), [`compiler/tests/ui/V3001_with_handler_hole_when_ambiguous.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3001_with_handler_hole_when_ambiguous.sak), [`compiler/tests/ui/V3001_with_names_std_handler.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3001_with_names_std_handler.sak).
 
 ## Fixed program
 
-[`compiler/tests/ui/V3001_greet_without_console.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3001_greet_without_console.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V3001_greet_without_console.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3001_greet_without_console.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn greet(name: String) -> Unit ! {Console} { Console.print("hello, {name}") }

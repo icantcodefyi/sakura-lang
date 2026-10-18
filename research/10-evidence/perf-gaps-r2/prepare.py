@@ -83,7 +83,7 @@ def main():
     manifest={'commit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(), 'variants':{}, 'hashes':{}}
     for p in ['sieve','nbody','spectral_norm']:
         d=OUT/p/'base'; d.mkdir(parents=True,exist_ok=True)
-        src=ROOT/f'bench/programs/{p}/sakura/main.sakura'
+        src=ROOT/f'bench/programs/{p}/sakura/main.sak'
         subprocess.run([CLI,'build',str(src),'--out-dir',str(d)],check=True)
         for dump in ['direct','core']:
             r=subprocess.run([CLI,'build',str(src),'--dump',dump],check=True,capture_output=True,text=True)

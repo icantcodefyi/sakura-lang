@@ -309,7 +309,7 @@ the hidden parameter's name. Check `tidy_vars` still renames `?T` vars that are 
      `err_ty` stays unless a catch-all arm exists);
    - `W4010`: also when `hidden` and a catch-all arm exists (message: "…including the failures of
      the row variable `e`…"); keep the existing `Param` case (fixture
-     `compiler/tests/ui/W4010_catch_all_on_open_union.sakura` must still pass).
+     `compiler/tests/ui/W4010_catch_all_on_open_union.sak` must still pass).
 
 3. **New code `V3003`** in `sakura_diagnostics::codes` (append after `V3002`, phase `EFFECT`, title
    `try_unknown_failures`). Message: ``"`try` cannot name the failures of its body: the row ends in
@@ -319,7 +319,7 @@ the hidden parameter's name. Check `tidy_vars` still renames `?T` vars that are 
    Explain page: minimal pair `fn wrap<e>(f: fn() -> Int ! e) -> Result<Int, Never> ! e { try {
    f() } }` → fixed `fn wrap<E, e>(f: fn() -> Int ! {Fail<E> | e}) -> Result<Int, E> ! e { try {
    f() } }`. Add the code to the design §12.3 phase list? Not needed (the scheme is by phase digit);
-   add it to `compiler/tests/ui/V3003_try_unknown_failures.sakura` with `// expect: V3003` and the
+   add it to `compiler/tests/ui/V3003_try_unknown_failures.sak` with `// expect: V3003` and the
    `.jsonl` the CLI harness expects (copy the format of `V3002_effect_label_not_permitted.jsonl`).
 
 4. **`finish_body`** (`body.rs`), before defaulting:
@@ -372,9 +372,9 @@ fn local() -> Result<Int, A> {
 Expect `swallow` to report exactly `W4010` and nothing else; `partial` row is `e`; `k`'s rendered
 scheme (via `local_schemes`) is `fn(fn() -> A ! {Fail<B> | e1}) -> Result<A, B> ! e1`.
 
-Also: `compiler/tests/ui/V3003_try_unknown_failures.sakura` (`wrap<e>` above). Confirm std still
-checks: `retry.sakura::attempt` (`try { action() }` over `{Fail<E> | e}` → `Result<T, E>`),
-`test.sakura::expect_fail`, `task.sakura::timeout` and `par_map` (see risks).
+Also: `compiler/tests/ui/V3003_try_unknown_failures.sak` (`wrap<e>` above). Confirm std still
+checks: `retry.sak::attempt` (`try { action() }` over `{Fail<E> | e}` → `Result<T, E>`),
+`test.sak::expect_fail`, `task.sak::timeout` and `par_map` (see risks).
 
 ---
 
@@ -588,7 +588,7 @@ explain page (codes.rs) to mention `try` bodies.
 
 Tests: negative `("try body assigns an outer var", "fn f() -> Int { var n = 0; let _ = try { n =
 1 }; n }", &["V2041"])`; positive: assigning a `var` declared *inside* the try body, and assigning
-after the try from the result; ui fixture `V2041_assign_in_try.sakura` (`// expect: V2041`) next to
+after the try from the result; ui fixture `V2041_assign_in_try.sak` (`// expect: V2041`) next to
 the existing lambda fixture.
 
 ### 4.3 Remove dead `explicit_type_args` / `order_args`
@@ -714,7 +714,7 @@ finishes in bounded time (`Instant::now()` guard of ~10 s to catch accidental qu
 
 ## 7. Risks and how to handle them
 
-1. **std `timeout`** (`compiler/std/task.sakura`): `fn timeout<T, e>(limit, action: fn() -> T ! e) ->
+1. **std `timeout`** (`compiler/std/task.sak`): `fn timeout<T, e>(limit, action: fn() -> T ! e) ->
    T ! {Clock, Task, Fail<Timeout> | e}` writes `e` next to `Fail<Timeout>`, so by I3 `e` is
    Fail-free and `action` cannot fail. The body still checks (`fn() { action() }` has row `{| e}` ⊆
    `{Clock, Fail<Timeout> | e}`), no current M0–M2 program passes a failing action (`timeout` is
@@ -799,7 +799,7 @@ Each commit: fmt, clippy `-D warnings`, full workspace tests, rebase, push.
    `V4002` next to the `W4010`).
 7. **Inspecting a value settles its error union.** A field read, method call, tuple access or
    operator on a value whose type is an error-union variable (`fn(e) { e.tag }` passed as
-   `pred: fn(E) -> Bool` after `body` failed with `ToolError`, std `tool.sakura`) fixes the
+   `pred: fn(E) -> Bool` after `body` failed with `ToolError`, std `tool.sak`) fixes the
    variable to its current union (`Infer::settle`); later failures must fit it, as with an
    ordinary type variable. Without this the field read is `V2010`.
 8. **Kind rule refined: Fail-free iff next to `Fail<E>` with a type parameter `E`** (1.5.1,

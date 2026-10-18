@@ -11,7 +11,7 @@ Annotate the binding or function with the union you mean (design §5.3).
 
 ## Wrong program
 
-[`compiler/tests/ui/V2015_error_union_annotation_needed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2015_error_union_annotation_needed.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V2015_error_union_annotation_needed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2015_error_union_annotation_needed.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 error A
@@ -40,7 +40,7 @@ fn pick(c: Bool) -> Unit { let _ = if c { try { fa() } } else { try { fb() } } }
   "symbol_id": "main::V2015_error_union_annotation_needed::pick",
   "spans": [
     {
-      "uri": "file://$DIR/V2015_error_union_annotation_needed.sakura",
+      "uri": "file://$DIR/V2015_error_union_annotation_needed.sak",
       "content_hash": "sha256:2407ddc115dd635ed4832eb5bb83ac5ccdbf144d1035f9a18519a101d334e3e8",
       "start_byte": 192,
       "end_byte": 208,
@@ -64,7 +64,7 @@ fn pick(c: Bool) -> Unit { let _ = if c { try { fa() } } else { try { fb() } } }
 
 ## Fixed program
 
-[`compiler/tests/ui/V2015_error_union_annotation_needed.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2015_error_union_annotation_needed.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V2015_error_union_annotation_needed.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2015_error_union_annotation_needed.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 error A

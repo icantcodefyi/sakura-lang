@@ -4,11 +4,11 @@ import { tokenize } from "@/lib/sakura/highlight";
 import { WINDOW, WindowBar } from "./window";
 
 const FILES = [
-  { path: "src/billing/retry.sakura", add: 214, del: 90 },
-  { path: "src/billing/ledger.sakura", add: 131, del: 122 },
-  { path: "src/billing/charge.sakura", add: 38, del: 11, signature: true },
-  { path: "src/billing/webhooks.sakura", add: 156, del: 104 },
-  { path: "test/billing_test.sakura", add: 73, del: 61 },
+  { path: "src/billing/retry.sak", add: 214, del: 90 },
+  { path: "src/billing/ledger.sak", add: 131, del: 122 },
+  { path: "src/billing/charge.sak", add: 38, del: 11, signature: true },
+  { path: "src/billing/webhooks.sak", add: 156, del: 104 },
+  { path: "test/billing_test.sak", add: 73, del: 61 },
 ];
 
 const BEFORE =

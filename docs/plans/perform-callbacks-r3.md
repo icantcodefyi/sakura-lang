@@ -91,7 +91,7 @@ receives a lambda that calls the already re-bound callback, so it needs no `p` h
 
 ### 1.4 Tests (D)
 
-- `tests/semantics/handler_callback_context.sakura` (**M2**, user effect only, `mode: run`):
+- `tests/semantics/handler_callback_context.sak` (**M2**, user effect only, `mode: run`):
 
   ```sakura
   effect Store {
@@ -132,7 +132,7 @@ receives a lambda that calls the already re-bound callback, so it needs no `p` h
   Expected stdout: `a = 5` then `b = 10`. Under the old semantics the callback ran outside the
   clause's frame, so its `Store.put` found no handler at all (`D090`) in the first `with` and only
   `memory()` (printing `b = 5`) in the second.
-- `tests/semantics/std_fs_with_file.sakura` (M3, F's fixture) keeps passing after §3.1, including
+- `tests/semantics/std_fs_with_file.sak` (M3, F's fixture) keeps passing after §3.1, including
   a body that performs `Fs.read` on another path and one that fails.
 - An attenuation test in `sakura_codegen_js` e2e: `with Fs.rooted(Dir.subdir(Fs.root(), "data")) {
   Fs.with_file(p, Read, fn(f) { Fs.read(Path.of("secret.txt")) }) }` reads `data/secret.txt`, not the
@@ -180,7 +180,7 @@ clause calls `body()` → `Handler<Db>` (row `{}`); (b) the same clause also per
 {Db}>`; (d) a clause passing `fn() { body(x) }` to a generic `fn run<T, e>(f: fn() -> T ! e) -> T !
 e` → row `{}`; (e) F's round-2 false `V4002` case (`match Json.decode(next) { Ok(v) => v, … }` inside
 `generate`'s clause) is clean. Negative: a clause failing with a tag not declared on the operation
-keeps its existing code; `handler_callback_context.sakura` above type-checks with the rows shown.
+keeps its existing code; `handler_callback_context.sak` above type-checks with the rows shown.
 
 ## 3. F — std
 
@@ -217,7 +217,7 @@ addr)`; `examples/json_api` is unchanged.
 
 ### 3.3 Fixtures
 
-`tests/semantics/std_fs_with_file.sakura` (M3): read, write and append through `with_file` under
+`tests/semantics/std_fs_with_file.sak` (M3): read, write and append through `with_file` under
 `Fs.memory`, a body that performs `Fs.read` on a second path, a body that fails (the file is still
 closed: a second `with_file` on the same path works), and `Fs.read_all`. Expected stdout checked in.
 

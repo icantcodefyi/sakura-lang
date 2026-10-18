@@ -1,6 +1,6 @@
 ---
 name: sakura
-description: Writes, checks, repairs, and tests Sakura Lang programs. Use when working with .sakura files, sakura.toml, Sakura effects, typed holes, or Sakura compiler diagnostics.
+description: Writes, checks, repairs, and tests Sakura Lang programs. Use when working with .sak files, sakura.toml, Sakura effects, typed holes, or Sakura compiler diagnostics.
 license: MIT OR Apache-2.0
 compatibility: Requires the matching Sakura CLI on PATH. Running and testing programs requires Node; verification additionally requires the compiler's pinned solver. No network or provider key is needed for these examples.
 metadata:

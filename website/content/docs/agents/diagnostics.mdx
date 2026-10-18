@@ -50,9 +50,9 @@ fn greet(name: String) -> Unit {
   "snapshot": "sha256:91c0",
   "symbol_id": "hello::main::greet",
   "spans": [
-    { "uri": "file:///work/hello/src/main.sakura", "content_hash": "sha256:4be2",
+    { "uri": "file:///work/hello/src/main.sak", "content_hash": "sha256:4be2",
       "start_byte": 3, "end_byte": 8, "role": "primary" },
-    { "uri": "file:///work/hello/src/main.sakura", "content_hash": "sha256:4be2",
+    { "uri": "file:///work/hello/src/main.sak", "content_hash": "sha256:4be2",
       "start_byte": 35, "end_byte": 65, "role": "cause", "label": "`Console.print` performs `Console` here" }
   ],
   "related_ids": [],
@@ -64,7 +64,7 @@ fn greet(name: String) -> Unit {
   "fixes": [
     { "id": "f:01", "title": "Add `Console` to the signature",
       "applicability": "suggested", "impact": "interface_change",
-      "edits": [ { "span": { "uri": "file:///work/hello/src/main.sakura", "content_hash": "sha256:4be2",
+      "edits": [ { "span": { "uri": "file:///work/hello/src/main.sak", "content_hash": "sha256:4be2",
                              "start_byte": 30, "end_byte": 30, "role": "primary" },
                    "replacement": " ! {Console}" } ] }
   ]

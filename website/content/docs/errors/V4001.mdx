@@ -23,7 +23,7 @@ match o { Some(n) if n >= 0 => n, _ => 0 }
 
 ## Wrong program
 
-[`compiler/tests/ui/V4001_non_exhaustive_match.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V4001_non_exhaustive_match.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V4001_non_exhaustive_match.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V4001_non_exhaustive_match.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 error ParseError(input: String)
@@ -51,7 +51,7 @@ fn parse_age(s: String) -> Int ! {Fail<ParseError>} {
   "symbol_id": "main::V4001_non_exhaustive_match::parse_age",
   "spans": [
     {
-      "uri": "file://$DIR/V4001_non_exhaustive_match.sakura",
+      "uri": "file://$DIR/V4001_non_exhaustive_match.sak",
       "content_hash": "sha256:a85cd0432d080f202e1a76e4e6c322d610e6c4d89ced36170bc83516ba2643f3",
       "start_byte": 123,
       "end_byte": 227,
@@ -80,7 +80,7 @@ fn parse_age(s: String) -> Int ! {Fail<ParseError>} {
 
 ## Fixed program
 
-[`compiler/tests/ui/V4001_non_exhaustive_match.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V4001_non_exhaustive_match.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V4001_non_exhaustive_match.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V4001_non_exhaustive_match.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 error ParseError(input: String)

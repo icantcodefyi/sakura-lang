@@ -129,7 +129,7 @@ bench/
   programs/<name>/
     meta.toml             # family, sizes = [n1, n2, n3, n4], lane, ints, checksums
     expected/<n>.txt      # oracle output per size (and for 0..3)
-    sakura/main.sakura    # pub fn run(n: Int) -> Int (checksum); pub fn main prints run(n) from Cli
+    sakura/main.sak    # pub fn run(n: Int) -> Int (checksum); pub fn main prints run(n) from Cli
     js/main.mjs           # export function run(n) → checksum
     rust/, go/, ocaml/, koka/   # main <n>: prints one JSON line per sample (see 3.3)
   harness/                # WS-B's code (Node for the JS panel, Python or Rust for orchestration)
@@ -210,15 +210,15 @@ that blocks and a 6% one that flags, a complexity-change fixture. Delta: none.
 **WS-S — mechanical (Sol, now).** (1) Ports of every §2.1 program to hand JS, Rust (both lanes),
 Go, OCaml and Koka, each from the Sakura source and the matched-lane rules, with the sample
 printer of §3.3; (2) `tests/semantics` fixtures that pin results today and will be rerun under
-every optimisation: `deep_sum.sakura` (non-tail, depth 1,000,000), `direct_closure_values.sakura`
+every optimisation: `deep_sum.sak` (non-tail, depth 1,000,000), `direct_closure_values.sak`
 (a pure lambda stored in a record and in a `Map`, called from pure and effectful code),
-`handler_lexical_bind.sakura` (a loop performing in a `with` body; a lambda created in the body
+`handler_lexical_bind.sak` (a loop performing in a `with` body; a lambda created in the body
 and called under an inner `with` of the same effect, which must reach the inner instance; an
-escaped lambda called under an outer instance), `handler_clause_fail.sakura`, `handler_cancel_in_loop.sakura`
+escaped lambda called under an outer instance), `handler_clause_fail.sak`, `handler_cancel_in_loop.sak`
 (a sibling cancelled while looping over a pure handler, under `Task.deterministic`),
-`arith_range_edges.sakura` (`MAX + 1`, `MAX - 1 + 1`, `MIN - 1`, `0 - MIN`, `x / 0`, `x % 0`,
-`MIN / -1`, each with its `expect-defect`), `contract_site_blame.sakura` (blame through a direct
-call, a function value, a callback), `list_retained_version.sakura`; (3) `.github/workflows/bench.yml`
+`arith_range_edges.sak` (`MAX + 1`, `MAX - 1 + 1`, `MIN - 1`, `0 - MIN`, `x / 0`, `x % 0`,
+`MIN / -1`, each with its `expect-defect`), `contract_site_blame.sak` (blame through a direct
+call, a function value, a callback), `list_retained_version.sak`; (3) `.github/workflows/bench.yml`
 per §3.4; (4) `bench/toolchains.toml`. Tests: fixtures pass on today's compiler. Delta: none.
 
 **WS-A — measurement (Astra, now).** `bench/README.md` methodology section, noise
@@ -234,7 +234,7 @@ blessed baseline, `research/10-evidence` rerun at the harness's first green comm
 `$d`; direct twins of higher-order defs and of runtime callback builtins; the `$d` test at CPS
 boundaries; reasons in `--dump direct`; the `--no-direct` run added to `cargo test -p sakura_cli --test semantics`
 and the trace-parity assertion. Tests: `direct_closure_values`, `list_retained_version`; a
-`--dump direct` snapshot of `research/10-evidence/micro.sakura` (`fib` still `cps(recursion)` until
+`--dump direct` snapshot of `research/10-evidence/micro.sak` (`fib` still `cps(recursion)` until
 WS-P3). Delta: `pipeline`, `shapes`.
 
 **WS-P2 — handlers (Opus, after WS-P1; §17.113).** Paths: `crates/sakura_core/src/opt.rs`
@@ -266,14 +266,14 @@ differential run with the new cases, `--dump core` snapshots showing `proved`. D
 `contract_tests.rs`. Delta: `contracts`.
 
 **WS-P6 — collections and strings (Opus, after the gates; §17.116 items 1–3).** Paths:
-`sakura_runtime.js` §7 (List/Map/Set builders and leaf iteration), `std/list.sakura`,
-`std/string.sakura` docs, `ABI.md` §7. Tests: `list_retained_version`, the `std/list` test
+`sakura_runtime.js` §7 (List/Map/Set builders and leaf iteration), `std/list.sak`,
+`std/string.sak` docs, `ABI.md` §7. Tests: `list_retained_version`, the `std/list` test
 blocks, `collections.js` bench slopes unchanged or better. Delta: `pipeline`, `tokenizer`,
 `map_set`.
 
 **WS8.7 — scalar `SqlValue` (Opus, with WS8; §17.116 item 4).** Paths: `sakura_types`
-conversions, `sakura_core` template lowering, `std/sql.sakura` tests. Tests:
-`sql_untrusted_param.sakura` unchanged, a new `sql_scalar_params.sakura` pinning that a
+conversions, `sakura_core` template lowering, `std/sql.sak` tests. Tests:
+`sql_untrusted_param.sak` unchanged, a new `sql_scalar_params.sak` pinning that a
 `String`/`Int`/`Float`/`Bool` interpolation binds the constructor (observable through
 `Sql.memory`'s stored parameter values). Delta: none in the suite; a `Sql.query` microbench in
 `research/10-evidence` by Astra.
@@ -287,9 +287,9 @@ conversions, `sakura_core` template lowering, `std/sql.sakura` tests. Tests:
 | `bench/baselines/`, `bench/deltas.md`, `bench/README.md` methodology, `research/10-evidence/**` | WS-A |
 | `crates/sakura_codegen_js/**`, `runtime/js/sakura_runtime.js` §1–§6, `runtime/js/ABI.md` §1–§6, `sakura_cli` dump/flags | WS-P1 → WS-P3 → WS-P2 → WS-P5 (sequenced; see 4.3) |
 | `crates/sakura_core/src/opt.rs`, `opt/ranges.rs`, `ir.rs` annotations | WS-P4 (ranges), WS-P2 (handler inlining and bound annotation; coordinate in REQUESTS) |
-| `runtime/js/sakura_runtime.js` §7 collections and strings, `std/list.sakura`, `std/string.sakura` | WS-P6 |
-| `runtime/js/sakura_runtime.js` fs section, `std/fs.sakura`, `std/INDEX.md` fs entries | WS-FS |
-| `sakura_types` conversions, `sakura_core` template lowering, `std/sql.sakura` | WS8.7 |
+| `runtime/js/sakura_runtime.js` §7 collections and strings, `std/list.sak`, `std/string.sak` | WS-P6 |
+| `runtime/js/sakura_runtime.js` fs section, `std/fs.sak`, `std/INDEX.md` fs entries | WS-FS |
+| `sakura_types` conversions, `sakura_core` template lowering, `std/sql.sak` | WS8.7 |
 | `docs/design.md`, `docs/plans/**`, `docs/llms.txt` | design (Fable) |
 
 ### 4.3 Ordering
@@ -304,7 +304,7 @@ gates ──┬─▶ WS-P1 ──▶ WS-P2 ──▶ WS-P5
 ```
 
 A workstream is done when its tests are on master, the `--no-direct` and trace parity runs are
-green, its `bench/deltas.md` line exists, and `--dump direct` on `research/10-evidence/micro.sakura`
+green, its `bench/deltas.md` line exists, and `--dump direct` on `research/10-evidence/micro.sak`
 matches its expected snapshot.
 
 ---
@@ -324,10 +324,10 @@ matches its expected snapshot.
 3. `deep_countdown`, `deep_sum`, `million_operations` green on Node and Bun; a cancelled task never
    runs a bound perform's clause, and every bound perform remains a cancellation point: the dispatch
    tests the current task's cancellation flag before the clause (the runtime unit test), and
-   `handler_cancel_bound.sakura` shows cancellation, finalizer and trace records identical to the
+   `handler_cancel_bound.sak` shows cancellation, finalizer and trace records identical to the
    unbound form (reworded in §17.156 (1): the JS runtime cancels only a suspended task, so the
    resumption is where a cancellation is first observed, by construction).
-4. Code size: the emitted `micro.sakura` module is at most 2× the pre-round size in bytes
+4. Code size: the emitted `micro.sak` module is at most 2× the pre-round size in bytes
    (two bodies per def); `bench compile` within the research/10 §6 budgets.
 5. `.github/workflows/bench.yml` has blocked at least one deliberate regression in a test PR.
 6. Named maintainer review (CODEOWNERS) of WS-P2 (handler dispatch touches cancellation and
@@ -341,10 +341,10 @@ matches its expected snapshot.
 Paths: `runtime/js/sakura_runtime.js` fs and open-file section (`Dir` gains a memory kind
 `{store: Map<string, Uint8Array>, prefix}`; `fs_memory_root(files)`; `fs_subdir`, `fs_read`,
 `fs_write`, `fs_list`, `fs_exists`, `file_open` dispatch on the kind; `fs_detached_root` retired;
-`fixtures_dir("")` returns an empty memory root), `std/fs.sakura` (`memory(files)` is
+`fixtures_dir("")` returns an empty memory root), `std/fs.sak` (`memory(files)` is
 `rooted(fs_memory_root(files))`; the `buffer_file`/`found` helpers and the memory clauses go;
 docs per §17.119), `std/INDEX.md`. Semantics to pin (each a case in
-`tests/semantics/fs_memory_rooted.sakura` or the re-blessed `std_fs_with_file.sakura`):
+`tests/semantics/fs_memory_rooted.sak` or the re-blessed `std_fs_with_file.sak`):
 (a) §15.6's narrowing under `Fs.memory([("data/a.txt", …)])` reads `a.txt`; (b) a write under
 `Fs.rooted(Dir.subdir(Fs.root(), "data"))` is read back by the outer handler as `data/x.txt`;
 (c) `Dir.subdir(root, "nope")` fails `no such directory`, `Dir.subdir(root, "data/a.txt")`
@@ -375,7 +375,7 @@ authority).
 
 **WS-P1** (`49cdc6d..9f36028`, §17.111):
 
-1. Only closures of direct **first-order** defs (no function-typed parameter) carry `$d`. A function hidden in a type variable (`app(f, x)` with `x: A = fn(…)`) can reach a twin as an argument without `$d`; it is harmless only if no twin reached through `.$d` calls its arguments. A higher-order lambda or def passed as a value therefore runs CPS (`direct_higher_order.sakura` pins this; exposing them crashes it with `D090`).
+1. Only closures of direct **first-order** defs (no function-typed parameter) carry `$d`. A function hidden in a type variable (`app(f, x)` with `x: A = fn(…)`) can reach a twin as an argument without `$d`; it is harmless only if no twin reached through `.$d` calls its arguments. A higher-order lambda or def passed as a value therefore runs CPS (`direct_higher_order.sak` pins this; exposing them crashes it with `D090`).
 2. The runtime `$d` test lives once, in the CPS entry of a higher-order direct def (`if (f.$d !== undefined) return $ret($k, map$d(xs, f))`), not at each call site, so the continuation is not emitted twice. Call sites inline the twin when every function argument is statically twinned.
 3. No runtime callback builtin gained a twin: std's `map`/`filter`/`fold`/`find`/`all`/`any`/`sort_by` are Sakura defs (they get twins by the def rule), `list_map` and the other `list_*`/`map_update` callback builtins are not reachable from Sakura code, and the reachable callback builtins (`defect_catch`, `file_closing`, `cli_parse`, `http_*`, `serve_listen`, `property_run`) perform or suspend.
 4. Clauses are analysed like any def (`StateGet`/`StateSet` allowed), so a pure clause has a twin and its CPS entry is the adapter; WS-P2's dispatch can use it.
@@ -464,8 +464,8 @@ authority).
 5. **Not done: the resumable loop.** An unbound perform in CPS code gets tail-direct dispatch with a shared continuation (`find`, then `$cl.$d` inline, else the CPS clause; the continuation is emitted once as `$kN`, or is `$k`/a join), but a loop with an unbound perform stays a join-point function under the gauge, not a `for (;;)` with a resumable entry. `handled_fwd` (the forwarding clause performs, so it is CPS) and `handled_suspend` (a CPS `Clock.sleep` in the loop) still pay a join call and two closures per iteration. **Scheduled as WS-P2b (§17.156 (2), §9). Landed as WS-P2b; see its deviations.**
 6. Instance state is own properties `s0`, `s1`, … instead of `s: [...]` (ABI §3): JSC reads and writes the array element 2.5× slower (1.53 vs 0.65 ms per 10^6 updates in fresh processes; Node 1.00 vs 0.88). `runtime.test.js`'s hand-built clauses changed with it.
 7. Every def is exported (lambdas and clauses included): an inlined constructor builds its clause closures in the caller's module.
-8. Cancellation at a bound perform (acceptance §5 item 3): a running JS task cannot become cancelled. `cancelTask` only reaches a task that is suspended, which unwinds at its resume, so the `T.t.cancelled` branch of a bound perform is unreachable from today's runtime. The branch is pinned by a runtime unit test (`a bound perform of a cancelled task is a cancellation point`). `handler_cancel_bound.sakura` (the loop inside the `with`, bound) shows the cancellation and trace records are unchanged, but it observes the cancellation at `Clock.sleep`. Question for the designer: should §5 item 3 say "a cancelled task never runs a bound perform's clause" instead? **Decided (§17.156 (1)): yes; §5 item 3 is reworded above.**
-9. §17.138's inlining is narrower than written: the consumer must be a **call**, not any next bind. With allocations allowed, `bottom_up$d` became `new Tree(1, [r, bottom_up$d(…)])`. V8 allocates the array literal before the call, so the array survives the whole subtree, and binary_trees/Node n=14 peaked at 257–290 MB, no better than before (`bench/results/2026-10-18-wsp2-binary-trees-alloc-variant*.json`). With calls only: 157–168 MB, time unchanged. A producer that sets the blame site keeps its `$S.s` line before the consumer, a consumer that sets it is not inlined into, and `micro.sakura` has no adjacent one-use reference bind (a lambda's closure bind separates `map` from `fold`), so the emitted-JS snapshot is the regression test's program (`one_use_temporaries_do_not_outlive_their_consumer`), not micro's. The blame/defect fixtures are `direct_inlined_bind_blame` (producer `D020`, call span primary) and `direct_inlined_bind_defect` (consumer `D021`).
+8. Cancellation at a bound perform (acceptance §5 item 3): a running JS task cannot become cancelled. `cancelTask` only reaches a task that is suspended, which unwinds at its resume, so the `T.t.cancelled` branch of a bound perform is unreachable from today's runtime. The branch is pinned by a runtime unit test (`a bound perform of a cancelled task is a cancellation point`). `handler_cancel_bound.sak` (the loop inside the `with`, bound) shows the cancellation and trace records are unchanged, but it observes the cancellation at `Clock.sleep`. Question for the designer: should §5 item 3 say "a cancelled task never runs a bound perform's clause" instead? **Decided (§17.156 (1)): yes; §5 item 3 is reworded above.**
+9. §17.138's inlining is narrower than written: the consumer must be a **call**, not any next bind. With allocations allowed, `bottom_up$d` became `new Tree(1, [r, bottom_up$d(…)])`. V8 allocates the array literal before the call, so the array survives the whole subtree, and binary_trees/Node n=14 peaked at 257–290 MB, no better than before (`bench/results/2026-10-18-wsp2-binary-trees-alloc-variant*.json`). With calls only: 157–168 MB, time unchanged. A producer that sets the blame site keeps its `$S.s` line before the consumer, a consumer that sets it is not inlined into, and `micro.sak` has no adjacent one-use reference bind (a lambda's closure bind separates `map` from `fold`), so the emitted-JS snapshot is the regression test's program (`one_use_temporaries_do_not_outlive_their_consumer`), not micro's. The blame/defect fixtures are `direct_inlined_bind_blame` (producer `D020`, call span primary) and `direct_inlined_bind_defect` (consumer `D021`).
 10. **Open block: `handled_suspend`/Node peak RSS**, 88 → 121 MB (+37%) at n=100000 and n=1000000, in both the pre-rebase and the rebased runs. Time improved 42% at the same cells. Per-process peaks are bimodal (12 of 12 baseline processes at 87–88 MB; 8 of 12 after at 120 MB, the rest 86 MB). The post-GC heap is 5.0 MB in both builds after 60 runs. `--trace-gc` shows the jump as a single new-space doubling (16 → 32 MB semi-space) in the last scavenge of a process, with no mark-compact in either build. Capping the semi space (`--max-semi-space-size=8`, diagnostic only) makes both builds peak at 69–70 MB (6 of 6 each). Reverting either the bound perform or the state layout alone, on emitted copies, also gives 86 MB. The likely fix is item 5 (the loop's two closures per iteration). Not suppressed; to WS-A and the designer under §17.136, which now needs the confirmation group. **Decided (§17.156 (3)): judged as young-generation sizing under the three-reading protocol (post-GC heap equal, `--trace-gc` shows only new-space growth, equal peaks under a capped semi space); a warning carrying the diagnostic, recorded in `bench/deltas.md`; the baseline takes the number at the quiet window; WS-P2b remeasures the cell. Remeasured by WS-P2b: the per-iteration closures were the cause (WS-P2b deviation 7).**
 11. On Bun, d1/d4 at n=1000 and 10000 stay at ~5× while 100000 and 10^6 reach 0.95–1.46×. Inlining the checked `$rt.add`/`$rt.rem` by hand on the emitted copy brings n=10000 from 0.0387 to 0.0078 ms. That is JSC's tier-up on the arithmetic calls (WS-P4's inline fast path covers `+`/`-`/`*` but not `%`), not handler dispatch.
 12. Named maintainer review (§5 item 6) is still owed: bound performs read the task through `$rt.T` for cancellation and traces. **Approved by @icantcodefyi, 2026-10-18.**
@@ -569,7 +569,7 @@ authority).
 3. `D030` carries no span on either backend today (`defect("D030", msg)`, no blame site), so "identical span" holds as "none, as before"; the semantics harness checks stderr byte for byte under both ABIs.
 4. `sakura_lir/src/builtins.sigs` gained the two lines `examples/regen_core.rs` writes (the example lists them beside `list_at`). The rest of that run's output, ~85 rewritten or new `tests/corpus` files, is drift from earlier Core and std changes unrelated to WS-P8 and was not committed.
 5. The differential generator gained `Int` form 17, `({ let ys = …; ys[Int.abs(i) % Int.max(List.len(ys), 1)] }).expect("read")` (fused; `D030` on an empty list). Form 17 previously fell through to a leaf, so only programs drawing it changed. It exposed a latent `sakura_eval` LIR bug, fixed separately: a direct builtin that defected left its taken arguments live, so the run ended unbalanced.
-6. The "Option used twice" fixture is `--dump core` in `sakura_cli/tests/cli.rs` (`build_dump_core_fuses_get_expect`) plus `twice` in `tests/semantics/fused_get_expect.sakura`.
+6. The "Option used twice" fixture is `--dump core` in `sakura_cli/tests/cli.rs` (`build_dump_core_fuses_get_expect`) plus `twice` in `tests/semantics/fused_get_expect.sak`.
 7. After WS-P7 landed, `list_get_expect` and `map_get_expect` joined `opt::owned::BORROWS` (two lines in WS-P7's file, as its REQUESTS entry asked); without them a fused read counted as an escape and kept the next `List.push` persistent (`--dump owned`: `escapes-call list_get_expect`). `fused_get_expect_owned_push` reads the last element through the leaf cache, pushes in place, and reads again across the 31/32/33 boundaries, identical under both ABIs and on WASM. Neither builtin has a `fresh` or `consumes` column.
 
 **WS-P2b** (§17.156 (2); the `perf(codegen)` and `test(semantics)` WS-P2b commits, measured before rebase as `e2c9092`, `522a3f9`; measured as `522a3f9` with `emit.rs` at `d2cd5f8` → `522a3f9`, advisory):
@@ -597,7 +597,7 @@ the next quiet window (§17.153).
 | **WS-P7** | Ownership facts in Core; in-place update of owned `List`/`Map`/`Set` on JS and native (§17.149) | Opus; CODEOWNERS review (semantics-adjacent) | `sakura_core/src/opt/owned.rs`, `sakura_core/src/builtins.rs` (`fresh`, `consumes` columns), `sakura_codegen_js` (owned entries), `runtime/js` (`list_set_owned`, `list_push_owned`, `map_set_owned`, `map_remove_owned`, `set_add_owned`, `set_remove_owned`; leaf/entries cache invalidation; `ABI.md` §7), `sakura_lir` + `runtime/rt` (`builtins.sigs`, owning entries, per-node rc test in `list.rs`/`map.rs`), `tools/sakura_eval` (`Limits::audit_owned`), `sakura_cli` (`--dump owned`) | now; M4-LIR coordination for the rt half | the §17.149 invariant fixtures (retained version after `set`/`push`/`Map.set` with shared leaf, tail and HAMT subtree; captured before update; stored in a record/`Map` value; the loop run twice; empty singleton; inside `with`/`try`/after a `Perform`; generic `List<A>`) pass with trace, `--no-direct` and WASM parity; `audit_owned` on in the differential and corpus runs; `--dump owned` reasons from the fixed set; advisory delta on `sieve` (path copies gone) and `map_set` (node copies gone); `--dump direct` unaffected |
 | **WS-P8** | `list_get`/`map_get` + immediately consumed `option_expect` fuse into `list_get_expect`/`map_get_expect` (§17.151) | Opus, small | `sakura_core/src/opt.rs` (peephole after inlining), `sakura_core/src/builtins.rs`, `runtime/js`, `runtime/rt` + `sakura_lir/src/builtins.sigs`, `tools/sakura_eval` (composition) | now | fixtures: in range; out of range with identical `D030` message, span and exit 70 under both ABIs and on WASM; Option used twice not fused (`--dump core`); `Map` key miss; advisory delta on `spectral_norm` |
 | **WS-P4b** | `opt::ranges` seeds parameter intervals from `requires` and refined-parameter `where` (§17.154) | Opus, small | `sakura_core/src/opt/ranges.rs`, `tools/sakura_eval` generator cases | now | a seeded `requires` violated at run time still defects `D020` before the body (the `audit_ranges` oracle); a parameter without a clause is the whole range; `countdown` with `requires n >= 0` shows `n - 1` proved in `--dump core` and `acc + n` checked |
-| **WS-S10** | Benchmark-definition fixes (§17.150) | Sol; Astra records the boundaries | `bench/programs/nbody/sakura/main.sakura` (`List.set`), `bench/programs/countdown/js/main.mjs` (explicit overflow check), an audit of the other controls' check placement, `research/10-evidence/ws-a/{nbody,countdown}-definition-change.json`, `bench/deltas.md` (boundary rows, not optimisation rows) | now | oracles pass at every size; boundary records carry both blob hashes; pre-change ratios excluded from comparisons and noise summaries; raw runs retained |
+| **WS-S10** | Benchmark-definition fixes (§17.150) | Sol; Astra records the boundaries | `bench/programs/nbody/sakura/main.sak` (`List.set`), `bench/programs/countdown/js/main.mjs` (explicit overflow check), an audit of the other controls' check placement, `research/10-evidence/ws-a/{nbody,countdown}-definition-change.json`, `bench/deltas.md` (boundary rows, not optimisation rows) | now | oracles pass at every size; boundary records carry both blob hashes; pre-change ratios excluded from comparisons and noise summaries; raw runs retained |
 | **WS-B10** | Harness: `meta.host.quiet`, `bless` refusal, advisory verdict, per-key-kind `map_set` results (§17.152 item 3, §17.153) | Opus (WS-B); Sol (`bench.yml` weekly `noise` schedule); Astra (`bench/README.md` quiet-window protocol) | `bench/harness`, `bench/README.md`, `.github/workflows/bench.yml` | now | fixtures: a run over the load threshold is `quiet: false` and `bless` refuses it; `compare` of a loaded base prints `advisory (host load L)`; `map_set` reports `Int`, `String` and tuple keys as separate cells; the weekly job uploads five noise artefacts |
 | **Quiet window** | Close-out remeasure (§17.153) | owner announces; Astra runs and reports; owner blesses | `bench/baselines/<host-id>.json`, `bench/deltas.md` | WS-P7, WS-P8, WS-P4b, WS-S10, WS-B10 landed; WS-P2 and WS-P5 landed (`m3-completion-and-m4.md` §3.7 item 6) | §5 item 1 as amended; `countdown`'s two halves reported separately (§17.154 item 3); `map_set` per key kind decides the provisional Bun ceiling; `pipeline` remeasured with WS-P4's fast path; the three representation-bound programs reported with cause |
 | **WS-P2b** | Resumable loops: a join-point loop whose only CPS steps are unbound performs or `cps` builtins becomes a `for (;;)` with a resumable entry; an iteration pays a continuation only when it suspends or forwards to a CPS clause (§17.156 (2)) | Opus | `crates/sakura_codegen_js/src/emit.rs` (reads `direct.rs`'s `Facts`), an emitted-JS snapshot, `tests/semantics` | WS-P5 landed (both edit `emit.rs`) | `handled_fwd` and `handled_suspend` emit the loop form; `handler_cancel_in_loop`, `handler_cancel_bound`, `million_operations`, the nested-`with` case and every fixture unchanged under `--no-direct`, trace parity and WASM; a fixture that suspends twice in one loop resumes with the right state; blame, `Check` binds and gauge accounting unchanged; advisory deltas on `handled_fwd` (9.02×/14.33×) and `handled_suspend` (5.18×/4.07×) toward the `handled` band, judged at the next quiet window; the `handled_suspend`/Node RSS cell remeasured and the per-iteration closures confirmed or ruled out as the cause |

@@ -26,7 +26,7 @@ test "counts rows" { with empty_db() { expect_eq(Db.count(), 0) } }
 
 ## Wrong program
 
-[`compiler/tests/ui/V3020_test_unhandled_effect.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3020_test_unhandled_effect.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V3020_test_unhandled_effect.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3020_test_unhandled_effect.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 effect Db {
@@ -51,14 +51,14 @@ test "counts rows" { expect_eq(Db.count(), 0) }
   "symbol_id": "main::V3020_test_unhandled_effect::test:counts rows",
   "spans": [
     {
-      "uri": "file://$DIR/V3020_test_unhandled_effect.sakura",
+      "uri": "file://$DIR/V3020_test_unhandled_effect.sak",
       "content_hash": "sha256:c7c8d39e5ec232c63875fbbb369da28bf275c4e6a4ba8b50111740b0eb0a9a4a",
       "start_byte": 74,
       "end_byte": 87,
       "role": "primary"
     },
     {
-      "uri": "file://$DIR/V3020_test_unhandled_effect.sakura",
+      "uri": "file://$DIR/V3020_test_unhandled_effect.sak",
       "content_hash": "sha256:c7c8d39e5ec232c63875fbbb369da28bf275c4e6a4ba8b50111740b0eb0a9a4a",
       "start_byte": 100,
       "end_byte": 110,
@@ -124,7 +124,7 @@ test "counts rows" { expect_eq(Db.count(), 0) }
 
 ## Fixed program
 
-[`compiler/tests/ui/V3020_test_unhandled_effect.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3020_test_unhandled_effect.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V3020_test_unhandled_effect.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3020_test_unhandled_effect.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 effect Db {

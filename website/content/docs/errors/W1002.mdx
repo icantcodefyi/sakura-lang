@@ -23,7 +23,7 @@ let max_attempts = 3
 
 ## Wrong program
 
-[`compiler/tests/ui/W1002_shadowed_import.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/W1002_shadowed_import.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/W1002_shadowed_import.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/W1002_shadowed_import.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 import std/retry.{retry}
@@ -49,14 +49,14 @@ fn attempts() -> Int {
   "symbol_id": "main::W1002_shadowed_import::attempts",
   "spans": [
     {
-      "uri": "file://$DIR/W1002_shadowed_import.sakura",
+      "uri": "file://$DIR/W1002_shadowed_import.sak",
       "content_hash": "sha256:85bf3bd33fd7034ff2f082a235afd9dfe7293700fc964b6860c8251319e073f4",
       "start_byte": 89,
       "end_byte": 94,
       "role": "primary"
     },
     {
-      "uri": "file://$DIR/W1002_shadowed_import.sakura",
+      "uri": "file://$DIR/W1002_shadowed_import.sak",
       "content_hash": "sha256:85bf3bd33fd7034ff2f082a235afd9dfe7293700fc964b6860c8251319e073f4",
       "start_byte": 52,
       "end_byte": 57,
@@ -76,7 +76,7 @@ fn attempts() -> Int {
 
 ## Fixed program
 
-[`compiler/tests/ui/W1002_shadowed_import.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/W1002_shadowed_import.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/W1002_shadowed_import.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/W1002_shadowed_import.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 import std/retry.{retry}

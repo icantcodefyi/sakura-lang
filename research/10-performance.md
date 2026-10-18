@@ -31,7 +31,7 @@ in [results.json](10-evidence/results.json). No compiler code was changed.
 
 ### 1.1 Reproduction and fairness boundaries
 
-[README](10-evidence/README.md) gives the commands. [micro.sakura](10-evidence/micro.sakura)
+[README](10-evidence/README.md) gives the commands. [micro.sak](10-evidence/micro.sak)
 is compiled by the real CLI. [bench.mjs](10-evidence/bench.mjs) imports its exports
 and calls `runTask` once per complete workload, including the public CPS adapter;
 it does not bypass the compiler or insert one task per inner iteration.
@@ -160,7 +160,7 @@ Inspected [design §5, §7, §13, §17](../docs/design.md),
 [direct analysis](../compiler/crates/sakura_codegen_js/src/direct.rs),
 [emission](../compiler/crates/sakura_codegen_js/src/emit.rs),
 [Core optimisations](../compiler/crates/sakura_core/src/opt.rs),
-[std/list](../compiler/std/list.sakura), and [M4 ABI](../compiler/runtime/rt/ABI.md).
+[std/list](../compiler/std/list.sak), and [M4 ABI](../compiler/runtime/rt/ABI.md).
 The checked-in [generated excerpt](10-evidence/generated-micro.js.txt) is the
 complete emitted workload module at the baseline, retained for inspection.
 

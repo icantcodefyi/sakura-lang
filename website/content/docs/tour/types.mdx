@@ -221,7 +221,7 @@ A variant may share its type's name, as `UserId` does. Two refined types with id
 `pub type` exports a type together with its constructors and fields. `pub opaque type` exports only the name: other modules can hold, pass, compare, and show its values, but constructing one or reading its fields outside the declaring module is `V1006`.
 
 ```sakura
-// src/tokens.sakura
+// src/tokens.sak
 pub opaque type Token = Token(String)
 
 pub fn issue(user: Int) -> Token ! {Random} {
@@ -244,7 +244,7 @@ Other modules can only get a `Token` from `tokens.issue`. Std uses the same mech
 There are no methods, no `self`, and no extension methods. A function becomes callable with dot syntax on a type only by living in that type's module:
 
 ```sakura
-// src/shapes.sakura, the home module of Shape
+// src/shapes.sak, the home module of Shape
 pub type Shape = Circle(Float) | Rect(Float, Float) | Empty
 
 pub fn area(s: Shape) -> Float {
@@ -257,7 +257,7 @@ pub fn area(s: Shape) -> Float {
 ```
 
 ```sakura
-// src/report.sakura, in package `app`
+// src/report.sak, in package `app`
 import app/shapes.{Shape}
 
 fn total_area(xs: List<Shape>) -> Float {

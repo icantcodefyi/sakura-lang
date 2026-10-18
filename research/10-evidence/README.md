@@ -13,7 +13,7 @@ python3 research/10-evidence/summarize.py --input research/10-evidence/rerun.jso
 ```
 
 `--prepare` builds the release CLI into **this worktree's** `compiler/target`, then
-compiles `micro.sakura` into `research/10-evidence/target/js`. The result defaults
+compiles `micro.sak` into `research/10-evidence/target/js`. The result defaults
 to `results.json` when `--output` is omitted. Use a different output name to preserve
 the recorded baseline. `summarize.py` defaults to the checked-in `results.json` and `summary.md`; use
 `--input` and `--output` as above to summarize a rerun without replacing that evidence.
@@ -46,7 +46,7 @@ after one warmup, warm OS file cache, no persistent analysis service.
 
 ## Files
 
-- `micro.sakura`: nine original kernels; `main` is a reachability root.
+- `micro.sak`: nine original kernels; `main` is a reachability root.
 - `native.mjs`, `reference.mjs`: independently written comparison algorithms.
 - `bench.mjs`: in-process timer and correctness checks.
 - `measure.py`: build/orchestration/metadata, raw samples and process peak RSS.

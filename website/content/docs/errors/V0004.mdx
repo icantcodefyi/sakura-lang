@@ -22,7 +22,7 @@ fn price() -> Int { 1 + 2 }
 
 ## Wrong program
 
-[`compiler/tests/ui/V0004_invalid_character.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0004_invalid_character.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V0004_invalid_character.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0004_invalid_character.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn price() -> Int { 1 $ 2 }
@@ -43,7 +43,7 @@ fn price() -> Int { 1 $ 2 }
   "symbol_id": "main::V0004_invalid_character::price",
   "spans": [
     {
-      "uri": "file://$DIR/V0004_invalid_character.sakura",
+      "uri": "file://$DIR/V0004_invalid_character.sak",
       "content_hash": "sha256:7f1f0ceccb34c4fd667b6e3de781ca528e3486cb76e3981f65310a9c99a3fbdb",
       "start_byte": 56,
       "end_byte": 57,
@@ -62,7 +62,7 @@ fn price() -> Int { 1 $ 2 }
 
 ## Fixed program
 
-[`compiler/tests/ui/V0004_invalid_character.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0004_invalid_character.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V0004_invalid_character.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0004_invalid_character.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn price() -> Int { 1 + 2 }

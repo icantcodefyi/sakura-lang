@@ -215,7 +215,7 @@ fn greet() -> Unit ! {Console} {
 fn main() -> Unit ! {Console} { greet() }
 ```
 
-`sakura run hello.sakura --target js` prints exactly one line. Removing `Console` from `greet`'s declared row must fail with a stable diagnostic. An unfinished `Console.print(` must produce a tree and diagnostic without hanging. Snapshot emitted JS and actually execute it; generated text alone is insufficient.
+`sakura run hello.sak --target js` prints exactly one line. Removing `Console` from `greet`'s declared row must fail with a stable diagnostic. An unfinished `Console.print(` must produce a tree and diagnostic without hanging. Snapshot emitted JS and actually execute it; generated text alone is insufficient.
 
 ### M1 — useful pure language and typed errors
 

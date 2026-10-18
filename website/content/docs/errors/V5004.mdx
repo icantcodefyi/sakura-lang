@@ -33,7 +33,7 @@ let p: Percent = 50
 
 ## Wrong program
 
-[`compiler/tests/ui/V5004_literal_violates_refinement.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V5004_literal_violates_refinement.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V5004_literal_violates_refinement.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V5004_literal_violates_refinement.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 type Percent = Int where it >= 0 && it <= 100
@@ -56,7 +56,7 @@ let p: Percent = 150
   "symbol_id": "main::V5004_literal_violates_refinement::p",
   "spans": [
     {
-      "uri": "file://$DIR/V5004_literal_violates_refinement.sakura",
+      "uri": "file://$DIR/V5004_literal_violates_refinement.sak",
       "content_hash": "sha256:d2f1fca3817182d347c7d91f32404fd2a085f8b5002c18aacbcfed11d29340bd",
       "start_byte": 149,
       "end_byte": 152,
@@ -64,7 +64,7 @@ let p: Percent = 150
       "label": "never a valid `Percent`"
     },
     {
-      "uri": "file://$DIR/V5004_literal_violates_refinement.sakura",
+      "uri": "file://$DIR/V5004_literal_violates_refinement.sak",
       "content_hash": "sha256:d2f1fca3817182d347c7d91f32404fd2a085f8b5002c18aacbcfed11d29340bd",
       "start_byte": 110,
       "end_byte": 130,
@@ -84,7 +84,7 @@ let p: Percent = 150
 
 ## Fixed program
 
-[`compiler/tests/ui/V5004_literal_violates_refinement.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V5004_literal_violates_refinement.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V5004_literal_violates_refinement.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V5004_literal_violates_refinement.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 type Percent = Int where it >= 0 && it <= 100

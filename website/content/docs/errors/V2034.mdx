@@ -32,7 +32,7 @@ x = Pos.validate(PosRepr { ..x, n: input })?
 
 ## Wrong program
 
-[`compiler/tests/ui/V2034_refined_field_assignment.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2034_refined_field_assignment.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V2034_refined_field_assignment.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2034_refined_field_assignment.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 // `x.n = -1` is sugar for `x = PosRepr { ..x, n: -1 }`, a `PosRepr`, so it would hand back a
@@ -63,14 +63,14 @@ fn f(p: Pos) -> Pos {
   "symbol_id": "main::V2034_refined_field_assignment::f",
   "spans": [
     {
-      "uri": "file://$DIR/V2034_refined_field_assignment.sakura",
+      "uri": "file://$DIR/V2034_refined_field_assignment.sak",
       "content_hash": "sha256:72c19717d1973e6fd701c2fb3bdd48334ff9476cb8e0e79dffd11ed9bfa3317c",
       "start_byte": 349,
       "end_byte": 357,
       "role": "primary"
     },
     {
-      "uri": "file://$DIR/V2034_refined_field_assignment.sakura",
+      "uri": "file://$DIR/V2034_refined_field_assignment.sak",
       "content_hash": "sha256:72c19717d1973e6fd701c2fb3bdd48334ff9476cb8e0e79dffd11ed9bfa3317c",
       "start_byte": 283,
       "end_byte": 286,
@@ -95,7 +95,7 @@ fn f(p: Pos) -> Pos {
       "edits": [
         {
           "span": {
-            "uri": "file://$DIR/V2034_refined_field_assignment.sakura",
+            "uri": "file://$DIR/V2034_refined_field_assignment.sak",
             "content_hash": "sha256:72c19717d1973e6fd701c2fb3bdd48334ff9476cb8e0e79dffd11ed9bfa3317c",
             "start_byte": 349,
             "end_byte": 355,
@@ -105,7 +105,7 @@ fn f(p: Pos) -> Pos {
         },
         {
           "span": {
-            "uri": "file://$DIR/V2034_refined_field_assignment.sakura",
+            "uri": "file://$DIR/V2034_refined_field_assignment.sak",
             "content_hash": "sha256:72c19717d1973e6fd701c2fb3bdd48334ff9476cb8e0e79dffd11ed9bfa3317c",
             "start_byte": 357,
             "end_byte": 357,
@@ -119,11 +119,11 @@ fn f(p: Pos) -> Pos {
 }
 ```
 
-More fixtures for this code: [`compiler/tests/ui/V2034_refined_prefix_assignment.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2034_refined_prefix_assignment.sakura).
+More fixtures for this code: [`compiler/tests/ui/V2034_refined_prefix_assignment.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2034_refined_prefix_assignment.sak).
 
 ## Fixed program
 
-[`compiler/tests/ui/V2034_refined_field_assignment.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2034_refined_field_assignment.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V2034_refined_field_assignment.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2034_refined_field_assignment.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 type PosRepr = { n: Int }

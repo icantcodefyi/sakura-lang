@@ -25,7 +25,7 @@ def run(args, cwd=ROOT, timeout=120):
 def prepare():
     env = dict(os.environ, CARGO_TARGET_DIR=str(ROOT / 'compiler/target'))
     subprocess.run(['cargo', 'build', '--release', '-p', 'sakura_cli'], cwd=ROOT / 'compiler', env=env, check=True)
-    run([ROOT / 'compiler/target/release/sakura', 'build', HERE / 'micro.sakura', '--out-dir', HERE / 'target/js'])
+    run([ROOT / 'compiler/target/release/sakura', 'build', HERE / 'micro.sak', '--out-dir', HERE / 'target/js'])
 
 
 def main():
@@ -50,7 +50,7 @@ def main():
         'seed': 20261018, 'repetitions': args.repetitions,
         'method': '250ms warmup, power-of-two calibration >=30ms, 9 samples/process, alternating n..n+3, median of process medians',
         'sha256': {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in [
-            HERE / 'micro.sakura', HERE / 'bench.mjs', HERE / 'reference.mjs', HERE / 'native.mjs',
+            HERE / 'micro.sak', HERE / 'bench.mjs', HERE / 'reference.mjs', HERE / 'native.mjs',
             HERE / 'target/js/main/micro.js', HERE / 'target/js/sakura_runtime.js']},
     }
     rows = []
@@ -75,7 +75,7 @@ def main():
     cli = ROOT / 'compiler/target/release/sakura'
     latency = {}
     for operation in ['check', 'build']:
-        command = [cli, operation, HERE / 'micro.sakura']
+        command = [cli, operation, HERE / 'micro.sak']
         if operation == 'build': command += ['--out-dir', HERE / 'target/latency']
         run(command)
         samples = []

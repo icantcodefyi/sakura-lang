@@ -12,7 +12,7 @@ Use a smaller value, or `Decimal`/`Float` if you need the magnitude.
 
 ## Wrong program
 
-[`compiler/tests/ui/V0003_int_literal_out_of_range.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0003_int_literal_out_of_range.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V0003_int_literal_out_of_range.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0003_int_literal_out_of_range.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn big() -> Int { 9_223_372_036_854_775_808 }
@@ -33,7 +33,7 @@ fn big() -> Int { 9_223_372_036_854_775_808 }
   "symbol_id": "main::V0003_int_literal_out_of_range::big",
   "spans": [
     {
-      "uri": "file://$DIR/V0003_int_literal_out_of_range.sakura",
+      "uri": "file://$DIR/V0003_int_literal_out_of_range.sak",
       "content_hash": "sha256:5f34d3ad63174507c3a9b1b8d90384b2936de88d9f320c4e0fda01794042702f",
       "start_byte": 52,
       "end_byte": 77,
@@ -52,7 +52,7 @@ fn big() -> Int { 9_223_372_036_854_775_808 }
 
 ## Fixed program
 
-[`compiler/tests/ui/V0003_int_literal_out_of_range.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0003_int_literal_out_of_range.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V0003_int_literal_out_of_range.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0003_int_literal_out_of_range.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn big() -> Int { 9_223_372_036_854_775_807 }

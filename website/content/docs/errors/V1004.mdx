@@ -24,7 +24,7 @@ fn count() -> Int { List.len([1, 2]) }
 
 ## Wrong program
 
-[`compiler/tests/ui/V1004_name_case_mismatch.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1004_name_case_mismatch.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V1004_name_case_mismatch.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1004_name_case_mismatch.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn count() -> Int { list.len([1, 2]) }
@@ -45,7 +45,7 @@ fn count() -> Int { list.len([1, 2]) }
   "symbol_id": "main::V1004_name_case_mismatch::count",
   "spans": [
     {
-      "uri": "file://$DIR/V1004_name_case_mismatch.sakura",
+      "uri": "file://$DIR/V1004_name_case_mismatch.sak",
       "content_hash": "sha256:b661d72702f5a8e4b3d2d30860c4c549c89a174a52dfa4c7eab5f1ce861fb3fb",
       "start_byte": 54,
       "end_byte": 58,
@@ -67,7 +67,7 @@ fn count() -> Int { list.len([1, 2]) }
       "edits": [
         {
           "span": {
-            "uri": "file://$DIR/V1004_name_case_mismatch.sakura",
+            "uri": "file://$DIR/V1004_name_case_mismatch.sak",
             "content_hash": "sha256:b661d72702f5a8e4b3d2d30860c4c549c89a174a52dfa4c7eab5f1ce861fb3fb",
             "start_byte": 54,
             "end_byte": 58,
@@ -83,7 +83,7 @@ fn count() -> Int { list.len([1, 2]) }
 
 ## Fixed program
 
-[`compiler/tests/ui/V1004_name_case_mismatch.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1004_name_case_mismatch.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V1004_name_case_mismatch.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1004_name_case_mismatch.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn count() -> Int { List.len([1, 2]) }

@@ -23,7 +23,7 @@ Log.event(Level.Info, "token set", [])
 
 ## Wrong program
 
-[`compiler/tests/ui/V2031_secret_interpolated.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2031_secret_interpolated.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V2031_secret_interpolated.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2031_secret_interpolated.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn leak() -> Unit ! {Env, Log} {
@@ -47,7 +47,7 @@ fn leak() -> Unit ! {Env, Log} {
   "symbol_id": "main::V2031_secret_interpolated::leak",
   "spans": [
     {
-      "uri": "file://$DIR/V2031_secret_interpolated.sakura",
+      "uri": "file://$DIR/V2031_secret_interpolated.sak",
       "content_hash": "sha256:577018d20ab792123d30ea7aebba44ae2d4bfe1e9fdaaeba92b4edc94cf3a140",
       "start_byte": 165,
       "end_byte": 170,
@@ -70,7 +70,7 @@ fn leak() -> Unit ! {Env, Log} {
 
 ## Fixed program
 
-[`compiler/tests/ui/V2031_secret_interpolated.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2031_secret_interpolated.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V2031_secret_interpolated.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2031_secret_interpolated.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn leak() -> Unit ! {Env, Log} {

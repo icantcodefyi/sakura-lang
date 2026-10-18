@@ -22,7 +22,7 @@ let xs: List<Int> = List.empty()
 
 ## Wrong program
 
-[`compiler/tests/ui/V0011_call_site_type_arguments.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0011_call_site_type_arguments.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V0011_call_site_type_arguments.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0011_call_site_type_arguments.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn none() -> List<Int> { List<Int>.empty() }
@@ -43,7 +43,7 @@ fn none() -> List<Int> { List<Int>.empty() }
   "symbol_id": "main::V0011_call_site_type_arguments::none",
   "spans": [
     {
-      "uri": "file://$DIR/V0011_call_site_type_arguments.sakura",
+      "uri": "file://$DIR/V0011_call_site_type_arguments.sak",
       "content_hash": "sha256:b53d8923eac9064225dfe966b725c0f580bb879b266dab596f3e78257c992777",
       "start_byte": 63,
       "end_byte": 64,
@@ -60,11 +60,11 @@ fn none() -> List<Int> { List<Int>.empty() }
 }
 ```
 
-More fixtures for this code: [`compiler/tests/ui/V0011_type_arguments_at_call.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0011_type_arguments_at_call.sakura).
+More fixtures for this code: [`compiler/tests/ui/V0011_type_arguments_at_call.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0011_type_arguments_at_call.sak).
 
 ## Fixed program
 
-[`compiler/tests/ui/V0011_call_site_type_arguments.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0011_call_site_type_arguments.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V0011_call_site_type_arguments.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0011_call_site_type_arguments.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn none() -> List<Int> { List.empty() }

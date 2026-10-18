@@ -22,7 +22,7 @@ fn main() -> Unit ! {Console} { let greeting = "hi"; Console.print(greeting) }
 
 ## Wrong program
 
-[`compiler/tests/ui/V1002_unresolved_name.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1002_unresolved_name.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V1002_unresolved_name.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1002_unresolved_name.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn total() -> Int { subtotal + 1 }
@@ -43,7 +43,7 @@ fn total() -> Int { subtotal + 1 }
   "symbol_id": "main::V1002_unresolved_name::total",
   "spans": [
     {
-      "uri": "file://$DIR/V1002_unresolved_name.sakura",
+      "uri": "file://$DIR/V1002_unresolved_name.sak",
       "content_hash": "sha256:a05007960f2dfb9768cc5b843ff90f123b87583f10bdfecfe5abb50d9e2dbc5e",
       "start_byte": 54,
       "end_byte": 62,
@@ -60,11 +60,11 @@ fn total() -> Int { subtotal + 1 }
 }
 ```
 
-More fixtures for this code: [`compiler/tests/ui/V1002_module_function_did_you_mean.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1002_module_function_did_you_mean.sakura), [`compiler/tests/ui/V1002_module_function_no_near_candidate.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1002_module_function_no_near_candidate.sakura).
+More fixtures for this code: [`compiler/tests/ui/V1002_module_function_did_you_mean.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1002_module_function_did_you_mean.sak), [`compiler/tests/ui/V1002_module_function_no_near_candidate.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1002_module_function_no_near_candidate.sak).
 
 ## Fixed program
 
-[`compiler/tests/ui/V1002_unresolved_name.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1002_unresolved_name.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V1002_unresolved_name.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1002_unresolved_name.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn total(subtotal: Int) -> Int { subtotal + 1 }

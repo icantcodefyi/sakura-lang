@@ -25,7 +25,7 @@ fn four() -> Int { double(2) }
 
 ## Wrong program
 
-[`compiler/tests/ui/V2002_arity_mismatch.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2002_arity_mismatch.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V2002_arity_mismatch.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2002_arity_mismatch.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn double(x: Int) -> Int { x * 2 }
@@ -48,7 +48,7 @@ fn four() -> Int { double(2, 2) }
   "symbol_id": "main::V2002_arity_mismatch::four",
   "spans": [
     {
-      "uri": "file://$DIR/V2002_arity_mismatch.sakura",
+      "uri": "file://$DIR/V2002_arity_mismatch.sak",
       "content_hash": "sha256:c871525ab5c724ef81dd0f38e0dad00386ca60537d36d8e833a2e8bfe7e61031",
       "start_byte": 89,
       "end_byte": 101,
@@ -69,11 +69,11 @@ fn four() -> Int { double(2, 2) }
 }
 ```
 
-More fixtures for this code: [`compiler/tests/ui/V2002_function_value_keeps_type.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2002_function_value_keeps_type.sakura), [`compiler/tests/ui/V2002_names_callee_and_module.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2002_names_callee_and_module.sakura), [`compiler/tests/ui/V2002_row_argument_count.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2002_row_argument_count.sakura).
+More fixtures for this code: [`compiler/tests/ui/V2002_function_value_keeps_type.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2002_function_value_keeps_type.sak), [`compiler/tests/ui/V2002_names_callee_and_module.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2002_names_callee_and_module.sak), [`compiler/tests/ui/V2002_row_argument_count.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2002_row_argument_count.sak).
 
 ## Fixed program
 
-[`compiler/tests/ui/V2002_arity_mismatch.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2002_arity_mismatch.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V2002_arity_mismatch.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2002_arity_mismatch.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn double(x: Int) -> Int { x * 2 }

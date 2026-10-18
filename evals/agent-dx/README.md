@@ -70,7 +70,7 @@ fails if that schema grows unsupported keywords. Paths cannot escape the task.
 - `starter_files`: SHA-256 of each project file. `starter_sha256`: SHA-256 of the
   concatenation, sorted by relative POSIX path, of `path + NUL + hex_digest + LF`.
   The inventory must match exactly; hashes cover raw bytes, including the manifest.
-- `editable_files`: only `src/main.sakura`; other files, including permissions,
+- `editable_files`: only `src/main.sak`; other files, including permissions,
   are immutable. Existing types, signatures, contracts and visible tests are frozen.
 - `frozen_baseline`: `commit-starter`, ref `refs/heads/eval-baseline`, specs `all`.
   This is a creation instruction, not a placeholder SHA: commit the exact starter

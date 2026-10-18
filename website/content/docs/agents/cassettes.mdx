@@ -73,7 +73,7 @@ For provider recording, install `Llm.recording(path, Llm.anthropic(key, model))`
 
 ### A synthetic record-then-replay example
 
-In a scratch package, set `[permissions]` in `sakura.toml` to include `net = ["api.anthropic.com:443"]`, then put this in `src/main.sakura`. The outer HTTP handler supplies an invented response; it makes no network request:
+In a scratch package, set `[permissions]` in `sakura.toml` to include `net = ["api.anthropic.com:443"]`, then put this in `src/main.sak`. The outer HTTP handler supplies an invented response; it makes no network request:
 
 ```sakura
 import std/fs.{Fs}

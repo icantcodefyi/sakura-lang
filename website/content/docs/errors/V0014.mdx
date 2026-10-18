@@ -24,7 +24,7 @@ clamp(x, 0, 10)
 
 ## Wrong program
 
-[`compiler/tests/ui/V0014_named_argument.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0014_named_argument.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V0014_named_argument.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0014_named_argument.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn double(n: Int) -> Int { n * 2 }
@@ -47,7 +47,7 @@ fn four() -> Int { double(n: 2) }
   "symbol_id": "main::V0014_named_argument::four",
   "spans": [
     {
-      "uri": "file://$DIR/V0014_named_argument.sakura",
+      "uri": "file://$DIR/V0014_named_argument.sak",
       "content_hash": "sha256:92140ff8ef26bf98b95db3ae0e646b29364103e543747cfc5f18ff85a4e84934",
       "start_byte": 96,
       "end_byte": 98,
@@ -66,7 +66,7 @@ fn four() -> Int { double(n: 2) }
 
 ## Fixed program
 
-[`compiler/tests/ui/V0014_named_argument.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0014_named_argument.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V0014_named_argument.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0014_named_argument.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn double(n: Int) -> Int { n * 2 }

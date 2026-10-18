@@ -35,7 +35,7 @@ against your own temporary adapter until it lands. Never rewrite another owner's
 - No phase reads the filesystem; inputs arrive as an in-memory snapshot.
 - Every diagnostic uses a stable code from design §12.3 with a primary span. Never renumber codes.
 - Malformed input must produce diagnostics, never a panic or a hang.
-- Tests: `insta` snapshots for trees, diagnostics, IR and emitted JS; `.sakura` programs in
+- Tests: `insta` snapshots for trees, diagnostics, IR and emitted JS; `.sak` programs in
   `compiler/tests/ui` (expected diagnostics) and `compiler/tests/semantics` (expected stdout).
   Review every snapshot diff; never bulk-accept.
 - Commits: small Conventional Commits scoped by crate, e.g. `feat(syntax): parse match arms`.

@@ -24,7 +24,7 @@ fn answer() -> Int { 42 }
 
 ## Wrong program
 
-[`compiler/tests/ui/V1011_missing_body.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1011_missing_body.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V1011_missing_body.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1011_missing_body.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn answer() -> Int
@@ -45,7 +45,7 @@ fn answer() -> Int
   "symbol_id": "main::V1011_missing_body::answer",
   "spans": [
     {
-      "uri": "file://$DIR/V1011_missing_body.sakura",
+      "uri": "file://$DIR/V1011_missing_body.sak",
       "content_hash": "sha256:a0934d9e9c56abf72c8033a6645bf7dbffd399f7656e88d39811aa065ea0cffd",
       "start_byte": 63,
       "end_byte": 69,
@@ -64,7 +64,7 @@ fn answer() -> Int
 
 ## Fixed program
 
-[`compiler/tests/ui/V1011_missing_body.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1011_missing_body.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V1011_missing_body.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1011_missing_body.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn answer() -> Int { 42 }

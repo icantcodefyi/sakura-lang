@@ -24,7 +24,7 @@ fn stop() -> Int { for _ in 0..10 { break }; 1 }
 
 ## Wrong program
 
-[`compiler/tests/ui/V1041_jump_outside_loop.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1041_jump_outside_loop.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V1041_jump_outside_loop.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1041_jump_outside_loop.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn stop() -> Int {
@@ -48,7 +48,7 @@ fn stop() -> Int {
   "symbol_id": "main::V1041_jump_outside_loop::stop",
   "spans": [
     {
-      "uri": "file://$DIR/V1041_jump_outside_loop.sakura",
+      "uri": "file://$DIR/V1041_jump_outside_loop.sak",
       "content_hash": "sha256:95b4618fc7120e534d43e6e16c5466203c9283cf3bf7fb67c03255622ba7a384",
       "start_byte": 81,
       "end_byte": 86,
@@ -67,7 +67,7 @@ fn stop() -> Int {
 
 ## Fixed program
 
-[`compiler/tests/ui/V1041_jump_outside_loop.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1041_jump_outside_loop.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V1041_jump_outside_loop.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1041_jump_outside_loop.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn stop() -> Int {

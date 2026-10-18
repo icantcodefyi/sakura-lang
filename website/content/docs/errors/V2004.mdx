@@ -25,7 +25,7 @@ fn depth(p: Point) -> Int { p.y }
 
 ## Wrong program
 
-[`compiler/tests/ui/V2004_unknown_field.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2004_unknown_field.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V2004_unknown_field.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2004_unknown_field.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 type Point = { x: Int, y: Int }
@@ -48,7 +48,7 @@ fn depth(p: Point) -> Int { p.z }
   "symbol_id": "main::V2004_unknown_field::depth",
   "spans": [
     {
-      "uri": "file://$DIR/V2004_unknown_field.sakura",
+      "uri": "file://$DIR/V2004_unknown_field.sak",
       "content_hash": "sha256:26b824edfe6805bb39737d8cbc2a61fa872417ca248585185ad9f0858d8ec9a6",
       "start_byte": 95,
       "end_byte": 98,
@@ -67,7 +67,7 @@ fn depth(p: Point) -> Int { p.z }
 
 ## Fixed program
 
-[`compiler/tests/ui/V2004_unknown_field.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2004_unknown_field.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V2004_unknown_field.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2004_unknown_field.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 type Point = { x: Int, y: Int }

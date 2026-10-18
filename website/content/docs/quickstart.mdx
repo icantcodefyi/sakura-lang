@@ -58,7 +58,7 @@ edition = "2026"
 
 `[permissions]` is the ceiling on what the program may do (design §6). This program only prints, so it is empty. `sakura run` enforces startup grants and passes the table as `SAKURA_PERMISSIONS` for host-handler enforcement. Missing required root authority exits with 75.
 
-```sakura title="hello/src/main.sakura"
+```sakura title="hello/src/main.sak"
 /// Build a greeting for a person.
 fn greet(name: String) -> String { "Hello, {name}" }
 
@@ -116,7 +116,7 @@ Hello, world
 
 Suppose `greet` starts printing without declaring it:
 
-```sakura title="hello/src/main.sakura"
+```sakura title="hello/src/main.sak"
 /// Build a greeting for a person.
 fn greet(name: String) -> String {
   Console.print("greeting {name}")
@@ -128,7 +128,7 @@ pub fn main() -> Unit ! {Console} { Console.print(greet("world")) }
 
 ```text
 error[V3001]: function `greet` performs `Console`, which its signature does not allow (allowed: `{}`)
-  ┌─ src/main.sakura:2:4
+  ┌─ src/main.sak:2:4
   │
 2 │ fn greet(name: String) -> String {
   │    ^^^^^
@@ -158,9 +158,9 @@ error[V3001]: function `greet` performs `Console`, which its signature does not 
   "snapshot": "sha256:9470da24…",
   "symbol_id": null,
   "spans": [
-    { "uri": "file:///…/hello/src/main.sakura", "content_hash": "sha256:f1ee9f10…",
+    { "uri": "file:///…/hello/src/main.sak", "content_hash": "sha256:f1ee9f10…",
       "start_byte": 38, "end_byte": 43, "role": "primary" },
-    { "uri": "file:///…/hello/src/main.sakura", "content_hash": "sha256:f1ee9f10…",
+    { "uri": "file:///…/hello/src/main.sak", "content_hash": "sha256:f1ee9f10…",
       "start_byte": 72, "end_byte": 104, "role": "cause",
       "label": "`Console.print` performs `Console` here" }
   ],
@@ -173,7 +173,7 @@ error[V3001]: function `greet` performs `Console`, which its signature does not 
   "fixes": [
     { "id": "f:e8f9a0e1d729d3d1.0", "title": "Add `Console` to the signature",
       "applicability": "suggested", "impact": "interface_change",
-      "edits": [{ "span": { "uri": "file:///…/hello/src/main.sakura", "content_hash": "sha256:f1ee9f10…",
+      "edits": [{ "span": { "uri": "file:///…/hello/src/main.sak", "content_hash": "sha256:f1ee9f10…",
                             "start_byte": 67, "end_byte": 67, "role": "primary" },
                   "replacement": " ! {Console}" }] },
     { "id": "f:e8f9a0e1d729d3d1.1", "title": "Handle the effect locally with `with`",

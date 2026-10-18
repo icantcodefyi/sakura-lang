@@ -23,7 +23,7 @@ xs = List.push(xs, 1)      // or: let _ = …
 
 ## Wrong program
 
-[`compiler/tests/ui/V2040_unused_value.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2040_unused_value.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V2040_unused_value.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2040_unused_value.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn grow() -> List<Int> {
@@ -48,7 +48,7 @@ fn grow() -> List<Int> {
   "symbol_id": "main::V2040_unused_value::grow",
   "spans": [
     {
-      "uri": "file://$DIR/V2040_unused_value.sakura",
+      "uri": "file://$DIR/V2040_unused_value.sak",
       "content_hash": "sha256:7b646d34a2de853d303274a74c43956873368e72ede612763bde2b4f04167b85",
       "start_byte": 76,
       "end_byte": 92,
@@ -73,7 +73,7 @@ fn grow() -> List<Int> {
       "edits": [
         {
           "span": {
-            "uri": "file://$DIR/V2040_unused_value.sakura",
+            "uri": "file://$DIR/V2040_unused_value.sak",
             "content_hash": "sha256:7b646d34a2de853d303274a74c43956873368e72ede612763bde2b4f04167b85",
             "start_byte": 76,
             "end_byte": 76,
@@ -89,7 +89,7 @@ fn grow() -> List<Int> {
 
 ## Fixed program
 
-[`compiler/tests/ui/V2040_unused_value.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2040_unused_value.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V2040_unused_value.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2040_unused_value.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn grow() -> List<Int> {

@@ -44,7 +44,7 @@ After solving the enclosing body, `sakura check --json` emits one `hole` record 
 | `candidates` | Up to 10 ranked expressions that fit, each with `expr` and its `fit` kind. |
 | `contracts_in_scope` | The refinements and contracts assumed at this point. |
 
-For the `clamp` program above, saved as `src/main.sakura`, the record looks like this, pretty-printed, with hashes shortened:
+For the `clamp` program above, saved as `src/main.sak`, the record looks like this, pretty-printed, with hashes shortened:
 
 ```json
 {
@@ -53,7 +53,7 @@ For the `clamp` program above, saved as `src/main.sakura`, the record looks like
   "id": "h:5d0c8e2b1a7f4396",
   "name": "body",
   "snapshot": "sha256:…",
-  "span": { "uri": "file:///…/src/main.sakura", "content_hash": "sha256:…",
+  "span": { "uri": "file:///…/src/main.sak", "content_hash": "sha256:…",
             "start_byte": 123, "end_byte": 128, "role": "primary" },
   "expected_type": { "render": "Int", "structured": null },
   "allowed_effects": { "render": "{}", "row": { "labels": [], "tail": null } },

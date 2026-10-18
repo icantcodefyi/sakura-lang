@@ -27,7 +27,7 @@ fn or_default<T>(body: fn() -> T ! {Fail<Refused | Timeout>}, default: T) -> T {
 
 ## Wrong program
 
-[`compiler/tests/ui/W4010_catch_all_on_open_union.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/W4010_catch_all_on_open_union.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/W4010_catch_all_on_open_union.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/W4010_catch_all_on_open_union.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn or_default<T, E>(body: fn() -> T ! {Fail<E>}, default: T) -> T {
@@ -52,7 +52,7 @@ fn or_default<T, E>(body: fn() -> T ! {Fail<E>}, default: T) -> T {
   "symbol_id": "main::W4010_catch_all_on_open_union::or_default",
   "spans": [
     {
-      "uri": "file://$DIR/W4010_catch_all_on_open_union.sakura",
+      "uri": "file://$DIR/W4010_catch_all_on_open_union.sak",
       "content_hash": "sha256:c1845e4f3393b763ee6b588a26a8e1b3a46aaec1bcfd8d8a934b86a5eb963015",
       "start_byte": 131,
       "end_byte": 132,
@@ -71,7 +71,7 @@ fn or_default<T, E>(body: fn() -> T ! {Fail<E>}, default: T) -> T {
 
 ## Fixed program
 
-[`compiler/tests/ui/W4010_catch_all_on_open_union.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/W4010_catch_all_on_open_union.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/W4010_catch_all_on_open_union.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/W4010_catch_all_on_open_union.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 error Timeout

@@ -21,7 +21,7 @@ rustup target add wasm32-unknown-unknown --toolchain nightly
 cargo +nightly install cargo-fuzz --version 0.13.2 --locked
 cargo +nightly fetch --locked --manifest-path fuzz/Cargo.toml   # cargo-fuzz has no --locked
 mkdir -p target/fuzz-corpus/parse
-cp fuzz/corpus/parse/* tests/ui/*.sakura tests/semantics/*.sakura target/fuzz-corpus/parse/
+cp fuzz/corpus/parse/* tests/ui/*.sak tests/semantics/*.sak target/fuzz-corpus/parse/
 cargo +nightly fuzz run parse target/fuzz-corpus/parse -- \
   -max_total_time=120 -max_len=16384 -timeout=10 -rss_limit_mb=2048
 ```

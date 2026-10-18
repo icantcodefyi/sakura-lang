@@ -18,12 +18,12 @@ pub fn main() -> Unit {
 }
 ```
 
-Save this as `main.sakura`, then run:
+Save this as `main.sak`, then run:
 
 ```sh
-sakura verify main.sakura
-sakura verify --json main.sakura
-sakura verify --target wasm main.sakura
+sakura verify main.sak
+sakura verify --json main.sak
+sakura verify --target wasm main.sak
 ```
 
 The example proves two obligations: this call meets `ordered`, and `clamp` meets `bounded` on normal return assuming its precondition. The default profile is JavaScript's safe-integer range; `--target wasm` checks signed i64 arithmetic. It selects a verification profile; [`run --target wasm`](/docs/tour/memory#backends) executes a program.
@@ -40,7 +40,7 @@ A completed run exits 1 for any `disproved` obligation and otherwise 0, includin
 ## What changes in a build
 
 ```sh
-sakura build --manifest main.sakura
+sakura build --manifest main.sak
 ```
 
 JS builds can remove eligible `ensures` and non-entry `where` checks using matching authenticated proof records. Missing or stale records retain checks. This does not remove preconditions or `T.from` entry checks, and the predicate's computation remains. `run`, `test`, LIR output and WASM builds retain these checks. Separate interval-based arithmetic optimization does not require the solver.

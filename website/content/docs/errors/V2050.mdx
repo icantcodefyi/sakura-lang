@@ -12,7 +12,7 @@ Replace the hole with an expression.
 
 ## Wrong program
 
-[`compiler/tests/ui/V2050_hole_in_build.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2050_hole_in_build.sakura), which the compiler's ui suite runs through `sakura build`:
+[`compiler/tests/ui/V2050_hole_in_build.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2050_hole_in_build.sak), which the compiler's ui suite runs through `sakura build`:
 
 ```sakura
 fn unfinished(x: Int) -> Int { ?result }
@@ -22,7 +22,7 @@ fn unfinished(x: Int) -> Int { ?result }
 
 ## Fixed program
 
-[`compiler/tests/ui/V2050_hole_in_build.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2050_hole_in_build.fixed.sakura), which `sakura build` accepts with no diagnostics:
+[`compiler/tests/ui/V2050_hole_in_build.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2050_hole_in_build.fixed.sak), which `sakura build` accepts with no diagnostics:
 
 ```sakura
 fn unfinished(x: Int) -> Int { x * 2 }

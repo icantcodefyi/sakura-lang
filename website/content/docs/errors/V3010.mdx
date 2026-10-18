@@ -25,7 +25,7 @@ effect Store { fn save(key: String) -> Unit ! {Fail<Full>} }
 
 ## Wrong program
 
-[`compiler/tests/ui/V3010_invalid_operation_row.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3010_invalid_operation_row.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V3010_invalid_operation_row.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3010_invalid_operation_row.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 effect Store {
@@ -48,7 +48,7 @@ effect Store {
   "symbol_id": "main::V3010_invalid_operation_row::Store.save",
   "spans": [
     {
-      "uri": "file://$DIR/V3010_invalid_operation_row.sakura",
+      "uri": "file://$DIR/V3010_invalid_operation_row.sak",
       "content_hash": "sha256:57175066baa343e9c90ba3522cbcca1eb9714fb6cb102fe0f1e930bd25c7f191",
       "start_byte": 82,
       "end_byte": 91,
@@ -67,7 +67,7 @@ effect Store {
 
 ## Fixed program
 
-[`compiler/tests/ui/V3010_invalid_operation_row.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3010_invalid_operation_row.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V3010_invalid_operation_row.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3010_invalid_operation_row.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 error Full

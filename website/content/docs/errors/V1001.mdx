@@ -24,7 +24,7 @@ fn answer() -> Int { 42 }
 
 ## Wrong program
 
-[`compiler/tests/ui/V1001_duplicate_definition.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1001_duplicate_definition.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V1001_duplicate_definition.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1001_duplicate_definition.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn answer() -> Int { 41 }
@@ -47,14 +47,14 @@ fn answer() -> Int { 42 }
   "symbol_id": "main::V1001_duplicate_definition::answer",
   "spans": [
     {
-      "uri": "file://$DIR/V1001_duplicate_definition.sakura",
+      "uri": "file://$DIR/V1001_duplicate_definition.sak",
       "content_hash": "sha256:351780f2d565fdefc89bb127a89c101039dd0a5acb8ed277b9c8799cf98ee040",
       "start_byte": 64,
       "end_byte": 70,
       "role": "primary"
     },
     {
-      "uri": "file://$DIR/V1001_duplicate_definition.sakura",
+      "uri": "file://$DIR/V1001_duplicate_definition.sak",
       "content_hash": "sha256:351780f2d565fdefc89bb127a89c101039dd0a5acb8ed277b9c8799cf98ee040",
       "start_byte": 37,
       "end_byte": 43,
@@ -74,7 +74,7 @@ fn answer() -> Int { 42 }
 
 ## Fixed program
 
-[`compiler/tests/ui/V1001_duplicate_definition.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1001_duplicate_definition.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V1001_duplicate_definition.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1001_duplicate_definition.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn answer() -> Int { 42 }

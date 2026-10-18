@@ -927,7 +927,7 @@ L1… so they do not collide with the M4-RT entries above.
   (a branch per read; a static check is impossible), and (b) `Eq`, `Ord`, `Hash` and `Show` of
   tuples must not depend on the row: `(3, 3)` built either way is one value, one `Set` member
   and one `Map` key, so `Hash` of an `i64` slot and of an `IntBox` word must agree. Builtins that
-  read tuples (`map_of`) read through rows too. `crates/sakura_lir/tests/corpus/lir/tuple_shapes.sakura`
+  read tuples (`map_of`) read through rows too. `crates/sakura_lir/tests/corpus/lir/tuple_shapes.sak`
   pins both; it failed in the interpreter until (b) held. This answers M4-RT's P5: the LIR
   projects through the row kinds and never coerces a tuple at an instantiation site, and
   `sakura_rt` already implements (b). Question for the designer: keep E2 with these two

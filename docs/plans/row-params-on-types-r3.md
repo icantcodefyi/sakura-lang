@@ -75,7 +75,7 @@ type arguments are formatted like rows in signatures: sorted labels, `Fail<…>`
   generics. `Handler<Eff, r>` stays the compiler-known case but should go through the same path if
   that is the smaller diff.
 - Interface hash / exports: row generics are part of a type's interface.
-- Tests: `tests/ui/V1007_row_argument_kind.sakura` (`type Box<e> = { run: fn() -> Unit ! e }` then
+- Tests: `tests/ui/V1007_row_argument_kind.sak` (`type Box<e> = { run: fn() -> Unit ! e }` then
   `let b: Box<Int> = …` → `V1007`; `List<{Console}>` → `V1007`), `V1004` arity with a row param, a
   positive lowering snapshot for `Tool<e>`-shaped declarations.
 
@@ -148,11 +148,11 @@ Update `compiler/std/INDEX.md` (signatures; deviations 16 and 18 become "resolve
 
 ## 7. Tests across crates
 
-- `tests/semantics/row_param_type.sakura` (**M2**, `mode: run`): `type Box<e> = { run: fn(Int) ->
+- `tests/semantics/row_param_type.sak` (**M2**, `mode: run`): `type Box<e> = { run: fn(Int) ->
   Int ! e }`, `fn apply<e>(b: Box<e>, x: Int) -> Int ! e { let f = b.run; f(x) }`, a `Box<{Console}>`
   whose function prints, a `Box<{}>`, and a list `[box_console, box_pure]` whose element type unifies
   to `Box<{Console}>`; expected stdout checked in.
-- `tests/ui/V1007_row_argument_kind.sakura`, `tests/ui/V1004_row_argument_count.sakura`.
+- `tests/ui/V1007_row_argument_kind.sak`, `tests/ui/V1004_row_argument_count.sak`.
 - `sakura_types` unit tests: `Tool<{Http}>` vs `Tool<{Console}>` closed mismatch; open tails join;
   kind of `e` on `Tool<e>` is failure-carrying, on `type Wrap<E, e> = { f: fn() -> Unit ! {Fail<E> |
   e} }` Fail-free; generalization of a local holding a `Box<?t>`; rendering snapshots.
@@ -180,4 +180,4 @@ Update `compiler/std/INDEX.md` (signatures; deviations 16 and 18 become "resolve
 5. **The §7 semantics fixture** leaves the pure box unannotated: a `Box<{}>` and a
    `Box<{Console}>` do not unify (rows are never widened), so only an open row joins the list.
 6. **Not done**: a `sakura_hir` lowering snapshot for `Agent<T, e>` (the parser corpus
-   `row_arguments.sakura` and `sakura_types/tests/row_args.rs` cover the shapes).
+   `row_arguments.sak` and `sakura_types/tests/row_args.rs` cover the shapes).

@@ -10,7 +10,7 @@ The left side of `=` must be a `var` name or a field path on one (`u.email = e`)
 
 ## Wrong program
 
-[`compiler/tests/ui/V0013_invalid_assign_target.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0013_invalid_assign_target.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V0013_invalid_assign_target.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0013_invalid_assign_target.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn first_to_zero() -> List<Int> {
@@ -35,7 +35,7 @@ fn first_to_zero() -> List<Int> {
   "symbol_id": "main::V0013_invalid_assign_target::first_to_zero",
   "spans": [
     {
-      "uri": "file://$DIR/V0013_invalid_assign_target.sakura",
+      "uri": "file://$DIR/V0013_invalid_assign_target.sak",
       "content_hash": "sha256:9efe4470093197fa02711feae337771ddb8627e42f4dd694d1f2e2392af074f8",
       "start_byte": 88,
       "end_byte": 93,
@@ -54,7 +54,7 @@ fn first_to_zero() -> List<Int> {
 
 ## Fixed program
 
-[`compiler/tests/ui/V0013_invalid_assign_target.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0013_invalid_assign_target.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V0013_invalid_assign_target.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0013_invalid_assign_target.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn first_to_zero() -> List<Int> {

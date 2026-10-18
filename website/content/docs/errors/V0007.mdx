@@ -11,7 +11,7 @@ interface impl` (design §2.1). Pick another name.
 
 ## Wrong program
 
-[`compiler/tests/ui/V0007_reserved_keyword.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0007_reserved_keyword.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V0007_reserved_keyword.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0007_reserved_keyword.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 // `spawn` is reserved (§2.1); it is legal only directly after `.` or `fn` (`Task.spawn`).
@@ -36,7 +36,7 @@ fn price() -> Int {
   "symbol_id": "main::V0007_reserved_keyword::price",
   "spans": [
     {
-      "uri": "file://$DIR/V0007_reserved_keyword.sakura",
+      "uri": "file://$DIR/V0007_reserved_keyword.sak",
       "content_hash": "sha256:09bc15c8fdbb45a0dd80c447bbd51ee4334417798ba6dcb7d43656ecc555285e",
       "start_byte": 152,
       "end_byte": 157,
@@ -55,7 +55,7 @@ fn price() -> Int {
 
 ## Fixed program
 
-[`compiler/tests/ui/V0007_reserved_keyword.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0007_reserved_keyword.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V0007_reserved_keyword.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0007_reserved_keyword.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn price() -> Int {

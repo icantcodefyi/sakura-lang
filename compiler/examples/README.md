@@ -1,7 +1,7 @@
 # Example corpus
 
-The design §15 programs as runnable projects (`sakura.toml`, `src/main.sakura`, and
-`expected.stdout` for `mode: run`). Header directives in `src/main.sakura` follow the fixture
+The design §15 programs as runnable projects (`sakura.toml`, `src/main.sak`, and
+`expected.stdout` for `mode: run`). Header directives in `src/main.sak` follow the fixture
 format in `compiler/REQUESTS.md` (F → E), plus `// args:` (arguments after `--`) and
 `// stdout-regex: true` (each line of `expected.stdout` is a regex for the matching
 stdout line). Programs also carry `test` blocks; `cargo test -p sakura_cli --test examples` runs every

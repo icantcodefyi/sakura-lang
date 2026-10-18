@@ -16,7 +16,7 @@ version and build revision. These teaching examples are separate from the agent
 evaluation tasks.
 
 The source of each page is its example's `recipe.md`, `sakura.toml`,
-`src/main.sakura` and fixture files. Run `cargo run -p agent_docs` from `compiler/`
+`src/main.sak` and fixture files. Run `cargo run -p agent_docs` from `compiler/`
 to regenerate the cookbook and skill reference. Edit those sources, not the rendered pages.
 
 ## Decode JSON into a refined record
@@ -56,7 +56,7 @@ edition = "2026"
 
 ### Source and tests
 
-`src/main.sakura` includes all required imports and tests.
+`src/main.sak` includes all required imports and tests.
 
 ```sakura test id=cookbook-json_refined project=json_refined
 // milestone: M3
@@ -139,7 +139,7 @@ fs.read = ["./data"]
 
 ### Source and tests
 
-`src/main.sakura` includes all required imports and tests.
+`src/main.sak` includes all required imports and tests.
 
 ```sakura test id=cookbook-cli_files project=cli_files
 // milestone: M3
@@ -245,7 +245,7 @@ edition = "2026"
 
 ### Source and tests
 
-`src/main.sakura` includes all required imports and tests.
+`src/main.sak` includes all required imports and tests.
 
 ```sakura test id=cookbook-http_retry project=http_retry
 // milestone: M3
@@ -371,7 +371,7 @@ edition = "2026"
 
 ### Source and tests
 
-`src/main.sakura` includes all required imports and tests.
+`src/main.sak` includes all required imports and tests.
 
 ```sakura test id=cookbook-sqlite_query project=sqlite_query
 // milestone: M3
@@ -464,7 +464,7 @@ edition = "2026"
 
 ### Source and tests
 
-`src/main.sakura` includes all required imports and tests.
+`src/main.sak` includes all required imports and tests.
 
 ```sakura test id=cookbook-router_endpoint project=router_endpoint
 // milestone: M3
@@ -550,7 +550,7 @@ edition = "2026"
 
 ### Source and tests
 
-`src/main.sakura` includes all required imports and tests.
+`src/main.sak` includes all required imports and tests.
 
 ```sakura test id=cookbook-scripted_tool project=scripted_tool
 // milestone: M3
@@ -679,7 +679,7 @@ edition = "2026"
 
 ### Source and tests
 
-`src/main.sakura` includes all required imports and tests.
+`src/main.sak` includes all required imports and tests.
 
 ```sakura test id=cookbook-budgeted_agent project=budgeted_agent
 // milestone: M3
@@ -816,7 +816,7 @@ edition = "2026"
 
 ### Source and tests
 
-`src/main.sakura` includes all required imports and tests.
+`src/main.sak` includes all required imports and tests.
 
 ```sakura test id=cookbook-indexed_update project=indexed_update
 // milestone: M3

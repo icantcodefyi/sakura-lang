@@ -12,7 +12,7 @@ keeps the compiler's stack bounded on malformed or adversarial input. Split the 
 
 ## Wrong program
 
-[`compiler/tests/ui/V0008_nesting_limit.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0008_nesting_limit.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V0008_nesting_limit.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0008_nesting_limit.sak), which the compiler's ui suite runs through `sakura check`:
 
 The program is 10022 bytes, too long to show here; open the file to read it.
 
@@ -31,7 +31,7 @@ The program is 10022 bytes, too long to show here; open the file to read it.
   "symbol_id": "main::V0008_nesting_limit::deep",
   "spans": [
     {
-      "uri": "file://$DIR/V0008_nesting_limit.sakura",
+      "uri": "file://$DIR/V0008_nesting_limit.sak",
       "content_hash": "sha256:b0535cfc22662ebf15361d5ab0c56fe7b5f50a4fd0acf3139b95343829f66f54",
       "start_byte": 240,
       "end_byte": 241,
@@ -50,7 +50,7 @@ The program is 10022 bytes, too long to show here; open the file to read it.
 
 ## Fixed program
 
-[`compiler/tests/ui/V0008_nesting_limit.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0008_nesting_limit.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V0008_nesting_limit.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0008_nesting_limit.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn deep() -> Int {

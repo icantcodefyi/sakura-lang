@@ -23,7 +23,7 @@ fn fact(n: Int) -> Int { if n == 0 { 1 } else { n * fact(n - 1) } }
 
 ## Wrong program
 
-[`compiler/tests/ui/V1020_recursive_lambda.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1020_recursive_lambda.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V1020_recursive_lambda.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1020_recursive_lambda.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn fact_of_five() -> Int {
@@ -47,7 +47,7 @@ fn fact_of_five() -> Int {
   "symbol_id": "main::V1020_recursive_lambda::fact_of_five",
   "spans": [
     {
-      "uri": "file://$DIR/V1020_recursive_lambda.sakura",
+      "uri": "file://$DIR/V1020_recursive_lambda.sak",
       "content_hash": "sha256:b3195773f224d3690fe85396ada7c0c4b7be8a53a36bdc3cd1e635e61d74760b",
       "start_byte": 109,
       "end_byte": 113,
@@ -66,7 +66,7 @@ fn fact_of_five() -> Int {
 
 ## Fixed program
 
-[`compiler/tests/ui/V1020_recursive_lambda.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1020_recursive_lambda.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V1020_recursive_lambda.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1020_recursive_lambda.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn fact(n: Int) -> Int { if n == 0 { 1 } else { n * fact(n - 1) } }

@@ -12,5 +12,5 @@ version and build revision. These teaching examples are separate from the agent
 evaluation tasks.
 
 The source of each page is its example's `recipe.md`, `sakura.toml`,
-`src/main.sakura` and fixture files. Run `cargo run -p agent_docs` from `compiler/`
+`src/main.sak` and fixture files. Run `cargo run -p agent_docs` from `compiler/`
 to regenerate the cookbook and skill reference. Edit those sources, not the rendered pages.

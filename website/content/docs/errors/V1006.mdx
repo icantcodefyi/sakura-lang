@@ -25,7 +25,7 @@ fn make() -> Html { Html.text("<b>escaped</b>") }
 
 ## Wrong program
 
-[`compiler/tests/ui/V1006_opaque_constructor.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1006_opaque_constructor.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V1006_opaque_constructor.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1006_opaque_constructor.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 import std/html.{Html}
@@ -48,14 +48,14 @@ fn forged() -> Html { Html("<script>evil()</script>") }
   "symbol_id": "main::V1006_opaque_constructor::forged",
   "spans": [
     {
-      "uri": "file://$DIR/V1006_opaque_constructor.sakura",
+      "uri": "file://$DIR/V1006_opaque_constructor.sak",
       "content_hash": "sha256:211177718e6c3b71682268c70462cfd8072f349bdf97e6e7fd211c4f3a7726f5",
       "start_byte": 80,
       "end_byte": 84,
       "role": "primary"
     },
     {
-      "uri": "sakura:///std/html.sakura",
+      "uri": "sakura:///std/html.sak",
       "content_hash": "sha256:c1ae97f2077f44255567e95a767863404dbc4f7feea60cdcff0ed4e48a4c69aa",
       "start_byte": 413,
       "end_byte": 417,
@@ -73,11 +73,11 @@ fn forged() -> Html { Html("<script>evil()</script>") }
 }
 ```
 
-More fixtures for this code: [`compiler/tests/ui/V1006_opaque_field.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1006_opaque_field.sakura), [`compiler/tests/ui/V1006_private_item.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1006_private_item.sakura).
+More fixtures for this code: [`compiler/tests/ui/V1006_opaque_field.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1006_opaque_field.sak), [`compiler/tests/ui/V1006_private_item.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1006_private_item.sak).
 
 ## Fixed program
 
-[`compiler/tests/ui/V1006_opaque_constructor.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1006_opaque_constructor.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V1006_opaque_constructor.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1006_opaque_constructor.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 import std/html.{Html}

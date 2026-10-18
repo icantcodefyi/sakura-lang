@@ -49,7 +49,7 @@ u.trust(@trust("display only"))
 
 ## Wrong program
 
-[`compiler/tests/ui/V6001_capability_construction.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V6001_capability_construction.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V6001_capability_construction.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V6001_capability_construction.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 import std/fs.{Dir}
@@ -73,7 +73,7 @@ fn forge() -> Dir
   "symbol_id": "main::V6001_capability_construction::forge",
   "spans": [
     {
-      "uri": "file://$DIR/V6001_capability_construction.sakura",
+      "uri": "file://$DIR/V6001_capability_construction.sak",
       "content_hash": "sha256:c4777cc6bde9a20e0e5888061689b5b68f25177b3155829732f48e0606ac8e45",
       "start_byte": 120,
       "end_byte": 123,
@@ -92,7 +92,7 @@ fn forge() -> Dir
 
 ## Fixed program
 
-[`compiler/tests/ui/V6001_capability_construction.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V6001_capability_construction.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V6001_capability_construction.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V6001_capability_construction.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 import std/fs.{Dir, Fs}

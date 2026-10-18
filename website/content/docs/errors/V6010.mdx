@@ -25,7 +25,7 @@ pub fn main() -> Unit ! {Console} {
 
 ## Wrong program
 
-[`compiler/tests/ui/V6010_non_std_effect_in_main.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V6010_non_std_effect_in_main.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V6010_non_std_effect_in_main.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V6010_non_std_effect_in_main.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 effect Db {
@@ -50,7 +50,7 @@ pub fn main() -> Unit ! {Db} { let _ = Db.count() }
   "symbol_id": "main::V6010_non_std_effect_in_main::main",
   "spans": [
     {
-      "uri": "file://$DIR/V6010_non_std_effect_in_main.sakura",
+      "uri": "file://$DIR/V6010_non_std_effect_in_main.sak",
       "content_hash": "sha256:078c14d559d336cea5c09610d1a85ad083cbda818318ac750afcd2aceb5d8c23",
       "start_byte": 94,
       "end_byte": 96,
@@ -69,7 +69,7 @@ pub fn main() -> Unit ! {Db} { let _ = Db.count() }
 
 ## Fixed program
 
-[`compiler/tests/ui/V6010_non_std_effect_in_main.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V6010_non_std_effect_in_main.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V6010_non_std_effect_in_main.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V6010_non_std_effect_in_main.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 effect Db {

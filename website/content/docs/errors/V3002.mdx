@@ -27,7 +27,7 @@ fn apply<e>(f: fn() -> Int ! e) -> Int ! e { f() }
 
 ## Wrong program
 
-[`compiler/tests/ui/V3002_effect_label_not_permitted.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3002_effect_label_not_permitted.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V3002_effect_label_not_permitted.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3002_effect_label_not_permitted.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn apply(f: fn() -> Int) -> Int { f() }
@@ -55,7 +55,7 @@ fn noisy() -> Int ! {Console} { apply(loud_one) }
   "symbol_id": "main::V3002_effect_label_not_permitted::noisy",
   "spans": [
     {
-      "uri": "file://$DIR/V3002_effect_label_not_permitted.sakura",
+      "uri": "file://$DIR/V3002_effect_label_not_permitted.sak",
       "content_hash": "sha256:a4b6e19ab0cafb694cd04bc0664109475cfca1b6e88f0e7eafea82702d83df5f",
       "start_byte": 186,
       "end_byte": 194,
@@ -79,7 +79,7 @@ fn noisy() -> Int ! {Console} { apply(loud_one) }
 
 ## Fixed program
 
-[`compiler/tests/ui/V3002_effect_label_not_permitted.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3002_effect_label_not_permitted.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V3002_effect_label_not_permitted.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3002_effect_label_not_permitted.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn apply<e>(f: fn() -> Int ! e) -> Int ! e { f() }

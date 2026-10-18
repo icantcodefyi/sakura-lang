@@ -26,7 +26,7 @@ x(2)
 
 ## Wrong program
 
-[`compiler/tests/ui/V2003_not_callable.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2003_not_callable.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V2003_not_callable.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2003_not_callable.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn call() -> Int {
@@ -50,7 +50,7 @@ fn call() -> Int {
   "symbol_id": "main::V2003_not_callable::call",
   "spans": [
     {
-      "uri": "file://$DIR/V2003_not_callable.sakura",
+      "uri": "file://$DIR/V2003_not_callable.sak",
       "content_hash": "sha256:3fa13dd548ca2d0ccd72eaaa3fba486cdf2d3296071bc7d16c036474f7c6c401",
       "start_byte": 67,
       "end_byte": 71,
@@ -69,7 +69,7 @@ fn call() -> Int {
 
 ## Fixed program
 
-[`compiler/tests/ui/V2003_not_callable.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2003_not_callable.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V2003_not_callable.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2003_not_callable.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn call() -> Int {

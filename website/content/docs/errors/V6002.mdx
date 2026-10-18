@@ -34,7 +34,7 @@ fn read_config() -> Bytes ! {Fs, Fail<FsError>} {
 
 ## Wrong program
 
-[`compiler/tests/ui/V6002_scoped_value_escape.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V6002_scoped_value_escape.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V6002_scoped_value_escape.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V6002_scoped_value_escape.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 import std/fs.{Fs}
@@ -57,7 +57,7 @@ fn leak() -> Handler<Fs> ! {Fs} { with Fs.rooted(Fs.root()) { Fs.rooted(Fs.root(
   "symbol_id": "main::V6002_scoped_value_escape::leak",
   "spans": [
     {
-      "uri": "file://$DIR/V6002_scoped_value_escape.sakura",
+      "uri": "file://$DIR/V6002_scoped_value_escape.sak",
       "content_hash": "sha256:afc99366219bd0d4a54a4e2ac146eb68f3f379f6e940a7d3dba2b8d2f5d5411b",
       "start_byte": 140,
       "end_byte": 160,
@@ -74,11 +74,11 @@ fn leak() -> Handler<Fs> ! {Fs} { with Fs.rooted(Fs.root()) { Fs.rooted(Fs.root(
 }
 ```
 
-More fixtures for this code: [`compiler/tests/ui/V6002_spawn_captures_inner_with.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V6002_spawn_captures_inner_with.sakura), [`compiler/tests/ui/V6002_spawn_nested_lambda.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V6002_spawn_nested_lambda.sakura).
+More fixtures for this code: [`compiler/tests/ui/V6002_spawn_captures_inner_with.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V6002_spawn_captures_inner_with.sak), [`compiler/tests/ui/V6002_spawn_nested_lambda.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V6002_spawn_nested_lambda.sak).
 
 ## Fixed program
 
-[`compiler/tests/ui/V6002_scoped_value_escape.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V6002_scoped_value_escape.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V6002_scoped_value_escape.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V6002_scoped_value_escape.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 import std/fs.{Fs, FsError}

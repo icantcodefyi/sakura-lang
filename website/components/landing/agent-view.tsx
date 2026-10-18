@@ -17,7 +17,7 @@ const MCP = `// → tools/call (planned for M3; sakura check --json emits the sa
   "id": "h:9b07…",
   "name": "receipt",
   "snapshot": "sha256:41c2…",
-  "span": { "uri": "file:///app/src/cart.sakura", "start_byte": 142, "end_byte": 150, "role": "primary" },
+  "span": { "uri": "file:///app/src/cart.sak", "start_byte": 142, "end_byte": 150, "role": "primary" },
   "expected_type": { "render": "Receipt" },
   "allowed_effects": { "render": "{Payments, Fail<CheckoutError>}" },
   "locals": [
@@ -40,7 +40,7 @@ const DIAGNOSTIC = `{
   "snapshot": "sha256:9c1e…",
   "symbol_id": "app::users::signup",
   "spans": [{
-    "uri": "file:///app/src/users.sakura", "content_hash": "sha256:52b0…",
+    "uri": "file:///app/src/users.sak", "content_hash": "sha256:52b0…",
     "start_byte": 431, "end_byte": 461, "role": "cause",
     "label": "\`Http.post_json\` introduces \`Http\` here"
   }],
@@ -140,7 +140,7 @@ export async function AgentView() {
                   <div className="grid gap-3">
                     <Code
                       code={HOLE}
-                      title={<span>src/cart.sakura</span>}
+                      title={<span>src/cart.sak</span>}
                       numbers
                       mark={{ 2: "seal" }}
                     />

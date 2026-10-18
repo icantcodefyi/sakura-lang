@@ -23,7 +23,7 @@ fn log(line: String) -> Unit ! {Console} { … }
 
 ## Wrong program
 
-[`compiler/tests/ui/V1007_row_argument_kind.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1007_row_argument_kind.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V1007_row_argument_kind.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1007_row_argument_kind.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 type Box<e> = { run: fn() -> Unit ! e }
@@ -48,7 +48,7 @@ fn also(xs: List<{Console}>) -> Unit { () }
   "symbol_id": "main::V1007_row_argument_kind::wrong",
   "spans": [
     {
-      "uri": "file://$DIR/V1007_row_argument_kind.sakura",
+      "uri": "file://$DIR/V1007_row_argument_kind.sak",
       "content_hash": "sha256:be23ae9b6fb3d53ea9979c646b12d1f8bbc17a13497f93627b7a16ffda36b751",
       "start_byte": 97,
       "end_byte": 100,
@@ -67,7 +67,7 @@ fn also(xs: List<{Console}>) -> Unit { () }
 
 ## Fixed program
 
-[`compiler/tests/ui/V1007_row_argument_kind.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1007_row_argument_kind.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V1007_row_argument_kind.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1007_row_argument_kind.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 type Box<e> = { run: fn() -> Unit ! e }

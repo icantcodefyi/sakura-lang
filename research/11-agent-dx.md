@@ -26,7 +26,7 @@ labels design goals separately.
 | Surface | Verified in source today | Boundary or adoption gap |
 | --- | --- | --- |
 | Source installation | `cargo install --locked --path crates/sakura_cli` from `compiler/`; std is embedded. [Quickstart](../website/content/docs/quickstart.mdx). | No supported compiler release/installer is documented; no release workflow was found. Do not advertise a registry package or supported binary matrix. |
-| Project scaffolds | [new.rs](../compiler/crates/sakura_cli/src/new.rs): `new <cli|lib|agent|api> <name>` and `init --kind <kind>` (default `cli`) create `sakura.toml`, `sakura.lock`, `src/main.sakura`, `.gitignore` containing `/target/`. Each template has a test. | No `AGENTS.md`, `CLAUDE.md`, skill or client MCP configuration. `new` refuses nonempty destinations; `init` preserves existing individual files but **refuses an existing `sakura.toml`**. It is not a repeatable setup updater. Neither initializes Git. |
+| Project scaffolds | [new.rs](../compiler/crates/sakura_cli/src/new.rs): `new <cli|lib|agent|api> <name>` and `init --kind <kind>` (default `cli`) create `sakura.toml`, `sakura.lock`, `src/main.sak`, `.gitignore` containing `/target/`. Each template has a test. | No `AGENTS.md`, `CLAUDE.md`, skill or client MCP configuration. `new` refuses nonempty destinations; `init` preserves existing individual files but **refuses an existing `sakura.toml`**. It is not a repeatable setup updater. Neither initializes Git. |
 | Permissions in scaffolds | Manifest includes `[permissions]`; cli/lib leave it empty; api grants its loopback listener; agent grants the provider endpoint and an environment-key name. | Do not describe all scaffolds as zero-authority. The agent template contains a particular provider/model string; it is an implementation default, not a verified current provider recommendation. |
 | Language reference | [docs/llms.txt](../docs/llms.txt) is embedded into [CLI main.rs](../compiler/crates/sakura_cli/src/main.rs). `sakura prompt` already prints it. | `--budget` uses four bytes per estimated token and drops trailing whole sections; it is not a tokenizer or retrieval of requested signatures. The design's extra-signature behavior is not this implementation. |
 | Offline lookup and explanations | [doc.rs](../compiler/crates/sakura_cli/src/doc.rs) implements symbol/type search; `doc --json` is one JSON object. `explain` looks up [codes::REGISTRY](../compiler/crates/sakura_diagnostics/src/codes.rs), case-insensitively, and prints title, phase and explanation; unknown codes exit 2. | No `sakura doc --index`. Many registry explanations have wrong/fixed pairs, but some are advice or fragments; do not assume every explanation contains a compilable program. |
@@ -87,7 +87,7 @@ Proposed Sakura frontmatter, **an illustration, not an installed skill**:
 ```yaml
 ---
 name: sakura
-description: Write, check, repair, and test Sakura Lang programs. Use for .sakura files, sakura.toml, typed effects, holes, and Sakura compiler diagnostics.
+description: Write, check, repair, and test Sakura Lang programs. Use for .sak files, sakura.toml, typed effects, holes, and Sakura compiler diagnostics.
 license: MIT OR Apache-2.0
 compatibility: Requires a matching source-built Sakura CLI; running JS programs also requires the supported JavaScript host.
 metadata:
@@ -120,7 +120,7 @@ not a replacement skill format:
 ```text
 ---
 description: Use the project's Sakura workflow for Sakura source and manifests.
-globs: "**/*.sakura,**/sakura.toml"
+globs: "**/*.sak,**/sakura.toml"
 alwaysApply: false
 ---
 Read AGENTS.md and use the installed sakura skill before changing Sakura code.
@@ -590,7 +590,7 @@ substantial platform effort; they are not calendar estimates.
 | Agent eval pilot | High / M | Existing diagnostic/example harnesses provide components; add task oracles and bounded model episodes, not a new compiler evaluator. |
 | Immutable release binaries | Very high for first install / M–L | Source build exists. Owner must first approve supported OS/CPU/ABI matrix and release policy. Build/test artifacts, checksums, notices, std/runtime inclusion and same-version skill bundle. A Rust CLI binary still needs its JS host for JS execution; document that dependency. |
 | Download/install script | High / M, after binaries | Make versions pin-able, verify checksums, detect platform, support noninteractive prefix/PATH instructions and clean failure. Do not require `curl | sh`; offer reviewed download/manual extraction. [uv's distribution configuration][uv-dist] is real prior art for coordinated installers and artifacts. |
-| VS Code extension over existing LSP | Medium–high / M | Thin client starts `sakura lsp`, registers `.sakura`, exposes diagnostic links/holes and executable selection. Test stdio, root selection, edits/UTF-16 positions, formatting and stale fixes. Follow the official [language-server extension guide][vscode-lsp]. Source extension first; marketplace publication needs authorization. |
+| VS Code extension over existing LSP | Medium–high / M | Thin client starts `sakura lsp`, registers `.sak`, exposes diagnostic links/holes and executable selection. Test stdio, root selection, edits/UTF-16 positions, formatting and stale fixes. Follow the official [language-server extension guide][vscode-lsp]. Source extension first; marketplace publication needs authorization. |
 | Homebrew | Medium / S–M after release | A maintained tap formula can point at immutable archives with SHA-256 and a smoke test; do not assume admission to core. Formula structure and tests are documented in the [cookbook][brew]. Owner controls namespace/credentials and publishing. |
 | npm wrapper | Medium / M after release | Optional convenience for JS-centric agents: a `bin` launcher and explicit platform/architecture packages or a verified installer. Account for unsupported targets, offline installs and disabled install scripts. `bin`, `os`, `cpu`, `optionalDependencies` are documented [package fields][npm-package]; they do not themselves implement binary selection. No registry package/name is claimed. |
 | Tree-sitter grammar | Medium / M | Useful for editor highlighting, structural navigation and external tooling; the existing `website/lib/sakura/grammar.ts` is syntax highlighting, not a tree-sitter parser. Start a corpus tied to the compiler lexer/parser cases; test holes, tagged strings, comments and newline rules. [Tree-sitter parser guide][tree-sitter]. |

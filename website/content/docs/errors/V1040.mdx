@@ -24,7 +24,7 @@ n = n + 1
 
 ## Wrong program
 
-[`compiler/tests/ui/V1040_assign_immutable.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1040_assign_immutable.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V1040_assign_immutable.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1040_assign_immutable.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn bump() -> Int {
@@ -49,14 +49,14 @@ fn bump() -> Int {
   "symbol_id": "main::V1040_assign_immutable::bump",
   "spans": [
     {
-      "uri": "file://$DIR/V1040_assign_immutable.sakura",
+      "uri": "file://$DIR/V1040_assign_immutable.sak",
       "content_hash": "sha256:40c9e7936c6de9f647222973e040bb9c2de3da952d0decdb81b480d2fd85436e",
       "start_byte": 93,
       "end_byte": 94,
       "role": "primary"
     },
     {
-      "uri": "file://$DIR/V1040_assign_immutable.sakura",
+      "uri": "file://$DIR/V1040_assign_immutable.sak",
       "content_hash": "sha256:40c9e7936c6de9f647222973e040bb9c2de3da952d0decdb81b480d2fd85436e",
       "start_byte": 85,
       "end_byte": 86,
@@ -79,7 +79,7 @@ fn bump() -> Int {
       "edits": [
         {
           "span": {
-            "uri": "file://$DIR/V1040_assign_immutable.sakura",
+            "uri": "file://$DIR/V1040_assign_immutable.sak",
             "content_hash": "sha256:40c9e7936c6de9f647222973e040bb9c2de3da952d0decdb81b480d2fd85436e",
             "start_byte": 81,
             "end_byte": 84,
@@ -95,7 +95,7 @@ fn bump() -> Int {
 
 ## Fixed program
 
-[`compiler/tests/ui/V1040_assign_immutable.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1040_assign_immutable.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V1040_assign_immutable.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1040_assign_immutable.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn bump() -> Int {

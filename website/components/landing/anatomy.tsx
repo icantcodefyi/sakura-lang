@@ -69,7 +69,7 @@ export async function Anatomy() {
         {/* The contract, on ruled paper, with the compiler's seal on the signature line. */}
         <figure className={cn(WINDOW, "relative mt-12")}>
           <WindowBar className="justify-between sm:px-4">
-            <span>src/accounts.sakura</span>
+            <span>src/accounts.sak</span>
             <span className="hidden text-muted-foreground sm:inline">hover a clause</span>
           </WindowBar>
           <ol className="py-3 sm:py-5">

@@ -23,7 +23,7 @@ let _ = fn(x: Int) { x }
 
 ## Wrong program
 
-[`compiler/tests/ui/V2005_infinite_type.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2005_infinite_type.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V2005_infinite_type.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2005_infinite_type.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn omega() -> Unit { let _ = fn(x) { x(x) } }
@@ -44,7 +44,7 @@ fn omega() -> Unit { let _ = fn(x) { x(x) } }
   "symbol_id": "main::V2005_infinite_type::omega",
   "spans": [
     {
-      "uri": "file://$DIR/V2005_infinite_type.sakura",
+      "uri": "file://$DIR/V2005_infinite_type.sak",
       "content_hash": "sha256:27f65a7229749e5131e2a3337167b8619997bac0ab6f4964d97034c905723ed7",
       "start_byte": 71,
       "end_byte": 75,
@@ -68,7 +68,7 @@ fn omega() -> Unit { let _ = fn(x) { x(x) } }
 
 ## Fixed program
 
-[`compiler/tests/ui/V2005_infinite_type.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2005_infinite_type.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V2005_infinite_type.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2005_infinite_type.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn omega() -> Unit { let _ = fn(x: Int) { x } }

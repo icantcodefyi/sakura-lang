@@ -23,7 +23,7 @@ fn double(x: Int) -> Int { x * 2 }
 
 ## Wrong program
 
-[`compiler/tests/ui/V2001_type_mismatch.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2001_type_mismatch.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V2001_type_mismatch.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2001_type_mismatch.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn age() -> Int { "forty" }
@@ -44,7 +44,7 @@ fn age() -> Int { "forty" }
   "symbol_id": "main::V2001_type_mismatch::age",
   "spans": [
     {
-      "uri": "file://$DIR/V2001_type_mismatch.sakura",
+      "uri": "file://$DIR/V2001_type_mismatch.sak",
       "content_hash": "sha256:ba191e33c0daecd6ab8441edc074708a7abbc21c3a46cbcf5927c1a9a99784d0",
       "start_byte": 52,
       "end_byte": 59,
@@ -68,7 +68,7 @@ fn age() -> Int { "forty" }
 
 ## Fixed program
 
-[`compiler/tests/ui/V2001_type_mismatch.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2001_type_mismatch.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V2001_type_mismatch.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2001_type_mismatch.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn age() -> Int { 40 }

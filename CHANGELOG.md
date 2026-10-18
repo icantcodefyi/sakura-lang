@@ -61,6 +61,13 @@ published yet.
 
 ### Changed
 
+- **Breaking:** Sakura Lang source files end in `.sak` instead of `.sakura`, a clean switch
+  with no fallback (owner decision, design §17.179). Rename sources with
+  `git mv main.sakura main.sak`; `sakura` names the rename when given a `.sakura` file or a
+  tree with only `.sakura` sources. The VS Code extension, the skill bundle, the agent-DX
+  tasks (revision 2) and every document follow. `sakura.toml`, the `sakura:///std/…` URIs
+  and the `sakura` language id are unchanged. <!-- rename:keep -->
+
 - Design round 13 (§17.169–§17.178) defines M5's offset32 native ABI, native host coverage,
   single-thread execution and cancellation, proven-copy warnings, four memory-checking
   lanes, dependency pins and staged platform matrix; regions and representation changes
@@ -155,7 +162,7 @@ published yet.
   numbers compare exactly across backends.
 
 - A VS Code extension in `editors/vscode/` (not published; build a `.vsix` locally):
-  `.sakura` highlighting generated from the website grammar, language configuration, and a
+  `.sak` highlighting generated from the website grammar, language configuration, and a
   client for `sakura lsp` per project (nearest `sakura.toml`) with error-page links,
   quick fixes showing their impact class, stale-fix refusal, Show Hole Context and format on
   save. `sakura lsp` diagnostics gain `codeDescription` links to `/docs/errors/<code>`, quick

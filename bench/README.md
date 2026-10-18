@@ -20,7 +20,7 @@ bench/
   results/                  # recorded runs kept for reference (not baselines; never written by CI)
   programs/<name>/
     meta.toml               # family, sizes, lane, ints, [checksums], optional extras
-    sakura/main.sakura      # pub fn run(n: Int) -> Int; main prints run(n) for each CLI argument
+    sakura/main.sak      # pub fn run(n: Int) -> Int; main prints run(n) for each CLI argument
     js/main.mjs             # export function run(n) → checksum (async allowed)
     rust/ go/ ocaml/ koka/  # WS-S ports, protocol below
   target/                   # build output (ignored)
@@ -85,9 +85,9 @@ records the original failures, controlled probes and full-run results.
 
 ## Program interface
 
-**Sakura** (`sakura/main.sakura`): `pub fn run(n: Int) -> Int` returns the checksum and
+**Sakura** (`sakura/main.sak`): `pub fn run(n: Int) -> Int` returns the checksum and
 performs no effects; handlers a program needs are installed inside `run`. `main` prints
-`run(n)` for each argument (`sakura run programs/fib/sakura/main.sakura -- 24`). The JS
+`run(n)` for each argument (`sakura run programs/fib/sakura/main.sak -- 24`). The JS
 backend emits only code reachable from `main`, so every other export the harness calls
 (`contracts`' `negative`) must be reachable from `main`.
 

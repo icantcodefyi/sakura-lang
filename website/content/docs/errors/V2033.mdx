@@ -32,7 +32,7 @@ let body = Html.text(r.body)
 
 ## Wrong program
 
-[`compiler/tests/ui/V2033_decode_opaque_html.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2033_decode_opaque_html.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V2033_decode_opaque_html.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2033_decode_opaque_html.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 // The WS9.10 re-audit's second exploit: markup forged by decoding JSON into `Html`, then
@@ -64,7 +64,7 @@ pub fn main() -> Unit ! {Console} {
   "symbol_id": "main::V2033_decode_opaque_html::main",
   "spans": [
     {
-      "uri": "file://$DIR/V2033_decode_opaque_html.sakura",
+      "uri": "file://$DIR/V2033_decode_opaque_html.sak",
       "content_hash": "sha256:a7a9afd859632742e97a2d058c182883ad7d476ce6c8569202ea2e954ccf8ec2",
       "start_byte": 385,
       "end_byte": 396,
@@ -85,11 +85,11 @@ pub fn main() -> Unit ! {Console} {
 }
 ```
 
-More fixtures for this code: [`compiler/tests/ui/V2033_decode_opaque_query.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2033_decode_opaque_query.sakura), [`compiler/tests/ui/V2033_decode_opaque_urlpart.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2033_decode_opaque_urlpart.sakura), [`compiler/tests/ui/V2033_property_opaque.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2033_property_opaque.sakura).
+More fixtures for this code: [`compiler/tests/ui/V2033_decode_opaque_query.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2033_decode_opaque_query.sak), [`compiler/tests/ui/V2033_decode_opaque_urlpart.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2033_decode_opaque_urlpart.sak), [`compiler/tests/ui/V2033_property_opaque.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2033_property_opaque.sak).
 
 ## Fixed program
 
-[`compiler/tests/ui/V2033_decode_opaque_html.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2033_decode_opaque_html.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V2033_decode_opaque_html.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2033_decode_opaque_html.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 // Decode the representation (a `String`), then build the `Html` through its escaping

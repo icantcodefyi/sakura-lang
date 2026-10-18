@@ -32,7 +32,7 @@ fn first_kb(p: Path) -> Bytes ! {Fs, Fail<FsError>} {
 
 ## Wrong program
 
-[`compiler/tests/ui/V6003_resource_escape.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V6003_resource_escape.sakura), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V6003_resource_escape.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V6003_resource_escape.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 import std/fs.{File, Fs, FsError, Mode}
@@ -58,7 +58,7 @@ fn keep_open(p: Path) -> File ! {Fs, Fail<FsError>} {
   "symbol_id": "main::V6003_resource_escape::keep_open",
   "spans": [
     {
-      "uri": "file://$DIR/V6003_resource_escape.sakura",
+      "uri": "file://$DIR/V6003_resource_escape.sak",
       "content_hash": "sha256:579bb06c8d05fa88c34b60f174de613fd71825550c967a76fdccb4e0dd20580f",
       "start_byte": 216,
       "end_byte": 220,
@@ -75,11 +75,11 @@ fn keep_open(p: Path) -> File ! {Fs, Fail<FsError>} {
 }
 ```
 
-More fixtures for this code: [`compiler/tests/ui/V6003_route_handler_returns_file.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V6003_route_handler_returns_file.sakura).
+More fixtures for this code: [`compiler/tests/ui/V6003_route_handler_returns_file.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V6003_route_handler_returns_file.sak).
 
 ## Fixed program
 
-[`compiler/tests/ui/V6003_resource_escape.fixed.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V6003_resource_escape.fixed.sakura), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V6003_resource_escape.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V6003_resource_escape.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 import std/fs.{Fs, FsError, Mode}
