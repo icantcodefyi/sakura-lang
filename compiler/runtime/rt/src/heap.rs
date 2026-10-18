@@ -40,6 +40,15 @@ pub struct Stats {
     pub peak: u64,
     /// Bytes in free lists and free page runs.
     pub free_list_bytes: u64,
+    /// Continuation frames allocated (design §17.118: direct regions allocate none).
+    pub frames: u64,
+    /// `Int`/`Float` boxes compiled code allocated (the LIR's `Box`).
+    pub boxes: u64,
+    /// Reference-count increments compiled code asked for (`rt_dup`: the LIR's `Dup` and the
+    /// increments of projections and captures).
+    pub dups: u64,
+    /// Words given up through the `drop` export (compiled code's `Drop`s and the host's).
+    pub drops: u64,
 }
 
 #[derive(Default)]
@@ -64,7 +73,7 @@ pub struct Heap {
     pub emergency: bool,
     /// The emergency pool could not serve a request: the task ends without more finalizers.
     pub em_exhausted: bool,
-    stats: Stats,
+    pub(crate) stats: Stats,
 }
 
 /// The small class holding `size` bytes, if any.

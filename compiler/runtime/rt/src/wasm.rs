@@ -78,7 +78,9 @@ pub extern "C" fn alloc_bytes(len: u32) -> u32 {
 /// `drop(ptr)`: the host gives up an owned word it received.
 #[unsafe(no_mangle)]
 pub extern "C" fn drop(ptr: u32) {
-    rt().drop(ptr);
+    let rt = rt();
+    rt.heap.stats.drops += 1;
+    rt.drop(ptr);
 }
 
 /// `run(task) -> outcome` (ABI §6.2): drive tasks until `task` has an outcome or waits.
@@ -192,14 +194,17 @@ pub extern "C" fn rt_task_free(task: u32) {
     rt().task_free(task);
 }
 
-/// The `stats()` counters (ABI §10), six little-endian `u64`s: requested, live, peak,
-/// live objects, committed, free-list bytes. Returns their address.
+/// The number of `stats()` counters.
+pub const STATS: usize = 10;
+
+/// The `stats()` counters (ABI §10), [`STATS`] little-endian `u64`s: requested, live, peak,
+/// live objects, committed, free-list bytes, frames, boxes, dups, drops. Returns their address.
 #[unsafe(no_mangle)]
 pub extern "C" fn rt_stats() -> u32 {
-    struct Counters(UnsafeCell<[u64; 6]>);
+    struct Counters(UnsafeCell<[u64; STATS]>);
     // SAFETY: one thread (see `Instance`).
     unsafe impl Sync for Counters {}
-    static COUNTERS: Counters = Counters(UnsafeCell::new([0; 6]));
+    static COUNTERS: Counters = Counters(UnsafeCell::new([0; STATS]));
     let s = rt().stats();
     let at = COUNTERS.0.get();
     // SAFETY: the only reference to `COUNTERS`, written once here before the host reads it.
@@ -211,6 +216,10 @@ pub extern "C" fn rt_stats() -> u32 {
             s.live_objects,
             s.committed,
             s.free_list_bytes,
+            s.frames,
+            s.boxes,
+            s.dups,
+            s.drops,
         ];
     }
     at as usize as u32
@@ -253,6 +262,7 @@ pub extern "C" fn rt_raise(code: u32, message: u32, len: u32, site: u32) -> u32 
 #[unsafe(no_mangle)]
 pub extern "C" fn rt_dup(w: u32) -> u32 {
     let rt = rt();
+    rt.heap.stats.dups += 1;
     match rt.dup(w) {
         Ok(()) => 0,
         Err(d) => {
@@ -269,12 +279,16 @@ pub extern "C" fn rt_alloc(t: u32, size: u32) -> u32 {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn rt_box_i64(v: i64) -> u32 {
-    ptr(rt().new_int(v))
+    let rt = rt();
+    rt.heap.stats.boxes += 1;
+    ptr(rt.new_int(v))
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn rt_box_f64(v: f64) -> u32 {
-    ptr(rt().new_float(v))
+    let rt = rt();
+    rt.heap.stats.boxes += 1;
+    ptr(rt.new_float(v))
 }
 
 /// `TupleGet`: element `i` of tuple `t` (borrowed) read through its row and converted to

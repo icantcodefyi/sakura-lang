@@ -1,9 +1,10 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.0.2**, agreed before `sakura_lir` or `sakura_rt`
-emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed and 1.0.2 the
+**Status:** design specification, version **1.1.0**, agreed before `sakura_lir` or `sakura_rt`
+emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed, 1.0.2 the
 R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
-the end, with the questions still open). Owned by the designer; implemented jointly by M4-LIR (`crates/sakura_lir`)
+the end, with the questions still open), and 1.1.0 the four `stats()` counters and the
+direct-style twins of design §17.118 (plan item L4). Owned by the designer; implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
 (`crates/sakura_codegen_wasm`, `runtime/js/sakura_wasm_host.js`). This document is prose,
 tables and byte layouts; it contains no code and is not itself normative language
@@ -46,7 +47,11 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   defect message and site (§6.5, §9), the `ok_handle` completion status and runtime-side
   queueing (§8.2, §8.5) and cancellation and finalizer semantics (§6.4, §7.4), as design
   §17.129 endorsed P8–P12. It is a PATCH for the same reason as 1.0.1: no module has been
-  emitted. `sakura_abi_version` is `0x010002`.
+  emitted. `sakura_abi_version` was `0x010002`.
+- 1.1.0 (MINOR, design §17.118) appends four counters to `stats()` (§10: `frames`, `boxes`,
+  `dups`, `drops`; the export now returns 80 bytes) and states how direct style (§5) is
+  compiled. Nothing shipped changes: the six counters keep their offsets, and twins are
+  internal functions outside the import and export lists. `sakura_abi_version` is `0x010100`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -253,6 +258,20 @@ by default, plan §3.1 M4-OPT).
   **depth gauge** global (as JS `G.d`, limit 400): past the limit the direct call is rewritten
   by the caller into the frame protocol, so the native stack never overflows. Direct functions
   may raise a defect (§6.5) and nothing else.
+  **As compiled (1.1.0, design §17.118):** the functions are `sakura_lir::direct::regions`
+  (direct by the §17.111 facts, and first-order straight-line LIR: no `with`, `try`, handler
+  state, callback or closure call; every call a call of another such function). Each gets a
+  **twin** beside its frame-protocol body; twins call twins natively, and frame-protocol code
+  calls a non-recursive region's twin instead of pushing a frame. The gauge counts estimated
+  native stack bytes (a twin charges `64 + 8 × variables` on entry and gives it back on
+  return; budget 128 KiB, so Wasmtime's 512 KiB default stack holds), and a module global
+  holds the twin's state: 0 returned, 1 a defect is raised (the runtime holds it, as §6.5), 2
+  the gauge ran out. A twin that runs out of gauge releases what it holds and returns 2 through
+  every twin above it; the frame-protocol caller then makes the same call through frames,
+  which call recursive defs through frames. Direct code performs nothing, so running it again
+  is unobservable; a region that cannot run out (no cycle of twins, deepest chain within the
+  budget) is entered without holding its arguments, otherwise the caller holds (`Dup`s) them
+  for the second attempt. Every defect keeps its code, message and site.
 - Ownership at a call (research/09 §4, §17.82): arguments are **passed owned**: the caller
   `Dup`s any argument it still uses afterwards and the callee `Drop`s every parameter on every
   terminal path (or transfers it). Results are **returned owned**. Captures are owned by the
@@ -564,7 +583,13 @@ cannot return several values through `extern "C"`, so the M4-WASM linker synthes
   `sakura run --stats` prints them): `requested` (cumulative bytes requested), `live` and
   `peak` (bytes of live blocks at their class or run size), `live_objects` (live blocks; the
   §7.5 tests compare it), `committed` (linear memory above the heap base), `free_list_bytes`
-  (small free lists plus free page runs). A dlmalloc comparison harness stays in `runtime/rt/bench`.
+  (small free lists plus free page runs), and since 1.1.0 (design §17.118) `frames`
+  (continuation frames allocated), `boxes` (`IntBox`/`FloatBox` objects compiled code
+  allocated, the LIR's `Box`), `dups` (reference-count increments compiled code asked for:
+  `Dup` and the increments of projections, captures and state reads) and `drops` (calls of the
+  `drop` export, compiled code's and the host's), each a cumulative `u64` in that order after
+  the first six. `sakura_wasm_host.js` appends them as one JSON line at exit when
+  `SAKURA_WASM_STATS=<path>` is set, for benchmark records. A dlmalloc comparison harness stays in `runtime/rt/bench`.
 - Failed growth or an exhausted limit is **one defect path**: `D096 heap_exhausted` from the
   allocating site, after which the task unwinds (§6.4). The runtime reserves a fixed emergency
   region (64 KiB, committed at start, its own free lists, small blocks only, used only while the

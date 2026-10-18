@@ -30,7 +30,7 @@ mod wasm;
 pub use heap::{Heap, Stats};
 
 /// `sakura_abi_version` (ABI §0): `MAJOR << 16 | MINOR << 8 | PATCH`.
-pub const ABI_VERSION: u32 = 1 << 16 | 2;
+pub const ABI_VERSION: u32 = 1 << 16 | 1 << 8;
 
 /// A defect raised by the runtime: the `D` registry number and a fixed message (ABI §6.5).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

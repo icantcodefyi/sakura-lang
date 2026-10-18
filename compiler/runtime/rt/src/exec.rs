@@ -327,6 +327,7 @@ impl Rt {
     fn frame_alloc(&mut self, code: u32, n: u32) -> Res<(u32, u32)> {
         let size = n.checked_mul(8).and_then(|b| b.checked_add(F_SLOTS));
         let f = self.new_object(tag::FRAME, size.ok_or(Defect::HEAP_EXHAUSTED)?)?;
+        self.heap.stats.frames += 1;
         self.set(f, F_CODE, code);
         self.set(f, F_N, n);
         match self.arena_new(f) {

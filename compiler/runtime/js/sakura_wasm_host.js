@@ -23,7 +23,21 @@ import * as rt from "./sakura_runtime.js";
 rt.stopTracing();
 
 /** ABI §0: the version this host implements. */
-export const ABI_VERSION = 0x010002;
+export const ABI_VERSION = 0x010100;
+
+/** The `stats()` counters in order (ABI §10). */
+export const STATS = [
+  "requested",
+  "live",
+  "peak",
+  "live_objects",
+  "committed",
+  "free_list_bytes",
+  "frames",
+  "boxes",
+  "dups",
+  "drops",
+];
 
 /** Outcome kinds (ABI §6.5). */
 export const OUTCOME = Object.freeze({
@@ -1012,7 +1026,27 @@ export class Host {
     if (v >> 16 !== ABI_VERSION >> 16 || ((v >> 8) & 0xff) > ((ABI_VERSION >> 8) & 0xff)) {
       throw new AbiMismatch(v);
     }
+    const path = proc?.env?.SAKURA_WASM_STATS;
+    if (path) {
+      proc.on("exit", () => {
+        proc.getBuiltinModule("node:fs").appendFileSync(path, `${JSON.stringify(this.stats())}\n`);
+      });
+    }
     return this;
+  }
+
+  /**
+   * The `stats()` counters (ABI §10) by name, as numbers. With `SAKURA_WASM_STATS=<path>` one
+   * JSON line of them is appended at exit, for benchmark records (design §17.118).
+   */
+  stats() {
+    const [p, len] = this.exports.stats();
+    const view = new DataView(this.exports.memory.buffer, p, len);
+    const out = {};
+    STATS.forEach((name, i) => {
+      if (8 * i + 8 <= len) out[name] = Number(view.getBigUint64(8 * i, true));
+    });
+    return out;
   }
 
   /** Run the task starting at `entry` (-1 for `main`) to an outcome. */

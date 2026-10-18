@@ -38,7 +38,10 @@ pub const HOST_FILES: [(&str, &str); 2] = [
 ];
 
 /// ABI §0: `MAJOR << 16 | MINOR << 8 | PATCH`.
-pub const ABI_VERSION: u32 = 0x01_00_02;
+pub const ABI_VERSION: u32 = 0x01_01_00;
+
+/// The number of `u64` counters `stats()` returns (ABI §10).
+const STATS: i32 = 10;
 
 /// `SAKURA_MAX_HEAP` default (ABI §10).
 pub const DEFAULT_MAX_HEAP: u64 = 1 << 30;
@@ -578,7 +581,10 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
 
     // stats() -> (ptr, len)
     let mut f = Function::new([]);
-    f.instructions().call(rtf("rt_stats")?).i32_const(48).end();
+    f.instructions()
+        .call(rtf("rt_stats")?)
+        .i32_const(8 * STATS)
+        .end();
     funcs.push(added(FIXED[7], vec![], i32s(2), f));
 
     // invoke(listener, ptr, len) -> task: a served request (`rt_invoke`; `ptr` is the
