@@ -565,9 +565,10 @@ fn serve_host_answers_on_wasm_as_on_js() {
             .iter()
             .map(|p| http_get(port, p))
             .collect();
-        // The driver and node share the process group.
+        // The driver and node share the process group. `--` is required: procps `kill` (Linux)
+        // takes `-9 -PGID` as options, exits 0 and kills nothing, and `wait` below never returns.
         let _ = std::process::Command::new("kill")
-            .args(["-9", &format!("-{}", child.id())])
+            .args(["-9", "--", &format!("-{}", child.id())])
             .status();
         let _ = child.wait();
         let stderr = std::fs::read_to_string(&err).unwrap_or_default();
