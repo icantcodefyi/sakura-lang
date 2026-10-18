@@ -696,9 +696,11 @@ fn host_defect(rt: &Rt, at: u32, len: u32) -> Defect {
 }
 
 /// Read what a host-delegated builtin returned (`b`, a `Bytes`, consumed): 0 ok and 1 failed
-/// (the value is held for `rt_vt_take_*`), 2 after a defect (raised here).
+/// (the value is held for `rt_vt_take_*`), 2 after a defect (raised here). `expect` is the
+/// declared result's top for each status (`vt::top`): a value of another shape is `D090`
+/// before compiled code reads it (security review W2).
 #[unsafe(no_mangle)]
-pub extern "C" fn rt_vt_result(b: u32) -> u32 {
+pub extern "C" fn rt_vt_result(b: u32, expect: u32) -> u32 {
     let rt = rt();
     if b == 0 {
         raised(rt, Defect::HEAP_EXHAUSTED);
@@ -707,9 +709,15 @@ pub extern "C" fn rt_vt_result(b: u32) -> u32 {
     let (len, at) = rt.data(b);
     let status = if len == 0 { 255 } else { rt.heap.mem.u8(at) };
     let r = match status {
-        0 | 1 => rt.vt_decode(at + 1, len - 1).map(|w| {
+        0 | 1 => rt.vt_decode(at + 1, len - 1).and_then(|w| {
+            let want = if status == 0 {
+                expect & 0xff
+            } else {
+                expect >> 8
+            };
+            rt.vt_check(w, want).inspect_err(|_| rt.drop(w))?;
             transport().result = w as u64;
-            status as u32
+            Ok(status as u32)
         }),
         2 if len >= 5 => Err(host_defect(rt, at + 1, len - 1)),
         _ => Err(crate::vt::MALFORMED),

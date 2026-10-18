@@ -244,3 +244,55 @@ fn malformed_values_are_d090_and_leak_nothing() {
         assert_eq!(rt.stats().live_objects, base, "{what} leaked");
     }
 }
+
+#[test]
+fn a_host_answer_of_another_shape_than_the_declared_result_is_d090() {
+    // Hostile host (security review W2): `rt_vt_result` checks the decoded value's top against
+    // the builtin's declared result before compiled code reads it.
+    use sakura_rt::vt::top;
+    let mut rt = runtime();
+    let base = rt.stats().live_objects;
+    let handle = |kind: u32| {
+        let mut v = vec![t::HANDLE];
+        v.extend(u32s(&[kind, 3, 1]));
+        v
+    };
+    let mut ok_string = vec![t::VARIANT];
+    ok_string.extend(u32s(&[1, 0, 1]));
+    ok_string.extend(string("x"));
+    let mut none = vec![t::VARIANT];
+    none.extend(u32s(&[0, 0, 0]));
+    let mut list = vec![t::LIST];
+    list.extend(u32s(&[1]));
+    list.extend(int(1));
+    let cases: &[(&[u8], u32, bool)] = &[
+        (&ok_string, top::RESULT, true),
+        (&ok_string, top::OPTION, false),
+        (&none, top::OPTION, true),
+        (&none, top::RESULT, false),
+        // `fs_read` answered with a `List` (the review's example).
+        (&list, top::RESULT, false),
+        (&list, top::LIST, true),
+        (&string("s"), top::STRING, true),
+        (&string("s"), top::LIST, false),
+        (&[t::BOOL, 1], top::BOOL, true),
+        (&int(1), top::BOOL, false),
+        (&handle(0), top::DIR, true),
+        (&handle(2), top::DIR, false),
+        (&handle(2), top::BODY, true),
+        (&handle(6), top::BODY, false),
+        (&int(1), top::ANY, true),
+        (&int(1), 99, false),
+    ];
+    for &(bytes, want, ok) in cases {
+        let w = decode(&mut rt, bytes).unwrap();
+        let r = rt.vt_check(w, want);
+        assert_eq!(r.is_ok(), ok, "{bytes:?} against top {want}");
+        if let Err(d) = r {
+            assert_eq!(d.code, 90);
+        }
+        rt.drop(w);
+    }
+    // The handles above retire on drop; nothing else is left.
+    assert_eq!(rt.stats().live_objects, base);
+}

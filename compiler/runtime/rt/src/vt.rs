@@ -67,6 +67,23 @@ pub const BODY: u32 = 2;
 /// guest makes it a native closure (`rt_code_js_callback`).
 pub const CALLBACK: u32 = 5;
 
+/// The top of a host-delegated builtin's declared result (security review W2), as
+/// `sakura_codegen_wasm` passes it to `rt_vt_result`: `ok | err << 8`, `err` the top of the
+/// value a status-1 answer fails with. Only the top is checked (the tag, a handle's kind or a
+/// record's or variant's type id); a type argument inside it is the host's word (trusted base).
+pub mod top {
+    pub const ANY: u32 = 0;
+    pub const BOOL: u32 = 1;
+    pub const STRING: u32 = 2;
+    pub const LIST: u32 = 3;
+    pub const OPTION: u32 = 4;
+    pub const RESULT: u32 = 5;
+    pub const JSON: u32 = 6;
+    pub const CLI_ERROR: u32 = 7;
+    pub const DIR: u32 = 8;
+    pub const BODY: u32 = 9;
+}
+
 pub const MALFORMED: Defect = Defect {
     code: 90,
     message: "a malformed value crossed the host boundary",
@@ -141,6 +158,29 @@ impl Rt {
             return Err(MALFORMED);
         }
         Ok(w)
+    }
+
+    /// `D090` unless the decoded word `w` (borrowed) has the declared top `want` (a [`top`]).
+    pub fn vt_check(&self, w: u32, want: u32) -> Res<()> {
+        let tagged = |t: u16| is_ptr(w) && self.tag(w) == t;
+        let typed = |id: Option<u32>| {
+            (tagged(tag::VARIANT) || tagged(tag::RECORD)) && Some(self.heap.mem.u32(w + 8)) == id
+        };
+        let handle = |kind: u32| tagged(tag::HANDLE) && self.heap.mem.u32(w + 8) == kind;
+        let ok = match want {
+            top::ANY => true,
+            top::BOOL => w == TRUE || w == FALSE,
+            top::STRING => tagged(tag::STRING),
+            top::LIST => tagged(tag::LIST_ROOT),
+            top::OPTION => typed(Some(self.option_id())),
+            top::RESULT => typed(Some(self.result_id())),
+            top::JSON => typed(self.type_named(b"std::json::Json")),
+            top::CLI_ERROR => typed(self.type_named(b"std::cli::CliError")),
+            top::DIR => handle(DIR),
+            top::BODY => handle(BODY),
+            _ => false,
+        };
+        if ok { Ok(()) } else { Err(MALFORMED) }
     }
 
     fn vt_release(&mut self, v: V) {

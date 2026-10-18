@@ -1378,8 +1378,8 @@ impl Gen<'_, '_> {
             }
             _ => {}
         }
-        if let Some(&import) = self.env.hosted.get(name) {
-            let failed = self.hosted(s, import, args, live)?;
+        if self.env.hosted.contains_key(name) {
+            let failed = self.hosted(s, name, args, live)?;
             // A direct builtin does not fail (`fail` is for `cps` ones): a host bug.
             s.local_get(failed);
             self.pad_if(s, live, Some((90, "a host builtin failed")))?;
@@ -1418,10 +1418,15 @@ impl Gen<'_, '_> {
     fn hosted(
         &mut self,
         s: &mut InstructionSink<'_>,
-        import: u32,
+        name: &str,
         args: &[Var],
         live: &Live,
     ) -> Result<u32, String> {
+        let import = self.env.hosted[name];
+        let expect = crate::HOSTED
+            .iter()
+            .find(|(h, _)| *h == name)
+            .map_or(0, |&(_, t)| t);
         // Until `rt_vt_end` the unpushed arguments are still held here.
         let mut held = live.clone();
         for &a in args {
@@ -1456,6 +1461,7 @@ impl Gen<'_, '_> {
         s.local_get(self.lu);
         self.call_rt(s, "drop")?;
         s.local_get(self.lf2);
+        s.i32_const(expect as i32);
         self.call_rt(s, "rt_vt_result")?;
         s.local_set(self.lu);
         s.local_get(self.lu).i32_const(2).i32_eq();
@@ -1740,12 +1746,11 @@ impl Gen<'_, '_> {
             } if self.env.hosted.contains_key(name) => {
                 // The host answers at once: no frame, no suspension. `Ok` continues at `cont`
                 // with the result, a failure is this frame's `fail`.
-                let import = self.env.hosted[name];
                 let mut rest = live.clone();
                 for &a in args {
                     self.consume(&mut rest, a);
                 }
-                let failed = self.hosted(s, import, args, &rest)?;
+                let failed = self.hosted(s, name, args, &rest)?;
                 s.local_get(failed).if_(BlockType::Empty);
                 self.depth += 1;
                 for (&v, &n) in &rest {

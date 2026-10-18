@@ -85,7 +85,9 @@ pub const IMPORTS: &[&str] = &[
 /// and export `_start` (and imports nothing from `sakura_host`, which it implements).
 pub fn validate(wasm: &[u8], max_heap: u64, host: Host) -> Result<(), String> {
     let import_ok = |module: &str, name: &str| match (host, module) {
-        (Host::Abi, "sakura_host") => IMPORTS.contains(&name) || crate::HOSTED.contains(&name),
+        (Host::Abi, "sakura_host") => {
+            IMPORTS.contains(&name) || crate::HOSTED.iter().any(|(h, _)| *h == name)
+        }
         (Host::Wasi, "wasi_snapshot_preview1") => matches!(name, "fd_write" | "proc_exit"),
         _ => false,
     };

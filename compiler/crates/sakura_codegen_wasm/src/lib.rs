@@ -189,32 +189,48 @@ fn native_slots(name: &str) -> (Vec<Slot>, Vec<Slot>) {
 
 /// Builtins the Node host implements by delegating to the JS runtime (`sakura_wasm_host.js`
 /// `HOSTED`): their arguments and results cross in `sakura-vt1`. Schemas cross as their JS
-/// text (ABI §8.1). `cli_parse` is `cps` but answers at once.
-pub const HOSTED: &[&str] = &[
-    "cli_args",
-    "cli_parse",
-    "env_get",
-    "file_open",
-    "file_read",
-    "file_write",
-    "fs_exists",
-    "fs_list",
-    "fs_memory_root",
-    "fs_read",
-    "fs_root",
-    "fs_subdir",
-    "fs_write",
-    "http_body_of",
-    "http_recording_append",
-    "http_recording_append_stream",
-    "http_recording_lookup",
-    "http_recording_lookup_stream",
-    "http_recording_open",
-    "json_decode",
-    "json_encode",
-    "json_parse",
-    "json_schema",
+/// text (ABI §8.1). `cli_parse` is `cps` but answers at once. Each comes with the top of its
+/// declared result (`sakura_rt::vt::top`, `ok | err << 8`), which `rt_vt_result` checks a
+/// host answer against (security review W2); `cli_parse`'s `T` is any `Schema` type.
+pub const HOSTED: &[(&str, u32)] = &[
+    ("cli_args", top::LIST),
+    ("cli_parse", top::ANY | top::CLI_ERROR << 8),
+    ("env_get", top::OPTION),
+    ("file_open", top::RESULT),
+    ("file_read", top::RESULT),
+    ("file_write", top::RESULT),
+    ("fs_exists", top::BOOL),
+    ("fs_list", top::RESULT),
+    ("fs_memory_root", top::DIR),
+    ("fs_read", top::RESULT),
+    ("fs_root", top::DIR),
+    ("fs_subdir", top::RESULT),
+    ("fs_write", top::RESULT),
+    ("http_body_of", top::BODY),
+    ("http_recording_append", top::RESULT),
+    ("http_recording_append_stream", top::RESULT),
+    ("http_recording_lookup", top::RESULT),
+    ("http_recording_lookup_stream", top::RESULT),
+    ("http_recording_open", top::RESULT),
+    ("json_decode", top::RESULT),
+    ("json_encode", top::STRING),
+    ("json_parse", top::RESULT),
+    ("json_schema", top::JSON),
 ];
+
+/// `sakura_rt::vt::top`, the result tops `HOSTED` names (the runtime crate is not a dependency).
+mod top {
+    pub const ANY: u32 = 0;
+    pub const BOOL: u32 = 1;
+    pub const STRING: u32 = 2;
+    pub const LIST: u32 = 3;
+    pub const OPTION: u32 = 4;
+    pub const RESULT: u32 = 5;
+    pub const JSON: u32 = 6;
+    pub const CLI_ERROR: u32 = 7;
+    pub const DIR: u32 = 8;
+    pub const BODY: u32 = 9;
+}
 
 /// The functions the linker synthesises, in order, before the program's.
 const FIXED: &[&str] = &[
@@ -270,7 +286,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
             }
         }
         used.into_iter()
-            .filter(|n| HOSTED.contains(&n.as_str()))
+            .filter(|n| HOSTED.iter().any(|(h, _)| h == n))
             .collect()
     };
     let imports = if wasi {
