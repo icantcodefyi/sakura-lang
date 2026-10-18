@@ -189,6 +189,36 @@ pub fn sakura_env(args: &[&str], cwd: &Path, env: &[(&str, &Path)]) -> Output {
     }
 }
 
+/// `f` over every item, on one thread per core taking the next item as it finishes the last, so
+/// a corpus of independent `sakura` runs is not paced by one process at a time. Results come back
+/// in the order of `items`.
+pub fn par_map<T: Sync, R: Send>(items: &[T], f: impl Fn(&T) -> R + Sync) -> Vec<R> {
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let workers = std::thread::available_parallelism().map_or(4, |n| n.get());
+    let mut done: Vec<(usize, R)> = std::thread::scope(|s| {
+        let handles: Vec<_> = (0..workers.min(items.len()))
+            .map(|_| {
+                s.spawn(|| {
+                    let mut done = Vec::new();
+                    loop {
+                        let i = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        let Some(item) = items.get(i) else {
+                            break done;
+                        };
+                        done.push((i, f(item)));
+                    }
+                })
+            })
+            .collect();
+        handles
+            .into_iter()
+            .flat_map(|h| h.join().unwrap())
+            .collect()
+    });
+    done.sort_by_key(|(i, _)| *i);
+    done.into_iter().map(|(_, r)| r).collect()
+}
+
 /// Parses JSON Lines output; every line must be an object with `schema_version` and `kind`, and
 /// the last record must be the `summary`.
 pub fn json_lines(stdout: &str) -> Result<Vec<serde_json::Value>, String> {

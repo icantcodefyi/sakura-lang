@@ -134,38 +134,67 @@ fn run(path: &Path) -> Result<(), String> {
     compare_file(&path.with_extension("jsonl"), &normalized)
 }
 
+/// One fixture's outcome, computed concurrently and reported in fixture order.
+enum Outcome {
+    /// A `.fixed.sak` companion, which runs with its wrong fixture; `true` if that is missing.
+    Companion(bool),
+    /// Above the milestone: the reason, and whether `sakura check` survived it.
+    Skipped(String, Result<(), String>),
+    /// The fixture's directives and result, and its fixed companion's name and result.
+    Ran(
+        std::collections::BTreeMap<String, String>,
+        Result<(), String>,
+        Option<(String, Result<(), String>)>,
+    ),
+}
+
 #[test]
 fn ui() {
-    let mut report = Report::default();
-    for path in fixtures("ui") {
+    let results = par_map(&fixtures("ui"), |path| {
         let name = path.file_name().unwrap().to_string_lossy().into_owned();
         if name.ends_with(".fixed.sak") {
             let wrong = path.with_file_name(name.replace(".fixed.sak", ".sak"));
-            if !wrong.exists() {
-                report.fail(&name, "a fixed companion without its wrong fixture");
-            }
-            continue;
+            return (name, Outcome::Companion(!wrong.exists()));
         }
-        let d = directives(&std::fs::read_to_string(&path).unwrap());
-        let result = match skip_reason(&d, UI_MILESTONE) {
-            Some(why) => {
+        let d = directives(&std::fs::read_to_string(path).unwrap());
+        if let Some(why) = skip_reason(&d, UI_MILESTONE) {
+            return (
+                name,
+                Outcome::Skipped(why, check_never_crashes(path).map(|_| ())),
+            );
+        }
+        let result = run(path);
+        let fixed = path.with_extension("fixed.sak");
+        let fixed = fixed.exists().then(|| {
+            let name = fixed.file_name().unwrap().to_string_lossy().into_owned();
+            (
+                name,
+                run_fixed(&fixed, d.get("command").map(String::as_str)),
+            )
+        });
+        (name, Outcome::Ran(d, result, fixed))
+    });
+    let mut report = Report::default();
+    for (name, outcome) in results {
+        match outcome {
+            Outcome::Companion(false) => {}
+            Outcome::Companion(true) => {
+                report.fail(&name, "a fixed companion without its wrong fixture")
+            }
+            Outcome::Skipped(why, survived) => {
                 report.skip(&name, why);
-                check_never_crashes(&path).map(|_| ())
-            }
-            None => {
-                report.settle(&name, &d, run(&path));
-                let fixed = path.with_extension("fixed.sak");
-                if fixed.exists() {
-                    match run_fixed(&fixed, d.get("command").map(String::as_str)) {
-                        Ok(()) => report.pass(),
-                        Err(e) => report.fail(&fixed.file_name().unwrap().to_string_lossy(), e),
-                    }
+                if let Err(e) = survived {
+                    report.fail(&name, e);
                 }
-                Ok(())
             }
-        };
-        if let Err(e) = result {
-            report.fail(&name, e);
+            Outcome::Ran(d, result, fixed) => {
+                report.settle(&name, &d, result);
+                match fixed {
+                    Some((_, Ok(()))) => report.pass(),
+                    Some((fixed, Err(e))) => report.fail(&fixed, e),
+                    None => {}
+                }
+            }
         }
     }
     report.finish("ui");

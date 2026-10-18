@@ -21,7 +21,7 @@ mod common;
 
 use common::*;
 use std::collections::BTreeMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// Fixtures that do not agree yet, and why. Empty since W2 (plan §3.7 row 3); a fixture
 /// that WASM cannot run yet goes here with the reason.
@@ -118,7 +118,7 @@ fn run_mode(mode: &str, target: &str, name: &str, dir: &Path, rest: &[&str]) -> 
     };
     let trace = tmp.join(format!("{label}.{mode}.{target}.trace"));
     let coverage = tmp.join(format!("{label}.{mode}.{target}.imports"));
-    let out_dir = tmp.join(format!("out-{target}"));
+    let out_dir = tmp.join(format!("{label}.{mode}.{target}.out"));
     let _ = std::fs::remove_file(&trace);
     let _ = std::fs::remove_file(&coverage);
     let mut args = vec![
@@ -393,6 +393,13 @@ fn a_wrong_defect_site_or_message_is_rejected() {
     }
 }
 
+/// One parity comparison: a semantics fixture or an example project, with its directives and
+/// mode.
+enum Job {
+    Fixture(PathBuf, BTreeMap<String, String>, String),
+    Example(PathBuf, BTreeMap<String, String>, String),
+}
+
 #[test]
 fn js_and_wasm_agree_on_the_semantics_corpus() {
     let node = std::process::Command::new("node").arg("--version").output();
@@ -412,32 +419,18 @@ fn js_and_wasm_agree_on_the_semantics_corpus() {
     );
     assert!(sakura_codegen_wasm::available(), "WASM runtime is missing");
     eprintln!("parity backend: {primary} (compared with the other backend)");
-    let (mut agree, mut known, mut failures) = (0, 0, vec![]);
-    let mut ops: BTreeMap<String, usize> = BTreeMap::new();
-    let mut covered: Vec<(String, Imports)> = vec![];
-    let mut total = 0;
+    // Every run- and test-mode fixture, then the examples: run-mode ones run with their `args`,
+    // and every one's tests. Each job runs both backends; jobs run concurrently.
+    let mut jobs: Vec<Job> = vec![];
     for path in fixtures("semantics") {
-        let name = path.file_name().unwrap().to_string_lossy().into_owned();
         let d = directives(&std::fs::read_to_string(&path).unwrap());
         let mode = d.get("mode").map_or("run", String::as_str);
         if !matches!(mode, "run" | "test") || skip_reason(&d, SEMANTICS_MILESTONE).is_some() {
             continue;
         }
-        total += 1;
-        let dir = path.parent().unwrap();
-        let (js, mut wasm) = run_pair(&primary, mode, &name, dir, &[]);
-        count_ops(&wasm.trace, &mut ops);
-        covered.push((name.clone(), std::mem::take(&mut wasm.imports)));
-        let known_reason = KNOWN.iter().find(|(n, _)| *n == name).map(|(_, r)| *r);
-        match (compare(Some((&path, &d)), mode, &js, &wasm), known_reason) {
-            (None, None) => agree += 1,
-            (None, Some(_)) => failures.push(format!("{name}: agrees now; drop it from KNOWN")),
-            (Some(_), Some(_)) => known += 1,
-            (Some(why), None) => failures.push(format!("{name}: {why}")),
-        }
+        let mode = mode.to_owned();
+        jobs.push(Job::Fixture(path, d, mode));
     }
-    // The examples: run-mode ones run with their `args`, and every one's tests.
-    let (mut examples, mut examples_agree) = (0, 0);
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples");
     let mut dirs: Vec<_> = std::fs::read_dir(&root)
         .unwrap()
@@ -447,31 +440,67 @@ fn js_and_wasm_agree_on_the_semantics_corpus() {
     dirs.sort();
     for dir in dirs {
         let d = directives(&std::fs::read_to_string(dir.join("src/main.sak")).unwrap());
-        let args: Vec<&str> = d
-            .get("args")
-            .map_or("", String::as_str)
-            .split_whitespace()
-            .collect();
         let modes: &[&str] = if d.get("mode").map(String::as_str) == Some("run") {
             &["run", "test"]
         } else {
             &["test"]
         };
         for mode in modes {
-            examples += 1;
-            let (js, mut wasm) = run_pair(&primary, mode, "", &dir, &args);
-            if *mode == "run" && d.get("stdout-regex").is_some_and(|v| v == "true") {
-                wasm.stdout.clone_from(&js.stdout);
+            jobs.push(Job::Example(dir.clone(), d.clone(), (*mode).to_owned()));
+        }
+    }
+    let pairs = par_map(&jobs, |job| match job {
+        Job::Fixture(path, _, mode) => {
+            let name = path.file_name().unwrap().to_string_lossy();
+            run_pair(&primary, mode, &name, path.parent().unwrap(), &[])
+        }
+        Job::Example(dir, d, mode) => {
+            let args: Vec<&str> = d
+                .get("args")
+                .map_or("", String::as_str)
+                .split_whitespace()
+                .collect();
+            run_pair(&primary, mode, "", dir, &args)
+        }
+    });
+    let (mut agree, mut known, mut failures) = (0, 0, vec![]);
+    let mut ops: BTreeMap<String, usize> = BTreeMap::new();
+    let mut covered: Vec<(String, Imports)> = vec![];
+    let (mut total, mut examples, mut examples_agree) = (0, 0, 0);
+    for (job, (js, mut wasm)) in jobs.iter().zip(pairs) {
+        match job {
+            Job::Fixture(path, d, mode) => {
+                total += 1;
+                let name = path.file_name().unwrap().to_string_lossy().into_owned();
+                count_ops(&wasm.trace, &mut ops);
+                covered.push((name.clone(), std::mem::take(&mut wasm.imports)));
+                let known_reason = KNOWN.iter().find(|(n, _)| *n == name).map(|(_, r)| *r);
+                match (compare(Some((path, d)), mode, &js, &wasm), known_reason) {
+                    (None, None) => agree += 1,
+                    (None, Some(_)) => {
+                        failures.push(format!("{name}: agrees now; drop it from KNOWN"))
+                    }
+                    (Some(_), Some(_)) => known += 1,
+                    (Some(why), None) => failures.push(format!("{name}: {why}")),
+                }
             }
-            count_ops(&wasm.trace, &mut ops);
-            let label = format!(
-                "example {} ({mode})",
-                dir.file_name().unwrap().to_string_lossy()
-            );
-            covered.push((label, std::mem::take(&mut wasm.imports)));
-            match compare(None, mode, &js, &wasm) {
-                None => examples_agree += 1,
-                Some(why) => failures.push(format!("example {} ({mode}): {why}", dir.display())),
+            Job::Example(dir, d, mode) => {
+                examples += 1;
+                if mode == "run" && d.get("stdout-regex").is_some_and(|v| v == "true") {
+                    wasm.stdout.clone_from(&js.stdout);
+                }
+                count_ops(&wasm.trace, &mut ops);
+                let label = format!(
+                    "example {} ({mode})",
+                    dir.file_name().unwrap().to_string_lossy()
+                );
+                covered.push((label, std::mem::take(&mut wasm.imports)));
+                match compare(None, mode, &js, &wasm) {
+                    None => examples_agree += 1,
+                    Some(why) => {
+                        failures.push(format!("example {} ({mode}): {why}", dir.display()))
+                    }
+                }
             }
         }
     }

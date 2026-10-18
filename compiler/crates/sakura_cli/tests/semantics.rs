@@ -31,7 +31,10 @@ fn run(path: &Path, d: &std::collections::BTreeMap<String, String>) -> Result<()
     for abi in ["direct", "no-direct"] {
         let trace = tmp.join(format!("{name}.{abi}.trace"));
         let _ = std::fs::remove_file(&trace);
+        // Fixtures share a directory and run concurrently, so each run builds into its own.
+        let out_dir = tmp.join(format!("{name}.{abi}.out"));
         let mut args = args.clone();
+        args.extend(["--out-dir", out_dir.to_str().unwrap()]);
         if abi == "no-direct" {
             args.insert(1, "--no-direct");
         }
@@ -95,22 +98,26 @@ fn expect(
 
 #[test]
 fn semantics() {
-    let mut report = Report::default();
-    for path in fixtures("semantics") {
+    let results = par_map(&fixtures("semantics"), |path| {
         let name = path.file_name().unwrap().to_string_lossy().into_owned();
-        let d = directives(&std::fs::read_to_string(&path).unwrap());
-        let result = match skip_reason(&d, SEMANTICS_MILESTONE) {
+        let d = directives(&std::fs::read_to_string(path).unwrap());
+        let skip = skip_reason(&d, SEMANTICS_MILESTONE);
+        let result = match skip {
+            Some(_) => check_never_crashes(path).map(|_| ()),
+            None => run(path, &d),
+        };
+        (name, d, skip, result)
+    });
+    let mut report = Report::default();
+    for (name, d, skip, result) in results {
+        match skip {
             Some(why) => {
                 report.skip(&name, why);
-                check_never_crashes(&path).map(|_| ())
+                if let Err(e) = result {
+                    report.fail(&name, e);
+                }
             }
-            None => {
-                report.settle(&name, &d, run(&path, &d));
-                Ok(())
-            }
-        };
-        if let Err(e) = result {
-            report.fail(&name, e);
+            None => report.settle(&name, &d, result),
         }
     }
     report.finish("semantics");
