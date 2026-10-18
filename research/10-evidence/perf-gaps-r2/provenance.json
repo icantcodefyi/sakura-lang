@@ -1,0 +1,23 @@
+{
+  "commit": "1ced38db0c1da60146229041a143f62edb470cb9",
+  "cpu": "Apple M4 Pro",
+  "memory_bytes": 25769803776,
+  "logical_cpus": 12,
+  "environment_overrides": {
+    "NODE_OPTIONS": null,
+    "BUN_OPTIONS": null,
+    "SAKURA_TRACE": null
+  },
+  "source_hashes": {
+    "compiler/runtime/js/sakura_runtime.js": "7bdb801f826de2cb708d995dc6bd050d90d952ce68e8cd80471d8996ad0508e4",
+    "compiler/std/list.sakura": "76d381fff00241a26640f588266333338c0d4932bcfff8282183822acdebfca9",
+    "bench/harness/runner.mjs": "55a510b5fd859c76467b5891c6fbe73945835f32218545dab5e9adfd074d51ea",
+    "bench/programs/sieve/js/main.mjs": "8289692544c85869ef52c8b2e6a446e9032e4608d77db5a8aaae94a125cb1f31",
+    "bench/programs/sieve/sakura/main.sakura": "46f59a69e9f131f22facb2897c6e71e0cc243096217ea4cd5487ee91d41f0076",
+    "bench/programs/nbody/js/main.mjs": "de52d95ac58ed3ef2517759876259f5530faf7a638367aa168aa9045aa54780c",
+    "bench/programs/nbody/sakura/main.sakura": "cac89a6b80a2e06273ae8ec67bf58eaee0a349f26cc11d777d37c8b4231a9a55",
+    "bench/programs/spectral_norm/js/main.mjs": "c9bf2d73790f8e9a3e2bb10fad320e4e66389438a5f6809e8b756282c9ce4d28",
+    "bench/programs/spectral_norm/sakura/main.sakura": "22a7587903a2779089c960159c1e445b2b58c70929bcdbfa189c6569eb443d21"
+  },
+  "cli_sha256": "4be0ca731167ffe2a5fdda787ed52c3d9637a32db830d0869dc903e03980c2a5"
+}

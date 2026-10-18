@@ -1,0 +1,236 @@
+Statistical profiling result from /tmp/sakura-perfgaps-r2/profiles/sieve-v8.log, (2427 ticks, 28 unaccounted, 0 excluded).
+
+ [Shared libraries]:
+   ticks  total  nonlib   name
+     13    0.5%          /usr/lib/system/libsystem_malloc.dylib
+      3    0.1%          /usr/lib/system/libsystem_c.dylib
+      2    0.1%          /opt/homebrew/Cellar/node/26.11.0/lib/libnode.147.dylib
+      1    0.0%          /usr/lib/system/libsystem_platform.dylib
+
+ [JavaScript]:
+   ticks  total  nonlib   name
+    669   27.6%   27.8%  JS: *set$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/std/list.js:6:22
+    223    9.2%    9.3%  JS: *run$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:51:22
+      9    0.4%    0.4%  JS: *setAt file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:1025:15
+      8    0.3%    0.3%  JS: +run$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:51:22
+      4    0.2%    0.2%  JS: *pushLeaf file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:1016:18
+      3    0.1%    0.1%  JS: +push file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:987:14
+      1    0.0%    0.0%  JS: ^run$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:51:22
+      1    0.0%    0.0%  JS: +setAt file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:1025:15
+      1    0.0%    0.0%  JS: +list_push file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:1064:26
+      1    0.0%    0.0%  JS: *push file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:987:14
+
+ [C++]:
+   ticks  total  nonlib   name
+    994   41.0%   41.3%  t node::http2::Http2Ping::MemoryInfoName() const
+    266   11.0%   11.0%  t __os_nospin_lock_lock_slow
+     61    2.5%    2.5%  t __os_nospin_lock_unlock_slow
+     58    2.4%    2.4%  T __kernelrpc_mach_port_get_refs
+     51    2.1%    2.1%  t __os_once_gate_broadcast
+     11    0.5%    0.5%  T _mach_vm_region
+      9    0.4%    0.4%  T _OSAtomicIncrement32
+      5    0.2%    0.2%  T _mach_vm_map
+      2    0.1%    0.1%  T absl::lts_20260817::Mutex::lock()
+      1    0.0%    0.0%  t non-virtual thunk to node::heap::(anonymous namespace)::HeapSnapshotStream::~HeapSnapshotStream()
+      1    0.0%    0.0%  T absl::lts_20260817::synchronization_internal::PthreadWaiter::Wait(absl::lts_20260817::synchronization_internal::KernelTimeout)
+      1    0.0%    0.0%  T ___platform_sigaction
+
+ [Summary]:
+   ticks  total  nonlib   name
+    920   37.9%   38.2%  JavaScript
+   1460   60.2%   60.6%  C++
+    349   14.4%   14.5%  GC
+     19    0.8%          Shared libraries
+     28    1.2%          Unaccounted
+
+ [C++ entry points]:
+   ticks    cpp   total   name
+    635   62.1%   26.2%  t node::http2::Http2Ping::MemoryInfoName() const
+    266   26.0%   11.0%  t __os_nospin_lock_lock_slow
+     61    6.0%    2.5%  t __os_nospin_lock_unlock_slow
+     51    5.0%    2.1%  t __os_once_gate_broadcast
+      9    0.9%    0.4%  T _OSAtomicIncrement32
+      1    0.1%    0.0%  t non-virtual thunk to node::heap::(anonymous namespace)::HeapSnapshotStream::~HeapSnapshotStream()
+
+ [Bottom up (heavy) profile]:
+  Note: percentage shows a share of a particular caller in the total
+  amount of its parent calls.
+  Callers occupying less than 1.0% are not shown.
+
+   ticks parent  name
+    994   41.0%  t node::http2::Http2Ping::MemoryInfoName() const
+    348   35.0%    JS: *set$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/std/list.js:6:22
+    343   98.6%      JS: *run$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:51:22
+    318   92.7%        JS: ^run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+    318  100.0%          JS: ^<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+    318  100.0%            JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+     25    7.3%        JS: ~run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+     25  100.0%          JS: ~<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+     25  100.0%            JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+      5    1.4%      JS: +run$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:51:22
+      3   60.0%        JS: ~run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+      3  100.0%          JS: ~<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+      3  100.0%            JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+      2   40.0%        JS: ^run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+      2  100.0%          JS: ^<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+      2  100.0%            JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+    244   24.5%    JS: *run$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:51:22
+    221   90.6%      JS: ^run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+    221  100.0%        JS: ^<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+    221  100.0%          JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+    221  100.0%            JS: ^runTask file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:239:24
+     23    9.4%      JS: ~run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+     23  100.0%        JS: ~<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+     23  100.0%          JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+     23  100.0%            JS: ~runTask file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:239:24
+     11    1.1%    JS: *pushLeaf file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:1016:18
+     10   90.9%      JS: *run$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:51:22
+     10  100.0%        JS: ^run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+     10  100.0%          JS: ^<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+     10  100.0%            JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+      1    9.1%      JS: *pushLeaf file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:1016:18
+      1  100.0%        JS: *run$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:51:22
+      1  100.0%          JS: ^run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+      1  100.0%            JS: ^<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+
+    669   27.6%  JS: *set$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/std/list.js:6:22
+    630   94.2%    JS: *run$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:51:22
+    592   94.0%      JS: ^run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+    592  100.0%        JS: ^<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+    592  100.0%          JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+    592  100.0%            JS: ^runTask file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:239:24
+     38    6.0%      JS: ~run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+     38  100.0%        JS: ~<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+     38  100.0%          JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+     38  100.0%            JS: ~runTask file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:239:24
+     12    1.8%    JS: +run$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:51:22
+      9   75.0%      JS: ~run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+      9  100.0%        JS: ~<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+      9  100.0%          JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+      9  100.0%            JS: ~runTask file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:239:24
+      3   25.0%      JS: ^run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+      3  100.0%        JS: ^<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+      3  100.0%          JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+      3  100.0%            JS: ^runTask file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:239:24
+
+    266   11.0%  t __os_nospin_lock_lock_slow
+    251   94.4%    JS: *set$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/std/list.js:6:22
+    246   98.0%      JS: *run$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:51:22
+    227   92.3%        JS: ^run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+    227  100.0%          JS: ^<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+    227  100.0%            JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+     19    7.7%        JS: ~run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+     19  100.0%          JS: ~<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+     19  100.0%            JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+      5    2.0%      JS: +run$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:51:22
+      3   60.0%        JS: ~run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+      3  100.0%          JS: ~<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+      3  100.0%            JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+      2   40.0%        JS: ^run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+      2  100.0%          JS: ^<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+      2  100.0%            JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+      6    2.3%    JS: *run$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:51:22
+      5   83.3%      JS: ~run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+      5  100.0%        JS: ~<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+      5  100.0%          JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+      5  100.0%            JS: ~runTask file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:239:24
+      1   16.7%      JS: ^run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+      1  100.0%        JS: ^<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+      1  100.0%          JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+      1  100.0%            JS: ^runTask file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:239:24
+      6    2.3%    JS: *pushLeaf file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:1016:18
+      4   66.7%      JS: *pushLeaf file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:1016:18
+      4  100.0%        JS: *run$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:51:22
+      4  100.0%          JS: ^run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+      4  100.0%            JS: ^<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+      2   33.3%      JS: *run$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:51:22
+      2  100.0%        JS: ^run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+      2  100.0%          JS: ^<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+      2  100.0%            JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+
+    223    9.2%  JS: *run$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:51:22
+    197   88.3%    JS: ^run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+    197  100.0%      JS: ^<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+    197  100.0%        JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+    197  100.0%          JS: ^runTask file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:239:24
+    197  100.0%            JS: ~call file:///Users/aniruddhdubge/.t3/scratch/sakura-worktrees/perfgaps/research/10-evidence/perf-gaps-r2/profile.mjs:5:14
+     26   11.7%    JS: ~run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+     26  100.0%      JS: ~<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+     26  100.0%        JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+     26  100.0%          JS: ~runTask file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:239:24
+     26  100.0%            JS: ~call file:///Users/aniruddhdubge/.t3/scratch/sakura-worktrees/perfgaps/research/10-evidence/perf-gaps-r2/profile.mjs:5:14
+
+     61    2.5%  t __os_nospin_lock_unlock_slow
+     56   91.8%    JS: *set$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/std/list.js:6:22
+     55   98.2%      JS: *run$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:51:22
+     52   94.5%        JS: ^run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+     52  100.0%          JS: ^<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+     52  100.0%            JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+      3    5.5%        JS: ~run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+      3  100.0%          JS: ~<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+      3  100.0%            JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+      1    1.8%      JS: +run$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:51:22
+      1  100.0%        JS: ~run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+      1  100.0%          JS: ~<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+      1  100.0%            JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+      2    3.3%    JS: *run$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:51:22
+      2  100.0%      JS: ^run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+      2  100.0%        JS: ^<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+      2  100.0%          JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+      2  100.0%            JS: ^runTask file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:239:24
+      1    1.6%    JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      1    1.6%    JS: *setAt file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:1025:15
+      1  100.0%      JS: *run$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:51:22
+      1  100.0%        JS: ~run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+      1  100.0%          JS: ~<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+      1  100.0%            JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+      1    1.6%    JS: *pushLeaf file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:1016:18
+      1  100.0%      JS: *pushLeaf file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:1016:18
+      1  100.0%        JS: *run$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:51:22
+      1  100.0%          JS: ^run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+      1  100.0%            JS: ^<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+
+     58    2.4%  T __kernelrpc_mach_port_get_refs
+
+     51    2.1%  t __os_once_gate_broadcast
+     50   98.0%    JS: *set$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/std/list.js:6:22
+     49   98.0%      JS: *run$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:51:22
+     44   89.8%        JS: ^run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+     44  100.0%          JS: ^<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+     44  100.0%            JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+      5   10.2%        JS: ~run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+      5  100.0%          JS: ~<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+      5  100.0%            JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+      1    2.0%      JS: +run$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:51:22
+      1  100.0%        JS: ~run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+      1  100.0%          JS: ~<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+      1  100.0%            JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+      1    2.0%    JS: *setAt file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:1025:15
+      1  100.0%      JS: *run$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:51:22
+      1  100.0%        JS: ~run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+      1  100.0%          JS: ~<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+      1  100.0%            JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+
+     28    1.2%  UNKNOWN
+     26   92.9%    JS: *set$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/std/list.js:6:22
+     24   92.3%      JS: *run$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:51:22
+     22   91.7%        JS: ^run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+     22  100.0%          JS: ^<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+     22  100.0%            JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+      2    8.3%        JS: ~run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+      2  100.0%          JS: ~<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+      2  100.0%            JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+      2    7.7%      JS: +run$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:51:22
+      2  100.0%        JS: ~run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+      2  100.0%          JS: ~<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+      2  100.0%            JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+      1    3.6%    JS: *setAt file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:1025:15
+      1  100.0%      JS: *run$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:51:22
+      1  100.0%        JS: ~run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+      1  100.0%          JS: ~<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21
+      1  100.0%            JS: ~drive file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:250:15
+      1    3.6%    JS: *pushLeaf file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:1016:18
+      1  100.0%      JS: *pushLeaf file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:1016:18
+      1  100.0%        JS: *run$d file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:51:22
+      1  100.0%          JS: ^run file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js:223:20
+      1  100.0%            JS: ^<anonymous> file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js:244:21

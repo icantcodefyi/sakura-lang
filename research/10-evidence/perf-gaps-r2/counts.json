@@ -1,0 +1,52 @@
+{
+  "sieve": {
+    "result": {
+      "kind": "ok",
+      "value": 17984
+    },
+    "counts": {
+      "list_push": 200000,
+      "List": 598286,
+      "list_get": 446,
+      "Some": 446,
+      "contract_enter": 398286,
+      "contract_exit": 398286,
+      "list_set": 398286,
+      "set_arrays": 1592937,
+      "set_slots": 40809579,
+      "list_at": 200000,
+      "ret": 1
+    }
+  },
+  "nbody": {
+    "result": {
+      "kind": "ok",
+      "value": -169079859
+    },
+    "counts": {
+      "Body": 2500006,
+      "List": 6000007,
+      "list_at": 2500009,
+      "list_get": 1500016,
+      "Some": 1500016,
+      "list_slice": 3000002,
+      "list_push": 3500005,
+      "float_sqrt": 1000010,
+      "ret": 1
+    }
+  },
+  "spectral_norm": {
+    "result": {
+      "kind": "ok",
+      "value": 1274224081
+    },
+    "counts": {
+      "list_push": 16400,
+      "List": 16400,
+      "list_get": 6401600,
+      "Some": 6401600,
+      "float_sqrt": 1,
+      "ret": 1
+    }
+  }
+}

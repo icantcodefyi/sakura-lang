@@ -1,0 +1,8 @@
+main::main::main cps(row)
+std::cli::host direct
+main::main::$entry cps(with)
+std::cli::host$Cli_args direct
+std::cli::host$Cli_exit direct
+main::main::run direct
+std::option::unwrap_or direct
+std::list::set direct

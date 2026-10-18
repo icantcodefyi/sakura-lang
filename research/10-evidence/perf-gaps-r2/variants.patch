@@ -1,0 +1,647 @@
+--- sieve/base/sakura_runtime.js
++++ sieve/no_boundary_gauge/sakura_runtime.js
+@@ -40 +40 @@
+-  return ++G.d > LIMIT ? new Bounce(k, [v]) : k(v);
++  return k(v);
+--- sieve/base/main/main.js
++++ sieve/no_contract/main/main.js
+@@ -113 +112,0 @@
+-                      $S.s = $c0;
+--- sieve/base/std/list.js
++++ sieve/no_contract/std/list.js
+@@ -7,20 +7 @@
+-  const $site = $rt.take_site();
+-  const enter = $rt.contract_enter();
+-  const t = (0 <= i);
+-  let v;
+-  j0: {
+-    if (t) {
+-      const r = $rt.list_len(xs);
+-      const t_1 = (i < r);
+-      v = t_1;
+-      break j0;
+-    } else {
+-      v = false;
+-      break j0;
+-    }
+-  }
+-  const exit = $rt.contract_exit();
+-  if (!v) $rt.violated("D020", "precondition `set` of set violated", $site, $c0);
+-  const pre = undefined;
+-  const r_1 = $rt.list_set(xs, i, x);
+-  return r_1;
++  return $rt.list_set(xs, i, x);
+--- sieve/base/main/main.js
++++ sieve/no_int_checks/main/main.js
+@@ -89 +89 @@
+-      if (!Number.isSafeInteger(t_3)) $rt.mul(p_1, p_1);
++
+@@ -100 +100 @@
+-              if (!Number.isSafeInteger(t_5)) $rt.mul(p_1, p_1);
++
+@@ -116 +116 @@
+-                      if (!Number.isSafeInteger(t_7)) $rt.add(j_1, p_5);
++
+@@ -152 +152 @@
+-          if (!Number.isSafeInteger(t_8)) $rt.add(p_3, 1);
++
+@@ -188 +188 @@
+-            if (!Number.isSafeInteger(t_9)) $rt.add(count_1, 1);
++
+--- sieve/base/sakura_runtime.js
++++ sieve/private_array/sakura_runtime.js
+@@ -916,4 +916 @@
+-  const leaves = [];
+-  const body = arr.length - (arr.length % 32 || 32);
+-  for (let i = 0; i < body; i += 32) leaves.push(arr.slice(i, i + 32));
+-  return fromLeaves(leaves, arr.slice(Math.max(body, 0)));
++  return arr.slice();
+@@ -1046 +1043 @@
+-  return xs.n;
++  return xs.length;
+@@ -1049 +1046 @@
+-  return i >= 0 && i < xs.n ? Some(at(xs, i)) : None;
++  return i >= 0 && i < xs.length ? Some(xs[i]) : None;
+@@ -1053,10 +1050 @@
+-  if ((i & ~31) === xs.lb) return xs.lf[i & 31];
+-  // The tail starts on a leaf boundary, so it is cached like a leaf.
+-  let node = xs.tail;
+-  if (i < xs.n - xs.tl) {
+-    node = xs.root;
+-    for (let level = xs.shift; level > 0; level -= 5) node = node[(i >>> level) & 31];
+-  }
+-  xs.lb = i & ~31;
+-  xs.lf = node;
+-  return node[i & 31];
++  return xs[i];
+@@ -1065 +1053 @@
+-  return push(xs, x);
++  xs.push(x); return xs;
+@@ -1069 +1057 @@
+-  return setAt(xs, i, x);
++  xs[i] = x; return xs;
+--- sieve/base/sakura_runtime.js
++++ sieve/unique_no_contract/sakura_runtime.js
+@@ -1027,13 +1027,9 @@
+-  if (i >= off) {
+-    const t = xs.tail.slice(0, xs.tl);
+-    t[i - off] = x;
+-    return new List(xs.n, xs.shift, xs.root, t, xs.tl);
+-  }
+-  const root = xs.root.slice();
+-  let copy = root;
+-  for (let level = xs.shift; level > 0; level -= 5) {
+-    const j = (i >>> level) & 31;
+-    copy = copy[j] = copy[j].slice();
+-  }
+-  copy[i & 31] = x;
+-  return new List(xs.n, xs.shift, root, xs.tail, xs.tl);
++  let leaf = xs.tail, index = i - off;
++  if (i < off) {
++    leaf = xs.root;
++    for (let level = xs.shift; level > 0; level -= 5) leaf = leaf[(i >>> level) & 31];
++    index = i & 31;
++  }
++  leaf[index] = x;
++  xs.lb = -1; xs.lf = null;
++  return xs;
+--- sieve/base/std/list.js
++++ sieve/unique_no_contract/std/list.js
+@@ -7,20 +7 @@
+-  const $site = $rt.take_site();
+-  const enter = $rt.contract_enter();
+-  const t = (0 <= i);
+-  let v;
+-  j0: {
+-    if (t) {
+-      const r = $rt.list_len(xs);
+-      const t_1 = (i < r);
+-      v = t_1;
+-      break j0;
+-    } else {
+-      v = false;
+-      break j0;
+-    }
+-  }
+-  const exit = $rt.contract_exit();
+-  if (!v) $rt.violated("D020", "precondition `set` of set violated", $site, $c0);
+-  const pre = undefined;
+-  const r_1 = $rt.list_set(xs, i, x);
+-  return r_1;
++  return $rt.list_set(xs, i, x);
+--- sieve/base/sakura_runtime.js
++++ sieve/unique_trie/sakura_runtime.js
+@@ -1027,13 +1027,9 @@
+-  if (i >= off) {
+-    const t = xs.tail.slice(0, xs.tl);
+-    t[i - off] = x;
+-    return new List(xs.n, xs.shift, xs.root, t, xs.tl);
+-  }
+-  const root = xs.root.slice();
+-  let copy = root;
+-  for (let level = xs.shift; level > 0; level -= 5) {
+-    const j = (i >>> level) & 31;
+-    copy = copy[j] = copy[j].slice();
+-  }
+-  copy[i & 31] = x;
+-  return new List(xs.n, xs.shift, root, xs.tail, xs.tl);
++  let leaf = xs.tail, index = i - off;
++  if (i < off) {
++    leaf = xs.root;
++    for (let level = xs.shift; level > 0; level -= 5) leaf = leaf[(i >>> level) & 31];
++    index = i & 31;
++  }
++  leaf[index] = x;
++  xs.lb = -1; xs.lf = null;
++  return xs;
+--- nbody/base/main/main.js
++++ nbody/direct_map/main/main.js
+@@ -324,3 +324,3 @@
+-  const f = advance$1.bind(null, dt);
+-  f.$d = advance$1$d.bind(null, dt);
+-  const r_6 = $std_list.map$d(bs, f);
++  const builder = $rt.list_builder();
++  for (let k = 0; k < $rt.list_len(bs); k++) $rt.list_builder_push(builder, advance$1$d(dt, $rt.list_at(bs, k)));
++  const r_6 = $rt.list_builder_finish(builder);
+--- nbody/base/main/main.js
++++ nbody/indexed_reuse/main/main.js
+@@ -263 +263 @@
+-                  const rec = new Body(x_2, y_2, z_2, t_15, t_18, t_21, mass_3);
++                  const rec = (b_1.vx = t_15, b_1.vy = t_18, b_1.vz = t_21, b_1);
+@@ -283 +283 @@
+-                  const rec_1 = new Body(x_3, y_3, z_3, t_24, t_27, t_30, mass_7);
++                  const rec_1 = (r_2.vx = t_24, r_2.vy = t_27, r_2.vz = t_30, r_2);
+@@ -445,8 +445 @@
+-  const r = $rt.list_slice(bs, 0, i);
+-  const r_1 = $rt.list_push(r, b);
+-  const t = (i + 1);
+-  if (!Number.isSafeInteger(t)) $rt.add(i, 1);
+-  const r_2 = $rt.list_len(bs);
+-  const r_3 = $rt.list_slice(bs, t, r_2);
+-  const r_4 = $std_list.concat$d(r_1, r_3);
+-  return r_4;
++  return $rt.list_set(bs, i, b);
+@@ -477 +470 @@
+-  const rec = new Body(t_1, t_3, t_5, vx_1, vy_1, vz_1, mass);
++  const rec = (b.x = t_1, b.y = t_3, b.z = t_5, b);
+--- nbody/base/main/main.js
++++ nbody/indexed_set/main/main.js
+@@ -445,8 +445 @@
+-  const r = $rt.list_slice(bs, 0, i);
+-  const r_1 = $rt.list_push(r, b);
+-  const t = (i + 1);
+-  if (!Number.isSafeInteger(t)) $rt.add(i, 1);
+-  const r_2 = $rt.list_len(bs);
+-  const r_3 = $rt.list_slice(bs, t, r_2);
+-  const r_4 = $std_list.concat$d(r_1, r_3);
+-  return r_4;
++  return $rt.list_set(bs, i, b);
+--- nbody/base/sakura_runtime.js
++++ nbody/no_boundary_gauge/sakura_runtime.js
+@@ -40 +40 @@
+-  return ++G.d > LIMIT ? new Bounce(k, [v]) : k(v);
++  return k(v);
+--- nbody/base/main/main.js
++++ nbody/object_literals/main/main.js
+@@ -106 +106 @@
+-  const rec = new Body(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, c);
++  const rec = ({x: 0.0, y: 0.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, mass: c});
+@@ -190 +190 @@
+-  const rec = new Body(x_1, y, z, t_7, t_9, t_11, mass_3);
++  const rec = ({x: x_1, y: y, z: z, vx: t_7, vy: t_9, vz: t_11, mass: mass_3});
+@@ -263 +263 @@
+-                  const rec = new Body(x_2, y_2, z_2, t_15, t_18, t_21, mass_3);
++                  const rec = ({x: x_2, y: y_2, z: z_2, vx: t_15, vy: t_18, vz: t_21, mass: mass_3});
+@@ -283 +283 @@
+-                  const rec_1 = new Body(x_3, y_3, z_3, t_24, t_27, t_30, mass_7);
++                  const rec_1 = ({x: x_3, y: y_3, z: z_3, vx: t_24, vy: t_27, vz: t_30, mass: mass_7});
+@@ -477 +477 @@
+-  const rec = new Body(t_1, t_3, t_5, vx_1, vy_1, vz_1, mass);
++  const rec = ({x: t_1, y: t_3, z: t_5, vx: vx_1, vy: vy_1, vz: vz_1, mass: mass});
+@@ -506 +506 @@
+-  const rec = new Body(x, y, z, t, t_1, t_2, t_3);
++  const rec = ({x: x, y: y, z: z, vx: t, vy: t_1, vz: t_2, mass: t_3});
+--- nbody/base/main/main.js
++++ nbody/reuse_records/main/main.js
+@@ -263 +263 @@
+-                  const rec = new Body(x_2, y_2, z_2, t_15, t_18, t_21, mass_3);
++                  const rec = (b_1.vx = t_15, b_1.vy = t_18, b_1.vz = t_21, b_1);
+@@ -283 +283 @@
+-                  const rec_1 = new Body(x_3, y_3, z_3, t_24, t_27, t_30, mass_7);
++                  const rec_1 = (r_2.vx = t_24, r_2.vy = t_27, r_2.vz = t_30, r_2);
+@@ -477 +477 @@
+-  const rec = new Body(t_1, t_3, t_5, vx_1, vy_1, vz_1, mass);
++  const rec = (b.x = t_1, b.y = t_3, b.z = t_5, b);
+--- nbody/base/main/main.js
++++ nbody/unique_both/main/main.js
+@@ -263 +263 @@
+-                  const rec = new Body(x_2, y_2, z_2, t_15, t_18, t_21, mass_3);
++                  const rec = (b_1.vx = t_15, b_1.vy = t_18, b_1.vz = t_21, b_1);
+@@ -283 +283 @@
+-                  const rec_1 = new Body(x_3, y_3, z_3, t_24, t_27, t_30, mass_7);
++                  const rec_1 = (r_2.vx = t_24, r_2.vy = t_27, r_2.vz = t_30, r_2);
+@@ -445,8 +445 @@
+-  const r = $rt.list_slice(bs, 0, i);
+-  const r_1 = $rt.list_push(r, b);
+-  const t = (i + 1);
+-  if (!Number.isSafeInteger(t)) $rt.add(i, 1);
+-  const r_2 = $rt.list_len(bs);
+-  const r_3 = $rt.list_slice(bs, t, r_2);
+-  const r_4 = $std_list.concat$d(r_1, r_3);
+-  return r_4;
++  return $rt.list_set(bs, i, b);
+@@ -477 +470 @@
+-  const rec = new Body(t_1, t_3, t_5, vx_1, vy_1, vz_1, mass);
++  const rec = (b.x = t_1, b.y = t_3, b.z = t_5, b);
+--- nbody/base/sakura_runtime.js
++++ nbody/unique_both/sakura_runtime.js
+@@ -1027,13 +1027,9 @@
+-  if (i >= off) {
+-    const t = xs.tail.slice(0, xs.tl);
+-    t[i - off] = x;
+-    return new List(xs.n, xs.shift, xs.root, t, xs.tl);
+-  }
+-  const root = xs.root.slice();
+-  let copy = root;
+-  for (let level = xs.shift; level > 0; level -= 5) {
+-    const j = (i >>> level) & 31;
+-    copy = copy[j] = copy[j].slice();
+-  }
+-  copy[i & 31] = x;
+-  return new List(xs.n, xs.shift, root, xs.tail, xs.tl);
++  let leaf = xs.tail, index = i - off;
++  if (i < off) {
++    leaf = xs.root;
++    for (let level = xs.shift; level > 0; level -= 5) leaf = leaf[(i >>> level) & 31];
++    index = i & 31;
++  }
++  leaf[index] = x;
++  xs.lb = -1; xs.lf = null;
++  return xs;
+--- nbody/base/main/main.js
++++ nbody/unique_both_map/main/main.js
+@@ -263 +263 @@
+-                  const rec = new Body(x_2, y_2, z_2, t_15, t_18, t_21, mass_3);
++                  const rec = (b_1.vx = t_15, b_1.vy = t_18, b_1.vz = t_21, b_1);
+@@ -283 +283 @@
+-                  const rec_1 = new Body(x_3, y_3, z_3, t_24, t_27, t_30, mass_7);
++                  const rec_1 = (r_2.vx = t_24, r_2.vy = t_27, r_2.vz = t_30, r_2);
+@@ -324,3 +324,3 @@
+-  const f = advance$1.bind(null, dt);
+-  f.$d = advance$1$d.bind(null, dt);
+-  const r_6 = $std_list.map$d(bs, f);
++  const builder = $rt.list_builder();
++  for (let k = 0; k < $rt.list_len(bs); k++) $rt.list_builder_push(builder, advance$1$d(dt, $rt.list_at(bs, k)));
++  const r_6 = $rt.list_builder_finish(builder);
+@@ -445,8 +445 @@
+-  const r = $rt.list_slice(bs, 0, i);
+-  const r_1 = $rt.list_push(r, b);
+-  const t = (i + 1);
+-  if (!Number.isSafeInteger(t)) $rt.add(i, 1);
+-  const r_2 = $rt.list_len(bs);
+-  const r_3 = $rt.list_slice(bs, t, r_2);
+-  const r_4 = $std_list.concat$d(r_1, r_3);
+-  return r_4;
++  return $rt.list_set(bs, i, b);
+@@ -477 +470 @@
+-  const rec = new Body(t_1, t_3, t_5, vx_1, vy_1, vz_1, mass);
++  const rec = (b.x = t_1, b.y = t_3, b.z = t_5, b);
+--- nbody/base/sakura_runtime.js
++++ nbody/unique_both_map/sakura_runtime.js
+@@ -1027,13 +1027,9 @@
+-  if (i >= off) {
+-    const t = xs.tail.slice(0, xs.tl);
+-    t[i - off] = x;
+-    return new List(xs.n, xs.shift, xs.root, t, xs.tl);
+-  }
+-  const root = xs.root.slice();
+-  let copy = root;
+-  for (let level = xs.shift; level > 0; level -= 5) {
+-    const j = (i >>> level) & 31;
+-    copy = copy[j] = copy[j].slice();
+-  }
+-  copy[i & 31] = x;
+-  return new List(xs.n, xs.shift, root, xs.tail, xs.tl);
++  let leaf = xs.tail, index = i - off;
++  if (i < off) {
++    leaf = xs.root;
++    for (let level = xs.shift; level > 0; level -= 5) leaf = leaf[(i >>> level) & 31];
++    index = i & 31;
++  }
++  leaf[index] = x;
++  xs.lb = -1; xs.lf = null;
++  return xs;
+--- nbody/base/main/main.js
++++ nbody/unique_list/main/main.js
+@@ -445,8 +445 @@
+-  const r = $rt.list_slice(bs, 0, i);
+-  const r_1 = $rt.list_push(r, b);
+-  const t = (i + 1);
+-  if (!Number.isSafeInteger(t)) $rt.add(i, 1);
+-  const r_2 = $rt.list_len(bs);
+-  const r_3 = $rt.list_slice(bs, t, r_2);
+-  const r_4 = $std_list.concat$d(r_1, r_3);
+-  return r_4;
++  return $rt.list_set(bs, i, b);
+--- nbody/base/sakura_runtime.js
++++ nbody/unique_list/sakura_runtime.js
+@@ -1027,13 +1027,9 @@
+-  if (i >= off) {
+-    const t = xs.tail.slice(0, xs.tl);
+-    t[i - off] = x;
+-    return new List(xs.n, xs.shift, xs.root, t, xs.tl);
+-  }
+-  const root = xs.root.slice();
+-  let copy = root;
+-  for (let level = xs.shift; level > 0; level -= 5) {
+-    const j = (i >>> level) & 31;
+-    copy = copy[j] = copy[j].slice();
+-  }
+-  copy[i & 31] = x;
+-  return new List(xs.n, xs.shift, root, xs.tail, xs.tl);
++  let leaf = xs.tail, index = i - off;
++  if (i < off) {
++    leaf = xs.root;
++    for (let level = xs.shift; level > 0; level -= 5) leaf = leaf[(i >>> level) & 31];
++    index = i & 31;
++  }
++  leaf[index] = x;
++  xs.lb = -1; xs.lf = null;
++  return xs;
+--- spectral_norm/base/main/main.js
++++ spectral_norm/arithmetic/main/main.js
+@@ -351 +351 @@
+-  if (!Number.isSafeInteger(t)) $rt.add(i, j);
++
+@@ -353 +353 @@
+-  if (!Number.isSafeInteger(t_1)) $rt.add(i, j);
++
+@@ -355 +355 @@
+-  if (!Number.isSafeInteger(t_2)) $rt.add(t_1, 1);
++
+@@ -357,2 +357,2 @@
+-  if (!Number.isSafeInteger(t_3)) $rt.mul(t, t_2);
+-  const t_4 = ((t_3 - t_3 % 2) / 2 + 0);
++
++  const t_4 = (t_3 / 2 + 0);
+@@ -360 +360 @@
+-  if (!Number.isSafeInteger(t_5)) $rt.add(t_4, i);
++
+@@ -362 +362 @@
+-  if (!Number.isSafeInteger(t_6)) $rt.add(t_5, 1);
++
+--- spectral_norm/base/sakura_runtime.js
++++ spectral_norm/cached_get/sakura_runtime.js
+@@ -1049 +1049 @@
+-  return i >= 0 && i < xs.n ? Some(at(xs, i)) : None;
++  return i >= 0 && i < xs.n ? Some(list_at(xs, i)) : None;
+--- spectral_norm/base/main/main.js
++++ spectral_norm/even_division/main/main.js
+@@ -358 +358 @@
+-  const t_4 = ((t_3 - t_3 % 2) / 2 + 0);
++  const t_4 = (t_3 / 2 + 0);
+--- spectral_norm/base/main/main.js
++++ spectral_norm/flat_arithmetic/main/main.js
+@@ -211,0 +212 @@
++  const flat = $rt.toArray(v);
+@@ -234 +235 @@
+-                const r_1 = at$d(v, j_1);
++                const r_1 = flat[j_1];
+@@ -280,0 +282 @@
++  const flat = $rt.toArray(v);
+@@ -303 +305 @@
+-                const r_1 = at$d(v, j_1);
++                const r_1 = flat[j_1];
+@@ -351 +353 @@
+-  if (!Number.isSafeInteger(t)) $rt.add(i, j);
++
+@@ -353 +355 @@
+-  if (!Number.isSafeInteger(t_1)) $rt.add(i, j);
++
+@@ -355 +357 @@
+-  if (!Number.isSafeInteger(t_2)) $rt.add(t_1, 1);
++
+@@ -357,2 +359,2 @@
+-  if (!Number.isSafeInteger(t_3)) $rt.mul(t, t_2);
+-  const t_4 = ((t_3 - t_3 % 2) / 2 + 0);
++
++  const t_4 = (t_3 / 2 + 0);
+@@ -360 +362 @@
+-  if (!Number.isSafeInteger(t_5)) $rt.add(t_4, i);
++
+@@ -362 +364 @@
+-  if (!Number.isSafeInteger(t_6)) $rt.add(t_5, 1);
++
+--- spectral_norm/base/main/main.js
++++ spectral_norm/flat_read/main/main.js
+@@ -211,0 +212 @@
++  const flat = $rt.toArray(v);
+@@ -234 +235 @@
+-                const r_1 = at$d(v, j_1);
++                const r_1 = flat[j_1];
+@@ -280,0 +282 @@
++  const flat = $rt.toArray(v);
+@@ -303 +305 @@
+-                const r_1 = at$d(v, j_1);
++                const r_1 = flat[j_1];
+--- spectral_norm/base/main/main.js
++++ spectral_norm/fused_arithmetic/main/main.js
+@@ -201,3 +201,2 @@
+-  const item = $rt.list_get(v, i);
+-  const r = $rt.option_expect(item, "vector index");
+-  return r;
++  if (i < 0 || i >= v.n) return $rt.defect("D030", "vector index");
++  return $rt.list_at(v, i);
+@@ -351 +350 @@
+-  if (!Number.isSafeInteger(t)) $rt.add(i, j);
++
+@@ -353 +352 @@
+-  if (!Number.isSafeInteger(t_1)) $rt.add(i, j);
++
+@@ -355 +354 @@
+-  if (!Number.isSafeInteger(t_2)) $rt.add(t_1, 1);
++
+@@ -357,2 +356,2 @@
+-  if (!Number.isSafeInteger(t_3)) $rt.mul(t, t_2);
+-  const t_4 = ((t_3 - t_3 % 2) / 2 + 0);
++
++  const t_4 = (t_3 / 2 + 0);
+@@ -360 +359 @@
+-  if (!Number.isSafeInteger(t_5)) $rt.add(t_4, i);
++
+@@ -362 +361 @@
+-  if (!Number.isSafeInteger(t_6)) $rt.add(t_5, 1);
++
+--- spectral_norm/base/main/main.js
++++ spectral_norm/fused_at/main/main.js
+@@ -201,3 +201,2 @@
+-  const item = $rt.list_get(v, i);
+-  const r = $rt.option_expect(item, "vector index");
+-  return r;
++  if (i < 0 || i >= v.n) return $rt.defect("D030", "vector index");
++  return $rt.list_at(v, i);
+--- spectral_norm/base/sakura_runtime.js
++++ spectral_norm/no_boundary_gauge/sakura_runtime.js
+@@ -40 +40 @@
+-  return ++G.d > LIMIT ? new Bounce(k, [v]) : k(v);
++  return k(v);
+--- spectral_norm/base/main/main.js
++++ spectral_norm/no_int_checks/main/main.js
+@@ -351 +351 @@
+-  if (!Number.isSafeInteger(t)) $rt.add(i, j);
++
+@@ -353 +353 @@
+-  if (!Number.isSafeInteger(t_1)) $rt.add(i, j);
++
+@@ -355 +355 @@
+-  if (!Number.isSafeInteger(t_2)) $rt.add(t_1, 1);
++
+@@ -357 +357 @@
+-  if (!Number.isSafeInteger(t_3)) $rt.mul(t, t_2);
++
+@@ -360 +360 @@
+-  if (!Number.isSafeInteger(t_5)) $rt.add(t_4, i);
++
+@@ -362 +362 @@
+-  if (!Number.isSafeInteger(t_6)) $rt.add(t_5, 1);
++
+--- spectral_norm/base/main/main.js
++++ spectral_norm/simple_loops/main/main.js
+@@ -212,61 +212,7 @@
+-  const xs = $rt.list([]);
+-  let out_1, i_1;
+-  out_1 = xs;
+-  i_1 = 0;
+-  j1: for (;;) {
+-    const t = (i_1 < n);
+-    let v_1, out_2, i_2;
+-    j2: {
+-      if (t) {
+-        let out_3, i_3, sum, j;
+-        j3: {
+-          let out_4, i_4, sum_1, j_1;
+-          out_4 = out_1;
+-          i_4 = i_1;
+-          sum_1 = 0.0;
+-          j_1 = 0;
+-          j4: for (;;) {
+-            const t_1 = (j_1 < n);
+-            let v_2, out_5, i_5, sum_2, j_2;
+-            j5: {
+-              if (t_1) {
+-                const r = a$d(i_4, j_1);
+-                const r_1 = at$d(v, j_1);
+-                const t_2 = (r * r_1);
+-                const t_3 = (sum_1 + t_2);
+-                const t_4 = (j_1 + 1);
+-                v_2 = undefined;
+-                out_5 = out_4;
+-                i_5 = i_4;
+-                sum_2 = t_3;
+-                j_2 = t_4;
+-                break j5;
+-              } else {
+-                out_3 = out_4;
+-                i_3 = i_4;
+-                sum = sum_1;
+-                j = j_1;
+-                break j3;
+-              }
+-            }
+-            out_4 = out_5;
+-            i_4 = i_5;
+-            sum_1 = sum_2;
+-            j_1 = j_2;
+-            continue j4;
+-          }
+-        }
+-        const r_2 = $rt.list_push(out_3, sum);
+-        const t_5 = (i_3 + 1);
+-        v_1 = undefined;
+-        out_2 = r_2;
+-        i_2 = t_5;
+-        break j2;
+-      } else {
+-        return out_1;
+-      }
+-    }
+-    out_1 = out_2;
+-    i_1 = i_2;
+-    continue j1;
+-  }
++  let out = $rt.list([]);
++  for (let i = 0; i < n; i++) {
++    let sum = 0.0;
++    for (let j = 0; j < n; j++) sum = sum + a$d(i, j) * at$d(v, j);
++    out = $rt.list_push(out, sum);
++  }
++  return out;
+@@ -281,61 +227,7 @@
+-  const xs = $rt.list([]);
+-  let out_1, i_1;
+-  out_1 = xs;
+-  i_1 = 0;
+-  j1: for (;;) {
+-    const t = (i_1 < n);
+-    let v_1, out_2, i_2;
+-    j2: {
+-      if (t) {
+-        let out_3, i_3, sum, j;
+-        j3: {
+-          let out_4, i_4, sum_1, j_1;
+-          out_4 = out_1;
+-          i_4 = i_1;
+-          sum_1 = 0.0;
+-          j_1 = 0;
+-          j4: for (;;) {
+-            const t_1 = (j_1 < n);
+-            let v_2, out_5, i_5, sum_2, j_2;
+-            j5: {
+-              if (t_1) {
+-                const r = a$d(j_1, i_4);
+-                const r_1 = at$d(v, j_1);
+-                const t_2 = (r * r_1);
+-                const t_3 = (sum_1 + t_2);
+-                const t_4 = (j_1 + 1);
+-                v_2 = undefined;
+-                out_5 = out_4;
+-                i_5 = i_4;
+-                sum_2 = t_3;
+-                j_2 = t_4;
+-                break j5;
+-              } else {
+-                out_3 = out_4;
+-                i_3 = i_4;
+-                sum = sum_1;
+-                j = j_1;
+-                break j3;
+-              }
+-            }
+-            out_4 = out_5;
+-            i_4 = i_5;
+-            sum_1 = sum_2;
+-            j_1 = j_2;
+-            continue j4;
+-          }
+-        }
+-        const r_2 = $rt.list_push(out_3, sum);
+-        const t_5 = (i_3 + 1);
+-        v_1 = undefined;
+-        out_2 = r_2;
+-        i_2 = t_5;
+-        break j2;
+-      } else {
+-        return out_1;
+-      }
+-    }
+-    out_1 = out_2;
+-    i_1 = i_2;
+-    continue j1;
+-  }
++  let out = $rt.list([]);
++  for (let i = 0; i < n; i++) {
++    let sum = 0.0;
++    for (let j = 0; j < n; j++) sum = sum + a$d(j, i) * at$d(v, j);
++    out = $rt.list_push(out, sum);
++  }
++  return out;

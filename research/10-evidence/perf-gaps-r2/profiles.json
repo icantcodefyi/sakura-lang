@@ -1,0 +1,1495 @@
+{
+  "sieve/node": {
+    "command": [
+      "node",
+      "--cpu-prof",
+      "--cpu-prof-dir=/tmp/sakura-perfgaps-r2/profiles",
+      "--cpu-prof-name=sieve-node.cpuprofile",
+      "/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/perfgaps/research/10-evidence/perf-gaps-r2/profile.mjs",
+      "/tmp/sakura-perfgaps-r2/sieve/base/bench_entry.mjs",
+      "200000",
+      "3"
+    ],
+    "stdout": "{\"n\":200000,\"calls\":102,\"checksum\":17984}\n",
+    "stderr": "",
+    "samples": 2427,
+    "self": [
+      {
+        "function": "setAt",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js",
+        "line": 1025,
+        "samples": 1229,
+        "percent": 50.63864853728884
+      },
+      {
+        "function": "run$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js",
+        "line": 51,
+        "samples": 403,
+        "percent": 16.60486196950968
+      },
+      {
+        "function": "(garbage collector)",
+        "file": "",
+        "line": 0,
+        "samples": 311,
+        "percent": 12.81417387721467
+      },
+      {
+        "function": "set$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/std/list.js",
+        "line": 6,
+        "samples": 116,
+        "percent": 4.779563246806758
+      },
+      {
+        "function": "(program)",
+        "file": "",
+        "line": 0,
+        "samples": 90,
+        "percent": 3.708281829419036
+      },
+      {
+        "function": "push",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js",
+        "line": 987,
+        "samples": 43,
+        "percent": 1.7717346518335393
+      },
+      {
+        "function": "take_site",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js",
+        "line": 85,
+        "samples": 37,
+        "percent": 1.5245158632056037
+      },
+      {
+        "function": "List",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js",
+        "line": 898,
+        "samples": 36,
+        "percent": 1.4833127317676142
+      },
+      {
+        "function": "List",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js",
+        "line": 898,
+        "samples": 21,
+        "percent": 0.865265760197775
+      },
+      {
+        "function": "set$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/std/list.js",
+        "line": 6,
+        "samples": 21,
+        "percent": 0.865265760197775
+      },
+      {
+        "function": "run",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js",
+        "line": 223,
+        "samples": 20,
+        "percent": 0.8240626287597858
+      },
+      {
+        "function": "list_set",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js",
+        "line": 1068,
+        "samples": 15,
+        "percent": 0.6180469715698393
+      },
+      {
+        "function": "contract_enter",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js",
+        "line": 100,
+        "samples": 13,
+        "percent": 0.5356407086938607
+      },
+      {
+        "function": "pushLeaf",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js",
+        "line": 1016,
+        "samples": 12,
+        "percent": 0.49443757725587145
+      },
+      {
+        "function": "set$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/std/list.js",
+        "line": 6,
+        "samples": 10,
+        "percent": 0.4120313143798929
+      },
+      {
+        "function": "list_at",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js",
+        "line": 1052,
+        "samples": 9,
+        "percent": 0.37082818294190356
+      },
+      {
+        "function": "pushLeaf",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js",
+        "line": 1016,
+        "samples": 8,
+        "percent": 0.3296250515039143
+      },
+      {
+        "function": "contract_exit",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js",
+        "line": 103,
+        "samples": 6,
+        "percent": 0.24721878862793573
+      },
+      {
+        "function": "list_len",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js",
+        "line": 1045,
+        "samples": 6,
+        "percent": 0.24721878862793573
+      },
+      {
+        "function": "pushLeaf",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js",
+        "line": 1016,
+        "samples": 5,
+        "percent": 0.20601565718994644
+      },
+      {
+        "function": "(idle)",
+        "file": "",
+        "line": 0,
+        "samples": 4,
+        "percent": 0.16481252575195715
+      },
+      {
+        "function": "list_push",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js",
+        "line": 1064,
+        "samples": 2,
+        "percent": 0.08240626287597858
+      },
+      {
+        "function": "compileSourceTextModule",
+        "file": "node:internal/modules/esm/utils",
+        "line": 338,
+        "samples": 1,
+        "percent": 0.04120313143798929
+      },
+      {
+        "function": "compileSourceTextModule",
+        "file": "node:internal/modules/esm/utils",
+        "line": 338,
+        "samples": 1,
+        "percent": 0.04120313143798929
+      },
+      {
+        "function": "defaultResolve",
+        "file": "node:internal/modules/esm/resolve",
+        "line": 928,
+        "samples": 1,
+        "percent": 0.04120313143798929
+      },
+      {
+        "function": "compileForInternalLoader",
+        "file": "node:internal/bootstrap/realm",
+        "line": 425,
+        "samples": 1,
+        "percent": 0.04120313143798929
+      },
+      {
+        "function": "",
+        "file": "node:internal/streams/readable",
+        "line": 1,
+        "samples": 1,
+        "percent": 0.04120313143798929
+      },
+      {
+        "function": "list_at",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js",
+        "line": 1052,
+        "samples": 1,
+        "percent": 0.04120313143798929
+      },
+      {
+        "function": "push",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js",
+        "line": 987,
+        "samples": 1,
+        "percent": 0.04120313143798929
+      },
+      {
+        "function": "list",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js",
+        "line": 915,
+        "samples": 1,
+        "percent": 0.04120313143798929
+      },
+      {
+        "function": "drive",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js",
+        "line": 250,
+        "samples": 1,
+        "percent": 0.04120313143798929
+      },
+      {
+        "function": "",
+        "file": "node:net",
+        "line": 1,
+        "samples": 1,
+        "percent": 0.04120313143798929
+      }
+    ],
+    "sha256": "d0fda0ed5272e6733f7b5adce7253912ff22b0ec92b517accef09dfb75e4edb0"
+  },
+  "sieve/bun": {
+    "command": [
+      "bun",
+      "--cpu-prof",
+      "--cpu-prof-dir=/tmp/sakura-perfgaps-r2/profiles",
+      "--cpu-prof-name=sieve-bun.cpuprofile",
+      "/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/perfgaps/research/10-evidence/perf-gaps-r2/profile.mjs",
+      "/tmp/sakura-perfgaps-r2/sieve/base/bench_entry.mjs",
+      "200000",
+      "3"
+    ],
+    "stdout": "{\"n\":200000,\"calls\":51,\"checksum\":17984}\n",
+    "stderr": "",
+    "samples": 2386,
+    "self": [
+      {
+        "function": "setAt",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js",
+        "line": 1025,
+        "samples": 1924,
+        "percent": 80.63704945515506
+      },
+      {
+        "function": "setAt",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js",
+        "line": 1025,
+        "samples": 235,
+        "percent": 9.849119865884326
+      },
+      {
+        "function": "List",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js",
+        "line": 898,
+        "samples": 82,
+        "percent": 3.4367141659681475
+      },
+      {
+        "function": "pushLeaf",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js",
+        "line": 1016,
+        "samples": 38,
+        "percent": 1.5926236378876781
+      },
+      {
+        "function": "push",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js",
+        "line": 987,
+        "samples": 33,
+        "percent": 1.383067896060352
+      },
+      {
+        "function": "List",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js",
+        "line": 898,
+        "samples": 22,
+        "percent": 0.9220452640402347
+      },
+      {
+        "function": "run$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/main/main.js",
+        "line": 51,
+        "samples": 20,
+        "percent": 0.8382229673093042
+      },
+      {
+        "function": "List",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js",
+        "line": 898,
+        "samples": 8,
+        "percent": 0.3352891869237217
+      },
+      {
+        "function": "pushLeaf",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js",
+        "line": 1016,
+        "samples": 8,
+        "percent": 0.3352891869237217
+      },
+      {
+        "function": "set$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/std/list.js",
+        "line": 6,
+        "samples": 5,
+        "percent": 0.20955574182732606
+      },
+      {
+        "function": "list_at",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js",
+        "line": 1052,
+        "samples": 4,
+        "percent": 0.16764459346186086
+      },
+      {
+        "function": "importModule",
+        "file": "",
+        "line": 0,
+        "samples": 2,
+        "percent": 0.08382229673093043
+      },
+      {
+        "function": "call",
+        "file": "file:///Users/aniruddhdubge/.t3/scratch/sakura-worktrees/perfgaps/research/10-evidence/perf-gaps-r2/profile.mjs",
+        "line": 5,
+        "samples": 2,
+        "percent": 0.08382229673093043
+      },
+      {
+        "function": "push",
+        "file": "",
+        "line": 0,
+        "samples": 1,
+        "percent": 0.041911148365465216
+      },
+      {
+        "function": "slice",
+        "file": "",
+        "line": 0,
+        "samples": 1,
+        "percent": 0.041911148365465216
+      },
+      {
+        "function": "pushLeaf",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/sieve/base/sakura_runtime.js",
+        "line": 1016,
+        "samples": 1,
+        "percent": 0.041911148365465216
+      }
+    ],
+    "sha256": "7f8f221768e077fb1f33285852f5ed5991fa051b735f63eed04e04eaf1f754c5"
+  },
+  "sieve/v8": {
+    "command": [
+      "node",
+      "--prof",
+      "--no-logfile-per-isolate",
+      "--logfile=/tmp/sakura-perfgaps-r2/profiles/sieve-v8.log",
+      "/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/perfgaps/research/10-evidence/perf-gaps-r2/profile.mjs",
+      "/tmp/sakura-perfgaps-r2/sieve/base/bench_entry.mjs",
+      "200000",
+      "3"
+    ],
+    "stdout": "{\"n\":200000,\"calls\":101,\"checksum\":17984}\n",
+    "stderr": "",
+    "process_stderr": "",
+    "log_sha256": "afc1bafb401ac30c7c4957d017ad938926fec7fea6729e48fa9adcea5d5a4c37"
+  },
+  "nbody/node": {
+    "command": [
+      "node",
+      "--cpu-prof",
+      "--cpu-prof-dir=/tmp/sakura-perfgaps-r2/profiles",
+      "--cpu-prof-name=nbody-node.cpuprofile",
+      "/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/perfgaps/research/10-evidence/perf-gaps-r2/profile.mjs",
+      "/tmp/sakura-perfgaps-r2/nbody/base/bench_entry.mjs",
+      "100000",
+      "3"
+    ],
+    "stdout": "{\"n\":100000,\"calls\":17,\"checksum\":-169079859}\n",
+    "stderr": "",
+    "samples": 2512,
+    "self": [
+      {
+        "function": "list_slice",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 1121,
+        "samples": 605,
+        "percent": 24.0843949044586
+      },
+      {
+        "function": "list",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 915,
+        "samples": 383,
+        "percent": 15.246815286624203
+      },
+      {
+        "function": "items",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 964,
+        "samples": 286,
+        "percent": 11.385350318471337
+      },
+      {
+        "function": "advance$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/main/main.js",
+        "line": 200,
+        "samples": 141,
+        "percent": 5.6130573248407645
+      },
+      {
+        "function": "(garbage collector)",
+        "file": "",
+        "line": 0,
+        "samples": 115,
+        "percent": 4.578025477707007
+      },
+      {
+        "function": "Body",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/main/main.js",
+        "line": 8,
+        "samples": 102,
+        "percent": 4.060509554140127
+      },
+      {
+        "function": "set$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/main/main.js",
+        "line": 444,
+        "samples": 95,
+        "percent": 3.781847133757962
+      },
+      {
+        "function": "list_push",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 1064,
+        "samples": 93,
+        "percent": 3.7022292993630574
+      },
+      {
+        "function": "push",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 987,
+        "samples": 75,
+        "percent": 2.9856687898089174
+      },
+      {
+        "function": "push",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 987,
+        "samples": 59,
+        "percent": 2.3487261146496814
+      },
+      {
+        "function": "(program)",
+        "file": "",
+        "line": 0,
+        "samples": 51,
+        "percent": 2.0302547770700636
+      },
+      {
+        "function": "fromLeaves",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 928,
+        "samples": 47,
+        "percent": 1.8710191082802548
+      },
+      {
+        "function": "advance$1$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/main/main.js",
+        "line": 460,
+        "samples": 33,
+        "percent": 1.3136942675159236
+      },
+      {
+        "function": "push",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 987,
+        "samples": 30,
+        "percent": 1.194267515923567
+      },
+      {
+        "function": "list_at",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 1052,
+        "samples": 28,
+        "percent": 1.1146496815286624
+      },
+      {
+        "function": "concat$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/std/list.js",
+        "line": 71,
+        "samples": 28,
+        "percent": 1.1146496815286624
+      },
+      {
+        "function": "Body",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/main/main.js",
+        "line": 8,
+        "samples": 27,
+        "percent": 1.0748407643312101
+      },
+      {
+        "function": "at$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/main/main.js",
+        "line": 433,
+        "samples": 25,
+        "percent": 0.9952229299363057
+      },
+      {
+        "function": "map$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/std/list.js",
+        "line": 9,
+        "samples": 22,
+        "percent": 0.8757961783439491
+      },
+      {
+        "function": "list_builder_finish",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 1083,
+        "samples": 22,
+        "percent": 0.8757961783439491
+      },
+      {
+        "function": "option_expect",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 1976,
+        "samples": 22,
+        "percent": 0.8757961783439491
+      },
+      {
+        "function": "run$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/main/main.js",
+        "line": 63,
+        "samples": 20,
+        "percent": 0.7961783439490446
+      },
+      {
+        "function": "List",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 898,
+        "samples": 20,
+        "percent": 0.7961783439490446
+      },
+      {
+        "function": "Some",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 547,
+        "samples": 18,
+        "percent": 0.7165605095541401
+      },
+      {
+        "function": "list_get",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 1048,
+        "samples": 18,
+        "percent": 0.7165605095541401
+      },
+      {
+        "function": "concat$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/std/list.js",
+        "line": 71,
+        "samples": 13,
+        "percent": 0.517515923566879
+      },
+      {
+        "function": "at",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 979,
+        "samples": 12,
+        "percent": 0.47770700636942676
+      },
+      {
+        "function": "List",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 898,
+        "samples": 11,
+        "percent": 0.43789808917197454
+      },
+      {
+        "function": "Variant",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 512,
+        "samples": 11,
+        "percent": 0.43789808917197454
+      },
+      {
+        "function": "float_sqrt",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 496,
+        "samples": 9,
+        "percent": 0.35828025477707004
+      },
+      {
+        "function": "at$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/main/main.js",
+        "line": 433,
+        "samples": 9,
+        "percent": 0.35828025477707004
+      },
+      {
+        "function": "list_len",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 1045,
+        "samples": 8,
+        "percent": 0.3184713375796178
+      },
+      {
+        "function": "list_at",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 1052,
+        "samples": 7,
+        "percent": 0.2786624203821656
+      },
+      {
+        "function": "advance$1$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/main/main.js",
+        "line": 460,
+        "samples": 7,
+        "percent": 0.2786624203821656
+      },
+      {
+        "function": "List",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 898,
+        "samples": 6,
+        "percent": 0.23885350318471338
+      },
+      {
+        "function": "list_push",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 1064,
+        "samples": 6,
+        "percent": 0.23885350318471338
+      },
+      {
+        "function": "list_len",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 1045,
+        "samples": 5,
+        "percent": 0.19904458598726116
+      },
+      {
+        "function": "list_builder_push",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 1074,
+        "samples": 4,
+        "percent": 0.1592356687898089
+      },
+      {
+        "function": "advance$1$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/main/main.js",
+        "line": 460,
+        "samples": 4,
+        "percent": 0.1592356687898089
+      },
+      {
+        "function": "list_slice",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 1121,
+        "samples": 4,
+        "percent": 0.1592356687898089
+      },
+      {
+        "function": "list_slice",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 1121,
+        "samples": 4,
+        "percent": 0.1592356687898089
+      },
+      {
+        "function": "fromLeaves",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 928,
+        "samples": 3,
+        "percent": 0.11942675159235669
+      },
+      {
+        "function": "concat$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/std/list.js",
+        "line": 71,
+        "samples": 3,
+        "percent": 0.11942675159235669
+      },
+      {
+        "function": "Builder",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 952,
+        "samples": 3,
+        "percent": 0.11942675159235669
+      },
+      {
+        "function": "compileSourceTextModule",
+        "file": "node:internal/modules/esm/utils",
+        "line": 338,
+        "samples": 2,
+        "percent": 0.07961783439490445
+      },
+      {
+        "function": "fromLeaves",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 928,
+        "samples": 2,
+        "percent": 0.07961783439490445
+      },
+      {
+        "function": "push",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 987,
+        "samples": 2,
+        "percent": 0.07961783439490445
+      },
+      {
+        "function": "at$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/main/main.js",
+        "line": 433,
+        "samples": 2,
+        "percent": 0.07961783439490445
+      },
+      {
+        "function": "(idle)",
+        "file": "",
+        "line": 0,
+        "samples": 1,
+        "percent": 0.03980891719745223
+      },
+      {
+        "function": "link",
+        "file": "node:internal/modules/esm/module_job",
+        "line": 385,
+        "samples": 1,
+        "percent": 0.03980891719745223
+      },
+      {
+        "function": "PerformanceNodeTiming",
+        "file": "node:internal/perf/nodetiming",
+        "line": 37,
+        "samples": 1,
+        "percent": 0.03980891719745223
+      },
+      {
+        "function": "compileForInternalLoader",
+        "file": "node:internal/bootstrap/realm",
+        "line": 425,
+        "samples": 1,
+        "percent": 0.03980891719745223
+      },
+      {
+        "function": "Option",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 541,
+        "samples": 1,
+        "percent": 0.03980891719745223
+      },
+      {
+        "function": "list_at",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 1052,
+        "samples": 1,
+        "percent": 0.03980891719745223
+      },
+      {
+        "function": "offset_momentum$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/main/main.js",
+        "line": 130,
+        "samples": 1,
+        "percent": 0.03980891719745223
+      },
+      {
+        "function": "call",
+        "file": "file:///Users/aniruddhdubge/.t3/scratch/sakura-worktrees/perfgaps/research/10-evidence/perf-gaps-r2/profile.mjs",
+        "line": 5,
+        "samples": 1,
+        "percent": 0.03980891719745223
+      },
+      {
+        "function": "map$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/std/list.js",
+        "line": 9,
+        "samples": 1,
+        "percent": 0.03980891719745223
+      },
+      {
+        "function": "getHighWaterMark",
+        "file": "node:internal/streams/state",
+        "line": 33,
+        "samples": 1,
+        "percent": 0.03980891719745223
+      }
+    ],
+    "sha256": "6eeeba8ae3644b72b9d1c19b9909d064297dba62f3fef620cf0a9ae9eec67ec0"
+  },
+  "nbody/bun": {
+    "command": [
+      "bun",
+      "--cpu-prof",
+      "--cpu-prof-dir=/tmp/sakura-perfgaps-r2/profiles",
+      "--cpu-prof-name=nbody-bun.cpuprofile",
+      "/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/perfgaps/research/10-evidence/perf-gaps-r2/profile.mjs",
+      "/tmp/sakura-perfgaps-r2/nbody/base/bench_entry.mjs",
+      "100000",
+      "3"
+    ],
+    "stdout": "{\"n\":100000,\"calls\":16,\"checksum\":-169079859}\n",
+    "stderr": "",
+    "samples": 2470,
+    "self": [
+      {
+        "function": "list",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 915,
+        "samples": 571,
+        "percent": 23.11740890688259
+      },
+      {
+        "function": "push",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 987,
+        "samples": 514,
+        "percent": 20.809716599190285
+      },
+      {
+        "function": "push",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 987,
+        "samples": 280,
+        "percent": 11.336032388663968
+      },
+      {
+        "function": "list_slice",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 1121,
+        "samples": 233,
+        "percent": 9.433198380566802
+      },
+      {
+        "function": "Option",
+        "file": "",
+        "line": 1,
+        "samples": 171,
+        "percent": 6.923076923076923
+      },
+      {
+        "function": "advance$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/main/main.js",
+        "line": 200,
+        "samples": 94,
+        "percent": 3.805668016194332
+      },
+      {
+        "function": "items",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 964,
+        "samples": 74,
+        "percent": 2.9959514170040484
+      },
+      {
+        "function": "List",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 898,
+        "samples": 72,
+        "percent": 2.91497975708502
+      },
+      {
+        "function": "Body",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/main/main.js",
+        "line": 8,
+        "samples": 68,
+        "percent": 2.7530364372469633
+      },
+      {
+        "function": "Variant",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 512,
+        "samples": 65,
+        "percent": 2.6315789473684212
+      },
+      {
+        "function": "List",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 898,
+        "samples": 61,
+        "percent": 2.4696356275303644
+      },
+      {
+        "function": "List",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 898,
+        "samples": 57,
+        "percent": 2.3076923076923075
+      },
+      {
+        "function": "map$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/std/list.js",
+        "line": 9,
+        "samples": 56,
+        "percent": 2.2672064777327936
+      },
+      {
+        "function": "Body",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/main/main.js",
+        "line": 8,
+        "samples": 26,
+        "percent": 1.0526315789473684
+      },
+      {
+        "function": "set$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/main/main.js",
+        "line": 444,
+        "samples": 24,
+        "percent": 0.97165991902834
+      },
+      {
+        "function": "Some",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 547,
+        "samples": 20,
+        "percent": 0.8097165991902834
+      },
+      {
+        "function": "bound advance$1$d",
+        "file": "",
+        "line": 0,
+        "samples": 16,
+        "percent": 0.6477732793522267
+      },
+      {
+        "function": "advance$1$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/main/main.js",
+        "line": 460,
+        "samples": 15,
+        "percent": 0.6072874493927125
+      },
+      {
+        "function": "push",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 987,
+        "samples": 12,
+        "percent": 0.48582995951417
+      },
+      {
+        "function": "Builder",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 952,
+        "samples": 11,
+        "percent": 0.44534412955465585
+      },
+      {
+        "function": "list_builder_finish",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 1083,
+        "samples": 7,
+        "percent": 0.2834008097165992
+      },
+      {
+        "function": "List",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 898,
+        "samples": 5,
+        "percent": 0.20242914979757085
+      },
+      {
+        "function": "list",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 915,
+        "samples": 4,
+        "percent": 0.16194331983805668
+      },
+      {
+        "function": "concat$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/std/list.js",
+        "line": 71,
+        "samples": 3,
+        "percent": 0.1214574898785425
+      },
+      {
+        "function": "importModule",
+        "file": "",
+        "line": 0,
+        "samples": 2,
+        "percent": 0.08097165991902834
+      },
+      {
+        "function": "List",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 898,
+        "samples": 2,
+        "percent": 0.08097165991902834
+      },
+      {
+        "function": "List",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 898,
+        "samples": 2,
+        "percent": 0.08097165991902834
+      },
+      {
+        "function": "map",
+        "file": "",
+        "line": 1,
+        "samples": 1,
+        "percent": 0.04048582995951417
+      },
+      {
+        "function": "fromLeaves",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 928,
+        "samples": 1,
+        "percent": 0.04048582995951417
+      },
+      {
+        "function": "at$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/main/main.js",
+        "line": 433,
+        "samples": 1,
+        "percent": 0.04048582995951417
+      },
+      {
+        "function": "push",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/sakura_runtime.js",
+        "line": 987,
+        "samples": 1,
+        "percent": 0.04048582995951417
+      },
+      {
+        "function": "run$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/nbody/base/main/main.js",
+        "line": 63,
+        "samples": 1,
+        "percent": 0.04048582995951417
+      }
+    ],
+    "sha256": "bababb61967f3ae141e3b1acef644cde2eb03df4c6a37cc1e3f711a51a3df15b"
+  },
+  "nbody/v8": {
+    "command": [
+      "node",
+      "--prof",
+      "--no-logfile-per-isolate",
+      "--logfile=/tmp/sakura-perfgaps-r2/profiles/nbody-v8.log",
+      "/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/perfgaps/research/10-evidence/perf-gaps-r2/profile.mjs",
+      "/tmp/sakura-perfgaps-r2/nbody/base/bench_entry.mjs",
+      "100000",
+      "3"
+    ],
+    "stdout": "{\"n\":100000,\"calls\":17,\"checksum\":-169079859}\n",
+    "stderr": "",
+    "process_stderr": "",
+    "log_sha256": "911d957052b04e58c43875a2d8b6d68a0e886d4c05cf19814053000c96fb2052"
+  },
+  "spectral_norm/node": {
+    "command": [
+      "node",
+      "--cpu-prof",
+      "--cpu-prof-dir=/tmp/sakura-perfgaps-r2/profiles",
+      "--cpu-prof-name=spectral_norm-node.cpuprofile",
+      "/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/perfgaps/research/10-evidence/perf-gaps-r2/profile.mjs",
+      "/tmp/sakura-perfgaps-r2/spectral_norm/base/bench_entry.mjs",
+      "400",
+      "3"
+    ],
+    "stdout": "{\"n\":400,\"calls\":68,\"checksum\":1274224081}\n",
+    "stderr": "",
+    "samples": 2475,
+    "self": [
+      {
+        "function": "at",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 979,
+        "samples": 233,
+        "percent": 9.414141414141413
+      },
+      {
+        "function": "option_expect",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 1976,
+        "samples": 233,
+        "percent": 9.414141414141413
+      },
+      {
+        "function": "option_expect",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 1976,
+        "samples": 202,
+        "percent": 8.16161616161616
+      },
+      {
+        "function": "at",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 979,
+        "samples": 197,
+        "percent": 7.959595959595959
+      },
+      {
+        "function": "Some",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 547,
+        "samples": 170,
+        "percent": 6.8686868686868685
+      },
+      {
+        "function": "Some",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 547,
+        "samples": 167,
+        "percent": 6.747474747474747
+      },
+      {
+        "function": "a$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/main/main.js",
+        "line": 349,
+        "samples": 166,
+        "percent": 6.707070707070707
+      },
+      {
+        "function": "a$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/main/main.js",
+        "line": 349,
+        "samples": 161,
+        "percent": 6.505050505050505
+      },
+      {
+        "function": "mul_av$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/main/main.js",
+        "line": 211,
+        "samples": 153,
+        "percent": 6.181818181818182
+      },
+      {
+        "function": "mul_atv$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/main/main.js",
+        "line": 280,
+        "samples": 150,
+        "percent": 6.0606060606060606
+      },
+      {
+        "function": "(garbage collector)",
+        "file": "",
+        "line": 0,
+        "samples": 142,
+        "percent": 5.737373737373737
+      },
+      {
+        "function": "list_get",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 1048,
+        "samples": 117,
+        "percent": 4.7272727272727275
+      },
+      {
+        "function": "list_get",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 1048,
+        "samples": 93,
+        "percent": 3.757575757575758
+      },
+      {
+        "function": "at$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/main/main.js",
+        "line": 200,
+        "samples": 82,
+        "percent": 3.313131313131313
+      },
+      {
+        "function": "at$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/main/main.js",
+        "line": 200,
+        "samples": 75,
+        "percent": 3.0303030303030303
+      },
+      {
+        "function": "Variant",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 512,
+        "samples": 59,
+        "percent": 2.3838383838383836
+      },
+      {
+        "function": "Variant",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 512,
+        "samples": 52,
+        "percent": 2.101010101010101
+      },
+      {
+        "function": "push",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 987,
+        "samples": 4,
+        "percent": 0.16161616161616163
+      },
+      {
+        "function": "push",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 987,
+        "samples": 3,
+        "percent": 0.12121212121212122
+      },
+      {
+        "function": "(idle)",
+        "file": "",
+        "line": 0,
+        "samples": 2,
+        "percent": 0.08080808080808081
+      },
+      {
+        "function": "compileSourceTextModule",
+        "file": "node:internal/modules/esm/utils",
+        "line": 338,
+        "samples": 2,
+        "percent": 0.08080808080808081
+      },
+      {
+        "function": "push",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 987,
+        "samples": 2,
+        "percent": 0.08080808080808081
+      },
+      {
+        "function": "defaultImportModuleDynamicallyForModule",
+        "file": "node:internal/modules/esm/utils",
+        "line": 213,
+        "samples": 1,
+        "percent": 0.04040404040404041
+      },
+      {
+        "function": "compileForInternalLoader",
+        "file": "node:internal/bootstrap/realm",
+        "line": 425,
+        "samples": 1,
+        "percent": 0.04040404040404041
+      },
+      {
+        "function": "",
+        "file": "node:stream/promises",
+        "line": 1,
+        "samples": 1,
+        "percent": 0.04040404040404041
+      },
+      {
+        "function": "push",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 987,
+        "samples": 1,
+        "percent": 0.04040404040404041
+      },
+      {
+        "function": "a$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/main/main.js",
+        "line": 349,
+        "samples": 1,
+        "percent": 0.04040404040404041
+      },
+      {
+        "function": "Option",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 541,
+        "samples": 1,
+        "percent": 0.04040404040404041
+      },
+      {
+        "function": "list_push",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 1064,
+        "samples": 1,
+        "percent": 0.04040404040404041
+      },
+      {
+        "function": "List",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 898,
+        "samples": 1,
+        "percent": 0.04040404040404041
+      },
+      {
+        "function": "Option",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 541,
+        "samples": 1,
+        "percent": 0.04040404040404041
+      },
+      {
+        "function": "Socket",
+        "file": "node:net",
+        "line": 611,
+        "samples": 1,
+        "percent": 0.04040404040404041
+      }
+    ],
+    "sha256": "8a77446b434b01741a71da4eb48902f5a23bc9ae6862269ee56ca77ab9790818"
+  },
+  "spectral_norm/bun": {
+    "command": [
+      "bun",
+      "--cpu-prof",
+      "--cpu-prof-dir=/tmp/sakura-perfgaps-r2/profiles",
+      "--cpu-prof-name=spectral_norm-bun.cpuprofile",
+      "/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/perfgaps/research/10-evidence/perf-gaps-r2/profile.mjs",
+      "/tmp/sakura-perfgaps-r2/spectral_norm/base/bench_entry.mjs",
+      "400",
+      "3"
+    ],
+    "stdout": "{\"n\":400,\"calls\":38,\"checksum\":1274224081}\n",
+    "stderr": "",
+    "samples": 2421,
+    "self": [
+      {
+        "function": "Option",
+        "file": "",
+        "line": 1,
+        "samples": 807,
+        "percent": 33.333333333333336
+      },
+      {
+        "function": "Option",
+        "file": "",
+        "line": 1,
+        "samples": 753,
+        "percent": 31.10285006195787
+      },
+      {
+        "function": "Variant",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 512,
+        "samples": 325,
+        "percent": 13.424204874019
+      },
+      {
+        "function": "Variant",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 512,
+        "samples": 292,
+        "percent": 12.061131763733995
+      },
+      {
+        "function": "Some",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 547,
+        "samples": 107,
+        "percent": 4.419661296984717
+      },
+      {
+        "function": "Some",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 547,
+        "samples": 93,
+        "percent": 3.841387856257745
+      },
+      {
+        "function": "mul_atv$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/main/main.js",
+        "line": 280,
+        "samples": 7,
+        "percent": 0.28913672036348614
+      },
+      {
+        "function": "mul_av$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/main/main.js",
+        "line": 211,
+        "samples": 7,
+        "percent": 0.28913672036348614
+      },
+      {
+        "function": "pushLeaf",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 1016,
+        "samples": 5,
+        "percent": 0.20652622883106153
+      },
+      {
+        "function": "a$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/main/main.js",
+        "line": 349,
+        "samples": 5,
+        "percent": 0.20652622883106153
+      },
+      {
+        "function": "List",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 898,
+        "samples": 5,
+        "percent": 0.20652622883106153
+      },
+      {
+        "function": "importModule",
+        "file": "",
+        "line": 0,
+        "samples": 2,
+        "percent": 0.08261049153242461
+      },
+      {
+        "function": "at$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/main/main.js",
+        "line": 200,
+        "samples": 2,
+        "percent": 0.08261049153242461
+      },
+      {
+        "function": "a$d",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/main/main.js",
+        "line": 349,
+        "samples": 2,
+        "percent": 0.08261049153242461
+      },
+      {
+        "function": "push",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 987,
+        "samples": 2,
+        "percent": 0.08261049153242461
+      },
+      {
+        "function": "pushLeaf",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 1016,
+        "samples": 2,
+        "percent": 0.08261049153242461
+      },
+      {
+        "function": "at",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 979,
+        "samples": 1,
+        "percent": 0.041305245766212306
+      },
+      {
+        "function": "List",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 898,
+        "samples": 1,
+        "percent": 0.041305245766212306
+      },
+      {
+        "function": "Done",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 28,
+        "samples": 1,
+        "percent": 0.041305245766212306
+      },
+      {
+        "function": "Variant",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 512,
+        "samples": 1,
+        "percent": 0.041305245766212306
+      },
+      {
+        "function": "push",
+        "file": "file:///private/tmp/sakura-perfgaps-r2/spectral_norm/base/sakura_runtime.js",
+        "line": 987,
+        "samples": 1,
+        "percent": 0.041305245766212306
+      }
+    ],
+    "sha256": "af4f926683f529d372176079e20d556c824dcd2afc37bc4d29dd2622307cad58"
+  },
+  "spectral_norm/v8": {
+    "command": [
+      "node",
+      "--prof",
+      "--no-logfile-per-isolate",
+      "--logfile=/tmp/sakura-perfgaps-r2/profiles/spectral_norm-v8.log",
+      "/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/perfgaps/research/10-evidence/perf-gaps-r2/profile.mjs",
+      "/tmp/sakura-perfgaps-r2/spectral_norm/base/bench_entry.mjs",
+      "400",
+      "3"
+    ],
+    "stdout": "{\"n\":400,\"calls\":66,\"checksum\":1274224081}\n",
+    "stderr": "",
+    "process_stderr": "",
+    "log_sha256": "826e43f6170761f8d2c34a98eed1afc1d0524761be1043f9eeca69a6b799468f"
+  }
+}

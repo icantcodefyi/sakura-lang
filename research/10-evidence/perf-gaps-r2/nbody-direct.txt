@@ -1,0 +1,17 @@
+main::main::main cps(row)
+std::cli::host direct
+main::main::$entry cps(with)
+std::cli::host$Cli_args direct
+std::cli::host$Cli_exit direct
+main::main::run direct
+main::main::system direct
+main::main::offset_momentum direct
+main::main::advance direct
+main::main::energy direct
+main::main::at direct
+main::main::set direct
+main::main::advance$1 direct
+std::list::map direct
+std::list::concat direct
+main::main::solar_mass direct
+main::main::planet direct

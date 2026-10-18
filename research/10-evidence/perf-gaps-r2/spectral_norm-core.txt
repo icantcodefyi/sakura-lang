@@ -1,0 +1,209 @@
+pub fn main#0() -> Unit ! {Cli, Console} {
+  let r%0: List<String> = perform Cli.args()
+  let n%1: Int = call $list_len(r%0)
+  join j0() {
+    ret ()
+  }
+  join j1(i%2: Int) {
+    let more%3: Bool = lt(int)(i%2, n%1)
+    if more%3 {
+      let x%4: String = call $list_at(r%0, i%2)
+      join j2() {
+        let i%5: Int = intadd(i%2, 1) proved
+        jump j1(i%5)
+      }
+      let r%6: Option<Int> = call $string_parse_int(x%4)
+      let r%7: Int = call $option_expect(r%6, "size")
+      let r%8: Int = call @run#5(r%7)
+      let s%9: String = show<Int>(r%8)
+      let r%10: Unit = perform Console.print(s%9)
+      jump j2()
+    } else {
+      jump j0()
+    }
+  }
+  jump j1(0)
+}
+
+fn $entry#2() -> Unit {
+  let cli%0: Handler<Cli> = call @host#1()
+  handle cli%0 {
+    let console%1: Handler<Console> = call $console_host()
+    handle console%1 {
+      let r%2: Unit = call @main#0()
+      ret r%2
+    }
+  }
+}
+
+pub fn run#5(n%0: Int) -> Int {
+  let t%1: Bool = eq(int)(n%0, 0)
+  join j0(v%2: Unit) {
+    let xs%3: List<Float> = alloc list()
+    join j1(u%4: List<Float>, k%5: Int) {
+      join j4(u%14: List<Float>, k%15: Int, v%16: List<Float>, i%17: Int) {
+        join j7(u%31: List<Float>, k%32: Int, v%33: List<Float>, i%34: Int, vbv%35: Float, vv%36: Float, m%37: Int) {
+          let t%63: Float = floatdiv(vbv%35, vv%36)
+          let r%64: Float = call $float_sqrt(t%63)
+          let t%65: Float = floatmul(r%64, 1000000000.0)
+          let r%66: Int = call $float_round(t%65)
+          ret r%66
+        }
+        join j8(u%38: List<Float>, k%39: Int, v%40: List<Float>, i%41: Int, vbv%42: Float, vv%43: Float, m%44: Int) {
+          let t%45: Bool = lt(int)(m%44, n%0)
+          join j9(v%46: Unit, u%47: List<Float>, k%48: Int, v%49: List<Float>, i%50: Int, vbv%51: Float, vv%52: Float, m%53: Int) {
+            jump j8(u%47, k%48, v%49, i%50, vbv%51, vv%52, m%53)
+          }
+          if t%45 {
+            let r%54: Float = call @at#7(u%38, m%44)
+            let r%55: Float = call @at#7(v%40, m%44)
+            let t%56: Float = floatmul(r%54, r%55)
+            let t%57: Float = floatadd(vbv%42, t%56)
+            let r%58: Float = call @at#7(v%40, m%44)
+            let r%59: Float = call @at#7(v%40, m%44)
+            let t%60: Float = floatmul(r%58, r%59)
+            let t%61: Float = floatadd(vv%43, t%60)
+            let t%62: Int = intadd(m%44, 1) proved
+            jump j9((), u%38, k%39, v%40, i%41, t%57, t%61, t%62)
+          } else {
+            jump j7(u%38, k%39, v%40, i%41, vbv%42, vv%43, m%44)
+          }
+        }
+        jump j8(u%14, k%15, v%16, i%17, 0.0, 0.0, 0)
+      }
+      join j5(u%18: List<Float>, k%19: Int, v%20: List<Float>, i%21: Int) {
+        let t%22: Bool = lt(int)(i%21, 10)
+        join j6(v%23: Unit, u%24: List<Float>, k%25: Int, v%26: List<Float>, i%27: Int) {
+          jump j5(u%24, k%25, v%26, i%27)
+        }
+        if t%22 {
+          let r%28: List<Float> = call @mul_atav#6(u%18, n%0)
+          let r%29: List<Float> = call @mul_atav#6(r%28, n%0)
+          let t%30: Int = intadd(i%21, 1) proved
+          jump j6((), r%29, k%19, r%28, t%30)
+        } else {
+          jump j4(u%18, k%19, v%20, i%21)
+        }
+      }
+      jump j5(u%4, k%5, u%4, 0)
+    }
+    join j2(u%6: List<Float>, k%7: Int) {
+      let t%8: Bool = lt(int)(k%7, n%0)
+      join j3(v%9: Unit, u%10: List<Float>, k%11: Int) {
+        jump j2(u%10, k%11)
+      }
+      if t%8 {
+        let r%12: List<Float> = call $list_push(u%6, 1.0)
+        let t%13: Int = intadd(k%7, 1) proved
+        jump j3((), r%12, t%13)
+      } else {
+        jump j1(u%6, k%7)
+      }
+    }
+    jump j2(xs%3, 0)
+  }
+  if t%1 {
+    ret 0
+  } else {
+    jump j0(())
+  }
+}
+
+fn mul_atav#6(v%0: List<Float>, n%1: Int) -> List<Float> {
+  let r%2: List<Float> = call @mul_av#8(v%0, n%1)
+  let r%3: List<Float> = call @mul_atv#9(r%2, n%1)
+  ret r%3
+}
+
+fn at#7(v%0: List<Float>, i%1: Int) -> Float {
+  let item%2: Option<Float> = call $list_get(v%0, i%1)
+  let r%3: Float = call $option_expect(item%2, "vector index")
+  ret r%3
+}
+
+fn mul_av#8(v%0: List<Float>, n%1: Int) -> List<Float> {
+  let xs%2: List<Float> = alloc list()
+  join j1(out%5: List<Float>, i%6: Int) {
+    let t%7: Bool = lt(int)(i%6, n%1)
+    join j2(v%8: Unit, out%9: List<Float>, i%10: Int) {
+      jump j1(out%9, i%10)
+    }
+    if t%7 {
+      join j3(out%11: List<Float>, i%12: Int, sum%13: Float, j%14: Int) {
+        let r%30: List<Float> = call $list_push(out%11, sum%13)
+        let t%31: Int = intadd(i%12, 1) proved
+        jump j2((), r%30, t%31)
+      }
+      join j4(out%15: List<Float>, i%16: Int, sum%17: Float, j%18: Int) {
+        let t%19: Bool = lt(int)(j%18, n%1)
+        join j5(v%20: Unit, out%21: List<Float>, i%22: Int, sum%23: Float, j%24: Int) {
+          jump j4(out%21, i%22, sum%23, j%24)
+        }
+        if t%19 {
+          let r%25: Float = call @a#10(i%16, j%18)
+          let r%26: Float = call @at#7(v%0, j%18)
+          let t%27: Float = floatmul(r%25, r%26)
+          let t%28: Float = floatadd(sum%17, t%27)
+          let t%29: Int = intadd(j%18, 1) proved
+          jump j5((), out%15, i%16, t%28, t%29)
+        } else {
+          jump j3(out%15, i%16, sum%17, j%18)
+        }
+      }
+      jump j4(out%5, i%6, 0.0, 0)
+    } else {
+      ret out%5
+    }
+  }
+  jump j1(xs%2, 0)
+}
+
+fn mul_atv#9(v%0: List<Float>, n%1: Int) -> List<Float> {
+  let xs%2: List<Float> = alloc list()
+  join j1(out%5: List<Float>, i%6: Int) {
+    let t%7: Bool = lt(int)(i%6, n%1)
+    join j2(v%8: Unit, out%9: List<Float>, i%10: Int) {
+      jump j1(out%9, i%10)
+    }
+    if t%7 {
+      join j3(out%11: List<Float>, i%12: Int, sum%13: Float, j%14: Int) {
+        let r%30: List<Float> = call $list_push(out%11, sum%13)
+        let t%31: Int = intadd(i%12, 1) proved
+        jump j2((), r%30, t%31)
+      }
+      join j4(out%15: List<Float>, i%16: Int, sum%17: Float, j%18: Int) {
+        let t%19: Bool = lt(int)(j%18, n%1)
+        join j5(v%20: Unit, out%21: List<Float>, i%22: Int, sum%23: Float, j%24: Int) {
+          jump j4(out%21, i%22, sum%23, j%24)
+        }
+        if t%19 {
+          let r%25: Float = call @a#10(j%18, i%16)
+          let r%26: Float = call @at#7(v%0, j%18)
+          let t%27: Float = floatmul(r%25, r%26)
+          let t%28: Float = floatadd(sum%17, t%27)
+          let t%29: Int = intadd(j%18, 1) proved
+          jump j5((), out%15, i%16, t%28, t%29)
+        } else {
+          jump j3(out%15, i%16, sum%17, j%18)
+        }
+      }
+      jump j4(out%5, i%6, 0.0, 0)
+    } else {
+      ret out%5
+    }
+  }
+  jump j1(xs%2, 0)
+}
+
+fn a#10(i%0: Int, j%1: Int) -> Float {
+  let t%2: Int = intadd(i%0, j%1)
+  let t%3: Int = intadd(i%0, j%1)
+  let t%4: Int = intadd(t%3, 1)
+  let t%5: Int = intmul(t%2, t%4)
+  let t%6: Int = intdiv(t%5, 2) proved
+  let t%7: Int = intadd(t%6, i%0)
+  let t%8: Int = intadd(t%7, 1)
+  let r%9: Float = call $int_to_float(t%8)
+  let t%10: Float = floatdiv(1.0, r%9)
+  ret t%10
+}

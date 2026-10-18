@@ -1,0 +1,14 @@
+--- spectral_norm/fused_at/sakura_runtime.js
++++ spectral_norm/fused_uncached/sakura_runtime.js
+@@ -1053,10 +1053 @@
+-  if ((i & ~31) === xs.lb) return xs.lf[i & 31];
+-  // The tail starts on a leaf boundary, so it is cached like a leaf.
+-  let node = xs.tail;
+-  if (i < xs.n - xs.tl) {
+-    node = xs.root;
+-    for (let level = xs.shift; level > 0; level -= 5) node = node[(i >>> level) & 31];
+-  }
+-  xs.lb = i & ~31;
+-  xs.lf = node;
+-  return node[i & 31];
++  return at(xs, i);

@@ -1,0 +1,248 @@
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 shape |  32b (word*, word*)
+layout 3 shape |  32b (i64, word*)
+layout 4 shape |  16b ()
+effect 0 std::cli::Cli [args() -> ptr, exit(i64) -> unit]
+effect 1 std::console::Console [print(ptr) -> unit, read_line() -> ptr]
+contract 0 D020 "set"
+string 0 "size"
+builtin cli_args() -> ptr
+builtin cli_exit(i64) -> unit
+builtin console_host() -> ptr
+builtin contract_enter() -> unit
+builtin contract_exit() -> unit
+builtin list_at(ptr, i64) -> word
+builtin list_get(ptr, i64) -> ptr
+builtin list_len(ptr) -> i64
+builtin list_push(ptr, word) -> ptr
+builtin list_set(ptr, i64, word) -> ptr
+builtin option_expect(ptr, ptr) -> word
+builtin string_parse_int(ptr) -> ptr
+entry $entry#2
+
+fn main#0 pub top -> unit ; main::main, frame 9 slots [%0 word*, %23 i64, %24 word*, %25 i64, %26 i64, %28 bool, %29 word*, %30 i64, %31 i64]
+  b0():
+    perform std::cli::Cli.args() -> b1()
+  b1(%0 r: ptr):
+    dup %0
+    %1 n: i64 = $list_len(%0)
+    %33 lit: i64 = const 0
+    jump b3(%33, %0, %1)
+  b2():
+    %2 lit: unit = const ()
+    ret %2
+  b3(%3 i: i64, %4 r: ptr, %5 n: i64):
+    %6 more: bool = lt.int %3, %5
+    if %6 then b4(%4, %5, %3) else b5(%4, %5, %3)
+  b4(%7 r: ptr, %8 n: i64, %9 i: i64):
+    dup %7
+    %13 x: word = $list_at(%7, %9)
+    %19 r: ptr = $string_parse_int(%13)
+    %20 lit: ptr = const str 0
+    %21 r: word = $option_expect(%19, %20)
+    %22 unbox: i64 = unbox %21
+    drop %21
+    call run#5(%22) -> b7(%7, %8, %9)
+  b5(%10 r: ptr, %11 n: i64, %12 i: i64):
+    drop %10
+    jump b2()
+  b6(%14 r: ptr, %15 n: i64, %16 i: i64):
+    %17 lit: i64 = const 1
+    %18 i: i64 = intadd %16, %17
+    jump b3(%18, %14, %15)
+  b7(%23 r: i64, %24 r: ptr, %25 n: i64, %26 i: i64):
+    %27 s: ptr = show %23
+    perform std::console::Console.print(%27) -> b8(%24, %25, %26)
+  b8(%28 r: unit, %29 r: ptr, %30 n: i64, %31 i: i64):
+    %32 box: word = box %28
+    drop %32
+    jump b6(%29, %30, %31)
+
+fn host#1 pub top -> ptr ; std::cli, frame 0 slots []
+  b0():
+    %0 args: ptr = closure host$Cli_args#3[]
+    %1 exit: ptr = closure host$Cli_exit#4[]
+    %2 handler: ptr = handler std::cli::Cli row 4 state() clauses(%0, %1)
+    ret %2
+
+fn $entry#2 top -> unit ; main::main, frame 2 slots [%0 word*, %2 bool]
+  b0():
+    call host#1() -> b1()
+  b1(%0 cli: ptr):
+    handle_push %0
+    %1 console: ptr = $console_host()
+    handle_push %1
+    call main#0() -> b2()
+  b2(%2 r: unit) [handle, handle]:
+    handle_pop
+    handle_pop
+    ret %2
+
+fn host$Cli_args#3 clause std::cli::Cli.args -> ptr ; std::cli, captures [], frame 2 slots [%0 word*, %1 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    %2 r: ptr = $cli_args()
+    ret %2
+
+fn host$Cli_exit#4 clause std::cli::Cli.exit -> unit ; std::cli, captures [], frame 3 slots [%0 word*, %1 i64, %2 i64]
+  b0(%0 env: ptr, %1 inst: id, %2 code: i64):
+    drop %0
+    %3 r: unit = $cli_exit(%2)
+    ret %3
+
+fn run#5 pub top -> i64 ; main::main, frame 11 slots [%0 i64, %94 word*, %95 i64, %96 word*, %97 i64, %98 i64, %149 word*, %150 i64, %151 i64, %152 i64, %153 i64]
+  b0(%0 n: i64):
+    %1 xs: ptr = alloc list()
+    %182 lit: i64 = const 0
+    jump b24(%1, %182, %0)
+  b1(%2 flags: ptr, %3 i: i64, %4 n: i64):
+    %159 lit: i64 = const 2
+    jump b10(%2, %3, %159, %4)
+  b2(%5 flags: ptr, %6 i: i64, %7 p: i64):
+    dup %5
+    %8 n: i64 = $list_len(%5)
+    %70 lit: i64 = const 0
+    %71 lit: i64 = const 0
+    dup %5
+    jump b3(%70, %5, %6, %7, %71, %5, %8)
+  b3(%9 i: i64, %10 flags: ptr, %11 i: i64, %12 p: i64, %13 count: i64, %14 flags: ptr, %15 n: i64):
+    %16 more: bool = lt.int %9, %15
+    if %16 then b4(%14, %15, %9, %10, %11, %12, %13) else b5(%14, %15, %9, %10, %11, %12, %13)
+  b4(%17 flags: ptr, %18 n: i64, %19 i: i64, %20 flags: ptr, %21 i: i64, %22 p: i64, %23 count: i64):
+    dup %17
+    %31 x: word = $list_at(%17, %19)
+    %32 unbox: bool = unbox %31
+    drop %31
+    if %32 then b8(%17, %18, %19, %20, %21, %22, %23) else b9(%17, %18, %19, %20, %21, %22, %23)
+  b5(%24 flags: ptr, %25 n: i64, %26 i: i64, %27 flags: ptr, %28 i: i64, %29 p: i64, %30 count: i64):
+    drop %24
+    drop %27
+    ret %30
+  b6(%33 flags: ptr, %34 i: i64, %35 p: i64, %36 count: i64, %37 flags: ptr, %38 n: i64, %39 i: i64):
+    %40 lit: i64 = const 1
+    %41 i: i64 = intadd %39, %40
+    jump b3(%41, %33, %34, %35, %36, %37, %38)
+  b7(%42 v: word, %43 flags: ptr, %44 i: i64, %45 p: i64, %46 count: i64, %47 flags: ptr, %48 n: i64, %49 i: i64):
+    drop %42
+    jump b6(%43, %44, %45, %46, %47, %48, %49)
+  b8(%50 flags: ptr, %51 n: i64, %52 i: i64, %53 flags: ptr, %54 i: i64, %55 p: i64, %56 count: i64):
+    %64 lit: i64 = const 1
+    %65 t: i64 = intadd %56, %64
+    %66 lit: unit = const ()
+    %67 box: word = box %66
+    jump b7(%67, %53, %54, %55, %65, %50, %51, %52)
+  b9(%57 flags: ptr, %58 n: i64, %59 i: i64, %60 flags: ptr, %61 i: i64, %62 p: i64, %63 count: i64):
+    %68 lit: unit = const ()
+    %69 box: word = box %68
+    jump b7(%69, %60, %61, %62, %63, %57, %58, %59)
+  b10(%72 flags: ptr, %73 i: i64, %74 p: i64, %75 n: i64):
+    %76 t: i64 = intmul %74, %74
+    %77 t: bool = lt.int %76, %75
+    if %77 then b12(%75, %72, %73, %74) else b13(%75, %72, %73, %74)
+  b11(%78 v: word, %79 flags: ptr, %80 i: i64, %81 p: i64, %82 n: i64):
+    drop %78
+    jump b10(%79, %80, %81, %82)
+  b12(%83 n: i64, %84 flags: ptr, %85 i: i64, %86 p: i64):
+    dup %84
+    %91 item: ptr = $list_get(%84, %86)
+    %92 lit: bool = const false
+    %93 box: word = box %92
+    call unwrap_or#6(%91, %93) -> b14(%83, %84, %85, %86)
+  b13(%87 n: i64, %88 flags: ptr, %89 i: i64, %90 p: i64):
+    jump b2(%88, %89, %90)
+  b14(%94 r: word, %95 n: i64, %96 flags: ptr, %97 i: i64, %98 p: i64):
+    %99 unbox: bool = unbox %94
+    drop %94
+    if %99 then b16(%95, %96, %97, %98) else b17(%95, %96, %97, %98)
+  b15(%100 v: word, %101 flags: ptr, %102 i: i64, %103 p: i64, %104 n: i64):
+    drop %100
+    %105 lit: i64 = const 1
+    %106 t: i64 = intadd %103, %105
+    %107 lit: unit = const ()
+    %108 box: word = box %107
+    jump b11(%108, %101, %102, %106, %104)
+  b16(%109 n: i64, %110 flags: ptr, %111 i: i64, %112 p: i64):
+    %117 t: i64 = intmul %112, %112
+    jump b19(%110, %111, %112, %117, %109)
+  b17(%113 n: i64, %114 flags: ptr, %115 i: i64, %116 p: i64):
+    %157 lit: unit = const ()
+    %158 box: word = box %157
+    jump b15(%158, %114, %115, %116, %113)
+  b18(%118 flags: ptr, %119 i: i64, %120 p: i64, %121 j: i64, %122 n: i64):
+    %123 lit: unit = const ()
+    %124 box: word = box %123
+    jump b15(%124, %118, %119, %120, %122)
+  b19(%125 flags: ptr, %126 i: i64, %127 p: i64, %128 j: i64, %129 n: i64):
+    %130 t: bool = lt.int %128, %129
+    if %130 then b21(%129, %125, %126, %127, %128) else b22(%129, %125, %126, %127, %128)
+  b20(%131 v: word, %132 flags: ptr, %133 i: i64, %134 p: i64, %135 j: i64, %136 n: i64):
+    drop %131
+    jump b19(%132, %133, %134, %135, %136)
+  b21(%137 n: i64, %138 flags: ptr, %139 i: i64, %140 p: i64, %141 j: i64):
+    %147 lit: bool = const false
+    %148 box: word = box %147
+    call set#7(%138, %141, %148) -> b23(%137, %139, %140, %141)
+  b22(%142 n: i64, %143 flags: ptr, %144 i: i64, %145 p: i64, %146 j: i64):
+    jump b18(%143, %144, %145, %146, %142)
+  b23(%149 r: ptr, %150 n: i64, %151 i: i64, %152 p: i64, %153 j: i64):
+    %154 t: i64 = intadd %153, %152
+    %155 lit: unit = const ()
+    %156 box: word = box %155
+    jump b20(%156, %149, %151, %152, %154, %150)
+  b24(%160 flags: ptr, %161 i: i64, %162 n: i64):
+    %163 t: bool = lt.int %161, %162
+    if %163 then b26(%162, %160, %161) else b27(%162, %160, %161)
+  b25(%164 v: word, %165 flags: ptr, %166 i: i64, %167 n: i64):
+    drop %164
+    jump b24(%165, %166, %167)
+  b26(%168 n: i64, %169 flags: ptr, %170 i: i64):
+    %174 lit: i64 = const 2
+    %175 t: bool = ge.int %170, %174
+    %176 box: word = box %175
+    %177 r: ptr = $list_push(%169, %176)
+    %178 lit: i64 = const 1
+    %179 t: i64 = intadd %170, %178
+    %180 lit: unit = const ()
+    %181 box: word = box %180
+    jump b25(%181, %177, %179, %168)
+  b27(%171 n: i64, %172 flags: ptr, %173 i: i64):
+    jump b1(%172, %173, %171)
+
+fn unwrap_or#6 pub top -> word ; std::option, frame 2 slots [%0 word*, %1 word*]
+  b0(%0 o: ptr, %1 default: word):
+    %4 tag: i64 = tag %0 ctor std::option::Option
+    switch %4 0 => b3(%0, %1) 1 => b4(%0, %1)
+  b1(%2 a: word):
+    ret %2
+  b2(%3 default: word):
+    ret %3
+  b3(%5 o: ptr, %6 default: word):
+    drop %5
+    jump b2(%6)
+  b4(%7 o: ptr, %8 default: word):
+    drop %8
+    %9 p: word = proj %7.0 std::option::Option.Some
+    drop %7
+    jump b1(%9)
+
+fn set#7 pub top -> ptr ; std::list, frame 3 slots [%0 word*, %1 i64, %2 word*]
+  b0(%0 xs: ptr, %1 i: i64, %2 x: word):
+    %3 enter: unit = $contract_enter()
+    %4 lit: i64 = const 0
+    %5 t: bool = le.int %4, %1
+    if %5 then b2(%0, %1, %2) else b3(%0, %1, %2)
+  b1(%6 v: bool, %7 xs: ptr, %8 i: i64, %9 x: word):
+    %10 exit: unit = $contract_exit()
+    check D020 %6 ; set
+    %11 pre: unit = const ()
+    %12 r: ptr = $list_set(%7, %8, %9)
+    ret %12
+  b2(%13 xs: ptr, %14 i: i64, %15 x: word):
+    dup %13
+    %19 r: i64 = $list_len(%13)
+    %20 t: bool = lt.int %14, %19
+    jump b1(%20, %13, %14, %15)
+  b3(%16 xs: ptr, %17 i: i64, %18 x: word):
+    %21 lit: bool = const false
+    jump b1(%21, %16, %17, %18)

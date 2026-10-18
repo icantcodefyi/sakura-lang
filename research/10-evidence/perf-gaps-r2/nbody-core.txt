@@ -1,0 +1,354 @@
+pub fn main#0() -> Unit ! {Cli, Console} {
+  let r%0: List<String> = perform Cli.args()
+  let n%1: Int = call $list_len(r%0)
+  join j0() {
+    ret ()
+  }
+  join j1(i%2: Int) {
+    let more%3: Bool = lt(int)(i%2, n%1)
+    if more%3 {
+      let x%4: String = call $list_at(r%0, i%2)
+      join j2() {
+        let i%5: Int = intadd(i%2, 1) proved
+        jump j1(i%5)
+      }
+      let r%6: Option<Int> = call $string_parse_int(x%4)
+      let r%7: Int = call $option_expect(r%6, "size")
+      let r%8: Int = call @run#5(r%7)
+      let s%9: String = show<Int>(r%8)
+      let r%10: Unit = perform Console.print(s%9)
+      jump j2()
+    } else {
+      jump j0()
+    }
+  }
+  jump j1(0)
+}
+
+fn $entry#2() -> Unit {
+  let cli%0: Handler<Cli> = call @host#1()
+  handle cli%0 {
+    let console%1: Handler<Console> = call $console_host()
+    handle console%1 {
+      let r%2: Unit = call @main#0()
+      ret r%2
+    }
+  }
+}
+
+pub fn run#5(n%0: Int) -> Int {
+  let r%1: List<Body> = call @system#6()
+  let r%2: List<Body> = call @offset_momentum#7(r%1)
+  join j0(bs%3: List<Body>, i%4: Int) {
+    let r%13: Float = call @energy#9(bs%3)
+    let t%14: Float = floatmul(r%13, 1000000000.0)
+    let r%15: Int = call $float_round(t%14)
+    ret r%15
+  }
+  join j1(bs%5: List<Body>, i%6: Int) {
+    let t%7: Bool = lt(int)(i%6, n%0)
+    join j2(v%8: Unit, bs%9: List<Body>, i%10: Int) {
+      jump j1(bs%9, i%10)
+    }
+    if t%7 {
+      let r%11: List<Body> = call @advance#8(bs%5, 0.01)
+      let t%12: Int = intadd(i%6, 1) proved
+      jump j2((), r%11, t%12)
+    } else {
+      jump j0(bs%5, i%6)
+    }
+  }
+  jump j1(r%2, 0)
+}
+
+fn system#6() -> List<Body> {
+  let c%0: Float = call @solar_mass#15()
+  let rec%1: Body = alloc Body(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, c%0)
+  let t%2: Float = floatneg(1.1603200440274284)
+  let t%3: Float = floatneg(0.10362204447112311)
+  let t%4: Float = floatneg(6.90460016972063e-5)
+  let r%5: Body = call @planet#16(4.841431442464721, t%2, t%3, 0.001660076642744037, 0.007699011184197404, t%4, 0.0009547919384243266)
+  let t%6: Float = floatneg(0.4035234171143214)
+  let t%7: Float = floatneg(0.002767425107268624)
+  let r%8: Body = call @planet#16(8.34336671824458, 4.124798564124305, t%6, t%7, 0.004998528012349172, 2.3041729757376393e-5, 0.0002858859806661308)
+  let t%9: Float = floatneg(15.111151401698631)
+  let t%10: Float = floatneg(0.22330757889265573)
+  let t%11: Float = floatneg(2.9658956854023756e-5)
+  let r%12: Body = call @planet#16(12.894369562139131, t%9, t%10, 0.002964601375647616, 0.0023784717395948095, t%11, 4.366244043351563e-5)
+  let t%13: Float = floatneg(25.919314609987964)
+  let t%14: Float = floatneg(9.515922545197159e-5)
+  let r%15: Body = call @planet#16(15.379697114850917, t%13, 0.17925877295037118, 0.0026806777249038932, 0.001628241700382423, t%14, 5.1513890204661145e-5)
+  let xs%16: List<Body> = alloc list(rec%1, r%5, r%8, r%12, r%15)
+  ret xs%16
+}
+
+fn offset_momentum#7(bs%0: List<Body>) -> List<Body> {
+  let n%1: Int = call $list_len(bs%0)
+  join j0(px%2: Float, py%3: Float, pz%4: Float) {
+    let r%27: Body = call @at#10(bs%0, 0)
+    let c%28: Float = call @solar_mass#15()
+    let t%29: Float = floatdiv(px%2, c%28)
+    let t%30: Float = floatsub(0.0, t%29)
+    let c%31: Float = call @solar_mass#15()
+    let t%32: Float = floatdiv(py%3, c%31)
+    let t%33: Float = floatsub(0.0, t%32)
+    let c%34: Float = call @solar_mass#15()
+    let t%35: Float = floatdiv(pz%4, c%34)
+    let t%36: Float = floatsub(0.0, t%35)
+    let x%37: Float = r%27.x
+    let y%38: Float = r%27.y
+    let z%39: Float = r%27.z
+    let mass%40: Float = r%27.mass
+    let rec%41: Body = alloc Body(x%37, y%38, z%39, t%30, t%33, t%36, mass%40)
+    let r%42: List<Body> = call @set#11(bs%0, 0, rec%41)
+    ret r%42
+  }
+  join j1(i%5: Int, px%6: Float, py%7: Float, pz%8: Float) {
+    let more%9: Bool = lt(int)(i%5, n%1)
+    if more%9 {
+      let x%10: Body = call $list_at(bs%0, i%5)
+      join j2(px%11: Float, py%12: Float, pz%13: Float) {
+        let i%14: Int = intadd(i%5, 1) proved
+        jump j1(i%14, px%11, py%12, pz%13)
+      }
+      let vx%15: Float = x%10.vx
+      let mass%16: Float = x%10.mass
+      let t%17: Float = floatmul(vx%15, mass%16)
+      let t%18: Float = floatadd(px%6, t%17)
+      let vy%19: Float = x%10.vy
+      let mass%20: Float = x%10.mass
+      let t%21: Float = floatmul(vy%19, mass%20)
+      let t%22: Float = floatadd(py%7, t%21)
+      let vz%23: Float = x%10.vz
+      let mass%24: Float = x%10.mass
+      let t%25: Float = floatmul(vz%23, mass%24)
+      let t%26: Float = floatadd(pz%8, t%25)
+      jump j2(t%18, t%22, t%26)
+    } else {
+      jump j0(px%6, py%7, pz%8)
+    }
+  }
+  jump j1(0, 0.0, 0.0, 0.0)
+}
+
+fn advance#8(start%0: List<Body>, dt%1: Float) -> List<Body> {
+  let r%2: Int = call $list_len(start%0)
+  join j0(bs%3: List<Body>, i%4: Int) {
+    let f%89: fn(Body) -> Body = closure @advance$1#12[dt%1]
+    let r%90: List<Body> = call @map#13(bs%3, f%89)
+    ret r%90
+  }
+  join j1(bs%5: List<Body>, i%6: Int) {
+    let t%7: Bool = lt(int)(i%6, r%2)
+    join j2(v%8: Unit, bs%9: List<Body>, i%10: Int) {
+      jump j1(bs%9, i%10)
+    }
+    if t%7 {
+      let r%11: Body = call @at#10(bs%5, i%6)
+      let t%12: Int = intadd(i%6, 1) proved
+      join j3(bs%13: List<Body>, i%14: Int, b%15: Body, j%16: Int) {
+        let r%87: List<Body> = call @set#11(bs%13, i%14, b%15)
+        let t%88: Int = intadd(i%14, 1) proved
+        jump j2((), r%87, t%88)
+      }
+      join j4(bs%17: List<Body>, i%18: Int, b%19: Body, j%20: Int) {
+        let t%21: Bool = lt(int)(j%20, r%2)
+        join j5(v%22: Unit, bs%23: List<Body>, i%24: Int, b%25: Body, j%26: Int) {
+          jump j4(bs%23, i%24, b%25, j%26)
+        }
+        if t%21 {
+          let r%27: Body = call @at#10(bs%17, j%20)
+          let x%28: Float = b%19.x
+          let x%29: Float = r%27.x
+          let t%30: Float = floatsub(x%28, x%29)
+          let y%31: Float = b%19.y
+          let y%32: Float = r%27.y
+          let t%33: Float = floatsub(y%31, y%32)
+          let z%34: Float = b%19.z
+          let z%35: Float = r%27.z
+          let t%36: Float = floatsub(z%34, z%35)
+          let t%37: Float = floatmul(t%30, t%30)
+          let t%38: Float = floatmul(t%33, t%33)
+          let t%39: Float = floatadd(t%37, t%38)
+          let t%40: Float = floatmul(t%36, t%36)
+          let t%41: Float = floatadd(t%39, t%40)
+          let r%42: Float = call $float_sqrt(t%41)
+          let t%43: Float = floatmul(t%41, r%42)
+          let t%44: Float = floatdiv(dt%1, t%43)
+          let vx%45: Float = b%19.vx
+          let mass%46: Float = r%27.mass
+          let t%47: Float = floatmul(t%30, mass%46)
+          let t%48: Float = floatmul(t%47, t%44)
+          let t%49: Float = floatsub(vx%45, t%48)
+          let vy%50: Float = b%19.vy
+          let mass%51: Float = r%27.mass
+          let t%52: Float = floatmul(t%33, mass%51)
+          let t%53: Float = floatmul(t%52, t%44)
+          let t%54: Float = floatsub(vy%50, t%53)
+          let vz%55: Float = b%19.vz
+          let mass%56: Float = r%27.mass
+          let t%57: Float = floatmul(t%36, mass%56)
+          let t%58: Float = floatmul(t%57, t%44)
+          let t%59: Float = floatsub(vz%55, t%58)
+          let x%60: Float = b%19.x
+          let y%61: Float = b%19.y
+          let z%62: Float = b%19.z
+          let mass%63: Float = b%19.mass
+          let rec%64: Body = alloc Body(x%60, y%61, z%62, t%49, t%54, t%59, mass%63)
+          let vx%65: Float = r%27.vx
+          let mass%66: Float = rec%64.mass
+          let t%67: Float = floatmul(t%30, mass%66)
+          let t%68: Float = floatmul(t%67, t%44)
+          let t%69: Float = floatadd(vx%65, t%68)
+          let vy%70: Float = r%27.vy
+          let mass%71: Float = rec%64.mass
+          let t%72: Float = floatmul(t%33, mass%71)
+          let t%73: Float = floatmul(t%72, t%44)
+          let t%74: Float = floatadd(vy%70, t%73)
+          let vz%75: Float = r%27.vz
+          let mass%76: Float = rec%64.mass
+          let t%77: Float = floatmul(t%36, mass%76)
+          let t%78: Float = floatmul(t%77, t%44)
+          let t%79: Float = floatadd(vz%75, t%78)
+          let x%80: Float = r%27.x
+          let y%81: Float = r%27.y
+          let z%82: Float = r%27.z
+          let mass%83: Float = r%27.mass
+          let rec%84: Body = alloc Body(x%80, y%81, z%82, t%69, t%74, t%79, mass%83)
+          let r%85: List<Body> = call @set#11(bs%17, j%20, rec%84)
+          let t%86: Int = intadd(j%20, 1) proved
+          jump j5((), r%85, i%18, rec%64, t%86)
+        } else {
+          jump j3(bs%17, i%18, b%19, j%20)
+        }
+      }
+      jump j4(bs%5, i%6, r%11, t%12)
+    } else {
+      jump j0(bs%5, i%6)
+    }
+  }
+  jump j1(start%0, 0)
+}
+
+fn energy#9(bs%0: List<Body>) -> Float {
+  let r%1: Int = call $list_len(bs%0)
+  join j1(e%4: Float, i%5: Int) {
+    let t%6: Bool = lt(int)(i%5, r%1)
+    join j2(v%7: Unit, e%8: Float, i%9: Int) {
+      jump j1(e%8, i%9)
+    }
+    if t%6 {
+      let r%10: Body = call @at#10(bs%0, i%5)
+      let mass%11: Float = r%10.mass
+      let t%12: Float = floatmul(0.5, mass%11)
+      let vx%13: Float = r%10.vx
+      let vx%14: Float = r%10.vx
+      let t%15: Float = floatmul(vx%13, vx%14)
+      let vy%16: Float = r%10.vy
+      let vy%17: Float = r%10.vy
+      let t%18: Float = floatmul(vy%16, vy%17)
+      let t%19: Float = floatadd(t%15, t%18)
+      let vz%20: Float = r%10.vz
+      let vz%21: Float = r%10.vz
+      let t%22: Float = floatmul(vz%20, vz%21)
+      let t%23: Float = floatadd(t%19, t%22)
+      let t%24: Float = floatmul(t%12, t%23)
+      let t%25: Float = floatadd(e%4, t%24)
+      let t%26: Int = intadd(i%5, 1) proved
+      join j3(e%27: Float, i%28: Int, j%29: Int) {
+        let t%60: Int = intadd(i%28, 1) proved
+        jump j2((), e%27, t%60)
+      }
+      join j4(e%30: Float, i%31: Int, j%32: Int) {
+        let t%33: Bool = lt(int)(j%32, r%1)
+        join j5(v%34: Unit, e%35: Float, i%36: Int, j%37: Int) {
+          jump j4(e%35, i%36, j%37)
+        }
+        if t%33 {
+          let r%38: Body = call @at#10(bs%0, j%32)
+          let x%39: Float = r%10.x
+          let x%40: Float = r%38.x
+          let t%41: Float = floatsub(x%39, x%40)
+          let y%42: Float = r%10.y
+          let y%43: Float = r%38.y
+          let t%44: Float = floatsub(y%42, y%43)
+          let z%45: Float = r%10.z
+          let z%46: Float = r%38.z
+          let t%47: Float = floatsub(z%45, z%46)
+          let mass%48: Float = r%10.mass
+          let mass%49: Float = r%38.mass
+          let t%50: Float = floatmul(mass%48, mass%49)
+          let t%51: Float = floatmul(t%41, t%41)
+          let t%52: Float = floatmul(t%44, t%44)
+          let t%53: Float = floatadd(t%51, t%52)
+          let t%54: Float = floatmul(t%47, t%47)
+          let t%55: Float = floatadd(t%53, t%54)
+          let r%56: Float = call $float_sqrt(t%55)
+          let t%57: Float = floatdiv(t%50, r%56)
+          let t%58: Float = floatsub(e%30, t%57)
+          let t%59: Int = intadd(j%32, 1) proved
+          jump j5((), t%58, i%31, t%59)
+        } else {
+          jump j3(e%30, i%31, j%32)
+        }
+      }
+      jump j4(t%25, i%5, t%26)
+    } else {
+      ret e%4
+    }
+  }
+  jump j1(0.0, 0)
+}
+
+fn at#10(bs%0: List<Body>, i%1: Int) -> Body {
+  let item%2: Option<Body> = call $list_get(bs%0, i%1)
+  let r%3: Body = call $option_expect(item%2, "body index")
+  ret r%3
+}
+
+fn set#11(bs%0: List<Body>, i%1: Int, b%2: Body) -> List<Body> {
+  let r%3: List<Body> = call $list_slice(bs%0, 0, i%1)
+  let r%4: List<Body> = call $list_push(r%3, b%2)
+  let t%5: Int = intadd(i%1, 1)
+  let r%6: Int = call $list_len(bs%0)
+  let r%7: List<Body> = call $list_slice(bs%0, t%5, r%6)
+  let r%8: List<Body> = call @concat#14(r%4, r%7)
+  ret r%8
+}
+
+lambda advance$1#12[dt%0: Float](b%1: Body) -> Body {
+  let x%2: Float = b%1.x
+  let vx%3: Float = b%1.vx
+  let t%4: Float = floatmul(dt%0, vx%3)
+  let t%5: Float = floatadd(x%2, t%4)
+  let y%6: Float = b%1.y
+  let vy%7: Float = b%1.vy
+  let t%8: Float = floatmul(dt%0, vy%7)
+  let t%9: Float = floatadd(y%6, t%8)
+  let z%10: Float = b%1.z
+  let vz%11: Float = b%1.vz
+  let t%12: Float = floatmul(dt%0, vz%11)
+  let t%13: Float = floatadd(z%10, t%12)
+  let vx%14: Float = b%1.vx
+  let vy%15: Float = b%1.vy
+  let vz%16: Float = b%1.vz
+  let mass%17: Float = b%1.mass
+  let rec%18: Body = alloc Body(t%5, t%9, t%13, vx%14, vy%15, vz%16, mass%17)
+  ret rec%18
+}
+
+const fn solar_mass#15() -> Float {
+  let t%0: Float = floatmul(4.0, 3.141592653589793)
+  let t%1: Float = floatmul(t%0, 3.141592653589793)
+  ret t%1
+}
+
+fn planet#16(x%0: Float, y%1: Float, z%2: Float, vx%3: Float, vy%4: Float, vz%5: Float, m%6: Float) -> Body {
+  let t%7: Float = floatmul(vx%3, 365.24)
+  let t%8: Float = floatmul(vy%4, 365.24)
+  let t%9: Float = floatmul(vz%5, 365.24)
+  let c%10: Float = call @solar_mass#15()
+  let t%11: Float = floatmul(m%6, c%10)
+  let rec%12: Body = alloc Body(x%0, y%1, z%2, t%7, t%8, t%9, t%11)
+  ret rec%12
+}

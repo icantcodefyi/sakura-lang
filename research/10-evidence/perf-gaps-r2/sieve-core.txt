@@ -1,0 +1,123 @@
+pub fn main#0() -> Unit ! {Cli, Console} {
+  let r%0: List<String> = perform Cli.args()
+  let n%1: Int = call $list_len(r%0)
+  join j0() {
+    ret ()
+  }
+  join j1(i%2: Int) {
+    let more%3: Bool = lt(int)(i%2, n%1)
+    if more%3 {
+      let x%4: String = call $list_at(r%0, i%2)
+      join j2() {
+        let i%5: Int = intadd(i%2, 1) proved
+        jump j1(i%5)
+      }
+      let r%6: Option<Int> = call $string_parse_int(x%4)
+      let r%7: Int = call $option_expect(r%6, "size")
+      let r%8: Int = call @run#5(r%7)
+      let s%9: String = show<Int>(r%8)
+      let r%10: Unit = perform Console.print(s%9)
+      jump j2()
+    } else {
+      jump j0()
+    }
+  }
+  jump j1(0)
+}
+
+fn $entry#2() -> Unit {
+  let cli%0: Handler<Cli> = call @host#1()
+  handle cli%0 {
+    let console%1: Handler<Console> = call $console_host()
+    handle console%1 {
+      let r%2: Unit = call @main#0()
+      ret r%2
+    }
+  }
+}
+
+pub fn run#5(n%0: Int) -> Int {
+  let xs%1: List<Bool> = alloc list()
+  join j0(flags%2: List<Bool>, i%3: Int) {
+    join j3(flags%13: List<Bool>, i%14: Int, p%15: Int) {
+      let n%49: Int = call $list_len(flags%13)
+      join j11(i%54: Int, flags%55: List<Bool>, i%56: Int, p%57: Int, count%58: Int) {
+        let more%59: Bool = lt(int)(i%54, n%49)
+        if more%59 {
+          let x%60: Bool = call $list_at(flags%13, i%54)
+          join j12(flags%61: List<Bool>, i%62: Int, p%63: Int, count%64: Int) {
+            let i%65: Int = intadd(i%54, 1) proved
+            jump j11(i%65, flags%61, i%62, p%63, count%64)
+          }
+          join j13(v%66: Unit, flags%67: List<Bool>, i%68: Int, p%69: Int, count%70: Int) {
+            jump j12(flags%67, i%68, p%69, count%70)
+          }
+          if x%60 {
+            let t%71: Int = intadd(count%58, 1)
+            jump j13((), flags%55, i%56, p%57, t%71)
+          } else {
+            jump j13((), flags%55, i%56, p%57, count%58)
+          }
+        } else {
+          ret count%58
+        }
+      }
+      jump j11(0, flags%13, i%14, p%15, 0)
+    }
+    join j4(flags%16: List<Bool>, i%17: Int, p%18: Int) {
+      let t%19: Int = intmul(p%18, p%18)
+      let t%20: Bool = lt(int)(t%19, n%0)
+      join j5(v%21: Unit, flags%22: List<Bool>, i%23: Int, p%24: Int) {
+        jump j4(flags%22, i%23, p%24)
+      }
+      if t%20 {
+        let item%25: Option<Bool> = call $list_get(flags%16, p%18)
+        let r%26: Bool = call @unwrap_or#6(item%25, false)
+        join j6(v%27: Unit, flags%28: List<Bool>, i%29: Int, p%30: Int) {
+          let t%48: Int = intadd(p%30, 1)
+          jump j5((), flags%28, i%29, t%48)
+        }
+        if r%26 {
+          let t%31: Int = intmul(p%18, p%18)
+          join j7(flags%32: List<Bool>, i%33: Int, p%34: Int, j%35: Int) {
+            jump j6((), flags%32, i%33, p%34)
+          }
+          join j8(flags%36: List<Bool>, i%37: Int, p%38: Int, j%39: Int) {
+            let t%40: Bool = lt(int)(j%39, n%0)
+            join j9(v%41: Unit, flags%42: List<Bool>, i%43: Int, p%44: Int, j%45: Int) {
+              jump j8(flags%42, i%43, p%44, j%45)
+            }
+            if t%40 {
+              let r%46: List<Bool> = call @set#7(flags%36, j%39, false)
+              let t%47: Int = intadd(j%39, p%38)
+              jump j9((), r%46, i%37, p%38, t%47)
+            } else {
+              jump j7(flags%36, i%37, p%38, j%39)
+            }
+          }
+          jump j8(flags%16, i%17, p%18, t%31)
+        } else {
+          jump j6((), flags%16, i%17, p%18)
+        }
+      } else {
+        jump j3(flags%16, i%17, p%18)
+      }
+    }
+    jump j4(flags%2, i%3, 2)
+  }
+  join j1(flags%4: List<Bool>, i%5: Int) {
+    let t%6: Bool = lt(int)(i%5, n%0)
+    join j2(v%7: Unit, flags%8: List<Bool>, i%9: Int) {
+      jump j1(flags%8, i%9)
+    }
+    if t%6 {
+      let t%10: Bool = ge(int)(i%5, 2)
+      let r%11: List<Bool> = call $list_push(flags%4, t%10)
+      let t%12: Int = intadd(i%5, 1) proved
+      jump j2((), r%11, t%12)
+    } else {
+      jump j0(flags%4, i%5)
+    }
+  }
+  jump j1(xs%1, 0)
+}
