@@ -1,6 +1,7 @@
 //! Core-to-Core optimizations (design §13.1 "opt").
 //!
-//! - Jumps to a join point that only returns one of its parameters become that return.
+//! - Jumps to a join point that only returns one of its parameters, or passes it on to such a
+//!   join point (the inner `if` of an `else if`), become that return.
 //! - Self tail calls become jumps to a loop header, so tail-recursive functions run as loops
 //!   (and, when pure, as direct-style JS loops). A call inside a `Handle` or `Try` region is
 //!   not a tail call: the region must stay installed while the callee runs. In a def that
@@ -319,9 +320,16 @@ fn return_joins_inner(e: &Expr, out: &mut HashMap<Label, usize>) {
             join,
             body,
         } => {
-            if let Expr::Ret(Atom::Local(r)) = **join
-                && let Some(i) = params.iter().position(|p| *p == r)
-            {
+            // An inner `if`'s join that jumps on to an outer return join returns too.
+            let r = match &**join {
+                Expr::Ret(Atom::Local(r)) => Some(r),
+                Expr::Jump(l, args) => match out.get(l).map(|&i| &args[i]) {
+                    Some(Atom::Local(r)) => Some(r),
+                    _ => None,
+                },
+                _ => None,
+            };
+            if let Some(i) = r.and_then(|r| params.iter().position(|p| p == r)) {
                 out.insert(*label, i);
             }
             return_joins(join, out);

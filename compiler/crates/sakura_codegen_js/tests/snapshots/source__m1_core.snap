@@ -22,9 +22,6 @@ fn test$0#_() -> Unit {
 
 fn parse_age#_(s%0: String) -> Int ! {Fail<ParseError>} {
   let r%1: Option<Int> = call $string_parse_int(s%0)
-  join j1(n%3: Int) {
-    ret n%3
-  }
   join j2() {
     let rec%4: ParseError = alloc ParseError(s%0)
     fail rec%4
@@ -34,7 +31,7 @@ fn parse_age#_(s%0: String) -> Int ! {Fail<ParseError>} {
       let p%5: Int = r%1.Some#_
       let t%6: Bool = ge(int)(p%5, 0)
       if t%6 {
-        jump j1(p%5)
+        ret p%5
       } else {
         jump j2()
       }

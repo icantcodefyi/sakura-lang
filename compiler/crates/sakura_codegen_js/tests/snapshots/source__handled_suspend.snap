@@ -12,9 +12,6 @@ export function run(n, $ctx, $k) {
   const $i1 = $ctx1.h.i;
   const next = counter$Tick_next;
   const r_1 = $rt.makeHandler("main::main::Tick", [0], [next]);
-  const j1 = (v_1) => {
-    return $ret($k, v_1);
-  };
   const $ctx2 = $rt.install($ctx1, r_1);
   const $i2 = $ctx2.h.i;
   const j2 = (acc, i) => {
@@ -23,7 +20,7 @@ export function run(n, $ctx, $k) {
     const r_6 = $std_instant.to_unix_millis$d(r_5);
     const t_6 = (acc + r_6);
     if (!Number.isSafeInteger(t_6)) $rt.add(acc, r_6);
-    return j1(t_6);
+    return $ret($k, t_6);
   };
   const j3 = (acc_1, i_1) => {
     if (++$G.d > $L) return $b(j3, [acc_1, i_1]);

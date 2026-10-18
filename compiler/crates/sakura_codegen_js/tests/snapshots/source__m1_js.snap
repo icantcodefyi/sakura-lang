@@ -43,29 +43,24 @@ export function test$0($ctx, $k) {
 export function parse_age(s, $ctx, $k) {
   if (++$G.d > $L) return $b(parse_age, [s, $ctx, $k]);
   const r = $rt.string_parse_int(s);
-  let n;
-  j1: {
-    j2: {
-      switch (r.tag) {
-        case 1: {
-          const p = r.fields[0];
-          const t = (p >= 0);
-          if (t) {
-            n = p;
-            break j1;
-          } else {
-            break j2;
-          }
-        }
-        default: {
+  j2: {
+    switch (r.tag) {
+      case 1: {
+        const p = r.fields[0];
+        const t = (p >= 0);
+        if (t) {
+          return $ret($k, p);
+        } else {
           break j2;
         }
       }
+      default: {
+        break j2;
+      }
     }
-    const rec = new ParseError(s);
-    return $rt.fail($ctx, rec);
   }
-  return $ret($k, n);
+  const rec = new ParseError(s);
+  return $rt.fail($ctx, rec);
 }
 
 export function test$0$run(seed, $ctx, $k) {

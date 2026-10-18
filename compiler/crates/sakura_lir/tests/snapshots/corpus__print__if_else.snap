@@ -77,12 +77,10 @@ fn classify#2 top -> ptr ; main::if_else, frame 1 slots [%0 i64]
   b2(%4 n: i64):
     %6 lit: i64 = const 0
     %7 t: bool = eq.int %4, %6
-    if %7 then b4() else b5()
-  b3(%8 v: ptr):
+    if %7 then b3() else b4()
+  b3():
+    %8 lit: ptr = const str 5
     ret %8
   b4():
-    %9 lit: ptr = const str 5
-    jump b3(%9)
-  b5():
-    %10 lit: ptr = const str 0
-    jump b3(%10)
+    %9 lit: ptr = const str 0
+    ret %9

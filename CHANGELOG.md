@@ -232,6 +232,11 @@ published yet.
   sites are unchanged. A generic member, or one that checks a contract, is not copied (a
   contracted function still runs the others in its own loop); non-tail calls stay calls.
 
+- A call in tail position under an `else if`, or under an `if` nested in an `if` branch, is a
+  tail call: self-recursive and mutually recursive functions written that way run as loops
+  too, where they ran through frames before. A terminating program's output, effects and
+  defects are unchanged.
+
 - A `requires` violated inside a self-tail-recursive function now blames the self call
   (`down2(n - 2)`) instead of the outer call that entered the loop. Contracted functions
   take their blame site as a trailing parameter on the JS backend, and predicates that

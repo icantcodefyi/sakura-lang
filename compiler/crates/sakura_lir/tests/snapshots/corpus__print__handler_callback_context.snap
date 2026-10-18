@@ -9,7 +9,7 @@ layout 3 shape |  32b (i64, word*)
 layout 4 shape |  24b (word*)
 layout 5 shape |  16b ()
 
-fn main#0 pub top -> unit ; main::handler_callback_context, frame 4 slots [%0 word*, %5 word*, %6 word*, %13 word*]
+fn main#0 pub top -> unit ; main::handler_callback_context, frame 4 slots [%0 word*, %5 word*, %6 word*, %11 word*]
   b0():
     call memory#2() -> b1()
   b1(%0 r: ptr):
@@ -24,19 +24,17 @@ fn main#0 pub top -> unit ; main::handler_callback_context, frame 4 slots [%0 wo
     call doubled#4() -> b3()
   b3(%6 r: ptr) [handle]:
     handle_push %6
-    %9 f: ptr = closure main$2#5[]
-    %10 lit: ptr = const str 1
-    %11 lit: i64 = const 1
-    %12 callback: ptr = callback %9
-    perform main::handler_callback_context::Store.with_default(%10, %11, %12) -> b5()
-  b4(%7 v: word) [handle]:
-    %8 unbox: unit = unbox %7
-    drop %7
+    %7 f: ptr = closure main$2#5[]
+    %8 lit: ptr = const str 1
+    %9 lit: i64 = const 1
+    %10 callback: ptr = callback %7
+    perform main::handler_callback_context::Store.with_default(%8, %9, %10) -> b4()
+  b4(%11 r: word) [handle, handle]:
+    %12 unbox: unit = unbox %11
+    drop %11
     handle_pop
-    ret %8
-  b5(%13 r: word) [handle, handle]:
     handle_pop
-    jump b4(%13)
+    ret %12
 
 fn $entry#1 top -> unit ; main::handler_callback_context, frame 1 slots [%1 bool]
   b0():

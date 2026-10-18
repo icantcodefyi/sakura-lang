@@ -426,15 +426,13 @@ fn shapes#11 top -> ptr ; main::loop_resume_edges, frame 1 slots [%0 i64]
     %9 t: i64 = intrem %6, %8
     %10 lit: i64 = const 1
     %11 t: bool = eq.int %9, %10
-    if %11 then b4(%6) else b5(%6)
-  b3(%12 v: ptr):
-    ret %12
+    if %11 then b3(%6) else b4(%6)
+  b3(%12 k: i64):
+    %14 r: ptr = alloc main::loop_resume_edges::Shape.Box(%12)
+    ret %14
   b4(%13 k: i64):
-    %15 r: ptr = alloc main::loop_resume_edges::Shape.Box(%13)
-    jump b3(%15)
-  b5(%14 k: i64):
-    %16 r: ptr = alloc main::loop_resume_edges::Shape.Pair(%14, %14)
-    jump b3(%16)
+    %15 r: ptr = alloc main::loop_resume_edges::Shape.Pair(%13, %13)
+    ret %15
 
 fn matcher$1#12 lambda -> word ; main::loop_resume_edges, captures [], frame 2 slots [%0 word*, %1 word*]
   b0(%0 env: ptr, %1 x: word):

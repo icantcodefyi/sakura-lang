@@ -9,14 +9,8 @@ export function run(n, $ctx, $k) {
   const $ctx1 = $rt.install($ctx, r);
   const next_1 = forward$Tick_next;
   const r_1 = $rt.makeHandler("main::main::Tick", [], [next_1]);
-  const j1 = (v_1) => {
-    return $ret($k, v_1);
-  };
   const $ctx2 = $rt.install($ctx1, r_1);
   const $i2 = $ctx2.h.i;
-  const j2 = (acc, i) => {
-    return j1(acc);
-  };
   const j3 = (acc_1, i_1) => {
     if (++$G.d > $L) return $b(j3, [acc_1, i_1]);
     j3: for (;;) {
@@ -36,7 +30,7 @@ export function run(n, $ctx, $k) {
           i_2 = t_3;
           break j4;
         } else {
-          return j2(acc_1, i_1);
+          return $ret($k, acc_1);
         }
       }
       acc_1 = acc_2;

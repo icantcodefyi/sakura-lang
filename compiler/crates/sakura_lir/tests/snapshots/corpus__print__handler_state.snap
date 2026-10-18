@@ -51,7 +51,7 @@ fn answer#2 top -> i64 ; main::handler_state, frame 1 slots [%4 i64]
     handle_pop
     ret %4
 
-fn nested#3 top -> i64 ; main::handler_state, frame 2 slots [%3 i64, %8 i64]
+fn nested#3 top -> i64 ; main::handler_state, frame 2 slots [%3 i64, %7 i64]
   b0():
     %0 next: ptr = closure counter$Counter_next#5[]
     %1 lit: i64 = const 0
@@ -63,13 +63,11 @@ fn nested#3 top -> i64 ; main::handler_state, frame 2 slots [%3 i64, %8 i64]
     %5 lit: i64 = const 0
     %6 r: ptr = handler main::handler_state::Counter row 4 state(%5) clauses(%4)
     handle_push %6
-    perform main::handler_state::Counter.next() -> b3()
-  b2(%7 v: i64) [handle]:
+    perform main::handler_state::Counter.next() -> b2()
+  b2(%7 r: i64) [handle, handle]:
+    handle_pop
     handle_pop
     ret %7
-  b3(%8 r: i64) [handle, handle]:
-    handle_pop
-    jump b2(%8)
 
 fn counter#4 top -> ptr ; main::handler_state, frame 0 slots []
   b0():

@@ -567,20 +567,18 @@ fn main$3#8 lambda -> word ; main::nested_options, captures [], frame 3 slots [%
 
 fn flatten#11 top -> ptr ; main::nested_options, frame 1 slots [%0 word*]
   b0(%0 o: ptr):
-    %3 tag: i64 = tag %0 ctor std::option::Option
-    switch %3 0 => b3(%0) 1 => b4(%0)
-  b1(%1 inner: ptr):
+    %2 tag: i64 = tag %0 ctor std::option::Option
+    switch %2 0 => b2(%0) 1 => b3(%0)
+  b1():
+    %1 v: ptr = const static std::option::Option.None
     ret %1
-  b2():
-    %2 v: ptr = const static std::option::Option.None
-    ret %2
+  b2(%3 o: ptr):
+    drop %3
+    jump b1()
   b3(%4 o: ptr):
+    %5 p: word = proj %4.0 std::option::Option.Some
     drop %4
-    jump b2()
-  b4(%5 o: ptr):
-    %6 p: word = proj %5.0 std::option::Option.Some
-    drop %5
-    jump b1(%6)
+    ret %5
 
 fn main$4#12 lambda -> word ; main::nested_options, captures [word*], frame 1 slots [%0 word*]
   b0(%0 env: ptr):

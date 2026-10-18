@@ -48,7 +48,7 @@ pipeline n=1000
   all-frame: frames 2509, boxes 2501, dups 6005, drops 9013, restarts 0
 rbtree n=1000
   direct: frames 4, boxes 0, dups 118637, drops 110993, restarts 0
-  all-frame: frames 22054, boxes 0, dups 118637, drops 110993, restarts 0
+  all-frame: frames 21969, boxes 0, dups 118637, drops 110993, restarts 0
 shapes n=1000
   direct: frames 5010, boxes 10184, dups 43723, drops 49733, restarts 0
   all-frame: frames 21010, boxes 10184, dups 43723, drops 49733, restarts 0

@@ -45,42 +45,40 @@ fn $entry#1 top -> unit ; main::error_unions, frame 1 slots [%1 bool]
     handle_pop
     ret %1
 
-fn report#2 top -> ptr ; main::error_unions, frame 3 slots [%0 i64, %11 word*, %13 word*]
+fn report#2 top -> ptr ; main::error_unions, frame 3 slots [%0 i64, %10 word*, %12 word*]
   b0(%0 id: i64):
-    try_push -> b9(err, )
-    call fetch_retrying#3(%0) -> b10()
+    try_push -> b8(err, )
+    call fetch_retrying#3(%0) -> b9()
   b1(%1 v: ptr):
-    %5 tag: i64 = tag %1 ctor std::result::Result
-    switch %5 0 => b5(%1) 1 => b6(%1)
-  b2(%2 d: ptr):
+    %4 tag: i64 = tag %1 ctor std::result::Result
+    switch %4 0 => b4(%1) 1 => b5(%1)
+  b2():
+    %2 lit: ptr = const str 0
     ret %2
   b3():
-    %3 lit: ptr = const str 0
+    %3 lit: ptr = const str 1
     ret %3
-  b4():
-    %4 lit: ptr = const str 1
-    ret %4
+  b4(%5 v: ptr):
+    %7 p: word = proj %5.0 std::result::Result.Ok
+    drop %5
+    ret %7
   b5(%6 v: ptr):
-    %8 p: word = proj %6.0 std::result::Result.Ok
+    %8 p: word = proj %6.0 std::result::Result.Err
     drop %6
-    jump b2(%8)
-  b6(%7 v: ptr):
-    %9 p: word = proj %7.0 std::result::Result.Err
-    drop %7
-    %10 tag: i64 = tag %9 member [main::error_unions::NotFound, main::error_unions::Forbidden]
-    drop %9
-    switch %10 0 => b7() 1 => b8()
+    %9 tag: i64 = tag %8 member [main::error_unions::NotFound, main::error_unions::Forbidden]
+    drop %8
+    switch %9 0 => b6() 1 => b7()
+  b6():
+    jump b2()
   b7():
     jump b3()
-  b8():
-    jump b4()
-  b9(%11 e: word):
-    %12 err: ptr = alloc std::result::Result.Err(%11)
-    jump b1(%12)
-  b10(%13 r: ptr) [try]:
-    %14 ok: ptr = alloc std::result::Result.Ok(%13)
+  b8(%10 e: word):
+    %11 err: ptr = alloc std::result::Result.Err(%10)
+    jump b1(%11)
+  b9(%12 r: ptr) [try]:
+    %13 ok: ptr = alloc std::result::Result.Ok(%12)
     try_pop
-    jump b1(%14)
+    jump b1(%13)
 
 fn fetch_retrying#3 top -> ptr ; main::error_unions, frame 3 slots [%0 i64, %1 word*, %6 word*]
   b0(%0 id: i64):

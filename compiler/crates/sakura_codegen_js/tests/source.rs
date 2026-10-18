@@ -172,6 +172,27 @@ pub fn main() -> Unit ! {Console} {
     insta::assert_snapshot!(&even[..even.find("\n}\n").unwrap()]);
 }
 
+/// A call in tail position under nested `if`s is a tail call: the inner `if`'s join only passes
+/// its value on to the outer one's, which returns it.
+#[test]
+fn tail_calls_under_nested_ifs_become_jumps() {
+    let src = r#"
+fn walk(n: Int) -> Int { if n <= 0 { n } else if n % 2 == 0 { walk(n - 1) } else { walk(n - 2) } }
+fn ping(n: Int) -> Int { if n <= 0 { 0 } else { if n % 3 == 0 { pong(n - 1) } else { ping(n - 1) } } }
+fn pong(n: Int) -> Int { if n <= 0 { 1 } else if n % 5 == 0 { ping(n - 1) } else { pong(n - 1) } }
+pub fn main() -> Unit ! {Console} { Console.print("{walk(1000001)} {ping(1000000)}") }
+"#;
+    let r = common::run("nested_tail", src).unwrap();
+    assert_eq!((r.stdout.as_str(), r.code), ("-1 1\n", 0), "{}", r.stderr);
+    let (m, _) = common::build("nested_tail", src, false).unwrap();
+    let core = m.to_string();
+    for name in ["walk", "ping", "pong"] {
+        let d = &core[core.find(&format!("fn {name}#")).unwrap()..];
+        let d = &d[..d.find("\n}\n").unwrap()];
+        assert!(!d.contains("call"), "{d}");
+    }
+}
+
 /// A one-use reference-valued temporary in direct code is inlined into its consumer, so the frame
 /// does not keep a discarded tree reachable (research/10-evidence/binary-trees-rss.md). A
 /// temporary read twice stays a local; a contracted consumer takes its blame site as an
