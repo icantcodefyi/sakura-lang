@@ -167,8 +167,8 @@ JS controls for `handled_*` are closure calls on a stateful object (research/10
    skipped), `meta.failures` (oracle and build failures with their output), `flags.suite`,
    `flags.engines`, `flags.processes`; `compile` results carry `p95_ms` and `budget_ms` and
    use `engine: "cli"`, `lane: "compile"`, `size` = corpus lines.
-7. **The compile corpus imports `main/gen/m<i>`**: the analysis names every user package
-   `main` whatever `sakura.toml` says (design §9 says the manifest name); posted in REQUESTS.
+7. **The compile corpus imports `corpus/gen/m<i>`**, its manifest's name (design §9,
+   §17.127). Until WS9 the analysis named every user package `main`.
 8. **`compare` confirmation** is a second head file rather than a rerun inside `compare`; the
    CI job reruns the flagged programs with `--filter` and passes both files.
 

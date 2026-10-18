@@ -490,7 +490,8 @@ BUDGETS_MS = {"check_cold_10k": 1000, "build_10k": 500, "check_cold_100k": 3000,
 def corpus(lines):
     """A generated package of ~`lines` lines: modules of plain functions, records and matches."""
     d = TARGET / "corpus" / f"{lines}"
-    if (d / "sakura.toml").exists():
+    entry = d / "src" / "main.sakura"
+    if entry.exists() and "import corpus/" in entry.read_text():  # older corpora import `main/`
         return d
     (d / "src" / "gen").mkdir(parents=True, exist_ok=True)
     (d / "sakura.toml").write_text('[package]\nname = "corpus"\nversion = "0.1.0"\nedition = "2026"\n')
@@ -508,8 +509,7 @@ def corpus(lines):
                      f"  if y > {f} {{ y + s + String.len(r.b) }} else {{ r.a + s }}",
                      "}", "", "", ""]
         (d / "src" / "gen" / f"m{m}.sakura").write_text("\n".join(body))
-    # The analysis names the user package `main` whatever sakura.toml says (REQUESTS, perf/bench).
-    imports = [f"import main/gen/m{m}" for m in range(mods)]
+    imports = [f"import corpus/gen/m{m}" for m in range(mods)]
     calls = " + ".join(f"m{m}.f0(1, m{m}.R{m} {{ a: 1, b: \"x\" }})" for m in range(mods))
     (d / "src" / "main.sakura").write_text("\n".join(imports) + f"\n\npub fn main() -> Unit ! {{Console}} {{\n"
                                            f"  Console.print(\"{{{calls}}}\")\n}}\n")

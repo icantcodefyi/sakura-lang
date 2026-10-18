@@ -349,8 +349,10 @@ fn analyze(snapshot: &Snapshot, prev: Option<&Analyzed>) -> Analyzed {
     // Reuse `prev` only for the same files with the same interfaces; then a module is reused
     // (neither lowered nor checked again) when its text is unchanged and none of its
     // diagnostics points into a changed file.
+    let name = package_name(snapshot);
     let prev = prev.filter(|p| {
         p.interfaces == interfaces
+            && p.program.packages.last().is_some_and(|pk| pk.name == name)
             && p.snapshot.files.len() == snapshot.files.len()
             && (p.snapshot.files.iter().zip(&snapshot.files)).all(|(a, b)| a.uri == b.uri)
     });
@@ -373,6 +375,7 @@ fn analyze(snapshot: &Snapshot, prev: Option<&Analyzed>) -> Analyzed {
         .collect();
     let (mut program, lowered) = lower(
         snapshot,
+        &name,
         &parses,
         prev.map(|p| (&p.program, &reused_file[..])),
     );
@@ -482,7 +485,7 @@ fn has_entry(program: &sakura_hir::Program) -> bool {
     program
         .packages
         .iter()
-        .filter(|p| p.name == "main")
+        .filter(|p| p.name != "std")
         .flat_map(|p| &p.modules)
         .filter_map(|&m| program.lookup(m, "main"))
         .any(|d| {
@@ -596,7 +599,8 @@ impl Analysis {
 }
 
 /// Where a snapshot file belongs: `("std", "list")` for `sakura:///std/list.sakura`; user files are
-/// package `main` with the path relative to the last `src/` (`users/repo`), or the file stem.
+/// package `main` (renamed by [`package_name`]) with the path relative to the last `src/`
+/// (`users/repo`), or the file stem.
 fn module_of(uri: &str) -> (&'static str, String) {
     let path = uri.strip_suffix(".sakura").unwrap_or(uri);
     if let Some(rest) = path.strip_prefix("sakura:///std/") {
@@ -607,6 +611,16 @@ fn module_of(uri: &str) -> (&'static str, String) {
         None => path.rsplit('/').next().unwrap_or(path),
     };
     ("main", rel.to_owned())
+}
+
+/// The user package's name: `sakura.toml`'s `name`, or `main` without one (§9, §17.127).
+fn package_name(snapshot: &Snapshot) -> String {
+    (snapshot.files.iter())
+        .find(|f| f.uri.ends_with("/sakura.toml"))
+        .and_then(|f| Manifest::parse(&f.text).ok())
+        .map(|m| m.package.name)
+        .filter(|n| !n.is_empty())
+        .unwrap_or_else(|| "main".to_owned())
 }
 
 /// Parses every Sakura Lang file: the parses by `FileId` (`None` for other files) and their
@@ -630,6 +644,7 @@ fn parse_all(snapshot: &Snapshot) -> (Vec<Option<sakura_syntax::Parse>>, Vec<Dia
 /// also how many modules were lowered.
 fn lower(
     snapshot: &Snapshot,
+    name: &str,
     parses: &[Option<sakura_syntax::Parse>],
     prev: Option<(&sakura_hir::Program, &[bool])>,
 ) -> (sakura_hir::Program, usize) {
@@ -657,7 +672,7 @@ fn lower(
             modules: std,
         },
         sakura_hir::PackageInput {
-            name: "main",
+            name,
             deps: vec![],
             modules: user,
         },

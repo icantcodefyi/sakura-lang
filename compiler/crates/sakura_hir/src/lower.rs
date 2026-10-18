@@ -757,7 +757,11 @@ impl Cx {
                 .map(|p| self.program.packages[p.0 as usize].name.as_str())
                 .collect();
             let mut msg = format!("unknown package `{pkg_name}` in import");
-            if path.len() == 1 {
+            let own_name = &self.program.packages[own.0 as usize].name;
+            if pkg_name == "main" && own_name != "main" {
+                // §9, §17.127: `main` is only the package of a file run without a manifest.
+                msg.push_str(&format!("; this package is named `{own_name}`"));
+            } else if path.len() == 1 {
                 msg.push_str("; imports start with a package name, e.g. `import std/http`");
             } else {
                 msg.push_str("; add it to `[dependencies]` in sakura.toml");

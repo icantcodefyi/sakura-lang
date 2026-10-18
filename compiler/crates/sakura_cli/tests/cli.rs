@@ -334,6 +334,38 @@ pub fn main() -> Unit ! {Console, Fs} { Console.print("{probe("data/a.txt")} {pr
     assert_eq!(out.stdout, "read denied\n");
 }
 
+#[test]
+fn the_package_is_named_by_its_manifest() {
+    let dir = std::env::temp_dir().join(format!("sakura-cli-{}-acme", std::process::id()));
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(dir.join("sakura.toml"), "[package]\nname = \"acme\"\n").unwrap();
+    std::fs::write(
+        dir.join("src/util.sakura"),
+        "pub fn twice(x: Int) -> Int { x * 2 }\n",
+    )
+    .unwrap();
+    let main = |package: &str| {
+        let text = format!(
+            "import {package}/util\n\npub fn main() -> Unit ! {{Console}} {{ Console.print(\"{{util.twice(21)}}\") }}\n"
+        );
+        std::fs::write(dir.join("src/main.sakura"), text).unwrap();
+    };
+    main("acme");
+    let out = sakura(&["run", dir.to_str().unwrap()], &dir);
+    assert_eq!(out.code, Some(0), "{}", out.stderr);
+    assert_eq!(out.stdout, "42\n");
+
+    main("main");
+    let out = sakura(&["check", "--json"], &dir);
+    assert_eq!(out.code, Some(1), "{}", out.stderr);
+    let v1005 = out.stdout.lines().find(|l| l.contains("\"V1005\""));
+    assert!(
+        v1005.is_some_and(|l| l.contains("this package is named `acme`")),
+        "{}",
+        out.stdout
+    );
+}
+
 const AUDITED: &str = r#"import std/untrusted
 
 type Percent = Int where it >= 0 && it <= 100
