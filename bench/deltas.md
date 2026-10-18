@@ -22,6 +22,17 @@ new version, including the old `bench/results/2026-10-18-*` files. The WS-A hist
 raw runs are retained, but sieve is excluded from their noise/comparison summaries.
 The candidate uses the new definition in one fresh full-suite run.
 
+WS-S10 adds two further **benchmark-definition boundaries** (§17.150).
+All earlier nbody and countdown ratios, including the historical candidate's,
+are excluded from every comparison and noise summary; raw evidence is retained.
+These rows make no optimisation or performance-ceiling claim. The existing
+local/CI noise subsets contain neither program and need no recalculation.
+
+| Definition boundary | Source-blob evidence | Unchanged workload / verification | Measurement limitation |
+|---|---|---|---|
+| WS-S10 nbody: slice/push/concat helper → persistent `List.set` | [old/new identities](../research/10-evidence/ws-a/nbody-definition-change.json) | Five bodies, same pair traversal, Float order and energy checksum; every helper index is in range; [validation](../research/10-evidence/ws-a/wss10-validation.md) | Source idiom change; pre-change ratios are incompatible; new timings advisory under §17.153 |
+| WS-S10 countdown: unchecked hand JS → checks after each arithmetic operation | [old/new identities](../research/10-evidence/ws-a/countdown-definition-change.json) | Same descending sum and parity; parity before sum, next-index check before accumulation, checked final addition; [audit](../research/10-evidence/ws-a/wss10-control-audit.md) | Control now performs the required checks; old denominator is incompatible; fresh quiet-window run needed |
+
 For each optimisation landing, add a row linking both raw runs and the machine-readable
 `bench/bench compare` output. Record the exact measured commits (not just the later
 report commit), pinned engines, matched lane, input size, absolute Sakura times and
@@ -35,4 +46,4 @@ older ordinary-JS controls and current matched-suite controls in one before/afte
 A subsequent compiler change needs a fresh run; do not relabel these measurements with
 that change's commit.
 
-AI assistance: GPT-6-Astra prepared this ledger; the human contributor owns review.
+AI assistance: GPT-6-Astra prepared this ledger; GPT-6.1-Sol added the WS-S10 boundaries; the human contributor owns review.

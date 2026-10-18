@@ -1,0 +1,59 @@
+[oracle] contracts sakura/node
+[oracle] contracts js/node
+[oracle] contracts sakura/bun
+[oracle] contracts js/bun
+[oracle] contracts_plain sakura/node
+[oracle] contracts_plain js/node
+[oracle] contracts_plain sakura/bun
+[oracle] contracts_plain js/bun
+[oracle] countdown sakura/node
+[oracle] countdown js/node
+[oracle] countdown sakura/bun
+[oracle] countdown js/bun
+[oracle] nbody sakura/node
+[oracle] nbody js/node
+[oracle] nbody sakura/bun
+[oracle] nbody js/bun
+[1/32] nbody sakura/bun n=5000
+[2/32] countdown js/bun n=1000
+[3/32] contracts_plain js/node n=10000
+[4/32] contracts sakura/node n=1000
+[5/32] contracts js/bun n=1000
+[6/32] countdown js/node n=1000
+[7/32] contracts sakura/bun n=1000
+[8/32] nbody js/node n=1000
+[9/32] contracts_plain sakura/node n=10000
+[10/32] contracts_plain js/bun n=10000
+[11/32] nbody js/bun n=1000
+[12/32] nbody sakura/bun n=1000
+[13/32] nbody js/bun n=5000
+[14/32] contracts_plain sakura/bun n=10000
+[15/32] countdown js/bun n=10000
+[16/32] countdown sakura/bun n=10000
+[17/32] nbody sakura/node n=5000
+[18/32] contracts sakura/bun n=10000
+[19/32] countdown sakura/bun n=1000
+[20/32] contracts_plain sakura/node n=1000
+[21/32] countdown js/node n=10000
+[22/32] contracts sakura/node n=10000
+[23/32] contracts js/bun n=10000
+[24/32] contracts js/node n=10000
+[25/32] countdown sakura/node n=10000
+[26/32] countdown sakura/node n=1000
+[27/32] contracts_plain js/bun n=1000
+[28/32] nbody js/node n=5000
+[29/32] contracts js/node n=1000
+[30/32] nbody sakura/node n=1000
+[31/32] contracts_plain js/node n=1000
+[32/32] contracts_plain sakura/bun n=1000
+wrote research/10-evidence/ws-a/wss10-changed-js.json
+| Program | n | sakura/bun ms | js/bun ms | sakura/node ms | js/node ms | ratio bun | ratio node |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| contracts | 1000 | 0.01486 | 0.001991 | 0.008245 | 0.001847 | 7.46× | 4.46× |
+| contracts | 10000 | 0.05005 | 0.01675 | 0.04816 | 0.01526 | 2.99× | 3.16× |
+| contracts_plain | 1000 | 0.001968 | 0.001347 | 0.00546 | 0.001256 | 1.46× | 4.35× |
+| contracts_plain | 10000 | 0.01943 | 0.0149 | 0.0286 | 0.009688 | 1.30× | 2.95× |
+| countdown | 1000 | 0.003626 | 0.0009757 | 0.002234 | 0.002214 | 3.72× | 1.01× |
+| countdown | 10000 | 0.01172 | 0.007622 | 0.02235 | 0.01536 | 1.54× | 1.45× |
+| nbody | 1000 | 0.6769 | 0.05109 | 0.6642 | 0.08067 | 13.25× | 8.23× |
+| nbody | 5000 | 10.33 | 0.2577 | 3.401 | 0.2303 | 40.11× | 14.77× |

@@ -1,0 +1,84 @@
+[oracle] contracts sakura/node
+[oracle] contracts js/node
+[oracle] contracts sakura/bun
+[oracle] contracts js/bun
+[oracle] contracts rust/native
+[oracle] contracts go/native
+[oracle] contracts_plain sakura/node
+[oracle] contracts_plain js/node
+[oracle] contracts_plain sakura/bun
+[oracle] contracts_plain js/bun
+[oracle] contracts_plain rust/native
+[oracle] contracts_plain go/native
+[oracle] countdown sakura/node
+[oracle] countdown js/node
+[oracle] countdown sakura/bun
+[oracle] countdown js/bun
+[oracle] countdown rust/native
+[oracle] countdown go/native
+[oracle] nbody sakura/node
+[oracle] nbody js/node
+[oracle] nbody sakura/bun
+[oracle] nbody js/bun
+[oracle] nbody rust/native
+[oracle] nbody go/native
+[1/48] contracts rust/native n=10000
+[2/48] countdown js/bun n=1000
+[3/48] contracts sakura/bun n=10000
+[4/48] nbody go/native n=1000
+[5/48] contracts_plain go/native n=10000
+[6/48] countdown sakura/bun n=1000
+[7/48] contracts go/native n=1000
+[8/48] nbody go/native n=5000
+[9/48] contracts_plain go/native n=1000
+[10/48] countdown go/native n=10000
+[11/48] countdown sakura/node n=1000
+[12/48] nbody sakura/bun n=1000
+[13/48] contracts rust/native n=1000
+[14/48] contracts sakura/node n=10000
+[15/48] contracts_plain sakura/node n=10000
+[16/48] contracts sakura/node n=1000
+[17/48] countdown js/bun n=10000
+[18/48] countdown js/node n=1000
+[19/48] nbody rust/native n=1000
+[20/48] nbody sakura/node n=5000
+[21/48] nbody js/node n=1000
+[22/48] contracts js/bun n=1000
+[23/48] contracts_plain js/bun n=10000
+[24/48] nbody sakura/bun n=5000
+[25/48] contracts_plain js/bun n=1000
+[26/48] contracts js/node n=1000
+[27/48] countdown rust/native n=10000
+[28/48] contracts_plain rust/native n=1000
+[29/48] nbody rust/native n=5000
+[30/48] countdown sakura/node n=10000
+[31/48] countdown js/node n=10000
+[32/48] contracts_plain js/node n=10000
+[33/48] nbody js/node n=5000
+[34/48] nbody js/bun n=5000
+[35/48] nbody js/bun n=1000
+[36/48] contracts go/native n=10000
+[37/48] nbody sakura/node n=1000
+[38/48] contracts_plain sakura/bun n=1000
+[39/48] contracts_plain sakura/bun n=10000
+[40/48] contracts js/node n=10000
+[41/48] contracts_plain js/node n=1000
+[42/48] contracts js/bun n=10000
+[43/48] countdown go/native n=1000
+[44/48] countdown rust/native n=1000
+[45/48] countdown sakura/bun n=10000
+[46/48] contracts sakura/bun n=1000
+[47/48] contracts_plain rust/native n=10000
+[48/48] contracts_plain sakura/node n=1000
+[load] not quiet: one-minute load 17.53 > 3; busy: node, rustc, sakura
+wrote bench/target/wss10-post-rebase-2/changed-all.json
+| Program | n | sakura/bun ms | js/bun ms | sakura/node ms | js/node ms | go/native ms | rust/native ms | ratio bun | ratio node |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| contracts | 1000 | 0.01274 | 0.004576 | 0.006096 | 0.001936 | 0.0009664 | 0.000339 | 2.78× | 3.15× |
+| contracts | 10000 | 0.04885 | 0.02956 | 0.04904 | 0.04351 | 0.009765 | 0.003122 | 1.65× | 1.13× |
+| contracts_plain | 1000 | 0.005311 | 0.001446 | 0.007529 | 0.003152 | 0.0006334 | 0.0003168 | 3.67× | 2.39× |
+| contracts_plain | 10000 | 0.1283 | 0.0154 | 0.0238 | 0.008422 | 0.006603 | 0.004204 | 8.33× | 2.83× |
+| countdown | 1000 | 0.00344 | 0.000828 | 0.002247 | 0.002663 | 0.0011 | 0.0005659 | 4.15× | 0.84× |
+| countdown | 10000 | 0.0169 | 0.008114 | 0.02239 | 0.01536 | 0.005141 | 0.002562 | 2.08× | 1.46× |
+| nbody | 1000 | 0.7153 | 0.05463 | 1.486 | 0.06388 | 0.03913 | 0.1176 | 13.10× | 23.26× |
+| nbody | 5000 | 4.748 | 0.2558 | 4.175 | 0.231 | 0.1777 | 0.1732 | 18.56× | 18.07× |

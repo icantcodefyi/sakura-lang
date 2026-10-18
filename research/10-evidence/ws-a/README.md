@@ -13,6 +13,19 @@ Five unchanged-commit repetitions already cross the warning margin on both CI op
 
 The earlier [full-nightly dispatch](https://github.com/icantcodefyi/sakura-lang/actions/runs/39085419775) only exercised macOS and the expensive native panel. It was cancelled after the dedicated noise jobs succeeded to avoid unnecessary runner use; it is not counted as passed or used in the noise analysis. [Recorded status](ci-dispatch.json).
 
+**WS-S10 compatibility boundaries (§17.150):** nbody now uses persistent
+`List.set` instead of slice/push/concat, and countdown's hand-JS control now
+checks each arithmetic operation. Their pre-change ratios, including the
+historical candidate's cells, are excluded from all comparisons and noise
+summaries; retain all raw runs. The existing local/CI noise subsets contain
+neither program, so their statistics are unaffected. See
+[nbody source identities](nbody-definition-change.json),
+[countdown source identities](countdown-definition-change.json), and the
+[all-control check-placement audit](wss10-control-audit.md). These changes
+are benchmark-definition boundaries, not compiler optimisations or ceiling
+acceptance. A new quiet-window run is required for adoption of those cells.
+
+
 **Sieve compatibility boundary:** `5b10553` replaced full-list clearing passes with indexed clearing from p² using `List.set`, in Sakura and every control/port. All earlier sieve ratios—including WS-B’s 2026-10-18 reference files and the raw local noise series—measure the old algorithm. They are retained only as historical data and excluded from noise summaries and all baseline comparisons. The local comparison inputs in `local-comparison-inputs/` explicitly record this selection. A candidate must be measured after that change; matching prime-count checksums alone does not make the algorithms comparable. [Source-blob evidence](sieve-definition-change.json) confirms the source changed while the oracle metadata stayed identical.
 
 ## Definition of spread

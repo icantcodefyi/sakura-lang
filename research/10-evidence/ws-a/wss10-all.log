@@ -1,0 +1,387 @@
+[oracle] binary_trees sakura/node
+[oracle] binary_trees js/node
+[oracle] binary_trees sakura/bun
+[oracle] binary_trees js/bun
+[oracle] binary_trees rust/native
+[oracle] binary_trees go/native
+[FAIL] `ocamlopt -o main main.ml` exited 2:
+File "main.ml", line 1, characters 9-15:
+1 | let () = Runner.main Kernels.binary_trees 14
+             ^^^^^^
+Error: Unbound module Runner
+
+[FAIL] `koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/binary_trees/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/binary_trees/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/binary_trees/koka/main.kk` exited 1:
+bench/programs/binary_trees/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)
+  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/binary_trees/koka
+               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10
+               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib
+
+Failed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/binary_trees/koka/main.kk
+
+[oracle] contracts sakura/node
+[oracle] contracts js/node
+[oracle] contracts sakura/bun
+[oracle] contracts js/bun
+[oracle] contracts rust/native
+[oracle] contracts go/native
+[oracle] contracts_plain sakura/node
+[oracle] contracts_plain js/node
+[oracle] contracts_plain sakura/bun
+[oracle] contracts_plain js/bun
+[oracle] contracts_plain rust/native
+[oracle] contracts_plain go/native
+[oracle] countdown sakura/node
+[oracle] countdown js/node
+[oracle] countdown sakura/bun
+[oracle] countdown js/bun
+[oracle] countdown rust/native
+[oracle] countdown go/native
+[oracle] deltablue sakura/node
+[oracle] deltablue js/node
+[oracle] deltablue sakura/bun
+[oracle] deltablue js/bun
+[oracle] deltablue rust/native
+[oracle] deltablue go/native
+[oracle] fib sakura/node
+[oracle] fib js/node
+[oracle] fib sakura/bun
+[oracle] fib js/bun
+[oracle] fib rust/native
+[oracle] fib go/native
+[oracle] handled_d1 sakura/node
+[oracle] handled_d1 js/node
+[oracle] handled_d1 sakura/bun
+[oracle] handled_d1 js/bun
+[oracle] handled_d1 rust/native
+[oracle] handled_d1 go/native
+[FAIL] `koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/handled_d1/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/handled_d1/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_d1/koka/main.kk` exited 1:
+bench/programs/handled_d1/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)
+  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_d1/koka
+               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10
+               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib
+
+Failed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_d1/koka/main.kk
+
+[oracle] handled_d16 sakura/node
+[oracle] handled_d16 js/node
+[oracle] handled_d16 sakura/bun
+[oracle] handled_d16 js/bun
+[oracle] handled_d16 rust/native
+[oracle] handled_d16 go/native
+[FAIL] `koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/handled_d16/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/handled_d16/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_d16/koka/main.kk` exited 1:
+bench/programs/handled_d16/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)
+  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_d16/koka
+               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10
+               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib
+
+Failed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_d16/koka/main.kk
+
+[oracle] handled_d4 sakura/node
+[oracle] handled_d4 js/node
+[oracle] handled_d4 sakura/bun
+[oracle] handled_d4 js/bun
+[oracle] handled_d4 rust/native
+[oracle] handled_d4 go/native
+[FAIL] `koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/handled_d4/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/handled_d4/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_d4/koka/main.kk` exited 1:
+bench/programs/handled_d4/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)
+  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_d4/koka
+               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10
+               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib
+
+Failed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_d4/koka/main.kk
+
+[oracle] handled_fwd sakura/node
+[oracle] handled_fwd js/node
+[oracle] handled_fwd sakura/bun
+[oracle] handled_fwd js/bun
+[oracle] handled_fwd rust/native
+[oracle] handled_fwd go/native
+[FAIL] `koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/handled_fwd/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/handled_fwd/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_fwd/koka/main.kk` exited 1:
+bench/programs/handled_fwd/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)
+  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_fwd/koka
+               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10
+               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib
+
+Failed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_fwd/koka/main.kk
+
+[oracle] handled_reentry sakura/node
+[oracle] handled_reentry js/node
+[oracle] handled_reentry sakura/bun
+[oracle] handled_reentry js/bun
+[oracle] handled_reentry rust/native
+[oracle] handled_reentry go/native
+[FAIL] `koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/handled_reentry/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/handled_reentry/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_reentry/koka/main.kk` exited 1:
+bench/programs/handled_reentry/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)
+  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_reentry/koka
+               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10
+               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib
+
+Failed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_reentry/koka/main.kk
+
+[oracle] handled_suspend sakura/node
+[oracle] handled_suspend js/node
+[oracle] handled_suspend sakura/bun
+[oracle] handled_suspend js/bun
+[oracle] handled_suspend rust/native
+[oracle] handled_suspend go/native
+[FAIL] `koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/handled_suspend/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/handled_suspend/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_suspend/koka/main.kk` exited 1:
+bench/programs/handled_suspend/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)
+  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_suspend/koka
+               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10
+               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib
+
+Failed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_suspend/koka/main.kk
+
+[oracle] json_validate sakura/node
+[oracle] json_validate js/node
+[oracle] json_validate sakura/bun
+[oracle] json_validate js/bun
+[oracle] json_validate rust/native
+[oracle] json_validate go/native
+[oracle] map_set sakura/node
+[oracle] map_set js/node
+[oracle] map_set sakura/bun
+[oracle] map_set js/bun
+[oracle] map_set rust/native
+[oracle] map_set go/native
+[FAIL] `ocamlopt -o main main.ml` exited 2:
+File "main.ml", line 1, characters 9-15:
+1 | let () = Runner.main Kernels.map_set 100000
+             ^^^^^^
+Error: Unbound module Runner
+
+[FAIL] `koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/map_set/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/map_set/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/map_set/koka/main.kk` exited 1:
+bench/programs/map_set/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)
+  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/map_set/koka
+               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10
+               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib
+
+Failed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/map_set/koka/main.kk
+
+[oracle] nbody sakura/node
+[oracle] nbody js/node
+[oracle] nbody sakura/bun
+[oracle] nbody js/bun
+[oracle] nbody rust/native
+[oracle] nbody go/native
+[oracle] pipeline sakura/node
+[oracle] pipeline js/node
+[oracle] pipeline sakura/bun
+[oracle] pipeline js/bun
+[oracle] pipeline rust/native
+[oracle] pipeline go/native
+[FAIL] `ocamlopt -o main main.ml` exited 2:
+File "main.ml", line 1, characters 9-15:
+1 | let () = Runner.main Kernels.pipeline 300000
+             ^^^^^^
+Error: Unbound module Runner
+
+[FAIL] `koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/pipeline/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/pipeline/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/pipeline/koka/main.kk` exited 1:
+bench/programs/pipeline/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)
+  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/pipeline/koka
+               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10
+               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib
+
+Failed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/pipeline/koka/main.kk
+
+[oracle] rbtree sakura/node
+[oracle] rbtree js/node
+[oracle] rbtree sakura/bun
+[oracle] rbtree js/bun
+[oracle] rbtree rust/native
+[oracle] rbtree go/native
+[FAIL] `ocamlopt -o main main.ml` exited 2:
+File "main.ml", line 1, characters 9-15:
+1 | let () = Runner.main Kernels.rbtree 100000
+             ^^^^^^
+Error: Unbound module Runner
+
+[FAIL] `koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/rbtree/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/rbtree/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/rbtree/koka/main.kk` exited 1:
+bench/programs/rbtree/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)
+  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/rbtree/koka
+               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10
+               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib
+
+Failed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/rbtree/koka/main.kk
+
+[oracle] shapes sakura/node
+[oracle] shapes js/node
+[oracle] shapes sakura/bun
+[oracle] shapes js/bun
+[oracle] shapes rust/native
+[oracle] shapes go/native
+[FAIL] `ocamlopt -o main main.ml` exited 2:
+File "main.ml", line 1, characters 9-15:
+1 | let () = Runner.main Kernels.shapes 100000
+             ^^^^^^
+Error: Unbound module Runner
+
+[FAIL] `koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/shapes/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/shapes/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/shapes/koka/main.kk` exited 1:
+bench/programs/shapes/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)
+  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/shapes/koka
+               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10
+               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib
+
+Failed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/shapes/koka/main.kk
+
+[oracle] sieve sakura/node
+[oracle] sieve js/node
+[oracle] sieve sakura/bun
+[oracle] sieve js/bun
+[oracle] sieve rust/native
+[oracle] sieve go/native
+[oracle] spectral_norm sakura/node
+[oracle] spectral_norm js/node
+[oracle] spectral_norm sakura/bun
+[oracle] spectral_norm js/bun
+[oracle] spectral_norm rust/native
+[oracle] spectral_norm go/native
+[oracle] tokenizer sakura/node
+[oracle] tokenizer js/node
+[oracle] tokenizer sakura/bun
+[oracle] tokenizer js/bun
+[oracle] tokenizer rust/native
+[oracle] tokenizer go/native
+[1/120] deltablue rust/native n=100
+[2/120] sieve js/bun n=1000
+[3/120] contracts_plain go/native n=1000
+[4/120] contracts_plain rust/native n=1000
+[5/120] fib sakura/node n=20
+[6/120] spectral_norm js/node n=50
+[7/120] spectral_norm sakura/node n=100
+[8/120] contracts_plain sakura/bun n=10000
+[9/120] deltablue js/node n=1000
+[10/120] fib js/node n=24
+[11/120] contracts js/node n=10000
+[12/120] contracts_plain js/node n=10000
+[13/120] countdown js/node n=1000
+[14/120] nbody rust/native n=1000
+[15/120] sieve sakura/bun n=1000
+[16/120] deltablue js/node n=100
+[17/120] sieve sakura/node n=10000
+[18/120] json_validate sakura/node n=100
+[19/120] json_validate js/node n=1000
+[20/120] nbody sakura/bun n=1000
+[21/120] spectral_norm js/bun n=100
+[22/120] tokenizer rust/native n=1000
+[23/120] fib rust/native n=20
+[24/120] sieve go/native n=1000
+[25/120] spectral_norm sakura/node n=50
+[26/120] tokenizer go/native n=10000
+[27/120] fib sakura/node n=24
+[28/120] deltablue sakura/bun n=100
+[29/120] json_validate rust/native n=100
+[30/120] contracts_plain js/bun n=1000
+[31/120] countdown sakura/node n=1000
+[32/120] deltablue sakura/bun n=1000
+[33/120] nbody js/bun n=1000
+[34/120] sieve sakura/bun n=10000
+[35/120] countdown go/native n=10000
+[36/120] tokenizer go/native n=1000
+[37/120] tokenizer js/bun n=10000
+[38/120] contracts js/node n=1000
+[39/120] fib js/node n=20
+[40/120] tokenizer rust/native n=10000
+[41/120] contracts_plain js/bun n=10000
+[42/120] json_validate js/bun n=100
+[43/120] fib js/bun n=20
+[44/120] sieve sakura/node n=1000
+[45/120] fib sakura/bun n=20
+[46/120] deltablue go/native n=100
+[47/120] nbody go/native n=1000
+[48/120] spectral_norm rust/native n=50
+[49/120] deltablue sakura/node n=100
+[50/120] fib go/native n=24
+[51/120] deltablue rust/native n=1000
+[52/120] json_validate sakura/node n=1000
+[53/120] contracts sakura/node n=10000
+[54/120] json_validate js/bun n=1000
+[55/120] countdown rust/native n=10000
+[56/120] sieve js/node n=10000
+[57/120] fib js/bun n=24
+[58/120] fib sakura/bun n=24
+[59/120] spectral_norm js/bun n=50
+[60/120] countdown js/bun n=10000
+[61/120] sieve go/native n=10000
+[62/120] deltablue go/native n=1000
+[63/120] fib rust/native n=24
+[64/120] countdown sakura/bun n=10000
+[65/120] tokenizer sakura/bun n=1000
+[66/120] contracts go/native n=1000
+[67/120] spectral_norm rust/native n=100
+[68/120] nbody go/native n=5000
+[69/120] deltablue sakura/node n=1000
+[70/120] sieve rust/native n=1000
+[71/120] sieve js/node n=1000
+[72/120] deltablue js/bun n=1000
+[73/120] contracts sakura/bun n=1000
+[74/120] nbody sakura/node n=1000
+[75/120] contracts sakura/bun n=10000
+[76/120] nbody js/node n=1000
+[77/120] contracts go/native n=10000
+[78/120] contracts_plain rust/native n=10000
+[79/120] contracts_plain sakura/node n=10000
+[80/120] json_validate go/native n=1000
+[81/120] sieve js/bun n=10000
+[82/120] contracts sakura/node n=1000
+[83/120] json_validate js/node n=100
+[84/120] contracts_plain sakura/node n=1000
+[85/120] tokenizer js/bun n=1000
+[86/120] tokenizer js/node n=10000
+[87/120] json_validate go/native n=100
+[88/120] countdown js/node n=10000
+[89/120] nbody sakura/bun n=5000
+[90/120] spectral_norm go/native n=100
+[91/120] nbody js/node n=5000
+[92/120] contracts rust/native n=10000
+[93/120] tokenizer sakura/node n=1000
+[94/120] nbody rust/native n=5000
+[95/120] contracts_plain sakura/bun n=1000
+[96/120] countdown js/bun n=1000
+[97/120] contracts js/bun n=1000
+[98/120] json_validate sakura/bun n=1000
+[99/120] tokenizer sakura/bun n=10000
+[100/120] sieve rust/native n=10000
+[101/120] contracts_plain go/native n=10000
+[102/120] nbody sakura/node n=5000
+[103/120] countdown rust/native n=1000
+[104/120] countdown go/native n=1000
+[105/120] nbody js/bun n=5000
+[106/120] contracts js/bun n=10000
+[107/120] countdown sakura/bun n=1000
+[108/120] spectral_norm go/native n=50
+[109/120] contracts_plain js/node n=1000
+[110/120] spectral_norm sakura/bun n=100
+[111/120] json_validate rust/native n=1000
+[112/120] json_validate sakura/bun n=100
+[113/120] fib go/native n=20
+[114/120] tokenizer js/node n=1000
+[115/120] contracts rust/native n=1000
+[116/120] spectral_norm js/node n=100
+[117/120] deltablue js/bun n=100
+[118/120] countdown sakura/node n=10000
+[119/120] spectral_norm sakura/bun n=50
+[120/120] tokenizer sakura/node n=10000
+wrote research/10-evidence/ws-a/wss10-all.json
+| Program | n | sakura/bun ms | js/bun ms | sakura/node ms | js/node ms | go/native ms | rust/native ms | ratio bun | ratio node |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| contracts | 1000 | 0.01199 | 0.001791 | 0.005151 | 0.001914 | 0.0009499 | 0.0006348 | 6.70× | 2.69× |
+| contracts | 10000 | 0.05842 | 0.01718 | 0.05467 | 0.01602 | 0.009904 | 0.003094 | 3.40× | 3.41× |
+| contracts_plain | 1000 | 0.002169 | 0.001461 | 0.002255 | 0.001219 | 0.0006779 | 0.0003395 | 1.48× | 1.85× |
+| contracts_plain | 10000 | 0.01911 | 0.0133 | 0.02452 | 0.009168 | 0.006254 | 0.003561 | 1.44× | 2.67× |
+| countdown | 1000 | 0.003438 | 0.0007913 | 0.002232 | 0.001576 | 0.0005676 | 0.0002493 | 4.34× | 1.42× |
+| countdown | 10000 | 0.01175 | 0.007706 | 0.04201 | 0.01546 | 0.005219 | 0.002638 | 1.53× | 2.72× |
+| deltablue | 100 | 7.895 | 0.2132 | 4.042 | 0.0559 | 0.09826 | 0.08465 | 37.02× | 72.31× |
+| deltablue | 1000 | 88.18 | 1.028 | 54.73 | 0.6911 | 0.933 | 0.6926 | 85.75× | 79.20× |
+| fib | 20 | 0.06046 | 0.02532 | 0.06155 | 0.03877 | 0.01481 | 0.0271 | 2.39× | 1.59× |
+| fib | 24 | 0.443 | 0.1883 | 0.5044 | 0.2687 | 0.1059 | 0.1089 | 2.35× | 1.88× |
+| json_validate | 100 | 0.07949 | 0.02468 | 0.2862 | 0.07701 | 0.08831 | 0.04663 | 3.22× | 3.72× |
+| json_validate | 1000 | 0.9622 | 0.2491 | 0.9181 | 1.737 | 0.8922 | 0.3805 | 3.86× | 0.53× |
+| nbody | 1000 | 2.683 | 0.05206 | 0.7404 | 0.0465 | 0.03725 | 0.03699 | 51.53× | 15.92× |
+| nbody | 5000 | 3.598 | 0.2537 | 3.55 | 0.2324 | 0.1767 | 0.1927 | 14.18× | 15.27× |
+| sieve | 1000 | 0.2267 | 0.004479 | 0.04963 | 0.003639 | 0.001198 | 0.0008166 | 50.61× | 13.64× |
+| sieve | 10000 | 1.642 | 0.03152 | 1.697 | 0.03148 | 0.01033 | 0.007767 | 52.10× | 53.92× |
+| spectral_norm | 50 | 3.174 | 0.1018 | 0.9847 | 0.08298 | 0.09456 | 0.07413 | 31.17× | 11.87× |
+| spectral_norm | 100 | 5.206 | 1.084 | 3.059 | 0.867 | 0.3994 | 0.2936 | 4.80× | 3.53× |
+| tokenizer | 1000 | 0.09304 | 0.07802 | 0.06246 | 0.6104 | 0.3356 | 0.1729 | 1.19× | 0.10× |
+| tokenizer | 10000 | 1.387 | 0.8232 | 0.7774 | 2.314 | 35.69 | 5.795 | 1.68× | 0.34× |

@@ -1,0 +1,297 @@
+[oracle] binary_trees sakura/node
+[oracle] binary_trees js/node
+[oracle] binary_trees sakura/bun
+[oracle] binary_trees js/bun
+[oracle] contracts sakura/node
+[oracle] contracts js/node
+[oracle] contracts sakura/bun
+[oracle] contracts js/bun
+[oracle] contracts_plain sakura/node
+[oracle] contracts_plain js/node
+[oracle] contracts_plain sakura/bun
+[oracle] contracts_plain js/bun
+[oracle] countdown sakura/node
+[oracle] countdown js/node
+[oracle] countdown sakura/bun
+[oracle] countdown js/bun
+[oracle] deltablue sakura/node
+[oracle] deltablue js/node
+[oracle] deltablue sakura/bun
+[oracle] deltablue js/bun
+[oracle] fib sakura/node
+[oracle] fib js/node
+[oracle] fib sakura/bun
+[oracle] fib js/bun
+[oracle] handled_d1 sakura/node
+[oracle] handled_d1 js/node
+[oracle] handled_d1 sakura/bun
+[oracle] handled_d1 js/bun
+[oracle] handled_d16 sakura/node
+[oracle] handled_d16 js/node
+[oracle] handled_d16 sakura/bun
+[oracle] handled_d16 js/bun
+[oracle] handled_d4 sakura/node
+[oracle] handled_d4 js/node
+[oracle] handled_d4 sakura/bun
+[oracle] handled_d4 js/bun
+[oracle] handled_fwd sakura/node
+[oracle] handled_fwd js/node
+[oracle] handled_fwd sakura/bun
+[oracle] handled_fwd js/bun
+[oracle] handled_reentry sakura/node
+[oracle] handled_reentry js/node
+[oracle] handled_reentry sakura/bun
+[oracle] handled_reentry js/bun
+[oracle] handled_suspend sakura/node
+[oracle] handled_suspend js/node
+[oracle] handled_suspend sakura/bun
+[oracle] handled_suspend js/bun
+[oracle] json_validate sakura/node
+[oracle] json_validate js/node
+[oracle] json_validate sakura/bun
+[oracle] json_validate js/bun
+[oracle] map_set sakura/node
+[oracle] map_set js/node
+[oracle] map_set sakura/bun
+[oracle] map_set js/bun
+[oracle] nbody sakura/node
+[oracle] nbody js/node
+[oracle] nbody sakura/bun
+[oracle] nbody js/bun
+[oracle] pipeline sakura/node
+[oracle] pipeline js/node
+[oracle] pipeline sakura/bun
+[oracle] pipeline js/bun
+[oracle] rbtree sakura/node
+[oracle] rbtree js/node
+[oracle] rbtree sakura/bun
+[oracle] rbtree js/bun
+[oracle] shapes sakura/node
+[oracle] shapes js/node
+[oracle] shapes sakura/bun
+[oracle] shapes js/bun
+[oracle] sieve sakura/node
+[oracle] sieve js/node
+[oracle] sieve sakura/bun
+[oracle] sieve js/bun
+[oracle] spectral_norm sakura/node
+[oracle] spectral_norm js/node
+[oracle] spectral_norm sakura/bun
+[oracle] spectral_norm js/bun
+[oracle] tokenizer sakura/node
+[oracle] tokenizer js/node
+[oracle] tokenizer sakura/bun
+[oracle] tokenizer js/bun
+[1/168] contracts sakura/bun n=10000
+[2/168] rbtree js/bun n=10000
+[3/168] contracts js/node n=10000
+[4/168] binary_trees js/bun n=10
+[5/168] tokenizer js/bun n=1000
+[6/168] deltablue sakura/bun n=1000
+[7/168] handled_reentry js/node n=10000
+[8/168] map_set js/node n=1000
+[9/168] tokenizer js/node n=1000
+[10/168] pipeline sakura/node n=10000
+[11/168] countdown js/bun n=1000
+[12/168] fib sakura/bun n=20
+[13/168] shapes js/bun n=1000
+[14/168] handled_d16 js/node n=10000
+[15/168] handled_d1 sakura/bun n=10000
+[16/168] handled_d1 js/node n=1000
+[17/168] fib js/node n=20
+[18/168] contracts_plain sakura/bun n=10000
+[19/168] json_validate sakura/node n=1000
+[20/168] deltablue sakura/node n=1000
+[21/168] nbody js/node n=1000
+[22/168] sieve js/bun n=10000
+[23/168] shapes sakura/node n=1000
+[24/168] map_set sakura/bun n=10000
+[25/168] contracts_plain js/node n=1000
+[26/168] sieve js/bun n=1000
+[27/168] handled_reentry js/node n=1000
+[28/168] handled_fwd sakura/bun n=1000
+[29/168] binary_trees sakura/bun n=10
+[30/168] nbody js/bun n=1000
+[31/168] fib sakura/node n=24
+[32/168] handled_fwd js/node n=1000
+[33/168] deltablue js/bun n=100
+[34/168] handled_d4 js/bun n=10000
+[35/168] handled_reentry sakura/bun n=10000
+[36/168] map_set sakura/bun n=1000
+[37/168] sieve sakura/bun n=1000
+[38/168] sieve sakura/node n=10000
+[39/168] binary_trees js/bun n=8
+[40/168] handled_d4 js/bun n=1000
+[41/168] handled_reentry sakura/node n=1000
+[42/168] sieve js/node n=1000
+[43/168] handled_d1 sakura/node n=10000
+[44/168] handled_suspend sakura/node n=1000
+[45/168] nbody sakura/bun n=1000
+[46/168] map_set js/bun n=1000
+[47/168] deltablue js/node n=100
+[48/168] countdown js/bun n=10000
+[49/168] handled_d4 sakura/bun n=1000
+[50/168] handled_fwd sakura/bun n=10000
+[51/168] json_validate sakura/bun n=100
+[52/168] rbtree sakura/bun n=10000
+[53/168] fib js/bun n=20
+[54/168] pipeline js/bun n=10000
+[55/168] deltablue js/node n=1000
+[56/168] deltablue sakura/bun n=100
+[57/168] nbody sakura/node n=5000
+[58/168] json_validate sakura/bun n=1000
+[59/168] pipeline sakura/bun n=10000
+[60/168] spectral_norm sakura/bun n=100
+[61/168] handled_reentry js/bun n=10000
+[62/168] json_validate js/bun n=100
+[63/168] handled_suspend js/bun n=1000
+[64/168] fib sakura/node n=20
+[65/168] nbody js/bun n=5000
+[66/168] handled_d1 sakura/node n=1000
+[67/168] sieve sakura/bun n=10000
+[68/168] handled_reentry sakura/node n=10000
+[69/168] handled_suspend sakura/node n=10000
+[70/168] sieve sakura/node n=1000
+[71/168] contracts_plain js/bun n=1000
+[72/168] json_validate sakura/node n=100
+[73/168] tokenizer sakura/bun n=1000
+[74/168] handled_d1 sakura/bun n=1000
+[75/168] countdown js/node n=10000
+[76/168] handled_fwd sakura/node n=1000
+[77/168] fib sakura/bun n=24
+[78/168] json_validate js/node n=1000
+[79/168] rbtree js/bun n=1000
+[80/168] handled_fwd js/bun n=1000
+[81/168] handled_d4 sakura/node n=1000
+[82/168] rbtree sakura/node n=10000
+[83/168] spectral_norm sakura/node n=100
+[84/168] pipeline js/node n=1000
+[85/168] handled_fwd js/bun n=10000
+[86/168] contracts sakura/node n=10000
+[87/168] spectral_norm sakura/node n=50
+[88/168] shapes js/bun n=10000
+[89/168] shapes sakura/node n=10000
+[90/168] handled_d16 sakura/node n=10000
+[91/168] pipeline js/bun n=1000
+[92/168] handled_suspend sakura/bun n=1000
+[93/168] spectral_norm js/node n=50
+[94/168] binary_trees sakura/node n=10
+[95/168] binary_trees sakura/bun n=8
+[96/168] json_validate js/bun n=1000
+[97/168] tokenizer js/bun n=10000
+[98/168] deltablue js/bun n=1000
+[99/168] contracts js/bun n=10000
+[100/168] handled_d4 js/node n=10000
+[101/168] contracts_plain sakura/node n=10000
+[102/168] binary_trees js/node n=8
+[103/168] handled_suspend sakura/bun n=10000
+[104/168] map_set sakura/node n=1000
+[105/168] nbody sakura/node n=1000
+[106/168] map_set sakura/node n=10000
+[107/168] rbtree sakura/bun n=1000
+[108/168] handled_fwd sakura/node n=10000
+[109/168] handled_d16 js/bun n=10000
+[110/168] handled_suspend js/node n=10000
+[111/168] pipeline sakura/node n=1000
+[112/168] binary_trees js/node n=10
+[113/168] countdown sakura/node n=10000
+[114/168] pipeline js/node n=10000
+[115/168] handled_d1 js/bun n=10000
+[116/168] map_set js/bun n=10000
+[117/168] map_set js/node n=10000
+[118/168] spectral_norm sakura/bun n=50
+[119/168] handled_d16 js/bun n=1000
+[120/168] handled_d16 sakura/bun n=1000
+[121/168] handled_suspend js/bun n=10000
+[122/168] nbody js/node n=5000
+[123/168] rbtree js/node n=10000
+[124/168] handled_d4 js/node n=1000
+[125/168] handled_d16 js/node n=1000
+[126/168] json_validate js/node n=100
+[127/168] handled_suspend js/node n=1000
+[128/168] contracts_plain sakura/bun n=1000
+[129/168] spectral_norm js/bun n=100
+[130/168] shapes sakura/bun n=10000
+[131/168] handled_fwd js/node n=10000
+[132/168] tokenizer sakura/node n=10000
+[133/168] handled_reentry js/bun n=1000
+[134/168] contracts sakura/node n=1000
+[135/168] contracts js/node n=1000
+[136/168] contracts_plain js/bun n=10000
+[137/168] fib js/node n=24
+[138/168] countdown js/node n=1000
+[139/168] spectral_norm js/node n=100
+[140/168] binary_trees sakura/node n=8
+[141/168] pipeline sakura/bun n=1000
+[142/168] countdown sakura/node n=1000
+[143/168] tokenizer sakura/bun n=10000
+[144/168] tokenizer js/node n=10000
+[145/168] shapes sakura/bun n=1000
+[146/168] handled_d1 js/bun n=1000
+[147/168] tokenizer sakura/node n=1000
+[148/168] contracts_plain js/node n=10000
+[149/168] countdown sakura/bun n=1000
+[150/168] deltablue sakura/node n=100
+[151/168] handled_d16 sakura/bun n=10000
+[152/168] contracts sakura/bun n=1000
+[153/168] rbtree js/node n=1000
+[154/168] shapes js/node n=1000
+[155/168] fib js/bun n=24
+[156/168] sieve js/node n=10000
+[157/168] handled_d4 sakura/node n=10000
+[158/168] handled_d4 sakura/bun n=10000
+[159/168] spectral_norm js/bun n=50
+[160/168] contracts js/bun n=1000
+[161/168] handled_d16 sakura/node n=1000
+[162/168] countdown sakura/bun n=10000
+[163/168] shapes js/node n=10000
+[164/168] rbtree sakura/node n=1000
+[165/168] nbody sakura/bun n=5000
+[166/168] contracts_plain sakura/node n=1000
+[167/168] handled_reentry sakura/bun n=1000
+[168/168] handled_d1 js/node n=10000
+wrote research/10-evidence/ws-a/wss10-js.json
+| Program | n | sakura/bun ms | js/bun ms | sakura/node ms | js/node ms | ratio bun | ratio node |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| binary_trees | 8 | 0.405 | 0.1603 | 0.289 | 0.1628 | 2.53× | 1.77× |
+| binary_trees | 10 | 2.417 | 0.8596 | 1.547 | 0.8579 | 2.81× | 1.80× |
+| contracts | 1000 | 0.01262 | 0.00189 | 0.005552 | 0.001919 | 6.67× | 2.89× |
+| contracts | 10000 | 0.05615 | 0.01696 | 0.05039 | 0.01507 | 3.31× | 3.34× |
+| contracts_plain | 1000 | 0.003891 | 0.001449 | 0.002464 | 0.001256 | 2.68× | 1.96× |
+| contracts_plain | 10000 | 0.07283 | 0.01346 | 0.02388 | 0.009159 | 5.41× | 2.61× |
+| countdown | 1000 | 0.008736 | 0.0007838 | 0.005255 | 0.001544 | 11.15× | 3.40× |
+| countdown | 10000 | 0.0119 | 0.00767 | 0.02243 | 0.0153 | 1.55× | 1.47× |
+| deltablue | 100 | 7.484 | 0.07431 | 11.93 | 0.04376 | 100.72× | 272.64× |
+| deltablue | 1000 | 87.73 | 0.9802 | 52.39 | 0.6566 | 89.51× | 79.78× |
+| fib | 20 | 0.05801 | 0.02423 | 0.05548 | 0.03626 | 2.39× | 1.53× |
+| fib | 24 | 0.3713 | 0.1657 | 0.3768 | 0.2595 | 2.24× | 1.45× |
+| handled_d1 | 1000 | 0.01994 | 0.0008198 | 0.02058 | 0.001342 | 24.32× | 15.34× |
+| handled_d1 | 10000 | 0.2079 | 0.00724 | 0.2049 | 0.03078 | 28.72× | 6.66× |
+| handled_d16 | 1000 | 0.03673 | 0.0007662 | 0.03306 | 0.002823 | 47.94× | 11.71× |
+| handled_d16 | 10000 | 1.446 | 0.007166 | 0.3155 | 0.01406 | 201.84× | 22.44× |
+| handled_d4 | 1000 | 0.02264 | 0.0007357 | 0.0213 | 0.003841 | 30.78× | 5.55× |
+| handled_d4 | 10000 | 0.5065 | 0.007561 | 0.912 | 0.01363 | 66.98× | 66.92× |
+| handled_fwd | 1000 | 0.02516 | 0.00211 | 0.01904 | 0.001862 | 11.92× | 10.23× |
+| handled_fwd | 10000 | 0.2566 | 0.02119 | 0.1983 | 0.01967 | 12.11× | 10.08× |
+| handled_reentry | 1000 | 0.02774 | 0.005397 | 0.0199 | 0.02258 | 5.14× | 0.88× |
+| handled_reentry | 10000 | 0.23 | 0.02046 | 0.1983 | 0.2677 | 11.25× | 0.74× |
+| handled_suspend | 1000 | 0.02417 | 0.001676 | 0.03648 | 0.004636 | 14.42× | 7.87× |
+| handled_suspend | 10000 | 0.2551 | 0.01846 | 0.2352 | 0.02182 | 13.82× | 10.78× |
+| json_validate | 100 | 0.08446 | 0.02129 | 0.08721 | 0.1912 | 3.97× | 0.46× |
+| json_validate | 1000 | 0.8665 | 0.2206 | 1.132 | 0.6952 | 3.93× | 1.63× |
+| map_set | 1000 | 1.913 | 0.2914 | 1.101 | 0.5237 | 6.56× | 2.10× |
+| map_set | 10000 | 32.93 | 3.907 | 15.55 | 6.268 | 8.43× | 2.48× |
+| nbody | 1000 | 0.7225 | 0.05103 | 0.6872 | 0.04675 | 14.16× | 14.70× |
+| nbody | 5000 | 3.721 | 0.2666 | 3.414 | 0.8198 | 13.96× | 4.16× |
+| pipeline | 1000 | 0.008102 | 0.00383 | 0.007723 | 0.03444 | 2.12× | 0.22× |
+| pipeline | 10000 | 0.0869 | 0.0363 | 0.07696 | 0.3366 | 2.39× | 0.23× |
+| rbtree | 1000 | 0.4406 | 0.1543 | 0.2255 | 0.1719 | 2.86× | 1.31× |
+| rbtree | 10000 | 8.397 | 3.023 | 4.329 | 4.483 | 2.78× | 0.97× |
+| shapes | 1000 | 1.043 | 0.1384 | 0.1695 | 0.3866 | 7.54× | 0.44× |
+| shapes | 10000 | 6.564 | 1.992 | 2.593 | 1.955 | 3.30× | 1.33× |
+| sieve | 1000 | 0.08868 | 0.003735 | 0.04883 | 0.003099 | 23.74× | 15.75× |
+| sieve | 10000 | 2.179 | 0.0343 | 0.7941 | 0.05635 | 63.52× | 14.09× |
+| spectral_norm | 50 | 1.289 | 0.1048 | 0.6859 | 0.07709 | 12.30× | 8.90× |
+| spectral_norm | 100 | 5.3 | 0.5675 | 2.778 | 0.318 | 9.34× | 8.73× |
+| tokenizer | 1000 | 0.07572 | 0.0756 | 0.08715 | 0.2405 | 1.00× | 0.36× |
+| tokenizer | 10000 | 1.957 | 0.7444 | 0.7208 | 4.069 | 2.63× | 0.18× |

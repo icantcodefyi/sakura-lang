@@ -1,0 +1,2 @@
+PASS: n=3 check order (10 checks), immediate decrement underflow, sum overflow at n=134217728, safe adjacent n=134217727.
+PASS: n=3 check order (10 checks), immediate decrement underflow, sum overflow at n=134217728, safe adjacent n=134217727.

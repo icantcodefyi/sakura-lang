@@ -1,0 +1,3618 @@
+{
+ "schema": "sakura-bench-v1",
+ "meta": {
+  "commit": "2008fb68f47a5d9b155f230dc27fee4c33c61743",
+  "dirty": true,
+  "host": {
+   "id": "d88970189598",
+   "cpu": "Apple M4 Pro",
+   "os": "Darwin 27.2.0 arm64",
+   "mem_bytes": 25769803776
+  },
+  "engines": {
+   "node": "26.11.0",
+   "bun": "1.4.3",
+   "rustc": "1.99.1",
+   "go": "1.27.2",
+   "ocaml": "5.5.1",
+   "koka": "3.2.9",
+   "hyperfine": "2.0.0"
+  },
+  "flags": {
+   "suite": "all",
+   "engines": [
+    "node",
+    "bun"
+   ],
+   "lane": "matched",
+   "sizes": "quick",
+   "stable": false,
+   "filter": "*",
+   "processes": 1,
+   "seed": 20261018
+  },
+  "seed": 20261018,
+  "started": "2026-10-18T06:18:06Z",
+  "missing": [],
+  "failures": [
+   {
+    "program": "binary_trees",
+    "variant": "ocaml",
+    "engine": "native",
+    "error": "`ocamlopt -o main main.ml` exited 2:\nFile \"main.ml\", line 1, characters 9-15:\n1 | let () = Runner.main Kernels.binary_trees 14\n             ^^^^^^\nError: Unbound module Runner\n"
+   },
+   {
+    "program": "binary_trees",
+    "variant": "koka",
+    "engine": "native",
+    "error": "`koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/binary_trees/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/binary_trees/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/binary_trees/koka/main.kk` exited 1:\nbench/programs/binary_trees/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)\n  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/binary_trees/koka\n               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10\n               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib\n\nFailed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/binary_trees/koka/main.kk\n"
+   },
+   {
+    "program": "handled_d1",
+    "variant": "koka",
+    "engine": "native",
+    "error": "`koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/handled_d1/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/handled_d1/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_d1/koka/main.kk` exited 1:\nbench/programs/handled_d1/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)\n  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_d1/koka\n               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10\n               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib\n\nFailed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_d1/koka/main.kk\n"
+   },
+   {
+    "program": "handled_d16",
+    "variant": "koka",
+    "engine": "native",
+    "error": "`koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/handled_d16/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/handled_d16/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_d16/koka/main.kk` exited 1:\nbench/programs/handled_d16/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)\n  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_d16/koka\n               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10\n               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib\n\nFailed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_d16/koka/main.kk\n"
+   },
+   {
+    "program": "handled_d4",
+    "variant": "koka",
+    "engine": "native",
+    "error": "`koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/handled_d4/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/handled_d4/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_d4/koka/main.kk` exited 1:\nbench/programs/handled_d4/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)\n  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_d4/koka\n               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10\n               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib\n\nFailed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_d4/koka/main.kk\n"
+   },
+   {
+    "program": "handled_fwd",
+    "variant": "koka",
+    "engine": "native",
+    "error": "`koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/handled_fwd/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/handled_fwd/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_fwd/koka/main.kk` exited 1:\nbench/programs/handled_fwd/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)\n  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_fwd/koka\n               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10\n               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib\n\nFailed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_fwd/koka/main.kk\n"
+   },
+   {
+    "program": "handled_reentry",
+    "variant": "koka",
+    "engine": "native",
+    "error": "`koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/handled_reentry/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/handled_reentry/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_reentry/koka/main.kk` exited 1:\nbench/programs/handled_reentry/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)\n  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_reentry/koka\n               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10\n               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib\n\nFailed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_reentry/koka/main.kk\n"
+   },
+   {
+    "program": "handled_suspend",
+    "variant": "koka",
+    "engine": "native",
+    "error": "`koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/handled_suspend/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/handled_suspend/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_suspend/koka/main.kk` exited 1:\nbench/programs/handled_suspend/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)\n  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_suspend/koka\n               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10\n               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib\n\nFailed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/handled_suspend/koka/main.kk\n"
+   },
+   {
+    "program": "map_set",
+    "variant": "ocaml",
+    "engine": "native",
+    "error": "`ocamlopt -o main main.ml` exited 2:\nFile \"main.ml\", line 1, characters 9-15:\n1 | let () = Runner.main Kernels.map_set 100000\n             ^^^^^^\nError: Unbound module Runner\n"
+   },
+   {
+    "program": "map_set",
+    "variant": "koka",
+    "engine": "native",
+    "error": "`koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/map_set/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/map_set/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/map_set/koka/main.kk` exited 1:\nbench/programs/map_set/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)\n  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/map_set/koka\n               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10\n               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib\n\nFailed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/map_set/koka/main.kk\n"
+   },
+   {
+    "program": "pipeline",
+    "variant": "ocaml",
+    "engine": "native",
+    "error": "`ocamlopt -o main main.ml` exited 2:\nFile \"main.ml\", line 1, characters 9-15:\n1 | let () = Runner.main Kernels.pipeline 300000\n             ^^^^^^\nError: Unbound module Runner\n"
+   },
+   {
+    "program": "pipeline",
+    "variant": "koka",
+    "engine": "native",
+    "error": "`koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/pipeline/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/pipeline/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/pipeline/koka/main.kk` exited 1:\nbench/programs/pipeline/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)\n  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/pipeline/koka\n               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10\n               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib\n\nFailed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/pipeline/koka/main.kk\n"
+   },
+   {
+    "program": "rbtree",
+    "variant": "ocaml",
+    "engine": "native",
+    "error": "`ocamlopt -o main main.ml` exited 2:\nFile \"main.ml\", line 1, characters 9-15:\n1 | let () = Runner.main Kernels.rbtree 100000\n             ^^^^^^\nError: Unbound module Runner\n"
+   },
+   {
+    "program": "rbtree",
+    "variant": "koka",
+    "engine": "native",
+    "error": "`koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/rbtree/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/rbtree/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/rbtree/koka/main.kk` exited 1:\nbench/programs/rbtree/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)\n  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/rbtree/koka\n               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10\n               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib\n\nFailed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/rbtree/koka/main.kk\n"
+   },
+   {
+    "program": "shapes",
+    "variant": "ocaml",
+    "engine": "native",
+    "error": "`ocamlopt -o main main.ml` exited 2:\nFile \"main.ml\", line 1, characters 9-15:\n1 | let () = Runner.main Kernels.shapes 100000\n             ^^^^^^\nError: Unbound module Runner\n"
+   },
+   {
+    "program": "shapes",
+    "variant": "koka",
+    "engine": "native",
+    "error": "`koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/shapes/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/target/koka/shapes/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/shapes/koka/main.kk` exited 1:\nbench/programs/shapes/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)\n  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/shapes/koka\n               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10\n               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib\n\nFailed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wss10/bench/programs/shapes/koka/main.kk\n"
+   }
+  ]
+ },
+ "results": [
+  {
+   "program": "deltablue",
+   "variant": "rust",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100,
+   "samples_ms": [
+    0.0854545078125,
+    0.08060945703125,
+    0.08171744726562499,
+    0.081558431640625,
+    0.07743286132812499,
+    0.08465242382812499,
+    0.09028719140625001,
+    0.091802654296875,
+    0.09230680468750001
+   ],
+   "median_ms": 0.08465242382812499,
+   "process_medians_ms": [
+    0.08465242382812499
+   ],
+   "rss_bytes": 2605056,
+   "process_rss_bytes": [
+    2605056
+   ],
+   "checksum_ok": true,
+   "checksum": "355776"
+  },
+  {
+   "program": "sieve",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.004985483764648434,
+    0.004804204345703125,
+    0.004222773193359376,
+    0.0044792276611328175,
+    0.005274449584960941,
+    0.004486292480468751,
+    0.004299596191406255,
+    0.00398647045898437,
+    0.003898991943359381
+   ],
+   "median_ms": 0.0044792276611328175,
+   "process_medians_ms": [
+    0.0044792276611328175
+   ],
+   "rss_bytes": 47677440,
+   "process_rss_bytes": [
+    47677440
+   ],
+   "checksum_ok": true,
+   "checksum": "168"
+  },
+  {
+   "program": "contracts_plain",
+   "variant": "go",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.0006448930053710938,
+    0.0006383755950927734,
+    0.00062865576171875,
+    0.0006589845123291016,
+    0.0006942272186279297,
+    0.0006786327362060546,
+    0.000677880599975586,
+    0.0006842231750488282,
+    0.0007931969909667969
+   ],
+   "median_ms": 0.000677880599975586,
+   "process_medians_ms": [
+    0.000677880599975586
+   ],
+   "rss_bytes": 5292032,
+   "process_rss_bytes": [
+    5292032
+   ],
+   "checksum_ok": true,
+   "checksum": "8440"
+  },
+  {
+   "program": "contracts_plain",
+   "variant": "rust",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.0003299563751220703,
+    0.00033779621124267577,
+    0.0003395229949951172,
+    0.0005047168731689453,
+    0.0003261893539428711,
+    0.00032845274353027345,
+    0.00034603564453125,
+    0.0003481597900390625,
+    0.00034339586639404296
+   ],
+   "median_ms": 0.0003395229949951172,
+   "process_medians_ms": [
+    0.0003395229949951172
+   ],
+   "rss_bytes": 2064384,
+   "process_rss_bytes": [
+    2064384
+   ],
+   "checksum_ok": true,
+   "checksum": "8440"
+  },
+  {
+   "program": "fib",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 20,
+   "samples_ms": [
+    0.05809659765624997,
+    0.058520996093749944,
+    0.06152425195312494,
+    0.06510025976562495,
+    0.07220011523437497,
+    0.06080753710937492,
+    0.06440958593750001,
+    0.06155493164062498,
+    0.06527986718750012
+   ],
+   "median_ms": 0.06155493164062498,
+   "process_medians_ms": [
+    0.06155493164062498
+   ],
+   "rss_bytes": 53657600,
+   "process_rss_bytes": [
+    53657600
+   ],
+   "checksum_ok": true,
+   "checksum": "6765"
+  },
+  {
+   "program": "spectral_norm",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 50,
+   "samples_ms": [
+    0.08298120117187502,
+    0.07899104882812502,
+    0.08064664843750002,
+    0.08360164257812497,
+    0.09344010351562493,
+    0.07935546874999999,
+    0.08635831640625002,
+    0.08326863671875007,
+    0.07940885351562499
+   ],
+   "median_ms": 0.08298120117187502,
+   "process_medians_ms": [
+    0.08298120117187502
+   ],
+   "rss_bytes": 50692096,
+   "process_rss_bytes": [
+    50692096
+   ],
+   "checksum_ok": true,
+   "checksum": "1274193837"
+  },
+  {
+   "program": "spectral_norm",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100,
+   "samples_ms": [
+    2.999752625000003,
+    3.0364531250000013,
+    3.059216187499999,
+    3.1255859374999986,
+    3.005640624999998,
+    3.1113854375000045,
+    3.060437499999999,
+    3.057124999999999,
+    3.0968619375000017
+   ],
+   "median_ms": 3.059216187499999,
+   "process_medians_ms": [
+    3.059216187499999
+   ],
+   "rss_bytes": 72466432,
+   "process_rss_bytes": [
+    72466432
+   ],
+   "checksum_ok": true,
+   "checksum": "1274219991"
+  },
+  {
+   "program": "contracts_plain",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.0528649091796875,
+    0.043548461914062475,
+    0.019315429687499996,
+    0.01916475390625,
+    0.018806518554687512,
+    0.018823526367187426,
+    0.019005656250000058,
+    0.018875854492187538,
+    0.019105020507812487
+   ],
+   "median_ms": 0.019105020507812487,
+   "process_medians_ms": [
+    0.019105020507812487
+   ],
+   "rss_bytes": 42827776,
+   "process_rss_bytes": [
+    42827776
+   ],
+   "checksum_ok": true,
+   "checksum": "85000"
+  },
+  {
+   "program": "deltablue",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.7967304687499999,
+    0.7789472656249998,
+    0.7986184843749999,
+    0.678750640625001,
+    0.6813261718749999,
+    0.6910937500000003,
+    0.68538996875,
+    0.690991531249999,
+    0.6998040312499985
+   ],
+   "median_ms": 0.6910937500000003,
+   "process_medians_ms": [
+    0.6910937500000003
+   ],
+   "rss_bytes": 123682816,
+   "process_rss_bytes": [
+    123682816
+   ],
+   "checksum_ok": true,
+   "checksum": "8002176"
+  },
+  {
+   "program": "fib",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 24,
+   "samples_ms": [
+    0.2665748749999999,
+    0.2655156249999999,
+    0.28564974218750017,
+    0.2797923124999997,
+    0.30872330468749976,
+    0.2646305390625008,
+    0.2756477890625,
+    0.26625878906249945,
+    0.26870214843749984
+   ],
+   "median_ms": 0.26870214843749984,
+   "process_medians_ms": [
+    0.26870214843749984
+   ],
+   "rss_bytes": 46792704,
+   "process_rss_bytes": [
+    46792704
+   ],
+   "checksum_ok": true,
+   "checksum": "46368"
+  },
+  {
+   "program": "contracts",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.016825297363281227,
+    0.016015360351562508,
+    0.017511352539062497,
+    0.01687591552734377,
+    0.015935241699218727,
+    0.015640441894531232,
+    0.015305704589843705,
+    0.016003153320312546,
+    0.016207804687499994
+   ],
+   "median_ms": 0.016015360351562508,
+   "process_medians_ms": [
+    0.016015360351562508
+   ],
+   "rss_bytes": 50036736,
+   "process_rss_bytes": [
+    50036736
+   ],
+   "checksum_ok": true,
+   "checksum": "85000"
+  },
+  {
+   "program": "contracts_plain",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.009167846679687494,
+    0.008773183105468749,
+    0.009053263427734368,
+    0.009674784179687507,
+    0.010121134521484387,
+    0.009166900634765607,
+    0.009742543457031239,
+    0.00953629541015627,
+    0.009051188232421875
+   ],
+   "median_ms": 0.009167846679687494,
+   "process_medians_ms": [
+    0.009167846679687494
+   ],
+   "rss_bytes": 49807360,
+   "process_rss_bytes": [
+    49807360
+   ],
+   "checksum_ok": true,
+   "checksum": "85000"
+  },
+  {
+   "program": "countdown",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.00166512680053711,
+    0.0016901613769531258,
+    0.002007516204833984,
+    0.0015511334838867186,
+    0.001647153198242185,
+    0.0015593197937011707,
+    0.001550652832031249,
+    0.0015686047973632808,
+    0.001576332092285155
+   ],
+   "median_ms": 0.001576332092285155,
+   "process_medians_ms": [
+    0.001576332092285155
+   ],
+   "rss_bytes": 49856512,
+   "process_rss_bytes": [
+    49856512
+   ],
+   "checksum_ok": true,
+   "checksum": "500501"
+  },
+  {
+   "program": "nbody",
+   "variant": "rust",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.036833455078125,
+    0.036990234375,
+    0.0401300859375,
+    0.0386770830078125,
+    0.041108561523437503,
+    0.0363197021484375,
+    0.03562235546875,
+    0.036224771484375,
+    0.0373714599609375
+   ],
+   "median_ms": 0.036990234375,
+   "process_medians_ms": [
+    0.036990234375
+   ],
+   "rss_bytes": 2048000,
+   "process_rss_bytes": [
+    2048000
+   ],
+   "checksum_ok": true,
+   "checksum": "-169087605"
+  },
+  {
+   "program": "sieve",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.19320914453125027,
+    0.1810833359374997,
+    0.08627311328124998,
+    0.12853141406250002,
+    0.2590870742187503,
+    0.31271630859374966,
+    0.6753860664062503,
+    0.5849013671875003,
+    0.22667285156250028
+   ],
+   "median_ms": 0.22667285156250028,
+   "process_medians_ms": [
+    0.22667285156250028
+   ],
+   "rss_bytes": 61652992,
+   "process_rss_bytes": [
+    61652992
+   ],
+   "checksum_ok": true,
+   "checksum": "168"
+  },
+  {
+   "program": "deltablue",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100,
+   "samples_ms": [
+    0.11946500390624992,
+    0.34042871093749993,
+    0.12922216796874997,
+    0.05589648437499983,
+    0.055649253906250085,
+    0.04941568750000025,
+    0.04897526171875022,
+    0.3536300429687502,
+    0.05217138671874988
+   ],
+   "median_ms": 0.05589648437499983,
+   "process_medians_ms": [
+    0.05589648437499983
+   ],
+   "rss_bytes": 69451776,
+   "process_rss_bytes": [
+    69451776
+   ],
+   "checksum_ok": true,
+   "checksum": "355776"
+  },
+  {
+   "program": "sieve",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    1.6972031249999944,
+    2.3034478750000034,
+    3.6185052499999983,
+    0.9540833749999962,
+    0.8418802499999956,
+    0.8477134999999976,
+    0.8531875000000042,
+    6.3545832499999975,
+    12.565145874999999
+   ],
+   "median_ms": 1.6972031249999944,
+   "process_medians_ms": [
+    1.6972031249999944
+   ],
+   "rss_bytes": 88145920,
+   "process_rss_bytes": [
+    88145920
+   ],
+   "checksum_ok": true,
+   "checksum": "1229"
+  },
+  {
+   "program": "json_validate",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100,
+   "samples_ms": [
+    0.277825439453125,
+    0.27920719335937494,
+    0.33911197851562513,
+    0.292952392578125,
+    0.25660498046875,
+    0.35280436328124987,
+    0.24530729101562487,
+    0.3752230624999999,
+    0.28623641015625
+   ],
+   "median_ms": 0.28623641015625,
+   "process_medians_ms": [
+    0.28623641015625
+   ],
+   "rss_bytes": 87769088,
+   "process_rss_bytes": [
+    87769088
+   ],
+   "checksum_ok": true,
+   "checksum": "20340"
+  },
+  {
+   "program": "json_validate",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.9282499999999914,
+    1.722042000000016,
+    3.54789550000001,
+    1.3700625000000173,
+    4.7309999999999945,
+    2.4689795000000174,
+    1.854562499999986,
+    1.7369165000000066,
+    1.6625209999999981
+   ],
+   "median_ms": 1.7369165000000066,
+   "process_medians_ms": [
+    1.7369165000000066
+   ],
+   "rss_bytes": 60407808,
+   "process_rss_bytes": [
+    60407808
+   ],
+   "checksum_ok": true,
+   "checksum": "597442"
+  },
+  {
+   "program": "nbody",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    1.5052526250000007,
+    5.214161437500003,
+    6.651450500000003,
+    2.2922395625000007,
+    2.700096375000001,
+    5.213807250000002,
+    1.6182812500000026,
+    2.6825937499999952,
+    1.6952890625000023
+   ],
+   "median_ms": 2.6825937499999952,
+   "process_medians_ms": [
+    2.6825937499999952
+   ],
+   "rss_bytes": 46891008,
+   "process_rss_bytes": [
+    46891008
+   ],
+   "checksum_ok": true,
+   "checksum": "-169087605"
+  },
+  {
+   "program": "spectral_norm",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100,
+   "samples_ms": [
+    1.6418111875,
+    1.982478515625,
+    1.6743222656249994,
+    0.44303059375000053,
+    1.084419921875,
+    0.9808964843750001,
+    0.4427180937500008,
+    0.450483078125,
+    1.1155982968749996
+   ],
+   "median_ms": 1.084419921875,
+   "process_medians_ms": [
+    1.084419921875
+   ],
+   "rss_bytes": 34816000,
+   "process_rss_bytes": [
+    34816000
+   ],
+   "checksum_ok": true,
+   "checksum": "1274219991"
+  },
+  {
+   "program": "tokenizer",
+   "variant": "rust",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.165526046875,
+    0.170736328125,
+    0.3208623046875,
+    0.217709640625,
+    0.167021484375,
+    0.176746421875,
+    0.18295182031249999,
+    0.17101074218749998,
+    0.1729361953125
+   ],
+   "median_ms": 0.1729361953125,
+   "process_medians_ms": [
+    0.1729361953125
+   ],
+   "rss_bytes": 3260416,
+   "process_rss_bytes": [
+    3260416
+   ],
+   "checksum_ok": true,
+   "checksum": "46325"
+  },
+  {
+   "program": "fib",
+   "variant": "rust",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 20,
+   "samples_ms": [
+    0.021081014160156248,
+    0.016711832519531247,
+    0.0691923828125,
+    0.0383777060546875,
+    0.04153397607421875,
+    0.019661865234375,
+    0.0277491865234375,
+    0.02709747314453125,
+    0.01769647216796875
+   ],
+   "median_ms": 0.02709747314453125,
+   "process_medians_ms": [
+    0.02709747314453125
+   ],
+   "rss_bytes": 2064384,
+   "process_rss_bytes": [
+    2064384
+   ],
+   "checksum_ok": true,
+   "checksum": "6765"
+  },
+  {
+   "program": "sieve",
+   "variant": "go",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.00118628564453125,
+    0.0011621106567382812,
+    0.001179718017578125,
+    0.0012898534240722657,
+    0.0013503875732421874,
+    0.0011979115905761718,
+    0.0011921971740722656,
+    0.001920440673828125,
+    0.0017271728515625
+   ],
+   "median_ms": 0.0011979115905761718,
+   "process_medians_ms": [
+    0.0011979115905761718
+   ],
+   "rss_bytes": 12926976,
+   "process_rss_bytes": [
+    12926976
+   ],
+   "checksum_ok": true,
+   "checksum": "168"
+  },
+  {
+   "program": "spectral_norm",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 50,
+   "samples_ms": [
+    0.9890188906250001,
+    1.071724609375,
+    1.0303430937500009,
+    0.9409446562500001,
+    1.1472148437499996,
+    0.9253431093749995,
+    0.9213112031249988,
+    0.883549468750001,
+    0.984662765625
+   ],
+   "median_ms": 0.984662765625,
+   "process_medians_ms": [
+    0.984662765625
+   ],
+   "rss_bytes": 73482240,
+   "process_rss_bytes": [
+    73482240
+   ],
+   "checksum_ok": true,
+   "checksum": "1274193837"
+  },
+  {
+   "program": "tokenizer",
+   "variant": "go",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    35.685333,
+    34.516416,
+    32.340167,
+    33.400209,
+    41.885916,
+    34.365209,
+    35.739458,
+    36.79225,
+    47.105541
+   ],
+   "median_ms": 35.685333,
+   "process_medians_ms": [
+    35.685333
+   ],
+   "rss_bytes": 22233088,
+   "process_rss_bytes": [
+    22233088
+   ],
+   "checksum_ok": true,
+   "checksum": "463250"
+  },
+  {
+   "program": "fib",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 24,
+   "samples_ms": [
+    0.5764863281249992,
+    0.45555273437500077,
+    0.5262076875000004,
+    1.3889329531250008,
+    0.83390559375,
+    0.5043619843750005,
+    0.46792707812499934,
+    0.4896881562500006,
+    0.4803483125000003
+   ],
+   "median_ms": 0.5043619843750005,
+   "process_medians_ms": [
+    0.5043619843750005
+   ],
+   "rss_bytes": 51757056,
+   "process_rss_bytes": [
+    51757056
+   ],
+   "checksum_ok": true,
+   "checksum": "46368"
+  },
+  {
+   "program": "deltablue",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100,
+   "samples_ms": [
+    8.152281250000001,
+    9.49396875,
+    8.095786375000003,
+    6.167078125000003,
+    7.432562499999989,
+    7.719994874999998,
+    7.894656250000011,
+    8.271109374999995,
+    7.141375000000011
+   ],
+   "median_ms": 7.894656250000011,
+   "process_medians_ms": [
+    7.894656250000011
+   ],
+   "rss_bytes": 107544576,
+   "process_rss_bytes": [
+    107544576
+   ],
+   "checksum_ok": true,
+   "checksum": "355776"
+  },
+  {
+   "program": "json_validate",
+   "variant": "rust",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100,
+   "samples_ms": [
+    0.07771980859375,
+    0.052944580078125,
+    0.046356201171875,
+    0.054067544921875,
+    0.050789224609375,
+    0.04118839453125,
+    0.046634603515625005,
+    0.043322103515625,
+    0.042817220703125
+   ],
+   "median_ms": 0.046634603515625005,
+   "process_medians_ms": [
+    0.046634603515625005
+   ],
+   "rss_bytes": 2375680,
+   "process_rss_bytes": [
+    2375680
+   ],
+   "checksum_ok": true,
+   "checksum": "20340"
+  },
+  {
+   "program": "contracts_plain",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.0014762102966308591,
+    0.0014845822753906252,
+    0.0014610252380371086,
+    0.00149234390258789,
+    0.0014130414428710943,
+    0.0014167912902832043,
+    0.0014739532470703122,
+    0.0014483210449218742,
+    0.001447992950439455
+   ],
+   "median_ms": 0.0014610252380371086,
+   "process_medians_ms": [
+    0.0014610252380371086
+   ],
+   "rss_bytes": 44974080,
+   "process_rss_bytes": [
+    44974080
+   ],
+   "checksum_ok": true,
+   "checksum": "8440"
+  },
+  {
+   "program": "countdown",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.0023394673461914067,
+    0.002366600036621095,
+    0.002230718017578126,
+    0.0022153625488281273,
+    0.0022487996215820316,
+    0.002224131286621092,
+    0.0022315343017578135,
+    0.002215967773437501,
+    0.002241711975097656
+   ],
+   "median_ms": 0.0022315343017578135,
+   "process_medians_ms": [
+    0.0022315343017578135
+   ],
+   "rss_bytes": 56328192,
+   "process_rss_bytes": [
+    56328192
+   ],
+   "checksum_ok": true,
+   "checksum": "500501"
+  },
+  {
+   "program": "deltablue",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    321.67816600000003,
+    339.8531250000001,
+    179.44679199999996,
+    88.18287499999997,
+    86.23424999999997,
+    88.08175000000006,
+    87.41954099999998,
+    87.69787500000007,
+    91.11295900000005
+   ],
+   "median_ms": 88.18287499999997,
+   "process_medians_ms": [
+    88.18287499999997
+   ],
+   "rss_bytes": 116867072,
+   "process_rss_bytes": [
+    116867072
+   ],
+   "checksum_ok": true,
+   "checksum": "8002176"
+  },
+  {
+   "program": "nbody",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.05145772265625004,
+    0.052049642578125,
+    0.05472782324218756,
+    0.05359676171875005,
+    0.05142777539062504,
+    0.053382202148437585,
+    0.05297717285156245,
+    0.05195983886718747,
+    0.05205883789062504
+   ],
+   "median_ms": 0.05205883789062504,
+   "process_medians_ms": [
+    0.05205883789062504
+   ],
+   "rss_bytes": 35471360,
+   "process_rss_bytes": [
+    35471360
+   ],
+   "checksum_ok": true,
+   "checksum": "-169087605"
+  },
+  {
+   "program": "sieve",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    1.5144140625000002,
+    1.6229153749999998,
+    1.606055968749999,
+    1.6940104374999994,
+    1.7042474062500013,
+    1.6729166875000026,
+    1.6204830625,
+    1.6422278437499997,
+    1.7103398437500026
+   ],
+   "median_ms": 1.6422278437499997,
+   "process_medians_ms": [
+    1.6422278437499997
+   ],
+   "rss_bytes": 63488000,
+   "process_rss_bytes": [
+    63488000
+   ],
+   "checksum_ok": true,
+   "checksum": "1229"
+  },
+  {
+   "program": "countdown",
+   "variant": "go",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.005218505859375,
+    0.005194783447265625,
+    0.005188705444335938,
+    0.005707382202148437,
+    0.005941156982421875,
+    0.005570210815429687,
+    0.00529367578125,
+    0.0051648203125,
+    0.005169881225585937
+   ],
+   "median_ms": 0.005218505859375,
+   "process_medians_ms": [
+    0.005218505859375
+   ],
+   "rss_bytes": 5046272,
+   "process_rss_bytes": [
+    5046272
+   ],
+   "checksum_ok": true,
+   "checksum": "50005001"
+  },
+  {
+   "program": "tokenizer",
+   "variant": "go",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.4040055390625,
+    0.3253606796875,
+    0.3356318359375,
+    0.32095865625,
+    0.330341796875,
+    0.3607584609375,
+    0.5836142578125,
+    0.2762392578125,
+    0.3540810546875
+   ],
+   "median_ms": 0.3356318359375,
+   "process_medians_ms": [
+    0.3356318359375
+   ],
+   "rss_bytes": 17203200,
+   "process_rss_bytes": [
+    17203200
+   ],
+   "checksum_ok": true,
+   "checksum": "46325"
+  },
+  {
+   "program": "tokenizer",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.789158203125,
+    0.7706959687500001,
+    0.7478880312499996,
+    0.8231634062499991,
+    0.7765787812499987,
+    0.9398528593749997,
+    0.8444466249999998,
+    0.9396223906250007,
+    0.9789843749999996
+   ],
+   "median_ms": 0.8231634062499991,
+   "process_medians_ms": [
+    0.8231634062499991
+   ],
+   "rss_bytes": 62111744,
+   "process_rss_bytes": [
+    62111744
+   ],
+   "checksum_ok": true,
+   "checksum": "463250"
+  },
+  {
+   "program": "contracts",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.002111935913085939,
+    0.002001627624511719,
+    0.0018960622558593723,
+    0.0019095942382812495,
+    0.002141698181152344,
+    0.002111645996093748,
+    0.001899007141113282,
+    0.0018774108886718752,
+    0.0019141743774414091
+   ],
+   "median_ms": 0.0019141743774414091,
+   "process_medians_ms": [
+    0.0019141743774414091
+   ],
+   "rss_bytes": 49971200,
+   "process_rss_bytes": [
+    49971200
+   ],
+   "checksum_ok": true,
+   "checksum": "8440"
+  },
+  {
+   "program": "fib",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 20,
+   "samples_ms": [
+    0.039041259765625,
+    0.038774861328124965,
+    0.03994401074218751,
+    0.037921224609375026,
+    0.03738387011718747,
+    0.03736966894531246,
+    0.03926326562500004,
+    0.04064192675781253,
+    0.038237263671874966
+   ],
+   "median_ms": 0.038774861328124965,
+   "process_medians_ms": [
+    0.038774861328124965
+   ],
+   "rss_bytes": 48332800,
+   "process_rss_bytes": [
+    48332800
+   ],
+   "checksum_ok": true,
+   "checksum": "6765"
+  },
+  {
+   "program": "tokenizer",
+   "variant": "rust",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    5.813677125,
+    5.845515625,
+    5.7950625,
+    5.814796875,
+    5.700479125,
+    5.726354125,
+    5.724484375,
+    5.789198,
+    5.8189115000000005
+   ],
+   "median_ms": 5.7950625,
+   "process_medians_ms": [
+    5.7950625
+   ],
+   "rss_bytes": 4505600,
+   "process_rss_bytes": [
+    4505600
+   ],
+   "checksum_ok": true,
+   "checksum": "463250"
+  },
+  {
+   "program": "contracts_plain",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.013189737792968753,
+    0.01329508471679687,
+    0.013263254638671881,
+    0.013376200439453145,
+    0.013135203124999995,
+    0.013471537353515611,
+    0.013147634033203126,
+    0.01343179321289062,
+    0.013430155273437522
+   ],
+   "median_ms": 0.01329508471679687,
+   "process_medians_ms": [
+    0.01329508471679687
+   ],
+   "rss_bytes": 42434560,
+   "process_rss_bytes": [
+    42434560
+   ],
+   "checksum_ok": true,
+   "checksum": "85000"
+  },
+  {
+   "program": "json_validate",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100,
+   "samples_ms": [
+    0.053542033203125006,
+    0.03146777343750001,
+    0.031108642578125012,
+    0.025486083984374963,
+    0.023928425781249985,
+    0.024682536132812516,
+    0.02229626464843748,
+    0.02204504394531248,
+    0.021410482421874932
+   ],
+   "median_ms": 0.024682536132812516,
+   "process_medians_ms": [
+    0.024682536132812516
+   ],
+   "rss_bytes": 39567360,
+   "process_rss_bytes": [
+    39567360
+   ],
+   "checksum_ok": true,
+   "checksum": "20340"
+  },
+  {
+   "program": "fib",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 20,
+   "samples_ms": [
+    0.02603930664062501,
+    0.02701070166015626,
+    0.02483148193359372,
+    0.02492535400390622,
+    0.02532055664062499,
+    0.02431913232421873,
+    0.02603080224609372,
+    0.024552225585937504,
+    0.02572554541015626
+   ],
+   "median_ms": 0.02532055664062499,
+   "process_medians_ms": [
+    0.02532055664062499
+   ],
+   "rss_bytes": 27607040,
+   "process_rss_bytes": [
+    27607040
+   ],
+   "checksum_ok": true,
+   "checksum": "6765"
+  },
+  {
+   "program": "sieve",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.053959879882812534,
+    0.049274251953125014,
+    0.04856514550781249,
+    0.04866345214843748,
+    0.05105175781249993,
+    0.048372558593750004,
+    0.05089306640625002,
+    0.049633300781250056,
+    0.05023323535156243
+   ],
+   "median_ms": 0.049633300781250056,
+   "process_medians_ms": [
+    0.049633300781250056
+   ],
+   "rss_bytes": 86736896,
+   "process_rss_bytes": [
+    86736896
+   ],
+   "checksum_ok": true,
+   "checksum": "168"
+  },
+  {
+   "program": "fib",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 20,
+   "samples_ms": [
+    0.05850370312499997,
+    0.057801676757812503,
+    0.06068212890625008,
+    0.0604591474609375,
+    0.05963012695312497,
+    0.06200459765624999,
+    0.05933349609374994,
+    0.06319502734375004,
+    0.061591552734375
+   ],
+   "median_ms": 0.0604591474609375,
+   "process_medians_ms": [
+    0.0604591474609375
+   ],
+   "rss_bytes": 38010880,
+   "process_rss_bytes": [
+    38010880
+   ],
+   "checksum_ok": true,
+   "checksum": "6765"
+  },
+  {
+   "program": "deltablue",
+   "variant": "go",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100,
+   "samples_ms": [
+    0.112827796875,
+    0.10695751953125,
+    0.09418538671875,
+    0.09826220703125,
+    0.0946661796875,
+    0.09439762109375,
+    0.0924033203125,
+    0.322412109375,
+    0.23723941796875
+   ],
+   "median_ms": 0.09826220703125,
+   "process_medians_ms": [
+    0.09826220703125
+   ],
+   "rss_bytes": 12320768,
+   "process_rss_bytes": [
+    12320768
+   ],
+   "checksum_ok": true,
+   "checksum": "355776"
+  },
+  {
+   "program": "nbody",
+   "variant": "go",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.038451822265625,
+    0.03774169921875,
+    0.0372466220703125,
+    0.0352462158203125,
+    0.0354180908203125,
+    0.035370361328125,
+    0.0375487060546875,
+    0.036496296875,
+    0.0374913330078125
+   ],
+   "median_ms": 0.0372466220703125,
+   "process_medians_ms": [
+    0.0372466220703125
+   ],
+   "rss_bytes": 5226496,
+   "process_rss_bytes": [
+    5226496
+   ],
+   "checksum_ok": true,
+   "checksum": "-169087605"
+  },
+  {
+   "program": "spectral_norm",
+   "variant": "rust",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 50,
+   "samples_ms": [
+    0.07353653906249999,
+    0.072972494140625,
+    0.072764892578125,
+    0.0741341953125,
+    0.07439265820312499,
+    0.07584440234375,
+    0.074366373046875,
+    0.07350830078125001,
+    0.077827310546875
+   ],
+   "median_ms": 0.0741341953125,
+   "process_medians_ms": [
+    0.0741341953125
+   ],
+   "rss_bytes": 2064384,
+   "process_rss_bytes": [
+    2064384
+   ],
+   "checksum_ok": true,
+   "checksum": "1274193837"
+  },
+  {
+   "program": "deltablue",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100,
+   "samples_ms": [
+    4.047671874999999,
+    4.048333249999999,
+    4.0270416250000025,
+    4.419453125000004,
+    4.0509895,
+    4.022500000000001,
+    4.013239624999997,
+    3.9932812500000097,
+    4.041958374999993
+   ],
+   "median_ms": 4.041958374999993,
+   "process_medians_ms": [
+    4.041958374999993
+   ],
+   "rss_bytes": 126156800,
+   "process_rss_bytes": [
+    126156800
+   ],
+   "checksum_ok": true,
+   "checksum": "355776"
+  },
+  {
+   "program": "fib",
+   "variant": "go",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 24,
+   "samples_ms": [
+    0.105909017578125,
+    0.103721599609375,
+    0.1052179375,
+    0.110446615234375,
+    0.107609701171875,
+    0.10844637109375,
+    0.105802001953125,
+    0.1054287109375,
+    0.1069169921875
+   ],
+   "median_ms": 0.105909017578125,
+   "process_medians_ms": [
+    0.105909017578125
+   ],
+   "rss_bytes": 5046272,
+   "process_rss_bytes": [
+    5046272
+   ],
+   "checksum_ok": true,
+   "checksum": "46368"
+  },
+  {
+   "program": "deltablue",
+   "variant": "rust",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.71886459375,
+    0.693430984375,
+    0.702949875,
+    0.686834640625,
+    0.6926048124999999,
+    0.750352859375,
+    0.686465484375,
+    0.688106125,
+    0.6917994843749999
+   ],
+   "median_ms": 0.6926048124999999,
+   "process_medians_ms": [
+    0.6926048124999999
+   ],
+   "rss_bytes": 4161536,
+   "process_rss_bytes": [
+    4161536
+   ],
+   "checksum_ok": true,
+   "checksum": "8002176"
+  },
+  {
+   "program": "json_validate",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.9204316406249999,
+    1.0523365781250007,
+    1.0176861874999998,
+    0.9148483125000002,
+    0.9180677187499988,
+    0.9139212343750014,
+    0.9248274687500011,
+    0.9164576718749995,
+    0.9082389375000002
+   ],
+   "median_ms": 0.9180677187499988,
+   "process_medians_ms": [
+    0.9180677187499988
+   ],
+   "rss_bytes": 124125184,
+   "process_rss_bytes": [
+    124125184
+   ],
+   "checksum_ok": true,
+   "checksum": "597442"
+  },
+  {
+   "program": "contracts",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.053584146484374984,
+    0.0547261962890625,
+    0.05275610351562504,
+    0.05374552441406255,
+    0.054269653320312417,
+    0.05524845410156254,
+    0.054670328125000056,
+    0.05668949414062496,
+    0.05735050488281246
+   ],
+   "median_ms": 0.054670328125000056,
+   "process_medians_ms": [
+    0.054670328125000056
+   ],
+   "rss_bytes": 56033280,
+   "process_rss_bytes": [
+    56033280
+   ],
+   "checksum_ok": true,
+   "checksum": "85000"
+  },
+  {
+   "program": "json_validate",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.24466927343750022,
+    0.2498440781250002,
+    0.2482265625000002,
+    0.2481393203125002,
+    0.25306607812500026,
+    0.2491419296874997,
+    0.25688769531250033,
+    0.24851887500000025,
+    0.28364746093749993
+   ],
+   "median_ms": 0.2491419296874997,
+   "process_medians_ms": [
+    0.2491419296874997
+   ],
+   "rss_bytes": 55853056,
+   "process_rss_bytes": [
+    55853056
+   ],
+   "checksum_ok": true,
+   "checksum": "597442"
+  },
+  {
+   "program": "countdown",
+   "variant": "rust",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.002608154296875,
+    0.002619328796386719,
+    0.0026543604736328124,
+    0.0027257410278320312,
+    0.0026376088256835936,
+    0.0026319198608398438,
+    0.0026365458374023438,
+    0.0026429672241210936,
+    0.0026450601806640626
+   ],
+   "median_ms": 0.0026376088256835936,
+   "process_medians_ms": [
+    0.0026376088256835936
+   ],
+   "rss_bytes": 2064384,
+   "process_rss_bytes": [
+    2064384
+   ],
+   "checksum_ok": true,
+   "checksum": "50005001"
+  },
+  {
+   "program": "sieve",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.03182161425781249,
+    0.031194213867187515,
+    0.031475585937499995,
+    0.030997436523437505,
+    0.032870849609374975,
+    0.03139241601562498,
+    0.031211669921875074,
+    0.03225451660156253,
+    0.031965494140624995
+   ],
+   "median_ms": 0.031475585937499995,
+   "process_medians_ms": [
+    0.031475585937499995
+   ],
+   "rss_bytes": 79937536,
+   "process_rss_bytes": [
+    79937536
+   ],
+   "checksum_ok": true,
+   "checksum": "1229"
+  },
+  {
+   "program": "fib",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 24,
+   "samples_ms": [
+    0.23869807812499988,
+    0.1911625976562501,
+    0.18189925390625006,
+    0.1803287734375001,
+    0.19051269531250004,
+    0.1882185859375003,
+    0.19216341406250015,
+    0.1829690742187502,
+    0.18831152343749968
+   ],
+   "median_ms": 0.18831152343749968,
+   "process_medians_ms": [
+    0.18831152343749968
+   ],
+   "rss_bytes": 23265280,
+   "process_rss_bytes": [
+    23265280
+   ],
+   "checksum_ok": true,
+   "checksum": "46368"
+  },
+  {
+   "program": "fib",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 24,
+   "samples_ms": [
+    0.41503124999999974,
+    0.4146647109375001,
+    0.4150179062499997,
+    0.4164046250000002,
+    0.44960253906250003,
+    0.47609082031249983,
+    0.45791113281249984,
+    0.5113082656249999,
+    0.4429833984374998
+   ],
+   "median_ms": 0.4429833984374998,
+   "process_medians_ms": [
+    0.4429833984374998
+   ],
+   "rss_bytes": 27099136,
+   "process_rss_bytes": [
+    27099136
+   ],
+   "checksum_ok": true,
+   "checksum": "46368"
+  },
+  {
+   "program": "spectral_norm",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 50,
+   "samples_ms": [
+    0.1033924140625,
+    0.10105143359375002,
+    0.10476171875000007,
+    0.10217155078124995,
+    0.1048579101562499,
+    0.10183235742187491,
+    0.09941943359374994,
+    0.10168636132812492,
+    0.09732535937500009
+   ],
+   "median_ms": 0.10183235742187491,
+   "process_medians_ms": [
+    0.10183235742187491
+   ],
+   "rss_bytes": 39501824,
+   "process_rss_bytes": [
+    39501824
+   ],
+   "checksum_ok": true,
+   "checksum": "1274193837"
+  },
+  {
+   "program": "countdown",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.007682718994140622,
+    0.007705993652343743,
+    0.007778157470703123,
+    0.00769219970703125,
+    0.007702840332031252,
+    0.00776665234375,
+    0.007715555664062498,
+    0.007838134765625004,
+    0.0076961364746094
+   ],
+   "median_ms": 0.007705993652343743,
+   "process_medians_ms": [
+    0.007705993652343743
+   ],
+   "rss_bytes": 39452672,
+   "process_rss_bytes": [
+    39452672
+   ],
+   "checksum_ok": true,
+   "checksum": "50005001"
+  },
+  {
+   "program": "sieve",
+   "variant": "go",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.01019669580078125,
+    0.01028516650390625,
+    0.01011311865234375,
+    0.0103262939453125,
+    0.010445882080078125,
+    0.010329437255859376,
+    0.01041199755859375,
+    0.01035528564453125,
+    0.01037397265625
+   ],
+   "median_ms": 0.010329437255859376,
+   "process_medians_ms": [
+    0.010329437255859376
+   ],
+   "rss_bytes": 11567104,
+   "process_rss_bytes": [
+    11567104
+   ],
+   "checksum_ok": true,
+   "checksum": "1229"
+  },
+  {
+   "program": "deltablue",
+   "variant": "go",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    1.48490103125,
+    0.963725921875,
+    0.9779420625,
+    0.93303059375,
+    0.930208984375,
+    0.940190109375,
+    0.924824875,
+    0.919951828125,
+    0.92165365625
+   ],
+   "median_ms": 0.93303059375,
+   "process_medians_ms": [
+    0.93303059375
+   ],
+   "rss_bytes": 13533184,
+   "process_rss_bytes": [
+    13533184
+   ],
+   "checksum_ok": true,
+   "checksum": "8002176"
+  },
+  {
+   "program": "fib",
+   "variant": "rust",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 24,
+   "samples_ms": [
+    0.1082838515625,
+    0.10361588671875,
+    0.1118173828125,
+    0.12338427734375,
+    0.1074021796875,
+    0.10781689453125,
+    0.10894987109375001,
+    0.11243017578124999,
+    0.11578483203124999
+   ],
+   "median_ms": 0.10894987109375001,
+   "process_medians_ms": [
+    0.10894987109375001
+   ],
+   "rss_bytes": 2064384,
+   "process_rss_bytes": [
+    2064384
+   ],
+   "checksum_ok": true,
+   "checksum": "46368"
+  },
+  {
+   "program": "countdown",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.013180348632812491,
+    0.011523549316406242,
+    0.011585316894531253,
+    0.011630533691406264,
+    0.011754353759765634,
+    0.011765279052734362,
+    0.011516469482421882,
+    0.012864685058593728,
+    0.0172471923828125
+   ],
+   "median_ms": 0.011754353759765634,
+   "process_medians_ms": [
+    0.011754353759765634
+   ],
+   "rss_bytes": 48087040,
+   "process_rss_bytes": [
+    48087040
+   ],
+   "checksum_ok": true,
+   "checksum": "50005001"
+  },
+  {
+   "program": "tokenizer",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.095757650390625,
+    0.09621150585937499,
+    0.0877216796875,
+    0.09304125976562505,
+    0.0985876464843749,
+    0.08923250195312504,
+    0.09537215039062508,
+    0.08407210351562511,
+    0.08422273828124993
+   ],
+   "median_ms": 0.09304125976562505,
+   "process_medians_ms": [
+    0.09304125976562505
+   ],
+   "rss_bytes": 67239936,
+   "process_rss_bytes": [
+    67239936
+   ],
+   "checksum_ok": true,
+   "checksum": "46325"
+  },
+  {
+   "program": "contracts",
+   "variant": "go",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.0009639129638671875,
+    0.0009479395751953125,
+    0.000949914306640625,
+    0.0009525604248046875,
+    0.0009467938842773438,
+    0.0009315910339355469,
+    0.0009569473266601563,
+    0.0009521280822753906,
+    0.00094346875
+   ],
+   "median_ms": 0.000949914306640625,
+   "process_medians_ms": [
+    0.000949914306640625
+   ],
+   "rss_bytes": 5160960,
+   "process_rss_bytes": [
+    5160960
+   ],
+   "checksum_ok": true,
+   "checksum": "8440"
+  },
+  {
+   "program": "spectral_norm",
+   "variant": "rust",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100,
+   "samples_ms": [
+    0.2991451875,
+    0.29555468749999997,
+    0.2935592421875,
+    0.293518875,
+    0.3040182265625,
+    0.29002929687499995,
+    0.2902259140625,
+    0.29284928906249996,
+    0.29518717968749997
+   ],
+   "median_ms": 0.2935592421875,
+   "process_medians_ms": [
+    0.2935592421875
+   ],
+   "rss_bytes": 2080768,
+   "process_rss_bytes": [
+    2080768
+   ],
+   "checksum_ok": true,
+   "checksum": "1274219991"
+  },
+  {
+   "program": "nbody",
+   "variant": "go",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 5000,
+   "samples_ms": [
+    0.175501953125,
+    0.17541324609375,
+    0.174494140625,
+    0.17892203515625,
+    0.197126625,
+    0.1766560859375,
+    0.17471712109375,
+    0.19402392578125,
+    0.17745230859375
+   ],
+   "median_ms": 0.1766560859375,
+   "process_medians_ms": [
+    0.1766560859375
+   ],
+   "rss_bytes": 5292032,
+   "process_rss_bytes": [
+    5292032
+   ],
+   "checksum_ok": true,
+   "checksum": "-169020000"
+  },
+  {
+   "program": "deltablue",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    55.42275000000001,
+    50.664916000000005,
+    61.40854200000001,
+    58.06012499999997,
+    54.73195799999996,
+    51.605166000000054,
+    50.06245799999999,
+    58.19545799999992,
+    49.2338749999999
+   ],
+   "median_ms": 54.73195799999996,
+   "process_medians_ms": [
+    54.73195799999996
+   ],
+   "rss_bytes": 157532160,
+   "process_rss_bytes": [
+    157532160
+   ],
+   "checksum_ok": true,
+   "checksum": "8002176"
+  },
+  {
+   "program": "sieve",
+   "variant": "rust",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.0012552108764648437,
+    0.0008155276184082031,
+    0.0007902946472167968,
+    0.0010802218322753907,
+    0.000808489501953125,
+    0.00125428515625,
+    0.0008165766296386719,
+    0.0007887904052734375,
+    0.0012588399047851562
+   ],
+   "median_ms": 0.0008165766296386719,
+   "process_medians_ms": [
+    0.0008165766296386719
+   ],
+   "rss_bytes": 2080768,
+   "process_rss_bytes": [
+    2080768
+   ],
+   "checksum_ok": true,
+   "checksum": "168"
+  },
+  {
+   "program": "sieve",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.003310498535156251,
+    0.0040195134277343746,
+    0.0036387990112304695,
+    0.004363042236328121,
+    0.0032449874877929705,
+    0.0038698450317382824,
+    0.004057711242675781,
+    0.0032444407348632825,
+    0.0036181234130859344
+   ],
+   "median_ms": 0.0036387990112304695,
+   "process_medians_ms": [
+    0.0036387990112304695
+   ],
+   "rss_bytes": 56410112,
+   "process_rss_bytes": [
+    56410112
+   ],
+   "checksum_ok": true,
+   "checksum": "168"
+  },
+  {
+   "program": "deltablue",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    1.0614166562499996,
+    0.9728554687499997,
+    1.4523072812500004,
+    0.9923789062499999,
+    1.0373684687499996,
+    1.019828125,
+    1.3069687499999993,
+    1.0016614374999975,
+    1.0283867187499993
+   ],
+   "median_ms": 1.0283867187499993,
+   "process_medians_ms": [
+    1.0283867187499993
+   ],
+   "rss_bytes": 88539136,
+   "process_rss_bytes": [
+    88539136
+   ],
+   "checksum_ok": true,
+   "checksum": "8002176"
+  },
+  {
+   "program": "contracts",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.01198402905273438,
+    0.013472625732421875,
+    0.014020579101562486,
+    0.011914377685546873,
+    0.011992044921875,
+    0.014027648925781261,
+    0.011919352294921887,
+    0.013465728759765622,
+    0.011886128906249988
+   ],
+   "median_ms": 0.011992044921875,
+   "process_medians_ms": [
+    0.011992044921875
+   ],
+   "rss_bytes": 48562176,
+   "process_rss_bytes": [
+    48562176
+   ],
+   "checksum_ok": true,
+   "checksum": "8440"
+  },
+  {
+   "program": "nbody",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.7318235781249998,
+    0.8357643281249993,
+    0.7102246093750004,
+    0.7247096249999991,
+    0.8855624999999989,
+    0.7032708281250013,
+    0.9464791718750014,
+    0.8083170468750005,
+    0.7404153593749996
+   ],
+   "median_ms": 0.7404153593749996,
+   "process_medians_ms": [
+    0.7404153593749996
+   ],
+   "rss_bytes": 71548928,
+   "process_rss_bytes": [
+    71548928
+   ],
+   "checksum_ok": true,
+   "checksum": "-169087605"
+  },
+  {
+   "program": "contracts",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.05727412890625,
+    0.04695393847656254,
+    0.051558390625000006,
+    0.058420451171875,
+    0.050888427734375075,
+    0.06633284472656253,
+    0.13095048046875002,
+    0.12656933593749997,
+    0.12638065527343756
+   ],
+   "median_ms": 0.058420451171875,
+   "process_medians_ms": [
+    0.058420451171875
+   ],
+   "rss_bytes": 41844736,
+   "process_rss_bytes": [
+    41844736
+   ],
+   "checksum_ok": true,
+   "checksum": "85000"
+  },
+  {
+   "program": "nbody",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.046499755859374936,
+    0.04645817187500001,
+    0.05897599218749994,
+    0.04650854492187495,
+    0.04626342773437497,
+    0.046539306640625,
+    0.06890991210937492,
+    0.04637247851562509,
+    0.04648876953125014
+   ],
+   "median_ms": 0.046499755859374936,
+   "process_medians_ms": [
+    0.046499755859374936
+   ],
+   "rss_bytes": 50036736,
+   "process_rss_bytes": [
+    50036736
+   ],
+   "checksum_ok": true,
+   "checksum": "-169087605"
+  },
+  {
+   "program": "contracts",
+   "variant": "go",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.012061208251953125,
+    0.009654072998046876,
+    0.014665018798828125,
+    0.01178099560546875,
+    0.00990381884765625,
+    0.01229957080078125,
+    0.009318745849609376,
+    0.0098441875,
+    0.009677642822265626
+   ],
+   "median_ms": 0.00990381884765625,
+   "process_medians_ms": [
+    0.00990381884765625
+   ],
+   "rss_bytes": 5210112,
+   "process_rss_bytes": [
+    5210112
+   ],
+   "checksum_ok": true,
+   "checksum": "85000"
+  },
+  {
+   "program": "contracts_plain",
+   "variant": "rust",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.0031121063232421873,
+    0.004260833740234375,
+    0.00356075537109375,
+    0.0030761566162109373,
+    0.005090011596679688,
+    0.00315499365234375,
+    0.006138203979492187,
+    0.0033468883056640623,
+    0.00536710107421875
+   ],
+   "median_ms": 0.00356075537109375,
+   "process_medians_ms": [
+    0.00356075537109375
+   ],
+   "rss_bytes": 2080768,
+   "process_rss_bytes": [
+    2080768
+   ],
+   "checksum_ok": true,
+   "checksum": "85000"
+  },
+  {
+   "program": "contracts_plain",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.024083374023437493,
+    0.024515950683593746,
+    0.023569417480468757,
+    0.026856689453125027,
+    0.024979777343749954,
+    0.02361389160156252,
+    0.02655100488281248,
+    0.02407151269531249,
+    0.026787984374999962
+   ],
+   "median_ms": 0.024515950683593746,
+   "process_medians_ms": [
+    0.024515950683593746
+   ],
+   "rss_bytes": 55640064,
+   "process_rss_bytes": [
+    55640064
+   ],
+   "checksum_ok": true,
+   "checksum": "85000"
+  },
+  {
+   "program": "json_validate",
+   "variant": "go",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.8903698125,
+    0.99639971875,
+    1.10641275,
+    0.89216928125,
+    1.396622375,
+    0.88448828125,
+    0.87352475,
+    1.38067840625,
+    0.8673111875
+   ],
+   "median_ms": 0.89216928125,
+   "process_medians_ms": [
+    0.89216928125
+   ],
+   "rss_bytes": 12746752,
+   "process_rss_bytes": [
+    12746752
+   ],
+   "checksum_ok": true,
+   "checksum": "597442"
+  },
+  {
+   "program": "sieve",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.03152266455078126,
+    0.03139886474609377,
+    0.03177610253906249,
+    0.031566406249999956,
+    0.030531168945312492,
+    0.030977193359375044,
+    0.03178800439453128,
+    0.03154296875000001,
+    0.03072676562500004
+   ],
+   "median_ms": 0.03152266455078126,
+   "process_medians_ms": [
+    0.03152266455078126
+   ],
+   "rss_bytes": 62734336,
+   "process_rss_bytes": [
+    62734336
+   ],
+   "checksum_ok": true,
+   "checksum": "1229"
+  },
+  {
+   "program": "contracts",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.005407506225585938,
+    0.005150833129882813,
+    0.005077611328124995,
+    0.005117238403320304,
+    0.005083307861328115,
+    0.005091903686523444,
+    0.005183059692382808,
+    0.005606989624023437,
+    0.005347529052734376
+   ],
+   "median_ms": 0.005150833129882813,
+   "process_medians_ms": [
+    0.005150833129882813
+   ],
+   "rss_bytes": 56049664,
+   "process_rss_bytes": [
+    56049664
+   ],
+   "checksum_ok": true,
+   "checksum": "8440"
+  },
+  {
+   "program": "json_validate",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100,
+   "samples_ms": [
+    0.07981038476562508,
+    0.07708276367187505,
+    0.07850260351562499,
+    0.07701277539062501,
+    0.07668286132812496,
+    0.07836303710937487,
+    0.07598722265624991,
+    0.07508846093749999,
+    0.07321232031249991
+   ],
+   "median_ms": 0.07701277539062501,
+   "process_medians_ms": [
+    0.07701277539062501
+   ],
+   "rss_bytes": 58916864,
+   "process_rss_bytes": [
+    58916864
+   ],
+   "checksum_ok": true,
+   "checksum": "20340"
+  },
+  {
+   "program": "contracts_plain",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.002301651000976561,
+    0.002280306518554688,
+    0.0023330408935546866,
+    0.002254559875488279,
+    0.002314684570312503,
+    0.0022410609130859363,
+    0.002246058166503903,
+    0.0022413101196289073,
+    0.002231379211425785
+   ],
+   "median_ms": 0.002254559875488279,
+   "process_medians_ms": [
+    0.002254559875488279
+   ],
+   "rss_bytes": 55672832,
+   "process_rss_bytes": [
+    55672832
+   ],
+   "checksum_ok": true,
+   "checksum": "8440"
+  },
+  {
+   "program": "tokenizer",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.07243717382812498,
+    0.07406787109375002,
+    0.07765112304687505,
+    0.08433170507812504,
+    0.07801603125,
+    0.08045849609375,
+    0.07815063476562512,
+    0.07863037109374993,
+    0.07580509374999989
+   ],
+   "median_ms": 0.07801603125,
+   "process_medians_ms": [
+    0.07801603125
+   ],
+   "rss_bytes": 46661632,
+   "process_rss_bytes": [
+    46661632
+   ],
+   "checksum_ok": true,
+   "checksum": "46325"
+  },
+  {
+   "program": "tokenizer",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    2.373679687500001,
+    2.186518249999999,
+    2.3549531250000015,
+    2.910091187500001,
+    2.0949504999999995,
+    2.244096374999998,
+    2.3143515625000006,
+    2.579544249999998,
+    2.2878984374999973
+   ],
+   "median_ms": 2.3143515625000006,
+   "process_medians_ms": [
+    2.3143515625000006
+   ],
+   "rss_bytes": 90357760,
+   "process_rss_bytes": [
+    90357760
+   ],
+   "checksum_ok": true,
+   "checksum": "463250"
+  },
+  {
+   "program": "json_validate",
+   "variant": "go",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100,
+   "samples_ms": [
+    0.088616048828125,
+    0.10465234375,
+    0.109730630859375,
+    0.086300537109375,
+    0.085966876953125,
+    0.088305419921875,
+    0.09493562890625,
+    0.086240884765625,
+    0.08572705078125
+   ],
+   "median_ms": 0.088305419921875,
+   "process_medians_ms": [
+    0.088305419921875
+   ],
+   "rss_bytes": 13467648,
+   "process_rss_bytes": [
+    13467648
+   ],
+   "checksum_ok": true,
+   "checksum": "20340"
+  },
+  {
+   "program": "countdown",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.015455505371093747,
+    0.015406595703124998,
+    0.01534857177734375,
+    0.015391011718750014,
+    0.015259135253906264,
+    0.015904032714843724,
+    0.01549623583984372,
+    0.015469807617187525,
+    0.016581380371093746
+   ],
+   "median_ms": 0.015455505371093747,
+   "process_medians_ms": [
+    0.015455505371093747
+   ],
+   "rss_bytes": 49184768,
+   "process_rss_bytes": [
+    49184768
+   ],
+   "checksum_ok": true,
+   "checksum": "50005001"
+  },
+  {
+   "program": "nbody",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 5000,
+   "samples_ms": [
+    3.5979531250000036,
+    4.269697999999998,
+    3.462760375000002,
+    3.470114625000001,
+    3.400979249999999,
+    3.5963333750000004,
+    3.751265625000002,
+    3.598927125000003,
+    4.165682250000003
+   ],
+   "median_ms": 3.5979531250000036,
+   "process_medians_ms": [
+    3.5979531250000036
+   ],
+   "rss_bytes": 48119808,
+   "process_rss_bytes": [
+    48119808
+   ],
+   "checksum_ok": true,
+   "checksum": "-169020000"
+  },
+  {
+   "program": "spectral_norm",
+   "variant": "go",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100,
+   "samples_ms": [
+    0.431189453125,
+    0.4141682890625,
+    0.4025693359375,
+    0.386740234375,
+    0.3856389921875,
+    0.407764,
+    0.37998990625,
+    0.399435546875,
+    0.3904381484375
+   ],
+   "median_ms": 0.399435546875,
+   "process_medians_ms": [
+    0.399435546875
+   ],
+   "rss_bytes": 11943936,
+   "process_rss_bytes": [
+    11943936
+   ],
+   "checksum_ok": true,
+   "checksum": "1274219991"
+  },
+  {
+   "program": "nbody",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 5000,
+   "samples_ms": [
+    0.2504469453125,
+    0.23872884375000014,
+    0.23220378124999996,
+    0.2324049453125001,
+    0.23115364843750008,
+    0.2312447890625,
+    0.24452636718749998,
+    0.2439293593750005,
+    0.23154524218749994
+   ],
+   "median_ms": 0.2324049453125001,
+   "process_medians_ms": [
+    0.2324049453125001
+   ],
+   "rss_bytes": 50216960,
+   "process_rss_bytes": [
+    50216960
+   ],
+   "checksum_ok": true,
+   "checksum": "-169020000"
+  },
+  {
+   "program": "contracts",
+   "variant": "rust",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.0032308247680664062,
+    0.003119433044433594,
+    0.003190383911132812,
+    0.0031896641845703126,
+    0.0030939534301757813,
+    0.003039703369140625,
+    0.0030663020019531246,
+    0.0029158604736328124,
+    0.0030572789306640624
+   ],
+   "median_ms": 0.0030939534301757813,
+   "process_medians_ms": [
+    0.0030939534301757813
+   ],
+   "rss_bytes": 2080768,
+   "process_rss_bytes": [
+    2080768
+   ],
+   "checksum_ok": true,
+   "checksum": "85000"
+  },
+  {
+   "program": "tokenizer",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.06246150781250004,
+    0.06331193164062499,
+    0.06092578125000003,
+    0.06061083984375004,
+    0.060616455078124964,
+    0.060487792968749954,
+    0.07157853124999991,
+    0.08574047851562505,
+    0.06266471484375002
+   ],
+   "median_ms": 0.06246150781250004,
+   "process_medians_ms": [
+    0.06246150781250004
+   ],
+   "rss_bytes": 69500928,
+   "process_rss_bytes": [
+    69500928
+   ],
+   "checksum_ok": true,
+   "checksum": "46325"
+  },
+  {
+   "program": "nbody",
+   "variant": "rust",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 5000,
+   "samples_ms": [
+    0.22439729687499999,
+    0.2276904296875,
+    0.18245980078125001,
+    0.18331608203125,
+    0.177653484375,
+    0.184689453125,
+    0.23276790234375,
+    0.19271044921875,
+    0.20545719531249998
+   ],
+   "median_ms": 0.19271044921875,
+   "process_medians_ms": [
+    0.19271044921875
+   ],
+   "rss_bytes": 2048000,
+   "process_rss_bytes": [
+    2048000
+   ],
+   "checksum_ok": true,
+   "checksum": "-169020000"
+  },
+  {
+   "program": "contracts_plain",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.0025084075927734387,
+    0.0025635452270507814,
+    0.0020988845825195314,
+    0.002206130981445311,
+    0.0021654942626953104,
+    0.002120549499511716,
+    0.0021351623535156294,
+    0.0023452097778320358,
+    0.0021693699951171874
+   ],
+   "median_ms": 0.0021693699951171874,
+   "process_medians_ms": [
+    0.0021693699951171874
+   ],
+   "rss_bytes": 48644096,
+   "process_rss_bytes": [
+    48644096
+   ],
+   "checksum_ok": true,
+   "checksum": "8440"
+  },
+  {
+   "program": "countdown",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.0010468838806152337,
+    0.0018369229431152347,
+    0.0009076614379882816,
+    0.0007913030090332032,
+    0.0008024190063476572,
+    0.0007797597045898427,
+    0.0007744534606933563,
+    0.000774927764892578,
+    0.0007741241455078117
+   ],
+   "median_ms": 0.0007913030090332032,
+   "process_medians_ms": [
+    0.0007913030090332032
+   ],
+   "rss_bytes": 40648704,
+   "process_rss_bytes": [
+    40648704
+   ],
+   "checksum_ok": true,
+   "checksum": "500501"
+  },
+  {
+   "program": "contracts",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.0022652282714843777,
+    0.0019347534179687542,
+    0.0017503814697265585,
+    0.0017844644775390633,
+    0.0017665557861328146,
+    0.0017792713623046921,
+    0.0017906545410156238,
+    0.002992395996093751,
+    0.0029218952636718767
+   ],
+   "median_ms": 0.0017906545410156238,
+   "process_medians_ms": [
+    0.0017906545410156238
+   ],
+   "rss_bytes": 43859968,
+   "process_rss_bytes": [
+    43859968
+   ],
+   "checksum_ok": true,
+   "checksum": "8440"
+  },
+  {
+   "program": "json_validate",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    1.0238814999999999,
+    1.1120143125000013,
+    1.3452643124999994,
+    1.3644036562499995,
+    0.9622083437499995,
+    0.9176132812500004,
+    0.8929947812499996,
+    0.884516937499999,
+    0.8533606875000004
+   ],
+   "median_ms": 0.9622083437499995,
+   "process_medians_ms": [
+    0.9622083437499995
+   ],
+   "rss_bytes": 77512704,
+   "process_rss_bytes": [
+    77512704
+   ],
+   "checksum_ok": true,
+   "checksum": "597442"
+  },
+  {
+   "program": "tokenizer",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    1.053393250000001,
+    1.3869049374999989,
+    0.9808385312500008,
+    1.2247291874999995,
+    2.046806000000002,
+    7.4033919375,
+    3.030197906249999,
+    1.515777343749999,
+    1.0973580937499996
+   ],
+   "median_ms": 1.3869049374999989,
+   "process_medians_ms": [
+    1.3869049374999989
+   ],
+   "rss_bytes": 69222400,
+   "process_rss_bytes": [
+    69222400
+   ],
+   "checksum_ok": true,
+   "checksum": "463250"
+  },
+  {
+   "program": "sieve",
+   "variant": "rust",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.00776698828125,
+    0.007777842285156251,
+    0.007749715087890624,
+    0.007778045654296875,
+    0.00775764990234375,
+    0.007758707763671874,
+    0.00782640576171875,
+    0.007726552246093749,
+    0.00863379931640625
+   ],
+   "median_ms": 0.00776698828125,
+   "process_medians_ms": [
+    0.00776698828125
+   ],
+   "rss_bytes": 2080768,
+   "process_rss_bytes": [
+    2080768
+   ],
+   "checksum_ok": true,
+   "checksum": "1229"
+  },
+  {
+   "program": "contracts_plain",
+   "variant": "go",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.006240839721679687,
+    0.006346201538085938,
+    0.006376749755859375,
+    0.00813604736328125,
+    0.006254302978515625,
+    0.0061641031494140625,
+    0.00633795166015625,
+    0.00625037646484375,
+    0.006232961059570313
+   ],
+   "median_ms": 0.006254302978515625,
+   "process_medians_ms": [
+    0.006254302978515625
+   ],
+   "rss_bytes": 5275648,
+   "process_rss_bytes": [
+    5275648
+   ],
+   "checksum_ok": true,
+   "checksum": "85000"
+  },
+  {
+   "program": "nbody",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 5000,
+   "samples_ms": [
+    4.135640625000001,
+    3.593843750000005,
+    3.5384269999999987,
+    3.525244749999999,
+    3.571015625000001,
+    3.532171875000003,
+    3.555161499999997,
+    3.5444894999999974,
+    3.549838499999993
+   ],
+   "median_ms": 3.549838499999993,
+   "process_medians_ms": [
+    3.549838499999993
+   ],
+   "rss_bytes": 61276160,
+   "process_rss_bytes": [
+    61276160
+   ],
+   "checksum_ok": true,
+   "checksum": "-169020000"
+  },
+  {
+   "program": "countdown",
+   "variant": "rust",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.000255357421875,
+    0.0002487169952392578,
+    0.0002483339309692383,
+    0.0002483539581298828,
+    0.00025185935211181643,
+    0.00024998314666748047,
+    0.00024860413360595706,
+    0.00024934577941894534,
+    0.0002498909683227539
+   ],
+   "median_ms": 0.00024934577941894534,
+   "process_medians_ms": [
+    0.00024934577941894534
+   ],
+   "rss_bytes": 2064384,
+   "process_rss_bytes": [
+    2064384
+   ],
+   "checksum_ok": true,
+   "checksum": "500501"
+  },
+  {
+   "program": "countdown",
+   "variant": "go",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.0005689194946289063,
+    0.0005697975158691406,
+    0.0005642801971435546,
+    0.0005675633697509766,
+    0.0005666643676757812,
+    0.0005679365844726563,
+    0.0005650138854980469,
+    0.000568200424194336,
+    0.0005631796569824218
+   ],
+   "median_ms": 0.0005675633697509766,
+   "process_medians_ms": [
+    0.0005675633697509766
+   ],
+   "rss_bytes": 5373952,
+   "process_rss_bytes": [
+    5373952
+   ],
+   "checksum_ok": true,
+   "checksum": "500501"
+  },
+  {
+   "program": "nbody",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 5000,
+   "samples_ms": [
+    0.2547063828125,
+    0.2536875000000003,
+    0.2531067734375001,
+    0.2536969375,
+    0.2521432265625001,
+    0.25252083593749974,
+    0.2546110000000006,
+    0.25469759375000045,
+    0.2531389921875
+   ],
+   "median_ms": 0.2536875000000003,
+   "process_medians_ms": [
+    0.2536875000000003
+   ],
+   "rss_bytes": 26198016,
+   "process_rss_bytes": [
+    26198016
+   ],
+   "checksum_ok": true,
+   "checksum": "-169020000"
+  },
+  {
+   "program": "contracts",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.01692390966796875,
+    0.016878581054687508,
+    0.016840229980468774,
+    0.017672525878906248,
+    0.017317382812499976,
+    0.01715460205078123,
+    0.017181701660156257,
+    0.017351460937500007,
+    0.01745015478515627
+   ],
+   "median_ms": 0.017181701660156257,
+   "process_medians_ms": [
+    0.017181701660156257
+   ],
+   "rss_bytes": 40058880,
+   "process_rss_bytes": [
+    40058880
+   ],
+   "checksum_ok": true,
+   "checksum": "85000"
+  },
+  {
+   "program": "countdown",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.0034592996826171875,
+    0.003423589050292969,
+    0.003437522888183591,
+    0.0034443638916015623,
+    0.0034066289672851566,
+    0.003440053283691409,
+    0.0035450566406249953,
+    0.0034278081665039054,
+    0.003414446472167966
+   ],
+   "median_ms": 0.003437522888183591,
+   "process_medians_ms": [
+    0.003437522888183591
+   ],
+   "rss_bytes": 50118656,
+   "process_rss_bytes": [
+    50118656
+   ],
+   "checksum_ok": true,
+   "checksum": "500501"
+  },
+  {
+   "program": "spectral_norm",
+   "variant": "go",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 50,
+   "samples_ms": [
+    0.0945142421875,
+    0.094956462890625,
+    0.094514486328125,
+    0.094115642578125,
+    0.0942884921875,
+    0.095324625,
+    0.095991375,
+    0.09456103515625,
+    0.095053060546875
+   ],
+   "median_ms": 0.09456103515625,
+   "process_medians_ms": [
+    0.09456103515625
+   ],
+   "rss_bytes": 11452416,
+   "process_rss_bytes": [
+    11452416
+   ],
+   "checksum_ok": true,
+   "checksum": "1274193837"
+  },
+  {
+   "program": "contracts_plain",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.001215356201171875,
+    0.0011978569030761718,
+    0.0012439295349121107,
+    0.0012151641845703134,
+    0.0012403500976562506,
+    0.0012543055114746099,
+    0.0012472292480468737,
+    0.0012129313049316394,
+    0.0012192624511718764
+   ],
+   "median_ms": 0.0012192624511718764,
+   "process_medians_ms": [
+    0.0012192624511718764
+   ],
+   "rss_bytes": 49577984,
+   "process_rss_bytes": [
+    49577984
+   ],
+   "checksum_ok": true,
+   "checksum": "8440"
+  },
+  {
+   "program": "spectral_norm",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100,
+   "samples_ms": [
+    5.7028437499999995,
+    6.050145874999998,
+    5.7404009999999985,
+    5.134260499999996,
+    5.248937499999997,
+    5.206354250000004,
+    5.153323,
+    5.192796874999999,
+    5.199416624999998
+   ],
+   "median_ms": 5.206354250000004,
+   "process_medians_ms": [
+    5.206354250000004
+   ],
+   "rss_bytes": 50151424,
+   "process_rss_bytes": [
+    50151424
+   ],
+   "checksum_ok": true,
+   "checksum": "1274219991"
+  },
+  {
+   "program": "json_validate",
+   "variant": "rust",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.3827454375,
+    0.38154557031249997,
+    0.380962890625,
+    0.37798600000000004,
+    0.3819501953125,
+    0.3805299453125,
+    0.3760843125,
+    0.380378578125,
+    0.37984700781249997
+   ],
+   "median_ms": 0.3805299453125,
+   "process_medians_ms": [
+    0.3805299453125
+   ],
+   "rss_bytes": 2637824,
+   "process_rss_bytes": [
+    2637824
+   ],
+   "checksum_ok": true,
+   "checksum": "597442"
+  },
+  {
+   "program": "json_validate",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100,
+   "samples_ms": [
+    0.07895987890625,
+    0.07807275390625001,
+    0.07949365234375005,
+    0.07940519335937501,
+    0.07914575195312512,
+    0.08085327148437504,
+    0.07950407031250006,
+    0.08002807617187502,
+    0.08121940039062503
+   ],
+   "median_ms": 0.07949365234375005,
+   "process_medians_ms": [
+    0.07949365234375005
+   ],
+   "rss_bytes": 74137600,
+   "process_rss_bytes": [
+    74137600
+   ],
+   "checksum_ok": true,
+   "checksum": "20340"
+  },
+  {
+   "program": "fib",
+   "variant": "go",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 20,
+   "samples_ms": [
+    0.01481005859375,
+    0.014674072265625,
+    0.01495845556640625,
+    0.01482552099609375,
+    0.01481087255859375,
+    0.01470762109375,
+    0.01482969140625,
+    0.0146490478515625,
+    0.0152882490234375
+   ],
+   "median_ms": 0.01481087255859375,
+   "process_medians_ms": [
+    0.01481087255859375
+   ],
+   "rss_bytes": 5046272,
+   "process_rss_bytes": [
+    5046272
+   ],
+   "checksum_ok": true,
+   "checksum": "6765"
+  },
+  {
+   "program": "tokenizer",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.22655941015625003,
+    0.39747965625000004,
+    0.6103826523437501,
+    0.89953857421875,
+    0.7115680312500001,
+    0.8640310859375004,
+    0.9219874687500003,
+    0.5495346679687501,
+    0.37704687500000045
+   ],
+   "median_ms": 0.6103826523437501,
+   "process_medians_ms": [
+    0.6103826523437501
+   ],
+   "rss_bytes": 71876608,
+   "process_rss_bytes": [
+    71876608
+   ],
+   "checksum_ok": true,
+   "checksum": "46325"
+  },
+  {
+   "program": "contracts",
+   "variant": "rust",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.0003190800323486328,
+    0.0003159497604370117,
+    0.00039291127014160155,
+    0.0008026301040649414,
+    0.0014253005981445313,
+    0.0011077779083251953,
+    0.0008964786529541016,
+    0.0004192365036010742,
+    0.0006348028182983399
+   ],
+   "median_ms": 0.0006348028182983399,
+   "process_medians_ms": [
+    0.0006348028182983399
+   ],
+   "rss_bytes": 2080768,
+   "process_rss_bytes": [
+    2080768
+   ],
+   "checksum_ok": true,
+   "checksum": "8440"
+  },
+  {
+   "program": "spectral_norm",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100,
+   "samples_ms": [
+    1.5038893281249992,
+    0.9140657500000007,
+    0.8411862031249999,
+    0.8670019531249995,
+    0.8548313749999998,
+    1.0152786406250005,
+    1.1045358125,
+    0.49408464062499924,
+    0.45383918749999985
+   ],
+   "median_ms": 0.8670019531249995,
+   "process_medians_ms": [
+    0.8670019531249995
+   ],
+   "rss_bytes": 50806784,
+   "process_rss_bytes": [
+    50806784
+   ],
+   "checksum_ok": true,
+   "checksum": "1274219991"
+  },
+  {
+   "program": "deltablue",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100,
+   "samples_ms": [
+    0.4051748046874999,
+    0.23084130859374996,
+    0.25115950781249996,
+    0.28930371093749985,
+    0.20949641796874996,
+    0.2132324218749999,
+    0.1648499335937501,
+    0.1172828749999999,
+    0.07825097656249991
+   ],
+   "median_ms": 0.2132324218749999,
+   "process_medians_ms": [
+    0.2132324218749999
+   ],
+   "rss_bytes": 83263488,
+   "process_rss_bytes": [
+    83263488
+   ],
+   "checksum_ok": true,
+   "checksum": "355776"
+  },
+  {
+   "program": "countdown",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.024721781249999963,
+    0.05652878808593753,
+    0.02637595605468751,
+    0.04156599951171874,
+    0.07606416845703123,
+    0.04200911425781245,
+    0.05403186035156249,
+    0.05182415771484372,
+    0.029053751953124984
+   ],
+   "median_ms": 0.04200911425781245,
+   "process_medians_ms": [
+    0.04200911425781245
+   ],
+   "rss_bytes": 55787520,
+   "process_rss_bytes": [
+    55787520
+   ],
+   "checksum_ok": true,
+   "checksum": "50005001"
+  },
+  {
+   "program": "spectral_norm",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 50,
+   "samples_ms": [
+    7.330330749999998,
+    2.887765625,
+    3.1742604374999956,
+    4.0736614375,
+    3.8019739374999943,
+    2.3219401250000047,
+    2.6911406249999956,
+    2.3233828125000002,
+    3.7525729374999983
+   ],
+   "median_ms": 3.1742604374999956,
+   "process_medians_ms": [
+    3.1742604374999956
+   ],
+   "rss_bytes": 46743552,
+   "process_rss_bytes": [
+    46743552
+   ],
+   "checksum_ok": true,
+   "checksum": "1274193837"
+  },
+  {
+   "program": "tokenizer",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    1.1293346562500002,
+    1.2910416875,
+    0.7774140625000001,
+    1.2526562499999994,
+    1.4143059999999998,
+    0.6409049375000002,
+    0.6335377812499985,
+    0.6402669062500017,
+    0.6336198124999974
+   ],
+   "median_ms": 0.7774140625000001,
+   "process_medians_ms": [
+    0.7774140625000001
+   ],
+   "rss_bytes": 121389056,
+   "process_rss_bytes": [
+    121389056
+   ],
+   "checksum_ok": true,
+   "checksum": "463250"
+  }
+ ]
+}

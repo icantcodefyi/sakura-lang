@@ -1,0 +1,49 @@
+.................[oracle] map_set sakura/node
+[oracle] map_set js/node
+[1/8] map_set:int sakura/node n=1000
+[2/8] map_set:string js/node n=1000
+[3/8] map_set js/node n=1000
+[4/8] map_set:int js/node n=1000
+[5/8] map_set:tuple js/node n=1000
+[6/8] map_set sakura/node n=1000
+[7/8] map_set:string sakura/node n=1000
+[8/8] map_set:tuple sakura/node n=1000
+[load] not quiet: one-minute load 18.27 > 3; busy: go, sakura
+wrote /var/folders/nz/sh4b0_xs0q17580csxlh5_s00000gn/T/tmp1pfs3doc/run.json
+..[oracle] fib sakura/node
+[FAIL] fib sakura/node: oracle failed: run(20) = 6765, expected 6766
+[oracle] fib js/node
+[FAIL] fib js/node: oracle failed: run(20) = 6765, expected 6766
+[load] not quiet: one-minute load 18.27 > 3; busy: sakura
+wrote /var/folders/nz/sh4b0_xs0q17580csxlh5_s00000gn/T/tmpyfbvl202/out.json
+....[oracle] p sakura/node
+[1/1] p sakura/node n=1
+[load] not quiet: one-minute load 4.50 > 3; busy: rustc
+wrote /var/folders/nz/sh4b0_xs0q17580csxlh5_s00000gn/T/tmp_kg75bsd/run.json
+..[oracle] p sakura/node
+[1/5] p sakura/node n=1
+[2/5] p sakura/node n=1
+[3/5] p sakura/node n=1
+[4/5] p sakura/node n=1
+[5/5] p sakura/node n=1
+[load] not quiet: one-minute load 18.27 > 3; busy: sakura
+wrote /var/folders/nz/sh4b0_xs0q17580csxlh5_s00000gn/T/tmpszxu6kl5/run.json
+..................
+----------------------------------------------------------------------
+Ran 43 tests in 3.631s
+
+OK
+| Program | n | sakura/node ms | js/node ms | ratio node |
+|---|---:|---:|---:|---:|
+| map_set | 1000 | 1 | 1 | 1.00× |
+| map_set:int | 1000 | 1 | 1 | 1.00× |
+| map_set:string | 1000 | 1 | 1 | 1.00× |
+| map_set:tuple | 1000 | 1 | 1 | 1.00× |
+| Program | n |
+|---|---:|
+| Program | n | sakura/node ms | ratio node |
+|---|---:|---:|---:|
+| p | 1 | 1 | — |
+| Program | n | sakura/node ms | ratio node |
+|---|---:|---:|---:|
+| p | 1 | 1 | — |

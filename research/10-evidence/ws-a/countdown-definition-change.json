@@ -1,0 +1,24 @@
+{
+  "old": {
+    "commit": "2008fb68f47a5d9b155f230dc27fee4c33c61743",
+    "algorithm": "descending sum and parity loops with unchecked Number arithmetic, sum before parity",
+    "git_blobs": {
+      "bench/programs/countdown/sakura/main.sakura": "d2653575e5ff57904380286632ef518b5a59b365",
+      "bench/programs/countdown/js/main.mjs": "1681e24f6e5705899cdc9c5650de22fa29697618",
+      "bench/programs/countdown/meta.toml": "ebdc4b59cee8db8712664a44fe6c037005547109"
+    }
+  },
+  "new": {
+    "commit": "fba399f149ec05572230035c19e5e4d6004b7488",
+    "algorithm": "parity then descending sum in Sakura evaluation order; Number.isSafeInteger after each decrement, sum and final addition",
+    "git_blobs": {
+      "bench/programs/countdown/sakura/main.sakura": "d2653575e5ff57904380286632ef518b5a59b365",
+      "bench/programs/countdown/js/main.mjs": "29e095e97487eb9e22878294d3849b6e99a0191e",
+      "bench/programs/countdown/meta.toml": "ebdc4b59cee8db8712664a44fe6c037005547109"
+    }
+  },
+  "decision": "Exclude all pre-change countdown ratios from every comparison and noise summary; retain raw historical evidence. This is a benchmark-definition boundary, not a compiler optimisation.",
+  "basis": "docs/design.md §17.150; docs/plans/performance-r1.md §9 WS-S10",
+  "checksums": "Unchanged meta.toml blob; all nine oracle sizes checked, including correctness-only n=1000000.",
+  "validation": "wss10-validation.md"
+}

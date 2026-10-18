@@ -63,6 +63,17 @@ def main():
              'only exercised macOS and the expensive native panel. It was cancelled after the dedicated '
              'noise jobs succeeded to avoid unnecessary runner use; it is not counted as passed or used '
              'in the noise analysis. [Recorded status](ci-dispatch.json).', '',
+             '**WS-S10 compatibility boundaries (§17.150):** nbody now uses persistent\n'
+             "`List.set` instead of slice/push/concat, and countdown's hand-JS control now\n"
+             'checks each arithmetic operation. Their pre-change ratios, including the\n'
+             "historical candidate's cells, are excluded from all comparisons and noise\n"
+             'summaries; retain all raw runs. The existing local/CI noise subsets contain\n'
+             'neither program, so their statistics are unaffected. See\n'
+             '[nbody source identities](nbody-definition-change.json),\n'
+             '[countdown source identities](countdown-definition-change.json), and the\n'
+             '[all-control check-placement audit](wss10-control-audit.md). These changes\n'
+             'are benchmark-definition boundaries, not compiler optimisations or ceiling\n'
+             'acceptance. A new quiet-window run is required for adoption of those cells.\n', '',
              '**Sieve compatibility boundary:** `5b10553` replaced full-list clearing passes with indexed '
              'clearing from p² using `List.set`, in Sakura and every control/port. All earlier sieve '
              'ratios—including WS-B’s 2026-10-18 reference files and the raw local noise series—measure '

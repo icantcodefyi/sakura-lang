@@ -181,6 +181,27 @@ JS controls for `handled_*` are closure calls on a stateful object (research/10
    CI job reruns programs selected by `confirmation_programs` (a timing block or an initial
    Node RSS crossing) once with `--filter` and `--processes 5`, then passes both files.
 
+## WS-S10 definition boundaries (§17.150)
+
+Nbody's persistent update helper now calls `List.set`; its five-body system,
+pair traversal, Float operation order and checksum are unchanged. The helper's
+indices are always valid: momentum uses 0 in the five-element system; advance
+uses `0 <= i < 5` and `i < j < 5`; updates and the final map preserve length.
+This replaces a legacy slice/push/concat idiom, not a compiler optimisation or
+a general rewrite for clamped/out-of-range slices.
+
+Countdown's hand-JS control checks `Number.isSafeInteger` immediately after
+both loops' decrements, each accumulation and the final parity addition. It
+computes parity before the sum and checks the sum loop's next index before
+its accumulator, following Sakura's evaluation order. Checksums are unchanged.
+
+The [nbody](../research/10-evidence/ws-a/nbody-definition-change.json) and
+[countdown](../research/10-evidence/ws-a/countdown-definition-change.json)
+records pin both definitions. Exclude all pre-change ratios for these programs
+from comparisons and noise summaries; preserve raw historical runs. Existing
+candidate cells for these programs require a fresh quiet-window measurement.
+See the boundary rows in [deltas.md](deltas.md); no baseline is blessed here.
+
 ## Methodology
 
 ### What a number means
@@ -214,9 +235,13 @@ run is one ratio observation, not 45 independent ratio observations.
 
 The `matched` flag records the requested lane; oracle agreement alone is not a complete
 semantic audit of algorithms, aliases or arithmetic checks. The hand-JS `fib` control,
-for example, uses raw `Number` arithmetic over the safe-input corpus. Review overflow-check
-placement against §17.109 before treating these results as a full matching-semantics
-claim. The concrete DeltaBlue validation-work discrepancy is recorded with the candidate.
+for example, uses raw `Number` arithmetic over the safe-input corpus. The
+[WS-S10 audit](../research/10-evidence/ws-a/wss10-control-audit.md) records check placement
+for all fifteen families, including the handled variants and contract-free companion.
+Countdown now checks each decrement, sum and final addition; other omissions remain
+explicit matching gaps. Review overflow-check placement against §17.109 before treating
+these results as a full matching-semantics claim. The concrete DeltaBlue validation-work
+discrepancy is recorded with the candidate.
 
 ### Repetition and load recording
 

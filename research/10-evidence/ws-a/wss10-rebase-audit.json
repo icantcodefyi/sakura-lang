@@ -1,0 +1,9 @@
+{
+  "upstream_commit": "2170ad7ace1bd7e4da04054f1e632e980ede934a",
+  "git_blobs": {
+    "bench/programs/map_set/js/main.mjs": "ecc7316842538b76eb7878a66a4a84c8dd9b06f4",
+    "bench/programs/map_set/sakura/main.sakura": "a6565170265a1dad3122f056e0291fa2a3672147",
+    "bench/programs/map_set/meta.toml": "4499b0fa1480d3177e27423df89e7ddcbda7dd15"
+  },
+  "finding": "WS-B10 adds run_int/run_string/run_tuple; their arithmetic is raw Number arithmetic, with the same missing overflow checks as the aggregate map_set control. Original aggregate checksums are unchanged; new per-key-kind cases are checked separately after rebase."
+}

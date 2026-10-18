@@ -1,0 +1,1664 @@
+{
+ "schema": "sakura-bench-v1",
+ "meta": {
+  "commit": "2e13a6b70837faba66ddcc2916904e48b5db6f39",
+  "dirty": false,
+  "host": {
+   "id": "d88970189598",
+   "cpu": "Apple M4 Pro",
+   "os": "Darwin 27.2.0 arm64",
+   "mem_bytes": 25769803776,
+   "quiet": false,
+   "load": {
+    "quiet": false,
+    "ci": false,
+    "threshold": 3.0,
+    "logical_cpus": 12,
+    "interval_s": 15,
+    "max_load_1m": 17.5302734375,
+    "reasons": [
+     "one-minute load 17.53 > 3",
+     "busy: node, rustc, sakura"
+    ],
+    "snapshots": [
+     {
+      "utc": "2026-10-18T06:26:30Z",
+      "load_1m": 17.5302734375,
+      "busiest": [
+       {
+        "executable": "differential-955d91781d5114c1",
+        "cpu_percent": 98.9
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 18.9
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 12.0
+       },
+       {
+        "executable": "WindowServer",
+        "cpu_percent": 11.9
+       },
+       {
+        "executable": "XprotectService",
+        "cpu_percent": 10.6
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 9.3
+       },
+       {
+        "executable": "Google Chrome Helper",
+        "cpu_percent": 6.9
+       },
+       {
+        "executable": "Google Chrome Helper",
+        "cpu_percent": 6.2
+       },
+       {
+        "executable": "com.apple.DriverKit-AppleBCMWLAN",
+        "cpu_percent": 5.4
+       },
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 4.7
+       },
+       {
+        "executable": "T3 Code (Nightly)",
+        "cpu_percent": 4.5
+       },
+       {
+        "executable": "T3 Code (Nightly) Helper (Renderer)",
+        "cpu_percent": 3.2
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T06:26:45Z",
+      "load_1m": 17.24267578125,
+      "busiest": [
+       {
+        "executable": "node",
+        "cpu_percent": 65.3
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 62.7
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 54.1
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 54.1
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 53.3
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 49.0
+       },
+       {
+        "executable": "WindowServer",
+        "cpu_percent": 48.5
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 47.3
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 42.8
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 40.9
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 39.9
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 38.1
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T06:27:00Z",
+      "load_1m": 16.43115234375,
+      "busiest": [
+       {
+        "executable": "rustc",
+        "cpu_percent": 35.2
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 34.9
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 31.8
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 29.8
+       },
+       {
+        "executable": "mds",
+        "cpu_percent": 29.4
+       },
+       {
+        "executable": "(rustc)",
+        "cpu_percent": 27.6
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 27.5
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 26.7
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 26.3
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 25.9
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 20.7
+       },
+       {
+        "executable": "fseventsd",
+        "cpu_percent": 18.5
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T06:27:09Z",
+      "load_1m": 17.197265625,
+      "busiest": [
+       {
+        "executable": "m3-c83f943033ced849",
+        "cpu_percent": 275.1
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 39.0
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 35.1
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 34.9
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 34.6
+       },
+       {
+        "executable": "corpus-48481979b53372d5",
+        "cpu_percent": 33.3
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 32.4
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 21.0
+       },
+       {
+        "executable": "WindowServer",
+        "cpu_percent": 13.9
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 13.1
+       },
+       {
+        "executable": "Google Chrome",
+        "cpu_percent": 8.8
+       },
+       {
+        "executable": "fseventsd",
+        "cpu_percent": 6.1
+       }
+      ]
+     }
+    ]
+   }
+  },
+  "engines": {
+   "node": "26.11.0",
+   "bun": "1.4.3",
+   "rustc": "1.99.1",
+   "go": "1.27.2",
+   "ocaml": "5.5.1",
+   "koka": "3.2.9",
+   "hyperfine": "2.0.0"
+  },
+  "flags": {
+   "suite": "all",
+   "engines": [
+    "node",
+    "bun"
+   ],
+   "lane": "matched",
+   "sizes": "quick",
+   "stable": false,
+   "filter": "[cn]*",
+   "processes": 1,
+   "seed": 20261018
+  },
+  "seed": 20261018,
+  "started": "2026-10-18T06:26:25Z",
+  "missing": [],
+  "failures": []
+ },
+ "results": [
+  {
+   "program": "contracts",
+   "variant": "rust",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.0033231964111328127,
+    0.0030927835693359373,
+    0.00315646875,
+    0.0031217244873046877,
+    0.003104771911621094,
+    0.0030907720336914063,
+    0.0030171381835937504,
+    0.0034992141723632813,
+    0.003332794189453125
+   ],
+   "median_ms": 0.0031217244873046877,
+   "process_medians_ms": [
+    0.0031217244873046877
+   ],
+   "rss_bytes": 2080768,
+   "process_rss_bytes": [
+    2080768
+   ],
+   "checksum_ok": true,
+   "checksum": "85000"
+  },
+  {
+   "program": "countdown",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.0007881603240966796,
+    0.0008340873718261713,
+    0.0008123327789306646,
+    0.0008463885040283191,
+    0.001028144195556642,
+    0.0011804110260009767,
+    0.0008247693328857428,
+    0.0008280366210937501,
+    0.0008279889373779305
+   ],
+   "median_ms": 0.0008280366210937501,
+   "process_medians_ms": [
+    0.0008280366210937501
+   ],
+   "rss_bytes": 41009152,
+   "process_rss_bytes": [
+    41009152
+   ],
+   "checksum_ok": true,
+   "checksum": "500501"
+  },
+  {
+   "program": "contracts",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.04760465527343749,
+    0.0488480224609375,
+    0.04776017285156248,
+    0.047488281249999986,
+    0.0473850908203125,
+    0.09575927734375,
+    0.1505901279296875,
+    0.12131652832031248,
+    0.2486964521484375
+   ],
+   "median_ms": 0.0488480224609375,
+   "process_medians_ms": [
+    0.0488480224609375
+   ],
+   "rss_bytes": 41926656,
+   "process_rss_bytes": [
+    41926656
+   ],
+   "checksum_ok": true,
+   "checksum": "85000"
+  },
+  {
+   "program": "nbody",
+   "variant": "go",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.037294595703125,
+    0.0376221513671875,
+    0.03738057421875,
+    0.039130453125,
+    0.03851806640625,
+    0.04110205078125,
+    0.0451360673828125,
+    0.051886271484375,
+    0.06767146875
+   ],
+   "median_ms": 0.039130453125,
+   "process_medians_ms": [
+    0.039130453125
+   ],
+   "rss_bytes": 5079040,
+   "process_rss_bytes": [
+    5079040
+   ],
+   "checksum_ok": true,
+   "checksum": "-169087605"
+  },
+  {
+   "program": "contracts_plain",
+   "variant": "go",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.0066773173828125,
+    0.007075505493164063,
+    0.0066026103515625,
+    0.00670623779296875,
+    0.006715347290039062,
+    0.00649266552734375,
+    0.006482889770507812,
+    0.006533299682617188,
+    0.006361063598632813
+   ],
+   "median_ms": 0.0066026103515625,
+   "process_medians_ms": [
+    0.0066026103515625
+   ],
+   "rss_bytes": 5095424,
+   "process_rss_bytes": [
+    5095424
+   ],
+   "checksum_ok": true,
+   "checksum": "85000"
+  },
+  {
+   "program": "countdown",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.003467005371093755,
+    0.003429066894531249,
+    0.00345172119140625,
+    0.003443079589843745,
+    0.003398513793945311,
+    0.0033632406005859386,
+    0.003399012207031246,
+    0.0034400889892578085,
+    0.003442459106445306
+   ],
+   "median_ms": 0.0034400889892578085,
+   "process_medians_ms": [
+    0.0034400889892578085
+   ],
+   "rss_bytes": 50429952,
+   "process_rss_bytes": [
+    50429952
+   ],
+   "checksum_ok": true,
+   "checksum": "500501"
+  },
+  {
+   "program": "contracts",
+   "variant": "go",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.0009747352600097656,
+    0.0009858970642089844,
+    0.0009388618469238281,
+    0.000967681884765625,
+    0.000942541748046875,
+    0.0009664382934570313,
+    0.0009686025085449218,
+    0.0009620246887207031,
+    0.0009524218139648437
+   ],
+   "median_ms": 0.0009664382934570313,
+   "process_medians_ms": [
+    0.0009664382934570313
+   ],
+   "rss_bytes": 5292032,
+   "process_rss_bytes": [
+    5292032
+   ],
+   "checksum_ok": true,
+   "checksum": "8440"
+  },
+  {
+   "program": "nbody",
+   "variant": "go",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 5000,
+   "samples_ms": [
+    0.18138737109375,
+    0.17765511328125,
+    0.17842252734375,
+    0.17925894921875,
+    0.176428546875,
+    0.17794384765625,
+    0.1759920234375,
+    0.17701806640625,
+    0.17512451171875
+   ],
+   "median_ms": 0.17765511328125,
+   "process_medians_ms": [
+    0.17765511328125
+   ],
+   "rss_bytes": 5210112,
+   "process_rss_bytes": [
+    5210112
+   ],
+   "checksum_ok": true,
+   "checksum": "-169020000"
+  },
+  {
+   "program": "contracts_plain",
+   "variant": "go",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.0006332899627685546,
+    0.0006334222106933594,
+    0.0006279640197753906,
+    0.0006259848327636718,
+    0.0006341959533691406,
+    0.0006260662078857421,
+    0.0006581306457519531,
+    0.0006337629852294922,
+    0.000638943359375
+   ],
+   "median_ms": 0.0006334222106933594,
+   "process_medians_ms": [
+    0.0006334222106933594
+   ],
+   "rss_bytes": 4980736,
+   "process_rss_bytes": [
+    4980736
+   ],
+   "checksum_ok": true,
+   "checksum": "8440"
+  },
+  {
+   "program": "countdown",
+   "variant": "go",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.005110356689453125,
+    0.005122589111328125,
+    0.00514493310546875,
+    0.005138168334960938,
+    0.00515018212890625,
+    0.005135472534179688,
+    0.005196044921875,
+    0.00517322802734375,
+    0.005140787719726562
+   ],
+   "median_ms": 0.005140787719726562,
+   "process_medians_ms": [
+    0.005140787719726562
+   ],
+   "rss_bytes": 5029888,
+   "process_rss_bytes": [
+    5029888
+   ],
+   "checksum_ok": true,
+   "checksum": "50005001"
+  },
+  {
+   "program": "countdown",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.0022714716186523452,
+    0.0022981999511718747,
+    0.0022549412841796866,
+    0.0023124618530273415,
+    0.0022466990356445303,
+    0.0022411015625000003,
+    0.002218139648437499,
+    0.002237841247558596,
+    0.0022217153320312558
+   ],
+   "median_ms": 0.0022466990356445303,
+   "process_medians_ms": [
+    0.0022466990356445303
+   ],
+   "rss_bytes": 56410112,
+   "process_rss_bytes": [
+    56410112
+   ],
+   "checksum_ok": true,
+   "checksum": "500501"
+  },
+  {
+   "program": "nbody",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.682399078125,
+    0.714120453125,
+    0.715319015625,
+    0.7031731718750001,
+    0.7286067656250008,
+    0.745805984375,
+    0.7344628906250001,
+    0.7017701874999993,
+    0.7907506406250011
+   ],
+   "median_ms": 0.715319015625,
+   "process_medians_ms": [
+    0.715319015625
+   ],
+   "rss_bytes": 49856512,
+   "process_rss_bytes": [
+    49856512
+   ],
+   "checksum_ok": true,
+   "checksum": "-169087605"
+  },
+  {
+   "program": "contracts",
+   "variant": "rust",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.000348080322265625,
+    0.00036026700592041016,
+    0.0003421627655029297,
+    0.00047113768005371093,
+    0.0003389501571655273,
+    0.00033690612030029294,
+    0.0003374160079956055,
+    0.00033490339660644533,
+    0.0003375317306518555
+   ],
+   "median_ms": 0.0003389501571655273,
+   "process_medians_ms": [
+    0.0003389501571655273
+   ],
+   "rss_bytes": 2080768,
+   "process_rss_bytes": [
+    2080768
+   ],
+   "checksum_ok": true,
+   "checksum": "8440"
+  },
+  {
+   "program": "contracts",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.05095418261718748,
+    0.04964388085937499,
+    0.048074014648437524,
+    0.049121866210937504,
+    0.04884090234375005,
+    0.04904244042968742,
+    0.04855830859374999,
+    0.047817993164062544,
+    0.04991154003906251
+   ],
+   "median_ms": 0.04904244042968742,
+   "process_medians_ms": [
+    0.04904244042968742
+   ],
+   "rss_bytes": 55738368,
+   "process_rss_bytes": [
+    55738368
+   ],
+   "checksum_ok": true,
+   "checksum": "85000"
+  },
+  {
+   "program": "contracts_plain",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.02374204541015626,
+    0.024526712890624996,
+    0.023798156738281256,
+    0.02445149755859377,
+    0.024172994140625015,
+    0.022790222167968777,
+    0.02386893701171877,
+    0.02371173095703122,
+    0.023781291015624983
+   ],
+   "median_ms": 0.023798156738281256,
+   "process_medians_ms": [
+    0.023798156738281256
+   ],
+   "rss_bytes": 55853056,
+   "process_rss_bytes": [
+    55853056
+   ],
+   "checksum_ok": true,
+   "checksum": "85000"
+  },
+  {
+   "program": "contracts",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.011792622802734368,
+    0.0062393085937500065,
+    0.005751261474609387,
+    0.00516746020507812,
+    0.006096445800781239,
+    0.00498424267578125,
+    0.004986592529296882,
+    0.017045583007812518,
+    0.014985982421875016
+   ],
+   "median_ms": 0.006096445800781239,
+   "process_medians_ms": [
+    0.006096445800781239
+   ],
+   "rss_bytes": 56426496,
+   "process_rss_bytes": [
+    56426496
+   ],
+   "checksum_ok": true,
+   "checksum": "8440"
+  },
+  {
+   "program": "countdown",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.00910488891601563,
+    0.009108347656250002,
+    0.008270568847656243,
+    0.007918477539062496,
+    0.008186920166015618,
+    0.007868357421875,
+    0.007823130126953126,
+    0.007854593994140624,
+    0.008113759277343757
+   ],
+   "median_ms": 0.008113759277343757,
+   "process_medians_ms": [
+    0.008113759277343757
+   ],
+   "rss_bytes": 38436864,
+   "process_rss_bytes": [
+    38436864
+   ],
+   "checksum_ok": true,
+   "checksum": "50005001"
+  },
+  {
+   "program": "countdown",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.0026627832946777338,
+    0.001645604461669923,
+    0.0023217608032226576,
+    0.0034588356018066396,
+    0.0022605349426269503,
+    0.0022847442626953117,
+    0.0035200513000488293,
+    0.003342830657958984,
+    0.004466454803466795
+   ],
+   "median_ms": 0.0026627832946777338,
+   "process_medians_ms": [
+    0.0026627832946777338
+   ],
+   "rss_bytes": 50069504,
+   "process_rss_bytes": [
+    50069504
+   ],
+   "checksum_ok": true,
+   "checksum": "500501"
+  },
+  {
+   "program": "nbody",
+   "variant": "rust",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.10157666015625,
+    0.117621013671875,
+    0.324435955078125,
+    0.13137972070312498,
+    0.03596028515625,
+    0.209853515625,
+    0.12723518749999999,
+    0.065304279296875,
+    0.0346533203125
+   ],
+   "median_ms": 0.117621013671875,
+   "process_medians_ms": [
+    0.117621013671875
+   ],
+   "rss_bytes": 2048000,
+   "process_rss_bytes": [
+    2048000
+   ],
+   "checksum_ok": true,
+   "checksum": "-169087605"
+  },
+  {
+   "program": "nbody",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 5000,
+   "samples_ms": [
+    5.542072875000002,
+    4.381619749999999,
+    4.1753750000000025,
+    4.431437500000001,
+    4.903156249999995,
+    3.564895875000005,
+    3.402130249999999,
+    3.605682250000001,
+    3.3996353750000026
+   ],
+   "median_ms": 4.1753750000000025,
+   "process_medians_ms": [
+    4.1753750000000025
+   ],
+   "rss_bytes": 61440000,
+   "process_rss_bytes": [
+    61440000
+   ],
+   "checksum_ok": true,
+   "checksum": "-169020000"
+  },
+  {
+   "program": "nbody",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.05536938476562503,
+    0.06454012109374996,
+    0.05846052929687506,
+    0.06387947460937504,
+    0.062198078125,
+    0.05407161523437498,
+    0.08483789062500002,
+    0.07128979492187493,
+    0.08885066601562497
+   ],
+   "median_ms": 0.06387947460937504,
+   "process_medians_ms": [
+    0.06387947460937504
+   ],
+   "rss_bytes": 50167808,
+   "process_rss_bytes": [
+    50167808
+   ],
+   "checksum_ok": true,
+   "checksum": "-169087605"
+  },
+  {
+   "program": "contracts",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.009127487182617189,
+    0.0037067260742187497,
+    0.005840169311523438,
+    0.02030536389160157,
+    0.007564590454101572,
+    0.0036834259033203115,
+    0.00457587683105469,
+    0.0032295278320312593,
+    0.003514755249023435
+   ],
+   "median_ms": 0.00457587683105469,
+   "process_medians_ms": [
+    0.00457587683105469
+   ],
+   "rss_bytes": 44400640,
+   "process_rss_bytes": [
+    44400640
+   ],
+   "checksum_ok": true,
+   "checksum": "8440"
+  },
+  {
+   "program": "contracts_plain",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.013822326660156259,
+    0.028408935546874986,
+    0.017123555175781263,
+    0.015166341308593734,
+    0.015402424804687509,
+    0.01356524658203126,
+    0.03386897802734379,
+    0.013333618164062477,
+    0.021701700683593728
+   ],
+   "median_ms": 0.015402424804687509,
+   "process_medians_ms": [
+    0.015402424804687509
+   ],
+   "rss_bytes": 39796736,
+   "process_rss_bytes": [
+    39796736
+   ],
+   "checksum_ok": true,
+   "checksum": "85000"
+  },
+  {
+   "program": "nbody",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 5000,
+   "samples_ms": [
+    12.5867395,
+    7.013749999999995,
+    8.239218749999992,
+    5.700015625000006,
+    4.748088500000009,
+    4.6329948750000085,
+    3.5959843750000005,
+    3.9568281250000013,
+    3.5461562499999957
+   ],
+   "median_ms": 4.748088500000009,
+   "process_medians_ms": [
+    4.748088500000009
+   ],
+   "rss_bytes": 47792128,
+   "process_rss_bytes": [
+    47792128
+   ],
+   "checksum_ok": true,
+   "checksum": "-169020000"
+  },
+  {
+   "program": "contracts_plain",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.0014200147094726567,
+    0.0014354502563476562,
+    0.0014457384643554692,
+    0.0018105634155273446,
+    0.0018753941650390613,
+    0.001597287506103516,
+    0.0014308509826660154,
+    0.0014272753295898437,
+    0.0016348762512207043
+   ],
+   "median_ms": 0.0014457384643554692,
+   "process_medians_ms": [
+    0.0014457384643554692
+   ],
+   "rss_bytes": 44924928,
+   "process_rss_bytes": [
+    44924928
+   ],
+   "checksum_ok": true,
+   "checksum": "8440"
+  },
+  {
+   "program": "contracts",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.0019247487182617214,
+    0.001945599853515622,
+    0.0018730798950195304,
+    0.0019139582519531254,
+    0.0018883107299804691,
+    0.002009686828613279,
+    0.0024451599121093764,
+    0.0019448598022460892,
+    0.0019355748291015606
+   ],
+   "median_ms": 0.0019355748291015606,
+   "process_medians_ms": [
+    0.0019355748291015606
+   ],
+   "rss_bytes": 50298880,
+   "process_rss_bytes": [
+    50298880
+   ],
+   "checksum_ok": true,
+   "checksum": "8440"
+  },
+  {
+   "program": "countdown",
+   "variant": "rust",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.0025617955932617184,
+    0.0025423787841796874,
+    0.004346626281738281,
+    0.00257278955078125,
+    0.002560084045410156,
+    0.0025577646484375,
+    0.0026042327880859374,
+    0.002575665771484375,
+    0.002549158752441406
+   ],
+   "median_ms": 0.0025617955932617184,
+   "process_medians_ms": [
+    0.0025617955932617184
+   ],
+   "rss_bytes": 2064384,
+   "process_rss_bytes": [
+    2064384
+   ],
+   "checksum_ok": true,
+   "checksum": "50005001"
+  },
+  {
+   "program": "contracts_plain",
+   "variant": "rust",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.00031920814514160156,
+    0.00032796669006347653,
+    0.00031992308044433593,
+    0.0003162930755615234,
+    0.0003114477767944336,
+    0.0003110780715942383,
+    0.0003150428161621094,
+    0.0003168306350708008,
+    0.0003299598693847656
+   ],
+   "median_ms": 0.0003168306350708008,
+   "process_medians_ms": [
+    0.0003168306350708008
+   ],
+   "rss_bytes": 2080768,
+   "process_rss_bytes": [
+    2080768
+   ],
+   "checksum_ok": true,
+   "checksum": "8440"
+  },
+  {
+   "program": "nbody",
+   "variant": "rust",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 5000,
+   "samples_ms": [
+    0.172455890625,
+    0.17324088671875001,
+    0.17243522265625,
+    0.17362662499999998,
+    0.1730506171875,
+    0.17366373828125,
+    0.17333349609375,
+    0.17417578125,
+    0.17285026171875
+   ],
+   "median_ms": 0.17324088671875001,
+   "process_medians_ms": [
+    0.17324088671875001
+   ],
+   "rss_bytes": 2048000,
+   "process_rss_bytes": [
+    2048000
+   ],
+   "checksum_ok": true,
+   "checksum": "-169020000"
+  },
+  {
+   "program": "countdown",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.022864359375000004,
+    0.022566264160156252,
+    0.022464355468750002,
+    0.022423990722656217,
+    0.022382080078125033,
+    0.022364888183593723,
+    0.02235689257812501,
+    0.02233388281250004,
+    0.02238667773437497
+   ],
+   "median_ms": 0.02238667773437497,
+   "process_medians_ms": [
+    0.02238667773437497
+   ],
+   "rss_bytes": 55525376,
+   "process_rss_bytes": [
+    55525376
+   ],
+   "checksum_ok": true,
+   "checksum": "50005001"
+  },
+  {
+   "program": "countdown",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.015222900390624988,
+    0.015359456542968747,
+    0.015366658203124994,
+    0.015248413085937496,
+    0.01531646728515626,
+    0.015335347656249998,
+    0.015400695800781239,
+    0.015402404785156254,
+    0.015405761718750022
+   ],
+   "median_ms": 0.015359456542968747,
+   "process_medians_ms": [
+    0.015359456542968747
+   ],
+   "rss_bytes": 49283072,
+   "process_rss_bytes": [
+    49283072
+   ],
+   "checksum_ok": true,
+   "checksum": "50005001"
+  },
+  {
+   "program": "contracts_plain",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.008889780761718744,
+    0.008421640869140615,
+    0.008410644531249997,
+    0.008635467529296864,
+    0.00842625927734375,
+    0.008409616943359371,
+    0.008375935791015643,
+    0.008607472656250004,
+    0.008300709960937486
+   ],
+   "median_ms": 0.008421640869140615,
+   "process_medians_ms": [
+    0.008421640869140615
+   ],
+   "rss_bytes": 49577984,
+   "process_rss_bytes": [
+    49577984
+   ],
+   "checksum_ok": true,
+   "checksum": "85000"
+  },
+  {
+   "program": "nbody",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 5000,
+   "samples_ms": [
+    0.22930371093750002,
+    0.23102669140624998,
+    0.2307846679687502,
+    0.23103694531249985,
+    0.23031412890625003,
+    0.230514484375,
+    0.23102116015625018,
+    0.23200814062499964,
+    0.23478613281249983
+   ],
+   "median_ms": 0.23102116015625018,
+   "process_medians_ms": [
+    0.23102116015625018
+   ],
+   "rss_bytes": 49922048,
+   "process_rss_bytes": [
+    49922048
+   ],
+   "checksum_ok": true,
+   "checksum": "-169020000"
+  },
+  {
+   "program": "nbody",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 5000,
+   "samples_ms": [
+    0.2557672499999999,
+    0.25582161718749985,
+    0.25539583593750015,
+    0.2553362578125,
+    0.25527864843750026,
+    0.2552587890625002,
+    0.2560162734375,
+    0.2561282499999997,
+    0.25613346875000076
+   ],
+   "median_ms": 0.2557672499999999,
+   "process_medians_ms": [
+    0.2557672499999999
+   ],
+   "rss_bytes": 26312704,
+   "process_rss_bytes": [
+    26312704
+   ],
+   "checksum_ok": true,
+   "checksum": "-169020000"
+  },
+  {
+   "program": "nbody",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.054612548828124996,
+    0.05514611816406251,
+    0.05355985546875003,
+    0.07128308105468739,
+    0.05176782226562493,
+    0.053519531249999974,
+    0.05462520312500008,
+    0.060470906249999956,
+    0.061307617187499996
+   ],
+   "median_ms": 0.05462520312500008,
+   "process_medians_ms": [
+    0.05462520312500008
+   ],
+   "rss_bytes": 35438592,
+   "process_rss_bytes": [
+    35438592
+   ],
+   "checksum_ok": true,
+   "checksum": "-169087605"
+  },
+  {
+   "program": "contracts",
+   "variant": "go",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.009298299072265625,
+    0.00976524853515625,
+    0.010874847412109374,
+    0.0094241435546875,
+    0.0093752646484375,
+    0.009271108154296876,
+    0.010148040771484375,
+    0.010200408935546875,
+    0.010531331298828125
+   ],
+   "median_ms": 0.00976524853515625,
+   "process_medians_ms": [
+    0.00976524853515625
+   ],
+   "rss_bytes": 5439488,
+   "process_rss_bytes": [
+    5439488
+   ],
+   "checksum_ok": true,
+   "checksum": "85000"
+  },
+  {
+   "program": "nbody",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    4.022734374999999,
+    1.4860260000000025,
+    0.8412083750000008,
+    5.4988021250000045,
+    5.755145749999997,
+    1.208062499999997,
+    1.3571041249999993,
+    1.449578124999995,
+    2.704854124999997
+   ],
+   "median_ms": 1.4860260000000025,
+   "process_medians_ms": [
+    1.4860260000000025
+   ],
+   "rss_bytes": 57704448,
+   "process_rss_bytes": [
+    57704448
+   ],
+   "checksum_ok": true,
+   "checksum": "-169087605"
+  },
+  {
+   "program": "contracts_plain",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.003863067626953126,
+    0.010331705688476564,
+    0.002828480957031247,
+    0.0065149383544921835,
+    0.0023356273193359395,
+    0.018901458740234384,
+    0.005311243652343756,
+    0.004051386596679682,
+    0.007041407226562504
+   ],
+   "median_ms": 0.005311243652343756,
+   "process_medians_ms": [
+    0.005311243652343756
+   ],
+   "rss_bytes": 50593792,
+   "process_rss_bytes": [
+    50593792
+   ],
+   "checksum_ok": true,
+   "checksum": "8440"
+  },
+  {
+   "program": "contracts_plain",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.07119856249999934,
+    0.16944596875000073,
+    0.14855989062500008,
+    0.06830273437500001,
+    0.05244335937500022,
+    0.6910657656249999,
+    0.12829621875000008,
+    0.05328776562499993,
+    0.330998046875
+   ],
+   "median_ms": 0.12829621875000008,
+   "process_medians_ms": [
+    0.12829621875000008
+   ],
+   "rss_bytes": 40812544,
+   "process_rss_bytes": [
+    40812544
+   ],
+   "checksum_ok": true,
+   "checksum": "85000"
+  },
+  {
+   "program": "contracts",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.07040018652343749,
+    0.03165999316406254,
+    0.038464111328124995,
+    0.04975976562499995,
+    0.04351395703124994,
+    0.027999227539062588,
+    0.050296264648437505,
+    0.059115884765625015,
+    0.03911600781249991
+   ],
+   "median_ms": 0.04351395703124994,
+   "process_medians_ms": [
+    0.04351395703124994
+   ],
+   "rss_bytes": 49758208,
+   "process_rss_bytes": [
+    49758208
+   ],
+   "checksum_ok": true,
+   "checksum": "85000"
+  },
+  {
+   "program": "contracts_plain",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.003152399658203124,
+    0.003901479125976569,
+    0.002078389526367186,
+    0.0033684030761718733,
+    0.001874516723632813,
+    0.006012461303710942,
+    0.0013251037597656334,
+    0.0027899221191406143,
+    0.003265686035156243
+   ],
+   "median_ms": 0.003152399658203124,
+   "process_medians_ms": [
+    0.003152399658203124
+   ],
+   "rss_bytes": 49954816,
+   "process_rss_bytes": [
+    49954816
+   ],
+   "checksum_ok": true,
+   "checksum": "8440"
+  },
+  {
+   "program": "contracts",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.042241867187500226,
+    0.028224929687500122,
+    0.04050292968749991,
+    0.019697914062499766,
+    0.03470149218749974,
+    0.026266601562499936,
+    0.029556640625000075,
+    0.04767285156250001,
+    0.025907546875000076
+   ],
+   "median_ms": 0.029556640625000075,
+   "process_medians_ms": [
+    0.029556640625000075
+   ],
+   "rss_bytes": 39698432,
+   "process_rss_bytes": [
+    39698432
+   ],
+   "checksum_ok": true,
+   "checksum": "85000"
+  },
+  {
+   "program": "countdown",
+   "variant": "go",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.001347556427001953,
+    0.0019370721282958984,
+    0.0016109027862548828,
+    0.0016450850219726562,
+    0.0011000022888183593,
+    0.0007856108245849609,
+    0.0006998017578125,
+    0.0006337521820068359,
+    0.0007015209197998046
+   ],
+   "median_ms": 0.0011000022888183593,
+   "process_medians_ms": [
+    0.0011000022888183593
+   ],
+   "rss_bytes": 5341184,
+   "process_rss_bytes": [
+    5341184
+   ],
+   "checksum_ok": true,
+   "checksum": "500501"
+  },
+  {
+   "program": "countdown",
+   "variant": "rust",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.0004091326446533203,
+    0.0005658950805664063,
+    0.0004994106292724609,
+    0.0004315802307128906,
+    0.001029171615600586,
+    0.000789117172241211,
+    0.0005075677185058594,
+    0.0007704302520751954,
+    0.0008060925750732422
+   ],
+   "median_ms": 0.0005658950805664063,
+   "process_medians_ms": [
+    0.0005658950805664063
+   ],
+   "rss_bytes": 2064384,
+   "process_rss_bytes": [
+    2064384
+   ],
+   "checksum_ok": true,
+   "checksum": "500501"
+  },
+  {
+   "program": "countdown",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.037081461425781254,
+    0.015895467285156256,
+    0.017126139160156262,
+    0.01690061425781253,
+    0.02306306982421874,
+    0.01403240966796876,
+    0.017055765624999997,
+    0.012311137207031253,
+    0.016175252441406274
+   ],
+   "median_ms": 0.01690061425781253,
+   "process_medians_ms": [
+    0.01690061425781253
+   ],
+   "rss_bytes": 45154304,
+   "process_rss_bytes": [
+    45154304
+   ],
+   "checksum_ok": true,
+   "checksum": "50005001"
+  },
+  {
+   "program": "contracts",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.01222410058593748,
+    0.012584940917968773,
+    0.012363240722656266,
+    0.012230285644531241,
+    0.013492451660156224,
+    0.01346016455078125,
+    0.012737345214843737,
+    0.013084350585937488,
+    0.013360839843750028
+   ],
+   "median_ms": 0.012737345214843737,
+   "process_medians_ms": [
+    0.012737345214843737
+   ],
+   "rss_bytes": 49594368,
+   "process_rss_bytes": [
+    49594368
+   ],
+   "checksum_ok": true,
+   "checksum": "8440"
+  },
+  {
+   "program": "contracts_plain",
+   "variant": "rust",
+   "engine": "native",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.0028980356445312497,
+    0.0030594228515625,
+    0.014317871093749998,
+    0.007574040771484375,
+    0.004203623413085937,
+    0.0033877664794921877,
+    0.00434591162109375,
+    0.0031425170898437497,
+    0.004530242919921875
+   ],
+   "median_ms": 0.004203623413085937,
+   "process_medians_ms": [
+    0.004203623413085937
+   ],
+   "rss_bytes": 2064384,
+   "process_rss_bytes": [
+    2064384
+   ],
+   "checksum_ok": true,
+   "checksum": "85000"
+  },
+  {
+   "program": "contracts_plain",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.0024260686035156263,
+    0.004014556884765624,
+    0.010290809631347656,
+    0.007651326477050781,
+    0.007336891174316407,
+    0.006164952575683599,
+    0.010429372131347661,
+    0.008688794433593744,
+    0.007529301940917971
+   ],
+   "median_ms": 0.007529301940917971,
+   "process_medians_ms": [
+    0.007529301940917971
+   ],
+   "rss_bytes": 56098816,
+   "process_rss_bytes": [
+    56098816
+   ],
+   "checksum_ok": true,
+   "checksum": "8440"
+  }
+ ]
+}

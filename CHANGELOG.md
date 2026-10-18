@@ -7,6 +7,13 @@ published yet.
 
 ## [Unreleased]
 
+### Fixed
+
+- Benchmark nbody uses persistent `List.set`, and the countdown hand-JS control
+  checks arithmetic overflow in source operation order (§17.150). Checksums are
+  unchanged; pre-change ratios are excluded across these definition boundaries.
+  The WS-S10 evidence records the remaining controls' arithmetic-check gaps.
+
 ### Added
 
 - Benchmark results retain every process peak RSS, and comparisons report process medians

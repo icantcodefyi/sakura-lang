@@ -1,0 +1,22 @@
+.........[oracle] fib sakura/node
+[FAIL] fib sakura/node: oracle failed: run(20) = 6765, expected 6766
+[oracle] fib js/node
+[FAIL] fib js/node: oracle failed: run(20) = 6765, expected 6766
+wrote /var/folders/nz/sh4b0_xs0q17580csxlh5_s00000gn/T/tmpy5zl2fva/out.json
+.[oracle] p sakura/node
+[1/5] p sakura/node n=1
+[2/5] p sakura/node n=1
+[3/5] p sakura/node n=1
+[4/5] p sakura/node n=1
+[5/5] p sakura/node n=1
+wrote /var/folders/nz/sh4b0_xs0q17580csxlh5_s00000gn/T/tmp7iws22wb/run.json
+.................
+----------------------------------------------------------------------
+Ran 27 tests in 1.518s
+
+OK
+| Program | n |
+|---|---:|
+| Program | n | sakura/node ms | ratio node |
+|---|---:|---:|---:|
+| p | 1 | 1 | — |

@@ -1,0 +1,25 @@
+{
+  "old": {
+    "commit": "2008fb68f47a5d9b155f230dc27fee4c33c61743",
+    "algorithm": "five-body pairwise integration; persistent updates reconstructed with slice/push/concat",
+    "git_blobs": {
+      "bench/programs/nbody/sakura/main.sakura": "5a87d9621a7e371738a87b4c075d341b1b06831a",
+      "bench/programs/nbody/js/main.mjs": "e13fe7cc08b7bf93018b8ce2f9176c33a736556a",
+      "bench/programs/nbody/meta.toml": "5ac84a68d05eba9db3e2cc7af7fee33ce8dffb95"
+    }
+  },
+  "new": {
+    "commit": "fba399f149ec05572230035c19e5e4d6004b7488",
+    "algorithm": "same five-body integration and Float operation order; persistent updates via List.set",
+    "git_blobs": {
+      "bench/programs/nbody/sakura/main.sakura": "76c282e3f55311f50c414920205f3c9d408f6e82",
+      "bench/programs/nbody/js/main.mjs": "e13fe7cc08b7bf93018b8ce2f9176c33a736556a",
+      "bench/programs/nbody/meta.toml": "5ac84a68d05eba9db3e2cc7af7fee33ce8dffb95"
+    }
+  },
+  "decision": "Exclude all pre-change nbody ratios from every comparison and noise summary; retain raw historical evidence. This is a benchmark-definition boundary, not a compiler optimisation.",
+  "basis": "docs/design.md §17.150; docs/plans/performance-r1.md §9 WS-S10",
+  "checksums": "Unchanged meta.toml blob; all eight oracle sizes checked.",
+  "validation": "wss10-validation.md",
+  "compatibility": "system() has five bodies; momentum updates index 0; advance updates 0 <= i < 5 and i < j < 5; updates and map preserve length. Persistent List.set retains value semantics. No claim of equivalence for arbitrary out-of-range uses of the old clamped slice helper."
+}

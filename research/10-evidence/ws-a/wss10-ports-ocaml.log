@@ -1,0 +1,5 @@
+ocaml/matched/reuse binary_trees: 8 oracles, 9 samples, bounds OK
+ocaml/matched/reuse map_set: 8 oracles, 9 samples, bounds OK
+ocaml/matched/reuse pipeline: 8 oracles, 9 samples, bounds OK
+ocaml/matched/reuse rbtree: 8 oracles, 9 samples, bounds OK
+ocaml/matched/reuse shapes: 8 oracles, 9 samples, bounds OK

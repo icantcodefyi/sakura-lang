@@ -1,0 +1,11 @@
+koka/matched/reuse binary_trees: 8 oracles, 9 samples, bounds OK
+koka/matched/reuse handled_d1: 8 oracles, 9 samples, bounds OK
+koka/matched/reuse handled_d16: 8 oracles, 9 samples, bounds OK
+koka/matched/reuse handled_d4: 8 oracles, 9 samples, bounds OK
+koka/matched/reuse handled_fwd: 8 oracles, 9 samples, bounds OK
+koka/matched/reuse handled_reentry: 8 oracles, 9 samples, bounds OK
+koka/matched/reuse handled_suspend: 8 oracles, 9 samples, bounds OK
+koka/matched/reuse map_set: 8 oracles, 9 samples, bounds OK
+koka/matched/reuse pipeline: 8 oracles, 9 samples, bounds OK
+koka/matched/reuse rbtree: 8 oracles, 9 samples, bounds OK
+koka/matched/reuse shapes: 8 oracles, 9 samples, bounds OK

@@ -1,0 +1,15 @@
+RUN: python3 bench/programs/_shared/python/verify.py --language rust
+EXIT: 0 rust
+RUN: python3 bench/programs/_shared/python/verify.py --language go
+EXIT: 0 go
+RUN: python3 bench/programs/_shared/python/verify.py --language python
+EXIT: 0 python
+RUN: python3 bench/programs/_shared/python/verify.py --language typescript
+EXIT: 0 typescript
+RUN: python3 bench/programs/_shared/python/verify.py --language ocaml
+EXIT: 0 ocaml
+RUN: python3 bench/programs/_shared/python/verify.py --language koka
+EXIT: 0 koka
+RUN: python3 bench/programs/_shared/python/verify.py --language koka --reuse no-reuse
+EXIT: 0 koka-no-reuse
+FAILED: []
