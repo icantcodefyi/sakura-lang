@@ -136,14 +136,23 @@ impl Analysis {
     pub fn analyze(snapshot: &Snapshot) -> Arc<Analyzed> {
         static CACHE: Mutex<Vec<Arc<Analyzed>>> = Mutex::new(Vec::new());
         const KEEP: usize = 8;
-        let mut cache = CACHE.lock().unwrap_or_else(|e| e.into_inner());
-        if let Some(i) = cache.iter().position(|a| a.snapshot.hash == snapshot.hash) {
-            let hit = cache.remove(i);
-            cache.push(hit.clone());
-            return hit;
+        let lock = || CACHE.lock().unwrap_or_else(|e| e.into_inner());
+        let prev = {
+            let mut cache = lock();
+            if let Some(i) = cache.iter().position(|a| a.snapshot.hash == snapshot.hash) {
+                let hit = cache.remove(i);
+                cache.push(hit.clone());
+                return hit;
+            }
+            // The latest analysis is usually the previous edit of this snapshot.
+            cache.last().cloned()
+        };
+        // Unlocked, so callers on other threads analyse their snapshots in parallel.
+        let analyzed = Arc::new(analyze(snapshot, prev.as_deref()));
+        let mut cache = lock();
+        if let Some(hit) = cache.iter().find(|a| a.snapshot.hash == snapshot.hash) {
+            return hit.clone();
         }
-        // The latest analysis is usually the previous edit of this snapshot.
-        let analyzed = Arc::new(analyze(snapshot, cache.last().map(|a| &**a)));
         if cache.len() == KEEP {
             cache.remove(0);
         }
