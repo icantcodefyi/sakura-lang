@@ -5,8 +5,11 @@
         Interleaves the binaries (A, B, A, B, …) on the `sakura new cli` hello-world and the
         `bench compile` 10k-line corpus; prints median, p95 and range per binary and case.
     compile_latency.py instrument compiler/crates/sakura_analysis/src/lib.rs
-        Adds per-phase timing of `analyze`, printed to stderr when SAKURA_PHASES is set. For a
-        throwaway build only; never commit the result.
+        Adds per-phase timing of `analyze`, printed to stderr when SAKURA_PHASES is set, and a
+        `latency_loop` test that analyses the hello-world under fresh URIs, so every analysis
+        after the first reuses std, and a `check_loop` test that type-checks std's HIR
+        SAKURA_CHECK_N times, for a sampling profiler. For a throwaway build only; never commit
+        the result.
     compile_latency.py phases --runs 40 /path/to/instrumented/sakura
         Median milliseconds per phase over fresh processes, per case.
     SAKURA_PHASES=1 <test binary built with the instrumented crate> 2>&1 | compile_latency.py phases -
@@ -108,8 +111,39 @@ END = r"""
 """
 
 
+LOOP = r"""
+#[test]
+fn latency_loop() {
+    let main = std::env::var("SAKURA_LOOP_MAIN").expect("SAKURA_LOOP_MAIN: a hello-world main.sak");
+    let text = std::fs::read_to_string(main).unwrap();
+    let n: usize = std::env::var("SAKURA_LOOP_N").map_or(300, |n| n.parse().unwrap());
+    for i in 0..n {
+        let uri = format!("file:///t{i}/src/main.sak");
+        let a = sakura_analysis::Analysis::analyze(&sakura_analysis::Snapshot::with_std([(uri, text.clone())]));
+        assert!(!a.check.has_errors(), "{:?}", a.check.diagnostics);
+    }
+}
+
+#[test]
+fn check_loop() {
+    let n: u32 = std::env::var("SAKURA_CHECK_N").map_or(0, |n| n.parse().unwrap());
+    let std = sakura_analysis::Snapshot::new(sakura_analysis::std_sources());
+    let a = sakura_analysis::Analysis::analyze(&std);
+    let t = std::time::Instant::now();
+    for _ in 0..n {
+        let (_, diags) = sakura_types::check_program(std::hint::black_box(&a.program));
+        assert!(diags.is_empty(), "{diags:?}");
+    }
+    if n > 0 {
+        eprintln!("check of std: {:.3} ms", t.elapsed().as_secs_f64() * 1e3 / f64::from(n));
+    }
+}
+"""
+
+
 def cmd_instrument(a):
     p = Path(a.lib)
+    (p.parent.parent / "tests" / "latency_loop.rs").write_text(LOOP.lstrip("\n"))
     s = p.read_text()
 
     def after(anchor, code):

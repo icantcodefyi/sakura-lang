@@ -104,7 +104,8 @@ Reuse still costs the most where it should cost nothing:
   declarations are checked again on every analysis, and the result is then discarded for a
   reused module. A trial (not committed) that marks every def of a reused module as checked
   took check from 3.89 to 0.55 ms and the analysis from 11.8 to 8.4 ms (two runs each side).
-  Its output was not verified; that is the follow-up's job.
+  Its output was not verified; that is the follow-up's job. Done as WS-C1a (below): 4.39 →
+  0.63 ms, output verified.
 - **`symbols::index`, 3.4 ms; `interface_hash`, 2.2 ms; `evaluated_functions`, 1.3 ms.** All
   three walk every std tree again. Nothing they compute for an unchanged std file differs from
   std's own analysis, except an interface hash when another module's names change which bodies
@@ -143,12 +144,127 @@ the predicate to check.
 If WS-C2 hands each fresh process std's analysis at no cost, `check_hello` becomes the 3.8 ms
 outside `analyze`, plus parsing std again (3.25 ms: the parse cache does not survive the
 process, and the hashing and indexing passes need the trees), plus the reuse path (11.8 ms),
-plus deserialisation. That is at least 19 ms, or about 15.4 ms with the check fix. The 10 ms
+plus deserialisation. That is at least 19 ms, or about 15.7 ms with WS-C1a's reuse path
+(8.66 ms). The 10 ms
 target needs the reuse path to stop walking std: carry std's symbols, interface hashes and its
 share of the evaluated names from std's analysis, and parse a std file only when navigation
 asks for its tree. `check_cold_10k` (55.6 ms of analysis, 34.3 ms of it the user package) needs
 the same plus cheaper per-file work on user code. `interface_hash` re-walks every token that
 parsing just produced.
+
+## WS-C1a: a reused module's defs are not checked again
+
+Measured 2026-10-19 by Claude Opus 5.5: `bde235ca` (before) against the WS-C1a commit on it
+(after), release builds in separate target directories, same host, load average 12 to 23
+throughout, so every number is indicative. `check_program_reusing` now marks every def of a
+reused module as checked, not only those with a scheme. Their bodies, declaration caches and
+holes were already copied from the previous result, and `sakura_analysis` already carried their
+diagnostics over.
+
+**Verdict: the reuse path's check falls from 4.39 to 0.63 ms (target ≤ 1 ms, met), and an
+analysis that reuses std from 12.55 to 8.66 ms. A single `sakura check` is unchanged.**
+
+Hello-world under fresh URIs in one process (`latency_loop`, below), 5 alternating runs of 300
+analyses per side, the 299 that reused std in each; median ms over all 1,495:
+
+| Phase | Before | After |
+|---|---:|---:|
+| `evaluated_functions` | 1.35 | 1.35 |
+| `interface_hash` | 2.26 | 2.26 |
+| lower | 1.17 | 1.14 |
+| check | **4.39** | **0.63** |
+| `symbols::index` | 3.19 | 3.13 |
+| **total** | **12.55** | **8.66** |
+
+Per-run medians of check: 4.20 to 4.67 ms before, 0.59 to 0.65 after. The 3.76 ms saved is
+within the 4.39 ms the phase took, and close to the trial's 3.34. What is left is the hello
+module's own check, `prepare`'s walk over every def (trust positions, refined bases), and
+cloning the previous interner and bodies. Every analysis in the loop is asserted error-free;
+output is verified by tests, not by the loop: `std_reuse_matches_a_fresh_analysis` (every ui,
+semantics and bench program, now also reusing its own analysis and, multi-file, with its
+first file edited) and `reused_tests.rs`.
+
+Fresh processes, `compile_latency.py time --runs 61` (interleaved):
+
+| Case | Side | Median ms | p95 ms | Range ms |
+|---|---|---:|---:|---:|
+| `check_hello` | before | 33.8 | 43.8 | 24.9–72.4 |
+| `check_hello` | after | 33.6 | 44.2 | 25.1–50.0 |
+| `check_cold_10k` | before | 68.7 | 131.8 | 60.2–149.3 |
+| `check_cold_10k` | after | 68.7 | 102.1 | 60.6–143.0 |
+
+No measurable difference, as expected: a process's first analysis reuses nothing. (The
+medians are higher than WS-C1's because the host was busier; compare sides, not tables.)
+
+**Two bugs this removes.** Checking a reused test block again also queued its literals into
+refined types, and the `V5004`s they raised were pushed after the filter that drops a reused
+file's diagnostics. So an unchanged module's `V5004` in a test block was reported twice (the
+second out of order) after an edit to another module. Its typed holes were also reported
+twice, once copied from the previous result and once from the recheck. `reused_tests.rs`
+fails on `bde235ca` for both.
+
+**An order the review found.** A declaration's diagnostics (a bad signature type, say) are
+raised where it is first used. In a fresh analysis that can be an earlier module's test block,
+which a reusing analysis no longer checks, so the same diagnostics came out in another order
+within the file. WS-C1 already had this for reused `fn` bodies. `analyze` now sorts type
+diagnostics by position within a file, not by file alone. The human and JSON output already
+sorted by position (`output_order`), so only `Analysis` results and the LSP payload change
+order. `reused_tests.rs` pins the case, and `std_reuse_matches_a_fresh_analysis` now edits a
+multi-file program's last file as well as its first, so reused modules come before the edited
+one too.
+
+**One difference left, for the designer.** A body containing a syntax error suppresses every
+diagnostic raised while it is checked, including a lazily lowered signature of another module
+(`Checker::push`). A fresh analysis whose first use of a bad signature is such a body loses that
+signature's diagnostic; a reusing analysis that skips the body reports it. A probe (not
+committed) with `app`'s test `{ let x = lib.f()\n let y = (1 + }` and `lib`'s
+`pub fn f() -> List<Int, Int>`, after an edit to another body of `lib`, gives `[V0001, V2010]`
+fresh and `[V0001, V2002, V2010]` reusing. It predates WS-C1a (a reused `fn` body does the
+same). The fresh output is the wrong one, since a signature error is not a cascade of the
+syntax error; the fix (lower declarations with suppression off) changes fresh diagnostics, so
+it waits for a decision.
+
+### Sampling profile of `check` on std
+
+`check_loop` (below) type-checks std's HIR 3,000 times in a release build. macOS `sample`,
+15 s at 1 ms, 10,368 samples inside `check_program`; 10.1 ms per check under the profiler and
+load (7.7 ms without the profiler). Shares are inclusive (time in the function and its
+callees), attributed through inlining to the nearest symbol:
+
+| Function | Inclusive |
+|---|---:|
+| `check_def` | 98.8% |
+| `with_body` for a `fn` body | 47.4% |
+| `check_test_like` (std's `test` blocks) | 46.3% |
+| `finish_body` (solving, coverage, zonking) | 45.9% |
+| `infer_inner` | 41.8% |
+| `Interner::intern` | 15.2% |
+| SipHash `write` (self) | 12.7% |
+| `Infer::zonk_with` | 12.4% |
+| `Interner::row` | 10.6% |
+| `Type::clone` | 10.4% |
+| `hash_one::<Type>` / `hash_one::<Row>` | 9.5% / 7.7% |
+| `Infer::flatten_row` | 9.4% |
+| `instantiate_at` / `Infer::instantiate` | 9.1% / 8.3% |
+| `scheme_of` | 7.7% |
+
+By self time, allocation, copies and drops are 37%, hashing (SipHash and hashbrown probes)
+22%, the checker's walks 12%, `infer.rs` 12%, and cloning `Type` and `Label` values 6%.
+
+What this says, for whoever takes the next row (no change to inference was made here):
+
+- **std's tests are almost half of std's check.** A process whose output never includes std's
+  test diagnostics (every `sakura check` and `sakura build` of a user package) could skip
+  them. Whether a fresh analysis may skip std's tests is a design question, because a std
+  test diagnostic would then show only in `sakura test` of std.
+- **The interner hashes with SipHash.** `Interner` keys `HashMap<Type, TypeId>` and its row
+  map on `std::hash::RandomState`. A faster hasher over the same keys would address most of
+  the 22% hashing share without changing any `TypeId`.
+- **Types are cloned out of the interner.** `Type::clone` (10%) and `Vec<Label>::clone`
+  (5%) come from reading a type to match on it (63 `.ty(…).clone()` and
+  `.row_data(…).clone()` sites in `sakura_types`) and from `Interner::intern` keeping each new
+  type twice, in its vector and as its map key. Borrowing instead of cloning is a refactor of
+  the readers, not of inference.
 
 ## Rows proposed for `performance-r1.md` §9
 
@@ -170,4 +286,13 @@ python3 research/10-evidence/compile_latency.py instrument /tmp/sakura-phases/co
 python3 research/10-evidence/compile_latency.py phases --runs 61 <instrumented sakura>
 SAKURA_PHASES=1 <instrumented release test binary> --nocapture 2>&1 \
   | python3 research/10-evidence/compile_latency.py phases -
+# WS-C1a: instrument also writes tests/latency_loop.rs (latency_loop, check_loop)
+(cd /tmp/sakura-phases/compiler && cargo test --release --locked -p sakura_analysis --test latency_loop --no-run)
+SAKURA_PHASES=1 SAKURA_LOOP_MAIN=<hello>/src/main.sak <latency_loop binary> latency_loop --nocapture 2>&1 \
+  | grep '^phase' | python3 research/10-evidence/compile_latency.py phases -
+SAKURA_CHECK_N=3000 <latency_loop binary> check_loop --nocapture & sample $! 15 1 -file check.sample.txt
 ```
+
+Give every side its own `CARGO_TARGET_DIR`: two worktrees of one workspace get the same
+artifact names, and a shared target directory handed back a stale test binary once during
+WS-C1a.
