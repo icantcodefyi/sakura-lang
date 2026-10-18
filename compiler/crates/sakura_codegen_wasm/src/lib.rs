@@ -365,7 +365,7 @@ fn ops_table(m: &Module) -> Vec<u8> {
             body.push(0);
             names.extend_from_slice(&(op.name.len() as u32).to_le_bytes());
             names.extend_from_slice(op.name.as_bytes());
-            while names.len() % 4 != 0 {
+            while !names.len().is_multiple_of(4) {
                 names.push(0);
             }
         }
@@ -374,7 +374,11 @@ fn ops_table(m: &Module) -> Vec<u8> {
     for (at, off) in fix {
         body[at] = (base + off) as u32;
     }
-    let mut out: Vec<u8> = dir.iter().chain(&body).flat_map(|w| w.to_le_bytes()).collect();
+    let mut out: Vec<u8> = dir
+        .iter()
+        .chain(&body)
+        .flat_map(|w| w.to_le_bytes())
+        .collect();
     out.extend(names);
     out
 }

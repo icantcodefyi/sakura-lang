@@ -374,7 +374,11 @@ impl Rt {
             let (len, at) = self.data(shown);
             let t = self.text(shown);
             let e = t.find('e').unwrap_or(t.len()) as u32;
-            let mantissa = if t[..e as usize].ends_with(".0") { e - 2 } else { e };
+            let mantissa = if t[..e as usize].ends_with(".0") {
+                e - 2
+            } else {
+                e
+            };
             let r = self.build(|rt, buf| {
                 rt.put_mem(buf, at, mantissa)?;
                 rt.put(buf, b"e+")?;
