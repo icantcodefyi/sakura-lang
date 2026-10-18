@@ -730,7 +730,10 @@ export class Host {
    * An `async` import (`http_*`): run the JS runtime's CPS builtin `f` on the arguments at
    * `(ptr, len)` and complete `request` with its result (a status-0 answer of `schema`, a
    * `Result<_, String>`, or a defect) when it arrives; `abort` cancels it. A result past the
-   * copy budget is `Err("response too large")` (ABI §8.5, W4).
+   * copy budget is `Err("response too large")` (ABI §8.5, W4). A rejected operation settles its
+   * request with its defect, as JS `resumeLater` does (design §17.209 (2)): the `http_*` builtins
+   * answer network failures, a cut body included, as `Err` themselves, so a rejection is a host
+   * fault. A cancelled request is no longer in flight, so `complete` drops it.
    */
   async(request, ptr, len, f, schema, kinds = []) {
     const args = this.decodeSecret(ptr, len, kinds);
@@ -747,7 +750,8 @@ export class Host {
     const r = settle(f(...args, cpsContext(), (v) => ({ ok: v })));
     if (r?.p instanceof Promise) {
       this.inflight.set(request, r.cancel ?? (() => {}));
-      r.p.then(reply);
+      const failed = (e) => this.complete(request, 0, defectAnswer(e instanceof HostFault ? e : rt.hostFailure(e)));
+      r.p.then(reply, failed);
     } else {
       this.inflight.set(request, () => {});
       reply(r.ok);

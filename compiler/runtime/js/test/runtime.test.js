@@ -964,6 +964,33 @@ test("serveHttp refuses a body over 1 MiB with 413 and answers an invalid status
   }
 });
 
+test("http_send whose body is cut short is Err, not a defect", async () => {
+  const http = await import("node:http");
+  rt.def(
+    "std::response::Response",
+    class {
+      constructor(status, headers, body) {
+        Object.assign(this, { status, headers, body });
+      }
+    },
+  );
+  const server = http.createServer((_req, res) => {
+    res.writeHead(200, { "content-length": 4096 });
+    res.write(Buffer.alloc(100, 97), () => res.destroy());
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address();
+  try {
+    const req = { method: { $t: { ctors: [{ name: "Get" }] }, tag: 0 }, url: `http://127.0.0.1:${port}/`, headers: rt.list([]), secret_headers: rt.list([]), body: "" };
+    const o = await rt.runTask(rt.http_send, [req]);
+    assert.equal(o.kind, "ok", o.message);
+    assert.equal(o.value.tag, 1, "a truncated Ok is never returned");
+    assert.equal(typeof o.value.fields[0], "string");
+  } finally {
+    server.close();
+  }
+});
+
 test("SAKURA_MAX_COPY_BYTES is decimal digits from 1, unset is 256 MiB, anything else D091", async () => {
   const name = "SAKURA_MAX_COPY_BYTES";
   const read = (raw) => {

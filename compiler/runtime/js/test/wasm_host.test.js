@@ -203,6 +203,29 @@ test("an invalid SAKURA_MAX_COPY_BYTES is D091 at the first copy, not at load", 
   assert.equal(h.maxCopy, 256 * 1024 * 1024, "unset is the default");
 });
 
+test("a rejected http operation settles its request with a defect answer, or not at all once cancelled", async () => {
+  const { h, put } = host();
+  h.typeIds = new Map([["std::result::Result", 0]]);
+  h.typeNames = ["std::result::Result"];
+  put(64, [9, ...u32(0)]);
+  const schema = ["A", "std::result::Result", ["Y", "S"]];
+  const rejecting = (e) => (_ctx, k) => rt.suspend(Promise.reject(e), k, () => {});
+  h.async(1, 64, 5, rejecting(new TypeError("x is not a function")), schema);
+  h.async(2, 64, 5, rejecting(new rt.Defect("D092", "a defect keeps its code")), schema);
+  h.async(3, 64, 5, rejecting(new DOMException("aborted", "AbortError")), schema);
+  h.imports().sakura_host.abort(3);
+  // Node's default `--unhandled-rejections=throw` fails this test if any rejection escapes.
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(
+    h.completed.map(([request]) => request),
+    [1, 2],
+    "the cancelled request is dropped",
+  );
+  const [[, , fault], [, , defect]] = h.completed;
+  assert.deepEqual([fault[0], ...fault.subarray(1, 5)], [2, ...u32(91)], "a host fault is D091, as on JS");
+  assert.deepEqual([defect[0], ...defect.subarray(1, 5)], [2, ...u32(92)]);
+});
+
 test("a sync answer past the copy budget is a D091 answer, not a guest heap exhaustion", () => {
   const { h, put } = host();
   h.argv = ["a".repeat(200)];

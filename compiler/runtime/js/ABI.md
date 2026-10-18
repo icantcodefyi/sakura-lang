@@ -443,7 +443,9 @@ after closing. Writes are immediate: a memory file replaces its store entry on e
 `file_write`, so a body that fails leaves what it wrote, as on the host.
 
 **Http.** `http_send(req, $ctx, $k)` suspends on `fetch`: `Ok(Response)` for every status,
-`Err(reason)` when no response arrives; every `req.secret_headers` entry (`Http.bearer` adds
+`Err(reason)` when no response arrives or the connection drops while the body is read (never a
+truncated `Ok`; erratum 2026-10-19, design §17.209 (2): until then a cut body was the defect
+`D091`); every `req.secret_headers` entry (`Http.bearer` adds
 `authorization`) is sent as a header and exposed nowhere else (§17.57); cancelling the task
 aborts the request. The body is read with a running count: past `SAKURA_MAX_COPY_BYTES`
 (default 256 MiB, the WASM host's copy budget, read here on each request) or a declared

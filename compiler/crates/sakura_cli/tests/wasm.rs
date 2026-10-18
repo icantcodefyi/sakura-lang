@@ -798,6 +798,97 @@ fn contract_tests_fail_on_wasm_as_on_js() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Design §17.209 (2): a body cut short in `send` is `Err` on both backends, and a `send`
+/// cancelled while it reads a body settles quietly (on WASM an unhandled rejection of the
+/// aborted read would end the process).
+#[test]
+fn http_send_with_a_body_cut_short_is_err_alike_on_both_backends() {
+    use std::io::{BufRead, BufReader, Write};
+    if !available() {
+        eprintln!("skipped: node is missing");
+        return;
+    }
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    std::thread::spawn(move || {
+        for stream in listener.incoming().flatten() {
+            std::thread::spawn(move || {
+                let mut reader = BufReader::new(stream);
+                let mut first = String::new();
+                let _ = reader.read_line(&mut first);
+                let mut line = String::new();
+                while reader.read_line(&mut line).is_ok_and(|n| n > 2) {
+                    line.clear();
+                }
+                let _ = write!(
+                    reader.get_mut(),
+                    "HTTP/1.1 200 OK\r\ncontent-length: 4096\r\nconnection: close\r\n\r\n{}",
+                    "a".repeat(100)
+                );
+                let _ = reader.get_mut().flush();
+                // `/cut` closes now; `/stall` holds the body open until the client aborts.
+                if first.contains("/stall") {
+                    std::thread::sleep(std::time::Duration::from_secs(3));
+                }
+            });
+        }
+    });
+    let dir = std::env::temp_dir().join(format!("sakura-wasm-cut-{}", std::process::id()));
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(
+        dir.join("sakura.toml"),
+        format!(
+            "[package]\nname = \"c\"\nversion = \"0.1.0\"\nedition = \"2026\"\n\n\
+             [permissions]\nnet = [\"127.0.0.1:{port}\"]\n"
+        ),
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("src/main.sak"),
+        format!(
+            "import std/http.{{Http}}\nimport std/request.{{Get, Request}}\n\
+             import std/task.{{Task, timeout}}\nimport std/url.{{Url}}\n\n\
+             pub fn main() -> Unit ! {{Clock, Console, Http, Task}} {{\n\
+             \x20 match try {{ Http.send(Request.of(Get, Url.from(\"http://127.0.0.1:{port}/cut\"))) }} {{\n\
+             \x20   Ok(r) => Console.print(\"read {{String.len(r.body)}}\"),\n\
+             \x20   Err(e) => Console.print(\"failed: {{e.reason}}\"),\n\
+             \x20 }}\n\
+             \x20 let stall = Url.from(\"http://127.0.0.1:{port}/stall\")\n\
+             \x20 let r = try {{ timeout(Duration.millis(200), fn() {{ Http.send(Request.of(Get, stall)).status }}) }}\n\
+             \x20 Console.print(\"{{r}}\")\n\
+             \x20 Clock.sleep(Duration.millis(300))\n\
+             \x20 Console.print(\"settled\")\n}}\n"
+        ),
+    )
+    .unwrap();
+    let run = |target: &str| {
+        let out_dir = dir.join(format!("out-{target}"));
+        let args = [
+            "run",
+            "--target",
+            target,
+            "--out-dir",
+            out_dir.to_str().unwrap(),
+        ];
+        sakura_env(&args, &dir, &[])
+    };
+    let (js, wasm) = (run("js"), run("wasm"));
+    let rest = "Err(Timeout { limit: Duration(200) })\nsettled\n";
+    assert!(
+        js.code == Some(0) && js.stdout.starts_with("failed: ") && js.stdout.ends_with(rest),
+        "{:?}\n{}",
+        js.stdout,
+        js.stderr
+    );
+    assert_eq!(
+        (wasm.code, &wasm.stdout),
+        (js.code, &js.stdout),
+        "{}",
+        wasm.stderr
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// Design §17.205 (3): a response past `SAKURA_MAX_COPY_BYTES` is the same
 /// `Err("response too large")` on both backends (`runtime.test.js` covers the abort).
 #[test]

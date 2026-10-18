@@ -370,7 +370,7 @@ function resumeLater(t, { p, k, cancel }) {
   });
 }
 
-function hostFailure(err) {
+export function hostFailure(err) {
   return err instanceof Defect ? err : new Defect("D091", `host operation failed: ${err}`);
 }
 
@@ -3412,9 +3412,9 @@ async function boundedText(r, max) {
 
 /**
  * `http_send(req)`: suspends until the response arrives; `Ok(Response)` for any status,
- * `Err(reason)` when no response arrives, and `Err("response too large")`, the fetch aborted,
- * past `SAKURA_MAX_COPY_BYTES` of body. Every `req.secret_headers` entry is sent as a header and
- * is readable nowhere else. Cancelling the task aborts the request.
+ * `Err(reason)` when no response arrives or its body is cut short (design §17.209 (2)), and
+ * `Err("response too large")`, the fetch aborted, past `SAKURA_MAX_COPY_BYTES` of body. Every
+ * `req.secret_headers` entry is sent as a header and is readable nowhere else. Cancelling the task aborts the request.
  */
 export function http_send(req, _ctx, k) {
   const Response = std("std::response::Response");
@@ -3423,7 +3423,12 @@ export function http_send(req, _ctx, k) {
   if (a.err !== undefined) return ret(k, Err(a.err));
   const response = fetch(req.url, a.init).then(
     async (r) => {
-      const text = await boundedText(r, max);
+      let text;
+      try {
+        text = await boundedText(r, max);
+      } catch (e) {
+        return Err(failureOf(e));
+      }
       if (text !== undefined) return Ok(new Response(r.status, list([...r.headers]), text));
       a.abort.abort();
       return Err(TOO_LARGE);

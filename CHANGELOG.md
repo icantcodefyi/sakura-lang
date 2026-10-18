@@ -82,6 +82,14 @@ published yet.
 
 ### Changed
 
+- **Breaking:** a connection that drops while `Http.host()`'s `send` reads the response body fails with
+  `HttpError` (`status: None`, the reason from the host), as a failed connection already did,
+  on both backends: the JS backend reported the defect `D091`, and `--target wasm` ended the
+  process with an unhandled promise rejection, also when a task was cancelled while its `send`
+  read a body (design §17.209 (2)). A program that retries on `HttpError` now retries a cut
+  body too; nothing else changes. This is a semantics change: owner review requested
+  (§17.209 (2)).
+
 - The agent-DX offline fixture validator runs independent tasks in a thread pool,
   with `--jobs 1` for serial execution and byte-identical task-ordered reports
   (design §17.197).

@@ -8,7 +8,9 @@ direct-style twins of design §17.118 (plan item L4), 1.1.1 the gate 10 erratum 
 §8.4 (design §17.159; the plan's "1.0.3"), 1.1.2 the hostile-host hardening of plan WS12
 item 8 (§8.1, §8.4–§8.6), 1.1.3 the defect sites of plan L5 (§5, §6.5, §12; design §17.162), and 1.2.0 the `restarts`
 counter, the import and handle-kind lists as built and §5's fallback wording (design §17.160,
-§17.161; plan M4-OPT), and 1.2.1 the fail-closed copy budget of §8.5 and its reading as a per-instance ceiling (design §17.209). Owned by the designer; implemented jointly by M4-LIR (`crates/sakura_lir`)
+§17.161; plan M4-OPT), and 1.2.1 the fail-closed copy budget of §8.5, its reading as a
+per-instance ceiling and a cut body as `Err` (design §17.209). Owned by the designer;
+implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
 (`crates/sakura_codegen_wasm`, `runtime/js/sakura_wasm_host.js`). This document is prose,
 tables and byte layouts; it contains no code and is not itself normative language
@@ -84,10 +86,12 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   shipped changes: the ten counters keep their offsets, so a 1.2 host reads a 1.1 module's ten
   (`stats()` returns its length), and a 1.1 host refuses a 1.2 module by the MINOR rule above.
   `sakura_abi_version` is `0x010200`.
-- 1.2.1 is an erratum (design §17.209 (1), (3)): §8.5 states how the hosts read
-  `SAKURA_MAX_COPY_BYTES` (a positive integer or the defect `D091`, never unlimited) and that the
-  budget is a per-instance memory ceiling, not a byte-exact contract. A failure mode is
-  specified; no byte, import or export changes, so `sakura_abi_version` stays `0x010200`.
+- 1.2.1 is an erratum (design §17.209 (1)–(3)): §8.5 states how the hosts read
+  `SAKURA_MAX_COPY_BYTES` (a positive integer or the defect `D091`, never unlimited), that the
+  budget is a per-instance memory ceiling, not a byte-exact contract, and that a response body
+  cut short is `Err` (it was `D091` on JS and an unhandled rejection, ending the process, on
+  the Node host). Failure modes are specified; no byte, import or export changes, so
+  `sakura_abi_version` stays `0x010200`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -676,8 +680,10 @@ wrong class.
   exceeding either is the operation's ordinary error `"too many pending operations"` /
   `"response too large"`, so a server under load fails requests instead of the process (§10).
   As built (1.1.2), one policy for each: an operation whose result is a `Result<_, String>`
-  (`http_*`) answers `Err` with the message; one without an ordinary error to carry it is the
-  defect `D091` with it (`Clock.sleep` and `serve_listen` on a full table; a synchronous
+  (`http_*`) answers `Err` with the message (1.2.1: a body cut short is `Err` too, and a
+  rejected host operation always settles its request with its defect unless it was
+  cancelled); one without an ordinary error to carry it is the defect `D091` with it
+  (`Clock.sleep` and `serve_listen` on a full table; a synchronous
   answer past the budget, raised by the guest from a status-2 answer, or ending the run where
   the import has no answer). The budget counts one answer, and an HTTP completion together
   with the completions already queued for delivery.
