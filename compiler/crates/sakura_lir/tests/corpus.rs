@@ -4,7 +4,7 @@
 mod common;
 
 use common::{big_stack, programs, sigs};
-use sakura_lir::{lir, lower, print, validate};
+use sakura_lir::{interp, lir, lower, print, validate};
 
 #[test]
 fn every_program_lowers_and_validates() {
@@ -59,6 +59,50 @@ fn every_program_lowers_and_validates() {
         }
         assert!(failures.is_empty(), "{}", failures.join("\n"));
         insta::assert_snapshot!("validator_summary", summary);
+    });
+}
+
+/// Plan §3.5 L2: the LIR interpreter agrees with the expectations stored beside every snapshot
+/// (stdout and how the program ends), and every run releases every object and arena slot.
+#[test]
+fn interpreter_agrees_with_the_corpus_expectations() {
+    big_stack(|| {
+        let sigs = sigs();
+        let (mut agree, mut failures, mut unsupported) = (0, Vec::new(), Vec::new());
+        let mut report = String::new();
+        for p in programs() {
+            let m = lower::lower(&p.core, &sigs).unwrap();
+            let out = interp::run_main(&m, interp::Limits::default());
+            let ending = out.ending.summary();
+            if let interp::Ending::Unsupported(what) = &out.ending {
+                unsupported.push(format!("{}: {what}", p.name));
+                report.push_str(&format!("{}: unsupported ({what})\n", p.name));
+                continue;
+            }
+            let s = &out.stats;
+            report.push_str(&format!(
+                "{}: {ending}, {} allocated, {} dup, {} drop, peak {}, live {}/{}\n",
+                p.name, s.allocated, s.dups, s.drops, s.peak_objects, s.live_objects, s.live_arena
+            ));
+            if ending == p.ending && out.stdout == p.stdout && s.balanced() {
+                agree += 1;
+            } else {
+                failures.push(format!(
+                    "{}: ending {ending} (expected {}), balanced {}\n--- expected\n{}--- interpreter\n{}",
+                    p.name, p.ending, s.balanced(), p.stdout, out.stdout
+                ));
+            }
+        }
+        eprintln!(
+            "LIR interpreter: {agree} agree, {} disagree, {} unsupported",
+            failures.len(),
+            unsupported.len()
+        );
+        for u in &unsupported {
+            eprintln!("unsupported {u}");
+        }
+        assert!(failures.is_empty(), "{}", failures.join("\n"));
+        insta::assert_snapshot!("interpreter_report", report);
     });
 }
 
