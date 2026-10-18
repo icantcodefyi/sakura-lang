@@ -77,3 +77,13 @@ the offline validator with the built compiler, and existing workspace CI discove
 it. The paid runner must keep acceptance tests and baseline authority outside the
 agent sandbox. Runner isolation, accounting/replay and the protected paid workflow
 remain a later DX5 step; this amendment does not authorize provider calls.
+
+## Amendment: release packaging (2026-10-18)
+
+Decision [§17.147](../design.md) and [research/13](../../research/13-release.md) add
+top-level `tools/` for repository scripts that are not Cargo crates (`tools/install/`
+the user installer and its tests, `tools/release/` archive, smoke and assembly) and
+`packaging/` for reviewed channel files: `targets.json` (the one target inventory the
+release workflow, archives and npm packages read), the Homebrew formula and the npm
+wrapper. Nothing in either directory publishes; `.github/workflows/release.yml` does,
+only for an owner-pushed tag and behind protected environments.

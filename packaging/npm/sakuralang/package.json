@@ -1,0 +1,27 @@
+{
+  "name": "sakuralang",
+  "version": "0.1.0-alpha.1",
+  "description": "The Sakura Lang compiler and toolchain: the `sakura` command",
+  "license": "MIT OR Apache-2.0",
+  "homepage": "https://www.sakuralang.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/icantcodefyi/sakuralang.git",
+    "directory": "packaging/npm/sakuralang"
+  },
+  "bin": {
+    "sakura": "bin/sakura.js"
+  },
+  "files": [
+    "bin/sakura.js",
+    "LICENSE-MIT",
+    "LICENSE-APACHE"
+  ],
+  "engines": {
+    "node": ">=26"
+  },
+  "optionalDependencies": {
+    "sakuralang-darwin-arm64": "0.1.0-alpha.1",
+    "sakuralang-linux-x64-gnu": "0.1.0-alpha.1"
+  }
+}

@@ -1,0 +1,281 @@
+# Release (design §17.147, research/13, docs/release.md).
+#
+# - Run workflow (workflow_dispatch) is always a DRY RUN: it builds and smoke-tests every target
+#   in packaging/targets.json and uploads the archives, SHA256SUMS, release.json, the skill ZIP,
+#   install.sh, the Homebrew formula and the npm tarballs as workflow artifacts. It creates no
+#   release, tag, attestation, tap commit or package: the publish jobs cannot run on dispatch.
+# - Pushing a tag v<version> (the owner's act) builds the same way, then each channel waits in
+#   its protected environment (release-github, release-homebrew, release-npm) for the owner.
+#   The tag must equal the workspace version, and the repository variable
+#   RELEASE_ENVIRONMENTS_PROTECTED must be "true" (set only after the environments have
+#   required reviewers: GitHub creates a missing environment unprotected).
+# - crates.io is excluded until its source-package design is decided (research/13 §2).
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.plan.outputs.version }}
+      commit: ${{ steps.plan.outputs.commit }}
+      publish: ${{ steps.plan.outputs.publish }}
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Resolve version, commit and mode
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          PROTECTED: ${{ vars.RELEASE_ENVIRONMENTS_PROTECTED }}
+        run: |
+          version=$(python3 -I tools/release/release.py version)
+          commit=$(git rev-parse HEAD)
+          test "$commit" = "$GITHUB_SHA"
+          publish=false
+          if [ "$EVENT" = push ]; then
+            if [ "$GITHUB_REF" != "refs/tags/v$version" ]; then
+              echo "::error::tag $GITHUB_REF does not match the workspace version $version"
+              exit 1
+            fi
+            if [ "$PROTECTED" != true ]; then
+              echo "::error::set the repository variable RELEASE_ENVIRONMENTS_PROTECTED=true once release-github, release-homebrew and release-npm require the owner's review"
+              exit 1
+            fi
+            publish=true
+          fi
+          matrix=$(python3 -I -c 'import json; print(json.dumps(json.load(open("packaging/targets.json"))))')
+          {
+            echo "version=$version"
+            echo "commit=$commit"
+            echo "publish=$publish"
+            echo "matrix=$matrix"
+          } >> "$GITHUB_OUTPUT"
+          echo "Sakura Lang $version at $commit; publish: $publish" >> "$GITHUB_STEP_SUMMARY"
+      - name: Installer tests
+        run: |
+          shellcheck tools/install/install.sh tools/install/test.sh
+          sh tools/install/test.sh
+
+  build:
+    name: Build (${{ matrix.target }})
+    needs: plan
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      COMMIT: ${{ needs.plan.outputs.commit }}
+      TARGET: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned Rust toolchain
+        working-directory: compiler
+        run: |
+          rustup show active-toolchain || rustup toolchain install
+          rustup target add "$TARGET" wasm32-unknown-unknown
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      # No build cache: release binaries come from a clean, locked build of this commit.
+      - name: Build sakura
+        working-directory: compiler
+        env:
+          SAKURA_GIT_COMMIT: ${{ needs.plan.outputs.commit }}
+        run: cargo build --locked --release -p sakura_cli --bin sakura --target "$TARGET"
+      - name: Archive
+        run: python3 -I tools/release/release.py archive --target "$TARGET" --binary "compiler/target/$TARGET/release/sakura" --out dist
+      - name: Smoke test the extracted archive
+        run: python3 -I tools/release/release.py smoke --archive "dist/sakuralang-$VERSION-$TARGET.tar.gz" --commit "$COMMIT"
+      - name: Record the host floor
+        run: |
+          bin="compiler/target/$TARGET/release/sakura"
+          case "$RUNNER_OS" in
+            Linux) floor=$(objdump -T "$bin" | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -1) ;;
+            macOS) floor="macOS $(otool -l "$bin" | awk '/minos/ { print $2; exit }')" ;;
+          esac
+          echo "$TARGET: built on $ImageOS $ImageVersion, needs $floor" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: archive-${{ matrix.target }}
+          path: dist/*.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
+  assemble:
+    name: Assemble
+    needs: [plan, build]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      COMMIT: ${{ needs.plan.outputs.commit }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: archive-*
+          merge-multiple: true
+          path: archives
+      - name: Assemble the release set
+        run: python3 -I tools/release/release.py assemble --commit "$COMMIT" --archives archives --out dist
+      - name: Check sums, installer and npm offline install on this host
+        run: |
+          (cd dist && sha256sum --check --strict SHA256SUMS)
+          sh dist/install.sh --prefix "$RUNNER_TEMP/install prefix" --base-url "$PWD/dist"
+          "$RUNNER_TEMP/install prefix/bin/sakura" --version
+          npm install --global --prefix "$RUNNER_TEMP/npm prefix" --offline --ignore-scripts \
+            --no-audit --no-fund --cache "$RUNNER_TEMP/empty-npm-cache" \
+            "./dist/sakuralang-$VERSION.tgz" "./dist/sakuralang-linux-x64-gnu-$VERSION.tgz"
+          test "$("$RUNNER_TEMP/npm prefix/bin/sakura" --version)" = "sakura $VERSION ($COMMIT)"
+      - name: Summary
+        run: |
+          {
+            echo '```text'
+            cat dist/SHA256SUMS
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-${{ needs.plan.outputs.version }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
+
+  # Everything below runs only for an owner-pushed tag, each job behind its environment.
+  publish-github:
+    name: Publish GitHub prerelease
+    needs: [plan, assemble]
+    if: github.event_name == 'push' && needs.plan.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: release-github
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      COMMIT: ${{ needs.plan.outputs.commit }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-${{ needs.plan.outputs.version }}
+          path: dist
+      - name: Verify the approved bytes
+        run: (cd dist && sha256sum --check --strict SHA256SUMS)
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*
+      - name: Create the prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notes.md <<EOF
+          Sakura Lang $VERSION, a pre-alpha release from commit $COMMIT. Nothing beyond the
+          versioned diagnostic schema and the fixture formats is stable (STABILITY.md).
+
+          Platforms: macOS arm64 (aarch64-apple-darwin) and Linux x86-64 glibc
+          (x86_64-unknown-linux-gnu). Binaries are not signed or notarized; verify them with
+          \`SHA256SUMS\` and \`gh attestation verify <file> --repo $GITHUB_REPOSITORY\`.
+
+          Node 26 is required for \`sakura run\`, \`sakura test\` and MCP tools that execute
+          programs; \`check\`, \`build\`, \`doc\` and \`mcp serve\` need no Node. \`sakura verify\`
+          needs the pinned Z3, which is not bundled.
+
+          Install: download \`install.sh\`, read it, then \`sh install.sh --prefix ~/.local\`; or
+          verify and extract an archive by hand (docs/release.md).
+          EOF
+          gh release create "v$VERSION" dist/* --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --prerelease --latest=false --title "Sakura Lang $VERSION" --notes-file notes.md
+
+  publish-homebrew:
+    name: Publish Homebrew formula
+    needs: [plan, publish-github]
+    if: github.event_name == 'push' && needs.plan.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: release-homebrew
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-${{ needs.plan.outputs.version }}
+          path: dist
+      - name: Verify the approved bytes
+        run: (cd dist && sha256sum --check --strict SHA256SUMS)
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: icantcodefyi/homebrew-sakuralang
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: tap
+      - name: Commit the formula to the tap
+        working-directory: tap
+        run: |
+          mkdir -p Formula
+          cp ../dist/sakuralang.rb Formula/sakuralang.rb
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/sakuralang.rb
+          git commit -m "sakuralang $VERSION"
+          git push origin HEAD
+
+  publish-npm:
+    name: Publish npm packages
+    needs: [plan, publish-github]
+    if: github.event_name == 'push' && needs.plan.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: release-npm
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          registry-url: https://registry.npmjs.org
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-${{ needs.plan.outputs.version }}
+          path: dist
+      - name: Verify the approved bytes
+        run: (cd dist && sha256sum --check --strict SHA256SUMS)
+      # Trusted publishing (OIDC) when configured on npmjs.com; otherwise NPM_TOKEN from the
+      # environment. Platform packages first, then the wrapper; never the `latest` dist-tag.
+      - name: Publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          for pkg in dist/sakuralang-*-"$VERSION".tgz; do
+            npm publish "$pkg" --tag alpha --access public --provenance
+          done
+          npm publish "dist/sakuralang-$VERSION.tgz" --tag alpha --access public --provenance
