@@ -1186,8 +1186,8 @@ fn encode_args(rt: &mut Rt, args: &[u32]) -> Res<u32> {
     r
 }
 
-/// A host answer (`u8` status 0 ok / 1 failed, then a `sakura-vt1` value; consumed): the
-/// status and the value (owned).
+/// A host answer (`u8` status 0 ok / 1 failed, then a `sakura-vt1` value; 2 a defect, `u32`
+/// code and message; consumed): the status and the value (owned).
 fn answer(rt: &mut Rt, b: u32) -> Res<(u8, u32)> {
     if b == 0 {
         return Err(Defect::HEAP_EXHAUSTED);
@@ -1196,6 +1196,7 @@ fn answer(rt: &mut Rt, b: u32) -> Res<(u8, u32)> {
     let status = if len == 0 { 255 } else { rt.heap.mem.u8(at) };
     let r = match status {
         0 | 1 => rt.vt_decode(at + 1, len - 1).map(|w| (status, w)),
+        2 if len >= 5 => Err(host_defect(rt, at + 1, len - 1)),
         _ => Err(crate::vt::MALFORMED),
     };
     rt.drop(b);
@@ -1334,6 +1335,69 @@ pub extern "C" fn rt_code_sql_rollback(env: u32, _frame: u32) -> u32 {
     // SAFETY: a plain import with scalar arguments.
     unsafe { host::sql_rollback(instance, token) };
     ret(rt, UNIT as u64)
+}
+
+// ---- HTTP (`Http.host()`): the JS runtime's `fetch`, as an `async` import -------------------
+
+/// Request kind of a host HTTP exchange (ABI §8.5).
+const HTTP: u32 = 2;
+
+/// `Err(reason)` of a builtin returning `Result<_, String>`.
+fn err_string(rt: &mut Rt, reason: &[u8]) -> Res<u32> {
+    let t = rt.type_named(b"std::result::Result").ok_or(Defect::INTERNAL)?;
+    let s = rt.new_string(reason)?;
+    let e = rt.new_variant(t, 1).inspect_err(|_| rt.drop(s))?;
+    rt.set_slot(e, 0, u64::from(s));
+    Ok(e)
+}
+
+/// `http_send(req)` (cps, as JS `http_send`): `Ok(Response)` for any status, `Err(reason)` when
+/// none arrives. `req` crosses to this import of kind `secret` (ABI §8.1: its
+/// `secret_headers` are sent as headers); the host completes the request with the result as a
+/// status-0 answer, and cancelling the task aborts the fetch (`abort`).
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_k_http_send(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    if rt.block(frame) == 1 {
+        let b = rt.take_ret() as u32;
+        let r = answer(rt, b).and_then(|(status, v)| {
+            if status == 0 {
+                Ok(v)
+            } else {
+                rt.drop(v);
+                Err(crate::vt::MALFORMED)
+            }
+        });
+        return ok_or_raise(rt, r);
+    }
+    let req = rt.take_fslot(frame, 0) as u32;
+    rt.sched.vt_secrets = true;
+    let b = encode_args(rt, &[req]);
+    rt.sched.vt_secrets = false;
+    let b = match b {
+        Ok(b) => b,
+        Err(d) => return rt.raise(d),
+    };
+    match rt.request(HTTP) {
+        Ok(Some(id)) => {
+            let (len, at) = rt.data(b);
+            // SAFETY: a plain import with a slice inside linear memory, copied in at once; the
+            // host completes `id` later.
+            unsafe { host::http_send(id, at, len) };
+            rt.drop(b);
+            rt.set_block(frame, 1);
+            step::SUSPEND
+        }
+        Ok(None) => {
+            rt.drop(b);
+            let r = err_string(rt, b"too many pending operations");
+            ok_or_raise(rt, r)
+        }
+        Err(d) => {
+            rt.drop(b);
+            rt.raise(d)
+        }
+    }
 }
 
 // ---- JS-built handlers (`Llm.anthropic`): clauses the host runs with the JS runtime ---------
@@ -1962,6 +2026,9 @@ mod host {
         pub fn js_handler(name: u32, name_len: u32, ptr: u32, len: u32) -> i64;
         pub fn js_clause(instance: i64, op: u32, ptr: u32, len: u32) -> u32;
         pub fn js_resume(session: u32, status: u32, ptr: u32, len: u32) -> u32;
+        /// `async`, of kind `secret`: `fetch` of the request at `(ptr, len)`; completes
+        /// `request` with a status-0 answer holding the `Result<Response, String>`.
+        pub fn http_send(request: u32, ptr: u32, len: u32) -> u32;
     }
 }
 

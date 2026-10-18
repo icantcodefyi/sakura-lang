@@ -71,6 +71,7 @@ const IMPORTS: &[&str] = &[
     "js_handler",
     "js_clause",
     "js_resume",
+    "http_send",
 ];
 
 /// The ABI §1 allowlist, from an empty set (research/09 §1).

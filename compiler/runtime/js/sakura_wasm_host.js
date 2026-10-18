@@ -446,6 +446,30 @@ export class Host {
           const [v] = this.decode(new Reader(this.copyIn(ptr, len)));
           return this.jsStep(s.run, () => (status === 0 ? s.k(v) : rt.fail(s.ctx, v)));
         },
+        // `async`, of kind `secret` (ABI §8.1): the request's `secret_headers` arrive as
+        // `Secret`s, which only the JS runtime's `fetchArgs` exposes, as on the JS backend.
+        http_send: (request, ptr, len) => {
+          const [req] = this.decode(new Reader(this.copyIn(ptr, len)));
+          const schema = R(["A", "std::response::Response", []], "S");
+          const reply = (v) => {
+            let bytes;
+            try {
+              bytes = this.answerBytes({ ok: v }, schema);
+            } catch (e) {
+              bytes = defectAnswer(e instanceof rt.Defect ? e : new rt.Defect("D090", String(e?.message ?? e)));
+            }
+            this.complete(request, 0, bytes);
+          };
+          const r = rt.http_send(req, cpsContext(), (v) => ({ ok: v }));
+          if (r?.p instanceof Promise) {
+            this.inflight.set(request, r.cancel ?? (() => {}));
+            r.p.then((v) => reply(v));
+          } else {
+            this.inflight.set(request, () => {});
+            reply(r.ok);
+          }
+          return 1;
+        },
         trace_enabled: () => (this.traceFd === null ? 0 : 1),
         trace_write: (ptr, len) => {
           rt.flushOut();
@@ -468,6 +492,11 @@ export class Host {
 
   /** `{ ok }` or `{ fail }` as a status-prefixed `sakura-vt1` answer (as `hosted`). */
   answer(r, ok, err) {
+    return this.copyOut(this.answerBytes(r, ok, err));
+  }
+
+  /** The bytes of `answer`, for a completion's payload (copied out when delivered). */
+  answerBytes(r, ok, err) {
     const w = new Writer();
     if ("fail" in r) {
       w.u8(1);
@@ -476,7 +505,7 @@ export class Host {
       w.u8(0);
       this.encode(w, r.ok, ok);
     }
-    return this.copyOut(w.done());
+    return w.done().slice();
   }
 
   /** `v` of schema `s` as a guest `Bytes` holding its `sakura-vt1` value. */

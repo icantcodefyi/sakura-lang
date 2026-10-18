@@ -137,3 +137,103 @@ fn a_user_js_external_is_refused_on_wasm() {
     assert_eq!(&text[a..b], "external", "the span is the attribute");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// A local HTTP server answering every request with `201` and `path=<path> auth=<header>`,
+/// on a free port; it serves on a thread until the test process ends.
+fn echo_server() -> u16 {
+    use std::io::{BufRead, BufReader, Write};
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    std::thread::spawn(move || {
+        for stream in listener.incoming().flatten() {
+            let mut reader = BufReader::new(stream);
+            let (mut path, mut auth) = (String::new(), "None".to_string());
+            let mut line = String::new();
+            while reader.read_line(&mut line).is_ok_and(|n| n > 2) {
+                if path.is_empty() {
+                    path = line.split(' ').nth(1).unwrap_or("").to_string();
+                } else if line.to_ascii_lowercase().starts_with("authorization:") {
+                    auth = line["authorization:".len()..].trim().to_string();
+                }
+                line.clear();
+            }
+            let body = format!("path={path} auth={auth}");
+            let _ = write!(
+                reader.get_mut(),
+                "HTTP/1.1 201 Created\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
+                body.len()
+            );
+        }
+    });
+    port
+}
+
+/// `Http.host()` (real network, plan §3.7 W2): the same exchanges, output and trace on both
+/// backends; the `secret_headers` value reaches the server (`http_send` is the import of kind
+/// `secret`, ABI §8.1) and nothing else: not stdout, not the trace.
+#[test]
+fn http_host_sends_on_wasm_as_on_js() {
+    if !available() {
+        eprintln!("skipped: node is missing");
+        return;
+    }
+    let port = echo_server();
+    let dir = std::env::temp_dir().join(format!("sakura-wasm-http-{}", std::process::id()));
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(
+        dir.join("sakura.toml"),
+        format!(
+            "[package]\nname = \"h\"\nversion = \"0.1.0\"\nedition = \"2026\"\n\n\
+             [permissions]\nnet = [\"127.0.0.1:{port}\", \"127.0.0.1:1\"]\n"
+        ),
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("src/main.sakura"),
+        format!(
+            "import std/http.{{Http}}\nimport std/request.{{Get, Request}}\n\
+             import std/response.{{HttpError}}\nimport std/url.{{Url}}\n\n\
+             pub fn main() -> Unit ! {{Console, Http, Fail<HttpError>}} {{\n\
+             \x20 let req = Http.bearer(Request.of(Get, Url.from(\"http://127.0.0.1:{port}/hi\")), Secret.of(\"s3cr3t\"))\n\
+             \x20 let r = Http.send(req)\n\
+             \x20 Console.print(\"{{r.status}} {{r.body == \"path=/hi auth=Bearer s3cr3t\"}} {{List.len(req.secret_headers)}}\")\n\
+             \x20 match try {{ Http.send(Request.of(Get, Url.from(\"http://127.0.0.1:1/none\"))) }} {{\n\
+             \x20   Ok(_) => Console.print(\"unexpected\"),\n\
+             \x20   Err(e) => Console.print(\"failed: {{e.status}}\"),\n\
+             \x20 }}\n}}\n"
+        ),
+    )
+    .unwrap();
+    let run = |target: &str| {
+        let trace = dir.join(format!("{target}.trace"));
+        let out_dir = dir.join(format!("out-{target}"));
+        let out = sakura_env(
+            &[
+                "run",
+                "--target",
+                target,
+                "--out-dir",
+                out_dir.to_str().unwrap(),
+            ],
+            &dir,
+            &[("SAKURA_TRACE", &trace)],
+        );
+        (out, std::fs::read_to_string(&trace).unwrap_or_default())
+    };
+    let (js, js_trace) = run("js");
+    let (wasm, wasm_trace) = run("wasm");
+    assert_eq!(js.code, Some(0), "{}{}", js.stdout, js.stderr);
+    assert!(js.stdout.starts_with("201 true 1\n"), "{}", js.stdout);
+    assert!(js.stdout.ends_with("failed: None\n"), "{}", js.stdout);
+    assert_eq!(
+        (wasm.code, &wasm.stdout, &wasm_trace),
+        (js.code, &js.stdout, &js_trace),
+        "{}",
+        wasm.stderr
+    );
+    assert_eq!(js_trace.matches("\"op\":\"send\"").count(), 2);
+    for text in [&wasm.stdout, &wasm.stderr, &wasm_trace] {
+        assert!(!text.contains("s3cr3t"), "the secret leaked: {text}");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
