@@ -161,7 +161,8 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Tests
-        run: cargo nextest run --workspace --locked
+        # The required Parity matrix runs this identical target on both backends/OSes.
+        run: cargo nextest run --workspace --locked -E 'not (package(=sakura_cli) & binary(=parity))'
       - name: Doctests
         run: cargo test --workspace --doc --locked
       - name: Agent docs are fresh (design §17.142)
