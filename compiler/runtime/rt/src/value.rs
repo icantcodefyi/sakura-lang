@@ -274,6 +274,57 @@ impl Rt {
         h + HANDLER_STATE + 8 * self.heap.mem.u32(h + 16) + 4 * i
     }
 
+    /// A host-built handler whose clause closures capture `instance` (the host's id of its state,
+    /// e.g. one in-memory database per `Sql.memory()`) as a handle of kind `vt::SQL`, or with `js`
+    /// (a JS-built handler, `rt_code_js_clause`) of kind `vt::JS_HANDLER`: the handle is retired
+    /// when the last clause closure dies with the handler, and the host releases the instance
+    /// (security review W7). A JS clause also captures its operation and arity, which follow the
+    /// `n` codes at `codes`.
+    pub fn instance_handler(
+        &mut self,
+        effect: u32,
+        codes: u32,
+        n: u32,
+        instance: i64,
+        js: bool,
+    ) -> Res<u32> {
+        let caps = if js { 3 } else { 1 };
+        let kind = if js {
+            crate::vt::JS_HANDLER
+        } else {
+            crate::vt::SQL
+        };
+        let owner = self.new_object(tag::HANDLE, 24)?;
+        for (off, v) in [(8, kind), (12, instance as u32), (16, 1)] {
+            self.heap.mem.set_u32(owner + off, v);
+        }
+        let r = (|| {
+            let h = self.new_object(tag::HANDLER, 24 + 4 * n)?;
+            for (off, v) in [(8, effect), (12, u32::MAX), (16, 0), (20, n)] {
+                self.heap.mem.set_u32(h + off, v);
+            }
+            for i in 0..n {
+                let c = self
+                    .new_object(tag::CLOSURE, 16 + 8 * caps)
+                    .inspect_err(|_| self.drop(h))?;
+                self.heap
+                    .mem
+                    .set_u32(c + 8, self.heap.mem.u32(codes + 4 * i));
+                self.heap.mem.set_u32(c + 12, caps);
+                self.heap.mem.set_u32(h + 24 + 4 * i, c);
+                self.dup(owner).inspect_err(|_| self.drop(h))?;
+                self.set_slot(c, 0, u64::from(owner));
+                if js {
+                    self.set_slot(c, 1, u64::from(i));
+                    self.set_slot(c, 2, u64::from(self.heap.mem.u32(codes + 4 * (n + i))));
+                }
+            }
+            Ok(h)
+        })();
+        self.drop(owner);
+        r
+    }
+
     /// A pair tuple of the header's `(word, word)` row, consuming both.
     pub fn pair(&mut self, a: u32, b: u32) -> Res<u32> {
         let t = self

@@ -63,8 +63,15 @@ pub mod t {
 pub const DIR: u32 = 0;
 pub const FILE: u32 = 1;
 pub const BODY: u32 = 2;
+/// A host-built handler's instance (`slot` the host's id): an `Sql.memory()`/`Sql.sqlite`
+/// database, or a JS-built handler (`Llm.anthropic`, `Log.json`). Never crosses in a value: each
+/// clause closure captures one, and the last reference dying with the guest handler retires it,
+/// so the host releases the database or the handler's state (security review W7).
+pub const SQL: u32 = 4;
+pub const JS_HANDLER: u32 = 7;
 /// A JS function of the host a JS-built handler passes to an operation (`slot` its id); the
-/// guest makes it a native closure (`rt_code_js_callback`).
+/// guest makes it a native closure (`rt_code_js_callback`) that holds the handle, so it is
+/// retired when that closure dies, no later than the clause's handler (design §17.161).
 pub const CALLBACK: u32 = 5;
 
 /// The top of a host-delegated builtin's declared result (security review W2), as

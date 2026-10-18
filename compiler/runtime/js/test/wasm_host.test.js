@@ -199,3 +199,34 @@ test("a sync answer past the copy budget is a D091 answer, not a guest heap exha
   assert.equal(status, 2);
   assert.deepEqual(code, u32(91));
 });
+
+test("retire_handle forgets callbacks, closes databases and drops JS-built handlers", () => {
+  const { h } = host();
+  const retire = h.imports().sakura_host.retire_handle;
+  // A JS function a clause of JS-built handler 3 passes out crosses as a `callback` handle.
+  h.jsHandlers[3] = { spec: null, h: { key: "s3cr3t" } };
+  const fn = () => {};
+  const encode = (owner) => {
+    const w = { n: 0, buf: [], u8(v) { this.buf.push(v); }, u32(v) { this.buf.push(v); } };
+    h.owner = owner;
+    h.encodeDynamic(w, fn, 0);
+    return w.buf[2];
+  };
+  const a = encode(3);
+  const b = encode(3);
+  const other = encode(4);
+  retire(5, a, 2);
+  assert.ok(h.callbacks.has(a), "a wrong generation retires nothing");
+  retire(5, a, 1);
+  assert.ok(!h.callbacks.has(a), "the closure holding it died");
+  retire(7, 3, 1);
+  assert.equal(h.jsHandlers[3], undefined, "the handler's state (its key) is dropped");
+  assert.ok(!h.callbacks.has(b), "with the callbacks its clauses made");
+  assert.ok(h.callbacks.has(other));
+  let closed = 0;
+  h.sql[0] = { close: () => closed++ };
+  retire(4, 0, 1);
+  assert.equal(closed, 1);
+  assert.throws(() => h.sqlOf(0), HostFault, "a released database is a host fault");
+  assert.equal(h.imports().sakura_host.sql_rollback(0n, 1n), undefined, "a late rollback is a no-op");
+});

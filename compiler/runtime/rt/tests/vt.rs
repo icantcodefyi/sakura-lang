@@ -296,3 +296,35 @@ fn a_host_answer_of_another_shape_than_the_declared_result_is_d090() {
     // The handles above retire on drop; nothing else is left.
     assert_eq!(rt.stats().live_objects, base);
 }
+
+#[test]
+fn host_built_instances_are_released_when_their_handler_dies() {
+    // Security review W7: an `Sql` database or a JS-built handler (holding `Llm.anthropic`'s
+    // key) is released on the host when the guest handler built over it dies, not at exit.
+    use sakura_rt::HostCall;
+    use sakura_rt::vt::{JS_HANDLER, SQL};
+    let mut rt = runtime();
+    // Two clause codes, then a JS clause's arities. Without a code table every capture counts
+    // as a word, so the operation indices and arities here are non-pointer values (0, 1, 3).
+    let codes = rt.install(&u32s(&[10, 11, 1, 3])).unwrap();
+    let base = rt.stats().live_objects;
+    for (js, kind) in [(false, SQL), (true, JS_HANDLER)] {
+        rt.host_log.clear();
+        let h = rt.instance_handler(0, codes, 2, 42, js).unwrap();
+        assert!(
+            rt.host_log.is_empty(),
+            "the instance lives as long as its handler"
+        );
+        rt.drop(h);
+        assert_eq!(
+            rt.host_log,
+            vec![HostCall::RetireHandle {
+                kind,
+                slot: 42,
+                generation: 1
+            }],
+            "released once, with the handler"
+        );
+    }
+    assert_eq!(rt.stats().live_objects, base);
+}

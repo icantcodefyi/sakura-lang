@@ -1141,37 +1141,9 @@ pub extern "C" fn rt_code_file_close(env: u32, _frame: u32) -> u32 {
 
 // ---- SQL (`Sql.memory()`) ----------------------------------------------------------------------
 
-/// A host-built handler whose clause closures capture `instance` (an `i64`, the host's id of
-/// its state), e.g. one in-memory database per `Sql.memory()`. With `js` (a JS-built handler,
-/// `rt_code_js_clause`) they also capture the operation and its arity, which follow the `n`
-/// codes at `codes`.
-fn instance_handler(
-    rt: &mut Rt,
-    effect: u32,
-    codes: u32,
-    n: u32,
-    instance: i64,
-    js: bool,
-) -> Res<u32> {
-    let caps = if js { 3 } else { 1 };
-    let h = rt.new_object(tag::HANDLER, 24 + 4 * n)?;
-    for (off, v) in [(8, effect), (12, u32::MAX), (16, 0), (20, n)] {
-        rt.heap.mem.set_u32(h + off, v);
-    }
-    for i in 0..n {
-        let c = rt
-            .new_object(tag::CLOSURE, 16 + 8 * caps)
-            .inspect_err(|_| rt.drop(h))?;
-        rt.heap.mem.set_u32(c + 8, rt.heap.mem.u32(codes + 4 * i));
-        rt.heap.mem.set_u32(c + 12, caps);
-        rt.set_slot(c, 0, instance as u64);
-        if js {
-            rt.set_slot(c, 1, u64::from(i));
-            rt.set_slot(c, 2, u64::from(rt.heap.mem.u32(codes + 4 * (n + i))));
-        }
-        rt.heap.mem.set_u32(h + 24 + 4 * i, c);
-    }
-    Ok(h)
+/// The host's instance id a clause closure of `Rt::instance_handler` captures.
+fn instance_in(rt: &Rt, clause: u32) -> i64 {
+    i64::from(rt.heap.mem.u32(rt.slot(clause, 0) as u32 + 12))
 }
 
 /// `Sql.memory()`: a fresh in-memory database on the host, as JS `sql_memory`.
@@ -1180,7 +1152,7 @@ pub extern "C" fn rt_b_sql_memory(effect: u32, codes: u32, n: u32) -> u32 {
     // SAFETY: a plain import returning a scalar.
     let instance = unsafe { host::sql_open_memory() };
     let rt = rt();
-    let r = instance_handler(rt, effect, codes, n, instance, false);
+    let r = rt.instance_handler(effect, codes, n, instance, false);
     ptr(r)
 }
 
@@ -1193,7 +1165,7 @@ pub extern "C" fn rt_b_sql_sqlite(effect: u32, codes: u32, n: u32, path: u32) ->
     // SAFETY: a plain import with a slice inside linear memory, copied in at once.
     let instance = unsafe { host::sql_open_file(at, len) };
     rt.drop(path);
-    let r = instance_handler(rt, effect, codes, n, instance, false);
+    let r = rt.instance_handler(effect, codes, n, instance, false);
     ptr(r)
 }
 
@@ -1237,7 +1209,7 @@ fn sql_instance(rt: &mut Rt, frame: u32) -> Result<i64, u32> {
 /// A clause's instance (its closure's capture) and the clause closure released.
 fn instance_of(rt: &mut Rt, frame: u32) -> i64 {
     let clause = rt.take_fslot(frame, 0) as u32;
-    let instance = rt.slot(clause, 0) as i64;
+    let instance = instance_in(rt, clause);
     rt.drop(clause);
     instance
 }
@@ -1811,7 +1783,7 @@ fn js_handler(name: &str, effect: u32, codes: u32, n: u32, args: &[u32]) -> u32 
         unsafe { host::js_handler(name.as_ptr() as u32, name.len() as u32, at, len) }
     });
     rt.sched.vt_secrets = false;
-    let r = r.and_then(|instance| instance_handler(rt, effect, codes, n, instance, true));
+    let r = r.and_then(|instance| rt.instance_handler(effect, codes, n, instance, true));
     ptr(r)
 }
 
@@ -1840,7 +1812,7 @@ pub extern "C" fn rt_code_js_clause(_env: u32, frame: u32) -> u32 {
     let answer = match rt.block(frame) {
         0 => {
             let clause = rt.take_fslot(frame, 0) as u32;
-            let instance = rt.slot(clause, 0) as i64;
+            let instance = instance_in(rt, clause);
             let (op, arity) = (rt.slot(clause, 1) as u32, rt.slot(clause, 2) as usize);
             rt.drop(clause);
             let mut args = [UNIT; JS_ARGS as usize];
@@ -1978,7 +1950,7 @@ fn js_perform(rt: &mut Rt, frame: u32, at: u32, len: u32) -> Res<u32> {
             && rt.tag(x) == tag::HANDLE
             && rt.heap.mem.u32(x + 8) == crate::vt::CALLBACK
         {
-            let c = js_callback_closure(rt, frame, rt.heap.mem.u32(x + 12))
+            let c = js_callback_closure(rt, frame, x)
                 .and_then(|c| rt.callback_value(c, frame))
                 .inspect_err(|_| rt.drop(args))?;
             rt.set_slot(args, i, u64::from(c));
@@ -2032,16 +2004,18 @@ fn js_call(rt: &mut Rt, frame: u32, at: u32, len: u32) -> Res<u32> {
     Ok(step::CALL)
 }
 
-/// A native closure standing for the host's JS function `id` (`rt_code_js_callback`): it
-/// captures the JS clause's instance and kept closure arguments (duplicated), so the JS code it
-/// runs can call them too.
-fn js_callback_closure(rt: &mut Rt, frame: u32, id: u32) -> Res<u32> {
+/// A native closure standing for the host's JS function, the `callback` handle `x` (borrowed;
+/// `rt_code_js_callback`): it holds the handle, so the host's function is retired when the
+/// closure dies (security review W7), and captures the function's id and the JS clause's kept
+/// closure arguments (duplicated), so the JS code it runs can call them too.
+fn js_callback_closure(rt: &mut Rt, frame: u32, x: u32) -> Res<u32> {
     let caps = 2 + JS_ARGS;
     let c = rt.new_object(tag::CLOSURE, 16 + 8 * caps)?;
     rt.heap.mem.set_u32(c + 8, rt.sched.js_callback_code);
     rt.heap.mem.set_u32(c + 12, caps);
-    rt.set_slot(c, 0, 0);
-    rt.set_slot(c, 1, u64::from(id));
+    rt.dup(x).inspect_err(|_| rt.drop(c))?;
+    rt.set_slot(c, 0, u64::from(x));
+    rt.set_slot(c, 1, u64::from(rt.heap.mem.u32(x + 12)));
     for i in 0..JS_ARGS {
         let w = rt.fslot(frame, 2 + i) as u32;
         let w = if is_closure(rt, w) {
@@ -2061,9 +2035,11 @@ fn js_callback_closure(rt: &mut Rt, frame: u32, id: u32) -> Res<u32> {
 #[unsafe(no_mangle)]
 pub extern "C" fn rt_code_js_callback(_env: u32, frame: u32) -> u32 {
     let rt = rt();
+    // The closure holds the function's `callback` handle: released only after the host ran it.
+    let mut closure = 0;
     let answer = match rt.block(frame) {
         0 => {
-            let closure = rt.take_fslot(frame, 0) as u32;
+            closure = rt.take_fslot(frame, 0) as u32;
             let arg = rt.take_fslot(frame, 1) as u32;
             let id = rt.slot(closure, 1) as i64;
             let kept = (0..JS_ARGS).try_for_each(|i| {
@@ -2074,7 +2050,6 @@ pub extern "C" fn rt_code_js_callback(_env: u32, frame: u32) -> u32 {
                 rt.set_fslot(frame, 2 + i, u64::from(w));
                 Ok(())
             });
-            rt.drop(closure);
             kept.and_then(|()| {
                 with_args_reentrant(&[arg], |at, len| {
                     // SAFETY: a plain import with a slice inside linear memory, copied in at once.
@@ -2085,6 +2060,7 @@ pub extern "C" fn rt_code_js_callback(_env: u32, frame: u32) -> u32 {
         block => js_continue(frame, block),
     };
     let rt = self::rt();
+    rt.drop(closure);
     match answer {
         Ok(b) => js_answer(rt, frame, b),
         Err(d) => {

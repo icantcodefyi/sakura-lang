@@ -161,9 +161,10 @@ fn native_slots(name: &str) -> (Vec<Slot>, Vec<Slot>) {
         "rt_k_serve_listen" | "rt_code_serve_request" => (vec![w, w], vec![]),
         "rt_code_file_close" | "rt_code_task_cancel_all" => (vec![], vec![i]),
         // Slot 0 the instance, 1 the activation, then the arguments, kept while a
-        // `Sql.sqlite` clause performs `Fs.root()` (`sakura_rt::wasm::sql_instance`).
-        "rt_code_sql_query" => (vec![i, i, w, w], vec![i]),
-        "rt_code_sql_execute" | "rt_code_sql_transaction" => (vec![i, i, w], vec![i]),
+        // `Sql.sqlite` clause performs `Fs.root()` (`sakura_rt::wasm::sql_instance`); the
+        // capture is the instance's handle, retired with the handler.
+        "rt_code_sql_query" => (vec![i, i, w, w], vec![w]),
+        "rt_code_sql_execute" | "rt_code_sql_transaction" => (vec![i, i, w], vec![w]),
         "rt_code_sql_rollback"
         | "rt_code_prop_record"
         | "rt_code_prop_failures"
@@ -178,11 +179,12 @@ fn native_slots(name: &str) -> (Vec<Slot>, Vec<Slot>) {
         "rt_code_task_all" => (vec![w, i, w, w, i, i, w], vec![w]),
         "rt_code_task_race" => (vec![w, i, w, w, i, i], vec![w]),
         "rt_code_task_yield_now" => (vec![w, i], vec![w]),
-        // The clause, the activation, up to four arguments, the host's session, a flag.
-        "rt_code_js_clause" => (vec![w, i, w, w, w, w, i, i], vec![i, i, i]),
+        // The clause, the activation, up to four arguments, the host's session, a flag;
+        // captures the instance's handle, the operation and its arity.
+        "rt_code_js_clause" => (vec![w, i, w, w, w, w, i, i], vec![w, i, i]),
         // The closure, its argument, the kept closures, the host's session, a flag; captures
-        // an unused word, the host's function id and the kept closures.
-        "rt_code_js_callback" => (vec![w, w, w, w, w, w, i, i], vec![i, i, w, w, w, w]),
+        // the function's `callback` handle, its id and the kept closures.
+        "rt_code_js_callback" => (vec![w, w, w, w, w, w, i, i], vec![w, i, w, w, w, w]),
         _ => (vec![], vec![]),
     }
 }

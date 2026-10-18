@@ -3705,6 +3705,11 @@ export function sqlConnection(open) {
     db.exec(sql(name));
   };
   return {
+    /** Close the database (the WASM host, when the guest handler holding it dies). */
+    close: () => {
+      db?.close();
+      db = null;
+    },
     query: (q, schema, ctx) => run(ctx, (d) => list(d.prepare(q.text).all(...params(q)).map((row) => rowOf(row, schema)))),
     execute: (q, ctx) => run(ctx, (d) => Number(d.prepare(q.text).run(...params(q)).changes)),
     begin: (ctx) =>

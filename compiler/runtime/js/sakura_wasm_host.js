@@ -274,6 +274,12 @@ const JS_HANDLERS = {
 /** Handle kinds of host JS values (`sakura_rt::vt`): a function, an opaque result. */
 const CALLBACK = 5;
 const JSVALUE = 6;
+/**
+ * Handle kinds the guest retires when a handler it built on the host dies (`sakura_rt::vt`):
+ * an `Sql` database and a JS-built handler, `slot` the instance id (security review W7).
+ */
+const SQL = 4;
+const JS_HANDLER = 7;
 const OPAQUE = Symbol("an opaque JS value");
 
 /**
@@ -401,11 +407,7 @@ export class Host {
           const line = rt.console_read_line();
           return line.tag === 1 ? this.copyOut(new TextEncoder().encode(line.fields[0])) : 0;
         },
-        retire_handle: (kind, slot, generation) => {
-          if (this.handles.get(`${kind}:${slot}`)?.generation === generation) {
-            this.handles.delete(`${kind}:${slot}`);
-          }
-        },
+        retire_handle: (kind, slot, generation) => this.retire(kind, slot, generation),
         ...Object.fromEntries(
           Object.keys(HOSTED).map((name) => [name, (ptr, len) => this.hosted(name, ptr, len)]),
         ),
@@ -460,23 +462,23 @@ export class Host {
           this.sql.push(Object.assign(c, { file }));
           return BigInt(this.sql.length - 1);
         },
-        sql_needs_root: (inst) => (this.sql[Number(inst)].file?.open === false ? 1 : 0),
+        sql_needs_root: (inst) => (this.sqlOf(inst).file?.open === false ? 1 : 0),
         sql_root: (inst, ptr, len) => {
           const [d] = this.decode(new Reader(this.copyIn(ptr, len)));
-          this.sql[Number(inst)].file.dir = d;
+          this.sqlOf(inst).file.dir = d;
         },
         sql_query: (inst, ptr, len) => {
           const [q, schema] = this.decode(new Reader(this.copyIn(ptr, len)));
           const s = JSON.parse(schema);
-          return this.answer(this.sql[Number(inst)].query(q, s, null), ["L", s], SQL_ERROR);
+          return this.answer(this.sqlOf(inst).query(q, s, null), ["L", s], SQL_ERROR);
         },
         sql_execute: (inst, ptr, len) => {
           const [q] = this.decode(new Reader(this.copyIn(ptr, len)));
-          return this.answer(this.sql[Number(inst)].execute(q, null), "I", SQL_ERROR);
+          return this.answer(this.sqlOf(inst).execute(q, null), "I", SQL_ERROR);
         },
-        sql_begin: (inst) => this.answer(this.sql[Number(inst)].begin(null), "I", SQL_ERROR),
-        sql_release: (inst, token) => this.sql[Number(inst)].release(Number(token)),
-        sql_rollback: (inst, token) => this.sql[Number(inst)].rollback(Number(token)),
+        sql_begin: (inst) => this.answer(this.sqlOf(inst).begin(null), "I", SQL_ERROR),
+        sql_release: (inst, token) => this.sql[Number(inst)]?.release(Number(token)),
+        sql_rollback: (inst, token) => this.sql[Number(inst)]?.rollback(Number(token)),
         // Property tests: the search is the JS runtime's (`propertySteps`), the cases run here.
         prop_begin: (ptr, len) => {
           const [seed, schemas, names, regression] = this.decode(new Reader(this.copyIn(ptr, len)));
@@ -519,7 +521,9 @@ export class Host {
           return BigInt(this.jsHandlers.length - 1);
         },
         js_clause: (inst, op, ptr, len) => {
-          const { spec, h } = this.jsHandlers[Number(inst)];
+          const handler = this.jsHandlers[Number(inst)];
+          if (handler === undefined) throw new HostFault("a released JS handler");
+          const { spec, h } = handler;
           const args = this.decode(new Reader(this.copyIn(ptr, len)));
           const at = spec.schemaArg[op];
           if (at >= 0) args[at] = JSON.parse(args[at]);
@@ -531,7 +535,7 @@ export class Host {
               return { call: { index, unit, args: a, ctx, k } };
             };
           }
-          const run = { schema: spec.results[op](args) };
+          const run = { schema: spec.results[op](args), inst: Number(inst) };
           // A failure reaching the clause's own context names the clause (see `js_resume`).
           const ctx = { h: guestFrames, c: { j: (e) => ({ fail: e, clause: run }), m: 0 }, t: { id: 0, fins: [] }, p: null };
           return this.jsStep(run, () => h.c[op](h, ...args, ctx, (v) => ({ ok: v })));
@@ -595,11 +599,11 @@ export class Host {
           if (s !== undefined) s.response = r;
         },
         js_callback: (id, ptr, len) => {
-          const f = this.callbacks.get(Number(id));
-          if (f === undefined) throw new HostFault("an unknown JS callback");
+          const c = this.callbacks.get(Number(id));
+          if (c === undefined) throw new HostFault("an unknown JS callback");
           const args = this.decode(new Reader(this.copyIn(ptr, len)));
           const ctx = { h: guestFrames, c: { j: (e) => ({ fail: e }), m: 0 }, t: { id: 0, fins: [] }, p: null };
-          return this.jsStep({ schema: OPAQUE }, () => f(...args, ctx, (v) => ({ ok: v })));
+          return this.jsStep({ schema: OPAQUE, inst: c.inst }, () => c.f(...args, ctx, (v) => ({ ok: v })));
         },
         trace_enabled: () => (this.traceFd === null ? 0 : 1),
         trace_write: (ptr, len) => {
@@ -727,6 +731,33 @@ export class Host {
     return k;
   }
 
+  /**
+   * `retire_handle` (ABI §8.4): the guest's last reference to a handle died. A `callback`'s
+   * function is forgotten; an `Sql` database is closed and a JS-built handler (with its key
+   * and the callbacks its clauses made) dropped when the guest handler holding them dies.
+   */
+  retire(kind, slot, generation) {
+    if (generation !== 1 && (kind === CALLBACK || kind === SQL || kind === JS_HANDLER)) return;
+    if (kind === CALLBACK) {
+      this.callbacks.delete(slot);
+    } else if (kind === SQL) {
+      this.sql[slot]?.close();
+      this.sql[slot] = undefined;
+    } else if (kind === JS_HANDLER) {
+      this.jsHandlers[slot] = undefined;
+      for (const [id, c] of this.callbacks) if (c.inst === slot) this.callbacks.delete(id);
+    } else if (this.handles.get(`${kind}:${slot}`)?.generation === generation) {
+      this.handles.delete(`${kind}:${slot}`);
+    }
+  }
+
+  /** The `Sql` connection of instance `inst`; a released or unknown one is a host fault. */
+  sqlOf(inst) {
+    const c = this.sql[Number(inst)];
+    if (c === undefined) throw new HostFault("a released or unknown SQL instance");
+    return c;
+  }
+
   /** A host object as a handle `(kind, slot, generation)`, added to its table. */
   handle(kind, object) {
     const slot = this.nextSlot++;
@@ -740,6 +771,8 @@ export class Host {
    */
   jsStep(run, start) {
     const w = new Writer();
+    // The callbacks this step's JS code passes out belong to its handler instance (`retire`).
+    this.owner = run.inst;
     try {
       const r = settle(start());
       if ("call" in r) {
@@ -902,7 +935,7 @@ export class Host {
     }
     if (typeof v === "function") {
       const id = this.nextCallback++;
-      this.callbacks.set(id, v);
+      this.callbacks.set(id, { f: v, inst: this.owner });
       w.u8(T.handle);
       w.u32(CALLBACK);
       w.u32(id);
