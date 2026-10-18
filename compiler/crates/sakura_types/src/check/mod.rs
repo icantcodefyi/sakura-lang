@@ -238,7 +238,9 @@ pub(crate) fn check(
     let reused = |m: ModuleId| reuse.is_some_and(|(_, keep)| keep(m));
     if let Some((prev, _)) = reuse {
         // Reused bodies hold the previous `TypeId`s and their defs' `ParamId`s, so start from
-        // the previous interner and declarations, and never check those defs again.
+        // the previous interner and declarations, and never check those defs again. That
+        // includes the schemeless ones (tests, types, effects), whose bodies and holes are copied
+        // below and whose diagnostics the caller keeps.
         cx.inf = Infer::continuing(prev.interner.clone());
         for (def, s) in prev.defs.iter().filter(|(d, _)| reused(d.module)) {
             debug_assert!(
@@ -246,7 +248,16 @@ pub(crate) fn check(
                 "reused scheme of {def:?} mentions an inference variable"
             );
             cx.schemes.insert(*def, s.clone());
-            cx.checked.insert(*def);
+        }
+        for (mi, module) in program.modules.iter().enumerate() {
+            let module_id = ModuleId(mi as u32);
+            if reused(module_id) {
+                let defs = module.defs.iter().map(|(index, _)| DefId {
+                    module: module_id,
+                    index,
+                });
+                cx.checked.extend(defs);
+            }
         }
         let keep = |d: &&DefId| reused(d.module);
         for (d, g) in prev.decls.generics.iter().filter(|(d, _)| keep(d)) {

@@ -163,6 +163,13 @@ published yet.
 
 ### Fixed
 
+- After an edit, an unchanged module's `test` block no longer reports a `V5004` (a literal
+  that breaks a refinement) twice, or a typed hole twice, in the LSP and MCP servers and any
+  other process that analyses more than once: a reused module's tests, types and effects are
+  no longer checked again (plan WS-C1a). Type diagnostics within a file are listed by position
+  in `Analysis` results, so a reusing analysis lists them as a fresh one does; the human and
+  JSON output already sorted them.
+
 - A long flat `match` no longer overflows the compiler's stack (design §17.193): a 3,000-arm
   literal `match` crashed a debug `sakura run`, because its decision tree is an `if` chain as
   deep as its arms. Every recursive walk over an IR (the match compiler, Core passes, the LIR

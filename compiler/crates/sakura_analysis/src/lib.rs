@@ -447,8 +447,9 @@ fn analyze<'a>(snapshot: &Snapshot, prevs: impl IntoIterator<Item = &'a Analyzed
         }
         None => sakura_types::check_program_with(&program, &diagnostics),
     };
-    // One order whether or not results were reused.
-    type_diags.sort_by_key(|d| d.spans.first().map(|s| s.file));
+    // One order whether or not results were reused. By position within a file, because a
+    // declaration's diagnostics are raised where it is first used, which may be a reused body.
+    type_diags.sort_by_key(|d| d.spans.first().map(|s| (s.file, s.start, s.end)));
     let holes = typed
         .holes
         .iter()
@@ -895,11 +896,16 @@ mod tests {
             for chunk in programs.chunks(programs.len().div_ceil(threads)) {
                 s.spawn(move || {
                     for files in chunk {
-                        let snap = Snapshot::with_std(files.iter().map(|f| {
-                            let name = f.file_name().unwrap().to_string_lossy();
-                            let text = std::fs::read_to_string(f).unwrap();
-                            (format!("file:///t/src/{name}"), text)
-                        }));
+                        let snapshot = |edited: Option<usize>| {
+                            Snapshot::with_std(files.iter().enumerate().map(|(i, f)| {
+                                let name = f.file_name().unwrap().to_string_lossy();
+                                let mut text = std::fs::read_to_string(f).unwrap();
+                                if edited == Some(i) {
+                                    text.push('\n');
+                                }
+                                (format!("file:///t/src/{name}"), text)
+                            }))
+                        };
                         let out = |a: &Analyzed| {
                             let core =
                                 (!a.check.has_errors() && a.check.holes.is_empty()).then(|| {
@@ -908,14 +914,28 @@ mod tests {
                             let js = (core.as_ref())
                                 .filter(|c| !c.diagnostics.iter().any(Diagnostic::is_error))
                                 .map(|c| {
-                                    Analysis::emit_js(&snap, &c.module, &BuildOptions::default())
+                                    let opts = BuildOptions::default();
+                                    Analysis::emit_js(&a.snapshot, &c.module, &opts)
                                 });
                             let core = core.map(|c| (c.module, c.diagnostics));
                             (format!("{:?}", a.check), format!("{core:?}"), js)
                         };
+                        let snap = snapshot(None);
                         let fresh = out(&analyze(&snap, []));
-                        let reused = out(&analyze(&snap, [std]));
-                        assert!(fresh == reused, "{} differs", files[0].display());
+                        let reused = analyze(&snap, [std]);
+                        assert!(fresh == out(&reused), "{} differs", files[0].display());
+                        // Every user module reused too, so no test block is checked again (plan
+                        // WS-C1a).
+                        let again = out(&analyze(&snap, [&reused]));
+                        assert!(fresh == again, "{} differs reused", files[0].display());
+                        // A multi-file program with its first or last file edited and the others
+                        // reused, before and after the edited one.
+                        for i in [0, files.len() - 1].into_iter().filter(|_| files.len() > 1) {
+                            let edited = snapshot(Some(i));
+                            let fresh = out(&analyze(&edited, []));
+                            let reused = out(&analyze(&edited, [&reused]));
+                            assert!(fresh == reused, "{} differs edited", files[i].display());
+                        }
                     }
                 });
             }
