@@ -161,8 +161,7 @@ jobs:
 
   parity:
     name: Parity (${{ matrix.backend }}, ${{ matrix.os }})
-    # Restore the workspace build saved by Rust on each OS before running only parity.
-    needs: rust
+    # Share Rust's build cache without waiting for the full workspace test suites.
     strategy:
       fail-fast: false
       matrix:
