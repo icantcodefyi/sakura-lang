@@ -749,7 +749,8 @@ fn contract_tests_fail_on_wasm_as_on_js() {
     assert!(js.3.is_some(), "JS stores the shrunk case");
     assert_eq!(run("wasm"), js);
 
-    let dir = std::env::temp_dir().join(format!("sakura-wasm-record-{}", std::process::id()));
+    let dir =
+        std::env::temp_dir().join(format!("sakura-wasm-record-refused-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join("main.sak"), src).unwrap();
     let out = sakura(&["test", "--record", "--target", "wasm", "main.sak"], &dir);
