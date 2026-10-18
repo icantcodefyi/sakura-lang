@@ -75,10 +75,10 @@ table! {
     Direct secret_wrap/1, Direct secret_expose/1, Direct json_parse/1, Direct json_encode/2,
     Direct json_decode/2, Direct json_schema/2, Direct untrusted_of/1, Direct untrusted_value/1,
     // Fs, Cli
-    Direct fs_root/0, Direct fs_detached_root/0, Direct fs_subdir/2, Direct fs_read/2,
+    Direct fs_root/0, Direct fs_memory_root/1, Direct fs_subdir/2, Direct fs_read/2,
     Direct fs_write/3, Direct fs_list/2, Direct fs_exists/2, Direct cli_args/0, Direct cli_exit/1,
-    Cps cli_parse/2, Direct file_open/3, Direct file_buffer/1, Cps file_closing/2,
-    Direct file_read/2, Direct file_write/2, Direct file_contents/1,
+    Cps cli_parse/2, Direct file_open/3, Cps file_closing/2, Direct file_read/2,
+    Direct file_write/2,
     // Task
     Direct task_host/0, Direct task_deterministic/1,
     // Http

@@ -389,38 +389,84 @@ test("with_file host files: chunked reads, appends, closed on fail, no escapes",
     assert.deepEqual(rt.file_read(rd, 10), rt.Ok(bytes("")));
     assert.equal(rt.file_open(root, "../out.txt", WRITE).tag, 1);
     assert.equal(rt.file_open(root, "missing.txt", READ).fields[0], "not found");
+    assert.deepEqual(rt.fs_subdir(root, "nope"), rt.Err("no such directory"));
   } finally {
     process.chdir(cwd);
     fs.rmSync(dir, { recursive: true });
   }
 });
 
-test("with_file buffers keep their contents after closing", () => {
-  const id = rt.file_buffer(rt.string_to_bytes("ab"));
-  assert.deepEqual(rt.file_read(id, 1), rt.Ok(rt.string_to_bytes("a")));
-  for (let i = 0; i < 100; i++) rt.file_write(id, rt.string_to_bytes("x"));
-  rt.runTask(($ctx, $k) => rt.file_closing(id, (c, k) => ret(k, undefined), $ctx, $k));
-  assert.deepEqual(rt.file_read(id, 1), rt.Err("the file is closed"));
-  assert.equal(rt.file_contents(id).length, 102);
+test("a memory Dir answers like a host directory (design §17.119)", () => {
+  class Entry {
+    constructor(name, is_dir) {
+      this.name = name;
+      this.is_dir = is_dir;
+    }
+  }
+  rt.def("std::fs::Entry", Entry);
+  const bytes = (s) => rt.string_to_bytes(s);
+  const text = (r) => rt.string_from_bytes(r.fields[0]).fields[0];
+  const root = rt.fs_memory_root(rt.list([["data/a.txt", bytes("a")], ["data/sub/b.txt", bytes("b")], ["top.txt", bytes("t")]]));
+  // Directories are the keys' prefixes; a subdir shares the store, both ways.
+  const data = rt.fs_subdir(root, "data").fields[0];
+  assert.equal(text(rt.fs_read(data, "a.txt")), "a");
+  assert.equal(text(rt.fs_read(rt.fs_subdir(data, "./sub/").fields[0], "b.txt")), "b");
+  assert.deepEqual(rt.fs_write(data, "x.txt", bytes("x")), rt.Ok(undefined));
+  assert.equal(text(rt.fs_read(root, "data/x.txt")), "x");
+  assert.deepEqual(rt.fs_subdir(root, "nope"), rt.Err("no such directory"));
+  assert.deepEqual(rt.fs_subdir(root, "data/a.txt"), rt.Err("not a directory"));
+  assert.deepEqual(rt.fs_subdir(data, "../top.txt"), rt.Err("not a relative path"));
+  assert.deepEqual(rt.fs_read(data, "../top.txt"), rt.Err("not a relative path"));
+  // No mkdir: writes need an existing parent directory, reads a file.
+  assert.deepEqual(rt.fs_write(root, "missing/x.txt", bytes("x")), rt.Err("not found"));
+  assert.deepEqual(rt.fs_write(root, "top.txt/x", bytes("x")), rt.Err("not a directory"));
+  assert.deepEqual(rt.fs_write(root, "data", bytes("x")), rt.Err("is a directory"));
+  assert.deepEqual(rt.fs_read(root, "data"), rt.Err("is a directory"));
+  assert.deepEqual(rt.fs_read(root, "nope.txt"), rt.Err("not found"));
+  assert.ok(rt.fs_exists(root, "data") && rt.fs_exists(root, ".") && rt.fs_exists(data, "sub/b.txt"));
+  assert.ok(!rt.fs_exists(root, "dat") && !rt.fs_exists(root, "../x"));
+  const names = (r) => rt.toArray(r.fields[0]).map((e) => `${e.name}${e.is_dir ? "/" : ""}`);
+  assert.deepEqual(names(rt.fs_list(root, ".")), ["data/", "top.txt"]);
+  assert.deepEqual(names(rt.fs_list(data, ".")), ["a.txt", "sub/", "x.txt"]);
+  assert.deepEqual(rt.fs_list(root, "top.txt"), rt.Err("not a directory"));
+  // Host-path users (cassettes, Sql.sqlite) see no host directory; fixtures_dir("") is empty.
+  assert.equal(rt.http_recording_open(root, "c.jsonl").fields[0], "c.jsonl: this directory has no host access");
+  assert.deepEqual(names(rt.fs_list(rt.fixtures_dir("", false), ".")), []);
+  // Each root is a fresh store.
+  assert.deepEqual(rt.fs_read(rt.fs_memory_root(rt.list([])), "data/x.txt"), rt.Err("not found"));
 });
 
-test("with_file buffers are released when the body fails, hits a defect or is cancelled", async () => {
-  const failed = rt.file_buffer(rt.string_to_bytes("ab"));
-  const out = rt.runTask(($ctx, $k) => rt.file_closing(failed, (c, k) => rt.fail(c, "boom"), $ctx, $k));
-  assert.deepEqual(out, { kind: "fail", error: "boom" });
-  assert.throws(() => rt.file_contents(failed), /is not a buffer/);
-
-  const defected = rt.file_buffer(rt.string_to_bytes("ab"));
-  rt.runTask(($ctx, $k) => rt.file_closing(defected, (c, k) => ret(k, rt.div(1, 0)), $ctx, $k));
-  assert.throws(() => rt.file_contents(defected), /is not a buffer/);
-
-  const cancelled = rt.file_buffer(rt.string_to_bytes("ab"));
-  const frames = rt.install({ h: null, c: null, t: null }, rt.task_host()).h;
-  const loser = ($ctx, $k) => rt.file_closing(cancelled, (c, k) => rt.clock_sleep_ms(5_000, c, k), $ctx, $k);
-  const winner = ($ctx, $k) => rt.clock_sleep_ms(10, $ctx, () => ret($k, "w"));
-  const race = ($ctx, $k) => rt.perform($ctx, "std::task::Task", 4, [rt.list([loser, winner])], $k);
-  assert.deepEqual(await rt.runTask(race, [], frames), ok("w"));
-  assert.throws(() => rt.file_contents(cancelled), /is not a buffer/);
+test("memory with_file writes through on every chunk and keeps them when the body fails", () => {
+  const [READ, WRITE, APPEND] = [{ tag: 0 }, { tag: 1 }, { tag: 2 }];
+  const bytes = (s) => rt.string_to_bytes(s);
+  const text = (r) => rt.string_from_bytes(r.fields[0]).fields[0];
+  const root = rt.fs_memory_root(rt.list([["old.txt", bytes("old")]]));
+  const w = rt.file_open(root, "log.txt", WRITE).fields[0];
+  assert.equal(text(rt.fs_read(root, "log.txt")), "");
+  const o = rt.runTask(($ctx, $k) =>
+    rt.file_closing(w, (c, k) => {
+      for (let i = 0; i < 100; i++) rt.file_write(w, bytes("x"));
+      assert.equal(text(rt.fs_read(root, "log.txt")).length, 100);
+      return rt.fail(c, "boom");
+    }, $ctx, $k),
+  );
+  assert.deepEqual(o, { kind: "fail", error: "boom" });
+  assert.deepEqual(rt.file_write(w, bytes("x")), rt.Err("the file is closed"));
+  assert.equal(text(rt.fs_read(root, "log.txt")).length, 100);
+  // A held value never changes; an append after another writer continues from its bytes.
+  const held = rt.fs_read(root, "old.txt").fields[0];
+  const a = rt.file_open(root, "old.txt", APPEND).fields[0];
+  rt.file_write(a, bytes("1"));
+  rt.fs_write(root, "old.txt", bytes("new"));
+  rt.file_write(a, bytes("2"));
+  assert.equal(rt.string_from_bytes(held).fields[0], "old");
+  assert.equal(text(rt.fs_read(root, "old.txt")), "new2");
+  const r = rt.file_open(root, "old.txt", READ).fields[0];
+  assert.equal(text(rt.file_read(r, 2)), "ne");
+  rt.file_write(a, bytes("3"));
+  assert.equal(text(rt.file_read(r, 10)), "w23");
+  assert.deepEqual(rt.file_open(root, "nope.txt", READ), rt.Err("not found"));
+  assert.deepEqual(rt.file_open(root, "missing/x.txt", APPEND), rt.Err("not found"));
 });
 
 test("sseMessage rebuilds a Messages API stream and the text after each delta", () => {

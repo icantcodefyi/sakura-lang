@@ -77,51 +77,12 @@ pub fn subdir(d: Dir, name: String) -> Dir ! {Fail<FsError>} {
   }
 }
 
-/// Test handler over in-memory files; `write` updates them. `root()` is a directory with
-/// no host access, so `Fs.rooted(Fs.root())` inside it fails every operation. A file opened
-/// with `with_file` is written back when the body returns, and not at all if it fails.
-pub fn memory(files: List<(Path, Bytes)>) -> Handler<Fs> {
-  handler Fs {
-    var store = Map.of(List.map(files, fn(f) { (Path.to_string(f.0), f.1) }))
-    fn root() { fs_detached_root() }
-    fn read(path) { found(path, Map.get(store, Path.to_string(path))) }
-    fn read_text(path) {
-      let bytes = found(path, Map.get(store, Path.to_string(path)))
-      untrusted.of(ok_or_fail(path, String.from_bytes(bytes).map_err(fn(e) { "invalid UTF-8 at byte {e.offset}" })))
-    }
-    fn write(path, data) { store = Map.insert(store, Path.to_string(path), data) }
-    fn list(dir) {
-      let prefix = if Path.to_string(dir) == "." { "" } else { "{Path.to_string(dir)}/" }
-      let names = List.filter_map(Map.keys(store), fn(k) {
-        if String.starts_with(k, prefix) { Some(String.slice(k, String.len(prefix), String.len(k))) } else { None }
-      })
-      let entries = List.map(names, fn(n) {
-        match String.split(n, "/") {
-          [file] => Entry { name: file, is_dir: false },
-          parts => Entry { name: List.first(parts).unwrap_or(n), is_dir: true },
-        }
-      })
-      List.sort_by(List.unique(entries), fn(e) { e.name })
-    }
-    fn exists(path) { Map.contains(store, Path.to_string(path)) }
-    fn with_file(path, mode, body) {
-      let key = Path.to_string(path)
-      let initial = match mode {
-        Read => found(path, Map.get(store, key)),
-        Write => Bytes.from_list([]),
-        Append => Map.get(store, key).unwrap_or(Bytes.from_list([])),
-      }
-      let id = file_buffer(initial)
-      let r = file_closing(id, fn() { body(File { id, path, mode }) })
-      // The body may have written other paths through this instance: read `store` afresh.
-      let contents = file_contents(id)
-      if mode != Read { store = Map.insert(store, key, contents) }
-      r
-    }
-    fn read_chunk(file, max) { read_file(file, max) }
-    fn write_chunk(file, data) { write_file(file, data) }
-  }
-}
+/// Test handler over in-memory `files` (design §17.119): `rooted` over a directory in a store
+/// of its own, so `root()`, `Dir.subdir` and `Fs.rooted` compose exactly as on the host. Every
+/// handler over the store sees each write at once, `with_file` included; installing this value
+/// twice shares the files, evaluating `Fs.memory(…)` again starts afresh. A directory exists
+/// while some file is inside it; no manifest `[permissions]` apply.
+pub fn memory(files: List<(Path, Bytes)>) -> Handler<Fs> { rooted(fs_memory_root(files)) }
 
 fn read_file(file: File, max: Int) -> Bytes ! {Fail<FsError>} {
   ok_or_fail(file.path, file_read(file.id, max))
@@ -152,18 +113,12 @@ fn ok_or_fail<T>(path: Path, r: Result<T, String>) -> T ! {Fail<FsError>} {
   }
 }
 
-fn found(path: Path, o: Option<Bytes>) -> Bytes ! {Fail<FsError>} {
-  match o {
-    Some(b) => b,
-    None => fail FsError { path: Path.to_string(path), reason: "not found" },
-  }
-}
-
 @external(js, "sakura_runtime", "fs_root")
 fn fs_root() -> Dir
 
-@external(js, "sakura_runtime", "fs_detached_root")
-fn fs_detached_root() -> Dir
+/// The root of a fresh in-memory store holding `files`, for `Fs.memory`.
+@external(js, "sakura_runtime", "fs_memory_root")
+fn fs_memory_root(files: List<(Path, Bytes)>) -> Dir
 
 @external(js, "sakura_runtime", "fs_subdir")
 fn fs_subdir(d: Dir, name: String) -> Result<Dir, String>
@@ -180,16 +135,11 @@ fn fs_list(d: Dir, path: String) -> Result<List<Entry>, String>
 @external(js, "sakura_runtime", "fs_exists")
 fn fs_exists(d: Dir, path: String) -> Bool
 
-/// A host file in `d`, opened per `mode`; the id indexes the runtime's open-file table.
+/// A file in `d`, opened per `mode`; the id indexes the runtime's open-file table.
 @external(js, "sakura_runtime", "file_open")
 fn file_open(d: Dir, path: String, mode: Mode) -> Result<Int, String>
 
-/// An in-memory file holding `initial`, positioned at its start, for `Fs.memory`.
-@external(js, "sakura_runtime", "file_buffer")
-fn file_buffer(initial: Bytes) -> Int
-
-/// Runs `body`, then closes file `id` however `body` ends. A closed buffer keeps its
-/// contents for `file_contents`.
+/// Runs `body`, then closes file `id` however `body` ends.
 @external(js, "sakura_runtime", "file_closing")
 fn file_closing<T, e>(id: Int, body: fn() -> T ! e) -> T ! e
 
@@ -198,7 +148,3 @@ fn file_read(id: Int, max: Int) -> Result<Bytes, String>
 
 @external(js, "sakura_runtime", "file_write")
 fn file_write(id: Int, data: Bytes) -> Result<Unit, String>
-
-/// The whole contents of buffer `id`, open or closed; the buffer is then released.
-@external(js, "sakura_runtime", "file_contents")
-fn file_contents(id: Int) -> Bytes

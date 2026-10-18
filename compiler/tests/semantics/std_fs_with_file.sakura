@@ -9,7 +9,7 @@
 import std/fs.{Append, File, Fs, Read, Write}
 import std/path.{Path}
 
-test "with_file writes when the body returns and reads back in chunks" {
+test "with_file writes and reads back in chunks" {
   let log = Path.of("log.txt")
   with Fs.memory([]) {
     let r = try {
@@ -41,7 +41,7 @@ test "the body reaches the same handler for other paths" {
 
 error Abort
 
-test "a failing body writes nothing and closes the file" {
+test "a failing body keeps what it wrote and closes the file" {
   let a = Path.of("a.txt")
   with Fs.memory([(a, String.to_bytes("old"))]) {
     let r = try {
@@ -51,7 +51,7 @@ test "a failing body writes nothing and closes the file" {
       })
     }
     expect(r.is_err())
-    expect_eq(try { Fs.with_file(a, Read, fn(f) { Fs.read_all(f) }) }, Ok(String.to_bytes("old")))
+    expect_eq(try { Fs.with_file(a, Read, fn(f) { Fs.read_all(f) }) }, Ok(String.to_bytes("new")))
     expect_fails_with(
       fn() { Fs.with_file(a, Read, fn(f) { Fs.write_chunk(f, String.to_bytes("x")) }) },
       fn(e) { e.reason == "opened for reading" },

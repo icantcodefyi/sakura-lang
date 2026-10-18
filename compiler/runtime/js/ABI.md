@@ -284,18 +284,26 @@ reaches `net` hosts, and `env_get` only sees `env` keys; each refusal is the ope
 ordinary error. Unset means no limits.
 
 **Capabilities.** `$rt.Dir` holds a host directory in a private field and is only built by
-`fs_root()` (the working directory) and `fs_subdir`. `fs_detached_root()` has no host access. Every `fs_*` path is relative and must
-stay inside the directory after symlinks are resolved (`escapes the directory` otherwise).
+`fs_root()` (the working directory) and `fs_subdir`. Every `fs_*` path is relative and must
+stay inside the directory after symlinks are resolved (`escapes the directory` otherwise);
+`fs_subdir` fails `no such directory` or `not a directory`.
+
+**Memory directories** (design §17.119). `fs_memory_root(files)` is a `Dir` over a fresh store
+(`Map` from normalized path to `Uint8Array`) holding the `(Path, Bytes)` pairs; `Fs.memory` is
+`Fs.rooted` over it. The `fs_*` and `file_*` externals dispatch on the kind: a key is a file, a
+proper prefix of a key a directory, `fs_subdir` shares the store, a write needs an existing
+parent directory (`not found` otherwise), reading a directory is `is a directory`. No grants
+apply. Host-path users (`http_recording_open`, `sql_sqlite`) get `this directory has no host
+access`.
 `Untrusted<T>` is `$rt.Untrusted { v }`, shown as `Untrusted.of(…)`.
 
 **Open files.** `file_open(dir, path, mode)` (same path rules; `Read` needs `fs.read`, `Write`
-and `Append` `fs.write`) and `file_buffer(initial)` return an `Int` id into one open-file table.
+and `Append` `fs.write`) returns an `Int` id into one open-file table.
 `file_closing(id, body, $ctx, $k)` registers a finalizer (section 4) that closes the file on
 return, `fail`, defect or cancellation. `file_read(id, max)` reads from the current position
 (empty at the end), `file_write(id, data)` appends; both return `Err("the file is closed")`
-after closing. Host writes are immediate; `file_contents(id)` takes the bytes of a buffer whose
-body returned, open or closed, and releases it. A buffer whose body failed, hit a defect or was
-cancelled is released when it closes.
+after closing. Writes are immediate: a memory file replaces its store entry on every
+`file_write`, so a body that fails leaves what it wrote, as on the host.
 
 **Http.** `http_send(req, $ctx, $k)` suspends on `fetch`: `Ok(Response)` for every status,
 `Err(reason)` when no response arrives; every `req.secret_headers` entry (`Http.bearer` adds
@@ -328,9 +336,9 @@ and `http_recording_append_stream(id, req, status, headers, bytes)` are the same
 `Http.stream`: one record shape serves both operations; a body that is not UTF-8 is written as
 `response_body_base64` instead of `response_body`. `fixtures_dir(path, writable)`
 is the `Dir` a test runner returns from `Test.fixtures()`: `<package>/tests/fixtures`, readable,
-writable (and created) only when `writable` (`sakura test --record`); `""` has no host access.
-`test_env(host, empty)` is a test's default `Env` handler: `host` under `SAKURA_RECORD=1`, else
-`empty` (design §17.102).
+writable (and created) only when `writable` (`sakura test --record`); `""` is an empty memory
+directory. `test_env(host, empty)` is a test's default `Env` handler: `host` under
+`SAKURA_RECORD=1`, else `empty` (design §17.102).
 
 **Sql.** `sql_memory()` and `sql_sqlite(path)` (a file inside the installed `Fs` handler's
 `root`, opened on first use) are `std::sql::Sql` handlers over `node:sqlite`. `Query` params
@@ -446,6 +454,6 @@ container) and must be a borrowed or generation-checked id.
 | task → `kids` | owning (until finished) | `startFiber` deletes the child on completion |
 | fiber `finish` closure → parent task, fiber | back-edge | completion reports upward |
 | suspended task → `wake`, promise callbacks → `k` | owning while pending | cleared when the task resumes (`t.wake = null`) |
-| `files`, `bodies` tables → open file / stream | owning | deleted by `file_closing`/`file_contents` and `http_stream_closing` |
+| `files`, `bodies` tables → open file / stream | owning | deleted by `file_closing` and `http_stream_closing` |
 | `cassettes` table → cursor | owning, never released | ponytail: one entry per `Http.recording` instance that opened a file, kept until the process exits; key cursors by handler instance if long-running programs record |
 | `opNames`, `types`, `refinements` | owning, program-lifetime | registered once at start-up |

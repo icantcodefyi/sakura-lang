@@ -631,7 +631,8 @@ pub fn main() -> Unit ! {Console, Fs} {
     assert!(work.join("app.db").exists());
 }
 
-/// The driver passes `[permissions]` as JSON in `SAKURA_PERMISSIONS`; root handlers apply it.
+/// The driver passes `[permissions]` as JSON in `SAKURA_PERMISSIONS`; root handlers apply it, and
+/// `Fs.memory` (no host authority, design §17.119) ignores it.
 #[test]
 fn root_handlers_apply_manifest_permissions() {
     let src = r#"import std/fs.{Fs}
@@ -646,6 +647,9 @@ pub fn main() -> Unit ! {Console, Fs, Env, Http} {
   Console.print("{Env.get("ALLOWED")} {Env.get("HIDDEN")}")
   let r = try { Http.send(Request.of(Method.Get, Url.from("http://example.invalid:81/"))) }
   Console.print("{r.is_err()}")
+  with Fs.memory([(Path.of("m.txt"), String.to_bytes("m"))]) {
+    Console.print("{try { Fs.write(Path.of("n.txt"), Fs.read(Path.of("m.txt"))) }}")
+  }
 }
 "#;
     let (m, sources) = common::build("permissions", src, false).unwrap();
@@ -674,7 +678,8 @@ pub fn main() -> Unit ! {Console, Fs, Env, Http} {
             "Err(FsError { path: \"data/b.txt\", reason: \"not in the manifest's fs.write list\" })\n",
             "Ok(())\n",
             "Some(\"a\") None\n",
-            "true\n"
+            "true\n",
+            "Ok(())\n"
         ),
         "{}",
         String::from_utf8_lossy(&out.stderr)

@@ -438,7 +438,7 @@ exports (as the JS builtins test does). Every import has one of three shapes:
 
 | Shape | Signature | Used for |
 |---|---|---|
-| `sync` | `(args as scalars/slices…) -> i32 status` plus results through `alloc_bytes` copy-out or an out-slot in the frame | `console_print`, `clock_now_ms`, `random_*`, `env_get`, `string_*` helpers that stay on the host in v1, `fs_root`, `fs_subdir`, `file_buffer` |
+| `sync` | `(args as scalars/slices…) -> i32 status` plus results through `alloc_bytes` copy-out or an out-slot in the frame | `console_print`, `clock_now_ms`, `random_*`, `env_get`, `string_*` helpers that stay on the host in v1, `fs_root`, `fs_memory_root`, `fs_subdir` |
 | `async` | `(request_id: i32, args…) -> i32 accepted` | anything that suspends: `clock_sleep_ms`, `http_send`, `http_stream_open`, `file_read`, `sql_*`, `serve_listen`, `llm_anthropic`; completion comes back through the export `complete` (§8.5) |
 | `callback` | the host receives a `callback_id: i32` and later calls the export `invoke(callback_id, args_ptr)`; used only by `serve_listen` and `Task` fibers | reentrancy, §8.5 |
 
@@ -451,8 +451,8 @@ out), `2 denied` (a `[permissions]` refusal, reported as the operation's ordinar
 The driver passes `SAKURA_PERMISSIONS` to the host exactly as for JS; every host operation
 rechecks grants on each call (research/09 §5 item 5: numeric secrecy is not security). A `Dir`
 is a `Handle` object (§3.2 tag 17) whose host slot records the resolved directory and its
-read/write authority; `fs_subdir` creates a new slot with attenuated authority. `fs_detached_root`
-is a slot with no authority. Path rules are the JS ones.
+read/write authority; `fs_subdir` creates a new slot with attenuated authority. `fs_memory_root`
+is a slot over an in-memory store with no host authority (design §17.119). Path rules are the JS ones.
 
 ### 8.4 Handle tables
 

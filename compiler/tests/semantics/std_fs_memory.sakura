@@ -1,5 +1,4 @@
 // milestone: M3
-// needs: runtime externals `untrusted_of` and `fs_detached_root` (std/fs, std/untrusted)
 // mode: test
 // covers: Import NameList WithExpr TryExpr
 

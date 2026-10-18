@@ -2398,9 +2398,10 @@ export function log_write(line) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Fs (design §6.1, §10.2): a `Dir` capability is a host directory (or none, for
-// `fs_detached_root`); user code cannot build one. Paths are relative (`std/path` rejects `/`
-// and `..`); after resolving symlinks the target must still be inside the directory.
+// Fs (design §6.1, §10.2): a `Dir` capability is a host directory or, for `Fs.memory`, a
+// directory in an in-memory store (§17.119); user code cannot build one. Paths are relative
+// (`std/path` rejects `/` and `..`); after resolving symlinks the target must still be inside
+// the directory.
 
 const nodeFs = () => proc.getBuiltinModule("node:fs");
 const nodePath = () => proc.getBuiltinModule("node:path");
@@ -2408,16 +2409,21 @@ const nodePath = () => proc.getBuiltinModule("node:path");
 export class Dir {
   #root;
   #grants;
-  constructor(brand, root, grants) {
+  #store;
+  constructor(brand, root, grants, store = null) {
     if (brand !== DIR_BRAND) throw internal("a Dir is only created by the Fs host");
-    this.#root = root;
+    this.#root = root; // a host directory, or the store key of a memory one ("" at its root)
     this.#grants = grants; // null, or { read: [abs dirs], write: [abs dirs] } from the manifest
+    this.#store = store; // null for a host directory, else { files: Map<key, Uint8Array>, dirs: Set<key> }
   }
   static root(d) {
     return d.#root;
   }
   static grants(d) {
     return d.#grants;
+  }
+  static store(d) {
+    return d.#store;
   }
 }
 const DIR_BRAND = Symbol("Dir");
@@ -2444,16 +2450,31 @@ export function fs_root() {
   const grants = p === null ? null : { read: abs(p.fs?.read), write: abs(p.fs?.write) };
   return new Dir(DIR_BRAND, root, grants);
 }
-export function fs_detached_root() {
-  return new Dir(DIR_BRAND, null, null);
+/**
+ * `Fs.memory(files)`'s directory (design §17.119): the root of a fresh store holding `files`,
+ * `(Path, Bytes)` pairs. Its directories are the keys' proper prefixes. No grants apply.
+ */
+export function fs_memory_root(pairs) {
+  const store = { files: new Map(), dirs: new Set([""]) };
+  for (const [p, data] of items(pairs)) {
+    const key = memKey("", p);
+    if (key === null || key === "") continue; // `Path` rules both out
+    store.files.set(key, data);
+    for (let i = key.lastIndexOf("/"); i > 0; i = key.lastIndexOf("/", i - 1)) {
+      const d = key.slice(0, i);
+      if (store.dirs.has(d)) break;
+      store.dirs.add(d);
+    }
+  }
+  return new Dir(DIR_BRAND, "", null, store);
 }
 /**
  * `Test.fixtures()` for the `sakura test` runner (design §17.73): `dir` (`<package>/tests/fixtures`),
  * readable, and writable only when `writable` (`sakura test --record`), which also creates it;
- * `""` (no package) is a directory without host access.
+ * `""` (no package) is an empty memory directory.
  */
 export function fixtures_dir(dir, writable) {
-  if (dir === "") return fs_detached_root();
+  if (dir === "") return fs_memory_root(EMPTY_LIST);
   const fs = nodeFs();
   if (writable) fs.mkdirSync(dir, { recursive: true });
   let root = nodePath().resolve(dir);
@@ -2465,8 +2486,8 @@ export function fixtures_dir(dir, writable) {
 
 /** The host path of `rel` inside `d`, or an error message; `forWrite` allows a missing file. */
 function inside(d, rel, forWrite) {
+  if (Dir.store(d) !== null) return { err: "this directory has no host access" };
   const root = Dir.root(d);
-  if (root === null) return { err: "this directory has no host access" };
   if (rel.startsWith("/") || rel.split(/[\\/]/).includes("..")) return { err: "not a relative path" };
   const fs = nodeFs();
   const path = nodePath();
@@ -2505,21 +2526,87 @@ function fsResult(d, rel, forWrite, f) {
   }
 }
 
+// A memory `Dir` (design §17.119) answers as the host would: a key is a file, a proper prefix
+// of a key (up to a `/`) a directory, and a write needs its parent directory to exist.
+const NOT_RELATIVE = /^\/|(^|[\\/])\.\.([\\/]|$)/;
+const UNNORMAL = /(^|\/)\.?(\/|$)/;
+
+/** The store key of `rel` inside memory directory `prefix`, or `null` if it is not relative. */
+function memKey(prefix, rel) {
+  if (NOT_RELATIVE.test(rel)) return null;
+  if (UNNORMAL.test(rel)) rel = rel.split("/").filter((s) => s !== "" && s !== ".").join("/");
+  return prefix === "" ? rel : rel === "" ? prefix : `${prefix}/${rel}`;
+}
+
+/** Why `key` cannot be written (created or replaced), or `undefined`. */
+function memUnwritable(store, key) {
+  if (store.files.has(key)) return undefined;
+  if (store.dirs.has(key)) return "is a directory";
+  const parent = key.slice(0, Math.max(0, key.lastIndexOf("/")));
+  if (store.dirs.has(parent)) return undefined;
+  return store.files.has(parent) ? "not a directory" : "not found";
+}
+
+/** `Ok(f(store, key))` for `rel` in memory directory `d`, or the reason it is not relative. */
+function memResult(d, rel, f) {
+  const key = memKey(Dir.root(d), rel);
+  return key === null ? Err("not a relative path") : f(Dir.store(d), key);
+}
+
 export function fs_subdir(d, name) {
-  return fsResult(d, name, false, (p) => {
+  if (Dir.store(d) !== null) {
+    return memResult(d, name, (store, key) =>
+      store.dirs.has(key)
+        ? Ok(new Dir(DIR_BRAND, key, null, store))
+        : Err(store.files.has(key) ? "not a directory" : "no such directory"),
+    );
+  }
+  const r = fsResult(d, name, false, (p) => {
     if (!nodeFs().statSync(p).isDirectory()) throw new Error("not a directory");
     return new Dir(DIR_BRAND, p, Dir.grants(d));
   });
+  return r.tag === 1 && r.fields[0] === "not found" ? Err("no such directory") : r;
 }
 export function fs_read(d, rel) {
+  if (Dir.store(d) !== null) {
+    return memResult(d, rel, (store, key) => {
+      const data = store.files.get(key);
+      if (data !== undefined) return Ok(data);
+      return Err(store.dirs.has(key) ? "is a directory" : "not found");
+    });
+  }
   return fsResult(d, rel, false, (p) => new Uint8Array(nodeFs().readFileSync(p)));
 }
 export function fs_write(d, rel, data) {
+  if (Dir.store(d) !== null) {
+    return memResult(d, rel, (store, key) => {
+      const err = memUnwritable(store, key);
+      if (err !== undefined) return Err(err);
+      store.files.set(key, data);
+      return Ok(undefined);
+    });
+  }
   return fsResult(d, rel, true, (p) => void nodeFs().writeFileSync(p, data));
 }
 /** Entries sorted by name. */
 export function fs_list(d, rel) {
   const Entry = std("std::fs::Entry");
+  if (Dir.store(d) !== null) {
+    return memResult(d, rel, (store, key) => {
+      if (!store.dirs.has(key)) return Err(store.files.has(key) ? "not a directory" : "not found");
+      const pre = key === "" ? "" : `${key}/`;
+      const isDir = new Map();
+      for (const k of store.files.keys()) {
+        if (!k.startsWith(pre) || k === pre) continue;
+        const slash = k.indexOf("/", pre.length);
+        if (slash < 0) {
+          if (!isDir.has(k.slice(pre.length))) isDir.set(k.slice(pre.length), false);
+        } else isDir.set(k.slice(pre.length, slash), true);
+      }
+      const names = [...isDir.keys()].sort(cmpStr);
+      return Ok(list(names.map((n) => new Entry(n, isDir.get(n)))));
+    });
+  }
   return fsResult(d, rel, false, (p) =>
     list(
       nodeFs()
@@ -2530,40 +2617,52 @@ export function fs_list(d, rel) {
   );
 }
 export function fs_exists(d, rel) {
+  const store = Dir.store(d);
+  if (store !== null) {
+    const key = memKey(Dir.root(d), rel);
+    return key !== null && (store.files.has(key) || store.dirs.has(key));
+  }
   const r = inside(d, rel, false);
   return r.err === undefined;
 }
 
 // Open files behind `Fs.with_file` (std/fs): ids index this table. A host file is
-// `{ fd, pos }`, an in-memory one `{ buf, len, pos }`; `closed` stops reads and writes. A buffer
-// whose body returned stays until `file_contents` takes it; one whose body failed, hit a defect
-// or was cancelled is released with it, since no `file_contents` will follow.
+// `{ fd, pos }`, a memory one `{ files, key, pos, buf, len, view }`: it reads the store's
+// current bytes and writes through to it on every `file_write` (design §17.119), appending into
+// `buf` while the store still holds `view`, its last write. Closing removes the entry.
 const files = new Map();
 let nextFile = 1;
 
 function addFile(f) {
   const id = nextFile++;
-  files.set(id, { ...f, pos: 0, closed: false });
+  files.set(id, { ...f, pos: 0 });
   return id;
 }
 
 /** `mode` is `std::fs::Mode`: `Read | Write | Append` (tags 0, 1, 2). */
 export function file_open(d, rel, mode) {
+  if (Dir.store(d) !== null) {
+    return memResult(d, rel, (store, key) => {
+      const has = store.files.has(key);
+      const missing = store.dirs.has(key) ? "is a directory" : "not found";
+      const err = mode.tag === 0 ? (has ? undefined : missing) : memUnwritable(store, key);
+      if (err !== undefined) return Err(err);
+      if (mode.tag === 1 || !has) store.files.set(key, EMPTY_BYTES);
+      return Ok(addFile({ files: store.files, key, buf: null, len: 0, view: null }));
+    });
+  }
   return fsResult(d, rel, mode.tag !== 0, (p) => addFile({ fd: nodeFs().openSync(p, "rwa"[mode.tag]) }));
 }
-export function file_buffer(initial) {
-  return addFile({ buf: initial.slice(), len: initial.length });
-}
+const EMPTY_BYTES = new Uint8Array(0);
 
 /** Runs `body($ctx, $k)` and closes file `id` on return, fail, defect or cancellation. */
 export function file_closing(id, body, ctx, k) {
   return finalize(
     ctx,
-    (returned) => {
+    () => {
       const f = files.get(id);
-      if (f === undefined || f.closed) return;
-      f.closed = true;
-      if (f.fd !== undefined || !returned) files.delete(id);
+      if (f === undefined) return;
+      files.delete(id);
       if (f.fd !== undefined) nodeFs().closeSync(f.fd);
     },
     body,
@@ -2572,15 +2671,15 @@ export function file_closing(id, body, ctx, k) {
 }
 
 function openFile(id) {
-  const f = files.get(id);
-  return f === undefined || f.closed ? null : f;
+  return files.get(id) ?? null;
 }
 
 export function file_read(id, max) {
   const f = openFile(id);
   if (f === null) return Err("the file is closed");
   if (f.fd === undefined) {
-    const out = f.buf.slice(f.pos, Math.min(f.len, f.pos + max));
+    const data = f.files.get(f.key);
+    const out = data.slice(f.pos, Math.min(data.length, f.pos + max));
     f.pos += out.length;
     return Ok(out);
   }
@@ -2606,6 +2705,13 @@ export function file_write(id, data) {
       return Err(hostMessage(e));
     }
   }
+  // Another write replaced the file since ours: continue from its bytes. Appending past `len`
+  // never changes a view already handed out.
+  const cur = f.files.get(f.key);
+  if (cur !== f.view) {
+    f.buf = cur;
+    f.len = cur.length;
+  }
   if (f.len + data.length > f.buf.length) {
     const grown = new Uint8Array(Math.max(f.len + data.length, f.buf.length * 2));
     grown.set(f.buf.subarray(0, f.len));
@@ -2613,15 +2719,9 @@ export function file_write(id, data) {
   }
   f.buf.set(data, f.len);
   f.len += data.length;
+  f.view = f.buf.subarray(0, f.len);
+  f.files.set(f.key, f.view);
   return Ok(undefined);
-}
-
-/** The whole contents of buffer `id`, open or closed; the buffer is then released. */
-export function file_contents(id) {
-  const f = files.get(id);
-  if (f === undefined || f.buf === undefined) throw internal(`file ${id} is not a buffer`);
-  files.delete(id);
-  return f.buf.slice(0, f.len);
 }
 
 // ---------------------------------------------------------------------------------------------
