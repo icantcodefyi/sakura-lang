@@ -1,7 +1,11 @@
 // milestone: M3
 // expect-exit: 70
 // expect-defect: D020
-// covers: design §17.126 (List.set: path copy, old versions intact, requires checked)
+// covers: Defect
+// spec: §17.126
+
+// `List.set` copies one path: the old version is intact, and an out-of-range index is the
+// caller's `D020`.
 
 pub fn main() -> Unit ! {Console} {
   let old = List.range(0, 2_000)
