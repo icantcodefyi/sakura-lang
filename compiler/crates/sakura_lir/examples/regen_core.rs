@@ -61,7 +61,9 @@ fn main() {
             .unwrap_or_else(|| "ok".into());
         // `D003` is the JS profile's; `Int` is i64 on WASM (§17.80).
         if ending == "D003" {
-            report.push(format!("semantics/{name}: left out (expects the JS-only D003)"));
+            report.push(format!(
+                "semantics/{name}: left out (expects the JS-only D003)"
+            ));
             continue;
         }
         let stdout = std::fs::read_to_string(path.with_extension("stdout")).unwrap_or_default();
@@ -231,7 +233,10 @@ fn builtin_sigs() -> String {
                 let params = params.trim_matches(['(', ')']);
                 let arity = params.split(", ").filter(|p| !p.is_empty()).count();
                 if arity != b.arity {
-                    eprintln!("builtins.sigs: {name} takes {} arguments in Core: {sig}", b.arity);
+                    eprintln!(
+                        "builtins.sigs: {name} takes {} arguments in Core: {sig}",
+                        b.arity
+                    );
                 }
                 b.abi == c::builtins::Abi::Cps
             }
@@ -274,10 +279,7 @@ fn signature(decl: &str) -> Option<String> {
         .collect();
     // `sakura_core` passes a schema per `Schema`-bounded type parameter after the declared
     // parameters (`lower/mod.rs`, "trailing schema arguments").
-    let schemas = tparam_decls
-        .iter()
-        .filter(|p| p.contains("Schema"))
-        .count();
+    let schemas = tparam_decls.iter().filter(|p| p.contains("Schema")).count();
     // Split the parameter list at its closing parenthesis and top-level commas.
     let mut depth = 0i32;
     let mut params = Vec::new();

@@ -488,7 +488,10 @@ fn build_emits_lir() {
     let out = sakura(&["build", "--emit", "lir", "main.sakura"], &dir);
     assert_eq!(out.code, Some(0), "{}", out.stderr);
     let lir = std::fs::read_to_string(dir.join("target/sakura/lir/main.lir")).unwrap();
-    assert!(lir.contains("fn main#0 pub top -> unit ; main::main"), "{lir}");
+    assert!(
+        lir.contains("fn main#0 pub top -> unit ; main::main"),
+        "{lir}"
+    );
     assert!(lir.contains("fn $entry#"), "{lir}");
 
     let niche = sakura(
@@ -496,8 +499,15 @@ fn build_emits_lir() {
         &dir,
     );
     assert_eq!(niche.code, Some(2), "{}", niche.stderr);
-    assert!(niche.stderr.contains("not implemented yet"), "{}", niche.stderr);
-    let both = sakura(&["build", "--emit", "lir", "--manifest", "main.sakura"], &dir);
+    assert!(
+        niche.stderr.contains("not implemented yet"),
+        "{}",
+        niche.stderr
+    );
+    let both = sakura(
+        &["build", "--emit", "lir", "--manifest", "main.sakura"],
+        &dir,
+    );
     assert_eq!(both.code, Some(2), "{}", both.stderr);
 }
 
