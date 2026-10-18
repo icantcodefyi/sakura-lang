@@ -389,7 +389,9 @@ fn the_package_is_named_by_its_manifest() {
     );
 }
 
-const AUDITED: &str = r#"import std/untrusted
+const AUDITED: &str = r#"import std/http.{Http}
+import std/request.{Request}
+import std/untrusted
 
 type Percent = Int where it >= 0 && it <= 100
 
@@ -408,6 +410,10 @@ pub fn main() -> Unit ! {Console} {
   let n = Untrusted.trust(Untrusted.of(scale(p, half(8))), @trust("computed locally"))
   Console.print("{n}")
 }
+
+pub fn authorize(req: Request, token: Secret<String>) -> Request {
+  Http.bearer(req, Secret.map(token, fn(t) { t + "!" }, @trust("derived key")))
+}
 "#;
 
 /// Design §17.78 (gate 6): `sakura audit --json` lists every user site, then one summary.
@@ -419,15 +425,18 @@ fn audit_json_lists_user_sites_then_a_summary() {
     let recs = common::json_lines(&out.stdout).unwrap();
     let (summary, sites) = recs.split_last().unwrap();
     let kinds: Vec<&str> = sites.iter().map(|r| r["site"].as_str().unwrap()).collect();
-    assert_eq!(kinds, ["total", "from", "trust"], "{recs:#?}");
+    // `Http.bearer`'s own `Secret.map` site is std's and not listed (design §17.159 (2)).
+    assert_eq!(kinds, ["total", "from", "trust", "trust"], "{recs:#?}");
     assert!(sites.iter().all(|r| r["kind"] == "audit"
         && r["schema_version"] == "1.0"
         && r["span"]["uri"].as_str().unwrap().ends_with("/main.sakura")));
     assert_eq!(sites[2]["reason"], "computed locally");
     assert_eq!(sites[2]["sink"], "std::untrusted::trust");
+    assert_eq!(sites[3]["reason"], "derived key");
+    assert_eq!(sites[3]["sink"], "std::secret::map");
     assert_eq!(summary["kind"], "summary");
-    assert_eq!(summary["sites"], 3);
-    assert_eq!(summary["by_site"]["trust"], 1);
+    assert_eq!(summary["sites"], 4);
+    assert_eq!(summary["by_site"]["trust"], 2);
     // A report, not a check: errors elsewhere do not change the exit code.
     let broken = tmp(
         "audit-broken",
@@ -577,7 +586,11 @@ fn build_manifest_lists_trusted_base_and_obligations() {
         .collect();
     assert_eq!(
         user,
-        [("total", "main::main::half"), ("trust", "main::main::main")]
+        [
+            ("total", "main::main::half"),
+            ("trust", "main::main::main"),
+            ("trust", "main::main::authorize")
+        ]
     );
     assert!(trusted.iter().any(|t| t["kind"] == "std_host"));
     for t in trusted {

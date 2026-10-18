@@ -20,6 +20,11 @@ published yet.
   fresh instance. On both backends `Sql.sqlite`'s `Fs.root()` runs in the clause's task, so it
   no longer spends a task number in `SAKURA_TRACE` on JS (design §17.159 (5)).
 
+- **Breaking:** `Secret.map(s, f, reason: Trust)` takes a `@trust("…")` reason, and
+  `sakura audit` lists each call beside `Secret.expose`: a pure `f` cannot perform, but a
+  defect in it can print the clear value (security review S1, design §17.159 (2)).
+  `Http.bearer` is unchanged for callers; std's own site is not listed.
+
 - `Serve.host()` reads at most 1 MiB of a request body: a larger body is answered `413` and
   its connection closed without running the handler. A reply whose status or headers the
   server cannot send is reported as a `D091` defect and answered `500`, and the server keeps

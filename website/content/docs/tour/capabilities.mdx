@@ -208,7 +208,7 @@ pub fn call_billing(amount: Decimal) -> Unit ! {Env, Http, Log, Fail<HttpError>}
 }
 ```
 
-Adapters that genuinely need the raw value use `Secret.expose(s, @trust("reason"))`. [`sakura audit`](/docs/agents/audit) lists every user `@trust` site with its reason. This prevents accidental disclosure, not deliberate leakage.
+Adapters that genuinely need the raw value use `Secret.expose(s, @trust("reason"))`, and a derived credential uses `Secret.map(s, f, @trust("reason"))`: the result stays secret, but a defect in `f` can print the clear value, so it is audited too. [`sakura audit`](/docs/agents/audit) lists every user `@trust` site with its reason. This prevents accidental disclosure, not deliberate leakage.
 
 ## The trusted computing base
 

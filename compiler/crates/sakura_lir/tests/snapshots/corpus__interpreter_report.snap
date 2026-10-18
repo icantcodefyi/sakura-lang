@@ -82,6 +82,7 @@ semantics/records: ok, 18 allocated, 1 dup, 19 drop, peak 6, live 0/0
 semantics/refined_var_rebuild: D010, 53 allocated, 52 dup, 105 drop, peak 8, live 0/0
 semantics/row_param_type: ok, 27 allocated, 12 dup, 39 drop, peak 10, live 0/0
 semantics/row_widening: ok, 11 allocated, 4 dup, 15 drop, peak 7, live 0/0
+semantics/secret_map_defect: unsupported (builtin secret_wrap)
 semantics/show_format: ok, 37 allocated, 8 dup, 45 drop, peak 7, live 0/0
 semantics/sql_untrusted_param: unsupported (builtin sql_memory)
 semantics/std_collections: ok, 191 allocated, 350 dup, 541 drop, peak 17, live 0/0

@@ -1,5 +1,6 @@
 //! `compiler/tests/semantics`: programs run end to end. `// mode: run` (default) compares stdout
-//! with `<name>.stdout` and the exit code with `// expect-exit:` (default 0); `// mode: test`
+//! with `<name>.stdout`, the exit code with `// expect-exit:` (default 0) and, when given, stderr
+//! with the substring of `// expect-stderr:`; `// mode: test`
 //! requires `sakura test` to pass; `// mode: check` requires a clean `sakura check`. `run` and
 //! `test` fixtures also run under `--no-direct` with identical effect traces (design §17.111).
 //! These runs are on JS, so `@js` directives apply (§17.80); `tests/parity.rs` holds WASM to
@@ -80,6 +81,11 @@ fn expect(
             "expected defect {defect} on stderr or in the trace:\n{}",
             out.stderr
         ));
+    }
+    if let Some(s) = d.get("expect-stderr")
+        && !out.stderr.contains(s.as_str())
+    {
+        return Err(format!("expected {s:?} on stderr:\n{}", out.stderr));
     }
     if mode == "run" {
         compare_file(&want.stdout, &out.stdout)?;

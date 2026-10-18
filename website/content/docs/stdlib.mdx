@@ -398,7 +398,7 @@ fn len(u: Untrusted<String>) -> Int
 ```sakura
 fn of<T>(value: T) -> Secret<T>    // @external
 fn expose<T>(s: Secret<T>, reason: Trust) -> T
-fn map<T, U>(s: Secret<T>, f: fn(T) -> U) -> Secret<U>
+fn map<T, U>(s: Secret<T>, f: fn(T) -> U, reason: Trust) -> Secret<U>
 ```
 
 ### `std/decimal`

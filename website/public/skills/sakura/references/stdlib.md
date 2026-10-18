@@ -585,7 +585,7 @@ fn handle<e>(r: Router<e>, req: Request) -> Response ! e
 ```sakura fragment
 fn of<T>(value: T) -> Secret<T>    // @external
 fn expose<T>(s: Secret<T>, reason: Trust) -> T
-fn map<T, U>(s: Secret<T>, f: fn(T) -> U) -> Secret<U>
+fn map<T, U>(s: Secret<T>, f: fn(T) -> U, reason: Trust) -> Secret<U>
 ```
 
 ### `std/serve`
@@ -800,7 +800,7 @@ fn is_canonical(text: String) -> Bool    // @total
 14. **`Trust` has its home in `std/core`**; it is compiler-known and in the prelude (§17.16),
     and `@trust("…")` is accepted only at a `Trust` parameter (`V6001`). `Untrusted.check(u, clause, pred)` takes the clause text for
     its `Violation`; `Secret.of` and `Secret.map` are additions for tests and derived
-    credentials.
+    credentials; `map` takes a `Trust` reason like `expose` (§17.159 (2)).
 15. **`Decimal` is `DecimalRepr where is_canonical(it)`** over `{ whole: Int, frac: List<Int> }`
     (floor and fractional digits, no trailing zeros; a refinement since §17.130, so its JSON
     form is the record and decoding checks it), not `{ units: Int, scale: Int }`: derived `Ord` compares fields in order,

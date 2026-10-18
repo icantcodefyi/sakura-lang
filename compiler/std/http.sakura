@@ -50,7 +50,7 @@ pub fn post_json<T: Schema>(url: Url, body: T) -> Response ! {Http, Fail<HttpErr
 /// `req` with `("authorization", "Bearer <token>")` added to its `secret_headers`, which host
 /// handlers send and nothing shows, matches or records.
 pub fn bearer(req: Request, token: Secret<String>) -> Request {
-  let value = Secret.map(token, fn(t) { "Bearer " + t })
+  let value = Secret.map(token, fn(t) { "Bearer " + t }, @trust("bearer header"))
   Request { ..req, secret_headers: List.push(req.secret_headers, ("authorization", value)) }
 }
 

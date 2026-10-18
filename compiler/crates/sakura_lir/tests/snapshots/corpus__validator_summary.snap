@@ -82,6 +82,7 @@ semantics/records: 3 funcs, 9 blocks, 1 dup, 24 drop, valid
 semantics/refined_var_rebuild: 26 funcs, 133 blocks, 18 dup, 55 drop, valid
 semantics/row_param_type: 6 funcs, 22 blocks, 4 dup, 16 drop, valid
 semantics/row_widening: 15 funcs, 30 blocks, 1 dup, 10 drop, valid
+semantics/secret_map_defect: 4 funcs, 9 blocks, 0 dup, 5 drop, valid
 semantics/show_format: 3 funcs, 13 blocks, 2 dup, 35 drop, valid
 semantics/sql_untrusted_param: 16 funcs, 112 blocks, 10 dup, 52 drop, valid
 semantics/std_collections: 32 funcs, 194 blocks, 55 dup, 146 drop, valid
