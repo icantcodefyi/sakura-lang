@@ -181,6 +181,13 @@ published yet.
 
 ### Changed
 
+- `sakura verify` no longer re-solves an obligation whose MAC-authenticated proof record
+  still matches its key and was obtained with the same solvers: it rebuilds the record from
+  the cached solver answers, so a second run on an unchanged tree prints the same records
+  without solving. `unknown` results are still solved every time, and forged or foreign
+  records are solved again. Proof records written before this change are not read; rerun
+  `sakura verify` once so that `sakura build` drops proved checks again.
+
 - Updated live repository links and clone instructions to `icantcodefyi/sakuralang`.
 
 - Benchmark peak-RSS crossings above 25% now require one confirmation group on Node;
