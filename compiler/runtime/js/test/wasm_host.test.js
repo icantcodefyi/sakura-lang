@@ -5,7 +5,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { Host, HostFault, Reader, runTests } from "../sakura_wasm_host.js";
+import { Host, HostFault, Reader, defectSpans, readDebug, runTests } from "../sakura_wasm_host.js";
 import * as rt from "../sakura_runtime.js";
 
 /** A host over one page of memory with a bump `alloc_bytes` (a `Bytes`' data at +12). */
@@ -296,4 +296,39 @@ test("after a host fault the remaining tests run on a fresh instance", async () 
     ],
   );
   assert.deepEqual(seen, [2, 2], "b and c ran on the second instance, not the faulted one");
+});
+
+/** A module of nothing but a `sakura.debug` custom section holding `payload` (ABI §12). */
+function debugModule(payload) {
+  const name = [...new TextEncoder().encode("sakura.debug")];
+  const body = [name.length, ...name, ...payload];
+  const leb = (n) => (n < 0x80 ? [n] : [(n & 0x7f) | 0x80, ...leb(n >> 7)]);
+  return new WebAssembly.Module(Uint8Array.from([0, 0x61, 0x73, 0x6d, 1, 0, 0, 0, 0, ...leb(body.length), ...body]));
+}
+
+test("sakura.debug sites render as the JS backend's spans; a malformed section is ignored", () => {
+  const uri = [...new TextEncoder().encode("file:///a.sakura")];
+  const site = (start, end, role, contract) => [...u32(0), ...u32(start), ...u32(end), role, ...u32(contract)];
+  const section = [
+    ...new TextEncoder().encode("SKRDBG01"),
+    ...u32(0x010100),
+    ...new Array(32).fill(0),
+    ...u32(1),
+    ...u32(uri.length),
+    ...uri,
+    ...new Array(32).fill(0),
+    ...u32(2),
+    ...site(10, 20, 1, 1), // the clause of contract 0
+    ...site(40, 50, 0, 1), // a call that contract blames
+    ...u32(0),
+    ...u32(0),
+  ];
+  const debug = readDebug(debugModule(section));
+  const span = (start_byte, end_byte, role) => ({ uri: "file:///a.sakura", start_byte, end_byte, role });
+  assert.deepEqual(defectSpans(debug, 2), [span(40, 50, "primary"), span(10, 20, "definition")]);
+  assert.deepEqual(defectSpans(debug, 1), [span(10, 20, "primary")]);
+  assert.deepEqual(defectSpans(debug, 0), []);
+  assert.deepEqual(defectSpans(debug, 3), []);
+  assert.equal(readDebug(debugModule(section.slice(0, 60))), null);
+  assert.equal(readDebug(new WebAssembly.Module(Uint8Array.from([0, 0x61, 0x73, 0x6d, 1, 0, 0, 0]))), null);
 });

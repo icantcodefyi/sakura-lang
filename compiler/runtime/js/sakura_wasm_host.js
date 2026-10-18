@@ -52,6 +52,67 @@ export const OUTCOME = Object.freeze({
 const proc = globalThis.process;
 const utf8 = new TextDecoder("utf-8", { fatal: true });
 
+/**
+ * The sources and sites of a module's `sakura.debug` section (ABI §12), or `null` when it has
+ * none (`sakura build --strip`) or the section is malformed (it is bounds-checked, never
+ * trusted): `{ sources: [uri], sites: [{ source, start_byte, end_byte, role, contract }] }`.
+ */
+export function readDebug(module) {
+  const [section] = WebAssembly.Module.customSections(module, "sakura.debug");
+  if (section === undefined) return null;
+  const view = new DataView(section);
+  let at = 0;
+  const need = (n) => {
+    if (at + n > view.byteLength) throw new RangeError("sakura.debug is truncated");
+  };
+  const u32 = () => {
+    need(4);
+    at += 4;
+    return view.getUint32(at - 4, true);
+  };
+  try {
+    need(8);
+    if (utf8.decode(new Uint8Array(section, 0, 8)) !== "SKRDBG01") return null;
+    at = 8 + 4 + 32;
+    const sources = [];
+    for (let n = u32(); n > 0; n--) {
+      const len = u32();
+      need(len + 32);
+      sources.push(utf8.decode(new Uint8Array(section, at, len)));
+      at += len + 32;
+    }
+    const sites = [];
+    for (let n = u32(); n > 0; n--) {
+      const [source, start_byte, end_byte] = [u32(), u32(), u32()];
+      need(1);
+      const role = view.getUint8(at++);
+      sites.push({ source, start_byte, end_byte, role, contract: u32() });
+    }
+    return { sources, sites };
+  } catch {
+    return null;
+  }
+}
+
+const ROLES = ["primary", "definition"];
+
+/**
+ * The spans of a defect at site id `site` (ABI §12; 0 is none), as the JS runtime's `violated`
+ * gives them (design §17.162): the site, and after a blamed call its contract's clause as the
+ * `definition` span; a clause alone is the primary span.
+ */
+export function defectSpans(debug, site) {
+  const at = debug?.sites[site - 1];
+  if (at === undefined) return [];
+  const span = (s, role) => {
+    const uri = debug.sources[s.source];
+    return uri ? [{ uri, start_byte: s.start_byte, end_byte: s.end_byte, role }] : [];
+  };
+  if (ROLES[at.role] !== "primary" || at.contract === 0) return span(at, "primary");
+  const clause = debug.sites.find((s) => ROLES[s.role] === "definition" && s.contract === at.contract);
+  return [...span(at, "primary"), ...(clause ? span(clause, "definition") : [])];
+}
+
 /** A host-side fault the guest cannot cause in a checked program (`D090`, ABI §8.6). */
 export class HostFault extends Error {}
 
@@ -1123,6 +1184,7 @@ export class Host {
 
   async instantiate(bytes) {
     this.module = await WebAssembly.compile(bytes);
+    this.debug = readDebug(this.module);
     await this.fresh();
     const v = this.exports.sakura_abi_version.value;
     if (v >> 16 !== ABI_VERSION >> 16 || ((v >> 8) & 0xff) > ((ABI_VERSION >> 8) & 0xff)) {
@@ -1202,7 +1264,8 @@ export class Host {
         const code = view.getUint32(0, true);
         const site = view.getUint32(4, true);
         const message = utf8.decode(payload.subarray(8));
-        return { kind: "defect", code: `D${String(code).padStart(3, "0")}`, message, site };
+        const spans = defectSpans(this.debug, site);
+        return { kind: "defect", code: `D${String(code).padStart(3, "0")}`, message, spans };
       }
       case OUTCOME.exit:
         return { kind: "exit", code: view.getUint32(0, true) | 0 };
@@ -1319,6 +1382,7 @@ export async function runMain(bytes, argv = []) {
       return 70;
     default: {
       const record = { schema_version: "1.0", kind: "defect", code: o.code, message: o.message };
+      if (o.spans?.length) record.spans = o.spans;
       writeErr(JSON.stringify(record));
       return 70;
     }
