@@ -90,9 +90,20 @@ fn solver(name: &str, limits: Limits) -> Solver {
     Solver::find(SolverKind::Z3, Some(&fake(name)), limits).unwrap()
 }
 
+/// For the fakes that hang: they are killed at a short deadline.
 fn quick() -> Limits {
     Limits {
         deadline: Duration::from_millis(500),
+        ..Limits::default()
+    }
+}
+
+/// For the fakes that answer: limits no loaded runner reaches, so starting a fresh script (which
+/// macOS scans on first exec) never turns an answer into a timeout.
+fn roomy() -> Limits {
+    Limits {
+        timeout_ms: 60_000,
+        deadline: Duration::from_secs(60),
         ..Limits::default()
     }
 }
@@ -106,15 +117,15 @@ fn reason(a: Answer) -> ReasonKind {
 
 #[test]
 fn a_crash_is_unknown_crash() {
-    let s = solver("crash", quick());
+    let s = solver("crash", roomy());
     assert_eq!(reason(s.ask("(check-sat)")), ReasonKind::Crash);
 }
 
 #[test]
 fn garbage_is_a_malformed_reply() {
-    let s = solver("garbage", quick());
+    let s = solver("garbage", roomy());
     assert_eq!(reason(s.ask("(check-sat)")), ReasonKind::MalformedReply);
-    let s = solver("error", quick());
+    let s = solver("error", roomy());
     assert_eq!(reason(s.ask("(check-sat)")), ReasonKind::MalformedReply);
 }
 
@@ -136,7 +147,7 @@ fn a_slow_answer_within_the_deadline_counts() {
 fn output_beyond_the_cap_is_refused() {
     let limits = Limits {
         output_cap: 1024,
-        ..quick()
+        ..roomy()
     };
     let s = solver("chatty", limits);
     assert_eq!(reason(s.ask("(check-sat)")), ReasonKind::OutputLimit);
@@ -144,11 +155,11 @@ fn output_beyond_the_cap_is_refused() {
 
 #[test]
 fn unknown_reasons_are_structured() {
-    let s = solver("timeout", quick());
+    let s = solver("timeout", roomy());
     assert_eq!(reason(s.ask("q")), ReasonKind::Timeout);
-    let s = solver("rlimit", quick());
+    let s = solver("rlimit", roomy());
     assert_eq!(reason(s.ask("q")), ReasonKind::ResourceLimit);
-    let s = solver("incomplete", quick());
+    let s = solver("incomplete", roomy());
     assert_eq!(reason(s.ask("q")), ReasonKind::SolverUnknown);
 }
 
@@ -156,7 +167,7 @@ fn unknown_reasons_are_structured() {
 fn the_budget_bounds_a_whole_run() {
     let limits = Limits {
         aggregate: Duration::ZERO,
-        ..quick()
+        ..roomy()
     };
     let s = solver("unsat", limits);
     assert_eq!(reason(s.ask("q")), ReasonKind::Timeout);
@@ -198,7 +209,7 @@ fn the_rlimit_override_is_recorded() {
 
 #[test]
 fn models_are_decoded_to_source_values() {
-    let s = solver("model", quick());
+    let s = solver("model", roomy());
     let Answer::Sat(m) = s.ask("q") else { panic!() };
     assert_eq!(m.get("total").map(String::as_str), Some("1"));
     assert_eq!(m.get("p").map(String::as_str), Some("100"));
@@ -228,20 +239,20 @@ fn records_keep_reasons_and_cross_check_disagreements() {
     assert_eq!(r.solver.unwrap().rlimit, 10_000_000);
 
     // Feasible, then `unsat` for every other query: proved.
-    let primary = solver("by-query", quick());
+    let primary = solver("by-query", roomy());
     let proved = verify(vc, ensures, &primary, None);
     assert_eq!(proved.status, Status::Proved);
     assert_eq!(proved.path_feasible, Some(true));
     assert!(proved.warnings.is_empty());
 
     // An impossible path: proved, but flagged vacuous (§17.98).
-    let never = solver("unsat", quick());
+    let never = solver("unsat", roomy());
     let vacuous = verify(vc, ensures, &never, None);
     assert_eq!(vacuous.status, Status::Proved);
     assert_eq!(vacuous.path_feasible, Some(false));
     assert_eq!(vacuous.warnings, ["W7002"]);
 
-    let cross = solver("sat", quick());
+    let cross = solver("sat", roomy());
     let blocked = verify(vc, ensures, &primary, Some(&cross));
     assert_eq!(blocked.status, Status::Unknown);
     assert_eq!(blocked.reason.unwrap().kind, ReasonKind::SolverDisagreement);
@@ -261,7 +272,7 @@ fn a_disproved_record() {
         .iter()
         .find(|o| o.clause == "ensures scale_wrong")
         .unwrap();
-    let s = solver("witness", quick());
+    let s = solver("witness", roomy());
     let r = verify(vc, ensures, &s, None);
     insta::assert_json_snapshot!(r);
 }

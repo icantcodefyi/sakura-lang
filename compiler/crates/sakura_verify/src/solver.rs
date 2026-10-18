@@ -5,7 +5,7 @@
 
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Command, ExitStatus, Stdio};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -199,7 +199,12 @@ impl Solver {
                 Ok(Some(s)) => break s,
                 Ok(None) if Instant::now() >= deadline => {
                     let _ = child.kill();
-                    let _ = child.wait();
+                    match child.wait() {
+                        // It ended on its own after the last poll (a crash still being reported,
+                        // say): its own status decides, not the deadline.
+                        Ok(s) if !killed(s) => break s,
+                        _ => {}
+                    }
                     // The reader is detached: a grandchild may still hold the pipe.
                     return Answer::Unknown(Reason::new(
                         ReasonKind::Timeout,
@@ -229,6 +234,19 @@ impl Solver {
             &self.limits,
         )
     }
+}
+
+/// Whether `s` is the deadline's kill rather than the solver's own exit or crash.
+#[cfg(unix)]
+fn killed(s: ExitStatus) -> bool {
+    use std::os::unix::process::ExitStatusExt;
+    const SIGKILL: i32 = 9;
+    s.signal() == Some(SIGKILL)
+}
+
+#[cfg(not(unix))]
+fn killed(_: ExitStatus) -> bool {
+    true
 }
 
 fn on_path(binary: &str) -> Option<PathBuf> {
