@@ -7,6 +7,17 @@ published yet.
 
 ## [Unreleased]
 
+### Security
+
+- M3 exit gate 10 passed on 2026-10-18: the [security review](docs/reviews/m3-security-review.md)
+  of the escape rules, the cassette format and the `Untrusted` template rule is signed by
+  Claude Fable 5.1 under the owner's written delegation (design §17.159; not the owner's
+  personal review). M3 is complete and the reviewed code is no longer frozen. The review
+  records follow-up findings as plan WS12: `Secret.map` will take a `Trust` reason, plain
+  `sakura test` will pass empty permissions to the runtime, `Serve.host()` gains a request body
+  cap, the proof key's directory mode is checked, non-release workflows pin action SHAs, and
+  WASM may send `Secret` headers once the approved transport change lands.
+
 ### Fixed
 
 - The Sakura skill starts with a bounded guide read and recommends targeted lookup
