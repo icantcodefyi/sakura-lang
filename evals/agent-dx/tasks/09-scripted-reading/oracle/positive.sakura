@@ -1,0 +1,6 @@
+test "oracle/positive" {
+  expect_eq(read_script(17), 17)
+  expect_eq(read_script(2), 2)
+  expect_eq(Json.decode(encode_reading(17)), Ok(Reading { value: 17 }))
+  expect_eq(Json.decode(encode_reading(2)), Ok(Reading { value: 2 }))
+}

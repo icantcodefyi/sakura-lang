@@ -1,0 +1,4 @@
+test "oracle/lower" {
+  expect_eq(successor(0), 1)
+  expect_defect(fn() { successor(-1) })
+}

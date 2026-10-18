@@ -1,0 +1,19 @@
+test "oracle/granted" {
+  with Env.of(Map.of([("APP_MODE", "fast"), ("ADMIN_MODE", "unsafe")])), Env.only(["APP_MODE"]) {
+    expect_eq(mode(), "fast")
+  }
+  let observed = handler Env {
+    fn get(key) {
+      Console.print(key)
+      if key == "APP_MODE" { Some("fast") } else { None }
+    }
+    fn secret(key) {
+      Console.print("secret:{key}")
+      None
+    }
+  }
+  with observed { expect_eq(mode(), "fast") }
+  let accesses = Test.output_lines()
+  expect(List.len(accesses) > 0)
+  expect(List.all(accesses, fn(key) { key == "APP_MODE" }))
+}

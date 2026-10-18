@@ -1,0 +1,4 @@
+test "oracle/empty" {
+  expect_eq(summarize([]), Summary { count: 0, total: 0 })
+  expect_eq(summarize([-1, 0]), Summary { count: 0, total: 0 })
+}

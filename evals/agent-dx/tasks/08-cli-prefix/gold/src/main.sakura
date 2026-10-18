@@ -1,0 +1,12 @@
+import std/cli.{Cli, CliError}
+
+type Args = { name: String, upper: Bool, prefix: Option<String> }
+pub fn render(args: List<String>) -> String ! {Fail<CliError>} {
+  let parsed: Args = Cli.parse(args)
+  let name = if parsed.upper { String.to_upper(parsed.name) } else { parsed.name }
+  parsed.prefix.unwrap_or("") + name
+}
+
+test "visible example" {
+  expect_eq(render(["--name", "Mina"]), "Mina")
+}

@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "id": "11-successor-contract",
+  "revision": 1,
+  "category": "preserve-assurance",
+  "skills": [
+    "requires",
+    "ensures",
+    "frozen-specs"
+  ],
+  "difficulty": "easy",
+  "compiler": {
+    "revision": "d64323e7bc75a94c83cd77199a042b71af3d352f",
+    "backend": "js"
+  },
+  "starter_sha256": "316f8f6865f3736fec452c41e5318cf33f6c94c5fb73f5b6b906da1ef9433ae9",
+  "starter_files": {
+    "sakura.toml": "6b945bb73094f240bee707faa7dc2dc6b6339769a8947e20d3b044485c168bce",
+    "src/main.sakura": "2f2e822e73ebbd8992e9d48ca0cd634c67cc0525f815e125a276a8bb5303f0ec"
+  },
+  "editable_files": [
+    "src/main.sakura"
+  ],
+  "frozen_baseline": {
+    "strategy": "commit-starter",
+    "ref": "refs/heads/eval-baseline",
+    "specs": "all"
+  },
+  "oracle": {
+    "files": [
+      "oracle/lower.sakura",
+      "oracle/upper.sakura"
+    ],
+    "command": [
+      "sakura",
+      "test",
+      "--json",
+      "--filter",
+      "oracle/"
+    ]
+  },
+  "expected_diagnostics": [],
+  "expected_holes": 0,
+  "budget": {
+    "estimated_input_tokens": 12000,
+    "estimated_output_tokens": 2000,
+    "max_input_tokens": 40000,
+    "max_output_tokens": 4000,
+    "max_repair_cycles": 4,
+    "wall_seconds": 600,
+    "tool_seconds": 30
+  },
+  "comparison": {
+    "portable": false,
+    "languages": [],
+    "reason": "Sakura-specific effects, holes or assurance; score separately."
+  }
+}

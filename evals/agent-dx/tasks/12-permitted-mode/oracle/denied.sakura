@@ -1,0 +1,6 @@
+test "oracle/denied" {
+  with Env.of(Map.of([("ADMIN_MODE", "fast")])), Env.only(["APP_MODE"]) { expect_eq(mode(), "safe") }
+  for value in ["", "FAST", "debug"] {
+    with Env.of(Map.of([("APP_MODE", value)])), Env.only(["APP_MODE"]) { expect_eq(mode(), "safe") }
+  }
+}

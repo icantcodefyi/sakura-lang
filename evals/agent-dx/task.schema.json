@@ -1,0 +1,242 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sakura agent DX pilot task v1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9]{2}-[a-z]+(-[a-z]+)*$"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "syntax-data",
+        "diagnose-repair",
+        "holes-retrieval",
+        "application-change",
+        "deterministic-effects",
+        "preserve-assurance"
+      ]
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "maxItems": 20,
+      "uniqueItems": true
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": [
+        "easy",
+        "medium",
+        "hard"
+      ]
+    },
+    "compiler": {
+      "type": "object",
+      "properties": {
+        "revision": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "backend": {
+          "const": "js"
+        }
+      },
+      "required": [
+        "revision",
+        "backend"
+      ],
+      "additionalProperties": false
+    },
+    "starter_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "starter_files": {
+      "type": "object",
+      "properties": {
+        "sakura.toml": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "src/main.sakura": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "sakura.toml",
+        "src/main.sakura"
+      ],
+      "additionalProperties": false
+    },
+    "editable_files": {
+      "const": [
+        "src/main.sakura"
+      ]
+    },
+    "frozen_baseline": {
+      "type": "object",
+      "properties": {
+        "strategy": {
+          "const": "commit-starter"
+        },
+        "ref": {
+          "const": "refs/heads/eval-baseline"
+        },
+        "specs": {
+          "const": "all"
+        }
+      },
+      "required": [
+        "strategy",
+        "ref",
+        "specs"
+      ],
+      "additionalProperties": false
+    },
+    "oracle": {
+      "type": "object",
+      "properties": {
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^oracle/[a-z]+(-[a-z]+)*[.]sakura$"
+          },
+          "minItems": 2,
+          "maxItems": 4,
+          "uniqueItems": true
+        },
+        "command": {
+          "const": [
+            "sakura",
+            "test",
+            "--json",
+            "--filter",
+            "oracle/"
+          ]
+        }
+      },
+      "required": [
+        "files",
+        "command"
+      ],
+      "additionalProperties": false
+    },
+    "expected_diagnostics": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^V[0-9]{4}$"
+      },
+      "minItems": 0,
+      "maxItems": 8,
+      "uniqueItems": true
+    },
+    "expected_holes": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "budget": {
+      "type": "object",
+      "properties": {
+        "estimated_input_tokens": {
+          "const": 12000
+        },
+        "estimated_output_tokens": {
+          "const": 2000
+        },
+        "max_input_tokens": {
+          "const": 40000
+        },
+        "max_output_tokens": {
+          "const": 4000
+        },
+        "max_repair_cycles": {
+          "const": 4
+        },
+        "wall_seconds": {
+          "const": 600
+        },
+        "tool_seconds": {
+          "const": 30
+        }
+      },
+      "required": [
+        "estimated_input_tokens",
+        "estimated_output_tokens",
+        "max_input_tokens",
+        "max_output_tokens",
+        "max_repair_cycles",
+        "wall_seconds",
+        "tool_seconds"
+      ],
+      "additionalProperties": false
+    },
+    "comparison": {
+      "type": "object",
+      "properties": {
+        "portable": {
+          "type": "boolean"
+        },
+        "languages": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "typescript",
+              "python"
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 2,
+          "uniqueItems": true
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "portable",
+        "languages",
+        "reason"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "revision",
+    "category",
+    "skills",
+    "difficulty",
+    "compiler",
+    "starter_sha256",
+    "starter_files",
+    "editable_files",
+    "frozen_baseline",
+    "oracle",
+    "expected_diagnostics",
+    "expected_holes",
+    "budget",
+    "comparison"
+  ],
+  "additionalProperties": false
+}

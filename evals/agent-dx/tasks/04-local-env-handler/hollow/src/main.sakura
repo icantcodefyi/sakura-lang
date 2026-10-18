@@ -1,0 +1,7 @@
+pub fn configured(read: fn() -> String ! {Env}) -> String {
+  ""
+}
+
+test "visible example" {
+  expect_eq(configured(fn() { Env.get("MODE").unwrap_or("unset") }), "quiet")
+}

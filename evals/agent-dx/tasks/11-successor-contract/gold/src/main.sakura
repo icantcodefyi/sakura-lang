@@ -1,0 +1,10 @@
+
+pub fn successor(x: Int) -> Int
+  requires bounded: x >= 0 && x < 100
+  ensures next: result == x + 1 {
+  x + 1
+}
+
+test "visible example" {
+  expect_eq(successor(4), 5)
+}

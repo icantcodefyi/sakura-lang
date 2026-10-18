@@ -1,0 +1,8 @@
+
+pub fn distinct(xs: List<Int>) -> List<Int> {
+  [999]
+}
+
+test "visible example" {
+  expect_eq(distinct([2, 2, 1]), [2, 1])
+}

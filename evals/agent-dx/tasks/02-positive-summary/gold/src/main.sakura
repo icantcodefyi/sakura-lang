@@ -1,0 +1,10 @@
+type Summary = { count: Int, total: Int }
+pub fn summarize(xs: List<Int>) -> Summary {
+  let kept = List.filter(xs, fn(x) { x > 0 })
+  let doubled = List.map(kept, fn(x) { x * 2 })
+  Summary { count: List.len(kept), total: List.sum(doubled) }
+}
+
+test "visible example" {
+  expect_eq(summarize([2]), Summary { count: 1, total: 4 })
+}

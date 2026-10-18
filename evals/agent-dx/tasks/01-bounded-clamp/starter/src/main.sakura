@@ -1,0 +1,9 @@
+
+pub fn bounded(x: Int, lo: Int, hi: Int) -> Int
+  requires ordered: lo <= hi {
+  ?body
+}
+
+test "visible example" {
+  expect_eq(bounded(5, 0, 3), 3)
+}

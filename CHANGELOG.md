@@ -30,6 +30,10 @@ published yet.
 
 ### Added
 
+- Twelve agent-DX pilot tasks with isolated oracle fixtures, gold/hollow solutions,
+  schema and frozen-baseline checks in ordinary Cargo CI. The protocol defines
+  the Anthropic-only $10 pilot budget; paid execution and its runner remain deferred.
+
 - Eight offline cookbook projects cover refined JSON, file CLI, HTTP retry/cassettes,
   SQLite parameters, direct router tests, scripted LLM tools, budgeted agents and
   persistent indexed updates. Cookbook pages and the embedded skill reference are

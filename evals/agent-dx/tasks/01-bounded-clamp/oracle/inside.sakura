@@ -1,0 +1,4 @@
+test "oracle/inside" {
+  expect_eq(bounded(3, -4, 7), 3)
+  expect_eq(bounded(-2, -2, -2), -2)
+}

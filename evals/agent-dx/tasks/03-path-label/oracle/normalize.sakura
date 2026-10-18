@@ -1,0 +1,3 @@
+test "oracle/normalize" {
+  expect_eq(label("./notes//today.txt"), "notes/today.txt (15 bytes)")
+}

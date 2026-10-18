@@ -1,0 +1,8 @@
+
+pub fn mode() -> String ! {Env} {
+  match Env.get("APP_MODE") { Some("fast") => "fast", _ => "safe" }
+}
+
+test "visible example" {
+  with Env.of(Map.of([])) { expect_eq(mode(), "safe") }
+}

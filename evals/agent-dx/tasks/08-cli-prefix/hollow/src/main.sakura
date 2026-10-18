@@ -1,0 +1,10 @@
+import std/cli.{Cli, CliError}
+
+type Args = { name: String, upper: Bool, prefix: Option<String> }
+pub fn render(args: List<String>) -> String ! {Fail<CliError>} {
+  ""
+}
+
+test "visible example" {
+  expect_eq(render(["--name", "Mina"]), "Mina")
+}

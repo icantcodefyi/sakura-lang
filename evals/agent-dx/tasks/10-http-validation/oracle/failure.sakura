@@ -1,0 +1,4 @@
+test "oracle/failure" {
+  with Http.scripted([]) { expect_eq(fetch_count(), -1) }
+  with Http.scripted([(Any, Response.status(500, "failed"))]) { expect_eq(fetch_count(), -1) }
+}

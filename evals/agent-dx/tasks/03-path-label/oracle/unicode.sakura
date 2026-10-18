@@ -1,0 +1,3 @@
+test "oracle/unicode" {
+  expect_eq(label("café.txt"), "café.txt (9 bytes)")
+}

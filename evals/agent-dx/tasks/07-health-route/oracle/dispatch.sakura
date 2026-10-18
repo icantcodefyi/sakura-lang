@@ -1,0 +1,5 @@
+test "oracle/dispatch" {
+  expect_eq(Router.handle(app(), Request.of(Get, Url.from("/version"))).body, "v1")
+  expect_eq(Router.handle(app(), Request.post("/health", "")).status, Status.from(405))
+  expect_eq(Router.handle(app(), Request.of(Get, Url.from("/missing"))).status, Status.from(404))
+}

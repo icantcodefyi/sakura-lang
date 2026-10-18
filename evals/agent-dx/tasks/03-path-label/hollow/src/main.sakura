@@ -1,0 +1,9 @@
+import std/path.{Path}
+
+pub fn label(text: String) -> String {
+  ""
+}
+
+test "visible example" {
+  expect_eq(label("a"), "a (1 bytes)")
+}

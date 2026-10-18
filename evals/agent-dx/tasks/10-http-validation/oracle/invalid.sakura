@@ -1,0 +1,5 @@
+test "oracle/invalid" {
+  for body in ["bad", "\{\"value\":-1\}", "\{\"value\":101\}", String.repeat("x", 129)] {
+    with Http.scripted([(Any, Response.status(200, body))]) { expect_eq(fetch_count(), -1) }
+  }
+}

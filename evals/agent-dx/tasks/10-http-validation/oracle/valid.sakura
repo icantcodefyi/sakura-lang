@@ -1,0 +1,16 @@
+import std/http.{Matcher}
+import std/request.{Get}
+
+test "oracle/valid" {
+  with Http.scripted([(Matcher.Path("/count"), Response.status(200, "\{\"value\":23\}"))]),
+      Http.scoped(["eval.invalid:443"]) {
+    expect_eq(fetch_count(), 23)
+  }
+  with Http.scripted([(Matcher.Method(Get), Response.status(200, "\{\"value\":100\}"))]),
+      Http.scoped(["eval.invalid:443"]) {
+    expect_eq(fetch_count(), 100)
+  }
+  with Http.scripted([(Any, Response.status(200, "\{\"value\":0\}"))]) {
+    expect_eq(fetch_count(), 0)
+  }
+}

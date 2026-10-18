@@ -1,0 +1,4 @@
+test "oracle/empty" {
+  expect_eq(distinct([]), [])
+  expect_eq(distinct([-2, -2]), [-2])
+}

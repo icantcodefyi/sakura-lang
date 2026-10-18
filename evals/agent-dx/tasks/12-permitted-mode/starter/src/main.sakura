@@ -1,0 +1,8 @@
+
+pub fn mode() -> String ! {Env} {
+  Env.get("ADMIN_MODE").unwrap_or("safe")
+}
+
+test "visible example" {
+  with Env.of(Map.of([])) { expect_eq(mode(), "safe") }
+}

@@ -1,0 +1,13 @@
+import std/request.{Get, Request}
+import std/response.{Response, Status}
+import std/router.{Router}
+import std/url.{Url}
+
+fn version(req: Request) -> Response { Response.status(200, "v1") }
+pub fn app() -> Router<{}> {
+  Router.new().get("/version", version).get("/health", fn(req) { Response.status(200, "ready") })
+}
+
+test "visible example" {
+  expect_eq(Router.handle(app(), Request.of(Get, Url.from("/version"))).body, "v1")
+}

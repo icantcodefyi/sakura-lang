@@ -1,0 +1,4 @@
+test "oracle/bounds" {
+  expect_eq(bounded(-9, -4, 7), -4)
+  expect_eq(bounded(12, -4, 7), 7)
+}

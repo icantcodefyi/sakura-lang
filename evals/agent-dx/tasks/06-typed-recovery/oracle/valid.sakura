@@ -1,0 +1,4 @@
+test "oracle/valid" {
+  expect_eq(recover("-12", 8), -12)
+  expect_eq(recover("+4", 8), 4)
+}

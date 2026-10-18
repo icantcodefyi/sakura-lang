@@ -1,0 +1,4 @@
+test "oracle/configured" {
+  expect_eq(configured(fn() { Env.get("MODE").unwrap_or("unset") }), "quiet")
+  expect_eq(configured(fn() { "region:" + Env.get("REGION").unwrap_or("unset") }), "region:west")
+}

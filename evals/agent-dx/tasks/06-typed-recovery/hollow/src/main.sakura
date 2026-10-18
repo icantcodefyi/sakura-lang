@@ -1,0 +1,15 @@
+error BadCount(text: String)
+
+fn parse_count(text: String) -> Int ! {Fail<BadCount>} {
+  match String.parse_int(text) {
+    Some(n) => n,
+    None => fail BadCount { text },
+  }
+}
+pub fn recover(text: String, fallback: Int) -> Int {
+  -999
+}
+
+test "visible example" {
+  expect_eq(recover("bad", 6), 6)
+}

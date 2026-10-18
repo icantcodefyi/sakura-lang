@@ -1,0 +1,8 @@
+type Summary = { count: Int, total: Int }
+pub fn summarize(xs: List<Int>) -> Summary {
+  Summary { count: List.len(xs), total: List.sum(xs) }
+}
+
+test "visible example" {
+  expect_eq(summarize([2]), Summary { count: 1, total: 4 })
+}

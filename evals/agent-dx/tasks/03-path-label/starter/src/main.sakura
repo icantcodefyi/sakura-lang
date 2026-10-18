@@ -1,0 +1,9 @@
+
+pub fn label(text: String) -> String {
+  let path = Path.to_string(Path.of(text))
+  String.len(path)
+}
+
+test "visible example" {
+  expect_eq(label("a"), "a (1 bytes)")
+}

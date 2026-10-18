@@ -1,0 +1,5 @@
+test "oracle/errors" {
+  expect_fails_with(fn() { render(["--upper"]) }, fn(e) { true })
+  expect_fails_with(fn() { render(["--name", "A", "--unknown"]) }, fn(e) { true })
+  expect_fails_with(fn() { render(["--name"]) }, fn(e) { true })
+}

@@ -1,0 +1,6 @@
+test "oracle/nonpositive" {
+  expect_eq(read_script(-6), -6)
+  expect_eq(read_script(0), 0)
+  expect_eq(Json.decode(encode_reading(-6)), Ok(Reading { value: -6 }))
+  expect_eq(Json.decode(encode_reading(0)), Ok(Reading { value: 0 }))
+}

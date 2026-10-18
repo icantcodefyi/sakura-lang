@@ -1,0 +1,4 @@
+test "oracle/upper" {
+  expect_eq(successor(99), 100)
+  expect_defect(fn() { successor(100) })
+}

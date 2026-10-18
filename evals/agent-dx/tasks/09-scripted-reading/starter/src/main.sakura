@@ -1,0 +1,19 @@
+import std/llm.{Llm, LlmError, Request}
+import std/prompt.{Prompt}
+
+type Reading = { value: Int }
+
+fn read_script(value: Int) -> Int ! {Fail<LlmError>} {
+  let request: Request<Reading> = Llm.request("Return the reading.", Prompt.text("sensor"))
+  with Llm.scripted([encode_reading(value)]) {
+    let reading = Llm.generate(request)
+    reading.value
+  }
+}
+pub fn encode_reading(value: Int) -> String {
+  Json.encode("{value}")
+}
+
+test "visible example" {
+  expect_eq(read_script(7), 7)
+}

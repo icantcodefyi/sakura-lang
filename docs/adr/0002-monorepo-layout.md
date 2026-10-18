@@ -61,3 +61,19 @@ recipes and client assets follow the [agent DX plan](../plans/agent-dx.md).
 Website mirrors and archives derive mechanically from that package. This keeps
 application guidance separate from compiler-contributor instructions and avoids
 hand-maintained language references per client.
+
+## Amendment: agent evaluation corpus (2026-10-18)
+
+Decision [§17.146](../design.md) adds top-level `evals/` for agent-facing
+experiments, beginning with [the agent DX pilot](../../evals/agent-dx/README.md).
+`evals/agent-dx/tasks/` owns prompts, starter projects, independent oracles,
+gold/hollow fixtures and versioned internal metadata. `harness/` owns offline
+fixture validation and later the separately reviewed model runner; `reports/`
+contains reviewed reports, never keys or unredacted provider transcripts.
+
+This is separate from `compiler/tools/sakura_eval`, which evaluates compiler Core
+programs. No new Cargo crate is needed: the CLI integration test `agent_dx` invokes
+the offline validator with the built compiler, and existing workspace CI discovers
+it. The paid runner must keep acceptance tests and baseline authority outside the
+agent sandbox. Runner isolation, accounting/replay and the protected paid workflow
+remain a later DX5 step; this amendment does not authorize provider calls.

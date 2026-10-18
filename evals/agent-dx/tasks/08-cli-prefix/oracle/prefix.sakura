@@ -1,0 +1,4 @@
+test "oracle/prefix" {
+  expect_eq(render(["--name", "Mina", "--upper", "--prefix", "hi:"]), "hi:MINA")
+  expect_eq(render(["--name", "Jo"]), "Jo")
+}

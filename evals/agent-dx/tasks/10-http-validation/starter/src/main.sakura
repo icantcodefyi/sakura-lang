@@ -1,0 +1,11 @@
+import std/http.{Any, Http}
+import std/response.{Response}
+
+type Count = { value: Int where it >= 0 && it <= 100 }
+pub fn fetch_count() -> Int ! {Http} {
+  0
+}
+
+test "visible example" {
+  with Http.scripted([(Any, Response.status(200, "\{\"value\":3\}"))]) { expect_eq(fetch_count(), 3) }
+}

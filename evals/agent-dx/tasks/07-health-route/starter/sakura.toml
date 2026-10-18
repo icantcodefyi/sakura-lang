@@ -1,0 +1,6 @@
+[package]
+name = "07_health_route"
+version = "0.1.0"
+edition = "2026"
+
+[permissions]

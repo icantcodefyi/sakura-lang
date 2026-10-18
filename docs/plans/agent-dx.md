@@ -273,3 +273,44 @@ scheduled beside W2 as the first agent-DX items, DX5's runner and DX6's workflow
    docs distinguish this content manifest from CLI build-time provenance. History
    verification uses an unrelated throwaway commit and a bundle-source edit/revert
    pair, requiring unchanged distribution bytes and a green `agent_docs --check`.
+
+
+### DX5 (GPT-6-Astra, task authoring and offline acceptance)
+
+1. **Owner-assigned scope.** Twelve tasks now live under `evals/agent-dx/tasks/`,
+   two per category in research/11 §5 (the evaluation design is §5; §4 covers
+   bootstrap). Each has a prompt, starter, gold, hollow, oracle files and internal
+   v1 metadata. They are evaluation variants, separate from the DX4 cookbook.
+   The owner assigned task authoring and the runner-independent CI checks to Astra;
+   Opus still owns the model runner, isolation, accounting and transcript replay.
+2. **Offline acceptance.** `sakura_cli/tests/agent_dx.rs` invokes a dependency-free
+   Python validator with Cargo's built CLI. Existing `ci.yml` workspace tests
+   discover it on both platforms; this step needs no workflow or secrets. It checks
+   schemas, starter hashes and initial diagnostics, then gold passes all 25 oracle
+   cases and hollow fails all 25, each compiled and run independently. Fifty
+   structural negative controls reject changed permissions, trust shortcuts,
+   removed visible tests, unfinished holes, a weakened postcondition and a widened
+   effect row. This trusted-fixture verifier is not the agent sandbox or paid runner.
+3. **Frozen baseline representation.** Metadata stores `commit-starter` plus a
+   baseline ref; the verifier creates that commit from the byte-hashed starter and
+   retains its actual SHA outside the candidate. A model runner must do the same
+   with its own protected Git store. No agent-controlled ref is final authority,
+   and oracles/gold/hollow must never enter the agent-visible filesystem. The
+   committed compiler revision is the authoring baseline; runs also record the
+   actual compiler and bundle hashes.
+4. **The $10 owner decision tightens the pilot caps.** The full matrix stays
+   12 × 2 conditions × 2 Anthropic models × 1 fresh episode = 48. Per-episode caps
+   are now 40,000 aggregate input / 4,000 output tokens, four repair cycles, ten
+   minutes and 30 seconds per tool, with two workers. Estimates are 12,000 input /
+   2,000 output tokens. At model price ceilings $4/$20 and $2/$10 per million
+   input/output tokens (24 episodes each), estimated cost is $3.168 and the full
+   maximum is $8.64, leaving $1.36 under $10. Exact IDs, prices and run approval
+   remain the owner's runtime decision. No paid API call was made.
+5. **Protocol and boundaries.** The README defines baseline versus skill discovery,
+   pass@1 versus repaired success, iterations-to-green, diagnostic-fix success,
+   cost/activation metrics, reporting and owner approval. Six tasks are eligible
+   for later TS/Python translation, which is neither implemented nor funded here.
+   Canned-transcript replay and the protected paid workflow remain runner-stage
+   acceptance; no model results or completed-DX5 claim are made. ADR 0002 records
+   `evals/`. AI assistance: GPT-6-Astra authored the corpus, protocol and offline
+   checks; the human contributor owns acceptance.

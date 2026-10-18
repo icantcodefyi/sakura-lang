@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "id": "08-cli-prefix",
+  "revision": 1,
+  "category": "application-change",
+  "skills": [
+    "cli-schema",
+    "optional-values",
+    "strings"
+  ],
+  "difficulty": "medium",
+  "compiler": {
+    "revision": "d64323e7bc75a94c83cd77199a042b71af3d352f",
+    "backend": "js"
+  },
+  "starter_sha256": "00e03db91a1d620dcb923b66429a22c58e17be35adb60e89b1e1b27656435cb6",
+  "starter_files": {
+    "sakura.toml": "57742d06eb22c2aa86b8b5a0f3ca93869c06261e1fe83960566f5df555d5d5c7",
+    "src/main.sakura": "6539dfd68bdbc2609f61f0bf0846c92bd2ecd8152bcfd3b2460a0d64b28e099a"
+  },
+  "editable_files": [
+    "src/main.sakura"
+  ],
+  "frozen_baseline": {
+    "strategy": "commit-starter",
+    "ref": "refs/heads/eval-baseline",
+    "specs": "all"
+  },
+  "oracle": {
+    "files": [
+      "oracle/prefix.sakura",
+      "oracle/errors.sakura"
+    ],
+    "command": [
+      "sakura",
+      "test",
+      "--json",
+      "--filter",
+      "oracle/"
+    ]
+  },
+  "expected_diagnostics": [],
+  "expected_holes": 0,
+  "budget": {
+    "estimated_input_tokens": 12000,
+    "estimated_output_tokens": 2000,
+    "max_input_tokens": 40000,
+    "max_output_tokens": 4000,
+    "max_repair_cycles": 4,
+    "wall_seconds": 600,
+    "tool_seconds": 30
+  },
+  "comparison": {
+    "portable": true,
+    "languages": [
+      "typescript",
+      "python"
+    ],
+    "reason": "Portable behavioral contract; translations and matched libraries still require review."
+  }
+}

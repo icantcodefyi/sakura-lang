@@ -1,0 +1,4 @@
+test "oracle/missing" {
+  expect_eq(configured(fn() { Env.get("HOME").unwrap_or("no-home") }), "no-home")
+  expect_eq(configured(fn() { Env.get("").unwrap_or("empty-key") }), "empty-key")
+}
