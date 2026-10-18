@@ -165,7 +165,9 @@ test "untrusted SQL input stays a bound parameter" {
 
 `q` reaches the database as a parameter value, never as SQL text. Direct `Untrusted<T>` interpolation unwraps the value before converting it through `SqlValue.from`; it does not require a trust assertion.
 
-HTML interpolations have element type `Html`. Existing `Html` values compose as markup; other `Show` values convert through `Html.from` and are escaped text. Direct `Untrusted<String>` interpolation escapes the contained text, without displaying the wrapper. `Untrusted<Html>` also passes through `Html.from` as escaped text, never raw markup. The automatic unwrap currently applies to `sql` and `html`; `url"…"` still rejects `Untrusted<String>`.
+HTML interpolations have element type `Html`. Existing `Html` values compose as markup; other `Show` values convert through `Html.from` and are escaped text. Direct `Untrusted<String>` interpolation escapes the contained text, without displaying the wrapper. `Untrusted<Html>` also passes through `Html.from` as escaped text, never raw markup.
+
+URL interpolations have element type `UrlPart` from `std/urlpart` (design §17.124). A `String`, `Int`, `Uuid` or `Untrusted<T>` converts through `UrlPart.from`, which percent-encodes its shown value, so `url"https://x.test/u/{id}?q={u}"` with `id = 7` and `u = Untrusted.of("a b&c")` is `https://x.test/u/7?q=a%20b%26c`. An interpolated value cannot add a path segment, a query parameter or a fragment. `UrlPart` is opaque, so an existing `UrlPart` passes through unchanged.
 
 ```sakura
 import std/html.{Html}

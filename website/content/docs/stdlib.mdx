@@ -90,6 +90,7 @@ fn is_err<A, E>(r: Result<A, E>) -> Bool    // @total
 fn len<A>(xs: List<A>) -> Int    // @external, @total
 fn get<A>(xs: List<A>, i: Int) -> Option<A>    // @external, @total
 fn push<A>(xs: List<A>, x: A) -> List<A>    // @external
+fn set<A>(xs: List<A>, i: Int, x: A) -> List<A> requires 0 <= i && i < len(xs)    // O(log32 n) path copy (§17.126)
 fn slice<A>(xs: List<A>, start: Int, end: Int) -> List<A>    // @external
 fn empty<A>() -> List<A>
 fn concat<A>(a: List<A>, b: List<A>) -> List<A>
@@ -474,8 +475,16 @@ fn is_valid(s: String) -> Bool    // @total
 fn host(u: Url) -> Option<String>
 fn path(u: Url) -> String
 fn query_param(u: Url, name: String) -> Option<String>
-fn template(parts: List<String>, args: List<String>) -> Url
+fn template(parts: List<String>, args: List<UrlPart>) -> Url    // url"…"; each value through UrlPart.from (§17.124)
 fn encode_component(s: String) -> String
+```
+
+### `std/urlpart`
+
+```sakura
+opaque type UrlPart = UrlPart(String)
+fn from<T: Show>(v: T) -> UrlPart    // percent-encodes show(v); each non-UrlPart url"…" value goes through it (§17.124)
+fn to_string(p: UrlPart) -> String
 ```
 
 ### `std/request`
@@ -523,10 +532,10 @@ fn post_json<T: Schema>(url: Url, body: T) -> Response ! {Http, Fail<HttpError |
 fn bearer(req: Request, token: Secret<String>) -> Request
 fn host() -> Handler<Http>
 fn scoped(hosts: List<String>) -> Handler<Http, {Http}>
-fn recording(path: Path) -> Handler<Http, {Http, Fs}>
+fn recording(path: Path) -> Handler<Http, {Http, Fs}>    // schema_version line; refuses credential headers; set-cookie redacted (§17.122)
 opaque type Cassette = { path: Path, id: Int }
 fn cassette(path: Path) -> Cassette
-fn open(c: Cassette) -> Cassette ! {Fs, Fail<HttpError>}
+fn open(c: Cassette) -> Cassette ! {Fs, Fail<HttpError>}    // written Cassette.open(c) or c.open() (§17.125)
 fn replaying(c: Cassette) -> Handler<Http, {Http, Fs}>
 fn scripted(script: List<(Matcher, Response)>) -> Handler<Http>
 ```
@@ -625,7 +634,7 @@ fn of(name: String) -> Model
 fn default() -> Model
 fn anthropic(key: Secret<String>, model: Model) -> Handler<Llm, {Http, Budget}>    // @external
 fn recording(path: Path, provider: Handler<Llm, {Http, Budget}>) -> Handler<Llm, {Http, Fs}>
-fn replay(path: Path) -> Handler<Llm, {Fs}>
+fn replay(path: Path) -> Handler<Llm, {Fs}>    // a miss is ProviderError naming Llm.recording and sakura test --record (§17.125)
 fn scripted(responses: List<String>) -> Handler<Llm>
 ```
 
