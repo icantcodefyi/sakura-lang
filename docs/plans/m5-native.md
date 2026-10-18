@@ -59,7 +59,7 @@ AI implementation: OpenAI Codex (gpt-6.1-sol); the human contributor owns accept
 - **Now:** N0a (Sol). It may run beside the whole M4 close-out: no file of `m3-completion-and-m4.md`
   §3.8 rows 1–8 is edited except `compiler/Cargo.toml` (additive) and `Cargo.lock`.
 - **When M4-OPT's first commit lands the 1.2.0 text:** N1a (N0a is in; §17.191 (1), (3)).
-- **When M4-OPT lands whole:** N0b, then N5.
+- **M4-OPT is whole (round 18, §17.199; the niche left M4):** N0b after §17.200's LIR commit (both edit `sakura_lir/src/lower.rs`), then N5; N1a's condition has held since `f93e7ab7`, so it starts now (§17.203).
 - **When N1a lands:** N1b and (after L5) N2 in parallel.
 - **When N2 and N0b have landed:** N3; then N4.
 - **M5 exit** (§17.178): §14.3's amended M5 line; `{js, wasm, native} × {ubuntu, macos}` green on
@@ -77,6 +77,8 @@ AI implementation: OpenAI Codex (gpt-6.1-sol); the human contributor owns accept
 | `nbody` §17.118 carry (§17.160 (1)) | first window after N2, native lane | carried with the scalar-leaf question |
 | Native compile budget (§17.175 (4)) | N2's per-program lowering/codegen/object/link p95 on the reference host | research/10 §6 build budget applies to compile-to-object; link reported beside it; no native compile claim |
 | Regions (§17.174) | after N3+N4 window: share of `requested` bytes dying inside the allocating twin on the allocation kernels | no region work |
+| `Option` niche (§17.199 (1); research/08 §6.2, §17.83, §17.99) | first window after N3, native lane: a prototype's `requested` bytes and time on `shapes` and `map_set` against the tagged layout (the measured upper bound is 11.8% of `shapes`' bytes) | tagged stays; if built, the universal ABI §4.3 form with the per-field schema table, an ABI MINOR allocated at landing; the §17.99 parity gate is its acceptance |
+| `deltablue`: ownership through parameters and fields, dense `Int`-keyed map (§17.201 (2)) | WS-P13a's ablation now (plan `performance-r1.md` §9), then the `List`/`Map` window above with `deltablue` among its programs | HAMT and trie stay; `deltablue` carried under §17.152 (2), named in `bench/deltas.md` |
 | `ptr64-v1` pointer profile (§17.169 (4)) | after N2's `offset32-v1` baseline is measured | `offset32-v1` only |
 
 ## 4. Sanitizer lanes (§17.173)
