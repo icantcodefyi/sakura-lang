@@ -1111,10 +1111,11 @@ test "replays" {{
     );
 }
 
-/// Design §17.205 (2): `sakura test --record` stores a streamed body of exactly 16 MiB; one byte
-/// more is an `HttpError` naming the limit, and that cassette gets no exchange.
+/// Design §17.205 (2), §17.209 (4): `sakura test --record` stores a streamed or sent body of
+/// exactly 16 MiB; one byte more is an `HttpError` naming the limit, and that cassette gets no
+/// exchange.
 #[test]
-fn test_record_limits_a_streamed_body_to_16_mib() {
+fn test_record_limits_a_response_body_to_16_mib() {
     let program = r#"import std/fs.{Fs}
 import std/http.{Any, Http}
 import std/path.{Path}
@@ -1129,16 +1130,25 @@ fn status(n: Int, cassette: String) -> Result<Status, HttpError> ! {Fs} {
   }
 }
 
+fn sent(n: Int, cassette: String) -> Result<Status, HttpError> ! {Fs} {
+  let body = String.repeat("a", n)
+  with Http.scripted([(Any, Response.status(200, body))]), Http.recording(Path.of(cassette)) {
+    try { Http.send(Request.of(Method.Get, Url.from("https://api.example/big"))).status }
+  }
+}
+
 test "16 MiB records" {
   with Fs.rooted(Test.fixtures()) {
     expect_eq(status(16_777_216, "at.jsonl"), Ok(Status.from(200)))
+    expect_eq(sent(16_777_216, "sent-at.jsonl"), Ok(Status.from(200)))
   }
 }
 
 test "one byte more fails" {
-  let reason = "response body over 16 MiB: sakura test --record stores at most 16,777,216 bytes of a streamed body"
+  let reason = "response body over 16 MiB: sakura test --record stores at most 16,777,216 bytes of a response body"
   with Fs.rooted(Test.fixtures()) {
     expect_eq(status(16_777_217, "over.jsonl"), Err(HttpError { status: None, reason }))
+    expect_eq(sent(16_777_217, "sent-over.jsonl"), Err(HttpError { status: None, reason }))
   }
 }
 "#;
@@ -1158,10 +1168,18 @@ test "one byte more fails" {
         recorded.stderr
     );
     let fixtures = dir.join("tests/fixtures");
-    let at = std::fs::read_to_string(fixtures.join("at.jsonl")).unwrap();
-    assert_eq!(at.lines().count(), 2, "the 16 MiB exchange is recorded");
-    let over = std::fs::read_to_string(fixtures.join("over.jsonl")).unwrap_or_default();
-    assert!(!over.contains("api.example"), "{over}");
+    for at in ["at.jsonl", "sent-at.jsonl"] {
+        let text = std::fs::read_to_string(fixtures.join(at)).unwrap();
+        assert_eq!(
+            text.lines().count(),
+            2,
+            "{at}: the 16 MiB exchange is recorded"
+        );
+    }
+    for over in ["over.jsonl", "sent-over.jsonl"] {
+        let text = std::fs::read_to_string(fixtures.join(over)).unwrap_or_default();
+        assert!(!text.contains("api.example"), "{over}: {text}");
+    }
 }
 
 /// `--dump direct`'s loop lines (design §17.181 (1)): a loop body with nine CPS steps keeps the

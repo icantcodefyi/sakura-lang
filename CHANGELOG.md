@@ -23,12 +23,14 @@ published yet.
   `"response too large"`, where the whole body was read with no limit (design §17.205 (3)).
   To migrate, raise `SAKURA_MAX_COPY_BYTES` or read a large response with `Http.stream`.
 
-- `sakura test --record` stores at most 16 MiB (16,777,216 bytes) of a streamed response body:
-  past that, `Http.stream` under `Http.recording` fails with `HttpError` `"response body over
-  16 MiB: sakura test --record stores at most 16,777,216 bytes of a streamed body"` and the
-  cassette is not appended to. A larger body was held whole, one list element per byte, until
-  the test runner's heap ran out (security review C2, design §17.205 (2)). To migrate, record
-  a smaller response, or read a large one with `Http.stream` outside `Http.recording`.
+- `sakura test --record` stores at most 16 MiB (16,777,216 bytes) of a response body, sent or
+  streamed: past that, `Http.send` or `Http.stream` under `Http.recording` fails with
+  `HttpError` `"response body over 16 MiB: sakura test --record stores at most 16,777,216
+  bytes of a response body"` and the cassette is not appended to. A larger streamed body was
+  held whole, one list element per byte, until the test runner's heap ran out (security
+  review C2, design §17.205 (2)); a sent body was appended whole (design §17.209 (4), which
+  also changed the message's last words from "of a streamed body"). To migrate, record a
+  smaller response, or read a large one outside `Http.recording`.
 
 - The proof key is refused when its directory is writable by other users or owned by another
   user, as a readable key file already was; a key inside the project root or the proofs
