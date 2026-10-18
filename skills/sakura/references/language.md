@@ -1,0 +1,137 @@
+# Sakura Lang — edition 2026 (v0)
+
+> Sakura Lang is a strict, typed language for code written by agents. Every function signature states its parameter types (with refinements), result, effects, and error union; the compiler checks the body against it. Read this whole file; it is the entire core language. Library signatures: `sakura doc <std::module::name>`, `sakura doc --search "fn(List<A>) -> Int"`, the MCP `symbol_query` tool and `compiler/std/INDEX.md`. The full design is `docs/design.md`; its §17 lists every decision taken in rounds 2 and 3.
+
+## Toolchain loop
+`sakura check --json` (types/effects, holes allowed) → `sakura test --json` → `sakura run`. Diagnostics have stable codes (`V3001`), byte spans, and `fixes[]` with an `impact` class; never apply a fix whose impact is `contract_change` or `authority_change` without being asked, and know that `interface_change` fixes are only ever `suggested`. `sakura fmt` is canonical. `sakura explain V3001` gives the rationale. `sakura check --frozen-specs all` (baseline: git `HEAD`, or `--since <rev>`) reports every changed signature, row, contract, test body or permission as `V8020`. Holes `?name` compile under `check` and report expected type, locals, and candidates. Exit codes: 0 ok, 1 errors or `main` failed with an uncaught error, 3 test failures, 70 defect, 75 permission denied.
+
+## Status in this compiler
+- Works on the JS backend: the core language, opaque access checks (`V1006`), runtime refinements/contracts, stateful handlers, typed failures (including failures escaping tests), properties/snapshots; std data and JSON, filesystem and file callbacks, SQLite/memory SQL, HTTP and serving, CLI, structured tasks, budgets, tools and agent loops. `sql"…"` converts interpolations via `SqlValue.from`; `html"…"` inserts `Html` values as markup and escapes everything else via `Html.from`; `Tool.of` lowers named `@tool` functions; `@llm` bodies generate requests. Types take effect rows: `Tool<e>`, `Agent<T, e>`, `Router<e>`. Prelude `Trust` needs no import; `@trust("reason")` outside a trusted sink argument is `V6001`. The escape check reports a scoped value leaving its `with` (`V6002`) and a `@resource` (`Fs.File`) leaving its callback (`V6003`). `Untrusted.validate(u)` runs the expected refined type's `where` (`V5003` when the target is not a refined type); a literal in a refined position is evaluated at compile time (`V5004` when it violates the `where`, design §17.87), and one the compiler cannot decide is checked once before `main` starts (`D010` at start-up).
+- Works in tooling: `sakura new <cli|lib|agent|api> <name>`, `init`, `fix`, frozen-spec checks, `sakura audit [--json]` (every `@trust`, `@total`, `T.from`, `@external` and `@resource` site), `sakura doc [--search]`, `sakura build --manifest` (`target/sakura/manifest.json`: the trusted base and every contract obligation with its status), `sakura test --contracts` (a generated property per contracted `pub fn`; `W7001` when it gives up), `sakura verify [--json] [--target js|wasm] [--rlimit N] [--solver PATH]` (needs Z3 5.3.1 on `PATH`; per obligation `proved`, `disproved` with a counterexample, `unknown` with a reason, or `unsupported`; `W7002` for a proof over an impossible path; exit 1 on `disproved`; statuses go to the manifest, and `sakura build` then drops a `proved` `ensures`/`where` check only while its proof still matches the code and its record verifies under the key in `$XDG_STATE_HOME/sakura/proof.key`), LSP and compiler MCP. Analysis rechecks only the edited module when its public interface holds (whole-program lowering remains). `sakura run` rejects missing root grants with exit 75 and passes `[permissions]` through `SAKURA_PERMISSIONS` to enforcing host handlers; plain JS/FFI is trusted, not an OS sandbox.
+- Cassettes: `Http.recording(path)` replays recorded exchanges (JSON Lines with a `schema_version` first line; `secret_headers` are never written or matched; a credential-shaped ordinary header such as `authorization` or `cookie` is refused, use `Http.bearer`; `set-cookie` is stored redacted; design §17.122) and `Llm.replay(path)` is `Llm.anthropic` over it; tests open them with `with Fs.rooted(Test.fixtures())`. A miss fails naming `sakura test --record`. `Llm.recording(path, provider)` (design §17.102) is the same over your own provider and the enclosing `Http`, so `sakura test --record` fetches and appends a missing exchange; `Llm.replay` only replays. Both read the cassette once per `with`. `Llm.anthropic` and `Http.host` are tested with local mocks and synthetic cassettes; no live-provider test is claimed. `Http.stream(req, fn(incoming) { … })` reads a response as it arrives with `Http.read_chunk(incoming.body, max)`; the `@resource` `Body` cannot leave the callback (`V6003`), and the connection closes when the callback leaves. `Llm.stream` emits one partial per SSE text delta as it arrives. A cassette miss under `Llm.replay` is `ProviderError { status: 0, reason }` naming `Llm.recording` and `sakura test --record`. `Http.scoped(hosts)` attenuates the outer handler.
+- All twelve examples pass their harness modes, none check-only: seven run plus test, five test; `llm_extract`, `agent_loop` and `secrets` replay committed synthetic cassettes with the network denied.
+- Performance (design §17.109–§17.118, planned after M3): pure functions, pure lambdas and a `with` over a `handler` literal will compile to plain JS calls and loops with no annotation; `sakura build --dump direct` will list every function as `direct` or `cps(<reason>)`. Today every effectful or higher-order path pays the trampoline (`research/10-performance.md`).
+- Not yet (M3): nothing except `Sql.postgres`, which is deferred past M4. WASM is M4; native Perceus reuse is M5. Sections below also describe planned interfaces; this status list and `sakura --help` distinguish what the current binary provides.
+
+## Syntax in one screen
+```sakura test id=llms-syntax-screen
+import std/request.{Request}               // first segment = package (`std`, your sakura.toml `name`, a dependency); names must be listed; no wildcards
+import std/sql.{Sql, SqlError}             // effects and types are never imported implicitly
+import std/json as js                      // `js.Json`, `js.parse(...)`
+
+type Email = String where String.len(it) <= 254 && String.contains(it, "@")   // refinement, `it` = value
+type User = { id: Int, email: Email, name: String }                            // nominal record
+type Shape = Circle(Float) | Rect(Float, Float) | Empty                        // variants, positional fields
+pub opaque type Token = Token(String)                                          // constructor private to this module
+error NotFound(id: Int)                                                        // error tag with payload
+error Forbidden
+type UserError = NotFound | Forbidden                                          // error union (tags only)
+
+effect Users {                                                                 // user-defined effect
+  fn get(id: Int) -> Option<User> ! {Fail<SqlError>}
+}
+
+fn memory(users: List<User>) -> Handler<Users> {                              // `Users.memory(...)`: non-operation names
+  handler Users { fn get(id) { List.find(users, fn(u) { u.id == id }) } }    // resolve to this module's functions
+}
+
+pub fn view(caller: String, id: Int) -> User ! {Users, Log, Fail<UserError>} // signature = contract
+  requires id > 0                                                            // runtime-checked, caller blamed
+  ensures result.id == id                                                    // runtime-checked, callee blamed
+{
+  let found = try { Users.get(id) } catch { SqlError { .. } => None }         // catch removes tags from the row
+  match found {                                                              // exhaustive
+    None => fail NotFound { id },
+    Some(u) if u.name != caller => fail Forbidden,
+    Some(u) => u,                                                            // last expression = value
+  }
+}
+
+pub fn main() -> Unit ! {Console, Log, Fail<UserError>} {
+  with Users.memory([]), Log.json() {                                        // install handlers (innermost last)
+    let u = view("ann", 7)
+    Console.print("hello {u.name}")                                          // interpolation needs Show
+  }
+}
+
+test "missing user" {
+  with Users.memory([]) { expect_fail(fn() { view("ann", 1) }, NotFound { id: 1 }) }
+}
+property "clamp bounded"(x: Int, lo: Int, hi: Int) requires lo <= hi { expect(Int.clamp(x, lo, hi) <= hi) }
+```
+
+Rules you must know:
+- Casing is enforced: `snake_case` values/functions/modules/effect-row variables (`e`); `PascalCase` types, variants, error tags, effects, type variables (`A`).
+- Statements end at newline. A line continues when it ends with `(`, `[`, `{`, `,`, `=`, `->`, `=>`, `.`, `|`, `..` or a binary operator other than `>`, or when the next line starts with `.`, `else`, `catch`, a closing bracket, `|`, `..`, `=`, `->`, `=>`, or a binary operator other than `-`. `foo\n(bar)` is two statements; so is `a >\n b` (put the operator first on the next line). `;` is allowed. Signatures may break before `!`, `requires`, `ensures` and the body `{`.
+- Blocks are expressions; the value is the final expression. `return e` exits the function early. `if` without `else` is `Unit`. An unused non-`Unit` value is an error (`V2040`): write `let _ = e`.
+- Top-level `fn` must be fully annotated. Omitted `!` means pure `! {}`. Inside bodies everything is inferred.
+- `<...>` is type arguments only in type positions. No call-site type args (`V0011`): `let xs: List<Int> = List.empty()`, `let u: User = Json.decode(text)?`. In expressions `<` is comparison.
+- No named arguments (`V0014`): pass a record (`Budget.limits(Limits { tokens: Some(20_000), usd: None, calls: None })`). `name: value` appears only inside attributes (`@llm(system: "...")`).
+- `e.f(a)` means `T.f(e, a)` where `T` is `e`'s type and `f` lives in `T`'s module (`List.map`, `String.len`, your own module for your types). `Type.f` is a module function or constructor; `Type.Variant` a qualified constructor (`Json.String(s)`, `Level.Warn`); `Effect.op(...)` performs an operation, and `Effect.f(...)` for a non-operation `f` calls the effect's module (`Console.captured()`, `Clock.fixed(t)`).
+- `import std/http` binds only the module name `http`. To use `Http` in a row or `Request` in a type, import them: `import std/http.{Http}`, `import std/request.{Request}`. Each type's functions live in its own module: `std/request` (`Request`, `Method`, `BadRequest`), `std/response` (`Response`, `Status`, `HttpError`), `std/prompt` (`Prompt`), `std/llm` (`Llm`, `Request<T>`, `Model`, `LlmError`), `std/budget` (`Budget`, `Limits`, `BudgetExceeded`), `std/tool` (`Tool`, `ToolError`), `std/agent` (`Agent`), `std/router` (`Router`), `std/serve` (`Serve`, `Address`, `ServeError`), `std/html` (`Html`), `std/decimal` (`Decimal`). `V1002` on a std name offers the import as a machine-applicable fix.
+- `pub type` exports constructors and fields; `pub opaque type` exports the name only and is `Schema` only inside its module (`V2033` elsewhere: no `Json.decode`, row, LLM output, CLI or property value builds one; decode the representation and call the constructor). A `type` with no `=` is an external host type (resources, capabilities): no constructors, not `Eq`/`Show`.
+- No `null`, no exceptions, no implicit conversions, no overloading, no methods/classes/traits, no macros, no mutable references, no globals.
+- Record literal: `User { id: 1, email, name: "x" }` (punning ok). Update: `User { ..u, name: "y" }`. Not allowed unparenthesized in `if`/`match`/`with`/`for`/`while` headers or contract predicates.
+- Tuples `(a, b)`, `.0`/`.1`; lists `[1, 2]`; `xs[i]` is `List.get(xs, i) -> Option<T>`; ranges `0..n` (exclusive).
+- Lambdas: `fn(x) { x + 1 }`, `fn(x: Int) -> Int { x + 1 }`, `fn(_) { 0 }`. One form.
+- `var` locals can be reassigned (`total = total + x`; `u.name = "y"` means `u = User { ..u, name: "y" }`; `xs = List.push(xs, 1)`; `xs = List.set(xs, i, v)` for an indexed update, O(log n), `requires` the index in range). Closures capture by value; neither a lambda nor a `try` body may assign to an outer `var` (`V2041`: assign after the `try`). `let` is immutable (`V1040`).
+- Loops: `for x in xs { }` (List, Range, Map → `(k, v)`, Set), `while c { }`, `break`, `continue` (only inside the loop body, `V1041`).
+- Operators: `+ - * / %` (`Int` with `Int`, `Float` with `Float`; `+` also concatenates `String`), `== != < <= > >=`, `&& || !`. `Int` arithmetic is checked: overflow and `/ 0` are defects (crash the task), not errors. Convert explicitly: `Int.to_float`, `Float.round`; `String.parse_int` gives `None` when unparsable or beyond the backend's `Int` range.
+- Patterns: `_`, `x`, literals, `Some(x)`, `User { id, .. }`, `SqlError { .. }`, `(a, b)`, `[]`, `[x, ..rest]`, `A | B`, guards `if`. Matches must be exhaustive; `_` is required for `Int`/`String` literals.
+- Strings: `"{expr}"` interpolates; a literal brace is `\{`. Multi-line strings are allowed. `sql"..."`, `html"..."`, `url"..."` are tagged templates that bind interpolations safely; an `Untrusted<T>` interpolation converts as its wrapped `T` (a bound parameter, escaped text, a percent-encoded `UrlPart`; design §17.101, §17.124). In `url"..."` every interpolation (`String`, `Int`, `Uuid`, `Untrusted<T>`) is percent-encoded through `UrlPart.from`.
+- Reserved for later editions (`V0007`): `verify proof ghost control resume region spawn actor interface impl`, except directly after `.` or `fn` (`Task.spawn` is fine).
+
+## Types
+Primitives `Unit Bool Int(i64) Float(f64) String(UTF-8) Bytes Never`. Data `List<T> Map<K,V> Set<T> Option<T>(None|Some) Result<T,E>(Ok|Err) Range (A,B)`. Everything is immutable and compared structurally. Built-in constraints (derived automatically, not user-definable): `Eq Ord Hash Show Schema` — `fn sort<A: Ord>(xs: List<A>)`. On a type variable, `A: Eq` is the only way to use `==`, `A: Ord` the only way to use `<`, `A: Show` to interpolate (`V2032` when a concrete type lacks a constraint). Functions, handlers, resources, and `Secret<T>` are not `Eq`/`Show`/`Schema`; an opaque type is not `Schema` outside its module (`V2033`). `Schema` types get JSON codecs, JSON Schema, decoding that checks refinements. Refined types coerce to their base implicitly; enter them via `Email.validate(s) -> Result<Email, Violation>` (external input), `Email.from(s)` (defect on failure; trusted values only), or a literal: `let p: Percent = 50` and `Fs.read_text("a.txt")` are checked against the predicate at compile time (`V5004` when the literal fails; nothing when it passes; a predicate the compiler cannot evaluate is checked once at start-up). A field assignment on a `var` of a refined type (`x.n = -1` on `x: Pos`) is `V2034`: it would rebuild the base type and skip the `where`; write `x = Pos.from(PosRepr { ..x, n: -1 })` or `Pos.validate(…)?`. `Show` prints valid Sakura Lang syntax: `[1, 2]`, `(1, "a")`, `Some("x")`, `User { id: 1 }`, `Map.of([("a", 1)])`, `2.0`; strings are quoted inside containers, raw at the top level. Time is whole milliseconds: `Instant` (since the epoch, UTC) and `Duration`.
+
+## Effects and errors
+- Row `! {A, B | e}` = effects a call may perform. Effects are **requirements**; handlers give **authority**. Std effects, one module each: `Console Clock Random Env Log Task Test` (prelude) and `Fs Http Serve Sql Cli Budget Llm` (import them).
+- `Fail<E>` is the built-in abortive effect; `fail Tag { field }` has type `Never`. `E` is a union of error tags; calling a failing function adds its tags to your row automatically (no `?` needed). Public signatures are upper bounds; the compiler reports extra tags with the call that introduced them.
+- Recover: `try { body } catch { Tag { f } => e, Other | More => e2 }` — matched tags are removed, unmatched propagate, arms need not be exhaustive. Arms match the tags the body is known to raise when it is checked: a callback whose type is still unknown (an unannotated lambda parameter) contributes none and its tag is `V2001`, so annotate the parameter. `try { body }` alone gives `Result<T, E>` and needs nameable failures: over a row variable that may hide them it is `V3003` (declare `Fail<E>` with a type parameter, or `catch` the known tags). A row variable written next to `Fail<E>` with a type parameter `E` cannot hide failures; one written bare or next to a concrete tag (`{Fail<SqlError> | e}`) may, and the caller sees the tags joined. `r?` turns `Result<T,E>` back into `Fail<E>`. `Option.or_fail(o, Tag)`.
+- Defects (contract violations, overflow, `Option.expect`) are not catchable; `Task.scope` and tests observe them. `! {}` means "no declared operations", not "cannot crash". There is no way to raise a defect from user code; use `requires`.
+- Handlers: `handler Eff { var state = init; fn op(args) { ...; value } }` is an expression of type `Handler<Eff, r>` (`r` = effects its clauses use). Clauses return the operation's result exactly once (no `resume`) and may `fail` only with the operation's declared tags. `with h1, h2 { body }` installs them, `h1` outermost; the body's row loses `Eff` and gains `r`. Inner `with` shadows outer. Handler `var` state is private to the instance. Operations may be generic and may carry the row of a callback parameter (`fn scope<T, e>(body: fn(Scope) -> T ! e) -> T ! e`); otherwise an operation row holds only `Fail<...>`. A function passed to an operation is a callback: it runs under the handlers in force where the operation was performed, so `Fs.with_file(p, m, fn(f) { Fs.read_chunk(f, 4096) })` reaches the handler that opened the file and an attenuating handler cannot be bypassed from inside it. Types may take row parameters (`Tool<e>`, `Router<e>`): write a row where the parameter goes (`Tool<{Http}>`, `Tool<e>`).
+- Tests are `fn() -> Unit ! {Test, Fail<E>}`: typed failures may escape and count as a failed test. They run under deterministic defaults (`Clock.fixed(Instant.from_unix_millis(0))`, `Random.seeded(seed)`, `Env.of(Map.empty())`, `Console.captured()`, `Log.captured()`; no network/fs); any other effect must be installed in the test with `with` (`V3020`; std fakes: `Sql.memory()`, `Http.scripted(...)`, `Fs.memory(...)` (an in-memory directory: `Dir.subdir`/`Fs.rooted` narrowing works under it, writes are seen by every handler over it), `Llm.scripted(...)`, `Clock.virtual()` where `sleep` advances time, `Task.deterministic(seed)`). `expect_output(lines)` checks captured `Console`/`Log` lines. Explicit generators: `import std/gen` then `gen.for_all(gen.list(gen.int(0, 9), 20), 100, fn(xs) { ... })` inside a `test`; `property` parameters always use type-derived generators, and a `requires` on a `property` is a filter: a property that discards more than 90% of its inputs fails, so build the precondition into the input instead.
+- `retry(policy, fn() {...})` with `policy: Policy<E>` from `std/retry` (`retry.policy(retry_on, max_attempts)`), `timeout(d, fn() {...})` from `std/task` adding `Fail<Timeout>` (the action may fail; its tags are joined), and `with Budget.limits(Limits { tokens: Some(n), usd: None, calls: None }) {...}` are ordinary functions and handlers over thunks.
+- Authority: `main` gets root handlers for the std effects it declares, limited by `sakura.toml [permissions]` (`fs.read`, `net`, `env`, ...). Narrow before passing down: `with Fs.rooted(Dir.subdir(Fs.root(), "data")) { ... }`. Capability values (`Dir`, `File`) are external types that cannot be forged or escape their `with` scope; network and environment authority is data: `Http.scoped(["api.example.com:443"])`, `Env.only(["HOME"])`. `Env.get(key) -> Option<String>` is plain; `Env.secret(key) -> Option<Secret<String>>` cannot be shown/logged/serialized. `Untrusted<String>` (request bodies, file text, LLM text) must be validated into a refined type (`let e: Email = Untrusted.validate(u)?`) or released with `Untrusted.trust(u, @trust("why"))`; `@trust("...")` is the only attribute usable as an expression, accepted only by `Untrusted.trust`, `Secret.expose` and `Html.raw`, and the planned `sakura audit` will list every use. `sql"..."`/`html"..."` templates bind interpolations safely and never splice raw.
+
+## Concurrency and memory
+`Task.scope(fn(s) { let f = Task.spawn(s, fn() {...}); Task.join(f) })`; children cannot outlive the scope; first failure cancels siblings; cancellation is cooperative at effect operations. No shared mutable state exists, so there are no data races; fibers communicate through results (`join`, `all`, `race`) and handler state, there is no channel type. Values have value semantics; the compiler owns copying/reference counting; `W8001` tells you when a loop copies a collection because an older value is still used. Cyclic data: `import std/graph.{Graph, NodeId}`. Resources (files, connections, response bodies) are scope-bound: `Fs.with_file(path, Read, fn(file) { Fs.read_all(file) })`, `Http.stream(req, fn(r) { Http.read_chunk(r.body, 65_536) })`; returning the resource, or a record holding it, is an error (`V6003`).
+
+## Standard library, most used
+```text
+List.map filter filter_map fold find all any len get push set concat sort sort_by zip enumerate slice reverse join sum first last contains unique flat_map range
+Map.empty of get insert remove contains update entries keys values len      Set.empty of insert contains len to_list
+String.len chars graphemes split trim starts_with ends_with contains replace to_lower to_upper parse_int parse_float slice repeat pad_left
+Option.map unwrap_or or_fail expect is_some      Result.map map_err unwrap_or raise is_ok is_err
+Int.to_float to_string abs min max clamp pow checked_add    Float.round to_int_checked sqrt is_nan format
+Json.encode decode parse get get_string      Instant.from_unix_millis to_unix_millis parse add diff format_iso   Duration.millis seconds minutes to_millis
+Console.print read_line   Clock.now monotonic sleep   Random.int float bytes uuid   Env.get secret   Log.event
+Fs.root read read_text write list exists with_file read_chunk write_chunk read_all rooted memory   Dir.subdir   Path.of join to_string validate   Url.from validate host path query_param encode_component   UrlPart.from to_string
+Http.get post_json send stream read_chunk bearer scoped scripted recording   Request.of post post_json json param header   Response.status ok_json html json text
+Sql.query execute transaction memory sqlite   sql.migrate   Cli.args exit parse of   Budget.limits unlimited reserve settle
+Llm.request generate generate_text stream step scripted anthropic recording replay (LlmError = Refused | InvalidOutput | Truncated | RateLimited | Timeout | ProviderError | BudgetExceeded)
+Prompt.of text   Model.of default   Untrusted.of trust check len   Secret.of expose map
+Tool.from of call name   Agent.run(Agent { request, tools, max_steps, stop })   Router.new get post put delete route handle   Serve.listen scripted   Address.of
+Html.text untrusted from raw(markup, @trust("…")) concat to_string   Decimal.parse from_int add sub neg mul div_checked round to_string
+expect expect_eq expect_fail expect_fails_with expect_defect expect_output expect_snapshot   gen.int bool one_of list string map pair for_all
+```
+Type-directed results are named by annotation: `let rows: List<User> = Sql.query(q)`, `let args: Args = Cli.parse(Cli.args())`, `let req: Request<Answer> = Llm.request(system, Prompt.text("..."))`.
+
+## Common diagnostics → fix
+- `V0011 call-site type arguments` / `V0014 named argument` — annotate the binding; pass positionally or as a record.
+- `V1002 unresolved name` — accept the offered `import std/<module>.{Name}` fix; effects and types are never implicit.
+- `V3001 effect not allowed` — add the effect to the signature (interface change) or handle it with `with` locally.
+- `V3002`/`V2015 error union mismatch` — widen the declared `Fail<...>` or translate with `try/catch` at the boundary.
+- `V3003 try cannot name its failures` — the body's row variable may hide `Fail`: declare `Fail<E>` with a type parameter, or `catch` the known tags.
+- `V4001 non-exhaustive match` — add the listed witness case; do not add `_` on closed unions unless intended.
+- `V2040 unused value` — you forgot `xs = List.push(xs, v)` or `let _ =`.
+- `V2031 Secret is not Show` / `V2032 constraint not satisfied` — pass the secret to a sink (`Http.bearer`), never into text; add the constraint or use a type that has it.
+- `V2033 opaque_not_schema` — `Json.decode` (or `Sql.query`, `Llm.generate`, `Cli.parse`, `Tool.of`, a `property`) reached `Query`/`Html`/`UrlPart` from another module: decode the representation (`String`) and call the constructor (`Html.text(s)`, `UrlPart.from(s)`).
+- `V2034 refined field assignment` — `x.f = v` on a refined `var` (or through a refined prefix) would rebuild the base type and skip its `where`; reassign the whole value through `T.from` (trusted) or `T.validate` (data).
+- `V5004 literal violates refinement` — the literal can never satisfy the type's `where` clause; change the literal or the type, never the clause.
+- `V6002/V6003 escapes scope` — return data, not the capability/resource/handler.
+- `V3020 test uses effect without handler` — wrap the test body in `with <fake handler>`.
+- `D020/D021 contract violated` — the caller (requires) or callee (ensures) is wrong; never delete the clause to pass (specs are frozen under repair).
+
+## Writing good Sakura Lang
+Put refinements on domain types (`Email`, `Percent`, `NonEmpty<T>`) and let decoding validate. Make invariant-carrying types `pub opaque` when the invariant is how the value was made (escaped, encoded, from a literal) and a refinement when it is a predicate over the value (then it decodes). Keep public error unions small and stable; translate internal tags at the boundary; reuse std tags (`Timeout`, `RateLimited`) instead of declaring look-alikes. Declare the narrowest effect row that compiles. Prefer `match` over nested `if`. Prefer `List.fold`/`map` over `var` loops unless a loop is clearer. Keep hot code pure and its lambdas effect-free so it compiles direct; hoist `String.len` out of loops (it is O(n) on JS). Write tests with fake handlers next to the code. Never use `.expect` or `.trust` outside startup/trusted boundaries, and always give the reason.
