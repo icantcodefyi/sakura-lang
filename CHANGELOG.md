@@ -98,6 +98,12 @@ published yet.
 
 ### Fixed
 
+- `sakura run` exits 70 with the raw code on stderr when the program's exit code is outside
+  `0..=255` (a Windows NTSTATUS such as Ctrl-C's), instead of truncating it to a byte. On
+  Windows, `node` is found through `PATHEXT` (a `node.cmd` shim works), solvers are found as
+  `z3.exe` and `cvc5.exe`, and test permission grants carry no `\\?\` prefix (design §17.180
+  (4c)). Windows is not yet a supported platform.
+
 - The agent skill entry point fits below the eval harness tool-output limit; refinement
   and fake-clock examples remain in a linked reference and the generated bundle.
 
