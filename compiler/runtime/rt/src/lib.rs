@@ -12,6 +12,7 @@ pub mod arena;
 pub mod builtins;
 pub mod cmp;
 pub mod exec;
+pub mod generate;
 pub mod heap;
 pub mod layout;
 pub mod list;
