@@ -1,0 +1,90 @@
+// milestone: M3
+// covers: performance-r1 WS-P7; design §17.149 (updates inside `with`, `try` and after a perform)
+
+effect Tick {
+  fn tick() -> Int
+}
+
+error Stop(at: Int)
+
+fn ticks(start: Int) -> Handler<Tick, {}> {
+  handler Tick {
+    var n = start
+    fn tick() {
+      n = n + 1
+      n
+    }
+  }
+}
+
+// Fails part way: the list built before the failure is the one the handler sees.
+fn fill(n: Int) -> List<Int> ! {Tick, Fail<Stop>} {
+  var xs: List<Int> = []
+  var i = 0
+  while i < n {
+    xs = List.push(xs, Tick.tick())
+    if i == 5 { fail Stop { at: List.len(xs) } }
+    i = i + 1
+  }
+  xs
+}
+
+pub fn main() -> Unit ! {Console} {
+  // Inside `with`, the updates follow a perform in the same loop.
+  let inside = with ticks(100) {
+    var xs: List<Int> = []
+    var i = 0
+    while i < 40 {
+      xs = List.push(xs, Tick.tick())
+      i = i + 1
+    }
+    i = 0
+    while i < 40 {
+      xs = List.set(xs, i, Option.unwrap_or(xs[i], 0) + Tick.tick())
+      i = i + 1
+    }
+    xs
+  }
+  Console.print("with {List.len(inside)} {List.sum(inside)} {inside[0]} {inside[39]}")
+
+  // Inside `try`: only the handler reads the version from before the update, which it must
+  // see intact.
+  let ys = List.range(0, 40)
+  let r = try {
+    let zs = List.set(ys, 0, 99)
+    if List.sum(zs) > 0 { fail Stop { at: 1 } }
+    zs
+  } catch {
+    Stop { at } => List.push(ys, at),
+  }
+  Console.print("try {List.len(r)} {List.sum(r)} {r[0]}")
+  // A handler that does not read it: the update may be in place.
+  let vs = List.range(0, 40)
+  let w = try {
+    let ws = List.set(vs, 0, 99)
+    if List.sum(ws) > 10000 { fail Stop { at: 1 } }
+    ws
+  } catch {
+    Stop { at } => [at],
+  }
+  Console.print("try {List.sum(w)}")
+
+  let t = with ticks(0) {
+    try { fill(10) } catch {
+      Stop { at } => [at],
+    }
+  }
+  let u = with ticks(0) {
+    try { fill(3) } catch {
+      Stop { at } => [at],
+    }
+  }
+  Console.print("fill {t} {u}")
+
+  // After a perform: the list is printed, then updated.
+  var zs = List.range(0, 3)
+  Console.print("{zs}")
+  zs = List.set(zs, 0, 7)
+  zs = List.push(zs, 8)
+  Console.print("{zs}")
+}

@@ -1,0 +1,61 @@
+// milestone: M3
+// covers: performance-r1 WS-P7; design §17.149 (a retained version is intact after an update)
+
+// Each collection is built by an owned loop, which may update it in place; then an older
+// version is retained and the newer one updated again. The retained version shares a trie leaf,
+// the tail, or a HAMT subtree with the new one and must not change.
+pub fn main() -> Unit ! {Console} {
+  var xs: List<Int> = []
+  var i = 0
+  while i < 100 {
+    xs = List.push(xs, i)
+    i = i + 1
+  }
+  i = 0
+  while i < 100 {
+    xs = List.set(xs, i, i * 2)
+    i = i + 1
+  }
+  let old = xs
+  xs = List.set(xs, 5, -1)
+  xs = List.set(xs, 98, -2)
+  xs = List.push(xs, 7)
+  Console.print("old {List.len(old)} {List.sum(old)} {old[5]} {old[98]} {old[100]}")
+  Console.print("new {List.len(xs)} {List.sum(xs)} {xs[5]} {xs[98]} {xs[100]}")
+
+  var m: Map<Int, Int> = Map.empty()
+  i = 0
+  while i < 300 {
+    m = Map.insert(m, i, i)
+    i = i + 1
+  }
+  let snapshot = m
+  m = Map.insert(m, 7, -7)
+  m = Map.insert(m, 1000, 1)
+  m = Map.remove(m, 3)
+  Console.print(
+    "snapshot {Map.len(snapshot)} {snapshot.get(7)} {snapshot.get(3)} {snapshot.get(1000)}",
+  )
+  Console.print("map {Map.len(m)} {Map.get(m, 7)} {Map.get(m, 3)} {Map.get(m, 1000)}")
+
+  var s: Set<Int> = Set.empty()
+  i = 0
+  while i < 100 {
+    s = Set.insert(s, i % 40)
+    i = i + 1
+  }
+  let s0 = s
+  s = Set.insert(s, 999)
+  Console.print("sets {Set.len(s0)} {Set.contains(s0, 999)} {Set.len(s)} {Set.contains(s, 999)}")
+
+  // Every version of a loop kept in a list: none may be updated in place.
+  var versions: List<List<Int>> = []
+  var v: List<Int> = [0, 0, 0]
+  i = 0
+  while i < 3 {
+    versions = List.push(versions, v)
+    v = List.set(v, i, i + 1)
+    i = i + 1
+  }
+  Console.print("{versions} {v}")
+}

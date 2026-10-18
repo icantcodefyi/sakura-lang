@@ -1,0 +1,35 @@
+// milestone: M3
+// covers: performance-r1 WS-P7; design §17.149 (captured or stored before an update)
+
+type Box = { items: List<Int> }
+
+pub fn main() -> Unit ! {Console} {
+  // Captured by a closure before the update.
+  let xs = List.range(0, 40)
+  let total = fn() { List.sum(xs) }
+  let ys = List.set(xs, 0, 100)
+  Console.print("captured {total()} {List.sum(ys)}")
+
+  // Stored in a record.
+  let zs = List.range(0, 40)
+  let b = Box { items: zs }
+  let ws = List.push(List.set(zs, 39, 0), 1)
+  Console.print("record {List.sum(b.items)} {List.len(b.items)} {List.sum(ws)}")
+
+  // Stored as a Map value, and as a Map that is itself a value.
+  let vs = List.range(0, 40)
+  let byName = Map.insert(Map.empty(), "v", vs)
+  let vs2 = List.set(vs, 1, -1)
+  Console.print("map value {Map.get(byName, "v")} {List.sum(vs2)}")
+  var inner: Map<Int, Int> = Map.empty()
+  inner = Map.insert(inner, 1, 1)
+  let outer = Map.insert(Map.empty(), 0, inner)
+  inner = Map.insert(inner, 2, 2)
+  Console.print("nested {outer} {inner}")
+
+  // Stored in a list.
+  var row: List<Int> = [1, 2, 3]
+  let grid = [row, row]
+  row = List.set(row, 0, 9)
+  Console.print("grid {grid} {row}")
+}

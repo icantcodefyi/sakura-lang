@@ -1,0 +1,53 @@
+// milestone: M3
+// covers: performance-r1 WS-P7; design §17.149 (the same owned loop run twice)
+
+let base: List<Int> = [1, 2, 3]
+
+// Builds a fresh list and updates it in place on every call.
+fn squares(n: Int) -> List<Int> {
+  var xs: List<Int> = []
+  var i = 0
+  while i < n {
+    xs = List.push(xs, i)
+    i = i + 1
+  }
+  i = 0
+  while i < n {
+    xs = List.set(xs, i, i * i)
+    i = i + 1
+  }
+  xs
+}
+
+// Starts from a cached constant, which is shared: its updates copy.
+fn bumped() -> List<Int> {
+  var xs = base
+  var i = 0
+  while i < List.len(xs) {
+    xs = List.set(xs, i, Option.unwrap_or(xs[i], 0) + 10)
+    i = i + 1
+  }
+  xs
+}
+
+fn counts(words: List<String>) -> Map<String, Int> {
+  var m: Map<String, Int> = Map.empty()
+  for w in words { m = Map.insert(m, w, Option.unwrap_or(Map.get(m, w), 0) + 1) }
+  m
+}
+
+pub fn main() -> Unit ! {Console} {
+  let a = squares(40)
+  let b = squares(40)
+  Console.print("{List.sum(a)} {List.sum(b)} {a == b}")
+  Console.print("{bumped()} {bumped()} {base}")
+  let words = String.split("a b a c b a", " ")
+  Console.print("{counts(words)} {counts(words)}")
+  var runs: List<Int> = []
+  var k = 0
+  while k < 2 {
+    runs = List.push(runs, List.sum(squares(33)))
+    k = k + 1
+  }
+  Console.print("{runs}")
+}

@@ -1,0 +1,10 @@
+// milestone: M3
+// covers: performance-r1 WS-P7; design §17.149, §17.126 (`List.set` cannot reach `[]`)
+// expect-exit: 70
+// expect-defect: D020
+
+pub fn main() -> Unit ! {Console} {
+  var xs: List<Int> = []
+  xs = List.set(xs, 0, 1)
+  Console.print("{xs}")
+}

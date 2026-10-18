@@ -1,0 +1,45 @@
+// milestone: M3
+// covers: performance-r1 WS-P7; design §17.149 (an owned update of an empty singleton allocates)
+
+pub fn main() -> Unit ! {Console} {
+  let e: List<Int> = []
+  var a: List<Int> = []
+  a = List.push(a, 1)
+  var b: List<Int> = []
+  b = List.push(b, 2)
+  b = List.push(b, 3)
+  var r = List.range(0, 0)
+  r = List.push(r, 4)
+  var parts = String.chars("")
+  parts = List.push(parts, "x")
+  Console.print("{e} {a} {b} {r} {parts} {List.len(e)} {List.len([])}")
+
+  let em: Map<Int, Int> = Map.empty()
+  var m1: Map<Int, Int> = Map.empty()
+  m1 = Map.insert(m1, 1, 10)
+  var m2: Map<Int, Int> = Map.empty()
+  m2 = Map.remove(m2, 1)
+  m2 = Map.insert(m2, 2, 20)
+  Console.print("{em} {m1} {m2} {Map.len(em)} {Map.len(Map.empty())}")
+
+  // A map emptied by removals, then refilled.
+  var m3: Map<Int, Int> = Map.empty()
+  var i = 0
+  while i < 80 {
+    m3 = Map.insert(m3, i, i)
+    i = i + 1
+  }
+  i = 0
+  while i < 80 {
+    m3 = Map.remove(m3, i)
+    i = i + 1
+  }
+  m3 = Map.insert(m3, 5, 5)
+  Console.print("{m3} {Map.len(m3)}")
+
+  let es: Set<Int> = Set.empty()
+  var s1: Set<Int> = Set.empty()
+  s1 = Set.insert(s1, 1)
+  s1 = Set.insert(s1, 1)
+  Console.print("{Set.len(es)} {Set.len(s1)} {Set.to_list(s1)} {Set.len(Set.empty())}")
+}
