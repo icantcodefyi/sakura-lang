@@ -343,4 +343,9 @@ authority).
 
 ## 8. Deviations recorded during implementation
 
-(empty; implementers append here, each with the commit and the §17 entry it touches)
+**WS-FS** (`57ae00d..4136455`, §17.119):
+
+1. A missing host directory passed to `Dir.subdir` now fails with `no such directory` instead of `not found`, so host and memory roots report the same text. Other host errors are unchanged.
+2. `sakura_core/src/builtins.rs` (WS8's crate) changed by one added and three removed externals: `fs_memory_root` in; `fs_detached_root`, `file_buffer`, `file_contents` out.
+3. A memory `Dir` has no host path, so `Http.recording` and `Sql.sqlite` under `Fs.memory` still fail with `this directory has no host access`. Cassettes inside the fake would need a separate decision.
+4. No tour page described the old limitation; one sentence was added to the `Fs.memory` row of `website/content/docs/tour/testing.mdx`.
