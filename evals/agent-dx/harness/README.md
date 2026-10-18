@@ -34,11 +34,32 @@ Python 3.11+ standard library only, plus Git, Node and a built `sakura`.
    judged afterwards in a separate verifier directory with its own baseline commit:
    the file guard, `check --frozen-specs all --since <baseline>`, no holes or
    diagnostics, the visible tests and every oracle separately (`offline.py`'s rules).
-5. Writes `<task>.<condition>.<model>.jsonl` (start, count, request, response, tool,
-   submission, verdict, end events) and `summary.json` with per-episode metrics
-   (pass@1, success, iterations to green, censoring, diagnostics initial/seen/final
-   and fix success, tokens, cost, documents, skill activation, unauthorized edits)
-   and per model/condition counts with 95% Wilson intervals and cost per accepted task.
+5. Writes `<task>.<condition>.<model>.in<input cap>.jsonl` (start, count, request,
+   response, tool, submission, verdict, end events) and `summary.json` with per-episode
+   metrics (pass@1, success, iterations to green, censoring, diagnostics, tokens, cost,
+   documents, input budget, skill activation, unauthorized edits) and per
+   model/condition/input-cap counts with 95% Wilson intervals, cost per accepted task and
+   `input_cap` stops.
+
+## Retrieval and budget telemetry (harness 2, design §17.165 (3))
+
+- `documents`: one record per lookup, in order, failed ones included: `id`
+  (`skill:SKILL.md`, `explain V3001`, `prompt --budget 3000`, `doc List.map`, `help`),
+  `ok` (the tool succeeded, `sakura` exited 0, and `doc` did not answer
+  `no symbol matches`), `bytes` the model received, `approx_tokens` (bytes / 4, an
+  estimate, not a tokenizer count), `truncated` (cut at 8,000 characters), `turn`, and
+  `input_used`, the aggregate input billed so far including the request that asked.
+- `diagnostics.reported`: codes of diagnostics that `check`, `test`, `fix`, `audit` or
+  `verify` reported (`--json` diagnostic records, or `error[…]`/`warning[…]` headers);
+  `diagnostics.quoted`: codes that appear in retrieved text (`explain`, `prompt`, `doc`,
+  `help`, skill files). `seen` keeps harness 1's meaning (any code in `sakura` output).
+- `input_budget`: `cap`, `used`, `remaining`, and `refused_request`, the counted input
+  of the request the cap refused (null if the cap did not stop the episode).
+- `input_cap`: the episode's arm. `--input-caps 40000,60000` runs every cell once per
+  cap, shuffled together by `--seed`, so the arms are paired in one design; each arm's
+  maximum cost is planned and reserved from its own cap. Caps are at most 60,000.
+
+Replay refuses transcripts recorded by another harness version.
 
 ## Backends
 
@@ -82,6 +103,18 @@ ANTHROPIC_API_KEY=… python3 evals/agent-dx/harness/runner.py run --backend liv
   --model claude-opus-5-5=4/20 --model claude-sonnet-5-5=2/10 \
   --budget-usd 10 --approved-by icantcodefyi --seed 1
 git commit -m "chore(evals): record agent-eval spend" -- evals/agent-dx/reports/ledger.json
+```
+
+The next run (§17.165 (3)–(4)) pairs the arms and repeats with a second order seed. It
+needs a fresh key and the owner's written approval of its worst case; the full design is
+96 episodes per seed, so `--tasks` must select a subset or the owner must raise the
+48-episode ledger cap first. Check the plan first:
+
+```sh
+python3 evals/agent-dx/harness/runner.py run --backend live --plan-only \
+  --sakura compiler/target/release/sakura --tasks <ids> --input-caps 40000,60000 \
+  --model claude-opus-5-5=4/20 --model claude-sonnet-5-5=2/10 \
+  --budget-usd <approved> --approved-by icantcodefyi --seed 1   # then --seed 2
 ```
 
 Transcripts and the summary land in `target/agent-dx/runs/<run-id>/` (ignored;

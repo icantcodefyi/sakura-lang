@@ -29,19 +29,22 @@ import urllib.request
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import offline  # noqa: E402
 
-HARNESS_VERSION = '1'
+HARNESS_VERSION = '2'
 SUITE = offline.SUITE
 OWNER = 'icantcodefyi'
 OWNER_TOTAL_USD = 10.0  # owner decision 2026-10-18: $10 total across every live run
 MAX_LIVE_EPISODES = 48  # 12 tasks x 2 conditions x 2 models x 1 episode
 PRICE_CEILING = (4.0, 20.0)  # USD per million input/output tokens, README model A envelope
 MAX_TURNS = 40
+MAX_INPUT_CAP = 60_000  # the §17.146 envelope; §17.165 pairs a 60,000 arm against 40,000
 TOOL_OUTPUT_CHARS = 8000
 CONDITIONS = ('baseline', 'skill')
 ANTHROPIC_VERSION = '2023-06-01'
 SAKURA_SUBCOMMANDS = {'check', 'test', 'fmt', 'fix', 'explain', 'prompt', 'doc', 'audit',
                       'verify', 'help', '--help', '-h', '--version', '-V'}
 SUBMITTING = {'check', 'test'}
+RETRIEVING = {'explain', 'prompt', 'doc', 'help', '--help', '-h'}
+CODE = re.compile(r'\b[A-Z]\d{4}\b')
 
 SYSTEM = """You are a coding agent working in a small Sakura Lang project. The project directory \
 is the only filesystem you can see. Use the tools to list, read and write project files and to \
@@ -244,6 +247,21 @@ def codes_of(rows):
     return sorted({row['code'] for row in rows if row.get('code')})
 
 
+def reported_codes(text):
+    """Codes of the diagnostics a command reported: its `--json` diagnostic records, or the
+    `error[V1002]` headers of the human rendering; never codes quoted in prose."""
+    codes = set()
+    for line in text.splitlines():
+        try:
+            record = json.loads(line)
+        except ValueError:
+            codes.update(re.findall(r'^(?:error|warning|note)\[([A-Z]\d{4})\]', line))
+            continue
+        if isinstance(record, dict) and record.get('kind') == 'diagnostic' and record.get('code'):
+            codes.add(record['code'])
+    return codes
+
+
 def verdict(task, meta, binary, candidate, scratch):
     """Independent acceptance of one frozen snapshot, outside the agent's directory."""
     directory = Path(tempfile.mkdtemp(prefix='verify-', dir=scratch))
@@ -304,16 +322,39 @@ def cost(usage, prices):
             + usage.get('output_tokens', 0) * pout) / 1_000_000
 
 
+def budget_of(task, input_cap=None):
+    """The task's budget, with the aggregate input cap of the episode's arm if one is set."""
+    budget = dict(json.loads((task / 'task.json').read_text())['budget'])
+    if input_cap is not None:
+        budget['max_input_tokens'] = input_cap
+    return budget
+
+
+def episode_id(task, condition, model, budget):
+    return f"{task.name}.{condition}.{model}.in{budget['max_input_tokens']}"
+
+
+def lookup_id(tool, args):
+    """The document a tool call retrieves (`explain V1002`, `doc List.map`, `skill:SKILL.md`),
+    or None for project and checking tools."""
+    if tool == 'load_skill':
+        return f"skill:{args.get('path')}"
+    argv = args.get('args') if tool == 'sakura' else None
+    if isinstance(argv, list) and argv and argv[0] in RETRIEVING:
+        return ' '.join(str(a) for a in argv)
+    return None
+
+
 def episode_max_usd(budget, prices):
     return (budget['max_input_tokens'] * prices[0] + budget['max_output_tokens'] * prices[1]) / 1e6
 
 
 class Episode:
     def __init__(self, task, condition, model, prices, backend, binary, skill, scratch,
-                 transcript, ledger=None, spend_cap=None):
+                 transcript, ledger=None, spend_cap=None, input_cap=None):
         self.task, self.meta = task, json.loads((task / 'task.json').read_text())
-        self.budget = self.meta['budget']
-        self.id = f'{task.name}.{condition}.{model}'
+        self.budget = budget_of(task, input_cap)
+        self.id = episode_id(task, condition, model, self.budget)
         self.condition, self.model, self.prices = condition, model, prices
         self.backend, self.binary, self.scratch = backend, binary, Path(scratch)
         self.skill = skill if condition == 'skill' else None
@@ -331,6 +372,8 @@ class Episode:
         self.model_s = self.tool_s = 0.0
         self.turns = self.tool_calls = 0
         self.seen, self.documents, self.unauthorized = set(), [], []
+        self.reported, self.quoted = set(), set()
+        self.refused_input = None
         self.skill_loaded = False
 
     def emit(self, event, **fields):
@@ -339,6 +382,9 @@ class Episode:
 
     def elapsed(self):
         return self.model_s + self.tool_s
+
+    def input_used(self):
+        return sum(v for k, v in self.usage.items() if k != 'output_tokens')
 
     # -- tools
 
@@ -373,8 +419,9 @@ class Episode:
             if path not in self.skill['files']:
                 raise ValueError('unknown skill file')
             self.skill_loaded = True
-            self.documents.append('skill:' + path)
-            return self.skill['files'][path]
+            text = self.skill['files'][path]
+            self.quoted.update(CODE.findall(text))
+            return text
         if name == 'sakura':
             argv = args.get('args')
             if not (isinstance(argv, list) and argv and all(isinstance(a, str) for a in argv)
@@ -382,8 +429,6 @@ class Episode:
                 raise ValueError('allowed: ' + ', '.join(sorted(SAKURA_SUBCOMMANDS)))
             if argv[0] in SUBMITTING:
                 self.submit('sakura ' + argv[0])
-            if argv[0] in ('explain', 'prompt'):
-                self.documents.append(' '.join(argv))
             try:
                 code, out, err = offline.run([self.binary, *argv], self.project,
                                              self.budget['tool_seconds'])
@@ -392,9 +437,26 @@ class Episode:
             text = f'exit {code}\n{out}{err}'
             for path in {str(self.project.resolve()), str(self.project)}:
                 text = text.replace(path, '<project>')
-            self.seen.update(re.findall(r'\b[A-Z]\d{4}\b', text))
+            self.seen.update(CODE.findall(text))
+            if argv[0] in RETRIEVING:
+                self.quoted.update(CODE.findall(text))
+            else:
+                self.reported.update(reported_codes(out + err))
             return text
         raise ValueError(f'unknown tool {name}')
+
+    def document(self, lookup, tool, output, failed):
+        """One retrieval: what was asked, whether it succeeded, what the model received, and
+        the aggregate input billed so far, the request that asked for it included (§17.165 (3)).
+        `approx_tokens` is bytes / 4, not a tokenizer count."""
+        sent = output[:TOOL_OUTPUT_CHARS].encode()
+        # `sakura doc` exits 0 with `no symbol matches` when the lookup found nothing.
+        ok = not failed and (tool != 'sakura' or (output.startswith('exit 0\n')
+                                                  and output[7:].strip() != 'no symbol matches'))
+        return {'id': lookup, 'ok': ok, 'bytes': len(sent),
+                'approx_tokens': math.ceil(len(sent) / 4),
+                'truncated': len(output) > TOOL_OUTPUT_CHARS,
+                'input_used': self.input_used(), 'turn': self.turns}
 
     # -- the loop
 
@@ -407,10 +469,11 @@ class Episode:
         if self.skill:
             body['system'] += ('\n\nAvailable skills (load with the load_skill tool):\n- sakura: '
                                + self.skill['description'])
-        used_in = sum(v for k, v in self.usage.items() if k != 'output_tokens')
+        used_in = self.input_used()
         counted = self.backend.count(body)
         self.emit('count', turn=self.turns, counted_input=counted)
         if used_in + counted > self.budget['max_input_tokens']:
+            self.refused_input = counted
             raise Stop('input_cap')
         reserve = (counted * self.prices[0] + remaining_out * self.prices[1]) / 1e6
         entry = None
@@ -471,6 +534,9 @@ class Episode:
                     if use['name'] == 'write_file':
                         self.unauthorized.append(str((use.get('input') or {}).get('path')))
                 self.tool_s += time.monotonic() - start
+                lookup = lookup_id(use['name'], use.get('input') or {})
+                if lookup:
+                    self.documents.append(self.document(lookup, use['name'], output, failed))
                 output = output[:TOOL_OUTPUT_CHARS]
                 self.emit('tool', turn=self.turns, id=use['id'], name=use['name'],
                           input=use.get('input'), output=output, is_error=failed)
@@ -509,17 +575,22 @@ class Episode:
             fixed = bool(final and final['accepted'] and final['diagnostics'] == [])
         return {
             'episode': self.id, 'task': self.task.name, 'condition': self.condition,
-            'model': self.model, 'termination': termination,
+            'model': self.model, 'input_cap': self.budget['max_input_tokens'],
+            'termination': termination,
             'submissions': len(self.submissions), 'pass_at_1': bool(accepted and accepted[0]),
             'success': bool(accepted and accepted[-1]), 'iterations_to_green': green,
             'censored': green is None, 'turns': self.turns, 'tool_calls': self.tool_calls,
             'skill_loaded': self.skill_loaded if self.skill else None,
             'documents': self.documents, 'unauthorized_edits': sorted(set(self.unauthorized)),
             'diagnostics': {'initial': initial_codes, 'initial_holes': initial_holes,
-                            'seen': sorted(self.seen),
+                            'seen': sorted(self.seen), 'reported': sorted(self.reported),
+                            'quoted': sorted(self.quoted),
                             'final': final['diagnostics'] if final else None,
                             'fix_success': fixed},
             'tokens': dict(self.usage), 'cost_usd': round(self.usd, 6),
+            'input_budget': {'cap': self.budget['max_input_tokens'], 'used': self.input_used(),
+                             'remaining': self.budget['max_input_tokens'] - self.input_used(),
+                             'refused_request': self.refused_input},
             'model_seconds': round(self.model_s, 3),
         }
 
@@ -538,7 +609,7 @@ def wilson(successes, n, z=1.96):
 def summarize(episodes):
     cells = {}
     for m in episodes:
-        cells.setdefault(f"{m['model']}/{m['condition']}", []).append(m)
+        cells.setdefault(f"{m['model']}/{m['condition']}/in{m['input_cap']}", []).append(m)
     summary = {}
     for key, rows in sorted(cells.items()):
         n = len(rows)
@@ -554,6 +625,7 @@ def summarize(episodes):
                                     if greens else None},
             'cost_usd': spent, 'cost_per_accepted': round(spent / success, 6) if success else None,
             'skill_not_loaded': sum(r['skill_loaded'] is False for r in rows),
+            'input_cap_stops': sum(r['termination'] == 'input_cap' for r in rows),
             'failed': [r['episode'] for r in rows if not r['success']],
         }
     return summary
@@ -601,12 +673,18 @@ def command_run(args):
     models = args.model or []
     offline.require(models, 'pin at least one --model MODEL_ID=IN/OUT')
     offline.require(len({m for m, _ in models}) == len(models), 'duplicate --model')
-    plan = [(t, c, m, p) for t in tasks for c in conditions for m, p in models]
+    caps = [None]
+    if args.input_caps:
+        caps = [int(c) for c in args.input_caps.split(',')]
+        offline.require(len(set(caps)) == len(caps) and all(0 < c <= MAX_INPUT_CAP for c in caps),
+                        f'--input-caps: distinct values in (0, {MAX_INPUT_CAP}]')
+    # Every arm runs every cell, shuffled together, so the arms are paired in one design.
+    plan = [(t, c, m, p, k) for t in tasks for c in conditions for m, p in models for k in caps]
     random.Random(args.seed).shuffle(plan)
-    budgets = [json.loads((t / 'task.json').read_text())['budget'] for t, *_ in plan]
+    budgets = [budget_of(t, k) for t, _, _, _, k in plan]
     estimate = sum((b['estimated_input_tokens'] * p[0] + b['estimated_output_tokens'] * p[1]) / 1e6
-                   for b, (_, _, _, p) in zip(budgets, plan))
-    maximum = sum(episode_max_usd(b, p) for b, (_, _, _, p) in zip(budgets, plan))
+                   for b, (_, _, _, p, _) in zip(budgets, plan))
+    maximum = sum(episode_max_usd(b, p) for b, (_, _, _, p, _) in zip(budgets, plan))
     run_id = args.run_id or datetime.datetime.now(datetime.UTC).strftime('%Y%m%dT%H%M%SZ')
     ledger = None
     if args.backend == 'live':
@@ -633,7 +711,8 @@ def command_run(args):
     print(json.dumps({'run_id': run_id, 'episodes': len(plan), 'estimated_usd': round(estimate, 4),
                       'maximum_usd': round(maximum, 4),
                       'ledger_spent_usd': ledger.spent() if ledger else None,
-                      'order': [f'{t.name}.{c}.{m}' for t, c, m, _ in plan]}), flush=True)
+                      'order': [episode_id(t, c, m, b) for (t, c, m, _, _), b in zip(plan, budgets)]}),
+          flush=True)
     if args.plan_only:
         return 0
     out = Path(args.out or offline.ROOT / 'target/agent-dx/runs' / run_id)
@@ -647,15 +726,15 @@ def command_run(args):
         header = {'run_id': run_id, 'backend': args.backend, 'approved_by': args.approved_by,
                   'budget_usd': args.budget_usd, 'seed': args.seed, 'sandbox': args.sandbox,
                   'models': {m: list(p) for m, p in models}, 'conditions': conditions,
+                  'input_caps': caps,
                   'skill_sha256': skill['sha256'], 'github_run': os.environ.get('GITHUB_RUN_ID'),
                   'environment': environment(binary)}
         (out / 'run.json').write_text(json.dumps(header, indent=1) + '\n')
         run_spent = 0.0
-        for task, condition, model, prices in plan:
+        for (task, condition, model, prices, cap), budget in zip(plan, budgets):
             if ledger:
                 available = min(args.budget_usd - run_spent, OWNER_TOTAL_USD - ledger.spent())
-                need = episode_max_usd(json.loads((task / 'task.json').read_text())['budget'],
-                                       prices)
+                need = episode_max_usd(budget, prices)
                 if need > available + 1e-9:
                     print(f'stopping: next episode may cost ${need:.4f}, ${available:.4f} left',
                           flush=True)
@@ -666,8 +745,8 @@ def command_run(args):
                 script = json.loads(Path(args.script).read_text())
                 backend = Recorded(script['responses'])
             episode = Episode(task, condition, model, prices, backend, wrapped, skill, scratch,
-                              out / f'{task.name}.{condition}.{model}.jsonl', ledger,
-                              (args.budget_usd or 0) - run_spent)
+                              out / f'{episode_id(task, condition, model, budget)}.jsonl', ledger,
+                              (args.budget_usd or 0) - run_spent, cap)
             try:
                 metrics = episode.run()
             except Halt as halt:
@@ -692,6 +771,8 @@ def command_replay(args):
     binary = str(Path(args.sakura).resolve())
     events = [json.loads(line) for line in Path(args.transcript).read_text().splitlines()]
     start = next(e for e in events if e['event'] == 'start')
+    offline.require(start['harness'] == HARNESS_VERSION,
+                    f"transcript was recorded by harness {start['harness']}, not {HARNESS_VERSION}")
     recorded = next(e for e in events if e['event'] == 'end')['metrics']
     responses = [dict(e['body'], elapsed_s=e['elapsed_s'])
                  for e in events if e['event'] == 'response']
@@ -707,7 +788,8 @@ def command_replay(args):
         skill = load_skill_bundle(binary, scratch)
         out = Path(args.out or scratch) / ('replay-' + Path(args.transcript).name)
         episode = Episode(task, start['condition'], start['model'], tuple(start['prices']),
-                          Recorded(responses, counts), binary, skill, scratch, out)
+                          Recorded(responses, counts), binary, skill, scratch, out,
+                          input_cap=start['budget']['max_input_tokens'])
         replayed = episode.run()
     print(json.dumps(replayed, sort_keys=True), flush=True)
     diff = {k: (recorded.get(k), replayed.get(k)) for k in set(recorded) | set(replayed)
@@ -733,6 +815,8 @@ def main(argv=None):
     run.add_argument('--budget-usd', type=float)
     run.add_argument('--approved-by')
     run.add_argument('--seed', type=int, default=0)
+    run.add_argument('--input-caps', help='comma-separated aggregate input caps, one arm each '
+                     '(e.g. 40000,60000, §17.165); default: each task\'s own cap')
     run.add_argument('--run-id')
     run.add_argument('--out', help='transcripts and summary (default: target/agent-dx/runs/<id>)')
     run.add_argument('--ledger', default=str(SUITE / 'reports/ledger.json'))

@@ -59,16 +59,18 @@ class Base(unittest.TestCase):
                                 text=True, env={**os.environ, **(env or {})}, timeout=600)
         return result
 
-    def scripted(self, responses, task=TASK, condition='baseline'):
+    def scripted(self, responses, task=TASK, condition='baseline', cap=None):
         script = self.tmp / 'script.json'
         script.write_text(json.dumps({'responses': responses}))
         out = self.tmp / 'out'
+        arm = ('--input-caps', str(cap)) if cap else ()
         result = self.run_cli('run', '--sakura', SAKURA, '--backend', 'scripted', '--script',
                               str(script), '--tasks', task, '--conditions', condition,
-                              '--model', PRICES, '--out', str(out), '--sandbox', 'none')
+                              '--model', PRICES, '--out', str(out), '--sandbox', 'none', *arm)
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         summary = json.loads((out / 'summary.json').read_text())
-        return summary['episodes'][0], out / f'{task}.{condition}.claude-test.jsonl'
+        name = f'{task}.{condition}.claude-test.in{cap or 40000}.jsonl'
+        return summary['episodes'][0], out / name
 
 
 class Runner(Base):
@@ -103,15 +105,24 @@ class Runner(Base):
         cases = [
             ([reply(write('a', GOLD), out=4000, stop='max_tokens')], 'output_cap'),
             ([reply(check('a'), inp=39000), reply(check('b'), inp=2000)], 'input_cap'),
+            ([reply(check('a'), inp=39000), reply(check('b'), inp=2000)], 'script_exhausted',
+             60000),
             ([reply(check('a'), elapsed=601)], 'wall_clock'),
             ([reply(write(f'w{i}', HOLLOW + '\n' * i), check(f'c{i}')) for i in range(7)],
              'repair_cap'),
             ([reply(check('a'))], 'script_exhausted'),
         ]
-        for responses, reason in cases:
-            with self.subTest(reason):
-                metrics, transcript = self.scripted(responses)
+        for responses, reason, *cap in cases:
+            with self.subTest(reason, cap=cap):
+                metrics, transcript = self.scripted(responses, cap=cap[0] if cap else None)
                 self.assertEqual(metrics['termination'], reason)
+                self.assertEqual(metrics['input_cap'], cap[0] if cap else 40000)
+                if reason == 'input_cap':
+                    self.assertEqual(metrics['input_budget'], {
+                        'cap': 40000, 'used': 39000, 'remaining': 1000, 'refused_request': 2000})
+                if cap:
+                    self.assertEqual(metrics['input_budget']['remaining'], 60000 - 39000 - 2000)
+                    self.assertIsNone(metrics['input_budget']['refused_request'])
                 self.assertFalse(metrics['success'])
                 if reason == 'repair_cap':
                     self.assertEqual(metrics['submissions'], 5)
@@ -129,12 +140,49 @@ class Runner(Base):
         self.assertFalse(metrics['success'])
         self.assertFalse((TASKS.parent / 'escape.txt').exists())
 
+    def test_retrieval_telemetry(self):
+        metrics, transcript = self.scripted([
+            reply(tool('load_skill', 'a', path='SKILL.md'), inp=1500),
+            reply(tool('load_skill', 'b', path='missing.md'),
+                  tool('sakura', 'c', args=['explain', 'V3001']), inp=2500),
+            reply(tool('sakura', 'd', args=['doc', 'len']),
+                  tool('sakura', 'e', args=['doc', 'no_such_symbol']), check('f')),
+            done()], condition='skill')
+        documents = metrics['documents']
+        self.assertEqual([(d['id'], d['ok'], d['input_used'], d['turn']) for d in documents], [
+            ('skill:SKILL.md', True, 1500, 1), ('skill:missing.md', False, 4000, 2),
+            ('explain V3001', True, 4000, 2), ('doc len', True, 5000, 3),
+            ('doc no_such_symbol', False, 5000, 3)])
+        tools = {e['id']: e['output'] for e in map(json.loads, transcript.read_text().splitlines())
+                 if e['event'] == 'tool'}
+        for document, uid in zip(documents, 'abcde'):
+            self.assertEqual(document['bytes'], len(tools[uid].encode()))
+            self.assertEqual(document['approx_tokens'], -(-document['bytes'] // 4))
+        # SKILL.md is longer than the harness's 8,000-character tool-output cut.
+        self.assertEqual([d['truncated'] for d in documents], [True, False, False, False, False])
+        diagnostics = metrics['diagnostics']
+        self.assertEqual(diagnostics['reported'], ['V1002', 'V2001'])
+        self.assertIn('V3001', diagnostics['quoted'])
+        self.assertNotIn('V3001', diagnostics['reported'])
+        self.assertEqual(metrics['input_budget'], {'cap': 40000, 'used': 6000,
+                                                   'remaining': 34000, 'refused_request': None})
+        result = self.run_cli('replay', '--sakura', SAKURA, '--transcript', str(transcript))
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_replay_refuses_other_harness_versions(self):
+        old = self.tmp / 'old.jsonl'
+        old.write_text((HERE / 'fixtures/03-path-label.repair.jsonl').read_text()
+                       .replace('"harness": "2"', '"harness": "1"'))
+        result = self.run_cli('replay', '--sakura', SAKURA, '--transcript', str(old))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('recorded by harness 1', result.stderr)
+
     def test_skill_condition_records_activation(self):
         metrics, _ = self.scripted([reply(tool('load_skill', 'a', path='SKILL.md')),
                                     reply(write('b', GOLD), check('c')), done()],
                                    condition='skill')
         self.assertTrue(metrics['skill_loaded'])
-        self.assertEqual(metrics['documents'], ['skill:SKILL.md'])
+        self.assertEqual([d['id'] for d in metrics['documents']], ['skill:SKILL.md'])
         self.assertTrue(metrics['pass_at_1'])
         metrics, _ = self.scripted([reply(tool('load_skill', 'a', path='SKILL.md')), done()])
         self.assertIsNone(metrics['skill_loaded'])
@@ -240,6 +288,20 @@ class LiveMode(Base):
             self.assertNotIn('sk-test-not-real', path.read_text())
         metrics = json.loads((self.tmp / 'live/summary.json').read_text())['episodes'][0]
         self.assertTrue(metrics['success'])
+
+    def test_paired_input_arms_plan(self):
+        approved = ('--budget-usd', '1', '--approved-by', 'icantcodefyi', '--plan-only')
+        result = self.live(*approved, '--input-caps', '40000,60000')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        plan = json.loads(result.stdout.splitlines()[0])
+        self.assertEqual(sorted(plan['order']), [f'{TASK}.baseline.claude-test.in40000',
+                                                 f'{TASK}.baseline.claude-test.in60000'])
+        self.assertAlmostEqual(plan['maximum_usd'],
+                               ((40000 + 60000) * 4 + 2 * 4000 * 20) / 1e6)
+        for bad in ('70000', '40000,40000', '0'):
+            result = self.live(*approved, '--input-caps', bad)
+            self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(Mock.seen, [])
 
     def test_episode_cap(self):
         entry = {'run_id': 'old', 'model': 'm', 'turn': 0, 'status': 'settled',
