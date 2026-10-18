@@ -51,6 +51,9 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
+    env:
+      Z3_VERSION: "5.3.1"
+      CVC5_VERSION: "1.4.2"
     defaults:
       run:
         working-directory: compiler
@@ -66,6 +69,81 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 26
+      # Official release archives; SHA-256 values also match GitHub's asset digests.
+      - name: Select pinned solver archives
+        id: solvers
+        shell: bash
+        run: |
+          case "$RUNNER_OS-$RUNNER_ARCH" in
+            Linux-X64)
+              z3_platform=x64-glibc-2.39
+              z3_sha256=acca9625e8cc8edeb9647b653a1bd696544ddeb5d1c2970a4576734a0c175b40
+              cvc5_platform=Linux-x86_64
+              cvc5_sha256=7eb18f8c814c36a46c5a7d003983e9cfbc4b0a9828d6dd596239291bd4cc61d8
+              ;;
+            macOS-ARM64)
+              z3_platform=arm64-osx-13.3
+              z3_sha256=0de02438052952153aab5d1361be4d61b6d226337440356c054d403c959da86b
+              cvc5_platform=macOS-arm64
+              cvc5_sha256=24397f7d022e755876ca836193d4c5f9c1d4326f0f6c01f7d7fc1ddd6bc5096c
+              ;;
+            *) echo "Unsupported solver platform: $RUNNER_OS-$RUNNER_ARCH" >&2; exit 1 ;;
+          esac
+          {
+            echo "z3_archive=z3-${Z3_VERSION}-${z3_platform}"
+            echo "z3_sha256=$z3_sha256"
+            echo "cvc5_archive=cvc5-${cvc5_platform}-static"
+            echo "cvc5_sha256=$cvc5_sha256"
+          } >> "$GITHUB_OUTPUT"
+      - name: Cache Z3
+        id: cache-z3
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/solvers/z3
+          key: z3-${{ env.Z3_VERSION }}-${{ runner.os }}-${{ runner.arch }}
+      - name: Cache cvc5
+        id: cache-cvc5
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/solvers/cvc5
+          key: cvc5-${{ env.CVC5_VERSION }}-${{ runner.os }}-${{ runner.arch }}
+      - name: Install pinned Z3
+        if: steps.cache-z3.outputs.cache-hit != 'true'
+        shell: bash
+        env:
+          ARCHIVE: ${{ steps.solvers.outputs.z3_archive }}
+          SHA256: ${{ steps.solvers.outputs.z3_sha256 }}
+        run: |
+          archive="$RUNNER_TEMP/$ARCHIVE.zip"
+          curl --fail --location --silent --show-error --retry 3 \
+            "https://github.com/Z3Prover/z3/releases/download/z3-${Z3_VERSION}/${ARCHIVE}.zip" \
+            --output "$archive"
+          echo "$SHA256  $archive" | shasum -a 256 --check
+          unzip -q "$archive" -d "$RUNNER_TEMP/z3-unpack"
+          mkdir -p "$RUNNER_TEMP/solvers"
+          mv "$RUNNER_TEMP/z3-unpack/$ARCHIVE" "$RUNNER_TEMP/solvers/z3"
+      - name: Install pinned cvc5
+        if: steps.cache-cvc5.outputs.cache-hit != 'true'
+        shell: bash
+        env:
+          ARCHIVE: ${{ steps.solvers.outputs.cvc5_archive }}
+          SHA256: ${{ steps.solvers.outputs.cvc5_sha256 }}
+        run: |
+          archive="$RUNNER_TEMP/$ARCHIVE.zip"
+          curl --fail --location --silent --show-error --retry 3 \
+            "https://github.com/cvc5/cvc5/releases/download/cvc5-${CVC5_VERSION}/${ARCHIVE}.zip" \
+            --output "$archive"
+          echo "$SHA256  $archive" | shasum -a 256 --check
+          unzip -q "$archive" -d "$RUNNER_TEMP/cvc5-unpack"
+          mkdir -p "$RUNNER_TEMP/solvers"
+          mv "$RUNNER_TEMP/cvc5-unpack/$ARCHIVE" "$RUNNER_TEMP/solvers/cvc5"
+      - name: Put solvers on PATH
+        shell: bash
+        run: |
+          echo "$RUNNER_TEMP/solvers/z3/bin" >> "$GITHUB_PATH"
+          echo "$RUNNER_TEMP/solvers/cvc5/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/solvers/z3/bin/z3" --version
+          "$RUNNER_TEMP/solvers/cvc5/bin/cvc5" --version
       - name: Check formatting
         run: cargo fmt --all -- --check
       - name: Clippy

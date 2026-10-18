@@ -1,8 +1,8 @@
 //! Against a real Z3 5.3.1 (and cvc5 1.4.2 when present): every obligation of every fixture gets
 //! the committed status of `tests/expected/*.tsv`. Skipped, with a message, when the pinned
-//! solver is not on `PATH`; `SAKURA_BLESS=1` rewrites the expected files (review the diff). No
-//! obligation may be `unknown` because of a timeout: under the §17.106 limits that is a budget
-//! bug, not a result.
+//! solver is not on `PATH` locally; in CI this fails (§17.137). `SAKURA_BLESS=1` rewrites the
+//! expected files (review the diff). No obligation may be `unknown` because of a timeout:
+//! under the §17.106 limits that is a budget bug, not a result.
 
 mod common;
 
@@ -17,6 +17,11 @@ fn z3() -> Option<Solver> {
     match Solver::find(SolverKind::Z3, None, Limits::default()) {
         Ok(s) => Some(s),
         Err(why) => {
+            assert!(
+                std::env::var_os("CI").is_none(),
+                "CI requires the pinned Z3 (design §17.137): {}",
+                why.detail
+            );
             eprintln!("skipped: {}", why.detail);
             None
         }

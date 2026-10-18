@@ -1017,13 +1017,17 @@ fn outside(dir: &Path, name: &str) -> std::path::PathBuf {
     std::path::PathBuf::from(format!("{}-{name}", dir.display()))
 }
 
-/// Whether the pinned Z3 (plan §3.5) is on `PATH`; `sakura verify` tests skip without it.
+/// Require the pinned Z3 in CI (§17.137); locally, skip when it is not on `PATH`.
 fn has_z3() -> bool {
     let ok = std::process::Command::new("z3")
         .arg("--version")
         .output()
         .is_ok_and(|o| String::from_utf8_lossy(&o.stdout).contains("5.3.1"));
     if !ok {
+        assert!(
+            std::env::var_os("CI").is_none(),
+            "CI requires Z3 5.3.1 on PATH (design §17.137)"
+        );
         eprintln!("skipped: Z3 5.3.1 is not on PATH");
     }
     ok
