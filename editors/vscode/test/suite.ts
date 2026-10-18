@@ -71,12 +71,14 @@ const tests: [string, (api: SakuraApi) => Promise<void>][] = [
       await editor.edit((e) => e.insert(new vscode.Position(1, at + 2), 'String.len("é𝄞") + '));
       const col = editor.document.lineAt(1).text.indexOf("?rest");
       editor.selection = new vscode.Selection(1, col + 2, 1, col + 2);
-      const record = await vscode.commands.executeCommand("sakura.showHoleContext");
+      const record = await waitFor("hole context after edits", () =>
+        vscode.commands.executeCommand("sakura.showHoleContext"),
+      );
       assert.ok(record, "a hole record at the cursor");
       assert.match(JSON.stringify(record), /"rest"/);
       // One column before the hole there is none.
-      await vscode.window.showTextDocument(editor.document);
-      editor.selection = new vscode.Selection(1, col - 3, 1, col - 3);
+      const source = await vscode.window.showTextDocument(editor.document);
+      source.selection = new vscode.Selection(1, col - 3, 1, col - 3);
       assert.equal(await vscode.commands.executeCommand("sakura.showHoleContext"), null);
     },
   ],
@@ -114,7 +116,9 @@ const tests: [string, (api: SakuraApi) => Promise<void>][] = [
       // still exist, so wait for the diagnostic to move with the inserted newline.
       await fixDiagnostic(1);
       const fresh = await fix();
+      const version = doc.version;
       assert.equal(await run(fresh), true);
+      await waitFor("the quick-fix edit", () => doc.version > version);
       assert.equal(doc.getText(), "\nfn count() -> Int { List.len([1, 2]) }\n");
     },
   ],
@@ -123,7 +127,22 @@ const tests: [string, (api: SakuraApi) => Promise<void>][] = [
     async () => {
       const editor = await open("a/src/fmt.sak");
       await editor.edit((e) => e.insert(new vscode.Position(1, 0), "\n"));
-      await editor.document.save();
+      await waitFor("the Sakura formatter", async () => {
+        const edits = await vscode.commands.executeCommand<vscode.TextEdit[]>(
+          "vscode.executeFormatDocumentProvider",
+          editor.document.uri,
+          { tabSize: 2, insertSpaces: true },
+        );
+        return edits && edits.length > 0;
+      });
+      const version = editor.document.version;
+      assert.equal(await editor.document.save(), true);
+      await waitFor("formatted text saved to disk", async () => {
+        const doc = editor.document;
+        if (doc.version <= version || doc.isDirty) return false;
+        const saved = await vscode.workspace.fs.readFile(doc.uri);
+        return Buffer.from(saved).toString("utf8") === doc.getText();
+      });
       assert.ok(editor.document.getText().startsWith("fn double(x: Int) -> Int"));
     },
   ],
@@ -137,6 +156,7 @@ const tests: [string, (api: SakuraApi) => Promise<void>][] = [
       assert.deepEqual(api.roots(), []);
       await config.update("path", process.env.SAKURA_BIN, vscode.ConfigurationTarget.Workspace);
       await waitFor("a restarted server", () => api.roots().length === 1);
+      await api.ready(a);
       assert.equal(api.lastError(), undefined);
     },
   ],
