@@ -30,6 +30,13 @@ published yet.
 
 ### Added
 
+- Release preparation for `v0.1.0-alpha.1` (not published): the workspace version is
+  `0.1.0-alpha.1`; `sakura --version` and MCP `compiler_info` (`commit`) report the source
+  commit of a stamped build. `release.yml` builds macOS arm64 and Linux x86-64 archives
+  with SHA-256 sums, a provenance record, the skill ZIP, `tools/install/install.sh`
+  (pinned version, strict checksum verification), a Homebrew formula and npm packages;
+  a manual run is a dry run, and every publishing step waits for the owner.
+
 - Twelve agent-DX pilot tasks with isolated oracle fixtures, gold/hollow solutions,
   schema and frozen-baseline checks in ordinary Cargo CI. The protocol defines
   the Anthropic-only $10 pilot budget; paid execution and its runner remain deferred.

@@ -1,8 +1,11 @@
 # Releasing Sakura Lang — draft owner procedure
 
-**Draft, 2026-10-18. No release workflow or publication channel is implemented by
-this document.** Commands below describe future owner actions after DX6 is
-reviewed and qualified. A publishing command here is not authorization to run it.
+**Draft, 2026-10-18.** DX6 implements the workflow
+[`.github/workflows/release.yml`](../.github/workflows/release.yml), the installer
+[`tools/install/install.sh`](../tools/install/install.sh), the packaging script
+[`tools/release/release.py`](../tools/release/release.py) and the reviewed channel files in
+[`packaging/`](../packaging/) (§3). No channel has been published. A publishing command here is
+not authorization to run it.
 See [release research](../research/13-release.md), [agent-DX plan](plans/agent-dx.md)
 DX6 and owner answers in §3, [design](design.md) §17.147 and
 [STABILITY](../STABILITY.md).
@@ -23,7 +26,11 @@ and dry runs need no publication credentials.
 In repository **Settings → Environments**, create proposed publication
 environments `release-github`, `release-homebrew`, `release-npm` and `release-crates`.
 Require **@icantcodefyi** as reviewer, disable administrator bypass and allow
-release tags matching `v*`. Workflow checks must additionally validate the exact
+release tags matching `v*`. Only then set the repository **variable**
+`RELEASE_ENVIRONMENTS_PROTECTED` to `true` (Settings → Secrets and variables → Actions →
+Variables): a tag-triggered run fails without it, because GitHub silently creates an
+unprotected environment when a job names one that does not exist. `release.yml` has no
+crates.io job yet, so `release-crates` can wait for that channel's design. Workflow checks must additionally validate the exact
 version/approved SHA. Every publishing job must reference its environment:
 creating environments alone protects nothing. Scope secrets to those environments.
 
@@ -153,12 +160,19 @@ limitations. Source tests alone do not qualify released binaries.
 
 ## 3. Dry run — no tag or publication
 
-Once implemented, use Actions → reviewed release workflow → **Run workflow**
-on the candidate ref in dry-run mode. Dispatch must only build/test and upload
-Actions artifacts: no release (even a draft), tag, registry package, tap commit
-or public signing/attestation. Failed gates stop promotion. Implementers must fill
-in actual input names before declaring this procedure ready; they do not exist
-at this research baseline.
+Run **Actions → Release → Run workflow** on the candidate ref, or
+`gh workflow run release.yml --repo icantcodefyi/sakuralang --ref master`. The dispatch
+has no inputs: it is always a dry run. It builds every target in
+[`packaging/targets.json`](../packaging/targets.json) with `SAKURA_GIT_COMMIT` set to
+the commit, smoke-tests each extracted archive on its native runner (`release.py smoke`:
+version and commit, `new`/`check`/`test`/`build`, generated JS on Node 26, a WASM run,
+a bounded MCP session with `compiler_info`, `setup --apply` twice against the canonical
+skill, no writes to `HOME`, the missing-Node error), runs the installer tests, assembles the
+set and installs it from the assembled directory with `install.sh` and offline npm.
+The publish jobs are skipped: they require a tag push. Download the results with
+`gh run download <run-id> --repo icantcodefyi/sakuralang -n release-<version>`
+(`archive-<target>` holds each target's archive alone). The run summary lists the
+SHA-256 inventory and each target's host floor (glibc or macOS minimum).
 
 Download from that **specific run ID and SHA**. Review the full active matrix's
 archives, notices/Node requirements, shell/manual installer, canonical skill ZIP/
@@ -185,6 +199,21 @@ On each fresh native host:
 6. Reject corrupted archives, absent hashes/verifiers, unsupported CPU/libc and
    failed downloads before installation. Test repeat installs and cleanup.
    Save logs, OS/ABI floor and tool versions.
+
+Without the script, a user verifies and installs by hand (macOS shown; on Linux use
+`sha256sum -c`):
+
+```sh
+v=0.1.0-alpha.1 t=aarch64-apple-darwin
+base=https://github.com/icantcodefyi/sakuralang/releases/download/v$v
+curl -fLO "$base/SHA256SUMS" && curl -fLO "$base/sakuralang-$v-$t.tar.gz"
+grep " sakuralang-$v-$t.tar.gz\$" SHA256SUMS | shasum -a 256 -c
+tar -tzf "sakuralang-$v-$t.tar.gz"   # inspect before extracting
+tar -xzf "sakuralang-$v-$t.tar.gz" && install -m 755 "sakuralang-$v-$t/sakura" ~/.local/bin/
+```
+
+The scripted path is the same steps: download `install.sh` from the release, read it, run
+`sh install.sh --prefix ~/.local`. `sh tools/install/test.sh` covers its refusals.
 
 Inspect npm's `npm pack --dry-run` output and actual tarballs. Install with scripts
 disabled/network denied using a preseeded cache or local wrapper/platform
@@ -216,6 +245,14 @@ pause at channel gates. If it rebuilds, compare/qualify final hashes again befor
 publication; same-source builds are not assumed byte-identical.
 
 ## 5. Publish each approved channel
+
+The tag run of `release.yml` rebuilds and re-smoke-tests, then pauses at three jobs:
+approving `release-github` attests every file and creates the prerelease
+(`--prerelease --latest=false`); `release-homebrew` commits the filled formula with
+`HOMEBREW_TAP_TOKEN`; `release-npm` publishes the platform packages, then the wrapper, with
+`--tag alpha` (trusted publishing, else `NPM_TOKEN`). The latter two wait for the first.
+Native builds are not proven byte-identical, so review the tag run's own `SHA256SUMS`
+and summary before approving, not only the dry run's.
 
 1. **GitHub first.** Approve `release-github` for the tagged run/inventory. Create
    prerelease `v0.1.0-alpha.1`, explicitly not stable/latest. Publish tested bytes,
