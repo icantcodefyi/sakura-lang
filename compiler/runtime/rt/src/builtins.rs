@@ -264,8 +264,19 @@ impl Rt {
         let b0 = start.clamp(0, len as i64) as u32;
         let b1 = end.clamp(b0 as i64, len as i64) as u32;
         let t = self.text(s);
-        let r = if !t.is_char_boundary(b0 as usize) || !t.is_char_boundary(b1 as usize) {
-            Err(NOT_A_BOUNDARY)
+        let off = [b0, b1]
+            .into_iter()
+            .find(|&b| !t.is_char_boundary(b as usize));
+        let r = if let Some(b) = off {
+            let shown = crate::show::int_text(b.into());
+            Err(self.with_parts(
+                NOT_A_BOUNDARY,
+                &[
+                    b"byte offset ",
+                    shown.bytes(),
+                    b" is not on a character boundary",
+                ],
+            ))
         } else if b0 == 0 && b1 == len {
             self.dup(s).map(|_| s)
         } else {
@@ -334,7 +345,11 @@ impl Rt {
     /// `Float.round`: half away from zero; non-finite is `D004`, beyond i64 `D001`.
     pub fn float_round(&mut self, f: f64) -> Res<i64> {
         if !f.is_finite() {
-            return Err(NOT_AN_INTEGER);
+            let shown = crate::show::float_text(f);
+            return Err(self.with_parts(
+                NOT_AN_INTEGER,
+                &[b"Float.round of ", shown.bytes(), b" is not an integer"],
+            ));
         }
         let r = f.abs() + 0.5;
         let r = r - (r % 1.0);
@@ -398,11 +413,15 @@ impl Rt {
             self.drop2(o, msg);
             return r;
         }
-        self.drop2(o, msg);
-        Err(Defect {
-            code: 30,
-            message: "Option.expect on None",
-        })
+        self.drop(o);
+        // The program's own message (design §17.162), as JS.
+        Err(self.with_text(
+            Defect {
+                code: 30,
+                message: "Option.expect on None",
+            },
+            msg,
+        ))
     }
 
     /// `option_expect(list_get(xs, i), msg)`, fused by `opt` (design §17.151). ponytail: the

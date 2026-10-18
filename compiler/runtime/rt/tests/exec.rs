@@ -65,6 +65,7 @@ const OVERFLOW: u32 = 23;
 const OOM_MAIN: u32 = 24;
 const FIN_ALLOC: u32 = 25;
 const BAD_OP: u32 = 27;
+const TEXT_DEFECT: u32 = 28;
 
 const TABLE: &[Code] = &[
     callback_stub,
@@ -95,6 +96,7 @@ const TABLE: &[Code] = &[
     fin_alloc,
     fin_fail,
     bad_op,
+    text_defect,
 ];
 
 fn codes() -> Vec<Option<CodeDesc<'static>>> {
@@ -128,6 +130,7 @@ fn codes() -> Vec<Option<CodeDesc<'static>>> {
         d("fin_alloc", &[BOOL], &[I64]),
         d("fin_fail", &[BOOL], &[]),
         d("bad_op", &[I64], &[]),
+        d("text_defect", &[I64], &[]),
     ]
 }
 
@@ -253,6 +256,19 @@ fn sum_defect(rt: &mut Rt, _env: u32, f: u32) -> u32 {
     rt.set_fslot(c, 0, (n - 1) as u64);
     rt.set_block(f, 1);
     CALL
+}
+
+/// `None.expect("no key k")`, inside a contract predicate when slot 0 is 1.
+fn text_defect(rt: &mut Rt, _env: u32, f: u32) -> u32 {
+    if rt.fslot(f, 0) == 1 {
+        rt.sched.contract_depth += 1;
+    }
+    let none = ok!(rt, rt.new_variant(0, 0));
+    let msg = ok!(rt, rt.new_string(b"no key k"));
+    match rt.option_expect(none, msg) {
+        Ok(_) => RETURN,
+        Err(d) => rt.raise(d),
+    }
 }
 
 /// `with Counter { var count = 0; tick() { count += 1; count } } { for i in 0..n { tick() } }`
@@ -777,6 +793,27 @@ fn million_frame_destruction() {
         );
         assert_eq!(finish(rt, task), (outcome::DEFECT, 1));
     });
+}
+
+/// A defect's message carries the program's text (design §17.162): owned by the task until it
+/// is freed, and composed into `D011`'s inside a contract predicate.
+#[test]
+fn a_defect_message_carries_program_text() {
+    let mut rt = runtime(16 << 20);
+    for (mode, code, want) in [
+        (0, 30, "no key k"),
+        (1, 11, "contract evaluation failed: D030: no key k"),
+    ] {
+        ten_times(&mut rt, |rt| {
+            let (task, kind) = run_task(rt, TEXT_DEFECT, 1, mode, 0);
+            assert_eq!(kind, outcome::DEFECT);
+            let (d, _) = rt.defect(task).unwrap().unwrap();
+            assert_eq!(d.code, code);
+            let text = rt.defect_text(task);
+            assert_eq!(rt.data_bytes(text), want.as_bytes());
+            finish(rt, task);
+        });
+    }
 }
 
 #[test]

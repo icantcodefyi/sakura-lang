@@ -181,14 +181,22 @@ fn outcome_bytes(rt: &mut Rt, task: u32) -> Res<u32> {
         }
         outcome::DEFECT => {
             let (d, site) = rt.defect(task)?.unwrap_or((Defect::INTERNAL, 0));
-            let n = d.message.len() as u32;
+            let text = rt.defect_text(task);
+            let n = match text {
+                0 => d.message.len() as u32,
+                _ => rt.data(text).0,
+            };
             let b = rt.new_bytes(8 + n)?;
             rt.heap.mem.set_u32(b + 12, d.code as u32);
             rt.heap.mem.set_u32(b + 16, site);
-            rt.heap
-                .mem
-                .bytes_mut(b + 20, n)
-                .copy_from_slice(d.message.as_bytes());
+            match text {
+                0 => rt
+                    .heap
+                    .mem
+                    .bytes_mut(b + 20, n)
+                    .copy_from_slice(d.message.as_bytes()),
+                _ => rt.heap.mem.copy(b + 20, rt.data(text).1, n),
+            }
             Ok(b)
         }
         outcome::EXIT => {
@@ -2122,8 +2130,9 @@ pub extern "C" fn rt_k_property_run(_env: u32, frame: u32) -> u32 {
                     let t = rt.dup(e).and_then(|_| rt.show(e));
                     (3, t)
                 }
-                outcome::DEFECT => match rt.defect(child) {
-                    Ok(Some((d, _))) => (4, rt.new_string(d.message.as_bytes())),
+                outcome::DEFECT => match (rt.defect(child), rt.defect_text(child)) {
+                    (Ok(Some(_)), text) if text != 0 => (4, rt.dup(text).map(|()| text)),
+                    (Ok(Some((d, _))), _) => (4, rt.new_string(d.message.as_bytes())),
                     _ => (4, Err(Defect::INTERNAL)),
                 },
                 _ => (5, Ok(0)),

@@ -58,6 +58,7 @@ fn balanced(f: impl Fn(&mut Rt)) {
     let mut rt = runtime();
     let base = rt.stats().live_objects;
     f(&mut rt);
+    rt.discard_text();
     assert_eq!(rt.stats().live_objects, base, "objects leaked");
 }
 

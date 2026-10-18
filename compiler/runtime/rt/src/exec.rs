@@ -125,7 +125,10 @@ const T_NO: u32 = 164;
 /// The fiber group the task belongs to (0 for none) and whether a `join` named it.
 const T_GROUP: u32 = 168;
 const T_JOINED: u32 = 172;
-const TASK_SIZE: u32 = 176;
+/// The `String` holding the defect's message when it carries program data (design §17.162),
+/// owned by the task; 0 when the message is static.
+const T_DEFECT_TEXT: u32 = 176;
+const TASK_SIZE: u32 = 180;
 /// Words of one catch entry on the task's catch stack (`catch_entry`).
 const CATCH_WORDS: u32 = 7;
 /// Slots a finalizer frame adds after its own for the unwinding it interrupts: while a
@@ -193,6 +196,9 @@ pub struct Sched {
     /// Contract predicates being evaluated (`contract_enter`/`contract_exit`): a defect
     /// raised inside one is `D011` (design §7.1, as JS).
     pub contract_depth: u32,
+    /// The message of the defect about to be recorded when it carries program data: its code
+    /// and an owned `String` ([`Rt::with_text`]).
+    text: (u16, u32),
     /// Encode a `Secret`'s inner value (`sakura_rt::vt`): only around an import of kind
     /// `secret` (ABI §8.1).
     pub vt_secrets: bool,
@@ -311,10 +317,72 @@ impl Rt {
         self.record_defect_at(t, d, 0);
     }
 
+    /// `d` with the message `text` (a `String`, consumed) instead of its static one, for the
+    /// defect the current task records next: `return Err(rt.with_text(d, text))`. As JS, a
+    /// defect's message carries the program's data (design §17.162).
+    pub fn with_text(&mut self, d: Defect, text: u32) -> Defect {
+        let (_, old) = core::mem::replace(&mut self.sched.text, (d.code, text));
+        self.drop(old);
+        d
+    }
+
+    /// Release the text of a defect that is handled without being recorded (an `Err` a caller
+    /// consumes itself, as the runtime's own tests do).
+    pub fn discard_text(&mut self) {
+        let (_, text) = core::mem::take(&mut self.sched.text);
+        self.drop(text);
+    }
+
+    /// [`Rt::with_text`] of `parts` concatenated; the static message if that cannot allocate.
+    pub fn with_parts(&mut self, d: Defect, parts: &[&[u8]]) -> Defect {
+        let Ok(mut buf) = self.strbuf() else {
+            return d;
+        };
+        for p in parts {
+            if self.put(&mut buf, p).is_err() {
+                self.strbuf_free(buf);
+                return d;
+            }
+        }
+        let text = self.finish(buf);
+        self.with_text(d, text)
+    }
+
     fn record_defect_at(&mut self, t: u32, d: Defect, site: u32) {
+        let (code, mut text) = core::mem::take(&mut self.sched.text);
+        if code != d.code {
+            self.drop(text);
+            text = 0;
+        }
         let d = if self.sched.contract_depth > 0 {
             self.sched.contract_depth = 0;
-            Defect::CONTRACT_EVALUATION
+            // As JS: `contract evaluation failed: <code>: <message>`.
+            let e = Defect::CONTRACT_EVALUATION;
+            let digits = [100, 10, 1].map(|k| b'0' + (d.code / k % 10) as u8);
+            let composed = self.strbuf().ok().and_then(|mut buf| {
+                let r = self
+                    .put(&mut buf, e.message.as_bytes())
+                    .and_then(|()| self.put(&mut buf, b": D"))
+                    .and_then(|()| self.put(&mut buf, &digits))
+                    .and_then(|()| self.put(&mut buf, b": "))
+                    .and_then(|()| match text {
+                        0 => self.put(&mut buf, d.message.as_bytes()),
+                        _ => {
+                            let (len, at) = self.data(text);
+                            self.put_mem(&mut buf, at, len)
+                        }
+                    });
+                match r {
+                    Ok(()) => Some(self.finish(buf)),
+                    Err(_) => {
+                        self.strbuf_free(buf);
+                        None
+                    }
+                }
+            });
+            self.drop(text);
+            text = composed.unwrap_or(0);
+            e
         } else {
             d
         };
@@ -325,6 +393,9 @@ impl Rt {
             self.heap
                 .mem
                 .set_u64(t + T_DEFECT_MSG, d.message.as_ptr() as usize as u64);
+            self.set(t, T_DEFECT_TEXT, text);
+        } else {
+            self.drop(text);
         }
     }
 
@@ -764,6 +835,15 @@ impl Rt {
         Ok(Some((Defect { code, message }, self.u(t, T_DEFECT_SITE))))
     }
 
+    /// The `String` holding the message of task `id`'s defect when it carries program data
+    /// (borrowed; [`Rt::defect`]'s static message otherwise), or 0.
+    pub fn defect_text(&self, id: u32) -> u32 {
+        match self.arena_obj(id, tag::TASK) {
+            Some(t) if self.u(t, T_OUTCOME) == outcome::DEFECT => self.u(t, T_DEFECT_TEXT),
+            _ => 0,
+        }
+    }
+
     /// `join`: the child's outcome, or `None` after registering the current task to be woken
     /// (the caller sets its resume block and returns `step::YIELD`). A retired id is `D095`.
     pub fn join(&mut self, child: u32) -> Res<Option<(u32, u64)>> {
@@ -818,6 +898,8 @@ impl Rt {
             }
             _ => {}
         }
+        let text = self.u(t, T_DEFECT_TEXT);
+        self.drop(text);
         for off in [T_CATCHES, T_FINS, T_ACTS, T_KIDS, T_WAITERS] {
             let s = self.tstack(t, off);
             self.stack_free(s);
@@ -1820,7 +1902,14 @@ impl Rt {
                 }
             }
             outcome::DEFECT => match self.defect(child) {
-                Ok(Some((d, site))) => self.raise_at(d, site),
+                Ok(Some((d, site))) => {
+                    let text = self.defect_text(child);
+                    let d = match self.dup(text) {
+                        Ok(()) => self.with_text(d, text),
+                        Err(_) => d,
+                    };
+                    self.raise_at(d, site)
+                }
                 _ => self.raise(Defect::INTERNAL),
             },
             _ => {

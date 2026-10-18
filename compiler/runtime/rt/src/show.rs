@@ -67,7 +67,7 @@ const GT: u32 = 19;
 const NONE: u32 = 20;
 
 /// A fixed buffer for number formatting.
-struct Fixed {
+pub(crate) struct Fixed {
     buf: [u8; 40],
     len: usize,
 }
@@ -91,7 +91,7 @@ impl Fixed {
             len: 0,
         }
     }
-    fn bytes(&self) -> &[u8] {
+    pub(crate) fn bytes(&self) -> &[u8] {
         &self.buf[..self.len]
     }
     fn push(&mut self, b: &[u8]) {
@@ -100,7 +100,7 @@ impl Fixed {
     }
 }
 
-fn int_text(i: i64) -> Fixed {
+pub(crate) fn int_text(i: i64) -> Fixed {
     let mut f = Fixed::new();
     let _ = write!(f, "{i}");
     f
@@ -108,7 +108,7 @@ fn int_text(i: i64) -> Fixed {
 
 /// JS `showFloat`: `String(f)` (shortest round-trip digits, JS exponent rules) with `.0` added to
 /// a mantissa without a point; `-0.0`, `NaN`, `Infinity`, `-Infinity`.
-fn float_text(f: f64) -> Fixed {
+pub(crate) fn float_text(f: f64) -> Fixed {
     let mut out = Fixed::new();
     if f.is_nan() {
         out.push(b"NaN");
