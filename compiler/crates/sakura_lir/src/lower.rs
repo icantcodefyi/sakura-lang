@@ -822,7 +822,13 @@ impl<'c, 'a> Fl<'c, 'a> {
 
     /// Free Core locals of `rest`, counting what a jump or a `try` must pass to its join point.
     /// Iterative over statements; recursive only into nested blocks.
+    ///
+    /// The recursive entry: runs under `ensure_stack` (design §17.193).
     fn fv(&self, rest: Rest) -> BTreeSet<Local> {
+        sakura_core::ensure_stack(|| self.fv_inner(rest))
+    }
+
+    fn fv_inner(&self, rest: Rest) -> BTreeSet<Local> {
         let mut out = BTreeSet::new();
         let mut bound: Vec<Local> = Vec::new();
         for s in &rest.block.stmts[rest.from..] {
@@ -965,7 +971,13 @@ impl<'c, 'a> Fl<'c, 'a> {
     }
 
     /// Lowers `rest` into LIR block `b`, whose environment is `env`.
-    fn block(
+    ///
+    /// The recursive entry: runs under `ensure_stack` (design §17.193).
+    fn block(&mut self, rest: Rest<'a>, b: BlockId, env: Env, regions: Vec<RegionKind>) -> R<()> {
+        sakura_core::ensure_stack(|| self.block_inner(rest, b, env, regions))
+    }
+
+    fn block_inner(
         &mut self,
         rest: Rest<'a>,
         mut b: BlockId,

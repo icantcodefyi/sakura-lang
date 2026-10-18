@@ -462,7 +462,13 @@ fn reach(from: DefId, edges: &[BTreeSet<DefId>], ok: &dyn Fn(DefId) -> bool) -> 
 /// or right after it: member k's loop is defined inside member k-1's, so its body sees the
 /// labels of every member before it and of the next. The first order found, trying `rest` in
 /// `DefId` order, wins.
+///
+/// The recursive entry: runs under `ensure_stack` (design §17.193).
 fn nest(order: &mut Vec<DefId>, rest: &[DefId], edges: &[BTreeSet<DefId>]) -> bool {
+    crate::ensure_stack(|| nest_inner(order, rest, edges))
+}
+
+fn nest_inner(order: &mut Vec<DefId>, rest: &[DefId], edges: &[BTreeSet<DefId>]) -> bool {
     if rest.is_empty() {
         return true;
     }

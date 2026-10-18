@@ -1661,7 +1661,20 @@ impl<'a, 'p> FnLower<'a, 'p> {
     }
 
     /// `x.a.b = v` → `x = T { ..x, a: A { ..x.a, b: v } }`.
+    ///
+    /// The recursive entry: runs under `ensure_stack` (design §17.193).
     fn update_path(
+        &mut self,
+        cur: Atom,
+        ty: Ty,
+        fields: &[String],
+        v: Atom,
+        pos: Option<Pos>,
+    ) -> Option<Atom> {
+        crate::ensure_stack(|| self.update_path_inner(cur, ty, fields, v, pos))
+    }
+
+    fn update_path_inner(
         &mut self,
         cur: Atom,
         ty: Ty,

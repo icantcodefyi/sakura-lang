@@ -214,7 +214,12 @@ impl FnLower<'_, '_> {
         }
     }
 
+    /// The recursive entry: runs under `ensure_stack` (design §17.193).
     fn compile(&mut self, occ: Occ, rows: Vec<Row>, arms: &[ArmInfo], fb: &Fallback) -> Expr {
+        crate::ensure_stack(|| self.compile_inner(occ, rows, arms, fb))
+    }
+
+    fn compile_inner(&mut self, occ: Occ, rows: Vec<Row>, arms: &[ArmInfo], fb: &Fallback) -> Expr {
         // Expand or-patterns at the top of any column, then record bindings.
         let mut expanded = Vec::new();
         let mut todo: Vec<Row> = rows.into_iter().rev().collect();

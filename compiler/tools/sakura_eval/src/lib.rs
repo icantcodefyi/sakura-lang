@@ -540,7 +540,20 @@ impl<'m> Machine<'m> {
         atoms.iter().map(|a| self.atom(env, a)).collect()
     }
 
+    /// The recursive entry: runs under `ensure_stack` (design §17.193).
     fn eval(
+        &mut self,
+        def: DefId,
+        env: &mut [Option<Value>],
+        expr: &Expr,
+        hs: &Rc<Handlers>,
+        tail: bool,
+        rets: &[Label],
+    ) -> R<Flow> {
+        sakura_core::ensure_stack(|| self.eval_inner(def, env, expr, hs, tail, rets))
+    }
+
+    fn eval_inner(
         &mut self,
         def: DefId,
         env: &mut [Option<Value>],

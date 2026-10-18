@@ -147,6 +147,16 @@ published yet.
 
 ### Fixed
 
+- A long flat `match` no longer overflows the compiler's stack (design §17.193): a 3,000-arm
+  literal `match` crashed a debug `sakura run`, because its decision tree is an `if` chain as
+  deep as its arms. Every recursive walk over an IR (the match compiler, Core passes, the LIR
+  lowering, the snapshot converter, the evaluator) grows its stack on the heap when it runs
+  low, so no number of arms, `let`s or constructors bounds a pass. The JS output and
+  `--dump core` stop indenting past 32 levels, so deep code is linear in size (the 3,000-arm
+  program's JS falls from 406 MB to 5.4 MB), and `sakura check` indexes a `type` of thousands of
+  variants in linear time. Such a program still exceeds node's limits when it runs: its JS nests
+  a labeled block per arm, and its WASM a `block` per LIR block.
+
 - `agent_docs` normalizes Windows path separators so the skill mirror, manifest,
   hashes, and ZIP are byte-identical to Unix output (design §17.180 (5)).
 

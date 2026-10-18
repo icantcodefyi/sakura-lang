@@ -232,7 +232,12 @@ fn ty(t: &c::Ty) -> v::Ty {
     }
 }
 
-fn block(mut e: &c::Expr) -> v::Block {
+/// The recursive entry: runs under `ensure_stack` (design §17.193).
+fn block(e: &c::Expr) -> v::Block {
+    sakura_core::ensure_stack(|| block_inner(e))
+}
+
+fn block_inner(mut e: &c::Expr) -> v::Block {
     let mut stmts = vec![];
     loop {
         match e {

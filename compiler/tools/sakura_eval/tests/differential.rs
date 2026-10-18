@@ -213,6 +213,7 @@ enum Form {
     MatchList,
     MatchShape,
     MatchRec,
+    MatchInt,
     TryCatch,
     With,
     Call,
@@ -304,6 +305,7 @@ impl Gen<'_> {
                 Form::MatchOption,
                 Form::MatchList,
                 Form::MatchRec,
+                Form::MatchInt,
                 Form::TryCatch,
                 Form::With,
             ]);
@@ -326,6 +328,7 @@ impl Gen<'_> {
             Form::MatchList => self.match_list(ty, d),
             Form::MatchShape => self.match_shape(ty, d),
             Form::MatchRec => self.match_rec(ty, d),
+            Form::MatchInt => self.match_int(ty, d),
             Form::TryCatch => self.try_catch(ty, d),
             Form::With => self.with(ty, d),
             Form::Call => self.call(ty, d),
@@ -708,6 +711,29 @@ impl Gen<'_> {
         let some = self.with_locals(&[(n.clone(), Ty::Int)], |g| g.expr(ty, d));
         let none = self.expr(ty, d);
         format!("(match {scrut} {{ Some({n}) => {some}, None => {none} }})")
+    }
+
+    /// A literal `match` on an `Int`; one in ten is a long chain of leaf arms, the flat source
+    /// that lowers to deep IR (design §17.193).
+    fn match_int(&mut self, ty: Ty, d: u32) -> String {
+        let scrut = self.expr(Ty::Int, d);
+        let long = self.rng.chance(10);
+        let n = if long {
+            200 + self.rng.below(300)
+        } else {
+            2 + self.rng.below(5)
+        } as i64;
+        let mut arms = String::new();
+        for k in -n / 2..n - n / 2 {
+            let body = if long {
+                self.leaf(ty)
+            } else {
+                self.expr(ty, d)
+            };
+            let _ = write!(arms, "{k} => {body}, ");
+        }
+        let other = self.expr(ty, d);
+        format!("(match {scrut} {{ {arms}_ => {other} }})")
     }
 
     fn match_list(&mut self, ty: Ty, d: u32) -> String {
