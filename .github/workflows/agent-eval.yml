@@ -46,11 +46,13 @@ jobs:
     environment: agent-eval
     timeout-minutes: 360
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Install pinned Rust toolchain
         working-directory: compiler
         run: rustup show active-toolchain || rustup toolchain install
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 26
       - name: Build the CLI
@@ -78,18 +80,21 @@ jobs:
             --run-id "gh-$GITHUB_RUN_ID" --out "$RUNNER_TEMP/agent-eval"
       - name: Commit the spend ledger
         if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           git diff --quiet -- evals/agent-dx/reports/ledger.json && exit 0
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "chore(evals): record agent-eval spend for run $GITHUB_RUN_ID" \
             -- evals/agent-dx/reports/ledger.json
-          git pull --rebase origin master
-          git push origin HEAD:master
+          auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c http.https://github.com/.extraheader="$auth" pull --rebase origin master
+          git -c http.https://github.com/.extraheader="$auth" push origin HEAD:master
       # Summaries only: raw transcripts stay private until reviewed and redacted.
       - name: Upload the summary
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: agent-eval-${{ github.run_id }}
           path: |

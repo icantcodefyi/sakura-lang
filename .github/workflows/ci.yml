@@ -26,10 +26,10 @@ jobs:
     env:
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: website/package.json
       - name: Install dependencies
@@ -58,21 +58,21 @@ jobs:
       run:
         working-directory: compiler
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Install pinned Rust toolchain
         run: |
           rustup show active-toolchain || rustup toolchain install
           rustup target add wasm32-unknown-unknown
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: compiler
           # Older caches may embed an empty runtime built without the WASM target.
           cache-workspace-crates: true
           shared-key: compiler
           key: wasm32-unknown-unknown
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 26
       # Official release archives; SHA-256 values also match GitHub's asset digests.
@@ -103,13 +103,13 @@ jobs:
           } >> "$GITHUB_OUTPUT"
       - name: Cache Z3
         id: cache-z3
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/solvers/z3
           key: z3-${{ env.Z3_VERSION }}-${{ runner.os }}-${{ runner.arch }}
       - name: Cache cvc5
         id: cache-cvc5
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/solvers/cvc5
           key: cvc5-${{ env.CVC5_VERSION }}-${{ runner.os }}-${{ runner.arch }}
@@ -177,21 +177,21 @@ jobs:
       SAKURA_REQUIRE_WASM: "1"
       SAKURA_PARITY_BACKEND: ${{ matrix.backend }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Install pinned Rust toolchain
         run: |
           rustup show active-toolchain || rustup toolchain install
           rustup target add wasm32-unknown-unknown
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: compiler
           cache-workspace-crates: true
           shared-key: compiler
           key: wasm32-unknown-unknown
           save-if: false
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 26
       - name: Backend parity and comparator regression
@@ -201,7 +201,7 @@ jobs:
         run: cat target/tmp/parity/imports.txt
       - name: Upload parity traces and host-import coverage
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: parity-${{ matrix.backend }}-${{ matrix.os }}
           path: compiler/target/tmp/parity/
@@ -215,13 +215,13 @@ jobs:
       run:
         working-directory: editors/vscode
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Install pinned Rust toolchain
         working-directory: compiler
         run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: compiler
           key: vscode
@@ -229,7 +229,7 @@ jobs:
       - name: Build sakura
         working-directory: compiler
         run: cargo build -p sakura_cli --locked
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: editors/vscode/package.json
       - name: Install dependencies
@@ -249,7 +249,7 @@ jobs:
       # A local package only; publishing is the owner's (docs/release.md).
       - name: Package
         run: bun run package
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: sakura-vscode
           path: editors/vscode/*.vsix

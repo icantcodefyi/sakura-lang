@@ -48,10 +48,10 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.14"
       - name: Read reference pins
@@ -66,17 +66,17 @@ jobs:
                   print(f"{name}={version}", file=output)
           PY
           echo "$GITHUB_WORKSPACE/bench" >> "$GITHUB_PATH"
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ steps.pins.outputs.node }}
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         if: matrix.engine == 'bun'
         with:
           bun-version: ${{ steps.pins.outputs.bun }}
       - name: Install pinned Rust toolchain
         working-directory: compiler
         run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: compiler
       - name: Measure and compare matched ratios
@@ -178,7 +178,7 @@ jobs:
               annotate_rss(json.loads((output / f"confirmed-{engine}-{index}.json").read_text()))
           raise SystemExit(2 if blocked else 0)
           PY
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: bench-pr-${{ matrix.os }}-${{ matrix.engine }}
@@ -193,10 +193,10 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.14"
       - name: Read reference pins
@@ -211,23 +211,23 @@ jobs:
                   print(f"{name}={version}", file=output)
           PY
           echo "$GITHUB_WORKSPACE/bench" >> "$GITHUB_PATH"
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ steps.pins.outputs.node }}
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: ${{ steps.pins.outputs.bun }}
       - name: Install pinned Rust toolchain
         working-directory: compiler
         run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: compiler
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version: ${{ steps.pins.outputs.go }}
           cache: false
-      - uses: ocaml/setup-ocaml@v3
+      - uses: ocaml/setup-ocaml@93303b622b2522e4411e295f9e77411a24912ac7 # v3.9.0
         with:
           ocaml-compiler: ${{ steps.pins.outputs.ocaml }}
       - name: Expose OCaml native compiler
@@ -255,7 +255,7 @@ jobs:
                 --stable --json "bench-results/nightly-${lane}-${engine}.json"
             done
           done
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: bench-nightly-macos
@@ -281,10 +281,10 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.14"
       - name: Validate repeat count and read pins
@@ -306,17 +306,17 @@ jobs:
               for name in ("node", "bun"):
                   print(f"{name}={pins[name]}", file=output)
           PY
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ steps.pins.outputs.node }}
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         if: matrix.engine == 'bun'
         with:
           bun-version: ${{ steps.pins.outputs.bun }}
       - name: Install pinned Rust toolchain
         working-directory: compiler
         run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: compiler
       - name: Repeat quick matched JS subset with load snapshots
@@ -344,7 +344,7 @@ jobs:
                   print((output / f"{name}.log").read_text()[-5000:])
                   raise SystemExit(result.returncode)
           PY
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: bench-noise-${{ matrix.os }}-${{ matrix.engine }}
