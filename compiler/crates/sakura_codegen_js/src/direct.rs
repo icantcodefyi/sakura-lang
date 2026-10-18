@@ -2,9 +2,10 @@
 //!
 //! A def (top-level function, constant, lambda or clause) is **direct** when its row performs
 //! nothing itself (`{}`, or only row variables of its function-typed parameters), its body has no
-//! `Perform`, `Handle`, `Try` or `Fail`, every call is of a direct def, a `Direct` builtin, a
-//! function-typed parameter, or a local bound to a closure of a direct def. A direct def gets a
-//! twin `f$d(captures…, params…) → value`.
+//! `Try` or `Fail`, every `Handle` is over a handler literal whose clauses are direct, every
+//! `Perform` is lexically bound to one of those (design §17.113), and every call is of a direct
+//! def, a `Direct` builtin, a function-typed parameter, or a local bound to a closure of a direct
+//! def. A direct def gets a twin `f$d(captures…, params…) → value`.
 //!
 //! Recursion (§17.112): a component of the call graph (static calls and passed function values)
 //! is direct when every member is a first-order non-constant def and no member passes a member's
@@ -24,6 +25,7 @@
 use std::collections::HashMap;
 
 use sakura_core::builtins::{self, Abi};
+use sakura_core::opt::handlers::{self, Bound};
 use sakura_core::*;
 
 /// Locals bound to a closure of a known def (`Bind::Closure`), with the captured atoms.
@@ -39,6 +41,8 @@ pub(crate) enum Need {
 }
 
 pub(crate) struct Facts {
+    /// Twins are emitted (false under `--no-direct`).
+    pub enabled: bool,
     /// `Err(reason)` for a def compiled only in CPS, for `--dump direct`.
     pub verdicts: Vec<Result<(), String>>,
     first_order: Vec<bool>,
@@ -49,6 +53,7 @@ impl Facts {
     /// No def is direct (`--no-direct`).
     pub fn none(m: &Module) -> Self {
         Facts {
+            enabled: false,
             verdicts: vec![Err("no-direct".into()); m.defs.len()],
             first_order: vec![false; m.defs.len()],
             recursive: vec![false; m.defs.len()],
@@ -100,6 +105,21 @@ pub(crate) fn is_fn(ty: &Ty) -> bool {
 /// `l` is a function-typed parameter of `def` (not a capture).
 pub(crate) fn fn_param(def: &FnDef, l: Local) -> bool {
     def.params.contains(&l) && is_fn(&def.local(l).ty)
+}
+
+/// The clause a bound perform (by its local) calls: its def, the closure's captures and the
+/// handler literal's local.
+pub(crate) fn bound_clause<'d>(
+    bound: &Bound,
+    closures: &'d Closures,
+    x: Local,
+    op: u32,
+) -> Option<(DefId, &'d [Atom], Local)> {
+    let h = *bound.performs.get(&x)?;
+    match bound.handlers[&h][op as usize] {
+        Atom::Local(c) => closures.get(&c).map(|(d, caps)| (*d, caps.as_slice(), h)),
+        _ => None,
+    }
 }
 
 pub(crate) fn closures(def: &FnDef) -> Closures {
@@ -202,7 +222,8 @@ pub(crate) fn analyze(m: &Module) -> Facts {
             if !row_ok(d) {
                 return Err("row".into());
             }
-            body_ok(m, d, &closures(d), &d.body, needs)
+            let cx = (m, d, &closures(d), &handlers::bind(m, d));
+            body_ok(cx, &d.body, needs)
         })
         .collect();
 
@@ -226,7 +247,11 @@ pub(crate) fn analyze(m: &Module) -> Facts {
                 .iter()
                 .any(|n| matches!(n, Need::Exposes(d) if scc.contains(&d.index())))
         });
-        let eligible = !passes_member && scc.iter().all(|&i| first_order[i]);
+        // A `with` would install into the context that `runSync` does not have.
+        let eligible = !passes_member
+            && scc
+                .iter()
+                .all(|&i| first_order[i] && !has_handle(&m.defs[i].body));
         for i in scc {
             if eligible {
                 recursive[i] = true;
@@ -237,6 +262,7 @@ pub(crate) fn analyze(m: &Module) -> Facts {
     }
 
     let mut facts = Facts {
+        enabled: true,
         verdicts,
         first_order,
         recursive,
@@ -273,51 +299,85 @@ fn row_ok(d: &FnDef) -> bool {
         })
 }
 
-fn body_ok(
-    m: &Module,
-    d: &FnDef,
-    closures: &Closures,
-    e: &Expr,
-    needs: &mut Vec<Need>,
-) -> Result<(), String> {
+type BodyCx<'a> = (&'a Module, &'a FnDef, &'a Closures, &'a Bound);
+
+fn body_ok(cx: BodyCx, e: &Expr, needs: &mut Vec<Need>) -> Result<(), String> {
+    let (m, d, closures, bound) = cx;
     sakura_core::ensure_stack(|| match e {
-        Expr::Let { bind, body, .. } => {
+        Expr::Let {
+            local, bind, body, ..
+        } => {
             match bind {
                 Bind::Call(callee, args) => {
                     needs.extend(call_needs(m, d, closures, true, callee, args)?);
                 }
-                Bind::Perform(eff, op, _) => {
-                    let eff = m.effect(*eff);
-                    return Err(format!(
-                        "perform {}.{}",
-                        eff.name, eff.ops[*op as usize].name
-                    ));
-                }
+                Bind::Perform(eff, op, _) => match bound_clause(bound, closures, *local, *op) {
+                    Some((clause, _, _)) => needs.push(Need::Direct(clause)),
+                    None => {
+                        let eff = m.effect(*eff);
+                        return Err(format!(
+                            "perform {}.{}",
+                            eff.name, eff.ops[*op as usize].name
+                        ));
+                    }
+                },
                 _ => {}
             }
-            body_ok(m, d, closures, body, needs)
+            body_ok(cx, body, needs)
         }
         Expr::Ret(_) | Expr::Jump(..) => Ok(()),
         Expr::LetJoin { join, body, .. } => {
-            body_ok(m, d, closures, join, needs)?;
-            body_ok(m, d, closures, body, needs)
+            body_ok(cx, join, needs)?;
+            body_ok(cx, body, needs)
         }
         Expr::Switch { arms, default, .. } => {
             for (_, a) in arms {
-                body_ok(m, d, closures, a, needs)?;
+                body_ok(cx, a, needs)?;
             }
             match default {
-                Some(e) => body_ok(m, d, closures, e, needs),
+                Some(e) => body_ok(cx, e, needs),
                 None => Ok(()),
             }
         }
         Expr::If { then, els, .. } => {
-            body_ok(m, d, closures, then, needs)?;
-            body_ok(m, d, closures, els, needs)
+            body_ok(cx, then, needs)?;
+            body_ok(cx, els, needs)
+        }
+        Expr::Handle {
+            handler: Atom::Local(h),
+            body,
+        } if bound.handlers.contains_key(h) => {
+            for c in &bound.handlers[h] {
+                match c {
+                    Atom::Local(c) if let Some((clause, _)) = closures.get(c) => {
+                        needs.push(Need::Direct(*clause))
+                    }
+                    _ => return Err("with".into()),
+                }
+            }
+            body_ok(cx, body, needs)
         }
         Expr::Handle { .. } => Err("with".into()),
         Expr::Try { .. } => Err("try".into()),
         Expr::Fail(_) => Err("fail".into()),
+    })
+}
+
+fn has_handle(e: &Expr) -> bool {
+    sakura_core::ensure_stack(|| match e {
+        Expr::Handle { .. } => true,
+        Expr::Let { body, .. } | Expr::Try { body, .. } => has_handle(body),
+        Expr::LetJoin { join, body, .. }
+        | Expr::If {
+            then: join,
+            els: body,
+            ..
+        } => has_handle(join) || has_handle(body),
+        Expr::Switch { arms, default, .. } => {
+            arms.iter().any(|(_, a)| has_handle(a))
+                || default.as_ref().is_some_and(|d| has_handle(d))
+        }
+        Expr::Ret(_) | Expr::Jump(..) | Expr::Fail(_) => false,
     })
 }
 

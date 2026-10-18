@@ -6,7 +6,7 @@ main::micro::loop_sum direct
 main::micro::list_map_fold direct
 main::micro::records direct
 main::micro::strings direct
-main::micro::effects cps(with)
+main::micro::effects direct
 main::micro::contracts direct
 main::micro::contracts_plain direct
 main::micro::increment_plain direct

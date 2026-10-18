@@ -9,7 +9,8 @@ fn test$0#_() -> Unit {
 }
 
 fn answer#_() -> Int {
-  let r%0: Handler<Counter> = call @counter#_()
+  let next%4: fn() -> Int = closure @counter$Counter_next#_[]
+  let r%0: Handler<Counter> = handler Counter state[0] clauses[next%4]
   handle r%0 {
     let f%2: fn() -> Int ! {Counter} = closure @answer$1#_[]
     let r%3: Int = call @twice#_(f%2)
@@ -18,18 +19,28 @@ fn answer#_() -> Int {
 }
 
 test fn test$0$run#_(seed%0: Int) -> Unit {
-  let console%1: Handler<Console> = call @captured#_()
+  let print%11: fn(String) -> Unit = closure @captured$Console_print#_[]
+  let read_line%12: fn() -> Option<String> = closure @captured$Console_read_line#_[]
+  let console%1: Handler<Console> = handler Console state[] clauses[print%11, read_line%12]
   handle console%1 {
-    let log%2: Handler<Log> = call @captured#_()
+    let event%13: fn(Level, String, List<(String, Json)>) -> Unit = closure @captured$Log_event#_[]
+    let log%2: Handler<Log> = handler Log state[] clauses[event%13]
     handle log%2 {
       let epoch%3: Instant = call @from_unix_millis#_(0)
-      let clock%4: Handler<Clock> = call @fixed#_(epoch%3)
+      let now%14: fn() -> Instant = closure @fixed$Clock_now#_[epoch%3]
+      let monotonic%15: fn() -> Duration = closure @fixed$Clock_monotonic#_[]
+      let sleep%16: fn(Duration) -> Unit = closure @fixed$Clock_sleep#_[]
+      let clock%4: Handler<Clock> = handler Clock state[] clauses[now%14, monotonic%15, sleep%16]
       handle clock%4 {
         let random%5: Handler<Random> = call @seeded#_(seed%0)
         handle random%5 {
           let vars%6: Map<String, String> = call $map_empty()
-          let env%7: Handler<Env> = call @of#_(vars%6)
-          let env_host%8: Handler<Env> = call @host#_()
+          let get%17: fn(String) -> Option<String> = closure @of$Env_get#_[vars%6]
+          let secret%18: fn(String) -> Option<Secret> = closure @of$Env_secret#_[vars%6]
+          let env%7: Handler<Env> = handler Env state[] clauses[get%17, secret%18]
+          let get%19: fn(String) -> Option<String> = closure @host$Env_get#_[]
+          let secret%20: fn(String) -> Option<Secret> = closure @host$Env_secret#_[]
+          let env_host%8: Handler<Env> = handler Env state[] clauses[get%19, secret%20]
           let env_default%9: Handler<Env> = call $test_env(env_host%8, env%7)
           handle env_default%9 {
             let r%10: Unit = call @test$0#_()

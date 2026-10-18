@@ -61,8 +61,8 @@ test("a suspension inside runSync is D090", () => {
 const COUNTER = "test::Counter";
 function counter(start) {
   const next = (inst, _ctx, k) => {
-    inst.s[0] = rt.add(inst.s[0], 1);
-    return ret(k, inst.s[0]);
+    inst.s0 = rt.add(inst.s0, 1);
+    return ret(k, inst.s0);
   };
   return rt.makeHandler(COUNTER, [start], [next]);
 }
@@ -109,6 +109,34 @@ test("a clause performing its own effect reaches the next outer handler", () => 
     return next(c, (a) => next(c, (b) => ret($k, [a, b])));
   };
   assert.deepEqual(rt.runTask(body), ok([10, 20]));
+});
+
+test("the driver sets the current-task register for each segment and restores it", () => {
+  const seen = [];
+  const inner = ($ctx, $k) => {
+    seen.push(rt.T.t === $ctx.t);
+    return ret($k, 1);
+  };
+  const outer = ($ctx, $k) => {
+    const o = rt.runTask(inner);
+    seen.push(o.kind === "ok" && rt.T.t === $ctx.t);
+    return ret($k, 2);
+  };
+  assert.deepEqual(rt.runTask(outer), { kind: "ok", value: 2 });
+  assert.deepEqual(seen, [true, true]);
+  assert.equal(rt.T.t, null);
+});
+
+test("a bound perform of a cancelled task is a cancellation point", () => {
+  let after = false;
+  const body = ($ctx, $k) => {
+    $ctx.t.cancelled = true;
+    rt.bound(COUNTER, 0);
+    after = true;
+    return ret($k, 0);
+  };
+  assert.deepEqual(rt.runTask(body), { kind: "cancelled" });
+  assert.equal(after, false);
 });
 
 test("missing handler is an internal defect, not a crash", () => {
@@ -694,10 +722,10 @@ test("a handler holding a callback bound to itself is released after the task", 
   // effect Store { fn keep(f: fn() -> Int) -> Unit; fn run() -> Int }, state `var kept`
   const program = () => {
     const keep = (inst, f, _ctx, k) => {
-      inst.s[0] = f;
+      inst.s0 = f;
       return ret(k, undefined);
     };
-    const run = (inst, ctx, k) => inst.s[0](ctx, k);
+    const run = (inst, ctx, k) => inst.s0(ctx, k);
     const h = rt.makeHandler(STORE, [null], [keep, run]);
     return rt.runTask(($ctx, $k) => {
       const c = rt.install($ctx, h);

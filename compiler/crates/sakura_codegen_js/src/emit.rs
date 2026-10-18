@@ -9,6 +9,7 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::Write;
 
 use sakura_core::builtins::{self, Abi};
+use sakura_core::opt::handlers::{self, Bound};
 use sakura_core::*;
 
 use crate::direct::{self, Closures};
@@ -80,7 +81,9 @@ pub(crate) fn module(cx: &Cx, module: &str) -> (String, String) {
             rel(&module_path(other))
         );
     }
-    head.push_str("const { G: $G, LIMIT: $L, bounce: $b, ret: $ret, S: $S } = $rt;\n");
+    head.push_str(
+        "const { G: $G, LIMIT: $L, bounce: $b, ret: $ret, S: $S, T: $T, TRACE: $tr } = $rt;\n",
+    );
     for (i, lit) in pool.lits.borrow().iter().enumerate() {
         let _ = writeln!(head, "const $c{i} = {lit};");
     }
@@ -334,6 +337,11 @@ struct FnEmit<'a> {
     ctxs: u32,
     /// Locals bound to a closure of a known def: a call of one with a twin is inlined.
     closures: Closures,
+    /// Handler literals and the performs bound to them (design §17.113).
+    bound: Bound,
+    /// The `Handle`s over a handler literal being emitted, innermost last: the handler's local
+    /// and the JS name of the instance.
+    insts: Vec<(Local, String)>,
     ns: &'a RefCell<BTreeSet<String>>,
     pool: &'a Pool,
     /// Locals bound by an `Int` operation the interval pass proves (design §17.114).
@@ -387,6 +395,8 @@ impl<'a> FnEmit<'a> {
             in_entry: Vec::new(),
             ctxs: 0,
             closures: direct::closures(def),
+            bound: handlers::bind(cx.m, def),
+            insts: Vec::new(),
             ns,
             pool,
             proved: sakura_core::opt::ranges::analyze(
@@ -406,11 +416,9 @@ impl<'a> FnEmit<'a> {
     fn def(mut self, w: &mut W) {
         let d = self.def;
         let name = self.cx.def_names[self.id.index()].clone();
-        let export = if matches!(d.kind, FnKind::Top { .. } | FnKind::Test | FnKind::Const) {
-            "export "
-        } else {
-            ""
-        };
+        // Lambdas and clauses too: an inlined handler constructor (design §17.113) builds its
+        // clause closures in the caller's module.
+        let export = "export ";
         let constant = d.kind == FnKind::Const;
         // A constant's body is `name$init`; `name` evaluates it once and caches the value.
         let body_name = if constant {
@@ -599,8 +607,14 @@ impl<'a> FnEmit<'a> {
 
     fn frames_inner(&self, e: &Expr, frame: u32, f: &mut Frames) {
         match e {
-            Expr::Let { bind, body, .. } => {
-                let inner = if self.is_cps(bind) { f.fresh() } else { frame };
+            Expr::Let {
+                local, bind, body, ..
+            } => {
+                let inner = if self.is_cps(*local, bind) {
+                    f.fresh()
+                } else {
+                    frame
+                };
                 self.frames(body, inner, f);
             }
             Expr::Ret(_) | Expr::Fail(_) => {}
@@ -637,10 +651,10 @@ impl<'a> FnEmit<'a> {
         }
     }
 
-    /// Does this binding transfer control through a continuation?
-    fn is_cps(&self, b: &Bind) -> bool {
+    /// Does this binding (of `x`) transfer control through a continuation?
+    fn is_cps(&self, x: Local, b: &Bind) -> bool {
         match b {
-            Bind::Perform(..) => true,
+            Bind::Perform(..) => self.bound_clause(x, b).is_none(),
             // The CPS body of a recursive def may run under `runSync`: it calls every recursive
             // def through its CPS body, so no nested driver starts (design §17.112).
             Bind::Call(callee, _)
@@ -661,6 +675,16 @@ impl<'a> FnEmit<'a> {
                 args,
             ),
             _ => false,
+        }
+    }
+
+    /// The direct clause a perform bound to a handler literal calls (design §17.113): its def,
+    /// the closure's captures and the handler's local.
+    fn bound_clause(&self, x: Local, b: &Bind) -> Option<(DefId, &[Atom], Local)> {
+        match b {
+            Bind::Perform(_, op, _) => direct::bound_clause(&self.bound, &self.closures, x, *op)
+                .filter(|(d, _, _)| self.cx.direct.direct(*d)),
+            _ => None,
         }
     }
 
@@ -704,7 +728,7 @@ impl<'a> FnEmit<'a> {
                 body,
             } => {
                 w.at(*pos);
-                if self.is_cps(bind) {
+                if self.is_cps(*local, bind) {
                     self.cps_call(w, *local, bind, *pos, body, ctx);
                 } else {
                     self.simple_bind(w, *local, bind, *pos);
@@ -790,12 +814,32 @@ impl<'a> FnEmit<'a> {
                 w.line("}");
             }
             Expr::Handle { handler, body } => {
+                let h = self.atom(handler);
+                let lit = match handler {
+                    Atom::Local(l) if self.bound.performs.values().any(|h| h == l) => Some(*l),
+                    _ => None,
+                };
                 let c = self.fresh_ctx();
-                w.line(&format!(
-                    "const {c} = $rt.install({ctx}, {});",
-                    self.atom(handler)
-                ));
+                // Direct code has no context: only bound performs reach the instance.
+                let c = if self.mode == Mode::Direct {
+                    ctx.to_owned()
+                } else {
+                    w.line(&format!("const {c} = $rt.install({ctx}, {h});"));
+                    c
+                };
+                if let Some(l) = lit {
+                    let i = format!("$i{}", self.ctxs);
+                    w.line(&if self.mode == Mode::Direct {
+                        format!("const {i} = $rt.instance({h});")
+                    } else {
+                        format!("const {i} = {c}.h.i;")
+                    });
+                    self.insts.push((l, i));
+                }
                 self.expr(w, body, &c);
+                if lit.is_some() {
+                    self.insts.pop();
+                }
             }
             Expr::Try { on_fail, body } => {
                 let c = self.fresh_ctx();
@@ -827,6 +871,42 @@ impl<'a> FnEmit<'a> {
         };
         // `callee(args…, ctx, ` — the continuation and closing parenthesis follow.
         let head = match bind {
+            Bind::Perform(e, op, args)
+                if self.cx.direct.enabled
+                    && !self.cx.m.effect(*e).ops[*op as usize]
+                        .params
+                        .iter()
+                        .any(direct::is_fn) =>
+            {
+                // Tail-direct dispatch (design §17.113): a clause with a twin runs inline; the
+                // continuation is shared by both paths.
+                let (f, c) = (format!("$f{}", x.0), format!("$cl{}", x.0));
+                let eff = js_string(&self.cx.m.effect(*e).qualified_name());
+                w.line(&format!(
+                    "const {f} = $rt.find({ctx}, {eff}, {op}), {c} = {f}.i.c[{op}];"
+                ));
+                let k = match k {
+                    Some(k) => k,
+                    None => {
+                        let k = format!("$k{}", x.0);
+                        w.line(&format!("const {k} = ({xs}) => {{"));
+                        w.depth += 1;
+                        self.expr(w, body, ctx);
+                        w.depth -= 1;
+                        w.line("};");
+                        k
+                    }
+                };
+                let a: Vec<String> = std::iter::once(format!("{f}.i"))
+                    .chain(args.iter().map(|a| self.atom(a)))
+                    .collect();
+                let a = a.join(", ");
+                w.line(&format!(
+                    "if ({c}.$d !== undefined) return $ret({k}, {c}.$d({a}));"
+                ));
+                w.line(&format!("return {c}({a}, $rt.cctx({ctx}, {f}), {k});"));
+                return;
+            }
             Bind::Perform(e, op, args) => {
                 let f = format!("$f{}", x.0);
                 let eff = js_string(&self.cx.m.effect(*e).qualified_name());
@@ -901,7 +981,29 @@ impl<'a> FnEmit<'a> {
                 ),
                 None => format!("{}.$d({})", self.name(*l), self.atoms(args)),
             },
-            Bind::Call(..) | Bind::Perform(..) => unreachable!("CPS binding"),
+            Bind::Perform(e, op, args) => {
+                let (clause, caps, h) = self.bound_clause(x, bind).expect("CPS binding");
+                let inst = &self
+                    .insts
+                    .iter()
+                    .rev()
+                    .find(|(l, _)| *l == h)
+                    .expect("bound perform outside its handler")
+                    .1;
+                // Still a cancellation point, and traced (design §17.113).
+                w.line(&format!(
+                    "if ($T.t.cancelled || $tr) $rt.bound({}, {op});",
+                    js_string(&self.cx.m.effect(*e).qualified_name())
+                ));
+                let a: Vec<String> = caps
+                    .iter()
+                    .map(|c| self.atom(c))
+                    .chain([inst.clone()])
+                    .chain(args.iter().map(|a| self.atom(a)))
+                    .collect();
+                format!("{}$d({})", self.def_ref(clause), a.join(", "))
+            }
+            Bind::Call(..) => unreachable!("CPS binding"),
             Bind::Closure(d, caps) => {
                 let f = self.def_ref(*d);
                 if caps.is_empty() {
@@ -963,9 +1065,9 @@ impl<'a> FnEmit<'a> {
                 self.atoms(state),
                 self.atoms(clauses)
             ),
-            Bind::StateGet(inst, i) => format!("{}.s[{i}]", self.atom(inst)),
+            Bind::StateGet(inst, i) => format!("{}.s{i}", self.atom(inst)),
             Bind::StateSet(inst, i, v) => {
-                w.line(&format!("{}.s[{i}] = {};", self.atom(inst), self.atom(v)));
+                w.line(&format!("{}.s{i} = {};", self.atom(inst), self.atom(v)));
                 "undefined".into()
             }
             Bind::Hole(h) => format!("$rt.defect(\"D090\", \"typed hole ?{h} was evaluated\")"),

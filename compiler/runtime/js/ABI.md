@@ -40,9 +40,10 @@ direct ABI).
 ### Direct twins (design §17.111)
 
 A def (top-level function, constant, lambda or clause) is **direct** when its row is `{}` or
-only row variables of its function-typed parameters, its body has no `Perform`, `Handle`, `Try`
-or `Fail`, every call is of a direct def, a `Direct` builtin, a function-typed parameter or a
-local bound to a closure of a direct def. It is also emitted as a plain function
+only row variables of its function-typed parameters, its body has no `Try` or `Fail`, every
+`Handle` is over a handler literal whose clauses are direct and every `Perform` is bound to one
+(section 3), and every call is of a direct def, a `Direct` builtin, a function-typed parameter
+or a local bound to a closure of a direct def. It is also emitted as a plain function
 `f$d(captures…, a1, …, an) → value` that may throw a defect and nothing else. Recursion is
 below.
 `sakura build --dump direct` prints the verdict per def (`direct` or `cps(<reason>)`);
@@ -102,6 +103,7 @@ non-tail recursion see `bench/` (`fib`, `binary_trees`).
 ```js
 $ctx = { h: frame | null, c: catcher, t: task, p?: frame | null }
 frame   = { e: effectId, i: instance, n: frame | null }   // innermost first
+instance = { e: effectId, c: clauses, s0, s1, … }         // state slots (section 3)
 catcher = { j: (error) → Step, m: number }                // m = finalizer mark
 task    = { fins: Array<() → void>, cancelled, wake, kids }
 ```
@@ -113,6 +115,9 @@ Contexts are immutable; regions that change them bind a new `$ctx` lexically. Co
 region uses the outer variable, so leaving a region by falling through, `return`, `break` or
 `fail` uninstalls it without any runtime bookkeeping.
 
+Direct code has no context. A `Handle` there only builds the instance its bound performs use
+(section 3), and the current task is read from `$rt.T.t` (section 6).
+
 ## 3. Effects and handlers (design §5.5)
 
 - Effect id: the qualified name, `"<package>::<module>::<Effect>"`, e.g.
@@ -122,7 +127,9 @@ region uses the outer variable, so leaving a region by falling through, `return`
 - `with h { body }`: `const $ctx1 = $rt.install($ctx, h)` creates a fresh **instance**
   `{ e, c, s }` with `s` copied from the handler's initial state, so each installation starts
   from the initial values and nested instances are independent.
-- Handler state: `inst.s[i]` (read) and `inst.s[i] = v` (write), only inside clauses.
+- Handler state: slot `i` is the instance's own property `s<i>`: `inst.s0` (read) and
+  `inst.s0 = v` (write), only inside clauses. (A property, not an array element: JSC reads and
+  writes it about 2.5× faster.) `$rt.instance(h)` builds an instance; `install` uses it.
 - `Eff.op(args)`:
   ```js
   const $f = $rt.find($ctx, E, op);                   // innermost frame for E
@@ -140,6 +147,44 @@ region uses the outer variable, so leaving a region by falling through, `return`
   (`Task.all(bodies)`) are ordinary values; host clauses run those under `cctx.p`. `$rt.perform`
   (performs from runtime code) passes no callbacks and does not wrap.
 - A missing handler cannot happen in checked programs; the runtime reports defect `D090`.
+
+**Bound performs (design §17.113).** `sakura_core::opt` inlines calls of handler constructors
+(a `{}`-row top-level def without row variables whose body only binds atoms, clause closures and
+the handler it returns), so `with counter() { … }` installs a handler literal of the same def.
+A `Perform` directly in the body of a `Handle` over such a literal (not in a lambda, not under an
+inner `Handle` of the same effect, of an operation without function-typed parameters) is
+**bound** (`opt::handlers::bind`, a side table; Core is unchanged). When its clause is direct it
+calls the clause's twin on the instance:
+
+```js
+const $ctx1 = $rt.install($ctx, h), $i1 = $ctx1.h.i;   // direct code: const $i1 = $rt.instance(h);
+…
+if ($T.t.cancelled || $tr) $rt.bound("main::Tick", 0); // cancellation point and trace record
+const r = counter$Tick_next$d($i1);                     // the clause's twin, captures first
+```
+
+`$T` is `$rt.T`, the current-task register (section 6), and `$tr` is `$rt.TRACE` (tracing is
+on); `bound` throws the cancellation signal or appends the same trace record `find` would, so
+every operation stays a cancellation point and traces are identical under `--no-direct`. Such a
+`Handle` does not stop the enclosing def from being direct: no other code can reach the
+instance (callees of direct code perform nothing). A def with a `Handle` is never a recursive
+direct def (`runSync` has no context).
+
+**Tail-direct dispatch.** Every clause closure of a direct first-order clause carries `$d` (the
+instance's twin table is its clause list). An unbound perform in CPS code, of an operation
+without function-typed parameters, runs a twinned clause inline after `find`, with one
+continuation shared by both paths:
+
+```js
+const $f3 = $rt.find($ctx, "main::Tick", 0), $cl3 = $f3.i.c[0];
+const $k3 = (r) => { … };                               // or `$k` / a join point, unwrapped
+if ($cl3.$d !== undefined) return $ret($k3, $cl3.$d($f3.i));
+return $cl3($f3.i, $rt.cctx($ctx, $f3), $k3);
+```
+
+A loop whose body has an unbound perform stays a join-point function under the gauge (no
+resumable `for (;;)` entry yet). Every def is exported, lambdas and clauses included: an inlined
+constructor builds its clause closures in the caller's module.
 
 ## 4. Failure (`Fail`, `try`)
 
@@ -194,6 +239,10 @@ caller. `std/test`'s `expect_defect` is built on it.
 
 - `$rt.runTask(f, args = [], frames = null)` runs `f(...args, $ctx, $k)` to completion and
   returns its outcome, or a `Promise` of it if the task suspended.
+- `$rt.T.t` is the task whose segment the driver is running: `drive` sets it on every start
+  and resume and restores the outer value on exit, so it equals `$ctx.t` wherever compiled code
+  runs. It carries task identity only (cancellation and trace numbering); handlers are never
+  found through it (design §17.113, R01 §4.5).
 - `$rt.runSync(f, args)` (design §17.112) runs the CPS body `f(...args, null, k)` of a
   recursive direct def on the current JS stack under its own trampoline (the gauge starts at 0
   and each `Bounce` resets it to 0), returns the value, lets defects propagate and restores the

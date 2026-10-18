@@ -4,6 +4,8 @@
 //! - Self tail calls become jumps to a loop header, so tail-recursive functions run as loops
 //!   (and, when pure, as direct-style JS loops). A call inside a `Handle` or `Try` region is
 //!   not a tail call: the region must stay installed while the callee runs.
+//! - Calls of handler constructors are inlined, and performs bound to a handler literal are
+//!   found by [`handlers::bind`] (design §17.113).
 //!
 //! [`ranges`] is not a rewrite: backends run it at emission for their `Int` range.
 
@@ -13,9 +15,11 @@ use crate::ir::*;
 
 use std::collections::HashMap;
 
+pub mod handlers;
 pub mod proved;
 
 pub fn optimize(m: &mut Module) {
+    handlers::inline_constructors(m);
     for i in 0..m.defs.len() {
         let mut returns = HashMap::new();
         return_joins(&m.defs[i].body, &mut returns);

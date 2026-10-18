@@ -128,10 +128,19 @@ export function makeHandler(e, s, c) {
   return new Handler(e, c, s);
 }
 
-/** `Handle`: a fresh instance (state copied from the handler value) on top of `ctx`. */
+/**
+ * A fresh instance of `h`: its clauses, and state slot `k` copied from the handler value as
+ * property `s<k>` (a property, not an array element: JSC reads and writes it 2.5x faster).
+ */
+export function instance(h) {
+  const i = { e: h.e, c: h.c };
+  for (let k = 0; k < h.s.length; k++) i[`s${k}`] = h.s[k];
+  return i;
+}
+
+/** `Handle`: a fresh instance on top of `ctx`. */
 export function install(ctx, h) {
-  const i = { e: h.e, c: h.c, s: h.s.slice() };
-  return { h: { e: h.e, i, n: ctx.h }, c: ctx.c, t: ctx.t };
+  return { h: { e: h.e, i: instance(h), n: ctx.h }, c: ctx.c, t: ctx.t };
 }
 
 /** The innermost frame handling effect `e`, for performing its operation `op`. */
@@ -142,6 +151,23 @@ export function find(ctx, e, op) {
   if (f === null) throw internal(`no handler installed for ${e}`);
   if (traceFd !== null) trace(ctx.t, { effect: e, op: opNames.get(e)?.[op] ?? op });
   return f;
+}
+
+/**
+ * The current-task register (design §17.113): the task whose segment the driver is running.
+ * Task identity only; handlers are never found through it.
+ */
+export const T = { t: null };
+
+/**
+ * The slow path of a perform bound to its handler literal (design §17.113), taken when the
+ * current task is cancelled or tracing is on: the same cancellation point and trace record as
+ * `find`.
+ */
+export function bound(e, op) {
+  const t = T.t;
+  if (t.cancelled) throw CANCEL;
+  if (traceFd !== null) trace(t, { effect: e, op: opNames.get(e)?.[op] ?? op });
 }
 
 // Effect traces (design §17.80): with `SAKURA_TRACE=<path>`, one JSON line per performed
@@ -161,6 +187,11 @@ let traceFd = (() => {
 export function stopTracing() {
   traceFd = null;
 }
+/**
+ * Tracing was on at load: bound performs take `bound`, which checks `traceFd` again, so after
+ * `stopTracing` they only take the slow path and write nothing.
+ */
+export const TRACE = traceFd !== null;
 let traceSeq = 0;
 function trace(t, record) {
   const line = JSON.stringify({ seq: traceSeq++, task: t.id, ...record });
@@ -254,6 +285,8 @@ export function runTask(f, args = [], frames = null, t = newTask()) {
 function drive(t, start) {
   let step;
   G.d = 0;
+  const outer = T.t;
+  T.t = t;
   try {
     step = start();
     for (;;) {
@@ -278,6 +311,8 @@ function drive(t, start) {
     const d = err instanceof Defect ? err : asDefect(err);
     if (traceFd !== null) trace(t, { event: "defect", code: d.code });
     return { kind: "defect", code: d.code, message: d.detail, spans: d.spans, error: d };
+  } finally {
+    T.t = outer;
   }
 }
 

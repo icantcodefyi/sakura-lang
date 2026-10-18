@@ -11,7 +11,7 @@ import * as $std_instant from "../std/instant.js";
 import * as $std_log from "../std/log.js";
 import * as $std_random from "../std/random.js";
 import * as $std_test from "../std/test.js";
-const { G: $G, LIMIT: $L, bounce: $b, ret: $ret, S: $S } = $rt;
+const { G: $G, LIMIT: $L, bounce: $b, ret: $ret, S: $S, T: $T, TRACE: $tr } = $rt;
 
 export function test$0($ctx, $k) {
   if (++$G.d > $L) return $b(test$0, [$ctx, $k]);
@@ -22,7 +22,8 @@ export function test$0($ctx, $k) {
 
 export function answer($ctx, $k) {
   if (++$G.d > $L) return $b(answer, [$ctx, $k]);
-  const r = counter$d();
+  const next = counter$Counter_next;
+  const r = $rt.makeHandler("main::main::Counter", [0], [next]);
   const $ctx1 = $rt.install($ctx, r);
   const f = answer$1;
   return twice(f, $ctx1, $k);
@@ -30,18 +31,31 @@ export function answer($ctx, $k) {
 
 export function test$0$run(seed, $ctx, $k) {
   if (++$G.d > $L) return $b(test$0$run, [seed, $ctx, $k]);
-  const console_1 = $std_console.captured$d();
+  const print = $std_console.captured$Console_print;
+  const read_line = $std_console.captured$Console_read_line;
+  const console_1 = $rt.makeHandler("std::console::Console", [], [print, read_line]);
   const $ctx1 = $rt.install($ctx, console_1);
-  const log = $std_log.captured$d();
+  const event = $std_log.captured$Log_event;
+  const log = $rt.makeHandler("std::log::Log", [], [event]);
   const $ctx2 = $rt.install($ctx1, log);
   const epoch = $std_instant.from_unix_millis$d(0);
-  const clock = $std_clock.fixed$d(epoch);
+  const now = $std_clock.fixed$Clock_now.bind(null, epoch);
+  now.$d = $std_clock.fixed$Clock_now$d.bind(null, epoch);
+  const monotonic = $std_clock.fixed$Clock_monotonic;
+  const sleep = $std_clock.fixed$Clock_sleep;
+  const clock = $rt.makeHandler("std::clock::Clock", [], [now, monotonic, sleep]);
   const $ctx3 = $rt.install($ctx2, clock);
   const random = $std_random.seeded$d(seed);
   const $ctx4 = $rt.install($ctx3, random);
   const vars = $rt.map_empty();
-  const env = $std_env.of$d(vars);
-  const env_host = $std_env.host$d();
+  const get = $std_env.of$Env_get.bind(null, vars);
+  get.$d = $std_env.of$Env_get$d.bind(null, vars);
+  const secret = $std_env.of$Env_secret.bind(null, vars);
+  secret.$d = $std_env.of$Env_secret$d.bind(null, vars);
+  const env = $rt.makeHandler("std::env::Env", [], [get, secret]);
+  const get_1 = $std_env.host$Env_get;
+  const secret_1 = $std_env.host$Env_secret;
+  const env_host = $rt.makeHandler("std::env::Env", [], [get_1, secret_1]);
   const env_default = $rt.test_env(env_host, env);
   const $ctx5 = $rt.install($ctx4, env_default);
   return test$0($ctx5, $k);
@@ -58,10 +72,11 @@ export function counter($ctx, $k) {
 }
 counter.$d = counter$d;
 
-function answer$1($ctx, $k) {
+export function answer$1($ctx, $k) {
   if (++$G.d > $L) return $b(answer$1, [$ctx, $k]);
-  const $f0 = $rt.find($ctx, "main::main::Counter", 0);
-  return $f0.i.c[0]($f0.i, $rt.cctx($ctx, $f0), $k);
+  const $f0 = $rt.find($ctx, "main::main::Counter", 0), $cl0 = $f0.i.c[0];
+  if ($cl0.$d !== undefined) return $ret($k, $cl0.$d($f0.i));
+  return $cl0($f0.i, $rt.cctx($ctx, $f0), $k);
 }
 
 export function twice$d(f) {
@@ -84,17 +99,17 @@ export function twice(f, $ctx, $k) {
   });
 }
 
-function counter$Counter_next$d(inst) {
-  const n = inst.s[0];
+export function counter$Counter_next$d(inst) {
+  const n = inst.s0;
   const t = (n + 1);
   if (!Number.isSafeInteger(t)) $rt.add(n, 1);
-  inst.s[0] = t;
+  inst.s0 = t;
   const set = undefined;
-  const n_1 = inst.s[0];
+  const n_1 = inst.s0;
   return n_1;
 }
 
-function counter$Counter_next(inst, $ctx, $k) {
+export function counter$Counter_next(inst, $ctx, $k) {
   return $ret($k, counter$Counter_next$d(inst));
 }
 counter$Counter_next.$d = counter$Counter_next$d;

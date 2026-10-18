@@ -1,0 +1,48 @@
+// milestone: M3
+// covers: performance-r1 WS-P2; design §17.113 (a perform bound to its handler literal stays a
+// cancellation point and is traced); the loop of handler_cancel_in_loop inside the `with`
+
+error Stop
+
+effect Counter {
+  fn next() -> Int
+}
+
+fn counter() -> Handler<Counter> {
+  handler Counter {
+    var n = 0
+    fn next() {
+      n = n + 1
+      n
+    }
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  with Clock.virtual(), Task.deterministic(7) {
+    let outcome = try {
+      Task.all([
+        fn() {
+          with counter() {
+            var n = 0
+            for _ in 0..1_000_000 {
+              n = Counter.next()
+              if n == 1 {
+                Console.print("started")
+                Clock.sleep(Duration.millis(10))
+              }
+            }
+            Console.print("finished")
+            n
+          }
+        },
+        fn() {
+          Clock.sleep(Duration.millis(1))
+          fail Stop
+        },
+      ])
+    }
+    Console.print("{outcome}")
+    Console.print("joined")
+  }
+}
