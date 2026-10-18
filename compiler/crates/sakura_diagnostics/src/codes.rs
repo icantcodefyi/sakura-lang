@@ -73,7 +73,12 @@ Fixed:
 Use a smaller value, or `Decimal`/`Float` if you need the magnitude.";
 
     V0004 "invalid_character" LEX,
-"The source contains a character that cannot start any token. Remove it, or put it inside a string.";
+"The source contains a character that cannot start any token. Remove it, or put it inside a string.
+
+Wrong:
+    fn price() -> Int { 1 $ 2 }
+Fixed:
+    fn price() -> Int { 1 + 2 }";
 
     V0005 "invalid_escape" LEX,
 "A string contains an escape that is not one of `\\\\ \\\" \\n \\r \\t \\0 \\{ \\}` or
@@ -140,7 +145,14 @@ Fixed:
 
     // 1: resolve / modules
     V1001 "duplicate_definition" RESOLVE,
-"Two items in the same module and namespace have the same name (design §9). Rename or remove one.";
+"Two items in the same module and namespace have the same name (design §9). Rename or remove one;
+functions are not overloaded by parameter types.
+
+Wrong:
+    fn answer() -> Int { 41 }
+    fn answer() -> Int { 42 }
+Fixed:
+    fn answer() -> Int { 42 }";
 
     V1002 "unresolved_name" RESOLVE,
 "No value with this name is in scope. Check the spelling, add an `import`, or define it.
@@ -151,15 +163,33 @@ Fixed:
     fn main() -> Unit ! {Console} { let greeting = \"hi\"; Console.print(greeting) }";
 
     V1003 "unresolved_type" RESOLVE,
-"No type, effect, variant or error tag with this name is in scope. Check the spelling or import it.";
+"No type, effect, variant or error tag with this name is in scope. Check the spelling or import it
+(`import std/fs.{Dir}`); `compiler/std/INDEX.md` lists what each std module exports.
+
+Wrong:
+    fn shout(s: Strng) -> Int { 1 }
+Fixed:
+    fn shout(s: String) -> Int { 1 }";
 
     V1004 "name_case_mismatch" RESOLVE,
 "Values are `lower_snake` identifiers and types, variants, error tags and effects are `UpperCamel`
-(design §2.1). A name was used in the wrong namespace for its case.";
+(design §2.1). A name was used in the wrong namespace for its case: std modules are reached
+through their `UpperCamel` namespace (`List.len`, `String.trim`), not the module path.
+
+Wrong:
+    fn count() -> Int { list.len([1, 2]) }
+Fixed:
+    fn count() -> Int { List.len([1, 2]) }";
 
     V1005 "unresolved_module" RESOLVE,
 "An `import` names a module that does not exist in the snapshot, std, or the declared
-dependencies. The first path segment is a package name (`std`, this package, or a dependency).";
+dependencies. The first path segment is a package name (`std`, this package, or a dependency);
+`compiler/std/INDEX.md` lists std's modules, and a dependency must be declared in `sakura.toml`.
+
+Wrong:
+    import std/nope
+Fixed:
+    import std/json";
 
     V1006 "private_item" RESOLVE,
 "The item exists but this module cannot use it: it is not `pub`, or it is a constructor or field
@@ -195,15 +225,34 @@ Fixed:
 
     V1011 "missing_body" RESOLVE,
 "A function has no body. Only `@external` and `@llm` declarations may omit it (design §11.1,
-§13.6).";
+§13.6). Write the body, or leave a typed hole (`{ ?todo }`) that `sakura check` accepts and
+reports with its expected type.
+
+Wrong:
+    fn answer() -> Int
+Fixed:
+    fn answer() -> Int { 42 }";
 
     V1012 "mixed_union_alternatives" RESOLVE,
 "`type X = A | B` must be either all existing error tags (an error-union alias) or all new
-variants. Mixing the two is ambiguous (design §3.2).";
+variants. Mixing the two is ambiguous (design §3.2). Rename the new variant so it does not reuse
+an error tag's name, or declare the missing name as an `error` too.
+
+Wrong:
+    error Timeout
+    type Outcome = Timeout | Done
+Fixed:
+    error Timeout
+    type Outcome = Expired | Done";
 
     V1020 "recursive_lambda" RESOLVE,
 "Local lambdas cannot refer to themselves. Lift the function to the top level, where functions
-may be mutually recursive.";
+may be mutually recursive.
+
+Wrong:
+    let fact = fn(n) { if n == 0 { 1 } else { n * fact(n - 1) } }
+Fixed:
+    fn fact(n: Int) -> Int { if n == 0 { 1 } else { n * fact(n - 1) } }";
 
     V1030 "import_cycle" RESOLVE,
 "Modules import each other in a cycle; v0 forbids import cycles (design §9). Move the shared
@@ -220,7 +269,14 @@ Fixed:
     n = n + 1";
 
     V1041 "jump_outside_loop" RESOLVE,
-"`break` or `continue` appears outside a `for` or `while` loop (or crosses a function boundary).";
+"`break` or `continue` appears outside a `for` or `while` loop (or crosses a function boundary:
+a `break` inside a lambda cannot leave the loop around the lambda). Return a value instead, or
+move the jump into the loop body.
+
+Wrong:
+    fn stop() -> Int { break; 1 }
+Fixed:
+    fn stop() -> Int { for _ in 0..10 { break }; 1 }";
 
     // 2: types
     V2001 "type_mismatch" TYPE,
@@ -234,18 +290,46 @@ Fixed:
 
     V2002 "arity_mismatch" TYPE,
 "A function was called with the wrong number of arguments, or a pattern has the wrong number of
-fields.";
+fields. The diagnostic's `expected` and `actual` carry both counts; arguments are positional, with
+no defaults (pass a record when a call needs options).
+
+Wrong:
+    fn double(x: Int) -> Int { x * 2 }
+    fn four() -> Int { double(2, 2) }
+Fixed:
+    fn four() -> Int { double(2) }";
 
     V2003 "not_callable" TYPE,
-"The callee of a call expression is not a function.";
+"The callee of a call expression is not a function: a value of another type is followed by
+`(…)`. Check that the name refers to the function you meant (a local can shadow it), or remove
+the call.
+
+Wrong:
+    let x = 1
+    x(2)
+Fixed:
+    let x = fn(n: Int) { n + 1 }
+    x(2)";
 
     V2004 "unknown_field" TYPE,
 "The record type has no field with this name, or a record literal is missing required fields or
-names an extra one.";
+names an extra one. Check the type's declaration for the field names; a record literal must list
+every field (or start from another value with `{ ..r, field: v }`).
+
+Wrong:
+    type Point = { x: Int, y: Int }
+    fn depth(p: Point) -> Int { p.z }
+Fixed:
+    fn depth(p: Point) -> Int { p.y }";
 
     V2005 "infinite_type" TYPE,
 "Inference would need a type that contains itself (the occurs check failed). Usually a function
-was applied to itself or a value was put inside its own list; add an annotation to find where.";
+was applied to itself or a value was put inside its own list; add an annotation to find where.
+
+Wrong:
+    let _ = fn(x) { x(x) }
+Fixed:
+    let _ = fn(x: Int) { x }";
 
     V2010 "cannot_infer_type" TYPE,
 "The type of an empty collection literal (or another binding) cannot be inferred from its uses.
@@ -357,7 +441,16 @@ Fixed:
 
     V3002 "effect_label_not_permitted" EFFECT,
 "A closed effect row was required to be empty or smaller, but an effect label had to be in it
-(row unification `{A | r} ~ {}` failed, design §5.2).";
+(row unification `{A | r} ~ {}` failed, design §5.2). The usual cause is passing an effectful
+function where a parameter's type is a pure `fn() -> T`. Make the parameter's row a variable so
+the callee carries the argument's effects through, or handle the effect before passing the
+function.
+
+Wrong:
+    fn apply(f: fn() -> Int) -> Int { f() }
+    fn noisy() -> Int ! {Console} { apply(loud_one) }
+Fixed:
+    fn apply<e>(f: fn() -> Int ! e) -> Int ! e { f() }";
 
     V3003 "try_unknown_failures" EFFECT,
 "`try` without `catch` must name every failure of its body in `Result<T, E>`. When the body's
@@ -372,19 +465,47 @@ Fixed:
     fn wrap<E, e>(f: fn() -> Int ! {Fail<E> | e}) -> Result<Int, E> ! e { try { f() } }";
 
     V3010 "invalid_operation_row" EFFECT,
-"An effect operation's row may contain only `Fail<…>` in v0 (design §5.5).";
+"An effect operation's row may contain only `Fail<…>` in v0 (design §5.5). An operation states
+how it can fail; which other effects run is the handler's business, and the handler's own row
+carries them.
+
+Wrong:
+    effect Store { fn save(key: String) -> Unit ! {Console} }
+Fixed:
+    error Full
+    effect Store { fn save(key: String) -> Unit ! {Fail<Full>} }";
 
     V3011 "handler_clause_mismatch" EFFECT,
 "A `handler` must provide exactly one clause per operation of its effect, with matching
-parameter counts (design §5.5). Add the missing clause or remove the extra one.";
+parameter counts (design §5.5). Add the missing clause or remove the extra one.
+
+Wrong:
+    effect Pair { fn left() -> Int; fn right() -> Int }
+    fn only_left() -> Handler<Pair> { handler Pair { fn left() { 1 } } }
+Fixed:
+    fn both() -> Handler<Pair> { handler Pair { fn left() { 1 }; fn right() { 2 } } }";
 
     V3012 "with_non_handler" EFFECT,
-"`with` was given something that is not a `Handler<E, r>` value.";
+"`with` was given something that is not a `Handler<E, r>` value. Pass a `handler E { … }`
+expression or a function that returns one (std's handlers such as `Fs.rooted(dir)` and
+`Log.captured()`); to compute a value without handling an effect, drop the `with`.
+
+Wrong:
+    fn five() -> Int { with 5 { 1 } }
+Fixed:
+    fn five() -> Int { 5 }";
 
     V3020 "test_unhandled_effect" EFFECT,
 "Tests run under deterministic default handlers for `Clock`, `Random`, `Env`, `Console` and
 `Log` (design §5.8). Any other effect used in a test must be handled inside the test with
-`with`, usually by a fake handler from std.";
+`with`, usually by a fake handler from std or one the test module declares.
+
+Wrong:
+    effect Db { fn count() -> Int }
+    test \"counts rows\" { expect_eq(Db.count(), 0) }
+Fixed:
+    fn empty_db() -> Handler<Db> { handler Db { fn count() { 0 } } }
+    test \"counts rows\" { with empty_db() { expect_eq(Db.count(), 0) } }";
 
     // 4: patterns
     V4001 "non_exhaustive_match" PATTERN,
@@ -406,13 +527,27 @@ Fixed:
     match o { Some(n) => n, _ => 0 }";
 
     V4003 "or_pattern_bindings" PATTERN,
-"All alternatives of an or-pattern must bind the same names with the same types (design §3.2).";
+"All alternatives of an or-pattern must bind the same names with the same types (design §3.2).
+Bind the name in every alternative, replace it with `_`, or split the alternatives into arms.
+
+Wrong:
+    (x, 0) | (0, _) => 1
+Fixed:
+    (_, 0) | (0, _) => 1";
 
     // 5: contracts / refinements
     V5001 "impure_contract" CONTRACT,
 "Predicates in `where`, `requires`, `ensures` and `property` bodies must be pure, terminating and
 deterministic: no loops, no recursion, and calls only to `@total` functions in the contract
-subset (design §7.1).";
+subset (design §7.1). Move effects out of the predicate and mark the helper it calls `@total`.
+
+Wrong:
+    fn noisy_positive(x: Int) -> Bool ! {Console} { Console.print(\"checking\"); x > 0 }
+    fn halve(x: Int) -> Int ! {Console} requires noisy_positive(x) { x / 2 }
+Fixed:
+    @total
+    fn positive(x: Int) -> Bool { x > 0 }
+    fn halve(x: Int) -> Int requires positive(x) { x / 2 }";
 
     V5002 "refinement_checked_at_runtime" CONTRACT,
 "Retired (design §17.87, §12.3): never reported. It warned that a literal into a refined type
@@ -524,7 +659,14 @@ Fixed:
 
     V6010 "non_std_effect_in_main" CAPABILITY,
 "`main`'s effect row may contain only std effects, because only they have host root handlers
-(design §9). Handle user effects inside `main` with `with`.";
+(design §9). Handle user effects inside `main` with `with`.
+
+Wrong:
+    pub fn main() -> Unit ! {Db} { let _ = Db.count() }
+Fixed:
+    pub fn main() -> Unit ! {Console} {
+      with empty_db() { Console.print(\"{Db.count()} rows\") }
+    }";
 
     // 7: tests / verification (none yet)
 
@@ -570,15 +712,34 @@ placeholder: the plan named `V8002`, which §17.131 gave to `reserved_package_na
 and the output of `sakura --version`.";
 
     V9002 "phase_unavailable" INTERNAL,
-"A compiler phase needed by this command is not implemented yet in this pre-alpha build.";
+"A compiler phase needed by this command is not implemented yet in this pre-alpha build. The
+message names the missing piece (a backend feature, a `@contract_test` handler other than
+`Effect.constructor()`, …). Rewrite the program to avoid it, use another command or target
+(`sakura check` runs every front-end phase), or report it if the feature is documented as
+available.";
 
     // Warnings
     W1002 "shadowed_import" RESOLVE,
-"A local binding shadows an imported name. This is allowed but often a mistake; rename one.";
+"A local binding shadows an imported name. This is allowed but often a mistake; rename one.
+
+Warning:
+    import std/retry.{retry}
+    let retry = 3
+Fixed:
+    let max_attempts = 3";
 
     W4010 "catch_all_on_open_union" PATTERN,
 "A `catch` uses `_ => …` on an error union that may grow. New error tags would be silently
-swallowed; list the tags instead (design §5.3).";
+swallowed; list the tags instead (design §5.3).
+
+Warning:
+    fn or_default<T, E>(body: fn() -> T ! {Fail<E>}, default: T) -> T {
+      try { body() } catch { _ => default }
+    }
+Fixed:
+    fn or_default<T>(body: fn() -> T ! {Fail<Refused | Timeout>}, default: T) -> T {
+      try { body() } catch { Timeout => default, Refused => default }
+    }";
 
     W5005 "linear_contract_on_hot_path" CONTRACT,
 "A `requires`, `ensures`, `where` or `property requires` clause calls `List.all`, `List.any`,
@@ -631,7 +792,9 @@ Fixed:
 
     W8001 "copy_on_write" PACKAGE,
 "An update to a shared collection is forced to copy inside a loop because another reference
-retains the old value (design §8.2). Drop the retaining use or restructure the loop.";
+retains the old value (design §8.2). Drop the retaining use or restructure the loop. The code is
+registered ahead of its check, which comes with the native backend's reuse analysis (M5); no
+command reports it yet.";
 
     // Runtime defects
     D001 "int_overflow" RUNTIME,
@@ -646,33 +809,45 @@ effect row and cannot be caught by `try`.";
 computing a silently wrong value (design §4.1).";
 
     D004 "float_not_finite" RUNTIME,
-"`Float.round` or a float-to-int conversion was given NaN or ±∞.";
+"`Float.round` or a float-to-int conversion was given NaN or ±∞. Check the value before
+converting it; NaN and infinities come from dividing by zero or from overflowing arithmetic on
+`Float`.";
 
     D010 "refinement_violated" RUNTIME,
 "A checked introduction such as `Email.from(s)` received a value that fails the refinement.
 Use `validate` (which returns a typed error) at untrusted boundaries.";
 
     D011 "contract_evaluation_failed" RUNTIME,
-"Evaluating a contract predicate itself defected (for example it overflowed).";
+"Evaluating a contract predicate itself defected (for example it overflowed). Make the predicate
+total over every input it can see: compare before multiplying, or bound the operands in the
+parameter's refined type.";
 
     D020 "precondition_violated" RUNTIME,
-"A `requires` clause failed on entry. The caller is blamed: the span is the call site.";
+"A `requires` clause failed on entry. The caller is blamed: the span is the call site. Check
+the condition before the call, or give the argument a refined type whose predicate implies the
+clause so the check happens where the value is made.";
 
     D021 "postcondition_violated" RUNTIME,
-"An `ensures` clause failed on normal return. The callee is blamed.";
+"An `ensures` clause failed on normal return. The callee is blamed: fix the function body, or
+weaken the clause if it promises more than the function can deliver. `sakura test --contracts`
+and `sakura verify` look for such inputs before the program runs.";
 
     D030 "option_expect_none" RUNTIME,
-"`Option.expect` was called on `None`.";
+"`Option.expect` was called on `None`. Use `expect` only where `None` is a bug; otherwise match
+on the option or use `Option.unwrap_or(o, default)`.";
 
     D031 "string_slice_not_char_boundary" RUNTIME,
-"`String.slice` was given a byte offset that is not on a UTF-8 character boundary.";
+"`String.slice` was given a byte offset that is not on a UTF-8 character boundary. Offsets are
+bytes, not characters: derive them from the string itself rather than from a character count.";
 
     D090 "runtime_internal_error" RUNTIME,
 "The runtime hit a bug or an exhausted host resource (for example a JS exception that is not a
 Sakura Lang defect). Never your program's fault; please report it.";
 
     D091 "host_failure" RUNTIME,
-"A host operation failed outside Sakura Lang's control (for example a rejected host promise).";
+"A host operation failed outside Sakura Lang's control (for example a rejected host promise).
+The defect carries the host's message; check the host environment (the Node version, file
+permissions, the network) and report it if the program and host look correct.";
 
     D092 "rc_overflow" RUNTIME,
 "On the WASM runtime, an object's reference count would pass 2^32 − 1. The count is left
