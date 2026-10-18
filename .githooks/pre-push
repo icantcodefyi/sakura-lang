@@ -11,7 +11,11 @@ while read -r _local_ref local_sha _remote_ref _remote_sha; do
   # keeps dependency builds cached, and cargo's lock on it serializes concurrent checks.
   src=$(mktemp -d "${TMPDIR:-/tmp}/sakura-pre-push.XXXXXX")
   trap 'rm -rf "$src"' EXIT
-  git archive "$local_sha" compiler docs | tar -x -C "$src"
+  # The CLI embeds docs/llms.txt and the skills/sakura bundle (design §17.142).
+  paths="compiler docs"
+  git cat-file -e "$local_sha:skills" 2>/dev/null && paths="$paths skills"
+  # shellcheck disable=SC2086
+  git archive "$local_sha" $paths | tar -x -C "$src"
   cd "$src/compiler"
   if ! cargo metadata --locked --offline --format-version 1 >/dev/null 2>&1; then
     echo "pre-push: compiler/Cargo.lock in $local_sha does not match its Cargo.toml files." >&2
