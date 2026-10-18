@@ -169,12 +169,15 @@ fn calls_catches() -> Int { catches() + 1 }
 fn keeps(xs: List<fn(Int) -> Int>) -> Int {
   match xs[0] { Some(f) => f(1), None => 0 }
 }
+// `1 + ping(…)` is not a tail call: a tail cycle would be merged into one loop (§17.160 (5)).
 fn ping(n: Int, f: fn(Int) -> Int) -> Int { if n == 0 { f(0) } else { pong(n - 1, f) } }
-fn pong(n: Int, f: fn(Int) -> Int) -> Int { ping(n, f) }
+fn pong(n: Int, f: fn(Int) -> Int) -> Int { 1 + ping(n, f) }
+fn even2(n: Int) -> Bool { if n == 0 { true } else { odd2(n - 1) } }
+fn odd2(n: Int) -> Bool { if n == 0 { false } else { even2(n - 1) } }
 pub fn main() -> Unit ! {Console} {
   let t = with counter() { ticks() }
   let total = t + fib(10) + uses_twice(1) + bound() + unknown(counter()) + calls_catches()
-    + keeps([fn(x) { x }]) + ping(2, fn(x) { x })
+    + keeps([fn(x) { x }]) + ping(2, fn(x) { x }) + (if even2(4) { 1 } else { 0 })
   Console.print("{total}")
   calls_prints()
 }
@@ -194,6 +197,9 @@ fn each_reason_is_reported() {
     assert_eq!(verdict("twice"), "direct");
     assert_eq!(verdict("uses_twice"), "direct");
     assert_eq!(verdict("bound"), "direct");
+    // A tail cycle is one loop per member (§17.160 (5)): no component, so direct.
+    assert_eq!(verdict("even2"), "direct");
+    assert_eq!(verdict("odd2"), "direct");
     // Negative cases, one per reason.
     assert_eq!(verdict("prints"), "cps(row)");
     assert_eq!(verdict("calls_prints"), "cps(row)");

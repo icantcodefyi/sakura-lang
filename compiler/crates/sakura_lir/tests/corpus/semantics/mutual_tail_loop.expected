@@ -1,0 +1,12 @@
+ending: ok
+--- stdout
+true true false
+1999999 8 10
+10000 7
+ping 2
+pong 1
+done
+pong 2
+ping 1
+done
+x

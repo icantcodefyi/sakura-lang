@@ -77,7 +77,9 @@ semantics/loop_resume_edges: 20 funcs, 111 blocks, 0 dup, 51 drop, valid
 semantics/loop_resume_twice: 15 funcs, 50 blocks, 0 dup, 39 drop, valid
 semantics/loops: 4 funcs, 53 blocks, 10 dup, 29 drop, valid
 semantics/million_operations: 5 funcs, 13 blocks, 0 dup, 2 drop, valid
-semantics/mutual_recursion: 4 funcs, 15 blocks, 0 dup, 9 drop, valid
+semantics/mutual_recursion: 4 funcs, 21 blocks, 0 dup, 9 drop, valid
+semantics/mutual_tail_blame: 4 funcs, 19 blocks, 0 dup, 6 drop, valid
+semantics/mutual_tail_loop: 13 funcs, 112 blocks, 0 dup, 41 drop, valid
 semantics/newline_rule: 9 funcs, 43 blocks, 10 dup, 37 drop, valid
 semantics/owned_captured_and_stored: 8 funcs, 41 blocks, 10 dup, 54 drop, valid
 semantics/owned_effects: 11 funcs, 92 blocks, 14 dup, 68 drop, valid

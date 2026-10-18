@@ -114,6 +114,64 @@ pub fn main() -> Unit ! {Console} { Console.print("{sum_to(10000000, 0)} {fib(20
     );
 }
 
+/// Design §17.160 (5) (WS-P9): tail calls around a cycle of defs become jumps into one loop in
+/// each member, up to four; non-tail calls, a generic cycle and a cycle of five defs stay calls.
+#[test]
+fn mutual_tail_calls_share_one_loop() {
+    let src = r#"
+fn is_even(n: Int) -> Bool { if n == 0 { true } else { is_odd(n - 1) } }
+fn is_odd(n: Int) -> Bool { if n == 0 { false } else { is_even(n - 1) } }
+fn count_even(n: Int) -> Int { if n == 0 { 0 } else { 1 + count_odd(n - 1) } }
+fn count_odd(n: Int) -> Int { if n == 0 { 0 } else { 1 + count_even(n - 1) } }
+fn left<T>(n: Int, x: T) -> T { if n == 0 { x } else { right(n - 1, x) } }
+fn right<T>(n: Int, x: T) -> T { if n == 0 { x } else { left(n - 1, x) } }
+fn s1(n: Int) -> Int { if n == 0 { 1 } else { s2(n - 1) } }
+fn s2(n: Int) -> Int { if n == 0 { 2 } else { s3(n - 1) } }
+fn s3(n: Int) -> Int { if n == 0 { 3 } else { s4(n - 1) } }
+fn s4(n: Int) -> Int { if n == 0 { 4 } else { s5(n - 1) } }
+fn s5(n: Int) -> Int { if n == 0 { 5 } else { s1(n - 1) } }
+fn t1(n: Int) -> Int { if n == 0 { 1 } else { t2(n - 1) } }
+fn t2(n: Int) -> Int { if n == 0 { 2 } else { t3(n - 1) } }
+fn t3(n: Int) -> Int { if n == 0 { 3 } else { t4(n - 1) } }
+fn t4(n: Int) -> Int { if n == 0 { 4 } else { t1(n - 1) } }
+pub fn main() -> Unit ! {Console} {
+  Console.print("{is_even(1000000)} {count_even(1001)} {left(100001, 1)} {s1(1000002)} {t1(1000002)}")
+}
+"#;
+    let r = common::run("mutual_tail", src).unwrap();
+    assert_eq!(
+        (r.stdout.as_str(), r.code),
+        ("true 1001 1 3 3\n", 0),
+        "{}",
+        r.stderr
+    );
+    let (m, sources) = common::build("mutual_tail", src, false).unwrap();
+    let core = m.to_string();
+    let def = |name: &str| {
+        let d = &core[core.find(&format!("fn {name}#")).unwrap()..];
+        d[..d.find("\n}\n").unwrap()].to_owned()
+    };
+    assert!(!def("is_even").contains("call"), "{}", def("is_even"));
+    assert!(
+        def("count_even").contains("call @count_odd"),
+        "{}",
+        def("count_even")
+    );
+    assert!(def("left").contains("call @right"), "{}", def("left"));
+    assert!(def("s1").contains("call @s2"), "{}", def("s1"));
+    // Four defs is the most one loop takes.
+    assert!(!def("t1").contains("call"), "{}", def("t1"));
+    let js = sakura_codegen_js::emit(&m, &sakura_codegen_js::Options::new(sources))
+        .into_iter()
+        .find(|f| f.path == "main/main.js")
+        .unwrap()
+        .text;
+    let even = &js[js
+        .find("function is_even$d")
+        .expect("is_even is direct-style")..];
+    insta::assert_snapshot!(&even[..even.find("\n}\n").unwrap()]);
+}
+
 /// A one-use reference-valued temporary in direct code is inlined into its consumer, so the frame
 /// does not keep a discarded tree reachable (research/10-evidence/binary-trees-rss.md). A
 /// temporary read twice stays a local; a contracted consumer takes its blame site as an

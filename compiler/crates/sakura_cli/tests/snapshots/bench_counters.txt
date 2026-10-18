@@ -8,8 +8,8 @@ contracts_plain n=1000
   direct: frames 1121, boxes 1070, dups 2110, drops 4185
   all-frame: frames 2122, boxes 1070, dups 2110, drops 4185
 countdown n=1000
-  direct: frames 1006, boxes 0, dups 2, drops 6
-  all-frame: frames 1007, boxes 0, dups 2, drops 6
+  direct: frames 4, boxes 0, dups 2, drops 6
+  all-frame: frames 7, boxes 0, dups 2, drops 6
 deltablue n=100
   direct: frames 7921, boxes 85182, dups 277706, drops 269773
   all-frame: frames 156941, boxes 85182, dups 277706, drops 269773

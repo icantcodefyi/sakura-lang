@@ -1,0 +1,100 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 shape |  32b (word*, word*)
+layout 3 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::mutual_tail_blame, frame 6 slots [%2 i64, %7 i64, %8 word*, %11 bool, %15 i64, %17 bool]
+  b0():
+    %0 lit: i64 = const 1000000
+    %1 $site: i64 = const 2
+    call down#2(%0, %1) -> b1()
+  b1(%2 r: i64):
+    %3 s: ptr = show %2
+    %4 lit: ptr = const str 0
+    %5 s: ptr = concat %3, %4
+    drop %3
+    drop %4
+    %6 lit: i64 = const 3
+    call up#3(%6) -> b2(%5)
+  b2(%7 r: i64, %8 s: ptr):
+    %9 s: ptr = show %7
+    %10 s: ptr = concat %8, %9
+    drop %8
+    drop %9
+    perform std::console::Console.print(%10) -> b3()
+  b3(%11 r: unit):
+    %12 box: word = box %11
+    drop %12
+    %13 lit: i64 = const 5
+    %14 $site: i64 = const 3
+    call down#2(%13, %14) -> b4()
+  b4(%15 r: i64):
+    %16 s: ptr = show %15
+    perform std::console::Console.print(%16) -> b5()
+  b5(%17 r: unit):
+    %18 box: word = box %17
+    %19 unbox: unit = unbox %18
+    drop %18
+    ret %19
+
+fn $entry#1 top -> unit ; main::mutual_tail_blame, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn down#2 top -> i64 ; main::mutual_tail_blame, frame 2 slots [%0 i64, %1 i64]
+  b0(%0 n: i64, %1 $site: i64):
+    jump b1(%0, %1)
+  b1(%2 n: i64, %3 $site: i64):
+    %16 enter: unit = $contract_enter()
+    %17 lit: i64 = const 0
+    %18 t: bool = ge.int %2, %17
+    %19 exit: unit = $contract_exit()
+    check D020 %18 blame %3+0 ; nonneg
+    %20 pre: unit = const ()
+    %21 lit: i64 = const 0
+    %22 t: bool = eq.int %2, %21
+    if %22 then b5(%2, %3) else b6(%2, %3)
+  b2(%4 n: i64, %5 $site: i64):
+    %6 lit: i64 = const 0
+    %7 t: bool = eq.int %4, %6
+    if %7 then b3(%4, %5) else b4(%4, %5)
+  b3(%8 n: i64, %9 $site: i64):
+    %12 lit: i64 = const 0
+    ret %12
+  b4(%10 n: i64, %11 $site: i64):
+    %13 lit: i64 = const 2
+    %14 t: i64 = intsub %10, %13
+    %15 $site: i64 = const 4
+    jump b1(%14, %15)
+  b5(%23 n: i64, %24 $site: i64):
+    %27 lit: i64 = const 0
+    ret %27
+  b6(%25 n: i64, %26 $site: i64):
+    %28 lit: i64 = const 1
+    %29 t: i64 = intsub %25, %28
+    jump b2(%29, %26)
+
+fn up#3 top -> i64 ; main::mutual_tail_blame, frame 2 slots [%0 i64, %9 i64]
+  b0(%0 n: i64):
+    %1 lit: i64 = const 0
+    %2 t: bool = eq.int %0, %1
+    if %2 then b1(%0) else b2(%0)
+  b1(%3 n: i64):
+    %5 lit: i64 = const 0
+    ret %5
+  b2(%4 n: i64):
+    %6 lit: i64 = const 2
+    %7 t: i64 = intsub %4, %6
+    %8 $site: i64 = const 4
+    call down#2(%7, %8) -> b3()
+  b3(%9 r: i64):
+    ret %9

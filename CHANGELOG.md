@@ -141,6 +141,13 @@ published yet.
   to avoid repeated full-guide input costs. The first paid DX5 pilot now has a
   public report; no additional episodes are authorized.
 
+- Tail calls around a cycle of up to four monomorphic functions without contract checks
+  (`is_even`/`is_odd`, a state machine) run as one loop on both backends instead of through
+  continuation frames, so they need constant stack: each function of the cycle carries a copy
+  of the others (design §17.160 (5), WS-P9). Output, effect order, defect messages and blame
+  sites are unchanged. A generic member, or one that checks a contract, is not copied (a
+  contracted function still runs the others in its own loop); non-tail calls stay calls.
+
 - A `requires` violated inside a self-tail-recursive function now blames the self call
   (`down2(n - 2)`) instead of the outer call that entered the loop. Contracted functions
   take their blame site as a trailing parameter on the JS backend, and predicates that

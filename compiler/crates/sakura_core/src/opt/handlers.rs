@@ -57,7 +57,7 @@ fn is_constructor(d: &FnDef) -> bool {
     matches!((e, last), (Expr::Ret(Atom::Local(r)), Some((l, Bind::MakeHandler { .. }))) if *r == l)
 }
 
-fn mentions_var(ty: &Ty) -> bool {
+pub(crate) fn mentions_var(ty: &Ty) -> bool {
     match ty {
         Ty::Var(_) => true,
         Ty::Tuple(ts) => ts.iter().any(mentions_var),

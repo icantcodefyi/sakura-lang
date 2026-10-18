@@ -108,6 +108,38 @@ pub fn main() -> Unit ! {Console} {
     }
 }
 
+/// Design §17.160 (5): when `up` is copied into `down`'s loop, the call of `down` in `up` binds
+/// the site, so the violating iteration blames it under both ABIs, as the call did.
+#[test]
+fn requires_in_a_mutual_tail_loop_blames_the_member_call() {
+    let src = r#"fn down(n: Int) -> Int
+  requires nonneg: n >= 0
+{ if n == 0 { 0 } else { up(n - 1) } }
+fn up(n: Int) -> Int { if n == 0 { 0 } else { down(n - 2) } }
+pub fn main() -> Unit ! {Console} {
+  Console.print("{down(4)} {up(3)}")
+  Console.print("{down(5)}")
+}
+"#;
+    for direct in [true, false] {
+        let r = run_abi("mutual_tail_blame", src, direct);
+        assert_eq!((r.stdout.as_str(), r.code), ("0 0\n", 70), "{}", r.stderr);
+        let d = defect_record(&r.stderr);
+        assert_eq!(d["code"], "D020", "{d}");
+        assert_eq!(
+            d["message"], "precondition `nonneg` of down violated",
+            "{d}"
+        );
+        let span = |k: usize, end: &str| {
+            let at = |s: &str| d["spans"][k][s].as_u64().unwrap() as usize;
+            &src[at("start_byte")..at(end)]
+        };
+        assert_eq!(d["spans"][0]["role"], "primary", "{d}");
+        assert_eq!(span(0, "end_byte"), "down(n - 2)", "{d}");
+        assert_eq!(span(1, "end_byte"), "n >= 0", "{d}");
+    }
+}
+
 /// Design §17.115: the `D011` bracket is elided around a predicate that cannot defect, and
 /// kept (with its `D011`) around one that can: an unproved checked `+` or a user call.
 #[test]

@@ -51,32 +51,54 @@ fn $entry#1 top -> unit ; main::mutual_recursion, frame 1 slots [%1 bool]
     handle_pop
     ret %1
 
-fn is_even#2 top -> bool ; main::mutual_recursion, frame 2 slots [%0 i64, %8 bool]
+fn is_even#2 top -> bool ; main::mutual_recursion, frame 1 slots [%0 i64]
   b0(%0 n: i64):
-    %1 lit: i64 = const 0
-    %2 t: bool = eq.int %0, %1
-    if %2 then b1(%0) else b2(%0)
-  b1(%3 n: i64):
-    %5 lit: bool = const true
-    ret %5
-  b2(%4 n: i64):
-    %6 lit: i64 = const 1
-    %7 t: i64 = intsub %4, %6
-    call is_odd#3(%7) -> b3()
-  b3(%8 r: bool):
-    ret %8
+    jump b1(%0)
+  b1(%1 n: i64):
+    %10 lit: i64 = const 0
+    %11 t: bool = eq.int %1, %10
+    if %11 then b5(%1) else b6(%1)
+  b2(%2 n: i64):
+    %3 lit: i64 = const 0
+    %4 t: bool = eq.int %2, %3
+    if %4 then b3(%2) else b4(%2)
+  b3(%5 n: i64):
+    %7 lit: bool = const false
+    ret %7
+  b4(%6 n: i64):
+    %8 lit: i64 = const 1
+    %9 t: i64 = intsub %6, %8
+    jump b1(%9)
+  b5(%12 n: i64):
+    %14 lit: bool = const true
+    ret %14
+  b6(%13 n: i64):
+    %15 lit: i64 = const 1
+    %16 t: i64 = intsub %13, %15
+    jump b2(%16)
 
-fn is_odd#3 top -> bool ; main::mutual_recursion, frame 2 slots [%0 i64, %8 bool]
+fn is_odd#3 top -> bool ; main::mutual_recursion, frame 1 slots [%0 i64]
   b0(%0 n: i64):
-    %1 lit: i64 = const 0
-    %2 t: bool = eq.int %0, %1
-    if %2 then b1(%0) else b2(%0)
-  b1(%3 n: i64):
-    %5 lit: bool = const false
-    ret %5
-  b2(%4 n: i64):
-    %6 lit: i64 = const 1
-    %7 t: i64 = intsub %4, %6
-    call is_even#2(%7) -> b3()
-  b3(%8 r: bool):
-    ret %8
+    jump b1(%0)
+  b1(%1 n: i64):
+    %10 lit: i64 = const 0
+    %11 t: bool = eq.int %1, %10
+    if %11 then b5(%1) else b6(%1)
+  b2(%2 n: i64):
+    %3 lit: i64 = const 0
+    %4 t: bool = eq.int %2, %3
+    if %4 then b3(%2) else b4(%2)
+  b3(%5 n: i64):
+    %7 lit: bool = const true
+    ret %7
+  b4(%6 n: i64):
+    %8 lit: i64 = const 1
+    %9 t: i64 = intsub %6, %8
+    jump b1(%9)
+  b5(%12 n: i64):
+    %14 lit: bool = const false
+    ret %14
+  b6(%13 n: i64):
+    %15 lit: i64 = const 1
+    %16 t: i64 = intsub %13, %15
+    jump b2(%16)

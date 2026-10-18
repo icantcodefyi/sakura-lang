@@ -1,0 +1,15 @@
+// milestone: M4
+// expect-exit: 70
+// expect-defect: D020
+// covers: performance-r1 WS-P9; design §17.160 (5), §17.115 (a member's call of a contracted def is blamed)
+
+fn down(n: Int) -> Int
+  requires nonneg: n >= 0
+{ if n == 0 { 0 } else { up(n - 1) } }
+
+fn up(n: Int) -> Int { if n == 0 { 0 } else { down(n - 2) } }
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("{down(1_000_000)} {up(3)}")
+  Console.print("{down(5)}")
+}
