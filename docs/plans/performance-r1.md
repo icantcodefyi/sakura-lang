@@ -175,6 +175,12 @@ to stdout by a benchmark program.
   table embedded in the baseline of the reference machine (ratios only). Uploads the JSON as an
   artefact. Blocks only per §17.110 (confirmed > 10% and ≥ 0.1 ms, or an immediate-failure
   condition). The semantics fixtures gate separately in `ci.yml` as today.
+- Peak RSS (§17.136, amending §17.110): on Node a maximum rise above 25% in a cell is confirmed
+  by one automatic second group of five processes of that cell in the same job and blocks only
+  when both groups cross; a single crossing is a warning annotation with the `rss` diagnostic
+  rows. On Bun the crossing warns and never blocks until Astra's unchanged-commit noise study
+  shows the confirmed rule would have produced no false block there. A local `bench compare`
+  applies the same rules; nobody reruns until green, and every group's samples are retained.
 - Job `nightly`: `workflow_dispatch` and a schedule, `macos-latest`, `bench run --suite all`
   with the pinned toolchains installed; a missing toolchain fails this job.
 - No job commits results. Baselines are blessed by hand from the reference machine.
