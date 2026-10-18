@@ -1,5 +1,5 @@
 // milestone: M3
-// covers: Defect
+// covers: performance-r1 WS-P8; design §17.151 (fused reads in range, Option used twice)
 // spec: §17.151
 
 // `opt` fuses a `get` whose `Option` only feeds the next `expect` into one checked read

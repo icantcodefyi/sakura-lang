@@ -1,0 +1,22 @@
+// milestone: M3
+// covers: performance-r1 WS-P8 and WS-P7; design §17.151, §17.149 (fused read then owned push)
+
+// A fused read (`list_get_expect`, through `list_at`'s leaf cache) is a borrow, so the push
+// after it updates the list in place; the cache must still see each new last element.
+
+fn grow(n: Int) -> List<Int> {
+  var xs = List.range(0, n)
+  var i = 0
+  while i < 5 {
+    let last = xs[List.len(xs) - 1].expect("last")
+    xs = List.push(xs, last + 10)
+    i = i + 1
+  }
+  xs
+}
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("{grow(3)} {grow(31)}")
+  Console.print("{grow(32)}")
+  Console.print("{grow(33)}")
+}

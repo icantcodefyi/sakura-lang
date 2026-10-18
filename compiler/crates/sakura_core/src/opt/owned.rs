@@ -79,9 +79,11 @@ impl Facts {
 const BORROWS: &[&str] = &[
     "list_len",
     "list_get",
+    "list_get_expect",
     "list_at",
     "list_contains",
     "map_get",
+    "map_get_expect",
     "map_contains",
     "map_len",
     "set_contains",
