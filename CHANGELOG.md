@@ -23,6 +23,11 @@ published yet.
 
 ### Added
 
+- Eight offline cookbook projects cover refined JSON, file CLI, HTTP retry/cassettes,
+  SQLite parameters, direct router tests, scripted LLM tools, budgeted agents and
+  persistent indexed updates. Cookbook pages and the embedded skill reference are
+  generated from those projects; CI checks their source, fixtures and freshness.
+
 - Downloadable Sakura skill with a byte-identical website mirror, deterministic ZIP,
   SHA-256 checksum and provenance manifest. `agent_docs --check` and the CLI harness
   reject distribution drift; the agents docs and `/llms.txt` link the bundle.

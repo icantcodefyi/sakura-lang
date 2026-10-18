@@ -2,6 +2,8 @@
 //! own sources (design §17.142): the `sakura` skill's `references/` and the signature listing of
 //! `compiler/std/INDEX.md`. `--check` writes nothing and exits 1 when any output is stale.
 
+mod cookbook;
+
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -94,11 +96,15 @@ fn outputs(root: &Path) -> Result<agent_docs::Files, String> {
     ];
     let mut skill = agent_docs::files(&root.join("skills/sakura"))?;
     let mut out = agent_docs::Files::new();
-    for (name, text) in references {
+    for (name, text) in references
+        .into_iter()
+        .map(|(name, text)| (name.to_owned(), text))
+        .chain(cookbook::outputs(root)?)
+    {
         if let Some(name) = name.strip_prefix("skills/sakura/") {
             skill.insert(name.into(), text.as_bytes().to_vec());
         }
-        out.insert(name.into(), text.into_bytes());
+        out.insert(name, text.into_bytes());
     }
     let commit = agent_docs::source_commit(root)?;
     for (name, bytes) in agent_docs::distribution(&skill, env!("CARGO_PKG_VERSION"), &commit)? {

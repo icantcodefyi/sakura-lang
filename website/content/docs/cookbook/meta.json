@@ -1,0 +1,14 @@
+{
+  "title": "Cookbook",
+  "pages": [
+    "index",
+    "json_refined",
+    "cli_files",
+    "http_retry",
+    "sqlite_query",
+    "router_endpoint",
+    "scripted_tool",
+    "budgeted_agent",
+    "indexed_update"
+  ]
+}

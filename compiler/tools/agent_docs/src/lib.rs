@@ -61,6 +61,7 @@ pub fn source_commit(root: &Path) -> Result<String, String> {
             ":(glob)compiler/std/**/*.sakura",
             "compiler/crates/sakura_diagnostics/src/codes.rs",
             "compiler/Cargo.toml",
+            "compiler/examples",
         ])
         .output()
         .map_err(|e| format!("cannot identify skill source commit: {e}"))?;

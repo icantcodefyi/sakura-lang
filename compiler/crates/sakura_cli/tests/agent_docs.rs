@@ -12,6 +12,8 @@
 //!   `<id>.fixed.sakura`, and must check clean;
 //! - `fragment`: not a complete program, labelled so, not run.
 //!
+//! Recipe fences add `project=<example-directory>` to `test`: their source must match the
+//! example verbatim, and its manifest/data/fixtures accompany the isolated test project.
 //! Other fences need a language (`sh`, `text`, …); `json` and `toml` ones must parse. A fence
 //! with no info string fails. `SAKURA_BLESS=1` writes `.stdout`/`.span` from the actual output.
 //! Also checked: `SKILL.md`'s frontmatter and size, and that every relative link resolves inside
@@ -51,6 +53,7 @@ struct Fixture {
     id: String,
     mode: Mode,
     body: String,
+    project: Option<String>,
 }
 
 fn skill_dir() -> PathBuf {
@@ -167,9 +170,25 @@ fn classify(fences: Vec<Fence>) -> Result<Vec<Fixture>, Vec<String>> {
                     }
                 };
                 let mut id = None;
+                let mut project = None;
                 for w in words {
                     match w.strip_prefix("id=") {
                         Some(v) if !v.is_empty() && id.is_none() => id = Some(v.to_owned()),
+                        _ if w.starts_with("project=") && project.is_none() => {
+                            let name = w.strip_prefix("project=").unwrap();
+                            if !name.is_empty()
+                                && name.bytes().all(|c| {
+                                    c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'_'
+                                })
+                                && mode == Mode::Test
+                            {
+                                project = Some(name.to_owned());
+                            } else {
+                                errors.push(fail(
+                                    "project must name an example directory in test mode".into(),
+                                ));
+                            }
+                        }
                         _ => errors.push(fail(format!("unexpected `{w}`"))),
                     }
                 }
@@ -185,6 +204,7 @@ fn classify(fences: Vec<Fence>) -> Result<Vec<Fixture>, Vec<String>> {
                     id,
                     mode,
                     body: f.body,
+                    project,
                 });
             }
             _ => {}
@@ -217,6 +237,30 @@ fn project(name: &str, source: &str) -> PathBuf {
     std::fs::write(dir.join("sakura.toml"), MANIFEST).unwrap();
     std::fs::write(dir.join("src/main.sakura"), source).unwrap();
     dir
+}
+
+/// Copy only authored sidecars, never an example's generated build directory.
+fn copy_recipe_files(from: &Path, to: &Path) -> Result<(), String> {
+    if !from.exists() {
+        return Ok(());
+    }
+    std::fs::create_dir_all(to).map_err(|e| e.to_string())?;
+    for entry in std::fs::read_dir(from).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let kind = entry.file_type().map_err(|e| e.to_string())?;
+        if kind.is_symlink() {
+            return Err(format!(
+                "recipe sidecar must not be a symlink: {}",
+                entry.path().display()
+            ));
+        }
+        if kind.is_dir() {
+            copy_recipe_files(&entry.path(), &to.join(entry.file_name()))?;
+        } else {
+            std::fs::copy(entry.path(), to.join(entry.file_name())).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
 }
 
 /// `sakura check --json`: the exit code, the diagnostics and the summary.
@@ -257,8 +301,31 @@ fn ok(dir: &Path, args: &[&str]) -> Result<String, String> {
 }
 
 /// Runs one positive (`check`/`test`/`run`/`hole-step`) program.
-fn positive(name: &str, mode: &Mode, source: &str, expect: &Path) -> Result<(), String> {
+fn positive(
+    name: &str,
+    mode: &Mode,
+    source: &str,
+    expect: &Path,
+    example: Option<&str>,
+) -> Result<(), String> {
     let dir = project(name, source);
+    if let Some(example) = example {
+        let original = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../examples")
+            .join(example);
+        let canonical =
+            std::fs::read_to_string(original.join("src/main.sakura")).map_err(|e| e.to_string())?;
+        if source != canonical {
+            return Err(format!(
+                "{example}: recipe source differs from the example; regenerate agent_docs"
+            ));
+        }
+        std::fs::copy(original.join("sakura.toml"), dir.join("sakura.toml"))
+            .map_err(|e| e.to_string())?;
+        for relative in ["data", "tests/fixtures"] {
+            copy_recipe_files(&original.join(relative), &dir.join(relative))?;
+        }
+    }
     let (code, diags, summary) = check(&dir)?;
     let errs = errors(&diags);
     if code != Some(0) || !errs.is_empty() {
@@ -298,7 +365,13 @@ fn wrong(f: &Fixture, code: &str, fixed: Option<&Fixture>, expect: &Path) -> Res
         .ok_or("the primary span is not in the sample")?;
     compare_file(&expect.join(format!("{}.span", f.id)), &format!("{text}\n"))?;
     match fixed {
-        Some(fixed) => positive(&fixed.id, &fixed.mode, &fixed.body, expect),
+        Some(fixed) => positive(
+            &fixed.id,
+            &fixed.mode,
+            &fixed.body,
+            expect,
+            fixed.project.as_deref(),
+        ),
         None => {
             let path = expect.join(format!("{}.fixed.sakura", f.id));
             let source = std::fs::read_to_string(&path).map_err(|_| {
@@ -308,7 +381,13 @@ fn wrong(f: &Fixture, code: &str, fixed: Option<&Fixture>, expect: &Path) -> Res
                     path.display()
                 )
             })?;
-            positive(&format!("{}.fixed", f.id), &Mode::Check, &source, expect)
+            positive(
+                &format!("{}.fixed", f.id),
+                &Mode::Check,
+                &source,
+                expect,
+                None,
+            )
         }
     }
 }
@@ -324,7 +403,7 @@ fn run_all(fixtures: &[Fixture], expect: &Path) -> Vec<String> {
                     .find(|g| g.id == f.id && !matches!(g.mode, Mode::Wrong(_)));
                 wrong(f, code, fixed, expect)
             }
-            mode => positive(&f.id, mode, &f.body, expect),
+            mode => positive(&f.id, mode, &f.body, expect, f.project.as_deref()),
         };
         if let Err(e) = result {
             failures.push(format!("{} (`{}`): {e}", f.at, f.id));
@@ -494,6 +573,26 @@ fn harness_rejects_unclassified_fences_and_checks_wrong_fixed_pairs() {
     std::fs::write(expect.join("stray.span"), "").unwrap();
     assert_eq!(orphans(&fixtures, &expect).len(), 1);
     let _ = std::fs::remove_dir_all(&expect);
+}
+
+#[test]
+fn recipe_fences_require_matching_source_and_a_local_project() {
+    for info in [
+        "test project=../outside",
+        "fragment project=json_refined",
+        "run project=json_refined",
+    ] {
+        let doc = format!("```sakura {info} id=bad\ntest \"test\" {{ expect(true) }}\n```\n");
+        assert!(classify(fences("recipes.md", &doc)).is_err(), "{info}");
+    }
+    let result = positive(
+        "recipe-drift",
+        &Mode::Test,
+        "test \"drift\" { expect(true) }\n",
+        &fixtures_dir(),
+        Some("json_refined"),
+    );
+    assert!(result.unwrap_err().contains("differs from the example"));
 }
 
 /// The distributed tree and every archive byte must be reproducible from the source bundle.
