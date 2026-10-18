@@ -181,7 +181,7 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
               return (
                 <span
                   key={i}
-                  className={`grid grid-cols-[2rem_minmax(0,1fr)] transition-colors duration-300 @min-[38rem]:grid-cols-[2.25rem_1fr_7.5rem] ${
+                  className={`grid min-h-[1lh] grid-cols-[2rem_minmax(0,1fr)] transition-colors duration-300 @min-[38rem]:grid-cols-[2.25rem_1fr_7.5rem] ${
                     bad ? "bg-fail-wash" : proved ? "bg-ok-wash" : ""
                   } ${visible ? "" : "invisible"}`}
                 >
@@ -202,7 +202,7 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
                       {cursorLine === i && !done ? <Caret /> : null}
                     </span>
                   </span>
-                  <span className="hidden pr-4 @min-[38rem]:block">
+                  <span className="hidden h-[1lh] items-center pr-4 @min-[38rem]:flex">
                     {proved ? (
                       <MarginNote note={{ kind: "ok", text: "runtime check" }} />
                     ) : showNote ? (
@@ -212,18 +212,27 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
                 </span>
               );
             })}
+            {/* Once the bad line is gone, an invisible copy holds its height so the window never
+                shrinks. */}
+            {removed ? (
+              <span className="invisible grid grid-cols-[2rem_minmax(0,1fr)] @min-[38rem]:grid-cols-[2.25rem_1fr_7.5rem]">
+                <span />
+                <span className={`pr-3 @min-[38rem]:pr-2 ${LINE}`}>
+                  <TokenSpans line={lines[BAD_LINE]} />
+                </span>
+              </span>
+            ) : null}
           </code>
         </pre>
 
-        {/* diagnostic, expands under the code */}
+        {/* The diagnostic always holds its space, like an editor's empty lines below the code, so
+            the window keeps one height for the whole loop; it only fades in. */}
         <div
-          className={`grid transition-[grid-template-rows] duration-500 ease-[var(--ease-out)] ${
-            state.diagnostic ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+          className={`transition-[opacity,translate,visibility] duration-300 ease-[var(--ease-out)] ${
+            state.diagnostic ? "visible opacity-100" : "invisible translate-y-1 opacity-0"
           }`}
         >
-          <div className="overflow-hidden">
-            <Diagnostic />
-          </div>
+          <Diagnostic />
         </div>
 
         <StatusBar
@@ -401,7 +410,7 @@ function StatusBar({
         <button
           type="button"
           onClick={onReplay}
-          className="-mr-2 h-10 shrink-0 rounded-md px-3 font-sans text-[12px] text-muted-foreground transition-[color,transform] duration-150 hover:text-foreground active:scale-[0.97]"
+          className="-mr-2 shrink-0 self-stretch rounded-md px-3 font-sans text-[12px] text-muted-foreground transition-[color,transform] duration-150 hover:text-foreground active:scale-[0.97]"
         >
           Replay
         </button>
