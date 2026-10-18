@@ -140,7 +140,7 @@ The standard library ships fakes for its own effects:
 | ----------------------------- | ----------------------------------------------------- |
 | `Sql.memory()`                | A database.                                           |
 | `Http.scripted(script)`       | The HTTP client, answering from a list of request matchers and responses. |
-| `Fs.memory(files)`            | The filesystem, from a list of `(path, bytes)` pairs. |
+| `Fs.memory(files)`            | The filesystem, from a list of `(path, bytes)` pairs. `Dir.subdir` and `Fs.rooted` narrow it as on the host. |
 | `Llm.scripted(responses)`     | A model provider. `Llm.replay(path)` replays a recording. |
 | `Clock.virtual()`             | The clock. Time advances only when told to.           |
 | `Task.deterministic(seed)`    | The task scheduler. Interleavings are reproducible.   |

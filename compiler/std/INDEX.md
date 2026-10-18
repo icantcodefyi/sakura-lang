@@ -744,7 +744,8 @@ fn memory() -> Handler<Sql>    // @external
 12. Resolved (§17.57): `Request.secret_headers: List<(String, Secret<String>)>` replaces
     `bearer`; host handlers send each entry, nothing shows, matches or records it.
 13. **Parameterless `Fs.host()` and `Http.host()`** for the entry point (as item 9);
-    `Fs.memory`'s `root()` is a directory without host access. `Cli.exit` under `Cli.of` is
+    `Fs.memory(files)` is `Fs.rooted` over an in-memory directory, so `Dir.subdir` and
+    `Fs.rooted` compose over it as on the host (§17.119). `Cli.exit` under `Cli.of` is
     a defect (`D030`). `Llm.scripted` reports undecodable output as `InvalidOutput` with one
     `Violation` whose `clause` is the decoder's message and `value_summary` its JSON Pointer.
 14. **`Trust` has its home in `std/core`**; it is compiler-known and in the prelude (§17.16),
