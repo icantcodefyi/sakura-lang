@@ -15,7 +15,9 @@ Every Sakura Lang function value and every non-direct top-level function is
 function f(a1, …, an, $ctx, $k) → Step
 ```
 
-`$k` is the continuation, a JS function `(value) → Step`. Calls happen only in tail position
+`$k` is the continuation, a JS function `(value) → Step`. A def whose contract blames its
+caller takes one more, trailing parameter in both ABIs: `f(a1, …, an, $ctx, $k, $site)` and
+`f$d(captures…, a1, …, an, $site)` (section 5); a call through a function value passes none. Calls happen only in tail position
 (`return g(x, $ctx, (r) => …)`), so the JS stack only grows through chains of tail calls. To
 bound those chains the runtime keeps a **depth gauge** `G.d`:
 
@@ -60,7 +62,7 @@ ABIs and compares their effect traces.
   `fn() { with Clock.host() { Clock.sleep(…) } }`, so nothing runs an unknown function value
   under a nested driver).
 - In a twin, a reference-valued temporary read once, by the next binding, is inlined into it
-  when that binding is a call that emits nothing before its expression (no `$S.s`):
+  when that binding is a call that emits nothing before its expression:
   `check$d(bottom_up$d(t))`, so the frame does not keep the value alive (design §17.138). Not
   into an allocation: V8 allocates an array literal before evaluating its elements.
 - CPS code calls `f$d` inline when `f` is direct and every function-typed argument is
@@ -74,7 +76,8 @@ recursive twin counts its frames on the shared gauge:
 
 ```js
 function f$d(n) {
-  if ($G.d >= $L) return $rt.runSync(f, [n]);   // the deep remainder, on the heap
+  if ($G.d >= $L) return $rt.runSync(f, [n]);   // the deep remainder, on the heap (`, $site`
+                                                 // as a third argument when `f` takes one)
   ++$G.d;
   …
   --$G.d; return v;                              // on every return
@@ -223,12 +226,24 @@ becomes defect `D090`; a rejected host promise becomes `D091`.
 A defect carries `spans` (`{ uri, start_byte, end_byte, role }`, `uri` being the emitter's
 `Source::name`). Contract checks call `$rt.violated(code, message, site, clause)`:
 
-- `requires` (`D020`) and the `where` of `T.from` (`D010`) blame the **caller** (design §7.2).
-  A function containing such a check starts with `const $site = $rt.take_site();`, and every
-  call to it through a known global first sets `$S.s` (`$rt.S.s`) to the call's span, so the
-  primary span is the call (`scale(Percent.from(50), -1)`) and the clause is the `definition`
-  span. A call through a function value leaves the register `null`; the clause is then primary.
-- `ensures` (`D021`) blames the callee: the clause is the primary span.
+- `requires` (`D020`) and the `where` of `T.from` (`D010`) blame the **caller** (design §7.2,
+  §17.115). A function containing such a check takes a trailing integer parameter `$site`
+  (section 1), and every call to it through a known global passes the call's **site number**,
+  so the primary span is the call (`scale(Percent.from(50), -1)`) and the clause is the
+  `definition` span. Site numbers index one program-wide table: each module numbers its call
+  spans from where the previous module stopped (modules are emitted in one pass) and fills its
+  range once at load with `$rt.sites(base, [span…])`. `violated` reads the table only on
+  failure. A call through a function value or from the runtime passes nothing (`undefined`),
+  and a call without a source span passes `-1`; the clause is then primary.
+- In such a function, `sakura_core::opt`'s self tail call is a jump back to the loop head that
+  re-runs the checks; it is preceded by a `$site` marker bind at the call's position, emitted
+  as `$site = <n>;`, so a violating iteration blames the self call, not the outer call.
+- `ensures` (`D021`) blames the callee: the clause is the primary span (`violated(…, -1, …)`).
+- A predicate is bracketed by `$rt.contract_enter()`/`$rt.contract_exit()` so a defect inside
+  it becomes `D011`. The emitter drops the bracket when no path from the enter to its exits
+  can defect: only plain binds and branches, builtins that return for every argument
+  (`list_len`, `string_len`, `list_contains`, `int_min`, … in `emit.rs`'s `TOTAL`), and
+  checked `Int` arithmetic the interval pass proves (design §17.114). Any other call keeps it.
 - A record field's `where` (`title: String where …`) is the refinement `T.field` over the
   field's type: it is the field's schema (so `Json.decode`, property inputs and shrinking
   check it), and literals, updates and field assignments of the type call a generated

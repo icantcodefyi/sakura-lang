@@ -859,3 +859,19 @@ test("a refined decode runs its predicate under the decoding task and allocates 
   assert.equal(predicate, decoding);
   assert.equal(next, decoding + 1);
 });
+
+test("violated blames the call site from the table, else the clause", () => {
+  const call = { uri: "m.sakura", start_byte: 10, end_byte: 14 };
+  const clause = { uri: "m.sakura", start_byte: 2, end_byte: 6 };
+  rt.sites(900, [call]);
+  const spans = (site) => {
+    try {
+      rt.violated("D020", "precondition violated", site, clause);
+    } catch (e) {
+      return e.spans.map((s) => `${s.role}@${s.start_byte}`).join(" ");
+    }
+  };
+  assert.equal(spans(900), "primary@10 definition@2");
+  assert.equal(spans(-1), "primary@2");
+  assert.equal(spans(undefined), "primary@2");
+});

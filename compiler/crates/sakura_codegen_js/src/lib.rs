@@ -173,12 +173,15 @@ pub fn module_path(module: &str) -> String {
 pub(crate) struct Cx<'a> {
     pub m: &'a Module,
     pub direct: direct::Facts,
-    /// Defs whose contract checks blame their caller (`requires`, `T.from`'s `where`): callers
-    /// with a known target record the call's span first (ABI.md §5).
+    /// Defs whose contract checks blame their caller (`requires`, `T.from`'s `where`): they
+    /// take a trailing `$site` parameter (ABI.md §5).
     pub takes_site: Vec<bool>,
     /// Per def, its ownership summary (design §17.149): a direct def that consumes a parameter
     /// also gets an owned entry `f$o`, its twin with that parameter owned.
     pub summaries: Vec<sakura_core::opt::owned::Summary>,
+    /// The next program-wide call-site number: modules are emitted one after another, each
+    /// numbering its sites from here (ABI.md §5).
+    pub sites: std::cell::Cell<u32>,
     pub def_names: Vec<String>,
     pub type_names: Vec<String>,
     pub lines: BTreeMap<FileId, (usize, LineIndex)>,
@@ -215,38 +218,22 @@ impl<'a> Cx<'a> {
             lines.insert(s.file, (sources.len(), LineIndex::new(&s.text)));
             sources.push(s.name.clone());
         }
-        let takes_site = m.defs.iter().map(|d| blames_caller(m, &d.body)).collect();
+        let takes_site = m
+            .defs
+            .iter()
+            .map(|d| sakura_core::opt::blames_caller(m, &d.body))
+            .collect();
         Cx {
             m,
             direct,
             takes_site,
             summaries: sakura_core::opt::owned::summaries(m),
+            sites: std::cell::Cell::new(0),
             def_names,
             type_names,
             lines,
             sources,
         }
-    }
-}
-
-fn blames_caller(m: &Module, e: &Expr) -> bool {
-    sakura_core::ensure_stack(|| blames_caller_inner(m, e))
-}
-
-fn blames_caller_inner(m: &Module, e: &Expr) -> bool {
-    match e {
-        Expr::Let { bind, body, .. } => {
-            matches!(bind, Bind::Check(c, _) if m.contracts[c.index()].kind != ContractKind::Ensures)
-                || blames_caller(m, body)
-        }
-        Expr::Ret(_) | Expr::Jump(..) | Expr::Fail(_) => false,
-        Expr::LetJoin { join, body, .. } => blames_caller(m, join) || blames_caller(m, body),
-        Expr::Switch { arms, default, .. } => {
-            arms.iter().any(|(_, a)| blames_caller(m, a))
-                || default.as_ref().is_some_and(|d| blames_caller(m, d))
-        }
-        Expr::If { then, els, .. } => blames_caller(m, then) || blames_caller(m, els),
-        Expr::Handle { body, .. } | Expr::Try { body, .. } => blames_caller(m, body),
     }
 }
 

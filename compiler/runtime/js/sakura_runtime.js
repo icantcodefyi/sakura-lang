@@ -77,22 +77,22 @@ export function defect(code, message, spans = []) {
 }
 
 /**
- * Call-site register for contract blame (design §7.2): a caller sets `S.s` to the span of a
- * call right before calling a function whose `requires` (or `T.from`'s `where`) blames its
- * caller; that function takes it on entry, so a call through a function value leaves `null`.
+ * Call sites for contract blame (design §7.2, §17.115): a function whose `requires` (or
+ * `T.from`'s `where`) blames its caller takes the site as a trailing integer, an index into this
+ * program-wide table that each module fills once at load with `sites(base, spans)`. A call
+ * through a function value passes none (`undefined`), and `-1` means no site.
  */
-export const S = { s: null };
-export function take_site() {
-  const s = S.s;
-  S.s = null;
-  return s;
+const SITES = [];
+export function sites(base, spans) {
+  for (let i = 0; i < spans.length; i++) SITES[base + i] = spans[i];
 }
 
 /** A failed contract check: the blamed call (if known) is the primary span, then the clause. */
 export function violated(code, message, site, clause) {
+  const at = site >= 0 ? SITES[site] : undefined;
   const spans = [];
-  if (site !== null) spans.push({ ...site, role: "primary" });
-  if (clause !== null) spans.push({ ...clause, role: site === null ? "primary" : "definition" });
+  if (at !== undefined) spans.push({ ...at, role: "primary" });
+  if (clause !== null) spans.push({ ...clause, role: at === undefined ? "primary" : "definition" });
   defect(code, message, spans);
 }
 
@@ -322,12 +322,13 @@ const syncDone = (v) => new Done(v);
  * The deep remainder of a direct recursion (design §17.112): run the CPS body `f(...args)` to
  * its value on the current JS stack, under a trampoline of its own, and restore the gauge on
  * every exit. Defects propagate. Nothing it runs can suspend (pure code performs nothing).
+ * `site` is the def's blame site, if it takes one (ABI.md §5).
  */
-export function runSync(f, args) {
+export function runSync(f, args, site) {
   const saved = G.d;
   try {
     G.d = 0;
-    let step = f(...args, null, syncDone);
+    let step = f(...args, null, syncDone, site);
     while (step instanceof Bounce) {
       G.d = 0;
       step = step.f(...step.a);

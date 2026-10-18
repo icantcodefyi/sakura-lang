@@ -116,7 +116,8 @@ pub fn main() -> Unit ! {Console} { Console.print("{sum_to(10000000, 0)} {fib(20
 
 /// A one-use reference-valued temporary in direct code is inlined into its consumer, so the frame
 /// does not keep a discarded tree reachable (research/10-evidence/binary-trees-rss.md). A
-/// temporary read twice, or passed to a call that sets the blame site first, stays a local.
+/// temporary read twice stays a local; a contracted consumer takes its blame site as an
+/// argument (design §17.115), so `nonempty$d(make$d(2), 0)` is inlined too.
 #[test]
 fn one_use_temporaries_do_not_outlive_their_consumer() {
     let src = r#"

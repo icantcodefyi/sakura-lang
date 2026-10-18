@@ -44,6 +44,110 @@ pub fn main() -> Unit ! {Console} {
     assert!(src[at..].starts_with("total >= 0"), "{d}");
 }
 
+/// Build `src` and run `main` under one ABI (`direct` false is `--no-direct`).
+fn run_abi(name: &str, src: &str, direct: bool) -> common::Run {
+    let (m, sources) = common::build(name, src, false).unwrap();
+    let dir =
+        std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(format!("abi-{name}-{direct}"));
+    let _ = std::fs::remove_dir_all(&dir);
+    let opts = sakura_codegen_js::Options {
+        direct_style: direct,
+        ..sakura_codegen_js::Options::new(sources)
+    };
+    for f in sakura_codegen_js::emit(&m, &opts) {
+        let path = dir.join(&f.path);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, f.text).unwrap();
+    }
+    common::node(&dir, "__main__.js", &[])
+}
+
+/// Design §17.115 (WS-P4b deviation 6): a self tail call is a loop whose head re-runs the
+/// `requires`, and the violating iteration blames the self call, not the outer call, under
+/// both ABIs; through a function value the clause is primary.
+#[test]
+fn requires_in_a_self_tail_loop_blames_the_self_call() {
+    let src = r#"fn down2(n: Int) -> Int
+  requires nonneg: n >= 0
+{ if n == 0 { 0 } else { down2(n - 2) } }
+fn apply(f: fn(Int) -> Int, x: Int) -> Int { f(x) }
+pub fn main() -> Unit ! {Console} {
+  Console.print("{down2(4)}")
+  Console.print("{apply(down2, 2)}")
+  Console.print("{down2(3)}")
+}
+"#;
+    for direct in [true, false] {
+        let r = run_abi("self_tail_blame", src, direct);
+        assert_eq!((r.stdout.as_str(), r.code), ("0\n0\n", 70), "{}", r.stderr);
+        let d = defect_record(&r.stderr);
+        assert_eq!(d["code"], "D020", "{d}");
+        let at = |k: usize| d["spans"][k]["start_byte"].as_u64().unwrap() as usize;
+        assert_eq!(d["spans"][0]["role"], "primary", "{d}");
+        assert!(src[at(0)..].starts_with("down2(n - 2)"), "{d}");
+        let end = d["spans"][0]["end_byte"].as_u64().unwrap() as usize;
+        assert_eq!(&src[at(0)..end], "down2(n - 2)", "{d}");
+        assert!(src[at(1)..].starts_with("n >= 0"), "{d}");
+    }
+    let through_value = src.replace("{down2(3)}", "{apply(down2, 3)}");
+    for direct in [true, false] {
+        let r = run_abi("self_tail_blame_value", &through_value, direct);
+        let d = defect_record(&r.stderr);
+        assert_eq!(d["code"], "D020", "{d}");
+        // The value call passes no site; the loop's own self call is still blamed.
+        let at = d["spans"][0]["start_byte"].as_u64().unwrap() as usize;
+        assert!(through_value[at..].starts_with("down2(n - 2)"), "{d}");
+    }
+    let once = src.replace("{down2(3)}", "{apply(down2, -1)}");
+    for direct in [true, false] {
+        let r = run_abi("value_call_blame", &once, direct);
+        let d = defect_record(&r.stderr);
+        assert_eq!(d["spans"].as_array().unwrap().len(), 1, "{d}");
+        let at = d["spans"][0]["start_byte"].as_u64().unwrap() as usize;
+        assert!(once[at..].starts_with("n >= 0"), "{d}");
+    }
+}
+
+/// Design §17.115: the `D011` bracket is elided around a predicate that cannot defect, and
+/// kept (with its `D011`) around one that can: an unproved checked `+` or a user call.
+#[test]
+fn contract_brackets_only_where_the_predicate_can_defect() {
+    let src = r#"fn total(x: Int, xs: List<Int>) -> Int
+  requires x >= 0 && List.len(xs) < 10
+{ x }
+fn bumped(x: Int) -> Int
+  requires x + 1 > 0
+{ x }
+fn helper(x: Int) -> Bool { x > 0 }
+fn called(x: Int) -> Int
+  requires helper(x)
+{ x }
+pub fn main() -> Unit ! {Console} {
+  Console.print("{total(1, [])} {called(1)} {bumped(1)}")
+  Console.print("{bumped(9007199254740991)}")
+}
+"#;
+    let (m, sources) = common::build("brackets", src, false).unwrap();
+    let js = sakura_codegen_js::emit(&m, &sakura_codegen_js::Options::new(sources))
+        .into_iter()
+        .find(|f| f.path == "main/main.js")
+        .unwrap()
+        .text;
+    let body = |f: &str| {
+        let at = js.find(&format!("function {f}$d(")).unwrap();
+        js[at..at + js[at..].find("\n}\n").unwrap()].to_owned()
+    };
+    assert!(!body("total").contains("contract_enter"), "{js}");
+    assert!(body("bumped").contains("$rt.contract_enter()"), "{js}");
+    assert!(body("bumped").contains("$rt.contract_exit()"), "{js}");
+    assert!(body("called").contains("$rt.contract_enter()"), "{js}");
+    for direct in [true, false] {
+        let r = run_abi("brackets", src, direct);
+        assert_eq!((r.stdout.as_str(), r.code), ("1 1 1\n", 70), "{}", r.stderr);
+        assert_eq!(defect_record(&r.stderr)["code"], "D011", "{}", r.stderr);
+    }
+}
+
 #[test]
 fn refinement_from_blames_the_introduction() {
     let src = r#"type Percent = Int where it >= 0 && it <= 100

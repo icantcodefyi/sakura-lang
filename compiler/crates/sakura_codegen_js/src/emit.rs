@@ -27,7 +27,10 @@ pub(crate) fn module(cx: &Cx, module: &str) -> (String, String) {
         cx,
     };
     let ns = RefCell::new(BTreeSet::new());
-    let pool = Pool::default();
+    let pool = Pool {
+        site_base: cx.sites.get(),
+        ..Pool::default()
+    };
     for (i, t) in cx.m.types.iter().enumerate() {
         if t.module == module && t.builtin.is_none() {
             type_class(&mut w, TypeId(i as u32));
@@ -87,11 +90,19 @@ pub(crate) fn module(cx: &Cx, module: &str) -> (String, String) {
             rel(&module_path(other))
         );
     }
-    head.push_str(
-        "const { G: $G, LIMIT: $L, bounce: $b, ret: $ret, S: $S, T: $T, TRACE: $tr } = $rt;\n",
-    );
+    head.push_str("const { G: $G, LIMIT: $L, bounce: $b, ret: $ret, T: $T, TRACE: $tr } = $rt;\n");
     for (i, lit) in pool.lits.borrow().iter().enumerate() {
         let _ = writeln!(head, "const $c{i} = {lit};");
+    }
+    let sites = pool.sites.borrow();
+    if !sites.is_empty() {
+        let _ = writeln!(
+            head,
+            "$rt.sites({}, [{}]);",
+            pool.site_base,
+            sites.join(", ")
+        );
+        cx.sites.set(pool.site_base + sites.len() as u32);
     }
     head.push('\n');
     let shift = head.matches('\n').count() as u32;
@@ -109,11 +120,16 @@ pub(crate) fn module(cx: &Cx, module: &str) -> (String, String) {
     (text, map)
 }
 
-/// Module-level constants (schemas, source spans), deduplicated: `$c0`, `$c1`, ….
+/// Module-level constants (schemas, source spans), deduplicated: `$c0`, `$c1`, …; and the
+/// module's call sites for contract blame, numbered program-wide from `site_base` (ABI.md §5).
 #[derive(Default)]
 struct Pool {
     lits: RefCell<Vec<String>>,
     index: RefCell<HashMap<String, usize>>,
+    site_base: u32,
+    /// Pooled span constants, in site order.
+    sites: RefCell<Vec<String>>,
+    site_index: RefCell<HashMap<String, u32>>,
 }
 
 impl Pool {
@@ -126,6 +142,19 @@ impl Pool {
         let i = lits.len() - 1;
         self.index.borrow_mut().insert(lit, i);
         format!("$c{i}")
+    }
+
+    /// The program-wide site number of a pooled span constant.
+    fn site(&self, span: String) -> u32 {
+        let mut sites = self.sites.borrow_mut();
+        *self
+            .site_index
+            .borrow_mut()
+            .entry(span)
+            .or_insert_with_key(|span| {
+                sites.push(span.clone());
+                self.site_base + sites.len() as u32 - 1
+            })
     }
 }
 
@@ -360,6 +389,8 @@ struct FnEmit<'a> {
     owned: owned::Facts,
     /// `$d`, or `$o` for the owned entry of a consuming def.
     twin: &'static str,
+    /// The `contract_enter`/`contract_exit` binds around predicates that cannot defect.
+    unbracketed: HashSet<Local>,
 }
 
 impl<'a> FnEmit<'a> {
@@ -422,8 +453,10 @@ impl<'a> FnEmit<'a> {
             ),
             owned: owned::analyze(cx.m, def, &cx.summaries, &[]),
             twin: "$d",
+            unbracketed: HashSet::new(),
         };
         e.analyze_labels();
+        brackets(&def.body, &e.proved, &mut e.unbracketed);
         if mode == Mode::Direct {
             count_uses(&def.body, &mut e.uses);
         }
@@ -463,16 +496,15 @@ impl<'a> FnEmit<'a> {
             .chain(&d.params)
             .map(|l| self.name(*l).to_owned())
             .collect();
-        let site = if self.cx.takes_site[self.id.index()] {
-            "const $site = $rt.take_site();"
-        } else {
-            ""
-        };
+        // A def that blames its caller is told the call site (design §17.115): trailing in both
+        // ABIs, so a call through a function value, which passes none, leaves it `undefined`.
+        let takes_site = self.cx.takes_site[self.id.index()];
+        let site = if takes_site { ", $site" } else { "" };
         w.at(d.pos);
         match self.mode {
             Mode::Direct => {
                 w.line(&format!(
-                    "{body_export}function {body_name}{}({}) {{",
+                    "{body_export}function {body_name}{}({}{site}) {{",
                     self.twin,
                     params.join(", ")
                 ));
@@ -480,13 +512,10 @@ impl<'a> FnEmit<'a> {
                 if self.cx.direct.recursive(self.id) {
                     // The first `LIMIT` frames run here; the rest on the heap (design §17.112).
                     w.line(&format!(
-                        "if ($G.d >= $L) return $rt.runSync({body_name}, [{}]);",
+                        "if ($G.d >= $L) return $rt.runSync({body_name}, [{}]{site});",
                         params.join(", ")
                     ));
                     w.line("++$G.d;");
-                }
-                if !site.is_empty() {
-                    w.line(site);
                 }
                 self.expr(w, &d.body, "");
                 w.depth -= 1;
@@ -508,6 +537,9 @@ impl<'a> FnEmit<'a> {
                 }
                 let ps = params.join(", ");
                 params.extend(["$ctx".into(), "$k".into()]);
+                if takes_site {
+                    params.push("$site".into());
+                }
                 w.line(&format!(
                     "{export}function {name}({}) {{",
                     params.join(", ")
@@ -521,7 +553,7 @@ impl<'a> FnEmit<'a> {
                     .filter(|p| direct::fn_param(d, **p))
                     .map(|p| format!("{}.$d !== undefined", self.name(*p)))
                     .collect();
-                let twin = format!("return $ret($k, {name}$d({ps}));");
+                let twin = format!("return $ret($k, {name}$d({ps}{site}));");
                 if tests.is_empty() {
                     w.line(&twin);
                 } else {
@@ -530,9 +562,6 @@ impl<'a> FnEmit<'a> {
                         "if (++$G.d > $L) return $b({name}, [{}]);",
                         params.join(", ")
                     ));
-                    if !site.is_empty() {
-                        w.line(site);
-                    }
                     self.expr(w, &d.body, "$ctx");
                 }
                 w.depth -= 1;
@@ -543,13 +572,13 @@ impl<'a> FnEmit<'a> {
             }
             Mode::Cps => {
                 params.extend(["$ctx".into(), "$k".into()]);
+                if takes_site {
+                    params.push("$site".into());
+                }
                 let ps = params.join(", ");
                 w.line(&format!("{body_export}function {body_name}({ps}) {{"));
                 w.depth += 1;
                 w.line(&format!("if (++$G.d > $L) return $b({body_name}, [{ps}]);"));
-                if !site.is_empty() {
-                    w.line(site);
-                }
                 self.expr(w, &d.body, "$ctx");
                 w.depth -= 1;
                 w.line("}");
@@ -574,14 +603,19 @@ impl<'a> FnEmit<'a> {
         w.line("");
     }
 
-    /// `$S.s = <span>;` before a call to a def that blames its caller, so its contract defects
-    /// name this call (design §7.2).
-    fn site_for(&self, callee: &Atom, pos: Option<Pos>) -> Option<String> {
+    /// The trailing site argument (`, 7`) of a call to a def that blames its caller, so its
+    /// contract defects name this call (design §7.2, §17.115); `-1` when the call has no span.
+    fn site_arg(&self, callee: &Atom, pos: Option<Pos>) -> String {
         match callee {
-            Atom::Global(d) if self.cx.takes_site[d.index()] => {
-                Some(format!("$S.s = {};", self.span(pos)))
-            }
-            _ => None,
+            Atom::Global(d) if self.cx.takes_site[d.index()] => format!(", {}", self.site(pos)),
+            _ => String::new(),
+        }
+    }
+
+    fn site(&self, pos: Option<Pos>) -> i64 {
+        match self.span(pos) {
+            s if s == "null" => -1,
+            s => self.pool.site(s).into(),
         }
     }
 
@@ -900,7 +934,8 @@ impl<'a> FnEmit<'a> {
             }
             _ => None,
         };
-        // `callee(args…, ctx, ` — the continuation and closing parenthesis follow.
+        // `callee(args…, ctx, ` — the continuation, `site` and closing parenthesis follow.
+        let mut site = String::new();
         let head = match bind {
             Bind::Perform(e, op, args)
                 if self.cx.direct.enabled
@@ -954,9 +989,7 @@ impl<'a> FnEmit<'a> {
                 format!("{f}.i.c[{op}]({}, ", a.join(", "))
             }
             Bind::Call(callee, args) => {
-                if let Some(site) = self.site_for(callee, pos) {
-                    w.line(&site);
-                }
+                site = self.site_arg(callee, pos);
                 let mut a: Vec<String> = args.iter().map(|x| self.atom(x)).collect();
                 a.push(ctx.to_owned());
                 let f = match callee {
@@ -968,13 +1001,13 @@ impl<'a> FnEmit<'a> {
             _ => unreachable!("not a CPS binding"),
         };
         match k {
-            Some(k) => w.line(&format!("return {head}{k});")),
+            Some(k) => w.line(&format!("return {head}{k}{site});")),
             None => {
                 w.line(&format!("return {head}({xs}) => {{"));
                 w.depth += 1;
                 self.expr(w, body, ctx);
                 w.depth -= 1;
-                w.line("});");
+                w.line(&format!("}}{site});"));
             }
         }
     }
@@ -983,7 +1016,7 @@ impl<'a> FnEmit<'a> {
     /// inlined into it: `check$d(bottom_up$d(t))`, not `const r = bottom_up$d(t);
     /// check$d(r);`, which keeps `r` (a whole tree) reachable from the frame until the
     /// function returns. The consumer is a call that emits no statement before its
-    /// expression (no site register, check or bound perform), and its other operands are
+    /// expression (no check or bound perform), and its other operands are
     /// plain reads, so the producer still runs right after the statements before it and
     /// before the consumer. Not an allocation: V8 allocates `new T(1, [a, f()])`'s array
     /// before calling `f`, and that array then survives everything `f` allocates.
@@ -995,13 +1028,8 @@ impl<'a> FnEmit<'a> {
         let consumer = match body {
             Expr::Let {
                 bind: Bind::Call(callee, args),
-                pos,
                 ..
-            } => {
-                *callee != Atom::Local(x)
-                    && self.site_for(callee, *pos).is_none()
-                    && args.contains(&Atom::Local(x))
-            }
+            } => *callee != Atom::Local(x) && args.contains(&Atom::Local(x)),
             _ => false,
         };
         self.mode == Mode::Direct
@@ -1014,6 +1042,16 @@ impl<'a> FnEmit<'a> {
     fn simple_bind(&mut self, w: &mut W, x: Local, bind: &Bind, pos: Option<Pos>, body: &Expr) {
         let xs = self.name(x).to_owned();
         let rhs = match bind {
+            // A self tail call's position: the next iteration's checks blame it (design §17.115).
+            Bind::Atom(_)
+                if self.cx.takes_site[self.id.index()]
+                    && self.def.local(x).name == sakura_core::opt::SITE_MARK =>
+            {
+                w.line(&format!("$site = {};", self.site(pos)));
+                return;
+            }
+            // The `D011` bracket around a predicate that cannot defect (design §17.115).
+            Bind::Call(Atom::Builtin(_), _) if self.unbracketed.contains(&x) => return,
             Bind::Atom(a) => self.atom(a),
             // The inline fast path (design §17.114): an unsafe result means the checked
             // operation defects, so `$rt.add`/`sub`/`mul` run only to raise it.
@@ -1028,12 +1066,14 @@ impl<'a> FnEmit<'a> {
             }
             Bind::Prim(op, args) => self.prim(op, args, self.proved[x.index()]),
             Bind::Call(f @ Atom::Global(d), args) => {
-                if let Some(site) = self.site_for(f, pos) {
-                    w.line(&site);
-                }
                 // An owned argument goes to the callee's owned entry (design §17.149).
                 let twin = if self.owned.owned(x) { "$o" } else { "$d" };
-                format!("{}{twin}({})", self.def_ref(*d), self.atoms(args))
+                format!(
+                    "{}{twin}({}{})",
+                    self.def_ref(*d),
+                    self.atoms(args),
+                    self.site_arg(f, pos)
+                )
             }
             Bind::Call(Atom::Builtin(name), args) => {
                 let owned = if self.owned.owned(x) { "_owned" } else { "" };
@@ -1111,7 +1151,7 @@ impl<'a> FnEmit<'a> {
                     _ => format!("{what} `{}` of {} violated", decl.name, self.def.name),
                 });
                 let site = if decl.kind == ContractKind::Ensures {
-                    "null"
+                    "-1"
                 } else {
                     "$site"
                 };
@@ -1465,6 +1505,117 @@ fn collect_labels_inner(e: &Expr, infos: &mut HashMap<Label, LabelInfo>, inside:
             collect_labels(els, infos, inside);
         }
     }
+}
+
+/// Every `contract_enter` whose predicate cannot defect, and the `contract_exit`s that close
+/// it, into `out`: such a bracket can never turn a defect into `D011` (design §17.115).
+fn brackets(e: &Expr, proved: &[bool], out: &mut HashSet<Local>) {
+    sakura_core::ensure_stack(|| match e {
+        Expr::Let {
+            local, bind, body, ..
+        } => {
+            if *bind == Bind::Call(Atom::Builtin("contract_enter".into()), vec![]) {
+                let mut exits = Vec::new();
+                if total_until_exit(body, proved, &mut exits) {
+                    out.insert(*local);
+                    out.extend(exits);
+                }
+            }
+            brackets(body, proved, out)
+        }
+        Expr::Ret(_) | Expr::Jump(..) | Expr::Fail(_) => {}
+        Expr::LetJoin { join, body, .. } => {
+            brackets(join, proved, out);
+            brackets(body, proved, out);
+        }
+        Expr::Switch { arms, default, .. } => {
+            for (_, a) in arms {
+                brackets(a, proved, out);
+            }
+            if let Some(d) = default {
+                brackets(d, proved, out);
+            }
+        }
+        Expr::If { then, els, .. } => {
+            brackets(then, proved, out);
+            brackets(els, proved, out);
+        }
+        Expr::Handle { body, .. } | Expr::Try { body, .. } => brackets(body, proved, out),
+    })
+}
+
+/// Builtins that return for every argument of their type.
+const TOTAL: &[&str] = &[
+    "list_len",
+    "map_len",
+    "set_len",
+    "string_len",
+    "bytes_len",
+    "list_get",
+    "map_get",
+    "list_contains",
+    "map_contains",
+    "set_contains",
+    "string_contains",
+    "string_starts_with",
+    "string_ends_with",
+    "int_min",
+    "int_max",
+    "int_abs",
+    "int_to_float",
+    "float_is_nan",
+];
+
+/// Does every path from `e` reach a `contract_exit` (collected in `exits`) without a bind that
+/// may defect: a call other than a [`TOTAL`] builtin, unproved checked `Int` arithmetic, an
+/// `Int` literal beyond ±(2^53−1), or anything but plain binds and branches?
+fn total_until_exit(e: &Expr, proved: &[bool], exits: &mut Vec<Local>) -> bool {
+    sakura_core::ensure_stack(|| match e {
+        Expr::Let {
+            local, bind, body, ..
+        } => {
+            if *bind == Bind::Call(Atom::Builtin("contract_exit".into()), vec![]) {
+                exits.push(*local);
+                return true;
+            }
+            let safe = |a: &Atom| !matches!(a, Atom::Lit(Lit::Int(i)) if lit_js(&Lit::Int(*i)).starts_with('$'));
+            let ok = match bind {
+                Bind::Atom(a) | Bind::Proj(a, _) => safe(a),
+                Bind::Prim(op, args) => {
+                    args.iter().all(safe)
+                        && (proved[local.index()]
+                            || !matches!(
+                                op,
+                                PrimOp::IntAdd
+                                    | PrimOp::IntSub
+                                    | PrimOp::IntMul
+                                    | PrimOp::IntDiv
+                                    | PrimOp::IntRem
+                            ))
+                }
+                Bind::Alloc(_, args) => args.iter().all(safe),
+                Bind::Call(Atom::Builtin(name), args) => {
+                    TOTAL.contains(&name.as_str()) && args.iter().all(safe)
+                }
+                _ => false,
+            };
+            ok && total_until_exit(body, proved, exits)
+        }
+        Expr::Jump(..) => true,
+        Expr::LetJoin { join, body, .. } => {
+            total_until_exit(join, proved, exits) && total_until_exit(body, proved, exits)
+        }
+        Expr::Switch { arms, default, .. } => {
+            arms.iter().all(|(_, a)| total_until_exit(a, proved, exits))
+                && default
+                    .as_ref()
+                    .is_none_or(|d| total_until_exit(d, proved, exits))
+        }
+        Expr::If { then, els, .. } => {
+            total_until_exit(then, proved, exits) && total_until_exit(els, proved, exits)
+        }
+        Expr::Ret(_) | Expr::Fail(_) | Expr::Handle { .. } | Expr::Try { .. } => false,
+    })
 }
 
 /// How often each local is read in `e`.
