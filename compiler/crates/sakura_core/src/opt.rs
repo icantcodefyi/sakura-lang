@@ -7,7 +7,8 @@
 //! - Calls of handler constructors are inlined, and performs bound to a handler literal are
 //!   found by [`handlers::bind`] (design §17.113).
 //!
-//! [`ranges`] is not a rewrite: backends run it at emission for their `Int` range.
+//! [`ranges`] is not a rewrite: backends run it at emission for their `Int` range, and
+//! [`owned`] at emission for in-place updates (design §17.149).
 
 pub mod ranges;
 
@@ -16,6 +17,7 @@ use crate::ir::*;
 use std::collections::HashMap;
 
 pub mod handlers;
+pub mod owned;
 pub mod proved;
 
 pub fn optimize(m: &mut Module) {

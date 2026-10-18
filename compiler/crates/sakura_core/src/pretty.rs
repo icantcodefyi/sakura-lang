@@ -3,6 +3,7 @@
 use std::fmt::{self, Write};
 
 use crate::ir::*;
+use crate::opt::owned;
 use crate::opt::ranges::{self, Profile};
 
 impl fmt::Display for Module {
@@ -14,6 +15,8 @@ impl fmt::Display for Module {
             depth: 0,
             profile: None,
             facts: ranges::Facts::default(),
+            sums: Vec::new(),
+            owned: owned::Facts::default(),
         };
         p.module();
         f.write_str(&p.out)
@@ -27,8 +30,8 @@ impl Module {
     }
 
     /// [`Module::display_module`] with each `Int` operation the interval pass proves for
-    /// `profile` marked `proved` and the intervals contracts seed (design §17.114, §17.154;
-    /// `--dump core`).
+    /// `profile` marked `proved`, the intervals contracts seed and each in-place update marked
+    /// `owned` (design §17.114, §17.154, §17.149; `--dump core`).
     pub fn display_module_for(&self, module: &str, profile: Option<Profile>) -> String {
         let mut p = Printer {
             m: self,
@@ -37,6 +40,8 @@ impl Module {
             depth: 0,
             profile,
             facts: ranges::Facts::default(),
+            sums: profile.map_or_else(Vec::new, |_| owned::summaries(self)),
+            owned: owned::Facts::default(),
         };
         for (i, d) in self.defs.iter().enumerate() {
             if d.module == module {
@@ -56,6 +61,9 @@ struct Printer<'a> {
     profile: Option<Profile>,
     /// The interval pass's verdict per local of `def` under `profile`.
     facts: ranges::Facts,
+    /// Consuming summaries, and the ownership facts of `def`, when `profile` is set.
+    sums: Vec<owned::Summary>,
+    owned: owned::Facts,
 }
 
 impl<'a> Printer<'a> {
@@ -150,6 +158,10 @@ impl<'a> Printer<'a> {
         self.facts = self
             .profile
             .map_or_else(Default::default, |p| ranges::facts(self.m, d, p));
+        self.owned = match self.profile {
+            Some(_) => owned::analyze(self.m, d, &self.sums, &[]),
+            None => owned::Facts::default(),
+        };
         let kind = match &d.kind {
             FnKind::Top { export: true } => "pub fn".to_owned(),
             FnKind::Top { export: false } => "fn".to_owned(),
@@ -355,6 +367,8 @@ impl<'a> Printer<'a> {
             } => {
                 let proved = if self.facts.proved.get(local.index()) == Some(&true) {
                     " proved"
+                } else if self.owned.owned(*local) {
+                    " owned"
                 } else {
                     ""
                 };

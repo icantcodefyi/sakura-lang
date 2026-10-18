@@ -4,6 +4,11 @@
 //! builtins are plain JS functions `f(args…) -> value` (they may throw a defect); `Cps` builtins
 //! take callbacks and follow the CPS ABI `f(args…, ctx, k) -> step` (see `runtime/js/ABI.md`).
 //! A conformance test checks this table against the runtime's exports and arities.
+//!
+//! Two columns feed the ownership pass (design §17.149, [`crate::opt::owned`]): `fresh` marks a
+//! result that shares no node with any input or other live value (`[fresh]`), and `consumes`
+//! the argument an owned-capable builtin takes over (`[consumes 0]`). Each owned-capable
+//! builtin `f` has an in-place twin `f_owned` in the runtime.
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Abi {
@@ -17,35 +22,76 @@ pub struct Builtin {
     /// Sakura Lang-level arity (excluding `ctx`, `k`).
     pub arity: usize,
     pub abi: Abi,
+    /// The result shares no node with an input or any other value, so it is an owned origin.
+    /// False for anything that can return an input or a shared value (`list_slice`,
+    /// `list_concat`) and for the empty singletons, which the ownership pass treats on their own.
+    pub fresh: bool,
+    /// For an owned-capable builtin, the argument position it takes over: when that argument is
+    /// owned, the runtime's `<name>_owned` updates it in place.
+    pub consumes: Option<usize>,
+}
+
+const PLAIN: Builtin = Builtin {
+    name: "",
+    arity: 0,
+    abi: Abi::Direct,
+    fresh: false,
+    consumes: None,
+};
+
+macro_rules! cols {
+    () => {
+        PLAIN
+    };
+    (fresh) => {
+        Builtin {
+            fresh: true,
+            ..PLAIN
+        }
+    };
+    (consumes $p:literal) => {
+        Builtin {
+            consumes: Some($p),
+            ..PLAIN
+        }
+    };
 }
 
 macro_rules! table {
-    ($($abi:ident $name:ident / $arity:literal),* $(,)?) => {
+    ($($abi:ident $name:ident / $arity:literal $([$($col:tt)*])?),* $(,)?) => {
         pub const BUILTINS: &[Builtin] = &[
-            $(Builtin { name: stringify!($name), arity: $arity, abi: Abi::$abi }),*
+            $(Builtin {
+                name: stringify!($name),
+                arity: $arity,
+                abi: Abi::$abi,
+                ..cols!($($($col)*)?)
+            }),*
         ];
     };
 }
 
 table! {
     // List (persistent, design §13.4)
-    Direct list_empty/0, Direct list_len/1, Direct list_get/2, Direct list_at/2, Direct list_push/2,
-    Direct list_set/3, Direct list_concat/2, Direct list_range/2, Direct list_reverse/1,
+    Direct list_empty/0, Direct list_len/1, Direct list_get/2, Direct list_at/2,
+    Direct list_push/2 [consumes 0], Direct list_set/3 [consumes 0], Direct list_concat/2,
+    Direct list_range/2 [fresh], Direct list_reverse/1,
     Direct list_join/2, Direct list_sum/1, Direct list_first/1, Direct list_last/1,
     Direct list_contains/2, Direct list_slice/3, Direct list_sort/1, Direct list_zip/2,
     Direct list_enumerate/1, Direct list_unique/1,
     // Transient builders, used only inside std/list bodies (design §17.116)
-    Direct list_builder/0, Direct list_builder_push/2, Direct list_builder_finish/1,
+    Direct list_builder/0, Direct list_builder_push/2, Direct list_builder_finish/1 [fresh],
     Cps list_map/2, Cps list_filter/2, Cps list_fold/3, Cps list_find/2, Cps list_all/2,
     Cps list_any/2, Cps list_flat_map/2, Cps list_sort_by/2,
     // Map / Set (insertion-ordered)
-    Direct map_empty/0, Direct map_of/1, Direct map_get/2, Direct map_insert/3, Direct map_remove/2,
+    Direct map_empty/0, Direct map_of/1, Direct map_get/2, Direct map_insert/3 [consumes 0],
+    Direct map_remove/2 [consumes 0],
     Direct map_contains/2, Direct map_entries/1, Direct map_keys/1, Direct map_values/1,
     Direct map_len/1, Cps map_update/3,
-    Direct set_empty/0, Direct set_of/1, Direct set_insert/2, Direct set_contains/2,
+    Direct set_empty/0, Direct set_of/1, Direct set_insert/2 [consumes 0], Direct set_contains/2,
     Direct set_to_list/1,
     // String
-    Direct string_len/1, Direct string_chars/1, Direct string_graphemes/1, Direct string_split/2,
+    Direct string_len/1, Direct string_chars/1 [fresh], Direct string_graphemes/1 [fresh],
+    Direct string_split/2 [fresh],
     Direct string_trim/1, Direct string_starts_with/2, Direct string_ends_with/2,
     Direct string_contains/2, Direct string_replace/3, Direct string_to_lower/1,
     Direct string_to_upper/1, Direct string_parse_int/1, Direct string_parse_float/1,
