@@ -10,6 +10,9 @@
 //! bound to a closure of a direct def; a component of the call graph is direct when every member
 //! is first-order, non-constant and installs no handler, and no member passes a member's
 //! function value (§17.112).
+//!
+//! [`regions`] narrows the facts to the LIR functions a backend may run without continuation
+//! frames (ABI §5 "direct style").
 
 use std::collections::HashMap;
 
@@ -79,6 +82,73 @@ pub fn dump(m: &Module) -> String {
         }
     }
     out
+}
+
+/// The **direct regions** of a lowered module (§17.118, ABI §5 "direct style"): per function,
+/// whether it may run as a native call with its arguments and result in their representations
+/// and no continuation frame. That holds for a top-level function or constant whose def is
+/// direct and whose LIR body is first-order straight-line code: no handler or `try` region, no
+/// handler state, no callback, and every call a direct call of another such function. A direct
+/// def that calls a closure, a `cps` builtin or a bound clause keeps the frame protocol (its
+/// facts still say `direct`; the backend's frames are the conservative reading).
+pub fn regions(m: &crate::lir::Module) -> Vec<bool> {
+    use crate::lir::{Callee, FuncKind, Inst, Term};
+    let mut ok: Vec<bool> = m
+        .funcs
+        .iter()
+        .enumerate()
+        .map(|(i, f)| {
+            matches!(f.kind, FuncKind::Top { .. } | FuncKind::Const)
+                && m.direct.direct(i as DefId)
+                && f.blocks.iter().all(|b| {
+                    b.regions.is_empty()
+                        && b.insts.iter().all(|i| {
+                            !matches!(
+                                i,
+                                Inst::HandlePush { .. }
+                                    | Inst::HandlePop
+                                    | Inst::TryPush { .. }
+                                    | Inst::TryPop
+                                    | Inst::StateGet { .. }
+                                    | Inst::StateSet { .. }
+                                    | Inst::MakeCallback { .. }
+                                    | Inst::LoadCapture { .. }
+                            )
+                        })
+                        && matches!(
+                            b.term,
+                            Term::Return(_)
+                                | Term::Jump(_)
+                                | Term::If { .. }
+                                | Term::Switch { .. }
+                                | Term::Call {
+                                    callee: Callee::Direct(_),
+                                    ..
+                                }
+                        )
+                })
+        })
+        .collect();
+    loop {
+        let mut changed = false;
+        for i in 0..ok.len() {
+            if ok[i]
+                && m.funcs[i].blocks.iter().any(|b| match &b.term {
+                    Term::Call {
+                        callee: Callee::Direct(g),
+                        ..
+                    } => !ok.get(g.index()).copied().unwrap_or(false),
+                    _ => false,
+                })
+            {
+                ok[i] = false;
+                changed = true;
+            }
+        }
+        if !changed {
+            return ok;
+        }
+    }
 }
 
 fn is_fn(ty: &Ty) -> bool {

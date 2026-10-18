@@ -133,12 +133,11 @@ fn lir_facts_agree_with_dump_direct() {
         // Fixtures that do not check (`mode: check` negatives) have no Core; everything else
         // is compared.
         assert!(compared >= 150, "only {compared} programs compared");
-        let user: String = micro_dump
-            .lines()
-            .filter(|l| l.starts_with("main::main::"))
-            .map(|l| format!("{l}\n"))
-            .collect();
-        insta::assert_snapshot!("micro_direct", user);
+        // The whole dump is pinned by `sakura_cli/tests/snapshots/micro.direct`.
+        assert!(
+            micro_dump.contains("main::main::fib direct\n"),
+            "{micro_dump}"
+        );
     });
 }
 
@@ -146,9 +145,7 @@ fn lir_facts_agree_with_dump_direct() {
 /// reaches (`row`, `callee`, `closure-call`, `with`, `try`) and §17.112's `recursion`. (`fail` is
 /// preceded by `row` or `try` in every checked def; an unbound `perform` in a `{}`-row def needs an
 /// operation with a callback parameter, which the corpus parity covers.)
-#[test]
-fn each_reason_is_reported() {
-    let src = r#"
+const REASONS: &str = r#"
 effect Tick { fn next() -> Int }
 fn counter() -> Handler<Tick> {
   handler Tick {
@@ -181,7 +178,10 @@ pub fn main() -> Unit ! {Console} {
   calls_prints()
 }
 "#;
-    let m = core(vec![("file:///p/main.sakura".into(), src.into())]).expect("checks");
+
+#[test]
+fn each_reason_is_reported() {
+    let m = core(vec![("file:///p/main.sakura".into(), REASONS.into())]).expect("checks");
     let dump = agree(&m).unwrap();
     let verdict = |name: &str| -> &str {
         dump.lines()
@@ -223,4 +223,40 @@ fn facts_survive_the_committed_form_and_malformed_input_is_refused() {
         .replacen("\"Global\":", "\"Global\":9999999,\"x\":", 1);
     assert!(snapshot::Snapshot::from_json(&bad).is_err());
     assert_eq!(direct::dump(&snapshot::Module::default()), "");
+}
+
+/// The direct regions (`direct::regions`): a direct top-level function whose LIR is
+/// first-order straight-line code, calling only other such functions, runs without frames; a
+/// direct def that calls a function value, installs a bound handler, calls a function outside
+/// the regions or is a clause keeps the frame protocol, as does every `cps` def.
+#[test]
+fn regions_are_direct_first_order_code() {
+    common::big_stack(|| {
+        let m = core(vec![("file:///p/main.sakura".into(), REASONS.into())]).expect("checks");
+        let lir = sakura_lir::from_core(&m, Default::default()).unwrap();
+        let regions = direct::regions(&lir);
+        let region = |name: &str| -> bool {
+            let i = lir
+                .funcs
+                .iter()
+                .position(|f| f.module == "main::main" && f.name == name)
+                .unwrap_or_else(|| panic!("no function {name}"));
+            regions[i]
+        };
+        assert!(region("fib"));
+        for name in [
+            "twice",
+            "uses_twice",
+            "bound",
+            "counter$Tick_next",
+            "catches",
+            "ping",
+        ] {
+            assert!(!region(name), "{name} is not a direct region");
+        }
+        // Every region is direct by the facts.
+        for (i, &r) in regions.iter().enumerate() {
+            assert!(!r || lir.direct.direct(i as u32), "{}", lir.funcs[i].name);
+        }
+    });
 }
