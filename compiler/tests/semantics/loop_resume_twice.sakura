@@ -1,0 +1,51 @@
+// milestone: M3
+// covers: performance-r1 WS-P2b; design §17.156 (2) (a resumable loop suspends twice in one
+// iteration and resumes with its loop state, inner joins (straight-line and branching) and
+// handler state intact, both with a direct clause and when the clause forwards)
+
+effect Counter {
+  fn next() -> Int
+}
+
+fn counter() -> Handler<Counter> {
+  handler Counter {
+    var n = 0
+    fn next() {
+      n = n + 1
+      n
+    }
+  }
+}
+
+fn forward() -> Handler<Counter, {Counter}> {
+  handler Counter {
+    fn next() { Counter.next() * 100 }
+  }
+}
+
+fn spin(tag: String) -> Int ! {Clock, Console, Counter} {
+  var acc = 0
+  var i = 0
+  while i < 5 {
+    let a = Counter.next()
+    if i % 2 == 0 {
+      Clock.sleep(Duration.millis(2))
+      acc = acc + a * 10
+    }
+    let b = Counter.next()
+    if b % 3 == 0 { acc = acc - 1 }
+    Clock.sleep(Duration.millis(1))
+    acc = acc + b
+    Console.print("{tag} i={i} a={a} b={b} acc={acc} t={Instant.to_unix_millis(Clock.now())}")
+    i = i + 1
+  }
+  acc
+}
+
+pub fn main() -> Unit ! {Console} {
+  with Clock.virtual() {
+    let direct = with counter() { spin("direct") }
+    let forwarded = with counter() { with forward() { spin("forwarded") } }
+    Console.print("{direct} {forwarded}")
+  }
+}

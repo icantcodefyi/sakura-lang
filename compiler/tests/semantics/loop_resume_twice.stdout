@@ -1,0 +1,11 @@
+direct i=0 a=1 b=2 acc=12 t=3
+direct i=1 a=3 b=4 acc=16 t=4
+direct i=2 a=5 b=6 acc=71 t=7
+direct i=3 a=7 b=8 acc=79 t=8
+direct i=4 a=9 b=10 acc=179 t=11
+forwarded i=0 a=100 b=200 acc=1200 t=14
+forwarded i=1 a=300 b=400 acc=1600 t=15
+forwarded i=2 a=500 b=600 acc=7199 t=18
+forwarded i=3 a=700 b=800 acc=7999 t=19
+forwarded i=4 a=900 b=1000 acc=17999 t=22
+179 17999

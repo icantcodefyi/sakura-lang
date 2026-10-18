@@ -1,0 +1,99 @@
+// milestone: M3
+// covers: performance-r1 WS-P2b; design §17.156 (2) (resumable loops with an early return, a
+// match, a callback-typed operation, a `fail`, `break` and `continue`)
+
+error Boom(at: Int)
+
+effect Each {
+  fn apply(f: fn(Int) -> Int, x: Int) -> Int
+}
+
+effect Counter {
+  fn next() -> Int
+}
+
+fn counter() -> Handler<Counter> {
+  handler Counter {
+    var n = 0
+    fn next() {
+      n = n + 1
+      n
+    }
+  }
+}
+
+fn each() -> Handler<Each> {
+  handler Each {
+    fn apply(f, x) { f(x) + 1 }
+  }
+}
+
+type Shape = Dot | Box(Int) | Pair(Int, Int)
+
+fn shapes(k: Int) -> Shape {
+  if k % 3 == 0 { Dot } else if k % 3 == 1 { Box(k) } else { Pair(k, k) }
+}
+
+fn early(limit: Int) -> Int ! {Clock, Counter} {
+  var i = 0
+  while true {
+    let v = Counter.next()
+    if v > limit { return v * 1000 + i }
+    if v % 4 == 0 { Clock.sleep(Duration.millis(1)) }
+    i = i + 1
+  }
+  -1
+}
+
+fn matcher(n: Int) -> Int ! {Console, Counter, Each} {
+  var acc = 0
+  for k in 0..n {
+    let s = shapes(k)
+    let c = Counter.next()
+    acc = match s {
+      Dot => acc + Each.apply(fn(x) { x * 2 }, c),
+      Box(b) => {
+        Console.print("box {b} {c}")
+        acc + b
+      },
+      Pair(p, q) => acc + p * q - c,
+    }
+  }
+  acc
+}
+
+fn failing(n: Int) -> Int ! {Clock, Counter, Fail<Boom>} {
+  var acc = 0
+  var i = 0
+  while i < n {
+    let c = Counter.next()
+    if c == 7 { fail Boom { at: i } }
+    if c % 2 == 0 { Clock.sleep(Duration.millis(1)) }
+    acc = acc + c
+    i = i + 1
+  }
+  acc
+}
+
+fn breaker() -> Int ! {Console, Counter} {
+  var acc = 0
+  for k in 0..100 {
+    let c = Counter.next()
+    if c > 5 { break }
+    if c % 2 == 1 { continue }
+    Console.print("even {c}")
+    acc = acc + c
+  }
+  acc
+}
+
+pub fn main() -> Unit ! {Console} {
+  with Clock.virtual() {
+    with counter() { Console.print("early {early(9)}") }
+    with counter(), each() { Console.print("matcher {matcher(7)}") }
+    with counter() { Console.print("failing {try { failing(10) }}") }
+    with counter() { Console.print("ok {try { failing(5) }}") }
+    with counter() { Console.print("breaker {breaker()}") }
+    Console.print("t {Instant.to_unix_millis(Clock.now())}")
+  }
+}
