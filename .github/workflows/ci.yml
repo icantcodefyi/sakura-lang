@@ -6,6 +6,8 @@ on:
   pull_request:
   merge_group:
   workflow_dispatch:
+  schedule:
+    - cron: "37 3 * * *" # Native toolchain / scheduled Valgrind smoke (§17.173).
 
 permissions:
   contents: read
@@ -159,6 +161,61 @@ jobs:
       - name: Agent docs are fresh (design §17.142)
         run: cargo run -p agent_docs --locked -- --check
 
+  native:
+    name: Native (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: compiler
+    env:
+      # Preparation only: full sanitizer lanes and detection controls land with N1/N2.
+      NATIVE_NIGHTLY: nightly-2026-10-17
+      MACOSX_DEPLOYMENT_TARGET: "12.0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned Rust toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: compiler
+          cache-workspace-crates: true
+          shared-key: native
+      - name: Verify platform A host
+        shell: bash
+        run: |
+          case "$RUNNER_OS-$RUNNER_ARCH" in
+            Linux-X64|macOS-ARM64) ;;
+            *) echo "Unsupported native host: $RUNNER_OS-$RUNNER_ARCH" >&2; exit 1 ;;
+          esac
+      - name: Build opt-in native toolchain
+        run: cargo build --features native --locked
+      - name: Clippy native skeletons
+        run: cargo clippy -p sakura_codegen_native -p sakura_host_native --all-targets --features native --locked -- -D warnings
+      - name: Link and execute object and wrapper staticlib smoke tests
+        run: cargo test -p sakura_codegen_native -p sakura_host_native --features native --locked -- --nocapture
+      - name: Install pinned sanitizer toolchain (preparation, not sanitizer coverage)
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: rustup toolchain install "$NATIVE_NIGHTLY" --profile minimal --component miri,rust-src
+      - name: Install Valgrind
+        if: runner.os == 'Linux' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes valgrind
+          valgrind --version
+      - name: Scheduled Memcheck toolchain smoke (no Sakura allocator coverage yet)
+        if: runner.os == 'Linux' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        run: |
+          printf 'int main(void) { return 0; }\n' > "$RUNNER_TEMP/n0a.c"
+          cc -g "$RUNNER_TEMP/n0a.c" -o "$RUNNER_TEMP/n0a"
+          valgrind --error-exitcode=1 --leak-check=full "$RUNNER_TEMP/n0a"
+
   parity:
     name: Parity (${{ matrix.backend }}, ${{ matrix.os }})
     # Share Rust's build cache without waiting for the full workspace test suites.
@@ -257,7 +314,7 @@ jobs:
   ci-required:
     name: ci-required
     if: always()
-    needs: [website, rust, parity, vscode]
+    needs: [website, rust, native, parity, vscode]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -265,10 +322,12 @@ jobs:
         env:
           WEBSITE_RESULT: ${{ needs.website.result }}
           RUST_RESULT: ${{ needs.rust.result }}
+          NATIVE_RESULT: ${{ needs.native.result }}
           PARITY_RESULT: ${{ needs.parity.result }}
           VSCODE_RESULT: ${{ needs.vscode.result }}
         run: |
           test "$WEBSITE_RESULT" = success
           test "$RUST_RESULT" = success
+          test "$NATIVE_RESULT" = success
           test "$PARITY_RESULT" = success
           test "$VSCODE_RESULT" = success
