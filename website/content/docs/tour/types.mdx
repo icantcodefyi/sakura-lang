@@ -121,7 +121,7 @@ type Percent = Int where it >= 0 && it <= 100
 type NonEmpty<T> = List<T> where List.len(it) > 0
 ```
 
-The predicate must be in the contract subset: pure, terminating, no loops or recursion ([design §7.1](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)). A refined type is a distinct nominal type with the same representation as its base. Values enter it through:
+The predicate must be in the contract subset: pure, terminating, no loops or recursion ([design §7.1](https://github.com/icantcodefyi/sakuralang/blob/master/docs/design.md)). A refined type is a distinct nominal type with the same representation as its base. Values enter it through:
 
 - `Percent.validate(n) -> Result<Percent, Violation>`, generated for every refined type. Use it for external input.
 - `Percent.from(n) -> Percent`, a checked introduction that is defect `D010` on failure. Use it at trusted boundaries only; the planned `sakura audit` will list each use.
@@ -164,7 +164,7 @@ An unconstrained type parameter can only be passed around and matched through co
 
 ### Show output
 
-Interpolation uses `Show`. Its output is valid Sakura Lang expression syntax, stable across backends, and the format `sakura test` snapshots use ([design §4.8](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)):
+Interpolation uses `Show`. Its output is valid Sakura Lang expression syntax, stable across backends, and the format `sakura test` snapshots use ([design §4.8](https://github.com/icantcodefyi/sakuralang/blob/master/docs/design.md)):
 
 | Value | Shows as |
 | --- | --- |
@@ -233,7 +233,7 @@ Other modules can only get a `Token` from `tokens.issue`. Std uses the same mech
 
 ## Method-call resolution
 
-`e.f(args)` is resolved in this order; the first match wins ([design §4.9](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)):
+`e.f(args)` is resolved in this order; the first match wins ([design §4.9](https://github.com/icantcodefyi/sakuralang/blob/master/docs/design.md)):
 
 1. `e` is a record and `f` is a field: field access.
 2. `e` names an effect: `Eff.op(args)` performs the operation on the innermost installed handler. If `op` is not an operation, `Eff.f` is a function of the effect's home module, which is how handler constructors such as `Console.host()`, `Clock.fixed(t)`, and `Users.memory([])` are found.

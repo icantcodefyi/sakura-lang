@@ -11,7 +11,7 @@ Most supply-chain attacks and injection bugs rely on code doing more than it sho
 
 ## Effects are requirements, handlers are authority
 
-`Fs` in a signature says "this function may perform filesystem operations". It does not say which files. The **installed handler** decides that ([design §6.1](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)).
+`Fs` in a signature says "this function may perform filesystem operations". It does not say which files. The **installed handler** decides that ([design §6.1](https://github.com/icantcodefyi/sakuralang/blob/master/docs/design.md)).
 
 A handler for `Fs` is built from a `Dir` capability value. Every path is resolved relative to that directory, and symlink escapes are rejected. Authority lives in capability values that handlers close over, not in effect labels.
 
@@ -78,7 +78,7 @@ fn forge() -> Dir
 
 ## Scoped escape rules
 
-An external type, a handler, an `@resource` type, or a value transitively containing one is **scoped**. Closures also carry the scoped locals they capture ([design §6.3](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)). Scoped values may be passed down the call stack, stored in scoped records, and returned from ordinary functions. They may not flow into:
+An external type, a handler, an `@resource` type, or a value transitively containing one is **scoped**. Closures also carry the scoped locals they capture ([design §6.3](https://github.com/icantcodefyi/sakuralang/blob/master/docs/design.md)). Scoped values may be passed down the call stack, stored in scoped records, and returned from ordinary functions. They may not flow into:
 
 - a `Task.spawn` closure whose `Scope` outlives the `with` that produced the value (there are no detached tasks in v0),
 - a top-level `let`,
@@ -137,7 +137,7 @@ fn read_email(raw: Untrusted<String>) -> Email ! {Fail<InvalidEmail>} {
 
 ## Tagged templates never splice
 
-`sql"…"`, `html"…"` and `url"…"` are implemented tagged templates; `shell` is reserved but has no std module. The design uses tagged templates ([design §4.11](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)). A tagged string desugars to a call to the tag module's `template` function, with the literal parts and the interpolated values passed separately:
+`sql"…"`, `html"…"` and `url"…"` are implemented tagged templates; `shell` is reserved but has no std module. The design uses tagged templates ([design §4.11](https://github.com/icantcodefyi/sakuralang/blob/master/docs/design.md)). A tagged string desugars to a call to the tag module's `template` function, with the literal parts and the interpolated values passed separately:
 
 ```text
 sql"select * from users where email = {email}"
@@ -212,7 +212,7 @@ Adapters that genuinely need the raw value use `Secret.expose(s, @trust("reason"
 
 ## The trusted computing base
 
-Some things are assumed, and Sakura Lang says so. The trusted computing base is the compiler, the runtime, the std root handlers, FFI bindings marked `@external`, every `@trust` site, the host platform, and later the SMT solver ([design §6.6](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)). [`sakura build --manifest`](/docs/agents/build-manifest) inventories trusted compiler/runtime/std bindings and user trust sites, including a hash of the emitted runtime. It does not hash every trusted component. Each item has the `trusted` status in the [guarantee model](/docs/tour/contracts#the-guarantee-model).
+Some things are assumed, and Sakura Lang says so. The trusted computing base is the compiler, the runtime, the std root handlers, FFI bindings marked `@external`, every `@trust` site, the host platform, and later the SMT solver ([design §6.6](https://github.com/icantcodefyi/sakuralang/blob/master/docs/design.md)). [`sakura build --manifest`](/docs/agents/build-manifest) inventories trusted compiler/runtime/std bindings and user trust sites, including a hash of the emitted runtime. It does not hash every trusted component. Each item has the `trusted` status in the [guarantee model](/docs/tour/contracts#the-guarantee-model).
 
 Compiler fixes never widen authority silently. A fix that would change authority carries `impact: authority_change` and is never applied by `sakura fix` automatically. See [Diagnostics](/docs/agents/diagnostics).
 

@@ -47,7 +47,7 @@ The URL and the request body are stored verbatim: a replay must match them. A `S
 
 `Llm.replay(path)` installs the Anthropic adapter over `Http.recording`, an empty scripted outer HTTP handler and `Budget.unlimited()`, using a placeholder secret. It needs `Fs`, not live provider credentials. It replays generation, free text, partial callbacks and tool turns; missing exchanges fail as `ProviderError`.
 
-The [LLM extraction example](https://github.com/icantcodefyi/sakura-lang/tree/master/compiler/examples/llm_extract) uses `Fs.rooted(Test.fixtures())`, an outer `Budget.unlimited()` for its generated `@llm` function, and `Llm.replay(Path.of("extract_ticket.jsonl"))`. The [agent-loop example](https://github.com/icantcodefyi/sakura-lang/tree/master/compiler/examples/agent_loop) also scripts its knowledge-base tool.
+The [LLM extraction example](https://github.com/icantcodefyi/sakuralang/tree/master/compiler/examples/llm_extract) uses `Fs.rooted(Test.fixtures())`, an outer `Budget.unlimited()` for its generated `@llm` function, and `Llm.replay(Path.of("extract_ticket.jsonl"))`. The [agent-loop example](https://github.com/icantcodefyi/sakuralang/tree/master/compiler/examples/agent_loop) also scripts its knowledge-base tool.
 
 `Llm.replay` and `Llm.recording` keep one cassette open per handler installation. Repeated identical requests consume matching responses in recorded order, then repeat the last response.
 

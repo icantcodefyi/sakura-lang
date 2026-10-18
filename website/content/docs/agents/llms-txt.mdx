@@ -7,7 +7,7 @@ There are two different `llms.txt` files in the Sakura Lang project. Do not conf
 
 | | Site exports | Language reference |
 | --- | --- | --- |
-| Where | This website: `/llms.txt`, `/llms-full.txt`, `/docs/<page>.md` | The repository: [`docs/llms.txt`](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/llms.txt) |
+| Where | This website: `/llms.txt`, `/llms-full.txt`, `/docs/<page>.md` | The repository: [`docs/llms.txt`](https://github.com/icantcodefyi/sakuralang/blob/master/docs/llms.txt) |
 | Contents | These docs pages, as Markdown | The whole core language in one file, written for a model's context |
 | Status | Live today | Exists today as a file; `sakura prompt` emits it |
 | Use it for | Explanations, the tour, agent tooling docs | Writing Sakura Lang code |
@@ -39,7 +39,7 @@ Use `/llms.txt` to choose pages when context is tight. Use a per-page `.md` URL 
 
 ## The language reference: `docs/llms.txt`
 
-[`docs/llms.txt`](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/llms.txt) is the one-file reference an agent needs to write correct Sakura Lang. It covers:
+[`docs/llms.txt`](https://github.com/icantcodefyi/sakuralang/blob/master/docs/llms.txt) is the one-file reference an agent needs to write correct Sakura Lang. It covers:
 
 - the toolchain loop (`sakura check --json`, `sakura test --json`, `sakura run`) and fix impact rules;
 - the syntax on one screen, plus the rules agents get wrong (newlines, casing, no call-site type arguments, no named arguments, explicit imports, one lambda form);
@@ -49,7 +49,7 @@ Use `/llms.txt` to choose pages when context is tight. Use a per-page `.md` URL 
 - the most used standard library names;
 - common diagnostics and their fixes.
 
-The [design](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md) is provisional and includes unimplemented decisions. Use the guide embedded in your compiler for its availability claims. Retrieve full library signatures with MCP `symbol_query` or the implemented offline `sakura doc --search` command.
+The [design](https://github.com/icantcodefyi/sakuralang/blob/master/docs/design.md) is provisional and includes unimplemented decisions. Use the guide embedded in your compiler for its availability claims. Retrieve full library signatures with MCP `symbol_query` or the implemented offline `sakura doc --search` command.
 
 ### `sakura prompt`
 
@@ -63,7 +63,7 @@ sakura prompt --budget 8000
 For browsing the latest source guide (which may differ from your installed binary):
 
 ```bash
-curl https://raw.githubusercontent.com/icantcodefyi/sakura-lang/master/docs/llms.txt
+curl https://raw.githubusercontent.com/icantcodefyi/sakuralang/master/docs/llms.txt
 ```
 
 ## System prompt snippet

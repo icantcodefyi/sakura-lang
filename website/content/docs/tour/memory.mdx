@@ -74,7 +74,7 @@ The state is private to the instance, initialized once per `with`, and released 
 
 ## Reference counting and reuse
 
-With no aliasable mutation and strict evaluation, the heap is an acyclic graph: a value can only reference values that existed before it. That makes reference counting complete without a cycle collector. The plan for native and WASM ([design §8.2](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)):
+With no aliasable mutation and strict evaluation, the heap is an acyclic graph: a value can only reference values that existed before it. That makes reference counting complete without a cycle collector. The plan for native and WASM ([design §8.2](https://github.com/icantcodefyi/sakuralang/blob/master/docs/design.md)):
 
 - **Non-atomic counts per task.** The compiler inserts `dup`/`drop` after Core lowering (Perceus). Values sent across worker threads are promoted to atomic counts on send.
 - **Same-constructor reuse.** When a value is uniquely referenced, an update or a `match` that rebuilds a value of the same shape reuses its memory.
@@ -125,7 +125,7 @@ effect Fs {
 }
 ```
 
-The excerpt above is from the std `Fs` declaration ([design §10.2](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)). `Sql.transaction(fn() { … })` follows the same pattern. The closure's result may not contain the resource (`V6003`, the same escape check that keeps capabilities in scope). Resources are released on normal exit, `fail`, defect, and cancellation, in reverse order of acquisition. A failed release is logged as a defect, never ignored.
+The excerpt above is from the std `Fs` declaration ([design §10.2](https://github.com/icantcodefyi/sakuralang/blob/master/docs/design.md)). `Sql.transaction(fn() { … })` follows the same pattern. The closure's result may not contain the resource (`V6003`, the same escape check that keeps capabilities in scope). Resources are released on normal exit, `fail`, defect, and cancellation, in reverse order of acquisition. A failed release is logged as a defect, never ignored.
 
 ## Regions
 
@@ -155,7 +155,7 @@ sakura build --target js
 - Sharing a large value and then updating it copies. `W8001` points at loops where this happens.
 - Cyclic data needs `Graph` and `NodeId`s instead of direct references.
 - On the JS backend, `Int` arithmetic and literals beyond ±(2^53−1) are defect `D003` until a wider representation lands. Parsing is the exception: `String.parse_int` returns `None` for such a value, because parsing is where untrusted input enters.
-- Native handler state uses a per-instance lock. Whether that holds up under parallelism is an open question ([design §16](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)).
+- Native handler state uses a per-instance lock. Whether that holds up under parallelism is an open question ([design §16](https://github.com/icantcodefyi/sakuralang/blob/master/docs/design.md)).
 
 ## What the compiler checks
 

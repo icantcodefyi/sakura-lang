@@ -9,7 +9,7 @@ Future supported release lines will be listed here before publication.
 
 ## Report privately
 
-Use [GitHub private vulnerability reporting](https://github.com/icantcodefyi/sakura-lang/security/advisories/new)
+Use [GitHub private vulnerability reporting](https://github.com/icantcodefyi/sakuralang/security/advisories/new)
 from the repository's **Security → Advisories → Report a vulnerability** page.
 The initial security contact and triage owner is
 [@icantcodefyi](https://github.com/icantcodefyi).

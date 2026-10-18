@@ -7,7 +7,7 @@ description: Finish M3, establish WASM and verification in M4, then add native c
   Sakura Lang is pre-alpha and builds from source. The core language and M3 functionality run on JavaScript. **M3 is complete pending the owner's security review (gate 10):** gates 1–9 and 11 pass at `a843e60` (see the gate report below). WASM execution and static contract verification are not available through the CLI. There are no milestone dates or published releases.
 </Callout>
 
-The sequence is **M3 → M4 → M5**. The [completion plan](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/plans/m3-completion-and-m4.md) defines the gates; [design §17.81–§17.99](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md) defines the provisional M4 decisions. M0–M2 provide the existing parser, type/effect checker, JS backend, handlers, typed holes, formatter and test runner.
+The sequence is **M3 → M4 → M5**. The [completion plan](https://github.com/icantcodefyi/sakuralang/blob/master/docs/plans/m3-completion-and-m4.md) defines the gates; [design §17.81–§17.99](https://github.com/icantcodefyi/sakuralang/blob/master/docs/design.md) defines the provisional M4 decisions. M0–M2 provide the existing parser, type/effect checker, JS backend, handlers, typed holes, formatter and test runner.
 
 <PipelineFlow />
 
@@ -43,11 +43,11 @@ All eleven gates must pass on `origin/master` on Ubuntu and macOS before integra
 10. The named CODEOWNERS maintainer reviews the escape rules, the cassette format and the `Untrusted` template rule (WS8 item 2), because all three affect security. This gate is tracked separately: gates 1–9 and 11 passing make M3 complete pending review, and the signed packet closes M3.
 11. WS8 (design §17.100–§17.102) passes: the `rows.rs` catch cases, `tests/semantics/sql_untrusted_param.sakura`, the `std/llm` recording miss, `examples/llm_extract`'s recorded test and the `cli.rs` `--record` environment case.
 
-The [gate report](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/plans/m3-gate-report.md) records the latest audit of every gate against a named commit. The re-audit of 2026-10-18 at `a843e60`, after the M3 close-out (WS9), passes gates 1–9 and 11, so M3 is **complete pending the owner's security review (gate 10)**. The review packet is in [docs/reviews](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/reviews/m3-security-review.md). Until the owner signs it, the reviewed escape, cassette and template code is frozen; the roadmap marks M3 complete with the commit that holds the signed packet.
+The [gate report](https://github.com/icantcodefyi/sakuralang/blob/master/docs/plans/m3-gate-report.md) records the latest audit of every gate against a named commit. The re-audit of 2026-10-18 at `a843e60`, after the M3 close-out (WS9), passes gates 1–9 and 11, so M3 is **complete pending the owner's security review (gate 10)**. The review packet is in [docs/reviews](https://github.com/icantcodefyi/sakuralang/blob/master/docs/reviews/m3-security-review.md). Until the owner signs it, the reviewed escape, cassette and template code is frozen; the roadmap marks M3 complete with the commit that holds the signed packet.
 
 ## M4: WASM and contract verification
 
-The [ABI and encoding research](https://github.com/icantcodefyi/sakura-lang/blob/master/research/09-m4-abi-and-encoding.md) and [runtime ABI](https://github.com/icantcodefyi/sakura-lang/blob/master/compiler/runtime/rt/ABI.md) have landed. Plan §3.5 started three isolated tracks before the M3 gates; it does not declare their implementation complete:
+The [ABI and encoding research](https://github.com/icantcodefyi/sakuralang/blob/master/research/09-m4-abi-and-encoding.md) and [runtime ABI](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/runtime/rt/ABI.md) have landed. Plan §3.5 started three isolated tracks before the M3 gates; it does not declare their implementation complete:
 
 - **R1 → R2/R3:** runtime skeleton, allocator and bounded reference counting; then values/collections (R2) and frames, trampoline and scheduler (R3).
 - **L1 → L2:** LIR model, layout/ownership validation and printing; then lowering and an interpreter checked against stored differential expectations.

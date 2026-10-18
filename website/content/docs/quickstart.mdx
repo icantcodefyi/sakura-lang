@@ -12,8 +12,8 @@ description: Build the Sakura Lang compiler from source, then check, test and ru
 You need [rustup](https://rustup.rs) and [Node.js](https://nodejs.org) (`sakura run` and `sakura test` execute the generated JavaScript with `node`; CI uses Node 26). The repository pins its Rust toolchain in `compiler/rust-toolchain.toml`, so rustup fetches the right version on first build.
 
 ```bash
-git clone https://github.com/icantcodefyi/sakura-lang
-cd sakura-lang/compiler
+git clone https://github.com/icantcodefyi/sakuralang
+cd sakuralang/compiler
 cargo install --locked --path crates/sakura_cli
 sakura --version
 ```
@@ -205,7 +205,7 @@ hole ?result: expected Int, effects {}; locals [x: Int]; candidates [x, Int.abs(
 | `sakura test [--json] [--seed N] [--filter text] [--update-snapshots]` | Run tests and properties with deterministic handlers |
 | `sakura fmt [--check] [paths]` | Canonical format. There are no options |
 | `sakura explain V3001` | Rationale, causes and repairs for a diagnostic code |
-| `sakura prompt` | Print the language guide for agents ([llms.txt](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/llms.txt)) |
+| `sakura prompt` | Print the language guide for agents ([llms.txt](https://github.com/icantcodefyi/sakuralang/blob/master/docs/llms.txt)) |
 
 Also available: `sakura new`, `sakura init`, `sakura fix`, `sakura check --frozen-specs all [--since rev]`, `sakura lsp`, and `sakura mcp serve`. `sakura doc` and trust-site `sakura audit` are M3 completion work. Package commands remain planned; verification/WASM are M4 and native is M5.
 

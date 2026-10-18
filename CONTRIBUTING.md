@@ -14,8 +14,8 @@ Run `git config core.hooksPath .githooks` once after cloning. The pre-push hook 
 ## Set up the checkout
 
 ```sh
-git clone https://github.com/icantcodefyi/sakura-lang.git
-cd sakura-lang
+git clone https://github.com/icantcodefyi/sakuralang.git
+cd sakuralang
 cd website
 bun install --frozen-lockfile
 bun run dev

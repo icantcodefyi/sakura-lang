@@ -35,7 +35,7 @@ pub fn double(n: Int) -> Int {
 
 ## Statements and newlines
 
-There are no mandatory semicolons. The lexer ends a statement at a line break only when **both** hold ([design §2.4](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)):
+There are no mandatory semicolons. The lexer ends a statement at a line break only when **both** hold ([design §2.4](https://github.com/icantcodefyi/sakuralang/blob/master/docs/design.md)):
 
 1. The previous token can end an expression: a name, a hole, a literal, `)`, `]`, `}`, `>`, postfix `?`, `true`, `false`, `break`, `continue`, or `return`.
 2. The next token cannot continue one: it is not `.`, `else`, `catch`, `)`, `]`, `}`, `,`, `=>`, `=`, `->`, `|`, `..`, or a binary operator other than `-`.
@@ -121,7 +121,7 @@ fn describe(n: Option<Int>) -> String {
 
 ## Operators
 
-Tightest first ([design §3.1](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)):
+Tightest first ([design §3.1](https://github.com/icantcodefyi/sakuralang/blob/master/docs/design.md)):
 
 | Level | Operators | Associativity |
 | --- | --- | --- |
@@ -140,7 +140,7 @@ Tightest first ([design §3.1](https://github.com/icantcodefyi/sakura-lang/blob/
 - `a < b < c` is `V0010`. `&&` and `||` short-circuit.
 - `xs[i]` is `List.get(xs, i)` and returns `Option`.
 
-Four parsing rules remove guesswork ([design §3.2](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)):
+Four parsing rules remove guesswork ([design §3.2](https://github.com/icantcodefyi/sakuralang/blob/master/docs/design.md)):
 
 - In expressions, `<` is always comparison. There are no call-site type arguments: `List<Int>.empty()` and `f<T>(x)` are `V0011`. Name the type with a binding annotation instead: `let xs: List<Int> = List.empty()`, `let rows: List<User> = Sql.query(q)`.
 - There are no named arguments: `f(name: v)` is `V0014`. Pass values positionally, or pass a record when there are many options (`Budget.limits(Limits { tokens: Some(20_000), usd: None, calls: None })`).

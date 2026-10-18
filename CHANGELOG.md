@@ -88,6 +88,8 @@ published yet.
 
 ### Changed
 
+- Updated live repository links and clone instructions to `icantcodefyi/sakuralang`.
+
 - Benchmark peak-RSS crossings above 25% now require one confirmation group on Node;
   Bun crossings warn only (design §17.136). Compare output retains both groups' maxima,
   medians and counts, and CI reuses the timing confirmation run.
@@ -161,4 +163,4 @@ published yet.
 - A non-exhaustive `match` on a refined list type reports `V4001` with the missing case instead
   of an internal compiler error.
 
-[Unreleased]: https://github.com/icantcodefyi/sakura-lang/commits/master
+[Unreleased]: https://github.com/icantcodefyi/sakuralang/commits/master
