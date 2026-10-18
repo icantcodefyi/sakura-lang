@@ -57,6 +57,7 @@ const IMPORTS: &[&str] = &[
     "test_output_lines",
     "test_fixtures",
     "test_snapshot",
+    "file_close",
 ];
 
 /// The ABI §1 allowlist, from an empty set (research/09 §1).

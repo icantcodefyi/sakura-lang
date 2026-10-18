@@ -108,8 +108,16 @@ pub extern "C" fn complete(request: u32, status: u32, payload: u32, _len: u32) -
 
 /// The module's tables (data-segment addresses) and the funcref code of the callback stub.
 #[unsafe(no_mangle)]
-pub extern "C" fn rt_init(layout: u32, codes: u32, effects: u32, ops: u32, stub: u32) -> u32 {
+pub extern "C" fn rt_init(
+    layout: u32,
+    codes: u32,
+    effects: u32,
+    ops: u32,
+    stub: u32,
+    file_close: u32,
+) -> u32 {
     let rt = rt();
+    rt.sched.file_close_code = file_close;
     rt.set_codes(codes);
     rt.set_effects(effects);
     rt.sched.ops = ops;
@@ -978,6 +986,56 @@ fn log_line(rt: &mut Rt, level: u32, message: u32, fields: u32) -> Res<u32> {
     Ok(line)
 }
 
+// ---- files ------------------------------------------------------------------------------------
+
+/// `file_closing(id, body)` (cps, as JS: `finalize` with the file's close): register a
+/// finalizer that closes file `id` (`rt_code_file_close`, which the runtime runs on `fail`,
+/// defect or cancellation), call `body`, then on its return pop the finalizer and close.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_k_file_closing(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    let id = rt.fslot(frame, 0);
+    if rt.block(frame) == 1 {
+        let result = rt.take_ret();
+        let closer = rt.fin_pop();
+        rt.drop(closer);
+        // SAFETY: a plain import with a scalar argument.
+        unsafe { host::file_close(id as i64) };
+        return ret(rt, result);
+    }
+    let body = rt.take_fslot(frame, 1) as u32;
+    let closer = rt
+        .new_object(tag::CLOSURE, 24)
+        .inspect(|&c| {
+            rt.heap.mem.set_u32(c + 8, rt.sched.file_close_code);
+            rt.heap.mem.set_u32(c + 12, 1);
+            rt.set_slot(c, 0, id);
+        })
+        .and_then(|c| rt.fin_push(c));
+    if let Err(d) = closer {
+        rt.drop(body);
+        return rt.raise(d);
+    }
+    match rt.call_value(body, 0) {
+        Ok(_) => {
+            rt.set_block(frame, 1);
+            step::CALL
+        }
+        Err(d) => rt.raise(d),
+    }
+}
+
+/// The finalizer `file_closing` registers: closes the file in its capture (slot 0 of its
+/// frame is `returned`, unused).
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_file_close(env: u32, _frame: u32) -> u32 {
+    let rt = rt();
+    let id = rt.slot(env, 0);
+    // SAFETY: a plain import with a scalar argument.
+    unsafe { host::file_close(id as i64) };
+    ret(rt, UNIT as u64)
+}
+
 // ---- the test runner's `std::test::Test` handler (`sakura test --target wasm`) --------------
 
 /// A root task for test wrapper `code` under the runner's `Test` handler `h` (consumed); the
@@ -1163,6 +1221,8 @@ mod host {
         pub fn test_output_lines() -> u32;
         pub fn test_fixtures() -> u32;
         pub fn test_snapshot(name: u32, name_len: u32, rendered: u32, rendered_len: u32);
+        /// Closes a file the host's `file_open` opened (JS `file_close`).
+        pub fn file_close(id: i64);
     }
 }
 
