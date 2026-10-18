@@ -23,7 +23,7 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
 
   const MDX = page.data.body;
   const markdownUrl = getPageMarkdownUrl(page);
-  const githubUrl = `${site.github}/blob/master/website/content/docs/${page.path}`;
+  const githubUrl = `${site.github}/blob/main/website/content/docs/${page.path}`;
   const url = absolute(page.url);
   const crumbs = [
     { name: site.name, url: absolute("/") },

@@ -11,7 +11,7 @@ A numeric literal is malformed, such as `0x` with no digits, `1.` or `.5`. Write
 
 ## Wrong program
 
-[`compiler/tests/ui/V0006_malformed_number.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0006_malformed_number.sak), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V0006_malformed_number.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V0006_malformed_number.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn mask() -> Int { 0x }
@@ -51,7 +51,7 @@ fn mask() -> Int { 0x }
 
 ## Fixed program
 
-[`compiler/tests/ui/V0006_malformed_number.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0006_malformed_number.fixed.sak), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V0006_malformed_number.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V0006_malformed_number.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn mask() -> Int { 0xff }

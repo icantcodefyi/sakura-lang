@@ -23,7 +23,7 @@ fn shout(s: String) -> Int { 1 }
 
 ## Wrong program
 
-[`compiler/tests/ui/V1003_unresolved_type.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1003_unresolved_type.sak), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V1003_unresolved_type.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V1003_unresolved_type.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn shout(s: Strng) -> Int { 1 }
@@ -82,7 +82,7 @@ fn shout(s: Strng) -> Int { 1 }
 
 ## Fixed program
 
-[`compiler/tests/ui/V1003_unresolved_type.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1003_unresolved_type.fixed.sak), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V1003_unresolved_type.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V1003_unresolved_type.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn shout(s: String) -> Int { 1 }

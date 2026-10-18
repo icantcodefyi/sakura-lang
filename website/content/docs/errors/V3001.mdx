@@ -32,7 +32,7 @@ fn greet(name: String) -> Unit ! {Console} { Console.print("hello, {name}") }
 
 ## Wrong program
 
-[`compiler/tests/ui/V3001_greet_without_console.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3001_greet_without_console.sak), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V3001_greet_without_console.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V3001_greet_without_console.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn greet(name: String) -> Unit { Console.print("hello, {name}") }
@@ -144,11 +144,11 @@ pub fn main() -> Unit ! {Console} { greet("Sakura Lang") }
 }
 ```
 
-More fixtures for this code: [`compiler/tests/ui/V3001_residual_fail_uses_try.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3001_residual_fail_uses_try.sak), [`compiler/tests/ui/V3001_with_handler_hole_when_ambiguous.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3001_with_handler_hole_when_ambiguous.sak), [`compiler/tests/ui/V3001_with_names_std_handler.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3001_with_names_std_handler.sak).
+More fixtures for this code: [`compiler/tests/ui/V3001_residual_fail_uses_try.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V3001_residual_fail_uses_try.sak), [`compiler/tests/ui/V3001_with_handler_hole_when_ambiguous.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V3001_with_handler_hole_when_ambiguous.sak), [`compiler/tests/ui/V3001_with_names_std_handler.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V3001_with_names_std_handler.sak).
 
 ## Fixed program
 
-[`compiler/tests/ui/V3001_greet_without_console.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3001_greet_without_console.fixed.sak), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V3001_greet_without_console.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V3001_greet_without_console.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn greet(name: String) -> Unit ! {Console} { Console.print("hello, {name}") }

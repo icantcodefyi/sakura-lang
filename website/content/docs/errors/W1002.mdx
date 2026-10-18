@@ -23,7 +23,7 @@ let max_attempts = 3
 
 ## Wrong program
 
-[`compiler/tests/ui/W1002_shadowed_import.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/W1002_shadowed_import.sak), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/W1002_shadowed_import.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/W1002_shadowed_import.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 import std/retry.{retry}
@@ -76,7 +76,7 @@ fn attempts() -> Int {
 
 ## Fixed program
 
-[`compiler/tests/ui/W1002_shadowed_import.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/W1002_shadowed_import.fixed.sak), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/W1002_shadowed_import.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/W1002_shadowed_import.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 import std/retry.{retry}

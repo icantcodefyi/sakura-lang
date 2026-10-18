@@ -82,7 +82,7 @@ Sakura Lang is pre-alpha and nothing is released. The v0 language design is writ
 
 - Portable Sakura skill: ${site.url}/skills/sakura/SKILL.md
 - Skill ZIP: ${site.url}/skills/sakura-skill.zip (checksum: ${site.url}/skills/sakura-skill.sha256; provenance and file hashes: ${site.url}/skills/manifest.json). Extract the sakura/ folder into \`.claude/skills/\`, \`.agents/skills/\`, or \`.cursor/skills/\` in your project.
-- The core language for agents, in one file: ${site.github}/blob/master/docs/llms.txt
+- The core language for agents, in one file: ${site.github}/blob/main/docs/llms.txt
 - Every docs page is available as Markdown: append \`.md\` to its URL (for example ${site.url}/docs/tour/effects.md).
 - All docs in one file: ${site.url}/llms-full.txt
 

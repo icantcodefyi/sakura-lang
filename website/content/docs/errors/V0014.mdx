@@ -24,7 +24,7 @@ clamp(x, 0, 10)
 
 ## Wrong program
 
-[`compiler/tests/ui/V0014_named_argument.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0014_named_argument.sak), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V0014_named_argument.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V0014_named_argument.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn double(n: Int) -> Int { n * 2 }
@@ -66,7 +66,7 @@ fn four() -> Int { double(n: 2) }
 
 ## Fixed program
 
-[`compiler/tests/ui/V0014_named_argument.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0014_named_argument.fixed.sak), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V0014_named_argument.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V0014_named_argument.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn double(n: Int) -> Int { n * 2 }

@@ -23,7 +23,7 @@ match o { Some(n) => n, _ => 0 }
 
 ## Wrong program
 
-[`compiler/tests/ui/V4002_unreachable_arm.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V4002_unreachable_arm.sak), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V4002_unreachable_arm.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V4002_unreachable_arm.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn sign(n: Int) -> String {
@@ -69,7 +69,7 @@ fn sign(n: Int) -> String {
 
 ## Fixed program
 
-[`compiler/tests/ui/V4002_unreachable_arm.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V4002_unreachable_arm.fixed.sak), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V4002_unreachable_arm.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V4002_unreachable_arm.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn sign(n: Int) -> String {

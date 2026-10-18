@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Sakura Lang is pre-alpha; no compiler is released yet. Search existing issues first.
-        Report security issues privately using [SECURITY.md](https://github.com/icantcodefyi/sakuralang/blob/master/SECURITY.md).
+        Report security issues privately using [SECURITY.md](https://github.com/icantcodefyi/sakuralang/blob/main/SECURITY.md).
         Remove secrets and private data from all examples and logs.
   - type: input
     id: revision

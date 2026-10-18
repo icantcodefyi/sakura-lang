@@ -32,7 +32,7 @@ fn first_kb(p: Path) -> Bytes ! {Fs, Fail<FsError>} {
 
 ## Wrong program
 
-[`compiler/tests/ui/V6003_resource_escape.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V6003_resource_escape.sak), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V6003_resource_escape.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V6003_resource_escape.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 import std/fs.{File, Fs, FsError, Mode}
@@ -75,11 +75,11 @@ fn keep_open(p: Path) -> File ! {Fs, Fail<FsError>} {
 }
 ```
 
-More fixtures for this code: [`compiler/tests/ui/V6003_route_handler_returns_file.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V6003_route_handler_returns_file.sak).
+More fixtures for this code: [`compiler/tests/ui/V6003_route_handler_returns_file.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V6003_route_handler_returns_file.sak).
 
 ## Fixed program
 
-[`compiler/tests/ui/V6003_resource_escape.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V6003_resource_escape.fixed.sak), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V6003_resource_escape.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V6003_resource_escape.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 import std/fs.{Fs, FsError, Mode}

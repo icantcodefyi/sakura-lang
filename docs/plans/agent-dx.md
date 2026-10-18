@@ -451,7 +451,7 @@ scheduled beside W2 as the first agent-DX items, DX5's runner and DX6's workflow
    live request and its settled cost after; unknown outcomes stay charged at the reservation
    and halt the run. The runner hard-codes the $10 owner total, the owner as the only
    approver, a $4/$20 price ceiling and 48 live episodes across all runs (so a smoke run
-   counts toward the 48). `agent-eval.yml` commits the ledger back to `master`; local runs
+   counts toward the 48). `agent-eval.yml` commits the ledger back to `main`; local runs
    must commit it by hand.
 4. **Conditions.** Only `baseline` and `skill` (normal discovery: listed by name and
    description, loaded by tool call, activation recorded) are implemented, the two the

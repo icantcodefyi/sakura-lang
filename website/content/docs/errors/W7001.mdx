@@ -30,7 +30,7 @@ pub fn sku(number: Int) -> String
 
 ## Wrong program
 
-[`compiler/tests/ui/W7001_property_discard_budget.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/W7001_property_discard_budget.sak), which the compiler's ui suite runs through `sakura test --contracts`:
+[`compiler/tests/ui/W7001_property_discard_budget.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/W7001_property_discard_budget.sak), which the compiler's ui suite runs through `sakura test --contracts`:
 
 ```sakura
 pub fn exact(x: Int) -> Int
@@ -42,7 +42,7 @@ pub fn exact(x: Int) -> Int
 
 ## Fixed program
 
-[`compiler/tests/ui/W7001_property_discard_budget.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/W7001_property_discard_budget.fixed.sak), which `sakura test --contracts` accepts with no diagnostics:
+[`compiler/tests/ui/W7001_property_discard_budget.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/W7001_property_discard_budget.fixed.sak), which `sakura test --contracts` accepts with no diagnostics:
 
 ```sakura
 pub fn exact(x: Int) -> Int

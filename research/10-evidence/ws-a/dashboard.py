@@ -61,7 +61,7 @@ def main():
     <p class="note">Five complete runs per cell. Local analysis retains four programs under heavy shared-host contention (1-minute load 4.76–62.10 on 12 CPUs); CI covers fib and pipeline within one runner allocation per job. Historical sieve data is excluded after the algorithm change at 5b10553. Empirical ranges, not confidence intervals. The two macOS jobs used different virtual hardware.</p>
     <p class="note">An unchanged-source macOS/Node comparison also triggered the independent two-size fib complexity heuristic. Tightening timing thresholds would not repair that gate.</p>
     ''' + candidate_html + latency_html + '''
-    <p class="note">All raw samples, load snapshots, comparison verdicts, provenance and human-only blessing instructions are in the <a href="https://github.com/icantcodefyi/sakura-lang/blob/master/research/10-evidence/ws-a/README.md">WS-A report</a>.</p>
+    <p class="note">All raw samples, load snapshots, comparison verdicts, provenance and human-only blessing instructions are in the <a href="https://github.com/icantcodefyi/sakura-lang/blob/main/research/10-evidence/ws-a/README.md">WS-A report</a>.</p>
     </body></html>'''
     (HERE / 'measurement-summary.html').write_text(page + '\n')
 

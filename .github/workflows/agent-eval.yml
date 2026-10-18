@@ -32,7 +32,7 @@ on:
         default: baseline,skill
 
 permissions:
-  contents: write # commits the spend ledger back to master
+  contents: write # commits the spend ledger back to main
 
 concurrency:
   group: agent-eval
@@ -89,8 +89,8 @@ jobs:
           git commit -m "chore(evals): record agent-eval spend for run $GITHUB_RUN_ID" \
             -- evals/agent-dx/reports/ledger.json
           auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
-          git -c http.https://github.com/.extraheader="$auth" pull --rebase origin master
-          git -c http.https://github.com/.extraheader="$auth" push origin HEAD:master
+          git -c http.https://github.com/.extraheader="$auth" pull --rebase origin main
+          git -c http.https://github.com/.extraheader="$auth" push origin HEAD:main
       # Summaries only: raw transcripts stay private until reviewed and redacted.
       - name: Upload the summary
         if: always()

@@ -415,7 +415,7 @@ Only the owner: dispatch `v0.1.0-alpha.1` after WS12 items 1–3 and 5–7; revi
 
 ## 4. M3 exit gates
 
-All must pass on `origin/master`, on ubuntu and macos. Gates 1–9 and 11 passing after WS9 makes M3 **complete pending review**, which is when M4's "after the gates" milestones start (§3.5, §17.128); gate 10 is tracked separately and closes M3 when signed. Each gate names its command.
+All must pass on `origin/main`, on ubuntu and macos. Gates 1–9 and 11 passing after WS9 makes M3 **complete pending review**, which is when M4's "after the gates" milestones start (§3.5, §17.128); gate 10 is tracked separately and closes M3 when signed. Each gate names its command.
 
 **Status (2026-10-18): M3 complete.** WS9 item 10's re-audit at `a843e60` passes gates 1–9 and 11 ([gate report](m3-gate-report.md#re-audit-2026-10-18-at-a843e60)), and gate 10 passed on 2026-10-18: the [security packet](../reviews/m3-security-review.md) is signed against `6ccce80` by Claude Fable 5.1 under the owner's written delegation of that day (design §17.159; not the owner's personal review). The §17.128 freeze is lifted. The re-audit's gate 10 finding (`Json.decode` forges opaque types) was decided in §17.130 and fixed by WS10 before the review. The review's own findings are WS12.
 

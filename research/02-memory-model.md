@@ -171,7 +171,7 @@ println!("{first}");
 
 ### 2.11 Zig: explicit allocators
 
-**Core idea.** Allocation policy is supplied explicitly, and cleanup remains the programmer's responsibility. Arenas make phase-based teardown convenient; allocator selection does not itself prove pointer lifetimes or race freedom. [Zig memory documentation](https://ziglang.org/documentation/master/), [Arena implementation](https://github.com/ziglang/zig/blob/master/lib/std/heap/arena_allocator.zig).
+**Core idea.** Allocation policy is supplied explicitly, and cleanup remains the programmer's responsibility. Arenas make phase-based teardown convenient; allocator selection does not itself prove pointer lifetimes or race freedom. [Zig memory documentation](https://ziglang.org/documentation/master/), [Arena implementation](https://github.com/ziglang/zig/blob/main/lib/std/heap/arena_allocator.zig).
 
 ```text
 arena = Arena(parent_allocator)
@@ -438,7 +438,7 @@ Primary sources used above; paper dates take precedence over search-engine crawl
 34. [Rust Arc documentation](https://doc.rust-lang.org/std/sync/struct.Arc.html).
 35. [Rust reference cycles](https://doc.rust-lang.org/book/ch15-06-reference-cycles.html).
 36. [Zig language and memory documentation](https://ziglang.org/documentation/master/).
-37. [Zig arena allocator source](https://github.com/ziglang/zig/blob/master/lib/std/heap/arena_allocator.zig).
+37. [Zig arena allocator source](https://github.com/ziglang/zig/blob/main/lib/std/heap/arena_allocator.zig).
 38. [Tofte and Talpin, Region-Based Memory Management, 1997](https://web.cs.ucla.edu/~palsberg/tba/papers/tofte-talpin-iandc97.pdf).
 39. [David Gay, safe-region memory-management thesis](https://theory.stanford.edu/~aiken/publications/theses/gay.pdf).
 40. [Pony reference capabilities](https://tutorial.ponylang.io/reference-capabilities/reference-capabilities).

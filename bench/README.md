@@ -303,7 +303,7 @@ not establish the noise of the stable nightly configuration or of the other fami
 The default dispatch still runs the full nightly job.
 
 ```sh
-gh workflow run bench.yml --ref master -f mode=noise -f repeats=5
+gh workflow run bench.yml --ref main -f mode=noise -f repeats=5
 # After the run completes, download each bench-noise-<os>-<engine> artifact separately.
 python3 research/10-evidence/analyze_noise.py path/to/noise-[1-5].json --json summary.json
 ```

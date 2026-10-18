@@ -129,12 +129,12 @@ effects, or grant capabilities merely to silence a compiler error.
 
 ## Automation and bootstrap policy
 
-CI runs on pushes to `master`, PRs, and merge groups. `ci-required` aggregates
+CI runs on pushes to `main`, PRs, and merge groups. `ci-required` aggregates
 website checks and the Rust job, which runs in `compiler/` using its pinned toolchain.
 
 During bootstrap, direct pushes are allowed: **PR reviews and required status
-checks are not enforced**. The active `Protect master during bootstrap` branch ruleset blocks force pushes
-and deletion of `master`, with no bypass actors. When the project leaves
+checks are not enforced**. The active `Protect the default branch` ruleset blocks force pushes
+and deletion of `main`, with no bypass actors. When the project leaves
 bootstrap, enable required `ci-required` checks and PR reviews before accepting
 routine changes. A green gate is still expected now; investigate failures.
 

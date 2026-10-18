@@ -26,7 +26,7 @@ test "counts rows" { with empty_db() { expect_eq(Db.count(), 0) } }
 
 ## Wrong program
 
-[`compiler/tests/ui/V3020_test_unhandled_effect.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3020_test_unhandled_effect.sak), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V3020_test_unhandled_effect.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V3020_test_unhandled_effect.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 effect Db {
@@ -124,7 +124,7 @@ test "counts rows" { expect_eq(Db.count(), 0) }
 
 ## Fixed program
 
-[`compiler/tests/ui/V3020_test_unhandled_effect.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3020_test_unhandled_effect.fixed.sak), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V3020_test_unhandled_effect.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V3020_test_unhandled_effect.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 effect Db {

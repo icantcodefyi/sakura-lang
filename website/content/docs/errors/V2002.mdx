@@ -25,7 +25,7 @@ fn four() -> Int { double(2) }
 
 ## Wrong program
 
-[`compiler/tests/ui/V2002_arity_mismatch.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2002_arity_mismatch.sak), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V2002_arity_mismatch.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V2002_arity_mismatch.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn double(x: Int) -> Int { x * 2 }
@@ -69,11 +69,11 @@ fn four() -> Int { double(2, 2) }
 }
 ```
 
-More fixtures for this code: [`compiler/tests/ui/V2002_function_value_keeps_type.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2002_function_value_keeps_type.sak), [`compiler/tests/ui/V2002_names_callee_and_module.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2002_names_callee_and_module.sak), [`compiler/tests/ui/V2002_row_argument_count.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2002_row_argument_count.sak).
+More fixtures for this code: [`compiler/tests/ui/V2002_function_value_keeps_type.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V2002_function_value_keeps_type.sak), [`compiler/tests/ui/V2002_names_callee_and_module.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V2002_names_callee_and_module.sak), [`compiler/tests/ui/V2002_row_argument_count.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V2002_row_argument_count.sak).
 
 ## Fixed program
 
-[`compiler/tests/ui/V2002_arity_mismatch.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2002_arity_mismatch.fixed.sak), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V2002_arity_mismatch.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V2002_arity_mismatch.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn double(x: Int) -> Int { x * 2 }

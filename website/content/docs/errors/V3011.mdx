@@ -24,7 +24,7 @@ fn both() -> Handler<Pair> { handler Pair { fn left() { 1 }; fn right() { 2 } } 
 
 ## Wrong program
 
-[`compiler/tests/ui/V3011_handler_clause_mismatch.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3011_handler_clause_mismatch.sak), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V3011_handler_clause_mismatch.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V3011_handler_clause_mismatch.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 effect Pair {
@@ -73,7 +73,7 @@ fn only_left() -> Handler<Pair> {
 
 ## Fixed program
 
-[`compiler/tests/ui/V3011_handler_clause_mismatch.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3011_handler_clause_mismatch.fixed.sak), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V3011_handler_clause_mismatch.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V3011_handler_clause_mismatch.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 effect Pair {

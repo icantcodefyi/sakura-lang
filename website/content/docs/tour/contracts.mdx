@@ -11,7 +11,7 @@ Types say what shape a value has. Refinements and contracts say what is true abo
 
 ## The guarantee model
 
-Every claim Sakura Lang makes about a program has exactly one of four statuses ([design §1.2](https://github.com/icantcodefyi/sakuralang/blob/master/docs/design.md)):
+Every claim Sakura Lang makes about a program has exactly one of four statuses ([design §1.2](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)):
 
 | Status            | Meaning                                                                                | Who establishes it                                                            |
 | ----------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
@@ -65,7 +65,7 @@ test "generic refinements keep their element type" {
 
 ## How values enter a refined type
 
-A value becomes a `Percent` in one of four ways ([design §4.3](https://github.com/icantcodefyi/sakuralang/blob/master/docs/design.md)):
+A value becomes a `Percent` in one of four ways ([design §4.3](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)):
 
 | Entry point                               | On failure                                                        |
 | ----------------------------------------- | ----------------------------------------------------------------- |
@@ -124,7 +124,7 @@ This checks the refinement and returns `Err(Violation)` on failure; it does not 
 
 ## The contract subset
 
-Predicates in `where`, `requires`, `ensures`, and `property` clauses must be pure (`! {}`), terminating, and deterministic. v0 enforces this syntactically ([design §7.1](https://github.com/icantcodefyi/sakuralang/blob/master/docs/design.md)):
+Predicates in `where`, `requires`, `ensures`, and `property` clauses must be pure (`! {}`), terminating, and deterministic. v0 enforces this syntactically ([design §7.1](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)):
 
 - No loops and no recursion.
 - Calls only to functions with row `{}` that are marked `@total` or are themselves in the subset, checked transitively. Anything else is `V5001`.
@@ -220,7 +220,7 @@ Compiler fixes that touch a contract carry `impact: contract_change` and are nev
 
 ## Not in v0
 
-- **Termination proofs.** The M4 `sakura verify` preview proves supported obligations conditional on normal return; it does not prove termination ([design §7.5](https://github.com/icantcodefyi/sakuralang/blob/master/docs/design.md)).
+- **Termination proofs.** The M4 `sakura verify` preview proves supported obligations conditional on normal return; it does not prove termination ([design §7.5](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)).
 - **Flow-sensitive refinement.** An `if n >= 0` does not turn `n` into a refined type. Use `validate` or `from`.
 - **`old(expr)`** in postconditions. There is no mutation to snapshot.
 - **Proof-oriented syntax.** The keywords `verify`, `proof`, and `ghost` are reserved and rejected today with `V0007`.

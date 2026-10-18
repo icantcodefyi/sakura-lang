@@ -11,7 +11,7 @@ A string contains an escape that is not one of `\\ \" \n \r \t \0 \{ \}` or
 
 ## Wrong program
 
-[`compiler/tests/ui/V0005_invalid_escape.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0005_invalid_escape.sak), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V0005_invalid_escape.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V0005_invalid_escape.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn path() -> String { "C:\qdata" }
@@ -51,7 +51,7 @@ fn path() -> String { "C:\qdata" }
 
 ## Fixed program
 
-[`compiler/tests/ui/V0005_invalid_escape.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V0005_invalid_escape.fixed.sak), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V0005_invalid_escape.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V0005_invalid_escape.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn path() -> String { "C:\\qdata" }

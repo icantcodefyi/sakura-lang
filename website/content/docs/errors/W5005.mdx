@@ -29,7 +29,7 @@ fn total(xs: List<Positive>) -> Int { List.fold(xs, 0, fn(acc, x) { acc + x }) }
 
 ## Wrong program
 
-[`compiler/tests/ui/W5005_linear_contract_on_hot_path.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/W5005_linear_contract_on_hot_path.sak), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/W5005_linear_contract_on_hot_path.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/W5005_linear_contract_on_hot_path.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn count_positive(xs: List<Int>) -> Int
@@ -77,7 +77,7 @@ fn many(xs: List<Int>) -> Int {
 
 ## Fixed program
 
-[`compiler/tests/ui/W5005_linear_contract_on_hot_path.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/W5005_linear_contract_on_hot_path.fixed.sak), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/W5005_linear_contract_on_hot_path.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/W5005_linear_contract_on_hot_path.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 type Positive = Int where it > 0

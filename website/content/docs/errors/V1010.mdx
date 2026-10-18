@@ -26,7 +26,7 @@ fn double(n: Int) -> Int { n * 2 }
 
 ## Wrong program
 
-[`compiler/tests/ui/V1010_tool_of_lambda.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1010_tool_of_lambda.sak), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V1010_tool_of_lambda.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V1010_tool_of_lambda.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 import std/tool.{Tool}
@@ -66,11 +66,11 @@ pub fn tools() -> Unit { let _ = Tool.of(fn(a: Int) { a }) }
 }
 ```
 
-More fixtures for this code: [`compiler/tests/ui/V1010_tool_of_untagged_function.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1010_tool_of_untagged_function.sak), [`compiler/tests/ui/V1010_unknown_attribute.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1010_unknown_attribute.sak).
+More fixtures for this code: [`compiler/tests/ui/V1010_tool_of_untagged_function.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V1010_tool_of_untagged_function.sak), [`compiler/tests/ui/V1010_unknown_attribute.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V1010_unknown_attribute.sak).
 
 ## Fixed program
 
-[`compiler/tests/ui/V1010_tool_of_lambda.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V1010_tool_of_lambda.fixed.sak), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V1010_tool_of_lambda.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V1010_tool_of_lambda.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 import std/tool.{Tool}

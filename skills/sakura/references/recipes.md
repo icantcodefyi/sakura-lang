@@ -32,7 +32,7 @@ failed predicate should be a defect. No permissions are needed.
 The harness runs `main` (expecting `2 x tea`) and both tests. The tests cover a valid
 record, invalid JSON, an empty name, missing quantity and both out-of-range bounds.
 
-[Source project](https://github.com/icantcodefyi/sakuralang/tree/master/compiler/examples/json_refined) · harness mode: `run + test`.
+[Source project](https://github.com/icantcodefyi/sakuralang/tree/main/compiler/examples/json_refined) · harness mode: `run + test`.
 
 From the repository root, with this checkout's `sakura` on `PATH`:
 
@@ -114,7 +114,7 @@ arguments and files with `Cli.of` and `Fs.memory`, checking success, missing fla
 and a missing file. The harness also runs `sakura run -- --input note.txt` against
 the committed data file and expects `4 bytes`.
 
-[Source project](https://github.com/icantcodefyi/sakuralang/tree/master/compiler/examples/cli_files) · harness mode: `run + test`.
+[Source project](https://github.com/icantcodefyi/sakuralang/tree/main/compiler/examples/cli_files) · harness mode: `run + test`.
 
 From the repository root, with this checkout's `sakura` on `PATH`:
 
@@ -222,7 +222,7 @@ even in recording mode. `Clock.virtual` advances without sleeping. Tests check
 success after 100 ms, exhaustion after 300 ms, and immediate transport failure.
 The harness uses test mode; the manifest grants no network or environment access.
 
-[Source project](https://github.com/icantcodefyi/sakuralang/tree/master/compiler/examples/http_retry) · harness mode: `test`.
+[Source project](https://github.com/icantcodefyi/sakuralang/tree/main/compiler/examples/http_retry) · harness mode: `test`.
 
 From the repository root, with this checkout's `sakura` on `PATH`:
 
@@ -348,7 +348,7 @@ fails on an absent table, checks `SqlError`, and proves the first write rolled b
 The harness uses test mode. For a persistent database, query `sakura doc std::sql::sqlite`
 and supply an appropriately confined filesystem handler and manifest permissions.
 
-[Source project](https://github.com/icantcodefyi/sakuralang/tree/master/compiler/examples/sqlite_query) · harness mode: `test`.
+[Source project](https://github.com/icantcodefyi/sakuralang/tree/main/compiler/examples/sqlite_query) · harness mode: `test`.
 
 From the repository root, with this checkout's `sakura` on `PATH`:
 
@@ -441,7 +441,7 @@ successful response body, rejection of malformed JSON, an invalid refinement and
 an oversized body, plus missing-route and wrong-method statuses. The harness uses
 test mode and never starts a server.
 
-[Source project](https://github.com/icantcodefyi/sakuralang/tree/master/compiler/examples/router_endpoint) · harness mode: `test`.
+[Source project](https://github.com/icantcodefyi/sakuralang/tree/main/compiler/examples/router_endpoint) · harness mode: `test`.
 
 From the repository root, with this checkout's `sakura` on `PATH`:
 
@@ -527,7 +527,7 @@ through `Llm.replay`, which denies network fallback. The harness uses test mode.
 The manifest grants no network or key access. Budgets are intentionally unlimited
 here; the budgeted-agent recipe exercises finite accounting.
 
-[Source project](https://github.com/icantcodefyi/sakuralang/tree/master/compiler/examples/scripted_tool) · harness mode: `test`.
+[Source project](https://github.com/icantcodefyi/sakuralang/tree/main/compiler/examples/scripted_tool) · harness mode: `test`.
 
 From the repository root, with this checkout's `sakura` on `PATH`:
 
@@ -656,7 +656,7 @@ rejects before any scripted response is consumed, and the final-turn rule. These
 are local accounting tests, not measured provider prices or a hard billing guarantee.
 The harness uses test mode; no key, paid call or live service is involved.
 
-[Source project](https://github.com/icantcodefyi/sakuralang/tree/master/compiler/examples/budgeted_agent) · harness mode: `test`.
+[Source project](https://github.com/icantcodefyi/sakuralang/tree/main/compiler/examples/budgeted_agent) · harness mode: `test`.
 
 From the repository root, with this checkout's `sakura` on `PATH`:
 
@@ -792,7 +792,7 @@ inputs, and external indices below zero, at the length and inside the list.
 The harness also runs `main` and checks `[3, 0, 7, 0]`. No effects other than its
 console output, permissions or slice/concat reconstruction are needed.
 
-[Source project](https://github.com/icantcodefyi/sakuralang/tree/master/compiler/examples/indexed_update) · harness mode: `run + test`.
+[Source project](https://github.com/icantcodefyi/sakuralang/tree/main/compiler/examples/indexed_update) · harness mode: `run + test`.
 
 From the repository root, with this checkout's `sakura` on `PATH`:
 

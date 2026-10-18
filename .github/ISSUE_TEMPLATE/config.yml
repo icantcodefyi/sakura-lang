@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Private security report
-    url: https://github.com/icantcodefyi/sakuralang/blob/master/SECURITY.md
+    url: https://github.com/icantcodefyi/sakuralang/blob/main/SECURITY.md
     about: Read the private reporting route before sharing vulnerability details.
   - name: Language RFC process
-    url: https://github.com/icantcodefyi/sakuralang/blob/master/docs/rfcs/README.md
+    url: https://github.com/icantcodefyi/sakuralang/blob/main/docs/rfcs/README.md
     about: Learn how language proposals are reviewed and decided.

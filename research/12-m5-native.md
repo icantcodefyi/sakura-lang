@@ -114,7 +114,7 @@ does not invent Sakura variable/type debug metadata. **Proposal:** N2 emits symb
 source line mappings and tested unwind tables first; use `gimli` and `object` as
 needed for DWARF/object sections. Full optimized-local debugging is a later explicit
 bar. Inspect [Cranelift unwind support](https://github.com/bytecodealliance/wasmtime/tree/v49.0.3/cranelift/codegen/src/isa/unwind)
-and [rustc's Cranelift debug integration](https://github.com/rust-lang/rustc_codegen_cranelift/tree/master/src/debuginfo)
+and [rustc's Cranelift debug integration](https://github.com/rust-lang/rustc_codegen_cranelift/tree/main/src/debuginfo)
 as implementation precedents. A debugger stack of native twins and a logical stack
 of suspended frames require separate renderers sharing Sakura's site IDs.
 

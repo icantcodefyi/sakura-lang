@@ -14,7 +14,7 @@ available.
 
 ## Wrong program
 
-[`compiler/tests/ui/V9002_contract_test_handler_unsupported.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V9002_contract_test_handler_unsupported.sak), which the compiler's ui suite runs through `sakura test --contracts`:
+[`compiler/tests/ui/V9002_contract_test_handler_unsupported.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V9002_contract_test_handler_unsupported.sak), which the compiler's ui suite runs through `sakura test --contracts`:
 
 ```sakura
 @contract_test(handlers: [Log.captured(), 1])
@@ -27,7 +27,7 @@ pub fn half(x: Int) -> Int
 
 ## Fixed program
 
-[`compiler/tests/ui/V9002_contract_test_handler_unsupported.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V9002_contract_test_handler_unsupported.fixed.sak), which `sakura test --contracts` accepts with no diagnostics:
+[`compiler/tests/ui/V9002_contract_test_handler_unsupported.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V9002_contract_test_handler_unsupported.fixed.sak), which `sakura test --contracts` accepts with no diagnostics:
 
 ```sakura
 import std/log.{Log}

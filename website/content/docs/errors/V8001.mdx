@@ -16,7 +16,7 @@ pub fn main() -> Unit ! {Console} { Console.print("hello") }
 
 ## Wrong program
 
-[`compiler/tests/ui/V8001_missing_entry_point.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V8001_missing_entry_point.sak), which the compiler's ui suite runs through `sakura run`:
+[`compiler/tests/ui/V8001_missing_entry_point.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V8001_missing_entry_point.sak), which the compiler's ui suite runs through `sakura run`:
 
 ```sakura
 fn helper() -> Int { 1 }
@@ -26,7 +26,7 @@ fn helper() -> Int { 1 }
 
 ## Fixed program
 
-[`compiler/tests/ui/V8001_missing_entry_point.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V8001_missing_entry_point.fixed.sak), which `sakura run` accepts with no diagnostics:
+[`compiler/tests/ui/V8001_missing_entry_point.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V8001_missing_entry_point.fixed.sak), which `sakura run` accepts with no diagnostics:
 
 ```sakura
 fn helper() -> Int { 1 }

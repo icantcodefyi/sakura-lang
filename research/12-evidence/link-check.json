@@ -124,7 +124,7 @@
       "status": 200
     },
     {
-      "url": "https://github.com/rust-lang/rustc_codegen_cranelift/tree/master/src/debuginfo",
+      "url": "https://github.com/rust-lang/rustc_codegen_cranelift/tree/main/src/debuginfo",
       "status": 200
     },
     {

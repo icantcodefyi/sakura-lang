@@ -72,7 +72,7 @@ const PATHS = [
   { href: "/llms-full.txt", path: "/llms-full.txt", what: "All of the docs in one file." },
   { href: "/docs/tour/effects.md", path: "/docs/<page>.md", what: "Any page as plain Markdown." },
   {
-    href: `${site.github}/blob/master/docs/llms.txt`,
+    href: `${site.github}/blob/main/docs/llms.txt`,
     path: "docs/llms.txt",
     what: "The whole core language, in one file.",
   },

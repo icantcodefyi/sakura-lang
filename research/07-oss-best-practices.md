@@ -360,7 +360,7 @@ Additional primary sources:
 [fumadocs-llms]: https://www.fumadocs.dev/docs/integrations/llms
 [agents-format]: https://agents.md/
 [vscode-syntax]: https://code.visualstudio.com/api/language-extensions/syntax-highlight-guide
-[tree-tests]: https://github.com/tree-sitter/tree-sitter/blob/master/docs/src/creating-parsers/5-writing-tests.md
+[tree-tests]: https://github.com/tree-sitter/tree-sitter/blob/main/docs/src/creating-parsers/5-writing-tests.md
 [editions]: https://doc.rust-lang.org/edition-guide/editions/index.html
 [mit]: https://opensource.org/license/mit
 [apache]: https://opensource.org/license/apache-2.0

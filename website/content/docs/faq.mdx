@@ -5,7 +5,7 @@ description: Honest answers to common questions about Sakura Lang's status, desi
 
 ## Is Sakura Lang usable today?
 
-Not for real work yet. The v0 language is fully specified in [docs/design.md](https://github.com/icantcodefyi/sakuralang/blob/master/docs/design.md), and the compiler is a Rust workspace in [compiler/](https://github.com/icantcodefyi/sakuralang/tree/master/compiler). It parses, resolves, type- and effect-checks and runs the core language and substantial M3 functionality on JavaScript. All twelve examples pass their configured modes, with `agent_loop` and `secrets` still check-only. M3 completion, WASM/static verification and native execution remain ahead. See the [roadmap](/docs/roadmap).
+Not for real work yet. The v0 language is fully specified in [docs/design.md](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md), and the compiler is a Rust workspace in [compiler/](https://github.com/icantcodefyi/sakuralang/tree/main/compiler). It parses, resolves, type- and effect-checks and runs the core language and substantial M3 functionality on JavaScript. All twelve examples pass their configured modes, with `agent_loop` and `secrets` still check-only. M3 completion, WASM/static verification and native execution remain ahead. See the [roadmap](/docs/roadmap).
 
 ## Why not just use TypeScript with Effect-TS?
 
@@ -53,7 +53,7 @@ In v0, nothing is proven by a solver: every `requires`, `ensures`, and `where` c
 
 ## Can Sakura Lang call existing libraries in other languages?
 
-On the JavaScript backend, yes, through `@external` declarations. Foreign calls perform a `Foreign` effect that only the host root handler can provide, so `main` must declare it. Exceptions become a typed `ForeignError`, callbacks passed to foreign code must be pure, and any package that uses `@external` is marked `trusted` in the build manifest. See [design §13.6](https://github.com/icantcodefyi/sakuralang/blob/master/docs/design.md).
+On the JavaScript backend, yes, through `@external` declarations. Foreign calls perform a `Foreign` effect that only the host root handler can provide, so `main` must declare it. Exceptions become a typed `ForeignError`, callbacks passed to foreign code must be pure, and any package that uses `@external` is marked `trusted` in the build manifest. See [design §13.6](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md).
 
 ## What is the license?
 
@@ -61,7 +61,7 @@ Dual-licensed under MIT or Apache-2.0, at your option. See `LICENSE-MIT` and `LI
 
 ## How can I help?
 
-- Read [docs/design.md](https://github.com/icantcodefyi/sakuralang/blob/master/docs/design.md) and the [Language Tour](/docs/tour/basics), and open issues on [GitHub](https://github.com/icantcodefyi/sakuralang) where the design is unclear, inconsistent, or wrong.
+- Read [docs/design.md](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md) and the [Language Tour](/docs/tour/basics), and open issues on [GitHub](https://github.com/icantcodefyi/sakuralang) where the design is unclear, inconsistent, or wrong.
 - Try writing a small program you know well in Sakura Lang syntax, by hand or with an agent, and report what was awkward.
 - Point out prior art the design should learn from.
-- Language changes go through [RFCs](https://github.com/icantcodefyi/sakuralang/tree/master/docs/rfcs); see [CONTRIBUTING.md](https://github.com/icantcodefyi/sakuralang/blob/master/CONTRIBUTING.md).
+- Language changes go through [RFCs](https://github.com/icantcodefyi/sakuralang/tree/main/docs/rfcs); see [CONTRIBUTING.md](https://github.com/icantcodefyi/sakuralang/blob/main/CONTRIBUTING.md).

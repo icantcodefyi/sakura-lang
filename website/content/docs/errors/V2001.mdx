@@ -23,7 +23,7 @@ fn double(x: Int) -> Int { x * 2 }
 
 ## Wrong program
 
-[`compiler/tests/ui/V2001_type_mismatch.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2001_type_mismatch.sak), which the compiler's ui suite runs through `sakura check`:
+[`compiler/tests/ui/V2001_type_mismatch.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V2001_type_mismatch.sak), which the compiler's ui suite runs through `sakura check`:
 
 ```sakura
 fn age() -> Int { "forty" }
@@ -68,7 +68,7 @@ fn age() -> Int { "forty" }
 
 ## Fixed program
 
-[`compiler/tests/ui/V2001_type_mismatch.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2001_type_mismatch.fixed.sak), which `sakura check` accepts with no diagnostics:
+[`compiler/tests/ui/V2001_type_mismatch.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V2001_type_mismatch.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
 fn age() -> Int { 40 }

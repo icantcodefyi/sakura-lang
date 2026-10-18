@@ -224,7 +224,7 @@ fn page(info: &CodeInfo, fixture: Option<&Fixture>) -> String {
         return out;
     }
     let repo = env!("CARGO_PKG_REPOSITORY");
-    let link = |rel: &str| format!("[`{UI}/{rel}`]({repo}/blob/master/{UI}/{rel})");
+    let link = |rel: &str| format!("[`{UI}/{rel}`]({repo}/blob/main/{UI}/{rel})");
     out.push_str("\n## Wrong program\n\n");
     let Some(f) = fixture else {
         out.push_str(&format!(
