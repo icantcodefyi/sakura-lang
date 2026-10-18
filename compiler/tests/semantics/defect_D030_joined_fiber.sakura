@@ -3,9 +3,7 @@
 // expect-defect: D030
 // covers: Defect; design §17.162 (a child's defect keeps its message through `join`)
 
-fn lookup(key: String) -> Int {
-  Map.of([("a", 1)]).get(key).expect("{key} is configured")
-}
+fn lookup(key: String) -> Int { Map.of([("a", 1)]).get(key).expect("{key} is configured") }
 
 pub fn main() -> Unit ! {Console, Task} {
   Console.print("before")
