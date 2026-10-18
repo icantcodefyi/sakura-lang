@@ -55,6 +55,9 @@ published yet.
 - Typed failures escaping test bodies are reported as test failures.
 - `sakura build --manifest` emits the trusted base and runtime contract obligations to
   `target/sakura/manifest.json`.
+- `sakura build --emit lir` writes the WASM backend's validated low-level IR as text to
+  `target/sakura/lir/main.lir` (M4 preview; no WASM is emitted yet). `--layout=niche` is
+  accepted and refused until the `Option` niche layout lands.
 - `sakura test --record`, `Http.recording`, `Llm.replay` and `Test.fixtures` support
   scoped cassette recording and offline replay. Example fixtures are explicitly synthetic.
 - Scoped escape diagnostics `V6002`/`V6003`, foreign-capability FFI rejection `V6001`,

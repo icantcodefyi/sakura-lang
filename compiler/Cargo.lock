@@ -1033,6 +1033,7 @@ dependencies = [
  "sakura_analysis",
  "sakura_diagnostics",
  "sakura_hir",
+ "sakura_lir",
  "sakura_lsp",
  "sakura_mcp",
  "sakura_types",

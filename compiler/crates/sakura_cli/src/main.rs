@@ -87,9 +87,15 @@ enum Command {
         /// Only `js` exists in v0.
         #[arg(long, default_value = "js", value_parser = ["js"])]
         target: String,
-        /// Where to write the JS modules.
-        #[arg(long, default_value = "target/sakura/js")]
-        out_dir: PathBuf,
+        /// What to write: the JS modules, or the WASM backend's LIR as text (`main.lir`).
+        #[arg(long, default_value = "js", value_parser = ["js", "lir"])]
+        emit: String,
+        /// How `Option` is represented in the LIR. `niche` is not implemented yet (M4-OPT).
+        #[arg(long, default_value = "tagged", value_parser = ["tagged", "niche"])]
+        layout: String,
+        /// Where to write the output [default: target/sakura/<emit>].
+        #[arg(long)]
+        out_dir: Option<PathBuf>,
         /// Also write `target/sakura/manifest.json`: the trusted base (compiler, runtime, std
         /// host bindings, `@external`, `@trust`, `@total`) and every contract obligation with
         /// its status.
@@ -271,10 +277,23 @@ fn dispatch(command: Command) -> ExitCode {
         Command::Build {
             json,
             target: _,
+            emit,
+            layout,
             out_dir,
             manifest,
             paths,
         } => match load(&paths).map_err(usage_error).and_then(|snapshot| {
+            let out_dir = out_dir.unwrap_or_else(|| Path::new("target/sakura").join(&emit));
+            if emit == "lir" {
+                if manifest {
+                    return Err(usage_error("`--manifest` needs `--emit js`"));
+                }
+                let layout = match layout.as_str() {
+                    "niche" => sakura_lir::Layout::Niche,
+                    _ => sakura_lir::Layout::Tagged,
+                };
+                return build_lir(json, &snapshot, &out_dir, layout);
+            }
             let dir = build(json, &snapshot, &out_dir, BuildOptions::default(), false)?;
             if manifest {
                 write_manifest(&snapshot, &dir).map_err(usage_error)?;
@@ -451,6 +470,38 @@ fn build(
         }
         Err(Err(e)) => Err(usage_error(e)),
     }
+}
+
+/// `sakura build --emit lir`: checks, lowers to Core and then to LIR (plan §3.5 L3), validates
+/// it and writes it as text to `<out_dir>/main.lir`. A LIR the lowering cannot produce or the
+/// validator rejects is a compiler bug (`V9001`).
+fn build_lir(
+    json: bool,
+    snapshot: &Snapshot,
+    out_dir: &Path,
+    layout: sakura_lir::Layout,
+) -> Result<(), ExitCode> {
+    let (module, diags) = Analysis::lower_core(snapshot, &BuildOptions::default());
+    let Some(module) = module else {
+        report(json, snapshot, &diags, &[], true);
+        return Err(ExitCode::from(EXIT_ERRORS));
+    };
+    let lir = match sakura_lir::from_core(&module, layout) {
+        Ok(lir) => lir,
+        Err(e) if layout == sakura_lir::Layout::Niche => return Err(usage_error(e)),
+        Err(e) => panic!("LIR lowering: {e}"),
+    };
+    if let Some(e) = sakura_lir::validate::validate(&lir, Default::default()).first() {
+        panic!("LIR validator: {e}");
+    }
+    let path = out_dir.join("main.lir");
+    std::fs::create_dir_all(out_dir)
+        .and_then(|()| std::fs::write(&path, sakura_lir::print::module(&lir)))
+        .map_err(|e| usage_error(format!("{}: {e}", path.display())))?;
+    if json || !diags.is_empty() {
+        report(json, snapshot, &diags, &[], true);
+    }
+    Ok(())
 }
 
 /// Writes `target/sakura/manifest.json` for a build emitted into `dir`.

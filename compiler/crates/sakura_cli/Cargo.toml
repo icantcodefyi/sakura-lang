@@ -17,6 +17,7 @@ sakura_analysis.workspace = true
 sakura_hir.workspace = true
 sakura_types.workspace = true
 sakura_diagnostics.workspace = true
+sakura_lir.workspace = true
 sakura_lsp.workspace = true
 sakura_mcp.workspace = true
 clap.workspace = true

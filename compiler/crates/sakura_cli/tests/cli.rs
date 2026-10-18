@@ -477,6 +477,30 @@ fn doc_searches_by_type_pattern() {
     );
 }
 
+/// Plan §3.5 L3: `sakura build --emit lir` writes the validated LIR as text; `--layout=niche` is
+/// plumbed through to the lowering, which refuses it until M4-OPT implements it.
+#[test]
+fn build_emits_lir() {
+    let dir = tmp(
+        "emit-lir",
+        "pub fn main() -> Unit ! {Console} { Console.print(\"hi\") }\n",
+    );
+    let out = sakura(&["build", "--emit", "lir", "main.sakura"], &dir);
+    assert_eq!(out.code, Some(0), "{}", out.stderr);
+    let lir = std::fs::read_to_string(dir.join("target/sakura/lir/main.lir")).unwrap();
+    assert!(lir.contains("fn main#0 pub top -> unit ; main::main"), "{lir}");
+    assert!(lir.contains("fn $entry#"), "{lir}");
+
+    let niche = sakura(
+        &["build", "--emit", "lir", "--layout", "niche", "main.sakura"],
+        &dir,
+    );
+    assert_eq!(niche.code, Some(2), "{}", niche.stderr);
+    assert!(niche.stderr.contains("not implemented yet"), "{}", niche.stderr);
+    let both = sakura(&["build", "--emit", "lir", "--manifest", "main.sakura"], &dir);
+    assert_eq!(both.code, Some(2), "{}", both.stderr);
+}
+
 /// Design §17.76 (gate 6): `sakura build --manifest` writes the trusted base and one
 /// `runtime_checked` obligation per contract clause, with ids that survive body edits.
 #[test]
