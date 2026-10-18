@@ -254,8 +254,18 @@ export async function runMain(bytes, argv = []) {
   }
 }
 
-const self = proc?.argv?.[1];
-if (self && import.meta.url === new URL(`file://${self}`).href) {
+// Run as the entry script (`node sakura_wasm_host.js …`). Compared as real paths: the script
+// may be reached through a symlink (macOS `/tmp`), and `import.meta.url` is resolved.
+const isMain = () => {
+  const fs = proc.getBuiltinModule("node:fs");
+  const url = proc.getBuiltinModule("node:url");
+  try {
+    return fs.realpathSync(proc.argv[1]) === fs.realpathSync(url.fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+};
+if (proc?.argv?.[1] && isMain()) {
   const [path, ...args] = proc.argv.slice(2);
   const fs = proc.getBuiltinModule("node:fs");
   proc.exitCode = await runMain(fs.readFileSync(path), args);
