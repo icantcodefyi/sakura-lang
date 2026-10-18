@@ -42,6 +42,14 @@ const IMPORTS: &[&str] = &[
     "console_read_line",
     "trace_enabled",
     "trace_write",
+    "clock_now_ms",
+    "clock_monotonic_ms",
+    "clock_sleep_ms",
+    "random_int",
+    "random_float",
+    "random_bytes",
+    "random_uuid",
+    "log_write",
 ];
 
 /// The ABI §1 allowlist, from an empty set (research/09 §1).

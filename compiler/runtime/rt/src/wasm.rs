@@ -546,25 +546,238 @@ pub extern "C" fn rt_k_clock_virtual_sleep(_env: u32, frame: u32) -> u32 {
     }
 }
 
-/// The host console handler (`console_host`): no state (`type_id = 0xFFFF_FFFF`, errata L11),
-/// clauses `print` and `read_line` as static closures of the native codes.
+/// A host-built root handler (`console_host`, `clock_host`, …): no state (`type_id =
+/// 0xFFFF_FFFF`, errata L11), its clauses static closures of the native codes listed at
+/// `codes` (`n` `u32`s in the static block, one per operation in declaration order).
 #[unsafe(no_mangle)]
-pub extern "C" fn rt_b_console_host(effect: u32, print: u32, read_line: u32) -> u32 {
+pub extern "C" fn rt_b_host_handler(effect: u32, codes: u32, n: u32) -> u32 {
     let rt = rt();
     let r = (|| {
-        let h = rt.new_object(tag::HANDLER, 24 + 8)?;
-        for (off, v) in [(8, effect), (12, u32::MAX), (16, 0), (20, 2)] {
+        let h = rt.new_object(tag::HANDLER, 24 + 4 * n)?;
+        for (off, v) in [(8, effect), (12, u32::MAX), (16, 0), (20, n)] {
             rt.heap.mem.set_u32(h + off, v);
         }
-        for (i, code) in [print, read_line].into_iter().enumerate() {
+        for i in 0..n {
             let c = rt.new_object(tag::CLOSURE, 16)?;
-            rt.heap.mem.set_u32(c + 8, code);
+            rt.heap.mem.set_u32(c + 8, rt.heap.mem.u32(codes + 4 * i));
             rt.make_static(c);
-            rt.heap.mem.set_u32(h + 24 + 4 * i as u32, c);
+            rt.heap.mem.set_u32(h + 24 + 4 * i, c);
         }
         Ok(h)
     })();
     ptr(r)
+}
+
+/// A host clause's operation arguments: slot 0 is the clause closure and slot 1 the
+/// activation id (released here); the arguments start at slot 2.
+fn clause_args(rt: &mut Rt, frame: u32) {
+    let clause = rt.take_fslot(frame, 0) as u32;
+    rt.drop(clause);
+}
+
+/// Return `v` (an owned result in the operation's representation) from a native code.
+fn ret(rt: &mut Rt, v: u64) -> u32 {
+    rt.set_ret(v);
+    step::RETURN
+}
+
+/// A one-field constructor of the std type `name` around the `i64` `v` (`Instant(ms)`).
+fn wrap_int(rt: &mut Rt, name: &[u8], v: i64) -> Res<u32> {
+    let t = rt.type_named(name).ok_or(Defect::INTERNAL)?;
+    let p = rt.new_variant(t, 0)?;
+    rt.set_slot(p, 0, v as u64);
+    Ok(p)
+}
+
+fn ok_or_raise(rt: &mut Rt, r: Res<u32>) -> u32 {
+    match r {
+        Ok(v) => ret(rt, v as u64),
+        Err(d) => rt.raise(d),
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_clock_now(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    clause_args(rt, frame);
+    // SAFETY: a plain import returning a scalar.
+    let ms = unsafe { host::clock_now_ms() };
+    let r = wrap_int(rt, b"std::instant::Instant", ms);
+    ok_or_raise(rt, r)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_clock_monotonic(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    clause_args(rt, frame);
+    // SAFETY: a plain import returning a scalar.
+    let ms = unsafe { host::clock_monotonic_ms() };
+    let r = wrap_int(rt, b"std::duration::Duration", ms);
+    ok_or_raise(rt, r)
+}
+
+/// Request kind of a host sleep (ABI §8.5).
+const SLEEP: u32 = 1;
+
+/// `Clock.sleep(d)`: suspends on a host timer (`clock_sleep_ms(request, ms)`), as JS
+/// `clock_sleep_ms`; a non-positive duration returns at once.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_clock_sleep(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    if rt.block(frame) == 1 {
+        // Completed: the payload (none for a timer) is the low word of the return register.
+        let bits = rt.take_ret();
+        rt.drop(bits as u32);
+        return ret(rt, UNIT as u64);
+    }
+    clause_args(rt, frame);
+    let d = rt.take_fslot(frame, 2) as u32;
+    let ms = rt.slot(d, 0) as i64;
+    rt.drop(d);
+    if ms <= 0 {
+        return ret(rt, UNIT as u64);
+    }
+    match rt.request(SLEEP) {
+        Ok(Some(req)) => {
+            // SAFETY: a plain import with scalar arguments; the host completes `req` later.
+            unsafe { host::clock_sleep_ms(req, ms) };
+            rt.set_block(frame, 1);
+            step::SUSPEND
+        }
+        // ponytail: past `SAKURA_MAX_REQUESTS` a sleep returns at once; JS has no limit here.
+        Ok(None) => ret(rt, UNIT as u64),
+        Err(d) => rt.raise(d),
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_random_int(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    clause_args(rt, frame);
+    let (lo, hi) = (rt.fslot(frame, 2) as i64, rt.fslot(frame, 3) as i64);
+    if lo > hi {
+        return rt.raise(Defect {
+            code: 20,
+            message: "precondition of Random.int violated: lo <= hi",
+        });
+    }
+    // SAFETY: a plain import with scalar arguments.
+    let v = unsafe { host::random_int(lo, hi) };
+    ret(rt, v as u64)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_random_float(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    clause_args(rt, frame);
+    // SAFETY: a plain import returning a scalar.
+    let v = unsafe { host::random_float() };
+    ret(rt, v.to_bits())
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_random_bytes(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    clause_args(rt, frame);
+    let n = rt.fslot(frame, 2) as i64;
+    if n < 0 {
+        return rt.raise(Defect {
+            code: 20,
+            message: "precondition of Random.bytes violated: n >= 0",
+        });
+    }
+    // SAFETY: a plain import; the host copies the bytes out through `alloc_bytes`.
+    let b = unsafe { host::random_bytes(n) };
+    if b == 0 {
+        return rt.raise(Defect::HEAP_EXHAUSTED);
+    }
+    ret(rt, b as u64)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_random_uuid(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    clause_args(rt, frame);
+    // SAFETY: a plain import; the text arrives as a `Bytes` from `alloc_bytes`.
+    let b = unsafe { host::random_uuid() };
+    let r = bytes_to_string(rt, b);
+    ok_or_raise(rt, r)
+}
+
+/// A `String` with the bytes of the host's `Bytes` `b` (consumed), which the host made from a
+/// JS string, so UTF-8.
+fn bytes_to_string(rt: &mut Rt, b: u32) -> Res<u32> {
+    if b == 0 {
+        return Err(Defect::HEAP_EXHAUSTED);
+    }
+    let (len, at) = rt.data(b);
+    let s = rt.new_object(tag::STRING, len + 16);
+    if let Ok(s) = s {
+        rt.heap.mem.set_u32(s + 8, len);
+        rt.heap.mem.copy(s + 16, at, len);
+    }
+    rt.drop(b);
+    s
+}
+
+/// `Log.event(level, message, fields)` of `log_stderr`: one stderr line `Level message
+/// key=value…` with `Show` of the level and of each `Json` value, as JS.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_log_stderr_event(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    clause_args(rt, frame);
+    let (level, message, fields) = (
+        rt.take_fslot(frame, 2) as u32,
+        rt.take_fslot(frame, 3) as u32,
+        rt.take_fslot(frame, 4) as u32,
+    );
+    let line = log_line(rt, level, message, fields);
+    rt.drop(fields);
+    match line {
+        Ok(s) => {
+            let (len, at) = rt.data(s);
+            // SAFETY: a plain import with a slice inside linear memory, copied in at once.
+            unsafe { host::log_write(at, len) };
+            rt.drop(s);
+            ret(rt, UNIT as u64)
+        }
+        Err(d) => rt.raise(d),
+    }
+}
+
+/// `show(level) message key=show(json)…` (`level` and `message` consumed, `fields` borrowed).
+fn log_line(rt: &mut Rt, level: u32, message: u32, fields: u32) -> Res<u32> {
+    let shown = rt.show(level).inspect_err(|_| rt.drop(message))?;
+    let sp = rt
+        .static_string(b" ")
+        .inspect_err(|_| rt.drop2(shown, message))?;
+    let mut line = rt
+        .string_concat(shown, sp)
+        .inspect_err(|_| rt.drop(message))?;
+    line = rt.string_concat(line, message)?;
+    for i in 0..rt.list_n(fields) {
+        let pair = rt.at(fields, i);
+        let (k, v) = (rt.slot_word(pair, 0)?, rt.slot_word(pair, 1)?);
+        let sp = rt.static_string(b" ")?;
+        line = rt.string_concat(line, sp)?;
+        line = rt.string_concat(line, k)?;
+        let eq = rt.static_string(b"=")?;
+        line = rt.string_concat(line, eq)?;
+        let v = rt.show(v)?;
+        line = rt.string_concat(line, v)?;
+    }
+    Ok(line)
+}
+
+/// An operation of a host handler this runtime does not implement yet.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_unsupported(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    clause_args(rt, frame);
+    rt.raise(Defect {
+        code: 90,
+        message: "a host operation the WASM backend does not support yet",
+    })
 }
 
 mod host {
@@ -573,6 +786,17 @@ mod host {
         pub fn console_print(ptr: u32, len: u32);
         /// The next line as a `Bytes` from `alloc_bytes` (without its newline), 0 at the end.
         pub fn console_read_line() -> u32;
+        pub fn clock_now_ms() -> i64;
+        pub fn clock_monotonic_ms() -> i64;
+        /// `async`: completes `request` after `ms` milliseconds (ABI §8.2).
+        pub fn clock_sleep_ms(request: u32, ms: i64) -> u32;
+        pub fn random_int(lo: i64, hi: i64) -> i64;
+        pub fn random_float() -> f64;
+        /// A `Bytes` from `alloc_bytes`, 0 when the heap is exhausted.
+        pub fn random_bytes(n: i64) -> u32;
+        pub fn random_uuid() -> u32;
+        /// A stderr line (JS `log_write`).
+        pub fn log_write(ptr: u32, len: u32);
     }
 }
 
@@ -634,6 +858,12 @@ builtins! {
     rt_b_secret_wrap(x: u32) -> u32 = ptr |rt| rt.secret_wrap(x);
     rt_b_secret_expose(s: u32) -> u32 = ptr |rt| rt.secret_expose(s);
     rt_b_show(w: u32) -> u32 = ptr |rt| rt.show(w);
+    // `test_env(recording, default)`: the test default `Env` (design §17.102). ponytail: always
+    // the default; `sakura test --record` is JS-only until the host passes `SAKURA_RECORD`.
+    rt_b_test_env(recording: u32, default: u32) -> u32 = plain |rt| {
+        rt.drop(recording);
+        default
+    };
     rt_b_list_empty() -> u32 = plain |rt| rt.list_empty();
     rt_b_set_empty() -> u32 = plain |rt| rt.set_empty();
     rt_b_set_insert(s: u32, x: u32) -> u32 = ptr |rt| rt.set_insert(s, x);

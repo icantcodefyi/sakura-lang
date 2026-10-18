@@ -124,6 +124,19 @@ impl Rt {
         self.heap.mem.u32(self.layout + 16)
     }
 
+    /// The id of the type whose entry is named `qualified` (`std::instant::Instant`), if the
+    /// program has it.
+    pub fn type_named(&self, qualified: &[u8]) -> Option<u32> {
+        let n = self.heap.mem.u32(self.layout);
+        (0..n).find(|&id| {
+            let name = self.type_name(id);
+            name != 0 && {
+                let len = self.heap.mem.u32(name);
+                self.heap.mem.bytes(name + 4, len) == qualified
+            }
+        })
+    }
+
     pub fn type_kind(&self, type_id: u32) -> u32 {
         self.heap.mem.u32(self.entry(type_id))
     }
