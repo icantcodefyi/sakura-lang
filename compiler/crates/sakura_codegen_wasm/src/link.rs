@@ -178,25 +178,6 @@ impl<'a> Runtime<'a> {
             })
             .map(|i| i as u32)
     }
-
-    /// The runtime's exported function `name` (runtime numbering).
-    fn export(&self, name: &str) -> Result<u32, String> {
-        match self.exports.get(name) {
-            Some((ExternalKind::Func, i)) => Ok(*i),
-            _ => Err(err(format!("no function export {name}"))),
-        }
-    }
-
-    /// The type of runtime function `f` (runtime numbering).
-    fn func_type(&self, f: u32) -> &wasmparser::FuncType {
-        let n = self.imports.len() as u32;
-        let t = if f < n {
-            self.imports[f as usize].2
-        } else {
-            self.funcs[(f - n) as usize]
-        };
-        &self.types[t as usize]
-    }
 }
 
 fn val(t: wasmparser::ValType) -> ValType {
@@ -229,72 +210,78 @@ pub struct Layout {
     pub first_global: u32,
     /// Index of the program's passive data segment.
     pub data_index: u32,
-}
-
-/// The runtime's function signatures by export name, for type checks in the code generator.
-pub fn rt_signature(rt: &Runtime<'_>, name: &str) -> Option<(Vec<ValType>, Vec<ValType>)> {
-    let f = rt.export(name).ok()?;
-    let t = rt.func_type(f);
-    Some((
-        t.params().iter().map(|&v| val(v)).collect(),
-        t.results().iter().map(|&v| val(v)).collect(),
-    ))
+    /// Index of the program's first function import (after the runtime's kept ones).
+    pub first_import: u32,
+    /// Final index of every runtime function (runtime numbering, imports first).
+    map: Vec<u32>,
+    resolve_host: bool,
 }
 
 impl<'a> Runtime<'a> {
-    /// The index spaces of the linked module when the program adds `n_added` functions.
-    pub fn layout(&self) -> Result<Layout, String> {
-        let kept = self
-            .imports
+    /// The runtime's function imports from `module`, in order: `(name, params, results)`.
+    pub fn imports_of(&self, module: &str) -> Vec<(String, Vec<ValType>, Vec<ValType>)> {
+        self.imports
             .iter()
-            .filter(|(m, _, _)| m != "sakura_link")
-            .count() as u32;
-        let first_added = kept + self.funcs.len() as u32;
+            .filter(|(m, _, _)| m == module)
+            .map(|(_, name, t)| {
+                let t = &self.types[*t as usize];
+                (
+                    name.clone(),
+                    t.params().iter().map(|&v| val(v)).collect(),
+                    t.results().iter().map(|&v| val(v)).collect(),
+                )
+            })
+            .collect()
+    }
+
+    /// The index spaces of the linked module. The program adds `new_imports` function imports
+    /// after the runtime's kept ones. `sakura_link.dispatch` resolves to the first added
+    /// function; with `resolve_host` the `sakura_host` imports resolve to the next added
+    /// functions, in import order (an embedding that implements them in the module).
+    pub fn layout(&self, resolve_host: bool, new_imports: u32) -> Result<Layout, String> {
+        let resolved = |m: &str| m == "sakura_link" || (resolve_host && m == "sakura_host");
+        let kept = self.imports.iter().filter(|(m, _, _)| !resolved(m)).count() as u32;
+        let first_added = kept + new_imports + self.funcs.len() as u32;
+        let (mut next_kept, mut next_host) = (0, 1);
+        let mut map = vec![];
+        for (m, name, _) in &self.imports {
+            map.push(match m.as_str() {
+                "sakura_link" if name == "dispatch" => first_added,
+                "sakura_link" => return Err(err(format!("unknown link import {name}"))),
+                m if resolved(m) => {
+                    next_host += 1;
+                    first_added + next_host - 1
+                }
+                _ => {
+                    next_kept += 1;
+                    next_kept - 1
+                }
+            });
+        }
+        for i in 0..self.funcs.len() as u32 {
+            map.push(kept + new_imports + i);
+        }
         let mut rt = HashMap::new();
         for (name, &(kind, i)) in &self.exports {
             if kind == ExternalKind::Func {
-                rt.insert(name.clone(), self.remap(i, first_added)?);
+                rt.insert(name.clone(), map[i as usize]);
             }
         }
         Ok(Layout {
             rt,
             first_added,
+            first_import: kept,
             table_base: self.table_min as u32,
             first_global: self.globals.len() as u32,
             data_index: self.data.len() as u32,
+            map,
+            resolve_host,
         })
-    }
-
-    /// Final index of runtime function `f`: kept imports first, the `sakura_link` imports
-    /// resolve to added functions (`dispatch` is the first one), then the runtime's own.
-    fn remap(&self, f: u32, first_added: u32) -> Result<u32, String> {
-        let n = self.imports.len() as u32;
-        if f < n {
-            let (m, name, _) = &self.imports[f as usize];
-            if m == "sakura_link" {
-                return match name.as_str() {
-                    "dispatch" => Ok(first_added),
-                    _ => Err(err(format!("unknown link import {name}"))),
-                };
-            }
-            let before = self.imports[..f as usize]
-                .iter()
-                .filter(|(m, _, _)| m != "sakura_link")
-                .count();
-            return Ok(before as u32);
-        }
-        let dropped = self
-            .imports
-            .iter()
-            .filter(|(m, _, _)| m == "sakura_link")
-            .count() as u32;
-        Ok(f - dropped)
     }
 }
 
-struct Remap<'r, 'a> {
-    rt: &'r Runtime<'a>,
-    first_added: u32,
+struct Remap<'l> {
+    map: &'l [u32],
     /// Index of the first saturating-truncation helper (`SAT_HELPERS` order).
     sat: u32,
 }
@@ -383,7 +370,7 @@ fn sat_helper(f64_in: bool, i64_out: bool, signed: bool) -> Added {
     }
 }
 
-impl Remap<'_, '_> {
+impl Remap<'_> {
     /// Re-encode a runtime function body, lowering what LLVM emits inside libcore functions
     /// (whose bitcode keeps its own target features under LTO) to the ABI §1 profile:
     /// sign extension becomes a shift pair, saturating truncation a call of a helper, and the
@@ -433,18 +420,21 @@ impl Remap<'_, '_> {
     }
 }
 
-impl Reencode for Remap<'_, '_> {
+impl Reencode for Remap<'_> {
     type Error = String;
 
     fn function_index(&mut self, f: u32) -> Result<u32, reencode::Error<String>> {
-        self.rt
-            .remap(f, self.first_added)
-            .map_err(reencode::Error::UserError)
+        self.map
+            .get(f as usize)
+            .copied()
+            .ok_or_else(|| reencode::Error::UserError(err(format!("function {f}"))))
     }
 }
 
 /// What the program contributes to the linked module.
 pub struct Program {
+    /// Function imports after the runtime's: module, name, params, results.
+    pub imports: Vec<(String, String, Vec<ValType>, Vec<ValType>)>,
     /// Added functions; the first must be the dispatcher `(code, env, frame) -> step`.
     pub funcs: Vec<Added>,
     /// Funcref table entries after the runtime's: compiled code, then native codes (final
@@ -484,8 +474,18 @@ pub fn link(rt: &Runtime<'_>, layout: &Layout, p: Program) -> Result<Vec<u8>, St
     // One type per added function (deduplicated).
     let mut added_types: Vec<(Vec<ValType>, Vec<ValType>)> = vec![];
     let mut type_of = vec![];
-    for f in p.funcs.iter().chain(&helpers) {
-        let key = (f.params.clone(), f.results.clone());
+    let mut import_types = vec![];
+    let keys = p
+        .imports
+        .iter()
+        .map(|(_, _, ps, rs)| (ps.clone(), rs.clone()))
+        .chain(
+            p.funcs
+                .iter()
+                .chain(&helpers)
+                .map(|f| (f.params.clone(), f.results.clone())),
+        );
+    for key in keys {
         let i = match added_types.iter().position(|k| *k == key) {
             Some(i) => i,
             None => {
@@ -496,15 +496,23 @@ pub fn link(rt: &Runtime<'_>, layout: &Layout, p: Program) -> Result<Vec<u8>, St
                 added_types.len() - 1
             }
         };
-        type_of.push(rt.types.len() as u32 + i as u32);
+        let t = rt.types.len() as u32 + i as u32;
+        if import_types.len() < p.imports.len() {
+            import_types.push(t);
+        } else {
+            type_of.push(t);
+        }
     }
     module.section(&types);
 
     let mut imports = ImportSection::new();
     for (m, name, t) in &rt.imports {
-        if m != "sakura_link" {
+        if m != "sakura_link" && !(layout.resolve_host && m == "sakura_host") {
             imports.import(m, name, EntityType::Function(*t));
         }
+    }
+    for (k, (m, name, _, _)) in p.imports.iter().enumerate() {
+        imports.import(m, name, EntityType::Function(import_types[k]));
     }
     module.section(&imports);
 
@@ -541,8 +549,7 @@ pub fn link(rt: &Runtime<'_>, layout: &Layout, p: Program) -> Result<Vec<u8>, St
 
     let mut globals = GlobalSection::new();
     let mut remap = Remap {
-        rt,
-        first_added: layout.first_added,
+        map: &layout.map,
         sat: layout.first_added + p.funcs.len() as u32,
     };
     for (ty, init) in &rt.globals {
@@ -575,10 +582,7 @@ pub fn link(rt: &Runtime<'_>, layout: &Layout, p: Program) -> Result<Vec<u8>, St
 
     let mut elems = ElementSection::new();
     for (offset, fs) in &rt.elements {
-        let fs = fs
-            .iter()
-            .map(|&f| rt.remap(f, layout.first_added))
-            .collect::<Result<Vec<_>, _>>()?;
+        let fs: Vec<u32> = fs.iter().map(|&f| layout.map[f as usize]).collect();
         elems.active(
             Some(0),
             &ConstExpr::i32_const(*offset as i32),
@@ -620,7 +624,9 @@ pub fn link(rt: &Runtime<'_>, layout: &Layout, p: Program) -> Result<Vec<u8>, St
     let mut fnames = NameMap::new();
     let mut entries: Vec<(u32, String)> = vec![];
     for (&i, n) in &rt.names {
-        entries.push((rt.remap(i, layout.first_added)?, n.clone()));
+        if let Some(&f) = layout.map.get(i as usize) {
+            entries.push((f, n.clone()));
+        }
     }
     for (k, f) in p.funcs.iter().chain(&helpers).enumerate() {
         entries.push((layout.first_added + k as u32, f.name.clone()));

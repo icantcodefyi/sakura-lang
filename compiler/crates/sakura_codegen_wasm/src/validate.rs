@@ -5,6 +5,8 @@
 
 use wasmparser::{Parser, Payload, TypeRef, Validator, WasmFeatures};
 
+use crate::Host;
+
 /// The ABI §1 allowlist, from an empty set (research/09 §1).
 pub fn profile() -> WasmFeatures {
     WasmFeatures::MUTABLE_GLOBAL
@@ -40,7 +42,16 @@ pub const IMPORTS: &[&str] = &[
     "trace_write",
 ];
 
-pub fn validate(wasm: &[u8], max_heap: u64) -> Result<(), String> {
+/// The gate for `host`: a [`Host::Wasi`] command may also import `fd_write` and `proc_exit`
+/// and export `_start` (and imports nothing from `sakura_host`, which it implements).
+pub fn validate(wasm: &[u8], max_heap: u64, host: Host) -> Result<(), String> {
+    let import_ok = |module: &str, name: &str| match (host, module) {
+        (Host::Abi, "sakura_host") => IMPORTS.contains(&name),
+        (Host::Wasi, "wasi_snapshot_preview1") => matches!(name, "fd_write" | "proc_exit"),
+        _ => false,
+    };
+    let export_ok =
+        |name: &str| EXPORTS.contains(&name) || (host == Host::Wasi && name == "_start");
     Validator::new_with_features(profile())
         .validate_all(wasm)
         .map_err(|e| format!("the module is outside the ABI §1 profile: {e}"))?;
@@ -51,7 +62,7 @@ pub fn validate(wasm: &[u8], max_heap: u64) -> Result<(), String> {
                 for imports in s {
                     for item in imports.map_err(|e| e.to_string())? {
                         let (_, i) = item.map_err(|e| e.to_string())?;
-                        if i.module != "sakura_host" || !IMPORTS.contains(&i.name) {
+                        if !import_ok(i.module, i.name) {
                             return Err(format!("import {}.{} is not in ABI §8", i.module, i.name));
                         }
                         if !matches!(i.ty, TypeRef::Func(_)) {
@@ -68,7 +79,7 @@ pub fn validate(wasm: &[u8], max_heap: u64) -> Result<(), String> {
             Payload::ExportSection(s) => {
                 for e in s {
                     let e = e.map_err(|e| e.to_string())?;
-                    if !EXPORTS.contains(&e.name) {
+                    if !export_ok(e.name) {
                         return Err(format!("export {} is not in ABI §9", e.name));
                     }
                 }

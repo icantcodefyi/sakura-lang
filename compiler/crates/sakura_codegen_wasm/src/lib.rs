@@ -13,6 +13,7 @@ mod debug;
 mod func;
 pub mod link;
 pub mod validate;
+pub mod wasi;
 
 use sakura_lir::layout::{Slot, SlotKind};
 use sakura_lir::lir::Module;
@@ -27,12 +28,25 @@ pub const ABI_VERSION: u32 = 0x01_00_02;
 /// `SAKURA_MAX_HEAP` default (ABI §10).
 pub const DEFAULT_MAX_HEAP: u64 = 1 << 30;
 
+/// Which embedding the module is for.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Host {
+    /// The ABI module: every host operation is a `sakura_host` import (Node,
+    /// `runtime/js/sakura_wasm_host.js`).
+    #[default]
+    Abi,
+    /// A WASI command for the `wasmtime` CLI ([`wasi`]): the pure host imports are
+    /// implemented in the module over `wasi_snapshot_preview1`, and `_start` runs `main`.
+    Wasi,
+}
+
 #[derive(Clone, Debug)]
 pub struct Options {
     /// The memory maximum the module declares (ABI §10).
     pub max_heap: u64,
     /// Omit the `sakura.debug` section (`sakura build --strip`, ABI §12).
     pub strip: bool,
+    pub host: Host,
 }
 
 impl Default for Options {
@@ -40,6 +54,7 @@ impl Default for Options {
         Options {
             max_heap: DEFAULT_MAX_HEAP,
             strip: false,
+            host: Host::Abi,
         }
     }
 }
@@ -99,17 +114,40 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     if !available() {
         return Err(
             "the WASM backend is unavailable: this compiler was built without the \
-                    wasm32-unknown-unknown target (rustup target add wasm32-unknown-unknown)"
+             wasm32-unknown-unknown target (rustup target add wasm32-unknown-unknown)"
                 .into(),
         );
     }
+    let wasi = opts.host == Host::Wasi;
     let rt = link::Runtime::parse(RUNTIME)?;
-    let layout = rt.layout()?;
+    let imports = if wasi { wasi::imports() } else { vec![] };
+    let layout = rt.layout(wasi, imports.len() as u32)?;
+    let host_imports = if wasi {
+        rt.imports_of("sakura_host")
+    } else {
+        vec![]
+    };
+    // The added functions, in order: the dispatcher, the host adapters (WASI), the ABI
+    // exports, `_start` (WASI), then the program's.
+    let mut names: Vec<String> = vec!["sakura$dispatch".into()];
+    names.extend(host_imports.iter().map(|(n, _, _)| format!("wasi${n}")));
+    names.extend(FIXED[1..].iter().map(|s| s.to_string()));
+    if wasi {
+        names.push("_start".into());
+    }
+    let index = |name: &str| -> u32 {
+        layout.first_added
+            + names
+                .iter()
+                .position(|n| n == name)
+                .expect("an added function") as u32
+    };
+    let first_user = layout.first_added + names.len() as u32;
     let n = m.funcs.len() as u32;
-    let first_user = layout.first_added + FIXED.len() as u32;
+
     let mut statics = data::Statics::default();
-    let layout_off = statics.bytes(&m.layouts.to_bytes());
-    let layout_len = m.layouts.to_bytes().len() as u32;
+    let layout_bytes = m.layouts.to_bytes();
+    let layout_off = statics.bytes(&layout_bytes);
     let stub_captures = [
         Slot::WORD,
         Slot {
@@ -129,13 +167,13 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
             (n.as_str(), &[][..], caps)
         })
         .collect();
-    let codes_bytes = sakura_lir::layout::code_table_with(m, &native_codes);
-    let codes_off = statics.bytes(&codes_bytes);
+    let codes_off = statics.bytes(&sakura_lir::layout::code_table_with(m, &native_codes));
     let effects_bytes = sakura_lir::layout::effect_table(m);
     let effects_off = statics.bytes(&effects_bytes);
     let ops_off = statics.bytes(&ops_table(m));
     let tests_bytes = tests_table(m);
     let tests_off = statics.bytes(&tests_bytes);
+    let texts = wasi.then(|| wasi::Texts::new(&mut statics));
 
     let g = layout.first_global;
     let (static_base, inited, abi) = (g, g + 1, g + 2);
@@ -154,12 +192,12 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     let mut user = Vec::with_capacity(m.funcs.len());
     for f in &m.funcs {
         let body = func::compile(&env, &mut statics, f).map_err(|e| format!("WASM: {e}"))?;
-        user.push(link::Added {
-            name: format!("{}::{}", f.module, f.name),
-            params: vec![ValType::I32, ValType::I32],
-            results: vec![ValType::I32],
+        user.push(added(
+            &format!("{}::{}", f.module, f.name),
+            vec![ValType::I32, ValType::I32],
+            vec![ValType::I32],
             body,
-        });
+        ));
     }
     let rtf = |name: &str| -> Result<u32, String> {
         layout
@@ -183,6 +221,20 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
         .call_indirect(0, rt_step_type(&rt)?)
         .end();
     funcs.push(added(FIXED[0], i32s(3), i32s(1), f));
+
+    let ix = wasi::Ix {
+        fd_write: layout.first_import,
+        proc_exit: layout.first_import + 1,
+        static_base,
+        start: index("start"),
+        run: rtf("run")?,
+        outcome: index("outcome"),
+    };
+    if let Some(t) = &texts {
+        for (name, params, results) in &host_imports {
+            funcs.push(wasi::adapter(name, params.clone(), results.clone(), &ix, t));
+        }
+    }
 
     // sakura$init() -> ok: the static block, the runtime's tables, once.
     let mut f = Function::new([(1, ValType::I32)]);
@@ -213,7 +265,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     funcs.push(added(FIXED[1], vec![], i32s(1), f));
 
     // start(entry) -> task: `entry` is a code from `tests()`, or -1 for the module entry.
-    let init = layout.first_added + 1;
+    let init = index("sakura$init");
     let entry = m.entry.map_or(-1, |e| e.0 as i32);
     let mut f = Function::new([]);
     let mut s = f.instructions();
@@ -234,7 +286,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
 
     // layout_table(), effect_table() -> (ptr, len)
     for (k, (off, len)) in [
-        (layout_off, layout_len),
+        (layout_off, layout_bytes.len() as u32),
         (effects_off, effects_bytes.len() as u32),
     ]
     .into_iter()
@@ -281,14 +333,16 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     let mut f = Function::new([]);
     f.instructions().i32_const(0).end();
     funcs.push(added(FIXED[8], i32s(3), i32s(1), f));
+    if let Some(t) = &texts {
+        funcs.push(wasi::start(&ix, t));
+    }
+    debug_assert_eq!(funcs.len(), names.len());
     funcs.extend(user);
 
     let mut table: Vec<u32> = (0..n).map(|i| first_user + i).collect();
     for name in &natives {
         table.push(rtf(name)?);
     }
-    let fixed =
-        |name: &str| layout.first_added + FIXED.iter().position(|f| *f == name).unwrap() as u32;
     let mut exports = vec![
         ("memory".to_string(), ExportKind::Memory, 0),
         ("sakura_abi_version".to_string(), ExportKind::Global, abi),
@@ -305,7 +359,10 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
         "stats",
         "invoke",
     ] {
-        exports.push((name.to_string(), ExportKind::Func, fixed(name)));
+        exports.push((name.to_string(), ExportKind::Func, index(name)));
+    }
+    if wasi {
+        exports.push(("_start".to_string(), ExportKind::Func, index("_start")));
     }
     let mut custom = vec![];
     if !opts.strip {
@@ -315,6 +372,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
         &rt,
         &layout,
         link::Program {
+            imports,
             funcs,
             table,
             globals: vec![
@@ -328,7 +386,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
             custom,
         },
     )?;
-    validate::validate(&bytes, opts.max_heap)?;
+    validate::validate(&bytes, opts.max_heap, opts.host)?;
     Ok(bytes)
 }
 
