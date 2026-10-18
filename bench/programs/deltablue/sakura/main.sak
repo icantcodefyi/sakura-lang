@@ -405,8 +405,24 @@ fn projection_test(n: Int) -> Int {
   let b = value_of(p, src)
   if b != 5 { return Option.expect(None, "Projection test 2 failed!") }
   p = change(p, scale, 5)
+  i = 0
+  while i < n - 1 {
+    let d = Option.expect(dests[i], "destination")
+    if value_of(p, d) != (i + 1) * 5 + 1000 {
+      return Option.expect(None, "Projection test 3 failed!")
+    }
+    i = i + 1
+  }
   let c = sum_values(p, dests)
   p = change(p, offset, 2000)
+  i = 0
+  while i < n - 1 {
+    let d = Option.expect(dests[i], "destination")
+    if value_of(p, d) != (i + 1) * 5 + 2000 {
+      return Option.expect(None, "Projection test 4 failed!")
+    }
+    i = i + 1
+  }
   a + b + c + sum_values(p, dests)
 }
 

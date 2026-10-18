@@ -40,6 +40,18 @@ local/CI noise subsets contain neither program and need no recalculation.
 | WS-S10 nbody: slice/push/concat helper → persistent `List.set` | [old/new identities](../research/10-evidence/ws-a/nbody-definition-change.json) | Five bodies, same pair traversal, Float order and energy checksum; every helper index is in range; [validation](../research/10-evidence/ws-a/wss10-validation.md) | Source idiom change; pre-change ratios are incompatible; new timings advisory under §17.153 |
 | WS-S10 countdown: unchecked hand JS → checks after each arithmetic operation | [old/new identities](../research/10-evidence/ws-a/countdown-definition-change.json) | Same descending sum and parity; parity before sum, next-index check before accumulation, checked final addition; [audit](../research/10-evidence/ws-a/wss10-control-audit.md) | Control now performs the required checks; old denominator is incompatible; fresh quiet-window run needed |
 
+
+The DeltaBlue definition boundary (§17.183 item 1) adds the missing Sakura checks
+against every destination except the last after changing scale and offset, matching
+the hand-JS control's AWFY projection checks 3 and 4. **All earlier `deltablue`
+ratios are excluded from comparisons and noise summaries**, including the candidate
+and the noisy round-14 run; retain their raw evidence. The checksums are unchanged,
+but the timed validation work differs. A fresh quiet-window run is required.
+
+| Definition boundary | Source-blob evidence | Unchanged workload / verification | Measurement limitation |
+|---|---|---|---|
+| DeltaBlue: add AWFY projection checks 3 and 4 (§17.183 item 1) | `bench/programs/deltablue/sakura/main.sak`: old `f1da8357e415e16240a224c3094ffb0b1bd49a63` (at `9728a44c`) → new `4f8af375a0b6370723d2b4b56a73650aed3afcd2` (Git blob hashes) | Same planner operations, traversal order and checksums; checks cover indices 0 through n−2, with n=0 returning early and n=1 checking no destinations. All eight oracle sizes (0, 1, 2, 3, 100, 1000, 5000, 10000) pass against unchanged `meta.toml` on Sakura and hand JS under Node and Bun, and Sakura WASM under Node | Benchmark-definition correction, no optimisation or timing claim; old ratios incompatible; no baseline blessed or timing expectations changed |
+
 For each optimisation landing, add a row linking both raw runs and the machine-readable
 `bench/bench compare` output. Record the exact measured commits (not just the later
 report commit), pinned engines, matched lane, input size, absolute Sakura times and
