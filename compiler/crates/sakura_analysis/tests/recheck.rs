@@ -50,12 +50,10 @@ fn a_private_body_edit_rechecks_only_its_module() {
 
     // Same diagnostics and holes as checking everything: app's error and hole carry over.
     let full = Analysis::analyze(&snap(&edited, true));
-    // std alone is read from the disk cache or analysed here, once per process, and reused
-    // (design §17.195).
-    let std_fresh = stats().analyses - after.analyses - 1;
+    // std's analysis, taken at the first analysis, is reused (design §17.195, §17.204 (1a)).
     assert_eq!(
         stats().checked_modules - after.checked_modules,
-        std_fresh * sakura_analysis::std_sources().count() + 3,
+        3,
         "only std is reused across file sets"
     );
     assert_eq!(report(&warm), report(&full));

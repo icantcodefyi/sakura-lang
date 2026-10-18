@@ -13,7 +13,8 @@ fn edits_reparse_only_the_edited_file_and_queries_share_one_analysis() {
     let before = stats();
     let first = Analysis::analyze(&snap);
     let cold = stats();
-    assert_eq!(cold.analyses - before.analyses, 1);
+    // Its own, after std's unless std's came from the disk cache (design §17.204 (1a)).
+    assert!((1..=2).contains(&(cold.analyses - before.analyses)));
 
     // Every later query on the same snapshot reuses the analysis.
     let again = Analysis::analyze(&snap);

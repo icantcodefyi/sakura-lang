@@ -135,9 +135,9 @@ impl Analysis {
     /// snapshot (hover, completion, `hole_context`) share one analysis, files whose text did
     /// not change are not parsed again, and when no module's interface changed since the
     /// previous analysis only the edited modules are lowered and type-checked again (design
-    /// §14.3 M3, §17.74). After an analysis of other files, std is reused from an analysis of
-    /// std alone, made once per process, and only the user modules are lowered and checked
-    /// (§17.195).
+    /// §14.3 M3, §17.74). Otherwise std is reused from std's analysis alone, read from the disk
+    /// cache or made once per process, and only the user modules are lowered and checked
+    /// (§17.195, §17.204 (1a)).
     pub fn analyze(snapshot: &Snapshot) -> Arc<Analyzed> {
         static CACHE: Mutex<Vec<Arc<Analyzed>>> = Mutex::new(Vec::new());
         const KEEP: usize = 8;
@@ -152,10 +152,10 @@ impl Analysis {
             // The latest analysis is usually the previous edit of this snapshot.
             cache.last().cloned()
         };
-        // Not for a process's first analysis: one fresh analysis is cheaper than std's plus a
-        // reusing one, which still hashes and indexes every std file.
+        // A process's first analysis too, so `check`, the LSP and the MCP server take one path
+        // (std first, design §17.214 (1)).
         let has_std = snapshot.files.first().is_some_and(|f| is_std(&f.uri));
-        let std = (has_std && prev.is_some()).then(|| std::iter::once_with(std_analysis));
+        let std = has_std.then(|| std::iter::once_with(std_analysis));
         // Unlocked, so callers on other threads analyse their snapshots in parallel.
         let analyzed = Arc::new(analyze(
             snapshot,
@@ -420,7 +420,8 @@ impl Analyzed {
 }
 
 /// std alone, analysed once per compiler build and read from the cache by every later process
-/// (design §17.195 (3)): the `prev` of a snapshot whose latest cached analysis has other files.
+/// (design §17.195 (3)): the `prev` of a snapshot whose latest cached analysis, if any, has other
+/// files.
 fn std_analysis<'a>() -> &'a Analyzed {
     static STD: OnceLock<Analyzed> = OnceLock::new();
     STD.get_or_init(|| {

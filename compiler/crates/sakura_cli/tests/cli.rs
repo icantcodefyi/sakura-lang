@@ -2041,3 +2041,68 @@ fn build_dump_core_compares_tags() {
         .count();
     assert_eq!(structural, 3, "{lines:#?}");
 }
+
+/// Design §17.195 (3), §17.214 (5): std's analysis cache changes no output. With an empty cache
+/// directory the first run writes the file and later runs read it; every run prints what a run
+/// with `SAKURA_NO_CACHE=1` prints, including after the file is corrupted (it is replaced) and
+/// when the cache directory cannot be created.
+#[test]
+fn std_cache_changes_no_output() {
+    let compiler = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let cache = std::env::temp_dir().join(format!("sakura-cli-{}-std-cache", std::process::id()));
+    let _ = std::fs::remove_dir_all(&cache);
+    let run = |dir: &str, args: &[&str], cache_dir: Option<&Path>| {
+        let mut cmd = std::process::Command::new(env!("CARGO_BIN_EXE_sakura"));
+        cmd.args(args).current_dir(compiler.join(dir));
+        match cache_dir {
+            Some(d) => cmd.env("SAKURA_CACHE_DIR", d).env_remove("SAKURA_NO_CACHE"),
+            None => cmd.env("SAKURA_NO_CACHE", "1"),
+        };
+        let out = cmd.output().expect("spawn sakura");
+        (out.status.code(), out.stdout, out.stderr)
+    };
+    let cases: &[(&str, &[&str])] = &[
+        ("examples/hello", &["check", "--json", "."]),
+        ("examples/hello", &["build", "--dump", "core", "."]),
+        ("examples/hello", &["build", "--dump", "direct", "."]),
+        ("examples/hello", &["build", "--dump", "owned", "."]),
+        (
+            "tests/ui",
+            &["check", "--json", "V1006_opaque_constructor.sak"],
+        ),
+        ("tests/ui", &["check", "--json", "V1006_private_item.sak"]),
+        ("tests/ui/V1030_import_cycle", &["check", "--json", "."]),
+    ];
+    let file = || {
+        let dir = cache.join("sakuralang").join("std");
+        let bins: Vec<_> = (std::fs::read_dir(&dir).unwrap().flatten())
+            .map(|e| e.path())
+            .filter(|p| p.extension().is_some_and(|x| x == "bin"))
+            .collect();
+        assert_eq!(bins.len(), 1, "{bins:?}");
+        bins[0].clone()
+    };
+    for (dir, args) in cases {
+        let fresh = run(dir, args, None);
+        assert_eq!(
+            run(dir, args, Some(&cache)),
+            fresh,
+            "{dir} {args:?} writing"
+        );
+        assert_eq!(
+            run(dir, args, Some(&cache)),
+            fresh,
+            "{dir} {args:?} reading"
+        );
+    }
+    let (dir, args) = cases[0];
+    let fresh = run(dir, args, None);
+    let size = std::fs::metadata(file()).unwrap().len();
+    std::fs::write(file(), b"not std's analysis").unwrap();
+    assert_eq!(run(dir, args, Some(&cache)), fresh, "corrupt file");
+    assert_eq!(std::fs::metadata(file()).unwrap().len(), size, "replaced");
+    let blocked = cache.join("a-file");
+    std::fs::write(&blocked, "").unwrap();
+    assert_eq!(run(dir, args, Some(&blocked)), fresh, "unwritable");
+    std::fs::remove_dir_all(&cache).unwrap();
+}

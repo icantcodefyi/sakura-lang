@@ -39,21 +39,20 @@ fn unrelated_programs_reuse_std_and_nothing_else() {
     let before = stats();
     let _ = Analysis::analyze(&Snapshot::with_std(a));
     let cold = stats();
-    assert_eq!(
-        cold.checked_modules - before.checked_modules,
-        std_modules + 2
-    );
-
-    // A second, unrelated program: std alone is read from the disk cache or analysed, once per
-    // process, then its module.
-    let _ = Analysis::analyze(&Snapshot::with_std(z));
-    let second = stats();
-    let std_fresh = second.analyses - cold.analyses - 1;
+    // std first (design §17.204 (1a)): std's analysis is read from the disk cache, or made here
+    // once per process, then the program's modules are checked.
+    let std_fresh = cold.analyses - before.analyses - 1;
     assert!(std_fresh <= 1, "analyses");
     assert_eq!(
-        second.checked_modules - cold.checked_modules,
-        std_fresh * std_modules + 1
+        cold.checked_modules - before.checked_modules,
+        std_fresh * std_modules + 2
     );
+
+    // A second, unrelated program: its module only.
+    let _ = Analysis::analyze(&Snapshot::with_std(z));
+    let second = stats();
+    assert_eq!(second.analyses - cold.analyses, 1, "analyses");
+    assert_eq!(second.checked_modules - cold.checked_modules, 1);
 
     // A third: its module only.
     let warm_b = Analysis::analyze(&Snapshot::with_std(b));
