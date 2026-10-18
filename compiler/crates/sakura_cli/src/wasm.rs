@@ -1,0 +1,101 @@
+//! `--target wasm` (plan §3.5 W1): Core → LIR → one module linked with `sakura_rt`
+//! (`sakura_codegen_wasm`), written as `main.wasm` beside the Node host
+//! (`sakura_wasm_host.js`) and the JS runtime whose host functions it delegates to.
+
+use std::path::{Path, PathBuf};
+use std::process::ExitCode;
+
+use sakura_analysis::{Analysis, BuildOptions, Snapshot};
+use sakura_diagnostics::{Diagnostic, Phase, Span, codes};
+
+use crate::{EXIT_ERRORS, report, usage_error};
+
+pub const MODULE: &str = "main.wasm";
+pub const HOST: &str = "sakura_wasm_host.js";
+
+/// `@external(js, …)` in a user package: the WASM backend has no JS to call (design §17.81).
+/// Std's externals are the runtime's builtins, which this backend implements or reports at
+/// run time as `D090`.
+fn js_externals(snapshot: &Snapshot) -> Vec<Diagnostic> {
+    let a = Analysis::analyze(snapshot);
+    let mut out = vec![];
+    for symbol in a.symbols() {
+        let module = a.program.module(symbol.def.module);
+        if a.program.packages[module.package.0 as usize].name == "std" {
+            continue;
+        }
+        let def = a.program.def(symbol.def);
+        for attr in def.attrs.iter().filter(|a| a.name == "external") {
+            if attr.args.first().map(|s| s.trim()) == Some("js") {
+                out.push(
+                    Diagnostic::error(
+                        codes::V8004,
+                        Phase::Package,
+                        format!(
+                            "`{}` is `@external(js, …)`, which the WASM target cannot call; \
+                             build with `--target js`",
+                            def.name
+                        ),
+                    )
+                    .with_span(Span::primary(
+                        module.file,
+                        attr.range.start().into(),
+                        attr.range.end().into(),
+                    )),
+                );
+            }
+        }
+    }
+    out
+}
+
+/// Checks, lowers and links `snapshot` into `out_dir`. On failure the diagnostics are already
+/// reported. `then` is the command that continues (`run`) and writes the final summary.
+pub fn build(
+    json: bool,
+    snapshot: &Snapshot,
+    out_dir: &Path,
+    opts: &BuildOptions,
+    then: bool,
+) -> Result<PathBuf, ExitCode> {
+    let refused = js_externals(snapshot);
+    if !refused.is_empty() {
+        report(json, snapshot, &refused, &[], true);
+        return Err(ExitCode::from(EXIT_ERRORS));
+    }
+    let (module, diags) = Analysis::lower_core(snapshot, opts);
+    let Some(module) = module else {
+        report(json, snapshot, &diags, &[], true);
+        return Err(ExitCode::from(EXIT_ERRORS));
+    };
+    let lir = match sakura_lir::from_core(&module, sakura_lir::Layout::Tagged) {
+        Ok(lir) => lir,
+        Err(e) => panic!("LIR lowering: {e}"),
+    };
+    if let Some(e) = sakura_lir::validate::validate(&lir, Default::default()).first() {
+        panic!("LIR validator: {e}");
+    }
+    let bytes = sakura_codegen_wasm::emit(&lir, &Default::default()).map_err(usage_error)?;
+    let write = |name: &str, bytes: &[u8]| -> Result<(), ExitCode> {
+        let path = out_dir.join(name);
+        std::fs::create_dir_all(out_dir)
+            .and_then(|()| std::fs::write(&path, bytes))
+            .map_err(|e| usage_error(format!("{}: {e}", path.display())))
+    };
+    write(MODULE, &bytes)?;
+    for (name, text) in sakura_codegen_wasm::HOST_FILES {
+        write(name, text.as_bytes())?;
+    }
+    if (json && !then) || !diags.is_empty() {
+        report(json, snapshot, &diags, &[], !then);
+    }
+    Ok(out_dir.to_path_buf())
+}
+
+/// The node command line that runs `main` of the module built into `dir`.
+pub fn command(dir: &Path) -> std::process::Command {
+    let mut node = crate::testing::node();
+    node.arg(std::path::absolute(dir.join(HOST)).unwrap_or_default())
+        .arg(std::path::absolute(dir.join(MODULE)).unwrap_or_default());
+    node
+}

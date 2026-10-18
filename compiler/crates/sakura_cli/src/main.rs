@@ -20,6 +20,7 @@ mod manifest;
 mod new;
 mod testing;
 mod verify;
+mod wasm;
 
 const EXIT_ERRORS: u8 = 1;
 const EXIT_USAGE: u8 = 2;
@@ -85,8 +86,9 @@ enum Command {
     Build {
         #[arg(long)]
         json: bool,
-        /// Only `js` exists in v0.
-        #[arg(long, default_value = "js", value_parser = ["js"])]
+        /// `js`, or `wasm`: one module linked with the `sakura_rt` runtime (`main.wasm`, with
+        /// the Node host `sakura_wasm_host.js`), into `target/sakura/wasm` by default.
+        #[arg(long, default_value = "js", value_parser = ["js", "wasm"])]
         target: String,
         /// What to write: the JS modules, or the WASM backend's LIR as text (`main.lir`).
         #[arg(long, default_value = "js", value_parser = ["js", "lir"])]
@@ -119,8 +121,12 @@ enum Command {
     Run {
         /// A file or directory (default: `src/` if present, else `.`).
         path: Option<PathBuf>,
-        #[arg(long, default_value = "target/sakura/js")]
-        out_dir: PathBuf,
+        /// `js`, or `wasm` (run on node through `sakura_wasm_host.js`).
+        #[arg(long, default_value = "js", value_parser = ["js", "wasm"])]
+        target: String,
+        /// Where the build goes [default: target/sakura/<target>].
+        #[arg(long)]
+        out_dir: Option<PathBuf>,
         #[arg(long, hide = true)]
         no_direct: bool,
         /// Arguments passed to the program.
@@ -317,7 +323,7 @@ fn dispatch(command: Command) -> ExitCode {
         ),
         Command::Build {
             json,
-            target: _,
+            target,
             emit,
             layout,
             out_dir,
@@ -342,6 +348,13 @@ fn dispatch(command: Command) -> ExitCode {
                     }
                 };
             }
+            if target == "wasm" && emit == "js" {
+                if manifest {
+                    return Err(usage_error("`--manifest` needs `--target js`"));
+                }
+                let out_dir = out_dir.unwrap_or_else(|| Path::new("target/sakura/wasm").into());
+                return wasm::build(json, &snapshot, &out_dir, &opts, false).map(|_| ());
+            }
             let out_dir = out_dir.unwrap_or_else(|| Path::new("target/sakura").join(&emit));
             if emit == "lir" {
                 if manifest {
@@ -364,10 +377,14 @@ fn dispatch(command: Command) -> ExitCode {
         },
         Command::Run {
             path,
+            target,
             out_dir,
             no_direct,
             args,
-        } => run(path, &out_dir, !no_direct, &args),
+        } => {
+            let out_dir = out_dir.unwrap_or_else(|| Path::new("target/sakura").join(&target));
+            run(path, &target, &out_dir, !no_direct, &args)
+        }
         Command::Test {
             json,
             flags,
@@ -604,7 +621,13 @@ fn write_manifest_with(
     std::fs::write(path, text).map_err(|e| format!("{}: {e}", path.display()))
 }
 
-fn run(path: Option<PathBuf>, out_dir: &Path, direct: bool, args: &[String]) -> ExitCode {
+fn run(
+    path: Option<PathBuf>,
+    target: &str,
+    out_dir: &Path,
+    direct: bool,
+    args: &[String],
+) -> ExitCode {
     let paths: Vec<PathBuf> = path.into_iter().collect();
     let snapshot = match load(&paths) {
         Ok(s) => s,
@@ -615,7 +638,12 @@ fn run(path: Option<PathBuf>, out_dir: &Path, direct: bool, args: &[String]) -> 
         direct,
         ..BuildOptions::default()
     };
-    let dir = match build(false, &snapshot, out_dir, opts, true) {
+    let built = if target == "wasm" {
+        wasm::build(false, &snapshot, out_dir, &opts, true)
+    } else {
+        build(false, &snapshot, out_dir, opts, true)
+    };
+    let dir = match built {
         Ok(d) => d,
         Err(code) => return code,
     };
@@ -643,9 +671,14 @@ fn run(path: Option<PathBuf>, out_dir: &Path, direct: bool, args: &[String]) -> 
         .find(|f| f.uri.ends_with("/sakura.toml"))
         .and_then(|f| disk::uri_path(&f.uri))
         .and_then(|p| p.parent().map(Path::to_path_buf));
-    let main = std::path::absolute(dir.join("__main__.js")).unwrap_or_default();
-    let mut node = testing::node();
-    node.arg(&main).args(args).env(
+    let mut node = if target == "wasm" {
+        wasm::command(&dir)
+    } else {
+        let mut node = testing::node();
+        node.arg(std::path::absolute(dir.join("__main__.js")).unwrap_or_default());
+        node
+    };
+    node.args(args).env(
         "SAKURA_PERMISSIONS",
         serde_json::to_string(&permissions).unwrap_or_default(),
     );

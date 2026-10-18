@@ -1038,6 +1038,7 @@ dependencies = [
  "clap",
  "sakura_analysis",
  "sakura_codegen_js",
+ "sakura_codegen_wasm",
  "sakura_core",
  "sakura_core_snapshot",
  "sakura_diagnostics",
