@@ -53,6 +53,10 @@ impl Module {
     }
 }
 
+/// Lines nested deeper stay at this indentation, so a dump stays linear in size however deep
+/// the IR nests (design §17.193).
+const MAX_INDENT: usize = 32;
+
 struct Printer<'a> {
     m: &'a Module,
     def: Option<&'a FnDef>,
@@ -68,7 +72,7 @@ struct Printer<'a> {
 
 impl<'a> Printer<'a> {
     fn line(&mut self, s: &str) {
-        for _ in 0..self.depth {
+        for _ in 0..self.depth.min(MAX_INDENT) {
             self.out.push_str("  ");
         }
         self.out.push_str(s);

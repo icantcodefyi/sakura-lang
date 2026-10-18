@@ -4,7 +4,7 @@
 
 use sakura_diagnostics::FileId;
 use sakura_hir::{DefId, DefKind, ModuleId, Program};
-use sakura_syntax::{NodeOrToken, SyntaxKind as K, SyntaxNode, TextSize};
+use sakura_syntax::{NodeOrToken, SyntaxKind as K, SyntaxNode, TextRange, TextSize};
 use serde::Serialize;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -165,9 +165,11 @@ fn item_node(root: &SyntaxNode, offset: TextSize) -> Option<SyntaxNode> {
     if offset >= root.text_range().end() {
         return None;
     }
-    let token = root.token_at_offset(offset).right_biased()?;
-    token
-        .parent_ancestors()
+    // The element over the byte at `offset` is the right-biased token there. `covering_element`
+    // binary-searches each node's children where `token_at_offset` scans them, which is
+    // quadratic over a `type` of thousands of variants.
+    root.covering_element(TextRange::at(offset, 1.into()))
+        .ancestors()
         .find(|n| ITEM_KINDS.contains(&n.kind()))
 }
 

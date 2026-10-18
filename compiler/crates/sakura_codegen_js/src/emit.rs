@@ -181,6 +181,10 @@ fn ns_name(module: &str) -> String {
     format!("${}", ident(&module.replace("::", "_").replace('/', "_")))
 }
 
+/// Lines nested deeper stay at this indentation, so the output stays linear in size however
+/// deep the IR nests (design §17.193).
+const MAX_INDENT: usize = 32;
+
 struct W<'c> {
     out: String,
     line: u32,
@@ -198,13 +202,13 @@ impl W<'_> {
             let (line, col) = ix.line_col(pos.offset);
             self.maps.push(Mapping {
                 gen_line: self.line,
-                gen_col: (self.depth * 2) as u32,
+                gen_col: (self.depth.min(MAX_INDENT) * 2) as u32,
                 source: *source as u32,
                 line,
                 col,
             });
         }
-        for _ in 0..self.depth {
+        for _ in 0..self.depth.min(MAX_INDENT) {
             self.out.push_str("  ");
         }
         self.out.push_str(s);
