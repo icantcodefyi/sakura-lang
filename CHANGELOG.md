@@ -123,6 +123,12 @@ published yet.
   ([gate report](docs/plans/m3-gate-report.md)). The reviewed escape, cassette and template
   code stays frozen until the [review packet](docs/reviews/m3-security-review.md) is signed.
 
+- Faster collections on the JS backend (design §17.116): `List.map`, `filter`, `filter_map`,
+  `flat_map`, `range`, `zip` and `enumerate` build their result in place before returning it,
+  `for` over a list reads each leaf of the vector once, `for` over a `Map` or `Set` copies
+  nothing, and string splitting and map inserts allocate less. `String.len` is documented as
+  O(n) on JS: compute it once outside a loop.
+
 ### Fixed
 
 - `sakura fmt` keeps file header comments above sorted imports when an inline block comment

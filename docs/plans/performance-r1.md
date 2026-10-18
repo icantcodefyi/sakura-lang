@@ -374,3 +374,44 @@ authority).
 4. The CPS name `f` of a recursive direct def is its CPS body, not the `$ret($k, f$d(…))` adapter (it still exposes `f.$d`). `runSync` and CPS calls of the def as an unknown value therefore never re-enter the twin. Static calls from CPS code still inline `f$d`.
 5. `runSync` passes `null` as the context. Direct code does not install handlers, catch failures or perform, so nothing reads it.
 6. `bench compare` blocks on peak RSS for `binary_trees` on Node at n=14 (198 → 291 MB) while every ratio improved by 63–86%. The unchanged hand-JS control also rose 26% at n=8 in the same pair of runs. The higher peak reproduces in-process: over 20 runs of n=14 it was 266 MB direct against 163 MB under `--no-direct`. The post-GC heap after those runs was 4.6 against 4.7 MB, but that is not peak RSS (WS-A's 2026-10-18 ruling keeps maximum > 25% as an immediate block) and its cause is not established. This is an **open block**: not suppressed and not explained away. It goes to WS-A and the designer.
+
+**WS-P6** (§17.116 items 1–3; numbers: `bench run --suite js --filter '[mpt]*'` before at
+`b7ea569` and after, same host, both engines, Sakura/hand-JS ratio at the largest size —
+`pipeline` Bun 10.21 → 2.98, Node 0.94 → 0.30; `tokenizer` Bun 1.81 → 1.40, Node 0.30 → 0.31;
+`map_set` Bun 4.56 → 5.02 (Sakura 539 → 471 ms; see 6), Node 3.73 → 3.15):
+
+1. **Leaf iteration is a cache, not a new loop.** `for x in xs` is lowered by `sakura_core`
+   (`list_len` + `list_at` per element), which this workstream does not own, so `list_at` keeps
+   a one-leaf cache on the list (`lb`, `lf`; the tail is cached like a leaf): an in-order loop
+   walks the trie once per 32 elements (≈2× on a 300k loop). The two fields cost a linear push
+   loop ≈5–8% (1M pushes: Node 8.1 → 8.6 ms, Bun 11.4 → 12.2 ms); adding them lazily instead was
+   measured and is slower for `pipeline` (Bun 2.8 → 3.4 ms).
+2. **Map and Set iteration walk the insertion log, not the HAMT.** The HAMT is in hash order;
+   §13.4's iteration order is insertion order, which is the log. `map_entries`/`set_to_list`
+   (what `for` iterates) return the log itself when it has no holes, so iteration copies
+   nothing; with holes it is one filtered copy.
+3. **Builders are three new builtins** (`list_builder`, `list_builder_push`,
+   `list_builder_finish`) behind a private abstract `type Builder<A>` in `std/list`. Adding them
+   touched files outside WS-P6's paths, each by the mechanical minimum: the `sakura_core`
+   builtins table (one line), `sakura_lir/src/builtins.sigs` (three lines, what
+   `examples/regen_core.rs` would write), and both evaluators in `tools/sakura_eval`, where a
+   builder is the list it finishes as. `runtime/rt` has no builder yet (routed in REQUESTS).
+4. `concat` keeps its push loop: it starts from `a`, and a builder would copy `a` (O(len a)
+   instead of O(len b)). `flat_map` now appends each inner element to its builder instead of
+   calling `concat`. `reverse`, `unique` and `merge` keep push loops (not in §17.116's list).
+5. Beyond the plan, measured on the target programs: HAMT inserts and removals build the
+   resized node array in one pass instead of `slice` + `splice`; `setAt` copies its path without
+   a closure; `hashOf` tests `number` first and has a separate `hashString`; `string_chars` and
+   `string_split` adopt their fresh array as the list when it has at most 32 elements; and the
+   `Hash` section's `ser` builds a tuple key without intermediate arrays (same strings; outside
+   §7 by a few lines).
+6. `bench compare` flags `map_set` Bun n=100000 (+10.0%, confirmed +8.5% by a Bun-only rerun):
+   Sakura went 539 → 471 / 466 ms while the unchanged hand-JS control measured 118 ms in the
+   baseline run and 94 ms in both later runs, so the flag is the control's variance on a loaded
+   host. Bun's sampling profiler puts 37% of `map_set` in `hashString`, which a microbenchmark
+   does not reproduce (≈25 ns per key); not pursued further.
+7. Ceilings after WS-P6 alone: `pipeline` Bun 2.98 is above 2.0 (the per-element remainder is
+   loop shape and the checked counter, WS-P1/WS-P4), and `map_set` Bun ≈5.0 is above 3.0 (a
+   persistent HAMT insert copies 32-wide nodes where the control mutates a JS `Map`).
+   `tokenizer` (1.40 Bun) is within 1.5. `bench/deltas.md` is WS-A's; the numbers are in
+   REQUESTS for Astra.
