@@ -11,7 +11,7 @@ has:
 | Directory | Programs | Expectations |
 |---|---|---|
 | `semantics/` | every `run`-mode program of `compiler/tests/semantics` except those whose `needs:` names the JS backend | the fixture's `.stdout` and `expect-defect` (the `@wasm` variant if present) |
-| `diff/` | `diff_NNNN.sakura`: `program(NNNN)` of `tools/sakura_eval/tests/differential.rs` at `a52f2be`, seeds 1–51 except 21 (the reference evaluator stops it with the JS-only `D003`) and 50 (its snapshot exceeds serde_json's recursion limit when read back; `compiler/REQUESTS.md`) | the reference evaluator (`sakura_eval::run_main`), which the JS backend is held to by that test |
+| `diff/` | `diff_NNNN.sakura`: `program(NNNN)` of `tools/sakura_eval/tests/differential.rs` at `a52f2be`, seeds 1–51 except 21 (the reference evaluator stops it with the JS-only `D003`); 50 nests its blocks past serde_json's default recursion limit, which the reader lifts (§17.129) | the reference evaluator (`sakura_eval::run_main`), which the JS backend is held to by that test |
 | `lir/` | adversarial cases for the LIR: tuple shapes across generic boundaries (ABI.md errata L2), `fail` across regions, callbacks, a lambda reading its clause's state | the reference evaluator |
 
 `builtins.sigs` gives each runtime builtin's parameter and result representations (from std's

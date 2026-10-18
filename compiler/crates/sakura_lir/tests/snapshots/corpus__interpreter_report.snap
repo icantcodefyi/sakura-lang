@@ -99,6 +99,7 @@ diff/diff_0046: ok, 48 allocated, 44 dup, 92 drop, peak 11, live 0/0
 diff/diff_0047: ok, 37 allocated, 10 dup, 47 drop, peak 10, live 0/0
 diff/diff_0048: D020, 20 allocated, 9 dup, 29 drop, peak 11, live 0/0
 diff/diff_0049: ok, 61 allocated, 59 dup, 120 drop, peak 16, live 0/0
+diff/diff_0050: D020, 25 allocated, 15 dup, 40 drop, peak 10, live 0/0
 diff/diff_0051: ok, 21 allocated, 1 dup, 22 drop, peak 7, live 0/0
 lir/regions: ok, 73 allocated, 31 dup, 104 drop, peak 13, live 0/0
 lir/tuple_shapes: ok, 99 allocated, 45 dup, 144 drop, peak 13, live 0/0

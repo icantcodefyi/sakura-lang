@@ -14,7 +14,8 @@ convert = ["dep:sakura_analysis", "dep:sakura_core", "dep:sakura_hir"]
 
 [dependencies]
 serde.workspace = true
-serde_json.workspace = true
+serde_json = { workspace = true, features = ["unbounded_depth"] }
+serde_stacker.workspace = true
 sakura_analysis = { workspace = true, optional = true }
 sakura_core = { workspace = true, optional = true }
 sakura_hir = { workspace = true, optional = true }

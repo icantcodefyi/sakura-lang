@@ -1,0 +1,43 @@
+type P = { a: Int, s: String }
+type Shape = Dot | Num(Int) | Pair(Int, String)
+error Oops(code: Int)
+error Bad
+effect Counter { fn next() -> Int }
+effect Acc {
+  fn add(x: Int) -> Unit ! {Fail<Bad>}
+  fn total() -> Int
+}
+fn counter(start: Int) -> Handler<Counter> { handler Counter { var n = start; fn next() { n = n + 1; n } } }
+fn doubling() -> Handler<Counter, {Counter}> {
+  handler Counter { var k = 0; fn next() { k = k + 1; Counter.next() * 2 + k } }
+}
+fn acc(limit: Int) -> Handler<Acc, {Console}> {
+  handler Acc {
+    var t = 0
+    fn add(x) { if x > limit { fail Bad }; t = t + x; Console.print("add {x} = {t}") }
+    fn total() { t }
+  }
+}
+effect Around { fn around<e>(x: Int, body: fn(Int) -> Int ! e) -> Int ! e }
+fn around() -> Handler<Around, {Console}> {
+  handler Around {
+    var calls = 0
+    fn around(x, body) { calls = calls + 1; Console.print("around {x} #{calls}"); body(x + calls) }
+  }
+}
+fn widen() -> Handler<Around, {Around}> { handler Around { fn around(x, body) { Around.around(x * 2, body) + 1 } } }
+fn h0(p0: Int, p1: P) -> Int ! {Counter}
+{ var v1 = "<{Counter.next()}>"; var v2 = 0; while v2 < 2 { v2 = v2 + 1; if ((-7) == Int.min(String.len("back\\slash"), ((P { a: 5, s: "x y" })).a)) { break }; if (if (Int.abs(1) < p0) { true } else { (if ((-9) >= v2) { false } else { (match List.last([8, 4503599627370496, 4]) { Some(v3) => true, None => true }) }) }) { continue }; v1 = v1 + (match List.range(0, 0) { [] => v1, [v4, ..v5] => (({ var v6 = (P { a: 0, s: "two\nlines" }); v6.a = p0; v6 })).s }) }; Counter.next() }
+fn h1(p0: Int) -> Bool
+{ let v13 = (match (try { if false { fail Bad }; if ("🦀" != "🦀") { return false }; let v9 = (match (P { a: (-1), s: "日本" }) { P { a: 0, .. } => (P { a: 10, s: "héllo" }), P { a: v7, s: v8 } => (P { a: 9, s: "🦀" }) }); (P { ..v9, s: "back\\slash" }) } catch { Bad => (try { if true { fail Oops { code: (-10) } }; (P { a: 0, s: "back\\slash" }) } catch { Oops { code: v10 } => (P { a: 3, s: "héllo" }) }) }) { P { a: 2, .. } => Dot, P { a: v11, s: v12 } => Dot }); let v21 = ((match Dot { Dot => (match (P { a: (-10), s: "tab\t" }) { P { a: 0, .. } => "two\nlines", P { a: v14, s: v15 } => "back\\slash" }), Num(v16) => ("back\\slash" + "back\\slash"), Pair(v16, v17) => List.join(List.map(List.range(0, 0), fn(v18) { let v19 = (P { a: 7, s: "q\"" }); let v20 = v16; v17 }), v17) }) + ("x y" + (if false { "a" } else { "tab\t" }))); (p0 != String.len("<{p0}>")) }
+fn h2(p0: P, p1: List<Int>) -> P ! {Counter}
+  requires ((8 + 9) % (0 - 1) != 7) && false
+  ensures (if false { true } else { (p1 != p1) })
+{ let v22 = Pair(8, "日本"); var v23 = (h0(List.fold(p1, (-7), fn(v24, v25) { var v26 = 2; var v27 = 0; while v27 < 3 { v27 = v27 + 1; v26 = v26 + 8 }; var v28 = ""; for v29 in [7, 4, 10] { var v30 = "héllo"; for v31 in 1..3 { var v32 = p1; for v33 in List.range(0, 1) { if true { break }; let v34 = v22; v32 = List.push(v32, 6) }; v30 = v30 + v30 }; if false { break }; v28 = v28 + "back\\slash" }; 9 }), (if false { (P { a: (-10), s: "sakura" }) } else { p0 })) + String.len(("" + "a"))); var v35 = 0; while v35 < 4 { v35 = v35 + 1; let v39 = (match List.unique(List.unique([(-10)])) { [] => Dot, [v36] => Pair((-1), "🦀"), [v36, v38, ..] => Num((v35 % v38)) }); var v40 = Counter.next(); for v41 in 1..2 { var v42 = ({ let v43 = v22; if List.any(List.slice(p1, v41, 8), fn(v44) { let v46 = ({ let v45 = [(-10)]; v22 }); (v35 >= v40) }) { continue }; Counter.next() }); var v47 = 0; while v47 < 4 { v47 = v47 + 1; v42 = v42 + (9 % v41) }; var v48 = (match (List.unique(List.range(0, 3)))[(Counter.next() * (with doubling() { if true { continue }; let v49 = "back\\slash"; 3 }))] { Some(v50) => List.push((match (p1)[v40] { Some(v51) => [(-4)], None => [(-1)] }), Counter.next()), None => [(v41 / (-5)), Counter.next(), 4503599627370496] }); for v52 in -2..4 { var v53 = v41; for v54 in List.reverse(List.filter_map(List.filter_map([(-9), 10], fn(v55) { if false { Some((-2)) } else { None } }), fn(v56) { if (true || false) { Some((p0).a) } else { None } })) { if (true || false) { break }; let v88 = (try { var v57 = ((P { ..(P { a: (-8), s: "tab\t" }), a: (-4) })).s; var v58 = 0; while v58 < 4 { v58 = v58 + 1; var v59 = ((P { ..(P { a: (-2), s: "x y" }), s: "日本" })).s; var v60 = 0; while v60 < 0 { v60 = v60 + 1; if ((if true { false } else { false }) && true) { fail Oops { code: h0(h0((-4), (P { a: 1, s: "x y" })), (if true { (P { a: (-4), s: "🦀" }) } else { p0 })) } }; let v61 = Counter.next(); v59 = v59 + "{(try { var v62 = (v40 * v54); for v63 in List.filter([(-3), 8], fn(v64) { if true { return true }; var v65 = (-7); for v66 in p1 { if false { continue }; var v67 = v54; var v68 = 0; while v68 < 4 { v68 = v68 + 1; let v69 = p1; var v70 = (-9); for v71 in -2..4 { v70 = v70 + v60 }; v67 = v67 + v35 }; v65 = v65 + 8 }; false }) { let v72 = Pair(v52, "back\\slash"); var v73 = List.range(0, 1); for v74 in (match p0 { P { a: 2, .. } => v48, P { a: v75, s: v76 } => List.range(0, 3) }) { if (try { var v77 = p1; for v78 in [6, (-5), (-7)] { if true { fail Bad }; v77 = List.push(v77, 8) }; if true { continue }; true } catch { Bad => true }) { return (P { ..(P { a: 2, s: "a" }), a: v58 }) }; if false { break }; v73 = List.push(v73, List.fold(v73, 3, fn(v79, v80) { var v81 = (-3); var v82 = 0; while v82 < 0 { v82 = v82 + 1; if false { continue }; v81 = v81 + 9 }; 9 })) }; v62 = v62 + (2 % 8) }; var v83 = "back\\slash"; var v84 = 0; while v84 < 1 { v84 = v84 + 1; var v85 = v57; for v86 in p1 { v85 = v85 + "sakura" }; v83 = v83 + ((P { a: 7, s: "tab\t" })).s }; (if false { (P { a: (-3), s: "héllo" }) } else { p0 }) })}" }; v57 = v57 + "{Pair((-9), v59)}" }; if true { break }; (P { a: 8, s: "🦀" }) } catch { Oops { code: v87 } => (P { a: (-1), s: "sakura" }) }); v53 = v53 + h0(Int.min(Counter.next(), Counter.next()), (P { ..(P { ..(P { a: 4, s: "sakura" }), a: v42 }), s: "sakura" })) }; if (match (List.range(1, 4))[Int.abs((match p1 { [] => 9, [v89, ..v90] => 10 }))] { Some(v91) => true, None => ({ if (v39 == v39) { continue }; true }) }) { break }; v48 = List.push(v48, 6) }; v40 = v40 + h0(Counter.next(), (if List.contains(v48, 10) { ({ var v92 = (P { a: 1, s: "sakura" }); v92.a = (-6); v92 }) } else { (P { a: (-8), s: "two\nlines" }) })) }; v23 = v23 + (h0(Counter.next(), (P { a: (-6), s: "two\nlines" })) % Counter.next()) }; (P { a: 6, s: "back\\slash" }) }
+pub fn main() -> Unit ! {Console} {
+  Console.print("{h1(7)}")
+  with counter(6) {
+    Console.print("{h2((match Num(7) { Dot => (P { a: (-3), s: "x y" }), Num(v93) if true => (P { ..(P { a: (-4), s: "a" }), s: "back\\slash" }), Num(v93) => ({ var v94 = (P { a: (-6), s: "two\nlines" }); v94.a = v93; v94 }), Pair(v93, v95) => (P { ..(P { a: 5, s: "héllo" }), a: v93 }) }), List.concat((match Num(6) { Dot => List.range(0, 2), Num(v96) => List.range(0, 0), Pair(v96, v97) => [8] }), (try { if false { fail Bad }; let v98 = false; [0, 0, 5] } catch { Bad => List.range(0, 1) })))}")
+  }
+  Console.print("{Dot}")
+}

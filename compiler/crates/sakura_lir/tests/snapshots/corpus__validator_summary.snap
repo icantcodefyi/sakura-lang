@@ -99,6 +99,7 @@ diff/diff_0046: 23 funcs, 242 blocks, 34 dup, 124 drop, valid
 diff/diff_0047: 22 funcs, 173 blocks, 29 dup, 91 drop, valid
 diff/diff_0048: 22 funcs, 178 blocks, 25 dup, 122 drop, valid
 diff/diff_0049: 14 funcs, 95 blocks, 19 dup, 49 drop, valid
+diff/diff_0050: 32 funcs, 490 blocks, 107 dup, 288 drop, valid
 diff/diff_0051: 12 funcs, 101 blocks, 3 dup, 69 drop, valid
 lir/regions: 12 funcs, 85 blocks, 4 dup, 61 drop, valid
 lir/tuple_shapes: 8 funcs, 46 blocks, 11 dup, 77 drop, valid

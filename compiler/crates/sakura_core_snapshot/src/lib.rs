@@ -16,6 +16,13 @@ use serde::{Deserialize, Serialize};
 
 pub const FORMAT: &str = "sakura-core-snapshot-v1";
 
+/// The deepest nesting of blocks (`if`, `match`, join points, handlers, `try`) that
+/// [`Module::check`] accepts (§17.129), so a snapshot too deep for a recursive reader is an error.
+pub const MAX_BLOCK_DEPTH: usize = 1024;
+
+/// The deepest JSON nesting [`Snapshot::from_json`] parses; one block level is at most five.
+const MAX_JSON_DEPTH: usize = 8 * MAX_BLOCK_DEPTH;
+
 pub type DefId = u32;
 pub type TypeId = u32;
 pub type EffectId = u32;
@@ -34,7 +41,17 @@ pub struct Snapshot {
 
 impl Snapshot {
     pub fn from_json(text: &str) -> Result<Snapshot, String> {
-        let s: Snapshot = serde_json::from_str(text).map_err(|e| e.to_string())?;
+        // serde_json's fixed limit of 128 levels rejects valid deep `if`/`match` nesting, so the
+        // limit is off and the stack grows instead. Past the bound nothing is built at all:
+        // dropping a deeply nested value recurses too.
+        if json_depth(text) > MAX_JSON_DEPTH {
+            return Err(format!("JSON nested deeper than {MAX_JSON_DEPTH} levels"));
+        }
+        let mut de = serde_json::Deserializer::from_str(text);
+        de.disable_recursion_limit();
+        let s = Snapshot::deserialize(serde_stacker::Deserializer::new(&mut de))
+            .map_err(|e| e.to_string())?;
+        de.end().map_err(|e| e.to_string())?;
         if s.format != FORMAT {
             return Err(format!("expected format {FORMAT}, found {}", s.format));
         }
@@ -90,6 +107,25 @@ pub struct Module {
     pub field_schemas: Vec<(TypeId, Vec<Vec<Ty>>)>,
     pub tests: Vec<(String, DefId)>,
     pub entry: Option<DefId>,
+}
+
+/// The deepest `[`/`{` nesting outside strings.
+fn json_depth(text: &str) -> usize {
+    let (mut depth, mut max, mut in_str, mut escaped) = (0usize, 0, false, false);
+    for b in text.bytes() {
+        match (in_str, b) {
+            (true, _) if escaped => escaped = false,
+            (true, b'\\') => escaped = true,
+            (true, b'"') | (false, b'"') => in_str = !in_str,
+            (false, b'[' | b'{') => {
+                depth += 1;
+                max = max.max(depth);
+            }
+            (false, b']' | b'}') => depth = depth.saturating_sub(1),
+            _ => {}
+        }
+    }
+    max
 }
 
 impl Module {
@@ -154,48 +190,59 @@ impl Ctx<'_> {
         }
     }
 
-    fn block(&self, b: &Block) -> Result<(), String> {
-        for s in &b.stmts {
-            match s {
-                Stmt::Let { local, bind, .. } => {
-                    self.local(*local)?;
-                    self.bind(bind)?;
-                }
-                Stmt::Join { params, join, .. } => {
-                    for l in params {
-                        self.local(*l)?;
+    /// Walks `root` and the blocks nested in it with a worklist, at most [`MAX_BLOCK_DEPTH`] deep.
+    fn block(&self, root: &Block) -> Result<(), String> {
+        let mut todo = vec![(root, 1)];
+        while let Some((b, depth)) = todo.pop() {
+            if depth > MAX_BLOCK_DEPTH {
+                return Err(format!("blocks nested deeper than {MAX_BLOCK_DEPTH}"));
+            }
+            let mut nested = |b| todo.push((b, depth + 1));
+            for s in &b.stmts {
+                match s {
+                    Stmt::Let { local, bind, .. } => {
+                        self.local(*local)?;
+                        self.bind(bind)?;
                     }
-                    self.block(join)?;
+                    Stmt::Join { params, join, .. } => {
+                        for l in params {
+                            self.local(*l)?;
+                        }
+                        nested(join);
+                    }
                 }
             }
-        }
-        match &b.term {
-            Terminator::Ret(a) | Terminator::Fail(a) => self.atom(a),
-            Terminator::Jump(_, args) => args.iter().try_for_each(|a| self.atom(a)),
-            Terminator::Switch {
-                scrut,
-                on,
-                arms,
-                default,
-            } => {
-                self.atom(scrut)?;
-                if let SwitchOn::Variant(t) = on {
-                    self.ty(*t)?;
+            match &b.term {
+                Terminator::Ret(a) | Terminator::Fail(a) => self.atom(a)?,
+                Terminator::Jump(_, args) => args.iter().try_for_each(|a| self.atom(a))?,
+                Terminator::Switch {
+                    scrut,
+                    on,
+                    arms,
+                    default,
+                } => {
+                    self.atom(scrut)?;
+                    if let SwitchOn::Variant(t) = on {
+                        self.ty(*t)?;
+                    }
+                    arms.iter().for_each(|(_, a)| nested(a));
+                    if let Some(d) = default {
+                        nested(d);
+                    }
                 }
-                arms.iter().try_for_each(|(_, a)| self.block(a))?;
-                default.as_ref().map_or(Ok(()), |d| self.block(d))
+                Terminator::If { cond, then, els } => {
+                    self.atom(cond)?;
+                    nested(then);
+                    nested(els);
+                }
+                Terminator::Handle { handler, body } => {
+                    self.atom(handler)?;
+                    nested(body);
+                }
+                Terminator::Try { body, .. } => nested(body),
             }
-            Terminator::If { cond, then, els } => {
-                self.atom(cond)?;
-                self.block(then)?;
-                self.block(els)
-            }
-            Terminator::Handle { handler, body } => {
-                self.atom(handler)?;
-                self.block(body)
-            }
-            Terminator::Try { body, .. } => self.block(body),
         }
+        Ok(())
     }
 
     fn bind(&self, b: &Bind) -> Result<(), String> {
@@ -548,4 +595,73 @@ pub enum CmpTy {
     Bool,
     String,
     Any,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `main` returning `1` from the innermost of `depth` nested `if true { … } else { … }`.
+    fn nested_ifs(depth: usize) -> Snapshot {
+        let one = || Block {
+            stmts: vec![],
+            term: Terminator::Ret(Atom::Lit(Lit::Int(1))),
+        };
+        let mut body = one();
+        for _ in 1..depth {
+            body = Block {
+                stmts: vec![],
+                term: Terminator::If {
+                    cond: Atom::Lit(Lit::Bool(true)),
+                    then: Box::new(body),
+                    els: Box::new(one()),
+                },
+            };
+        }
+        let main = Def {
+            name: "main".into(),
+            module: "main::main".into(),
+            kind: FnKind::Top { export: true },
+            captures: vec![],
+            params: vec![],
+            locals: vec![],
+            ret: Ty::Int,
+            row: Row {
+                effects: vec![],
+                fail: None,
+                tail: None,
+            },
+            row_vars: vec![],
+            pos: None,
+            body,
+            refined_params: vec![],
+        };
+        Snapshot {
+            format: FORMAT.into(),
+            files: vec![],
+            module: Module {
+                defs: vec![main],
+                entry: Some(0),
+                ..Module::default()
+            },
+        }
+    }
+
+    #[test]
+    fn nesting_up_to_the_bound_round_trips() {
+        // Far past serde_json's default limit of 128 JSON levels.
+        let deep = nested_ifs(MAX_BLOCK_DEPTH);
+        assert_eq!(Snapshot::from_json(&deep.to_json()), Ok(deep));
+    }
+
+    #[test]
+    fn nesting_past_the_bound_is_an_error() {
+        let err = Snapshot::from_json(&nested_ifs(MAX_BLOCK_DEPTH + 1).to_json()).unwrap_err();
+        assert!(err.contains("nested deeper than"), "{err}");
+        // Hostile input far deeper than any reader's stack: an error before anything is built.
+        let hostile = format!("{}{}", "[".repeat(1_000_000), "]".repeat(1_000_000));
+        let err = Snapshot::from_json(&hostile).unwrap_err();
+        assert!(err.contains("JSON nested deeper"), "{err}");
+        assert_eq!(json_depth(r#"{"a": "[[\"{"}"#), 1);
+    }
 }
