@@ -56,6 +56,23 @@ pub struct Config {
     pub solver_status: Option<fn() -> Value>,
 }
 
+/// The workspace when no `--root` is given (design §17.143): the nearest ancestor of `start`
+/// (itself included) that holds `sakura.toml`. Outside a project it is an error naming the
+/// directory searched, never a silently wrong root.
+pub fn project_root(start: &Path) -> Result<PathBuf, String> {
+    let start = std::path::absolute(start).map_err(|e| e.to_string())?;
+    start
+        .ancestors()
+        .find(|dir| dir.join("sakura.toml").is_file())
+        .map(Path::to_path_buf)
+        .ok_or_else(|| {
+            format!(
+                "no sakura.toml in {} or any parent directory",
+                start.display()
+            )
+        })
+}
+
 /// Serves MCP on stdin/stdout until the client disconnects.
 pub fn serve(config: Config) -> Result<(), String> {
     let runtime = tokio::runtime::Builder::new_multi_thread()
