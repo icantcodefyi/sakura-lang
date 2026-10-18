@@ -1262,7 +1262,7 @@ One Rust library (`sakura_analysis` facade) serves CLI, LSP, and MCP. No phase r
 Core module   = { defs: [FnDef], types: [TypeDef], effects: [EffectDef], tests: [FnDef] }
 FnDef         = { id: DefId, params: [Local], refined_params: [RefinementId?], row: Row, ret: Type, contracts: [Check], body: Expr }
 Expr (ANF)    = Let(Local, Bind, Expr) | Ret(Atom) | Jump(Label, [Atom]) | LetJoin(Label, [Local], Expr, Expr)
-              | Switch(Atom, on: Variant | Errors | Lit(ty), [(Tag | Lit, Expr)], default: Expr?) | If(Atom, Expr, Expr)
+              | Switch(Atom, on: Variant | Errors | Lit([Lit]), [(key, Expr)], default: Expr?) | If(Atom, Expr, Expr)
               | Handle { handler: Atom, body: Expr } | Try { on_fail: Label, body: Expr } | Fail(Atom)
 Bind          = Atom | Prim(op, [Atom]) | Call(Atom, [Atom]) | Closure(DefId, captures: [Atom])
               | Alloc(ctor, [Atom]) | Proj(Atom, index) | Perform(EffectId, op, [Atom])
@@ -1278,7 +1278,7 @@ Refined types are their base everywhere but in schema positions; a def keeps, pe
 
 A `Prim` carries a per-profile `range: Checked | Proved` annotation computed at emission by `opt::ranges` (§17.114); it is not part of the committed snapshot. Likewise the consuming argument of an owned-capable collection builtin carries an `owned` annotation computed at emission by `opt::owned` (§17.149); the LIR recomputes the same facts from the committed snapshot and a parity test compares both `--dump owned` outputs (§17.176 (2)), and `opt` fuses `list_get`/`map_get` with an immediately consumed `option_expect` into `list_get_expect`/`map_get_expect` (§17.151). `Perform` and `Handle` carry the lexically bound handler instance when `opt` can resolve it (§17.113).
 
-`Handle`, `Try` and `Fail` are **expressions**, not bindings: their bodies live in the same function, so `return`/`break`/`continue` inside `with` and `try` are ordinary jumps and the region's context is lexical (no thunks, no unwinding tables). Handler state is explicit (`StateGet`/`StateSet` on the clause's instance parameter) and clauses are closures because they capture the enclosing function's variables. Locals carry types; `Switch` names the variant type or error union it discriminates. `sakura_core::ir` and `runtime/js/ABI.md` are normative for field names.
+`Handle`, `Try` and `Fail` are **expressions**, not bindings: their bodies live in the same function, so `return`/`break`/`continue` inside `with` and `try` are ordinary jumps and the region's context is lexical (no thunks, no unwinding tables). Handler state is explicit (`StateGet`/`StateSet` on the clause's instance parameter) and clauses are closures because they capture the enclosing function's variables. Locals carry types; `Switch` names the variant type or error union it discriminates, and an arm's key indexes its tags, members or literals; a `Lit` switch holds distinct `Int` or `String` literals and always has a default (§17.200 (2)). `sakura_core::ir` and `runtime/js/ABI.md` are normative for field names.
 
 Invariants checked by `sakura_core::validate` after every pass: every `Local` is bound once and used only in scope; `Perform` targets a declared operation with matching arity; `Check` precedes any use of the checked value; `Switch` tags are exhaustive or carry a default; rows on `Call` targets are closed or variables bound by the enclosing def. Decision trees come from a Maranget-style compiler in `sakura_core` that shares normalized patterns with the usefulness checker in `sakura_types` but is a separate module (`R06 §4.3`).
 
