@@ -1,0 +1,15 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D003
+// covers: design §17.154 (a conjunction is not negated); performance-r1 WS-P4b
+
+// The else of `flag && n < 1 - MAX` does not know `n >= 1 - MAX` (`flag` may be false), so
+// `n - 1` keeps its check and defects at the end of the JS range.
+fn pred(flag: Bool, n: Int) -> Int { if flag && n < -9_007_199_254_740_990 { 0 } else { n - 1 } }
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("{pred(true, -9_007_199_254_740_991)}")
+  Console.print("{pred(false, 5)}")
+  Console.print("{pred(false, -9_007_199_254_740_991)}")
+  Console.print("never printed")
+}

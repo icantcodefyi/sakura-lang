@@ -389,7 +389,11 @@ impl<'a> FnEmit<'a> {
             closures: direct::closures(def),
             ns,
             pool,
-            proved: sakura_core::opt::ranges::analyze(def, sakura_core::opt::ranges::Profile::Js),
+            proved: sakura_core::opt::ranges::analyze(
+                cx.m,
+                def,
+                sakura_core::opt::ranges::Profile::Js,
+            ),
         };
         e.analyze_labels();
         e

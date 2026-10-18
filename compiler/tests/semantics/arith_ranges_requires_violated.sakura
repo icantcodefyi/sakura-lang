@@ -1,0 +1,16 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D020
+// covers: design §17.154 (a seeded `requires` violated at run time); performance-r1 WS-P4b
+
+// The self-call `down2(n - 2)` is a loop whose back edge re-enters the check, so the seed
+// `n >= 0` never crosses it: from 3 the call `down2(-1)` defects D020 before the body.
+fn down2(n: Int) -> Int
+  requires nonneg: n >= 0
+{ if n == 0 { 0 } else { down2(n - 2) } }
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("{down2(4)}")
+  Console.print("{down2(3)}")
+  Console.print("never printed")
+}

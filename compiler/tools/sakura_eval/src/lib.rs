@@ -233,7 +233,12 @@ impl<'m> Machine<'m> {
             test_output: Vec::new(),
             proved: if limits.audit_ranges {
                 use sakura_core::opt::ranges::{Profile, analyze};
-                let both = |d| [analyze(d, Profile::Js), analyze(d, Profile::I64)];
+                let both = |d| {
+                    [
+                        analyze(module, d, Profile::Js),
+                        analyze(module, d, Profile::I64),
+                    ]
+                };
                 module.defs.iter().map(both).collect()
             } else {
                 Vec::new()

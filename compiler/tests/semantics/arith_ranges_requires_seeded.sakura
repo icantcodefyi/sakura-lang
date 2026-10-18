@@ -1,0 +1,23 @@
+// milestone: M3
+// covers: design §17.154 (contracts seed the interval pass); performance-r1 WS-P4b
+
+// `requires` and a refined parameter's `where` seed `opt::ranges`: `n - 1` below is proved past
+// the check, `acc + n` stays checked. Each result must equal the checked one.
+type Percent = Int where it >= 0 && it <= 100
+
+fn sum_tail(n: Int, acc: Int) -> Int
+  requires n >= 0
+{ if n == 0 { acc } else { sum_tail(n - 1, acc + n) } }
+
+fn both(n: Int, k: Int) -> Int
+  requires bounded: n >= 0 && n < 1000 && k > 0
+{ n * k + n / k }
+
+fn scale(p: Percent, x: Int) -> Int { p * 90_071_992_547_409 + x % (p + 1) }
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("{sum_tail(0, 0)} {sum_tail(1, 0)} {sum_tail(100_000, 0)}")
+  Console.print("{sum_tail(1, 9_007_199_254_740_990)}")
+  Console.print("{both(0, 1)} {both(999, 7)} {both(999, -1 + 2)}")
+  Console.print("{scale(0, 5)} {scale(100, -7)} {scale(37, 9_007_199_254_740_991)}")
+}

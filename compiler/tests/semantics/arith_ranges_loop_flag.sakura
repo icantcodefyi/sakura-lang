@@ -1,0 +1,22 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D003
+// covers: design §17.154 (facts on a loop's `Bool` do not cross its back edge); performance-r1 WS-P4b
+
+// `ok` enters the loop as `x < MAX`, but the back edge sets it to `true` without that fact, so
+// `x + 1` keeps its check: from `MAX` the second iteration defects.
+fn bump(x: Int) -> Int {
+  let below = x < 9_007_199_254_740_991
+  var ok = below
+  while true {
+    if ok { return x + 1 }
+    ok = true
+  }
+  0
+}
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("{bump(9_007_199_254_740_990)}")
+  Console.print("{bump(9_007_199_254_740_991)}")
+  Console.print("never printed")
+}

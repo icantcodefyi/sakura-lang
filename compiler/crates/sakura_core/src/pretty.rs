@@ -13,7 +13,7 @@ impl fmt::Display for Module {
             out: String::new(),
             depth: 0,
             profile: None,
-            proved: Vec::new(),
+            facts: ranges::Facts::default(),
         };
         p.module();
         f.write_str(&p.out)
@@ -27,7 +27,8 @@ impl Module {
     }
 
     /// [`Module::display_module`] with each `Int` operation the interval pass proves for
-    /// `profile` marked `proved` (design §17.114; `--dump core`).
+    /// `profile` marked `proved` and the intervals contracts seed (design §17.114, §17.154;
+    /// `--dump core`).
     pub fn display_module_for(&self, module: &str, profile: Option<Profile>) -> String {
         let mut p = Printer {
             m: self,
@@ -35,7 +36,7 @@ impl Module {
             out: String::new(),
             depth: 0,
             profile,
-            proved: Vec::new(),
+            facts: ranges::Facts::default(),
         };
         for (i, d) in self.defs.iter().enumerate() {
             if d.module == module {
@@ -54,7 +55,7 @@ struct Printer<'a> {
     depth: usize,
     profile: Option<Profile>,
     /// The interval pass's verdict per local of `def` under `profile`.
-    proved: Vec<bool>,
+    facts: ranges::Facts,
 }
 
 impl<'a> Printer<'a> {
@@ -146,9 +147,9 @@ impl<'a> Printer<'a> {
 
     fn def(&mut self, id: DefId, d: &'a FnDef) {
         self.def = Some(d);
-        self.proved = self
+        self.facts = self
             .profile
-            .map_or_else(Vec::new, |p| ranges::analyze(d, p));
+            .map_or_else(Default::default, |p| ranges::facts(self.m, d, p));
         let kind = match &d.kind {
             FnKind::Top { export: true } => "pub fn".to_owned(),
             FnKind::Top { export: false } => "fn".to_owned(),
@@ -171,7 +172,12 @@ impl<'a> Printer<'a> {
             .iter()
             .enumerate()
             .map(|(i, l)| match d.refined_params.get(i).copied().flatten() {
-                Some(r) => format!("{} where {}", self.decl(*l), self.refinement(r)),
+                Some(r) => format!(
+                    "{} where {}{}",
+                    self.decl(*l),
+                    self.refinement(r),
+                    self.seeds(*l)
+                ),
                 None => self.decl(*l),
             })
             .collect();
@@ -188,6 +194,18 @@ impl<'a> Printer<'a> {
         self.expr(&d.body);
         self.depth -= 1;
         self.line("}");
+    }
+
+    /// ` seeds n%0 in [0, 9007199254740991]` where a contract seeds intervals at `l`.
+    fn seeds(&self, l: Local) -> String {
+        let Some(seeds) = self.facts.seeds.get(l.index()).filter(|s| !s.is_empty()) else {
+            return String::new();
+        };
+        let ivs: Vec<String> = seeds
+            .iter()
+            .map(|(x, lo, hi)| format!("{} in [{lo}, {hi}]", self.local(*x)))
+            .collect();
+        format!(" seeds {}", ivs.join(", "))
     }
 
     fn decl(&self, l: Local) -> String {
@@ -335,12 +353,17 @@ impl<'a> Printer<'a> {
             Expr::Let {
                 local, bind, body, ..
             } => {
-                let proved = if self.proved.get(local.index()) == Some(&true) {
+                let proved = if self.facts.proved.get(local.index()) == Some(&true) {
                     " proved"
                 } else {
                     ""
                 };
-                let line = format!("let {} = {}{proved}", self.decl(*local), self.bind(bind));
+                let line = format!(
+                    "let {} = {}{proved}{}",
+                    self.decl(*local),
+                    self.bind(bind),
+                    self.seeds(*local)
+                );
                 self.line(&line);
                 self.expr(body);
             }

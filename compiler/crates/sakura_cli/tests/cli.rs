@@ -1262,3 +1262,31 @@ fn build_dump_core_marks_proved_operations() {
 "
     );
 }
+
+/// `--dump core` shows a `requires` seeding the interval pass (design §17.154): `countdown`'s
+/// `sum_tail` with `requires n >= 0` proves `n - 1` past the check, and `acc + n` stays checked.
+#[test]
+fn build_dump_core_shows_requires_seeds() {
+    let dir = tmp(
+        "dump-core-seeds",
+        "fn sum_tail(n: Int, acc: Int) -> Int requires n >= 0 \
+         { if n == 0 { acc } else { sum_tail(n - 1, acc + n) } }\n\
+         pub fn main() -> Unit ! {Console} { Console.print(\"{sum_tail(10, 0)}\") }\n",
+    );
+    let out = sakura(&["build", "--dump", "core", "main.sakura"], &dir);
+    assert_eq!(out.code, Some(0), "{}", out.stderr);
+    let lines: Vec<&str> = out
+        .stdout
+        .lines()
+        .skip_while(|l| !l.starts_with("fn sum_tail"))
+        .take_while(|l| *l != "}")
+        .map(str::trim)
+        .collect();
+    let has = |s: &str| lines.contains(&s);
+    assert!(
+        has("let pre%5: Unit = check #0(t%3) seeds n%0 in [0, 9007199254740991]"),
+        "{lines:#?}"
+    );
+    assert!(has("let t%8: Int = intsub(n%0, 1) proved"), "{lines:#?}");
+    assert!(has("let t%9: Int = intadd(acc%1, n%0)"), "{lines:#?}");
+}
