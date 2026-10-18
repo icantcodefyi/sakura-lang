@@ -62,10 +62,14 @@ jobs:
         with:
           persist-credentials: false
       - name: Install pinned Rust toolchain
-        run: rustup show active-toolchain || rustup toolchain install
+        run: |
+          rustup show active-toolchain || rustup toolchain install
+          rustup target add wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: compiler
+          # Older caches may embed an empty runtime built without the WASM target.
+          key: wasm32-unknown-unknown
       - uses: actions/setup-node@v7
         with:
           node-version: 26
