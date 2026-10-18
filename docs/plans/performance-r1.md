@@ -570,6 +570,7 @@ authority).
 4. `sakura_lir/src/builtins.sigs` gained the two lines `examples/regen_core.rs` writes (the example lists them beside `list_at`). The rest of that run's output, ~85 rewritten or new `tests/corpus` files, is drift from earlier Core and std changes unrelated to WS-P8 and was not committed.
 5. The differential generator gained `Int` form 17, `({ let ys = …; ys[Int.abs(i) % Int.max(List.len(ys), 1)] }).expect("read")` (fused; `D030` on an empty list). Form 17 previously fell through to a leaf, so only programs drawing it changed. It exposed a latent `sakura_eval` LIR bug, fixed separately: a direct builtin that defected left its taken arguments live, so the run ended unbalanced.
 6. The "Option used twice" fixture is `--dump core` in `sakura_cli/tests/cli.rs` (`build_dump_core_fuses_get_expect`) plus `twice` in `tests/semantics/fused_get_expect.sakura`.
+7. After WS-P7 landed, `list_get_expect` and `map_get_expect` joined `opt::owned::BORROWS` (two lines in WS-P7's file, as its REQUESTS entry asked); without them a fused read counted as an escape and kept the next `List.push` persistent (`--dump owned`: `escapes-call list_get_expect`). `fused_get_expect_owned_push` reads the last element through the leaf cache, pushes in place, and reads again across the 31/32/33 boundaries, identical under both ABIs and on WASM. Neither builtin has a `fresh` or `consumes` column.
 
 ## 9. Round 10 (§17.149–§17.154): ownership, fusion, benchmark definitions, measurement
 
