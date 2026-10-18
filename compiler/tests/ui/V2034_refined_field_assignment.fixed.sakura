@@ -1,0 +1,9 @@
+type PosRepr = { n: Int }
+
+type Pos = PosRepr where it.n > 0
+
+fn f(p: Pos) -> Pos {
+  var x = p
+  x = Pos.from(PosRepr { ..x, n: 1 })
+  x
+}

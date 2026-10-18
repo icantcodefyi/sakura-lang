@@ -1,0 +1,11 @@
+effect Pair {
+  fn left() -> Int
+  fn right() -> Int
+}
+
+fn both() -> Handler<Pair> {
+  handler Pair {
+    fn left() { 1 }
+    fn right() { 2 }
+  }
+}

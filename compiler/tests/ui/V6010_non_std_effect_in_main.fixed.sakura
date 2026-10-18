@@ -1,0 +1,11 @@
+effect Db {
+  fn count() -> Int
+}
+
+fn empty_db() -> Handler<Db> {
+  handler Db {
+    fn count() { 0 }
+  }
+}
+
+pub fn main() -> Unit ! {Console} { with empty_db() { Console.print("{Db.count()} rows") } }

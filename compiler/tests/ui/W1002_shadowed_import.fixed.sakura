@@ -1,0 +1,6 @@
+import std/retry.{retry}
+
+fn attempts() -> Int {
+  let max_attempts = 3
+  max_attempts
+}

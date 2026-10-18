@@ -1,0 +1,6 @@
+import std/fs.{Fs, FsError, Mode}
+import std/path.{Path}
+
+fn first_kb(p: Path) -> Bytes ! {Fs, Fail<FsError>} {
+  Fs.with_file(p, Mode.Read, fn(file) { Fs.read_chunk(file, 1024) })
+}

@@ -1,0 +1,11 @@
+effect Db {
+  fn count() -> Int
+}
+
+fn empty_db() -> Handler<Db> {
+  handler Db {
+    fn count() { 0 }
+  }
+}
+
+test "counts rows" { with empty_db() { expect_eq(Db.count(), 0) } }

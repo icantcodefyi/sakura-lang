@@ -1,0 +1,3 @@
+pub fn exact(x: Int) -> Int
+  requires x >= 0 && x <= 123_456
+{ x }

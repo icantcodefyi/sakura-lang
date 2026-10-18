@@ -1,0 +1,6 @@
+import std/core.{Violation}
+import std/untrusted
+
+type Small = Int where it >= 0 && it <= 10
+
+fn small() -> Result<Small, Violation> { Untrusted.validate(Untrusted.of(1)) }

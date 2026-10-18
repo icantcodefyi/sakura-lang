@@ -1,0 +1,3 @@
+fn double(n: Int) -> Int { n * 2 }
+
+fn four() -> Int { double(2) }

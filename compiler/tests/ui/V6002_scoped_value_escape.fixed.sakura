@@ -1,0 +1,6 @@
+import std/fs.{Fs, FsError}
+import std/path.{Path}
+
+fn read_config() -> Bytes ! {Fs, Fail<FsError>} {
+  with Fs.rooted(Fs.root()) { Fs.read(Path.of("config.toml")) }
+}

@@ -1,0 +1,6 @@
+@total
+fn positive(x: Int) -> Bool { x > 0 }
+
+fn halve(x: Int) -> Int
+  requires positive(x)
+{ x / 2 }

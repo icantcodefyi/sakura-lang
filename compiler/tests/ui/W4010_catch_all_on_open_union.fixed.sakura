@@ -1,0 +1,10 @@
+error Timeout
+
+error Refused
+
+fn or_default<T>(body: fn() -> T ! {Fail<Refused | Timeout>}, default: T) -> T {
+  try { body() } catch {
+    Timeout => default,
+    Refused => default,
+  }
+}

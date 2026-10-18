@@ -1,0 +1,1 @@
+fn omega() -> Unit { let _ = fn(x: Int) { x } }

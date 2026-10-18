@@ -1,0 +1,4 @@
+fn price() -> Int {
+  let spawned = 2
+  1
+}

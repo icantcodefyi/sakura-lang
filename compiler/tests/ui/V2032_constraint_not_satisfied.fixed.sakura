@@ -1,0 +1,4 @@
+fn same() -> Bool {
+  let f = fn() { 1 }
+  f() == f()
+}

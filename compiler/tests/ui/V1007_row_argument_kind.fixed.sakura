@@ -1,0 +1,5 @@
+type Box<e> = { run: fn() -> Unit ! e }
+
+fn right(b: Box<{Console}>) -> Unit ! {Console} { b.run() }
+
+fn also(xs: List<Int>) -> Unit { () }

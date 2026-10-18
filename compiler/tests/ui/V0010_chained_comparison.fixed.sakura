@@ -1,0 +1,1 @@
+fn same(a: Int, b: Int, c: Bool) -> Bool { (a == b) == c }

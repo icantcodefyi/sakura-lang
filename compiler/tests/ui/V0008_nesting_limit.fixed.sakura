@@ -1,0 +1,4 @@
+fn deep() -> Int {
+  let inner = ((1))
+  ((inner))
+}

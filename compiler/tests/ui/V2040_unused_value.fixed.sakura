@@ -1,0 +1,5 @@
+fn grow() -> List<Int> {
+  var xs = [1]
+  xs = List.push(xs, 2)
+  xs
+}

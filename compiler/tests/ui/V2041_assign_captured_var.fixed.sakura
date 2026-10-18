@@ -1,0 +1,5 @@
+fn total() -> Int {
+  var sum = 0
+  for x in [1] { sum = sum + x }
+  sum
+}

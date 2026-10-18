@@ -1,0 +1,6 @@
+fn size(o: Option<Int>) -> Int {
+  (match o {
+    Some(n) => n,
+    None => 0,
+  }).abs()
+}

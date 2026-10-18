@@ -1,0 +1,4 @@
+fn nothing() -> List<Int> {
+  var xs: List<Int> = []
+  xs
+}

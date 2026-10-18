@@ -1,0 +1,3 @@
+fn one() -> Int { 1 }
+
+/* this comment is closed */

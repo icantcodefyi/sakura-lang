@@ -1,0 +1,8 @@
+fn apply<e>(f: fn() -> Int ! e) -> Int ! e { f() }
+
+fn loud_one() -> Int ! {Console} {
+  Console.print("side effect")
+  1
+}
+
+fn noisy() -> Int ! {Console} { apply(loud_one) }

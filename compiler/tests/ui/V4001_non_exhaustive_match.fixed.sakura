@@ -1,0 +1,9 @@
+error ParseError(input: String)
+
+fn parse_age(s: String) -> Int ! {Fail<ParseError>} {
+  match String.parse_int(s) {
+    Some(n) if n >= 0 => n,
+    Some(_) => fail ParseError { input: s },
+    None => fail ParseError { input: s },
+  }
+}

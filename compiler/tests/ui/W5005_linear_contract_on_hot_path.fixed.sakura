@@ -1,0 +1,9 @@
+type Positive = Int where it > 0
+
+fn count_positive(xs: List<Positive>) -> Int { List.len(xs) }
+
+fn many(xs: List<Positive>) -> Int {
+  var n = 0
+  for _ in 0..1000 { n = n + count_positive(xs) }
+  n
+}

@@ -1,0 +1,3 @@
+type Point = { x: Int, y: Int }
+
+fn depth(p: Point) -> Int { p.y }

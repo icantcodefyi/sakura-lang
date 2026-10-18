@@ -1,0 +1,5 @@
+error Full
+
+effect Store {
+  fn save(key: String) -> Unit ! {Fail<Full>}
+}

@@ -1,0 +1,10 @@
+import std/log.{Log}
+
+@contract_test(handlers: [Log.captured()])
+pub fn half(x: Int) -> Int
+  ! {Log}
+  requires x > 0
+{
+  Log.event(Level.Info, "halving", [])
+  x / 2
+}

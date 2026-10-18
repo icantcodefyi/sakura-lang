@@ -1,0 +1,1 @@
+fn mask() -> Int { 0xff }

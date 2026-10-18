@@ -1,0 +1,9 @@
+error A
+
+error B
+
+fn fa() -> Int ! {Fail<A>} { fail A }
+
+fn fb() -> Int ! {Fail<B>} { fail B }
+
+fn pick(c: Bool) -> Unit { let _: Result<Int, A | B> = if c { try { fa() } } else { try { fb() } } }

@@ -1,0 +1,3 @@
+import std/html.{Html}
+
+fn escaped() -> Html { Html.text("<script>evil()</script>") }

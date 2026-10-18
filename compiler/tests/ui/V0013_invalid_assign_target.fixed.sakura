@@ -1,0 +1,5 @@
+fn first_to_zero() -> List<Int> {
+  var xs = [1, 2]
+  xs = List.set(xs, 0, 0)
+  xs
+}

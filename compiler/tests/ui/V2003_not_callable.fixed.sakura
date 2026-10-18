@@ -1,0 +1,4 @@
+fn call() -> Int {
+  let x = fn(n: Int) { n + 1 }
+  x(2)
+}
