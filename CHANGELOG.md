@@ -22,6 +22,16 @@ published yet.
   cap, the proof key's directory mode is checked, non-release workflows pin action SHAs, and
   WASM may send `Secret` headers once the approved transport change lands.
 
+### Changed
+
+- Design round 12 (§17.160–§17.168): design §12.1 now lists only the `sakura build` flags that
+  exist (`--release` is removed; every build keeps its checks) and marks `sakura mcp serve --tools`
+  as planned; `sakura verify --json` will report `summary.reused` under schema 1.1 and reuse
+  `unknown(resource_limit)` results; WASM defect records will match JS in code, message and site
+  before M4 is called complete; the rest of M4 is ordered in plan `m3-completion-and-m4.md` §3.8,
+  M5 planning opens in `docs/plans/m5-native.md`, and `docs/plans/road-to-1.0.md` is a provisional
+  outline.
+
 ### Fixed
 
 - The Sakura skill starts with a bounded guide read and recommends targeted lookup
