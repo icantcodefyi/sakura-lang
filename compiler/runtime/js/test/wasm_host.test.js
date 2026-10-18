@@ -5,7 +5,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { Host, HostFault, Reader } from "../sakura_wasm_host.js";
+import { Host, HostFault, Reader, runTests } from "../sakura_wasm_host.js";
 import * as rt from "../sakura_runtime.js";
 
 /** A host over one page of memory with a bump `alloc_bytes` (a `Bytes`' data at +12). */
@@ -247,4 +247,53 @@ test("a handle of another kind where a Dir or Body is expected is a D090, not a 
   const body = [9, ...u32(1), 12, ...u32(0), ...u32(dir), ...u32(1)];
   put(256, body);
   assert.throws(() => h.imports().sakura_host.http_body_close(256, body.length), HostFault);
+});
+
+test("after a host fault the remaining tests run on a fresh instance", async () => {
+  // A module stand-in: each instance counts itself; on the first, test `a` faults mid-run.
+  class Stub extends Host {
+    async instantiate() {
+      this.instances = 0;
+      await this.fresh();
+      return this;
+    }
+    async fresh() {
+      this.instances++;
+      this.exports = { instance: this.instances };
+    }
+    tests() {
+      return ["a", "b", "c"].map((name, code) => ({ code, name, module: "m" }));
+    }
+    async runTask(code) {
+      if (code === 0) throw new HostFault("a stale or foreign handle");
+      return { kind: "ok", instance: this.exports.instance };
+    }
+  }
+  const host = new Stub();
+  const seen = [];
+  const runTask = host.runTask.bind(host);
+  host.runTask = async (code) => {
+    const o = await runTask(code);
+    seen.push(o.instance);
+    return o;
+  };
+  const lines = [];
+  const write = process.stdout.write;
+  process.stdout.write = (line) => lines.push(JSON.parse(line));
+  let code;
+  try {
+    code = await runTests(new Uint8Array(), 0, "", "", false, host);
+  } finally {
+    process.stdout.write = write;
+  }
+  assert.equal(code, 3);
+  assert.deepEqual(
+    lines.filter((r) => r.kind === "test").map((r) => [r.name, r.status, r.defect?.code ?? null]),
+    [
+      ["a", "defect", "D090"],
+      ["b", "passed", null],
+      ["c", "passed", null],
+    ],
+  );
+  assert.deepEqual(seen, [2, 2], "b and c ran on the second instance, not the faulted one");
 });

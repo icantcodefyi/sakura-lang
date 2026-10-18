@@ -1090,6 +1090,12 @@ export class Host {
     this.handles.clear();
     this.sessions.clear();
     this.callbacks.clear();
+    for (const c of this.sql) c?.close();
+    this.sql = [];
+    this.props = [];
+    this.jsHandlers = [];
+    this.served.clear();
+    this.escaping = null;
   }
 
   /** Answer the served requests whose tasks finished (`serve_listen`), as JS `serveHttp`. */
@@ -1116,9 +1122,8 @@ export class Host {
   }
 
   async instantiate(bytes) {
-    const module = await WebAssembly.compile(bytes);
-    const instance = await WebAssembly.instantiate(module, coverage.wrap(module, this.imports()));
-    this.exports = instance.exports;
+    this.module = await WebAssembly.compile(bytes);
+    await this.fresh();
     const v = this.exports.sakura_abi_version.value;
     if (v >> 16 !== ABI_VERSION >> 16 || ((v >> 8) & 0xff) > ((ABI_VERSION >> 8) & 0xff)) {
       throw new AbiMismatch(v);
@@ -1130,6 +1135,16 @@ export class Host {
       });
     }
     return this;
+  }
+
+  /**
+   * A new instance of the module, for a run after a trap or host fault: the guest the fault
+   * left mid-run (its scheduler still running) is never entered again (ABI §8.6, security
+   * review W9). The caller has run `close()`, which dropped the old instance's host state.
+   */
+  async fresh() {
+    const instance = await WebAssembly.instantiate(this.module, coverage.wrap(this.module, this.imports()));
+    this.exports = instance.exports;
   }
 
   /**
@@ -1342,11 +1357,11 @@ function snapshot(runner, module, name, rendered) {
  * `sakura test --target wasm`: every test of the module (or those whose name contains
  * `filter`) as a task under the runner's `Test` handler, reported with `test_runner.js`'s JSON
  * records (one `test` per test, then a `summary`). Returns the exit code: 3 if any failed.
+ * A test a trap or host fault ends is a `defect`, and the rest run on a fresh instance.
  */
-export async function runTests(bytes, seed, filter, snapshotDir, update) {
+export async function runTests(bytes, seed, filter, snapshotDir, update, host = new Host()) {
   const path = proc.getBuiltinModule("node:path");
   const emit = (record) => proc.stdout.write(`${JSON.stringify({ schema_version: "1.0", ...record })}\n`);
-  const host = new Host();
   host.seed = seed;
   host.runner = {
     snapshotDir,
@@ -1381,6 +1396,9 @@ export async function runTests(bytes, seed, filter, snapshotDir, update) {
       o = await host.runTask(t.code);
     } catch (e) {
       o = aborted(e);
+      // The next test runs on a fresh instance, never on the one the fault left (W9).
+      host.close();
+      await host.fresh();
     }
     rt.flushOut();
     const duration_ms = Math.round(performance.now() - start);
