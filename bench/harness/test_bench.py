@@ -65,6 +65,35 @@ class Compare(unittest.TestCase):
         self.assertEqual(out["verdict"], "blocked")
 
 
+FAKE_NATIVE = """#!/usr/bin/env python3
+import json, sys
+fib = lambda n: n if n < 2 else fib(n - 1) + fib(n - 2)
+mode, args = sys.argv[1], sys.argv[2:]
+if mode == "values":
+    print(json.dumps({"values": {a: str(fib(int(a))) for a in args}}))
+else:
+    for _ in range(9):
+        print(json.dumps({"n": int(args[0]), "ms": 0.5, "checksum": str(fib(int(args[0])))}))
+"""
+
+
+class NativeProtocol(unittest.TestCase):
+    def test_values_and_measure_lines_are_parsed(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp)
+        exe = tmp / "main"
+        exe.write_text(FAKE_NATIVE)
+        exe.chmod(0o755)
+        m = bench.meta("fib")
+        bench.oracle("fib", m, "rust", "native", exe)  # raises on a mismatch
+        samples, checksum, rss = bench.measure("rust", "native", exe, 20, False)
+        self.assertEqual((len(samples), checksum), (9, "6765"))
+        self.assertGreater(rss, 0)
+        m["checksums"]["20"] = "1"
+        with self.assertRaises(bench.Fail):
+            bench.oracle("fib", m, "rust", "native", exe)
+
+
 class Oracle(unittest.TestCase):
     def test_wrong_checksum_is_refused_and_not_timed(self):
         tmp = Path(tempfile.mkdtemp())
