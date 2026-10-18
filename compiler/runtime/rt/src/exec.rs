@@ -1,0 +1,1252 @@
+//! Execution state (ABI §6, §7, §8.5): continuation frames, handler activations, the catch and
+//! finalizer chain, the trampoline, tasks and the scheduler, and the request table.
+//!
+//! Every function compiles to `(env, frame) -> step`; frames, activations, finalizer entries,
+//! tasks and requests live in the arena and refer to each other by generational id. The driver
+//! loops over steps, so neither Sakura recursion nor unwinding grows the native stack.
+//!
+//! Conventions this file fixes where ABI 1.0.1 is silent (ABI.md P8–P12): a callee's result and
+//! a caught error travel in the task's 8-byte **return register**, read by the parent's resume
+//! block; `env` is passed on a function's entry call only (a function that needs it later keeps
+//! it in a slot); a finalizer closure takes one `Bool` parameter, `returned`, in slot 0.
+
+use crate::layout::WORD;
+use crate::scratch::Stack;
+use crate::{Defect, Res, Rt, tag};
+
+/// Step codes (ABI §6.2).
+pub mod step {
+    pub const RETURN: u32 = 0;
+    pub const CALL: u32 = 1;
+    pub const FAIL: u32 = 2;
+    pub const DEFECT: u32 = 3;
+    pub const SUSPEND: u32 = 4;
+    pub const YIELD: u32 = 5;
+}
+
+/// Outcome kinds (ABI §6.5; numbering ABI.md P9).
+pub mod outcome {
+    pub const OK: u32 = 0;
+    pub const FAIL: u32 = 1;
+    pub const DEFECT: u32 = 2;
+    pub const CANCELLED: u32 = 3;
+    pub const PENDING: u32 = 4;
+    pub const EXIT: u32 = 5;
+}
+
+/// Completion statuses (ABI §8.2), plus `OK_HANDLE` (ABI.md P10): the payload is the 12 bytes
+/// `kind, slot, generation` of a host handle the completion carries.
+pub mod status {
+    pub const OK: u32 = 0;
+    pub const ERR: u32 = 1;
+    pub const DENIED: u32 = 2;
+    pub const HOST_FAILURE: u32 = 3;
+    pub const OK_HANDLE: u32 = 4;
+}
+
+/// A compiled function on the host: the funcref table entry `call_indirect` would reach.
+pub type Code = fn(&mut Rt, u32, u32) -> u32;
+
+/// `SAKURA_MAX_REQUESTS` default (ABI §8.5).
+pub const MAX_REQUESTS: u32 = 4_096;
+
+// Frame (tag 0x8001): ABI §6.1.
+const F_CODE: u32 = 8;
+const F_BLOCK: u32 = 12;
+const F_PARENT: u32 = 16;
+const F_ACT: u32 = 20;
+const F_CATCH: u32 = 24;
+const F_N: u32 = 28;
+const F_SLOTS: u32 = 32;
+
+// Activation (tag 0x8002): ABI §6.3; state slots described by the handler's row (ABI P1).
+const A_EFFECT: u32 = 8;
+const A_HANDLER: u32 = 12;
+const A_OUTER: u32 = 16;
+const A_FRAME: u32 = 20;
+const A_N: u32 = 24;
+const A_STATE: u32 = 32;
+
+// Finalizer entry (tag 0x8003): the cleanup closure (owned), its task, the activation in scope.
+const E_CLOSURE: u32 = 8;
+const E_TASK: u32 = 12;
+const E_ACT: u32 = 16;
+
+// Request (tag 0x8005): ABI §8.5.
+const R_TASK: u32 = 12;
+const R_EPOCH: u32 = 16;
+const R_FRAME: u32 = 20;
+const R_KIND: u32 = 24;
+
+// Task (tag 0x8004): ABI §7.3, runtime-internal layout.
+const T_EPOCH: u32 = 8;
+const T_STATE: u32 = 12;
+const T_OUTCOME: u32 = 16;
+const T_FRAME: u32 = 20;
+const T_PARENT: u32 = 24;
+const T_REQUEST: u32 = 28;
+const T_CANCELLED: u32 = 32;
+const T_RET: u32 = 40;
+const T_DEFECT: u32 = 48;
+const T_MODE: u32 = 52;
+const T_TARGET: u32 = 56;
+const T_FIN_FRAME: u32 = 60;
+const T_NEXT_FRAME: u32 = 72;
+const T_NEXT_ENV: u32 = 76;
+const T_BLOCKED: u32 = 80;
+const T_ID: u32 = 84;
+const T_CATCHES: u32 = 88;
+const T_FINS: u32 = 100;
+const T_ACTS: u32 = 112;
+const T_KIDS: u32 = 124;
+const T_WAITERS: u32 = 136;
+const TASK_SIZE: u32 = 148;
+/// Slots a finalizer frame adds after its own for the unwinding it interrupts: while a
+/// finalizer runs, the task is not unwinding and the finalizer is ordinary code (its own
+/// `try` regions unwind normally, and finalizers nest).
+const STASH: u32 = 4;
+
+// Task states.
+const RUNNABLE: u32 = 0;
+const WAITING: u32 = 1;
+const BLOCKED: u32 = 2;
+const DONE: u32 = 3;
+const RUNNING: u32 = 4;
+
+// Unwinding modes.
+const NONE: u32 = 0;
+const FAIL: u32 = 1;
+const DEFECT: u32 = 2;
+const CANCEL: u32 = 3;
+const EXIT: u32 = 4;
+
+/// Scheduler state of one instance.
+#[derive(Default)]
+pub struct Sched {
+    queue: Option<Stack>,
+    head: u32,
+    deferred: Option<Stack>,
+    /// The task whose frame is executing (0 between steps).
+    pub current: u32,
+    running: bool,
+    unwinding: u32,
+    /// Live requests (ABI §8.5 limit) and the configured limit.
+    pub requests: u32,
+    pub max_requests: u32,
+    /// The funcref index of the runtime's callback stub (`callback_stub`), set at link time.
+    pub callback_code: u32,
+    pub exit_code: i32,
+}
+
+impl Rt {
+    // ---- small accessors ----------------------------------------------------------------
+
+    fn u(&self, p: u32, off: u32) -> u32 {
+        self.heap.mem.u32(p + off)
+    }
+
+    fn set(&mut self, p: u32, off: u32, v: u32) {
+        self.heap.mem.set_u32(p + off, v);
+    }
+
+    fn task(&self, t: u32) -> u32 {
+        self.arena_obj(t, tag::TASK).expect("live task")
+    }
+
+    fn cur(&self) -> u32 {
+        self.task(self.sched.current)
+    }
+
+    fn tstack(&self, t: u32, off: u32) -> Stack {
+        Stack::load(&self.heap.mem, t + off)
+    }
+
+    fn tstack_put(&mut self, t: u32, off: u32, s: Stack) {
+        s.store(&mut self.heap.mem, t + off);
+    }
+
+    fn tpush(&mut self, t: u32, off: u32, v: u32) -> Res<()> {
+        let mut s = self.tstack(t, off);
+        let r = self.push(&mut s, v);
+        self.tstack_put(t, off, s);
+        r
+    }
+
+    fn tpop(&mut self, t: u32, off: u32) -> Option<u32> {
+        let mut s = self.tstack(t, off);
+        let v = self.pop(&mut s);
+        self.tstack_put(t, off, s);
+        v
+    }
+
+    /// Frame slot `i` of the frame at `f`.
+    pub fn fslot(&self, f: u32, i: u32) -> u64 {
+        self.heap.mem.u64(f + F_SLOTS + 8 * i)
+    }
+
+    pub fn set_fslot(&mut self, f: u32, i: u32, v: u64) {
+        self.heap.mem.set_u64(f + F_SLOTS + 8 * i, v);
+    }
+
+    /// Move slot `i` out (the frame no longer owns it).
+    pub fn take_fslot(&mut self, f: u32, i: u32) -> u64 {
+        let v = self.fslot(f, i);
+        self.set_fslot(f, i, 0);
+        v
+    }
+
+    pub fn block(&self, f: u32) -> u32 {
+        self.u(f, F_BLOCK)
+    }
+
+    pub fn set_block(&mut self, f: u32, b: u32) {
+        self.set(f, F_BLOCK, b);
+    }
+
+    /// The activation in scope of the frame at `f` (an id; 0 for none).
+    pub fn frame_activation(&self, f: u32) -> u32 {
+        self.u(f, F_ACT)
+    }
+
+    /// Set the return register of the current task (a result, owned by whoever takes it).
+    pub fn set_ret(&mut self, bits: u64) {
+        let t = self.cur();
+        self.heap.mem.set_u64(t + T_RET, bits);
+    }
+
+    /// Take the return register (a callee's result or a caught error).
+    pub fn take_ret(&mut self) -> u64 {
+        let t = self.cur();
+        let v = self.heap.mem.u64(t + T_RET);
+        self.heap.mem.set_u64(t + T_RET, 0);
+        v
+    }
+
+    /// `fail e` from compiled code: `return rt.fail(e)`.
+    pub fn fail(&mut self, error: u32) -> u32 {
+        self.set_ret(error as u64);
+        step::FAIL
+    }
+
+    /// A defect from compiled code or a builtin: `return rt.raise(d)`.
+    pub fn raise(&mut self, d: Defect) -> u32 {
+        let t = self.cur();
+        self.record_defect(t, d);
+        step::DEFECT
+    }
+
+    fn record_defect(&mut self, t: u32, d: Defect) {
+        if self.u(t, T_DEFECT) == 0 {
+            self.set(t, T_DEFECT, d.code as u32);
+        }
+    }
+
+    // ---- frames -------------------------------------------------------------------------
+
+    fn frame_alloc(&mut self, code: u32, n: u32) -> Res<(u32, u32)> {
+        let size = n.checked_mul(8).and_then(|b| b.checked_add(F_SLOTS));
+        let f = self.new_object(tag::FRAME, size.ok_or(Defect::HEAP_EXHAUSTED)?)?;
+        self.set(f, F_CODE, code);
+        self.set(f, F_N, n);
+        match self.arena_new(f) {
+            Ok(id) => Ok((id, f)),
+            Err(e) => {
+                self.heap.free(f);
+                Err(e)
+            }
+        }
+    }
+
+    /// A child frame of the current frame for `code`, entered with `env`: the caller stores the
+    /// arguments, sets its own resume block and returns `step::CALL`.
+    pub fn call(&mut self, code: u32, n_slots: u32, env: u32) -> Res<u32> {
+        let t = self.cur();
+        let parent = self.u(t, T_FRAME);
+        let p = self.arena_get(parent, tag::FRAME)?;
+        let (id, f) = self.frame_alloc(code, n_slots)?;
+        self.set(f, F_PARENT, parent);
+        self.set(f, F_ACT, self.u(p, F_ACT));
+        self.set(f, F_CATCH, self.u(p, F_CATCH));
+        self.set(t, T_NEXT_FRAME, id);
+        self.set(t, T_NEXT_ENV, env);
+        Ok(f)
+    }
+
+    /// `call` of a closure value (borrowed: the caller keeps it alive across the call).
+    pub fn call_closure(&mut self, closure: u32, n_slots: u32) -> Res<u32> {
+        let code = self.u(closure, 8);
+        self.call(code, n_slots, closure)
+    }
+
+    /// Pop frame `id`: release the activations it installed, drop its slots, retire it.
+    fn pop_frame(&mut self, t: u32, id: u32) {
+        let Some(f) = self.arena_obj(id, tag::FRAME) else {
+            return;
+        };
+        loop {
+            let acts = self.tstack(t, T_ACTS);
+            if acts.len == 0 {
+                break;
+            }
+            let top = self.stack_at(&acts, acts.len - 1);
+            match self.arena_obj(top, tag::ACTIVATION) {
+                Some(a) if self.u(a, A_FRAME) == id => {
+                    self.tpop(t, T_ACTS);
+                    self.release_activation(top);
+                }
+                _ => break,
+            }
+        }
+        if let Some(desc) = self.code(self.u(f, F_CODE)) {
+            for i in 0..desc.n_frame_slots.min(self.u(f, F_N)) {
+                if self.frame_kind(&desc, i) == WORD {
+                    let w = self.heap.mem.u32(f + F_SLOTS + 8 * i);
+                    self.drop(w);
+                }
+            }
+        }
+        self.arena_free(id);
+        self.heap.free(f);
+    }
+
+    // ---- try / catch ----------------------------------------------------------------------
+
+    /// Enter a `try` region of the frame at `f` whose failures resume at `join_block`.
+    pub fn try_push(&mut self, f: u32, join_block: u32) -> Res<()> {
+        let t = self.cur();
+        let fid = self.u(t, T_FRAME);
+        let mark = self.tstack(t, T_FINS).len;
+        let outer = self.u(f, F_CATCH);
+        for v in [join_block, fid, mark, outer] {
+            self.tpush(t, T_CATCHES, v)?;
+        }
+        let id = self.tstack(t, T_CATCHES).len / 4;
+        self.set(f, F_CATCH, id);
+        Ok(())
+    }
+
+    /// Leave the innermost `try` region of the frame at `f` normally.
+    pub fn try_pop(&mut self, f: u32) {
+        let t = self.cur();
+        let mut s = self.tstack(t, T_CATCHES);
+        let outer = self.stack_at(&s, s.len - 1);
+        s.len -= 4;
+        self.tstack_put(t, T_CATCHES, s);
+        self.set(f, F_CATCH, outer);
+    }
+
+    fn catch_entry(&self, t: u32, id: u32) -> [u32; 4] {
+        let s = self.tstack(t, T_CATCHES);
+        let base = 4 * (id - 1);
+        [0, 1, 2, 3].map(|k| self.stack_at(&s, base + k))
+    }
+
+    // ---- finalizers -----------------------------------------------------------------------
+
+    /// `finalize(fin, body)`: register `closure` (consumed) for the current extent.
+    pub fn fin_push(&mut self, closure: u32) -> Res<()> {
+        let t = self.cur();
+        let r = self.new_object(tag::FIN_ENTRY, 20).and_then(|e| {
+            self.set(e, E_CLOSURE, closure);
+            self.set(e, E_TASK, self.sched.current);
+            let f = self.arena_get(self.u(t, T_FRAME), tag::FRAME)?;
+            self.set(e, E_ACT, self.u(f, F_ACT));
+            let id = self.arena_new(e).inspect_err(|_| self.heap.free(e))?;
+            self.tpush(t, T_FINS, id).inspect_err(|_| {
+                self.arena_free(id);
+                self.heap.free(e);
+            })
+        });
+        r.inspect_err(|_| self.drop(closure))
+    }
+
+    /// The body returned: pop the newest finalizer and return its closure (owned), which the
+    /// caller then calls with `returned = true` (ABI §6.4: exactly once).
+    pub fn fin_pop(&mut self) -> u32 {
+        let t = self.cur();
+        let id = self.tpop(t, T_FINS).expect("a finalizer to pop");
+        self.take_fin(id)
+    }
+
+    fn take_fin(&mut self, id: u32) -> u32 {
+        let e = self.arena_obj(id, tag::FIN_ENTRY).expect("live finalizer");
+        let c = self.u(e, E_CLOSURE);
+        self.arena_free(id);
+        self.heap.free(e);
+        c
+    }
+
+    // ---- handlers -------------------------------------------------------------------------
+
+    /// `with h { … }` in the frame at `f`: a fresh activation of `handler` (consumed), its
+    /// state copied from the handler's initial values.
+    pub fn handle_install(&mut self, f: u32, handler: u32) -> Res<u32> {
+        let t = self.cur();
+        let row = self.row(self.u(handler, 12), 0);
+        let n = row.n_slots;
+        let a = self
+            .new_object(tag::ACTIVATION, A_STATE + 8 * n)
+            .inspect_err(|_| self.drop(handler))?;
+        self.set(a, A_EFFECT, self.u(handler, 8));
+        self.set(a, A_HANDLER, handler);
+        self.set(a, A_OUTER, self.u(f, F_ACT));
+        self.set(a, A_FRAME, self.u(t, T_FRAME));
+        self.set(a, A_N, n);
+        self.heap
+            .mem
+            .copy(a + A_STATE, self.handler_state(handler, 0), 8 * n);
+        for i in 0..n {
+            if self.kind(&row, i) == WORD {
+                let w = self.heap.mem.u32(a + A_STATE + 8 * i);
+                self.dup(w)?;
+            }
+        }
+        let id = match self.arena_new(a) {
+            Ok(id) => id,
+            Err(e) => {
+                self.free_activation(a);
+                return Err(e);
+            }
+        };
+        if let Err(e) = self.tpush(t, T_ACTS, id) {
+            self.release_activation(id);
+            return Err(e);
+        }
+        self.set(f, F_ACT, id);
+        Ok(id)
+    }
+
+    /// Leave the innermost `with` region of the frame at `f`.
+    pub fn handle_exit(&mut self, f: u32) {
+        let t = self.cur();
+        let id = self.tpop(t, T_ACTS).expect("an activation to pop");
+        let a = self
+            .arena_obj(id, tag::ACTIVATION)
+            .expect("live activation");
+        self.set(f, F_ACT, self.u(a, A_OUTER));
+        self.release_activation(id);
+    }
+
+    fn release_activation(&mut self, id: u32) {
+        let a = self
+            .arena_obj(id, tag::ACTIVATION)
+            .expect("live activation");
+        self.arena_free(id);
+        self.free_activation(a);
+    }
+
+    fn free_activation(&mut self, a: u32) {
+        let handler = self.u(a, A_HANDLER);
+        let row = self.row(self.u(handler, 12), 0);
+        for i in 0..self.u(a, A_N) {
+            if self.kind(&row, i) == WORD {
+                let w = self.heap.mem.u32(a + A_STATE + 8 * i);
+                self.drop(w);
+            }
+        }
+        self.drop(handler);
+        self.heap.free(a);
+    }
+
+    /// `E.op(args…)` from the frame at `f`: a clause frame with `n_slots` (slot 0 is the
+    /// activation id, the caller stores the arguments after it). `Ok(0)` when the task is
+    /// cancelled: the caller returns `step::YIELD` and the task unwinds there (ABI §7.4).
+    pub fn perform(&mut self, f: u32, effect: u32, op: u32, n_slots: u32) -> Res<u32> {
+        let t = self.cur();
+        if self.u(t, T_CANCELLED) != 0 {
+            return Ok(0);
+        }
+        let mut id = self.u(f, F_ACT);
+        let a = loop {
+            let a = self.arena_get(id, tag::ACTIVATION)?;
+            if self.u(a, A_EFFECT) == effect {
+                break a;
+            }
+            id = self.u(a, A_OUTER);
+            if id == 0 {
+                return Err(Defect::INTERNAL);
+            }
+        };
+        let clause = self
+            .heap
+            .mem
+            .u32(self.handler_clause(self.u(a, A_HANDLER), op));
+        let c = self.call_closure(clause, n_slots)?;
+        // The clause sees the handlers outside its own activation (design §5.5).
+        self.set(c, F_ACT, self.u(a, A_OUTER));
+        self.set_fslot(c, 0, id as u64);
+        Ok(c)
+    }
+
+    /// The state slot address of activation `act` (a clause's first parameter), checked.
+    fn state_at(&self, act: u32, i: u32) -> Res<u32> {
+        let a = self.arena_get(act, tag::ACTIVATION)?;
+        assert!(i < self.u(a, A_N), "state slot out of range");
+        Ok(a + A_STATE + 8 * i)
+    }
+
+    /// `StateGet`: the raw slot (a word is borrowed; the caller dups it if it keeps it).
+    pub fn state(&self, act: u32, i: u32) -> Res<u64> {
+        Ok(self.heap.mem.u64(self.state_at(act, i)?))
+    }
+
+    /// `StateSet`: store `v` (owned), dropping the old word of a kind-0 slot.
+    pub fn set_state(&mut self, act: u32, i: u32, v: u64) -> Res<()> {
+        let at = self.state_at(act, i)?;
+        let a = self.arena_get(act, tag::ACTIVATION)?;
+        let row = self.row(self.u(self.u(a, A_HANDLER), 12), 0);
+        let old = self.heap.mem.u64(at);
+        self.heap.mem.set_u64(at, v);
+        if self.kind(&row, i) == WORD {
+            self.drop(old as u32);
+        }
+        Ok(())
+    }
+
+    /// An operation callback (ABI §6.3): `inner` (consumed) bound to the perform site's
+    /// activation `site`, held as a non-owning id.
+    pub fn make_callback(&mut self, inner: u32, site: u32) -> Res<u32> {
+        let c = self
+            .new_object(tag::CLOSURE, 32)
+            .inspect_err(|_| self.drop(inner))?;
+        self.set(c, 8, self.sched.callback_code);
+        self.set(c, 12, 2);
+        self.heap.mem.set_u64(c + 16, inner as u64);
+        self.heap.mem.set_u64(c + 24, site as u64);
+        Ok(c)
+    }
+
+    // ---- tasks ----------------------------------------------------------------------------
+
+    fn task_alloc(&mut self, parent: u32) -> Res<(u32, u32)> {
+        let t = self.new_object(tag::TASK, TASK_SIZE)?;
+        self.set(t, T_PARENT, parent);
+        match self.arena_new(t) {
+            Ok(id) => {
+                self.set(t, T_ID, id);
+                Ok((id, t))
+            }
+            Err(e) => {
+                self.heap.free(t);
+                Err(e)
+            }
+        }
+    }
+
+    /// A root task running `code` (entered with `env`); its frame is returned for the
+    /// arguments. The host then calls `run`.
+    pub fn start(&mut self, code: u32, n_slots: u32, env: u32) -> Res<(u32, u32)> {
+        self.new_task(0, 0, code, n_slots, env)
+    }
+
+    fn new_task(&mut self, parent: u32, act: u32, code: u32, n: u32, env: u32) -> Res<(u32, u32)> {
+        let (id, t) = self.task_alloc(parent)?;
+        let (fid, f) = match self.frame_alloc(code, n) {
+            Ok(x) => x,
+            Err(e) => {
+                self.arena_free(id);
+                self.heap.free(t);
+                return Err(e);
+            }
+        };
+        self.set(f, F_ACT, act);
+        self.set(t, T_FRAME, fid);
+        self.set(t, T_NEXT_ENV, env);
+        if let Err(e) = self.enqueue(id, false) {
+            self.pop_frame(t, fid);
+            self.task_free(id);
+            return Err(e);
+        }
+        Ok((id, f))
+    }
+
+    /// `Task.spawn`: a child of the current task running `closure` (borrowed) under the
+    /// handlers in scope of the current frame (the performer's, ABI §7.4).
+    pub fn spawn(&mut self, closure: u32, n_slots: u32) -> Res<(u32, u32)> {
+        let parent = self.sched.current;
+        let t = self.cur();
+        let f = self.arena_get(self.u(t, T_FRAME), tag::FRAME)?;
+        let act = self.u(f, F_ACT);
+        let r = self.new_task(parent, act, self.u(closure, 8), n_slots, closure)?;
+        if let Err(e) = self.tpush(t, T_KIDS, r.0) {
+            self.cancel(r.0);
+            return Err(e);
+        }
+        Ok(r)
+    }
+
+    /// The outcome of task `id`: kind and value (the value stays owned by the task).
+    pub fn outcome(&self, id: u32) -> Res<(u32, u64)> {
+        let t = self.arena_obj(id, tag::TASK).ok_or(Defect::FIBER_RETIRED)?;
+        if self.u(t, T_STATE) != DONE {
+            return Ok((outcome::PENDING, 0));
+        }
+        let value = match self.u(t, T_OUTCOME) {
+            outcome::DEFECT => self.u(t, T_DEFECT) as u64,
+            _ => self.heap.mem.u64(t + T_RET),
+        };
+        Ok((self.u(t, T_OUTCOME), value))
+    }
+
+    /// `join`: the child's outcome, or `None` after registering the current task to be woken
+    /// (the caller sets its resume block and returns `step::YIELD`). A retired id is `D095`.
+    pub fn join(&mut self, child: u32) -> Res<Option<(u32, u64)>> {
+        let c = self
+            .arena_obj(child, tag::TASK)
+            .ok_or(Defect::FIBER_RETIRED)?;
+        if self.u(c, T_STATE) == DONE {
+            return self.outcome(child).map(Some);
+        }
+        let me = self.sched.current;
+        self.tpush(c, T_WAITERS, me)?;
+        let t = self.cur();
+        self.set(t, T_BLOCKED, self.u(t, T_BLOCKED) + 1);
+        Ok(None)
+    }
+
+    /// Scope end: true when every child has an outcome; otherwise the current task is woken
+    /// when the last one finishes (the caller returns `step::YIELD` and asks again).
+    pub fn wait_children(&mut self) -> Res<bool> {
+        let t = self.cur();
+        let kids = self.tstack(t, T_KIDS);
+        let mut all = true;
+        for i in 0..kids.len {
+            let k = self.stack_at(&kids, i);
+            if self.u(self.task(k), T_STATE) != DONE {
+                all = false;
+                self.join(k)?;
+            }
+        }
+        Ok(all)
+    }
+
+    /// Retire the children of the current task (all done): their slots and outcomes go.
+    pub fn retire_children(&mut self) {
+        let t = self.cur();
+        while let Some(k) = self.tpop(t, T_KIDS) {
+            self.task_free(k);
+        }
+    }
+
+    /// Release a finished task: its outcome value, stacks and slot (its children first).
+    pub fn task_free(&mut self, id: u32) {
+        let t = self.task(id);
+        assert_eq!(self.u(t, T_STATE), DONE, "task_free of a live task");
+        while let Some(k) = self.tpop(t, T_KIDS) {
+            self.task_free(k);
+        }
+        match self.u(t, T_OUTCOME) {
+            outcome::OK | outcome::FAIL => {
+                let w = self.heap.mem.u32(t + T_RET);
+                self.drop(w);
+            }
+            _ => {}
+        }
+        for off in [T_CATCHES, T_FINS, T_ACTS, T_KIDS, T_WAITERS] {
+            let s = self.tstack(t, off);
+            self.stack_free(s);
+        }
+        self.arena_free(id);
+        self.heap.free(t);
+    }
+
+    /// `cancel(task)`: mark it and its descendants, bump their epochs, abort their pending
+    /// requests and make each unwind at its suspension point (ABI §7.4, §8.5). A canceller
+    /// that must see the finalizers done joins the task.
+    pub fn cancel(&mut self, id: u32) {
+        let mut todo = Stack::NONE;
+        let mut next = Some(id);
+        while let Some(id) = next {
+            let t = self.task(id);
+            if self.u(t, T_CANCELLED) == 0 && self.u(t, T_STATE) != DONE {
+                self.set(t, T_CANCELLED, 1);
+                self.set(t, T_EPOCH, self.u(t, T_EPOCH) + 1);
+                let kids = self.tstack(t, T_KIDS);
+                for i in 0..kids.len {
+                    let k = self.stack_at(&kids, i);
+                    let _ = self.push(&mut todo, k);
+                }
+                self.wake_cancelled(id);
+            }
+            next = self.pop(&mut todo);
+        }
+        self.stack_free(todo);
+    }
+
+    fn wake_cancelled(&mut self, id: u32) {
+        let t = self.task(id);
+        match self.u(t, T_STATE) {
+            WAITING => {
+                self.set(t, T_STATE, RUNNABLE);
+                let req = self.u(t, T_REQUEST);
+                if let Some(r) = self.arena_obj(req, tag::REQUEST) {
+                    let cont = self.u(r, R_FRAME);
+                    let parent = self
+                        .arena_obj(cont, tag::FRAME)
+                        .map_or(0, |f| self.u(f, F_PARENT));
+                    // The continuation is dropped without running user code (ABI §8.5).
+                    self.pop_frame(t, cont);
+                    self.set(t, T_FRAME, parent);
+                    self.free_request(req);
+                    self.host_abort(req);
+                }
+                self.set(t, T_REQUEST, 0);
+                self.begin(t, CANCEL);
+                let _ = self.enqueue(id, true);
+            }
+            BLOCKED => {
+                self.set(t, T_BLOCKED, 0);
+                self.set(t, T_STATE, RUNNABLE);
+                self.begin(t, CANCEL);
+                let _ = self.enqueue(id, true);
+            }
+            RUNNABLE => self.begin(t, CANCEL),
+            _ => {}
+        }
+    }
+
+    /// `Cli.exit(code)` from compiled code: the task unwinds every finalizer and ends `exit`;
+    /// the caller returns `step::YIELD`.
+    pub fn exit(&mut self, code: i32) {
+        self.sched.exit_code = code;
+        let t = self.cur();
+        self.abort_finalizers(t);
+        if self.u(t, T_MODE) == NONE {
+            self.begin(t, EXIT);
+        } else {
+            self.upgrade_to_defect(t);
+            self.set(t, T_MODE, EXIT);
+        }
+    }
+
+    /// Start (or escalate) unwinding: a defect replaces a `Fail`; otherwise the first wins.
+    fn begin(&mut self, t: u32, mode: u32) {
+        let old = self.u(t, T_MODE);
+        if old == NONE && self.u(t, T_FIN_FRAME) == 0 {
+            self.sched.unwinding += 1;
+            self.heap.emergency = true;
+        }
+        if mode == DEFECT {
+            self.upgrade_to_defect(t);
+        } else if old == NONE && !(mode == CANCEL && self.u(t, T_FIN_FRAME) != 0) {
+            // A cancel that reaches a task already running its finalizers changes nothing.
+            self.set(t, T_MODE, mode);
+        }
+    }
+
+    // ---- requests -------------------------------------------------------------------------
+
+    /// A request for an `async` import from the current task: its id, or `None` at the
+    /// `SAKURA_MAX_REQUESTS` limit (the operation's ordinary error). The caller passes the id
+    /// to the import, sets its resume block and returns `step::SUSPEND`.
+    pub fn request(&mut self, kind: u32) -> Res<Option<u32>> {
+        let max = if self.sched.max_requests == 0 {
+            MAX_REQUESTS
+        } else {
+            self.sched.max_requests
+        };
+        if self.sched.requests >= max {
+            return Ok(None);
+        }
+        let t = self.cur();
+        let r = self.new_object(tag::REQUEST, 32)?;
+        self.set(r, R_TASK, self.sched.current);
+        self.set(r, R_EPOCH, self.u(t, T_EPOCH));
+        self.set(r, R_KIND, kind);
+        let id = self.arena_new(r).inspect_err(|_| self.heap.free(r))?;
+        self.set(r, 8, id);
+        self.set(t, T_REQUEST, id);
+        self.sched.requests += 1;
+        Ok(Some(id))
+    }
+
+    fn free_request(&mut self, id: u32) {
+        let r = self.arena_obj(id, tag::REQUEST).expect("live request");
+        self.arena_free(id);
+        self.heap.free(r);
+        self.sched.requests -= 1;
+    }
+
+    /// The `complete(request, status, payload)` export (ABI §8.5): 1 when the completion
+    /// resumed its task (the task then reads `(status << 32) | payload` from its return
+    /// register), 0 when it was stale, already completed or for an older epoch (the payload
+    /// is dropped and a carried handle retired), 2 when it arrived while the guest was
+    /// running and was queued (ABI.md P11).
+    pub fn complete(&mut self, req: u32, status: u32, payload: u32) -> u32 {
+        if self.sched.running {
+            let mut q = self.sched.deferred.take().unwrap_or(Stack::NONE);
+            let ok = [req, status, payload]
+                .iter()
+                .all(|&v| self.push(&mut q, v).is_ok());
+            self.sched.deferred = Some(q);
+            return if ok { 2 } else { 0 };
+        }
+        let live = self.arena_obj(req, tag::REQUEST).filter(|&r| {
+            let t = self.arena_obj(self.u(r, R_TASK), tag::TASK);
+            t.is_some_and(|t| self.u(t, T_EPOCH) == self.u(r, R_EPOCH))
+        });
+        let Some(r) = live else {
+            if status == status::OK_HANDLE && payload != 0 {
+                let at = payload + 12;
+                let (k, s, g) = (
+                    self.heap.mem.u32(at),
+                    self.heap.mem.u32(at + 4),
+                    self.heap.mem.u32(at + 8),
+                );
+                self.retire_handle(k, s, g);
+            }
+            self.drop(payload);
+            return 0;
+        };
+        let tid = self.u(r, R_TASK);
+        let t = self.task(tid);
+        self.set(t, T_FRAME, self.u(r, R_FRAME));
+        self.heap
+            .mem
+            .set_u64(t + T_RET, (status as u64) << 32 | payload as u64);
+        self.set(t, T_REQUEST, 0);
+        self.free_request(req);
+        self.set(t, T_STATE, RUNNABLE);
+        if self.enqueue(tid, false).is_err() {
+            self.record_defect(t, Defect::HEAP_EXHAUSTED);
+            self.begin(t, DEFECT);
+        }
+        1
+    }
+
+    fn apply_deferred(&mut self) {
+        let Some(mut q) = self.sched.deferred.take() else {
+            return;
+        };
+        let mut i = 0;
+        while i + 3 <= q.len {
+            let (r, s, p) = (
+                self.stack_at(&q, i),
+                self.stack_at(&q, i + 1),
+                self.stack_at(&q, i + 2),
+            );
+            self.complete(r, s, p);
+            i += 3;
+        }
+        q.len = 0;
+        self.stack_free(q);
+    }
+
+    // ---- scheduler and trampoline -------------------------------------------------------
+
+    /// ponytail: the run queue grows on demand, so a wake-up while the heap and the emergency
+    /// pool are both exhausted is lost (cancel wakes run with emergency allocation on); a
+    /// queue sized from the live task count when tasks get a hard limit.
+    fn enqueue(&mut self, id: u32, front: bool) -> Res<()> {
+        let mut q = self.sched.queue.take().unwrap_or(Stack::NONE);
+        let r = if front && self.sched.head > 0 {
+            self.sched.head -= 1;
+            self.stack_set(&q, self.sched.head, id);
+            Ok(())
+        } else {
+            self.push(&mut q, id)
+        };
+        self.sched.queue = Some(q);
+        r
+    }
+
+    fn dequeue(&mut self) -> Option<u32> {
+        let mut q = self.sched.queue.take()?;
+        let r = if self.sched.head < q.len {
+            let v = self.stack_at(&q, self.sched.head);
+            self.sched.head += 1;
+            Some(v)
+        } else {
+            None
+        };
+        if self.sched.head == q.len {
+            q.len = 0;
+            self.sched.head = 0;
+        }
+        self.sched.queue = Some(q);
+        r
+    }
+
+    /// The `run` driver (ABI §6.2) on the host: run tasks until `root` has an outcome or no
+    /// task can run; returns the root's outcome kind (`PENDING` when it waits).
+    pub fn run(&mut self, root: u32, table: &[Code]) -> u32 {
+        loop {
+            self.apply_deferred();
+            if let Ok((kind, _)) = self.outcome(root)
+                && kind != outcome::PENDING
+            {
+                return kind;
+            }
+            let Some(id) = self.dequeue() else {
+                return outcome::PENDING;
+            };
+            if self
+                .arena_obj(id, tag::TASK)
+                .is_some_and(|t| self.u(t, T_STATE) != DONE)
+            {
+                self.drive(id, table);
+            }
+        }
+    }
+
+    fn drive(&mut self, id: u32, table: &[Code]) {
+        self.sched.current = id;
+        let t = self.task(id);
+        self.set(t, T_STATE, RUNNING);
+        loop {
+            if self.u(t, T_MODE) != NONE {
+                if !self.unwind(t) {
+                    break;
+                }
+                continue;
+            }
+            let fid = self.u(t, T_FRAME);
+            let Some(f) = self.arena_obj(fid, tag::FRAME) else {
+                self.record_defect(t, Defect::INTERNAL);
+                self.begin(t, DEFECT);
+                continue;
+            };
+            let env = self.u(t, T_NEXT_ENV);
+            self.set(t, T_NEXT_ENV, 0);
+            let code = self.u(f, F_CODE) as usize;
+            self.sched.running = true;
+            let s = table.get(code).map_or(step::DEFECT, |c| c(self, env, f));
+            self.sched.running = false;
+            match s {
+                step::RETURN => {
+                    let parent = self.u(f, F_PARENT);
+                    if fid == self.u(t, T_FIN_FRAME) {
+                        let stash = self.fin_stash(f);
+                        self.pop_frame(t, fid);
+                        self.end_finalizer(t, stash, true);
+                        continue;
+                    }
+                    self.pop_frame(t, fid);
+                    if parent == 0 {
+                        self.finish_task(t, outcome::OK);
+                        break;
+                    } else {
+                        self.set(t, T_FRAME, parent);
+                    }
+                }
+                step::CALL => {
+                    let next = self.u(t, T_NEXT_FRAME);
+                    self.set(t, T_FRAME, next);
+                    self.set(t, T_NEXT_FRAME, 0);
+                }
+                step::FAIL => {
+                    // A finalizer's frames start with no catch entry, so catch 0 inside one
+                    // means the `Fail` escapes it: a defect (ABI §6.4).
+                    let c = self.u(f, F_CATCH);
+                    if self.u(t, T_FIN_FRAME) != 0 && c == 0 {
+                        let e = self.take_ret();
+                        self.drop(e as u32);
+                        self.record_defect(t, Defect::FINALIZER_FAILED);
+                        self.abort_finalizers(t);
+                        self.begin(t, DEFECT);
+                    } else {
+                        self.begin(t, FAIL);
+                        self.set(t, T_TARGET, c);
+                    }
+                }
+                step::DEFECT => {
+                    self.abort_finalizers(t);
+                    if self.u(t, T_DEFECT) == 0 {
+                        self.record_defect(t, Defect::INTERNAL);
+                    }
+                    self.begin(t, DEFECT);
+                }
+                step::SUSPEND => {
+                    let req = self.u(t, T_REQUEST);
+                    let Some(r) = self.arena_obj(req, tag::REQUEST) else {
+                        self.record_defect(t, Defect::INTERNAL);
+                        self.begin(t, DEFECT);
+                        continue;
+                    };
+                    self.set(r, R_FRAME, fid);
+                    self.set(t, T_FRAME, 0);
+                    self.set(t, T_STATE, WAITING);
+                    if self.u(t, T_CANCELLED) != 0 {
+                        self.wake_cancelled(id);
+                    }
+                    break;
+                }
+                step::YIELD => {
+                    if self.u(t, T_CANCELLED) != 0 && self.u(t, T_MODE) == NONE {
+                        self.begin(t, CANCEL);
+                        continue;
+                    }
+                    if self.u(t, T_MODE) != NONE {
+                        continue;
+                    }
+                    if self.u(t, T_BLOCKED) > 0 {
+                        self.set(t, T_STATE, BLOCKED);
+                    } else {
+                        self.set(t, T_STATE, RUNNABLE);
+                        if self.enqueue(id, false).is_err() {
+                            self.record_defect(t, Defect::HEAP_EXHAUSTED);
+                            self.begin(t, DEFECT);
+                            continue;
+                        }
+                    }
+                    break;
+                }
+                _ => {
+                    self.record_defect(t, Defect::INTERNAL);
+                    self.begin(t, DEFECT);
+                }
+            }
+        }
+        self.sched.current = 0;
+    }
+
+    /// One unwinding step: run the next finalizer, or finish the unwinding. False when the
+    /// task ended.
+    fn unwind(&mut self, t: u32) -> bool {
+        let mode = self.u(t, T_MODE);
+        let target = if mode == FAIL { self.u(t, T_TARGET) } else { 0 };
+        let mark = if target > 0 {
+            self.catch_entry(t, target)[2]
+        } else {
+            0
+        };
+        if self.heap.em_exhausted {
+            // The emergency region is gone too: the task ends without its remaining
+            // finalizers; the host ledger closes resources (ABI §10).
+            self.abort_finalizers(t);
+            self.record_defect(t, Defect::HEAP_EXHAUSTED);
+            while let Some(id) = self.tpop(t, T_FINS) {
+                let c = self.take_fin(id);
+                self.drop(c);
+            }
+            self.upgrade_to_defect(t);
+            return self.finish_unwinding(t, DEFECT, 0);
+        }
+        if self.tstack(t, T_FINS).len <= mark {
+            return self.finish_unwinding(t, mode, target);
+        }
+        let id = self.tpop(t, T_FINS).expect("a finalizer");
+        let e = self.arena_obj(id, tag::FIN_ENTRY).expect("live finalizer");
+        let act = self.u(e, E_ACT);
+        let closure = self.take_fin(id);
+        let code = self.u(closure, 8);
+        // The finalizer's own slots, then four stash slots (beyond its descriptor, so never
+        // dropped) holding the unwinding it interrupts: finalizers nest.
+        let n = self.code(code).map_or(1, |d| d.n_frame_slots.max(1));
+        match self.frame_alloc(code, n + STASH) {
+            Ok((fid, f)) => {
+                // `returned = false` in slot 0 (zeroed); no catch entry; the activation in
+                // scope where the finalizer was registered.
+                self.set(f, F_ACT, act);
+                let m = &self.heap.mem;
+                let stash = [
+                    mode as u64 | (target as u64) << 32,
+                    m.u64(t + T_RET),
+                    self.u(t, T_FRAME) as u64 | (closure as u64) << 32,
+                    self.u(t, T_FIN_FRAME) as u64
+                        | ((self.tstack(t, T_CATCHES).len / 4) as u64) << 32,
+                ];
+                for (k, v) in stash.into_iter().enumerate() {
+                    self.set_fslot(f, n + k as u32, v);
+                }
+                self.heap.mem.set_u64(t + T_RET, 0);
+                self.set(t, T_FRAME, fid);
+                self.set(t, T_FIN_FRAME, fid);
+                self.set(t, T_NEXT_ENV, closure);
+                self.set(t, T_MODE, NONE);
+            }
+            Err(_) => {
+                self.drop(closure);
+                self.heap.em_exhausted = true;
+            }
+        }
+        true
+    }
+
+    /// Every finalizer above the mark has run: resume the catcher or end the task.
+    fn finish_unwinding(&mut self, t: u32, mode: u32, target: u32) -> bool {
+        let outer = self.u(t, T_FIN_FRAME) == 0;
+        if mode == FAIL && target > 0 {
+            let [join, frame, _, outer_catch] = self.catch_entry(t, target);
+            let mut fid = self.u(t, T_FRAME);
+            while fid != frame && fid != 0 {
+                let parent = self
+                    .arena_obj(fid, tag::FRAME)
+                    .map_or(0, |f| self.u(f, F_PARENT));
+                self.pop_frame(t, fid);
+                fid = parent;
+            }
+            let mut s = self.tstack(t, T_CATCHES);
+            s.len = 4 * (target - 1);
+            self.tstack_put(t, T_CATCHES, s);
+            let f = self
+                .arena_obj(frame, tag::FRAME)
+                .expect("the catching frame");
+            self.set(f, F_CATCH, outer_catch);
+            self.set(f, F_BLOCK, join);
+            self.set(t, T_FRAME, frame);
+            self.set(t, T_MODE, NONE);
+            if outer {
+                self.end_unwinding_count();
+            }
+            return true;
+        }
+        let mut fid = self.u(t, T_FRAME);
+        while fid != 0 {
+            let parent = self
+                .arena_obj(fid, tag::FRAME)
+                .map_or(0, |f| self.u(f, F_PARENT));
+            self.pop_frame(t, fid);
+            fid = parent;
+        }
+        self.set(t, T_FRAME, 0);
+        let kind = match mode {
+            FAIL => outcome::FAIL,
+            DEFECT => outcome::DEFECT,
+            CANCEL => outcome::CANCELLED,
+            _ => outcome::EXIT,
+        };
+        if kind != outcome::FAIL {
+            // The return register's bits are not known to be a word here: it is not dropped
+            // (a resume block takes it first, ABI.md P8).
+            self.heap.mem.set_u64(t + T_RET, 0);
+        }
+        self.end_unwinding_count();
+        self.finish_task(t, kind);
+        false
+    }
+
+    /// A defect during `Fail` unwinding replaces it: the error is dropped.
+    fn upgrade_to_defect(&mut self, t: u32) {
+        if self.u(t, T_MODE) == FAIL {
+            let e = self.heap.mem.u32(t + T_RET);
+            self.heap.mem.set_u64(t + T_RET, 0);
+            self.drop(e);
+        }
+        self.set(t, T_MODE, DEFECT);
+    }
+
+    fn end_unwinding_count(&mut self) {
+        self.sched.unwinding -= 1;
+        if self.sched.unwinding == 0 {
+            self.heap.emergency = false;
+            self.heap.em_exhausted = false;
+        }
+    }
+
+    /// The stash of the finalizer frame at `f` (its last `STASH` slots).
+    fn fin_stash(&self, f: u32) -> [u64; 4] {
+        let n = self.u(f, F_N);
+        [0, 1, 2, 3].map(|k| self.fslot(f, n - STASH + k))
+    }
+
+    /// A finalizer frame is gone (returned, or aborted): restore the unwinding it interrupted.
+    fn end_finalizer(&mut self, t: u32, stash: [u64; 4], returned: bool) {
+        if returned {
+            let result = self.heap.mem.u32(t + T_RET);
+            self.drop(result);
+        }
+        let [modes, ret, frames, fins] = stash;
+        self.set(t, T_MODE, modes as u32);
+        self.set(t, T_TARGET, (modes >> 32) as u32);
+        self.heap.mem.set_u64(t + T_RET, ret);
+        self.set(t, T_FRAME, frames as u32);
+        self.set(t, T_FIN_FRAME, fins as u32);
+        let mut s = self.tstack(t, T_CATCHES);
+        s.len = s.len.min(4 * (fins >> 32) as u32);
+        self.tstack_put(t, T_CATCHES, s);
+        self.drop((frames >> 32) as u32);
+    }
+
+    /// A defect, an escaping `Fail` or `exit` inside finalizers: pop every running finalizer's
+    /// frames and resume the outermost unwinding; finalizers they registered stay on the stack
+    /// and run next.
+    fn abort_finalizers(&mut self, t: u32) {
+        while self.u(t, T_FIN_FRAME) != 0 {
+            let fin = self.u(t, T_FIN_FRAME);
+            let mut fid = self.u(t, T_FRAME);
+            while fid != fin && fid != 0 {
+                let parent = self
+                    .arena_obj(fid, tag::FRAME)
+                    .map_or(0, |f| self.u(f, F_PARENT));
+                self.pop_frame(t, fid);
+                fid = parent;
+            }
+            let f = self
+                .arena_obj(fin, tag::FRAME)
+                .expect("the finalizer frame");
+            let stash = self.fin_stash(f);
+            self.pop_frame(t, fin);
+            self.heap.mem.set_u64(t + T_RET, 0);
+            self.end_finalizer(t, stash, false);
+        }
+    }
+
+    fn finish_task(&mut self, t: u32, kind: u32) {
+        self.set(t, T_OUTCOME, kind);
+        self.set(t, T_STATE, DONE);
+        while let Some(id) = self.tpop(t, T_FINS) {
+            let c = self.take_fin(id);
+            self.drop(c);
+        }
+        let mut c = self.tstack(t, T_CATCHES);
+        c.len = 0;
+        self.tstack_put(t, T_CATCHES, c);
+        while let Some(w) = self.tpop(t, T_WAITERS) {
+            if let Some(wt) = self.arena_obj(w, tag::TASK)
+                && self.u(wt, T_STATE) == BLOCKED
+            {
+                let b = self.u(wt, T_BLOCKED).saturating_sub(1);
+                self.set(wt, T_BLOCKED, b);
+                if b == 0 {
+                    self.set(wt, T_STATE, RUNNABLE);
+                    let _ = self.enqueue(w, false);
+                }
+            } else if let Some(wt) = self.arena_obj(w, tag::TASK) {
+                let b = self.u(wt, T_BLOCKED).saturating_sub(1);
+                self.set(wt, T_BLOCKED, b);
+            }
+        }
+    }
+
+    /// The `abort(request_id)` import (ABI §8.5).
+    fn host_abort(&mut self, req: u32) {
+        #[cfg(not(target_arch = "wasm32"))]
+        self.host_log.push(crate::HostCall::Abort { request: req });
+        #[cfg(target_arch = "wasm32")]
+        // SAFETY: a plain import with a scalar argument; the host never reads guest memory here.
+        unsafe {
+            crate::host::abort(req)
+        }
+    }
+
+    /// Live execution state, for the ABI §7.5 tests: arena slots, requests, queued tasks.
+    pub fn exec_counts(&self) -> (u32, u32) {
+        (self.arena.live, self.sched.requests)
+    }
+}
+
+/// The runtime's operation-callback stub (ABI §6.3): swap the activation to the perform site's,
+/// call the user function with the arguments moved over, and pass its result through.
+pub fn callback_stub(rt: &mut Rt, env: u32, frame: u32) -> u32 {
+    if rt.block(frame) == 1 {
+        return step::RETURN;
+    }
+    let inner = rt.heap.mem.u32(env + 16);
+    let site = rt.heap.mem.u32(env + 24);
+    if rt.arena_obj(site, tag::ACTIVATION).is_none() {
+        return rt.raise(Defect::CONTEXT_ESCAPED);
+    }
+    let n = rt.u(frame, F_N);
+    let child = match rt.call_closure(inner, n) {
+        Ok(c) => c,
+        Err(d) => return rt.raise(d),
+    };
+    for i in 0..n {
+        let v = rt.take_fslot(frame, i);
+        rt.set_fslot(child, i, v);
+    }
+    rt.set(child, F_ACT, site);
+    rt.set_block(frame, 1);
+    step::CALL
+}

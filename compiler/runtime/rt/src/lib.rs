@@ -8,7 +8,9 @@
 #[cfg(not(target_arch = "wasm32"))]
 extern crate alloc;
 
+pub mod arena;
 pub mod cmp;
+pub mod exec;
 pub mod heap;
 pub mod layout;
 pub mod list;
@@ -123,6 +125,9 @@ pub struct Rt {
     pub empty_map: u32,
     pub empty_set: u32,
     pub hole: u32,
+    /// The activation arena and the scheduler (ABI §7).
+    pub arena: arena::Arena,
+    pub sched: exec::Sched,
     /// Host imports the runtime called, for tests (on wasm32 they go to `sakura_host`).
     #[cfg(not(target_arch = "wasm32"))]
     pub host_log: alloc::vec::Vec<HostCall>,
@@ -137,6 +142,11 @@ pub enum HostCall {
         slot: u32,
         generation: u32,
     },
+    Abort {
+        request: u32,
+    },
+    /// Test instrumentation: a value hand-built code logged.
+    Trace(u64),
 }
 
 impl Rt {
@@ -151,6 +161,8 @@ impl Rt {
             empty_map: 0,
             empty_set: 0,
             hole: 0,
+            arena: arena::Arena::default(),
+            sched: exec::Sched::default(),
             #[cfg(not(target_arch = "wasm32"))]
             host_log: alloc::vec::Vec::new(),
         };
@@ -179,10 +191,11 @@ impl Rt {
 }
 
 #[cfg(target_arch = "wasm32")]
-mod host {
+pub(crate) mod host {
     #[link(wasm_import_module = "sakura_host")]
     unsafe extern "C" {
         pub fn retire_handle(kind: u32, slot: u32, generation: u32);
+        pub fn abort(request: u32);
     }
 }
 

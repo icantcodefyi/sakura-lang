@@ -14,12 +14,27 @@ pub struct Stack {
 }
 
 impl Stack {
-    /// A stack with no storage, for paths that never push (leaf comparisons).
+    /// A stack with no storage yet (the first push allocates it).
     pub const NONE: Stack = Stack {
         block: 0,
         len: 0,
         cap: 0,
     };
+
+    /// A stack kept in 12 bytes of linear memory (`block`, `len`, `cap`).
+    pub fn load(mem: &crate::mem::Mem, at: u32) -> Stack {
+        Stack {
+            block: mem.u32(at),
+            len: mem.u32(at + 4),
+            cap: mem.u32(at + 8),
+        }
+    }
+
+    pub fn store(&self, mem: &mut crate::mem::Mem, at: u32) {
+        mem.set_u32(at, self.block);
+        mem.set_u32(at + 4, self.len);
+        mem.set_u32(at + 8, self.cap);
+    }
 }
 
 impl Rt {
@@ -33,16 +48,20 @@ impl Rt {
     }
 
     pub fn stack_free(&mut self, s: Stack) {
-        self.heap.free(s.block);
+        if s.block != 0 {
+            self.heap.free(s.block);
+        }
     }
 
     pub fn push(&mut self, s: &mut Stack, v: u32) -> Res<()> {
         if s.len == s.cap {
-            let cap = s.cap.checked_mul(2).ok_or(Defect::HEAP_EXHAUSTED)?;
+            let cap = s.cap.checked_mul(2).ok_or(Defect::HEAP_EXHAUSTED)?.max(14);
             let size = cap.checked_mul(4).and_then(|b| b.checked_add(8));
             let block = self.heap.alloc(size.ok_or(Defect::HEAP_EXHAUSTED)?)?;
-            self.heap.mem.copy(block + 8, s.block + 8, 4 * s.len);
-            self.heap.free(s.block);
+            if s.block != 0 {
+                self.heap.mem.copy(block + 8, s.block + 8, 4 * s.len);
+                self.heap.free(s.block);
+            }
             *s = Stack {
                 block,
                 len: s.len,

@@ -128,10 +128,22 @@ impl Rt {
                 }
             }
             tag::CLOSURE => {
-                let code = self.code(m(self, 8));
-                for i in 0..m(self, 12) {
-                    if code.is_none_or(|c| self.capture_kind(&c, i) == WORD) {
-                        self.dec_slot(obj + SLOTS + 8 * i, head);
+                // Captures are described by the code descriptor of `code` (ABI §3.4); one
+                // beyond it is never dropped, as for frames. Without a descriptor (runtime-built
+                // closures in tests), every capture is a word.
+                let n = m(self, 12);
+                match self.code(m(self, 8)) {
+                    Some(c) => {
+                        for i in 0..n.min(c.n_captures) {
+                            if self.capture_kind(&c, i) == WORD {
+                                self.dec_slot(obj + SLOTS + 8 * i, head);
+                            }
+                        }
+                    }
+                    None => {
+                        for i in 0..n {
+                            self.dec_slot(obj + SLOTS + 8 * i, head);
+                        }
                     }
                 }
             }

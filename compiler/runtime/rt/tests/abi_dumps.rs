@@ -47,6 +47,7 @@ fn snapshot(name: &str, text: &str) {
 }
 
 #[test]
+#[cfg_attr(miri, ignore = "reads snapshot files")]
 fn layout_table_bytes() {
     let mut out = String::new();
     hex(&mut out, &layout_bytes(&program(), KNOWN));
@@ -54,6 +55,7 @@ fn layout_table_bytes() {
 }
 
 #[test]
+#[cfg_attr(miri, ignore = "reads snapshot files")]
 fn one_object_of_each_tag() {
     let mut rt = rt_with(&program(), KNOWN);
     let mut objs: Vec<(&str, u32, u32)> = vec![];
