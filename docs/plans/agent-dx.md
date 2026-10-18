@@ -45,6 +45,8 @@ scheduled beside W2 as the first agent-DX items, DX5's runner and DX6's workflow
    channel. Nothing publishes until these are given.
 2. DX5: the pilot budget (dollars) and the two pinned model identifiers at run time; whether a
    replication is funded after the pilot's report.
+   **Owner answer (2026-10-18): no paid runs for now (budget $0).** Build the tasks, oracles,
+   transcript replay and the offline CI parts only; the paid workflow stays undispatched.
 3. DX7/DX8: the VS Code marketplace publisher and the plugin marketplace namespace.
 4. DX2: whether `sakura new` should offer `--setup <client>` as a shortcut once `setup` exists
    (proposed: yes, same code path, same project-local rule).
