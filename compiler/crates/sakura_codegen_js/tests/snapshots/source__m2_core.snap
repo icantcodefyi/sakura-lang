@@ -3,36 +3,36 @@ source: crates/sakura_codegen_js/tests/source.rs
 expression: "common::stable(&m.display_module(\"main::main\"))"
 ---
 fn test$0#_() -> Unit {
-  let r%0: Int = call @answer()
-  let r%1: Unit = call @expect_eq(r%0, 3)
+  let r%0: Int = call @answer#_()
+  let r%1: Unit = call @expect_eq#_(r%0, 3)
   ret r%1
 }
 
 fn answer#_() -> Int {
-  let r%0: Handler<Counter> = call @counter()
+  let r%0: Handler<Counter> = call @counter#_()
   handle r%0 {
-    let f%2: fn() -> Int ! {Counter} = closure @answer$1[]
-    let r%3: Int = call @twice(f%2)
+    let f%2: fn() -> Int ! {Counter} = closure @answer$1#_[]
+    let r%3: Int = call @twice#_(f%2)
     ret r%3
   }
 }
 
 test fn test$0$run#_(seed%0: Int) -> Unit {
-  let console%1: Handler<Console> = call @captured()
+  let console%1: Handler<Console> = call @captured#_()
   handle console%1 {
-    let log%2: Handler<Log> = call @captured()
+    let log%2: Handler<Log> = call @captured#_()
     handle log%2 {
-      let epoch%3: Unit = call @from_unix_millis(0)
-      let clock%4: Handler<Clock> = call @fixed(epoch%3)
+      let epoch%3: Instant = call @from_unix_millis#_(0)
+      let clock%4: Handler<Clock> = call @fixed#_(epoch%3)
       handle clock%4 {
-        let random%5: Handler<Random> = call @seeded(seed%0)
+        let random%5: Handler<Random> = call @seeded#_(seed%0)
         handle random%5 {
-          let vars%6: Unit = call $map_empty()
-          let env%7: Handler<Env> = call @of(vars%6)
-          let env_host%8: Handler<Env> = call @host()
+          let vars%6: Map<String, String> = call $map_empty()
+          let env%7: Handler<Env> = call @of#_(vars%6)
+          let env_host%8: Handler<Env> = call @host#_()
           let env_default%9: Handler<Env> = call $test_env(env_host%8, env%7)
           handle env_default%9 {
-            let r%10: Unit = call @test$0()
+            let r%10: Unit = call @test$0#_()
             ret r%10
           }
         }
@@ -42,7 +42,7 @@ test fn test$0$run#_(seed%0: Int) -> Unit {
 }
 
 fn counter#_() -> Handler<Counter> {
-  let next%0: fn() -> Int = closure @counter$Counter_next[]
+  let next%0: fn() -> Int = closure @counter$Counter_next#_[]
   let handler%1: Handler<Counter> = handler Counter state[0] clauses[next%0]
   ret handler%1
 }

@@ -104,6 +104,14 @@ impl Validator<'_> {
 
     fn check_def(&mut self) {
         let def = self.def;
+        if !def.refined_params.is_empty() && def.refined_params.len() != def.params.len() {
+            self.err("refined_params must be empty or have one entry per parameter".into());
+        }
+        for r in def.refined_params.iter().flatten() {
+            if r.index() >= self.m.refinements.len() {
+                self.err(format!("unknown refinement #{}", r.0));
+            }
+        }
         match def.kind {
             FnKind::Top { .. } | FnKind::Test | FnKind::Const => {
                 if !def.captures.is_empty() {

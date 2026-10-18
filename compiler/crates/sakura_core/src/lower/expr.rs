@@ -120,12 +120,17 @@ impl<'a, 'p> FnLower<'a, 'p> {
             s.reps.push((p, r));
             params.push(r);
         }
-        let (ret, row) = match &scheme {
+        let (ret, row, refined_params) = match &scheme {
             Some(sc) => match s.l.t.interner.ty(sc.ty).clone() {
-                sakura_types::Type::Fn { ret, row, .. } => (s.conv(ret), s.l.row(row)),
-                _ => (s.conv(sc.ty), Row::empty()),
+                sakura_types::Type::Fn { params, ret, row } => {
+                    let refined = s.refined_params(&params);
+                    // Lowers the `T$check` of every refined type the result names.
+                    s.schema_conv(ret);
+                    (s.conv(ret), s.l.row(row), refined)
+                }
+                _ => (s.conv(sc.ty), Row::empty(), vec![]),
             },
-            None => (Ty::Unit, Row::empty()),
+            None => (Ty::Unit, Row::empty(), vec![]),
         };
         if let Some(sc) = &scheme {
             s.row_vars = sc.row_params.iter().map(|p| p.0).collect();
@@ -145,6 +150,14 @@ impl<'a, 'p> FnLower<'a, 'p> {
         };
         let body = s.finish_body(r);
         let module = s.l.module_name(def.module);
+        let refined_params = if refined_params.iter().any(Option::is_some) {
+            // A dictionary-passing copy's leading schema parameters are not refined.
+            let mut r = vec![None; params.len().saturating_sub(refined_params.len())];
+            r.extend(refined_params);
+            r
+        } else {
+            vec![]
+        };
         FnDef {
             name: s.l.m.defs[id.index()].name.clone(),
             module,
@@ -157,7 +170,20 @@ impl<'a, 'p> FnLower<'a, 'p> {
             row_vars: s.row_vars,
             pos,
             body,
+            refined_params,
         }
+    }
+
+    /// The refinement of each of `tys` that is a refined type (`p: Percent`), lowering the
+    /// `T$check` of every refined type they name at any depth, whether or not anything calls it
+    /// (design §17.107).
+    fn refined_params(&mut self, tys: &[sakura_types::TypeId]) -> Vec<Option<RefinementId>> {
+        tys.iter()
+            .map(|&t| match self.schema_conv(t) {
+                Ty::Refined(r, _) => Some(r),
+                _ => None,
+            })
+            .collect()
     }
 
     /// The generated body of a bodiless `@llm(system: "…")` function (design §11.1):
@@ -380,11 +406,14 @@ impl<'a, 'p> FnLower<'a, 'p> {
         let (record, failures, nops) = (op("record_failure"), op("failures"), eff.ops.len() as i64);
         let mut reps = Vec::new();
         for ty in &schemas {
-            let r = b.local("schema", Ty::Unit);
+            let r = b.local("schema", Ty::Opaque("Schema".into()));
             blk.push(r, Bind::Prim(PrimOp::Schema(ty.clone()), vec![]));
             reps.push(local(r));
         }
-        let rs = b.local("schemas", Ty::Tuple(vec![Ty::Unit; reps.len()]));
+        let rs = b.local(
+            "schemas",
+            Ty::Tuple(vec![Ty::Opaque("Schema".into()); reps.len()]),
+        );
         blk.push(rs, Bind::Alloc(Alloc::Tuple, reps));
         let ns = b.local("names", Ty::Tuple(vec![Ty::String; names.len()]));
         blk.push(
@@ -421,6 +450,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
             row_vars: vec![],
             pos,
             body: blk.finish(Expr::Ret(local(r))),
+            refined_params: vec![],
         }
     }
 
@@ -444,6 +474,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
             row_vars: vec![],
             pos,
             body,
+            refined_params: vec![],
         }
     }
 
@@ -474,15 +505,21 @@ impl<'a, 'p> FnLower<'a, 'p> {
             }
             (Some(c), hir::RefinementIntro::Validate) => {
                 let result = s.l.m.builtin_type("Result");
-                ret_ty = Ty::Var(u32::MAX);
                 let violation = s.violation(&tname, x.clone());
+                let violation_ty = match &violation {
+                    Atom::Local(v) => s.b.ty(*v).clone(),
+                    _ => Ty::String,
+                };
+                ret_ty = result.map_or(Ty::Var(u32::MAX), |rt| {
+                    Ty::Adt(rt, vec![base.clone(), violation_ty])
+                });
                 result.map(|rt| {
                     let after = s.b.label();
                     let out = s.b.local("r", ret_ty.clone());
                     let ok = s.scoped(|s| {
                         let v = s.bind(
                             "ok",
-                            Ty::Unit,
+                            ret_ty.clone(),
                             Bind::Alloc(Alloc::Variant(rt, 0), vec![x.clone()]),
                             None,
                         );
@@ -491,7 +528,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
                     let err = s.scoped(|s| {
                         let v = s.bind(
                             "err",
-                            Ty::Unit,
+                            ret_ty.clone(),
                             Bind::Alloc(Alloc::Variant(rt, 1), vec![violation]),
                             None,
                         );
@@ -528,6 +565,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
             row_vars: vec![],
             pos,
             body,
+            refined_params: vec![],
         }
     }
 
@@ -1863,14 +1901,14 @@ impl<'a, 'p> FnLower<'a, 'p> {
             _ => Ty::Var(u32::MAX),
         };
         let after = self.b.label();
-        let (r, vs) = self.join_params(Some(ty));
+        let (r, vs) = self.join_params(Some(ty.clone()));
         let on_fail = self.b.label();
         let err = self.b.local("e", err_ty.clone());
         let fail_code = self.scoped(|s| match arms {
             None => {
                 let v = s.bind(
                     "err",
-                    Ty::Unit,
+                    ty.clone(),
                     Bind::Alloc(Alloc::Variant(rt, 1), vec![local(err)]),
                     None,
                 );
@@ -1890,7 +1928,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
             let v = match (v, arms) {
                 (Some(v), None) => Some(s.bind(
                     "ok",
-                    Ty::Unit,
+                    ty.clone(),
                     Bind::Alloc(Alloc::Variant(rt, 0), vec![v]),
                     None,
                 )),
@@ -2094,6 +2132,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
             row_vars: s.row_vars,
             pos,
             body: code,
+            refined_params: vec![],
         };
         self.l.m.defs[id.index()] = def;
         (id, caps)

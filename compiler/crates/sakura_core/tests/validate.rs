@@ -29,6 +29,7 @@ fn top(name: &str, b: FnBuilder, params: Vec<Local>, ret: Ty, row: Row, body: Ex
         row_vars: vec![],
         pos: None,
         body,
+        refined_params: vec![],
     }
 }
 

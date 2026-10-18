@@ -121,11 +121,11 @@ impl<'a> Printer<'a> {
             self.def(DefId(i as u32), d);
         }
         for t in &m.tests {
-            let line = format!("test {:?} = @{}", t.name, m.def(t.def).name);
+            let line = format!("test {:?} = {}", t.name, self.global(t.def));
             self.line(&line);
         }
         if let Some(e) = m.entry {
-            let line = format!("entry @{}", m.def(e).name);
+            let line = format!("entry {}", self.global(e));
             self.line(&line);
         }
     }
@@ -149,7 +149,15 @@ impl<'a> Printer<'a> {
             let cs: Vec<String> = d.captures.iter().map(|l| self.decl(*l)).collect();
             format!("[{}]", cs.join(", "))
         };
-        let ps: Vec<String> = d.params.iter().map(|l| self.decl(*l)).collect();
+        let ps: Vec<String> = d
+            .params
+            .iter()
+            .enumerate()
+            .map(|(i, l)| match d.refined_params.get(i).copied().flatten() {
+                Some(r) => format!("{} where {}", self.decl(*l), self.refinement(r)),
+                None => self.decl(*l),
+            })
+            .collect();
         let line = format!(
             "{kind} {}#{}{caps}({}) -> {}{} {{",
             d.name,
@@ -178,6 +186,17 @@ impl<'a> Printer<'a> {
         format!("{name}%{}", l.0)
     }
 
+    /// `@name#id`: monomorphised copies share a name (design §17.107).
+    fn global(&self, d: DefId) -> String {
+        let name = self.m.defs.get(d.index()).map_or("?", |d| &d.name);
+        format!("@{name}#{}", d.0)
+    }
+
+    fn refinement(&self, r: RefinementId) -> String {
+        let name = self.m.refinements.get(r.index()).map_or("?", |r| &r.name);
+        format!("{name}#{}", r.0)
+    }
+
     fn atom(&self, a: &Atom) -> String {
         match a {
             Atom::Local(l) => self.local(*l),
@@ -188,7 +207,7 @@ impl<'a> Printer<'a> {
                 Lit::Float(f) => format!("{f:?}"),
                 Lit::String(s) => format!("{s:?}"),
             },
-            Atom::Global(d) => format!("@{}", self.m.defs.get(d.index()).map_or("?", |d| &d.name)),
+            Atom::Global(d) => self.global(*d),
             Atom::Builtin(b) => format!("${b}"),
         }
     }
@@ -400,7 +419,7 @@ impl<'a> Printer<'a> {
             }
             Bind::Call(f, args) => format!("call {}({})", self.atom(f), self.atoms(args)),
             Bind::Closure(d, caps) => {
-                format!("closure @{}[{}]", self.m.def(*d).name, self.atoms(caps))
+                format!("closure {}[{}]", self.global(*d), self.atoms(caps))
             }
             Bind::Alloc(a, args) => {
                 let what = match a {

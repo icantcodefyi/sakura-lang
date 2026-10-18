@@ -68,6 +68,7 @@ fn add_def(
         row_vars: vec![],
         pos: None,
         body,
+        refined_params: vec![],
     });
     DefId(m.defs.len() as u32 - 1)
 }

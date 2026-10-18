@@ -297,6 +297,7 @@ impl<'p> Lower<'p> {
             row_vars: vec![],
             pos: None,
             body: Expr::Ret(unit()),
+            refined_params: vec![],
         });
         DefId(self.m.defs.len() as u32 - 1)
     }
@@ -495,12 +496,16 @@ impl<'p> Lower<'p> {
                     continue;
                 };
                 let at_fn = self.callee(at);
-                let instant = b.local("epoch", Ty::Unit);
+                let instant_ty = match self.t.defs.get(&at).map(|sc| self.t.interner.ty(sc.ty)) {
+                    Some(types::Type::Fn { ret, .. }) => self.ty(*ret),
+                    _ => Ty::Var(u32::MAX),
+                };
+                let instant = b.local("epoch", instant_ty);
                 blk.push(instant, Bind::Call(at_fn, vec![int(0)]));
                 args.push(local(instant));
             }
             if module_path == "env" {
-                let vars = b.local("vars", Ty::Unit);
+                let vars = b.local("vars", Ty::Map(Box::new(Ty::String), Box::new(Ty::String)));
                 blk.push(vars, Bind::Call(builtin("map_empty"), vec![]));
                 args.push(local(vars));
             }

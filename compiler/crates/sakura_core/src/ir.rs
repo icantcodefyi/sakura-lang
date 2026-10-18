@@ -78,7 +78,8 @@ pub struct Module {
     pub types: Vec<TypeDef>,
     pub effects: Vec<EffectDef>,
     pub contracts: Vec<ContractDecl>,
-    /// Refined types (`type Percent = Int where …`) that appear in schemas.
+    /// Refined types (`type Percent = Int where …`) that appear in schemas or in a def's
+    /// signature ([`FnDef::refined_params`]).
     pub refinements: Vec<Refinement>,
     /// Schema types of a type's fields where they differ from the field types (they mention
     /// a refined type): a record's fields, or each constructor's payload of a variant.
@@ -333,6 +334,11 @@ pub struct FnDef {
     pub row_vars: Vec<u32>,
     pub pos: Option<Pos>,
     pub body: Expr,
+    /// The refined type each parameter was declared with (`p: Percent`), one entry per
+    /// parameter, or empty when none is refined (design §17.107). Values are their base type
+    /// everywhere in Core; this records the `where` a caller has established, for the verifier.
+    /// Backends ignore it.
+    pub refined_params: Vec<Option<RefinementId>>,
 }
 
 impl FnDef {

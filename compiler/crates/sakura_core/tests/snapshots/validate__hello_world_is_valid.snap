@@ -1,6 +1,6 @@
 ---
 source: crates/sakura_core/tests/validate.rs
-assertion_line: 72
+assertion_line: 83
 expression: m.to_string()
 ---
 effect std::effects::Console {
@@ -15,7 +15,7 @@ fn greet#0(name%0: String) -> Unit ! {Console} {
 }
 
 fn main#1() -> Unit ! {Console} {
-  let r%0: Unit = call @greet("Sakura Lang")
+  let r%0: Unit = call @greet#0("Sakura Lang")
   ret r%0
 }
-entry @main
+entry @main#1

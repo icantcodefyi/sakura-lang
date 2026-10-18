@@ -50,6 +50,7 @@ fn def(
         row_vars: vec![],
         pos: None,
         body,
+        refined_params: vec![],
     }
 }
 
