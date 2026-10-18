@@ -131,6 +131,7 @@ const NATIVE_CODES: &[&str] = &[
     "rt_code_prop_record",
     "rt_code_prop_failures",
     "rt_code_prop_forward",
+    "rt_code_http_body_close",
 ];
 
 /// The frame and capture slot kinds of a native code's code-table entry: the words a code
@@ -145,6 +146,7 @@ fn native_slots(name: &str) -> (Vec<Slot>, Vec<Slot>) {
     );
     match name {
         "rt_code_callback_stub" => (vec![], vec![w, i]),
+        "rt_code_http_body_close" => (vec![], vec![w]),
         "rt_code_file_close" | "rt_code_task_cancel_all" => (vec![], vec![i]),
         // Slot 0 the instance, 1 the activation, then the arguments, kept while a
         // `Sql.sqlite` clause performs `Fs.root()` (`sakura_rt::wasm::sql_instance`).
@@ -187,8 +189,11 @@ pub const HOSTED: &[&str] = &[
     "fs_root",
     "fs_subdir",
     "fs_write",
+    "http_body_of",
     "http_recording_append",
+    "http_recording_append_stream",
     "http_recording_lookup",
+    "http_recording_lookup_stream",
     "http_recording_open",
     "json_decode",
     "json_encode",

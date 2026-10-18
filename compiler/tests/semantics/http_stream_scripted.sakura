@@ -1,0 +1,40 @@
+// milestone: M3
+// mode: test
+// covers: TestDecl Lambda TryExpr; design §17.88; plan m3-completion-and-m4 §3.7 W2
+
+// `Http.stream` over a scripted response: the body is read in chunks, then empty; it closes when
+// the callback returns or fails (the finalizer shows in the trace), and on WASM it crosses as a
+// host handle of kind `body` (runtime/rt/ABI.md §8.4).
+import std/http.{Any, Http}
+import std/request.{Get, Request}
+import std/response.{HttpError, Response, Status}
+import std/url.{Url}
+
+error Stop
+
+fn req() -> Request { Request.of(Get, Url.from("https://a.example/x")) }
+
+test "a scripted body reads in chunks, then empty" {
+  with Http.scripted([(Any, Response.status(200, "hello world"))]) {
+    let got = try {
+      Http.stream(req(), fn(i) {
+        let first = Http.read_chunk(i.body, 5)
+        let rest = Http.read_chunk(i.body, 100)
+        (
+          i.status,
+          String.from_bytes(first),
+          String.from_bytes(rest),
+          Bytes.len(Http.read_chunk(i.body, 100)),
+        )
+      })
+    }
+    expect_eq(got, Ok((Status.from(200), Ok("hello"), Ok(" world"), 0)))
+  }
+}
+
+test "a failing callback closes the body and fails the stream" {
+  with Http.scripted([(Any, Response.status(200, "unread"))]) {
+    let got: Result<Int, HttpError | Stop> = try { Http.stream(req(), fn(_i) { fail Stop }) }
+    expect_eq(got, Err(Stop))
+  }
+}

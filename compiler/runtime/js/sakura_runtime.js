@@ -3286,16 +3286,14 @@ export function http_stream_open(req, _ctx, k) {
 
 /** Runs `f($ctx, $k)` and closes `body` (aborting its fetch) on return, fail, defect or cancel. */
 export function http_stream_closing(body, f, ctx, k) {
-  return finalize(
-    ctx,
-    () => {
-      const b = bodies.get(body.id);
-      bodies.delete(body.id);
-      b?.abort?.abort();
-    },
-    f,
-    k,
-  );
+  return finalize(ctx, () => http_body_close(body), f, k);
+}
+
+/** Closes `body`, aborting its fetch (`http_stream_closing`'s finalizer; the WASM host's too). */
+export function http_body_close(body) {
+  const b = bodies.get(body.id);
+  bodies.delete(body.id);
+  b?.abort?.abort();
 }
 
 /** Up to `max` bytes; empty at the end; `Err` after the callback left or when the connection drops. */

@@ -168,8 +168,8 @@ fn echo_server() -> u16 {
     port
 }
 
-/// `Http.host()` (real network, plan §3.7 W2): the same exchanges, output and trace on both
-/// backends; the `secret_headers` value reaches the server (`http_send` is the import of kind
+/// `Http.host()` (real network, plan §3.7 W2): the same exchanges (a send, a body streamed in
+/// chunks, a refused connection), output and trace on both backends; the `secret_headers` value reaches the server (`http_send` is the import of kind
 /// `secret`, ABI §8.1) and nothing else: not stdout, not the trace.
 #[test]
 fn http_host_sends_on_wasm_as_on_js() {
@@ -197,6 +197,16 @@ fn http_host_sends_on_wasm_as_on_js() {
              \x20 let req = Http.bearer(Request.of(Get, Url.from(\"http://127.0.0.1:{port}/hi\")), Secret.of(\"s3cr3t\"))\n\
              \x20 let r = Http.send(req)\n\
              \x20 Console.print(\"{{r.status}} {{r.body == \"path=/hi auth=Bearer s3cr3t\"}} {{List.len(req.secret_headers)}}\")\n\
+             \x20 let streamed = Http.stream(Request.of(Get, Url.from(\"http://127.0.0.1:{port}/s\")), fn(i) {{\n\
+             \x20   var n = 0\n\
+             \x20   var chunk = Http.read_chunk(i.body, 4)\n\
+             \x20   while Bytes.len(chunk) > 0 {{\n\
+             \x20     n = n + Bytes.len(chunk)\n\
+             \x20     chunk = Http.read_chunk(i.body, 4)\n\
+             \x20   }}\n\
+             \x20   (i.status, n)\n\
+             \x20 }})\n\
+             \x20 Console.print(\"streamed {{streamed}}\")\n\
              \x20 match try {{ Http.send(Request.of(Get, Url.from(\"http://127.0.0.1:1/none\"))) }} {{\n\
              \x20   Ok(_) => Console.print(\"unexpected\"),\n\
              \x20   Err(e) => Console.print(\"failed: {{e.status}}\"),\n\
@@ -224,6 +234,7 @@ fn http_host_sends_on_wasm_as_on_js() {
     let (wasm, wasm_trace) = run("wasm");
     assert_eq!(js.code, Some(0), "{}{}", js.stdout, js.stderr);
     assert!(js.stdout.starts_with("201 true 1\n"), "{}", js.stdout);
+    assert!(js.stdout.contains("\nstreamed (201, 17)\n"), "{}", js.stdout);
     assert!(js.stdout.ends_with("failed: None\n"), "{}", js.stdout);
     assert_eq!(
         (wasm.code, &wasm.stdout, &wasm_trace),
@@ -232,6 +243,7 @@ fn http_host_sends_on_wasm_as_on_js() {
         wasm.stderr
     );
     assert_eq!(js_trace.matches("\"op\":\"send\"").count(), 2);
+    assert_eq!(js_trace.matches("\"op\":\"read_chunk\"").count(), 6);
     for text in [&wasm.stdout, &wasm.stderr, &wasm_trace] {
         assert!(!text.contains("s3cr3t"), "the secret leaked: {text}");
     }

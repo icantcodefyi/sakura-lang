@@ -161,6 +161,9 @@ pub struct Sched {
     pub callback_code: u32,
     /// The code of `file_closing`'s finalizer (`rt_code_file_close`), set at link time.
     pub file_close_code: u32,
+    /// The code of `http_stream_closing`'s finalizer (`rt_code_http_body_close`), set at
+    /// link time.
+    pub body_close_code: u32,
     /// The code of `Sql.transaction`'s finalizer (`rt_code_sql_rollback`), set at link time.
     pub sql_rollback_code: u32,
     /// The code of `Task.scope`'s finalizer (`rt_code_task_cancel_all`), set at link time.

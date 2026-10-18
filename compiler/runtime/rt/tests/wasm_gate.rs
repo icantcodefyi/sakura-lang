@@ -75,6 +75,9 @@ const IMPORTS: &[&str] = &[
     "js_clause",
     "js_resume",
     "http_send",
+    "http_stream_open",
+    "http_stream_read",
+    "http_body_close",
 ];
 
 /// The ABI §1 allowlist, from an empty set (research/09 §1).

@@ -65,8 +65,9 @@ const T = Object.freeze({
   // Inner value only to an import of kind `secret` (ABI §8.1); otherwise `Unit` (redacted).
   secret: 14,
 });
-/** Handle kinds (ABI §8.4). */
+/** Handle kinds (ABI §8.4: `dir`, `file`, `body`, …). */
 const DIR = 0;
+const BODY = 2;
 const MAX_DEPTH = 64;
 const utf8out = new TextEncoder();
 
@@ -199,6 +200,17 @@ export const HOSTED = {
   fs_root: { run: () => ({ ok: rt.fs_root() }), result: () => DIR_SCHEMA },
   fs_subdir: { run: (_h, d, name) => ({ ok: rt.fs_subdir(d, name) }), result: () => R(DIR_SCHEMA, "S") },
   fs_write: { run: (_h, d, p, data) => ({ ok: rt.fs_write(d, p, data) }), result: () => R("U", "S") },
+  http_body_of: { run: (_h, bytes) => ({ ok: rt.http_body_of(bytes) }), result: () => ["X", "std::http::Body"] },
+  http_recording_lookup_stream: {
+    run: (_h, id, req) => ({ ok: rt.http_recording_lookup_stream(id, req) }),
+    result: () => R(OPT(["A", "std::http::Incoming", []]), "S"),
+  },
+  http_recording_append_stream: {
+    run: (_h, id, req, status, headers, bytes) => ({
+      ok: rt.http_recording_append_stream(id, req, status, headers, bytes),
+    }),
+    result: () => R("U", "S"),
+  },
   http_recording_open: { run: (_h, d, p) => ({ ok: rt.http_recording_open(d, p) }), result: () => R("I", "S") },
   http_recording_lookup: {
     run: (_h, id, req) => ({ ok: rt.http_recording_lookup(id, req) }),
@@ -467,29 +479,17 @@ export class Host {
           const [v] = this.decode(new Reader(this.copyIn(ptr, len)));
           return this.jsStep(s.run, () => (status === 0 ? s.k(v) : rt.fail(s.ctx, v)));
         },
-        // `async`, of kind `secret` (ABI §8.1): the request's `secret_headers` arrive as
-        // `Secret`s, which only the JS runtime's `fetchArgs` exposes, as on the JS backend.
-        http_send: (request, ptr, len) => {
-          const [req] = this.decode(new Reader(this.copyIn(ptr, len)));
-          const schema = R(["A", "std::response::Response", []], "S");
-          const reply = (v) => {
-            let bytes;
-            try {
-              bytes = this.answerBytes({ ok: v }, schema);
-            } catch (e) {
-              bytes = defectAnswer(e instanceof rt.Defect ? e : new rt.Defect("D090", String(e?.message ?? e)));
-            }
-            this.complete(request, 0, bytes);
-          };
-          const r = rt.http_send(req, cpsContext(), (v) => ({ ok: v }));
-          if (r?.p instanceof Promise) {
-            this.inflight.set(request, r.cancel ?? (() => {}));
-            r.p.then((v) => reply(v));
-          } else {
-            this.inflight.set(request, () => {});
-            reply(r.ok);
-          }
-          return 1;
+        // `async` (ABI §8.2): the JS runtime's CPS builtin, its result completing `request`.
+        // `http_send` and `http_stream_open` are of kind `secret` (ABI §8.1): the request's
+        // `secret_headers` arrive as `Secret`s, which only its `fetchArgs` exposes, as on JS.
+        http_send: (request, ptr, len) =>
+          this.async(request, ptr, len, rt.http_send, R(["A", "std::response::Response", []], "S")),
+        http_stream_open: (request, ptr, len) =>
+          this.async(request, ptr, len, rt.http_stream_open, R(["A", "std::http::Incoming", []], "S")),
+        http_stream_read: (request, ptr, len) => this.async(request, ptr, len, rt.http_stream_read, R("Y", "S")),
+        http_body_close: (ptr, len) => {
+          const [body] = this.decode(new Reader(this.copyIn(ptr, len)));
+          rt.http_body_close(body);
         },
         trace_enabled: () => (this.traceFd === null ? 0 : 1),
         trace_write: (ptr, len) => {
@@ -509,6 +509,33 @@ export class Host {
     const p = this.exports.alloc_bytes(bytes.length);
     if (p !== 0) this.bytes().set(bytes, p + 12);
     return p;
+  }
+
+  /**
+   * An `async` import: run the JS runtime's CPS builtin `f` on the arguments at `(ptr, len)`
+   * and complete `request` with its result (a status-0 answer of `schema`, or a defect) when
+   * it arrives; `abort` cancels it.
+   */
+  async(request, ptr, len, f, schema) {
+    const args = this.decode(new Reader(this.copyIn(ptr, len)));
+    const reply = (v) => {
+      let bytes;
+      try {
+        bytes = this.answerBytes({ ok: v }, schema);
+      } catch (e) {
+        bytes = defectAnswer(e instanceof rt.Defect ? e : new rt.Defect("D090", String(e?.message ?? e)));
+      }
+      this.complete(request, 0, bytes);
+    };
+    const r = settle(f(...args, cpsContext(), (v) => ({ ok: v })));
+    if (r?.p instanceof Promise) {
+      this.inflight.set(request, r.cancel ?? (() => {}));
+      r.p.then(reply);
+    } else {
+      this.inflight.set(request, () => {});
+      reply(r.ok);
+    }
+    return 1;
   }
 
   /** `{ ok }` or `{ fail }` as a status-prefixed `sakura-vt1` answer (as `hosted`). */
@@ -665,6 +692,8 @@ export class Host {
         return;
       }
       case "A": {
+        // An opaque type the host implements (`Body`, `Dir`) crosses as its handle.
+        if (v instanceof rt.Body || v instanceof rt.Dir) return this.encodeDynamic(w, v, depth);
         const [, id, args] = s;
         const r = rt.refinementOf(id);
         if (r !== null) return this.encode(w, v, r.base, args, depth);
@@ -708,6 +737,13 @@ export class Host {
       const [slot, generation] = this.handle(DIR, v);
       w.u8(T.handle);
       w.u32(DIR);
+      w.u32(slot);
+      return w.u32(generation);
+    }
+    if (v instanceof rt.Body) {
+      const [slot, generation] = this.handle(BODY, v);
+      w.u8(T.handle);
+      w.u32(BODY);
       w.u32(slot);
       return w.u32(generation);
     }

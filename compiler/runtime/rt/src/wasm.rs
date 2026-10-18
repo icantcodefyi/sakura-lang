@@ -117,6 +117,7 @@ pub extern "C" fn rt_init(layout: u32, codes: u32, effects: u32, ops: u32, nativ
     rt.sched.sql_rollback_code = code(2);
     rt.sched.cancel_all_code = code(3);
     rt.sched.prop_codes = [code(4), code(5), code(6)];
+    rt.sched.body_close_code = code(7);
     rt.set_codes(codes);
     rt.set_effects(effects);
     rt.sched.ops = ops;
@@ -1410,13 +1411,20 @@ fn err_string(rt: &mut Rt, reason: &[u8]) -> Res<u32> {
     Ok(e)
 }
 
-/// `http_send(req)` (cps, as JS `http_send`): `Ok(Response)` for any status, `Err(reason)` when
-/// none arrives. `req` crosses to this import of kind `secret` (ABI §8.1: its
-/// `secret_headers` are sent as headers); the host completes the request with the result as a
-/// status-0 answer, and cancelling the task aborts the fetch (`abort`).
-#[unsafe(no_mangle)]
-pub extern "C" fn rt_k_http_send(_env: u32, frame: u32) -> u32 {
-    let rt = rt();
+/// The `async` imports of `async_hosted`.
+#[derive(Clone, Copy)]
+enum Async {
+    Send,
+    Open,
+    Read,
+}
+
+/// An `async` host-delegated builtin (`cps`, ABI §8.2 `async`): the arguments (consumed) as
+/// one tuple to `import(request, ptr, len)`, then a suspension until the host completes the
+/// request with a status-0 answer holding the builtin's result (a `Result<_, String>`, or a
+/// defect). With `secret`, `Secret`s cross with their values (ABI §8.1). Past
+/// `SAKURA_MAX_REQUESTS` the result is `Err("too many pending operations")`.
+fn async_hosted(rt: &mut Rt, frame: u32, args: &[u32], secret: bool, import: Async) -> u32 {
     if rt.block(frame) == 1 {
         let b = rt.take_ret() as u32;
         let r = answer(rt, b).and_then(|(status, v)| {
@@ -1429,9 +1437,8 @@ pub extern "C" fn rt_k_http_send(_env: u32, frame: u32) -> u32 {
         });
         return ok_or_raise(rt, r);
     }
-    let req = rt.take_fslot(frame, 0) as u32;
-    rt.sched.vt_secrets = true;
-    let b = encode_args(rt, &[req]);
+    rt.sched.vt_secrets = secret;
+    let b = encode_args(rt, args);
     rt.sched.vt_secrets = false;
     let b = match b {
         Ok(b) => b,
@@ -1440,9 +1447,15 @@ pub extern "C" fn rt_k_http_send(_env: u32, frame: u32) -> u32 {
     match rt.request(HTTP) {
         Ok(Some(id)) => {
             let (len, at) = rt.data(b);
-            // SAFETY: a plain import with a slice inside linear memory, copied in at once; the
-            // host completes `id` later.
-            unsafe { host::http_send(id, at, len) };
+            // SAFETY: plain imports with a slice inside linear memory, copied in at once; the
+            // host completes `id` later. Called directly: the linker gives imports no table slot.
+            unsafe {
+                match import {
+                    Async::Send => host::http_send(id, at, len),
+                    Async::Open => host::http_stream_open(id, at, len),
+                    Async::Read => host::http_stream_read(id, at, len),
+                }
+            };
             rt.drop(b);
             rt.set_block(frame, 1);
             step::SUSPEND
@@ -1456,6 +1469,113 @@ pub extern "C" fn rt_k_http_send(_env: u32, frame: u32) -> u32 {
             rt.drop(b);
             rt.raise(d)
         }
+    }
+}
+
+/// The frame's argument words from slot 0 (taken) when it starts; none when it resumes.
+fn cps_args<const N: usize>(rt: &mut Rt, frame: u32) -> [u32; N] {
+    if rt.block(frame) == 1 {
+        return [0; N];
+    }
+    core::array::from_fn(|i| rt.take_fslot(frame, i as u32) as u32)
+}
+
+/// `http_send(req)` (cps, as JS `http_send`): `Ok(Response)` for any status, `Err(reason)` when
+/// none arrives. `req` crosses to this import of kind `secret` (ABI §8.1: its `secret_headers`
+/// are sent as headers); cancelling the task aborts the fetch (`abort`).
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_k_http_send(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    let args: [u32; 1] = cps_args(rt, frame);
+    async_hosted(rt, frame, &args, true, Async::Send)
+}
+
+/// `http_stream_open(req)` (cps, as JS): `Ok(Incoming)` once the status and headers arrive,
+/// its `body` a host handle of kind `body` (ABI §8.4); `req` as for `http_send`.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_k_http_stream_open(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    let args: [u32; 1] = cps_args(rt, frame);
+    async_hosted(rt, frame, &args, true, Async::Open)
+}
+
+/// `http_stream_read(body, max)` (cps, as JS): up to `max` bytes, empty at the end, `Err`
+/// after the body closed.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_k_http_stream_read(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    let r = (|| {
+        if rt.block(frame) == 1 {
+            return Ok([0, 0]);
+        }
+        let body = rt.take_fslot(frame, 0) as u32;
+        let max = rt.fslot(frame, 1) as i64;
+        rt.new_int(max).map(|m| [body, m]).inspect_err(|_| rt.drop(body))
+    })();
+    match r {
+        Ok(args) => async_hosted(rt, frame, &args, false, Async::Read),
+        Err(d) => rt.raise(d),
+    }
+}
+
+/// Close the body handle `body` (borrowed) on the host (JS `http_stream_closing`'s finalizer).
+fn body_close(rt: &mut Rt, body: u32) -> Res<()> {
+    rt.dup(body)?;
+    let b = encode_args(rt, &[body])?;
+    let (len, at) = rt.data(b);
+    // SAFETY: a plain import with a slice inside linear memory, copied in at once.
+    unsafe { host::http_body_close(at, len) };
+    rt.drop(b);
+    Ok(())
+}
+
+/// `http_stream_closing(body, k)` (cps, as JS: `finalize` with the body's close): a finalizer
+/// closing `body` (`rt_code_http_body_close`, run on `fail`, defect or cancellation), `k()`,
+/// then on its return the finalizer popped and the body closed.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_k_http_stream_closing(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    if rt.block(frame) == 1 {
+        let result = rt.take_ret();
+        let closer = rt.fin_pop();
+        let closed = body_close(rt, rt.slot(closer, 0) as u32);
+        rt.drop(closer);
+        return match closed {
+            Ok(()) => ret(rt, result),
+            Err(d) => rt.raise(d),
+        };
+    }
+    let body = rt.take_fslot(frame, 0) as u32;
+    let k = rt.take_fslot(frame, 1) as u32;
+    let closer = rt
+        .new_object(tag::CLOSURE, 24)
+        .inspect(|&c| {
+            rt.heap.mem.set_u32(c + 8, rt.sched.body_close_code);
+            rt.heap.mem.set_u32(c + 12, 1);
+            rt.set_slot(c, 0, u64::from(body));
+        })
+        .inspect_err(|_| rt.drop(body))
+        .and_then(|c| rt.fin_push(c));
+    if let Err(d) = closer {
+        rt.drop(k);
+        return rt.raise(d);
+    }
+    match rt.call_value(k, 0) {
+        Ok(_) => {
+            rt.set_block(frame, 1);
+            step::CALL
+        }
+        Err(d) => rt.raise(d),
+    }
+}
+
+/// The finalizer `http_stream_closing` registers: closes the body in its capture.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_http_body_close(env: u32, _frame: u32) -> u32 {
+    let rt = rt();
+    match body_close(rt, rt.slot(env, 0) as u32) {
+        Ok(()) => ret(rt, UNIT as u64),
+        Err(d) => rt.raise(d),
     }
 }
 
@@ -2093,6 +2213,11 @@ mod host {
         /// `async`, of kind `secret`: `fetch` of the request at `(ptr, len)`; completes
         /// `request` with a status-0 answer holding the `Result<Response, String>`.
         pub fn http_send(request: u32, ptr: u32, len: u32) -> u32;
+        /// `async`: `Http.stream`'s builtins (JS `http_stream_open`, `http_stream_read`, the
+        /// latter over a `body` handle); `http_body_close` closes one at once.
+        pub fn http_stream_open(request: u32, ptr: u32, len: u32) -> u32;
+        pub fn http_stream_read(request: u32, ptr: u32, len: u32) -> u32;
+        pub fn http_body_close(ptr: u32, len: u32);
     }
 }
 
