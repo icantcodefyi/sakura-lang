@@ -1,6 +1,6 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.2.1**, agreed before `sakura_lir` or `sakura_rt`
+**Status:** design specification, version **1.2.2**, agreed before `sakura_lir` or `sakura_rt`
 emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed, 1.0.2 the
 R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
 the end, with the questions still open), and 1.1.0 the four `stats()` counters and the
@@ -9,7 +9,8 @@ direct-style twins of design §17.118 (plan item L4), 1.1.1 the gate 10 erratum 
 item 8 (§8.1, §8.4–§8.6), 1.1.3 the defect sites of plan L5 (§5, §6.5, §12; design §17.162), and 1.2.0 the `restarts`
 counter, the import and handle-kind lists as built and §5's fallback wording (design §17.160,
 §17.161; plan M4-OPT), and 1.2.1 the fail-closed copy budget of §8.5, its reading as a
-per-instance ceiling and a cut body as `Err` (design §17.209). Owned by the designer;
+per-instance ceiling and a cut body as `Err` (design §17.209), and 1.2.2 the root task's release
+(design §17.212). Owned by the designer;
 implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
 (`crates/sakura_codegen_wasm`, `runtime/js/sakura_wasm_host.js`). This document is prose,
@@ -92,6 +93,14 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   cut short is `Err` (it was `D091` on JS and an unhandled rejection, ending the process, on
   the Node host). Failure modes are specified; no byte, import or export changes, so
   `sakura_abi_version` stays `0x010200`.
+- 1.2.2 is an erratum (design §17.212): the Node host never released a finished root task, so
+  each `main` on a reused instance kept its task (stacks, slot and outcome) and the clauses of
+  its host handlers (`rt_b_host_handler`), which were static. §6.2 states the release and §9
+  lists the export `task_free(task)`, `sakura_rt`'s `rt_task_free`, which the WASI command
+  already called internally. §0 has no rule for an added export; this one is optional to both
+  sides (a host calls it only when the module has it, and a host without it runs a module that
+  has it as before), so it is a PATCH as §17.212 decided and `sakura_abi_version` stays
+  `0x010200`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -366,7 +375,8 @@ popped by a `fail` that unwound past it) is detected, not dereferenced.
 | 5 `Yield` | scheduler point (`Task.yield_now`, fiber start) | pick the next runnable task (§7.4) |
 
 Loop iterations are not counted or limited: bounded work is the host's business (it owns
-the heap limit, §10, and the aggregate request limit, §8.5). A frame is reused for a self
+the heap limit, §10, and the aggregate request limit, §8.5). The host releases a root task with `task_free(task)` (§9)
+once it has read its outcome; the id is invalid after (1.2.2). A frame is reused for a self
 tail call (the Core `opt` loop rewrite, as JS) without the driver's involvement.
 
 ### 6.3 Handler activations (tag 0x8002)
@@ -714,6 +724,7 @@ reports the test as a defect and runs the rest on a fresh instance of the module
 ## 9. Exports
 
 `memory`, `sakura_abi_version` (global), `run(task) -> i32` (an outcome number, §6.5), `start(entry_fn) -> task`,
+`task_free(task)` (a finished root task, after its `outcome`; 1.2.2),
 `complete(req, status, ptr, len) -> i32`, `invoke(cb, ptr, len) -> i32`, `alloc_bytes(len) ->
 ptr`, `drop(ptr)`, `layout_table() -> (ptr, len)`, `effect_table() -> (ptr, len)`, `outcome(task)
 -> (kind, ptr, len)` (the outcome encoded as §8.1 transport; a defect's carries its code,

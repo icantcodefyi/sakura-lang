@@ -882,8 +882,9 @@ pub extern "C" fn rt_code_task_cancel_all(env: u32, frame: u32) -> u32 {
 }
 
 /// A host-built root handler (`console_host`, `clock_host`, …): no state (`type_id =
-/// 0xFFFF_FFFF`, errata L11), its clauses static closures of the native codes listed at
-/// `codes` (`n` `u32`s in the static block, one per operation in declaration order).
+/// 0xFFFF_FFFF`, errata L11), its clauses closures it owns of the native codes listed at
+/// `codes` (`n` `u32`s in the static block, one per operation in declaration order), freed
+/// with it, so a reused instance does not keep them per `main` (design §17.212).
 #[unsafe(no_mangle)]
 pub extern "C" fn rt_b_host_handler(effect: u32, codes: u32, n: u32) -> u32 {
     let rt = rt();
@@ -893,9 +894,10 @@ pub extern "C" fn rt_b_host_handler(effect: u32, codes: u32, n: u32) -> u32 {
             rt.heap.mem.set_u32(h + off, v);
         }
         for i in 0..n {
-            let c = rt.new_object(tag::CLOSURE, 16)?;
+            let c = rt
+                .new_object(tag::CLOSURE, 16)
+                .inspect_err(|_| rt.drop(h))?;
             rt.heap.mem.set_u32(c + 8, rt.heap.mem.u32(codes + 4 * i));
-            rt.make_static(c);
             rt.heap.mem.set_u32(h + 24 + 4 * i, c);
         }
         Ok(h)

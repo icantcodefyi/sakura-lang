@@ -1235,7 +1235,10 @@ export class Host {
     return out;
   }
 
-  /** Run the task starting at `entry` (-1 for `main`) to an outcome. */
+  /**
+   * Run the task starting at `entry` (-1 for `main`) to an outcome, then release the task
+   * (`task_free`, ABI §6.2), so a reused instance does not keep every finished `main`.
+   */
   async runTask(entry = -1) {
     const e = this.exports;
     const task = e.start(entry);
@@ -1257,7 +1260,10 @@ export class Host {
       kind = e.run(task);
       this.reply();
     }
-    return this.outcome(task, kind);
+    const o = this.outcome(task, kind);
+    // A module built before ABI 1.2.2 has no `task_free` and keeps its finished tasks.
+    e.task_free?.(task);
+    return o;
   }
 
   /** Decode `outcome(task)` (the payload is a `Bytes` the host drops). */

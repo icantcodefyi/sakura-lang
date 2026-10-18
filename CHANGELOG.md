@@ -198,6 +198,12 @@ published yet.
 
 ### Fixed
 
+- On `--target wasm`, running `main` again on one instance (the benchmark harness's Node cells
+  do, once per sample) no longer keeps 4 objects per run: the Node host releases each finished
+  root task through the new module export `task_free`, and the clauses of a host handler
+  (`Console.host()`, `Clock.host()` and the other `*.host()` handlers) are freed with it instead
+  of being static (design §17.212, ABI 1.2.2).
+
 - A syntax error now hides only the diagnostics that point into the body holding it (design
   §17.207 (1)). Before, every diagnostic raised while that body was checked was dropped, so
   `sakura check` could miss an error in another module, such as a bad signature (`V2002`)

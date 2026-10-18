@@ -633,6 +633,11 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     for name in ["run", "complete", "alloc_bytes", "drop"] {
         exports.push((name.to_string(), ExportKind::Func, rtf(name)?));
     }
+    exports.push((
+        "task_free".to_string(),
+        ExportKind::Func,
+        rtf("rt_task_free")?,
+    ));
     for name in [
         "start",
         "layout_table",

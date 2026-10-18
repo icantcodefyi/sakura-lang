@@ -692,6 +692,81 @@ fn a_twin_that_runs_out_of_gauge_restarts_once_per_entry() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Design §17.212: the Node host releases each finished root task (`task_free`) and a host
+/// handler owns its clauses, so `main` run again on one instance, returning, failing or
+/// defecting, leaves the guest heap's live objects and bytes as the first run left them.
+#[test]
+fn main_run_again_on_one_instance_keeps_no_objects() {
+    if !available() {
+        eprintln!("skipped: node is missing");
+        return;
+    }
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("task_release");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let runs = r#"
+const [dir] = process.argv.slice(1);
+const { Host, loadTypes } = await import(`${dir}/sakura_wasm_host.js`);
+const host = new Host();
+await loadTypes();
+await host.instantiate(process.getBuiltinModule("node:fs").readFileSync(`${dir}/main.wasm`));
+const seen = [];
+for (let i = 0; i < 3; i++) {
+  const o = await host.runTask(-1);
+  const s = host.stats();
+  seen.push(`${o.kind} ${s.live_objects} ${s.live}`);
+}
+console.log(seen.join("\n"));
+"#;
+    for (name, body, kind) in [
+        ("returns", "  Console.print(\"{6 * 7}\")\n", "ok"),
+        (
+            "fails",
+            "  Console.print(\"x\")\n  fail Boom(\"no\")\n",
+            "fail",
+        ),
+        (
+            "defects",
+            "  Console.print(\"{1 / List.len([])}\")\n",
+            "defect",
+        ),
+    ] {
+        std::fs::write(
+            dir.join(format!("{name}.sak")),
+            format!(
+                "error Boom(reason: String)\n\n\
+                 pub fn main() -> Unit ! {{Console, Fail<Boom>}} {{\n{body}}}\n"
+            ),
+        )
+        .unwrap();
+        let out_dir = format!("out-{name}");
+        let file = format!("{name}.sak");
+        let built = sakura(
+            &["build", "--target", "wasm", "--out-dir", &out_dir, &file],
+            &dir,
+        );
+        assert_eq!(built.code, Some(0), "{name}: {}", built.stderr);
+        let out = std::process::Command::new("node")
+            .args(["--input-type=module", "-e", runs])
+            .arg(dir.join(&out_dir))
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&out.stdout);
+        assert!(
+            out.status.success(),
+            "{name}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let lines: Vec<&str> = stdout.lines().filter(|l| l.starts_with(kind)).collect();
+        assert_eq!(lines.len(), 3, "{name}: {stdout}");
+        assert!(
+            lines.iter().all(|l| *l == lines[0]),
+            "{name}: live objects and bytes grew between runs:\n{stdout}"
+        );
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// Design §17.192 (2): tail cycles with no nesting order run as one loop per def on WASM, so the
 /// fixture's three 10^6-step cycles take a few frames in all (3,000,059 before the dispatch join).
 #[test]

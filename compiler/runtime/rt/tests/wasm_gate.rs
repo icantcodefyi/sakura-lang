@@ -23,6 +23,7 @@ const EXPORTS: &[&str] = &[
     "sakura_abi_version",
     "run",
     "start",
+    "task_free",
     "complete",
     "invoke",
     "alloc_bytes",
