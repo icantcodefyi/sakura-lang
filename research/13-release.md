@@ -57,7 +57,8 @@ Apply the owner's answers without reopening them:
 
 - First version `0.1.0-alpha.1`, tag `v0.1.0-alpha.1`.
 - Public repository `icantcodefyi/sakuralang`, under the owner's personal account.
-- Public package names `sakuralang` on crates.io and npm. Homebrew repository
+- Public package name `sakuralang` on npm; crates.io is deferred for the alpha
+  (§17.157). Homebrew repository
   `icantcodefyi/homebrew-sakuralang`, formula `sakuralang`, executable `sakura`.
   These are desired names, not evidence that registry ownership is secured.
 - A ships first; B only after A ships; C only after B ships. Use GNU Linux targets,
@@ -101,6 +102,12 @@ versions work. Solver installation for `verify` is separate; installers must not
 silently fetch or bundle solvers.
 
 ### crates.io is a separate source-packaging problem
+
+**Round-11 disposition (§17.157):** crates.io is deferred for `v0.1.0-alpha.1`.
+Alpha channels are GitHub archives with the installer, Homebrew tap and npm.
+Revisit for the first beta, or earlier on a `cargo install sakuralang` request,
+through a new ADR, starting with the generated source-package option below.
+The following is the packaging evaluation that informed that decision.
 
 Neither cargo-dist nor a shell workflow makes `cargo publish -p sakura_cli` valid.
 Cargo's [dependency rules](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html)
@@ -302,9 +309,10 @@ Blacksmith. Compilation and publication need not use the same runner provider.
 
 Each step ends at a reviewable artifact, never implicit publication.
 
-1. **Designer + owner:** record the tooling decision in an ADR; reconcile GNU
-   A/B/C with the older proposal; decide crates.io packaging/deferral, signing and
-   npm companion names. Preserve STABILITY promises.
+1. **Designer + owner:** ADR 0003 records the tooling decision (Proposed until
+   owner acceptance); §17.157 adopts GNU A/B/C and defers crates.io for the alpha.
+   Owner acceptance, signing and npm companion names remain owner gates. Preserve
+   STABILITY promises.
 2. **Opus:** prepare tag-triggered builds and artifact-only dry-run dispatch.
    Reject unsupported version inputs, resolve source SHA, check tag/version,
    install pinned Rust plus WASM target and build from `compiler/` using
@@ -335,9 +343,9 @@ Each step ends at a reviewable artifact, never implicit publication.
    blockers. Prove publishing/OIDC jobs cannot run in dry mode. No secrets on PRs
    or release builds through `pull_request_target`. Pin used Actions to reviewed
    full SHAs before first release.
-8. **Owner + Opus:** protected, separate GitHub/attestation, Homebrew, npm and
-   crates.io publication gates. Consume the exact approved run/commit artifacts;
-   recheck digests. Require every active target. Attest final approved bytes;
+8. **Owner + Opus:** protected, separate GitHub/attestation, Homebrew and npm
+   publication gates. crates.io is deferred for the alpha (§17.157). Consume the
+   exact approved run/commit artifacts; recheck digests. Require every active target. Attest final approved bytes;
    do not rebuild unnoticed during promotion.
 9. **Owner:** execute [docs/release.md](../docs/release.md). Tag only the qualified
    commit, approve each channel separately, and requalify the final inventory if

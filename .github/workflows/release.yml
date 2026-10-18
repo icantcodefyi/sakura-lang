@@ -9,7 +9,7 @@
 #   The tag must equal the workspace version, and the repository variable
 #   RELEASE_ENVIRONMENTS_PROTECTED must be "true" (set only after the environments have
 #   required reviewers: GitHub creates a missing environment unprotected).
-# - crates.io is excluded until its source-package design is decided (research/13 §2).
+# - crates.io is deferred for the alpha (design §17.157; research/13 §2).
 name: Release
 
 on:

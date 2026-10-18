@@ -7,12 +7,14 @@
 [`packaging/`](../packaging/) (§3). No channel has been published. A publishing command here is
 not authorization to run it.
 See [release research](../research/13-release.md), [agent-DX plan](plans/agent-dx.md)
-DX6 and owner answers in §3, [design](design.md) §17.147 and
+DX6 and owner answers in §3, [design](design.md) §§17.147, 17.157 and
 [STABILITY](../STABILITY.md).
 
 Owner: **@icantcodefyi**. First tag: `v0.1.0-alpha.1`. Public repository:
 `icantcodefyi/sakuralang`. Package/formula name: `sakuralang`; executable: `sakura`.
-Publish matrix A only: `aarch64-apple-darwin` and `x86_64-unknown-linux-gnu`.
+Alpha channels: GitHub archives with the installer, Homebrew tap and npm.
+crates.io is deferred (§17.157). Publish matrix A only: `aarch64-apple-darwin` and
+`x86_64-unknown-linux-gnu`. Linux uses GNU libc; Alpine/musl is unsupported.
 B adds Linux ARM64 after A ships; C adds Windows x64 and Intel macOS after B
 ships. These are decisions, not proof of registry ownership or supported hosts.
 
@@ -24,14 +26,13 @@ and dry runs need no publication credentials.
 ### GitHub and approvals
 
 In repository **Settings → Environments**, create proposed publication
-environments `release-github`, `release-homebrew`, `release-npm` and `release-crates`.
+environments `release-github`, `release-homebrew` and `release-npm`.
 Require **@icantcodefyi** as reviewer, disable administrator bypass and allow
 release tags matching `v*`. Only then set the repository **variable**
 `RELEASE_ENVIRONMENTS_PROTECTED` to `true` (Settings → Secrets and variables → Actions →
 Variables): a tag-triggered run fails without it, because GitHub silently creates an
-unprotected environment when a job names one that does not exist. `release.yml` has no
-crates.io job yet, so `release-crates` can wait for that channel's design. Workflow checks must additionally validate the exact
-version/approved SHA. Every publishing job must reference its environment:
+unprotected environment when a job names one that does not exist. Workflow checks
+must additionally validate the exact version/approved SHA. Every publishing job must reference its environment:
 creating environments alone protects nothing. Scope secrets to those environments.
 
 For this owner-only repository, leave **Prevent self-review off** if the owner
@@ -48,21 +49,13 @@ job; the owner need not generate it. Only the approved release job needs
 `contents: write`. Attestations additionally need `id-token: write` and
 `attestations: write`. Build/PR jobs must not inherit these publishing permissions.
 
-### crates.io
+### crates.io — deferred (§17.157)
 
-Sign in through GitHub at [crates.io](https://crates.io/), verify email, check the
-`sakuralang` name, then create an API token under **Account Settings → API Tokens**
-at [crates.io/me](https://crates.io/me). Select the smallest publication scope and
-expiry supporting first creation, narrowing it afterward where necessary.
-For approved CI store `CARGO_REGISTRY_TOKEN` in `release-crates`. For manual
-publication use Cargo's credential flow without putting the token in source or
-command history. See [Cargo publication](https://doc.rust-lang.org/cargo/reference/publishing.html).
-
-**This channel is blocked on packaging, not merely a token.** Current `sakura_cli`
-is not a publishable `sakuralang` package: internal dependencies are unpublished
-and embedded inputs sit outside crate roots. Accept a reviewed source-package
-design or explicitly defer this channel. Do not publish internal crates, a
-placeholder or a binary-downloading crate as a shortcut. Alternatives are in
+crates.io is deferred for `v0.1.0-alpha.1`; no account/token setup or publication
+is required for this channel. The current CLI has unpublished dependencies and
+embedded inputs outside crate roots. Revisit for the first beta, or earlier on a
+`cargo install sakuralang` request, through a new source-packaging ADR. Do not
+publish internal crates, a placeholder or a binary-downloading crate. See
 [research §2](../research/13-release.md).
 
 ### npm
@@ -176,8 +169,8 @@ SHA-256 inventory and each target's host floor (glibc or macOS minimum).
 
 Download from that **specific run ID and SHA**. Review the full active matrix's
 archives, notices/Node requirements, shell/manual installer, canonical skill ZIP/
-manifest, release provenance, SHA-256 inventory, formula, npm tarballs and source
-crate if its packaging gate is complete. C later adds Windows ZIP/PowerShell.
+manifest, release provenance, SHA-256 inventory, formula and npm tarballs.
+C later adds Windows ZIP/PowerShell.
 Do not publish only the successful subset of a failing matrix.
 
 On each fresh native host:
@@ -219,10 +212,6 @@ Inspect npm's `npm pack --dry-run` output and actual tarballs. Install with scri
 disabled/network denied using a preseeded cache or local wrapper/platform
 tarballs. An empty cache cannot prove offline install. Confirm no hidden binary
 download. Test the Homebrew formula against staged artifacts before a tap push.
-For crates.io, inspect `cargo package --list`, run
-`cargo publish --dry-run --locked` on the approved package and install its
-unpacked source away from the repo. Never use `--no-verify` to hide packaging
-failures.
 
 ## 4. Owner approval and tag
 
@@ -271,12 +260,6 @@ and summary before approving, not only the dry run's.
    versions and **`--tag alpha`**, not `latest`. Owner handles initial ownership/
    2FA. Test `npm install -g sakuralang@0.1.0-alpha.1` and the binary on clean
    hosts; upload success does not prove platform selection works.
-4. **crates.io.** Only after packaging and its dry run pass, approve
-   `release-crates` or manually publish the approved source package. Name
-   `sakuralang`, version `0.1.0-alpha.1`, binary `sakura`. Check isolated
-   `cargo install sakuralang --version 0.1.0-alpha.1 --locked`, embedded content,
-   version/commit and Node execution. An owner-deferred channel must be marked
-   unavailable; do not imply `cargo install` works.
 
 A later channel failure does not authorize mutating earlier assets. Record
 partial rollout and seek approval for remaining publication. Resume identical
