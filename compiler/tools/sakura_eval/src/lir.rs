@@ -1349,13 +1349,14 @@ impl<'m> Vm<'m> {
                     .iter()
                     .map(|&a| self.take(cur, a))
                     .collect::<R<Vec<_>>>()?;
-                let v = self.builtin(name, &vals)?;
+                // The arguments are released before a defect too: the run must end balanced.
+                let v = self.builtin(name, &vals);
                 for a in vals {
                     if let Val::W(w) = a {
                         self.drop_word(w)?;
                     }
                 }
-                self.set(cur, *dst, v)
+                self.set(cur, *dst, v?)
             }
             HandlePush { handler } => {
                 let h = self.take_word(cur, *handler)?;
