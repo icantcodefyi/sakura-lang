@@ -335,7 +335,8 @@ impl Rt {
             tag::RECORD => {
                 let type_id = self.heap.mem.u32(w + 8);
                 let row = self.obj_row(w);
-                let name = [NAME, self.type_name(type_id), 0];
+                // The row's name is the type's own (the entry's is qualified).
+                let name = [NAME, row.name, 0];
                 if row.n_slots == 0 {
                     if self.type_kind(type_id) == crate::layout::ERROR {
                         return self.seq(st, &[name]);

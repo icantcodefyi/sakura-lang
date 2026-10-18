@@ -169,12 +169,15 @@ impl Rt {
                 }
             }
             tag::HANDLER => {
-                // ABI 1.0.1 §3.2: state slots are described by the handler's layout row.
-                let row = self.row(m(self, 12), 0);
+                // ABI 1.0.1 §3.2: state slots are described by the handler's layout row; a
+                // host-built handler has no state and no row (errata L11).
                 let (n_state, n_clauses) = (m(self, 16), m(self, 20));
-                for i in 0..n_state {
-                    if self.owns(&row, i) {
-                        self.dec_slot(obj + HANDLER_STATE + 8 * i, head);
+                if n_state > 0 {
+                    let row = self.row(m(self, 12), 0);
+                    for i in 0..n_state {
+                        if self.owns(&row, i) {
+                            self.dec_slot(obj + HANDLER_STATE + 8 * i, head);
+                        }
                     }
                 }
                 for i in 0..n_clauses {

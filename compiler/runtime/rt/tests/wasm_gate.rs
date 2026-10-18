@@ -1,8 +1,13 @@
-//! The ABI §1 validator gate on the `sakura_rt` wasm object: the rustc-built module must
-//! validate under exactly the profile's features and pass the structural checks (one 32-bit
-//! non-shared memory with a maximum ≤ `SAKURA_MAX_HEAP`, imports from `sakura_host` only, exports
-//! from the §9 list only). Skipped when the `wasm32-unknown-unknown` target is not installed,
-//! unless `SAKURA_REQUIRE_WASM=1`.
+//! The ABI §1 gate on the `sakura_rt` wasm object before linking: the rustc-built module must
+//! validate under the profile's features plus exactly what the `sakura_codegen_wasm` linker
+//! lowers (sign extension and saturating truncation, which libcore's bitcode keeps under LTO
+//! because its functions carry their own target features, and the reference-types encoding
+//! of `call_indirect`'s table index; no reference-typed instruction), and pass the structural
+//! checks (one 32-bit non-shared memory with a maximum ≤ `SAKURA_MAX_HEAP`, imports from
+//! `sakura_host` and the linker's `sakura_link` only, exports from the §9 list or the `rt_*`
+//! functions the linker resolves and removes). The normative gate is the linked module's
+//! (`sakura_codegen_wasm::validate`). Skipped when the `wasm32-unknown-unknown` target is not
+//! installed, unless `SAKURA_REQUIRE_WASM=1`.
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -29,8 +34,8 @@ const EXPORTS: &[&str] = &[
     "stats",
 ];
 
-/// Runtime-side imports named by ABI §8.5 (the `BUILTINS`-generated list joins in M4-WASM).
-const IMPORTS: &[&str] = &["retire_handle", "abort"];
+/// Runtime-side imports of ABI §8 (`sakura_host`).
+const IMPORTS: &[&str] = &["retire_handle", "abort", "console_print", "console_read_line"];
 
 /// The ABI §1 allowlist, from an empty set (research/09 §1).
 fn profile() -> WasmFeatures {
@@ -100,7 +105,10 @@ fn wasm_object_passes_the_abi_profile_gate() {
         return;
     }
     let wasm = build_module();
-    Validator::new_with_features(profile())
+    let lowered = WasmFeatures::SIGN_EXTENSION
+        | WasmFeatures::SATURATING_FLOAT_TO_INT
+        | WasmFeatures::REFERENCE_TYPES;
+    Validator::new_with_features(profile() | lowered)
         .validate_all(&wasm)
         .unwrap_or_else(|e| panic!("outside the ABI §1 profile: {e}"));
 
@@ -111,12 +119,12 @@ fn wasm_object_passes_the_abi_profile_gate() {
                 for imports in s {
                     for item in imports.unwrap() {
                         let (_, i) = item.unwrap();
-                        assert_eq!(i.module, "sakura_host", "import {}", i.name);
-                        assert!(
-                            IMPORTS.contains(&i.name),
-                            "import {} is not in ABI §8",
-                            i.name
-                        );
+                        let known = match i.module {
+                            "sakura_host" => IMPORTS.contains(&i.name),
+                            "sakura_link" => i.name == "dispatch",
+                            _ => false,
+                        };
+                        assert!(known, "import {}.{} is not in ABI §8", i.module, i.name);
                         assert!(
                             matches!(i.ty, TypeRef::Func(_)),
                             "import {} is not a function",
@@ -128,6 +136,28 @@ fn wasm_object_passes_the_abi_profile_gate() {
             Payload::MemorySection(s) => memories.extend(s.into_iter().map(|m| m.unwrap())),
             Payload::ExportSection(s) => {
                 exports.extend(s.into_iter().map(|e| e.unwrap().name.to_string()));
+            }
+            Payload::CodeSectionEntry(body) => {
+                use wasmparser::Operator as O;
+                let mut ops = body.get_operators_reader().unwrap();
+                while !ops.eof() {
+                    let op = ops.read().unwrap();
+                    assert!(
+                        !matches!(
+                            op,
+                            O::RefNull { .. }
+                                | O::RefIsNull
+                                | O::RefFunc { .. }
+                                | O::TableGet { .. }
+                                | O::TableSet { .. }
+                                | O::TableGrow { .. }
+                                | O::TableSize { .. }
+                                | O::TableFill { .. }
+                                | O::TypedSelect { .. }
+                        ),
+                        "a reference-typed instruction: {op:?}"
+                    );
+                }
             }
             _ => {}
         }
@@ -141,7 +171,10 @@ fn wasm_object_passes_the_abi_profile_gate() {
         "maximum {max} pages exceeds SAKURA_MAX_HEAP"
     );
     for e in &exports {
-        assert!(EXPORTS.contains(&e.as_str()), "export {e} is not in ABI §9");
+        assert!(
+            EXPORTS.contains(&e.as_str()) || e.starts_with("rt_"),
+            "export {e} is not in ABI §9"
+        );
     }
     for e in ["memory", "alloc_bytes", "drop"] {
         assert!(

@@ -9,6 +9,7 @@
 extern crate alloc;
 
 pub mod arena;
+pub mod builtins;
 pub mod cmp;
 pub mod exec;
 pub mod heap;
@@ -59,6 +60,10 @@ impl Defect {
     pub const HEAP_EXHAUSTED: Defect = Defect {
         code: 96,
         message: "heap exhausted",
+    };
+    pub const CONTRACT_EVALUATION: Defect = Defect {
+        code: 11,
+        message: "contract evaluation failed",
     };
     pub const INT_OVERFLOW: Defect = Defect {
         code: 1,

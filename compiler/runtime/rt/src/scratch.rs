@@ -98,6 +98,26 @@ pub struct StrBuf {
     cap: u32,
 }
 
+impl StrBuf {
+    /// The `String` object being built (its bytes start at offset 16).
+    pub fn obj(&self) -> u32 {
+        self.obj
+    }
+
+    pub fn len(&self) -> u32 {
+        self.len
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
+    /// Keep only the first `n` bytes.
+    pub fn truncate(&mut self, n: u32) {
+        self.len = self.len.min(n);
+    }
+}
+
 impl Rt {
     pub fn strbuf(&mut self) -> Res<StrBuf> {
         let obj = self.new_object(tag::STRING, 64)?;
