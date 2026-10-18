@@ -9,6 +9,10 @@ published yet.
 
 ### Added
 
+- Benchmark results retain every process peak RSS, and comparisons report process medians
+  alongside the unchanged maximum-based +25% RSS gate. The WS-P1 variance study and raw
+  evidence are documented in `bench/README.md`.
+
 - Research on language design, agent ergonomics, memory management, effects,
   standard-library direction, and open-source engineering practices in `research/`.
 - Bun / Next.js / Fumadocs website and documentation delivery in `website/`.

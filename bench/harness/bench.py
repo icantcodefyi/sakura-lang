@@ -321,6 +321,7 @@ def cmd_run(a):
             "median_ms": statistics.median(medians) if medians else None,
             "process_medians_ms": medians,
             "rss_bytes": max(r for _s, _c, r in runs),
+            "process_rss_bytes": [r for _s, _c, r in runs],
             "checksum_ok": all(c == expected for _s, c, _r in runs),
             "checksum": next((c for _s, c, _r in runs if c != expected), expected)})
         if not res["results"][-1]["checksum_ok"]:
@@ -382,6 +383,34 @@ def slope(points):
     return sum((x - mx) * (y - my) for x, y in pts) / den if den else None
 
 
+def rss_samples(document, row):
+    """Validate new-format process peaks; a legacy row has only its maximum."""
+    if "process_rss_bytes" not in row:
+        return None
+    peaks = row["process_rss_bytes"]
+    count = document["meta"].get("flags", {}).get("processes")
+    if (type(count) is not int or count < 1
+            or not isinstance(peaks, list) or not peaks or len(peaks) != count
+            or any(type(x) not in (int, float) or not math.isfinite(x) or x <= 0 for x in peaks)
+            or max(peaks) != row.get("rss_bytes")):
+        raise ValueError("invalid/incomplete process RSS samples or inconsistent maximum")
+    return peaks
+
+
+def rss_comparison(base, b, head, r, jump):
+    """Keep the maximum gate; process medians explain variation without changing policy."""
+    bp, hp = rss_samples(base, b), rss_samples(head, r)
+    if not b.get("rss_bytes") or not r.get("rss_bytes"):
+        return None
+    before, after = b["rss_bytes"], r["rss_bytes"]
+    return {"statistic": "maximum", "base_bytes": before, "head_bytes": after,
+            "base_median_bytes": statistics.median(bp) if bp is not None else None,
+            "head_median_bytes": statistics.median(hp) if hp is not None else None,
+            "base_processes": len(bp) if bp is not None else None,
+            "head_processes": len(hp) if hp is not None else None,
+            "status": "blocked" if after > before * (1 + jump) else "ok"}
+
+
 def compare(base, heads, flag=0.05, block=0.10, abs_ms=0.1, slope_jump=0.5, rss_jump=0.25):
     """Rows and verdict per §17.110. A block needs every head (the CI's confirmation rerun) to
     exceed both thresholds; immediate failures need one head."""
@@ -418,7 +447,7 @@ def compare(base, heads, flag=0.05, block=0.10, abs_ms=0.1, slope_jump=0.5, rss_
         rows.append({"program": p, "engine": e, "size": n, "base_ratio": base_ratio,
                      "head_ratio": h_rats[0][key][0] / h_rats[0][key][1], "delta": d, "status": status})
 
-    immediate = []
+    immediate, rss_rows = [], []
     b_by = {(r["program"], r["variant"], r["engine"], r["size"]): r for r in base["results"]}
     for r in head["results"]:
         key = (r["program"], r["variant"], r["engine"], r["size"])
@@ -427,8 +456,17 @@ def compare(base, heads, flag=0.05, block=0.10, abs_ms=0.1, slope_jump=0.5, rss_
         b = b_by.get(key)
         if b and b["checksum_ok"] and r["checksum_ok"] and b["checksum"] != r["checksum"]:
             immediate.append(f"{key}: checksum changed {b['checksum']} → {r['checksum']}")
-        if b and b.get("rss_bytes") and r.get("rss_bytes") and r["rss_bytes"] > b["rss_bytes"] * (1 + rss_jump):
-            immediate.append(f"{key}: peak RSS {b['rss_bytes']} → {r['rss_bytes']} (+{r['rss_bytes'] / b['rss_bytes'] - 1:.0%})")
+        if b:
+            try:
+                memory = rss_comparison(base, b, head, r, rss_jump)
+            except ValueError as error:
+                immediate.append(f"{key}: {error}")
+                memory = None
+            if memory:
+                rss_rows.append({field: r[field] for field in ("program", "variant", "engine", "size")} | memory)
+                if memory["status"] == "blocked":
+                    before, after = memory["base_bytes"], memory["head_bytes"]
+                    immediate.append(f"{key}: peak RSS ({memory['statistic']}) {before} → {after} (+{after / before - 1:.0%})")
     for f in head["meta"].get("failures", []):
         immediate.append(f"{f['program']} {f['variant']}/{f['engine']}: {f['error'].splitlines()[0]}")
     for p, v, e in sorted({(r["program"], r["variant"], r["engine"]) for r in head["results"]}):
@@ -439,7 +477,7 @@ def compare(base, heads, flag=0.05, block=0.10, abs_ms=0.1, slope_jump=0.5, rss_
             immediate.append(f"({p!r}, {v!r}, {e!r}): complexity changed, log-log slope {sb:.2f} → {sh_:.2f}")
     if immediate:
         worse("blocked")
-    return {"verdict": verdict, "rows": rows, "immediate": immediate}
+    return {"verdict": verdict, "rows": rows, "immediate": immediate, "rss": rss_rows}
 
 
 def cmd_compare(a):
@@ -454,6 +492,16 @@ def cmd_compare(a):
     for r in out["rows"]:
         print(f"| {r['program']} | {r['engine']} | {r['size']} | {r['base_ratio']:.3f} | {r['head_ratio']:.3f} "
               f"| {r['delta']:+.1%} | {r['status']} |")
+    memory_changes = [r for r in out["rss"] if r["status"] == "blocked"
+                      or (r["base_median_bytes"] and r["head_median_bytes"]
+                          and r["head_median_bytes"] > r["base_median_bytes"] * 1.25)]
+    for r in memory_changes:
+        median = (f"{r['base_median_bytes']} → {r['head_median_bytes']} bytes"
+                  if r["base_median_bytes"] is not None and r["head_median_bytes"] is not None else "unavailable (legacy result)")
+        print(f"\nRSS detail: {r['program']} {r['variant']}/{r['engine']} n={r['size']}: "
+              f"maximum {r['base_bytes']} → {r['head_bytes']} bytes; "
+              f"process median {median} "
+              f"(processes {r['base_processes'] or 'unknown'} → {r['head_processes'] or 'unknown'}; median is diagnostic only)")
     for i in out["immediate"]:
         print(f"\nIMMEDIATE FAILURE: {i}")
     print(f"\nverdict: {out['verdict']}")
