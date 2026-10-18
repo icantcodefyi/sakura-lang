@@ -1,0 +1,6 @@
+// milestone: M1
+// expect: V0001
+// §17.207 (1): a `V3001` raised from a body holding a syntax error points at the body's calls,
+// so it is a cascade and stays suppressed, though its primary span is the function's name.
+fn log() -> Unit { Console.print("x")
+  let y = (1 + }

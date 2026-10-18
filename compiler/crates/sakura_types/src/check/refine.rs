@@ -117,7 +117,7 @@ impl Checker<'_> {
                 ty: r.def,
                 pred: r.pred,
                 shown,
-                suppress: self.b.suppress,
+                suppress: self.suppressed(&self.span(self.expr_range(e))),
             };
             self.literals.push(pending);
         }

@@ -159,8 +159,9 @@ struct BodyState {
     validates: Vec<(ExprId, ExprId)>,
     /// `Untrusted.validate` paths in callee position.
     validate_callees: HashSet<ExprId>,
-    /// The body contains a syntax error: its type diagnostics would be cascades.
-    suppress: bool,
+    /// `(file, lo, hi)` of the body when it contains a syntax error: a diagnostic with a span
+    /// inside it is a cascade (design §17.207 (1)).
+    suppress: Option<(sakura_diagnostics::FileId, u32, u32)>,
     /// Empty list literals, checked for an inferable element type (V2010).
     empty_lists: Vec<ExprId>,
     /// Initializers of generalized `let`s (their leftover variables are quantified).
@@ -435,8 +436,17 @@ impl<'p> Checker<'p> {
         self.push(d);
     }
 
+    /// Whether `s` lies inside the current body that holds a syntax error.
+    fn suppressed(&self, s: &Span) -> bool {
+        self.b
+            .suppress
+            .is_some_and(|(f, lo, hi)| s.file == f && lo <= s.start && s.end <= hi)
+    }
+
     fn push(&mut self, mut d: Diagnostic) {
-        if self.body.is_some() && self.b.suppress {
+        // Any span, not only the primary: a `V3001` points at the signature and at the body's
+        // calls, which a syntax error may have mangled.
+        if d.spans.iter().any(|s| self.suppressed(s)) {
             return;
         }
         let mut texts: Vec<&mut String> = vec![&mut d.message];

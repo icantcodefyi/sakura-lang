@@ -171,8 +171,10 @@ pub fn check_program(
 }
 
 /// Like [`check_program`], given the lex/parse diagnostics of the same snapshot: type
-/// diagnostics inside a body that contains a syntax error are suppressed, because the syntax
-/// error is their root cause (§12.2 "no cascades").
+/// diagnostics with a span inside a body that contains a syntax error are suppressed, because
+/// the syntax error is their root cause (§12.2 "no cascades"). Suppression is by place, not
+/// time: a diagnostic raised while such a body is checked but located wholly elsewhere, such as
+/// another module's signature, is reported (design §17.207 (1)).
 pub fn check_program_with(
     program: &sakura_hir::Program,
     syntax_errors: &[sakura_diagnostics::Diagnostic],

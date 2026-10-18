@@ -1,0 +1,11 @@
+// milestone: M1
+// expect: V0001 V2002 V2010
+// expect-span: V2002 1:15
+// §17.207 (1): as `V2002_signature_first_used_in_broken_body`, with `lib.f`'s signature first
+// lowered from a sound function before the broken test block uses it.
+import main/lib
+
+pub fn g() -> Int { List.len(lib.f()) }
+
+test "t" { let x = lib.f()
+  let y = (1 + }

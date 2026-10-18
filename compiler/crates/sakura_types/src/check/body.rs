@@ -347,10 +347,9 @@ impl<'p> Checker<'p> {
         let (lo, hi) = ranges.fold((u32::MAX, 0u32), |(lo, hi), r| {
             (lo.min(r.start().into()), hi.max(r.end().into()))
         });
-        self.b.suppress = self
-            .syntax_errors
-            .iter()
-            .any(|(f, at)| *f == file && lo <= *at && *at <= hi);
+        self.b.suppress = (self.syntax_errors.iter())
+            .any(|(f, at)| *f == file && lo <= *at && *at <= hi)
+            .then_some((file, lo, hi));
         let saved_body = self.body.replace(body);
         let saved_level = self.inf.level();
         self.inf.set_level(0);

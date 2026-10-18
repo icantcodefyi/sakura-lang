@@ -1,0 +1,9 @@
+// milestone: M1
+// expect: V0001 V2002 V2010
+// expect-span: V2002 1:15
+// §17.207 (1): a syntax error suppresses only diagnostics inside its own body. `lib.f`'s bad
+// signature is first lowered from this broken test block, and is still reported in lib.
+import main/lib
+
+test "t" { let x = lib.f()
+  let y = (1 + }

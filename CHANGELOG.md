@@ -198,6 +198,12 @@ published yet.
 
 ### Fixed
 
+- A syntax error now hides only the diagnostics that point into the body holding it (design
+  §17.207 (1)). Before, every diagnostic raised while that body was checked was dropped, so
+  `sakura check` could miss an error in another module, such as a bad signature (`V2002`)
+  first used from the broken body, that an analysis after an edit then reported. Diagnostics
+  inside the broken body, and a `V3001` about its calls, stay suppressed as before.
+
 - After an edit, a literal into a refined type is checked again when the edited function is
   reached from the refinement only through a `requires` or `ensures` clause, in the LSP and MCP
   servers and any other process that analyses more than once (design §17.87). Before, the

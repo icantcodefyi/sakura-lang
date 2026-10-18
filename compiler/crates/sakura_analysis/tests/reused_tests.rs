@@ -62,31 +62,41 @@ fn test_blocks_of_reused_modules_carry_over_and_edited_ones_are_rechecked() {
     assert_eq!(codes(&warm), ["V5004", "V2001"]);
 
     // A signature's diagnostics are raised where it is first used. In a fresh analysis that can
-    // be an earlier module's test block, which a reusing analysis does not check.
+    // be an earlier module's test block, which a reusing analysis does not check. The block may
+    // hold a syntax error, which suppresses only diagnostics inside it (design §17.207 (1)).
     let lib = |g: &str| {
         format!("pub fn plain() -> Int {{ {g} }}\n\npub fn f() -> List<Int, Int> {{ [] }}\n")
     };
-    let snap = |g: &str, extra: bool| {
-        let mut files = vec![
-            (
-                "file:///s/src/app.sak".to_owned(),
-                "import main/lib\n\ntest \"t\" { lib.f() }\n".to_owned(),
-            ),
-            ("file:///s/src/lib.sak".to_owned(), lib(g)),
-        ];
-        if extra {
-            files.push(("zzz:///notes.txt".to_owned(), String::new()));
-        }
-        Snapshot::with_std(files)
-    };
-    let fresh = Analysis::analyze(&snap("\"x\"", true));
-    let _ = Analysis::analyze(&snap("true", false));
-    let before = stats();
-    let reused = Analysis::analyze(&snap("\"x\"", false));
-    assert_eq!(
-        stats().checked_modules - before.checked_modules,
-        1,
-        "app is reused"
-    );
-    assert_eq!(format!("{:?}", reused.check), format!("{:?}", fresh.check));
+    for (test, want) in [
+        ("lib.f()", ["V2001", "V2002", "V2010"].as_slice()),
+        (
+            "let x = lib.f()\n  let y = (1 + ",
+            ["V0001", "V2001", "V2002", "V2010"].as_slice(),
+        ),
+    ] {
+        let snap = |g: &str, extra: bool| {
+            let mut files = vec![
+                (
+                    "file:///s/src/app.sak".to_owned(),
+                    format!("import main/lib\n\ntest \"t\" {{ {test} }}\n"),
+                ),
+                ("file:///s/src/lib.sak".to_owned(), lib(g)),
+            ];
+            if extra {
+                files.push(("zzz:///notes.txt".to_owned(), String::new()));
+            }
+            Snapshot::with_std(files)
+        };
+        let fresh = Analysis::analyze(&snap("\"x\"", true));
+        let _ = Analysis::analyze(&snap("true", false));
+        let before = stats();
+        let reused = Analysis::analyze(&snap("\"x\"", false));
+        assert_eq!(
+            stats().checked_modules - before.checked_modules,
+            1,
+            "app is reused"
+        );
+        assert_eq!(format!("{:?}", reused.check), format!("{:?}", fresh.check));
+        assert_eq!(codes(&fresh), want, "{test}");
+    }
 }
