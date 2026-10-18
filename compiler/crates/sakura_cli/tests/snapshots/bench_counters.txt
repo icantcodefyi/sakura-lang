@@ -1,0 +1,63 @@
+binary_trees n=8
+  direct: frames 4, boxes 0, dups 51550, drops 52251
+  all-frame: frames 77669, boxes 0, dups 51550, drops 52251
+contracts n=1000
+  direct: frames 2175, boxes 1070, dups 4220, drops 8278
+  all-frame: frames 3176, boxes 1070, dups 4220, drops 8278
+contracts_plain n=1000
+  direct: frames 1121, boxes 1070, dups 2110, drops 4185
+  all-frame: frames 2122, boxes 1070, dups 2110, drops 4185
+countdown n=1000
+  direct: frames 1006, boxes 0, dups 2, drops 6
+  all-frame: frames 1007, boxes 0, dups 2, drops 6
+deltablue n=100
+  direct: frames 7921, boxes 84984, dups 277112, drops 268783
+  all-frame: frames 156545, boxes 84984, dups 277112, drops 268783
+fib n=20
+  direct: frames 4, boxes 0, dups 2, drops 6
+  all-frame: frames 21896, boxes 0, dups 2, drops 6
+handled_d1 n=1000
+  direct: frames 1005, boxes 0, dups 2, drops 2006
+  all-frame: frames 1005, boxes 0, dups 2, drops 2006
+handled_d16 n=1000
+  direct: frames 1005, boxes 0, dups 2, drops 2006
+  all-frame: frames 1005, boxes 0, dups 2, drops 2006
+handled_d4 n=1000
+  direct: frames 1005, boxes 0, dups 2, drops 2006
+  all-frame: frames 1005, boxes 0, dups 2, drops 2006
+handled_fwd n=1000
+  direct: frames 2005, boxes 0, dups 2, drops 3006
+  all-frame: frames 2005, boxes 0, dups 2, drops 3006
+handled_reentry n=1000
+  direct: frames 2006, boxes 2001, dups 2003, drops 5009
+  all-frame: frames 2007, boxes 2001, dups 2003, drops 5009
+handled_suspend n=1000
+  direct: frames 1008, boxes 0, dups 2, drops 3010
+  all-frame: frames 1012, boxes 0, dups 2, drops 3010
+json_validate n=100
+  direct: frames 4, boxes 0, dups 493, drops 2685
+  all-frame: frames 107, boxes 0, dups 493, drops 2685
+map_set n=1000
+  direct: frames 2005, boxes 15834, dups 15011, drops 34843
+  all-frame: frames 9005, boxes 15834, dups 15011, drops 34843
+nbody n=1000
+  direct: frames 7005, boxes 0, dups 42026, drops 48043
+  all-frame: frames 52038, boxes 0, dups 42026, drops 48043
+pipeline n=1000
+  direct: frames 2508, boxes 2501, dups 6005, drops 9013
+  all-frame: frames 2509, boxes 2501, dups 6005, drops 9013
+rbtree n=1000
+  direct: frames 4, boxes 0, dups 118637, drops 110993
+  all-frame: frames 22054, boxes 0, dups 118637, drops 110993
+shapes n=1000
+  direct: frames 5010, boxes 10184, dups 43723, drops 49733
+  all-frame: frames 21010, boxes 10184, dups 43723, drops 49733
+sieve n=1000
+  direct: frames 4, boxes 0, dups 2473, drops 4567
+  all-frame: frames 1444, boxes 0, dups 2473, drops 4567
+spectral_norm n=50
+  direct: frames 4, boxes 2050, dups 100213, drops 202369
+  all-frame: frames 200265, boxes 2050, dups 100213, drops 202369
+tokenizer n=1000
+  direct: frames 4, boxes 0, dups 3005, drops 10011
+  all-frame: frames 1005, boxes 0, dups 3005, drops 10011
