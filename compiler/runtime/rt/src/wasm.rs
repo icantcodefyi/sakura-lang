@@ -8,9 +8,13 @@
 //! recorded on the current task, so compiled code releases what it holds and returns step 3.
 //! Builtins (`rt_b_*`) take their arguments owned, also on the defect path (ABI.md P2, L6).
 //!
-//! Every export takes the instance with `rt()` once and lets it go before it returns or calls
-//! out, so no two `&mut Rt` are live at once: `run` calls compiled code (`sakura_link.dispatch`)
-//! between `Rt::next` and `Rt::after`, holding nothing.
+//! Every export takes the instance with `rt()` and lets it go before it returns or calls out,
+//! so no two `&mut Rt` are live at once: `run` calls compiled code (`sakura_link.dispatch`)
+//! between `Rt::next` and `Rt::after`, holding nothing. An import that may call back into the
+//! guest (it answers through `alloc_bytes`, which takes the instance itself) is called only from
+//! an export's own body or a helper without an `&mut Rt` parameter, never below a function that
+//! holds one as a parameter (a parameter is `noalias` for the whole call), and the instance is
+//! taken again after it returns (`reentrant`, `with_args_reentrant`; security review W3).
 
 use core::cell::UnsafeCell;
 
@@ -42,6 +46,13 @@ unsafe extern "C" {
     /// `call_indirect` of compiled code `code` with `(env, frame)`: synthesised by the linker,
     /// never an import of the linked module.
     fn dispatch(code: u32, env: u32, frame: u32) -> u32;
+}
+
+/// Call `import`, which may call back into the guest (it answers through `alloc_bytes`), and take
+/// the instance again after it returns: the caller holds no `&mut Rt` across it (module doc).
+fn reentrant<R>(import: impl FnOnce() -> R) -> (&'static mut Rt, R) {
+    let r = import();
+    (rt(), r)
 }
 
 /// Record `d` on the current task for compiled code (which returns step 3 next).
@@ -531,7 +542,7 @@ pub extern "C" fn rt_code_console_read_line(_env: u32, frame: u32) -> u32 {
     let clause = rt.take_fslot(frame, 0) as u32;
     rt.drop(clause);
     // SAFETY: a plain import; the line arrives as a `Bytes` from `alloc_bytes`.
-    let b = unsafe { host::console_read_line() };
+    let (rt, b) = reentrant(|| unsafe { host::console_read_line() });
     let r = if b == 0 {
         Ok(rt.none())
     } else {
@@ -998,7 +1009,7 @@ pub extern "C" fn rt_code_random_bytes(_env: u32, frame: u32) -> u32 {
         });
     }
     // SAFETY: a plain import; the host copies the bytes out through `alloc_bytes`.
-    let b = unsafe { host::random_bytes(n) };
+    let (rt, b) = reentrant(|| unsafe { host::random_bytes(n) });
     if b == 0 {
         return rt.raise(Defect::HEAP_EXHAUSTED);
     }
@@ -1010,7 +1021,7 @@ pub extern "C" fn rt_code_random_uuid(_env: u32, frame: u32) -> u32 {
     let rt = rt();
     clause_args(rt, frame);
     // SAFETY: a plain import; the text arrives as a `Bytes` from `alloc_bytes`.
-    let b = unsafe { host::random_uuid() };
+    let (rt, b) = reentrant(|| unsafe { host::random_uuid() });
     let r = bytes_to_string(rt, b);
     ok_or_raise(rt, r)
 }
@@ -1250,6 +1261,30 @@ fn with_args<R>(rt: &mut Rt, args: &[u32], call: impl FnOnce(&mut Rt, u32, u32) 
     r
 }
 
+/// `with_args` for an import that may call back into the guest: no `&mut Rt` is held across
+/// `call(ptr, len)`, so the caller takes the instance again afterwards (module doc).
+fn with_args_reentrant<R>(args: &[u32], call: impl FnOnce(u32, u32) -> R) -> Res<R> {
+    let rt = rt();
+    let secret = rt.sched.vt_secrets;
+    let b = match rt.vt_encode_tuple(args) {
+        Ok(b) => b,
+        Err(d) => {
+            for &a in args {
+                rt.drop(a);
+            }
+            return Err(d);
+        }
+    };
+    let (len, at) = rt.data(b);
+    let out = call(at, len);
+    let rt = self::rt();
+    drop_transport(rt, b, secret);
+    for &a in args {
+        rt.drop(a);
+    }
+    Ok(out)
+}
+
 /// Drop the encoded tuple `b`, its bytes overwritten first when it was encoded for a kind-`secret`
 /// import (`vt_secrets` set): the clear inner values must not outlive the call in a freed block.
 fn drop_transport(rt: &mut Rt, b: u32, secret: bool) {
@@ -1299,10 +1334,11 @@ pub extern "C" fn rt_code_sql_query(_env: u32, frame: u32) -> u32 {
         rt.take_fslot(frame, 3) as u32,
     );
     // SAFETY: a plain import with a slice inside linear memory, copied in at once.
-    let r = with_args(rt, &[q, schema], |_, at, len| unsafe {
+    let out = with_args_reentrant(&[q, schema], |at, len| unsafe {
         host::sql_query(instance, at, len)
-    })
-    .and_then(|out| answer(rt, out));
+    });
+    let rt = self::rt();
+    let r = out.and_then(|out| answer(rt, out));
     ok_or_fail(rt, r)
 }
 
@@ -1316,10 +1352,11 @@ pub extern "C" fn rt_code_sql_execute(_env: u32, frame: u32) -> u32 {
     };
     let q = rt.take_fslot(frame, 2) as u32;
     // SAFETY: as in `rt_code_sql_query`.
-    let r = with_args(rt, &[q], |_, at, len| unsafe {
+    let out = with_args_reentrant(&[q], |at, len| unsafe {
         host::sql_execute(instance, at, len)
-    })
-    .and_then(|out| answer(rt, out));
+    });
+    let rt = self::rt();
+    let r = out.and_then(|out| answer(rt, out));
     match r {
         // `execute` returns an `Int` in its declared representation (errata L12).
         Ok((0, v)) => {
@@ -1345,7 +1382,8 @@ pub extern "C" fn rt_code_sql_transaction(_env: u32, frame: u32) -> u32 {
             };
             let body = rt.take_fslot(frame, 2) as u32;
             // SAFETY: a plain import; the answer arrives as a `Bytes`.
-            let begun = answer(rt, unsafe { host::sql_begin(instance) });
+            let (rt, b) = reentrant(|| unsafe { host::sql_begin(instance) });
+            let begun = answer(rt, b);
             let token = match begun {
                 Ok((0, t)) => {
                     let token = rt.int_of(t);
@@ -1819,12 +1857,13 @@ pub extern "C" fn rt_code_js_clause(_env: u32, frame: u32) -> u32 {
                 }
             }
             // SAFETY: a plain import with a slice inside linear memory, copied in at once.
-            with_args(rt, &args[..arity], |_, at, len| unsafe {
+            with_args_reentrant(&args[..arity], |at, len| unsafe {
                 host::js_clause(instance, op, at, len)
             })
         }
-        block => js_continue(rt, frame, block),
+        block => js_continue(frame, block),
     };
+    let rt = self::rt();
     match answer {
         Ok(b) => js_answer(rt, frame, b),
         Err(d) => {
@@ -1836,7 +1875,8 @@ pub extern "C" fn rt_code_js_clause(_env: u32, frame: u32) -> u32 {
 
 /// A JS clause or callback resumed after an operation or call it asked for: block 1 returned,
 /// 2 failed (the caught error).
-fn js_continue(rt: &mut Rt, frame: u32, block: u32) -> Res<u32> {
+fn js_continue(frame: u32, block: u32) -> Res<u32> {
+    let rt = rt();
     if block == 1 {
         rt.try_pop(frame);
         let v = rt.take_ret() as u32;
@@ -1846,10 +1886,10 @@ fn js_continue(rt: &mut Rt, frame: u32, block: u32) -> Res<u32> {
         } else {
             v
         };
-        js_resume(rt, frame, 0, v)
+        js_resume(frame, 0, v)
     } else {
         let e = rt.take_ret() as u32;
-        js_resume(rt, frame, 1, e)
+        js_resume(frame, 1, e)
     }
 }
 
@@ -1863,10 +1903,10 @@ fn js_release(rt: &mut Rt, frame: u32) {
 
 /// The JS continuation waiting in the frame's session gets `v` (consumed): the operation's
 /// result (`status` 0) or its failure (1).
-fn js_resume(rt: &mut Rt, frame: u32, status: u32, v: u32) -> Res<u32> {
-    let session = rt.fslot(frame, JS_SESSION) as u32;
+fn js_resume(frame: u32, status: u32, v: u32) -> Res<u32> {
+    let session = rt().fslot(frame, JS_SESSION) as u32;
     // SAFETY: a plain import with a slice inside linear memory, copied in at once.
-    with_args(rt, &[v], |_, at, len| unsafe {
+    with_args_reentrant(&[v], |at, len| unsafe {
         host::js_resume(session, status, at, len)
     })
 }
@@ -2042,14 +2082,15 @@ pub extern "C" fn rt_code_js_callback(_env: u32, frame: u32) -> u32 {
             });
             rt.drop(closure);
             kept.and_then(|()| {
-                with_args(rt, &[arg], |_, at, len| {
+                with_args_reentrant(&[arg], |at, len| {
                     // SAFETY: a plain import with a slice inside linear memory, copied in at once.
                     unsafe { host::js_callback(id, at, len) }
                 })
             })
         }
-        block => js_continue(rt, frame, block),
+        block => js_continue(frame, block),
     };
+    let rt = self::rt();
     match answer {
         Ok(b) => js_answer(rt, frame, b),
         Err(d) => {
@@ -2090,7 +2131,7 @@ pub extern "C" fn rt_k_property_run(_env: u32, frame: u32) -> u32 {
                 Err(d) => return rt.raise(d),
             };
             rt.set_fslot(frame, 8, session as u64);
-            prop_advance(rt, frame, 0, 0)
+            prop_advance(frame, 0, 0)
         }
         1 => {
             let child = rt.fslot(frame, 9) as u32;
@@ -2129,7 +2170,7 @@ pub extern "C" fn rt_k_property_run(_env: u32, frame: u32) -> u32 {
                 Ok(t) => t,
                 Err(d) => return rt.raise(d),
             };
-            prop_advance(rt, frame, code | detail << 8, text)
+            prop_advance(frame, code | detail << 8, text)
         }
         _ => {
             // `Test.record_failure` of the report returned.
@@ -2149,11 +2190,12 @@ fn prop_done(rt: &mut Rt, frame: u32) -> u32 {
 
 /// Tell the host how the last case ended (`result`: 0 for none yet; `text` a `String` or 0,
 /// consumed) and act on its answer.
-fn prop_advance(rt: &mut Rt, frame: u32, result: i64, text: u32) -> u32 {
+fn prop_advance(frame: u32, result: i64, text: u32) -> u32 {
+    let rt = rt();
     let session = rt.fslot(frame, 8) as i64;
     let (tlen, tat) = if text == 0 { (0, 0) } else { rt.data(text) };
     // SAFETY: a plain import with a slice inside linear memory, copied in at once.
-    let b = unsafe { host::prop_next(session, result, tat, tlen) };
+    let (rt, b) = reentrant(|| unsafe { host::prop_next(session, result, tat, tlen) });
     if text != 0 {
         rt.drop(text);
     }
@@ -2365,7 +2407,7 @@ fn test_value(frame: u32, f: unsafe extern "C" fn() -> u32) -> u32 {
     let rt = rt();
     clause_args(rt, frame);
     // SAFETY: a plain import; the value arrives as a `Bytes` from `alloc_bytes`.
-    let b = unsafe { f() };
+    let (rt, b) = reentrant(|| unsafe { f() });
     if b == 0 {
         return rt.raise(Defect::HEAP_EXHAUSTED);
     }
