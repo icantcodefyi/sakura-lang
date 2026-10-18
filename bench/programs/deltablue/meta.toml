@@ -1,0 +1,14 @@
+family = "AWFY medium workload"
+sizes = [100, 1000, 5000, 10000]
+lane = "matched"
+ints = "js-safe"
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "4951"
+"1" = "9177"
+"2" = "12188"
+"3" = "15209"
+"100" = "355776"
+"1000" = "8002176"
+"5000" = "139986176"
+"10000" = "529966176"

@@ -1,0 +1,45 @@
+Provenance and licence of the DeltaBlue program
+===============================================
+
+DeltaBlue is John Maloney's constraint-solver benchmark. These files are ports of the
+JavaScript version in Are We Fast Yet (Stefan Marr, Benoit Daloze and Hanspeter Mössenböck,
+https://github.com/smarr/are-we-fast-yet, benchmarks/JavaScript/deltablue.js, fetched
+2026-10-18), which says of itself:
+
+    The benchmark in its current state is a derivation from the SOM version,
+    which is derived from Mario Wolczko's Smalltalk version of DeltaBlue.
+
+    The original license details are available here:
+    http://web.archive.org/web/20050825101121/http://www.sunlabs.com/people/mario/java_benchmarking/index.html
+
+and whose LICENSE.md says, for Richards and DeltaBlue:
+
+    These benchmark are derived from the Smalltalk sources provided by Mario Wolczko.
+    License details are available at:
+      http://web.archive.org/web/20050825101121/http://www.sunlabs.com/people/mario/java_benchmarking/index.html
+    Further information:
+      http://www.wolczko.com/java_benchmarking.html
+
+The archived page credits John Maloney "for creating the DeltaBlue benchmark, and granting
+permission to distribute a translation of the benchmark" and links its licensing terms from a
+separate page that was not retrieved for this commit. A maintainer must confirm those terms
+before this program is redistributed outside this repository.
+
+Changes from the Are We Fast Yet version
+----------------------------------------
+
+js/main.mjs keeps AWFY's classes and methods. sakura/main.sakura reimplements the same
+algorithm over persistent maps of variable and constraint records, because Sakura Lang has no
+mutable objects; every traversal and queue keeps AWFY's order. Both:
+
+- replace SOM's Vector with lists/arrays; queues advance a head index (SOM's removeFirst is
+  O(1)); removing a constraint from a variable drops every occurrence, as SOM's remove does;
+- sort the unsatisfied constraints strongest first with a stable sort instead of SOM's
+  in-place sort (Array.prototype.sort; List.sort_by);
+- use integer values: ScaleConstraint's backward step is Int division in Sakura and `/` in
+  JS, which agree because every division in the two tests is exact (the oracle checks it);
+- return a checksum instead of `true`: chainTest returns the sum of the 100 values it checks
+  plus the plan length; projectionTest returns the two checked values plus the sums of all
+  destination values after the scale and offset changes, and 0 for n = 0 (AWFY's version
+  needs n >= 1). run(n) adds the two. Every AWFY check still fails the run (a defect in
+  Sakura, an Error in JS).

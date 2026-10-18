@@ -103,7 +103,7 @@ whole table.
 ## Programs
 
 Fifteen §17.109 families; `handled` is six entries and `contracts` has its companion, so
-there are 20 program directories. All use `ints = "js-safe"`.
+there are 21 program directories. All use `ints = "js-safe"`.
 
 | Program | Sizes | `run(n)` returns |
 |---|---|---|
@@ -119,6 +119,7 @@ there are 20 program directories. All use `ints = "js-safe"`.
 | `shapes` | 1e3, 1e4, 5e4, 1e5 | n MINSTD-generated items, five rounds of `..` updates, variant dispatch and `Option` |
 | `tokenizer` | 1e3, 1e4, 5e4, 1e5 | text of n ASCII and non-ASCII words; tokens + 3·UTF-8 bytes + 7·scalars + 11·tokens ending in `,` |
 | `json_validate` | 100, 1e3, 1e4, 3e4 | n JSON lines decoded into a refined record (every 17th empty name, every 13th age 200), valid ones re-encoded; valid + bytes + ids + 1000·invalid |
+| `deltablue` | 100, 1e3, 5e3, 1e4 | Are We Fast Yet's DeltaBlue: `chainTest(n)` + `projectionTest(n)`, each returning the values AWFY checks (provenance and changes in `programs/deltablue/LICENSE`) |
 | `handled_d1`, `_d4`, `_d16` | 1e3, 1e4, 1e5, 1e6 | Σ `Tick.next() % 7` with the counter 1, 4 or 16 handler frames from the perform |
 | `handled_fwd` | same | the same through a wrapper handler that forwards to the counter |
 | `handled_reentry` | same | the perform happens in a callback that `List.fold` calls |
@@ -133,9 +134,12 @@ JS controls for `handled_*` are closure calls on a stateful object (research/10
 
 1. **No `expected/` directory.** The oracle table lives only in `meta.toml` `[checksums]`,
    one source of truth that `bench oracle --write` generates and every lane must match.
-2. **`deltablue` is not in this commit.** Its object graph needs a faithful Sakura port
-   over persistent maps (no mutable references); it follows in a separate commit, with the
-   Are We Fast Yet licence and attribution in `programs/deltablue/LICENSE`.
+2. **`deltablue` over persistent maps.** Sakura Lang has no mutable objects, so the Sakura
+   port keeps AWFY's algorithm and traversal order over maps of variable and constraint
+   records threaded through every planner call; the JS control is AWFY's JavaScript with
+   arrays for SOM's Vector. Both sort with a stable sort instead of SOM's, and return a
+   checksum instead of `true` (`programs/deltablue/LICENSE`). The redistribution terms of
+   the original DeltaBlue sources still need a maintainer's confirmation.
 3. **`sieve` makes one full pass per prime** instead of striding over multiples: Sakura
    Lang has no mutable array or `List.set`, and a stride over a persistent list would be
    O(n) per write. The JS control makes the same passes, so the lane stays matched.
@@ -164,5 +168,7 @@ All programs were written for this suite and are licensed like the repository. `
 [The Computer Language Benchmarks Game](https://benchmarksgame-team.pages.debian.net/benchmarksgame/)
 (including the n-body initial conditions); no submitted program was copied. `rbtree`
 follows Okasaki's insertion (*Red-black trees in a functional setting*, JFP 1999).
+`deltablue` is ported from Are We Fast Yet (Marr, Daloze and Mössenböck, DLS 2016), derived
+from Mario Wolczko's Smalltalk version of John Maloney's benchmark; see its `LICENSE`.
 
 AI involvement: written by Claude (Opus 5.5) as WS-B; the human contributor owns the result.

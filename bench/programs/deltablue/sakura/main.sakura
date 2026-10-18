@@ -1,0 +1,418 @@
+// DeltaBlue, ported from Are We Fast Yet's JavaScript version (see ../LICENSE). Sakura Lang has
+// no mutable objects, so variables and constraints are records in persistent maps keyed by id,
+// and every planner operation takes and returns the planner state. The algorithm, the order of
+// every traversal and queue, and the two AWFY tests are kept; differences from AWFY are listed
+// in ../LICENSE. run(n) = chain_test(n) + projection_test(n), each returning the values the AWFY
+// test checks (a failed AWFY check is a defect here).
+import std/cli.{Cli}
+
+let required = -800
+let preferred = -400
+let strong_default = -200
+let default_strength = 0
+let absolute_weakest = 10000
+
+type Dir = NoDir | Forward | Backward
+type Kind = Edit | Stay | Equality | Scale(Int, Int)
+type Con = { kind: Kind, strength: Int, v1: Int, v2: Int, dir: Dir, satisfied: Bool }
+
+type Var = {
+  value: Int,
+  constraints: List<Int>,
+  determined_by: Int,
+  walk: Int,
+  stay: Bool,
+  mark: Int,
+}
+
+type Planner = { vars: Map<Int, Var>, cons: Map<Int, Con>, mark: Int }
+
+fn planner() -> Planner { Planner { vars: Map.empty(), cons: Map.empty(), mark: 1 } }
+
+fn var_of(p: Planner, id: Int) -> Var { Option.expect(Map.get(p.vars, id), "variable") }
+
+fn con_of(p: Planner, id: Int) -> Con { Option.expect(Map.get(p.cons, id), "constraint") }
+
+fn put_var(p: Planner, id: Int, v: Var) -> Planner {
+  Planner { ..p, vars: Map.insert(p.vars, id, v) }
+}
+
+fn put_con(p: Planner, id: Int, c: Con) -> Planner {
+  Planner { ..p, cons: Map.insert(p.cons, id, c) }
+}
+
+fn new_var(p: Planner, value: Int) -> (Planner, Int) {
+  let id = Map.len(p.vars)
+  let v = Var {
+    value,
+    constraints: [],
+    determined_by: 0 - 1,
+    walk: absolute_weakest,
+    stay: true,
+    mark: 0,
+  }
+  (put_var(p, id, v), id)
+}
+
+fn value_of(p: Planner, id: Int) -> Int { var_of(p, id).value }
+
+fn set_value(p: Planner, id: Int, value: Int) -> Planner {
+  put_var(p, id, Var { ..var_of(p, id), value })
+}
+
+fn set_mark(p: Planner, id: Int, mark: Int) -> Planner {
+  put_var(p, id, Var { ..var_of(p, id), mark })
+}
+
+fn new_mark(p: Planner) -> (Planner, Int) { (Planner { ..p, mark: p.mark + 1 }, p.mark + 1) }
+
+// ---- constraint queries
+
+fn is_unary(c: Con) -> Bool {
+  match c.kind {
+    Edit | Stay => true,
+    _ => false,
+  }
+}
+
+fn is_input(c: Con) -> Bool {
+  match c.kind {
+    Edit => true,
+    _ => false,
+  }
+}
+
+fn is_satisfied(c: Con) -> Bool { if is_unary(c) { c.satisfied } else { c.dir != NoDir } }
+
+fn output(c: Con) -> Int { if is_unary(c) || c.dir != Forward { c.v1 } else { c.v2 } }
+
+/// The variables a constraint reads, as AWFY's inputsDo.
+fn inputs(c: Con) -> List<Int> {
+  let primary = if c.dir == Forward { c.v1 } else { c.v2 }
+  match c.kind {
+    Edit | Stay => [],
+    Equality => [primary],
+    Scale(s, o) => [primary, s, o],
+  }
+}
+
+/// The variables a constraint is attached to, as AWFY's addToGraph.
+fn attached(c: Con) -> List<Int> {
+  match c.kind {
+    Edit | Stay => [c.v1],
+    Equality => [c.v1, c.v2],
+    Scale(s, o) => [c.v1, c.v2, s, o],
+  }
+}
+
+fn weakest(a: Int, b: Int) -> Int { if b > a { b } else { a } }
+
+// ---- constraint operations
+
+fn unsatisfied(c: Con) -> Con { Con { ..c, dir: NoDir, satisfied: false } }
+
+fn add_to_graph(start: Planner, cid: Int) -> Planner {
+  var p = start
+  let c = con_of(p, cid)
+  for v in attached(c) {
+    let x = var_of(p, v)
+    p = put_var(p, v, Var { ..x, constraints: List.push(x.constraints, cid) })
+  }
+  put_con(p, cid, unsatisfied(c))
+}
+
+fn remove_from_graph(start: Planner, cid: Int) -> Planner {
+  var p = start
+  let c = con_of(p, cid)
+  for v in attached(c) {
+    let x = var_of(p, v)
+    let determined_by = if x.determined_by == cid { 0 - 1 } else { x.determined_by }
+    p = put_var(
+      p,
+      v,
+      Var { ..x, constraints: List.filter(x.constraints, fn(c) { c != cid }), determined_by },
+    )
+  }
+  put_con(p, cid, unsatisfied(c))
+}
+
+fn choose_method(p: Planner, cid: Int, mark: Int) -> Planner {
+  let c = con_of(p, cid)
+  if is_unary(c) {
+    let out = var_of(p, c.v1)
+    return put_con(p, cid, Con { ..c, satisfied: out.mark != mark && c.strength < out.walk })
+  }
+  let v1 = var_of(p, c.v1)
+  let v2 = var_of(p, c.v2)
+  let dir = if v1.mark == mark {
+    if v2.mark != mark && c.strength < v2.walk { Forward } else { NoDir }
+  } else if v2.mark == mark {
+    if v1.mark != mark && c.strength < v1.walk { Backward } else { NoDir }
+  } else if v1.walk > v2.walk {
+    if c.strength < v1.walk { Backward } else { NoDir }
+  } else if c.strength < v2.walk { Forward } else { NoDir }
+  put_con(p, cid, Con { ..c, dir })
+}
+
+fn execute(p: Planner, cid: Int) -> Planner {
+  let c = con_of(p, cid)
+  match c.kind {
+    Edit | Stay => p,
+    Equality => if c.dir == Forward { set_value(p, c.v2, value_of(p, c.v1)) } else {
+      set_value(p, c.v1, value_of(p, c.v2))
+    },
+    Scale(s, o) => if c.dir == Forward {
+      set_value(p, c.v2, value_of(p, c.v1) * value_of(p, s) + value_of(p, o))
+    } else { set_value(p, c.v1, (value_of(p, c.v2) - value_of(p, o)) / value_of(p, s)) },
+  }
+}
+
+fn recalculate(start: Planner, cid: Int) -> Planner {
+  var p = start
+  let c = con_of(p, cid)
+  let out_id = output(c)
+  let out = var_of(p, out_id)
+  if is_unary(c) {
+    p = put_var(p, out_id, Var { ..out, walk: c.strength, stay: !is_input(c) })
+  } else {
+    let ihn = var_of(p, if c.dir == Forward { c.v1 } else { c.v2 })
+    let stay = match c.kind {
+      Scale(s, o) => ihn.stay && var_of(p, s).stay && var_of(p, o).stay,
+      _ => ihn.stay,
+    }
+    p = put_var(p, out_id, Var { ..out, walk: weakest(c.strength, ihn.walk), stay })
+  }
+  if var_of(p, out_id).stay { execute(p, cid) } else { p }
+}
+
+fn inputs_known(p: Planner, c: Con, mark: Int) -> Bool {
+  if is_unary(c) { return true }
+  let v = var_of(p, if c.dir == Forward { c.v1 } else { c.v2 })
+  v.mark == mark || v.stay || v.determined_by < 0
+}
+
+/// AWFY's satisfy: the constraint it overrides, or -1.
+fn satisfy(start: Planner, cid: Int, mark: Int) -> (Planner, Int) {
+  var p = choose_method(start, cid, mark)
+  let c = con_of(p, cid)
+  if !is_satisfied(c) {
+    if c.strength == required {
+      return (Option.expect(None, "Could not satisfy a required constraint"), 0)
+    }
+    return (p, 0 - 1)
+  }
+  for i in inputs(c) { p = set_mark(p, i, mark) }
+  let out_id = output(c)
+  let overridden = var_of(p, out_id).determined_by
+  if overridden >= 0 { p = put_con(p, overridden, unsatisfied(con_of(p, overridden))) }
+  p = put_var(p, out_id, Var { ..var_of(p, out_id), determined_by: cid })
+  let (q, ok) = add_propagate(p, cid, mark)
+  if !ok { return (Option.expect(None, "Cycle encountered"), 0) }
+  (set_mark(q, out_id, mark), overridden)
+}
+
+// ---- planner
+
+fn add_constraint(start: Planner, c: Con) -> (Planner, Int) {
+  let cid = Map.len(start.cons)
+  let p = add_to_graph(put_con(start, cid, c), cid)
+  (incremental_add(p, cid), cid)
+}
+
+fn destroy_constraint(start: Planner, cid: Int) -> Planner {
+  let p = if is_satisfied(con_of(start, cid)) { incremental_remove(start, cid) } else { start }
+  remove_from_graph(p, cid)
+}
+
+fn incremental_add(start: Planner, cid: Int) -> Planner {
+  let (p0, mark) = new_mark(start)
+  let (p1, first) = satisfy(p0, cid, mark)
+  var p = p1
+  var overridden = first
+  while overridden >= 0 {
+    let (q, next) = satisfy(p, overridden, mark)
+    p = q
+    overridden = next
+  }
+  p
+}
+
+fn incremental_remove(start: Planner, cid: Int) -> Planner {
+  let out = output(con_of(start, cid))
+  var p = remove_from_graph(put_con(start, cid, unsatisfied(con_of(start, cid))), cid)
+  let (q, todo) = remove_propagate_from(p, out)
+  p = q
+  for u in todo { p = incremental_add(p, u) }
+  p
+}
+
+fn consuming(p: Planner, v: Int) -> List<Int> {
+  let x = var_of(p, v)
+  List.filter(x.constraints, fn(c) { c != x.determined_by && is_satisfied(con_of(p, c)) })
+}
+
+fn add_propagate(start: Planner, cid: Int, mark: Int) -> (Planner, Bool) {
+  var p = start
+  var todo = [cid]
+  var head = 0
+  while head < List.len(todo) {
+    let d = Option.expect(todo[head], "queue")
+    head = head + 1
+    if var_of(p, output(con_of(p, d))).mark == mark { return (incremental_remove(p, cid), false) }
+    p = recalculate(p, d)
+    todo = List.concat(todo, consuming(p, output(con_of(p, d))))
+  }
+  (p, true)
+}
+
+fn remove_propagate_from(start: Planner, out: Int) -> (Planner, List<Int>) {
+  var p = put_var(
+    start,
+    out,
+    Var { ..var_of(start, out), determined_by: 0 - 1, walk: absolute_weakest, stay: true },
+  )
+  var unsat: List<Int> = []
+  var todo = [out]
+  var head = 0
+  while head < List.len(todo) {
+    let v = Option.expect(todo[head], "queue")
+    head = head + 1
+    for c in var_of(p, v).constraints {
+      if !is_satisfied(con_of(p, c)) { unsat = List.push(unsat, c) }
+    }
+    for c in consuming(p, v) {
+      p = recalculate(p, c)
+      todo = List.push(todo, output(con_of(p, c)))
+    }
+  }
+  // Strongest first; stable (AWFY uses SOM's in-place sort; see ../LICENSE).
+  (p, List.sort_by(unsat, fn(c) { con_of(p, c).strength }))
+}
+
+fn make_plan(start: Planner, sources: List<Int>) -> (Planner, List<Int>) {
+  let (p0, mark) = new_mark(start)
+  var p = p0
+  var plan: List<Int> = []
+  var todo = sources
+  var head = 0
+  while head < List.len(todo) {
+    let cid = Option.expect(todo[head], "queue")
+    head = head + 1
+    let c = con_of(p, cid)
+    let out = output(c)
+    if var_of(p, out).mark != mark && inputs_known(p, c, mark) {
+      plan = List.push(plan, cid)
+      p = set_mark(p, out, mark)
+      todo = List.concat(todo, consuming(p, out))
+    }
+  }
+  (p, plan)
+}
+
+fn extract_plan(p: Planner, constraints: List<Int>) -> (Planner, List<Int>) {
+  make_plan(
+    p,
+    List.filter(constraints, fn(cid) { is_input(con_of(p, cid)) && is_satisfied(con_of(p, cid)) }),
+  )
+}
+
+fn execute_plan(start: Planner, plan: List<Int>) -> Planner {
+  var p = start
+  for c in plan { p = execute(p, c) }
+  p
+}
+
+fn unary(kind: Kind, v: Int, strength: Int) -> Con {
+  Con { kind, strength, v1: v, v2: v, dir: NoDir, satisfied: false }
+}
+
+fn binary(kind: Kind, v1: Int, v2: Int, strength: Int) -> Con {
+  Con { kind, strength, v1, v2, dir: NoDir, satisfied: false }
+}
+
+fn change(start: Planner, v: Int, new_value: Int) -> Planner {
+  let (p0, edit) = add_constraint(start, unary(Edit, v, preferred))
+  let (p1, plan) = extract_plan(p0, [edit])
+  var p = p1
+  var i = 0
+  while i < 10 {
+    p = execute_plan(set_value(p, v, new_value), plan)
+    i = i + 1
+  }
+  destroy_constraint(p, edit)
+}
+
+// ---- the AWFY tests
+
+fn chain_test(n: Int) -> Int {
+  var p = planner()
+  var i = 0
+  while i < n + 1 {
+    let (q, _) = new_var(p, 0)
+    p = q
+    i = i + 1
+  }
+  i = 0
+  while i < n {
+    let (q, _) = add_constraint(p, binary(Equality, i, i + 1, required))
+    p = q
+    i = i + 1
+  }
+  let (q1, _) = add_constraint(p, unary(Stay, n, strong_default))
+  let (q2, edit) = add_constraint(q1, unary(Edit, 0, preferred))
+  let (q3, plan) = extract_plan(q2, [edit])
+  p = q3
+  var sum = 0
+  i = 0
+  while i < 100 {
+    p = execute_plan(set_value(p, 0, i), plan)
+    if value_of(p, n) != i { return Option.expect(None, "Chain test failed!") }
+    sum = sum + value_of(p, n)
+    i = i + 1
+  }
+  p = destroy_constraint(p, edit)
+  sum + List.len(plan)
+}
+
+fn sum_values(p: Planner, ids: List<Int>) -> Int {
+  List.fold(ids, 0, fn(acc, v) { acc + value_of(p, v) })
+}
+
+fn projection_test(n: Int) -> Int {
+  if n == 0 { return 0 }
+  let (p0, scale) = new_var(planner(), 10)
+  let (p1, offset) = new_var(p0, 1000)
+  var p = p1
+  var dests: List<Int> = []
+  var src = 0
+  var dst = 0
+  var i = 1
+  while i <= n {
+    let (q1, s) = new_var(p, i)
+    let (q2, d) = new_var(q1, i)
+    src = s
+    dst = d
+    dests = List.push(dests, d)
+    let (q3, _) = add_constraint(q2, unary(Stay, s, default_strength))
+    let (q4, _) = add_constraint(q3, binary(Scale(scale, offset), s, d, required))
+    p = q4
+    i = i + 1
+  }
+  p = change(p, src, 17)
+  let a = value_of(p, dst)
+  if a != 1170 { return Option.expect(None, "Projection test 1 failed!") }
+  p = change(p, dst, 1050)
+  let b = value_of(p, src)
+  if b != 5 { return Option.expect(None, "Projection test 2 failed!") }
+  p = change(p, scale, 5)
+  let c = sum_values(p, dests)
+  p = change(p, offset, 2000)
+  a + b + c + sum_values(p, dests)
+}
+
+pub fn run(n: Int) -> Int { chain_test(n) + projection_test(n) }
+
+// `sakura run main.sakura -- <n>...` prints run(n) for each argument.
+pub fn main() -> Unit ! {Cli, Console} {
+  for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+}
