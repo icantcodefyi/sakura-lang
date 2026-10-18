@@ -3,11 +3,13 @@
 //! [role] 12:5`), and `<name>.jsonl` holds the full JSON output with the fixture directory as `$DIR`.
 //! A `<name>.fixed.sak` companion is the repaired program shown on the code's error page
 //! (design §17.144): it must come out of the same command with exit 0 and no error or warning.
+//! A directory `<name>/` is one multi-module fixture, checked as a whole: its first `.sak` file
+//! (sorted) holds the directives, and `<name>.jsonl` sits beside the directory.
 
 mod common;
 
 use common::*;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// 1-based `line:col` (col in characters) of a byte offset.
 fn line_col(text: &str, byte: usize) -> String {
@@ -64,8 +66,22 @@ fn run_fixed(path: &Path, command: Option<&str>) -> Result<(), String> {
     }
 }
 
+/// A fixture's `.sak` files: the file itself, or a directory fixture's files, sorted.
+fn sources(path: &Path) -> Vec<PathBuf> {
+    if !path.is_dir() {
+        return vec![path.to_owned()];
+    }
+    let mut files: Vec<PathBuf> = (std::fs::read_dir(path).unwrap())
+        .map(|e| e.unwrap().path())
+        .filter(|p| p.extension().is_some_and(|e| e == "sak"))
+        .collect();
+    files.sort();
+    files
+}
+
 fn run(path: &Path) -> Result<(), String> {
-    let text = std::fs::read_to_string(path).unwrap();
+    let files = sources(path);
+    let text = std::fs::read_to_string(&files[0]).unwrap();
     let d = directives(&text);
     let mut expected: Vec<&str> = d
         .get("expect")
@@ -108,11 +124,20 @@ fn run(path: &Path) -> Result<(), String> {
             [code, role, pos] => (code, role, pos),
             _ => return Err("expect-span needs `CODE [role] line:col`".into()),
         };
+        // The span's own file, so a directory fixture's spans may point into any of its files.
+        let text_of = |uri: &str| {
+            let file = files.iter().find(|f| {
+                uri.ends_with(&format!("/{}", f.file_name().unwrap().to_string_lossy()))
+            })?;
+            std::fs::read_to_string(file).ok()
+        };
         let found = recs.iter().any(|r| {
             r["code"] == code
                 && r["spans"].as_array().into_iter().flatten().any(|s| {
                     s["role"] == role
-                        && line_col(&text, s["start_byte"].as_u64().unwrap() as usize) == pos
+                        && text_of(s["uri"].as_str().unwrap_or("")).is_some_and(|text| {
+                            line_col(&text, s["start_byte"].as_u64().unwrap() as usize) == pos
+                        })
                 })
         });
         if !found {
@@ -150,13 +175,20 @@ enum Outcome {
 
 #[test]
 fn ui() {
-    let results = par_map(&fixtures("ui"), |path| {
+    let mut paths = fixtures("ui");
+    paths.extend(
+        (std::fs::read_dir(tests_dir().join("ui")).unwrap())
+            .map(|e| e.unwrap().path())
+            .filter(|p| p.is_dir() && !sources(p).is_empty()),
+    );
+    paths.sort();
+    let results = par_map(&paths, |path| {
         let name = path.file_name().unwrap().to_string_lossy().into_owned();
         if name.ends_with(".fixed.sak") {
             let wrong = path.with_file_name(name.replace(".fixed.sak", ".sak"));
             return (name, Outcome::Companion(!wrong.exists()));
         }
-        let d = directives(&std::fs::read_to_string(path).unwrap());
+        let d = directives(&std::fs::read_to_string(&sources(path)[0]).unwrap());
         if let Some(why) = skip_reason(&d, UI_MILESTONE) {
             return (
                 name,

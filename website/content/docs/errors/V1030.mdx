@@ -11,7 +11,7 @@ items into a third module.
 
 ## Wrong program
 
-[`compiler/tests/ui/V1030_import_cycle/`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V1030_import_cycle/), which the compiler's ui suite does not run yet (needs: directory fixtures in tests/ui (a cycle needs two modules)):
+[`compiler/tests/ui/V1030_import_cycle/`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V1030_import_cycle/), which the compiler's ui suite runs through `sakura check`:
 
 `a.sak`:
 
@@ -27,6 +27,38 @@ pub fn one() -> Int { b.two() - 1 }
 import main/a
 
 pub fn two() -> Int { a.one() + 1 }
+```
+
+`sakura check --json` reports this record (pretty-printed; `$DIR` is the fixture's directory):
+
+```json
+{
+  "schema_version": "1.0",
+  "kind": "diagnostic",
+  "id": "d:0ea8cc732080ffbe",
+  "code": "V1030",
+  "severity": "error",
+  "phase": "resolve",
+  "message": "import cycle: main/a → main/b → main/a; imports must form a DAG (design §9) — move the shared items into a module both can import",
+  "snapshot": "sha256:$SNAPSHOT",
+  "symbol_id": null,
+  "spans": [
+    {
+      "uri": "file://$DIR/V1030_import_cycle/b.sak",
+      "content_hash": "sha256:e126520df5deef82b67102abaec285f1f9995869878aad873b825f328aba815a",
+      "start_byte": 7,
+      "end_byte": 13,
+      "role": "primary"
+    }
+  ],
+  "related_ids": [],
+  "expected": null,
+  "actual": null,
+  "obligation": null,
+  "counterexample": null,
+  "explanation_uri": "sakura://explain/V1030",
+  "fixes": []
+}
 ```
 
 ## Fixed program

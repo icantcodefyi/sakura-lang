@@ -95,11 +95,16 @@ fn fixture(ui: &Path, names: &[String], code: &str) -> Result<Option<Fixture>, S
             .into_iter()
             .map(|f| Ok((f.clone(), read(&format!("{dir}/{f}"))?)))
             .collect::<Result<Vec<_>, String>>()?;
+        let jsonl_name = format!("{dir}.jsonl");
+        let jsonl = names
+            .contains(&jsonl_name)
+            .then(|| read(&jsonl_name))
+            .transpose()?;
         return Ok(Some(described(
             format!("{dir}/"),
             files,
             None,
-            None,
+            jsonl,
             vec![],
         )));
     };
@@ -145,7 +150,7 @@ fn described(
         .and_then(|m| m.trim_start_matches('M').parse::<u32>().ok())
         .unwrap_or(0);
     Fixture {
-        skipped: (milestone > UI_MILESTONE || rel.ends_with('/'))
+        skipped: (milestone > UI_MILESTONE)
             .then(|| get("needs").unwrap_or_else(|| format!("milestone M{milestone}"))),
         command: get("command"),
         rel,
