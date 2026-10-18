@@ -530,6 +530,16 @@ impl<'a> BodyCx<'a> {
             }
             if let Some(res) = self.static_member(&base, &name) {
                 let callee = self.alloc(Expr::Path(res), c.text_range());
+                let segs = path_segments(&base);
+                let written: Vec<&str> = segs
+                    .iter()
+                    .map(SyntaxToken::text)
+                    .chain([name.text()])
+                    .collect();
+                self.body
+                    .source_map
+                    .written
+                    .insert(callee, written.join("."));
                 let type_args = self.type_args(n);
                 let (args, arg_names) = self.args(n);
                 return Expr::Call {

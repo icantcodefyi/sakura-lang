@@ -66,6 +66,9 @@ published yet.
   exists, as a `suggested` fix, never `machine_applicable`; `sakura explain V1002` names
   std's `len` convention (design §17.182 (2)).
 
+- `V2002` names a `Type.member` callee as written: ``List.map` (std/list) takes 2 arguments,
+  this call passes 1`` rather than the bare `map` (design §17.182 (3)).
+
 - A loop body with more than eight CPS steps keeps the shared-continuation form instead of
   the resumable `for (;;)` loop, which copies the rest of an iteration once per step;
   `sakura build --dump direct` lists each such loop as `resumable` or

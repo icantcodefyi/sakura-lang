@@ -808,10 +808,14 @@ impl Checker<'_> {
                     if !broken {
                         let takes = params.len();
                         let plural = |n: usize| if n == 1 { "" } else { "s" };
+                        let written = match &body.exprs[e] {
+                            Expr::Call { callee, .. } => body.source_map.written.get(*callee),
+                            _ => None,
+                        };
                         let msg = match self.b.calls.get(e) {
                             Some(CallTarget::Def(d) | CallTarget::Method(d)) => format!(
                                 "`{}` ({}) takes {takes} argument{}, this call passes {given}",
-                                self.callee_name(*d),
+                                written.cloned().unwrap_or_else(|| self.callee_name(*d)),
                                 self.module_path(d.module),
                                 plural(takes)
                             ),

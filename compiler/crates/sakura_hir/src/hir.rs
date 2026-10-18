@@ -613,6 +613,9 @@ pub struct Contract {
 pub struct SourceMap {
     pub exprs: ArenaMap<ExprId, TextRange>,
     pub pats: ArenaMap<PatId, TextRange>,
+    /// A callee written `Type.member` (or `Eff.op`, `module.f`), as written, so diagnostics name
+    /// it the way the call does (design §17.182 (3)).
+    pub written: ArenaMap<ExprId, String>,
 }
 
 impl SourceMap {
