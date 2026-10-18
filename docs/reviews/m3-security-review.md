@@ -217,25 +217,45 @@ although §4.11 promised both.
   whose `from` quotes) is how it will be.
 - `Untrusted<Html>` renders `Html(&quot;…&quot;)`, the escaped `Show` form of the wrapper, rather
   than the escaped markup text. Endorsed in §17.125 (2), but its reasons do not hold: `Html`
-  **is** `Schema` (opaque types derive constraints, §4.2), and `Untrusted.of` takes any `T`. The
+  **was** `Schema` on `a843e60` (opaque types derived every constraint, §4.2; after §17.130 it is
+  `Schema` only inside `std/html`), and `Untrusted.of` takes any `T`. The
   conclusion holds anyway: an `Untrusted<Html>` always goes through `Html.from`, so it is escaped
   text, never markup (pinned by `std/html.sakura`'s test).
 
-**Found in the WS9.10 re-audit, not decided: `Json.decode` forges opaque std types.** Opaque
-types derive constraints (§4.2, §17.10), so `Query<R>`, `Html` and `UrlPart` are `Schema`, and
-`Json.decode` (and anything else that decodes through `Schema`) builds them from any JSON text
-with no diagnostic and no `sakura audit` site. Checked on the `a843e60` binary: a program decoding
-an attacker-controlled body into `type Report = { title: String, q: Query<Row> }` and running
-`Sql.query(rep.q)` executes `select name from users where 1=1 --` (it prints `rows: 1`); decoding
+**Found in the WS9.10 re-audit, decided in §17.130, fixed by plan WS10: `Json.decode` forged
+opaque std types.** On `a843e60` opaque types derived every constraint (§4.2, §17.10), so
+`Query<R>`, `Html` and `UrlPart` were `Schema`, and `Json.decode` (and every other path through a
+`Schema` bound: `Sql.query` rows, `Llm.generate`, `Cli.parse`, `Tool.of` arguments, `property`
+parameters) built them from any JSON text with no diagnostic and no `sakura audit` site. Checked
+on that binary: a program decoding an attacker-controlled body into
+`type Report = { title: String, q: Query<Row> }` and running `Sql.query(rep.q)` executed
+`select name from users where 1=1 --` (it printed `rows: 1`); decoding
 `{"Html":"<script>evil()</script>"}` into `Html` and interpolating it into `html"<p>{h}</p>"`
-renders the script tag; decoding `{"UrlPart":"a&b=c"}` gives an unencoded `UrlPart`. So "`Query<R>`
-only from `sql"…"`, `Html` only by escaping code" (§9, §17.10) holds for constructors but not for
-decoding, and the template invariant above can be bypassed by data. The fix is a design decision
-(for example: an opaque type is not `Schema` outside its module unless it declares a decoder,
-or decoding an opaque type is `V2032`), so it is filed in `compiler/REQUESTS.md` for the designer
-and not changed here.
+rendered the script tag; decoding `{"UrlPart":"a&b=c"}` gave an unencoded `UrlPart`.
 
-- [ ] Decide whether this blocks gate 10, and which rule closes it.
+**The rule (§17.130).** An opaque type is `Schema` **only inside its declaring module**; outside
+it, every `Schema` bound instantiated at an opaque type (directly or through a field) is the
+compile error `V2033 opaque_not_schema`, so no decoder, row mapper, structured output, CLI parser,
+tool argument or property generator builds one. The principle: an invariant that is a predicate
+over the representation is a refinement type and decodes through its predicate (`Uuid`, `Path`,
+`Decimal`, now all refinements); an invariant about how the value was produced (`Query` from a
+literal, `Html` by escaping, `UrlPart` by encoding, `File` by the runtime) is opaque and has no
+JSON form outside its module. A program with the representation in data decodes the
+representation and calls the constructor in the open (`Html.text`, `Html.untrusted`,
+`Html.raw` with `@trust`, `UrlPart.from`). There is no decoder opt-in in v0, nothing new for
+`sakura audit`, and `Eq`/`Ord`/`Hash`/`Show` are unchanged (they consume, never build).
+
+**Fixed state to verify (WS10).** The three programs above are `tests/ui/V2033_decode_opaque_{query,html,urlpart}.sakura`,
+each failing at the decode; `acceptance.rs` rejects the same three plus `Report`, a generic
+`decode_any<T: Schema>` at `Query<Row>`, `Tool.of` on a `@tool` with a `Query` parameter, a
+`property` over `Html`, and `Sql.query` into a row holding `Html`, and accepts a module decoding
+its own opaque type and `Uuid`/`Path` decoding with the check; `tests/semantics/uuid_decode.sakura`
+runs. The template conversion (`check/expr.rs` `template`, `lower/expr.rs` `untrusted_value`) and
+`std/urlpart` are untouched by the fix; `holds` (`check/body.rs::adt_holds`) is the one checker
+change.
+
+- [ ] WS10 landed (commit: ______); the three `V2033` fixtures and the `acceptance.rs` cases
+      above pass, and the rule in §17.130 is the one to freeze.
 
 **Decided before your review (§17.124, §17.125), for you to confirm or overturn.**
 

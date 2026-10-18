@@ -75,7 +75,8 @@ ran `select name from users where 1=1 --`, a decoded `Html` rendered a `<script>
 `html"…"`, and a decoded `UrlPart` stayed unencoded. This is outside gates 1–9 and 11, which
 all pass, but it bypasses the template invariant the packet asks the owner to freeze. It is
 listed in the packet's part C and filed in `compiler/REQUESTS.md` for a design decision. No
-code was changed.
+code was changed. **Decided (design, round 8): §17.130, opaque types are `Schema` only in their
+declaring module (`V2033`); fixed by plan WS10.**
 
 **After `a843e60`.** `origin/master` has since gained `a4eb9cb` (rt ABI 1.0.2), `1d76670`
 (`list_set` in the LIR interpreter) and `9ec8c7b` (`W7002` from the registry). These are M4
