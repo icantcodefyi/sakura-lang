@@ -21,3 +21,4 @@ has been implemented.
 
 - [0001: Record architecture decisions](0001-record-architecture-decisions.md)
 - [0002: Single monorepo with Rust compiler and Bun website](0002-monorepo-layout.md)
+- [0003: Hand-written release workflow and installers over cargo-dist](0003-release-tooling.md)
