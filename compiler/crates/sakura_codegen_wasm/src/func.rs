@@ -1153,12 +1153,14 @@ impl Gen<'_, '_> {
                 s.i32_const(effect as i32);
                 self.static_addr(s, codes);
                 s.i32_const(n as i32);
-                let build = if name == "sql_memory" {
-                    "rt_b_sql_memory"
+                // A builder of its own (`rt_b_<builtin>`) takes the builtin's arguments too.
+                let own = format!("rt_b_{name}");
+                if self.env.rt.contains_key(&own) {
+                    get(s, self);
+                    self.call_rt(s, &own)?;
                 } else {
-                    "rt_b_host_handler"
-                };
-                self.call_rt(s, build)?;
+                    self.call_rt(s, "rt_b_host_handler")?;
+                }
                 s.local_set(d);
                 return self.check_zero(s, d, live);
             }

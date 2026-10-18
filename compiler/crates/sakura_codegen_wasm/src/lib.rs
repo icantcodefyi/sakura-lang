@@ -113,7 +113,39 @@ const HOST_HANDLERS: &[(&str, &str, &str)] = &[
     ("log_stderr", "std::log::Log", "log_stderr"),
     ("log_json", "std::log::Log", "log_json"),
     ("sql_memory", "std::sql::Sql", "sql"),
+    ("task_host", "std::task::Task", "task"),
+    ("task_deterministic", "std::task::Task", "task"),
 ];
+
+/// The frame and capture slot kinds of a native code's code-table entry: the words a code
+/// keeps across a suspension are released by the trampoline if the task unwinds meanwhile.
+fn native_slots(name: &str) -> (Vec<Slot>, Vec<Slot>) {
+    let (w, i) = (
+        Slot::WORD,
+        Slot {
+            kind: SlotKind::I64,
+            owns: false,
+        },
+    );
+    match name {
+        "rt_code_callback_stub" => (vec![], vec![w, i]),
+        "rt_code_file_close"
+        | "rt_code_sql_query"
+        | "rt_code_sql_execute"
+        | "rt_code_sql_transaction"
+        | "rt_code_task_cancel_all" => (vec![], vec![i]),
+        "rt_code_sql_rollback" => (vec![], vec![i, i]),
+        // `std::task::Task`'s clauses (`sakura_rt::task`): slot 0 the clause, 1 the activation,
+        // the arguments, then the clause's own state.
+        "rt_code_task_scope" => (vec![w, i, w, w, i], vec![w]),
+        "rt_code_task_spawn" => (vec![w, i, w, w, w], vec![w]),
+        "rt_code_task_join" => (vec![w, i, w], vec![w]),
+        "rt_code_task_all" => (vec![w, i, w, w, i, i, w], vec![w]),
+        "rt_code_task_race" => (vec![w, i, w, w, i, i], vec![w]),
+        "rt_code_task_yield_now" => (vec![w, i], vec![w]),
+        _ => (vec![], vec![]),
+    }
+}
 
 /// Builtins the Node host implements by delegating to the JS runtime (`sakura_wasm_host.js`
 /// `HOSTED`): their arguments and results cross in `sakura-vt1`. Schemas cross as their JS
@@ -237,29 +269,12 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     let mut statics = data::Statics::default();
     let layout_bytes = m.layouts.to_bytes();
     let layout_off = statics.bytes(&layout_bytes);
-    let stub_captures = [
-        Slot::WORD,
-        Slot {
-            kind: SlotKind::I64,
-            owns: false,
-        },
-    ];
-    let int_pair = [stub_captures[1], stub_captures[1]];
     let natives = natives(&layout);
+    let slots: Vec<(Vec<Slot>, Vec<Slot>)> = natives.iter().map(|n| native_slots(n)).collect();
     let native_codes: Vec<sakura_lir::layout::NativeCode<'_>> = natives
         .iter()
-        .map(|n| {
-            let caps: &[Slot] = match n.as_str() {
-                "rt_code_callback_stub" => &stub_captures,
-                "rt_code_file_close"
-                | "rt_code_sql_query"
-                | "rt_code_sql_execute"
-                | "rt_code_sql_transaction" => &stub_captures[1..],
-                "rt_code_sql_rollback" => &int_pair,
-                _ => &[],
-            };
-            (n.as_str(), &[][..], caps)
-        })
+        .zip(&slots)
+        .map(|(n, (frame, caps))| (n.as_str(), frame.as_slice(), caps.as_slice()))
         .collect();
     let codes_off = statics.bytes(&sakura_lir::layout::code_table_with(m, &native_codes));
     let effects_bytes = sakura_lir::layout::effect_table(m);
@@ -389,6 +404,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     s.i32_const(n as i32)
         .i32_const(code_of("rt_code_file_close") as i32)
         .i32_const(code_of("rt_code_sql_rollback") as i32)
+        .i32_const(code_of("rt_code_task_cancel_all") as i32)
         .call(rtf("rt_init")?);
     s.if_(BlockType::Empty).i32_const(0).return_().end();
     s.i32_const(1).global_set(inited).i32_const(1).end();
