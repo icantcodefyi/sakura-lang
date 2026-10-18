@@ -1,5 +1,6 @@
 // milestone: M1
 // covers: Term PostfixExpr Postfix
+// fmt: exempt covers Term PostfixExpr Postfix NEWLINE rule (continuation lines)
 
 fn total(xs: List<Int>) -> Int {
   xs

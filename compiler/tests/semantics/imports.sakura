@@ -1,5 +1,6 @@
 // milestone: M1
 // covers: Import ModPath NameList Name TypePath
+// fmt: exempt covers NameList (trailing comma)
 
 import std/graph.{Graph, NodeId,}
 import std/retry as r

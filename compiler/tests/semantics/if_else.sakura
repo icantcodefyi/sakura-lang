@@ -1,5 +1,6 @@
 // milestone: M0
 // covers: IfExpr
+// fmt: exempt covers IfExpr (`else` on its own line)
 
 fn classify(n: Int) -> String {
   if n < 0 { "negative" } else if n == 0 { "zero" } else { "positive" }

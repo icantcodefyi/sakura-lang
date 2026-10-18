@@ -1,5 +1,6 @@
 // milestone: M0
 // covers: File Item ItemBody FnDecl Params Param Type Expr Block Stmt LetStmt Term
+// fmt: exempt covers Block Stmt Term (`;` between statements on one line)
 
 pub fn main() -> Unit ! {Console} {
   let x = { let a = 2; let b = 3; a * b }
