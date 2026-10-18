@@ -2,6 +2,7 @@ import { defineDocs } from "fumadocs-mdx/macro";
 import { llms, loader } from "fumadocs-core/source";
 import { renderPlaceholder } from "fumadocs-core/mdx-plugins/remark-llms.runtime";
 import { site } from "@/lib/site";
+import { diagramMarkdown } from "@/components/docs-diagrams";
 
 const docs = defineDocs({
   dir: "content/docs",
@@ -10,7 +11,23 @@ const docs = defineDocs({
     lastModified: true,
     postprocess: {
       // JSX blocks become placeholders, rendered to plain Markdown in renderPage below.
-      includeProcessedMarkdown: { mdxAsPlaceholder: ["Callout", "Cards", "Card", "Steps", "Step"] },
+      includeProcessedMarkdown: {
+        mdxAsPlaceholder: [
+          "Callout",
+          "Cards",
+          "Card",
+          "Steps",
+          "Step",
+          // docs diagrams (components/docs-diagrams.tsx), printed as Markdown by diagramMarkdown
+          "AgentLoop",
+          "CapabilityScopes",
+          "CassetteFlow",
+          "ContractFlow",
+          "EffectFlow",
+          "HandlerFlow",
+          "PipelineFlow",
+        ],
+      },
     },
   },
 });
@@ -35,6 +52,7 @@ const markdownFor = {
     `- [${attributes.title}](${attributes.href})${children.trim() ? `: ${children.trim()}` : ""}`,
   Steps: ({ children }: { children: string }) => children.trim(),
   Step: ({ children }: { children: string }) => children.trim(),
+  ...diagramMarkdown,
 };
 
 export const docsLlms = llms(source, {

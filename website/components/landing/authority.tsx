@@ -64,7 +64,7 @@ const REFUSED: { code: string; why: string; tag: string }[] = [
 ];
 
 /** One row per scope; the bar under each shows how much of the host's authority is left. */
-function Scopes(): ReactNode {
+export function Scopes(): ReactNode {
   return (
     <ol className="divide-y divide-border rounded-xl border border-strong bg-card px-4 sm:px-5">
       {SCOPES.map((s, i) => (

@@ -4,6 +4,15 @@ import { Step, Steps } from "fumadocs-ui/components/steps";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import type { ComponentProps } from "react";
 import type { MDXComponents } from "mdx/types";
+import {
+  AgentLoop,
+  CapabilityScopes,
+  CassetteFlow,
+  ContractFlow,
+  EffectFlow,
+  HandlerFlow,
+  PipelineFlow,
+} from "@/components/docs-diagrams";
 
 /** Callouts are tinted panels in the callout colour, without the default side stripe. */
 function SakuraCallout({ className, ...props }: ComponentProps<typeof Callout>) {
@@ -18,7 +27,14 @@ function SakuraCallout({ className, ...props }: ComponentProps<typeof Callout>) 
 export function getMDXComponents(components?: MDXComponents) {
   return {
     ...defaultMdxComponents,
+    AgentLoop,
     Callout: SakuraCallout,
+    CapabilityScopes,
+    CassetteFlow,
+    ContractFlow,
+    EffectFlow,
+    HandlerFlow,
+    PipelineFlow,
     Step,
     Steps,
     Tab,
