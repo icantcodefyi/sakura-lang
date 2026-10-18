@@ -1,0 +1,10 @@
+**
+!dist/extension.js
+!syntaxes/sakura.tmLanguage.json
+!language-configuration.json
+!images/**
+!package.json
+!README.md
+!CHANGELOG.md
+!LICENSE-MIT
+!LICENSE-APACHE

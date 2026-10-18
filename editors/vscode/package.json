@@ -1,0 +1,130 @@
+{
+  "name": "sakura",
+  "displayName": "Sakura Lang",
+  "description": "Sakura Lang for VS Code: highlighting, diagnostics with error-page links, typed-hole context, formatting and quick fixes from `sakura lsp`.",
+  "version": "0.1.0-alpha.1",
+  "private": true,
+  "publisher": "sakuralang",
+  "license": "(MIT OR Apache-2.0)",
+  "icon": "images/icon.png",
+  "homepage": "https://www.sakuralang.com/docs/editors",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/icantcodefyi/sakuralang",
+    "directory": "editors/vscode"
+  },
+  "bugs": "https://github.com/icantcodefyi/sakuralang/issues",
+  "categories": [
+    "Programming Languages",
+    "Formatters",
+    "Linters"
+  ],
+  "keywords": [
+    "sakura",
+    "lsp",
+    "agents"
+  ],
+  "engines": {
+    "vscode": "^1.91.0"
+  },
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "sakura",
+        "aliases": [
+          "Sakura Lang",
+          "sakura"
+        ],
+        "extensions": [
+          ".sakura"
+        ],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./images/sakura-file.svg",
+          "dark": "./images/sakura-file.svg"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "sakura",
+        "scopeName": "source.sakura",
+        "path": "./syntaxes/sakura.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "sakura.showHoleContext",
+        "title": "Show Hole Context",
+        "category": "Sakura"
+      },
+      {
+        "command": "sakura.applyFix",
+        "title": "Apply Quick Fix",
+        "category": "Sakura"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "sakura.showHoleContext",
+          "when": "editorLangId == sakura"
+        },
+        {
+          "command": "sakura.applyFix",
+          "when": "false"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "sakura.showHoleContext",
+          "when": "editorLangId == sakura",
+          "group": "navigation@90"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Sakura",
+      "properties": {
+        "sakura.path": {
+          "type": "string",
+          "default": "",
+          "scope": "machine-overridable",
+          "markdownDescription": "Path to the `sakura` executable. Empty: the first `sakura` on `PATH`. A leading `~/` is your home directory; a relative path is taken from the first workspace folder."
+        }
+      }
+    },
+    "configurationDefaults": {
+      "[sakura]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "sakuralang.sakura"
+      }
+    }
+  },
+  "scripts": {
+    "grammar": "bun scripts/grammar.ts",
+    "build": "bun build src/extension.ts --outdir dist --target node --format cjs --external vscode --minify && bun build test/suite.ts --outdir dist/test --target node --format cjs --external vscode",
+    "fmt": "oxfmt src test scripts",
+    "fmt:check": "oxfmt --check src test scripts",
+    "lint": "oxlint src test scripts",
+    "typecheck": "tsc --noEmit",
+    "test": "bun scripts/grammar.ts --check && bun test ./test/lib.test.ts",
+    "test:vscode": "bun run build && bun test/run.ts",
+    "package": "bun run build && cp ../../LICENSE-MIT ../../LICENSE-APACHE . && vsce package --no-dependencies --skip-license"
+  },
+  "dependencies": {
+    "vscode-languageclient": "10.1.2"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.3",
+    "@types/node": "26.6.5",
+    "@types/vscode": "1.91.0",
+    "@vscode/test-electron": "3.1.0",
+    "@vscode/vsce": "4.0.0",
+    "oxfmt": "0.73.0",
+    "oxlint": "1.88.0",
+    "typescript": "7.0.2"
+  },
+  "packageManager": "bun@1.4.3"
+}

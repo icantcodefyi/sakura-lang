@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "es2023",
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "lib": ["es2023"],
+    "types": ["node", "bun"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    // The website's grammar names Shiki's type; the website's packages are not installed here.
+    "paths": { "shiki": ["./scripts/shiki.d.ts"] }
+  },
+  "include": ["src", "test", "scripts"]
+}
