@@ -152,12 +152,18 @@ jobs:
           echo "$RUNNER_TEMP/solvers/cvc5/bin" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/solvers/z3/bin/z3" --version
           "$RUNNER_TEMP/solvers/cvc5/bin/cvc5" --version
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
+        with:
+          tool: cargo-nextest@0.9.148
       - name: Check formatting
         run: cargo fmt --all -- --check
       - name: Clippy
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Tests
-        run: cargo test --workspace --locked
+        run: cargo nextest run --workspace --locked
+      - name: Doctests
+        run: cargo test --workspace --doc --locked
       - name: Agent docs are fresh (design §17.142)
         run: cargo run -p agent_docs --locked -- --check
 

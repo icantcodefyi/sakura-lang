@@ -1,0 +1,16 @@
+# Each nextest test has its own process, so LazyLock does not protect the shared
+# CARGO_TARGET_TMPDIR/fake-solvers scripts from being rewritten during execution.
+[test-groups.solver-scripts]
+max-threads = 1
+
+# Both sweeps build into examples/<name>/target/sakura/wasm.
+[test-groups.wasm-examples]
+max-threads = 1
+
+[[profile.default.overrides]]
+filter = 'package(=sakura_verify) & binary(=worker)'
+test-group = 'solver-scripts'
+
+[[profile.default.overrides]]
+filter = 'package(=sakura_cli) & binary(=wasm) & (test(=example_tests_pass_on_wasm) | test(=run_mode_examples_print_their_expected_stdout_on_wasm))'
+test-group = 'wasm-examples'

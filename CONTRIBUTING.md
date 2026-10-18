@@ -130,7 +130,12 @@ effects, or grant capabilities merely to silence a compiler error.
 ## Automation and bootstrap policy
 
 CI runs on pushes to `main`, PRs, and merge groups. `ci-required` aggregates
-website checks and the Rust job, which runs in `compiler/` using its pinned toolchain.
+website, Rust, native, parity, and VS Code checks. The Rust jobs run in `compiler/`
+using its pinned toolchain: fmt, clippy, `cargo nextest run --workspace --locked`,
+`cargo test --workspace --doc --locked`, and the agent-doc freshness check.
+Nextest runs test binaries in parallel; its configuration serializes tests that
+share solver scripts or WASM example output. The local gate remains
+`cargo test --workspace --locked` (above).
 
 During bootstrap, direct pushes are allowed: **PR reviews and required status
 checks are not enforced**. The active `Protect the default branch` ruleset blocks force pushes
