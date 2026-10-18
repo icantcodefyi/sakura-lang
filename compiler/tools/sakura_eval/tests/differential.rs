@@ -16,8 +16,10 @@
 //! `var` loops with `break`/`continue`/`return`; `try`/`catch` over error tags (partial catches
 //! let the rest propagate); user effects with stateful and forwarding handlers under nested
 //! `with`, including an operation whose callback runs under the perform site's handlers; and
-//! `requires`/`ensures` that sometimes fail (`D020`/`D021`/`D011`); and `Int` arithmetic at the
-//! ends of the JS range, under comparisons and in counters that stop at or step past an end. The
+//! `requires`/`ensures` that sometimes fail (`D020`/`D021`/`D011`), including conjunctions of
+//! comparisons that seed the interval pass (§17.154) over parameters the body computes on; and
+//! `Int` arithmetic at the ends of the JS range, under comparisons and in counters that stop at
+//! or step past an end. The
 //! evaluator also audits the interval pass (design §17.114): an operation it proves for the JS
 //! or i64 profile that defects as that profile forbids fails the run. The same oracle is meant to
 //! check the WASM backend in M4 (research/08 §7).
@@ -1005,6 +1007,9 @@ impl Gen<'_> {
                 }
                 let _ = write!(contracts, "\n  requires {p}");
             }
+            if let Some(seeded) = self.seeded_requires(&names, &params) {
+                let _ = write!(contracts, "\n  requires {seeded}");
+            }
             if contracts.is_empty() || self.rng.chance(50) {
                 let p = self.with_locals(&[("result".into(), ret)], |g| g.expr(Ty::Bool, 2));
                 let _ = write!(contracts, "\n  ensures {p}");
@@ -1017,7 +1022,19 @@ impl Gen<'_> {
             ret: Some(ret),
             ..PURE
         };
-        let body = self.body(ret, 3);
+        let mut body = self.body(ret, 3);
+        // Arithmetic on an `Int` parameter, which a seeding `requires` may bound.
+        if let Some(i) = params.iter().position(|t| *t == Ty::Int)
+            && self.rng.chance(50)
+        {
+            let op = self.rng.pick(&["+", "-", "*", "/", "%"]);
+            let k = self.rng.pick(&["1", "2", "(-1)", "4503599627370496"]);
+            let operand = match params.iter().rposition(|t| *t == Ty::Int) {
+                Some(j) if j != i && self.rng.chance(50) => names[j].clone(),
+                _ => k.into(),
+            };
+            body = format!("let _ = {} {op} {operand}; {body}", names[i]);
+        }
         let row: Vec<&str> = [
             (counter, "Counter"),
             (console, "Console"),
@@ -1051,6 +1068,36 @@ impl Gen<'_> {
             sig.join(", "),
             ret.name()
         )
+    }
+
+    /// A conjunction of comparisons of `Int` parameters against literals (often at a range
+    /// edge) or each other: the form that seeds the interval pass (design §17.154).
+    fn seeded_requires(&mut self, names: &[String], params: &[Ty]) -> Option<String> {
+        let ints: Vec<&str> = names
+            .iter()
+            .zip(params)
+            .filter(|(_, t)| **t == Ty::Int)
+            .map(|(n, _)| n.as_str())
+            .collect();
+        if ints.is_empty() || !self.rng.chance(60) {
+            return None;
+        }
+        let clauses: Vec<String> = (0..1 + self.rng.below(3))
+            .map(|_| {
+                let v = self.rng.pick(&ints);
+                let rel = self.rng.pick(&["<", "<=", "==", "!=", ">", ">="]);
+                let bound = match self.rng.below(3) {
+                    0 => self.edge(),
+                    1 => self.rng.pick(&ints).into(),
+                    _ => match self.rng.below(7) as i64 - 3 {
+                        n if n < 0 => format!("({n})"),
+                        n => n.to_string(),
+                    },
+                };
+                format!("{v} {rel} {bound}")
+            })
+            .collect();
+        Some(clauses.join(" && "))
     }
 
     /// Statements of `main` (or of a `with` inside it), one per line.
