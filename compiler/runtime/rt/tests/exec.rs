@@ -237,11 +237,14 @@ fn sum_main(rt: &mut Rt, _env: u32, f: u32) -> u32 {
     RETURN
 }
 
+/// The site id `sum_defect`'s defect block carries (ABI §12).
+const SUM_DEFECT_SITE: u32 = 7;
+
 /// As `sum`, with an `Int` overflow defect at the bottom.
 fn sum_defect(rt: &mut Rt, _env: u32, f: u32) -> u32 {
     let n = rt.fslot(f, 0) as i64;
     if n == 0 {
-        return rt.raise(Defect::INT_OVERFLOW);
+        return rt.raise_at(Defect::INT_OVERFLOW, SUM_DEFECT_SITE);
     }
     let c = ok!(rt, rt.call(SUM_DEFECT, 1, 0));
     rt.set_fslot(c, 0, (n - 1) as u64);
@@ -733,6 +736,7 @@ fn million_frame_recursion_without_native_stack_growth() {
         assert_eq!(kind, outcome::OK);
         let (_, v) = rt.outcome(task).unwrap();
         assert_eq!(rt.int_of(v as u32), (MILLION * (MILLION + 1) / 2) as i64);
+        assert_eq!(rt.defect(task).unwrap(), None);
         finish(rt, task);
     });
 }
@@ -743,6 +747,11 @@ fn million_frame_destruction() {
     ten_times(&mut rt, |rt| {
         let (task, kind) = run_task(rt, SUM_DEFECT, 1, MILLION, 0);
         assert_eq!(kind, outcome::DEFECT);
+        assert_eq!(
+            rt.defect(task).unwrap(),
+            Some((Defect::INT_OVERFLOW, SUM_DEFECT_SITE)),
+            "the outcome carries the message and site (ABI §6.5, P9)"
+        );
         assert_eq!(finish(rt, task), (outcome::DEFECT, 1));
     });
 }
@@ -894,6 +903,10 @@ fn fail_escaping_a_finalizer_is_d093() {
         // Run fin_body's first step by hand: replace finalizer 2 with one that fails.
         assert_eq!(rt.run(task, &failing_table()), outcome::DEFECT);
         assert_eq!(traces(rt), [10], "the remaining finalizer still ran");
+        assert_eq!(
+            rt.defect(task).unwrap(),
+            Some((Defect::FINALIZER_FAILED, 0))
+        );
         assert_eq!(finish(rt, task), (outcome::DEFECT, 93));
     });
 }

@@ -1,5 +1,5 @@
 //! `sakura_rt`, the Sakura Lang WASM runtime. The contract is `ABI.md` next to this crate
-//! (1.0.1); its "Open questions" are the readings this code chose where the ABI is still
+//! (1.0.2); its "Open questions" are the readings this code chose where the ABI was
 //! silent. `no_std`: on wasm32 the linear memory is the module's own (`mem`), on the host a
 //! `Vec<u8>` with the same addresses, which is how `cargo test` and Miri exercise the runtime.
 
@@ -26,7 +26,7 @@ mod wasm;
 pub use heap::{Heap, Stats};
 
 /// `sakura_abi_version` (ABI §0): `MAJOR << 16 | MINOR << 8 | PATCH`.
-pub const ABI_VERSION: u32 = 1 << 16 | 1;
+pub const ABI_VERSION: u32 = 1 << 16 | 2;
 
 /// A defect raised by the runtime: the `D` registry number and a fixed message (ABI §6.5).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

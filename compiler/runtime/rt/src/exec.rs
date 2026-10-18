@@ -5,7 +5,7 @@
 //! tasks and requests live in the arena and refer to each other by generational id. The driver
 //! loops over steps, so neither Sakura recursion nor unwinding grows the native stack.
 //!
-//! Conventions this file fixes where ABI 1.0.1 is silent (ABI.md P8–P12): a callee's result and
+//! Conventions ABI 1.0.2 took from this file (ABI.md P8–P12, design §17.129): a callee's result and
 //! a caught error travel in the task's 8-byte **return register**, read by the parent's resume
 //! block; `env` is passed on a function's entry call only (a function that needs it later keeps
 //! it in a slot); a finalizer closure takes one `Bool` parameter, `returned`, in slot 0.
@@ -100,7 +100,12 @@ const T_FINS: u32 = 100;
 const T_ACTS: u32 = 112;
 const T_KIDS: u32 = 124;
 const T_WAITERS: u32 = 136;
-const TASK_SIZE: u32 = 148;
+// The defect's message (address and length of a `'static` string; ABI §6.5 "static string
+// offset", the same thing on wasm32) and site id (§12; 0 when the runtime raised it).
+const T_DEFECT_SITE: u32 = 148;
+const T_DEFECT_LEN: u32 = 152;
+const T_DEFECT_MSG: u32 = 156;
+const TASK_SIZE: u32 = 164;
 /// Slots a finalizer frame adds after its own for the unwinding it interrupts: while a
 /// finalizer runs, the task is not unwinding and the finalizer is ordinary code (its own
 /// `try` regions unwind normally, and finalizers nest).
@@ -228,16 +233,30 @@ impl Rt {
         step::FAIL
     }
 
-    /// A defect from compiled code or a builtin: `return rt.raise(d)`.
+    /// A defect from a builtin or the runtime, with no source site: `return rt.raise(d)`.
     pub fn raise(&mut self, d: Defect) -> u32 {
+        self.raise_at(d, 0)
+    }
+
+    /// A defect from compiled code's defect block at site id `site` (ABI §6.5, §12).
+    pub fn raise_at(&mut self, d: Defect, site: u32) -> u32 {
         let t = self.cur();
-        self.record_defect(t, d);
+        self.record_defect_at(t, d, site);
         step::DEFECT
     }
 
     fn record_defect(&mut self, t: u32, d: Defect) {
+        self.record_defect_at(t, d, 0);
+    }
+
+    fn record_defect_at(&mut self, t: u32, d: Defect, site: u32) {
         if self.u(t, T_DEFECT) == 0 {
             self.set(t, T_DEFECT, d.code as u32);
+            self.set(t, T_DEFECT_SITE, site);
+            self.set(t, T_DEFECT_LEN, d.message.len() as u32);
+            self.heap
+                .mem
+                .set_u64(t + T_DEFECT_MSG, d.message.as_ptr() as usize as u64);
         }
     }
 
@@ -586,6 +605,23 @@ impl Rt {
             _ => self.heap.mem.u64(t + T_RET),
         };
         Ok((self.u(t, T_OUTCOME), value))
+    }
+
+    /// The defect record of task `id` (ABI §6.5, design §17.129 P9): code, message and site,
+    /// `None` unless the task ended in a defect.
+    pub fn defect(&self, id: u32) -> Res<Option<(Defect, u32)>> {
+        let t = self.arena_obj(id, tag::TASK).ok_or(Defect::FIBER_RETIRED)?;
+        if self.u(t, T_STATE) != DONE || self.u(t, T_OUTCOME) != outcome::DEFECT {
+            return Ok(None);
+        }
+        let ptr = self.heap.mem.u64(t + T_DEFECT_MSG) as usize as *const u8;
+        let len = self.u(t, T_DEFECT_LEN) as usize;
+        // SAFETY: only `record_defect_at` writes these two fields, from a `&'static str`, and
+        // they are read only once the task has a defect outcome, so they were written.
+        let message =
+            unsafe { core::str::from_utf8_unchecked(core::slice::from_raw_parts(ptr, len)) };
+        let code = self.u(t, T_DEFECT) as u16;
+        Ok(Some((Defect { code, message }, self.u(t, T_DEFECT_SITE))))
     }
 
     /// `join`: the child's outcome, or `None` after registering the current task to be woken
