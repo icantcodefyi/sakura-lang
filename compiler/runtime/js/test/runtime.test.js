@@ -964,6 +964,41 @@ test("serveHttp refuses a body over 1 MiB with 413 and answers an invalid status
   }
 });
 
+test("SAKURA_MAX_COPY_BYTES is decimal digits from 1, unset is 256 MiB, anything else D091", async () => {
+  const name = "SAKURA_MAX_COPY_BYTES";
+  const read = (raw) => {
+    if (raw === undefined) delete process.env[name];
+    else process.env[name] = raw;
+    try {
+      return rt.bytesEnv(name, rt.DEFAULT_COPY_BYTES);
+    } catch (e) {
+      return e;
+    } finally {
+      delete process.env[name];
+    }
+  };
+  assert.equal(read(undefined), 256 * 1024 * 1024);
+  assert.equal(read("42"), 42);
+  assert.equal(read("1"), 1);
+  assert.equal(read("007"), 7);
+  assert.equal(read("9007199254740991"), Number.MAX_SAFE_INTEGER);
+  for (const raw of ["abc", "", "0", "000", "-1", "+5", "1.5", "1e3", " 42", "42 ", "42\n", "٤٢", "9007199254740992", "9".repeat(400)]) {
+    const e = read(raw);
+    assert.ok(e instanceof rt.Defect, `${JSON.stringify(raw)} is refused`);
+    assert.equal(e.code, "D091");
+    assert.equal(e.detail, `${name} must be a positive integer number of bytes (1 to 2^53 - 1), got ${JSON.stringify(raw)}`);
+  }
+  // `http_send` refuses before any request leaves.
+  process.env[name] = "abc";
+  try {
+    const req = { method: { $t: { ctors: [{ name: "Get" }] }, tag: 0 }, url: "http://127.0.0.1:9/", headers: rt.list([]), secret_headers: rt.list([]), body: "" };
+    const o = await rt.runTask(rt.http_send, [req]);
+    assert.deepEqual([o.kind, o.code], ["defect", "D091"]);
+  } finally {
+    delete process.env[name];
+  }
+});
+
 test("http_send past SAKURA_MAX_COPY_BYTES is Err(response too large) and aborts the fetch", async () => {
   const http = await import("node:http");
   class Response {

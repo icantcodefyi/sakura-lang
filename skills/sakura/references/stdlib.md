@@ -99,6 +99,11 @@ checked skill reference; they are not additional APIs.
   response body; past that, or with a declared `content-length` over it, the fetch is
   aborted and `send` fails with `HttpError` `"response too large"` (§17.205). On
   `--target wasm` the host also counts headers and queued answers against the same budget.
+  The variable takes decimal digits from 1 to 2^53 - 1; any other value (empty, `0`, signs, fractions,
+  exponents, spaces) is the defect `D091` at first use (on `--target wasm`, where the
+  budget covers every host answer, the first answer), never an unlimited or zero budget
+  (§17.209). The budget is a per-instance memory ceiling, not a byte-exact contract: near it
+  the two backends may differ, so read at most about that many bytes.
 
 ## Module dependencies (non-test code)
 

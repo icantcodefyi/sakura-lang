@@ -847,7 +847,7 @@ fn http_send_over_the_copy_budget_fails_alike_on_both_backends() {
         ),
     )
     .unwrap();
-    let run = |target: &str| {
+    let run = |target: &str, budget: &str| {
         let out_dir = dir.join(format!("out-{target}"));
         let args = [
             "run",
@@ -856,9 +856,9 @@ fn http_send_over_the_copy_budget_fails_alike_on_both_backends() {
             "--out-dir",
             out_dir.to_str().unwrap(),
         ];
-        sakura_env(&args, &dir, &[("SAKURA_MAX_COPY_BYTES", Path::new("1024"))])
+        sakura_env(&args, &dir, &[("SAKURA_MAX_COPY_BYTES", Path::new(budget))])
     };
-    let (js, wasm) = (run("js"), run("wasm"));
+    let (js, wasm) = (run("js", "1024"), run("wasm", "1024"));
     assert_eq!(
         (js.code, js.stdout.as_str()),
         (Some(0), "failed: response too large\n"),
@@ -871,6 +871,22 @@ fn http_send_over_the_copy_budget_fails_alike_on_both_backends() {
         "{}",
         wasm.stderr
     );
+    // Design §17.209 (1): an invalid budget is never unlimited: the same D091 on both.
+    let refused = "SAKURA_MAX_COPY_BYTES must be a positive integer number of bytes \
+                   (1 to 2^53 - 1), got \\\"1e3\\\"";
+    for out in [run("js", "1e3"), run("wasm", "1e3")] {
+        assert_eq!(
+            (out.code, out.stdout.as_str()),
+            (Some(70), ""),
+            "{}",
+            out.stderr
+        );
+        assert!(
+            out.stderr.contains("\"code\":\"D091\"") && out.stderr.contains(refused),
+            "{}",
+            out.stderr
+        );
+    }
     let _ = std::fs::remove_dir_all(&dir);
 }
 

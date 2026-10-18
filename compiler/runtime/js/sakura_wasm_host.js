@@ -117,11 +117,6 @@ export function defectSpans(debug, site) {
 /** A host-side fault the guest cannot cause in a checked program (`D090`, ABI §8.6). */
 export class HostFault extends Error {}
 
-/**
- * `SAKURA_MAX_COPY_BYTES` (ABI §8.5, §10; default 256 MiB): the bytes one answer may copy into
- * the guest, and the bytes of completions queued for it at once (security review W4).
- */
-const MAX_COPY_BYTES = Number(proc?.env?.SAKURA_MAX_COPY_BYTES ?? 256 * 1024 * 1024);
 const TOO_LARGE = "response too large";
 
 // ---------------------------------------------------------------------------------------------
@@ -419,7 +414,7 @@ export class Host {
     // their bytes in all (`SAKURA_MAX_COPY_BYTES`).
     this.completed = [];
     this.queued = 0;
-    this.maxCopy = MAX_COPY_BYTES;
+    this.copyBudget = null;
     this.wake = null;
     this.traceFd = null;
     const path = proc?.env?.SAKURA_TRACE;
@@ -427,6 +422,15 @@ export class Host {
       this.fs = proc.getBuiltinModule("node:fs");
       this.traceFd = this.fs.openSync(path, "a");
     }
+  }
+
+  /**
+   * `SAKURA_MAX_COPY_BYTES` (ABI §8.5, §10; default 256 MiB): the bytes one answer may copy into
+   * the guest, and the bytes of completions queued for it at once (security review W4). Read at
+   * first use, so an invalid value is the run's `D091`, not a crash at load.
+   */
+  get maxCopy() {
+    return (this.copyBudget ??= rt.bytesEnv("SAKURA_MAX_COPY_BYTES", rt.DEFAULT_COPY_BYTES));
   }
 
   /** A fresh view of linear memory (never kept across a call into the guest). */
@@ -660,6 +664,9 @@ export class Host {
         // starts a guest task (`invoke`); its response comes back through `serve_respond`, and a
         // failure or defect is its outcome, read after the guest runs (`served`).
         serve_listen: (request, listener, ptr, len) => {
+          // Read before the server starts: an invalid budget is this run's `D091`, not an
+          // exception in a request callback at the first copy (design §17.209 (1)).
+          void this.maxCopy;
           const [addr] = this.decode(new Reader(this.copyIn(ptr, len)));
           const stop = (reason) => {
             const e = new (rt.typeClass("std::serve::ServeError"))(reason);

@@ -171,7 +171,7 @@ test("an http answer past the copy budget is Err(response too large), queued byt
   put(64, [9, ...u32(0)]);
   const body = (n) => () => ({ ok: rt.Ok(new Uint8Array(n)) });
   const schema = ["A", "std::result::Result", ["Y", "S"]];
-  h.maxCopy = 64;
+  h.copyBudget = 64;
   h.async(1, 64, 5, body(16), schema);
   h.async(2, 64, 5, body(16), schema);
   h.async(3, 64, 5, body(100), schema);
@@ -189,11 +189,25 @@ test("an http answer past the copy budget is Err(response too large), queued byt
   assert.equal(h.queued, 0, "delivered completions leave the budget");
 });
 
+test("an invalid SAKURA_MAX_COPY_BYTES is D091 at the first copy, not at load", () => {
+  process.env.SAKURA_MAX_COPY_BYTES = "1e3";
+  try {
+    const { h } = host();
+    const d091 = (e) => e instanceof rt.Defect && e.code === "D091";
+    assert.throws(() => h.copyOut(new Uint8Array(1)), d091);
+    assert.throws(() => h.imports().sakura_host.serve_listen(1, 0, 0, 0), d091, "before the server starts");
+  } finally {
+    delete process.env.SAKURA_MAX_COPY_BYTES;
+  }
+  const { h } = host();
+  assert.equal(h.maxCopy, 256 * 1024 * 1024, "unset is the default");
+});
+
 test("a sync answer past the copy budget is a D091 answer, not a guest heap exhaustion", () => {
   const { h, put } = host();
   h.argv = ["a".repeat(200)];
   put(64, [9, ...u32(0)]);
-  h.maxCopy = 64;
+  h.copyBudget = 64;
   const p = h.hosted("cli_args", 64, 5);
   const [status, ...code] = outBytes(h, p, 5);
   assert.equal(status, 2);

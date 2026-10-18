@@ -3376,8 +3376,23 @@ function fetchArgs(req) {
 
 const failureOf = (e) => String(e?.cause?.message ?? e?.message ?? e);
 
+/**
+ * A byte-count variable (design §17.209 (1)): unset is `fallback`, decimal digits with a value
+ * from 1 to 2^53 - 1 are that value, anything else is the defect `D091` naming the variable,
+ * the value seen and the accepted form, so a limit is never off and never zero by accident.
+ */
+export function bytesEnv(name, fallback) {
+  const raw = proc?.env?.[name];
+  if (raw === undefined) return fallback;
+  const n = /^[0-9]+$/.test(raw) ? Number(raw) : 0;
+  if (n >= 1 && Number.isSafeInteger(n)) return n;
+  const form = "a positive integer number of bytes (1 to 2^53 - 1)";
+  throw new Defect("D091", `${name} must be ${form}, got ${JSON.stringify(raw)}`);
+}
+
+export const DEFAULT_COPY_BYTES = 256 * 1024 * 1024;
 /** The WASM host's copy budget (`sakura_wasm_host.js`, ABI §8.5), read per request. */
-const maxCopyBytes = () => Number(proc?.env?.SAKURA_MAX_COPY_BYTES ?? 256 * 1024 * 1024);
+const maxCopyBytes = () => bytesEnv("SAKURA_MAX_COPY_BYTES", DEFAULT_COPY_BYTES);
 const TOO_LARGE = "response too large";
 
 /** `r`'s body as text, or `undefined` once it is over `max` bytes. */
@@ -3403,9 +3418,9 @@ async function boundedText(r, max) {
  */
 export function http_send(req, _ctx, k) {
   const Response = std("std::response::Response");
+  const max = maxCopyBytes();
   const a = fetchArgs(req);
   if (a.err !== undefined) return ret(k, Err(a.err));
-  const max = maxCopyBytes();
   const response = fetch(req.url, a.init).then(
     async (r) => {
       const text = await boundedText(r, max);

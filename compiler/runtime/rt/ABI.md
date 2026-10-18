@@ -1,6 +1,6 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.2.0**, agreed before `sakura_lir` or `sakura_rt`
+**Status:** design specification, version **1.2.1**, agreed before `sakura_lir` or `sakura_rt`
 emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed, 1.0.2 the
 R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
 the end, with the questions still open), and 1.1.0 the four `stats()` counters and the
@@ -8,7 +8,7 @@ direct-style twins of design §17.118 (plan item L4), 1.1.1 the gate 10 erratum 
 §8.4 (design §17.159; the plan's "1.0.3"), 1.1.2 the hostile-host hardening of plan WS12
 item 8 (§8.1, §8.4–§8.6), 1.1.3 the defect sites of plan L5 (§5, §6.5, §12; design §17.162), and 1.2.0 the `restarts`
 counter, the import and handle-kind lists as built and §5's fallback wording (design §17.160,
-§17.161; plan M4-OPT). Owned by the designer; implemented jointly by M4-LIR (`crates/sakura_lir`)
+§17.161; plan M4-OPT), and 1.2.1 the fail-closed copy budget of §8.5 and its reading as a per-instance ceiling (design §17.209). Owned by the designer; implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
 (`crates/sakura_codegen_wasm`, `runtime/js/sakura_wasm_host.js`). This document is prose,
 tables and byte layouts; it contains no code and is not itself normative language
@@ -84,6 +84,10 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   shipped changes: the ten counters keep their offsets, so a 1.2 host reads a 1.1 module's ten
   (`stats()` returns its length), and a 1.1 host refuses a 1.2 module by the MINOR rule above.
   `sakura_abi_version` is `0x010200`.
+- 1.2.1 is an erratum (design §17.209 (1), (3)): §8.5 states how the hosts read
+  `SAKURA_MAX_COPY_BYTES` (a positive integer or the defect `D091`, never unlimited) and that the
+  budget is a per-instance memory ceiling, not a byte-exact contract. A failure mode is
+  specified; no byte, import or export changes, so `sakura_abi_version` stays `0x010200`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -677,6 +681,17 @@ wrong class.
   answer past the budget, raised by the guest from a status-2 answer, or ending the run where
   the import has no answer). The budget counts one answer, and an HTTP completion together
   with the completions already queued for delivery.
+- Limit variables (1.2.1, design §17.209 (1)): unset is the default; decimal digits with a value
+  from 1 to 2^53 - 1 are that value; anything else (empty, a sign, a fraction, an exponent,
+  spaces, words) is the defect `D091` naming the variable, the value seen and the accepted
+  form, raised at first use (JS `http_send`, which the Node host also calls, reads
+  `SAKURA_MAX_COPY_BYTES` on each request; the Node host reads its own budget once per instance,
+  at its first copy or when `serve_listen` starts), so a limit is never off and never zero by
+  accident. Until 1.2.1 a non-numeric value turned the budget off and an empty one refused
+  every body. The budget is a per-instance ceiling on host memory, not a byte-exact contract:
+  the JS backend counts body bytes per response and this host the encoded answer plus the
+  queued completions, so a response within the limit by less than its headers and the other
+  in-flight answers can be `Ok` on one and `Err` on the other.
 - Payloads (1.1.2): `complete` and `invoke` take ownership only of a `Bytes` inside memory
   with `rc = 1` and no static flag; anything else is refused untouched (`complete` returns 0
   and the request stays pending).

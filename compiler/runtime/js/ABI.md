@@ -452,6 +452,11 @@ the WASM host's message (rt ABI §8.5). This counts body bytes only; the WASM ho
 this function, then also checks the encoded answer (headers included, plus queued answers)
 against the same budget, so a body just under it can still be `Err` there. Erratum 2026-10-19 (design §17.205 (3)): until then the JS runtime
 read a whole response with no limit; the `Err` case gained this cause, nothing else changed.
+`bytesEnv(name, fallback)` reads the variable (rt ABI §8.5, design §17.209 (1)): unset is the
+default, decimal digits from 1 to 2^53 - 1 are the value, and anything else is the defect `D091`
+naming the variable, the value seen and the accepted form, raised before the request leaves.
+Erratum 2026-10-19: until then a non-numeric value turned the limit off and an empty one
+refused every body; the failure mode is specified, no shape changes.
 
 **Streaming** (design §17.88, behind `Http.stream`/`Http.read_chunk`). A `Body` is an id into a
 runtime table, like an open file. `http_stream_open(req, $ctx, $k) -> Result<Incoming, String>`

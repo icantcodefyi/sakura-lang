@@ -9,6 +9,14 @@ published yet.
 
 ### Security
 
+- **Breaking:** `SAKURA_MAX_COPY_BYTES` must be decimal digits with a value from 1 to
+  2^53 - 1: any other value (empty, `0`, a sign, a fraction, an exponent such as `1e3`, hex,
+  spaces such as `" 42"`, words) is the defect `D091` naming the variable and the value, at
+  first use: `Http.host()`'s `send` on the JS backend, and on `--target wasm`, where the budget
+  covers every host answer, the first answer or `Serve.host()` starting. A non-numeric value turned the limit off, an empty one refused
+  every response body, and forms like `1e3` were accepted (design §17.209 (1)). To migrate,
+  set the variable to a plain byte count or unset it for the 256 MiB default.
+
 - `Http.host()`'s `send` on the JS backend reads at most `SAKURA_MAX_COPY_BYTES` (default
   256 MiB) of a response body, as `--target wasm` already did: a larger body, or a declared
   `content-length` over the limit, aborts the fetch and fails with `HttpError`
