@@ -1,5 +1,7 @@
 // milestone: M1
 // mode: test
+// expect-defect@js: D003
+// expect-defect@wasm: D001
 // covers: TestDecl
 
 error Empty

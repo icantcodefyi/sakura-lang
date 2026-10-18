@@ -1,6 +1,7 @@
 // milestone: M3
 // expect-exit: 70
 // expect-defect: D003
+// expect-exit@wasm: 0
 // covers: performance-r1 WS-S; design §17.111–§17.116
 
 pub fn main() -> Unit ! {Console} {

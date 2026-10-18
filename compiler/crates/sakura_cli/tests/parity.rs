@@ -4,9 +4,10 @@
 //! (`SAKURA_TRACE`); every test-mode fixture runs `sakura test --json` on both, which must
 //! agree on the exit code, each test's status, failures, captured output and defect code,
 //! and the trace. The examples (`compiler/examples`) are held to the same, run in their project
-//! (run-mode ones with their `args`, and every one's tests). A fixture with an `expect-defect@js` or `expect-defect@wasm` directive is
-//! held to its own backend's expectation instead (§17.80: the backends differ exactly at
-//! `Int` ±(2^53−1)). Fixtures WASM cannot run yet are listed in `KNOWN` with the reason; one
+//! (run-mode ones with their `args`, and every one's tests). A fixture with an `@js`/`@wasm`
+//! directive or a `<name>.<backend>.stdout` is held to each backend's own expectation instead
+//! (§17.80: the backends differ exactly at `Int` ±(2^53−1); `common::expectation`). Fixtures
+//! WASM cannot run yet are listed in `KNOWN` with the reason; one
 //! that starts agreeing fails the test until it is removed, so the list stays exact.
 //! Task numbers in traces are compared up to renaming in order of first appearance: JS spends
 //! a task number on each refinement check a JSON decode runs (`runTask(r.check, …)`), which on
@@ -21,47 +22,46 @@ use common::*;
 use std::collections::BTreeMap;
 use std::path::Path;
 
-/// Fixtures that do not agree yet, and why.
-const KNOWN: &[(&str, &str)] = &[
-    (
-        "arith_range_edges.sakura",
-        "JS stops with D003 beyond ±(2^53−1); Int is i64 on WASM (§17.80), no @wasm variant yet",
-    ),
-    (
-        "arith_range_edges_min_sub.sakura",
-        "JS stops with D003 beyond ±(2^53−1); Int is i64 on WASM (§17.80), no @wasm variant yet",
-    ),
-    (
-        "arith_ranges_conjunction_else.sakura",
-        "JS stops with D003 beyond ±(2^53−1); Int is i64 on WASM (§17.80), no @wasm variant yet",
-    ),
-    (
-        "arith_ranges_counter_overflow.sakura",
-        "JS stops with D003 beyond ±(2^53−1); Int is i64 on WASM (§17.80), no @wasm variant yet",
-    ),
-    (
-        "arith_ranges_loop_flag.sakura",
-        "JS stops with D003 beyond ±(2^53−1); Int is i64 on WASM (§17.80), no @wasm variant yet",
-    ),
-    (
-        "arith_ranges_unseeded_param.sakura",
-        "JS stops with D003 beyond ±(2^53−1); Int is i64 on WASM (§17.80), no @wasm variant yet",
-    ),
-    (
-        "defect_D003_js_unsafe_integer.sakura",
-        "a JS-only defect (§17.80): WASM computes the i64 result",
-    ),
-    (
-        "test_blocks.sakura",
-        "an expect_defect body overflows Int: its trace's defect event is D003 on JS, D001 on WASM",
-    ),
-];
+/// Fixtures that do not agree yet, and why. Empty since W2 (plan §3.7 row 3); a fixture
+/// that WASM cannot run yet goes here with the reason.
+const KNOWN: &[(&str, &str)] = &[];
 
 struct Run {
     code: Option<i32>,
     stdout: String,
     defect: Option<String>,
     trace: String,
+    /// On WASM: the host imports the module declares, the host provides, and those called
+    /// (`SAKURA_WASM_COVERAGE`, `sakura_wasm_host.js`).
+    imports: Imports,
+}
+
+#[derive(Default)]
+struct Imports {
+    declared: std::collections::BTreeSet<String>,
+    provided: std::collections::BTreeSet<String>,
+    called: BTreeMap<String, u64>,
+}
+
+/// The coverage lines one run's host processes appended (a test run starts one per module).
+fn imports(path: &Path) -> Imports {
+    let mut out = Imports::default();
+    for line in std::fs::read_to_string(path).unwrap_or_default().lines() {
+        let v: serde_json::Value = serde_json::from_str(line).expect("a coverage line");
+        let names = |k: &str| {
+            v[k].as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|x| x.as_str().map(str::to_owned))
+                .collect::<Vec<_>>()
+        };
+        out.declared.extend(names("declared"));
+        out.provided.extend(names("provided"));
+        for (k, n) in v["called"].as_object().into_iter().flatten() {
+            *out.called.entry(k.clone()).or_default() += n.as_u64().unwrap_or(0);
+        }
+    }
+    out
 }
 
 fn defect_code(stderr: &str) -> Option<String> {
@@ -95,8 +95,10 @@ fn run_mode(mode: &str, target: &str, name: &str, dir: &Path, rest: &[&str]) -> 
         name
     };
     let trace = tmp.join(format!("{label}.{mode}.{target}.trace"));
+    let coverage = tmp.join(format!("{label}.{mode}.{target}.imports"));
     let out_dir = tmp.join(format!("out-{target}"));
     let _ = std::fs::remove_file(&trace);
+    let _ = std::fs::remove_file(&coverage);
     let mut args = vec![
         mode,
         "--target",
@@ -113,8 +115,16 @@ fn run_mode(mode: &str, target: &str, name: &str, dir: &Path, rest: &[&str]) -> 
         args.push("--");
         args.extend(rest);
     }
-    let out = sakura_env(&args, dir, &[("SAKURA_TRACE", &trace)]);
+    let out = sakura_env(
+        &args,
+        dir,
+        &[
+            ("SAKURA_TRACE", &trace),
+            ("SAKURA_WASM_COVERAGE", &coverage),
+        ],
+    );
     Run {
+        imports: imports(&coverage),
         code: if out.timed_out { None } else { out.code },
         defect: defect_code(&out.stderr),
         stdout: if mode == "test" {
@@ -150,16 +160,61 @@ fn renumbered(trace: &str) -> String {
     out
 }
 
-/// `None` when the backends agree (or each meets its own `@backend` expectation).
-fn compare(d: &BTreeMap<String, String>, js: &Run, wasm: &Run) -> Option<String> {
-    let own = |b: &str| d.get(&format!("expect-defect@{b}")).cloned();
-    if own("js").is_some() || own("wasm").is_some() {
-        let meets = |r: &Run, b: &str| match own(b).or_else(|| d.get("expect-defect").cloned()) {
-            Some(code) => r.defect.as_deref() == Some(code.as_str()),
-            None => r.code == Some(0),
-        };
-        return (!meets(js, "js") || !meets(wasm, "wasm"))
-            .then(|| "a backend misses its own expectation".into());
+/// `None` when the backends agree, or, for a fixture with a backend's own expectation
+/// (§17.80: `@js`/`@wasm` directives, `<name>.<backend>.stdout`), when each meets its own and
+/// they agree elsewhere: test records always, and traces with each backend's expected defect
+/// code masked unless a backend has its own stdout (then the runs diverge by design).
+fn compare(
+    path: Option<(&Path, &BTreeMap<String, String>)>,
+    mode: &str,
+    js: &Run,
+    wasm: &Run,
+) -> Option<String> {
+    if let Some((path, d)) = path {
+        let (ej, ew) = (expectation(path, d, "js"), expectation(path, d, "wasm"));
+        if ej.own || ew.own {
+            for (b, e, r) in [("js", &ej, js), ("wasm", &ew, wasm)] {
+                if r.code != Some(e.exit) {
+                    return Some(format!("{b}: exit {:?}, expected {}", r.code, e.exit));
+                }
+                if let Some(code) = &e.defect
+                    && r.defect.as_ref() != Some(code)
+                    && !trace_defects(&r.trace).contains(code)
+                {
+                    return Some(format!("{b}: no defect {code}"));
+                }
+                if mode == "run" {
+                    let want = std::fs::read_to_string(&e.stdout).unwrap_or_default();
+                    if r.stdout != want {
+                        return Some(format!(
+                            "{b}: stdout differs from {}\n{}",
+                            e.stdout.display(),
+                            r.stdout
+                        ));
+                    }
+                }
+            }
+            if mode == "test" && js.stdout != wasm.stdout {
+                return Some(format!(
+                    "test records differ\n--- js\n{}--- wasm\n{}",
+                    js.stdout, wasm.stdout
+                ));
+            }
+            let mask = |r: &Run, e: &Expect| match &e.defect {
+                Some(c) => r
+                    .trace
+                    .replace(&format!("\"code\":\"{c}\""), "\"code\":\"expected\""),
+                None => r.trace.clone(),
+            };
+            let separate = ej.stdout != ew.stdout;
+            if !separate && mask(js, &ej) != mask(wasm, &ew) {
+                return Some(format!(
+                    "effect traces differ\n--- js\n{}--- wasm\n{}",
+                    js.trace, wasm.trace
+                ));
+            }
+            return None;
+        }
     }
     if js.code != wasm.code {
         return Some(format!("exit {:?} on js, {:?} on wasm", js.code, wasm.code));
@@ -196,6 +251,41 @@ fn count_ops(trace: &str, ops: &mut BTreeMap<String, usize>) {
     }
 }
 
+/// Which host imports each run exercised, written to `parity/imports.txt`; the summary
+/// returned lists every import the host provides or a module declares that no run called.
+fn import_report(runs: &[(String, Imports)]) -> String {
+    let mut all = std::collections::BTreeSet::new();
+    let mut calls: BTreeMap<&str, u64> = BTreeMap::new();
+    let mut detail = String::new();
+    for (name, i) in runs {
+        all.extend(i.declared.iter().cloned());
+        all.extend(i.provided.iter().cloned());
+        for (k, n) in &i.called {
+            *calls.entry(k).or_default() += n;
+        }
+        let used: Vec<&str> = i.called.keys().map(String::as_str).collect();
+        detail.push_str(&format!("{name}: {}\n", used.join(" ")));
+    }
+    let uncovered: Vec<&str> = all
+        .iter()
+        .map(String::as_str)
+        .filter(|k| !calls.contains_key(k))
+        .collect();
+    detail.push_str(&format!(
+        "\ncalls: {calls:?}\nuncovered: {}\n",
+        uncovered.join(" ")
+    ));
+    let path = Path::new(env!("CARGO_TARGET_TMPDIR")).join("parity/imports.txt");
+    std::fs::write(&path, &detail).unwrap();
+    format!(
+        "host imports: {} of {} called by some run; uncovered: {}; per run: {}",
+        all.len() - uncovered.len(),
+        all.len(),
+        uncovered.join(" "),
+        path.display()
+    )
+}
+
 #[test]
 fn js_and_wasm_agree_on_the_semantics_corpus() {
     let node = std::process::Command::new("node").arg("--version").output();
@@ -209,6 +299,7 @@ fn js_and_wasm_agree_on_the_semantics_corpus() {
     }
     let (mut agree, mut known, mut failures) = (0, 0, vec![]);
     let mut ops: BTreeMap<String, usize> = BTreeMap::new();
+    let mut covered: Vec<(String, Imports)> = vec![];
     let mut total = 0;
     for path in fixtures("semantics") {
         let name = path.file_name().unwrap().to_string_lossy().into_owned();
@@ -220,10 +311,11 @@ fn js_and_wasm_agree_on_the_semantics_corpus() {
         total += 1;
         let dir = path.parent().unwrap();
         let js = run_mode(mode, "js", &name, dir, &[]);
-        let wasm = run_mode(mode, "wasm", &name, dir, &[]);
+        let mut wasm = run_mode(mode, "wasm", &name, dir, &[]);
         count_ops(&wasm.trace, &mut ops);
+        covered.push((name.clone(), std::mem::take(&mut wasm.imports)));
         let known_reason = KNOWN.iter().find(|(n, _)| *n == name).map(|(_, r)| *r);
-        match (compare(&d, &js, &wasm), known_reason) {
+        match (compare(Some((&path, &d)), mode, &js, &wasm), known_reason) {
             (None, None) => agree += 1,
             (None, Some(_)) => failures.push(format!("{name}: agrees now; drop it from KNOWN")),
             (Some(_), Some(_)) => known += 1,
@@ -259,7 +351,12 @@ fn js_and_wasm_agree_on_the_semantics_corpus() {
                 wasm.stdout.clone_from(&js.stdout);
             }
             count_ops(&wasm.trace, &mut ops);
-            match compare(&BTreeMap::new(), &js, &wasm) {
+            let label = format!(
+                "example {} ({mode})",
+                dir.file_name().unwrap().to_string_lossy()
+            );
+            covered.push((label, std::mem::take(&mut wasm.imports)));
+            match compare(None, mode, &js, &wasm) {
                 None => examples_agree += 1,
                 Some(why) => failures.push(format!("example {} ({mode}): {why}", dir.display())),
             }
@@ -272,5 +369,6 @@ fn js_and_wasm_agree_on_the_semantics_corpus() {
         failures.len()
     );
     eprintln!("traced operations on WASM: {ops:?}");
+    eprintln!("{}", import_report(&covered));
     assert!(failures.is_empty(), "{}", failures.join("\n\n"));
 }

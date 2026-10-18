@@ -1,7 +1,8 @@
-// milestone: M4
-// needs: 64-bit Int backend (WASM/native); JS reports D003 first
+// milestone: M3
+// needs: 64-bit Int backend (WASM/native); JS reports D003 first (expect-defect@js)
 // expect-exit: 70
 // expect-defect: D001
+// expect-defect@js: D003
 // covers: Defect
 
 fn big() -> Int { 4_611_686_018_427_387_904 }

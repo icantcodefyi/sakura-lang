@@ -63,6 +63,57 @@ pub fn directives(text: &str) -> BTreeMap<String, String> {
     map
 }
 
+/// What a fixture expects of one backend (design §17.80): `expect-exit@<backend>` and
+/// `expect-defect@<backend>` override the unsuffixed directives, and `<name>.<backend>.stdout`
+/// overrides `<name>.stdout`. An `expect-exit@<backend>` other than 70 (a defect's) cancels the
+/// unsuffixed defect, so `expect-exit@wasm: 0` alone says WASM computes what JS stops at. In
+/// test mode the defect is the one the trace records (a test that expects it still passes).
+pub struct Expect {
+    pub exit: i32,
+    pub defect: Option<String>,
+    pub stdout: PathBuf,
+    /// The backend has its own expectation (a suffixed directive or stdout file).
+    pub own: bool,
+}
+
+pub fn expectation(path: &Path, d: &BTreeMap<String, String>, backend: &str) -> Expect {
+    let get = |k: &str| d.get(&format!("{k}@{backend}"));
+    let own_stdout = path.with_extension(format!("{backend}.stdout"));
+    let has_own_stdout = own_stdout.exists();
+    let exit = get("expect-exit")
+        .or_else(|| d.get("expect-exit"))
+        .and_then(|c| c.parse().ok())
+        .unwrap_or(0);
+    let defect = get("expect-defect")
+        .or_else(|| {
+            d.get("expect-defect")
+                .filter(|_| get("expect-exit").is_none() || exit == 70)
+        })
+        .cloned();
+    Expect {
+        exit,
+        defect,
+        own: has_own_stdout || get("expect-exit").is_some() || get("expect-defect").is_some(),
+        stdout: if has_own_stdout {
+            own_stdout
+        } else {
+            path.with_extension("stdout")
+        },
+    }
+}
+
+/// The defect codes of a §17.80 effect trace's `defect` events, in order.
+pub fn trace_defects(trace: &str) -> Vec<String> {
+    trace
+        .lines()
+        .filter(|l| l.contains("\"event\":\"defect\""))
+        .filter_map(|l| {
+            let at = l.find("\"code\":\"")? + 8;
+            Some(l.get(at..at + 4)?.to_owned())
+        })
+        .collect()
+}
+
 /// `M2` → 2. Missing means M0.
 pub fn milestone(d: &BTreeMap<String, String>) -> i8 {
     d.get("milestone")

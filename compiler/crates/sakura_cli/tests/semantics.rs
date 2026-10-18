@@ -2,6 +2,8 @@
 //! with `<name>.stdout` and the exit code with `// expect-exit:` (default 0); `// mode: test`
 //! requires `sakura test` to pass; `// mode: check` requires a clean `sakura check`. `run` and
 //! `test` fixtures also run under `--no-direct` with identical effect traces (design §17.111).
+//! These runs are on JS, so `@js` directives apply (§17.80); `tests/parity.rs` holds WASM to
+//! JS and to its own `@wasm` expectations.
 
 mod common;
 
@@ -21,7 +23,7 @@ fn run(path: &Path, d: &std::collections::BTreeMap<String, String>) -> Result<()
         args.extend(["--seed", seed]);
     }
     if mode == "check" {
-        return expect(path, d, mode, &sakura(&args, dir));
+        return expect(path, d, mode, &sakura(&args, dir), "");
     }
     let tmp = Path::new(env!("CARGO_TARGET_TMPDIR"));
     let (mut traces, mut stderr) = (Vec::new(), Vec::new());
@@ -33,8 +35,9 @@ fn run(path: &Path, d: &std::collections::BTreeMap<String, String>) -> Result<()
             args.insert(1, "--no-direct");
         }
         let out = sakura_env(&args, dir, &[("SAKURA_TRACE", &trace)]);
-        expect(path, d, mode, &out).map_err(|e| format!("{abi}: {e}"))?;
-        traces.push(std::fs::read_to_string(&trace).unwrap_or_default());
+        let trace = std::fs::read_to_string(&trace).unwrap_or_default();
+        expect(path, d, mode, &out, &trace).map_err(|e| format!("{abi}: {e}"))?;
+        traces.push(trace);
         stderr.push(out.stderr);
     }
     if traces[0] != traces[1] {
@@ -57,30 +60,29 @@ fn expect(
     d: &std::collections::BTreeMap<String, String>,
     mode: &str,
     out: &Output,
+    trace: &str,
 ) -> Result<(), String> {
     if out.timed_out {
         return Err(format!("`sakura {mode}` timed out"));
     }
-    let want: i32 = d
-        .get("expect-exit")
-        .and_then(|c| c.parse().ok())
-        .unwrap_or(0);
-    if out.code != Some(want) {
+    let want = expectation(path, d, "js");
+    if out.code != Some(want.exit) {
         return Err(format!(
-            "`sakura {mode}` exited {:?}, expected {want}\nstdout:\n{}\nstderr:\n{}",
-            out.code, out.stdout, out.stderr
+            "`sakura {mode}` exited {:?}, expected {}\nstdout:\n{}\nstderr:\n{}",
+            out.code, want.exit, out.stdout, out.stderr
         ));
     }
-    if let Some(defect) = d.get("expect-defect")
+    if let Some(defect) = &want.defect
         && !out.stderr.contains(defect.as_str())
+        && !trace_defects(trace).contains(defect)
     {
         return Err(format!(
-            "expected defect {defect} on stderr:\n{}",
+            "expected defect {defect} on stderr or in the trace:\n{}",
             out.stderr
         ));
     }
     if mode == "run" {
-        compare_file(&path.with_extension("stdout"), &out.stdout)?;
+        compare_file(&want.stdout, &out.stdout)?;
     }
     Ok(())
 }

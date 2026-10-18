@@ -2,6 +2,7 @@
 // needs: JS backend: Int beyond 2^53 - 1 traps
 // expect-exit: 70
 // expect-defect: D003
+// expect-exit@wasm: 0
 // covers: Defect
 
 fn edge() -> Int { 9_007_199_254_740_991 }

@@ -97,9 +97,12 @@ pub fn run_node_tests(
     if update {
         writable(&mut cmd, snapshots)?;
     }
-    // The operator's effect trace (design §17.80), the one file the runtime opens itself.
-    if let Some(trace) = std::env::var_os("SAKURA_TRACE") {
-        cmd.arg(format!("--allow-fs-write={}", Path::new(&trace).display()));
+    // The operator's effect trace (design §17.80) and the WASM host's import coverage (plan
+    // §3.7 W2), the files the runtime opens itself.
+    for var in ["SAKURA_TRACE", "SAKURA_WASM_COVERAGE"] {
+        if let Some(path) = std::env::var_os(var) {
+            cmd.arg(format!("--allow-fs-write={}", Path::new(&path).display()));
+        }
     }
     if let Some((net, env)) = record {
         writable(&mut cmd, &snapshots.with_file_name("fixtures"))?;

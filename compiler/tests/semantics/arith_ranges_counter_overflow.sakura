@@ -1,6 +1,7 @@
 // milestone: M3
 // expect-exit: 70
 // expect-defect: D003
+// expect-exit@wasm: 0
 // covers: design §17.114 (interval pass); performance-r1 WS-P4
 
 // `i <= MAX` lets the counter reach the end of the JS range, so `i + 1` keeps its check and the
