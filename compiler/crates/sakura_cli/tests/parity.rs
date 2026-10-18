@@ -3,10 +3,15 @@
 //! agree on stdout, the exit code, the defect code on stderr, and the effect trace
 //! (`SAKURA_TRACE`); every test-mode fixture runs `sakura test --json` on both, which must
 //! agree on the exit code, each test's status, failures, captured output and defect code,
-//! and the trace. A fixture with an `expect-defect@js` or `expect-defect@wasm` directive is
+//! and the trace. The examples (`compiler/examples`) are held to the same, run in their project
+//! (run-mode ones with their `args`, and every one's tests). A fixture with an `expect-defect@js` or `expect-defect@wasm` directive is
 //! held to its own backend's expectation instead (§17.80: the backends differ exactly at
 //! `Int` ±(2^53−1)). Fixtures WASM cannot run yet are listed in `KNOWN` with the reason; one
 //! that starts agreeing fails the test until it is removed, so the list stays exact.
+//! Task numbers in traces are compared up to renaming in order of first appearance: JS spends
+//! a task number on each refinement check a JSON decode runs (`runTask(r.check, …)`), which on
+//! WASM the host's copy of the JS runtime runs outside the guest. An example with
+//! `stdout-regex` (the host clock) is held to its regex by `tests/wasm.rs`, not compared here.
 //! The report on stderr gives the counts and which effect operations the traces covered.
 //! Skipped when node is missing, unless `SAKURA_REQUIRE_WASM=1`.
 
@@ -67,10 +72,17 @@ fn test_records(stdout: &str) -> String {
     out
 }
 
-fn run_mode(mode: &str, target: &str, name: &str, dir: &Path) -> Run {
+/// `sakura <mode>` on `target` for fixture `name` in `dir`, or (with `name` empty) for the
+/// project in `dir` with program arguments `rest`.
+fn run_mode(mode: &str, target: &str, name: &str, dir: &Path, rest: &[&str]) -> Run {
     let tmp = Path::new(env!("CARGO_TARGET_TMPDIR")).join("parity");
     std::fs::create_dir_all(&tmp).unwrap();
-    let trace = tmp.join(format!("{name}.{target}.trace"));
+    let label = if name.is_empty() {
+        dir.file_name().unwrap().to_str().unwrap()
+    } else {
+        name
+    };
+    let trace = tmp.join(format!("{label}.{mode}.{target}.trace"));
     let out_dir = tmp.join(format!("out-{target}"));
     let _ = std::fs::remove_file(&trace);
     let mut args = vec![
@@ -83,7 +95,12 @@ fn run_mode(mode: &str, target: &str, name: &str, dir: &Path) -> Run {
     if mode == "test" {
         args.push("--json");
     }
-    args.push(name);
+    if !name.is_empty() {
+        args.push(name);
+    } else if !rest.is_empty() {
+        args.push("--");
+        args.extend(rest);
+    }
     let out = sakura_env(&args, dir, &[("SAKURA_TRACE", &trace)]);
     Run {
         code: if out.timed_out { None } else { out.code },
@@ -93,8 +110,32 @@ fn run_mode(mode: &str, target: &str, name: &str, dir: &Path) -> Run {
         } else {
             out.stdout
         },
-        trace: std::fs::read_to_string(&trace).unwrap_or_default(),
+        trace: renumbered(&std::fs::read_to_string(&trace).unwrap_or_default()),
     }
+}
+
+/// `trace` with its `"task":n` numbers renamed 0, 1, … in order of first appearance.
+fn renumbered(trace: &str) -> String {
+    let mut seen: Vec<String> = vec![];
+    let mut out = String::new();
+    for line in trace.lines() {
+        match line.find("\"task\":") {
+            Some(at) => {
+                let rest = &line[at + 7..];
+                let end = rest
+                    .find(|c: char| !c.is_ascii_digit())
+                    .unwrap_or(rest.len());
+                let id = &rest[..end];
+                let k = seen.iter().position(|s| s == id).unwrap_or_else(|| {
+                    seen.push(id.to_owned());
+                    seen.len() - 1
+                });
+                out.push_str(&format!("{}{k}{}\n", &line[..at + 7], &rest[end..]));
+            }
+            None => out.push_str(&format!("{line}\n")),
+        }
+    }
+    out
 }
 
 /// `None` when the backends agree (or each meets its own `@backend` expectation).
@@ -132,6 +173,17 @@ fn compare(d: &BTreeMap<String, String>, js: &Run, wasm: &Run) -> Option<String>
     None
 }
 
+/// Count the effect operations in a trace, for the report.
+fn count_ops(trace: &str, ops: &mut BTreeMap<String, usize>) {
+    for line in trace.lines() {
+        if let (Some(e), Some(o)) = (line.find("\"effect\":"), line.find("\"op\":")) {
+            let effect = line[e + 10..].split('"').next().unwrap_or_default();
+            let op = line[o + 6..].split('"').next().unwrap_or_default();
+            *ops.entry(format!("{effect}.{op}")).or_default() += 1;
+        }
+    }
+}
+
 #[test]
 fn js_and_wasm_agree_on_the_semantics_corpus() {
     let node = std::process::Command::new("node").arg("--version").output();
@@ -155,15 +207,9 @@ fn js_and_wasm_agree_on_the_semantics_corpus() {
         }
         total += 1;
         let dir = path.parent().unwrap();
-        let js = run_mode(mode, "js", &name, dir);
-        let wasm = run_mode(mode, "wasm", &name, dir);
-        for line in wasm.trace.lines() {
-            if let (Some(e), Some(o)) = (line.find("\"effect\":"), line.find("\"op\":")) {
-                let effect = line[e + 10..].split('"').next().unwrap_or_default();
-                let op = line[o + 6..].split('"').next().unwrap_or_default();
-                *ops.entry(format!("{effect}.{op}")).or_default() += 1;
-            }
-        }
+        let js = run_mode(mode, "js", &name, dir, &[]);
+        let wasm = run_mode(mode, "wasm", &name, dir, &[]);
+        count_ops(&wasm.trace, &mut ops);
         let known_reason = KNOWN.iter().find(|(n, _)| *n == name).map(|(_, r)| *r);
         match (compare(&d, &js, &wasm), known_reason) {
             (None, None) => agree += 1,
@@ -172,9 +218,45 @@ fn js_and_wasm_agree_on_the_semantics_corpus() {
             (Some(why), None) => failures.push(format!("{name}: {why}")),
         }
     }
+    // The examples: run-mode ones run with their `args`, and every one's tests.
+    let (mut examples, mut examples_agree) = (0, 0);
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples");
+    let mut dirs: Vec<_> = std::fs::read_dir(&root)
+        .unwrap()
+        .filter_map(|e| Some(e.ok()?.path()))
+        .filter(|p| p.join("sakura.toml").exists())
+        .collect();
+    dirs.sort();
+    for dir in dirs {
+        let d = directives(&std::fs::read_to_string(dir.join("src/main.sakura")).unwrap());
+        let args: Vec<&str> = d
+            .get("args")
+            .map_or("", String::as_str)
+            .split_whitespace()
+            .collect();
+        let modes: &[&str] = if d.get("mode").map(String::as_str) == Some("run") {
+            &["run", "test"]
+        } else {
+            &["test"]
+        };
+        for mode in modes {
+            examples += 1;
+            let js = run_mode(mode, "js", "", &dir, &args);
+            let mut wasm = run_mode(mode, "wasm", "", &dir, &args);
+            if *mode == "run" && d.get("stdout-regex").is_some_and(|v| v == "true") {
+                wasm.stdout.clone_from(&js.stdout);
+            }
+            count_ops(&wasm.trace, &mut ops);
+            match compare(&BTreeMap::new(), &js, &wasm) {
+                None => examples_agree += 1,
+                Some(why) => failures.push(format!("example {} ({mode}): {why}", dir.display())),
+            }
+        }
+    }
     eprintln!(
         "parity: {agree} of {total} run- and test-mode fixtures agree on stdout (test records), \
-         exit, defect and trace; {known} known differences; {} failures",
+         exit, defect and trace; {known} known differences; {examples_agree} of {examples} \
+         example runs and test runs agree; {} failures",
         failures.len()
     );
     eprintln!("traced operations on WASM: {ops:?}");

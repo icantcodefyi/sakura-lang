@@ -1,5 +1,6 @@
 //! `--target wasm` (plan §3.5 W1): the run-mode examples print `expected.stdout` on node through
-//! `sakura_wasm_host.js`, and a user `@external(js, …)` is refused at build time.
+//! `sakura_wasm_host.js`, every example's tests pass, and a user `@external(js, …)` is refused
+//! at build time. `tests/parity.rs` holds the examples to JS's test records and traces.
 //! Skipped when node or the backend's runtime object is missing, unless `SAKURA_REQUIRE_WASM=1`.
 
 mod common;
@@ -7,15 +8,23 @@ mod common;
 use common::*;
 use std::path::Path;
 
-/// The run-mode examples of `examples/README.md` that W1 runs on WASM, in table order; the
-/// others are listed in `docs/plans/m3-completion-and-m4.md` §7 (W1) with what they need.
-const EXAMPLES: &[&str] = &[
-    "hello",
-    "contracts",
-    "counter",
-    "typed_errors",
-    "word_count",
-];
+/// Every example, in name order, with its directives.
+fn examples() -> Vec<(String, std::collections::BTreeMap<String, String>)> {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples");
+    let mut out: Vec<_> = std::fs::read_dir(&root)
+        .unwrap()
+        .filter_map(|e| {
+            let dir = e.ok()?.path();
+            let src = std::fs::read_to_string(dir.join("src/main.sakura")).ok()?;
+            Some((
+                dir.file_name()?.to_string_lossy().into_owned(),
+                directives(&src),
+            ))
+        })
+        .collect();
+    out.sort_by(|a, b| a.0.cmp(&b.0));
+    out
+}
 
 fn available() -> bool {
     let node = std::process::Command::new("node")
@@ -47,9 +56,11 @@ fn run_mode_examples_print_their_expected_stdout_on_wasm() {
     }
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples");
     let mut failures = vec![];
-    for name in EXAMPLES {
-        let dir = root.join(name);
-        let d = directives(&std::fs::read_to_string(dir.join("src/main.sakura")).unwrap());
+    for (name, d) in examples() {
+        if d.get("mode").map(String::as_str) != Some("run") {
+            continue;
+        }
+        let dir = root.join(&name);
         let mut args = vec!["run", "--target", "wasm", "--"];
         args.extend(d.get("args").map_or("", String::as_str).split_whitespace());
         let out = sakura(&args, &dir);
@@ -73,19 +84,6 @@ fn run_mode_examples_print_their_expected_stdout_on_wasm() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// Examples whose `test` blocks pass under `sakura test --target wasm`.
-const TESTED: &[&str] = &[
-    "hello",
-    "contracts",
-    "counter",
-    "typed_errors",
-    "json_api",
-    "word_count",
-    "concurrency",
-    "graph",
-    "property",
-];
-
 #[test]
 fn example_tests_pass_on_wasm() {
     if !available() {
@@ -94,8 +92,8 @@ fn example_tests_pass_on_wasm() {
     }
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples");
     let mut failures = vec![];
-    for name in TESTED {
-        let out = sakura(&["test", "--target", "wasm", "--json"], &root.join(name));
+    for (name, _) in examples() {
+        let out = sakura(&["test", "--target", "wasm", "--json"], &root.join(&name));
         let summary = json_lines(&out.stdout)
             .unwrap_or_default()
             .into_iter()
