@@ -121,6 +121,9 @@ pub const HOSTED: &[&str] = &[
     "cli_args",
     "cli_parse",
     "env_get",
+    "file_open",
+    "file_read",
+    "file_write",
     "fs_exists",
     "fs_list",
     "fs_memory_root",
@@ -244,10 +247,10 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     let native_codes: Vec<sakura_lir::layout::NativeCode<'_>> = natives
         .iter()
         .map(|n| {
-            let caps: &[Slot] = if n == "rt_code_callback_stub" {
-                &stub_captures
-            } else {
-                &[]
+            let caps: &[Slot] = match n.as_str() {
+                "rt_code_callback_stub" => &stub_captures,
+                "rt_code_file_close" => &stub_captures[1..],
+                _ => &[],
             };
             (n.as_str(), &[][..], caps)
         })
@@ -377,7 +380,9 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     for off in [layout_off, codes_off, effects_off, ops_off] {
         s.local_get(0).i32_const(off as i32).i32_add();
     }
-    s.i32_const(n as i32).call(rtf("rt_init")?);
+    s.i32_const(n as i32)
+        .i32_const(code_of("rt_code_file_close") as i32)
+        .call(rtf("rt_init")?);
     s.if_(BlockType::Empty).i32_const(0).return_().end();
     s.i32_const(1).global_set(inited).i32_const(1).end();
     funcs.push(added(FIXED[1], vec![], i32s(1), f));

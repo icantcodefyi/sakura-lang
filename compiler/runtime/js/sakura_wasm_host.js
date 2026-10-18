@@ -179,6 +179,9 @@ export const HOSTED = {
     error: () => ["A", "std::cli::CliError", []],
   },
   env_get: { run: (_h, key) => ({ ok: rt.env_get(key) }), result: () => OPT("S") },
+  file_open: { run: (_h, d, p, mode) => ({ ok: rt.file_open(d, p, mode) }), result: () => R("I", "S") },
+  file_read: { run: (_h, id, max) => ({ ok: rt.file_read(id, max) }), result: () => R("Y", "S") },
+  file_write: { run: (_h, id, data) => ({ ok: rt.file_write(id, data) }), result: () => R("U", "S") },
   fs_exists: { run: (_h, d, p) => ({ ok: rt.fs_exists(d, p) }), result: () => "B" },
   fs_list: {
     run: (_h, d, p) => ({ ok: rt.fs_list(d, p) }),
@@ -296,6 +299,7 @@ export class Host {
         random_bytes: (n) => this.copyOut(rt.random_bytes(Number(n))),
         random_uuid: () => this.copyOut(new TextEncoder().encode(rt.random_uuid())),
         log_write: (ptr, len) => rt.log_write(this.string(ptr, len)),
+        file_close: (id) => rt.file_close(Number(id)),
         trace_enabled: () => (this.traceFd === null ? 0 : 1),
         trace_write: (ptr, len) => {
           rt.flushOut();

@@ -55,6 +55,7 @@ pub const IMPORTS: &[&str] = &[
     "test_output_lines",
     "test_fixtures",
     "test_snapshot",
+    "file_close",
 ];
 
 /// The gate for `host`: a [`Host::Wasi`] command may also import `fd_write` and `proc_exit`

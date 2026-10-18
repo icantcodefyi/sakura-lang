@@ -2770,17 +2770,15 @@ const EMPTY_BYTES = new Uint8Array(0);
 
 /** Runs `body($ctx, $k)` and closes file `id` on return, fail, defect or cancellation. */
 export function file_closing(id, body, ctx, k) {
-  return finalize(
-    ctx,
-    () => {
-      const f = files.get(id);
-      if (f === undefined) return;
-      files.delete(id);
-      if (f.fd !== undefined) nodeFs().closeSync(f.fd);
-    },
-    body,
-    k,
-  );
+  return finalize(ctx, () => file_close(id), body, k);
+}
+
+/** Closes file `id` (a second close does nothing); the WASM host calls it from its finalizer. */
+export function file_close(id) {
+  const f = files.get(id);
+  if (f === undefined) return;
+  files.delete(id);
+  if (f.fd !== undefined) nodeFs().closeSync(f.fd);
 }
 
 function openFile(id) {

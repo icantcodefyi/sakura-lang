@@ -65,6 +65,7 @@ map_len: (ptr) -> i64
 map_remove: (ptr, word) -> ptr
 match_failure: () -> unit
 option_expect: (ptr, ptr) -> word
+property_run: (i64, ptr, ptr, ptr, i64, i64, i64, ptr) -> unit cps
 random_host: () -> ptr
 secret_expose: (ptr) -> word
 secret_wrap: (ptr) -> ptr
