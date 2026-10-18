@@ -18,6 +18,9 @@ sakura_analysis = { path = "../crates/sakura_analysis" }
 sakura_fmt = { path = "../crates/sakura_fmt" }
 sakura_types = { path = "../crates/sakura_types" }
 sakura_hir = { path = "../crates/sakura_hir" }
+sakura_lir = { path = "../crates/sakura_lir" }
+sakura_codegen_wasm = { path = "../crates/sakura_codegen_wasm" }
+sakura_verify = { path = "../crates/sakura_verify" }
 la-arena = "0.3.1"
 
 [[bin]]
@@ -44,6 +47,20 @@ bench = false
 [[bin]]
 name = "row_unify"
 path = "fuzz_targets/row_unify.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "lir"
+path = "fuzz_targets/lir.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vc"
+path = "fuzz_targets/vc.rs"
 test = false
 doc = false
 bench = false

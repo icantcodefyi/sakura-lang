@@ -9,12 +9,15 @@ cargo-fuzz 0.13.2, the latest on crates.io on 2026-10-18.
 | `parse` | any bytes, ≤ 16 KiB | the tree is lossless (recovery consumed every byte), diagnostic spans are in bounds and on UTF-8 boundaries, no panic or stack overflow past the nesting limit |
 | `check` | any bytes, ≤ 8 KiB, with std | `Analysis::check` returns diagnostics with registered-looking `V`/`W` codes and valid spans; never panics or hangs |
 | `fmt_idempotent` | sources that parse | `format(format(x)) == format(x)` |
+| `lir` | checked sources, ≤ 8 KiB, with std | Core lowers to valid LIR and emits WASM accepted by the ABI validation gate |
+| `vc` | checked sources, ≤ 8 KiB, with std | VC construction and SMT query encoding do not panic for JS and i64 profiles, without running a solver |
 | `row_unify` | 4 bytes: two label sets and closed/shared/fresh/rigid tails | unification and union are commutative, unify is reflexive, union is idempotent, a row recurring through a function's effect is rejected |
 
 From `compiler/`:
 
 ```sh
 rustup toolchain install nightly --profile minimal
+rustup target add wasm32-unknown-unknown --toolchain nightly
 cargo +nightly install cargo-fuzz --version 0.13.2 --locked
 cargo +nightly fetch --locked --manifest-path fuzz/Cargo.toml   # cargo-fuzz has no --locked
 mkdir -p target/fuzz-corpus/parse

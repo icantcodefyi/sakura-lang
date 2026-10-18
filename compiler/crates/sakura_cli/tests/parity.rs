@@ -13,7 +13,9 @@
 //! number on either backend). An example with
 //! `stdout-regex` (the host clock) is held to its regex by `tests/wasm.rs`, not compared here.
 //! The report on stderr gives the counts and which effect operations the traces covered.
-//! Skipped when node is missing, unless `SAKURA_REQUIRE_WASM=1`.
+//! Skipped when node is missing locally; CI and `SAKURA_REQUIRE_WASM=1` require it.
+//! `SAKURA_PARITY_BACKEND` selects which backend runs first, against the other reference.
+//! Both executions are necessary in every matrix cell to compare their traces.
 
 mod common;
 
@@ -145,6 +147,9 @@ fn compare(
     js: &Run,
     wasm: &Run,
 ) -> Option<String> {
+    if js.code.is_none() || wasm.code.is_none() {
+        return Some("a backend timed out or terminated without an exit code".into());
+    }
     if let Some((path, d)) = path {
         let (ej, ew) = (expectation(path, d, "js"), expectation(path, d, "wasm"));
         if ej.own || ew.own {
@@ -261,17 +266,56 @@ fn import_report(runs: &[(String, Imports)]) -> String {
     )
 }
 
+/// Run the selected backend first, then its reference, retaining canonical comparison order.
+fn run_pair(primary: &str, mode: &str, name: &str, dir: &Path, rest: &[&str]) -> (Run, Run) {
+    let first = run_mode(mode, primary, name, dir, rest);
+    if primary == "js" {
+        (first, run_mode(mode, "wasm", name, dir, rest))
+    } else {
+        (run_mode(mode, "js", name, dir, rest), first)
+    }
+}
+
+#[test]
+fn a_single_trace_event_divergence_is_rejected() {
+    let run = |trace: &str| Run {
+        code: Some(0),
+        stdout: "ok\n".into(),
+        defect: None,
+        trace: trace.into(),
+        imports: Imports::default(),
+    };
+    let js = run("{\"effect\":\"Console\",\"op\":\"print\",\"task\":1}\n");
+    let mut wasm = run(&js.trace);
+    assert_eq!(compare(None, "run", &js, &wasm), None);
+    wasm.trace
+        .push_str("{\"effect\":\"Clock\",\"op\":\"now_ms\",\"task\":1}\n");
+    let difference = compare(None, "run", &js, &wasm).expect("one extra event must fail parity");
+    assert!(
+        difference.starts_with("effect traces differ"),
+        "{difference}"
+    );
+}
+
 #[test]
 fn js_and_wasm_agree_on_the_semantics_corpus() {
     let node = std::process::Command::new("node").arg("--version").output();
-    if node.is_err() {
+    if !node.is_ok_and(|out| out.status.success()) {
         assert!(
-            std::env::var("SAKURA_REQUIRE_WASM").as_deref() != Ok("1"),
+            std::env::var("SAKURA_REQUIRE_WASM").as_deref() != Ok("1")
+                && std::env::var_os("CI").is_none(),
             "node is missing"
         );
         eprintln!("skipped: node is missing");
         return;
     }
+    let primary = std::env::var("SAKURA_PARITY_BACKEND").unwrap_or_else(|_| "js".into());
+    assert!(
+        matches!(primary.as_str(), "js" | "wasm"),
+        "invalid parity backend: {primary}"
+    );
+    assert!(sakura_codegen_wasm::available(), "WASM runtime is missing");
+    eprintln!("parity backend: {primary} (compared with the other backend)");
     let (mut agree, mut known, mut failures) = (0, 0, vec![]);
     let mut ops: BTreeMap<String, usize> = BTreeMap::new();
     let mut covered: Vec<(String, Imports)> = vec![];
@@ -285,8 +329,7 @@ fn js_and_wasm_agree_on_the_semantics_corpus() {
         }
         total += 1;
         let dir = path.parent().unwrap();
-        let js = run_mode(mode, "js", &name, dir, &[]);
-        let mut wasm = run_mode(mode, "wasm", &name, dir, &[]);
+        let (js, mut wasm) = run_pair(&primary, mode, &name, dir, &[]);
         count_ops(&wasm.trace, &mut ops);
         covered.push((name.clone(), std::mem::take(&mut wasm.imports)));
         let known_reason = KNOWN.iter().find(|(n, _)| *n == name).map(|(_, r)| *r);
@@ -320,8 +363,7 @@ fn js_and_wasm_agree_on_the_semantics_corpus() {
         };
         for mode in modes {
             examples += 1;
-            let js = run_mode(mode, "js", "", &dir, &args);
-            let mut wasm = run_mode(mode, "wasm", "", &dir, &args);
+            let (js, mut wasm) = run_pair(&primary, mode, "", &dir, &args);
             if *mode == "run" && d.get("stdout-regex").is_some_and(|v| v == "true") {
                 wasm.stdout.clone_from(&js.stdout);
             }
@@ -345,7 +387,11 @@ fn js_and_wasm_agree_on_the_semantics_corpus() {
     );
     eprintln!("traced operations on WASM: {ops:?}");
     eprintln!("{}", import_report(&covered));
+    assert!(total > 0 && examples > 0, "parity corpus must not be empty");
     for (name, i) in &covered {
+        if i.provided.is_empty() {
+            failures.push(format!("{name}: no WASM host-import coverage was recorded"));
+        }
         let missing: Vec<&String> = i.declared.difference(&i.provided).collect();
         if !missing.is_empty() {
             failures.push(format!("{name}: the host lacks imports {missing:?}"));

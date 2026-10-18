@@ -69,6 +69,8 @@ jobs:
         with:
           workspaces: compiler
           # Older caches may embed an empty runtime built without the WASM target.
+          cache-workspace-crates: true
+          shared-key: compiler
           key: wasm32-unknown-unknown
       - uses: actions/setup-node@v7
         with:
@@ -157,6 +159,54 @@ jobs:
       - name: Agent docs are fresh (design §17.142)
         run: cargo run -p agent_docs --locked -- --check
 
+  parity:
+    name: Parity (${{ matrix.backend }}, ${{ matrix.os }})
+    # Restore the workspace build saved by Rust on each OS before running only parity.
+    needs: rust
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        backend: [js, wasm]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: compiler
+    env:
+      SAKURA_REQUIRE_WASM: "1"
+      SAKURA_PARITY_BACKEND: ${{ matrix.backend }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Install pinned Rust toolchain
+        run: |
+          rustup show active-toolchain || rustup toolchain install
+          rustup target add wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: compiler
+          cache-workspace-crates: true
+          shared-key: compiler
+          key: wasm32-unknown-unknown
+          save-if: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+      - name: Backend parity and comparator regression
+        run: cargo test -p sakura_cli --test parity --locked -- --nocapture
+      - name: Print host-import coverage
+        if: always()
+        run: cat target/tmp/parity/imports.txt
+      - name: Upload parity traces and host-import coverage
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: parity-${{ matrix.backend }}-${{ matrix.os }}
+          path: compiler/target/tmp/parity/
+          if-no-files-found: error
+
   vscode:
     name: VS Code extension
     runs-on: ubuntu-latest
@@ -208,7 +258,7 @@ jobs:
   ci-required:
     name: ci-required
     if: always()
-    needs: [website, rust, vscode]
+    needs: [website, rust, parity, vscode]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -216,8 +266,10 @@ jobs:
         env:
           WEBSITE_RESULT: ${{ needs.website.result }}
           RUST_RESULT: ${{ needs.rust.result }}
+          PARITY_RESULT: ${{ needs.parity.result }}
           VSCODE_RESULT: ${{ needs.vscode.result }}
         run: |
           test "$WEBSITE_RESULT" = success
           test "$RUST_RESULT" = success
+          test "$PARITY_RESULT" = success
           test "$VSCODE_RESULT" = success

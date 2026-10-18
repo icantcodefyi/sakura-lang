@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [parse, check, fmt_idempotent, row_unify]
+        target: [parse, check, fmt_idempotent, row_unify, lir, vc]
     defaults:
       run:
         working-directory: compiler
@@ -36,6 +36,7 @@ jobs:
       - name: Install nightly and cargo-fuzz
         run: |
           rustup toolchain install nightly --profile minimal
+          rustup target add wasm32-unknown-unknown --toolchain nightly
           cargo +nightly install cargo-fuzz --version 0.13.2 --locked
       # cargo-fuzz has no --locked flag; fetching with it first fails on a stale fuzz/Cargo.lock.
       - name: Check the fuzz lockfile

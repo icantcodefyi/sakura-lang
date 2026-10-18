@@ -1,0 +1,18 @@
+// milestone: M3
+// covers: WithExpr; design §17.80; plan m3-completion-and-m4 §3.7 W2 (host-import coverage)
+
+// The root handlers the host installs, held to what does not depend on the machine (stdin is
+// empty under the harnesses, the key is unset), so the parity harness covers their imports.
+pub fn main() -> Unit ! {Clock, Console, Env, Random} {
+  Console.print("read: {Console.read_line()}")
+  let a = Clock.monotonic()
+  Clock.sleep(Duration.millis(1))
+  let b = Clock.monotonic()
+  Console.print("monotonic: {Duration.to_millis(b) >= Duration.to_millis(a)}")
+  Console.print("int: {Random.int(7, 7)}")
+  let f = Random.float()
+  Console.print("float: {f >= 0.0 && f < 1.0}")
+  Console.print("bytes: {Bytes.len(Random.bytes(16))}")
+  Console.print("uuid: {Uuid.is_canonical(Uuid.to_string(Random.uuid()))}")
+  Console.print("env: {Env.get("SAKURA_SURELY_UNSET")}")
+}
