@@ -416,3 +416,14 @@ authority).
    persistent HAMT insert copies 32-wide nodes where the control mutates a JS `Map`).
    `tokenizer` (1.40 Bun) is within 1.5. `bench/deltas.md` is WS-A's; the numbers are in
    REQUESTS for Astra.
+
+**WS-P4** (`opt::ranges`, inline fast path, §17.114):
+
+1. The slow path of the inline fast path is the existing `$rt.add`/`$rt.sub`/`$rt.mul`, called only when the raw result is not a safe integer (it then always defects). No `add_slow` was added, so `sakura_runtime.js` is unchanged.
+2. Intervals are single ranges, so `x != 0` proves a divisor only when 0 is an end of `x`'s range: `if b == 0 { … } else { a / b }` keeps its check. A guard such as `b > 0` proves it.
+3. The pass is per def and does not look into callees: `countdown`'s `n - 1` and `acc + n`, `sieve`'s `j + p` and `spectral_norm`'s `a(i, j)` arithmetic stay checked. Their gains come from the inline fast path.
+4. A walk budget (2^22 steps per def) bounds nested-loop fixpoints. A def past it proves nothing.
+5. The evaluator gained `Limits::audit_ranges`, a soundness oracle: a proved operation that defects as its profile forbids stops the run with `Internal`. The differential and corpus tests run with it on. The corpus test now also checks `expect-defect` fixtures and skips `needs:` ones. The differential skips the LIR comparison for a `D011` caused by `D003`, because the new range-edge cases hit it inside contract predicates.
+6. `sakura build --dump core` is a second `Dump` variant beside WS-P1's `direct`. It prints instead of building and shows the JS profile only.
+7. `runtime/js/ABI.md` §7's `Int` row (WS-P6's section) now says proved operations are raw. The `emit.rs` hunks are a `proved` field on `FnEmit` and the `Bind::Prim` arms of `simple_bind` and `prim`, as posted in REQUESTS.
+8. Measured on `13d49d5`, before WS-P6's list builders landed. Not met: `countdown` 1.3 (1.57 Node, 2.75 Bun) and `sieve` 1.5 (27×/60×, dominated by `List.set`, outside WS-P4's scope). The bench was taken under host load 10–11, and an unchanged-code rerun blocks, so the deltas are recorded as inconclusive where noisy (`bench/deltas.md`).

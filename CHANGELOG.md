@@ -62,6 +62,8 @@ published yet.
 - `sakura build --emit lir` writes the WASM backend's validated low-level IR as text to
   `target/sakura/lir/main.lir` (M4 preview; no WASM is emitted yet). `--layout=niche` is
   accepted and refused until the `Option` niche layout lands.
+- `sakura build --dump core` prints the user modules' Core, with each `Int` operation the JS
+  backend's interval pass proves marked `proved` (design §17.114).
 - `sakura verify [--json] [--target js|wasm] [--rlimit N] [--solver PATH]` discharges
   contract, overflow and division obligations with Z3 5.3.1 (`proved`, `disproved` with a
   counterexample replayed through the evaluator, `unknown`, `unsupported`, and `W7002` for a
@@ -93,6 +95,10 @@ published yet.
   `sakura test --contracts` skips a `pub fn` with such a parameter and names it. `Uuid` is now
   `String where is_canonical(it)` and `Decimal` is `DecimalRepr where is_canonical(it)`, so both
   decode with their check; programs that built `Uuid("…")` or matched on it use `Uuid.parse`.
+- The JS backend emits `Int` arithmetic it can prove in range (loop counters under their
+  guard, `n - 1` under `n >= 1`, a non-zero literal divisor) as the raw operator, and inlines
+  the safe-integer test of every other `+`, `-` and `*`. Semantics are unchanged: every
+  `D001`/`D002`/`D003` still happens where it did (design §17.114).
 - A `sakura.toml` naming its package `std` or `main` is `V8002 reserved_package_name` (§17.131).
 - A field assignment through a refined type (`x.n = -1` on `var x: Pos`, or `r.total.frac = …`
   through a `Decimal`) is the new error `V2034 refined_field_assignment` (design §17.135), in
