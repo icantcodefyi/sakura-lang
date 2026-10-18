@@ -9,6 +9,17 @@ published yet.
 
 ### Security
 
+- `--target wasm` checks what its JS host answers instead of trusting it (security review
+  W1–W4, W7–W11; ABI 1.1.2): an operation index or a builtin result of the wrong shape is a
+  `D090` defect, never a heap read, and a completion payload must be a fresh `Bytes`. A
+  response over `SAKURA_MAX_COPY_BYTES` (256 MiB) is `Err("response too large")` from `Http`
+  and a `D091` defect elsewhere, instead of `D096`; a full request table is `D091` for
+  `Clock.sleep` (which returned at once) and `serve_listen`. A database from `Sql.sqlite` or
+  `Sql.memory()` and an `Llm.anthropic` handler, with its key, are released when their handler
+  ends rather than at exit. `sakura test --target wasm` runs the tests after a host fault on a
+  fresh instance. On both backends `Sql.sqlite`'s `Fs.root()` runs in the clause's task, so it
+  no longer spends a task number in `SAKURA_TRACE` on JS (design §17.159 (5)).
+
 - `Serve.host()` reads at most 1 MiB of a request body: a larger body is answered `413` and
   its connection closed without running the handler. A reply whose status or headers the
   server cannot send is reported as a `D091` defect and answered `500`, and the server keeps

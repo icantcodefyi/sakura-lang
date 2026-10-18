@@ -1,11 +1,12 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.1.1**, agreed before `sakura_lir` or `sakura_rt`
+**Status:** design specification, version **1.1.2**, agreed before `sakura_lir` or `sakura_rt`
 emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed, 1.0.2 the
 R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
 the end, with the questions still open), and 1.1.0 the four `stats()` counters and the
-direct-style twins of design §17.118 (plan item L4), and 1.1.1 the gate 10 erratum to §8.1 and
-§8.4 (design §17.159; the plan's "1.0.3"). Owned by the designer; implemented jointly by M4-LIR (`crates/sakura_lir`)
+direct-style twins of design §17.118 (plan item L4), 1.1.1 the gate 10 erratum to §8.1 and
+§8.4 (design §17.159; the plan's "1.0.3"), and 1.1.2 the hostile-host hardening of plan WS12
+item 8 (§8.1, §8.4–§8.6). Owned by the designer; implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
 (`crates/sakura_codegen_wasm`, `runtime/js/sakura_wasm_host.js`). This document is prose,
 tables and byte layouts; it contains no code and is not itself normative language
@@ -58,6 +59,13 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   what the host can and cannot erase; §8.4 says what is built for generations and `file` ids.
   It is wording that matches the shipped modules and hosts (PATCH); no byte, import signature
   or check changes, so `sakura_abi_version` stays `0x010100`.
+- 1.1.2 is an erratum (security review W1–W4, W7–W11; plan WS12 item 8; design §17.159 (5),
+  §17.161): it states the checks the guest and the Node host now make on each other (§8.1),
+  the release of host-built instances and callbacks (§8.4), one policy for a full request
+  table and the copy budget as built (§8.5), and a fresh instance after a trap (§8.6). No
+  shipped byte or import signature changes: `retire_handle` gains kinds 4 and 7, which a host
+  without them ignores, and the handle-kind list itself is restated in M4-OPT's 1.2.0
+  (§17.161), so `sakura_abi_version` stays `0x010100`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -488,6 +496,13 @@ reads a guest object header and the guest never receives a host pointer.
   the life of the instance). This redaction is hygiene under the trust model (the host is part
   of the trusted base, §8), not a defence against the host. A further kind-`secret` import
   needs a line in the security review record (`docs/reviews/m3-security-review.md`) first.
+- Checks as built (1.1.2): the host is trusted, but a buggy one must not corrupt the guest
+  heap. The guest refuses with `D090`, before compiled code reads anything, an operation index
+  past the handler's clause count in a JS-built handler's answer, and a host-delegated
+  builtin's answer whose top (tag, handle kind, or record or variant type id) is not the
+  builtin's declared result's (`sakura_rt::vt::top`, passed by `sakura_codegen_wasm`); type
+  arguments inside the top stay the host's word. An import that may call back into the guest
+  through `alloc_bytes` is called with no `&mut Rt` live (`wasm.rs` module doc).
 
 ### 8.2 Import table
 
@@ -537,6 +552,16 @@ never reuses a slot, so a generation mismatch is reachable only from a forged or
 reuses slots. A `File`'s `id` is the JS runtime's plain `Int` id into its own file table, as on
 JS, not a packed handle; `dir` and `body` are handles.
 
+Instances and callbacks (1.1.2, design §17.161): a host-built handler's state, an `Sql`
+database (kind 4, `sql`) or a JS-built handler such as `Llm.anthropic` with its key (kind 7),
+is named by a handle every clause closure of the guest handler captures and that never
+crosses in a value; when the guest handler dies the handle is retired and the host closes the
+database or drops the JS handler and the callbacks its clauses made. A JS function a JS-built
+handler passes to an operation (kind 5, `callback`) is held by the native closure standing for
+it and retired when that closure dies, no later than its clause's handler. A `Dir` or `Body`
+argument whose handle is of another kind is a host fault (`D090`), never an object of the
+wrong class.
+
 ### 8.5 Asynchronous requests, cancellation and late completions
 
 - The guest allocates a **request** (tag 0x8005: `generation`, `task` id, `task_epoch`,
@@ -567,6 +592,15 @@ JS, not a packed handle; `dir` and `body` are handles.
   `SAKURA_MAX_COPY_BYTES` (default 256 MiB) aggregate in-flight copied bytes per instance;
   exceeding either is the operation's ordinary error `"too many pending operations"` /
   `"response too large"`, so a server under load fails requests instead of the process (§10).
+  As built (1.1.2), one policy for each: an operation whose result is a `Result<_, String>`
+  (`http_*`) answers `Err` with the message; one without an ordinary error to carry it is the
+  defect `D091` with it (`Clock.sleep` and `serve_listen` on a full table; a synchronous
+  answer past the budget, raised by the guest from a status-2 answer, or ending the run where
+  the import has no answer). The budget counts one answer, and an HTTP completion together
+  with the completions already queued for delivery.
+- Payloads (1.1.2): `complete` and `invoke` take ownership only of a `Bytes` inside memory
+  with `rc = 1` and no static flag; anything else is refused untouched (`complete` returns 0
+  and the request stays pending).
 
 ### 8.6 Traps and teardown
 
@@ -574,7 +608,8 @@ A WASM trap (impossible in a correct build: every defect is a branch) is caught 
 reported as `D090` with the function name from the names section and the PC, and the host
 runs its own **resource ledger**: it closes every open handle and aborts every request of
 the instance, because guest finalizers cannot run after a trap (research/08 §3.4). The same
-ledger runs at process exit.
+ledger runs at process exit. The instance is never entered again (1.1.2): `sakura test`
+reports the test as a defect and runs the rest on a fresh instance of the module.
 
 ## 9. Exports
 

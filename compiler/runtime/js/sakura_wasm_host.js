@@ -1,5 +1,5 @@
 /**
- * The Node host for Sakura Lang WASM modules (`runtime/rt/ABI.md` 1.0.2 §8, plan §3.5 W1/R4).
+ * The Node host for Sakura Lang WASM modules (`runtime/rt/ABI.md` 1.1.2 §8, plan §3.5 W1/R4).
  *
  * It instantiates a module the WASM backend linked with `sakura_rt`, implements the
  * `sakura_host` imports by delegating to the JS runtime's host functions
