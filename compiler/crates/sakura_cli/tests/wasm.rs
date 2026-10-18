@@ -797,3 +797,79 @@ fn contract_tests_fail_on_wasm_as_on_js() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// Design §17.205 (3): a response past `SAKURA_MAX_COPY_BYTES` is the same
+/// `Err("response too large")` on both backends (`runtime.test.js` covers the abort).
+#[test]
+fn http_send_over_the_copy_budget_fails_alike_on_both_backends() {
+    use std::io::{BufRead, BufReader, Write};
+    if !available() {
+        eprintln!("skipped: node is missing");
+        return;
+    }
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    std::thread::spawn(move || {
+        for stream in listener.incoming().flatten() {
+            let mut reader = BufReader::new(stream);
+            let mut line = String::new();
+            while reader.read_line(&mut line).is_ok_and(|n| n > 2) {
+                line.clear();
+            }
+            // No content-length: the client must count the bytes as they arrive.
+            let _ = write!(
+                reader.get_mut(),
+                "HTTP/1.1 200 OK\r\nconnection: close\r\n\r\n{}",
+                "a".repeat(4096)
+            );
+        }
+    });
+    let dir = std::env::temp_dir().join(format!("sakura-wasm-budget-{}", std::process::id()));
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(
+        dir.join("sakura.toml"),
+        format!(
+            "[package]\nname = \"b\"\nversion = \"0.1.0\"\nedition = \"2026\"\n\n\
+             [permissions]\nnet = [\"127.0.0.1:{port}\"]\n"
+        ),
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("src/main.sak"),
+        format!(
+            "import std/http.{{Http}}\nimport std/request.{{Get, Request}}\n\
+             import std/response.{{HttpError}}\nimport std/url.{{Url}}\n\n\
+             pub fn main() -> Unit ! {{Console, Http}} {{\n\
+             \x20 match try {{ Http.send(Request.of(Get, Url.from(\"http://127.0.0.1:{port}/big\"))) }} {{\n\
+             \x20   Ok(r) => Console.print(\"read {{String.len(r.body)}}\"),\n\
+             \x20   Err(e) => Console.print(\"failed: {{e.reason}}\"),\n\
+             \x20 }}\n}}\n"
+        ),
+    )
+    .unwrap();
+    let run = |target: &str| {
+        let out_dir = dir.join(format!("out-{target}"));
+        let args = [
+            "run",
+            "--target",
+            target,
+            "--out-dir",
+            out_dir.to_str().unwrap(),
+        ];
+        sakura_env(&args, &dir, &[("SAKURA_MAX_COPY_BYTES", Path::new("1024"))])
+    };
+    let (js, wasm) = (run("js"), run("wasm"));
+    assert_eq!(
+        (js.code, js.stdout.as_str()),
+        (Some(0), "failed: response too large\n"),
+        "{}",
+        js.stderr
+    );
+    assert_eq!(
+        (wasm.code, &wasm.stdout),
+        (js.code, &js.stdout),
+        "{}",
+        wasm.stderr
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}

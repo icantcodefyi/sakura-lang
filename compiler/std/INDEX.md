@@ -95,6 +95,10 @@ checked skill reference; they are not additional APIs.
   streamed body"` and nothing is appended (§17.205). A `Llm.replay` miss is
   `ProviderError` with guidance naming `Llm.recording` and `sakura test --record`; it does
   not call a provider.
+- `Http.host()`'s `send` reads at most `SAKURA_MAX_COPY_BYTES` (default 256 MiB) of a
+  response body; past that, or with a declared `content-length` over it, the fetch is
+  aborted and `send` fails with `HttpError` `"response too large"` (§17.205). On
+  `--target wasm` the host also counts headers and queued answers against the same budget.
 
 ## Module dependencies (non-test code)
 

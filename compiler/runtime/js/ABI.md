@@ -445,7 +445,13 @@ after closing. Writes are immediate: a memory file replaces its store entry on e
 **Http.** `http_send(req, $ctx, $k)` suspends on `fetch`: `Ok(Response)` for every status,
 `Err(reason)` when no response arrives; every `req.secret_headers` entry (`Http.bearer` adds
 `authorization`) is sent as a header and exposed nowhere else (§17.57); cancelling the task
-aborts the request.
+aborts the request. The body is read with a running count: past `SAKURA_MAX_COPY_BYTES`
+(default 256 MiB, the WASM host's copy budget, read here on each request) or a declared
+`content-length` over it, the fetch is aborted and the result is `Err("response too large")`,
+the WASM host's message (rt ABI §8.5). This counts body bytes only; the WASM host, which calls
+this function, then also checks the encoded answer (headers included, plus queued answers)
+against the same budget, so a body just under it can still be `Err` there. Erratum 2026-10-19 (design §17.205 (3)): until then the JS runtime
+read a whole response with no limit; the `Err` case gained this cause, nothing else changed.
 
 **Streaming** (design §17.88, behind `Http.stream`/`Http.read_chunk`). A `Body` is an id into a
 runtime table, like an open file. `http_stream_open(req, $ctx, $k) -> Result<Incoming, String>`

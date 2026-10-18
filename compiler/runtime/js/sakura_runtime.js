@@ -3376,17 +3376,43 @@ function fetchArgs(req) {
 
 const failureOf = (e) => String(e?.cause?.message ?? e?.message ?? e);
 
+/** The WASM host's copy budget (`sakura_wasm_host.js`, ABI §8.5), read per request. */
+const maxCopyBytes = () => Number(proc?.env?.SAKURA_MAX_COPY_BYTES ?? 256 * 1024 * 1024);
+const TOO_LARGE = "response too large";
+
+/** `r`'s body as text, or `undefined` once it is over `max` bytes. */
+async function boundedText(r, max) {
+  // A HEAD or 304 answer may declare a length with no body to follow.
+  if (r.body !== null && Number(r.headers.get("content-length")) > max) return undefined;
+  const decoder = new TextDecoder();
+  let text = "";
+  let size = 0;
+  for await (const chunk of r.body ?? []) {
+    size += chunk.length;
+    if (size > max) return undefined;
+    text += decoder.decode(chunk, { stream: true });
+  }
+  return text + decoder.decode();
+}
+
 /**
  * `http_send(req)`: suspends until the response arrives; `Ok(Response)` for any status,
- * `Err(reason)` when no response arrives. Every `req.secret_headers` entry is sent as a header and
+ * `Err(reason)` when no response arrives, and `Err("response too large")`, the fetch aborted,
+ * past `SAKURA_MAX_COPY_BYTES` of body. Every `req.secret_headers` entry is sent as a header and
  * is readable nowhere else. Cancelling the task aborts the request.
  */
 export function http_send(req, _ctx, k) {
   const Response = std("std::response::Response");
   const a = fetchArgs(req);
   if (a.err !== undefined) return ret(k, Err(a.err));
+  const max = maxCopyBytes();
   const response = fetch(req.url, a.init).then(
-    async (r) => Ok(new Response(r.status, list([...r.headers]), await r.text())),
+    async (r) => {
+      const text = await boundedText(r, max);
+      if (text !== undefined) return Ok(new Response(r.status, list([...r.headers]), text));
+      a.abort.abort();
+      return Err(TOO_LARGE);
+    },
     (e) => Err(failureOf(e)),
   );
   return suspend(response, k, () => a.abort.abort());

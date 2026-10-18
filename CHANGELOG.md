@@ -9,6 +9,12 @@ published yet.
 
 ### Security
 
+- `Http.host()`'s `send` on the JS backend reads at most `SAKURA_MAX_COPY_BYTES` (default
+  256 MiB) of a response body, as `--target wasm` already did: a larger body, or a declared
+  `content-length` over the limit, aborts the fetch and fails with `HttpError`
+  `"response too large"`, where the whole body was read with no limit (design §17.205 (3)).
+  To migrate, raise `SAKURA_MAX_COPY_BYTES` or read a large response with `Http.stream`.
+
 - `sakura test --record` stores at most 16 MiB (16,777,216 bytes) of a streamed response body:
   past that, `Http.stream` under `Http.recording` fails with `HttpError` `"response body over
   16 MiB: sakura test --record stores at most 16,777,216 bytes of a streamed body"` and the

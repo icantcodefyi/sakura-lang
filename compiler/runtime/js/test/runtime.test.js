@@ -963,3 +963,46 @@ test("serveHttp refuses a body over 1 MiB with 413 and answers an invalid status
     s.close();
   }
 });
+
+test("http_send past SAKURA_MAX_COPY_BYTES is Err(response too large) and aborts the fetch", async () => {
+  const http = await import("node:http");
+  class Response {
+    constructor(status, headers, body) {
+      Object.assign(this, { status, headers, body });
+    }
+  }
+  rt.def("std::response::Response", Response);
+  const closed = new Map();
+  const server = http.createServer((req, res) => {
+    closed.set(req.url, new Promise((resolve) => res.on("close", () => resolve(res.writableFinished))));
+    if (req.method === "HEAD") return res.writeHead(200, { "content-length": 1 << 20 }).end();
+    if (req.url === "/declared") res.writeHead(200, { "content-length": 1 << 20 });
+    res.write(Buffer.alloc(1024, 97));
+    if (req.url === "/fits") return res.end();
+    // Neither `/declared` nor `/chunked` ends: only the client's abort closes them.
+    if (req.url === "/chunked") res.write(Buffer.alloc(1024, 97));
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address();
+  const method = (tag) => ({ $t: { ctors: [{ name: "Get" }, { name: "Head" }] }, tag });
+  const send = (path, tag = 0) =>
+    rt.runTask(rt.http_send, [
+      { method: method(tag), url: `http://127.0.0.1:${port}${path}`, headers: rt.list([]), secret_headers: rt.list([]), body: "" },
+    ]);
+  process.env.SAKURA_MAX_COPY_BYTES = "1024";
+  try {
+    const fits = await send("/fits");
+    assert.equal(fits.value.tag, 0);
+    assert.equal(fits.value.fields[0].body, "a".repeat(1024));
+    const head = await send("/head", 1);
+    assert.equal(head.value.tag, 0, "a declared length with no body to follow is not refused");
+    assert.equal(head.value.fields[0].body, "");
+    for (const path of ["/declared", "/chunked"]) {
+      assert.deepEqual(await send(path), ok(rt.Err("response too large")), path);
+      assert.equal(await closed.get(path), false, `${path}: the connection closed before the body ended`);
+    }
+  } finally {
+    delete process.env.SAKURA_MAX_COPY_BYTES;
+    server.close();
+  }
+});
