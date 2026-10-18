@@ -1,0 +1,6024 @@
+{
+ "schema": "sakura-bench-v1",
+ "meta": {
+  "commit": "46179f9dd93da5602e4611372180a1083bc043d0",
+  "dirty": false,
+  "host": {
+   "id": "d88970189598",
+   "cpu": "Apple M4 Pro",
+   "os": "Darwin 27.2.0 arm64",
+   "mem_bytes": 25769803776,
+   "quiet": false,
+   "load": {
+    "quiet": false,
+    "ci": false,
+    "threshold": 3.0,
+    "logical_cpus": 12,
+    "interval_s": 15,
+    "max_load_1m": 18.05322265625,
+    "reasons": [
+     "one-minute load 18.05 > 3",
+     "busy: ld, node, python3, rustc, sakura"
+    ],
+    "snapshots": [
+     {
+      "utc": "2026-10-18T10:33:23Z",
+      "load_1m": 12.498046875,
+      "busiest": [
+       {
+        "executable": "launchd",
+        "cpu_percent": 41.0
+       },
+       {
+        "executable": "(sakura)",
+        "cpu_percent": 37.5
+       },
+       {
+        "executable": "(node)",
+        "cpu_percent": 20.4
+       },
+       {
+        "executable": "Wispr Flow",
+        "cpu_percent": 2.1
+       },
+       {
+        "executable": "Wispr Flow Helper (Renderer)",
+        "cpu_percent": 1.9
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.5
+       },
+       {
+        "executable": "T3 Code (Nightly)",
+        "cpu_percent": 1.5
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.3
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.3
+       },
+       {
+        "executable": "fseventsd",
+        "cpu_percent": 1.1
+       },
+       {
+        "executable": "notifyd",
+        "cpu_percent": 1.0
+       },
+       {
+        "executable": "claude",
+        "cpu_percent": 0.9
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T10:33:38Z",
+      "load_1m": 11.41552734375,
+      "busiest": [
+       {
+        "executable": "fseventsd",
+        "cpu_percent": 70.2
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 51.1
+       },
+       {
+        "executable": "(ld)",
+        "cpu_percent": 45.2
+       },
+       {
+        "executable": "ld",
+        "cpu_percent": 45.2
+       },
+       {
+        "executable": "ld",
+        "cpu_percent": 38.4
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 35.4
+       },
+       {
+        "executable": "ld",
+        "cpu_percent": 34.0
+       },
+       {
+        "executable": "(rustc)",
+        "cpu_percent": 27.9
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 26.9
+       },
+       {
+        "executable": "(ld)",
+        "cpu_percent": 26.4
+       },
+       {
+        "executable": "mds",
+        "cpu_percent": 24.9
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 23.9
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T10:33:53Z",
+      "load_1m": 18.05322265625,
+      "busiest": [
+       {
+        "executable": "rustc",
+        "cpu_percent": 77.2
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 76.3
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 74.6
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 73.8
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 73.2
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 73.2
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 72.7
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 71.5
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 70.3
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 69.9
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 10.1
+       },
+       {
+        "executable": "corespotlightd",
+        "cpu_percent": 3.5
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T10:34:08Z",
+      "load_1m": 17.0771484375,
+      "busiest": [
+       {
+        "executable": "node",
+        "cpu_percent": 98.7
+       },
+       {
+        "executable": "lir",
+        "cpu_percent": 95.7
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 12.1
+       },
+       {
+        "executable": "python3",
+        "cpu_percent": 11.1
+       },
+       {
+        "executable": "fseventsd",
+        "cpu_percent": 3.3
+       },
+       {
+        "executable": "sysmond",
+        "cpu_percent": 3.1
+       },
+       {
+        "executable": "Wispr Flow",
+        "cpu_percent": 1.7
+       },
+       {
+        "executable": "atos",
+        "cpu_percent": 1.3
+       },
+       {
+        "executable": "Wispr Flow Helper (Renderer)",
+        "cpu_percent": 1.3
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.2
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.1
+       },
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 1.0
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T10:34:23Z",
+      "load_1m": 14.6220703125,
+      "busiest": [
+       {
+        "executable": "vc",
+        "cpu_percent": 41.6
+       },
+       {
+        "executable": "XprotectService",
+        "cpu_percent": 24.9
+       },
+       {
+        "executable": "launchd",
+        "cpu_percent": 16.5
+       },
+       {
+        "executable": "fseventsd",
+        "cpu_percent": 3.3
+       },
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 2.6
+       },
+       {
+        "executable": "Wispr Flow",
+        "cpu_percent": 2.0
+       },
+       {
+        "executable": "Wispr Flow Helper (Renderer)",
+        "cpu_percent": 1.8
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.6
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.3
+       },
+       {
+        "executable": "T3 Code (Nightly)",
+        "cpu_percent": 1.3
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.2
+       },
+       {
+        "executable": "com.apple.appkit.xpc.openAndSavePanelService",
+        "cpu_percent": 1.2
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T10:34:39Z",
+      "load_1m": 13.02587890625,
+      "busiest": [
+       {
+        "executable": "semantics-4562cd610615af28",
+        "cpu_percent": 52.9
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 23.8
+       },
+       {
+        "executable": "python3",
+        "cpu_percent": 5.8
+       },
+       {
+        "executable": "fseventsd",
+        "cpu_percent": 4.2
+       },
+       {
+        "executable": "sysmond",
+        "cpu_percent": 2.1
+       },
+       {
+        "executable": "Wispr Flow",
+        "cpu_percent": 1.7
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.5
+       },
+       {
+        "executable": "Wispr Flow Helper (Renderer)",
+        "cpu_percent": 1.5
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.0
+       },
+       {
+        "executable": "claude",
+        "cpu_percent": 1.0
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.0
+       },
+       {
+        "executable": "OpenUsage",
+        "cpu_percent": 1.0
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T10:34:54Z",
+      "load_1m": 10.9521484375,
+      "busiest": [
+       {
+        "executable": "source-0890498ca23efcff",
+        "cpu_percent": 100.0
+       },
+       {
+        "executable": "Discord Helper (Renderer)",
+        "cpu_percent": 33.9
+       },
+       {
+        "executable": "XprotectService",
+        "cpu_percent": 20.3
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 19.8
+       },
+       {
+        "executable": "WindowServer",
+        "cpu_percent": 18.6
+       },
+       {
+        "executable": "launchd",
+        "cpu_percent": 11.7
+       },
+       {
+        "executable": "Discord Helper",
+        "cpu_percent": 8.1
+       },
+       {
+        "executable": "claude",
+        "cpu_percent": 2.8
+       },
+       {
+        "executable": "claude",
+        "cpu_percent": 2.3
+       },
+       {
+        "executable": "codex",
+        "cpu_percent": 2.2
+       },
+       {
+        "executable": "Wispr Flow Helper (Renderer)",
+        "cpu_percent": 1.8
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.5
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T10:35:09Z",
+      "load_1m": 11.9482421875,
+      "busiest": [
+       {
+        "executable": "corpus-e844998577bd3cc6",
+        "cpu_percent": 95.2
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 24.8
+       },
+       {
+        "executable": "(node)",
+        "cpu_percent": 14.5
+       },
+       {
+        "executable": "claude",
+        "cpu_percent": 3.0
+       },
+       {
+        "executable": "sysmond",
+        "cpu_percent": 2.6
+       },
+       {
+        "executable": "WindowServer",
+        "cpu_percent": 1.5
+       },
+       {
+        "executable": "fseventsd",
+        "cpu_percent": 1.3
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.3
+       },
+       {
+        "executable": "Wispr Flow Helper (Renderer)",
+        "cpu_percent": 1.3
+       },
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 1.2
+       },
+       {
+        "executable": "Wispr Flow",
+        "cpu_percent": 1.1
+       },
+       {
+        "executable": "Discord Helper",
+        "cpu_percent": 1.0
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T10:35:24Z",
+      "load_1m": 10.11962890625,
+      "busiest": [
+       {
+        "executable": "sakura_core-f7a3c0e53f67e47d",
+        "cpu_percent": 99.5
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 47.5
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 32.8
+       },
+       {
+        "executable": "launchd",
+        "cpu_percent": 12.3
+       },
+       {
+        "executable": "claude",
+        "cpu_percent": 2.3
+       },
+       {
+        "executable": "Wispr Flow",
+        "cpu_percent": 1.9
+       },
+       {
+        "executable": "Wispr Flow Helper (Renderer)",
+        "cpu_percent": 1.7
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.5
+       },
+       {
+        "executable": "T3 Code (Nightly) Helper (Renderer)",
+        "cpu_percent": 1.3
+       },
+       {
+        "executable": "WindowServer",
+        "cpu_percent": 1.2
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.2
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.2
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T10:35:39Z",
+      "load_1m": 8.83056640625,
+      "busiest": [
+       {
+        "executable": "differential-818f9814d6093254",
+        "cpu_percent": 110.9
+       },
+       {
+        "executable": "mdworker_shared",
+        "cpu_percent": 19.8
+       },
+       {
+        "executable": "XprotectService",
+        "cpu_percent": 6.3
+       },
+       {
+        "executable": "sysmond",
+        "cpu_percent": 2.8
+       },
+       {
+        "executable": "claude",
+        "cpu_percent": 2.2
+       },
+       {
+        "executable": "Wispr Flow",
+        "cpu_percent": 1.9
+       },
+       {
+        "executable": "Discord Helper (Renderer)",
+        "cpu_percent": 1.7
+       },
+       {
+        "executable": "Wispr Flow Helper (Renderer)",
+        "cpu_percent": 1.7
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.5
+       },
+       {
+        "executable": "WindowServer",
+        "cpu_percent": 1.4
+       },
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 1.4
+       },
+       {
+        "executable": "fseventsd",
+        "cpu_percent": 1.3
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T10:35:54Z",
+      "load_1m": 11.833984375,
+      "busiest": [
+       {
+        "executable": "differential-818f9814d6093254",
+        "cpu_percent": 129.8
+       },
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 33.8
+       },
+       {
+        "executable": "trustd",
+        "cpu_percent": 21.9
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 9.0
+       },
+       {
+        "executable": "XprotectService",
+        "cpu_percent": 8.1
+       },
+       {
+        "executable": "launchd",
+        "cpu_percent": 7.6
+       },
+       {
+        "executable": "T3 Code (Nightly)",
+        "cpu_percent": 6.4
+       },
+       {
+        "executable": "WindowServer",
+        "cpu_percent": 1.6
+       },
+       {
+        "executable": "Wispr Flow",
+        "cpu_percent": 1.4
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.3
+       },
+       {
+        "executable": "Wispr Flow Helper (Renderer)",
+        "cpu_percent": 1.3
+       },
+       {
+        "executable": "Discord Helper (Renderer)",
+        "cpu_percent": 1.2
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T10:36:09Z",
+      "load_1m": 11.59814453125,
+      "busiest": [
+       {
+        "executable": "differential-818f9814d6093254",
+        "cpu_percent": 134.1
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 19.8
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 13.1
+       },
+       {
+        "executable": "T3 Code (Nightly) Helper (Renderer)",
+        "cpu_percent": 12.9
+       },
+       {
+        "executable": "OpenUsage",
+        "cpu_percent": 5.4
+       },
+       {
+        "executable": "runningboardd",
+        "cpu_percent": 4.4
+       },
+       {
+        "executable": "python3",
+        "cpu_percent": 4.1
+       },
+       {
+        "executable": "sysmond",
+        "cpu_percent": 2.9
+       },
+       {
+        "executable": "fseventsd",
+        "cpu_percent": 2.8
+       },
+       {
+        "executable": "T3 Code (Nightly)",
+        "cpu_percent": 2.7
+       },
+       {
+        "executable": "codex",
+        "cpu_percent": 2.7
+       },
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 2.1
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T10:36:24Z",
+      "load_1m": 11.96484375,
+      "busiest": [
+       {
+        "executable": "differential-818f9814d6093254",
+        "cpu_percent": 133.7
+       },
+       {
+        "executable": "launchd",
+        "cpu_percent": 5.7
+       },
+       {
+        "executable": "spotlightknowledged.updater",
+        "cpu_percent": 4.7
+       },
+       {
+        "executable": "fseventsd",
+        "cpu_percent": 4.5
+       },
+       {
+        "executable": "dasd",
+        "cpu_percent": 2.8
+       },
+       {
+        "executable": "Wispr Flow",
+        "cpu_percent": 1.9
+       },
+       {
+        "executable": "Wispr Flow Helper (Renderer)",
+        "cpu_percent": 1.8
+       },
+       {
+        "executable": "claude",
+        "cpu_percent": 1.6
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.6
+       },
+       {
+        "executable": "python3",
+        "cpu_percent": 1.3
+       },
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 1.2
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.2
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T10:36:39Z",
+      "load_1m": 11.52880859375,
+      "busiest": [
+       {
+        "executable": "differential-818f9814d6093254",
+        "cpu_percent": 131.7
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 39.6
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 37.5
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 33.4
+       },
+       {
+        "executable": "Discord Helper (Renderer)",
+        "cpu_percent": 33.1
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 16.6
+       },
+       {
+        "executable": "WindowServer",
+        "cpu_percent": 15.6
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 14.5
+       },
+       {
+        "executable": "XprotectService",
+        "cpu_percent": 9.3
+       },
+       {
+        "executable": "Discord Helper",
+        "cpu_percent": 8.4
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 5.6
+       },
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 4.4
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T10:36:54Z",
+      "load_1m": 10.8828125,
+      "busiest": [
+       {
+        "executable": "XprotectService",
+        "cpu_percent": 29.1
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 25.8
+       },
+       {
+        "executable": "fmt-d1c99452374c1a43",
+        "cpu_percent": 22.0
+       },
+       {
+        "executable": "corebrightnessd",
+        "cpu_percent": 14.7
+       },
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 7.8
+       },
+       {
+        "executable": "launchd",
+        "cpu_percent": 6.6
+       },
+       {
+        "executable": "PerfPowerServices",
+        "cpu_percent": 6.6
+       },
+       {
+        "executable": "ControlCenter",
+        "cpu_percent": 6.1
+       },
+       {
+        "executable": "WindowServer",
+        "cpu_percent": 5.9
+       },
+       {
+        "executable": "python3",
+        "cpu_percent": 5.2
+       },
+       {
+        "executable": "BetterDisplay",
+        "cpu_percent": 4.2
+       },
+       {
+        "executable": "fseventsd",
+        "cpu_percent": 3.4
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T10:37:09Z",
+      "load_1m": 10.201171875,
+      "busiest": [
+       {
+        "executable": "fmt-d1c99452374c1a43",
+        "cpu_percent": 100.0
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 40.8
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 3.0
+       },
+       {
+        "executable": "sysmond",
+        "cpu_percent": 2.7
+       },
+       {
+        "executable": "Wispr Flow",
+        "cpu_percent": 1.7
+       },
+       {
+        "executable": "Wispr Flow Helper (Renderer)",
+        "cpu_percent": 1.5
+       },
+       {
+        "executable": "fseventsd",
+        "cpu_percent": 1.4
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.3
+       },
+       {
+        "executable": "claude",
+        "cpu_percent": 1.1
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.1
+       },
+       {
+        "executable": "Discord Helper (Renderer)",
+        "cpu_percent": 1.1
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.1
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T10:37:24Z",
+      "load_1m": 9.46630859375,
+      "busiest": [
+       {
+        "executable": "corpus-80ed451afb4e8a3f",
+        "cpu_percent": 100.0
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 98.1
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 51.2
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 9.0
+       },
+       {
+        "executable": "launchd",
+        "cpu_percent": 3.1
+       },
+       {
+        "executable": "Wispr Flow",
+        "cpu_percent": 1.2
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.1
+       },
+       {
+        "executable": "Wispr Flow Helper (Renderer)",
+        "cpu_percent": 1.1
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 0.9
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 0.8
+       },
+       {
+        "executable": "Discord Helper (Renderer)",
+        "cpu_percent": 0.7
+       },
+       {
+        "executable": "Google Chrome Helper",
+        "cpu_percent": 0.6
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T10:37:39Z",
+      "load_1m": 8.3408203125,
+      "busiest": [
+       {
+        "executable": "exec-9167406e27342e93",
+        "cpu_percent": 399.7
+       },
+       {
+        "executable": "(sakura)",
+        "cpu_percent": 37.5
+       },
+       {
+        "executable": "corebrightnessd",
+        "cpu_percent": 21.3
+       },
+       {
+        "executable": "XprotectService",
+        "cpu_percent": 19.8
+       },
+       {
+        "executable": "PerfPowerServices",
+        "cpu_percent": 9.0
+       },
+       {
+        "executable": "ControlCenter",
+        "cpu_percent": 8.7
+       },
+       {
+        "executable": "WindowServer",
+        "cpu_percent": 8.3
+       },
+       {
+        "executable": "BetterDisplay",
+        "cpu_percent": 6.9
+       },
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 5.9
+       },
+       {
+        "executable": "com.apple.AmbientDisplayAgent",
+        "cpu_percent": 4.2
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 3.0
+       },
+       {
+        "executable": "sysmond",
+        "cpu_percent": 2.6
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T10:37:54Z",
+      "load_1m": 7.82177734375,
+      "busiest": [
+       {
+        "executable": "exec-9167406e27342e93",
+        "cpu_percent": 99.0
+       },
+       {
+        "executable": "claude",
+        "cpu_percent": 3.6
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 3.0
+       },
+       {
+        "executable": "launchd",
+        "cpu_percent": 2.8
+       },
+       {
+        "executable": "Wispr Flow",
+        "cpu_percent": 1.5
+       },
+       {
+        "executable": "Wispr Flow Helper (Renderer)",
+        "cpu_percent": 1.3
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.1
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.0
+       },
+       {
+        "executable": "Discord Helper (Renderer)",
+        "cpu_percent": 0.9
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 0.9
+       },
+       {
+        "executable": "ui-24dc6df103422863",
+        "cpu_percent": 0.8
+       },
+       {
+        "executable": "launchservicesd",
+        "cpu_percent": 0.6
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T10:38:09Z",
+      "load_1m": 7.20263671875,
+      "busiest": [
+       {
+        "executable": "acceptance-82b1c5dc9f8fecb6",
+        "cpu_percent": 203.7
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 48.4
+       },
+       {
+        "executable": "XprotectService",
+        "cpu_percent": 9.1
+       },
+       {
+        "executable": "sysmond",
+        "cpu_percent": 2.7
+       },
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 2.1
+       },
+       {
+        "executable": "Wispr Flow Helper (Renderer)",
+        "cpu_percent": 1.4
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.3
+       },
+       {
+        "executable": "Wispr Flow",
+        "cpu_percent": 1.2
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.0
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 0.9
+       },
+       {
+        "executable": "Google Chrome Helper",
+        "cpu_percent": 0.8
+       },
+       {
+        "executable": "fseventsd",
+        "cpu_percent": 0.7
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T10:38:24Z",
+      "load_1m": 6.70166015625,
+      "busiest": [
+       {
+        "executable": "corpus-cdb51bb754e53a17",
+        "cpu_percent": 99.4
+       },
+       {
+        "executable": "semantics-4562cd610615af28",
+        "cpu_percent": 57.1
+       },
+       {
+        "executable": "(sakura)",
+        "cpu_percent": 54.7
+       },
+       {
+        "executable": "(node)",
+        "cpu_percent": 9.0
+       },
+       {
+        "executable": "launchd",
+        "cpu_percent": 2.5
+       },
+       {
+        "executable": "fseventsd",
+        "cpu_percent": 2.3
+       },
+       {
+        "executable": "Wispr Flow",
+        "cpu_percent": 1.6
+       },
+       {
+        "executable": "Wispr Flow Helper (Renderer)",
+        "cpu_percent": 1.6
+       },
+       {
+        "executable": "Google Chrome Helper",
+        "cpu_percent": 1.6
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.3
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.1
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.1
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T10:38:39Z",
+      "load_1m": 6.47119140625,
+      "busiest": [
+       {
+        "executable": "source-0890498ca23efcff",
+        "cpu_percent": 100.0
+       },
+       {
+        "executable": "negative-84c7a3b0b0db2767",
+        "cpu_percent": 99.1
+       },
+       {
+        "executable": "(sakura)",
+        "cpu_percent": 44.2
+       },
+       {
+        "executable": "mdworker_shared",
+        "cpu_percent": 3.0
+       },
+       {
+        "executable": "sysmond",
+        "cpu_percent": 2.7
+       },
+       {
+        "executable": "Wispr Flow",
+        "cpu_percent": 1.7
+       },
+       {
+        "executable": "Wispr Flow Helper (Renderer)",
+        "cpu_percent": 1.4
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.2
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.1
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.1
+       },
+       {
+        "executable": "Discord Helper (Renderer)",
+        "cpu_percent": 0.9
+       },
+       {
+        "executable": "Google Chrome Helper",
+        "cpu_percent": 0.9
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T10:38:54Z",
+      "load_1m": 8.455078125,
+      "busiest": [
+       {
+        "executable": "corpus-e844998577bd3cc6",
+        "cpu_percent": 93.6
+       },
+       {
+        "executable": "live-8731ca07fd4519aa",
+        "cpu_percent": 4.3
+       },
+       {
+        "executable": "XprotectService",
+        "cpu_percent": 3.4
+       },
+       {
+        "executable": "Discord Helper (Renderer)",
+        "cpu_percent": 3.2
+       },
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 2.9
+       },
+       {
+        "executable": "Wispr Flow Helper (Renderer)",
+        "cpu_percent": 1.5
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.4
+       },
+       {
+        "executable": "Wispr Flow",
+        "cpu_percent": 1.4
+       },
+       {
+        "executable": "launchd",
+        "cpu_percent": 1.3
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.0
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.0
+       },
+       {
+        "executable": "launchservicesd",
+        "cpu_percent": 0.9
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T10:39:04Z",
+      "load_1m": 7.8369140625,
+      "busiest": [
+       {
+        "executable": "mds",
+        "cpu_percent": 31.2
+       },
+       {
+        "executable": "corpus-e844998577bd3cc6",
+        "cpu_percent": 28.8
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 28.1
+       },
+       {
+        "executable": "fseventsd",
+        "cpu_percent": 23.7
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 11.8
+       },
+       {
+        "executable": "cargo",
+        "cpu_percent": 3.4
+       },
+       {
+        "executable": "Finder",
+        "cpu_percent": 3.2
+       },
+       {
+        "executable": "coreaudiod",
+        "cpu_percent": 3.1
+       },
+       {
+        "executable": "com.apple.appkit.xpc.openAndSavePanelService",
+        "cpu_percent": 3.0
+       },
+       {
+        "executable": "com.apple.appkit.xpc.openAndSavePanelService",
+        "cpu_percent": 3.0
+       },
+       {
+        "executable": "Wispr Flow",
+        "cpu_percent": 2.5
+       },
+       {
+        "executable": "Raycast Backend",
+        "cpu_percent": 2.0
+       }
+      ]
+     }
+    ]
+   }
+  },
+  "engines": {
+   "node": "26.11.0",
+   "bun": "1.4.3",
+   "rustc": "1.99.1",
+   "go": "1.27.2",
+   "ocaml": "5.5.1",
+   "koka": "3.2.9",
+   "hyperfine": "2.0.0"
+  },
+  "flags": {
+   "suite": "js",
+   "engines": [
+    "node",
+    "bun"
+   ],
+   "lane": "matched",
+   "sizes": "all",
+   "stable": false,
+   "filter": "map_set",
+   "processes": 5,
+   "seed": 20261018
+  },
+  "seed": 20261018,
+  "started": "2026-10-18T10:33:19Z",
+  "missing": [],
+  "failures": []
+ },
+ "results": [
+  {
+   "program": "map_set:string",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    2.3512057499999983,
+    2.329575562499997,
+    2.3852578124999972,
+    2.3698203125,
+    2.3482916250000017,
+    2.3424245,
+    2.356859374999999,
+    2.3564478750000006,
+    2.3572265624999957,
+    2.7551875000000017,
+    2.796476562499997,
+    2.454776062499999,
+    2.4304140624999953,
+    2.3871588749999972,
+    2.3754713750000036,
+    2.995804687499998,
+    3.0211093750000018,
+    2.7032370000000014,
+    2.348906249999999,
+    2.358752625000001,
+    2.3788098750000017,
+    2.345734375000003,
+    2.340487000000003,
+    2.3114244375000013,
+    2.2754218749999993,
+    2.3271718750000048,
+    2.339231812499996,
+    2.3475598750000017,
+    2.3377865,
+    2.309971375,
+    2.3232630000000007,
+    2.3259895624999984,
+    2.3160260625000006,
+    2.313765624999995,
+    2.3224531249999956,
+    2.333789062500003,
+    2.304169312500001,
+    2.7394062499999983,
+    2.3851536249999974,
+    2.2890989375000004,
+    2.319653625000001,
+    2.2859245,
+    2.2888671874999957,
+    2.308434937500003,
+    2.3286015624999976
+   ],
+   "median_ms": 2.340487000000003,
+   "process_medians_ms": [
+    2.3564478750000006,
+    2.7032370000000014,
+    2.340487000000003,
+    2.3232630000000007,
+    2.308434937500003
+   ],
+   "rss_bytes": 91357184,
+   "process_rss_bytes": [
+    89784320,
+    91357184,
+    89702400,
+    89571328,
+    89620480
+   ],
+   "checksum_ok": true,
+   "checksum": "8354664"
+  },
+  {
+   "program": "map_set:int",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.3499332656249998,
+    0.37317675781250026,
+    0.34469335937500034,
+    0.3453636093750001,
+    0.35373242187499976,
+    0.3585302734374993,
+    0.35956087499999967,
+    0.3706699218750007,
+    0.35405110156249986,
+    0.40653157812500007,
+    0.5360260390625,
+    0.4544977187499999,
+    0.3718837890625002,
+    0.36872851562499953,
+    0.34085839843749977,
+    0.3617151640625007,
+    0.3770205078125004,
+    0.5205458984374998,
+    0.38119042968749994,
+    0.35246484375,
+    0.32060839843750033,
+    0.3143356093749996,
+    0.34071549218749997,
+    0.3517096328124998,
+    0.3275426406249995,
+    0.32551757812499993,
+    0.3246604843750003,
+    0.3674235078125001,
+    0.3705576171875,
+    0.3690501328125002,
+    0.37371159374999996,
+    0.3663561171874994,
+    0.37319987500000007,
+    0.3752057265625002,
+    0.35714843750000025,
+    0.3720159453125005,
+    0.34158886718750026,
+    0.34312239062500005,
+    0.3382373046875,
+    0.33529394531250034,
+    0.337415359375,
+    0.4031018906249999,
+    0.41101497656249997,
+    0.3454755859375007,
+    0.33297331250000006
+   ],
+   "median_ms": 0.35405110156249986,
+   "process_medians_ms": [
+    0.35405110156249986,
+    0.3770205078125004,
+    0.3275426406249995,
+    0.3705576171875,
+    0.34158886718750026
+   ],
+   "rss_bytes": 80199680,
+   "process_rss_bytes": [
+    71139328,
+    74219520,
+    80199680,
+    71581696,
+    72220672
+   ],
+   "checksum_ok": true,
+   "checksum": "1335761"
+  },
+  {
+   "program": "map_set:tuple",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    2.1834375,
+    2.1310078124999983,
+    2.0979635624999986,
+    2.083312499999998,
+    2.0950755,
+    2.1014166874999987,
+    2.1218255624999998,
+    2.095398437500002,
+    2.113466125000002,
+    2.1602916875000027,
+    2.1353775625000004,
+    2.1190989999999985,
+    2.1351119999999995,
+    2.1037838750000013,
+    2.112419250000002,
+    2.0742499999999993,
+    2.1101588124999964,
+    2.1069765625000016,
+    2.181638000000003,
+    2.2126979374999998,
+    2.0860807500000007,
+    2.1614609374999993,
+    2.1146328124999982,
+    2.111317687499998,
+    2.1227916874999977,
+    2.1270546874999994,
+    2.1932187499999998,
+    2.1661275625000016,
+    2.181984374999999,
+    2.1179921875000005,
+    2.1241744999999987,
+    2.1215807499999997,
+    2.094367187499998,
+    2.1204270624999992,
+    2.1241901249999984,
+    2.130330687499999,
+    2.169757812500002,
+    2.1610338749999976,
+    2.121528625,
+    2.1092890625000003,
+    2.104841125,
+    2.1118333125,
+    2.1087083124999992,
+    2.0986900624999976,
+    2.3701953125000017
+   ],
+   "median_ms": 2.112419250000002,
+   "process_medians_ms": [
+    2.1014166874999987,
+    2.112419250000002,
+    2.1270546874999994,
+    2.1241744999999987,
+    2.1118333125
+   ],
+   "rss_bytes": 105938944,
+   "process_rss_bytes": [
+    105234432,
+    104857600,
+    104611840,
+    105938944,
+    104873984
+   ],
+   "checksum_ok": true,
+   "checksum": "56655"
+  },
+  {
+   "program": "map_set:int",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    0.8751842500000002,
+    0.8271315000000001,
+    0.8151093749999996,
+    0.8802512968750005,
+    0.8500585937499991,
+    0.8656998750000007,
+    0.8316679687499988,
+    0.875575515625,
+    0.8817298124999997,
+    0.8356250000000003,
+    0.8650182343749995,
+    0.8544837187499992,
+    0.8407819062499993,
+    0.8992682343749987,
+    0.9309479218749992,
+    0.842419921874999,
+    0.9090781249999988,
+    0.8461992187499998,
+    0.8372050781249998,
+    0.8961113281249995,
+    0.8748639218750007,
+    0.9032630312500007,
+    0.9208893281249999,
+    0.9266900937500004,
+    1.4142532499999998,
+    1.6059492187500002,
+    1.1795957031250008,
+    0.8635677031249998,
+    0.880606109375,
+    0.8850820312499996,
+    0.839686859375,
+    0.8472142031249987,
+    0.9037226562500003,
+    0.9042122499999987,
+    0.8413463593750006,
+    0.8118378906250001,
+    0.8159941406250004,
+    0.9369270937500005,
+    0.8513365781250011,
+    0.8371887968750009,
+    0.8363951718749991,
+    0.8288925781250001,
+    0.8237473906249999,
+    0.8299921875000003,
+    0.8721764218750003
+   ],
+   "median_ms": 0.8635677031249998,
+   "process_medians_ms": [
+    0.8656998750000007,
+    0.8544837187499992,
+    0.9208893281249999,
+    0.8635677031249998,
+    0.8363951718749991
+   ],
+   "rss_bytes": 108953600,
+   "process_rss_bytes": [
+    108593152,
+    108953600,
+    108888064,
+    106905600,
+    107610112
+   ],
+   "checksum_ok": true,
+   "checksum": "13359761"
+  },
+  {
+   "program": "map_set:int",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100000,
+   "samples_ms": [
+    58.61212499999999,
+    59.34629199999995,
+    58.69458300000002,
+    58.79245800000001,
+    63.822083999999904,
+    60.68983400000002,
+    58.23133299999995,
+    56.497333000000026,
+    55.762958000000026,
+    56.94037499999996,
+    62.69304099999994,
+    61.184999999999945,
+    61.746916000000056,
+    70.30158300000005,
+    73.1395,
+    66.32604200000003,
+    57.688083000000006,
+    61.802374999999984,
+    58.751374999999996,
+    61.19941699999998,
+    61.208957999999996,
+    61.15158299999996,
+    68.10979199999997,
+    62.57066699999996,
+    59.24249999999995,
+    62.843665999999985,
+    65.48870799999997,
+    54.78587500000003,
+    59.51329199999998,
+    56.853458000000046,
+    60.219584000000054,
+    66.38600000000008,
+    58.098708999999985,
+    58.93587500000001,
+    57.95620799999995,
+    58.14820800000007,
+    57.91308300000003,
+    57.99699999999996,
+    59.33012499999995,
+    67.31016599999998,
+    59.37083400000006,
+    57.64258300000006,
+    63.073375000000055,
+    59.25091699999996,
+    67.1332920000001
+   ],
+   "median_ms": 59.33012499999995,
+   "process_medians_ms": [
+    58.69458300000002,
+    61.802374999999984,
+    61.208957999999996,
+    58.14820800000007,
+    59.33012499999995
+   ],
+   "rss_bytes": 286588928,
+   "process_rss_bytes": [
+    283377664,
+    279969792,
+    258654208,
+    286588928,
+    268091392
+   ],
+   "checksum_ok": true,
+   "checksum": "133599761"
+  },
+  {
+   "program": "map_set:string",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.2878984375,
+    0.2685419921875001,
+    0.26743978125000023,
+    0.26845735156250017,
+    0.27511458593750016,
+    0.26996712499999953,
+    0.26471257031249973,
+    0.2660019531249995,
+    0.2633251953125004,
+    1.0802457734374995,
+    1.2189947968750001,
+    1.7189501953125008,
+    0.5038616562500007,
+    1.155124351562499,
+    1.6306051406250006,
+    2.3351409531250003,
+    0.9271389999999986,
+    0.9110527343749997,
+    0.3321640624999995,
+    1.1002786406250005,
+    0.5943678437500006,
+    0.611354828125001,
+    0.6617487031249993,
+    0.602979812500001,
+    0.5778776093750011,
+    0.4047089843749987,
+    0.9669349062500014,
+    0.3002955703125001,
+    0.3604739609374996,
+    0.28904492187499997,
+    0.36095540625,
+    0.26984016406250033,
+    0.26827116406249996,
+    0.2691871718750001,
+    0.2733740234374995,
+    0.26971125781250027,
+    0.2871184843750001,
+    0.2666253281250004,
+    0.26333625781250003,
+    0.2684156953125001,
+    0.26673958593750013,
+    0.2630667265625002,
+    0.26179167187500063,
+    0.2666106796875001,
+    0.27119824218749944
+   ],
+   "median_ms": 0.2733740234374995,
+   "process_medians_ms": [
+    0.26845735156250017,
+    1.155124351562499,
+    0.602979812500001,
+    0.2733740234374995,
+    0.2666253281250004
+   ],
+   "rss_bytes": 122798080,
+   "process_rss_bytes": [
+    122798080,
+    122224640,
+    88064000,
+    122535936,
+    122781696
+   ],
+   "checksum_ok": true,
+   "checksum": "835164"
+  },
+  {
+   "program": "map_set",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    26.205208000000027,
+    41.148792000000014,
+    28.660041999999976,
+    31.359290999999985,
+    29.345957999999996,
+    25.51875000000001,
+    24.192833000000007,
+    24.69387499999999,
+    26.205125000000066,
+    25.674083499999995,
+    23.988312500000006,
+    26.84747900000002,
+    23.8083125,
+    25.505791500000043,
+    26.007562500000006,
+    33.241145500000016,
+    26.658082999999976,
+    26.496583499999986,
+    104.09979099999998,
+    237.76187499999992,
+    170.637875,
+    125.19274999999993,
+    149.82574999999997,
+    222.93120799999997,
+    117.63429200000019,
+    190.15545799999995,
+    237.27366600000005,
+    26.347812500000003,
+    27.359916999999996,
+    25.599125000000015,
+    26.278208500000005,
+    25.574896000000024,
+    25.985916999999972,
+    26.07385449999998,
+    26.302270499999963,
+    25.29254199999997,
+    31.17489599999999,
+    28.227437500000008,
+    27.08937499999999,
+    26.919375000000002,
+    27.872041499999966,
+    27.224917000000005,
+    26.030104499999993,
+    27.087312499999996,
+    27.504832999999962
+   ],
+   "median_ms": 26.205208000000027,
+   "process_medians_ms": [
+    26.205208000000027,
+    26.007562500000006,
+    170.637875,
+    26.07385449999998,
+    27.224917000000005
+   ],
+   "rss_bytes": 142868480,
+   "process_rss_bytes": [
+    123109376,
+    129089536,
+    142868480,
+    125566976,
+    128057344
+   ],
+   "checksum_ok": true,
+   "checksum": "21771080"
+  },
+  {
+   "program": "map_set:int",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100000,
+   "samples_ms": [
+    13.804052249999998,
+    13.232916500000002,
+    13.30889599999999,
+    13.565437500000002,
+    13.555552250000005,
+    13.711562500000014,
+    13.234323000000018,
+    13.302583499999997,
+    13.280510249999992,
+    14.231135249999994,
+    13.637062499999999,
+    13.660958499999992,
+    13.726770749999986,
+    13.564635500000009,
+    14.323479249999991,
+    13.158426999999989,
+    13.439270749999991,
+    13.332979249999994,
+    14.001999999999995,
+    12.994802000000007,
+    13.017739750000004,
+    13.213635499999981,
+    13.453270750000001,
+    13.38058325,
+    13.892979249999996,
+    13.24065625,
+    13.371656250000001,
+    14.055093749999997,
+    13.241239499999992,
+    13.077062499999997,
+    13.385114499999986,
+    13.38802075000001,
+    13.750468749999982,
+    13.372749999999996,
+    13.178083500000014,
+    13.264395749999977,
+    14.003854000000004,
+    13.255875000000003,
+    13.462187500000013,
+    13.40030200000001,
+    13.504853999999995,
+    13.253656250000006,
+    13.831489500000004,
+    13.527729250000021,
+    13.444801999999981
+   ],
+   "median_ms": 13.372749999999996,
+   "process_medians_ms": [
+    13.30889599999999,
+    13.637062499999999,
+    13.371656250000001,
+    13.372749999999996,
+    13.462187500000013
+   ],
+   "rss_bytes": 214827008,
+   "process_rss_bytes": [
+    211058688,
+    211320832,
+    214827008,
+    210731008,
+    214646784
+   ],
+   "checksum_ok": true,
+   "checksum": "133599761"
+  },
+  {
+   "program": "map_set:string",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 50000,
+   "samples_ms": [
+    13.0347395,
+    14.325843750000004,
+    12.56614574999999,
+    12.842989499999987,
+    12.536552,
+    12.526947999999976,
+    12.62109375,
+    12.605031249999996,
+    12.784916750000008,
+    13.773218749999998,
+    14.451093750000013,
+    13.163697750000011,
+    13.088937499999986,
+    13.08361450000001,
+    12.837843750000019,
+    12.447968750000001,
+    12.45423975,
+    12.81803124999999,
+    13.353833500000007,
+    14.417864499999993,
+    13.455906249999998,
+    13.07747925000001,
+    12.930656249999998,
+    12.820906250000007,
+    12.869260249999996,
+    12.760593749999998,
+    12.863864750000005,
+    13.1261145,
+    14.035499999999999,
+    12.624062500000008,
+    12.459478999999988,
+    13.113770749999986,
+    13.41517725,
+    13.660677000000021,
+    13.235864499999991,
+    12.635781250000008,
+    12.918239749999998,
+    14.866895749999998,
+    18.738458500000007,
+    13.112354249999981,
+    15.6946145,
+    15.68411475000002,
+    13.860510250000004,
+    13.569000000000017,
+    13.394333250000017
+   ],
+   "median_ms": 13.08361450000001,
+   "process_medians_ms": [
+    12.62109375,
+    13.08361450000001,
+    12.930656249999998,
+    13.1261145,
+    13.860510250000004
+   ],
+   "rss_bytes": 168132608,
+   "process_rss_bytes": [
+    167837696,
+    168132608,
+    156614656,
+    167673856,
+    167919616
+   ],
+   "checksum_ok": true,
+   "checksum": "41774662"
+  },
+  {
+   "program": "map_set:tuple",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 50000,
+   "samples_ms": [
+    57.53958299999999,
+    55.99779100000001,
+    49.085000000000036,
+    48.83729099999999,
+    59.44008299999996,
+    54.618625000000065,
+    55.42345799999998,
+    51.47012499999994,
+    47.40208400000006,
+    61.96116599999999,
+    51.66345799999999,
+    55.59054200000003,
+    59.003499999999974,
+    63.07683300000008,
+    58.925208,
+    61.37920800000006,
+    53.738750000000095,
+    58.61033299999997,
+    55.51720899999998,
+    54.61312499999997,
+    48.10512499999999,
+    57.05000000000001,
+    49.31733399999996,
+    50.686916,
+    51.28504099999998,
+    50.43504199999995,
+    48.83400000000006,
+    55.49283300000002,
+    51.89387500000004,
+    48.532249999999976,
+    54.276208999999994,
+    49.379583000000025,
+    53.867541000000074,
+    52.866457999999966,
+    50.57949999999994,
+    48.63320799999997,
+    62.25904200000002,
+    60.311667,
+    52.46858299999997,
+    56.240790999999945,
+    54.94741600000009,
+    52.531541999999945,
+    53.35054200000002,
+    48.20037500000001,
+    54.41399999999999
+   ],
+   "median_ms": 54.41399999999999,
+   "process_medians_ms": [
+    54.618625000000065,
+    58.925208,
+    50.686916,
+    51.89387500000004,
+    54.41399999999999
+   ],
+   "rss_bytes": 162365440,
+   "process_rss_bytes": [
+    160546816,
+    149979136,
+    152076288,
+    162365440,
+    154173440
+   ],
+   "checksum_ok": true,
+   "checksum": "283326"
+  },
+  {
+   "program": "map_set:string",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.19545182421875018,
+    0.19588183593750008,
+    0.19743603515624986,
+    0.19767122265625003,
+    0.1947775078124998,
+    0.196836265625,
+    0.19569400781250001,
+    0.19578678515625025,
+    0.19481266406249986,
+    0.9176992187500002,
+    0.6220761718749994,
+    0.32742968750000045,
+    0.5480410156249995,
+    0.27337631249999994,
+    0.25761653125000095,
+    0.2141230468750006,
+    0.2293893125000004,
+    0.20133529687499951,
+    0.19966129296875001,
+    0.19999934765625005,
+    0.20158089062499984,
+    0.19769742968750004,
+    0.19699527734375,
+    0.19708984375000016,
+    0.19673079296874985,
+    0.19677750781250003,
+    0.19701643749999986,
+    0.20195751953124996,
+    0.2024596367187499,
+    0.20218408203125016,
+    0.1983950195312496,
+    0.20007731249999994,
+    0.19933675000000006,
+    0.19662321093750013,
+    0.19677001953124984,
+    0.1968439140624998,
+    0.22528841015625,
+    0.23810888671874997,
+    0.2578401679687501,
+    0.3632986640625,
+    0.4132070312499998,
+    0.5355089531250004,
+    0.3088513984375001,
+    0.2309062500000003,
+    0.2061752929687506
+   ],
+   "median_ms": 0.19933675000000006,
+   "process_medians_ms": [
+    0.19578678515625025,
+    0.27337631249999994,
+    0.19708984375000016,
+    0.19933675000000006,
+    0.2578401679687501
+   ],
+   "rss_bytes": 56131584,
+   "process_rss_bytes": [
+    55967744,
+    55984128,
+    55853056,
+    56131584,
+    55967744
+   ],
+   "checksum_ok": true,
+   "checksum": "835164"
+  },
+  {
+   "program": "map_set",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.8247903593750001,
+    0.6182311093750004,
+    0.5691536406250002,
+    0.5784557343750008,
+    0.5221445312500013,
+    0.5032252656249998,
+    0.520555328124999,
+    0.5261835937499999,
+    0.5256191406249986,
+    0.5055266874999997,
+    0.5629427031249996,
+    0.5211380156249996,
+    0.5167239531250001,
+    0.5199309999999997,
+    0.4991269531249989,
+    0.49780600000000064,
+    0.5035117187499996,
+    0.49843749999999964,
+    0.5013997343750001,
+    0.5013359375000004,
+    0.5163105468750002,
+    0.5175358125000002,
+    0.49784504687499975,
+    0.5046256562500009,
+    0.5055559999999986,
+    0.5207962187500002,
+    0.5160494843749994,
+    0.5052929687500001,
+    0.5104648437499995,
+    0.5079017031249995,
+    0.4977044375000004,
+    0.4960462187500001,
+    0.49619531250000115,
+    0.5046959687499992,
+    0.4973470000000013,
+    0.5075839843749996,
+    0.5076907500000001,
+    0.5119414062500001,
+    0.5036979218750002,
+    0.5056028593750002,
+    0.5128717499999995,
+    0.5116757812500001,
+    0.5052747343749999,
+    0.49784309375000113,
+    0.49833789062500067
+   ],
+   "median_ms": 0.5055559999999986,
+   "process_medians_ms": [
+    0.5261835937499999,
+    0.5055266874999997,
+    0.5055559999999986,
+    0.5046959687499992,
+    0.5056028593750002
+   ],
+   "rss_bytes": 57786368,
+   "process_rss_bytes": [
+    57769984,
+    57671680,
+    57638912,
+    57753600,
+    57786368
+   ],
+   "checksum_ok": true,
+   "checksum": "2176582"
+  },
+  {
+   "program": "map_set:int",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 50000,
+   "samples_ms": [
+    33.34975000000003,
+    31.408042000000023,
+    27.90558299999998,
+    27.578540999999973,
+    29.033082999999976,
+    27.106250000000045,
+    32.59379200000001,
+    28.400583000000097,
+    44.317042000000015,
+    109.28583400000002,
+    87.07579199999998,
+    88.84287500000005,
+    80.48929199999998,
+    85.40991600000007,
+    70.489958,
+    70.35820799999999,
+    67.2020829999999,
+    95.19945899999993,
+    32.13799999999998,
+    32.83187499999997,
+    32.27237500000001,
+    32.107124999999996,
+    35.26937499999997,
+    33.76670900000005,
+    32.51766699999996,
+    36.89033400000005,
+    30.35216700000001,
+    25.145521000000002,
+    28.762833500000028,
+    25.09872900000002,
+    25.343646000000035,
+    27.075499999999977,
+    24.626374999999996,
+    24.42595849999998,
+    25.091083000000026,
+    25.747229000000004,
+    29.08179150000001,
+    29.875708500000002,
+    26.501833000000005,
+    26.46195849999998,
+    28.753145500000016,
+    25.514250000000004,
+    28.563812499999983,
+    25.80427100000003,
+    25.624562500000025
+   ],
+   "median_ms": 29.033082999999976,
+   "process_medians_ms": [
+    29.033082999999976,
+    85.40991600000007,
+    32.51766699999996,
+    25.145521000000002,
+    26.501833000000005
+   ],
+   "rss_bytes": 226426880,
+   "process_rss_bytes": [
+    225869824,
+    211304448,
+    226426880,
+    218546176,
+    225837056
+   ],
+   "checksum_ok": true,
+   "checksum": "66799759"
+  },
+  {
+   "program": "map_set:tuple",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 50000,
+   "samples_ms": [
+    58.91362499999997,
+    77.435,
+    68.63883299999998,
+    56.83904200000006,
+    59.053583,
+    40.26554199999998,
+    36.513083999999935,
+    31.779499999999985,
+    31.788999999999987,
+    31.983000000000004,
+    30.50637499999999,
+    31.877666999999974,
+    31.578167000000008,
+    31.769292000000007,
+    34.273000000000025,
+    33.37549999999999,
+    33.38362499999994,
+    32.085166999999956,
+    40.86370899999997,
+    48.69970799999999,
+    41.499167,
+    40.34437499999996,
+    41.532374999999945,
+    43.68016699999998,
+    46.63291700000002,
+    41.817040999999904,
+    50.798374999999965,
+    34.086792,
+    33.843208000000004,
+    31.759416999999985,
+    34.18920800000001,
+    33.329207999999994,
+    35.42399999999998,
+    44.08749999999998,
+    38.270667,
+    36.500999999999976,
+    37.22783300000003,
+    38.605166999999994,
+    41.64179200000001,
+    39.628750000000025,
+    36.43316699999997,
+    39.928540999999996,
+    42.26529199999993,
+    36.081042000000025,
+    34.13237499999991
+   ],
+   "median_ms": 38.605166999999994,
+   "process_medians_ms": [
+    56.83904200000006,
+    31.983000000000004,
+    41.817040999999904,
+    34.18920800000001,
+    38.605166999999994
+   ],
+   "rss_bytes": 236208128,
+   "process_rss_bytes": [
+    207781888,
+    232783872,
+    227540992,
+    236208128,
+    224706560
+   ],
+   "checksum_ok": true,
+   "checksum": "283326"
+  },
+  {
+   "program": "map_set:string",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 50000,
+   "samples_ms": [
+    19.071187500000008,
+    21.741521000000006,
+    22.350041499999975,
+    43.27904149999998,
+    35.111958000000016,
+    30.00649999999996,
+    23.249000000000024,
+    34.30631249999999,
+    20.539833500000043,
+    14.869916750000002,
+    13.805697999999992,
+    13.73558324999999,
+    14.137843750000002,
+    13.474250000000012,
+    12.97009374999999,
+    14.746499999999997,
+    14.084562500000004,
+    13.00037500000002,
+    14.043750000000003,
+    13.588948000000002,
+    14.341104249999987,
+    13.658322749999996,
+    16.37784375000001,
+    16.680823000000004,
+    16.441979000000003,
+    15.914979249999988,
+    15.049468749999988,
+    15.479250000000008,
+    14.530583500000006,
+    14.450958500000013,
+    13.492354000000006,
+    14.639895500000023,
+    13.744667000000021,
+    14.242562499999963,
+    14.468103999999983,
+    13.528521000000012,
+    14.44972900000002,
+    17.364520999999996,
+    28.17904150000001,
+    22.623104000000012,
+    15.327624999999983,
+    19.85235400000002,
+    18.447791999999993,
+    16.94681250000002,
+    19.737458500000002
+   ],
+   "median_ms": 15.049468749999988,
+   "process_medians_ms": [
+    23.249000000000024,
+    13.805697999999992,
+    15.049468749999988,
+    14.450958500000013,
+    18.447791999999993
+   ],
+   "rss_bytes": 88768512,
+   "process_rss_bytes": [
+    84819968,
+    86753280,
+    86458368,
+    86343680,
+    88768512
+   ],
+   "checksum_ok": true,
+   "checksum": "41774662"
+  },
+  {
+   "program": "map_set",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    22.955270999999982,
+    21.051229000000006,
+    7.273042000000004,
+    7.576229500000011,
+    11.170312500000023,
+    10.25060400000001,
+    8.151499999999999,
+    6.777208499999972,
+    5.872875000000022,
+    8.84549475,
+    8.318114625,
+    8.255781250000013,
+    7.567984375000009,
+    8.516208250000005,
+    6.148624999999996,
+    7.041833374999996,
+    7.036135375000001,
+    8.712859375000008,
+    6.4056355000000025,
+    6.039197874999999,
+    5.981812499999997,
+    6.005614624999993,
+    5.911229124999991,
+    5.8436822500000005,
+    6.259807249999994,
+    5.787229124999996,
+    5.8330105,
+    6.193411499999996,
+    5.7988073749999955,
+    5.593848999999999,
+    5.643645875000004,
+    5.753385499999993,
+    5.773010374999998,
+    5.815151,
+    5.728932375000014,
+    6.113510500000004,
+    6.171203125000005,
+    6.081895875000001,
+    5.956421875000004,
+    5.85278125,
+    6.2135103749999985,
+    5.8127812500000005,
+    5.867145875000006,
+    5.878770875000001,
+    5.8409636250000005
+   ],
+   "median_ms": 5.981812499999997,
+   "process_medians_ms": [
+    8.151499999999999,
+    8.255781250000013,
+    5.981812499999997,
+    5.773010374999998,
+    5.878770875000001
+   ],
+   "rss_bytes": 173293568,
+   "process_rss_bytes": [
+    115867648,
+    169836544,
+    170508288,
+    173293568,
+    169377792
+   ],
+   "checksum_ok": true,
+   "checksum": "21771080"
+  },
+  {
+   "program": "map_set:tuple",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    9.305041500000002,
+    10.793948,
+    16.559281250000012,
+    16.56427075000002,
+    22.09728125000001,
+    41.862697749999995,
+    14.66606250000001,
+    23.72697925,
+    63.09324999999998,
+    8.973677250000009,
+    10.089510500000003,
+    9.989666749999998,
+    9.4898125,
+    9.307260499999998,
+    8.962833250000017,
+    9.330927000000003,
+    9.422458250000005,
+    8.3581145,
+    9.91525,
+    10.456062500000002,
+    9.76634374999999,
+    8.888083499999993,
+    9.122979249999986,
+    8.957614500000005,
+    9.504228999999981,
+    9.298000000000002,
+    9.447698000000003,
+    9.888948,
+    10.944208250000003,
+    10.037406250000004,
+    9.2331875,
+    9.424677000000003,
+    9.837406250000015,
+    9.36122924999998,
+    9.54045825,
+    9.623104250000011,
+    9.620104249999997,
+    10.681031250000004,
+    10.560958249999999,
+    10.36690625,
+    9.478229249999984,
+    9.202645749999988,
+    8.539656250000007,
+    8.78213550000001,
+    9.223562499999986
+   ],
+   "median_ms": 9.478229249999984,
+   "process_medians_ms": [
+    16.56427075000002,
+    9.330927000000003,
+    9.447698000000003,
+    9.623104250000011,
+    9.478229249999984
+   ],
+   "rss_bytes": 84017152,
+   "process_rss_bytes": [
+    76349440,
+    82706432,
+    84017152,
+    82067456,
+    81510400
+   ],
+   "checksum_ok": true,
+   "checksum": "56655"
+  },
+  {
+   "program": "map_set:int",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 50000,
+   "samples_ms": [
+    11.854124999999996,
+    22.848103999999992,
+    19.27785399999999,
+    7.3103332500000135,
+    9.045729249999994,
+    10.79302075000001,
+    8.198635499999995,
+    13.268812499999996,
+    19.5534375,
+    18.796771000000007,
+    12.477000000000004,
+    9.313541500000014,
+    19.392041499999976,
+    7.252478999999994,
+    10.798416500000002,
+    14.8804375,
+    9.750624999999985,
+    9.931166500000018,
+    6.266052125000002,
+    6.3088385,
+    6.174302125000004,
+    6.44468225,
+    6.321328124999994,
+    6.232057250000011,
+    6.38202612500001,
+    6.457343750000007,
+    6.380703125000011,
+    6.351520875000006,
+    6.368614624999999,
+    6.3518593749999965,
+    6.366447999999998,
+    6.355343750000003,
+    6.206468749999999,
+    6.27167187500001,
+    6.33795825,
+    6.208791750000003,
+    6.385786374999995,
+    7.296458375,
+    6.385979249999998,
+    6.657822875000008,
+    6.458140625000013,
+    6.972848875000011,
+    7.822494875000004,
+    6.488979125,
+    6.5402759999999915
+   ],
+   "median_ms": 6.5402759999999915,
+   "process_medians_ms": [
+    11.854124999999996,
+    10.798416500000002,
+    6.321328124999994,
+    6.351520875000006,
+    6.5402759999999915
+   ],
+   "rss_bytes": 195936256,
+   "process_rss_bytes": [
+    168919040,
+    169263104,
+    195772416,
+    195936256,
+    192446464
+   ],
+   "checksum_ok": true,
+   "checksum": "66799759"
+  },
+  {
+   "program": "map_set:tuple",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100000,
+   "samples_ms": [
+    119.90308300000004,
+    86.450875,
+    123.3890419999999,
+    87.70783399999993,
+    66.60233400000004,
+    63.524082999999905,
+    23.082625000000007,
+    20.746000000000095,
+    20.94041600000014,
+    31.570583499999998,
+    39.4010835,
+    33.41931249999996,
+    61.44793750000002,
+    15.037499999999966,
+    15.017333500000007,
+    14.900603999999987,
+    16.131437500000004,
+    17.19122950000002,
+    16.148354499999982,
+    16.73010450000001,
+    16.882479500000017,
+    16.117728999999997,
+    14.72274999999999,
+    15.463145499999996,
+    15.269666500000028,
+    14.676333499999998,
+    15.451999999999998,
+    14.461948000000007,
+    15.273114500000005,
+    26.104625000000013,
+    14.778937500000012,
+    14.82165624999999,
+    14.480646000000007,
+    14.346895749999987,
+    14.828374999999994,
+    16.163385500000004,
+    15.031000000000006,
+    15.307552000000001,
+    14.992437500000008,
+    15.289843749999989,
+    14.9207605,
+    15.67485425000001,
+    15.36211449999999,
+    15.619718749999976,
+    15.060729250000009
+   ],
+   "median_ms": 15.463145499999996,
+   "process_medians_ms": [
+    66.60233400000004,
+    17.19122950000002,
+    15.463145499999996,
+    14.82165624999999,
+    15.289843749999989
+   ],
+   "rss_bytes": 146161664,
+   "process_rss_bytes": [
+    123158528,
+    146161664,
+    131956736,
+    128794624,
+    126205952
+   ],
+   "checksum_ok": true,
+   "checksum": "566654"
+  },
+  {
+   "program": "map_set:tuple",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.7149687499999997,
+    0.7290514374999999,
+    0.7968932343750001,
+    0.6084680937499991,
+    0.6887910156250001,
+    0.37233203125000003,
+    0.3891927187499995,
+    0.8443098906249986,
+    0.6117337187500009,
+    0.36147916406250014,
+    0.385439125,
+    0.36062304687500024,
+    0.36852181250000005,
+    0.36109049218750044,
+    0.36925814062499995,
+    0.3603245468749998,
+    0.35819140624999957,
+    0.36055241406250005,
+    0.3660227812500003,
+    0.39340722656250016,
+    0.3624609375000003,
+    0.3612314453125003,
+    0.3624427031250006,
+    0.3642014921875001,
+    0.35953613281249996,
+    0.3645299453124995,
+    0.36475228125000037,
+    0.3565856093749997,
+    0.3796165390624999,
+    0.35484667968749983,
+    0.35702441406249985,
+    0.35268261718749994,
+    0.34808170312500053,
+    0.3475065078124997,
+    0.35173665625000083,
+    0.35756510156250076,
+    0.36717675781250003,
+    0.38162304687500015,
+    0.35129035937499964,
+    0.3544853515624995,
+    0.39140657031250026,
+    0.4028824843750005,
+    0.41859342187500026,
+    0.36189322656249967,
+    0.41180501562500016
+   ],
+   "median_ms": 0.3642014921875001,
+   "process_medians_ms": [
+    0.6887910156250001,
+    0.36109049218750044,
+    0.3642014921875001,
+    0.35484667968749983,
+    0.38162304687500015
+   ],
+   "rss_bytes": 123551744,
+   "process_rss_bytes": [
+    88997888,
+    123322368,
+    123387904,
+    123551744,
+    123305984
+   ],
+   "checksum_ok": true,
+   "checksum": "5657"
+  },
+  {
+   "program": "map_set:tuple",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.375415853515625,
+    0.262387857421875,
+    0.33302547265625004,
+    0.29470206640624985,
+    0.3186193847656251,
+    0.3619759941406251,
+    0.29271508789062484,
+    0.31149104687500007,
+    0.31387622070312515,
+    0.10677840234375002,
+    0.10847013281250006,
+    0.1078486328124999,
+    0.11092057226562502,
+    0.10531990429687488,
+    0.10973844335937488,
+    0.10997468945312505,
+    0.10743139648437516,
+    0.1390909824218749,
+    0.1064453125,
+    0.10378449999999972,
+    0.13175976562499958,
+    0.11326889062500012,
+    0.18754492187499938,
+    0.10617903124999994,
+    0.10356770312499997,
+    0.14429360937500046,
+    0.15431445312500003,
+    0.10108487890625006,
+    0.10128010937499998,
+    0.10405826757812509,
+    0.1037471503906251,
+    0.10602359960937502,
+    0.10439054296874994,
+    0.10215576171875007,
+    0.10051188281250001,
+    0.10611718749999999,
+    0.09988704296874995,
+    0.09966691015624995,
+    0.09995369531249998,
+    0.09905175781249997,
+    0.10040551757812488,
+    0.1026181640624999,
+    0.10023641015624984,
+    0.10081477929687499,
+    0.099028400390625
+   ],
+   "median_ms": 0.10847013281250006,
+   "process_medians_ms": [
+    0.31387622070312515,
+    0.10847013281250006,
+    0.11326889062500012,
+    0.1037471503906251,
+    0.09995369531249998
+   ],
+   "rss_bytes": 60702720,
+   "process_rss_bytes": [
+    58146816,
+    59867136,
+    48234496,
+    59539456,
+    60702720
+   ],
+   "checksum_ok": true,
+   "checksum": "5657"
+  },
+  {
+   "program": "map_set:int",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 50000,
+   "samples_ms": [
+    125.50741700000003,
+    150.459833,
+    136.4833749999999,
+    142.250583,
+    156.82345799999996,
+    145.97529099999997,
+    144.00591599999984,
+    138.60620799999992,
+    136.938042,
+    84.79087500000003,
+    72.86525,
+    102.59554200000002,
+    95.486625,
+    93.00762500000008,
+    78.40787499999999,
+    85.41862500000002,
+    87.70695799999999,
+    81.23183300000005,
+    42.69149999999996,
+    44.412082999999996,
+    37.24891600000001,
+    38.525709000000006,
+    40.263417000000004,
+    42.47049999999996,
+    47.64670799999999,
+    40.39233300000001,
+    56.880750000000035,
+    36.22770800000001,
+    38.15225000000004,
+    60.517583,
+    41.23441699999995,
+    37.37895900000001,
+    37.03870800000004,
+    36.836874999999964,
+    42.77833300000009,
+    41.11291599999993,
+    39.78562500000004,
+    35.80324999999999,
+    39.03529200000003,
+    37.22804099999996,
+    35.405125,
+    39.5985,
+    39.33683400000007,
+    42.10391699999991,
+    41.55291699999998
+   ],
+   "median_ms": 42.47049999999996,
+   "process_medians_ms": [
+    142.250583,
+    85.41862500000002,
+    42.47049999999996,
+    38.15225000000004,
+    39.33683400000007
+   ],
+   "rss_bytes": 132120576,
+   "process_rss_bytes": [
+    107806720,
+    107610112,
+    131006464,
+    127909888,
+    132120576
+   ],
+   "checksum_ok": true,
+   "checksum": "66799759"
+  },
+  {
+   "program": "map_set:int",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.12508577539062493,
+    0.17984545898437498,
+    0.07784399414062504,
+    0.09384415820312508,
+    0.14243733789062496,
+    0.13338769531249994,
+    0.12368961523437516,
+    0.06086612890624998,
+    0.16986181640624998,
+    0.05894734765624998,
+    0.05690551757812501,
+    0.05873543359375,
+    0.06005932617187493,
+    0.06260701562499993,
+    0.057119466796875074,
+    0.06479231835937505,
+    0.062944662109375,
+    0.059610433593749956,
+    0.054769816406250005,
+    0.055426106445312484,
+    0.05705574609374997,
+    0.0565376796874999,
+    0.056115600585937564,
+    0.05610021972656254,
+    0.057412313476562504,
+    0.056005575195312574,
+    0.05796134472656245,
+    0.05664908886718745,
+    0.057690836914062515,
+    0.05654386425781249,
+    0.05688456250000007,
+    0.058539957031250034,
+    0.057952107421874954,
+    0.0578013916015625,
+    0.05574373339843752,
+    0.05585168457031253,
+    0.0565242919921875,
+    0.05702742480468753,
+    0.05794376660156253,
+    0.05744425488281246,
+    0.05882255078124998,
+    0.060983520507812417,
+    0.05794779492187496,
+    0.06121948242187503,
+    0.057147989257812504
+   ],
+   "median_ms": 0.05794376660156253,
+   "process_medians_ms": [
+    0.12508577539062493,
+    0.059610433593749956,
+    0.056115600585937564,
+    0.05688456250000007,
+    0.05794376660156253
+   ],
+   "rss_bytes": 81969152,
+   "process_rss_bytes": [
+    65142784,
+    65060864,
+    81920000,
+    81969152,
+    81969152
+   ],
+   "checksum_ok": true,
+   "checksum": "1335761"
+  },
+  {
+   "program": "map_set:int",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    16.337354250000004,
+    9.989573000000007,
+    15.937583250000003,
+    13.414583250000021,
+    32.57720825000001,
+    39.08760425,
+    21.901948000000004,
+    23.76665625000001,
+    19.745239500000025,
+    6.029427125000005,
+    5.952500000000001,
+    6.262661375,
+    6.1877865000000085,
+    6.252895875000007,
+    6.450744749999998,
+    6.581322874999998,
+    6.196151125,
+    9.427416624999992,
+    6.018010500000003,
+    5.934854250000001,
+    5.877546875,
+    5.836093750000003,
+    5.855458375000012,
+    5.665380124999999,
+    6.2592291250000045,
+    5.889604125000005,
+    5.6625988750000005,
+    5.9814531249999945,
+    5.945791624999998,
+    6.182578124999999,
+    6.061645749999997,
+    5.847984374999996,
+    6.174400999999989,
+    11.140541749999997,
+    6.731229124999999,
+    5.949005124999999,
+    5.805140625,
+    6.055510499999997,
+    6.067984375000002,
+    5.913744750000006,
+    6.925088625000001,
+    6.823026000000013,
+    7.018593749999994,
+    6.140484375,
+    5.960901124999992
+   ],
+   "median_ms": 6.067984375000002,
+   "process_medians_ms": [
+    19.745239500000025,
+    6.252895875000007,
+    5.877546875,
+    6.061645749999997,
+    6.067984375000002
+   ],
+   "rss_bytes": 78921728,
+   "process_rss_bytes": [
+    72810496,
+    78757888,
+    77955072,
+    77758464,
+    78921728
+   ],
+   "checksum_ok": true,
+   "checksum": "13359761"
+  },
+  {
+   "program": "map_set:string",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 50000,
+   "samples_ms": [
+    121.74745800000005,
+    97.34400000000005,
+    280.79658300000006,
+    170.49362500000007,
+    160.03141600000004,
+    141.29250000000002,
+    135.99237500000004,
+    140.64179099999978,
+    210.087583,
+    55.681457999999964,
+    56.262500000000045,
+    58.19779200000005,
+    52.47345800000005,
+    58.01054199999999,
+    63.30645800000002,
+    60.77541699999995,
+    58.85958400000004,
+    60.51795800000002,
+    51.91312499999998,
+    50.98325,
+    50.02337499999999,
+    50.88625000000002,
+    53.110915999999975,
+    53.31487500000003,
+    112.96050000000002,
+    137.44887500000004,
+    201.07504200000005,
+    53.23562499999997,
+    51.86366700000002,
+    50.23991700000005,
+    53.52054100000004,
+    50.895667,
+    52.269542,
+    53.36616599999991,
+    54.51258399999995,
+    52.1568749999999,
+    52.83541600000001,
+    50.690833,
+    49.80670900000001,
+    51.41966600000006,
+    47.354375000000005,
+    51.81508299999996,
+    47.583708,
+    49.94987500000002,
+    56.00508300000001
+   ],
+   "median_ms": 53.110915999999975,
+   "process_medians_ms": [
+    141.29250000000002,
+    58.19779200000005,
+    53.110915999999975,
+    52.269542,
+    50.690833
+   ],
+   "rss_bytes": 157614080,
+   "process_rss_bytes": [
+    152272896,
+    151109632,
+    154763264,
+    157614080,
+    150290432
+   ],
+   "checksum_ok": true,
+   "checksum": "41774662"
+  },
+  {
+   "program": "map_set",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100000,
+   "samples_ms": [
+    146.17204100000004,
+    123.25841700000001,
+    154.26645799999994,
+    158.00312499999995,
+    132.93562500000007,
+    110.80779100000018,
+    112.95425,
+    123.18724999999995,
+    137.51716599999986,
+    107.13104199999998,
+    93.40487499999995,
+    117.839875,
+    120.76212499999997,
+    101.04708400000004,
+    93.56958299999997,
+    99.38629199999991,
+    87.806333,
+    99.63874999999985,
+    108.24012499999998,
+    100.25866699999995,
+    100.89525000000003,
+    101.42979200000002,
+    106.349917,
+    102.68245799999988,
+    110.55741699999999,
+    101.18433400000004,
+    101.40462500000012,
+    105.97895800000003,
+    98.61683300000004,
+    90.67087500000002,
+    108.69387499999993,
+    103.66191600000002,
+    103.34479099999999,
+    91.368833,
+    97.75979200000006,
+    93.61037499999998,
+    121.42304199999995,
+    106.63404100000002,
+    126.33991700000001,
+    119.30137500000001,
+    129.140667,
+    129.39625,
+    153.4860000000001,
+    124.31841699999995,
+    131.907375
+   ],
+   "median_ms": 101.42979200000002,
+   "process_medians_ms": [
+    132.93562500000007,
+    99.63874999999985,
+    101.42979200000002,
+    98.61683300000004,
+    126.33991700000001
+   ],
+   "rss_bytes": 271368192,
+   "process_rss_bytes": [
+    270843904,
+    271368192,
+    250511360,
+    250232832,
+    250544128
+   ],
+   "checksum_ok": true,
+   "checksum": "217716079"
+  },
+  {
+   "program": "map_set",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    1.1136275937499995,
+    1.094139343750001,
+    1.08393228125,
+    1.0718020937499997,
+    1.1337083125000014,
+    1.1119088437499993,
+    1.0799895937499997,
+    1.0947825312500008,
+    1.0890390624999995,
+    1.0661901249999985,
+    1.0691875,
+    1.0681223749999997,
+    1.0863632812499997,
+    1.08125521875,
+    1.0471992187500003,
+    1.036700531250002,
+    1.0366406250000004,
+    1.0770820312500007,
+    1.1069544374999989,
+    1.1119010312499995,
+    1.1133932187500015,
+    1.098872406249999,
+    1.7704179687499995,
+    2.7593229062499987,
+    2.9222174375000023,
+    2.299790343749997,
+    4.31291928125,
+    1.0769062500000004,
+    1.0538554687499992,
+    1.077187499999999,
+    1.0740781249999998,
+    1.0468724062500012,
+    1.0661210937499987,
+    1.0705781249999973,
+    1.0701471249999983,
+    1.0696640624999993,
+    1.11330728125,
+    1.071446625,
+    1.0633489687499988,
+    1.0756041874999998,
+    1.0768385625000008,
+    1.0729687499999994,
+    1.0579049687499982,
+    1.0910742187499984,
+    1.110416687499999
+   ],
+   "median_ms": 1.0756041874999998,
+   "process_medians_ms": [
+    1.094139343750001,
+    1.0681223749999997,
+    1.7704179687499995,
+    1.0701471249999983,
+    1.0756041874999998
+   ],
+   "rss_bytes": 157466624,
+   "process_rss_bytes": [
+    157417472,
+    157466624,
+    155336704,
+    157073408,
+    157155328
+   ],
+   "checksum_ok": true,
+   "checksum": "2176582"
+  },
+  {
+   "program": "map_set:int",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100000,
+   "samples_ms": [
+    4.223703125,
+    4.201963499999998,
+    4.152968749999999,
+    3.936104125,
+    3.910062500000002,
+    4.015708375000003,
+    4.1921509999999955,
+    4.292838499999988,
+    3.917395874999997,
+    4.114823000000001,
+    3.8781457500000016,
+    3.8608073750000003,
+    3.999525999999996,
+    4.136427125000004,
+    4.2523385000000005,
+    3.9758437499999957,
+    3.8312500000000114,
+    3.9898281250000025,
+    3.9628281249999944,
+    3.831562500000004,
+    3.8497447499999993,
+    3.9221822499999988,
+    3.8763124999999974,
+    3.8695260000000005,
+    3.8585677499999917,
+    3.873031249999997,
+    3.993223999999998,
+    4.968473999999993,
+    4.066317749999996,
+    5.216776000000003,
+    4.059630250000005,
+    4.864302124999995,
+    4.133942625000003,
+    3.9975677500000018,
+    5.103760500000007,
+    4.069171874999995,
+    3.8979322499999967,
+    3.913963625000001,
+    3.9156458749999956,
+    4.724083374999999,
+    5.325854124999999,
+    4.029036500000004,
+    4.020041625000005,
+    3.9837552500000015,
+    4.096317749999997
+   ],
+   "median_ms": 4.020041625000005,
+   "process_medians_ms": [
+    4.152968749999999,
+    3.9898281250000025,
+    3.873031249999997,
+    4.133942625000003,
+    4.020041625000005
+   ],
+   "rss_bytes": 110198784,
+   "process_rss_bytes": [
+    75464704,
+    74809344,
+    75464704,
+    110198784,
+    75005952
+   ],
+   "checksum_ok": true,
+   "checksum": "133599761"
+  },
+  {
+   "program": "map_set:int",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100000,
+   "samples_ms": [
+    100.19258400000001,
+    99.73879099999999,
+    103.80904099999998,
+    99.73762499999998,
+    95.23837500000002,
+    91.58779200000004,
+    92.38754200000005,
+    83.96795800000018,
+    91.43624999999997,
+    104.638417,
+    109.58941700000003,
+    138.39716599999997,
+    111.45804199999998,
+    116.356,
+    96.04329100000007,
+    91.46183299999984,
+    95.55616699999996,
+    104.69450000000006,
+    86.53499999999997,
+    105.556375,
+    121.16341699999998,
+    122.38941599999998,
+    116.20800000000008,
+    113.76974999999993,
+    107.17470800000001,
+    90.20304199999987,
+    95.1606670000001,
+    90.09454099999999,
+    95.09174999999999,
+    96.82999999999993,
+    101.75345799999991,
+    98.59887499999991,
+    85.11854099999994,
+    85.31041600000003,
+    89.93920900000012,
+    81.51724999999988,
+    85.72483399999999,
+    92.89358299999998,
+    97.45074999999997,
+    100.05320799999993,
+    91.08170799999994,
+    80.88708299999996,
+    83.01420900000005,
+    85.13129199999992,
+    82.80791699999986
+   ],
+   "median_ms": 95.23837500000002,
+   "process_medians_ms": [
+    95.23837500000002,
+    104.69450000000006,
+    107.17470800000001,
+    90.09454099999999,
+    85.72483399999999
+   ],
+   "rss_bytes": 186007552,
+   "process_rss_bytes": [
+    181518336,
+    186007552,
+    158351360,
+    181354496,
+    164429824
+   ],
+   "checksum_ok": true,
+   "checksum": "133599761"
+  },
+  {
+   "program": "map_set:tuple",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100000,
+   "samples_ms": [
+    30.84254199999998,
+    32.63216600000004,
+    28.398042000000032,
+    25.43466699999999,
+    27.44991699999997,
+    27.032459000000017,
+    23.80250000000001,
+    26.29774999999995,
+    33.168750000000045,
+    29.326520999999985,
+    25.23720800000001,
+    24.823583000000013,
+    26.746479000000022,
+    25.09687500000001,
+    29.315041500000007,
+    25.521562500000016,
+    26.306978999999956,
+    25.6236045,
+    31.10091650000001,
+    25.5422705,
+    25.3599375,
+    30.3323125,
+    34.328750000000014,
+    33.34266650000001,
+    30.02362499999998,
+    30.782562499999983,
+    30.28268750000001,
+    24.005250000000018,
+    24.74391650000001,
+    27.890895999999998,
+    24.209812499999998,
+    23.681395500000008,
+    23.04672949999997,
+    22.911208000000045,
+    23.927583500000026,
+    22.1319795,
+    26.659958500000016,
+    24.81162500000002,
+    30.729270999999983,
+    24.28268750000001,
+    23.99422899999996,
+    24.75562500000001,
+    24.279270999999994,
+    24.1724375,
+    26.03687500000001
+   ],
+   "median_ms": 25.6236045,
+   "process_medians_ms": [
+    27.44991699999997,
+    25.6236045,
+    30.3323125,
+    23.927583500000026,
+    24.75562500000001
+   ],
+   "rss_bytes": 187793408,
+   "process_rss_bytes": [
+    141443072,
+    187793408,
+    184942592,
+    170196992,
+    172539904
+   ],
+   "checksum_ok": true,
+   "checksum": "566654"
+  },
+  {
+   "program": "map_set",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 50000,
+   "samples_ms": [
+    34.57629199999997,
+    38.99449999999996,
+    37.07008300000001,
+    34.87287500000002,
+    40.63175000000001,
+    35.96570799999995,
+    36.88408299999992,
+    35.107624999999985,
+    39.368082999999956,
+    36.935834,
+    36.367166999999995,
+    31.345792000000017,
+    38.802250000000015,
+    37.060749999999985,
+    34.92379100000005,
+    38.045582999999965,
+    32.04608299999995,
+    33.104375000000005,
+    31.032583999999986,
+    32.80525,
+    36.950874999999996,
+    33.604750000000024,
+    29.940249999999992,
+    34.215791000000024,
+    33.70074999999997,
+    30.30229099999997,
+    38.979416000000015,
+    31.650459000000012,
+    37.42650000000003,
+    32.30125000000004,
+    31.355416000000048,
+    34.305834000000004,
+    32.078250000000025,
+    32.282208999999966,
+    36.36666700000001,
+    37.087582999999995,
+    33.93233300000003,
+    34.23037499999998,
+    39.674125000000004,
+    33.661625000000015,
+    29.781709000000035,
+    35.58254100000005,
+    35.744042000000036,
+    35.521334000000024,
+    36.334666000000084
+   ],
+   "median_ms": 35.521334000000024,
+   "process_medians_ms": [
+    36.88408299999992,
+    36.367166999999995,
+    33.604750000000024,
+    32.30125000000004,
+    35.521334000000024
+   ],
+   "rss_bytes": 182829056,
+   "process_rss_bytes": [
+    182829056,
+    180731904,
+    176586752,
+    179650560,
+    181092352
+   ],
+   "checksum_ok": true,
+   "checksum": "108857747"
+  },
+  {
+   "program": "map_set:tuple",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 50000,
+   "samples_ms": [
+    5.870786500000001,
+    5.917176999999995,
+    6.209218749999998,
+    7.273598875000005,
+    8.258911374999997,
+    6.529078124999998,
+    6.59311975,
+    6.770364624999999,
+    6.495781250000007,
+    14.008802000000003,
+    10.626906250000005,
+    31.970687499999997,
+    55.524552,
+    42.042250000000024,
+    30.03752075,
+    24.898603999999978,
+    30.606104250000044,
+    11.389822750000008,
+    5.9807135,
+    5.809338624999995,
+    5.8589896249999995,
+    5.585473999999998,
+    5.880426999999997,
+    5.668395750000002,
+    5.828291750000005,
+    5.832843750000009,
+    5.680828125000005,
+    6.110098875000006,
+    5.912010375000001,
+    6.004958249999994,
+    6.010541625000002,
+    6.093984375000005,
+    6.189041750000001,
+    6.1915676249999905,
+    6.202291625000001,
+    6.067786499999997,
+    6.033338499999999,
+    5.774026124999999,
+    5.879072999999998,
+    5.959328124999999,
+    6.323718750000012,
+    5.934479249999995,
+    6.203291624999991,
+    5.939963500000005,
+    6.012223999999989
+   ],
+   "median_ms": 6.093984375000005,
+   "process_medians_ms": [
+    6.529078124999998,
+    30.03752075,
+    5.828291750000005,
+    6.093984375000005,
+    5.959328124999999
+   ],
+   "rss_bytes": 104988672,
+   "process_rss_bytes": [
+    74137600,
+    104988672,
+    57819136,
+    57638912,
+    58048512
+   ],
+   "checksum_ok": true,
+   "checksum": "283326"
+  },
+  {
+   "program": "map_set",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    15.033874999999995,
+    16.434875000000005,
+    18.342333499999995,
+    15.339770999999985,
+    15.10152100000002,
+    15.674749999999989,
+    15.252145999999982,
+    14.992520999999954,
+    18.266999999999996,
+    14.641937499999983,
+    14.578666499999997,
+    15.539437499999991,
+    19.727687500000002,
+    15.703082999999992,
+    15.263229500000023,
+    15.35012500000002,
+    14.629374999999982,
+    15.774187499999982,
+    19.101958499999995,
+    17.489396,
+    25.916750000000008,
+    31.809021,
+    20.25977050000003,
+    21.093395999999984,
+    16.786062500000014,
+    18.646000000000015,
+    18.42591699999997,
+    16.241478999999998,
+    16.429979000000003,
+    16.879708499999992,
+    21.853312499999987,
+    18.113646000000017,
+    15.88164549999999,
+    16.477937499999996,
+    16.35416650000002,
+    16.470437500000003,
+    15.949541499999981,
+    15.192542000000003,
+    16.345270999999997,
+    14.670145500000018,
+    14.76362499999999,
+    14.938521000000009,
+    14.554520999999994,
+    15.64718750000003,
+    14.845103999999992
+   ],
+   "median_ms": 15.35012500000002,
+   "process_medians_ms": [
+    15.339770999999985,
+    15.35012500000002,
+    19.101958499999995,
+    16.470437500000003,
+    14.938521000000009
+   ],
+   "rss_bytes": 216285184,
+   "process_rss_bytes": [
+    197033984,
+    212910080,
+    215318528,
+    214630400,
+    216285184
+   ],
+   "checksum_ok": true,
+   "checksum": "21771080"
+  },
+  {
+   "program": "map_set",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    1.7009478750000007,
+    1.9230260625,
+    1.8246745000000004,
+    1.9569556875000025,
+    1.7280234374999992,
+    2.2025208124999978,
+    1.9826354375000008,
+    2.072968750000001,
+    1.8130156249999985,
+    1.9448229062499998,
+    1.7268190000000008,
+    1.6989856562499988,
+    1.7069921874999991,
+    1.8679960937499978,
+    1.914106750000002,
+    1.7609179687500003,
+    1.7978724062500007,
+    1.9135494687499985,
+    1.8368138125000009,
+    1.8705911562500006,
+    1.8803385312500005,
+    1.823179687499998,
+    1.869584656249998,
+    1.8813242187500023,
+    1.77931378125,
+    1.7825065312500001,
+    1.8529635312500012,
+    1.80472265625,
+    1.8637018437499986,
+    1.87709246875,
+    1.8194648437499978,
+    1.7998580625000002,
+    1.873139312500001,
+    1.8472669374999988,
+    1.8077278750000012,
+    1.832454437500001,
+    2.0250182499999987,
+    1.864716187500001,
+    1.8128072499999988,
+    1.7544973749999997,
+    2.0652473749999984,
+    1.7370103750000006,
+    1.9177630625000006,
+    1.7081301875000037,
+    1.937778625
+   ],
+   "median_ms": 1.8529635312500012,
+   "process_medians_ms": [
+    1.9230260625,
+    1.7978724062500007,
+    1.8529635312500012,
+    1.832454437500001,
+    1.864716187500001
+   ],
+   "rss_bytes": 107872256,
+   "process_rss_bytes": [
+    107872256,
+    106758144,
+    105431040,
+    105611264,
+    107266048
+   ],
+   "checksum_ok": true,
+   "checksum": "2176582"
+  },
+  {
+   "program": "map_set:string",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100000,
+   "samples_ms": [
+    27.908457999999996,
+    27.11570899999998,
+    29.397291999999993,
+    32.99566699999997,
+    28.31895800000001,
+    27.49383400000005,
+    26.300917000000027,
+    30.156416999999976,
+    27.197625000000016,
+    29.6304375,
+    27.489333500000015,
+    29.477687499999973,
+    30.363812499999995,
+    29.154646000000014,
+    28.977374999999995,
+    28.48668749999996,
+    30.24981250000002,
+    32.29216650000001,
+    28.872479,
+    29.554666499999996,
+    28.351979,
+    29.327604000000008,
+    27.573354499999994,
+    28.123562500000048,
+    28.62658300000004,
+    32.335249999999974,
+    29.262708499999974,
+    29.657791499999973,
+    28.056083,
+    30.122229000000033,
+    29.096416499999975,
+    27.30208349999998,
+    29.622604000000024,
+    31.707333500000004,
+    28.578270999999972,
+    27.464916500000015,
+    38.81325000000004,
+    44.99950000000001,
+    35.240332999999964,
+    35.311666,
+    37.474958000000015,
+    29.54054100000002,
+    48.755750000000035,
+    28.194208000000003,
+    30.274541999999997
+   ],
+   "median_ms": 29.096416499999975,
+   "process_medians_ms": [
+    27.908457999999996,
+    29.477687499999973,
+    28.872479,
+    29.096416499999975,
+    35.311666
+   ],
+   "rss_bytes": 196820992,
+   "process_rss_bytes": [
+    178094080,
+    196820992,
+    193413120,
+    196591616,
+    166182912
+   ],
+   "checksum_ok": true,
+   "checksum": "83549664"
+  },
+  {
+   "program": "map_set:string",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.12683984375000001,
+    0.12566829687500003,
+    0.12493440624999996,
+    0.11781119921874983,
+    0.11936718749999997,
+    0.12448307421875016,
+    0.12671272656249988,
+    0.12212744140624965,
+    0.12117448046875001,
+    0.12533414453125014,
+    0.127532875,
+    0.12470882031249997,
+    0.12797998046875003,
+    0.12921696093750001,
+    0.12338899609374998,
+    0.12858707812500003,
+    0.12887581250000002,
+    0.12641471484375,
+    0.1253144531250001,
+    0.12308951953125002,
+    0.12102848437500002,
+    0.12250748828125002,
+    0.1267439804687498,
+    0.12453466796875001,
+    0.12375488281249991,
+    0.12394254687499995,
+    0.12611230468750012,
+    0.12825764843749998,
+    0.1256871718749999,
+    0.12345882421874999,
+    0.12314680859374993,
+    0.12593912890624992,
+    0.12616748046874982,
+    0.12663916015624999,
+    0.12638053125000015,
+    0.12626676562500005,
+    0.1257067070312501,
+    0.12038736718749998,
+    0.12413411718750011,
+    0.12370296484374999,
+    0.12703890234375015,
+    0.12694498828125012,
+    0.1241777343749999,
+    0.12662369531249995,
+    0.12506038281250031
+   ],
+   "median_ms": 0.12506038281250031,
+   "process_medians_ms": [
+    0.12448307421875016,
+    0.127532875,
+    0.12394254687499995,
+    0.12616748046874982,
+    0.12506038281250031
+   ],
+   "rss_bytes": 57114624,
+   "process_rss_bytes": [
+    56164352,
+    56639488,
+    56983552,
+    57114624,
+    56885248
+   ],
+   "checksum_ok": true,
+   "checksum": "835164"
+  },
+  {
+   "program": "map_set:tuple",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    4.499656250000001,
+    4.9482395,
+    4.4157396250000005,
+    4.535005124999998,
+    4.813625000000009,
+    4.718994749999993,
+    4.6619636249999985,
+    4.534911500000007,
+    4.703484375000002,
+    5.394051999999995,
+    5.141968750000004,
+    4.652666625000002,
+    4.674031249999999,
+    4.464739625,
+    4.48563025,
+    4.481354124999996,
+    4.624036375000003,
+    4.456515625000009,
+    4.5996457500000005,
+    4.964484374999998,
+    4.819817750000006,
+    4.5932291249999935,
+    4.44965112500001,
+    4.476078125000001,
+    4.509135375,
+    4.510718750000009,
+    4.493484375000008,
+    4.896000000000001,
+    4.678942749999997,
+    4.461000000000006,
+    4.543593749999999,
+    4.4884583750000004,
+    4.597666750000002,
+    4.566645875000006,
+    4.478739625000003,
+    4.542604124999997,
+    4.510869750000005,
+    4.872265624999997,
+    4.657187499999999,
+    4.549942625,
+    4.643473999999998,
+    4.561807375000001,
+    4.443015625000001,
+    4.716437499999998,
+    4.378822999999997
+   ],
+   "median_ms": 4.561807375000001,
+   "process_medians_ms": [
+    4.6619636249999985,
+    4.624036375000003,
+    4.510718750000009,
+    4.543593749999999,
+    4.561807375000001
+   ],
+   "rss_bytes": 187826176,
+   "process_rss_bytes": [
+    187203584,
+    171491328,
+    184090624,
+    187318272,
+    187826176
+   ],
+   "checksum_ok": true,
+   "checksum": "56655"
+  },
+  {
+   "program": "map_set:string",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.45213996875000007,
+    0.4137832031250004,
+    0.40914127343749973,
+    0.4226796874999996,
+    0.4129251328125001,
+    0.43510774999999935,
+    0.43552864843749983,
+    0.4305074843750001,
+    0.42849511718750044,
+    0.4790585937500005,
+    0.4213600312499999,
+    0.4447011718749998,
+    0.4564160156249999,
+    0.45349479687499983,
+    0.4355351562500003,
+    0.41896550000000055,
+    0.44096159375,
+    0.448830078124999,
+    0.49845312500000016,
+    0.42086132812500043,
+    0.45324154687499973,
+    0.450884109375,
+    0.45456574999999955,
+    0.4665514374999997,
+    0.4375566406250009,
+    0.42330664062500034,
+    0.44676107812499843,
+    0.4422096328124998,
+    0.4357649765624996,
+    0.4220862656249995,
+    0.4331302031249997,
+    0.4417210234374993,
+    0.4483395156250003,
+    0.5364169921875002,
+    0.4312815703124997,
+    0.38731478124999974,
+    0.4273349609374999,
+    0.4431816406250002,
+    0.4445807265624997,
+    0.4392685546875006,
+    0.41247525781249994,
+    0.41698665624999975,
+    0.46430240624999985,
+    0.45434146875000003,
+    0.4214788437500001
+   ],
+   "median_ms": 0.4392685546875006,
+   "process_medians_ms": [
+    0.42849511718750044,
+    0.4447011718749998,
+    0.450884109375,
+    0.4357649765624996,
+    0.4392685546875006
+   ],
+   "rss_bytes": 78823424,
+   "process_rss_bytes": [
+    78823424,
+    70221824,
+    69402624,
+    75841536,
+    77004800
+   ],
+   "checksum_ok": true,
+   "checksum": "835164"
+  },
+  {
+   "program": "map_set:string",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    7.903354000000007,
+    7.961031249999991,
+    8.834041499999998,
+    8.642458500000004,
+    7.202812499999993,
+    8.113145749999987,
+    7.09914599999999,
+    6.984531250000003,
+    8.456823000000014,
+    8.663281249999997,
+    8.784396000000001,
+    8.965343750000002,
+    8.691698000000002,
+    8.031499999999994,
+    8.738489749999985,
+    9.265916750000002,
+    9.002062499999994,
+    8.894093749999996,
+    8.316114749999997,
+    8.692125000000004,
+    8.416302249999987,
+    8.662208500000006,
+    8.687906250000012,
+    8.873177249999998,
+    9.142822749999993,
+    9.030010499999975,
+    9.603666750000002,
+    8.927260500000003,
+    8.190927000000002,
+    8.487343749999994,
+    8.9808855,
+    8.032114750000005,
+    8.238635500000001,
+    8.562999999999988,
+    8.605437500000022,
+    8.242708249999993,
+    7.66908325,
+    8.6170415,
+    8.429677249999997,
+    8.4422395,
+    16.269948,
+    17.67638550000001,
+    18.095197999999982,
+    17.219448,
+    16.04942700000001
+   ],
+   "median_ms": 8.692125000000004,
+   "process_medians_ms": [
+    7.961031249999991,
+    8.784396000000001,
+    8.692125000000004,
+    8.487343749999994,
+    16.04942700000001
+   ],
+   "rss_bytes": 76840960,
+   "process_rss_bytes": [
+    74907648,
+    75857920,
+    74891264,
+    76840960,
+    74924032
+   ],
+   "checksum_ok": true,
+   "checksum": "8354664"
+  },
+  {
+   "program": "map_set:string",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 50000,
+   "samples_ms": [
+    30.21645799999999,
+    28.857459000000006,
+    31.23904200000004,
+    35.14666699999998,
+    28.900666,
+    32.275082999999995,
+    30.03125,
+    29.241540999999984,
+    35.67462499999999,
+    29.354625,
+    30.934541499999995,
+    29.087916500000006,
+    29.084124999999972,
+    29.980270500000017,
+    28.74483300000003,
+    30.425854500000014,
+    29.467624999999998,
+    29.880270999999993,
+    30.901916999999997,
+    29.76595850000001,
+    30.26097900000002,
+    29.584687499999973,
+    32.856083499999954,
+    28.592458499999964,
+    39.04200000000003,
+    39.3967705,
+    31.448687500000005,
+    30.452207999999985,
+    31.788707999999986,
+    29.156041000000016,
+    29.544332999999995,
+    29.58525000000003,
+    38.06124999999997,
+    32.48108400000001,
+    28.907041999999933,
+    29.283041000000026,
+    35.242624999999975,
+    31.582832999999994,
+    33.27116699999999,
+    30.48566599999998,
+    29.200917000000004,
+    34.915167000000054,
+    31.025582999999983,
+    28.93808399999989,
+    28.81574999999998
+   ],
+   "median_ms": 30.21645799999999,
+   "process_medians_ms": [
+    30.21645799999999,
+    29.467624999999998,
+    30.901916999999997,
+    29.58525000000003,
+    31.025582999999983
+   ],
+   "rss_bytes": 235372544,
+   "process_rss_bytes": [
+    198115328,
+    231211008,
+    235372544,
+    232620032,
+    232701952
+   ],
+   "checksum_ok": true,
+   "checksum": "41774662"
+  },
+  {
+   "program": "map_set:tuple",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100000,
+   "samples_ms": [
+    118.88449999999995,
+    119.27995799999997,
+    125.35254100000009,
+    120.38816600000007,
+    127.18033400000002,
+    133.833083,
+    142.83191699999998,
+    146.52779099999998,
+    141.678541,
+    122.33270799999997,
+    126.85916699999996,
+    123.56412499999999,
+    133.73187500000006,
+    122.87058300000001,
+    133.93020899999988,
+    130.77087499999993,
+    146.9771659999999,
+    127.30579199999988,
+    124.56849999999997,
+    118.19825000000003,
+    121.4883749999999,
+    127.607666,
+    133.371667,
+    139.91775000000007,
+    137.83612500000004,
+    142.46733300000005,
+    123.73845899999992,
+    116.296042,
+    119.02716700000008,
+    124.65054099999998,
+    116.15654099999995,
+    136.28137500000003,
+    133.54433400000016,
+    137.06225000000018,
+    117.81237499999997,
+    127.84887499999991,
+    120.40241600000007,
+    118.25562500000001,
+    125.888916,
+    119.83437500000002,
+    129.07249999999988,
+    129.01987499999996,
+    127.66112499999986,
+    132.83270900000002,
+    120.45004199999994
+   ],
+   "median_ms": 127.18033400000002,
+   "process_medians_ms": [
+    127.18033400000002,
+    127.30579199999988,
+    127.607666,
+    124.65054099999998,
+    125.888916
+   ],
+   "rss_bytes": 246317056,
+   "process_rss_bytes": [
+    234340352,
+    233406464,
+    233783296,
+    246317056,
+    224231424
+   ],
+   "checksum_ok": true,
+   "checksum": "566654"
+  },
+  {
+   "program": "map_set",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100000,
+   "samples_ms": [
+    376.720541,
+    430.096,
+    415.3231249999999,
+    458.0737079999999,
+    361.9664579999999,
+    314.48287500000015,
+    360.56441700000005,
+    310.92241699999977,
+    312.3578749999997,
+    434.26570900000013,
+    429.73183300000005,
+    411.9230829999999,
+    350.19829100000015,
+    431.4549579999998,
+    388.05562499999996,
+    380.41154099999994,
+    414.30541700000003,
+    428.02529199999935,
+    317.89979200000005,
+    334.050334,
+    335.27929199999994,
+    308.0750830000002,
+    312.96016699999973,
+    328.41866700000037,
+    335.91762500000004,
+    375.82995900000014,
+    317.87125000000015,
+    322.853875,
+    325.656125,
+    313.59450000000015,
+    342.3153749999999,
+    312.2566670000001,
+    310.3965830000002,
+    334.6647499999999,
+    310.01379199999974,
+    333.89554199999975,
+    332.44425,
+    315.3137079999999,
+    328.9206250000002,
+    323.79045799999994,
+    590.0687080000002,
+    312.92604200000005,
+    310.49616600000036,
+    314.2537500000003,
+    295.072083
+   ],
+   "median_ms": 328.41866700000037,
+   "process_medians_ms": [
+    361.9664579999999,
+    414.30541700000003,
+    328.41866700000037,
+    322.853875,
+    315.3137079999999
+   ],
+   "rss_bytes": 583237632,
+   "process_rss_bytes": [
+    485425152,
+    583237632,
+    493060096,
+    468221952,
+    447643648
+   ],
+   "checksum_ok": true,
+   "checksum": "217716079"
+  },
+  {
+   "program": "map_set:string",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    1.8739270624999982,
+    2.251861999999999,
+    1.875859375000001,
+    2.0466328125000004,
+    2.186184937500002,
+    1.9014400624999972,
+    1.8241197500000013,
+    1.8591614374999992,
+    1.8413098750000003,
+    1.9850859375000027,
+    2.0305208125000007,
+    2.012916687499999,
+    1.978867187499997,
+    2.022960937499999,
+    2.034309874999998,
+    2.0563255624999996,
+    2.0916198124999994,
+    2.0010546875000017,
+    1.9882551874999983,
+    2.0343098750000017,
+    2.1065885625000007,
+    2.0509088125000012,
+    2.0080130625000017,
+    1.972531250000003,
+    2.0175390624999956,
+    1.9789661249999995,
+    1.9495521250000039,
+    1.9080442499999997,
+    2.0321510624999988,
+    1.9322083750000019,
+    2.0354895625000005,
+    2.106380250000001,
+    2.089036437499999,
+    1.9945833750000013,
+    2.2295625,
+    2.296744812500002,
+    2.0082056874999985,
+    2.0521666875000015,
+    2.0864140624999976,
+    2.0287213125,
+    2.0786745000000018,
+    1.9910911875000004,
+    1.9664244375000024,
+    1.9366926875000061,
+    2.0122395624999996
+   ],
+   "median_ms": 2.0122395624999996,
+   "process_medians_ms": [
+    1.875859375000001,
+    2.022960937499999,
+    2.0080130625000017,
+    2.0354895625000005,
+    2.0122395624999996
+   ],
+   "rss_bytes": 68927488,
+   "process_rss_bytes": [
+    64831488,
+    64454656,
+    68927488,
+    64307200,
+    64978944
+   ],
+   "checksum_ok": true,
+   "checksum": "8354664"
+  },
+  {
+   "program": "map_set:int",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.2870439453125,
+    0.29302408593749973,
+    0.27332128906249986,
+    0.2750986328124996,
+    0.27664388281249996,
+    0.27447591406250016,
+    0.27246745312499954,
+    0.2773668593750003,
+    0.32171126562499985,
+    0.285350265625,
+    0.29526921093750014,
+    0.27550260937500015,
+    0.2792623749999996,
+    0.27742089843749973,
+    0.2737015000000005,
+    0.2781927031249998,
+    0.2779820937499995,
+    0.27424088281249936,
+    0.28488769531250036,
+    0.30187695312499985,
+    0.27251464843749984,
+    0.27842545312499967,
+    0.2836826171875,
+    0.27070898437500013,
+    0.2807001953124999,
+    0.27693457031250013,
+    0.2779003906250006,
+    0.2745654296875002,
+    0.285380859375,
+    0.2720172500000002,
+    0.2690364609375,
+    0.2740094453125006,
+    0.27253808593749973,
+    0.2651468125000003,
+    0.26726822656249993,
+    0.2639557265625001,
+    0.28601497656249997,
+    0.30082226562500036,
+    0.2778746796874998,
+    0.2745836562499999,
+    0.2720504531250003,
+    0.2770878906250003,
+    0.2798180390624996,
+    0.27617414843749977,
+    0.27671028124999975
+   ],
+   "median_ms": 0.2770878906250003,
+   "process_medians_ms": [
+    0.27664388281249996,
+    0.2779820937499995,
+    0.27842545312499967,
+    0.2720172500000002,
+    0.2770878906250003
+   ],
+   "rss_bytes": 122650624,
+   "process_rss_bytes": [
+    122011648,
+    122650624,
+    122355712,
+    122273792,
+    121880576
+   ],
+   "checksum_ok": true,
+   "checksum": "1335761"
+  },
+  {
+   "program": "map_set",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 50000,
+   "samples_ms": [
+    98.91495799999996,
+    42.760583,
+    41.91066699999999,
+    39.26416599999993,
+    37.30195800000001,
+    42.32779199999993,
+    38.72441600000002,
+    36.64516700000013,
+    36.116416999999956,
+    39.406083000000024,
+    35.496167000000014,
+    37.38116600000001,
+    34.60650000000004,
+    34.14699999999999,
+    34.782624999999996,
+    42.783874999999966,
+    37.788332999999966,
+    35.20720800000004,
+    41.275499999999965,
+    34.580332999999996,
+    38.225832999999966,
+    34.155583999999976,
+    36.90016699999995,
+    35.49770799999999,
+    39.90508299999999,
+    38.418542,
+    34.58141699999999,
+    34.814458,
+    34.452291,
+    34.84858300000002,
+    34.79820799999999,
+    34.019124999999974,
+    34.467083,
+    43.26895799999994,
+    37.848292000000015,
+    35.55833300000006,
+    42.22083300000003,
+    45.600625000000036,
+    43.13620800000001,
+    39.42266699999999,
+    57.37183399999992,
+    36.42866700000002,
+    41.23991699999999,
+    38.08758399999999,
+    37.097875000000045
+   ],
+   "median_ms": 36.90016699999995,
+   "process_medians_ms": [
+    39.26416599999993,
+    35.496167000000014,
+    36.90016699999995,
+    34.814458,
+    41.23991699999999
+   ],
+   "rss_bytes": 218185728,
+   "process_rss_bytes": [
+    206716928,
+    216236032,
+    217284608,
+    218185728,
+    217513984
+   ],
+   "checksum_ok": true,
+   "checksum": "108857747"
+  },
+  {
+   "program": "map_set:string",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    4.5521198750000025,
+    4.527427125000003,
+    4.269062499999997,
+    3.917666750000002,
+    4.200041749999997,
+    4.022224000000001,
+    4.256218750000002,
+    4.061630250000007,
+    3.9329687500000006,
+    4.520328124999999,
+    4.108015625,
+    4.240401125000005,
+    4.279635374999998,
+    4.110968750000005,
+    4.438906250000002,
+    4.2165156249999995,
+    4.2925728749999905,
+    4.055109375000001,
+    4.437072874999998,
+    4.056536375,
+    4.500854250000003,
+    4.445067750000007,
+    4.342984375,
+    4.508895750000001,
+    4.0812812500000035,
+    4.028145874999993,
+    4.102723874999995,
+    4.2089218750000015,
+    4.727385499999997,
+    4.397177125000006,
+    4.152828124999999,
+    4.2224843750000005,
+    4.158572874999997,
+    4.069953124999998,
+    4.069416625000002,
+    4.219427124999996,
+    4.337734375000004,
+    4.437135374999997,
+    4.293916750000001,
+    4.166703125000005,
+    4.225932374999999,
+    4.244025999999998,
+    4.425426999999999,
+    4.316182249999997,
+    4.170208375000001
+   ],
+   "median_ms": 4.240401125000005,
+   "process_medians_ms": [
+    4.200041749999997,
+    4.240401125000005,
+    4.342984375,
+    4.2089218750000015,
+    4.293916750000001
+   ],
+   "rss_bytes": 192675840,
+   "process_rss_bytes": [
+    190824448,
+    188022784,
+    188563456,
+    192675840,
+    192380928
+   ],
+   "checksum_ok": true,
+   "checksum": "8354664"
+  },
+  {
+   "program": "map_set:string",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100000,
+   "samples_ms": [
+    121.67529199999996,
+    120.83083299999998,
+    129.06224999999995,
+    126.585917,
+    116.53858400000001,
+    123.78920799999992,
+    126.55462499999999,
+    122.02116699999988,
+    122.70279099999993,
+    467.44575,
+    240.739458,
+    226.41816599999993,
+    273.50470799999994,
+    146.88799999999992,
+    135.92320800000016,
+    139.40137499999992,
+    130.2083749999997,
+    125.65650000000005,
+    120.09770799999995,
+    124.736042,
+    122.05345799999998,
+    120.28745800000002,
+    116.615542,
+    119.54416700000002,
+    124.16679200000021,
+    116.35675000000015,
+    119.96858300000008,
+    125.80824999999999,
+    127.66341699999998,
+    132.39779199999998,
+    131.57908300000008,
+    133.6445,
+    139.03274999999985,
+    134.87687499999993,
+    139.11858299999994,
+    138.68216699999994,
+    125.74379200000004,
+    123.84516699999995,
+    129.15075000000002,
+    134.6706250000001,
+    118.59370799999999,
+    131.6287080000002,
+    129.866125,
+    123.4576669999999,
+    132.77212499999996
+   ],
+   "median_ms": 129.15075000000002,
+   "process_medians_ms": [
+    122.70279099999993,
+    146.88799999999992,
+    120.09770799999995,
+    133.6445,
+    129.15075000000002
+   ],
+   "rss_bytes": 206716928,
+   "process_rss_bytes": [
+    198098944,
+    195674112,
+    203096064,
+    206716928,
+    199884800
+   ],
+   "checksum_ok": true,
+   "checksum": "83549664"
+  },
+  {
+   "program": "map_set:tuple",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 50000,
+   "samples_ms": [
+    11.156677250000001,
+    10.842583500000003,
+    11.804312499999995,
+    11.531260500000002,
+    11.501822750000002,
+    11.133166500000016,
+    11.388093750000024,
+    11.281166750000011,
+    11.345864750000004,
+    11.269801999999999,
+    11.297812499999992,
+    12.323687500000005,
+    11.789229249999991,
+    11.405520749999994,
+    12.041604250000006,
+    11.2638125,
+    11.550666749999976,
+    11.61072925000002,
+    11.452468750000008,
+    11.885093749999996,
+    11.665000000000006,
+    11.627416499999995,
+    11.69535399999998,
+    12.051552000000015,
+    11.946531249999992,
+    11.324281250000013,
+    11.41898974999998,
+    10.957406250000005,
+    11.665572749999995,
+    11.618156249999998,
+    11.42189574999999,
+    11.359062499999993,
+    11.42289575000001,
+    11.123114499999986,
+    11.085354000000024,
+    10.868218750000011,
+    11.456843750000004,
+    12.327364500000002,
+    12.532010499999998,
+    12.387718750000019,
+    11.906593750000013,
+    11.29776050000001,
+    11.400323000000014,
+    11.271822750000013,
+    11.414322749999997
+   ],
+   "median_ms": 11.456843750000004,
+   "process_medians_ms": [
+    11.345864750000004,
+    11.550666749999976,
+    11.665000000000006,
+    11.359062499999993,
+    11.456843750000004
+   ],
+   "rss_bytes": 168787968,
+   "process_rss_bytes": [
+    168787968,
+    168361984,
+    167346176,
+    168001536,
+    166838272
+   ],
+   "checksum_ok": true,
+   "checksum": "283326"
+  },
+  {
+   "program": "map_set",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    3.7264323124999983,
+    3.8436432499999995,
+    3.8485416249999993,
+    3.673286499999996,
+    3.8117551875000046,
+    3.8611197500000003,
+    3.9193645625,
+    3.7203801875000053,
+    3.8608333124999987,
+    3.9823255000000017,
+    3.6791718750000015,
+    3.5765937500000007,
+    3.637914062499995,
+    3.712481812500002,
+    3.7012291249999976,
+    3.9679765624999987,
+    4.041317687500005,
+    4.078684875,
+    3.9480417500000016,
+    3.840791750000001,
+    3.8986406249999987,
+    3.999973875000002,
+    3.9263958750000043,
+    3.8369375000000048,
+    3.9808021249999967,
+    3.9251511249999993,
+    3.95338550000001,
+    3.8361379999999983,
+    3.7678906249999997,
+    3.8292734374999995,
+    3.7936380000000014,
+    3.842440125000003,
+    3.8133099375000015,
+    3.8408437499999977,
+    3.7419999999999973,
+    3.846494749999998,
+    3.7159270000000006,
+    3.8490261250000017,
+    3.7879687499999974,
+    3.7816197500000044,
+    3.9159948750000027,
+    3.883135375000002,
+    3.7092917500000055,
+    3.7665781250000094,
+    3.7903541249999932
+   ],
+   "median_ms": 3.8292734374999995,
+   "process_medians_ms": [
+    3.8436432499999995,
+    3.712481812500002,
+    3.9263958750000043,
+    3.8292734374999995,
+    3.7879687499999974
+   ],
+   "rss_bytes": 60686336,
+   "process_rss_bytes": [
+    60604416,
+    60063744,
+    60686336,
+    59719680,
+    60440576
+   ],
+   "checksum_ok": true,
+   "checksum": "21771080"
+  },
+  {
+   "program": "map_set:string",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100000,
+   "samples_ms": [
+    37.35008399999998,
+    36.68408400000004,
+    43.505584,
+    41.47312499999998,
+    39.53616699999998,
+    45.08862499999998,
+    44.41233299999999,
+    43.291375000000016,
+    39.70037500000001,
+    34.84049999999996,
+    41.07770900000003,
+    43.63495799999998,
+    39.356041000000005,
+    38.17987500000004,
+    41.71020899999996,
+    40.39358400000003,
+    39.750749999999925,
+    38.46158300000002,
+    38.95049999999998,
+    45.84049999999996,
+    41.763499999999965,
+    38.703959,
+    41.620291000000066,
+    43.86745900000005,
+    37.17120799999998,
+    44.14949999999999,
+    38.58241599999997,
+    36.93908299999998,
+    40.53520900000001,
+    40.18129200000004,
+    37.582333000000006,
+    39.505292,
+    40.04887499999995,
+    39.31504200000006,
+    40.04554099999996,
+    40.49591699999996,
+    34.929417,
+    39.37062499999996,
+    40.41616699999997,
+    39.31849999999997,
+    43.43954199999996,
+    51.08949999999999,
+    48.666291,
+    40.86933399999998,
+    41.006624999999985
+   ],
+   "median_ms": 40.86933399999998,
+   "process_medians_ms": [
+    41.47312499999998,
+    39.750749999999925,
+    41.620291000000066,
+    40.04554099999996,
+    40.86933399999998
+   ],
+   "rss_bytes": 148422656,
+   "process_rss_bytes": [
+    148111360,
+    146800640,
+    144965632,
+    144211968,
+    148422656
+   ],
+   "checksum_ok": true,
+   "checksum": "83549664"
+  },
+  {
+   "program": "map_set",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100000,
+   "samples_ms": [
+    458.6892499999999,
+    420.2522919999999,
+    437.9933749999998,
+    466.55620799999997,
+    449.330375,
+    433.8208330000002,
+    436.81158300000016,
+    441.21587499999987,
+    425.02666600000066,
+    458.626792,
+    424.5148330000002,
+    450.7357500000003,
+    923.8964170000004,
+    1435.561416,
+    1075.7950840000003,
+    855.1355410000006,
+    1154.4185000000007,
+    1827.6364589999994,
+    474.6533750000001,
+    437.180834,
+    451.34675000000016,
+    474.1764159999998,
+    452.068209,
+    444.1928750000002,
+    498.63183300000037,
+    500.70937499999945,
+    513.6455839999999,
+    499.05208300000004,
+    500.807542,
+    488.51099999999997,
+    563.3097499999999,
+    501.02383299999974,
+    469.2162080000003,
+    498.67520800000057,
+    457.02958300000046,
+    494.1951660000004,
+    442.414125,
+    422.22787500000004,
+    430.94391700000006,
+    450.5562909999999,
+    435.20258300000023,
+    424.66370800000004,
+    417.10812499999975,
+    420.370625,
+    411.55833299999995
+   ],
+   "median_ms": 474.1764159999998,
+   "process_medians_ms": [
+    437.9933749999998,
+    923.8964170000004,
+    474.1764159999998,
+    498.67520800000057,
+    424.66370800000004
+   ],
+   "rss_bytes": 535052288,
+   "process_rss_bytes": [
+    524812288,
+    513032192,
+    535052288,
+    521224192,
+    508084224
+   ],
+   "checksum_ok": true,
+   "checksum": "217716079"
+  },
+  {
+   "program": "map_set",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.2804908828124999,
+    0.2889010390625,
+    0.2765488281249997,
+    0.29669726562499976,
+    0.29750130468750013,
+    0.2975914687500003,
+    0.29357779687499974,
+    0.2850598984374999,
+    0.30484082031250015,
+    0.6470791015624999,
+    1.5183180390624997,
+    0.6183385390625,
+    0.5698352812500005,
+    0.3752799453125002,
+    0.3061940078125005,
+    0.6120569687499993,
+    0.7214091796875,
+    0.5066523437499999,
+    0.2830615234375,
+    0.2793645859375,
+    0.27866113281250016,
+    0.27909700781250013,
+    0.28373242187500036,
+    0.2871188203124997,
+    0.28960514062499954,
+    0.2907259140624996,
+    0.2861565703125004,
+    0.2790615234375,
+    0.27508658593750024,
+    0.28951400000000005,
+    0.2895146484375002,
+    0.28441667187499986,
+    0.30676074218750005,
+    0.29933821875,
+    0.29599089062500017,
+    0.2995693359375,
+    0.2775869140624998,
+    0.27730110937499974,
+    0.29158756249999973,
+    0.2848411484375002,
+    0.2873785781249998,
+    0.2883255234375004,
+    0.2689189453125005,
+    0.2808450546875001,
+    0.27819759375000075
+   ],
+   "median_ms": 0.2895146484375002,
+   "process_medians_ms": [
+    0.29357779687499974,
+    0.6120569687499993,
+    0.28373242187500036,
+    0.2895146484375002,
+    0.2808450546875001
+   ],
+   "rss_bytes": 75251712,
+   "process_rss_bytes": [
+    75251712,
+    64307200,
+    67239936,
+    64454656,
+    67878912
+   ],
+   "checksum_ok": true,
+   "checksum": "2176582"
+  },
+  {
+   "program": "map_set:tuple",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.5443834687500004,
+    0.5419309999999999,
+    0.5656653593750001,
+    0.5922252499999994,
+    0.5657213593749999,
+    0.5668470000000001,
+    0.5863398437499985,
+    0.6140553437499996,
+    0.606074218749999,
+    0.51206315625,
+    0.5477421874999999,
+    0.5691458437500003,
+    0.5816484375000002,
+    0.5325436250000006,
+    0.5440625000000008,
+    0.5480253906249999,
+    0.5728079531249985,
+    0.5505989531250002,
+    0.570552078125,
+    0.5433268281250001,
+    0.5813124999999992,
+    0.5814199218750007,
+    0.5543554687500007,
+    0.5274863281250006,
+    0.5606881562500003,
+    0.5778339843749993,
+    0.582079421875001,
+    0.5246634062499993,
+    0.5269003906250003,
+    0.5573828125000002,
+    0.5812330625,
+    0.5337552187499996,
+    0.5398789062500011,
+    0.5529681093749996,
+    0.5502050781249999,
+    0.5466204531249996,
+    0.5098587187500003,
+    0.5533606718750006,
+    0.5101627500000001,
+    1.6163541562500008,
+    1.1490123749999999,
+    2.67943425,
+    1.598890625000001,
+    2.2335240937500007,
+    1.814339203124998
+   ],
+   "median_ms": 0.5668470000000001,
+   "process_medians_ms": [
+    0.5668470000000001,
+    0.5480253906249999,
+    0.570552078125,
+    0.5466204531249996,
+    1.598890625000001
+   ],
+   "rss_bytes": 80019456,
+   "process_rss_bytes": [
+    71696384,
+    72122368,
+    77725696,
+    71745536,
+    80019456
+   ],
+   "checksum_ok": true,
+   "checksum": "5657"
+  },
+  {
+   "program": "map_set",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 50000,
+   "samples_ms": [
+    453.77675,
+    397.46795799999995,
+    296.29299999999967,
+    495.392417,
+    285.1785829999999,
+    282.56466699999964,
+    324.91704200000004,
+    224.42691600000035,
+    277.95616599999994,
+    210.199209,
+    206.703709,
+    213.49512499999992,
+    201.63329199999998,
+    197.96962499999995,
+    220.48854200000005,
+    198.07112500000017,
+    194.3273750000003,
+    214.93904199999997,
+    195.89762499999995,
+    181.07237499999997,
+    180.929084,
+    202.97620900000015,
+    197.888917,
+    206.01599999999985,
+    177.39599999999996,
+    198.93058299999984,
+    187.8297090000001,
+    180.85787500000004,
+    190.339791,
+    185.4457910000001,
+    187.5357080000001,
+    200.7300419999999,
+    202.5423330000001,
+    187.60141599999997,
+    195.38779099999988,
+    191.871083,
+    194.76425000000006,
+    185.2750000000001,
+    184.83620799999994,
+    197.4119579999999,
+    190.0412080000001,
+    194.1011249999999,
+    191.14550000000008,
+    185.07499999999982,
+    184.00983300000007
+   ],
+   "median_ms": 195.89762499999995,
+   "process_medians_ms": [
+    296.29299999999967,
+    206.703709,
+    195.89762499999995,
+    190.339791,
+    190.0412080000001
+   ],
+   "rss_bytes": 277463040,
+   "process_rss_bytes": [
+    276873216,
+    277463040,
+    275824640,
+    260931584,
+    269811712
+   ],
+   "checksum_ok": true,
+   "checksum": "108857747"
+  },
+  {
+   "program": "map_set:tuple",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    1.1034010624999997,
+    1.0384322812499995,
+    1.0764856875,
+    1.1570885312499986,
+    1.8149570312499996,
+    2.8099218750000006,
+    1.8076289062499988,
+    1.285218750000002,
+    1.3538463749999998,
+    1.0617564999999995,
+    1.053558593750001,
+    1.0833580937499985,
+    1.0609062500000004,
+    1.0828450625000006,
+    1.1035611875000022,
+    1.1132187500000015,
+    1.1460208437500015,
+    1.0968255312499977,
+    1.0981549375000004,
+    1.0919153749999992,
+    1.0849726562499988,
+    1.0863567500000002,
+    1.1029036562499996,
+    1.0960950625000017,
+    1.108545562499998,
+    1.1301002499999981,
+    1.1154609375,
+    1.1495351562500016,
+    1.1339648437500003,
+    1.0940768437500008,
+    1.09861590625,
+    1.0744257812499995,
+    1.086108093750001,
+    1.0686132812499984,
+    1.1211028750000018,
+    1.1040937500000005,
+    1.1138906249999998,
+    1.1051171875000012,
+    1.1255130312499997,
+    1.2008659062499998,
+    1.1319166874999986,
+    1.1362109374999996,
+    1.1371979062499982,
+    1.13298696875,
+    1.137515624999999
+   ],
+   "median_ms": 1.09861590625,
+   "process_medians_ms": [
+    1.285218750000002,
+    1.0833580937499985,
+    1.0981549375000004,
+    1.09861590625,
+    1.13298696875
+   ],
+   "rss_bytes": 64716800,
+   "process_rss_bytes": [
+    63586304,
+    64716800,
+    63602688,
+    64421888,
+    64618496
+   ],
+   "checksum_ok": true,
+   "checksum": "56655"
+  },
+  {
+   "program": "map_set:tuple",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.20091878124999996,
+    0.19333772656250003,
+    0.1950520859374998,
+    0.19471777343750007,
+    0.2280694960937497,
+    0.19548812109375024,
+    0.2186264648437497,
+    0.19595556640625,
+    0.19489469531250014,
+    0.19604573828124994,
+    0.19766471484375003,
+    0.1951767578125001,
+    0.19783251953125003,
+    0.19467562109374992,
+    0.19465494531250016,
+    0.19457112890624995,
+    0.1958186835937501,
+    0.1973663750000001,
+    0.21277636718750004,
+    0.19377783203124999,
+    0.19359407421875008,
+    0.19458072656250014,
+    0.19304752734374997,
+    0.1951914062500002,
+    0.2108323554687499,
+    0.2025061874999996,
+    0.19377229687499975,
+    0.19643099218750004,
+    0.19673876953125014,
+    0.19172330859374997,
+    0.19106884765624987,
+    0.1966230468750001,
+    0.19534505078124997,
+    0.19577473828125003,
+    0.1959615859374999,
+    0.19167626953124994,
+    0.19355891796875002,
+    0.19360319140624993,
+    0.1939674492187502,
+    0.19369303125000004,
+    0.19305599218749991,
+    0.1945333671874998,
+    0.1931227226562502,
+    0.19303743750000013,
+    0.19497135546874977
+   ],
+   "median_ms": 0.19548812109375024,
+   "process_medians_ms": [
+    0.19548812109375024,
+    0.1958186835937501,
+    0.19458072656250014,
+    0.19577473828125003,
+    0.19360319140624993
+   ],
+   "rss_bytes": 56311808,
+   "process_rss_bytes": [
+    55951360,
+    56311808,
+    56016896,
+    56082432,
+    56246272
+   ],
+   "checksum_ok": true,
+   "checksum": "5657"
+  },
+  {
+   "program": "map_set:int",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.022666483398437492,
+    0.022214457031249996,
+    0.022322998046875014,
+    0.022309997558593753,
+    0.02273604345703123,
+    0.02264322900390625,
+    0.022592407226562472,
+    0.022296691894531206,
+    0.022234721191406237,
+    0.02317142724609375,
+    0.02253995751953125,
+    0.022565511230468766,
+    0.02217665625000001,
+    0.02246130371093752,
+    0.022365213867187483,
+    0.022064229492187504,
+    0.022331726074218794,
+    0.022768188476562534,
+    0.02214790820312501,
+    0.02173213671874999,
+    0.021897379394531263,
+    0.021807454101562485,
+    0.022432169433593774,
+    0.02205181884765628,
+    0.023323445800781217,
+    0.02244693994140623,
+    0.02221799755859377,
+    0.06346907617187503,
+    0.05893986132812501,
+    0.034981281249999996,
+    0.023421550781249967,
+    0.023549886718749913,
+    0.022929037109374995,
+    0.03280208398437501,
+    0.02622404101562492,
+    0.024456298828125056,
+    0.030594441894531255,
+    0.02437927246093749,
+    0.07140708398437501,
+    0.025346781250000006,
+    0.0318592529296875,
+    0.02540919970703126,
+    0.022174540039062496,
+    0.02187709570312496,
+    0.023059489257812482
+   ],
+   "median_ms": 0.02246130371093752,
+   "process_medians_ms": [
+    0.022322998046875014,
+    0.02246130371093752,
+    0.02214790820312501,
+    0.02622404101562492,
+    0.025346781250000006
+   ],
+   "rss_bytes": 68337664,
+   "process_rss_bytes": [
+    61816832,
+    63127552,
+    68337664,
+    55377920,
+    62455808
+   ],
+   "checksum_ok": true,
+   "checksum": "1335761"
+  },
+  {
+   "program": "map_set:tuple",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100000,
+   "samples_ms": [
+    73.02070800000001,
+    70.919083,
+    72.16170799999998,
+    74.73116700000003,
+    83.60066699999993,
+    79.79987500000004,
+    86.29420800000003,
+    79.97087500000009,
+    72.179167,
+    71.902375,
+    74.05866699999996,
+    77.2305,
+    79.2455000000001,
+    69.61099999999999,
+    70.02491599999996,
+    73.10237500000005,
+    72.48358300000007,
+    82.27416599999992,
+    77.22645899999998,
+    77.936916,
+    83.04095899999993,
+    90.2645,
+    72.94854100000009,
+    75.628375,
+    72.9325,
+    73.45429200000001,
+    81.25125000000003,
+    81.660166,
+    78.39766700000001,
+    77.66091699999993,
+    81.14125000000001,
+    77.63929100000007,
+    75.55533400000002,
+    75.73358400000006,
+    72.61512500000003,
+    81.46395799999993,
+    90.32120800000001,
+    87.26824999999997,
+    88.31254200000001,
+    97.568625,
+    88.69016699999997,
+    85.323667,
+    85.68879099999992,
+    82.09620900000004,
+    95.41583300000002
+   ],
+   "median_ms": 77.22645899999998,
+   "process_medians_ms": [
+    74.73116700000003,
+    73.10237500000005,
+    77.22645899999998,
+    77.66091699999993,
+    88.31254200000001
+   ],
+   "rss_bytes": 299450368,
+   "process_rss_bytes": [
+    276987904,
+    292012032,
+    292864000,
+    287522816,
+    299450368
+   ],
+   "checksum_ok": true,
+   "checksum": "566654"
+  },
+  {
+   "program": "map_set:int",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    10.443791624999996,
+    0.43024474999999995,
+    0.7005156250000013,
+    1.579265624999998,
+    0.5680625000000035,
+    1.6555989999999952,
+    0.2675103750000005,
+    0.5145886250000018,
+    2.293078125000001,
+    0.30822070312499994,
+    0.29633203124999996,
+    0.3055719374999999,
+    0.32318457031250025,
+    0.3193450546875001,
+    0.28613834375000025,
+    0.3014430390624998,
+    0.2848863984375001,
+    0.2912011718749996,
+    0.2659850234375001,
+    0.2643011093750003,
+    0.2752542343750002,
+    0.2847093046875,
+    0.27511230468750014,
+    0.2806601562500002,
+    0.26708724218750035,
+    0.27144238281249944,
+    0.28814485156250047,
+    0.9266959687499998,
+    0.5085520937499997,
+    0.3781699218750001,
+    0.2539459531250001,
+    0.6483548125,
+    1.1697460937499997,
+    1.0672493437499995,
+    0.8879023437499995,
+    0.7979544374999996,
+    0.28049121093749996,
+    0.2836308593750001,
+    0.2801936875000002,
+    0.2764560546874999,
+    0.2812496796874999,
+    0.28596257031249994,
+    0.27274023437500006,
+    0.27763281250000027,
+    0.27931119531250026
+   ],
+   "median_ms": 0.3014430390624998,
+   "process_medians_ms": [
+    0.7005156250000013,
+    0.3014430390624998,
+    0.27511230468750014,
+    0.7979544374999996,
+    0.2801936875000002
+   ],
+   "rss_bytes": 72450048,
+   "process_rss_bytes": [
+    65601536,
+    72450048,
+    66863104,
+    67223552,
+    66469888
+   ],
+   "checksum_ok": true,
+   "checksum": "13359761"
+  },
+  {
+   "program": "map_set:int",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 50000,
+   "samples_ms": [
+    1.6939010625000002,
+    1.7649648437499987,
+    1.705190093749998,
+    1.772473968749999,
+    1.7395234375000008,
+    1.8338502500000011,
+    1.7430286562500008,
+    1.683296875,
+    1.7849830625000003,
+    1.8059882812500003,
+    1.7936210937500014,
+    1.8107109374999997,
+    1.7695025937499977,
+    1.7467409062500003,
+    1.8378632812500015,
+    1.8341796875000007,
+    1.6779518124999981,
+    1.7516119687500016,
+    1.7428268437500005,
+    1.6986588749999996,
+    1.7268164062500002,
+    1.7149999999999999,
+    1.7092343750000012,
+    1.7545442812499985,
+    1.7010039062499978,
+    1.7437005312499991,
+    1.7280507812499977,
+    1.7076028749999992,
+    1.7533151250000003,
+    1.7442812500000002,
+    1.7345742187500015,
+    1.7405872187500009,
+    1.8181185000000006,
+    1.7998450312499976,
+    1.7627734375000017,
+    1.737632812500003,
+    1.7020950624999998,
+    1.749834625,
+    1.797710937499998,
+    1.7577682187499981,
+    1.7348658750000006,
+    1.7088333437500012,
+    1.7308255312500016,
+    1.7177851562499988,
+    1.7399778749999975
+   ],
+   "median_ms": 1.7430286562500008,
+   "process_medians_ms": [
+    1.7430286562500008,
+    1.7936210937500014,
+    1.7268164062500002,
+    1.7442812500000002,
+    1.7348658750000006
+   ],
+   "rss_bytes": 73170944,
+   "process_rss_bytes": [
+    70074368,
+    69287936,
+    73138176,
+    73170944,
+    71221248
+   ],
+   "checksum_ok": true,
+   "checksum": "66799759"
+  },
+  {
+   "program": "map_set",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100000,
+   "samples_ms": [
+    81.27283400000005,
+    82.64891699999998,
+    87.49129099999999,
+    90.83375000000001,
+    93.24295799999993,
+    88.17120899999998,
+    92.77941599999997,
+    98.64437499999985,
+    99.13208399999985,
+    86.403458,
+    91.97162499999996,
+    87.688041,
+    86.48900000000003,
+    89.760583,
+    86.82887500000004,
+    88.07062499999995,
+    91.16983299999993,
+    92.68979100000001,
+    80.72920899999997,
+    86.673542,
+    85.21937500000001,
+    89.78208299999994,
+    91.17829200000006,
+    88.09616700000004,
+    93.26887499999998,
+    97.01795900000002,
+    90.26575000000003,
+    82.438083,
+    82.07424999999995,
+    85.71008399999994,
+    87.665208,
+    89.4358749999999,
+    89.88270899999998,
+    93.16829199999995,
+    90.69995899999992,
+    97.08441700000003,
+    91.85662500000001,
+    81.910125,
+    91.73916699999995,
+    98.95425,
+    91.30445800000007,
+    89.34954199999993,
+    92.6434999999999,
+    90.35845800000004,
+    97.566417
+   ],
+   "median_ms": 89.78208299999994,
+   "process_medians_ms": [
+    90.83375000000001,
+    88.07062499999995,
+    89.78208299999994,
+    89.4358749999999,
+    91.73916699999995
+   ],
+   "rss_bytes": 308215808,
+   "process_rss_bytes": [
+    298762240,
+    283901952,
+    308215808,
+    302972928,
+    302940160
+   ],
+   "checksum_ok": true,
+   "checksum": "217716079"
+  },
+  {
+   "program": "map_set",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 50000,
+   "samples_ms": [
+    148.172959,
+    145.79145800000003,
+    134.44045899999992,
+    122.24966699999993,
+    118.09420799999998,
+    133.956416,
+    146.5562500000001,
+    131.27637499999992,
+    124.28937500000006,
+    143.13645899999995,
+    133.62020800000005,
+    134.8047919999999,
+    132.66770799999995,
+    143.974375,
+    131.36908300000005,
+    129.37537499999985,
+    119.6189589999999,
+    129.32074999999986,
+    129.80487499999998,
+    131.448167,
+    126.25800000000004,
+    144.72670800000003,
+    128.13537500000007,
+    123.65137499999992,
+    124.70516700000007,
+    136.198167,
+    143.44554100000005,
+    115.936125,
+    123.36079200000006,
+    124.96875,
+    131.09116700000004,
+    114.52650000000006,
+    118.27662499999997,
+    121.81845900000008,
+    128.24199999999996,
+    122.31133399999999,
+    122.86258300000003,
+    123.74570799999992,
+    120.28216699999996,
+    128.10241699999995,
+    114.74862500000006,
+    115.6819579999999,
+    132.55595799999992,
+    122.80445799999984,
+    121.73041699999999
+   ],
+   "median_ms": 129.80487499999998,
+   "process_medians_ms": [
+    133.956416,
+    132.66770799999995,
+    129.80487499999998,
+    122.31133399999999,
+    122.80445799999984
+   ],
+   "rss_bytes": 372326400,
+   "process_rss_bytes": [
+    308281344,
+    372326400,
+    342966272,
+    362283008,
+    311279616
+   ],
+   "checksum_ok": true,
+   "checksum": "108857747"
+  },
+  {
+   "program": "map_set:int",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    3.5771119375,
+    3.6035312499999996,
+    3.609906249999998,
+    3.5884713749999975,
+    3.568572937500001,
+    3.5303046874999993,
+    3.738096374999998,
+    3.7396796875000007,
+    3.875294250000003,
+    3.474429687499999,
+    3.4264479375000008,
+    3.5008255000000013,
+    6.559549437499996,
+    4.408802062500001,
+    3.562494812500006,
+    3.6421328124999945,
+    3.646145812500002,
+    3.731531249999996,
+    4.0366926875,
+    3.6869609375000003,
+    3.5848306874999984,
+    3.547067687500004,
+    3.5611536875000027,
+    3.5253020624999962,
+    3.5928411874999995,
+    3.5611067500000004,
+    3.602513000000002,
+    8.280229125000005,
+    10.860755250000004,
+    3.966333374999998,
+    5.528947875,
+    3.766109374999999,
+    3.9613488749999988,
+    4.5356927499999955,
+    3.4803958749999993,
+    4.077010375,
+    4.335872437500001,
+    3.8700259999999957,
+    3.550242187500004,
+    3.961380187500005,
+    4.853085937500005,
+    4.349815124999999,
+    4.194690062499994,
+    3.9358176875000055,
+    4.274565125000002
+   ],
+   "median_ms": 3.6421328124999945,
+   "process_medians_ms": [
+    3.6035312499999996,
+    3.6421328124999945,
+    3.5848306874999984,
+    4.077010375,
+    4.194690062499994
+   ],
+   "rss_bytes": 195969024,
+   "process_rss_bytes": [
+    195510272,
+    188776448,
+    188809216,
+    172998656,
+    195969024
+   ],
+   "checksum_ok": true,
+   "checksum": "13359761"
+  },
+  {
+   "program": "map_set:string",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100000,
+   "samples_ms": [
+    68.31812500000001,
+    66.65220900000003,
+    69.99000000000007,
+    75.9457920000001,
+    85.94058299999995,
+    73.69058399999994,
+    76.42449999999997,
+    80.47874999999999,
+    85.90054199999997,
+    69.64412499999997,
+    69.79179200000004,
+    67.81708300000003,
+    71.05066699999998,
+    77.10454200000004,
+    69.26095900000007,
+    68.50862499999994,
+    78.512292,
+    73.41829200000006,
+    71.40099999999995,
+    69.72045800000001,
+    74.43770799999993,
+    76.698125,
+    68.142334,
+    69.76079200000004,
+    70.42816700000003,
+    79.93512500000008,
+    76.60525000000007,
+    71.27687500000002,
+    70.03337500000004,
+    71.60412500000001,
+    81.29449999999997,
+    76.05574999999999,
+    68.52087500000005,
+    71.16387499999996,
+    69.91533300000003,
+    78.2980839999999,
+    101.58850000000001,
+    78.202042,
+    82.18712499999992,
+    83.88654200000008,
+    77.33899999999994,
+    77.39987499999995,
+    79.48341599999992,
+    87.23591600000009,
+    73.65879199999995
+   ],
+   "median_ms": 71.40099999999995,
+   "process_medians_ms": [
+    75.9457920000001,
+    69.79179200000004,
+    71.40099999999995,
+    71.27687500000002,
+    79.48341599999992
+   ],
+   "rss_bytes": 275251200,
+   "process_rss_bytes": [
+    275251200,
+    267255808,
+    257654784,
+    273055744,
+    245694464
+   ],
+   "checksum_ok": true,
+   "checksum": "83549664"
+  }
+ ]
+}

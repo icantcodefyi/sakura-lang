@@ -471,6 +471,85 @@ authority).
 12. Named maintainer review (§5 item 6) is still owed: bound performs read the task through `$rt.T` for cancellation and traces.
 13. The full-suite pair `c4da994` → `9fa7d68` was measured under host load 9.4–13.1 (other agents' test and WASM jobs). It blocks on time in 11 programs without handlers and reports a complexity change in the unchanged hand-JS binary_trees/Bun control. An interleaved fresh-process A/B of every blocked cell (`bench/results/2026-10-18-wsp2-ab-under-load.txt`) puts them within ±5% by per-side minimum, except handled_reentry/Bun n=100000 (min +14%, median −5%, 15 rounds), which is inconclusive. The suite numbers are advisory (§17.153); the quiet-window remeasure decides.
 
+**WS-P7** (§17.149; ownership facts and in-place updates):
+
+1. **Entry names follow the builtins.** The owned entries are `list_set_owned`,
+   `list_push_owned`, `map_insert_owned`, `map_remove_owned` and `set_insert_owned` (the plan's
+   `map_set_owned`/`set_add_owned` are `map_insert`/`set_insert` in the table). There is no
+   `set_remove_owned`: std has no `Set.remove`, so `set_remove` is not in the table and Core
+   cannot call it (the native `set_remove` still takes the rc path of item 9).
+2. **The empty singletons are owned origins.** §17.149 lists the empty singleton as not
+   `fresh`, which would leave `sieve`'s `var flags = []` and every `Map.empty()` loop shared, and
+   its expected effect could not happen. `[]`, `list_empty`, `map_empty` and `set_empty` are
+   therefore owned origins without being `fresh`: every owned entry tests for the singleton and
+   allocates as the persistent operation does, and `list_set` cannot reach one (its
+   `requires`; `owned_empty_set_defect`). A fresh builtin can also return the singleton
+   (`List.range(0, 0)`, `String.chars("")`), which the same test covers. **Designer: confirm.**
+3. **Summaries have two facts.** A def *consumes* `p` when, with `p` owned at entry, `p` is
+   owned and every return returns an owned local (std's `List.set`, `Map.update`, a user's
+   generic `fill`). Beyond §17.149, a def's result is *fresh* when every return returns an owned
+   local with nothing owned at entry (std's `List.range`, `List.map`, `Set.of`; a user's
+   `squares(n)`): a call of it is an owned origin, as a `fresh` builtin is. Without it every
+   `List.range` was `shared(origin)`, since `range` is a std def over `list_range`. A fresh def
+   consumes nothing. Recursion: a callee still being summarised has neither fact.
+4. **Borrows** are the §17.149 list plus primitive operations on the value (`==`, `<`, `Show`,
+   which retain nothing) and branch/check atoms. `map_entries`, `set_to_list` and `list_slice`
+   are not borrows: they can return the log or the list itself.
+5. **Liveness through joins counts only live parameters.** Lowering passes every `var` to every
+   join, read or not (a block expression's join receives the old `t` beside the new one), so a
+   jump argument is a use only where the join's parameter is live; a local passed to two live
+   parameters is `stored`. Without this no `xs = { … List.set(xs, …) … }` update was owned. A
+   `try` body keeps its handler's live locals live after every site in it
+   (`owned_effects`: the handler reads the pre-update list, so the update copies).
+6. **The owned entry of a consuming def is `f$o`,** its direct twin emitted with the consumed
+   parameter owned; a call site with an owned argument calls it instead of `f$d`
+   (`set$o` → `list_set_owned`, a user's `fill$o` → `set$o`). CPS calls and `--no-direct` call
+   the persistent body, so both ABIs agree by construction and the fixtures check it.
+7. **No cache invalidation was needed.** `list_at`'s leaf cache holds a node, and the owned
+   entries write nodes instead of replacing them (a full tail moves into the trie as the same
+   array); the runtime test interleaves `list_at` with owned updates. There is no entries cache:
+   `liveLog` returns the log itself, which item 4 handles. The runtime test also checks that an
+   owned chain builds exactly the persistent chain's trie and HAMT (`deepEqual` on `idx`).
+8. **No new LIR builtins or `builtins.sigs` lines.** The LIR already passes a builtin's
+   arguments owned and inserts a `Dup` only when the value is used later, so on an owned site
+   the existing builtins are the owning entries. The native runtime adds the §17.126 dynamic
+   test instead of reading the static fact: `list_set` on a root with one reference writes each
+   unique path node in place and copies from the first shared one; `map_insert`/`set_insert`
+   on a unique root reuse the root and log and write unique HAMT branches (a new slot grows the
+   node by one, moving its entries); `map_remove`/`set_remove` reuse root and log and copy the
+   HAMT path as `hdel` does (ponytail: in-place `hdel` when `Map.remove` loops matter natively).
+   `sakura_codegen_wasm` is M4-W2's and is unchanged. The rt test
+   `owned_updates_write_in_place_and_keep_retained_versions` checks in-place-iff-unique, retained
+   versions and the live-object count.
+9. **`sakura_eval` had no `list_set`.** Every corpus and differential program using `List.set`
+   was skipped as unsupported; the evaluator now implements it. The differential generator emits
+   a guarded `List.set` (also as a loop update) and `Map`/`Set` update chains from the empty
+   singletons; the RNG stream changed, so a seed now names a different program.
+10. **`audit_owned`** tags the consumed value by `Rc` identity (a weak reference keeps the
+    address from being reused) after an owned site returns a different value, and stops on a
+    later read of a tagged local. Jump arguments are not checked (item 5's dead parameters);
+    a tagged value passed through a jump is caught where the parameter is read. Owned sites in
+    tail position are not run as tail calls under the audit. Reads inside `Show`/`==` of an
+    enclosing value are not checked (ponytail: a deep check if the oracle ever misses one).
+11. `--dump owned` prints `fn <name>[ consumes <param>]` and one line per consuming site,
+    `  r%46 = set(flags%36) owned` or `shared(<reason>)`; `--dump core` appends `owned` to the
+    same bindings. The CLI test covers every reason.
+12. Not owned today, as designed: an update after the value is read by a non-borrow (`for` over
+    a `Map` reads `map_entries`), aliased (`let snapshot = mi`: `map_set`'s update and remove
+    phases after its snapshot), captured or stored; values from a cached top-level constant
+    (`owned_loop_twice`'s `base`).
+13. **Advisory numbers** (§17.153: host load 9–14, `meta.host.quiet: false`; `bench run --suite
+    js --filter <p>` on `46179f9` and on this work rebased onto it, raw runs
+    `bench/results/2026-10-18-wsp7-{sieve,map_set}-{base,head}.json`), Sakura/hand-JS ratio,
+    Bun / Node: `sieve` n=200000 84.68× → 4.41× / 28.10× → 4.17× (64.3 → 3.4 ms on Bun; every
+    size 4.0–4.4×, the path copies are gone and the rest is representation, §17.152);
+    `map_set` n=100000 5.28× → 3.27× / 3.24× → 3.37×; per key kind, Bun: `int` 23.69× → 16.45×,
+    `string` 3.16× → 1.53×, `tuple` 8.22× → 4.79×; Node: `int` 4.44× → 4.93×, `string`
+    2.45× → 1.83×, `tuple` 3.01× → 2.87×. Node `map_set`/`int` is the one cell that got worse
+    (59.3 → 66.6 ms) and is unconfirmed under this load; `map_set`'s update and remove phases
+    stay persistent after its snapshot (item 12). The quiet window decides.
+14. Named maintainer review (CODEOWNERS, semantics-adjacent) is owed.
+
 ## 9. Round 10 (§17.149–§17.154): ownership, fusion, benchmark definitions, measurement
 
 Evidence: `research/10-evidence/perf-gaps-r2.md` (Astra, `de3c42e`, measured at `1ced38d`),
