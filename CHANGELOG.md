@@ -69,6 +69,17 @@ published yet.
   platform-A CI job that links and executes a constant object and a test-only runtime
   staticlib wrapper. Real runtime staticlib linkage and the ABI export move to N1a;
   native compilation and execution of Sakura programs remain unimplemented.
+- `V2002` on a call to a declared function names the callee and its home module and fills
+  `expected`/`actual` with the two counts (`` `Env.get` (std/env) takes 1 argument, this call
+  passes 2 ``); a call through a function value keeps the type form (design §17.165).
+- `V1002` on `Type.member` suggests the one function within two edits when the usual
+  did-you-mean finds none (`List.lenth` → `List.len`, machine-applicable) (§17.165).
+- `V3001`'s `with` fix names the effect's one deterministic `std` handler when there is one
+  (`with Env.of(?vars)`, still `incomplete`), and `sakura explain V3001` says how to recover
+  from a residual `Fail<E>` (§17.165).
+- The agent-eval harness (version 2) records each lookup with its size and success, splits
+  reported diagnostics from codes quoted in documents, reports the remaining input and the
+  refused request, and pairs input-cap arms (`--input-caps 40000,60000`) (§17.165).
 
 - Design round 12 (§17.160–§17.168): design §12.1 now lists only the `sakura build` flags that
   exist (`--release` is removed; every build keeps its checks) and marks `sakura mcp serve --tools`
