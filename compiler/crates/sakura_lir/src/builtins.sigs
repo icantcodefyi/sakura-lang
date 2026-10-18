@@ -92,6 +92,7 @@ string_to_upper: (ptr) -> ptr
 string_trim: (ptr) -> ptr
 task_deterministic: (i64) -> ptr
 task_host: () -> ptr
+test_env: (ptr, ptr) -> ptr
 test_expect_defect: (ptr) -> unit cps
 untrusted_of: (word) -> ptr
 untrusted_validate: (ptr) -> ptr

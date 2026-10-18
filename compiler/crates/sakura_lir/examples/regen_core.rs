@@ -218,6 +218,7 @@ fn builtin_sigs() -> String {
         ("contract_enter", "() -> unit"),
         ("contract_exit", "() -> unit"),
         ("match_failure", "() -> unit"),
+        ("test_env", "(ptr, ptr) -> ptr"),
     ] {
         sigs.insert(name.to_owned(), sig.to_owned());
     }
