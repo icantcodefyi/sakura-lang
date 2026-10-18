@@ -17,6 +17,7 @@ use std::collections::{HashMap, HashSet};
 
 use sakura_hir::arena::ArenaMap;
 use sakura_hir::{BodyId, ExprId, LocalId, ModuleId, PatId};
+use serde::{Deserialize, Serialize};
 use text_size::TextRange;
 
 mod check;
@@ -34,7 +35,7 @@ pub use ty::{
 };
 
 /// Everything the checker learned about a [`sakura_hir::Program`].
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct TypedProgram {
     /// Owns every [`TypeId`] and [`RowId`] below.
     pub interner: Interner,
@@ -56,7 +57,7 @@ impl TypedProgram {
 }
 
 /// Types and rows of one HIR [`sakura_hir::Body`].
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct TypedBody {
     /// The type of every expression.
     pub types: ArenaMap<ExprId, TypeId>,
@@ -94,7 +95,7 @@ pub struct TypedBody {
 }
 
 /// The resolved target of a call-like expression.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CallTarget {
     /// A top-level function, constructor or effect operation called by name (the callee
     /// expression is a `Path`). Arguments are exactly the call's arguments. On `Index` it is
@@ -112,7 +113,7 @@ pub enum CallTarget {
 }
 
 /// A typed hole `?name` (design §12.4), already rendered for the `hole` JSON record.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Hole {
     pub name: String,
     pub module: ModuleId,
@@ -130,14 +131,14 @@ pub struct Hole {
     pub candidates: Vec<HoleCandidate>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HoleCandidate {
     /// Source text to put in place of the hole, e.g. `x` or `List.len(?xs)`.
     pub expr: String,
     pub fit: Fit,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Fit {
     /// A local whose type is exactly the expected type.
     ExactLocal,

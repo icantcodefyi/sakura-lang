@@ -6,33 +6,34 @@
 use std::collections::HashMap;
 
 use crate::DefId;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct TypeId(pub u32);
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct RowId(pub u32);
 
 /// A type inference variable.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct TyVar(pub u32);
 
 /// A row (effect) inference variable, only ever found in a row tail.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct RowVar(pub u32);
 
 /// A rigid (skolem) or quantified type parameter. Ids are unique per [`Interner`], so the
 /// parameters of different signatures and schemes never collide.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct ParamId(pub u32);
 
 /// A rigid or quantified effect-row parameter (`e` in `fn map<A, B, e>`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct RowParamId(pub u32);
 
 /// Type constructors with a fixed meaning. Everything user- or std-declared is `Adt`,
 /// including `Option` and `Result` (HIR lang items).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum TyCon {
     Bool,
     Int,
@@ -49,7 +50,7 @@ pub enum TyCon {
     Adt(DefId),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Type {
     /// `Unit` is `Tuple([])`.
     Tuple(Vec<TypeId>),
@@ -79,20 +80,20 @@ pub enum Type {
 }
 
 /// The identity of an effect label. `Fail` sorts last, matching the formatter (§12.5).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Effect {
     Def(DefId),
     Fail,
 }
 
 /// One effect in a row: the declaration plus its type arguments (`Fail<E>`, `State<Int>`).
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Label {
     pub effect: Effect,
     pub args: Vec<TypeId>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Tail {
     Closed,
     Var(RowVar),
@@ -101,14 +102,14 @@ pub enum Tail {
 
 /// A set of unique labels plus an optional open tail (§5.2). `labels` is sorted by
 /// `effect` with no duplicates; [`Interner::row`] enforces this when given unique labels.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Row {
     pub labels: Vec<Label>,
     pub tail: Tail,
 }
 
 /// The fixed, compiler-derived constraints (§4.4).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Constraint {
     Eq,
     Ord,
@@ -131,7 +132,7 @@ impl Constraint {
 
 /// A polymorphic type: `forall params row_params. ty`. A monomorphic binding has both
 /// lists empty. Bounds of each parameter live in the interner's [`ParamInfo`].
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Scheme {
     pub params: Vec<ParamId>,
     pub row_params: Vec<RowParamId>,
@@ -148,7 +149,7 @@ impl Scheme {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ParamInfo {
     pub name: String,
     pub bounds: Vec<Constraint>,
@@ -167,10 +168,32 @@ pub struct Interner {
 
 /// A row parameter's name and, if it carries failures, its hidden error type `e.Fail`
 /// (design §5.2 rule 8).
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct RowParamInfo {
     name: String,
     fail: Option<ParamId>,
+}
+
+/// Serialized as its tables; the two maps are rebuilt from the tables they index.
+impl Serialize for Interner {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        (&self.types, &self.rows, &self.params, &self.row_params).serialize(s)
+    }
+}
+
+impl<'de> Deserialize<'de> for Interner {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let (types, rows, params, row_params): (Vec<Type>, Vec<Row>, _, _) =
+            Deserialize::deserialize(d)?;
+        Ok(Interner {
+            type_ids: (types.iter().cloned()).zip((0..).map(TypeId)).collect(),
+            row_ids: (rows.iter().cloned()).zip((0..).map(RowId)).collect(),
+            types,
+            rows,
+            params,
+            row_params,
+        })
+    }
 }
 
 impl Interner {

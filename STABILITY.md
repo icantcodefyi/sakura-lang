@@ -30,6 +30,13 @@ MSRV increases may occur in pre-1.0 minor releases and must be announced in note
 Supported host/target and OS/ABI minimums will be stated only after native smoke
 tests exist; there are no supported target guarantees yet.
 
+The compiler caches std's analysis on disk, one file per compiler build, in
+`<cache>/sakuralang/std/`: `<cache>` is `$SAKURA_CACHE_DIR`, else `$XDG_CACHE_HOME` or
+`~/.cache` on Unix and `%LOCALAPPDATA%` on Windows. `SAKURA_NO_CACHE=1` turns it off. The
+files are per-build artefacts with no compatibility promise: their format, name and location
+may change in any release, any of them may be deleted at any time, and a missing, damaged or
+foreign file only costs the analysis it would have saved.
+
 ## Contracts to define at 1.0
 
 Before 1.0, enumerate guarantees for source semantics, standard-library APIs,

@@ -7,20 +7,21 @@ use std::ops::Index;
 
 use crate::arena::{Arena, ArenaMap, Idx};
 use sakura_diagnostics::{Diagnostic, FileId};
+use serde::{Deserialize, Serialize};
 use text_size::TextRange;
 
 // ---- Ids -------------------------------------------------------------------------------------
 
 /// Index of a [`Package`] in [`Program::packages`].
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct PackageId(pub u32);
 
 /// Index of a [`Module`] in [`Program::modules`].
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct ModuleId(pub u32);
 
 /// A definition anywhere in the program: the owning module plus the index in its `defs`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct DefId {
     pub module: ModuleId,
     pub index: Idx<Def>,
@@ -34,7 +35,7 @@ pub type LocalId = Idx<Local>;
 // ---- Program, packages, modules --------------------------------------------------------------
 
 /// Every module of every package in one workspace snapshot, lowered and resolved.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Program {
     pub packages: Vec<Package>,
     pub modules: Vec<Module>,
@@ -166,7 +167,7 @@ impl Index<DefId> for Program {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Package {
     pub name: String,
     /// Packages this one may import from (besides itself and `std`).
@@ -175,7 +176,7 @@ pub struct Package {
 }
 
 /// One source file. All ranges inside a module (defs, bodies, types) are in [`Module::file`].
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Module {
     pub package: PackageId,
     /// Path relative to the package's `src/`, without extension: `users/repo`.
@@ -196,7 +197,7 @@ pub struct Module {
     pub makers: BTreeMap<Idx<Def>, Idx<Def>>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Import {
     /// `["std", "http"]` for `import std/http`.
     pub path: Vec<String>,
@@ -209,7 +210,7 @@ pub struct Import {
     pub names: Vec<ImportedName>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ImportedName {
     pub name: String,
     pub range: TextRange,
@@ -218,7 +219,7 @@ pub struct ImportedName {
 
 /// Definitions that the language semantics refer to by role. `None` when the defining std
 /// module is not part of the snapshot.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct LangItems {
     pub option: Option<DefId>,
     pub some: Option<DefId>,
@@ -238,7 +239,7 @@ pub struct LangItems {
 ///
 /// - `T.from(value: B) -> T`: checked introduction; a failed predicate is Defect `D010`.
 /// - `T.validate(value: B) -> Result<T, Violation>`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum RefinementIntro {
     From,
     Validate,
@@ -265,7 +266,7 @@ impl RefinementIntro {
 
 // ---- Definitions -----------------------------------------------------------------------------
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Def {
     /// The declared name. Tests and properties use their description string.
     pub name: String,
@@ -277,7 +278,7 @@ pub struct Def {
     pub kind: DefKind,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Attr {
     pub name: String,
     pub range: TextRange,
@@ -285,7 +286,7 @@ pub struct Attr {
     pub args: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum DefKind {
     Fn(FnDef),
     /// `let NAME [: T] = e` at module level. The initializer is `body.value`.
@@ -302,19 +303,19 @@ pub enum DefKind {
     Property(PropertyDef),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FnDef {
     pub sig: Signature,
     pub body: BodyId,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ConstDef {
     pub ty: Option<TypeRef>,
     pub body: BodyId,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TypeDef {
     pub generics: Vec<TypeParam>,
     pub body: TypeDefBody,
@@ -324,7 +325,7 @@ pub struct TypeDef {
 }
 
 /// Right-hand side of `type X = …`, classified per design §3.2 rule 5.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum TypeDefBody {
     Record(Vec<FieldDef>),
     /// Variants declared by this type, in order (each is a [`DefKind::Variant`]).
@@ -348,19 +349,19 @@ pub enum TypeDefBody {
     Missing,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct VariantDef {
     pub parent: Idx<Def>,
     pub index: u32,
     pub fields: Vec<TypeRef>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ErrorDef {
     pub fields: Vec<FieldDef>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FieldDef {
     pub name: String,
     pub range: TextRange,
@@ -369,7 +370,7 @@ pub struct FieldDef {
     pub refinement: Option<BodyId>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EffectDef {
     pub generics: Vec<TypeParam>,
     pub ops: Vec<Idx<Def>>,
@@ -377,7 +378,7 @@ pub struct EffectDef {
 
 /// An effect operation. Type parameters in `sig` refer to the effect's generics first, then
 /// the op's own (ops have none in v0). `body` holds `requires`/`ensures` when present.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct OpDef {
     pub effect: Idx<Def>,
     pub index: u32,
@@ -385,18 +386,18 @@ pub struct OpDef {
     pub body: Option<BodyId>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TestDef {
     pub body: BodyId,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PropertyDef {
     pub params: Vec<Param>,
     pub body: BodyId,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Signature {
     pub generics: Vec<TypeParam>,
     pub params: Vec<Param>,
@@ -405,21 +406,21 @@ pub struct Signature {
     pub row: Option<RowRef>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Param {
     pub name: String,
     pub range: TextRange,
     pub ty: TypeRef,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TypeParam {
     pub name: String,
     pub range: TextRange,
     pub kind: TypeParamKind,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum TypeParamKind {
     /// Uppercase parameter with its constraints (`A: Eq + Show`).
     Type(Vec<Bound>),
@@ -428,7 +429,7 @@ pub enum TypeParamKind {
 }
 
 /// The fixed, compiler-derived constraints (design §4.4).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Bound {
     Eq,
     Ord,
@@ -439,13 +440,36 @@ pub enum Bound {
 
 // ---- Types and rows --------------------------------------------------------------------------
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct TypeRef {
     pub kind: TypeRefKind,
     pub range: TextRange,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+/// The one recursive HIR type, so the one place a crafted std analysis cache could nest deep
+/// enough to exhaust the stack: a read-back type nests at most twice as deep as the parser
+/// allows source to (`MAX_DEPTH`).
+impl<'de> Deserialize<'de> for TypeRef {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(remote = "TypeRef")]
+        struct Fields {
+            kind: TypeRefKind,
+            range: TextRange,
+        }
+        thread_local!(static DEPTH: std::cell::Cell<u32> = const { std::cell::Cell::new(0) });
+        let depth = DEPTH.get() + 1;
+        if depth > 2 * sakura_syntax::MAX_DEPTH {
+            return Err(serde::de::Error::custom("a type nests too deeply"));
+        }
+        DEPTH.set(depth);
+        let ty = Fields::deserialize(d);
+        DEPTH.set(depth - 1);
+        ty
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum TypeRefKind {
     Named {
         res: TypeRes,
@@ -466,7 +490,7 @@ pub enum TypeRefKind {
 }
 
 /// What a `TypeName` in type position resolved to.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TypeRes {
     /// A `type`, `error` or `effect` definition.
     Def(DefId),
@@ -479,7 +503,7 @@ pub enum TypeRes {
 }
 
 /// Types and effects the compiler knows without a Sakura Lang declaration.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Builtin {
     Unit,
     Bool,
@@ -567,7 +591,7 @@ impl Builtin {
 }
 
 /// An effect row `{A, B<T> | e}` or a bare row variable `e` (labels empty, tail set).
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RowRef {
     pub labels: Vec<EffectRef>,
     /// Index of a lowercase generic parameter; `Err` if unresolved.
@@ -576,7 +600,7 @@ pub struct RowRef {
 }
 
 /// One row label: an effect (`TypeRes::Def` of an effect, or `Builtin::Fail`) and its args.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EffectRef {
     pub effect: TypeRes,
     pub args: Vec<TypeRef>,
@@ -587,7 +611,7 @@ pub struct EffectRef {
 
 /// Executable code of one definition: a function, constant, test, property, refinement
 /// predicate or op contract. Lambdas and handler clauses live inside their enclosing body.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Body {
     pub owner: Idx<Def>,
     /// Parameter locals in order (fn/property params; `it` for refinement predicates).
@@ -605,14 +629,14 @@ pub struct Body {
     pub source_map: SourceMap,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Contract {
     pub label: Option<String>,
     pub expr: ExprId,
 }
 
 /// Source ranges for every expression and pattern of a body, in the module's file.
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct SourceMap {
     pub exprs: ArenaMap<ExprId, TextRange>,
     pub pats: ArenaMap<PatId, TextRange>,
@@ -631,7 +655,7 @@ impl SourceMap {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Local {
     pub name: String,
     /// `var` bindings and handler state; only these may be assigned.
@@ -640,7 +664,7 @@ pub struct Local {
     pub range: TextRange,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Literal {
     Int(i64),
     Float(f64),
@@ -650,7 +674,7 @@ pub enum Literal {
 }
 
 /// What an identifier or `TypePath` in value position resolved to.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Res {
     Local(LocalId),
     /// A function, constant, variant constructor, error tag, record type (as constructor
@@ -660,13 +684,13 @@ pub enum Res {
     Err,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum UnaryOp {
     Neg,
     Not,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum BinaryOp {
     Or,
     And,
@@ -685,7 +709,7 @@ pub enum BinaryOp {
     Rem,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Expr {
     /// Placeholder for syntax that failed to parse or lower. Never authorizes codegen.
     Missing,
@@ -812,7 +836,7 @@ pub enum Expr {
     },
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Stmt {
     Let {
         pat: PatId,
@@ -834,27 +858,27 @@ pub enum Stmt {
     Expr(ExprId),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MatchArm {
     pub pat: PatId,
     pub guard: Option<ExprId>,
     pub body: ExprId,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LambdaParam {
     pub local: LocalId,
     pub ty: Option<TypeRef>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FieldInit {
     pub name: String,
     pub range: TextRange,
     pub value: ExprId,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct HandlerExpr {
     /// The handled effect (`TypeRes::Def` of an effect, or `Err`).
     pub effect: TypeRes,
@@ -864,14 +888,14 @@ pub struct HandlerExpr {
     pub clauses: Vec<HandlerClause>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct HandlerState {
     pub local: LocalId,
     pub ty: Option<TypeRef>,
     pub init: ExprId,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct HandlerClause {
     /// The op this clause implements; `None` if the effect has no op of that name.
     pub op: Option<DefId>,
@@ -881,7 +905,7 @@ pub struct HandlerClause {
     pub body: ExprId,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Pat {
     Missing,
     Wild,
@@ -909,7 +933,7 @@ pub enum Pat {
     Or(Vec<PatId>),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FieldPat {
     pub name: String,
     pub range: TextRange,

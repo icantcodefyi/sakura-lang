@@ -176,7 +176,7 @@ struct BodyState {
 
 /// Generic parameters, aliases and fields per definition. A reused module keeps its entries,
 /// so every `ParamId` its bodies and schemes mention stays the same.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
 pub(crate) struct DeclCache {
     generics: HashMap<DefId, Vec<GenericSlot>>,
     aliases: HashMap<DefId, TypeId>,

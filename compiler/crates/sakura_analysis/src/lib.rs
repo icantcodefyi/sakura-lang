@@ -11,6 +11,7 @@ use sakura_diagnostics::{
     Diagnostic, FileId, HoleReport, Phase, Rendered, SourceFile, Span, codes, sha256,
 };
 use sakura_hir::DefId;
+use serde::{Deserialize, Serialize};
 
 pub mod disk;
 mod edit;
@@ -19,6 +20,7 @@ mod nav;
 mod query;
 mod render;
 mod specs;
+mod std_cache;
 mod symbols;
 
 pub use edit::{Conflict, FileEdit};
@@ -108,7 +110,7 @@ impl Snapshot {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct CheckResult {
     pub diagnostics: Vec<Diagnostic>,
     pub holes: Vec<HoleReport>,
@@ -237,7 +239,7 @@ fn fn_name(item: &sakura_syntax::SyntaxNode) -> Option<sakura_syntax::SyntaxToke
 /// What one file adds to the functions the checker may evaluate on a literal (design §17.87):
 /// the names called in its `where` clauses, and per function the names called in its body and
 /// contracts. A function of the file, so an analysis carries it for every unchanged file.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 struct Calls {
     in_where: Vec<String>,
     fns: HashMap<String, Vec<String>>,
@@ -417,11 +419,18 @@ impl Analyzed {
     }
 }
 
-/// std alone, analysed once per process: the `prev` of a snapshot whose latest cached analysis
-/// has other files (design §17.195).
+/// std alone, analysed once per compiler build and read from the cache by every later process
+/// (design §17.195 (3)): the `prev` of a snapshot whose latest cached analysis has other files.
 fn std_analysis<'a>() -> &'a Analyzed {
     static STD: OnceLock<Analyzed> = OnceLock::new();
-    STD.get_or_init(|| analyze(&Snapshot::new(std_sources()), []))
+    STD.get_or_init(|| {
+        let snapshot = Snapshot::new(std_sources());
+        std_cache::load(&snapshot).unwrap_or_else(|| {
+            let analyzed = analyze(&snapshot, []);
+            std_cache::store(&analyzed);
+            analyzed
+        })
+    })
 }
 
 /// Every frontend phase: HIR, typed program, symbols, and their diagnostics and holes; reusing
@@ -967,9 +976,9 @@ mod tests {
         assert!(std.iter().any(|(uri, _)| uri == "sakura:///std/core.sak"));
     }
 
-    /// Design §17.195, §13.2: reusing std from its once-per-process analysis gives the same
-    /// diagnostics, holes, symbols, Core and JS as analysing everything, for every `ui`,
-    /// `semantics` and bench program.
+    /// Design §17.195, §13.2: reusing std from its once-per-process analysis, or from the disk
+    /// cache's, gives the same diagnostics, holes, symbols, Core and JS as analysing everything,
+    /// for every `ui`, `semantics`, bench and example program.
     #[test]
     fn std_reuse_matches_a_fresh_analysis() {
         let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../..");
@@ -977,28 +986,38 @@ mod tests {
             "compiler/tests/ui",
             "compiler/tests/semantics",
             "bench/programs",
+            "compiler/examples",
         ];
         let sak = |p: &std::path::Path| p.extension().is_some_and(|e| e == "sak");
-        // A program is a `.sak` file, a bench program's `sakura/main.sak`, or a `ui` directory.
+        // A program is a `.sak` file, a bench program's `sakura/main.sak`, an example's
+        // `src/main.sak`, or a `ui` directory.
         let mut programs: Vec<Vec<std::path::PathBuf>> = (dirs.iter())
             .flat_map(|d| std::fs::read_dir(format!("{root}/{d}")).unwrap())
             .map(|e| e.unwrap().path())
-            .map(|p| match (p.is_dir(), p.join("sakura/main.sak")) {
-                (true, main) if main.exists() => vec![main],
-                (true, _) => (std::fs::read_dir(&p).unwrap())
-                    .map(|e| e.unwrap().path())
-                    .filter(|f| sak(f))
-                    .collect(),
-                (false, _) => vec![p].into_iter().filter(|f| sak(f)).collect(),
+            .map(|p| {
+                match (
+                    p.is_dir(),
+                    p.join("sakura/main.sak"),
+                    p.join("src/main.sak"),
+                ) {
+                    (true, main, _) | (true, _, main) if main.exists() => vec![main],
+                    (true, _, _) => (std::fs::read_dir(&p).unwrap())
+                        .map(|e| e.unwrap().path())
+                        .filter(|f| sak(f))
+                        .collect(),
+                    (false, _, _) => vec![p].into_iter().filter(|f| sak(f)).collect(),
+                }
             })
             .filter(|files| !files.is_empty())
             .collect();
         programs.iter_mut().for_each(|files| files.sort());
         programs.sort();
         let std = std_analysis();
+        let cached = std_cache::round_trip(std);
         let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
         std::thread::scope(|s| {
             for chunk in programs.chunks(programs.len().div_ceil(threads)) {
+                let cached = &cached;
                 s.spawn(move || {
                     for files in chunk {
                         let snapshot = |edited: Option<usize>| {
@@ -1030,6 +1049,9 @@ mod tests {
                         let fresh = out(&analyze(&snap, []));
                         let reused = analyze(&snap, [std]);
                         assert!(fresh == out(&reused), "{} differs", files[0].display());
+                        // std as the cache gives it to a fresh process (design §17.214 (5)).
+                        let from_cache = out(&analyze(&snap, [cached]));
+                        assert!(fresh == from_cache, "{} differs cached", files[0].display());
                         // Every user module reused too, so no test block is checked again (plan
                         // WS-C1a).
                         let again = out(&analyze(&snap, [&reused]));

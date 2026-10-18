@@ -44,13 +44,15 @@ fn unrelated_programs_reuse_std_and_nothing_else() {
         std_modules + 2
     );
 
-    // A second, unrelated program: std alone is analysed, once per process, then its module.
+    // A second, unrelated program: std alone is read from the disk cache or analysed, once per
+    // process, then its module.
     let _ = Analysis::analyze(&Snapshot::with_std(z));
     let second = stats();
-    assert_eq!(second.analyses - cold.analyses, 2, "analyses");
+    let std_fresh = second.analyses - cold.analyses - 1;
+    assert!(std_fresh <= 1, "analyses");
     assert_eq!(
         second.checked_modules - cold.checked_modules,
-        std_modules + 1
+        std_fresh * std_modules + 1
     );
 
     // A third: its module only.

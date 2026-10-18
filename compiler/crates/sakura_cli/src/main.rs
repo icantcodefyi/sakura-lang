@@ -46,7 +46,11 @@ fn version() -> &'static str {
 #[command(
     name = "sakura",
     version = version(),
-    about = "The Sakura Lang compiler and toolchain"
+    about = "The Sakura Lang compiler and toolchain",
+    after_help = "Environment:\n  \
+        SAKURA_CACHE_DIR  where std's analysis is cached per compiler build \
+        (<dir>/sakuralang/std); default $XDG_CACHE_HOME or ~/.cache, %LOCALAPPDATA% on Windows\n  \
+        SAKURA_NO_CACHE   set to 1 to neither read nor write that cache"
 )]
 struct Cli {
     #[command(subcommand)]

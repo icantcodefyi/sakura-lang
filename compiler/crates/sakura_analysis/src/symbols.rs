@@ -5,9 +5,9 @@
 use sakura_diagnostics::FileId;
 use sakura_hir::{DefId, DefKind, ModuleId, Program};
 use sakura_syntax::{NodeOrToken, SyntaxKind as K, SyntaxNode, TextRange, TextSize};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Symbol {
     /// `package::module/path::name`, e.g. `main::users/repo::load_user`, `std::list::map`,
     /// `std::console::Console.print` for an operation, `main::app::test:name` for a test.
@@ -15,7 +15,8 @@ pub struct Symbol {
     /// The name as written at a use site: `load_user`, `Console.print`, `Some`.
     pub name: String,
     /// `fn`, `const`, `type`, `variant`, `error`, `effect`, `op`, `test` or `property`.
-    pub kind: &'static str,
+    #[serde(deserialize_with = "kind")]
+    pub kind: StaticStr,
     pub package: String,
     pub module: String,
     pub is_pub: bool,
@@ -32,9 +33,9 @@ pub struct Symbol {
     pub name_range: [u32; 2],
     /// Byte range of the whole item (attributes and doc comments included).
     pub item_range: [u32; 2],
-    #[serde(skip)]
+    #[serde(skip, default = "unset_file")]
     pub file: FileId,
-    #[serde(skip)]
+    #[serde(skip, default = "unset_def")]
     pub def: DefId,
     /// Test and property bodies, normalized, for frozen specs (design §7.3).
     #[serde(skip)]
@@ -52,6 +53,33 @@ const ITEM_KINDS: &[K] = &[
     K::PROPERTY_DECL,
     K::VARIANT,
 ];
+
+// Placeholders for the fields the JSON record skips: std's analysis cache stores them beside it
+// and sets them after reading (`std_cache.rs`).
+fn unset_file() -> FileId {
+    FileId(u32::MAX)
+}
+
+fn unset_def() -> DefId {
+    let index = sakura_hir::arena::Idx::from_raw(u32::MAX.into());
+    DefId {
+        module: ModuleId(u32::MAX),
+        index,
+    }
+}
+
+/// `&'static str`, spelled so that serde's derive does not borrow it from the input.
+type StaticStr = &'static str;
+
+const KINDS: [&str; 9] = [
+    "fn", "const", "type", "variant", "error", "effect", "op", "test", "property",
+];
+
+fn kind<'de, D: serde::Deserializer<'de>>(d: D) -> Result<&'static str, D::Error> {
+    let text = String::deserialize(d)?;
+    (KINDS.iter().find(|k| **k == text).copied())
+        .ok_or_else(|| serde::de::Error::custom(format!("unknown symbol kind `{text}`")))
+}
 
 pub(crate) fn kind_name(kind: &DefKind) -> &'static str {
     match kind {

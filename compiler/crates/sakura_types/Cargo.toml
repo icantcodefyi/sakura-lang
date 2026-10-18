@@ -12,6 +12,7 @@ publish.workspace = true
 sakura_diagnostics.workspace = true
 sakura_hir.workspace = true
 text-size.workspace = true
+serde.workspace = true
 
 [dev-dependencies]
 sakura_syntax.workspace = true

@@ -16,7 +16,7 @@ use crate::ty::{Effect, Label, ParamId, RowId, RowParamId, Scheme, Tail, TyCon, 
 pub(super) type AdtSubst = (HashMap<ParamId, TypeId>, HashMap<RowParamId, RowId>);
 
 /// One generic parameter of a definition, indexed by `TypeRes::Param(n)`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub(crate) enum GenericSlot {
     Ty(ParamId),
     Row(RowParamId),

@@ -4,7 +4,7 @@
 //! Phases build [`Diagnostic`]s against a [`FileId`] and byte range; the driver resolves
 //! files to URIs and content hashes when rendering JSON or terminal output.
 
-use serde::Serialize;
+use serde::{Deserialize, Deserializer, Serialize};
 
 pub mod codes;
 mod human;
@@ -51,7 +51,7 @@ pub fn sha256(bytes: &[u8]) -> String {
 }
 
 /// Identifies a source file inside one workspace snapshot.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct FileId(pub u32);
 
 /// A stable diagnostic code such as `V3001` (see design §12.3).
@@ -62,7 +62,18 @@ pub struct FileId(pub u32);
 #[serde(transparent)]
 pub struct Code(pub &'static str);
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+/// A code that is not in the registry is an error: every code a phase emits is listed there.
+impl<'de> Deserialize<'de> for Code {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let text = String::deserialize(d)?;
+        (codes::REGISTRY.iter())
+            .find(|i| i.code.0 == text)
+            .map(|i| i.code)
+            .ok_or_else(|| serde::de::Error::custom(format!("unknown code `{text}`")))
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Severity {
     Error,
@@ -70,7 +81,7 @@ pub enum Severity {
     Note,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Phase {
     Lex,
@@ -86,7 +97,7 @@ pub enum Phase {
     Internal,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SpanRole {
     Primary,
@@ -96,7 +107,7 @@ pub enum SpanRole {
 }
 
 /// A labelled, half-open, zero-based UTF-8 byte range in one file.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Span {
     pub file: FileId,
     pub start: u32,
@@ -127,7 +138,7 @@ impl Span {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Applicability {
     MachineApplicable,
@@ -137,7 +148,7 @@ pub enum Applicability {
 
 /// What applying a fix changes. `sakura fix` never auto-applies `ContractChange` or
 /// `AuthorityChange` (design §7.3, §12.1).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Impact {
     Local,
@@ -147,13 +158,13 @@ pub enum Impact {
     AuthorityChange,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Edit {
     pub span: Span,
     pub replacement: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Fix {
     pub title: String,
     pub applicability: Applicability,
@@ -164,10 +175,36 @@ pub struct Fix {
 /// A rendered type or effect row for `expected` / `actual`. `structured` holds the
 /// machine-readable form when the phase provides one; it must be a JSON object, whose keys are
 /// merged next to `render` in the JSON record (e.g. `{"row": {"labels": [...], "tail": null}}`).
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Rendered {
     pub render: String,
+    #[serde(with = "structured")]
     pub structured: Option<serde_json::Value>,
+}
+
+/// `structured` is JSON in a human-readable format (the JSON record) and JSON text in a binary
+/// one (std's analysis cache, design §17.195 (3)): only a self-describing format can read a
+/// `serde_json::Value` back.
+mod structured {
+    use serde::de::Error;
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use serde_json::Value;
+
+    pub fn serialize<S: Serializer>(v: &Option<Value>, s: S) -> Result<S::Ok, S::Error> {
+        match s.is_human_readable() {
+            true => v.serialize(s),
+            false => v.as_ref().map(Value::to_string).serialize(s),
+        }
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Option<Value>, D::Error> {
+        if d.is_human_readable() {
+            return Option::<Value>::deserialize(d);
+        }
+        (Option::<String>::deserialize(d)?)
+            .map(|text| serde_json::from_str(&text).map_err(D::Error::custom))
+            .transpose()
+    }
 }
 
 impl Rendered {
@@ -198,7 +235,7 @@ impl Rendered {
 }
 
 /// A typed hole `?name` as reported by `sakura check` (design §12.4), rendered for the `hole` record.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HoleReport {
     pub name: String,
     pub span: Span,
@@ -213,7 +250,7 @@ pub struct HoleReport {
     pub contracts_in_scope: Vec<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Diagnostic {
     pub code: Code,
     /// Stable path of the item the diagnostic is about, e.g. `pkg::users/repo::load_user`.
