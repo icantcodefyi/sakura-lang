@@ -78,1033 +78,787 @@ fn $entry#1 top -> unit ; main::match_wide_dispatch, frame 1 slots [%1 bool]
     handle_pop
     ret %1
 
-fn run#2 top -> ptr ; main::match_wide_dispatch, frame 3 slots [%0 i64, %11 word*, %14 i64]
+fn run#2 top -> ptr ; main::match_wide_dispatch, frame 3 slots [%0 i64, %10 word*, %13 i64]
   b0(%0 k: i64):
-    try_push -> b6(err, )
-    %13 lit: i64 = const 100
-    call step#3(%0, %13) -> b7()
-  b1(%1 v: ptr):
-    %5 tag: i64 = tag %1 ctor std::result::Result
-    switch %5 0 => b4(%1) 1 => b5(%1)
-  b2(%2 v: i64):
-    %3 s: ptr = show %2
-    ret %3
-  b3():
-    %4 lit: ptr = const str 1
-    ret %4
-  b4(%6 v: ptr):
-    %8 p: word = proj %6.0 std::result::Result.Ok
-    drop %6
-    %9 unbox: i64 = unbox %8
-    drop %8
-    jump b2(%9)
-  b5(%7 v: ptr):
-    %10 p: word = proj %7.0 std::result::Result.Err
-    drop %7
-    drop %10
-    jump b3()
-  b6(%11 e: word):
-    %12 err: ptr = alloc std::result::Result.Err(%11)
-    jump b1(%12)
-  b7(%14 r: i64) [try]:
-    %15 box: word = box %14
-    %16 ok: ptr = alloc std::result::Result.Ok(%15)
-    try_pop
-    jump b1(%16)
-
-fn step#3 top -> i64 ; main::match_wide_dispatch, frame 162 slots [%0 i64, %1 i64, %4 bool, %5 i64, %9 word*, %13 i64, %16 i64, %17 i64, %19 word*, %23 i64, %26 i64, %27 i64, %29 word*, %33 i64, %36 i64, %37 i64, %39 word*, %43 i64, %46 i64, %47 i64, %49 word*, %53 i64, %56 bool, %57 i64, %61 word*, %65 i64, %68 i64, %69 i64, %71 word*, %75 i64, %78 i64, %79 i64, %81 word*, %85 i64, %88 i64, %89 i64, %91 word*, %95 i64, %98 i64, %99 i64, %101 word*, %105 i64, %108 bool, %109 i64, %113 word*, %117 i64, %120 i64, %121 i64, %123 word*, %127 i64, %130 i64, %131 i64, %133 word*, %137 i64, %140 i64, %141 i64, %143 word*, %147 i64, %150 i64, %151 i64, %153 word*, %157 i64, %160 bool, %161 i64, %165 word*, %169 i64, %172 i64, %173 i64, %175 word*, %179 i64, %182 i64, %183 i64, %185 word*, %189 i64, %192 i64, %193 i64, %195 word*, %199 i64, %202 i64, %203 i64, %205 word*, %209 i64, %212 bool, %213 i64, %217 word*, %221 i64, %224 i64, %225 i64, %227 word*, %231 i64, %234 i64, %235 i64, %237 word*, %241 i64, %244 i64, %245 i64, %247 word*, %251 i64, %254 i64, %255 i64, %257 word*, %261 i64, %264 bool, %265 i64, %269 word*, %273 i64, %276 i64, %277 i64, %279 word*, %283 i64, %286 i64, %287 i64, %289 word*, %293 i64, %296 i64, %297 i64, %299 word*, %303 i64, %306 i64, %307 i64, %309 word*, %313 i64, %316 bool, %317 i64, %321 word*, %325 i64, %328 i64, %329 i64, %331 word*, %335 i64, %338 i64, %339 i64, %341 word*, %345 i64, %348 i64, %349 i64, %351 word*, %355 i64, %358 i64, %359 i64, %361 word*, %365 i64, %368 bool, %369 i64, %373 word*, %377 i64, %380 i64, %381 i64, %383 word*, %387 i64, %390 i64, %391 i64, %393 word*, %397 i64, %400 i64, %401 i64, %403 word*, %407 i64, %410 i64, %411 i64, %413 word*, %417 i64]
-  b0(%0 k: i64, %1 acc: i64):
-    switch %0 0 => b242(%1) 1 => b243(%1) 2 => b244(%1) 3 => b245(%1) 4 => b246(%1) 5 => b247(%1) 6 => b248(%1) 7 => b249(%1) 8 => b250(%1) 9 => b251(%1) 10 => b252(%1) 11 => b253(%1) 12 => b254(%1) 13 => b255(%1) 14 => b256(%1) 15 => b257(%1) 16 => b258(%1) 17 => b259(%1) 18 => b260(%1) 19 => b261(%1) 20 => b262(%1) 21 => b263(%1) 22 => b264(%1) 23 => b265(%1) 24 => b266(%1) 25 => b267(%1) 26 => b268(%1) 27 => b269(%1) 28 => b270(%1) 29 => b271(%1) 30 => b272(%1) 31 => b273(%1) 32 => b274(%1) 33 => b275(%1) 34 => b276(%1) 35 => b277(%1) 36 => b278(%1) 37 => b279(%1) 38 => b280(%1) 39 => b281(%1) 40 => b282(%1) 41 => b283(%1) 42 => b284(%1) 43 => b285(%1) 44 => b286(%1) 45 => b287(%1) 46 => b288(%1) 47 => b289(%1) 48 => b290(%1) 49 => b291(%1) 50 => b292(%1) 51 => b293(%1) 52 => b294(%1) 53 => b295(%1) 54 => b296(%1) 55 => b297(%1) 56 => b298(%1) 57 => b299(%1) 58 => b300(%1) 59 => b301(%1) 60 => b302(%1) 61 => b303(%1) 62 => b304(%1) 63 => b305(%1) 64 => b306(%1) 65 => b307(%1) 66 => b308(%1) 67 => b309(%1) 68 => b310(%1) 69 => b311(%1) 70 => b312(%1) 71 => b313(%1) 72 => b314(%1) 73 => b315(%1) 74 => b316(%1) 75 => b317(%1) 76 => b318(%1) 77 => b319(%1) 78 => b320(%1) 79 => b321(%1) _ => b322(%1)
-  b1(%2 acc: i64):
-    %3 lit: ptr = const str 2
-    perform std::console::Console.print(%3) -> b2(%2)
-  b2(%4 r: unit, %5 acc: i64):
-    %6 box: word = box %4
-    drop %6
-    %7 lit: i64 = const 0
-    %8 t: i64 = intadd %5, %7
-    ret %8
-  b3():
     try_push -> b4(err, )
-    %12 lit: i64 = const 1
-    call check#4(%12) -> b6()
-  b4(%9 e: word):
-    drop %9
-    jump b5()
-  b5():
-    %10 lit: i64 = const 1
-    %11 t: i64 = intneg %10
-    ret %11
-  b6(%13 r: i64) [try]:
+    %12 lit: i64 = const 100
+    call step#3(%0, %12) -> b5()
+  b1(%1 v: ptr):
+    %2 tag: i64 = tag %1 ctor std::result::Result
+    switch %2 0 => b2(%1) 1 => b3(%1)
+  b2(%3 v: ptr):
+    %5 p: word = proj %3.0 std::result::Result.Ok
+    drop %3
+    %6 unbox: i64 = unbox %5
+    drop %5
+    %7 s: ptr = show %6
+    ret %7
+  b3(%4 v: ptr):
+    %8 p: word = proj %4.0 std::result::Result.Err
+    drop %4
+    drop %8
+    %9 lit: ptr = const str 1
+    ret %9
+  b4(%10 e: word):
+    %11 err: ptr = alloc std::result::Result.Err(%10)
+    jump b1(%11)
+  b5(%13 r: i64) [try]:
+    %14 box: word = box %13
+    %15 ok: ptr = alloc std::result::Result.Ok(%14)
     try_pop
-    ret %13
-  b7(%14 acc: i64):
-    %15 lit: i64 = const 2
-    call check#4(%15) -> b8(%14)
-  b8(%16 r: i64, %17 acc: i64):
-    %18 t: i64 = intadd %17, %16
-    ret %18
-  b9():
-    try_push -> b10(err, )
-    %22 lit: i64 = const 3
-    call check#4(%22) -> b12()
-  b10(%19 e: word):
-    drop %19
-    jump b11()
-  b11():
-    %20 lit: i64 = const 3
-    %21 t: i64 = intneg %20
-    ret %21
-  b12(%23 r: i64) [try]:
+    jump b1(%15)
+
+fn step#3 top -> i64 ; main::match_wide_dispatch, frame 162 slots [%0 i64, %1 i64, %84 bool, %85 i64, %89 word*, %93 i64, %95 i64, %96 i64, %98 word*, %102 i64, %104 i64, %105 i64, %107 word*, %111 i64, %113 i64, %114 i64, %116 word*, %120 i64, %122 i64, %123 i64, %125 word*, %129 i64, %131 bool, %132 i64, %136 word*, %140 i64, %142 i64, %143 i64, %145 word*, %149 i64, %151 i64, %152 i64, %154 word*, %158 i64, %160 i64, %161 i64, %163 word*, %167 i64, %169 i64, %170 i64, %172 word*, %176 i64, %178 bool, %179 i64, %183 word*, %187 i64, %189 i64, %190 i64, %192 word*, %196 i64, %198 i64, %199 i64, %201 word*, %205 i64, %207 i64, %208 i64, %210 word*, %214 i64, %216 i64, %217 i64, %219 word*, %223 i64, %225 bool, %226 i64, %230 word*, %234 i64, %236 i64, %237 i64, %239 word*, %243 i64, %245 i64, %246 i64, %248 word*, %252 i64, %254 i64, %255 i64, %257 word*, %261 i64, %263 i64, %264 i64, %266 word*, %270 i64, %272 bool, %273 i64, %277 word*, %281 i64, %283 i64, %284 i64, %286 word*, %290 i64, %292 i64, %293 i64, %295 word*, %299 i64, %301 i64, %302 i64, %304 word*, %308 i64, %310 i64, %311 i64, %313 word*, %317 i64, %319 bool, %320 i64, %324 word*, %328 i64, %330 i64, %331 i64, %333 word*, %337 i64, %339 i64, %340 i64, %342 word*, %346 i64, %348 i64, %349 i64, %351 word*, %355 i64, %357 i64, %358 i64, %360 word*, %364 i64, %366 bool, %367 i64, %371 word*, %375 i64, %377 i64, %378 i64, %380 word*, %384 i64, %386 i64, %387 i64, %389 word*, %393 i64, %395 i64, %396 i64, %398 word*, %402 i64, %404 i64, %405 i64, %407 word*, %411 i64, %413 bool, %414 i64, %418 word*, %422 i64, %424 i64, %425 i64, %427 word*, %431 i64, %433 i64, %434 i64, %436 word*, %440 i64, %442 i64, %443 i64, %445 word*, %449 i64, %451 i64, %452 i64, %454 word*, %458 i64]
+  b0(%0 k: i64, %1 acc: i64):
+    switch %0 0 => b1(%1) 1 => b2(%1) 2 => b3(%1) 3 => b4(%1) 4 => b5(%1) 5 => b6(%1) 6 => b7(%1) 7 => b8(%1) 8 => b9(%1) 9 => b10(%1) 10 => b11(%1) 11 => b12(%1) 12 => b13(%1) 13 => b14(%1) 14 => b15(%1) 15 => b16(%1) 16 => b17(%1) 17 => b18(%1) 18 => b19(%1) 19 => b20(%1) 20 => b21(%1) 21 => b22(%1) 22 => b23(%1) 23 => b24(%1) 24 => b25(%1) 25 => b26(%1) 26 => b27(%1) 27 => b28(%1) 28 => b29(%1) 29 => b30(%1) 30 => b31(%1) 31 => b32(%1) 32 => b33(%1) 33 => b34(%1) 34 => b35(%1) 35 => b36(%1) 36 => b37(%1) 37 => b38(%1) 38 => b39(%1) 39 => b40(%1) 40 => b41(%1) 41 => b42(%1) 42 => b43(%1) 43 => b44(%1) 44 => b45(%1) 45 => b46(%1) 46 => b47(%1) 47 => b48(%1) 48 => b49(%1) 49 => b50(%1) 50 => b51(%1) 51 => b52(%1) 52 => b53(%1) 53 => b54(%1) 54 => b55(%1) 55 => b56(%1) 56 => b57(%1) 57 => b58(%1) 58 => b59(%1) 59 => b60(%1) 60 => b61(%1) 61 => b62(%1) 62 => b63(%1) 63 => b64(%1) 64 => b65(%1) 65 => b66(%1) 66 => b67(%1) 67 => b68(%1) 68 => b69(%1) 69 => b70(%1) 70 => b71(%1) 71 => b72(%1) 72 => b73(%1) 73 => b74(%1) 74 => b75(%1) 75 => b76(%1) 76 => b77(%1) 77 => b78(%1) 78 => b79(%1) 79 => b80(%1) _ => b81(%1)
+  b1(%2 acc: i64):
+    %83 lit: ptr = const str 2
+    perform std::console::Console.print(%83) -> b82(%2)
+  b2(%3 acc: i64):
+    try_push -> b83(err, )
+    %92 lit: i64 = const 1
+    call check#4(%92) -> b84()
+  b3(%4 acc: i64):
+    %94 lit: i64 = const 2
+    call check#4(%94) -> b85(%4)
+  b4(%5 acc: i64):
+    try_push -> b86(err, )
+    %101 lit: i64 = const 3
+    call check#4(%101) -> b87()
+  b5(%6 acc: i64):
+    %103 lit: i64 = const 4
+    call check#4(%103) -> b88(%6)
+  b6(%7 acc: i64):
+    try_push -> b89(err, )
+    %110 lit: i64 = const 5
+    call check#4(%110) -> b90()
+  b7(%8 acc: i64):
+    %112 lit: i64 = const 6
+    call check#4(%112) -> b91(%8)
+  b8(%9 acc: i64):
+    try_push -> b92(err, )
+    %119 lit: i64 = const 7
+    call check#4(%119) -> b93()
+  b9(%10 acc: i64):
+    %121 lit: i64 = const 8
+    call check#4(%121) -> b94(%10)
+  b10(%11 acc: i64):
+    try_push -> b95(err, )
+    %128 lit: i64 = const 9
+    call check#4(%128) -> b96()
+  b11(%12 acc: i64):
+    %130 lit: ptr = const str 3
+    perform std::console::Console.print(%130) -> b97(%12)
+  b12(%13 acc: i64):
+    try_push -> b98(err, )
+    %139 lit: i64 = const 11
+    call check#4(%139) -> b99()
+  b13(%14 acc: i64):
+    %141 lit: i64 = const 12
+    call check#4(%141) -> b100(%14)
+  b14(%15 acc: i64):
+    try_push -> b101(err, )
+    %148 lit: i64 = const 13
+    call check#4(%148) -> b102()
+  b15(%16 acc: i64):
+    %150 lit: i64 = const 14
+    call check#4(%150) -> b103(%16)
+  b16(%17 acc: i64):
+    try_push -> b104(err, )
+    %157 lit: i64 = const 15
+    call check#4(%157) -> b105()
+  b17(%18 acc: i64):
+    %159 lit: i64 = const 16
+    call check#4(%159) -> b106(%18)
+  b18(%19 acc: i64):
+    try_push -> b107(err, )
+    %166 lit: i64 = const 17
+    call check#4(%166) -> b108()
+  b19(%20 acc: i64):
+    %168 lit: i64 = const 18
+    call check#4(%168) -> b109(%20)
+  b20(%21 acc: i64):
+    try_push -> b110(err, )
+    %175 lit: i64 = const 19
+    call check#4(%175) -> b111()
+  b21(%22 acc: i64):
+    %177 lit: ptr = const str 4
+    perform std::console::Console.print(%177) -> b112(%22)
+  b22(%23 acc: i64):
+    try_push -> b113(err, )
+    %186 lit: i64 = const 21
+    call check#4(%186) -> b114()
+  b23(%24 acc: i64):
+    %188 lit: i64 = const 22
+    call check#4(%188) -> b115(%24)
+  b24(%25 acc: i64):
+    try_push -> b116(err, )
+    %195 lit: i64 = const 23
+    call check#4(%195) -> b117()
+  b25(%26 acc: i64):
+    %197 lit: i64 = const 24
+    call check#4(%197) -> b118(%26)
+  b26(%27 acc: i64):
+    try_push -> b119(err, )
+    %204 lit: i64 = const 25
+    call check#4(%204) -> b120()
+  b27(%28 acc: i64):
+    %206 lit: i64 = const 26
+    call check#4(%206) -> b121(%28)
+  b28(%29 acc: i64):
+    try_push -> b122(err, )
+    %213 lit: i64 = const 27
+    call check#4(%213) -> b123()
+  b29(%30 acc: i64):
+    %215 lit: i64 = const 28
+    call check#4(%215) -> b124(%30)
+  b30(%31 acc: i64):
+    try_push -> b125(err, )
+    %222 lit: i64 = const 29
+    call check#4(%222) -> b126()
+  b31(%32 acc: i64):
+    %224 lit: ptr = const str 5
+    perform std::console::Console.print(%224) -> b127(%32)
+  b32(%33 acc: i64):
+    try_push -> b128(err, )
+    %233 lit: i64 = const 31
+    call check#4(%233) -> b129()
+  b33(%34 acc: i64):
+    %235 lit: i64 = const 32
+    call check#4(%235) -> b130(%34)
+  b34(%35 acc: i64):
+    try_push -> b131(err, )
+    %242 lit: i64 = const 33
+    call check#4(%242) -> b132()
+  b35(%36 acc: i64):
+    %244 lit: i64 = const 34
+    call check#4(%244) -> b133(%36)
+  b36(%37 acc: i64):
+    try_push -> b134(err, )
+    %251 lit: i64 = const 35
+    call check#4(%251) -> b135()
+  b37(%38 acc: i64):
+    %253 lit: i64 = const 36
+    call check#4(%253) -> b136(%38)
+  b38(%39 acc: i64):
+    try_push -> b137(err, )
+    %260 lit: i64 = const 37
+    call check#4(%260) -> b138()
+  b39(%40 acc: i64):
+    %262 lit: i64 = const 38
+    call check#4(%262) -> b139(%40)
+  b40(%41 acc: i64):
+    try_push -> b140(err, )
+    %269 lit: i64 = const 39
+    call check#4(%269) -> b141()
+  b41(%42 acc: i64):
+    %271 lit: ptr = const str 6
+    perform std::console::Console.print(%271) -> b142(%42)
+  b42(%43 acc: i64):
+    try_push -> b143(err, )
+    %280 lit: i64 = const 41
+    call check#4(%280) -> b144()
+  b43(%44 acc: i64):
+    %282 lit: i64 = const 42
+    call check#4(%282) -> b145(%44)
+  b44(%45 acc: i64):
+    try_push -> b146(err, )
+    %289 lit: i64 = const 43
+    call check#4(%289) -> b147()
+  b45(%46 acc: i64):
+    %291 lit: i64 = const 44
+    call check#4(%291) -> b148(%46)
+  b46(%47 acc: i64):
+    try_push -> b149(err, )
+    %298 lit: i64 = const 45
+    call check#4(%298) -> b150()
+  b47(%48 acc: i64):
+    %300 lit: i64 = const 46
+    call check#4(%300) -> b151(%48)
+  b48(%49 acc: i64):
+    try_push -> b152(err, )
+    %307 lit: i64 = const 47
+    call check#4(%307) -> b153()
+  b49(%50 acc: i64):
+    %309 lit: i64 = const 48
+    call check#4(%309) -> b154(%50)
+  b50(%51 acc: i64):
+    try_push -> b155(err, )
+    %316 lit: i64 = const 49
+    call check#4(%316) -> b156()
+  b51(%52 acc: i64):
+    %318 lit: ptr = const str 7
+    perform std::console::Console.print(%318) -> b157(%52)
+  b52(%53 acc: i64):
+    try_push -> b158(err, )
+    %327 lit: i64 = const 51
+    call check#4(%327) -> b159()
+  b53(%54 acc: i64):
+    %329 lit: i64 = const 52
+    call check#4(%329) -> b160(%54)
+  b54(%55 acc: i64):
+    try_push -> b161(err, )
+    %336 lit: i64 = const 53
+    call check#4(%336) -> b162()
+  b55(%56 acc: i64):
+    %338 lit: i64 = const 54
+    call check#4(%338) -> b163(%56)
+  b56(%57 acc: i64):
+    try_push -> b164(err, )
+    %345 lit: i64 = const 55
+    call check#4(%345) -> b165()
+  b57(%58 acc: i64):
+    %347 lit: i64 = const 56
+    call check#4(%347) -> b166(%58)
+  b58(%59 acc: i64):
+    try_push -> b167(err, )
+    %354 lit: i64 = const 57
+    call check#4(%354) -> b168()
+  b59(%60 acc: i64):
+    %356 lit: i64 = const 58
+    call check#4(%356) -> b169(%60)
+  b60(%61 acc: i64):
+    try_push -> b170(err, )
+    %363 lit: i64 = const 59
+    call check#4(%363) -> b171()
+  b61(%62 acc: i64):
+    %365 lit: ptr = const str 8
+    perform std::console::Console.print(%365) -> b172(%62)
+  b62(%63 acc: i64):
+    try_push -> b173(err, )
+    %374 lit: i64 = const 61
+    call check#4(%374) -> b174()
+  b63(%64 acc: i64):
+    %376 lit: i64 = const 62
+    call check#4(%376) -> b175(%64)
+  b64(%65 acc: i64):
+    try_push -> b176(err, )
+    %383 lit: i64 = const 63
+    call check#4(%383) -> b177()
+  b65(%66 acc: i64):
+    %385 lit: i64 = const 64
+    call check#4(%385) -> b178(%66)
+  b66(%67 acc: i64):
+    try_push -> b179(err, )
+    %392 lit: i64 = const 65
+    call check#4(%392) -> b180()
+  b67(%68 acc: i64):
+    %394 lit: i64 = const 66
+    call check#4(%394) -> b181(%68)
+  b68(%69 acc: i64):
+    try_push -> b182(err, )
+    %401 lit: i64 = const 67
+    call check#4(%401) -> b183()
+  b69(%70 acc: i64):
+    %403 lit: i64 = const 68
+    call check#4(%403) -> b184(%70)
+  b70(%71 acc: i64):
+    try_push -> b185(err, )
+    %410 lit: i64 = const 69
+    call check#4(%410) -> b186()
+  b71(%72 acc: i64):
+    %412 lit: ptr = const str 9
+    perform std::console::Console.print(%412) -> b187(%72)
+  b72(%73 acc: i64):
+    try_push -> b188(err, )
+    %421 lit: i64 = const 71
+    call check#4(%421) -> b189()
+  b73(%74 acc: i64):
+    %423 lit: i64 = const 72
+    call check#4(%423) -> b190(%74)
+  b74(%75 acc: i64):
+    try_push -> b191(err, )
+    %430 lit: i64 = const 73
+    call check#4(%430) -> b192()
+  b75(%76 acc: i64):
+    %432 lit: i64 = const 74
+    call check#4(%432) -> b193(%76)
+  b76(%77 acc: i64):
+    try_push -> b194(err, )
+    %439 lit: i64 = const 75
+    call check#4(%439) -> b195()
+  b77(%78 acc: i64):
+    %441 lit: i64 = const 76
+    call check#4(%441) -> b196(%78)
+  b78(%79 acc: i64):
+    try_push -> b197(err, )
+    %448 lit: i64 = const 77
+    call check#4(%448) -> b198()
+  b79(%80 acc: i64):
+    %450 lit: i64 = const 78
+    call check#4(%450) -> b199(%80)
+  b80(%81 acc: i64):
+    try_push -> b200(err, )
+    %457 lit: i64 = const 79
+    call check#4(%457) -> b201()
+  b81(%82 acc: i64):
+    %459 lit: i64 = const 1
+    %460 t: i64 = intsub %82, %459
+    ret %460
+  b82(%84 r: unit, %85 acc: i64):
+    %86 box: word = box %84
+    drop %86
+    %87 lit: i64 = const 0
+    %88 t: i64 = intadd %85, %87
+    ret %88
+  b83(%89 e: word):
+    drop %89
+    %90 lit: i64 = const 1
+    %91 t: i64 = intneg %90
+    ret %91
+  b84(%93 r: i64) [try]:
     try_pop
-    ret %23
-  b13(%24 acc: i64):
-    %25 lit: i64 = const 4
-    call check#4(%25) -> b14(%24)
-  b14(%26 r: i64, %27 acc: i64):
-    %28 t: i64 = intadd %27, %26
-    ret %28
-  b15():
-    try_push -> b16(err, )
-    %32 lit: i64 = const 5
-    call check#4(%32) -> b18()
-  b16(%29 e: word):
-    drop %29
-    jump b17()
-  b17():
-    %30 lit: i64 = const 5
-    %31 t: i64 = intneg %30
-    ret %31
-  b18(%33 r: i64) [try]:
-    try_pop
-    ret %33
-  b19(%34 acc: i64):
-    %35 lit: i64 = const 6
-    call check#4(%35) -> b20(%34)
-  b20(%36 r: i64, %37 acc: i64):
-    %38 t: i64 = intadd %37, %36
-    ret %38
-  b21():
-    try_push -> b22(err, )
-    %42 lit: i64 = const 7
-    call check#4(%42) -> b24()
-  b22(%39 e: word):
-    drop %39
-    jump b23()
-  b23():
-    %40 lit: i64 = const 7
-    %41 t: i64 = intneg %40
-    ret %41
-  b24(%43 r: i64) [try]:
-    try_pop
-    ret %43
-  b25(%44 acc: i64):
-    %45 lit: i64 = const 8
-    call check#4(%45) -> b26(%44)
-  b26(%46 r: i64, %47 acc: i64):
-    %48 t: i64 = intadd %47, %46
-    ret %48
-  b27():
-    try_push -> b28(err, )
-    %52 lit: i64 = const 9
-    call check#4(%52) -> b30()
-  b28(%49 e: word):
-    drop %49
-    jump b29()
-  b29():
-    %50 lit: i64 = const 9
-    %51 t: i64 = intneg %50
-    ret %51
-  b30(%53 r: i64) [try]:
-    try_pop
-    ret %53
-  b31(%54 acc: i64):
-    %55 lit: ptr = const str 3
-    perform std::console::Console.print(%55) -> b32(%54)
-  b32(%56 r: unit, %57 acc: i64):
-    %58 box: word = box %56
-    drop %58
-    %59 lit: i64 = const 10
-    %60 t: i64 = intadd %57, %59
-    ret %60
-  b33():
-    try_push -> b34(err, )
-    %64 lit: i64 = const 11
-    call check#4(%64) -> b36()
-  b34(%61 e: word):
-    drop %61
-    jump b35()
-  b35():
-    %62 lit: i64 = const 11
-    %63 t: i64 = intneg %62
-    ret %63
-  b36(%65 r: i64) [try]:
-    try_pop
-    ret %65
-  b37(%66 acc: i64):
-    %67 lit: i64 = const 12
-    call check#4(%67) -> b38(%66)
-  b38(%68 r: i64, %69 acc: i64):
-    %70 t: i64 = intadd %69, %68
-    ret %70
-  b39():
-    try_push -> b40(err, )
-    %74 lit: i64 = const 13
-    call check#4(%74) -> b42()
-  b40(%71 e: word):
-    drop %71
-    jump b41()
-  b41():
-    %72 lit: i64 = const 13
-    %73 t: i64 = intneg %72
-    ret %73
-  b42(%75 r: i64) [try]:
-    try_pop
-    ret %75
-  b43(%76 acc: i64):
-    %77 lit: i64 = const 14
-    call check#4(%77) -> b44(%76)
-  b44(%78 r: i64, %79 acc: i64):
-    %80 t: i64 = intadd %79, %78
-    ret %80
-  b45():
-    try_push -> b46(err, )
-    %84 lit: i64 = const 15
-    call check#4(%84) -> b48()
-  b46(%81 e: word):
-    drop %81
-    jump b47()
-  b47():
-    %82 lit: i64 = const 15
-    %83 t: i64 = intneg %82
-    ret %83
-  b48(%85 r: i64) [try]:
-    try_pop
-    ret %85
-  b49(%86 acc: i64):
-    %87 lit: i64 = const 16
-    call check#4(%87) -> b50(%86)
-  b50(%88 r: i64, %89 acc: i64):
-    %90 t: i64 = intadd %89, %88
-    ret %90
-  b51():
-    try_push -> b52(err, )
-    %94 lit: i64 = const 17
-    call check#4(%94) -> b54()
-  b52(%91 e: word):
-    drop %91
-    jump b53()
-  b53():
-    %92 lit: i64 = const 17
-    %93 t: i64 = intneg %92
     ret %93
-  b54(%95 r: i64) [try]:
-    try_pop
-    ret %95
-  b55(%96 acc: i64):
-    %97 lit: i64 = const 18
-    call check#4(%97) -> b56(%96)
-  b56(%98 r: i64, %99 acc: i64):
-    %100 t: i64 = intadd %99, %98
+  b85(%95 r: i64, %96 acc: i64):
+    %97 t: i64 = intadd %96, %95
+    ret %97
+  b86(%98 e: word):
+    drop %98
+    %99 lit: i64 = const 3
+    %100 t: i64 = intneg %99
     ret %100
-  b57():
-    try_push -> b58(err, )
-    %104 lit: i64 = const 19
-    call check#4(%104) -> b60()
-  b58(%101 e: word):
-    drop %101
-    jump b59()
-  b59():
-    %102 lit: i64 = const 19
-    %103 t: i64 = intneg %102
-    ret %103
-  b60(%105 r: i64) [try]:
+  b87(%102 r: i64) [try]:
     try_pop
-    ret %105
-  b61(%106 acc: i64):
-    %107 lit: ptr = const str 4
-    perform std::console::Console.print(%107) -> b62(%106)
-  b62(%108 r: unit, %109 acc: i64):
-    %110 box: word = box %108
-    drop %110
-    %111 lit: i64 = const 20
-    %112 t: i64 = intadd %109, %111
-    ret %112
-  b63():
-    try_push -> b64(err, )
-    %116 lit: i64 = const 21
-    call check#4(%116) -> b66()
-  b64(%113 e: word):
-    drop %113
-    jump b65()
-  b65():
-    %114 lit: i64 = const 21
-    %115 t: i64 = intneg %114
+    ret %102
+  b88(%104 r: i64, %105 acc: i64):
+    %106 t: i64 = intadd %105, %104
+    ret %106
+  b89(%107 e: word):
+    drop %107
+    %108 lit: i64 = const 5
+    %109 t: i64 = intneg %108
+    ret %109
+  b90(%111 r: i64) [try]:
+    try_pop
+    ret %111
+  b91(%113 r: i64, %114 acc: i64):
+    %115 t: i64 = intadd %114, %113
     ret %115
-  b66(%117 r: i64) [try]:
+  b92(%116 e: word):
+    drop %116
+    %117 lit: i64 = const 7
+    %118 t: i64 = intneg %117
+    ret %118
+  b93(%120 r: i64) [try]:
     try_pop
-    ret %117
-  b67(%118 acc: i64):
-    %119 lit: i64 = const 22
-    call check#4(%119) -> b68(%118)
-  b68(%120 r: i64, %121 acc: i64):
-    %122 t: i64 = intadd %121, %120
-    ret %122
-  b69():
-    try_push -> b70(err, )
-    %126 lit: i64 = const 23
-    call check#4(%126) -> b72()
-  b70(%123 e: word):
-    drop %123
-    jump b71()
-  b71():
-    %124 lit: i64 = const 23
-    %125 t: i64 = intneg %124
-    ret %125
-  b72(%127 r: i64) [try]:
-    try_pop
+    ret %120
+  b94(%122 r: i64, %123 acc: i64):
+    %124 t: i64 = intadd %123, %122
+    ret %124
+  b95(%125 e: word):
+    drop %125
+    %126 lit: i64 = const 9
+    %127 t: i64 = intneg %126
     ret %127
-  b73(%128 acc: i64):
-    %129 lit: i64 = const 24
-    call check#4(%129) -> b74(%128)
-  b74(%130 r: i64, %131 acc: i64):
-    %132 t: i64 = intadd %131, %130
-    ret %132
-  b75():
-    try_push -> b76(err, )
-    %136 lit: i64 = const 25
-    call check#4(%136) -> b78()
-  b76(%133 e: word):
+  b96(%129 r: i64) [try]:
+    try_pop
+    ret %129
+  b97(%131 r: unit, %132 acc: i64):
+    %133 box: word = box %131
     drop %133
-    jump b77()
-  b77():
-    %134 lit: i64 = const 25
-    %135 t: i64 = intneg %134
+    %134 lit: i64 = const 10
+    %135 t: i64 = intadd %132, %134
     ret %135
-  b78(%137 r: i64) [try]:
+  b98(%136 e: word):
+    drop %136
+    %137 lit: i64 = const 11
+    %138 t: i64 = intneg %137
+    ret %138
+  b99(%140 r: i64) [try]:
     try_pop
-    ret %137
-  b79(%138 acc: i64):
-    %139 lit: i64 = const 26
-    call check#4(%139) -> b80(%138)
-  b80(%140 r: i64, %141 acc: i64):
-    %142 t: i64 = intadd %141, %140
-    ret %142
-  b81():
-    try_push -> b82(err, )
-    %146 lit: i64 = const 27
-    call check#4(%146) -> b84()
-  b82(%143 e: word):
-    drop %143
-    jump b83()
-  b83():
-    %144 lit: i64 = const 27
-    %145 t: i64 = intneg %144
-    ret %145
-  b84(%147 r: i64) [try]:
-    try_pop
+    ret %140
+  b100(%142 r: i64, %143 acc: i64):
+    %144 t: i64 = intadd %143, %142
+    ret %144
+  b101(%145 e: word):
+    drop %145
+    %146 lit: i64 = const 13
+    %147 t: i64 = intneg %146
     ret %147
-  b85(%148 acc: i64):
-    %149 lit: i64 = const 28
-    call check#4(%149) -> b86(%148)
-  b86(%150 r: i64, %151 acc: i64):
-    %152 t: i64 = intadd %151, %150
-    ret %152
-  b87():
-    try_push -> b88(err, )
-    %156 lit: i64 = const 29
-    call check#4(%156) -> b90()
-  b88(%153 e: word):
-    drop %153
-    jump b89()
-  b89():
-    %154 lit: i64 = const 29
-    %155 t: i64 = intneg %154
-    ret %155
-  b90(%157 r: i64) [try]:
+  b102(%149 r: i64) [try]:
     try_pop
-    ret %157
-  b91(%158 acc: i64):
-    %159 lit: ptr = const str 5
-    perform std::console::Console.print(%159) -> b92(%158)
-  b92(%160 r: unit, %161 acc: i64):
-    %162 box: word = box %160
-    drop %162
-    %163 lit: i64 = const 30
-    %164 t: i64 = intadd %161, %163
-    ret %164
-  b93():
-    try_push -> b94(err, )
-    %168 lit: i64 = const 31
-    call check#4(%168) -> b96()
-  b94(%165 e: word):
-    drop %165
-    jump b95()
-  b95():
-    %166 lit: i64 = const 31
-    %167 t: i64 = intneg %166
+    ret %149
+  b103(%151 r: i64, %152 acc: i64):
+    %153 t: i64 = intadd %152, %151
+    ret %153
+  b104(%154 e: word):
+    drop %154
+    %155 lit: i64 = const 15
+    %156 t: i64 = intneg %155
+    ret %156
+  b105(%158 r: i64) [try]:
+    try_pop
+    ret %158
+  b106(%160 r: i64, %161 acc: i64):
+    %162 t: i64 = intadd %161, %160
+    ret %162
+  b107(%163 e: word):
+    drop %163
+    %164 lit: i64 = const 17
+    %165 t: i64 = intneg %164
+    ret %165
+  b108(%167 r: i64) [try]:
+    try_pop
     ret %167
-  b96(%169 r: i64) [try]:
-    try_pop
-    ret %169
-  b97(%170 acc: i64):
-    %171 lit: i64 = const 32
-    call check#4(%171) -> b98(%170)
-  b98(%172 r: i64, %173 acc: i64):
-    %174 t: i64 = intadd %173, %172
+  b109(%169 r: i64, %170 acc: i64):
+    %171 t: i64 = intadd %170, %169
+    ret %171
+  b110(%172 e: word):
+    drop %172
+    %173 lit: i64 = const 19
+    %174 t: i64 = intneg %173
     ret %174
-  b99():
-    try_push -> b100(err, )
-    %178 lit: i64 = const 33
-    call check#4(%178) -> b102()
-  b100(%175 e: word):
-    drop %175
-    jump b101()
-  b101():
-    %176 lit: i64 = const 33
-    %177 t: i64 = intneg %176
-    ret %177
-  b102(%179 r: i64) [try]:
+  b111(%176 r: i64) [try]:
     try_pop
-    ret %179
-  b103(%180 acc: i64):
-    %181 lit: i64 = const 34
-    call check#4(%181) -> b104(%180)
-  b104(%182 r: i64, %183 acc: i64):
-    %184 t: i64 = intadd %183, %182
-    ret %184
-  b105():
-    try_push -> b106(err, )
-    %188 lit: i64 = const 35
-    call check#4(%188) -> b108()
-  b106(%185 e: word):
-    drop %185
-    jump b107()
-  b107():
-    %186 lit: i64 = const 35
-    %187 t: i64 = intneg %186
+    ret %176
+  b112(%178 r: unit, %179 acc: i64):
+    %180 box: word = box %178
+    drop %180
+    %181 lit: i64 = const 20
+    %182 t: i64 = intadd %179, %181
+    ret %182
+  b113(%183 e: word):
+    drop %183
+    %184 lit: i64 = const 21
+    %185 t: i64 = intneg %184
+    ret %185
+  b114(%187 r: i64) [try]:
+    try_pop
     ret %187
-  b108(%189 r: i64) [try]:
-    try_pop
-    ret %189
-  b109(%190 acc: i64):
-    %191 lit: i64 = const 36
-    call check#4(%191) -> b110(%190)
-  b110(%192 r: i64, %193 acc: i64):
-    %194 t: i64 = intadd %193, %192
+  b115(%189 r: i64, %190 acc: i64):
+    %191 t: i64 = intadd %190, %189
+    ret %191
+  b116(%192 e: word):
+    drop %192
+    %193 lit: i64 = const 23
+    %194 t: i64 = intneg %193
     ret %194
-  b111():
-    try_push -> b112(err, )
-    %198 lit: i64 = const 37
-    call check#4(%198) -> b114()
-  b112(%195 e: word):
-    drop %195
-    jump b113()
-  b113():
-    %196 lit: i64 = const 37
-    %197 t: i64 = intneg %196
-    ret %197
-  b114(%199 r: i64) [try]:
+  b117(%196 r: i64) [try]:
     try_pop
-    ret %199
-  b115(%200 acc: i64):
-    %201 lit: i64 = const 38
-    call check#4(%201) -> b116(%200)
-  b116(%202 r: i64, %203 acc: i64):
-    %204 t: i64 = intadd %203, %202
-    ret %204
-  b117():
-    try_push -> b118(err, )
-    %208 lit: i64 = const 39
-    call check#4(%208) -> b120()
-  b118(%205 e: word):
-    drop %205
-    jump b119()
-  b119():
-    %206 lit: i64 = const 39
-    %207 t: i64 = intneg %206
-    ret %207
-  b120(%209 r: i64) [try]:
+    ret %196
+  b118(%198 r: i64, %199 acc: i64):
+    %200 t: i64 = intadd %199, %198
+    ret %200
+  b119(%201 e: word):
+    drop %201
+    %202 lit: i64 = const 25
+    %203 t: i64 = intneg %202
+    ret %203
+  b120(%205 r: i64) [try]:
     try_pop
+    ret %205
+  b121(%207 r: i64, %208 acc: i64):
+    %209 t: i64 = intadd %208, %207
     ret %209
-  b121(%210 acc: i64):
-    %211 lit: ptr = const str 6
-    perform std::console::Console.print(%211) -> b122(%210)
-  b122(%212 r: unit, %213 acc: i64):
-    %214 box: word = box %212
-    drop %214
-    %215 lit: i64 = const 40
-    %216 t: i64 = intadd %213, %215
-    ret %216
-  b123():
-    try_push -> b124(err, )
-    %220 lit: i64 = const 41
-    call check#4(%220) -> b126()
-  b124(%217 e: word):
-    drop %217
-    jump b125()
-  b125():
-    %218 lit: i64 = const 41
-    %219 t: i64 = intneg %218
-    ret %219
-  b126(%221 r: i64) [try]:
+  b122(%210 e: word):
+    drop %210
+    %211 lit: i64 = const 27
+    %212 t: i64 = intneg %211
+    ret %212
+  b123(%214 r: i64) [try]:
     try_pop
+    ret %214
+  b124(%216 r: i64, %217 acc: i64):
+    %218 t: i64 = intadd %217, %216
+    ret %218
+  b125(%219 e: word):
+    drop %219
+    %220 lit: i64 = const 29
+    %221 t: i64 = intneg %220
     ret %221
-  b127(%222 acc: i64):
-    %223 lit: i64 = const 42
-    call check#4(%223) -> b128(%222)
-  b128(%224 r: i64, %225 acc: i64):
-    %226 t: i64 = intadd %225, %224
-    ret %226
-  b129():
-    try_push -> b130(err, )
-    %230 lit: i64 = const 43
-    call check#4(%230) -> b132()
-  b130(%227 e: word):
+  b126(%223 r: i64) [try]:
+    try_pop
+    ret %223
+  b127(%225 r: unit, %226 acc: i64):
+    %227 box: word = box %225
     drop %227
-    jump b131()
-  b131():
-    %228 lit: i64 = const 43
-    %229 t: i64 = intneg %228
+    %228 lit: i64 = const 30
+    %229 t: i64 = intadd %226, %228
     ret %229
-  b132(%231 r: i64) [try]:
+  b128(%230 e: word):
+    drop %230
+    %231 lit: i64 = const 31
+    %232 t: i64 = intneg %231
+    ret %232
+  b129(%234 r: i64) [try]:
     try_pop
-    ret %231
-  b133(%232 acc: i64):
-    %233 lit: i64 = const 44
-    call check#4(%233) -> b134(%232)
-  b134(%234 r: i64, %235 acc: i64):
-    %236 t: i64 = intadd %235, %234
-    ret %236
-  b135():
-    try_push -> b136(err, )
-    %240 lit: i64 = const 45
-    call check#4(%240) -> b138()
-  b136(%237 e: word):
-    drop %237
-    jump b137()
-  b137():
-    %238 lit: i64 = const 45
-    %239 t: i64 = intneg %238
-    ret %239
-  b138(%241 r: i64) [try]:
-    try_pop
+    ret %234
+  b130(%236 r: i64, %237 acc: i64):
+    %238 t: i64 = intadd %237, %236
+    ret %238
+  b131(%239 e: word):
+    drop %239
+    %240 lit: i64 = const 33
+    %241 t: i64 = intneg %240
     ret %241
-  b139(%242 acc: i64):
-    %243 lit: i64 = const 46
-    call check#4(%243) -> b140(%242)
-  b140(%244 r: i64, %245 acc: i64):
-    %246 t: i64 = intadd %245, %244
-    ret %246
-  b141():
-    try_push -> b142(err, )
-    %250 lit: i64 = const 47
-    call check#4(%250) -> b144()
-  b142(%247 e: word):
-    drop %247
-    jump b143()
-  b143():
-    %248 lit: i64 = const 47
-    %249 t: i64 = intneg %248
-    ret %249
-  b144(%251 r: i64) [try]:
+  b132(%243 r: i64) [try]:
     try_pop
-    ret %251
-  b145(%252 acc: i64):
-    %253 lit: i64 = const 48
-    call check#4(%253) -> b146(%252)
-  b146(%254 r: i64, %255 acc: i64):
+    ret %243
+  b133(%245 r: i64, %246 acc: i64):
+    %247 t: i64 = intadd %246, %245
+    ret %247
+  b134(%248 e: word):
+    drop %248
+    %249 lit: i64 = const 35
+    %250 t: i64 = intneg %249
+    ret %250
+  b135(%252 r: i64) [try]:
+    try_pop
+    ret %252
+  b136(%254 r: i64, %255 acc: i64):
     %256 t: i64 = intadd %255, %254
     ret %256
-  b147():
-    try_push -> b148(err, )
-    %260 lit: i64 = const 49
-    call check#4(%260) -> b150()
-  b148(%257 e: word):
+  b137(%257 e: word):
     drop %257
-    jump b149()
-  b149():
-    %258 lit: i64 = const 49
+    %258 lit: i64 = const 37
     %259 t: i64 = intneg %258
     ret %259
-  b150(%261 r: i64) [try]:
+  b138(%261 r: i64) [try]:
     try_pop
     ret %261
-  b151(%262 acc: i64):
-    %263 lit: ptr = const str 7
-    perform std::console::Console.print(%263) -> b152(%262)
-  b152(%264 r: unit, %265 acc: i64):
-    %266 box: word = box %264
+  b139(%263 r: i64, %264 acc: i64):
+    %265 t: i64 = intadd %264, %263
+    ret %265
+  b140(%266 e: word):
     drop %266
-    %267 lit: i64 = const 50
-    %268 t: i64 = intadd %265, %267
+    %267 lit: i64 = const 39
+    %268 t: i64 = intneg %267
     ret %268
-  b153():
-    try_push -> b154(err, )
-    %272 lit: i64 = const 51
-    call check#4(%272) -> b156()
-  b154(%269 e: word):
-    drop %269
-    jump b155()
-  b155():
-    %270 lit: i64 = const 51
-    %271 t: i64 = intneg %270
-    ret %271
-  b156(%273 r: i64) [try]:
+  b141(%270 r: i64) [try]:
     try_pop
-    ret %273
-  b157(%274 acc: i64):
-    %275 lit: i64 = const 52
-    call check#4(%275) -> b158(%274)
-  b158(%276 r: i64, %277 acc: i64):
-    %278 t: i64 = intadd %277, %276
-    ret %278
-  b159():
-    try_push -> b160(err, )
-    %282 lit: i64 = const 53
-    call check#4(%282) -> b162()
-  b160(%279 e: word):
-    drop %279
-    jump b161()
-  b161():
-    %280 lit: i64 = const 53
-    %281 t: i64 = intneg %280
+    ret %270
+  b142(%272 r: unit, %273 acc: i64):
+    %274 box: word = box %272
+    drop %274
+    %275 lit: i64 = const 40
+    %276 t: i64 = intadd %273, %275
+    ret %276
+  b143(%277 e: word):
+    drop %277
+    %278 lit: i64 = const 41
+    %279 t: i64 = intneg %278
+    ret %279
+  b144(%281 r: i64) [try]:
+    try_pop
     ret %281
-  b162(%283 r: i64) [try]:
-    try_pop
-    ret %283
-  b163(%284 acc: i64):
-    %285 lit: i64 = const 54
-    call check#4(%285) -> b164(%284)
-  b164(%286 r: i64, %287 acc: i64):
-    %288 t: i64 = intadd %287, %286
+  b145(%283 r: i64, %284 acc: i64):
+    %285 t: i64 = intadd %284, %283
+    ret %285
+  b146(%286 e: word):
+    drop %286
+    %287 lit: i64 = const 43
+    %288 t: i64 = intneg %287
     ret %288
-  b165():
-    try_push -> b166(err, )
-    %292 lit: i64 = const 55
-    call check#4(%292) -> b168()
-  b166(%289 e: word):
-    drop %289
-    jump b167()
-  b167():
-    %290 lit: i64 = const 55
-    %291 t: i64 = intneg %290
-    ret %291
-  b168(%293 r: i64) [try]:
+  b147(%290 r: i64) [try]:
     try_pop
-    ret %293
-  b169(%294 acc: i64):
-    %295 lit: i64 = const 56
-    call check#4(%295) -> b170(%294)
-  b170(%296 r: i64, %297 acc: i64):
-    %298 t: i64 = intadd %297, %296
-    ret %298
-  b171():
-    try_push -> b172(err, )
-    %302 lit: i64 = const 57
-    call check#4(%302) -> b174()
-  b172(%299 e: word):
-    drop %299
-    jump b173()
-  b173():
-    %300 lit: i64 = const 57
-    %301 t: i64 = intneg %300
-    ret %301
-  b174(%303 r: i64) [try]:
+    ret %290
+  b148(%292 r: i64, %293 acc: i64):
+    %294 t: i64 = intadd %293, %292
+    ret %294
+  b149(%295 e: word):
+    drop %295
+    %296 lit: i64 = const 45
+    %297 t: i64 = intneg %296
+    ret %297
+  b150(%299 r: i64) [try]:
     try_pop
+    ret %299
+  b151(%301 r: i64, %302 acc: i64):
+    %303 t: i64 = intadd %302, %301
     ret %303
-  b175(%304 acc: i64):
-    %305 lit: i64 = const 58
-    call check#4(%305) -> b176(%304)
-  b176(%306 r: i64, %307 acc: i64):
-    %308 t: i64 = intadd %307, %306
+  b152(%304 e: word):
+    drop %304
+    %305 lit: i64 = const 47
+    %306 t: i64 = intneg %305
+    ret %306
+  b153(%308 r: i64) [try]:
+    try_pop
     ret %308
-  b177():
-    try_push -> b178(err, )
-    %312 lit: i64 = const 59
-    call check#4(%312) -> b180()
-  b178(%309 e: word):
-    drop %309
-    jump b179()
-  b179():
-    %310 lit: i64 = const 59
-    %311 t: i64 = intneg %310
-    ret %311
-  b180(%313 r: i64) [try]:
+  b154(%310 r: i64, %311 acc: i64):
+    %312 t: i64 = intadd %311, %310
+    ret %312
+  b155(%313 e: word):
+    drop %313
+    %314 lit: i64 = const 49
+    %315 t: i64 = intneg %314
+    ret %315
+  b156(%317 r: i64) [try]:
     try_pop
-    ret %313
-  b181(%314 acc: i64):
-    %315 lit: ptr = const str 8
-    perform std::console::Console.print(%315) -> b182(%314)
-  b182(%316 r: unit, %317 acc: i64):
-    %318 box: word = box %316
-    drop %318
-    %319 lit: i64 = const 60
-    %320 t: i64 = intadd %317, %319
-    ret %320
-  b183():
-    try_push -> b184(err, )
-    %324 lit: i64 = const 61
-    call check#4(%324) -> b186()
-  b184(%321 e: word):
+    ret %317
+  b157(%319 r: unit, %320 acc: i64):
+    %321 box: word = box %319
     drop %321
-    jump b185()
-  b185():
-    %322 lit: i64 = const 61
-    %323 t: i64 = intneg %322
+    %322 lit: i64 = const 50
+    %323 t: i64 = intadd %320, %322
     ret %323
-  b186(%325 r: i64) [try]:
+  b158(%324 e: word):
+    drop %324
+    %325 lit: i64 = const 51
+    %326 t: i64 = intneg %325
+    ret %326
+  b159(%328 r: i64) [try]:
     try_pop
-    ret %325
-  b187(%326 acc: i64):
-    %327 lit: i64 = const 62
-    call check#4(%327) -> b188(%326)
-  b188(%328 r: i64, %329 acc: i64):
-    %330 t: i64 = intadd %329, %328
-    ret %330
-  b189():
-    try_push -> b190(err, )
-    %334 lit: i64 = const 63
-    call check#4(%334) -> b192()
-  b190(%331 e: word):
-    drop %331
-    jump b191()
-  b191():
-    %332 lit: i64 = const 63
-    %333 t: i64 = intneg %332
-    ret %333
-  b192(%335 r: i64) [try]:
-    try_pop
+    ret %328
+  b160(%330 r: i64, %331 acc: i64):
+    %332 t: i64 = intadd %331, %330
+    ret %332
+  b161(%333 e: word):
+    drop %333
+    %334 lit: i64 = const 53
+    %335 t: i64 = intneg %334
     ret %335
-  b193(%336 acc: i64):
-    %337 lit: i64 = const 64
-    call check#4(%337) -> b194(%336)
-  b194(%338 r: i64, %339 acc: i64):
-    %340 t: i64 = intadd %339, %338
-    ret %340
-  b195():
-    try_push -> b196(err, )
-    %344 lit: i64 = const 65
-    call check#4(%344) -> b198()
-  b196(%341 e: word):
-    drop %341
-    jump b197()
-  b197():
-    %342 lit: i64 = const 65
-    %343 t: i64 = intneg %342
-    ret %343
-  b198(%345 r: i64) [try]:
+  b162(%337 r: i64) [try]:
     try_pop
-    ret %345
-  b199(%346 acc: i64):
-    %347 lit: i64 = const 66
-    call check#4(%347) -> b200(%346)
-  b200(%348 r: i64, %349 acc: i64):
+    ret %337
+  b163(%339 r: i64, %340 acc: i64):
+    %341 t: i64 = intadd %340, %339
+    ret %341
+  b164(%342 e: word):
+    drop %342
+    %343 lit: i64 = const 55
+    %344 t: i64 = intneg %343
+    ret %344
+  b165(%346 r: i64) [try]:
+    try_pop
+    ret %346
+  b166(%348 r: i64, %349 acc: i64):
     %350 t: i64 = intadd %349, %348
     ret %350
-  b201():
-    try_push -> b202(err, )
-    %354 lit: i64 = const 67
-    call check#4(%354) -> b204()
-  b202(%351 e: word):
+  b167(%351 e: word):
     drop %351
-    jump b203()
-  b203():
-    %352 lit: i64 = const 67
+    %352 lit: i64 = const 57
     %353 t: i64 = intneg %352
     ret %353
-  b204(%355 r: i64) [try]:
+  b168(%355 r: i64) [try]:
     try_pop
     ret %355
-  b205(%356 acc: i64):
-    %357 lit: i64 = const 68
-    call check#4(%357) -> b206(%356)
-  b206(%358 r: i64, %359 acc: i64):
-    %360 t: i64 = intadd %359, %358
-    ret %360
-  b207():
-    try_push -> b208(err, )
-    %364 lit: i64 = const 69
-    call check#4(%364) -> b210()
-  b208(%361 e: word):
-    drop %361
-    jump b209()
-  b209():
-    %362 lit: i64 = const 69
-    %363 t: i64 = intneg %362
-    ret %363
-  b210(%365 r: i64) [try]:
+  b169(%357 r: i64, %358 acc: i64):
+    %359 t: i64 = intadd %358, %357
+    ret %359
+  b170(%360 e: word):
+    drop %360
+    %361 lit: i64 = const 59
+    %362 t: i64 = intneg %361
+    ret %362
+  b171(%364 r: i64) [try]:
     try_pop
-    ret %365
-  b211(%366 acc: i64):
-    %367 lit: ptr = const str 9
-    perform std::console::Console.print(%367) -> b212(%366)
-  b212(%368 r: unit, %369 acc: i64):
-    %370 box: word = box %368
-    drop %370
-    %371 lit: i64 = const 70
-    %372 t: i64 = intadd %369, %371
-    ret %372
-  b213():
-    try_push -> b214(err, )
-    %376 lit: i64 = const 71
-    call check#4(%376) -> b216()
-  b214(%373 e: word):
-    drop %373
-    jump b215()
-  b215():
-    %374 lit: i64 = const 71
-    %375 t: i64 = intneg %374
+    ret %364
+  b172(%366 r: unit, %367 acc: i64):
+    %368 box: word = box %366
+    drop %368
+    %369 lit: i64 = const 60
+    %370 t: i64 = intadd %367, %369
+    ret %370
+  b173(%371 e: word):
+    drop %371
+    %372 lit: i64 = const 61
+    %373 t: i64 = intneg %372
+    ret %373
+  b174(%375 r: i64) [try]:
+    try_pop
     ret %375
-  b216(%377 r: i64) [try]:
-    try_pop
-    ret %377
-  b217(%378 acc: i64):
-    %379 lit: i64 = const 72
-    call check#4(%379) -> b218(%378)
-  b218(%380 r: i64, %381 acc: i64):
-    %382 t: i64 = intadd %381, %380
+  b175(%377 r: i64, %378 acc: i64):
+    %379 t: i64 = intadd %378, %377
+    ret %379
+  b176(%380 e: word):
+    drop %380
+    %381 lit: i64 = const 63
+    %382 t: i64 = intneg %381
     ret %382
-  b219():
-    try_push -> b220(err, )
-    %386 lit: i64 = const 73
-    call check#4(%386) -> b222()
-  b220(%383 e: word):
-    drop %383
-    jump b221()
-  b221():
-    %384 lit: i64 = const 73
-    %385 t: i64 = intneg %384
-    ret %385
-  b222(%387 r: i64) [try]:
+  b177(%384 r: i64) [try]:
     try_pop
-    ret %387
-  b223(%388 acc: i64):
-    %389 lit: i64 = const 74
-    call check#4(%389) -> b224(%388)
-  b224(%390 r: i64, %391 acc: i64):
-    %392 t: i64 = intadd %391, %390
-    ret %392
-  b225():
-    try_push -> b226(err, )
-    %396 lit: i64 = const 75
-    call check#4(%396) -> b228()
-  b226(%393 e: word):
-    drop %393
-    jump b227()
-  b227():
-    %394 lit: i64 = const 75
-    %395 t: i64 = intneg %394
-    ret %395
-  b228(%397 r: i64) [try]:
+    ret %384
+  b178(%386 r: i64, %387 acc: i64):
+    %388 t: i64 = intadd %387, %386
+    ret %388
+  b179(%389 e: word):
+    drop %389
+    %390 lit: i64 = const 65
+    %391 t: i64 = intneg %390
+    ret %391
+  b180(%393 r: i64) [try]:
     try_pop
+    ret %393
+  b181(%395 r: i64, %396 acc: i64):
+    %397 t: i64 = intadd %396, %395
     ret %397
-  b229(%398 acc: i64):
-    %399 lit: i64 = const 76
-    call check#4(%399) -> b230(%398)
-  b230(%400 r: i64, %401 acc: i64):
-    %402 t: i64 = intadd %401, %400
+  b182(%398 e: word):
+    drop %398
+    %399 lit: i64 = const 67
+    %400 t: i64 = intneg %399
+    ret %400
+  b183(%402 r: i64) [try]:
+    try_pop
     ret %402
-  b231():
-    try_push -> b232(err, )
-    %406 lit: i64 = const 77
-    call check#4(%406) -> b234()
-  b232(%403 e: word):
-    drop %403
-    jump b233()
-  b233():
-    %404 lit: i64 = const 77
-    %405 t: i64 = intneg %404
-    ret %405
-  b234(%407 r: i64) [try]:
+  b184(%404 r: i64, %405 acc: i64):
+    %406 t: i64 = intadd %405, %404
+    ret %406
+  b185(%407 e: word):
+    drop %407
+    %408 lit: i64 = const 69
+    %409 t: i64 = intneg %408
+    ret %409
+  b186(%411 r: i64) [try]:
     try_pop
-    ret %407
-  b235(%408 acc: i64):
-    %409 lit: i64 = const 78
-    call check#4(%409) -> b236(%408)
-  b236(%410 r: i64, %411 acc: i64):
-    %412 t: i64 = intadd %411, %410
-    ret %412
-  b237():
-    try_push -> b238(err, )
-    %416 lit: i64 = const 79
-    call check#4(%416) -> b240()
-  b238(%413 e: word):
-    drop %413
-    jump b239()
-  b239():
-    %414 lit: i64 = const 79
-    %415 t: i64 = intneg %414
-    ret %415
-  b240(%417 r: i64) [try]:
-    try_pop
+    ret %411
+  b187(%413 r: unit, %414 acc: i64):
+    %415 box: word = box %413
+    drop %415
+    %416 lit: i64 = const 70
+    %417 t: i64 = intadd %414, %416
     ret %417
-  b241(%418 acc: i64):
-    %419 lit: i64 = const 1
-    %420 t: i64 = intsub %418, %419
+  b188(%418 e: word):
+    drop %418
+    %419 lit: i64 = const 71
+    %420 t: i64 = intneg %419
     ret %420
-  b242(%421 acc: i64):
-    jump b1(%421)
-  b243(%422 acc: i64):
-    jump b3()
-  b244(%423 acc: i64):
-    jump b7(%423)
-  b245(%424 acc: i64):
-    jump b9()
-  b246(%425 acc: i64):
-    jump b13(%425)
-  b247(%426 acc: i64):
-    jump b15()
-  b248(%427 acc: i64):
-    jump b19(%427)
-  b249(%428 acc: i64):
-    jump b21()
-  b250(%429 acc: i64):
-    jump b25(%429)
-  b251(%430 acc: i64):
-    jump b27()
-  b252(%431 acc: i64):
-    jump b31(%431)
-  b253(%432 acc: i64):
-    jump b33()
-  b254(%433 acc: i64):
-    jump b37(%433)
-  b255(%434 acc: i64):
-    jump b39()
-  b256(%435 acc: i64):
-    jump b43(%435)
-  b257(%436 acc: i64):
-    jump b45()
-  b258(%437 acc: i64):
-    jump b49(%437)
-  b259(%438 acc: i64):
-    jump b51()
-  b260(%439 acc: i64):
-    jump b55(%439)
-  b261(%440 acc: i64):
-    jump b57()
-  b262(%441 acc: i64):
-    jump b61(%441)
-  b263(%442 acc: i64):
-    jump b63()
-  b264(%443 acc: i64):
-    jump b67(%443)
-  b265(%444 acc: i64):
-    jump b69()
-  b266(%445 acc: i64):
-    jump b73(%445)
-  b267(%446 acc: i64):
-    jump b75()
-  b268(%447 acc: i64):
-    jump b79(%447)
-  b269(%448 acc: i64):
-    jump b81()
-  b270(%449 acc: i64):
-    jump b85(%449)
-  b271(%450 acc: i64):
-    jump b87()
-  b272(%451 acc: i64):
-    jump b91(%451)
-  b273(%452 acc: i64):
-    jump b93()
-  b274(%453 acc: i64):
-    jump b97(%453)
-  b275(%454 acc: i64):
-    jump b99()
-  b276(%455 acc: i64):
-    jump b103(%455)
-  b277(%456 acc: i64):
-    jump b105()
-  b278(%457 acc: i64):
-    jump b109(%457)
-  b279(%458 acc: i64):
-    jump b111()
-  b280(%459 acc: i64):
-    jump b115(%459)
-  b281(%460 acc: i64):
-    jump b117()
-  b282(%461 acc: i64):
-    jump b121(%461)
-  b283(%462 acc: i64):
-    jump b123()
-  b284(%463 acc: i64):
-    jump b127(%463)
-  b285(%464 acc: i64):
-    jump b129()
-  b286(%465 acc: i64):
-    jump b133(%465)
-  b287(%466 acc: i64):
-    jump b135()
-  b288(%467 acc: i64):
-    jump b139(%467)
-  b289(%468 acc: i64):
-    jump b141()
-  b290(%469 acc: i64):
-    jump b145(%469)
-  b291(%470 acc: i64):
-    jump b147()
-  b292(%471 acc: i64):
-    jump b151(%471)
-  b293(%472 acc: i64):
-    jump b153()
-  b294(%473 acc: i64):
-    jump b157(%473)
-  b295(%474 acc: i64):
-    jump b159()
-  b296(%475 acc: i64):
-    jump b163(%475)
-  b297(%476 acc: i64):
-    jump b165()
-  b298(%477 acc: i64):
-    jump b169(%477)
-  b299(%478 acc: i64):
-    jump b171()
-  b300(%479 acc: i64):
-    jump b175(%479)
-  b301(%480 acc: i64):
-    jump b177()
-  b302(%481 acc: i64):
-    jump b181(%481)
-  b303(%482 acc: i64):
-    jump b183()
-  b304(%483 acc: i64):
-    jump b187(%483)
-  b305(%484 acc: i64):
-    jump b189()
-  b306(%485 acc: i64):
-    jump b193(%485)
-  b307(%486 acc: i64):
-    jump b195()
-  b308(%487 acc: i64):
-    jump b199(%487)
-  b309(%488 acc: i64):
-    jump b201()
-  b310(%489 acc: i64):
-    jump b205(%489)
-  b311(%490 acc: i64):
-    jump b207()
-  b312(%491 acc: i64):
-    jump b211(%491)
-  b313(%492 acc: i64):
-    jump b213()
-  b314(%493 acc: i64):
-    jump b217(%493)
-  b315(%494 acc: i64):
-    jump b219()
-  b316(%495 acc: i64):
-    jump b223(%495)
-  b317(%496 acc: i64):
-    jump b225()
-  b318(%497 acc: i64):
-    jump b229(%497)
-  b319(%498 acc: i64):
-    jump b231()
-  b320(%499 acc: i64):
-    jump b235(%499)
-  b321(%500 acc: i64):
-    jump b237()
-  b322(%501 acc: i64):
-    jump b241(%501)
+  b189(%422 r: i64) [try]:
+    try_pop
+    ret %422
+  b190(%424 r: i64, %425 acc: i64):
+    %426 t: i64 = intadd %425, %424
+    ret %426
+  b191(%427 e: word):
+    drop %427
+    %428 lit: i64 = const 73
+    %429 t: i64 = intneg %428
+    ret %429
+  b192(%431 r: i64) [try]:
+    try_pop
+    ret %431
+  b193(%433 r: i64, %434 acc: i64):
+    %435 t: i64 = intadd %434, %433
+    ret %435
+  b194(%436 e: word):
+    drop %436
+    %437 lit: i64 = const 75
+    %438 t: i64 = intneg %437
+    ret %438
+  b195(%440 r: i64) [try]:
+    try_pop
+    ret %440
+  b196(%442 r: i64, %443 acc: i64):
+    %444 t: i64 = intadd %443, %442
+    ret %444
+  b197(%445 e: word):
+    drop %445
+    %446 lit: i64 = const 77
+    %447 t: i64 = intneg %446
+    ret %447
+  b198(%449 r: i64) [try]:
+    try_pop
+    ret %449
+  b199(%451 r: i64, %452 acc: i64):
+    %453 t: i64 = intadd %452, %451
+    ret %453
+  b200(%454 e: word):
+    drop %454
+    %455 lit: i64 = const 79
+    %456 t: i64 = intneg %455
+    ret %456
+  b201(%458 r: i64) [try]:
+    try_pop
+    ret %458
 
 fn check#4 top -> i64 ; main::match_wide_dispatch, frame 1 slots [%0 i64]
   b0(%0 k: i64):

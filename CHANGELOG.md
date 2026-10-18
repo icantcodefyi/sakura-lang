@@ -230,15 +230,16 @@ published yet.
 
 - A 3,000-arm literal `match` now runs on node with both backends (design §17.200): a `match`
   on `Int` or `String` literals is one `switch` over its literals instead of a chain of tests
-  (`--dump core` shows it), an `else` no longer nests, a join past 64 nested labeled blocks is
-  an arrow function, and the rows after a failed guard continue in a join, so the emitted JS
-  nests as deep as the source plus a constant. On WASM a function past 256 blocks dispatches
+  (`--dump core` shows it) whose cases hold the arms that one row reaches, wildcard rows are
+  compiled once below the literals before them, an `else` no longer nests, a join past 64
+  nested labeled blocks is an arrow function, and the rows after a failed guard continue in a
+  join, so the emitted JS nests as deep as the source plus a constant. On WASM a function past 256 blocks dispatches
   through two levels of `br_table` and its blocks share locals, and an `Int` switch of more
   than eight arms is a jump by index arithmetic when its keys are dense or a binary search:
   the module no longer traps at compile, and V8 no longer runs out of memory optimizing a
   function of thousands of blocks. The snapshot writer grows its stack like its reader. A
-  direct-style JS loop body still nests a labeled block per arm (about 1,500 overflow node's
-  parser).
+  run of guarded rows is still a chain of joins on JS: inside a loop about 1,500 of them
+  overflow node's parser, and outside one about 10,000 exhaust its stack.
 
 - `agent_docs` normalizes Windows path separators so the skill mirror, manifest,
   hashes, and ZIP are byte-identical to Unix output (design §17.180 (5)).

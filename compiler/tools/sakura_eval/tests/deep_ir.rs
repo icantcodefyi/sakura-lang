@@ -13,7 +13,8 @@ use sakura_lir::snapshot;
 const N: usize = 3000;
 
 /// A 3,000-constructor enumeration matched exhaustively, a 3,000-`let` body, 3,000-arm `Int`
-/// and `String` literal `match`es, a sparse one (keys 1,000 apart) and 3,000 guarded rows.
+/// and `String` literal `match`es, a sparse one (keys 1,000 apart), 3,000 guarded rows, and a
+/// 3,000-arm `match` in a direct-style loop and in one that performs (a resumable loop).
 fn program() -> String {
     let mut s = format!(
         "type Big = {}\n\n",
@@ -36,6 +37,20 @@ fn program() -> String {
     s += "    _ => -1,\n  }\n}\n\nfn guard_arm(x: Int) -> Int {\n  match x {\n";
     (0..N).for_each(|i| s += &format!("    n if n < {} => {i},\n", i + 1));
     s += "    _ => -1,\n  }\n}\n\n";
+    for (f, row, tick) in [
+        ("loop_arm", "", ""),
+        (
+            "tick_arm",
+            " ! {Console}",
+            "    if i == n - 1 { Console.print(\"last {i}\") }\n",
+        ),
+    ] {
+        s += &format!(
+            "fn {f}(n: Int) -> Int{row} {{\n  var i = 0\n  var t = 0\n  while i < n {{\n{tick}    let v = match i {{\n"
+        );
+        (0..N).for_each(|i| s += &format!("      {i} => {},\n", i % 7));
+        s += "      _ => 0,\n    }\n    t = t + v\n    i = i + 1\n  }\n  t\n}\n\n";
+    }
     let main = [
         format!("{{big_index(C{})}} {{big_index(C0)}}", N - 1),
         "{lets(0)}".to_owned(),
@@ -49,6 +64,8 @@ fn program() -> String {
             "{{guard_arm({})}} {{guard_arm(-5)}} {{guard_arm({N})}}",
             N - 1
         ),
+        format!("{{loop_arm({N})}}"),
+        format!("{{tick_arm({N})}}"),
     ];
     s += "pub fn main() -> Unit ! {Console} {\n";
     main.iter()
@@ -58,15 +75,28 @@ fn program() -> String {
 
 fn expected() -> String {
     let n = N - 1;
+    let sum: usize = (0..N).map(|i| i % 7).sum();
     format!(
-        "{n} 0\n{N}\n{} 4500 -1\n{n} -1\n{n} 1500 -1\n{n} 0 -1\n",
+        "{n} 0\n{N}\n{} 4500 -1\n{n} -1\n{n} 1500 -1\n{n} 0 -1\n{sum}\nlast {n}\n{sum}\n",
         3 * n
     )
 }
 
 /// Runs node on `args`, which prints the expected output and exits 0 (V8 compiling a function
-/// in the background can still fail after the output).
+/// in the background can still fail after the output). Skipped when node is missing, unless
+/// `SAKURA_REQUIRE_WASM=1` (as `sakura_cli/tests/wasm.rs`).
 fn node(args: &[std::path::PathBuf]) {
+    let found = Command::new("node")
+        .arg("--version")
+        .output()
+        .is_ok_and(|o| o.status.success());
+    assert!(
+        found || std::env::var("SAKURA_REQUIRE_WASM").as_deref() != Ok("1"),
+        "node is missing"
+    );
+    if !found {
+        return;
+    }
     let out = Command::new("node").args(args).output().expect("node");
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert_eq!(String::from_utf8_lossy(&out.stdout), expected(), "{stderr}");

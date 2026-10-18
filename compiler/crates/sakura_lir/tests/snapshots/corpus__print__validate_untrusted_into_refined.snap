@@ -8,7 +8,7 @@ layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
 layout 3 shape |  32b (word*, word*)
 layout 4 shape |  32b (i64, word*)
 
-fn main#0 pub top -> unit ; main::validate_untrusted_into_refined, frame 12 slots [%3 word*, %5 bool, %10 word*, %14 bool, %17 bool, %19 bool, %22 word*, %25 word*, %27 word*, %30 word*, %36 bool, %46 bool]
+fn main#0 pub top -> unit ; main::validate_untrusted_into_refined, frame 12 slots [%3 word*, %5 bool, %10 word*, %14 bool, %17 bool, %19 bool, %22 word*, %25 word*, %27 word*, %30 word*, %40 bool, %50 bool]
   b0():
     %0 lit: i64 = const 50
     %1 box: word = box %0
@@ -26,8 +26,8 @@ fn main#0 pub top -> unit ; main::validate_untrusted_into_refined, frame 12 slot
     %9 r: ptr = $untrusted_of(%8)
     call percent#2(%9) -> b3()
   b3(%10 r: ptr):
-    %48 tag: i64 = tag %10 ctor std::result::Result
-    switch %48 0 => b18(%10) 1 => b19(%10)
+    %32 tag: i64 = tag %10 ctor std::result::Result
+    switch %32 0 => b14(%10) 1 => b15(%10)
   b4(%11 v: word):
     drop %11
     try_push -> b12(err, )
@@ -67,45 +67,41 @@ fn main#0 pub top -> unit ; main::validate_untrusted_into_refined, frame 12 slot
     %31 ok: ptr = alloc std::result::Result.Ok(%30)
     try_pop
     jump b5(%31)
-  b14(%32 p: i64):
-    %33 s: ptr = show %32
-    %34 lit: ptr = const str 2
-    %35 s: ptr = concat %34, %33
+  b14(%33 r: ptr):
+    %35 p: word = proj %33.0 std::result::Result.Ok
     drop %33
-    drop %34
-    perform std::console::Console.print(%35) -> b15()
-  b15(%36 r: unit):
-    %37 box: word = box %36
-    jump b4(%37)
-  b16(%38 v: ptr):
-    %39 type_name: word = proj %38.0 std::core::Violation
-    %40 s: ptr = show %39
-    drop %39
-    %41 lit: ptr = const str 3
-    %42 s: ptr = concat %40, %41
-    drop %40
-    drop %41
-    %43 clause: word = proj %38.1 std::core::Violation
+    %36 unbox: i64 = unbox %35
+    drop %35
+    %37 s: ptr = show %36
+    %38 lit: ptr = const str 2
+    %39 s: ptr = concat %38, %37
+    drop %37
     drop %38
+    perform std::console::Console.print(%39) -> b16()
+  b15(%34 r: ptr):
+    %42 p: word = proj %34.0 std::result::Result.Err
+    drop %34
+    %43 type_name: word = proj %42.0 std::core::Violation
     %44 s: ptr = show %43
     drop %43
-    %45 s: ptr = concat %42, %44
-    drop %42
+    %45 lit: ptr = const str 3
+    %46 s: ptr = concat %44, %45
     drop %44
-    perform std::console::Console.print(%45) -> b17()
-  b17(%46 r: unit):
-    %47 box: word = box %46
-    jump b4(%47)
-  b18(%49 r: ptr):
-    %51 p: word = proj %49.0 std::result::Result.Ok
-    drop %49
-    %52 unbox: i64 = unbox %51
-    drop %51
-    jump b14(%52)
-  b19(%50 r: ptr):
-    %53 p: word = proj %50.0 std::result::Result.Err
-    drop %50
-    jump b16(%53)
+    drop %45
+    %47 clause: word = proj %42.1 std::core::Violation
+    drop %42
+    %48 s: ptr = show %47
+    drop %47
+    %49 s: ptr = concat %46, %48
+    drop %46
+    drop %48
+    perform std::console::Console.print(%49) -> b17()
+  b16(%40 r: unit):
+    %41 box: word = box %40
+    jump b4(%41)
+  b17(%50 r: unit):
+    %51 box: word = box %50
+    jump b4(%51)
 
 fn $entry#1 top -> unit ; main::validate_untrusted_into_refined, frame 1 slots [%1 bool]
   b0():

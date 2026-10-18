@@ -10,98 +10,90 @@ layout 4 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
 layout 5 shape |  32b (word*, word*)
 layout 6 shape |  32b (i64, word*)
 
-fn main#0 pub top -> unit ; main::uuid_decode, frame 7 slots [%1 word*, %4 word*, %6 bool, %14 bool, %24 word*, %28 bool, %40 bool]
+fn main#0 pub top -> unit ; main::uuid_decode, frame 7 slots [%1 word*, %4 word*, %10 bool, %18 bool, %26 word*, %30 bool, %42 bool]
   b0():
     %0 lit: ptr = const str 0
     call read#4(%0) -> b1()
   b1(%1 r: ptr):
-    %42 tag: i64 = tag %1 ctor std::result::Result
-    switch %42 0 => b15(%1) 1 => b16(%1)
+    %21 tag: i64 = tag %1 ctor std::result::Result
+    switch %21 0 => b8(%1) 1 => b9(%1)
   b2(%2 v: word):
     drop %2
     %3 lit: ptr = const str 1
     call read#4(%3) -> b3()
   b3(%4 r: ptr):
-    %17 tag: i64 = tag %4 ctor std::result::Result
-    switch %17 0 => b8(%4) 1 => b9(%4)
-  b4():
-    %5 lit: ptr = const str 2
-    perform std::console::Console.print(%5) -> b5()
-  b5(%6 r: unit):
-    %7 box: word = box %6
-    %8 unbox: unit = unbox %7
+    %5 tag: i64 = tag %4 ctor std::result::Result
+    switch %5 0 => b4(%4) 1 => b5(%4)
+  b4(%6 r: ptr):
+    %8 p: word = proj %6.0 std::result::Result.Ok
+    drop %6
+    drop %8
+    %9 lit: ptr = const str 2
+    perform std::console::Console.print(%9) -> b6()
+  b5(%7 r: ptr):
+    %13 p: word = proj %7.0 std::result::Result.Err
     drop %7
-    ret %8
-  b6(%9 e: ptr):
-    %10 path: word = proj %9.0 std::json::DecodeError
-    drop %9
-    %11 s: ptr = show %10
-    drop %10
-    %12 lit: ptr = const str 3
-    %13 s: ptr = concat %12, %11
-    drop %11
-    drop %12
-    perform std::console::Console.print(%13) -> b7()
-  b7(%14 r: unit):
-    %15 box: word = box %14
-    %16 unbox: unit = unbox %15
+    %14 path: word = proj %13.0 std::json::DecodeError
+    drop %13
+    %15 s: ptr = show %14
+    drop %14
+    %16 lit: ptr = const str 3
+    %17 s: ptr = concat %16, %15
     drop %15
-    ret %16
-  b8(%18 r: ptr):
-    %20 p: word = proj %18.0 std::result::Result.Ok
-    drop %18
-    drop %20
-    jump b4()
-  b9(%19 r: ptr):
-    %21 p: word = proj %19.0 std::result::Result.Err
+    drop %16
+    perform std::console::Console.print(%17) -> b7()
+  b6(%10 r: unit):
+    %11 box: word = box %10
+    %12 unbox: unit = unbox %11
+    drop %11
+    ret %12
+  b7(%18 r: unit):
+    %19 box: word = box %18
+    %20 unbox: unit = unbox %19
     drop %19
-    jump b6(%21)
-  b10(%22 r: ptr):
-    %23 id: word = proj %22.0 main::uuid_decode::Ref
+    ret %20
+  b8(%22 r: ptr):
+    %24 p: word = proj %22.0 std::result::Result.Ok
     drop %22
-    call to_string#5(%23) -> b11()
-  b11(%24 r: ptr):
-    %25 s: ptr = show %24
+    %25 id: word = proj %24.0 main::uuid_decode::Ref
     drop %24
-    %26 lit: ptr = const str 4
-    %27 s: ptr = concat %26, %25
-    drop %25
-    drop %26
-    perform std::console::Console.print(%27) -> b12()
-  b12(%28 r: unit):
-    %29 box: word = box %28
-    jump b2(%29)
-  b13(%30 e: ptr):
-    %31 path: word = proj %30.0 std::json::DecodeError
-    %32 s: ptr = show %31
-    drop %31
-    %33 lit: ptr = const str 5
-    %34 s: ptr = concat %33, %32
-    drop %32
+    call to_string#5(%25) -> b10()
+  b9(%23 r: ptr):
+    %32 p: word = proj %23.0 std::result::Result.Err
+    drop %23
+    %33 path: word = proj %32.0 std::json::DecodeError
+    %34 s: ptr = show %33
     drop %33
-    %35 lit: ptr = const str 6
-    %36 s: ptr = concat %34, %35
+    %35 lit: ptr = const str 5
+    %36 s: ptr = concat %35, %34
     drop %34
     drop %35
-    %37 message: word = proj %30.1 std::json::DecodeError
-    drop %30
-    %38 s: ptr = show %37
-    drop %37
-    %39 s: ptr = concat %36, %38
+    %37 lit: ptr = const str 6
+    %38 s: ptr = concat %36, %37
     drop %36
+    drop %37
+    %39 message: word = proj %32.1 std::json::DecodeError
+    drop %32
+    %40 s: ptr = show %39
+    drop %39
+    %41 s: ptr = concat %38, %40
     drop %38
-    perform std::console::Console.print(%39) -> b14()
-  b14(%40 r: unit):
-    %41 box: word = box %40
-    jump b2(%41)
-  b15(%43 r: ptr):
-    %45 p: word = proj %43.0 std::result::Result.Ok
-    drop %43
-    jump b10(%45)
-  b16(%44 r: ptr):
-    %46 p: word = proj %44.0 std::result::Result.Err
-    drop %44
-    jump b13(%46)
+    drop %40
+    perform std::console::Console.print(%41) -> b12()
+  b10(%26 r: ptr):
+    %27 s: ptr = show %26
+    drop %26
+    %28 lit: ptr = const str 4
+    %29 s: ptr = concat %28, %27
+    drop %27
+    drop %28
+    perform std::console::Console.print(%29) -> b11()
+  b11(%30 r: unit):
+    %31 box: word = box %30
+    jump b2(%31)
+  b12(%42 r: unit):
+    %43 box: word = box %42
+    jump b2(%43)
 
 fn $entry#1 top -> unit ; main::uuid_decode, frame 1 slots [%1 bool]
   b0():

@@ -31,7 +31,8 @@ fn parse_age#_(s%0: String) -> Int ! {Fail<ParseError>} {
       let p%5: Int = r%1.Some#_
       let t%6: Bool = ge(int)(p%5, 0)
       if t%6 {
-        ret p%5
+        let n%3: Int = p%5
+        ret n%3
       } else {
         jump j2()
       }

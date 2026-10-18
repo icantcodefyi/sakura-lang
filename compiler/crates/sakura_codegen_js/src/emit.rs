@@ -727,8 +727,9 @@ impl<'a> FnEmit<'a> {
         self.labels = infos;
         self.settle_labels();
         // If an arrow join still moved a loop out of line, the function keeps every join
-        // inline. ponytail: a direct loop body nests as deep as its joins (a `match` of about
-        // 1,500 arms in a loop overflows V8's parser); a switch over the join chain would not.
+        // inline. ponytail: a direct loop body nests as deep as its joins (a run of about 1,500
+        // guarded `match` rows in a loop overflows V8's parser); splicing a join jumped to once
+        // at its jump would not.
         if self.mode == Mode::Direct && self.labels.values().any(|l| !l.inline && l.recursive) {
             self.labels.values_mut().for_each(|l| l.inline = true);
             self.settle_labels();
@@ -1122,22 +1123,22 @@ impl<'a> FnEmit<'a> {
                 let s = self.atom(scrut);
                 match on {
                     SwitchOn::Variant(_) | SwitchOn::Lit(_) => {
-                        let lits = match on {
-                            SwitchOn::Lit(ls) => Some(ls),
-                            _ => None,
+                        let lits = if let SwitchOn::Lit(ls) = on {
+                            Some(ls)
+                        } else {
+                            None
                         };
-                        match lits {
-                            Some(_) => w.line(&format!("switch ({s}) {{")),
-                            None => w.line(&format!("switch ({s}.tag) {{")),
-                        }
+                        let on_js = if lits.is_some() {
+                            s.clone()
+                        } else {
+                            format!("{s}.tag")
+                        };
+                        w.line(&format!("switch ({on_js}) {{"));
                         w.depth += 1;
                         for (key, arm) in arms {
-                            match lits {
-                                Some(ls) => {
-                                    w.line(&format!("case {}: {{", lit_js(&ls[*key as usize])))
-                                }
-                                None => w.line(&format!("case {key}: {{")),
-                            }
+                            let case = lits
+                                .map_or_else(|| key.to_string(), |ls| lit_js(&ls[*key as usize]));
+                            w.line(&format!("case {case}: {{"));
                             w.depth += 1;
                             self.expr(w, arm, ctx);
                             w.depth -= 1;

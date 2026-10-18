@@ -4,9 +4,9 @@
 //! A pattern matrix (one row per arm alternative, one column per occurrence) is split on the
 //! first column the first row tests: variants become a `Switch` on the tag, error tags a
 //! `Switch` over the union, `Int` and `String` literals a `Switch` over the column's literals,
-//! `Bool` and `Float` literals an `If` per literal, lists a chain of length tests, records and tuples are expanded without a
-//! test. Arm bodies are join points so they are never duplicated; guards run at the leaves and
-//! fall through to the remaining rows.
+//! `Bool` and `Float` literals an `If` per literal, lists a chain of length tests, records and
+//! tuples are expanded without a test. Arm bodies are join points so they are never duplicated;
+//! guards run at the leaves and fall through to the remaining rows.
 
 use std::collections::{BTreeSet, HashMap};
 
@@ -55,6 +55,8 @@ pub(crate) enum Fallback {
     Unreachable,
     /// `catch`: re-raise the unmatched error.
     Fail(Atom),
+    /// The rows below a literal switch: a leaf, or a jump to the join holding them.
+    Then(Expr),
 }
 
 struct ArmInfo {
@@ -122,7 +124,38 @@ impl FnLower<'_, '_> {
         let mut e = self.budgeted(site, |s| {
             s.compile(vec![(scrut, ty)], rows, &infos, &fallback)
         });
-        for (label, params, code) in joins.into_iter().rev() {
+        // An arm one leaf reaches is that leaf's code, so arms on distinct literals are a
+        // `Switch`'s cases and not one join each, nested (design §17.200 (1)). A jump inside a
+        // `Handle` or `Try` keeps its join: the region must not cover the arm.
+        let mut uses: HashMap<Label, usize> = HashMap::new();
+        each_jump(&mut e, true, |j| {
+            if let Expr::Jump(l, _) = j {
+                *uses.entry(*l).or_default() += 1;
+            }
+        });
+        let mut once: HashMap<Label, usize> = (joins.iter().enumerate())
+            .filter(|(_, (l, ..))| uses.get(l) == Some(&1))
+            .map(|(i, (l, ..))| (*l, i))
+            .collect();
+        let mut joins: Vec<_> = joins.into_iter().map(Some).collect();
+        each_jump(&mut e, false, |j| {
+            if let Expr::Jump(l, args) = j
+                && let Some(i) = once.remove(l)
+            {
+                let args = std::mem::take(args);
+                let (_, params, mut code) = joins[i].take().expect("one jump");
+                for (p, a) in params.into_iter().zip(args).rev() {
+                    code = Expr::Let {
+                        local: p,
+                        bind: Bind::Atom(a),
+                        pos: None,
+                        body: Box::new(code),
+                    };
+                }
+                *j = code;
+            }
+        });
+        for (label, params, code) in joins.into_iter().flatten().rev() {
             e = Expr::LetJoin {
                 label,
                 params,
@@ -312,6 +345,7 @@ impl FnLower<'_, '_> {
     fn fallback(&mut self, fb: &Fallback) -> Expr {
         match fb {
             Fallback::Fail(e) => Expr::Fail(e.clone()),
+            Fallback::Then(e) => e.clone(),
             Fallback::Unreachable => self.scoped(|s| {
                 let x = s.bind(
                     "unreachable",
@@ -324,65 +358,79 @@ impl FnLower<'_, '_> {
         }
     }
 
-    fn leaf(&mut self, occ: Occ, mut rows: Vec<Row>, arms: &[ArmInfo], fb: &Fallback) -> Expr {
-        let row = rows.remove(0);
-        let info = &arms[row.arm];
-        let lookup: HashMap<LocalId, Atom> = row.binds.iter().cloned().collect();
-        let args: Vec<Atom> = info
-            .binds
-            .iter()
-            .map(|l| lookup.get(l).cloned().unwrap_or(unit()))
-            .collect();
-        let jump = Expr::Jump(info.label, args);
-        let Some(guard) = info.guard else {
-            return jump;
-        };
-        // The rows after a failed guard continue in the join `next` (or are one jump), and the
-        // joins that rest binds move out beside it, so a run of guarded rows is a sequence of
-        // joins rather than an `If` nested once per row (design §17.200 (5)).
-        let mut rest = self.compile(occ, rows, arms, fb);
-        let mut hoisted = Vec::new();
-        while let Expr::LetJoin {
-            label,
-            params,
-            join,
-            body,
-        } = &mut rest
-        {
-            let join = std::mem::replace(join, Box::new(Expr::Ret(unit())));
-            let body = std::mem::replace(&mut **body, Expr::Ret(unit()));
-            hoisted.push((*label, std::mem::take(params), join));
-            rest = body;
-        }
-        let (fall, rest) = match rest {
-            Expr::Jump(..) | Expr::Ret(_) | Expr::Fail(_) => (rest, None),
-            _ => {
-                let next = self.b.label();
-                (Expr::Jump(next, vec![]), Some((next, rest)))
+    fn leaf(&mut self, occ: Occ, rows: Vec<Row>, arms: &[ArmInfo], fb: &Fallback) -> Expr {
+        // A guarded row that fails continues with the rows after it, and when the next is a leaf
+        // row too the run is taken here in one pass: each test falls to a join holding the next
+        // one, and those joins, with the ones the rows after the run bind, are a sequence beside
+        // the first test rather than an `If` nested once per row (design §17.200 (5)).
+        let mut rows = rows.into_iter();
+        let mut run = Vec::new();
+        while let Some(row) = rows.next() {
+            let guarded = arms[row.arm].guard.is_some();
+            run.push(row);
+            let leaf_next = (rows.as_slice().first())
+                .is_some_and(|r| r.pats.iter().all(|p| matches!(p, P::Any)));
+            if !guarded || !leaf_next {
+                break;
             }
-        };
-        let test = self.scoped(|s| {
-            for (l, a) in &row.binds {
-                s.env.insert(*l, a.clone());
-            }
-            let Some(c) = s.expr(guard) else {
+            if !self.spend(1) {
                 return Expr::Ret(unit());
-            };
-            Expr::If {
-                cond: c,
-                then: Box::new(jump),
-                els: Box::new(fall),
             }
-        });
-        let mut e = match rest {
-            Some((next, rest)) => Expr::LetJoin {
-                label: next,
-                params: vec![],
-                join: Box::new(rest),
-                body: Box::new(test),
-            },
-            None => test,
-        };
+        }
+        let mut hoisted = Vec::new();
+        let mut next = None;
+        if run.last().is_some_and(|r| arms[r.arm].guard.is_some()) {
+            let mut rest = self.compile(occ, rows.collect(), arms, fb);
+            while let Expr::LetJoin {
+                label,
+                params,
+                join,
+                body,
+            } = &mut rest
+            {
+                let join = std::mem::replace(join, Box::new(Expr::Ret(unit())));
+                let body = std::mem::replace(&mut **body, Expr::Ret(unit()));
+                hoisted.push((*label, std::mem::take(params), join));
+                rest = body;
+            }
+            next = Some(rest);
+        }
+        for row in run.into_iter().rev() {
+            let info = &arms[row.arm];
+            let lookup: HashMap<LocalId, Atom> = row.binds.iter().cloned().collect();
+            let args: Vec<Atom> = info
+                .binds
+                .iter()
+                .map(|l| lookup.get(l).cloned().unwrap_or(unit()))
+                .collect();
+            let jump = Expr::Jump(info.label, args);
+            let Some(guard) = info.guard else {
+                next = Some(jump);
+                continue;
+            };
+            let fall = match next.take().expect("a guarded row has rows after it") {
+                e @ (Expr::Jump(..) | Expr::Ret(_) | Expr::Fail(_)) => e,
+                e => {
+                    let l = self.b.label();
+                    hoisted.push((l, vec![], Box::new(e)));
+                    Expr::Jump(l, vec![])
+                }
+            };
+            next = Some(self.scoped(|s| {
+                for (l, a) in &row.binds {
+                    s.env.insert(*l, a.clone());
+                }
+                let Some(c) = s.expr(guard) else {
+                    return Expr::Ret(unit());
+                };
+                Expr::If {
+                    cond: c,
+                    then: Box::new(jump),
+                    els: Box::new(fall),
+                }
+            }));
+        }
+        let mut e = next.expect("a leaf has a row");
         for (label, params, join) in hoisted.into_iter().rev() {
             e = Expr::LetJoin {
                 label,
@@ -663,43 +711,57 @@ impl FnLower<'_, '_> {
                 }
             });
         }
+        // The rows before the column's first wildcard switch on their literals; the rows from it
+        // on are compiled once, as the default and where an arm's rows fall when none of them
+        // matches (Maranget's mixture rule), so no wildcard row is copied into the arms.
+        let cut =
+            (rows.iter().position(|r| !matches!(r.pats[col], P::Lit(_)))).unwrap_or(rows.len());
+        let mut rows = rows;
+        let below = rows.split_off(cut);
+        let mut join = None;
+        let fall = if below.is_empty() {
+            fb.clone()
+        } else {
+            match self.compile(occ, below, arms, fb) {
+                e @ (Expr::Jump(..) | Expr::Ret(_) | Expr::Fail(_)) => Fallback::Then(e),
+                e => {
+                    let l = self.b.label();
+                    join = Some((l, e));
+                    Fallback::Then(Expr::Jump(l, vec![]))
+                }
+            }
+        };
         let mut lits = Vec::new();
         let mut index = HashMap::new();
-        let mut groups: Vec<Vec<usize>> = Vec::new();
-        let mut wild = Vec::new();
-        for (i, r) in rows.iter().enumerate() {
-            match &r.pats[col] {
-                P::Lit(l) => {
-                    let k = *index.entry(lit_key(l)).or_insert_with(|| {
-                        lits.push(l.clone());
-                        groups.push(Vec::new());
-                        groups.len() - 1
-                    });
-                    groups[k].push(i);
-                }
-                _ => wild.push(i),
-            }
+        let mut groups: Vec<Vec<Row>> = Vec::new();
+        for r in &rows {
+            let P::Lit(l) = &r.pats[col] else {
+                unreachable!("cut at the first wildcard")
+            };
+            let k = *index.entry(lit_key(l)).or_insert_with(|| {
+                lits.push(l.clone());
+                groups.push(Vec::new());
+                groups.len() - 1
+            });
+            groups[k].push(without(r));
         }
-        let mut switch_arms = Vec::new();
-        for (k, group) in groups.iter().enumerate() {
-            let (mut g, mut w) = (group.iter().peekable(), wild.iter().peekable());
-            let mut spec = Vec::new();
-            while let Some(&i) = match (g.peek(), w.peek()) {
-                (Some(a), Some(b)) if a < b => g.next(),
-                (Some(_), None) => g.next(),
-                _ => w.next(),
-            } {
-                spec.push(without(&rows[i]));
-            }
-            switch_arms.push((k as u32, self.compile(spec_occ.clone(), spec, arms, fb)));
-        }
-        let rest = wild.iter().map(|&i| without(&rows[i])).collect();
-        let default = self.compile(spec_occ, rest, arms, fb);
-        Expr::Switch {
+        let switch_arms = (groups.into_iter().enumerate())
+            .map(|(k, spec)| (k as u32, self.compile(spec_occ.clone(), spec, arms, &fall)))
+            .collect();
+        let switch = Expr::Switch {
             scrut: atom,
             on: SwitchOn::Lit(lits),
             arms: switch_arms,
-            default: Some(Box::new(default)),
+            default: Some(Box::new(self.fallback(&fall))),
+        };
+        match join {
+            Some((label, code)) => Expr::LetJoin {
+                label,
+                params: vec![],
+                join: Box::new(code),
+                body: Box::new(switch),
+            },
+            None => switch,
         }
     }
 
@@ -838,5 +900,31 @@ fn lit_key(l: &Lit) -> LitKey<'_> {
         Lit::Int(i) => LitKey::Int(*i),
         Lit::String(s) => LitKey::Str(s),
         _ => unreachable!("switch on a {l:?} literal"),
+    }
+}
+
+/// Calls `f` on every `Jump` in `e`, inside `Handle` and `Try` regions only if `regions`.
+fn each_jump(e: &mut Expr, regions: bool, mut f: impl FnMut(&mut Expr)) {
+    let mut todo = vec![e];
+    while let Some(e) = todo.pop() {
+        match e {
+            Expr::Jump(..) => f(e),
+            Expr::Let { body, .. } => todo.push(body),
+            Expr::Handle { body, .. } | Expr::Try { body, .. } if regions => todo.push(body),
+            Expr::LetJoin {
+                join: a, body: b, ..
+            }
+            | Expr::If {
+                then: a, els: b, ..
+            } => {
+                todo.push(a);
+                todo.push(b);
+            }
+            Expr::Switch { arms, default, .. } => {
+                todo.extend(arms.iter_mut().map(|(_, a)| a));
+                todo.extend(default.as_deref_mut());
+            }
+            Expr::Handle { .. } | Expr::Try { .. } | Expr::Ret(_) | Expr::Fail(_) => {}
+        }
     }
 }

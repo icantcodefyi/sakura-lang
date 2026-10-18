@@ -1,5 +1,5 @@
 // milestone: M1
-// covers: design §17.200 (a literal `match` is one `Switch`: first match with wildcard and guarded rows between literal rows; past 64 arms the JS joins leave the inline form, inside a loop too); MatchExpr MatchArm Literal TuplePat
+// covers: design §17.200 (a literal `match` is one `Switch`: first match with wildcard and guarded rows between literal rows; an arm one row reaches is its case, inside a loop too); MatchExpr MatchArm Literal TuplePat
 
 fn pick(x: Int) -> String {
   match x {

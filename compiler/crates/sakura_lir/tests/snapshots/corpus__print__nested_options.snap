@@ -295,8 +295,8 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     drop %242
     dup %241
     %243 n: i64 = $list_len(%241)
-    %397 lit: i64 = const 0
-    jump b39(%397, %240, %241, %243)
+    %381 lit: i64 = const 0
+    jump b39(%381, %240, %241, %243)
   b32(%244 xs: ptr):
     %245 r: ptr = $map_empty()
     %246 f: ptr = closure main$5#13[]
@@ -398,8 +398,8 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     dup %314
     %321 x: word = $list_at(%314, %316)
     %328 value: word = proj %321.1 main::nested_options::Cell
-    %368 tag: i64 = tag %328 ctor std::option::Option
-    switch %368 0 => b48(%313, %314, %315, %316, %321, %328) 1 => b49(%313, %314, %315, %316, %321, %328)
+    %347 tag: i64 = tag %328 ctor std::option::Option
+    switch %347 0 => b45(%313, %314, %315, %316, %321, %328) 1 => b46(%313, %314, %315, %316, %321, %328)
   b41(%317 xs: ptr, %318 xs: ptr, %319 n: i64, %320 i: i64):
     drop %318
     jump b32(%317)
@@ -426,36 +426,30 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     %346 box: word = box %341
     drop %346
     jump b42(%342, %343, %344, %345)
-  b45(%347 xs: ptr, %348 xs: ptr, %349 n: i64, %350 i: i64, %351 x: ptr):
-    %352 lit: ptr = const str 6
-    jump b43(%352, %347, %348, %349, %350, %351)
-  b46(%353 xs: ptr, %354 xs: ptr, %355 n: i64, %356 i: i64, %357 x: ptr):
-    %358 lit: ptr = const str 7
-    jump b43(%358, %353, %354, %355, %356, %357)
-  b47(%359 n: i64, %360 xs: ptr, %361 xs: ptr, %362 n: i64, %363 i: i64, %364 x: ptr):
-    %365 s: ptr = show %359
-    %366 lit: ptr = const str 8
-    %367 s: ptr = concat %366, %365
-    drop %365
-    drop %366
-    jump b43(%367, %360, %361, %362, %363, %364)
-  b48(%369 xs: ptr, %370 xs: ptr, %371 n: i64, %372 i: i64, %373 x: ptr, %374 value: ptr):
+  b45(%348 xs: ptr, %349 xs: ptr, %350 n: i64, %351 i: i64, %352 x: ptr, %353 value: ptr):
+    drop %353
+    %360 lit: ptr = const str 6
+    jump b43(%360, %348, %349, %350, %351, %352)
+  b46(%354 xs: ptr, %355 xs: ptr, %356 n: i64, %357 i: i64, %358 x: ptr, %359 value: ptr):
+    %361 p: word = proj %359.0 std::option::Option.Some
+    drop %359
+    %362 tag: i64 = tag %361 ctor std::option::Option
+    switch %362 0 => b47(%354, %355, %356, %357, %358, %361) 1 => b48(%354, %355, %356, %357, %358, %361)
+  b47(%363 xs: ptr, %364 xs: ptr, %365 n: i64, %366 i: i64, %367 x: ptr, %368 p: ptr):
+    drop %368
+    %375 lit: ptr = const str 7
+    jump b43(%375, %363, %364, %365, %366, %367)
+  b48(%369 xs: ptr, %370 xs: ptr, %371 n: i64, %372 i: i64, %373 x: ptr, %374 p: ptr):
+    %376 p: word = proj %374.0 std::option::Option.Some
     drop %374
-    jump b45(%369, %370, %371, %372, %373)
-  b49(%375 xs: ptr, %376 xs: ptr, %377 n: i64, %378 i: i64, %379 x: ptr, %380 value: ptr):
-    %381 p: word = proj %380.0 std::option::Option.Some
-    drop %380
-    %382 tag: i64 = tag %381 ctor std::option::Option
-    switch %382 0 => b50(%375, %376, %377, %378, %379, %381) 1 => b51(%375, %376, %377, %378, %379, %381)
-  b50(%383 xs: ptr, %384 xs: ptr, %385 n: i64, %386 i: i64, %387 x: ptr, %388 p: ptr):
-    drop %388
-    jump b46(%383, %384, %385, %386, %387)
-  b51(%389 xs: ptr, %390 xs: ptr, %391 n: i64, %392 i: i64, %393 x: ptr, %394 p: ptr):
-    %395 p: word = proj %394.0 std::option::Option.Some
-    drop %394
-    %396 unbox: i64 = unbox %395
-    drop %395
-    jump b47(%396, %389, %390, %391, %392, %393)
+    %377 unbox: i64 = unbox %376
+    drop %376
+    %378 s: ptr = show %377
+    %379 lit: ptr = const str 8
+    %380 s: ptr = concat %379, %378
+    drop %378
+    drop %379
+    jump b43(%380, %369, %370, %371, %372, %373)
 
 fn $entry#1 top -> unit ; main::nested_options, frame 1 slots [%1 bool]
   b0():
@@ -476,55 +470,45 @@ fn main$1#2 lambda -> word ; main::nested_options, captures [], frame 3 slots [%
 
 fn depth#3 top -> i64 ; main::nested_options, frame 1 slots [%0 word*]
   b0(%0 o: ptr):
-    %6 tag: i64 = tag %0 ctor std::option::Option
-    switch %6 0 => b6(%0) 1 => b7(%0)
-  b1():
-    %1 lit: i64 = const 0
-    ret %1
-  b2():
-    %2 lit: i64 = const 1
-    ret %2
-  b3():
-    %3 lit: i64 = const 2
-    ret %3
-  b4():
-    %4 lit: i64 = const 3
+    %1 tag: i64 = tag %0 ctor std::option::Option
+    switch %1 0 => b1(%0) 1 => b2(%0)
+  b1(%2 o: ptr):
+    drop %2
+    %4 lit: i64 = const 0
     ret %4
-  b5():
-    %5 lit: i64 = const 4
-    ret %5
-  b6(%7 o: ptr):
+  b2(%3 o: ptr):
+    %5 p: word = proj %3.0 std::option::Option.Some
+    drop %3
+    %6 tag: i64 = tag %5 ctor std::option::Option
+    switch %6 0 => b3(%5) 1 => b4(%5)
+  b3(%7 p: ptr):
     drop %7
-    jump b1()
-  b7(%8 o: ptr):
-    %9 p: word = proj %8.0 std::option::Option.Some
+    %9 lit: i64 = const 1
+    ret %9
+  b4(%8 p: ptr):
+    %10 p: word = proj %8.0 std::option::Option.Some
     drop %8
-    %10 tag: i64 = tag %9 ctor std::option::Option
-    switch %10 0 => b8(%9) 1 => b9(%9)
-  b8(%11 p: ptr):
-    drop %11
-    jump b2()
-  b9(%12 p: ptr):
-    %13 p: word = proj %12.0 std::option::Option.Some
+    %11 tag: i64 = tag %10 ctor std::option::Option
+    switch %11 0 => b5(%10) 1 => b6(%10)
+  b5(%12 p: ptr):
     drop %12
-    %14 tag: i64 = tag %13 ctor std::option::Option
-    switch %14 0 => b10(%13) 1 => b11(%13)
-  b10(%15 p: ptr):
-    drop %15
-    jump b3()
-  b11(%16 p: ptr):
-    %17 p: word = proj %16.0 std::option::Option.Some
-    drop %16
-    %18 tag: i64 = tag %17 ctor std::option::Option
-    switch %18 0 => b12(%17) 1 => b13(%17)
-  b12(%19 p: ptr):
-    drop %19
-    jump b4()
-  b13(%20 p: ptr):
-    %21 p: word = proj %20.0 std::option::Option.Some
+    %14 lit: i64 = const 2
+    ret %14
+  b6(%13 p: ptr):
+    %15 p: word = proj %13.0 std::option::Option.Some
+    drop %13
+    %16 tag: i64 = tag %15 ctor std::option::Option
+    switch %16 0 => b7(%15) 1 => b8(%15)
+  b7(%17 p: ptr):
+    drop %17
+    %19 lit: i64 = const 3
+    ret %19
+  b8(%18 p: ptr):
+    %20 p: word = proj %18.0 std::option::Option.Some
+    drop %18
     drop %20
-    drop %21
-    jump b5()
+    %21 lit: i64 = const 4
+    ret %21
 
 fn main$2#5 lambda -> word ; main::nested_options, captures [word*], frame 3 slots [%0 word*, %1 word*, %4 word*]
   b0(%0 env: ptr, %1 a: word):
@@ -567,17 +551,15 @@ fn main$3#8 lambda -> word ; main::nested_options, captures [], frame 3 slots [%
 
 fn flatten#11 top -> ptr ; main::nested_options, frame 1 slots [%0 word*]
   b0(%0 o: ptr):
-    %2 tag: i64 = tag %0 ctor std::option::Option
-    switch %2 0 => b2(%0) 1 => b3(%0)
-  b1():
-    %1 v: ptr = const static std::option::Option.None
-    ret %1
+    %1 tag: i64 = tag %0 ctor std::option::Option
+    switch %1 0 => b1(%0) 1 => b2(%0)
+  b1(%2 o: ptr):
+    drop %2
+    %4 v: ptr = const static std::option::Option.None
+    ret %4
   b2(%3 o: ptr):
+    %5 p: word = proj %3.0 std::option::Option.Some
     drop %3
-    jump b1()
-  b3(%4 o: ptr):
-    %5 p: word = proj %4.0 std::option::Option.Some
-    drop %4
     ret %5
 
 fn main$4#12 lambda -> word ; main::nested_options, captures [word*], frame 1 slots [%0 word*]

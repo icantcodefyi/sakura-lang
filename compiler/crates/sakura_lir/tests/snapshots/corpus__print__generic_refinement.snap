@@ -98,12 +98,12 @@ fn NonEmpty$from#2 top -> ptr ; main::generic_refinement, frame 2 slots [%0 word
 fn top#3 top -> i64 ; main::generic_refinement, frame 2 slots [%0 word*, %5 word*]
   b0(%0 xs: ptr):
     dup %0
-    %11 len: i64 = $list_len(%0)
-    %12 lit: i64 = const 1
-    %13 is: bool = eq.int %11, %12
-    %14 lit: i64 = const 0
-    %15 is: bool = eq.int %11, %14
-    if %15 then b5(%0, %13) else b6(%0, %13)
+    %9 len: i64 = $list_len(%0)
+    %10 lit: i64 = const 1
+    %11 is: bool = eq.int %9, %10
+    %12 lit: i64 = const 0
+    %13 is: bool = eq.int %9, %12
+    if %13 then b4(%0, %11) else b5(%0, %11)
   b1(%1 v: i64, %2 xs: ptr):
     %3 f: ptr = closure top$1#8[]
     %4 box: word = box %1
@@ -114,67 +114,61 @@ fn top#3 top -> i64 ; main::generic_refinement, frame 2 slots [%0 word*, %5 word
     ret %6
   b3(%7 x: i64, %8 xs: ptr):
     jump b1(%7, %8)
-  b4(%9 xs: ptr):
-    %10 lit: i64 = const 0
-    jump b1(%10, %9)
+  b4(%14 xs: ptr, %15 is: bool):
+    %18 lit: i64 = const 0
+    jump b1(%18, %14)
   b5(%16 xs: ptr, %17 is: bool):
-    jump b4(%16)
-  b6(%18 xs: ptr, %19 is: bool):
-    if %19 then b7(%18) else b8(%18)
+    if %17 then b6(%16) else b7(%16)
+  b6(%19 xs: ptr):
+    %21 lit: i64 = const 0
+    dup %19
+    %22 item: word = $list_at(%19, %21)
+    %23 unbox: i64 = unbox %22
+    drop %22
+    jump b3(%23, %19)
   b7(%20 xs: ptr):
-    %22 lit: i64 = const 0
+    %24 lit: i64 = const 0
     dup %20
-    %23 item: word = $list_at(%20, %22)
-    %24 unbox: i64 = unbox %23
-    drop %23
-    jump b3(%24, %20)
-  b8(%21 xs: ptr):
-    %25 lit: i64 = const 0
-    dup %21
-    %26 item: word = $list_at(%21, %25)
-    %27 unbox: i64 = unbox %26
-    drop %26
-    jump b3(%27, %21)
+    %25 item: word = $list_at(%20, %24)
+    %26 unbox: i64 = unbox %25
+    drop %25
+    jump b3(%26, %20)
 
 fn check#4 top -> ptr ; main::generic_refinement, frame 2 slots [%0 word*, %1 word*]
   b0(%0 xs: ptr):
     call NonEmpty$validate#6(%0) -> b1()
   b1(%1 r: ptr):
-    %15 tag: i64 = tag %1 ctor std::result::Result
-    switch %15 0 => b4(%1) 1 => b5(%1)
-  b2(%2 ok: ptr):
-    dup %2
-    %3 r: i64 = $list_len(%2)
-    %4 s: ptr = show %3
-    %5 lit: ptr = const str 0
-    %6 s: ptr = concat %4, %5
-    drop %4
-    drop %5
-    %7 t: bool = eq.any %2, %2
-    drop %2
-    %8 s: ptr = show %7
-    %9 s: ptr = concat %6, %8
-    drop %6
+    %2 tag: i64 = tag %1 ctor std::result::Result
+    switch %2 0 => b2(%1) 1 => b3(%1)
+  b2(%3 r: ptr):
+    %5 p: word = proj %3.0 std::result::Result.Ok
+    drop %3
+    dup %5
+    %6 r: i64 = $list_len(%5)
+    %7 s: ptr = show %6
+    %8 lit: ptr = const str 0
+    %9 s: ptr = concat %7, %8
+    drop %7
     drop %8
-    ret %9
-  b3(%10 v: ptr):
-    %11 type_name: word = proj %10.0 std::core::Violation
-    drop %10
-    %12 s: ptr = show %11
+    %10 t: bool = eq.any %5, %5
+    drop %5
+    %11 s: ptr = show %10
+    %12 s: ptr = concat %9, %11
+    drop %9
     drop %11
-    %13 lit: ptr = const str 3
-    %14 s: ptr = concat %13, %12
-    drop %12
+    ret %12
+  b3(%4 r: ptr):
+    %13 p: word = proj %4.0 std::result::Result.Err
+    drop %4
+    %14 type_name: word = proj %13.0 std::core::Violation
     drop %13
-    ret %14
-  b4(%16 r: ptr):
-    %18 p: word = proj %16.0 std::result::Result.Ok
+    %15 s: ptr = show %14
+    drop %14
+    %16 lit: ptr = const str 3
+    %17 s: ptr = concat %16, %15
+    drop %15
     drop %16
-    jump b2(%18)
-  b5(%17 r: ptr):
-    %19 p: word = proj %17.0 std::result::Result.Err
-    drop %17
-    jump b3(%19)
+    ret %17
 
 fn Full$from#5 top -> ptr ; main::generic_refinement, frame 2 slots [%0 word*, %1 i64]
   b0(%0 it: ptr, %1 $site: i64):

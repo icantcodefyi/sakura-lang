@@ -155,31 +155,25 @@ fn $entry#1 top -> unit ; main::variants_and_match, frame 1 slots [%1 bool]
 
 fn area#2 top -> i64 ; main::variants_and_match, frame 1 slots [%0 word*]
   b0(%0 s: ptr):
-    %9 tag: i64 = tag %0 ctor main::variants_and_match::Shape
-    switch %9 0 => b4(%0) 1 => b5(%0) 2 => b6(%0)
-  b1(%1 r: i64):
-    %2 lit: i64 = const 3
-    %3 t: i64 = intmul %2, %1
-    %4 t: i64 = intmul %3, %1
-    ret %4
-  b2(%5 w: i64, %6 h: i64):
-    %7 t: i64 = intmul %5, %6
-    ret %7
-  b3():
-    %8 lit: i64 = const 0
+    %1 tag: i64 = tag %0 ctor main::variants_and_match::Shape
+    switch %1 0 => b1(%0) 1 => b2(%0) 2 => b3(%0)
+  b1(%2 s: ptr):
+    %5 p: i64 = proj %2.0 main::variants_and_match::Shape.Circle
+    drop %2
+    %6 lit: i64 = const 3
+    %7 t: i64 = intmul %6, %5
+    %8 t: i64 = intmul %7, %5
     ret %8
-  b4(%10 s: ptr):
-    %13 p: i64 = proj %10.0 main::variants_and_match::Shape.Circle
-    drop %10
-    jump b1(%13)
-  b5(%11 s: ptr):
-    %14 p: i64 = proj %11.0 main::variants_and_match::Shape.Rect
-    %15 p: i64 = proj %11.1 main::variants_and_match::Shape.Rect
-    drop %11
-    jump b2(%14, %15)
-  b6(%12 s: ptr):
-    drop %12
-    jump b3()
+  b2(%3 s: ptr):
+    %9 p: i64 = proj %3.0 main::variants_and_match::Shape.Rect
+    %10 p: i64 = proj %3.1 main::variants_and_match::Shape.Rect
+    drop %3
+    %11 t: i64 = intmul %9, %10
+    ret %11
+  b3(%4 s: ptr):
+    drop %4
+    %12 lit: i64 = const 0
+    ret %12
 
 fn describe#3 top -> ptr ; main::variants_and_match, frame 1 slots [%0 i64]
   b0(%0 n: i64):
@@ -187,28 +181,24 @@ fn describe#3 top -> ptr ; main::variants_and_match, frame 1 slots [%0 i64]
   b1():
     %1 lit: ptr = const str 4
     ret %1
-  b2():
-    %2 lit: ptr = const str 5
-    ret %2
-  b3(%3 k: i64):
-    %4 lit: ptr = const str 6
-    ret %4
-  b4():
-    %5 lit: ptr = const str 7
-    ret %5
-  b5(%6 n: i64):
+  b2(%2 n: i64):
+    %3 lit: i64 = const 0
+    %4 t: bool = lt.int %2, %3
+    if %4 then b3(%2) else b4(%2)
+  b3(%5 n: i64):
+    %7 lit: ptr = const str 5
+    ret %7
+  b4(%6 n: i64):
+    %8 lit: ptr = const str 6
+    ret %8
+  b5(%9 n: i64):
+    %14 lit: ptr = const str 7
+    ret %14
+  b6(%10 n: i64):
     jump b1()
-  b6(%7 n: i64):
-    jump b2()
-  b7(%8 n: i64):
-    jump b2()
-  b8(%9 n: i64):
-    jump b2()
-  b9(%10 n: i64):
-    %11 lit: i64 = const 0
-    %12 t: bool = lt.int %10, %11
-    if %12 then b10(%10) else b11(%10)
-  b10(%13 n: i64):
-    jump b3(%13)
-  b11(%14 n: i64):
-    jump b4()
+  b7(%11 n: i64):
+    jump b1()
+  b8(%12 n: i64):
+    jump b1()
+  b9(%13 n: i64):
+    jump b2(%13)

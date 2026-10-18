@@ -227,6 +227,9 @@ impl Ctx<'_> {
                             self.ty(*t)?;
                         }
                         SwitchOn::Lit(ls) => {
+                            if default.is_none() {
+                                return Err("literal switch without a default".into());
+                            }
                             for (k, _) in arms {
                                 Self::ok((*k as usize) < ls.len(), "switch key")?;
                             }

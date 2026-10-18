@@ -357,7 +357,9 @@ impl Validator<'_> {
                                 Lit::Int(i) if int == Some(true) => Ok(*i),
                                 Lit::String(s) if int == Some(false) => Err(s.as_str()),
                                 _ => {
-                                    self.err(format!("switch key {l:?} on a non-literal type"));
+                                    self.err(format!(
+                                        "switch key {l:?} does not match the scrutinee's type"
+                                    ));
                                     continue;
                                 }
                             };

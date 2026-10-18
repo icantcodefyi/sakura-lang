@@ -3,10 +3,10 @@
 //! **Control.** The blocks become the cases of a `br_table` dispatch inside one `loop`, two-level
 //! past 256 blocks (`Gen::dispatch`): a local `$b` names the case to run, a jump sets it and
 //! branches back to the loop. Case `i < n` is block `i` with its parameters already in locals;
-//! the *resume* cases come after them, one per
-//! block the trampoline resumes (the entry, call and `perform` continuations, catch targets):
-//! each takes the block's parameters out of the frame slots (the first from the return register
-//! for a continuation or catch target) and falls into the block's own case. On entry `$b` is
+//! the *resume* cases come after them, one per block the trampoline resumes (the entry, call and
+//! `perform` continuations, catch targets): each takes the block's parameters out of the frame
+//! slots (the first from the return register for a continuation or catch target) and falls into
+//! the block's own case. On entry `$b` is
 //! `n + frame.block`, so the trampoline always enters through a resume case. ponytail: a
 //! dispatch per jump; a relooper (structured `block`/`loop` per region) when it shows in the
 //! benchmarks.
@@ -621,7 +621,8 @@ impl Gen<'_, '_> {
     /// The dispatch loop: one `block` per case and a `br_table` on `$b` over `sel` (a missing
     /// selector runs a case raising `bad`), one-level for at most [`CHUNK`] blocks and
     /// `2 * CHUNK` selectors, else an outer `br_table` on `$b >> 8` over chunks of 256
-    /// selectors and an inner one on `$b & 255`, so nesting is at most 257 + ⌈selectors/256⌉ + 1.
+    /// selectors and an inner one on `$b & 255`, so nesting is at most
+    /// 257 + ⌈selectors/256⌉ + 1.
     fn dispatch(
         &mut self,
         s: &mut InstructionSink<'_>,

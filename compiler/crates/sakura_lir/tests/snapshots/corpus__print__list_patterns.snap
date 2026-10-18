@@ -97,29 +97,27 @@ fn $entry#1 top -> unit ; main::list_patterns, frame 1 slots [%1 bool]
     handle_pop
     ret %1
 
-fn sum#2 top -> i64 ; main::list_patterns, frame 3 slots [%0 word*, %4 i64, %5 i64]
+fn sum#2 top -> i64 ; main::list_patterns, frame 3 slots [%0 word*, %3 i64, %4 i64]
   b0(%0 xs: ptr):
     dup %0
-    %7 len: i64 = $list_len(%0)
-    %8 lit: i64 = const 1
-    %9 is: bool = eq.int %7, %8
-    %10 lit: i64 = const 0
-    %11 is: bool = eq.int %7, %10
-    if %11 then b4(%0, %7, %9) else b5(%0, %7, %9)
-  b1():
-    %1 lit: i64 = const 0
-    ret %1
-  b2(%2 x: i64, %3 rest: ptr):
-    call sum#2(%3) -> b3(%2)
-  b3(%4 r: i64, %5 x: i64):
-    %6 t: i64 = intadd %5, %4
-    ret %6
-  b4(%12 xs: ptr, %13 len: i64, %14 is: bool):
-    drop %12
-    jump b1()
-  b5(%15 xs: ptr, %16 len: i64, %17 is: bool):
-    if %17 then b6(%15, %16) else b7(%15, %16)
-  b6(%18 xs: ptr, %19 len: i64):
+    %6 len: i64 = $list_len(%0)
+    %7 lit: i64 = const 1
+    %8 is: bool = eq.int %6, %7
+    %9 lit: i64 = const 0
+    %10 is: bool = eq.int %6, %9
+    if %10 then b3(%0, %6, %8) else b4(%0, %6, %8)
+  b1(%1 x: i64, %2 rest: ptr):
+    call sum#2(%2) -> b2(%1)
+  b2(%3 r: i64, %4 x: i64):
+    %5 t: i64 = intadd %4, %3
+    ret %5
+  b3(%11 xs: ptr, %12 len: i64, %13 is: bool):
+    drop %11
+    %17 lit: i64 = const 0
+    ret %17
+  b4(%14 xs: ptr, %15 len: i64, %16 is: bool):
+    if %16 then b5(%14, %15) else b6(%14, %15)
+  b5(%18 xs: ptr, %19 len: i64):
     %22 lit: i64 = const 0
     dup %18
     %23 item: word = $list_at(%18, %22)
@@ -127,8 +125,8 @@ fn sum#2 top -> i64 ; main::list_patterns, frame 3 slots [%0 word*, %4 i64, %5 i
     drop %23
     %25 lit: i64 = const 1
     %26 rest: ptr = $list_slice(%18, %25, %19)
-    jump b2(%24, %26)
-  b7(%20 xs: ptr, %21 len: i64):
+    jump b1(%24, %26)
+  b6(%20 xs: ptr, %21 len: i64):
     %27 lit: i64 = const 0
     dup %20
     %28 item: word = $list_at(%20, %27)
@@ -136,69 +134,65 @@ fn sum#2 top -> i64 ; main::list_patterns, frame 3 slots [%0 word*, %4 i64, %5 i
     drop %28
     %30 lit: i64 = const 1
     %31 rest: ptr = $list_slice(%20, %30, %21)
-    jump b2(%29, %31)
+    jump b1(%29, %31)
 
 fn shape#3 top -> ptr ; main::list_patterns, frame 1 slots [%0 word*]
   b0(%0 xs: ptr):
     dup %0
-    %15 len: i64 = $list_len(%0)
-    %16 lit: i64 = const 2
-    %17 is: bool = eq.int %15, %16
-    %18 lit: i64 = const 1
-    %19 is: bool = eq.int %15, %18
-    %20 lit: i64 = const 0
-    %21 is: bool = eq.int %15, %20
-    if %21 then b4(%0, %17, %19) else b5(%0, %17, %19)
-  b1():
-    %1 lit: ptr = const str 4
-    ret %1
-  b2(%2 only: ptr):
-    %3 s: ptr = show %2
-    drop %2
-    %4 lit: ptr = const str 5
+    %10 len: i64 = $list_len(%0)
+    %11 lit: i64 = const 2
+    %12 is: bool = eq.int %10, %11
+    %13 lit: i64 = const 1
+    %14 is: bool = eq.int %10, %13
+    %15 lit: i64 = const 0
+    %16 is: bool = eq.int %10, %15
+    if %16 then b2(%0, %12, %14) else b3(%0, %12, %14)
+  b1(%1 first: ptr, %2 second: ptr):
+    %3 s: ptr = show %1
+    drop %1
+    %4 lit: ptr = const str 4
     %5 s: ptr = concat %4, %3
     drop %3
     drop %4
-    ret %5
-  b3(%6 first: ptr, %7 second: ptr):
-    %8 s: ptr = show %6
+    %6 lit: ptr = const str 5
+    %7 s: ptr = concat %5, %6
+    drop %5
     drop %6
-    %9 lit: ptr = const str 6
-    %10 s: ptr = concat %9, %8
-    drop %8
-    drop %9
-    %11 lit: ptr = const str 7
-    %12 s: ptr = concat %10, %11
-    drop %10
-    drop %11
-    %13 s: ptr = show %7
+    %8 s: ptr = show %2
+    drop %2
+    %9 s: ptr = concat %7, %8
     drop %7
-    %14 s: ptr = concat %12, %13
-    drop %12
-    drop %13
-    ret %14
-  b4(%22 xs: ptr, %23 is: bool, %24 is: bool):
-    drop %22
-    jump b1()
-  b5(%25 xs: ptr, %26 is: bool, %27 is: bool):
-    if %27 then b6(%25, %26) else b7(%25, %26)
-  b6(%28 xs: ptr, %29 is: bool):
-    %32 lit: i64 = const 0
-    %33 item: word = $list_at(%28, %32)
-    jump b2(%33)
-  b7(%30 xs: ptr, %31 is: bool):
-    if %31 then b8(%30) else b9(%30)
-  b8(%34 xs: ptr):
-    %36 lit: i64 = const 0
+    drop %8
+    ret %9
+  b2(%17 xs: ptr, %18 is: bool, %19 is: bool):
+    drop %17
+    %23 lit: ptr = const str 6
+    ret %23
+  b3(%20 xs: ptr, %21 is: bool, %22 is: bool):
+    if %22 then b4(%20, %21) else b5(%20, %21)
+  b4(%24 xs: ptr, %25 is: bool):
+    %28 lit: i64 = const 0
+    %29 item: word = $list_at(%24, %28)
+    %30 s: ptr = show %29
+    drop %29
+    %31 lit: ptr = const str 7
+    %32 s: ptr = concat %31, %30
+    drop %30
+    drop %31
+    ret %32
+  b5(%26 xs: ptr, %27 is: bool):
+    if %27 then b6(%26) else b7(%26)
+  b6(%33 xs: ptr):
+    %35 lit: i64 = const 0
+    dup %33
+    %36 item: word = $list_at(%33, %35)
+    %37 lit: i64 = const 1
+    %38 item: word = $list_at(%33, %37)
+    jump b1(%36, %38)
+  b7(%34 xs: ptr):
+    %39 lit: i64 = const 0
     dup %34
-    %37 item: word = $list_at(%34, %36)
-    %38 lit: i64 = const 1
-    %39 item: word = $list_at(%34, %38)
-    jump b3(%37, %39)
-  b9(%35 xs: ptr):
-    %40 lit: i64 = const 0
-    dup %35
-    %41 item: word = $list_at(%35, %40)
-    %42 lit: i64 = const 1
-    %43 item: word = $list_at(%35, %42)
-    jump b3(%41, %43)
+    %40 item: word = $list_at(%34, %39)
+    %41 lit: i64 = const 1
+    %42 item: word = $list_at(%34, %41)
+    jump b1(%40, %42)

@@ -54,48 +54,42 @@ fn $entry#1 top -> unit ; main::record_patterns, frame 1 slots [%1 bool]
 
 fn where_is#2 top -> ptr ; main::record_patterns, frame 1 slots [%0 word*]
   b0(%0 p: ptr):
-    %18 p: i64 = proj %0.0 main::record_patterns::Point
-    %19 p: i64 = proj %0.1 main::record_patterns::Point
-    %20 p: word = proj %0.2 main::record_patterns::Point
+    %1 p: i64 = proj %0.0 main::record_patterns::Point
+    %2 p: i64 = proj %0.1 main::record_patterns::Point
+    %3 p: word = proj %0.2 main::record_patterns::Point
     drop %0
-    switch %18 0 => b4(%18, %19, %20) _ => b5(%18, %19, %20)
-  b1():
-    %1 lit: ptr = const str 3
-    ret %1
-  b2(%2 label: ptr):
-    %3 s: ptr = show %2
-    drop %2
-    %4 lit: ptr = const str 4
-    %5 s: ptr = concat %4, %3
-    drop %3
-    drop %4
-    ret %5
-  b3(%6 x: i64, %7 y: i64, %8 label: ptr):
-    %9 s: ptr = show %8
-    drop %8
-    %10 lit: ptr = const str 5
-    %11 s: ptr = concat %9, %10
+    switch %1 0 => b1(%1, %2, %3) _ => b2(%1, %2, %3)
+  b1(%4 p: i64, %5 p: i64, %6 p: ptr):
+    switch %5 0 => b3(%6) _ => b4(%6)
+  b2(%7 p: i64, %8 p: i64, %9 p: ptr):
+    %16 s: ptr = show %9
     drop %9
+    %17 lit: ptr = const str 5
+    %18 s: ptr = concat %16, %17
+    drop %16
+    drop %17
+    %19 s: ptr = show %7
+    %20 s: ptr = concat %18, %19
+    drop %18
+    drop %19
+    %21 lit: ptr = const str 6
+    %22 s: ptr = concat %20, %21
+    drop %20
+    drop %21
+    %23 s: ptr = show %8
+    %24 s: ptr = concat %22, %23
+    drop %22
+    drop %23
+    ret %24
+  b3(%10 p: ptr):
     drop %10
-    %12 s: ptr = show %6
-    %13 s: ptr = concat %11, %12
+    %12 lit: ptr = const str 3
+    ret %12
+  b4(%11 p: ptr):
+    %13 s: ptr = show %11
     drop %11
-    drop %12
-    %14 lit: ptr = const str 6
-    %15 s: ptr = concat %13, %14
+    %14 lit: ptr = const str 4
+    %15 s: ptr = concat %14, %13
     drop %13
     drop %14
-    %16 s: ptr = show %7
-    %17 s: ptr = concat %15, %16
-    drop %15
-    drop %16
-    ret %17
-  b4(%21 p: i64, %22 p: i64, %23 p: ptr):
-    switch %22 0 => b6(%23) _ => b7(%23)
-  b5(%24 p: i64, %25 p: i64, %26 p: ptr):
-    jump b3(%24, %25, %26)
-  b6(%27 p: ptr):
-    drop %27
-    jump b1()
-  b7(%28 p: ptr):
-    jump b2(%28)
+    ret %15

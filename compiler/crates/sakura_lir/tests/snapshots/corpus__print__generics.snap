@@ -99,26 +99,22 @@ fn largest#3 top -> ptr ; main::generics, frame 3 slots [%0 word*, %1 word*, %2 
   b1(%1 r: ptr):
     call last#11(%1) -> b2()
   b2(%2 r: ptr):
-    %8 tag: i64 = tag %2 ctor std::option::Option
-    switch %8 0 => b5(%2) 1 => b6(%2)
-  b3(%3 x: word):
-    %4 s: ptr = show %3
-    drop %3
-    %5 lit: ptr = const str 2
-    %6 s: ptr = concat %5, %4
+    %3 tag: i64 = tag %2 ctor std::option::Option
+    switch %3 0 => b3(%2) 1 => b4(%2)
+  b3(%4 r: ptr):
     drop %4
-    drop %5
+    %6 lit: ptr = const str 2
     ret %6
-  b4():
-    %7 lit: ptr = const str 3
-    ret %7
-  b5(%9 r: ptr):
+  b4(%5 r: ptr):
+    %7 p: word = proj %5.0 std::option::Option.Some
+    drop %5
+    %8 s: ptr = show %7
+    drop %7
+    %9 lit: ptr = const str 3
+    %10 s: ptr = concat %9, %8
+    drop %8
     drop %9
-    jump b4()
-  b6(%10 r: ptr):
-    %11 p: word = proj %10.0 std::option::Option.Some
-    drop %10
-    jump b3(%11)
+    ret %10
 
 fn largest#4 top -> ptr ; main::generics, frame 3 slots [%0 word*, %1 word*, %2 word*]
   b0(%0 xs: ptr):
@@ -126,27 +122,23 @@ fn largest#4 top -> ptr ; main::generics, frame 3 slots [%0 word*, %1 word*, %2 
   b1(%1 r: ptr):
     call last#11(%1) -> b2()
   b2(%2 r: ptr):
-    %8 tag: i64 = tag %2 ctor std::option::Option
-    switch %8 0 => b5(%2) 1 => b6(%2)
-  b3(%3 x: i64):
-    %4 s: ptr = show %3
-    %5 lit: ptr = const str 2
-    %6 s: ptr = concat %5, %4
+    %3 tag: i64 = tag %2 ctor std::option::Option
+    switch %3 0 => b3(%2) 1 => b4(%2)
+  b3(%4 r: ptr):
     drop %4
-    drop %5
+    %6 lit: ptr = const str 2
     ret %6
-  b4():
-    %7 lit: ptr = const str 3
-    ret %7
-  b5(%9 r: ptr):
+  b4(%5 r: ptr):
+    %7 p: word = proj %5.0 std::option::Option.Some
+    drop %5
+    %8 unbox: i64 = unbox %7
+    drop %7
+    %9 s: ptr = show %8
+    %10 lit: ptr = const str 3
+    %11 s: ptr = concat %10, %9
     drop %9
-    jump b4()
-  b6(%10 r: ptr):
-    %11 p: word = proj %10.0 std::option::Option.Some
     drop %10
-    %12 unbox: i64 = unbox %11
-    drop %11
-    jump b3(%12)
+    ret %11
 
 fn largest#5 top -> ptr ; main::generics, frame 3 slots [%0 word*, %1 word*, %2 word*]
   b0(%0 xs: ptr):
@@ -154,84 +146,72 @@ fn largest#5 top -> ptr ; main::generics, frame 3 slots [%0 word*, %1 word*, %2 
   b1(%1 r: ptr):
     call last#11(%1) -> b2()
   b2(%2 r: ptr):
-    %8 tag: i64 = tag %2 ctor std::option::Option
-    switch %8 0 => b5(%2) 1 => b6(%2)
-  b3(%3 x: ptr):
-    %4 s: ptr = show %3
-    drop %3
-    %5 lit: ptr = const str 2
-    %6 s: ptr = concat %5, %4
+    %3 tag: i64 = tag %2 ctor std::option::Option
+    switch %3 0 => b3(%2) 1 => b4(%2)
+  b3(%4 r: ptr):
     drop %4
-    drop %5
+    %6 lit: ptr = const str 2
     ret %6
-  b4():
-    %7 lit: ptr = const str 3
-    ret %7
-  b5(%9 r: ptr):
+  b4(%5 r: ptr):
+    %7 p: word = proj %5.0 std::option::Option.Some
+    drop %5
+    %8 s: ptr = show %7
+    drop %7
+    %9 lit: ptr = const str 3
+    %10 s: ptr = concat %9, %8
+    drop %8
     drop %9
-    jump b4()
-  b6(%10 r: ptr):
-    %11 p: word = proj %10.0 std::option::Option.Some
-    drop %10
-    jump b3(%11)
+    ret %10
 
-fn insert#6 top -> ptr ; main::generics, frame 8 slots [%0 word*, %1 word*, %19 word*, %20 word*, %21 word*, %23 word*, %24 word*, %25 word*]
+fn insert#6 top -> ptr ; main::generics, frame 8 slots [%0 word*, %1 word*, %22 word*, %23 word*, %24 word*, %26 word*, %27 word*, %28 word*]
   b0(%0 t: ptr, %1 x: word):
-    %27 tag: i64 = tag %0 ctor main::generics::Tree
-    switch %27 0 => b7(%0, %1) 1 => b8(%0, %1)
-  b1(%2 x: word):
-    %3 v: ptr = const static main::generics::Tree.Leaf
-    %4 v: ptr = const static main::generics::Tree.Leaf
-    %5 r: ptr = alloc main::generics::Tree.Node(%3, %2, %4)
-    ret %5
-  b2(%6 l: ptr, %7 v: word, %8 r: ptr, %9 x: word):
-    %10 t: bool = lt.any %9, %7
-    if %10 then b3(%9, %6, %7, %8) else b4(%9, %6, %7, %8)
-  b3(%11 x: word, %12 l: ptr, %13 v: word, %14 r: ptr):
-    call insert#6(%12, %11) -> b5(%13, %14)
-  b4(%15 x: word, %16 l: ptr, %17 v: word, %18 r: ptr):
-    call insert#6(%18, %15) -> b6(%16, %17)
-  b5(%19 r: ptr, %20 v: word, %21 r: ptr):
-    %22 r: ptr = alloc main::generics::Tree.Node(%19, %20, %21)
-    ret %22
-  b6(%23 r: ptr, %24 l: ptr, %25 v: word):
-    %26 r: ptr = alloc main::generics::Tree.Node(%24, %25, %23)
-    ret %26
-  b7(%28 t: ptr, %29 x: word):
-    drop %28
-    jump b1(%29)
-  b8(%30 t: ptr, %31 x: word):
-    %32 p: word = proj %30.0 main::generics::Tree.Node
-    %33 p: word = proj %30.1 main::generics::Tree.Node
-    %34 p: word = proj %30.2 main::generics::Tree.Node
-    drop %30
-    jump b2(%32, %33, %34, %31)
+    %2 tag: i64 = tag %0 ctor main::generics::Tree
+    switch %2 0 => b1(%0, %1) 1 => b2(%0, %1)
+  b1(%3 t: ptr, %4 x: word):
+    drop %3
+    %7 v: ptr = const static main::generics::Tree.Leaf
+    %8 v: ptr = const static main::generics::Tree.Leaf
+    %9 r: ptr = alloc main::generics::Tree.Node(%7, %4, %8)
+    ret %9
+  b2(%5 t: ptr, %6 x: word):
+    %10 p: word = proj %5.0 main::generics::Tree.Node
+    %11 p: word = proj %5.1 main::generics::Tree.Node
+    %12 p: word = proj %5.2 main::generics::Tree.Node
+    drop %5
+    %13 t: bool = lt.any %6, %11
+    if %13 then b3(%6, %10, %11, %12) else b4(%6, %10, %11, %12)
+  b3(%14 x: word, %15 l: ptr, %16 v: word, %17 r: ptr):
+    call insert#6(%15, %14) -> b5(%16, %17)
+  b4(%18 x: word, %19 l: ptr, %20 v: word, %21 r: ptr):
+    call insert#6(%21, %18) -> b6(%19, %20)
+  b5(%22 r: ptr, %23 v: word, %24 r: ptr):
+    %25 r: ptr = alloc main::generics::Tree.Node(%22, %23, %24)
+    ret %25
+  b6(%26 r: ptr, %27 l: ptr, %28 v: word):
+    %29 r: ptr = alloc main::generics::Tree.Node(%27, %28, %26)
+    ret %29
 
-fn to_list#8 top -> ptr ; main::generics, frame 7 slots [%0 word*, %5 word*, %6 word*, %7 word*, %9 word*, %10 word*, %11 word*]
+fn to_list#8 top -> ptr ; main::generics, frame 7 slots [%0 word*, %8 word*, %9 word*, %10 word*, %12 word*, %13 word*, %14 word*]
   b0(%0 t: ptr):
-    %12 tag: i64 = tag %0 ctor main::generics::Tree
-    switch %12 0 => b6(%0) 1 => b7(%0)
-  b1():
-    %1 xs: ptr = alloc list()
-    ret %1
-  b2(%2 l: ptr, %3 v: word, %4 r: ptr):
-    call to_list#8(%2) -> b3(%3, %4)
-  b3(%5 r: ptr, %6 v: word, %7 r: ptr):
-    %8 r: ptr = $list_push(%5, %6)
-    call to_list#8(%7) -> b4(%8)
-  b4(%9 r: ptr, %10 r: ptr):
-    call concat#9(%10, %9) -> b5()
-  b5(%11 r: ptr):
-    ret %11
-  b6(%13 t: ptr):
-    drop %13
-    jump b1()
-  b7(%14 t: ptr):
-    %15 p: word = proj %14.0 main::generics::Tree.Node
-    %16 p: word = proj %14.1 main::generics::Tree.Node
-    %17 p: word = proj %14.2 main::generics::Tree.Node
-    drop %14
-    jump b2(%15, %16, %17)
+    %1 tag: i64 = tag %0 ctor main::generics::Tree
+    switch %1 0 => b1(%0) 1 => b2(%0)
+  b1(%2 t: ptr):
+    drop %2
+    %4 xs: ptr = alloc list()
+    ret %4
+  b2(%3 t: ptr):
+    %5 p: word = proj %3.0 main::generics::Tree.Node
+    %6 p: word = proj %3.1 main::generics::Tree.Node
+    %7 p: word = proj %3.2 main::generics::Tree.Node
+    drop %3
+    call to_list#8(%5) -> b3(%6, %7)
+  b3(%8 r: ptr, %9 v: word, %10 r: ptr):
+    %11 r: ptr = $list_push(%8, %9)
+    call to_list#8(%10) -> b4(%11)
+  b4(%12 r: ptr, %13 r: ptr):
+    call concat#9(%13, %12) -> b5()
+  b5(%14 r: ptr):
+    ret %14
 
 fn insert$value#15 adapter of insert#6 -> word ; main::generics, captures [], frame 4 slots [%0 word*, %1 word*, %2 word*, %3 word*]
   b0(%0 env: ptr, %1 arg: word, %2 arg: word):

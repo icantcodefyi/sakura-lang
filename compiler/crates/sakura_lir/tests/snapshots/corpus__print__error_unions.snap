@@ -47,35 +47,31 @@ fn $entry#1 top -> unit ; main::error_unions, frame 1 slots [%1 bool]
 
 fn report#2 top -> ptr ; main::error_unions, frame 3 slots [%0 i64, %10 word*, %12 word*]
   b0(%0 id: i64):
-    try_push -> b8(err, )
-    call fetch_retrying#3(%0) -> b9()
+    try_push -> b6(err, )
+    call fetch_retrying#3(%0) -> b7()
   b1(%1 v: ptr):
-    %4 tag: i64 = tag %1 ctor std::result::Result
-    switch %4 0 => b4(%1) 1 => b5(%1)
-  b2():
-    %2 lit: ptr = const str 0
-    ret %2
-  b3():
-    %3 lit: ptr = const str 1
-    ret %3
-  b4(%5 v: ptr):
-    %7 p: word = proj %5.0 std::result::Result.Ok
-    drop %5
-    ret %7
-  b5(%6 v: ptr):
-    %8 p: word = proj %6.0 std::result::Result.Err
+    %2 tag: i64 = tag %1 ctor std::result::Result
+    switch %2 0 => b2(%1) 1 => b3(%1)
+  b2(%3 v: ptr):
+    %5 p: word = proj %3.0 std::result::Result.Ok
+    drop %3
+    ret %5
+  b3(%4 v: ptr):
+    %6 p: word = proj %4.0 std::result::Result.Err
+    drop %4
+    %7 tag: i64 = tag %6 member [main::error_unions::NotFound, main::error_unions::Forbidden]
     drop %6
-    %9 tag: i64 = tag %8 member [main::error_unions::NotFound, main::error_unions::Forbidden]
-    drop %8
-    switch %9 0 => b6() 1 => b7()
-  b6():
-    jump b2()
-  b7():
-    jump b3()
-  b8(%10 e: word):
+    switch %7 0 => b4() 1 => b5()
+  b4():
+    %8 lit: ptr = const str 0
+    ret %8
+  b5():
+    %9 lit: ptr = const str 1
+    ret %9
+  b6(%10 e: word):
     %11 err: ptr = alloc std::result::Result.Err(%10)
     jump b1(%11)
-  b9(%12 r: ptr) [try]:
+  b7(%12 r: ptr) [try]:
     %13 ok: ptr = alloc std::result::Result.Ok(%12)
     try_pop
     jump b1(%13)
@@ -83,25 +79,23 @@ fn report#2 top -> ptr ; main::error_unions, frame 3 slots [%0 i64, %10 word*, %
 fn fetch_retrying#3 top -> ptr ; main::error_unions, frame 3 slots [%0 i64, %1 word*, %6 word*]
   b0(%0 id: i64):
     try_push -> b1(err, )
-    call fetch#4(%0) -> b5()
+    call fetch#4(%0) -> b4()
   b1(%1 e: word):
-    %3 tag: i64 = tag %1 member [main::error_unions::NotFound, main::error_unions::Forbidden, main::error_unions::Timeout]
-    switch %3 2 => b3(%1) _ => b4(%1)
-  b2():
-    %2 lit: ptr = const str 2
-    ret %2
+    %2 tag: i64 = tag %1 member [main::error_unions::NotFound, main::error_unions::Forbidden, main::error_unions::Timeout]
+    switch %2 2 => b2(%1) _ => b3(%1)
+  b2(%3 e: ptr):
+    drop %3
+    %5 lit: ptr = const str 2
+    ret %5
   b3(%4 e: ptr):
-    drop %4
-    jump b2()
-  b4(%5 e: ptr):
-    fail %5
-  b5(%6 r: ptr) [try]:
+    fail %4
+  b4(%6 r: ptr) [try]:
     try_pop
     ret %6
 
 fn fetch#4 top -> ptr ; main::error_unions, frame 1 slots [%0 i64]
   b0(%0 id: i64):
-    switch %0 1 => b5() 2 => b6() 3 => b7() _ => b8()
+    switch %0 1 => b1() 2 => b2() 3 => b3() _ => b4()
   b1():
     %1 lit: ptr = const str 3
     ret %1
@@ -114,11 +108,3 @@ fn fetch#4 top -> ptr ; main::error_unions, frame 1 slots [%0 i64]
   b4():
     %4 err: ptr = alloc main::error_unions::NotFound()
     fail %4
-  b5():
-    jump b1()
-  b6():
-    jump b2()
-  b7():
-    jump b3()
-  b8():
-    jump b4()

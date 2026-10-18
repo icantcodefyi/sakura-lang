@@ -12,64 +12,60 @@ layout 6 variant std::task::Scope
 layout 7 shape |  32b (word*, word*)
 layout 8 shape |  32b (i64, word*)
 
-fn main#0 pub top -> unit ; main::trace_decode_then_spawn, frame 5 slots [%1 word*, %4 word*, %5 word*, %10 bool, %23 bool]
+fn main#0 pub top -> unit ; main::trace_decode_then_spawn, frame 5 slots [%1 word*, %7 word*, %8 word*, %13 bool, %26 bool]
   b0():
     %0 lit: ptr = const str 0
     call read#3(%0) -> b1()
   b1(%1 r: ptr):
-    %26 tag: i64 = tag %1 ctor std::result::Result
-    switch %26 0 => b8(%1) 1 => b9(%1)
-  b2(%2 scores: ptr):
-    %3 f: ptr = closure main$1#4[]
-    call map#6(%2, %3) -> b3()
+    %2 tag: i64 = tag %1 ctor std::result::Result
+    switch %2 0 => b2(%1) 1 => b3(%1)
+  b2(%3 r: ptr):
+    %5 p: word = proj %3.0 std::result::Result.Ok
+    drop %3
+    %6 f: ptr = closure main$1#4[]
+    call map#6(%5, %6) -> b4()
   b3(%4 r: ptr):
-    perform std::task::Task.all(%4) -> b4()
-  b4(%5 r: ptr):
-    %6 r: i64 = $list_len(%5)
-    %7 s: ptr = show %6
-    %8 lit: ptr = const str 1
-    %9 s: ptr = concat %8, %7
-    drop %7
-    drop %8
-    perform std::console::Console.print(%9) -> b5()
-  b5(%10 r: unit):
-    %11 box: word = box %10
-    %12 unbox: unit = unbox %11
-    drop %11
-    ret %12
-  b6(%13 e: ptr):
-    %14 path: word = proj %13.0 std::json::DecodeError
-    %15 s: ptr = show %14
-    drop %14
-    %16 lit: ptr = const str 2
-    %17 s: ptr = concat %16, %15
-    drop %15
-    drop %16
-    %18 lit: ptr = const str 3
-    %19 s: ptr = concat %17, %18
+    %16 p: word = proj %4.0 std::result::Result.Err
+    drop %4
+    %17 path: word = proj %16.0 std::json::DecodeError
+    %18 s: ptr = show %17
     drop %17
+    %19 lit: ptr = const str 2
+    %20 s: ptr = concat %19, %18
     drop %18
-    %20 message: word = proj %13.1 std::json::DecodeError
-    drop %13
-    %21 s: ptr = show %20
-    drop %20
-    %22 s: ptr = concat %19, %21
     drop %19
+    %21 lit: ptr = const str 3
+    %22 s: ptr = concat %20, %21
+    drop %20
     drop %21
-    perform std::console::Console.print(%22) -> b7()
-  b7(%23 r: unit):
-    %24 box: word = box %23
-    %25 unbox: unit = unbox %24
+    %23 message: word = proj %16.1 std::json::DecodeError
+    drop %16
+    %24 s: ptr = show %23
+    drop %23
+    %25 s: ptr = concat %22, %24
+    drop %22
     drop %24
-    ret %25
-  b8(%27 r: ptr):
-    %29 p: word = proj %27.0 std::result::Result.Ok
+    perform std::console::Console.print(%25) -> b7()
+  b4(%7 r: ptr):
+    perform std::task::Task.all(%7) -> b5()
+  b5(%8 r: ptr):
+    %9 r: i64 = $list_len(%8)
+    %10 s: ptr = show %9
+    %11 lit: ptr = const str 1
+    %12 s: ptr = concat %11, %10
+    drop %10
+    drop %11
+    perform std::console::Console.print(%12) -> b6()
+  b6(%13 r: unit):
+    %14 box: word = box %13
+    %15 unbox: unit = unbox %14
+    drop %14
+    ret %15
+  b7(%26 r: unit):
+    %27 box: word = box %26
+    %28 unbox: unit = unbox %27
     drop %27
-    jump b2(%29)
-  b9(%28 r: ptr):
-    %30 p: word = proj %28.0 std::result::Result.Err
-    drop %28
-    jump b6(%30)
+    ret %28
 
 fn $entry#1 top -> unit ; main::trace_decode_then_spawn, frame 1 slots [%2 bool]
   b0():

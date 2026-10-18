@@ -235,11 +235,11 @@ fn each#5 top -> ptr ; main::loop_resume_edges, frame 0 slots []
     %1 handler: ptr = handler main::loop_resume_edges::Each row 9 state() clauses(%0)
     ret %1
 
-fn matcher#6 top -> i64 ; main::loop_resume_edges, frame 19 slots [%0 i64, %16 word*, %17 i64, %18 i64, %19 i64, %20 i64, %21 i64, %22 i64, %23 i64, %24 word*, %35 i64, %36 i64, %37 i64, %38 i64, %52 bool, %53 i64, %54 i64, %55 i64, %56 i64]
+fn matcher#6 top -> i64 ; main::loop_resume_edges, frame 19 slots [%0 i64, %16 word*, %17 i64, %18 i64, %19 i64, %20 i64, %21 i64, %22 i64, %23 i64, %24 word*, %47 i64, %48 i64, %49 i64, %50 i64, %60 bool, %61 i64, %62 i64, %63 i64, %64 i64]
   b0(%0 n: i64):
-    %87 lit: i64 = const 0
-    %88 lit: i64 = const 0
-    jump b1(%87, %88, %0)
+    %72 lit: i64 = const 0
+    %73 lit: i64 = const 0
+    jump b1(%72, %73, %0)
   b1(%1 i: i64, %2 acc: i64, %3 n: i64):
     %4 more: bool = lt.int %1, %3
     if %4 then b2(%3, %1, %2) else b3(%3, %1, %2)
@@ -254,54 +254,48 @@ fn matcher#6 top -> i64 ; main::loop_resume_edges, frame 19 slots [%0 i64, %16 w
   b5(%16 r: ptr, %17 n: i64, %18 i: i64, %19 acc: i64):
     perform main::loop_resume_edges::Counter.next() -> b6(%17, %18, %19, %16)
   b6(%20 r: i64, %21 n: i64, %22 i: i64, %23 acc: i64, %24 r: ptr):
-    %68 tag: i64 = tag %24 ctor main::loop_resume_edges::Shape
-    switch %68 0 => b13(%21, %22, %23, %24, %20) 1 => b14(%21, %22, %23, %24, %20) 2 => b15(%21, %22, %23, %24, %20)
+    %29 tag: i64 = tag %24 ctor main::loop_resume_edges::Shape
+    switch %29 0 => b8(%21, %22, %23, %24, %20) 1 => b9(%21, %22, %23, %24, %20) 2 => b10(%21, %22, %23, %24, %20)
   b7(%25 v: i64, %26 acc: i64, %27 n: i64, %28 i: i64):
     jump b4(%25, %27, %28)
-  b8(%29 n: i64, %30 i: i64, %31 acc: i64, %32 r: i64):
-    %33 f: ptr = closure matcher$1#12[]
-    %34 callback: ptr = callback %33
-    perform main::loop_resume_edges::Each.apply(%34, %32) -> b9(%29, %30, %31)
-  b9(%35 r: i64, %36 n: i64, %37 i: i64, %38 acc: i64):
-    %39 t: i64 = intadd %38, %35
-    jump b7(%39, %38, %36, %37)
-  b10(%40 b: i64, %41 n: i64, %42 i: i64, %43 acc: i64, %44 r: i64):
-    %45 s: ptr = show %40
-    %46 lit: ptr = const str 6
-    %47 s: ptr = concat %46, %45
-    drop %45
-    drop %46
-    %48 lit: ptr = const str 7
-    %49 s: ptr = concat %47, %48
-    drop %47
-    drop %48
-    %50 s: ptr = show %44
-    %51 s: ptr = concat %49, %50
-    drop %49
-    drop %50
-    perform std::console::Console.print(%51) -> b11(%41, %42, %43, %40)
-  b11(%52 r: unit, %53 n: i64, %54 i: i64, %55 acc: i64, %56 b: i64):
-    %57 box: word = box %52
+  b8(%30 n: i64, %31 i: i64, %32 acc: i64, %33 r: ptr, %34 r: i64):
+    drop %33
+    %45 f: ptr = closure matcher$1#12[]
+    %46 callback: ptr = callback %45
+    perform main::loop_resume_edges::Each.apply(%46, %34) -> b11(%30, %31, %32)
+  b9(%35 n: i64, %36 i: i64, %37 acc: i64, %38 r: ptr, %39 r: i64):
+    %52 p: i64 = proj %38.0 main::loop_resume_edges::Shape.Box
+    drop %38
+    %53 s: ptr = show %52
+    %54 lit: ptr = const str 6
+    %55 s: ptr = concat %54, %53
+    drop %53
+    drop %54
+    %56 lit: ptr = const str 7
+    %57 s: ptr = concat %55, %56
+    drop %55
+    drop %56
+    %58 s: ptr = show %39
+    %59 s: ptr = concat %57, %58
     drop %57
-    %58 t: i64 = intadd %55, %56
-    jump b7(%58, %55, %53, %54)
-  b12(%59 p: i64, %60 q: i64, %61 n: i64, %62 i: i64, %63 acc: i64, %64 r: i64):
-    %65 t: i64 = intmul %59, %60
-    %66 t: i64 = intadd %63, %65
-    %67 t: i64 = intsub %66, %64
-    jump b7(%67, %63, %61, %62)
-  b13(%69 n: i64, %70 i: i64, %71 acc: i64, %72 r: ptr, %73 r: i64):
-    drop %72
-    jump b8(%69, %70, %71, %73)
-  b14(%74 n: i64, %75 i: i64, %76 acc: i64, %77 r: ptr, %78 r: i64):
-    %84 p: i64 = proj %77.0 main::loop_resume_edges::Shape.Box
-    drop %77
-    jump b10(%84, %74, %75, %76, %78)
-  b15(%79 n: i64, %80 i: i64, %81 acc: i64, %82 r: ptr, %83 r: i64):
-    %85 p: i64 = proj %82.0 main::loop_resume_edges::Shape.Pair
-    %86 p: i64 = proj %82.1 main::loop_resume_edges::Shape.Pair
-    drop %82
-    jump b12(%85, %86, %79, %80, %81, %83)
+    drop %58
+    perform std::console::Console.print(%59) -> b12(%35, %36, %37, %52)
+  b10(%40 n: i64, %41 i: i64, %42 acc: i64, %43 r: ptr, %44 r: i64):
+    %67 p: i64 = proj %43.0 main::loop_resume_edges::Shape.Pair
+    %68 p: i64 = proj %43.1 main::loop_resume_edges::Shape.Pair
+    drop %43
+    %69 t: i64 = intmul %67, %68
+    %70 t: i64 = intadd %42, %69
+    %71 t: i64 = intsub %70, %44
+    jump b7(%71, %42, %40, %41)
+  b11(%47 r: i64, %48 n: i64, %49 i: i64, %50 acc: i64):
+    %51 t: i64 = intadd %50, %47
+    jump b7(%51, %50, %48, %49)
+  b12(%60 r: unit, %61 n: i64, %62 i: i64, %63 acc: i64, %64 b: i64):
+    %65 box: word = box %60
+    drop %65
+    %66 t: i64 = intadd %63, %64
+    jump b7(%66, %63, %61, %62)
 
 fn failing#7 top -> i64 ; main::loop_resume_edges, frame 15 slots [%0 i64, %15 i64, %16 i64, %17 i64, %18 i64, %49 word*, %50 i64, %51 i64, %52 i64, %53 i64, %54 bool, %55 i64, %56 i64, %57 i64, %58 i64]
   b0(%0 n: i64):
