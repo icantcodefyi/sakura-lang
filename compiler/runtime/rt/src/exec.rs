@@ -1564,6 +1564,56 @@ impl Rt {
         let n = self.frame_size(code, 0);
         self.start(code, n, 0).map(|(task, _)| task)
     }
+
+    /// A root task running test wrapper `code` (`fn(seed: Int)`) under `handler` (consumed),
+    /// the runner's `std::test::Test` handler, installed in the task's root frame.
+    pub fn start_test(&mut self, code: u32, seed: i64, handler: u32) -> Res<u32> {
+        let n = self.frame_size(code, 1);
+        let (task, f) = self.start(code, n, 0).inspect_err(|_| self.drop(handler))?;
+        self.set_fslot(f, 0, seed as u64);
+        let saved = self.sched.current;
+        self.sched.current = task;
+        let r = self.handle_install(f, handler);
+        self.sched.current = saved;
+        r.map(|_| task)
+    }
+
+    /// A child of the current task running the closure value `closure` (consumed into its slot
+    /// 0, sakura_lir's convention) with no arguments, under the current frame's handlers.
+    pub fn spawn_value(&mut self, closure: u32) -> Res<u32> {
+        let code = self.u(closure, 8);
+        let n = self.frame_size(code, 1);
+        let parent = self.sched.current;
+        let t = self.cur();
+        let act = self
+            .arena_get(self.u(t, T_FRAME), tag::FRAME)
+            .map(|f| self.u(f, F_ACT))
+            .inspect_err(|_| self.drop(closure))?;
+        let (id, f) = self
+            .new_task(parent, act, code, n, closure)
+            .inspect_err(|_| self.drop(closure))?;
+        self.set_fslot(f, 0, closure as u64);
+        if let Err(e) = self.tpush(t, T_KIDS, id) {
+            self.cancel(id);
+            return Err(e);
+        }
+        Ok(id)
+    }
+
+    /// Retire the finished child `child` of the current task (its slot and outcome go).
+    pub fn retire_child(&mut self, child: u32) {
+        let t = self.cur();
+        let mut kids = self.tstack(t, T_KIDS);
+        if let Some(i) = (0..kids.len).find(|&i| self.stack_at(&kids, i) == child) {
+            for j in i..kids.len - 1 {
+                let next = self.stack_at(&kids, j + 1);
+                self.stack_set(&kids, j, next);
+            }
+            kids.len -= 1;
+            self.tstack_put(t, T_KIDS, kids);
+            self.task_free(child);
+        }
+    }
 }
 
 /// The operation-callback stub in `sakura_lir`'s convention (ABI §6.3, errata L3): slot 0 is

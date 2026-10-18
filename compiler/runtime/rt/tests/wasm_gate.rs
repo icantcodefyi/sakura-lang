@@ -50,6 +50,13 @@ const IMPORTS: &[&str] = &[
     "random_bytes",
     "random_uuid",
     "log_write",
+    "test_seed",
+    "test_record_failure",
+    "test_failures",
+    "test_output",
+    "test_output_lines",
+    "test_fixtures",
+    "test_snapshot",
 ];
 
 /// The ABI §1 allowlist, from an empty set (research/09 §1).

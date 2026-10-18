@@ -978,6 +978,154 @@ fn log_line(rt: &mut Rt, level: u32, message: u32, fields: u32) -> Res<u32> {
     Ok(line)
 }
 
+// ---- the test runner's `std::test::Test` handler (`sakura test --target wasm`) --------------
+
+/// A root task for test wrapper `code` under the runner's `Test` handler `h` (consumed); the
+/// seed comes from the host. 0 when the heap is exhausted.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_start_test(code: u32, h: u32) -> u32 {
+    // SAFETY: a plain import returning a scalar.
+    let seed = unsafe { host::test_seed() };
+    rt().start_test(code, seed, h).unwrap_or(0)
+}
+
+/// A clause taking one `String` (slot 2) for the host: `Test.record_failure`, `Test.output`.
+fn test_text(frame: u32, f: unsafe extern "C" fn(u32, u32)) -> u32 {
+    let rt = rt();
+    clause_args(rt, frame);
+    let s = rt.take_fslot(frame, 2) as u32;
+    let (len, at) = rt.data(s);
+    // SAFETY: a plain import with a slice inside linear memory, copied in at once.
+    unsafe { f(at, len) };
+    rt.drop(s);
+    ret(rt, UNIT as u64)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_test_record_failure(_env: u32, frame: u32) -> u32 {
+    test_text(frame, host::test_record_failure)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_test_output(_env: u32, frame: u32) -> u32 {
+    test_text(frame, host::test_output)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_test_failures(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    clause_args(rt, frame);
+    // SAFETY: a plain import returning a scalar.
+    let n = unsafe { host::test_failures() };
+    ret(rt, n as u64)
+}
+
+/// A clause whose result the host sends as a `sakura-vt1` value.
+fn test_value(frame: u32, f: unsafe extern "C" fn() -> u32) -> u32 {
+    let rt = rt();
+    clause_args(rt, frame);
+    // SAFETY: a plain import; the value arrives as a `Bytes` from `alloc_bytes`.
+    let b = unsafe { f() };
+    if b == 0 {
+        return rt.raise(Defect::HEAP_EXHAUSTED);
+    }
+    let (len, at) = rt.data(b);
+    let r = rt.vt_decode(at, len);
+    rt.drop(b);
+    ok_or_raise(rt, r)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_test_output_lines(_env: u32, frame: u32) -> u32 {
+    test_value(frame, host::test_output_lines)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_test_fixtures(_env: u32, frame: u32) -> u32 {
+    test_value(frame, host::test_fixtures)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_test_snapshot(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    clause_args(rt, frame);
+    let (name, rendered) = (
+        rt.take_fslot(frame, 2) as u32,
+        rt.take_fslot(frame, 3) as u32,
+    );
+    let ((nl, na), (rl, ra)) = (rt.data(name), rt.data(rendered));
+    // SAFETY: a plain import with slices inside linear memory, copied in at once.
+    unsafe { host::test_snapshot(na, nl, ra, rl) };
+    rt.drop2(name, rendered);
+    ret(rt, UNIT as u64)
+}
+
+/// `expect_defect(body)` (std/test, JS `test_expect_defect`): run `body` as a child task under
+/// the current handlers; a defect there passes, a normal return records a failure through
+/// `Test.record_failure`, a failure propagates (as JS `defect_catch`).
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_k_test_expect_defect(_env: u32, frame: u32) -> u32 {
+    use crate::exec::outcome;
+    let rt = rt();
+    match rt.block(frame) {
+        0 => {
+            let body = rt.take_fslot(frame, 0) as u32;
+            match rt.spawn_value(body) {
+                Ok(child) => rt.set_fslot(frame, 0, child as u64),
+                Err(d) => return rt.raise(d),
+            }
+            rt.set_block(frame, 1);
+            rt_k_test_expect_defect(_env, frame)
+        }
+        1 => {
+            let child = rt.fslot(frame, 0) as u32;
+            let (kind, value) = match rt.join(child) {
+                Ok(Some(o)) => o,
+                // Blocked until the child ends; resumed here.
+                Ok(None) => return step::YIELD,
+                Err(d) => return rt.raise(d),
+            };
+            let err = value as u32;
+            if kind == outcome::FAIL && rt.dup(err).is_err() {
+                return rt.raise(Defect::RC_OVERFLOW);
+            }
+            rt.retire_child(child);
+            match kind {
+                outcome::OK => {
+                    let Some(test) = rt.effect_named(b"std::test::Test") else {
+                        return rt.raise(Defect::INTERNAL);
+                    };
+                    let msg = rt.static_string(b"expected a defect, but the body returned");
+                    let c = msg.and_then(|m| {
+                        rt.perform_value(frame, test, 0, 1)
+                            .inspect_err(|_| rt.drop(m))
+                            .map(|c| (c, m))
+                    });
+                    match c {
+                        Ok((0, m)) => {
+                            rt.drop(m);
+                            step::YIELD
+                        }
+                        Ok((c, m)) => {
+                            rt.set_fslot(c, 2, m as u64);
+                            rt.set_block(frame, 2);
+                            step::CALL
+                        }
+                        Err(d) => rt.raise(d),
+                    }
+                }
+                outcome::FAIL => rt.fail(err),
+                _ => ret(rt, UNIT as u64),
+            }
+        }
+        _ => {
+            let r = rt.take_ret();
+            rt.drop(r as u32);
+            ret(rt, UNIT as u64)
+        }
+    }
+}
+
 /// An operation of a host handler this runtime does not implement yet.
 #[unsafe(no_mangle)]
 pub extern "C" fn rt_code_unsupported(_env: u32, frame: u32) -> u32 {
@@ -1006,6 +1154,15 @@ mod host {
         pub fn random_uuid() -> u32;
         /// A stderr line (JS `log_write`).
         pub fn log_write(ptr: u32, len: u32);
+        /// The test runner's `std::test::Test` operations and seed (`sakura test`).
+        pub fn test_seed() -> i64;
+        pub fn test_record_failure(ptr: u32, len: u32);
+        pub fn test_failures() -> i64;
+        pub fn test_output(ptr: u32, len: u32);
+        /// `sakura-vt1` values as `Bytes` from `alloc_bytes`.
+        pub fn test_output_lines() -> u32;
+        pub fn test_fixtures() -> u32;
+        pub fn test_snapshot(name: u32, name_len: u32, rendered: u32, rendered_len: u32);
     }
 }
 

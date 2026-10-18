@@ -98,6 +98,20 @@ impl Rt {
         self.table_at(self.effects, self.effects + 4 + 4 * id)
     }
 
+    /// The id of the effect named `qualified` (`std::test::Test`), if the program has it.
+    pub fn effect_named(&self, qualified: &[u8]) -> Option<u32> {
+        if self.effects == 0 {
+            return None;
+        }
+        (0..self.heap.mem.u32(self.effects)).find(|&id| {
+            let name = self.effect_name(id);
+            name != 0 && {
+                let len = self.heap.mem.u32(name);
+                self.heap.mem.bytes(name + 4, len) == qualified
+            }
+        })
+    }
+
     /// The table offset stored at `addr`, as an absolute address in `table` (0 stays 0).
     fn table_at(&self, table: u32, addr: u32) -> u32 {
         let v = self.heap.mem.u32(addr);
