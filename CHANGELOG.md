@@ -84,6 +84,10 @@ published yet.
   from refinement predicates participate in interface invalidation.
 - Roadmap and source-build documentation now distinguish implemented M3 behavior from
   M3 exit gates, planned M4 WASM/verification and M5 native execution.
+- M3 is complete pending the owner's security review (gate 10): the re-audit after the M3
+  close-out passes gates 1–9 and 11 at `a843e60`
+  ([gate report](docs/plans/m3-gate-report.md)). The reviewed escape, cassette and template
+  code stays frozen until the [review packet](docs/reviews/m3-security-review.md) is signed.
 
 ### Fixed
 

@@ -2,7 +2,7 @@
 
 **The signature is the contract.**
 
-Pre-alpha, source-buildable Rust compiler with a JavaScript backend. M3 is in progress; no release or stable language/API contract exists.
+Pre-alpha, source-buildable Rust compiler with a JavaScript backend. M3 is complete pending the owner's security review (gate 10; see the [gate report](docs/plans/m3-gate-report.md)); no release or stable language/API contract exists.
 
 ![Status: pre-alpha / design phase](https://img.shields.io/badge/status-pre--alpha%20%2F%20design%20phase-orange)
 
@@ -53,10 +53,12 @@ refined-target `Untrusted.validate` (`V5003`), bounded literal evaluation (`V500
 [Contract-generated properties](website/content/docs/tour/testing.mdx#property-tests-from-contracts)
 (`--contracts`), streaming HTTP (`Http.stream`/`Http.read_chunk`), `Llm.recording`,
 `Fs.memory` composed with `Dir.subdir`/`Fs.rooted`, and generic refined types have landed.
-Direct `Untrusted` interpolation binds values in SQL and escapes text in HTML. See the
+Direct `Untrusted` interpolation binds values in SQL, escapes text in HTML and
+percent-encodes URL parts. See the
 [verified examples](docs/plans/m3-docs-verification.md) and their remaining limits.
-The M4 plan allows isolated runtime (R1–R3), LIR (L1–L2) and verifier (V1–V2) work
-before the M3 gates, with CLI/backend integration still gated.
+Isolated M4 runtime (R1–R3), LIR (L1–L2) and verifier (V1–V2) work ran before the M3
+gates; with M3 complete pending review, the integration milestones (R4, L3, V3, W1, C1)
+may start.
 
 ## A small promise
 
