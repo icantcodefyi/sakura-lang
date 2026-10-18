@@ -1,0 +1,74 @@
+// milestone: M3
+// mode: test
+// spec: design §17.145
+
+import std/agent.{Agent}
+import std/budget.{Budget, BudgetExceeded, Calls, Limits, Tokens}
+import std/fs.{Fs}
+import std/http.{Http}
+import std/llm.{InvalidOutput, Llm, LlmError, Model, Request}
+import std/path.{Path}
+import std/prompt.{Prompt}
+import std/tool.{Tool, ToolError}
+
+@tool("Count waiting tasks")
+fn waiting() -> Int { 2 }
+
+fn count_tasks(max_steps: Int) -> Int
+  ! {Budget, Llm, Fail<LlmError | ToolError>}
+  requires max_steps > 0
+{
+  let request: Request<Int> = Llm.request("Use the waiting tool.", Prompt.text("How many tasks?"))
+  Agent.run(Agent { request, tools: [Tool.of(waiting)], max_steps, stop: fn(_) { false } })
+}
+
+fn replay_count(limits: Limits) -> Int ! {Fs, Fail<LlmError | ToolError>} {
+  // Keep the finite budget outside the provider. Llm.replay installs Budget.unlimited.
+  with Budget.limits(limits),
+      Http.scripted([]),
+      Http.recording(Path.of("tasks.jsonl")),
+      Llm.anthropic(Secret.of("offline-placeholder"), Model.default()) { count_tasks(3) }
+}
+
+test "two provider turns settle within a finite budget" {
+  with Fs.rooted(Test.fixtures()) {
+    expect_eq(replay_count(Limits { tokens: Some(5_000), usd: Some(0.10), calls: Some(3) }), 2)
+  }
+}
+
+test "the second turn cannot reserve past the call limit" {
+  with Fs.rooted(Test.fixtures()) {
+    expect_fails_with(
+      fn() { replay_count(Limits { tokens: Some(5_000), usd: Some(0.10), calls: Some(2) }) },
+      fn(e) {
+        match e {
+          BudgetExceeded { kind } => kind == Calls,
+          _ => false,
+        }
+      },
+    )
+  }
+}
+
+test "an impossible token reservation never reaches the model" {
+  with Budget.limits(Limits { tokens: Some(10), usd: None, calls: None }), Llm.scripted([]) {
+    expect_fails_with(fn() { count_tasks(3) }, fn(e) {
+      match e {
+        BudgetExceeded { kind } => kind == Tokens,
+        _ => false,
+      }
+    })
+  }
+}
+
+test "the last turn must answer instead of requesting another tool" {
+  with Budget.unlimited(),
+      Llm.scripted(["\{\"tool_use\":[\{\"name\":\"waiting\",\"input\":\{\}\}]\}"]) {
+    expect_fails_with(fn() { count_tasks(1) }, fn(e) {
+      match e {
+        InvalidOutput { .. } => true,
+        _ => false,
+      }
+    })
+  }
+}

@@ -29,3 +29,22 @@ the program here is the checked version and its header comment says what changed
 Cassettes (`tests/fixtures/*.jsonl`, replayed by `Http.recording` and `Llm.replay` with the
 network denied) are synthetic: hand-authored responses in the real response shapes, never
 recorded from a provider. Each directory's `tests/fixtures/README.md` says how they were made.
+
+## Cookbook (design §17.145)
+
+The eight additional projects below are discovered by the same harness, all at M3
+without skips. Their `recipe.md` prose and project files generate the website
+cookbook and `skills/sakura/references/recipes.md` through `agent_docs`.
+
+| Recipe | Harness mode |
+|---|---|
+| `json_refined` | run + test |
+| `cli_files` | run + test |
+| `http_retry` | test (cassette, virtual clock) |
+| `sqlite_query` | test (in-memory SQLite) |
+| `router_endpoint` | test (direct router calls) |
+| `scripted_tool` | test (script and cassette) |
+| `budgeted_agent` | test (finite budget and cassette) |
+| `indexed_update` | run + test |
+
+See [cookbook.md](cookbook.md) for the compiler baseline and regeneration command.

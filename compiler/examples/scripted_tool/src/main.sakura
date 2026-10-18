@@ -1,0 +1,58 @@
+// milestone: M3
+// mode: test
+// spec: design §17.145
+
+import std/agent.{Agent}
+import std/budget.{Budget}
+import std/fs.{Fs}
+import std/llm.{Llm, LlmError, Request}
+import std/path.{Path}
+import std/prompt.{Prompt}
+import std/tool.{Tool, ToolError}
+
+error UnknownStation
+
+@tool("Look up a station platform")
+fn platform(station: String) -> Int ! {Console, Fail<UnknownStation>} {
+  if station != "North" { fail UnknownStation }
+  Console.print("looked up {station}")
+  4
+}
+
+fn platform_answer() -> Int ! {Budget, Console, Llm, Fail<LlmError | ToolError>} {
+  let request: Request<Int> = Llm.request("Use the platform tool.", Prompt.text("North"))
+  Agent.run(Agent { request, tools: [Tool.of(platform)], max_steps: 3, stop: fn(_) { false } })
+}
+
+test "scripted model calls the actual tool before answering" {
+  with Budget.unlimited(),
+      Llm.scripted([
+        "\{\"tool_use\":[\{\"name\":\"platform\",\"input\":\{\"station\":\"North\"\}\}]\}",
+        "4",
+      ]) {
+    expect_eq(platform_answer(), 4)
+    expect_output(["looked up North"])
+  }
+}
+
+test "tool errors end the loop before an answer" {
+  with Budget.unlimited(),
+      Llm.scripted([
+        "\{\"tool_use\":[\{\"name\":\"platform\",\"input\":\{\"station\":\"Unknown\"\}\}]\}",
+      ]) {
+    expect_fails_with(fn() { platform_answer() }, fn(e) {
+      match e {
+        ToolError { tag, .. } => tag == "UnknownStation",
+        _ => false,
+      }
+    })
+    expect_output([])
+  }
+}
+
+test "the same two turns replay from a synthetic provider cassette" {
+  with Fs.rooted(Test.fixtures()), Budget.unlimited(), Llm.replay(Path.of("platform.jsonl")) {
+    expect_eq(platform_answer(), 4)
+    expect_output(["looked up North"])
+  }
+}

@@ -1,0 +1,3 @@
+{"schema_version":"1.0","kind":"cassette"}
+{"method":"GET","url":"https://recipes.invalid/status","headers":[],"body":"","status":429,"response_headers":[],"response_body":"busy"}
+{"method":"GET","url":"https://recipes.invalid/status","headers":[],"body":"","status":200,"response_headers":[],"response_body":"ready"}

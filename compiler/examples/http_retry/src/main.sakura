@@ -1,0 +1,64 @@
+// milestone: M3
+// mode: test
+// spec: design §17.145
+
+import std/duration.{Duration}
+import std/fs.{Fs}
+import std/http.{Any, Http, RateLimited}
+import std/path.{Path}
+import std/response.{HttpError, Response, Status}
+import std/retry
+import std/retry.{Policy}
+
+fn fetch() -> Response ! {Clock, Http, Random, Fail<HttpError | RateLimited>} {
+  let policy: Policy<HttpError | RateLimited> = Policy {
+    ..retry.policy(
+      fn(err: HttpError | RateLimited) {
+        match err {
+          RateLimited { .. } => true,
+          HttpError { .. } => false,
+        }
+      },
+      3,
+    ),
+    jitter: false,
+    deadline: Some(Duration.seconds(1)),
+  }
+  retry.retry(policy, fn() { Http.get(url"https://recipes.invalid/status") })
+}
+
+test "429 then success replays with a virtual backoff" {
+  with Fs.rooted(Test.fixtures()),
+      Http.scripted([]),
+      Http.recording(Path.of("status.jsonl")),
+      Clock.virtual() {
+    let response = fetch()
+    expect_eq(response.status, Status.from(200))
+    expect_eq(response.body, "ready")
+    expect_eq(Clock.monotonic(), Duration.millis(100))
+  }
+}
+
+test "three rejected attempts preserve RateLimited" {
+  with Http.scripted([(Any, Response.status(429, "busy"))]), Clock.virtual() {
+    expect_fails_with(fn() { fetch() }, fn(e) {
+      match e {
+        RateLimited { .. } => true,
+        _ => false,
+      }
+    })
+    expect_eq(Clock.monotonic(), Duration.millis(300))
+  }
+}
+
+test "a missing exchange does not reach a host or retry" {
+  with Http.scripted([]), Clock.virtual() {
+    expect_fails_with(fn() { fetch() }, fn(e) {
+      match e {
+        HttpError { .. } => true,
+        _ => false,
+      }
+    })
+    expect_eq(Clock.monotonic(), Duration.millis(0))
+  }
+}

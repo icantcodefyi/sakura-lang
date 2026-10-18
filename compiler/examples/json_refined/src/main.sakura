@@ -1,0 +1,32 @@
+// milestone: M3
+// mode: run
+// spec: design §17.145
+
+import std/json.{DecodeError}
+
+type Quantity = Int where it >= 1 && it <= 100
+type Order = { item: String where String.len(it) > 0, quantity: Quantity }
+
+fn read_order(text: String) -> Result<Order, DecodeError> { Json.decode(text) }
+
+pub fn main() -> Unit ! {Console} {
+  match read_order("\{\"item\":\"tea\",\"quantity\":2\}") {
+    Ok(order) => Console.print("{order.quantity} x {order.item}"),
+    Err(err) => Console.print("invalid order at {err.path}: {err.message}"),
+  }
+}
+
+test "JSON decoding validates the record fields" {
+  expect_eq(
+    read_order("\{\"item\":\"tea\",\"quantity\":2\}"),
+    Ok(Order { item: "tea", quantity: 2 }),
+  )
+}
+
+test "malformed JSON and invalid fields are recoverable" {
+  expect(Result.is_err(read_order("not json")))
+  expect(Result.is_err(read_order("\{\"item\":\"tea\",\"quantity\":0\}")))
+  expect(Result.is_err(read_order("\{\"item\":\"tea\",\"quantity\":101\}")))
+  expect(Result.is_err(read_order("\{\"item\":\"\",\"quantity\":1\}")))
+  expect(Result.is_err(read_order("\{\"item\":\"tea\"\}")))
+}

@@ -1,0 +1,51 @@
+// milestone: M3
+// mode: test
+// spec: design §17.145
+
+import std/sql.{Sql, SqlError}
+
+type Note = { id: Int, title: String }
+
+fn create_notes() -> Unit ! {Sql, Fail<SqlError>} {
+  Sql.migrate([sql"create table notes (id integer primary key, title text not null)"])
+}
+
+fn add_note(title: String) -> Unit ! {Sql, Fail<SqlError>} {
+  let _ = Sql.execute(sql"insert into notes (title) values ({title})")
+}
+
+fn find_notes(title: String) -> List<Note> ! {Sql, Fail<SqlError>} {
+  Sql.query(sql"select id, title from notes where title = {title} order by id")
+}
+
+test "SQLite binds interpolated values, including SQL-looking text" {
+  with Sql.memory() {
+    create_notes()
+    add_note("tea")
+    let literal = "x' OR 1=1 --"
+    expect_eq(find_notes(literal), [])
+    add_note(literal)
+    expect_eq(find_notes(literal), [Note { id: 2, title: literal }])
+    expect_eq(find_notes("tea"), [Note { id: 1, title: "tea" }])
+  }
+}
+
+test "a failing transaction rolls back earlier writes" {
+  with Sql.memory() {
+    create_notes()
+    expect_fails_with(
+      fn() {
+        Sql.transaction(fn() {
+          add_note("rolled back")
+          let _ = Sql.execute(sql"insert into absent_table (title) values ({"bad"})")
+        })
+      },
+      fn(e) {
+        match e {
+          SqlError { .. } => true,
+        }
+      },
+    )
+    expect_eq(find_notes("rolled back"), [])
+  }
+}

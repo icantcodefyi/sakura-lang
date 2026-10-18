@@ -1,0 +1,41 @@
+// milestone: M3
+// mode: test
+// spec: design §17.145
+
+import std/request.{BadRequest, Get, Request}
+import std/response.{Response, Status}
+import std/router.{Router}
+import std/url.{Url}
+
+type Greeting = { name: String where String.len(it) > 0 && String.len(it) <= 40 }
+
+fn greet(req: Request) -> Response {
+  try {
+    let input: Greeting = Request.json(req, 256)
+    Response.status(200, "Hello, {input.name}!")
+  } catch {
+    BadRequest { .. } => Response.status(400, "expected a short name"),
+  }
+}
+
+fn app() -> Router<{}> { Router.new().post("/greet", greet) }
+
+test "route dispatch calls the endpoint without a server" {
+  let response = Router.handle(
+    app(),
+    Request.post("/greet", Json.encode(Greeting { name: "Mina" })),
+  )
+  expect_eq(response.status, Status.from(200))
+  expect_eq(response.body, "Hello, Mina!")
+}
+
+test "malformed, invalid and oversized bodies return 400" {
+  for body in ["not json", "\{\"name\":\"\"\}", String.repeat("x", 257)] {
+    expect_eq(Router.handle(app(), Request.post("/greet", body)).status, Status.from(400))
+  }
+}
+
+test "unknown paths and wrong methods are distinct" {
+  expect_eq(Router.handle(app(), Request.post("/missing", "")).status, Status.from(404))
+  expect_eq(Router.handle(app(), Request.of(Get, Url.from("/greet"))).status, Status.from(405))
+}

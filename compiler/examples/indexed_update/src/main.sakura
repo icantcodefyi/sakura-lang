@@ -1,0 +1,39 @@
+// milestone: M3
+// mode: run
+// spec: design §17.145
+
+fn replace_negatives(values: List<Int>) -> List<Int> {
+  var updated = values
+  let n = List.len(updated)
+  if n == 0 { return updated }
+  for i in 0..n {
+    let value = List.get(updated, i).expect("i is inside the half-open range")
+    if value < 0 { updated = List.set(updated, i, 0) }
+  }
+  updated
+}
+
+pub fn main() -> Unit ! {Console} { Console.print("{replace_negatives([3, -2, 7, -1])}") }
+
+test "updates preserve earlier versions" {
+  let original = [3, -2, 7, -1]
+  expect_eq(replace_negatives(original), [3, 0, 7, 0])
+  expect_eq(original, [3, -2, 7, -1])
+}
+
+test "empty, singleton and unchanged inputs" {
+  expect_eq(replace_negatives([]), [])
+  expect_eq(replace_negatives([-1]), [0])
+  expect_eq(replace_negatives([0, 4]), [0, 4])
+}
+
+fn replace_if_present(values: List<Int>, index: Int, value: Int) -> List<Int> {
+  if index >= 0 && index < List.len(values) { List.set(values, index, value) } else { values }
+}
+
+test "external indices are checked before replacement" {
+  expect_eq(replace_if_present([7], -1, 9), [7])
+  expect_eq(replace_if_present([7], 1, 9), [7])
+  expect_eq(replace_if_present([], 0, 9), [])
+  expect_eq(replace_if_present([7], 0, 9), [9])
+}

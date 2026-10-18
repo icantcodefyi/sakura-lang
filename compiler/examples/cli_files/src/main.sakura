@@ -1,0 +1,49 @@
+// milestone: M3
+// mode: run
+// spec: design §17.145
+// args: --input note.txt
+
+import std/cli.{Cli, CliError}
+import std/fs.{Dir, Fs, FsError}
+import std/path.{Path}
+
+type Args = { input: Path }
+
+fn byte_count() -> Int ! {Cli, Fs, Fail<CliError | FsError>} {
+  let args: Args = Cli.parse(Cli.args())
+  with Fs.rooted(Dir.subdir(Fs.root(), "data")) { Bytes.len(Fs.read(args.input)) }
+}
+
+pub fn main() -> Unit ! {Cli, Console, Fs, Fail<CliError | FsError>} {
+  Console.print("{byte_count()} bytes")
+}
+
+test "CLI arguments select a file inside data" {
+  with Cli.of(["--input", "note.txt"]),
+      Fs.memory([(Path.of("data/note.txt"), String.to_bytes("tea\n"))]) {
+    expect_eq(byte_count(), 4)
+  }
+}
+
+test "missing arguments fail before reading" {
+  with Cli.of([]), Fs.memory([]) {
+    expect_fails_with(fn() { byte_count() }, fn(e) {
+      match e {
+        CliError { .. } => true,
+        _ => false,
+      }
+    })
+  }
+}
+
+test "a missing file remains FsError" {
+  with Cli.of(["--input", "missing.txt"]),
+      Fs.memory([(Path.of("data/note.txt"), String.to_bytes("tea\n"))]) {
+    expect_fails_with(fn() { byte_count() }, fn(e) {
+      match e {
+        FsError { .. } => true,
+        _ => false,
+      }
+    })
+  }
+}
