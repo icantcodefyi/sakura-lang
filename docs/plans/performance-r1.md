@@ -449,6 +449,7 @@ authority).
 4. `analyze` takes the `&Module` (to read `T$check`); the three callers changed by one line each: `FnEmit::new` in `sakura_codegen_js/src/emit.rs`, `pretty.rs`, and `sakura_eval`'s `audit_ranges`. A new `ranges::facts` also returns the seeded intervals, which `--dump core` prints as `seeds n%0 in [0, 9007199254740991]` after the check and after a refined parameter's `where`.
 5. Generator cases: a helper's contract gains, at 60% of helpers with an `Int` parameter, a `requires` conjunction of one to three comparisons of `Int` parameters against range edges, small literals or each other, and half of all helpers with an `Int` parameter start with `let _ = p op k`. Refined parameters are not generated; their seeding is covered by unit tests and `arith_ranges_requires_seeded`.
 6. Blame is unchanged: `D020` for a violating self-call inside the loop names the outer call's span (`down2(3)`), as before this change; caller-site blame inside a self-tail loop is WS-P5's.
+7. The three `D003` fixtures (`arith_ranges_unseeded_param`, `arith_ranges_loop_flag`, `arith_ranges_conjunction_else`) stop at the JS range, so they join `arith_ranges_counter_overflow` in `parity.rs`'s `KNOWN` list (WASM's i64 computes the result).
 
 ## 9. Round 10 (§17.149–§17.154): ownership, fusion, benchmark definitions, measurement
 

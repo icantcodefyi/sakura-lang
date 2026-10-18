@@ -32,7 +32,19 @@ const KNOWN: &[(&str, &str)] = &[
         "JS stops with D003 beyond ±(2^53−1); Int is i64 on WASM (§17.80), no @wasm variant yet",
     ),
     (
+        "arith_ranges_conjunction_else.sakura",
+        "JS stops with D003 beyond ±(2^53−1); Int is i64 on WASM (§17.80), no @wasm variant yet",
+    ),
+    (
         "arith_ranges_counter_overflow.sakura",
+        "JS stops with D003 beyond ±(2^53−1); Int is i64 on WASM (§17.80), no @wasm variant yet",
+    ),
+    (
+        "arith_ranges_loop_flag.sakura",
+        "JS stops with D003 beyond ±(2^53−1); Int is i64 on WASM (§17.80), no @wasm variant yet",
+    ),
+    (
+        "arith_ranges_unseeded_param.sakura",
         "JS stops with D003 beyond ±(2^53−1); Int is i64 on WASM (§17.80), no @wasm variant yet",
     ),
     (
