@@ -46,6 +46,9 @@ json_encode: (word, ptr) -> ptr
 json_parse: (ptr) -> ptr
 json_schema: (ptr, ptr) -> ptr
 list_at: (ptr, i64) -> word
+list_builder: () -> ptr
+list_builder_finish: (ptr) -> ptr
+list_builder_push: (ptr, word) -> ptr
 list_get: (ptr, i64) -> ptr
 list_len: (ptr) -> i64
 list_push: (ptr, word) -> ptr

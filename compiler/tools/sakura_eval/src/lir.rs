@@ -1879,7 +1879,14 @@ impl<'m> Vm<'m> {
                 }
                 W(self.option(got)?)
             }
-            ("list_push", [W(xs), x]) => {
+            // A builder is the list it would finish as (design §17.116).
+            ("list_builder", []) => self.new_list(vec![])?,
+            ("list_builder_finish", [W(b)]) => {
+                self.list(*b)?;
+                self.dup(*b)?;
+                W(*b)
+            }
+            ("list_push" | "list_builder_push", [W(xs), x]) => {
                 let mut ys = self.list(*xs)?.to_vec();
                 self.dup_all(&ys)?;
                 let x = self.box_val(*x)?;

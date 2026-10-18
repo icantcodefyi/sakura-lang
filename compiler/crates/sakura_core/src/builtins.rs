@@ -34,6 +34,8 @@ table! {
     Direct list_join/2, Direct list_sum/1, Direct list_first/1, Direct list_last/1,
     Direct list_contains/2, Direct list_slice/3, Direct list_sort/1, Direct list_zip/2,
     Direct list_enumerate/1, Direct list_unique/1,
+    // Transient builders, used only inside std/list bodies (design §17.116)
+    Direct list_builder/0, Direct list_builder_push/2, Direct list_builder_finish/1,
     Cps list_map/2, Cps list_filter/2, Cps list_fold/3, Cps list_find/2, Cps list_all/2,
     Cps list_any/2, Cps list_flat_map/2, Cps list_sort_by/2,
     // Map / Set (insertion-ordered)

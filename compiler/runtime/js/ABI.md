@@ -260,14 +260,14 @@ suspend; `timeout` is std code over `race`. `clock_virtual_sleep(now, ms, $ctx, 
 | `Unit` | `undefined` |
 | `Bool`, `Float` | boolean, number |
 | `Int` | number, always a safe integer; `$rt.add/sub/mul/div/rem/neg` check every operation |
-| `String` | string; `String.len` and offsets are UTF-8 bytes, `Ord` is code point order |
+| `String` | string; `String.len` and offsets are UTF-8 bytes, `Ord` is code point order. `String.len` is O(n) over the JS string (nothing is cached, design §17.116): hoist it out of loops |
 | `Bytes` | `Uint8Array`, never mutated |
 | tuple | array |
 | record, error tag | instance of an emitted class, fields as own properties in declaration order; the prototype's `$t` comes from `$rt.recordType(name, module, [[field, jsProp, hint]…], isError)` |
 | variant | instance of an emitted `class T extends $rt.Variant` with `{ tag, fields }`; `$t` from `$rt.variantType(name, module, [[ctor, [hints…]]…])`; nullary constructors are frozen singletons |
 | `Option`, `Result` | the runtime's `$rt.Option` / `$rt.Result` variants (`None`/`Some` = tags 0/1, `Ok`/`Err` = 0/1) |
-| `List` | `$rt.List`: a persistent vector, a 32-way trie of full leaves plus a tail of up to 32 elements; `get`/`push`/`set` O(log32 n). A push onto the newest version appends to the shared tail in place. Literals: `$rt.list([…])`; `$rt.toArray(xs)` copies out |
-| `Map`, `Set` | `$rt.VMap` / `$rt.VSet`: an insertion-order log (a `List` of entries, removed ones as holes, compacted when holes outnumber entries) plus a HAMT from `$rt.keyOf(key)` (structural) to the entry's log position. Insert, update, remove and lookup O(log32 n); updating a key keeps its position |
+| `List` | `$rt.List`: a persistent vector, a 32-way trie of full leaves plus a tail of up to 32 elements; `get`/`push`/`set` O(log32 n). A push onto the newest version appends to the shared tail in place. Literals: `$rt.list([…])`; `$rt.toArray(xs)` copies out. `list_at` (the index of `for` loops) keeps a one-leaf cache on the list (`lb`, `lf`; the tail counts as a leaf), so an in-order loop walks the trie once per 32 elements. std's `map`, `filter`, `filter_map`, `flat_map`, `range`, `zip` and `enumerate` build their results with `list_builder()`, `list_builder_push(b, x)` and `list_builder_finish(b)` (design §17.116): a builder fills preallocated 32-element leaves in place and `finish` builds the trie once, with the shape a push loop gives; a builder is a private std type, created and finished inside one std body |
+| `Map`, `Set` | `$rt.VMap` / `$rt.VSet`: an insertion-order log (a `List` of entries, removed ones as holes, compacted when holes outnumber entries) plus a HAMT from `$rt.keyOf(key)` (structural) to the entry's log position. Insert, update, remove and lookup O(log32 n); updating a key keeps its position. `map_entries` and `set_to_list` (what `for` iterates) return the log itself when it has no holes, so iteration copies nothing; entries are never mutated |
 | closure | JS function with the CPS ABI. A closure of a direct, **first-order** def (no function-typed parameter) also has own property `$d`, its twin with the captures bound: `f.$d = f$d` once per module for defs and capture-free lambdas, `x = f.bind(null, c…); x.$d = f$d.bind(null, c…)` otherwise. Testing `$d` is one load. Higher-order closures never expose `$d`: a function hidden in a type variable (`app(f, x)` with `x: A = fn(…)`) may reach a twin as an argument without `$d`, which is sound only if no twin reached through `.$d` calls its arguments |
 | `Handler` | `$rt.Handler { e, c, s }`; instances are `{ e, c, s }` |
 | `Secret` | `$rt.Secret` with a private field; `toString`, `toJSON` and `Symbol.toPrimitive` throw; `Show` prints `<secret>` |
@@ -290,18 +290,22 @@ structural over the same representation. Field names that are not safe JS proper
 (`__proto__`) get a `$` suffix in the emitted class; `$t` keeps the Sakura Lang name.
 
 Collections, measured with `node runtime/js/bench/collections.js 100000` (Apple silicon, best
-of 3; ns per operation at n = 100,000). The last column is a re-run on node 26.11 on 2026-10-18.
+of 3; ns per operation at n = 100,000). The third column is a re-run on node 26.11 on 2026-10-18;
+the last is WS-P6 (builders, the `list_at` leaf cache, the map log as `entries`, copy-free HAMT
+inserts and removals; best of five runs of the script, same day, a loaded machine, so ±2 ns on
+the small cases).
 
-| Case | Before (copying `Map`, array list) | Persistent HAMT / vector | Re-run, node 26.11 |
-|---|---|---|---|
-| `List.push`, linear | 20 | 31 | 13 |
-| `List.push` onto an older version | 1,486 at n = 20k, O(n) | 51 | 19 |
-| `List.get` / loop `list_at` | 11 / 2 | 46 / 4 | 10 / 4 |
-| `Map.insert`, new Int / String / tuple keys | ~368,000 at n = 20k, O(n) | 1,003 / 965 / 1,660 | 233 / 260 / 412 |
-| `Map.insert`, existing key | ~805,000 at n = 20k | 941 | 179 |
-| `Map.get` | 22 | 128 | 66 |
-| `Map.remove`, every key | ~366,000 at n = 20k | 1,831 | 516 |
-| `Set.insert`, Int | ~376,000 at n = 20k | 663 | 242 |
+| Case | Before (copying `Map`, array list) | Persistent HAMT / vector | Re-run, node 26.11 | WS-P6 |
+|---|---|---|---|---|
+| `List.push`, linear | 20 | 31 | 13 | 15 |
+| `List.push` onto an older version | 1,486 at n = 20k, O(n) | 51 | 19 | 19 |
+| `List.get` / loop `list_at` | 11 / 2 | 46 / 4 | 10 / 4 | 10 / 4 |
+| `Map.insert`, new Int / String / tuple keys | ~368,000 at n = 20k, O(n) | 1,003 / 965 / 1,660 | 233 / 260 / 412 | 204 / 207 / 335 |
+| `Map.insert`, existing key | ~805,000 at n = 20k | 941 | 179 | 157 |
+| `Map.get` | 22 | 128 | 66 | 63 |
+| `Map.remove`, every key | ~366,000 at n = 20k | 1,831 | 516 | 440 |
+| `Map.entries` | | | 11 | 0 |
+| `Set.insert`, Int | ~376,000 at n = 20k | 663 | 242 | 209 |
 
 The old maps copied on every update, so 100k inserts took minutes; the "before" column is
 therefore measured at n = 20,000.

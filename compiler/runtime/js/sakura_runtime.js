@@ -868,7 +868,11 @@ function ser(v) {
     case "undefined":
       return "u";
   }
-  if (Array.isArray(v)) return `(${v.map(ser).join(",")})`;
+  if (Array.isArray(v)) {
+    let out = "(";
+    for (let i = 0; i < v.length; i++) out += (i === 0 ? "" : ",") + ser(v[i]);
+    return out + ")";
+  }
   if (v instanceof List) return `[${items(v).map(ser).join(",")}]`;
   if (v instanceof Uint8Array) return `b${v.join(".")}`;
   if (v instanceof Variant) return `${v.tag}(${v.fields.map(ser).join(",")})`;
@@ -889,6 +893,11 @@ export class List {
     this.root = root; // trie of the first n - tl elements, null when there are none
     this.tail = tail; // the last `tl` elements are tail[0..tl)
     this.tl = tl;
+    // `list_at`'s leaf cache (design §17.116): the leaf (or tail) holding elements [lb, lb + 32).
+    // Compiler loops index in order, so 31 of 32 steps skip the walk. This version's elements
+    // never change.
+    this.lb = -1;
+    this.lf = null;
   }
 }
 
@@ -896,12 +905,26 @@ const EMPTY_LIST = new List(0, 5, null, [], 0);
 
 /** A list of the elements of `arr`, built bottom-up in O(n); `arr` is not retained. */
 export function list(arr) {
-  const n = arr.length;
-  if (n === 0) return EMPTY_LIST;
-  const tl = n % 32 === 0 ? 32 : n % 32;
-  const body = n - tl;
-  let level = [];
-  for (let i = 0; i < body; i += 32) level.push(arr.slice(i, i + 32));
+  const leaves = [];
+  const body = arr.length - (arr.length % 32 || 32);
+  for (let i = 0; i < body; i += 32) leaves.push(arr.slice(i, i + 32));
+  return fromLeaves(leaves, arr.slice(Math.max(body, 0)));
+}
+
+/** A list of the elements of `arr`, a fresh array the caller gives up: up to 32 are not copied. */
+function own(arr) {
+  return arr.length > 0 && arr.length <= 32 ? new List(arr.length, 5, null, arr, arr.length) : list(arr);
+}
+
+/** The list of full 32-element `leaves` followed by `rest` (at most 32); both are adopted. */
+function fromLeaves(leaves, rest) {
+  let tail = rest;
+  if (tail.length === 0) {
+    if (leaves.length === 0) return EMPTY_LIST;
+    tail = leaves.pop(); // the tail holds 1..32 elements, as after a push loop
+  }
+  const n = leaves.length * 32 + tail.length;
+  let level = leaves;
   let shift = 5;
   while (level.length > 32) {
     const up = [];
@@ -909,7 +932,20 @@ export function list(arr) {
     level = up;
     shift += 5;
   }
-  return new List(n, shift, level.length === 0 ? null : level, arr.slice(body), tl);
+  return new List(n, shift, level.length === 0 ? null : level, tail, tail.length);
+}
+
+/**
+ * A transient list builder (design §17.116), used only by std through `list_builder*`: created
+ * and finished inside one std function body, never a Sakura value, never shared. Pushing fills
+ * a leaf in place; `finish` builds the trie once, structurally identical to a push loop's.
+ */
+class Builder {
+  constructor() {
+    this.leaves = [];
+    this.leaf = new Array(32); // preallocated: JSC grows a pushed array slowly
+    this.i = 0; // elements in `leaf`
+  }
 }
 
 /** The elements as a fresh array (also for hosts and tests). */
@@ -985,13 +1021,14 @@ function setAt(xs, i, x) {
     t[i - off] = x;
     return new List(xs.n, xs.shift, xs.root, t, xs.tl);
   }
-  const go = (node, level) => {
-    const copy = node.slice();
+  const root = xs.root.slice();
+  let copy = root;
+  for (let level = xs.shift; level > 0; level -= 5) {
     const j = (i >>> level) & 31;
-    copy[j] = level === 0 ? x : go(node[j], level - 5);
-    return copy;
-  };
-  return new List(xs.n, xs.shift, go(xs.root, xs.shift), xs.tail, xs.tl);
+    copy = copy[j] = copy[j].slice();
+  }
+  copy[i & 31] = x;
+  return new List(xs.n, xs.shift, root, xs.tail, xs.tl);
 }
 
 export function list_empty() {
@@ -1003,9 +1040,18 @@ export function list_len(xs) {
 export function list_get(xs, i) {
   return i >= 0 && i < xs.n ? Some(at(xs, i)) : None;
 }
-/** Unchecked index for compiler-generated loops. */
+/** Unchecked index for compiler-generated loops; sequential indices hit the leaf cache. */
 export function list_at(xs, i) {
-  return at(xs, i);
+  if ((i & ~31) === xs.lb) return xs.lf[i & 31];
+  // The tail starts on a leaf boundary, so it is cached like a leaf.
+  let node = xs.tail;
+  if (i < xs.n - xs.tl) {
+    node = xs.root;
+    for (let level = xs.shift; level > 0; level -= 5) node = node[(i >>> level) & 31];
+  }
+  xs.lb = i & ~31;
+  xs.lf = node;
+  return node[i & 31];
 }
 export function list_push(xs, x) {
   return push(xs, x);
@@ -1013,6 +1059,22 @@ export function list_push(xs, x) {
 /** `List.set` (design §17.126): its `requires` has checked `0 <= i < n`; copies one path. */
 export function list_set(xs, i, x) {
   return setAt(xs, i, x);
+}
+export function list_builder() {
+  return new Builder();
+}
+export function list_builder_push(b, x) {
+  b.leaf[b.i++] = x;
+  if (b.i === 32) {
+    b.leaves.push(b.leaf);
+    b.leaf = new Array(32);
+    b.i = 0;
+  }
+  return b;
+}
+export function list_builder_finish(b) {
+  b.leaf.length = b.i;
+  return fromLeaves(b.leaves, b.leaf);
 }
 export function list_concat(xs, ys) {
   if (ys.n === 0) return xs;
@@ -1194,23 +1256,22 @@ function same(a, b) {
 }
 
 function hashOf(key) {
-  switch (typeof key) {
-    case "string": {
-      let h = 0x811c9dc5;
-      for (let i = 0; i < key.length; i++) h = Math.imul(h ^ key.charCodeAt(i), 0x01000193);
-      return h | 0;
-    }
-    case "number": {
-      if (!Number.isSafeInteger(key)) return hashOf(String(key));
-      let h = (key | 0) ^ Math.floor(key / 4294967296);
-      h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
-      h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
-      return (h ^ (h >>> 16)) | 0;
-    }
-    case "boolean":
-      return key ? 1231 : 1237;
+  if (typeof key === "number" && Number.isSafeInteger(key)) {
+    let h = (key | 0) ^ Math.floor(key / 4294967296);
+    h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
+    h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+    return (h ^ (h >>> 16)) | 0;
   }
-  return 0;
+  if (typeof key === "string") return hashString(key);
+  if (typeof key === "boolean") return key ? 1231 : 1237;
+  return typeof key === "number" ? hashString(String(key)) : 0;
+}
+
+/** FNV-1a over UTF-16 code units. */
+function hashString(key) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < key.length; i++) h = Math.imul(h ^ key.charCodeAt(i), 0x01000193);
+  return h | 0;
 }
 
 function popcount(x) {
@@ -1245,12 +1306,16 @@ function hset(node, shift, leaf) {
   if (node instanceof HNode) {
     const bit = 1 << ((leaf.h >>> shift) & 31);
     const i = popcount(node.bm & (bit - 1));
-    const a = node.a.slice();
     if (node.bm & bit) {
+      const a = node.a.slice();
       a[i] = hset(a[i], shift + 5, leaf);
       return new HNode(node.bm, a);
     }
-    a.splice(i, 0, leaf);
+    const old = node.a;
+    const a = new Array(old.length + 1);
+    for (let j = 0; j < i; j++) a[j] = old[j];
+    a[i] = leaf;
+    for (let j = i; j < old.length; j++) a[j + 1] = old[j];
     return new HNode(node.bm | bit, a);
   }
   if (node.h !== leaf.h) return hmerge(node, leaf, shift);
@@ -1283,12 +1348,16 @@ function hdel(node, shift, h, k) {
   const i = popcount(node.bm & (bit - 1));
   const child = hdel(node.a[i], shift + 5, h, k);
   if (child === node.a[i]) return node;
-  const a = node.a.slice();
+  let a;
   let bm = node.bm;
   if (child === null) {
-    a.splice(i, 1);
+    const old = node.a;
+    a = new Array(old.length - 1);
+    for (let j = 0; j < i; j++) a[j] = old[j];
+    for (let j = i + 1; j < old.length; j++) a[j - 1] = old[j];
     bm &= ~bit;
   } else {
+    a = node.a.slice();
     a[i] = child;
   }
   if (a.length === 0) return null;
@@ -1335,6 +1404,15 @@ function entries(m) {
   return m.size === m.log.n ? items(m.log) : items(m.log).filter((e) => e !== HOLE);
 }
 
+/**
+ * Live entries as a List (`for` over a map or set, design §17.116): the log itself when it has
+ * no holes, so iteration copies nothing. Entries are never mutated, and a push onto the result
+ * copies the shared tail as for any older version.
+ */
+function liveLog(m) {
+  return m.size === m.log.n ? m.log : list(entries(m));
+}
+
 const EMPTY_MAP = new VMap(EMPTY_LIST, null, 0);
 const EMPTY_SET = new VSet(EMPTY_LIST, null, 0);
 
@@ -1366,7 +1444,7 @@ export function map_contains(m, k) {
   return mapFind(m, k) !== undefined;
 }
 export function map_entries(m) {
-  return list(entries(m).map(([k, v]) => [k, v]));
+  return liveLog(m);
 }
 export function map_keys(m) {
   return list(entries(m).map(([k]) => k));
@@ -1402,7 +1480,7 @@ export function set_contains(s, x) {
   return hget(s.idx, hashOf(key), key) >= 0;
 }
 export function set_to_list(s) {
-  return list(entries(s));
+  return liveLog(s);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1422,7 +1500,7 @@ export function string_len(s) {
   return n;
 }
 export function string_chars(s) {
-  return list([...s]);
+  return own([...s]);
 }
 let segmenter;
 export function string_graphemes(s) {
@@ -1430,7 +1508,7 @@ export function string_graphemes(s) {
   return list([...segmenter.segment(s)].map((g) => g.segment));
 }
 export function string_split(s, sep) {
-  return list(sep === "" ? [...s] : s.split(sep));
+  return own(sep === "" ? [...s] : s.split(sep));
 }
 export function string_trim(s) {
   return s.trim();

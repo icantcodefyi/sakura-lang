@@ -320,6 +320,42 @@ test("List, Map and Set agree with a model under random persistent updates", () 
   assert.deepEqual(rt.toArray(rt.set_to_list(s)).slice(0, 3), [1, 3, 5]);
 });
 
+test("builders, leaf iteration and map logs keep lists persistent (design §17.116)", () => {
+  const shape = (xs) => [xs.n, xs.shift, xs.root, xs.tail.slice(0, xs.tl), xs.tl];
+  for (const n of [0, 1, 31, 32, 33, 64, 1024, 1025, 32 * 32 * 32 + 5]) {
+    let pushed = rt.list_empty();
+    let b = rt.list_builder();
+    for (let i = 0; i < n; i++) {
+      pushed = rt.list_push(pushed, i);
+      b = rt.list_builder_push(b, i);
+    }
+    const built = rt.list_builder_finish(b);
+    assert.deepEqual(shape(built), shape(pushed), `n = ${n}`);
+    assert.deepEqual(shape(rt.list(rt.toArray(pushed))), shape(pushed), `list(), n = ${n}`);
+    // In order, backwards and interleaved with another list: the leaf cache follows each list.
+    const other = rt.list_range(100_000, 100_000 + n);
+    for (let i = 0; i < n; i++) {
+      assert.equal(rt.list_at(built, i), i);
+      assert.equal(rt.list_at(other, i), 100_000 + i);
+    }
+    for (let i = n - 1; i >= 0; i--) assert.equal(rt.list_at(built, i), i);
+    if (n > 40) {
+      const set = rt.list_set(built, 3, -1); // a new version has its own cache
+      assert.equal(rt.list_at(set, 3), -1);
+      assert.equal(rt.list_at(built, 3), 3);
+    }
+  }
+  // A map's entry list is its log; pushing onto it or onto the map leaves the other unchanged.
+  let m = rt.map_of(rt.list([[1, "a"], [2, "b"]]));
+  const es = rt.map_entries(m);
+  const es2 = rt.list_push(es, [9, "z"]);
+  m = rt.map_insert(m, 3, "c");
+  assert.deepEqual(rt.toArray(es), [[1, "a"], [2, "b"]]);
+  assert.deepEqual(rt.toArray(es2), [[1, "a"], [2, "b"], [9, "z"]]);
+  assert.deepEqual(rt.toArray(rt.map_entries(m)), [[1, "a"], [2, "b"], [3, "c"]]);
+  assert.deepEqual(rt.toArray(rt.map_entries(rt.map_remove(m, 2))), [[1, "a"], [3, "c"]]);
+});
+
 test("Map and Set keep insertion order", () => {
   let m = rt.map_empty();
   for (const k of ["b", "a", "c"]) m = rt.map_insert(m, k, k.toUpperCase());

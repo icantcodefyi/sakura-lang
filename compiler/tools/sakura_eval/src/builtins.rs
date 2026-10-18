@@ -78,6 +78,14 @@ pub(crate) fn call(m: &mut Machine, name: &str, args: Vec<Value>, hs: &Rc<Handle
             ys.push(x.clone());
             list(ys)
         }
+        // A builder is the list it would finish as (design §17.116).
+        ("list_builder", []) => list(vec![]),
+        ("list_builder_push", [List(xs), x]) => {
+            let mut ys = (**xs).clone();
+            ys.push(x.clone());
+            list(ys)
+        }
+        ("list_builder_finish", [b @ List(_)]) => b.clone(),
         ("list_concat", [List(xs), List(ys)]) => {
             list(xs.iter().chain(ys.iter()).cloned().collect())
         }
