@@ -67,6 +67,22 @@ scheduled beside W2 as the first agent-DX items, DX5's runner and DX6's workflow
   install its GitHub App. Evaluate and switch the Linux jobs once installed.
 - Signing and credentials: still open.
 
+**Designer answers, 2026-10-18 (round 11, §17.157):**
+
+- Tooling: the hand-written `release.yml` + `tools/release/release.py` + `tools/install/install.sh`
+  over one inventory (`packaging/targets.json`), recorded in
+  [ADR 0003](../adr/0003-release-tooling.md); cargo-dist is reconsidered when its installers
+  verify unconditionally and its npm packaging carries binaries.
+- Matrix: the owner's GNU A→B→C above supersedes §17.147's proposed musl targets; musl is refused
+  by the installer and the npm launcher with a message, and the archives are not labelled static.
+- crates.io: **deferred for `v0.1.0-alpha.1`** (channels: GitHub release archives + installer,
+  Homebrew tap, npm). Revisited for the first beta, or on a `cargo install sakuralang` request,
+  through a new ADR whose default is a generated self-contained source package; no placeholder
+  crate, no internal-crate publication. `docs/release.md` marks the channel deferred (Sol).
+- Still the owner's: environments and `RELEASE_ENVIRONMENTS_PROTECTED`, tap repository and token,
+  npm trusted publishing or token, name ownership, signing choice (SHA-256 + attestations
+  recommended), Blacksmith installation and cost check, the first dispatch dry run on GitHub.
+
 ## 4. Deviations recorded during implementation
 
 ### DX0 (Opus, `compiler_info`)
