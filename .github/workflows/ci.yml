@@ -60,9 +60,13 @@ jobs:
             partition: --partition hash:2/2
             checks: false
           - os: macos-latest
-            label: macos-latest
-            partition: ""
+            label: "macos-latest, 1/2"
+            partition: --partition hash:1/2
             checks: true
+          - os: macos-latest
+            label: "macos-latest, 2/2"
+            partition: --partition hash:2/2
+            checks: false
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     env:
@@ -337,7 +341,7 @@ jobs:
   ci-required:
     name: ci-required
     if: always()
-    # The rust result requires every matrix child, including both Ubuntu partitions.
+    # The rust result requires every matrix child, including both partitions on each OS.
     needs: [website, rust, native, parity, vscode]
     runs-on: ubuntu-latest
     timeout-minutes: 5
