@@ -279,6 +279,12 @@ const guestFrames = Object.keys(PERFORMS).reduce((n, e) => {
   return { e, i: { e, c, s: [] }, n };
 }, null);
 
+/** `send(req, ctx, k)`, but `Err` for a request with `secret_headers` (design §17.155 (3)). */
+const unreviewed = (send) => (req, ctx, k) =>
+  rt.items(req.secret_headers).length > 0
+    ? rt.ret(k, rt.Err("secret_headers are not sent on --target wasm until Secret transport is reviewed"))
+    : send(req, ctx, k);
+
 /** A defect thrown by the JS runtime as a status-2 answer (`u32` code, message). */
 function defectAnswer(e) {
   if (!(e instanceof rt.Defect)) throw e;
@@ -513,12 +519,13 @@ export class Host {
           return this.jsStep(s.run, () => (status === 0 ? s.k(v) : rt.fail(s.ctx, v)));
         },
         // `async` (ABI §8.2): the JS runtime's CPS builtin, its result completing `request`.
-        // `http_send` and `http_stream_open` are of kind `secret` (ABI §8.1): the request's
-        // `secret_headers` arrive as `Secret`s, which only its `fetchArgs` exposes, as on JS.
+        // `http_send` and `http_stream_open` are not of kind `secret` until the owner's review of
+        // `Secret` transport (design §17.155 (3)): `secret_headers` arrive redacted, so a request
+        // carrying any is refused (`Err`) rather than sent without them.
         http_send: (request, ptr, len) =>
-          this.async(request, ptr, len, rt.http_send, R(["A", "std::response::Response", []], "S")),
+          this.async(request, ptr, len, unreviewed(rt.http_send), R(["A", "std::response::Response", []], "S")),
         http_stream_open: (request, ptr, len) =>
-          this.async(request, ptr, len, rt.http_stream_open, R(["A", "std::http::Incoming", []], "S")),
+          this.async(request, ptr, len, unreviewed(rt.http_stream_open), R(["A", "std::http::Incoming", []], "S")),
         http_stream_read: (request, ptr, len) => this.async(request, ptr, len, rt.http_stream_read, R("Y", "S")),
         http_body_close: (ptr, len) => {
           const [body] = this.decode(new Reader(this.copyIn(ptr, len)));

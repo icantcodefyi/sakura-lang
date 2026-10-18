@@ -169,8 +169,9 @@ fn echo_server() -> u16 {
 }
 
 /// `Http.host()` (real network, plan §3.7 W2): the same exchanges (a send, a body streamed in
-/// chunks, a refused connection), output and trace on both backends; the `secret_headers` value reaches the server (`http_send` is the import of kind
-/// `secret`, ABI §8.1) and nothing else: not stdout, not the trace.
+/// chunks, a refused connection), output and trace on both backends, except the bearer request:
+/// JS sends its `secret_headers`, WASM refuses it (`http_send` is not of kind `secret` until the
+/// owner's review, design §17.155 (3)) and the secret appears nowhere on WASM.
 #[test]
 fn http_host_sends_on_wasm_as_on_js() {
     if !available() {
@@ -195,8 +196,10 @@ fn http_host_sends_on_wasm_as_on_js() {
              import std/response.{{HttpError}}\nimport std/url.{{Url}}\n\n\
              pub fn main() -> Unit ! {{Console, Http, Fail<HttpError>}} {{\n\
              \x20 let req = Http.bearer(Request.of(Get, Url.from(\"http://127.0.0.1:{port}/hi\")), Secret.of(\"s3cr3t\"))\n\
-             \x20 let r = Http.send(req)\n\
-             \x20 Console.print(\"{{r.status}} {{r.body == \"path=/hi auth=Bearer s3cr3t\"}} {{List.len(req.secret_headers)}}\")\n\
+             \x20 match try {{ Http.send(req) }} {{\n\
+             \x20   Ok(r) => Console.print(\"{{r.status}} {{r.body == \"path=/hi auth=Bearer s3cr3t\"}} {{List.len(req.secret_headers)}}\"),\n\
+             \x20   Err(e) => Console.print(\"refused: {{e.reason}}\"),\n\
+             \x20 }}\n\
              \x20 let streamed = Http.stream(Request.of(Get, Url.from(\"http://127.0.0.1:{port}/s\")), fn(i) {{\n\
              \x20   var n = 0\n\
              \x20   var chunk = Http.read_chunk(i.body, 4)\n\
@@ -240,10 +243,12 @@ fn http_host_sends_on_wasm_as_on_js() {
         js.stdout
     );
     assert!(js.stdout.ends_with("failed: None\n"), "{}", js.stdout);
+    let refused = "refused: secret_headers are not sent on --target wasm until Secret transport is reviewed\n";
     assert_eq!(
-        (wasm.code, &wasm.stdout, &wasm_trace),
-        (js.code, &js.stdout, &js_trace),
-        "{}",
+        (wasm.code, wasm.stdout.strip_prefix(refused), &wasm_trace),
+        (js.code, js.stdout.strip_prefix("201 true 1\n"), &js_trace),
+        "{}{}",
+        wasm.stdout,
         wasm.stderr
     );
     assert_eq!(js_trace.matches("\"op\":\"send\"").count(), 2);

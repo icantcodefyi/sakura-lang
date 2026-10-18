@@ -1500,13 +1500,14 @@ fn cps_args<const N: usize>(rt: &mut Rt, frame: u32) -> [u32; N] {
 }
 
 /// `http_send(req)` (cps, as JS `http_send`): `Ok(Response)` for any status, `Err(reason)` when
-/// none arrives. `req` crosses to this import of kind `secret` (ABI §8.1: its `secret_headers`
-/// are sent as headers); cancelling the task aborts the fetch (`abort`).
+/// none arrives. Cancelling the task aborts the fetch (`abort`). Not of kind `secret` until the
+/// owner's review of `Secret` transport (design §17.155 (3)): `secret_headers` cross redacted
+/// and the host refuses such a request rather than send it without them.
 #[unsafe(no_mangle)]
 pub extern "C" fn rt_k_http_send(_env: u32, frame: u32) -> u32 {
     let rt = rt();
     let args: [u32; 1] = cps_args(rt, frame);
-    async_hosted(rt, frame, &args, true, Async::Send)
+    async_hosted(rt, frame, &args, false, Async::Send)
 }
 
 /// `http_stream_open(req)` (cps, as JS): `Ok(Incoming)` once the status and headers arrive,
@@ -1515,7 +1516,7 @@ pub extern "C" fn rt_k_http_send(_env: u32, frame: u32) -> u32 {
 pub extern "C" fn rt_k_http_stream_open(_env: u32, frame: u32) -> u32 {
     let rt = rt();
     let args: [u32; 1] = cps_args(rt, frame);
-    async_hosted(rt, frame, &args, true, Async::Open)
+    async_hosted(rt, frame, &args, false, Async::Open)
 }
 
 /// `http_stream_read(body, max)` (cps, as JS): up to `max` bytes, empty at the end, `Err`
