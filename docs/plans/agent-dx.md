@@ -505,3 +505,12 @@ record their status at authoring time.
    worst case $5.04 per seed (inside the $5.80 remaining). Seed 1 needs a fresh owner key and the
    owner's written approval of that worst case; seed 2 needs the owner to raise the eval total.
    No paid call before both exist.
+
+### DX5 (round 17, §17.197): the offline harness in parallel
+
+`offline.py` runs `exercise` over the 12 tasks on a `ThreadPoolExecutor` (`--jobs`, default
+`os.cpu_count()`, `1` restores the serial run); each task keeps its own scratch directory, the
+per-task lines are printed in task order after collection, so the report is byte-identical to
+the serial run's; `test_runner.py` stays serial. Owner Sol; the `agent_dx` test's wall time is
+recorded before and after in the commit (22 s before). The per-process cost each spawn pays is
+§17.195's std analysis, removed separately by WS-C1/WS-C2.
