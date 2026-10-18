@@ -199,6 +199,14 @@ published yet.
   ([gate report](docs/plans/m3-gate-report.md)). The reviewed escape, cassette and template
   code stays frozen until the [review packet](docs/reviews/m3-security-review.md) is signed.
 
+- Faster effect handlers on the JS backend (design §17.113): an operation performed directly
+  in the body of `with` over a handler literal, or over a call of a function that only builds
+  one (`counter()`, `Clock.fixed(…)`), calls its clause directly instead of searching the
+  handler stack. It stays a cancellation point and is traced as before, and a function whose
+  only effects are handled that way runs without continuations. Other operations run a clause
+  that performs nothing inline. Semantics, traces and output are unchanged.
+- Direct-style JS no longer keeps a value used once by the next call alive for the rest of
+  the function (design §17.138), which lowered `binary_trees`' peak memory on Node.
 - Faster collections on the JS backend (design §17.116): `List.map`, `filter`, `filter_map`,
   `flat_map`, `range`, `zip` and `enumerate` build their result in place before returning it,
   `for` over a list reads each leaf of the vector once, `for` over a `Map` or `Set` copies

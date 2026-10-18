@@ -1,0 +1,20 @@
+# WS-P2 interleaved A/B (fresh processes alternating base c4da994 / head; 7 rounds, 15 for the last two rows)
+# tool: /tmp ab.sh = bench/harness/runner.mjs measure on each bench build; host load 9.4-13.1 (other agents' cargo test/differential/wasm jobs)
+node deltablue n=5000 min base 311.1178 head 298.8483 head/base 0.961   median ratio 1.059
+node json_validate n=30000 min base 29.3440 head 30.2971 head/base 1.032   median ratio 1.073
+bun json_validate n=10000 min base 9.5845 head 9.0453 head/base 0.944   median ratio 0.980
+node map_set n=10000 min base 17.5481 head 17.7437 head/base 1.011   median ratio 1.051
+bun map_set n=10000 min base 28.7304 head 30.0920 head/base 1.047   median ratio 0.952
+bun nbody n=1000 min base 2.1330 head 2.1547 head/base 1.010   median ratio 0.992
+node pipeline n=300000 min base 2.6759 head 2.5857 head/base 0.966   median ratio 1.012
+node rbtree n=10000 min base 4.6584 head 4.7799 head/base 1.026   median ratio 1.029
+bun rbtree n=50000 min base 56.0005 head 64.6286 head/base 1.154   median ratio 1.037
+node shapes n=10000 min base 2.9797 head 3.0131 head/base 1.011   median ratio 1.032
+bun shapes n=100000 min base 28.1880 head 29.6822 head/base 1.053   median ratio 1.008
+node sieve n=10000 min base 0.8188 head 0.8086 head/base 0.988   median ratio 0.984
+bun spectral_norm n=200 min base 20.2052 head 19.3486 head/base 0.958   median ratio 0.957
+node spectral_norm n=50 min base 0.7825 head 0.7727 head/base 0.987   median ratio 1.003
+bun handled_reentry n=100000 min base 2.2499 head 2.4139 head/base 1.073   median ratio 0.958
+bun handled_suspend n=1000000 min base 23.2278 head 14.8943 head/base 0.641   median ratio 0.674
+bun rbtree n=50000 (15 rounds) min base 73.3618 head 74.3730 head/base 1.014   median ratio 0.934
+bun handled_reentry n=100000 (15 rounds) min base 2.9158 head 3.3197 head/base 1.139   median ratio 0.946
