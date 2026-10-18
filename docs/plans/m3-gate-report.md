@@ -191,9 +191,10 @@ All five named cases passed in gate 1 or gate 5 (see table).
    `llm_extract` are caught on push (REQUESTS 2026-10-18).
 4. **CI:** `fuzz.yml` has never run. Trigger it once with `workflow_dispatch` and confirm the
    nightly schedule fires, so gate 7's fuzz evidence comes from CI and not from a laptop.
-5. **Website:** `tour/testing.mdx` ("Property tests from contracts (planned)") and
-   `tour/contracts.mdx` still describe `sakura test --contracts` as unshipped. A rewrite needs a
-   verified example, so it is not done here.
+5. **Website — resolved in the documentation follow-up:** `tour/testing.mdx` and
+   `tour/contracts.mdx` now describe the shipped `sakura test --contracts`, including a verified
+   `ensures` failure, shrinking and regression replay. See the
+   [verification record](m3-docs-verification.md) for commands, related corrections and limits.
 6. **Fuzzing:** `check` at about 5 exec/s gets little coverage in ten minutes. Consider a longer
    budget or a lighter std snapshot for that target.
 7. **M4-RT / M4-LIR:** register `D092 rc_overflow`, `D094 context_escaped` and `D096 heap_exhausted`

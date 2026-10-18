@@ -46,6 +46,23 @@ type Ticket = {
 
 Field refinements are checked when the record is constructed.
 
+## Generic refinements
+
+A generic refined type keeps its base type's concrete arguments: `NonEmpty<Int>` coerces to `List<Int>`, while `NonEmpty.validate` can check a list of strings. Use a binding annotation to select the target instantiation:
+
+```sakura
+import std/core.{Violation}
+
+type NonEmpty<T> = List<T> where List.len(it) > 0
+
+test "generic refinements keep their element type" {
+  let xs: NonEmpty<Int> = NonEmpty.from([3, 9, 4])
+  expect_eq(List.fold(xs, 0, fn(sum, n) { sum + n }), 16)
+  let empty: Result<NonEmpty<String>, Violation> = NonEmpty.validate([])
+  expect(empty.is_err())
+}
+```
+
 ## How values enter a refined type
 
 A value becomes a `Percent` in one of four ways ([design §4.3](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)):
@@ -197,7 +214,7 @@ Compiler fixes that touch a contract carry `impact: contract_change` and are nev
 
 ## Property tests from contracts
 
-`--contracts` is not present in the current `sakura test --help`. The planned command will synthesize a property test for every `pub` function that has a refined parameter or a `requires` clause. Inputs are generated from the refinements and `requires` together, the function runs under the test handlers, and `ensures` and result refinements are checked. Failures are shrunk and saved. A function with effects other than `Fail`, `Clock`, and `Random` is tested only when it names handlers with `@contract_test(handlers: [Sql.memory(), Log.captured()])`. See [Testing](/docs/tour/testing#property-tests-from-contracts-planned).
+`sakura test --contracts` synthesizes properties for eligible `pub fn`s with a refined parameter or a `requires` clause. Generated inputs are filtered by refinements and preconditions; calls exercise runtime postconditions and refinement checks. Defects fail the property, and shrunk counterexamples are saved to `tests/regressions/<fn>.json` and replayed first on later `--contracts` runs. See the [worked ensures bug](/docs/tour/testing#catching-an-ensures-bug) and [eligibility limits](/docs/tour/testing#eligibility-and-limits), including effect handlers, skipped generic functions, and `W7001` when input generation gives up.
 
 ## Not in v0
 

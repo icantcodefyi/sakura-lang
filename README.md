@@ -50,10 +50,13 @@ Scoped escape checks (`V6002`/`V6003`), foreign-capability FFI rejection (`V6001
 refined-target `Untrusted.validate` (`V5003`), bounded literal evaluation (`V5004`,
 `V5002` retired), collection-only `W5005`, and `Html.from`/nested HTML templates have landed.
 
-`--contracts` and streaming HTTP remain planned. Audits currently omit undecided literal
-conversions, and direct `Untrusted<String>` SQL interpolation is rejected; the guides record
-these limitations. The M4 plan allows isolated runtime (R1–R3), LIR (L1–L2) and verifier
-(V1–V2) work before the M3 gates, with CLI/backend integration still gated.
+[Contract-generated properties](website/content/docs/tour/testing.mdx#property-tests-from-contracts)
+(`--contracts`), streaming HTTP (`Http.stream`/`Http.read_chunk`), `Llm.recording`,
+`Fs.memory` composed with `Dir.subdir`/`Fs.rooted`, and generic refined types have landed.
+Direct `Untrusted` interpolation binds values in SQL and escapes text in HTML. See the
+[verified examples](docs/plans/m3-docs-verification.md) and their remaining limits.
+The M4 plan allows isolated runtime (R1–R3), LIR (L1–L2) and verifier (V1–V2) work
+before the M3 gates, with CLI/backend integration still gated.
 
 ## A small promise
 

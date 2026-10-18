@@ -142,21 +142,30 @@ sql"select * from users where email = {email}"
   ==> sql.template(["select * from users where email = ", ""], [SqlValue.from(email)])
 ```
 
-Interpolated values are **never spliced raw**. Each one is type checked against the tag's parameter type. For `sql` that is `SqlValue`, which becomes a bound parameter. `html` escapes text by construction. This query binds a string as a parameter:
+Interpolated values are **never spliced raw**. Each one is type checked against the tag's parameter type. For `sql` that is `SqlValue`, which becomes a bound parameter. `html` escapes text by construction. This query binds the contents of an untrusted string as a parameter:
 
 ```sakura
 import std/sql.{Sql, SqlError}
 
 type Post = { id: Int, title: String }
 
-fn search(q: String) -> List<Post> ! {Sql, Fail<SqlError>} {
+fn search(q: Untrusted<String>) -> List<Post> ! {Sql, Fail<SqlError>} {
   Sql.query(sql"select id, title from posts where title = {q}")
+}
+
+test "untrusted SQL input stays a bound parameter" {
+  with Sql.memory() {
+    let _ = Sql.execute(sql"create table posts (id integer, title text)")
+    let _ = Sql.execute(sql"insert into posts values (1, {"hello"})")
+    expect_eq(List.len(search(Untrusted.of("hello"))), 1)
+    expect_eq(List.len(search(Untrusted.of("x' or 1=1 --"))), 0)
+  }
 }
 ```
 
-`q` reaches the database as a parameter value, never as SQL text. Direct `Untrusted<String>` SQL interpolation currently fails with `V2032` because `SqlValue.from` requires `Schema`; validate the input into a refined string before passing it here. The source index describes broader support than this binary accepts.
+`q` reaches the database as a parameter value, never as SQL text. Direct `Untrusted<T>` interpolation unwraps the value before converting it through `SqlValue.from`; it does not require a trust assertion.
 
-HTML interpolations have element type `Html`. Existing `Html` values compose as markup; other `Show` values convert through `Html.from` and are escaped text (design §17.77). `Untrusted<String>` interpolated directly is escaped in its shown wrapper form; `Html.untrusted` displays just the escaped contents:
+HTML interpolations have element type `Html`. Existing `Html` values compose as markup; other `Show` values convert through `Html.from` and are escaped text. Direct `Untrusted<String>` interpolation escapes the contained text, without displaying the wrapper. `Untrusted<Html>` also passes through `Html.from` as escaped text, never raw markup. The automatic unwrap currently applies to `sql` and `html`; `url"…"` still rejects `Untrusted<String>`.
 
 ```sakura
 import std/html.{Html}
@@ -164,7 +173,7 @@ import std/html.{Html}
 test "HTML composition keeps text escaped" {
   let heading = html"<h1>{"Tom & Jerry"}</h1>"
   let input = Untrusted.of("<script>")
-  let page = html"<main>{heading}{Html.untrusted(input)}</main>"
+  let page = html"<main>{heading}{input}</main>"
   expect_eq(Html.to_string(page), "<main><h1>Tom &amp; Jerry</h1>&lt;script&gt;</main>")
   expect_eq(Html.to_string(Html.from(3)), "3")
 }

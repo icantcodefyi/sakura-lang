@@ -145,6 +145,24 @@ The standard library ships fakes for its own effects:
 | `Clock.virtual()`             | The clock. Time advances only when told to.           |
 | `Task.deterministic(seed)`    | The task scheduler. Interleavings are reproducible.   |
 
+An in-memory filesystem also supports directory attenuation. The nested handler writes to the same store, using paths relative to its subdirectory:
+
+```sakura
+import std/fs.{Dir, Fs}
+import std/path.{Path}
+
+test "memory directories share writes through rooted handlers" {
+  with Fs.memory([(Path.of("notes/a.txt"), String.to_bytes("before"))]) {
+    let notes = Dir.subdir(Fs.root(), "notes")
+    with Fs.rooted(notes) {
+      expect_eq(Fs.read(Path.of("a.txt")), String.to_bytes("before"))
+      Fs.write(Path.of("a.txt"), String.to_bytes("after"))
+    }
+    expect_eq(Fs.read(Path.of("notes/a.txt")), String.to_bytes("after"))
+  }
+}
+```
+
 See [Handlers](/docs/tour/handlers) for how `with` and handler state work.
 
 ## Deterministic simulation
@@ -192,17 +210,50 @@ test "normalize output is strictly ascending" {
 
 Runs are seeded. `sakura test --json` reports one record per test with its seed, and `sakura test --seed N --filter "normalize"` reruns a case.
 
-## Property tests from contracts (planned)
+## Property tests from contracts
 
-The planned `sakura test --contracts` will write property tests you did not write ([design §7.4](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)). For every `pub` function with at least one refined parameter or `requires` clause, it:
+`sakura test --contracts` adds a generated property named `contract: <fn>` for each eligible `pub fn` with a refined parameter or a `requires` clause. It generates inputs from their types, uses bounded retries to find refined inputs whose predicates hold, and filters candidates through `requires`. It does not solve arbitrary preconditions. The call checks `ensures` and refinement introductions at runtime; a defect fails the property, while a typed `Fail` is an allowed outcome.
 
-1. Generates inputs jointly from the parameter refinements and `requires`. It uses constructive generators for ranges, lengths, enums, and non-empty lists, and falls back to filtering.
-2. Runs the function under the test default handlers.
-3. Checks every `ensures` clause and the result's refinements.
+### Catching an ensures bug
 
-Failures are shrunk and stored under `tests/regressions/<fn>.json`. If filtering discards more than 90% of candidates, the runner warns with `W7001`. Functions that use effects other than `Fail`, `Clock`, and `Random` are skipped unless handlers are supplied with a `@contract_test(handlers: [Sql.memory(), Log.captured()])` attribute.
+Put this deliberately broken function in `src/main.sakura` of a package with a `sakura.toml`:
 
-Given `clamp` from [Contracts](/docs/tour/contracts), The planned `sakura test --contracts` will generate `(x, lo, hi)` with `lo <= hi` and checks `lo <= result && result <= hi` on each run.
+```sakura
+pub fn increment(x: Int) -> Int
+  requires x >= 0
+  ensures result > x
+{ x }
+```
+
+Run:
+
+```sh
+sakura test --contracts --seed 42
+```
+
+The source-built CLI exits `3`, reports `contract: increment` as failed, and shrinks the counterexample to `x = 0` with defect `D021` (postcondition violated). It writes `tests/regressions/increment.json`:
+
+```json
+{
+  "schema_version": "1.0",
+  "function": "increment",
+  "seed": 42,
+  "inputs": {
+    "x": 0
+  },
+  "failure": "defect D021: postcondition `increment` of increment violated"
+}
+```
+
+Run the same command again: the failure says `(stored regression replayed)`. Change the body to `{ x + 1 }` and it passes, including the saved case. Keep the regression file: a passing replay remains on disk and generated cases still run. Ordinary `sakura test` does not synthesize these properties; use `--contracts` to run them.
+
+### Eligibility and limits
+
+Functions with effects other than `Fail`, `Clock`, and `Random` need `@contract_test(handlers: [Sql.memory(), Log.captured()])`. Import the effect names; current attribute entries must be zero-argument `Effect.constructor()` calls returning handlers. Handler state starts afresh for each case.
+
+Generic and effect-row-polymorphic functions, `@external` and `@llm` functions, and parameters the runner cannot generate (such as functions or handlers) are skipped. Generic refined types themselves work; see [refinements](/docs/tour/contracts#generic-refinements).
+
+If more than 90% of candidates are discarded, the property fails with exit `3` and warning `W7001`; this is not a proof that the precondition is impossible. Failures are shrunk and saved under `tests/regressions/<fn>.json`. The current filename uses only the function name, so same-named functions in different modules share a file. Passing generated tests establishes `tested`, never `proved`.
 
 ## Snapshot tests
 
@@ -222,7 +273,7 @@ The `Show` format is the same on every backend, so snapshots do not depend on th
 sakura test                                  # all tests and properties
 sakura test --filter "normalize"             # tests whose name matches
 sakura test --seed 42                        # fix the seed
-# Planned M3 completion: sakura test --contracts
+sakura test --contracts                     # also synthesize contract properties
 sakura test --json                           # JSON Lines records for agents
 sakura test --update-snapshots               # rewrite snapshot files
 ```

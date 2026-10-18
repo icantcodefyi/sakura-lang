@@ -37,7 +37,7 @@ A request matches on method, URL, ordinary headers and body. `Request.secret_hea
 
 The [LLM extraction example](https://github.com/icantcodefyi/sakura-lang/tree/master/compiler/examples/llm_extract) uses `Fs.rooted(Test.fixtures())`, an outer `Budget.unlimited()` for its generated `@llm` function, and `Llm.replay(Path.of("extract_ticket.jsonl"))`. The [agent-loop example](https://github.com/icantcodefyi/sakura-lang/tree/master/compiler/examples/agent_loop) also scripts its knowledge-base tool.
 
-Each `Llm.replay` operation currently reopens the cassette. Repeated identical requests therefore replay the first matching response on each operation. For sequential responses to the same request, keep one `Http.recording` handler around an explicit `Llm.anthropic` handler instead.
+`Llm.replay` and `Llm.recording` keep one cassette open per handler installation. Repeated identical requests consume matching responses in recorded order, then repeat the last response.
 
 From the repository root, after building the CLI:
 
@@ -57,7 +57,33 @@ sakura test --record
 
 A cassette miss can then forward through the outer `Http` handler and append the response. Existing hits still replay.
 
-For live provider recording, explicitly install `Llm.anthropic` with a real key and `Http.recording` over a host HTTP handler. `Llm.replay` keeps its empty scripted outer handler even with `--record`, so it cannot fetch a missing provider exchange itself. Review cassette diffs before committing them. The verification for this page used synthetic responses and local CLI integration tests, not a live provider.
+For provider recording, install `Llm.recording(path, Llm.anthropic(key, model))` inside an outer `Http` and `Fs` handler. It replays cassette hits and records misses through the supplied provider under `--record`; a miss without recording mode fails as `ProviderError`. Use `Http.host()` and a real secret key for live calls. `Llm.replay` keeps its empty scripted outer handler even with `--record`, so it cannot fetch a missing provider exchange itself. Review cassette diffs before committing them. The examples below were executed with synthetic responses, without a live provider or real credentials.
+
+### A synthetic record-then-replay example
+
+In a scratch package, set `[permissions]` in `sakura.toml` to include `net = ["api.anthropic.com:443"]`, then put this in `src/main.sakura`. The outer HTTP handler supplies an invented response; it makes no network request:
+
+```sakura
+import std/fs.{Fs}
+import std/http.{Http, Matcher}
+import std/llm.{Llm, Model, Request}
+import std/path.{Path}
+import std/prompt.{Prompt}
+import std/response.{Response}
+
+test "record a synthetic model response and replay it offline" {
+  let response = Response.status(200,
+    "\{\"content\":[\{\"type\":\"text\",\"text\":\"hello\"\}],\"stop_reason\":\"end_turn\",\"usage\":\{\"input_tokens\":1,\"output_tokens\":1\}\}")
+  with Http.scripted([(Matcher.Any, response)]), Fs.rooted(Test.fixtures()),
+      Llm.recording(Path.of("hello.jsonl"),
+        Llm.anthropic(Secret.of("synthetic-key"), Model.of("demo-model"))) {
+    let req: Request<String> = Llm.request("Be brief.", Prompt.text("Say hello."))
+    expect_eq(Untrusted.check(Llm.generate_text(req), "greeting", fn(s) { s == "hello" }), Ok("hello"))
+  }
+}
+```
+
+Run `sakura test --record` once to create `tests/fixtures/hello.jsonl`, then `sakura test` to replay it offline. Replacing the outer handler with `Http.scripted([])` still passes after recording, demonstrating that replay does not need the synthetic response. The placeholder key is not stored in the cassette.
 
 ## Synthetic cassette convention
 
@@ -68,3 +94,22 @@ All twelve examples now execute in run or test mode; these three replay committe
 ## Streaming responses
 
 `Http.recording` also implements `Http.stream` (design §17.88): a replayed exchange delivers its recorded body to the callback. Under `--record` the handler reads the whole streamed body from the outer `Http` before replaying it to the callback, so recording does not stream through.
+
+`Http.read_chunk` returns at most the requested number of bytes and an empty buffer at EOF. Consume the body inside the callback; it is closed when that scope exits:
+
+```sakura
+import std/http.{Http, Matcher}
+import std/response.{Response}
+import std/request.{Method, Request}
+import std/url.{Url}
+
+test "stream reads bounded chunks" {
+  with Http.scripted([(Matcher.Any, Response.status(200, "hello"))]) {
+    Http.stream(Request.of(Method.Get, Url.from("https://example.com/")), fn(i) {
+      expect_eq(Http.read_chunk(i.body, 3), String.to_bytes("hel"))
+      expect_eq(Http.read_chunk(i.body, 3), String.to_bytes("lo"))
+      expect_eq(Bytes.len(Http.read_chunk(i.body, 3)), 0)
+    })
+  }
+}
+```

@@ -71,7 +71,10 @@ published yet.
   `List.all`, `List.any` or `List.contains`. `String.contains` no longer triggers it.
 - WS7 Phase B documents the landed CLI and language behavior, regenerates the website
   std signatures from `compiler/std/INDEX.md`, and describes early M4 R1–R3/L1–L2/V1–V2
-  work separately from gated integration. `--contracts` and streaming HTTP remain planned.
+  work separately from gated integration.
+- Refreshed the tours, cassette guide and README for landed contract properties, streaming
+  HTTP, `Llm.recording`, memory filesystem attenuation, untrusted templates and generic
+  refinements, with [source-built CLI verification](docs/plans/m3-docs-verification.md).
 
 - Renamed the language from Vow to Sakura Lang: binary `sakura`, sources `.sakura`, manifest `sakura.toml`, crates `sakura_*`, env `SAKURA_*`, URIs `sakura://`, repo `icantcodefyi/sakura-lang`. Diagnostic codes are unchanged. <!-- rename:keep -->
 

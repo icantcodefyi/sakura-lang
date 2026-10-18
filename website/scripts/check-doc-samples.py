@@ -1,4 +1,4 @@
-"""Check the runnable WS7 docs against the source-built CLI (Python 3, no dependencies)."""
+"""Check the runnable documentation against the source-built CLI (Python 3, no dependencies)."""
 
 import json
 from pathlib import Path
@@ -18,6 +18,7 @@ PAGES = [
     "website/content/docs/agents/cassettes.mdx",
     "website/content/docs/tour/capabilities.mdx",
     "website/content/docs/tour/contracts.mdx",
+    "website/content/docs/tour/testing.mdx",
 ]
 # These fenced blocks deliberately demonstrate rejection, not executable programs.
 REJECTIONS = {("capabilities", 1): "V6001", ("capabilities", 2): "V6003"}
@@ -29,11 +30,16 @@ def main():
     checked = 0
     executed = 0
     failures = []
-    with tempfile.TemporaryDirectory(prefix="ws7-docs-", dir=ROOT / "compiler/target") as tmp:
+    with tempfile.TemporaryDirectory(prefix="ws7-docs-", dir="/tmp") as tmp:
         for name in PAGES:
             page = ROOT / name
             blocks = re.findall(r"```sakura[^\n]*\n(.*?)\n```", page.read_text(), re.S)
             for index, code in enumerate(blocks):
+                # The rest of the testing tour contains fragments referring to earlier blocks.
+                if page.stem == "testing" and not (
+                    code.startswith("pub fn increment(") or code.startswith("import std/fs.")
+                ):
+                    continue
                 label = f"{page.stem}-{index}"
                 project = Path(tmp) / label
                 (project / "src").mkdir(parents=True)
@@ -44,6 +50,50 @@ def main():
                         ROOT / "compiler/examples/secrets/tests/fixtures",
                         project / "tests/fixtures",
                     )
+                if "Llm.recording(" in code:
+                    with (project / "sakura.toml").open("a") as manifest:
+                        manifest.write('\n[permissions]\nnet = ["api.anthropic.com:443"]\n')
+                    recorded = subprocess.run(
+                        [str(BINARY), "test", "--record"],
+                        cwd=project, text=True, capture_output=True, timeout=60,
+                    )
+                    cassette = project / "tests/fixtures/hello.jsonl"
+                    if recorded.returncode != 0 or not cassette.is_file():
+                        failures.append(label)
+                        print(recorded.stdout, recorded.stderr)
+                    else:
+                        assert "synthetic-key" not in cassette.read_text()
+                        # Replay must work without any response from the outer HTTP handler.
+                        (project / "src/main.sakura").write_text(
+                            code.replace(
+                                "Http.scripted([(Matcher.Any, response)])", "Http.scripted([])"
+                            )
+                        )
+                    executed += 1
+                if code.startswith("pub fn increment("):
+                    args = [str(BINARY), "test", "--contracts", "--seed", "42"]
+                    for replay in (False, True):
+                        result = subprocess.run(
+                            args, cwd=project, text=True, capture_output=True, timeout=60
+                        )
+                        assert result.returncode == 3, result.stdout + result.stderr
+                        assert "x = 0: defect D021" in result.stdout, result.stdout
+                        assert ("stored regression replayed" in result.stdout) == replay
+                        executed += 1
+                    regression = json.loads(
+                        (project / "tests/regressions/increment.json").read_text()
+                    )
+                    documented = re.search(r"```json\n(.*?)\n```", page.read_text(), re.S)
+                    assert documented and regression == json.loads(documented.group(1))
+                    (project / "src/main.sakura").write_text(
+                        code.replace("{ x }", "{ x + 1 }")
+                    )
+                    result = subprocess.run(
+                        args, cwd=project, text=True, capture_output=True, timeout=60
+                    )
+                    assert result.returncode == 0, result.stdout + result.stderr
+                    executed += 1
+                    print(f"{label}: contract failure, regression replay, fixed body: PASS")
                 expected = REJECTIONS.get((page.stem, index))
                 commands = ["check"]
                 if not expected:
