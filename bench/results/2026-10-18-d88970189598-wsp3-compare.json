@@ -1,0 +1,153 @@
+{
+ "verdict": "blocked",
+ "rows": [
+  {
+   "program": "binary_trees",
+   "engine": "bun",
+   "size": 8,
+   "base_ratio": 8.311316582672882,
+   "head_ratio": 2.48139758156667,
+   "delta": -0.7014435009322357,
+   "status": "improved >10%: explain in the PR"
+  },
+  {
+   "program": "binary_trees",
+   "engine": "bun",
+   "size": 10,
+   "base_ratio": 7.927781348071585,
+   "head_ratio": 2.9008059080252617,
+   "delta": -0.6340961259317683,
+   "status": "improved >10%: explain in the PR"
+  },
+  {
+   "program": "binary_trees",
+   "engine": "bun",
+   "size": 12,
+   "base_ratio": 8.578835104441966,
+   "head_ratio": 2.959688187490834,
+   "delta": -0.6550011567469853,
+   "status": "improved >10%: explain in the PR"
+  },
+  {
+   "program": "binary_trees",
+   "engine": "bun",
+   "size": 14,
+   "base_ratio": 7.94057179542036,
+   "head_ratio": 2.8297232798300316,
+   "delta": -0.6436373408950167,
+   "status": "improved >10%: explain in the PR"
+  },
+  {
+   "program": "binary_trees",
+   "engine": "node",
+   "size": 8,
+   "base_ratio": 8.988943069559026,
+   "head_ratio": 1.8356739761125405,
+   "delta": -0.7957853373964472,
+   "status": "improved >10%: explain in the PR"
+  },
+  {
+   "program": "binary_trees",
+   "engine": "node",
+   "size": 10,
+   "base_ratio": 9.330208583413791,
+   "head_ratio": 1.8098732334823042,
+   "delta": -0.8060200672576928,
+   "status": "improved >10%: explain in the PR"
+  },
+  {
+   "program": "binary_trees",
+   "engine": "node",
+   "size": 12,
+   "base_ratio": 9.049741209908394,
+   "head_ratio": 1.9326022581083158,
+   "delta": -0.7864466824761414,
+   "status": "improved >10%: explain in the PR"
+  },
+  {
+   "program": "binary_trees",
+   "engine": "node",
+   "size": 14,
+   "base_ratio": 9.162652757795165,
+   "head_ratio": 2.032766633178358,
+   "delta": -0.7781464945892473,
+   "status": "improved >10%: explain in the PR"
+  },
+  {
+   "program": "fib",
+   "engine": "bun",
+   "size": 20,
+   "base_ratio": 9.442287926971453,
+   "head_ratio": 2.5861418411056354,
+   "delta": -0.7261106777184327,
+   "status": "improved >10%: explain in the PR"
+  },
+  {
+   "program": "fib",
+   "engine": "bun",
+   "size": 24,
+   "base_ratio": 10.518459117264939,
+   "head_ratio": 2.3793378609788896,
+   "delta": -0.7737940667494293,
+   "status": "improved >10%: explain in the PR"
+  },
+  {
+   "program": "fib",
+   "engine": "bun",
+   "size": 27,
+   "base_ratio": 9.786420142384808,
+   "head_ratio": 2.4450130735920306,
+   "delta": -0.7501626705149594,
+   "status": "improved >10%: explain in the PR"
+  },
+  {
+   "program": "fib",
+   "engine": "bun",
+   "size": 30,
+   "base_ratio": 9.50541366065464,
+   "head_ratio": 2.659134161041152,
+   "delta": -0.720250558684469,
+   "status": "improved >10%: explain in the PR"
+  },
+  {
+   "program": "fib",
+   "engine": "node",
+   "size": 20,
+   "base_ratio": 9.766391715530503,
+   "head_ratio": 1.5141357347722593,
+   "delta": -0.844964672841815,
+   "status": "improved >10%: explain in the PR"
+  },
+  {
+   "program": "fib",
+   "engine": "node",
+   "size": 24,
+   "base_ratio": 10.802967765895863,
+   "head_ratio": 1.5161207309909004,
+   "delta": -0.8596570161231827,
+   "status": "improved >10%: explain in the PR"
+  },
+  {
+   "program": "fib",
+   "engine": "node",
+   "size": 27,
+   "base_ratio": 10.389447525897447,
+   "head_ratio": 1.6457635197663445,
+   "delta": -0.8415927780891138,
+   "status": "improved >10%: explain in the PR"
+  },
+  {
+   "program": "fib",
+   "engine": "node",
+   "size": 30,
+   "base_ratio": 9.538490148560985,
+   "head_ratio": 1.6438026436253206,
+   "delta": -0.8276663687833958,
+   "status": "improved >10%: explain in the PR"
+  }
+ ],
+ "immediate": [
+  "('binary_trees', 'js', 'node', 8): peak RSS 64782336 \u2192 81772544 (+26%)",
+  "('binary_trees', 'sakura', 'node', 14): peak RSS 198377472 \u2192 290897920 (+47%)"
+ ]
+}
