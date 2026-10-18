@@ -367,8 +367,10 @@ pub struct Analyzed {
     pub program: sakura_hir::Program,
     pub typed: sakura_types::TypedProgram,
     pub check: CheckResult,
-    /// Parse trees by `FileId`; `None` for files that are not Sakura Lang modules (`sakura.toml`).
-    parses: Vec<Option<sakura_syntax::Parse>>,
+    /// Parse trees by `FileId`, made on first use: a module carried whole from an earlier
+    /// analysis (std, design §17.204 (3)) is not parsed unless asked. `None` for files that are
+    /// not Sakura Lang modules (`sakura.toml`).
+    parses: Vec<OnceLock<Option<sakura_syntax::Parse>>>,
     symbols: Vec<Symbol>,
     /// `sakura_types` diagnostics alone, and per file its interface hash (`None` for files that
     /// are not modules): what the next analysis needs to reuse this one.
@@ -394,7 +396,9 @@ impl Analyzed {
     }
 
     pub fn parse(&self, file: FileId) -> Option<&sakura_syntax::Parse> {
-        self.parses.get(file.0 as usize)?.as_ref()
+        let slot = self.parses.get(file.0 as usize)?;
+        slot.get_or_init(|| parse_file(&self.snapshot, file))
+            .as_ref()
     }
 
     /// The innermost symbol whose item contains `offset` in `file`.
@@ -424,7 +428,10 @@ fn std_analysis<'a>() -> &'a Analyzed {
 /// the first of `prevs` that matches (see below).
 fn analyze<'a>(snapshot: &Snapshot, prevs: impl IntoIterator<Item = &'a Analyzed>) -> Analyzed {
     ANALYSES.fetch_add(1, Ordering::Relaxed);
-    let (parses, mut diagnostics) = parse_all(snapshot);
+    let parses: Vec<OnceLock<Option<sakura_syntax::Parse>>> =
+        snapshot.files.iter().map(|_| OnceLock::new()).collect();
+    let parse =
+        |i: usize| (parses[i].get_or_init(|| parse_file(snapshot, FileId(i as u32)))).as_ref();
     let mut prevs = prevs.into_iter();
     // Only the latest, so std's analysis is not forced: it is made on first use.
     let latest = prevs.next();
@@ -433,10 +440,10 @@ fn analyze<'a>(snapshot: &Snapshot, prevs: impl IntoIterator<Item = &'a Analyzed
         (p.snapshot.files.get(i))
             .is_some_and(|a| a.uri == b.uri && a.content_hash == b.content_hash)
     };
-    let calls: Vec<Option<Arc<Calls>>> = (parses.iter().enumerate())
-        .map(|(i, parse)| match latest.filter(|p| unchanged(p, i)) {
+    let calls: Vec<Option<Arc<Calls>>> = (0..parses.len())
+        .map(|i| match latest.filter(|p| unchanged(p, i)) {
             Some(p) => p.calls[i].clone(),
-            None => parse.as_ref().map(|p| Arc::new(Calls::of(&p.syntax()))),
+            None => parse(i).map(|p| Arc::new(Calls::of(&p.syntax()))),
         })
         .collect();
     let evaluated = evaluated_functions(&calls);
@@ -444,11 +451,7 @@ fn analyze<'a>(snapshot: &Snapshot, prevs: impl IntoIterator<Item = &'a Analyzed
     // or that has none (design §17.204 (1c)); an unchanged file carries its predecessor's.
     let fresh: Vec<std::cell::OnceCell<Option<u64>>> = vec![Default::default(); parses.len()];
     let hash = |i: usize| {
-        *fresh[i].get_or_init(|| {
-            parses[i]
-                .as_ref()
-                .map(|p| interface_hash(&p.syntax(), &evaluated))
-        })
+        *fresh[i].get_or_init(|| parse(i).map(|p| interface_hash(&p.syntax(), &evaluated)))
     };
     // Reuse a `prev` whose files are a prefix of this snapshot's with the same URIs, where every
     // edited file kept its interface: the same files (an edit), or std alone, which depends on
@@ -490,11 +493,42 @@ fn analyze<'a>(snapshot: &Snapshot, prevs: impl IntoIterator<Item = &'a Analyzed
             })
         })
         .collect();
+    // The modules `lower_reusing` carries whole: their trees are not read, and their parse
+    // diagnostics are the previous analysis's.
+    let reuse = |m: sakura_hir::ModuleId| {
+        prev.is_some_and(|p| {
+            (p.program.modules.get(m.0 as usize)).is_some_and(|m| reused_file[m.file.0 as usize])
+        })
+    };
+    let mut carried = vec![false; snapshot.files.len()];
+    if let Some(p) = prev {
+        for m in &p.program.modules[..sakura_hir::carried(&p.program, &reuse)] {
+            carried[m.file.0 as usize] = true;
+        }
+    }
+    let mut diagnostics: Vec<Diagnostic> = Vec::new();
+    for (i, &carried) in carried.iter().enumerate() {
+        match prev.filter(|_| carried) {
+            Some(p) => diagnostics.extend(
+                (p.check.diagnostics.iter())
+                    .filter(|d| matches!(d.phase, Phase::Lex | Phase::Parse))
+                    .filter(|d| d.spans.first().is_some_and(|s| s.file.0 as usize == i))
+                    .map(|d| Diagnostic {
+                        symbol_id: None,
+                        ..d.clone()
+                    }),
+            ),
+            None => diagnostics.extend(parse(i).iter().flat_map(|p| p.errors.iter().cloned())),
+        }
+    }
     let (mut program, lowered) = lower(
         snapshot,
         &name,
-        &parses,
-        prev.map(|p| (&p.program, &reused_file[..])),
+        &|i| match carried[i] {
+            true => None,
+            false => parse(i).map(sakura_syntax::Parse::syntax),
+        },
+        prev.map(|p| (&p.program, &reuse as &dyn Fn(_) -> bool)),
     );
     LOWERS.fetch_add(lowered, Ordering::Relaxed);
     // One order whether or not results were reused.
@@ -554,9 +588,11 @@ fn analyze<'a>(snapshot: &Snapshot, prevs: impl IntoIterator<Item = &'a Analyzed
     diagnostics.extend(program.diagnostics.iter().cloned());
     diagnostics.extend(type_diags.iter().cloned());
     diagnostics.extend(reserved_package_name(snapshot));
-    let roots: Vec<Option<sakura_syntax::SyntaxNode>> = parses
-        .iter()
-        .map(|p| p.as_ref().map(sakura_syntax::Parse::syntax))
+    let roots: Vec<Option<sakura_syntax::SyntaxNode>> = (0..parses.len())
+        .map(|i| match reused_file[i] {
+            true => None,
+            false => parse(i).map(sakura_syntax::Parse::syntax),
+        })
         .collect();
     let uris: Vec<&str> = snapshot.files.iter().map(|f| f.uri.as_str()).collect();
     let symbols = symbols::index(
@@ -835,41 +871,33 @@ fn reserved_package_name(snapshot: &Snapshot) -> Option<Diagnostic> {
     )
 }
 
-/// Parses every Sakura Lang file: the parses by `FileId` (`None` for other files) and their
-/// diagnostics.
-fn parse_all(snapshot: &Snapshot) -> (Vec<Option<sakura_syntax::Parse>>, Vec<Diagnostic>) {
-    let mut diagnostics = Vec::new();
-    let parses = snapshot
-        .file_ids()
-        .map(|file| {
-            let source = snapshot.file(file);
-            let parse = is_module(&source.uri)
-                .then(|| parse_cached(file, &source.text, &source.content_hash))?;
-            diagnostics.extend(parse.errors.iter().cloned());
-            Some(parse)
-        })
-        .collect();
-    (parses, diagnostics)
+/// Parses file `file` of `snapshot`, or `None` if it is not a Sakura Lang module.
+fn parse_file(snapshot: &Snapshot, file: FileId) -> Option<sakura_syntax::Parse> {
+    let source = snapshot.file(file);
+    is_module(&source.uri).then(|| parse_cached(file, &source.text, &source.content_hash))
 }
 
-/// Lowers the parsed snapshot to HIR, keeping `prev`'s lowering of the files marked reusable;
-/// also how many modules were lowered.
+/// Lowers the snapshot's modules to HIR, keeping `prev`'s lowering of the modules it marks
+/// reusable; also how many modules were lowered. `root(file)` is `None` for a module that
+/// `lower_reusing` carries whole, which reads no tree.
 fn lower(
     snapshot: &Snapshot,
     name: &str,
-    parses: &[Option<sakura_syntax::Parse>],
-    prev: Option<(&sakura_hir::Program, &[bool])>,
+    root: &dyn Fn(usize) -> Option<sakura_syntax::SyntaxNode>,
+    prev: Option<(&sakura_hir::Program, &dyn Fn(sakura_hir::ModuleId) -> bool)>,
 ) -> (sakura_hir::Program, usize) {
+    static EMPTY: OnceLock<sakura_syntax::Parse> = OnceLock::new();
     let mut std = Vec::new();
     let mut user = Vec::new();
-    for (file, parse) in snapshot.file_ids().zip(parses) {
-        let Some(parse) = parse else { continue };
-        let (package, path) = module_of(&snapshot.file(file).uri);
-        let input = sakura_hir::ModuleInput {
-            file,
-            path,
-            root: parse.syntax(),
-        };
+    for file in snapshot.file_ids() {
+        let uri = &snapshot.file(file).uri;
+        if !is_module(uri) {
+            continue;
+        }
+        let (package, path) = module_of(uri);
+        let root = (root(file.0 as usize))
+            .unwrap_or_else(|| EMPTY.get_or_init(|| sakura_syntax::parse("")).syntax());
+        let input = sakura_hir::ModuleInput { file, path, root };
         if package == "std" {
             &mut std
         } else {
@@ -890,12 +918,7 @@ fn lower(
         },
     ];
     match prev {
-        Some((program, reuse)) => {
-            let reuse = |m: sakura_hir::ModuleId| {
-                (program.modules.get(m.0 as usize)).is_some_and(|m| reuse[m.file.0 as usize])
-            };
-            sakura_hir::lower_reusing(&packages, program, &reuse)
-        }
+        Some((program, reuse)) => sakura_hir::lower_reusing(&packages, program, reuse),
         None => {
             let program = sakura_hir::lower(&packages);
             let n = program.modules.len();
@@ -1049,6 +1072,23 @@ mod tests {
             "{fresh}"
         );
         assert_eq!(format!("{:?}", analyze(&edited, [&base]).check), fresh);
+    }
+
+    /// Design §17.204 (3): an analysis that reuses std parses no std file; a std tree is parsed
+    /// when something asks for it.
+    #[test]
+    fn reused_std_is_parsed_on_demand() {
+        let main = "pub fn main() -> Unit ! {Console} { Console.print(\"hi\") }\n";
+        let snap = Snapshot::with_std([("file:///d/src/main.sak".to_owned(), main.to_owned())]);
+        let reused = analyze(&snap, [std_analysis()]);
+        let std_files = std_sources().count();
+        assert!(reused.parses[..std_files].iter().all(|p| p.get().is_none()));
+        assert!(reused.parses[std_files].get().is_some());
+        let core = snap.file_id("sakura:///std/core.sak").unwrap();
+        assert_eq!(
+            reused.parse(core).map(|p| p.green.clone()),
+            std_analysis().parse(core).map(|p| p.green.clone())
+        );
     }
 
     /// A module carried whole from the previous analysis keeps its `@tool` functions' argument

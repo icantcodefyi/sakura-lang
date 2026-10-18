@@ -35,6 +35,7 @@ pub struct PackageInput<'a> {
 pub struct ModuleInput {
     pub file: FileId,
     pub path: String,
+    /// Not read for a module [`lower_reusing`] carries whole from `prev`.
     pub root: SyntaxNode,
 }
 
