@@ -26,6 +26,13 @@ pub fn serve() -> Result<(), String> {
         .as_ref()
         .and_then(|g| g.position_encodings.as_ref())
         .is_some_and(|e| e.contains(&lsp::PositionEncodingKind::UTF8));
+    let versioned_edits = params
+        .capabilities
+        .workspace
+        .as_ref()
+        .and_then(|w| w.workspace_edit.as_ref())
+        .and_then(|e| e.document_changes)
+        .unwrap_or(false);
     let root = params
         .workspace_folders
         .as_ref()
@@ -60,6 +67,7 @@ pub fn serve() -> Result<(), String> {
         disk: Vec::new(),
         root,
         utf8,
+        versioned_edits,
         open: HashMap::new(),
         client_uris: HashMap::new(),
         published: HashSet::new(),
@@ -78,6 +86,9 @@ struct Server {
     disk: Vec<(String, String)>,
     root: PathBuf,
     utf8: bool,
+    /// The client takes `documentChanges`: quick fixes then name the document version they were
+    /// computed for, so an editor refuses one that went stale after an edit.
+    versioned_edits: bool,
     /// Open documents by snapshot URI: version and text.
     open: HashMap<String, (i32, String)>,
     /// Snapshot URI → the URI the client used for it.
@@ -348,6 +359,10 @@ impl Server {
                 Severity::Note => lsp::DiagnosticSeverity::INFORMATION,
             }),
             code: Some(lsp::NumberOrString::String(d.code.0.to_owned())),
+            code_description: format!("{ERRORS_URL}/{}", d.code.0)
+                .parse()
+                .ok()
+                .map(|href| lsp::CodeDescription { href }),
             source: Some("sakura".into()),
             message,
             related_information: (!related.is_empty()).then_some(related),
@@ -500,15 +515,35 @@ impl Server {
                         .or_default()
                         .push(lsp::TextEdit::new(r, e.replacement.clone()));
                 }
+                let edit = if self.versioned_edits {
+                    let docs = changes.into_iter().map(|(uri, edits)| {
+                        let version = self.open.get(&canonical(&uri)).map(|(v, _)| *v);
+                        lsp::TextDocumentEdit {
+                            text_document: lsp::OptionalVersionedTextDocumentIdentifier {
+                                uri,
+                                version,
+                            },
+                            edits: edits.into_iter().map(lsp::OneOf::Left).collect(),
+                        }
+                    });
+                    lsp::WorkspaceEdit {
+                        document_changes: Some(lsp::DocumentChanges::Edits(docs.collect())),
+                        ..Default::default()
+                    }
+                } else {
+                    lsp::WorkspaceEdit {
+                        changes: Some(changes),
+                        ..Default::default()
+                    }
+                };
                 actions.push(lsp::CodeAction {
                     title: fix.title.clone(),
                     kind: Some(lsp::CodeActionKind::QUICKFIX),
                     diagnostics: Some(vec![lsp_diag.clone()]),
-                    edit: Some(lsp::WorkspaceEdit {
-                        changes: Some(changes),
-                        ..Default::default()
-                    }),
+                    edit: Some(edit),
                     is_preferred: Some(i == 0),
+                    // The fix's impact class (design §12.1), which an editor shows beside the title.
+                    data: Some(json!({"impact": fix.impact, "applicability": fix.applicability})),
                     ..Default::default()
                 });
             }
@@ -516,6 +551,9 @@ impl Server {
         actions
     }
 }
+
+/// Every registry code has a generated page here (design §17.144).
+const ERRORS_URL: &str = "https://www.sakuralang.com/docs/errors";
 
 fn canonical(uri: &lsp::Uri) -> String {
     let uri = uri.as_str();

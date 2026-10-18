@@ -33,6 +33,11 @@ fn diagnostics_navigation_and_formatting_over_stdio() {
             .all(|d| d["source"] == "sakura" && d["code"].is_string()),
         "{diags:?}"
     );
+    let href = format!(
+        "https://www.sakuralang.com/docs/errors/{}",
+        diags[0]["code"].as_str().unwrap()
+    );
+    assert_eq!(diags[0]["codeDescription"]["href"], href.as_str());
 
     c.notify(
         "textDocument/didChange",
@@ -82,6 +87,7 @@ fn diagnostics_navigation_and_formatting_over_stdio() {
         fix["edit"]["changes"][&uri][0]["newText"], "List",
         "{actions}"
     );
+    assert_eq!(fix["data"]["impact"], "local", "{actions}");
 
     let messy = "fn double(x: Int)->Int{x*2}\n";
     c.notify(
@@ -95,6 +101,36 @@ fn diagnostics_navigation_and_formatting_over_stdio() {
     let new = fmt[0]["newText"].as_str().unwrap();
     assert!(new.starts_with("fn double(x: Int) -> Int"), "{fmt}");
 
+    assert!(c.shutdown());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A client that takes `documentChanges` gets quick fixes pinned to the document version they
+/// were computed for, so an editor refuses to apply one after a later edit.
+#[test]
+fn quick_fixes_name_the_document_version() {
+    let dir = std::env::temp_dir().join(format!("sakura-lsp-versioned-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let root = format!("file://{}", dir.display());
+    let uri = format!("{root}/main.sakura");
+    let caps = json!({"workspace": {"workspaceEdit": {"documentChanges": true}}});
+    let (mut c, _) = Lsp::start_with(&root, caps);
+    let case = "fn count() -> Int { list.len([1, 2]) }\n";
+    let doc = json!({"uri": uri, "languageId": "sakura", "version": 7, "text": case});
+    c.notify("textDocument/didOpen", json!({"textDocument": doc}));
+    assert!(!c.diagnostics(&uri).is_empty());
+    let range = json!({"start": {"line": 0, "character": 0}, "end": {"line": 0, "character": 40}});
+    let actions = c.request(
+        "textDocument/codeAction",
+        json!({"textDocument": {"uri": uri}, "range": range, "context": {"diagnostics": []}}),
+    );
+    let edit = &actions[0]["edit"];
+    assert!(edit["changes"].is_null(), "{actions}");
+    let doc = &edit["documentChanges"][0];
+    assert_eq!(doc["textDocument"]["uri"], uri.as_str(), "{actions}");
+    assert_eq!(doc["textDocument"]["version"], 7, "{actions}");
+    assert_eq!(doc["edits"][0]["newText"], "List", "{actions}");
     assert!(c.shutdown());
     let _ = std::fs::remove_dir_all(&dir);
 }

@@ -15,6 +15,11 @@ impl Lsp {
     /// Spawns `sakura lsp`, initializes it with workspace folder `root` (a `file://` URI) and
     /// returns the client with the `initialize` result.
     pub fn start(root: &str) -> (Lsp, Value) {
+        Lsp::start_with(root, json!({}))
+    }
+
+    /// [`Lsp::start`] with the client capabilities `caps`.
+    pub fn start_with(root: &str, caps: Value) -> (Lsp, Value) {
         let mut child = Command::new(env!("CARGO_BIN_EXE_sakura"))
             .arg("lsp")
             .stdin(Stdio::piped())
@@ -30,7 +35,7 @@ impl Lsp {
         };
         let init = c.request(
             "initialize",
-            json!({"capabilities": {}, "workspaceFolders": [{"uri": root, "name": "t"}]}),
+            json!({"capabilities": caps, "workspaceFolders": [{"uri": root, "name": "t"}]}),
         );
         c.notify("initialized", json!({}));
         (c, init)
