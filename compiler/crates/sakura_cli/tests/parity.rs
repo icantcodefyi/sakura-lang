@@ -140,7 +140,7 @@ fn run_mode(mode: &str, target: &str, name: &str, dir: &Path, rest: &[&str]) -> 
 /// `None` when the backends agree, or, for a fixture with a backend's own expectation
 /// (§17.80: `@js`/`@wasm` directives, `<name>.<backend>.stdout`), when each meets its own and
 /// they agree elsewhere: test records always, and traces with each backend's expected defect
-/// code masked unless a backend has its own stdout (then the runs diverge by design).
+/// code masked, up to the defect when a backend has its own stdout (`same_until_defect`).
 fn compare(
     path: Option<(&Path, &BTreeMap<String, String>)>,
     mode: &str,
@@ -186,8 +186,13 @@ fn compare(
                     .replace(&format!("\"code\":\"{c}\""), "\"code\":\"expected\""),
                 None => r.trace.clone(),
             };
-            let separate = ej.stdout != ew.stdout;
-            if !separate && mask(js, &ej) != mask(wasm, &ew) {
+            let (tj, tw) = (mask(js, &ej), mask(wasm, &ew));
+            let agree = if ej.stdout != ew.stdout {
+                same_until_defect(&tj, &tw, &ej, &ew)
+            } else {
+                tj == tw
+            };
+            if !agree {
                 return Some(format!(
                     "effect traces differ\n--- js\n{}--- wasm\n{}",
                     js.trace, wasm.trace
@@ -218,6 +223,25 @@ fn compare(
         ));
     }
     None
+}
+
+/// The traces (expected defect codes masked) of a fixture whose backends print different
+/// stdout by design (§17.80: JS defects at `Int` ±2^53 where WASM continues) agree up to where
+/// the defecting backend stopped: its trace without its defect record is a prefix of the
+/// other's, task numbers and all (security review W10). Otherwise they are equal.
+fn same_until_defect(js: &str, wasm: &str, ej: &Expect, ew: &Expect) -> bool {
+    let strip = |t: &str| -> String {
+        t.lines()
+            .filter(|l| !l.contains("\"code\":\"expected\""))
+            .map(|l| format!("{l}\n"))
+            .collect()
+    };
+    let (j, w) = (strip(js), strip(wasm));
+    match (ej.defect.is_some(), ew.defect.is_some()) {
+        (true, false) => w.starts_with(&j),
+        (false, true) => j.starts_with(&w),
+        _ => j == w,
+    }
 }
 
 /// Count the effect operations in a trace, for the report.

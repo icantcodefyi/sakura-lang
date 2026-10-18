@@ -3761,12 +3761,14 @@ export function sql_memory() {
 
 /**
  * `Sql.sqlite(path)`: a database file inside the installed `Fs` handler's directory (its
- * `root`, op 0 of std/fs's `Fs`), opened on first use.
+ * `root`, op 0 of std/fs's `Fs`), opened on first use. `Fs.root()` runs in the clause's task
+ * (design §17.159 (5)), as on WASM: a runtime-internal drive spends no task number (§17.155).
  */
 export function sql_sqlite(path) {
   const rel = path; // `std/path.Path` is a refined String
   return sqlHandler((ctx) => {
-    const o = runTask((c, k) => perform(c, "std::fs::Fs", 0, [], (d) => ret(k, d)), [], ctx.p ?? ctx.h);
+    const t = { id: ctx.t?.id ?? T.t?.id ?? null, fins: [], cancelled: false, wake: null, kids: new Set() };
+    const o = runTask((c, k) => perform(c, "std::fs::Fs", 0, [], (d) => ret(k, d)), [], ctx.p ?? ctx.h, t);
     if (o instanceof Promise || o.kind !== "ok") throw new Error("Fs.root() is not available");
     return sqliteFile(o.value, rel);
   });

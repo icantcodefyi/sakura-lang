@@ -390,22 +390,11 @@ test "a malformed exchange names its line" {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-/// `trace` without its task numbers.
-fn untasked(trace: &str) -> String {
-    trace
-        .lines()
-        .map(|l| match (l.find("\"task\":"), l.find(",\"e")) {
-            (Some(a), Some(b)) if a < b => format!("{}{}\n", &l[..a], &l[b + 1..]),
-            _ => format!("{l}\n"),
-        })
-        .collect()
-}
-
 /// `Sql.sqlite(path)` (plan §3.7 W2): the file opens on the first operation inside the
 /// directory `Fs.root()` gives then, on both backends, with the same output and operations;
 /// a file that cannot open is the operation's `SqlError`, and the next operation tries again.
-/// Task numbers are not compared: JS performs that `Fs.root()` in a task of its own
-/// (`runTask` in `sql_sqlite`), WASM in the clause's (the open question of plan §7 W1 item 17).
+/// The traces compare with their task numbers: that `Fs.root()` runs in the clause's task on
+/// both backends (design §17.159 (5)).
 #[test]
 fn sql_sqlite_opens_on_first_use_on_wasm_as_on_js() {
     if !available() {
@@ -461,10 +450,7 @@ fn sql_sqlite_opens_on_first_use_on_wasm_as_on_js() {
             dir.join("data/app.db").exists(),
             "{target}: no database file"
         );
-        (
-            out,
-            untasked(&std::fs::read_to_string(&trace).unwrap_or_default()),
-        )
+        (out, std::fs::read_to_string(&trace).unwrap_or_default())
     };
     let (js, js_trace) = run("js");
     let (wasm, wasm_trace) = run("wasm");
@@ -474,6 +460,14 @@ fn sql_sqlite_opens_on_first_use_on_wasm_as_on_js() {
         "1 [Row { id: 1, name: \"ann\" }]\ncannot open\ncannot open\n"
     );
     assert_eq!(js_trace.matches("\"op\":\"root\"").count(), 3, "{js_trace}");
+    // In `main`'s task, the clause's, not a task of its own (§17.159 (5)).
+    assert_eq!(
+        js_trace
+            .matches("\"task\":0,\"effect\":\"std::fs::Fs\",\"op\":\"root\"")
+            .count(),
+        3,
+        "{js_trace}"
+    );
     assert_eq!(
         (wasm.code, &wasm.stdout, &wasm_trace),
         (js.code, &js.stdout, &js_trace),
