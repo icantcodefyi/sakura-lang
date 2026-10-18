@@ -165,6 +165,8 @@ pub struct Sched {
     pub sql_rollback_code: u32,
     /// The code of `Task.scope`'s finalizer (`rt_code_task_cancel_all`), set at link time.
     pub cancel_all_code: u32,
+    /// The property case handler's clause codes: `record_failure`, `failures`, forwarding.
+    pub prop_codes: [u32; 3],
     /// A task to run before the current one continues (`handoff`): a fiber starts eagerly.
     handoff: u32,
     /// Virtual sleepers (`virtual_sleep`): `at` (two words), order, request id.
@@ -1878,6 +1880,56 @@ impl Rt {
             return Err(e);
         }
         Ok(id)
+    }
+
+    /// `spawn_value` with arguments: `closure` (consumed) gets `args` (owned words) in slots
+    /// `1..`.
+    pub fn spawn_value_args(&mut self, closure: u32, args: &[u64]) -> Res<u32> {
+        let code = self.u(closure, 8);
+        let n = self.frame_size(code, args.len() as u32 + 1);
+        let parent = self.sched.current;
+        let t = self.cur();
+        let act = self
+            .arena_get(self.u(t, T_FRAME), tag::FRAME)
+            .map(|f| self.u(f, F_ACT));
+        let created = act.and_then(|act| self.new_task(parent, act, code, n, closure));
+        let (id, f) = match created {
+            Ok(x) => x,
+            Err(e) => {
+                self.drop(closure);
+                for &a in args {
+                    self.drop(a as u32);
+                }
+                return Err(e);
+            }
+        };
+        self.set_fslot(f, 0, closure as u64);
+        for (i, &a) in args.iter().enumerate() {
+            self.set_fslot(f, 1 + i as u32, a);
+        }
+        if let Err(e) = self.tpush(t, T_KIDS, id) {
+            self.cancel(id);
+            return Err(e);
+        }
+        Ok(id)
+    }
+
+    /// Install `handler` (consumed) in the root frame of task `id`, before it runs.
+    pub fn install_in(&mut self, id: u32, handler: u32) -> Res<()> {
+        let t = self.task(id);
+        let f = self
+            .arena_get(self.u(t, T_FRAME), tag::FRAME)
+            .inspect_err(|_| self.drop(handler))?;
+        let saved = self.sched.current;
+        self.sched.current = id;
+        let r = self.handle_install(f, handler);
+        self.sched.current = saved;
+        r.map(|_| ())
+    }
+
+    /// The number of slots of the frame at `f`.
+    pub fn frame_slots(&self, f: u32) -> u32 {
+        self.u(f, F_N)
     }
 
     /// Retire the finished child `child` of the current task (its slot and outcome go).

@@ -64,6 +64,10 @@ const IMPORTS: &[&str] = &[
     "sql_begin",
     "sql_release",
     "sql_rollback",
+    "prop_begin",
+    "prop_next",
+    "prop_record",
+    "prop_failures",
 ];
 
 /// The ABI §1 allowlist, from an empty set (research/09 §1).

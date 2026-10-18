@@ -108,24 +108,18 @@ pub extern "C" fn complete(request: u32, status: u32, payload: u32, _len: u32) -
 
 /// The module's tables (data-segment addresses) and the funcref code of the callback stub.
 #[unsafe(no_mangle)]
-pub extern "C" fn rt_init(
-    layout: u32,
-    codes: u32,
-    effects: u32,
-    ops: u32,
-    stub: u32,
-    file_close: u32,
-    sql_rollback: u32,
-    cancel_all: u32,
-) -> u32 {
+pub extern "C" fn rt_init(layout: u32, codes: u32, effects: u32, ops: u32, natives: u32) -> u32 {
     let rt = rt();
-    rt.sched.file_close_code = file_close;
-    rt.sched.sql_rollback_code = sql_rollback;
-    rt.sched.cancel_all_code = cancel_all;
+    // The native codes the runtime builds closures of (`NATIVE_CODES` in the code generator).
+    let code = |i: u32| rt.heap.mem.u32(natives + 4 * i);
+    rt.sched.callback_code = code(0);
+    rt.sched.file_close_code = code(1);
+    rt.sched.sql_rollback_code = code(2);
+    rt.sched.cancel_all_code = code(3);
+    rt.sched.prop_codes = [code(4), code(5), code(6)];
     rt.set_codes(codes);
     rt.set_effects(effects);
     rt.sched.ops = ops;
-    rt.sched.callback_code = stub;
     // SAFETY: a plain import with no arguments.
     rt.sched.trace = unsafe { crate::host::trace_enabled() } != 0;
     u32::from(rt.set_layout(layout).is_err())
@@ -402,10 +396,14 @@ pub extern "C" fn rt_fail(e: u32) -> u32 {
     rt().fail(e)
 }
 
-/// A callee frame of `n` slots for top-level function `code`; 0 after a defect.
+/// A callee frame of at least `n` slots for top-level function or native code `code`; 0 after
+/// a defect.
 #[unsafe(no_mangle)]
 pub extern "C" fn rt_call(code: u32, n: u32) -> u32 {
-    ptr(rt().call(code, n, 0))
+    let rt = rt();
+    // A native code's descriptor may ask for more slots than its arguments (its own state).
+    let n = rt.frame_size(code, n);
+    ptr(rt.call(code, n, 0))
 }
 
 /// A callee frame for the closure value `c` (consumed into slot 0) and `n_args` arguments.
@@ -1320,6 +1318,267 @@ pub extern "C" fn rt_code_sql_rollback(env: u32, _frame: u32) -> u32 {
     ret(rt, UNIT as u64)
 }
 
+// ---- property tests (`property_run`; the search runs on the host, JS `propertySteps`) ----------
+
+/// The answer `prop_next` gives: run a case, the property held, or report a message.
+const PROP_RUN: u8 = 0;
+const PROP_HELD: u8 = 1;
+
+// Slots of `property_run`: 0 seed, 1 schemas, 2 names, 3 the case, 4 the `record_failure`
+// op, 5 the `failures` op, 6 the number of `Test` ops, 7 the regression name, 8 the host's
+// session, 9 the running case's task.
+/// `property_run(seed, schemas, names, case, rec, fails, nops, regression)` (cps, JS
+/// `property_run`): the host generates, shrinks and words the report (`propertySteps`);
+/// here each case runs as a child task under a `Test` handler whose `record_failure` and
+/// `failures` go to the host's session and whose other operations forward outward.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_k_property_run(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    match rt.block(frame) {
+        0 => {
+            let args = [1, 2, 7].map(|i| rt.take_fslot(frame, i) as u32);
+            let seed = rt.fslot(frame, 0) as i64;
+            let r = (|| {
+                let s = rt.new_int(seed)?;
+                encode_args(rt, &[s, args[0], args[1], args[2]])
+            })();
+            let b = match r {
+                Ok(b) => b,
+                Err(d) => return rt.raise(d),
+            };
+            let (len, at) = rt.data(b);
+            // SAFETY: a plain import with a slice inside linear memory, copied in at once.
+            let session = unsafe { host::prop_begin(at, len) };
+            rt.drop(b);
+            rt.set_fslot(frame, 8, session as u64);
+            prop_advance(rt, frame, 0, 0)
+        }
+        1 => {
+            let child = rt.fslot(frame, 9) as u32;
+            let (kind, value) = match rt.join(child) {
+                Ok(Some(o)) => o,
+                Ok(None) => return step::YIELD,
+                Err(d) => return rt.raise(d),
+            };
+            use crate::exec::outcome;
+            // The case's end for the host: 1 returned `true`, 2 returned `false` (a discard),
+            // 3 failed (with the error's `Show`), 4 a defect (code, message), 5 cancelled.
+            let (code, text) = match kind {
+                outcome::OK if value as u32 == FALSE => (2, Ok(0)),
+                outcome::OK => (1, Ok(0)),
+                outcome::FAIL => {
+                    let e = value as u32;
+                    let t = rt.dup(e).and_then(|_| rt.show(e));
+                    (3, t)
+                }
+                outcome::DEFECT => match rt.defect(child) {
+                    Ok(Some((d, _))) => (4, rt.new_string(d.message.as_bytes())),
+                    _ => (4, Err(Defect::INTERNAL)),
+                },
+                _ => (5, Ok(0)),
+            };
+            let detail = if kind == outcome::DEFECT {
+                rt.defect(child)
+                    .ok()
+                    .flatten()
+                    .map_or(0, |(d, _)| d.code as i64)
+            } else {
+                0
+            };
+            rt.retire_child(child);
+            let text = match text {
+                Ok(t) => t,
+                Err(d) => return rt.raise(d),
+            };
+            prop_advance(rt, frame, code | detail << 8, text)
+        }
+        _ => {
+            // `Test.record_failure` of the report returned.
+            let r = rt.take_ret();
+            rt.drop(r as u32);
+            prop_done(rt, frame)
+        }
+    }
+}
+
+/// Release `property_run`'s case and return.
+fn prop_done(rt: &mut Rt, frame: u32) -> u32 {
+    let case = rt.take_fslot(frame, 3) as u32;
+    rt.drop(case);
+    ret(rt, UNIT as u64)
+}
+
+/// Tell the host how the last case ended (`result`: 0 for none yet; `text` a `String` or 0,
+/// consumed) and act on its answer.
+fn prop_advance(rt: &mut Rt, frame: u32, result: i64, text: u32) -> u32 {
+    let session = rt.fslot(frame, 8) as i64;
+    let (tlen, tat) = if text == 0 { (0, 0) } else { rt.data(text) };
+    // SAFETY: a plain import with a slice inside linear memory, copied in at once.
+    let b = unsafe { host::prop_next(session, result, tat, tlen) };
+    if text != 0 {
+        rt.drop(text);
+    }
+    if b == 0 {
+        return rt.raise(Defect::HEAP_EXHAUSTED);
+    }
+    let (len, at) = rt.data(b);
+    let answer = if len == 0 { 255 } else { rt.heap.mem.u8(at) };
+    let r = match answer {
+        PROP_HELD => {
+            rt.drop(b);
+            return prop_done(rt, frame);
+        }
+        PROP_RUN => rt.vt_decode(at + 1, len - 1).and_then(|values| {
+            let r = prop_case(rt, frame, session, values);
+            rt.drop(values);
+            r
+        }),
+        // The report: `Test.record_failure(message)` on the property's own `Test`.
+        _ => rt.vt_decode(at + 1, len - 1).and_then(|msg| {
+            let test = rt
+                .effect_named(b"std::test::Test")
+                .ok_or(Defect::INTERNAL)?;
+            let rec = rt.fslot(frame, 4) as u32;
+            match rt.perform_value(frame, test, rec, 1) {
+                Ok(0) => {
+                    rt.drop(msg);
+                    Ok(step::YIELD)
+                }
+                Ok(c) => {
+                    rt.set_fslot(c, 2, msg as u64);
+                    rt.set_block(frame, 2);
+                    Ok(step::CALL)
+                }
+                Err(d) => {
+                    rt.drop(msg);
+                    Err(d)
+                }
+            }
+        }),
+    };
+    rt.drop(b);
+    r.unwrap_or_else(|d| rt.raise(d))
+}
+
+/// Start one case: `case(values…)` (a tuple, borrowed) as a child task under the case's
+/// `Test` handler, handed off to; the frame waits at block 1.
+fn prop_case(rt: &mut Rt, frame: u32, session: i64, values: u32) -> Res<u32> {
+    let case = rt.fslot(frame, 3) as u32;
+    rt.dup(case)?;
+    let row = rt.obj_row(values);
+    let mut args = [0u64; 16];
+    let n = row.n_slots.min(16);
+    for i in 0..n {
+        let w = rt.slot_word(values, i)?;
+        args[i as usize] = w as u64;
+    }
+    let child = rt.spawn_value_args(case, &args[..n as usize])?;
+    let test = rt
+        .effect_named(b"std::test::Test")
+        .ok_or(Defect::INTERNAL)?;
+    let (rec, fails, nops) = (
+        rt.fslot(frame, 4) as u32,
+        rt.fslot(frame, 5) as u32,
+        rt.fslot(frame, 6) as u32,
+    );
+    let h = prop_handler(rt, test, session, rec, fails, nops)?;
+    rt.install_in(child, h)?;
+    rt.set_fslot(frame, 9, child as u64);
+    rt.handoff(child);
+    rt.set_block(frame, 1);
+    Ok(step::YIELD)
+}
+
+/// The case's `Test` handler: `record_failure` and `failures` over the host's session, every
+/// other operation forwarded to the `Test` outside (each clause captures the session and its
+/// operation index).
+fn prop_handler(
+    rt: &mut Rt,
+    effect: u32,
+    session: i64,
+    rec: u32,
+    fails: u32,
+    nops: u32,
+) -> Res<u32> {
+    let h = rt.new_object(tag::HANDLER, 24 + 4 * nops)?;
+    for (off, v) in [(8, effect), (12, u32::MAX), (16, 0), (20, nops)] {
+        rt.heap.mem.set_u32(h + off, v);
+    }
+    let [record, failures, forward] = rt.sched.prop_codes;
+    for j in 0..nops {
+        let code = match j {
+            _ if j == rec => record,
+            _ if j == fails => failures,
+            _ => forward,
+        };
+        let c = rt
+            .new_object(tag::CLOSURE, 32)
+            .inspect_err(|_| rt.drop(h))?;
+        rt.heap.mem.set_u32(c + 8, code);
+        rt.heap.mem.set_u32(c + 12, 2);
+        rt.set_slot(c, 0, session as u64);
+        rt.set_slot(c, 1, j as u64);
+        rt.heap.mem.set_u32(h + 24 + 4 * j, c);
+    }
+    Ok(h)
+}
+
+/// The case's `Test.record_failure(message)`: to the host's session.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_prop_record(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    let clause = rt.take_fslot(frame, 0) as u32;
+    let session = rt.slot(clause, 0) as i64;
+    rt.drop(clause);
+    let msg = rt.take_fslot(frame, 2) as u32;
+    let (len, at) = rt.data(msg);
+    // SAFETY: a plain import with a slice inside linear memory, copied in at once.
+    unsafe { host::prop_record(session, at, len) };
+    rt.drop(msg);
+    ret(rt, UNIT as u64)
+}
+
+/// The case's `Test.failures()`: the failures recorded so far in this case.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_prop_failures(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    let clause = rt.take_fslot(frame, 0) as u32;
+    let session = rt.slot(clause, 0) as i64;
+    rt.drop(clause);
+    // SAFETY: a plain import with a scalar argument.
+    let n = unsafe { host::prop_failures(session) };
+    ret(rt, n as u64)
+}
+
+/// Any other `Test` operation of the case: performed again on the `Test` outside, its result
+/// passed through.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_prop_forward(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    if rt.block(frame) == 1 {
+        return step::RETURN;
+    }
+    let clause = rt.take_fslot(frame, 0) as u32;
+    let op = rt.slot(clause, 1) as u32;
+    rt.drop(clause);
+    let n = rt.frame_slots(frame) - 2;
+    let Some(test) = rt.effect_named(b"std::test::Test") else {
+        return rt.raise(Defect::INTERNAL);
+    };
+    match rt.perform_value(frame, test, op, n) {
+        Ok(0) => step::YIELD,
+        Ok(c) => {
+            for i in 0..n {
+                let v = rt.take_fslot(frame, 2 + i);
+                rt.set_fslot(c, 2 + i, v);
+            }
+            rt.set_block(frame, 1);
+            step::CALL
+        }
+        Err(d) => rt.raise(d),
+    }
+}
+
 // ---- the test runner's `std::test::Test` handler (`sakura test --target wasm`) --------------
 
 /// A root task for test wrapper `code` under the runner's `Test` handler `h` (consumed); the
@@ -1507,6 +1766,14 @@ mod host {
         pub fn test_snapshot(name: u32, name_len: u32, rendered: u32, rendered_len: u32);
         /// Closes a file the host's `file_open` opened (JS `file_close`).
         pub fn file_close(id: i64);
+        /// Property tests (JS `propertySteps` on the host): a session over the tuple
+        /// `(seed, schemas, names, regression)`; the next step after a case's end (`result`:
+        /// 0 none yet, else its kind and, for a defect, its code `<< 8`; `text` its message);
+        /// a case's `Test.record_failure` and `Test.failures`.
+        pub fn prop_begin(ptr: u32, len: u32) -> i64;
+        pub fn prop_next(session: i64, result: i64, text: u32, text_len: u32) -> u32;
+        pub fn prop_record(session: i64, ptr: u32, len: u32);
+        pub fn prop_failures(session: i64) -> i64;
         /// SQL (JS `sqlConnection`): a new in-memory database's id, its queries and
         /// statements (`sakura-vt1` arguments; status-prefixed answers), savepoints.
         pub fn sql_open_memory() -> i64;
