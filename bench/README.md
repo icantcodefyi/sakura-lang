@@ -47,7 +47,8 @@ bench/bench oracle [--filter <glob>] [--write]
 | `oracle` | Checks Sakura and hand JS on Node against `meta.toml`, or records it with `--write`. | 0; 1 a mismatch |
 
 The host id is the first 12 hex digits of SHA-256 over CPU brand, OS name and architecture,
-and total memory, so OS updates keep it and a different machine never shares it.
+and total memory. The kernel release is recorded separately, outside that hash; different
+machines with the same configuration can share the id.
 
 ### Native builds (WS-S ports)
 
@@ -174,7 +175,130 @@ JS controls for `handled_*` are closure calls on a stateful object (research/10
 
 ## Methodology
 
-Owned by WS-A (plan §4.1).
+### What a number means
+
+The primary observation is per **(program, engine, lane, integer corpus, input size)**:
+`R = median(Sakura process medians) / median(hand-JS process medians)`. Each process
+contributes the median of nine calibrated batches; the default is five fresh processes
+per variant. The ratio of medians is not the median of 25 cross-paired process ratios.
+Do not pool input sizes, engines, lanes or hosts. `handled_*` cases and the contract-free
+companion remain separate; a median over the 21 directories is not the fifteen-family
+acceptance statistic in §17.109.
+
+The release compiler builds once before timing. The oracle checks 0–3, all four sizes,
+any correctness-only sizes, and specified negative cases before the harness schedules a
+program's timings; `--sizes quick` restricts timing, not oracle coverage. A failed program
+is excluded from timing and reported as a failure, never as a fast result. Each timed
+process loads its module before the timer, warms up for 250 ms (`--stable`: 2 s), calibrates
+a power-of-two batch toward 30 ms (cap 2^20 calls), and records nine per-call timings with
+GC enabled. Calls consume the returned checksum, including awaited asynchronous results.
+Sakura includes one public `runTask` boundary per workload call. Compilation, module
+loading and printing are outside the inner timer. Peak RSS includes the entire process,
+including loading and warmup, and is the maximum across its five processes.
+
+Jobs are serial within one harness invocation and shuffled across programs, variants,
+engines, sizes and repetitions with the recorded seed. Concurrent external workloads are
+not controlled by that guarantee. Retain every batch, process median, checksum failure
+and load log; do not trim outliers or silently repeat until a gate passes. A five-process
+run is one ratio observation, not 45 independent ratio observations.
+
+The `matched` flag records the requested lane; oracle agreement alone is not a complete
+semantic audit of algorithms, aliases or arithmetic checks. The hand-JS `fib` control,
+for example, uses raw `Number` arithmetic over the safe-input corpus. Review overflow-check
+placement against §17.109 before treating these results as a full matching-semantics
+claim. The concrete DeltaBlue validation-work discrepancy is recorded with the candidate.
+
+### Repetition and load recording
+
+Use the pinned engines in `toolchains.toml`; record the actual versions from each result.
+Keep the same compiler/runtime, harness, benchmark sources, flags, machine and power
+configuration across a noise series. For each full repetition change only the shuffle
+seed, and compare the same cells. Prefer five or more separate harness invocations;
+report empirical min–max, median, `(max − min) / median`, and `max / min − 1` separately
+per cell. Five observations do not establish a p95 noise bound or a production false-alarm
+rate. Nine batches from one VM share JIT and GC state, and repetitions on one CI VM do not
+measure variation between separately provisioned runners.
+
+From the repository root, an example (choose a new output directory for each series):
+
+```sh
+python3 research/10-evidence/record_load.py --log research/10-evidence/target/run-load.jsonl -- \
+  bench/bench run --suite js --lane matched --sizes quick --filter '[fp]*' \
+  --seed 20261018 --json research/10-evidence/target/run.json
+```
+
+The recorder samples `uptime`, logical CPU count, CPU model, summed per-process CPU use
+and the busiest executable names before, every 15 seconds during, and after the command;
+it also records `vm_stat` on macOS or `/proc/loadavg` and memory totals on Linux. Snapshots
+cover the whole invocation, including build/oracle work; they are contextual evidence,
+not CPU affinity, thermal telemetry or proof of an idle host. `ps` CPU percentages and
+load averages have different averaging windows. Its observation overhead is present on
+both variants. Label runs made during other builds or benchmarks as **shared-host/noisy**.
+Never stop an unrelated process to improve a result.
+
+The manual CI noise job is deliberately small: `fib` and `pipeline`, the first two sizes,
+five processes per cell, Node on Ubuntu and Node/Bun on macOS, serial repetitions within
+each job. It uses the default 250 ms warmup to characterise the PR configuration; this does
+not establish the noise of the stable nightly configuration or of the other families.
+The default dispatch still runs the full nightly job.
+
+```sh
+gh workflow run bench.yml --ref master -f mode=noise -f repeats=5
+# After the run completes, download each bench-noise-<os>-<engine> artifact separately.
+python3 research/10-evidence/analyze_noise.py path/to/noise-[1-5].json --json summary.json
+```
+
+The analyser rejects mixed commits, host metadata, engine versions, flags or incomplete coverage.
+Host ids fingerprint configurations; retain CI run/job ids to identify separate allocations.
+Its ordered-pair counts are a descriptive sensitivity check, not independent trials. For
+policy evidence also run `bench/bench compare base.json head.json confirmation.json`:
+all three must come from the same unchanged source for a no-change experiment. Check
+per-cell coverage explicitly because `compare` only compares overlapping ratio cells.
+
+### Benchmark-definition compatibility
+
+`5b10553` changed sieve from full-list clearing passes to indexed clearing from p²
+through `List.set`, updating Sakura and all controls/ports. **Sieve timings before that
+commit are not comparable with the new algorithm**, even though both print the same
+prime counts. Exclude them from noise summaries and baseline comparisons. The historical
+local noise series is retained, but its analysis uses `--exclude-program sieve`; its
+`compare` inputs also remove sieve and record that selection. The candidate baseline is
+measured after the change. Do not stitch old and new rows together and attribute them to
+one commit. The harness compares overlapping names/sizes, so callers must check workload
+source compatibility as well as checksums, versions and flags.
+
+### Thresholds, deltas and baseline review
+
+Policy uses `delta = R_head / R_base − 1`. Above 5% warns. Above 10% blocks only with at
+least 0.1 ms per workload of excess Sakura time
+`S_head − R_base × J_head`, confirmed at the same input size by a second run. Checksum,
+stack, complexity and RSS failures are independent gates; ratios do not neutralise them.
+The harness approximates a complexity change by a log-log slope increase above 0.5, which
+is a screening signal requiring inspection of raw size-sweep data. Do not mistake a
+warning or an unconfirmed timing block for evidence of a compiler regression. Explain
+improvements above 10%, including changes to validation work, arithmetic checks or aliases.
+
+[The WS-A measurement report](../research/10-evidence/ws-a/README.md) records the actual
+noise, coverage and threshold recommendation. Until the unchanged-source evidence supports
+a narrower margin on both runners, retain the existing 5% warning and confirmed 10% block
+with its 0.1 ms floor. Changing those constants is a policy decision, not an automatic
+consequence of an empirical range from a small sample.
+
+A candidate is a raw, provenance-preserving run under `baselines/candidate/`, outside the
+CI baseline glob `baselines/*.json`. Review all oracle/checksum verdicts, pin and source
+provenance, complete size coverage, shared load, and repeatability before adopting it.
+**Only a human owner runs `bench/bench bless …`.** Follow the candidate README for the exact
+file and command; agents and CI never bless. A clean-tree flag is necessary, not proof of
+idle conditions or statistical suitability. Keep historical evidence when pins change.
+
+Record each landed optimisation in [deltas.md](deltas.md), naming both measured commits,
+raw files, engine, size, ratios, absolute times, `compare` verdict, semantics/trace checks
+and load limitations. Preserve the original research/10 evidence when rerunning it;
+its ordinary-JS and checked controls are distinct from the matched suite and its numbers
+are not interchangeable with these ratios.
+
+Methodology and WS-A evidence: AI assistance by GPT-6-Astra; the human owner reviews and
+owns the result.
 
 ## Attribution
 

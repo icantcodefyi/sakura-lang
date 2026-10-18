@@ -9,14 +9,14 @@ From the repository root, with the pinned Rust toolchain, Node 26 and Bun instal
 
 ```sh
 python3 research/10-evidence/measure.py --prepare --output rerun.json
-python3 research/10-evidence/summarize.py
+python3 research/10-evidence/summarize.py --input research/10-evidence/rerun.json --output research/10-evidence/rerun-summary.md
 ```
 
 `--prepare` builds the release CLI into **this worktree's** `compiler/target`, then
 compiles `micro.sakura` into `research/10-evidence/target/js`. The result defaults
 to `results.json` when `--output` is omitted. Use a different output name to preserve
-the recorded baseline. `summarize.py` deliberately reads the checked-in
-`results.json`; point it at a reviewed new baseline when adopting a rerun.
+the recorded baseline. `summarize.py` defaults to the checked-in `results.json` and `summary.md`; use
+`--input` and `--output` as above to summarize a rerun without replacing that evidence.
 Generated code/output under `target/` is ignored. The recorded generated workload
 module is `generated-micro.js.txt`; its source map is intentionally not copied.
 A current checkout may emit different output; metadata records the compiler commit
@@ -69,3 +69,17 @@ No unrelated process was stopped and no benchmark result was removed as an outli
 These are exploratory microbenchmarks, not a cross-language leaderboard. See the
 report for numerical semantics, warmup/noise and memory limits. AI assistance:
 GPT-6-Astra authored this research/harness; the human contributor owns review.
+
+## Performance-round WS-A rerun
+
+[ws-a/README.md](ws-a/README.md) records the exact first-green compiler
+rerun, unchanged-commit noise on the reference host and CI runners, and the unblessed
+full-suite candidate. The original evidence files above are retained. The research
+controls and the new matched-suite controls are different workloads; their ratios are
+not interchangeable.
+
+`record_load.py --log <new-log.jsonl> -- <command>` records host load around and during
+one measurement. `analyze_noise.py <run1.json> <run2.json> ... --json <summary.json>`
+checks compatible, complete clean-tree harness results and reports per-cell empirical
+ratio ranges. It does not turn five observations into a confidence interval or silently
+pool engines, machines or commits.

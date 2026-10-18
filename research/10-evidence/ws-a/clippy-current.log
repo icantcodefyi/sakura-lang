@@ -1,0 +1,23 @@
+   Compiling serde_json v1.0.154
+   Compiling sakura_analysis v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/crates/sakura_analysis)
+    Checking serde_stacker v0.1.14
+    Checking sakura_rt v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/runtime/rt)
+    Checking sakura_diagnostics v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/crates/sakura_diagnostics)
+    Checking schemars v1.2.3
+    Checking lsp-types v0.97.0
+    Checking lsp-server v0.10.0
+    Checking sakura_syntax v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/crates/sakura_syntax)
+    Checking rmcp v3.5.1
+    Checking sakura_hir v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/crates/sakura_hir)
+    Checking sakura_fmt v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/crates/sakura_fmt)
+    Checking sakura_types v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/crates/sakura_types)
+    Checking sakura_core v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/crates/sakura_core)
+    Checking sakura_codegen_js v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/crates/sakura_codegen_js)
+    Checking sakura_eval v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/tools/sakura_eval)
+    Checking sakura_core_snapshot v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/crates/sakura_core_snapshot)
+    Checking sakura_verify v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/crates/sakura_verify)
+    Checking sakura_lir v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/crates/sakura_lir)
+    Checking sakura_lsp v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/crates/sakura_lsp)
+    Checking sakura_mcp v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/crates/sakura_mcp)
+    Checking sakura_cli v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/crates/sakura_cli)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.45s

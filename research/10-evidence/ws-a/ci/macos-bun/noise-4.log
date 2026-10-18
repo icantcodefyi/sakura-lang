@@ -1,0 +1,51 @@
+[oracle] fib sakura/bun
+[oracle] fib js/bun
+[oracle] pipeline sakura/bun
+[oracle] pipeline js/bun
+[1/40] fib js/bun n=24
+[2/40] pipeline sakura/bun n=10000
+[3/40] fib sakura/bun n=24
+[4/40] fib js/bun n=20
+[5/40] fib sakura/bun n=24
+[6/40] pipeline sakura/bun n=10000
+[7/40] fib sakura/bun n=24
+[8/40] pipeline js/bun n=10000
+[9/40] fib sakura/bun n=24
+[10/40] fib js/bun n=24
+[11/40] fib js/bun n=24
+[12/40] pipeline sakura/bun n=1000
+[13/40] fib js/bun n=20
+[14/40] pipeline sakura/bun n=10000
+[15/40] fib sakura/bun n=20
+[16/40] pipeline sakura/bun n=1000
+[17/40] fib sakura/bun n=20
+[18/40] fib js/bun n=20
+[19/40] pipeline js/bun n=1000
+[20/40] fib sakura/bun n=20
+[21/40] pipeline js/bun n=10000
+[22/40] pipeline js/bun n=1000
+[23/40] fib js/bun n=24
+[24/40] fib js/bun n=24
+[25/40] pipeline sakura/bun n=1000
+[26/40] fib sakura/bun n=20
+[27/40] pipeline sakura/bun n=10000
+[28/40] fib sakura/bun n=24
+[29/40] pipeline js/bun n=10000
+[30/40] pipeline js/bun n=1000
+[31/40] fib js/bun n=20
+[32/40] pipeline js/bun n=1000
+[33/40] fib js/bun n=20
+[34/40] pipeline sakura/bun n=1000
+[35/40] pipeline sakura/bun n=10000
+[36/40] pipeline js/bun n=10000
+[37/40] fib sakura/bun n=20
+[38/40] pipeline js/bun n=10000
+[39/40] pipeline sakura/bun n=1000
+[40/40] pipeline js/bun n=1000
+wrote bench-results/noise-4.json
+| Program | n | sakura/bun ms | js/bun ms | ratio bun |
+|---|---:|---:|---:|---:|
+| fib | 20 | 0.2856 | 0.02992 | 9.55× |
+| fib | 24 | 1.998 | 0.2051 | 9.74× |
+| pipeline | 1000 | 0.09466 | 0.005025 | 18.84× |
+| pipeline | 10000 | 0.9415 | 0.04473 | 21.05× |

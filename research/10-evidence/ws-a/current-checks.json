@@ -1,0 +1,46 @@
+[
+  {
+    "name": "fmt-current",
+    "command": [
+      "cargo",
+      "fmt",
+      "--all",
+      "--",
+      "--check"
+    ],
+    "cwd": "compiler",
+    "exit_code": 0,
+    "elapsed_seconds": 0.5210271250107326,
+    "commit": "a843e609d95eed9272b3f1e82f4bec8b813d5538"
+  },
+  {
+    "name": "clippy-current",
+    "command": [
+      "cargo",
+      "clippy",
+      "--workspace",
+      "--all-targets",
+      "--locked",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "cwd": "compiler",
+    "exit_code": 0,
+    "elapsed_seconds": 5.541783541964833,
+    "commit": "a843e609d95eed9272b3f1e82f4bec8b813d5538"
+  },
+  {
+    "name": "tests-current",
+    "command": [
+      "cargo",
+      "test",
+      "--workspace",
+      "--locked"
+    ],
+    "cwd": "compiler",
+    "exit_code": 0,
+    "elapsed_seconds": 323.52556966699194,
+    "commit": "a843e609d95eed9272b3f1e82f4bec8b813d5538"
+  }
+]

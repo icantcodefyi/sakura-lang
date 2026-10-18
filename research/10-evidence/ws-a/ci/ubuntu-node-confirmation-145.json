@@ -1,0 +1,42 @@
+{
+ "verdict": "flagged",
+ "rows": [
+  {
+   "program": "fib",
+   "engine": "node",
+   "size": 20,
+   "base_ratio": 10.180333481514989,
+   "head_ratio": 8.943479177317307,
+   "delta": -0.12149447819597547,
+   "status": "improved >10%: explain in the PR"
+  },
+  {
+   "program": "fib",
+   "engine": "node",
+   "size": 24,
+   "base_ratio": 9.62640964181953,
+   "head_ratio": 9.496620784468817,
+   "delta": -0.01348258199888741,
+   "status": "ok"
+  },
+  {
+   "program": "pipeline",
+   "engine": "node",
+   "size": 1000,
+   "base_ratio": 1.9216834279295396,
+   "head_ratio": 1.9050829951659263,
+   "delta": -0.008638484634016397,
+   "status": "ok"
+  },
+  {
+   "program": "pipeline",
+   "engine": "node",
+   "size": 10000,
+   "base_ratio": 2.1997380655647936,
+   "head_ratio": 2.3517158627371897,
+   "delta": 0.06908904271444483,
+   "status": "flagged"
+  }
+ ],
+ "immediate": []
+}

@@ -1,0 +1,153 @@
+{
+ "verdict": "blocked",
+ "rows": [
+  {
+   "program": "fib",
+   "engine": "bun",
+   "size": 20,
+   "base_ratio": 9.72650954767751,
+   "head_ratio": 11.589391409052741,
+   "delta": 0.19152624610542301,
+   "status": "flagged"
+  },
+  {
+   "program": "fib",
+   "engine": "bun",
+   "size": 24,
+   "base_ratio": 9.380772120538134,
+   "head_ratio": 4.52294675151436,
+   "delta": -0.5178492033068491,
+   "status": "improved >10%: explain in the PR"
+  },
+  {
+   "program": "fib",
+   "engine": "node",
+   "size": 20,
+   "base_ratio": 9.796512137856878,
+   "head_ratio": 16.2483812544289,
+   "delta": 0.6585883859256318,
+   "status": "blocked"
+  },
+  {
+   "program": "fib",
+   "engine": "node",
+   "size": 24,
+   "base_ratio": 9.883099098542205,
+   "head_ratio": 14.429923424688909,
+   "delta": 0.46006058229420943,
+   "status": "flagged"
+  },
+  {
+   "program": "pipeline",
+   "engine": "bun",
+   "size": 1000,
+   "base_ratio": 19.69212710765076,
+   "head_ratio": 16.61102454795512,
+   "delta": -0.15646367418066132,
+   "status": "improved >10%: explain in the PR"
+  },
+  {
+   "program": "pipeline",
+   "engine": "bun",
+   "size": 10000,
+   "base_ratio": 20.522113048255214,
+   "head_ratio": 21.97666744407921,
+   "delta": 0.07087741853890939,
+   "status": "flagged"
+  },
+  {
+   "program": "pipeline",
+   "engine": "node",
+   "size": 1000,
+   "base_ratio": 1.8877678748238869,
+   "head_ratio": 7.809827957473955,
+   "delta": 3.1370700612237865,
+   "status": "flagged"
+  },
+  {
+   "program": "pipeline",
+   "engine": "node",
+   "size": 10000,
+   "base_ratio": 1.9713173286784058,
+   "head_ratio": 1.2348622049692746,
+   "delta": -0.37358527366208427,
+   "status": "improved >10%: explain in the PR"
+  },
+  {
+   "program": "shapes",
+   "engine": "bun",
+   "size": 1000,
+   "base_ratio": 3.8531436582803513,
+   "head_ratio": 4.35360127007589,
+   "delta": 0.12988293616306312,
+   "status": "flagged"
+  },
+  {
+   "program": "shapes",
+   "engine": "bun",
+   "size": 10000,
+   "base_ratio": 3.6144100864228914,
+   "head_ratio": 3.720924764315554,
+   "delta": 0.029469450158069455,
+   "status": "ok"
+  },
+  {
+   "program": "shapes",
+   "engine": "node",
+   "size": 1000,
+   "base_ratio": 2.055834778717956,
+   "head_ratio": 6.746079066549153,
+   "delta": 2.28143055871255,
+   "status": "blocked"
+  },
+  {
+   "program": "shapes",
+   "engine": "node",
+   "size": 10000,
+   "base_ratio": 3.2306055244889333,
+   "head_ratio": 3.563044950727794,
+   "delta": 0.10290313184908295,
+   "status": "blocked"
+  },
+  {
+   "program": "spectral_norm",
+   "engine": "bun",
+   "size": 50,
+   "base_ratio": 12.824056952212846,
+   "head_ratio": 20.906474849496142,
+   "delta": 0.6302543670385556,
+   "status": "blocked"
+  },
+  {
+   "program": "spectral_norm",
+   "engine": "bun",
+   "size": 100,
+   "base_ratio": 14.344737914772654,
+   "head_ratio": 30.647174444939505,
+   "delta": 1.1364750354468378,
+   "status": "blocked"
+  },
+  {
+   "program": "spectral_norm",
+   "engine": "node",
+   "size": 50,
+   "base_ratio": 10.611007109664376,
+   "head_ratio": 20.572322776787015,
+   "delta": 0.9387719341032195,
+   "status": "flagged"
+  },
+  {
+   "program": "spectral_norm",
+   "engine": "node",
+   "size": 100,
+   "base_ratio": 10.672937451763085,
+   "head_ratio": 15.522452125220706,
+   "delta": 0.4543748799592675,
+   "status": "flagged"
+  }
+ ],
+ "immediate": [
+  "('fib', 'js', 'node'): complexity changed, log-log slope 10.51 \u2192 13.06",
+  "('fib', 'sakura', 'node'): complexity changed, log-log slope 10.56 \u2192 12.41"
+ ]
+}

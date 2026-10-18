@@ -1,0 +1,1103 @@
+   Compiling memchr v2.8.3
+   Compiling cfg-if v1.0.5
+   Compiling hashbrown v0.17.1
+   Compiling equivalent v1.0.2
+   Compiling foldhash v0.2.0
+   Compiling libc v0.2.191
+   Compiling serde_core v1.0.229
+   Compiling typenum v1.20.1
+   Compiling unicode-width v0.2.2
+   Compiling const-oid v0.10.2
+   Compiling termcolor v1.4.1
+   Compiling hashbrown v0.14.5
+   Compiling countme v3.0.1
+   Compiling text-size v1.1.1
+   Compiling rustc-hash v1.1.0
+   Compiling rand_core v0.10.1
+   Compiling psm v0.1.32
+   Compiling once_cell v1.21.4
+   Compiling la-arena v0.3.1
+   Compiling codespan-reporting v0.13.1
+   Compiling log v0.4.27
+   Compiling bitflags v2.13.2
+   Compiling fastrand v2.5.0
+   Compiling regex-syntax v0.8.11
+   Compiling same-file v1.0.6
+   Compiling aho-corasick v1.1.3
+   Compiling rowan v0.16.1
+   Compiling bstr v1.13.1
+   Compiling walkdir v2.5.0
+   Compiling similar v2.7.0
+   Compiling typed-arena v2.0.2
+   Compiling arrayvec v0.5.2
+   Compiling winnow v1.0.4
+   Compiling toml_writer v1.1.3+spec-1.1.0
+   Compiling pretty v0.12.5
+   Compiling sakura_analysis v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/crates/sakura_analysis)
+   Compiling num-traits v0.2.19
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling cpufeatures v0.3.1
+   Compiling errno v0.3.14
+   Compiling getrandom v0.4.3
+   Compiling stacker v0.1.25
+   Compiling rustix v1.1.5
+   Compiling hybrid-array v0.4.15
+   Compiling console v0.16.6
+   Compiling wait-timeout v0.2.1
+   Compiling quick-error v1.2.3
+   Compiling fnv v1.0.7
+   Compiling bit-vec v0.10.1
+   Compiling rand v0.10.3
+   Compiling chacha20 v0.10.2
+   Compiling rand_xorshift v0.5.0
+   Compiling bit-set v0.11.1
+   Compiling core_detect v1.0.0
+   Compiling unarray v0.1.4
+   Compiling pin-project-lite v0.2.17
+   Compiling futures-sink v0.3.34
+   Compiling futures-core v0.3.34
+   Compiling futures-io v0.3.34
+   Compiling slab v0.4.12
+   Compiling futures-task v0.3.34
+   Compiling block-buffer v0.12.1
+   Compiling crypto-common v0.2.2
+   Compiling futures-channel v0.3.34
+   Compiling signal-hook-registry v1.4.8
+   Compiling mio v1.2.4
+   Compiling bytes v1.12.1
+   Compiling ref-cast v1.0.27
+   Compiling crossbeam-utils v0.8.23
+   Compiling tracing-core v0.1.36
+   Compiling futures-util v0.3.34
+   Compiling bitflags v1.3.2
+   Compiling dyn-clone v1.0.20
+   Compiling fluent-uri v0.1.4
+   Compiling thiserror v2.0.21
+   Compiling tracing v0.1.44
+   Compiling uuid v1.28.0
+   Compiling crossbeam-channel v0.5.17
+   Compiling utf8parse v0.2.2
+   Compiling colorchoice v1.0.5
+   Compiling anstyle v1.0.14
+   Compiling anstyle-parse v1.0.0
+   Compiling anstyle-query v1.1.5
+   Compiling tokio v1.53.3
+   Compiling tempfile v3.27.0
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling clap_lex v1.1.1
+   Compiling wasmparser v0.262.0
+   Compiling sakura_rt v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/runtime/rt)
+   Compiling anstream v1.0.0
+   Compiling rusty-fork v0.3.1
+   Compiling clap_builder v4.6.7
+   Compiling digest v0.11.3
+   Compiling serde v1.0.229
+   Compiling indexmap v2.14.2
+   Compiling sha2 v0.11.1
+   Compiling regex-automata v0.4.9
+   Compiling serde_spanned v1.1.2
+   Compiling toml_datetime v1.1.2+spec-1.1.0
+   Compiling proptest v1.12.0
+   Compiling toml v1.1.8+spec-1.1.0
+   Compiling chrono v0.4.45
+   Compiling serde_json v1.0.154
+   Compiling sakura_diagnostics v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/crates/sakura_diagnostics)
+   Compiling schemars v1.2.3
+   Compiling lsp-types v0.97.0
+   Compiling lsp-server v0.10.0
+   Compiling sakura_syntax v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/crates/sakura_syntax)
+   Compiling clap v4.6.7
+   Compiling futures-executor v0.3.34
+   Compiling futures v0.3.34
+   Compiling globset v0.4.19
+   Compiling insta v1.49.0
+   Compiling sakura_hir v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/crates/sakura_hir)
+   Compiling sakura_fmt v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/crates/sakura_fmt)
+   Compiling tokio-util v0.7.20
+   Compiling rmcp v3.5.1
+   Compiling sakura_types v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/crates/sakura_types)
+   Compiling sakura_core v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/crates/sakura_core)
+   Compiling sakura_codegen_js v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/crates/sakura_codegen_js)
+   Compiling sakura_eval v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/tools/sakura_eval)
+   Compiling sakura_core_snapshot v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/crates/sakura_core_snapshot)
+   Compiling sakura_lsp v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/crates/sakura_lsp)
+   Compiling sakura_verify v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/crates/sakura_verify)
+   Compiling sakura_lir v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/crates/sakura_lir)
+   Compiling sakura_mcp v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/crates/sakura_mcp)
+   Compiling sakura_cli v0.0.0 (/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/compiler/crates/sakura_cli)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 14.03s
+     Running unittests src/lib.rs (target/debug/deps/sakura_analysis-ec2288f48433328f)
+
+running 13 tests
+test disk::tests::uris_round_trip ... ok
+test tests::module_paths ... ok
+test tests::snapshot_is_order_independent_and_content_addressed ... ok
+test manifest::tests::parses_the_design_example ... ok
+test edit::tests::edits_apply_atomically_and_check_hashes ... ok
+test query::tests::type_shapes_number_variables ... ok
+test tests::std_is_embedded ... ok
+test symbols::tests::signatures_are_normalized_to_one_line ... ok
+test disk::tests::files_of_a_std_checkout_load_as_std ... ok
+test specs::tests::weakening_a_contract_or_test_is_v8020 ... ok
+test specs::tests::effect_row_changes_are_interface_changes ... ok
+test specs::tests::body_edits_keep_the_interface_and_frozen_specs ... ok
+test specs::tests::obligations_name_their_clauses_and_keep_ids_across_body_edits ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.96s
+
+     Running tests/incremental.rs (target/debug/deps/incremental-d3895619c6c114be)
+
+running 1 test
+test edits_reparse_only_the_edited_file_and_queries_share_one_analysis ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.26s
+
+     Running tests/nav.rs (target/debug/deps/nav-8017e38479d9fc8e)
+
+running 3 tests
+test tool_argument_records_are_not_symbols ... ok
+test hover_definition_completion ... ok
+test hover_on_unicode_text_uses_byte_offsets ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.42s
+
+     Running tests/recheck.rs (target/debug/deps/recheck-ead8aecc47c708f3)
+
+running 1 test
+test a_private_body_edit_rechecks_only_its_module ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.22s
+
+     Running unittests src/main.rs (target/debug/deps/sakura-2126d3eb32f10e8b)
+
+running 2 tests
+test audit::tests::inventory_uses_resolved_calls_and_literal_reasons ... ok
+test doc::tests::name_id_and_type_search_preserve_mcp_records_and_contracts ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.29s
+
+     Running tests/cli.rs (target/debug/deps/cli-6a2ee97d8df6c5f2)
+
+running 23 tests
+test common::directive_tests::backend_expectations_keep_defaults_and_do_not_override_each_other ... ok
+test fmt_refuses_files_that_do_not_parse ... ok
+test prompt_prints_llms_txt_within_budget ... ok
+test fmt_check_then_rewrite ... ok
+test explain_known_and_unknown_codes ... ok
+test check_json_goes_to_stdout_and_ends_with_summary ... ok
+test check_human_goes_to_stderr_with_relative_paths ... ok
+test run_scopes_root_handlers_to_the_manifest ... ok
+test audit_lists_undecided_literal_conversions ... ok
+test audit_json_lists_user_sites_then_a_summary ... ok
+test doc_searches_by_type_pattern ... ok
+test usage_errors_exit_2 ... ok
+test test_json_has_exactly_one_summary_at_the_end ... ok
+test run_exits_75_when_permissions_do_not_cover_main ... ok
+test std_tests_pass ... ok
+test build_manifest_lists_trusted_base_and_obligations ... ok
+test fix_previews_then_applies_machine_applicable_fixes ... ok
+test test_contracts_report_w7001_and_replay_regressions ... ok
+test test_record_needs_net_and_makes_fixtures_writable ... ok
+test test_record_reads_the_manifest_env_keys ... ok
+test test_record_then_replay_through_http_recording ... ok
+test frozen_specs_compare_with_git_head ... ok
+test new_projects_check_and_are_formatted ... ok
+
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.87s
+
+     Running tests/examples.rs (target/debug/deps/examples-b4495dc1491df3a8)
+
+running 2 tests
+test common::directive_tests::backend_expectations_keep_defaults_and_do_not_override_each_other ... ok
+test examples ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.38s
+
+     Running tests/lsp.rs (target/debug/deps/lsp-4bfdf5be0fa7aa81)
+
+running 4 tests
+test common::directive_tests::backend_expectations_keep_defaults_and_do_not_override_each_other ... ok
+test std_definitions_open_and_disk_edits_show_without_save ... ok
+test lsp_hole_context_matches_mcp_after_unicode_edits ... ok
+test diagnostics_navigation_and_formatting_over_stdio ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.53s
+
+     Running tests/mcp.rs (target/debug/deps/mcp-63f3a4d21788ea85)
+
+running 2 tests
+test common::directive_tests::backend_expectations_keep_defaults_and_do_not_override_each_other ... ok
+test check_patch_apply_and_test_over_stdio ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
+
+     Running tests/runner.rs (target/debug/deps/runner-11762f46c9f6f268)
+
+running 4 tests
+test runner_ops_match_std_test_effect ... ok
+test filter_selects_tests ... ok
+test records_per_test_and_summary ... ok
+test snapshots_are_written_only_on_update_then_compared ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.28s
+
+     Running tests/semantics.rs (target/debug/deps/semantics-c28b785f4b1d4218)
+
+running 2 tests
+test common::directive_tests::backend_expectations_keep_defaults_and_do_not_override_each_other ... ok
+test semantics ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 48.64s
+
+     Running tests/ui.rs (target/debug/deps/ui-31b9946f0b4e68c4)
+
+running 2 tests
+test common::directive_tests::backend_expectations_keep_defaults_and_do_not_override_each_other ... ok
+test ui ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 20.00s
+
+     Running unittests src/lib.rs (target/debug/deps/sakura_codegen_js-5a27e4a5d9b484da)
+
+running 2 tests
+test sourcemap::tests::line_index ... ok
+test sourcemap::tests::vlq_matches_the_spec_examples ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/contract_tests.rs (target/debug/deps/contract_tests-94fd3c45636c0397)
+
+running 3 tests
+test contract_test_handlers_must_be_effect_constructors ... ok
+test ensures_failures_are_shrunk_fails_pass_and_discards_give_up ... ok
+test eligible_pub_fns_get_one_property_each ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.33s
+
+     Running tests/deep.rs (target/debug/deps/deep-d4abc500bea59817)
+
+running 1 test
+test a_100_000_link_chain_builds_and_runs ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.92s
+
+     Running tests/handbuilt.rs (target/debug/deps/handbuilt-1aea92a79b147a11)
+
+running 5 tests
+test defects_exit_70_with_a_json_record ... ok
+test loops_run_in_constant_stack ... ok
+test hello_world ... ok
+test handler_state_and_a_million_operations ... ok
+test million_deep_recursion ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.45s
+
+     Running tests/m3.rs (target/debug/deps/m3-af0b1318f0575a9a)
+
+running 28 tests
+test expect_eq_reports_floats_as_floats ... ok
+test json_round_trips_through_schemas_and_checks_refinements ... ok
+test ensures_blames_the_callee_clause ... ok
+test deterministic_tasks_give_input_order_results ... ok
+test llm_anthropic_speaks_the_messages_api_through_http_and_budget ... ok
+test host_fs_is_confined_to_its_directory ... ok
+test http_send_uses_fetch_and_sends_the_bearer_only_as_a_header ... ok
+test cli_parses_flags_into_a_record_and_exits_with_finalizers ... ok
+test m3_acceptance_contracts ... ok
+test constants_are_evaluated_once ... ok
+test llm_functions_generate_their_request ... ok
+test derived_generators_cover_records_variants_and_recursion ... ok
+test refinement_from_blames_the_introduction ... ok
+test field_refinements_are_checked_everywhere ... ok
+test requires_blames_the_call_span ... ok
+test serve_listen_answers_requests_and_survives_defects ... ok
+test sql_memory_queries_rows_by_schema_and_rolls_back_failed_transactions ... ok
+test root_handlers_apply_manifest_permissions ... ok
+test show_through_a_show_bound_keeps_float_formatting ... ok
+test refined_literals_are_checked_before_main ... ok
+test sql_template_arguments_are_converted_with_sql_value_from ... ok
+test sql_sqlite_opens_its_file_inside_the_fs_directory ... ok
+test virtual_sleeps_wake_in_virtual_time_order ... ok
+test tasks_run_concurrently_and_cancel_losers ... ok
+test cassettes_record_then_replay_with_the_network_denied ... ok
+test with_file_bodies_cannot_bypass_an_attenuating_handler ... ok
+test properties_shrink_to_minimal_counterexamples ... ok
+test refined_parameters_respect_where_and_shrink_inside_it ... ok
+
+test result: ok. 28 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.04s
+
+     Running tests/runtime.rs (target/debug/deps/runtime-8967f29fcb301769)
+
+running 2 tests
+test builtin_table_matches_runtime_exports ... ok
+test node_conformance_suite_passes ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.59s
+
+     Running tests/semantics.rs (target/debug/deps/semantics-84bcc69150b80ed3)
+
+running 1 test
+test semantics_corpus ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 11.19s
+
+     Running tests/source.rs (target/debug/deps/source-08d004a7c7afcd6b)
+
+running 11 tests
+test bench_direct_style ... ignored
+test a_false_property_reports_its_input ... ok
+test host_handlers_suspend_and_resume ... ok
+test uncaught_fail_in_a_test_is_a_test_failure ... ok
+test catch_rethrows_unmatched_tags_and_vars_flow_through_joins ... ok
+test externals_work_as_function_values ... ok
+test env_root_handler_reads_the_process_environment ... ok
+test tail_recursion_becomes_a_direct_style_loop ... ok
+test std_test_blocks_pass ... ok
+test acceptance_programs_snapshot ... ok
+test lowering_never_panics_on_the_corpus ... ok
+
+test result: ok. 10 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 17.49s
+
+     Running tests/stream.rs (target/debug/deps/stream-0a2c674ea6deb9d8)
+
+running 4 tests
+test llm_stream_emits_a_partial_per_delta ... ok
+test chunks_are_read_as_they_arrive ... ok
+test streams_record_and_replay_through_cassettes ... ok
+test cancelling_the_callback_aborts_the_fetch ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.48s
+
+     Running tests/trace.rs (target/debug/deps/trace-e165dc8aac1003c2)
+
+running 1 test
+test traces_record_performs_finalizers_cancellations_and_defects ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.40s
+
+     Running unittests src/lib.rs (target/debug/deps/sakura_core-dc2431af12ef9d6e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/validate.rs (target/debug/deps/validate-6e79643bcfc38c38)
+
+running 4 tests
+test rejects_double_binding ... ok
+test hello_world_is_valid ... ok
+test loop_with_join_point_is_valid ... ok
+test rejects_scope_arity_and_projection_errors ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running unittests src/lib.rs (target/debug/deps/sakura_core_snapshot-4cc1a7606d519460)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/sakura_diagnostics-af0662d6b86dab3c)
+
+running 4 tests
+test codes::tests::lookup_is_case_insensitive ... ok
+test codes::tests::phase_digit_matches_phase ... ok
+test codes::tests::codes_are_unique_and_well_formed ... ok
+test codes::tests::every_code_used_in_the_workspace_is_registered ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/render.rs (target/debug/deps/render-81a2e630bc886771)
+
+running 9 tests
+test every_registry_code_explains_itself ... ok
+test out_of_range_spans_are_clamped_not_panics ... ok
+test rendered_row_has_the_schema_shape ... ok
+test byte_offsets_are_utf8_and_slice_the_source ... ok
+test ordering_roots_first_then_position_and_ids_are_deterministic ... ok
+test output_is_capped_with_a_summary ... ok
+test human_rendering ... ok
+test hole_record_shape ... ok
+test diagnostic_record_matches_schema_shape ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running unittests src/lib.rs (target/debug/deps/sakura_eval-6d434680221c23bf)
+
+running 2 tests
+test show::tests::floats_print_like_js ... ok
+test show::tests::containers_render_as_sakura_syntax ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/corpus.rs (target/debug/deps/corpus-9948d5ebcf46af22)
+
+running 1 test
+test evaluator_agrees_with_expected_stdout ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 18.41s
+
+     Running tests/differential.rs (target/debug/deps/differential-bf5fe80f869ad48b)
+
+running 1 test
+test js_backend_agrees_with_the_evaluator has been running for over 60 seconds
+test js_backend_agrees_with_the_evaluator ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 81.70s
+
+     Running tests/eval.rs (target/debug/deps/eval-488abc63c4a8f80a)
+
+running 6 tests
+test hello_world ... ok
+test try_catches_a_fail_from_a_callee ... ok
+test arithmetic_defects ... ok
+test handler_state_advances_and_inner_handler_wins ... ok
+test step_limit_stops_runaway_programs ... ok
+test million_deep_tail_recursion_runs_in_constant_stack ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.89s
+
+     Running unittests src/lib.rs (target/debug/deps/sakura_fmt-260924dfdddd52bd)
+
+running 1 test
+test tests::guard_reports_a_dropped_comment_or_broken_output ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/fmt.rs (target/debug/deps/fmt-215f415c40855506)
+
+running 9 tests
+test refuses_parse_errors ... ok
+test import_sorting_keeps_the_header_on_top ... ok
+test width_is_measured_in_chars ... ok
+test verbatim_nodes_are_a_fixed_point ... ok
+test deepest_accepted_input_formats ... ok
+test fixtures ... ok
+test syntax_corpus_is_stable ... ok
+test long_chains_format ... ok
+test every_comment_survives ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 42.66s
+
+     Running tests/props.rs (target/debug/deps/props-6220d29dcaa19045)
+
+running 1 test
+test respacing_does_not_change_output ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.27s
+
+     Running unittests src/lib.rs (target/debug/deps/sakura_hir-7354c4da7aa725d0)
+
+running 1 test
+test diag::tests::suggests_close_names_only ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/examples.rs (target/debug/deps/examples-cc4fc662129914e9)
+
+running 1 test
+test examples_resolve ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.50s
+
+     Running tests/lower.rs (target/debug/deps/lower-afa7b515d62ab680)
+
+running 40 tests
+test deterministic ... ok
+test diag_assign_immutable ... ok
+test agent_row_params ... ok
+test diag_attributes ... ok
+test contracts_and_refinements ... ok
+test diag_case_mismatch ... ok
+test diag_duplicates ... ok
+test diag_explicit_imports ... ok
+test diag_non_std_effect_in_main ... ok
+test diag_import_cycle ... ok
+test diag_opaque_variant_import ... ok
+test diag_mixed_union ... ok
+test diag_misc_resolution ... ok
+test diag_or_pattern_bindings ... ok
+test diag_unknown_modules ... ok
+test diag_shadowed_import ... ok
+test diag_wrong_kinds ... ok
+test holes_strings_misc ... ok
+test diag_unresolved_with_suggestion ... ok
+test diag_private_and_missing_items ... ok
+test errors_unions_try ... ok
+test external_types ... ok
+test imports_across_modules ... ok
+test diag_recursive_lambda_and_jumps ... ok
+test effects_handlers_with ... ok
+test home_module_calls ... ok
+test parse_error_cascades ... ok
+test patterns ... ok
+test lambdas_and_generics ... ok
+test hello_world ... ok
+test records_and_update ... ok
+test loops_and_vars ... ok
+test single_variant_newtype ... ok
+test variant_named_like_builtin ... ok
+test tool_of ... ok
+test opaque_types ... ok
+test variants_and_match ... ok
+test malformed_input_never_panics ... ok
+test real_std_resolves ... ok
+test long_chains_do_not_overflow ... ok
+
+test result: ok. 40 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.40s
+
+     Running unittests src/lib.rs (target/debug/deps/sakura_lir-8898a09f929d5217)
+
+running 2 tests
+test show::tests::floats_print_like_js ... ok
+test show::tests::to_fixed_matches_js ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/abi.rs (target/debug/deps/abi-c4ed4b901a0fff0c)
+
+running 4 tests
+test frame_and_closure_descriptors ... ok
+test effect_table_bytes ... ok
+test layout_bytes_are_deterministic ... ok
+test layout_table_bytes ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.33s
+
+     Running tests/corpus.rs (target/debug/deps/corpus-b728c445e933a52d)
+
+running 3 tests
+test printer_snapshots ... ok
+test every_program_lowers_and_validates ... ok
+test interpreter_agrees_with_the_corpus_expectations ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 15.67s
+
+     Running tests/validate.rs (target/debug/deps/validate-b055b0157c3efff9)
+
+running 12 tests
+test a_projection_with_the_wrong_representation_is_rejected ... ok
+test an_activation_id_never_enters_an_ordinary_value ... ok
+test an_alloc_disagreeing_with_the_layout_is_rejected ... ok
+test handler_state_is_checked_against_its_row ... ok
+test a_reference_dropped_twice_is_rejected ... ok
+test leaving_a_with_region_without_closing_it_is_rejected ... ok
+test a_clause_follows_its_operations_signature ... ok
+test a_value_from_another_block_is_out_of_scope ... ok
+test a_raw_option_payload_projection_is_rejected_under_niche_layout ... ok
+test a_reference_left_live_at_a_terminator_is_rejected ... ok
+test a_call_with_the_wrong_convention_is_rejected ... ok
+test deleting_any_dup_or_drop_is_rejected ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.12s
+
+     Running unittests src/lib.rs (target/debug/deps/sakura_lsp-26592c36bfff48ce)
+
+running 1 test
+test tests::positions_round_trip_in_both_encodings ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/sakura_mcp-20f2d4248aaed537)
+
+running 2 tests
+test tests::minimal_edits_respect_char_boundaries ... ok
+test tests::docs_rank_codes_and_headings ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/sakura_rt-cb54becd9c53809f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/abi_dumps.rs (target/debug/deps/abi_dumps-e10b411361e752fc)
+
+running 2 tests
+test layout_table_bytes ... ok
+test one_object_of_each_tag ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/collections.rs (target/debug/deps/collections-84156b8146faa94d)
+
+running 8 tests
+test strings_and_bytes_are_utf8_bytes ... ok
+test show_follows_design_4_8 ... ok
+test string_hashes_are_cached_and_never_zero ... ok
+test list_builtins_match_js ... ok
+test map_and_set_keep_insertion_order ... ok
+test list_map_and_set_agree_with_a_model_under_random_persistent_updates ... ok
+test eq_ord_and_keys_are_structural ... ok
+test list_versions_stay_independent_while_appends_stay_in_place ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.53s
+
+     Running tests/exec.rs (target/debug/deps/exec-e9307a0cbe315c2a)
+
+running 22 tests
+test close_then_late_completion ... ok
+test cycle_handler_callback ... ok
+test callback_alias_nested_attenuation ... ok
+test arena_generations_detect_stale_ids_and_retire_slots ... ok
+test finalizer_order_cancel ... ok
+test double_completion_rejected ... ok
+test finalizer_order_defect ... ok
+test fiber_self_reference ... ok
+test fail_escaping_a_finalizer_is_d093 ... ok
+test finalizer_order_fail ... ok
+test finalizer_order_ok ... ok
+test rc_overflow_is_d092 ... ok
+test parent_cancel_during_child_completion ... ok
+test request_limit_is_an_ordinary_error ... ok
+test reentrant_host_completion ... ok
+test stale_callback_context_is_d094 ... ok
+test scope_exit_with_pending_work ... ok
+test the_arena_table_grows_before_its_first_entry ... ok
+test oom_while_unwinding ... ok
+test million_frame_destruction ... ok
+test million_frame_recursion_without_native_stack_growth ... ok
+test million_handled_operations_with_unboxed_state ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 35.45s
+
+     Running tests/heap.rs (target/debug/deps/heap-269595f3c8431652)
+
+running 8 tests
+test handles_retire_and_secrets_zero_on_destruction ... ok
+test handler_state_is_described_by_its_layout_row ... ok
+test rc_overflow_is_d092 ... ok
+test page_runs_are_reused_and_coalesced ... ok
+test counters_track_live_blocks ... ok
+test size_class_boundaries ... ok
+test oom_is_one_defect_path_d096 ... ok
+test million_object_destruction ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.78s
+
+     Running tests/wasm_gate.rs (target/debug/deps/wasm_gate-53515229c1e562f3)
+
+running 1 test
+test wasm_object_passes_the_abi_profile_gate ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.72s
+
+     Running unittests src/lib.rs (target/debug/deps/sakura_syntax-746630a44a9f8842)
+
+running 9 tests
+test lexer::tests::int_values ... ok
+test lexer::tests::unescape_decodes ... ok
+test syntax_kind::tests::raw_round_trip ... ok
+test lexer::tests::lossless_and_contiguous ... ok
+test lexer::tests::newline_rule ... ok
+test lexer::tests::strings_and_escapes ... ok
+test lexer::tests::unterminated ... ok
+test lexer::tests::numbers ... ok
+test lexer::tests::names_holes_and_errors ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/parse.rs (target/debug/deps/parse-f69e33b35f1afe67)
+
+running 2 tests
+test err ... ok
+test ok ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/robustness.rs (target/debug/deps/robustness-7849dcd35b1ff5fb)
+
+running 8 tests
+test moderate_nesting_is_fine ... ok
+test tight_token_soup ... ok
+test token_soup ... ok
+test arbitrary_strings ... ok
+test long_chains_are_not_nesting ... ok
+test deep_nesting_is_bounded ... ok
+test long_flat_input_is_linear ... ok
+test every_prefix_of_every_fixture ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.24s
+
+     Running unittests src/lib.rs (target/debug/deps/sakura_types-2c11a65a0b154cf6)
+
+running 45 tests
+test infer::tests::error_type_absorbs_mismatches ... ok
+test exhaust::tests::redundant_arm_after_wildcard ... ok
+test exhaust::tests::literal_patterns_need_a_wildcard ... ok
+test infer::tests::bound_flows_to_fresh_tails ... ok
+test exhaust::tests::missing_none_is_the_witness ... ok
+test exhaust::tests::empty_matrix_lists_constructors_in_order ... ok
+test infer::tests::closed_rows_widen_into_flexible_rows ... ok
+test exhaust::tests::tuples_of_bools ... ok
+test infer::tests::closed_fail_sets_must_be_equal_in_unify ... ok
+test infer::tests::bounds_intersect ... ok
+test infer::tests::fail_lower_bounds_join ... ok
+test infer::tests::fail_subsumption_is_union_inclusion ... ok
+test infer::tests::function_arity_mismatch ... ok
+test infer::tests::fail_upper_bound_rejects_later_tags ... ok
+test infer::tests::fail_unify_through_variables_joins ... ok
+test infer::tests::generalize_only_inner_level_vars ... ok
+test infer::tests::hidden_failures_of_a_row_parameter ... ok
+test infer::tests::never_and_refinements_subsume ... ok
+test infer::tests::occurs_check_rejects_infinite_types ... ok
+test infer::tests::open_row_against_empty_reports_the_label ... ok
+test infer::tests::rigid_bound ... ok
+test infer::tests::rigid_tails_must_match ... ok
+test infer::tests::row_occurs_check ... ok
+test infer::tests::row_vars_generalize ... ok
+test infer::tests::rows_with_distinct_tails_meet_in_a_fresh_tail ... ok
+test infer::tests::same_label_unifies_arguments ... ok
+test infer::tests::same_tail_with_different_labels_needs_both_in_the_tail ... ok
+test infer::tests::snapshot_rolls_back_bindings ... ok
+test infer::tests::subset_against_closed_rows ... ok
+test infer::tests::unify_primitives_and_vars ... ok
+test infer::tests::unifying_with_outer_var_lowers_level ... ok
+test infer::tests::union_joins_fail_and_unifies_tails ... ok
+test infer::tests::upper_bound_is_deferred ... ok
+test infer::tests::unify_with_self_succeeds ... ok
+test infer::tests::subset_is_reflexive_and_union_contains_parts ... ok
+test infer::tests::unify_solution_equates_rows ... ok
+test render::tests::tidy_vars_is_consistent ... ok
+test ty::tests::error_union_normalizes ... ok
+test ty::tests::interning_is_structural ... ok
+test ty::tests::rows_are_sorted_with_fail_last ... ok
+test infer::tests::union_is_idempotent_and_commutative ... ok
+test infer::tests::unify_is_commutative ... ok
+test infer::tests::occurs_check_always_rejects ... ok
+test infer::tests::fail_lub_is_commutative_and_idempotent ... ok
+test infer::tests::script_is_order_independent ... ok
+
+test result: ok. 45 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.92s
+
+     Running tests/acceptance.rs (target/debug/deps/acceptance-300e186ae1c3c3f2)
+
+running 23 tests
+test m1_checks ... ok
+test m0_unterminated_call_reports_only_the_parse_error ... ok
+test m0_hello_checks ... ok
+test generic_operation_clauses_see_rigid_type_parameters ... ok
+test hole_in_test_allows_typed_failures ... ok
+test m1_arm_after_wildcard_is_v4002 ... ok
+test m0_missing_console_is_v3001_with_cause ... ok
+test std_typechecks ... ignored, report on std; run with --ignored
+test m1_missing_wildcard_is_v4001_none ... ok
+test hole_candidates_snapshot ... ok
+test let_polymorphism_carries_constraints ... ok
+test hole_allowed_effects_are_structured ... ok
+test m2_checks_and_answer_is_pure ... ok
+test m2_typed_rows_are_resolved_for_core ... ok
+test m2_nested_handlers_check ... ok
+test try_bodies_assign_only_their_own_vars ... ok
+test m2_clause_with_undeclared_effect_is_v3001_at_clause ... ok
+test m2_hole_reports_expected_type_locals_and_candidates ... ok
+test tests_may_fail_with_typed_errors ... ok
+test m2_closed_callback_widens_twice_row ... ok
+test sql_template_arguments_convert_with_sql_value_from ... ok
+test trust_literals_at_sinks_check ... ok
+test template_arguments_see_through_untrusted ... ok
+
+test result: ok. 22 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.87s
+
+     Running tests/chains.rs (target/debug/deps/chains-42bd5fd220341670)
+
+running 3 tests
+test long_method_chain ... ok
+test long_operator_chain ... ok
+test effect_cause_search_walks_a_long_chain ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
+
+     Running tests/clauses.rs (target/debug/deps/clauses-33e3fc2d5fdc884a)
+
+running 7 tests
+test store_with_reentrant_callbacks_checks ... ok
+test a_callback_call_adds_nothing_to_the_handler_row ... ok
+test a_let_alias_of_a_callback_is_a_callback ... ok
+test a_callback_inside_a_lambda_flows_through_its_tail ... ok
+test a_clause_failing_with_an_undeclared_tag_is_still_rejected ... ok
+test a_clause_effect_stays_in_the_handler_row ... ok
+test a_wrapper_clause_performs_the_effect_outward ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
+
+     Running tests/corpus.rs (target/debug/deps/corpus-4bca108b9fcf8215)
+
+running 1 test
+test corpus_matches_expected_codes ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 20.61s
+
+     Running tests/escape.rs (target/debug/deps/escape-8eb54395bb27ad46)
+
+running 28 tests
+test a_lambda_capturing_only_plain_values_may_leave_a_with ... ok
+test a_package_may_declare_externals_over_its_own_external_types ... ok
+test a_callback_returning_a_record_holding_a_resource_is_v6003 ... ok
+test a_file_stored_in_handler_state_is_v6003 ... ok
+test a_lambda_capturing_a_dir_from_a_with_is_v6002 ... ok
+test a_route_handler_returning_a_file_is_v6003 ... ok
+test a_file_inside_a_with_is_reported_once ... ok
+test a_record_holding_the_file_is_v6003 ... ok
+test a_closure_over_the_file_is_v6003 ... ok
+test a_return_out_of_a_with_is_v6002 ... ok
+test a_record_holding_a_dir_returned_from_a_with_is_v6002 ... ok
+test a_lambda_capture_through_an_alias_and_a_record_is_v6002 ... ok
+test a_user_external_returning_a_std_capability_is_v6001 ... ok
+test a_top_level_handler_is_v6002 ... ok
+test a_task_capturing_a_dir_bound_inside_an_inner_with_is_v6002 ... ok
+test a_user_resource_type_is_checked_like_file ... ok
+test a_task_capturing_values_bound_outside_the_with_is_fine ... ok
+test a_top_level_function_value_is_fine ... ok
+test a_task_capturing_a_handler_bound_inside_an_inner_with_is_v6002 ... ok
+test a_user_external_mentioning_a_capability_at_any_depth_is_v6001 ... ok
+test a_task_whose_scope_is_inside_the_with_is_fine ... ok
+test a_with_returning_its_handler_is_v6002 ... ok
+test a_with_returning_a_dir_is_v6002 ... ok
+test plain_values_and_ordinary_returns_of_scoped_values_are_fine ... ok
+test reading_a_streamed_body_inside_the_callback_is_fine ... ok
+test a_wrapper_passing_the_callback_on_is_checked_at_its_caller ... ok
+test reading_inside_the_callback_is_fine ... ok
+test returning_the_file_from_with_file_is_v6003 ... ok
+
+test result: ok. 28 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.60s
+
+     Running tests/examples.rs (target/debug/deps/examples-f17c02611f8cc318)
+
+running 5 tests
+test typed_errors_across_a_boundary ... ok
+test hello_with_clock ... ok
+test refinements_and_contracts ... ok
+test user_effect_handler_with_state ... ok
+test field_refinements_are_checked ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.46s
+
+     Running tests/negative.rs (target/debug/deps/negative-cff2bbaa155a3807)
+
+running 1 test
+test negative_programs_are_rejected_with_exact_codes ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.65s
+
+     Running tests/order.rs (target/debug/deps/order-569c3ffe3b128ede)
+
+running 1 test
+test statement_order_does_not_matter ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 12.34s
+
+     Running tests/refine.rs (target/debug/deps/refine-d6c8a21329e76ce6)
+
+running 23 tests
+test a_defect_in_the_predicate_is_v5004 ... ok
+test literals_that_satisfy_the_predicate_need_no_conversion ... ok
+test a_literal_that_fails_the_predicate_is_v5004_with_the_clause ... ok
+test a_predicate_over_the_step_budget_keeps_the_start_up_check ... ok
+test a_clause_scanning_a_parameter_is_w5005_once ... ok
+test a_predicate_outside_the_fragment_keeps_the_start_up_check ... ok
+test generic_refinements_keep_their_arguments_and_decide_literals ... ok
+test matches_on_a_refined_list_name_the_missing_case ... ok
+test a_user_total_predicate_in_the_fragment_is_decided ... ok
+test generic_refinements_coerce_to_their_base_at_the_arguments ... ok
+test literals_reach_refined_parameters_and_fields ... ok
+test an_int_beyond_the_js_safe_range_is_undecidable ... ok
+test refinements_and_property_requires_are_w5005_but_bounded_clauses_are_not ... ok
+test std_contracts_are_exempt ... ok
+test only_literals_of_the_base_type_coerce ... ok
+test validate_into_a_plain_type_is_v5003 ... ok
+test short_circuit_decides_before_reaching_the_undecidable_part ... ok
+test the_tour_email_rejects_a_string_without_an_at ... ok
+test std_status_and_the_tour_email_are_decided ... ok
+test validate_into_an_annotated_refined_type_is_a_conversion ... ok
+test validate_without_a_target_or_with_the_wrong_base_is_v5003 ... ok
+test string_built_ins_match_the_js_runtime ... ok
+test std_path_and_status_literals_are_decided ... ok
+
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.51s
+
+     Running tests/row_args.rs (target/debug/deps/row_args-ed404ed89274d74f)
+
+running 6 tests
+test open_row_arguments_join ... ok
+test a_local_holding_a_row_argument_generalizes ... ok
+test row_arguments_render_in_place ... ok
+test row_parameters_of_types_have_kinds ... ok
+test kind_and_count_mismatches ... ok
+test closed_row_arguments_must_be_equal ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.25s
+
+     Running tests/rows.rs (target/debug/deps/rows-215988062667b38b)
+
+running 12 tests
+test catch_all_over_hidden_failures_is_only_w4010 ... ok
+test callbacks_sharing_a_row_variable_join_their_failures ... ok
+test an_inspected_error_value_settles_its_union ... ok
+test catch_around_row_polymorphic_calls_still_reports_uncaught_and_impossible_tags ... ok
+test catch_over_known_callback_failures_checks ... ok
+test catch_around_row_polymorphic_calls_discharges_the_caught_tags ... ok
+test bounded_tails_do_not_depend_on_statement_order ... ok
+test try_over_named_failures_checks ... ok
+test joined_failures_beyond_the_signature_list_only_the_extra_tag ... ok
+test row_mismatch_names_the_side_with_the_extra_label ... ok
+test row_parameter_kinds ... ok
+test catch_over_unknown_callback_failures_is_v2001_with_a_note ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.48s
+
+     Running unittests src/lib.rs (target/debug/deps/sakura_verify-38aaff5fc452ea41)
+
+running 4 tests
+test cache::tests::hmac_hashes_long_keys_first ... ok
+test cache::tests::hmac_matches_rfc_4231_case_2 ... ok
+test cache::tests::key_is_created_private_and_refused_inside_the_repo ... ok
+test cache::tests::tampering_turns_a_record_into_a_hint ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/bless.rs (target/debug/deps/bless-11b79b265e6bcfd8)
+
+running 1 test
+test bless_core_snapshots ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cache.rs (target/debug/deps/cache-6377a5dd66334327)
+
+running 1 test
+test a_body_only_edit_invalidates_exactly_its_own_proofs ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/corpus.rs (target/debug/deps/corpus-2c2a20a2c6bcc1a8)
+
+running 4 tests
+test a_malformed_snapshot_is_an_error ... ok
+test the_fifty_research_obligations_come_from_core ... ok
+test scale_is_split_into_ensures_and_overflow ... ok
+test every_obligation_has_a_committed_status ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/live.rs (target/debug/deps/live-da934e039588b07f)
+
+running 2 tests
+test wrong_scale_body_is_disproved_by_the_acceptance_witness ... ok
+test every_obligation_has_its_committed_status ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.66s
+
+     Running tests/worker.rs (target/debug/deps/worker-5e34ee72c0085f13)
+
+running 12 tests
+test the_budget_bounds_a_whole_run ... ok
+test only_the_pinned_version_runs ... ok
+test the_rlimit_override_is_recorded ... ok
+test models_are_decoded_to_source_values ... ok
+test output_beyond_the_cap_is_refused ... ok
+test a_crash_is_unknown_crash ... ok
+test a_disproved_record ... ok
+test garbage_is_a_malformed_reply ... ok
+test unknown_reasons_are_structured ... ok
+test a_slow_answer_within_the_deadline_counts ... ok
+test a_hung_solver_is_killed_at_the_deadline ... ok
+test records_keep_reasons_and_cross_check_disagreements ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.84s
+
+   Doc-tests sakura_analysis
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests sakura_codegen_js
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests sakura_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests sakura_core_snapshot
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests sakura_diagnostics
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests sakura_eval
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests sakura_fmt
+
+running 1 test
+test crates/sakura_fmt/src/lib.rs - (line 3) ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+all doctests ran in 0.79s; merged doctests compilation took 0.43s
+   Doc-tests sakura_hir
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests sakura_lir
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests sakura_lsp
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests sakura_mcp
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests sakura_rt
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests sakura_syntax
+
+running 1 test
+test crates/sakura_syntax/src/lib.rs - (line 5) ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+all doctests ran in 0.57s; merged doctests compilation took 0.23s
+   Doc-tests sakura_types
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests sakura_verify
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

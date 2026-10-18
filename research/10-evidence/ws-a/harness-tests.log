@@ -1,0 +1,12 @@
+.......[oracle] fib sakura/node
+[FAIL] fib sakura/node: oracle failed: run(20) = 6765, expected 6766
+[oracle] fib js/node
+[FAIL] fib js/node: oracle failed: run(20) = 6765, expected 6766
+wrote /var/folders/nz/sh4b0_xs0q17580csxlh5_s00000gn/T/tmpwcewyt_n/out.json
+.
+----------------------------------------------------------------------
+Ran 8 tests in 2.590s
+
+OK
+| Program | n |
+|---|---:|

@@ -1,0 +1,51 @@
+[oracle] fib sakura/node
+[oracle] fib js/node
+[oracle] pipeline sakura/node
+[oracle] pipeline js/node
+[1/40] fib js/node n=20
+[2/40] fib sakura/node n=24
+[3/40] pipeline js/node n=10000
+[4/40] pipeline js/node n=10000
+[5/40] pipeline js/node n=1000
+[6/40] fib js/node n=20
+[7/40] pipeline sakura/node n=10000
+[8/40] fib sakura/node n=20
+[9/40] fib sakura/node n=24
+[10/40] pipeline sakura/node n=10000
+[11/40] fib js/node n=20
+[12/40] pipeline js/node n=1000
+[13/40] fib sakura/node n=24
+[14/40] pipeline sakura/node n=1000
+[15/40] pipeline js/node n=1000
+[16/40] pipeline js/node n=1000
+[17/40] fib js/node n=24
+[18/40] pipeline sakura/node n=10000
+[19/40] pipeline sakura/node n=1000
+[20/40] pipeline js/node n=10000
+[21/40] fib js/node n=24
+[22/40] pipeline sakura/node n=1000
+[23/40] pipeline sakura/node n=1000
+[24/40] fib sakura/node n=24
+[25/40] pipeline sakura/node n=10000
+[26/40] fib sakura/node n=24
+[27/40] fib sakura/node n=20
+[28/40] fib sakura/node n=20
+[29/40] fib js/node n=24
+[30/40] pipeline sakura/node n=10000
+[31/40] pipeline js/node n=10000
+[32/40] fib sakura/node n=20
+[33/40] pipeline js/node n=1000
+[34/40] fib js/node n=20
+[35/40] fib js/node n=24
+[36/40] fib sakura/node n=20
+[37/40] fib js/node n=20
+[38/40] fib js/node n=24
+[39/40] pipeline js/node n=10000
+[40/40] pipeline sakura/node n=1000
+wrote bench-results/noise-5.json
+| Program | n | sakura/node ms | js/node ms | ratio node |
+|---|---:|---:|---:|---:|
+| fib | 20 | 0.3769 | 0.04033 | 9.34× |
+| fib | 24 | 2.656 | 0.2839 | 9.36× |
+| pipeline | 1000 | 0.07464 | 0.03801 | 1.96× |
+| pipeline | 10000 | 0.8673 | 0.3713 | 2.34× |

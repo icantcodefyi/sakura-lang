@@ -1,0 +1,10 @@
+| Program | Engine | n | Base ratio | Head ratio | Δ | Status |
+|---|---|---:|---:|---:|---:|---|
+| fib | node | 20 | 7.787 | 9.103 | +16.9% | flagged |
+| fib | node | 24 | 7.139 | 7.067 | -1.0% | ok |
+| pipeline | node | 1000 | 1.920 | 2.021 | +5.3% | flagged |
+| pipeline | node | 10000 | 2.380 | 2.774 | +16.6% | flagged |
+
+IMMEDIATE FAILURE: ('fib', 'js', 'node'): complexity changed, log-log slope 10.21 → 11.33
+
+verdict: blocked

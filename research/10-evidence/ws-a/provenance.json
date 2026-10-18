@@ -1,0 +1,41 @@
+{
+  "commit": "eaf58bbe625640cd4cdc2f79405bbb4e0f493cf4",
+  "measured_git_objects": {
+    "compiler": "7e4da209e10f2fcf32120dd2c9c8bbd7439a884a",
+    "bench/harness": "a408f239ed825c457ebfa0dc3dce2b1b55aefb82",
+    "bench/programs": "a02c3cab1a1dad01324001ccbda7f3eb971e354d",
+    "bench/toolchains.toml": "f5fe3df06356ef1a447a69e10bdf7c43eb041d9e",
+    "research/10-evidence/micro.sakura": "b3741726295a8ec475fe3e0be0cfadfad0873a90",
+    "research/10-evidence/bench.mjs": "42bbb2bbe1f7f18864398639e82033d9864535c7",
+    "research/10-evidence/reference.mjs": "c6e48a33c56258dd107e088689f042f2c47d6cea",
+    "research/10-evidence/native.mjs": "74dd9348a33d22eaa5d1606c636208348669ca12"
+  },
+  "label": "shared-host/noisy; unchanged checkout during local repetitions",
+  "local_series": {
+    "program_filter": "[fps]*",
+    "repetitions": 5,
+    "processes_per_cell": 5,
+    "samples_per_process": 9,
+    "seeds": [
+      20261018,
+      20261019,
+      20261020,
+      20261021,
+      20261022
+    ]
+  },
+  "environment_overrides_present": {
+    "NODE_OPTIONS": false,
+    "BUN_OPTIONS": false,
+    "CARGO_TARGET_DIR": false,
+    "RUSTFLAGS": false
+  },
+  "first_green_harness_commit": "f6d04c0b16c7b35721c0c324615d5be92357554f",
+  "first_green_to_local_performance_input_diff": [],
+  "first_green_equivalence_exclusion": "compiler/std/INDEX.md is documentation only; other compiler crate/runtime/std and research runner sources are identical",
+  "compiler_build_version": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "source_equivalent_rerun_commit": "e45f69620c44b586fa95e6faa9baa873f72a1074",
+  "source_equivalent_release_cli_sha256": "2553d0c6dddcc91cdbf257940518f20865a09791a937b9daffdb8fbeb6bb9bff",
+  "exact_first_green_rerun_commit": "f6d04c0b16c7b35721c0c324615d5be92357554f",
+  "exact_first_green_release_cli_sha256": "7a0dd06a81c1e584fc273b2584ea44776e3389be3014a38df2ee33b2decb1974"
+}

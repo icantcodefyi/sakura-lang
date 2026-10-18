@@ -1,0 +1,130 @@
+{
+  "commit": "e45f69620c44b586fa95e6faa9baa873f72a1074",
+  "host": {
+    "id": "27bba07e37d5",
+    "cpu": "Apple M2 Pro (Virtual)",
+    "os": "Darwin 25.6.0 arm64",
+    "mem_bytes": 15032385536
+  },
+  "engines": {
+    "node": "26.11.0",
+    "bun": "1.4.3",
+    "rustc": "1.99.0"
+  },
+  "flags": {
+    "suite": "js",
+    "engines": [
+      "bun"
+    ],
+    "lane": "matched",
+    "sizes": "quick",
+    "stable": false,
+    "filter": "[fp]*",
+    "processes": 5,
+    "seed": 20261018
+  },
+  "files": [
+    "research/10-evidence/ws-a/ci/macos-bun/noise-1.json",
+    "research/10-evidence/ws-a/ci/macos-bun/noise-2.json",
+    "research/10-evidence/ws-a/ci/macos-bun/noise-3.json",
+    "research/10-evidence/ws-a/ci/macos-bun/noise-4.json",
+    "research/10-evidence/ws-a/ci/macos-bun/noise-5.json"
+  ],
+  "run_count": 5,
+  "excluded_programs": [],
+  "method": "ratio of median-of-process-medians per run; empirical min/max across runs; ordered pairs are descriptive, not independent trials or a false-positive rate",
+  "rows": [
+    {
+      "program": "fib",
+      "engine": "bun",
+      "lane": "matched",
+      "ints": "js-safe",
+      "size": 20,
+      "ratios": [
+        9.753296492081889,
+        9.552406026315106,
+        9.526311707606165,
+        9.547862098565181,
+        9.606025984200548
+      ],
+      "median_ratio": 9.552406026315106,
+      "min_ratio": 9.526311707606165,
+      "max_ratio": 9.753296492081889,
+      "width_over_median": 0.023762053649145815,
+      "max_increase_over_min": 0.023827142281570568,
+      "ordered_pairs": 20,
+      "pairs_above_5_percent": 0,
+      "pairs_above_10_percent": 0,
+      "pairs_above_10_percent_and_0_1_ms": 0
+    },
+    {
+      "program": "fib",
+      "engine": "bun",
+      "lane": "matched",
+      "ints": "js-safe",
+      "size": 24,
+      "ratios": [
+        9.752351637327104,
+        9.727146658668104,
+        9.735500096702323,
+        9.742852741907695,
+        9.880328803687268
+      ],
+      "median_ratio": 9.742852741907695,
+      "min_ratio": 9.727146658668104,
+      "max_ratio": 9.880328803687268,
+      "width_over_median": 0.01572251465530928,
+      "max_increase_over_min": 0.01574790124940284,
+      "ordered_pairs": 20,
+      "pairs_above_5_percent": 0,
+      "pairs_above_10_percent": 0,
+      "pairs_above_10_percent_and_0_1_ms": 0
+    },
+    {
+      "program": "pipeline",
+      "engine": "bun",
+      "lane": "matched",
+      "ints": "js-safe",
+      "size": 1000,
+      "ratios": [
+        19.561390777791438,
+        19.023351912419248,
+        18.840745061241144,
+        18.839737525856634,
+        19.015620551618582
+      ],
+      "median_ratio": 19.015620551618582,
+      "min_ratio": 18.839737525856634,
+      "max_ratio": 19.561390777791438,
+      "width_over_median": 0.037950549653420464,
+      "max_increase_over_min": 0.03830484638888243,
+      "ordered_pairs": 20,
+      "pairs_above_5_percent": 0,
+      "pairs_above_10_percent": 0,
+      "pairs_above_10_percent_and_0_1_ms": 0
+    },
+    {
+      "program": "pipeline",
+      "engine": "bun",
+      "lane": "matched",
+      "ints": "js-safe",
+      "size": 10000,
+      "ratios": [
+        19.689481791495865,
+        20.83328206040381,
+        20.534356294198094,
+        21.047798649348067,
+        21.39293196786336
+      ],
+      "median_ratio": 20.83328206040381,
+      "min_ratio": 19.689481791495865,
+      "max_ratio": 21.39293196786336,
+      "width_over_median": 0.08176580969952438,
+      "max_increase_over_min": 0.08651574451813326,
+      "ordered_pairs": 20,
+      "pairs_above_5_percent": 3,
+      "pairs_above_10_percent": 0,
+      "pairs_above_10_percent_and_0_1_ms": 0
+    }
+  ]
+}

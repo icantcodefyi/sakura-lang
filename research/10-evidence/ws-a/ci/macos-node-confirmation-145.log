@@ -1,0 +1,8 @@
+| Program | Engine | n | Base ratio | Head ratio | Δ | Status |
+|---|---|---:|---:|---:|---:|---|
+| fib | node | 20 | 7.787 | 7.439 | -4.5% | ok |
+| fib | node | 24 | 7.139 | 7.348 | +2.9% | ok |
+| pipeline | node | 1000 | 1.920 | 1.795 | -6.5% | ok |
+| pipeline | node | 10000 | 2.380 | 2.209 | -7.2% | ok |
+
+verdict: ok

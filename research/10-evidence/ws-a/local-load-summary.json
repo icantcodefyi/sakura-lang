@@ -1,0 +1,42 @@
+[
+  {
+    "file": "noise-1-load.jsonl",
+    "snapshots": 12,
+    "duration_seconds": 158.41616070905002,
+    "load_1m_min": 4.755859375,
+    "load_1m_max": 8.3310546875,
+    "max_sum_process_cpu_percent": 599.1999999999999
+  },
+  {
+    "file": "noise-2-load.jsonl",
+    "snapshots": 14,
+    "duration_seconds": 185.17076499998802,
+    "load_1m_min": 6.7275390625,
+    "load_1m_max": 43.70556640625,
+    "max_sum_process_cpu_percent": 1113.5
+  },
+  {
+    "file": "noise-3-load.jsonl",
+    "snapshots": 14,
+    "duration_seconds": 187.12441354099428,
+    "load_1m_min": 42.2685546875,
+    "load_1m_max": 62.09716796875,
+    "max_sum_process_cpu_percent": 1163.6000000000004
+  },
+  {
+    "file": "noise-4-load.jsonl",
+    "snapshots": 13,
+    "duration_seconds": 172.355383083981,
+    "load_1m_min": 13.8359375,
+    "load_1m_max": 60.69189453125,
+    "max_sum_process_cpu_percent": 1174.3999999999999
+  },
+  {
+    "file": "noise-5-load.jsonl",
+    "snapshots": 12,
+    "duration_seconds": 158.98769816599088,
+    "load_1m_min": 6.18701171875,
+    "load_1m_max": 13.8359375,
+    "max_sum_process_cpu_percent": 325.70000000000005
+  }
+]

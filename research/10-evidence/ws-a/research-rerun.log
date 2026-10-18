@@ -1,0 +1,17 @@
+    Finished `release` profile [optimized] target(s) in 0.09s
+completed repetition 1/5
+completed repetition 2/5
+completed repetition 3/5
+completed repetition 4/5
+completed repetition 5/5
+| Workload | Node Sakura ms | Node / JS | Node / checked | Bun Sakura ms | Bun / JS | Bun / checked |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 6.011 | 9.68× | 8.48× | 3.920 | 9.80× | 9.90× |
+| tail_sum | 0.296 | 2.21× | 0.47× | 0.048 | 1.54× | 0.38× |
+| loop_sum | 0.485 | 3.79× | 1.00× | 0.063 | 2.40× | 1.01× |
+| list_map_fold | 0.498 | 1.54× | 2.75× | 0.638 | 23.62× | 2.32× |
+| records | 0.858 | 1.03× | 1.03× | 0.503 | 2.93× | 1.10× |
+| strings | 0.054 | 1.42× | 0.98× | 0.062 | 1.17× | 1.00× |
+| effects | 2.255 | 4.65× | 4.66× | 2.340 | 53.00× | 12.75× |
+| contracts | 0.263 | 4.81× | 0.68× | 0.335 | 7.15× | 6.89× |
+| contracts_plain | 0.065 | 1.87× | 2.55× | 0.199 | 13.38× | 7.84× |

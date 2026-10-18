@@ -1,0 +1,6 @@
+| Case | Lines | p95 ms | Median ms | Budget ms | |
+|---|---:|---:|---:|---:|---|
+| check_cold_10k | 10084 | 495.9 | 75.8 | 1000 | ok |
+| build_10k | 10084 | 88.4 | 76.7 | 500 | ok |
+| check_cold_100k | 100804 | 480.9 | 458.4 | 3000 | ok |
+| lsp_edit_10k | 10084 | 109.2 | 1.1 | 100 | over budget |

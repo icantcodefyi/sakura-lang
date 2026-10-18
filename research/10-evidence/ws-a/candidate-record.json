@@ -1,0 +1,13 @@
+{
+  "commit": "a843e609d95eed9272b3f1e82f4bec8b813d5538",
+  "host_id": "d88970189598",
+  "programs": 21,
+  "cells": 336,
+  "processes": 1680,
+  "samples": 15120,
+  "sha256": "1d05a53f7eb54816829ad81859f494b3dbf74718310b0929977d9f6744df04ec",
+  "path": "bench/baselines/candidate/2026-10-18-d88970189598-a843e60.json",
+  "original_output_path": "research/10-evidence/ws-a/candidate-current.json",
+  "label": "unblessed; shared-host/noisy; indexed List.set sieve",
+  "release_cli_sha256": "7d77a9a73f2afc8cce4cfc9142677cd4e591f276deca6e398249bb180c6cfb02"
+}

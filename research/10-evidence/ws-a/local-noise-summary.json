@@ -1,0 +1,413 @@
+{
+  "commit": "eaf58bbe625640cd4cdc2f79405bbb4e0f493cf4",
+  "host": {
+    "id": "d88970189598",
+    "cpu": "Apple M4 Pro",
+    "os": "Darwin 27.2.0 arm64",
+    "mem_bytes": 25769803776
+  },
+  "engines": {
+    "node": "26.11.0",
+    "bun": "1.4.3",
+    "rustc": "1.99.1",
+    "go": "1.27.2",
+    "ocaml": "5.5.1",
+    "koka": "3.2.9",
+    "hyperfine": "2.0.0"
+  },
+  "flags": {
+    "suite": "js",
+    "engines": [
+      "node",
+      "bun"
+    ],
+    "lane": "matched",
+    "sizes": "quick",
+    "stable": false,
+    "filter": "[fps]*",
+    "processes": 5,
+    "seed": 20261018
+  },
+  "files": [
+    "research/10-evidence/ws-a/noise-1.json",
+    "research/10-evidence/ws-a/noise-2.json",
+    "research/10-evidence/ws-a/noise-3.json",
+    "research/10-evidence/ws-a/noise-4.json",
+    "research/10-evidence/ws-a/noise-5.json"
+  ],
+  "run_count": 5,
+  "excluded_programs": [
+    "sieve"
+  ],
+  "method": "ratio of median-of-process-medians per run; empirical min/max across runs; ordered pairs are descriptive, not independent trials or a false-positive rate",
+  "rows": [
+    {
+      "program": "fib",
+      "engine": "bun",
+      "lane": "matched",
+      "ints": "js-safe",
+      "size": 20,
+      "ratios": [
+        9.72650954767751,
+        11.589391409052741,
+        13.733809093883618,
+        9.24013060002995,
+        9.138953395159316
+      ],
+      "median_ratio": 9.72650954767751,
+      "min_ratio": 9.138953395159316,
+      "max_ratio": 13.733809093883618,
+      "width_over_median": 0.4724054067084588,
+      "max_increase_over_min": 0.5027770139585226,
+      "ordered_pairs": 20,
+      "pairs_above_5_percent": 9,
+      "pairs_above_10_percent": 7,
+      "pairs_above_10_percent_and_0_1_ms": 6
+    },
+    {
+      "program": "fib",
+      "engine": "bun",
+      "lane": "matched",
+      "ints": "js-safe",
+      "size": 24,
+      "ratios": [
+        9.380772120538134,
+        4.52294675151436,
+        13.29041631189571,
+        9.685239656281915,
+        9.030577094051239
+      ],
+      "median_ratio": 9.380772120538134,
+      "min_ratio": 4.52294675151436,
+      "max_ratio": 13.29041631189571,
+      "width_over_median": 0.9346213134402841,
+      "max_increase_over_min": 1.9384419145429583,
+      "ordered_pairs": 20,
+      "pairs_above_5_percent": 8,
+      "pairs_above_10_percent": 7,
+      "pairs_above_10_percent_and_0_1_ms": 7
+    },
+    {
+      "program": "fib",
+      "engine": "node",
+      "lane": "matched",
+      "ints": "js-safe",
+      "size": 20,
+      "ratios": [
+        9.796512137856878,
+        16.2483812544289,
+        11.519349274382938,
+        11.215301605919803,
+        9.974870133821305
+      ],
+      "median_ratio": 11.215301605919803,
+      "min_ratio": 9.796512137856878,
+      "max_ratio": 16.2483812544289,
+      "width_over_median": 0.5752737949701249,
+      "max_increase_over_min": 0.6585883859256318,
+      "ordered_pairs": 20,
+      "pairs_above_5_percent": 8,
+      "pairs_above_10_percent": 8,
+      "pairs_above_10_percent_and_0_1_ms": 6
+    },
+    {
+      "program": "fib",
+      "engine": "node",
+      "lane": "matched",
+      "ints": "js-safe",
+      "size": 24,
+      "ratios": [
+        9.883099098542205,
+        14.429923424688909,
+        9.182146415298645,
+        20.69269574397993,
+        9.609286478358314
+      ],
+      "median_ratio": 9.883099098542205,
+      "min_ratio": 9.182146415298645,
+      "max_ratio": 20.69269574397993,
+      "width_over_median": 1.1646700305149358,
+      "max_increase_over_min": 1.253579371104693,
+      "ordered_pairs": 20,
+      "pairs_above_5_percent": 8,
+      "pairs_above_10_percent": 7,
+      "pairs_above_10_percent_and_0_1_ms": 7
+    },
+    {
+      "program": "pipeline",
+      "engine": "bun",
+      "lane": "matched",
+      "ints": "js-safe",
+      "size": 1000,
+      "ratios": [
+        19.69212710765076,
+        16.61102454795512,
+        24.131610094811503,
+        8.40183718418755,
+        18.25744276572413
+      ],
+      "median_ratio": 18.25744276572413,
+      "min_ratio": 8.40183718418755,
+      "max_ratio": 24.131610094811503,
+      "width_over_median": 0.8615540036173339,
+      "max_increase_over_min": 1.8721825436260238,
+      "ordered_pairs": 20,
+      "pairs_above_5_percent": 10,
+      "pairs_above_10_percent": 8,
+      "pairs_above_10_percent_and_0_1_ms": 1
+    },
+    {
+      "program": "pipeline",
+      "engine": "bun",
+      "lane": "matched",
+      "ints": "js-safe",
+      "size": 10000,
+      "ratios": [
+        20.522113048255214,
+        21.97666744407921,
+        19.711882557336068,
+        11.181498497826622,
+        21.006207923343567
+      ],
+      "median_ratio": 20.522113048255214,
+      "min_ratio": 11.181498497826622,
+      "max_ratio": 21.97666744407921,
+      "width_over_median": 0.5260261904253759,
+      "max_increase_over_min": 0.9654492149107632,
+      "ordered_pairs": 20,
+      "pairs_above_5_percent": 7,
+      "pairs_above_10_percent": 5,
+      "pairs_above_10_percent_and_0_1_ms": 5
+    },
+    {
+      "program": "pipeline",
+      "engine": "node",
+      "lane": "matched",
+      "ints": "js-safe",
+      "size": 1000,
+      "ratios": [
+        1.8877678748238869,
+        7.809827957473955,
+        2.3353929232424737,
+        1.253078834801097,
+        1.8767834149465132
+      ],
+      "median_ratio": 1.8877678748238869,
+      "min_ratio": 1.253078834801097,
+      "max_ratio": 7.809827957473955,
+      "width_over_median": 3.473281440009963,
+      "max_increase_over_min": 5.232511267907274,
+      "ordered_pairs": 20,
+      "pairs_above_5_percent": 9,
+      "pairs_above_10_percent": 9,
+      "pairs_above_10_percent_and_0_1_ms": 4
+    },
+    {
+      "program": "pipeline",
+      "engine": "node",
+      "lane": "matched",
+      "ints": "js-safe",
+      "size": 10000,
+      "ratios": [
+        1.9713173286784058,
+        1.2348622049692746,
+        2.115459459922248,
+        1.7873140172794666,
+        1.8640477695176791
+      ],
+      "median_ratio": 1.8640477695176791,
+      "min_ratio": 1.2348622049692746,
+      "max_ratio": 2.115459459922248,
+      "width_over_median": 0.4724113133542855,
+      "max_increase_over_min": 0.713113780152405,
+      "ordered_pairs": 20,
+      "pairs_above_5_percent": 9,
+      "pairs_above_10_percent": 7,
+      "pairs_above_10_percent_and_0_1_ms": 6
+    },
+    {
+      "program": "shapes",
+      "engine": "bun",
+      "lane": "matched",
+      "ints": "js-safe",
+      "size": 1000,
+      "ratios": [
+        3.8531436582803513,
+        4.35360127007589,
+        3.2484903036088015,
+        1.6534330882898607,
+        3.6303884847217742
+      ],
+      "median_ratio": 3.6303884847217742,
+      "min_ratio": 1.6534330882898607,
+      "max_ratio": 4.35360127007589,
+      "width_over_median": 0.7437683854357435,
+      "max_increase_over_min": 1.6330677067668957,
+      "ordered_pairs": 20,
+      "pairs_above_5_percent": 10,
+      "pairs_above_10_percent": 9,
+      "pairs_above_10_percent_and_0_1_ms": 7
+    },
+    {
+      "program": "shapes",
+      "engine": "bun",
+      "lane": "matched",
+      "ints": "js-safe",
+      "size": 10000,
+      "ratios": [
+        3.6144100864228914,
+        3.720924764315554,
+        4.739745138477871,
+        9.576136626612369,
+        3.5727134159081153
+      ],
+      "median_ratio": 3.720924764315554,
+      "min_ratio": 3.5727134159081153,
+      "max_ratio": 9.576136626612369,
+      "width_over_median": 1.6134223589464471,
+      "max_increase_over_min": 1.6803539808071335,
+      "ordered_pairs": 20,
+      "pairs_above_5_percent": 7,
+      "pairs_above_10_percent": 7,
+      "pairs_above_10_percent_and_0_1_ms": 7
+    },
+    {
+      "program": "shapes",
+      "engine": "node",
+      "lane": "matched",
+      "ints": "js-safe",
+      "size": 1000,
+      "ratios": [
+        2.055834778717956,
+        6.746079066549153,
+        3.9121049617155257,
+        1.441188187605466,
+        2.06632023288701
+      ],
+      "median_ratio": 2.06632023288701,
+      "min_ratio": 1.441188187605466,
+      "max_ratio": 6.746079066549153,
+      "width_over_median": 2.567313040114711,
+      "max_increase_over_min": 3.6809147650299314,
+      "ordered_pairs": 20,
+      "pairs_above_5_percent": 9,
+      "pairs_above_10_percent": 9,
+      "pairs_above_10_percent_and_0_1_ms": 7
+    },
+    {
+      "program": "shapes",
+      "engine": "node",
+      "lane": "matched",
+      "ints": "js-safe",
+      "size": 10000,
+      "ratios": [
+        3.2306055244889333,
+        3.563044950727794,
+        3.823925502681526,
+        7.093044218609413,
+        2.8655942851784597
+      ],
+      "median_ratio": 3.563044950727794,
+      "min_ratio": 2.8655942851784597,
+      "max_ratio": 7.093044218609413,
+      "width_over_median": 1.186471120036655,
+      "max_increase_over_min": 1.4752437060948709,
+      "ordered_pairs": 20,
+      "pairs_above_5_percent": 10,
+      "pairs_above_10_percent": 9,
+      "pairs_above_10_percent_and_0_1_ms": 9
+    },
+    {
+      "program": "spectral_norm",
+      "engine": "bun",
+      "lane": "matched",
+      "ints": "js-safe",
+      "size": 50,
+      "ratios": [
+        12.824056952212846,
+        20.906474849496142,
+        17.427254992119806,
+        19.262284082323156,
+        14.628014161403721
+      ],
+      "median_ratio": 17.427254992119806,
+      "min_ratio": 12.824056952212846,
+      "max_ratio": 20.906474849496142,
+      "width_over_median": 0.463780320018154,
+      "max_increase_over_min": 0.6302543670385556,
+      "ordered_pairs": 20,
+      "pairs_above_5_percent": 10,
+      "pairs_above_10_percent": 9,
+      "pairs_above_10_percent_and_0_1_ms": 9
+    },
+    {
+      "program": "spectral_norm",
+      "engine": "bun",
+      "lane": "matched",
+      "ints": "js-safe",
+      "size": 100,
+      "ratios": [
+        14.344737914772654,
+        30.647174444939505,
+        21.69340812879272,
+        19.582791608391645,
+        14.626903136030835
+      ],
+      "median_ratio": 19.582791608391645,
+      "min_ratio": 14.344737914772654,
+      "max_ratio": 30.647174444939505,
+      "width_over_median": 0.8324878728312111,
+      "max_increase_over_min": 1.1364750354468378,
+      "ordered_pairs": 20,
+      "pairs_above_5_percent": 9,
+      "pairs_above_10_percent": 9,
+      "pairs_above_10_percent_and_0_1_ms": 9
+    },
+    {
+      "program": "spectral_norm",
+      "engine": "node",
+      "lane": "matched",
+      "ints": "js-safe",
+      "size": 50,
+      "ratios": [
+        10.611007109664376,
+        20.572322776787015,
+        11.026596265574135,
+        10.867140364155953,
+        10.994824346932624
+      ],
+      "median_ratio": 10.994824346932624,
+      "min_ratio": 10.611007109664376,
+      "max_ratio": 20.572322776787015,
+      "width_over_median": 0.9060004373695777,
+      "max_increase_over_min": 0.9387719341032195,
+      "ordered_pairs": 20,
+      "pairs_above_5_percent": 4,
+      "pairs_above_10_percent": 4,
+      "pairs_above_10_percent_and_0_1_ms": 4
+    },
+    {
+      "program": "spectral_norm",
+      "engine": "node",
+      "lane": "matched",
+      "ints": "js-safe",
+      "size": 100,
+      "ratios": [
+        10.672937451763085,
+        15.522452125220706,
+        11.037455681795567,
+        5.337170489293356,
+        10.543848061350992
+      ],
+      "median_ratio": 10.672937451763085,
+      "min_ratio": 5.337170489293356,
+      "max_ratio": 15.522452125220706,
+      "width_over_median": 0.9543091282939001,
+      "max_increase_over_min": 1.9083672999315948,
+      "ordered_pairs": 20,
+      "pairs_above_5_percent": 7,
+      "pairs_above_10_percent": 7,
+      "pairs_above_10_percent_and_0_1_ms": 7
+    }
+  ]
+}

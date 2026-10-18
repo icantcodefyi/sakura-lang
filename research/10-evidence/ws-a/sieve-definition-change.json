@@ -1,0 +1,21 @@
+{
+  "old": {
+    "commit": "e45f69620c44b586fa95e6faa9baa873f72a1074",
+    "algorithm": "full-list clearing pass per prime",
+    "git_blobs": {
+      "bench/programs/sieve/sakura/main.sakura": "c90c38d77c8da3f277f16387713a6c71548cd08d",
+      "bench/programs/sieve/js/main.mjs": "c084bda8451d9500d50f1f1945bbb696601c9033",
+      "bench/programs/sieve/meta.toml": "03f3e88ee4fae12a0fae2ac71877d80f2e982c9b"
+    }
+  },
+  "new": {
+    "commit": "5b105530df8c569a4e2b20b65947842c42fab436",
+    "algorithm": "indexed clearing from p squared via List.set, with matching controls",
+    "git_blobs": {
+      "bench/programs/sieve/sakura/main.sakura": "8a9eb235705973e8f96b4a2ee72082d5fb3964fd",
+      "bench/programs/sieve/js/main.mjs": "ac9ea1d9b6166b10bd511509e114ac1bcd9cd2df",
+      "bench/programs/sieve/meta.toml": "03f3e88ee4fae12a0fae2ac71877d80f2e982c9b"
+    }
+  },
+  "decision": "Exclude all pre-change sieve ratios from noise and baseline comparisons; retain raw historical evidence."
+}

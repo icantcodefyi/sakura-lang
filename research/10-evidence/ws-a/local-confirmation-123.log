@@ -1,0 +1,24 @@
+| Program | Engine | n | Base ratio | Head ratio | Δ | Status |
+|---|---|---:|---:|---:|---:|---|
+| fib | bun | 20 | 9.727 | 11.589 | +19.2% | flagged |
+| fib | bun | 24 | 9.381 | 4.523 | -51.8% | improved >10%: explain in the PR |
+| fib | node | 20 | 9.797 | 16.248 | +65.9% | blocked |
+| fib | node | 24 | 9.883 | 14.430 | +46.0% | flagged |
+| pipeline | bun | 1000 | 19.692 | 16.611 | -15.6% | improved >10%: explain in the PR |
+| pipeline | bun | 10000 | 20.522 | 21.977 | +7.1% | flagged |
+| pipeline | node | 1000 | 1.888 | 7.810 | +313.7% | flagged |
+| pipeline | node | 10000 | 1.971 | 1.235 | -37.4% | improved >10%: explain in the PR |
+| shapes | bun | 1000 | 3.853 | 4.354 | +13.0% | flagged |
+| shapes | bun | 10000 | 3.614 | 3.721 | +2.9% | ok |
+| shapes | node | 1000 | 2.056 | 6.746 | +228.1% | blocked |
+| shapes | node | 10000 | 3.231 | 3.563 | +10.3% | blocked |
+| spectral_norm | bun | 50 | 12.824 | 20.906 | +63.0% | blocked |
+| spectral_norm | bun | 100 | 14.345 | 30.647 | +113.6% | blocked |
+| spectral_norm | node | 50 | 10.611 | 20.572 | +93.9% | flagged |
+| spectral_norm | node | 100 | 10.673 | 15.522 | +45.4% | flagged |
+
+IMMEDIATE FAILURE: ('fib', 'js', 'node'): complexity changed, log-log slope 10.51 → 13.06
+
+IMMEDIATE FAILURE: ('fib', 'sakura', 'node'): complexity changed, log-log slope 10.56 → 12.41
+
+verdict: blocked

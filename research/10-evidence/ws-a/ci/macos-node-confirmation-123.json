@@ -1,0 +1,44 @@
+{
+ "verdict": "blocked",
+ "rows": [
+  {
+   "program": "fib",
+   "engine": "node",
+   "size": 20,
+   "base_ratio": 7.786959839742301,
+   "head_ratio": 9.103147060093125,
+   "delta": 0.1690245291408079,
+   "status": "flagged"
+  },
+  {
+   "program": "fib",
+   "engine": "node",
+   "size": 24,
+   "base_ratio": 7.139429409725969,
+   "head_ratio": 7.067379532051932,
+   "delta": -0.010091825766339935,
+   "status": "ok"
+  },
+  {
+   "program": "pipeline",
+   "engine": "node",
+   "size": 1000,
+   "base_ratio": 1.9195367856120604,
+   "head_ratio": 2.0206446225629153,
+   "delta": 0.052673039510735764,
+   "status": "flagged"
+  },
+  {
+   "program": "pipeline",
+   "engine": "node",
+   "size": 10000,
+   "base_ratio": 2.380245595733913,
+   "head_ratio": 2.774267168175215,
+   "delta": 0.16553820040566514,
+   "status": "flagged"
+  }
+ ],
+ "immediate": [
+  "('fib', 'js', 'node'): complexity changed, log-log slope 10.21 \u2192 11.33"
+ ]
+}

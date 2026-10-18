@@ -1,0 +1,233 @@
+[oracle] fib sakura/node
+[oracle] fib js/node
+[oracle] fib sakura/bun
+[oracle] fib js/bun
+[oracle] pipeline sakura/node
+[oracle] pipeline js/node
+[oracle] pipeline sakura/bun
+[oracle] pipeline js/bun
+[oracle] shapes sakura/node
+[oracle] shapes js/node
+[oracle] shapes sakura/bun
+[oracle] shapes js/bun
+[oracle] sieve sakura/node
+[oracle] sieve js/node
+[oracle] sieve sakura/bun
+[oracle] sieve js/bun
+[oracle] spectral_norm sakura/node
+[oracle] spectral_norm js/node
+[oracle] spectral_norm sakura/bun
+[oracle] spectral_norm js/bun
+[1/200] shapes js/node n=10000
+[2/200] shapes sakura/node n=10000
+[3/200] fib js/bun n=20
+[4/200] pipeline sakura/bun n=1000
+[5/200] shapes sakura/bun n=10000
+[6/200] spectral_norm sakura/bun n=100
+[7/200] pipeline sakura/bun n=10000
+[8/200] sieve sakura/node n=1000
+[9/200] shapes sakura/node n=10000
+[10/200] shapes sakura/node n=1000
+[11/200] sieve sakura/node n=1000
+[12/200] fib js/node n=24
+[13/200] fib js/node n=24
+[14/200] spectral_norm js/node n=50
+[15/200] spectral_norm sakura/node n=100
+[16/200] sieve sakura/bun n=1000
+[17/200] shapes js/node n=1000
+[18/200] sieve js/bun n=10000
+[19/200] fib sakura/node n=20
+[20/200] fib js/bun n=20
+[21/200] spectral_norm sakura/bun n=50
+[22/200] sieve sakura/bun n=10000
+[23/200] sieve js/bun n=10000
+[24/200] spectral_norm sakura/bun n=50
+[25/200] sieve sakura/node n=10000
+[26/200] spectral_norm sakura/node n=50
+[27/200] spectral_norm js/node n=100
+[28/200] fib sakura/node n=20
+[29/200] sieve sakura/node n=1000
+[30/200] pipeline js/node n=1000
+[31/200] shapes js/bun n=10000
+[32/200] spectral_norm js/node n=100
+[33/200] fib js/node n=20
+[34/200] shapes sakura/bun n=1000
+[35/200] pipeline js/node n=10000
+[36/200] pipeline sakura/node n=1000
+[37/200] fib js/bun n=24
+[38/200] fib js/bun n=24
+[39/200] fib sakura/bun n=20
+[40/200] shapes sakura/node n=1000
+[41/200] pipeline sakura/node n=10000
+[42/200] spectral_norm js/bun n=50
+[43/200] shapes sakura/bun n=10000
+[44/200] spectral_norm js/node n=50
+[45/200] pipeline js/bun n=10000
+[46/200] pipeline js/node n=10000
+[47/200] spectral_norm sakura/node n=50
+[48/200] shapes js/node n=1000
+[49/200] fib sakura/bun n=24
+[50/200] shapes js/bun n=1000
+[51/200] fib js/bun n=24
+[52/200] fib sakura/node n=20
+[53/200] fib js/bun n=24
+[54/200] pipeline js/bun n=1000
+[55/200] shapes sakura/bun n=1000
+[56/200] fib js/bun n=24
+[57/200] shapes sakura/node n=1000
+[58/200] shapes sakura/bun n=10000
+[59/200] shapes sakura/node n=10000
+[60/200] spectral_norm sakura/bun n=50
+[61/200] sieve js/bun n=1000
+[62/200] fib sakura/node n=24
+[63/200] spectral_norm js/bun n=50
+[64/200] shapes js/bun n=1000
+[65/200] spectral_norm js/node n=100
+[66/200] shapes js/node n=10000
+[67/200] fib js/node n=20
+[68/200] pipeline sakura/node n=1000
+[69/200] sieve js/bun n=10000
+[70/200] shapes js/bun n=1000
+[71/200] shapes js/node n=1000
+[72/200] shapes sakura/bun n=1000
+[73/200] pipeline js/bun n=1000
+[74/200] sieve js/node n=10000
+[75/200] pipeline sakura/bun n=10000
+[76/200] pipeline sakura/bun n=1000
+[77/200] spectral_norm js/bun n=100
+[78/200] pipeline sakura/node n=10000
+[79/200] sieve js/node n=10000
+[80/200] fib js/node n=24
+[81/200] pipeline sakura/node n=1000
+[82/200] shapes js/node n=1000
+[83/200] pipeline js/bun n=1000
+[84/200] shapes sakura/bun n=1000
+[85/200] sieve js/node n=10000
+[86/200] sieve js/node n=1000
+[87/200] shapes js/bun n=10000
+[88/200] spectral_norm js/node n=50
+[89/200] shapes js/bun n=10000
+[90/200] pipeline sakura/node n=1000
+[91/200] pipeline sakura/bun n=1000
+[92/200] pipeline sakura/node n=10000
+[93/200] shapes sakura/node n=1000
+[94/200] spectral_norm sakura/bun n=50
+[95/200] pipeline js/bun n=1000
+[96/200] shapes js/bun n=1000
+[97/200] spectral_norm sakura/node n=100
+[98/200] spectral_norm sakura/bun n=100
+[99/200] pipeline js/bun n=10000
+[100/200] fib sakura/bun n=20
+[101/200] spectral_norm sakura/bun n=50
+[102/200] spectral_norm sakura/bun n=100
+[103/200] pipeline js/node n=1000
+[104/200] fib sakura/bun n=24
+[105/200] shapes sakura/bun n=10000
+[106/200] pipeline js/bun n=1000
+[107/200] pipeline sakura/node n=10000
+[108/200] shapes sakura/node n=10000
+[109/200] pipeline sakura/bun n=10000
+[110/200] spectral_norm sakura/node n=50
+[111/200] spectral_norm sakura/node n=100
+[112/200] pipeline sakura/bun n=1000
+[113/200] sieve js/bun n=1000
+[114/200] spectral_norm sakura/node n=100
+[115/200] shapes sakura/bun n=10000
+[116/200] spectral_norm js/node n=100
+[117/200] shapes js/bun n=10000
+[118/200] pipeline js/bun n=10000
+[119/200] sieve sakura/node n=10000
+[120/200] sieve js/bun n=1000
+[121/200] shapes js/node n=10000
+[122/200] sieve js/bun n=1000
+[123/200] shapes js/node n=10000
+[124/200] spectral_norm sakura/node n=100
+[125/200] pipeline js/node n=10000
+[126/200] shapes js/node n=1000
+[127/200] spectral_norm sakura/bun n=100
+[128/200] shapes js/node n=10000
+[129/200] fib sakura/node n=20
+[130/200] fib sakura/node n=24
+[131/200] spectral_norm sakura/bun n=100
+[132/200] shapes sakura/bun n=1000
+[133/200] pipeline js/bun n=10000
+[134/200] fib js/bun n=20
+[135/200] sieve js/node n=1000
+[136/200] fib js/bun n=20
+[137/200] fib sakura/node n=24
+[138/200] sieve sakura/bun n=1000
+[139/200] spectral_norm js/bun n=100
+[140/200] sieve sakura/node n=10000
+[141/200] fib sakura/node n=24
+[142/200] pipeline js/node n=1000
+[143/200] sieve sakura/bun n=10000
+[144/200] shapes js/bun n=1000
+[145/200] sieve js/node n=1000
+[146/200] sieve sakura/node n=10000
+[147/200] sieve sakura/node n=1000
+[148/200] pipeline js/node n=10000
+[149/200] sieve js/node n=1000
+[150/200] spectral_norm js/bun n=100
+[151/200] fib sakura/bun n=20
+[152/200] spectral_norm js/bun n=50
+[153/200] sieve sakura/bun n=1000
+[154/200] spectral_norm js/node n=50
+[155/200] pipeline js/bun n=10000
+[156/200] spectral_norm js/bun n=50
+[157/200] spectral_norm js/node n=50
+[158/200] shapes sakura/node n=10000
+[159/200] fib sakura/node n=24
+[160/200] sieve sakura/bun n=10000
+[161/200] fib js/node n=20
+[162/200] sieve sakura/bun n=10000
+[163/200] spectral_norm sakura/node n=50
+[164/200] fib sakura/bun n=20
+[165/200] pipeline sakura/node n=1000
+[166/200] fib sakura/bun n=24
+[167/200] sieve sakura/bun n=1000
+[168/200] spectral_norm js/node n=100
+[169/200] fib sakura/node n=20
+[170/200] sieve sakura/node n=1000
+[171/200] fib sakura/bun n=20
+[172/200] spectral_norm js/bun n=100
+[173/200] spectral_norm js/bun n=100
+[174/200] sieve sakura/bun n=1000
+[175/200] pipeline js/node n=1000
+[176/200] sieve js/bun n=10000
+[177/200] spectral_norm js/bun n=50
+[178/200] sieve js/bun n=1000
+[179/200] fib js/node n=24
+[180/200] fib sakura/bun n=24
+[181/200] spectral_norm sakura/node n=50
+[182/200] fib js/bun n=20
+[183/200] pipeline sakura/bun n=1000
+[184/200] fib js/node n=20
+[185/200] sieve js/node n=1000
+[186/200] sieve js/node n=10000
+[187/200] pipeline sakura/node n=10000
+[188/200] sieve sakura/bun n=10000
+[189/200] pipeline sakura/bun n=10000
+[190/200] pipeline sakura/bun n=10000
+[191/200] sieve js/bun n=10000
+[192/200] fib js/node n=20
+[193/200] pipeline js/node n=10000
+[194/200] fib sakura/bun n=24
+[195/200] sieve js/node n=10000
+[196/200] sieve sakura/node n=10000
+[197/200] shapes js/bun n=10000
+[198/200] fib js/node n=24
+[199/200] shapes sakura/node n=1000
+[200/200] pipeline js/node n=1000
+wrote /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/wsa/research/10-evidence/ws-a/noise-1.json
+| Program | n | sakura/bun ms | js/bun ms | sakura/node ms | js/node ms | ratio bun | ratio node |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| fib | 20 | 0.234 | 0.02406 | 0.3612 | 0.03688 | 9.73× | 9.80× |
+| fib | 24 | 1.59 | 0.1695 | 2.478 | 0.2507 | 9.38× | 9.88× |
+| pipeline | 1000 | 0.07425 | 0.00377 | 0.06493 | 0.0344 | 19.69× | 1.89× |
+| pipeline | 10000 | 0.6998 | 0.0341 | 0.6639 | 0.3368 | 20.52× | 1.97× |
+| shapes | 1000 | 0.514 | 0.1334 | 0.3039 | 0.1478 | 3.85× | 2.06× |
+| shapes | 10000 | 7.525 | 2.082 | 5.903 | 1.827 | 3.61× | 3.23× |
+| sieve | 1000 | 0.1628 | 0.02603 | 0.1281 | 0.07352 | 6.25× | 1.74× |
+| sieve | 10000 | 3.817 | 0.5601 | 2.852 | 1.615 | 6.81× | 1.77× |
+| spectral_norm | 50 | 1.364 | 0.1064 | 0.8383 | 0.079 | 12.82× | 10.61× |
+| spectral_norm | 100 | 5.43 | 0.3785 | 3.313 | 0.3104 | 14.34× | 10.67× |

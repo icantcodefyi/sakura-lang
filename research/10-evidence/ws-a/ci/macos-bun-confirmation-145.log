@@ -1,0 +1,8 @@
+| Program | Engine | n | Base ratio | Head ratio | Δ | Status |
+|---|---|---:|---:|---:|---:|---|
+| fib | bun | 20 | 9.753 | 9.548 | -2.1% | ok |
+| fib | bun | 24 | 9.752 | 9.743 | -0.1% | ok |
+| pipeline | bun | 1000 | 19.561 | 18.840 | -3.7% | ok |
+| pipeline | bun | 10000 | 19.689 | 21.048 | +6.9% | flagged |
+
+verdict: flagged

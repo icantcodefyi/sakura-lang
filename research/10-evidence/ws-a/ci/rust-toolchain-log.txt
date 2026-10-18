@@ -1,0 +1,16 @@
+Noise (macos-latest, node)	Install pinned Rust toolchain	﻿2026-10-18T01:27:16.9785630Z ##[group]Run rustup show active-toolchain || rustup toolchain install
+Noise (macos-latest, node)	Install pinned Rust toolchain	2026-10-18T01:27:16.9786280Z ^[[36;1mrustup show active-toolchain || rustup toolchain install^[[0m
+Noise (macos-latest, node)	Install pinned Rust toolchain	2026-10-18T01:27:17.2271560Z info: syncing channel updates for 1.99.1-aarch64-apple-darwin
+Noise (macos-latest, node)	Install pinned Rust toolchain	2026-10-18T01:27:17.4101090Z info: latest update on 2026-10-15 for version 1.99.1 (58cf8f9c3 2026-10-13)
+Noise (macos-latest, node)	Install pinned Rust toolchain	2026-10-18T01:27:25.9015260Z 1.99.1-aarch64-apple-darwin (overridden by '/Users/runner/work/sakura-lang/sakura-lang/compiler/rust-toolchain.toml')
+Noise (ubuntu-latest, node)	Install pinned Rust toolchain	﻿2026-10-18T01:27:01.9620608Z ##[group]Run rustup show active-toolchain || rustup toolchain install
+Noise (ubuntu-latest, node)	Install pinned Rust toolchain	2026-10-18T01:27:01.9620915Z ^[[36;1mrustup show active-toolchain || rustup toolchain install^[[0m
+Noise (ubuntu-latest, node)	Install pinned Rust toolchain	2026-10-18T01:27:02.0047351Z info: syncing channel updates for 1.99.1-x86_64-unknown-linux-gnu
+Noise (ubuntu-latest, node)	Install pinned Rust toolchain	2026-10-18T01:27:02.2886484Z info: latest update on 2026-10-15 for version 1.99.1 (58cf8f9c3 2026-10-13)
+Noise (ubuntu-latest, node)	Install pinned Rust toolchain	2026-10-18T01:27:09.6151179Z warn: the missing active toolchain `1.99.1-x86_64-unknown-linux-gnu` has been auto-installed
+Noise (ubuntu-latest, node)	Install pinned Rust toolchain	2026-10-18T01:27:09.6153797Z 1.99.1-x86_64-unknown-linux-gnu (overridden by '/home/runner/work/sakura-lang/sakura-lang/compiler/rust-toolchain.toml')
+Noise (macos-latest, bun)	Install pinned Rust toolchain	﻿2026-10-18T01:27:05.8318870Z ##[group]Run rustup show active-toolchain || rustup toolchain install
+Noise (macos-latest, bun)	Install pinned Rust toolchain	2026-10-18T01:27:05.8319280Z ^[[36;1mrustup show active-toolchain || rustup toolchain install^[[0m
+Noise (macos-latest, bun)	Install pinned Rust toolchain	2026-10-18T01:27:05.9115980Z info: syncing channel updates for 1.99.1-aarch64-apple-darwin
+Noise (macos-latest, bun)	Install pinned Rust toolchain	2026-10-18T01:27:06.0575920Z info: latest update on 2026-10-15 for version 1.99.1 (58cf8f9c3 2026-10-13)
+Noise (macos-latest, bun)	Install pinned Rust toolchain	2026-10-18T01:27:11.3443780Z 1.99.1-aarch64-apple-darwin (overridden by '/Users/runner/work/sakura-lang/sakura-lang/compiler/rust-toolchain.toml')
