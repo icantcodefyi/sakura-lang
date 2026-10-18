@@ -1,0 +1,470 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 error main::loop_resume_edges::Boom | Boom 24b (at: i64)
+layout 1 variant main::loop_resume_edges::Shape | Dot 16b () | Box 24b (i64) | Pair 32b (i64, i64)
+layout 2 variant std::duration::Duration | Duration 24b (i64)
+layout 3 variant std::instant::Instant | Instant 24b (i64)
+layout 4 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 5 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 6 shape |  32b (word*, word*)
+layout 7 shape |  32b (i64, word*)
+layout 8 shape |  24b (i64)
+layout 9 shape |  16b ()
+
+fn main#0 pub top -> unit ; main::loop_resume_edges, frame 15 slots [%27 word*, %28 i64, %32 bool, %35 i64, %39 bool, %45 bool, %47 word*, %50 i64, %57 bool, %59 word*, %62 i64, %66 i64, %70 bool, %73 i64, %77 bool]
+  b0():
+    %0 now: ptr = closure virtual$Clock_now#15[]
+    %1 monotonic: ptr = closure virtual$Clock_monotonic#17[]
+    %2 sleep: ptr = closure virtual$Clock_sleep#18[]
+    %3 lit: i64 = const 0
+    %4 r: ptr = handler std::clock::Clock row 8 state(%3) clauses(%0, %1, %2)
+    handle_push %4
+    %5 next: ptr = closure counter$Counter_next#14[]
+    %6 lit: i64 = const 0
+    %7 r: ptr = handler main::loop_resume_edges::Counter row 8 state(%6) clauses(%5)
+    handle_push %7
+    %72 lit: i64 = const 9
+    call early#4(%72) -> b21()
+  b1(%8 v: word) [handle]:
+    drop %8
+    %9 next: ptr = closure counter$Counter_next#14[]
+    %10 lit: i64 = const 0
+    %11 r: ptr = handler main::loop_resume_edges::Counter row 8 state(%10) clauses(%9)
+    %12 apply: ptr = closure each$Each_apply#13[]
+    %13 r: ptr = handler main::loop_resume_edges::Each row 9 state() clauses(%12)
+    handle_push %11
+    handle_push %13
+    %65 lit: i64 = const 7
+    call matcher#6(%65) -> b19()
+  b2(%14 v: word) [handle]:
+    drop %14
+    %15 next: ptr = closure counter$Counter_next#14[]
+    %16 lit: i64 = const 0
+    %17 r: ptr = handler main::loop_resume_edges::Counter row 8 state(%16) clauses(%15)
+    handle_push %17
+    try_push -> b17(err, )
+    %61 lit: i64 = const 10
+    call failing#7(%61) -> b18()
+  b3(%18 v: word) [handle]:
+    drop %18
+    %19 next: ptr = closure counter$Counter_next#14[]
+    %20 lit: i64 = const 0
+    %21 r: ptr = handler main::loop_resume_edges::Counter row 8 state(%20) clauses(%19)
+    handle_push %21
+    try_push -> b13(err, )
+    %49 lit: i64 = const 5
+    call failing#7(%49) -> b14()
+  b4(%22 v: word) [handle]:
+    drop %22
+    %23 next: ptr = closure counter$Counter_next#14[]
+    %24 lit: i64 = const 0
+    %25 r: ptr = handler main::loop_resume_edges::Counter row 8 state(%24) clauses(%23)
+    handle_push %25
+    call breaker#8() -> b9()
+  b5(%26 v: word) [handle]:
+    drop %26
+    perform std::clock::Clock.now() -> b6()
+  b6(%27 r: ptr) [handle]:
+    call to_unix_millis#9(%27) -> b7()
+  b7(%28 r: i64) [handle]:
+    %29 s: ptr = show %28
+    %30 lit: ptr = const str 0
+    %31 s: ptr = concat %30, %29
+    drop %29
+    drop %30
+    perform std::console::Console.print(%31) -> b8()
+  b8(%32 r: unit) [handle]:
+    %33 box: word = box %32
+    %34 unbox: unit = unbox %33
+    drop %33
+    handle_pop
+    ret %34
+  b9(%35 r: i64) [handle, handle]:
+    %36 s: ptr = show %35
+    %37 lit: ptr = const str 1
+    %38 s: ptr = concat %37, %36
+    drop %36
+    drop %37
+    perform std::console::Console.print(%38) -> b10()
+  b10(%39 r: unit) [handle, handle]:
+    %40 box: word = box %39
+    handle_pop
+    jump b5(%40)
+  b11(%41 v: ptr) [handle, handle]:
+    %42 s: ptr = show %41
+    drop %41
+    %43 lit: ptr = const str 2
+    %44 s: ptr = concat %43, %42
+    drop %42
+    drop %43
+    perform std::console::Console.print(%44) -> b12()
+  b12(%45 r: unit) [handle, handle]:
+    %46 box: word = box %45
+    handle_pop
+    jump b4(%46)
+  b13(%47 e: word) [handle, handle]:
+    %48 err: ptr = alloc std::result::Result.Err(%47)
+    jump b11(%48)
+  b14(%50 r: i64) [handle, handle, try]:
+    %51 box: word = box %50
+    %52 ok: ptr = alloc std::result::Result.Ok(%51)
+    try_pop
+    jump b11(%52)
+  b15(%53 v: ptr) [handle, handle]:
+    %54 s: ptr = show %53
+    drop %53
+    %55 lit: ptr = const str 3
+    %56 s: ptr = concat %55, %54
+    drop %54
+    drop %55
+    perform std::console::Console.print(%56) -> b16()
+  b16(%57 r: unit) [handle, handle]:
+    %58 box: word = box %57
+    handle_pop
+    jump b3(%58)
+  b17(%59 e: word) [handle, handle]:
+    %60 err: ptr = alloc std::result::Result.Err(%59)
+    jump b15(%60)
+  b18(%62 r: i64) [handle, handle, try]:
+    %63 box: word = box %62
+    %64 ok: ptr = alloc std::result::Result.Ok(%63)
+    try_pop
+    jump b15(%64)
+  b19(%66 r: i64) [handle, handle, handle]:
+    %67 s: ptr = show %66
+    %68 lit: ptr = const str 4
+    %69 s: ptr = concat %68, %67
+    drop %67
+    drop %68
+    perform std::console::Console.print(%69) -> b20()
+  b20(%70 r: unit) [handle, handle, handle]:
+    %71 box: word = box %70
+    handle_pop
+    handle_pop
+    jump b2(%71)
+  b21(%73 r: i64) [handle, handle]:
+    %74 s: ptr = show %73
+    %75 lit: ptr = const str 5
+    %76 s: ptr = concat %75, %74
+    drop %74
+    drop %75
+    perform std::console::Console.print(%76) -> b22()
+  b22(%77 r: unit) [handle, handle]:
+    %78 box: word = box %77
+    handle_pop
+    jump b1(%78)
+
+fn $entry#1 top -> unit ; main::loop_resume_edges, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn counter#3 top -> ptr ; main::loop_resume_edges, frame 0 slots []
+  b0():
+    %0 next: ptr = closure counter$Counter_next#14[]
+    %1 lit: i64 = const 0
+    %2 handler: ptr = handler main::loop_resume_edges::Counter row 8 state(%1) clauses(%0)
+    ret %2
+
+fn early#4 top -> i64 ; main::loop_resume_edges, frame 10 slots [%0 i64, %14 i64, %15 i64, %16 i64, %38 word*, %39 i64, %40 i64, %41 bool, %42 i64, %43 i64]
+  b0(%0 limit: i64):
+    %58 lit: i64 = const 0
+    jump b2(%58, %0)
+  b1(%1 i: i64):
+    %2 lit: i64 = const 1
+    %3 t: i64 = intneg %2
+    ret %3
+  b2(%4 i: i64, %5 limit: i64):
+    %9 lit: bool = const true
+    if %9 then b4(%5, %4) else b5(%5, %4)
+  b3(%6 v: word, %7 i: i64, %8 limit: i64):
+    drop %6
+    jump b2(%7, %8)
+  b4(%10 limit: i64, %11 i: i64):
+    perform main::loop_resume_edges::Counter.next() -> b6(%10, %11)
+  b5(%12 limit: i64, %13 i: i64):
+    jump b1(%13)
+  b6(%14 r: i64, %15 limit: i64, %16 i: i64):
+    %17 t: bool = gt.int %14, %15
+    if %17 then b13(%15, %16, %14) else b14(%15, %16, %14)
+  b7(%18 v: word, %19 i: i64, %20 limit: i64, %21 r: i64):
+    drop %18
+    %22 lit: i64 = const 4
+    %23 t: i64 = intrem %21, %22
+    %24 lit: i64 = const 0
+    %25 t: bool = eq.int %23, %24
+    if %25 then b9(%20, %19) else b10(%20, %19)
+  b8(%26 v: word, %27 i: i64, %28 limit: i64):
+    drop %26
+    %29 lit: i64 = const 1
+    %30 t: i64 = intadd %27, %29
+    %31 lit: unit = const ()
+    %32 box: word = box %31
+    jump b3(%32, %30, %28)
+  b9(%33 limit: i64, %34 i: i64):
+    %37 lit: i64 = const 1
+    call millis#10(%37) -> b11(%33, %34)
+  b10(%35 limit: i64, %36 i: i64):
+    %45 lit: unit = const ()
+    %46 box: word = box %45
+    jump b8(%46, %36, %35)
+  b11(%38 r: ptr, %39 limit: i64, %40 i: i64):
+    perform std::clock::Clock.sleep(%38) -> b12(%39, %40)
+  b12(%41 r: unit, %42 limit: i64, %43 i: i64):
+    %44 box: word = box %41
+    jump b8(%44, %43, %42)
+  b13(%47 limit: i64, %48 i: i64, %49 r: i64):
+    %53 lit: i64 = const 1000
+    %54 t: i64 = intmul %49, %53
+    %55 t: i64 = intadd %54, %48
+    ret %55
+  b14(%50 limit: i64, %51 i: i64, %52 r: i64):
+    %56 lit: unit = const ()
+    %57 box: word = box %56
+    jump b7(%57, %51, %50, %52)
+
+fn each#5 top -> ptr ; main::loop_resume_edges, frame 0 slots []
+  b0():
+    %0 apply: ptr = closure each$Each_apply#13[]
+    %1 handler: ptr = handler main::loop_resume_edges::Each row 9 state() clauses(%0)
+    ret %1
+
+fn matcher#6 top -> i64 ; main::loop_resume_edges, frame 19 slots [%0 i64, %16 word*, %17 i64, %18 i64, %19 i64, %20 i64, %21 i64, %22 i64, %23 i64, %24 word*, %35 i64, %36 i64, %37 i64, %38 i64, %52 bool, %53 i64, %54 i64, %55 i64, %56 i64]
+  b0(%0 n: i64):
+    %87 lit: i64 = const 0
+    %88 lit: i64 = const 0
+    jump b1(%87, %88, %0)
+  b1(%1 i: i64, %2 acc: i64, %3 n: i64):
+    %4 more: bool = lt.int %1, %3
+    if %4 then b2(%3, %1, %2) else b3(%3, %1, %2)
+  b2(%5 n: i64, %6 i: i64, %7 acc: i64):
+    call shapes#11(%6) -> b5(%5, %6, %7)
+  b3(%8 n: i64, %9 i: i64, %10 acc: i64):
+    ret %10
+  b4(%11 acc: i64, %12 n: i64, %13 i: i64):
+    %14 lit: i64 = const 1
+    %15 i: i64 = intadd %13, %14
+    jump b1(%15, %11, %12)
+  b5(%16 r: ptr, %17 n: i64, %18 i: i64, %19 acc: i64):
+    perform main::loop_resume_edges::Counter.next() -> b6(%17, %18, %19, %16)
+  b6(%20 r: i64, %21 n: i64, %22 i: i64, %23 acc: i64, %24 r: ptr):
+    %68 tag: i64 = tag %24 ctor main::loop_resume_edges::Shape
+    switch %68 0 => b13(%21, %22, %23, %24, %20) 1 => b14(%21, %22, %23, %24, %20) 2 => b15(%21, %22, %23, %24, %20)
+  b7(%25 v: i64, %26 acc: i64, %27 n: i64, %28 i: i64):
+    jump b4(%25, %27, %28)
+  b8(%29 n: i64, %30 i: i64, %31 acc: i64, %32 r: i64):
+    %33 f: ptr = closure matcher$1#12[]
+    %34 callback: ptr = callback %33
+    perform main::loop_resume_edges::Each.apply(%34, %32) -> b9(%29, %30, %31)
+  b9(%35 r: i64, %36 n: i64, %37 i: i64, %38 acc: i64):
+    %39 t: i64 = intadd %38, %35
+    jump b7(%39, %38, %36, %37)
+  b10(%40 b: i64, %41 n: i64, %42 i: i64, %43 acc: i64, %44 r: i64):
+    %45 s: ptr = show %40
+    %46 lit: ptr = const str 6
+    %47 s: ptr = concat %46, %45
+    drop %45
+    drop %46
+    %48 lit: ptr = const str 7
+    %49 s: ptr = concat %47, %48
+    drop %47
+    drop %48
+    %50 s: ptr = show %44
+    %51 s: ptr = concat %49, %50
+    drop %49
+    drop %50
+    perform std::console::Console.print(%51) -> b11(%41, %42, %43, %40)
+  b11(%52 r: unit, %53 n: i64, %54 i: i64, %55 acc: i64, %56 b: i64):
+    %57 box: word = box %52
+    drop %57
+    %58 t: i64 = intadd %55, %56
+    jump b7(%58, %55, %53, %54)
+  b12(%59 p: i64, %60 q: i64, %61 n: i64, %62 i: i64, %63 acc: i64, %64 r: i64):
+    %65 t: i64 = intmul %59, %60
+    %66 t: i64 = intadd %63, %65
+    %67 t: i64 = intsub %66, %64
+    jump b7(%67, %63, %61, %62)
+  b13(%69 n: i64, %70 i: i64, %71 acc: i64, %72 r: ptr, %73 r: i64):
+    drop %72
+    jump b8(%69, %70, %71, %73)
+  b14(%74 n: i64, %75 i: i64, %76 acc: i64, %77 r: ptr, %78 r: i64):
+    %84 p: i64 = proj %77.0 main::loop_resume_edges::Shape.Box
+    drop %77
+    jump b10(%84, %74, %75, %76, %78)
+  b15(%79 n: i64, %80 i: i64, %81 acc: i64, %82 r: ptr, %83 r: i64):
+    %85 p: i64 = proj %82.0 main::loop_resume_edges::Shape.Pair
+    %86 p: i64 = proj %82.1 main::loop_resume_edges::Shape.Pair
+    drop %82
+    jump b12(%85, %86, %79, %80, %81, %83)
+
+fn failing#7 top -> i64 ; main::loop_resume_edges, frame 15 slots [%0 i64, %15 i64, %16 i64, %17 i64, %18 i64, %49 word*, %50 i64, %51 i64, %52 i64, %53 i64, %54 bool, %55 i64, %56 i64, %57 i64, %58 i64]
+  b0(%0 n: i64):
+    %73 lit: i64 = const 0
+    %74 lit: i64 = const 0
+    jump b1(%73, %74, %0)
+  b1(%1 acc: i64, %2 i: i64, %3 n: i64):
+    %4 t: bool = lt.int %2, %3
+    if %4 then b3(%3, %1, %2) else b4(%3, %1, %2)
+  b2(%5 v: word, %6 acc: i64, %7 i: i64, %8 n: i64):
+    drop %5
+    jump b1(%6, %7, %8)
+  b3(%9 n: i64, %10 acc: i64, %11 i: i64):
+    perform main::loop_resume_edges::Counter.next() -> b5(%9, %10, %11)
+  b4(%12 n: i64, %13 acc: i64, %14 i: i64):
+    ret %13
+  b5(%15 r: i64, %16 n: i64, %17 acc: i64, %18 i: i64):
+    %19 lit: i64 = const 7
+    %20 t: bool = eq.int %15, %19
+    if %20 then b12(%16, %17, %18, %15) else b13(%16, %17, %18, %15)
+  b6(%21 v: word, %22 acc: i64, %23 i: i64, %24 n: i64, %25 r: i64):
+    drop %21
+    %26 lit: i64 = const 2
+    %27 t: i64 = intrem %25, %26
+    %28 lit: i64 = const 0
+    %29 t: bool = eq.int %27, %28
+    if %29 then b8(%24, %25, %22, %23) else b9(%24, %25, %22, %23)
+  b7(%30 v: word, %31 acc: i64, %32 i: i64, %33 n: i64, %34 r: i64):
+    drop %30
+    %35 t: i64 = intadd %31, %34
+    %36 lit: i64 = const 1
+    %37 t: i64 = intadd %32, %36
+    %38 lit: unit = const ()
+    %39 box: word = box %38
+    jump b2(%39, %35, %37, %33)
+  b8(%40 n: i64, %41 r: i64, %42 acc: i64, %43 i: i64):
+    %48 lit: i64 = const 1
+    call millis#10(%48) -> b10(%40, %41, %42, %43)
+  b9(%44 n: i64, %45 r: i64, %46 acc: i64, %47 i: i64):
+    %60 lit: unit = const ()
+    %61 box: word = box %60
+    jump b7(%61, %46, %47, %44, %45)
+  b10(%49 r: ptr, %50 n: i64, %51 r: i64, %52 acc: i64, %53 i: i64):
+    perform std::clock::Clock.sleep(%49) -> b11(%50, %51, %52, %53)
+  b11(%54 r: unit, %55 n: i64, %56 r: i64, %57 acc: i64, %58 i: i64):
+    %59 box: word = box %54
+    jump b7(%59, %57, %58, %55, %56)
+  b12(%62 n: i64, %63 acc: i64, %64 i: i64, %65 r: i64):
+    %70 rec: ptr = alloc main::loop_resume_edges::Boom(%64)
+    fail %70
+  b13(%66 n: i64, %67 acc: i64, %68 i: i64, %69 r: i64):
+    %71 lit: unit = const ()
+    %72 box: word = box %71
+    jump b6(%72, %67, %68, %66, %69)
+
+fn breaker#8 top -> i64 ; main::loop_resume_edges, frame 7 slots [%12 i64, %13 i64, %14 i64, %32 bool, %33 i64, %34 i64, %35 i64]
+  b0():
+    %54 lit: i64 = const 0
+    %55 lit: i64 = const 0
+    jump b1(%54, %55)
+  b1(%0 i: i64, %1 acc: i64):
+    %2 lit: i64 = const 100
+    %3 more: bool = lt.int %0, %2
+    if %3 then b2(%0, %1) else b3(%0, %1)
+  b2(%4 i: i64, %5 acc: i64):
+    perform main::loop_resume_edges::Counter.next() -> b5(%4, %5)
+  b3(%6 i: i64, %7 acc: i64):
+    ret %7
+  b4(%8 acc: i64, %9 i: i64):
+    %10 lit: i64 = const 1
+    %11 i: i64 = intadd %9, %10
+    jump b1(%11, %8)
+  b5(%12 r: i64, %13 i: i64, %14 acc: i64):
+    %15 lit: i64 = const 5
+    %16 t: bool = gt.int %12, %15
+    if %16 then b11(%13, %14, %12) else b12(%13, %14, %12)
+  b6(%17 v: word, %18 acc: i64, %19 i: i64, %20 r: i64):
+    drop %17
+    %21 lit: i64 = const 2
+    %22 t: i64 = intrem %20, %21
+    %23 lit: i64 = const 1
+    %24 t: bool = eq.int %22, %23
+    if %24 then b9(%19, %20, %18) else b10(%19, %20, %18)
+  b7(%25 v: word, %26 acc: i64, %27 i: i64, %28 r: i64):
+    drop %25
+    %29 s: ptr = show %28
+    %30 lit: ptr = const str 8
+    %31 s: ptr = concat %30, %29
+    drop %29
+    drop %30
+    perform std::console::Console.print(%31) -> b8(%27, %28, %26)
+  b8(%32 r: unit, %33 i: i64, %34 r: i64, %35 acc: i64):
+    %36 box: word = box %32
+    drop %36
+    %37 t: i64 = intadd %35, %34
+    jump b4(%37, %33)
+  b9(%38 i: i64, %39 r: i64, %40 acc: i64):
+    jump b4(%40, %38)
+  b10(%41 i: i64, %42 r: i64, %43 acc: i64):
+    %44 lit: unit = const ()
+    %45 box: word = box %44
+    jump b7(%45, %43, %41, %42)
+  b11(%46 i: i64, %47 acc: i64, %48 r: i64):
+    ret %47
+  b12(%49 i: i64, %50 acc: i64, %51 r: i64):
+    %52 lit: unit = const ()
+    %53 box: word = box %52
+    jump b6(%53, %50, %49, %51)
+
+fn shapes#11 top -> ptr ; main::loop_resume_edges, frame 1 slots [%0 i64]
+  b0(%0 k: i64):
+    %1 lit: i64 = const 3
+    %2 t: i64 = intrem %0, %1
+    %3 lit: i64 = const 0
+    %4 t: bool = eq.int %2, %3
+    if %4 then b1(%0) else b2(%0)
+  b1(%5 k: i64):
+    %7 v: ptr = const static main::loop_resume_edges::Shape.Dot
+    ret %7
+  b2(%6 k: i64):
+    %8 lit: i64 = const 3
+    %9 t: i64 = intrem %6, %8
+    %10 lit: i64 = const 1
+    %11 t: bool = eq.int %9, %10
+    if %11 then b4(%6) else b5(%6)
+  b3(%12 v: ptr):
+    ret %12
+  b4(%13 k: i64):
+    %15 r: ptr = alloc main::loop_resume_edges::Shape.Box(%13)
+    jump b3(%15)
+  b5(%14 k: i64):
+    %16 r: ptr = alloc main::loop_resume_edges::Shape.Pair(%14, %14)
+    jump b3(%16)
+
+fn matcher$1#12 lambda -> word ; main::loop_resume_edges, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 x: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 lit: i64 = const 2
+    %4 t: i64 = intmul %2, %3
+    %5 box: word = box %4
+    ret %5
+
+fn each$Each_apply#13 clause main::loop_resume_edges::Each.apply -> i64 ; main::loop_resume_edges, captures [], frame 5 slots [%0 word*, %1 i64, %2 word*, %3 i64, %5 word*]
+  b0(%0 env: ptr, %1 inst: id, %2 f: ptr, %3 x: i64):
+    drop %0
+    %4 box: word = box %3
+    call %2(%4) -> b1()
+  b1(%5 r: word):
+    %6 unbox: i64 = unbox %5
+    drop %5
+    %7 lit: i64 = const 1
+    %8 t: i64 = intadd %6, %7
+    ret %8
+
+fn counter$Counter_next#14 clause main::loop_resume_edges::Counter.next -> i64 ; main::loop_resume_edges, captures [], frame 2 slots [%0 word*, %1 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    %2 n: i64 = state_get %1[0] row 8
+    %3 lit: i64 = const 1
+    %4 t: i64 = intadd %2, %3
+    state_set %1[0] row 8 = %4
+    %5 set: unit = const ()
+    %6 n: i64 = state_get %1[0] row 8
+    ret %6

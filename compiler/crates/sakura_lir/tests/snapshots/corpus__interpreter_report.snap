@@ -66,6 +66,8 @@ semantics/literal_refinement_decided: ok, 8 allocated, 0 dup, 8 drop, peak 4, li
 semantics/literal_refinement_passes_once: ok, 12 allocated, 0 dup, 12 drop, peak 3, live 0/0
 semantics/literals_and_operators: ok, 40 allocated, 0 dup, 40 drop, peak 4, live 0/0
 semantics/loop_jump_past_inner_var: ok, 10 allocated, 0 dup, 10 drop, peak 4, live 0/0
+semantics/loop_resume_edges: ok, 71 allocated, 49 dup, 120 drop, peak 12, live 0/0
+semantics/loop_resume_twice: ok, 201 allocated, 56 dup, 257 drop, peak 12, live 0/0
 semantics/loops: ok, 44 allocated, 38 dup, 82 drop, peak 12, live 0/0
 semantics/million_operations: ok, 4 allocated, 1000000 dup, 1000004 drop, peak 4, live 0/0
 semantics/mutual_recursion: ok, 8 allocated, 0 dup, 8 drop, peak 4, live 0/0

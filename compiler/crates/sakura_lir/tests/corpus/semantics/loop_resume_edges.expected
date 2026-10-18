@@ -1,0 +1,12 @@
+ending: ok
+--- stdout
+early 10009
+box 1 2
+box 4 5
+matcher 52
+failing Err(Boom { at: 6 })
+ok Ok(15)
+even 2
+even 4
+breaker 6
+t 7

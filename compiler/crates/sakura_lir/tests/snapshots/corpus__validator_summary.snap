@@ -66,6 +66,8 @@ semantics/literal_refinement_decided: 5 funcs, 23 blocks, 3 dup, 14 drop, valid
 semantics/literal_refinement_passes_once: 6 funcs, 17 blocks, 1 dup, 3 drop, valid
 semantics/literals_and_operators: 2 funcs, 12 blocks, 0 dup, 51 drop, valid
 semantics/loop_jump_past_inner_var: 2 funcs, 38 blocks, 0 dup, 18 drop, valid
+semantics/loop_resume_edges: 20 funcs, 111 blocks, 0 dup, 51 drop, valid
+semantics/loop_resume_twice: 15 funcs, 50 blocks, 0 dup, 39 drop, valid
 semantics/loops: 4 funcs, 53 blocks, 10 dup, 29 drop, valid
 semantics/million_operations: 5 funcs, 13 blocks, 0 dup, 2 drop, valid
 semantics/mutual_recursion: 4 funcs, 15 blocks, 0 dup, 9 drop, valid

@@ -1,0 +1,230 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::duration::Duration | Duration 24b (i64)
+layout 1 variant std::instant::Instant | Instant 24b (i64)
+layout 2 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 3 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 4 shape |  32b (word*, word*)
+layout 5 shape |  32b (i64, word*)
+layout 6 shape |  24b (i64)
+layout 7 shape |  16b ()
+
+fn main#0 pub top -> unit ; main::loop_resume_twice, frame 4 slots [%19 bool, %27 i64, %28 i64, %30 i64]
+  b0():
+    %0 now: ptr = closure virtual$Clock_now#10[]
+    %1 monotonic: ptr = closure virtual$Clock_monotonic#12[]
+    %2 sleep: ptr = closure virtual$Clock_sleep#13[]
+    %3 lit: i64 = const 0
+    %4 r: ptr = handler std::clock::Clock row 6 state(%3) clauses(%0, %1, %2)
+    handle_push %4
+    %5 next: ptr = closure counter$Counter_next#9[]
+    %6 lit: i64 = const 0
+    %7 r: ptr = handler main::loop_resume_twice::Counter row 6 state(%6) clauses(%5)
+    handle_push %7
+    %29 lit: ptr = const str 2
+    call spin#4(%29) -> b6()
+  b1(%8 v: i64) [handle]:
+    %9 next: ptr = closure counter$Counter_next#9[]
+    %10 lit: i64 = const 0
+    %11 r: ptr = handler main::loop_resume_twice::Counter row 6 state(%10) clauses(%9)
+    handle_push %11
+    %22 next: ptr = closure forward$Counter_next#6[]
+    %23 r: ptr = handler main::loop_resume_twice::Counter row 7 state() clauses(%22)
+    handle_push %23
+    %26 lit: ptr = const str 1
+    call spin#4(%26) -> b5(%8)
+  b2(%12 v: i64, %13 v: i64) [handle]:
+    %14 s: ptr = show %13
+    %15 lit: ptr = const str 0
+    %16 s: ptr = concat %14, %15
+    drop %14
+    drop %15
+    %17 s: ptr = show %12
+    %18 s: ptr = concat %16, %17
+    drop %16
+    drop %17
+    perform std::console::Console.print(%18) -> b3()
+  b3(%19 r: unit) [handle]:
+    %20 box: word = box %19
+    %21 unbox: unit = unbox %20
+    drop %20
+    handle_pop
+    ret %21
+  b4(%24 v: i64, %25 v: i64) [handle, handle]:
+    handle_pop
+    jump b2(%24, %25)
+  b5(%27 r: i64, %28 v: i64) [handle, handle, handle]:
+    handle_pop
+    jump b4(%27, %28)
+  b6(%30 r: i64) [handle, handle]:
+    handle_pop
+    jump b1(%30)
+
+fn $entry#1 top -> unit ; main::loop_resume_twice, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn counter#3 top -> ptr ; main::loop_resume_twice, frame 0 slots []
+  b0():
+    %0 next: ptr = closure counter$Counter_next#9[]
+    %1 lit: i64 = const 0
+    %2 handler: ptr = handler main::loop_resume_twice::Counter row 6 state(%1) clauses(%0)
+    ret %2
+
+fn spin#4 top -> i64 ; main::loop_resume_twice, frame 46 slots [%0 word*, %16 i64, %17 word*, %18 i64, %19 i64, %29 i64, %30 word*, %31 i64, %32 i64, %33 i64, %45 word*, %46 word*, %47 i64, %48 i64, %49 i64, %50 i64, %51 bool, %52 word*, %53 i64, %54 i64, %55 i64, %56 i64, %78 word*, %79 word*, %80 i64, %81 i64, %82 word*, %83 i64, %84 word*, %85 i64, %86 i64, %87 word*, %90 bool, %91 word*, %92 i64, %93 i64, %124 word*, %125 word*, %126 i64, %127 i64, %128 i64, %129 bool, %130 word*, %131 i64, %132 i64, %133 i64]
+  b0(%0 tag: ptr):
+    %142 lit: i64 = const 0
+    %143 lit: i64 = const 0
+    jump b1(%142, %143, %0)
+  b1(%1 acc: i64, %2 i: i64, %3 tag: ptr):
+    %4 lit: i64 = const 5
+    %5 t: bool = lt.int %2, %4
+    if %5 then b3(%3, %1, %2) else b4(%3, %1, %2)
+  b2(%6 v: word, %7 acc: i64, %8 i: i64, %9 tag: ptr):
+    drop %6
+    jump b1(%7, %8, %9)
+  b3(%10 tag: ptr, %11 acc: i64, %12 i: i64):
+    perform main::loop_resume_twice::Counter.next() -> b5(%10, %11, %12)
+  b4(%13 tag: ptr, %14 acc: i64, %15 i: i64):
+    drop %13
+    ret %14
+  b5(%16 r: i64, %17 tag: ptr, %18 acc: i64, %19 i: i64):
+    %20 lit: i64 = const 2
+    %21 t: i64 = intrem %19, %20
+    %22 lit: i64 = const 0
+    %23 t: bool = eq.int %21, %22
+    if %23 then b16(%17, %18, %19, %16) else b17(%17, %18, %19, %16)
+  b6(%24 v: word, %25 acc: i64, %26 i: i64, %27 tag: ptr, %28 r: i64):
+    drop %24
+    perform main::loop_resume_twice::Counter.next() -> b7(%27, %28, %25, %26)
+  b7(%29 r: i64, %30 tag: ptr, %31 r: i64, %32 acc: i64, %33 i: i64):
+    %34 lit: i64 = const 3
+    %35 t: i64 = intrem %29, %34
+    %36 lit: i64 = const 0
+    %37 t: bool = eq.int %35, %36
+    if %37 then b14(%30, %31, %32, %33, %29) else b15(%30, %31, %32, %33, %29)
+  b8(%38 v: word, %39 acc: i64, %40 i: i64, %41 tag: ptr, %42 r: i64, %43 r: i64):
+    drop %38
+    %44 lit: i64 = const 1
+    call millis#7(%44) -> b9(%41, %42, %43, %39, %40)
+  b9(%45 r: ptr, %46 tag: ptr, %47 r: i64, %48 r: i64, %49 acc: i64, %50 i: i64):
+    perform std::clock::Clock.sleep(%45) -> b10(%46, %47, %48, %49, %50)
+  b10(%51 r: unit, %52 tag: ptr, %53 r: i64, %54 r: i64, %55 acc: i64, %56 i: i64):
+    %57 box: word = box %51
+    drop %57
+    %58 t: i64 = intadd %55, %54
+    %59 s: ptr = show %52
+    %60 lit: ptr = const str 3
+    %61 s: ptr = concat %59, %60
+    drop %59
+    drop %60
+    %62 s: ptr = show %56
+    %63 s: ptr = concat %61, %62
+    drop %61
+    drop %62
+    %64 lit: ptr = const str 4
+    %65 s: ptr = concat %63, %64
+    drop %63
+    drop %64
+    %66 s: ptr = show %53
+    %67 s: ptr = concat %65, %66
+    drop %65
+    drop %66
+    %68 lit: ptr = const str 5
+    %69 s: ptr = concat %67, %68
+    drop %67
+    drop %68
+    %70 s: ptr = show %54
+    %71 s: ptr = concat %69, %70
+    drop %69
+    drop %70
+    %72 lit: ptr = const str 6
+    %73 s: ptr = concat %71, %72
+    drop %71
+    drop %72
+    %74 s: ptr = show %58
+    %75 s: ptr = concat %73, %74
+    drop %73
+    drop %74
+    %76 lit: ptr = const str 7
+    %77 s: ptr = concat %75, %76
+    drop %75
+    drop %76
+    perform std::clock::Clock.now() -> b11(%52, %56, %58, %77)
+  b11(%78 r: ptr, %79 tag: ptr, %80 i: i64, %81 t: i64, %82 s: ptr):
+    call to_unix_millis#8(%78) -> b12(%79, %80, %81, %82)
+  b12(%83 r: i64, %84 tag: ptr, %85 i: i64, %86 t: i64, %87 s: ptr):
+    %88 s: ptr = show %83
+    %89 s: ptr = concat %87, %88
+    drop %87
+    drop %88
+    perform std::console::Console.print(%89) -> b13(%84, %85, %86)
+  b13(%90 r: unit, %91 tag: ptr, %92 i: i64, %93 t: i64):
+    %94 box: word = box %90
+    drop %94
+    %95 lit: i64 = const 1
+    %96 t: i64 = intadd %92, %95
+    %97 lit: unit = const ()
+    %98 box: word = box %97
+    jump b2(%98, %93, %96, %91)
+  b14(%99 tag: ptr, %100 r: i64, %101 acc: i64, %102 i: i64, %103 r: i64):
+    %109 lit: i64 = const 1
+    %110 t: i64 = intsub %101, %109
+    %111 lit: unit = const ()
+    %112 box: word = box %111
+    jump b8(%112, %110, %102, %99, %100, %103)
+  b15(%104 tag: ptr, %105 r: i64, %106 acc: i64, %107 i: i64, %108 r: i64):
+    %113 lit: unit = const ()
+    %114 box: word = box %113
+    jump b8(%114, %106, %107, %104, %105, %108)
+  b16(%115 tag: ptr, %116 acc: i64, %117 i: i64, %118 r: i64):
+    %123 lit: i64 = const 2
+    call millis#7(%123) -> b18(%115, %116, %117, %118)
+  b17(%119 tag: ptr, %120 acc: i64, %121 i: i64, %122 r: i64):
+    %140 lit: unit = const ()
+    %141 box: word = box %140
+    jump b6(%141, %120, %121, %119, %122)
+  b18(%124 r: ptr, %125 tag: ptr, %126 acc: i64, %127 i: i64, %128 r: i64):
+    perform std::clock::Clock.sleep(%124) -> b19(%125, %126, %127, %128)
+  b19(%129 r: unit, %130 tag: ptr, %131 acc: i64, %132 i: i64, %133 r: i64):
+    %134 box: word = box %129
+    drop %134
+    %135 lit: i64 = const 10
+    %136 t: i64 = intmul %133, %135
+    %137 t: i64 = intadd %131, %136
+    %138 lit: unit = const ()
+    %139 box: word = box %138
+    jump b6(%139, %137, %132, %130, %133)
+
+fn forward#5 top -> ptr ; main::loop_resume_twice, frame 0 slots []
+  b0():
+    %0 next: ptr = closure forward$Counter_next#6[]
+    %1 handler: ptr = handler main::loop_resume_twice::Counter row 7 state() clauses(%0)
+    ret %1
+
+fn forward$Counter_next#6 clause main::loop_resume_twice::Counter.next -> i64 ; main::loop_resume_twice, captures [], frame 3 slots [%0 word*, %1 i64, %2 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    perform main::loop_resume_twice::Counter.next() -> b1()
+  b1(%2 r: i64):
+    %3 lit: i64 = const 100
+    %4 t: i64 = intmul %2, %3
+    ret %4
+
+fn counter$Counter_next#9 clause main::loop_resume_twice::Counter.next -> i64 ; main::loop_resume_twice, captures [], frame 2 slots [%0 word*, %1 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    %2 n: i64 = state_get %1[0] row 6
+    %3 lit: i64 = const 1
+    %4 t: i64 = intadd %2, %3
+    state_set %1[0] row 6 = %4
+    %5 set: unit = const ()
+    %6 n: i64 = state_get %1[0] row 6
+    ret %6
