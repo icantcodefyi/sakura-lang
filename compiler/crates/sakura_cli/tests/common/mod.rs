@@ -90,8 +90,14 @@ pub struct Output {
 }
 
 pub fn sakura(args: &[&str], cwd: &Path) -> Output {
+    sakura_env(args, cwd, &[])
+}
+
+/// [`sakura`] with extra environment variables.
+pub fn sakura_env(args: &[&str], cwd: &Path, env: &[(&str, &Path)]) -> Output {
     let mut child = Command::new(env!("CARGO_BIN_EXE_sakura"))
         .args(args)
+        .envs(env.iter().copied())
         .current_dir(cwd)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())

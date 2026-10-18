@@ -89,6 +89,10 @@ pub fn run_node_tests(
     if update {
         writable(&mut cmd, snapshots)?;
     }
+    // The operator's effect trace (design §17.80), the one file the runtime opens itself.
+    if let Some(trace) = std::env::var_os("SAKURA_TRACE") {
+        cmd.arg(format!("--allow-fs-write={}", Path::new(&trace).display()));
+    }
     if let Some((net, env)) = record {
         writable(&mut cmd, &snapshots.with_file_name("fixtures"))?;
         // The runtime's `http_send` checks the hosts and `env_get` the keys (runtime/js/ABI.md §7).

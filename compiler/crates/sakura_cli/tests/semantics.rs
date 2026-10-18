@@ -1,12 +1,16 @@
 //! `compiler/tests/semantics`: programs run end to end. `// mode: run` (default) compares stdout
 //! with `<name>.stdout` and the exit code with `// expect-exit:` (default 0); `// mode: test`
-//! requires `sakura test` to pass; `// mode: check` requires a clean `sakura check`.
+//! requires `sakura test` to pass; `// mode: check` requires a clean `sakura check`. `run` and
+//! `test` fixtures also run under `--no-direct` with identical effect traces (design §17.111).
 
 mod common;
 
 use common::*;
 use std::path::Path;
 
+/// Runs the fixture under the direct ABI and under `--no-direct` (design §17.111): both must
+/// meet the expectations, and their effect traces (§17.80) and, for programs, stderr (defect
+/// codes and spans) must be identical.
 fn run(path: &Path, d: &std::collections::BTreeMap<String, String>) -> Result<(), String> {
     let dir = path.parent().unwrap();
     let name = path.file_name().unwrap().to_str().unwrap();
@@ -16,7 +20,44 @@ fn run(path: &Path, d: &std::collections::BTreeMap<String, String>) -> Result<()
     if let (Some(seed), "run" | "test") = (seed, mode) {
         args.extend(["--seed", seed]);
     }
-    let out = sakura(&args, dir);
+    if mode == "check" {
+        return expect(path, d, mode, &sakura(&args, dir));
+    }
+    let tmp = Path::new(env!("CARGO_TARGET_TMPDIR"));
+    let (mut traces, mut stderr) = (Vec::new(), Vec::new());
+    for abi in ["direct", "no-direct"] {
+        let trace = tmp.join(format!("{name}.{abi}.trace"));
+        let _ = std::fs::remove_file(&trace);
+        let mut args = args.clone();
+        if abi == "no-direct" {
+            args.insert(1, "--no-direct");
+        }
+        let out = sakura_env(&args, dir, &[("SAKURA_TRACE", &trace)]);
+        expect(path, d, mode, &out).map_err(|e| format!("{abi}: {e}"))?;
+        traces.push(std::fs::read_to_string(&trace).unwrap_or_default());
+        stderr.push(out.stderr);
+    }
+    if traces[0] != traces[1] {
+        return Err(format!(
+            "effect traces differ under --no-direct\n--- direct\n{}--- no-direct\n{}",
+            traces[0], traces[1]
+        ));
+    }
+    if mode == "run" && stderr[0] != stderr[1] {
+        return Err(format!(
+            "stderr differs under --no-direct\n--- direct\n{}--- no-direct\n{}",
+            stderr[0], stderr[1]
+        ));
+    }
+    Ok(())
+}
+
+fn expect(
+    path: &Path,
+    d: &std::collections::BTreeMap<String, String>,
+    mode: &str,
+    out: &Output,
+) -> Result<(), String> {
     if out.timed_out {
         return Err(format!("`sakura {mode}` timed out"));
     }
