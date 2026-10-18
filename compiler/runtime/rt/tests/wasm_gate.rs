@@ -79,6 +79,8 @@ const IMPORTS: &[&str] = &[
     "http_stream_open",
     "http_stream_read",
     "http_body_close",
+    "serve_listen",
+    "serve_respond",
 ];
 
 /// The ABI §1 allowlist, from an empty set (research/09 §1).

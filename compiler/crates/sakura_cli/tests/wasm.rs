@@ -346,3 +346,111 @@ fn sql_sqlite_opens_on_first_use_on_wasm_as_on_js() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// `GET path` (with `x-name: ann`) on `port`: the status code and the body.
+fn http_get(port: u16, path: &str) -> String {
+    use std::io::{Read, Write};
+    let mut s = std::net::TcpStream::connect(("127.0.0.1", port)).unwrap();
+    write!(
+        s,
+        "GET {path} HTTP/1.1\r\nhost: 127.0.0.1\r\nx-name: ann\r\nconnection: close\r\n\r\n"
+    )
+    .unwrap();
+    let mut out = String::new();
+    s.read_to_string(&mut out).unwrap();
+    let status = out.split(' ').nth(1).unwrap_or("").to_string();
+    let body = out.split_once("\r\n\r\n").map_or("", |(_, b)| b);
+    format!("{status} {body}")
+}
+
+/// `Serve.host()` (plan §3.7 W2, ABI §8.2 `callback`): on both backends the server answers each
+/// request from its own task (`invoke` on WASM), a handler's defect is a 500 with the defect
+/// record on stderr, and the server keeps answering. Defect messages are compared by code:
+/// WASM's are static (plan §7 W1 item 7).
+#[cfg(unix)]
+#[test]
+fn serve_host_answers_on_wasm_as_on_js() {
+    use std::os::unix::process::CommandExt;
+    if !available() {
+        eprintln!("skipped: node is missing");
+        return;
+    }
+    let dir = std::env::temp_dir().join(format!("sakura-wasm-serve-{}", std::process::id()));
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    let mut answers = vec![];
+    for target in ["js", "wasm"] {
+        let port = std::net::TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port();
+        std::fs::write(
+            dir.join("sakura.toml"),
+            format!(
+                "[package]\nname = \"srv\"\nversion = \"0.1.0\"\nedition = \"2026\"\n\n\
+                 [permissions]\nnet = [\"127.0.0.1:{port}\"]\n"
+            ),
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("src/main.sakura"),
+            format!(
+                "import std/request.{{Request}}\nimport std/response.{{Response}}\n\
+                 import std/router.{{Router}}\nimport std/serve.{{Address, Serve, ServeError}}\n\n\
+                 pub fn main() -> Unit ! {{Console, Serve, Fail<ServeError>}} {{\n\
+                 \x20 let router = Router.new()\n\
+                 \x20   .get(\"/hi\", fn(req) {{ Response.status(200, \"hello {{Request.header(req, \"x-name\")}}\") }})\n\
+                 \x20   .get(\"/boom\", fn(_req) {{ Response.status(200, List.first([]).expect(\"boom\")) }})\n\
+                 \x20 Serve.listen(router, Address.of(\"127.0.0.1\", {port}))\n}}\n"
+            ),
+        )
+        .unwrap();
+        let err = dir.join(format!("{target}.stderr"));
+        let out_dir = dir.join(format!("out-{target}"));
+        let mut child = std::process::Command::new(env!("CARGO_BIN_EXE_sakura"))
+            .args([
+                "run",
+                "--target",
+                target,
+                "--out-dir",
+                out_dir.to_str().unwrap(),
+            ])
+            .current_dir(&dir)
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::fs::File::create(&err).unwrap())
+            .process_group(0)
+            .spawn()
+            .unwrap();
+        let start = std::time::Instant::now();
+        while std::net::TcpStream::connect(("127.0.0.1", port)).is_err() {
+            assert!(
+                start.elapsed() < TIME_LIMIT,
+                "{target}: the server did not start\n{}",
+                std::fs::read_to_string(&err).unwrap_or_default()
+            );
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+        let got: Vec<String> = ["/hi", "/boom", "/hi", "/missing"]
+            .iter()
+            .map(|p| http_get(port, p))
+            .collect();
+        // The driver and node share the process group.
+        let _ = std::process::Command::new("kill")
+            .args(["-9", &format!("-{}", child.id())])
+            .status();
+        let _ = child.wait();
+        let stderr = std::fs::read_to_string(&err).unwrap_or_default();
+        let defects: Vec<String> = stderr
+            .lines()
+            .filter(|l| l.contains("\"kind\":\"defect\""))
+            .map(|l| l[l.find("\"code\":").unwrap()..][..13].to_string())
+            .collect();
+        answers.push((got, defects));
+    }
+    assert_eq!(answers[0].0[0], "200 hello Some(\"ann\")");
+    assert_eq!(answers[0].0[1], "500 internal error");
+    assert_eq!(answers[0].1, ["\"code\":\"D030\""]);
+    assert_eq!(answers[1], answers[0]);
+    let _ = std::fs::remove_dir_all(&dir);
+}

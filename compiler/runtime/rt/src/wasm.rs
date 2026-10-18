@@ -119,6 +119,7 @@ pub extern "C" fn rt_init(layout: u32, codes: u32, effects: u32, ops: u32, nativ
     rt.sched.prop_codes = [code(4), code(5), code(6)];
     rt.sched.body_close_code = code(7);
     rt.sched.js_callback_code = code(8);
+    rt.sched.serve_request_code = code(9);
     rt.set_codes(codes);
     rt.set_effects(effects);
     rt.sched.ops = ops;
@@ -1598,6 +1599,143 @@ pub extern "C" fn rt_code_http_body_close(env: u32, _frame: u32) -> u32 {
     }
 }
 
+// ---- the server host (`Serve.host()`): `serve_listen` and `invoke` -----------------------
+
+/// Request kind of a listening server (ABI §8.5).
+const SERVE: u32 = 3;
+
+/// `serve_listen(addr, handle)` (cps, as JS): the host listens on `addr` (the `async` import
+/// `serve_listen(request, listener, ptr, len)`, `listener` this frame's id, which keeps `handle`
+/// in slot 1) and hands each request it receives to `invoke`, which starts a task running
+/// `handle` under the handlers in scope here (`rt_code_serve_request`). The request completes
+/// only when the server cannot start or stops, with the `ServeError` this fails with.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_k_serve_listen(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    if rt.block(frame) == 1 {
+        let b = rt.take_ret() as u32;
+        let handle = rt.take_fslot(frame, 1) as u32;
+        rt.drop(handle);
+        return match answer(rt, b) {
+            Ok((0, e)) => rt.fail(e),
+            Ok((_, v)) => {
+                rt.drop(v);
+                rt.raise(crate::vt::MALFORMED)
+            }
+            Err(d) => rt.raise(d),
+        };
+    }
+    let addr = rt.take_fslot(frame, 0) as u32;
+    let listener = rt.current_frame();
+    let r = rt.request(SERVE).and_then(|id| {
+        let id = id.ok_or(Defect {
+            code: 90,
+            message: "too many pending operations",
+        })?;
+        with_args(rt, &[addr], |_, at, len| {
+            // SAFETY: a plain import with a slice inside linear memory, copied in at once; the
+            // host completes `id` when the server stops.
+            unsafe { host::serve_listen(id, listener, at, len) }
+        })
+    });
+    match r {
+        Ok(_) => {
+            rt.set_block(frame, 1);
+            step::SUSPEND
+        }
+        Err(d) => rt.raise(d),
+    }
+}
+
+/// `invoke(listener, payload) -> task` (ABI §9; the host calls it only while the guest is not
+/// running): `payload` (a `Bytes` from `alloc_bytes`, consumed) holds the `Request`; the result
+/// is the task answering it, whose id names the response (`serve_respond`) and whose outcome
+/// the host reads after the next `run`, or 0 when `listener` is gone or the heap is exhausted.
+/// Request tasks that have finished since the last call are freed first.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_invoke(listener: u32, payload: u32) -> u32 {
+    let rt = rt();
+    if let Some(mut served) = rt.sched.served.take() {
+        let mut i = 0;
+        while i < served.len {
+            let t = rt.stack_at(&served, i);
+            if rt.task_done(t) {
+                let last = rt.pop(&mut served).unwrap_or(t);
+                if i < served.len {
+                    rt.stack_set(&served, i, last);
+                }
+                rt.task_free(t);
+            } else {
+                i += 1;
+            }
+        }
+        rt.sched.served = Some(served);
+    }
+    if payload == 0 {
+        return 0;
+    }
+    let r = (|| {
+        let (len, at) = rt.data(payload);
+        let req = rt.vt_decode(at, len)?;
+        let Some((f, act)) = rt.live_frame(listener) else {
+            rt.drop(req);
+            return Ok(0);
+        };
+        let handle = rt.fslot(f, 1) as u32;
+        let code = rt.sched.serve_request_code;
+        let started = rt.dup(handle).and_then(|_| {
+            rt.start_under(act, code, 2)
+                .inspect_err(|_| rt.drop(handle))
+        });
+        let (task, root) = started.inspect_err(|_| rt.drop(req))?;
+        rt.set_fslot(root, 0, u64::from(handle));
+        rt.set_fslot(root, 1, u64::from(req));
+        let mut served = rt
+            .sched
+            .served
+            .take()
+            .unwrap_or(crate::scratch::Stack::NONE);
+        let pushed = rt.push(&mut served, task);
+        rt.sched.served = Some(served);
+        pushed.map(|()| task)
+    })();
+    rt.drop(payload);
+    r.unwrap_or(0)
+}
+
+/// The root of a served request's task: `handle(request)` (slots 0 and 1), then the response
+/// to the host (`serve_respond(task, …)`). A failure or defect is the task's outcome,
+/// which the host reports and answers with a 500.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_serve_request(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    if rt.block(frame) == 1 {
+        let resp = rt.take_ret() as u32;
+        let reply = i64::from(rt.sched.current);
+        let r = with_args(rt, &[resp], |_, at, len| {
+            // SAFETY: a plain import with a slice inside linear memory, copied in at once.
+            unsafe { host::serve_respond(reply, at, len) }
+        });
+        return match r {
+            Ok(()) => ret(rt, UNIT as u64),
+            Err(d) => rt.raise(d),
+        };
+    }
+    let handle = rt.take_fslot(frame, 0) as u32;
+    let req = rt.take_fslot(frame, 1);
+    match rt.call_value(handle, 1) {
+        Ok(c) => {
+            rt.set_fslot(c, 1, req);
+            rt.set_block(frame, 1);
+            step::CALL
+        }
+        Err(d) => {
+            rt.drop(req as u32);
+            rt.raise(d)
+        }
+    }
+}
+
 // ---- JS-built handlers (`Llm.anthropic`): clauses the host runs with the JS runtime ---------
 
 /// `Llm.anthropic(key, model)`: the JS runtime's handler, built on the host (`key` crosses to
@@ -2384,6 +2522,11 @@ mod host {
         pub fn http_stream_open(request: u32, ptr: u32, len: u32) -> u32;
         pub fn http_stream_read(request: u32, ptr: u32, len: u32) -> u32;
         pub fn http_body_close(ptr: u32, len: u32);
+        /// `async`: listen on the address at `(ptr, len)` for `listener` (`invoke`); completes
+        /// `request` with a status-0 answer holding the `ServeError` when the server stops.
+        pub fn serve_listen(request: u32, listener: u32, ptr: u32, len: u32) -> u32;
+        /// The response of the served request whose task is `task` (`invoke`).
+        pub fn serve_respond(task: i64, ptr: u32, len: u32);
     }
 }
 

@@ -310,6 +310,8 @@ export class Host {
     this.nextCallback = 1;
     // A failure on its way out of a JS clause through the guest's frames (`js_resume`).
     this.escaping = null;
+    // Served requests by task (`serve_listen`): how to reply, and the response once sent.
+    this.served = new Map();
     // Handle tables (ABI §8.4): `${kind}:${slot}` → { generation, object }.
     this.handles = new Map();
     this.nextSlot = 1;
@@ -520,6 +522,38 @@ export class Host {
         http_body_close: (ptr, len) => {
           const [body] = this.decode(new Reader(this.copyIn(ptr, len)));
           rt.http_body_close(body);
+        },
+        // `Serve.host()` (`serve_listen`, as JS): each request the JS runtime's server receives
+        // starts a guest task (`invoke`); its response comes back through `serve_respond`, and a
+        // failure or defect is its outcome, read after the guest runs (`served`).
+        serve_listen: (request, listener, ptr, len) => {
+          const [addr] = this.decode(new Reader(this.copyIn(ptr, len)));
+          const stop = (reason) => {
+            const e = new (rt.typeClass("std::serve::ServeError"))(reason);
+            this.complete(request, 0, this.answerBytes({ ok: e }, ["A", "std::serve::ServeError", []]));
+          };
+          this.inflight.set(request, () => {});
+          const s = rt.serveHttp(addr, (value, reply) => {
+            const w = new Writer();
+            this.encode(w, value, ["A", "std::request::Request", []]);
+            const bytes = w.done();
+            const task = this.exports.invoke(listener, this.copyOut(bytes), bytes.length);
+            if (task === 0) return reply({ kind: "gone" });
+            this.served.set(task, { reply, response: null });
+            this.wake?.();
+          });
+          if (s.err !== undefined) {
+            stop(s.err);
+          } else {
+            this.inflight.set(request, s.close);
+            s.stopped.then(stop);
+          }
+          return 1;
+        },
+        serve_respond: (task, ptr, len) => {
+          const [r] = this.decode(new Reader(this.copyIn(ptr, len)));
+          const s = this.served.get(Number(task));
+          if (s !== undefined) s.response = r;
         },
         js_callback: (id, ptr, len) => {
           const f = this.callbacks.get(Number(id));
@@ -940,6 +974,19 @@ export class Host {
     this.callbacks.clear();
   }
 
+  /** Answer the served requests whose tasks finished (`serve_listen`), as JS `serveHttp`. */
+  reply() {
+    for (const [task, s] of this.served) {
+      const [kind, b] = this.exports.outcome(task);
+      if (b !== 0) this.exports.drop(b);
+      if (kind === OUTCOME.pending) continue;
+      this.served.delete(task);
+      const o = this.outcome(task, kind);
+      if (o.kind === "ok" && s.response !== null) s.reply({ kind: "ok", value: s.response });
+      else s.reply(o);
+    }
+  }
+
   /** Deliver queued completions: copy each payload out, then `complete` (ABI §8.5). */
   deliver() {
     const e = this.exports;
@@ -966,6 +1013,7 @@ export class Host {
     const task = e.start(entry);
     if (task === 0) return { kind: "defect", code: "D096", message: "heap exhausted" };
     let kind = e.run(task);
+    this.reply();
     while (kind === OUTCOME.pending) {
       if (this.completed.length === 0) {
         if (this.inflight.size === 0) {
@@ -979,6 +1027,7 @@ export class Host {
       }
       this.deliver();
       kind = e.run(task);
+      this.reply();
     }
     return this.outcome(task, kind);
   }

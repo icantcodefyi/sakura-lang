@@ -133,6 +133,7 @@ const NATIVE_CODES: &[&str] = &[
     "rt_code_prop_forward",
     "rt_code_http_body_close",
     "rt_code_js_callback",
+    "rt_code_serve_request",
 ];
 
 /// The frame and capture slot kinds of a native code's code-table entry: the words a code
@@ -148,6 +149,9 @@ fn native_slots(name: &str) -> (Vec<Slot>, Vec<Slot>) {
     match name {
         "rt_code_callback_stub" => (vec![], vec![w, i]),
         "rt_code_http_body_close" => (vec![], vec![w]),
+        // `serve_listen`'s address and the handler it keeps; a served request's handler and
+        // request.
+        "rt_k_serve_listen" | "rt_code_serve_request" => (vec![w, w], vec![]),
         "rt_code_file_close" | "rt_code_task_cancel_all" => (vec![], vec![i]),
         // Slot 0 the instance, 1 the activation, then the arguments, kept while a
         // `Sql.sqlite` clause performs `Fs.root()` (`sakura_rt::wasm::sql_instance`).
@@ -540,9 +544,14 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     f.instructions().call(rtf("rt_stats")?).i32_const(48).end();
     funcs.push(added(FIXED[7], vec![], i32s(2), f));
 
-    // invoke(callback, ptr, len) -> i32: no host callbacks yet (serve_listen, fibers).
+    // invoke(listener, ptr, len) -> task: a served request (`rt_invoke`; `ptr` is the
+    // `Bytes` the host allocated, `len` its length).
     let mut f = Function::new([]);
-    f.instructions().i32_const(0).end();
+    f.instructions()
+        .local_get(0)
+        .local_get(1)
+        .call(rtf("rt_invoke")?)
+        .end();
     funcs.push(added(FIXED[8], i32s(3), i32s(1), f));
     if let Some(t) = &texts {
         funcs.push(wasi::start(&ix, t));

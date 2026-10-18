@@ -166,6 +166,10 @@ pub struct Sched {
     pub body_close_code: u32,
     /// The code of the closure standing for a host JS function (`rt_code_js_callback`).
     pub js_callback_code: u32,
+    /// The code of a served request's root frame (`rt_code_serve_request`), and the request
+    /// tasks the host may still read the outcome of (freed once finished, at the next `invoke`).
+    pub serve_request_code: u32,
+    pub served: Option<crate::scratch::Stack>,
     /// The code of `Sql.transaction`'s finalizer (`rt_code_sql_rollback`), set at link time.
     pub sql_rollback_code: u32,
     /// The code of `Task.scope`'s finalizer (`rt_code_task_cancel_all`), set at link time.
@@ -690,6 +694,31 @@ impl Rt {
         Ok(r)
     }
 
+    /// The id of the current task's running frame (a native code's own).
+    pub fn current_frame(&self) -> u32 {
+        self.u(self.cur(), T_FRAME)
+    }
+
+    /// The frame with id `fid` and its activation, if it is still live.
+    pub fn live_frame(&self, fid: u32) -> Option<(u32, u32)> {
+        let f = self.arena_obj(fid, tag::FRAME)?;
+        Some((f, self.u(f, F_ACT)))
+    }
+
+    /// A root task running native `code` (`n` frame slots) under activation `act`: its id and
+    /// root frame, whose slots the caller fills (`invoke` of a listener, as JS's `runTask`
+    /// with the listener's handlers).
+    pub fn start_under(&mut self, act: u32, code: u32, n: u32) -> Res<(u32, u32)> {
+        let n = self.frame_size(code, n);
+        self.new_task(0, act, code, n, 0)
+    }
+
+    /// Whether task `id` has finished (its outcome readable until it is freed).
+    pub fn task_done(&self, id: u32) -> bool {
+        self.arena_obj(id, tag::TASK)
+            .is_some_and(|t| self.u(t, T_STATE) == DONE)
+    }
+
     /// The outcome of task `id`: kind and value (the value stays owned by the task).
     pub fn outcome(&self, id: u32) -> Res<(u32, u64)> {
         let t = self.arena_obj(id, tag::TASK).ok_or(Defect::FIBER_RETIRED)?;
@@ -1157,6 +1186,9 @@ impl Rt {
                 }
             }
             step::DEFECT => {
+                // A builtin's flag for compiled code (`wasm::raised`) is moot now; left set, it
+                // would stop the next task's first check (a pointer result does not read it).
+                self.sched.raised = false;
                 self.abort_finalizers(t);
                 if self.u(t, T_DEFECT) == 0 {
                     self.record_defect(t, Defect::INTERNAL);

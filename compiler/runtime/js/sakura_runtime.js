@@ -4006,11 +4006,26 @@ export function llm_anthropic(key, handlerModel) {
 
 export function serve_listen(addr, handle, ctx, k) {
   const ServeError = std("std::serve::ServeError");
+  const s = serveHttp(addr, (value, reply) => {
+    const o = runTask(handle, [value], ctx.h);
+    if (o instanceof Promise) o.then(reply, () => reply({ kind: "rejected" }));
+    else reply(o);
+  });
+  if (s.err !== undefined) return fail(ctx, new ServeError(s.err));
+  return suspend(s.stopped, (reason) => fail(ctx, new ServeError(reason)), s.close);
+}
+
+/**
+ * The HTTP server behind `serve_listen` (the WASM host's too): `addr` must be in the manifest's
+ * `net` list; each request becomes a `Request` for `run(request, reply)`, where `reply(o)` takes
+ * the handler's outcome (`ok` with the `Response`; a `fail`, its `error` or `Show` text
+ * `shown`, or a `defect` is reported on stderr and answered 500). Returns `{ err }`, or `{ stopped, close }` (`stopped` resolves to why the
+ * server stopped).
+ */
+export function serveHttp(addr, run) {
   const where = `${addr.host}:${addr.port}`;
   const net = granted()?.net;
-  if (net !== undefined && !net.includes(where)) {
-    return fail(ctx, new ServeError(`${where} is not in the manifest's net list`));
-  }
+  if (net !== undefined && !net.includes(where)) return { err: `${where} is not in the manifest's net list` };
   const Request = std("std::request::Request");
   const Method = std("std::request::Method");
   const methods = Method.prototype.$t.ctors.map((c) => c.name.toUpperCase());
@@ -4031,7 +4046,7 @@ export function serve_listen(addr, handle, ctx, k) {
         for (let i = 0; i < req.rawHeaders.length; i += 2) headers.push([req.rawHeaders[i], req.rawHeaders[i + 1]]);
         const body = Buffer.concat(chunks).toString("utf8");
         const value = new Request(new Method(tag, []), req.url, list(headers), body, list([]), list([]));
-        const reply = (o) => {
+        run(value, (o) => {
           if (o.kind === "ok") {
             const r = o.value;
             const hs = { ...Object.fromEntries(items(r.headers)), "content-length": Buffer.byteLength(r.body) };
@@ -4042,17 +4057,14 @@ export function serve_listen(addr, handle, ctx, k) {
           if (o.kind === "defect") {
             writeErr(JSON.stringify({ schema_version: "1.0", kind: "defect", code: o.code, message: o.message }));
           } else if (o.kind === "fail") {
-            writeErr(`error: request failed with ${show(o.error)}`);
+            writeErr(`error: request failed with ${o.shown ?? show(o.error)}`);
           }
           plain(500, "internal error");
-        };
-        const o = runTask(handle, [value], ctx.h);
-        if (o instanceof Promise) o.then(reply, () => plain(500, "internal error"));
-        else reply(o);
+        });
       });
     });
     server.on("error", (e) => resolve(String(e.message ?? e)));
     server.listen(addr.port, addr.host);
   });
-  return suspend(stopped, (reason) => fail(ctx, new ServeError(reason)), () => server.close());
+  return { stopped, close: () => server.close() };
 }
