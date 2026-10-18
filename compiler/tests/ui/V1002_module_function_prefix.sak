@@ -1,0 +1,11 @@
+// milestone: M3
+// expect: V1002 V1002 V1002
+// §17.182 (2): `len` is a prefix of `lenght` and `length`, and `fil` of `filter` (which
+// `filter_map` extends), so each is suggested, never machine-applicable.
+import std/list
+
+pub fn size() -> Int { List.lenght([1]) }
+
+pub fn size2() -> Int { List.length([1]) }
+
+pub fn evens() -> List<Int> { List.fil([1, 2], fn(x) { x % 2 == 0 }) }

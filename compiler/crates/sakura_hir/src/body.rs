@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 
 use la_arena::Idx;
+use sakura_diagnostics::{Applicability, Fix};
 use sakura_syntax::{SyntaxKind::*, SyntaxNode, SyntaxToken};
 use text_size::TextRange;
 
@@ -816,15 +817,22 @@ impl<'a> BodyCx<'a> {
         };
         let mut d = diag::error(diag::UNRESOLVED_NAME, file, name.text_range(), what);
         let near = did_you_mean(member, cands.iter().map(String::as_str))
-            .or_else(|| diag::only_within(member, cands.iter().map(String::as_str), 2));
-        if let Some(s) = near {
+            .or_else(|| diag::only_within(member, cands.iter().map(String::as_str), 2))
+            .map(|s| (s, Applicability::MachineApplicable));
+        // A prefix is weaker evidence than two edits: only `suggested` (design §17.182 (2)).
+        let fns = hm
+            .exports
+            .iter()
+            .filter(|&(_, &i)| matches!(hm.defs[i].kind, DefKind::Fn(_)))
+            .map(|(n, _)| n.as_str());
+        let near =
+            near.or_else(|| diag::only_prefix(member, fns).map(|s| (s, Applicability::Suggested)));
+        if let Some((s, applicability)) = near {
             d.message.push_str(&format!("; did you mean `{s}`?"));
-            d = d.with_fix(diag::replace_fix(
-                file,
-                name.text_range(),
-                format!("Use `{type_name}.{s}`"),
-                s,
-            ));
+            d = d.with_fix(Fix {
+                applicability,
+                ..diag::replace_fix(file, name.text_range(), format!("Use `{type_name}.{s}`"), s)
+            });
         }
         self.cx.report(d);
         Some(Res::Err)

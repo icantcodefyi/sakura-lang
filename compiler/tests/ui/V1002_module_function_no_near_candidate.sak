@@ -1,6 +1,11 @@
 // milestone: M3
-// expect: V1002
-// §17.165: `len` is three edits from `lenght`, so nothing is guessed.
+// expect: V1002 V1002
+// §17.165, §17.182 (2): no std/list function is within two edits of `count` or a prefix of it,
+// and none has it as a prefix, so nothing is guessed (the std name is `len`). `map_e` has a
+// prefix match on each side (`map`, `map_err`), so it gets none either.
 import std/list
+import std/result
 
-pub fn size() -> Int { List.lenght([1]) }
+pub fn count() -> Int { List.count([1]) }
+
+pub fn mapped() -> Result<Int, String> { Result.map_e(Ok(1), fn(e) { e }) }

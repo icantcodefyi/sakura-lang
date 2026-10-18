@@ -61,6 +61,11 @@ published yet.
 
 ### Changed
 
+- `V1002` on `Type.member` suggests the one exported function that is a prefix of the typed
+  name or extends it (`List.lenght` → `len`, `List.fil` → `filter`) when no near spelling
+  exists, as a `suggested` fix, never `machine_applicable`; `sakura explain V1002` names
+  std's `len` convention (design §17.182 (2)).
+
 - A loop body with more than eight CPS steps keeps the shared-continuation form instead of
   the resumable `for (;;)` loop, which copies the rest of an iteration once per step;
   `sakura build --dump direct` lists each such loop as `resumable` or

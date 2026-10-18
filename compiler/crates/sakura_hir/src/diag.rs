@@ -83,6 +83,23 @@ pub fn only_within<'a>(
     near.all(|c| c == first).then_some(first)
 }
 
+/// The one candidate of at least three characters that is a prefix of `name` or has it as a
+/// prefix (design §17.182 (2): `lenght` → `len`). When every match extends `name`, one extending
+/// the shortest match counts as it, so `fil` gives `filter` rather than nothing for
+/// `filter`/`filter_map`; matches on both sides of `name` (`map_e`: `map`, `map_err`) give none.
+pub fn only_prefix<'a>(name: &str, candidates: impl Iterator<Item = &'a str>) -> Option<&'a str> {
+    let matches: Vec<&str> = candidates
+        .filter(|c| {
+            *c != name && c.chars().count() >= 3 && (name.starts_with(c) || c.starts_with(name))
+        })
+        .collect();
+    let shortest = *matches.iter().min_by_key(|c| c.len())?;
+    let extensions = matches
+        .iter()
+        .all(|c| c.starts_with(name) && c.starts_with(shortest));
+    (matches.len() == 1 || extensions).then_some(shortest)
+}
+
 /// Optimal string alignment distance: Levenshtein plus adjacent transpositions (`lsit` → `list`).
 fn levenshtein(a: &str, b: &str) -> usize {
     let a: Vec<char> = a.chars().collect();

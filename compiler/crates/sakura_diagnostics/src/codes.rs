@@ -155,7 +155,8 @@ Fixed:
     fn answer() -> Int { 42 }";
 
     V1002 "unresolved_name" RESOLVE,
-"No value with this name is in scope. Check the spelling, add an `import`, or define it.
+"No value with this name is in scope. Check the spelling, add an `import`, or define it. Std
+names a collection's size `len` (`List.len`, `String.len`, `Map.len`), not `length` or `size`.
 
 Wrong:
     fn main() -> Unit ! {Console} { Console.print(greting) }
