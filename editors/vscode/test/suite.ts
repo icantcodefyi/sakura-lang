@@ -9,10 +9,14 @@ const ws = process.env.SAKURA_TEST_WS!;
 const a = join(ws, "a");
 const uri = (path: string) => vscode.Uri.file(join(ws, path));
 
-async function waitFor<T>(what: string, f: () => T | undefined | false, ms = 20_000) {
+async function waitFor<T>(
+  what: string,
+  f: () => T | undefined | false | Promise<T | undefined | false>,
+  ms = 20_000,
+) {
   const end = Date.now() + ms;
   for (;;) {
-    const v = f();
+    const v = await f();
     if (v) return v;
     if (Date.now() > end) throw new Error(`timed out waiting for ${what}`);
     await new Promise((r) => setTimeout(r, 50));
@@ -81,25 +85,35 @@ const tests: [string, (api: SakuraApi) => Promise<void>][] = [
     async () => {
       const editor = await open("a/src/fix.sak");
       const doc = editor.document;
-      await diagnostics("a/src/fix.sak");
+      const fixDiagnostic = (line: number) =>
+        waitFor(`quick-fix diagnostic on line ${line + 1}`, () =>
+          vscode.languages
+            .getDiagnostics(doc.uri)
+            .find((d) => d.source === "sakura" && d.range.start.line === line),
+        );
+      await fixDiagnostic(0);
       // Only this extension's fixes (VS Code's built-in chat offers its own "Fix").
-      const fixes = async () =>
-        (
-          await vscode.commands.executeCommand<vscode.CodeAction[]>(
+      const fix = () =>
+        waitFor("a Sakura quick fix", async () => {
+          const actions = await vscode.commands.executeCommand<vscode.CodeAction[]>(
             "vscode.executeCodeActionProvider",
             doc.uri,
             new vscode.Range(0, 0, doc.lineCount, 0),
-          )
-        ).filter((a) => a.command?.command === "sakura.applyFix");
+          );
+          return actions.find((a) => a.command?.command === "sakura.applyFix");
+        });
       const run = (fix: vscode.CodeAction) =>
         vscode.commands.executeCommand(fix.command!.command, ...(fix.command!.arguments ?? []));
-      const [stale] = await fixes();
+      const stale = await fix();
       assert.equal(stale.title, "Use `List` (impact: local)");
       await editor.edit((e) => e.insert(new vscode.Position(0, 0), "\n"));
       const before = doc.getText();
       assert.equal(await run(stale), false);
       assert.equal(doc.getText(), before);
-      const [fresh] = await fixes();
+      // The edit resolves before the LSP publishes its new analysis. Old diagnostics
+      // still exist, so wait for the diagnostic to move with the inserted newline.
+      await fixDiagnostic(1);
+      const fresh = await fix();
       assert.equal(await run(fresh), true);
       assert.equal(doc.getText(), "\nfn count() -> Int { List.len([1, 2]) }\n");
     },
