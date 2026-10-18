@@ -393,7 +393,7 @@ function StatusBar({
           <span
             key={ticker.line}
             aria-hidden
-            className={`truncate motion-safe:animate-[note-in_220ms_var(--ease-out)_both] @min-[38rem]:hidden ${
+            className={`flex min-w-0 items-center gap-1.5 motion-safe:animate-[note-in_220ms_var(--ease-out)_both] @min-[38rem]:hidden ${
               ticker.note.kind === "fail"
                 ? "text-fail"
                 : ticker.note.kind === "seal"
@@ -401,8 +401,10 @@ function StatusBar({
                   : "text-ok"
             }`}
           >
-            {ticker.note.kind === "fail" ? <Cross /> : <Tick />} {ticker.note.text}{" "}
-            <span className="text-faint">on line {ticker.line}</span>
+            <span className="shrink-0">{ticker.note.kind === "fail" ? <Cross /> : <Tick />}</span>
+            <span className="truncate">
+              {ticker.note.text} <span className="text-faint">on line {ticker.line}</span>
+            </span>
           </span>
         ) : null}
       </span>
