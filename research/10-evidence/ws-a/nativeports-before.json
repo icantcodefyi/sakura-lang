@@ -1,0 +1,98 @@
+[
+  {
+    "program": "binary_trees",
+    "variant": "ocaml",
+    "build_ok": false,
+    "error": "`ocamlopt -o main main.ml` exited 2:\nFile \"main.ml\", line 1, characters 9-15:\n1 | let () = Runner.main Kernels.binary_trees 14\n             ^^^^^^\nError: Unbound module Runner\n"
+  },
+  {
+    "program": "binary_trees",
+    "variant": "koka",
+    "build_ok": false,
+    "error": "`koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/target/koka/binary_trees/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/target/koka/binary_trees/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/binary_trees/koka/main.kk` exited 1:\nbench/programs/binary_trees/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)\n  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/binary_trees/koka\n               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports\n               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib\n\nFailed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/binary_trees/koka/main.kk\n"
+  },
+  {
+    "program": "handled_d1",
+    "variant": "koka",
+    "build_ok": false,
+    "error": "`koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/target/koka/handled_d1/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/target/koka/handled_d1/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/handled_d1/koka/main.kk` exited 1:\nbench/programs/handled_d1/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)\n  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/handled_d1/koka\n               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports\n               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib\n\nFailed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/handled_d1/koka/main.kk\n"
+  },
+  {
+    "program": "handled_d16",
+    "variant": "koka",
+    "build_ok": false,
+    "error": "`koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/target/koka/handled_d16/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/target/koka/handled_d16/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/handled_d16/koka/main.kk` exited 1:\nbench/programs/handled_d16/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)\n  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/handled_d16/koka\n               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports\n               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib\n\nFailed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/handled_d16/koka/main.kk\n"
+  },
+  {
+    "program": "handled_d4",
+    "variant": "koka",
+    "build_ok": false,
+    "error": "`koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/target/koka/handled_d4/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/target/koka/handled_d4/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/handled_d4/koka/main.kk` exited 1:\nbench/programs/handled_d4/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)\n  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/handled_d4/koka\n               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports\n               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib\n\nFailed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/handled_d4/koka/main.kk\n"
+  },
+  {
+    "program": "handled_fwd",
+    "variant": "koka",
+    "build_ok": false,
+    "error": "`koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/target/koka/handled_fwd/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/target/koka/handled_fwd/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/handled_fwd/koka/main.kk` exited 1:\nbench/programs/handled_fwd/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)\n  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/handled_fwd/koka\n               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports\n               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib\n\nFailed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/handled_fwd/koka/main.kk\n"
+  },
+  {
+    "program": "handled_reentry",
+    "variant": "koka",
+    "build_ok": false,
+    "error": "`koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/target/koka/handled_reentry/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/target/koka/handled_reentry/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/handled_reentry/koka/main.kk` exited 1:\nbench/programs/handled_reentry/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)\n  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/handled_reentry/koka\n               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports\n               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib\n\nFailed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/handled_reentry/koka/main.kk\n"
+  },
+  {
+    "program": "handled_suspend",
+    "variant": "koka",
+    "build_ok": false,
+    "error": "`koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/target/koka/handled_suspend/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/target/koka/handled_suspend/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/handled_suspend/koka/main.kk` exited 1:\nbench/programs/handled_suspend/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)\n  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/handled_suspend/koka\n               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports\n               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib\n\nFailed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/handled_suspend/koka/main.kk\n"
+  },
+  {
+    "program": "map_set",
+    "variant": "ocaml",
+    "build_ok": false,
+    "error": "`ocamlopt -o main main.ml` exited 2:\nFile \"main.ml\", line 1, characters 9-15:\n1 | let () = Runner.main Kernels.map_set 100000\n             ^^^^^^\nError: Unbound module Runner\n"
+  },
+  {
+    "program": "map_set",
+    "variant": "koka",
+    "build_ok": false,
+    "error": "`koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/target/koka/map_set/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/target/koka/map_set/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/map_set/koka/main.kk` exited 1:\nbench/programs/map_set/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)\n  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/map_set/koka\n               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports\n               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib\n\nFailed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/map_set/koka/main.kk\n"
+  },
+  {
+    "program": "pipeline",
+    "variant": "ocaml",
+    "build_ok": false,
+    "error": "`ocamlopt -o main main.ml` exited 2:\nFile \"main.ml\", line 1, characters 9-15:\n1 | let () = Runner.main Kernels.pipeline 300000\n             ^^^^^^\nError: Unbound module Runner\n"
+  },
+  {
+    "program": "pipeline",
+    "variant": "koka",
+    "build_ok": false,
+    "error": "`koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/target/koka/pipeline/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/target/koka/pipeline/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/pipeline/koka/main.kk` exited 1:\nbench/programs/pipeline/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)\n  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/pipeline/koka\n               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports\n               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib\n\nFailed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/pipeline/koka/main.kk\n"
+  },
+  {
+    "program": "rbtree",
+    "variant": "ocaml",
+    "build_ok": false,
+    "error": "`ocamlopt -o main main.ml` exited 2:\nFile \"main.ml\", line 1, characters 9-15:\n1 | let () = Runner.main Kernels.rbtree 100000\n             ^^^^^^\nError: Unbound module Runner\n"
+  },
+  {
+    "program": "rbtree",
+    "variant": "koka",
+    "build_ok": false,
+    "error": "`koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/target/koka/rbtree/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/target/koka/rbtree/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/rbtree/koka/main.kk` exited 1:\nbench/programs/rbtree/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)\n  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/rbtree/koka\n               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports\n               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib\n\nFailed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/rbtree/koka/main.kk\n"
+  },
+  {
+    "program": "shapes",
+    "variant": "ocaml",
+    "build_ok": false,
+    "error": "`ocamlopt -o main main.ml` exited 2:\nFile \"main.ml\", line 1, characters 9-15:\n1 | let () = Runner.main Kernels.shapes 100000\n             ^^^^^^\nError: Unbound module Runner\n"
+  },
+  {
+    "program": "shapes",
+    "variant": "koka",
+    "build_ok": false,
+    "error": "`koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/target/koka/shapes/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/target/koka/shapes/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/shapes/koka/main.kk` exited 1:\nbench/programs/shapes/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)\n  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/shapes/koka\n               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports\n               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib\n\nFailed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/shapes/koka/main.kk\n"
+  }
+]

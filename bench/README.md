@@ -56,8 +56,32 @@ machines with the same configuration can share the id.
 |---|---|---|
 | `rust` | `rust/Cargo.toml`, a package with a binary named `main` | `cargo build --locked --profile checked` (matched lane; the package defines `[profile.checked]` inheriting `release` with `overflow-checks = true`) or `--profile release` (idiomatic), target dir `target/rust/<name>` |
 | `go` | `go/main.go` (+ `go.mod` if wanted) | `go build -o target/go/<name>/main .` in `go/` |
-| `ocaml` | `ocaml/main.ml`, stdlib only | `ocamlopt -o main main.ml` in a scratch copy (`-O3` when the compiler has flambda) |
-| `koka` | `koka/main.kk` | `koka -O2 --outputdir=… -o target/koka/<name>/main koka/main.kk` |
+| `ocaml` | `ocaml/main.ml` + `_shared/ocaml/{runner,kernels}.ml` | Copy all three modules to `target/ocaml/<name>`, then `ocamlopt -I +unix unix.cmxa runner.ml kernels.ml main.ml -o main` (`-O3` when the compiler has flambda) |
+| `koka` | `koka/main.kk` + `_shared/koka/{runner,kernels}.kk` | From the entry's `koka/` directory: `koka -O2 --target=c --stack=67108864 --include=<absolute-shared-koka-dir> --builddir=<absolute-target/koka/name/build> -o <absolute-target/koka/name/main> main.kk` |
+
+OCaml's runner uses the bundled Unix library; no opam package or special switch is
+needed with the pinned compiler. Copying shared sources keeps `.cmi`, `.cmx` and `.o`
+files out of `programs/`. Koka resolves shared imports through `--include`; compiling
+`main.kk` from its own directory avoids interpreting underscores in parent module
+paths as separators. Both builders use separate output directories per program.
+The Koka C build uses the independent verifier's 64 MiB stack setting and default
+reuse mode; the separate no-reuse panel remains available through
+`python3 bench/programs/_shared/python/verify.py --language koka --reuse no-reuse`.
+No toolchain pins or workload definitions changed for this integration fix.
+
+To check the full native panel at the two smallest timing sizes (all oracle sizes
+are still checked):
+
+```sh
+bench/bench run --suite native --lane matched --sizes quick --processes 1 --json bench/target/native-quick.json
+python3 -m unittest discover -s bench/harness
+```
+
+The tests compile and execute an OCaml and Koka shared-module port when their
+compilers are on `PATH`; those two integration tests explicitly skip if unavailable.
+One process per cell is a correctness smoke test; timings on a loaded host are advisory.
+The [native integration validation](../research/10-evidence/ws-a/nativeports-validation.md)
+records the original failures, controlled probes and full-run results.
 
 ## Program interface
 

@@ -115,8 +115,13 @@ def build_go(p, _lane):
 def build_ocaml(p, _lane):
     d = TARGET / "ocaml" / p
     d.mkdir(parents=True, exist_ok=True)
-    shutil.copy(PROGRAMS / p / "ocaml" / "main.ml", d / "main.ml")  # ocamlopt writes next to its source
-    sh(["ocamlopt", "-O3", "-o", "main", "main.ml"] if ocaml_flambda() else ["ocamlopt", "-o", "main", "main.ml"], cwd=d)
+    # ocamlopt writes intermediates next to its sources; keep shared modules in scratch too.
+    for name in ("runner.ml", "kernels.ml"):
+        shutil.copy(PROGRAMS / "_shared" / "ocaml" / name, d / name)
+    shutil.copy(PROGRAMS / p / "ocaml" / "main.ml", d / "main.ml")
+    flags = ["-O3"] if ocaml_flambda() else []
+    sh(["ocamlopt", *flags, "-I", "+unix", "unix.cmxa", "runner.ml", "kernels.ml",
+        "main.ml", "-o", "main"], cwd=d)
     return d / "main"
 
 
@@ -127,7 +132,11 @@ def ocaml_flambda():
 
 def build_koka(p, _lane):
     d = TARGET / "koka" / p
-    sh(["koka", "-O2", f"--outputdir={d / 'build'}", "-o", str(d / "main"), str(PROGRAMS / p / "koka" / "main.kk")])
+    d.mkdir(parents=True, exist_ok=True)
+    # Compile from the entry directory: Koka treats underscores in module paths as '/'.
+    sh(["koka", "-O2", "--target=c", "--stack=67108864", f"--builddir={d / 'build'}",
+        f"--include={PROGRAMS / '_shared' / 'koka'}", "-o", str(d / "main"), "main.kk"],
+       cwd=PROGRAMS / p / "koka")
     return d / "main"
 
 

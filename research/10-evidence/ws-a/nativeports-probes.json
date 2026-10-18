@@ -1,0 +1,48 @@
+[
+  {
+    "name": "ocaml-shared-without-unix",
+    "command": [
+      "ocamlopt",
+      "-o",
+      "main",
+      "runner.ml",
+      "kernels.ml",
+      "main.ml"
+    ],
+    "cwd": "/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/target/nativeports-validation/probes/ocaml",
+    "exit": 2,
+    "output": "File \"runner.ml\", line 1:\nAlert ocaml_deprecated_auto_include: \nOCaml's lib directory layout changed in 5.0. The unix subdirectory has been\nautomatically added to the search path, but you should add -I +unix to the\ncommand-line to silence this alert (e.g. by adding unix to the list of\nlibraries in your dune file, or adding use_unix to your _tags file for\nocamlbuild, or using -package unix for ocamlfind).\n\nFile \"main.ml\", line 1:\nError: No implementation provided for the following modules:\n         Unix referenced from Runner (runner.cmx)\n"
+  },
+  {
+    "name": "ocaml-shared-with-unix",
+    "command": [
+      "ocamlopt",
+      "-I",
+      "+unix",
+      "unix.cmxa",
+      "-o",
+      "main",
+      "runner.ml",
+      "kernels.ml",
+      "main.ml"
+    ],
+    "cwd": "/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/target/nativeports-validation/probes/ocaml",
+    "exit": 0,
+    "output": ""
+  },
+  {
+    "name": "koka-shared-only-original-cwd-and-outputdir",
+    "command": [
+      "koka",
+      "-O2",
+      "--outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/target/nativeports-validation/probes/koka/build",
+      "--include=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/_shared/koka",
+      "-o",
+      "/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/target/nativeports-validation/probes/koka/main",
+      "/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/binary_trees/koka/main.kk"
+    ],
+    "cwd": "/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports",
+    "exit": 1,
+    "output": "load    : std/core from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_core.kki\nload    : std/core/types from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_core_types.kki\nload    : std/core/char from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_core_char.kki\nload    : std/core/undiv from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_core_undiv.kki\nload    : std/core/unsafe from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_core_unsafe.kki\nload    : std/core/hnd from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_core_hnd.kki\nload    : std/core/exn from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_core_exn.kki\nload    : std/core/bool from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_core_bool.kki\nload    : std/core/vector from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_core_vector.kki\nload    : std/core/bytes from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_core_bytes.kki\nload    : std/core/int from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_core_int.kki\nload    : std/core/bslice from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_core_bslice.kki\nload    : std/core/string from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_core_string.kki\nload    : std/core/order from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_core_order.kki\nload    : std/core/sslice from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_core_sslice.kki\nload    : std/core/list from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_core_list.kki\nload    : std/core/maybe from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_core_maybe.kki\nload    : std/core/result from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_core_result.kki\nload    : std/core/tuple from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_core_tuple.kki\nload    : std/core/either from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_core_either.kki\nload    : std/core/lazy from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_core_lazy.kki\nload    : std/core/debug from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_core_debug.kki\nload    : std/core/show from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_core_show.kki\nload    : std/core/delayed from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_core_delayed.kki\nload    : std/os/env from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_os_env.kki\nload    : std/time/timer from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_time_timer.kki\nload    : std/time/duration from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_time_duration.kki\nload    : std/num/float64 from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_num_float64.kki\nload    : std/core/console from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_core_console.kki\nload    : std/core/maybe2 from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_core_maybe2.kki\nload    : std/os/path from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_os_path.kki\nload    : std/num/ddouble from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_num_ddouble.kki\nload    : std/time/timestamp from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_time_timestamp.kki\nload    : std/time/instant from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_time_instant.kki\nload    : std/num/int32 from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_num_int32.kki\nload    : std/num/int64 from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_num_int64.kki\nload    : std/text/parse from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_text_parse.kki\nload    : std/time/date from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_time_date.kki\nload    : std/num/decimal from: /opt/homebrew/Cellar/koka/3.2.9/lib/koka/v3.2.9/clang-drelease/std_num_decimal.kki\nparse   : .../kernels.kk\nparse   : .../runner.kk\nparse   : .../bench/programs/binary_trees/koka/main.kk\ncheck   : runner\ncheck   : kernels\ncheck   : bench/programs/binary_trees/koka/main\n/@virtual/bench/programs/binary_trees/koka/main/@main.kk(1,14): build error: could not find module: bench/programs/binary/trees/koka/main (imported from bench/programs/binary_trees/koka/main/@main)\n  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports\n               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib\n               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/_shared/koka\n\nvfs: [\"/@virtual/bench/programs/binary_trees/koka/main/@main.kk\"]\nFailed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/binary_trees/koka/main.kk\n"
+  }
+]

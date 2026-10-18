@@ -9,6 +9,10 @@ published yet.
 
 ### Fixed
 
+- Native benchmark builds include the OCaml shared modules and Unix library and
+  resolve Koka shared imports from the entry directory, matching the independent
+  verifier's C build configuration without changing port algorithms or toolchain pins.
+
 - Benchmark nbody uses persistent `List.set`, and the countdown hand-JS control
   checks arithmetic overflow in source operation order (§17.150). Checksums are
   unchanged; pre-change ratios are excluded across these definition boundaries.

@@ -1,0 +1,18 @@
+{
+  "bench/harness/bench.py": {
+    "git_blob": "670a993afd539afea333cb294d17a87e5c18e58b",
+    "sha256": "706abc5f24992b99d06fb678704fc6b35b9d7857d34e4071da0ce54d9a955ca2"
+  },
+  "bench/harness/test_bench.py": {
+    "git_blob": "41a224da40304adccea2135c2f4d99f4429fa3c2",
+    "sha256": "f68a1bd5f82336e726a834b24fe831817601824e27a17f3c6712b8736d51aaa3"
+  },
+  "bench/programs/_shared/python/verify.py": {
+    "git_blob": "ba1db7c0ae4b7f019176657718a2c9ba0195cde0",
+    "sha256": "77a7a61295019afc4b32943d53e9c0a755a22a382231b90c43ca6dfdb42082d6"
+  },
+  "bench/toolchains.toml": {
+    "git_blob": "f5fe3df06356ef1a447a69e10bdf7c43eb041d9e",
+    "sha256": "45f5e66c87d37abb80f6aa2c2080f2eeb4f425b6c36b28e99f5818f3a93cadbc"
+  }
+}

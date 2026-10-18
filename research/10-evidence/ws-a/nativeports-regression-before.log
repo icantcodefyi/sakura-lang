@@ -1,0 +1,47 @@
+EE
+======================================================================
+ERROR: test_koka_shared_port_with_underscore_builds_and_runs (test_bench.NativeBuilds.test_koka_shared_port_with_underscore_builds_and_runs)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/harness/test_bench.py", line 355, in test_koka_shared_port_with_underscore_builds_and_runs
+    self.check_port("koka", bench.build_koka)
+  File "/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/harness/test_bench.py", line 342, in check_port
+    exe = builder("binary_trees", "matched")
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/harness/bench.py", line 130, in build_koka
+    sh(["koka", "-O2", f"--outputdir={d / 'build'}", "-o", str(d / "main"), str(PROGRAMS / p / "koka" / "main.kk")])
+  File "/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/harness/bench.py", line 53, in sh
+    raise Fail(f"`{' '.join(map(str, cmd))}` exited {r.returncode}:\n{(r.stdout + r.stderr)[-3000:]}")
+bench.Fail: `koka -O2 --outputdir=/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/target/native_build_07zzaqxk/koka/binary_trees/build -o /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/target/native_build_07zzaqxk/koka/binary_trees/main /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/binary_trees/koka/main.kk` exited 1:
+bench/programs/binary_trees/koka/main.kk(1, 8): build error: could not find module: kernels (imported from main)
+  search path: /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/binary_trees/koka
+               /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports
+               /opt/homebrew/Cellar/koka/3.2.9/share/koka/v3.2.9/lib
+
+Failed to compile /Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/programs/binary_trees/koka/main.kk
+
+
+======================================================================
+ERROR: test_ocaml_shared_port_builds_and_runs (test_bench.NativeBuilds.test_ocaml_shared_port_builds_and_runs)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/harness/test_bench.py", line 351, in test_ocaml_shared_port_builds_and_runs
+    self.check_port("ocaml", bench.build_ocaml)
+  File "/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/harness/test_bench.py", line 342, in check_port
+    exe = builder("binary_trees", "matched")
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/harness/bench.py", line 119, in build_ocaml
+    sh(["ocamlopt", "-O3", "-o", "main", "main.ml"] if ocaml_flambda() else ["ocamlopt", "-o", "main", "main.ml"], cwd=d)
+  File "/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/nativeports/bench/harness/bench.py", line 53, in sh
+    raise Fail(f"`{' '.join(map(str, cmd))}` exited {r.returncode}:\n{(r.stdout + r.stderr)[-3000:]}")
+bench.Fail: `ocamlopt -o main main.ml` exited 2:
+File "main.ml", line 1, characters 9-15:
+1 | let () = Runner.main Kernels.binary_trees 14
+             ^^^^^^
+Error: Unbound module Runner
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.272s
+
+FAILED (errors=2)

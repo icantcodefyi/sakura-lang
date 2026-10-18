@@ -333,6 +333,28 @@ class NativeProtocol(unittest.TestCase):
             bench.oracle("fib", m, "rust", "native", exe)
 
 
+class NativeBuilds(unittest.TestCase):
+    def check_port(self, variant, builder):
+        # Real shared modules, linking and module resolution; no mocked compiler command.
+        bench.TARGET.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix="native_build_", dir=bench.TARGET) as tmp:
+            with patch.object(bench, "TARGET", Path(tmp)):
+                exe = builder("binary_trees", "matched")
+                bench.oracle("binary_trees", bench.meta("binary_trees"), variant, "native", exe)
+                samples, checksum, _rss = bench.measure(variant, "native", exe, 8, False)
+                self.assertEqual(len(samples), 9)
+                self.assertEqual(checksum, bench.meta("binary_trees")["checksums"]["8"])
+                self.assertTrue(all(0 <= ms < float("inf") for ms in samples))
+
+    @unittest.skipUnless(shutil.which("ocamlopt"), "OCaml toolchain unavailable")
+    def test_ocaml_shared_port_builds_and_runs(self):
+        self.check_port("ocaml", bench.build_ocaml)
+
+    @unittest.skipUnless(shutil.which("koka"), "Koka toolchain unavailable")
+    def test_koka_shared_port_with_underscore_builds_and_runs(self):
+        self.check_port("koka", bench.build_koka)
+
+
 class Oracle(unittest.TestCase):
     def test_wrong_checksum_is_refused_and_not_timed(self):
         tmp = Path(tempfile.mkdtemp())

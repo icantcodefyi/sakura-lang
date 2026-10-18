@@ -1,0 +1,220 @@
+[oracle] binary_trees rust/native
+[oracle] binary_trees go/native
+[oracle] binary_trees ocaml/native
+[oracle] binary_trees koka/native
+[oracle] contracts rust/native
+[oracle] contracts go/native
+[oracle] contracts_plain rust/native
+[oracle] contracts_plain go/native
+[oracle] countdown rust/native
+[oracle] countdown go/native
+[oracle] deltablue rust/native
+[oracle] deltablue go/native
+[oracle] fib rust/native
+[oracle] fib go/native
+[oracle] handled_d1 rust/native
+[oracle] handled_d1 go/native
+[oracle] handled_d1 koka/native
+[oracle] handled_d16 rust/native
+[oracle] handled_d16 go/native
+[oracle] handled_d16 koka/native
+[oracle] handled_d4 rust/native
+[oracle] handled_d4 go/native
+[oracle] handled_d4 koka/native
+[oracle] handled_fwd rust/native
+[oracle] handled_fwd go/native
+[oracle] handled_fwd koka/native
+[oracle] handled_reentry rust/native
+[oracle] handled_reentry go/native
+[oracle] handled_reentry koka/native
+[oracle] handled_suspend rust/native
+[oracle] handled_suspend go/native
+[oracle] handled_suspend koka/native
+[oracle] json_validate rust/native
+[oracle] json_validate go/native
+[oracle] map_set rust/native
+[oracle] map_set go/native
+[oracle] map_set ocaml/native
+[oracle] map_set koka/native
+[oracle] nbody rust/native
+[oracle] nbody go/native
+[oracle] pipeline rust/native
+[oracle] pipeline go/native
+[oracle] pipeline ocaml/native
+[oracle] pipeline koka/native
+[oracle] rbtree rust/native
+[oracle] rbtree go/native
+[oracle] rbtree ocaml/native
+[oracle] rbtree koka/native
+[oracle] shapes rust/native
+[oracle] shapes go/native
+[oracle] shapes ocaml/native
+[oracle] shapes koka/native
+[oracle] sieve rust/native
+[oracle] sieve go/native
+[oracle] spectral_norm rust/native
+[oracle] spectral_norm go/native
+[oracle] tokenizer rust/native
+[oracle] tokenizer go/native
+[1/116] handled_d4 koka/native n=1000
+[2/116] spectral_norm go/native n=100
+[3/116] deltablue go/native n=100
+[4/116] deltablue rust/native n=100
+[5/116] handled_fwd go/native n=1000
+[6/116] shapes rust/native n=1000
+[7/116] rbtree koka/native n=10000
+[8/116] countdown rust/native n=10000
+[9/116] handled_d16 koka/native n=10000
+[10/116] handled_fwd koka/native n=10000
+[11/116] binary_trees go/native n=10
+[12/116] contracts_plain go/native n=10000
+[13/116] fib go/native n=20
+[14/116] nbody go/native n=1000
+[15/116] rbtree rust/native n=1000
+[16/116] handled_d16 koka/native n=1000
+[17/116] pipeline go/native n=10000
+[18/116] handled_suspend go/native n=1000
+[19/116] handled_suspend koka/native n=10000
+[20/116] map_set koka/native n=1000
+[21/116] sieve go/native n=1000
+[22/116] tokenizer rust/native n=1000
+[23/116] handled_reentry koka/native n=1000
+[24/116] rbtree ocaml/native n=1000
+[25/116] rbtree koka/native n=1000
+[26/116] pipeline koka/native n=1000
+[27/116] handled_fwd go/native n=10000
+[28/116] handled_d4 rust/native n=1000
+[29/116] map_set rust/native n=1000
+[30/116] countdown go/native n=1000
+[31/116] fib rust/native n=20
+[32/116] handled_d4 rust/native n=10000
+[33/116] nbody rust/native n=1000
+[34/116] pipeline koka/native n=10000
+[35/116] handled_d16 rust/native n=10000
+[36/116] shapes go/native n=1000
+[37/116] shapes koka/native n=1000
+[38/116] binary_trees go/native n=8
+[39/116] handled_fwd koka/native n=1000
+[40/116] tokenizer rust/native n=10000
+[41/116] countdown go/native n=10000
+[42/116] json_validate go/native n=100
+[43/116] handled_reentry go/native n=1000
+[44/116] pipeline go/native n=1000
+[45/116] handled_reentry rust/native n=1000
+[46/116] handled_fwd rust/native n=1000
+[47/116] pipeline rust/native n=1000
+[48/116] pipeline ocaml/native n=1000
+[49/116] handled_d16 go/native n=1000
+[50/116] handled_suspend rust/native n=10000
+[51/116] handled_d4 koka/native n=10000
+[52/116] handled_suspend go/native n=10000
+[53/116] binary_trees rust/native n=10
+[54/116] json_validate go/native n=1000
+[55/116] handled_d1 koka/native n=10000
+[56/116] pipeline ocaml/native n=10000
+[57/116] handled_reentry go/native n=10000
+[58/116] handled_reentry rust/native n=10000
+[59/116] tokenizer go/native n=1000
+[60/116] handled_d1 go/native n=10000
+[61/116] shapes rust/native n=10000
+[62/116] handled_fwd rust/native n=10000
+[63/116] handled_reentry koka/native n=10000
+[64/116] handled_d1 rust/native n=10000
+[65/116] tokenizer go/native n=10000
+[66/116] contracts go/native n=1000
+[67/116] shapes koka/native n=10000
+[68/116] rbtree go/native n=10000
+[69/116] handled_d16 go/native n=10000
+[70/116] rbtree go/native n=1000
+[71/116] handled_d4 go/native n=10000
+[72/116] binary_trees ocaml/native n=8
+[73/116] map_set ocaml/native n=1000
+[74/116] binary_trees ocaml/native n=10
+[75/116] contracts go/native n=10000
+[76/116] deltablue rust/native n=1000
+[77/116] contracts_plain rust/native n=10000
+[78/116] map_set go/native n=10000
+[79/116] rbtree rust/native n=10000
+[80/116] binary_trees rust/native n=8
+[81/116] handled_suspend koka/native n=1000
+[82/116] contracts_plain rust/native n=1000
+[83/116] spectral_norm go/native n=50
+[84/116] spectral_norm rust/native n=50
+[85/116] map_set go/native n=1000
+[86/116] fib go/native n=24
+[87/116] nbody rust/native n=5000
+[88/116] sieve rust/native n=1000
+[89/116] map_set koka/native n=10000
+[90/116] contracts rust/native n=10000
+[91/116] sieve rust/native n=10000
+[92/116] pipeline rust/native n=10000
+[93/116] countdown rust/native n=1000
+[94/116] handled_d1 go/native n=1000
+[95/116] binary_trees koka/native n=8
+[96/116] json_validate rust/native n=1000
+[97/116] sieve go/native n=10000
+[98/116] rbtree ocaml/native n=10000
+[99/116] deltablue go/native n=1000
+[100/116] map_set ocaml/native n=10000
+[101/116] handled_d1 koka/native n=1000
+[102/116] handled_d16 rust/native n=1000
+[103/116] nbody go/native n=5000
+[104/116] binary_trees koka/native n=10
+[105/116] handled_d1 rust/native n=1000
+[106/116] contracts_plain go/native n=1000
+[107/116] shapes ocaml/native n=10000
+[108/116] map_set rust/native n=10000
+[109/116] json_validate rust/native n=100
+[110/116] handled_suspend rust/native n=1000
+[111/116] contracts rust/native n=1000
+[112/116] shapes go/native n=10000
+[113/116] handled_d4 go/native n=1000
+[114/116] fib rust/native n=24
+[115/116] shapes ocaml/native n=1000
+[116/116] spectral_norm rust/native n=100
+[load] not quiet: one-minute load 23.89 > 3; busy: node, rustc, sakura
+wrote bench/target/nativeports-validation/native-after.json
+| Program | n | go/native ms | koka/native ms | ocaml/native ms | rust/native ms |
+|---|---:|---:|---:|---:|---:|
+| binary_trees | 8 | 0.4193 | 0.1319 | 0.05747 | 1.161 |
+| binary_trees | 10 | 0.9933 | 0.6283 | 0.3046 | 2.483 |
+| contracts | 1000 | 0.0009957 | — | — | 0.0003278 |
+| contracts | 10000 | 0.009536 | — | — | 0.003048 |
+| contracts_plain | 1000 | 0.0006293 | — | — | 0.0007186 |
+| contracts_plain | 10000 | 0.006312 | — | — | 0.002906 |
+| countdown | 1000 | 0.0005708 | — | — | 0.0002589 |
+| countdown | 10000 | 0.01359 | — | — | 0.002564 |
+| deltablue | 100 | 0.09771 | — | — | 0.0723 |
+| deltablue | 1000 | 2.351 | — | — | 0.8865 |
+| fib | 20 | 0.01462 | — | — | 0.02829 |
+| fib | 24 | 0.1019 | — | — | 0.3068 |
+| handled_d1 | 1000 | 0.001224 | 0.005826 | — | 0.0004747 |
+| handled_d1 | 10000 | 0.01215 | 0.05325 | — | 0.007611 |
+| handled_d16 | 1000 | 0.00324 | 0.006184 | — | 0.0005857 |
+| handled_d16 | 10000 | 0.0131 | 0.05959 | — | 0.0106 |
+| handled_d4 | 1000 | 0.001754 | 0.005604 | — | 0.0008935 |
+| handled_d4 | 10000 | 0.01237 | 0.05206 | — | 0.00907 |
+| handled_fwd | 1000 | 0.001327 | 0.02281 | — | 0.001244 |
+| handled_fwd | 10000 | 0.01733 | 0.08248 | — | 0.004688 |
+| handled_reentry | 1000 | 0.004574 | 0.007323 | — | 0.0006373 |
+| handled_reentry | 10000 | 0.01947 | 0.1672 | — | 0.005956 |
+| handled_suspend | 1000 | 0.0007929 | 0.02251 | — | 0.0005406 |
+| handled_suspend | 10000 | 0.0075 | 0.08456 | — | 0.00919 |
+| json_validate | 100 | 0.1937 | — | — | 0.03778 |
+| json_validate | 1000 | 1.133 | — | — | 0.3794 |
+| map_set | 1000 | 0.4234 | 2.523 | 0.9025 | 0.932 |
+| map_set | 10000 | 6.025 | 34.08 | 28.17 | 4.225 |
+| nbody | 1000 | 0.03506 | — | — | 0.1007 |
+| nbody | 5000 | 0.3335 | — | — | 0.1959 |
+| pipeline | 1000 | 0.008756 | 0.01636 | 0.008015 | 0.00253 |
+| pipeline | 10000 | 0.0327 | 0.3114 | 0.1091 | 0.01491 |
+| rbtree | 1000 | 0.6469 | 0.1177 | 0.03577 | 0.2773 |
+| rbtree | 10000 | 9.667 | 2.362 | 6.618 | 4.901 |
+| shapes | 1000 | 0.2222 | 0.708 | 0.1573 | 0.01896 |
+| shapes | 10000 | 1.416 | 3.238 | 2.944 | 0.3643 |
+| sieve | 1000 | 0.00131 | — | — | 0.0008194 |
+| sieve | 10000 | 0.01031 | — | — | 0.008406 |
+| spectral_norm | 50 | 0.1232 | — | — | 0.07533 |
+| spectral_norm | 100 | 0.3814 | — | — | 0.3059 |
+| tokenizer | 1000 | 0.2887 | — | — | 0.1622 |
+| tokenizer | 10000 | 60.32 | — | — | 19.93 |
