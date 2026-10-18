@@ -69,4 +69,49 @@ scheduled beside W2 as the first agent-DX items, DX5's runner and DX6's workflow
 
 ## 4. Deviations recorded during implementation
 
-(none yet; append per workstream as `performance-r1.md` §8 does)
+### DX0 (Opus, `compiler_info`)
+
+1. `sakura_mcp::Config` gains `backends` (the CLI passes `TARGETS`, the same constant its
+   `--target` flags accept) and `solver_status` (the CLI's `verify::solver_status`).
+   `features.verify` is `true` whenever the binary has `sakura verify`; the solver status is a
+   separate `features.solver` object: `name` (`z3`), `pinned` (`5.3.1`), `available`, and
+   `version` + `path` when the pinned Z3 is on `PATH`, else `detail` (the reason `sakura verify`
+   would give). It is probed on each `compiler_info` call (one `z3 --version`).
+2. `tests/mcp.rs` reads the `--target` values from `sakura build --help` and compares them with
+   `features.backends`, and compares `features.solver.available` with its own `z3 --version`.
+
+### DX1 (Opus, generator and harness)
+
+1. **Fence convention.** A Sakura fence's info string is `sakura <mode> id=<fixture-id>`, mode
+   `check`, `test`, `run`, `hole-step`, `wrong:<code>` or `fragment` (no `id` needed). Other
+   fences need a language; `json` and `toml` bodies must parse; a bare fence fails.
+   Expectations live beside the harness in `compiler/tests/agent_docs/`: `<id>.stdout` (`run`),
+   `<id>.span` (the text under a `wrong` sample's primary span) and `<id>.fixed.sakura` (a fix
+   that is not itself a fence; otherwise the fix is the fence with the same `id`). Unused files
+   there fail the test; `SAKURA_BLESS=1` writes `.stdout`/`.span`. The header of
+   `sakura_cli/tests/agent_docs.rs` is the reference.
+2. **`references/stdlib.md` is byte-equal to `compiler/std/INDEX.md`.** The generator rewrites
+   only INDEX's "Signatures" section (between two `agent_docs` comment markers) from the
+   analysis's symbol records over the embedded std (`std_sources()`, the records `sakura doc`
+   prints): modules in path order, public items in source order, contracts and attribute names
+   (`// @external, @total`). The prelude, conventions, dependency and deviation sections stay
+   authored. Compared with the hand listing it adds `std/http`'s `type Body` and
+   `read_chunk`'s `requires`, renders rows in the checker's order (`{Budget, Http}`) and drops
+   the free-text notes (`List.set`'s complexity); a task-oriented index is not generated (the
+   authored prelude/conventions sections serve it until Astra asks for more).
+3. **Commit fill.** `skill_bundle()` in `sakura_cli/src/main.rs` rewrites `SKILL.md`'s
+   `sakura-compiler-version` (crate version) and `sakura-compiler-git` (`SAKURA_GIT_COMMIT` at
+   build time, as `manifest.json` already does; `unknown` in a local build) inside the
+   frontmatter. No `sakura` command writes the bundle until DX2's `setup`
+   (`expect(dead_code)` marks it); a unit test pins it to the source tree.
+4. **The harness found a broken sample**: `docs/llms.txt`'s syntax screen failed `V3001` (`main`
+   lacked `Fail<UserError>`) and declared a `Sql` it never performed (`sakura test` then fails
+   `V9002`). Its `main` row is now `{Console, Log, Fail<UserError>}`, the fence is
+   `sakura test id=llms-syntax-screen` and the std listing fence is `text`.
+5. Fixture projects have an empty `[permissions]` and no cassettes; a sample that needs either
+   gets a sidecar when it exists. ZIP, checksum, mirror and `manifest.json` checks join
+   `agent_docs.rs` with Sol's mirror. Astra's `SKILL.md` used `sakura id=X mode=test`; its four
+   fences were rewritten to `sakura test id=X` (her entry asked for a mechanical adaptation), and
+   her `@SAKURA_COMPILER_VERSION@`/`@SAKURA_COMPILER_GIT@` placeholders stay in the source.
+6. `cargo test --workspace` also fails on stale outputs (`agent_docs`'s `outputs_are_fresh`),
+   beside the CI step `cargo run -p agent_docs --locked -- --check`.
