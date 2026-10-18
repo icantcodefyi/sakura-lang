@@ -149,6 +149,9 @@ published yet.
   accepted and refused until the `Option` niche layout lands.
 - `sakura build --dump core` prints the user modules' Core, with each `Int` operation the JS
   backend's interval pass proves marked `proved` (design §17.114).
+- `sakura build --dump owned` lists each collection update as `owned` (in place) or
+  `shared(<reason>)` with reasons `origin`, `borrowed-after`, `captured`, `stored`,
+  `escapes-call <name>` and `join`; `--dump core` marks owned updates (design §17.149).
 - `sakura verify [--json] [--target js|wasm] [--rlimit N] [--solver PATH]` discharges
   contract, overflow and division obligations with Z3 5.3.1 (`proved`, `disproved` with a
   counterexample replayed through the evaluator, `unknown`, `unsupported`, and `W7002` for a
@@ -229,6 +232,12 @@ published yet.
   `for` over a list reads each leaf of the vector once, `for` over a `Map` or `Set` copies
   nothing, and string splitting and map inserts allocate less. `String.len` is documented as
   O(n) on JS: compute it once outside a loop.
+- `List.set`, `List.push`, `Map.insert`, `Map.remove` and `Set.insert` update a collection
+  in place when the compiler proves no other reference to it exists (design §17.149): built
+  from a literal, a fresh constructor, an empty collection or an earlier such update, and only
+  read (`len`, `get`, `contains`) before it is replaced. `sieve` no longer copies a trie path
+  per write. Every other update stays persistent, so results are unchanged. The WASM runtime
+  writes any path node with a reference count of one in place.
 
 ### Fixed
 
