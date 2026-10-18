@@ -954,8 +954,8 @@ test "replays" {{
     );
 }
 
-/// `sakura build --dump direct` (design §17.111) on research/10's kernels: `fib` stays
-/// `cps(recursion)` until §17.112, the higher-order `list_map_fold` and its lambdas are direct.
+/// `sakura build --dump direct` (design §17.111) on research/10's kernels: the recursive `fib`
+/// (§17.112), the higher-order `list_map_fold` and its lambdas are direct.
 #[test]
 fn dump_direct_lists_every_def_with_its_reason() {
     let micro = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../research/10-evidence");

@@ -1,6 +1,6 @@
 main::micro::main cps(row)
 main::micro::$entry cps(with)
-main::micro::fib cps(recursion)
+main::micro::fib direct
 main::micro::tail_sum direct
 main::micro::loop_sum direct
 main::micro::list_map_fold direct

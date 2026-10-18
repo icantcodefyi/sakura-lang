@@ -42,9 +42,9 @@ direct ABI).
 A def (top-level function, constant, lambda or clause) is **direct** when its row is `{}` or
 only row variables of its function-typed parameters, its body has no `Perform`, `Handle`, `Try`
 or `Fail`, every call is of a direct def, a `Direct` builtin, a function-typed parameter or a
-local bound to a closure of a direct def, and it is not recursive (a cycle of such calls,
-closures included, stays CPS until §17.112). It is also emitted as a plain function
-`f$d(captures…, a1, …, an) → value` that may throw a defect and nothing else.
+local bound to a closure of a direct def. It is also emitted as a plain function
+`f$d(captures…, a1, …, an) → value` that may throw a defect and nothing else. Recursion is
+below.
 `sakura build --dump direct` prints the verdict per def (`direct` or `cps(<reason>)`);
 `--no-direct` (hidden) emits no twins, so the semantics suite runs every fixture under both
 ABIs and compares their effect traces.
@@ -62,6 +62,27 @@ ABIs and compares their effect traces.
   statically twinned (a direct first-order def or a closure-bound local of one); otherwise it
   makes the CPS call and the entry test decides.
 
+**Recursion (design §17.112).** A strongly connected component of these calls (passed function
+values included) is direct when every member is a first-order, non-constant def and no member
+passes a member's function value; otherwise every member stays CPS (`cps(recursion)`). A
+recursive twin counts its frames on the shared gauge:
+
+```js
+function f$d(n) {
+  if ($G.d >= $L) return $rt.runSync(f, [n]);   // the deep remainder, on the heap
+  ++$G.d;
+  …
+  --$G.d; return v;                              // on every return
+}
+```
+
+So the first `LIMIT` frames (fewer when CPS hops already fill the gauge) run on the JS stack.
+The CPS name `f` of a recursive def is its CPS body, not an adapter, and that body calls every
+recursive direct def through its CPS body, so code under `runSync` re-enters no twin of its own
+component: a nested `runSync` starts only through a non-recursive twin calling a recursive def
+lower in the component graph, and nesting is bounded by that graph's depth. A defect unwinds
+through the twins; the gauge is restored by `runSync` and by the driver (`runTask`).
+
 No runtime builtin both takes a callback and can be reached from pure Sakura code (std's
 `map`/`filter`/`fold`/… are Sakura defs with twins; the remaining callback builtins perform),
 so none has a twin.
@@ -73,8 +94,8 @@ function are emitted as labelled blocks and `for (;;)` loops in both ABIs, so ta
 
 Measured (node 26, `cargo test -p sakura_codegen_js --test source bench -- --ignored`, wall
 time including ~40 ms startup): a pure helper called 10M times from a loop, 204 ms CPS vs
-106 ms direct; a 30M-iteration tail loop, 125 ms either way (it is a JS loop in both); `fib 27`
-(non-tail recursion stays CPS), 100 ms.
+106 ms direct; a 30M-iteration tail loop, 125 ms either way (it is a JS loop in both). For
+non-tail recursion see `bench/` (`fib`, `binary_trees`).
 
 ## 2. Context
 
@@ -173,6 +194,11 @@ caller. `std/test`'s `expect_defect` is built on it.
 
 - `$rt.runTask(f, args = [], frames = null)` runs `f(...args, $ctx, $k)` to completion and
   returns its outcome, or a `Promise` of it if the task suspended.
+- `$rt.runSync(f, args)` (design §17.112) runs the CPS body `f(...args, null, k)` of a
+  recursive direct def on the current JS stack under its own trampoline (the gauge starts at 0
+  and each `Bounce` resets it to 0), returns the value, lets defects propagate and restores the
+  gauge in `finally`. A suspension inside it is `D090`; pure code performs nothing, so none
+  occurs.
 - Tests: `__tests__.js` exports `tests = [{ name, module, run }]` (source order; `run` is a
   CPS function of the seed that installs the deterministic defaults of design §5.8 and runs the
   body) and `effects = { effectId: [opName, …] }`

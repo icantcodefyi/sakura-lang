@@ -431,6 +431,14 @@ impl<'a> FnEmit<'a> {
                     params.join(", ")
                 ));
                 w.depth += 1;
+                if self.cx.direct.recursive(self.id) {
+                    // The first `LIMIT` frames run here; the rest on the heap (design §17.112).
+                    w.line(&format!(
+                        "if ($G.d >= $L) return $rt.runSync({body_name}, [{}]);",
+                        params.join(", ")
+                    ));
+                    w.line("++$G.d;");
+                }
                 if !site.is_empty() {
                     w.line(site);
                 }
@@ -448,7 +456,7 @@ impl<'a> FnEmit<'a> {
                     w.line("}");
                 }
             }
-            Mode::Cps if self.cx.direct.direct(self.id) => {
+            Mode::Cps if self.cx.direct.direct(self.id) && !self.cx.direct.recursive(self.id) => {
                 if constant {
                     w.line(&format!("let {name}$once = false, {name}$value;"));
                 }
@@ -499,6 +507,11 @@ impl<'a> FnEmit<'a> {
                 self.expr(w, &d.body, "$ctx");
                 w.depth -= 1;
                 w.line("}");
+                // A recursive direct def keeps its CPS body as the entry, so `runSync` and
+                // values called from CPS code never re-enter the twin (design §17.112).
+                if self.cx.direct.exposes(self.id) && d.captures.is_empty() {
+                    w.line(&format!("{name}.$d = {name}$d;"));
+                }
                 if constant {
                     w.line(&format!("let {name}$once = false, {name}$value;"));
                     w.line(&format!("{export}function {name}($ctx, $k) {{"));
@@ -621,6 +634,17 @@ impl<'a> FnEmit<'a> {
     fn is_cps(&self, b: &Bind) -> bool {
         match b {
             Bind::Perform(..) => true,
+            // The CPS body of a recursive def may run under `runSync`: it calls every recursive
+            // def through its CPS body, so no nested driver starts (design §17.112).
+            Bind::Call(callee, _)
+                if self.mode == Mode::Cps
+                    && self.cx.direct.recursive(self.id)
+                    && self
+                        .callee_def(callee)
+                        .is_some_and(|d| self.cx.direct.recursive(d)) =>
+            {
+                true
+            }
             Bind::Call(callee, args) => !self.cx.direct.call_ok(
                 self.cx.m,
                 self.def,
@@ -633,12 +657,24 @@ impl<'a> FnEmit<'a> {
         }
     }
 
+    /// The def a call reaches statically: a global or a closure-bound local.
+    fn callee_def(&self, callee: &Atom) -> Option<DefId> {
+        match callee {
+            Atom::Global(d) => Some(*d),
+            Atom::Local(l) => self.closures.get(l).map(|(d, _)| *d),
+            _ => None,
+        }
+    }
+
     // -----------------------------------------------------------------------------------------
     // Expressions
 
     fn ret(&self, value: &str) -> String {
         match self.mode {
             Mode::Cps => format!("return $ret($k, {value});"),
+            Mode::Direct if self.cx.direct.recursive(self.id) => {
+                format!("--$G.d; return {value};")
+            }
             Mode::Direct => format!("return {value};"),
         }
     }

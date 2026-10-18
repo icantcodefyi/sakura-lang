@@ -107,9 +107,10 @@ pub fn main() -> Unit ! {Console} { Console.print("{sum_to(10000000, 0)} {fib(20
         .expect("sum_to is direct-style")..];
     let sum = &sum[..sum.find("\n}\n").unwrap()];
     insta::assert_snapshot!(sum);
+    // Non-tail recursion is direct for `LIMIT` frames, then runs its CPS body (design §17.112).
     assert!(
-        !js.contains("function fib$d"),
-        "non-tail recursion stays CPS"
+        js.contains("if ($G.d >= $L) return $rt.runSync(fib, [n]);"),
+        "{js}"
     );
 }
 
@@ -128,7 +129,7 @@ fn bench_direct_style() {
             "fn sq(x: Int) -> Int { x % 7 + 1 }\nfn go(n: Int, acc: Int) -> Int { if n == 0 { acc } else { go(n - 1, acc + sq(n)) } }\npub fn main() -> Unit ! {Console} { Console.print(\"{go(10000000, 0)}\") }",
         ),
         (
-            "fib 27 (CPS in both)",
+            "fib 27",
             "fn fib(n: Int) -> Int { if n < 2 { n } else { fib(n - 1) + fib(n - 2) } }\npub fn main() -> Unit ! {Console} { Console.print(\"{fib(27)}\") }",
         ),
     ];

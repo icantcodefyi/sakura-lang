@@ -19,6 +19,44 @@ test("1,000,000-deep non-tail recursion does not overflow the JS stack", () => {
   assert.deepEqual(rt.runTask(sum, [1_000_000]), ok(500000500000));
 });
 
+// The direct twin of `sum` (design §17.112): `LIMIT` frames on the JS stack, then the CPS body.
+function sum$d(n) {
+  if (G.d >= LIMIT) return rt.runSync(sum, [n]);
+  ++G.d;
+  if (n === 0) {
+    --G.d;
+    return 0;
+  }
+  const r = sum$d(rt.sub(n, 1));
+  --G.d;
+  return rt.add(n, r);
+}
+
+test("a direct recursion hands its deep remainder to runSync and restores the gauge", () => {
+  G.d = 7;
+  assert.equal(sum$d(1_000_000), 500000500000);
+  assert.equal(G.d, 7);
+  G.d = 0;
+});
+
+test("a defect inside runSync propagates with its code and the gauge is restored", () => {
+  function boom(n, $ctx, $k) {
+    if (++G.d > LIMIT) return bounce(boom, [n, $ctx, $k]);
+    if (n === 0) return rt.div(1, 0);
+    return boom(rt.sub(n, 1), $ctx, (r) => ret($k, rt.add(n, r)));
+  }
+  G.d = LIMIT;
+  assert.throws(() => rt.runSync(boom, [100_000]), (e) => e instanceof rt.Defect && e.code === "D002");
+  assert.equal(G.d, LIMIT);
+  G.d = 0;
+});
+
+test("a suspension inside runSync is D090", () => {
+  const sleepy = ($ctx, $k) => rt.suspend(Promise.resolve(1), $k);
+  assert.throws(() => rt.runSync(sleepy, []), (e) => e instanceof rt.Defect && e.code === "D090");
+  assert.equal(G.d, 0);
+});
+
 // effect Counter { fn next() -> Int }; handler with `var n = start`
 const COUNTER = "test::Counter";
 function counter(start) {

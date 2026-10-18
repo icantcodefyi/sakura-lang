@@ -277,6 +277,29 @@ function drive(t, start) {
   }
 }
 
+const syncDone = (v) => new Done(v);
+
+/**
+ * The deep remainder of a direct recursion (design §17.112): run the CPS body `f(...args)` to
+ * its value on the current JS stack, under a trampoline of its own, and restore the gauge on
+ * every exit. Defects propagate. Nothing it runs can suspend (pure code performs nothing).
+ */
+export function runSync(f, args) {
+  const saved = G.d;
+  try {
+    G.d = 0;
+    let step = f(...args, null, syncDone);
+    while (step instanceof Bounce) {
+      G.d = 0;
+      step = step.f(...step.a);
+    }
+    if (step instanceof Done) return step.o;
+    throw internal(`direct-style recursion did not finish synchronously: ${step}`);
+  } finally {
+    G.d = saved;
+  }
+}
+
 /** Await a suspension; cancelling the task wakes it early (and stops the host operation). */
 function resumeLater(t, { p, k, cancel }) {
   return new Promise((resolve, reject) => {

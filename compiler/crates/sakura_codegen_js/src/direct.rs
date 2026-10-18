@@ -3,8 +3,15 @@
 //! A def (top-level function, constant, lambda or clause) is **direct** when its row performs
 //! nothing itself (`{}`, or only row variables of its function-typed parameters), its body has no
 //! `Perform`, `Handle`, `Try` or `Fail`, every call is of a direct def, a `Direct` builtin, a
-//! function-typed parameter, or a local bound to a closure of a direct def, and it is not
-//! recursive (§17.112 is WS-P3). A direct def gets a twin `f$d(captures…, params…) → value`.
+//! function-typed parameter, or a local bound to a closure of a direct def. A direct def gets a
+//! twin `f$d(captures…, params…) → value`.
+//!
+//! Recursion (§17.112): a component of the call graph (static calls and passed function values)
+//! is direct when every member is a first-order non-constant def and no member passes a member's
+//! function value. Its twins count frames on the shared gauge and hand the remainder to the CPS
+//! bodies under `$rt.runSync`; those bodies call every recursive def through its CPS body, so
+//! code under a nested driver re-enters no twin of its own component and nesting is bounded by
+//! the component graph's depth.
 //!
 //! The twin calls a function-typed parameter `p` as `p.$d(…)`, so it assumes every
 //! function-typed argument carries a twin: a call in direct code passes only twinned function
@@ -35,6 +42,7 @@ pub(crate) struct Facts {
     /// `Err(reason)` for a def compiled only in CPS, for `--dump direct`.
     pub verdicts: Vec<Result<(), String>>,
     first_order: Vec<bool>,
+    recursive: Vec<bool>,
 }
 
 impl Facts {
@@ -43,7 +51,14 @@ impl Facts {
         Facts {
             verdicts: vec![Err("no-direct".into()); m.defs.len()],
             first_order: vec![false; m.defs.len()],
+            recursive: vec![false; m.defs.len()],
         }
+    }
+
+    /// `d` is direct and on a cycle of calls (§17.112): its twin counts frames on the gauge, and
+    /// its CPS body is what `$rt.runSync` runs.
+    pub fn recursive(&self, d: DefId) -> bool {
+        self.direct(d) && self.recursive[d.index()]
     }
 
     pub fn direct(&self, d: DefId) -> bool {
@@ -173,7 +188,7 @@ pub(crate) fn call_needs(
 
 pub(crate) fn analyze(m: &Module) -> Facts {
     let n = m.defs.len();
-    let first_order = m
+    let first_order: Vec<bool> = m
         .defs
         .iter()
         .map(|d| d.kind != FnKind::Const && !d.params.iter().any(|p| is_fn(&d.local(*p).ty)))
@@ -191,7 +206,6 @@ pub(crate) fn analyze(m: &Module) -> Facts {
         })
         .collect();
 
-    // Recursion through twins stays CPS until §17.112 (WS-P3): a def in a cycle of needs.
     let edges: Vec<Vec<usize>> = needs
         .iter()
         .map(|ns| {
@@ -203,13 +217,29 @@ pub(crate) fn analyze(m: &Module) -> Facts {
         })
         .collect();
     let ok: Vec<bool> = verdicts.iter().map(Result::is_ok).collect();
-    for i in recursive(&edges, &ok) {
-        verdicts[i] = Err("recursion".into());
+    let mut recursive = vec![false; n];
+    for scc in cycles(&edges, &ok) {
+        // A higher-order member or a member's function value passed inside the component could
+        // carry the recursion through a twin under the component's own nested driver.
+        let passes_member = scc.iter().any(|&i| {
+            needs[i]
+                .iter()
+                .any(|n| matches!(n, Need::Exposes(d) if scc.contains(&d.index())))
+        });
+        let eligible = !passes_member && scc.iter().all(|&i| first_order[i]);
+        for i in scc {
+            if eligible {
+                recursive[i] = true;
+            } else {
+                verdicts[i] = Err("recursion".into());
+            }
+        }
     }
 
     let mut facts = Facts {
         verdicts,
         first_order,
+        recursive,
     };
     loop {
         let mut changed = false;
@@ -291,8 +321,9 @@ fn body_ok(
     })
 }
 
-/// Nodes (among `ok`) on a cycle of `edges` restricted to `ok` nodes: Tarjan's SCCs, iterative.
-fn recursive(edges: &[Vec<usize>], ok: &[bool]) -> Vec<usize> {
+/// The strongly connected components (among `ok` nodes) that contain a cycle: Tarjan's,
+/// iterative.
+fn cycles(edges: &[Vec<usize>], ok: &[bool]) -> Vec<Vec<usize>> {
     const NONE: usize = usize::MAX;
     let n = edges.len();
     let (mut index, mut low, mut on) = (vec![NONE; n], vec![0; n], vec![false; n]);
@@ -337,11 +368,10 @@ fn recursive(edges: &[Vec<usize>], ok: &[bool]) -> Vec<usize> {
                     }
                 }
                 if scc.len() > 1 || edges[v].contains(&v) {
-                    out.extend(scc);
+                    out.push(scc);
                 }
             }
         }
     }
-    out.sort_unstable();
     out
 }
