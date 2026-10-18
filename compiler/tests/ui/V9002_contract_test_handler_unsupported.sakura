@@ -1,0 +1,7 @@
+// milestone: M3
+// expect: V9002
+// command: test --contracts
+@contract_test(handlers: [Log.captured(), 1])
+pub fn half(x: Int) -> Int
+  requires x > 0
+{ x / 2 }

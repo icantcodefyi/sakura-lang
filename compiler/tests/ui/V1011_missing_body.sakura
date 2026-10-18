@@ -1,0 +1,4 @@
+// milestone: M1
+// expect: V1011
+// expect-span: V1011 4:4
+fn answer() -> Int

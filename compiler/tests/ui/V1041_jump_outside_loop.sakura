@@ -1,0 +1,7 @@
+// milestone: M1
+// expect: V1041
+// expect-span: V1041 5:3
+fn stop() -> Int {
+  break
+  1
+}
