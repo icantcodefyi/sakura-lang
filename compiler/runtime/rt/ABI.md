@@ -1,12 +1,12 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.1.2**, agreed before `sakura_lir` or `sakura_rt`
+**Status:** design specification, version **1.1.3**, agreed before `sakura_lir` or `sakura_rt`
 emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed, 1.0.2 the
 R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
 the end, with the questions still open), and 1.1.0 the four `stats()` counters and the
 direct-style twins of design §17.118 (plan item L4), 1.1.1 the gate 10 erratum to §8.1 and
-§8.4 (design §17.159; the plan's "1.0.3"), and 1.1.2 the hostile-host hardening of plan WS12
-item 8 (§8.1, §8.4–§8.6). Owned by the designer; implemented jointly by M4-LIR (`crates/sakura_lir`)
+§8.4 (design §17.159; the plan's "1.0.3"), 1.1.2 the hostile-host hardening of plan WS12
+item 8 (§8.1, §8.4–§8.6), and 1.1.3 the defect sites of plan L5 (§5, §6.5, §12; design §17.162). Owned by the designer; implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
 (`crates/sakura_codegen_wasm`, `runtime/js/sakura_wasm_host.js`). This document is prose,
 tables and byte layouts; it contains no code and is not itself normative language
@@ -66,6 +66,13 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   shipped byte or import signature changes: `retire_handle` gains kinds 4 and 7, which a host
   without them ignores, and the handle-kind list itself is restated in M4-OPT's 1.2.0
   (§17.161), so `sakura_abi_version` stays `0x010100`.
+- 1.1.3 is an erratum (design §17.162, plan §3.8 row 5, L5): §12's section is now filled with
+  its sources and sites, and §5, §6.5 and §12 state how a contract check's site reaches the
+  defect record and how a host renders it as the JS backend's spans. It needs no new byte
+  layout, import or export: the section's layout, the defect outcome's `site` word and
+  `rt_raise`'s `site` argument are those 1.0.2 defined (a host that ignores the section prints
+  the record without spans, as before); the trailing site parameter is a parameter of
+  internal functions, which no export or import names. `sakura_abi_version` stays `0x010100`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -286,6 +293,12 @@ by default, plan §3.1 M4-OPT).
   is unobservable; a region that cannot run out (no cycle of twins, deepest chain within the
   budget) is entered without holding its arguments, otherwise the caller holds (`Dup`s) them
   for the second attempt. Every defect keeps its code, message and site.
+- **Blame sites** (1.1.3, design §7.2, §17.115, §17.162; as JS `$site`, `runtime/js/ABI.md`
+  §5). A top-level function whose `requires` or `where` checks blame its caller takes one
+  trailing `i64` parameter, a site group id (§12) or 0: a call of it by name passes the group
+  of the call's position, its function-value adapter passes 0, and a self tail call rebinds it
+  to the self call's group before jumping back. Lambdas and clauses have no such parameter
+  (a call through a function value names no site); their checks use 0.
 - Ownership at a call (research/09 §4, §17.82): arguments are **passed owned**: the caller
   `Dup`s any argument it still uses afterwards and the callee `Drop`s every parameter on every
   terminal path (or transfers it). Results are **returned owned**. Captures are owned by the
@@ -380,7 +393,12 @@ message and site, because the §12.2 defect record needs them. The host reads th
 the task record (§7.3) after `run` returns. Defects are **never traps**: the LIR emits the
 compare-and-branch and jumps to a shared per-function defect block that fills `task.defect`
 (code as a `u16` from the `D` registry, message as a static string offset, the site id from
-§12) and returns step 3. Exit: `Cli.exit(code)` is a fourth terminal, `exit(code)`, that
+§12) and returns step 3. **1.1.3:** a contract check's site is its caller's group plus the
+clause's offset in it when the group is not 0, else the clause's own site (role
+`definition`). A defect whose message carries program data (`Option.expect`'s own text,
+`D031`'s offset, `D004`'s value, `D011`'s `contract evaluation failed: <code>: <message>`)
+holds it in a runtime `String` the task owns until it is freed; the outcome's message is that
+text, so a record says what JS's says (design §17.162). Exit: `Cli.exit(code)` is a fourth terminal, `exit(code)`, that
 unwinds finalizers of every task and sets the process exit code (as JS `$rt.Exit`).
 
 ## 7. Ownership rules (RC without cycles)
@@ -707,6 +725,19 @@ and logical stack traces. Layout (little-endian, version-prefixed):
 | `n_sites` | `u32` | then `n_sites × (u32 source, u32 start_byte, u32 end_byte, u8 role, u32 contract_id or 0)`; `role` as `runtime/js/ABI.md` §5 (`primary`, `definition`, `caller`) |
 | `n_funcs` | `u32` | then `n_funcs × (u32 func_index, u32 name_offset, u32 site)` |
 | `n_blocks` | `u32` | then `n_blocks × (u32 func_index, u32 block, u32 site)` for every continuation block, so a frame's `(code, block)` maps to a source span |
+
+**As built (1.1.3, design §17.162).** `role` is `u8` 0 `primary`, 1 `definition` (2,
+`caller`, is unused). Site ids are entry index + 1 (0 is no site). Sources are indexed by the
+compiler's file number; a source's `uri` is the one the JS backend's spans carry, and an
+empty one has no span. A **site group** is a run of `primary` entries for one call position,
+one per contract that the callee's checks blame the caller with, in the callee's body order
+(`sakura_lir` lowering); every clause with a position has one `definition` entry with its
+`contract_id`. The host renders a defect's site as the JS runtime's `violated` does: a
+`primary` entry with a `contract_id`, then that contract's `definition` entry with role
+`definition`; a `definition` entry alone as `primary`. `module_hash` and the sources' content
+hashes are zero (not computed): the section is read from the module it is part of, and the
+host still bounds-checks it and ignores a malformed one. Function sites are 0 and there are
+no block entries yet (no logical stack traces).
 
 Every `Check` carries its site id into the defect record (§6.5); every frame's `(code, block)`
 gives a span, so the host renders the logical task stack by walking `frame.parent` ids

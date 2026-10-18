@@ -91,6 +91,13 @@ published yet.
 
 ### Fixed
 
+- `--target wasm` defect records now match `--target js` in code, message and site (design
+  §17.162): a contract defect says ``precondition `nonzero` of positive violated`` (not
+  ``contract `nonzero` violated``) and carries the same `spans`, the blamed call first and the
+  clause as `definition`; `Option.expect` reports the program's own message, and `D004`,
+  `D011` and `D031` name the value, the inner defect and the offset as JS does. The spans come
+  from the module's `sakura.debug` section (ABI 1.1.3, wording only), so `--strip` drops them.
+
 - A cassette line that lacks an exchange field (or has one of the wrong type) now fails
   `Http.recording`'s open with `<path>:<line>: not a cassette exchange (missing <field>)`
   instead of a `D090` at replay (security review C1).
