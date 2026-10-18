@@ -64,6 +64,8 @@ semantics/host_root_handlers: 15 funcs, 78 blocks, 6 dup, 44 drop, valid
 semantics/if_else: 3 funcs, 21 blocks, 0 dup, 6 drop, valid
 semantics/imports: 9 funcs, 22 blocks, 0 dup, 20 drop, valid
 semantics/let_polymorphism: 4 funcs, 10 blocks, 2 dup, 19 drop, valid
+semantics/line_endings_crlf: 5 funcs, 11 blocks, 2 dup, 23 drop, valid
+semantics/line_endings_lf: 5 funcs, 11 blocks, 2 dup, 23 drop, valid
 semantics/list_patterns: 4 funcs, 30 blocks, 8 dup, 31 drop, valid
 semantics/list_retained_version: 10 funcs, 48 blocks, 18 dup, 46 drop, valid
 semantics/list_set: 7 funcs, 36 blocks, 15 dup, 58 drop, valid

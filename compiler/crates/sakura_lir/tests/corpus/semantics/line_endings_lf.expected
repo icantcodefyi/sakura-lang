@@ -1,0 +1,7 @@
+ending: ok
+--- stdout
+[roses,
+violets,
+end]
+[19 chars, 3 lines]
+[cr escape: 3]

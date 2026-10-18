@@ -205,7 +205,11 @@ fn join_tokens(elements: impl Iterator<Item = sakura_syntax::SyntaxElement>) -> 
             out.push(' ');
         }
         gap = false;
-        out.push_str(t.text());
+        // A `\r\n` in a string means `\n` (§2): a CRLF checkout keeps its frozen texts.
+        match t.kind() {
+            K::STRING_TEXT => out.push_str(&t.text().replace("\r\n", "\n")),
+            _ => out.push_str(t.text()),
+        }
     }
     out
 }
@@ -323,5 +327,12 @@ mod tests {
         let (s, _, c) = sig("type Percent = Int where it >= 0 && it <= 100");
         assert_eq!(s, "type Percent = Int where it >= 0 && it <= 100");
         assert_eq!(c, ["where it >= 0 && it <= 100"]);
+    }
+
+    #[test]
+    fn texts_do_not_depend_on_line_endings() {
+        let lf = "test \"t\" {\n  expect_eq(f(), \"a\nb\")\n}\n";
+        let text = |src: &str| normalize(&sakura_syntax::parse(src).syntax());
+        assert_eq!(text(&lf.replace('\n', "\r\n")), text(lf));
     }
 }

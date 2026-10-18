@@ -1,0 +1,33 @@
+// milestone: M2
+// covers: Comment String
+// Its twin `line_endings_crlf.sak` is this file with CRLF line endings; `tests/parity.rs` holds
+// the two to the same stdout and trace (design §2, §17.180 (4b)).
+
+/// A doc comment ends before the line break.
+effect Note {
+  fn note(text: String) -> Unit
+}
+
+/* A block comment
+   over two lines. */
+fn poem(name: String) -> String {
+  let lines = "roses,
+{name},
+end"
+  lines
+}
+
+fn console_notes() -> Handler<Note, {Console}> {
+  handler Note {
+    fn note(t) { Console.print("[{t}]") }
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let text = poem("violets") // a line comment
+  with console_notes() {
+    Note.note(text)
+    Note.note("{String.len(text)} chars, {List.len(String.split(text, "\n"))} lines")
+    Note.note("cr escape: {String.len("a\rb")}")
+  }
+}

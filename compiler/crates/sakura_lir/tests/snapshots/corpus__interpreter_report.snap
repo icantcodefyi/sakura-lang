@@ -64,6 +64,8 @@ semantics/host_root_handlers: unsupported (builtin clock_host)
 semantics/if_else: ok, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/imports: ok, 23 allocated, 8 dup, 31 drop, peak 7, live 0/0
 semantics/let_polymorphism: ok, 16 allocated, 2 dup, 18 drop, peak 6, live 0/0
+semantics/line_endings_crlf: ok, 26 allocated, 5 dup, 31 drop, peak 9, live 0/0
+semantics/line_endings_lf: ok, 26 allocated, 5 dup, 31 drop, peak 9, live 0/0
 semantics/list_patterns: ok, 32 allocated, 26 dup, 58 drop, peak 7, live 0/0
 semantics/list_retained_version: ok, 839 allocated, 13246 dup, 14085 drop, peak 209, live 0/0
 semantics/list_set: D020, 7384 allocated, 3343693 dup, 3351077 drop, peak 2673, live 0/0

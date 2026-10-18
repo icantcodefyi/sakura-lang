@@ -208,34 +208,7 @@ pub(crate) fn path_segments(n: &SyntaxNode) -> Vec<SyntaxToken> {
         .collect()
 }
 
-/// Decodes a string literal's text segment (escapes per design §2.3).
-pub(crate) fn unescape(raw: &str) -> String {
-    let mut out = String::with_capacity(raw.len());
-    let mut chars = raw.chars().peekable();
-    while let Some(c) = chars.next() {
-        if c != '\\' {
-            out.push(c);
-            continue;
-        }
-        match chars.next() {
-            Some('n') => out.push('\n'),
-            Some('r') => out.push('\r'),
-            Some('t') => out.push('\t'),
-            Some('0') => out.push('\0'),
-            Some('u') if chars.peek() == Some(&'{') => {
-                chars.next();
-                let hex: String = chars.by_ref().take_while(|&c| c != '}').collect();
-                match u32::from_str_radix(&hex, 16).ok().and_then(char::from_u32) {
-                    Some(ch) => out.push(ch),
-                    None => out.push(char::REPLACEMENT_CHARACTER),
-                }
-            }
-            Some(other) => out.push(other),
-            None => out.push('\\'),
-        }
-    }
-    out
-}
+pub(crate) use sakura_syntax::unescape;
 
 /// Plain text of a `STRING_LIT` without interpolations (test names, attribute strings).
 pub(crate) fn string_text(n: &SyntaxNode) -> String {

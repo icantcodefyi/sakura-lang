@@ -497,3 +497,52 @@ fn js_and_wasm_agree_on_the_semantics_corpus() {
     }
     assert!(failures.is_empty(), "{}", failures.join("\n\n"));
 }
+
+/// Design §2, §17.180 (4b): a program means the same whatever its checkout's line endings, so
+/// `line_endings_crlf.sak` (checked in `-text`) prints and traces exactly like its LF twin, on JS
+/// under both ABIs and on WASM.
+#[test]
+fn a_crlf_fixture_runs_like_its_lf_twin() {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/semantics");
+    let crlf = std::fs::read_to_string(dir.join("line_endings_crlf.sak")).unwrap();
+    assert!(
+        crlf.split_inclusive('\n').all(|l| l.ends_with("\r\n")),
+        "line_endings_crlf.sak lost its CRLF line endings (see .gitattributes)"
+    );
+    let tmp = Path::new(env!("CARGO_TARGET_TMPDIR")).join("crlf");
+    std::fs::create_dir_all(&tmp).unwrap();
+    let run = |args: &[&str], name: &str| {
+        let trace = tmp.join(format!("{name}.{}.trace", args.join("_")));
+        let _ = std::fs::remove_file(&trace);
+        let file = format!("line_endings_{name}.sak");
+        let out = sakura_env(
+            &[args, &[file.as_str()]].concat(),
+            &dir,
+            &[("SAKURA_TRACE", &trace)],
+        );
+        assert_eq!(out.code, Some(0), "{args:?} {name}: {}", out.stderr);
+        let trace = std::fs::read_to_string(&trace).unwrap();
+        (
+            out.stdout,
+            trace.replace("::line_endings_crlf::", "::line_endings_lf::"),
+        )
+    };
+    if std::process::Command::new("node")
+        .arg("--version")
+        .output()
+        .is_err()
+    {
+        assert!(std::env::var_os("CI").is_none(), "node is missing");
+        eprintln!("skipped: node is missing");
+        return;
+    }
+    for args in [
+        &["run"][..],
+        &["run", "--no-direct"],
+        &["run", "--target", "wasm"],
+    ] {
+        let (lf, crlf) = (run(args, "lf"), run(args, "crlf"));
+        assert!(!lf.1.is_empty(), "{args:?}: no trace");
+        assert_eq!(lf, crlf, "{args:?}");
+    }
+}

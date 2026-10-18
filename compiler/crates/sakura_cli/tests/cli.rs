@@ -133,6 +133,26 @@ fn fmt_check_then_rewrite() {
     assert_eq!(sakura(&["fmt", "--check", "main.sak"], &dir).code, Some(0));
 }
 
+/// A formatted file checked out with CRLF (design §17.180 (4b)): `--check` names the line
+/// endings, `fmt` writes it back LF.
+#[test]
+fn fmt_names_crlf_and_writes_lf() {
+    let lf = "// Greets.\nfn main() -> Unit ! {Console} { Console.print(\"a\n  b\") }\n";
+    let dir = tmp("fmt-crlf", &lf.replace('\n', "\r\n"));
+    let check = sakura(&["fmt", "--check", "main.sak"], &dir);
+    assert_eq!(check.code, Some(1), "{}", check.stderr);
+    assert!(check.stdout.trim_end().ends_with("main.sak"));
+    assert!(
+        check.stderr.contains("CRLF line endings"),
+        "{}",
+        check.stderr
+    );
+    assert_eq!(sakura(&["fmt", "main.sak"], &dir).code, Some(0));
+    assert_eq!(std::fs::read_to_string(dir.join("main.sak")).unwrap(), lf);
+    let clean = sakura(&["fmt", "--check", "main.sak"], &dir);
+    assert_eq!(clean.code, Some(0), "{}", clean.stderr);
+}
+
 #[test]
 fn fmt_refuses_files_that_do_not_parse() {
     let broken = "fn main( -> Unit {}\n";
@@ -289,6 +309,11 @@ fn new_projects_check_and_are_formatted() {
         }
         let claude = std::fs::read_to_string(project.join("CLAUDE.md")).unwrap();
         assert_eq!(claude, "@AGENTS.md\n", "{kind}");
+        let attributes = std::fs::read_to_string(project.join(".gitattributes")).unwrap();
+        assert_eq!(
+            attributes, "*.sak text eol=lf\n*.snap text eol=lf\n",
+            "{kind}"
+        );
         let check = sakura(&["check"], &project);
         assert_eq!(check.code, Some(0), "{kind}: {}", check.stderr);
         assert_eq!(

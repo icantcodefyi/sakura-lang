@@ -210,10 +210,17 @@ impl Lexer<'_> {
                 }
             }
             Some(_) => {
-                self.pos += self.char_len();
+                // Before a `\r\n` the error is the one before a `\n` (§2).
+                let crlf = self.src[self.pos..].starts_with("\r\n");
+                self.pos += if crlf { 2 } else { self.char_len() };
+                let escape = if crlf {
+                    "\\\n"
+                } else {
+                    &self.src[start..self.pos]
+                };
                 self.error(
                     codes::INVALID_ESCAPE,
-                    format!("unknown escape `{}`", &self.src[start..self.pos]),
+                    format!("unknown escape `{escape}`"),
                     start,
                     self.pos,
                 );
@@ -244,6 +251,10 @@ impl Lexer<'_> {
             b'/' if self.peek(1) == Some(b'/') => {
                 let doc = self.peek(2) == Some(b'/') && self.peek(3) != Some(b'/');
                 self.eat_while(|b| b != b'\n');
+                // The `\r` of a `\r\n` ends the line, not the comment (§2).
+                if self.peek(0) == Some(b'\n') && self.src.as_bytes()[self.pos - 1] == b'\r' {
+                    self.pos -= 1;
+                }
                 self.push(if doc { DOC_COMMENT } else { COMMENT }, start);
             }
             b'/' if self.peek(1) == Some(b'*') => self.block_comment(),
@@ -587,12 +598,15 @@ pub(crate) fn int_value(text: &str) -> Option<i64> {
     }
 }
 
-/// Decode the escapes in the text of a `STRING_TEXT` token. Invalid escapes are kept verbatim
-/// (they were already reported as `V0005`).
+/// Decode the escapes in the text of a `STRING_TEXT` token, and a `\r\n` line break to `\n`
+/// (§2). Invalid escapes are kept verbatim (they were already reported as `V0005`).
 pub fn unescape(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut chars = text.chars();
     while let Some(c) = chars.next() {
+        if c == '\r' && chars.as_str().starts_with('\n') {
+            continue;
+        }
         if c != '\\' {
             out.push(c);
             continue;
@@ -734,6 +748,26 @@ mod tests {
         insta::assert_snapshot!(dump(
             r#""plain" "a{x}b{ f({a: 1}) }c" sql"q {v}" "\n\{\}\u{1F600}" "\q\u{110000}" "nested {"in{x}"}""#
         ));
+    }
+
+    #[test]
+    fn crlf_means_lf() {
+        // §2: a program's meaning does not depend on its checkout's line endings.
+        let src = "/// doc\r\nx // c\r\n\"a\r\nb\" // lone\r\r\n";
+        assert_eq!(kinds(src), kinds(&src.replace("\r\n", "\n")));
+        let (tokens, errors) = lex(src);
+        assert!(errors.is_empty());
+        let text = |k| {
+            (tokens.iter().filter(|t| t.kind == k))
+                .map(|t| &src[t.start as usize..t.end as usize])
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(text(DOC_COMMENT), ["/// doc"]);
+        assert_eq!(text(COMMENT), ["// c", "// lone\r"]);
+        assert_eq!(unescape(text(STRING_TEXT)[0]), "a\nb");
+        assert_eq!(unescape("a\rb\\r"), "a\rb\r");
+        let message = |src: &str| lex(src).1[0].message.clone();
+        assert_eq!(message("\"a\\\r\nb\""), message("\"a\\\nb\""));
     }
 
     #[test]

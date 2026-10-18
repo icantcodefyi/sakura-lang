@@ -1412,9 +1412,14 @@ function snapshot(runner, module, name, rendered) {
     fs.writeFileSync(file, want);
     return null;
   }
-  return have === null
-    ? `snapshot ${name} does not exist yet; run \`sakura test --update-snapshots\` and review it`
-    : `snapshot ${name} differs from ${file}:\n--- expected\n${have}--- actual\n${want}`;
+  if (have === null) {
+    return `snapshot ${name} does not exist yet; run \`sakura test --update-snapshots\` and review it`;
+  }
+  // A CRLF checkout of an LF snapshot (design §17.180 (4b)).
+  if (have.replaceAll("\r\n", "\n") === want.replaceAll("\r\n", "\n")) {
+    return `snapshot ${name} differs from ${file} only in line endings: snapshots are LF (\`*.snap text eol=lf\` in .gitattributes)`;
+  }
+  return `snapshot ${name} differs from ${file}:\n--- expected\n${have}--- actual\n${want}`;
 }
 
 /**

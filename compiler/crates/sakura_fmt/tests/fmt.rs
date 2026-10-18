@@ -95,7 +95,7 @@ fn line_comment_boundaries_preserve_unicode_and_controls() {
     // The lexer ends // and /// comments only at LF, even when another tool treats
     // one of these characters as a line break. Test both embedded and trailing text.
     for c in [
-        '\u{fdd0}', '\u{2028}', '\u{2029}', '\u{85}', '\u{b}', '\u{c}', '\r',
+        '\u{fdd0}', '\u{2028}', '\u{2029}', '\u{85}', '\u{b}', '\u{c}',
     ] {
         for prefix in ["//", "///"] {
             for text in [
@@ -127,6 +127,26 @@ fn line_comment_boundaries_preserve_unicode_and_controls() {
                 );
             }
         }
+    }
+}
+
+/// A `\r` ends a line comment only as part of a `\r\n` (§2, §17.180 (4b)): a bare one stays in
+/// the comment, except at the end of the file, where the formatter's final LF would make it one.
+#[test]
+fn a_carriage_return_ends_a_comment_only_before_lf() {
+    for prefix in ["//", "///"] {
+        let path = Path::new("carriage_return.sak");
+        let mid = format!("{prefix} a\rb\nfn f() -> Int {{ 1 }}\n");
+        assert_eq!(check(path, &mid), mid);
+        let crlf = format!("fn f() -> Int {{ 1 }} {prefix}\r\n");
+        assert_eq!(
+            check(path, &crlf),
+            format!("fn f() -> Int {{ 1 }} {prefix}\n")
+        );
+        assert_eq!(
+            check(path, &format!("{prefix} a\r")),
+            format!("{prefix} a\n")
+        );
     }
 }
 

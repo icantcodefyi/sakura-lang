@@ -1100,6 +1100,12 @@ fn fmt(check: bool, paths: &[PathBuf]) -> ExitCode {
         };
         if check {
             println!("{}", path.display());
+            if source.text.contains("\r\n") {
+                eprintln!(
+                    "{}: CRLF line endings; sakura fmt writes LF (`*.sak text eol=lf` in .gitattributes keeps checkouts LF)",
+                    path.display()
+                );
+            }
             failed = true;
         } else if let Err(e) = std::fs::write(&path, formatted) {
             return usage_error(format!("{}: {e}", path.display()));

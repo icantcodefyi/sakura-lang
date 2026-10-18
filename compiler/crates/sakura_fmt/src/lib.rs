@@ -63,10 +63,17 @@ const RAW_NL: char = '\u{FDD0}';
 /// and a `V9001` instead of output that would lose a comment or not parse (a formatter bug: the
 /// caller keeps the original text).
 pub fn format(text: &str) -> Result<String, Vec<Diagnostic>> {
-    let parse = sakura_syntax::parse(text);
-    if !parse.errors.is_empty() {
-        return Err(parse.errors);
+    let original = sakura_syntax::parse(text);
+    if !original.errors.is_empty() {
+        return Err(original.errors);
     }
+    // §2: a `\r\n` means `\n`, so a CRLF file is formatted as its LF text and the output is LF.
+    let lf = (text.contains("\r\n") || text.ends_with('\r')).then(|| lf_text(&original));
+    let lf_parse = lf.as_deref().map(sakura_syntax::parse);
+    let (text, parse) = match (&lf, &lf_parse) {
+        (Some(lf), Some(p)) => (lf.as_str(), p),
+        _ => (text, &original),
+    };
     let out = Fmt {
         src: text,
         in_branch: Default::default(),
@@ -81,21 +88,70 @@ pub fn format(text: &str) -> Result<String, Vec<Diagnostic>> {
     let result = result
         .replace("\u{fdd0}n", "\n")
         .replace("\u{fdd0}e", "\u{fdd0}");
-    match guard(&parse, &result) {
+    match guard(parse, &result) {
+        Some(d) if lf.is_some() => Err(vec![at_original(d, parse, &original)]),
         Some(d) => Err(vec![d]),
         None => Ok(result),
     }
 }
 
+/// The program `parse` holds, with LF line ends (§2: a `\r\n` means `\n`). In string text a
+/// `\r\n` becomes `\n` and a bare `\r` the `\r` escape, so it cannot pair with a later `\n`
+/// (`"a\r\r\nb"` stays `a\r\nb`). Elsewhere a `\r` is layout: in whitespace it becomes a space,
+/// which the formatter trims, and at the end of a comment line it goes.
+fn lf_text(parse: &sakura_syntax::Parse) -> String {
+    let mut out = String::new();
+    for t in parse
+        .syntax()
+        .descendants_with_tokens()
+        .filter_map(|e| e.into_token())
+    {
+        let text = t.text();
+        match t.kind() {
+            STRING_TEXT => out.push_str(&text.replace("\r\n", "\n").replace('\r', "\\r")),
+            WHITESPACE | NEWLINE => out.push_str(&text.replace('\r', " ")),
+            COMMENT | DOC_COMMENT => {
+                let lines: Vec<&str> = text.split('\n').map(|l| l.trim_end_matches('\r')).collect();
+                out.push_str(&lines.join("\n"));
+            }
+            _ => out.push_str(text),
+        }
+    }
+    out
+}
+
+/// `d`, a `V9001` about the LF text of a CRLF file, pointing at the same comment of the file
+/// itself: `lf_text` keeps every comment, in order, but a string before it may have shrunk.
+fn at_original(
+    mut d: Diagnostic,
+    lf: &sakura_syntax::Parse,
+    original: &sakura_syntax::Parse,
+) -> Diagnostic {
+    let (lf, original) = (comments(lf), comments(original));
+    for span in &mut d.spans {
+        let at = lf
+            .iter()
+            .position(|t| u32::from(t.text_range().start()) == span.start);
+        if let Some(r) = at
+            .and_then(|i| original.get(i))
+            .map(SyntaxToken::text_range)
+        {
+            (span.start, span.end) = (r.start().into(), r.end().into());
+        }
+    }
+    d
+}
+
+fn comments(p: &sakura_syntax::Parse) -> Vec<SyntaxToken> {
+    p.syntax()
+        .descendants_with_tokens()
+        .filter_map(|e| e.into_token())
+        .filter(|t| is_comment(t.kind()))
+        .collect()
+}
+
 /// The diagnostic for output that drops a comment of `input` or does not parse, if any.
 fn guard(input: &sakura_syntax::Parse, output: &str) -> Option<Diagnostic> {
-    let comments = |p: &sakura_syntax::Parse| -> Vec<SyntaxToken> {
-        p.syntax()
-            .descendants_with_tokens()
-            .filter_map(|e| e.into_token())
-            .filter(|t| is_comment(t.kind()))
-            .collect()
-    };
     let reparsed = sakura_syntax::parse(output);
     let bug = |message: String, start: u32, end: u32| {
         Diagnostic::error(codes::V9001, Phase::Internal, message).with_span(Span::primary(
@@ -1946,5 +2002,31 @@ mod tests {
         assert_eq!((dropped.spans[0].start, dropped.spans[0].end), (20, 27));
         let broken = guard(&input, "fn f( -> Int { 1 } // keep\n").expect("output does not parse");
         assert_eq!(broken.code, codes::V9001);
+    }
+
+    #[test]
+    fn crlf_input_formats_to_its_lf_output() {
+        let lf = "/// Doc.\nfn f() -> String { // c\n  \"a\nb\"\n}\n/* x\ny */\n";
+        let out = format(&lf.replace('\n', "\r\n")).unwrap();
+        assert_eq!(out, format(lf).unwrap());
+        assert!(!out.contains('\r'), "{out:?}");
+        // A bare `\r` before a line end in a string keeps its meaning (`a\r\nb`) as an escape.
+        let out = format("fn f() -> String { \"a\r\r\nb\" }\r\n").unwrap();
+        assert_eq!(out, "fn f() -> String { \"a\\r\nb\" }\n");
+        assert_eq!(format(&out).unwrap(), out);
+        // Bare `\r`s are layout, not line breaks: in whitespace, after a comment, in a block comment.
+        let out = format("fn f() -> Int {\r\r\n  1 // c\r\r\n}\r/* a\r\r\nb */\r\n").unwrap();
+        assert_eq!(out, "fn f() -> Int {\n  1 // c\n} /* a\nb */\n");
+    }
+
+    #[test]
+    fn a_crlf_files_v9001_points_into_the_file() {
+        let original = sakura_syntax::parse("fn f() -> String { \"a\r\nb\" }\r\n// c\r\n");
+        let lf = sakura_syntax::parse(&lf_text(&original));
+        let d = guard(&lf, "fn f() -> String { \"a\nb\" }\n").expect("drops the comment");
+        // `// c ` in the LF text (the `\r` after `}` is a space), `// c` in the file.
+        assert_eq!((d.spans[0].start, d.spans[0].end), (28, 33));
+        let d = at_original(d, &lf, &original);
+        assert_eq!((d.spans[0].start, d.spans[0].end), (29, 33));
     }
 }
