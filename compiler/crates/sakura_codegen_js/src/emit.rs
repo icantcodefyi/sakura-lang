@@ -868,6 +868,17 @@ impl<'a> FnEmit<'a> {
         let xs = self.name(x).to_owned();
         let rhs = match bind {
             Bind::Atom(a) => self.atom(a),
+            // The inline fast path (design §17.114): an unsafe result means the checked
+            // operation defects, so `$rt.add`/`sub`/`mul` run only to raise it.
+            Bind::Prim(op @ (PrimOp::IntAdd | PrimOp::IntSub | PrimOp::IntMul), args)
+                if !self.proved[x.index()] =>
+            {
+                let raw = self.prim(op, args, true);
+                let slow = self.prim(op, args, false);
+                w.line(&format!("const {xs} = {raw};"));
+                w.line(&format!("if (!Number.isSafeInteger({xs})) {slow};"));
+                return;
+            }
             Bind::Prim(op, args) => self.prim(op, args, self.proved[x.index()]),
             Bind::Call(f @ Atom::Global(d), args) => {
                 if let Some(site) = self.site_for(f, pos) {

@@ -12,8 +12,10 @@ function sum_to$d(n_1, acc_1) {
     if (t) {
       return acc;
     } else {
-      const t_1 = $rt.sub(n, 1);
-      const t_2 = $rt.add(acc, n);
+      const t_1 = (n - 1);
+      if (!Number.isSafeInteger(t_1)) $rt.sub(n, 1);
+      const t_2 = (acc + n);
+      if (!Number.isSafeInteger(t_2)) $rt.add(acc, n);
       n = t_1;
       acc = t_2;
       continue j0;
