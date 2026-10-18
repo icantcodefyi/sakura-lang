@@ -1059,6 +1059,7 @@ dependencies = [
  "sakura_types",
  "sakura_verify",
  "serde_json",
+ "toml",
 ]
 
 [[package]]
