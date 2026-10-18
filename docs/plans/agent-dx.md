@@ -382,7 +382,7 @@ scheduled beside W2 as the first agent-DX items, DX5's runner and DX6's workflow
    older VS Code bases (Cursor, VSCodium via Open VSX) can install it. Integration tests ran on
    VS Code 1.142.0 (stable) only.
 5. **Version string.** `vsce package` accepts `0.1.0-alpha.1`, but `vsce publish` rejects SemVer
-   pre-release suffixes; docs/release.md §5 tells the owner to publish `0.1.0` with
+   pre-release suffixes; docs/release.md §5 item 4 tells the owner to publish `0.1.0` with
    `--pre-release`. Licence files are copied in at package time (`--skip-license`; the package
    is dual-licensed and `vsce` looks for a single `LICENSE`).
 6. **Tests.** `bun run test`: root selection, executable resolution (setting, `~/`, relative,

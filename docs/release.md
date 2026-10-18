@@ -277,7 +277,7 @@ and summary before approving, not only the dry run's.
    2FA. Test `npm install -g sakuralang@0.1.0-alpha.1` and the binary on clean
    hosts; upload success does not prove platform selection works.
 
-5. **VS Code extension.** After the GitHub release (its users need a `sakura`), in
+4. **VS Code extension.** After the GitHub release (its users need a `sakura`), in
    `editors/vscode/`: the Marketplace rejects SemVer pre-release suffixes, so set
    `package.json`'s version to a plain `0.1.0` (later alphas `0.1.1`, `0.1.2`, …), then
    `bun install --frozen-lockfile`, `bun run test`, `bun run build`, and
