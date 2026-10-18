@@ -31,6 +31,17 @@ fn explain_known_and_unknown_codes() {
             .starts_with("V3001 effect_not_allowed (effect)\n\n")
     );
     assert!(out.stdout.contains("Wrong:") && out.stdout.contains("Fixed:"));
+    // The page URL comes last, under the site's canonical URL (design §17.144).
+    let url = out.stdout.trim_end().lines().last().unwrap();
+    let site = url.strip_suffix("/docs/errors/V3001").unwrap();
+    let site_ts = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../website/lib/site.ts"),
+    )
+    .unwrap();
+    assert!(
+        site_ts.contains(&format!("\"{site}\"")),
+        "{url} is not under site.url"
+    );
     let defect = sakura(&["explain", "D020"], Path::new("."));
     assert!(defect.stdout.contains("(runtime defect)"));
     let rc = sakura(&["explain", "D092"], Path::new("."));

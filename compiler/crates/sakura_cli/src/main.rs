@@ -1071,6 +1071,10 @@ fn prompt(budget: Option<usize>) -> String {
     )
 }
 
+/// The generated error pages (design §17.144) under the site's canonical URL, `site.url` in
+/// `website/lib/site.ts`.
+const ERRORS_URL: &str = "https://www.sakuralang.com/docs/errors";
+
 fn explain(code: &str) -> ExitCode {
     let Some(info) = codes::lookup(code) else {
         return usage_error(format!("unknown diagnostic code `{code}`"));
@@ -1084,8 +1088,8 @@ fn explain(code: &str) -> ExitCode {
         None => "runtime defect".into(),
     };
     println!(
-        "{} {} ({phase})\n\n{}",
-        info.code.0, info.title, info.explain
+        "{} {} ({phase})\n\n{}\n\n{ERRORS_URL}/{}",
+        info.code.0, info.title, info.explain, info.code.0
     );
     ExitCode::SUCCESS
 }
