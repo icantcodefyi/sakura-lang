@@ -219,6 +219,30 @@ fn import_sorting_keeps_the_header_on_top() {
 }
 
 #[test]
+fn import_sorting_keeps_header_before_inline_comment() {
+    for (text, expected) in [
+        (
+            "// header\n// second header line\n/* probe */ import b\nimport a\n",
+            "// header\n// second header line\nimport a\n/* probe */ import b\n",
+        ),
+        (
+            "// header\n/* first */ /* second */ import b\nimport a\n",
+            "// header\nimport a\n/* first */ /* second */ import b\n",
+        ),
+        (
+            "// header\n\n// attached\n/* probe */ import b\nimport a\n",
+            "// header\n\nimport a\n// attached\n/* probe */ import b\n",
+        ),
+        (
+            "/* probe */ import b\nimport a\n",
+            "import a\n/* probe */ import b\n",
+        ),
+    ] {
+        assert_eq!(check(Path::new("inline import comment"), text), expected);
+    }
+}
+
+#[test]
 fn verbatim_nodes_are_a_fixed_point() {
     // A node kept verbatim inside the extra nesting of a `with` list used to move its
     // continuation lines further right on every run.

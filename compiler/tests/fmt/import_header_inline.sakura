@@ -1,0 +1,7 @@
+// milestone: M1
+// expect: V1002
+// Header comments stay above the sorted imports, including an inline import comment.
+/* inline */ import std/untrusted
+import std/core.{Violation}
+
+fn f() -> Int { 1 }

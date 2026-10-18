@@ -116,6 +116,8 @@ published yet.
 
 ### Fixed
 
+- `sakura fmt` keeps file header comments above sorted imports when an inline block comment
+  precedes the first import, while moving that inline comment with its import.
 - `sakura fmt` preserves U+FDD0 in strings and comments instead of decoding it as a newline,
   and keeps Unicode separators and control characters inside line comments until LF.
 - `Llm.stream` under `Llm.anthropic` requests server-sent events and calls `on_partial` once per

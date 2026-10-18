@@ -1530,7 +1530,7 @@ impl Fmt<'_> {
         // off from them by a blank line, directly above the import, moves with it. The parser
         // attaches that group to the import itself, so when nothing sets it off it is the header.
         let mut header = nil();
-        let mut headless = None;
+        let mut header_import = None;
         if let Some(first) = s.entries.first_mut().filter(|_| imports > 0) {
             let split = first
                 .leading
@@ -1539,25 +1539,30 @@ impl Fmt<'_> {
                 .map_or(first.leading.len(), |i| i + 1);
             let detached: Vec<Comment> = first.leading.drain(..split).collect();
             header = comments_doc(&detached);
-            let own = leading_comments(&first.node);
-            // `/* c */ import a` on one line stays with its import.
-            if detached.is_empty() && own.iter().all(|c| c.1) {
+            let mut own = leading_comments(&first.node);
+            if detached.is_empty() {
+                // Keep the standalone header even when `/* c */ import a` follows it.
+                // Only the suffix on the import's own line moves with that import.
+                let split = own.iter().rposition(|c| c.1).map_or(0, |i| i + 1);
+                let attached = own.split_off(split);
                 header = lead_doc(own);
-                headless = Some(first.node.clone());
+                header_import = Some((first.node.clone(), lead_doc(attached)));
             }
         }
         s.entries[..imports].sort_by_key(|e| import_key(&e.node));
         let mut out = render(&header, WIDTH);
         let mut prev: Option<(SyntaxKind, bool, bool)> = None; // kind, single-line, std import
         for (i, e) in s.entries.iter().enumerate() {
-            let entry = if headless.as_ref() == Some(&e.node) {
-                e.inline
-                    .as_ref()
-                    .map_or_else(nil, |c| raw(c).append(t(" ")))
-                    .append(self.bare(&e.node))
-            } else {
-                self.entry(e)
-            };
+            let entry =
+                if let Some((_, attached)) = header_import.as_ref().filter(|(n, _)| n == &e.node) {
+                    e.inline
+                        .as_ref()
+                        .map_or_else(nil, |c| raw(c).append(t(" ")))
+                        .append(attached.clone())
+                        .append(self.bare(&e.node))
+                } else {
+                    self.entry(e)
+                };
             let mut doc = comments_doc(&e.leading).append(entry);
             if let Some(c) = &e.trailing {
                 doc = doc.append(t(" ")).append(raw(c));
