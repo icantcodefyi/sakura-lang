@@ -163,6 +163,14 @@ const tests: [string, (api: SakuraApi) => Promise<void>][] = [
 ];
 
 export async function run(): Promise<void> {
+  // This command is registered by an Eventually contribution, after all Restored contributions
+  // (including VS Code's save participants and default-formatter selector) have been created.
+  // https://github.com/microsoft/vscode/blob/6d62b1d5dace93a33b3a6d3eca1317bd5e15bcb1/src/vs/workbench/common/contributions.ts#L296
+  await waitFor("restored workbench contributions", async () =>
+    (await vscode.commands.getCommands(true)).includes(
+      "workbench.extensions.installMissingDependencies",
+    ),
+  );
   const ext = vscode.extensions.getExtension<SakuraApi>("sakuralang.sakura")!;
   const api = await ext.activate();
   let failed = 0;
