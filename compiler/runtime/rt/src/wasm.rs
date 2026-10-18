@@ -831,6 +831,13 @@ builtins! {
     rt_b_list_at(xs: u32, i: i64) -> u32 = ptr |rt| rt.list_at(xs, i);
     rt_b_list_get(xs: u32, i: i64) -> u32 = ptr |rt| rt.list_get(xs, i);
     rt_b_list_push(xs: u32, x: u32) -> u32 = ptr |rt| rt.list_push(xs, x);
+    // std/list's transient builders (design §17.116): here a builder is the list it finishes as.
+    rt_b_list_builder() -> u32 = plain |rt| rt.list_empty();
+    rt_b_list_builder_push(b: u32, x: u32) -> u32 = ptr |rt| rt.list_push(b, x);
+    rt_b_list_builder_finish(b: u32) -> u32 = plain |rt| {
+        let _ = rt;
+        b
+    };
     rt_b_list_set(xs: u32, i: i64, x: u32) -> u32 = ptr |rt| rt.list_set(xs, i, x);
     rt_b_list_slice(xs: u32, a: i64, b: i64) -> u32 = ptr |rt| rt.list_slice(xs, a, b);
     rt_b_string_len(s: u32) -> i64 = plain |rt| rt.string_len(s);
