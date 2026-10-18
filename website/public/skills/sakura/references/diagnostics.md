@@ -836,8 +836,7 @@ backend, runtime and host share one ABI revision.
 ```text
 A user package declares an `@external(js, …)` function, and `--target wasm` has no JavaScript
 to call (design §17.81): the WASM backend runs std's host operations through the runtime's own
-imports only. Build with `--target js`, or write the function in Sakura Lang. (The code is a
-placeholder: the plan named `V8002`, which §17.131 gave to `reserved_package_name`.)
+imports only. Build with `--target js`, or write the function in Sakura Lang.
 ```
 
 ## V8020 `spec_frozen` (package)
