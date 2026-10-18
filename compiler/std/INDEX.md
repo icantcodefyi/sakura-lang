@@ -125,6 +125,7 @@ fn is_err<A, E>(r: Result<A, E>) -> Bool    // @total
 fn len<A>(xs: List<A>) -> Int    // @external, @total
 fn get<A>(xs: List<A>, i: Int) -> Option<A>    // @external, @total
 fn push<A>(xs: List<A>, x: A) -> List<A>    // @external
+fn set<A>(xs: List<A>, i: Int, x: A) -> List<A> requires 0 <= i && i < len(xs)    // O(log32 n) path copy (§17.126)
 fn slice<A>(xs: List<A>, start: Int, end: Int) -> List<A>    // @external
 fn empty<A>() -> List<A>
 fn concat<A>(a: List<A>, b: List<A>) -> List<A>

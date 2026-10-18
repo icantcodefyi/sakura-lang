@@ -229,7 +229,14 @@ test("List, Map and Set agree with a model under random persistent updates", () 
   const versions = [[rt.list_empty(), []]];
   for (let i = 0; i < 40_000; i++) {
     const [xs, model] = versions[rand(versions.length)];
-    const next = [rt.list_push(xs, i), [...model, i]];
+    let next = [rt.list_push(xs, i), [...model, i]];
+    if (i % 3 === 0) {
+      // `List.set` (design §17.126) at a random index, trie or tail, of the new version.
+      const j = rand(model.length + 1);
+      const copy = [...next[1]];
+      copy[j] = -i;
+      next = [rt.list_set(next[0], j, -i), copy];
+    }
     if (versions.length < 64) versions.push(next);
     else versions[rand(64)] = next;
   }

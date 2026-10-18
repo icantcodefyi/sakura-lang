@@ -1,0 +1,19 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D020
+// covers: design §17.126 (List.set: path copy, old versions intact, requires checked)
+
+pub fn main() -> Unit ! {Console} {
+  let old = List.range(0, 2_000)
+  var xs = old
+  var i = 0
+  while i < 2_000 {
+    xs = List.set(xs, i, i * 2)
+    i = i + 3
+  }
+  Console.print("{xs[0]} {xs[1]} {xs[3]} {xs[1_998]} {xs[1_999]} {List.len(xs)}")
+  Console.print("{old[3]} {old[1_998]} {List.sum(old)}")
+  let tail = List.set(old, 1_999, -1)
+  Console.print("{tail[1_999]} {old[1_999]} {List.set([7], 0, 8)}")
+  let _ = List.set(old, 2_000, 0)
+}

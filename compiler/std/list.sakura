@@ -16,6 +16,18 @@ pub fn get<A>(xs: List<A>, i: Int) -> Option<A>
 @external(js, "sakura_runtime", "list_push")
 pub fn push<A>(xs: List<A>, x: A) -> List<A>
 
+/// A new list with element `i` replaced by `x`; `xs` is unchanged. O(log32 n): one
+/// root-to-leaf path of the trie is copied (design §17.126). Reassign it in a loop:
+/// `xs = List.set(xs, i, x)`.
+pub fn set<A>(xs: List<A>, i: Int, x: A) -> List<A>
+  requires 0 <= i && i < len(xs)
+{
+  list_set(xs, i, x)
+}
+
+@external(js, "sakura_runtime", "list_set")
+fn list_set<A>(xs: List<A>, i: Int, x: A) -> List<A>
+
 /// Elements in `[start, end)`. Both bounds are clamped to `[0, len(xs)]`; never defects.
 @external(js, "sakura_runtime", "list_slice")
 pub fn slice<A>(xs: List<A>, start: Int, end: Int) -> List<A>

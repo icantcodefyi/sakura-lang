@@ -30,10 +30,10 @@ macro_rules! table {
 table! {
     // List (persistent, design §13.4)
     Direct list_empty/0, Direct list_len/1, Direct list_get/2, Direct list_at/2, Direct list_push/2,
-    Direct list_concat/2, Direct list_range/2, Direct list_reverse/1, Direct list_join/2,
-    Direct list_sum/1, Direct list_first/1, Direct list_last/1, Direct list_contains/2,
-    Direct list_slice/3, Direct list_sort/1, Direct list_zip/2, Direct list_enumerate/1,
-    Direct list_unique/1,
+    Direct list_set/3, Direct list_concat/2, Direct list_range/2, Direct list_reverse/1,
+    Direct list_join/2, Direct list_sum/1, Direct list_first/1, Direct list_last/1,
+    Direct list_contains/2, Direct list_slice/3, Direct list_sort/1, Direct list_zip/2,
+    Direct list_enumerate/1, Direct list_unique/1,
     Cps list_map/2, Cps list_filter/2, Cps list_fold/3, Cps list_find/2, Cps list_all/2,
     Cps list_any/2, Cps list_flat_map/2, Cps list_sort_by/2,
     // Map / Set (insertion-ordered)

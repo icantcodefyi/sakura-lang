@@ -987,6 +987,10 @@ export function list_at(xs, i) {
 export function list_push(xs, x) {
   return push(xs, x);
 }
+/** `List.set` (design §17.126): its `requires` has checked `0 <= i < n`; copies one path. */
+export function list_set(xs, i, x) {
+  return setAt(xs, i, x);
+}
 export function list_concat(xs, ys) {
   if (ys.n === 0) return xs;
   if (xs.n === 0) return ys;
