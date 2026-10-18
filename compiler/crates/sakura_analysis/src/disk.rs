@@ -9,6 +9,16 @@ use crate::Snapshot;
 /// dot-directories are skipped) plus the project's `sakura.toml` into a snapshot with the std
 /// library. URIs are `file://` + absolute path.
 pub fn load(roots: &[PathBuf]) -> Result<Snapshot, String> {
+    read(roots, true)
+}
+
+/// The `.sakura` files under `roots`, each with its `file://` URI, without std or the manifest:
+/// what `sakura fmt` formats, so a std checkout's files are formatted like any other.
+pub fn load_sources(roots: &[PathBuf]) -> Result<Snapshot, String> {
+    read(roots, false)
+}
+
+fn read(roots: &[PathBuf], analyze: bool) -> Result<Snapshot, String> {
     let mut files = Vec::new();
     for root in roots {
         collect(root, &mut files).map_err(|e| format!("{}: {e}", root.display()))?;
@@ -16,15 +26,22 @@ pub fn load(roots: &[PathBuf]) -> Result<Snapshot, String> {
     if files.is_empty() {
         return Err("no .sakura files found".into());
     }
-    if let Some(manifest) = roots.iter().find_map(|r| manifest_near(r)) {
+    if let Some(manifest) = roots
+        .iter()
+        .find_map(|r| manifest_near(r))
+        .filter(|_| analyze)
+    {
         files.push(manifest);
     }
     let mut sources = Vec::new();
     for path in files {
         let abs = std::path::absolute(&path).map_err(|e| format!("{}: {e}", path.display()))?;
         let text = std::fs::read_to_string(&abs).map_err(|e| format!("{}: {e}", path.display()))?;
-        let uri = std_uri(&abs).unwrap_or_else(|| file_uri(&abs));
-        sources.push((uri, text));
+        let std = analyze.then(|| std_uri(&abs)).flatten();
+        sources.push((std.unwrap_or_else(|| file_uri(&abs)), text));
+    }
+    if !analyze {
+        return Ok(Snapshot::new(sources));
     }
     // Files given explicitly come first, so a std file read from disk replaces its embedded copy.
     Ok(Snapshot::with_std(sources))

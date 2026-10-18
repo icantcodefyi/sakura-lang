@@ -664,7 +664,12 @@ fn print_test_results(jsonl: &str) {
 }
 
 fn fmt(check: bool, paths: &[PathBuf]) -> ExitCode {
-    let snapshot = match load(paths) {
+    let roots = if paths.is_empty() {
+        disk::default_roots(Path::new("."))
+    } else {
+        paths.to_vec()
+    };
+    let snapshot = match disk::load_sources(&roots) {
         Ok(s) => s,
         Err(e) => return usage_error(e),
     };
