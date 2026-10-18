@@ -4,7 +4,8 @@
 mod common;
 
 use common::{big_stack, programs, sigs};
-use sakura_lir::{interp, lir, lower, print, validate};
+use sakura_eval::lir as interp;
+use sakura_lir::{lir, lower, print, validate};
 
 #[test]
 fn every_program_lowers_and_validates() {

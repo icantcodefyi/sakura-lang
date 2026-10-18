@@ -22,6 +22,7 @@ sakura_codegen_js = { path = "crates/sakura_codegen_js" }
 sakura_analysis = { path = "crates/sakura_analysis" }
 sakura_fmt = { path = "crates/sakura_fmt" }
 sakura_eval = { path = "tools/sakura_eval" }
+sakura_lir = { path = "crates/sakura_lir" }
 sakura_mcp = { path = "crates/sakura_mcp" }
 sakura_lsp = { path = "crates/sakura_lsp" }
 

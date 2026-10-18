@@ -4,12 +4,11 @@
 //! `compiler/tests/semantics` and every `tests/corpus/{diff,lir}/*.sakura` program with the live
 //! frontend and writes, beside each, `<name>.json` (the shared `sakura-core-snapshot-v1`,
 //! §17.107) and `<name>.expected` (how the program ends and what it prints). It also
-//! writes `builtins.sigs`, the representation of each runtime builtin's parameters and result,
+//! writes `src/builtins.sigs`, the representation of each runtime builtin's parameters and result,
 //! read from std's `@external` declarations.
 //!
-//! This is the only code in `sakura_lir` that sees `sakura_core`; it is dev-only so that the
-//! library has no live dependency on the M0–M3 crates before the gates (plan §3.5). Conversion
-//! failures are reported, never guessed: a Core form this file does not know stops the run.
+//! Conversion failures are reported, never guessed: a Core form this file does not know stops
+//! the run.
 //!
 //! Expectations: a semantics program's are its `.stdout` file and its `expect-defect` directive
 //! (the `@wasm` variant when present); programs whose `needs:` names the JS backend are left out.
@@ -101,7 +100,7 @@ fn main() {
         }
     }
 
-    std::fs::write(corpus.join("builtins.sigs"), builtin_sigs()).unwrap();
+    std::fs::write(here.join("src/builtins.sigs"), builtin_sigs()).unwrap();
     for r in &report {
         eprintln!("{r}");
     }

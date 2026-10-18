@@ -5,7 +5,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use sakura_lir::{lir, lower, snapshot};
+use sakura_lir::{lir, snapshot};
 
 pub struct Program {
     pub name: String,
@@ -19,8 +19,7 @@ pub fn corpus_dir() -> PathBuf {
 }
 
 pub fn sigs() -> BTreeMap<String, (lir::Sig, bool)> {
-    let text = std::fs::read_to_string(corpus_dir().join("builtins.sigs")).unwrap();
-    lower::parse_sigs(&text).unwrap()
+    sakura_lir::builtin_sigs()
 }
 
 pub fn programs() -> Vec<Program> {

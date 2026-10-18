@@ -122,7 +122,7 @@ impl fmt::Display for Repr {
     }
 }
 
-/// A runtime builtin's parameter and result representations (`tests/corpus/builtins.sigs`).
+/// A runtime builtin's parameter and result representations (`src/builtins.sigs`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Sig {
     pub params: Vec<Repr>,

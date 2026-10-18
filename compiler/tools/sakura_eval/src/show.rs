@@ -173,6 +173,54 @@ pub fn js_number(f: f64) -> String {
     if f < 0.0 { format!("-{body}") } else { body }
 }
 
+/// JS `Number.prototype.toFixed(digits)` as the runtime's `float_format` uses it: non-finite
+/// values show as `show_float`, magnitudes from 10^21 as `js_number`, and an exact tie rounds
+/// away from zero (ECMA-262 picks the larger `n`), unlike Rust's ties-to-even formatting.
+pub fn to_fixed(f: f64, digits: usize) -> String {
+    if !f.is_finite() {
+        return show_float(f);
+    }
+    if f.abs() >= 1e21 {
+        return js_number(f);
+    }
+    // A double's exact decimal expansion has at most 1074 fractional digits.
+    let exact = format!("{:.1100}", f.abs());
+    let (int, frac) = exact.split_once('.').unwrap_or((&exact, ""));
+    let mut digits_v: Vec<u8> = int
+        .bytes()
+        .chain(frac.bytes().take(digits))
+        .map(|b| b - b'0')
+        .collect();
+    let round_up = frac.as_bytes().get(digits).is_some_and(|&b| b >= b'5');
+    if round_up {
+        let mut i = digits_v.len();
+        loop {
+            if i == 0 {
+                digits_v.insert(0, 1);
+                break;
+            }
+            i -= 1;
+            if digits_v[i] == 9 {
+                digits_v[i] = 0;
+            } else {
+                digits_v[i] += 1;
+                break;
+            }
+        }
+    }
+    let n_int = digits_v.len() - digits;
+    let mut out = String::new();
+    if f < 0.0 {
+        out.push('-');
+    }
+    out.extend(digits_v[..n_int].iter().map(|d| char::from(b'0' + d)));
+    if digits > 0 {
+        out.push('.');
+        out.extend(digits_v[n_int..].iter().map(|d| char::from(b'0' + d)));
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -219,6 +267,24 @@ mod tests {
             (-0.0, "0"),
         ] {
             assert_eq!(js_number(f), s, "{f}");
+        }
+    }
+
+    #[test]
+    fn to_fixed_matches_js() {
+        for (f, d, s) in [
+            (4.56789, 2, "4.57"),
+            (0.5, 0, "1"),
+            (2.5, 0, "3"),
+            (-2.5, 0, "-3"),
+            (1.005, 2, "1.00"),
+            (9.995, 2, "9.99"),
+            (99.5, 0, "100"),
+            (0.0, 3, "0.000"),
+            (-0.0001, 2, "-0.00"),
+            (1e21, 2, "1e+21"),
+        ] {
+            assert_eq!(to_fixed(f, d), s, "{f} {d}");
         }
     }
 }

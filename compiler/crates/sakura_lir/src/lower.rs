@@ -48,7 +48,7 @@ pub fn repr_of(ty: &Ty) -> Repr {
     }
 }
 
-/// Reads `tests/corpus/builtins.sigs`: `name: (repr, …) -> repr [cps]` per line.
+/// Reads `src/builtins.sigs`: `name: (repr, …) -> repr [cps]` per line.
 pub fn parse_sigs(text: &str) -> R<BTreeMap<String, (Sig, bool)>> {
     let repr = |s: &str| -> R<Repr> {
         Ok(match s.trim() {

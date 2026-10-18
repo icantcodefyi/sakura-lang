@@ -9,6 +9,7 @@
 //! [`Stop::Unsupported`] so differential tests can skip the program instead of disagreeing.
 
 mod builtins;
+pub mod lir;
 mod show;
 
 use std::cell::RefCell;

@@ -10,6 +10,7 @@ publish.workspace = true
 
 [dependencies]
 sakura_core.workspace = true
+sakura_lir.workspace = true
 
 [dev-dependencies]
 sakura_analysis.workspace = true

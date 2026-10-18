@@ -1,4 +1,5 @@
-//! A LIR interpreter (plan §3.5 L2): the reference for what the WASM emitter must do.
+//! The LIR interpreter (plan §3.5 L2, moved here in L3): the reference for what the WASM emitter
+//! must do, and the third evaluator of `tests/differential.rs`.
 //!
 //! It runs LIR exactly as ABI v1 describes the machine, at the level of objects rather than
 //! bytes: heap objects carry a tag, a static flag and a reference count, and are released by a
@@ -20,8 +21,9 @@
 
 use std::collections::{HashMap, VecDeque};
 
-use crate::layout::{EntryKind, PAIR, Slot, SlotKind, closure_slots};
-use crate::lir::*;
+use sakura_lir::layout::{EntryKind, PAIR, Slot, SlotKind, closure_slots};
+use sakura_lir::lir::*;
+
 use crate::show::show_float;
 
 const UNIT: u32 = 0b0001;
