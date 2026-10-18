@@ -490,9 +490,14 @@ record their status at authoring time.
 1. **`SKILL.md` ≤ 7,500 bytes, ASCII**, pinned by a `sakura_cli` test; the cuts are named in
    §17.182 (1) (provenance paragraph to one sentence, `audit`/`verify` paragraph to one sentence,
    the bundle-history sentences dropped); the four examples, the edit loop and the syntax list stay.
+   Round 16 (§17.188): the test measures the **filled** text (version and a 40-character commit),
+   the source keeps a 7,000-byte working target, whoever crosses the target moves text in the same
+   commit, and Sol trims the named prose now (`f93e8adb` left six bytes of headroom).
 2. **Messages**: `V1002`'s `Type.member` form gains the prefix rule (`List.lenght` → `len`,
    `suggested` fix only) and `explain V1002` names the `len` convention; `V2002` names the callee
    as written (`List.map` (std/list)). Message text only; codes, schema and spans unchanged.
+   Round 16 (§17.187): the prefix rule's folding of extensions (`fil` → `filter`) is ratified and
+   §17.165's flat two-edit fallback is withdrawn (`List.size` → `slice` was `machine_applicable`).
 3. **Runner and workflow**: `--max-episodes` (default 48, per approved run) replaces the all-runs
    constant; the dollar ledger stays the only cross-run rail; `agent-eval.yml` gains `input_caps`
    (default `40000,60000`), `seed` and `max_episodes`; the §17.165 (3) harness changes land first.
