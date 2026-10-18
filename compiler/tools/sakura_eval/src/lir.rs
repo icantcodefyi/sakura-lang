@@ -1014,6 +1014,8 @@ impl<'m> Vm<'m> {
                 };
                 let (inner, site) = (*inner, *site as u32);
                 if self.act(site).is_none() {
+                    // The call consumed the callback; nothing else will release it.
+                    self.drop_word(w)?;
                     return self.defect("D094", "an operation callback outlived its handler");
                 }
                 self.dup(inner)?;
