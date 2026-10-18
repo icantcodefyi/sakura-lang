@@ -1,0 +1,231 @@
+name: Benchmarks
+
+on:
+  pull_request:
+    paths:
+      - "compiler/**"
+      - "bench/**"
+      - ".github/workflows/bench.yml"
+  workflow_dispatch:
+  schedule:
+    - cron: "17 2 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  perf:
+    if: github.event_name == 'pull_request'
+    name: Perf (${{ matrix.os }}, ${{ matrix.engine }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            engine: node
+          - os: macos-latest
+            engine: node
+          - os: macos-latest
+            engine: bun
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - name: Read reference pins
+        id: pins
+        run: |
+          python3 - <<'PY'
+          import os, tomllib
+          with open("bench/toolchains.toml", "rb") as source:
+              pins = tomllib.load(source)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              for name, version in pins.items():
+                  print(f"{name}={version}", file=output)
+          PY
+          echo "$GITHUB_WORKSPACE/bench" >> "$GITHUB_PATH"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ steps.pins.outputs.node }}
+      - uses: oven-sh/setup-bun@v2
+        if: matrix.engine == 'bun'
+        with:
+          bun-version: ${{ steps.pins.outputs.bun }}
+      - name: Install pinned Rust toolchain
+        working-directory: compiler
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: compiler
+      - name: Measure and compare matched ratios
+        env:
+          BENCH_ENGINE: ${{ matrix.engine }}
+        run: |
+          mkdir -p bench-results
+          python3 - <<'PY'
+          import copy, json, os, pathlib, subprocess
+
+          output = pathlib.Path("bench-results")
+          engine = os.environ["BENCH_ENGINE"]
+
+          def command(*args, allowed=(0,)):
+              result = subprocess.run(["bench", *map(str, args)], check=False)
+              if result.returncode not in allowed:
+                  raise SystemExit(result.returncode)
+              return result.returncode
+
+          def measure(path, program=None):
+              args = ["run", "--suite", "js", "--engine", engine,
+                      "--lane", "matched", "--sizes", "quick", "--json", path]
+              if program is not None:
+                  args += ["--filter", program]
+              # Missing optional toolchains are recorded by the harness on PRs.
+              if command(*args, allowed=(0, 3)) == 3:
+                  print("::warning::A toolchain was missing; see the result JSON")
+
+          head_path = output / f"head-{engine}.json"
+          measure(head_path)
+          head = json.loads(head_path.read_text())
+          candidates = [(p, json.loads(p.read_text()))
+                        for p in sorted(pathlib.Path("bench/baselines").glob("*.json"))]
+
+          def os_family(host):
+              name = host["os"].lower()
+              return "macos" if "darwin" in name or "macos" in name else name.split()[0]
+
+          host = head["meta"]["host"]
+          exact = [item for item in candidates if item[1]["meta"]["host"]["id"] == host["id"]]
+          same_os = [item for item in candidates
+                     if os_family(item[1]["meta"]["host"]) == os_family(host)]
+          reference = [item for item in candidates
+                       if "m4 pro" in item[1]["meta"]["host"]["cpu"].lower()]
+          choices = exact or same_os or reference
+          if not choices:
+              print("::warning::No blessed baseline exists; oracle results are uploaded")
+              raise SystemExit(0)
+          base_path, base = max(choices, key=lambda item: item[1]["meta"]["started"])
+          print(f"Comparing ratios against {base_path}")
+
+          # Suppress only timing blocks for this first pass: checksum, stack, complexity
+          # and RSS failures must fail without waiting for a confirmation measurement.
+          command("compare", base_path, head_path, "--block", "1e300",
+                  "--json", output / f"immediate-{engine}.json")
+          code = command("compare", base_path, head_path, "--json",
+                         output / f"compare-{engine}.json", allowed=(0, 2))
+          if code == 0:
+              raise SystemExit(0)
+
+          # Confirm the same program, so an unrelated regression in a second full run
+          # cannot confirm a noisy first measurement. Preserve both sets of samples.
+          blocked = False
+          for index, program in enumerate(sorted({row["program"] for row in head["results"]})):
+              paths = []
+              for label, data in (("base", base), ("head", head)):
+                  subset = copy.deepcopy(data)
+                  subset["results"] = [row for row in data["results"] if row["program"] == program]
+                  path = output / f"{label}-{engine}-{index}.json"
+                  path.write_text(json.dumps(subset))
+                  paths.append(path)
+              if command("compare", *paths, allowed=(0, 2)) == 0:
+                  continue
+              confirmation = output / f"confirm-{engine}-{index}.json"
+              measure(confirmation, program)
+              if command("compare", paths[0], confirmation, "--json",
+                         output / f"confirmed-{engine}-{index}.json", allowed=(0, 2)) == 2:
+                  blocked = True
+          raise SystemExit(2 if blocked else 0)
+          PY
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: bench-pr-${{ matrix.os }}-${{ matrix.engine }}
+          path: bench-results/
+          if-no-files-found: warn
+
+  nightly:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: macos-latest
+    timeout-minutes: 180
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - name: Read reference pins
+        id: pins
+        run: |
+          python3 - <<'PY'
+          import os, tomllib
+          with open("bench/toolchains.toml", "rb") as source:
+              pins = tomllib.load(source)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              for name, version in pins.items():
+                  print(f"{name}={version}", file=output)
+          PY
+          echo "$GITHUB_WORKSPACE/bench" >> "$GITHUB_PATH"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ steps.pins.outputs.node }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ steps.pins.outputs.bun }}
+      - name: Install pinned Rust toolchain
+        working-directory: compiler
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: compiler
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ steps.pins.outputs.go }}
+          cache: false
+      - uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: ${{ steps.pins.outputs.ocaml }}
+      - name: Expose OCaml native compiler
+        run: |
+          eval "$(opam env)"
+          opam var bin >> "$GITHUB_PATH"
+          test "$(ocamlopt -version)" = "${{ steps.pins.outputs.ocaml }}"
+      - name: Install pinned Koka and Hyperfine
+        env:
+          KOKA_VERSION: ${{ steps.pins.outputs.koka }}
+          HYPERFINE_VERSION: ${{ steps.pins.outputs.hyperfine }}
+        run: |
+          curl --fail --location --silent --show-error \
+            "https://github.com/koka-lang/koka/releases/download/v${KOKA_VERSION}/install.sh" \
+            --output "$RUNNER_TEMP/install-koka.sh"
+          sh "$RUNNER_TEMP/install-koka.sh" --minimal --force --prefix="$RUNNER_TEMP/koka"
+          echo "$RUNNER_TEMP/koka/bin" >> "$GITHUB_PATH"
+          cargo install hyperfine --version "=$HYPERFINE_VERSION" --locked
+      - name: Full suite (both lanes and engines)
+        run: |
+          mkdir -p bench-results
+          for lane in matched idiomatic; do
+            for engine in node bun; do
+              bench run --suite all --engine "$engine" --lane "$lane" --sizes all \
+                --stable --json "bench-results/nightly-${lane}-${engine}.json"
+            done
+          done
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: bench-nightly-macos
+          path: bench-results/
+          if-no-files-found: warn

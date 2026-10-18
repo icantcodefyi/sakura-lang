@@ -1,0 +1,9 @@
+# Exact reference-panel pins (design §17.109; performance-r1 §2.2).
+# Keep old blessed baselines when changing a pin. CPython is context only.
+node = "26.11.0"
+bun = "1.4.3"
+rust = "1.99.1"
+go = "1.27.2"
+ocaml = "5.5.1"
+koka = "3.2.9"
+hyperfine = "2.0.0"
