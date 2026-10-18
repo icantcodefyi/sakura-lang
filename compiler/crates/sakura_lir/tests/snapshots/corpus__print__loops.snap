@@ -1,0 +1,226 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 shape |  32b (word*, word*)
+layout 3 shape |  32b (i64, word*)
+layout 4 shape |  32b (word*, i64)
+
+fn main#0 pub top -> unit ; main::loops, frame 31 slots [%4 bool, %5 i64, %27 bool, %28 i64, %29 word*, %37 bool, %38 i64, %39 word*, %40 i64, %49 word*, %50 i64, %51 word*, %52 i64, %62 word*, %63 i64, %64 word*, %65 i64, %100 bool, %101 word*, %102 i64, %103 i64, %104 i64, %105 word*, %106 i64, %150 bool, %151 word*, %152 i64, %153 i64, %154 i64, %155 word*, %156 i64]
+  b0():
+    %270 lit: i64 = const 0
+    %271 lit: i64 = const 0
+    jump b36(%270, %271)
+  b1(%0 total: i64):
+    %1 s: ptr = show %0
+    %2 lit: ptr = const str 0
+    %3 s: ptr = concat %2, %1
+    drop %1
+    drop %2
+    perform std::console::Console.print(%3) -> b2(%0)
+  b2(%4 r: unit, %5 total: i64):
+    %6 box: word = box %4
+    drop %6
+    %7 xs: ptr = alloc list()
+    %8 lit: i64 = const 1
+    %9 box: word = box %8
+    %10 lit: i64 = const 2
+    %11 box: word = box %10
+    %12 lit: i64 = const 3
+    %13 box: word = box %12
+    %14 lit: i64 = const 4
+    %15 box: word = box %14
+    %16 lit: i64 = const 5
+    %17 box: word = box %16
+    %18 lit: i64 = const 6
+    %19 box: word = box %18
+    %20 xs: ptr = alloc list(%9, %11, %13, %15, %17, %19)
+    dup %20
+    %21 n: i64 = $list_len(%20)
+    %256 lit: i64 = const 0
+    jump b26(%256, %5, %7, %20, %21)
+  b3(%22 total: i64, %23 evens: ptr):
+    %24 s: ptr = show %23
+    %25 lit: ptr = const str 1
+    %26 s: ptr = concat %25, %24
+    drop %24
+    drop %25
+    perform std::console::Console.print(%26) -> b4(%22, %23)
+  b4(%27 r: unit, %28 total: i64, %29 evens: ptr):
+    %30 box: word = box %27
+    drop %30
+    %180 lit: i64 = const 1
+    jump b22(%28, %29, %180)
+  b5(%31 total: i64, %32 evens: ptr, %33 n: i64):
+    %34 s: ptr = show %33
+    %35 lit: ptr = const str 2
+    %36 s: ptr = concat %35, %34
+    drop %34
+    drop %35
+    perform std::console::Console.print(%36) -> b6(%31, %32, %33)
+  b6(%37 r: unit, %38 total: i64, %39 evens: ptr, %40 n: i64):
+    %41 box: word = box %37
+    drop %41
+    %42 lit: ptr = const str 3
+    %43 lit: i64 = const 1
+    %44 tup: ptr = alloc tuple#4(word, i64)(%42, %43)
+    %45 lit: ptr = const str 4
+    %46 lit: i64 = const 2
+    %47 tup: ptr = alloc tuple#4(word, i64)(%45, %46)
+    %48 xs: ptr = alloc list(%44, %47)
+    call of#2(%48) -> b7(%38, %39, %40)
+  b7(%49 r: ptr, %50 total: i64, %51 evens: ptr, %52 n: i64):
+    %53 xs: ptr = $map_entries(%49)
+    dup %53
+    %54 n: i64 = $list_len(%53)
+    %160 lit: i64 = const 0
+    jump b16(%160, %50, %51, %52, %53, %54)
+  b8(%55 total: i64, %56 evens: ptr, %57 n: i64):
+    %58 lit: ptr = const str 5
+    %59 lit: ptr = const str 6
+    %60 lit: ptr = const str 5
+    %61 xs: ptr = alloc list(%58, %59, %60)
+    call of#3(%61) -> b9(%55, %56, %57)
+  b9(%62 r: ptr, %63 total: i64, %64 evens: ptr, %65 n: i64):
+    %66 xs: ptr = $set_to_list(%62)
+    dup %66
+    %67 n: i64 = $list_len(%66)
+    %108 lit: i64 = const 0
+    jump b11(%108, %63, %64, %65, %66, %67)
+  b10(%68 total: i64, %69 evens: ptr, %70 n: i64):
+    drop %69
+    %71 lit: unit = const ()
+    ret %71
+  b11(%72 i: i64, %73 total: i64, %74 evens: ptr, %75 n: i64, %76 xs: ptr, %77 n: i64):
+    %78 more: bool = lt.int %72, %77
+    if %78 then b12(%76, %77, %72, %73, %74, %75) else b13(%76, %77, %72, %73, %74, %75)
+  b12(%79 xs: ptr, %80 n: i64, %81 i: i64, %82 total: i64, %83 evens: ptr, %84 n: i64):
+    dup %79
+    %91 x: word = $list_at(%79, %81)
+    perform std::console::Console.print(%91) -> b15(%79, %80, %81, %82, %83, %84)
+  b13(%85 xs: ptr, %86 n: i64, %87 i: i64, %88 total: i64, %89 evens: ptr, %90 n: i64):
+    drop %85
+    jump b10(%88, %89, %90)
+  b14(%92 total: i64, %93 evens: ptr, %94 n: i64, %95 xs: ptr, %96 n: i64, %97 i: i64):
+    %98 lit: i64 = const 1
+    %99 i: i64 = intadd %97, %98
+    jump b11(%99, %92, %93, %94, %95, %96)
+  b15(%100 r: unit, %101 xs: ptr, %102 n: i64, %103 i: i64, %104 total: i64, %105 evens: ptr, %106 n: i64):
+    %107 box: word = box %100
+    drop %107
+    jump b14(%104, %105, %106, %101, %102, %103)
+  b16(%109 i: i64, %110 total: i64, %111 evens: ptr, %112 n: i64, %113 xs: ptr, %114 n: i64):
+    %115 more: bool = lt.int %109, %114
+    if %115 then b17(%113, %114, %109, %110, %111, %112) else b18(%113, %114, %109, %110, %111, %112)
+  b17(%116 xs: ptr, %117 n: i64, %118 i: i64, %119 total: i64, %120 evens: ptr, %121 n: i64):
+    dup %116
+    %128 x: word = $list_at(%116, %118)
+    %158 p: ptr = tuple_get %128.0
+    %159 p: i64 = tuple_get %128.1
+    drop %128
+    jump b20(%158, %159, %116, %117, %118, %119, %120, %121)
+  b18(%122 xs: ptr, %123 n: i64, %124 i: i64, %125 total: i64, %126 evens: ptr, %127 n: i64):
+    drop %122
+    jump b8(%125, %126, %127)
+  b19(%129 total: i64, %130 evens: ptr, %131 n: i64, %132 xs: ptr, %133 n: i64, %134 i: i64):
+    %135 lit: i64 = const 1
+    %136 i: i64 = intadd %134, %135
+    jump b16(%136, %129, %130, %131, %132, %133)
+  b20(%137 k: ptr, %138 v: i64, %139 xs: ptr, %140 n: i64, %141 i: i64, %142 total: i64, %143 evens: ptr, %144 n: i64):
+    %145 s: ptr = show %137
+    drop %137
+    %146 lit: ptr = const str 7
+    %147 s: ptr = concat %145, %146
+    drop %145
+    drop %146
+    %148 s: ptr = show %138
+    %149 s: ptr = concat %147, %148
+    drop %147
+    drop %148
+    perform std::console::Console.print(%149) -> b21(%139, %140, %141, %142, %143, %144)
+  b21(%150 r: unit, %151 xs: ptr, %152 n: i64, %153 i: i64, %154 total: i64, %155 evens: ptr, %156 n: i64):
+    %157 box: word = box %150
+    drop %157
+    jump b19(%154, %155, %156, %151, %152, %153)
+  b22(%161 total: i64, %162 evens: ptr, %163 n: i64):
+    %164 lit: i64 = const 100
+    %165 t: bool = lt.int %163, %164
+    if %165 then b24(%161, %162, %163) else b25(%161, %162, %163)
+  b23(%166 v: word, %167 total: i64, %168 evens: ptr, %169 n: i64):
+    drop %166
+    jump b22(%167, %168, %169)
+  b24(%170 total: i64, %171 evens: ptr, %172 n: i64):
+    %176 lit: i64 = const 3
+    %177 t: i64 = intmul %172, %176
+    %178 lit: unit = const ()
+    %179 box: word = box %178
+    jump b23(%179, %170, %171, %177)
+  b25(%173 total: i64, %174 evens: ptr, %175 n: i64):
+    jump b5(%173, %174, %175)
+  b26(%181 i: i64, %182 total: i64, %183 evens: ptr, %184 xs: ptr, %185 n: i64):
+    %186 more: bool = lt.int %181, %185
+    if %186 then b27(%184, %185, %181, %182, %183) else b28(%184, %185, %181, %182, %183)
+  b27(%187 xs: ptr, %188 n: i64, %189 i: i64, %190 total: i64, %191 evens: ptr):
+    dup %187
+    %197 x: word = $list_at(%187, %189)
+    %198 unbox: i64 = unbox %197
+    drop %197
+    %206 lit: i64 = const 2
+    %207 t: i64 = intrem %198, %206
+    %208 lit: i64 = const 1
+    %209 t: bool = eq.int %207, %208
+    if %209 then b34(%187, %188, %189, %190, %191, %198) else b35(%187, %188, %189, %190, %191, %198)
+  b28(%192 xs: ptr, %193 n: i64, %194 i: i64, %195 total: i64, %196 evens: ptr):
+    drop %192
+    jump b3(%195, %196)
+  b29(%199 total: i64, %200 evens: ptr, %201 xs: ptr, %202 n: i64, %203 i: i64):
+    %204 lit: i64 = const 1
+    %205 i: i64 = intadd %203, %204
+    jump b26(%205, %199, %200, %201, %202)
+  b30(%210 v: word, %211 total: i64, %212 evens: ptr, %213 xs: ptr, %214 n: i64, %215 i: i64, %216 x: i64):
+    drop %210
+    %217 lit: i64 = const 4
+    %218 t: bool = gt.int %216, %217
+    if %218 then b32(%213, %214, %215, %216, %211, %212) else b33(%213, %214, %215, %216, %211, %212)
+  b31(%219 v: word, %220 total: i64, %221 evens: ptr, %222 xs: ptr, %223 n: i64, %224 i: i64, %225 x: i64):
+    drop %219
+    %226 box: word = box %225
+    %227 r: ptr = $list_push(%221, %226)
+    jump b29(%220, %227, %222, %223, %224)
+  b32(%228 xs: ptr, %229 n: i64, %230 i: i64, %231 x: i64, %232 total: i64, %233 evens: ptr):
+    drop %228
+    jump b3(%232, %233)
+  b33(%234 xs: ptr, %235 n: i64, %236 i: i64, %237 x: i64, %238 total: i64, %239 evens: ptr):
+    %240 lit: unit = const ()
+    %241 box: word = box %240
+    jump b31(%241, %238, %239, %234, %235, %236, %237)
+  b34(%242 xs: ptr, %243 n: i64, %244 i: i64, %245 total: i64, %246 evens: ptr, %247 x: i64):
+    jump b29(%245, %246, %242, %243, %244)
+  b35(%248 xs: ptr, %249 n: i64, %250 i: i64, %251 total: i64, %252 evens: ptr, %253 x: i64):
+    %254 lit: unit = const ()
+    %255 box: word = box %254
+    jump b30(%255, %251, %252, %248, %249, %250, %253)
+  b36(%257 i: i64, %258 total: i64):
+    %259 lit: i64 = const 5
+    %260 more: bool = lt.int %257, %259
+    if %260 then b37(%257, %258) else b38(%257, %258)
+  b37(%261 i: i64, %262 total: i64):
+    %269 t: i64 = intadd %262, %261
+    jump b39(%269, %261)
+  b38(%263 i: i64, %264 total: i64):
+    jump b1(%264)
+  b39(%265 total: i64, %266 i: i64):
+    %267 lit: i64 = const 1
+    %268 i: i64 = intadd %266, %267
+    jump b36(%268, %265)
+
+fn $entry#1 top -> unit ; main::loops, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1

@@ -1,0 +1,48 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 shape |  32b (word*, word*)
+layout 3 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::defect_D030_option_expect, frame 4 slots [%1 bool, %3 word*, %8 bool, %11 bool]
+  b0():
+    %0 lit: ptr = const str 0
+    perform std::console::Console.print(%0) -> b1()
+  b1(%1 r: unit):
+    %2 box: word = box %1
+    drop %2
+    call missing#2() -> b2()
+  b2(%3 r: ptr):
+    %4 lit: ptr = const str 1
+    %5 r: word = $option_expect(%3, %4)
+    %6 unbox: i64 = unbox %5
+    drop %5
+    %7 s: ptr = show %6
+    perform std::console::Console.print(%7) -> b3()
+  b3(%8 r: unit):
+    %9 box: word = box %8
+    drop %9
+    %10 lit: ptr = const str 2
+    perform std::console::Console.print(%10) -> b4()
+  b4(%11 r: unit):
+    %12 box: word = box %11
+    %13 unbox: unit = unbox %12
+    drop %12
+    ret %13
+
+fn $entry#1 top -> unit ; main::defect_D030_option_expect, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn missing#2 top -> ptr ; main::defect_D030_option_expect, frame 0 slots []
+  b0():
+    %0 v: ptr = const static std::option::Option.None
+    ret %0

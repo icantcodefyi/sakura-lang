@@ -1,0 +1,31 @@
+ending: ok
+--- stdout
+Dot
+Dot
+Dot
+Dot
+Dot
+Dot
+Dot
+Dot
+Dot
+Dot
+Dot
+Dot
+Dot
+Dot
+Dot
+Dot
+Dot
+Dot
+Dot
+P { a: 0, s: "sakura" }
+false
+P { a: 3, s: "a" }
+false
+P { a: 3, s: "a" }
+false
+P { a: 3, s: "a" }
+false
+P { a: 3, s: "a" }
+[]

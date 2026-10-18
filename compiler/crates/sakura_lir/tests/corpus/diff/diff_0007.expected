@@ -1,0 +1,20 @@
+ending: ok
+--- stdout
+around 8 #1
+-1
+-1
+true
+P { a: 81, s: "back\\slash" }
+around -5 #2
+P { a: -3, s: "héllo" }
+true
+3
+Ok(-1)
+[-6, 8]
+[-1, 0, -4]
+true
+-3
+false
+x ytab	
+true
+[-5]

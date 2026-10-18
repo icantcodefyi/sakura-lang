@@ -1,0 +1,4 @@
+ending: ok
+--- stdout
+P { a: 2, s: "🦀" }
+9

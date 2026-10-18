@@ -1,0 +1,38 @@
+type P = { a: Int, s: String }
+type Shape = Dot | Num(Int) | Pair(Int, String)
+error Oops(code: Int)
+error Bad
+effect Counter { fn next() -> Int }
+effect Acc {
+  fn add(x: Int) -> Unit ! {Fail<Bad>}
+  fn total() -> Int
+}
+fn counter(start: Int) -> Handler<Counter> { handler Counter { var n = start; fn next() { n = n + 1; n } } }
+fn doubling() -> Handler<Counter, {Counter}> {
+  handler Counter { var k = 0; fn next() { k = k + 1; Counter.next() * 2 + k } }
+}
+fn acc(limit: Int) -> Handler<Acc, {Console}> {
+  handler Acc {
+    var t = 0
+    fn add(x) { if x > limit { fail Bad }; t = t + x; Console.print("add {x} = {t}") }
+    fn total() { t }
+  }
+}
+effect Around { fn around<e>(x: Int, body: fn(Int) -> Int ! e) -> Int ! e }
+fn around() -> Handler<Around, {Console}> {
+  handler Around {
+    var calls = 0
+    fn around(x, body) { calls = calls + 1; Console.print("around {x} #{calls}"); body(x + calls) }
+  }
+}
+fn widen() -> Handler<Around, {Around}> { handler Around { fn around(x, body) { Around.around(x * 2, body) + 1 } } }
+fn h0(p0: Bool, p1: Int) -> Shape
+{ Num((match [2, (-10), 1] { [] => 8, [v1, ..v2] => (-9) })) }
+fn h1(p0: Int, p1: String) -> Bool
+{ var v3 = [(-4), 4503599627370496, (-5)]; for v4 in -1..0 { if true { return (List.join(List.map((try { if true { fail Oops { code: p0 } }; var v5 = [7]; for v6 in v3 { if false { return true }; let v7 = v6; v5 = List.push(v5, p0) }; var v8 = v4; for v9 in 2..2 { v8 = v8 + v4 }; [5] } catch { Oops { code: v10 } => [(-9), (-3), (-6)] }), fn(v11) { let v12 = (false && true); let v13 = Dot; ((P { a: (-1), s: "q\"" })).s }), (if false { p1 } else { "héllo" })) != "tab\t") }; v3 = List.push(v3, List.fold((if (4503599627370496 != p0) { List.filter(List.range(0, 3), fn(v14) { let v15 = (P { a: 2, s: "日本" }); true }) } else { List.push(v3, (-7)) }), Int.min((-1), ((P { a: 8, s: "sakura" })).a), fn(v16, v17) { List.sum(v3) })) }; false }
+fn h2(p0: Int) -> Int ! {Fail<Oops | Bad>}
+  requires (true != (List.range(0, 1) != List.range(0, 1)))
+{ if (if (List.all(List.range(0, 2), fn(v18) { true }) || ({ var v19 = 10; var v20 = 0; while v20 < 4 { v20 = v20 + 1; if true { fail Oops { code: p0 } }; if false { return v19 }; v19 = v19 + (-4) }; true })) { ((-10) >= (match [5] { [] => p0, [v21, ..v22] => v21 })) } else { (h1(4503599627370496, "tab\t") || (match [0, (-5)] { [] => true, [v23, ..v24] => true })) }) { return (try { if false { return 1 }; if (match List.range(0, 2) { [] => (4 <= p0), [v25, ..v26] => true }) { fail Bad }; (match (P { a: (-9), s: "" }) { P { a: 1, .. } => Int.abs(p0), P { a: v27, s: v28 } => Int.abs(p0) }) } catch { Bad => (7 % 3) }) }; (match Pair(List.fold(List.range(0, 2), p0, fn(v29, v30) { var v31 = [(-1)]; for v32 in -2..1 { if false { continue }; v31 = List.push(v31, v29) }; var v33 = p0; for v34 in 1..4 { if true { return (-9) }; v33 = v33 + v33 }; 7 }), "<{p0}>") { Dot => (9 * ((P { a: 10, s: "a" })).a), Num(v35) if (try { if false { fail Bad }; let v37 = ({ var v36 = (P { a: (-6), s: "日本" }); v36.a = v35; v36 }); true } catch { Bad => false }) => List.fold(List.push([4503599627370496, (-3), 4], 3), (-9), fn(v38, v39) { if (match Num((-6)) { Dot => true, Num(v40) => false, Pair(v40, v41) => false }) { return (v39 % v38) }; p0 }), Num(v35) => (match Num((-10)) { Dot => ((P { a: (-1), s: "a" })).a, Num(v42) => (-7), Pair(v42, v43) => (with counter((-7)) { if false { fail Bad }; (-5) }) }), Pair(v35, v44) => Int.abs((p0 / p0)) }) }
+pub fn main() -> Unit ! {Console} {
+  Console.print("{(try { h2((-9)) })}")
+}

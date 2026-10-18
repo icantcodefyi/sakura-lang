@@ -1,0 +1,266 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 shape |  32b (word*, word*)
+layout 3 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::std_collections, frame 42 slots [%3 word*, %4 word*, %8 word*, %9 word*, %10 word*, %15 word*, %16 word*, %17 word*, %20 bool, %21 word*, %24 word*, %25 word*, %30 bool, %31 word*, %32 word*, %38 word*, %39 word*, %40 word*, %43 bool, %44 word*, %48 word*, %49 word*, %53 word*, %54 word*, %55 word*, %58 bool, %59 word*, %68 word*, %74 word*, %75 word*, %82 word*, %83 word*, %86 bool, %96 word*, %97 word*, %104 word*, %105 word*, %108 bool, %112 i64, %119 i64, %120 word*, %136 bool]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 lit: ptr = const str 1
+    %2 r: ptr = $string_split(%0, %1)
+    dup %2
+    call sort#2(%2) -> b1(%2)
+  b1(%3 r: ptr, %4 r: ptr):
+    %5 s: ptr = show %3
+    drop %3
+    %6 lit: ptr = const str 1
+    %7 s: ptr = concat %5, %6
+    drop %5
+    drop %6
+    dup %4
+    call unique#3(%4) -> b2(%4, %7)
+  b2(%8 r: ptr, %9 r: ptr, %10 s: ptr):
+    %11 s: ptr = show %8
+    drop %8
+    %12 s: ptr = concat %10, %11
+    drop %10
+    drop %11
+    %13 lit: ptr = const str 1
+    %14 s: ptr = concat %12, %13
+    drop %12
+    drop %13
+    dup %9
+    call reverse#4(%9) -> b3(%9, %14)
+  b3(%15 r: ptr, %16 r: ptr, %17 s: ptr):
+    %18 s: ptr = show %15
+    drop %15
+    %19 s: ptr = concat %17, %18
+    drop %17
+    drop %18
+    perform std::console::Console.print(%19) -> b4(%16)
+  b4(%20 r: unit, %21 r: ptr):
+    %22 box: word = box %20
+    drop %22
+    %23 lit: ptr = const str 2
+    dup %21
+    call join#5(%21, %23) -> b5(%21)
+  b5(%24 r: ptr, %25 r: ptr):
+    %26 s: ptr = show %24
+    drop %24
+    %27 lit: ptr = const str 1
+    %28 s: ptr = concat %26, %27
+    drop %26
+    drop %27
+    %29 lit: ptr = const str 3
+    dup %25
+    call contains#6(%25, %29) -> b6(%25, %28)
+  b6(%30 r: bool, %31 r: ptr, %32 s: ptr):
+    %33 s: ptr = show %30
+    %34 s: ptr = concat %32, %33
+    drop %32
+    drop %33
+    %35 lit: ptr = const str 1
+    %36 s: ptr = concat %34, %35
+    drop %34
+    drop %35
+    %37 f: ptr = closure main$1#7[]
+    dup %31
+    call find#8(%31, %37) -> b7(%31, %36)
+  b7(%38 r: ptr, %39 r: ptr, %40 s: ptr):
+    %41 s: ptr = show %38
+    drop %38
+    %42 s: ptr = concat %40, %41
+    drop %40
+    drop %41
+    perform std::console::Console.print(%42) -> b8(%39)
+  b8(%43 r: unit, %44 r: ptr):
+    %45 box: word = box %43
+    drop %45
+    %46 r: ptr = $map_empty()
+    %47 f: ptr = closure main$2#9[]
+    dup %44
+    call fold#13(%44, %46, %47) -> b9(%44)
+  b9(%48 r: word, %49 r: ptr):
+    %50 s: ptr = show %48
+    %51 lit: ptr = const str 1
+    %52 s: ptr = concat %50, %51
+    drop %50
+    drop %51
+    call keys#14(%48) -> b10(%49, %52)
+  b10(%53 r: ptr, %54 r: ptr, %55 s: ptr):
+    %56 s: ptr = show %53
+    drop %53
+    %57 s: ptr = concat %55, %56
+    drop %55
+    drop %56
+    perform std::console::Console.print(%57) -> b11(%54)
+  b11(%58 r: unit, %59 r: ptr):
+    %60 box: word = box %58
+    drop %60
+    %61 lit: i64 = const 1
+    %62 box: word = box %61
+    %63 lit: i64 = const 2
+    %64 box: word = box %63
+    %65 lit: i64 = const 3
+    %66 box: word = box %65
+    %67 xs: ptr = alloc list(%62, %64, %66)
+    call zip#15(%67, %59) -> b12()
+  b12(%68 r: ptr):
+    %69 s: ptr = show %68
+    drop %68
+    %70 lit: ptr = const str 1
+    %71 s: ptr = concat %69, %70
+    drop %69
+    drop %70
+    %72 lit: ptr = const str 4
+    %73 xs: ptr = alloc list(%72)
+    call enumerate#16(%73) -> b13(%71)
+  b13(%74 r: ptr, %75 s: ptr):
+    %76 s: ptr = show %74
+    drop %74
+    %77 s: ptr = concat %75, %76
+    drop %75
+    drop %76
+    %78 lit: ptr = const str 1
+    %79 s: ptr = concat %77, %78
+    drop %77
+    drop %78
+    %80 lit: i64 = const 0
+    %81 lit: i64 = const 3
+    call range#17(%80, %81) -> b14(%79)
+  b14(%82 r: ptr, %83 s: ptr):
+    %84 s: ptr = show %82
+    drop %82
+    %85 s: ptr = concat %83, %84
+    drop %83
+    drop %84
+    perform std::console::Console.print(%85) -> b15()
+  b15(%86 r: unit):
+    %87 box: word = box %86
+    drop %87
+    %88 lit: ptr = const str 5
+    %89 r: ptr = $string_trim(%88)
+    %90 s: ptr = show %89
+    drop %89
+    %91 lit: ptr = const str 6
+    %92 s: ptr = concat %90, %91
+    drop %90
+    drop %91
+    %93 lit: ptr = const str 7
+    %94 lit: i64 = const 3
+    %95 lit: ptr = const str 8
+    call pad_left#18(%93, %94, %95) -> b16(%92)
+  b16(%96 r: ptr, %97 s: ptr):
+    %98 s: ptr = show %96
+    drop %96
+    %99 s: ptr = concat %97, %98
+    drop %97
+    drop %98
+    %100 lit: ptr = const str 6
+    %101 s: ptr = concat %99, %100
+    drop %99
+    drop %100
+    %102 lit: ptr = const str 9
+    %103 lit: i64 = const 2
+    call repeat#19(%102, %103) -> b17(%101)
+  b17(%104 r: ptr, %105 s: ptr):
+    %106 s: ptr = show %104
+    drop %104
+    %107 s: ptr = concat %105, %106
+    drop %105
+    drop %106
+    perform std::console::Console.print(%107) -> b18()
+  b18(%108 r: unit):
+    %109 box: word = box %108
+    drop %109
+    %110 lit: i64 = const 2
+    %111 lit: i64 = const 20
+    call pow#20(%110, %111) -> b19()
+  b19(%112 r: i64):
+    %113 s: ptr = show %112
+    %114 lit: ptr = const str 1
+    %115 s: ptr = concat %113, %114
+    drop %113
+    drop %114
+    %116 lit: i64 = const 50
+    %117 lit: i64 = const 0
+    %118 lit: i64 = const 10
+    call clamp#21(%116, %117, %118) -> b20(%115)
+  b20(%119 r: i64, %120 s: ptr):
+    %121 s: ptr = show %119
+    %122 s: ptr = concat %120, %121
+    drop %120
+    drop %121
+    %123 lit: ptr = const str 1
+    %124 s: ptr = concat %122, %123
+    drop %122
+    drop %123
+    %125 lit: f64 = const 3.14159
+    %126 lit: i64 = const 2
+    %127 r: ptr = $float_format(%125, %126)
+    %128 s: ptr = show %127
+    drop %127
+    %129 s: ptr = concat %124, %128
+    drop %124
+    drop %128
+    %130 lit: ptr = const str 1
+    %131 s: ptr = concat %129, %130
+    drop %129
+    drop %130
+    %132 lit: f64 = const 16.0
+    %133 r: f64 = $float_sqrt(%132)
+    %134 s: ptr = show %133
+    %135 s: ptr = concat %131, %134
+    drop %131
+    drop %134
+    perform std::console::Console.print(%135) -> b21()
+  b21(%136 r: unit):
+    %137 box: word = box %136
+    %138 unbox: unit = unbox %137
+    drop %137
+    ret %138
+
+fn $entry#1 top -> unit ; main::std_collections, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn main$1#7 lambda -> word ; main::std_collections, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 w: word):
+    drop %0
+    %2 lit: ptr = const str 11
+    %3 t: bool = gt.string %1, %2
+    drop %1
+    drop %2
+    %4 box: word = box %3
+    ret %4
+
+fn main$2#9 lambda -> word ; main::std_collections, captures [], frame 4 slots [%0 word*, %1 word*, %2 word*, %4 word*]
+  b0(%0 env: ptr, %1 m: word, %2 w: word):
+    drop %0
+    %3 f: ptr = closure main$2$1#10[]
+    call update#12(%1, %2, %3) -> b1()
+  b1(%4 r: ptr):
+    ret %4
+
+fn main$2$1#10 lambda -> word ; main::std_collections, captures [], frame 3 slots [%0 word*, %1 word*, %4 word*]
+  b0(%0 env: ptr, %1 n: word):
+    drop %0
+    %2 lit: i64 = const 0
+    %3 box: word = box %2
+    call unwrap_or#11(%1, %3) -> b1()
+  b1(%4 r: word):
+    %5 unbox: i64 = unbox %4
+    drop %4
+    %6 lit: i64 = const 1
+    %7 t: i64 = intadd %5, %6
+    %8 box: word = box %7
+    ret %8

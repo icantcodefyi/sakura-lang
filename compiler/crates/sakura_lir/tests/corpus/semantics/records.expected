@@ -1,0 +1,6 @@
+ending: ok
+--- stdout
+false true ann
+ann bea
+User { id: 1, name: "ann", admin: true }
+true

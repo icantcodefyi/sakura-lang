@@ -1,0 +1,8 @@
+ending: ok
+--- stdout
+日本
+日本
+日本
+日本
+Pair(10, "Ok(\"\")")
+false

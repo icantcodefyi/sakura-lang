@@ -1,0 +1,3 @@
+ending: ok
+--- stdout
+P { a: -8, s: "tab\t" }

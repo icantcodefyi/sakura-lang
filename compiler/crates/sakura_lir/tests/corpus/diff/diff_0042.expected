@@ -1,0 +1,5 @@
+ending: ok
+--- stdout
+8
+4
+false

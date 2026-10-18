@@ -1,0 +1,6 @@
+ending: ok
+--- stdout
+24
+false
+true
+false

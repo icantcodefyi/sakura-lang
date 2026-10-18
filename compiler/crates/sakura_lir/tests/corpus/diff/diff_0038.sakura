@@ -1,0 +1,42 @@
+type P = { a: Int, s: String }
+type Shape = Dot | Num(Int) | Pair(Int, String)
+error Oops(code: Int)
+error Bad
+effect Counter { fn next() -> Int }
+effect Acc {
+  fn add(x: Int) -> Unit ! {Fail<Bad>}
+  fn total() -> Int
+}
+fn counter(start: Int) -> Handler<Counter> { handler Counter { var n = start; fn next() { n = n + 1; n } } }
+fn doubling() -> Handler<Counter, {Counter}> {
+  handler Counter { var k = 0; fn next() { k = k + 1; Counter.next() * 2 + k } }
+}
+fn acc(limit: Int) -> Handler<Acc, {Console}> {
+  handler Acc {
+    var t = 0
+    fn add(x) { if x > limit { fail Bad }; t = t + x; Console.print("add {x} = {t}") }
+    fn total() { t }
+  }
+}
+effect Around { fn around<e>(x: Int, body: fn(Int) -> Int ! e) -> Int ! e }
+fn around() -> Handler<Around, {Console}> {
+  handler Around {
+    var calls = 0
+    fn around(x, body) { calls = calls + 1; Console.print("around {x} #{calls}"); body(x + calls) }
+  }
+}
+fn widen() -> Handler<Around, {Around}> { handler Around { fn around(x, body) { Around.around(x * 2, body) + 1 } } }
+pub fn main() -> Unit ! {Console} {
+  Console.print("{(match (List.reverse(List.concat([7, (-10)], List.unique(List.range(0, 3)))))[((-9) % ((match [(-4), 4] { [] => (P { a: 0, s: "sakura" }), [v1, ..v2] => (P { a: 1, s: "sakura" }) })).a)] { Some(v3) => (with acc(10) { Console.print("{(match (({ List.range(0, 2) }))[(v3 - v3)] { Some(v4) => (match (P { a: 5, s: "sakura" }) { P { a: 0, .. } => [(-2), 7, 4], P { a: v5, s: v6 } => List.range(0, 0) }), None => List.map(List.enumerate([0]), fn(v7) { let v8 = v7.0; let v9 = v7.1; v8 }) })}"); Pair(v3, List.join(List.map([6, (-1)], fn(v10) { let v11 = v3; "日本" }), "two\nlines")) }), None => Num((-7)) })}")
+  with around() {
+    with counter(4503599627370496) {
+      Console.print("{false}")
+      let v31 = (match List.map((match [(-6), 8] { [] => [5, (-1), (-10)], [v12] => List.range(0, 3), [v12, v14, ..] => List.range(0, 1) }), fn(v15) { Int.abs((-5)) }) { [] => Pair((try { if false { fail Oops { code: (-10) } }; (-7) } catch { Oops { code: v16 } => (-7) }), (match ([3, 6, 3])[(-1)] { Some(v17) => "a", None => "two\nlines" })), [v18] => (match List.first(List.map([9, 4], fn(v20) { var v21 = "q\""; for v22 in [(-2), (-1)] { Console.print("{(P { a: (-5), s: "🦀" })}"); let v23 = "héllo"; v21 = v21 + v21 }; 7 })) { Some(v24) => (match (P { a: (-6), s: "sakura" }) { P { a: 1, .. } => Pair((-8), "two\nlines"), P { a: v25, s: v26 } => Pair((-4), "x y") }), None => (match List.get([5, 7], (-6)) { Some(v27) => Pair(9, "x y"), None => Num(6) }) }), [v18, v28, ..] => Pair(Counter.next(), (match List.range(0, 3) { [] => "q\"", [v29, ..v30] => "back\\slash" })) })
+    }
+    with counter(1) {
+      Console.print("{false}")
+      Console.print("{Num(Counter.next())}")
+    }
+  }
+  Console.print("{List.range(0, 0)}")
+}

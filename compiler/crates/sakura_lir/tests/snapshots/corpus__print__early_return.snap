@@ -1,0 +1,137 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 shape |  32b (word*, word*)
+layout 3 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::early_return, frame 11 slots [%5 i64, %6 word*, %13 i64, %14 word*, %15 word*, %22 word*, %23 word*, %24 word*, %32 word*, %33 word*, %36 bool]
+  b0():
+    %0 f: ptr = closure main$1#2[]
+    %1 lit: ptr = const str 0
+    %2 lit: ptr = const str 1
+    %3 xs: ptr = alloc list(%1, %2)
+    %4 lit: ptr = const str 1
+    call index_of#3(%3, %4) -> b1(%0)
+  b1(%5 r: i64, %6 f: ptr):
+    %7 s: ptr = show %5
+    %8 lit: ptr = const str 2
+    %9 s: ptr = concat %7, %8
+    drop %7
+    drop %8
+    %10 lit: ptr = const str 0
+    %11 xs: ptr = alloc list(%10)
+    %12 lit: ptr = const str 3
+    call index_of#3(%11, %12) -> b2(%6, %9)
+  b2(%13 r: i64, %14 f: ptr, %15 s: ptr):
+    %16 s: ptr = show %13
+    %17 s: ptr = concat %15, %16
+    drop %15
+    drop %16
+    %18 lit: ptr = const str 2
+    %19 s: ptr = concat %17, %18
+    drop %17
+    drop %18
+    %20 lit: i64 = const 1
+    %21 box: word = box %20
+    dup %14
+    call %14(%21) -> b3(%14, %19)
+  b3(%22 r: word, %23 f: ptr, %24 s: ptr):
+    %25 s: ptr = show %22
+    drop %22
+    %26 s: ptr = concat %24, %25
+    drop %24
+    drop %25
+    %27 lit: ptr = const str 2
+    %28 s: ptr = concat %26, %27
+    drop %26
+    drop %27
+    %29 lit: i64 = const 1
+    %30 t: i64 = intneg %29
+    %31 box: word = box %30
+    call %23(%31) -> b4(%28)
+  b4(%32 r: word, %33 s: ptr):
+    %34 s: ptr = show %32
+    drop %32
+    %35 s: ptr = concat %33, %34
+    drop %33
+    drop %34
+    perform std::console::Console.print(%35) -> b5()
+  b5(%36 r: unit):
+    %37 box: word = box %36
+    %38 unbox: unit = unbox %37
+    drop %37
+    ret %38
+
+fn $entry#1 top -> unit ; main::early_return, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn main$1#2 lambda -> word ; main::early_return, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 x: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 lit: i64 = const 0
+    %4 t: bool = gt.int %2, %3
+    if %4 then b2() else b3()
+  b1(%5 v: word):
+    drop %5
+    %6 lit: ptr = const str 4
+    ret %6
+  b2():
+    %7 lit: ptr = const str 5
+    ret %7
+  b3():
+    %8 lit: unit = const ()
+    %9 box: word = box %8
+    jump b1(%9)
+
+fn index_of#3 top -> i64 ; main::early_return, frame 2 slots [%0 word*, %1 word*]
+  b0(%0 xs: ptr, %1 target: ptr):
+    dup %0
+    %2 n: i64 = $list_len(%0)
+    %51 lit: i64 = const 0
+    %52 lit: i64 = const 0
+    jump b2(%51, %52, %0, %1, %2)
+  b1(%3 i: i64):
+    %4 lit: i64 = const 1
+    %5 t: i64 = intneg %4
+    ret %5
+  b2(%6 i: i64, %7 i: i64, %8 xs: ptr, %9 target: ptr, %10 n: i64):
+    %11 more: bool = lt.int %6, %10
+    if %11 then b3(%8, %9, %10, %6, %7) else b4(%8, %9, %10, %6, %7)
+  b3(%12 xs: ptr, %13 target: ptr, %14 n: i64, %15 i: i64, %16 i: i64):
+    dup %12
+    %22 x: word = $list_at(%12, %15)
+    %30 t: bool = eq.string %22, %13
+    drop %22
+    if %30 then b7(%12, %13, %14, %15, %16) else b8(%12, %13, %14, %15, %16)
+  b4(%17 xs: ptr, %18 target: ptr, %19 n: i64, %20 i: i64, %21 i: i64):
+    drop %17
+    drop %18
+    jump b1(%21)
+  b5(%23 i: i64, %24 xs: ptr, %25 target: ptr, %26 n: i64, %27 i: i64):
+    %28 lit: i64 = const 1
+    %29 i: i64 = intadd %27, %28
+    jump b2(%29, %23, %24, %25, %26)
+  b6(%31 v: word, %32 i: i64, %33 xs: ptr, %34 target: ptr, %35 n: i64, %36 i: i64):
+    drop %31
+    %37 lit: i64 = const 1
+    %38 t: i64 = intadd %32, %37
+    jump b5(%38, %33, %34, %35, %36)
+  b7(%39 xs: ptr, %40 target: ptr, %41 n: i64, %42 i: i64, %43 i: i64):
+    drop %39
+    drop %40
+    ret %43
+  b8(%44 xs: ptr, %45 target: ptr, %46 n: i64, %47 i: i64, %48 i: i64):
+    %49 lit: unit = const ()
+    %50 box: word = box %49
+    jump b6(%50, %48, %44, %45, %46, %47)

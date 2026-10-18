@@ -1,0 +1,10 @@
+ending: ok
+--- stdout
+r = 2000 tick = 3
+each 3 40
+each 4 50
+seen = 5 tick = 6
+nested = 42
+skip 1 at 1
+skip 2 at 1
+first_over = 3

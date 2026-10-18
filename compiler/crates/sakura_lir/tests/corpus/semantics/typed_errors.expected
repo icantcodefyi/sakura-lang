@@ -1,0 +1,8 @@
+ending: ok
+--- stdout
+age 42
+not a number: x
+negative: -1
+Ok(7)
+Err(ParseError { input: "oops" })
+Err(ParseError { input: "q" })

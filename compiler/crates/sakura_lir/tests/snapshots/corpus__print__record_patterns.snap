@@ -1,0 +1,105 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::record_patterns::Point | Point 40b (x: i64, y: i64, label: word*)
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::record_patterns, frame 6 slots [%4 word*, %5 bool, %11 word*, %12 bool, %18 word*, %19 bool]
+  b0():
+    %0 lit: i64 = const 0
+    %1 lit: i64 = const 0
+    %2 lit: ptr = const str 0
+    %3 rec: ptr = alloc main::record_patterns::Point(%0, %1, %2)
+    call where_is#2(%3) -> b1()
+  b1(%4 r: ptr):
+    perform std::console::Console.print(%4) -> b2()
+  b2(%5 r: unit):
+    %6 box: word = box %5
+    drop %6
+    %7 lit: i64 = const 0
+    %8 lit: i64 = const 4
+    %9 lit: ptr = const str 1
+    %10 rec: ptr = alloc main::record_patterns::Point(%7, %8, %9)
+    call where_is#2(%10) -> b3()
+  b3(%11 r: ptr):
+    perform std::console::Console.print(%11) -> b4()
+  b4(%12 r: unit):
+    %13 box: word = box %12
+    drop %13
+    %14 lit: i64 = const 2
+    %15 lit: i64 = const 3
+    %16 lit: ptr = const str 2
+    %17 rec: ptr = alloc main::record_patterns::Point(%14, %15, %16)
+    call where_is#2(%17) -> b5()
+  b5(%18 r: ptr):
+    perform std::console::Console.print(%18) -> b6()
+  b6(%19 r: unit):
+    %20 box: word = box %19
+    %21 unbox: unit = unbox %20
+    drop %20
+    ret %21
+
+fn $entry#1 top -> unit ; main::record_patterns, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn where_is#2 top -> ptr ; main::record_patterns, frame 1 slots [%0 word*]
+  b0(%0 p: ptr):
+    %18 p: i64 = proj %0.0 main::record_patterns::Point
+    %19 p: i64 = proj %0.1 main::record_patterns::Point
+    %20 p: word = proj %0.2 main::record_patterns::Point
+    drop %0
+    %21 lit: i64 = const 0
+    %22 is: bool = eq.int %18, %21
+    if %22 then b4(%18, %19, %20) else b5(%18, %19, %20)
+  b1():
+    %1 lit: ptr = const str 3
+    ret %1
+  b2(%2 label: ptr):
+    %3 s: ptr = show %2
+    drop %2
+    %4 lit: ptr = const str 4
+    %5 s: ptr = concat %4, %3
+    drop %3
+    drop %4
+    ret %5
+  b3(%6 x: i64, %7 y: i64, %8 label: ptr):
+    %9 s: ptr = show %8
+    drop %8
+    %10 lit: ptr = const str 5
+    %11 s: ptr = concat %9, %10
+    drop %9
+    drop %10
+    %12 s: ptr = show %6
+    %13 s: ptr = concat %11, %12
+    drop %11
+    drop %12
+    %14 lit: ptr = const str 6
+    %15 s: ptr = concat %13, %14
+    drop %13
+    drop %14
+    %16 s: ptr = show %7
+    %17 s: ptr = concat %15, %16
+    drop %15
+    drop %16
+    ret %17
+  b4(%23 p: i64, %24 p: i64, %25 p: ptr):
+    %29 lit: i64 = const 0
+    %30 is: bool = eq.int %24, %29
+    if %30 then b6(%25) else b7(%25)
+  b5(%26 p: i64, %27 p: i64, %28 p: ptr):
+    jump b3(%26, %27, %28)
+  b6(%31 p: ptr):
+    drop %31
+    jump b1()
+  b7(%32 p: ptr):
+    jump b2(%32)

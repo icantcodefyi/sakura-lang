@@ -1,0 +1,4 @@
+ending: ok
+--- stdout
+P { a: 4503599627370497, s: "日本" }
+P { a: -2, s: "two\nlines" }

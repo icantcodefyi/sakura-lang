@@ -1,0 +1,34 @@
+type P = { a: Int, s: String }
+type Shape = Dot | Num(Int) | Pair(Int, String)
+error Oops(code: Int)
+error Bad
+effect Counter { fn next() -> Int }
+effect Acc {
+  fn add(x: Int) -> Unit ! {Fail<Bad>}
+  fn total() -> Int
+}
+fn counter(start: Int) -> Handler<Counter> { handler Counter { var n = start; fn next() { n = n + 1; n } } }
+fn doubling() -> Handler<Counter, {Counter}> {
+  handler Counter { var k = 0; fn next() { k = k + 1; Counter.next() * 2 + k } }
+}
+fn acc(limit: Int) -> Handler<Acc, {Console}> {
+  handler Acc {
+    var t = 0
+    fn add(x) { if x > limit { fail Bad }; t = t + x; Console.print("add {x} = {t}") }
+    fn total() { t }
+  }
+}
+effect Around { fn around<e>(x: Int, body: fn(Int) -> Int ! e) -> Int ! e }
+fn around() -> Handler<Around, {Console}> {
+  handler Around {
+    var calls = 0
+    fn around(x, body) { calls = calls + 1; Console.print("around {x} #{calls}"); body(x + calls) }
+  }
+}
+fn widen() -> Handler<Around, {Around}> { handler Around { fn around(x, body) { Around.around(x * 2, body) + 1 } } }
+fn h0(p0: Shape, p1: String) -> List<Int>
+{ var v1 = ((-4) - 6); var v2 = 0; while v2 < 1 { v2 = v2 + 1; if (Int.min((v2 / (-2)), v1) == (9 + (with counter(4503599627370496), doubling() { v2 }))) { break }; if List.all(List.flat_map(List.reverse(List.range(0, 2)), fn(v3) { let v4 = ("日本" == "x y"); let v5 = "<{(-9)}>"; [(-8)] }), fn(v6) { var v7 = "🦀"; var v8 = 0; while v8 < 3 { v8 = v8 + 1; v7 = v7 + ("x y" + (if false { "🦀" } else { p1 })) }; var v9 = List.slice((match (P { a: 1, s: "🦀" }) { P { a: 0, .. } => [(-8), (-5), 6], P { a: v10, s: v11 } => [(-9)] }), (match (P { a: 4, s: "tab\t" }) { P { a: 1, .. } => v2, P { a: v12, s: v13 } => v12 }), (-2)); for v14 in 1..2 { let v15 = Dot; var v16 = (if (match (P { a: (-3), s: "x y" }) { P { a: 2, .. } => false, P { a: v17, s: v18 } => false }) { v2 } else { List.fold([(-10), (-2)], v2, fn(v19, v20) { if true { return (-10) }; v2 }) }); for v21 in List.range(0, 3) { v16 = v16 + 3 }; v9 = List.push(v9, (8 / ((P { a: (-2), s: "héllo" })).a)) }; (if (if false { false } else { true }) { List.contains(v9, v2) } else { true }) }) { continue }; v1 = v1 + (-2) }; let v22 = (-9); List.push((match Num(v1) { Dot => List.range(0, 2), Num(v23) if (4503599627370496 == (-3)) => (match (P { a: (-1), s: "back\\slash" }) { P { a: 0, .. } => [(-3), 6, (-3)], P { a: v24, s: v25 } => List.range(0, 0) }), Num(v23) => List.range(-2, 3), Pair(v23, v26) => List.range(0, 3) }), v1) }
+pub fn main() -> Unit ! {Console} {
+  Console.print("{h0((try { Console.print("{h0(Dot, "")}"); let v27 = ({ Console.print("{(-7)}"); if false { fail Oops { code: 4503599627370496 } }; true }); ({ let v28 = [(-9), (-1)]; var v29 = (-9); for v30 in 1..0 { v29 = v29 + (-8) }; Pair(2, "sakura") }) } catch { Oops { code: v31 } => Dot }), "<{0}>")}")
+  Console.print("{List.sort_by(List.filter_map((match String.parse_int("0") { Some(v32) => List.map(List.enumerate([(-3), (-6), 8]), fn(v33) { let v34 = v33.0; let v35 = v33.1; v32 }), None => List.range(0, 0) }), fn(v36) { if false { Some(String.len((match [2] { [] => "a", [v37] => "héllo", [v37, v39, ..] => "héllo" }))) } else { None } }), fn(v40) { let v56 = (match Dot { Dot => (if true { true } else { ((P { a: 0, s: "🦀" }) != (P { a: 5, s: "tab\t" })) }), Num(v41) if (match Pair(v41, "日本") { Dot => (Dot != Num(3)), Num(v42) => (false && true), Pair(v42, v43) => (false && true) }) => (true && (try { if false { fail Oops { code: v41 } }; var v44 = [6, (-5), (-5)]; var v45 = 0; while v45 < 2 { v45 = v45 + 1; if false { break }; v44 = List.push(v44, v45) }; true } catch { Oops { code: v46 } => false })), Num(v41) => ((match Pair((-5), "q\"") { Dot => (-4), Num(v47) if false => v40, Num(v47) => 9, Pair(v47, v48) => 1 }) <= (with counter((-2)), doubling() { var v49 = "q\""; for v50 in List.range(0, 3) { if true { break }; let v51 = 0; v49 = v49 + "a" }; 7 })), Pair(v41, v52) => (match (try { if false { fail Oops { code: (-3) } }; Pair(5, "a") } catch { Oops { code: v53 } => Dot }) { Dot => (true || false), Num(v54) if false => (false && true), Num(v54) => (v52 != v52), Pair(v54, v55) => (3 < v54) }) }); let v59 = ({ var v57 = (P { ..({ var v58 = (P { a: (-8), s: "back\\slash" }); v58.a = v40; v58 }), s: ("héllo" + "x y") }); v57.a = (({ v40 }) / String.len("🦀")); v57 }); v40 })}")
+}

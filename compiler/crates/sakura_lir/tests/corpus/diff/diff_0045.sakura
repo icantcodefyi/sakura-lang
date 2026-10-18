@@ -1,0 +1,42 @@
+type P = { a: Int, s: String }
+type Shape = Dot | Num(Int) | Pair(Int, String)
+error Oops(code: Int)
+error Bad
+effect Counter { fn next() -> Int }
+effect Acc {
+  fn add(x: Int) -> Unit ! {Fail<Bad>}
+  fn total() -> Int
+}
+fn counter(start: Int) -> Handler<Counter> { handler Counter { var n = start; fn next() { n = n + 1; n } } }
+fn doubling() -> Handler<Counter, {Counter}> {
+  handler Counter { var k = 0; fn next() { k = k + 1; Counter.next() * 2 + k } }
+}
+fn acc(limit: Int) -> Handler<Acc, {Console}> {
+  handler Acc {
+    var t = 0
+    fn add(x) { if x > limit { fail Bad }; t = t + x; Console.print("add {x} = {t}") }
+    fn total() { t }
+  }
+}
+effect Around { fn around<e>(x: Int, body: fn(Int) -> Int ! e) -> Int ! e }
+fn around() -> Handler<Around, {Console}> {
+  handler Around {
+    var calls = 0
+    fn around(x, body) { calls = calls + 1; Console.print("around {x} #{calls}"); body(x + calls) }
+  }
+}
+fn widen() -> Handler<Around, {Around}> { handler Around { fn around(x, body) { Around.around(x * 2, body) + 1 } } }
+fn h0(p0: Int) -> Bool
+  requires (6 % (p0 - 2) != 7) && ((true && false) != (true != true))
+  ensures (match Pair((-10), "🦀") { Dot => false, Num(v1) if List.contains([1, 1], 9) => false, Num(v1) => (match Num(6) { Dot => false, Num(v2) if result => result, Num(v2) => result, Pair(v2, v3) => result }), Pair(v1, v4) => ("q\"" != v4) })
+{ if true { return (match (P { a: 0, s: "日本" }) { P { a: 0, .. } => (Pair((-2), "") != Num(p0)), P { a: v5, s: v6 } => List.all(List.filter([(-7), 4, 9], fn(v7) { true }), fn(v8) { true }) }) }; let v9 = Dot; (({ let v10 = false; false }) || (try { if false { fail Bad }; var v11 = "a"; var v12 = 0; while v12 < 2 { v12 = v12 + 1; if (match (List.range(0, 0))[(-1)] { Some(v13) => false, None => false }) { return false }; if false { break }; v11 = v11 + "q\"" }; ([(-5), 8] >= [(-10), 2]) } catch { Bad => (match [(-1), (-2)] { [] => true, [v14, ..v15] => true }) })) }
+fn h1(p0: Int) -> List<Int> ! {Fail<Oops | Bad>}
+  requires (4 % (p0 - 2) != 7) && ((false && false) && (0 == (-5)))
+  ensures true
+{ if true { return List.sort_by((match ((match Num(6) { Dot => List.range(0, 3), Num(v16) => [(-10), (-1)], Pair(v16, v17) => [5] }))[(p0 * 0)] { Some(v18) => List.flat_map([1, (-8)], fn(v19) { let v20 = true; List.range(0, 3) }), None => (match (List.range(0, 0))[p0] { Some(v21) => [(-9), (-1)], None => List.range(0, 2) }) }), fn(v22) { (2 - List.sum(List.range(0, 1))) }) }; List.range(0, 4) }
+pub fn main() -> Unit ! {Console} {
+  Console.print("{[3, 4]}")
+  Console.print("{List.map(List.enumerate(List.flat_map(List.filter_map(List.map(List.enumerate(List.range(0, 0)), fn(v23) { let v24 = v23.0; let v25 = v23.1; v25 }), fn(v26) { if (true && false) { Some(({ let v27 = "two\nlines"; let v28 = (-8); 4 })) } else { None } }), fn(v29) { Console.print("{Dot}"); Console.print("{(2 % v29)}"); List.filter_map(List.unique([7]), fn(v30) { if true { Some((v30 * v29)) } else { None } }) })), fn(v31) { let v32 = v31.0; let v33 = v31.1; ((match Num((-2)) { Dot => Int.abs(7), Num(v34) if h0((-9)) => (v32 * v32), Num(v34) => List.sum([(-5), 3]), Pair(v34, v35) => 7 }) - List.len(List.sort_by(List.range(0, 3), fn(v36) { let v37 = Num((-5)); var v38 = [8, (-6), 10]; for v39 in 2..2 { v38 = List.push(v38, v36) }; v33 }))) })}")
+  Console.print("{List.unique(List.map([6, 4], fn(v40) { let v42 = Pair((-2), (match List.get(List.range(0, 2), v40) { Some(v41) => "a", None => "héllo" })); String.len("日本") }))}")
+  Console.print("{h0(((P { a: (-8), s: "" })).a)}")
+}

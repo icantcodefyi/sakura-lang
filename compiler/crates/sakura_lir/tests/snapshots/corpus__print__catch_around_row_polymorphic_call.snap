@@ -1,0 +1,120 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 error main::catch_around_row_polymorphic_call::Oops | Oops 24b (code: i64)
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::catch_around_row_polymorphic_call, frame 6 slots [%2 bool, %6 bool, %9 word*, %23 word*, %24 word*, %29 i64]
+  b0():
+    try_push -> b8(err, )
+    %30 lit: bool = const false
+    if %30 then b12() else b13()
+  b1(%0 v: i64):
+    %1 s: ptr = show %0
+    perform std::console::Console.print(%1) -> b2()
+  b2(%2 r: unit):
+    %3 box: word = box %2
+    drop %3
+    try_push -> b5(err, )
+    %14 lit: i64 = const 2
+    %15 t: i64 = intneg %14
+    %16 lit: i64 = const 1
+    %17 box: word = box %16
+    %18 box: word = box %15
+    %19 lit: i64 = const 3
+    %20 box: word = box %19
+    %21 xs: ptr = alloc list(%17, %18, %20)
+    %22 f: ptr = closure main$2#4[]
+    call map#5(%21, %22) -> b7()
+  b3(%4 v: ptr):
+    %5 s: ptr = show %4
+    drop %4
+    perform std::console::Console.print(%5) -> b4()
+  b4(%6 r: unit):
+    %7 box: word = box %6
+    %8 unbox: unit = unbox %7
+    drop %7
+    ret %8
+  b5(%9 e: word):
+    %13 p: i64 = proj %9.0 main::catch_around_row_polymorphic_call::Oops
+    drop %9
+    jump b6(%13)
+  b6(%10 c: i64):
+    %11 box: word = box %10
+    %12 xs: ptr = alloc list(%11)
+    jump b3(%12)
+  b7(%23 r: ptr) [try]:
+    try_pop
+    jump b3(%23)
+  b8(%24 e: word):
+    %26 p: i64 = proj %24.0 main::catch_around_row_polymorphic_call::Oops
+    drop %24
+    jump b9(%26)
+  b9(%25 c: i64):
+    jump b1(%25)
+  b10(%27 v: word) [try]:
+    drop %27
+    %28 f: ptr = closure main$1#2[]
+    call twice#3(%28) -> b11()
+  b11(%29 r: i64) [try]:
+    try_pop
+    jump b1(%29)
+  b12() [try]:
+    %31 lit: i64 = const 1
+    %32 rec: ptr = alloc main::catch_around_row_polymorphic_call::Oops(%31)
+    fail %32
+  b13() [try]:
+    %33 lit: unit = const ()
+    %34 box: word = box %33
+    jump b10(%34)
+
+fn $entry#1 top -> unit ; main::catch_around_row_polymorphic_call, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn main$1#2 lambda -> word ; main::catch_around_row_polymorphic_call, captures [], frame 1 slots [%0 word*]
+  b0(%0 env: ptr):
+    drop %0
+    %1 lit: i64 = const 1
+    %2 box: word = box %1
+    ret %2
+
+fn twice#3 top -> i64 ; main::catch_around_row_polymorphic_call, frame 5 slots [%0 word*, %1 word*, %2 word*, %4 word*, %5 i64]
+  b0(%0 f: ptr):
+    dup %0
+    call %0() -> b1(%0)
+  b1(%1 r: word, %2 f: ptr):
+    %3 unbox: i64 = unbox %1
+    drop %1
+    call %2() -> b2(%3)
+  b2(%4 r: word, %5 r: i64):
+    %6 unbox: i64 = unbox %4
+    drop %4
+    %7 t: i64 = intadd %5, %6
+    ret %7
+
+fn main$2#4 lambda -> word ; main::catch_around_row_polymorphic_call, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 x: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 lit: i64 = const 0
+    %4 t: bool = lt.int %2, %3
+    if %4 then b1(%2) else b2(%2)
+  b1(%5 x: i64):
+    %7 rec: ptr = alloc main::catch_around_row_polymorphic_call::Oops(%5)
+    fail %7
+  b2(%6 x: i64):
+    %8 lit: i64 = const 2
+    %9 t: i64 = intmul %6, %8
+    %10 box: word = box %9
+    ret %10

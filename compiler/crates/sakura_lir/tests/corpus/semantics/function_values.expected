@@ -1,0 +1,4 @@
+ending: ok
+--- stdout
+add 13
+mul 42

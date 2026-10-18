@@ -1,0 +1,76 @@
+// LIR adversarial case: `fail` crossing `with` and `try` regions in one function and across
+// calls, a catch whose join lies outside an inner `try`, a lambda in a clause that reads the
+// clause's state (capturing its activation id), a callback re-entering a forwarding handler,
+// and early `return` from inside a `with` inside a loop.
+
+error Stop(at: Int)
+error Other
+
+effect Count {
+  fn tick() -> Int
+  fn each<e>(n: Int, body: fn(Int) -> Unit ! e) -> Unit ! e
+}
+
+fn counter() -> Handler<Count> {
+  handler Count {
+    var n = 0
+    fn tick() { n = n + 1; n }
+    fn each(k, body) {
+      let peek = fn(i: Int) -> Int { n + i }
+      var i = 0
+      while i < k { body(peek(i)); i = i + 1 }
+    }
+  }
+}
+
+fn forward() -> Handler<Count, {Count}> {
+  handler Count {
+    fn tick() { Count.tick() * 10 }
+    fn each(k, body) { Count.each(k + 1, body) }
+  }
+}
+
+fn risky(x: Int) -> Int ! {Count, Fail<Stop | Other>} {
+  let t = Count.tick()
+  if x > 2 { fail Stop { at: t } }
+  if x < 0 { fail Other }
+  t + x
+}
+
+fn first_over(limit: Int, xs: List<Int>) -> Int ! {Console} {
+  for x in xs {
+    with counter() {
+      if x > limit { return x }
+      Console.print("skip {x} at {Count.tick()}")
+    }
+  }
+  -1
+}
+
+pub fn main() -> Unit ! {Console} {
+  with counter() {
+    let r = try {
+      with forward() {
+        let a = risky(1)
+        let b = try { risky(5) } catch { Other => 0 }
+        a + b
+      }
+    } catch {
+      Stop { at } => at * 100,
+      Other => -100,
+    }
+    Console.print("r = {r} tick = {Count.tick()}")
+    let seen = try {
+      with forward() {
+        Count.each(4, fn(i) { if i == 5 { fail Stop { at: i } }; Console.print("each {i} {Count.tick()}") })
+      }
+      0
+    } catch { Stop { at } => at }
+    Console.print("seen = {seen} tick = {Count.tick()}")
+    let nested = try {
+      try { risky(-1) } catch { Stop { at } => at }
+    } catch { Other => 42 }
+    Console.print("nested = {nested}")
+  }
+  Console.print("first_over = {first_over(2, [1, 2, 3, 4])}")
+}

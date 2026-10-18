@@ -1,0 +1,189 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 shape |  32b (word*, word*)
+layout 3 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::literals_and_operators, frame 3 slots [%45 bool, %63 bool, %95 bool]
+  b0():
+    %0 lit: i64 = const 2
+    %1 lit: i64 = const 3
+    %2 t: i64 = intmul %0, %1
+    %3 lit: i64 = const 1
+    %4 t: i64 = intadd %3, %2
+    %5 s: ptr = show %4
+    %6 lit: ptr = const str 0
+    %7 s: ptr = concat %5, %6
+    drop %5
+    drop %6
+    %8 lit: i64 = const 1
+    %9 lit: i64 = const 2
+    %10 t: i64 = intadd %8, %9
+    %11 lit: i64 = const 3
+    %12 t: i64 = intmul %10, %11
+    %13 s: ptr = show %12
+    %14 s: ptr = concat %7, %13
+    drop %7
+    drop %13
+    %15 lit: ptr = const str 0
+    %16 s: ptr = concat %14, %15
+    drop %14
+    drop %15
+    %17 lit: i64 = const 7
+    %18 lit: i64 = const 2
+    %19 t: i64 = intdiv %17, %18
+    %20 s: ptr = show %19
+    %21 s: ptr = concat %16, %20
+    drop %16
+    drop %20
+    %22 lit: ptr = const str 0
+    %23 s: ptr = concat %21, %22
+    drop %21
+    drop %22
+    %24 lit: i64 = const 7
+    %25 t: i64 = intneg %24
+    %26 lit: i64 = const 3
+    %27 t: i64 = intrem %25, %26
+    %28 s: ptr = show %27
+    %29 s: ptr = concat %23, %28
+    drop %23
+    drop %28
+    %30 lit: ptr = const str 0
+    %31 s: ptr = concat %29, %30
+    drop %29
+    drop %30
+    %32 lit: i64 = const 255
+    %33 s: ptr = show %32
+    %34 s: ptr = concat %31, %33
+    drop %31
+    drop %33
+    %35 lit: ptr = const str 0
+    %36 s: ptr = concat %34, %35
+    drop %34
+    drop %35
+    %37 lit: i64 = const 5
+    %38 s: ptr = show %37
+    %39 s: ptr = concat %36, %38
+    drop %36
+    drop %38
+    %40 lit: ptr = const str 0
+    %41 s: ptr = concat %39, %40
+    drop %39
+    drop %40
+    %42 lit: i64 = const 1000000
+    %43 s: ptr = show %42
+    %44 s: ptr = concat %41, %43
+    drop %41
+    drop %43
+    perform std::console::Console.print(%44) -> b1()
+  b1(%45 r: unit):
+    %46 box: word = box %45
+    drop %46
+    %47 lit: f64 = const 1.5
+    %48 lit: f64 = const 2.25
+    %49 t: f64 = floatadd %47, %48
+    %50 s: ptr = show %49
+    %51 lit: ptr = const str 0
+    %52 s: ptr = concat %50, %51
+    drop %50
+    drop %51
+    %53 lit: f64 = const 10.0
+    %54 lit: f64 = const 4.0
+    %55 t: f64 = floatdiv %53, %54
+    %56 s: ptr = show %55
+    %57 s: ptr = concat %52, %56
+    drop %52
+    drop %56
+    %58 lit: ptr = const str 0
+    %59 s: ptr = concat %57, %58
+    drop %57
+    drop %58
+    %60 lit: f64 = const 2.0
+    %61 s: ptr = show %60
+    %62 s: ptr = concat %59, %61
+    drop %59
+    drop %61
+    perform std::console::Console.print(%62) -> b2()
+  b2(%63 r: unit):
+    %64 box: word = box %63
+    drop %64
+    %103 lit: bool = const true
+    if %103 then b8() else b9()
+  b3(%65 v: bool):
+    %66 s: ptr = show %65
+    %67 lit: ptr = const str 0
+    %68 s: ptr = concat %66, %67
+    drop %66
+    drop %67
+    %98 lit: bool = const false
+    if %98 then b6(%68) else b7(%68)
+  b4(%69 v: bool, %70 s: ptr):
+    %71 s: ptr = show %69
+    %72 s: ptr = concat %70, %71
+    drop %70
+    drop %71
+    %73 lit: ptr = const str 0
+    %74 s: ptr = concat %72, %73
+    drop %72
+    drop %73
+    %75 lit: i64 = const 3
+    %76 lit: i64 = const 3
+    %77 t: bool = le.int %75, %76
+    %78 s: ptr = show %77
+    %79 s: ptr = concat %74, %78
+    drop %74
+    drop %78
+    %80 lit: ptr = const str 0
+    %81 s: ptr = concat %79, %80
+    drop %79
+    drop %80
+    %82 lit: i64 = const 2
+    %83 lit: i64 = const 2
+    %84 t: bool = ne.int %82, %83
+    %85 s: ptr = show %84
+    %86 s: ptr = concat %81, %85
+    drop %81
+    drop %85
+    %87 lit: ptr = const str 0
+    %88 s: ptr = concat %86, %87
+    drop %86
+    drop %87
+    %89 lit: i64 = const 4
+    %90 lit: i64 = const 6
+    %91 t: i64 = intsub %89, %90
+    %92 t: i64 = intneg %91
+    %93 s: ptr = show %92
+    %94 s: ptr = concat %88, %93
+    drop %88
+    drop %93
+    perform std::console::Console.print(%94) -> b5()
+  b5(%95 r: unit):
+    %96 box: word = box %95
+    %97 unbox: unit = unbox %96
+    drop %96
+    ret %97
+  b6(%99 s: ptr):
+    %101 lit: bool = const true
+    jump b4(%101, %99)
+  b7(%100 s: ptr):
+    %102 lit: bool = const true
+    jump b4(%102, %100)
+  b8():
+    %104 lit: bool = const false
+    %105 t: bool = not %104
+    jump b3(%105)
+  b9():
+    %106 lit: bool = const false
+    jump b3(%106)
+
+fn $entry#1 top -> unit ; main::literals_and_operators, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1

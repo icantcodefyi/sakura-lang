@@ -1,0 +1,191 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 error main::typed_errors::Negative | Negative 24b (value: i64)
+layout 1 error main::typed_errors::ParseError | ParseError 24b (input: word*)
+layout 2 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 3 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 4 shape |  32b (word*, word*)
+layout 5 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::typed_errors, frame 14 slots [%1 word*, %2 bool, %5 word*, %6 bool, %9 word*, %10 bool, %14 bool, %18 bool, %25 bool, %28 word*, %39 word*, %45 word*, %47 word*, %50 i64]
+  b0():
+    %0 lit: ptr = const str 0
+    call show_age#2(%0) -> b1()
+  b1(%1 r: ptr):
+    perform std::console::Console.print(%1) -> b2()
+  b2(%2 r: unit):
+    %3 box: word = box %2
+    drop %3
+    %4 lit: ptr = const str 1
+    call show_age#2(%4) -> b3()
+  b3(%5 r: ptr):
+    perform std::console::Console.print(%5) -> b4()
+  b4(%6 r: unit):
+    %7 box: word = box %6
+    drop %7
+    %8 lit: ptr = const str 2
+    call show_age#2(%8) -> b5()
+  b5(%9 r: ptr):
+    perform std::console::Console.print(%9) -> b6()
+  b6(%10 r: unit):
+    %11 box: word = box %10
+    drop %11
+    try_push -> b19(err, )
+    %49 lit: ptr = const str 7
+    call parse_age#3(%49) -> b20()
+  b7(%12 v: ptr):
+    %13 s: ptr = show %12
+    drop %12
+    perform std::console::Console.print(%13) -> b8()
+  b8(%14 r: unit):
+    %15 box: word = box %14
+    drop %15
+    try_push -> b17(err, )
+    %41 lit: ptr = const str 4
+    %42 lit: ptr = const str 5
+    %43 lit: ptr = const str 6
+    %44 xs: ptr = alloc list(%41, %42, %43)
+    call ages#4(%44) -> b18()
+  b9(%16 v: ptr):
+    %17 s: ptr = show %16
+    drop %16
+    perform std::console::Console.print(%17) -> b10()
+  b10(%18 r: unit):
+    %19 box: word = box %18
+    drop %19
+    %20 lit: ptr = const str 3
+    %21 rec: ptr = alloc main::typed_errors::ParseError(%20)
+    %22 r: ptr = alloc std::result::Result.Err(%21)
+    try_push -> b13(err, )
+    %33 tag: i64 = tag %22 ctor std::result::Result
+    switch %33 0 => b15(%22) 1 => b16(%22)
+  b11(%23 v: ptr):
+    %24 s: ptr = show %23
+    drop %23
+    perform std::console::Console.print(%24) -> b12()
+  b12(%25 r: unit):
+    %26 box: word = box %25
+    %27 unbox: unit = unbox %26
+    drop %26
+    ret %27
+  b13(%28 e: word):
+    %29 err: ptr = alloc std::result::Result.Err(%28)
+    jump b11(%29)
+  b14(%30 v: i64) [try]:
+    %31 box: word = box %30
+    %32 ok: ptr = alloc std::result::Result.Ok(%31)
+    try_pop
+    jump b11(%32)
+  b15(%34 r: ptr) [try]:
+    %36 v: word = proj %34.0 std::result::Result.Ok
+    drop %34
+    %37 unbox: i64 = unbox %36
+    drop %36
+    jump b14(%37)
+  b16(%35 r: ptr) [try]:
+    %38 e: word = proj %35.0 std::result::Result.Err
+    drop %35
+    fail %38
+  b17(%39 e: word):
+    %40 err: ptr = alloc std::result::Result.Err(%39)
+    jump b9(%40)
+  b18(%45 r: ptr) [try]:
+    %46 ok: ptr = alloc std::result::Result.Ok(%45)
+    try_pop
+    jump b9(%46)
+  b19(%47 e: word):
+    %48 err: ptr = alloc std::result::Result.Err(%47)
+    jump b7(%48)
+  b20(%50 r: i64) [try]:
+    %51 box: word = box %50
+    %52 ok: ptr = alloc std::result::Result.Ok(%51)
+    try_pop
+    jump b7(%52)
+
+fn $entry#1 top -> unit ; main::typed_errors, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn show_age#2 top -> ptr ; main::typed_errors, frame 3 slots [%0 word*, %1 word*, %15 i64]
+  b0(%0 s: ptr):
+    try_push -> b1(err, )
+    call parse_age#3(%0) -> b6()
+  b1(%1 e: word):
+    %10 tag: i64 = tag %1 member [main::typed_errors::ParseError, main::typed_errors::Negative]
+    switch %10 0 => b4(%1) 1 => b5(%1)
+  b2(%2 input: ptr):
+    %3 s: ptr = show %2
+    drop %2
+    %4 lit: ptr = const str 8
+    %5 s: ptr = concat %4, %3
+    drop %3
+    drop %4
+    ret %5
+  b3(%6 value: i64):
+    %7 s: ptr = show %6
+    %8 lit: ptr = const str 9
+    %9 s: ptr = concat %8, %7
+    drop %7
+    drop %8
+    ret %9
+  b4(%11 e: ptr):
+    %13 p: word = proj %11.0 main::typed_errors::ParseError
+    drop %11
+    jump b2(%13)
+  b5(%12 e: ptr):
+    %14 p: i64 = proj %12.0 main::typed_errors::Negative
+    drop %12
+    jump b3(%14)
+  b6(%15 r: i64) [try]:
+    %16 s: ptr = show %15
+    %17 lit: ptr = const str 10
+    %18 s: ptr = concat %17, %16
+    drop %16
+    drop %17
+    try_pop
+    ret %18
+
+fn parse_age#3 top -> i64 ; main::typed_errors, frame 2 slots [%0 word*, %3 word*]
+  b0(%0 s: ptr):
+    dup %0
+    %1 r: ptr = $string_parse_int(%0)
+    %2 rec: ptr = alloc main::typed_errors::ParseError(%0)
+    call or_fail#6(%1, %2) -> b1()
+  b1(%3 r: word):
+    %4 unbox: i64 = unbox %3
+    drop %3
+    %5 lit: i64 = const 0
+    %6 t: bool = lt.int %4, %5
+    if %6 then b3(%4) else b4(%4)
+  b2(%7 v: word, %8 r: i64):
+    drop %7
+    ret %8
+  b3(%9 r: i64):
+    %11 rec: ptr = alloc main::typed_errors::Negative(%9)
+    fail %11
+  b4(%10 r: i64):
+    %12 lit: unit = const ()
+    %13 box: word = box %12
+    jump b2(%13, %10)
+
+fn ages#4 top -> ptr ; main::typed_errors, frame 2 slots [%0 word*, %2 word*]
+  b0(%0 xs: ptr):
+    %1 fn: ptr = const static closure parse_age$value#7
+    call map#5(%0, %1) -> b1()
+  b1(%2 r: ptr):
+    ret %2
+
+fn parse_age$value#7 adapter of parse_age#3 -> word ; main::typed_errors, captures [], frame 3 slots [%0 word*, %1 word*, %2 i64]
+  b0(%0 env: ptr, %1 arg: word):
+    drop %0
+    call parse_age#3(%1) -> b1()
+  b1(%2 r: i64):
+    %3 box: word = box %2
+    ret %3

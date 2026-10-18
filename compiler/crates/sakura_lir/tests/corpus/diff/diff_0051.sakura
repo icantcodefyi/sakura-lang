@@ -1,0 +1,34 @@
+type P = { a: Int, s: String }
+type Shape = Dot | Num(Int) | Pair(Int, String)
+error Oops(code: Int)
+error Bad
+effect Counter { fn next() -> Int }
+effect Acc {
+  fn add(x: Int) -> Unit ! {Fail<Bad>}
+  fn total() -> Int
+}
+fn counter(start: Int) -> Handler<Counter> { handler Counter { var n = start; fn next() { n = n + 1; n } } }
+fn doubling() -> Handler<Counter, {Counter}> {
+  handler Counter { var k = 0; fn next() { k = k + 1; Counter.next() * 2 + k } }
+}
+fn acc(limit: Int) -> Handler<Acc, {Console}> {
+  handler Acc {
+    var t = 0
+    fn add(x) { if x > limit { fail Bad }; t = t + x; Console.print("add {x} = {t}") }
+    fn total() { t }
+  }
+}
+effect Around { fn around<e>(x: Int, body: fn(Int) -> Int ! e) -> Int ! e }
+fn around() -> Handler<Around, {Console}> {
+  handler Around {
+    var calls = 0
+    fn around(x, body) { calls = calls + 1; Console.print("around {x} #{calls}"); body(x + calls) }
+  }
+}
+fn widen() -> Handler<Around, {Around}> { handler Around { fn around(x, body) { Around.around(x * 2, body) + 1 } } }
+pub fn main() -> Unit ! {Console} {
+  with acc(5) {
+    Console.print("{(match (P { ..(match Dot { Dot => (if true { (P { a: (-6), s: "🦀" }) } else { (P { a: 3, s: "sakura" }) }), Num(v1) => (P { ..(P { a: (-9), s: "héllo" }), s: "back\\slash" }), Pair(v1, v2) => (P { ..(P { a: (-7), s: "x y" }), a: v1 }) }), s: "<{9}>" }) { P { a: 0, .. } => (with around() { let v5 = (P { ..(match [4] { [] => (P { a: 6, s: "sakura" }), [v3, ..v4] => (P { a: 0, s: "two\nlines" }) }), s: "tab\t" }); (with counter((-2)) { "x y" }) }), P { a: v6, s: v7 } => "<{({ Console.print("{(match (P { a: (-3), s: "q\"" }) { P { a: 1, .. } => Pair(4, "x y"), P { a: v8, s: v9 } => Num((-1)) })}"); var v10 = List.len([4]); var v11 = 0; while v11 < 1 { v11 = v11 + 1; Console.print("{Int.abs(v6)}"); v10 = v10 + 1 }; (if false { v6 } else { (-4) }) })}>" })}")
+  }
+  Console.print("{(match (match Num((-1)) { Dot => Num(9), Num(v12) => Dot, Pair(v12, v13) => Pair(v12, v13) }) { Dot => 7, Num(v14) => Int.max(String.len("back\\slash"), ((-9) - v14)), Pair(v14, v15) => (match Dot { Dot => (match ([(-9), (-8), (-6)])[v14] { Some(v16) => v14, None => 0 }), Num(v17) => List.len(List.range(0, 2)), Pair(v17, v18) => 2 }) })}")
+}

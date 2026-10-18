@@ -1,0 +1,35 @@
+type P = { a: Int, s: String }
+type Shape = Dot | Num(Int) | Pair(Int, String)
+error Oops(code: Int)
+error Bad
+effect Counter { fn next() -> Int }
+effect Acc {
+  fn add(x: Int) -> Unit ! {Fail<Bad>}
+  fn total() -> Int
+}
+fn counter(start: Int) -> Handler<Counter> { handler Counter { var n = start; fn next() { n = n + 1; n } } }
+fn doubling() -> Handler<Counter, {Counter}> {
+  handler Counter { var k = 0; fn next() { k = k + 1; Counter.next() * 2 + k } }
+}
+fn acc(limit: Int) -> Handler<Acc, {Console}> {
+  handler Acc {
+    var t = 0
+    fn add(x) { if x > limit { fail Bad }; t = t + x; Console.print("add {x} = {t}") }
+    fn total() { t }
+  }
+}
+effect Around { fn around<e>(x: Int, body: fn(Int) -> Int ! e) -> Int ! e }
+fn around() -> Handler<Around, {Console}> {
+  handler Around {
+    var calls = 0
+    fn around(x, body) { calls = calls + 1; Console.print("around {x} #{calls}"); body(x + calls) }
+  }
+}
+fn widen() -> Handler<Around, {Around}> { handler Around { fn around(x, body) { Around.around(x * 2, body) + 1 } } }
+fn h0(p0: Int, p1: P) -> Int ! {Console}
+{ (try { if true { fail Bad }; 9 } catch { Bad => 8 }) }
+fn h1(p0: Shape, p1: P) -> String
+{ if ((-10) < ({ if true { return (match String.parse_int("9007199254740993") { Some(v1) => "🦀", None => "sakura" }) }; 2 })) { return (if true { "日本" } else { "<{(match p1 { P { a: 2, .. } => 3, P { a: v2, s: v3 } => v2 })}>" }) }; if (match List.sort(List.concat([(-6)], List.range(0, 2))) { [] => (((-7) + 4503599627370496) == (-1)), [v4] => (true == ("q\"" == "tab\t")), [v4, v6, ..] => (if false { (if false { false } else { true }) } else { (8 >= (-5)) }) }) { return (match ((with counter(8), doubling() { List.concat(List.range(0, 3), [1, (-4)]) }))[(match List.filter([8, (-3)], fn(v7) { if false { return true }; false }) { [] => (0 - 9), [v8, ..v9] => Int.max(v8, v8) })] { Some(v10) => (List.join(List.map([(-6)], fn(v11) { let v12 = "héllo"; var v13 = v10; var v14 = 0; while v14 < 3 { v14 = v14 + 1; let v15 = Num(10); v13 = v13 + v14 }; v12 }), "") + ("back\\slash" + "sakura")), None => "a" }) }; ((P { ..(P { ..p1, s: "日本" }), a: 5 })).s }
+pub fn main() -> Unit ! {Console} {
+  Console.print("{h0(1, (match (P { a: 8, s: "héllo" }) { P { a: 0, .. } => (P { ..(P { a: 4, s: "q\"" }), a: 5 }), P { a: v16, s: v17 } => (try { if true { fail Bad }; var v18 = v16; var v19 = 0; while v19 < 0 { v19 = v19 + 1; v18 = v18 + (-10) }; Console.print("{List.range(0, 0)}"); (P { a: (-8), s: "two\nlines" }) } catch { Bad => (P { a: (-5), s: "a" }) }) }))}")
+}

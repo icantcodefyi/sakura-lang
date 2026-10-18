@@ -1,0 +1,9 @@
+ending: ok
+--- stdout
+<-1>P { a: -7, s: "q\"" }
+<0>P { a: -7, s: "q\"" }
+<1>P { a: -7, s: "q\"" }
+<2>P { a: -7, s: "q\"" }
+<3>P { a: -7, s: "q\"" }
+false
+Ok("tab\tOk([10, 3])tab\tOk([10, 3])tab\tOk([10, 3])tab\tOk([10, 3])tab\t")

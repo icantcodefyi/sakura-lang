@@ -1,0 +1,12 @@
+ending: ok
+--- stdout
+[]
+Pair(2, "日本two\nlines日本")
+false
+P { a: -5, s: "🦀" }
+P { a: -5, s: "🦀" }
+P { a: -5, s: "🦀" }
+P { a: -5, s: "🦀" }
+false
+Num(2)
+[]

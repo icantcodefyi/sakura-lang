@@ -1,0 +1,39 @@
+type P = { a: Int, s: String }
+type Shape = Dot | Num(Int) | Pair(Int, String)
+error Oops(code: Int)
+error Bad
+effect Counter { fn next() -> Int }
+effect Acc {
+  fn add(x: Int) -> Unit ! {Fail<Bad>}
+  fn total() -> Int
+}
+fn counter(start: Int) -> Handler<Counter> { handler Counter { var n = start; fn next() { n = n + 1; n } } }
+fn doubling() -> Handler<Counter, {Counter}> {
+  handler Counter { var k = 0; fn next() { k = k + 1; Counter.next() * 2 + k } }
+}
+fn acc(limit: Int) -> Handler<Acc, {Console}> {
+  handler Acc {
+    var t = 0
+    fn add(x) { if x > limit { fail Bad }; t = t + x; Console.print("add {x} = {t}") }
+    fn total() { t }
+  }
+}
+effect Around { fn around<e>(x: Int, body: fn(Int) -> Int ! e) -> Int ! e }
+fn around() -> Handler<Around, {Console}> {
+  handler Around {
+    var calls = 0
+    fn around(x, body) { calls = calls + 1; Console.print("around {x} #{calls}"); body(x + calls) }
+  }
+}
+fn widen() -> Handler<Around, {Around}> { handler Around { fn around(x, body) { Around.around(x * 2, body) + 1 } } }
+fn h0(p0: Int) -> Bool ! {Console}
+{ (match (match List.map([(-5), (-1), 3], fn(v1) { Console.print("{[5, 3, 4]}"); p0 }) { [] => (P { ..(P { a: (-10), s: "sakura" }), s: "two\nlines" }), [v2] => (P { a: 4, s: "héllo" }), [v2, v4, ..] => (match List.range(0, 3) { [] => (P { a: (-10), s: "" }), [v5, ..v6] => (P { a: (-8), s: "x y" }) }) }) { P { a: 1, .. } => (List.fold([5, (-4)], p0, fn(v7, v8) { if false { return p0 }; let v9 = false; v7 }) <= (if false { p0 } else { (-8) })), P { a: v10, s: v11 } => (((P { a: (-1), s: "" })).a != (match Pair(9, "two\nlines") { Dot => v10, Num(v12) if true => p0, Num(v12) => 7, Pair(v12, v13) => p0 })) }) }
+pub fn main() -> Unit ! {Console} {
+  Console.print("{h0(String.len("{(P { a: (-1), s: "日本" })}"))}")
+  Console.print("{Pair(3, "x y")}")
+  Console.print("{(Int.abs(3) < (4 - List.len(List.map(List.enumerate([7, (-6), 3]), fn(v14) { let v15 = v14.0; let v16 = v14.1; v16 }))))}")
+  with counter(4503599627370496) {
+    Console.print("{"sakura"}")
+    Console.print("{h0((-8))}")
+  }
+}

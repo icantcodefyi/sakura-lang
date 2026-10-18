@@ -1,0 +1,131 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::row_param_type::Box | Box 24b (run: word*)
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::row_param_type, frame 26 slots [%8 i64, %9 word*, %10 word*, %11 word*, %13 bool, %14 word*, %15 word*, %16 word*, %19 i64, %20 word*, %21 word*, %23 bool, %24 word*, %25 word*, %28 i64, %29 word*, %31 bool, %32 word*, %53 i64, %54 word*, %55 i64, %56 i64, %58 bool, %59 word*, %60 i64, %61 i64]
+  b0():
+    %0 f: ptr = closure main$1#2[]
+    %1 rec: ptr = alloc main::row_param_type::Box(%0)
+    %2 f: ptr = closure main$2#3[]
+    %3 rec: ptr = alloc main::row_param_type::Box(%2)
+    %4 f: ptr = closure main$3#4[]
+    %5 rec: ptr = alloc main::row_param_type::Box(%4)
+    dup %1
+    dup %3
+    %6 xs: ptr = alloc list(%1, %3)
+    %7 lit: i64 = const 1
+    call apply#5(%1, %7) -> b1(%3, %5, %6)
+  b1(%8 r: i64, %9 rec: ptr, %10 rec: ptr, %11 xs: ptr):
+    %12 s: ptr = show %8
+    perform std::console::Console.print(%12) -> b2(%9, %10, %11)
+  b2(%13 r: unit, %14 rec: ptr, %15 rec: ptr, %16 xs: ptr):
+    %17 box: word = box %13
+    drop %17
+    %18 lit: i64 = const 2
+    call apply#5(%14, %18) -> b3(%15, %16)
+  b3(%19 r: i64, %20 rec: ptr, %21 xs: ptr):
+    %22 s: ptr = show %19
+    perform std::console::Console.print(%22) -> b4(%20, %21)
+  b4(%23 r: unit, %24 rec: ptr, %25 xs: ptr):
+    %26 box: word = box %23
+    drop %26
+    %27 lit: i64 = const 3
+    call apply#5(%24, %27) -> b5(%25)
+  b5(%28 r: i64, %29 xs: ptr):
+    %30 s: ptr = show %28
+    perform std::console::Console.print(%30) -> b6(%29)
+  b6(%31 r: unit, %32 xs: ptr):
+    %33 box: word = box %31
+    drop %33
+    dup %32
+    %34 n: i64 = $list_len(%32)
+    %63 lit: i64 = const 0
+    jump b8(%63, %32, %34)
+  b7():
+    %35 lit: unit = const ()
+    ret %35
+  b8(%36 i: i64, %37 xs: ptr, %38 n: i64):
+    %39 more: bool = lt.int %36, %38
+    if %39 then b9(%37, %38, %36) else b10(%37, %38, %36)
+  b9(%40 xs: ptr, %41 n: i64, %42 i: i64):
+    dup %40
+    %46 x: word = $list_at(%40, %42)
+    %52 lit: i64 = const 10
+    call apply#5(%46, %52) -> b12(%40, %41, %42)
+  b10(%43 xs: ptr, %44 n: i64, %45 i: i64):
+    drop %43
+    jump b7()
+  b11(%47 xs: ptr, %48 n: i64, %49 i: i64):
+    %50 lit: i64 = const 1
+    %51 i: i64 = intadd %49, %50
+    jump b8(%51, %47, %48)
+  b12(%53 r: i64, %54 xs: ptr, %55 n: i64, %56 i: i64):
+    %57 s: ptr = show %53
+    perform std::console::Console.print(%57) -> b13(%54, %55, %56)
+  b13(%58 r: unit, %59 xs: ptr, %60 n: i64, %61 i: i64):
+    %62 box: word = box %58
+    drop %62
+    jump b11(%59, %60, %61)
+
+fn $entry#1 top -> unit ; main::row_param_type, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn main$1#2 lambda -> word ; main::row_param_type, captures [], frame 4 slots [%0 word*, %1 word*, %6 bool, %7 i64]
+  b0(%0 env: ptr, %1 x: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 s: ptr = show %2
+    %4 lit: ptr = const str 0
+    %5 s: ptr = concat %4, %3
+    drop %3
+    drop %4
+    perform std::console::Console.print(%5) -> b1(%2)
+  b1(%6 r: unit, %7 x: i64):
+    %8 box: word = box %6
+    drop %8
+    %9 lit: i64 = const 1
+    %10 t: i64 = intadd %7, %9
+    %11 box: word = box %10
+    ret %11
+
+fn main$2#3 lambda -> word ; main::row_param_type, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 x: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 lit: i64 = const 2
+    %4 t: i64 = intmul %2, %3
+    %5 box: word = box %4
+    ret %5
+
+fn main$3#4 lambda -> word ; main::row_param_type, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 x: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 box: word = box %2
+    ret %3
+
+fn apply#5 top -> i64 ; main::row_param_type, frame 3 slots [%0 word*, %1 i64, %4 word*]
+  b0(%0 b: ptr, %1 x: i64):
+    %2 run: word = proj %0.0 main::row_param_type::Box
+    drop %0
+    %3 box: word = box %1
+    call %2(%3) -> b1()
+  b1(%4 r: word):
+    %5 unbox: i64 = unbox %4
+    drop %4
+    ret %5

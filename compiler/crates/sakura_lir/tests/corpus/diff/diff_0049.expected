@@ -1,0 +1,6 @@
+ending: ok
+--- stdout
+Num(-2)
+-10
+5
+Ok([0])

@@ -1,0 +1,6 @@
+ending: ok
+--- stdout
+Ok(50)
+Percent where
+Ok("sakura-lang")
+true

@@ -1,0 +1,181 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 shape |  32b (word*, word*)
+layout 3 shape |  32b (i64, word*)
+layout 4 shape |  24b (word*)
+layout 5 shape |  16b ()
+
+fn main#0 pub top -> unit ; main::handler_callback_context, frame 4 slots [%0 word*, %5 word*, %6 word*, %13 word*]
+  b0():
+    call memory#2() -> b1()
+  b1(%0 r: ptr):
+    handle_push %0
+    %1 f: ptr = closure main$1#3[]
+    %2 lit: ptr = const str 0
+    %3 lit: i64 = const 1
+    %4 callback: ptr = callback %1
+    perform main::handler_callback_context::Store.with_default(%2, %3, %4) -> b2()
+  b2(%5 r: word) [handle]:
+    drop %5
+    call doubled#4() -> b3()
+  b3(%6 r: ptr) [handle]:
+    handle_push %6
+    %9 f: ptr = closure main$2#5[]
+    %10 lit: ptr = const str 1
+    %11 lit: i64 = const 1
+    %12 callback: ptr = callback %9
+    perform main::handler_callback_context::Store.with_default(%10, %11, %12) -> b5()
+  b4(%7 v: word) [handle]:
+    %8 unbox: unit = unbox %7
+    drop %7
+    handle_pop
+    ret %8
+  b5(%13 r: word) [handle, handle]:
+    handle_pop
+    jump b4(%13)
+
+fn $entry#1 top -> unit ; main::handler_callback_context, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn memory#2 top -> ptr ; main::handler_callback_context, frame 0 slots []
+  b0():
+    %0 r: ptr = $map_empty()
+    %1 get: ptr = closure memory$Store_get#9[]
+    %2 put: ptr = closure memory$Store_put#10[]
+    %3 with_default: ptr = closure memory$Store_with_default#11[]
+    %4 handler: ptr = handler main::handler_callback_context::Store row 4 state(%0) clauses(%1, %2, %3)
+    ret %4
+
+fn main$1#3 lambda -> word ; main::handler_callback_context, captures [], frame 2 slots [%0 word*, %3 bool]
+  b0(%0 env: ptr):
+    drop %0
+    %1 lit: ptr = const str 0
+    %2 lit: i64 = const 5
+    perform main::handler_callback_context::Store.put(%1, %2) -> b1()
+  b1(%3 r: unit):
+    %4 box: word = box %3
+    ret %4
+
+fn doubled#4 top -> ptr ; main::handler_callback_context, frame 0 slots []
+  b0():
+    %0 get: ptr = closure doubled$Store_get#6[]
+    %1 put: ptr = closure doubled$Store_put#7[]
+    %2 with_default: ptr = closure doubled$Store_with_default#8[]
+    %3 handler: ptr = handler main::handler_callback_context::Store row 5 state() clauses(%0, %1, %2)
+    ret %3
+
+fn main$2#5 lambda -> word ; main::handler_callback_context, captures [], frame 2 slots [%0 word*, %3 bool]
+  b0(%0 env: ptr):
+    drop %0
+    %1 lit: ptr = const str 1
+    %2 lit: i64 = const 5
+    perform main::handler_callback_context::Store.put(%1, %2) -> b1()
+  b1(%3 r: unit):
+    %4 box: word = box %3
+    ret %4
+
+fn doubled$Store_get#6 clause main::handler_callback_context::Store.get -> ptr ; main::handler_callback_context, captures [], frame 4 slots [%0 word*, %1 i64, %2 word*, %3 word*]
+  b0(%0 env: ptr, %1 inst: id, %2 k: ptr):
+    drop %0
+    perform main::handler_callback_context::Store.get(%2) -> b1()
+  b1(%3 r: ptr):
+    ret %3
+
+fn doubled$Store_put#7 clause main::handler_callback_context::Store.put -> unit ; main::handler_callback_context, captures [], frame 5 slots [%0 word*, %1 i64, %2 word*, %3 i64, %6 bool]
+  b0(%0 env: ptr, %1 inst: id, %2 k: ptr, %3 v: i64):
+    drop %0
+    %4 lit: i64 = const 2
+    %5 t: i64 = intmul %3, %4
+    perform main::handler_callback_context::Store.put(%2, %5) -> b1()
+  b1(%6 r: unit):
+    %7 box: word = box %6
+    %8 unbox: unit = unbox %7
+    drop %7
+    ret %8
+
+fn doubled$Store_with_default#8 clause main::handler_callback_context::Store.with_default -> word ; main::handler_callback_context, captures [], frame 6 slots [%0 word*, %1 i64, %2 word*, %3 i64, %4 word*, %6 word*]
+  b0(%0 env: ptr, %1 inst: id, %2 k: ptr, %3 v: i64, %4 body: ptr):
+    drop %0
+    %5 callback: ptr = callback %4
+    perform main::handler_callback_context::Store.with_default(%2, %3, %5) -> b1()
+  b1(%6 r: word):
+    ret %6
+
+fn memory$Store_get#9 clause main::handler_callback_context::Store.get -> ptr ; main::handler_callback_context, captures [], frame 3 slots [%0 word*, %1 i64, %2 word*]
+  b0(%0 env: ptr, %1 inst: id, %2 k: ptr):
+    drop %0
+    %3 m: word = state_get %1[0] row 4
+    %4 r: ptr = $map_get(%3, %2)
+    ret %4
+
+fn memory$Store_put#10 clause main::handler_callback_context::Store.put -> unit ; main::handler_callback_context, captures [], frame 4 slots [%0 word*, %1 i64, %2 word*, %3 i64]
+  b0(%0 env: ptr, %1 inst: id, %2 k: ptr, %3 v: i64):
+    drop %0
+    %4 m: word = state_get %1[0] row 4
+    %5 box: word = box %3
+    %6 r: ptr = $map_insert(%4, %2, %5)
+    state_set %1[0] row 4 = %6
+    %7 set: unit = const ()
+    %8 lit: unit = const ()
+    ret %8
+
+fn memory$Store_with_default#11 clause main::handler_callback_context::Store.with_default -> word ; main::handler_callback_context, captures [], frame 18 slots [%0 word*, %1 i64, %2 word*, %3 i64, %4 word*, %6 bool, %7 i64, %8 word*, %9 i64, %10 word*, %16 word*, %17 i64, %18 word*, %27 word*, %28 word*, %29 word*, %33 bool, %34 word*]
+  b0(%0 env: ptr, %1 inst: id, %2 k: ptr, %3 v: i64, %4 body: ptr):
+    drop %0
+    %5 m: word = state_get %1[0] row 4
+    dup %2
+    call contains#12(%5, %2) -> b1(%1, %2, %3, %4)
+  b1(%6 r: bool, %7 inst: id, %8 k: ptr, %9 v: i64, %10 body: ptr):
+    %11 t: bool = not %6
+    if %11 then b6(%7, %8, %9, %10) else b7(%7, %8, %9, %10)
+  b2(%12 v: word, %13 inst: id, %14 k: ptr, %15 body: ptr):
+    drop %12
+    call %15() -> b3(%13, %14)
+  b3(%16 r: word, %17 inst: id, %18 k: ptr):
+    %19 s: ptr = show %18
+    %20 lit: ptr = const str 2
+    %21 s: ptr = concat %19, %20
+    drop %19
+    drop %20
+    %22 m: word = state_get %17[0] row 4
+    %23 r: ptr = $map_get(%22, %18)
+    %24 lit: i64 = const 1
+    %25 t: i64 = intneg %24
+    %26 box: word = box %25
+    call unwrap_or#13(%23, %26) -> b4(%16, %21)
+  b4(%27 r: word, %28 r: word, %29 s: ptr):
+    %30 unbox: i64 = unbox %27
+    drop %27
+    %31 s: ptr = show %30
+    %32 s: ptr = concat %29, %31
+    drop %29
+    drop %31
+    perform std::console::Console.print(%32) -> b5(%28)
+  b5(%33 r: unit, %34 r: word):
+    %35 box: word = box %33
+    drop %35
+    ret %34
+  b6(%36 inst: id, %37 k: ptr, %38 v: i64, %39 body: ptr):
+    %44 m: word = state_get %36[0] row 4
+    %45 box: word = box %38
+    dup %37
+    %46 r: ptr = $map_insert(%44, %37, %45)
+    state_set %36[0] row 4 = %46
+    %47 set: unit = const ()
+    %48 lit: unit = const ()
+    %49 box: word = box %48
+    jump b2(%49, %36, %37, %39)
+  b7(%40 inst: id, %41 k: ptr, %42 v: i64, %43 body: ptr):
+    %50 lit: unit = const ()
+    %51 box: word = box %50
+    jump b2(%51, %40, %41, %43)

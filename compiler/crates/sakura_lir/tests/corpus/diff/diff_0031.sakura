@@ -1,0 +1,35 @@
+type P = { a: Int, s: String }
+type Shape = Dot | Num(Int) | Pair(Int, String)
+error Oops(code: Int)
+error Bad
+effect Counter { fn next() -> Int }
+effect Acc {
+  fn add(x: Int) -> Unit ! {Fail<Bad>}
+  fn total() -> Int
+}
+fn counter(start: Int) -> Handler<Counter> { handler Counter { var n = start; fn next() { n = n + 1; n } } }
+fn doubling() -> Handler<Counter, {Counter}> {
+  handler Counter { var k = 0; fn next() { k = k + 1; Counter.next() * 2 + k } }
+}
+fn acc(limit: Int) -> Handler<Acc, {Console}> {
+  handler Acc {
+    var t = 0
+    fn add(x) { if x > limit { fail Bad }; t = t + x; Console.print("add {x} = {t}") }
+    fn total() { t }
+  }
+}
+effect Around { fn around<e>(x: Int, body: fn(Int) -> Int ! e) -> Int ! e }
+fn around() -> Handler<Around, {Console}> {
+  handler Around {
+    var calls = 0
+    fn around(x, body) { calls = calls + 1; Console.print("around {x} #{calls}"); body(x + calls) }
+  }
+}
+fn widen() -> Handler<Around, {Around}> { handler Around { fn around(x, body) { Around.around(x * 2, body) + 1 } } }
+fn h0(p0: Int) -> Int ! {Counter, Fail<Oops | Bad>}
+{ if (List.filter_map(List.sort_by([(-2), 0, 6], fn(v1) { let v2 = true; let v3 = "q\""; 6 }), fn(v4) { if true { Some((match String.parse_int("12a") { Some(v5) => v5, None => (-4) })) } else { None } }) >= [(-3), 3, 1]) { fail Bad }; if false { return List.fold((with counter((-10)) { let v6 = (P { a: (-1), s: "日本" }); List.range(0, 3) }), Counter.next(), fn(v7, v8) { Counter.next() }) }; ((if true { fail Oops { code: List.len([(-7), (-6), (-5)]) } } else { (p0 % p0) }) * (match Pair(4503599627370496, "sakura") { Dot => 0, Num(v9) => (try { if false { fail Bad }; p0 } catch { Bad => (-9) }), Pair(v9, v10) => (-8) })) }
+fn h1(p0: Int) -> Int ! {Fail<Oops | Bad>}
+{ if true { fail Oops { code: p0 } }; let v11 = (if true { Pair(5, "tab\t") } else { Num(0) }); p0 }
+pub fn main() -> Unit ! {Console} {
+  Console.print("{(try { h1((match List.filter([5, 8, 5], fn(v12) { false }) { [] => (match (P { a: (-5), s: "héllo" }) { P { a: 1, .. } => 5, P { a: v13, s: v14 } => 1 }), [v15] => (with acc(11) { v15 }), [v15, v17, ..] => ((-8) * v17) })) })}")
+}

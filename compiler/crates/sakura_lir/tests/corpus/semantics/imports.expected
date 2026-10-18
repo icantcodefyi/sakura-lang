@@ -1,0 +1,4 @@
+ending: ok
+--- stdout
+Some("a")
+3 true Duration(100)

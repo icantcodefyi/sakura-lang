@@ -1,0 +1,112 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 shape |  32b (word*, word*)
+layout 3 shape |  32b (i64, word*)
+layout 4 shape |  32b (i64, i64)
+layout 5 shape |  32b (word*, i64)
+layout 6 shape |  24b (i64)
+
+fn main#0 pub top -> unit ; main::tuples, frame 6 slots [%3 word*, %4 word*, %15 word*, %16 word*, %19 bool, %45 bool]
+  b0():
+    %0 lit: i64 = const 1
+    %1 lit: ptr = const str 0
+    %2 tup: ptr = alloc tuple#3(i64, word)(%0, %1)
+    dup %2
+    call swap#2(%2) -> b1(%2)
+  b1(%3 r: ptr, %4 tup: ptr):
+    %48 p: ptr = tuple_get %3.0
+    %49 p: i64 = tuple_get %3.1
+    drop %3
+    jump b2(%48, %49, %4)
+  b2(%5 word: ptr, %6 n: i64, %7 tup: ptr):
+    %8 s: ptr = show %5
+    drop %5
+    %9 lit: ptr = const str 1
+    %10 s: ptr = concat %8, %9
+    drop %8
+    drop %9
+    %11 s: ptr = show %6
+    %12 s: ptr = concat %10, %11
+    drop %10
+    drop %11
+    %13 lit: ptr = const str 1
+    %14 s: ptr = concat %12, %13
+    drop %12
+    drop %13
+    call swap#2(%7) -> b3(%14)
+  b3(%15 r: ptr, %16 s: ptr):
+    %17 s: ptr = show %15
+    drop %15
+    %18 s: ptr = concat %16, %17
+    drop %16
+    drop %17
+    perform std::console::Console.print(%18) -> b4()
+  b4(%19 r: unit):
+    %20 box: word = box %19
+    drop %20
+    %21 lit: i64 = const 1
+    %22 lit: i64 = const 2
+    %23 tup: ptr = alloc tuple#4(i64, i64)(%21, %22)
+    %24 lit: i64 = const 3
+    %25 tup: ptr = alloc tuple#5(word, i64)(%23, %24)
+    %26 t: ptr = tuple_get %25.0
+    %27 lit: unit = const ()
+    %28 s: ptr = show %27
+    %29 lit: ptr = const str 1
+    %30 s: ptr = concat %28, %29
+    drop %28
+    drop %29
+    %31 lit: i64 = const 1
+    %32 tup: ptr = alloc tuple#6(i64)(%31)
+    %33 s: ptr = show %32
+    drop %32
+    %34 s: ptr = concat %30, %33
+    drop %30
+    drop %33
+    %35 lit: ptr = const str 1
+    %36 s: ptr = concat %34, %35
+    drop %34
+    drop %35
+    %37 t: i64 = tuple_get %26.1
+    drop %26
+    %38 s: ptr = show %37
+    %39 s: ptr = concat %36, %38
+    drop %36
+    drop %38
+    %40 lit: ptr = const str 1
+    %41 s: ptr = concat %39, %40
+    drop %39
+    drop %40
+    %42 t: i64 = tuple_get %25.1
+    drop %25
+    %43 s: ptr = show %42
+    %44 s: ptr = concat %41, %43
+    drop %41
+    drop %43
+    perform std::console::Console.print(%44) -> b5()
+  b5(%45 r: unit):
+    %46 box: word = box %45
+    %47 unbox: unit = unbox %46
+    drop %46
+    ret %47
+
+fn $entry#1 top -> unit ; main::tuples, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn swap#2 top -> ptr ; main::tuples, frame 1 slots [%0 word*]
+  b0(%0 p: ptr):
+    %1 t: ptr = tuple_get %0.1
+    %2 t: i64 = tuple_get %0.0
+    drop %0
+    %3 tup: ptr = alloc tuple#5(word, i64)(%1, %2)
+    ret %3

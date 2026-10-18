@@ -1,0 +1,178 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 error main::effects_and_handlers::Full | Full 16b ()
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+layout 5 shape |  24b (word*)
+
+fn main#0 pub top -> unit ; main::effects_and_handlers, frame 11 slots [%1 word*, %4 bool, %8 bool, %11 word*, %16 word*, %17 word*, %20 bool, %23 word*, %27 i64, %30 word*, %35 i64]
+  b0():
+    %0 lit: i64 = const 2
+    call bounded#2(%0) -> b1()
+  b1(%1 r: ptr):
+    handle_push %1
+    try_push -> b11(err, )
+    %32 lit: ptr = const str 3
+    %33 lit: ptr = const str 0
+    %34 xs: ptr = alloc list(%32, %33)
+    call fill#3(%34) -> b12()
+  b2(%2 v: ptr) [handle]:
+    %3 s: ptr = show %2
+    drop %2
+    perform std::console::Console.print(%3) -> b3()
+  b3(%4 r: unit) [handle]:
+    %5 box: word = box %4
+    drop %5
+    try_push -> b9(err, )
+    %25 lit: ptr = const str 2
+    %26 xs: ptr = alloc list(%25)
+    call fill#3(%26) -> b10()
+  b4(%6 v: ptr) [handle]:
+    %7 s: ptr = show %6
+    drop %6
+    perform std::console::Console.print(%7) -> b5()
+  b5(%8 r: unit) [handle]:
+    %9 box: word = box %8
+    drop %9
+    %10 lit: ptr = const str 0
+    perform main::effects_and_handlers::Store.get(%10) -> b6()
+  b6(%11 r: ptr) [handle]:
+    %12 s: ptr = show %11
+    drop %11
+    %13 lit: ptr = const str 1
+    %14 s: ptr = concat %12, %13
+    drop %12
+    drop %13
+    %15 lit: ptr = const str 2
+    perform main::effects_and_handlers::Store.get(%15) -> b7(%14)
+  b7(%16 r: ptr, %17 s: ptr) [handle]:
+    %18 s: ptr = show %16
+    drop %16
+    %19 s: ptr = concat %17, %18
+    drop %17
+    drop %18
+    perform std::console::Console.print(%19) -> b8()
+  b8(%20 r: unit) [handle]:
+    %21 box: word = box %20
+    %22 unbox: unit = unbox %21
+    drop %21
+    handle_pop
+    ret %22
+  b9(%23 e: word) [handle]:
+    %24 err: ptr = alloc std::result::Result.Err(%23)
+    jump b4(%24)
+  b10(%27 r: i64) [handle, try]:
+    %28 box: word = box %27
+    %29 ok: ptr = alloc std::result::Result.Ok(%28)
+    try_pop
+    jump b4(%29)
+  b11(%30 e: word) [handle]:
+    %31 err: ptr = alloc std::result::Result.Err(%30)
+    jump b2(%31)
+  b12(%35 r: i64) [handle, try]:
+    %36 box: word = box %35
+    %37 ok: ptr = alloc std::result::Result.Ok(%36)
+    try_pop
+    jump b2(%37)
+
+fn $entry#1 top -> unit ; main::effects_and_handlers, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn bounded#2 top -> ptr ; main::effects_and_handlers, frame 1 slots [%0 i64]
+  b0(%0 limit: i64):
+    %1 r: ptr = $map_empty()
+    %2 put: ptr = closure bounded$Store_put#5[%0]
+    %3 get: ptr = closure bounded$Store_get#7[]
+    %4 handler: ptr = handler main::effects_and_handlers::Store row 5 state(%1) clauses(%2, %3)
+    ret %4
+
+fn fill#3 top -> i64 ; main::effects_and_handlers, frame 8 slots [%0 word*, %1 word*, %2 word*, %32 bool, %33 word*, %34 word*, %35 i64, %36 i64]
+  b0(%0 keys: ptr):
+    dup %0
+    call enumerate#4(%0) -> b1(%0)
+  b1(%1 r: ptr, %2 keys: ptr):
+    dup %1
+    %3 n: i64 = $list_len(%1)
+    %40 lit: i64 = const 0
+    jump b3(%40, %2, %1, %3)
+  b2(%4 keys: ptr):
+    %5 r: i64 = $list_len(%4)
+    ret %5
+  b3(%6 i: i64, %7 keys: ptr, %8 r: ptr, %9 n: i64):
+    %10 more: bool = lt.int %6, %9
+    if %10 then b4(%7, %8, %9, %6) else b5(%7, %8, %9, %6)
+  b4(%11 keys: ptr, %12 r: ptr, %13 n: i64, %14 i: i64):
+    dup %12
+    %19 x: word = $list_at(%12, %14)
+    %38 p: i64 = tuple_get %19.0
+    %39 p: ptr = tuple_get %19.1
+    drop %19
+    jump b7(%38, %39, %11, %12, %13, %14)
+  b5(%15 keys: ptr, %16 r: ptr, %17 n: i64, %18 i: i64):
+    drop %16
+    jump b2(%15)
+  b6(%20 keys: ptr, %21 r: ptr, %22 n: i64, %23 i: i64):
+    %24 lit: i64 = const 1
+    %25 i: i64 = intadd %23, %24
+    jump b3(%25, %20, %21, %22)
+  b7(%26 i: i64, %27 k: ptr, %28 keys: ptr, %29 r: ptr, %30 n: i64, %31 i: i64):
+    perform main::effects_and_handlers::Store.put(%27, %26) -> b8(%28, %29, %30, %31)
+  b8(%32 r: unit, %33 keys: ptr, %34 r: ptr, %35 n: i64, %36 i: i64):
+    %37 box: word = box %32
+    drop %37
+    jump b6(%33, %34, %35, %36)
+
+fn bounded$Store_put#5 clause main::effects_and_handlers::Store.put -> unit ; main::effects_and_handlers, captures [i64], frame 8 slots [%0 word*, %1 i64, %2 word*, %3 i64, %37 bool, %38 i64, %39 word*, %40 i64]
+  b0(%0 env: ptr, %1 inst: id, %2 key: ptr, %3 value: i64):
+    %4 limit: i64 = capture %0.0
+    drop %0
+    %5 data: word = state_get %1[0] row 5
+    %6 r: i64 = $map_len(%5)
+    %7 t: bool = ge.int %6, %4
+    if %7 then b5(%1, %2, %3) else b6(%1, %2, %3)
+  b1(%8 v: bool, %9 inst: id, %10 key: ptr, %11 value: i64):
+    if %8 then b3(%9, %10, %11) else b4(%9, %10, %11)
+  b2(%12 v: word, %13 inst: id, %14 key: ptr, %15 value: i64):
+    drop %12
+    %16 data: word = state_get %13[0] row 5
+    %17 box: word = box %15
+    %18 r: ptr = $map_insert(%16, %14, %17)
+    state_set %13[0] row 5 = %18
+    %19 set: unit = const ()
+    %20 lit: unit = const ()
+    ret %20
+  b3(%21 inst: id, %22 key: ptr, %23 value: i64):
+    drop %22
+    %27 err: ptr = alloc main::effects_and_handlers::Full()
+    fail %27
+  b4(%24 inst: id, %25 key: ptr, %26 value: i64):
+    %28 lit: unit = const ()
+    %29 box: word = box %28
+    jump b2(%29, %24, %25, %26)
+  b5(%30 inst: id, %31 key: ptr, %32 value: i64):
+    %36 data: word = state_get %30[0] row 5
+    dup %31
+    call contains#6(%36, %31) -> b7(%30, %31, %32)
+  b6(%33 inst: id, %34 key: ptr, %35 value: i64):
+    %42 lit: bool = const false
+    jump b1(%42, %33, %34, %35)
+  b7(%37 r: bool, %38 inst: id, %39 key: ptr, %40 value: i64):
+    %41 t: bool = not %37
+    jump b1(%41, %38, %39, %40)
+
+fn bounded$Store_get#7 clause main::effects_and_handlers::Store.get -> ptr ; main::effects_and_handlers, captures [], frame 3 slots [%0 word*, %1 i64, %2 word*]
+  b0(%0 env: ptr, %1 inst: id, %2 key: ptr):
+    drop %0
+    %3 data: word = state_get %1[0] row 5
+    %4 r: ptr = $map_get(%3, %2)
+    ret %4

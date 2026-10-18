@@ -1,0 +1,90 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::duration::Duration | Duration 24b (i64)
+layout 1 record std::graph::Graph | Graph 40b (nodes: word*, edges: word*, next: i64)
+layout 2 variant std::graph::NodeId | NodeId 24b (i64)
+layout 3 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 4 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 5 record std::retry::Policy | Policy 56b (retry_on: word*, max_attempts: i64, backoff: word*, jitter: bool, deadline: word*)
+layout 6 shape |  32b (word*, word*)
+layout 7 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::imports, frame 9 slots [%0 word*, %2 word*, %5 word*, %7 bool, %11 word*, %19 word*, %20 word*, %21 word*, %30 bool]
+  b0():
+    call empty#2() -> b1()
+  b1(%0 r: ptr):
+    %1 lit: ptr = const str 0
+    call insert#3(%0, %1) -> b2()
+  b2(%2 r: ptr):
+    %33 p: ptr = tuple_get %2.0
+    %34 p: ptr = tuple_get %2.1
+    drop %2
+    jump b3(%33, %34)
+  b3(%3 g: ptr, %4 a: ptr):
+    call get#4(%3, %4) -> b4()
+  b4(%5 r: ptr):
+    %6 s: ptr = show %5
+    drop %5
+    perform std::console::Console.print(%6) -> b5()
+  b5(%7 r: unit):
+    %8 box: word = box %7
+    drop %8
+    %9 f: ptr = closure main$1#5[]
+    %10 lit: i64 = const 3
+    call policy#6(%9, %10) -> b6()
+  b6(%11 r: ptr):
+    %12 max_attempts: i64 = proj %11.1 std::retry::Policy
+    %13 s: ptr = show %12
+    %14 lit: ptr = const str 1
+    %15 s: ptr = concat %13, %14
+    drop %13
+    drop %14
+    %16 retry_on: word = proj %11.0 std::retry::Policy
+    %17 lit: i64 = const 503
+    %18 box: word = box %17
+    call %16(%18) -> b7(%11, %15)
+  b7(%19 r: word, %20 r: ptr, %21 s: ptr):
+    %22 unbox: bool = unbox %19
+    drop %19
+    %23 s: ptr = show %22
+    %24 s: ptr = concat %21, %23
+    drop %21
+    drop %23
+    %25 lit: ptr = const str 1
+    %26 s: ptr = concat %24, %25
+    drop %24
+    drop %25
+    %27 backoff: word = proj %20.2 std::retry::Policy
+    drop %20
+    %28 s: ptr = show %27
+    drop %27
+    %29 s: ptr = concat %26, %28
+    drop %26
+    drop %28
+    perform std::console::Console.print(%29) -> b8()
+  b8(%30 r: unit):
+    %31 box: word = box %30
+    %32 unbox: unit = unbox %31
+    drop %31
+    ret %32
+
+fn $entry#1 top -> unit ; main::imports, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn main$1#5 lambda -> word ; main::imports, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 code: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 lit: i64 = const 500
+    %4 t: bool = ge.int %2, %3
+    %5 box: word = box %4
+    ret %5

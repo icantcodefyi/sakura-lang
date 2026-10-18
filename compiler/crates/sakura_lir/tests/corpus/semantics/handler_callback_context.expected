@@ -1,0 +1,4 @@
+ending: ok
+--- stdout
+a = 5
+b = 10

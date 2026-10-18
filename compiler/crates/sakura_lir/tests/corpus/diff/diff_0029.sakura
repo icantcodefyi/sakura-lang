@@ -1,0 +1,40 @@
+type P = { a: Int, s: String }
+type Shape = Dot | Num(Int) | Pair(Int, String)
+error Oops(code: Int)
+error Bad
+effect Counter { fn next() -> Int }
+effect Acc {
+  fn add(x: Int) -> Unit ! {Fail<Bad>}
+  fn total() -> Int
+}
+fn counter(start: Int) -> Handler<Counter> { handler Counter { var n = start; fn next() { n = n + 1; n } } }
+fn doubling() -> Handler<Counter, {Counter}> {
+  handler Counter { var k = 0; fn next() { k = k + 1; Counter.next() * 2 + k } }
+}
+fn acc(limit: Int) -> Handler<Acc, {Console}> {
+  handler Acc {
+    var t = 0
+    fn add(x) { if x > limit { fail Bad }; t = t + x; Console.print("add {x} = {t}") }
+    fn total() { t }
+  }
+}
+effect Around { fn around<e>(x: Int, body: fn(Int) -> Int ! e) -> Int ! e }
+fn around() -> Handler<Around, {Console}> {
+  handler Around {
+    var calls = 0
+    fn around(x, body) { calls = calls + 1; Console.print("around {x} #{calls}"); body(x + calls) }
+  }
+}
+fn widen() -> Handler<Around, {Around}> { handler Around { fn around(x, body) { Around.around(x * 2, body) + 1 } } }
+pub fn main() -> Unit ! {Console} {
+  Console.print("{"{(match List.map(List.sort_by([2, (-10), 4], fn(v1) { let v2 = false; 7 }), fn(v3) { var v4 = (if false { [2, 10, (-10)] } else { List.range(0, 0) }); var v5 = 0; while v5 < 1 { v5 = v5 + 1; v4 = List.push(v4, (-8)) }; (-1) }) { [] => (match Dot { Dot => (match (P { a: 7, s: "sakura" }) { P { a: 2, .. } => 7, P { a: v6, s: v7 } => 10 }), Num(v8) => (match Dot { Dot => (-5), Num(v9) if false => 6, Num(v9) => 4, Pair(v9, v10) => v8 }), Pair(v8, v11) => (with around() { 2 }) }), [v12, ..v13] => (-8) })}"}")
+  var v14 = 8; for v15 in -1..3 { if (try { if (!(true) != ("sakura" != "héllo")) { fail Oops { code: List.len((match (P { a: 1, s: "sakura" }) { P { a: 2, .. } => [7, 7], P { a: v16, s: v17 } => [9] })) } }; false } catch { Oops { code: v18 } => ((true && true) == (match (P { a: 6, s: "" }) { P { a: 0, .. } => true, P { a: v19, s: v20 } => false })) }) { continue }; v14 = v14 + ((with acc(0) { if true { continue }; Console.print("{(match (P { a: 7, s: "x y" }) { P { a: 1, .. } => (P { a: (-7), s: "two\nlines" }), P { a: v21, s: v22 } => (P { a: 6, s: "" }) })}"); Int.abs(v15) }) * (match (P { ..(P { a: 5, s: "héllo" }), a: 7 }) { P { a: 1, .. } => 10, P { a: v23, s: v24 } => (8 / v14) })) }
+  with around() {
+    with widen() {
+      let v25 = (-4)
+      Console.print("{List.sort_by(List.map(List.slice((match ([9, (-6)])[v14] { Some(v26) => [(-8)], None => [(-7), 10, (-8)] }), Around.around(2, fn(v27) { if true { return 1 }; v25 }), Around.around(v25, fn(v28) { Console.print("{(P { a: 4503599627370496, s: "q\"" })}"); (-10) })), fn(v29) { 2 }), fn(v30) { let v37 = List.sort_by(({ (match Num((-4)) { Dot => List.range(0, 1), Num(v31) => [6, 0], Pair(v31, v32) => [6] }) }), fn(v33) { if ("{(P { a: 0, s: "a" })}" != "<{v33}>") { return Int.abs(((-8) % v14)) }; let v35 = (match String.parse_int("x") { Some(v34) => [0, (-6), (-9)], None => List.push([(-2), (-1), 10], 6) }); ((match (v35)[5] { Some(v36) => (P { a: 5, s: "tab\t" }), None => (P { a: 4503599627370496, s: "日本" }) })).a }); 2 })}")
+      Console.print("{(P { a: 4503599627370496, s: "🦀" })}")
+    }
+    Console.print("{(P { a: (-3), s: "héllo" })}")
+  }
+}

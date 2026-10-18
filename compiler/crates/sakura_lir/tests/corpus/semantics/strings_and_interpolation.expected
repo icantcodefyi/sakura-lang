@@ -1,0 +1,6 @@
+ending: ok
+--- stdout
+hi, Sakura Lang!
+nested: hi, Sakura Lang 2!
+braces: {literal} tab:	| quote: "q" backslash: \
+unicode: 😀

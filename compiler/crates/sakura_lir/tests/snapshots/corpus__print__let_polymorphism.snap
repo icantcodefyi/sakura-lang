@@ -1,0 +1,88 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 shape |  32b (word*, word*)
+layout 3 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::let_polymorphism, frame 13 slots [%4 word*, %5 word*, %6 word*, %13 word*, %14 word*, %15 word*, %16 word*, %23 word*, %24 word*, %25 word*, %33 word*, %34 word*, %37 bool]
+  b0():
+    %0 f: ptr = closure main$1#2[]
+    %1 f: ptr = closure main$2#3[]
+    %2 lit: i64 = const 3
+    %3 box: word = box %2
+    dup %0
+    call %0(%3) -> b1(%0, %1)
+  b1(%4 r: word, %5 f: ptr, %6 f: ptr):
+    %7 unbox: i64 = unbox %4
+    drop %4
+    %8 s: ptr = show %7
+    %9 lit: ptr = const str 0
+    %10 s: ptr = concat %8, %9
+    drop %8
+    drop %9
+    %11 lit: bool = const true
+    %12 box: word = box %11
+    dup %5
+    call %5(%12) -> b2(%5, %6, %10)
+  b2(%13 r: word, %14 f: ptr, %15 f: ptr, %16 s: ptr):
+    %17 unbox: bool = unbox %13
+    drop %13
+    %18 s: ptr = show %17
+    %19 s: ptr = concat %16, %18
+    drop %16
+    drop %18
+    %20 lit: ptr = const str 0
+    %21 s: ptr = concat %19, %20
+    drop %19
+    drop %20
+    %22 lit: ptr = const str 1
+    call %14(%22) -> b3(%15, %21)
+  b3(%23 r: word, %24 f: ptr, %25 s: ptr):
+    %26 s: ptr = show %23
+    drop %23
+    %27 s: ptr = concat %25, %26
+    drop %25
+    drop %26
+    %28 lit: ptr = const str 0
+    %29 s: ptr = concat %27, %28
+    drop %27
+    drop %28
+    %30 lit: i64 = const 1
+    %31 box: word = box %30
+    %32 lit: ptr = const str 2
+    call %24(%31, %32) -> b4(%29)
+  b4(%33 r: word, %34 s: ptr):
+    %35 s: ptr = show %33
+    drop %33
+    %36 s: ptr = concat %34, %35
+    drop %34
+    drop %35
+    perform std::console::Console.print(%36) -> b5()
+  b5(%37 r: unit):
+    %38 box: word = box %37
+    %39 unbox: unit = unbox %38
+    drop %38
+    ret %39
+
+fn $entry#1 top -> unit ; main::let_polymorphism, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn main$1#2 lambda -> word ; main::let_polymorphism, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 x: word):
+    drop %0
+    ret %1
+
+fn main$2#3 lambda -> word ; main::let_polymorphism, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
+  b0(%0 env: ptr, %1 a: word, %2 b: word):
+    drop %0
+    %3 tup: ptr = alloc tuple#2(word, word)(%1, %2)
+    ret %3

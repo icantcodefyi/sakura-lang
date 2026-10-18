@@ -1,0 +1,36 @@
+type P = { a: Int, s: String }
+type Shape = Dot | Num(Int) | Pair(Int, String)
+error Oops(code: Int)
+error Bad
+effect Counter { fn next() -> Int }
+effect Acc {
+  fn add(x: Int) -> Unit ! {Fail<Bad>}
+  fn total() -> Int
+}
+fn counter(start: Int) -> Handler<Counter> { handler Counter { var n = start; fn next() { n = n + 1; n } } }
+fn doubling() -> Handler<Counter, {Counter}> {
+  handler Counter { var k = 0; fn next() { k = k + 1; Counter.next() * 2 + k } }
+}
+fn acc(limit: Int) -> Handler<Acc, {Console}> {
+  handler Acc {
+    var t = 0
+    fn add(x) { if x > limit { fail Bad }; t = t + x; Console.print("add {x} = {t}") }
+    fn total() { t }
+  }
+}
+effect Around { fn around<e>(x: Int, body: fn(Int) -> Int ! e) -> Int ! e }
+fn around() -> Handler<Around, {Console}> {
+  handler Around {
+    var calls = 0
+    fn around(x, body) { calls = calls + 1; Console.print("around {x} #{calls}"); body(x + calls) }
+  }
+}
+fn widen() -> Handler<Around, {Around}> { handler Around { fn around(x, body) { Around.around(x * 2, body) + 1 } } }
+fn h0(p0: String, p1: List<Int>) -> Int ! {Fail<Oops | Bad>}
+{ List.sum((match p1 { [] => (with counter(6) { if false { fail Bad }; p1 }), [v1, ..v2] => p1 })) }
+pub fn main() -> Unit ! {Console} {
+  let v3 = Pair(0, "🦀")
+  var v4 = 6; for v5 in -1..0 { if (List.slice([6], ((-4) / 5), (if false { v5 } else { v4 })) < (match ((match Pair(2, "") { Dot => List.range(0, 3), Num(v6) => [2], Pair(v6, v7) => [3, (-8)] }))[(if false { v4 } else { (-9) })] { Some(v8) => List.range(-1, 2), None => List.push([(-2), (-7), 4503599627370496], v5) })) { break }; v4 = v4 + ((P { ..({ var v9 = (P { a: (-5), s: "héllo" }); v9.a = v5; v9 }), s: ("🦀" + "🦀") })).a }
+  Console.print("{(try { h0(("tab\t" + "<{(-9)}>"), (if true { fail Oops { code: Int.abs(v4) } } else { List.concat([5, 6, 2], [9, (-5)]) })) })}")
+  Console.print("{(match List.last(({ let v12 = (7 < (match v3 { Dot => v4, Num(v10) if false => v4, Num(v10) => v10, Pair(v10, v11) => (-9) })); (match (P { a: 6, s: "x y" }) { P { a: 0, .. } => (match [(-10), 10, 9] { [] => [4, (-10)], [v13, ..v14] => v14 }), P { a: v15, s: v16 } => (with counter(0), doubling() { let v17 = "back\\slash"; let v18 = v12; List.range(0, 1) }) }) })) { Some(v19) => Num((-9)), None => Pair(List.fold((match [(-4), 8, (-1)] { [] => List.range(0, 3), [v20, ..v21] => List.range(0, 2) }), v4, fn(v22, v23) { Console.print("{3}"); Int.max(5, v22) }), List.join(List.map(List.filter([(-6)], fn(v24) { let v25 = true; Console.print("{v24}"); v25 }), fn(v26) { let v27 = "back\\slash"; Console.print("{(match (P { a: (-9), s: "q\"" }) { P { a: 1, .. } => (P { a: 4, s: "tab\t" }), P { a: v28, s: v29 } => (P { a: 3, s: "q\"" }) })}"); v27 }), ((P { a: (-5), s: "héllo" })).s)) })}")
+}

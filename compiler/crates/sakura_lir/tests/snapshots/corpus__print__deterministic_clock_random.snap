@@ -1,0 +1,99 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::duration::Duration | Duration 24b (i64)
+layout 1 variant std::instant::Instant | Instant 24b (i64)
+layout 2 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 3 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 4 variant std::uuid::Uuid | Uuid 24b (word*)
+layout 5 shape |  32b (word*, word*)
+layout 6 shape |  32b (i64, word*)
+layout 7 shape |  24b (i64)
+layout 8 shape |  40b (i64, i64, i64)
+
+fn main#0 pub top -> unit ; main::deterministic_clock_random, frame 15 slots [%1 word*, %3 word*, %5 word*, %6 bool, %8 word*, %9 word*, %13 word*, %14 word*, %17 bool, %22 i64, %28 i64, %29 word*, %36 i64, %37 word*, %40 bool]
+  b0():
+    %0 lit: i64 = const 42
+    call seeded#2(%0) -> b1()
+  b1(%1 r: ptr):
+    handle_push %1
+    %20 lit: i64 = const 1
+    %21 lit: i64 = const 100
+    perform std::random::Random.int(%20, %21) -> b10()
+  b2(%2 v: word):
+    drop %2
+    call virtual#3() -> b3()
+  b3(%3 r: ptr):
+    handle_push %3
+    %4 lit: i64 = const 90
+    call seconds#4(%4) -> b4()
+  b4(%5 r: ptr) [handle]:
+    perform std::clock::Clock.sleep(%5) -> b5()
+  b5(%6 r: unit) [handle]:
+    %7 box: word = box %6
+    drop %7
+    perform std::clock::Clock.now() -> b6()
+  b6(%8 r: ptr) [handle]:
+    call format_iso#5(%8) -> b7()
+  b7(%9 r: ptr) [handle]:
+    %10 s: ptr = show %9
+    drop %9
+    %11 lit: ptr = const str 0
+    %12 s: ptr = concat %10, %11
+    drop %10
+    drop %11
+    perform std::clock::Clock.monotonic() -> b8(%12)
+  b8(%13 r: ptr, %14 s: ptr) [handle]:
+    %15 s: ptr = show %13
+    drop %13
+    %16 s: ptr = concat %14, %15
+    drop %14
+    drop %15
+    perform std::console::Console.print(%16) -> b9()
+  b9(%17 r: unit) [handle]:
+    %18 box: word = box %17
+    %19 unbox: unit = unbox %18
+    drop %18
+    handle_pop
+    ret %19
+  b10(%22 r: i64) [handle]:
+    %23 s: ptr = show %22
+    %24 lit: ptr = const str 0
+    %25 s: ptr = concat %23, %24
+    drop %23
+    drop %24
+    %26 lit: i64 = const 1
+    %27 lit: i64 = const 100
+    perform std::random::Random.int(%26, %27) -> b11(%25)
+  b11(%28 r: i64, %29 s: ptr) [handle]:
+    %30 s: ptr = show %28
+    %31 s: ptr = concat %29, %30
+    drop %29
+    drop %30
+    %32 lit: ptr = const str 0
+    %33 s: ptr = concat %31, %32
+    drop %31
+    drop %32
+    %34 lit: i64 = const 1
+    %35 lit: i64 = const 100
+    perform std::random::Random.int(%34, %35) -> b12(%33)
+  b12(%36 r: i64, %37 s: ptr) [handle]:
+    %38 s: ptr = show %36
+    %39 s: ptr = concat %37, %38
+    drop %37
+    drop %38
+    perform std::console::Console.print(%39) -> b13()
+  b13(%40 r: unit) [handle]:
+    %41 box: word = box %40
+    handle_pop
+    jump b2(%41)
+
+fn $entry#1 top -> unit ; main::deterministic_clock_random, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1

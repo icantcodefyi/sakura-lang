@@ -1,0 +1,174 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 shape |  32b (word*, word*)
+layout 3 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::loop_jump_past_inner_var, frame 9 slots [%4 bool, %5 i64, %16 bool, %17 i64, %18 i64, %51 bool, %52 i64, %53 i64, %54 i64]
+  b0():
+    %168 lit: i64 = const 0
+    %169 lit: i64 = const 0
+    jump b24(%168, %169)
+  b1(%0 u: i64):
+    %1 s: ptr = show %0
+    %2 lit: ptr = const str 0
+    %3 s: ptr = concat %2, %1
+    drop %1
+    drop %2
+    perform std::console::Console.print(%3) -> b2(%0)
+  b2(%4 r: unit, %5 u: i64):
+    %6 box: word = box %4
+    drop %6
+    %113 lit: i64 = const 0
+    jump b14(%5, %113)
+  b3(%7 u: i64, %8 w: i64):
+    %9 s: ptr = show %7
+    %10 lit: ptr = const str 1
+    %11 s: ptr = concat %10, %9
+    drop %9
+    drop %10
+    %12 lit: ptr = const str 2
+    %13 s: ptr = concat %11, %12
+    drop %11
+    drop %12
+    %14 s: ptr = show %8
+    %15 s: ptr = concat %13, %14
+    drop %13
+    drop %14
+    perform std::console::Console.print(%15) -> b4(%7, %8)
+  b4(%16 r: unit, %17 u: i64, %18 w: i64):
+    %19 box: word = box %16
+    drop %19
+    %66 lit: i64 = const 0
+    jump b6(%66, %17, %18)
+  b5(%20 u: i64, %21 w: i64):
+    %22 lit: unit = const ()
+    ret %22
+  b6(%23 i: i64, %24 u: i64, %25 w: i64):
+    %26 lit: i64 = const 3
+    %27 more: bool = lt.int %23, %26
+    if %27 then b7(%23, %24, %25) else b8(%23, %24, %25)
+  b7(%28 i: i64, %29 u: i64, %30 w: i64):
+    %39 lit: i64 = const 1
+    %40 t: i64 = intadd %28, %39
+    %41 lit: i64 = const 1
+    %42 t: bool = eq.int %28, %41
+    if %42 then b12(%28, %29, %30, %40) else b13(%28, %29, %30, %40)
+  b8(%31 i: i64, %32 u: i64, %33 w: i64):
+    jump b5(%32, %33)
+  b9(%34 u: i64, %35 w: i64, %36 i: i64):
+    %37 lit: i64 = const 1
+    %38 i: i64 = intadd %36, %37
+    jump b6(%38, %34, %35)
+  b10(%43 v: word, %44 u: i64, %45 w: i64, %46 t: i64, %47 i: i64):
+    drop %43
+    %48 s: ptr = show %46
+    %49 lit: ptr = const str 3
+    %50 s: ptr = concat %49, %48
+    drop %48
+    drop %49
+    perform std::console::Console.print(%50) -> b11(%47, %44, %45)
+  b11(%51 r: unit, %52 i: i64, %53 u: i64, %54 w: i64):
+    %55 box: word = box %51
+    drop %55
+    jump b9(%53, %54, %52)
+  b12(%56 i: i64, %57 u: i64, %58 w: i64, %59 t: i64):
+    jump b5(%57, %58)
+  b13(%60 i: i64, %61 u: i64, %62 w: i64, %63 t: i64):
+    %64 lit: unit = const ()
+    %65 box: word = box %64
+    jump b10(%65, %61, %62, %63, %60)
+  b14(%67 u: i64, %68 w: i64):
+    %69 lit: i64 = const 5
+    %70 t: bool = lt.int %68, %69
+    if %70 then b16(%67, %68) else b17(%67, %68)
+  b15(%71 v: word, %72 u: i64, %73 w: i64):
+    drop %71
+    jump b14(%72, %73)
+  b16(%74 u: i64, %75 w: i64):
+    %78 lit: i64 = const 1
+    %79 t: i64 = intadd %75, %78
+    %80 lit: i64 = const 10
+    %81 t: i64 = intadd %80, %79
+    %82 lit: i64 = const 2
+    %83 t: bool = eq.int %79, %82
+    if %83 then b22(%74, %79, %81) else b23(%74, %79, %81)
+  b17(%76 u: i64, %77 w: i64):
+    jump b3(%76, %77)
+  b18(%84 v: word, %85 u: i64, %86 w: i64, %87 t: i64):
+    drop %84
+    %88 lit: i64 = const 4
+    %89 t: bool = eq.int %86, %88
+    if %89 then b20(%85, %86, %87) else b21(%85, %86, %87)
+  b19(%90 v: word, %91 u: i64, %92 w: i64, %93 t: i64):
+    drop %90
+    %94 t: i64 = intadd %91, %93
+    %95 lit: unit = const ()
+    %96 box: word = box %95
+    jump b15(%96, %94, %92)
+  b20(%97 u: i64, %98 w: i64, %99 t: i64):
+    jump b3(%97, %98)
+  b21(%100 u: i64, %101 w: i64, %102 t: i64):
+    %103 lit: unit = const ()
+    %104 box: word = box %103
+    jump b19(%104, %100, %101, %102)
+  b22(%105 u: i64, %106 t: i64, %107 t: i64):
+    jump b14(%105, %106)
+  b23(%108 u: i64, %109 t: i64, %110 t: i64):
+    %111 lit: unit = const ()
+    %112 box: word = box %111
+    jump b18(%112, %108, %109, %110)
+  b24(%114 i: i64, %115 u: i64):
+    %116 lit: i64 = const 3
+    %117 more: bool = lt.int %114, %116
+    if %117 then b25(%114, %115) else b26(%114, %115)
+  b25(%118 i: i64, %119 u: i64):
+    %166 lit: i64 = const 0
+    %167 lit: i64 = const 0
+    jump b32(%166, %119, %167, %118)
+  b26(%120 i: i64, %121 u: i64):
+    jump b1(%121)
+  b27(%122 u: i64, %123 i: i64):
+    %124 lit: i64 = const 1
+    %125 i: i64 = intadd %123, %124
+    jump b24(%125, %122)
+  b28(%126 u: i64, %127 t: i64, %128 i: i64):
+    %129 lit: i64 = const 1
+    %130 t: bool = eq.int %128, %129
+    if %130 then b30(%128, %126, %127) else b31(%128, %126, %127)
+  b29(%131 v: word, %132 u: i64, %133 t: i64, %134 i: i64):
+    drop %131
+    %135 t: i64 = intadd %132, %133
+    jump b27(%135, %134)
+  b30(%136 i: i64, %137 u: i64, %138 t: i64):
+    jump b27(%137, %136)
+  b31(%139 i: i64, %140 u: i64, %141 t: i64):
+    %142 lit: unit = const ()
+    %143 box: word = box %142
+    jump b29(%143, %140, %141, %139)
+  b32(%144 i: i64, %145 u: i64, %146 t: i64, %147 i: i64):
+    %148 lit: i64 = const 2
+    %149 more: bool = lt.int %144, %148
+    if %149 then b33(%147, %144, %145, %146) else b34(%147, %144, %145, %146)
+  b33(%150 i: i64, %151 i: i64, %152 u: i64, %153 t: i64):
+    %164 lit: i64 = const 1
+    %165 t: i64 = intadd %153, %164
+    jump b35(%152, %165, %150, %151)
+  b34(%154 i: i64, %155 i: i64, %156 u: i64, %157 t: i64):
+    jump b28(%156, %157, %154)
+  b35(%158 u: i64, %159 t: i64, %160 i: i64, %161 i: i64):
+    %162 lit: i64 = const 1
+    %163 i: i64 = intadd %161, %162
+    jump b32(%163, %158, %159, %160)
+
+fn $entry#1 top -> unit ; main::loop_jump_past_inner_var, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1

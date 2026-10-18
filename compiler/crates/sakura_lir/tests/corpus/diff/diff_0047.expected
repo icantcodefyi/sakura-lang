@@ -1,0 +1,4 @@
+ending: ok
+--- stdout
+Err(Oops { code: 5 })
+Num(-9)

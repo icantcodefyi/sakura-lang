@@ -1,0 +1,4 @@
+ending: ok
+--- stdout
+-4
+P { a: 9, s: "back\\slash" }

@@ -1,0 +1,15 @@
+ending: ok
+--- stdout
+P { a: -5, s: "日本" }
+P { a: -5, s: "日本" }
+4
+false
+0
+-4
+a
+true
+Dot
+Err(Bad)
+-9
+-9
+3

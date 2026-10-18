@@ -1,0 +1,228 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant main::variants_and_match::Shape | Circle 24b (i64) | Rect 32b (i64, i64) | Empty 16b ()
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::variants_and_match, frame 19 slots [%9 word*, %14 word*, %15 word*, %22 word*, %23 word*, %29 word*, %30 word*, %33 bool, %43 bool, %47 bool, %80 i64, %81 word*, %82 i64, %83 i64, %84 word*, %87 bool, %88 word*, %89 i64, %90 i64]
+  b0():
+    %0 lit: i64 = const 2
+    %1 r: ptr = alloc main::variants_and_match::Shape.Circle(%0)
+    %2 lit: i64 = const 3
+    %3 lit: i64 = const 4
+    %4 r: ptr = alloc main::variants_and_match::Shape.Rect(%2, %3)
+    %5 v: ptr = const static main::variants_and_match::Shape.Empty
+    %6 xs: ptr = alloc list(%1, %4, %5)
+    dup %6
+    %7 n: i64 = $list_len(%6)
+    %92 lit: i64 = const 0
+    jump b16(%92, %6, %7)
+  b1():
+    %8 lit: i64 = const 0
+    call describe#3(%8) -> b2()
+  b2(%9 r: ptr):
+    %10 s: ptr = show %9
+    drop %9
+    %11 lit: ptr = const str 0
+    %12 s: ptr = concat %10, %11
+    drop %10
+    drop %11
+    %13 lit: i64 = const 2
+    call describe#3(%13) -> b3(%12)
+  b3(%14 r: ptr, %15 s: ptr):
+    %16 s: ptr = show %14
+    drop %14
+    %17 s: ptr = concat %15, %16
+    drop %15
+    drop %16
+    %18 lit: ptr = const str 0
+    %19 s: ptr = concat %17, %18
+    drop %17
+    drop %18
+    %20 lit: i64 = const 5
+    %21 t: i64 = intneg %20
+    call describe#3(%21) -> b4(%19)
+  b4(%22 r: ptr, %23 s: ptr):
+    %24 s: ptr = show %22
+    drop %22
+    %25 s: ptr = concat %23, %24
+    drop %23
+    drop %24
+    %26 lit: ptr = const str 0
+    %27 s: ptr = concat %25, %26
+    drop %25
+    drop %26
+    %28 lit: i64 = const 10
+    call describe#3(%28) -> b5(%27)
+  b5(%29 r: ptr, %30 s: ptr):
+    %31 s: ptr = show %29
+    drop %29
+    %32 s: ptr = concat %30, %31
+    drop %30
+    drop %31
+    perform std::console::Console.print(%32) -> b6()
+  b6(%33 r: unit):
+    %34 box: word = box %33
+    drop %34
+    %35 lit: i64 = const 1
+    %36 lit: i64 = const 2
+    %37 r: ptr = alloc main::variants_and_match::Shape.Rect(%35, %36)
+    %38 r: ptr = alloc std::option::Option.Some(%37)
+    %50 tag: i64 = tag %38 ctor std::option::Option
+    switch %50 1 => b11(%38) _ => b12(%38)
+  b7(%39 w: i64):
+    %40 s: ptr = show %39
+    %41 lit: ptr = const str 1
+    %42 s: ptr = concat %41, %40
+    drop %40
+    drop %41
+    perform std::console::Console.print(%42) -> b8()
+  b8(%43 r: unit):
+    %44 box: word = box %43
+    %45 unbox: unit = unbox %44
+    drop %44
+    ret %45
+  b9():
+    %46 lit: ptr = const str 2
+    perform std::console::Console.print(%46) -> b10()
+  b10(%47 r: unit):
+    %48 box: word = box %47
+    %49 unbox: unit = unbox %48
+    drop %48
+    ret %49
+  b11(%51 r: ptr):
+    %53 p: word = proj %51.0 std::option::Option.Some
+    drop %51
+    %54 tag: i64 = tag %53 ctor main::variants_and_match::Shape
+    switch %54 0 => b13(%53) 1 => b14(%53) _ => b15(%53)
+  b12(%52 r: ptr):
+    drop %52
+    jump b9()
+  b13(%55 p: ptr):
+    %58 p: i64 = proj %55.0 main::variants_and_match::Shape.Circle
+    drop %55
+    jump b7(%58)
+  b14(%56 p: ptr):
+    %59 p: i64 = proj %56.0 main::variants_and_match::Shape.Rect
+    %60 p: i64 = proj %56.1 main::variants_and_match::Shape.Rect
+    drop %56
+    jump b7(%59)
+  b15(%57 p: ptr):
+    drop %57
+    jump b9()
+  b16(%61 i: i64, %62 xs: ptr, %63 n: i64):
+    %64 more: bool = lt.int %61, %63
+    if %64 then b17(%62, %63, %61) else b18(%62, %63, %61)
+  b17(%65 xs: ptr, %66 n: i64, %67 i: i64):
+    dup %65
+    %71 x: word = $list_at(%65, %67)
+    %77 s: ptr = show %71
+    %78 lit: ptr = const str 3
+    %79 s: ptr = concat %77, %78
+    drop %77
+    drop %78
+    call area#2(%71) -> b20(%65, %66, %67, %79)
+  b18(%68 xs: ptr, %69 n: i64, %70 i: i64):
+    drop %68
+    jump b1()
+  b19(%72 xs: ptr, %73 n: i64, %74 i: i64):
+    %75 lit: i64 = const 1
+    %76 i: i64 = intadd %74, %75
+    jump b16(%76, %72, %73)
+  b20(%80 r: i64, %81 xs: ptr, %82 n: i64, %83 i: i64, %84 s: ptr):
+    %85 s: ptr = show %80
+    %86 s: ptr = concat %84, %85
+    drop %84
+    drop %85
+    perform std::console::Console.print(%86) -> b21(%81, %82, %83)
+  b21(%87 r: unit, %88 xs: ptr, %89 n: i64, %90 i: i64):
+    %91 box: word = box %87
+    drop %91
+    jump b19(%88, %89, %90)
+
+fn $entry#1 top -> unit ; main::variants_and_match, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn area#2 top -> i64 ; main::variants_and_match, frame 1 slots [%0 word*]
+  b0(%0 s: ptr):
+    %9 tag: i64 = tag %0 ctor main::variants_and_match::Shape
+    switch %9 0 => b4(%0) 1 => b5(%0) 2 => b6(%0)
+  b1(%1 r: i64):
+    %2 lit: i64 = const 3
+    %3 t: i64 = intmul %2, %1
+    %4 t: i64 = intmul %3, %1
+    ret %4
+  b2(%5 w: i64, %6 h: i64):
+    %7 t: i64 = intmul %5, %6
+    ret %7
+  b3():
+    %8 lit: i64 = const 0
+    ret %8
+  b4(%10 s: ptr):
+    %13 p: i64 = proj %10.0 main::variants_and_match::Shape.Circle
+    drop %10
+    jump b1(%13)
+  b5(%11 s: ptr):
+    %14 p: i64 = proj %11.0 main::variants_and_match::Shape.Rect
+    %15 p: i64 = proj %11.1 main::variants_and_match::Shape.Rect
+    drop %11
+    jump b2(%14, %15)
+  b6(%12 s: ptr):
+    drop %12
+    jump b3()
+
+fn describe#3 top -> ptr ; main::variants_and_match, frame 1 slots [%0 i64]
+  b0(%0 n: i64):
+    %6 lit: i64 = const 0
+    %7 is: bool = eq.int %0, %6
+    if %7 then b5(%0) else b6(%0)
+  b1():
+    %1 lit: ptr = const str 4
+    ret %1
+  b2():
+    %2 lit: ptr = const str 5
+    ret %2
+  b3(%3 k: i64):
+    %4 lit: ptr = const str 6
+    ret %4
+  b4():
+    %5 lit: ptr = const str 7
+    ret %5
+  b5(%8 n: i64):
+    jump b1()
+  b6(%9 n: i64):
+    %10 lit: i64 = const 1
+    %11 is: bool = eq.int %9, %10
+    if %11 then b7(%9) else b8(%9)
+  b7(%12 n: i64):
+    jump b2()
+  b8(%13 n: i64):
+    %14 lit: i64 = const 2
+    %15 is: bool = eq.int %13, %14
+    if %15 then b9(%13) else b10(%13)
+  b9(%16 n: i64):
+    jump b2()
+  b10(%17 n: i64):
+    %18 lit: i64 = const 3
+    %19 is: bool = eq.int %17, %18
+    if %19 then b11(%17) else b12(%17)
+  b11(%20 n: i64):
+    jump b2()
+  b12(%21 n: i64):
+    %22 lit: i64 = const 0
+    %23 t: bool = lt.int %21, %22
+    if %23 then b13(%21) else b14(%21)
+  b13(%24 n: i64):
+    jump b3(%24)
+  b14(%25 n: i64):
+    jump b4()

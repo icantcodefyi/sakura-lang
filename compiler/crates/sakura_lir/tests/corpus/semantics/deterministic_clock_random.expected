@@ -1,0 +1,4 @@
+ending: ok
+--- stdout
+53 1 23
+1970-01-01T00:01:30Z Duration(90000)

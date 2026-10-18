@@ -1,0 +1,6 @@
+ending: ok
+--- stdout
+Num(-7)
+Pair(0, "a")
+[]
+[-4]

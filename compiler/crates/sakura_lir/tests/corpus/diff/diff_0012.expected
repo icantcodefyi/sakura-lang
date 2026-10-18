@@ -1,0 +1,9 @@
+ending: D020
+--- stdout
+two
+lines
+Ok(false)
+Dot
+[-2, -1, 0, 1, 2, 3, 4]
+Dot
+true

@@ -1,0 +1,75 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 shape |  32b (word*, word*)
+layout 3 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::literal_refinement_passes_once, frame 4 slots [%9 word*, %10 i64, %12 bool, %13 i64]
+  b0():
+    %15 lit: i64 = const 0
+    jump b2(%15)
+  b1():
+    %0 lit: unit = const ()
+    ret %0
+  b2(%1 i: i64):
+    %2 lit: i64 = const 3
+    %3 more: bool = lt.int %1, %2
+    if %3 then b3(%1) else b4(%1)
+  b3(%4 i: i64):
+    call tag#2() -> b6(%4)
+  b4(%5 i: i64):
+    jump b1()
+  b5(%6 i: i64):
+    %7 lit: i64 = const 1
+    %8 i: i64 = intadd %6, %7
+    jump b2(%8)
+  b6(%9 r: ptr, %10 i: i64):
+    %11 s: ptr = show %9
+    drop %9
+    perform std::console::Console.print(%11) -> b7(%10)
+  b7(%12 r: unit, %13 i: i64):
+    %14 box: word = box %12
+    drop %14
+    jump b5(%13)
+
+fn $entry#1 top -> unit ; main::literal_refinement_passes_once, frame 2 slots [%0 word*, %2 bool]
+  b0():
+    call Slug$from$lit#4() -> b1()
+  b1(%0 lit: ptr):
+    drop %0
+    %1 console: ptr = $console_host()
+    handle_push %1
+    call main#0() -> b2()
+  b2(%2 r: unit) [handle]:
+    handle_pop
+    ret %2
+
+fn tag#2 top -> ptr ; main::literal_refinement_passes_once, frame 1 slots [%0 word*]
+  b0():
+    call Slug$from$lit#4() -> b1()
+  b1(%0 lit: ptr):
+    ret %0
+
+fn Slug$from#3 top -> ptr ; main::literal_refinement_passes_once, frame 1 slots [%0 word*]
+  b0(%0 it: ptr):
+    %1 enter: unit = $contract_enter()
+    %2 lit: ptr = const str 0
+    dup %0
+    %3 r: ptr = $string_split(%0, %2)
+    %4 r: i64 = $list_len(%3)
+    %5 lit: i64 = const 1
+    %6 t: bool = eq.int %4, %5
+    %7 exit: unit = $contract_exit()
+    check D010 %6 ; Slug
+    %8 ok: unit = const ()
+    ret %0
+
+fn Slug$from$lit#4 const -> ptr ; main::literal_refinement_passes_once, frame 1 slots [%1 word*]
+  b0():
+    %0 lit: ptr = const str 1
+    call Slug$from#3(%0) -> b1()
+  b1(%1 v: ptr):
+    ret %1

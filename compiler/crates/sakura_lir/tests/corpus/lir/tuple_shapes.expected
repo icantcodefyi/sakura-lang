@@ -1,0 +1,10 @@
+ending: ok
+--- stdout
+40 (20, 20)
+14 ("seven", 7) 8
+true false true
+[2, 4, 6] [(1, 1), (2, 2), (3, 3)]
+[(5, 5)]
+Some(20) 1
+1 a 20
+((), ()) (Some(()), Some(())) ([(false, false)], [(false, false)])

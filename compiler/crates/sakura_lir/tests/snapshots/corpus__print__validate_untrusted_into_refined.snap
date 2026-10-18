@@ -1,0 +1,196 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record std::core::Violation | Violation 40b (type_name: word*, clause: word*, value_summary: word*)
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::validate_untrusted_into_refined, frame 12 slots [%3 word*, %5 bool, %10 word*, %14 bool, %17 bool, %19 bool, %22 word*, %25 word*, %27 word*, %30 word*, %36 bool, %46 bool]
+  b0():
+    %0 lit: i64 = const 50
+    %1 box: word = box %0
+    %2 r: ptr = $untrusted_of(%1)
+    call percent#2(%2) -> b1()
+  b1(%3 r: ptr):
+    %4 s: ptr = show %3
+    drop %3
+    perform std::console::Console.print(%4) -> b2()
+  b2(%5 r: unit):
+    %6 box: word = box %5
+    drop %6
+    %7 lit: i64 = const 150
+    %8 box: word = box %7
+    %9 r: ptr = $untrusted_of(%8)
+    call percent#2(%9) -> b3()
+  b3(%10 r: ptr):
+    %48 tag: i64 = tag %10 ctor std::result::Result
+    switch %48 0 => b18(%10) 1 => b19(%10)
+  b4(%11 v: word):
+    drop %11
+    try_push -> b12(err, )
+    %29 lit: ptr = const str 1
+    call slug#3(%29) -> b13()
+  b5(%12 v: ptr):
+    %13 s: ptr = show %12
+    drop %12
+    perform std::console::Console.print(%13) -> b6()
+  b6(%14 r: unit):
+    %15 box: word = box %14
+    drop %15
+    try_push -> b10(err, )
+    %24 lit: ptr = const str 0
+    call slug#3(%24) -> b11()
+  b7(%16 v: ptr):
+    call is_err#4(%16) -> b8()
+  b8(%17 r: bool):
+    %18 s: ptr = show %17
+    perform std::console::Console.print(%18) -> b9()
+  b9(%19 r: unit):
+    %20 box: word = box %19
+    %21 unbox: unit = unbox %20
+    drop %20
+    ret %21
+  b10(%22 e: word):
+    %23 err: ptr = alloc std::result::Result.Err(%22)
+    jump b7(%23)
+  b11(%25 r: ptr) [try]:
+    %26 ok: ptr = alloc std::result::Result.Ok(%25)
+    try_pop
+    jump b7(%26)
+  b12(%27 e: word):
+    %28 err: ptr = alloc std::result::Result.Err(%27)
+    jump b5(%28)
+  b13(%30 r: ptr) [try]:
+    %31 ok: ptr = alloc std::result::Result.Ok(%30)
+    try_pop
+    jump b5(%31)
+  b14(%32 p: i64):
+    %33 s: ptr = show %32
+    %34 lit: ptr = const str 2
+    %35 s: ptr = concat %34, %33
+    drop %33
+    drop %34
+    perform std::console::Console.print(%35) -> b15()
+  b15(%36 r: unit):
+    %37 box: word = box %36
+    jump b4(%37)
+  b16(%38 v: ptr):
+    %39 type_name: word = proj %38.0 std::core::Violation
+    %40 s: ptr = show %39
+    drop %39
+    %41 lit: ptr = const str 3
+    %42 s: ptr = concat %40, %41
+    drop %40
+    drop %41
+    %43 clause: word = proj %38.1 std::core::Violation
+    drop %38
+    %44 s: ptr = show %43
+    drop %43
+    %45 s: ptr = concat %42, %44
+    drop %42
+    drop %44
+    perform std::console::Console.print(%45) -> b17()
+  b17(%46 r: unit):
+    %47 box: word = box %46
+    jump b4(%47)
+  b18(%49 r: ptr):
+    %51 p: word = proj %49.0 std::result::Result.Ok
+    drop %49
+    %52 unbox: i64 = unbox %51
+    drop %51
+    jump b14(%52)
+  b19(%50 r: ptr):
+    %53 p: word = proj %50.0 std::result::Result.Err
+    drop %50
+    jump b16(%53)
+
+fn $entry#1 top -> unit ; main::validate_untrusted_into_refined, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn percent#2 top -> ptr ; main::validate_untrusted_into_refined, frame 2 slots [%0 word*, %3 word*]
+  b0(%0 u: ptr):
+    %1 raw: word = $untrusted_value(%0)
+    %2 unbox: i64 = unbox %1
+    drop %1
+    call Percent$validate#6(%2) -> b1()
+  b1(%3 r: word):
+    ret %3
+
+fn slug#3 top -> ptr ; main::validate_untrusted_into_refined, frame 2 slots [%0 word*, %3 word*]
+  b0(%0 raw: ptr):
+    %1 r: ptr = $untrusted_of(%0)
+    %2 raw: word = $untrusted_value(%1)
+    call Slug$validate#5(%2) -> b1()
+  b1(%3 r: word):
+    %4 tag: i64 = tag %3 ctor std::result::Result
+    switch %4 0 => b2(%3) 1 => b3(%3)
+  b2(%5 r: ptr):
+    %7 v: word = proj %5.0 std::result::Result.Ok
+    drop %5
+    ret %7
+  b3(%6 r: ptr):
+    %8 e: word = proj %6.0 std::result::Result.Err
+    drop %6
+    fail %8
+
+fn Slug$validate#5 top -> word ; main::validate_untrusted_into_refined, frame 1 slots [%0 word*]
+  b0(%0 it: ptr):
+    %1 enter: unit = $contract_enter()
+    %2 lit: ptr = const str 3
+    dup %0
+    %3 r: ptr = $string_split(%0, %2)
+    %4 r: i64 = $list_len(%3)
+    %5 lit: i64 = const 1
+    %6 t: bool = eq.int %4, %5
+    %7 exit: unit = $contract_exit()
+    %8 summary: ptr = show %0
+    %9 lit: ptr = const str 4
+    %10 lit: ptr = const str 5
+    %11 violation: ptr = alloc std::core::Violation(%9, %10, %8)
+    if %6 then b1(%0, %11) else b2(%0, %11)
+  b1(%12 it: ptr, %13 violation: ptr):
+    drop %13
+    %16 ok: ptr = alloc std::result::Result.Ok(%12)
+    ret %16
+  b2(%14 it: ptr, %15 violation: ptr):
+    drop %14
+    %17 err: ptr = alloc std::result::Result.Err(%15)
+    ret %17
+
+fn Percent$validate#6 top -> word ; main::validate_untrusted_into_refined, frame 1 slots [%0 i64]
+  b0(%0 it: i64):
+    %1 enter: unit = $contract_enter()
+    %2 lit: i64 = const 0
+    %3 t: bool = ge.int %0, %2
+    if %3 then b4(%0) else b5(%0)
+  b1(%4 v: bool, %5 it: i64):
+    %6 exit: unit = $contract_exit()
+    %7 summary: ptr = show %5
+    %8 lit: ptr = const str 6
+    %9 lit: ptr = const str 5
+    %10 violation: ptr = alloc std::core::Violation(%8, %9, %7)
+    if %4 then b2(%5, %10) else b3(%5, %10)
+  b2(%11 it: i64, %12 violation: ptr):
+    drop %12
+    %15 box: word = box %11
+    %16 ok: ptr = alloc std::result::Result.Ok(%15)
+    ret %16
+  b3(%13 it: i64, %14 violation: ptr):
+    %17 err: ptr = alloc std::result::Result.Err(%14)
+    ret %17
+  b4(%18 it: i64):
+    %20 lit: i64 = const 100
+    %21 t: bool = le.int %18, %20
+    jump b1(%21, %18)
+  b5(%19 it: i64):
+    %22 lit: bool = const false
+    jump b1(%22, %19)

@@ -1,0 +1,9 @@
+ending: ok
+--- stdout
+run 1
+2
+4
+3
+run 10
+11
+20

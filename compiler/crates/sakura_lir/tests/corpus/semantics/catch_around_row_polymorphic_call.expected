@@ -1,0 +1,4 @@
+ending: ok
+--- stdout
+2
+[-2]

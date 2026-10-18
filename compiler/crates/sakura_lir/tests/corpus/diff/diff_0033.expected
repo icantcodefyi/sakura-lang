@@ -1,0 +1,5 @@
+ending: ok
+--- stdout
+Pair(-7, "a")
+10
+false

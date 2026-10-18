@@ -1,0 +1,29 @@
+// LIR adversarial case (ABI.md errata L2): a tuple's row is chosen where it is built, so a
+// tuple built by generic code (word slots) is read by monomorphic code as `(Int, Int)`, and a
+// tuple built as `(Int, String)` is read by generic code; tuples of both shapes are compared,
+// shown, used as set members and map keys, and pass through lists.
+
+fn dup<A>(x: A) -> (A, A) { (x, x) }
+
+fn first<A, B>(p: (A, B)) -> A { p.0 }
+
+fn swap<A, B>(p: (A, B)) -> (B, A) { (p.1, p.0) }
+
+fn same<A: Eq>(a: A, b: A) -> Bool { a == b }
+
+pub fn main() -> Unit ! {Console} {
+  let p = dup(20)
+  Console.print("{p.0 + p.1} {p}")
+  let q = (7, "seven")
+  Console.print("{first(q) * 2} {swap(q)} {swap(swap(q)).0 + 1}")
+  Console.print("{same(dup(3), (3, 3))} {same(dup(3), (3, 4))} {(1.5, true) == (1.5, true)}")
+  let xs = [dup(1), (2, 2), dup(3)]
+  Console.print("{List.map(xs, fn(t) { t.0 + t.1 })} {xs}")
+  let s = Set.insert(Set.insert(Set.empty(), dup(5)), (5, 5))
+  Console.print("{Set.to_list(s)}")
+  let m = Map.insert(Map.insert(Map.empty(), (1, "a"), 10), swap(("a", 1)), 20)
+  Console.print("{Map.get(m, (1, "a"))} {Map.len(m)}")
+  for (k, v) in Map.entries(m) { Console.print("{k.0} {k.1} {v}") }
+  let units = dup(())
+  Console.print("{units} {dup(Some(()))} {dup([dup(false)])}")
+}

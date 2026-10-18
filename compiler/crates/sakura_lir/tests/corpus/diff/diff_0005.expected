@@ -1,0 +1,4 @@
+ending: ok
+--- stdout
+Pair(-6, "<-10>a<-4>")
+false

@@ -1,0 +1,6 @@
+ending: ok
+--- stdout
+-7
+P { a: 6, s: "two\nlines" }
+sakura
+true

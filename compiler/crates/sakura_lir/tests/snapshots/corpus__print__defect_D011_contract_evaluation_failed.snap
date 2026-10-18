@@ -1,0 +1,52 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 shape |  32b (word*, word*)
+layout 3 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::defect_D011_contract_evaluation_failed, frame 4 slots [%1 bool, %4 i64, %6 bool, %9 bool]
+  b0():
+    %0 lit: ptr = const str 0
+    perform std::console::Console.print(%0) -> b1()
+  b1(%1 r: unit):
+    %2 box: word = box %1
+    drop %2
+    %3 lit: i64 = const 0
+    call ratio#2(%3) -> b2()
+  b2(%4 r: i64):
+    %5 s: ptr = show %4
+    perform std::console::Console.print(%5) -> b3()
+  b3(%6 r: unit):
+    %7 box: word = box %6
+    drop %7
+    %8 lit: ptr = const str 1
+    perform std::console::Console.print(%8) -> b4()
+  b4(%9 r: unit):
+    %10 box: word = box %9
+    %11 unbox: unit = unbox %10
+    drop %10
+    ret %11
+
+fn $entry#1 top -> unit ; main::defect_D011_contract_evaluation_failed, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn ratio#2 top -> i64 ; main::defect_D011_contract_evaluation_failed, frame 1 slots [%0 i64]
+  b0(%0 x: i64):
+    %1 enter: unit = $contract_enter()
+    %2 lit: i64 = const 100
+    %3 t: i64 = intdiv %2, %0
+    %4 lit: i64 = const 1
+    %5 t: bool = gt.int %3, %4
+    %6 exit: unit = $contract_exit()
+    check D020 %5 ; ratio
+    %7 pre: unit = const ()
+    ret %0

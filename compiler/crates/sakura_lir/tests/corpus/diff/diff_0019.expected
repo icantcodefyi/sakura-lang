@@ -1,0 +1,4 @@
+ending: ok
+--- stdout
+add 0 = 0
+Ok(())
