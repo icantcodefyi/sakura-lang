@@ -489,6 +489,22 @@ impl<'p> Lower<'p> {
             let callee = self.callee(f);
             let h = b.local(module_path, Ty::Handler(eff));
             blk.push(h, Bind::Call(callee, args));
+            // Design §17.102: under `sakura test --record` the default `Env` is `Env.host()`,
+            // limited to the manifest's `env` list; the runtime picks by `SAKURA_RECORD`.
+            let h = match self.p.lookup(mid, "host").filter(|_| module_path == "env") {
+                Some(host) => {
+                    let host_fn = self.callee(host);
+                    let hh = b.local("env_host", Ty::Handler(eff));
+                    blk.push(hh, Bind::Call(host_fn, vec![]));
+                    let picked = b.local("env_default", Ty::Handler(eff));
+                    blk.push(
+                        picked,
+                        Bind::Call(builtin("test_env"), vec![local(hh), local(h)]),
+                    );
+                    picked
+                }
+                None => h,
+            };
             blk.handle(local(h));
         }
         let r = b.local("r", Ty::Unit);

@@ -2377,6 +2377,14 @@ export function test_expect_defect(body, ctx, k) {
   );
 }
 
+/**
+ * A test's default `Env` (design §17.102): `host` (`Env.host()`, limited to the manifest's `env`
+ * by `SAKURA_PERMISSIONS`) under `sakura test --record`, else `empty` (`Env.of(Map.empty())`).
+ */
+export function test_env(host, empty) {
+  return proc?.env?.SAKURA_RECORD === "1" ? host : empty;
+}
+
 export function env_get(key) {
   const allowed = granted()?.env;
   if (allowed !== undefined && !allowed.includes(key)) return None;

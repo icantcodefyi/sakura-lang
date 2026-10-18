@@ -188,9 +188,9 @@ struct TestFlags {
     /// Write `tests/__snapshots__/<module>/<name>.snap` files instead of comparing them.
     #[arg(long)]
     update_snapshots: bool,
-    /// Let `Http.recording`/`Llm.replay` forward misses to the network (only the hosts in
+    /// Let `Http.recording`/`Llm.recording` forward misses to the network (only the hosts in
     /// the manifest's `[permissions] net`) and append them to their `tests/fixtures`
-    /// cassettes.
+    /// cassettes; the default `Env` reads the manifest's `env` keys from the environment.
     #[arg(long)]
     record: bool,
     /// Also run a synthesized property for every `pub fn` with a refined parameter or a
@@ -525,7 +525,8 @@ fn test(
     snapshot: &Snapshot,
     std_tests: bool,
 ) -> ExitCode {
-    // Design §17.73: recording reaches exactly the manifest's `net` hosts, so it needs some.
+    // Design §17.73, §17.102: recording reaches exactly the manifest's `net` hosts, so it needs
+    // some, and its default `Env` reads exactly the manifest's `env` keys.
     let TestFlags {
         seed,
         ref filter,
@@ -534,11 +535,11 @@ fn test(
         contracts,
     } = *flags;
     let filter = filter.as_deref().unwrap_or("");
-    let net = if record {
-        let net = match Analysis::analyze(snapshot).manifest() {
-            Some(Ok(m)) => m.permissions.net,
+    let granted = if record {
+        let (net, env) = match Analysis::analyze(snapshot).manifest() {
+            Some(Ok(m)) => (m.permissions.net, m.permissions.env),
             Some(Err(e)) => return usage_error(format!("sakura.toml: {e}")),
-            None => Vec::new(),
+            None => (Vec::new(), Vec::new()),
         };
         if net.is_empty() {
             eprintln!(
@@ -546,7 +547,7 @@ fn test(
             );
             return ExitCode::from(EXIT_PERMISSION);
         }
-        Some(net)
+        Some((net, env))
     } else {
         None
     };
@@ -574,7 +575,7 @@ fn test(
         filter,
         &snapshots,
         update_snapshots,
-        net.as_deref(),
+        granted.as_ref().map(|(n, e)| (n.as_slice(), e.as_slice())),
         TEST_TIME_LIMIT,
     ) {
         Ok(run) => run,

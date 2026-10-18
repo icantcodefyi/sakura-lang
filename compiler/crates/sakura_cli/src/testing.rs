@@ -53,15 +53,16 @@ pub struct NodeRun {
 
 /// Runs the tests in a build directory. Tests read only their build output, snapshots and
 /// fixtures: no network, no child processes, and writes only to snapshots under `update`.
-/// `record` (`sakura test --record`, design §17.73) lists the `net` hosts the tests may reach,
-/// and makes `tests/fixtures` writable so `Http.recording` can append to its cassettes.
+/// `record` (`sakura test --record`, design §17.73, §17.102) holds the manifest's `net` hosts
+/// the tests may reach and its `env` keys the default `Env.host()` may read, and makes
+/// `tests/fixtures` writable so `Http.recording` can append to its cassettes.
 pub fn run_node_tests(
     dir: &Path,
     seed: u64,
     filter: &str,
     snapshots: &Path,
     update: bool,
-    record: Option<&[String]>,
+    record: Option<(&[String], &[String])>,
     limit: Duration,
 ) -> Result<NodeRun, String> {
     let dir = std::fs::canonicalize(dir).unwrap_or_else(|_| dir.to_path_buf());
@@ -88,11 +89,11 @@ pub fn run_node_tests(
     if update {
         writable(&mut cmd, snapshots)?;
     }
-    if let Some(net) = record {
+    if let Some((net, env)) = record {
         writable(&mut cmd, &snapshots.with_file_name("fixtures"))?;
-        // Only the hosts: the runtime's `http_send` checks them (runtime/js/ABI.md §7).
+        // The runtime's `http_send` checks the hosts and `env_get` the keys (runtime/js/ABI.md §7).
         let permissions =
-            serde_json::json!({"fs": {"read": [], "write": []}, "net": net, "env": []});
+            serde_json::json!({"fs": {"read": [], "write": []}, "net": net, "env": env});
         cmd.arg("--allow-net")
             .env("SAKURA_RECORD", "1")
             .env("SAKURA_PERMISSIONS", permissions.to_string());

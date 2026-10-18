@@ -41,7 +41,9 @@ export function test$0$run(seed, $ctx, $k) {
   const $ctx4 = $rt.install($ctx3, random);
   const vars = $rt.map_empty();
   const env = $std_env.of$d(vars);
-  const $ctx5 = $rt.install($ctx4, env);
+  const env_host = $std_env.host$d();
+  const env_default = $rt.test_env(env_host, env);
+  const $ctx5 = $rt.install($ctx4, env_default);
   return test$0($ctx5, $k);
 }
 

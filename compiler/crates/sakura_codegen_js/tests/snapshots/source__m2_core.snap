@@ -29,9 +29,11 @@ test fn test$0$run#_(seed%0: Int) -> Unit {
         handle random%5 {
           let vars%6: Unit = call $map_empty()
           let env%7: Handler<Env> = call @of(vars%6)
-          handle env%7 {
-            let r%8: Unit = call @test$0()
-            ret r%8
+          let env_host%8: Handler<Env> = call @host()
+          let env_default%9: Handler<Env> = call $test_env(env_host%8, env%7)
+          handle env_default%9 {
+            let r%10: Unit = call @test$0()
+            ret r%10
           }
         }
       }

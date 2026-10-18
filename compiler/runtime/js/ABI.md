@@ -329,6 +329,8 @@ and `http_recording_append_stream(id, req, status, headers, bytes)` are the same
 `response_body_base64` instead of `response_body`. `fixtures_dir(path, writable)`
 is the `Dir` a test runner returns from `Test.fixtures()`: `<package>/tests/fixtures`, readable,
 writable (and created) only when `writable` (`sakura test --record`); `""` has no host access.
+`test_env(host, empty)` is a test's default `Env` handler: `host` under `SAKURA_RECORD=1`, else
+`empty` (design §17.102).
 
 **Sql.** `sql_memory()` and `sql_sqlite(path)` (a file inside the installed `Fs` handler's
 `root`, opened on first use) are `std::sql::Sql` handlers over `node:sqlite`. `Query` params

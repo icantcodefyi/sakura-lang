@@ -606,6 +606,54 @@ test "fixtures are writable while recording" {
     );
 }
 
+/// Design §17.102: under `sakura test --record` the default `Env` is `Env.host()` limited to
+/// the manifest's `env` list; plain `sakura test` keeps `Env.of(Map.empty())`.
+#[test]
+fn test_record_reads_the_manifest_env_keys() {
+    let dir = tmp(
+        "record-env",
+        r#"test "sees K" { expect_eq(Env.get("K"), Some("v")) }
+test "never sees OTHER" { expect_eq(Env.get("OTHER"), None) }
+"#,
+    );
+    let run = |args: &[&str]| {
+        std::process::Command::new(env!("CARGO_BIN_EXE_sakura"))
+            .args(args)
+            .current_dir(&dir)
+            .env("K", "v")
+            .env("OTHER", "w")
+            .output()
+            .expect("run sakura")
+    };
+    let text = |o: &std::process::Output| {
+        format!(
+            "{}{}",
+            String::from_utf8_lossy(&o.stdout),
+            String::from_utf8_lossy(&o.stderr)
+        )
+    };
+    let manifest = "[package]\nname = \"record_env\"\n\n[permissions]\nenv = [\"K\"]\n";
+    std::fs::write(dir.join("sakura.toml"), manifest).unwrap();
+    let refused = run(&["test", "--record", "main.sakura"]);
+    assert_eq!(refused.status.code(), Some(75), "{}", text(&refused));
+
+    std::fs::write(
+        dir.join("sakura.toml"),
+        format!("{manifest}net = [\"127.0.0.1:1\"]\n"),
+    )
+    .unwrap();
+    let recorded = run(&["test", "--record", "main.sakura"]);
+    assert_eq!(recorded.status.code(), Some(0), "{}", text(&recorded));
+    let plain = run(&["test", "main.sakura"]);
+    assert_eq!(plain.status.code(), Some(3), "{}", text(&plain));
+    let out = text(&plain);
+    assert!(
+        out.contains("sees K ... failed") && out.contains("None"),
+        "{out}"
+    );
+    assert!(out.contains("never sees OTHER ... ok"), "{out}");
+}
+
 /// Design §7.4 (gate 6): `sakura test --contracts` runs a synthesized property per contracted
 /// `pub fn`, reports one that gives up as a `W7001` record before the summary, writes a shrunk
 /// failure to `tests/regressions/<fn>.json`, and replays that file first on the next run.
