@@ -562,6 +562,15 @@ authority).
 8. `bench compare` is advisory (base load 6.11, head 10.00). `contracts` improved in all eight cells (n=10^6 Node 3.24× → 2.35×, Bun 2.10× → 1.43×). `contracts_plain` flags four cells and blocks Node n=10^6 (+19.6%). Its emitted modules contain no site or bracket code (only the runtime import line changed), and the unchanged hand-JS control fell 0.94 → 0.83 ms between the runs, so that block is read as load, not as a regression. The quiet window decides. Node's `contracts` 2.35× is still above the 2.0 ceiling.
 9. Named maintainer review (§5 item 6) is still owed: blame spans changed for self-tail loops. **Approved by @icantcodefyi, 2026-10-18.**
 
+**WS-P8** (§17.151; `get` + immediately consumed `option_expect` → `list_get_expect`/`map_get_expect`):
+
+1. "Immediately" is literal: the `get` and the `option_expect` must be adjacent `let`s and the `Option` used nowhere else in the def. A message computed between the two (an interpolated `expect("at {i}")`, evaluated after the `get`) blocks the fusion; ANF order is never changed to make it apply. The fused `let` keeps the `option_expect`'s position. The pass runs first in `opt::optimize`, per def.
+2. Only the JS runtime has a fused fast path (`list_at`'s leaf cache, no `Some`). `runtime/rt`'s two builtins are the composition, so WASM still builds the `Option` (`ponytail` comment; a direct read when WASM indexing is measured). WASM's `D030` message was already the static `Option.expect on None` before this change, unfused or fused; parity compares the code and exit, which match.
+3. `D030` carries no span on either backend today (`defect("D030", msg)`, no blame site), so "identical span" holds as "none, as before"; the semantics harness checks stderr byte for byte under both ABIs.
+4. `sakura_lir/src/builtins.sigs` gained the two lines `examples/regen_core.rs` writes (the example lists them beside `list_at`). The rest of that run's output, ~85 rewritten or new `tests/corpus` files, is drift from earlier Core and std changes unrelated to WS-P8 and was not committed.
+5. The differential generator gained `Int` form 17, `({ let ys = …; ys[Int.abs(i) % Int.max(List.len(ys), 1)] }).expect("read")` (fused; `D030` on an empty list). Form 17 previously fell through to a leaf, so only programs drawing it changed. It exposed a latent `sakura_eval` LIR bug, fixed separately: a direct builtin that defected left its taken arguments live, so the run ended unbalanced.
+6. The "Option used twice" fixture is `--dump core` in `sakura_cli/tests/cli.rs` (`build_dump_core_fuses_get_expect`) plus `twice` in `tests/semantics/fused_get_expect.sakura`.
+
 ## 9. Round 10 (§17.149–§17.154): ownership, fusion, benchmark definitions, measurement
 
 Evidence: `research/10-evidence/perf-gaps-r2.md` (Astra, `de3c42e`, measured at `1ced38d`),
