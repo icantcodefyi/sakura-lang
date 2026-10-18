@@ -290,6 +290,10 @@ const SKILL: &[(&str, &str)] = &[
         include_str!("../../../../skills/sakura/references/language.md"),
     ),
     (
+        "references/repairs.md",
+        include_str!("../../../../skills/sakura/references/repairs.md"),
+    ),
+    (
         "references/stdlib.md",
         include_str!("../../../../skills/sakura/references/stdlib.md"),
     ),

@@ -76,7 +76,7 @@ run `sakura test --json <file>`. The tests use no live services.
 
 Catch only the expected tag; other failures must remain in the signature.
 
-```sakura id=skill-fail-recovery mode=test
+```sakura test id=skill-fail-recovery
 error Missing
 fn lookup() -> Int ! {Fail<Missing>} { fail Missing }
 fn fallback() -> Int { try { lookup() } catch { Missing => 0 } }
@@ -88,7 +88,7 @@ test "missing value uses the fallback" { expect_eq(fallback(), 0) }
 `label` stays pure because its handler supplies the operation. A local handler
 must implement the intended behavior, not discard the task's required effects.
 
-```sakura id=skill-local-handler mode=test
+```sakura test id=skill-local-handler
 effect Name { fn get() -> String }
 fn label() -> String {
   with handler Name { fn get() { "Sakura" } } { Name.get() }
@@ -101,7 +101,7 @@ test "local name" { expect_eq(label(), "Sakura") }
 Use `validate` for recoverable external input. Use `from` only at a boundary
 where violation should be a defect; do not remove the predicate to accept it.
 
-```sakura id=skill-refinement-entry mode=test
+```sakura test id=skill-refinement-entry
 type Percent = Int where it >= 0 && it <= 100
 fn checked(n: Int) -> Percent { Percent.from(n) }
 test "valid boundary" { expect_eq(checked(100), 100) }
@@ -116,7 +116,7 @@ test "external input can be rejected" {
 Keep the effect in the production function's row and replace its handler in the
 test. Query other effects' fake or replay handlers before writing a live test.
 
-```sakura id=skill-fake-clock mode=test
+```sakura test id=skill-fake-clock
 import std/instant.{Instant}
 fn observed_time() -> Instant ! {Clock} { Clock.now() }
 test "clock is controlled by the test" {
