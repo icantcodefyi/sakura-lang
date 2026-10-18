@@ -11,7 +11,7 @@
 //! it in a slot); a finalizer closure takes one `Bool` parameter, `returned`, in slot 0.
 
 use crate::layout::WORD;
-use crate::scratch::Stack;
+use crate::scratch::{Stack, StrBuf};
 use crate::{Defect, Res, Rt, tag};
 
 /// Step codes (ABI §6.2).
@@ -114,7 +114,9 @@ const T_WAITERS: u32 = 136;
 const T_DEFECT_SITE: u32 = 148;
 const T_DEFECT_LEN: u32 = 152;
 const T_DEFECT_MSG: u32 = 156;
-const TASK_SIZE: u32 = 164;
+/// The task's number in creation order, as JS numbers tasks in effect traces (§17.80).
+const T_NO: u32 = 164;
+const TASK_SIZE: u32 = 168;
 /// Words of one catch entry on the task's catch stack (`catch_entry`).
 const CATCH_WORDS: u32 = 7;
 /// Slots a finalizer frame adds after its own for the unwinding it interrupts: while a
@@ -160,6 +162,13 @@ pub struct Sched {
     /// Contract predicates being evaluated (`contract_enter`/`contract_exit`): a defect
     /// raised inside one is `D011` (design §7.1, as JS).
     pub contract_depth: u32,
+    /// Effect traces (design §17.80, `SAKURA_TRACE`): on, the next record's `seq`, the next
+    /// task number, and the operation-name table (`u32 n`, then per effect an offset to
+    /// `u32 n_ops` and `n_ops` name offsets; names `u32 len` + UTF-8; offsets relative).
+    pub trace: bool,
+    trace_seq: u64,
+    next_task_no: u32,
+    pub ops: u32,
 }
 
 impl Rt {
@@ -430,6 +439,9 @@ impl Rt {
     pub fn fin_pop(&mut self) -> u32 {
         let t = self.cur();
         let id = self.tpop(t, T_FINS).expect("a finalizer to pop");
+        if self.sched.trace {
+            self.trace(t, Trace::Event("finalizer"));
+        }
         self.take_fin(id)
     }
 
@@ -598,6 +610,8 @@ impl Rt {
     fn task_alloc(&mut self, parent: u32) -> Res<(u32, u32)> {
         let t = self.new_object(tag::TASK, TASK_SIZE)?;
         self.set(t, T_PARENT, parent);
+        self.set(t, T_NO, self.sched.next_task_no);
+        self.sched.next_task_no += 1;
         match self.arena_new(t) {
             Ok(id) => {
                 self.set(t, T_ID, id);
@@ -753,6 +767,9 @@ impl Rt {
         while let Some(id) = next {
             let t = self.task(id);
             if self.u(t, T_CANCELLED) == 0 && self.u(t, T_STATE) != DONE {
+                if self.sched.trace {
+                    self.trace(t, Trace::Event("cancel"));
+                }
                 self.set(t, T_CANCELLED, 1);
                 self.set(t, T_EPOCH, self.u(t, T_EPOCH) + 1);
                 let kids = self.tstack(t, T_KIDS);
@@ -1153,6 +1170,9 @@ impl Rt {
             return self.finish_unwinding(t, mode, target);
         }
         let id = self.tpop(t, T_FINS).expect("a finalizer");
+        if self.sched.trace {
+            self.trace(t, Trace::Event("finalizer"));
+        }
         let e = self.arena_obj(id, tag::FIN_ENTRY).expect("live finalizer");
         let act = self.u(e, E_ACT);
         let closure = self.take_fin(id);
@@ -1249,6 +1269,9 @@ impl Rt {
             // The return register's bits are not known to be a word here: it is not dropped
             // (a resume block takes it first, ABI.md P8).
             self.heap.mem.set_u64(t + T_RET, 0);
+        }
+        if kind == outcome::DEFECT && self.sched.trace {
+            self.trace(t, Trace::Defect(self.u(t, T_DEFECT)));
         }
         self.end_unwinding_count();
         self.finish_task(t, kind);
@@ -1365,6 +1388,103 @@ impl Rt {
     }
 }
 
+// ---- effect traces ----------------------------------------------------------------------
+
+/// One effect-trace record (design §17.80), as the JS runtime writes them:
+/// `{"seq","task","effect","op"}` per performed operation and `{"seq","task","event"[,"code"]}`
+/// per finalizer run, cancellation and defect.
+#[derive(Clone, Copy)]
+pub enum Trace {
+    Op(u32, u32),
+    Event(&'static str),
+    Defect(u32),
+}
+
+/// Decimal digits of `v` into `buf`, returning the used tail.
+fn digits(mut v: u64, buf: &mut [u8; 20]) -> &[u8] {
+    let mut i = buf.len();
+    loop {
+        i -= 1;
+        buf[i] = b'0' + (v % 10) as u8;
+        v /= 10;
+        if v == 0 {
+            return &buf[i..];
+        }
+    }
+}
+
+impl Rt {
+    /// A name in a table (`u32 len`, bytes) at `table + offset`.
+    fn table_name(&self, table: u32, offset_at: u32) -> (u32, u32) {
+        let o = self.heap.mem.u32(offset_at);
+        (self.heap.mem.u32(table + o), table + o + 4)
+    }
+
+    /// Write one trace record for task `t` (a record that cannot be built is skipped).
+    fn trace(&mut self, t: u32, rec: Trace) {
+        let Ok(mut b) = self.strbuf() else { return };
+        let r = self.trace_text(&mut b, t, rec);
+        let s = self.finish(b);
+        if r.is_ok() {
+            let (len, at) = self.data(s);
+            self.trace_out(at, len);
+        }
+        self.heap.free(s);
+    }
+
+    fn trace_text(&mut self, b: &mut StrBuf, t: u32, rec: Trace) -> Res<()> {
+        let mut n = [0; 20];
+        self.put(b, b"{\"seq\":")?;
+        let seq = self.sched.trace_seq;
+        self.sched.trace_seq += 1;
+        self.put(b, digits(seq, &mut n))?;
+        self.put(b, b",\"task\":")?;
+        self.put(b, digits(self.u(t, T_NO) as u64, &mut n))?;
+        match rec {
+            Trace::Op(effect, op) => {
+                let (len, at) = self.table_name(self.effects, self.effects + 4 + 4 * effect);
+                self.put(b, b",\"effect\":\"")?;
+                self.put_mem(b, at, len)?;
+                self.put(b, b"\",\"op\":\"")?;
+                let ops = self.sched.ops;
+                let e = ops + self.heap.mem.u32(ops + 4 + 4 * effect);
+                let (len, at) = self.table_name(ops, e + 4 + 4 * op);
+                self.put_mem(b, at, len)?;
+                self.put(b, b"\"}")
+            }
+            Trace::Event(name) => {
+                self.put(b, b",\"event\":\"")?;
+                self.put(b, name.as_bytes())?;
+                self.put(b, b"\"}")
+            }
+            Trace::Defect(code) => {
+                self.put(b, b",\"event\":\"defect\",\"code\":\"D")?;
+                let d = [
+                    b'0' + (code / 100 % 10) as u8,
+                    b'0' + (code / 10 % 10) as u8,
+                    b'0' + (code % 10) as u8,
+                ];
+                self.put(b, &d)?;
+                self.put(b, b"\"}")
+            }
+        }
+    }
+
+    fn trace_out(&mut self, at: u32, len: u32) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let line = self.heap.mem.bytes(at, len).to_vec();
+            self.trace_log
+                .push(alloc::string::String::from_utf8(line).unwrap_or_default());
+        }
+        #[cfg(target_arch = "wasm32")]
+        // SAFETY: a plain import with a slice inside linear memory, copied in before it returns.
+        unsafe {
+            crate::host::trace_write(at, len)
+        }
+    }
+}
+
 // ---- compiled code: `sakura_lir`'s conventions (ABI.md errata L3, L12) ------------------
 //
 // A closure value is called with itself, owned, in slot 0 and its arguments after it; a
@@ -1413,6 +1533,9 @@ impl Rt {
             .heap
             .mem
             .u32(self.handler_clause(self.u(a, A_HANDLER), op));
+        if self.sched.trace {
+            self.trace(t, Trace::Op(effect, op));
+        }
         self.dup(clause)?;
         let code = self.u(clause, 8);
         let n = self.frame_size(code, n_args + 2);

@@ -35,7 +35,14 @@ const EXPORTS: &[&str] = &[
 ];
 
 /// Runtime-side imports of ABI §8 (`sakura_host`).
-const IMPORTS: &[&str] = &["retire_handle", "abort", "console_print", "console_read_line"];
+const IMPORTS: &[&str] = &[
+    "retire_handle",
+    "abort",
+    "console_print",
+    "console_read_line",
+    "trace_enabled",
+    "trace_write",
+];
 
 /// The ABI §1 allowlist, from an empty set (research/09 §1).
 fn profile() -> WasmFeatures {

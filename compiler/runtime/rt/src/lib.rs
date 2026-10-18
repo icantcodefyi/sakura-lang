@@ -136,6 +136,9 @@ pub struct Rt {
     /// Host imports the runtime called, for tests (on wasm32 they go to `sakura_host`).
     #[cfg(not(target_arch = "wasm32"))]
     pub host_log: alloc::vec::Vec<HostCall>,
+    /// Effect-trace lines (on wasm32 they go to `sakura_host.trace_write`).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub trace_log: alloc::vec::Vec<alloc::string::String>,
 }
 
 /// A recorded host import call (host builds only).
@@ -170,6 +173,8 @@ impl Rt {
             sched: exec::Sched::default(),
             #[cfg(not(target_arch = "wasm32"))]
             host_log: alloc::vec::Vec::new(),
+            #[cfg(not(target_arch = "wasm32"))]
+            trace_log: alloc::vec::Vec::new(),
         };
         rt.statics()?;
         Ok(rt)
@@ -201,6 +206,10 @@ pub(crate) mod host {
     unsafe extern "C" {
         pub fn retire_handle(kind: u32, slot: u32, generation: u32);
         pub fn abort(request: u32);
+        /// One effect-trace line (design §17.80), without its newline.
+        pub fn trace_write(ptr: u32, len: u32);
+        /// Whether the host records effect traces (`SAKURA_TRACE`).
+        pub fn trace_enabled() -> u32;
     }
 }
 

@@ -108,11 +108,14 @@ pub extern "C" fn complete(request: u32, status: u32, payload: u32, _len: u32) -
 
 /// The module's tables (data-segment addresses) and the funcref code of the callback stub.
 #[unsafe(no_mangle)]
-pub extern "C" fn rt_init(layout: u32, codes: u32, effects: u32, stub: u32) -> u32 {
+pub extern "C" fn rt_init(layout: u32, codes: u32, effects: u32, ops: u32, stub: u32) -> u32 {
     let rt = rt();
     rt.set_codes(codes);
     rt.set_effects(effects);
+    rt.sched.ops = ops;
     rt.sched.callback_code = stub;
+    // SAFETY: a plain import with no arguments.
+    rt.sched.trace = unsafe { crate::host::trace_enabled() } != 0;
     u32::from(rt.set_layout(layout).is_err())
 }
 
