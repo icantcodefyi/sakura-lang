@@ -102,7 +102,11 @@ jobs:
 
           def os_family(host):
               name = host["os"].lower()
-              return "macos" if "darwin" in name or "macos" in name else name.split()[0]
+              if "darwin" in name or "macos" in name:
+                  return "macos"
+              if "linux" in name:
+                  return "linux"
+              return name.split()[0]
 
           host = head["meta"]["host"]
           exact = [item for item in candidates if item[1]["meta"]["host"]["id"] == host["id"]]
