@@ -2,7 +2,7 @@
 
 mod common;
 
-use common::check;
+use common::{check, check_modules};
 
 const M0: &str = r#"fn greet(name: String) -> Unit ! {Console} {
   Console.print("hello, {name}")
@@ -399,4 +399,127 @@ fn show_it(u: Untrusted<String>, s: Secret<String>) -> (String, String, Html) {
     assert!(c.diags.is_empty(), "{}", c.render());
     let bad = check("fn f(u: Untrusted<Int>) -> Int { u.trust(@trust(\"x\")) + @trust(\"y\") }\n");
     assert!(bad.codes().contains(&"V6001"), "{}", bad.render());
+}
+
+/// §17.130: an opaque type is `Schema` only in its declaring module, so data builds one there
+/// alone; elsewhere every `Schema` bound reaching it is `V2033`.
+#[test]
+fn opaque_types_are_schema_only_in_their_module() {
+    let a = r#"import std/json.{DecodeError}
+pub opaque type T = T(String)
+pub fn read(s: String) -> Result<T, DecodeError> { Json.decode(s) }
+"#;
+    let b = r#"import std/json.{DecodeError}
+import main/a.{T}
+fn forge(s: String) -> Result<T, DecodeError> { Json.decode(s) }
+"#;
+    let c = check_modules(&[("a", a)]);
+    assert!(c.diags.is_empty(), "{}", c.render());
+    let c = check_modules(&[("a", a), ("b", b)]);
+    assert_eq!(c.codes(), vec!["V2033"], "{}", c.render());
+    assert!(c.diags[0].message.contains("opaque outside `main/a`"));
+}
+
+#[test]
+fn decoding_std_opaque_types_is_v2033() {
+    for (import, ty) in [
+        ("import std/sql.{Query}", "Query<Row>"),
+        ("import std/html.{Html}", "Html"),
+        ("import std/urlpart.{UrlPart}", "UrlPart"),
+    ] {
+        let src = format!(
+            "import std/json.{{DecodeError}}\n{import}\ntype Row = {{ name: String }}\nfn f(s: String) -> Result<{ty}, DecodeError> {{ Json.decode(s) }}\n"
+        );
+        let c = check(&src);
+        assert_eq!(c.codes(), vec!["V2033"], "{ty}: {}", c.render());
+    }
+    // `Decimal` was opaque on `a843e60`; it is a refinement now and decodes with its check.
+    for (import, ty) in [
+        ("import std/uuid.{Uuid}", "Uuid"),
+        ("import std/path.{Path}", "Path"),
+        ("import std/decimal.{Decimal}", "Decimal"),
+        ("import std/uuid.{Uuid}", "{ id: Uuid }"),
+    ] {
+        let decl = if ty.starts_with('{') {
+            format!("type R = {ty}\n")
+        } else {
+            String::new()
+        };
+        let ty = if ty.starts_with('{') { "R" } else { ty };
+        let src = format!(
+            "import std/json.{{DecodeError}}\n{import}\n{decl}fn f(s: String) -> Result<{ty}, DecodeError> {{ Json.decode(s) }}\n"
+        );
+        let c = check(&src);
+        assert!(c.diags.is_empty(), "{ty}: {}", c.render());
+    }
+}
+
+/// The message names the field that holds the opaque type, and a generic `Schema` bound is
+/// discharged where it is concrete, so the call is the error.
+#[test]
+fn v2033_names_the_field_and_fails_at_the_generic_call() {
+    let report = check(
+        r#"import std/json.{DecodeError}
+import std/sql.{Query}
+type Row = { name: String }
+type Report = { title: String, q: Query<Row> }
+fn f(s: String) -> Result<Report, DecodeError> { Json.decode(s) }
+"#,
+    );
+    insta::assert_snapshot!(report.render(), @r"
+    V2033 5:50 `Report` holds `Report.q: Query<Row>`, which is opaque outside `std/sql`, so it is not `Schema`: a value comes from its module's constructors, not from data (design §17.130)
+      expected: Schema
+      actual: Report
+    ");
+    let generic = check(
+        r#"import std/json.{DecodeError}
+import std/sql.{Query}
+type Row = { name: String }
+fn decode_any<T: Schema>(s: String) -> Result<T, DecodeError> { Json.decode(s) }
+fn f(s: String) -> Result<Query<Row>, DecodeError> { decode_any(s) }
+"#,
+    );
+    assert_eq!(generic.codes(), vec!["V2033"], "{}", generic.render());
+    assert!(
+        generic.render().starts_with("V2033 5:54"),
+        "{}",
+        generic.render()
+    );
+}
+
+/// `Tool.of`'s synthesized `f$Args`, a `property` parameter and a `Sql.query` row type are the
+/// same `Schema` bound.
+#[test]
+fn tool_property_and_sql_rows_reject_opaque_types() {
+    let tool = check(
+        r#"import std/sql.{Query}
+import std/tool.{Tool}
+type Row = { name: String }
+@tool("Runs a query")
+fn run(q: Query<Row>) -> Int { 0 }
+fn tools() -> Tool<{}> { Tool.of(run) }
+"#,
+    );
+    assert_eq!(tool.codes(), vec!["V2033"], "{}", tool.render());
+    let property = check(
+        "import std/html.{Html}\nproperty \"p\"(h: Html) { expect(Html.to_string(h) == Html.to_string(h)) }\n",
+    );
+    assert_eq!(property.codes(), vec!["V2033"], "{}", property.render());
+    assert!(
+        property.render().starts_with("V2033 2:17"),
+        "{}",
+        property.render()
+    );
+    let rows = check(
+        r#"import std/html.{Html}
+import std/sql.{Sql, SqlError}
+type Row = { body: Html }
+fn f() -> List<Row> ! {Sql, Fail<SqlError>} { Sql.query(sql"select body from posts") }
+"#,
+    );
+    assert!(
+        rows.codes().iter().all(|c| *c == "V2033") && !rows.codes().is_empty(),
+        "{}",
+        rows.render()
+    );
 }

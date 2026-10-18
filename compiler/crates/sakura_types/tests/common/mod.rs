@@ -106,19 +106,29 @@ fn walk(root: &Path, dir: &Path, out: &mut Vec<(String, String)>) {
 }
 
 pub fn check(src: &str) -> Checked {
-    let user = FileId(0);
-    // The `Parse` outlives every red root so that it frees a deep tree iteratively.
-    let main_parse = sakura_syntax::parse_file(user, src);
-    let main = ModuleInput {
-        file: user,
-        path: "main".into(),
-        root: main_parse.syntax(),
-    };
+    check_modules(&[("main", src)])
+}
+
+/// Like [`check`] with several modules of the `main` package; `diags` holds those in any of
+/// them (`FileId(i)` for the i-th), and `src` is the first.
+pub fn check_modules(modules: &[(&str, &str)]) -> Checked {
+    let n = modules.len() as u32;
+    // The `Parse`s outlive every red root so that they free deep trees iteratively.
+    let parses: Vec<_> = (modules.iter().enumerate())
+        .map(|(i, (_, src))| sakura_syntax::parse_file(FileId(i as u32), src))
+        .collect();
+    let user: Vec<ModuleInput> = (modules.iter().zip(&parses).enumerate())
+        .map(|(i, ((path, _), parse))| ModuleInput {
+            file: FileId(i as u32),
+            path: (*path).into(),
+            root: parse.syntax(),
+        })
+        .collect();
     let std_mods: Vec<ModuleInput> = std_files()
         .into_iter()
         .enumerate()
         .map(|(i, (path, text))| {
-            let file = FileId(i as u32 + 1);
+            let file = FileId(i as u32 + n);
             ModuleInput {
                 file,
                 path,
@@ -126,7 +136,7 @@ pub fn check(src: &str) -> Checked {
             }
         })
         .collect();
-    let parse_errors = main_parse.errors.clone();
+    let parse_errors: Vec<Diagnostic> = parses.iter().flat_map(|p| p.errors.clone()).collect();
     let program = sakura_hir::lower(&[
         PackageInput {
             name: "std",
@@ -136,14 +146,14 @@ pub fn check(src: &str) -> Checked {
         PackageInput {
             name: "main",
             deps: vec![],
-            modules: vec![main],
+            modules: user,
         },
     ]);
     let (typed, type_diags) = check_program_with(&program, &parse_errors);
     let mut diags: Vec<Diagnostic> = parse_errors;
     let mut std_diags = Vec::new();
     for d in program.diagnostics.iter().cloned().chain(type_diags) {
-        if d.spans.first().is_some_and(|s| s.file == user) {
+        if d.spans.first().is_some_and(|s| s.file.0 < n) {
             if !diags.contains(&d) {
                 diags.push(d);
             }
@@ -156,7 +166,7 @@ pub fn check(src: &str) -> Checked {
         typed,
         diags,
         std_diags,
-        src: src.to_string(),
+        src: modules[0].1.to_string(),
     }
 }
 

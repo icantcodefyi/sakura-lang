@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use sakura_diagnostics::codes::{V2031, V2040, V3001, V3010, V5001};
+use sakura_diagnostics::codes::{V2031, V2033, V2040, V3001, V3010, V5001};
 use sakura_diagnostics::{Applicability, Code, Diagnostic, Edit, Fix, Impact, Phase};
 use sakura_hir::{Body, BodyId, DefId, DefKind, ExprId, ModuleId, TypeDefBody};
 
@@ -88,10 +88,10 @@ impl<'p> Checker<'p> {
             }
             DefKind::Test(t) => self.check_test_like(def, t.body, &[]),
             DefKind::Property(p) => {
-                let tys: Vec<TypeId> = p
+                let tys: Vec<(TypeId, text_size::TextRange)> = p
                     .params
                     .iter()
-                    .map(|x| self.lower_type(module, &x.ty, &[]))
+                    .map(|x| (self.lower_type(module, &x.ty, &[]), x.ty.range))
                     .collect();
                 self.check_test_like(def, p.body, &tys);
             }
@@ -208,7 +208,14 @@ impl<'p> Checker<'p> {
         }
     }
 
-    fn check_test_like(&mut self, def: DefId, bid: BodyId, params: &[TypeId]) {
+    /// A test or property body; a property's parameters come with their annotations, each a
+    /// `Schema` obligation because the generator is built from its schema (§17.130).
+    fn check_test_like(
+        &mut self,
+        def: DefId,
+        bid: BodyId,
+        params: &[(TypeId, text_size::TextRange)],
+    ) {
         let program = self.program;
         let module = def.module;
         let body = program.body(module, bid);
@@ -233,7 +240,13 @@ impl<'p> Checker<'p> {
         let shown = self.inf.closed_row(shown);
         let range = program.def(def).range;
         self.with_body(module, bid, Vec::new(), |cx| {
-            cx.bind_params(body, params);
+            let tys: Vec<TypeId> = params.iter().map(|p| p.0).collect();
+            cx.bind_params(body, &tys);
+            for &(ty, range) in params {
+                if !cx.holds(ty, Constraint::Schema, &mut Vec::new(), &mut HashSet::new()) {
+                    cx.report_constraint_at(ty, Constraint::Schema, range);
+                }
+            }
             cx.b.allowed_row = Some(shown);
             let unit = cx.inf.interner.unit();
             cx.b.frames.push(FnFrame { ret: unit });
@@ -568,9 +581,45 @@ impl<'p> Checker<'p> {
         if !self.b.reported.insert(o.at) {
             return;
         }
-        let shown = self.render(o.ty);
         let range = self.expr_range(o.at);
-        let (code, msg) = match o.constraint {
+        self.report_constraint_at(o.ty, o.constraint, range);
+    }
+
+    fn report_constraint_at(
+        &mut self,
+        ty: TypeId,
+        constraint: Constraint,
+        range: text_size::TextRange,
+    ) {
+        let shown = self.render(ty);
+        let opaque = if constraint == Constraint::Schema {
+            let mut path = vec![shown.clone()];
+            self.opaque_in(ty, &mut path, &mut HashSet::new())
+                .map(|found| (found, path))
+        } else {
+            None
+        };
+        let (code, msg) = match constraint {
+            _ if let Some(((def, at), path)) = opaque => {
+                let inner = self.render(at);
+                let held = if at == self.inf.shallow(ty) {
+                    String::new()
+                } else if path.len() > 1 {
+                    format!(" holds `{}: {inner}`, which", path.join("."))
+                } else {
+                    format!(" holds `{inner}`, which")
+                };
+                let m = self.program.module(def.module);
+                let pkg = &self.program.packages[m.package.0 as usize].name;
+                (
+                    V2033,
+                    format!(
+                        "`{shown}`{held} is opaque outside `{pkg}/{}`, so it is not `Schema`: a \
+                         value comes from its module's constructors, not from data (design §17.130)",
+                        m.path
+                    ),
+                )
+            }
             Constraint::Show => {
                 let hint = if shown.starts_with("Secret<") {
                     "; secrets cannot be shown, pass them to a sink such as `Http.bearer`"
@@ -592,8 +641,65 @@ impl<'p> Checker<'p> {
         let d = Diagnostic::error(code, Phase::Type, msg)
             .with_span(self.span(range))
             .with_actual(sakura_diagnostics::Rendered::text(shown))
-            .with_expected(sakura_diagnostics::Rendered::text(o.constraint.name()));
+            .with_expected(sakura_diagnostics::Rendered::text(constraint.name()));
         self.push(d);
+    }
+
+    /// The first opaque type reachable from `ty` whose constructors this module cannot see,
+    /// with the type it was reached as; `path` gains the field names on the way (`Report.q`).
+    fn opaque_in(
+        &mut self,
+        ty: TypeId,
+        path: &mut Vec<String>,
+        seen: &mut HashSet<TypeId>,
+    ) -> Option<(DefId, TypeId)> {
+        let ty = self.inf.shallow(ty);
+        if !seen.insert(ty) {
+            return None;
+        }
+        let children: Vec<(Option<String>, TypeId)> = match self.inf.interner.ty(ty).clone() {
+            Type::Tuple(xs) => xs
+                .into_iter()
+                .enumerate()
+                .map(|(i, x)| (Some(i.to_string()), x))
+                .collect(),
+            Type::Union(tags) => tags
+                .into_iter()
+                .map(|t| (None, self.inf.interner.con(TyCon::Adt(t), Vec::new())))
+                .collect(),
+            Type::Con(TyCon::Adt(def), args) => {
+                if !self.program.constructors_visible(def, self.module()) {
+                    return Some((def, ty));
+                }
+                if let Some(base) = self.inf.refined_base(def, &args) {
+                    vec![(None, base)]
+                } else if self.is_record(def) {
+                    let fields = self.fields_at(def, &args);
+                    fields.into_iter().map(|(n, t)| (Some(n), t)).collect()
+                } else {
+                    let mut out = Vec::new();
+                    for v in self.variants(def).unwrap_or_default() {
+                        let name = self.program.def(v).name.clone();
+                        for t in self.variant_fields(v, &args) {
+                            out.push((Some(name.clone()), t));
+                        }
+                    }
+                    out
+                }
+            }
+            Type::Con(_, args) => args.into_iter().map(|a| (None, a)).collect(),
+            _ => Vec::new(),
+        };
+        for (seg, t) in children {
+            let pushed = seg.map(|s| path.push(s)).is_some();
+            if let Some(found) = self.opaque_in(t, path, seen) {
+                return Some(found);
+            }
+            if pushed {
+                path.pop();
+            }
+        }
+        None
     }
 
     /// Whether `ty` satisfies `c`; unsolved variables are collected in `vars`.
@@ -655,6 +761,11 @@ impl<'p> Checker<'p> {
         vars: &mut Vec<TypeId>,
         seen: &mut HashSet<TypeId>,
     ) -> bool {
+        // An opaque type's invariant is how its module built it, so data builds one only
+        // inside that module (§17.130, `V2033`); `Eq`/`Ord`/`Hash`/`Show` consume and derive.
+        if c == Constraint::Schema && !self.program.constructors_visible(def, self.module()) {
+            return false;
+        }
         if let Some(base) = self.inf.refined_base(def, args) {
             return self.holds(base, c, vars, seen);
         }

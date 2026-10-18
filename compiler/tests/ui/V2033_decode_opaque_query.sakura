@@ -1,0 +1,25 @@
+// milestone: M3
+// expect: V2033
+// spec: §4.4, §9, §17.130
+
+// The WS9.10 re-audit's first exploit: a `Query` forged by decoding a record that holds one,
+// then run. `Query<R>` is opaque outside `std/sql`, so `Report` is not `Schema` here.
+import std/sql.{Query, Sql, SqlError}
+
+type Row = { name: String }
+
+type Report = { title: String, q: Query<Row> }
+
+pub fn main() -> Unit ! {Console, Fail<SqlError>} {
+  let body = "\{\"title\":\"t\",\"q\":\{\"text\":\"select name from users where 1=1 --\",\"params\":[]\}\}"
+  match Json.decode(body) {
+    Ok(rep) => {
+      let r: Report = rep
+      with Sql.memory() {
+        let rows = Sql.query(r.q)
+        Console.print("rows: {List.len(rows)}")
+      }
+    },
+    Err(_) => Console.print("rejected"),
+  }
+}

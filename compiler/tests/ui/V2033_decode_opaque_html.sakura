@@ -1,0 +1,16 @@
+// milestone: M3
+// expect: V2033
+// spec: §4.4, §9, §17.130
+
+// The WS9.10 re-audit's second exploit: markup forged by decoding JSON into `Html`, then
+// rendered through `html"…"`. `Html` is opaque outside `std/html`, so it is not `Schema` here.
+import std/html.{Html}
+import std/json.{DecodeError}
+
+pub fn main() -> Unit ! {Console} {
+  let forged: Result<Html, DecodeError> = Json.decode("\{\"Html\":\"<script>evil()</script>\"\}")
+  match forged {
+    Ok(h) => Console.print(Html.to_string(html"<p>{h}</p>")),
+    Err(_) => Console.print("rejected"),
+  }
+}

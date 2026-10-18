@@ -1,0 +1,9 @@
+// milestone: M3
+// expect: V2033
+// spec: §7.4, §17.130
+
+// A `property` generator is built from its parameters' schemas, so an opaque parameter from
+// another module would be generated from data. Compose one with `gen` inside a `test` instead.
+import std/html.{Html}
+
+property "rendered html is never empty"(h: Html) { expect_eq(Html.to_string(h), Html.to_string(h)) }

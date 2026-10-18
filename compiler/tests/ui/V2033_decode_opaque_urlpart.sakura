@@ -1,0 +1,16 @@
+// milestone: M3
+// expect: V2033
+// spec: §4.4, §9, §17.130
+
+// The WS9.10 re-audit's third exploit: an unencoded `UrlPart` forged by decoding JSON.
+// `UrlPart` is opaque outside `std/urlpart`; decode a `String` and call `UrlPart.from`.
+import std/json.{DecodeError}
+import std/urlpart.{UrlPart}
+
+pub fn main() -> Unit ! {Console} {
+  let forged: Result<UrlPart, DecodeError> = Json.decode("\{\"UrlPart\":\"a&b=c\"\}")
+  match forged {
+    Ok(p) => Console.print(UrlPart.to_string(p)),
+    Err(_) => Console.print("rejected"),
+  }
+}

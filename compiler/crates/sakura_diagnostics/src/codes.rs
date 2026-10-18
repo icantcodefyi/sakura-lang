@@ -277,6 +277,24 @@ Wrong:
 Fixed:
     compare the data the handlers were built from instead";
 
+    V2033 "opaque_not_schema" TYPE,
+"A `Schema` bound (`Json.decode`, `Sql.query` rows, `Llm.generate`, `Cli.parse`, `Tool.of`
+arguments, a `property` parameter) reaches an opaque type outside its declaring module, directly
+or through a field (design §17.130). Private construction comes in two kinds: an invariant that
+is a predicate over the representation is a refinement type and decodes through its predicate
+(`Uuid`, `Path`, `Decimal`); an invariant about how the value was produced (`Query<R>` from a
+`sql\"…\"` literal, `Html` by escaping, `UrlPart` by encoding, `File` by the runtime) is opaque,
+and data cannot build one. Decode the representation and call the module's constructor in the
+open.
+
+Wrong:
+    type Report = { title: String, body: Html }
+    let r: Report = Json.decode(text)?
+Fixed:
+    type ReportIn = { title: String, body: String }
+    let r: ReportIn = Json.decode(text)?
+    let body = Html.text(r.body)";
+
     V2040 "unused_value" TYPE,
 "A non-final expression statement produces a non-`Unit` value that is dropped. This catches
 forgotten reassignments such as `List.push(xs, 1)` (design §8.1).
