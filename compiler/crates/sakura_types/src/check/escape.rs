@@ -8,7 +8,8 @@
 //!
 //! - `V6002`: the value of a `with` (or a `return` out of it) is scoped; a top-level `let`
 //!   has a scoped type; a `Task.spawn` body captures a scoped local bound inside a `with`
-//!   that encloses the spawn but not the binding of its `Scope`.
+//!   that encloses the spawn but not the binding of its `Scope`. Any body expression counts
+//!   as the body of an anonymous lambda, so its captures are its free locals (§17.123).
 //! - `V6003`: the callback given to a function or operation whose parameter is a callback
 //!   taking a resource returns a value holding a resource; a resource is assigned to
 //!   handler `var` state.
@@ -20,7 +21,9 @@ use std::collections::{HashMap, HashSet};
 use la_arena::ArenaMap;
 use sakura_diagnostics::codes::{V6002, V6003};
 use sakura_diagnostics::{Diagnostic, Phase, SpanRole};
-use sakura_hir::{Body, DefId, DefKind, Expr, ExprId, LocalId, Pat, PatId, Res, Stmt, TypeDefBody};
+use sakura_hir::{
+    Body, DefId, DefKind, Expr, ExprId, LocalId, Pat, PatId, Program, Res, Stmt, TypeDefBody,
+};
 
 use super::Checker;
 use crate::ty::{TyCon, Type, TypeId};
@@ -113,6 +116,14 @@ impl Checker<'_> {
     pub(super) fn check_escapes(&mut self, out: &TypedBody) {
         let body = self.hir_body();
         let mut facts = Facts::default();
+        let task = self.program.find_module("std", "task");
+        facts.task_bodies = body
+            .exprs
+            .iter()
+            .filter_map(|(c, _)| spawn_args(self.program, task, body, out, c))
+            .map(|(_, b)| b)
+            .filter(|b| !matches!(body.exprs[*b], Expr::Lambda { .. }))
+            .collect();
         for &p in &body.params {
             facts.bind(p, None);
         }
@@ -147,8 +158,10 @@ struct Facts {
     bound: ArenaMap<LocalId, (usize, usize)>,
     /// Expressions whose value flows into each local (initializers, scrutinees, assignments).
     flows: ArenaMap<LocalId, Vec<ExprId>>,
-    /// Locals each lambda captures (including those its nested lambdas capture).
+    /// Locals each lambda captures (including those its nested lambdas capture), and each
+    /// non-lambda `Task.spawn` body, which is walked as if it were a lambda's body.
     captures: HashMap<ExprId, HashSet<LocalId>>,
+    task_bodies: HashSet<ExprId>,
     with_exprs: Vec<ExprId>,
     /// Values of `return`s that leave a `with` of their own function.
     returns: Vec<ExprId>,
@@ -203,7 +216,14 @@ impl Facts {
     }
 
     fn walk(&mut self, body: &Body, e: ExprId) {
+        let task = self.task_bodies.contains(&e);
+        if task {
+            self.lambdas.push(e);
+        }
         sakura_hir::ensure_stack(|| self.walk_inner(body, e));
+        if task {
+            self.lambdas.pop();
+        }
     }
 
     fn walk_all(&mut self, body: &Body, es: &[ExprId]) {
@@ -618,22 +638,12 @@ impl Escape<'_, '_> {
         let task = program.find_module("std", "task");
         let calls = self.facts.calls.clone();
         for (c, _) in calls {
-            let (Expr::Call { args, .. }, Some(CallTarget::Def(d))) =
-                (&body.exprs[c], out.calls.get(c))
-            else {
-                continue;
-            };
-            let def = program.def(*d);
-            if Some(d.module) != task || def.name != "spawn" || !matches!(def.kind, DefKind::Op(_))
-            {
-                continue;
-            }
-            let [scope, task_body] = args.as_slice() else {
+            let Some((scope, task_body)) = spawn_args(program, task, body, out, c) else {
                 continue;
             };
             // The `with`s around the `Scope`'s binding; a scope that is not a local (or a
             // field of one) is treated as bound outside every `with`.
-            let mut root = *scope;
+            let mut root = scope;
             while let Expr::Field { base, .. } | Expr::TupleField { base, .. } = &body.exprs[root] {
                 root = *base;
             }
@@ -641,30 +651,23 @@ impl Escape<'_, '_> {
                 Expr::Path(Res::Local(l)) => self.facts.bound.get(*l).map_or(0, |b| b.1),
                 _ => 0,
             };
-            let mut candidates: Vec<LocalId> = match &body.exprs[*task_body] {
-                Expr::Lambda { .. } => self
-                    .facts
-                    .captures
-                    .get(task_body)
-                    .map(|c| c.iter().copied().collect())
-                    .unwrap_or_default(),
-                _ => {
-                    let mut ls = Vec::new();
-                    used_locals(body, *task_body, &mut ls);
-                    ls
-                }
-            };
+            let mut candidates: Vec<LocalId> = self
+                .facts
+                .captures
+                .get(&task_body)
+                .map(|c| c.iter().copied().collect())
+                .unwrap_or_default();
             candidates.sort();
             for l in candidates {
                 let inner = self.facts.bound.get(l).is_some_and(|b| b.1 > scope_withs);
                 if !inner || !self.local_holds(l, Holds::Scoped) {
                     continue;
                 }
-                if !self.reported.insert(*task_body) {
+                if !self.reported.insert(task_body) {
                     break;
                 }
                 let local = &body.locals[l];
-                let range = self.cx.expr_range(*task_body);
+                let range = self.cx.expr_range(task_body);
                 let d = Diagnostic::error(
                     V6002,
                     Phase::Capability,
@@ -687,30 +690,24 @@ impl Escape<'_, '_> {
     }
 }
 
-/// Locals read under `e` through calls, fields and aggregates.
-// ponytail: does not look inside nested lambdas of a non-lambda task body; walk them (minus
-// their own binders) if `Task.spawn(s, make(fn() { … }))` shapes show up.
-fn used_locals(body: &Body, e: ExprId, out: &mut Vec<LocalId>) {
-    let mut todo = vec![e];
-    while let Some(e) = todo.pop() {
-        match &body.exprs[e] {
-            Expr::Path(Res::Local(l)) => out.push(*l),
-            Expr::Field { base, .. } | Expr::TupleField { base, .. } => todo.push(*base),
-            Expr::Call { callee, args, .. } => {
-                todo.push(*callee);
-                todo.extend(args);
-            }
-            Expr::MethodCall { receiver, args, .. } => {
-                todo.push(*receiver);
-                todo.extend(args);
-            }
-            Expr::Block { tail, .. } => todo.extend(tail),
-            Expr::Tuple(xs) | Expr::List(xs) => todo.extend(xs),
-            Expr::Record { spread, fields, .. } => {
-                todo.extend(spread);
-                todo.extend(fields.iter().map(|f| f.value));
-            }
-            _ => {}
-        }
+/// `(scope, body)` of a call to `std/task`'s `Task.spawn`.
+fn spawn_args(
+    program: &Program,
+    task: Option<sakura_hir::ModuleId>,
+    body: &Body,
+    out: &TypedBody,
+    c: ExprId,
+) -> Option<(ExprId, ExprId)> {
+    let (Expr::Call { args, .. }, Some(CallTarget::Def(d))) = (&body.exprs[c], out.calls.get(c))
+    else {
+        return None;
+    };
+    let def = program.def(*d);
+    if Some(d.module) != task || def.name != "spawn" || !matches!(def.kind, DefKind::Op(_)) {
+        return None;
+    }
+    match args.as_slice() {
+        [scope, task_body] => Some((*scope, *task_body)),
+        _ => None,
     }
 }

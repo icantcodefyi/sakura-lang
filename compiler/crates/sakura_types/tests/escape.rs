@@ -139,6 +139,34 @@ fn a_task_capturing_values_bound_outside_the_with_is_fine() {
     );
 }
 
+const MAKE: &str = "fn make<T, e>(g: fn() -> T ! e) -> fn() -> T ! e { g }\n";
+
+#[test]
+fn a_lambda_nested_in_a_call_argument_of_the_task_body_is_v6002() {
+    let src = "fn go() -> Unit ! {Task, Fs} {\n  Task.scope(fn(s) {\n    with Fs.rooted(Fs.root()) {\n      let f = Fs.rooted(Fs.root())\n      let t = Task.spawn(s, make(fn() { with f { Fs.exists(Path.of(\"a\")) } }))\n      let _ = Task.join(t)\n    }\n  })\n}\n";
+    let c = check(&format!("{FS}{MAKE}{src}"));
+    assert_eq!(c.codes(), ["V6002"], "{}", c.render());
+    assert!(
+        c.render().contains("this task captures `f`"),
+        "{}",
+        c.render()
+    );
+}
+
+#[test]
+fn a_nested_lambda_capturing_a_value_bound_outside_the_with_is_fine() {
+    clean(&format!(
+        "{MAKE}fn go() -> Unit ! {{Task, Fs}} {{\n  Task.scope(fn(s) {{\n    let f = Fs.rooted(Fs.root())\n    with Fs.rooted(Fs.root()) {{\n      let t = Task.spawn(s, make(fn() {{ with f {{ Fs.exists(Path.of(\"a\")) }} }}))\n      let _ = Task.join(t)\n    }}\n  }})\n}}\n"
+    ));
+}
+
+#[test]
+fn a_nested_lambda_parameter_shadowing_a_scoped_local_is_fine() {
+    clean(&format!(
+        "{MAKE}fn go() -> Unit ! {{Task, Fs}} {{\n  Task.scope(fn(s) {{\n    with Fs.rooted(Fs.root()) {{\n      let d = Fs.root()\n      let t = Task.spawn(s, make(fn() {{ List.len(List.map([1, 2], fn(d) {{ d + 1 }})) }}))\n      let _ = Task.join(t)\n      let _ = d\n    }}\n  }})\n}}\n"
+    ));
+}
+
 // ---- V6003: resources ----
 
 #[test]

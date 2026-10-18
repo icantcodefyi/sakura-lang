@@ -1,0 +1,22 @@
+// milestone: M3
+// expect: V6002
+// spec: §6.3, §17.123
+import std/fs.{Fs}
+
+fn make<T, e>(body: fn() -> T ! e) -> fn() -> T ! e { body }
+
+fn spawn_inner() -> Unit ! {Fs, Task} {
+  Task.scope(fn(scope) {
+    with Fs.rooted(Fs.root()) {
+      let dir = Fs.root()
+      let _ = Task.spawn(
+        scope,
+        make(fn() {
+          let _ = Fs.rooted(dir)
+          ()
+        }),
+      )
+      ()
+    }
+  })
+}
