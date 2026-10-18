@@ -1336,7 +1336,7 @@ impl<'m> Vm<'m> {
                     _ => Ok(()),
                 }
             }
-            Check { contract, cond } => match self.get(cur, *cond)? {
+            Check { contract, cond, .. } => match self.get(cur, *cond)? {
                 Val::B(true) => Ok(()),
                 _ => {
                     let c = &self.m.contracts[*contract as usize];

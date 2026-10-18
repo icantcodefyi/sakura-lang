@@ -7,13 +7,14 @@ layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
 layout 2 shape |  32b (word*, word*)
 layout 3 shape |  32b (i64, word*)
 
-fn main#0 pub top -> unit ; main::contract_site_blame_ensures, frame 1 slots [%1 i64]
+fn main#0 pub top -> unit ; main::contract_site_blame_ensures, frame 1 slots [%2 i64]
   b0():
     %0 lit: i64 = const 1
-    call positive#2(%0) -> b1()
-  b1(%1 r: i64):
-    %2 lit: unit = const ()
-    ret %2
+    %1 $site: i64 = const 3
+    call positive#2(%0, %1) -> b1()
+  b1(%2 r: i64):
+    %3 lit: unit = const ()
+    ret %3
 
 fn $entry#1 top -> unit ; main::contract_site_blame_ensures, frame 1 slots [%1 bool]
   b0():
@@ -24,21 +25,21 @@ fn $entry#1 top -> unit ; main::contract_site_blame_ensures, frame 1 slots [%1 b
     handle_pop
     ret %1
 
-fn positive#2 top -> i64 ; main::contract_site_blame_ensures, frame 1 slots [%0 i64]
-  b0(%0 x: i64):
-    %1 enter: unit = $contract_enter()
-    %2 lit: i64 = const 0
-    %3 t: bool = gt.int %0, %2
-    %4 exit: unit = $contract_exit()
-    check D020 %3 ; nonzero
-    %5 pre: unit = const ()
-    %12 lit: i64 = const 0
-    jump b1(%12)
-  b1(%6 result: i64):
-    %7 enter: unit = $contract_enter()
-    %8 lit: i64 = const 0
-    %9 t: bool = gt.int %6, %8
-    %10 exit: unit = $contract_exit()
-    check D021 %9 ; positive
-    %11 post: unit = const ()
-    ret %6
+fn positive#2 top -> i64 ; main::contract_site_blame_ensures, frame 2 slots [%0 i64, %1 i64]
+  b0(%0 x: i64, %1 $site: i64):
+    %2 enter: unit = $contract_enter()
+    %3 lit: i64 = const 0
+    %4 t: bool = gt.int %0, %3
+    %5 exit: unit = $contract_exit()
+    check D020 %4 blame %1+0 ; nonzero
+    %6 pre: unit = const ()
+    %13 lit: i64 = const 0
+    jump b1(%13)
+  b1(%7 result: i64):
+    %8 enter: unit = $contract_enter()
+    %9 lit: i64 = const 0
+    %10 t: bool = gt.int %7, %9
+    %11 exit: unit = $contract_exit()
+    check D021 %10 ; positive
+    %12 post: unit = const ()
+    ret %7

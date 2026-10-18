@@ -23,11 +23,17 @@ semantics/deep_recursion_defect: 4 funcs, 13 blocks, 0 dup, 3 drop, valid
 semantics/deep_sum: 3 funcs, 9 blocks, 0 dup, 1 drop, valid
 semantics/defect_D001_int_overflow: 3 funcs, 8 blocks, 0 dup, 3 drop, valid
 semantics/defect_D002_division_by_zero: 3 funcs, 8 blocks, 0 dup, 3 drop, valid
+semantics/defect_D004_float_round_nan: 2 funcs, 6 blocks, 0 dup, 3 drop, valid
 semantics/defect_D010_generic_refinement_from: 3 funcs, 8 blocks, 1 dup, 4 drop, valid
 semantics/defect_D010_refinement_from: 3 funcs, 11 blocks, 0 dup, 3 drop, valid
 semantics/defect_D011_contract_evaluation_failed: 3 funcs, 8 blocks, 0 dup, 3 drop, valid
+semantics/defect_D011_inner_message: 3 funcs, 8 blocks, 1 dup, 4 drop, valid
+semantics/defect_D011_nested_requires: 4 funcs, 12 blocks, 0 dup, 3 drop, valid
+semantics/defect_D020_external_precondition: 2 funcs, 6 blocks, 0 dup, 3 drop, valid
 semantics/defect_D020_requires_blames_caller: 5 funcs, 16 blocks, 0 dup, 3 drop, valid
+semantics/defect_D020_std_preconditions: 6 funcs, 30 blocks, 0 dup, 6 drop, valid
 semantics/defect_D021_ensures_blames_callee: 3 funcs, 9 blocks, 0 dup, 3 drop, valid
+semantics/defect_D030_joined_fiber: 6 funcs, 19 blocks, 3 dup, 12 drop, valid
 semantics/defect_D030_option_expect: 3 funcs, 8 blocks, 0 dup, 4 drop, valid
 semantics/defect_D031_string_slice_boundary: 3 funcs, 8 blocks, 0 dup, 3 drop, valid
 semantics/deterministic_clock_random: 32 funcs, 158 blocks, 10 dup, 94 drop, valid

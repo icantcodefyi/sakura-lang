@@ -11,17 +11,17 @@ layout 5 record std::retry::Policy | Policy 56b (retry_on: word*, max_attempts: 
 layout 6 shape |  32b (word*, word*)
 layout 7 shape |  32b (i64, word*)
 
-fn main#0 pub top -> unit ; main::imports, frame 9 slots [%0 word*, %2 word*, %5 word*, %7 bool, %11 word*, %19 word*, %20 word*, %21 word*, %30 bool]
+fn main#0 pub top -> unit ; main::imports, frame 9 slots [%0 word*, %2 word*, %5 word*, %7 bool, %12 word*, %20 word*, %21 word*, %22 word*, %31 bool]
   b0():
     call empty#2() -> b1()
   b1(%0 r: ptr):
     %1 lit: ptr = const str 0
     call insert#3(%0, %1) -> b2()
   b2(%2 r: ptr):
-    %33 p: ptr = tuple_get %2.0
-    %34 p: ptr = tuple_get %2.1
+    %34 p: ptr = tuple_get %2.0
+    %35 p: ptr = tuple_get %2.1
     drop %2
-    jump b3(%33, %34)
+    jump b3(%34, %35)
   b3(%3 g: ptr, %4 a: ptr):
     call get#4(%3, %4) -> b4()
   b4(%5 r: ptr):
@@ -33,42 +33,43 @@ fn main#0 pub top -> unit ; main::imports, frame 9 slots [%0 word*, %2 word*, %5
     drop %8
     %9 f: ptr = closure main$1#5[]
     %10 lit: i64 = const 3
-    call policy#6(%9, %10) -> b6()
-  b6(%11 r: ptr):
-    %12 max_attempts: i64 = proj %11.1 std::retry::Policy
-    %13 s: ptr = show %12
-    %14 lit: ptr = const str 1
-    %15 s: ptr = concat %13, %14
-    drop %13
+    %11 $site: i64 = const 2
+    call policy#6(%9, %10, %11) -> b6()
+  b6(%12 r: ptr):
+    %13 max_attempts: i64 = proj %12.1 std::retry::Policy
+    %14 s: ptr = show %13
+    %15 lit: ptr = const str 1
+    %16 s: ptr = concat %14, %15
     drop %14
-    %16 retry_on: word = proj %11.0 std::retry::Policy
-    %17 lit: i64 = const 503
-    %18 box: word = box %17
-    call %16(%18) -> b7(%11, %15)
-  b7(%19 r: word, %20 r: ptr, %21 s: ptr):
-    %22 unbox: bool = unbox %19
-    drop %19
-    %23 s: ptr = show %22
-    %24 s: ptr = concat %21, %23
-    drop %21
-    drop %23
-    %25 lit: ptr = const str 1
-    %26 s: ptr = concat %24, %25
-    drop %24
-    drop %25
-    %27 backoff: word = proj %20.2 std::retry::Policy
+    drop %15
+    %17 retry_on: word = proj %12.0 std::retry::Policy
+    %18 lit: i64 = const 503
+    %19 box: word = box %18
+    call %17(%19) -> b7(%12, %16)
+  b7(%20 r: word, %21 r: ptr, %22 s: ptr):
+    %23 unbox: bool = unbox %20
     drop %20
-    %28 s: ptr = show %27
-    drop %27
-    %29 s: ptr = concat %26, %28
+    %24 s: ptr = show %23
+    %25 s: ptr = concat %22, %24
+    drop %22
+    drop %24
+    %26 lit: ptr = const str 1
+    %27 s: ptr = concat %25, %26
+    drop %25
     drop %26
+    %28 backoff: word = proj %21.2 std::retry::Policy
+    drop %21
+    %29 s: ptr = show %28
     drop %28
-    perform std::console::Console.print(%29) -> b8()
-  b8(%30 r: unit):
-    %31 box: word = box %30
-    %32 unbox: unit = unbox %31
-    drop %31
-    ret %32
+    %30 s: ptr = concat %27, %29
+    drop %27
+    drop %29
+    perform std::console::Console.print(%30) -> b8()
+  b8(%31 r: unit):
+    %32 box: word = box %31
+    %33 unbox: unit = unbox %32
+    drop %32
+    ret %33
 
 fn $entry#1 top -> unit ; main::imports, frame 1 slots [%1 bool]
   b0():

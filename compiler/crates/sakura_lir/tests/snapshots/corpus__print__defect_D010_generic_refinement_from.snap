@@ -7,7 +7,7 @@ layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
 layout 2 shape |  32b (word*, word*)
 layout 3 shape |  32b (i64, word*)
 
-fn main#0 pub top -> unit ; main::defect_D010_generic_refinement_from, frame 5 slots [%2 bool, %3 word*, %5 word*, %7 bool, %10 bool]
+fn main#0 pub top -> unit ; main::defect_D010_generic_refinement_from, frame 5 slots [%2 bool, %3 word*, %6 word*, %8 bool, %11 bool]
   b0():
     %0 xs: ptr = alloc list()
     %1 lit: ptr = const str 0
@@ -15,21 +15,22 @@ fn main#0 pub top -> unit ; main::defect_D010_generic_refinement_from, frame 5 s
   b1(%2 r: unit, %3 xs: ptr):
     %4 box: word = box %2
     drop %4
-    call NonEmpty$from#2(%3) -> b2()
-  b2(%5 r: ptr):
-    %6 s: ptr = show %5
-    drop %5
-    perform std::console::Console.print(%6) -> b3()
-  b3(%7 r: unit):
-    %8 box: word = box %7
-    drop %8
-    %9 lit: ptr = const str 1
-    perform std::console::Console.print(%9) -> b4()
-  b4(%10 r: unit):
-    %11 box: word = box %10
-    %12 unbox: unit = unbox %11
-    drop %11
-    ret %12
+    %5 $site: i64 = const 2
+    call NonEmpty$from#2(%3, %5) -> b2()
+  b2(%6 r: ptr):
+    %7 s: ptr = show %6
+    drop %6
+    perform std::console::Console.print(%7) -> b3()
+  b3(%8 r: unit):
+    %9 box: word = box %8
+    drop %9
+    %10 lit: ptr = const str 1
+    perform std::console::Console.print(%10) -> b4()
+  b4(%11 r: unit):
+    %12 box: word = box %11
+    %13 unbox: unit = unbox %12
+    drop %12
+    ret %13
 
 fn $entry#1 top -> unit ; main::defect_D010_generic_refinement_from, frame 1 slots [%1 bool]
   b0():
@@ -40,14 +41,14 @@ fn $entry#1 top -> unit ; main::defect_D010_generic_refinement_from, frame 1 slo
     handle_pop
     ret %1
 
-fn NonEmpty$from#2 top -> ptr ; main::defect_D010_generic_refinement_from, frame 1 slots [%0 word*]
-  b0(%0 it: ptr):
-    %1 enter: unit = $contract_enter()
+fn NonEmpty$from#2 top -> ptr ; main::defect_D010_generic_refinement_from, frame 2 slots [%0 word*, %1 i64]
+  b0(%0 it: ptr, %1 $site: i64):
+    %2 enter: unit = $contract_enter()
     dup %0
-    %2 r: i64 = $list_len(%0)
-    %3 lit: i64 = const 0
-    %4 t: bool = gt.int %2, %3
-    %5 exit: unit = $contract_exit()
-    check D010 %4 ; NonEmpty
-    %6 ok: unit = const ()
+    %3 r: i64 = $list_len(%0)
+    %4 lit: i64 = const 0
+    %5 t: bool = gt.int %3, %4
+    %6 exit: unit = $contract_exit()
+    check D010 %5 blame %1+0 ; NonEmpty
+    %7 ok: unit = const ()
     ret %0

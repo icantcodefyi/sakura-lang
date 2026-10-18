@@ -170,10 +170,10 @@ fn repeat#2 top -> ptr ; main::owned_generic, frame 2 slots [%0 word*, %1 i64]
     drop %17
     ret %19
 
-fn fill#3 top -> ptr ; main::owned_generic, frame 5 slots [%0 word*, %1 word*, %17 word*, %18 word*, %19 i64]
+fn fill#3 top -> ptr ; main::owned_generic, frame 5 slots [%0 word*, %1 word*, %18 word*, %19 word*, %20 i64]
   b0(%0 xs: ptr, %1 x: word):
-    %24 lit: i64 = const 0
-    jump b1(%0, %24, %1)
+    %25 lit: i64 = const 0
+    jump b1(%0, %25, %1)
   b1(%2 out: ptr, %3 i: i64, %4 x: word):
     dup %2
     %5 r: i64 = $list_len(%2)
@@ -183,17 +183,18 @@ fn fill#3 top -> ptr ; main::owned_generic, frame 5 slots [%0 word*, %1 word*, %
     drop %7
     jump b1(%8, %9, %10)
   b3(%11 x: word, %12 out: ptr, %13 i: i64):
+    %17 $site: i64 = const 2
     dup %11
-    call set#9(%12, %13, %11) -> b5(%11, %13)
+    call set#9(%12, %13, %11, %17) -> b5(%11, %13)
   b4(%14 x: word, %15 out: ptr, %16 i: i64):
     drop %14
     ret %15
-  b5(%17 r: ptr, %18 x: word, %19 i: i64):
-    %20 lit: i64 = const 1
-    %21 t: i64 = intadd %19, %20
-    %22 lit: unit = const ()
-    %23 box: word = box %22
-    jump b2(%23, %17, %21, %18)
+  b5(%18 r: ptr, %19 x: word, %20 i: i64):
+    %21 lit: i64 = const 1
+    %22 t: i64 = intadd %20, %21
+    %23 lit: unit = const ()
+    %24 box: word = box %23
+    jump b2(%24, %18, %22, %19)
 
 fn tally#5 top -> ptr ; main::owned_generic, frame 7 slots [%0 word*, %26 word*, %27 word*, %28 i64, %29 i64, %30 word*, %31 word*]
   b0(%0 keys: ptr):

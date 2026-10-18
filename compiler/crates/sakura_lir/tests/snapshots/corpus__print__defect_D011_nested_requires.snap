@@ -1,0 +1,75 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 shape |  32b (word*, word*)
+layout 3 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::defect_D011_nested_requires, frame 5 slots [%2 i64, %4 bool, %8 i64, %10 bool, %13 bool]
+  b0():
+    %0 lit: i64 = const 4
+    %1 $site: i64 = const 3
+    call halves#2(%0, %1) -> b1()
+  b1(%2 r: i64):
+    %3 s: ptr = show %2
+    perform std::console::Console.print(%3) -> b2()
+  b2(%4 r: unit):
+    %5 box: word = box %4
+    drop %5
+    %6 lit: i64 = const 3
+    %7 $site: i64 = const 4
+    call halves#2(%6, %7) -> b3()
+  b3(%8 r: i64):
+    %9 s: ptr = show %8
+    perform std::console::Console.print(%9) -> b4()
+  b4(%10 r: unit):
+    %11 box: word = box %10
+    drop %11
+    %12 lit: ptr = const str 0
+    perform std::console::Console.print(%12) -> b5()
+  b5(%13 r: unit):
+    %14 box: word = box %13
+    %15 unbox: unit = unbox %14
+    drop %14
+    ret %15
+
+fn $entry#1 top -> unit ; main::defect_D011_nested_requires, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn halves#2 top -> i64 ; main::defect_D011_nested_requires, frame 6 slots [%0 i64, %1 i64, %4 i64, %5 i64, %6 i64, %12 i64]
+  b0(%0 x: i64, %1 $site: i64):
+    %2 enter: unit = $contract_enter()
+    %3 $site: i64 = const 5
+    call half#3(%0, %3) -> b1(%0, %1)
+  b1(%4 r: i64, %5 x: i64, %6 $site: i64):
+    %7 lit: i64 = const 10
+    %8 t: bool = lt.int %4, %7
+    %9 exit: unit = $contract_exit()
+    check D020 %8 blame %6+0 ; small
+    %10 pre: unit = const ()
+    %11 $site: i64 = const 6
+    call half#3(%5, %11) -> b2()
+  b2(%12 r: i64):
+    ret %12
+
+fn half#3 top -> i64 ; main::defect_D011_nested_requires, frame 2 slots [%0 i64, %1 i64]
+  b0(%0 x: i64, %1 $site: i64):
+    %2 enter: unit = $contract_enter()
+    %3 lit: i64 = const 2
+    %4 t: i64 = intrem %0, %3
+    %5 lit: i64 = const 0
+    %6 t: bool = eq.int %4, %5
+    %7 exit: unit = $contract_exit()
+    check D020 %6 blame %1+0 ; even
+    %8 pre: unit = const ()
+    %9 lit: i64 = const 2
+    %10 t: i64 = intdiv %0, %9
+    ret %10

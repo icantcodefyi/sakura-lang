@@ -142,14 +142,14 @@ fn $entry#1 top -> unit ; main::owned_loop_twice, frame 1 slots [%1 bool]
     handle_pop
     ret %1
 
-fn squares#2 top -> ptr ; main::owned_loop_twice, frame 4 slots [%0 i64, %21 word*, %22 i64, %23 i64]
+fn squares#2 top -> ptr ; main::owned_loop_twice, frame 4 slots [%0 i64, %22 word*, %23 i64, %24 i64]
   b0(%0 n: i64):
     %1 xs: ptr = alloc list()
-    %49 lit: i64 = const 0
-    jump b7(%1, %49, %0)
+    %50 lit: i64 = const 0
+    jump b7(%1, %50, %0)
   b1(%2 xs: ptr, %3 i: i64, %4 n: i64):
-    %28 lit: i64 = const 0
-    jump b2(%2, %28, %4)
+    %29 lit: i64 = const 0
+    jump b2(%2, %29, %4)
   b2(%5 xs: ptr, %6 i: i64, %7 n: i64):
     %8 t: bool = lt.int %6, %7
     if %8 then b4(%7, %5, %6) else b5(%7, %5, %6)
@@ -159,38 +159,39 @@ fn squares#2 top -> ptr ; main::owned_loop_twice, frame 4 slots [%0 i64, %21 wor
   b4(%13 n: i64, %14 xs: ptr, %15 i: i64):
     %19 t: i64 = intmul %15, %15
     %20 box: word = box %19
-    call set#8(%14, %15, %20) -> b6(%13, %15)
+    %21 $site: i64 = const 2
+    call set#8(%14, %15, %20, %21) -> b6(%13, %15)
   b5(%16 n: i64, %17 xs: ptr, %18 i: i64):
     ret %17
-  b6(%21 r: ptr, %22 n: i64, %23 i: i64):
-    %24 lit: i64 = const 1
-    %25 t: i64 = intadd %23, %24
-    %26 lit: unit = const ()
-    %27 box: word = box %26
-    jump b3(%27, %21, %25, %22)
-  b7(%29 xs: ptr, %30 i: i64, %31 n: i64):
-    %32 t: bool = lt.int %30, %31
-    if %32 then b9(%31, %29, %30) else b10(%31, %29, %30)
-  b8(%33 v: word, %34 xs: ptr, %35 i: i64, %36 n: i64):
-    drop %33
-    jump b7(%34, %35, %36)
-  b9(%37 n: i64, %38 xs: ptr, %39 i: i64):
-    %43 box: word = box %39
-    %44 r: ptr = $list_push(%38, %43)
-    %45 lit: i64 = const 1
-    %46 t: i64 = intadd %39, %45
-    %47 lit: unit = const ()
-    %48 box: word = box %47
-    jump b8(%48, %44, %46, %37)
-  b10(%40 n: i64, %41 xs: ptr, %42 i: i64):
-    jump b1(%41, %42, %40)
+  b6(%22 r: ptr, %23 n: i64, %24 i: i64):
+    %25 lit: i64 = const 1
+    %26 t: i64 = intadd %24, %25
+    %27 lit: unit = const ()
+    %28 box: word = box %27
+    jump b3(%28, %22, %26, %23)
+  b7(%30 xs: ptr, %31 i: i64, %32 n: i64):
+    %33 t: bool = lt.int %31, %32
+    if %33 then b9(%32, %30, %31) else b10(%32, %30, %31)
+  b8(%34 v: word, %35 xs: ptr, %36 i: i64, %37 n: i64):
+    drop %34
+    jump b7(%35, %36, %37)
+  b9(%38 n: i64, %39 xs: ptr, %40 i: i64):
+    %44 box: word = box %40
+    %45 r: ptr = $list_push(%39, %44)
+    %46 lit: i64 = const 1
+    %47 t: i64 = intadd %40, %46
+    %48 lit: unit = const ()
+    %49 box: word = box %48
+    jump b8(%49, %45, %47, %38)
+  b10(%41 n: i64, %42 xs: ptr, %43 i: i64):
+    jump b1(%42, %43, %41)
 
-fn bumped#4 top -> ptr ; main::owned_loop_twice, frame 6 slots [%0 word*, %15 word*, %16 word*, %17 i64, %22 word*, %23 i64]
+fn bumped#4 top -> ptr ; main::owned_loop_twice, frame 6 slots [%0 word*, %15 word*, %16 word*, %17 i64, %23 word*, %24 i64]
   b0():
     call base#5() -> b1()
   b1(%0 c: ptr):
-    %28 lit: i64 = const 0
-    jump b2(%0, %28)
+    %29 lit: i64 = const 0
+    jump b2(%0, %29)
   b2(%1 xs: ptr, %2 i: i64):
     dup %1
     %3 r: i64 = $list_len(%1)
@@ -213,13 +214,14 @@ fn bumped#4 top -> ptr ; main::owned_loop_twice, frame 6 slots [%0 word*, %15 wo
     %19 lit: i64 = const 10
     %20 t: i64 = intadd %18, %19
     %21 box: word = box %20
-    call set#8(%16, %17, %21) -> b7(%17)
-  b7(%22 r: ptr, %23 i: i64):
-    %24 lit: i64 = const 1
-    %25 t: i64 = intadd %23, %24
-    %26 lit: unit = const ()
-    %27 box: word = box %26
-    jump b3(%27, %22, %25)
+    %22 $site: i64 = const 3
+    call set#8(%16, %17, %21, %22) -> b7(%17)
+  b7(%23 r: ptr, %24 i: i64):
+    %25 lit: i64 = const 1
+    %26 t: i64 = intadd %24, %25
+    %27 lit: unit = const ()
+    %28 box: word = box %27
+    jump b3(%28, %23, %26)
 
 fn base#5 const -> ptr ; main::owned_loop_twice, frame 0 slots []
   b0():

@@ -64,6 +64,8 @@ pub struct Options {
     pub max_heap: u64,
     /// Omit the `sakura.debug` section (`sakura build --strip`, ABI §12).
     pub strip: bool,
+    /// The URI of each source by `Pos::file`, for the `sakura.debug` section's spans.
+    pub sources: Vec<String>,
     pub host: Host,
     /// Emit native twins for direct regions (design §17.118); `false` (`--no-direct`) runs every
     /// call through continuation frames, the all-frame baseline.
@@ -75,6 +77,7 @@ impl Default for Options {
         Options {
             max_heap: DEFAULT_MAX_HEAP,
             strip: false,
+            sources: vec![],
             host: Host::Abi,
             direct: true,
         }
@@ -647,7 +650,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     }
     let mut custom = vec![];
     if !opts.strip {
-        custom.push(("sakura.debug".to_string(), debug::section(m)));
+        custom.push(("sakura.debug".to_string(), debug::section(m, &opts.sources)));
     }
     let bytes = link::link(
         &rt,

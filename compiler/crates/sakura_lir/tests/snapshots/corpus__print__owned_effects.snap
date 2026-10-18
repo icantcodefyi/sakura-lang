@@ -10,15 +10,15 @@ layout 4 shape |  32b (word*, word*)
 layout 5 shape |  32b (i64, word*)
 layout 6 shape |  24b (i64)
 
-fn main#0 pub top -> unit ; main::owned_effects, frame 45 slots [%10 i64, %11 word*, %12 word*, %27 bool, %31 word*, %39 i64, %40 word*, %41 word*, %50 bool, %54 word*, %56 i64, %60 bool, %78 bool, %82 word*, %84 bool, %85 word*, %90 word*, %95 bool, %100 word*, %101 word*, %108 word*, %109 word*, %111 word*, %117 word*, %118 word*, %126 word*, %127 i64, %128 word*, %139 word*, %140 word*, %149 word*, %150 i64, %151 word*, %181 word*, %182 word*, %183 i64, %185 i64, %186 word*, %187 i64, %188 i64, %191 word*, %192 i64, %209 i64, %210 word*, %211 i64]
+fn main#0 pub top -> unit ; main::owned_effects, frame 45 slots [%10 i64, %11 word*, %12 word*, %27 bool, %31 word*, %39 i64, %40 word*, %41 word*, %50 bool, %54 word*, %56 i64, %60 bool, %78 bool, %82 word*, %84 bool, %85 word*, %91 word*, %96 bool, %101 word*, %102 word*, %109 word*, %110 word*, %112 word*, %118 word*, %119 word*, %128 word*, %129 i64, %130 word*, %141 word*, %142 word*, %152 word*, %153 i64, %154 word*, %184 word*, %185 word*, %186 i64, %188 i64, %189 word*, %190 i64, %191 i64, %195 word*, %196 i64, %213 i64, %214 word*, %215 i64]
   b0():
     %0 tick: ptr = closure ticks$Tick_tick#10[]
     %1 lit: i64 = const 100
     %2 r: ptr = handler main::owned_effects::Tick row 6 state(%1) clauses(%0)
     handle_push %2
-    %162 xs: ptr = alloc list()
-    %218 lit: i64 = const 0
-    jump b50(%162, %218)
+    %165 xs: ptr = alloc list()
+    %222 lit: i64 = const 0
+    jump b50(%165, %222)
   b1(%3 v: ptr):
     dup %3
     %4 r: i64 = $list_len(%3)
@@ -71,10 +71,11 @@ fn main#0 pub top -> unit ; main::owned_effects, frame 45 slots [%10 i64, %11 wo
   b4(%31 r: ptr):
     dup %31
     try_push -> b34(err, %31)
-    %146 lit: i64 = const 0
-    %147 lit: i64 = const 99
-    %148 box: word = box %147
-    call set#4(%31, %146, %148) -> b36()
+    %148 lit: i64 = const 0
+    %149 lit: i64 = const 99
+    %150 box: word = box %149
+    %151 $site: i64 = const 4
+    call set#4(%31, %148, %150, %151) -> b36()
   b5(%32 v: ptr):
     dup %32
     %33 r: i64 = $list_len(%32)
@@ -114,10 +115,11 @@ fn main#0 pub top -> unit ; main::owned_effects, frame 45 slots [%10 i64, %11 wo
     call range#6(%52, %53) -> b8()
   b8(%54 r: ptr):
     try_push -> b27(err, )
-    %123 lit: i64 = const 0
-    %124 lit: i64 = const 99
-    %125 box: word = box %124
-    call set#4(%54, %123, %125) -> b29()
+    %124 lit: i64 = const 0
+    %125 lit: i64 = const 99
+    %126 box: word = box %125
+    %127 $site: i64 = const 3
+    call set#4(%54, %124, %126, %127) -> b29()
   b9(%55 v: ptr):
     call sum#5(%55) -> b10()
   b10(%56 r: i64):
@@ -135,8 +137,8 @@ fn main#0 pub top -> unit ; main::owned_effects, frame 45 slots [%10 i64, %11 wo
     %64 r: ptr = handler main::owned_effects::Tick row 6 state(%63) clauses(%62)
     handle_push %64
     try_push -> b24(err, )
-    %116 lit: i64 = const 10
-    call fill#7(%116) -> b26()
+    %117 lit: i64 = const 10
+    call fill#7(%117) -> b26()
   b12(%65 v: ptr):
     %66 tick: ptr = closure ticks$Tick_tick#10[]
     %67 lit: i64 = const 0
@@ -144,8 +146,8 @@ fn main#0 pub top -> unit ; main::owned_effects, frame 45 slots [%10 i64, %11 wo
     handle_push %68
     dup %65
     try_push -> b20(err, %65)
-    %107 lit: i64 = const 3
-    call fill#7(%107) -> b22(%65)
+    %108 lit: i64 = const 3
+    call fill#7(%108) -> b22(%65)
   b13(%69 v: ptr, %70 v: ptr):
     %71 s: ptr = show %70
     drop %70
@@ -178,157 +180,159 @@ fn main#0 pub top -> unit ; main::owned_effects, frame 45 slots [%10 i64, %11 wo
     %87 lit: i64 = const 0
     %88 lit: i64 = const 7
     %89 box: word = box %88
-    call set#4(%85, %87, %89) -> b17()
-  b17(%90 r: ptr):
-    %91 lit: i64 = const 8
-    %92 box: word = box %91
-    %93 r: ptr = $list_push(%90, %92)
-    %94 s: ptr = show %93
-    drop %93
-    perform std::console::Console.print(%94) -> b18()
-  b18(%95 r: unit):
-    %96 box: word = box %95
-    %97 unbox: unit = unbox %96
-    drop %96
-    ret %97
-  b19(%98 v: ptr, %99 v: ptr) [handle]:
+    %90 $site: i64 = const 2
+    call set#4(%85, %87, %89, %90) -> b17()
+  b17(%91 r: ptr):
+    %92 lit: i64 = const 8
+    %93 box: word = box %92
+    %94 r: ptr = $list_push(%91, %93)
+    %95 s: ptr = show %94
+    drop %94
+    perform std::console::Console.print(%95) -> b18()
+  b18(%96 r: unit):
+    %97 box: word = box %96
+    %98 unbox: unit = unbox %97
+    drop %97
+    ret %98
+  b19(%99 v: ptr, %100 v: ptr) [handle]:
     handle_pop
-    jump b13(%98, %99)
-  b20(%100 e: word, %101 v: ptr) [handle]:
-    %106 p: i64 = proj %100.0 main::owned_effects::Stop
-    drop %100
-    jump b21(%106, %101)
-  b21(%102 at: i64, %103 v: ptr) [handle]:
-    %104 box: word = box %102
-    %105 xs: ptr = alloc list(%104)
-    jump b19(%105, %103)
-  b22(%108 r: ptr, %109 v: ptr) [handle, try]:
+    jump b13(%99, %100)
+  b20(%101 e: word, %102 v: ptr) [handle]:
+    %107 p: i64 = proj %101.0 main::owned_effects::Stop
+    drop %101
+    jump b21(%107, %102)
+  b21(%103 at: i64, %104 v: ptr) [handle]:
+    %105 box: word = box %103
+    %106 xs: ptr = alloc list(%105)
+    jump b19(%106, %104)
+  b22(%109 r: ptr, %110 v: ptr) [handle, try]:
     try_pop
-    jump b19(%108, %109)
-  b23(%110 v: ptr) [handle]:
+    jump b19(%109, %110)
+  b23(%111 v: ptr) [handle]:
     handle_pop
-    jump b12(%110)
-  b24(%111 e: word) [handle]:
-    %115 p: i64 = proj %111.0 main::owned_effects::Stop
-    drop %111
-    jump b25(%115)
-  b25(%112 at: i64) [handle]:
-    %113 box: word = box %112
-    %114 xs: ptr = alloc list(%113)
-    jump b23(%114)
-  b26(%117 r: ptr) [handle, try]:
+    jump b12(%111)
+  b24(%112 e: word) [handle]:
+    %116 p: i64 = proj %112.0 main::owned_effects::Stop
+    drop %112
+    jump b25(%116)
+  b25(%113 at: i64) [handle]:
+    %114 box: word = box %113
+    %115 xs: ptr = alloc list(%114)
+    jump b23(%115)
+  b26(%118 r: ptr) [handle, try]:
     try_pop
-    jump b23(%117)
-  b27(%118 e: word):
-    %122 p: i64 = proj %118.0 main::owned_effects::Stop
-    drop %118
-    jump b28(%122)
-  b28(%119 at: i64):
-    %120 box: word = box %119
-    %121 xs: ptr = alloc list(%120)
-    jump b9(%121)
-  b29(%126 r: ptr) [try]:
-    dup %126
-    call sum#5(%126) -> b30(%126)
-  b30(%127 r: i64, %128 r: ptr) [try]:
-    %129 lit: i64 = const 10000
-    %130 t: bool = gt.int %127, %129
-    if %130 then b32(%128) else b33(%128)
-  b31(%131 v: word, %132 r: ptr) [try]:
-    drop %131
-    try_pop
-    jump b9(%132)
-  b32(%133 r: ptr) [try]:
+    jump b23(%118)
+  b27(%119 e: word):
+    %123 p: i64 = proj %119.0 main::owned_effects::Stop
+    drop %119
+    jump b28(%123)
+  b28(%120 at: i64):
+    %121 box: word = box %120
+    %122 xs: ptr = alloc list(%121)
+    jump b9(%122)
+  b29(%128 r: ptr) [try]:
+    dup %128
+    call sum#5(%128) -> b30(%128)
+  b30(%129 r: i64, %130 r: ptr) [try]:
+    %131 lit: i64 = const 10000
+    %132 t: bool = gt.int %129, %131
+    if %132 then b32(%130) else b33(%130)
+  b31(%133 v: word, %134 r: ptr) [try]:
     drop %133
-    %135 lit: i64 = const 1
-    %136 rec: ptr = alloc main::owned_effects::Stop(%135)
-    fail %136
-  b33(%134 r: ptr) [try]:
-    %137 lit: unit = const ()
-    %138 box: word = box %137
-    jump b31(%138, %134)
-  b34(%139 e: word, %140 r: ptr):
-    %145 p: i64 = proj %139.0 main::owned_effects::Stop
-    drop %139
-    jump b35(%145, %140)
-  b35(%141 at: i64, %142 r: ptr):
-    %143 box: word = box %141
-    %144 r: ptr = $list_push(%142, %143)
-    jump b5(%144)
-  b36(%149 r: ptr) [try]:
-    dup %149
-    call sum#5(%149) -> b37(%149)
-  b37(%150 r: i64, %151 r: ptr) [try]:
-    %152 lit: i64 = const 0
-    %153 t: bool = gt.int %150, %152
-    if %153 then b39(%151) else b40(%151)
-  b38(%154 v: word, %155 r: ptr) [try]:
-    drop %154
     try_pop
-    jump b5(%155)
-  b39(%156 r: ptr) [try]:
-    drop %156
-    %158 lit: i64 = const 1
-    %159 rec: ptr = alloc main::owned_effects::Stop(%158)
-    fail %159
-  b40(%157 r: ptr) [try]:
-    %160 lit: unit = const ()
-    %161 box: word = box %160
-    jump b38(%161, %157)
-  b41(%163 xs: ptr, %164 i: i64) [handle]:
-    %197 lit: i64 = const 0
-    jump b43(%163, %197)
-  b42(%165 xs: ptr, %166 i: i64) [handle]:
+    jump b9(%134)
+  b32(%135 r: ptr) [try]:
+    drop %135
+    %137 lit: i64 = const 1
+    %138 rec: ptr = alloc main::owned_effects::Stop(%137)
+    fail %138
+  b33(%136 r: ptr) [try]:
+    %139 lit: unit = const ()
+    %140 box: word = box %139
+    jump b31(%140, %136)
+  b34(%141 e: word, %142 r: ptr):
+    %147 p: i64 = proj %141.0 main::owned_effects::Stop
+    drop %141
+    jump b35(%147, %142)
+  b35(%143 at: i64, %144 r: ptr):
+    %145 box: word = box %143
+    %146 r: ptr = $list_push(%144, %145)
+    jump b5(%146)
+  b36(%152 r: ptr) [try]:
+    dup %152
+    call sum#5(%152) -> b37(%152)
+  b37(%153 r: i64, %154 r: ptr) [try]:
+    %155 lit: i64 = const 0
+    %156 t: bool = gt.int %153, %155
+    if %156 then b39(%154) else b40(%154)
+  b38(%157 v: word, %158 r: ptr) [try]:
+    drop %157
+    try_pop
+    jump b5(%158)
+  b39(%159 r: ptr) [try]:
+    drop %159
+    %161 lit: i64 = const 1
+    %162 rec: ptr = alloc main::owned_effects::Stop(%161)
+    fail %162
+  b40(%160 r: ptr) [try]:
+    %163 lit: unit = const ()
+    %164 box: word = box %163
+    jump b38(%164, %160)
+  b41(%166 xs: ptr, %167 i: i64) [handle]:
+    %201 lit: i64 = const 0
+    jump b43(%166, %201)
+  b42(%168 xs: ptr, %169 i: i64) [handle]:
     handle_pop
-    jump b1(%165)
-  b43(%167 xs: ptr, %168 i: i64) [handle]:
-    %169 lit: i64 = const 40
-    %170 t: bool = lt.int %168, %169
-    if %170 then b45(%167, %168) else b46(%167, %168)
-  b44(%171 v: word, %172 xs: ptr, %173 i: i64) [handle]:
-    drop %171
-    jump b43(%172, %173)
-  b45(%174 xs: ptr, %175 i: i64) [handle]:
-    dup %174
-    %178 item: ptr = $list_get(%174, %175)
-    %179 lit: i64 = const 0
-    %180 box: word = box %179
-    call unwrap_or#3(%178, %180) -> b47(%174, %175)
-  b46(%176 xs: ptr, %177 i: i64) [handle]:
-    jump b42(%176, %177)
-  b47(%181 r: word, %182 xs: ptr, %183 i: i64) [handle]:
-    %184 unbox: i64 = unbox %181
-    drop %181
-    perform main::owned_effects::Tick.tick() -> b48(%182, %183, %184)
-  b48(%185 r: i64, %186 xs: ptr, %187 i: i64, %188 r: i64) [handle]:
-    %189 t: i64 = intadd %188, %185
-    %190 box: word = box %189
-    call set#4(%186, %187, %190) -> b49(%187)
-  b49(%191 r: ptr, %192 i: i64) [handle]:
-    %193 lit: i64 = const 1
-    %194 t: i64 = intadd %192, %193
-    %195 lit: unit = const ()
-    %196 box: word = box %195
-    jump b44(%196, %191, %194)
-  b50(%198 xs: ptr, %199 i: i64) [handle]:
-    %200 lit: i64 = const 40
-    %201 t: bool = lt.int %199, %200
-    if %201 then b52(%198, %199) else b53(%198, %199)
-  b51(%202 v: word, %203 xs: ptr, %204 i: i64) [handle]:
-    drop %202
-    jump b50(%203, %204)
-  b52(%205 xs: ptr, %206 i: i64) [handle]:
-    perform main::owned_effects::Tick.tick() -> b54(%205, %206)
-  b53(%207 xs: ptr, %208 i: i64) [handle]:
-    jump b41(%207, %208)
-  b54(%209 r: i64, %210 xs: ptr, %211 i: i64) [handle]:
-    %212 box: word = box %209
-    %213 r: ptr = $list_push(%210, %212)
-    %214 lit: i64 = const 1
-    %215 t: i64 = intadd %211, %214
-    %216 lit: unit = const ()
-    %217 box: word = box %216
-    jump b51(%217, %213, %215)
+    jump b1(%168)
+  b43(%170 xs: ptr, %171 i: i64) [handle]:
+    %172 lit: i64 = const 40
+    %173 t: bool = lt.int %171, %172
+    if %173 then b45(%170, %171) else b46(%170, %171)
+  b44(%174 v: word, %175 xs: ptr, %176 i: i64) [handle]:
+    drop %174
+    jump b43(%175, %176)
+  b45(%177 xs: ptr, %178 i: i64) [handle]:
+    dup %177
+    %181 item: ptr = $list_get(%177, %178)
+    %182 lit: i64 = const 0
+    %183 box: word = box %182
+    call unwrap_or#3(%181, %183) -> b47(%177, %178)
+  b46(%179 xs: ptr, %180 i: i64) [handle]:
+    jump b42(%179, %180)
+  b47(%184 r: word, %185 xs: ptr, %186 i: i64) [handle]:
+    %187 unbox: i64 = unbox %184
+    drop %184
+    perform main::owned_effects::Tick.tick() -> b48(%185, %186, %187)
+  b48(%188 r: i64, %189 xs: ptr, %190 i: i64, %191 r: i64) [handle]:
+    %192 t: i64 = intadd %191, %188
+    %193 box: word = box %192
+    %194 $site: i64 = const 5
+    call set#4(%189, %190, %193, %194) -> b49(%190)
+  b49(%195 r: ptr, %196 i: i64) [handle]:
+    %197 lit: i64 = const 1
+    %198 t: i64 = intadd %196, %197
+    %199 lit: unit = const ()
+    %200 box: word = box %199
+    jump b44(%200, %195, %198)
+  b50(%202 xs: ptr, %203 i: i64) [handle]:
+    %204 lit: i64 = const 40
+    %205 t: bool = lt.int %203, %204
+    if %205 then b52(%202, %203) else b53(%202, %203)
+  b51(%206 v: word, %207 xs: ptr, %208 i: i64) [handle]:
+    drop %206
+    jump b50(%207, %208)
+  b52(%209 xs: ptr, %210 i: i64) [handle]:
+    perform main::owned_effects::Tick.tick() -> b54(%209, %210)
+  b53(%211 xs: ptr, %212 i: i64) [handle]:
+    jump b41(%211, %212)
+  b54(%213 r: i64, %214 xs: ptr, %215 i: i64) [handle]:
+    %216 box: word = box %213
+    %217 r: ptr = $list_push(%214, %216)
+    %218 lit: i64 = const 1
+    %219 t: i64 = intadd %215, %218
+    %220 lit: unit = const ()
+    %221 box: word = box %220
+    jump b51(%221, %217, %219)
 
 fn $entry#1 top -> unit ; main::owned_effects, frame 1 slots [%1 bool]
   b0():

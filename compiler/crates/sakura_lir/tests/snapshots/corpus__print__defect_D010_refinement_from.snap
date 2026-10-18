@@ -7,7 +7,7 @@ layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
 layout 2 shape |  32b (word*, word*)
 layout 3 shape |  32b (i64, word*)
 
-fn main#0 pub top -> unit ; main::defect_D010_refinement_from, frame 4 slots [%1 bool, %4 i64, %6 bool, %9 bool]
+fn main#0 pub top -> unit ; main::defect_D010_refinement_from, frame 4 slots [%1 bool, %5 i64, %7 bool, %10 bool]
   b0():
     %0 lit: ptr = const str 0
     perform std::console::Console.print(%0) -> b1()
@@ -15,20 +15,21 @@ fn main#0 pub top -> unit ; main::defect_D010_refinement_from, frame 4 slots [%1
     %2 box: word = box %1
     drop %2
     %3 lit: i64 = const 101
-    call Percent$from#2(%3) -> b2()
-  b2(%4 r: i64):
-    %5 s: ptr = show %4
-    perform std::console::Console.print(%5) -> b3()
-  b3(%6 r: unit):
-    %7 box: word = box %6
-    drop %7
-    %8 lit: ptr = const str 1
-    perform std::console::Console.print(%8) -> b4()
-  b4(%9 r: unit):
-    %10 box: word = box %9
-    %11 unbox: unit = unbox %10
-    drop %10
-    ret %11
+    %4 $site: i64 = const 2
+    call Percent$from#2(%3, %4) -> b2()
+  b2(%5 r: i64):
+    %6 s: ptr = show %5
+    perform std::console::Console.print(%6) -> b3()
+  b3(%7 r: unit):
+    %8 box: word = box %7
+    drop %8
+    %9 lit: ptr = const str 1
+    perform std::console::Console.print(%9) -> b4()
+  b4(%10 r: unit):
+    %11 box: word = box %10
+    %12 unbox: unit = unbox %11
+    drop %11
+    ret %12
 
 fn $entry#1 top -> unit ; main::defect_D010_refinement_from, frame 1 slots [%1 bool]
   b0():
@@ -39,21 +40,21 @@ fn $entry#1 top -> unit ; main::defect_D010_refinement_from, frame 1 slots [%1 b
     handle_pop
     ret %1
 
-fn Percent$from#2 top -> i64 ; main::defect_D010_refinement_from, frame 1 slots [%0 i64]
-  b0(%0 it: i64):
-    %1 enter: unit = $contract_enter()
-    %2 lit: i64 = const 0
-    %3 t: bool = ge.int %0, %2
-    if %3 then b2(%0) else b3(%0)
-  b1(%4 v: bool, %5 it: i64):
-    %6 exit: unit = $contract_exit()
-    check D010 %4 ; Percent
-    %7 ok: unit = const ()
-    ret %5
-  b2(%8 it: i64):
-    %10 lit: i64 = const 100
-    %11 t: bool = le.int %8, %10
-    jump b1(%11, %8)
-  b3(%9 it: i64):
-    %12 lit: bool = const false
-    jump b1(%12, %9)
+fn Percent$from#2 top -> i64 ; main::defect_D010_refinement_from, frame 2 slots [%0 i64, %1 i64]
+  b0(%0 it: i64, %1 $site: i64):
+    %2 enter: unit = $contract_enter()
+    %3 lit: i64 = const 0
+    %4 t: bool = ge.int %0, %3
+    if %4 then b2(%0, %1) else b3(%0, %1)
+  b1(%5 v: bool, %6 it: i64, %7 $site: i64):
+    %8 exit: unit = $contract_exit()
+    check D010 %5 blame %7+0 ; Percent
+    %9 ok: unit = const ()
+    ret %6
+  b2(%10 it: i64, %11 $site: i64):
+    %14 lit: i64 = const 100
+    %15 t: bool = le.int %10, %14
+    jump b1(%15, %10, %11)
+  b3(%12 it: i64, %13 $site: i64):
+    %16 lit: bool = const false
+    jump b1(%16, %12, %13)

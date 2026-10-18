@@ -28,6 +28,20 @@ use wasm_encoder::{BlockType, Function, Ieee64, InstructionSink, MemArg, ValType
 
 use crate::data::Statics;
 
+/// The site a raised defect carries: a contract check's blame (`Inst::Check`) and its clause's
+/// own site id, or none.
+type Site = Option<(Option<(Var, u32)>, u32)>;
+
+/// A contract check's defect message, as the JS backend renders it (design §17.162): a
+/// refinement is named by its type, a clause by its function.
+pub fn check_message(c: &Contract, func: &str) -> String {
+    match c.code.as_str() {
+        "D010" => format!("refinement `{}` violated", c.name),
+        "D021" => format!("postcondition `{}` of {func} violated", c.name),
+        _ => format!("precondition `{}` of {func} violated", c.name),
+    }
+}
+
 /// Step codes (ABI §6.2).
 const RETURN: i32 = 0;
 const CALL: i32 = 1;
@@ -378,6 +392,7 @@ pub fn compile(env: &Env<'_>, statics: &mut Statics, f: &Func) -> Result<Functio
                     &mut s,
                     90,
                     "a frame resumed at a block that is not resumable",
+                    None,
                 );
             }
         }
@@ -460,7 +475,12 @@ pub fn compile_twin(env: &Env<'_>, statics: &mut Statics, f: &Func) -> Result<Fu
         if c < n {
             g.block(&mut s, BlockId(c))?;
         } else {
-            g.raise(&mut s, 90, "a twin jumped to a block that does not exist");
+            g.raise(
+                &mut s,
+                90,
+                "a twin jumped to a block that does not exist",
+                None,
+            );
         }
     }
     s.end(); // loop
@@ -538,12 +558,34 @@ impl Gen<'_, '_> {
             .i32_add();
     }
 
-    /// `rt_raise(code, message)`: a defect compiled code raises itself; returns step 3.
-    fn raise(&mut self, s: &mut InstructionSink<'_>, code: u16, message: &str) {
+    /// `rt_raise(code, message, site)`: a defect compiled code raises itself; returns step 3.
+    /// A contract check's site (ABI §12) is its caller's group plus the clause's offset when
+    /// the caller passed one, else the clause's own.
+    fn raise(&mut self, s: &mut InstructionSink<'_>, code: u16, message: &str, site: Site) {
         let off = self.statics.bytes(message.as_bytes());
         s.i32_const(code as i32);
         self.static_addr(s, off);
-        s.i32_const(message.len() as i32).i32_const(0);
+        s.i32_const(message.len() as i32);
+        match site {
+            Some((Some((group, offset)), clause)) => {
+                let g = self.local(group);
+                s.local_get(g).i64_eqz();
+                s.if_(BlockType::Result(ValType::I32));
+                s.i32_const(clause as i32);
+                s.else_();
+                s.local_get(g)
+                    .i32_wrap_i64()
+                    .i32_const(offset as i32)
+                    .i32_add();
+                s.end();
+            }
+            Some((None, clause)) => {
+                s.i32_const(clause as i32);
+            }
+            None => {
+                s.i32_const(0);
+            }
+        }
         s.call(self.env.rt["rt_raise"]);
         if self.twin {
             s.drop();
@@ -560,6 +602,16 @@ impl Gen<'_, '_> {
         s.return_();
     }
 
+    fn release(&self, s: &mut InstructionSink<'_>, live: &Live) -> Result<(), String> {
+        for (&v, &n) in live {
+            for _ in 0..n {
+                s.local_get(self.local(v));
+                self.call_rt(s, "drop")?;
+            }
+        }
+        Ok(())
+    }
+
     /// Release `live`, then the defect: `own` raises it here, otherwise the runtime already did.
     fn pad(
         &mut self,
@@ -567,14 +619,9 @@ impl Gen<'_, '_> {
         live: &Live,
         own: Option<(u16, &str)>,
     ) -> Result<(), String> {
-        for (&v, &n) in live {
-            for _ in 0..n {
-                s.local_get(self.local(v));
-                self.call_rt(s, "drop")?;
-            }
-        }
+        self.release(s, live)?;
         match own {
-            Some((code, msg)) => self.raise(s, code, msg),
+            Some((code, msg)) => self.raise(s, code, msg, None),
             None if self.twin => self.leave(s, DEFECTED),
             None => {
                 s.i32_const(DEFECT).return_();
@@ -965,12 +1012,22 @@ impl Gen<'_, '_> {
                 self.call_rt(s, "rt_set_state")?;
                 self.pad_if(s, live, None)?;
             }
-            Inst::Check { contract, cond } => {
+            Inst::Check {
+                contract,
+                cond,
+                blame,
+            } => {
                 let c = &self.env.m.contracts[*contract as usize];
                 let code = c.code.trim_start_matches('D').parse::<u16>().unwrap_or(90);
-                let msg = format!("contract `{}` violated", c.name);
+                let msg = check_message(c, &self.f.name);
+                let site = Some((*blame, c.site));
                 s.local_get(self.local(*cond)).i32_eqz();
-                self.pad_if(s, live, Some((code, &msg)))?;
+                s.if_(BlockType::Empty);
+                self.depth += 1;
+                self.release(s, live)?;
+                self.raise(s, code, &msg, site);
+                self.depth -= 1;
+                s.end();
             }
             Inst::Builtin { dst, name, args } => self.builtin(s, *dst, name, args, live)?,
             Inst::HandlePush { handler } => {

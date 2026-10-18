@@ -7,7 +7,7 @@ layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
 layout 2 shape |  32b (word*, word*)
 layout 3 shape |  32b (i64, word*)
 
-fn main#0 pub top -> unit ; main::defect_D020_requires_blames_caller, frame 4 slots [%1 bool, %6 i64, %8 bool, %11 bool]
+fn main#0 pub top -> unit ; main::defect_D020_requires_blames_caller, frame 4 slots [%1 bool, %7 i64, %9 bool, %12 bool]
   b0():
     %0 lit: ptr = const str 0
     perform std::console::Console.print(%0) -> b1()
@@ -17,20 +17,21 @@ fn main#0 pub top -> unit ; main::defect_D020_requires_blames_caller, frame 4 sl
     %3 lit: i64 = const 1
     %4 lit: i64 = const 5
     %5 lit: i64 = const 0
-    call clamp#2(%3, %4, %5) -> b2()
-  b2(%6 r: i64):
-    %7 s: ptr = show %6
-    perform std::console::Console.print(%7) -> b3()
-  b3(%8 r: unit):
-    %9 box: word = box %8
-    drop %9
-    %10 lit: ptr = const str 1
-    perform std::console::Console.print(%10) -> b4()
-  b4(%11 r: unit):
-    %12 box: word = box %11
-    %13 unbox: unit = unbox %12
-    drop %12
-    ret %13
+    %6 $site: i64 = const 2
+    call clamp#2(%3, %4, %5, %6) -> b2()
+  b2(%7 r: i64):
+    %8 s: ptr = show %7
+    perform std::console::Console.print(%8) -> b3()
+  b3(%9 r: unit):
+    %10 box: word = box %9
+    drop %10
+    %11 lit: ptr = const str 1
+    perform std::console::Console.print(%11) -> b4()
+  b4(%12 r: unit):
+    %13 box: word = box %12
+    %14 unbox: unit = unbox %13
+    drop %13
+    ret %14
 
 fn $entry#1 top -> unit ; main::defect_D020_requires_blames_caller, frame 1 slots [%1 bool]
   b0():
@@ -41,15 +42,15 @@ fn $entry#1 top -> unit ; main::defect_D020_requires_blames_caller, frame 1 slot
     handle_pop
     ret %1
 
-fn clamp#2 top -> i64 ; main::defect_D020_requires_blames_caller, frame 6 slots [%0 i64, %1 i64, %2 i64, %7 i64, %8 i64, %9 i64]
-  b0(%0 x: i64, %1 lo: i64, %2 hi: i64):
-    %3 enter: unit = $contract_enter()
-    %4 t: bool = le.int %1, %2
-    %5 exit: unit = $contract_exit()
-    check D020 %4 ; ordered
-    %6 pre: unit = const ()
+fn clamp#2 top -> i64 ; main::defect_D020_requires_blames_caller, frame 7 slots [%0 i64, %1 i64, %2 i64, %3 i64, %8 i64, %9 i64, %10 i64]
+  b0(%0 x: i64, %1 lo: i64, %2 hi: i64, %3 $site: i64):
+    %4 enter: unit = $contract_enter()
+    %5 t: bool = le.int %1, %2
+    %6 exit: unit = $contract_exit()
+    check D020 %5 blame %3+0 ; ordered
+    %7 pre: unit = const ()
     call min#3(%0, %2) -> b1(%1)
-  b1(%7 r: i64, %8 lo: i64):
-    call max#4(%8, %7) -> b2()
-  b2(%9 r: i64):
-    ret %9
+  b1(%8 r: i64, %9 lo: i64):
+    call max#4(%9, %8) -> b2()
+  b2(%10 r: i64):
+    ret %10

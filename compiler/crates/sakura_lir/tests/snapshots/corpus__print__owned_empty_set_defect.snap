@@ -7,22 +7,23 @@ layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
 layout 2 shape |  32b (word*, word*)
 layout 3 shape |  32b (i64, word*)
 
-fn main#0 pub top -> unit ; main::owned_empty_set_defect, frame 2 slots [%4 word*, %6 bool]
+fn main#0 pub top -> unit ; main::owned_empty_set_defect, frame 2 slots [%5 word*, %7 bool]
   b0():
     %0 xs: ptr = alloc list()
     %1 lit: i64 = const 0
     %2 lit: i64 = const 1
     %3 box: word = box %2
-    call set#2(%0, %1, %3) -> b1()
-  b1(%4 r: ptr):
-    %5 s: ptr = show %4
-    drop %4
-    perform std::console::Console.print(%5) -> b2()
-  b2(%6 r: unit):
-    %7 box: word = box %6
-    %8 unbox: unit = unbox %7
-    drop %7
-    ret %8
+    %4 $site: i64 = const 2
+    call set#2(%0, %1, %3, %4) -> b1()
+  b1(%5 r: ptr):
+    %6 s: ptr = show %5
+    drop %5
+    perform std::console::Console.print(%6) -> b2()
+  b2(%7 r: unit):
+    %8 box: word = box %7
+    %9 unbox: unit = unbox %8
+    drop %8
+    ret %9
 
 fn $entry#1 top -> unit ; main::owned_empty_set_defect, frame 1 slots [%1 bool]
   b0():

@@ -20,6 +20,12 @@
 //!   and every activation-id local is mapped to the row of the handler it belongs to (a
 //!   clause's own activation, or one a lambda captured), so `StateGet`/`StateSet` of a known
 //!   scalar never box and the validator checks them against the row.
+//! - **Blame sites** (design §7.2, §17.115, §17.162), mirroring the JS backend's `$site`: a
+//!   top-level def whose `requires`/`where` checks blame its caller takes a trailing `I64`
+//!   parameter, the id of a group of [`Site`]s, one per such contract, that a call through a
+//!   known global passes (0, no site, from an adapter or a call without a position). A check
+//!   reads it as the pseudo-local `$site` after the def's locals, which liveness carries like
+//!   any local, and `opt::SITE_MARK` before a self tail call rebinds it to the call's group.
 //! - **Ownership** (§17.82, conservative owned RC): [`ownership`] inserts a `Dup` before every
 //!   consuming use of a reference that is used again later in its block and a `Drop` after the
 //!   last use of every reference whose last use only borrows it. Edges and calls pass
@@ -30,10 +36,13 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use crate::layout::{LayoutTable, Slot};
 use crate::lir::{self, *};
 use crate::snapshot::{
-    self as core, Atom, Bind, Block as CBlock, Label, Local, Stmt, Terminator, Ty,
+    self as core, Atom, Bind, Block as CBlock, Label, Local, Pos, Stmt, Terminator, Ty,
 };
 
 type R<T> = Result<T, String>;
+
+/// `sakura_core::opt::SITE_MARK`: the local a self tail call binds at its position.
+const SITE_MARK: &str = "$site";
 
 /// The representation of a value of Core type `ty` (ABI §2).
 pub fn repr_of(ty: &Ty) -> Repr {
@@ -116,6 +125,13 @@ struct Cx<'a> {
     state_rows: HashMap<(core::DefId, Local), LayoutId>,
     /// The state row of each `handler` expression, by `(def, the local it binds)`.
     handler_sites: HashMap<(core::DefId, Local), LayoutId>,
+    /// Per def, the contracts whose checks blame its caller ([`blame`]).
+    blame: Vec<Vec<core::ContractId>>,
+    /// Per def, whether it takes the trailing site parameter.
+    takes_site: Vec<bool>,
+    sites: Vec<Site>,
+    /// The site group of each call position, by callee.
+    groups: HashMap<(core::DefId, Pos), u32>,
 }
 
 pub fn lower(core: &core::Module, sigs: &BTreeMap<String, (Sig, bool)>) -> R<Module> {
@@ -140,7 +156,27 @@ pub fn lower(core: &core::Module, sigs: &BTreeMap<String, (Sig, bool)>) -> R<Mod
         reprs: vec![],
         state_rows: HashMap::new(),
         handler_sites: HashMap::new(),
+        blame: core.defs.iter().map(|d| blame(core, d)).collect(),
+        takes_site: vec![],
+        sites: vec![],
+        groups: HashMap::new(),
     };
+    cx.takes_site = (0..core.defs.len())
+        .map(|i| {
+            let d = &core.defs[i];
+            matches!(d.kind, core::FnKind::Top { .. } | core::FnKind::Const)
+                && core.entry != Some(i as core::DefId)
+                && !cx.blame[i].is_empty()
+        })
+        .collect();
+    // The clauses' own sites first, so a contract's site id is fixed by the contract table.
+    let contract_sites: Vec<u32> = (0..core.contracts.len())
+        .map(|k| {
+            core.contracts[k]
+                .pos
+                .map_or(0, |p| cx.site(p, SiteRole::Definition, k as u32 + 1))
+        })
+        .collect();
     cx.reprs = core.defs.iter().map(|d| local_reprs(&cx, d)).collect();
     handler_rows(&mut cx);
     for i in 0..core.defs.len() {
@@ -184,7 +220,8 @@ pub fn lower(core: &core::Module, sigs: &BTreeMap<String, (Sig, bool)>) -> R<Mod
         contracts: core
             .contracts
             .iter()
-            .map(|c| Contract {
+            .zip(contract_sites)
+            .map(|(c, site)| Contract {
                 code: match c.kind {
                     core::ContractKind::Requires => "D020",
                     core::ContractKind::Ensures => "D021",
@@ -192,8 +229,10 @@ pub fn lower(core: &core::Module, sigs: &BTreeMap<String, (Sig, bool)>) -> R<Mod
                 }
                 .into(),
                 name: c.name.clone(),
+                site,
             })
             .collect(),
+        sites: cx.sites,
         strings: cx.strings,
         funcs,
         builtins,
@@ -273,9 +312,37 @@ impl Cx<'_> {
             def.params
                 .iter()
                 .map(|&p| repr_of(local_ty(def, p)))
+                .chain(self.takes_site[d as usize].then_some(Repr::I64))
                 .collect(),
             repr_of(&def.ret),
         ))
+    }
+
+    /// A new site; its id.
+    fn site(&mut self, p: Pos, role: SiteRole, contract: u32) -> u32 {
+        self.sites.push(Site {
+            file: p.file,
+            start: p.offset,
+            end: p.end,
+            role,
+            contract,
+        });
+        self.sites.len() as u32
+    }
+
+    /// The site group a call of `d` at `pos` passes: one `primary` site per contract `d`
+    /// blames its caller with, in [`blame`] order; 0 without a position.
+    fn group(&mut self, d: core::DefId, pos: Option<Pos>) -> u32 {
+        let Some(p) = pos else { return 0 };
+        if let Some(&g) = self.groups.get(&(d, p)) {
+            return g;
+        }
+        let g = self.sites.len() as u32 + 1;
+        for k in self.blame[d as usize].clone() {
+            self.site(p, SiteRole::Primary, k + 1);
+        }
+        self.groups.insert((d, p), g);
+        g
     }
 
     fn push_func(&mut self, f: Func) -> FuncId {
@@ -292,16 +359,27 @@ impl Cx<'_> {
         let def = def_of(self.core, d)?;
         let mut b = FuncBuilder::new(format!("{}$value", def.name), def.module.clone());
         let env = b.var("env", Repr::Ptr);
-        let words: Vec<Var> = params.iter().map(|_| b.var("arg", Repr::Word)).collect();
+        let n = params.len() - usize::from(self.takes_site[d as usize]);
+        let words: Vec<Var> = params[..n]
+            .iter()
+            .map(|_| b.var("arg", Repr::Word))
+            .collect();
         let entry = b.block(
             [env].into_iter().chain(words.iter().copied()).collect(),
             vec![],
         );
-        let args = words
+        let mut args = words
             .iter()
             .zip(&params)
             .map(|(&w, &p)| b.coerce(entry, w, p))
             .collect::<R<Vec<_>>>()?;
+        // A call through a function value names no call site (design §17.115).
+        if self.takes_site[d as usize] {
+            args.push(b.fresh(entry, "site", Repr::I64, |dst| Inst::Const {
+                dst,
+                value: lir::Const::I64(0),
+            }));
+        }
         let r = b.var("r", ret);
         let cont = b.block(vec![r], vec![]);
         b.end(
@@ -543,9 +621,13 @@ struct Fl<'c, 'a> {
     /// Join points some `try` names: their error parameter is a word whatever its Core type
     /// (a `try` whose body cannot fail types it `Unit`).
     catches: BTreeSet<Label>,
-    /// Each Core local's representation (see [`local_reprs`]).
+    /// Each Core local's representation (see [`local_reprs`]), then the `$site` pseudo-local's.
     reprs: Vec<Repr>,
     ret: Repr,
+    /// The `$site` pseudo-local (module docs): the first index after the def's locals.
+    site: Local,
+    /// The position of the `let` being lowered.
+    pos: Option<Pos>,
 }
 
 impl<'c, 'a> Fl<'c, 'a> {
@@ -561,8 +643,11 @@ impl<'c, 'a> Fl<'c, 'a> {
                 .map_or(Repr::Word, |o| repr_of(&o.ret)),
             _ => repr_of(&def.ret),
         };
-        let reprs = cx.reprs[id as usize].clone();
+        let mut reprs = cx.reprs[id as usize].clone();
+        reprs.push(Repr::I64);
         Fl {
+            site: def.locals.len() as Local,
+            pos: None,
             b: FuncBuilder::new(def.name.clone(), def.module.clone()),
             id,
             def,
@@ -580,7 +665,22 @@ impl<'c, 'a> Fl<'c, 'a> {
     }
 
     fn name(&self, l: Local) -> &'a str {
+        if l == self.site {
+            return SITE_MARK;
+        }
         local_name(self.def, l)
+    }
+
+    fn blames(&self) -> bool {
+        !self.cx.blame[self.id as usize].is_empty()
+    }
+
+    /// `$site` as a constant: site group `g`.
+    fn site_const(&mut self, b: BlockId, g: u32) -> Var {
+        self.b.fresh(b, SITE_MARK, Repr::I64, |dst| Inst::Const {
+            dst,
+            value: lir::Const::I64(g.into()),
+        })
     }
 
     fn lower(mut self) -> R<Func> {
@@ -603,7 +703,7 @@ impl<'c, 'a> Fl<'c, 'a> {
         };
         let b0 = match entry {
             None => {
-                let params: Vec<Var> = def
+                let mut params: Vec<Var> = def
                     .params
                     .iter()
                     .map(|&p| {
@@ -612,6 +712,11 @@ impl<'c, 'a> Fl<'c, 'a> {
                         v
                     })
                     .collect();
+                if self.cx.takes_site[self.id as usize] {
+                    let v = self.b.var(SITE_MARK, Repr::I64);
+                    env.insert(self.site, v);
+                    params.push(v);
+                }
                 self.b.block(params, vec![])
             }
             Some(clause) => {
@@ -662,6 +767,10 @@ impl<'c, 'a> Fl<'c, 'a> {
                 b0
             }
         };
+        if self.blames() && !env.contains_key(&self.site) {
+            let v = self.site_const(b0, 0);
+            env.insert(self.site, v);
+        }
         self.block(
             Rest {
                 block: &def.body,
@@ -720,6 +829,11 @@ impl<'c, 'a> Fl<'c, 'a> {
             if let Stmt::Let { local, bind, .. } = s {
                 for a in bind_atoms(bind) {
                     add_atom(a, &bound, &mut out);
+                }
+                if let Bind::Check(c, _) = bind
+                    && self.cx.blame[self.id as usize].contains(c)
+                {
+                    out.insert(self.site);
                 }
                 bound.push(*local);
             }
@@ -861,7 +975,18 @@ impl<'c, 'a> Fl<'c, 'a> {
         let blk = rest.block;
         for (i, s) in blk.stmts.iter().enumerate().skip(rest.from) {
             match s {
-                Stmt::Let { local, bind, .. } => {
+                // A self tail call's position: the next iteration's checks blame it.
+                Stmt::Let {
+                    local,
+                    bind: Bind::Atom(_),
+                    pos,
+                } if self.blames() && self.name(*local) == SITE_MARK => {
+                    let g = self.cx.group(self.id, *pos);
+                    let v = self.site_const(b, g);
+                    env.insert(self.site, v);
+                }
+                Stmt::Let { local, bind, pos } => {
+                    self.pos = *pos;
                     let after = Rest {
                         block: blk,
                         from: i + 1,
@@ -1218,7 +1343,13 @@ impl<'c, 'a> Fl<'c, 'a> {
                     }
                     Atom::Lit(_) => return Err("call of a literal".into()),
                 };
-                if params.len() != args.len() {
+                let site = match f {
+                    Atom::Global(d) if self.cx.takes_site[*d as usize] => {
+                        Some(self.cx.group(*d, self.pos))
+                    }
+                    _ => None,
+                };
+                if params.len() != args.len() + usize::from(site.is_some()) {
                     return Err(format!(
                         "call with {} arguments for {}",
                         args.len(),
@@ -1228,6 +1359,9 @@ impl<'c, 'a> Fl<'c, 'a> {
                 let mut vs = Vec::new();
                 for (a, &p) in args.iter().zip(&params) {
                     vs.push(self.atom_as(b, env, a, p)?);
+                }
+                if let Some(g) = site {
+                    vs.push(self.site_const(b, g));
                 }
                 let (cont, cb, cenv) = self.split(env, regions, local, rest, ret)?;
                 self.b.end(
@@ -1329,7 +1463,18 @@ impl<'c, 'a> Fl<'c, 'a> {
             }
             Bind::Check(c, a) => {
                 let cond = self.atom_as(b, env, a, Repr::Bool)?;
-                self.b.push(b, Inst::Check { contract: *c, cond });
+                let blame = match self.cx.blame[self.id as usize].iter().position(|k| k == c) {
+                    Some(j) => Some((lookup(env, self.site)?, j as u32)),
+                    None => None,
+                };
+                self.b.push(
+                    b,
+                    Inst::Check {
+                        contract: *c,
+                        cond,
+                        blame,
+                    },
+                );
                 unit(self)
             }
             Bind::MakeHandler {
@@ -1584,6 +1729,27 @@ fn lookup(env: &Env, l: Local) -> R<Var> {
     env.get(&l)
         .copied()
         .ok_or_else(|| format!("local %{l} is not in scope"))
+}
+
+/// The contracts whose checks in `def` blame its caller (`requires`, `where`), distinct, in body
+/// order: the clauses of a site group (`sakura_core::opt::blames_caller` on the JS side).
+fn blame(core: &core::Module, def: &core::Def) -> Vec<core::ContractId> {
+    let mut out = vec![];
+    for b in blocks(&def.body) {
+        for s in &b.stmts {
+            if let Stmt::Let {
+                bind: Bind::Check(c, _),
+                ..
+            } = s
+                && core.contracts.get(*c as usize).map(|k| k.kind)
+                    != Some(core::ContractKind::Ensures)
+                && !out.contains(c)
+            {
+                out.push(*c);
+            }
+        }
+    }
+    out
 }
 
 /// Every Core block of `body`, outermost first, in statement order.

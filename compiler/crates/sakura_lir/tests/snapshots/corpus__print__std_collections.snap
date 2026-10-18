@@ -8,7 +8,7 @@ layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
 layout 3 shape |  32b (word*, word*)
 layout 4 shape |  32b (i64, word*)
 
-fn main#0 pub top -> unit ; main::std_collections, frame 42 slots [%3 word*, %4 word*, %8 word*, %9 word*, %10 word*, %15 word*, %16 word*, %17 word*, %20 bool, %21 word*, %24 word*, %25 word*, %30 bool, %31 word*, %32 word*, %38 word*, %39 word*, %40 word*, %43 bool, %44 word*, %48 word*, %49 word*, %53 word*, %54 word*, %55 word*, %58 bool, %59 word*, %68 word*, %74 word*, %75 word*, %82 word*, %83 word*, %86 bool, %96 word*, %97 word*, %104 word*, %105 word*, %108 bool, %112 i64, %119 i64, %120 word*, %136 bool]
+fn main#0 pub top -> unit ; main::std_collections, frame 42 slots [%3 word*, %4 word*, %8 word*, %9 word*, %10 word*, %15 word*, %16 word*, %17 word*, %20 bool, %21 word*, %24 word*, %25 word*, %30 bool, %31 word*, %32 word*, %38 word*, %39 word*, %40 word*, %43 bool, %44 word*, %48 word*, %49 word*, %53 word*, %54 word*, %55 word*, %58 bool, %59 word*, %68 word*, %74 word*, %75 word*, %82 word*, %83 word*, %86 bool, %97 word*, %98 word*, %106 word*, %107 word*, %110 bool, %115 i64, %123 i64, %124 word*, %140 bool]
   b0():
     %0 lit: ptr = const str 0
     %1 lit: ptr = const str 1
@@ -154,76 +154,80 @@ fn main#0 pub top -> unit ; main::std_collections, frame 42 slots [%3 word*, %4 
     %93 lit: ptr = const str 7
     %94 lit: i64 = const 3
     %95 lit: ptr = const str 8
-    call pad_left#18(%93, %94, %95) -> b16(%92)
-  b16(%96 r: ptr, %97 s: ptr):
-    %98 s: ptr = show %96
-    drop %96
-    %99 s: ptr = concat %97, %98
+    %96 $site: i64 = const 5
+    call pad_left#18(%93, %94, %95, %96) -> b16(%92)
+  b16(%97 r: ptr, %98 s: ptr):
+    %99 s: ptr = show %97
     drop %97
+    %100 s: ptr = concat %98, %99
     drop %98
-    %100 lit: ptr = const str 6
-    %101 s: ptr = concat %99, %100
     drop %99
+    %101 lit: ptr = const str 6
+    %102 s: ptr = concat %100, %101
     drop %100
-    %102 lit: ptr = const str 9
-    %103 lit: i64 = const 2
-    call repeat#19(%102, %103) -> b17(%101)
-  b17(%104 r: ptr, %105 s: ptr):
-    %106 s: ptr = show %104
-    drop %104
-    %107 s: ptr = concat %105, %106
-    drop %105
+    drop %101
+    %103 lit: ptr = const str 9
+    %104 lit: i64 = const 2
+    %105 $site: i64 = const 6
+    call repeat#19(%103, %104, %105) -> b17(%102)
+  b17(%106 r: ptr, %107 s: ptr):
+    %108 s: ptr = show %106
     drop %106
-    perform std::console::Console.print(%107) -> b18()
-  b18(%108 r: unit):
-    %109 box: word = box %108
-    drop %109
-    %110 lit: i64 = const 2
-    %111 lit: i64 = const 20
-    call pow#20(%110, %111) -> b19()
-  b19(%112 r: i64):
-    %113 s: ptr = show %112
-    %114 lit: ptr = const str 1
-    %115 s: ptr = concat %113, %114
-    drop %113
-    drop %114
-    %116 lit: i64 = const 50
-    %117 lit: i64 = const 0
-    %118 lit: i64 = const 10
-    call clamp#21(%116, %117, %118) -> b20(%115)
-  b20(%119 r: i64, %120 s: ptr):
-    %121 s: ptr = show %119
-    %122 s: ptr = concat %120, %121
-    drop %120
-    drop %121
-    %123 lit: ptr = const str 1
-    %124 s: ptr = concat %122, %123
-    drop %122
-    drop %123
-    %125 lit: f64 = const 3.14159
-    %126 lit: i64 = const 2
-    %127 r: ptr = $float_format(%125, %126)
-    %128 s: ptr = show %127
-    drop %127
-    %129 s: ptr = concat %124, %128
+    %109 s: ptr = concat %107, %108
+    drop %107
+    drop %108
+    perform std::console::Console.print(%109) -> b18()
+  b18(%110 r: unit):
+    %111 box: word = box %110
+    drop %111
+    %112 lit: i64 = const 2
+    %113 lit: i64 = const 20
+    %114 $site: i64 = const 7
+    call pow#20(%112, %113, %114) -> b19()
+  b19(%115 r: i64):
+    %116 s: ptr = show %115
+    %117 lit: ptr = const str 1
+    %118 s: ptr = concat %116, %117
+    drop %116
+    drop %117
+    %119 lit: i64 = const 50
+    %120 lit: i64 = const 0
+    %121 lit: i64 = const 10
+    %122 $site: i64 = const 8
+    call clamp#21(%119, %120, %121, %122) -> b20(%118)
+  b20(%123 r: i64, %124 s: ptr):
+    %125 s: ptr = show %123
+    %126 s: ptr = concat %124, %125
     drop %124
-    drop %128
-    %130 lit: ptr = const str 1
-    %131 s: ptr = concat %129, %130
-    drop %129
-    drop %130
-    %132 lit: f64 = const 16.0
-    %133 r: f64 = $float_sqrt(%132)
-    %134 s: ptr = show %133
-    %135 s: ptr = concat %131, %134
+    drop %125
+    %127 lit: ptr = const str 1
+    %128 s: ptr = concat %126, %127
+    drop %126
+    drop %127
+    %129 lit: f64 = const 3.14159
+    %130 lit: i64 = const 2
+    %131 r: ptr = $float_format(%129, %130)
+    %132 s: ptr = show %131
     drop %131
+    %133 s: ptr = concat %128, %132
+    drop %128
+    drop %132
+    %134 lit: ptr = const str 1
+    %135 s: ptr = concat %133, %134
+    drop %133
     drop %134
-    perform std::console::Console.print(%135) -> b21()
-  b21(%136 r: unit):
-    %137 box: word = box %136
-    %138 unbox: unit = unbox %137
-    drop %137
-    ret %138
+    %136 lit: f64 = const 16.0
+    %137 r: f64 = $float_sqrt(%136)
+    %138 s: ptr = show %137
+    %139 s: ptr = concat %135, %138
+    drop %135
+    drop %138
+    perform std::console::Console.print(%139) -> b21()
+  b21(%140 r: unit):
+    %141 box: word = box %140
+    %142 unbox: unit = unbox %141
+    drop %141
+    ret %142
 
 fn $entry#1 top -> unit ; main::std_collections, frame 1 slots [%1 bool]
   b0():

@@ -322,9 +322,16 @@ fn inst(m: &Module, f: &Func, i: &Inst) -> String {
             "state_set %{}[{index}] row {} = %{}",
             inst.0, row.0, value.0
         ),
-        Check { contract, cond } => format!(
-            "check {} %{} ; {}",
-            m.contracts[*contract as usize].code, cond.0, m.contracts[*contract as usize].name
+        Check {
+            contract,
+            cond,
+            blame,
+        } => format!(
+            "check {} %{}{} ; {}",
+            m.contracts[*contract as usize].code,
+            cond.0,
+            blame.map_or(String::new(), |(v, j)| format!(" blame %{}+{j}", v.0)),
+            m.contracts[*contract as usize].name
         ),
         Builtin { dst, name, args } => format!("{} = ${name}({})", def(dst), vars(args)),
         HandlePush { handler } => format!("handle_push %{}", handler.0),

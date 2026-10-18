@@ -29,30 +29,31 @@ fn $entry#1 top -> unit ; main::contract_site_blame_callback, frame 1 slots [%1 
     handle_pop
     ret %1
 
-fn positive#2 top -> i64 ; main::contract_site_blame_callback, frame 1 slots [%0 i64]
-  b0(%0 x: i64):
-    %1 enter: unit = $contract_enter()
-    %2 lit: i64 = const 0
-    %3 t: bool = gt.int %0, %2
-    %4 exit: unit = $contract_exit()
-    check D020 %3 ; nonzero
-    %5 pre: unit = const ()
+fn positive#2 top -> i64 ; main::contract_site_blame_callback, frame 2 slots [%0 i64, %1 i64]
+  b0(%0 x: i64, %1 $site: i64):
+    %2 enter: unit = $contract_enter()
+    %3 lit: i64 = const 0
+    %4 t: bool = gt.int %0, %3
+    %5 exit: unit = $contract_exit()
+    check D020 %4 blame %1+0 ; nonzero
+    %6 pre: unit = const ()
     jump b1(%0)
-  b1(%6 result: i64):
-    %7 enter: unit = $contract_enter()
-    %8 lit: i64 = const 0
-    %9 t: bool = gt.int %6, %8
-    %10 exit: unit = $contract_exit()
-    check D021 %9 ; positive
-    %11 post: unit = const ()
-    ret %6
+  b1(%7 result: i64):
+    %8 enter: unit = $contract_enter()
+    %9 lit: i64 = const 0
+    %10 t: bool = gt.int %7, %9
+    %11 exit: unit = $contract_exit()
+    check D021 %10 ; positive
+    %12 post: unit = const ()
+    ret %7
 
-fn positive$value#4 adapter of positive#2 -> word ; main::contract_site_blame_callback, captures [], frame 3 slots [%0 word*, %1 word*, %3 i64]
+fn positive$value#4 adapter of positive#2 -> word ; main::contract_site_blame_callback, captures [], frame 3 slots [%0 word*, %1 word*, %4 i64]
   b0(%0 env: ptr, %1 arg: word):
     drop %0
     %2 unbox: i64 = unbox %1
     drop %1
-    call positive#2(%2) -> b1()
-  b1(%3 r: i64):
-    %4 box: word = box %3
-    ret %4
+    %3 site: i64 = const 0
+    call positive#2(%2, %3) -> b1()
+  b1(%4 r: i64):
+    %5 box: word = box %4
+    ret %5

@@ -135,6 +135,9 @@ pub struct Module {
     /// The effect table (ABI §3.2 `effect_id`), sorted by qualified name.
     pub effects: Vec<Effect>,
     pub contracts: Vec<Contract>,
+    /// The site table of the `sakura.debug` section (ABI §12); site id `i` is entry `i - 1`,
+    /// and 0 is no site.
+    pub sites: Vec<Site>,
     /// Static string literals (ABI §3.1 `flags.static`), deduplicated, in first-use order.
     pub strings: Vec<String>,
     pub funcs: Vec<Func>,
@@ -174,6 +177,31 @@ pub struct Contract {
     /// `D020`, `D021` or `D010`.
     pub code: String,
     pub name: String,
+    /// The site id of the clause itself (role `definition`), 0 when it has no position.
+    pub site: u32,
+}
+
+/// A source span a defect can name (ABI §12, design §17.162), the program-wide counterpart
+/// of the JS backend's `$rt.sites` table.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Site {
+    /// The source (`Pos::file`).
+    pub file: u32,
+    pub start: u32,
+    pub end: u32,
+    pub role: SiteRole,
+    /// The contract (index + 1) the span belongs to, or 0. A defect at a `primary` entry of a
+    /// contract also names that contract's `definition` entry, as JS's `violated` does.
+    pub contract: u32,
+}
+
+/// `runtime/js/ABI.md` §5's span roles, in the section as `u8` 0 and 1.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SiteRole {
+    /// A blamed call, or a clause with no call to blame.
+    Primary,
+    /// A contract clause.
+    Definition,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -452,10 +480,14 @@ pub enum Inst {
         index: u32,
         value: Var,
     },
-    /// Defect `contracts[contract].code` unless `cond`.
+    /// Defect `contracts[contract].code` unless `cond`. A `requires` or `where` check blames
+    /// the caller (design §7.2, §17.115): `blame` is the `I64` variable holding the site
+    /// group the call passed (0 for none) and the clause's offset in the group, so the defect's
+    /// site is `group + offset`, or the clause's own site without a group.
     Check {
         contract: u32,
         cond: Var,
+        blame: Option<(Var, u32)>,
     },
     /// A direct runtime function (no callbacks); consumes `args`.
     Builtin {
@@ -614,7 +646,9 @@ impl Inst {
             MakeCallback { f, .. } => vec![(*f, Consume)],
             StateGet { inst, .. } => vec![(*inst, Borrow)],
             StateSet { inst, value, .. } => vec![(*inst, Borrow), (*value, Consume)],
-            Check { cond, .. } => vec![(*cond, Borrow)],
+            Check { cond, blame, .. } => std::iter::once((*cond, Borrow))
+                .chain(blame.map(|(v, _)| (v, Borrow)))
+                .collect(),
             Builtin { args, .. } => all(args, Consume),
             HandlePush { handler } => vec![(*handler, Consume)],
             TryPush { carry, .. } => all(carry, Consume),

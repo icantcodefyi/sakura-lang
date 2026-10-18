@@ -23,11 +23,17 @@ semantics/deep_recursion_defect: D002, 2 allocated, 0 dup, 2 drop, peak 2, live 
 semantics/deep_sum: ok, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
 semantics/defect_D001_int_overflow: D001, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/defect_D002_division_by_zero: D002, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
+semantics/defect_D004_float_round_nan: unsupported (builtin float_round)
 semantics/defect_D010_generic_refinement_from: D010, 2 allocated, 1 dup, 3 drop, peak 2, live 0/0
 semantics/defect_D010_refinement_from: D010, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/defect_D011_contract_evaluation_failed: D011, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
+semantics/defect_D011_inner_message: D011, 2 allocated, 1 dup, 3 drop, peak 2, live 0/0
+semantics/defect_D011_nested_requires: D011, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
+semantics/defect_D020_external_precondition: D020, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
 semantics/defect_D020_requires_blames_caller: D020, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
+semantics/defect_D020_std_preconditions: D020, 3 allocated, 0 dup, 3 drop, peak 2, live 0/0
 semantics/defect_D021_ensures_blames_callee: D021, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
+semantics/defect_D030_joined_fiber: unsupported (builtin task_host)
 semantics/defect_D030_option_expect: D030, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/defect_D031_string_slice_boundary: D031, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/deterministic_clock_random: ok, 82 allocated, 16 dup, 98 drop, peak 11, live 0/0

@@ -71,6 +71,17 @@ pub fn validate(m: &Module, opts: Options) -> Vec<Error> {
             message: format!("entry {} out of range", e.0),
         });
     }
+    let bad_site = m.contracts.iter().any(|c| c.site as usize > m.sites.len())
+        || m.sites
+            .iter()
+            .any(|s| s.contract as usize > m.contracts.len());
+    if bad_site {
+        errors.push(Error {
+            func: "module".into(),
+            block: None,
+            message: "a site or a contract's site out of range".into(),
+        });
+    }
     errors
 }
 
@@ -606,11 +617,18 @@ impl<'a> Checker<'a> {
                 self.not_id(*value, "is stored in handler state")?;
                 self.expect(*value, self.state_slot(*row, *index)?.repr())?;
             }
-            Check { contract, cond } => {
+            Check {
+                contract,
+                cond,
+                blame,
+            } => {
                 ensure((*contract as usize) < self.m.contracts.len(), || {
                     format!("contract {contract} out of range")
                 })?;
                 self.expect(*cond, Repr::Bool)?;
+                if let Some((site, _)) = blame {
+                    self.expect(*site, Repr::I64)?;
+                }
             }
             Builtin { name, args, .. } => {
                 let sig = self

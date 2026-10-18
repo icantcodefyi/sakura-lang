@@ -11,95 +11,98 @@ layout 5 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
 layout 6 shape |  32b (word*, word*)
 layout 7 shape |  32b (i64, word*)
 
-fn main#0 pub top -> unit ; main::refined_var_rebuild, frame 20 slots [%2 word*, %6 bool, %10 word*, %13 bool, %14 word*, %17 word*, %18 word*, %23 word*, %24 bool, %29 word*, %31 bool, %52 word*, %53 i64, %54 word*, %55 word*, %56 word*, %57 i64, %58 word*, %73 word*, %74 i64]
+fn main#0 pub top -> unit ; main::refined_var_rebuild, frame 20 slots [%3 word*, %7 bool, %12 word*, %15 bool, %16 word*, %19 word*, %20 word*, %25 word*, %26 bool, %32 word*, %34 bool, %55 word*, %56 i64, %57 word*, %58 word*, %59 word*, %60 i64, %61 word*, %76 word*, %77 i64]
   b0():
     %0 lit: i64 = const 1
     %1 rec: ptr = alloc main::refined_var_rebuild::PosRepr(%0)
-    call Pos$from#2(%1) -> b1()
-  b1(%2 r: ptr):
-    %75 lit: i64 = const 0
-    jump b18(%75, %2)
-  b2(%3 x: ptr):
-    %4 n: i64 = proj %3.0 main::refined_var_rebuild::PosRepr
-    drop %3
-    %5 s: ptr = show %4
-    perform std::console::Console.print(%5) -> b3()
-  b3(%6 r: unit):
-    %7 box: word = box %6
-    drop %7
-    %8 lit: i64 = const 10
-    %9 rec: ptr = alloc main::refined_var_rebuild::PosRepr(%8)
-    call Pos$from#2(%9) -> b4()
-  b4(%10 r: ptr):
-    %11 n: i64 = proj %10.0 main::refined_var_rebuild::PosRepr
-    %12 s: ptr = show %11
-    perform std::console::Console.print(%12) -> b5(%10)
-  b5(%13 r: unit, %14 r: ptr):
-    %15 box: word = box %13
-    drop %15
-    %16 lit: i64 = const 1
-    call from_int#6(%16) -> b6(%14)
-  b6(%17 r: ptr, %18 r: ptr):
-    %19 rec: ptr = alloc main::refined_var_rebuild::Receipt(%17)
-    %60 lit: i64 = const 0
-    jump b12(%60, %18, %19)
-  b7(%20 x: ptr, %21 r: ptr):
-    drop %20
-    %22 total: word = proj %21.0 main::refined_var_rebuild::Receipt
-    drop %21
-    call to_string#8(%22) -> b8()
-  b8(%23 r: ptr):
-    perform std::console::Console.print(%23) -> b9()
-  b9(%24 r: unit):
-    %25 box: word = box %24
-    drop %25
-    %26 lit: i64 = const 1
-    %27 t: i64 = intneg %26
-    %28 rec: ptr = alloc main::refined_var_rebuild::PosRepr(%27)
-    call Pos$from#2(%28) -> b10()
-  b10(%29 r: ptr):
-    drop %29
-    %30 lit: ptr = const str 0
-    perform std::console::Console.print(%30) -> b11()
-  b11(%31 r: unit):
-    %32 box: word = box %31
-    %33 unbox: unit = unbox %32
+    %2 $site: i64 = const 5
+    call Pos$from#2(%1, %2) -> b1()
+  b1(%3 r: ptr):
+    %78 lit: i64 = const 0
+    jump b18(%78, %3)
+  b2(%4 x: ptr):
+    %5 n: i64 = proj %4.0 main::refined_var_rebuild::PosRepr
+    drop %4
+    %6 s: ptr = show %5
+    perform std::console::Console.print(%6) -> b3()
+  b3(%7 r: unit):
+    %8 box: word = box %7
+    drop %8
+    %9 lit: i64 = const 10
+    %10 rec: ptr = alloc main::refined_var_rebuild::PosRepr(%9)
+    %11 $site: i64 = const 6
+    call Pos$from#2(%10, %11) -> b4()
+  b4(%12 r: ptr):
+    %13 n: i64 = proj %12.0 main::refined_var_rebuild::PosRepr
+    %14 s: ptr = show %13
+    perform std::console::Console.print(%14) -> b5(%12)
+  b5(%15 r: unit, %16 r: ptr):
+    %17 box: word = box %15
+    drop %17
+    %18 lit: i64 = const 1
+    call from_int#6(%18) -> b6(%16)
+  b6(%19 r: ptr, %20 r: ptr):
+    %21 rec: ptr = alloc main::refined_var_rebuild::Receipt(%19)
+    %63 lit: i64 = const 0
+    jump b12(%63, %20, %21)
+  b7(%22 x: ptr, %23 r: ptr):
+    drop %22
+    %24 total: word = proj %23.0 main::refined_var_rebuild::Receipt
+    drop %23
+    call to_string#8(%24) -> b8()
+  b8(%25 r: ptr):
+    perform std::console::Console.print(%25) -> b9()
+  b9(%26 r: unit):
+    %27 box: word = box %26
+    drop %27
+    %28 lit: i64 = const 1
+    %29 t: i64 = intneg %28
+    %30 rec: ptr = alloc main::refined_var_rebuild::PosRepr(%29)
+    %31 $site: i64 = const 7
+    call Pos$from#2(%30, %31) -> b10()
+  b10(%32 r: ptr):
     drop %32
-    ret %33
-  b12(%34 i: i64, %35 x: ptr, %36 r: ptr):
-    %37 lit: i64 = const 2
-    %38 more: bool = lt.int %34, %37
-    if %38 then b13(%34, %35, %36) else b14(%34, %35, %36)
-  b13(%39 i: i64, %40 x: ptr, %41 r: ptr):
-    %50 total: word = proj %41.0 main::refined_var_rebuild::Receipt
-    drop %41
-    %51 lit: i64 = const 2
-    call from_int#6(%51) -> b16(%39, %40, %50)
-  b14(%42 i: i64, %43 x: ptr, %44 r: ptr):
-    jump b7(%43, %44)
-  b15(%45 x: ptr, %46 r: ptr, %47 i: i64):
-    %48 lit: i64 = const 1
-    %49 i: i64 = intadd %47, %48
-    jump b12(%49, %45, %46)
-  b16(%52 r: ptr, %53 i: i64, %54 x: ptr, %55 total: ptr):
-    call add#7(%55, %52) -> b17(%53, %54)
-  b17(%56 r: ptr, %57 i: i64, %58 x: ptr):
-    %59 rec: ptr = alloc main::refined_var_rebuild::Receipt(%56)
-    jump b15(%58, %59, %57)
-  b18(%61 i: i64, %62 x: ptr):
-    %63 lit: i64 = const 3
-    %64 more: bool = lt.int %61, %63
-    if %64 then b19(%61, %62) else b20(%61, %62)
-  b19(%65 i: i64, %66 x: ptr):
-    call next#3(%66) -> b22(%65)
-  b20(%67 i: i64, %68 x: ptr):
-    jump b2(%68)
-  b21(%69 x: ptr, %70 i: i64):
-    %71 lit: i64 = const 1
-    %72 i: i64 = intadd %70, %71
-    jump b18(%72, %69)
-  b22(%73 r: ptr, %74 i: i64):
-    jump b21(%73, %74)
+    %33 lit: ptr = const str 0
+    perform std::console::Console.print(%33) -> b11()
+  b11(%34 r: unit):
+    %35 box: word = box %34
+    %36 unbox: unit = unbox %35
+    drop %35
+    ret %36
+  b12(%37 i: i64, %38 x: ptr, %39 r: ptr):
+    %40 lit: i64 = const 2
+    %41 more: bool = lt.int %37, %40
+    if %41 then b13(%37, %38, %39) else b14(%37, %38, %39)
+  b13(%42 i: i64, %43 x: ptr, %44 r: ptr):
+    %53 total: word = proj %44.0 main::refined_var_rebuild::Receipt
+    drop %44
+    %54 lit: i64 = const 2
+    call from_int#6(%54) -> b16(%42, %43, %53)
+  b14(%45 i: i64, %46 x: ptr, %47 r: ptr):
+    jump b7(%46, %47)
+  b15(%48 x: ptr, %49 r: ptr, %50 i: i64):
+    %51 lit: i64 = const 1
+    %52 i: i64 = intadd %50, %51
+    jump b12(%52, %48, %49)
+  b16(%55 r: ptr, %56 i: i64, %57 x: ptr, %58 total: ptr):
+    call add#7(%58, %55) -> b17(%56, %57)
+  b17(%59 r: ptr, %60 i: i64, %61 x: ptr):
+    %62 rec: ptr = alloc main::refined_var_rebuild::Receipt(%59)
+    jump b15(%61, %62, %60)
+  b18(%64 i: i64, %65 x: ptr):
+    %66 lit: i64 = const 3
+    %67 more: bool = lt.int %64, %66
+    if %67 then b19(%64, %65) else b20(%64, %65)
+  b19(%68 i: i64, %69 x: ptr):
+    call next#3(%69) -> b22(%68)
+  b20(%70 i: i64, %71 x: ptr):
+    jump b2(%71)
+  b21(%72 x: ptr, %73 i: i64):
+    %74 lit: i64 = const 1
+    %75 i: i64 = intadd %73, %74
+    jump b18(%75, %72)
+  b22(%76 r: ptr, %77 i: i64):
+    jump b21(%76, %77)
 
 fn $entry#1 top -> unit ; main::refined_var_rebuild, frame 1 slots [%1 bool]
   b0():
@@ -110,27 +113,28 @@ fn $entry#1 top -> unit ; main::refined_var_rebuild, frame 1 slots [%1 bool]
     handle_pop
     ret %1
 
-fn Pos$from#2 top -> ptr ; main::refined_var_rebuild, frame 1 slots [%0 word*]
-  b0(%0 it: ptr):
-    %1 enter: unit = $contract_enter()
-    %2 n: i64 = proj %0.0 main::refined_var_rebuild::PosRepr
-    %3 lit: i64 = const 0
-    %4 t: bool = gt.int %2, %3
-    %5 exit: unit = $contract_exit()
-    check D010 %4 ; Pos
-    %6 ok: unit = const ()
+fn Pos$from#2 top -> ptr ; main::refined_var_rebuild, frame 2 slots [%0 word*, %1 i64]
+  b0(%0 it: ptr, %1 $site: i64):
+    %2 enter: unit = $contract_enter()
+    %3 n: i64 = proj %0.0 main::refined_var_rebuild::PosRepr
+    %4 lit: i64 = const 0
+    %5 t: bool = gt.int %3, %4
+    %6 exit: unit = $contract_exit()
+    check D010 %5 blame %1+0 ; Pos
+    %7 ok: unit = const ()
     ret %0
 
-fn next#3 top -> ptr ; main::refined_var_rebuild, frame 2 slots [%0 word*, %5 word*]
+fn next#3 top -> ptr ; main::refined_var_rebuild, frame 2 slots [%0 word*, %6 word*]
   b0(%0 p: ptr):
     %1 n: i64 = proj %0.0 main::refined_var_rebuild::PosRepr
     drop %0
     %2 lit: i64 = const 1
     %3 t: i64 = intadd %1, %2
     %4 rec: ptr = alloc main::refined_var_rebuild::PosRepr(%3)
-    call Pos$from#2(%4) -> b1()
-  b1(%5 r: ptr):
-    ret %5
+    %5 $site: i64 = const 8
+    call Pos$from#2(%4, %5) -> b1()
+  b1(%6 r: ptr):
+    ret %6
 
 fn Pos$check#25 top -> bool ; main::refined_var_rebuild, frame 1 slots [%0 word*]
   b0(%0 it: ptr):

@@ -79,6 +79,10 @@ pub fn build(
     }
     let wasm = sakura_codegen_wasm::Options {
         direct: opts.direct,
+        sources: snapshot
+            .file_ids()
+            .map(|f| snapshot.file(f).uri.clone())
+            .collect(),
         ..Default::default()
     };
     let bytes = sakura_codegen_wasm::emit(&lir, &wasm).map_err(usage_error)?;
