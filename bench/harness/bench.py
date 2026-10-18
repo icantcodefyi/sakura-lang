@@ -194,23 +194,25 @@ def ocaml_flambda():
     return r.stdout.strip() == "true"
 
 
-def build_koka(p, _lane):
-    d = TARGET / "koka" / p
+def build_koka(p, _lane, reuse=True):
+    d = TARGET / ("koka" if reuse else "koka-noreuse") / p
     d.mkdir(parents=True, exist_ok=True)
     # Compile from the entry directory: Koka treats underscores in module paths as '/'.
-    sh(["koka", "-O2", "--target=c", "--stack=67108864", f"--builddir={d / 'build'}",
+    sh(["koka", "-O2", "--target=c", *([] if reuse else ["--fno-reuse"]), "--stack=67108864", f"--builddir={d / 'build'}",
         f"--include={PROGRAMS / '_shared' / 'koka'}", "-o", str(d / "main"), "main.kk"],
        cwd=PROGRAMS / p / "koka")
     return d / "main"
 
 
 # Native variants (plan §2.2): source marker, toolchain, builder. The `matched` lane builds Rust
-# with overflow checks, `idiomatic` without; the other languages have one build.
+# with overflow checks, `idiomatic` without; Koka is built with and without reuse (§17.109's two
+# Koka lanes); the other languages have one build.
 NATIVE = {
     "rust": ("rust/Cargo.toml", "cargo", build_rust, ["rustc", "--version"]),
     "go": ("go/main.go", "go", build_go, ["go", "version"]),
     "ocaml": ("ocaml/main.ml", "ocamlopt", build_ocaml, ["ocamlopt", "-version"]),
     "koka": ("koka/main.kk", "koka", build_koka, ["koka", "--version"]),
+    "koka-noreuse": ("koka/main.kk", "koka", lambda p, lane: build_koka(p, lane, reuse=False), ["koka", "--version"]),
 }
 
 
@@ -496,7 +498,7 @@ def cmd_run(a):
     if a.suite in ("js", "all", "wasm"):
         missing += [e for e in engines if not shutil.which(e)]
     if a.suite in ("native", "all"):
-        missing += [tool for _v, (_s, tool, *_r) in NATIVE.items() if not shutil.which(tool)]
+        missing += [tool for tool in dict.fromkeys(t for _s, t, *_r in NATIVE.values()) if not shutil.which(tool)]
     for tool in missing:
         log(f"[missing] {tool}: its variants are skipped")
     status = EXIT_TOOLCHAIN if missing else EXIT_OK
@@ -826,6 +828,114 @@ def cmd_compare(a):
 
 
 # ---------------------------------------------------------------------------------------------
+# bench envelope (§17.213 (2))
+
+# §17.109's M4 envelope: per family, the native comparisons and their ceilings on the ratio of
+# medians Sakura-WASM / native, on the Node host and on Wasmtime.
+M4_ENVELOPE = (
+    (("fib", "countdown", "tail_clique", "sieve", "nbody", "spectral_norm"), (("rust", 3.0), ("go", 2.0))),
+    (("binary_trees", "rbtree", "pipeline", "shapes", "map_set"),
+     (("ocaml", 2.5), ("koka", 2.5), ("koka-noreuse", 2.5))),
+    (("handled_*",), (("koka", 3.0),)),
+    (("tokenizer", "json_validate"), (("rust", 3.0),)),
+)
+NOT_GATING = {"tail_clique"}  # reported beside `countdown`, not an M4 exit cell (§17.213 (4))
+
+
+def refusal(wasm, native):
+    """Why two files are not one window's WASM and native runs, or None."""
+    for d, suites, name in ((wasm, ("wasm",), "wasm"), (native, ("native", "all"), "native")):
+        if d.get("schema") != SCHEMA:
+            return f"the {name} file is not a {SCHEMA} file"
+        if d["meta"].get("flags", {}).get("suite") not in suites:
+            return f"the {name} file is not a `--suite {name}` run"
+    if native["meta"]["flags"].get("lane") != "matched":
+        return f"the native file's lane is {native['meta']['flags'].get('lane')}; the envelope reads Rust matched"
+    for field, get in (("meta.commit", lambda d: d["meta"].get("commit")),
+                       ("meta.host.id", lambda d: d["meta"].get("host", {}).get("id"))):
+        if get(wasm) != get(native):
+            return f"{field} differs: {get(wasm)} (wasm) and {get(native)} (native)"
+    return None
+
+
+def envelope(wasm, native):
+    """One row per program × size × engine × comparison with its ceiling and status, and the
+    reading: `met`, `miss` (a gating cell over its ceiling) or `incomplete` (a gating cell
+    unmeasured); `advisory (…)` instead when either run is not quiet, with the reading it would
+    have been as `direction` (§17.153). A Wasmtime cell recorded in `meta.absent` is read as its
+    Node cell (§17.213 (1))."""
+    by = {cell(r): r for d in (wasm, native) for r in d["results"]}
+    absent = {(f["program"], f["engine"]) for f in wasm["meta"].get("absent", [])}
+    rows = []
+    for patterns, lanes in M4_ENVELOPE:
+        for p in [p for pattern in patterns for p in programs(pattern)]:
+            sizes = sorted({r["size"] for d in (wasm, native) for r in d["results"] if r["program"] == p}) or [None]
+            for n in sizes:
+                for engine in WASM_ENGINES:
+                    for against, ceiling in lanes:
+                        s, c = by.get((p, "sakura", "wasm", engine, n)), by.get((p, against, "native", "native", n))
+                        ratio = None
+                        if (p, engine) in absent:
+                            status = "absent"
+                        elif not (s and c and s["median_ms"] and c["median_ms"]):
+                            status = "missing"
+                        elif not (s["checksum_ok"] and c["checksum_ok"]):
+                            status = "checksum"
+                        else:
+                            ratio = s["median_ms"] / c["median_ms"]
+                            status = "met" if ratio <= ceiling else "miss"
+                        rows.append({"program": p, "size": n, "engine": engine, "against": against,
+                                     "sakura_ms": s and s["median_ms"], "native_ms": c and c["median_ms"],
+                                     "ratio": ratio, "ceiling": ceiling, "status": status,
+                                     "gating": p not in NOT_GATING})
+    gating = {r["status"] for r in rows if r["gating"]}
+    reading = "miss" if "miss" in gating else "incomplete" if gating & {"missing", "checksum"} else "met"
+    loud = [d["meta"].get("host", {}) for d in (wasm, native) if d["meta"].get("host", {}).get("quiet") is not True]
+    loads = [h["load"]["max_load_1m"] for h in loud if h.get("load") and not h["load"].get("ci")]
+    advisory = (None if not loud else f"advisory (host load {max(loads):.2f})" if loads
+                else "advisory (CI runner)" if any((h.get("load") or {}).get("ci") for h in loud)
+                else "advisory (no quiet verdict)")
+    return {"commit": wasm["meta"].get("commit"), "host_id": wasm["meta"].get("host", {}).get("id"),
+            "reading": advisory or reading, "direction": reading,
+            "reasons": [x for h in loud for x in (h.get("load") or {}).get("reasons", [])], "rows": rows}
+
+
+def envelope_markdown(out):
+    num = lambda x, f: "—" if x is None else format(x, f)
+    lines = ["| Program | n | Engine | Against | Sakura ms | Native ms | Ratio | Ceiling | Status |",
+             "|---|---:|---|---|---:|---:|---:|---:|---|"]
+    for r in out["rows"]:
+        status = r["status"] + ("" if r["gating"] else " (not gating)")
+        ratio = "—" if r["ratio"] is None else f"{r['ratio']:.2f}×"
+        lines.append(f"| {r['program']} | {num(r['size'], '')} | {r['engine']} | {r['against']} "
+                     f"| {num(r['sakura_ms'], '.4g')} | {num(r['native_ms'], '.4g')} | {ratio} | {r['ceiling']} | {status} |")
+    counts = {}
+    for r in out["rows"]:
+        if r["gating"]:
+            counts[r["status"]] = counts.get(r["status"], 0) + 1
+    tally = ", ".join(f"{k} {v}" for k, v in sorted(counts.items()))
+    direction = f", direction only: {out['direction']}" if out["reading"] != out["direction"] else ""
+    lines += ["", f"M4 envelope: {out['reading']}{direction} (gating cells: {tally}; "
+                  f"commit {out['commit']}, host {out['host_id']})"]
+    return "\n".join(lines)
+
+
+def cmd_envelope(a):
+    wasm, native = (json.loads(Path(f).read_text()) for f in (a.wasm, a.native))
+    if reason := refusal(wasm, native):
+        log(f"refusing: {reason}")
+        return EXIT_BLOCKED
+    out = envelope(wasm, native)
+    text = envelope_markdown(out)
+    print(text)
+    if a.json:
+        Path(a.json).write_text(json.dumps(out, indent=1) + "\n")
+    if a.md:
+        Path(a.md).write_text(text + "\n")
+    return EXIT_OK  # a report: the gate is the owner's reading of it (§17.213 (2))
+
+
+# ---------------------------------------------------------------------------------------------
 # bench bless
 
 def cmd_bless(a):
@@ -1054,6 +1164,11 @@ def main(argv=None):
     c.add_argument("--block", type=float, default=0.10)
     c.add_argument("--abs-ms", type=float, default=0.1)
     c.add_argument("--json")
+    v = sub.add_parser("envelope", help="the §17.109 M4 envelope from one window's wasm and native runs")
+    v.add_argument("wasm", help="a `run --suite wasm` result")
+    v.add_argument("native", help="a `run --suite native --lane matched` result from the same commit and host")
+    v.add_argument("--json")
+    v.add_argument("--md")
     b = sub.add_parser("bless", help="copy a reviewed run into baselines/<host-id>.json")
     b.add_argument("result")
     k = sub.add_parser("compile", help="check/build/LSP latency against the research/10 §6 budgets")
@@ -1067,7 +1182,7 @@ def main(argv=None):
         return EXIT_TOOLCHAIN
     try:
         return {"run": cmd_run, "compare": cmd_compare, "bless": cmd_bless, "compile": cmd_compile,
-                "oracle": cmd_oracle}[a.cmd](a)
+                "envelope": cmd_envelope, "oracle": cmd_oracle}[a.cmd](a)
     except Fail as e:  # a build of the CLI itself failed
         log(e)
         return EXIT_ORACLE

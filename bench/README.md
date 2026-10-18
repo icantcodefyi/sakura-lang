@@ -14,7 +14,7 @@ Numbers from this suite are workload-specific observations, not a language ranki
 ```
 bench/
   bench                     # entry point: `bench/bench <command>` (Python 3.11+, stdlib only)
-  harness/bench.py          # orchestration: build, oracle, run, compare, bless, compile
+  harness/bench.py          # orchestration: build, oracle, run, compare, envelope, bless, compile
   harness/runner.mjs        # in-process runner: JS panel (Node and Bun), WASM modules on Node
   harness/test_bench.py     # harness tests: python3 -m unittest discover -s bench/harness
   results/                  # recorded runs kept for reference (not baselines; never written by CI)
@@ -34,6 +34,7 @@ bench/bench run --suite js --engine node --sizes quick --filter 'handled_*' --js
 bench/bench run --suite native --lane idiomatic --json out.json
 bench/bench run --suite wasm --sizes quick --json out.json  # Sakura on WASM (Node, Wasmtime)
 bench/bench compare bench/baselines/<host-id>.json head.json [rerun.json] [--json verdict.json]
+bench/bench envelope wasm.json native.json [--json out.json] [--md out.md]  # §17.109 M4 envelope
 bench/bench bless out.json                                 # → baselines/<host-id>.json, commit by hand
 bench/bench compile --json compile.json
 bench/bench oracle [--filter <glob>] [--write]
@@ -43,6 +44,7 @@ bench/bench oracle [--filter <glob>] [--write]
 |---|---|---|
 | `run` | Builds the release CLI and every variant, runs the oracle for each (variant, engine), then times every (program, variant, engine, size) in `--processes` (5) fresh processes, in an order shuffled with `--seed` (20261018), serially, GC on. Each process warms up 250 ms (2 s with `--stable`), calibrates a ≥ 30 ms batch and records nine samples; peak RSS comes from `wait4`. Prints a Markdown table of medians and Sakura/hand-JS ratios on stdout and writes the `sakura-bench-v1` JSON. `--sizes quick` times the first two sizes. Samples host load every 15 s while timing and records the quiet verdict in `meta.host.quiet` and `meta.host.load` ([Quiet window](#quiet-window-17153)). | 0; 1 an oracle or checksum failed (that program is not timed); 3 a toolchain is missing (its variants are skipped and listed in `meta.missing`) |
 | `compare` | Per (program, engine, size), the head's ratio Sakura/hand JS against the base's: worse by > `--flag` (5%) flags; worse by > `--block` (10%) **and** by ≥ `--abs-ms` (0.1) ms per workload beyond the base ratio blocks, but only if every head file given agrees (pass the CI's confirmation rerun of the blocked programs as a second head). Peak RSS up > 25% (maximum across fresh processes) blocks on Node only when the first and confirmation groups cross in the same cell; a single crossing warns. Bun RSS crossings only warn (§17.136). Immediate failures: a failed oracle or checksum, a checksum different from the base, malformed RSS samples, a log-log slope across the size sweep up by > 0.5 (a complexity-class change); native RSS crossings retain the immediate block. An improvement > 10% is reported for the pull request to explain. If the base or any head was measured on a loaded host (`meta.host.quiet: false`, not CI), the verdict is `advisory (host load L)` instead of `ok`, `flagged` or `blocked`: rows keep their statuses as direction only, no confirmation is requested, and only correctness failures (oracle, checksum, malformed samples) still block (§17.153). | 0 ok, flagged or advisory; 2 blocked |
+| `envelope` | The §17.109 M4 envelope from a `--suite wasm` file and a `--suite native --lane matched` file of the same commit and host ([M4 envelope](#m4-envelope-17213-2)): one row per program × size × engine × comparison with its ratio, ceiling and status, a reading line, and the same report as JSON with `--json` and Markdown with `--md`. Refuses files of different `meta.commit` or `meta.host.id`, the wrong suites, or a native `idiomatic` lane. When either run is not quiet the reading is `advisory (host load L)` (or `advisory (CI runner)`), with the reading it would have been as `direction`. | 0 a report, whatever its reading; 2 refused |
 | `bless` | Copies a run into `baselines/<host-id>.json`; refuses a run with failures, made from a dirty `compiler/` or `bench/` tree, or whose `meta.host.quiet` is not `true` (a loaded host, a CI runner, or a run recorded before §17.153), printing the reasons. | 0; 1 refused |
 | `compile` | The research/10 §6 budgets on generated packages (`target/corpus/<lines>`, 50-function modules): `check` of 10k and 100k lines and `build` of 10k lines, each 15 fresh processes; `sakura lsp` edit → `publishDiagnostics` on the 10k package, 15 edits in one warm server alternating a type error in a private body and its fix (the server publishes nothing for a clean file it has never reported). p95 against 1 s / 3 s / 500 ms / 100 ms. | 0; 2 over budget |
 | `oracle` | Checks Sakura and hand JS on Node against `meta.toml`, or records it with `--write`. | 0; 1 a mismatch |
@@ -65,9 +67,10 @@ needed with the pinned compiler. Copying shared sources keeps `.cmi`, `.cmx` and
 files out of `programs/`. Koka resolves shared imports through `--include`; compiling
 `main.kk` from its own directory avoids interpreting underscores in parent module
 paths as separators. Both builders use separate output directories per program.
-The Koka C build uses the independent verifier's 64 MiB stack setting and default
-reuse mode; the separate no-reuse panel remains available through
-`python3 bench/programs/_shared/python/verify.py --language koka --reuse no-reuse`.
+The Koka C build uses the independent verifier's 64 MiB stack setting. Each Koka port is
+built twice, as `koka` (default reuse) and `koka-noreuse` (`--fno-reuse`, in
+`target/koka-noreuse/<name>`), because §17.109's allocation and envelope ceilings name both
+lanes; `verify.py --language koka --reuse no-reuse` checks the same build outside the harness.
 No toolchain pins or workload definitions changed for this integration fix.
 
 To check the full native panel at the two smallest timing sizes (all oracle sizes
@@ -120,6 +123,40 @@ peak RSS of a short cell grows with its call count. Wasmtime's peak RSS includes
 
 The lane's numbers are advisory: none enters `deltas.md` or a baseline before the owner's
 quiet window (§17.153). The nightly workflow runs the lane as its own job, `nightly-wasm`.
+
+### M4 envelope (§17.213 (2))
+
+`envelope` reads §17.109's M4 ceilings on the ratio of medians Sakura-WASM / native, for
+each size both files have, on the Node host and on Wasmtime:
+
+| Programs | Against (ceiling) |
+|---|---|
+| `fib`, `countdown`, `sieve`, `nbody`, `spectral_norm`; `tail_clique` beside them, not gating (§17.213 (4)) | Rust matched (3.0), Go (2.0) |
+| `binary_trees`, `rbtree`, `pipeline`, `shapes`, `map_set` | OCaml (2.5), Koka (2.5), Koka no-reuse (2.5) |
+| `handled_*` | Koka (3.0) |
+| `tokenizer`, `json_validate` | Rust matched (3.0) |
+
+A row is `met` (ratio ≤ ceiling), `miss`, `missing` (a side has no timed median),
+`checksum` (a side's checksum failed) or `absent` (the Wasmtime cell is in the WASM file's
+`meta.absent`, as `json_validate`'s is: its Node cell is the reading, §17.213 (1)). The
+reading is `miss` when a gating row misses, otherwise `incomplete` when a gating row is
+missing or failed its checksum, otherwise `met`; when either run is not quiet it is
+`advisory (host load L)`, as in `compare`, and the JSON's `direction` holds the reading for
+direction only (§17.153). The `map_set:<kind>` cases have no native
+port and are not rows.
+
+At the window, after both runs, Astra writes the report; its Markdown is the M4 gate
+report's envelope section and goes into `deltas.md`:
+
+```sh
+bench/bench run --suite wasm --stable --json bench/target/quiet-wasm.json
+bench/bench run --suite native --lane matched --stable --json bench/target/quiet-native.json
+bench/bench envelope bench/target/quiet-wasm.json bench/target/quiet-native.json \
+  --json bench/target/envelope.json --md bench/target/envelope.md
+```
+
+The command exits 0 whatever the reading: it is a report and the owner reads the gate from
+it. It blesses nothing, and a reading from a run that is not quiet is direction only.
 
 ## Program interface
 

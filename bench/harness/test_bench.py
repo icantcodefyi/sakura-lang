@@ -1,6 +1,7 @@
 """Harness tests (plan §4.1 WS-B): `python3 -m unittest discover bench/harness`."""
 
 import contextlib
+import fnmatch
 import io
 import json
 import shutil
@@ -682,6 +683,154 @@ class WasmCompare(unittest.TestCase):
         self.assertEqual(bench.ratios(both), {("p", "wasm", "node", 100): (40.0, 10.0), ("p", "js", "node", 100): (20.0, 10.0)})
         self.assertEqual(bench.compare(js, [wasm])["rows"], [])  # a legacy JS base has no WASM cells
         self.assertIn("ratio wasm/node", bench.summary(both))
+
+
+ENVELOPE_PROGRAMS = ["fib", "tail_clique", "map_set", "handled_d1", "json_validate"]
+
+
+def window_doc(suite, rows, commit="c0ffee", host="h0", quiet=True, lane="matched"):
+    """A quiet-window document of `suite` from {(program, variant, backend, engine, size): median_ms}."""
+    d = doc({(p, v, e, n): ms for (p, v, _b, e, n), ms in rows.items()})
+    for r, (_p, _v, b, _e, _n) in zip(d["results"], rows):
+        r["backend"] = b
+    verdict = bench.quiet_verdict([snapshot(1.0 if quiet else 10.4)], 12, False)
+    d["meta"].update(commit=commit, flags={"suite": suite, "lane": lane}, absent=[],
+                     host={"id": host, "quiet": verdict["quiet"], "load": verdict})
+    return d
+
+
+def envelope_docs(ratio=2.0, n=100, **meta):
+    """A `--suite wasm` and a `--suite native` file in which every Sakura cell is `ratio` × every native one."""
+    wasm = window_doc("wasm", {(p, "sakura", "wasm", e, n): 10.0 * ratio
+                               for p in ENVELOPE_PROGRAMS for e in bench.WASM_ENGINES}, **meta)
+    native = window_doc("native", {(p, v, "native", "native", n): 10.0
+                                   for p in ENVELOPE_PROGRAMS for v in bench.NATIVE}, **meta)
+    return wasm, native
+
+
+@patch.object(bench, "programs", lambda pattern="*": fnmatch.filter(ENVELOPE_PROGRAMS, pattern))
+class Envelope(unittest.TestCase):
+    """§17.213 (2): the M4 envelope of §17.109 from one window's WASM and native files."""
+
+    def statuses(self, out):
+        return {(r["program"], r["engine"], r["against"]): r["status"] for r in out["rows"]}
+
+    def test_every_cell_inside_its_ceiling_meets_the_envelope(self):
+        out = bench.envelope(*envelope_docs(ratio=2.0))
+        self.assertEqual((out["reading"], out["direction"]), ("met", "met"))
+        self.assertEqual(set(self.statuses(out).values()), {"met"})
+        lanes = {(r["program"], r["against"], r["ceiling"]) for r in out["rows"]}
+        self.assertEqual(lanes, {("fib", "rust", 3.0), ("fib", "go", 2.0),
+                                 ("tail_clique", "rust", 3.0), ("tail_clique", "go", 2.0),
+                                 ("map_set", "ocaml", 2.5), ("map_set", "koka", 2.5), ("map_set", "koka-noreuse", 2.5),
+                                 ("handled_d1", "koka", 3.0), ("json_validate", "rust", 3.0)})
+        self.assertEqual(len(out["rows"]), 2 * len(lanes))  # Node host and Wasmtime
+
+    def test_a_cell_over_its_ceiling_misses_and_the_report_still_exits_zero(self):
+        out = bench.envelope(*envelope_docs(ratio=2.2))  # over Go's 2.0, inside the others
+        self.assertEqual(out["reading"], "miss")
+        self.assertEqual(self.statuses(out)[("fib", "node", "go")], "miss")
+        self.assertEqual(self.statuses(out)[("fib", "node", "rust")], "met")
+        code, stdout, _ = self.cli(*envelope_docs(ratio=2.2))
+        self.assertEqual(code, bench.EXIT_OK)
+        self.assertIn("| fib | 100 | wasmtime | go | 22 | 10 | 2.20× | 2.0 | miss |", stdout)
+        self.assertIn("M4 envelope: miss", stdout)
+
+    def test_tail_clique_is_reported_with_countdown_but_does_not_gate(self):
+        wasm, native = envelope_docs(ratio=2.0)
+        for r in wasm["results"]:
+            if r["program"] == "tail_clique":
+                r["median_ms"] = 40.0
+        out = bench.envelope(wasm, native)
+        self.assertEqual(out["reading"], "met")
+        self.assertEqual(self.statuses(out)[("tail_clique", "node", "go")], "miss")
+        self.assertFalse(next(r for r in out["rows"] if r["program"] == "tail_clique")["gating"])
+
+    def test_a_missing_cell_makes_the_reading_incomplete_not_met(self):
+        wasm, native = envelope_docs(ratio=2.0)
+        native["results"] = [r for r in native["results"] if r["variant"] != "koka-noreuse"]
+        wasm["results"] = [r for r in wasm["results"] if (r["program"], r["engine"]) != ("fib", "wasmtime")]
+        next(r for r in wasm["results"] if r["program"] == "handled_d1")["median_ms"] = None
+        out = bench.envelope(wasm, native)
+        self.assertEqual(self.statuses(out)[("handled_d1", "node", "koka")], "missing")
+        self.assertEqual(out["reading"], "incomplete")
+        self.assertEqual(self.statuses(out)[("map_set", "node", "koka-noreuse")], "missing")
+        self.assertEqual(self.statuses(out)[("fib", "wasmtime", "rust")], "missing")
+        self.assertEqual(self.statuses(out)[("fib", "node", "rust")], "met")
+
+    def test_a_failed_checksum_is_not_a_measurement(self):
+        wasm, native = envelope_docs(ratio=2.0)
+        wasm["results"][0]["checksum_ok"] = False
+        out = bench.envelope(wasm, native)
+        self.assertEqual(out["reading"], "incomplete")
+        self.assertEqual(self.statuses(out)[("fib", "node", "rust")], "checksum")
+
+    def test_an_absent_wasmtime_cell_is_its_node_cell_neither_a_miss_nor_missing(self):
+        wasm, native = envelope_docs(ratio=2.0)
+        wasm["results"] = [r for r in wasm["results"] if (r["program"], r["engine"]) != ("json_validate", "wasmtime")]
+        wasm["meta"]["absent"] = [{"program": "json_validate", "variant": "sakura", "backend": "wasm",
+                                   "engine": "wasmtime", "reason": "the builtin `json_decode` exists only in the Node host's JS"}]
+        out = bench.envelope(wasm, native)
+        self.assertEqual(out["reading"], "met")
+        self.assertEqual(self.statuses(out)[("json_validate", "wasmtime", "rust")], "absent")
+        self.assertEqual(self.statuses(out)[("json_validate", "node", "rust")], "met")
+
+    def test_a_loaded_run_is_advisory_with_its_load(self):
+        wasm, native = envelope_docs(ratio=2.0)
+        native["meta"]["host"] = window_doc("native", {}, quiet=False)["meta"]["host"]
+        out = bench.envelope(wasm, native)
+        self.assertEqual((out["reading"], out["direction"]), ("advisory (host load 10.40)", "met"))
+        _code, stdout, _ = self.cli(wasm, native)
+        self.assertIn("M4 envelope: advisory (host load 10.40), direction only: met", stdout)
+        native["meta"]["host"] = loaded(window_doc("native", {}), load=1.2, ci=True)["meta"]["host"]
+        self.assertEqual(bench.envelope(wasm, native)["reading"], "advisory (CI runner)")
+
+    def test_files_from_different_commits_hosts_suites_or_lanes_are_refused(self):
+        wasm, native = envelope_docs()
+        cases = {"meta.commit differs": (wasm, envelope_docs(commit="beef")[1]),
+                 "meta.host.id differs": (wasm, envelope_docs(host="h1")[1]),
+                 "is not a `--suite wasm` run": (native, native),
+                 "is not a `--suite native` run": (wasm, wasm),
+                 "lane is idiomatic": (wasm, envelope_docs(lane="idiomatic")[1])}
+        for reason, files in cases.items():
+            with self.subTest(reason=reason):
+                code, stdout, stderr = self.cli(*files)
+                self.assertEqual((code, stdout), (bench.EXIT_BLOCKED, ""))
+                self.assertIn(reason, stderr)
+
+    def test_cli_writes_the_json_and_markdown_reports(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out_json, out_md = Path(tmp) / "envelope.json", Path(tmp) / "envelope.md"
+            code, stdout, _ = self.cli(*envelope_docs(ratio=2.0), "--json", str(out_json), "--md", str(out_md))
+            self.assertEqual(code, bench.EXIT_OK)
+            report = json.loads(out_json.read_text())
+            self.assertEqual((report["reading"], report["commit"], report["host_id"]), ("met", "c0ffee", "h0"))
+            self.assertEqual(out_md.read_text(), stdout)
+
+    def test_the_native_panel_times_both_koka_lanes(self):
+        self.assertEqual([v for v, _b, _e in bench.variants("native", [], "rbtree")],
+                         ["rust", "go", "ocaml", "koka", "koka-noreuse"])
+        with patch.object(bench, "sh") as sh, tempfile.TemporaryDirectory() as tmp, \
+             patch.object(bench, "TARGET", Path(tmp)):
+            bench.NATIVE["koka-noreuse"][2]("rbtree", "matched")
+        self.assertIn("--fno-reuse", sh.call_args.args[0])
+
+    def cli(self, wasm, native, *flags):
+        with tempfile.TemporaryDirectory() as tmp:
+            paths = [Path(tmp) / "wasm.json", Path(tmp) / "native.json"]
+            for path, document in zip(paths, (wasm, native)):
+                path.write_text(json.dumps(document))
+            stdout, stderr = io.StringIO(), io.StringIO()
+            with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                code = bench.main(["envelope", *map(str, paths), *flags])
+        return code, stdout.getvalue(), stderr.getvalue()
+
+
+class EnvelopeTable(unittest.TestCase):
+    def test_every_envelope_program_is_a_program_of_the_suite(self):
+        for patterns, _lanes in bench.M4_ENVELOPE:
+            for pattern in patterns:
+                self.assertTrue(bench.programs(pattern), pattern)
 
 
 class Workflow(unittest.TestCase):
