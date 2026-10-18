@@ -234,59 +234,93 @@ fn fn_name(item: &sakura_syntax::SyntaxNode) -> Option<sakura_syntax::SyntaxToke
         .find(|t| t.kind() == sakura_syntax::SyntaxKind::IDENT)
 }
 
-/// The names called in `n`: the last name of each callee, or every name of a callee that does
-/// not end in one (`(f)(x)`). The evaluator follows calls only, so a local or a parameter is not
-/// a function it can run.
-fn called(n: &sakura_syntax::SyntaxNode) -> Vec<String> {
-    use sakura_syntax::SyntaxKind::{CALL_EXPR, IDENT};
-    let mut out = Vec::new();
-    for callee in
-        (n.descendants().filter(|c| c.kind() == CALL_EXPR)).filter_map(|c| c.first_child())
-    {
-        let tokens: Vec<sakura_syntax::SyntaxToken> = (callee.descendants_with_tokens())
-            .filter_map(|e| e.into_token())
-            .filter(|t| !t.kind().is_trivia())
-            .collect();
-        match tokens.last() {
-            Some(t) if t.kind() == IDENT => out.push(t.text().to_owned()),
-            _ => out
-                .extend((tokens.iter().filter(|t| t.kind() == IDENT)).map(|t| t.text().to_owned())),
-        }
-    }
-    out
+/// What one file adds to the functions the checker may evaluate on a literal (design §17.87):
+/// the names called in its `where` clauses, and per function the names called in its body and
+/// contracts. A function of the file, so an analysis carries it for every unchanged file.
+#[derive(Debug, Default)]
+struct Calls {
+    in_where: Vec<String>,
+    fns: HashMap<String, Vec<String>>,
 }
 
-/// The functions the checker may evaluate on a literal (design §17.87), by name over every
-/// module: names called in `where` clauses, then, until nothing changes, names called in the
-/// bodies and contracts of functions so named. By name, so a clash costs only reuse, never
-/// soundness.
-fn evaluated_functions(roots: &[sakura_syntax::SyntaxNode]) -> HashSet<String> {
-    use sakura_syntax::SyntaxKind::{BLOCK, CONTRACT, FN_DECL, WHERE_CLAUSE};
-    let mut names: HashSet<String> = roots
-        .iter()
-        .flat_map(|r| r.descendants().filter(|n| n.kind() == WHERE_CLAUSE))
-        .flat_map(|w| called(&w))
-        .collect();
-    let fns: Vec<(String, Vec<sakura_syntax::SyntaxNode>)> = roots
-        .iter()
-        .flat_map(|r| r.children().filter(|i| i.kind() == FN_DECL))
-        .filter_map(|f| {
-            let parts = f
-                .children()
-                .filter(|c| matches!(c.kind(), BLOCK | CONTRACT));
-            Some((fn_name(&f)?.text().to_owned(), parts.collect()))
-        })
-        .collect();
-    let mut expanded = vec![false; fns.len()];
-    let mut grew = true;
-    while grew {
-        grew = false;
-        for ((name, parts), done) in fns.iter().zip(&mut expanded) {
-            if !*done && names.contains(name) {
-                *done = true;
-                grew = true;
-                names.extend(parts.iter().flat_map(called));
+impl Calls {
+    /// One walk over the file's calls: a call counts for `where` when a `where` clause holds
+    /// it, and for a top-level function when that function's body or a contract holds it.
+    fn of(root: &sakura_syntax::SyntaxNode) -> Calls {
+        use sakura_syntax::SyntaxKind::{BLOCK, CALL_EXPR, CONTRACT, FN_DECL, WHERE_CLAUSE};
+        let mut calls = Calls::default();
+        for call in root.descendants().filter(|n| n.kind() == CALL_EXPR) {
+            let names = called(&call);
+            let (mut in_where, mut owner) = (false, None);
+            let mut below = call.clone();
+            for a in call.ancestors().skip(1) {
+                match a.kind() {
+                    WHERE_CLAUSE => in_where = true,
+                    FN_DECL
+                        if matches!(below.kind(), BLOCK | CONTRACT)
+                            && a.parent().as_ref() == Some(root) =>
+                    {
+                        owner = fn_name(&a);
+                    }
+                    _ => {}
+                }
+                below = a;
             }
+            if in_where {
+                calls.in_where.extend(names.iter().cloned());
+            }
+            if let Some(f) = owner {
+                calls
+                    .fns
+                    .entry(f.text().to_owned())
+                    .or_default()
+                    .extend(names);
+            }
+        }
+        calls
+    }
+}
+
+/// The names `call` calls: its callee's last name, or every name of a callee that does not end
+/// in one (`(f)(x)`). The evaluator follows calls only, so a local or a parameter is not a
+/// function it can run.
+fn called(call: &sakura_syntax::SyntaxNode) -> Vec<String> {
+    use sakura_syntax::SyntaxKind::IDENT;
+    let Some(callee) = call.first_child() else {
+        return Vec::new();
+    };
+    let mut last = callee.last_token();
+    while let Some(t) = last.as_ref().filter(|t| t.kind().is_trivia()) {
+        last = t.prev_token();
+    }
+    match last {
+        Some(t) if t.kind() == IDENT && callee.text_range().contains_range(t.text_range()) => {
+            vec![t.text().to_owned()]
+        }
+        _ => (callee.descendants_with_tokens())
+            .filter_map(|e| e.into_token())
+            .filter(|t| t.kind() == IDENT)
+            .map(|t| t.text().to_owned())
+            .collect(),
+    }
+}
+
+/// The functions the checker may evaluate on a literal, by name over every module: names
+/// called in `where` clauses, then names called by functions so named, transitively. By name,
+/// so a clash costs only reuse, never soundness.
+fn evaluated_functions(calls: &[Option<Arc<Calls>>]) -> HashSet<String> {
+    let calls: Vec<&Calls> = calls.iter().flatten().map(|c| &**c).collect();
+    let mut work: Vec<&str> = (calls.iter().flat_map(|c| &c.in_where))
+        .map(String::as_str)
+        .collect();
+    let mut names = HashSet::new();
+    while let Some(name) = work.pop() {
+        if names.insert(name.to_owned()) {
+            work.extend(
+                (calls.iter().filter_map(|c| c.fns.get(name)))
+                    .flatten()
+                    .map(String::as_str),
+            );
         }
     }
     names
@@ -340,6 +374,8 @@ pub struct Analyzed {
     /// are not modules): what the next analysis needs to reuse this one.
     type_diags: Vec<Diagnostic>,
     interfaces: Vec<Option<u64>>,
+    /// Per file what it adds to the evaluated functions (`None` for files that are not modules).
+    calls: Vec<Option<Arc<Calls>>>,
 }
 
 impl Analyzed {
@@ -389,32 +425,54 @@ fn std_analysis<'a>() -> &'a Analyzed {
 fn analyze<'a>(snapshot: &Snapshot, prevs: impl IntoIterator<Item = &'a Analyzed>) -> Analyzed {
     ANALYSES.fetch_add(1, Ordering::Relaxed);
     let (parses, mut diagnostics) = parse_all(snapshot);
-    let trees: Vec<sakura_syntax::SyntaxNode> =
-        parses.iter().flatten().map(|p| p.syntax()).collect();
-    let evaluated = evaluated_functions(&trees);
-    let interfaces: Vec<Option<u64>> = parses
-        .iter()
-        .map(|p| p.as_ref().map(|p| interface_hash(&p.syntax(), &evaluated)))
+    let mut prevs = prevs.into_iter();
+    // Only the latest, so std's analysis is not forced: it is made on first use.
+    let latest = prevs.next();
+    let unchanged = |p: &Analyzed, i: usize| {
+        let b = &snapshot.files[i];
+        (p.snapshot.files.get(i))
+            .is_some_and(|a| a.uri == b.uri && a.content_hash == b.content_hash)
+    };
+    let calls: Vec<Option<Arc<Calls>>> = (parses.iter().enumerate())
+        .map(|(i, parse)| match latest.filter(|p| unchanged(p, i)) {
+            Some(p) => p.calls[i].clone(),
+            None => parse.as_ref().map(|p| Arc::new(Calls::of(&p.syntax()))),
+        })
         .collect();
+    let evaluated = evaluated_functions(&calls);
+    // An interface hash is computed only for a file whose text changed since its predecessor,
+    // or that has none (design §17.204 (1c)); an unchanged file carries its predecessor's.
+    let fresh: Vec<std::cell::OnceCell<Option<u64>>> = vec![Default::default(); parses.len()];
+    let hash = |i: usize| {
+        *fresh[i].get_or_init(|| {
+            parses[i]
+                .as_ref()
+                .map(|p| interface_hash(&p.syntax(), &evaluated))
+        })
+    };
     // Reuse a `prev` whose files are a prefix of this snapshot's with the same URIs, where every
     // edited file kept its interface: the same files (an edit), or std alone, which depends on
-    // no user module. An unchanged file's hash is not compared: it differs only when another
-    // module's names change which of its bodies count (`evaluated`), and nothing it holds has
-    // changed. Then a module is reused (neither lowered nor checked again) when its text is
-    // unchanged and none of its diagnostics points into a changed file; files past the prefix
-    // are new.
+    // no user module. A hash carried under other evaluated names than this analysis's can
+    // differ spuriously, which costs reuse, never soundness. Then a module is reused (neither
+    // lowered nor checked again) when its text is unchanged and none of its diagnostics points
+    // into a changed file; files past the prefix are new.
     let name = package_name(snapshot);
-    let prev = prevs.into_iter().find(|p| {
+    let prev = latest.into_iter().chain(prevs).find(|p| {
         let n = p.snapshot.files.len();
         let same_files = n == snapshot.files.len()
             && p.program.packages.last().is_some_and(|pk| pk.name == name);
         (same_files || p.snapshot.files.iter().all(|f| is_std(&f.uri)))
             && n <= snapshot.files.len()
             && (p.snapshot.files.iter().zip(&snapshot.files).enumerate()).all(|(i, (a, b))| {
-                a.uri == b.uri
-                    && (a.content_hash == b.content_hash || p.interfaces[i] == interfaces[i])
+                a.uri == b.uri && (a.content_hash == b.content_hash || p.interfaces[i] == hash(i))
             })
     });
+    let interfaces: Vec<Option<u64>> = (0..parses.len())
+        .map(|i| match prev.filter(|p| unchanged(p, i)) {
+            Some(p) => p.interfaces[i],
+            None => hash(i),
+        })
+        .collect();
     let changed: Vec<bool> = (0..snapshot.files.len())
         .map(|i| {
             prev.and_then(|p| p.snapshot.files.get(i))
@@ -501,7 +559,12 @@ fn analyze<'a>(snapshot: &Snapshot, prevs: impl IntoIterator<Item = &'a Analyzed
         .map(|p| p.as_ref().map(sakura_syntax::Parse::syntax))
         .collect();
     let uris: Vec<&str> = snapshot.files.iter().map(|f| f.uri.as_str()).collect();
-    let symbols = symbols::index(&program, &roots, &uris);
+    let symbols = symbols::index(
+        &program,
+        &roots,
+        &uris,
+        prev.map(|p| (&p.symbols[..], &reused[..])),
+    );
     let mut analyzed = Analyzed {
         snapshot: snapshot.clone(),
         program,
@@ -514,6 +577,7 @@ fn analyze<'a>(snapshot: &Snapshot, prevs: impl IntoIterator<Item = &'a Analyzed
         symbols,
         type_diags,
         interfaces,
+        calls,
     };
     // `symbol_id` (§12.2): the innermost item containing the primary span.
     for d in &mut diagnostics {
@@ -881,8 +945,8 @@ mod tests {
     }
 
     /// Design §17.195, §13.2: reusing std from its once-per-process analysis gives the same
-    /// diagnostics, holes, Core and JS as analysing everything, for every `ui`, `semantics` and
-    /// bench program.
+    /// diagnostics, holes, symbols, Core and JS as analysing everything, for every `ui`,
+    /// `semantics` and bench program.
     #[test]
     fn std_reuse_matches_a_fresh_analysis() {
         let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../..");
@@ -936,7 +1000,8 @@ mod tests {
                                     Analysis::emit_js(&a.snapshot, &c.module, &opts)
                                 });
                             let core = core.map(|c| (c.module, c.diagnostics));
-                            (format!("{:?}", a.check), format!("{core:?}"), js)
+                            let symbols = format!("{:?}", a.symbols());
+                            (format!("{:?}", a.check), symbols, format!("{core:?}"), js)
                         };
                         let snap = snapshot(None);
                         let fresh = out(&analyze(&snap, []));
@@ -958,6 +1023,58 @@ mod tests {
                 });
             }
         });
+    }
+
+    /// A reused module in an import cycle with an edited one is not carried whole: a fresh
+    /// lowering binds the edited module's imports before the reused one's exports exist.
+    #[test]
+    fn a_cycle_through_an_edited_module_reports_as_fresh() {
+        let snap = |y: &str| {
+            Snapshot::with_std([
+                (
+                    "file:///c/src/a.sak".to_owned(),
+                    "import main/b.{y}\n\npub fn x() -> Int { 1 }\n".to_owned(),
+                ),
+                (
+                    "file:///c/src/b.sak".to_owned(),
+                    format!("import main/a.{{x}}\n\npub fn y() -> Int {{ {y} }}\n"),
+                ),
+            ])
+        };
+        let base = analyze(&snap("1"), []);
+        let edited = snap("2");
+        let fresh = format!("{:?}", analyze(&edited, []).check);
+        assert!(
+            fresh.contains("V1030") && fresh.contains("V1006"),
+            "{fresh}"
+        );
+        assert_eq!(format!("{:?}", analyze(&edited, [&base]).check), fresh);
+    }
+
+    /// A module carried whole from the previous analysis keeps its `@tool` functions' argument
+    /// records, so `Tool.of` in an edited module after it lowers as in a fresh analysis.
+    #[test]
+    fn carried_tool_functions_keep_their_records() {
+        let snap = |edit: &str| {
+            Snapshot::with_std([
+                (
+                    "file:///t/src/a.sak".to_owned(),
+                    "@tool(\"Adds one.\")\npub fn inc(n: Int) -> Int { n + 1 }\n\n@tool(\"Adds two.\")\npub fn add(x: Int, y: Int) -> Int { x + y }\n".to_owned(),
+                ),
+                (
+                    "file:///t/src/b.sak".to_owned(),
+                    format!("import main/a\nimport std/tool.{{Tool}}\n\npub fn names() -> List<String> {{ [Tool.name(Tool.of(a.add)), Tool.name(Tool.of(a.inc))] }}\n{edit}"),
+                ),
+            ])
+        };
+        let out = |a: &Analyzed| {
+            assert!(!a.check.has_errors(), "{:?}", a.check.diagnostics);
+            let core = sakura_core::lower(&a.program, &a.typed, &Default::default());
+            format!("{:?}", core.module)
+        };
+        let base = analyze(&snap(""), []);
+        let edited = snap("// edited\n");
+        assert_eq!(out(&analyze(&edited, [&base])), out(&analyze(&edited, [])));
     }
 
     #[test]

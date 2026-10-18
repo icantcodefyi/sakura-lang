@@ -83,6 +83,10 @@ published yet.
   check` is unchanged. Snapshot files now list std first, so `FileId`s in `--dump core` and
   the Core snapshot's `files` change order, and the snapshot hash changes (design §17.195).
 
+- An analysis that reuses std carries std's symbols, interface hashes and evaluated names and
+  its lowered items instead of walking its 45 trees again: about 1 ms instead of 8 for a
+  hello-world in a process that has analysed another program (design §17.204 (2)).
+
 - The Sakura skill keeps its examples, syntax list, and edit loop in a smaller entry
   point, with repair and completion detail in its references. Its 7,500-byte ASCII
   limit now measures release metadata after template fill, with a 7,000-byte source

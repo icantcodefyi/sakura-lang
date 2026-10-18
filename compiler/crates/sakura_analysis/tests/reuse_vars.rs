@@ -26,7 +26,7 @@ fn report(a: &sakura_analysis::Analyzed) -> String {
     let diags: Vec<String> = (a.check.diagnostics.iter())
         .map(|d| format!("{} {:?} {}", d.code.0, d.spans, d.message))
         .collect();
-    format!("{diags:#?}\n{:#?}", a.check.holes)
+    format!("{diags:#?}\n{:#?}\n{:?}", a.check.holes, a.symbols())
 }
 
 #[test]

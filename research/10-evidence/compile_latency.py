@@ -158,13 +158,13 @@ def cmd_instrument(a):
 
     lap = lambda name: f'    lap("{name}");\n'
     after("    ANALYSES.fetch_add(1, Ordering::Relaxed);\n", START.lstrip("\n"))
-    before("    let trees: Vec", lap("parse"))
-    after("    let evaluated = evaluated_functions(&trees);\n", lap("evaluated_functions"))
-    before("    let name = package_name(snapshot);\n", lap("interface_hash"))
+    before("    let mut prevs = prevs.into_iter();\n", lap("parse"))
+    after("    let evaluated = evaluated_functions(&calls);\n", lap("evaluated_functions"))
+    before("    let changed: Vec<bool>", lap("interface_hash"))
     before("    let changed: Vec<bool>", "    let reused_files = prev.map_or(0, |p| p.snapshot.files.len());\n")
     after("    LOWERS.fetch_add(lowered, Ordering::Relaxed);\n", lap("lower"))
     before("    let holes = typed\n", lap("check"))
-    after("    let symbols = symbols::index(&program, &roots, &uris);\n", lap("symbols_index"))
+    before("    let mut analyzed = Analyzed {\n", lap("symbols_index"))
     after("    analyzed.check.diagnostics = diagnostics;\n", lap("rest") + END.lstrip("\n"))
     p.write_text(s)
 

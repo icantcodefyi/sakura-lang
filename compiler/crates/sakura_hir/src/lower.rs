@@ -48,8 +48,10 @@ pub fn lower(packages: &[PackageInput<'_>]) -> Program {
 /// same order), and which depend on no module past the prefix: the same snapshot after an edit
 /// (design §17.74), or std alone (§17.195). Every module for which `reuse` holds keeps `prev`'s
 /// signatures, bodies and diagnostics (those whose primary span is in its file), so only the
-/// other modules are lowered again. Item collection and import binding (phases 1–3) still run
-/// over every module; they read no bodies. Also returns how many modules were lowered.
+/// other modules are lowered again. The first [`carried`] modules (std, in a program that
+/// reuses it) keep `prev`'s items, imports and exports too and their syntax is not read; item
+/// collection and import binding (phases 1–3) run over the others. Also returns how many
+/// modules were lowered.
 pub fn lower_reusing(
     packages: &[PackageInput<'_>],
     prev: &Program,
@@ -58,27 +60,74 @@ pub fn lower_reusing(
     lower_with(packages, Some((prev, reuse)))
 }
 
+/// How many leading modules [`lower_reusing`] takes whole from `prev`: the run that `reuse`
+/// holds for, cut before the first module importing one past it. So the run imports nothing
+/// lowered again, and every module after it sees it bound, as in a fresh lowering; in an import
+/// cycle with an edited module, a fresh lowering binds the edited one first, before the reused
+/// one's exports exist.
+pub fn carried(prev: &Program, reuse: &dyn Fn(ModuleId) -> bool) -> usize {
+    let mut n = (0..prev.modules.len())
+        .take_while(|&m| reuse(ModuleId(m as u32)))
+        .count();
+    let past = |m: &Module, n: usize| {
+        m.imports
+            .iter()
+            .any(|i| i.target.is_some_and(|t| t.0 as usize >= n))
+    };
+    while let Some(m) = (0..n).find(|&m| past(&prev.modules[m], n)) {
+        n = m;
+    }
+    n
+}
+
 fn lower_with(
     packages: &[PackageInput<'_>],
     prev: Option<(&Program, &dyn Fn(ModuleId) -> bool)>,
 ) -> (Program, usize) {
     let mut cx = Cx::default();
     cx.setup(packages);
-    for m in 0..cx.program.modules.len() {
+    // The carried modules are taken from `prev` collected, bound and lowered: phases 1–3 of the
+    // others read only what phase 4 does not change. A reused module after an edited one is
+    // collected and bound again, so the edited one is lowered seeing it collected only, as in a
+    // fresh lowering.
+    let carried = prev.map_or(0, |(p, reuse)| carried(p, reuse));
+    if let Some((p, _)) = prev {
+        for (now, p) in cx.program.modules.iter_mut().zip(&p.modules).take(carried) {
+            debug_assert_eq!(
+                (p.file, p.package, &p.path),
+                (now.file, now.package, &now.path)
+            );
+            now.defs = p.defs.clone();
+            now.bodies = p.bodies.clone();
+            now.imports = p.imports.clone();
+            now.items = p.items.clone();
+            now.scope = p.scope.clone();
+            now.exports = p.exports.clone();
+            now.makers = p.makers.clone();
+        }
+        for m in &mut cx.mods[..carried] {
+            m.root = None;
+        }
+    }
+    for m in carried..cx.program.modules.len() {
         cx.collect(ModuleId(m as u32));
     }
     let order = cx.module_graph();
-    for &m in &order {
+    for &m in order.iter().filter(|m| m.0 as usize >= carried) {
         cx.bind_imports(m);
         cx.classify_types(m);
         cx.compute_exports(m);
     }
     cx.lang_items();
-    cx.tool_args();
+    cx.tool_args(carried);
     // In module order either way, so a module being lowered sees the others in the same state.
     let mut reused = vec![false; cx.program.modules.len()];
     for (m, reused) in reused.iter_mut().enumerate() {
         let id = ModuleId(m as u32);
+        if m < carried {
+            *reused = true;
+            continue;
+        }
         let earlier = prev
             .filter(|(_, reuse)| reuse(id))
             .and_then(|(p, _)| p.modules.get(m))
@@ -228,6 +277,8 @@ pub(crate) enum Binding {
 
 #[derive(Default)]
 pub(crate) struct ModCx {
+    /// `None` for a module carried whole from a previous lowering; then the fields below are
+    /// empty too.
     pub root: Option<SyntaxNode>,
     /// Item syntax for phase 4, parallel to the module's top-level defs.
     pub items: Vec<(Idx<Def>, SyntaxNode)>,
@@ -272,6 +323,7 @@ impl Cx {
                     items: Vec::new(),
                     scope: BTreeMap::new(),
                     exports: BTreeMap::new(),
+                    makers: BTreeMap::new(),
                 });
                 self.mods.push(ModCx {
                     root: Some(m.root.clone()),
@@ -350,6 +402,30 @@ impl Cx {
                 _ => {}
             }
         }
+        let items = &self.mods[m.0 as usize].items;
+        let module = &self.program.modules[m.0 as usize];
+        let makers = (items.iter())
+            .filter(|(ty, _)| {
+                self.program.is_opaque(DefId {
+                    module: m,
+                    index: *ty,
+                })
+            })
+            .filter_map(|(ty, _)| {
+                let name = &module.defs[*ty].name;
+                let (f, _) = items.iter().find(|(_, node)| {
+                    node.kind() == FN_DECL
+                        && token(node, PUB_KW).is_some()
+                        && child(node, RET_TYPE).is_some_and(|r| {
+                            r.descendants_with_tokens()
+                                .filter_map(|e| e.into_token())
+                                .any(|t| t.kind() == TYPE_NAME && t.text() == name)
+                        })
+                })?;
+                Some((*ty, *f))
+            })
+            .collect();
+        self.program.modules[m.0 as usize].makers = makers;
     }
 
     fn collect_item(&mut self, m: ModuleId, item: &SyntaxNode, mut attrs: Vec<SyntaxNode>) {
@@ -571,18 +647,20 @@ impl Cx {
     /// in dependency-first order.
     fn module_graph(&mut self) -> Vec<ModuleId> {
         let n = self.program.modules.len();
-        let mut edges: Vec<Vec<(ModuleId, usize)>> = vec![Vec::new(); n];
-        for (m, out) in edges.iter_mut().enumerate() {
+        for m in 0..n {
             let mid = ModuleId(m as u32);
-            let nodes = self.mods[m].import_nodes.clone();
-            for node in nodes {
+            for node in self.mods[m].import_nodes.clone() {
                 let import = self.resolve_import_target(mid, &node);
-                if let Some(t) = import.target {
-                    out.push((t, self.program.modules[m].imports.len()));
-                }
                 self.program.modules[m].imports.push(import);
             }
         }
+        // Also a carried module's, whose imports are resolved already.
+        let edges: Vec<Vec<(ModuleId, usize)>> = (self.program.modules.iter())
+            .map(|m| {
+                let targets = m.imports.iter().map(|i| i.target).enumerate();
+                targets.filter_map(|(i, t)| Some((t?, i))).collect()
+            })
+            .collect();
         // Iterative DFS; colors: 0 white, 1 on stack, 2 done.
         let mut color = vec![0u8; n];
         let mut order = Vec::with_capacity(n);
@@ -886,19 +964,10 @@ impl Cx {
         let file = self.file(m);
         let name = self.program.def(ty).name.clone();
         let home = self.program.module(ty.module);
-        let maker = self.mods[ty.module.0 as usize]
-            .items
-            .iter()
-            .find(|(_, node)| {
-                node.kind() == FN_DECL
-                    && token(node, PUB_KW).is_some()
-                    && child(node, RET_TYPE).is_some_and(|r| {
-                        r.descendants_with_tokens()
-                            .filter_map(|e| e.into_token())
-                            .any(|t| t.kind() == TYPE_NAME && t.text() == name)
-                    })
-            })
-            .map(|(idx, _)| home.defs[*idx].name.clone());
+        let maker = home
+            .makers
+            .get(&ty.index)
+            .map(|f| home.defs[*f].name.clone());
         let hint = match maker {
             Some(f) => format!("; create one with `{name}.{f}(…)`"),
             None => String::new(),
@@ -1206,10 +1275,36 @@ impl Cx {
 
     /// Lowers `@tool` signatures before any body, so `Tool.of(f)` in any module can rewrite to
     /// `Tool.from` over `f$Args` (design §11.2): a record of `f`'s parameters, synthesized here
-    /// once per function under a name no source can write, in neither scope nor exports.
-    /// Generic `@tool` functions get none; `Tool.of` rejects them.
-    fn tool_args(&mut self) {
-        for mi in 0..self.program.modules.len() {
+    /// once per function under a name no source can write, in neither scope nor exports, or
+    /// found among a carried module's defs. Generic `@tool` functions get none; `Tool.of`
+    /// rejects them.
+    fn tool_args(&mut self, carried: usize) {
+        // A carried module's records exist already, allocated in the order of its functions.
+        for (mi, module) in self.program.modules[..carried].iter().enumerate() {
+            let fns = module
+                .items
+                .iter()
+                .filter_map(|&i| match &module.defs[i].kind {
+                    DefKind::Fn(f)
+                        if module.defs[i].attrs.iter().any(|a| a.name == "tool")
+                            && f.sig.generics.is_empty() =>
+                    {
+                        Some((i, f.sig.params.iter().map(|p| p.name.clone()).collect()))
+                    }
+                    _ => None,
+                });
+            let records = (module.defs.iter()).filter(|(_, d)| d.name.ends_with("$Args"));
+            let module = ModuleId(mi as u32);
+            for ((f, names), (record, _)) in fns.zip(records) {
+                let f = DefId { module, index: f };
+                let record = DefId {
+                    module,
+                    index: record,
+                };
+                self.tool_args.insert(f, (record, names));
+            }
+        }
+        for mi in carried..self.program.modules.len() {
             let m = ModuleId(mi as u32);
             for (idx, node) in self.mods[mi].items.clone() {
                 let def = &self.program.module(m).defs[idx];

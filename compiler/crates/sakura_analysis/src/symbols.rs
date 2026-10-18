@@ -91,11 +91,24 @@ pub(crate) fn symbol_id(program: &Program, def: DefId) -> String {
     format!("{package}::{}::{name}", m.path)
 }
 
-/// Builds the index. `roots[file]` is the parse tree of each snapshot file (`None` for files
-/// that are not Sakura Lang modules).
-pub(crate) fn index(program: &Program, roots: &[Option<SyntaxNode>], uris: &[&str]) -> Vec<Symbol> {
+/// Builds the index, in module order. `roots[file]` is the parse tree of each snapshot file
+/// (`None` for files that are not Sakura Lang modules). `prev` is the reused analysis's symbols
+/// and, per module, whether it was reused: a reused module's symbols are copied from there.
+pub(crate) fn index(
+    program: &Program,
+    roots: &[Option<SyntaxNode>],
+    uris: &[&str],
+    prev: Option<(&[Symbol], &[bool])>,
+) -> Vec<Symbol> {
     let mut out = Vec::new();
     for (mi, module) in program.modules.iter().enumerate() {
+        if let Some((symbols, _)) = prev.filter(|(_, r)| r[mi]) {
+            let m = ModuleId(mi as u32);
+            let start = symbols.partition_point(|s| s.def.module < m);
+            let end = start + symbols[start..].partition_point(|s| s.def.module == m);
+            out.extend_from_slice(&symbols[start..end]);
+            continue;
+        }
         let Some(Some(root)) = roots.get(module.file.0 as usize) else {
             continue;
         };

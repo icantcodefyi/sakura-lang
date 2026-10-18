@@ -191,6 +191,9 @@ pub struct Module {
     pub scope: BTreeMap<String, Idx<Def>>,
     /// The `pub` subset of `scope` (variants of `pub` types included).
     pub exports: BTreeMap<String, Idx<Def>>,
+    /// Each opaque type's first `pub fn` whose return type names it: `V1006`'s hint, kept here
+    /// so a module reused without its syntax tree still gives it.
+    pub makers: BTreeMap<Idx<Def>, Idx<Def>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
