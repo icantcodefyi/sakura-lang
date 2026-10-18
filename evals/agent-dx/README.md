@@ -1,6 +1,8 @@
 # Agent DX pilot: authored tasks and offline acceptance
 
-Status: **offline fixtures and an offline-tested runner; no model episodes have run**.
+Status: **first paid pilot run; report available, owner review pending**.
+See the [2026-10-18 report](reports/2026-10-18-pilot.md): 48 episodes, $4.200730
+spent. The episode cap is exhausted; the remaining dollars authorize no rerun.
 This implements the 12-task authoring portion of [DX5](../../docs/plans/agent-dx.md),
 [design §17.146](../../docs/design.md) and the evaluation design in
 [research/11 §5](../../research/11-agent-dx.md). Research §4 covers client setup;
@@ -11,7 +13,8 @@ The owner decision in the plan's §3 overrides the original cross-provider propo
 **Anthropic models only, at most $10 total on the owner's Anthropic key**. Task
 creation and offline validation do not authorize a paid run. The episode runner, its
 spend ledger and the owner-dispatched workflow are described in
-[harness/README.md](harness/README.md); none of them has made a paid call.
+[harness/README.md](harness/README.md). The owner-approved run is recorded in the
+report and ledger.
 
 ## Tasks and acceptance
 
@@ -129,7 +132,7 @@ under ignored `target/agent-dx/`, removes them on exit, filters inherited enviro
 variables and kills a timed-out process group. Do not run untrusted model code
 through it on the host. No build, compiler or diagnostic semantics change here.
 
-## Episode protocol for the future runner
+## Episode protocol
 
 1. Freeze the task revision/hashes and randomize paired task order before comparing
    two pinned Anthropic model IDs. Record exact provider IDs/revisions, reasoning,

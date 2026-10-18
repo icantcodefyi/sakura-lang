@@ -1,0 +1,2451 @@
+{
+ "episodes": [
+  {
+   "censored": false,
+   "condition": "baseline",
+   "cost_usd": 0.026386,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 1,
+    "seen": [
+     "V1006",
+     "V3001",
+     "V5003",
+     "V5004",
+     "V6001",
+     "V6002",
+     "V6003",
+     "V8020",
+     "W7001",
+     "W7002"
+    ]
+   },
+   "documents": [
+    "prompt --budget 3000"
+   ],
+   "episode": "01-bounded-clamp.baseline.claude-sonnet-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-sonnet-5-5",
+   "model_seconds": 6.353,
+   "pass_at_1": true,
+   "skill_loaded": null,
+   "submissions": 1,
+   "success": true,
+   "task": "01-bounded-clamp",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 10438,
+    "output_tokens": 551
+   },
+   "tool_calls": 6,
+   "turns": 4,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "baseline",
+   "cost_usd": 0.077522,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 0,
+    "seen": [
+     "V0009",
+     "V1006",
+     "V3001",
+     "V5003",
+     "V5004",
+     "V6001",
+     "V6002",
+     "V6003",
+     "V8020",
+     "W7001",
+     "W7002"
+    ]
+   },
+   "documents": [
+    "prompt --budget 3000"
+   ],
+   "episode": "09-scripted-reading.baseline.claude-sonnet-5-5",
+   "iterations_to_green": 2,
+   "model": "claude-sonnet-5-5",
+   "model_seconds": 16.378,
+   "pass_at_1": false,
+   "skill_loaded": null,
+   "submissions": 2,
+   "success": true,
+   "task": "09-scripted-reading",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 31286,
+    "output_tokens": 1495
+   },
+   "tool_calls": 14,
+   "turns": 8,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": true,
+   "condition": "baseline",
+   "cost_usd": 0.152776,
+   "diagnostics": {
+    "final": null,
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 0,
+    "seen": [
+     "V0007",
+     "V0011",
+     "V0014",
+     "V1002",
+     "V1006",
+     "V1040",
+     "V1041",
+     "V2001",
+     "V2015",
+     "V2031",
+     "V2032",
+     "V2033",
+     "V2034",
+     "V2040",
+     "V2041",
+     "V3001",
+     "V3002",
+     "V3003",
+     "V3020",
+     "V4001",
+     "V5003",
+     "V5004",
+     "V6001",
+     "V6002",
+     "V6003",
+     "V8020",
+     "W7001",
+     "W7002",
+     "W8001"
+    ]
+   },
+   "documents": [
+    "prompt",
+    "prompt --budget 20000"
+   ],
+   "episode": "10-http-validation.baseline.claude-opus-5-5",
+   "iterations_to_green": null,
+   "model": "claude-opus-5-5",
+   "model_seconds": 14.253,
+   "pass_at_1": false,
+   "skill_loaded": null,
+   "submissions": 0,
+   "success": false,
+   "task": "10-http-validation",
+   "termination": "input_cap",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 34019,
+    "output_tokens": 835
+   },
+   "tool_calls": 14,
+   "turns": 7,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "baseline",
+   "cost_usd": 0.0641,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 1,
+    "seen": [
+     "V1006",
+     "V3001",
+     "V5003",
+     "V5004",
+     "V6001",
+     "V6002",
+     "V6003",
+     "V8020",
+     "W7001",
+     "W7002"
+    ]
+   },
+   "documents": [
+    "prompt --budget 2000"
+   ],
+   "episode": "01-bounded-clamp.baseline.claude-opus-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-opus-5-5",
+   "model_seconds": 8.865,
+   "pass_at_1": true,
+   "skill_loaded": null,
+   "submissions": 1,
+   "success": true,
+   "task": "01-bounded-clamp",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 13220,
+    "output_tokens": 561
+   },
+   "tool_calls": 5,
+   "turns": 4,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": true,
+   "condition": "baseline",
+   "cost_usd": 0.14754,
+   "diagnostics": {
+    "final": [
+     "V0001",
+     "V0009"
+    ],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 1,
+    "seen": [
+     "V0001",
+     "V0007",
+     "V0009",
+     "V0011",
+     "V0014",
+     "V1002",
+     "V1006",
+     "V1040",
+     "V1041",
+     "V2001",
+     "V2015",
+     "V2031",
+     "V2032",
+     "V2033",
+     "V2034",
+     "V2040",
+     "V2041",
+     "V3001",
+     "V3002",
+     "V3003",
+     "V3020",
+     "V4001",
+     "V5003",
+     "V5004",
+     "V6001",
+     "V6002",
+     "V6003",
+     "V8020",
+     "W7001",
+     "W7002",
+     "W8001"
+    ]
+   },
+   "documents": [
+    "prompt --budget 3000",
+    "prompt --budget 12000",
+    "prompt --budget 20000",
+    "explain V3001"
+   ],
+   "episode": "06-typed-recovery.baseline.claude-opus-5-5",
+   "iterations_to_green": null,
+   "model": "claude-opus-5-5",
+   "model_seconds": 14.082,
+   "pass_at_1": false,
+   "skill_loaded": null,
+   "submissions": 1,
+   "success": false,
+   "task": "06-typed-recovery",
+   "termination": "input_cap",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 32845,
+    "output_tokens": 808
+   },
+   "tool_calls": 8,
+   "turns": 5,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "skill",
+   "cost_usd": 0.079542,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 1,
+    "seen": [
+     "V2002"
+    ]
+   },
+   "documents": [
+    "skill:SKILL.md"
+   ],
+   "episode": "06-typed-recovery.skill.claude-sonnet-5-5",
+   "iterations_to_green": 2,
+   "model": "claude-sonnet-5-5",
+   "model_seconds": 19.305,
+   "pass_at_1": false,
+   "skill_loaded": true,
+   "submissions": 4,
+   "success": true,
+   "task": "06-typed-recovery",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 30596,
+    "output_tokens": 1835
+   },
+   "tool_calls": 13,
+   "turns": 6,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "skill",
+   "cost_usd": 0.16196,
+   "diagnostics": {
+    "final": [],
+    "fix_success": true,
+    "initial": [
+     "V3001"
+    ],
+    "initial_holes": 0,
+    "seen": []
+   },
+   "documents": [
+    "skill:SKILL.md",
+    "skill:references/stdlib.md"
+   ],
+   "episode": "04-local-env-handler.skill.claude-opus-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-opus-5-5",
+   "model_seconds": 13.654,
+   "pass_at_1": true,
+   "skill_loaded": true,
+   "submissions": 1,
+   "success": true,
+   "task": "04-local-env-handler",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 36325,
+    "output_tokens": 833
+   },
+   "tool_calls": 8,
+   "turns": 6,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": true,
+   "condition": "baseline",
+   "cost_usd": 0.15964,
+   "diagnostics": {
+    "final": null,
+    "fix_success": false,
+    "initial": [
+     "V3001"
+    ],
+    "initial_holes": 0,
+    "seen": [
+     "V0007",
+     "V0011",
+     "V0014",
+     "V1002",
+     "V1006",
+     "V1040",
+     "V1041",
+     "V2001",
+     "V2015",
+     "V2031",
+     "V2032",
+     "V2033",
+     "V2034",
+     "V2040",
+     "V2041",
+     "V3001",
+     "V3002",
+     "V3003",
+     "V3020",
+     "V4001",
+     "V5003",
+     "V5004",
+     "V6001",
+     "V6002",
+     "V6003",
+     "V8020",
+     "W7001",
+     "W7002",
+     "W8001"
+    ]
+   },
+   "documents": [
+    "prompt --budget 3000",
+    "prompt --budget 20000",
+    "explain V3001"
+   ],
+   "episode": "04-local-env-handler.baseline.claude-opus-5-5",
+   "iterations_to_green": null,
+   "model": "claude-opus-5-5",
+   "model_seconds": 11.615,
+   "pass_at_1": false,
+   "skill_loaded": null,
+   "submissions": 0,
+   "success": false,
+   "task": "04-local-env-handler",
+   "termination": "input_cap",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 37455,
+    "output_tokens": 491
+   },
+   "tool_calls": 8,
+   "turns": 7,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "skill",
+   "cost_usd": 0.051502,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 0,
+    "seen": []
+   },
+   "documents": [
+    "skill:SKILL.md",
+    "skill:references/stdlib.md"
+   ],
+   "episode": "02-positive-summary.skill.claude-sonnet-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-sonnet-5-5",
+   "model_seconds": 6.47,
+   "pass_at_1": true,
+   "skill_loaded": true,
+   "submissions": 1,
+   "success": true,
+   "task": "02-positive-summary",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 22516,
+    "output_tokens": 647
+   },
+   "tool_calls": 7,
+   "turns": 4,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "baseline",
+   "cost_usd": 0.195828,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 0,
+    "seen": [
+     "V0001",
+     "V0007",
+     "V0009",
+     "V0011",
+     "V0014",
+     "V1002",
+     "V1006",
+     "V1040",
+     "V1041",
+     "V2001",
+     "V2015",
+     "V2031",
+     "V2032",
+     "V2033",
+     "V2034",
+     "V2040",
+     "V2041",
+     "V3001",
+     "V3002",
+     "V3003",
+     "V3020",
+     "V4001",
+     "V5003",
+     "V5004",
+     "V6001",
+     "V6002",
+     "V6003",
+     "V8020",
+     "W7001",
+     "W7002",
+     "W8001"
+    ]
+   },
+   "documents": [
+    "prompt"
+   ],
+   "episode": "08-cli-prefix.baseline.claude-opus-5-5",
+   "iterations_to_green": 3,
+   "model": "claude-opus-5-5",
+   "model_seconds": 27.876,
+   "pass_at_1": false,
+   "skill_loaded": null,
+   "submissions": 3,
+   "success": true,
+   "task": "08-cli-prefix",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 39382,
+    "output_tokens": 1915
+   },
+   "tool_calls": 12,
+   "turns": 8,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "baseline",
+   "cost_usd": 0.036396,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 0,
+    "seen": []
+   },
+   "documents": [],
+   "episode": "12-permitted-mode.baseline.claude-opus-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-opus-5-5",
+   "model_seconds": 9.713,
+   "pass_at_1": true,
+   "skill_loaded": null,
+   "submissions": 1,
+   "success": true,
+   "task": "12-permitted-mode",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 6024,
+    "output_tokens": 615
+   },
+   "tool_calls": 5,
+   "turns": 4,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "skill",
+   "cost_usd": 0.028126,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 0,
+    "seen": []
+   },
+   "documents": [
+    "skill:SKILL.md"
+   ],
+   "episode": "12-permitted-mode.skill.claude-sonnet-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-sonnet-5-5",
+   "model_seconds": 6.505,
+   "pass_at_1": true,
+   "skill_loaded": true,
+   "submissions": 1,
+   "success": true,
+   "task": "12-permitted-mode",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 11173,
+    "output_tokens": 578
+   },
+   "tool_calls": 6,
+   "turns": 3,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "skill",
+   "cost_usd": 0.095604,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 0,
+    "seen": []
+   },
+   "documents": [
+    "skill:references/stdlib.md"
+   ],
+   "episode": "12-permitted-mode.skill.claude-opus-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-opus-5-5",
+   "model_seconds": 13.926,
+   "pass_at_1": true,
+   "skill_loaded": true,
+   "submissions": 1,
+   "success": true,
+   "task": "12-permitted-mode",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 19516,
+    "output_tokens": 877
+   },
+   "tool_calls": 6,
+   "turns": 5,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "baseline",
+   "cost_usd": 0.047698,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 0,
+    "seen": [
+     "V0007",
+     "V0011",
+     "V0014",
+     "V1002",
+     "V1006",
+     "V1040",
+     "V1041",
+     "V2001",
+     "V2015",
+     "V2031",
+     "V2032",
+     "V2033",
+     "V2034",
+     "V2040",
+     "V2041",
+     "V3001",
+     "V3002",
+     "V3003",
+     "V3020",
+     "V4001",
+     "V5003",
+     "V5004",
+     "V6001",
+     "V6002",
+     "V6003",
+     "V8020",
+     "W7001",
+     "W7002",
+     "W8001"
+    ]
+   },
+   "documents": [
+    "prompt"
+   ],
+   "episode": "02-positive-summary.baseline.claude-sonnet-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-sonnet-5-5",
+   "model_seconds": 7.974,
+   "pass_at_1": true,
+   "skill_loaded": null,
+   "submissions": 1,
+   "success": true,
+   "task": "02-positive-summary",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 19709,
+    "output_tokens": 828
+   },
+   "tool_calls": 9,
+   "turns": 5,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "skill",
+   "cost_usd": 0.037064,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 0,
+    "seen": []
+   },
+   "documents": [],
+   "episode": "11-successor-contract.skill.claude-opus-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-opus-5-5",
+   "model_seconds": 13.892,
+   "pass_at_1": true,
+   "skill_loaded": false,
+   "submissions": 1,
+   "success": true,
+   "task": "11-successor-contract",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 6716,
+    "output_tokens": 510
+   },
+   "tool_calls": 5,
+   "turns": 4,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "skill",
+   "cost_usd": 0.085252,
+   "diagnostics": {
+    "final": [],
+    "fix_success": true,
+    "initial": [
+     "V1002",
+     "V2001"
+    ],
+    "initial_holes": 0,
+    "seen": [
+     "V1002",
+     "V2001"
+    ]
+   },
+   "documents": [
+    "skill:SKILL.md",
+    "skill:references/stdlib.md"
+   ],
+   "episode": "03-path-label.skill.claude-sonnet-5-5",
+   "iterations_to_green": 2,
+   "model": "claude-sonnet-5-5",
+   "model_seconds": 13.267,
+   "pass_at_1": false,
+   "skill_loaded": true,
+   "submissions": 2,
+   "success": true,
+   "task": "03-path-label",
+   "termination": "input_cap",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 37731,
+    "output_tokens": 979
+   },
+   "tool_calls": 13,
+   "turns": 6,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": true,
+   "condition": "baseline",
+   "cost_usd": 0.074808,
+   "diagnostics": {
+    "final": [
+     "V0001",
+     "V0009",
+     "V1002"
+    ],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 1,
+    "seen": [
+     "V0001",
+     "V0007",
+     "V0009",
+     "V0011",
+     "V0014",
+     "V1002",
+     "V1006",
+     "V1040",
+     "V1041",
+     "V2001",
+     "V2015",
+     "V2031",
+     "V2032",
+     "V2033",
+     "V2034",
+     "V2040",
+     "V2041",
+     "V2050",
+     "V3001",
+     "V3002",
+     "V3003",
+     "V3020",
+     "V4001",
+     "V5003",
+     "V5004",
+     "V6001",
+     "V6002",
+     "V6003",
+     "V8020",
+     "W7001",
+     "W7002",
+     "W8001"
+    ]
+   },
+   "documents": [
+    "prompt --budget 3000",
+    "prompt --budget 12000",
+    "prompt --budget 30000"
+   ],
+   "episode": "06-typed-recovery.baseline.claude-sonnet-5-5",
+   "iterations_to_green": null,
+   "model": "claude-sonnet-5-5",
+   "model_seconds": 10.02,
+   "pass_at_1": false,
+   "skill_loaded": null,
+   "submissions": 1,
+   "success": false,
+   "task": "06-typed-recovery",
+   "termination": "input_cap",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 33289,
+    "output_tokens": 823
+   },
+   "tool_calls": 9,
+   "turns": 5,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "skill",
+   "cost_usd": 0.072928,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 0,
+    "seen": [
+     "V1006",
+     "V3001",
+     "V5003",
+     "V5004",
+     "V6001",
+     "V6002",
+     "V6003",
+     "V8020",
+     "W7001",
+     "W7002"
+    ]
+   },
+   "documents": [
+    "skill:SKILL.md",
+    "prompt --budget 3000",
+    "skill:references/stdlib.md"
+   ],
+   "episode": "07-health-route.skill.claude-sonnet-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-sonnet-5-5",
+   "model_seconds": 10.143,
+   "pass_at_1": true,
+   "skill_loaded": true,
+   "submissions": 1,
+   "success": true,
+   "task": "07-health-route",
+   "termination": "input_cap",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 32114,
+    "output_tokens": 870
+   },
+   "tool_calls": 11,
+   "turns": 6,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": true,
+   "condition": "skill",
+   "cost_usd": 0.063814,
+   "diagnostics": {
+    "final": null,
+    "fix_success": false,
+    "initial": [
+     "V3001"
+    ],
+    "initial_holes": 0,
+    "seen": [
+     "V0007",
+     "V0011",
+     "V0014",
+     "V1002",
+     "V1006",
+     "V1040",
+     "V1041",
+     "V2001",
+     "V2015",
+     "V2031",
+     "V2032",
+     "V2033",
+     "V2034",
+     "V2040",
+     "V2041",
+     "V3001",
+     "V3002",
+     "V3003",
+     "V3020",
+     "V4001",
+     "V5003",
+     "V5004",
+     "V6001",
+     "V6002",
+     "V6003",
+     "V8020",
+     "W7001",
+     "W7002",
+     "W8001"
+    ]
+   },
+   "documents": [
+    "skill:SKILL.md",
+    "prompt",
+    "prompt --budget 100000",
+    "skill:references/stdlib.md"
+   ],
+   "episode": "04-local-env-handler.skill.claude-sonnet-5-5",
+   "iterations_to_green": null,
+   "model": "claude-sonnet-5-5",
+   "model_seconds": 7.339,
+   "pass_at_1": false,
+   "skill_loaded": true,
+   "submissions": 0,
+   "success": false,
+   "task": "04-local-env-handler",
+   "termination": "input_cap",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 29572,
+    "output_tokens": 467
+   },
+   "tool_calls": 9,
+   "turns": 5,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "skill",
+   "cost_usd": 0.143932,
+   "diagnostics": {
+    "final": [],
+    "fix_success": true,
+    "initial": [
+     "V1002",
+     "V2001"
+    ],
+    "initial_holes": 0,
+    "seen": [
+     "V1002",
+     "V2001"
+    ]
+   },
+   "documents": [
+    "skill:SKILL.md"
+   ],
+   "episode": "03-path-label.skill.claude-opus-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-opus-5-5",
+   "model_seconds": 13.345,
+   "pass_at_1": true,
+   "skill_loaded": true,
+   "submissions": 1,
+   "success": true,
+   "task": "03-path-label",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 31653,
+    "output_tokens": 866
+   },
+   "tool_calls": 9,
+   "turns": 6,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "baseline",
+   "cost_usd": 0.024798,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 0,
+    "seen": [
+     "V1006",
+     "V3001",
+     "V5003",
+     "V5004",
+     "V6001",
+     "V6002",
+     "V6003",
+     "V8020",
+     "W7001",
+     "W7002"
+    ]
+   },
+   "documents": [
+    "prompt --budget 3000"
+   ],
+   "episode": "12-permitted-mode.baseline.claude-sonnet-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-sonnet-5-5",
+   "model_seconds": 7.387,
+   "pass_at_1": true,
+   "skill_loaded": null,
+   "submissions": 1,
+   "success": true,
+   "task": "12-permitted-mode",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 9379,
+    "output_tokens": 604
+   },
+   "tool_calls": 6,
+   "turns": 3,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "skill",
+   "cost_usd": 0.027458,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 1,
+    "seen": []
+   },
+   "documents": [
+    "skill:SKILL.md"
+   ],
+   "episode": "01-bounded-clamp.skill.claude-sonnet-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-sonnet-5-5",
+   "model_seconds": 5.001,
+   "pass_at_1": true,
+   "skill_loaded": true,
+   "submissions": 1,
+   "success": true,
+   "task": "01-bounded-clamp",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 10949,
+    "output_tokens": 556
+   },
+   "tool_calls": 6,
+   "turns": 3,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": true,
+   "condition": "baseline",
+   "cost_usd": 0.08435,
+   "diagnostics": {
+    "final": [
+     "V1004",
+     "W1002"
+    ],
+    "fix_success": false,
+    "initial": [
+     "V1002",
+     "V2001"
+    ],
+    "initial_holes": 0,
+    "seen": [
+     "V0009",
+     "V1002",
+     "V1004",
+     "V1005",
+     "V1006",
+     "V2001",
+     "V3001",
+     "V5003",
+     "V5004",
+     "V6001",
+     "V6002",
+     "V6003",
+     "V8020",
+     "W1002",
+     "W7001",
+     "W7002"
+    ]
+   },
+   "documents": [
+    "prompt --budget 3000",
+    "explain V1002",
+    "explain V1005"
+   ],
+   "episode": "03-path-label.baseline.claude-sonnet-5-5",
+   "iterations_to_green": null,
+   "model": "claude-sonnet-5-5",
+   "model_seconds": 12.33,
+   "pass_at_1": false,
+   "skill_loaded": null,
+   "submissions": 2,
+   "success": false,
+   "task": "03-path-label",
+   "termination": "input_cap",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 36935,
+    "output_tokens": 1048
+   },
+   "tool_calls": 15,
+   "turns": 8,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "baseline",
+   "cost_usd": 0.112712,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 0,
+    "seen": [
+     "V0007",
+     "V0011",
+     "V0014",
+     "V1002",
+     "V1006",
+     "V1040",
+     "V1041",
+     "V2001",
+     "V2015",
+     "V2031",
+     "V2032",
+     "V2033",
+     "V2034",
+     "V2040",
+     "V2041",
+     "V3001",
+     "V3002",
+     "V3003",
+     "V3020",
+     "V4001",
+     "V5003",
+     "V5004",
+     "V6001",
+     "V6002",
+     "V6003",
+     "V8020",
+     "W7001",
+     "W7002",
+     "W8001"
+    ]
+   },
+   "documents": [
+    "prompt"
+   ],
+   "episode": "02-positive-summary.baseline.claude-opus-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-opus-5-5",
+   "model_seconds": 17.143,
+   "pass_at_1": true,
+   "skill_loaded": null,
+   "submissions": 1,
+   "success": true,
+   "task": "02-positive-summary",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 24023,
+    "output_tokens": 831
+   },
+   "tool_calls": 8,
+   "turns": 6,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": true,
+   "condition": "skill",
+   "cost_usd": 0.05613,
+   "diagnostics": {
+    "final": null,
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 0,
+    "seen": [
+     "V0007",
+     "V0011",
+     "V0014",
+     "V1002",
+     "V1006",
+     "V1040",
+     "V1041",
+     "V2032",
+     "V2033",
+     "V2034",
+     "V2040",
+     "V2041",
+     "V3001",
+     "V5003",
+     "V5004",
+     "V6001",
+     "V6002",
+     "V6003",
+     "V8020",
+     "W7001",
+     "W7002"
+    ]
+   },
+   "documents": [
+    "skill:SKILL.md",
+    "prompt --budget 4000",
+    "skill:references/stdlib.md"
+   ],
+   "episode": "10-http-validation.skill.claude-sonnet-5-5",
+   "iterations_to_green": null,
+   "model": "claude-sonnet-5-5",
+   "model_seconds": 5.32,
+   "pass_at_1": false,
+   "skill_loaded": true,
+   "submissions": 0,
+   "success": false,
+   "task": "10-http-validation",
+   "termination": "input_cap",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 25415,
+    "output_tokens": 530
+   },
+   "tool_calls": 10,
+   "turns": 4,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "baseline",
+   "cost_usd": 0.078966,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 0,
+    "seen": [
+     "V0001",
+     "V0007",
+     "V0009",
+     "V0011",
+     "V0014",
+     "V1002",
+     "V1006",
+     "V1040",
+     "V1041",
+     "V2001",
+     "V2015",
+     "V2031",
+     "V2032",
+     "V2033",
+     "V2034",
+     "V2040",
+     "V2041",
+     "V3001",
+     "V3002",
+     "V3003",
+     "V3020",
+     "V4001",
+     "V5003",
+     "V5004",
+     "V6001",
+     "V6002",
+     "V6003",
+     "V8020",
+     "W7001",
+     "W7002",
+     "W8001"
+    ]
+   },
+   "documents": [
+    "prompt",
+    "prompt --budget 30000"
+   ],
+   "episode": "08-cli-prefix.baseline.claude-sonnet-5-5",
+   "iterations_to_green": 2,
+   "model": "claude-sonnet-5-5",
+   "model_seconds": 16.241,
+   "pass_at_1": false,
+   "skill_loaded": null,
+   "submissions": 2,
+   "success": true,
+   "task": "08-cli-prefix",
+   "termination": "input_cap",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 33728,
+    "output_tokens": 1151
+   },
+   "tool_calls": 11,
+   "turns": 6,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": true,
+   "condition": "skill",
+   "cost_usd": 0.16812,
+   "diagnostics": {
+    "final": [
+     "V1002",
+     "V2002",
+     "V3001"
+    ],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 0,
+    "seen": [
+     "V1002",
+     "V2002",
+     "V3001"
+    ]
+   },
+   "documents": [
+    "skill:SKILL.md",
+    "skill:references/stdlib.md"
+   ],
+   "episode": "10-http-validation.skill.claude-opus-5-5",
+   "iterations_to_green": null,
+   "model": "claude-opus-5-5",
+   "model_seconds": 15.18,
+   "pass_at_1": false,
+   "skill_loaded": true,
+   "submissions": 1,
+   "success": false,
+   "task": "10-http-validation",
+   "termination": "input_cap",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 36635,
+    "output_tokens": 1079
+   },
+   "tool_calls": 12,
+   "turns": 6,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "baseline",
+   "cost_usd": 0.055152,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 1,
+    "seen": [
+     "V0007",
+     "V0011",
+     "V0014",
+     "V1002",
+     "V1006",
+     "V1040",
+     "V1041",
+     "V2001",
+     "V2015",
+     "V2031",
+     "V2032",
+     "V2033",
+     "V2034",
+     "V2040",
+     "V2041",
+     "V3001",
+     "V3002",
+     "V3003",
+     "V3020",
+     "V4001",
+     "V5003",
+     "V5004",
+     "V6001",
+     "V6002",
+     "V6003",
+     "V8020",
+     "W7001",
+     "W7002",
+     "W8001"
+    ]
+   },
+   "documents": [
+    "prompt --budget 3000",
+    "prompt --budget 12000"
+   ],
+   "episode": "05-stable-unique.baseline.claude-sonnet-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-sonnet-5-5",
+   "model_seconds": 9.486,
+   "pass_at_1": true,
+   "skill_loaded": null,
+   "submissions": 1,
+   "success": true,
+   "task": "05-stable-unique",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 24016,
+    "output_tokens": 712
+   },
+   "tool_calls": 9,
+   "turns": 5,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "skill",
+   "cost_usd": 0.069616,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 0,
+    "seen": []
+   },
+   "documents": [
+    "skill:SKILL.md",
+    "skill:references/stdlib.md"
+   ],
+   "episode": "09-scripted-reading.skill.claude-sonnet-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-sonnet-5-5",
+   "model_seconds": 12.276,
+   "pass_at_1": true,
+   "skill_loaded": true,
+   "submissions": 1,
+   "success": true,
+   "task": "09-scripted-reading",
+   "termination": "input_cap",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 29773,
+    "output_tokens": 1007
+   },
+   "tool_calls": 14,
+   "turns": 5,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "baseline",
+   "cost_usd": 0.012288,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 0,
+    "seen": []
+   },
+   "documents": [],
+   "episode": "11-successor-contract.baseline.claude-sonnet-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-sonnet-5-5",
+   "model_seconds": 7.15,
+   "pass_at_1": true,
+   "skill_loaded": null,
+   "submissions": 1,
+   "success": true,
+   "task": "11-successor-contract",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 3999,
+    "output_tokens": 429
+   },
+   "tool_calls": 5,
+   "turns": 3,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "baseline",
+   "cost_usd": 0.023788,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 0,
+    "seen": []
+   },
+   "documents": [],
+   "episode": "11-successor-contract.baseline.claude-opus-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-opus-5-5",
+   "model_seconds": 6.653,
+   "pass_at_1": true,
+   "skill_loaded": null,
+   "submissions": 1,
+   "success": true,
+   "task": "11-successor-contract",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 3822,
+    "output_tokens": 425
+   },
+   "tool_calls": 4,
+   "turns": 3,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "skill",
+   "cost_usd": 0.058756,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 0,
+    "seen": []
+   },
+   "documents": [
+    "skill:SKILL.md"
+   ],
+   "episode": "02-positive-summary.skill.claude-opus-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-opus-5-5",
+   "model_seconds": 7.722,
+   "pass_at_1": true,
+   "skill_loaded": true,
+   "submissions": 1,
+   "success": true,
+   "task": "02-positive-summary",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 11094,
+    "output_tokens": 719
+   },
+   "tool_calls": 5,
+   "turns": 3,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "skill",
+   "cost_usd": 0.152312,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 0,
+    "seen": []
+   },
+   "documents": [
+    "skill:SKILL.md",
+    "skill:references/stdlib.md"
+   ],
+   "episode": "09-scripted-reading.skill.claude-opus-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-opus-5-5",
+   "model_seconds": 15.025,
+   "pass_at_1": true,
+   "skill_loaded": true,
+   "submissions": 1,
+   "success": true,
+   "task": "09-scripted-reading",
+   "termination": "input_cap",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 32898,
+    "output_tokens": 1036
+   },
+   "tool_calls": 10,
+   "turns": 6,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "skill",
+   "cost_usd": 0.123328,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 1,
+    "seen": []
+   },
+   "documents": [
+    "skill:references/stdlib.md"
+   ],
+   "episode": "05-stable-unique.skill.claude-opus-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-opus-5-5",
+   "model_seconds": 9.903,
+   "pass_at_1": true,
+   "skill_loaded": true,
+   "submissions": 1,
+   "success": true,
+   "task": "05-stable-unique",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 28072,
+    "output_tokens": 552
+   },
+   "tool_calls": 7,
+   "turns": 5,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": true,
+   "condition": "baseline",
+   "cost_usd": 0.166044,
+   "diagnostics": {
+    "final": [
+     "V1002"
+    ],
+    "fix_success": false,
+    "initial": [
+     "V1002",
+     "V2001"
+    ],
+    "initial_holes": 0,
+    "seen": [
+     "V0007",
+     "V0011",
+     "V0014",
+     "V1002",
+     "V1006",
+     "V1040",
+     "V1041",
+     "V2001",
+     "V2015",
+     "V2031",
+     "V2032",
+     "V2033",
+     "V2034",
+     "V2040",
+     "V2041",
+     "V3001",
+     "V3002",
+     "V3003",
+     "V3020",
+     "V4001",
+     "V5003",
+     "V5004",
+     "V6001",
+     "V6002",
+     "V6003",
+     "V8020",
+     "W7001",
+     "W7002",
+     "W8001"
+    ]
+   },
+   "documents": [
+    "prompt --budget 3000",
+    "explain V1002",
+    "prompt --budget 20000"
+   ],
+   "episode": "03-path-label.baseline.claude-opus-5-5",
+   "iterations_to_green": null,
+   "model": "claude-opus-5-5",
+   "model_seconds": 16.23,
+   "pass_at_1": false,
+   "skill_loaded": null,
+   "submissions": 1,
+   "success": false,
+   "task": "03-path-label",
+   "termination": "input_cap",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 37456,
+    "output_tokens": 811
+   },
+   "tool_calls": 11,
+   "turns": 9,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "skill",
+   "cost_usd": 0.026838,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 0,
+    "seen": []
+   },
+   "documents": [
+    "skill:SKILL.md"
+   ],
+   "episode": "11-successor-contract.skill.claude-sonnet-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-sonnet-5-5",
+   "model_seconds": 6.624,
+   "pass_at_1": true,
+   "skill_loaded": true,
+   "submissions": 1,
+   "success": true,
+   "task": "11-successor-contract",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 10844,
+    "output_tokens": 515
+   },
+   "tool_calls": 5,
+   "turns": 3,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": true,
+   "condition": "baseline",
+   "cost_usd": 0.08881,
+   "diagnostics": {
+    "final": [
+     "V1002"
+    ],
+    "fix_success": false,
+    "initial": [
+     "V3001"
+    ],
+    "initial_holes": 0,
+    "seen": [
+     "V0007",
+     "V0011",
+     "V0014",
+     "V1002",
+     "V1006",
+     "V1040",
+     "V1041",
+     "V2001",
+     "V2015",
+     "V2031",
+     "V2032",
+     "V2033",
+     "V2034",
+     "V2040",
+     "V2041",
+     "V3001",
+     "V3002",
+     "V3003",
+     "V3020",
+     "V4001",
+     "V5003",
+     "V5004",
+     "V6001",
+     "V6002",
+     "V6003",
+     "V8020",
+     "W7001",
+     "W7002",
+     "W8001"
+    ]
+   },
+   "documents": [
+    "prompt --budget 3000",
+    "explain V3001",
+    "prompt --budget 20000"
+   ],
+   "episode": "04-local-env-handler.baseline.claude-sonnet-5-5",
+   "iterations_to_green": null,
+   "model": "claude-sonnet-5-5",
+   "model_seconds": 13.612,
+   "pass_at_1": false,
+   "skill_loaded": null,
+   "submissions": 1,
+   "success": false,
+   "task": "04-local-env-handler",
+   "termination": "input_cap",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 39305,
+    "output_tokens": 1020
+   },
+   "tool_calls": 14,
+   "turns": 7,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": true,
+   "condition": "baseline",
+   "cost_usd": 0.073902,
+   "diagnostics": {
+    "final": null,
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 0,
+    "seen": [
+     "V0007",
+     "V0011",
+     "V0014",
+     "V1002",
+     "V1006",
+     "V1040",
+     "V1041",
+     "V2001",
+     "V2015",
+     "V2031",
+     "V2032",
+     "V2033",
+     "V2034",
+     "V2040",
+     "V2041",
+     "V3001",
+     "V3002",
+     "V3003",
+     "V3020",
+     "V4001",
+     "V5003",
+     "V5004",
+     "V6001",
+     "V6002",
+     "V6003",
+     "V8020",
+     "W7001",
+     "W7002",
+     "W8001"
+    ]
+   },
+   "documents": [
+    "prompt",
+    "prompt --budget 30000"
+   ],
+   "episode": "10-http-validation.baseline.claude-sonnet-5-5",
+   "iterations_to_green": null,
+   "model": "claude-sonnet-5-5",
+   "model_seconds": 12.692,
+   "pass_at_1": false,
+   "skill_loaded": null,
+   "submissions": 0,
+   "success": false,
+   "task": "10-http-validation",
+   "termination": "input_cap",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 32091,
+    "output_tokens": 972
+   },
+   "tool_calls": 17,
+   "turns": 7,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "skill",
+   "cost_usd": 0.080932,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 1,
+    "seen": []
+   },
+   "documents": [
+    "skill:SKILL.md"
+   ],
+   "episode": "06-typed-recovery.skill.claude-opus-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-opus-5-5",
+   "model_seconds": 11.294,
+   "pass_at_1": true,
+   "skill_loaded": true,
+   "submissions": 1,
+   "success": true,
+   "task": "06-typed-recovery",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 16393,
+    "output_tokens": 768
+   },
+   "tool_calls": 5,
+   "turns": 4,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "skill",
+   "cost_usd": 0.18538,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 0,
+    "seen": []
+   },
+   "documents": [
+    "skill:SKILL.md"
+   ],
+   "episode": "08-cli-prefix.skill.claude-opus-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-opus-5-5",
+   "model_seconds": 21.225,
+   "pass_at_1": true,
+   "skill_loaded": true,
+   "submissions": 2,
+   "success": true,
+   "task": "08-cli-prefix",
+   "termination": "input_cap",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 38860,
+    "output_tokens": 1497
+   },
+   "tool_calls": 11,
+   "turns": 8,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "skill",
+   "cost_usd": 0.074996,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 1,
+    "seen": []
+   },
+   "documents": [
+    "skill:SKILL.md",
+    "skill:references/stdlib.md"
+   ],
+   "episode": "05-stable-unique.skill.claude-sonnet-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-sonnet-5-5",
+   "model_seconds": 7.638,
+   "pass_at_1": true,
+   "skill_loaded": true,
+   "submissions": 1,
+   "success": true,
+   "task": "05-stable-unique",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 34283,
+    "output_tokens": 643
+   },
+   "tool_calls": 8,
+   "turns": 5,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "baseline",
+   "cost_usd": 0.025244,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 0,
+    "seen": [
+     "V1006",
+     "V3001",
+     "V5003",
+     "V5004",
+     "V6001",
+     "V6002",
+     "V6003",
+     "V8020",
+     "W7001",
+     "W7002"
+    ]
+   },
+   "documents": [
+    "prompt --budget 3000"
+   ],
+   "episode": "07-health-route.baseline.claude-sonnet-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-sonnet-5-5",
+   "model_seconds": 7.18,
+   "pass_at_1": true,
+   "skill_loaded": null,
+   "submissions": 1,
+   "success": true,
+   "task": "07-health-route",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 9427,
+    "output_tokens": 639
+   },
+   "tool_calls": 6,
+   "turns": 3,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": true,
+   "condition": "skill",
+   "cost_usd": 0.065708,
+   "diagnostics": {
+    "final": null,
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 0,
+    "seen": [
+     "V0007",
+     "V0011",
+     "V0014",
+     "V1002",
+     "V1006",
+     "V1040",
+     "V1041",
+     "V2001",
+     "V2015",
+     "V2031",
+     "V2032",
+     "V2033",
+     "V2034",
+     "V2040",
+     "V2041",
+     "V3001",
+     "V3002",
+     "V3003",
+     "V3020",
+     "V4001",
+     "V5003",
+     "V5004",
+     "V6001",
+     "V6002",
+     "V6003",
+     "V8020",
+     "W7001",
+     "W7002",
+     "W8001"
+    ]
+   },
+   "documents": [
+    "skill:SKILL.md",
+    "prompt",
+    "skill:references/stdlib.md"
+   ],
+   "episode": "08-cli-prefix.skill.claude-sonnet-5-5",
+   "iterations_to_green": null,
+   "model": "claude-sonnet-5-5",
+   "model_seconds": 8.582,
+   "pass_at_1": false,
+   "skill_loaded": true,
+   "submissions": 0,
+   "success": false,
+   "task": "08-cli-prefix",
+   "termination": "input_cap",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 30144,
+    "output_tokens": 542
+   },
+   "tool_calls": 10,
+   "turns": 5,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "baseline",
+   "cost_usd": 0.124832,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 0,
+    "seen": [
+     "V0007",
+     "V0011",
+     "V0014",
+     "V1002",
+     "V1006",
+     "V1040",
+     "V1041",
+     "V2032",
+     "V2033",
+     "V2034",
+     "V2040",
+     "V2041",
+     "V3001",
+     "V5003",
+     "V5004",
+     "V6001",
+     "V6002",
+     "V6003",
+     "V8020",
+     "W7001",
+     "W7002"
+    ]
+   },
+   "documents": [
+    "prompt --budget 4000"
+   ],
+   "episode": "09-scripted-reading.baseline.claude-opus-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-opus-5-5",
+   "model_seconds": 15.835,
+   "pass_at_1": true,
+   "skill_loaded": null,
+   "submissions": 1,
+   "success": true,
+   "task": "09-scripted-reading",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 26343,
+    "output_tokens": 973
+   },
+   "tool_calls": 8,
+   "turns": 7,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "baseline",
+   "cost_usd": 0.10598,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 1,
+    "seen": [
+     "V0001",
+     "V1004",
+     "V1006",
+     "V3001",
+     "V5003",
+     "V5004",
+     "V6001",
+     "V6002",
+     "V6003",
+     "V8020",
+     "W7001",
+     "W7002"
+    ]
+   },
+   "documents": [
+    "prompt --budget 2000"
+   ],
+   "episode": "05-stable-unique.baseline.claude-opus-5-5",
+   "iterations_to_green": 2,
+   "model": "claude-opus-5-5",
+   "model_seconds": 11.858,
+   "pass_at_1": false,
+   "skill_loaded": null,
+   "submissions": 2,
+   "success": true,
+   "task": "05-stable-unique",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 22995,
+    "output_tokens": 700
+   },
+   "tool_calls": 8,
+   "turns": 6,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "skill",
+   "cost_usd": 0.0544,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 1,
+    "seen": []
+   },
+   "documents": [
+    "skill:SKILL.md"
+   ],
+   "episode": "01-bounded-clamp.skill.claude-opus-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-opus-5-5",
+   "model_seconds": 5.867,
+   "pass_at_1": true,
+   "skill_loaded": true,
+   "submissions": 1,
+   "success": true,
+   "task": "01-bounded-clamp",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 11050,
+    "output_tokens": 510
+   },
+   "tool_calls": 5,
+   "turns": 3,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "skill",
+   "cost_usd": 0.169784,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 0,
+    "seen": []
+   },
+   "documents": [
+    "skill:SKILL.md"
+   ],
+   "episode": "07-health-route.skill.claude-opus-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-opus-5-5",
+   "model_seconds": 18.975,
+   "pass_at_1": true,
+   "skill_loaded": true,
+   "submissions": 2,
+   "success": true,
+   "task": "07-health-route",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 37031,
+    "output_tokens": 1083
+   },
+   "tool_calls": 10,
+   "turns": 8,
+   "unauthorized_edits": []
+  },
+  {
+   "censored": false,
+   "condition": "baseline",
+   "cost_usd": 0.107688,
+   "diagnostics": {
+    "final": [],
+    "fix_success": null,
+    "initial": [],
+    "initial_holes": 0,
+    "seen": [
+     "V1006",
+     "V3001",
+     "V5003",
+     "V5004",
+     "V6001",
+     "V6002",
+     "V6003",
+     "V8020",
+     "W7001",
+     "W7002"
+    ]
+   },
+   "documents": [
+    "prompt --budget 3000"
+   ],
+   "episode": "07-health-route.baseline.claude-opus-5-5",
+   "iterations_to_green": 1,
+   "model": "claude-opus-5-5",
+   "model_seconds": 14.931,
+   "pass_at_1": true,
+   "skill_loaded": null,
+   "submissions": 1,
+   "success": true,
+   "task": "07-health-route",
+   "termination": "end_turn",
+   "tokens": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 22197,
+    "output_tokens": 945
+   },
+   "tool_calls": 7,
+   "turns": 6,
+   "unauthorized_edits": []
+  }
+ ],
+ "run": {
+  "approved_by": "icantcodefyi",
+  "backend": "live",
+  "budget_usd": 10.0,
+  "conditions": [
+   "baseline",
+   "skill"
+  ],
+  "environment": {
+   "date": "2026-10-18T11:45:45+00:00",
+   "harness": "1",
+   "node": "v26.12.0",
+   "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+   "python": "3.12.3",
+   "repo_commit": "6ccce80aacc3377e6d552f5cc466c40fea70ce29",
+   "sakura": "sakura 0.1.0-alpha.1"
+  },
+  "github_run": "39124392990",
+  "models": {
+   "claude-opus-5-5": [
+    4.0,
+    20.0
+   ],
+   "claude-sonnet-5-5": [
+    2.0,
+    10.0
+   ]
+  },
+  "run_id": "gh-39124392990",
+  "sandbox": "auto",
+  "seed": 0,
+  "skill_sha256": "af4f30ce2b1946adc778fd9d469899dc50c7c66d4ede746dcc9b7bf97d3e3929"
+ },
+ "summary": {
+  "claude-opus-5-5/baseline": {
+   "cost_per_accepted": 0.174666,
+   "cost_usd": 1.397324,
+   "episodes": 12,
+   "failed": [
+    "10-http-validation.baseline.claude-opus-5-5",
+    "06-typed-recovery.baseline.claude-opus-5-5",
+    "04-local-env-handler.baseline.claude-opus-5-5",
+    "03-path-label.baseline.claude-opus-5-5"
+   ],
+   "iterations_to_green": {
+    "median": 1,
+    "p90": 3
+   },
+   "pass_at_1": [
+    6,
+    12,
+    [
+     0.2538,
+     0.7462
+    ]
+   ],
+   "skill_not_loaded": 0,
+   "success": [
+    8,
+    12,
+    [
+     0.3906,
+     0.8619
+    ]
+   ]
+  },
+  "claude-opus-5-5/skill": {
+   "cost_per_accepted": 0.130143,
+   "cost_usd": 1.431572,
+   "episodes": 12,
+   "failed": [
+    "10-http-validation.skill.claude-opus-5-5"
+   ],
+   "iterations_to_green": {
+    "median": 1,
+    "p90": 1
+   },
+   "pass_at_1": [
+    11,
+    12,
+    [
+     0.6461,
+     0.9851
+    ]
+   ],
+   "skill_not_loaded": 1,
+   "success": [
+    11,
+    12,
+    [
+     0.6461,
+     0.9851
+    ]
+   ]
+  },
+  "claude-sonnet-5-5/baseline": {
+   "cost_per_accepted": 0.08374,
+   "cost_usd": 0.669924,
+   "episodes": 12,
+   "failed": [
+    "06-typed-recovery.baseline.claude-sonnet-5-5",
+    "03-path-label.baseline.claude-sonnet-5-5",
+    "04-local-env-handler.baseline.claude-sonnet-5-5",
+    "10-http-validation.baseline.claude-sonnet-5-5"
+   ],
+   "iterations_to_green": {
+    "median": 1,
+    "p90": 2
+   },
+   "pass_at_1": [
+    6,
+    12,
+    [
+     0.2538,
+     0.7462
+    ]
+   ],
+   "skill_not_loaded": 0,
+   "success": [
+    8,
+    12,
+    [
+     0.3906,
+     0.8619
+    ]
+   ]
+  },
+  "claude-sonnet-5-5/skill": {
+   "cost_per_accepted": 0.07799,
+   "cost_usd": 0.70191,
+   "episodes": 12,
+   "failed": [
+    "04-local-env-handler.skill.claude-sonnet-5-5",
+    "10-http-validation.skill.claude-sonnet-5-5",
+    "08-cli-prefix.skill.claude-sonnet-5-5"
+   ],
+   "iterations_to_green": {
+    "median": 1,
+    "p90": 2
+   },
+   "pass_at_1": [
+    7,
+    12,
+    [
+     0.3195,
+     0.8067
+    ]
+   ],
+   "skill_not_loaded": 0,
+   "success": [
+    9,
+    12,
+    [
+     0.4677,
+     0.9111
+    ]
+   ]
+  }
+ }
+}

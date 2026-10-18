@@ -463,3 +463,24 @@ scheduled beside W2 as the first agent-DX items, DX5's runner and DX6's workflow
    raw transcripts are not kept by the workflow. The `agent-eval` environment, its required
    reviewer and secret must be created by the owner; nothing was dispatched and no paid
    call was made. AI assistance: Opus 5.5 wrote the runner, tests and workflow.
+
+### DX5 (2026-10-18, first paid pilot report)
+
+The owner-approved GitHub run `39124392990` completed all 48 episodes (seed 0,
+Opus 5.5 and Sonnet 5.5, baseline versus discoverable skill). The
+[public report](../../evals/agent-dx/reports/2026-10-18-pilot.md) and
+[reviewed aggregate artifact](../../evals/agent-dx/reports/2026-10-18-pilot-summary.json)
+provide §1's per-task outcomes, failed episodes, Wilson intervals, activation,
+costs and retrieval limitations. Ledger spend is $4.200730 of $10; the 48-episode
+cap is reached and the owner's key is no longer available. No rerun is authorized.
+
+Status: **paid execution and report delivered; owner review pending**, not an
+unqualified DX5 close-out. Raw transcripts were never uploaded, so independent
+replay, retrieval-error auditing and candidate-level causal diagnosis are unavailable.
+All 12 failures ended at the input cap (six without a submission); six additional
+capped episodes succeeded. Diagnostic `seen` codes include documentation text.
+Follow-ups are assigned to Astra/Sol, Fable and the DX5 owner in the report;
+language/diagnostic questions are recorded in `compiler/REQUESTS.md`. A small
+post-pilot skill wording change encourages bounded, targeted retrieval; it was
+not the skill evaluated in this run. Historical implementation entries above
+record their status at authoring time.

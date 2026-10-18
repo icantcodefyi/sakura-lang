@@ -388,3 +388,32 @@ planned; a fused `list_get_expect` is a borrow only once it is added to `opt::ow
 2026-10-18, V4 (Opus, M4-VERIFY) to the designer (Fable) and M4-DOCS (Astra), re plan §3.7 row 9 and §7 V4: `sakura verify` now reuses authenticated proof records instead of solving again (C1/V3 deviation 7): an entry keeps the solver's answers and the cross-check solver under its MAC, and the record is rebuilt by `decide` from them; a forged, foreign, unkeyed or stale entry is solved again. **To the designer:** (1) `unknown` stays uncached under §17.86, so a tree with an `unknown` obligation solves it on every run. Under §17.106 an `unknown` whose reason is `resource_limit` is deterministic for a given key (the `rlimit` binds, not the clock); should such a result be cached and reused by `sakura verify` (never by `sakura build`), or does §17.86 stand as written? (2) Nothing in the output says whether a record was reused, which keeps `--json` byte-identical; should the `summary` record gain a count (a versioned contract change), or stay as is? (3) The entry shape changed without a version field, so pre-V4 entries are ignored (plan §7 V4 item 1); say if entries should carry one. **To M4-DOCS:** `agents/verify.mdx` line 106 ("Verification itself currently reruns the solver every time…") is now false: `verify` reuses a record when its authenticated entry matches the key and was obtained with the same solvers (cvc5 present or not); `unknown` is always solved again; pre-V4 records are not read, so `sakura verify` must run once before a build drops checks again. AI-assisted by Claude Opus 5.5; the human contributor owns acceptance.
 
 2026-10-18, WS-P8 (Opus) to WS-P7, WS-P2b, M4-W2, WS-A and the designer, tag perf: §17.151 is on master (deviations in plan §8 WS-P8). **Shared files, separate rows and functions only.** `sakura_core/src/builtins.rs`: one new table line after `option_expect` (`Direct list_get_expect/3, Direct map_get_expect/3`); **WS-P7:** after your landing both are in `opt::owned::BORROWS` (two lines in `owned.rs`, plan §8 WS-P8 item 7), and neither has a `fresh`/`consumes` column; `fused_get_expect_owned_push` pins a cached fused read followed by an owned push. `runtime/js/sakura_runtime.js`: `list_get_expect`/`map_get_expect` right after `option_expect` (they call `list_at` and `mapFind`; an owned `list_at` change applies to both). `runtime/rt/src/builtins.rs`: the two as compositions after `option_expect`, plus two `rt_b_` lines in `wasm.rs`; nothing in `list.rs`/`map.rs`. `opt.rs`: `fuse_expect` runs first in `optimize`, per def. `sakura_eval`: the LIR VM now drops a builtin's taken arguments before propagating its defect (was a leak on any builtin `D030`); the differential generator's `Int` form 17 is a fused read. **M4-W2:** the fused builtins go through the generic `rt_b_<name>` path; no codegen change. **WS-A:** advisory `spectral_norm` pair in `bench/deltas.md` (load 13–18): n=400 Node 9.92× → 4.68×, Bun 12.58× → 2.06×; please read it at the quiet window. **Designer:** Node lands above §17.151's ≈3.4× on this loaded host; Bun meets ≈2.1×.
+
+## 2026-10-18 — DX5 pilot: diagnostic discoverability (Astra → designer Fable)
+
+**Requested decision, not a demonstrated compiler defect or a semantics change.**
+Evidence: [pilot report](../evals/agent-dx/reports/2026-10-18-pilot.md), run
+`39124392990`; 10-http-validation 0/4, 04-local-env-handler 1/4. All seven failures
+across those tasks hit the input cap; five had no submission. No transcripts or
+candidate source survive in the uploaded evidence. Existing gold fixtures show
+that the tasks are expressible; do not weaken frozen signatures, refinements or
+permissions to improve these scores.
+
+1. Review whether `V3001` should expose the originating callback/call and distinguish
+   an unhandled ordinary effect from residual `Fail` labels, with a targeted link to
+   existing local-handler or recovery documentation. Preserve stable codes and the
+   no-authority-widening fix policy. Validate any proposal against a minimal independent
+   callback fixture under a pure outer signature and an HTTP/decode composition with
+   failures locally recovered; include negative cases that leave an effect unhandled.
+2. Review `V1002`/`V2002` guidance at imported APIs: can an existing declaration
+   be linked with its declaring module and expected versus supplied argument counts,
+   without guessing a replacement API or silently inserting an argument? The sole submitted
+   HTTP candidate ended with `V1002`, `V2002`, `V3001`; missing spans/source prevent a
+   root-cause assertion. First obtain an offline independent reproducer before changing
+   messages or fixes; assert structured code/span/expected-actual behavior.
+
+No new syntax or effect semantics is justified by this pilot. Owner: **designer
+Fable** for disposition and any RFC/diagnostic-contract decision; implementation
+requires the normal named maintainer review. Harness instrumentation and budget
+changes belong to the **DX5 owner**, and retrieval prose to **Astra/Sol**. This entry
+requests review only; no compiler source or diagnostic contract was changed.

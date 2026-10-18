@@ -59,7 +59,7 @@ Still planned: resumable JS loops, LIR direct-region optimization, niche layout 
 
 ### Agent development tools (DX0–DX7)
 
-The compiler reports its capabilities through MCP. A downloadable skill, `sakura setup`, generated diagnostic references and eight offline cookbook projects are available. The offline agent-evaluation harness and release tooling are prepared; paid evaluation and publication remain owner-controlled. The VS Code client can be packaged locally and is not published. DX8 plugin packaging, the playground and Linguist submission remain planned; see the [agent DX plan](https://github.com/icantcodefyi/sakuralang/blob/master/docs/plans/agent-dx.md).
+The compiler reports its capabilities through MCP. A downloadable skill, `sakura setup`, generated diagnostic references and eight offline cookbook projects are available. The first owner-approved agent-evaluation pilot ran 48 episodes for $4.20; its [report](https://github.com/icantcodefyi/sakuralang/blob/master/evals/agent-dx/reports/2026-10-18-pilot.md) records small-sample results and input-cap limits. Further evaluation and publication remain owner-controlled; release tooling is prepared. The VS Code client can be packaged locally and is not published. DX8 plugin packaging, the playground and Linguist submission remain planned; see the [agent DX plan](https://github.com/icantcodefyi/sakuralang/blob/master/docs/plans/agent-dx.md).
 
 For `scale(p, total) = total * p / 100`, proving `ensures result <= total` on normal return does not prove the multiplication cannot overflow. Overflow is a separate obligation. The wrong `/ 50` body has the counterexample `p = 100, total = 1`.
 
