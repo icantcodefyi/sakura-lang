@@ -1,0 +1,19 @@
+{
+  "processes": 2040,
+  "timing_batches": 18360,
+  "all_checksums_pass": true,
+  "summary_reproduced": true,
+  "new_and_legacy_maximum_gate_verdicts_equal_on_all_six_ordered_run_pairs": true,
+  "comparison_counts": {
+    "node": {
+      "ordered_pairs": 138,
+      "maximum_blocks": 2,
+      "median_crossings": 2
+    },
+    "bun": {
+      "ordered_pairs": 78,
+      "maximum_blocks": 3,
+      "median_crossings": 4
+    }
+  }
+}

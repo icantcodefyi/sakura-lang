@@ -41,7 +41,7 @@ bench/bench oracle [--filter <glob>] [--write]
 | Command | Behaviour | Exit |
 |---|---|---|
 | `run` | Builds the release CLI and every variant, runs the oracle for each (variant, engine), then times every (program, variant, engine, size) in `--processes` (5) fresh processes, in an order shuffled with `--seed` (20261018), serially, GC on. Each process warms up 250 ms (2 s with `--stable`), calibrates a ≥ 30 ms batch and records nine samples; peak RSS comes from `wait4`. Prints a Markdown table of medians and Sakura/hand-JS ratios on stdout and writes the `sakura-bench-v1` JSON. `--sizes quick` times the first two sizes. | 0; 1 an oracle or checksum failed (that program is not timed); 3 a toolchain is missing (its variants are skipped and listed in `meta.missing`) |
-| `compare` | Per (program, engine, size), the head's ratio Sakura/hand JS against the base's: worse by > `--flag` (5%) flags; worse by > `--block` (10%) **and** by ≥ `--abs-ms` (0.1) ms per workload beyond the base ratio blocks, but only if every head file given agrees (pass the CI's confirmation rerun of the blocked programs as a second head). Immediate failures, from the first head alone: a failed oracle or checksum, a checksum different from the base, peak RSS up > 25%, a log-log slope across the size sweep up by > 0.5 (a complexity-class change). An improvement > 10% is reported for the pull request to explain. | 0 ok or flagged; 2 blocked |
+| `compare` | Per (program, engine, size), the head's ratio Sakura/hand JS against the base's: worse by > `--flag` (5%) flags; worse by > `--block` (10%) **and** by ≥ `--abs-ms` (0.1) ms per workload beyond the base ratio blocks, but only if every head file given agrees (pass the CI's confirmation rerun of the blocked programs as a second head). Immediate failures, from the first head alone: a failed oracle or checksum, a checksum different from the base, peak RSS up > 25% (maximum across fresh processes), a log-log slope across the size sweep up by > 0.5 (a complexity-class change). An improvement > 10% is reported for the pull request to explain. | 0 ok or flagged; 2 blocked |
 | `bless` | Copies a run into `baselines/<host-id>.json`; refuses a run with failures or made from a dirty `compiler/` or `bench/` tree. | 0; 1 refused |
 | `compile` | The research/10 §6 budgets on generated packages (`target/corpus/<lines>`, 50-function modules): `check` of 10k and 100k lines and `build` of 10k lines, each 15 fresh processes; `sakura lsp` edit → `publishDiagnostics` on the 10k package, 15 edits in one warm server alternating a type error in a private body and its fix (the server publishes nothing for a clean file it has never reported). p95 against 1 s / 3 s / 500 ms / 100 ms. | 0; 2 over budget |
 | `oracle` | Checks Sakura and hand JS on Node against `meta.toml`, or records it with `--write`. | 0; 1 a mismatch |
@@ -166,7 +166,7 @@ JS controls for `handled_*` are closure calls on a stateful object (research/10
    `sakura build` library flag would replace it.
 6. **Result schema additions** to plan §3.3: `meta.dirty`, `meta.missing` (toolchains
    skipped), `meta.failures` (oracle and build failures with their output), `flags.suite`,
-   `flags.engines`, `flags.processes`; `compile` results carry `p95_ms` and `budget_ms` and
+   `flags.engines`, `flags.processes`, and per-row `process_rss_bytes` (all process peaks); `compile` results carry `p95_ms` and `budget_ms` and
    use `engine: "cli"`, `lane: "compile"`, `size` = corpus lines.
 7. **The compile corpus imports `corpus/gen/m<i>`**, its manifest's name (design §9,
    §17.127). Until WS9 the analysis named every user package `main`.
@@ -194,7 +194,9 @@ a power-of-two batch toward 30 ms (cap 2^20 calls), and records nine per-call ti
 GC enabled. Calls consume the returned checksum, including awaited asynchronous results.
 Sakura includes one public `runTask` boundary per workload call. Compilation, module
 loading and printing are outside the inner timer. Peak RSS includes the entire process,
-including loading and warmup, and is the maximum across its five processes.
+including loading and warmup. `rss_bytes` remains the maximum across processes for schema
+compatibility; `process_rss_bytes` retains every peak, in the same execution order as
+`process_medians_ms` for successful processes. The RSS comparison statistic is described below.
 
 Jobs are serial within one harness invocation and shuffled across programs, variants,
 engines, sizes and repetitions with the recorded seed. Concurrent external workloads are
@@ -254,6 +256,162 @@ Its ordered-pair counts are a descriptive sensitivity check, not independent tri
 policy evidence also run `bench/bench compare base.json head.json confirmation.json`:
 all three must come from the same unchanged source for a no-change experiment. Check
 per-cell coverage explicitly because `compare` only compares overlapping ratio cells.
+
+### Peak RSS measurement and the WS-P1 investigation
+
+**Decision: retain the maximum-based >25% immediate block on both engines. Do not widen
+Bun's margin or replace the gate with a median on this evidence.** The measurement change
+retains every process peak in `process_rss_bytes` instead of discarding all but the largest.
+`rss_bytes` keeps its original maximum meaning. `compare` adds `rss` diagnostic rows with
+base/head maxima, process medians and sample counts; the CLI prints those details when a
+maximum or median rises >25%. **The median is diagnostic only and never changes the
+verdict.** This makes a suspected noisy RSS block reviewable without silently accepting it.
+
+Legacy `sakura-bench-v1` files remain comparable: maximum against maximum, with unavailable
+medians/counts reported as null. Never infer missing peaks or compare a new median with an
+old maximum. Present but malformed/incomplete raw peaks in a compared cell (including a count different from
+`meta.flags.processes`, non-positive/non-finite values, or an inconsistent maximum) block
+instead of silently falling back. The raw array and comparison `rss` report are additive;
+existing readers still see the original meaning of `rss_bytes`. Native rows also retain
+the maximum rule; no native-engine variance claim is made here.
+
+#### Evidence and scope (2026-10-18)
+
+Measured frozen compiler/runtime/program sources at **`824a876`**, Node **26.11.0**, Bun
+**1.4.3**, Apple M4 Pro, 24 GiB, 12 logical CPUs, Darwin 27.2.0 arm64, host
+`d88970189598`. The full pilot used all **21 programs × four sizes × two engines × two
+variants × five fresh processes = 1,680 processes**. It used the standard 250 ms warmup,
+nine calibrated batches, GC on, matched lane and seed 20261018. Before seeing follow-up
+results, selection was fixed to every pilot cell with individual `max/min > 1.25`, plus
+all `shapes` cells. Those **36 cells** (23 Node, 13 Bun) received exactly **two more groups
+of five**, seeds 20261019–20261020. All **2,040 timed processes / 18,360 batches** passed
+checksums, with no missing engines or oracle failures. Every full-suite cell has five
+process observations; only the selected subset has three groups / fifteen processes.
+No samples were removed or rerun until a pass.
+
+[Raw pilot](results/rss-824a876/suite-1.json),
+[follow-up 2](results/rss-824a876/followup-2.json),
+[follow-up 3](results/rss-824a876/followup-3.json),
+[frozen selection](results/rss-824a876/selection.json),
+[provenance](results/rss-824a876/provenance.json), and
+[emitted-module hashes](results/rss-824a876/artifacts.json) preserve the observations.
+The source tree is marked dirty because RSS instrumentation/evidence was added; the pilot
+loaded only the raw-peak addition, and the measurement functions and runner stayed
+unchanged while comparison code was developed. The same emitted modules were hash-checked
+before each follow-up. No `NODE_OPTIONS`, `BUN_OPTIONS` or `SAKURA_TRACE` overrides were set.
+
+**Shared-host/noisy.** One-minute load (min / median / max) was **4.92 / 9.60 / 19.08**
+during the pilot, **5.17 / 8.24 / 11.27** during follow-up 2, and **8.08 / 9.49 / 11.76**
+during follow-up 3. Other Rust builds/tests and Node/Bun processes were active. Jobs within
+this experiment were serial; external workloads and thermal/power state were not
+controlled. [Load summary](results/rss-824a876/load-summary.json) lists the retained 15-second `*-load.jsonl` snapshots; these include `vm_stat`, load averages, summed
+process CPU use and busiest executable names. The run lasted 28.2 minutes plus two
+follow-ups of 2.8 minutes each. This is one host allocation, not a CI or p95 noise bound.
+
+#### Observed variance
+
+MB below means **1,000,000 bytes**. Increase means `max/min − 1`, not
+`(max − min)/median`; both measures are in the [complete report](results/rss-824a876/report.md)
+and [machine-readable summary](results/rss-824a876/summary.json). In the pilot, individual
+process peaks spanned >25% in **16/168 Node cells** and **9/168 Bun cells** (both variants).
+The largest spreads were Node `sieve`/Sakura n=10000, **87.8–180.6 MB (+105.6%)**, and Bun
+`rbtree`/hand JS n=50000, **153.6–251.8 MB (+63.9%)**. This is not uniquely a Bun phenomenon.
+
+For Sakura `shapes` n=50000, across all fifteen processes:
+
+| Engine | Individual peaks MB | Individual increase | Three group maxima MB | Maxima increase | Three group medians MB | Medians increase |
+|---|---:|---:|---:|---:|---:|---:|
+| Node | 266.2–293.1 | 10.1% | 286.9–293.1 | 2.2% | 272.8–278.6 | 2.1% |
+| Bun | 205.4–332.2 | 61.7% | 248.3–332.2 | 33.8% | 226.5–269.6 | 19.0% |
+
+For each program below, the table selects the largest individual-process spread among
+its four **Sakura pilot** sizes; it does not pool sizes. Hand-JS cells, every size and
+all follow-up peaks are in the complete report.
+
+| Program | Node n | Node range MB | Node increase | Bun n | Bun range MB | Bun increase |
+|---|---:|---:|---:|---:|---:|---:|
+| binary_trees | 10 | 127.8–175.9 | 37.7% | 14 | 77.9–92.7 | 19.0% |
+| contracts | 100000 | 53.9–54.7 | 1.5% | 100000 | 33.7–35.8 | 6.5% |
+| contracts_plain | 1000000 | 52.1–52.9 | 1.5% | 1000 | 46.5–49.4 | 6.3% |
+| countdown | 10000 | 54.3–55.9 | 2.8% | 10000 | 42.3–43.5 | 2.9% |
+| deltablue | 100 | 91.1–126.7 | 39.1% | 1000 | 116.3–141.5 | 21.7% |
+| fib | 20 | 67.4–85.1 | 26.3% | 20 | 40.3–44.0 | 9.3% |
+| handled_d1 | 100000 | 70.4–87.9 | 24.8% | 1000 | 44.2–46.7 | 5.7% |
+| handled_d16 | 100000 | 70.6–87.9 | 24.5% | 100000 | 42.7–44.3 | 3.8% |
+| handled_d4 | 100000 | 70.1–87.5 | 24.8% | 100000 | 40.3–43.6 | 8.4% |
+| handled_fwd | 1000000 | 86.1–86.8 | 0.9% | 100000 | 40.6–43.1 | 6.2% |
+| handled_reentry | 10000 | 87.7–122.6 | 39.7% | 1000 | 46.4–54.2 | 16.7% |
+| handled_suspend | 1000 | 84.8–121.4 | 43.0% | 1000000 | 42.9–45.1 | 5.1% |
+| json_validate | 10000 | 173.6–193.4 | 11.4% | 30000 | 112.6–130.8 | 16.2% |
+| map_set | 1000 | 128.3–183.8 | 43.3% | 10000 | 100.0–128.3 | 28.2% |
+| nbody | 1000 | 62.2–70.6 | 13.6% | 5000 | 48.3–52.2 | 8.0% |
+| pipeline | 100000 | 169.7–187.8 | 10.6% | 1000 | 52.8–60.0 | 13.6% |
+| rbtree | 100000 | 550.6–721.6 | 31.1% | 100000 | 683.1–792.0 | 15.9% |
+| shapes | 100000 | 367.3–438.6 | 19.4% | 100000 | 305.3–392.8 | 28.7% |
+| sieve | 10000 | 87.8–180.6 | 105.6% | 200000 | 73.9–87.1 | 17.9% |
+| spectral_norm | 50 | 62.3–72.2 | 15.8% | 100 | 48.3–52.2 | 8.2% |
+| tokenizer | 1000 | 69.6–86.9 | 24.9% | 50000 | 84.8–94.5 | 11.5% |
+
+#### Why the gate stays strict
+
+On the selected subset, evaluating all six ordered pairs of the three five-process
+groups gives the following sensitivity check. These reuse observations, were selected
+partly for high pilot variance, and are **not independent trials or false-positive rates**.
+
+| Engine | Selected cells | Ordered comparisons | Maximum >25% | Median >25% |
+|---|---:|---:|---:|---:|
+| Node | 23 | 138 | 2 | 2 |
+| Bun | 13 | 78 | 3 | 4 |
+
+A median would avoid the two unchanged-build Bun `shapes`/Sakura n=50000 crossings,
+but introduces crossings elsewhere: Bun hand-JS `rbtree` n=50000 has **48.4%** variation
+between group medians versus **17.0%** between maxima; hand-JS `shapes` n=50000 has
+**32.1%** versus **9.9%**. Node hand-JS `tokenizer` n=10000 has **26.1%** versus **8.3%**.
+The median is not consistently less noisy in this experiment, so choosing it just for the
+WS-P1 case would overfit that case. A wider Bun percentage would likewise be an unsupported
+policy change: a small, selected, shared-host series cannot establish a safe new margin.
+
+A low post-GC live heap does not rule out a real transient RSS increase. Post-GC heap
+measures retained managed data rather than the process high-water mark; forcing GC or
+using Bun's `--smol` would change the execution configuration. Those configurations were
+**not measured here**, so no variance-reduction claim is made for them. They would need
+separate matched measurements and provenance before any policy proposal. This experiment
+shows unchanged-build RSS variability; it does not prove GC pacing is the cause or prove
+the absence of a leak.
+
+The historical WS-P1 **180 → 273 MB** comparison therefore still blocks, as does any new
+maximum increase >25%, regardless of timing gains or the median. No baselines were blessed,
+rewritten or retrospectively passed. Quiet repetitions and separately allocated CI runners
+are needed before adopting a replacement statistic or margin; persistent RSS increases
+must remain visible even if retained heap is small.
+
+Reproduce the analysis from the retained files (no compiler build or baseline write):
+
+```sh
+python3 bench/results/rss-824a876/analyze.py \
+  bench/results/rss-824a876/suite-1.json \
+  bench/results/rss-824a876/followup-2.json \
+  bench/results/rss-824a876/followup-3.json \
+  --output bench/results/rss-824a876/summary.json
+python3 bench/results/rss-824a876/report.py
+python3 bench/results/rss-824a876/validate.py
+python3 -m unittest discover -s bench/harness
+bench/bench compare bench/results/rss-824a876/suite-1.json \
+  bench/results/rss-824a876/followup-3.json \
+  --json bench/target/rss-comparison.json
+```
+
+The retained [comparison](results/rss-824a876/comparison-1-3.json)
+([CLI output](results/rss-824a876/comparison-1-3.log)) exits 2: Bun `shapes`/Sakura n=50000
+rises from 256.3 to 332.2 MB maximum (+29.6%), while its median rises 19.0%. Other timing
+rows are warnings. This is an unchanged-source diagnostic, not a successful comparison;
+a measurement run's successful checksum exit is a different check. The 21 harness unit
+tests pass ([log](results/rss-824a876/tests.log)), and [validation](results/rss-824a876/validation.json)
+reproduces the summary and confirms identical new/legacy maximum-gate verdicts on all
+six ordered run comparisons. Collection used `record_load.py -- bench/bench run --suite js --seed 20261018`
+with the pilot JSON path, then the retained `followup.py` with the two fixed seeds and
+frozen modules. AI assistance: GPT-6-Astra measured, analyzed and implemented the harness
+change; the human contributor owns the result.
 
 ### Benchmark-definition compatibility
 

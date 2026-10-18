@@ -1,0 +1,17 @@
+{
+  "commit": "824a87660fdf056ba667350af63008fcc92ca537",
+  "instrumentation": "Only adds process_rss_bytes; timing, compiler and GC unchanged.",
+  "sha256": {
+    "bench/harness/bench.py": "e2f8ba401cc5086f389cb65ffe466be74d43b2eef6341455c588f64faf5454ac",
+    "bench/harness/runner.mjs": "55a510b5fd859c76467b5891c6fbe73945835f32218545dab5e9adfd074d51ea",
+    "compiler/target/release/sakura": "4851ac9fcec931b93e848178d8425adcebcc6084906c64281774cfc07c7a3274"
+  },
+  "measurement_source": "824a876 compiler/runtime/std/programs; unchanged release binary and emitted modules throughout the series",
+  "harness_changes_during_series": "Pilot loaded bench.py with only process_rss_bytes added. Candidate comparison/report functions and tests were edited while measurements ran; measure(), spawn(), runner.mjs and compiler/program sources were unchanged. No runs used smol or forced GC.",
+  "relevant_environment_present": {
+    "NODE_OPTIONS": false,
+    "BUN_OPTIONS": false,
+    "SAKURA_TRACE": false,
+    "CARGO_TARGET_DIR": false
+  }
+}

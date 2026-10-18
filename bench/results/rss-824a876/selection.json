@@ -1,0 +1,221 @@
+{
+  "rule": "pilot max/min > 1.25, plus all shapes cells; exactly two follow-up runs, five processes each",
+  "cells": [
+    {
+      "program": "tokenizer",
+      "variant": "js",
+      "engine": "node",
+      "size": 10000
+    },
+    {
+      "program": "shapes",
+      "variant": "sakura",
+      "engine": "node",
+      "size": 10000
+    },
+    {
+      "program": "shapes",
+      "variant": "js",
+      "engine": "bun",
+      "size": 1000
+    },
+    {
+      "program": "handled_suspend",
+      "variant": "sakura",
+      "engine": "node",
+      "size": 1000
+    },
+    {
+      "program": "shapes",
+      "variant": "sakura",
+      "engine": "bun",
+      "size": 1000
+    },
+    {
+      "program": "fib",
+      "variant": "sakura",
+      "engine": "node",
+      "size": 20
+    },
+    {
+      "program": "map_set",
+      "variant": "sakura",
+      "engine": "bun",
+      "size": 10000
+    },
+    {
+      "program": "map_set",
+      "variant": "sakura",
+      "engine": "bun",
+      "size": 50000
+    },
+    {
+      "program": "rbtree",
+      "variant": "js",
+      "engine": "bun",
+      "size": 10000
+    },
+    {
+      "program": "shapes",
+      "variant": "js",
+      "engine": "node",
+      "size": 100000
+    },
+    {
+      "program": "handled_reentry",
+      "variant": "sakura",
+      "engine": "node",
+      "size": 1000
+    },
+    {
+      "program": "deltablue",
+      "variant": "sakura",
+      "engine": "node",
+      "size": 100
+    },
+    {
+      "program": "pipeline",
+      "variant": "js",
+      "engine": "node",
+      "size": 100000
+    },
+    {
+      "program": "shapes",
+      "variant": "js",
+      "engine": "node",
+      "size": 50000
+    },
+    {
+      "program": "shapes",
+      "variant": "sakura",
+      "engine": "node",
+      "size": 1000
+    },
+    {
+      "program": "rbtree",
+      "variant": "sakura",
+      "engine": "node",
+      "size": 100000
+    },
+    {
+      "program": "shapes",
+      "variant": "sakura",
+      "engine": "bun",
+      "size": 100000
+    },
+    {
+      "program": "shapes",
+      "variant": "js",
+      "engine": "node",
+      "size": 1000
+    },
+    {
+      "program": "deltablue",
+      "variant": "js",
+      "engine": "bun",
+      "size": 5000
+    },
+    {
+      "program": "map_set",
+      "variant": "sakura",
+      "engine": "node",
+      "size": 1000
+    },
+    {
+      "program": "binary_trees",
+      "variant": "js",
+      "engine": "node",
+      "size": 10
+    },
+    {
+      "program": "shapes",
+      "variant": "sakura",
+      "engine": "node",
+      "size": 100000
+    },
+    {
+      "program": "shapes",
+      "variant": "js",
+      "engine": "bun",
+      "size": 100000
+    },
+    {
+      "program": "pipeline",
+      "variant": "js",
+      "engine": "node",
+      "size": 300000
+    },
+    {
+      "program": "shapes",
+      "variant": "sakura",
+      "engine": "node",
+      "size": 50000
+    },
+    {
+      "program": "sieve",
+      "variant": "sakura",
+      "engine": "node",
+      "size": 10000
+    },
+    {
+      "program": "shapes",
+      "variant": "js",
+      "engine": "bun",
+      "size": 50000
+    },
+    {
+      "program": "rbtree",
+      "variant": "js",
+      "engine": "node",
+      "size": 1000
+    },
+    {
+      "program": "binary_trees",
+      "variant": "sakura",
+      "engine": "node",
+      "size": 10
+    },
+    {
+      "program": "handled_reentry",
+      "variant": "sakura",
+      "engine": "node",
+      "size": 10000
+    },
+    {
+      "program": "shapes",
+      "variant": "sakura",
+      "engine": "bun",
+      "size": 50000
+    },
+    {
+      "program": "sieve",
+      "variant": "js",
+      "engine": "node",
+      "size": 50000
+    },
+    {
+      "program": "rbtree",
+      "variant": "js",
+      "engine": "bun",
+      "size": 50000
+    },
+    {
+      "program": "shapes",
+      "variant": "sakura",
+      "engine": "bun",
+      "size": 10000
+    },
+    {
+      "program": "shapes",
+      "variant": "js",
+      "engine": "node",
+      "size": 10000
+    },
+    {
+      "program": "shapes",
+      "variant": "js",
+      "engine": "bun",
+      "size": 10000
+    }
+  ]
+}
