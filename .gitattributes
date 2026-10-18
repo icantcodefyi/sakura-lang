@@ -25,5 +25,8 @@ pnpm-lock.yaml text eol=lf linguist-generated=true
 *.woff2 binary
 *.pdf binary
 
+# Snapshots are byte-exact data (design §17.196 (1)).
+*.snap -text
+
 # Line-ending fixtures keep their bytes (design §17.180 (4b)).
 compiler/tests/semantics/line_endings_crlf.sak -text whitespace=cr-at-eol
