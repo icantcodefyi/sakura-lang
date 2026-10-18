@@ -530,6 +530,12 @@ Fixed:
     [package]
     name = \"billing\"";
 
+    V8003 "abi_version_mismatch" PACKAGE,
+"The WASM module was compiled against a runtime ABI this host does not implement
+(`runtime/rt/ABI.md` §0): its major version differs, or its minor version is newer than the
+host's, so it may need imports the host lacks. Rebuild the module with this compiler, whose
+backend, runtime and host share one ABI revision.";
+
     V8020 "spec_frozen" PACKAGE,
 "A patch modifies a frozen symbol's signature, effect row, error union, contracts, or a test body
 (design §7.3). Frozen specs are the reviewer's intent; change the implementation instead.";
