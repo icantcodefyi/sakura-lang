@@ -109,7 +109,7 @@ there are 21 program directories. All use `ints = "js-safe"`.
 |---|---|---|
 | `fib` | 20, 24, 27, 30 | `fib(n)`, naive recursion, checked add |
 | `countdown` | 1e3, 1e4, 1e5, 3e5 (+1e6 oracle only) | `sum_tail(n, 0)` (self-tail) + 1 if `is_even(n)` (mutual recursion, n deep); JS uses loops |
-| `sieve` | 1e3, 1e4, 5e4, 2e5 | primes below n; one full pass over a fresh `List<Bool>` per prime p with p² < n |
+| `sieve` | 1e3, 1e4, 5e4, 2e5 | primes below n; Sakura clears each prime's multiples from p² with `List.set` (design §17.126), the controls make one full pass over a fresh array per prime p with p² < n |
 | `nbody` | 1e3, 5e3, 2e4, 1e5 | energy after n steps × 10⁹, rounded half away from zero (n = 1000 gives the Benchmarks Game −0.169087605) |
 | `spectral_norm` | 50, 100, 200, 400 | norm × 10⁹ rounded; `run(0)` = 0 |
 | `binary_trees` | 8, 10, 12, 14 | sum of every check (stretch, per-depth, long-lived) at max depth max(6, n) |
@@ -140,9 +140,20 @@ JS controls for `handled_*` are closure calls on a stateful object (research/10
    arrays for SOM's Vector. Both sort with a stable sort instead of SOM's, and return a
    checksum instead of `true` (`programs/deltablue/LICENSE`). The redistribution terms of
    the original DeltaBlue sources still need a maintainer's confirmation.
-3. **`sieve` makes one full pass per prime** instead of striding over multiples: Sakura
-   Lang has no mutable array or `List.set`, and a stride over a persistent list would be
-   O(n) per write. The JS control makes the same passes, so the lane stays matched.
+3. **`sieve`'s controls make one full pass per prime** instead of striding over multiples.
+   This was written when Sakura Lang had no `List.set`, and the Sakura port made the same
+   passes. Since design §17.126 (WS9.7) the Sakura port strides with `List.set`
+   (O(log32 n) path copy per write) and the controls are unchanged, so `sieve`'s ratio
+   compares a stride with full passes: it is not a matched comparison until the controls
+   stride too. Before and after on one machine (Apple M4 Pro, Node 26.11,
+   `bench/bench run --suite js --engine node --filter sieve`, medians in ms):
+
+   | n | Sakura before | Sakura after | hand JS | ratio before | ratio after |
+   |---:|---:|---:|---:|---:|---:|
+   | 1000 | 0.1273 | 0.05642 | 0.0719 | 1.75× | 0.79× |
+   | 10000 | 2.853 | 0.8598 | 1.62 | 1.77× | 0.53× |
+   | 50000 | 33.09 | 6.51 | 16.4 | 2.00× | 0.40× |
+   | 200000 | 326.9 | 32.77 | 128.9 | 2.55× | 0.25× |
 4. **Entry point `bench/bench`**, a shim over `harness/bench.py`, plus an `oracle` command
    besides `run`, `compare`, `bless` and `compile`; `run` also prints a Markdown summary.
 5. **In-process loading of Sakura programs** rewrites the emitted `__main__.js` (keep the
