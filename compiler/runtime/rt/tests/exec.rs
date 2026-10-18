@@ -1136,3 +1136,36 @@ fn an_operation_past_the_handlers_clauses_is_d090() {
         }
     });
 }
+
+#[test]
+fn a_completion_whose_payload_is_not_a_fresh_bytes_is_refused_untouched() {
+    // Hostile host (security review W11): `complete` takes ownership only of a `Bytes` with
+    // `rc = 1`; anything else leaves the object alone and the request pending.
+    let mut rt = runtime(64 << 20);
+    let fixed = rt.new_bytes(4).unwrap();
+    rt.make_static(fixed);
+    ten_times(&mut rt, |rt| {
+        let (task, kind) = run_task(rt, WAIT_ONE, 1, 0, 0);
+        assert_eq!(kind, outcome::PENDING);
+        let req = traces(rt)[0] as u32;
+        let int = rt.new_int(7).unwrap();
+        let shared = rt.new_bytes(4).unwrap();
+        rt.dup(shared).unwrap();
+        let size = rt.heap.mem.size() as u32;
+        for bad in [int, shared, fixed, shared + 4, 3, size - 4, !7] {
+            assert_eq!(rt.complete(req, status::OK, bad), 0, "payload {bad}");
+        }
+        assert_eq!((rt.rc(int), rt.rc(shared)), (1, 2), "nothing was taken");
+        let good = rt.new_bytes(4).unwrap();
+        assert_eq!(
+            rt.complete(req, status::OK, good),
+            1,
+            "the request was still pending"
+        );
+        assert_eq!(rt.run(task, TABLE), outcome::OK);
+        finish(rt, task);
+        rt.drop(int);
+        rt.drop(shared);
+        rt.drop(shared);
+    });
+}

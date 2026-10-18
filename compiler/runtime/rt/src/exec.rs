@@ -960,6 +960,11 @@ impl Rt {
     /// is dropped and a carried handle retired), 2 when it arrived while the guest was
     /// running and was queued (ABI.md P11).
     pub fn complete(&mut self, req: u32, status: u32, payload: u32) -> u32 {
+        // A payload that is not a fresh `Bytes` from `alloc_bytes` is refused untouched, and
+        // the request stays pending for an honest completion (security review W11).
+        if payload != 0 && !self.host_bytes(payload) {
+            return 0;
+        }
         if self.sched.running {
             let mut q = self.sched.deferred.take().unwrap_or(Stack::NONE);
             let ok = [req, status, payload]

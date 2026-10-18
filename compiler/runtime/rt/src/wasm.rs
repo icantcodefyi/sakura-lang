@@ -112,7 +112,7 @@ pub extern "C" fn run(task: u32) -> u32 {
 }
 
 /// `complete(request, status, payload, len) -> i32` (ABI §8.5): `payload` is a `Bytes` from
-/// `alloc_bytes` (0 for none), owned by the guest from here on.
+/// `alloc_bytes` (0 for none), owned by the guest from here on; anything else is refused (0).
 #[unsafe(no_mangle)]
 pub extern "C" fn complete(request: u32, status: u32, payload: u32, _len: u32) -> u32 {
     rt().complete(request, status, payload)
@@ -1690,7 +1690,8 @@ pub extern "C" fn rt_invoke(listener: u32, payload: u32) -> u32 {
         }
         rt.sched.served = Some(served);
     }
-    if payload == 0 {
+    // Not a fresh `Bytes` from `alloc_bytes`: refused untouched (security review W11).
+    if !rt.host_bytes(payload) {
         return 0;
     }
     let r = (|| {

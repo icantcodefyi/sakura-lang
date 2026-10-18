@@ -66,6 +66,20 @@ impl Rt {
         is_ptr(w) && self.flags(w) & STATIC == 0
     }
 
+    /// Whether `p` is a `Bytes` the host may hand over as owned (`complete`, `invoke`; ABI
+    /// §8.5, security review W11): inside the heap and memory, tag `BYTES`, `rc = 1`, not
+    /// static, its data inside memory. Anything else is refused untouched.
+    pub fn host_bytes(&self, p: u32) -> bool {
+        let size = self.heap.mem.size();
+        is_ptr(p)
+            && p >= self.heap.mem.base()
+            && u64::from(p) + 12 <= size
+            && self.tag(p) == tag::BYTES
+            && self.rc(p) == 1
+            && self.flags(p) & STATIC == 0
+            && u64::from(p) + 12 + u64::from(self.heap.mem.u32(p + 8)) <= size
+    }
+
     /// No other reference reaches `w`: an update may write it in place (design §17.149).
     pub(crate) fn unique(&self, w: u32) -> bool {
         self.counted(w) && self.rc(w) == 1
