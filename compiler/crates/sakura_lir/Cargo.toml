@@ -1,0 +1,23 @@
+[package]
+name = "sakura_lir"
+description = "Low-level IR for the WASM backend: closure-converted, layout-aware, owned-RC (runtime/rt/ABI.md v1)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+sakura_core_snapshot = { path = "../sakura_core_snapshot" }
+
+[dev-dependencies]
+# The converter from live Core, used only by `examples/regen_core.rs`.
+sakura_core_snapshot = { path = "../sakura_core_snapshot", features = ["convert"] }
+insta.workspace = true
+sakura_analysis.workspace = true
+sakura_core.workspace = true
+sakura_eval.workspace = true
+
+[lints]
+workspace = true

@@ -1120,6 +1120,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "sakura_lir"
+version = "0.0.0"
+dependencies = [
+ "insta",
+ "sakura_analysis",
+ "sakura_core",
+ "sakura_core_snapshot",
+ "sakura_eval",
+]
+
+[[package]]
 name = "sakura_lsp"
 version = "0.0.0"
 dependencies = [
