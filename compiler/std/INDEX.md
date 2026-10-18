@@ -660,7 +660,7 @@ fn of(name: String) -> Model
 fn default() -> Model
 fn anthropic(key: Secret<String>, model: Model) -> Handler<Llm, {Http, Budget}>    // @external
 fn recording(path: Path, provider: Handler<Llm, {Http, Budget}>) -> Handler<Llm, {Http, Fs}>
-fn replay(path: Path) -> Handler<Llm, {Fs}>
+fn replay(path: Path) -> Handler<Llm, {Fs}>    // a miss is ProviderError naming Llm.recording and sakura test --record (§17.125)
 fn scripted(responses: List<String>) -> Handler<Llm>
 ```
 

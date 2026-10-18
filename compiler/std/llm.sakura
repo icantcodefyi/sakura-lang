@@ -110,8 +110,9 @@ pub fn recording(path: Path, provider: Handler<Llm, {Http, Budget}>) -> Handler<
 
 /// `recording(path, anthropic(Secret.of("replay"), default()))` under `Http.scripted([])`: the
 /// offline consumer of a committed cassette (design §17.73, §17.102). Nothing reaches the
-/// network; a missing exchange is `ProviderError` naming `sakura test --record` (record it
-/// with `Llm.recording`). The placeholder key is never written or matched.
+/// network; a missing exchange is `ProviderError` whose reason names `sakura test --record`
+/// and `Llm.recording`, which records it (§17.125). The placeholder key is never written or
+/// matched.
 pub fn replay(path: Path) -> Handler<Llm, {Fs}> {
   let provider = anthropic(Secret.of("replay"), default())
   handler Llm {
@@ -136,7 +137,7 @@ pub fn replay(path: Path) -> Handler<Llm, {Fs}> {
 }
 
 fn opened(c: Cassette) -> Cassette ! {Fs, Fail<LlmError>} {
-  match try { Http.open(c) } {
+  match try { Cassette.open(c) } {
     Ok(open) => open,
     Err(e) => fail ProviderError { status: 0, reason: e.reason },
   }
@@ -149,10 +150,20 @@ fn recorded<T, e>(c: Cassette, provider: Handler<Llm, {Http, Budget}>, call: fn(
   }
 }
 
+/// `recorded` with the network denied; a miss (status 0) says how to record it (§17.125).
 fn offline<T, e>(c: Cassette, provider: Handler<Llm, {Http, Budget}>, call: fn() -> T ! {Llm | e})
   -> T ! {Fs, Fail<LlmError> | e} {
-  with Http.scripted([]) {
-    recorded(c, provider, call)
+  try {
+    with Http.scripted([]) {
+      recorded(c, provider, call)
+    }
+  } catch {
+    ProviderError(status, reason) => {
+      if status == 0 {
+        fail ProviderError(status, "{reason}; record it with Llm.recording")
+      }
+      fail ProviderError(status, reason)
+    }
   }
 }
 
@@ -259,6 +270,16 @@ test "recording a missing exchange without --record is a ProviderError naming it
       Err(ProviderError { status, reason }) => {
         expect_eq(status, 0)
         expect(String.contains(reason, "sakura test --record"))
+      }
+      other => expect_eq("{other}", "a ProviderError"),
+    }
+  }
+  with Fs.rooted(Test.fixtures()), replay(Path.of("absent.jsonl")) {
+    match try { Llm.generate(req) } {
+      Err(ProviderError { status, reason }) => {
+        expect_eq(status, 0)
+        expect(String.contains(reason, "sakura test --record"))
+        expect(String.contains(reason, "Llm.recording"))
       }
       other => expect_eq("{other}", "a ProviderError"),
     }
