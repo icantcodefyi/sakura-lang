@@ -1520,18 +1520,51 @@ impl<'c, 'a> Fl<'c, 'a> {
                     args: vec![v],
                 }));
             }
-            P::Schema(_) | P::SchemaOf(..) | P::ShowWith => {
-                self.b.push(
-                    b,
-                    Inst::Unsupported {
-                        what: format!("{op:?}")
-                            .split('(')
-                            .next()
-                            .unwrap_or("schema")
-                            .to_lowercase(),
-                    },
-                );
-                return self.b.placeholder(b, Repr::Ptr);
+            P::Schema(ty) | P::SchemaOf(ty, _) => {
+                // The schema's JSON text (crate::schema), with each `SchemaOf` operand spliced
+                // in by `concat`.
+                let vars = match op {
+                    P::SchemaOf(_, vars) => vars.as_slice(),
+                    _ => &[],
+                };
+                let mut acc: Option<Var> = None;
+                for piece in crate::schema::pieces(self.cx.core, ty, vars) {
+                    let v = match piece {
+                        crate::schema::Piece::Text(t) => {
+                            let id = self.cx.intern(&t);
+                            self.b.fresh(b, "schema", Repr::Ptr, |dst| Inst::Const {
+                                dst,
+                                value: lir::Const::Str(id),
+                            })
+                        }
+                        crate::schema::Piece::Operand(k) => {
+                            let a = args.get(k).ok_or("SchemaOf without its operand")?;
+                            self.atom_as(b, env, a, Repr::Ptr)?
+                        }
+                    };
+                    acc = Some(match acc {
+                        None => v,
+                        Some(prev) => self.b.fresh(b, name, Repr::Ptr, |dst| Inst::Prim {
+                            dst,
+                            op: PrimOp::Concat,
+                            args: vec![prev, v],
+                        }),
+                    });
+                }
+                return match acc {
+                    Some(v) => Ok(v),
+                    None => self.b.placeholder(b, Repr::Ptr),
+                };
+            }
+            P::ShowWith => {
+                // `Show` is driven by the value's own boxes and rows here (ABI §3.4), so the
+                // schema operand (JS needs it to print a generic `Float`) is not read.
+                let v = self.atom(b, env, args.first().ok_or("show_with takes two operands")?)?;
+                return Ok(self.b.fresh(b, name, Repr::Ptr, |dst| Inst::Prim {
+                    dst,
+                    op: PrimOp::Show,
+                    args: vec![v],
+                }));
             }
         };
         let mut vs = Vec::new();

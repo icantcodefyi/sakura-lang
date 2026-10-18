@@ -88,20 +88,18 @@ fn $entry#1 top -> unit ; main::sql_untrusted_param, frame 1 slots [%1 bool]
     handle_pop
     ret %1
 
-fn find#5 top -> ptr ; main::sql_untrusted_param, frame 4 slots [%0 word*, %2 word*, %7 word*, %10 word*]
+fn find#5 top -> ptr ; main::sql_untrusted_param, frame 4 slots [%0 word*, %2 word*, %7 word*, %9 word*]
   b0(%0 u: ptr):
     %1 raw: word = $untrusted_value(%0)
     call from#4(%1) -> b1()
   b1(%2 conv: ptr):
-    %3 lit: ptr = const str 9
-    %4 lit: ptr = const str 10
+    %3 lit: ptr = const str 11
+    %4 lit: ptr = const str 12
     %5 parts: ptr = alloc list(%3, %4)
     %6 args: ptr = alloc list(%2)
     call template#2(%5, %6) -> b2()
   b2(%7 tmpl: ptr):
-    unsupported "schema"
-    %8 placeholder: unit = const ()
-    %9 placeholder: word = box %8
-    perform std::sql::Sql.query(%7, %9) -> b3()
-  b3(%10 r: ptr):
-    ret %10
+    %8 schema: ptr = const str 13
+    perform std::sql::Sql.query(%7, %8) -> b3()
+  b3(%9 r: ptr):
+    ret %9

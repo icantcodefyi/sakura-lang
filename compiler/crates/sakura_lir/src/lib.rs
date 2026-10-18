@@ -9,6 +9,7 @@ pub mod layout;
 pub mod lir;
 pub mod lower;
 pub mod print;
+pub mod schema;
 pub mod validate;
 
 use std::collections::BTreeMap;
