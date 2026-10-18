@@ -15,7 +15,9 @@ sakura verify --target wasm --rlimit 20000000 --solver /path/to/z3 src
 
 Install **Z3 5.3.1** separately, then check `z3 --version`. The CLI uses `z3` on `PATH` or the binary named by `--solver PATH`; it checks the version and refuses a missing or different version. It downloads nothing. If pinned cvc5 **1.4.2** is also available on `PATH`, it cross-checks Z3's `unsat` answers; a disagreement prevents a proof.
 
-`--target js` is the default: `Int` must fit within ±(2^53−1). `--target wasm` selects the signed i64 verification profile, reported as `i64`. Selecting this profile does not build or execute WASM.
+`--target js` is the default: `Int` must fit within ±(2^53−1). `--target wasm` selects the signed i64 verification profile, reported as `i64`. Selecting this profile does not build or execute WASM. To execute it, use [`sakura run --target wasm`](/docs/tour/memory#backends); builds and tests also accept that target.
+
+The command accepts source files or directories; with no paths it uses `src/` when present, otherwise the current directory. Its options are `--json`, `--target js|wasm`, `--rlimit N` and `--solver PATH` (plus `--help`). There are no CLI timeout, cross-check or proof-certificate flags.
 
 Each query defaults to `rlimit 10000000`, a 2-second solver timeout and a 5-second external deadline. There is no automatic budget escalation. Set a project budget in `sakura.toml`:
 
@@ -99,7 +101,7 @@ After verification, run:
 sakura build --manifest main.sakura
 ```
 
-Only JS output from `sakura build` removes checks, and only a function's **own `ensures` and non-entry `where` checks** whose every obligation has an authenticated `proved` record matching the Core being built. **`requires`, `T.from` entry checks and checked arithmetic stay.** In the example, `clamp` can lose its postcondition check, but its entry precondition remains. The predicate is still computed, so a defect during predicate evaluation remains `D011`.
+Only JS output from `sakura build` removes checks, and only a function's **own `ensures` and non-entry `where` checks** whose every obligation has an authenticated `proved` record matching the Core being built. **This proof-removal pass retains `requires`, `T.from` entry checks and checked arithmetic.** The separate interval optimization can remove arithmetic guards it proves safe; that is not a solver verdict. In the example, `clamp` can lose its postcondition check, but its entry precondition remains. The predicate is still computed, so a defect during predicate evaluation remains `D011`.
 
 The build recomputes cache keys without running Z3. Missing, stale or unauthenticated proofs leave checks intact. `sakura run`, `sakura test` and `sakura build --emit lir` keep all checks. Verification itself currently reruns the solver every time; reading cached verdicts to accelerate `verify` is not implemented.
 

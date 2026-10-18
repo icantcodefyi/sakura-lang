@@ -14,6 +14,10 @@ published yet.
   take their blame site as a trailing parameter on the JS backend, and predicates that
   cannot defect skip the `D011` bracket (design §17.115); defect codes are unchanged.
 
+- M4 documentation now describes source-built WASM execution and verification,
+  CI parity, the pending Secret-header transport review, and implemented versus
+  planned backend and agent tooling. Added the static-verification tour.
+
 - The committed skill manifest omits its history-dependent `commit` field; file and
   ZIP SHA-256 hashes remain. Identical contents stay fresh across commits and rebases,
   and generation no longer requires Git history. CLI commit metadata stays build-time.

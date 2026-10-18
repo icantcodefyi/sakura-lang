@@ -74,7 +74,7 @@ The state is private to the instance, initialized once per `with`, and released 
 
 ## Reference counting and reuse
 
-With no aliasable mutation and strict evaluation, the heap is an acyclic graph: a value can only reference values that existed before it. That makes reference counting complete without a cycle collector. The plan for native and WASM ([design §8.2](https://github.com/icantcodefyi/sakuralang/blob/master/docs/design.md)):
+With no aliasable mutation and strict evaluation, the heap is an acyclic graph: a value can only reference values that existed before it. That makes reference counting complete without a cycle collector. The WASM backend implements conservative reference counting. The broader reuse and worker-thread design below remains planned for native ([design §8.2](https://github.com/icantcodefyi/sakuralang/blob/master/docs/design.md)):
 
 - **Non-atomic counts per task.** The compiler inserts `dup`/`drop` after Core lowering (Perceus). Values sent across worker threads are promoted to atomic counts on send.
 - **Same-constructor reuse.** When a value is uniquely referenced, an update or a `match` that rebuilds a value of the same shape reuses its memory.
@@ -143,16 +143,27 @@ There is no shared mutable memory, so tasks cannot race on data. Tasks communica
 | WebAssembly (`wasm-encoder`, runtime in linear memory) | M4 | non-atomic RC, no WASM GC required |
 | Native (Cranelift) | M5 | Perceus RC with reuse |
 
-In v0 the only build target is JavaScript:
+The source-built CLI supports JavaScript (the default) and WASM. Native execution remains planned:
 
 ```bash
 sakura build --target js
+sakura build --target wasm
+sakura run --target wasm
+sakura test --target wasm
 ```
+
+WASM builds write `main.wasm` and the Node host files to `target/sakura/wasm`; `run` and `test` execute through Node, not a browser or WASI host. Use Node 26. `--out-dir PATH` selects another output directory on all three commands. `run` accepts one source path and forwards arguments after `--`; `build` and `test` accept multiple paths. Omitted paths use `src/` when present, otherwise the current directory.
+
+`build --emit lir` writes `main.lir` to `target/sakura/lir`. LIR output supports `--layout tagged`; `--emit lir --layout niche` is rejected as not implemented. WASM emission always uses tagged layout; passing `--layout niche` to that path does not enable niches. There is no `build --release` flag. `build --manifest` writes the trust manifest for JS output; it is rejected with `--target wasm` or `--emit lir`. WASM retains runtime contract checks. See [verification](/docs/agents/verify) for the narrower JS proof-removal behavior.
+
+HTTP sends and streams, `Sql.sqlite`, `Llm.stream`, `Serve.host()` and `Log.json()` are implemented on WASM. **Requests carrying `Secret` HTTP headers are refused until the owner's security review**, including `Http.bearer` and `Llm.anthropic` over `Http.host()`. The host refuses them rather than silently sending an unauthenticated request. Offline scripted/replayed streams are available. `test --record` and `test --contracts` require `--target js`; ordinary tests run on both backends. User `@external(js, …)` bindings are rejected for WASM with `V8004`.
+
+WASM uses signed i64 `Int`; overflow is `D001`. JavaScript keeps its safe-integer profile (`D003` beyond ±(2^53−1)). `String.parse_int` and `Float.to_int_checked` follow the selected backend's range. The JS/WASM parity matrix is enforced in CI on Ubuntu and macOS, comparing outputs, exits, defects and traces, with explicit backend expectations for those integer differences. WASM source spans (`sakura.debug`) and dynamic defect messages remain planned; defect codes are compared today.
 
 ## Costs and limits
 
 - Reference counting costs something on every `dup` and `drop`. Reuse is what makes it competitive; how well it works is unmeasured.
-- Sharing a large value and then updating it copies. `W8001` points at loops where this happens.
+- Sharing a large value and then updating it copies. `W8001` copy diagnostics are planned for M5.
 - Cyclic data needs `Graph` and `NodeId`s instead of direct references.
 - On the JS backend, `Int` arithmetic and literals beyond ±(2^53−1) are defect `D003` until a wider representation lands. Parsing is the exception: `String.parse_int` returns `None` for such a value, because parsing is where untrusted input enters.
 - Native handler state uses a per-instance lock. Whether that holds up under parallelism is an open question ([design §16](https://github.com/icantcodefyi/sakuralang/blob/master/docs/design.md)).
@@ -165,7 +176,7 @@ sakura build --target js
 - A resource cannot escape its scope (`V6003`).
 - Reference counting is inserted automatically and is never visible in source. Reuse is an optimization only.
 
-The planned WASM runtime in M4 uses conservative reference counting with explicit ownership. Borrow inference and in-place Perceus reuse remain M5; current execution uses JavaScript GC.
+The WASM runtime uses conservative reference counting with explicit ownership. Borrow inference and Perceus reuse remain M5 work; JavaScript uses host GC.
 
 ## Next
 

@@ -6,6 +6,7 @@
     "effects",
     "handlers",
     "contracts",
+    "verification",
     "testing",
     "capabilities",
     "memory",

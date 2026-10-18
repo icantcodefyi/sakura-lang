@@ -17,10 +17,15 @@ cargo install --locked --path crates/sakura_cli
 sakura mcp serve --help
 ```
 
-The server works on the workspace in its current directory, or the one named by
-`--root <dir>`. Source edits are written only inside that directory through `apply_patch`;
+Without `--root`, the server finds the nearest ancestor of its working directory
+containing `sakura.toml`; it refuses to start outside a project. `--root <dir>`
+selects an explicit workspace. Source edits are written only inside that directory through `apply_patch`;
 `test` executes the supplied test runner. Compiler HTTP transport and the
 `--tools` function-export flag are planned, not supported options.
+
+For project-local setup, `sakura setup --client claude|codex|cursor|all` prints the
+proposed configuration; add `--apply` to write it. Run it inside the project.
+The commands below are manual alternatives.
 
 ## Client setup
 
@@ -81,8 +86,9 @@ Kinds include `conflict`, `unknown_snapshot`, `unknown_patch`, `spec_frozen`,
 was stamped with, else `null`), `schema_version`, `edition`, `tools`, `features`,
 `workspace_root`, `manifest` and `lock_digest`. Capabilities describe the
 running build: `backends` includes `wasm` when compiled in, `verify: true` reports
-CLI verification support with solver availability/version status, and
-`test_execution` reports whether the server has a test runner. A missing solver
+CLI verification support; the separate `features.solver` object reports `name`,
+`pinned`, `available`, and either `version`/`path` or a failure `detail`.
+`features.test_execution` reports whether the server has a test runner. A missing solver
 does not mean verification is unimplemented; `verify` is not an MCP tool.
 
 MCP results are JSON objects containing records and summaries, not the CLI
