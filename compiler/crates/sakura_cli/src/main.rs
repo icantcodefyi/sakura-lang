@@ -336,20 +336,12 @@ const SKILL: &[(&str, &str)] = &[
         include_str!("../../../../skills/sakura/assets/sakura.mdc"),
     ),
     (
-        "references/boundaries-and-time.md",
-        include_str!("../../../../skills/sakura/references/boundaries-and-time.md"),
-    ),
-    (
         "references/diagnostics.md",
         include_str!("../../../../skills/sakura/references/diagnostics.md"),
     ),
     (
         "references/language.md",
         include_str!("../../../../skills/sakura/references/language.md"),
-    ),
-    (
-        "references/provenance.md",
-        include_str!("../../../../skills/sakura/references/provenance.md"),
     ),
     (
         "references/recipes.md",
@@ -1216,6 +1208,19 @@ mod tests {
         assert_eq!(
             super::child_exit(Some(0xC000013A_u32 as i32)),
             super::EXIT_DEFECT
+        );
+    }
+
+    /// `SKILL.md` is at most 7,500 bytes of ASCII (design §17.182 (1)), so it survives an
+    /// 8,000-character tool-output cut with its metadata filled in.
+    #[test]
+    fn skill_entry_point_stays_under_its_bar() {
+        let text = super::SKILL[0].1;
+        assert!(text.is_ascii(), "SKILL.md must be ASCII");
+        assert!(
+            text.len() <= 7500,
+            "SKILL.md is {} bytes; the bar is 7,500 (design §17.182 (1))",
+            text.len()
         );
     }
 

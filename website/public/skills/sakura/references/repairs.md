@@ -5,6 +5,17 @@ not from measured agent-failure frequencies. Add pilot failures only with their
 reproducer and acceptance evidence. Retrieve the full explanation with
 `sakura explain CODE`; inspect its spans and the current file's content hash.
 
+## Bundle provenance
+
+The CLI fills the skill's metadata from its version and build-time
+`SAKURA_GIT_COMMIT`. Website copies retain placeholders; their content manifest
+records the compiler version and file/ZIP SHA-256 hashes, without a Git commit. Use
+the guide embedded in the installed executable: an edition alone does not identify
+a compatible pre-alpha commit. If provenance differs, use the installed compiler's
+help and guide before assuming an API exists.
+
+## Error table
+
 | Error | Likely cause | Repair that preserves intent | Seed in the compiler repository |
 | --- | --- | --- | --- |
 | `V0011` | Type arguments at a call, copied from TypeScript/Rust. | Remove the call-site arguments and annotate the receiving binding or another inference boundary. Preserve the intended type. | `tests/ui/V0011_call_site_type_arguments.sak` |

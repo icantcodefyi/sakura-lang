@@ -22,6 +22,14 @@ The source of each page is its example's `recipe.md`, `sakura.toml`,
 `src/main.sak` and fixture files. Run `cargo run -p agent_docs` from `compiler/`
 to regenerate the cookbook and skill reference. Edit those sources, not the rendered pages.
 
+## Audit and verify
+
+`sakura audit --json` inventories trust boundaries; it is not certification.
+`sakura verify --json` requires the pinned solver and reports each obligation.
+Exit 0 can include `unknown` or `unsupported`; inspect statuses and
+`path_feasible`, including `W7002` for vacuity. A proof is conditional on its
+recorded assumptions and target profile, not a whole-program guarantee.
+
 - [Decode JSON into a refined record](/docs/cookbook/json_refined) — Decode an order once and let its field refinements reject invalid external data.
 - [Read a file from a CLI](/docs/cookbook/cli_files) — Decode command-line flags into a record and count a selected file's bytes.
 - [Retry HTTP with an offline cassette](/docs/cookbook/http_retry) — Retry a safe GET after a rate limit, with a finite attempt count and virtual time in tests.

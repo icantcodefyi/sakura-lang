@@ -22,6 +22,8 @@ fn read(path: &Path) -> Result<String, String> {
 pub fn outputs(root: &Path) -> Result<Vec<(String, String)>, String> {
     let examples = root.join("compiler/examples");
     let intro = read(&examples.join("cookbook.md"))?;
+    // A recipe page repeats only the intro's opening paragraphs; its sections are the index's.
+    let provenance = intro.split("\n## ").next().unwrap_or(&intro);
     let mut index = format!(
         "---\ntitle: Cookbook\ndescription: Eight small, tested Sakura projects that run offline.\n---\n\n{NOTICE}\n\n{intro}\n"
     );
@@ -87,7 +89,7 @@ pub fn outputs(root: &Path) -> Result<Vec<(String, String)>, String> {
         out.push((
             format!("website/content/docs/cookbook/{name}.mdx"),
             format!(
-                "---\ntitle: {}\ndescription: {}\n---\n\n{NOTICE}\n\n{body}\n### Compiler provenance and regeneration\n\n{intro}",
+                "---\ntitle: {}\ndescription: {}\n---\n\n{NOTICE}\n\n{body}\n### Compiler provenance and regeneration\n\n{provenance}",
                 serde_json::to_string(title).unwrap(),
                 serde_json::to_string(description).unwrap(),
             ),

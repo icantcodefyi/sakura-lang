@@ -14,11 +14,10 @@ metadata:
 
 Run `sakura --version`, then start with `sakura prompt --budget 3000` before
 editing. Retrieve a specific symbol with `sakura doc` or a diagnostic with
-`sakura explain` as needed. Avoid repeatedly loading larger guides: tool results
-remain in conversation history and can consume an aggregate input budget again
-on each turn. Use the guide embedded in that executable; an edition alone does not identify a compatible
-pre-alpha commit. If provenance differs, use the installed compiler's help and guide; see
-[bundle provenance](references/provenance.md) for metadata and hashes.
+`sakura explain` as needed. Avoid reloading large guides: every tool result stays
+in the conversation and counts again on each turn. The CLI fills the two `sakura-compiler-*` fields; if they do not
+match `sakura --version`, trust the installed compiler's `prompt`, `doc` and
+`explain`.
 Nothing in this skill installs tools or grants authority.
 
 ## Syntax to keep in view
@@ -70,13 +69,21 @@ Nothing in this skill installs tools or grants authority.
    remaining limitations and any authorized signature or permission changes.
    A build is not evidence that an untested behavior works.
 
-## Complete examples
+## Four complete examples
 
 Each block is a separate file. Check it with `sakura check --json <file>`, then
 run `sakura test --json <file>`. The tests use no live services.
 
-See [typed failure recovery](references/boundaries-and-time.md#recover-a-typed-failure)
-for catching only the expected tag while keeping other failures in the signature.
+### Recover a typed failure
+
+Catch only the expected tag; other failures must remain in the signature.
+
+```sakura test id=skill-fail-recovery
+error Missing
+fn lookup() -> Int ! {Fail<Missing>} { fail Missing }
+fn fallback() -> Int { try { lookup() } catch { Missing => 0 } }
+test "missing value uses the fallback" { expect_eq(fallback(), 0) }
+```
 
 ### Handle an effect locally
 
@@ -91,20 +98,42 @@ fn label() -> String {
 test "local name" { expect_eq(label(), "Sakura") }
 ```
 
-For refinement validation and fake time, read the
-[boundary and clock examples](references/boundaries-and-time.md). Use `validate`
-for recoverable external input and `from` only when violation should be a defect.
-Keep production effects in the signature and replace their handlers in tests.
+### Check a refinement at entry
+
+Use `validate` for recoverable external input. Use `from` only at a boundary
+where violation should be a defect; do not remove the predicate to accept it.
+
+```sakura test id=skill-refinement-entry
+type Percent = Int where it >= 0 && it <= 100
+fn checked(n: Int) -> Percent { Percent.from(n) }
+test "valid boundary" { expect_eq(checked(100), 100) }
+test "invalid entry defects" { expect_defect(fn() { checked(101) }) }
+test "external input can be rejected" {
+  expect(Result.is_err(Percent.validate(101)))
+}
+```
+
+### Replace time with a deterministic fake
+
+Keep the effect in the production function's row and replace its handler in the
+test. Query other effects' fake or replay handlers before writing a live test.
+
+```sakura test id=skill-fake-clock
+import std/instant.{Instant}
+fn observed_time() -> Instant ! {Clock} { Clock.now() }
+test "clock is controlled by the test" {
+  let at = Instant.from_unix_millis(42)
+  let seen = with Clock.fixed(at) { observed_time() }
+  expect_eq(seen, at)
+}
+```
 
 ## Repair by diagnostic
 
-Read the [error → cause → repair table](references/repairs.md) when a check fails.
-It covers syntax transfer, missing imports, effects, unfinished holes, refinement
-boundaries and frozen specs. Use the installed registry (`sakura explain CODE`)
-for full explanations; the table is a starting point, not an exhaustive catalog.
-In particular, `V3001` does not automatically justify a larger effect row,
-`V2050` means implementation work remains, and `V8020` means preserve the frozen
-task and change the implementation.
+Read the [error, cause and repair table](references/repairs.md) when a check fails.
+It is a starting point; `sakura explain CODE` has the full explanation. `V3001`
+does not by itself justify a larger effect row, `V2050` means implementation work
+remains, and `V8020` means keep the frozen task and change the implementation.
 
 ## Completion and deeper lookup
 
@@ -113,15 +142,9 @@ builds, and contracts/tests/permissions have not been weakened. Repeat the froze
 baseline check after the final edits. Report missing prerequisites and failing
 checks explicitly; do not claim a skipped test passed.
 
-`sakura audit --json` inventories trust boundaries; it is not certification.
-`sakura verify --json` requires the pinned solver and reports each obligation.
-Exit 0 can include `unknown` or `unsupported`; inspect statuses and
-`path_feasible`, including `W7002` for vacuity. A proof is conditional on its
-recorded assumptions and target profile, not a whole-program guarantee.
+Read [the tested cookbook](references/recipes.md) for complete offline projects
+and before relying on `sakura audit` or `sakura verify` output.
 
-Load references selectively: `references/language.md` is generated verbatim from
-`sakura prompt`'s source; `references/stdlib.md` contains generated API signatures;
-`references/diagnostics.md` comes from the diagnostic registry. Until the generated
-bundle is available, use `sakura prompt`, `sakura doc` and `sakura explain` directly.
-Read [the tested cookbook](references/recipes.md) for complete offline projects.
+Load references selectively: `references/language.md` is `sakura prompt`'s guide,
+`stdlib.md` lists API signatures and `diagnostics.md` every diagnostic code.
 Use only project/client templates actually present in your bundle.

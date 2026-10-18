@@ -109,8 +109,10 @@ published yet.
   `z3.exe` and `cvc5.exe`, and test permission grants carry no `\\?\` prefix (design §17.180
   (4c)). Windows is not yet a supported platform.
 
-- The agent skill entry point fits below the eval harness tool-output limit; refinement
-  and fake-clock examples remain in a linked reference and the generated bundle.
+- The agent skill entry point is at most 7,500 bytes of ASCII, pinned by a `sakura_cli` test,
+  so it fits below the eval harness tool-output limit with its metadata filled in. Its four
+  examples stay; the provenance details moved to `references/repairs.md` and the `audit` and
+  `verify` notes to the cookbook (design §17.182 (1)).
 
 - `--target wasm` defect records now match `--target js` in code, message and site (design
   §17.162): a contract defect says ``precondition `nonzero` of positive violated`` (not

@@ -14,3 +14,11 @@ evaluation tasks.
 The source of each page is its example's `recipe.md`, `sakura.toml`,
 `src/main.sak` and fixture files. Run `cargo run -p agent_docs` from `compiler/`
 to regenerate the cookbook and skill reference. Edit those sources, not the rendered pages.
+
+## Audit and verify
+
+`sakura audit --json` inventories trust boundaries; it is not certification.
+`sakura verify --json` requires the pinned solver and reports each obligation.
+Exit 0 can include `unknown` or `unsupported`; inspect statuses and
+`path_feasible`, including `W7002` for vacuity. A proof is conditional on its
+recorded assumptions and target profile, not a whole-program guarantee.
