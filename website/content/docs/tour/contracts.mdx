@@ -15,12 +15,12 @@ Every claim Sakura Lang makes about a program has exactly one of four statuses (
 
 | Status            | Meaning                                                                                | Who establishes it                                                            |
 | ----------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `proved`          | Holds on all executions under the stated assumptions.                                  | The type and effect checker; later, SMT-discharged contracts.                 |
+| `proved`          | Holds on all executions under the stated assumptions.                                  | The type and effect checker; SMT-discharged contracts.                 |
 | `runtime_checked` | A violation is detected at the boundary and becomes a defect. The bad value never escapes. | Contract lowering (`requires`, `ensures`, `where`), checked arithmetic.        |
 | `tested`          | Held on the inputs that were executed.                                                 | `sakura test` (unit, property, snapshot, simulation).                            |
 | `trusted`         | Assumed.                                                                               | FFI declarations, host handlers, `@trust` sites, the toolchain itself.        |
 
-The current build manifest labels contract obligations `runtime_checked`. Scalar literals can already be decided at compile time; this is a bounded evaluator, not the planned SMT verifier. The compiler never prints "verified" for a program that merely compiled.
+The build manifest labels retained contract checks `runtime_checked` and clauses whose checks were all removed using authenticated proofs `proved`. Scalar literal evaluation is separate from SMT verification; compiling a program does not prove every obligation.
 
 ## Refinement types
 
@@ -200,7 +200,7 @@ fn top_score(scores: NonEmpty<Int>) -> Int
 
 ## Contracts are always checked
 
-The current JS build retains runtime contracts; there is no `--release` flag in the CLI. Decided literal introductions need no runtime conversion. Future `sakura verify` (M4) may remove an individual check only with a matching `proved` result.
+The JS build retains runtime contracts unless matching authenticated proofs allow check removal; see [`sakura verify`](/docs/agents/verify) for the exact scope.
 
 Contract violations are [defects](/docs/tour/effects), not effects. A defect terminates the current task after resource finalizers run. `try` cannot catch it. `Task.scope` and the test runner observe it as an outcome, and a defect in `main` exits with status 70 and a structured report.
 
@@ -218,7 +218,7 @@ Compiler fixes that touch a contract carry `impact: contract_change` and are nev
 
 ## Not in v0
 
-- **Static proof.** M4 adds `sakura verify`, which sends obligations in the QF_LIA, QF_BV, and EUF fragments to Z3 and reports `proved`, `disproved` (with a counterexample), `unknown`, or `unsupported`. Only `proved` removes a runtime check. Termination is never implied ([design §7.5](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)).
+- **Termination proofs.** The M4 `sakura verify` preview proves supported obligations conditional on normal return; it does not prove termination ([design §7.5](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md)).
 - **Flow-sensitive refinement.** An `if n >= 0` does not turn `n` into a refined type. Use `validate` or `from`.
 - **`old(expr)`** in postconditions. There is no mutation to snapshot.
 - **Proof-oriented syntax.** The keywords `verify`, `proof`, and `ghost` are reserved and rejected today with `V0007`.

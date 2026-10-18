@@ -1,0 +1,112 @@
+---
+title: Verify contracts
+description: Prove contract and arithmetic obligations with sakura verify, inspect counterexamples, and understand proof-backed check removal.
+---
+
+`sakura verify` is available in the source-built CLI as an M4 preview. It generates obligations for user functions, including functions unreachable from `main`, and asks Z3 whether their contracts and arithmetic are safe under the stated assumptions. See [contracts and refinements](/docs/tour/contracts) for the language rules.
+
+```sh
+sakura verify src
+sakura verify --json src
+sakura verify --target wasm --rlimit 20000000 --solver /path/to/z3 src
+```
+
+## Solver and limits
+
+Install **Z3 5.3.1** separately, then check `z3 --version`. The CLI uses `z3` on `PATH` or the binary named by `--solver PATH`; it checks the version and refuses a missing or different version. It downloads nothing. If pinned cvc5 **1.4.2** is also available on `PATH`, it cross-checks Z3's `unsat` answers; a disagreement prevents a proof.
+
+`--target js` is the default: `Int` must fit within ±(2^53−1). `--target wasm` selects the signed i64 verification profile, reported as `i64`. Selecting this profile does not build or execute WASM.
+
+Each query defaults to `rlimit 10000000`, a 2-second solver timeout and a 5-second external deadline. There is no automatic budget escalation. Set a project budget in `sakura.toml`:
+
+```toml
+[verify]
+rlimit = 20000000
+```
+
+`--rlimit N` overrides the manifest; zero is rejected. The solver metadata and proof cache key include the limits used. To reuse proofs in a build, use the manifest setting: builds use `[verify] rlimit` or the default, so proofs from a different command-line budget will not remove checks.
+
+## A real run
+
+Save this as `main.sakura`:
+
+```sakura
+fn clamp(x: Int, lo: Int, hi: Int) -> Int
+  requires ordered: lo <= hi
+  ensures bounded: lo <= result && result <= hi
+{
+  if x < lo { lo } else if x > hi { hi } else { x }
+}
+
+pub fn main() -> Unit {
+  let _value = clamp(12, 0, 10)
+}
+```
+
+Running `sakura verify main.sakura` with Z3 5.3.1 produced the following output (obligations on stdout, the summary on stderr), with exit status 0:
+
+```text
+proved      main::main::main requires ordered at main.sakura:9:16
+proved      main::main::clamp ensures bounded at main.sakura:3:20
+2 proved, 0 disproved, 0 unknown, 0 unsupported (profile js, z3 5.3.1, rlimit 10000000)
+```
+
+The first result proves that this call meets `ordered`; it says nothing about another caller. The second proves `bounded` on normal return, assuming the precondition. Neither proves termination or the absence of every possible defect.
+
+Arithmetic is checked separately. For example, `total * p / 100` can satisfy an `ensures result <= total` clause on normal return while `total * p` can still overflow. A proved postcondition does not discharge that overflow obligation.
+
+## Reading statuses
+
+| Status | Meaning |
+| --- | --- |
+| `proved` | The obligation holds under its recorded assumptions and target profile. Check `path_feasible` for vacuity. |
+| `disproved` | The solver found a counterexample to definedness or to the predicate. Check `replay` before treating it as a confirmed execution. |
+| `unknown` | Verification was inconclusive; `reason` identifies a resource limit, timeout, solver failure or other cause. |
+| `unsupported` | The obligation uses a construct outside the implemented verification fragment; `reason` names it. |
+| `runtime_checked` | A manifest status for a retained runtime check, not a solver verdict or a static proof. |
+
+A completed verification exits **1** if any obligation is `disproved`, otherwise **0**, even with `unknown`, `unsupported` or warnings. Loading, compilation and solver setup errors can also fail. An automation gate that requires proofs must inspect the records, not just the exit code.
+
+Counterexamples contain source values. Replay currently runs through the Core evaluator on the JS profile for eligible pure top-level functions whose parameters are all `Int` or `Bool`. `replay: "confirmed"` means execution produced the defect predicted by that obligation; `candidate` or `unavailable` is not confirmation. i64 replay is not implemented.
+
+### W7002: vacuous proofs
+
+The verifier first checks whether an obligation's assumptions are feasible. An impossible path produces `proved` with `path_feasible: false` and **`W7002 vacuous_obligation`**. For example, `requires x > 0 && x < 0` makes a postcondition vacuously true: no input can reach it. Inspect the contradictory assumptions instead of treating that result as a useful postcondition. An inconclusive feasibility query produces `unknown`.
+
+## JSON Lines
+
+`sakura verify --json main.sakura` writes one `obligation` record per obligation, any `W7002` `diagnostic` records, then a final `summary`. These are separate JSON objects, one per line, with `schema_version: "1.0"`.
+
+Obligation records include:
+
+- `id`, `symbol_id`, `clause`, `obligation` (`requires`, `ensures`, `where`, `overflow` or `division`), `site` and `span`.
+- `status`, `profile`, `solver` (name, version, `rlimit`, `timeout_ms`, `deadline_ms`) and optional `cross_check` metadata.
+- `path_feasible`, `path_conditions`, `summaries` and `inlined` dependencies, plus `warnings`.
+- `reason` with `kind` and `detail`, or `counterexample` with `failed`, `inputs` and summary values, plus `replay`; fields without a result can be null. Counterexample integers are decimal strings to preserve i64 precision.
+- `snapshot` and `manifest_id`: the latter identifies the contract clause updated in the manifest and is null for arithmetic obligations.
+
+Spans carry the source URI, content hash and byte range. The summary includes `proved`, `disproved`, `unknown` and `unsupported` counts as well as diagnostic counts. Consume records by `kind`; a stream can contain both proof results and diagnostics.
+
+## Proof cache and build behavior
+
+Verification writes records to `target/sakura/proofs/<key>.json`. A `sakura-proof-v1` digest covers the normalized verification condition, the function's own Core body, inlined definitions, assumed contracts, target profile, encoder version, solver identity and limits, and trust policy. A body-only edit invalidates that function's proofs; a callee contract change invalidates dependent proofs. A caller that assumes only a callee's contract can retain its conditional result after that callee's body changes.
+
+A digest alone cannot authenticate an editable file. Records carry an **HMAC-SHA256** made with a per-installation key at `$XDG_STATE_HOME/sakura/proof.key`, falling back to `~/.local/state/sakura/proof.key`. The key is created on first use with mode `0600`; a key inside the project is refused. If authentication is unavailable, verification warns and no build drops checks based on those records. Copying records from another installation or editing a `proved` field does not authorize check removal.
+
+After verification, run:
+
+```sh
+sakura build --manifest main.sakura
+```
+
+Only JS output from `sakura build` removes checks, and only a function's **own `ensures` and non-entry `where` checks** whose every obligation has an authenticated `proved` record matching the Core being built. **`requires`, `T.from` entry checks and checked arithmetic stay.** In the example, `clamp` can lose its postcondition check, but its entry precondition remains. The predicate is still computed, so a defect during predicate evaluation remains `D011`.
+
+The build recomputes cache keys without running Z3. Missing, stale or unauthenticated proofs leave checks intact. `sakura run`, `sakura test` and `sakura build --emit lir` keep all checks. Verification itself currently reruns the solver every time; reading cached verdicts to accelerate `verify` is not implemented.
+
+See the [build manifest](/docs/agents/build-manifest) for the trusted base and clause records. `verify` writes `target/sakura/manifest.json` with verification statuses; a clause takes its worst obligation's status (`disproved`, then `unknown`, then `unsupported`, then `proved`). `build --manifest` describes the actual build: `proved` only for clauses whose checks it all removed, and `runtime_checked` for the rest. Building therefore replaces prior `unknown` or `disproved` manifest statuses with `runtime_checked` where checks remain.
+
+## Limits of the preview
+
+The verifier handles a restricted scalar fragment, including booleans, bounded integers, comparisons, arithmetic, branches and supported calls. Proofs depend on the recorded assumptions and call summaries. They do not establish the behavior of trusted host code or certify a whole program.
+
+Loop invariants, recursion and termination proofs, `Float` and `String` theories, quantified collection predicates, effectful subterms and circular summaries are unsupported. Proof certificates and the reserved `verify fn` / `proof` / `ghost` syntax are not implemented. See the [M4 plan](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/plans/m3-completion-and-m4.md#3-m4--wasm-backend-and-sakura-verify) for the remaining work.

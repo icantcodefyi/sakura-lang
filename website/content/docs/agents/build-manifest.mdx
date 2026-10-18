@@ -16,8 +16,8 @@ The manifest is one JSON object with:
 - `schema_version: "1.0"` and the input `snapshot` hash.
 - `compiler.version` and `compiler.git`; local builds may have a null git value.
 - `trusted` entries for the compiler, emitted runtime (with SHA-256), std host bindings, user `@external` declarations, `@trust` reasons and `@total` declarations.
-- `obligations` with an ID, symbol ID, clause, status and source span. Current contract records have status `runtime_checked`.
+- `obligations` with an ID, symbol ID, clause, status and source span. Build records have status `proved` only for clauses whose checks were all removed using matching authenticated proofs; other clauses remain `runtime_checked`.
 
-Obligation IDs use `o:` followed by a digest of the symbol, clause name and normalized predicate. A function-body edit that preserves these does not change its obligation ID. That identity is not a proof-cache validity guarantee: M4 verification must also track bodies and other dependencies.
+Obligation IDs use `o:` followed by a digest of the symbol, clause name and normalized predicate. A function-body edit that preserves these does not change its obligation ID. That identity is not a proof-cache validity guarantee: verification also tracks bodies and other dependencies.
 
-This records assumptions and runtime obligations; it does not certify the program. [Compile-time literal evaluation](/docs/tour/contracts#literal-refinements-at-compile-time) already decides some introductions, while `sakura verify` and proof-driven check removal remain planned M4 integration. See the [roadmap](/docs/roadmap).
+This records assumptions and runtime obligations; it does not certify the program. See [`sakura verify`](/docs/agents/verify) for proof statuses, the authenticated cache and which checks a build can remove.

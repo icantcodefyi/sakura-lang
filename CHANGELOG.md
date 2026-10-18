@@ -67,7 +67,9 @@ published yet.
   counterexample replayed through the evaluator, `unknown`, `unsupported`, and `W7002` for a
   proof over an impossible path) and records statuses in the manifest; `sakura build` then
   drops a proved `ensures`/`where` check only while its MAC-authenticated proof still matches the
-  code. `[verify] rlimit` in `sakura.toml` sets the solver budget.
+  code. `[verify] rlimit` in `sakura.toml` sets the solver budget. The website now documents
+  [verification](website/content/docs/agents/verify.mdx), with a captured CLI example,
+  JSON Lines records, cache authentication and check-removal limits.
 - `sakura test --record`, `Http.recording`, `Llm.replay` and `Test.fixtures` support
   scoped cassette recording and offline replay. Example fixtures are explicitly synthetic.
 - Scoped escape diagnostics `V6002`/`V6003`, foreign-capability FFI rejection `V6001`,
