@@ -1,0 +1,2741 @@
+{
+  "base": "c4da99459bab325b4938fd3a8a6df2494be71deb",
+  "head": "6b53ec707319c5053fbd46250a239eae004d0826",
+  "node": "v26.11.0",
+  "load_1_min": 14.1611328125,
+  "load_1_max": 17.974609375,
+  "load_snapshots": 4,
+  "cells": [
+    {
+      "n": 100000,
+      "arm": "cap8",
+      "side": "base",
+      "runs": [
+        {
+          "name": "100000-cap8-1-base",
+          "peak_rss_bytes": 72482816,
+          "post_gc_heap_used_bytes": 5179608,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 330,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 457,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4026,
+              "max_committed_KiB": 5120,
+              "committed_levels_KiB": [
+                3584,
+                4096,
+                4352,
+                4608,
+                5120
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 233,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 684,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 1027,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1280,
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "100000-cap8-2-base",
+          "peak_rss_bytes": 72712192,
+          "post_gc_heap_used_bytes": 5179536,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 327,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 458,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4027,
+              "max_committed_KiB": 4608,
+              "committed_levels_KiB": [
+                3584,
+                4352,
+                4608
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 325,
+              "max_committed_KiB": 768,
+              "committed_levels_KiB": [
+                512,
+                768
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 684,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 1132,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1280,
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "100000-cap8-3-base",
+          "peak_rss_bytes": 72253440,
+          "post_gc_heap_used_bytes": 5178560,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 321,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 444,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4119,
+              "max_committed_KiB": 4864,
+              "committed_levels_KiB": [
+                3584,
+                4096,
+                4352,
+                4608,
+                4864
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 322,
+              "max_committed_KiB": 768,
+              "committed_levels_KiB": [
+                512,
+                768
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 684,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 1200,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1280,
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "100000-cap8-4-base",
+          "peak_rss_bytes": 72417280,
+          "post_gc_heap_used_bytes": 5179608,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 329,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 491,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4027,
+              "max_committed_KiB": 4608,
+              "committed_levels_KiB": [
+                3584,
+                4352,
+                4608
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 238,
+              "max_committed_KiB": 768,
+              "committed_levels_KiB": [
+                512,
+                768
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 684,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 1156,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1280,
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "100000-cap8-5-base",
+          "peak_rss_bytes": 72499200,
+          "post_gc_heap_used_bytes": 5180112,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 326,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 484,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4028,
+              "max_committed_KiB": 4608,
+              "committed_levels_KiB": [
+                3584,
+                4096,
+                4608
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 242,
+              "max_committed_KiB": 768,
+              "committed_levels_KiB": [
+                512,
+                768
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 684,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 1131,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1280,
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        }
+      ],
+      "peak_rss_bytes": {
+        "min": 72253440,
+        "max": 72712192,
+        "median": 72482816
+      },
+      "post_gc_heap_used_bytes": {
+        "min": 5178560,
+        "max": 5180112,
+        "median": 5179608
+      }
+    },
+    {
+      "n": 100000,
+      "arm": "cap8",
+      "side": "head",
+      "runs": [
+        {
+          "name": "100000-cap8-1-head",
+          "peak_rss_bytes": 69894144,
+          "post_gc_heap_used_bytes": 5168904,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 235,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 461,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4009,
+              "max_committed_KiB": 4864,
+              "committed_levels_KiB": [
+                3584,
+                4096,
+                4352,
+                4608,
+                4864
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 200,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 688,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 972,
+              "max_committed_KiB": 1280,
+              "committed_levels_KiB": [
+                1280
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "100000-cap8-2-head",
+          "peak_rss_bytes": 69533696,
+          "post_gc_heap_used_bytes": 5168800,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 228,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 473,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4008,
+              "max_committed_KiB": 4608,
+              "committed_levels_KiB": [
+                3584,
+                4096,
+                4352,
+                4608
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 201,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 688,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 972,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1280,
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "100000-cap8-3-head",
+          "peak_rss_bytes": 69648384,
+          "post_gc_heap_used_bytes": 5168800,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 237,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 489,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4009,
+              "max_committed_KiB": 4608,
+              "committed_levels_KiB": [
+                3584,
+                4096,
+                4352,
+                4608
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 201,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 688,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 972,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1280,
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "100000-cap8-4-head",
+          "peak_rss_bytes": 69681152,
+          "post_gc_heap_used_bytes": 5168800,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 238,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 463,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4009,
+              "max_committed_KiB": 4608,
+              "committed_levels_KiB": [
+                3584,
+                4352,
+                4608
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 298,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 688,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 1164,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1280,
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "100000-cap8-5-head",
+          "peak_rss_bytes": 69500928,
+          "post_gc_heap_used_bytes": 5168800,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 234,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 483,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4008,
+              "max_committed_KiB": 4608,
+              "committed_levels_KiB": [
+                3584,
+                4096,
+                4352,
+                4608
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 284,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 688,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 972,
+              "max_committed_KiB": 1280,
+              "committed_levels_KiB": [
+                1280
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        }
+      ],
+      "peak_rss_bytes": {
+        "min": 69500928,
+        "max": 69894144,
+        "median": 69648384
+      },
+      "post_gc_heap_used_bytes": {
+        "min": 5168800,
+        "max": 5168904,
+        "median": 5168800
+      }
+    },
+    {
+      "n": 100000,
+      "arm": "default",
+      "side": "base",
+      "runs": [
+        {
+          "name": "100000-default-1-base",
+          "peak_rss_bytes": 71942144,
+          "post_gc_heap_used_bytes": 5178200,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 324,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 444,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4023,
+              "max_committed_KiB": 4352,
+              "committed_levels_KiB": [
+                3584,
+                4096,
+                4352
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 228,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 684,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 1160,
+              "max_committed_KiB": 1280,
+              "committed_levels_KiB": [
+                1280
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "100000-default-2-base",
+          "peak_rss_bytes": 72581120,
+          "post_gc_heap_used_bytes": 5179560,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 332,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 485,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4028,
+              "max_committed_KiB": 4864,
+              "committed_levels_KiB": [
+                3584,
+                4096,
+                4352,
+                4608,
+                4864
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 238,
+              "max_committed_KiB": 768,
+              "committed_levels_KiB": [
+                512,
+                768
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 684,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 1155,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1280,
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "100000-default-3-base",
+          "peak_rss_bytes": 72138752,
+          "post_gc_heap_used_bytes": 5179848,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 325,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 444,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4028,
+              "max_committed_KiB": 4608,
+              "committed_levels_KiB": [
+                3584,
+                4096,
+                4608
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 332,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 684,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 1047,
+              "max_committed_KiB": 1280,
+              "committed_levels_KiB": [
+                1280
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "100000-default-4-base",
+          "peak_rss_bytes": 72450048,
+          "post_gc_heap_used_bytes": 5180064,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 322,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 461,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4026,
+              "max_committed_KiB": 4864,
+              "committed_levels_KiB": [
+                3584,
+                4096,
+                4352,
+                4608,
+                4864
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 242,
+              "max_committed_KiB": 768,
+              "committed_levels_KiB": [
+                512,
+                768
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 684,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 1041,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1280,
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "100000-default-5-base",
+          "peak_rss_bytes": 72744960,
+          "post_gc_heap_used_bytes": 5179680,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 328,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 484,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                11520,
+                15616,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4025,
+              "max_committed_KiB": 4864,
+              "committed_levels_KiB": [
+                3584,
+                4096,
+                4608,
+                4864
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 325,
+              "max_committed_KiB": 768,
+              "committed_levels_KiB": [
+                512,
+                768
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 684,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 1134,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1280,
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        }
+      ],
+      "peak_rss_bytes": {
+        "min": 71942144,
+        "max": 72744960,
+        "median": 72450048
+      },
+      "post_gc_heap_used_bytes": {
+        "min": 5178200,
+        "max": 5180064,
+        "median": 5179680
+      }
+    },
+    {
+      "n": 100000,
+      "arm": "default",
+      "side": "head",
+      "runs": [
+        {
+          "name": "100000-default-1-head",
+          "peak_rss_bytes": 69992448,
+          "post_gc_heap_used_bytes": 5168984,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 234,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 486,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4009,
+              "max_committed_KiB": 4864,
+              "committed_levels_KiB": [
+                3584,
+                4352,
+                4608,
+                4864
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 323,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 688,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 966,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "100000-default-2-head",
+          "peak_rss_bytes": 70025216,
+          "post_gc_heap_used_bytes": 5168752,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 239,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 462,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4010,
+              "max_committed_KiB": 5120,
+              "committed_levels_KiB": [
+                3584,
+                4096,
+                4352,
+                4608,
+                4864,
+                5120
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 201,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 688,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 972,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1280,
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "100000-default-3-head",
+          "peak_rss_bytes": 70156288,
+          "post_gc_heap_used_bytes": 5168424,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 235,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 451,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4008,
+              "max_committed_KiB": 4352,
+              "committed_levels_KiB": [
+                3584,
+                4352
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 329,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 688,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 1049,
+              "max_committed_KiB": 1280,
+              "committed_levels_KiB": [
+                1280
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "100000-default-4-head",
+          "peak_rss_bytes": 69484544,
+          "post_gc_heap_used_bytes": 5169400,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 228,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 468,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4010,
+              "max_committed_KiB": 4608,
+              "committed_levels_KiB": [
+                3584,
+                4096,
+                4352,
+                4608
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 300,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 688,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 1057,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1280,
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "100000-default-5-head",
+          "peak_rss_bytes": 69763072,
+          "post_gc_heap_used_bytes": 5168752,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 233,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 471,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4009,
+              "max_committed_KiB": 4864,
+              "committed_levels_KiB": [
+                3584,
+                4096,
+                4352,
+                4608,
+                4864
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 201,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 688,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 972,
+              "max_committed_KiB": 1280,
+              "committed_levels_KiB": [
+                1280
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        }
+      ],
+      "peak_rss_bytes": {
+        "min": 69484544,
+        "max": 70156288,
+        "median": 69992448
+      },
+      "post_gc_heap_used_bytes": {
+        "min": 5168424,
+        "max": 5169400,
+        "median": 5168752
+      }
+    },
+    {
+      "n": 1000000,
+      "arm": "cap8",
+      "side": "base",
+      "runs": [
+        {
+          "name": "1000000-cap8-1-base",
+          "peak_rss_bytes": 72187904,
+          "post_gc_heap_used_bytes": 5181080,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 2221,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 475,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4034,
+              "max_committed_KiB": 4864,
+              "committed_levels_KiB": [
+                3584,
+                4352,
+                4608,
+                4864
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 341,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 684,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 1127,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1280,
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "1000000-cap8-2-base",
+          "peak_rss_bytes": 72400896,
+          "post_gc_heap_used_bytes": 5180984,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 2222,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 491,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4127,
+              "max_committed_KiB": 4608,
+              "committed_levels_KiB": [
+                3584,
+                4352,
+                4608
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 373,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 684,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 1165,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "1000000-cap8-3-base",
+          "peak_rss_bytes": 71925760,
+          "post_gc_heap_used_bytes": 5181128,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 2230,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 484,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4035,
+              "max_committed_KiB": 4864,
+              "committed_levels_KiB": [
+                3584,
+                4096,
+                4352,
+                4608,
+                4864
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 338,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 684,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 1131,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1280,
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "1000000-cap8-4-base",
+          "peak_rss_bytes": 72073216,
+          "post_gc_heap_used_bytes": 5181176,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 2223,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 467,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4116,
+              "max_committed_KiB": 4864,
+              "committed_levels_KiB": [
+                3584,
+                4096,
+                4352,
+                4608,
+                4864
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 310,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 684,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 1191,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1280,
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "1000000-cap8-5-base",
+          "peak_rss_bytes": 71974912,
+          "post_gc_heap_used_bytes": 5181128,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 2221,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 467,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4202,
+              "max_committed_KiB": 4864,
+              "committed_levels_KiB": [
+                3584,
+                4096,
+                4608,
+                4864
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 511,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 684,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 1384,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1280,
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        }
+      ],
+      "peak_rss_bytes": {
+        "min": 71925760,
+        "max": 72400896,
+        "median": 72073216
+      },
+      "post_gc_heap_used_bytes": {
+        "min": 5180984,
+        "max": 5181176,
+        "median": 5181128
+      }
+    },
+    {
+      "n": 1000000,
+      "arm": "cap8",
+      "side": "head",
+      "runs": [
+        {
+          "name": "1000000-cap8-1-head",
+          "peak_rss_bytes": 69992448,
+          "post_gc_heap_used_bytes": 5169856,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 1584,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 457,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4024,
+              "max_committed_KiB": 4608,
+              "committed_levels_KiB": [
+                3584,
+                4096,
+                4352,
+                4608
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 209,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 688,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 983,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1280,
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "1000000-cap8-2-head",
+          "peak_rss_bytes": 70074368,
+          "post_gc_heap_used_bytes": 5169856,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 1585,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 468,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4022,
+              "max_committed_KiB": 4608,
+              "committed_levels_KiB": [
+                3584,
+                4096,
+                4352,
+                4608
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 209,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 688,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 983,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "1000000-cap8-3-head",
+          "peak_rss_bytes": 69812224,
+          "post_gc_heap_used_bytes": 5169592,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 1587,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 488,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4023,
+              "max_committed_KiB": 4608,
+              "committed_levels_KiB": [
+                3584,
+                4096,
+                4352,
+                4608
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 341,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 688,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 1065,
+              "max_committed_KiB": 1280,
+              "committed_levels_KiB": [
+                1280
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "1000000-cap8-4-head",
+          "peak_rss_bytes": 69812224,
+          "post_gc_heap_used_bytes": 5169856,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 1586,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 480,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4081,
+              "max_committed_KiB": 4608,
+              "committed_levels_KiB": [
+                3584,
+                4352,
+                4608
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 281,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 688,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 983,
+              "max_committed_KiB": 1280,
+              "committed_levels_KiB": [
+                1280
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "1000000-cap8-5-head",
+          "peak_rss_bytes": 70270976,
+          "post_gc_heap_used_bytes": 5169856,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 1583,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 483,
+              "max_committed_KiB": 16384,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4125,
+              "max_committed_KiB": 4864,
+              "committed_levels_KiB": [
+                3584,
+                4096,
+                4352,
+                4608,
+                4864
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 305,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 688,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 1061,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1280,
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        }
+      ],
+      "peak_rss_bytes": {
+        "min": 69812224,
+        "max": 70270976,
+        "median": 69992448
+      },
+      "post_gc_heap_used_bytes": {
+        "min": 5169592,
+        "max": 5169856,
+        "median": 5169856
+      }
+    },
+    {
+      "n": 1000000,
+      "arm": "default",
+      "side": "base",
+      "runs": [
+        {
+          "name": "1000000-default-1-base",
+          "peak_rss_bytes": 88965120,
+          "post_gc_heap_used_bytes": 5180840,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 1364,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 454,
+              "max_committed_KiB": 32768,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384,
+                24576,
+                32768
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4034,
+              "max_committed_KiB": 4864,
+              "committed_levels_KiB": [
+                3584,
+                4352,
+                4608,
+                4864
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 249,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 684,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 1042,
+              "max_committed_KiB": 1280,
+              "committed_levels_KiB": [
+                1280
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "1000000-default-2-base",
+          "peak_rss_bytes": 123617280,
+          "post_gc_heap_used_bytes": 5181128,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 1341,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 472,
+              "max_committed_KiB": 65536,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384,
+                24576,
+                32768,
+                49152,
+                65536
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4035,
+              "max_committed_KiB": 4864,
+              "committed_levels_KiB": [
+                3584,
+                4096,
+                4352,
+                4608,
+                4864
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 303,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 684,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 1156,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1280,
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "1000000-default-3-base",
+          "peak_rss_bytes": 119046144,
+          "post_gc_heap_used_bytes": 5181032,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 1357,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 484,
+              "max_committed_KiB": 49152,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384,
+                24576,
+                32768,
+                49152
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4047,
+              "max_committed_KiB": 4608,
+              "committed_levels_KiB": [
+                3584,
+                4352,
+                4608
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 375,
+              "max_committed_KiB": 768,
+              "committed_levels_KiB": [
+                512,
+                768
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 684,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 1159,
+              "max_committed_KiB": 1792,
+              "committed_levels_KiB": [
+                1280,
+                1792
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "1000000-default-4-base",
+          "peak_rss_bytes": 123191296,
+          "post_gc_heap_used_bytes": 5181080,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 1274,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 484,
+              "max_committed_KiB": 65536,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384,
+                24576,
+                32768,
+                49152,
+                65536
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4034,
+              "max_committed_KiB": 4864,
+              "committed_levels_KiB": [
+                3584,
+                4096,
+                4352,
+                4608,
+                4864
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 325,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 684,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 1134,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1280,
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "1000000-default-5-base",
+          "peak_rss_bytes": 123207680,
+          "post_gc_heap_used_bytes": 5181080,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 1299,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 468,
+              "max_committed_KiB": 65536,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384,
+                24576,
+                32768,
+                49152,
+                65536
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4034,
+              "max_committed_KiB": 4608,
+              "committed_levels_KiB": [
+                3584,
+                4352,
+                4608
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 325,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 684,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 1390,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1280,
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        }
+      ],
+      "peak_rss_bytes": {
+        "min": 88965120,
+        "max": 123617280,
+        "median": 123191296
+      },
+      "post_gc_heap_used_bytes": {
+        "min": 5180840,
+        "max": 5181128,
+        "median": 5181080
+      }
+    },
+    {
+      "n": 1000000,
+      "arm": "default",
+      "side": "head",
+      "runs": [
+        {
+          "name": "1000000-default-1-head",
+          "peak_rss_bytes": 122060800,
+          "post_gc_heap_used_bytes": 5169808,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 832,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 446,
+              "max_committed_KiB": 65536,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384,
+                24576,
+                32768,
+                49152,
+                65536
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4022,
+              "max_committed_KiB": 4864,
+              "committed_levels_KiB": [
+                3584,
+                4096,
+                4352,
+                4864
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 323,
+              "max_committed_KiB": 768,
+              "committed_levels_KiB": [
+                768
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 688,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 1048,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "1000000-default-2-head",
+          "peak_rss_bytes": 121061376,
+          "post_gc_heap_used_bytes": 5169808,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 824,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 466,
+              "max_committed_KiB": 65536,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384,
+                24576,
+                32768,
+                49152,
+                65536
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4022,
+              "max_committed_KiB": 4608,
+              "committed_levels_KiB": [
+                3584,
+                4096,
+                4352,
+                4608
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 323,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 688,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 1057,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1280,
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "1000000-default-3-head",
+          "peak_rss_bytes": 121241600,
+          "post_gc_heap_used_bytes": 5169808,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 842,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 462,
+              "max_committed_KiB": 65536,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384,
+                24576,
+                32768,
+                49152,
+                65536
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4022,
+              "max_committed_KiB": 4864,
+              "committed_levels_KiB": [
+                3584,
+                4096,
+                4352,
+                4608,
+                4864
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 298,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 688,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 983,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1280,
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "1000000-default-4-head",
+          "peak_rss_bytes": 121290752,
+          "post_gc_heap_used_bytes": 5170120,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 820,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 489,
+              "max_committed_KiB": 65536,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384,
+                24576,
+                32768,
+                49152,
+                65536
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4023,
+              "max_committed_KiB": 4608,
+              "committed_levels_KiB": [
+                3584,
+                4352,
+                4608
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 296,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 688,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 1057,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1280,
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "1000000-default-5-head",
+          "peak_rss_bytes": 121290752,
+          "post_gc_heap_used_bytes": 5169808,
+          "post_gc_external_bytes": 2175052,
+          "post_gc_array_buffers_bytes": 144231,
+          "natural_mark_compact_count": 0,
+          "natural_scavenge_count": 825,
+          "spaces": {
+            "New space": {
+              "max_used_KiB": 473,
+              "max_committed_KiB": 65536,
+              "committed_levels_KiB": [
+                1536,
+                2048,
+                3072,
+                4096,
+                6144,
+                8192,
+                12288,
+                16384,
+                24576,
+                32768,
+                49152,
+                65024,
+                65536
+              ]
+            },
+            "Old space": {
+              "max_used_KiB": 4022,
+              "max_committed_KiB": 4608,
+              "committed_levels_KiB": [
+                3584,
+                4096,
+                4352,
+                4608
+              ]
+            },
+            "Code space": {
+              "max_used_KiB": 209,
+              "max_committed_KiB": 512,
+              "committed_levels_KiB": [
+                512
+              ]
+            },
+            "Large object space": {
+              "max_used_KiB": 688,
+              "max_committed_KiB": 720,
+              "committed_levels_KiB": [
+                720
+              ]
+            },
+            "Trusted space": {
+              "max_used_KiB": 983,
+              "max_committed_KiB": 1536,
+              "committed_levels_KiB": [
+                1280,
+                1536
+              ]
+            },
+            "New large object space": {
+              "max_used_KiB": 0,
+              "max_committed_KiB": 0,
+              "committed_levels_KiB": [
+                0
+              ]
+            }
+          }
+        }
+      ],
+      "peak_rss_bytes": {
+        "min": 121061376,
+        "max": 122060800,
+        "median": 121290752
+      },
+      "post_gc_heap_used_bytes": {
+        "min": 5169808,
+        "max": 5170120,
+        "median": 5169808
+      }
+    }
+  ]
+}

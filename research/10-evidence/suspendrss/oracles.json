@@ -1,0 +1,58 @@
+{
+  "base": {
+    "command": [
+      "node",
+      "bench/harness/runner.mjs",
+      "values",
+      "/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/suspendrss/research/10-evidence/target/suspendrss/base/bench_entry.mjs",
+      "0",
+      "1",
+      "2",
+      "3",
+      "1000",
+      "10000",
+      "100000",
+      "1000000"
+    ],
+    "result": {
+      "values": {
+        "0": "0",
+        "1": "2",
+        "2": "4",
+        "3": "7",
+        "1000": "3004",
+        "10000": "29999",
+        "100000": "300001",
+        "1000000": "2999999"
+      }
+    }
+  },
+  "head": {
+    "command": [
+      "node",
+      "bench/harness/runner.mjs",
+      "values",
+      "/Users/aniruddhdubge/.t3/scratch/sakura-worktrees/suspendrss/research/10-evidence/target/suspendrss/head/bench_entry.mjs",
+      "0",
+      "1",
+      "2",
+      "3",
+      "1000",
+      "10000",
+      "100000",
+      "1000000"
+    ],
+    "result": {
+      "values": {
+        "0": "0",
+        "1": "2",
+        "2": "4",
+        "3": "7",
+        "1000": "3004",
+        "10000": "29999",
+        "100000": "300001",
+        "1000000": "2999999"
+      }
+    }
+  }
+}
