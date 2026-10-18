@@ -6,6 +6,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Host, HostFault, Reader } from "../sakura_wasm_host.js";
+import * as rt from "../sakura_runtime.js";
 
 /** A host over one page of memory with a bump `alloc_bytes` (a `Bytes`' data at +12). */
 function host() {
@@ -112,4 +113,50 @@ test("shutdown with pending work aborts every request and retires every handle",
   h.complete(1, 0, null);
   h.deliver();
   assert.equal(completed.length, 0, "nothing is delivered after shutdown");
+});
+
+test("http_send is of kind secret: secret_headers reach fetch and the copied slice is zeroed", () => {
+  const { h, put } = host();
+  class Method extends rt.Variant {}
+  Method.prototype.$t = rt.variantType("Method", "std::request", [["Get", []], ["Post", []]]);
+  class Request {
+    constructor(method, url, headers, body, secret_headers, params) {
+      Object.assign(this, { method, url, headers, body, secret_headers, params });
+    }
+  }
+  class Response {}
+  rt.def("std::request::Method", Method);
+  rt.def("std::request::Request", Request);
+  rt.def("std::response::Response", Response);
+  h.typeIds = new Map();
+  h.typeNames = ["std::request::Request", "std::request::Method"];
+  const str = (s) => [4, ...u32(Buffer.byteLength(s)), ...Buffer.from(s)];
+  // (Request { Get, url, [], "", [("authorization", Secret("Bearer s3cr3t"))], [] }), as the
+  // guest encodes it for a kind-`secret` import.
+  const tuple = [9, ...u32(1), 7, ...u32(0), ...u32(6), 8, ...u32(1), ...u32(0), ...u32(0)];
+  tuple.push(...str("http://127.0.0.1:1/x"), 6, ...u32(0), ...str(""));
+  tuple.push(6, ...u32(1), 9, ...u32(2), ...str("authorization"), 14, ...str("Bearer s3cr3t"));
+  tuple.push(6, ...u32(0));
+  put(64, tuple);
+  const slices = [];
+  const copyIn = h.copyIn.bind(h);
+  h.copyIn = (ptr, len) => {
+    const s = copyIn(ptr, len);
+    slices.push(s);
+    return s;
+  };
+  const fetch = globalThis.fetch;
+  let init;
+  globalThis.fetch = (_url, i) => {
+    init = i;
+    return new Promise(() => {});
+  };
+  try {
+    h.imports().sakura_host.http_send(7, 64, tuple.length);
+  } finally {
+    globalThis.fetch = fetch;
+  }
+  assert.equal(init.headers.get("authorization"), "Bearer s3cr3t");
+  assert.ok(slices.length > 0 && slices.every((s) => s.every((b) => b === 0)), "the host slice is zeroed");
+  h.close();
 });

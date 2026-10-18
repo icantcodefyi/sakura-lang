@@ -169,9 +169,9 @@ fn echo_server() -> u16 {
 }
 
 /// `Http.host()` (real network, plan §3.7 W2): the same exchanges (a send, a body streamed in
-/// chunks, a refused connection), output and trace on both backends, except the bearer request:
-/// JS sends its `secret_headers`, WASM refuses it (`http_send` is not of kind `secret` until the
-/// owner's review, design §17.155 (3)) and the secret appears nowhere on WASM.
+/// chunks, a refused connection), output and trace on both backends, the bearer request
+/// included: `http_send` is of kind `secret` (gate 10, design §17.159), so WASM sends its
+/// `secret_headers` as JS does, and the secret appears nowhere in WASM's output or trace.
 #[test]
 fn http_host_sends_on_wasm_as_on_js() {
     if !available() {
@@ -243,18 +243,95 @@ fn http_host_sends_on_wasm_as_on_js() {
         js.stdout
     );
     assert!(js.stdout.ends_with("failed: None\n"), "{}", js.stdout);
-    let refused = "refused: secret_headers are not sent on --target wasm until Secret transport is reviewed\n";
+    // `http_send` is of kind `secret` (gate 10, W0): the bearer header reaches the server.
     assert_eq!(
-        (wasm.code, wasm.stdout.strip_prefix(refused), &wasm_trace),
-        (js.code, js.stdout.strip_prefix("201 true 1\n"), &js_trace),
-        "{}{}",
-        wasm.stdout,
+        (wasm.code, &wasm.stdout, &wasm_trace),
+        (js.code, &js.stdout, &js_trace),
+        "{}",
         wasm.stderr
     );
     assert_eq!(js_trace.matches("\"op\":\"send\"").count(), 2);
     assert_eq!(js_trace.matches("\"op\":\"read_chunk\"").count(), 6);
     for text in [&wasm.stdout, &wasm.stderr, &wasm_trace] {
         assert!(!text.contains("s3cr3t"), "the secret leaked: {text}");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Gate 10 (W0): with `http_send` of kind `secret`, the cassette imports still see a
+/// `secret_headers` entry redacted. A package test records through `Http.recording` from a
+/// scripted outer `Http` (`--record` is JS-only), then replays on `--target wasm` under
+/// `Http.scripted([])`, `Http.bearer` carrying the token both times: it is in neither run's
+/// output nor the fixture file, and the replay matched it with the header redacted.
+#[test]
+fn recording_with_a_bearer_token_on_wasm_never_writes_the_token() {
+    if !available() {
+        eprintln!("skipped: node is missing");
+        return;
+    }
+    let program = |outer: &str| {
+        format!(
+            r#"import std/fs.{{Fs}}
+import std/http.{{Any, Http}}
+import std/request.{{Method, Request}}
+import std/response.{{HttpError, Response}}
+import std/url.{{Url}}
+
+fn get() -> String ! {{Http, Fail<HttpError>}} {{
+  let req = Http.bearer(Request.of(Method.Get, Url.from("https://api.example/a")), Secret.of("s3cr3t-wasm"))
+  Http.send(req).body
+}}
+
+test "replays" {{
+  with Fs.rooted(Test.fixtures()), {outer}, Http.recording("api.jsonl") {{
+    expect_eq(try {{ get() }}, Ok("live"))
+  }}
+}}
+"#
+        )
+    };
+    let dir = std::env::temp_dir().join(format!("sakura-wasm-record-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(
+        dir.join("sakura.toml"),
+        "[package]\nname = \"r\"\nversion = \"0.1.0\"\nedition = \"2026\"\n\n\
+         [permissions]\nnet = [\"api.example:443\"]\n",
+    )
+    .unwrap();
+    let main = dir.join("src/main.sakura");
+    std::fs::write(
+        &main,
+        program(r#"Http.scripted([(Any, Response.status(200, "live"))])"#),
+    )
+    .unwrap();
+    let recorded = sakura(&["test", "--record"], &dir);
+    assert_eq!(
+        recorded.code,
+        Some(0),
+        "{}{}",
+        recorded.stdout,
+        recorded.stderr
+    );
+    let cassette = std::fs::read_to_string(dir.join("tests/fixtures/api.jsonl")).unwrap();
+    assert_eq!(cassette.lines().count(), 2, "{cassette}");
+    std::fs::write(&main, program("Http.scripted([])")).unwrap();
+    let replayed = sakura(&["test", "--target", "wasm"], &dir);
+    assert_eq!(
+        replayed.code,
+        Some(0),
+        "{}{}",
+        replayed.stdout,
+        replayed.stderr
+    );
+    for text in [
+        &recorded.stdout,
+        &recorded.stderr,
+        &replayed.stdout,
+        &replayed.stderr,
+        &cassette,
+    ] {
+        assert!(!text.contains("s3cr3t-wasm"), "the secret leaked: {text}");
     }
     let _ = std::fs::remove_dir_all(&dir);
 }

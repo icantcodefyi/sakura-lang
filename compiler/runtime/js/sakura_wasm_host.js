@@ -293,12 +293,6 @@ const guestFrames = Object.keys(PERFORMS).reduce((n, e) => {
   return { e, i: { e, c, s: [] }, n };
 }, null);
 
-/** `send(req, ctx, k)`, but `Err` for a request with `secret_headers` (design §17.155 (3)). */
-const unreviewed = (send) => (req, ctx, k) =>
-  rt.items(req.secret_headers).length > 0
-    ? rt.ret(k, rt.Err("secret_headers are not sent on --target wasm until Secret transport is reviewed"))
-    : send(req, ctx, k);
-
 /** A defect thrown by the JS runtime as a status-2 answer (`u32` code, message). */
 function defectAnswer(e) {
   if (!(e instanceof rt.Defect)) throw e;
@@ -362,6 +356,20 @@ export class Host {
       throw new HostFault(`slice (${ptr}, ${len}) outside linear memory`);
     }
     return mem.slice(ptr, ptr + len);
+  }
+
+  /**
+   * The tuple at `(ptr, len)`, its copied slice zeroed once decoded (decoded `Bytes` are copies):
+   * a kind-`secret` import's (ABI §8.1) holds inner values. The decoded strings cannot be
+   * zeroed; the host only drops its references to them.
+   */
+  decodeSecret(ptr, len) {
+    const slice = this.copyIn(ptr, len);
+    try {
+      return this.decode(new Reader(slice));
+    } finally {
+      slice.fill(0);
+    }
   }
 
   /** A guest UTF-8 string slice as a JS string; malformed UTF-8 is a host fault. */
@@ -496,7 +504,7 @@ export class Host {
         prop_failures: (session) => BigInt(this.props[Number(session)].msgs.length),
         js_handler: (np, nl, ptr, len) => {
           const name = this.string(np, nl);
-          const args = this.decode(new Reader(this.copyIn(ptr, len)));
+          const args = this.decodeSecret(ptr, len);
           this.jsHandlers.push({ spec: JS_HANDLERS[name], h: JS_HANDLERS[name].build(...args) });
           return BigInt(this.jsHandlers.length - 1);
         },
@@ -533,13 +541,12 @@ export class Host {
           return this.jsStep(s.run, () => (status === 0 ? s.k(v) : rt.fail(s.ctx, v)));
         },
         // `async` (ABI §8.2): the JS runtime's CPS builtin, its result completing `request`.
-        // `http_send` and `http_stream_open` are not of kind `secret` until the owner's review of
-        // `Secret` transport (design §17.155 (3)): `secret_headers` arrive redacted, so a request
-        // carrying any is refused (`Err`) rather than sent without them.
+        // `http_send` and `http_stream_open` are of kind `secret` (ABI §8.1, design §17.159):
+        // `secret_headers` arrive as real `rt.Secret`s and reach `fetch` as on JS.
         http_send: (request, ptr, len) =>
-          this.async(request, ptr, len, unreviewed(rt.http_send), R(["A", "std::response::Response", []], "S")),
+          this.async(request, ptr, len, rt.http_send, R(["A", "std::response::Response", []], "S")),
         http_stream_open: (request, ptr, len) =>
-          this.async(request, ptr, len, unreviewed(rt.http_stream_open), R(["A", "std::http::Incoming", []], "S")),
+          this.async(request, ptr, len, rt.http_stream_open, R(["A", "std::http::Incoming", []], "S")),
         http_stream_read: (request, ptr, len) => this.async(request, ptr, len, rt.http_stream_read, R("Y", "S")),
         http_body_close: (ptr, len) => {
           const [body] = this.decode(new Reader(this.copyIn(ptr, len)));
@@ -610,7 +617,7 @@ export class Host {
    * it arrives; `abort` cancels it.
    */
   async(request, ptr, len, f, schema) {
-    const args = this.decode(new Reader(this.copyIn(ptr, len)));
+    const args = this.decodeSecret(ptr, len);
     const reply = (v) => {
       let bytes;
       try {

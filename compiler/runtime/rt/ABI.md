@@ -1,10 +1,11 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.1.0**, agreed before `sakura_lir` or `sakura_rt`
+**Status:** design specification, version **1.1.1**, agreed before `sakura_lir` or `sakura_rt`
 emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed, 1.0.2 the
 R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
 the end, with the questions still open), and 1.1.0 the four `stats()` counters and the
-direct-style twins of design §17.118 (plan item L4). Owned by the designer; implemented jointly by M4-LIR (`crates/sakura_lir`)
+direct-style twins of design §17.118 (plan item L4), and 1.1.1 the gate 10 erratum to §8.1 and
+§8.4 (design §17.159; the plan's "1.0.3"). Owned by the designer; implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
 (`crates/sakura_codegen_wasm`, `runtime/js/sakura_wasm_host.js`). This document is prose,
 tables and byte layouts; it contains no code and is not itself normative language
@@ -52,6 +53,11 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   `dups`, `drops`; the export now returns 80 bytes) and states how direct style (§5) is
   compiled. Nothing shipped changes: the six counters keep their offsets, and twins are
   internal functions outside the import and export lists. `sakura_abi_version` is `0x010100`.
+- 1.1.1 is an erratum (design §17.159, security review W0, W5, W12; plan WS12 item 7 calls it
+  1.0.3, written before 1.1.0 landed): §8.1 lists the kind-`secret` imports as built and says
+  what the host can and cannot erase; §8.4 says what is built for generations and `file` ids.
+  It is wording that matches the shipped modules and hosts (PATCH); no byte, import signature
+  or check changes, so `sakura_abi_version` stays `0x010100`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -469,9 +475,19 @@ reads a guest object header and the guest never receives a host pointer.
   `json_encode`/`json_decode`/`cli_parse` keep their exact behaviour by delegating to the JS
   implementations in M4 (the guest-side implementations are an M4-RT stretch goal; the parity
   harness does not care which side runs them).
-- `Secret`: an import of kind `secret` (only `http_send`'s `secret_headers` and
-  `secret_expose` under `@trust`) receives a slice of the inner bytes; the host zeroes its
-  copy after use. No other import may be passed a `Secret` pointer; the LIR validator refuses.
+- `Secret` (1.1.1): a `Secret` crosses as `sakura-vt1` tag 14. Only an import of kind `secret`
+  receives its inner value; every other import receives `14, Unit` (redacted), decided by the
+  guest's encoder (`Sched::vt_secrets`) at run time, not by a LIR check. The kind-`secret`
+  imports as built are exactly `js_handler` (the arguments of a JS-built handler, for example
+  `Llm.anthropic`'s key), `http_send` and `http_stream_open` (a request's `secret_headers`, the
+  same egress as JS `fetchArgs`), listed in `sakura_rt::vt::SECRET_IMPORTS`; the cassette
+  imports (`http_recording_*`) are not, so a recording sees that a header is secret but never
+  its value. The guest zeroes the encoded transport `Bytes` before freeing it and the host
+  zeroes its copied slice once decoded; the decoded values are JS strings, which cannot be
+  zeroed, so the host only drops its references to them (a JS-built handler keeps its key for
+  the life of the instance). This redaction is hygiene under the trust model (the host is part
+  of the trusted base, §8), not a defence against the host. A further kind-`secret` import
+  needs a line in the security review record (`docs/reviews/m3-security-review.md`) first.
 
 ### 8.2 Import table
 
@@ -514,6 +530,12 @@ first, the host slot moves to `closing`, the host resource is closed, then `clos
 the slot increments the generation; a slot is retired before its generation wraps. `File`
 remains the std `@resource` opaque record `{ id: Int, path, mode }` (§17.89 item 1); on WASM
 `id` is the packed `(slot, generation)` and the std code is unchanged.
+
+As built (1.1.1 erratum): the Node host issues each handle a fresh slot and generation 1 and
+never reuses a slot, so a generation mismatch is reachable only from a forged or foreign handle
+(a host fault); the generation increment and retirement above are the rule for a host that
+reuses slots. A `File`'s `id` is the JS runtime's plain `Int` id into its own file table, as on
+JS, not a packed handle; `dir` and `body` are handles.
 
 ### 8.5 Asynchronous requests, cancellation and late completions
 

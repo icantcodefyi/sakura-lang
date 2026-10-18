@@ -133,6 +133,52 @@ fn secrets_cross_only_to_secret_imports() {
     assert_eq!(rt.stats().live_objects, base);
 }
 
+/// Gate 10 (W0, design §17.159): `rt_k_http_send` and `rt_k_http_stream_open` encode their
+/// request for a kind-`secret` import, so a `secret_headers` entry carries its inner value; the
+/// cassette imports (`http_recording_lookup`/`append`) see `14, Unit`. The kind-`secret` list
+/// is exactly the three the review record approves.
+#[test]
+fn http_send_carries_secret_headers_and_cassettes_see_them_redacted() {
+    assert_eq!(
+        sakura_rt::vt::SECRET_IMPORTS,
+        ["js_handler", "http_send", "http_stream_open"]
+    );
+    let mut rt = runtime();
+    let base = rt.stats().live_objects;
+    // A `secret_headers` entry: ("authorization", Secret("Bearer s3cr3t")).
+    let mut header = vec![t::TUPLE];
+    header.extend(u32s(&[2]));
+    header.extend(string("authorization"));
+    header.push(t::SECRET);
+    header.extend(string("Bearer s3cr3t"));
+    let w = decode(&mut rt, &header).unwrap();
+    let tuple = |rt: &mut Rt, import: &str| {
+        rt.sched.vt_secrets = sakura_rt::vt::secret_import(import);
+        let b = rt.vt_encode_tuple(&[w]).unwrap();
+        rt.sched.vt_secrets = false;
+        let out = rt.data_bytes(b).to_vec();
+        rt.drop(b);
+        out
+    };
+    let mut clear = vec![t::TUPLE];
+    clear.extend(u32s(&[1]));
+    clear.extend(&header);
+    for import in ["http_send", "http_stream_open"] {
+        assert_eq!(tuple(&mut rt, import), clear, "{import}");
+    }
+    let mut redacted = vec![t::TUPLE];
+    redacted.extend(u32s(&[1]));
+    redacted.push(t::TUPLE);
+    redacted.extend(u32s(&[2]));
+    redacted.extend(string("authorization"));
+    redacted.extend([t::SECRET, t::UNIT]);
+    for import in ["http_recording_lookup", "http_recording_append"] {
+        assert_eq!(tuple(&mut rt, import), redacted, "{import}");
+    }
+    rt.drop(w);
+    assert_eq!(rt.stats().live_objects, base);
+}
+
 #[test]
 fn malformed_values_are_d090_and_leak_nothing() {
     let mut rt = runtime();

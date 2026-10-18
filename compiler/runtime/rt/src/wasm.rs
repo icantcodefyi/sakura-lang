@@ -18,6 +18,7 @@ use crate::exec::{Next, step};
 use crate::heap::DEFAULT_MAX_HEAP;
 use crate::layout::{BOOL, F64, I64, WORD};
 use crate::object::{FALSE, TRUE, UNIT, bool_word};
+use crate::vt::secret_import;
 use crate::{Defect, Res, Rt, tag};
 
 struct Instance(UnsafeCell<Option<Rt>>);
@@ -1228,10 +1229,11 @@ fn instance_of(rt: &mut Rt, frame: u32) -> i64 {
 /// import copies in at once; the words are released after the call, since a handle among
 /// them retires on the host when its last reference goes (ABI §8.4).
 fn with_args<R>(rt: &mut Rt, args: &[u32], call: impl FnOnce(&mut Rt, u32, u32) -> R) -> Res<R> {
-    let r = encode_tuple(rt, args).map(|b| {
+    let secret = rt.sched.vt_secrets;
+    let r = rt.vt_encode_tuple(args).map(|b| {
         let (len, at) = rt.data(b);
         let out = call(rt, at, len);
-        rt.drop(b);
+        drop_transport(rt, b, secret);
         out
     });
     for &a in args {
@@ -1240,30 +1242,14 @@ fn with_args<R>(rt: &mut Rt, args: &[u32], call: impl FnOnce(&mut Rt, u32, u32) 
     r
 }
 
-/// The `sakura-vt1` tuple of `args` (borrowed) as a `Bytes`. A handle among them must stay
-/// alive until the host has read the tuple: dropping its last reference retires it there.
-fn encode_tuple(rt: &mut Rt, args: &[u32]) -> Res<u32> {
-    (|| {
-        let mut b = rt.strbuf()?;
-        let r = (|| {
-            rt.put(&mut b, &[crate::vt::t::TUPLE])?;
-            rt.put(&mut b, &(args.len() as u32).to_le_bytes())?;
-            for &a in args {
-                rt.vt_encode_word(&mut b, a)?;
-            }
-            Ok(())
-        })();
-        match r {
-            Ok(()) => {
-                let s = rt.finish(b);
-                rt.string_to_bytes(s)
-            }
-            Err(e) => {
-                rt.strbuf_free(b);
-                Err(e)
-            }
-        }
-    })()
+/// Drop the encoded tuple `b`, its bytes overwritten first when it was encoded for a kind-`secret`
+/// import (`vt_secrets` set): the clear inner values must not outlive the call in a freed block.
+fn drop_transport(rt: &mut Rt, b: u32, secret: bool) {
+    if secret {
+        let (len, at) = rt.data(b);
+        rt.heap.mem.fill(at, 0, len);
+    }
+    rt.drop(b);
 }
 
 /// A host answer (`u8` status 0 ok / 1 failed, then a `sakura-vt1` value; 2 a defect, `u32`
@@ -1465,9 +1451,9 @@ fn async_hosted(rt: &mut Rt, frame: u32, args: &[u32], secret: bool, import: Asy
         return ok_or_raise(rt, r);
     }
     rt.sched.vt_secrets = secret;
-    let b = encode_tuple(rt, args);
+    let b = rt.vt_encode_tuple(args);
     rt.sched.vt_secrets = false;
-    let r = b.and_then(|b| async_call(rt, frame, b, import));
+    let r = b.and_then(|b| async_call(rt, frame, b, secret, import));
     // After the host read them (a `body` handle among them retires when released).
     for &a in args {
         rt.drop(a);
@@ -1475,9 +1461,9 @@ fn async_hosted(rt: &mut Rt, frame: u32, args: &[u32], secret: bool, import: Asy
     r.unwrap_or_else(|d| rt.raise(d))
 }
 
-/// The request for `async_hosted`'s arguments `b` (consumed): the suspension, or the
-/// ordinary error past the request limit.
-fn async_call(rt: &mut Rt, frame: u32, b: u32, import: Async) -> Res<u32> {
+/// The request for `async_hosted`'s arguments `b` (consumed, zeroed first when `secret`): the
+/// suspension, or the ordinary error past the request limit.
+fn async_call(rt: &mut Rt, frame: u32, b: u32, secret: bool, import: Async) -> Res<u32> {
     match rt.request(HTTP) {
         Ok(Some(id)) => {
             let (len, at) = rt.data(b);
@@ -1490,16 +1476,16 @@ fn async_call(rt: &mut Rt, frame: u32, b: u32, import: Async) -> Res<u32> {
                     Async::Read => host::http_stream_read(id, at, len),
                 }
             };
-            rt.drop(b);
+            drop_transport(rt, b, secret);
             rt.set_block(frame, 1);
             Ok(step::SUSPEND)
         }
         Ok(None) => {
-            rt.drop(b);
+            drop_transport(rt, b, secret);
             err_string(rt, b"too many pending operations").map(|e| ret(rt, u64::from(e)))
         }
         Err(d) => {
-            rt.drop(b);
+            drop_transport(rt, b, secret);
             Err(d)
         }
     }
@@ -1514,23 +1500,29 @@ fn cps_args<const N: usize>(rt: &mut Rt, frame: u32) -> [u32; N] {
 }
 
 /// `http_send(req)` (cps, as JS `http_send`): `Ok(Response)` for any status, `Err(reason)` when
-/// none arrives. Cancelling the task aborts the fetch (`abort`). Not of kind `secret` until the
-/// owner's review of `Secret` transport (design §17.155 (3)): `secret_headers` cross redacted
-/// and the host refuses such a request rather than send it without them.
+/// none arrives. Cancelling the task aborts the fetch (`abort`). Of kind `secret` (ABI §8.1,
+/// approved at gate 10, design §17.159): `secret_headers` cross with their inner values, the
+/// same egress as JS `fetchArgs`, and the transport is zeroed before it is freed.
 #[unsafe(no_mangle)]
 pub extern "C" fn rt_k_http_send(_env: u32, frame: u32) -> u32 {
     let rt = rt();
     let args: [u32; 1] = cps_args(rt, frame);
-    async_hosted(rt, frame, &args, false, Async::Send)
+    async_hosted(rt, frame, &args, secret_import("http_send"), Async::Send)
 }
 
 /// `http_stream_open(req)` (cps, as JS): `Ok(Incoming)` once the status and headers arrive,
-/// its `body` a host handle of kind `body` (ABI §8.4); `req` as for `http_send`.
+/// its `body` a host handle of kind `body` (ABI §8.4); `req` as for `http_send` (kind `secret`).
 #[unsafe(no_mangle)]
 pub extern "C" fn rt_k_http_stream_open(_env: u32, frame: u32) -> u32 {
     let rt = rt();
     let args: [u32; 1] = cps_args(rt, frame);
-    async_hosted(rt, frame, &args, false, Async::Open)
+    async_hosted(
+        rt,
+        frame,
+        &args,
+        secret_import("http_stream_open"),
+        Async::Open,
+    )
 }
 
 /// `http_stream_read(body, max)` (cps, as JS): up to `max` bytes, empty at the end, `Err`
@@ -1556,7 +1548,7 @@ pub extern "C" fn rt_k_http_stream_read(_env: u32, frame: u32) -> u32 {
 
 /// Close the body handle `body` (borrowed) on the host (JS `http_stream_closing`'s finalizer).
 fn body_close(rt: &mut Rt, body: u32) -> Res<()> {
-    let b = encode_tuple(rt, &[body])?;
+    let b = rt.vt_encode_tuple(&[body])?;
     let (len, at) = rt.data(b);
     // SAFETY: a plain import with a slice inside linear memory, copied in at once.
     unsafe { host::http_body_close(at, len) };
@@ -1771,7 +1763,7 @@ pub extern "C" fn rt_b_log_json(effect: u32, codes: u32, n: u32) -> u32 {
 fn js_handler(name: &str, effect: u32, codes: u32, n: u32, args: &[u32]) -> u32 {
     let rt = rt();
     // The arguments are a `secret` import's (ABI §8.1).
-    rt.sched.vt_secrets = true;
+    rt.sched.vt_secrets = secret_import("js_handler");
     let r = with_args(rt, args, |rt, at, len| {
         rt.sched.vt_secrets = false;
         // SAFETY: a plain import with slices inside linear memory (`name` is in the runtime's
@@ -2538,8 +2530,9 @@ mod host {
         /// `async`, of kind `secret`: `fetch` of the request at `(ptr, len)`; completes
         /// `request` with a status-0 answer holding the `Result<Response, String>`.
         pub fn http_send(request: u32, ptr: u32, len: u32) -> u32;
-        /// `async`: `Http.stream`'s builtins (JS `http_stream_open`, `http_stream_read`, the
-        /// latter over a `body` handle); `http_body_close` closes one at once.
+        /// `async`: `Http.stream`'s builtins (JS `http_stream_open`, of kind `secret` as
+        /// `http_send`, and `http_stream_read`, over a `body` handle); `http_body_close` closes
+        /// one at once.
         pub fn http_stream_open(request: u32, ptr: u32, len: u32) -> u32;
         pub fn http_stream_read(request: u32, ptr: u32, len: u32) -> u32;
         pub fn http_body_close(ptr: u32, len: u32);

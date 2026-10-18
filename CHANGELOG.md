@@ -9,6 +9,12 @@ published yet.
 
 ### Security
 
+- `--target wasm` now sends `Secret` HTTP headers (`Http.bearer`, and `Llm.anthropic` over
+  `Http.host()`) instead of refusing the request, as gate 10 approved (security review W0):
+  `http_send` and `http_stream_open` are kind-`secret` host imports beside `js_handler`, and
+  cassettes still see the header redacted. The guest and the host overwrite their transport
+  copies of the value once it has crossed (ABI 1.1.1 erratum, §8.1 and §8.4).
+
 - The installer verifies GitHub artifact attestations when `gh` is available and fails
   on verification errors; otherwise it reports "integrity verified, not attested".
   Installation now requires an absolute prefix and uses a securely created staging file.

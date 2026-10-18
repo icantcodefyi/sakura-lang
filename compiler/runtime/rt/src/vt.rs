@@ -28,6 +28,16 @@ use crate::object::{FALSE, SCOPED, TRUE, UNIT, bool_word, is_ptr};
 use crate::scratch::StrBuf;
 use crate::{Defect, Res, Rt, tag};
 
+/// The imports of kind `secret` (ABI 1.0.3 §8.1), the only ones a `Secret`'s inner value
+/// crosses to, each approved at gate 10 (design §17.159). Another needs a line in the security
+/// review record (`docs/reviews/m3-security-review.md`) first.
+pub const SECRET_IMPORTS: [&str; 3] = ["js_handler", "http_send", "http_stream_open"];
+
+/// Whether `import` is of kind `secret`: the `Sched::vt_secrets` its arguments encode under.
+pub fn secret_import(import: &str) -> bool {
+    SECRET_IMPORTS.contains(&import)
+}
+
 pub const MAX_DEPTH: u32 = 64;
 pub const MAX_NODES: u32 = 1 << 20;
 
@@ -363,6 +373,31 @@ impl Rt {
     }
 
     // ---- encoding ---------------------------------------------------------------------------
+
+    /// The `sakura-vt1` tuple of `args` (borrowed) as a `Bytes`, a `Secret` encoded as
+    /// `vt_secrets` says. A handle among them must stay alive until the host has read the
+    /// tuple: dropping its last reference retires it there.
+    pub fn vt_encode_tuple(&mut self, args: &[u32]) -> Res<u32> {
+        let mut b = self.strbuf()?;
+        let r = (|| {
+            self.put(&mut b, &[t::TUPLE])?;
+            self.put(&mut b, &(args.len() as u32).to_le_bytes())?;
+            for &a in args {
+                self.vt_encode_word(&mut b, a)?;
+            }
+            Ok(())
+        })();
+        match r {
+            Ok(()) => {
+                let s = self.finish(b);
+                self.string_to_bytes(s)
+            }
+            Err(e) => {
+                self.strbuf_free(b);
+                Err(e)
+            }
+        }
+    }
 
     /// Encode the word `w` (borrowed) into `b`.
     pub fn vt_encode_word(&mut self, b: &mut StrBuf, w: u32) -> Res<()> {
