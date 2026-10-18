@@ -80,18 +80,28 @@ fn single(path: &Path) -> Option<sakura_core::Module> {
 fn lir_facts_agree_with_dump_direct() {
     common::big_stack(|| {
         let r = root();
-        let mut programs: Vec<(String, Option<sakura_core::Module>)> = vec![];
-        let micro = r.join("research/10-evidence/micro.sak");
-        programs.push(("micro".into(), single(&micro)));
+        // (name, files) of every program, lowered concurrently below: the check holds for any
+        // Core, so which earlier analysis each lowering reuses does not matter here.
+        let mut inputs: Vec<(String, Vec<(String, String)>)> = vec![];
+        let file = |p: &Path| {
+            vec![(
+                "file:///p/main.sak".into(),
+                std::fs::read_to_string(p).unwrap(),
+            )]
+        };
+        inputs.push((
+            "micro".into(),
+            file(&r.join("research/10-evidence/micro.sak")),
+        ));
         for p in sorted(&r.join("compiler/tests/semantics"), "sak") {
-            programs.push((format!("semantics/{}", p.display()), single(&p)));
+            inputs.push((format!("semantics/{}", p.display()), file(&p)));
         }
         for sub in ["diff", "lir"] {
             let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("tests/corpus")
                 .join(sub);
             for p in sorted(&dir, "sak") {
-                programs.push((format!("corpus/{sub}/{}", p.display()), single(&p)));
+                inputs.push((format!("corpus/{sub}/{}", p.display()), file(&p)));
             }
         }
         let mut benches: Vec<PathBuf> = std::fs::read_dir(r.join("bench/programs"))
@@ -101,7 +111,7 @@ fn lir_facts_agree_with_dump_direct() {
             .collect();
         benches.sort();
         for p in benches {
-            programs.push((format!("bench/{}", p.display()), single(&p)));
+            inputs.push((format!("bench/{}", p.display()), file(&p)));
         }
         let mut examples: Vec<PathBuf> = std::fs::read_dir(r.join("compiler/examples"))
             .unwrap()
@@ -117,8 +127,10 @@ fn lir_facts_agree_with_dump_direct() {
                 .into_iter()
                 .map(|(rel, text)| (format!("file:///{name}/src/{rel}"), text))
                 .collect();
-            programs.push((format!("example/{name}"), core(files)));
+            inputs.push((format!("example/{name}"), files));
         }
+        let programs: Vec<(String, Option<sakura_core::Module>)> =
+            common::par_map(&inputs, |(name, files)| (name.clone(), core(files.clone())));
 
         let micro_dump = agree(programs[0].1.as_ref().expect("micro.sak checks")).unwrap();
         let (mut compared, mut failures) = (0, vec![]);

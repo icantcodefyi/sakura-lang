@@ -60,6 +60,38 @@ pub fn big_stack<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> T
         .unwrap()
 }
 
+/// `f` over every item, on one big-stack thread per core taking the next item as it finishes the
+/// last; results come back in the order of `items`.
+pub fn par_map<T: Sync, R: Send>(items: &[T], f: impl Fn(&T) -> R + Sync) -> Vec<R> {
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let workers = std::thread::available_parallelism().map_or(4, |n| n.get());
+    let mut done: Vec<(usize, R)> = std::thread::scope(|s| {
+        let handles: Vec<_> = (0..workers.min(items.len()))
+            .map(|_| {
+                std::thread::Builder::new()
+                    .stack_size(1 << 28)
+                    .spawn_scoped(s, || {
+                        let mut done = Vec::new();
+                        loop {
+                            let i = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                            let Some(item) = items.get(i) else {
+                                break done;
+                            };
+                            done.push((i, f(item)));
+                        }
+                    })
+                    .unwrap()
+            })
+            .collect();
+        handles
+            .into_iter()
+            .flat_map(|h| h.join().unwrap())
+            .collect()
+    });
+    done.sort_by_key(|(i, _)| *i);
+    done.into_iter().map(|(_, r)| r).collect()
+}
+
 /// The programs of one corpus directory whose name ends with one of `names`.
 pub fn named(names: &[&str]) -> Vec<Program> {
     programs()

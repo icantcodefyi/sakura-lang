@@ -93,33 +93,38 @@ fn ending(code: Option<i32>, stderr: &str) -> String {
     }
 }
 
-/// Runs every program on one runner; returns the mismatches.
-fn sweep(host: Host, run: impl Fn(&Path) -> std::process::Output) -> Vec<String> {
+/// Runs every program on one runner, concurrently; returns the mismatches.
+fn sweep(host: Host, run: impl Fn(&Path) -> std::process::Output + Sync) -> Vec<String> {
     let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("corpus-{host:?}"));
     std::fs::create_dir_all(&dir).unwrap();
     let sigs = sakura_lir::builtin_sigs();
-    let mut failures = vec![];
-    let mut report = BTreeMap::new();
-    for p in programs() {
+    let programs = programs();
+    // Per program: whether it agrees, and what it printed when it does not.
+    let results = par_map(&programs, |p| {
         let m = sakura_lir::lower::lower(&p.core, &sigs).unwrap();
         let opts = Options {
             host,
             ..Default::default()
         };
-        let bytes = match sakura_codegen_wasm::emit(&m, &opts) {
-            Ok(b) => b,
-            Err(e) => {
-                failures.push(format!("{}: emit: {e}", p.name));
-                continue;
-            }
-        };
+        let bytes = sakura_codegen_wasm::emit(&m, &opts).map_err(|e| format!("emit: {e}"))?;
         let path = dir.join(format!("{}.wasm", p.name.replace('/', "__")));
         std::fs::write(&path, bytes).unwrap();
         let out = run(&path);
         let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
         let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
         let got = ending(out.status.code(), &stderr);
-        let ok = got == p.ending && stdout == p.stdout;
+        Ok::<_, String>((got == p.ending && stdout == p.stdout, got, stdout, stderr))
+    });
+    let mut failures = vec![];
+    let mut report = BTreeMap::new();
+    for (p, result) in programs.iter().zip(results) {
+        let (ok, got, stdout, stderr) = match result {
+            Ok(r) => r,
+            Err(e) => {
+                failures.push(format!("{}: {e}", p.name));
+                continue;
+            }
+        };
         report.insert(p.name.clone(), ok);
         match (ok, KNOWN
             .iter()
@@ -181,6 +186,38 @@ fn the_corpus_runs_on_wasmtime() {
         })
     });
     assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// `f` over every item, on one big-stack thread per core taking the next item as it finishes the
+/// last; results in the order of `items`.
+fn par_map<T: Sync, R: Send>(items: &[T], f: impl Fn(&T) -> R + Sync) -> Vec<R> {
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let workers = std::thread::available_parallelism().map_or(4, |n| n.get());
+    let mut done: Vec<(usize, R)> = std::thread::scope(|s| {
+        let handles: Vec<_> = (0..workers.min(items.len()))
+            .map(|_| {
+                std::thread::Builder::new()
+                    .stack_size(1 << 28)
+                    .spawn_scoped(s, || {
+                        let mut done = Vec::new();
+                        loop {
+                            let i = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                            let Some(item) = items.get(i) else {
+                                break done;
+                            };
+                            done.push((i, f(item)));
+                        }
+                    })
+                    .unwrap()
+            })
+            .collect();
+        handles
+            .into_iter()
+            .flat_map(|h| h.join().unwrap())
+            .collect()
+    });
+    done.sort_by_key(|(i, _)| *i);
+    done.into_iter().map(|(_, r)| r).collect()
 }
 
 /// Lowering long programs nests deeply; run on a big stack, as `sakura_lir`'s corpus tests do.
