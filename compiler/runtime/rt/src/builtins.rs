@@ -447,6 +447,22 @@ impl Rt {
         r
     }
 
+    /// `String.from_bytes`: `Ok(string)` or `Err(Utf8Error { offset })` at the first byte that
+    /// is not UTF-8 (as JS).
+    pub fn string_from_bytes(&mut self, b: u32) -> Res<u32> {
+        match self.string_from_utf8(b)? {
+            Ok(s) => self.ok(s),
+            Err(offset) => {
+                let t = self
+                    .type_named(b"std::string::Utf8Error")
+                    .ok_or(Defect::INTERNAL)?;
+                let e = self.new_record(t)?;
+                self.set_slot(e, 0, offset as u64);
+                self.err(e)
+            }
+        }
+    }
+
     /// `Bool` result as a generic word (for builtins that return `Bool` in a generic position).
     pub fn bool_result(b: bool) -> u32 {
         bool_word(b)

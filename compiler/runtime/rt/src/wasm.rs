@@ -525,6 +525,215 @@ pub extern "C" fn rt_code_console_read_line(_env: u32, frame: u32) -> u32 {
     }
 }
 
+// ---- host-delegated builtins (`sakura-vt1`, `crate::vt`) ------------------------------------
+//
+// Compiled code calls a builtin the JS host implements as: `rt_vt_begin`, one `rt_vt_push_*` per
+// argument (consumed), `rt_vt_end` (a `Bytes` holding the arguments as one tuple value), the
+// import `sakura_host.<builtin>(ptr, len) -> Bytes`, then `rt_vt_result` on what it returned:
+// `u8 status` (0 ok, 1 the operation failed with the value, 2 defect: `u32 code`, message) and
+// the value, which `rt_vt_take_*` hands over in the builtin's result representation.
+
+struct Transport {
+    args: Option<crate::scratch::StrBuf>,
+    n: u32,
+    result: u64,
+}
+
+struct TransportCell(UnsafeCell<Transport>);
+
+// SAFETY: one thread (see `Instance`).
+unsafe impl Sync for TransportCell {}
+
+static TRANSPORT: TransportCell = TransportCell(UnsafeCell::new(Transport {
+    args: None,
+    n: 0,
+    result: 0,
+}));
+
+fn transport() -> &'static mut Transport {
+    // SAFETY: one thread, and each export below takes this reference once and lets it go
+    // before it returns, as `rt()`.
+    unsafe { &mut *TRANSPORT.0.get() }
+}
+
+/// The text of the last defect a host operation reported (ABI §6.5 needs a `'static` message).
+/// ponytail: one buffer, so an earlier task's record shows the latest message; a message table
+/// when tasks report host defects concurrently.
+struct Message(UnsafeCell<[u8; 256]>);
+
+// SAFETY: one thread (see `Instance`).
+unsafe impl Sync for Message {}
+
+static HOST_MESSAGE: Message = Message(UnsafeCell::new([0; 256]));
+
+fn status(r: Res<()>) -> u32 {
+    match r {
+        Ok(()) => 0,
+        Err(d) => {
+            raised(rt(), d);
+            1
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_vt_begin() -> u32 {
+    let rt = rt();
+    let tr = transport();
+    if let Some(b) = tr.args.take() {
+        rt.strbuf_free(b);
+    }
+    let r = rt.strbuf().and_then(|mut b| {
+        // The tuple's tag, then its count, patched by `rt_vt_end`.
+        let r = rt.put(&mut b, &[crate::vt::t::TUPLE, 0, 0, 0, 0]);
+        tr.args = Some(b);
+        r
+    });
+    tr.n = 0;
+    status(r)
+}
+
+fn push(f: impl FnOnce(&mut Rt, &mut crate::scratch::StrBuf) -> Res<()>) -> u32 {
+    let rt = rt();
+    let tr = transport();
+    let Some(b) = tr.args.as_mut() else {
+        return status(Err(Defect::INTERNAL));
+    };
+    tr.n += 1;
+    status(f(rt, b))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_vt_push_word(w: u32) -> u32 {
+    let r = push(|rt, b| rt.vt_encode_word(b, w));
+    rt().drop(w);
+    r
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_vt_push_i64(v: i64) -> u32 {
+    push(|rt, b| rt.vt_encode_bits(b, I64, v as u64))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_vt_push_f64(v: f64) -> u32 {
+    push(|rt, b| rt.vt_encode_bits(b, F64, v.to_bits()))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_vt_push_bool(v: u32) -> u32 {
+    push(|rt, b| rt.vt_encode_bits(b, BOOL, u64::from(v != 0)))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_vt_push_unit() -> u32 {
+    push(|rt, b| rt.vt_encode_word(b, UNIT))
+}
+
+/// The arguments as a `Bytes` (the host copies `(ptr + 12, len)` in); 0 after a defect.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_vt_end() -> u32 {
+    let rt = rt();
+    let tr = transport();
+    let Some(b) = tr.args.take() else {
+        return ptr(Err(Defect::INTERNAL));
+    };
+    rt.heap.mem.set_u32(b.obj() + 16 + 1, tr.n);
+    let s = rt.finish(b);
+    let r = rt.string_to_bytes(s);
+    ptr(r)
+}
+
+/// Read what a host-delegated builtin returned (`b`, a `Bytes`, consumed): 0 ok and 1 failed
+/// (the value is held for `rt_vt_take_*`), 2 after a defect (raised here).
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_vt_result(b: u32) -> u32 {
+    let rt = rt();
+    if b == 0 {
+        raised(rt, Defect::HEAP_EXHAUSTED);
+        return 2;
+    }
+    let (len, at) = rt.data(b);
+    let status = if len == 0 { 255 } else { rt.heap.mem.u8(at) };
+    let r = match status {
+        0 | 1 => rt.vt_decode(at + 1, len - 1).map(|w| {
+            transport().result = w as u64;
+            status as u32
+        }),
+        2 if len >= 5 => {
+            let code = rt.heap.mem.u32(at + 1);
+            let msg = rt.heap.mem.bytes(at + 5, len - 5);
+            // SAFETY: the only reference to the buffer while it is written; a defect record
+            // points at it afterwards (see `HOST_MESSAGE`).
+            let buf = unsafe { &mut *HOST_MESSAGE.0.get() };
+            let n = msg.len().min(buf.len());
+            // Cut at a character boundary so the text stays UTF-8.
+            let n = (0..=n)
+                .rev()
+                .find(|&k| core::str::from_utf8(&msg[..k]).is_ok())
+                .unwrap_or(0);
+            buf[..n].copy_from_slice(&msg[..n]);
+            // SAFETY: `buf[..n]` is UTF-8 (checked above) and the buffer is a static.
+            let message = unsafe { core::str::from_utf8_unchecked(&buf[..n]) };
+            Err(Defect {
+                code: code as u16,
+                message,
+            })
+        }
+        _ => Err(crate::vt::MALFORMED),
+    };
+    rt.drop(b);
+    match r {
+        Ok(s) => s,
+        Err(d) => {
+            raised(rt, d);
+            2
+        }
+    }
+}
+
+/// The held result as a word (owned).
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_vt_take_word() -> u32 {
+    core::mem::take(&mut transport().result) as u32
+}
+
+/// The held result as a scalar (the word is released).
+fn take_scalar(f: impl FnOnce(&Rt, u32) -> u64) -> u64 {
+    let rt = rt();
+    let w = core::mem::take(&mut transport().result) as u32;
+    let v = f(rt, w);
+    rt.drop(w);
+    v
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_vt_take_i64() -> i64 {
+    take_scalar(|rt, w| {
+        if crate::object::is_ptr(w) {
+            rt.int_of(w) as u64
+        } else {
+            0
+        }
+    }) as i64
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_vt_take_f64() -> f64 {
+    f64::from_bits(take_scalar(|rt, w| {
+        if crate::object::is_ptr(w) {
+            rt.float_of(w).to_bits()
+        } else {
+            0
+        }
+    }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_vt_take_bool() -> u32 {
+    take_scalar(|_, w| u64::from(w == TRUE)) as u32
+}
+
 // ---- builtins that call back or suspend (`cps` in `builtins.sigs`) ---------------------------
 //
 // `rt_k_<name>` is a native code called like a Sakura function: its arguments are in its frame
@@ -854,6 +1063,7 @@ builtins! {
     rt_b_string_parse_int(s: u32) -> u32 = ptr |rt| rt.string_parse_int(s);
     rt_b_string_parse_float(s: u32) -> u32 = ptr |rt| rt.string_parse_float(s);
     rt_b_string_to_bytes(s: u32) -> u32 = ptr |rt| rt.string_to_bytes(s);
+    rt_b_string_from_bytes(b: u32) -> u32 = ptr |rt| rt.string_from_bytes(b);
     rt_b_int_to_string(i: i64) -> u32 = ptr |rt| rt.int_to_string(i);
     rt_b_int_checked_add(a: i64, b: i64) -> u32 = ptr |rt| rt.int_checked_add(a, b);
     rt_b_float_round(f: f64) -> i64 = scalar |rt| rt.float_round(f);

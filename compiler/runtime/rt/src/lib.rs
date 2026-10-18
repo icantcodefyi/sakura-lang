@@ -21,6 +21,7 @@ pub mod object;
 pub mod scratch;
 pub mod show;
 pub mod value;
+pub mod vt;
 #[cfg(target_arch = "wasm32")]
 mod wasm;
 
