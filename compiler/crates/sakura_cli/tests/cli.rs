@@ -1202,6 +1202,89 @@ fn build_drops_only_checks_with_authenticated_proofs() {
     assert!(build(&dir, &state, &[]).contains(ensures_check));
 }
 
+/// Plan §3.7 item 9 (C1/V3 deviation 7), design §17.86: a second `sakura verify` on an unchanged
+/// tree asks the solver nothing beyond its version and prints byte-identical JSON; a forged
+/// record is solved again, never trusted; a body-only edit solves only the edited function's
+/// obligations.
+#[cfg(unix)]
+#[test]
+fn verify_reuses_only_authenticated_unchanged_records() {
+    use std::os::unix::fs::PermissionsExt;
+    if !has_z3() {
+        return;
+    }
+    let dir = tmp("verify-reuse", SCALE);
+    let state = outside(&dir, "state");
+    let log = outside(&dir, "z3.log");
+    let wrapper = outside(&dir, "z3");
+    std::fs::write(
+        &wrapper,
+        format!(
+            "#!/bin/sh\necho \"$1\" >> '{}'\nexec z3 \"$@\"\n",
+            log.display()
+        ),
+    )
+    .unwrap();
+    std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let solves = || {
+        let n = std::fs::read_to_string(&log)
+            .unwrap_or_default()
+            .lines()
+            .filter(|l| *l != "--version")
+            .count();
+        let _ = std::fs::remove_file(&log);
+        n
+    };
+    let verify = || {
+        let out = sakura_in_state(
+            &[
+                "verify",
+                "--json",
+                "--solver",
+                wrapper.to_str().unwrap(),
+                "main.sakura",
+            ],
+            &dir,
+            &state,
+        );
+        assert_eq!(out.status.code(), Some(1), "{out:?}");
+        String::from_utf8(out.stdout).unwrap()
+    };
+    let first = verify();
+    let all = solves();
+    assert!(all > 0);
+    assert_eq!(verify(), first, "the same records");
+    assert_eq!(solves(), 0, "an unchanged tree solves nothing");
+
+    // Forge every verdict, keeping the MAC: each record is solved again and the output is the same.
+    let proofs = dir.join("target/sakura/proofs");
+    for f in std::fs::read_dir(&proofs).unwrap() {
+        let path = f.unwrap().path();
+        let text = std::fs::read_to_string(&path).unwrap();
+        let forged = if text.contains("\"status\":\"proved\"") {
+            text.replace("\"status\":\"proved\"", "\"status\":\"disproved\"")
+        } else {
+            text.replace("\"status\":\"disproved\"", "\"status\":\"proved\"")
+        };
+        assert_ne!(forged, text);
+        std::fs::write(&path, forged).unwrap();
+    }
+    assert_eq!(verify(), first, "forged records are not believed");
+    assert_eq!(solves(), all, "every forged record is solved again");
+    verify();
+    assert_eq!(solves(), 0, "the rewritten records are authentic");
+
+    // A body-only edit: only `scale`'s obligations are solved again.
+    std::fs::write(
+        dir.join("main.sakura"),
+        SCALE.replace("{ total * p / 100 }", "{ p * total / 100 }"),
+    )
+    .unwrap();
+    verify();
+    let edited = solves();
+    assert!(0 < edited && edited < all, "{edited} of {all}");
+}
+
 /// Design §17.98, §17.105: a proof over an impossible path is `proved` with
 /// `path_feasible: false` and the warning `W7002`.
 #[test]

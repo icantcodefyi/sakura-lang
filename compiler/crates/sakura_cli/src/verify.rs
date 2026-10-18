@@ -4,7 +4,9 @@
 //! `sakura verify` lowers the program to Core, generates every obligation of the user's
 //! functions for the target's profile, asks the pinned Z3 (and cvc5 when it is on `PATH`), writes
 //! one record per obligation, stores each `proved`/`disproved` verdict in the proof cache under
-//! its `sakura-proof-v1` key with the installation key's MAC, and updates the manifest. `sakura
+//! its `sakura-proof-v1` key with the installation key's MAC, and updates the manifest. An
+//! obligation whose key has an authenticated record from the same solvers and limits is not
+//! solved again: its record is rebuilt from the cached answers. `sakura
 //! build` recomputes the keys from the program it is building and drops a check only when the
 //! cache holds an authenticated `proved` record for every obligation of that check.
 
@@ -101,18 +103,25 @@ pub(crate) fn verify(opts: &Options, paths: &[PathBuf]) -> ExitCode {
     let profile = profile(opts.target);
     let core = snap::convert::convert(&module);
     let clauses = a.obligations();
+    let (info, cross) = (z3.info(), cvc5.as_ref().map(Solver::info));
     let mut results = Vec::new();
     for vc in vc::generate(&core, profile) {
         for o in &vc.obligations {
-            let mut r = solver::verify(&vc, o, &z3, cvc5.as_ref());
+            let key = cache::key(&core, &vc, o, &info, TRUST);
+            let mut r = match cache.reuse(&key, &vc, o, &info, cross.as_ref()) {
+                Some(r) => r,
+                None => {
+                    let (r, answers) = solver::solve(&vc, o, &z3, cvc5.as_ref());
+                    if let Some(e) = Entry::new(key, &r, &answers, cache.key.as_ref())
+                        && let Err(e) = cache.put(&e)
+                    {
+                        eprintln!("warning: {PROOFS}: {e}");
+                    }
+                    r
+                }
+            };
             if r.status == Status::Disproved && profile == Profile::Js {
                 replay(&module, &vc, o, &mut r);
-            }
-            let key = cache::key(&core, &vc, o, &z3.info(), TRUST);
-            if let Some(e) = Entry::new(key, &r, cache.key.as_ref())
-                && let Err(e) = cache.put(&e)
-            {
-                eprintln!("warning: {PROOFS}: {e}");
             }
             let manifest_id = clause_id(&clauses, &core, o.contract);
             results.push((r, manifest_id));
