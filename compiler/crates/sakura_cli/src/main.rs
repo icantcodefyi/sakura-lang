@@ -274,6 +274,71 @@ const TARGETS: [&str; 2] = ["js", "wasm"];
 
 const LLMS_TXT: &str = include_str!("../../../../docs/llms.txt");
 
+/// The `sakura` skill (design §17.142): every file of `skills/sakura/`, by path inside it.
+/// [`skill_bundle`] fills in this build's version and commit.
+const SKILL: &[(&str, &str)] = &[
+    (
+        "SKILL.md",
+        include_str!("../../../../skills/sakura/SKILL.md"),
+    ),
+    (
+        "references/diagnostics.md",
+        include_str!("../../../../skills/sakura/references/diagnostics.md"),
+    ),
+    (
+        "references/language.md",
+        include_str!("../../../../skills/sakura/references/language.md"),
+    ),
+    (
+        "references/stdlib.md",
+        include_str!("../../../../skills/sakura/references/stdlib.md"),
+    ),
+];
+
+/// The skill as this binary hands it out: `SKILL.md`'s `sakura-compiler-version` and
+/// `sakura-compiler-git` metadata name this build (the commit from `SAKURA_GIT_COMMIT` at build
+/// time, as in `manifest.json`), so the bundle always matches the compiler that wrote it.
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "`sakura setup` (design §17.143) writes the bundle"
+    )
+)]
+fn skill_bundle() -> Vec<(&'static str, String)> {
+    SKILL
+        .iter()
+        .map(|&(path, text)| match path {
+            "SKILL.md" => (path, fill_skill_metadata(text)),
+            _ => (path, text.to_owned()),
+        })
+        .collect()
+}
+
+#[cfg_attr(not(test), expect(dead_code, reason = "see `skill_bundle`"))]
+fn fill_skill_metadata(text: &str) -> String {
+    let git = option_env!("SAKURA_GIT_COMMIT").unwrap_or("unknown");
+    let mut out = String::new();
+    let mut fences = 0;
+    for line in text.split_inclusive('\n') {
+        fences += usize::from(line.trim_end() == "---");
+        let indent = &line[..line.len() - line.trim_start().len()];
+        let value = match line.trim_start().split_once(':') {
+            _ if fences != 1 => None,
+            Some(("sakura-compiler-version", _)) => {
+                Some(("sakura-compiler-version", env!("CARGO_PKG_VERSION")))
+            }
+            Some(("sakura-compiler-git", _)) => Some(("sakura-compiler-git", git)),
+            _ => None,
+        };
+        match value {
+            Some((key, value)) => out.push_str(&format!("{indent}{key}: \"{value}\"\n")),
+            None => out.push_str(line),
+        }
+    }
+    out
+}
+
 fn main() -> ExitCode {
     let cli = Cli::parse();
     let json = matches!(
@@ -1015,4 +1080,54 @@ fn explain(code: &str) -> ExitCode {
         info.code.0, info.title, info.explain
     );
     ExitCode::SUCCESS
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    /// The embedded bundle is exactly `skills/sakura/` (no file missing or extra), with only the
+    /// compiler metadata lines of `SKILL.md` filled in.
+    #[test]
+    fn embedded_skill_matches_the_source_tree() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../skills/sakura");
+        let mut on_disk = Vec::new();
+        let mut dirs = vec![root.clone()];
+        while let Some(dir) = dirs.pop() {
+            for entry in std::fs::read_dir(dir).unwrap().flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    dirs.push(path);
+                } else {
+                    let rel = path.strip_prefix(&root).unwrap().to_string_lossy();
+                    on_disk.push(rel.replace('\\', "/"));
+                }
+            }
+        }
+        on_disk.sort();
+        let bundle = super::skill_bundle();
+        let embedded: Vec<&str> = bundle.iter().map(|(p, _)| *p).collect();
+        assert_eq!(embedded, on_disk);
+        for (path, text) in &bundle {
+            let source = std::fs::read_to_string(root.join(path)).unwrap();
+            if *path != "SKILL.md" {
+                assert!(*text == source, "{path} differs from the source tree");
+                continue;
+            }
+            let version = format!("sakura-compiler-version: \"{}\"", env!("CARGO_PKG_VERSION"));
+            assert!(text.contains(&version), "{text}");
+            assert!(text.contains("sakura-compiler-git: \""), "{text}");
+            let differing: Vec<_> = text
+                .lines()
+                .zip(source.lines())
+                .filter(|(a, b)| a != b)
+                .map(|(a, _)| a.trim_start())
+                .collect();
+            assert!(
+                text.lines().count() == source.lines().count()
+                    && differing.iter().all(|l| l.starts_with("sakura-compiler-")),
+                "{differing:?}"
+            );
+        }
+    }
 }
