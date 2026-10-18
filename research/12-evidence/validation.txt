@@ -1,0 +1,2 @@
+PASS: 28 local Markdown targets; 3 JSON evidence files
+External URL results: link-check.json (2026-10-18); fragments not validated

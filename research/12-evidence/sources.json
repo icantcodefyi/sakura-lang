@@ -1,0 +1,59 @@
+{
+  "accessed": "2026-10-18",
+  "sources": [
+    {
+      "name": "koka-parc",
+      "url": "https://raw.githubusercontent.com/koka-lang/koka/v3.2.9/src/Backend/C/Parc.hs",
+      "sha256": "e302b0041a709c7e0b2833e0403717cc82480cad65185b1900d9400f783c2971",
+      "bytes": 44805
+    },
+    {
+      "name": "koka-reuse",
+      "url": "https://raw.githubusercontent.com/koka-lang/koka/v3.2.9/src/Backend/C/ParcReuse.hs",
+      "sha256": "6d34a00bb545d1920f89ac6f739355a74cd3bdabc1e67af9606b6476929af5fe",
+      "bytes": 42740
+    },
+    {
+      "name": "koka-specialize",
+      "url": "https://raw.githubusercontent.com/koka-lang/koka/v3.2.9/src/Backend/C/ParcReuseSpec.hs",
+      "sha256": "8be4841224486c76d59095b22be43ea9d59ca553722454fee38ba5bf017046ac",
+      "bytes": 13755
+    },
+    {
+      "name": "koka-rc",
+      "url": "https://raw.githubusercontent.com/koka-lang/koka/v3.2.9/kklib/src/refcount.c",
+      "sha256": "dfb74c0895a7c02368a1f88789429c59ea3023862d26fb35fb7d3f3333abcf06",
+      "bytes": 33027
+    },
+    {
+      "name": "lean-borrow",
+      "url": "https://raw.githubusercontent.com/leanprover/lean4/v4.35.0/src/Lean/Compiler/LCNF/InferBorrow.lean",
+      "sha256": "338f9567d5dbdba6a69bb9cd70f8683e0e1a9c721edba769660cff316c48e1d5",
+      "bytes": 19152
+    },
+    {
+      "name": "lean-reuse",
+      "url": "https://raw.githubusercontent.com/leanprover/lean4/v4.35.0/src/Lean/Compiler/LCNF/ResetReuse.lean",
+      "sha256": "424540b72cba42b78abbb6bce5796aec2df58e4359da5d38f551a7d7b88f99b0",
+      "bytes": 12804
+    },
+    {
+      "name": "lean-expand",
+      "url": "https://raw.githubusercontent.com/leanprover/lean4/v4.35.0/src/Lean/Compiler/LCNF/ExpandResetReuse.lean",
+      "sha256": "90d7ba0c57820f319458ede06ac3c2f22c3e6a71a50284dec99cb5964a4fc5d3",
+      "bytes": 15051
+    },
+    {
+      "name": "cranelift-callconv",
+      "url": "https://raw.githubusercontent.com/bytecodealliance/wasmtime/v49.0.3/cranelift/codegen/src/isa/call_conv.rs",
+      "sha256": "8cf56cf6fdae53e6e0b8278c01418cd2d7ff65be307e7ff68b2617e17cb01465",
+      "bytes": 6189
+    },
+    {
+      "name": "inkwell-manifest",
+      "url": "https://raw.githubusercontent.com/TheDan64/inkwell/0.10.0/Cargo.toml",
+      "sha256": "de22408f712e311cdd82695610b100cc2db2495f5ca2dff2abff96216632c90a",
+      "bytes": 7882
+    }
+  ]
+}

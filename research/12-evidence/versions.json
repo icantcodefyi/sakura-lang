@@ -1,0 +1,110 @@
+{
+  "accessed": "2026-10-18",
+  "versions": [
+    {
+      "crate": "cranelift-codegen",
+      "version": "0.136.3",
+      "published": "2026-10-14T17:09:51.068407Z",
+      "rust_version": "1.96.0",
+      "source": "https://crates.io/api/v1/crates/cranelift-codegen"
+    },
+    {
+      "crate": "cranelift-frontend",
+      "version": "0.136.3",
+      "published": "2026-10-14T17:10:02.229639Z",
+      "rust_version": "1.96.0",
+      "source": "https://crates.io/api/v1/crates/cranelift-frontend"
+    },
+    {
+      "crate": "cranelift-object",
+      "version": "0.136.3",
+      "published": "2026-10-14T17:10:07.901913Z",
+      "rust_version": "1.96.0",
+      "source": "https://crates.io/api/v1/crates/cranelift-object"
+    },
+    {
+      "crate": "inkwell",
+      "version": "0.10.0",
+      "published": "2026-08-06T03:31:54.096086Z",
+      "rust_version": null,
+      "source": "https://crates.io/api/v1/crates/inkwell"
+    },
+    {
+      "crate": "tokio",
+      "version": "1.53.3",
+      "published": "2026-10-13T20:51:46.498182Z",
+      "rust_version": "1.71",
+      "source": "https://crates.io/api/v1/crates/tokio"
+    },
+    {
+      "crate": "reqwest",
+      "version": "0.13.5",
+      "published": "2026-09-08T20:55:26.479356Z",
+      "rust_version": "1.85.0",
+      "source": "https://crates.io/api/v1/crates/reqwest"
+    },
+    {
+      "crate": "hyper",
+      "version": "1.12.0",
+      "published": "2026-10-06T15:57:18.927904Z",
+      "rust_version": "1.63",
+      "source": "https://crates.io/api/v1/crates/hyper"
+    },
+    {
+      "crate": "axum",
+      "version": "0.8.9",
+      "published": "2026-04-14T07:55:20.258398Z",
+      "rust_version": "1.80",
+      "source": "https://crates.io/api/v1/crates/axum"
+    },
+    {
+      "crate": "rustls",
+      "version": "0.23.46",
+      "published": "2026-10-14T09:54:15.075873Z",
+      "rust_version": "1.71",
+      "source": "https://crates.io/api/v1/crates/rustls"
+    },
+    {
+      "crate": "rusqlite",
+      "version": "0.40.2",
+      "published": "2026-08-08T14:21:52.570893Z",
+      "rust_version": null,
+      "source": "https://crates.io/api/v1/crates/rusqlite"
+    },
+    {
+      "crate": "sqlx",
+      "version": "0.9.0",
+      "published": "2026-05-21T17:35:53.403466Z",
+      "rust_version": "1.94.0",
+      "source": "https://crates.io/api/v1/crates/sqlx"
+    },
+    {
+      "crate": "cap-std",
+      "version": "4.0.3",
+      "published": "2026-08-20T15:09:44.911133Z",
+      "rust_version": null,
+      "source": "https://crates.io/api/v1/crates/cap-std"
+    },
+    {
+      "crate": "rustix",
+      "version": "1.1.5",
+      "published": "2026-09-16T23:05:02.319690Z",
+      "rust_version": "1.65",
+      "source": "https://crates.io/api/v1/crates/rustix"
+    },
+    {
+      "crate": "gimli",
+      "version": "0.34.0",
+      "published": "2026-06-25T07:08:40.637831Z",
+      "rust_version": "1.88",
+      "source": "https://crates.io/api/v1/crates/gimli"
+    },
+    {
+      "crate": "object",
+      "version": "0.40.0",
+      "published": "2026-08-01T08:06:55.680121Z",
+      "rust_version": "1.85",
+      "source": "https://crates.io/api/v1/crates/object"
+    }
+  ]
+}
