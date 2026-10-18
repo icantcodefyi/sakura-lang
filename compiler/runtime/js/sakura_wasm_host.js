@@ -266,6 +266,20 @@ export class Host {
         ...Object.fromEntries(
           Object.keys(HOSTED).map((name) => [name, (ptr, len) => this.hosted(name, ptr, len)]),
         ),
+        // The test runner's `std::test::Test` handler (`runTests`), as `test_runner.js`'s.
+        test_seed: () => BigInt(this.seed ?? 0),
+        test_record_failure: (ptr, len) => this.test.failures.push(this.string(ptr, len)),
+        test_failures: () => BigInt(this.test.failures.length),
+        test_output: (ptr, len) => this.test.output.push(this.string(ptr, len)),
+        test_output_lines: () => this.value(rt.list(this.test.output.slice()), ["L", "S"]),
+        test_snapshot: (n, nl, r, rl) => {
+          const problem = snapshot(this.runner, this.test.module, this.string(n, nl), this.string(r, rl));
+          if (problem !== null) this.test.failures.push(problem);
+        },
+        test_fixtures: () => {
+          const dir = rt.fixtures_dir(this.runner.fixtures, proc.env.SAKURA_RECORD === "1");
+          return this.value(dir, DIR_SCHEMA);
+        },
         abort: (request) => {
           this.inflight.get(request)?.();
           this.inflight.delete(request);
@@ -300,6 +314,27 @@ export class Host {
     const p = this.exports.alloc_bytes(bytes.length);
     if (p !== 0) this.bytes().set(bytes, p + 12);
     return p;
+  }
+
+  /** `v` of schema `s` as a guest `Bytes` holding its `sakura-vt1` value. */
+  value(v, s) {
+    const w = new Writer();
+    this.encode(w, v, s);
+    return this.copyOut(w.done());
+  }
+
+  /** The module's tests from `tests()`: `{ code, name, module }`. */
+  tests() {
+    const [at, len] = this.exports.tests();
+    const r = new Reader(this.copyIn(at, len));
+    const n = r.u32();
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const code = r.u32();
+      const name = utf8.decode(r.slice());
+      out.push({ code, name, module: utf8.decode(r.slice()) });
+    }
+    return out;
   }
 
   /** The module's type ids, read once from `layout_table()` (ABI §3.4 entries and names). */
@@ -666,6 +701,88 @@ export async function runMain(bytes, argv = []) {
   }
 }
 
+/**
+ * `tests/__snapshots__/<module>/<name>.snap` holds `rendered` plus a newline (as
+ * `test_runner.js`); `module`'s leading package segment is dropped.
+ */
+function snapshot(runner, module, name, rendered) {
+  const fs = proc.getBuiltinModule("node:fs");
+  const path = proc.getBuiltinModule("node:path");
+  if (runner.snapshotDir === "") return "snapshots need a project directory";
+  if (!/^[A-Za-z0-9_.-]+$/.test(name) || name.startsWith(".")) {
+    return `snapshot name ${JSON.stringify(name)} must be letters, digits, '_', '-' or '.'`;
+  }
+  const file = path.join(runner.snapshotDir, ...module.split("::").slice(1), `${name}.snap`);
+  const want = `${rendered}\n`;
+  let have = null;
+  try {
+    have = fs.readFileSync(file, "utf8");
+  } catch {}
+  if (have === want) return null;
+  if (runner.update) {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, want);
+    return null;
+  }
+  return have === null
+    ? `snapshot ${name} does not exist yet; run \`sakura test --update-snapshots\` and review it`
+    : `snapshot ${name} differs from ${file}:\n--- expected\n${have}--- actual\n${want}`;
+}
+
+/**
+ * `sakura test --target wasm`: every test of the module (or those whose name contains
+ * `filter`) as a task under the runner's `Test` handler, reported with `test_runner.js`'s JSON
+ * records (one `test` per test, then a `summary`). Returns the exit code: 3 if any failed.
+ */
+export async function runTests(bytes, seed, filter, snapshotDir, update) {
+  const path = proc.getBuiltinModule("node:path");
+  const emit = (record) => proc.stdout.write(`${JSON.stringify({ schema_version: "1.0", ...record })}\n`);
+  const host = new Host();
+  host.seed = seed;
+  host.runner = {
+    snapshotDir,
+    update,
+    fixtures: snapshotDir === "" ? "" : path.join(snapshotDir, "..", "fixtures"),
+  };
+  await loadTypes();
+  await host.instantiate(bytes);
+  const tests = host.tests();
+  let [passed, failed, skipped] = [0, 0, 0];
+  for (const t of tests) {
+    if (filter !== "" && !t.name.includes(filter)) {
+      skipped++;
+      continue;
+    }
+    host.test = { failures: [], output: [], module: t.module };
+    const start = performance.now();
+    let o;
+    try {
+      o = await host.runTask(t.code);
+    } catch (e) {
+      o = { kind: "defect", code: "D090", message: `trap: ${e.message}` };
+    }
+    rt.flushOut();
+    const duration_ms = Math.round(performance.now() - start);
+    const { failures, output } = host.test;
+    let status = "passed";
+    let defect = null;
+    if (o.kind === "defect") {
+      status = "defect";
+      defect = { code: o.code, message: o.message };
+    } else if (o.kind === "fail") {
+      status = "failed";
+      failures.push(`test failed with ${o.shown}`);
+    } else if (failures.length > 0) {
+      status = "failed";
+    }
+    if (status === "passed") passed++;
+    else failed++;
+    emit({ kind: "test", name: t.name, module: t.module, status, seed, duration_ms, failures, output, defect });
+  }
+  emit({ kind: "summary", passed, failed, skipped, total: tests.length, seed });
+  return failed > 0 ? 3 : 0;
+}
+
 // Run as the entry script (`node sakura_wasm_host.js …`). Compared as real paths: the script
 // may be reached through a symlink (macOS `/tmp`), and `import.meta.url` is resolved.
 const isMain = () => {
@@ -678,7 +795,19 @@ const isMain = () => {
   }
 };
 if (proc?.argv?.[1] && isMain()) {
-  const [path, ...args] = proc.argv.slice(2);
   const fs = proc.getBuiltinModule("node:fs");
-  proc.exitCode = await runMain(fs.readFileSync(path), args);
+  if (proc.argv[2] === "--test") {
+    // `--test <module.wasm> <seed> <filter> <snapshot-dir> <update: 0|1>` (as test_runner.js).
+    const [, path, seed, filter, snapshotDir, update] = proc.argv.slice(2);
+    proc.exitCode = await runTests(
+      fs.readFileSync(path),
+      Number(seed ?? "0"),
+      filter ?? "",
+      snapshotDir ?? "",
+      update === "1",
+    );
+  } else {
+    const [path, ...args] = proc.argv.slice(2);
+    proc.exitCode = await runMain(fs.readFileSync(path), args);
+  }
 }

@@ -263,11 +263,10 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     let g = layout.first_global;
     let (static_base, inited, abi) = (g, g + 1, g + 2);
     let code_of = |name: &str| n + natives.iter().position(|x| x == name).unwrap() as u32;
-    let mut host_handlers = HashMap::new();
-    for (builtin, effect, prefix) in HOST_HANDLERS {
-        let Some(e) = m.effects.iter().position(|x| x.name == *effect) else {
-            continue;
-        };
+    // The native code of each operation of `effect` (`rt_code_<prefix>_<op>`, or
+    // `rt_code_unsupported`), as `u32`s in the static block: (effect id, offset, count).
+    let clause_codes = |statics: &mut data::Statics, effect: &str, prefix: &str| {
+        let e = m.effects.iter().position(|x| x.name == effect)?;
         let codes: Vec<u8> = m.effects[e]
             .ops
             .iter()
@@ -280,12 +279,19 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
             })
             .flat_map(u32::to_le_bytes)
             .collect();
-        let n_ops = m.effects[e].ops.len() as u32;
-        host_handlers.insert(
-            builtin.to_string(),
-            (e as u32, statics.bytes(&codes), n_ops),
-        );
+        Some((
+            e as u32,
+            statics.bytes(&codes),
+            m.effects[e].ops.len() as u32,
+        ))
+    };
+    let mut host_handlers = HashMap::new();
+    for (builtin, effect, prefix) in HOST_HANDLERS {
+        if let Some(h) = clause_codes(&mut statics, effect, prefix) {
+            host_handlers.insert(builtin.to_string(), h);
+        }
     }
+    let test_handler = clause_codes(&mut statics, "std::test::Test", "test");
     let env = func::Env {
         m,
         rt: &layout.rt,
@@ -376,7 +382,8 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     s.i32_const(1).global_set(inited).i32_const(1).end();
     funcs.push(added(FIXED[1], vec![], i32s(1), f));
 
-    // start(entry) -> task: `entry` is a code from `tests()`, or -1 for the module entry.
+    // start(entry) -> task: `entry` is a code from `tests()`, or -1 for the module entry. A
+    // test runs under the runner's `std::test::Test` handler (host clauses `rt_code_test_*`).
     let init = index("sakura$init");
     let entry = m.entry.map_or(-1, |e| e.0 as i32);
     let mut f = Function::new([]);
@@ -388,12 +395,23 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
         .return_()
         .end();
     s.local_get(0).i32_const(-1).i32_eq();
-    s.if_(BlockType::Result(ValType::I32))
+    s.if_(BlockType::Empty)
         .i32_const(entry)
-        .else_()
-        .local_get(0)
+        .call(rtf("rt_start")?)
+        .return_()
         .end();
-    s.call(rtf("rt_start")?).end();
+    match &test_handler {
+        Some((effect, codes, n_ops)) => {
+            s.local_get(0);
+            s.i32_const(*effect as i32);
+            s.global_get(static_base).i32_const(*codes as i32).i32_add();
+            s.i32_const(*n_ops as i32).call(rtf("rt_b_host_handler")?);
+            s.call(rtf("rt_start_test")?).end();
+        }
+        None => {
+            s.local_get(0).call(rtf("rt_start")?).end();
+        }
+    }
     funcs.push(added(FIXED[2], i32s(1), i32s(1), f));
 
     // layout_table(), effect_table() -> (ptr, len)
@@ -553,13 +571,16 @@ fn ops_table(m: &Module) -> Vec<u8> {
     out
 }
 
-/// `tests()` (ABI §9): `u32 n`, then per test `u32 code`, `u32 len`, the UTF-8 name.
+/// `tests()` (ABI §9): `u32 n`, then per test `u32 code` and the name and module (each
+/// `u32 len`, UTF-8).
 fn tests_table(m: &Module) -> Vec<u8> {
     let mut out = (m.tests.len() as u32).to_le_bytes().to_vec();
     for (name, f) in &m.tests {
         out.extend_from_slice(&f.0.to_le_bytes());
-        out.extend_from_slice(&(name.len() as u32).to_le_bytes());
-        out.extend_from_slice(name.as_bytes());
+        for text in [name.as_str(), m.func(*f).module.as_str()] {
+            out.extend_from_slice(&(text.len() as u32).to_le_bytes());
+            out.extend_from_slice(text.as_bytes());
+        }
     }
     out
 }

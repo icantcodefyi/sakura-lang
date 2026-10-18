@@ -48,6 +48,13 @@ pub const IMPORTS: &[&str] = &[
     "random_bytes",
     "random_uuid",
     "log_write",
+    "test_seed",
+    "test_record_failure",
+    "test_failures",
+    "test_output",
+    "test_output_lines",
+    "test_fixtures",
+    "test_snapshot",
 ];
 
 /// The gate for `host`: a [`Host::Wasi`] command may also import `fd_write` and `proc_exit`
