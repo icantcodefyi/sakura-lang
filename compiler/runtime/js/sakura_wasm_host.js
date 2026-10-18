@@ -38,6 +38,169 @@ const utf8 = new TextDecoder("utf-8", { fatal: true });
 /** A host-side fault the guest cannot cause in a checked program (`D090`, ABI §8.6). */
 export class HostFault extends Error {}
 
+// ---------------------------------------------------------------------------------------------
+// `sakura-vt1` values, in the tagged reading `sakura_rt` implements (runtime/rt/src/vt.rs): every
+// value carries its kind, records and variants their layout `type_id`. The host encodes a JS
+// value guided by its schema (JS numbers do not say `Int` or `Float`) and decodes guest values
+// without one.
+
+const T = Object.freeze({
+  unit: 0,
+  bool: 1,
+  int: 2,
+  float: 3,
+  string: 4,
+  bytes: 5,
+  list: 6,
+  record: 7,
+  variant: 8,
+  tuple: 9,
+  map: 10,
+  set: 11,
+  handle: 12,
+  untrusted: 13,
+});
+/** Handle kinds (ABI §8.4). */
+const DIR = 0;
+const MAX_DEPTH = 64;
+const utf8out = new TextEncoder();
+
+class Writer {
+  constructor() {
+    this.buf = new Uint8Array(256);
+    this.n = 0;
+  }
+  room(k) {
+    if (this.n + k <= this.buf.length) return;
+    const b = new Uint8Array(Math.max(this.buf.length * 2, this.n + k));
+    b.set(this.buf.subarray(0, this.n));
+    this.buf = b;
+  }
+  u8(v) {
+    this.room(1);
+    this.buf[this.n++] = v;
+  }
+  u32(v) {
+    this.room(4);
+    new DataView(this.buf.buffer).setUint32(this.n, v, true);
+    this.n += 4;
+  }
+  i64(v) {
+    this.room(8);
+    new DataView(this.buf.buffer).setBigInt64(this.n, BigInt(v), true);
+    this.n += 8;
+  }
+  f64(v) {
+    this.room(8);
+    new DataView(this.buf.buffer).setFloat64(this.n, v, true);
+    this.n += 8;
+  }
+  bytes(b) {
+    this.u32(b.length);
+    this.room(b.length);
+    this.buf.set(b, this.n);
+    this.n += b.length;
+  }
+  done() {
+    return this.buf.subarray(0, this.n);
+  }
+}
+
+class Reader {
+  constructor(bytes) {
+    this.b = bytes;
+    this.v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    this.at = 0;
+  }
+  need(k) {
+    if (this.at + k > this.b.length) throw new HostFault("a guest value ends early");
+  }
+  u8() {
+    this.need(1);
+    return this.b[this.at++];
+  }
+  u32() {
+    this.need(4);
+    this.at += 4;
+    return this.v.getUint32(this.at - 4, true);
+  }
+  i64() {
+    this.need(8);
+    this.at += 8;
+    return this.v.getBigInt64(this.at - 8, true);
+  }
+  f64() {
+    this.need(8);
+    this.at += 8;
+    return this.v.getFloat64(this.at - 8, true);
+  }
+  slice() {
+    const n = this.u32();
+    this.need(n);
+    this.at += n;
+    return this.b.subarray(this.at - n, this.at);
+  }
+}
+
+/** `["V", i]` of a descriptor's schema bound to `env` (the type's arguments), recursively. */
+function bind(s, env) {
+  if (!Array.isArray(s)) return s;
+  if (s[0] === "V") return env?.[s[1]] ?? null;
+  if (s[0] === "A") return ["A", s[1], s[2].map((a) => bind(a, env))];
+  if (s[0] === "W" || s[0] === "X") return s;
+  return [s[0], ...s.slice(1).map((a) => bind(a, env))];
+}
+
+const R = (ok, err) => ["A", "std::result::Result", [ok, err]];
+const OPT = (x) => ["A", "std::option::Option", [x]];
+const DECODE_ERROR = ["A", "std::json::DecodeError", []];
+const JSON_VALUE = ["A", "std::json::Json", []];
+const DIR_SCHEMA = ["X", "std::fs::Dir"];
+/** A JS continuation context for host functions written in CPS: a `fail` lands in `fail`. */
+const cpsContext = () => ({ h: null, c: { j: (e) => ({ fail: e }), m: 0 }, t: { fins: [] } });
+/** Run a CPS host function's bounces to its answer. */
+function settle(x) {
+  while (x !== null && typeof x === "object" && typeof x.f === "function" && Array.isArray(x.a)) {
+    x = x.f(...x.a);
+  }
+  return x;
+}
+
+/**
+ * Builtins the host implements by delegating to `sakura_runtime.js` (the WASM backend's
+ * `HOSTED` list): `run(host, ...args)` with the decoded arguments returns `{ ok }` or
+ * `{ fail }`, and `result(args)` is the schema its answer is encoded with.
+ */
+export const HOSTED = {
+  cli_args: { run: (h) => ({ ok: rt.list(h.argv) }), result: () => ["L", "S"] },
+  cli_parse: {
+    run: (_h, args, schema) => settle(rt.cli_parse(args, JSON.parse(schema), cpsContext(), (v) => ({ ok: v }))),
+    result: ([, schema]) => JSON.parse(schema),
+    error: () => ["A", "std::cli::CliError", []],
+  },
+  env_get: { run: (_h, key) => ({ ok: rt.env_get(key) }), result: () => OPT("S") },
+  fs_exists: { run: (_h, d, p) => ({ ok: rt.fs_exists(d, p) }), result: () => "B" },
+  fs_list: {
+    run: (_h, d, p) => ({ ok: rt.fs_list(d, p) }),
+    result: () => R(["L", ["A", "std::fs::Entry", []]], "S"),
+  },
+  fs_memory_root: { run: (_h, files) => ({ ok: rt.fs_memory_root(files) }), result: () => DIR_SCHEMA },
+  fs_read: { run: (_h, d, p) => ({ ok: rt.fs_read(d, p) }), result: () => R("Y", "S") },
+  fs_root: { run: () => ({ ok: rt.fs_root() }), result: () => DIR_SCHEMA },
+  fs_subdir: { run: (_h, d, name) => ({ ok: rt.fs_subdir(d, name) }), result: () => R(DIR_SCHEMA, "S") },
+  fs_write: { run: (_h, d, p, data) => ({ ok: rt.fs_write(d, p, data) }), result: () => R("U", "S") },
+  json_decode: {
+    run: (_h, text, schema) => ({ ok: rt.json_decode(text, JSON.parse(schema)) }),
+    result: ([, schema]) => R(JSON.parse(schema), DECODE_ERROR),
+  },
+  json_encode: { run: (_h, v, schema) => ({ ok: rt.json_encode(v, JSON.parse(schema)) }), result: () => "S" },
+  json_parse: { run: (_h, text) => ({ ok: rt.json_parse(text) }), result: () => R(JSON_VALUE, DECODE_ERROR) },
+  json_schema: {
+    run: (_h, witness, schema) => ({ ok: rt.json_schema(witness, JSON.parse(schema)) }),
+    result: () => JSON_VALUE,
+  },
+};
+
 /** One instance of a module and its host state. */
 export class Host {
   constructor({ argv = [] } = {}) {
@@ -45,6 +208,12 @@ export class Host {
     this.exports = null;
     // Requests in flight (ABI §8.5): request id → how to abort the host operation.
     this.inflight = new Map();
+    // Handle tables (ABI §8.4): `${kind}:${slot}` → { generation, object }.
+    this.handles = new Map();
+    this.nextSlot = 1;
+    // The module's layout type ids by qualified name, and back (from `layout_table()`).
+    this.typeIds = null;
+    this.typeNames = null;
     // Completions waiting for the guest to stop running: [request, status, payload bytes].
     this.completed = [];
     this.wake = null;
@@ -89,7 +258,14 @@ export class Host {
           const line = rt.console_read_line();
           return line.tag === 1 ? this.copyOut(new TextEncoder().encode(line.fields[0])) : 0;
         },
-        retire_handle: (_kind, _slot, _generation) => {},
+        retire_handle: (kind, slot, generation) => {
+          if (this.handles.get(`${kind}:${slot}`)?.generation === generation) {
+            this.handles.delete(`${kind}:${slot}`);
+          }
+        },
+        ...Object.fromEntries(
+          Object.keys(HOSTED).map((name) => [name, (ptr, len) => this.hosted(name, ptr, len)]),
+        ),
         abort: (request) => {
           this.inflight.get(request)?.();
           this.inflight.delete(request);
@@ -124,6 +300,229 @@ export class Host {
     const p = this.exports.alloc_bytes(bytes.length);
     if (p !== 0) this.bytes().set(bytes, p + 12);
     return p;
+  }
+
+  /** The module's type ids, read once from `layout_table()` (ABI §3.4 entries and names). */
+  types() {
+    if (this.typeIds !== null) return;
+    this.typeIds = new Map();
+    this.typeNames = [];
+    const [at, len] = this.exports.layout_table();
+    const t = this.copyIn(at, len);
+    const v = new DataView(t.buffer, t.byteOffset, t.byteLength);
+    const n = v.getUint32(0, true);
+    for (let i = 0; i < n; i++) {
+      const entry = v.getUint32(20 + 4 * i, true);
+      const name = v.getUint32(entry + 4, true);
+      const id = name === 0 ? "" : utf8.decode(t.subarray(name + 4, name + 4 + v.getUint32(name, true)));
+      this.typeNames.push(id);
+      if (id !== "" && !this.typeIds.has(id)) this.typeIds.set(id, i);
+    }
+  }
+
+  typeId(id) {
+    this.types();
+    const k = this.typeIds.get(id);
+    if (k === undefined) throw new HostFault(`type ${id} is not in the module's layout table`);
+    return k;
+  }
+
+  /** A host object as a handle `(kind, slot, generation)`, added to its table. */
+  handle(kind, object) {
+    const slot = this.nextSlot++;
+    this.handles.set(`${kind}:${slot}`, { generation: 1, object });
+    return [slot, 1];
+  }
+
+  /** Encode JS value `v` of schema `s` (type arguments `env`) into `w`. */
+  encode(w, v, s, env = null, depth = 0) {
+    if (depth > MAX_DEPTH) throw new HostFault("a value nests too deep to cross into the guest");
+    s = bind(s, env);
+    if (s === null) return this.encodeDynamic(w, v, depth);
+    const head = typeof s === "string" ? s : s[0];
+    switch (head) {
+      case "U":
+        return w.u8(T.unit);
+      case "B":
+        w.u8(T.bool);
+        return w.u8(v ? 1 : 0);
+      case "I":
+        w.u8(T.int);
+        return w.i64(v);
+      case "F":
+        w.u8(T.float);
+        return w.f64(v);
+      case "S":
+        w.u8(T.string);
+        return w.bytes(utf8out.encode(v));
+      case "Y":
+        w.u8(T.bytes);
+        return w.bytes(v);
+      case "T":
+        w.u8(T.tuple);
+        w.u32(s.length - 1);
+        for (let i = 1; i < s.length; i++) this.encode(w, v[i - 1], s[i], null, depth + 1);
+        return;
+      case "L":
+      case "E": {
+        const xs = rt.items(head === "E" ? rt.set_to_list(v) : v);
+        w.u8(head === "E" ? T.set : T.list);
+        w.u32(xs.length);
+        for (const x of xs) this.encode(w, x, s[1], null, depth + 1);
+        return;
+      }
+      case "M": {
+        const es = rt.items(rt.map_entries(v));
+        w.u8(T.map);
+        w.u32(es.length);
+        for (const [k, x] of es) {
+          this.encode(w, k, s[1], null, depth + 1);
+          this.encode(w, x, s[2], null, depth + 1);
+        }
+        return;
+      }
+      case "A": {
+        const [, id, args] = s;
+        const r = rt.refinementOf(id);
+        if (r !== null) return this.encode(w, v, r.base, args, depth);
+        const cls = rt.typeClass(id);
+        if (cls === null) throw new HostFault(`type ${id} is not loaded`);
+        const t = cls.prototype.$t;
+        if (t.kind === "record") {
+          w.u8(T.record);
+          w.u32(this.typeId(id));
+          w.u32(t.fields.length);
+          for (let i = 0; i < t.fields.length; i++) this.encode(w, v[t.props[i]], t.h[i], args, depth + 1);
+        } else {
+          const h = t.ctors[v.tag].h;
+          w.u8(T.variant);
+          w.u32(this.typeId(id));
+          w.u32(v.tag);
+          w.u32(h.length);
+          for (let i = 0; i < h.length; i++) this.encode(w, v.fields[i], h[i], args, depth + 1);
+        }
+        return;
+      }
+      case "W":
+        return this.encode(w, v, ["A", v.constructor.prototype.$t.id, []], null, depth);
+      case "X":
+        return this.encodeDynamic(w, v, depth);
+      default:
+        throw new HostFault(`unknown schema ${JSON.stringify(s)}`);
+    }
+  }
+
+  /** A value whose schema is unknown (an unsolved type parameter): by its JS shape. */
+  encodeDynamic(w, v, depth) {
+    if (v === undefined) return w.u8(T.unit);
+    if (typeof v === "boolean") return this.encode(w, v, "B", null, depth);
+    if (typeof v === "string") return this.encode(w, v, "S", null, depth);
+    // ponytail: an unknown-schema number is an `Int` when integral; schemas that reach every
+    // host result make this branch rare (a `Float` like 2.0 here would cross as `Int`).
+    if (typeof v === "number") return this.encode(w, v, Number.isInteger(v) ? "I" : "F", null, depth);
+    if (v instanceof Uint8Array) return this.encode(w, v, "Y", null, depth);
+    if (v instanceof rt.Dir) {
+      const [slot, generation] = this.handle(DIR, v);
+      w.u8(T.handle);
+      w.u32(DIR);
+      w.u32(slot);
+      return w.u32(generation);
+    }
+    if (v instanceof rt.List) return this.encode(w, v, ["L", null], null, depth);
+    if (Array.isArray(v)) return this.encode(w, v, ["T", ...v.map(() => null)], null, depth);
+    const t = v?.constructor?.prototype?.$t;
+    if (t !== undefined) return this.encode(w, v, ["A", t.id, []], null, depth);
+    throw new HostFault("a host value of unknown type");
+  }
+
+  /** Decode a guest value (`sakura_rt::vt`) into the JS runtime's representation. */
+  decode(r, depth = 0) {
+    if (depth > MAX_DEPTH) throw new HostFault("a guest value nests too deep");
+    const tag = r.u8();
+    const many = (n) => {
+      const out = [];
+      for (let i = 0; i < n; i++) out.push(this.decode(r, depth + 1));
+      return out;
+    };
+    switch (tag) {
+      case T.unit:
+        return undefined;
+      case T.bool:
+        return r.u8() === 1;
+      case T.int:
+        return Number(r.i64());
+      case T.float:
+        return r.f64();
+      case T.string:
+        return utf8.decode(r.slice());
+      case T.bytes:
+        return new Uint8Array(r.slice());
+      case T.list:
+        return rt.list(many(r.u32()));
+      case T.set:
+        return rt.set_of(rt.list(many(r.u32())));
+      case T.map: {
+        const n = r.u32();
+        const pairs = [];
+        for (let i = 0; i < n; i++) pairs.push([this.decode(r, depth + 1), this.decode(r, depth + 1)]);
+        return rt.map_of(rt.list(pairs));
+      }
+      case T.tuple:
+        return many(r.u32());
+      case T.record:
+      case T.variant: {
+        this.types();
+        const id = this.typeNames[r.u32()];
+        const cls = id === undefined ? null : rt.typeClass(id);
+        if (cls === null) throw new HostFault(`a guest value of a type the host has not loaded (${id})`);
+        if (tag === T.record) return new cls(...many(r.u32()));
+        const ctor = r.u32();
+        const fields = many(r.u32());
+        return id === "std::option::Option" && ctor === 0 ? rt.None : new cls(ctor, fields);
+      }
+      case T.handle: {
+        const [kind, slot, generation] = [r.u32(), r.u32(), r.u32()];
+        const h = this.handles.get(`${kind}:${slot}`);
+        if (h === undefined || h.generation !== generation) throw new HostFault("a stale or foreign handle");
+        return h.object;
+      }
+      case T.untrusted:
+        return rt.untrusted_of(this.decode(r, depth + 1));
+      default:
+        throw new HostFault(`unknown value tag ${tag}`);
+    }
+  }
+
+  /**
+   * A builtin of `HOSTED`: the arguments arrive as one tuple at `(ptr, len)`; the answer goes
+   * back as a `Bytes`: `u8` status (0 ok, 1 the operation failed with the value, 2 a defect:
+   * `u32` code and the message), then the value.
+   */
+  hosted(name, ptr, len) {
+    const op = HOSTED[name];
+    const args = this.decode(new Reader(this.copyIn(ptr, len)));
+    const w = new Writer();
+    try {
+      const r = op.run(this, ...args);
+      if ("fail" in r) {
+        w.u8(1);
+        this.encode(w, r.fail, op.error(args));
+      } else {
+        w.u8(0);
+        this.encode(w, r.ok, op.result(args));
+      }
+    } catch (e) {
+      if (!(e instanceof rt.Defect)) throw e;
+      const out = new Writer();
+      out.u8(2);
+      out.u32(Number(e.code.slice(1)));
+      const m = utf8out.encode(e.detail);
+      out.room(m.length);
+      out.buf.set(m, out.n);
+      out.n += m.length;
+      return this.copyOut(out.done());
+    }
+    return this.copyOut(w.done());
   }
 
   /**
@@ -215,6 +614,18 @@ export class AbiMismatch extends Error {
   }
 }
 
+/**
+ * The program's JS type descriptors and refinement predicates (`__types__.js`, written by
+ * `sakura build --target wasm` next to this file): the JS implementations of `json_*` and
+ * `cli_parse` that the host delegates to read them (ABI §8.1).
+ */
+export async function loadTypes() {
+  const url = new URL("./__types__.js", import.meta.url);
+  const fs = proc.getBuiltinModule("node:fs");
+  const path = proc.getBuiltinModule("node:url").fileURLToPath(url);
+  if (fs.existsSync(path)) await import(url.href);
+}
+
 function writeErr(line) {
   rt.flushOut();
   proc.stderr.write(`${line}\n`);
@@ -225,6 +636,7 @@ export async function runMain(bytes, argv = []) {
   const host = new Host({ argv });
   let o;
   try {
+    await loadTypes();
     await host.instantiate(bytes);
     o = await host.runTask(-1);
   } catch (e) {

@@ -114,6 +114,26 @@ const HOST_HANDLERS: &[(&str, &str, &str)] = &[
     ("log_json", "std::log::Log", "log_json"),
 ];
 
+/// Builtins the Node host implements by delegating to the JS runtime (`sakura_wasm_host.js`
+/// `HOSTED`): their arguments and results cross in `sakura-vt1`. Schemas cross as their JS
+/// text (ABI §8.1). `cli_parse` is `cps` but answers at once.
+pub const HOSTED: &[&str] = &[
+    "cli_args",
+    "cli_parse",
+    "env_get",
+    "fs_exists",
+    "fs_list",
+    "fs_memory_root",
+    "fs_read",
+    "fs_root",
+    "fs_subdir",
+    "fs_write",
+    "json_decode",
+    "json_encode",
+    "json_parse",
+    "json_schema",
+];
+
 /// The functions the linker synthesises, in order, before the program's.
 const FIXED: &[&str] = &[
     "sakura$dispatch",
@@ -146,7 +166,46 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     }
     let wasi = opts.host == Host::Wasi;
     let rt = link::Runtime::parse(RUNTIME)?;
-    let imports = if wasi { wasi::imports() } else { vec![] };
+    // Builtins the JS host implements, as imports of the ABI module (a WASI command has no JS).
+    let hosted_names: Vec<String> = if wasi {
+        vec![]
+    } else {
+        let mut used = std::collections::BTreeSet::new();
+        for f in &m.funcs {
+            for b in &f.blocks {
+                for i in &b.insts {
+                    if let sakura_lir::lir::Inst::Builtin { name, .. } = i {
+                        used.insert(name.clone());
+                    }
+                }
+                if let sakura_lir::lir::Term::Call {
+                    callee: sakura_lir::lir::Callee::Builtin(name),
+                    ..
+                } = &b.term
+                {
+                    used.insert(name.clone());
+                }
+            }
+        }
+        used.into_iter()
+            .filter(|n| HOSTED.contains(&n.as_str()))
+            .collect()
+    };
+    let imports = if wasi {
+        wasi::imports()
+    } else {
+        hosted_names
+            .iter()
+            .map(|n| {
+                (
+                    "sakura_host".to_string(),
+                    n.clone(),
+                    vec![ValType::I32; 2],
+                    vec![ValType::I32],
+                )
+            })
+            .collect()
+    };
     let layout = rt.layout(wasi, imports.len() as u32)?;
     let host_imports = if wasi {
         rt.imports_of("sakura_host")
@@ -235,6 +294,11 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
         cps: natives
             .iter()
             .filter_map(|x| Some((x.strip_prefix("rt_k_")?.to_string(), code_of(x))))
+            .collect(),
+        hosted: hosted_names
+            .iter()
+            .enumerate()
+            .map(|(k, n)| (n.clone(), layout.first_import + k as u32))
             .collect(),
     };
     let mut user = Vec::with_capacity(m.funcs.len());

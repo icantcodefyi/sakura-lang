@@ -58,6 +58,9 @@ pub struct Env<'a> {
     pub host_handlers: HashMap<String, (u32, u32, u32)>,
     /// The native code of each `cps` builtin the runtime implements (`rt_k_<name>`).
     pub cps: HashMap<String, u32>,
+    /// The import index of each builtin the host implements (`sakura_host.<name>(ptr, len)`,
+    /// arguments and result in `sakura-vt1`, `sakura_rt::vt`).
+    pub hosted: HashMap<String, u32>,
 }
 
 /// How the trampoline enters a block.
@@ -1156,6 +1159,13 @@ impl Gen<'_, '_> {
             }
             _ => {}
         }
+        if let Some(&import) = self.env.hosted.get(name) {
+            let failed = self.hosted(s, import, args, live)?;
+            // A direct builtin does not fail (`fail` is for `cps` ones): a host bug.
+            s.local_get(failed);
+            self.pad_if(s, live, Some((90, "a host builtin failed")))?;
+            return self.take_result(s, dst, live);
+        }
         let export = format!("rt_b_{name}");
         let Some(&f) = self.env.rt.get(&export) else {
             // The arguments were consumed by the call that cannot be made.
@@ -1181,6 +1191,80 @@ impl Gen<'_, '_> {
         } else {
             self.check_flag(s, live)
         }
+    }
+
+    /// A host-delegated builtin call (`Env::hosted`): the arguments (consumed) as one value,
+    /// the import, then `rt_vt_result`. A defect lands on `live`'s pad; the returned local holds
+    /// 1 when the operation failed (its error is then the held result), else 0.
+    fn hosted(
+        &mut self,
+        s: &mut InstructionSink<'_>,
+        import: u32,
+        args: &[Var],
+        live: &Live,
+    ) -> Result<u32, String> {
+        // Until `rt_vt_end` the unpushed arguments are still held here.
+        let mut held = live.clone();
+        for &a in args {
+            if self.repr(a).is_managed() {
+                *held.entry(a).or_default() += 1;
+            }
+        }
+        self.call_rt(s, "rt_vt_begin")?;
+        self.pad_if(s, &held, None)?;
+        for &a in args {
+            let push = match self.repr(a) {
+                Repr::I64 => "rt_vt_push_i64",
+                Repr::F64 => "rt_vt_push_f64",
+                Repr::Bool => "rt_vt_push_bool",
+                Repr::Unit => "rt_vt_push_unit",
+                _ => "rt_vt_push_word",
+            };
+            if self.repr(a) != Repr::Unit {
+                s.local_get(self.local(a));
+            }
+            self.consume(&mut held, a);
+            self.call_rt(s, push)?;
+            self.pad_if(s, &held, None)?;
+        }
+        self.call_rt(s, "rt_vt_end")?;
+        s.local_set(self.lu);
+        self.check_zero(s, self.lu, live)?;
+        // `(ptr, len)` of the arguments; the host copies them before it returns.
+        s.local_get(self.lu).i32_const(12).i32_add();
+        s.local_get(self.lu).i32_load(mem(8, 2));
+        s.call(import).local_set(self.lf2);
+        s.local_get(self.lu);
+        self.call_rt(s, "drop")?;
+        s.local_get(self.lf2);
+        self.call_rt(s, "rt_vt_result")?;
+        s.local_set(self.lu);
+        s.local_get(self.lu).i32_const(2).i32_eq();
+        self.pad_if(s, live, None)?;
+        Ok(self.lu)
+    }
+
+    /// The held host result into `dst`, in its representation.
+    fn take_result(
+        &mut self,
+        s: &mut InstructionSink<'_>,
+        dst: Var,
+        live: &Live,
+    ) -> Result<(), String> {
+        let take = match self.repr(dst) {
+            Repr::I64 => "rt_vt_take_i64",
+            Repr::F64 => "rt_vt_take_f64",
+            Repr::Bool => "rt_vt_take_bool",
+            _ => "rt_vt_take_word",
+        };
+        self.call_rt(s, take)?;
+        if self.repr(dst) == Repr::Unit {
+            s.call(self.env.rt["drop"]);
+        } else {
+            s.local_set(self.local(dst));
+        }
+        let _ = live;
+        Ok(())
     }
 
     // ---- terminators ----------------------------------------------------------------------
@@ -1261,6 +1345,47 @@ impl Gen<'_, '_> {
                     Some(e) => self.edge(s, e),
                     None => self.pad(s, live, Some((90, "no switch arm applied")))?,
                 }
+            }
+            Term::Call {
+                callee: Callee::Builtin(name),
+                args,
+                cont,
+            } if self.env.hosted.contains_key(name) => {
+                // The host answers at once: no frame, no suspension. `Ok` continues at `cont`
+                // with the result, a failure is this frame's `fail`.
+                let import = self.env.hosted[name];
+                let mut rest = live.clone();
+                for &a in args {
+                    self.consume(&mut rest, a);
+                }
+                let failed = self.hosted(s, import, args, &rest)?;
+                s.local_get(failed).if_(BlockType::Empty);
+                self.depth += 1;
+                for (&v, &n) in &rest {
+                    for _ in 0..n {
+                        s.local_get(self.local(v));
+                        self.call_rt(s, "drop")?;
+                    }
+                }
+                self.call_rt(s, "rt_vt_take_word")?;
+                self.call_rt(s, "rt_fail")?;
+                s.return_();
+                self.depth -= 1;
+                s.end();
+                let p0 = self.f.block(cont.block).params[0];
+                self.take_result(s, p0, &rest)?;
+                let params = &self.f.block(cont.block).params[1..];
+                for &a in &cont.args {
+                    if self.repr(a) != Repr::Unit {
+                        s.local_get(self.local(a));
+                    }
+                }
+                for &p in params.iter().rev() {
+                    if self.repr(p) != Repr::Unit {
+                        s.local_set(self.local(p));
+                    }
+                }
+                self.goto(s, cont.block.0);
             }
             Term::Call { callee, args, cont } => {
                 self.suspend_at(s, cont, live)?;

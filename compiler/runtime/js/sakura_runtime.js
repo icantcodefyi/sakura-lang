@@ -575,6 +575,10 @@ function std(id) {
   if (cls === undefined) throw internal(`std type ${id} is not loaded`);
   return cls;
 }
+/** The class of the named type `id`, or `null` (the WASM host builds values with it). */
+export function typeClass(id) {
+  return types.get(id) ?? null;
+}
 /** The descriptor (`$t`) of the named type `id`. */
 function descriptor(id) {
   return std(id).prototype.$t;
@@ -716,6 +720,10 @@ function resolve(h, env) {
 const refinements = new Map();
 export function refined(id, name, base, check) {
   refinements.set(id, { name, base, check });
+}
+/** The refinement named `id` (`{ name, base, check }`), or `null`. */
+export function refinementOf(id) {
+  return refinements.get(id) ?? null;
 }
 
 export function showFloat(f) {
@@ -953,7 +961,7 @@ export function toArray(xs) {
   return items(xs);
 }
 
-function items(xs) {
+export function items(xs) {
   const out = new Array(xs.n);
   let k = 0;
   const walk = (node, level) => {
