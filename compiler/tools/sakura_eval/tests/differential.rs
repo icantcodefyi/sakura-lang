@@ -1,6 +1,10 @@
 //! Differential testing (design §14.3 M2, §14.5): generated well-typed programs run on the JS
 //! backend (`sakura_codegen_js` + node) and on the reference evaluator over the same Core must print
 //! the same lines and end the same way (ok, or the same defect code after the same output).
+//! The same Core also lowers to LIR (`sakura_lir::from_core`), which must validate, and the LIR
+//! interpreter (`sakura_eval::lir`, plan §3.5 L3) must agree too and end with every object and
+//! arena slot released; it is skipped where the evaluator stops with JS's `D003`, because `Int`
+//! is i64 on WASM (§17.80).
 //!
 //! The generator covers the M0–M3 forms: ints, strings, options, blocks and matches; records,
 //! variants and record/list patterns; lists and the `List` std functions with effectful callbacks;
@@ -1141,7 +1145,7 @@ fn js_backend_agrees_with_the_evaluator() {
     let workers = std::thread::available_parallelism()
         .map_or(4, |n| n.get())
         .min(8);
-    let results: Vec<(u64, Result<Option<String>, String>)> = std::thread::scope(|s| {
+    let results: Vec<(u64, Result<Option<(String, bool)>, String>)> = std::thread::scope(|s| {
         let handles: Vec<_> = seeds
             .chunks(seeds.len().div_ceil(workers).max(1))
             .map(|chunk| {
@@ -1164,13 +1168,17 @@ fn js_backend_agrees_with_the_evaluator() {
         .iter()
         .filter(|(_, r)| matches!(r, Ok(Some(_))))
         .count();
+    let lir_agreed = results
+        .iter()
+        .filter(|(_, r)| matches!(r, Ok(Some((_, true)))))
+        .count();
     let skipped = results
         .iter()
         .filter(|(_, r)| matches!(r, Ok(None)))
         .count();
     let mut endings = std::collections::BTreeMap::<&str, usize>::new();
     for (_, r) in &results {
-        if let Ok(Some(end)) = r {
+        if let Ok(Some((end, _))) = r {
             *endings.entry(end.as_str()).or_default() += 1;
         }
     }
@@ -1179,7 +1187,8 @@ fn js_backend_agrees_with_the_evaluator() {
         .filter_map(|(seed, r)| r.as_ref().err().map(|e| format!("seed {seed}: {e}")))
         .collect();
     eprintln!(
-        "differential: {agreed} agree, {} disagree, {skipped} skipped; endings {endings:?}",
+        "differential: {agreed} agree ({lir_agreed} with the LIR too), {} disagree, {skipped} \
+         skipped; endings {endings:?}",
         failures.len()
     );
     assert!(failures.is_empty(), "{}", failures.join("\n\n"));
@@ -1189,9 +1198,10 @@ fn js_backend_agrees_with_the_evaluator() {
     );
 }
 
-/// `Ok(Some(ending))` agree, `Ok(None)` skipped (evaluator lacks a feature), `Err` disagree or
-/// the program did not compile (a generator or compiler bug).
-fn check_one(seed: u64, dir: &Path) -> Result<Option<String>, String> {
+/// `Ok(Some((ending, lir)))` agree (`lir`: the LIR interpreter was compared too), `Ok(None)`
+/// skipped (evaluator lacks a feature), `Err` disagree or the program did not compile (a
+/// generator or compiler bug).
+fn check_one(seed: u64, dir: &Path) -> Result<Option<(String, bool)>, String> {
     let src = program(seed);
     let snapshot = Snapshot::with_std([("file:///diff/main.sakura".to_owned(), src.clone())]);
     // One lowering feeds both backends, so they run exactly the same Core.
@@ -1217,13 +1227,45 @@ fn check_one(seed: u64, dir: &Path) -> Result<Option<String>, String> {
             .into_iter()
             .map(|f| (f.path, f.text))
             .collect();
+    let lir = sakura_lir::from_core(&module, sakura_lir::Layout::Tagged)
+        .map_err(|e| format!("LIR lowering: {e}\n{src}"))?;
+    let errors = sakura_lir::validate::validate(&lir, Default::default());
+    if let Some(e) = errors.first() {
+        return Err(format!("LIR validator: {e}\n{src}"));
+    }
     let Some(eval) = run_eval(module) else {
         return Ok(None);
     };
     let js = run_js(dir, &files);
-    if js == eval {
-        Ok(Some(js.1))
-    } else {
-        Err(format!("JS {js:?}\nevaluator {eval:?}\n{src}"))
+    if js != eval {
+        return Err(format!("JS {js:?}\nevaluator {eval:?}\n{src}"));
     }
+    if eval.1 == "D003" {
+        return Ok(Some((js.1, false)));
+    }
+    match run_lir(lir) {
+        None => Ok(Some((js.1, false))),
+        Some(lir) if lir == eval => Ok(Some((js.1, true))),
+        Some(lir) => Err(format!("LIR {lir:?}\nevaluator {eval:?}\n{src}")),
+    }
+}
+
+/// The LIR interpreter's ending, `None` if it lacks a builtin. An unbalanced run (an object or
+/// arena slot left live, or a reference count operation unmatched) is an ending of its own.
+fn run_lir(m: sakura_lir::lir::Module) -> Option<Ending> {
+    use sakura_eval::lir;
+    let out = std::thread::Builder::new()
+        .stack_size(1 << 28)
+        .spawn(move || lir::run_main(&m, lir::Limits::default()))
+        .unwrap()
+        .join()
+        .unwrap();
+    if let lir::Ending::Unsupported(_) = out.ending {
+        return None;
+    }
+    let end = match out.stats.balanced() {
+        true => out.ending.summary(),
+        false => format!("unbalanced {:?} after {}", out.stats, out.ending.summary()),
+    };
+    Some((out.stdout, end))
 }
