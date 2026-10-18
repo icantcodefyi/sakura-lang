@@ -1,7 +1,9 @@
 //! JS vs WASM parity (plan §3.1 M4-WASM acceptance, §17.80): every run-mode fixture of
 //! `compiler/tests/semantics` runs with `--target js` and `--target wasm`, and the two must
 //! agree on stdout, the exit code, the defect code on stderr, and the effect trace
-//! (`SAKURA_TRACE`). A fixture with an `expect-defect@js` or `expect-defect@wasm` directive is
+//! (`SAKURA_TRACE`); every test-mode fixture runs `sakura test --json` on both, which must
+//! agree on the exit code, each test's status, failures, captured output and defect code,
+//! and the trace. A fixture with an `expect-defect@js` or `expect-defect@wasm` directive is
 //! held to its own backend's expectation instead (§17.80: the backends differ exactly at
 //! `Int` ±(2^53−1)). Fixtures WASM cannot run yet are listed in `KNOWN` with the reason; one
 //! that starts agreeing fails the test until it is removed, so the list stays exact.
@@ -33,6 +35,14 @@ const KNOWN: &[(&str, &str)] = &[
         "Task.deterministic: fibers are not wired to compiled code yet (W1 follow-up)",
     ),
     (
+        "properties.sakura",
+        "property tests: property_run (sakura-gen-v1 generation and shrinking) is not on WASM yet",
+    ),
+    (
+        "test_blocks.sakura",
+        "an expect_defect body overflows Int: its trace's defect event is D003 on JS, D001 on WASM",
+    ),
+    (
         "sql_untrusted_param.sakura",
         "the SQL host (sql_memory) is not implemented on WASM yet",
     ),
@@ -50,28 +60,47 @@ fn defect_code(stderr: &str) -> Option<String> {
     Some(stderr[at..at + 4].to_owned())
 }
 
-fn run(target: &str, name: &str, dir: &Path) -> Run {
+/// `sakura test --json`'s `test` records without their timing, one line each.
+fn test_records(stdout: &str) -> String {
+    let mut out = String::new();
+    for r in json_lines(stdout).unwrap_or_default() {
+        if r["kind"] == "test" {
+            let defect = r["defect"]["code"].as_str().unwrap_or("");
+            out.push_str(&format!(
+                "{} {} {} {} {}\n",
+                r["name"], r["status"], r["failures"], r["output"], defect
+            ));
+        }
+    }
+    out
+}
+
+fn run_mode(mode: &str, target: &str, name: &str, dir: &Path) -> Run {
     let tmp = Path::new(env!("CARGO_TARGET_TMPDIR")).join("parity");
     std::fs::create_dir_all(&tmp).unwrap();
     let trace = tmp.join(format!("{name}.{target}.trace"));
     let out_dir = tmp.join(format!("out-{target}"));
     let _ = std::fs::remove_file(&trace);
-    let out = sakura_env(
-        &[
-            "run",
-            "--target",
-            target,
-            "--out-dir",
-            out_dir.to_str().unwrap(),
-            name,
-        ],
-        dir,
-        &[("SAKURA_TRACE", &trace)],
-    );
+    let mut args = vec![
+        mode,
+        "--target",
+        target,
+        "--out-dir",
+        out_dir.to_str().unwrap(),
+    ];
+    if mode == "test" {
+        args.push("--json");
+    }
+    args.push(name);
+    let out = sakura_env(&args, dir, &[("SAKURA_TRACE", &trace)]);
     Run {
         code: if out.timed_out { None } else { out.code },
         defect: defect_code(&out.stderr),
-        stdout: out.stdout,
+        stdout: if mode == "test" {
+            test_records(&out.stdout)
+        } else {
+            out.stdout
+        },
         trace: std::fs::read_to_string(&trace).unwrap_or_default(),
     }
 }
@@ -112,7 +141,7 @@ fn compare(d: &BTreeMap<String, String>, js: &Run, wasm: &Run) -> Option<String>
 }
 
 #[test]
-fn js_and_wasm_agree_on_the_run_mode_semantics_corpus() {
+fn js_and_wasm_agree_on_the_semantics_corpus() {
     let node = std::process::Command::new("node").arg("--version").output();
     if node.is_err() {
         assert!(
@@ -128,15 +157,14 @@ fn js_and_wasm_agree_on_the_run_mode_semantics_corpus() {
     for path in fixtures("semantics") {
         let name = path.file_name().unwrap().to_string_lossy().into_owned();
         let d = directives(&std::fs::read_to_string(&path).unwrap());
-        if d.get("mode").is_some_and(|m| m != "run")
-            || skip_reason(&d, SEMANTICS_MILESTONE).is_some()
-        {
+        let mode = d.get("mode").map_or("run", String::as_str);
+        if !matches!(mode, "run" | "test") || skip_reason(&d, SEMANTICS_MILESTONE).is_some() {
             continue;
         }
         total += 1;
         let dir = path.parent().unwrap();
-        let js = run("js", &name, dir);
-        let wasm = run("wasm", &name, dir);
+        let js = run_mode(mode, "js", &name, dir);
+        let wasm = run_mode(mode, "wasm", &name, dir);
         for line in wasm.trace.lines() {
             if let (Some(e), Some(o)) = (line.find("\"effect\":"), line.find("\"op\":")) {
                 let effect = line[e + 10..].split('"').next().unwrap_or_default();
@@ -153,8 +181,8 @@ fn js_and_wasm_agree_on_the_run_mode_semantics_corpus() {
         }
     }
     eprintln!(
-        "parity: {agree} of {total} run-mode fixtures agree on stdout, exit, defect and trace; \
-         {known} known differences; {} failures",
+        "parity: {agree} of {total} run- and test-mode fixtures agree on stdout (test records), \
+         exit, defect and trace; {known} known differences; {} failures",
         failures.len()
     );
     eprintln!("traced operations on WASM: {ops:?}");
