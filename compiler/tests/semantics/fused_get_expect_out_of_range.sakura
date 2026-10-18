@@ -1,0 +1,16 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D030
+// covers: Defect
+// spec: §17.151
+
+// The fused read (`list_get_expect`) fails as `xs[i]` did: `D030` with the message.
+
+fn at(xs: List<Int>, i: Int) -> Int { List.get(xs, i).expect("index in range") }
+
+pub fn main() -> Unit ! {Console} {
+  let xs = List.range(0, 40)
+  Console.print("{at(xs, 39)}")
+  Console.print("{at(xs, 40)}")
+  Console.print("never printed")
+}

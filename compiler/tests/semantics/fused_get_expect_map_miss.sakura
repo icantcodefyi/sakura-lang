@@ -1,0 +1,16 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D030
+// covers: Defect
+// spec: §17.151
+
+// A `Map` key miss through the fused read (`map_get_expect`) is `D030` with the message.
+
+fn price(m: Map<String, Int>, k: String) -> Int { Map.get(m, k).expect("priced") }
+
+pub fn main() -> Unit ! {Console} {
+  let m = Map.insert(Map.empty(), "tea", 3)
+  Console.print("{price(m, "tea")}")
+  Console.print("{price(m, "coffee")}")
+  Console.print("never printed")
+}

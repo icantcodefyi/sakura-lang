@@ -8,6 +8,8 @@
 //!   backend can blame the self call for the next iteration's checks (design §17.115).
 //! - Calls of handler constructors are inlined, and performs bound to a handler literal are
 //!   found by [`handlers::bind`] (design §17.113).
+//! - `list_get`/`map_get` whose `Option` only feeds the next binding's `option_expect` become
+//!   one checked read, `list_get_expect`/`map_get_expect` (design §17.151).
 //!
 //! [`ranges`] is not a rewrite: backends run it at emission for their `Int` range, and
 //! [`owned`] at emission for in-place updates (design §17.149).
@@ -25,6 +27,7 @@ pub mod proved;
 pub fn optimize(m: &mut Module) {
     handlers::inline_constructors(m);
     for i in 0..m.defs.len() {
+        fuse_expect(&mut m.defs[i]);
         let mut returns = HashMap::new();
         return_joins(&m.defs[i].body, &mut returns);
         thread_jumps(&mut m.defs[i].body, &returns);
@@ -62,6 +65,161 @@ fn blames_caller_inner(m: &Module, e: &Expr) -> bool {
 /// The local a self tail call of a def that blames its caller binds to `()` right before its
 /// jump, at the call's position: the next iteration's checks blame that call (design §17.115).
 pub const SITE_MARK: &str = "$site";
+
+/// `let o = list_get(xs, i); let r = option_expect(o, msg)` with `o` used nowhere else becomes
+/// `let r = list_get_expect(xs, i, msg)`, keeping the `option_expect`'s position; likewise
+/// `map_get`. Both runtimes define the fused builtin as the composition, so the order of
+/// evaluation, the `D030` and its message are unchanged.
+fn fuse_expect(def: &mut FnDef) {
+    let mut uses = vec![0; def.locals.len()];
+    local_uses(&def.body, &mut uses);
+    fuse(&mut def.body, &uses);
+}
+
+fn fuse(e: &mut Expr, uses: &[usize]) {
+    crate::ensure_stack(|| fuse_inner(e, uses))
+}
+
+fn fuse_inner(mut e: &mut Expr, uses: &[usize]) {
+    loop {
+        if let Expr::Let {
+            local: o,
+            bind: Bind::Call(Atom::Builtin(get), _),
+            body,
+            ..
+        } = e
+            && let Some(fused) = match get.as_str() {
+                "list_get" => Some("list_get_expect"),
+                "map_get" => Some("map_get_expect"),
+                _ => None,
+            }
+            && uses[o.index()] == 1
+            && let Expr::Let {
+                bind: Bind::Call(Atom::Builtin(expect), eargs),
+                ..
+            } = &**body
+            && expect == "option_expect"
+            && eargs.first() == Some(&Atom::Local(*o))
+        {
+            let Expr::Let {
+                local,
+                bind: Bind::Call(f, args),
+                pos,
+                body,
+            } = e
+            else {
+                unreachable!()
+            };
+            let Expr::Let {
+                local: r,
+                bind: Bind::Call(_, eargs),
+                pos: at,
+                body: rest,
+            } = &mut **body
+            else {
+                unreachable!()
+            };
+            (*local, *pos) = (*r, *at);
+            *f = Atom::Builtin(fused.to_owned());
+            args.push(eargs.pop().expect("option_expect has a message"));
+            let rest = std::mem::replace(&mut **rest, Expr::Ret(Atom::Lit(Lit::Unit)));
+            **body = rest;
+        }
+        match e {
+            Expr::Let { body, .. } | Expr::Handle { body, .. } | Expr::Try { body, .. } => e = body,
+            Expr::LetJoin { join, body, .. } => {
+                fuse(join, uses);
+                e = body;
+            }
+            Expr::Switch { arms, default, .. } => {
+                for (_, a) in arms {
+                    fuse(a, uses);
+                }
+                if let Some(d) = default {
+                    fuse(d, uses);
+                }
+                return;
+            }
+            Expr::If { then, els, .. } => {
+                fuse(then, uses);
+                e = els;
+            }
+            Expr::Ret(_) | Expr::Jump(..) | Expr::Fail(_) => return,
+        }
+    }
+}
+
+/// How many times each local is read in `e`.
+fn local_uses(e: &Expr, out: &mut [usize]) {
+    crate::ensure_stack(|| local_uses_inner(e, out))
+}
+
+fn local_uses_inner(mut e: &Expr, out: &mut [usize]) {
+    let mut count = |atoms: &[Atom]| {
+        for a in atoms {
+            if let Atom::Local(l) = a {
+                out[l.index()] += 1;
+            }
+        }
+    };
+    loop {
+        match e {
+            Expr::Let { bind, body, .. } => {
+                match bind {
+                    Bind::Atom(a) | Bind::Proj(a, _) | Bind::Check(_, a) | Bind::StateGet(a, _) => {
+                        count(std::slice::from_ref(a))
+                    }
+                    Bind::Prim(_, args)
+                    | Bind::Closure(_, args)
+                    | Bind::Alloc(_, args)
+                    | Bind::Perform(_, _, args) => count(args),
+                    Bind::Call(f, args) => {
+                        count(std::slice::from_ref(f));
+                        count(args);
+                    }
+                    Bind::MakeHandler { state, clauses, .. } => {
+                        count(state);
+                        count(clauses);
+                    }
+                    Bind::StateSet(a, _, b) => count(&[a.clone(), b.clone()]),
+                    Bind::Hole(_) => {}
+                }
+                e = body;
+            }
+            Expr::Handle { handler, body } => {
+                count(std::slice::from_ref(handler));
+                e = body;
+            }
+            Expr::Try { body, .. } => e = body,
+            Expr::LetJoin { join, body, .. } => {
+                local_uses(join, out);
+                return local_uses(body, out);
+            }
+            Expr::Switch {
+                scrut,
+                arms,
+                default,
+                ..
+            } => {
+                count(std::slice::from_ref(scrut));
+                for (_, a) in arms {
+                    local_uses(a, out);
+                }
+                if let Some(d) = default {
+                    local_uses(d, out);
+                }
+                return;
+            }
+            Expr::If { cond, then, els } => {
+                count(std::slice::from_ref(cond));
+                local_uses(then, out);
+                return local_uses(els, out);
+            }
+            Expr::Ret(a) | Expr::Fail(a) => return count(std::slice::from_ref(a)),
+            Expr::Jump(_, args) => return count(args),
+        }
+    }
+}
 
 fn label_uses(e: &Expr, out: &mut HashMap<Label, usize>) {
     crate::ensure_stack(|| label_uses_inner(e, out))

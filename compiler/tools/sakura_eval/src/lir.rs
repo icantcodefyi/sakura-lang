@@ -1997,6 +1997,15 @@ impl<'m> Vm<'m> {
                 let text = crate::show::to_fixed(*f, (*d).min(100) as usize);
                 W(self.string(text)?)
             }
+            // `opt`'s fused reads (design §17.151): the composition they replace.
+            ("list_get_expect" | "map_get_expect", [xs, k, msg]) => {
+                let o = self.builtin(&name[..name.len() - "_expect".len()], &[*xs, *k])?;
+                let r = self.builtin("option_expect", &[o, *msg]);
+                if let W(o) = o {
+                    self.drop_word(o)?;
+                }
+                r?
+            }
             ("option_expect", [W(o), W(msg)]) => {
                 let (c, payload) = match &self.obj(*o)?.body {
                     Body::Slots(_, c, ss) => (*c, ss.first().copied()),

@@ -1433,3 +1433,38 @@ fn build_dump_core_shows_requires_seeds() {
     assert!(has("let t%8: Int = intsub(n%0, 1) proved"), "{lines:#?}");
     assert!(has("let t%9: Int = intadd(acc%1, n%0)"), "{lines:#?}");
 }
+
+/// `--dump core` shows `opt`'s fusion (design §17.151): a `get` whose `Option` only feeds the
+/// next `expect` is one checked read; an `Option` that is used again keeps both calls.
+#[test]
+fn build_dump_core_fuses_get_expect() {
+    let dir = tmp(
+        "dump-core-fuse",
+        "fn at(xs: List<Int>, i: Int) -> Int { xs[i].expect(\"index\") }\n\
+         fn price(m: Map<String, Int>, k: String) -> Int { Map.get(m, k).expect(\"priced\") }\n\
+         fn twice(xs: List<Int>, i: Int) -> Int \
+         { let o = List.get(xs, i)\n if Option.is_some(o) { o.expect(\"present\") } else { 0 } }\n\
+         pub fn main() -> Unit ! {Console} \
+         { Console.print(\"{at([1], 0)} {price(Map.empty(), \"x\")} {twice([1], 0)}\") }\n",
+    );
+    let out = sakura(&["build", "--dump", "core", "main.sakura"], &dir);
+    assert_eq!(out.code, Some(0), "{}", out.stderr);
+    let lines: Vec<&str> = out.stdout.lines().map(str::trim).collect();
+    let has = |s: &str| lines.contains(&s);
+    assert!(
+        has("let r%3: Int = call $list_get_expect(xs%0, i%1, \"index\")"),
+        "{lines:#?}"
+    );
+    assert!(
+        has("let r%3: Int = call $map_get_expect(m%0, k%1, \"priced\")"),
+        "{lines:#?}"
+    );
+    assert!(
+        has("let r%2: Option<Int> = call $list_get(xs%0, i%1)"),
+        "{lines:#?}"
+    );
+    assert!(
+        has("let r%5: Int = call $option_expect(r%2, \"present\")"),
+        "{lines:#?}"
+    );
+}

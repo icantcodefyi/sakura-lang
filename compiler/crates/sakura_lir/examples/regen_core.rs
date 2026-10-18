@@ -212,9 +212,11 @@ fn builtin_sigs() -> String {
             }
         }
     }
-    // Emitted by `sakura_core`'s lowering itself, so std declares no signature for them.
+    // Emitted by `sakura_core` itself (lowering, `opt`'s fusion), so std declares no signature for them.
     for (name, sig) in [
         ("list_at", "(ptr, i64) -> word"),
+        ("list_get_expect", "(ptr, i64, ptr) -> word"),
+        ("map_get_expect", "(ptr, word, ptr) -> word"),
         ("contract_enter", "() -> unit"),
         ("contract_exit", "() -> unit"),
         ("match_failure", "() -> unit"),

@@ -2225,6 +2225,15 @@ export function match_failure() {
 export function option_expect(o, msg) {
   return o.tag === 1 ? o.fields[0] : defect("D030", msg);
 }
+/** `option_expect(list_get(xs, i), msg)` with no `Option`, through the leaf cache (§17.151). */
+export function list_get_expect(xs, i, msg) {
+  return i >= 0 && i < xs.n ? list_at(xs, i) : defect("D030", msg);
+}
+/** `option_expect(map_get(m, k), msg)` with no `Option` (design §17.151). */
+export function map_get_expect(m, k, msg) {
+  const e = mapFind(m, k);
+  return e === undefined ? defect("D030", msg) : e[1];
+}
 
 // ---------------------------------------------------------------------------------------------
 // Host primitives (design §10.2). Std wraps them in handlers; `console_host` is a handler value.

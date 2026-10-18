@@ -186,6 +186,20 @@ test("defect_catch runs a child task and reports its defect", () => {
   assert.deepEqual(o.value, [rt.Err("D030: nothing here"), rt.Ok(5)]);
 });
 
+test("fused reads are option_expect of the get (design §17.151)", () => {
+  let xs = rt.list_empty();
+  for (let i = 0; i < 100; i++) xs = rt.list_push(xs, i * 2);
+  for (const i of [0, 31, 32, 64, 99, 31]) {
+    assert.equal(rt.list_get_expect(xs, i, "m"), rt.option_expect(rt.list_get(xs, i), "m"));
+  }
+  for (const i of [-1, 100, 1.5 * 2 ** 31]) {
+    assert.throws(() => rt.list_get_expect(xs, i, "in range"), { code: "D030", detail: "in range" });
+  }
+  const m = rt.map_insert(rt.map_empty(), "tea", 3);
+  assert.equal(rt.map_get_expect(m, "tea", "priced"), 3);
+  assert.throws(() => rt.map_get_expect(m, "coffee", "priced"), { code: "D030", detail: "priced" });
+});
+
 test("host suspension resumes the continuation", async () => {
   const body = ($ctx, $k) =>
     rt.clock_sleep_ms(5, $ctx, () => sum(10_000, $ctx, (s) => ret($k, s)));

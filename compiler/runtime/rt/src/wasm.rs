@@ -2598,6 +2598,8 @@ builtins! {
     rt_b_float_to_int_checked(f: f64) -> u32 = ptr |rt| rt.float_to_int_checked(f);
     rt_b_float_format(f: f64, d: i64) -> u32 = ptr |rt| rt.float_format(f, d);
     rt_b_option_expect(o: u32, msg: u32) -> u32 = ptr |rt| rt.option_expect(o, msg);
+    rt_b_list_get_expect(xs: u32, i: i64, msg: u32) -> u32 = ptr |rt| rt.list_get_expect(xs, i, msg);
+    rt_b_map_get_expect(m: u32, k: u32, msg: u32) -> u32 = ptr |rt| rt.map_get_expect(m, k, msg);
     rt_b_untrusted_of(x: u32) -> u32 = ptr |rt| rt.untrusted_of(x);
     rt_b_untrusted_value(u: u32) -> u32 = ptr |rt| rt.untrusted_value(u);
     rt_b_secret_wrap(x: u32) -> u32 = ptr |rt| rt.secret_wrap(x);

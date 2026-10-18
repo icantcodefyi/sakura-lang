@@ -405,6 +405,19 @@ impl Rt {
         })
     }
 
+    /// `option_expect(list_get(xs, i), msg)`, fused by `opt` (design §17.151). ponytail: the
+    /// composition, so WASM still builds the `Option`; read in place when WASM indexing is measured.
+    pub fn list_get_expect(&mut self, xs: u32, i: i64, msg: u32) -> Res<u32> {
+        let o = self.list_get(xs, i).inspect_err(|_| self.drop(msg))?;
+        self.option_expect(o, msg)
+    }
+
+    /// `option_expect(map_get(m, k), msg)` (design §17.151); the composition, as above.
+    pub fn map_get_expect(&mut self, m: u32, k: u32, msg: u32) -> Res<u32> {
+        let o = self.map_get(m, k).inspect_err(|_| self.drop(msg))?;
+        self.option_expect(o, msg)
+    }
+
     /// `Untrusted.of`, `Secret.wrap`: a one-slot wrapper owning `x`.
     fn wrap(&mut self, t: u16, x: u32) -> Res<u32> {
         let p = self.new_object(t, 16).inspect_err(|_| self.drop(x))?;

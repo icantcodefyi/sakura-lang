@@ -67,6 +67,19 @@ pub(crate) fn call(m: &mut Machine, name: &str, args: Vec<Value>, hs: &Rc<Handle
             }
         };
     }
+    // `opt`'s fused reads (design §17.151) are defined as the composition they replace.
+    if let Some(get) = match name {
+        "list_get_expect" => Some("list_get"),
+        "map_get_expect" => Some("map_get"),
+        _ => None,
+    } {
+        let mut args = args;
+        let msg = args.pop().expect("a fused read takes a message");
+        return match call(m, get, args, hs)? {
+            Ok(o) => call(m, "option_expect", vec![o, msg], hs),
+            Err(e) => Ok(Err(e)),
+        };
+    }
     let v = match (name, args.as_slice()) {
         ("list_empty", []) => list(vec![]),
         ("list_len", [List(xs)]) => Int(xs.len() as i64),

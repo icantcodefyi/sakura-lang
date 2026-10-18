@@ -1,0 +1,29 @@
+// milestone: M3
+// covers: Defect
+// spec: §17.151
+
+// `opt` fuses a `get` whose `Option` only feeds the next `expect` into one checked read
+// (`list_get_expect`, `map_get_expect`); an `Option` used again is left alone. Same output either way.
+
+fn at(xs: List<Int>, i: Int) -> Int { xs[i].expect("index in range") }
+
+fn price(m: Map<String, Int>, k: String) -> Int { Map.get(m, k).expect("priced") }
+
+fn twice(xs: List<Int>, i: Int) -> Int {
+  let o = List.get(xs, i)
+  if Option.is_some(o) { o.expect("present") } else { -1 }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let xs = List.range(0, 100)
+  var sum = 0
+  var i = 0
+  while i < 100 {
+    sum = sum + at(xs, i)
+    i = i + 1
+  }
+  let m = Map.insert(Map.insert(Map.empty(), "tea", 3), "cake", 5)
+  Console.print("{sum} {at(xs, 31)} {at(xs, 32)} {at(xs, 99)}")
+  Console.print("{price(m, "tea")} {price(m, "cake")}")
+  Console.print("{twice(xs, 7)} {twice(xs, 100)}")
+}

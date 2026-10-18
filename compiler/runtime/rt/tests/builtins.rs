@@ -229,3 +229,31 @@ fn wrappers_and_option_expect() {
         assert_eq!(rt.option_expect(none, m).unwrap_err().code, 30);
     });
 }
+
+/// `opt`'s fused reads (design §17.151) are `option_expect` of the `get`, references balanced.
+#[test]
+fn fused_get_expect() {
+    balanced(|rt| {
+        let x = s(rt, "x");
+        let e = rt.list_empty();
+        let xs = rt.list_push(e, x).unwrap();
+        rt.dup(xs).unwrap();
+        let m = s(rt, "msg");
+        let v = rt.list_get_expect(xs, 0, m).unwrap();
+        assert_eq!(text(rt, v), "x");
+        rt.dup(xs).unwrap();
+        let m = s(rt, "msg");
+        assert_eq!(rt.list_get_expect(xs, 1, m).unwrap_err().code, 30);
+        let k = s(rt, "tea");
+        let v = s(rt, "3");
+        let e = rt.map_empty();
+        let map = rt.map_insert(e, k, v).unwrap();
+        rt.dup(map).unwrap();
+        let (k, m) = (s(rt, "tea"), s(rt, "msg"));
+        let v = rt.map_get_expect(map, k, m).unwrap();
+        assert_eq!(text(rt, v), "3");
+        rt.drop(xs);
+        let (k, m) = (s(rt, "coffee"), s(rt, "msg"));
+        assert_eq!(rt.map_get_expect(map, k, m).unwrap_err().code, 30);
+    });
+}

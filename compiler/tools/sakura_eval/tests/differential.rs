@@ -438,6 +438,16 @@ impl Gen<'_> {
                     let f = self.lambda(&[Ty::Int, Ty::Int], Ty::Int, d, false);
                     format!("List.fold({xs}, {init}, {f})")
                 }
+                // A read `opt` fuses into `list_get_expect` (design §17.151); an empty list is
+                // its `D030`.
+                17 if !contract => {
+                    let ys = self.name();
+                    let xs = self.expr(Ty::List, d);
+                    let i = self.expr(Ty::Int, d);
+                    format!(
+                        "({{ let {ys} = {xs}; {ys}[Int.abs({i}) % Int.max(List.len({ys}), 1)] }}).expect(\"read\")"
+                    )
+                }
                 _ => self.leaf(Ty::Int),
             },
             Ty::Bool => match self.rng.below(14) {
