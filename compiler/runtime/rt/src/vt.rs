@@ -53,6 +53,9 @@ pub mod t {
 pub const DIR: u32 = 0;
 pub const FILE: u32 = 1;
 pub const BODY: u32 = 2;
+/// A JS function of the host a JS-built handler passes to an operation (`slot` its id); the
+/// guest makes it a native closure (`rt_code_js_callback`).
+pub const CALLBACK: u32 = 5;
 
 pub const MALFORMED: Defect = Defect {
     code: 90,

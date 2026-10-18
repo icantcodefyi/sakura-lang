@@ -243,16 +243,25 @@ const JS_HANDLERS = {
     build: (key, model) => rt.llm_anthropic(key, model),
     schemaArg: [1, -1, 2, 3],
     results: [(a) => a[1], () => null, (a) => a[2], (a) => ["A", "std::llm::Step", [a[3]]]],
+    // Per operation, the positions of closure arguments (they stay in the guest) and whether
+    // each returns `Unit`: `stream`'s `on_partial`.
+    closures: [[], [], [[1, 1]], []],
   },
 };
 
+/** Handle kinds of host JS values (`sakura_rt::vt`): a function, an opaque result. */
+const CALLBACK = 5;
+const JSVALUE = 6;
+const OPAQUE = Symbol("an opaque JS value");
+
 /**
  * The operations a JS-built handler may perform in the guest, by effect: per operation
- * whether it returns `Unit` (1) or a value (0). Others (`Http.stream`, whose callback is JS) are
- * a `D090`.
+ * whether it returns `Unit` (1) or a value (0). Others are a `D090`. A JS function among the
+ * arguments (`Http.stream`'s body) crosses as a `callback` handle the guest runs through
+ * `js_callback`: nothing callable crosses the boundary (pull-based, plan §7 W2).
  */
 const PERFORMS = {
-  "std::http::Http": [0],
+  "std::http::Http": [0, 0, 0],
   "std::budget::Budget": [0, 1],
 };
 
@@ -296,6 +305,11 @@ export class Host {
     this.jsHandlers = [];
     this.sessions = new Map();
     this.nextSession = 1;
+    // JS functions a JS-built handler passed to a guest operation, by id (`js_callback`).
+    this.callbacks = new Map();
+    this.nextCallback = 1;
+    // A failure on its way out of a JS clause through the guest's frames (`js_resume`).
+    this.escaping = null;
     // Handle tables (ABI §8.4): `${kind}:${slot}` → { generation, object }.
     this.handles = new Map();
     this.nextSlot = 1;
@@ -468,8 +482,17 @@ export class Host {
           const args = this.decode(new Reader(this.copyIn(ptr, len)));
           const at = spec.schemaArg[op];
           if (at >= 0) args[at] = JSON.parse(args[at]);
+          // A closure argument stays in the guest: calling it asks the guest (answer 4).
+          for (const [index, unit] of spec.closures[op]) {
+            args[index] = (...a) => {
+              const k = a.pop();
+              const ctx = a.pop();
+              return { call: { index, unit, args: a, ctx, k } };
+            };
+          }
           const run = { schema: spec.results[op](args) };
-          const ctx = { h: guestFrames, c: { j: (e) => ({ fail: e }), m: 0 }, t: { id: 0, fins: [] }, p: null };
+          // A failure reaching the clause's own context names the clause (see `js_resume`).
+          const ctx = { h: guestFrames, c: { j: (e) => ({ fail: e, clause: run }), m: 0 }, t: { id: 0, fins: [] }, p: null };
           return this.jsStep(run, () => h.c[op](h, ...args, ctx, (v) => ({ ok: v })));
         },
         js_resume: (session, status, ptr, len) => {
@@ -477,6 +500,13 @@ export class Host {
           this.sessions.delete(session);
           if (s === undefined) throw new HostFault("an unknown JS handler session");
           const [v] = this.decode(new Reader(this.copyIn(ptr, len)));
+          // A failure a JS callback sent to its clause's own context (`onPartial`'s) skips the
+          // clause's continuations, as on JS: the guest only unwound its frames to here.
+          if (status === 1 && this.escaping?.run === s.run) {
+            const { e } = this.escaping;
+            this.escaping = null;
+            return this.jsStep(s.run, () => ({ fail: e }));
+          }
           return this.jsStep(s.run, () => (status === 0 ? s.k(v) : rt.fail(s.ctx, v)));
         },
         // `async` (ABI §8.2): the JS runtime's CPS builtin, its result completing `request`.
@@ -490,6 +520,13 @@ export class Host {
         http_body_close: (ptr, len) => {
           const [body] = this.decode(new Reader(this.copyIn(ptr, len)));
           rt.http_body_close(body);
+        },
+        js_callback: (id, ptr, len) => {
+          const f = this.callbacks.get(Number(id));
+          if (f === undefined) throw new HostFault("an unknown JS callback");
+          const args = this.decode(new Reader(this.copyIn(ptr, len)));
+          const ctx = { h: guestFrames, c: { j: (e) => ({ fail: e }), m: 0 }, t: { id: 0, fins: [] }, p: null };
+          return this.jsStep({ schema: OPAQUE }, () => f(...args, ctx, (v) => ({ ok: v })));
         },
         trace_enabled: () => (this.traceFd === null ? 0 : 1),
         trace_write: (ptr, len) => {
@@ -617,7 +654,16 @@ export class Host {
     const w = new Writer();
     try {
       const r = settle(start());
-      if ("perform" in r) {
+      if ("call" in r) {
+        const { index, unit, args, ctx, k } = r.call;
+        const session = this.nextSession++;
+        this.sessions.set(session, { run, ctx, k });
+        w.u8(4);
+        w.u32(session);
+        w.u32(index);
+        w.u8(unit);
+        this.encodeDynamic(w, args, 0);
+      } else if ("perform" in r) {
         const { e, op, args, ctx, k } = r.perform;
         const unit = PERFORMS[e][op];
         if (unit === undefined) {
@@ -632,8 +678,18 @@ export class Host {
         w.bytes(utf8out.encode(e));
         this.encodeDynamic(w, args, 0);
       } else if ("fail" in r) {
+        // From a JS callback, a failure of its clause's context leaves the clause too.
+        if (run.schema === OPAQUE && r.clause !== undefined) this.escaping = { run: r.clause, e: r.fail };
         w.u8(1);
         this.encodeDynamic(w, r.fail, 0);
+      } else if (run.schema === OPAQUE) {
+        // A JS callback's result only JS code reads: it crosses as a handle.
+        const [slot, generation] = this.handle(JSVALUE, r.ok);
+        w.u8(0);
+        w.u8(T.handle);
+        w.u32(JSVALUE);
+        w.u32(slot);
+        w.u32(generation);
       } else {
         w.u8(0);
         this.encode(w, r.ok, run.schema);
@@ -756,6 +812,14 @@ export class Host {
       w.u8(T.secret);
       return this.encodeDynamic(w, rt.Secret.expose(v), depth + 1);
     }
+    if (typeof v === "function") {
+      const id = this.nextCallback++;
+      this.callbacks.set(id, v);
+      w.u8(T.handle);
+      w.u32(CALLBACK);
+      w.u32(id);
+      return w.u32(1);
+    }
     if (Array.isArray(v)) return this.encode(w, v, ["T", ...v.map(() => null)], null, depth);
     const t = v?.constructor?.prototype?.$t;
     if (t !== undefined) return this.encode(w, v, ["A", t.id, []], null, depth);
@@ -864,13 +928,16 @@ export class Host {
   /**
    * The resource ledger (ABI §8.6), run when the instance ends (an outcome, a trap or exit):
    * abort every request in flight, drop queued completions and retire every handle, because
-   * guest finalizers cannot run after a trap. A completion arriving later is discarded.
+   * guest finalizers cannot run after a trap; JS continuations and callbacks waiting on the
+   * guest are dropped too. A completion arriving later is discarded.
    */
   close() {
     for (const abort of this.inflight.values()) abort();
     this.inflight.clear();
     this.completed.length = 0;
     this.handles.clear();
+    this.sessions.clear();
+    this.callbacks.clear();
   }
 
   /** Deliver queued completions: copy each payload out, then `complete` (ABI §8.5). */

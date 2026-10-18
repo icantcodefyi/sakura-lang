@@ -1,0 +1,62 @@
+// milestone: M3
+// mode: test
+// covers: TestDecl Lambda WithExpr; design §10.7, §17.88; plan m3-completion-and-m4 §3.7 W2
+
+// `Llm.stream` through `Llm.anthropic` over a scripted server-sent-event body: one partial per
+// text delta, then the decoded value. On WASM the JS clause runs on the host and nothing
+// callable crosses: `on_partial` stays in the guest and the host asks for each call, and the
+// `Http.stream` body the clause passes becomes a native closure (plan §7 W2).
+import std/budget.{Budget}
+import std/http.{Any, Http}
+import std/llm.{Llm, Model, Request, request}
+import std/prompt.{Prompt}
+import std/response.{HttpError, Response}
+
+fn events() -> String {
+  List.join(
+    [
+      "data: \{\"type\":\"message_start\",\"message\":\{\"usage\":\{\"input_tokens\":3\}\}\}\n\n",
+      "data: \{\"type\":\"content_block_start\",\"index\":0,\"content_block\":\{\"type\":\"text\",\"text\":\"\"\}\}\n\n",
+      "data: \{\"type\":\"content_block_delta\",\"index\":0,\"delta\":\{\"type\":\"text_delta\",\"text\":\"\{\\\"value\\\":\"\}\}\n\n",
+      "data: \{\"type\":\"content_block_delta\",\"index\":0,\"delta\":\{\"type\":\"text_delta\",\"text\":\" 5\}\"\}\}\n\n",
+      "data: \{\"type\":\"message_delta\",\"delta\":\{\"stop_reason\":\"end_turn\"\},\"usage\":\{\"output_tokens\":4\}\}\n\n",
+      "data: \{\"type\":\"message_stop\"\}\n\n",
+    ],
+    "",
+  )
+}
+
+test "a streamed answer reports each partial, then the value" {
+  let req: Request<Int> = request("Count.", Prompt.text("how many?"))
+  with Http.scripted([(Any, Response.status(200, events()))]),
+      Budget.unlimited(),
+      Llm.anthropic(Secret.of("k"), Model.of("claude-test")) {
+    let n = try { Llm.stream(req, fn(p) { Console.print(p.text) }) }
+    expect_eq(n, Ok(5))
+    expect_output(["\{\"value\":", "\{\"value\": 5\}"])
+  }
+}
+
+test "a failing partial callback fails the stream" {
+  let req: Request<Int> = request("Count.", Prompt.text("how many?"))
+  with Http.scripted([(Any, Response.status(200, events()))]),
+      Budget.unlimited(),
+      Llm.anthropic(Secret.of("k"), Model.of("claude-test")) {
+    let n = try { Llm.stream(req, fn(_p) { fail Stop }) }
+    expect_eq(n, Err(Stop))
+  }
+}
+
+// JS sends `on_partial`'s failure straight to the clause's context, past the handler's own
+// `HttpError` → `ProviderError` translation; WASM must too.
+test "an HttpError from the partial callback stays an HttpError" {
+  let req: Request<Int> = request("Count.", Prompt.text("how many?"))
+  with Http.scripted([(Any, Response.status(200, events()))]),
+      Budget.unlimited(),
+      Llm.anthropic(Secret.of("k"), Model.of("claude-test")) {
+    let n = try { Llm.stream(req, fn(_p) { fail HttpError { status: None, reason: "mine" } }) }
+    expect_eq("{n}", "Err(HttpError \{ status: None, reason: \"mine\" \})")
+  }
+}
+
+error Stop

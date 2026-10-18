@@ -132,6 +132,7 @@ const NATIVE_CODES: &[&str] = &[
     "rt_code_prop_failures",
     "rt_code_prop_forward",
     "rt_code_http_body_close",
+    "rt_code_js_callback",
 ];
 
 /// The frame and capture slot kinds of a native code's code-table entry: the words a code
@@ -168,6 +169,9 @@ fn native_slots(name: &str) -> (Vec<Slot>, Vec<Slot>) {
         "rt_code_task_yield_now" => (vec![w, i], vec![w]),
         // The clause, the activation, up to four arguments, the host's session, a flag.
         "rt_code_js_clause" => (vec![w, i, w, w, w, w, i, i], vec![i, i, i]),
+        // The closure, its argument, the kept closures, the host's session, a flag; captures
+        // an unused word, the host's function id and the kept closures.
+        "rt_code_js_callback" => (vec![w, w, w, w, w, w, i, i], vec![i, i, w, w, w, w]),
         _ => (vec![], vec![]),
     }
 }

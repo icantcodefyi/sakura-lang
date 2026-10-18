@@ -234,7 +234,11 @@ fn http_host_sends_on_wasm_as_on_js() {
     let (wasm, wasm_trace) = run("wasm");
     assert_eq!(js.code, Some(0), "{}{}", js.stdout, js.stderr);
     assert!(js.stdout.starts_with("201 true 1\n"), "{}", js.stdout);
-    assert!(js.stdout.contains("\nstreamed (201, 17)\n"), "{}", js.stdout);
+    assert!(
+        js.stdout.contains("\nstreamed (201, 17)\n"),
+        "{}",
+        js.stdout
+    );
     assert!(js.stdout.ends_with("failed: None\n"), "{}", js.stdout);
     assert_eq!(
         (wasm.code, &wasm.stdout, &wasm_trace),

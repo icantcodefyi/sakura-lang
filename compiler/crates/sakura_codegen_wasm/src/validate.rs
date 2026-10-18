@@ -72,6 +72,7 @@ pub const IMPORTS: &[&str] = &[
     "js_handler",
     "js_clause",
     "js_resume",
+    "js_callback",
     "http_send",
     "http_stream_open",
     "http_stream_read",

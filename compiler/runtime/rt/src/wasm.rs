@@ -118,6 +118,7 @@ pub extern "C" fn rt_init(layout: u32, codes: u32, effects: u32, ops: u32, nativ
     rt.sched.cancel_all_code = code(3);
     rt.sched.prop_codes = [code(4), code(5), code(6)];
     rt.sched.body_close_code = code(7);
+    rt.sched.js_callback_code = code(8);
     rt.set_codes(codes);
     rt.set_effects(effects);
     rt.sched.ops = ops;
@@ -1174,11 +1175,11 @@ fn sql_instance(rt: &mut Rt, frame: u32) -> Result<i64, u32> {
     if rt.block(frame) == SQL_ROOTED {
         let dir = rt.take_ret() as u32;
         let instance = rt.fslot(frame, 0) as i64;
-        let b = encode_args(rt, &[dir]).map_err(|d| rt.raise(d))?;
-        let (len, at) = rt.data(b);
         // SAFETY: a plain import with a slice inside linear memory, copied in at once.
-        unsafe { host::sql_root(instance, at, len) };
-        rt.drop(b);
+        with_args(rt, &[dir], |_, at, len| unsafe {
+            host::sql_root(instance, at, len)
+        })
+        .map_err(|d| rt.raise(d))?;
         return Ok(instance);
     }
     let instance = instance_of(rt, frame);
@@ -1208,9 +1209,26 @@ fn instance_of(rt: &mut Rt, frame: u32) -> i64 {
     instance
 }
 
-/// The `sakura-vt1` tuple of `args` (consumed words) as a `Bytes`.
-fn encode_args(rt: &mut Rt, args: &[u32]) -> Res<u32> {
-    let r = (|| {
+/// `call(rt, ptr, len)` over the `sakura-vt1` tuple of `args` (consumed words), a slice the
+/// import copies in at once; the words are released after the call, since a handle among
+/// them retires on the host when its last reference goes (ABI §8.4).
+fn with_args<R>(rt: &mut Rt, args: &[u32], call: impl FnOnce(&mut Rt, u32, u32) -> R) -> Res<R> {
+    let r = encode_tuple(rt, args).map(|b| {
+        let (len, at) = rt.data(b);
+        let out = call(rt, at, len);
+        rt.drop(b);
+        out
+    });
+    for &a in args {
+        rt.drop(a);
+    }
+    r
+}
+
+/// The `sakura-vt1` tuple of `args` (borrowed) as a `Bytes`. A handle among them must stay
+/// alive until the host has read the tuple: dropping its last reference retires it there.
+fn encode_tuple(rt: &mut Rt, args: &[u32]) -> Res<u32> {
+    (|| {
         let mut b = rt.strbuf()?;
         let r = (|| {
             rt.put(&mut b, &[crate::vt::t::TUPLE])?;
@@ -1230,11 +1248,7 @@ fn encode_args(rt: &mut Rt, args: &[u32]) -> Res<u32> {
                 Err(e)
             }
         }
-    })();
-    for &a in args {
-        rt.drop(a);
-    }
-    r
+    })()
 }
 
 /// A host answer (`u8` status 0 ok / 1 failed, then a `sakura-vt1` value; 2 a defect, `u32`
@@ -1275,13 +1289,11 @@ pub extern "C" fn rt_code_sql_query(_env: u32, frame: u32) -> u32 {
         rt.take_fslot(frame, 2) as u32,
         rt.take_fslot(frame, 3) as u32,
     );
-    let r = encode_args(rt, &[q, schema]).and_then(|b| {
-        let (len, at) = rt.data(b);
-        // SAFETY: a plain import with a slice inside linear memory, copied in at once.
-        let out = unsafe { host::sql_query(instance, at, len) };
-        rt.drop(b);
-        answer(rt, out)
-    });
+    // SAFETY: a plain import with a slice inside linear memory, copied in at once.
+    let r = with_args(rt, &[q, schema], |_, at, len| unsafe {
+        host::sql_query(instance, at, len)
+    })
+    .and_then(|out| answer(rt, out));
     ok_or_fail(rt, r)
 }
 
@@ -1294,13 +1306,11 @@ pub extern "C" fn rt_code_sql_execute(_env: u32, frame: u32) -> u32 {
         Err(step) => return step,
     };
     let q = rt.take_fslot(frame, 2) as u32;
-    let r = encode_args(rt, &[q]).and_then(|b| {
-        let (len, at) = rt.data(b);
-        // SAFETY: as in `rt_code_sql_query`.
-        let out = unsafe { host::sql_execute(instance, at, len) };
-        rt.drop(b);
-        answer(rt, out)
-    });
+    // SAFETY: as in `rt_code_sql_query`.
+    let r = with_args(rt, &[q], |_, at, len| unsafe {
+        host::sql_execute(instance, at, len)
+    })
+    .and_then(|out| answer(rt, out));
     match r {
         // `execute` returns an `Int` in its declared representation (errata L12).
         Ok((0, v)) => {
@@ -1404,7 +1414,9 @@ const HTTP: u32 = 2;
 
 /// `Err(reason)` of a builtin returning `Result<_, String>`.
 fn err_string(rt: &mut Rt, reason: &[u8]) -> Res<u32> {
-    let t = rt.type_named(b"std::result::Result").ok_or(Defect::INTERNAL)?;
+    let t = rt
+        .type_named(b"std::result::Result")
+        .ok_or(Defect::INTERNAL)?;
     let s = rt.new_string(reason)?;
     let e = rt.new_variant(t, 1).inspect_err(|_| rt.drop(s))?;
     rt.set_slot(e, 0, u64::from(s));
@@ -1438,12 +1450,19 @@ fn async_hosted(rt: &mut Rt, frame: u32, args: &[u32], secret: bool, import: Asy
         return ok_or_raise(rt, r);
     }
     rt.sched.vt_secrets = secret;
-    let b = encode_args(rt, args);
+    let b = encode_tuple(rt, args);
     rt.sched.vt_secrets = false;
-    let b = match b {
-        Ok(b) => b,
-        Err(d) => return rt.raise(d),
-    };
+    let r = b.and_then(|b| async_call(rt, frame, b, import));
+    // After the host read them (a `body` handle among them retires when released).
+    for &a in args {
+        rt.drop(a);
+    }
+    r.unwrap_or_else(|d| rt.raise(d))
+}
+
+/// The request for `async_hosted`'s arguments `b` (consumed): the suspension, or the
+/// ordinary error past the request limit.
+fn async_call(rt: &mut Rt, frame: u32, b: u32, import: Async) -> Res<u32> {
     match rt.request(HTTP) {
         Ok(Some(id)) => {
             let (len, at) = rt.data(b);
@@ -1458,16 +1477,15 @@ fn async_hosted(rt: &mut Rt, frame: u32, args: &[u32], secret: bool, import: Asy
             };
             rt.drop(b);
             rt.set_block(frame, 1);
-            step::SUSPEND
+            Ok(step::SUSPEND)
         }
         Ok(None) => {
             rt.drop(b);
-            let r = err_string(rt, b"too many pending operations");
-            ok_or_raise(rt, r)
+            err_string(rt, b"too many pending operations").map(|e| ret(rt, u64::from(e)))
         }
         Err(d) => {
             rt.drop(b);
-            rt.raise(d)
+            Err(d)
         }
     }
 }
@@ -1510,7 +1528,9 @@ pub extern "C" fn rt_k_http_stream_read(_env: u32, frame: u32) -> u32 {
         }
         let body = rt.take_fslot(frame, 0) as u32;
         let max = rt.fslot(frame, 1) as i64;
-        rt.new_int(max).map(|m| [body, m]).inspect_err(|_| rt.drop(body))
+        rt.new_int(max)
+            .map(|m| [body, m])
+            .inspect_err(|_| rt.drop(body))
     })();
     match r {
         Ok(args) => async_hosted(rt, frame, &args, false, Async::Read),
@@ -1520,8 +1540,7 @@ pub extern "C" fn rt_k_http_stream_read(_env: u32, frame: u32) -> u32 {
 
 /// Close the body handle `body` (borrowed) on the host (JS `http_stream_closing`'s finalizer).
 fn body_close(rt: &mut Rt, body: u32) -> Res<()> {
-    rt.dup(body)?;
-    let b = encode_args(rt, &[body])?;
+    let b = encode_tuple(rt, &[body])?;
     let (len, at) = rt.data(b);
     // SAFETY: a plain import with a slice inside linear memory, copied in at once.
     unsafe { host::http_body_close(at, len) };
@@ -1592,31 +1611,38 @@ pub extern "C" fn rt_b_llm_anthropic(effect: u32, codes: u32, n: u32, key: u32, 
 /// consumed); its clauses are `rt_code_js_clause`.
 fn js_handler(name: &str, effect: u32, codes: u32, n: u32, args: &[u32]) -> u32 {
     let rt = rt();
+    // The arguments are a `secret` import's (ABI §8.1).
     rt.sched.vt_secrets = true;
-    let b = encode_args(rt, args);
-    rt.sched.vt_secrets = false;
-    let r = b.and_then(|b| {
-        let (len, at) = rt.data(b);
+    let r = with_args(rt, args, |rt, at, len| {
+        rt.sched.vt_secrets = false;
         // SAFETY: a plain import with slices inside linear memory (`name` is in the runtime's
         // data), copied in at once.
-        let instance =
-            unsafe { host::js_handler(name.as_ptr() as u32, name.len() as u32, at, len) };
-        rt.drop(b);
-        instance_handler(rt, effect, codes, n, instance, true)
+        unsafe { host::js_handler(name.as_ptr() as u32, name.len() as u32, at, len) }
     });
+    rt.sched.vt_secrets = false;
+    let r = r.and_then(|instance| instance_handler(rt, effect, codes, n, instance, true));
     ptr(r)
 }
 
 /// Slot of a JS clause's frame holding the host's session while an operation it performs runs
 /// (then a flag: that operation returns `Unit`). Slots 2.. hold the clause's arguments, at
-/// most four words (`sakura_codegen_wasm` refuses other operations).
+/// most four words (`sakura_codegen_wasm` refuses other operations); a closure argument stays
+/// there for the clause's whole run (the host calls it by position, answer 4).
 const JS_SESSION: u32 = 6;
 const JS_UNIT: u32 = 7;
+const JS_ARGS: u32 = 4;
+
+fn is_closure(rt: &Rt, w: u32) -> bool {
+    crate::object::is_ptr(w) && rt.tag(w) == tag::CLOSURE
+}
 
 /// A clause of a JS-built handler: the host runs the JS clause, and each operation the JS
-/// code performs (`Http.send`, `Budget.reserve`/`settle`) is performed here, on the handlers
-/// outside this one, its result or failure handed back to the JS continuation, until the JS
-/// clause returns, fails or defects.
+/// code performs (`Http.send`, `Http.stream`, `Budget.reserve`/`settle`) is performed here, on
+/// the handlers outside this one, and each call it makes of a closure argument (`Llm.stream`'s
+/// `on_partial`) is made here, the result or failure handed back to the JS continuation, until
+/// the JS clause returns, fails or defects. Nothing callable crosses (pull-based): the host
+/// asks for every step, and a JS function the clause passes to an operation becomes a native
+/// closure here (`rt_code_js_callback`).
 #[unsafe(no_mangle)]
 pub extern "C" fn rt_code_js_clause(_env: u32, frame: u32) -> u32 {
     let rt = rt();
@@ -1626,37 +1652,53 @@ pub extern "C" fn rt_code_js_clause(_env: u32, frame: u32) -> u32 {
             let instance = rt.slot(clause, 0) as i64;
             let (op, arity) = (rt.slot(clause, 1) as u32, rt.slot(clause, 2) as usize);
             rt.drop(clause);
-            let mut args = [0; 4];
+            let mut args = [UNIT; JS_ARGS as usize];
             for (i, a) in args.iter_mut().enumerate().take(arity) {
-                *a = rt.take_fslot(frame, 2 + i as u32) as u32;
+                // A closure stays in its slot and crosses as `Unit`.
+                if !is_closure(rt, rt.fslot(frame, 2 + i as u32) as u32) {
+                    *a = rt.take_fslot(frame, 2 + i as u32) as u32;
+                }
             }
-            encode_args(rt, &args[..arity]).map(|b| {
-                let (len, at) = rt.data(b);
-                // SAFETY: a plain import with a slice inside linear memory, copied in at once.
-                let out = unsafe { host::js_clause(instance, op, at, len) };
-                rt.drop(b);
-                out
+            // SAFETY: a plain import with a slice inside linear memory, copied in at once.
+            with_args(rt, &args[..arity], |_, at, len| unsafe {
+                host::js_clause(instance, op, at, len)
             })
         }
-        1 => {
-            rt.try_pop(frame);
-            let v = rt.take_ret() as u32;
-            // A `Unit` result is no word.
-            let v = if rt.fslot(frame, JS_UNIT) != 0 {
-                UNIT
-            } else {
-                v
-            };
-            js_resume(rt, frame, 0, v)
-        }
-        _ => {
-            let e = rt.take_ret() as u32;
-            js_resume(rt, frame, 1, e)
-        }
+        block => js_continue(rt, frame, block),
     };
     match answer {
         Ok(b) => js_answer(rt, frame, b),
-        Err(d) => rt.raise(d),
+        Err(d) => {
+            js_release(rt, frame);
+            rt.raise(d)
+        }
+    }
+}
+
+/// A JS clause or callback resumed after an operation or call it asked for: block 1 returned,
+/// 2 failed (the caught error).
+fn js_continue(rt: &mut Rt, frame: u32, block: u32) -> Res<u32> {
+    if block == 1 {
+        rt.try_pop(frame);
+        let v = rt.take_ret() as u32;
+        // A `Unit` result is no word.
+        let v = if rt.fslot(frame, JS_UNIT) != 0 {
+            UNIT
+        } else {
+            v
+        };
+        js_resume(rt, frame, 0, v)
+    } else {
+        let e = rt.take_ret() as u32;
+        js_resume(rt, frame, 1, e)
+    }
+}
+
+/// Release the closure arguments a JS clause or callback kept.
+fn js_release(rt: &mut Rt, frame: u32) {
+    for i in 0..JS_ARGS {
+        let w = rt.take_fslot(frame, 2 + i) as u32;
+        rt.drop(w);
     }
 }
 
@@ -1664,33 +1706,64 @@ pub extern "C" fn rt_code_js_clause(_env: u32, frame: u32) -> u32 {
 /// result (`status` 0) or its failure (1).
 fn js_resume(rt: &mut Rt, frame: u32, status: u32, v: u32) -> Res<u32> {
     let session = rt.fslot(frame, JS_SESSION) as u32;
-    let b = encode_args(rt, &[v])?;
-    let (len, at) = rt.data(b);
     // SAFETY: a plain import with a slice inside linear memory, copied in at once.
-    let out = unsafe { host::js_resume(session, status, at, len) };
-    rt.drop(b);
-    Ok(out)
+    with_args(rt, &[v], |_, at, len| unsafe {
+        host::js_resume(session, status, at, len)
+    })
 }
 
-/// What the JS clause did next (a `Bytes`, consumed): `u8` 0 returned, 1 failed (then the
-/// value), 2 defected (`u32` code, message), or 3 performs an operation: `u32` session, `u32`
-/// op, `u8` whether it returns `Unit`, the effect's name (`u32 len`, UTF-8), then the
-/// arguments as one tuple.
+/// What the JS code did next (a `Bytes`, consumed): `u8` 0 returned, 1 failed (then the
+/// value), 2 defected (`u32` code, message), 3 performs an operation (`u32` session, `u32`
+/// op, `u8` whether it returns `Unit`, the effect's name as `u32 len` and UTF-8, then the
+/// arguments as one tuple), or 4 calls closure argument `index` (`u32` session, `u32`
+/// index, `u8` whether it returns `Unit`, then the arguments as one tuple).
 fn js_answer(rt: &mut Rt, frame: u32, b: u32) -> u32 {
     if b == 0 {
+        js_release(rt, frame);
         return rt.raise(Defect::HEAP_EXHAUSTED);
     }
     let (len, at) = rt.data(b);
     let status = if len == 0 { 255 } else { rt.heap.mem.u8(at) };
     let r = match status {
-        0 => rt.vt_decode(at + 1, len - 1).map(|v| ret(rt, v as u64)),
-        1 => rt.vt_decode(at + 1, len - 1).map(|e| rt.fail(e)),
+        0 => rt.vt_decode(at + 1, len - 1).map(|v| {
+            js_release(rt, frame);
+            ret(rt, v as u64)
+        }),
+        1 => rt.vt_decode(at + 1, len - 1).map(|e| {
+            js_release(rt, frame);
+            rt.fail(e)
+        }),
         2 if len >= 5 => Err(host_defect(rt, at + 1, len - 1)),
         3 if len >= 14 => js_perform(rt, frame, at, len),
+        4 if len >= 10 => js_call(rt, frame, at, len),
         _ => Err(crate::vt::MALFORMED),
     };
     rt.drop(b);
-    r.unwrap_or_else(|d| rt.raise(d))
+    r.unwrap_or_else(|d| {
+        js_release(rt, frame);
+        rt.raise(d)
+    })
+}
+
+/// The decoded argument tuple at `(at, len)` (owned) and its arity.
+fn js_tuple(rt: &mut Rt, at: u32, len: u32) -> Res<(u32, u32)> {
+    let args = rt.vt_decode(at, len)?;
+    if rt.tag(args) != tag::TUPLE {
+        rt.drop(args);
+        return Err(crate::vt::MALFORMED);
+    }
+    let n = rt.obj_row(args).n_slots;
+    Ok((args, n))
+}
+
+/// Move the tuple's slots into the frame at `c` from slot `first`, releasing the tuple.
+fn js_spread(rt: &mut Rt, args: u32, n: u32, c: u32, first: u32) {
+    for i in 0..n {
+        let x = rt.slot(args, i);
+        rt.set_slot(args, i, 0);
+        rt.set_fslot(c, first + i, x);
+    }
+    rt.drop(args);
 }
 
 fn js_perform(rt: &mut Rt, frame: u32, at: u32, len: u32) -> Res<u32> {
@@ -1703,12 +1776,22 @@ fn js_perform(rt: &mut Rt, frame: u32, at: u32, len: u32) -> Res<u32> {
     let effect = rt
         .effect_named(rt.heap.mem.bytes(at + 14, name_len))
         .ok_or(Defect::INTERNAL)?;
-    let args = rt.vt_decode(at + 14 + name_len, len - 14 - name_len)?;
-    if rt.tag(args) != tag::TUPLE {
-        rt.drop(args);
-        return Err(crate::vt::MALFORMED);
+    let (args, n) = js_tuple(rt, at + 14 + name_len, len - 14 - name_len)?;
+    // A JS function among the arguments (a `callback` handle) becomes a native closure, bound
+    // as a callback to the clause's handlers, which are the JS code's (`callback(f, ctx)`).
+    for i in 0..n {
+        let x = rt.slot(args, i) as u32;
+        if crate::object::is_ptr(x)
+            && rt.tag(x) == tag::HANDLE
+            && rt.heap.mem.u32(x + 8) == crate::vt::CALLBACK
+        {
+            let c = js_callback_closure(rt, frame, rt.heap.mem.u32(x + 12))
+                .and_then(|c| rt.callback_value(c, frame))
+                .inspect_err(|_| rt.drop(args))?;
+            rt.set_slot(args, i, u64::from(c));
+            rt.drop(x);
+        }
     }
-    let n = rt.obj_row(args).n_slots;
     rt.set_fslot(frame, JS_SESSION, u64::from(session));
     rt.set_fslot(frame, JS_UNIT, u64::from(unit));
     let performed = rt
@@ -1725,14 +1808,96 @@ fn js_perform(rt: &mut Rt, frame: u32, at: u32, len: u32) -> Res<u32> {
         rt.drop(args);
         return Ok(step::YIELD);
     }
-    for i in 0..n {
-        let x = rt.slot(args, i);
-        rt.set_slot(args, i, 0);
-        rt.set_fslot(c, 2 + i, x);
-    }
-    rt.drop(args);
+    js_spread(rt, args, n, c, 2);
     rt.set_block(frame, 1);
     Ok(step::CALL)
+}
+
+/// Answer 4: call the closure argument the JS code names (kept, so duplicated); its result or
+/// failure goes back to the JS continuation, as for an operation.
+fn js_call(rt: &mut Rt, frame: u32, at: u32, len: u32) -> Res<u32> {
+    let m = &rt.heap.mem;
+    let (session, index, unit) = (m.u32(at + 1), m.u32(at + 5), m.u8(at + 9));
+    let f = if index < JS_ARGS {
+        rt.fslot(frame, 2 + index) as u32
+    } else {
+        0
+    };
+    if !is_closure(rt, f) {
+        return Err(crate::vt::MALFORMED);
+    }
+    let (args, n) = js_tuple(rt, at + 10, len - 10)?;
+    rt.set_fslot(frame, JS_SESSION, u64::from(session));
+    rt.set_fslot(frame, JS_UNIT, u64::from(unit));
+    let c = rt
+        .try_push(frame, 2)
+        .and_then(|()| rt.dup(f))
+        .and_then(|_| rt.call_value(f, n))
+        .inspect_err(|_| rt.drop(args))?;
+    js_spread(rt, args, n, c, 1);
+    rt.set_block(frame, 1);
+    Ok(step::CALL)
+}
+
+/// A native closure standing for the host's JS function `id` (`rt_code_js_callback`): it
+/// captures the JS clause's instance and kept closure arguments (duplicated), so the JS code it
+/// runs can call them too.
+fn js_callback_closure(rt: &mut Rt, frame: u32, id: u32) -> Res<u32> {
+    let caps = 2 + JS_ARGS;
+    let c = rt.new_object(tag::CLOSURE, 16 + 8 * caps)?;
+    rt.heap.mem.set_u32(c + 8, rt.sched.js_callback_code);
+    rt.heap.mem.set_u32(c + 12, caps);
+    rt.set_slot(c, 0, 0);
+    rt.set_slot(c, 1, u64::from(id));
+    for i in 0..JS_ARGS {
+        let w = rt.fslot(frame, 2 + i) as u32;
+        let w = if is_closure(rt, w) {
+            rt.dup(w).map(|_| w).inspect_err(|_| rt.drop(c))?
+        } else {
+            0
+        };
+        rt.set_slot(c, 2 + i, u64::from(w));
+    }
+    Ok(c)
+}
+
+/// A JS function the host passed to an operation (`Http.stream`'s body, from `Llm.stream`),
+/// called here with one argument: the host runs it (`js_callback`) as a JS clause runs, with the
+/// clause's closure arguments in this frame's slots 2.., and its result crosses back as an
+/// opaque `jsvalue` handle for the JS code that receives it.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_js_callback(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    let answer = match rt.block(frame) {
+        0 => {
+            let closure = rt.take_fslot(frame, 0) as u32;
+            let arg = rt.take_fslot(frame, 1) as u32;
+            let id = rt.slot(closure, 1) as i64;
+            let kept = (0..JS_ARGS).try_for_each(|i| {
+                let w = rt.slot(closure, 2 + i) as u32;
+                if w != 0 {
+                    rt.dup(w)?;
+                }
+                rt.set_fslot(frame, 2 + i, u64::from(w));
+                Ok(())
+            });
+            rt.drop(closure);
+            kept.and_then(|()| {
+                with_args(rt, &[arg], |_, at, len| {
+                    // SAFETY: a plain import with a slice inside linear memory, copied in at once.
+                    unsafe { host::js_callback(id, at, len) }
+                })
+            })
+        }
+        block => js_continue(rt, frame, block),
+    };
+    match answer {
+        Ok(b) => js_answer(rt, frame, b),
+        Err(d) => {
+            js_release(rt, frame);
+            rt.raise(d)
+        }
+    }
 }
 
 // ---- property tests (`property_run`; the search runs on the host, JS `propertySteps`) ----------
@@ -1755,18 +1920,16 @@ pub extern "C" fn rt_k_property_run(_env: u32, frame: u32) -> u32 {
         0 => {
             let args = [1, 2, 7].map(|i| rt.take_fslot(frame, i) as u32);
             let seed = rt.fslot(frame, 0) as i64;
-            let r = (|| {
-                let s = rt.new_int(seed)?;
-                encode_args(rt, &[s, args[0], args[1], args[2]])
-            })();
-            let b = match r {
-                Ok(b) => b,
+            let r = rt.new_int(seed).and_then(|s| {
+                // SAFETY: a plain import with a slice inside linear memory, copied in at once.
+                with_args(rt, &[s, args[0], args[1], args[2]], |_, at, len| unsafe {
+                    host::prop_begin(at, len)
+                })
+            });
+            let session = match r {
+                Ok(s) => s,
                 Err(d) => return rt.raise(d),
             };
-            let (len, at) = rt.data(b);
-            // SAFETY: a plain import with a slice inside linear memory, copied in at once.
-            let session = unsafe { host::prop_begin(at, len) };
-            rt.drop(b);
             rt.set_fslot(frame, 8, session as u64);
             prop_advance(rt, frame, 0, 0)
         }
@@ -2210,6 +2373,9 @@ mod host {
         pub fn js_handler(name: u32, name_len: u32, ptr: u32, len: u32) -> i64;
         pub fn js_clause(instance: i64, op: u32, ptr: u32, len: u32) -> u32;
         pub fn js_resume(session: u32, status: u32, ptr: u32, len: u32) -> u32;
+        /// Run the host's JS function `id` (a `callback` handle the host passed) on the tuple at
+        /// `(ptr, len)`; answers as `js_answer` reads them.
+        pub fn js_callback(id: i64, ptr: u32, len: u32) -> u32;
         /// `async`, of kind `secret`: `fetch` of the request at `(ptr, len)`; completes
         /// `request` with a status-0 answer holding the `Result<Response, String>`.
         pub fn http_send(request: u32, ptr: u32, len: u32) -> u32;
