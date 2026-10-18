@@ -157,10 +157,58 @@ jobs:
       - name: Agent docs are fresh (design §17.142)
         run: cargo run -p agent_docs --locked -- --check
 
+  vscode:
+    name: VS Code extension
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: editors/vscode
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Install pinned Rust toolchain
+        working-directory: compiler
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: compiler
+          key: vscode
+      # The integration tests drive a real `sakura lsp`.
+      - name: Build sakura
+        working-directory: compiler
+        run: cargo build -p sakura_cli --locked
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: editors/vscode/package.json
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Format
+        run: bun run fmt:check
+      - name: Lint
+        run: bun run lint
+      - name: Typecheck
+        run: bun run typecheck
+      - name: Unit tests and grammar drift
+        run: bun run test
+      - name: Integration tests in VS Code
+        env:
+          SAKURA_BIN: ${{ github.workspace }}/compiler/target/debug/sakura
+        run: xvfb-run -a bun run test:vscode
+      # A local package only; publishing is the owner's (docs/release.md).
+      - name: Package
+        run: bun run package
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sakura-vscode
+          path: editors/vscode/*.vsix
+          if-no-files-found: error
+
   ci-required:
     name: ci-required
     if: always()
-    needs: [website, rust]
+    needs: [website, rust, vscode]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -168,6 +216,8 @@ jobs:
         env:
           WEBSITE_RESULT: ${{ needs.website.result }}
           RUST_RESULT: ${{ needs.rust.result }}
+          VSCODE_RESULT: ${{ needs.vscode.result }}
         run: |
           test "$WEBSITE_RESULT" = success
           test "$RUST_RESULT" = success
+          test "$VSCODE_RESULT" = success
