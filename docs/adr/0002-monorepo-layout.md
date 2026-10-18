@@ -50,3 +50,14 @@ would discard the existing website workflow without a demonstrated benefit.
 
 See [the engineering research](../../research/07-oss-best-practices.md),
 [the design](../design.md), and [ADR 0001](0001-record-architecture-decisions.md).
+
+## Amendment: portable agent skill (2026-10-18)
+
+Decision [§17.142](../design.md) adds `skills/sakura/` as the canonical portable
+Agent Skills package for application authors. `SKILL.md` and
+`references/repairs.md` are hand-authored. The planned `compiler/tools/agent_docs`
+generator owns the language, standard-library and diagnostic references; later
+recipes and client assets follow the [agent DX plan](../plans/agent-dx.md).
+Website mirrors and archives derive mechanically from that package. This keeps
+application guidance separate from compiler-contributor instructions and avoids
+hand-maintained language references per client.

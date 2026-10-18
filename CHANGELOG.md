@@ -20,6 +20,10 @@ published yet.
 
 ### Added
 
+- Canonical Sakura agent skill source with a compiler-driven edit loop, four offline
+  examples and a fixture-seeded repair table. Generated references, embedded metadata
+  and distribution are tracked separately in the agent DX plan.
+
 - Benchmark results retain every process peak RSS, and comparisons report process medians
   alongside the unchanged maximum-based +25% RSS gate. The WS-P1 variance study and raw
   evidence are documented in `bench/README.md`.
