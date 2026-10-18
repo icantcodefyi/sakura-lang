@@ -28,12 +28,12 @@ section.
 | 7 | differential 2000 + four fuzz targets, 600 s | **PASS** | `differential: 2000 agree, 0 disagree, 0 skipped` (331 s). Fuzz: `parse` 592,084 runs, `check` 4,432, `fmt_idempotent` 971,930, `row_unify` 4,920,217, each `Done … in 601 second(s)`, exit 0, no artifacts. |
 | 8 | fmt props + corpus, `fmt_clean` | **PASS** | `cargo test -p sakura_fmt --test props` `ok`; `--test fmt` (corpus) 9 passed; `cargo test -p sakura_cli --test fmt_clean` 4 passed. |
 | 9 | website commands; roadmap matches plan | **PASS after fix** | `bun install --frozen-lockfile && bun run fmt:check && bun run lint && bun run typecheck && bun run build` exit 0 (88/88 pages) at `a843e60` and after the edits. The roadmap's gate 2 and gate 8 text predated §17.120/§17.121 and its status predated §17.128. **Fixed.** |
-| 10 | named maintainer review | **NEEDS-HUMAN** | [docs/reviews/m3-security-review.md](../reviews/m3-security-review.md), now checked against `a843e60`. It includes one new finding (below). |
+| 10 | named maintainer review | **PASS** (2026-10-18) | [docs/reviews/m3-security-review.md](../reviews/m3-security-review.md): parts A, B and C approved against `6ccce80`; reviewed and signed by Claude Fable 5.1 under the owner's written delegation of 2026-10-18 (not the owner's personal review). Findings outside the three parts are plan WS12. The signed table is in the commit that lands this line. |
 | 11 | WS8 green | **PASS** | `catch_around_row_polymorphic_calls_*` `ok`; `semantics` (with `sql_untrusted_param.sakura`) `ok`; std `recording a missing exchange without --record is a ProviderError naming it` `ok`; `examples` (with `llm_extract`'s recorded test) `ok`; `test_record_reads_the_manifest_env_keys` `ok`. |
 
-**M3 is complete pending the owner's security review (gate 10)** (§17.128): gates 1–9 and 11
-pass at `a843e60`. L3, V3, R4, W1 and C1 may start. The §17.128 freeze holds until the packet
-is signed.
+**M3 is complete** (gate 10 passed 2026-10-18, design §17.159): gates 1–9 and 11 pass at
+`a843e60`, and the security packet is signed against `6ccce80`. The §17.128 freeze is lifted.
+The review's follow-ups (none in a frozen file or a reviewed rule) are plan WS12.
 
 ### Details
 
@@ -254,7 +254,12 @@ replay. The website checks were re-run after the edits and exited 0.
 
 ### 10. Maintainer review
 
-NEEDS-HUMAN by definition. See [docs/reviews/m3-security-review.md](../reviews/m3-security-review.md).
+**PASS (2026-10-18).** See [docs/reviews/m3-security-review.md](../reviews/m3-security-review.md),
+"Review record": approved under the owner's written delegation of 2026-10-18 by Claude Fable 5.1,
+with 12 WASM-boundary and 22 other findings routed to plan WS12 (four Medium outside the packet's
+parts: `Secret.map` defect-message leak, plain `sakura test` without `SAKURA_PERMISSIONS`,
+`serve` body cap, proof-key directory mode; the WASM Mediums are host-answer validation,
+`&mut Rt` aliasing, the unbuilt copy budget). The first audit's text below is history.
 Findings the reviewer should weigh: cassettes redact only `secret_headers`, so ordinary headers,
 URL query strings, request bodies and `response_headers` are written verbatim. The cassette has
 no `schema_version`. The `Task.spawn` escape check does not walk lambdas nested in a call
