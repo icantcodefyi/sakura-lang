@@ -16,6 +16,8 @@ bench/
   bench                     # entry point: `bench/bench <command>` (Python 3.11+, stdlib only)
   harness/bench.py          # orchestration: build, oracle, run, compare, bless, compile
   harness/runner.mjs        # in-process JS-panel runner (Node and Bun)
+  harness/test_bench.py     # harness tests: python3 -m unittest discover -s bench/harness
+  results/                  # recorded runs kept for reference (not baselines; never written by CI)
   programs/<name>/
     meta.toml               # family, sizes, lane, ints, [checksums], optional extras
     sakura/main.sakura      # pub fn run(n: Int) -> Int; main prints run(n) for each CLI argument
@@ -23,6 +25,38 @@ bench/
     rust/ go/ ocaml/ koka/  # WS-S ports, protocol below
   target/                   # build output (ignored)
 ```
+
+## Commands
+
+```sh
+bench/bench run --suite js --json out.json                 # Node and Bun, all sizes
+bench/bench run --suite js --engine node --sizes quick --filter 'handled_*' --json out.json
+bench/bench run --suite native --lane idiomatic --json out.json
+bench/bench compare bench/baselines/<host-id>.json head.json [rerun.json] [--json verdict.json]
+bench/bench bless out.json                                 # → baselines/<host-id>.json, commit by hand
+bench/bench compile --json compile.json
+bench/bench oracle [--filter <glob>] [--write]
+```
+
+| Command | Behaviour | Exit |
+|---|---|---|
+| `run` | Builds the release CLI and every variant, runs the oracle for each (variant, engine), then times every (program, variant, engine, size) in `--processes` (5) fresh processes, in an order shuffled with `--seed` (20261018), serially, GC on. Each process warms up 250 ms (2 s with `--stable`), calibrates a ≥ 30 ms batch and records nine samples; peak RSS comes from `wait4`. Prints a Markdown table of medians and Sakura/hand-JS ratios on stdout and writes the `sakura-bench-v1` JSON. `--sizes quick` times the first two sizes. | 0; 1 an oracle or checksum failed (that program is not timed); 3 a toolchain is missing (its variants are skipped and listed in `meta.missing`) |
+| `compare` | Per (program, engine, size), the head's ratio Sakura/hand JS against the base's: worse by > `--flag` (5%) flags; worse by > `--block` (10%) **and** by ≥ `--abs-ms` (0.1) ms per workload beyond the base ratio blocks, but only if every head file given agrees (pass the CI's confirmation rerun of the blocked programs as a second head). Immediate failures, from the first head alone: a failed oracle or checksum, a checksum different from the base, peak RSS up > 25%, a log-log slope across the size sweep up by > 0.5 (a complexity-class change). An improvement > 10% is reported for the pull request to explain. | 0 ok or flagged; 2 blocked |
+| `bless` | Copies a run into `baselines/<host-id>.json`; refuses a run with failures or made from a dirty `compiler/` or `bench/` tree. | 0; 1 refused |
+| `compile` | The research/10 §6 budgets on generated packages (`target/corpus/<lines>`, 50-function modules): `check` of 10k and 100k lines and `build` of 10k lines, each 15 fresh processes; `sakura lsp` edit → `publishDiagnostics` on the 10k package, 15 edits in one warm server alternating a type error in a private body and its fix (the server publishes nothing for a clean file it has never reported). p95 against 1 s / 3 s / 500 ms / 100 ms. | 0; 2 over budget |
+| `oracle` | Checks Sakura and hand JS on Node against `meta.toml`, or records it with `--write`. | 0; 1 a mismatch |
+
+The host id is the first 12 hex digits of SHA-256 over CPU brand, OS name and architecture,
+and total memory, so OS updates keep it and a different machine never shares it.
+
+### Native builds (WS-S ports)
+
+| Variant | Source | Build (by `run`) |
+|---|---|---|
+| `rust` | `rust/Cargo.toml`, a package with a binary named `main` | `cargo build --locked --profile checked` (matched lane; the package defines `[profile.checked]` inheriting `release` with `overflow-checks = true`) or `--profile release` (idiomatic), target dir `target/rust/<name>` |
+| `go` | `go/main.go` (+ `go.mod` if wanted) | `go build -o target/go/<name>/main .` in `go/` |
+| `ocaml` | `ocaml/main.ml`, stdlib only | `ocamlopt -o main main.ml` in a scratch copy (`-O3` when the compiler has flambda) |
+| `koka` | `koka/main.kk` | `koka -O2 --outputdir=… -o target/koka/<name>/main koka/main.kk` |
 
 ## Program interface
 
@@ -106,10 +140,18 @@ JS controls for `handled_*` are closure calls on a stateful object (research/10
    Lang has no mutable array or `List.set`, and a stride over a persistent list would be
    O(n) per write. The JS control makes the same passes, so the lane stays matched.
 4. **Entry point `bench/bench`**, a shim over `harness/bench.py`, plus an `oracle` command
-   besides `run`, `compare`, `bless` and `compile`.
+   besides `run`, `compare`, `bless` and `compile`; `run` also prints a Markdown summary.
 5. **In-process loading of Sakura programs** rewrites the emitted `__main__.js` (keep the
    std imports and `registerOps`, drop `runMain`, re-export `run` and `runTask`); a
    `sakura build` library flag would replace it.
+6. **Result schema additions** to plan §3.3: `meta.dirty`, `meta.missing` (toolchains
+   skipped), `meta.failures` (oracle and build failures with their output), `flags.suite`,
+   `flags.engines`, `flags.processes`; `compile` results carry `p95_ms` and `budget_ms` and
+   use `engine: "cli"`, `lane: "compile"`, `size` = corpus lines.
+7. **The compile corpus imports `main/gen/m<i>`**: the analysis names every user package
+   `main` whatever `sakura.toml` says (design §9 says the manifest name); posted in REQUESTS.
+8. **`compare` confirmation** is a second head file rather than a rerun inside `compare`; the
+   CI job reruns the flagged programs with `--filter` and passes both files.
 
 ## Methodology
 

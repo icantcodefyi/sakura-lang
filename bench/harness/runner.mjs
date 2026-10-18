@@ -1,9 +1,9 @@
 // In-process runner for the JS panel (plan §3.2), one fresh process per invocation:
 //   node runner.mjs values  <module> <n>...          → {"values": {"<n>": checksum, ...}}
 //   node runner.mjs negative <module> <k>...         → {"defects": {"<k>": "D020", ...}}
-//   node runner.mjs measure <module> <n> [--stable]  → {"n", "batch", "samples_ms", "checksum", "rss_bytes"}
+//   node runner.mjs measure <module> <n> [--stable]  → {"n", "batch", "samples_ms", "checksum"}
 // measure: warmup 250 ms (2 s with --stable), a power-of-two batch calibrated to ≥ 30 ms, then
-// nine samples of that batch (ms per call).
+// nine samples of that batch (ms per call). Peak RSS is taken by the harness from wait4.
 // <module> is a Sakura entry built by harness/bench.py (exports `program` and `runTask`) or a
 // hand-written JS module exporting `run(n)`. Nothing else is written to stdout.
 const [mode, path, ...rest] = process.argv.slice(2);
@@ -65,9 +65,7 @@ if (mode === "values") {
     await batch(count);
     samples.push((performance.now() - t) / count);
   }
-  // Peak RSS of this process (resourceUsage reports KiB on every platform).
-  const rss = process.resourceUsage ? process.resourceUsage().maxRSS * 1024 : process.memoryUsage().rss;
-  out({ n, batch: count, samples_ms: samples, checksum: String(sink), rss_bytes: rss });
+  out({ n, batch: count, samples_ms: samples, checksum: String(sink) });
 } else {
   throw new Error(`unknown mode ${mode}`);
 }
