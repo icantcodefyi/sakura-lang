@@ -1,0 +1,389 @@
+{
+ "method": "ad hoc A/B, not `bench run`: `bench/harness/runner.mjs measure` in fresh processes, variants interleaved with alternating order, per-process median of nine samples, median across processes; deltablue built once per compiler, runtime file swapped",
+ "variants": {
+  "base": "b4aa556 compiler and runtime ($rt.eq at 7 sites)",
+  "p11a": "deb9a20 compiler and runtime (tag compare)",
+  "p11b": "deb9a20 compiler, runtime with the per-map Int key kind (not landed)",
+  "shape": "p11b with hgetInt discriminating nodes by field instead of instanceof (not landed)"
+ },
+ "runs": [
+  {
+   "program": "deltablue",
+   "cells": [
+    {
+     "engine": "bun",
+     "n": 1000,
+     "variant": "base",
+     "fn": null,
+     "median_ms": 63.121,
+     "min_ms": 60.979,
+     "processes": 8
+    },
+    {
+     "engine": "bun",
+     "n": 1000,
+     "variant": "p11b",
+     "fn": null,
+     "median_ms": 59.127,
+     "min_ms": 57.448,
+     "processes": 8
+    },
+    {
+     "engine": "bun",
+     "n": 1000,
+     "variant": "p11a",
+     "fn": null,
+     "median_ms": 59.851,
+     "min_ms": 58.406,
+     "processes": 8
+    },
+    {
+     "engine": "bun",
+     "n": 5000,
+     "variant": "base",
+     "fn": null,
+     "median_ms": 373.757,
+     "min_ms": 365.739,
+     "processes": 8
+    },
+    {
+     "engine": "bun",
+     "n": 5000,
+     "variant": "p11b",
+     "fn": null,
+     "median_ms": 360.826,
+     "min_ms": 336.817,
+     "processes": 8
+    },
+    {
+     "engine": "bun",
+     "n": 5000,
+     "variant": "p11a",
+     "fn": null,
+     "median_ms": 364.568,
+     "min_ms": 337.455,
+     "processes": 8
+    },
+    {
+     "engine": "node",
+     "n": 1000,
+     "variant": "base",
+     "fn": null,
+     "median_ms": 43.456,
+     "min_ms": 41.922,
+     "processes": 8
+    },
+    {
+     "engine": "node",
+     "n": 1000,
+     "variant": "p11b",
+     "fn": null,
+     "median_ms": 40.473,
+     "min_ms": 39.275,
+     "processes": 8
+    },
+    {
+     "engine": "node",
+     "n": 1000,
+     "variant": "p11a",
+     "fn": null,
+     "median_ms": 39.56,
+     "min_ms": 38.509,
+     "processes": 8
+    },
+    {
+     "engine": "node",
+     "n": 5000,
+     "variant": "base",
+     "fn": null,
+     "median_ms": 283.375,
+     "min_ms": 277.111,
+     "processes": 8
+    },
+    {
+     "engine": "node",
+     "n": 5000,
+     "variant": "p11b",
+     "fn": null,
+     "median_ms": 261.583,
+     "min_ms": 249.952,
+     "processes": 8
+    },
+    {
+     "engine": "node",
+     "n": 5000,
+     "variant": "p11a",
+     "fn": null,
+     "median_ms": 249.069,
+     "min_ms": 243.597,
+     "processes": 8
+    }
+   ],
+   "load_1m_at_end": 11.1
+  },
+  {
+   "program": "map_set",
+   "cells": [
+    {
+     "engine": "bun",
+     "n": 10000,
+     "variant": "p11b",
+     "fn": "run_int",
+     "median_ms": 4.043,
+     "min_ms": 3.86,
+     "processes": 6
+    },
+    {
+     "engine": "bun",
+     "n": 10000,
+     "variant": "p11b",
+     "fn": "run_string",
+     "median_ms": 4.151,
+     "min_ms": 3.893,
+     "processes": 6
+    },
+    {
+     "engine": "bun",
+     "n": 10000,
+     "variant": "p11a",
+     "fn": "run_int",
+     "median_ms": 4.119,
+     "min_ms": 3.979,
+     "processes": 6
+    },
+    {
+     "engine": "bun",
+     "n": 10000,
+     "variant": "p11a",
+     "fn": "run_string",
+     "median_ms": 4.148,
+     "min_ms": 4.016,
+     "processes": 6
+    },
+    {
+     "engine": "bun",
+     "n": 100000,
+     "variant": "p11b",
+     "fn": "run_int",
+     "median_ms": 58.158,
+     "min_ms": 55.994,
+     "processes": 6
+    },
+    {
+     "engine": "bun",
+     "n": 100000,
+     "variant": "p11b",
+     "fn": "run_string",
+     "median_ms": 68.76,
+     "min_ms": 66.539,
+     "processes": 6
+    },
+    {
+     "engine": "bun",
+     "n": 100000,
+     "variant": "p11a",
+     "fn": "run_int",
+     "median_ms": 57.874,
+     "min_ms": 56.562,
+     "processes": 6
+    },
+    {
+     "engine": "bun",
+     "n": 100000,
+     "variant": "p11a",
+     "fn": "run_string",
+     "median_ms": 64.751,
+     "min_ms": 64.009,
+     "processes": 6
+    },
+    {
+     "engine": "node",
+     "n": 10000,
+     "variant": "p11b",
+     "fn": "run_int",
+     "median_ms": 2.935,
+     "min_ms": 2.839,
+     "processes": 6
+    },
+    {
+     "engine": "node",
+     "n": 10000,
+     "variant": "p11b",
+     "fn": "run_string",
+     "median_ms": 2.838,
+     "min_ms": 2.778,
+     "processes": 6
+    },
+    {
+     "engine": "node",
+     "n": 10000,
+     "variant": "p11a",
+     "fn": "run_int",
+     "median_ms": 3.266,
+     "min_ms": 2.817,
+     "processes": 6
+    },
+    {
+     "engine": "node",
+     "n": 10000,
+     "variant": "p11a",
+     "fn": "run_string",
+     "median_ms": 2.779,
+     "min_ms": 2.721,
+     "processes": 6
+    },
+    {
+     "engine": "node",
+     "n": 100000,
+     "variant": "p11b",
+     "fn": "run_int",
+     "median_ms": 54.911,
+     "min_ms": 50.27,
+     "processes": 6
+    },
+    {
+     "engine": "node",
+     "n": 100000,
+     "variant": "p11b",
+     "fn": "run_string",
+     "median_ms": 53.108,
+     "min_ms": 49.941,
+     "processes": 6
+    },
+    {
+     "engine": "node",
+     "n": 100000,
+     "variant": "p11a",
+     "fn": "run_int",
+     "median_ms": 52.893,
+     "min_ms": 49.425,
+     "processes": 6
+    },
+    {
+     "engine": "node",
+     "n": 100000,
+     "variant": "p11a",
+     "fn": "run_string",
+     "median_ms": 57.632,
+     "min_ms": 50.279,
+     "processes": 6
+    }
+   ],
+   "load_1m_at_end": 9.0
+  },
+  {
+   "program": "deltablue",
+   "cells": [
+    {
+     "engine": "bun",
+     "n": 1000,
+     "variant": "shape",
+     "fn": null,
+     "median_ms": 59.583,
+     "min_ms": 56.486,
+     "processes": 6
+    },
+    {
+     "engine": "bun",
+     "n": 1000,
+     "variant": "p11b",
+     "fn": null,
+     "median_ms": 59.69,
+     "min_ms": 57.184,
+     "processes": 6
+    },
+    {
+     "engine": "bun",
+     "n": 1000,
+     "variant": "p11a",
+     "fn": null,
+     "median_ms": 60.07,
+     "min_ms": 58.997,
+     "processes": 6
+    },
+    {
+     "engine": "bun",
+     "n": 5000,
+     "variant": "shape",
+     "fn": null,
+     "median_ms": 377.862,
+     "min_ms": 348.082,
+     "processes": 6
+    },
+    {
+     "engine": "bun",
+     "n": 5000,
+     "variant": "p11b",
+     "fn": null,
+     "median_ms": 372.621,
+     "min_ms": 357.359,
+     "processes": 6
+    },
+    {
+     "engine": "bun",
+     "n": 5000,
+     "variant": "p11a",
+     "fn": null,
+     "median_ms": 366.445,
+     "min_ms": 339.391,
+     "processes": 6
+    },
+    {
+     "engine": "node",
+     "n": 1000,
+     "variant": "shape",
+     "fn": null,
+     "median_ms": 38.719,
+     "min_ms": 37.763,
+     "processes": 6
+    },
+    {
+     "engine": "node",
+     "n": 1000,
+     "variant": "p11b",
+     "fn": null,
+     "median_ms": 41.752,
+     "min_ms": 39.768,
+     "processes": 6
+    },
+    {
+     "engine": "node",
+     "n": 1000,
+     "variant": "p11a",
+     "fn": null,
+     "median_ms": 40.794,
+     "min_ms": 39.484,
+     "processes": 6
+    },
+    {
+     "engine": "node",
+     "n": 5000,
+     "variant": "shape",
+     "fn": null,
+     "median_ms": 253.878,
+     "min_ms": 236.973,
+     "processes": 6
+    },
+    {
+     "engine": "node",
+     "n": 5000,
+     "variant": "p11b",
+     "fn": null,
+     "median_ms": 264.634,
+     "min_ms": 246.712,
+     "processes": 6
+    },
+    {
+     "engine": "node",
+     "n": 5000,
+     "variant": "p11a",
+     "fn": null,
+     "median_ms": 253.714,
+     "min_ms": 244.213,
+     "processes": 6
+    }
+   ],
+   "load_1m_at_end": 11.1
+  }
+ ]
+}

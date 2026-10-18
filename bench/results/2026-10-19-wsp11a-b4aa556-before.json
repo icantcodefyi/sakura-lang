@@ -1,0 +1,2142 @@
+{
+ "schema": "sakura-bench-v1",
+ "meta": {
+  "commit": "b4aa55644f1043d99b1707b02fb73ae9a7ccbdcf",
+  "dirty": false,
+  "host": {
+   "id": "d88970189598",
+   "cpu": "Apple M4 Pro",
+   "os": "Darwin 27.2.0 arm64",
+   "mem_bytes": 25769803776,
+   "quiet": false,
+   "load": {
+    "quiet": false,
+    "ci": false,
+    "threshold": 3.0,
+    "logical_cpus": 12,
+    "interval_s": 15,
+    "max_load_1m": 25.95654296875,
+    "reasons": [
+     "one-minute load 25.96 > 3",
+     "busy: ld, node, rustc, sakura"
+    ],
+    "snapshots": [
+     {
+      "utc": "2026-10-18T18:32:14Z",
+      "load_1m": 24.8251953125,
+      "busiest": [
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 136.4
+       },
+       {
+        "executable": "spindump",
+        "cpu_percent": 89.8
+       },
+       {
+        "executable": "mobileassetd",
+        "cpu_percent": 83.4
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 44.4
+       },
+       {
+        "executable": "XprotectService",
+        "cpu_percent": 33.1
+       },
+       {
+        "executable": "assetsubscriptiond",
+        "cpu_percent": 7.7
+       },
+       {
+        "executable": "runningboardd",
+        "cpu_percent": 5.4
+       },
+       {
+        "executable": "fseventsd",
+        "cpu_percent": 5.1
+       },
+       {
+        "executable": "mds_stores",
+        "cpu_percent": 4.2
+       },
+       {
+        "executable": "mds",
+        "cpu_percent": 3.1
+       },
+       {
+        "executable": "WindowServer",
+        "cpu_percent": 2.6
+       },
+       {
+        "executable": "Wispr Flow Helper (Renderer)",
+        "cpu_percent": 1.6
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T18:32:29Z",
+      "load_1m": 20.6669921875,
+      "busiest": [
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 99.7
+       },
+       {
+        "executable": "corpus-fb372ce8c9719c29",
+        "cpu_percent": 90.4
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 15.5
+       },
+       {
+        "executable": "CategoriesService",
+        "cpu_percent": 7.6
+       },
+       {
+        "executable": "trustd",
+        "cpu_percent": 3.5
+       },
+       {
+        "executable": "mdworker_shared",
+        "cpu_percent": 3.4
+       },
+       {
+        "executable": "WindowServer",
+        "cpu_percent": 2.8
+       },
+       {
+        "executable": "Wispr Flow",
+        "cpu_percent": 2.1
+       },
+       {
+        "executable": "Wispr Flow Helper (Renderer)",
+        "cpu_percent": 2.1
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.9
+       },
+       {
+        "executable": "com.apple.DriverKit-AppleBCMWLAN",
+        "cpu_percent": 1.6
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.5
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T18:32:44Z",
+      "load_1m": 23.458984375,
+      "busiest": [
+       {
+        "executable": "differential-818f9814d6093254",
+        "cpu_percent": 134.4
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 93.9
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 92.9
+       },
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 50.4
+       },
+       {
+        "executable": "PerfPowerServices",
+        "cpu_percent": 31.7
+       },
+       {
+        "executable": "clippy-driver",
+        "cpu_percent": 28.3
+       },
+       {
+        "executable": "clippy-driver",
+        "cpu_percent": 27.9
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 13.5
+       },
+       {
+        "executable": "AMPLibraryAgent",
+        "cpu_percent": 13.4
+       },
+       {
+        "executable": "runningboardd",
+        "cpu_percent": 13.3
+       },
+       {
+        "executable": "PodcastContentService",
+        "cpu_percent": 8.3
+       },
+       {
+        "executable": "opendirectoryd",
+        "cpu_percent": 7.5
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T18:32:59Z",
+      "load_1m": 20.533203125,
+      "busiest": [
+       {
+        "executable": "differential-818f9814d6093254",
+        "cpu_percent": 129.6
+       },
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 120.4
+       },
+       {
+        "executable": "logd",
+        "cpu_percent": 77.1
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 36.9
+       },
+       {
+        "executable": "(node)",
+        "cpu_percent": 22.9
+       },
+       {
+        "executable": "(node)",
+        "cpu_percent": 21.4
+       },
+       {
+        "executable": "trustd",
+        "cpu_percent": 17.1
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 15.3
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 14.6
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 14.1
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 14.1
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 14.0
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T18:33:14Z",
+      "load_1m": 25.21826171875,
+      "busiest": [
+       {
+        "executable": "differential-818f9814d6093254",
+        "cpu_percent": 120.7
+       },
+       {
+        "executable": "ld",
+        "cpu_percent": 45.7
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 43.9
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 41.3
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 38.7
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 37.7
+       },
+       {
+        "executable": "fseventsd",
+        "cpu_percent": 34.2
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 33.5
+       },
+       {
+        "executable": "Raycast Backend",
+        "cpu_percent": 5.2
+       },
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 3.9
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 3.9
+       },
+       {
+        "executable": "com.apple.appkit.xpc.openAndSavePanelService",
+        "cpu_percent": 3.5
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T18:33:29Z",
+      "load_1m": 25.95654296875,
+      "busiest": [
+       {
+        "executable": "differential-818f9814d6093254",
+        "cpu_percent": 86.7
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 37.2
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 33.1
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 29.8
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 28.5
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 23.9
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 23.5
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 23.2
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 22.2
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 20.3
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 20.3
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 19.6
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T18:33:45Z",
+      "load_1m": 23.04296875,
+      "busiest": [
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 145.9
+       },
+       {
+        "executable": "differential-818f9814d6093254",
+        "cpu_percent": 136.6
+       },
+       {
+        "executable": "logd",
+        "cpu_percent": 87.9
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 15.7
+       },
+       {
+        "executable": "XprotectService",
+        "cpu_percent": 15.5
+       },
+       {
+        "executable": "trustd",
+        "cpu_percent": 14.7
+       },
+       {
+        "executable": "claude",
+        "cpu_percent": 4.9
+       },
+       {
+        "executable": "T3 Code (Nightly)",
+        "cpu_percent": 3.9
+       },
+       {
+        "executable": "WindowServer",
+        "cpu_percent": 2.7
+       },
+       {
+        "executable": "Wispr Flow",
+        "cpu_percent": 1.8
+       },
+       {
+        "executable": "Wispr Flow Helper (Renderer)",
+        "cpu_percent": 1.8
+       },
+       {
+        "executable": "T3 Code (Nightly) Helper (Renderer)",
+        "cpu_percent": 1.8
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T18:34:00Z",
+      "load_1m": 21.91357421875,
+      "busiest": [
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 141.7
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 92.4
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 62.5
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 62.5
+       },
+       {
+        "executable": "logd",
+        "cpu_percent": 46.4
+       },
+       {
+        "executable": "fseventsd",
+        "cpu_percent": 9.7
+       },
+       {
+        "executable": "python3",
+        "cpu_percent": 4.4
+       },
+       {
+        "executable": "mds",
+        "cpu_percent": 3.8
+       },
+       {
+        "executable": "python3",
+        "cpu_percent": 3.1
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 2.8
+       },
+       {
+        "executable": "notifyd",
+        "cpu_percent": 2.7
+       },
+       {
+        "executable": "trustd",
+        "cpu_percent": 2.7
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T18:34:15Z",
+      "load_1m": 18.68359375,
+      "busiest": [
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 118.8
+       },
+       {
+        "executable": "fmt-9e00c626e3c6dbf6",
+        "cpu_percent": 99.7
+       },
+       {
+        "executable": "frauddefensed",
+        "cpu_percent": 27.5
+       },
+       {
+        "executable": "cloudd",
+        "cpu_percent": 26.4
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 10.7
+       },
+       {
+        "executable": "trustd",
+        "cpu_percent": 9.7
+       },
+       {
+        "executable": "trustd",
+        "cpu_percent": 5.5
+       },
+       {
+        "executable": "com.apple.DriverKit-AppleBCMWLAN",
+        "cpu_percent": 2.1
+       },
+       {
+        "executable": "T3 Code (Nightly)",
+        "cpu_percent": 2.1
+       },
+       {
+        "executable": "fseventsd",
+        "cpu_percent": 1.8
+       },
+       {
+        "executable": "Wispr Flow Helper (Renderer)",
+        "cpu_percent": 1.8
+       },
+       {
+        "executable": "WindowServer",
+        "cpu_percent": 1.7
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T18:34:30Z",
+      "load_1m": 15.78662109375,
+      "busiest": [
+       {
+        "executable": "node",
+        "cpu_percent": 57.9
+       },
+       {
+        "executable": "fseventsd",
+        "cpu_percent": 48.9
+       },
+       {
+        "executable": "git",
+        "cpu_percent": 44.4
+       },
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 34.1
+       },
+       {
+        "executable": "(node)",
+        "cpu_percent": 33.1
+       },
+       {
+        "executable": "XprotectService",
+        "cpu_percent": 30.2
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 9.6
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 9.0
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 8.8
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 6.3
+       },
+       {
+        "executable": "claude",
+        "cpu_percent": 4.8
+       },
+       {
+        "executable": "Raycast Backend",
+        "cpu_percent": 4.2
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T18:34:45Z",
+      "load_1m": 15.98974609375,
+      "busiest": [
+       {
+        "executable": "node",
+        "cpu_percent": 59.3
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 54.8
+       },
+       {
+        "executable": "corpus-fc9c48da1a02c1a1",
+        "cpu_percent": 43.4
+       },
+       {
+        "executable": "(sakura)",
+        "cpu_percent": 14.2
+       },
+       {
+        "executable": "(node)",
+        "cpu_percent": 14.1
+       },
+       {
+        "executable": "(sakura)",
+        "cpu_percent": 11.2
+       },
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 10.3
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 6.5
+       },
+       {
+        "executable": "fseventsd",
+        "cpu_percent": 5.5
+       },
+       {
+        "executable": "semantics-14d9410381ff881e",
+        "cpu_percent": 5.1
+       },
+       {
+        "executable": "(node)",
+        "cpu_percent": 3.7
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 2.8
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T18:35:00Z",
+      "load_1m": 14.169921875,
+      "busiest": [
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 99.2
+       },
+       {
+        "executable": "m3-539347e28c35a4bc",
+        "cpu_percent": 86.7
+       },
+       {
+        "executable": "XprotectService",
+        "cpu_percent": 57.4
+       },
+       {
+        "executable": "defects-c56de6d0c5fb8dcc",
+        "cpu_percent": 24.1
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 23.7
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 23.4
+       },
+       {
+        "executable": "trustd",
+        "cpu_percent": 22.6
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 20.5
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 20.5
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 19.0
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 19.0
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 17.3
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T18:35:15Z",
+      "load_1m": 12.353515625,
+      "busiest": [
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 144.9
+       },
+       {
+        "executable": "direct-1fe47d5514a58a55",
+        "cpu_percent": 97.8
+       },
+       {
+        "executable": "duetexpertd",
+        "cpu_percent": 84.1
+       },
+       {
+        "executable": "T3 Code (Nightly) Helper (Renderer)",
+        "cpu_percent": 78.3
+       },
+       {
+        "executable": "T3 Code (Nightly)",
+        "cpu_percent": 40.6
+       },
+       {
+        "executable": "trustd",
+        "cpu_percent": 25.0
+       },
+       {
+        "executable": "WindowServer",
+        "cpu_percent": 10.9
+       },
+       {
+        "executable": "T3 Code (Nightly) Helper",
+        "cpu_percent": 7.5
+       },
+       {
+        "executable": "claude",
+        "cpu_percent": 3.5
+       },
+       {
+        "executable": "logd",
+        "cpu_percent": 3.2
+       },
+       {
+        "executable": "com.apple.DriverKit-AppleBCMWLAN",
+        "cpu_percent": 2.1
+       },
+       {
+        "executable": "Wispr Flow Helper (Renderer)",
+        "cpu_percent": 1.9
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T18:35:30Z",
+      "load_1m": 13.64404296875,
+      "busiest": [
+       {
+        "executable": "differential-58530f4629dcd50f",
+        "cpu_percent": 134.6
+       },
+       {
+        "executable": "direct-1fe47d5514a58a55",
+        "cpu_percent": 70.9
+       },
+       {
+        "executable": "sakura",
+        "cpu_percent": 50.9
+       },
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 14.5
+       },
+       {
+        "executable": "fseventsd",
+        "cpu_percent": 7.9
+       },
+       {
+        "executable": "WindowServer",
+        "cpu_percent": 7.2
+       },
+       {
+        "executable": "T3 Code (Nightly) Helper (Renderer)",
+        "cpu_percent": 5.1
+       },
+       {
+        "executable": "trustd",
+        "cpu_percent": 4.2
+       },
+       {
+        "executable": "(node)",
+        "cpu_percent": 4.1
+       },
+       {
+        "executable": "T3 Code (Nightly) Helper",
+        "cpu_percent": 3.7
+       },
+       {
+        "executable": "claude",
+        "cpu_percent": 2.2
+       },
+       {
+        "executable": "claude",
+        "cpu_percent": 1.9
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T18:35:45Z",
+      "load_1m": 13.7890625,
+      "busiest": [
+       {
+        "executable": "m3-39bad41c9132062d",
+        "cpu_percent": 394.6
+       },
+       {
+        "executable": "differential-58530f4629dcd50f",
+        "cpu_percent": 73.2
+       },
+       {
+        "executable": "fresh-c2104bbaa89d6a54",
+        "cpu_percent": 35.4
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 35.3
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 27.6
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 19.0
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 15.0
+       },
+       {
+        "executable": "fseventsd",
+        "cpu_percent": 9.4
+       },
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 8.9
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 5.4
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 5.1
+       },
+       {
+        "executable": "node",
+        "cpu_percent": 3.5
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T18:36:00Z",
+      "load_1m": 15.02001953125,
+      "busiest": [
+       {
+        "executable": "corpus-0fcf4794dbcbf824",
+        "cpu_percent": 100.0
+       },
+       {
+        "executable": "source-9a81952af842bf5e",
+        "cpu_percent": 99.3
+       },
+       {
+        "executable": "fresh-c2104bbaa89d6a54",
+        "cpu_percent": 99.0
+       },
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 98.3
+       },
+       {
+        "executable": "duetexpertd",
+        "cpu_percent": 88.9
+       },
+       {
+        "executable": "WindowServer",
+        "cpu_percent": 4.3
+       },
+       {
+        "executable": "T3 Code (Nightly) Helper (Renderer)",
+        "cpu_percent": 3.3
+       },
+       {
+        "executable": "Finder",
+        "cpu_percent": 3.0
+       },
+       {
+        "executable": "airportd",
+        "cpu_percent": 2.7
+       },
+       {
+        "executable": "com.apple.appkit.xpc.openAndSavePanelService",
+        "cpu_percent": 2.7
+       },
+       {
+        "executable": "com.apple.DriverKit-AppleBCMWLAN",
+        "cpu_percent": 2.6
+       },
+       {
+        "executable": "claude",
+        "cpu_percent": 2.2
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-18T18:36:07Z",
+      "load_1m": 14.85791015625,
+      "busiest": [
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 105.6
+       },
+       {
+        "executable": "source-9a81952af842bf5e",
+        "cpu_percent": 96.0
+       },
+       {
+        "executable": "duetexpertd",
+        "cpu_percent": 84.9
+       },
+       {
+        "executable": "XprotectService",
+        "cpu_percent": 36.7
+       },
+       {
+        "executable": "WindowServer",
+        "cpu_percent": 5.7
+       },
+       {
+        "executable": "coreaudiod",
+        "cpu_percent": 4.5
+       },
+       {
+        "executable": "fresh-89fc517cdf7ab8bf",
+        "cpu_percent": 3.5
+       },
+       {
+        "executable": "Wispr Flow",
+        "cpu_percent": 3.0
+       },
+       {
+        "executable": "T3 Code (Nightly) Helper",
+        "cpu_percent": 2.0
+       },
+       {
+        "executable": "Wispr Flow Helper (Renderer)",
+        "cpu_percent": 1.8
+       },
+       {
+        "executable": "Google Chrome Helper (Renderer)",
+        "cpu_percent": 1.7
+       },
+       {
+        "executable": "OpenUsage",
+        "cpu_percent": 1.6
+       }
+      ]
+     }
+    ]
+   }
+  },
+  "engines": {
+   "node": "26.11.0",
+   "bun": "1.4.3",
+   "rustc": "1.99.1",
+   "go": "1.27.2",
+   "ocaml": "5.5.1",
+   "koka": "3.2.9",
+   "hyperfine": "2.0.0"
+  },
+  "flags": {
+   "suite": "js",
+   "engines": [
+    "node",
+    "bun"
+   ],
+   "lane": "matched",
+   "sizes": "all",
+   "stable": false,
+   "filter": "deltablue",
+   "processes": 5,
+   "seed": 20261018
+  },
+  "seed": 20261018,
+  "started": "2026-10-18T18:31:35Z",
+  "missing": [],
+  "failures": []
+ },
+ "results": [
+  {
+   "program": "deltablue",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100,
+   "samples_ms": [
+    5.681307250000003,
+    5.684651000000002,
+    5.284468750000002,
+    4.371531250000004,
+    4.8258906249999995,
+    5.119312500000007,
+    6.3079740000000015,
+    6.994098999999991,
+    5.616223874999989,
+    5.49936975,
+    5.576609375000004,
+    5.0364687500000045,
+    4.386536375000006,
+    4.726854250000002,
+    4.9401198749999935,
+    5.815375000000003,
+    7.276489499999997,
+    5.587291624999992,
+    5.491723999999998,
+    5.573104125,
+    5.255401124999999,
+    4.5075312499999995,
+    4.858588500000003,
+    5.3241562500000015,
+    5.559755249999995,
+    7.529260375000007,
+    5.618453124999988,
+    5.610671875000001,
+    5.768885499999996,
+    5.314911499999994,
+    4.473791750000004,
+    4.903692750000005,
+    5.145166625000002,
+    6.603479124999993,
+    6.772729124999998,
+    5.7227187499999985,
+    5.657234375000002,
+    5.728223874999998,
+    7.389333375,
+    8.879130249999996,
+    8.770729125000003,
+    14.05857287500001,
+    37.216703124999995,
+    19.957864625000013,
+    14.587531250000012
+   ],
+   "median_ms": 5.610671875000001,
+   "process_medians_ms": [
+    5.616223874999989,
+    5.49936975,
+    5.491723999999998,
+    5.610671875000001,
+    8.879130249999996
+   ],
+   "rss_bytes": 142114816,
+   "process_rss_bytes": [
+    125370368,
+    127942656,
+    123879424,
+    129433600,
+    142114816
+   ],
+   "checksum_ok": true,
+   "checksum": "355776"
+  },
+  {
+   "program": "deltablue",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.7098190156249995,
+    0.6978242187500001,
+    0.6740436249999995,
+    0.6449804687499991,
+    0.6405312500000004,
+    0.6466569062500014,
+    0.6422571718750003,
+    0.6449453124999991,
+    0.6444316406249992,
+    0.70552734375,
+    0.703125,
+    0.6836438750000005,
+    0.6467363281249989,
+    0.6469355468749995,
+    0.6412753906249993,
+    0.6463457031250002,
+    0.6448470000000004,
+    0.6410429687499999,
+    1.4240598749999975,
+    4.990083312499998,
+    1.7069296875000006,
+    3.0959739999999982,
+    7.936999999999998,
+    5.720796874999998,
+    4.014802062499996,
+    2.1383750000000035,
+    3.2461562499999985,
+    0.696977859375,
+    0.7213027343750005,
+    0.6629042968750003,
+    0.6334680937499995,
+    0.6399420624999994,
+    0.63194921875,
+    0.6355878906250005,
+    0.6321464843749993,
+    0.6269121093749987,
+    0.6960240937500002,
+    0.6911464843749995,
+    0.6985130156249992,
+    0.6887395781250003,
+    0.6375924531250003,
+    0.6394537656249994,
+    0.6424029999999998,
+    0.6430924375,
+    0.6453001406250003
+   ],
+   "median_ms": 0.6453001406250003,
+   "process_medians_ms": [
+    0.6449804687499991,
+    0.6467363281249989,
+    3.2461562499999985,
+    0.6355878906250005,
+    0.6453001406250003
+   ],
+   "rss_bytes": 123912192,
+   "process_rss_bytes": [
+    123420672,
+    123797504,
+    88817664,
+    123912192,
+    123027456
+   ],
+   "checksum_ok": true,
+   "checksum": "8002176"
+  },
+  {
+   "program": "deltablue",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    10.89271875,
+    10.043875,
+    9.582979250000008,
+    10.947625000000002,
+    11.112562499999996,
+    8.988968750000026,
+    9.435937499999994,
+    9.888156250000009,
+    9.66172924999998,
+    9.98526025000001,
+    10.203676999999999,
+    9.621448000000001,
+    9.61209375,
+    13.523510250000001,
+    9.881041750000009,
+    8.916646000000014,
+    9.240906249999995,
+    9.274124999999998,
+    10.598968749999997,
+    10.844573000000011,
+    10.393197999999998,
+    10.868614749999992,
+    13.271812499999982,
+    9.778312499999998,
+    9.79734375000001,
+    9.534031249999998,
+    10.223135500000012,
+    10.505541499999993,
+    12.857666499999993,
+    10.991479499999997,
+    10.912750000000017,
+    10.591041499999989,
+    11.669812500000006,
+    10.238854500000002,
+    10.286979500000001,
+    10.694895500000001,
+    10.323968750000006,
+    11.473500000000001,
+    10.227927250000008,
+    11.013958250000002,
+    13.849771000000004,
+    9.718177250000025,
+    9.725531250000017,
+    10.371104250000002,
+    9.720458250000007
+   ],
+   "median_ms": 10.323968750000006,
+   "process_medians_ms": [
+    9.888156250000009,
+    9.621448000000001,
+    10.393197999999998,
+    10.694895500000001,
+    10.323968750000006
+   ],
+   "rss_bytes": 126173184,
+   "process_rss_bytes": [
+    109133824,
+    126091264,
+    112541696,
+    105463808,
+    126173184
+   ],
+   "checksum_ok": true,
+   "checksum": "529966176"
+  },
+  {
+   "program": "deltablue",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100,
+   "samples_ms": [
+    0.04391280078124998,
+    0.0434423427734375,
+    0.043219686523437495,
+    0.04382413769531246,
+    0.04428324414062501,
+    0.04248018359374994,
+    0.04224768066406248,
+    0.04231998632812495,
+    0.0434472255859375,
+    0.043047566406250015,
+    0.04433487988281254,
+    0.04674922753906252,
+    0.044746012695312476,
+    0.04443697070312502,
+    0.0438902587890625,
+    0.04410750292968746,
+    0.044695190429687504,
+    0.04547294140624991,
+    0.043687174804687534,
+    0.0440123291015625,
+    0.04567700195312502,
+    0.04598433398437496,
+    0.05035058593749997,
+    0.04202368164062498,
+    0.042588989257812515,
+    0.0429621982421875,
+    0.04383988476562506,
+    0.04616101074218748,
+    0.044221801757812484,
+    0.04701086425781248,
+    0.04554903125000004,
+    0.04557572460937498,
+    0.04390047265624997,
+    0.046042033203124944,
+    0.044246052734374985,
+    0.0443338212890626,
+    0.05965474511718749,
+    0.05023360156250001,
+    0.04863789843749994,
+    0.07588370703125003,
+    0.15750801562500005,
+    0.1849725341796875,
+    0.16026379394531254,
+    0.20054471777343763,
+    0.2480550937499999
+   ],
+   "median_ms": 0.04443697070312502,
+   "process_medians_ms": [
+    0.0434423427734375,
+    0.04443697070312502,
+    0.04383988476562506,
+    0.04554903125000004,
+    0.15750801562500005
+   ],
+   "rss_bytes": 92504064,
+   "process_rss_bytes": [
+    89014272,
+    89587712,
+    89489408,
+    90947584,
+    92504064
+   ],
+   "checksum_ok": true,
+   "checksum": "355776"
+  },
+  {
+   "program": "deltablue",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 5000,
+   "samples_ms": [
+    280.272792,
+    282.89650000000006,
+    278.96008400000005,
+    283.248959,
+    277.0832499999999,
+    281.91324999999983,
+    280.5512920000001,
+    288.5418330000002,
+    280.92454199999975,
+    400.4836250000001,
+    495.24183400000015,
+    426.7950000000001,
+    374.3939580000001,
+    396.77954199999976,
+    405.3594159999998,
+    664.6077500000001,
+    298.10345899999993,
+    280.62987499999963,
+    284.690875,
+    291.80600000000004,
+    288.24466699999994,
+    284.9959590000001,
+    279.0575839999999,
+    287.7769579999999,
+    287.0909160000001,
+    284.55745799999977,
+    283.4255840000001,
+    289.396708,
+    285.46233300000006,
+    280.2463329999998,
+    278.5205000000001,
+    277.3330410000001,
+    280.447459,
+    275.1489580000002,
+    281.7204999999999,
+    278.92045800000005,
+    288.566958,
+    284.74854200000004,
+    282.444084,
+    284.57554100000016,
+    279.90254200000004,
+    282.9773750000004,
+    282.0834169999998,
+    278.31783399999995,
+    285.3480420000001
+   ],
+   "median_ms": 282.9773750000004,
+   "process_medians_ms": [
+    280.92454199999975,
+    400.4836250000001,
+    284.9959590000001,
+    280.2463329999998,
+    282.9773750000004
+   ],
+   "rss_bytes": 246415360,
+   "process_rss_bytes": [
+    246415360,
+    203636736,
+    240287744,
+    218759168,
+    243171328
+   ],
+   "checksum_ok": true,
+   "checksum": "139986176"
+  },
+  {
+   "program": "deltablue",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    43.659333000000004,
+    43.41870899999998,
+    43.603665999999976,
+    42.41395899999998,
+    43.76812499999994,
+    43.40533400000004,
+    43.471000000000004,
+    43.31833299999994,
+    43.914999999999964,
+    42.34491700000001,
+    43.95425,
+    43.50762500000002,
+    43.34975000000003,
+    43.48325,
+    43.27383299999997,
+    42.789083000000005,
+    42.80620799999997,
+    44.003667000000064,
+    64.65495900000002,
+    69.73733299999998,
+    65.65716699999996,
+    69.858792,
+    72.43999999999994,
+    63.73487499999999,
+    60.59258399999999,
+    64.73512500000004,
+    68.15604199999996,
+    43.14050000000003,
+    43.07929100000001,
+    43.358791999999994,
+    43.65750000000003,
+    42.813125000000014,
+    42.669583999999986,
+    43.25629200000003,
+    42.26795799999991,
+    43.381167000000005,
+    42.88749999999999,
+    43.431083,
+    42.636708,
+    43.852292000000034,
+    44.44841699999995,
+    43.774125000000026,
+    44.03425000000004,
+    44.137459000000035,
+    44.758542000000034
+   ],
+   "median_ms": 43.471000000000004,
+   "process_medians_ms": [
+    43.471000000000004,
+    43.34975000000003,
+    65.65716699999996,
+    43.14050000000003,
+    43.852292000000034
+   ],
+   "rss_bytes": 147046400,
+   "process_rss_bytes": [
+    146980864,
+    142163968,
+    138346496,
+    140296192,
+    147046400
+   ],
+   "checksum_ok": true,
+   "checksum": "8002176"
+  },
+  {
+   "program": "deltablue",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    605.91875,
+    611.8188329999998,
+    604.7800419999999,
+    619.869917,
+    633.0031250000002,
+    667.7354169999999,
+    643.7740000000003,
+    609.958791,
+    613.2375000000002,
+    645.3625420000001,
+    643.7957499999998,
+    640.144667,
+    648.1382919999996,
+    652.3299170000005,
+    677.6508750000003,
+    651.096708,
+    2087.063542,
+    2026.3755409999994,
+    670.0702500000007,
+    638.7829169999995,
+    651.9539169999998,
+    669.2155000000002,
+    646.582042,
+    621.1060000000007,
+    643.6608750000014,
+    649.1640420000003,
+    643.4777919999997,
+    684.206375,
+    673.5674589999999,
+    657.6221249999999,
+    679.8186660000001,
+    739.4224589999999,
+    674.2430409999997,
+    679.8069999999998,
+    688.5520829999996,
+    672.1092499999995,
+    1557.723333,
+    1123.932209,
+    2121.1012089999995,
+    1514.6353749999998,
+    1224.8895830000001,
+    1674.6335419999996,
+    1559.7897089999988,
+    1479.1090000000004,
+    1392.6055829999987
+   ],
+   "median_ms": 651.096708,
+   "process_medians_ms": [
+    613.2375000000002,
+    651.096708,
+    646.582042,
+    679.8069999999998,
+    1514.6353749999998
+   ],
+   "rss_bytes": 283344896,
+   "process_rss_bytes": [
+    269975552,
+    269090816,
+    270516224,
+    283344896,
+    267747328
+   ],
+   "checksum_ok": true,
+   "checksum": "529966176"
+  },
+  {
+   "program": "deltablue",
+   "variant": "sakura",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100,
+   "samples_ms": [
+    3.472507812499998,
+    3.449153625000001,
+    3.6477213750000033,
+    3.4774505000000033,
+    3.438552062499994,
+    3.4682109374999968,
+    3.4259791875000047,
+    3.4102968750000002,
+    3.4566588750000022,
+    3.535700500000001,
+    3.564744812499999,
+    3.789174437499998,
+    3.523906249999996,
+    3.533906250000001,
+    3.4790573124999966,
+    3.464760437499997,
+    3.465695312500003,
+    3.4437057499999995,
+    3.4636718749999993,
+    3.4372786249999976,
+    3.605789062500005,
+    3.4653697500000007,
+    3.4658984375000017,
+    3.4722500000000025,
+    3.487458312500003,
+    3.438382812500002,
+    3.442632812500001,
+    3.4880755000000008,
+    3.43673175,
+    3.680807312499997,
+    3.531135374999998,
+    3.4689609375000003,
+    3.4279323125000047,
+    3.457304687499999,
+    3.457921875000004,
+    3.4443489374999956,
+    3.4723489375000014,
+    3.494320312500001,
+    3.6842630625000012,
+    3.4821406249999995,
+    3.5291354374999955,
+    3.477276062500003,
+    3.5230703124999962,
+    3.484424500000003,
+    3.482322937500001
+   ],
+   "median_ms": 3.4653697500000007,
+   "process_medians_ms": [
+    3.4566588750000022,
+    3.523906249999996,
+    3.4653697500000007,
+    3.457921875000004,
+    3.484424500000003
+   ],
+   "rss_bytes": 127418368,
+   "process_rss_bytes": [
+    125108224,
+    125534208,
+    125173760,
+    127418368,
+    127172608
+   ],
+   "checksum_ok": true,
+   "checksum": "355776"
+  },
+  {
+   "program": "deltablue",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    0.9577317500000007,
+    0.9830221249999997,
+    0.9313411562500011,
+    0.9434010312499996,
+    0.9605807500000001,
+    0.939022156250001,
+    1.0111419375000015,
+    1.0008997499999985,
+    0.9524218749999989,
+    0.9952539062499994,
+    0.9668645937499996,
+    0.9434322812500007,
+    0.9788736875000001,
+    0.9703085937499996,
+    0.9643880312500013,
+    1.0053997500000005,
+    0.9938658750000009,
+    1.01684503125,
+    0.9563789062500003,
+    0.9357395624999985,
+    0.9703150937500009,
+    0.9243658749999994,
+    0.9391627499999995,
+    0.9504296875000016,
+    0.9543085937499995,
+    0.94953253125,
+    0.9394687499999996,
+    1.5893046875000003,
+    1.7578203124999998,
+    1.4003216249999983,
+    2.3628385312499987,
+    1.3442174374999993,
+    2.982776062500001,
+    3.466777343750003,
+    2.545466125000001,
+    2.947519531250002,
+    0.9291588437499989,
+    0.9477877812499997,
+    0.9519362187499993,
+    0.9572122187499996,
+    0.9399179687499988,
+    0.9583736875,
+    0.9782421874999976,
+    0.9533281249999987,
+    0.9647460937499979
+   ],
+   "median_ms": 0.9577317500000007,
+   "process_medians_ms": [
+    0.9577317500000007,
+    0.9788736875000001,
+    0.94953253125,
+    2.3628385312499987,
+    0.9533281249999987
+   ],
+   "rss_bytes": 91947008,
+   "process_rss_bytes": [
+    83705856,
+    85639168,
+    91947008,
+    88047616,
+    85819392
+   ],
+   "checksum_ok": true,
+   "checksum": "8002176"
+  },
+  {
+   "program": "deltablue",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "samples_ms": [
+    62.994958999999994,
+    59.99670900000001,
+    63.72675000000004,
+    68.44370800000002,
+    60.27841699999999,
+    64.78600000000006,
+    65.0540840000001,
+    77.67533299999991,
+    64.84170800000004,
+    63.18475000000001,
+    59.50074999999998,
+    62.01262499999996,
+    67.59379200000001,
+    63.66874999999993,
+    66.29970900000001,
+    63.13704199999995,
+    82.34679200000005,
+    63.86545799999999,
+    74.014208,
+    65.82554099999993,
+    63.464207999999985,
+    62.645083,
+    65.47716700000001,
+    63.962041,
+    59.067333000000076,
+    80.16624999999999,
+    62.98791700000004,
+    58.02525000000003,
+    64.13791700000002,
+    66.64249999999998,
+    59.96158300000002,
+    62.55879100000004,
+    62.33079200000009,
+    61.936500000000024,
+    81.5277910000001,
+    58.55670800000007,
+    62.25574999999998,
+    64.38404100000002,
+    65.60387500000007,
+    65.08387500000003,
+    61.73575000000005,
+    60.48645799999997,
+    64.44554199999993,
+    80.41058399999997,
+    62.99062500000002
+   ],
+   "median_ms": 63.962041,
+   "process_medians_ms": [
+    64.78600000000006,
+    63.66874999999993,
+    63.962041,
+    62.33079200000009,
+    64.38404100000002
+   ],
+   "rss_bytes": 125435904,
+   "process_rss_bytes": [
+    115359744,
+    125435904,
+    121520128,
+    117456896,
+    112902144
+   ],
+   "checksum_ok": true,
+   "checksum": "8002176"
+  },
+  {
+   "program": "deltablue",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 5000,
+   "samples_ms": [
+    3.642270874999994,
+    3.762739625000002,
+    3.8194426250000006,
+    3.752421875000003,
+    3.692583374999998,
+    3.6819166249999995,
+    3.7070416250000022,
+    3.6797238749999934,
+    3.764833375000009,
+    3.7170286249999975,
+    3.741432249999999,
+    3.741143250000004,
+    3.7432916875000046,
+    3.723890625000003,
+    3.7343853750000022,
+    5.265549499999999,
+    9.989312499999997,
+    13.611317687499998,
+    7.713354125000002,
+    7.360307375000005,
+    4.769046874999994,
+    5.130432249999998,
+    6.033515624999993,
+    5.163739625000005,
+    6.117713499999994,
+    7.127026000000001,
+    5.38044275,
+    5.744833499999999,
+    10.545228999999978,
+    64.10783349999997,
+    11.939895999999976,
+    14.225771000000009,
+    20.866312499999992,
+    6.28791700000005,
+    11.033416499999987,
+    32.231979000000024,
+    3.9908958749999996,
+    4.392338625000001,
+    4.186614625000004,
+    3.9953541249999986,
+    4.075484374999995,
+    3.803739499999992,
+    3.79845837500001,
+    3.7646511250000003,
+    3.765755250000012
+   ],
+   "median_ms": 3.9908958749999996,
+   "process_medians_ms": [
+    3.7070416250000022,
+    3.741432249999999,
+    6.033515624999993,
+    11.939895999999976,
+    3.9908958749999996
+   ],
+   "rss_bytes": 131678208,
+   "process_rss_bytes": [
+    131072000,
+    131284992,
+    131678208,
+    131563520,
+    130973696
+   ],
+   "checksum_ok": true,
+   "checksum": "139986176"
+  },
+  {
+   "program": "deltablue",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    1067.7429159999997,
+    1150.2051660000002,
+    1104.1679170000007,
+    1064.4066250000005,
+    1213.0107919999991,
+    2435.2047079999993,
+    2263.5982920000006,
+    3498.9210000000003,
+    3737.272084,
+    1506.958125,
+    1971.3942500000003,
+    1329.0170420000004,
+    1186.8256249999995,
+    1056.8671250000007,
+    1104.3128749999996,
+    1060.3712920000016,
+    1010.6428749999995,
+    986.4310000000005,
+    992.5713750000004,
+    986.3802500000002,
+    1005.8236669999987,
+    1029.534540999999,
+    978.4915830000009,
+    2379.9774159999997,
+    2785.652333,
+    1006.3702080000003,
+    1049.153416000001,
+    1046.4369580000002,
+    972.6442080000002,
+    1226.0534580000003,
+    1076.1822920000004,
+    1114.5002080000004,
+    1028.667375,
+    985.3967499999999,
+    976.106667,
+    1469.8506670000006,
+    1031.344,
+    1031.2904169999997,
+    1092.1967499999992,
+    1433.9240419999996,
+    1038.4226669999998,
+    981.2068330000002,
+    973.6657500000001,
+    974.1378330000007,
+    960.7908750000006
+   ],
+   "median_ms": 1046.4369580000002,
+   "process_medians_ms": [
+    1213.0107919999991,
+    1104.3128749999996,
+    1006.3702080000003,
+    1046.4369580000002,
+    1031.2904169999997
+   ],
+   "rss_bytes": 228507648,
+   "process_rss_bytes": [
+    228507648,
+    206110720,
+    222085120,
+    223592448,
+    210010112
+   ],
+   "checksum_ok": true,
+   "checksum": "529966176"
+  },
+  {
+   "program": "deltablue",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100,
+   "samples_ms": [
+    0.10265120507812497,
+    0.11592488671875001,
+    0.13231730078125004,
+    0.29140722656249984,
+    0.18860904882812513,
+    0.4527506503906249,
+    0.28001163671874996,
+    0.3018811035156248,
+    0.7267412109375,
+    0.0742962246093749,
+    0.06998819921874999,
+    0.07146109960937497,
+    0.07158146093750006,
+    0.07182771679687494,
+    0.07263427734375005,
+    0.07537231445312509,
+    0.0739293632812501,
+    0.0709365234374999,
+    0.068552814453125,
+    0.06694620703124998,
+    0.06752010156249999,
+    0.07026180078125,
+    0.07088680078124998,
+    0.07377555468749997,
+    0.07480655859375007,
+    0.06984244726562494,
+    0.06911629101562489,
+    0.07436922070312502,
+    0.06919759179687501,
+    0.06896093749999999,
+    0.07025073242187496,
+    0.06955371093750007,
+    0.07370336914062492,
+    0.0746290683593751,
+    0.07469409179687503,
+    0.07373022460937495,
+    0.0761533203125,
+    0.07169563671875001,
+    0.06929133984375002,
+    0.07017830468749997,
+    0.07170328710937501,
+    0.07329915429687506,
+    0.0749952812500001,
+    0.07478312109375018,
+    0.07413102148437511
+   ],
+   "median_ms": 0.07329915429687506,
+   "process_medians_ms": [
+    0.28001163671874996,
+    0.07182771679687494,
+    0.06984244726562494,
+    0.07370336914062492,
+    0.07329915429687506
+   ],
+   "rss_bytes": 85835776,
+   "process_rss_bytes": [
+    83886080,
+    85835776,
+    84590592,
+    83968000,
+    84574208
+   ],
+   "checksum_ok": true,
+   "checksum": "355776"
+  },
+  {
+   "program": "deltablue",
+   "variant": "sakura",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 5000,
+   "samples_ms": [
+    450.233917,
+    677.096125,
+    525.6577080000002,
+    792.6719999999996,
+    653.203458,
+    1996.2879160000002,
+    2420.6587499999996,
+    2598.97675,
+    2421.909083999999,
+    423.03929099999993,
+    404.558125,
+    393.9716669999998,
+    923.0664590000001,
+    484.7198330000001,
+    403.07387500000004,
+    423.96570900000006,
+    384.95329200000015,
+    399.09570900000017,
+    413.68608399999994,
+    399.3734999999999,
+    399.978666,
+    388.6315840000002,
+    382.62262499999997,
+    410.0626659999998,
+    384.6136660000002,
+    396.439625,
+    392.6590000000001,
+    390.65675,
+    380.57216700000004,
+    412.015666,
+    415.41095800000016,
+    432.1646660000001,
+    374.896792,
+    1249.2991250000005,
+    433.7565420000001,
+    408.39958300000035,
+    760.7661250000001,
+    414.95795899999985,
+    413.56666700000005,
+    405.0334590000002,
+    414.18837500000063,
+    398.6130000000003,
+    433.0663340000001,
+    401.86733300000014,
+    407.60641699999996
+   ],
+   "median_ms": 412.015666,
+   "process_medians_ms": [
+    792.6719999999996,
+    404.558125,
+    396.439625,
+    412.015666,
+    413.56666700000005
+   ],
+   "rss_bytes": 155746304,
+   "process_rss_bytes": [
+    140476416,
+    138723328,
+    139214848,
+    136560640,
+    155746304
+   ],
+   "checksum_ok": true,
+   "checksum": "139986176"
+  },
+  {
+   "program": "deltablue",
+   "variant": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 5000,
+   "samples_ms": [
+    39.384603999999996,
+    41.94591650000001,
+    33.04641650000002,
+    43.24187499999999,
+    11.87243749999999,
+    56.75872900000002,
+    40.32722899999999,
+    16.104708000000016,
+    47.80881249999993,
+    5.705822999999995,
+    5.790999999999997,
+    5.2979687499999955,
+    4.8345105000000075,
+    5.614541750000001,
+    5.277010250000004,
+    5.028823000000003,
+    5.510260499999987,
+    5.633364499999999,
+    5.596140624999997,
+    5.439760374999999,
+    5.376963499999995,
+    5.486885500000007,
+    5.344281250000009,
+    5.478562499999995,
+    5.613291625000002,
+    5.573645874999997,
+    5.598807374999993,
+    6.130718750000007,
+    10.040140625,
+    18.537625,
+    24.90569275,
+    9.224078124999991,
+    13.874552124999994,
+    5.634484374999985,
+    5.160916624999999,
+    5.217130125000011,
+    5.439895750000005,
+    5.276885499999992,
+    5.766624999999991,
+    5.67696875,
+    5.4517397500000015,
+    5.449229250000002,
+    5.578937499999995,
+    5.4359375000000085,
+    5.594437499999998
+   ],
+   "median_ms": 5.510260499999987,
+   "process_medians_ms": [
+    40.32722899999999,
+    5.510260499999987,
+    5.486885500000007,
+    9.224078124999991,
+    5.4517397500000015
+   ],
+   "rss_bytes": 99434496,
+   "process_rss_bytes": [
+    83492864,
+    99434496,
+    98009088,
+    99106816,
+    91439104
+   ],
+   "checksum_ok": true,
+   "checksum": "139986176"
+  },
+  {
+   "program": "deltablue",
+   "variant": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "samples_ms": [
+    7.496208249999995,
+    7.568729250000004,
+    7.405999999999992,
+    7.570770749999994,
+    7.534031249999998,
+    7.5547499999999985,
+    7.654896000000008,
+    7.569031249999995,
+    7.561875000000015,
+    7.500854249999989,
+    7.5270207500000055,
+    7.574687499999996,
+    7.450260499999999,
+    7.450010500000005,
+    7.345270749999997,
+    7.489895750000002,
+    7.557760250000001,
+    7.4159375000000125,
+    7.41613550000001,
+    7.520010499999998,
+    7.6621562500000095,
+    7.666864750000002,
+    13.641927249999995,
+    18.999104250000002,
+    9.494249999999994,
+    13.163802000000004,
+    9.856395750000019,
+    7.509958499999996,
+    7.4266875,
+    7.463999999999999,
+    7.293771000000007,
+    7.541125000000008,
+    7.479354000000001,
+    7.464583500000003,
+    7.429135500000001,
+    7.651416499999982,
+    7.629874999999998,
+    7.636937500000002,
+    7.562635499999999,
+    7.466666500000002,
+    7.470364750000002,
+    7.6493124999999935,
+    7.616104000000007,
+    7.485676999999981,
+    7.613791499999991
+   ],
+   "median_ms": 7.561875000000015,
+   "process_medians_ms": [
+    7.561875000000015,
+    7.489895750000002,
+    9.494249999999994,
+    7.464583500000003,
+    7.613791499999991
+   ],
+   "rss_bytes": 137740288,
+   "process_rss_bytes": [
+    134774784,
+    137740288,
+    136560640,
+    136740864,
+    136658944
+   ],
+   "checksum_ok": true,
+   "checksum": "529966176"
+  }
+ ]
+}

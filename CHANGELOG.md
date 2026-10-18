@@ -145,6 +145,11 @@ published yet.
   M5 planning opens in `docs/plans/m5-native.md`, and `docs/plans/road-to-1.0.md` is a provisional
   outline.
 
+- `==` and `!=` on an enumeration whose constructors have no fields (`type Dir = North | South`),
+  or against a field-less constructor (`shape == Empty`, `o == None`), compare constructor tags
+  instead of walking the values, on JS and WASM; results, traces and defects are unchanged and
+  `--dump core` shows the comparison as `tag_eq` (design §17.183, WS-P11a).
+
 ### Fixed
 
 - A long flat `match` no longer overflows the compiler's stack (design §17.193): a 3,000-arm
