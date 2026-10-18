@@ -156,6 +156,7 @@ const OPT = (x) => ["A", "std::option::Option", [x]];
 const DECODE_ERROR = ["A", "std::json::DecodeError", []];
 const JSON_VALUE = ["A", "std::json::Json", []];
 const DIR_SCHEMA = ["X", "std::fs::Dir"];
+const SQL_ERROR = ["A", "std::sql::SqlError", []];
 /** A JS continuation context for host functions written in CPS: a `fail` lands in `fail`. */
 const cpsContext = () => ({ h: null, c: { j: (e) => ({ fail: e }), m: 0 }, t: { fins: [] } });
 /** Run a CPS host function's bounces to its answer. */
@@ -211,6 +212,8 @@ export class Host {
     this.exports = null;
     // Requests in flight (ABI §8.5): request id → how to abort the host operation.
     this.inflight = new Map();
+    // `Sql.memory()` connections by id (JS `sqlConnection`).
+    this.sql = [];
     // Handle tables (ABI §8.4): `${kind}:${slot}` → { generation, object }.
     this.handles = new Map();
     this.nextSlot = 1;
@@ -300,6 +303,22 @@ export class Host {
         random_uuid: () => this.copyOut(new TextEncoder().encode(rt.random_uuid())),
         log_write: (ptr, len) => rt.log_write(this.string(ptr, len)),
         file_close: (id) => rt.file_close(Number(id)),
+        sql_open_memory: () => {
+          this.sql.push(rt.sqlConnection(() => new (proc.getBuiltinModule("node:sqlite").DatabaseSync)(":memory:")));
+          return BigInt(this.sql.length - 1);
+        },
+        sql_query: (inst, ptr, len) => {
+          const [q, schema] = this.decode(new Reader(this.copyIn(ptr, len)));
+          const s = JSON.parse(schema);
+          return this.answer(this.sql[Number(inst)].query(q, s, null), ["L", s], SQL_ERROR);
+        },
+        sql_execute: (inst, ptr, len) => {
+          const [q] = this.decode(new Reader(this.copyIn(ptr, len)));
+          return this.answer(this.sql[Number(inst)].execute(q, null), "I", SQL_ERROR);
+        },
+        sql_begin: (inst) => this.answer(this.sql[Number(inst)].begin(null), "I", SQL_ERROR),
+        sql_release: (inst, token) => this.sql[Number(inst)].release(Number(token)),
+        sql_rollback: (inst, token) => this.sql[Number(inst)].rollback(Number(token)),
         trace_enabled: () => (this.traceFd === null ? 0 : 1),
         trace_write: (ptr, len) => {
           rt.flushOut();
@@ -318,6 +337,19 @@ export class Host {
     const p = this.exports.alloc_bytes(bytes.length);
     if (p !== 0) this.bytes().set(bytes, p + 12);
     return p;
+  }
+
+  /** `{ ok }` or `{ fail }` as a status-prefixed `sakura-vt1` answer (as `hosted`). */
+  answer(r, ok, err) {
+    const w = new Writer();
+    if ("fail" in r) {
+      w.u8(1);
+      this.encode(w, r.fail, err);
+    } else {
+      w.u8(0);
+      this.encode(w, r.ok, ok);
+    }
+    return this.copyOut(w.done());
   }
 
   /** `v` of schema `s` as a guest `Bytes` holding its `sakura-vt1` value. */

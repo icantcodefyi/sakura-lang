@@ -3458,52 +3458,72 @@ function rowOf(row, s) {
 }
 
 /** A `Sql` handler over `open()`, which returns a `DatabaseSync` (called on first use). */
-function sqlHandler(open) {
+/**
+ * A database connection opened on first use (`open(ctx)`), with the operations of `std::sql::Sql`
+ * in direct style: `query`/`execute` return `{ ok }` or `{ fail: SqlError }`; `begin()` opens a
+ * savepoint and returns its token, which `release` or `rollback` ends exactly once (a second end
+ * of the same token does nothing). The JS handler and the WASM host both run on it.
+ */
+export function sqlConnection(open) {
   let db = null;
   let depth = 0;
+  let next = 1;
+  const live = new Map();
   const err = (e) => new (std("std::sql::SqlError"))(e instanceof DecodeFailure ? `column ${e.path}: ${e.message}` : String(e.message ?? e));
-  const run = (ctx, k, f) => {
+  const run = (ctx, f) => {
     try {
       db ??= open(ctx);
-      return ret(k, f(db));
+      return { ok: f(db) };
     } catch (e) {
       if (e instanceof Defect || e instanceof Exit || e === CANCEL) throw e;
-      return fail(ctx, err(e));
+      return { fail: err(e) };
     }
   };
   const params = (q) => items(q.params).map(sqlValue);
-  const query = (_i, q, schema, ctx, k) =>
-    run(ctx, k, (d) => list(d.prepare(q.text).all(...params(q)).map((row) => rowOf(row, schema))));
-  const execute = (_i, q, ctx, k) => run(ctx, k, (d) => Number(d.prepare(q.text).run(...params(q)).changes));
+  const end = (token, sql) => {
+    const name = live.get(token);
+    if (name === undefined) return;
+    live.delete(token);
+    depth--;
+    db.exec(sql(name));
+  };
+  return {
+    query: (q, schema, ctx) => run(ctx, (d) => list(d.prepare(q.text).all(...params(q)).map((row) => rowOf(row, schema)))),
+    execute: (q, ctx) => run(ctx, (d) => Number(d.prepare(q.text).run(...params(q)).changes)),
+    begin: (ctx) =>
+      run(ctx, (d) => {
+        const name = `sakura_tx${depth}`;
+        d.exec(`SAVEPOINT ${name}`);
+        depth++;
+        const token = next++;
+        live.set(token, name);
+        return token;
+      }),
+    release: (token) => end(token, (name) => `RELEASE ${name}`),
+    rollback: (token) => end(token, (name) => `ROLLBACK TO ${name}; RELEASE ${name}`),
+  };
+}
+
+function sqlHandler(open) {
+  const c = sqlConnection(open);
+  const answer = (r, ctx, k) => ("fail" in r ? fail(ctx, r.fail) : ret(k, r.ok));
+  const query = (_i, q, schema, ctx, k) => answer(c.query(q, schema, ctx), ctx, k);
+  const execute = (_i, q, ctx, k) => answer(c.execute(q, ctx), ctx, k);
   const transaction = (_i, body, ctx, k) => {
     // The body runs under the performer's handlers (it performs `Sql` itself).
     const pc = { h: ctx.p ?? ctx.h, c: ctx.c, t: ctx.t };
-    let name;
-    try {
-      db ??= open(ctx);
-      name = `sakura_tx${depth}`;
-      db.exec(`SAVEPOINT ${name}`);
-      depth++;
-    } catch (e) {
-      if (e instanceof Defect || e instanceof Exit || e === CANCEL) throw e;
-      return fail(ctx, err(e));
-    }
-    let live = true;
-    const end = (sql) => {
-      if (!live) return;
-      live = false;
-      depth--;
-      db.exec(sql);
-    };
-    const rollback = () => end(`ROLLBACK TO ${name}; RELEASE ${name}`);
-    const run = (c, kk) =>
+    const begun = c.begin(ctx);
+    if ("fail" in begun) return fail(ctx, begun.fail);
+    const token = begun.ok;
+    const rollback = () => c.rollback(token);
+    const run = (cc, kk) =>
       body(
-        catcher(c, (e) => {
+        catcher(cc, (e) => {
           rollback();
           return fail(ctx, e);
         }),
         (v) => {
-          end(`RELEASE ${name}`);
+          c.release(token);
           return ret(kk, v);
         },
       );

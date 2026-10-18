@@ -112,6 +112,7 @@ const HOST_HANDLERS: &[(&str, &str, &str)] = &[
     ("random_host", "std::random::Random", "random"),
     ("log_stderr", "std::log::Log", "log_stderr"),
     ("log_json", "std::log::Log", "log_json"),
+    ("sql_memory", "std::sql::Sql", "sql"),
 ];
 
 /// Builtins the Node host implements by delegating to the JS runtime (`sakura_wasm_host.js`
@@ -243,13 +244,18 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
             owns: false,
         },
     ];
+    let int_pair = [stub_captures[1], stub_captures[1]];
     let natives = natives(&layout);
     let native_codes: Vec<sakura_lir::layout::NativeCode<'_>> = natives
         .iter()
         .map(|n| {
             let caps: &[Slot] = match n.as_str() {
                 "rt_code_callback_stub" => &stub_captures,
-                "rt_code_file_close" => &stub_captures[1..],
+                "rt_code_file_close"
+                | "rt_code_sql_query"
+                | "rt_code_sql_execute"
+                | "rt_code_sql_transaction" => &stub_captures[1..],
+                "rt_code_sql_rollback" => &int_pair,
                 _ => &[],
             };
             (n.as_str(), &[][..], caps)
@@ -382,6 +388,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     }
     s.i32_const(n as i32)
         .i32_const(code_of("rt_code_file_close") as i32)
+        .i32_const(code_of("rt_code_sql_rollback") as i32)
         .call(rtf("rt_init")?);
     s.if_(BlockType::Empty).i32_const(0).return_().end();
     s.i32_const(1).global_set(inited).i32_const(1).end();

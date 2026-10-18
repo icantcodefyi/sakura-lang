@@ -1153,7 +1153,12 @@ impl Gen<'_, '_> {
                 s.i32_const(effect as i32);
                 self.static_addr(s, codes);
                 s.i32_const(n as i32);
-                self.call_rt(s, "rt_b_host_handler")?;
+                let build = if name == "sql_memory" {
+                    "rt_b_sql_memory"
+                } else {
+                    "rt_b_host_handler"
+                };
+                self.call_rt(s, build)?;
                 s.local_set(d);
                 return self.check_zero(s, d, live);
             }

@@ -56,6 +56,12 @@ pub const IMPORTS: &[&str] = &[
     "test_fixtures",
     "test_snapshot",
     "file_close",
+    "sql_open_memory",
+    "sql_query",
+    "sql_execute",
+    "sql_begin",
+    "sql_release",
+    "sql_rollback",
 ];
 
 /// The gate for `host`: a [`Host::Wasi`] command may also import `fd_write` and `proc_exit`
