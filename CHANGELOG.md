@@ -55,6 +55,15 @@ published yet.
 
 ### Changed
 
+- Design round 13 (§17.169–§17.178) defines M5's offset32 native ABI, native host coverage,
+  single-thread execution and cancellation, proven-copy warnings, four memory-checking
+  lanes, dependency pins and staged platform matrix; regions and representation changes
+  remain deferred pending measurements.
+- N0a adds opt-in native codegen/host skeletons, exact toolchain dependency pins and a
+  platform-A CI job that links and executes a constant object and a test-only runtime
+  staticlib wrapper. Real runtime staticlib linkage and the ABI export move to N1a;
+  native compilation and execution of Sakura programs remain unimplemented.
+
 - Design round 12 (§17.160–§17.168): design §12.1 now lists only the `sakura build` flags that
   exist (`--release` is removed; every build keeps its checks) and marks `sakura mcp serve --tools`
   as planned; `sakura verify --json` will report `summary.reused` under schema 1.1 and reuse
