@@ -8,7 +8,17 @@ const config = {
   turbopack: {
     rules: {
       "*.css": {
-        loaders: ["@tailwindcss/turbopack"],
+        loaders: [
+          {
+            loader: "@tailwindcss/turbopack",
+            options: {
+              // Lightning CSS falsely warns on Fumadocs' valid ::highlight(fd-search) rules:
+              // https://github.com/parcel-bundler/lightningcss/issues/1300
+              // Let Turbopack minify the CSS instead of running Tailwind's extra optimizer.
+              optimize: false,
+            },
+          },
+        ],
         as: "*.css",
       },
     },

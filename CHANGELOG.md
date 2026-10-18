@@ -9,6 +9,9 @@ published yet.
 
 ### Fixed
 
+- Website production builds preserve Fumadocs search highlights without Lightning CSS's
+  false positive `::highlight` warnings; Turbopack still minifies the emitted CSS.
+
 - Native benchmark builds include the OCaml shared modules and Unix library and
   resolve Koka shared imports from the entry directory, matching the independent
   verifier's C build configuration without changing port algorithms or toolchain pins.
