@@ -7,6 +7,16 @@ on:
       - "bench/**"
       - ".github/workflows/bench.yml"
   workflow_dispatch:
+    inputs:
+      mode:
+        description: Full nightly suite or inexpensive unchanged-commit noise sample
+        type: choice
+        options: [nightly, noise]
+        default: nightly
+      repeats:
+        description: Independent quick noise runs per runner/engine (2–10)
+        type: number
+        default: 5
   schedule:
     - cron: "17 2 * * *"
 
@@ -164,7 +174,7 @@ jobs:
           if-no-files-found: warn
 
   nightly:
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode != 'noise')
     runs-on: macos-latest
     timeout-minutes: 180
     defaults:
@@ -237,5 +247,94 @@ jobs:
         if: always()
         with:
           name: bench-nightly-macos
+          path: bench-results/
+          if-no-files-found: warn
+
+  noise:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'noise'
+    name: Noise (${{ matrix.os }}, ${{ matrix.engine }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            engine: node
+          - os: macos-latest
+            engine: node
+          - os: macos-latest
+            engine: bun
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - name: Validate repeat count and read pins
+        id: pins
+        env:
+          NOISE_REPEATS: ${{ inputs.repeats }}
+        run: |
+          python3 - <<'PY'
+          import os, tomllib
+          try:
+              repeats = int(os.environ["NOISE_REPEATS"])
+          except ValueError:
+              raise SystemExit("repeats must be an integer from 2 to 10")
+          if not 2 <= repeats <= 10:
+              raise SystemExit("repeats must be an integer from 2 to 10")
+          with open("bench/toolchains.toml", "rb") as source:
+              pins = tomllib.load(source)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              for name in ("node", "bun"):
+                  print(f"{name}={pins[name]}", file=output)
+          PY
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ steps.pins.outputs.node }}
+      - uses: oven-sh/setup-bun@v2
+        if: matrix.engine == 'bun'
+        with:
+          bun-version: ${{ steps.pins.outputs.bun }}
+      - name: Install pinned Rust toolchain
+        working-directory: compiler
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: compiler
+      - name: Repeat quick matched JS subset with load snapshots
+        env:
+          NOISE_REPEATS: ${{ inputs.repeats }}
+          BENCH_ENGINE: ${{ matrix.engine }}
+        run: |
+          python3 - <<'PY'
+          import os, pathlib, subprocess, sys
+          output = pathlib.Path("bench-results")
+          output.mkdir(exist_ok=True)
+          for index in range(1, int(os.environ["NOISE_REPEATS"]) + 1):
+              name = f"noise-{index}"
+              command = [sys.executable, "research/10-evidence/record_load.py",
+                         "--log", str(output / f"{name}-load.jsonl"), "--",
+                         "bench/bench", "run", "--suite", "js",
+                         "--engine", os.environ["BENCH_ENGINE"], "--lane", "matched",
+                         "--sizes", "quick", "--filter", "[fp]*",
+                         "--seed", str(20261017 + index),
+                         "--json", str(output / f"{name}.json")]
+              with (output / f"{name}.log").open("w") as log:
+                  result = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT)
+              print(f"{name}: exit {result.returncode}", flush=True)
+              if result.returncode:
+                  print((output / f"{name}.log").read_text()[-5000:])
+                  raise SystemExit(result.returncode)
+          PY
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: bench-noise-${{ matrix.os }}-${{ matrix.engine }}
           path: bench-results/
           if-no-files-found: warn
