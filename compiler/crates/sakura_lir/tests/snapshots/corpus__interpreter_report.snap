@@ -30,6 +30,7 @@ semantics/if_else: ok, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/imports: ok, 23 allocated, 8 dup, 31 drop, peak 7, live 0/0
 semantics/let_polymorphism: ok, 16 allocated, 2 dup, 18 drop, peak 6, live 0/0
 semantics/list_patterns: ok, 32 allocated, 26 dup, 58 drop, peak 7, live 0/0
+semantics/list_set: D020, 7384 allocated, 3343692 dup, 3351076 drop, peak 2673, live 0/0
 semantics/literal_refinement_checked_at_startup: D010, 3 allocated, 0 dup, 3 drop, peak 3, live 0/0
 semantics/literal_refinement_decided: ok, 8 allocated, 0 dup, 8 drop, peak 4, live 0/0
 semantics/literal_refinement_passes_once: ok, 12 allocated, 0 dup, 12 drop, peak 3, live 0/0

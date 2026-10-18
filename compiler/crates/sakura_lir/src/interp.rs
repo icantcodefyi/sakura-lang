@@ -1883,6 +1883,19 @@ impl<'m> Vm<'m> {
                 ys.push(x);
                 self.new_list(ys)?
             }
+            ("list_set", [W(xs), I(i), x]) => {
+                // `List.set`'s `requires` has checked the index; out of range is defence.
+                let mut ys = self.list(*xs)?.to_vec();
+                let Some(i) = index(*i, ys.len()) else {
+                    return self.defect(
+                        "D020",
+                        "precondition of List.set violated: 0 <= i && i < len(xs)",
+                    );
+                };
+                ys[i] = self.box_val(*x)?;
+                self.dup_all(&ys)?;
+                self.new_list(ys)?
+            }
             ("list_slice", [W(xs), I(a), I(b)]) => {
                 let xs = self.list(*xs)?;
                 let n = xs.len() as i64;

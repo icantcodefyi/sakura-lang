@@ -30,6 +30,7 @@ semantics/if_else: 3 funcs, 21 blocks, 0 dup, 6 drop, valid
 semantics/imports: 9 funcs, 22 blocks, 0 dup, 20 drop, valid
 semantics/let_polymorphism: 4 funcs, 10 blocks, 2 dup, 19 drop, valid
 semantics/list_patterns: 4 funcs, 30 blocks, 8 dup, 31 drop, valid
+semantics/list_set: 7 funcs, 35 blocks, 15 dup, 58 drop, valid
 semantics/literal_refinement_checked_at_startup: 5 funcs, 12 blocks, 1 dup, 4 drop, valid
 semantics/literal_refinement_decided: 3 funcs, 6 blocks, 0 dup, 11 drop, valid
 semantics/literal_refinement_passes_once: 5 funcs, 16 blocks, 1 dup, 3 drop, valid

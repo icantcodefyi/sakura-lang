@@ -51,6 +51,7 @@ list_at: (ptr, i64) -> word
 list_get: (ptr, i64) -> ptr
 list_len: (ptr) -> i64
 list_push: (ptr, word) -> ptr
+list_set: (ptr, i64, word) -> ptr
 list_slice: (ptr, i64, i64) -> ptr
 llm_anthropic: (ptr, ptr) -> ptr
 log_json: () -> ptr

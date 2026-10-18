@@ -1,0 +1,5 @@
+ending: D020
+--- stdout
+Some(0) Some(1) Some(6) Some(3996) Some(1999) 2000
+Some(3) Some(1998) 1999000
+Some(-1) Some(1999) [8]
