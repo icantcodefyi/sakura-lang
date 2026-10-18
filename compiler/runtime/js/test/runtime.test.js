@@ -715,3 +715,31 @@ test("a handler holding a callback bound to itself is released after the task", 
   gc();
   assert.equal(instance.deref(), undefined);
 });
+
+test("sakura-gen-v1: the SplitMix64 reference vector and its derived draws (ABI §11)", () => {
+  const r = new rt.SplitMix(0);
+  const got = Array.from({ length: 5 }, () => r.next().toString(16).padStart(16, "0"));
+  assert.deepEqual(got, [
+    "e220a8397b1dcdaf",
+    "6e789e6aa1b965f4",
+    "06c45d188009454f",
+    "f88bb8a8724c81ec",
+    "1b39896a51a8749b",
+  ]);
+  // `below` stays in range and covers it; `float` is in [0, 1); one draw each.
+  const s = new rt.SplitMix(7);
+  const seen = new Set();
+  for (let i = 0; i < 200; i++) {
+    const x = s.below(6);
+    assert.ok(x >= 0 && x < 6);
+    seen.add(x);
+    const f = s.float();
+    assert.ok(f >= 0 && f < 1);
+  }
+  assert.equal(seen.size, 6);
+  assert.equal(new rt.SplitMix(1).below(1), 0);
+  // The streams are a function of their domain only.
+  assert.equal(rt.caseStream(0, 3, 1).next(), rt.caseStream(0, 3, 1).next());
+  assert.notEqual(rt.caseStream(0, 3, 1).next(), rt.caseStream(0, 3, 2).next());
+  assert.notEqual(rt.caseStream(0, 3, 1).next(), rt.taskStream(0).next());
+});

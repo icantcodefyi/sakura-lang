@@ -1622,11 +1622,66 @@ const RUNS = 100;
 const MAX_SHRINK_TRIES = 2000;
 const DISCARD = Object.freeze({ discard: true });
 
-function mulberry(state) {
-  let t = (state + 0x6d2b79f5) | 0;
-  t = Math.imul(t ^ (t >>> 15), 1 | t);
-  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+/**
+ * `sakura-gen-v1` (runtime/rt/ABI.md §11, design §17.96): the generation protocol every backend
+ * shares, so `--seed N` means the same inputs and the same fiber order everywhere. Raw bits are
+ * SplitMix64; `below(n)` is unbiased rejection sampling on the top `ceil(log2 n)` bits, `float()`
+ * the upper 53 bits over 2^53, `bool()` the top bit. A property case's stream for run `run` and
+ * parameter `param` starts at `mix(mix(base, fnv64("case") ^ run), param)`, `Task.deterministic`'s
+ * at `mix(base, fnv64("task"))`, where `base = splitmix(seed)` and `mix(s, x)` is one step from
+ * `s ^ x`.
+ */
+export const GEN_PROTOCOL = "sakura-gen-v1";
+const U64 = (x) => BigInt.asUintN(64, x);
+
+export class SplitMix {
+  constructor(state) {
+    this.s = U64(BigInt(state));
+  }
+  next() {
+    this.s = U64(this.s + 0x9e3779b97f4a7c15n);
+    let z = this.s;
+    z = U64((z ^ (z >> 30n)) * 0xbf58476d1ce4e5b9n);
+    z = U64((z ^ (z >> 27n)) * 0x94d049bb133111ebn);
+    return z ^ (z >> 31n);
+  }
+  /** Uniform in [0, n) for 1 <= n <= 2^63, as a Number. */
+  below(n) {
+    const big = BigInt(n);
+    const k = BigInt((big - 1n).toString(2).length) - (big === 1n ? 1n : 0n);
+    for (;;) {
+      const x = this.next() >> (64n - k);
+      if (x < big) return Number(x);
+    }
+  }
+  float() {
+    return Number(this.next() >> 11n) / 2 ** 53;
+  }
+  bool() {
+    return this.next() >> 63n === 1n;
+  }
+}
+
+/** One SplitMix64 output from state `x`. */
+function splitmix(x) {
+  return new SplitMix(x).next();
+}
+function mix(s, x) {
+  return splitmix(U64(s) ^ U64(x));
+}
+/** FNV-1a 64 of an ASCII label (domain separation). */
+function fnv64(label) {
+  let h = 0xcbf29ce484222325n;
+  for (let i = 0; i < label.length; i++) h = U64((h ^ BigInt(label.charCodeAt(i))) * 0x100000001b3n);
+  return h;
+}
+/** The stream of property case `run`, parameter `param`, under `--seed seed`. */
+export function caseStream(seed, run, param) {
+  return new SplitMix(mix(mix(splitmix(BigInt.asUintN(64, BigInt(seed))), fnv64("case") ^ BigInt(run)), BigInt(param)));
+}
+/** `Task.deterministic(seed)`'s stream. */
+export function taskStream(seed) {
+  return new SplitMix(mix(splitmix(BigInt.asUintN(64, BigInt(seed))), fnv64("task")));
 }
 
 /** Substitute type parameters (`["V", i]`) of schema `s` with `env`. */
@@ -1658,9 +1713,9 @@ const CHARS = [..."abcxyz AZ09_-é€😀\n"];
  * type finds no satisfying value. `pool` holds the case's earlier Int, Float and String values;
  * a quarter of new ones repeat one, so `requires List.contains(xs, x)` is often satisfiable. */
 function arbitrary(s, seed, run, param, pool = new Map()) {
-  let state = Math.imul(seed ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(run + 1, 0xc2b2ae35) ^ param;
-  const next = () => mulberry((state = (state + 0x6d2b79f5) | 0));
-  const below = (n) => Math.floor(next() * n);
+  const r = caseStream(seed, run, param);
+  const next = () => r.float();
+  const below = (n) => r.below(n);
   const len = (size) => below(Math.min(size, 24) + 1);
   const gen = (s, size) => {
     if (s !== "I" && s !== "F" && s !== "S") return compound(s, size);
@@ -1673,7 +1728,7 @@ function arbitrary(s, seed, run, param, pool = new Map()) {
   };
   const compound = (s, size) => {
     if (s === "U") return undefined;
-    if (s === "B") return next() < 0.5;
+    if (s === "B") return r.bool();
     if (s === "I") return next() < 0.1 ? [0, 1, -1][below(3)] : below(20 * size + 1) - 10 * size;
     if (s === "F") return next() < 0.1 ? [0, -0.5, 1.5][below(3)] : (next() - 0.5) * 20 * size;
     if (s === "S") {
@@ -1901,7 +1956,7 @@ export function property_run(seed, schemas, names, kase, rec, fails, nops, regre
         const steps = `${shrunk} step${shrunk === 1 ? "" : "s"}`;
         const from = shrunk === 0 ? "" : ` (shrunk in ${steps} from ${shown(first)})`;
         save(best, why);
-        return report(`property falsified by ${shown(best)}: ${why}${from}${replayed}`);
+        return report(`property falsified by ${shown(best)}: ${why}${from}${replayed} (${GEN_PROTOCOL}, seed ${seed})`);
       }
       tries++;
       return exec(cands[j], (r) =>
@@ -1916,7 +1971,7 @@ export function property_run(seed, schemas, names, kase, rec, fails, nops, regre
     if (i >= RUNS) {
       // A property that barely ran is a false green (design §17.64).
       if (discards * 10 <= RUNS * 9) return ret(k, undefined);
-      return report(`property gave up: ${discards} of ${RUNS} inputs discarded by requires`);
+      return report(`property gave up: ${discards} of ${RUNS} inputs discarded by requires (${GEN_PROTOCOL}, seed ${seed})`);
     }
     let values;
     try {
@@ -2994,7 +3049,7 @@ function startOrder(n, rng) {
   const order = Array.from({ length: n }, (_, i) => i);
   if (rng !== null) {
     for (let i = n - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1));
+      const j = rng.below(i + 1);
       [order[i], order[j]] = [order[j], order[i]];
     }
   }
@@ -3082,9 +3137,7 @@ export function task_host() {
  * interleaves the same way.
  */
 export function task_deterministic(seed) {
-  let state = seed | 0;
-  const rng = () => mulberry((state = (state + 0x6d2b79f5) | 0));
-  return taskHandler(rng, (_i, _ctx, k) => ret(k, undefined));
+  return taskHandler(taskStream(seed), (_i, _ctx, k) => ret(k, undefined));
 }
 
 // ---------------------------------------------------------------------------------------------

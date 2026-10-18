@@ -781,7 +781,18 @@ export async function runTests(bytes, seed, filter, snapshotDir, update) {
     }
     if (status === "passed") passed++;
     else failed++;
-    emit({ kind: "test", name: t.name, module: t.module, status, seed, duration_ms, failures, output, defect });
+    emit({
+      kind: "test",
+      name: t.name,
+      module: t.module,
+      status,
+      seed,
+      generator: rt.GEN_PROTOCOL,
+      duration_ms,
+      failures,
+      output,
+      defect,
+    });
   }
   emit({ kind: "summary", passed, failed, skipped, total: tests.length, seed });
   return failed > 0 ? 3 : 0;

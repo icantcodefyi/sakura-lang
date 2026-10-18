@@ -109,7 +109,18 @@ for (const t of tests) {
   }
   if (status === "passed") passed++;
   else failed++;
-  emit({ kind: "test", name: t.name, module: t.module, status, seed, duration_ms, failures, output, defect });
+  emit({
+    kind: "test",
+    name: t.name,
+    module: t.module,
+    status,
+    seed,
+    generator: $rt.GEN_PROTOCOL,
+    duration_ms,
+    failures,
+    output,
+    defect,
+  });
 }
 emit({ kind: "summary", passed, failed, skipped, total: tests.length, seed });
 process.exitCode = failed > 0 ? 3 : 0;
