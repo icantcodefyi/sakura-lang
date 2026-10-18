@@ -98,6 +98,9 @@ published yet.
 
 ### Fixed
 
+- The agent skill entry point fits below the eval harness tool-output limit; refinement
+  and fake-clock examples remain in a linked reference and the generated bundle.
+
 - `--target wasm` defect records now match `--target js` in code, message and site (design
   §17.162): a contract defect says ``precondition `nonzero` of positive violated`` (not
   ``contract `nonzero` violated``) and carries the same `spans`, the blamed call first and the

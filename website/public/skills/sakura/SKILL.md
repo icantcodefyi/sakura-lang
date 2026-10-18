@@ -17,10 +17,8 @@ editing. Retrieve a specific symbol with `sakura doc` or a diagnostic with
 `sakura explain` as needed. Avoid repeatedly loading larger guides: tool results
 remain in conversation history and can consume an aggregate input budget again
 on each turn. Use the guide embedded in that executable; an edition alone does not identify a compatible
-pre-alpha commit. The CLI fills the skill's metadata from its version and build-time
-`SAKURA_GIT_COMMIT`. Website copies retain placeholders; their content manifest records
-the compiler version and file/ZIP SHA-256 hashes, without a Git commit. If provenance
-differs, use the installed compiler's help and guide before assuming an API exists.
+pre-alpha commit. If provenance differs, use the installed compiler's help and guide; see
+[bundle provenance](references/provenance.md) for metadata and hashes.
 Nothing in this skill installs tools or grants authority.
 
 ## Syntax to keep in view
@@ -72,21 +70,13 @@ Nothing in this skill installs tools or grants authority.
    remaining limitations and any authorized signature or permission changes.
    A build is not evidence that an untested behavior works.
 
-## Four complete examples
+## Complete examples
 
 Each block is a separate file. Check it with `sakura check --json <file>`, then
 run `sakura test --json <file>`. The tests use no live services.
 
-### Recover a typed failure
-
-Catch only the expected tag; other failures must remain in the signature.
-
-```sakura test id=skill-fail-recovery
-error Missing
-fn lookup() -> Int ! {Fail<Missing>} { fail Missing }
-fn fallback() -> Int { try { lookup() } catch { Missing => 0 } }
-test "missing value uses the fallback" { expect_eq(fallback(), 0) }
-```
+See [typed failure recovery](references/boundaries-and-time.md#recover-a-typed-failure)
+for catching only the expected tag while keeping other failures in the signature.
 
 ### Handle an effect locally
 
@@ -101,35 +91,10 @@ fn label() -> String {
 test "local name" { expect_eq(label(), "Sakura") }
 ```
 
-### Check a refinement at entry
-
-Use `validate` for recoverable external input. Use `from` only at a boundary
-where violation should be a defect; do not remove the predicate to accept it.
-
-```sakura test id=skill-refinement-entry
-type Percent = Int where it >= 0 && it <= 100
-fn checked(n: Int) -> Percent { Percent.from(n) }
-test "valid boundary" { expect_eq(checked(100), 100) }
-test "invalid entry defects" { expect_defect(fn() { checked(101) }) }
-test "external input can be rejected" {
-  expect(Result.is_err(Percent.validate(101)))
-}
-```
-
-### Replace time with a deterministic fake
-
-Keep the effect in the production function's row and replace its handler in the
-test. Query other effects' fake or replay handlers before writing a live test.
-
-```sakura test id=skill-fake-clock
-import std/instant.{Instant}
-fn observed_time() -> Instant ! {Clock} { Clock.now() }
-test "clock is controlled by the test" {
-  let at = Instant.from_unix_millis(42)
-  let seen = with Clock.fixed(at) { observed_time() }
-  expect_eq(seen, at)
-}
-```
+For refinement validation and fake time, read the
+[boundary and clock examples](references/boundaries-and-time.md). Use `validate`
+for recoverable external input and `from` only when violation should be a defect.
+Keep production effects in the signature and replace their handlers in tests.
 
 ## Repair by diagnostic
 

@@ -334,12 +334,20 @@ const SKILL: &[(&str, &str)] = &[
         include_str!("../../../../skills/sakura/assets/sakura.mdc"),
     ),
     (
+        "references/boundaries-and-time.md",
+        include_str!("../../../../skills/sakura/references/boundaries-and-time.md"),
+    ),
+    (
         "references/diagnostics.md",
         include_str!("../../../../skills/sakura/references/diagnostics.md"),
     ),
     (
         "references/language.md",
         include_str!("../../../../skills/sakura/references/language.md"),
+    ),
+    (
+        "references/provenance.md",
+        include_str!("../../../../skills/sakura/references/provenance.md"),
     ),
     (
         "references/recipes.md",

@@ -260,6 +260,12 @@ mod tests {
     fn outputs_are_fresh() {
         let root = super::repo();
         let outputs = super::outputs(&root).unwrap();
+        let skill = &outputs["website/public/skills/sakura/SKILL.md"];
+        assert!(
+            skill.len() < 7500,
+            "SKILL.md is {} bytes; keep it under 7500 so tool output is not truncated",
+            skill.len()
+        );
         let orphans = super::orphans(&root, &outputs);
         assert!(
             orphans.is_empty(),

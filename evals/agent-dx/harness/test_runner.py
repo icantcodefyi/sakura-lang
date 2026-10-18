@@ -158,8 +158,8 @@ class Runner(Base):
         for document, uid in zip(documents, 'abcde'):
             self.assertEqual(document['bytes'], len(tools[uid].encode()))
             self.assertEqual(document['approx_tokens'], -(-document['bytes'] // 4))
-        # SKILL.md is longer than the harness's 8,000-character tool-output cut.
-        self.assertEqual([d['truncated'] for d in documents], [True, False, False, False, False])
+        # The entry point must fit below the harness's 8,000-character tool-output cut.
+        self.assertEqual([d['truncated'] for d in documents], [False, False, False, False, False])
         diagnostics = metrics['diagnostics']
         self.assertEqual(diagnostics['reported'], ['V1002', 'V2001'])
         self.assertIn('V3001', diagnostics['quoted'])
