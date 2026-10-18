@@ -942,7 +942,7 @@ pub extern "C" fn rt_code_clock_monotonic(_env: u32, frame: u32) -> u32 {
 const SLEEP: u32 = 1;
 
 /// `Clock.sleep(d)`: suspends on a host timer (`clock_sleep_ms(request, ms)`), as JS
-/// `clock_sleep_ms`; a non-positive duration returns at once.
+/// `clock_sleep_ms`; a non-positive duration returns at once, a full request table is `D091`.
 #[unsafe(no_mangle)]
 pub extern "C" fn rt_code_clock_sleep(_env: u32, frame: u32) -> u32 {
     let rt = rt();
@@ -959,15 +959,13 @@ pub extern "C" fn rt_code_clock_sleep(_env: u32, frame: u32) -> u32 {
     if ms <= 0 {
         return ret(rt, UNIT as u64);
     }
-    match rt.request(SLEEP) {
-        Ok(Some(req)) => {
+    match rt.request_or_defect(SLEEP) {
+        Ok(req) => {
             // SAFETY: a plain import with scalar arguments; the host completes `req` later.
             unsafe { host::clock_sleep_ms(req, ms) };
             rt.set_block(frame, 1);
             step::SUSPEND
         }
-        // ponytail: past `SAKURA_MAX_REQUESTS` a sleep returns at once; JS has no limit here.
-        Ok(None) => ret(rt, UNIT as u64),
         Err(d) => rt.raise(d),
     }
 }
@@ -1680,11 +1678,7 @@ pub extern "C" fn rt_k_serve_listen(_env: u32, frame: u32) -> u32 {
     }
     let addr = rt.take_fslot(frame, 0) as u32;
     let listener = rt.current_frame();
-    let r = rt.request(SERVE).and_then(|id| {
-        let id = id.ok_or(Defect {
-            code: 90,
-            message: "too many pending operations",
-        })?;
+    let r = rt.request_or_defect(SERVE).and_then(|id| {
         with_args(rt, &[addr], |_, at, len| {
             // SAFETY: a plain import with a slice inside linear memory, copied in at once; the
             // host completes `id` when the server stops.

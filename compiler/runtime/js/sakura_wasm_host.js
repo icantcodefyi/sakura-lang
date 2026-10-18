@@ -55,6 +55,13 @@ const utf8 = new TextDecoder("utf-8", { fatal: true });
 /** A host-side fault the guest cannot cause in a checked program (`D090`, ABI §8.6). */
 export class HostFault extends Error {}
 
+/**
+ * `SAKURA_MAX_COPY_BYTES` (ABI §8.5, §10; default 256 MiB): the bytes one answer may copy into
+ * the guest, and the bytes of completions queued for it at once (security review W4).
+ */
+const MAX_COPY_BYTES = Number(proc?.env?.SAKURA_MAX_COPY_BYTES ?? 256 * 1024 * 1024);
+const TOO_LARGE = "response too large";
+
 // ---------------------------------------------------------------------------------------------
 // `sakura-vt1` values, in the tagged reading `sakura_rt` implements (runtime/rt/src/vt.rs): every
 // value carries its kind, records and variants their layout `type_id`. The host encodes a JS
@@ -333,8 +340,11 @@ export class Host {
     // The module's layout type ids by qualified name, and back (from `layout_table()`).
     this.typeIds = null;
     this.typeNames = null;
-    // Completions waiting for the guest to stop running: [request, status, payload bytes].
+    // Completions waiting for the guest to stop running: [request, status, payload bytes], and
+    // their bytes in all (`SAKURA_MAX_COPY_BYTES`).
     this.completed = [];
+    this.queued = 0;
+    this.maxCopy = MAX_COPY_BYTES;
     this.wake = null;
     this.traceFd = null;
     const path = proc?.env?.SAKURA_TRACE;
@@ -606,15 +616,20 @@ export class Host {
    * guest heap is exhausted.
    */
   copyOut(bytes) {
+    // Past the copy budget the answer is a `D091`, not a guest heap exhaustion (W4).
+    if (bytes.length > this.maxCopy) {
+      throw new rt.Defect("D091", `${TOO_LARGE}: ${bytes.length} bytes over SAKURA_MAX_COPY_BYTES`);
+    }
     const p = this.exports.alloc_bytes(bytes.length);
     if (p !== 0) this.bytes().set(bytes, p + 12);
     return p;
   }
 
   /**
-   * An `async` import: run the JS runtime's CPS builtin `f` on the arguments at `(ptr, len)`
-   * and complete `request` with its result (a status-0 answer of `schema`, or a defect) when
-   * it arrives; `abort` cancels it.
+   * An `async` import (`http_*`): run the JS runtime's CPS builtin `f` on the arguments at
+   * `(ptr, len)` and complete `request` with its result (a status-0 answer of `schema`, a
+   * `Result<_, String>`, or a defect) when it arrives; `abort` cancels it. A result past the
+   * copy budget is `Err("response too large")` (ABI §8.5, W4).
    */
   async(request, ptr, len, f, schema) {
     const args = this.decodeSecret(ptr, len);
@@ -622,6 +637,7 @@ export class Host {
       let bytes;
       try {
         bytes = this.answerBytes({ ok: v }, schema);
+        if (bytes.length + this.queued > this.maxCopy) bytes = this.answerBytes({ ok: rt.Err(TOO_LARGE) }, schema);
       } catch (e) {
         bytes = defectAnswer(e instanceof rt.Defect ? e : new rt.Defect("D090", String(e?.message ?? e)));
       }
@@ -640,7 +656,16 @@ export class Host {
 
   /** `{ ok }` or `{ fail }` as a status-prefixed `sakura-vt1` answer (as `hosted`). */
   answer(r, ok, err) {
-    return this.copyOut(this.answerBytes(r, ok, err));
+    return this.answerOut(this.answerBytes(r, ok, err));
+  }
+
+  /** A status-prefixed answer copied out; past the copy budget, its `D091` answer instead. */
+  answerOut(bytes) {
+    try {
+      return this.copyOut(bytes);
+    } catch (e) {
+      return this.copyOut(defectAnswer(e));
+    }
   }
 
   /** The bytes of `answer`, for a completion's payload (copied out when delivered). */
@@ -760,7 +785,7 @@ export class Host {
     } catch (e) {
       return this.copyOut(defectAnswer(e));
     }
-    return this.copyOut(w.done());
+    return this.answerOut(w.done());
   }
 
   /** Encode JS value `v` of schema `s` (type arguments `env`) into `w`. */
@@ -975,7 +1000,7 @@ export class Host {
     } catch (e) {
       return this.copyOut(defectAnswer(e));
     }
-    return this.copyOut(w.done());
+    return this.answerOut(w.done());
   }
 
   /**
@@ -985,6 +1010,7 @@ export class Host {
   complete(request, status, bytes) {
     if (!this.inflight.delete(request)) return;
     this.completed.push([request, status, bytes]);
+    this.queued += bytes?.length ?? 0;
     this.wake?.();
   }
 
@@ -998,6 +1024,7 @@ export class Host {
     for (const abort of this.inflight.values()) abort();
     this.inflight.clear();
     this.completed.length = 0;
+    this.queued = 0;
     this.handles.clear();
     this.sessions.clear();
     this.callbacks.clear();
@@ -1020,6 +1047,7 @@ export class Host {
   deliver() {
     const e = this.exports;
     for (const [request, status, bytes] of this.completed.splice(0)) {
+      this.queued -= bytes?.length ?? 0;
       const p = bytes === null ? 0 : this.copyOut(bytes);
       e.complete(request, status, p, bytes?.length ?? 0);
     }
@@ -1170,6 +1198,16 @@ export async function loadTypes() {
   if (fs.existsSync(path)) await import(url.href);
 }
 
+/**
+ * The outcome of a run an exception ended inside the guest: a trap is a runtime bug (ABI §8.6),
+ * reported as `D090` with what the engine says; a host defect where the import has no answer
+ * to carry it (the copy budget, `D091`) keeps its code.
+ */
+function aborted(e) {
+  if (e instanceof rt.Defect) return { kind: "defect", code: e.code, message: e.detail };
+  return { kind: "defect", code: "D090", message: `trap: ${e.message}` };
+}
+
 function writeErr(line) {
   rt.flushOut();
   proc.stderr.write(`${line}\n`);
@@ -1188,8 +1226,7 @@ export async function runMain(bytes, argv = []) {
       writeErr(`error[V8003]: ${e.message}`);
       return 2;
     }
-    // A trap: a runtime bug (ABI §8.6), reported as `D090` with what the engine says.
-    o = { kind: "defect", code: "D090", message: `trap: ${e.message}` };
+    o = aborted(e);
   }
   host.close();
   rt.flushOut();
@@ -1281,7 +1318,7 @@ export async function runTests(bytes, seed, filter, snapshotDir, update) {
     try {
       o = await host.runTask(t.code);
     } catch (e) {
-      o = { kind: "defect", code: "D090", message: `trap: ${e.message}` };
+      o = aborted(e);
     }
     rt.flushOut();
     const duration_ms = Math.round(performance.now() - start);

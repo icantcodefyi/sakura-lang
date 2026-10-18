@@ -1066,6 +1066,12 @@ fn request_limit_is_an_ordinary_error() {
         Ok(None),
         "the second request is refused, not a defect"
     );
+    // An operation with no ordinary error (`Clock.sleep`, `serve_listen`) gets `D091` (W4).
+    assert_eq!(
+        rt.request_or_defect(0),
+        Err(sakura_rt::exec::TOO_MANY_REQUESTS)
+    );
+    assert_eq!(sakura_rt::exec::TOO_MANY_REQUESTS.code, 91);
     rt.sched.current = 0;
     rt.cancel(a);
     rt.run(a, TABLE);

@@ -160,3 +160,42 @@ test("http_send is of kind secret: secret_headers reach fetch and the copied sli
   assert.ok(slices.length > 0 && slices.every((s) => s.every((b) => b === 0)), "the host slice is zeroed");
   h.close();
 });
+
+/** The guest bytes of a `Bytes` the stand-in `alloc_bytes` returned at `p` (`len` of them). */
+const outBytes = (h, p, len) => new Uint8Array(h.exports.memory.buffer).slice(p + 12, p + 12 + len);
+
+test("an http answer past the copy budget is Err(response too large), queued bytes included", () => {
+  const { h, put } = host();
+  h.typeIds = new Map([["std::result::Result", 0]]);
+  h.typeNames = ["std::result::Result"];
+  put(64, [9, ...u32(0)]);
+  const body = (n) => () => ({ ok: rt.Ok(new Uint8Array(n)) });
+  const schema = ["A", "std::result::Result", ["Y", "S"]];
+  h.maxCopy = 64;
+  h.async(1, 64, 5, body(16), schema);
+  h.async(2, 64, 5, body(16), schema);
+  h.async(3, 64, 5, body(100), schema);
+  const decoded = h.completed.map(([, , b]) => decode(h, b.subarray(1)));
+  assert.deepEqual(
+    decoded.map((r) => [r.tag, r.fields[0] instanceof Uint8Array ? r.fields[0].length : r.fields[0]]),
+    [
+      [0, 16],
+      [1, "response too large"],
+      [1, "response too large"],
+    ],
+    "the second fits alone but not with the first queued; the third never fits",
+  );
+  h.deliver();
+  assert.equal(h.queued, 0, "delivered completions leave the budget");
+});
+
+test("a sync answer past the copy budget is a D091 answer, not a guest heap exhaustion", () => {
+  const { h, put } = host();
+  h.argv = ["a".repeat(200)];
+  put(64, [9, ...u32(0)]);
+  h.maxCopy = 64;
+  const p = h.hosted("cli_args", 64, 5);
+  const [status, ...code] = outBytes(h, p, 5);
+  assert.equal(status, 2);
+  assert.deepEqual(code, u32(91));
+});

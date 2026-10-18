@@ -59,6 +59,12 @@ pub type Code = fn(&mut Rt, u32, u32) -> u32;
 /// `SAKURA_MAX_REQUESTS` default (ABI §8.5).
 pub const MAX_REQUESTS: u32 = 4_096;
 
+/// A full request table for an operation with no ordinary error (`request_or_defect`).
+pub const TOO_MANY_REQUESTS: Defect = Defect {
+    code: 91,
+    message: "too many pending operations",
+};
+
 // Frame (tag 0x8001): ABI §6.1.
 const F_CODE: u32 = 8;
 const F_BLOCK: u32 = 12;
@@ -931,6 +937,14 @@ impl Rt {
         self.set(t, T_REQUEST, id);
         self.sched.requests += 1;
         Ok(Some(id))
+    }
+
+    /// `request` for an operation whose result has no ordinary error to carry the limit
+    /// (`Clock.sleep`, `serve_listen`): past `SAKURA_MAX_REQUESTS` it is [`TOO_MANY_REQUESTS`].
+    /// One policy for a full table (security review W4): `Err("too many pending operations")`
+    /// where the result is a `Result<_, String>` (`http_*`), this defect everywhere else.
+    pub fn request_or_defect(&mut self, kind: u32) -> Res<u32> {
+        self.request(kind)?.ok_or(TOO_MANY_REQUESTS)
     }
 
     fn free_request(&mut self, id: u32) {
