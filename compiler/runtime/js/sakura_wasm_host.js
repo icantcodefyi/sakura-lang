@@ -179,6 +179,9 @@ function bind(s, env) {
 }
 
 const R = (ok, err) => ["A", "std::result::Result", [ok, err]];
+/** An operation whose first argument is a `Dir` (or a `Body`): its handle kind is checked (W8). */
+const DIR_ARG = [[0, DIR]];
+const BODY_ARG = [[0, BODY]];
 const OPT = (x) => ["A", "std::option::Option", [x]];
 const DECODE_ERROR = ["A", "std::json::DecodeError", []];
 const JSON_VALUE = ["A", "std::json::Json", []];
@@ -198,7 +201,8 @@ function settle(x) {
 /**
  * Builtins the host implements by delegating to `sakura_runtime.js` (the WASM backend's
  * `HOSTED` list): `run(host, ...args)` with the decoded arguments returns `{ ok }` or
- * `{ fail }`, and `result(args)` is the schema its answer is encoded with.
+ * `{ fail }`, and `result(args)` is the schema its answer is encoded with; `args` lists the
+ * positions of handle arguments and their expected kinds.
  */
 export const HOSTED = {
   cli_args: { run: (h) => ({ ok: rt.list(h.argv) }), result: () => ["L", "S"] },
@@ -208,19 +212,20 @@ export const HOSTED = {
     error: () => ["A", "std::cli::CliError", []],
   },
   env_get: { run: (_h, key) => ({ ok: rt.env_get(key) }), result: () => OPT("S") },
-  file_open: { run: (_h, d, p, mode) => ({ ok: rt.file_open(d, p, mode) }), result: () => R("I", "S") },
+  file_open: { args: DIR_ARG, run: (_h, d, p, mode) => ({ ok: rt.file_open(d, p, mode) }), result: () => R("I", "S") },
   file_read: { run: (_h, id, max) => ({ ok: rt.file_read(id, max) }), result: () => R("Y", "S") },
   file_write: { run: (_h, id, data) => ({ ok: rt.file_write(id, data) }), result: () => R("U", "S") },
-  fs_exists: { run: (_h, d, p) => ({ ok: rt.fs_exists(d, p) }), result: () => "B" },
+  fs_exists: { args: DIR_ARG, run: (_h, d, p) => ({ ok: rt.fs_exists(d, p) }), result: () => "B" },
   fs_list: {
+    args: DIR_ARG,
     run: (_h, d, p) => ({ ok: rt.fs_list(d, p) }),
     result: () => R(["L", ["A", "std::fs::Entry", []]], "S"),
   },
   fs_memory_root: { run: (_h, files) => ({ ok: rt.fs_memory_root(files) }), result: () => DIR_SCHEMA },
-  fs_read: { run: (_h, d, p) => ({ ok: rt.fs_read(d, p) }), result: () => R("Y", "S") },
+  fs_read: { args: DIR_ARG, run: (_h, d, p) => ({ ok: rt.fs_read(d, p) }), result: () => R("Y", "S") },
   fs_root: { run: () => ({ ok: rt.fs_root() }), result: () => DIR_SCHEMA },
-  fs_subdir: { run: (_h, d, name) => ({ ok: rt.fs_subdir(d, name) }), result: () => R(DIR_SCHEMA, "S") },
-  fs_write: { run: (_h, d, p, data) => ({ ok: rt.fs_write(d, p, data) }), result: () => R("U", "S") },
+  fs_subdir: { args: DIR_ARG, run: (_h, d, name) => ({ ok: rt.fs_subdir(d, name) }), result: () => R(DIR_SCHEMA, "S") },
+  fs_write: { args: DIR_ARG, run: (_h, d, p, data) => ({ ok: rt.fs_write(d, p, data) }), result: () => R("U", "S") },
   http_body_of: { run: (_h, bytes) => ({ ok: rt.http_body_of(bytes) }), result: () => ["X", "std::http::Body"] },
   http_recording_lookup_stream: {
     run: (_h, id, req) => ({ ok: rt.http_recording_lookup_stream(id, req) }),
@@ -232,7 +237,7 @@ export const HOSTED = {
     }),
     result: () => R("U", "S"),
   },
-  http_recording_open: { run: (_h, d, p) => ({ ok: rt.http_recording_open(d, p) }), result: () => R("I", "S") },
+  http_recording_open: { args: DIR_ARG, run: (_h, d, p) => ({ ok: rt.http_recording_open(d, p) }), result: () => R("I", "S") },
   http_recording_lookup: {
     run: (_h, id, req) => ({ ok: rt.http_recording_lookup(id, req) }),
     result: () => R(OPT(["A", "std::response::Response", []]), "S"),
@@ -308,6 +313,8 @@ const guestFrames = Object.keys(PERFORMS).reduce((n, e) => {
 
 /** A defect thrown by the JS runtime as a status-2 answer (`u32` code, message). */
 function defectAnswer(e) {
+  // A host fault where the import has an answer to carry it is the guest's `D090` defect.
+  if (e instanceof HostFault) e = new rt.Defect("D090", e.message);
   if (!(e instanceof rt.Defect)) throw e;
   const out = new Writer();
   out.u8(2);
@@ -379,13 +386,33 @@ export class Host {
    * a kind-`secret` import's (ABI §8.1) holds inner values. The decoded strings cannot be
    * zeroed; the host only drops its references to them.
    */
-  decodeSecret(ptr, len) {
+  decodeSecret(ptr, len, kinds = []) {
     const slice = this.copyIn(ptr, len);
     try {
-      return this.decode(new Reader(slice));
+      return this.checked(this.decode(new Reader(slice)), kinds);
     } finally {
       slice.fill(0);
     }
+  }
+
+
+  /**
+   * The argument tuple at `(ptr, len)`, each argument at a position of `kinds` a handle of that
+   * kind (`[[index, kind]]`): a handle of another kind (a `jsvalue` where `fs_read` wants a
+   * `Dir`) is a host fault, never an object of the wrong class (security review W8).
+   */
+  args(ptr, len, kinds = []) {
+    return this.checked(this.decode(new Reader(this.copyIn(ptr, len))), kinds);
+  }
+
+  /** `args`, each at a position of `kinds` checked to be a handle of that kind (`args`). */
+  checked(args, kinds) {
+    for (const [i, kind] of kinds) {
+      if (!(args[i] instanceof (kind === DIR ? rt.Dir : rt.Body))) {
+        throw new HostFault(`argument ${i} is not a ${kind === DIR ? "Dir" : "Body"} handle`);
+      }
+    }
+    return args;
   }
 
   /** A guest UTF-8 string slice as a JS string; malformed UTF-8 is a host fault. */
@@ -464,7 +491,7 @@ export class Host {
         },
         sql_needs_root: (inst) => (this.sqlOf(inst).file?.open === false ? 1 : 0),
         sql_root: (inst, ptr, len) => {
-          const [d] = this.decode(new Reader(this.copyIn(ptr, len)));
+          const [d] = this.args(ptr, len, DIR_ARG);
           this.sqlOf(inst).file.dir = d;
         },
         sql_query: (inst, ptr, len) => {
@@ -561,9 +588,10 @@ export class Host {
           this.async(request, ptr, len, rt.http_send, R(["A", "std::response::Response", []], "S")),
         http_stream_open: (request, ptr, len) =>
           this.async(request, ptr, len, rt.http_stream_open, R(["A", "std::http::Incoming", []], "S")),
-        http_stream_read: (request, ptr, len) => this.async(request, ptr, len, rt.http_stream_read, R("Y", "S")),
+        http_stream_read: (request, ptr, len) =>
+          this.async(request, ptr, len, rt.http_stream_read, R("Y", "S"), BODY_ARG),
         http_body_close: (ptr, len) => {
-          const [body] = this.decode(new Reader(this.copyIn(ptr, len)));
+          const [body] = this.args(ptr, len, BODY_ARG);
           rt.http_body_close(body);
         },
         // `Serve.host()` (`serve_listen`, as JS): each request the JS runtime's server receives
@@ -635,8 +663,8 @@ export class Host {
    * `Result<_, String>`, or a defect) when it arrives; `abort` cancels it. A result past the
    * copy budget is `Err("response too large")` (ABI §8.5, W4).
    */
-  async(request, ptr, len, f, schema) {
-    const args = this.decodeSecret(ptr, len);
+  async(request, ptr, len, f, schema, kinds = []) {
+    const args = this.decodeSecret(ptr, len, kinds);
     const reply = (v) => {
       let bytes;
       try {
@@ -1019,9 +1047,10 @@ export class Host {
    */
   hosted(name, ptr, len) {
     const op = HOSTED[name];
-    const args = this.decode(new Reader(this.copyIn(ptr, len)));
     const w = new Writer();
+    let args;
     try {
+      args = this.args(ptr, len, op.args);
       const r = op.run(this, ...args);
       if ("fail" in r) {
         w.u8(1);

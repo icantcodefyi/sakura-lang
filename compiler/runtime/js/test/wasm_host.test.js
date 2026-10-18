@@ -230,3 +230,21 @@ test("retire_handle forgets callbacks, closes databases and drops JS-built handl
   assert.throws(() => h.sqlOf(0), HostFault, "a released database is a host fault");
   assert.equal(h.imports().sakura_host.sql_rollback(0n, 1n), undefined, "a late rollback is a no-op");
 });
+
+test("a handle of another kind where a Dir or Body is expected is a D090, not a TypeError", () => {
+  const { h, put } = host();
+  // A `jsvalue` handle the module already holds, passed where `fs_read` takes a `Dir`.
+  const [slot] = h.handle(6, { opaque: true });
+  const str = (x) => [4, ...u32(x.length), ...Buffer.from(x)];
+  const tuple = [9, ...u32(2), 12, ...u32(6), ...u32(slot), ...u32(1), ...str("a.txt")];
+  put(64, tuple);
+  const p = h.hosted("fs_read", 64, tuple.length);
+  const [status, ...code] = outBytes(h, p, 5);
+  assert.equal(status, 2, "a defect answer the guest raises on the task");
+  assert.deepEqual(code, u32(90));
+  // `http_body_close` has no answer: a host fault, never the wrong object reaching the runtime.
+  const [dir] = h.handle(0, rt.fs_memory_root(rt.list([])));
+  const body = [9, ...u32(1), 12, ...u32(0), ...u32(dir), ...u32(1)];
+  put(256, body);
+  assert.throws(() => h.imports().sakura_host.http_body_close(256, body.length), HostFault);
+});
