@@ -1,0 +1,82 @@
+// milestone: M3
+// covers: M4-OPT research/08 §6.2 (nested-option corpus); design §17.83, §17.99
+// spec: §17.99
+
+// Every `Option` shape through depth 4 stays distinct, whichever layout holds it: in generic
+// code, closures, records and collections, around payloads a niche could confuse with `None`
+// (zero, false, empty, `Unit`, the integer bounds, `Json.Null`), through matching, equality,
+// map keys, ordering and display (JSON is `nested_options_json.sak`). The JS and WASM backends
+// print the same lines.
+
+type Cell = { name: String, value: Option<Option<Int>> }
+
+fn wrap<A>(x: A) -> Option<A> { Some(x) }
+
+fn flatten<A>(o: Option<Option<A>>) -> Option<A> {
+  match o {
+    Some(inner) => inner,
+    None => None,
+  }
+}
+
+fn depth<A>(o: Option<Option<Option<Option<A>>>>) -> Int {
+  match o {
+    None => 0,
+    Some(None) => 1,
+    Some(Some(None)) => 2,
+    Some(Some(Some(None))) => 3,
+    Some(Some(Some(Some(_)))) => 4,
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let shapes: List<Option<Option<Option<Option<Int>>>>> = [
+    None,
+    Some(None),
+    Some(Some(None)),
+    Some(Some(Some(None))),
+    Some(Some(Some(Some(0)))),
+  ]
+  Console.print("{shapes}")
+  Console.print("{List.map(shapes, fn(o) { depth(o) })}")
+  Console.print(
+    "{List.map(shapes, fn(a) { List.map(shapes, fn(b) { if a == b { 1 } else { 0 } }) })}",
+  )
+
+  let none: Option<Int> = None
+  let nothing: List<Int> = []
+  Console.print("{wrap(none)} {wrap(wrap(0))} {wrap(wrap(wrap(())))}")
+  Console.print("{wrap(false)} {wrap("")} {wrap(nothing)} {wrap(Json.Null)}")
+  Console.print("{wrap(9007199254740991)} {wrap(-9007199254740991)} {wrap(0.0)}")
+
+  let lifted = Option.map(Some(none), fn(x) { Option.is_some(x) })
+  let absent: Option<Option<Int>> = None
+  Console.print("{lifted} {flatten(Some(Some(0)))} {flatten(Some(none))} {flatten(absent)}")
+
+  let empty: Option<String> = None
+  let keep = Some(empty)
+  let later = fn() { keep }
+  Console.print("{later()} {later() == Some(None)} {later() == None}")
+
+  let cells = [
+    Cell { name: "unset", value: None },
+    Cell { name: "null", value: Some(None) },
+    Cell { name: "zero", value: Some(Some(0)) },
+  ]
+  Console.print("{cells}")
+  for c in cells {
+    let v = match c.value {
+      None => "absent",
+      Some(None) => "present, empty",
+      Some(Some(n)) => "present, {n}",
+    }
+    Console.print("{c.name}: {v}")
+  }
+
+  let m = List.fold(shapes, Map.empty(), fn(acc, o) { Map.insert(acc, o, depth(o)) })
+  Console.print(
+    "{Map.len(m)} {Map.get(m, Some(None))} {Map.get(m, None)} {Map.get(m, Some(Some(Some(Some(1)))))}",
+  )
+  Console.print("{List.unique([Some(None), None, Some(None), Some(Some(0)), None])}")
+  Console.print("{List.sort([Some(Some(2)), None, Some(None), Some(Some(0))])}")
+}

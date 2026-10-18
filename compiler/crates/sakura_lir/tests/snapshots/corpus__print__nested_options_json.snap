@@ -1,0 +1,94 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::nested_options_json::Cell | Cell 32b (name: word*, value: word*)
+layout 1 error std::json::DecodeError | DecodeError 32b (path: word*, message: word*)
+layout 2 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 3 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 4 shape |  32b (word*, word*)
+layout 5 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::nested_options_json, frame 2 slots [%34 bool, %47 bool]
+  b0():
+    %0 v: ptr = const static std::option::Option.None
+    %1 v: ptr = const static std::option::Option.None
+    %2 lit: ptr = const str 0
+    %3 rec: ptr = alloc main::nested_options_json::Cell(%2, %1)
+    %4 v: ptr = const static std::option::Option.None
+    %5 r: ptr = alloc std::option::Option.Some(%4)
+    %6 lit: ptr = const str 1
+    %7 rec: ptr = alloc main::nested_options_json::Cell(%6, %5)
+    %8 lit: i64 = const 0
+    %9 box: word = box %8
+    %10 r: ptr = alloc std::option::Option.Some(%9)
+    %11 r: ptr = alloc std::option::Option.Some(%10)
+    %12 lit: ptr = const str 2
+    %13 rec: ptr = alloc main::nested_options_json::Cell(%12, %11)
+    %14 xs: ptr = alloc list(%3, %7, %13)
+    %15 lit: i64 = const 0
+    %16 box: word = box %15
+    %17 r: ptr = alloc std::option::Option.Some(%16)
+    %18 r: ptr = alloc std::option::Option.Some(%17)
+    %19 schema: ptr = const str 3
+    %20 r: ptr = $json_encode(%18, %19)
+    %21 s: ptr = show %20
+    drop %20
+    %22 lit: ptr = const str 4
+    %23 s: ptr = concat %21, %22
+    drop %21
+    drop %22
+    %24 schema: ptr = const str 3
+    %25 r: ptr = $json_encode(%0, %24)
+    %26 s: ptr = show %25
+    drop %25
+    %27 s: ptr = concat %23, %26
+    drop %23
+    drop %26
+    %28 lit: ptr = const str 4
+    %29 s: ptr = concat %27, %28
+    drop %27
+    drop %28
+    %30 schema: ptr = const str 5
+    %31 r: ptr = $json_encode(%14, %30)
+    %32 s: ptr = show %31
+    drop %31
+    %33 s: ptr = concat %29, %32
+    drop %29
+    drop %32
+    perform std::console::Console.print(%33) -> b1()
+  b1(%34 r: unit):
+    %35 box: word = box %34
+    drop %35
+    %36 schema: ptr = const str 6
+    %37 lit: ptr = const str 7
+    %38 r: ptr = $json_decode(%37, %36)
+    %39 schema: ptr = const str 8
+    %40 lit: ptr = const str 9
+    %41 r: ptr = $json_decode(%40, %39)
+    %42 s: ptr = show %38
+    drop %38
+    %43 lit: ptr = const str 4
+    %44 s: ptr = concat %42, %43
+    drop %42
+    drop %43
+    %45 s: ptr = show %41
+    drop %41
+    %46 s: ptr = concat %44, %45
+    drop %44
+    drop %45
+    perform std::console::Console.print(%46) -> b2()
+  b2(%47 r: unit):
+    %48 box: word = box %47
+    %49 unbox: unit = unbox %48
+    drop %48
+    ret %49
+
+fn $entry#1 top -> unit ; main::nested_options_json, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1

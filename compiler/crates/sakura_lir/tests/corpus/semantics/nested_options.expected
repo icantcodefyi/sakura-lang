@@ -1,0 +1,17 @@
+ending: ok
+--- stdout
+[None, Some(None), Some(Some(None)), Some(Some(Some(None))), Some(Some(Some(Some(0))))]
+[0, 1, 2, 3, 4]
+[[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 1]]
+Some(None) Some(Some(0)) Some(Some(Some(())))
+Some(false) Some("") Some([]) Some(Null)
+Some(9007199254740991) Some(-9007199254740991) Some(0.0)
+Some(false) Some(0) None None
+Some(None) true false
+[Cell { name: "unset", value: None }, Cell { name: "null", value: Some(None) }, Cell { name: "zero", value: Some(Some(0)) }]
+unset: absent
+null: present, empty
+zero: present, 0
+5 Some(1) Some(0) None
+[Some(None), None, Some(Some(0))]
+[None, Some(None), Some(Some(0)), Some(Some(2))]

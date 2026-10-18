@@ -1,0 +1,597 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::nested_options::Cell | Cell 32b (name: word*, value: word*)
+layout 1 variant std::json::Json | Null 16b () | Bool 24b (bool) | Number 24b (f64) | String 24b (word*) | Array 24b (word*) | Object 24b (word*)
+layout 2 variant std::list::Builder
+layout 3 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 4 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 5 shape |  32b (word*, word*)
+layout 6 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19 word*, %22 word*, %23 word*, %25 bool, %26 word*, %29 word*, %30 word*, %32 bool, %33 word*, %37 word*, %38 word*, %39 word*, %40 word*, %46 word*, %47 word*, %48 word*, %49 word*, %50 word*, %51 word*, %52 word*, %53 word*, %54 word*, %55 word*, %62 word*, %63 word*, %64 word*, %65 word*, %66 word*, %67 word*, %68 word*, %69 word*, %70 word*, %71 word*, %72 word*, %73 word*, %74 word*, %75 word*, %76 word*, %79 bool, %80 word*, %81 word*, %82 word*, %86 word*, %87 word*, %88 word*, %89 word*, %94 word*, %95 word*, %96 word*, %97 word*, %98 word*, %103 word*, %104 word*, %105 word*, %106 word*, %112 word*, %113 word*, %114 word*, %115 word*, %118 bool, %119 word*, %120 word*, %124 word*, %125 word*, %126 word*, %133 word*, %134 word*, %135 word*, %136 word*, %143 word*, %144 word*, %145 word*, %146 word*, %149 bool, %150 word*, %151 word*, %155 word*, %156 word*, %157 word*, %166 word*, %167 word*, %168 word*, %169 word*, %170 word*, %176 word*, %177 word*, %178 word*, %179 word*, %184 word*, %185 word*, %186 word*, %189 bool, %190 word*, %195 word*, %196 word*, %197 word*, %201 word*, %202 word*, %203 word*, %204 word*, %212 word*, %213 word*, %214 word*, %219 bool, %220 word*, %237 bool, %238 word*, %239 word*, %245 word*, %272 bool, %285 word*, %287 bool, %301 word*, %303 bool, %339 bool, %340 word*, %341 word*, %342 i64, %343 i64]
+  b0():
+    %0 v: ptr = const static std::option::Option.None
+    %1 v: ptr = const static std::option::Option.None
+    %2 r: ptr = alloc std::option::Option.Some(%1)
+    %3 v: ptr = const static std::option::Option.None
+    %4 r: ptr = alloc std::option::Option.Some(%3)
+    %5 r: ptr = alloc std::option::Option.Some(%4)
+    %6 v: ptr = const static std::option::Option.None
+    %7 r: ptr = alloc std::option::Option.Some(%6)
+    %8 r: ptr = alloc std::option::Option.Some(%7)
+    %9 r: ptr = alloc std::option::Option.Some(%8)
+    %10 lit: i64 = const 0
+    %11 box: word = box %10
+    %12 r: ptr = alloc std::option::Option.Some(%11)
+    %13 r: ptr = alloc std::option::Option.Some(%12)
+    %14 r: ptr = alloc std::option::Option.Some(%13)
+    %15 r: ptr = alloc std::option::Option.Some(%14)
+    %16 xs: ptr = alloc list(%0, %2, %5, %9, %15)
+    %17 s: ptr = show %16
+    perform std::console::Console.print(%17) -> b1(%16)
+  b1(%18 r: unit, %19 xs: ptr):
+    %20 box: word = box %18
+    drop %20
+    %21 f: ptr = closure main$1#2[]
+    dup %19
+    call map#4(%19, %21) -> b2(%19)
+  b2(%22 r: ptr, %23 xs: ptr):
+    %24 s: ptr = show %22
+    drop %22
+    perform std::console::Console.print(%24) -> b3(%23)
+  b3(%25 r: unit, %26 xs: ptr):
+    %27 box: word = box %25
+    drop %27
+    dup %26
+    %28 f: ptr = closure main$2#5[%26]
+    dup %26
+    call map#4(%26, %28) -> b4(%26)
+  b4(%29 r: ptr, %30 xs: ptr):
+    %31 s: ptr = show %29
+    drop %29
+    perform std::console::Console.print(%31) -> b5(%30)
+  b5(%32 r: unit, %33 xs: ptr):
+    %34 box: word = box %32
+    drop %34
+    %35 v: ptr = const static std::option::Option.None
+    %36 xs: ptr = alloc list()
+    dup %35
+    call wrap#7(%35) -> b6(%33, %35, %36)
+  b6(%37 r: ptr, %38 xs: ptr, %39 v: ptr, %40 xs: ptr):
+    %41 s: ptr = show %37
+    drop %37
+    %42 lit: ptr = const str 0
+    %43 s: ptr = concat %41, %42
+    drop %41
+    drop %42
+    %44 lit: i64 = const 0
+    %45 box: word = box %44
+    call wrap#7(%45) -> b7(%38, %39, %40, %43)
+  b7(%46 r: ptr, %47 xs: ptr, %48 v: ptr, %49 xs: ptr, %50 s: ptr):
+    call wrap#7(%46) -> b8(%47, %48, %49, %50)
+  b8(%51 r: ptr, %52 xs: ptr, %53 v: ptr, %54 xs: ptr, %55 s: ptr):
+    %56 s: ptr = show %51
+    drop %51
+    %57 s: ptr = concat %55, %56
+    drop %55
+    drop %56
+    %58 lit: ptr = const str 0
+    %59 s: ptr = concat %57, %58
+    drop %57
+    drop %58
+    %60 lit: unit = const ()
+    %61 box: word = box %60
+    call wrap#7(%61) -> b9(%52, %53, %54, %59)
+  b9(%62 r: ptr, %63 xs: ptr, %64 v: ptr, %65 xs: ptr, %66 s: ptr):
+    call wrap#7(%62) -> b10(%63, %64, %65, %66)
+  b10(%67 r: ptr, %68 xs: ptr, %69 v: ptr, %70 xs: ptr, %71 s: ptr):
+    call wrap#7(%67) -> b11(%68, %69, %70, %71)
+  b11(%72 r: ptr, %73 xs: ptr, %74 v: ptr, %75 xs: ptr, %76 s: ptr):
+    %77 s: ptr = show %72
+    drop %72
+    %78 s: ptr = concat %76, %77
+    drop %76
+    drop %77
+    perform std::console::Console.print(%78) -> b12(%73, %74, %75)
+  b12(%79 r: unit, %80 xs: ptr, %81 v: ptr, %82 xs: ptr):
+    %83 box: word = box %79
+    drop %83
+    %84 lit: bool = const false
+    %85 box: word = box %84
+    call wrap#7(%85) -> b13(%80, %81, %82)
+  b13(%86 r: ptr, %87 xs: ptr, %88 v: ptr, %89 xs: ptr):
+    %90 s: ptr = show %86
+    drop %86
+    %91 lit: ptr = const str 0
+    %92 s: ptr = concat %90, %91
+    drop %90
+    drop %91
+    %93 lit: ptr = const str 1
+    call wrap#7(%93) -> b14(%87, %88, %89, %92)
+  b14(%94 r: ptr, %95 xs: ptr, %96 v: ptr, %97 xs: ptr, %98 s: ptr):
+    %99 s: ptr = show %94
+    drop %94
+    %100 s: ptr = concat %98, %99
+    drop %98
+    drop %99
+    %101 lit: ptr = const str 0
+    %102 s: ptr = concat %100, %101
+    drop %100
+    drop %101
+    call wrap#7(%97) -> b15(%95, %96, %102)
+  b15(%103 r: ptr, %104 xs: ptr, %105 v: ptr, %106 s: ptr):
+    %107 s: ptr = show %103
+    drop %103
+    %108 s: ptr = concat %106, %107
+    drop %106
+    drop %107
+    %109 lit: ptr = const str 0
+    %110 s: ptr = concat %108, %109
+    drop %108
+    drop %109
+    %111 v: ptr = const static std::json::Json.Null
+    call wrap#7(%111) -> b16(%104, %105, %110)
+  b16(%112 r: ptr, %113 xs: ptr, %114 v: ptr, %115 s: ptr):
+    %116 s: ptr = show %112
+    drop %112
+    %117 s: ptr = concat %115, %116
+    drop %115
+    drop %116
+    perform std::console::Console.print(%117) -> b17(%113, %114)
+  b17(%118 r: unit, %119 xs: ptr, %120 v: ptr):
+    %121 box: word = box %118
+    drop %121
+    %122 lit: i64 = const 9007199254740991
+    %123 box: word = box %122
+    call wrap#7(%123) -> b18(%119, %120)
+  b18(%124 r: ptr, %125 xs: ptr, %126 v: ptr):
+    %127 s: ptr = show %124
+    drop %124
+    %128 lit: ptr = const str 0
+    %129 s: ptr = concat %127, %128
+    drop %127
+    drop %128
+    %130 lit: i64 = const 9007199254740991
+    %131 t: i64 = intneg %130
+    %132 box: word = box %131
+    call wrap#7(%132) -> b19(%125, %126, %129)
+  b19(%133 r: ptr, %134 xs: ptr, %135 v: ptr, %136 s: ptr):
+    %137 s: ptr = show %133
+    drop %133
+    %138 s: ptr = concat %136, %137
+    drop %136
+    drop %137
+    %139 lit: ptr = const str 0
+    %140 s: ptr = concat %138, %139
+    drop %138
+    drop %139
+    %141 lit: f64 = const 0.0
+    %142 box: word = box %141
+    call wrap#7(%142) -> b20(%134, %135, %140)
+  b20(%143 r: ptr, %144 xs: ptr, %145 v: ptr, %146 s: ptr):
+    %147 s: ptr = show %143
+    drop %143
+    %148 s: ptr = concat %146, %147
+    drop %146
+    drop %147
+    perform std::console::Console.print(%148) -> b21(%144, %145)
+  b21(%149 r: unit, %150 xs: ptr, %151 v: ptr):
+    %152 box: word = box %149
+    drop %152
+    dup %151
+    %153 r: ptr = alloc std::option::Option.Some(%151)
+    %154 f: ptr = closure main$3#8[]
+    call map#10(%153, %154) -> b22(%150, %151)
+  b22(%155 r: ptr, %156 xs: ptr, %157 v: ptr):
+    %158 v: ptr = const static std::option::Option.None
+    %159 s: ptr = show %155
+    drop %155
+    %160 lit: ptr = const str 0
+    %161 s: ptr = concat %159, %160
+    drop %159
+    drop %160
+    %162 lit: i64 = const 0
+    %163 box: word = box %162
+    %164 r: ptr = alloc std::option::Option.Some(%163)
+    %165 r: ptr = alloc std::option::Option.Some(%164)
+    call flatten#11(%165) -> b23(%156, %157, %158, %161)
+  b23(%166 r: ptr, %167 xs: ptr, %168 v: ptr, %169 v: ptr, %170 s: ptr):
+    %171 s: ptr = show %166
+    drop %166
+    %172 s: ptr = concat %170, %171
+    drop %170
+    drop %171
+    %173 lit: ptr = const str 0
+    %174 s: ptr = concat %172, %173
+    drop %172
+    drop %173
+    %175 r: ptr = alloc std::option::Option.Some(%168)
+    call flatten#11(%175) -> b24(%167, %169, %174)
+  b24(%176 r: ptr, %177 xs: ptr, %178 v: ptr, %179 s: ptr):
+    %180 s: ptr = show %176
+    drop %176
+    %181 s: ptr = concat %179, %180
+    drop %179
+    drop %180
+    %182 lit: ptr = const str 0
+    %183 s: ptr = concat %181, %182
+    drop %181
+    drop %182
+    call flatten#11(%178) -> b25(%177, %183)
+  b25(%184 r: ptr, %185 xs: ptr, %186 s: ptr):
+    %187 s: ptr = show %184
+    drop %184
+    %188 s: ptr = concat %186, %187
+    drop %186
+    drop %187
+    perform std::console::Console.print(%188) -> b26(%185)
+  b26(%189 r: unit, %190 xs: ptr):
+    %191 box: word = box %189
+    drop %191
+    %192 v: ptr = const static std::option::Option.None
+    %193 r: ptr = alloc std::option::Option.Some(%192)
+    %194 f: ptr = closure main$4#12[%193]
+    dup %194
+    call %194() -> b27(%190, %194)
+  b27(%195 r: word, %196 xs: ptr, %197 f: ptr):
+    %198 s: ptr = show %195
+    drop %195
+    %199 lit: ptr = const str 0
+    %200 s: ptr = concat %198, %199
+    drop %198
+    drop %199
+    dup %197
+    call %197() -> b28(%196, %197, %200)
+  b28(%201 r: word, %202 xs: ptr, %203 f: ptr, %204 s: ptr):
+    %205 v: ptr = const static std::option::Option.None
+    %206 r: ptr = alloc std::option::Option.Some(%205)
+    %207 t: bool = eq.any %201, %206
+    drop %201
+    drop %206
+    %208 s: ptr = show %207
+    %209 s: ptr = concat %204, %208
+    drop %204
+    drop %208
+    %210 lit: ptr = const str 0
+    %211 s: ptr = concat %209, %210
+    drop %209
+    drop %210
+    call %203() -> b29(%202, %211)
+  b29(%212 r: word, %213 xs: ptr, %214 s: ptr):
+    %215 v: ptr = const static std::option::Option.None
+    %216 t: bool = eq.any %212, %215
+    drop %212
+    drop %215
+    %217 s: ptr = show %216
+    %218 s: ptr = concat %214, %217
+    drop %214
+    drop %217
+    perform std::console::Console.print(%218) -> b30(%213)
+  b30(%219 r: unit, %220 xs: ptr):
+    %221 box: word = box %219
+    drop %221
+    %222 v: ptr = const static std::option::Option.None
+    %223 lit: ptr = const str 2
+    %224 rec: ptr = alloc main::nested_options::Cell(%223, %222)
+    %225 v: ptr = const static std::option::Option.None
+    %226 r: ptr = alloc std::option::Option.Some(%225)
+    %227 lit: ptr = const str 3
+    %228 rec: ptr = alloc main::nested_options::Cell(%227, %226)
+    %229 lit: i64 = const 0
+    %230 box: word = box %229
+    %231 r: ptr = alloc std::option::Option.Some(%230)
+    %232 r: ptr = alloc std::option::Option.Some(%231)
+    %233 lit: ptr = const str 4
+    %234 rec: ptr = alloc main::nested_options::Cell(%233, %232)
+    %235 xs: ptr = alloc list(%224, %228, %234)
+    %236 s: ptr = show %235
+    perform std::console::Console.print(%236) -> b31(%220, %235)
+  b31(%237 r: unit, %238 xs: ptr, %239 xs: ptr):
+    %240 box: word = box %237
+    drop %240
+    dup %239
+    %241 n: i64 = $list_len(%239)
+    %395 lit: i64 = const 0
+    jump b39(%395, %238, %239, %241)
+  b32(%242 xs: ptr):
+    %243 r: ptr = $map_empty()
+    %244 f: ptr = closure main$5#13[]
+    call fold#14(%242, %243, %244) -> b33()
+  b33(%245 r: word):
+    dup %245
+    %246 r: i64 = $map_len(%245)
+    %247 s: ptr = show %246
+    %248 lit: ptr = const str 0
+    %249 s: ptr = concat %247, %248
+    drop %247
+    drop %248
+    %250 v: ptr = const static std::option::Option.None
+    %251 r: ptr = alloc std::option::Option.Some(%250)
+    dup %245
+    %252 r: ptr = $map_get(%245, %251)
+    %253 s: ptr = show %252
+    drop %252
+    %254 s: ptr = concat %249, %253
+    drop %249
+    drop %253
+    %255 lit: ptr = const str 0
+    %256 s: ptr = concat %254, %255
+    drop %254
+    drop %255
+    %257 v: ptr = const static std::option::Option.None
+    dup %245
+    %258 r: ptr = $map_get(%245, %257)
+    %259 s: ptr = show %258
+    drop %258
+    %260 s: ptr = concat %256, %259
+    drop %256
+    drop %259
+    %261 lit: ptr = const str 0
+    %262 s: ptr = concat %260, %261
+    drop %260
+    drop %261
+    %263 lit: i64 = const 1
+    %264 box: word = box %263
+    %265 r: ptr = alloc std::option::Option.Some(%264)
+    %266 r: ptr = alloc std::option::Option.Some(%265)
+    %267 r: ptr = alloc std::option::Option.Some(%266)
+    %268 r: ptr = alloc std::option::Option.Some(%267)
+    %269 r: ptr = $map_get(%245, %268)
+    %270 s: ptr = show %269
+    drop %269
+    %271 s: ptr = concat %262, %270
+    drop %262
+    drop %270
+    perform std::console::Console.print(%271) -> b34()
+  b34(%272 r: unit):
+    %273 box: word = box %272
+    drop %273
+    %274 v: ptr = const static std::option::Option.None
+    %275 r: ptr = alloc std::option::Option.Some(%274)
+    %276 v: ptr = const static std::option::Option.None
+    %277 v: ptr = const static std::option::Option.None
+    %278 r: ptr = alloc std::option::Option.Some(%277)
+    %279 lit: i64 = const 0
+    %280 box: word = box %279
+    %281 r: ptr = alloc std::option::Option.Some(%280)
+    %282 r: ptr = alloc std::option::Option.Some(%281)
+    %283 v: ptr = const static std::option::Option.None
+    %284 xs: ptr = alloc list(%275, %276, %278, %282, %283)
+    call unique#15(%284) -> b35()
+  b35(%285 r: ptr):
+    %286 s: ptr = show %285
+    drop %285
+    perform std::console::Console.print(%286) -> b36()
+  b36(%287 r: unit):
+    %288 box: word = box %287
+    drop %288
+    %289 lit: i64 = const 2
+    %290 box: word = box %289
+    %291 r: ptr = alloc std::option::Option.Some(%290)
+    %292 r: ptr = alloc std::option::Option.Some(%291)
+    %293 v: ptr = const static std::option::Option.None
+    %294 v: ptr = const static std::option::Option.None
+    %295 r: ptr = alloc std::option::Option.Some(%294)
+    %296 lit: i64 = const 0
+    %297 box: word = box %296
+    %298 r: ptr = alloc std::option::Option.Some(%297)
+    %299 r: ptr = alloc std::option::Option.Some(%298)
+    %300 xs: ptr = alloc list(%292, %293, %295, %299)
+    call sort#16(%300) -> b37()
+  b37(%301 r: ptr):
+    %302 s: ptr = show %301
+    drop %301
+    perform std::console::Console.print(%302) -> b38()
+  b38(%303 r: unit):
+    %304 box: word = box %303
+    %305 unbox: unit = unbox %304
+    drop %304
+    ret %305
+  b39(%306 i: i64, %307 xs: ptr, %308 xs: ptr, %309 n: i64):
+    %310 more: bool = lt.int %306, %309
+    if %310 then b40(%307, %308, %309, %306) else b41(%307, %308, %309, %306)
+  b40(%311 xs: ptr, %312 xs: ptr, %313 n: i64, %314 i: i64):
+    dup %312
+    %319 x: word = $list_at(%312, %314)
+    %326 value: word = proj %319.1 main::nested_options::Cell
+    %366 tag: i64 = tag %326 ctor std::option::Option
+    switch %366 0 => b48(%311, %312, %313, %314, %319, %326) 1 => b49(%311, %312, %313, %314, %319, %326)
+  b41(%315 xs: ptr, %316 xs: ptr, %317 n: i64, %318 i: i64):
+    drop %316
+    jump b32(%315)
+  b42(%320 xs: ptr, %321 xs: ptr, %322 n: i64, %323 i: i64):
+    %324 lit: i64 = const 1
+    %325 i: i64 = intadd %323, %324
+    jump b39(%325, %320, %321, %322)
+  b43(%327 v: ptr, %328 xs: ptr, %329 xs: ptr, %330 n: i64, %331 i: i64, %332 x: ptr):
+    %333 name: word = proj %332.0 main::nested_options::Cell
+    drop %332
+    %334 s: ptr = show %333
+    drop %333
+    %335 lit: ptr = const str 5
+    %336 s: ptr = concat %334, %335
+    drop %334
+    drop %335
+    %337 s: ptr = show %327
+    drop %327
+    %338 s: ptr = concat %336, %337
+    drop %336
+    drop %337
+    perform std::console::Console.print(%338) -> b44(%328, %329, %330, %331)
+  b44(%339 r: unit, %340 xs: ptr, %341 xs: ptr, %342 n: i64, %343 i: i64):
+    %344 box: word = box %339
+    drop %344
+    jump b42(%340, %341, %342, %343)
+  b45(%345 xs: ptr, %346 xs: ptr, %347 n: i64, %348 i: i64, %349 x: ptr):
+    %350 lit: ptr = const str 6
+    jump b43(%350, %345, %346, %347, %348, %349)
+  b46(%351 xs: ptr, %352 xs: ptr, %353 n: i64, %354 i: i64, %355 x: ptr):
+    %356 lit: ptr = const str 7
+    jump b43(%356, %351, %352, %353, %354, %355)
+  b47(%357 n: i64, %358 xs: ptr, %359 xs: ptr, %360 n: i64, %361 i: i64, %362 x: ptr):
+    %363 s: ptr = show %357
+    %364 lit: ptr = const str 8
+    %365 s: ptr = concat %364, %363
+    drop %363
+    drop %364
+    jump b43(%365, %358, %359, %360, %361, %362)
+  b48(%367 xs: ptr, %368 xs: ptr, %369 n: i64, %370 i: i64, %371 x: ptr, %372 value: ptr):
+    drop %372
+    jump b45(%367, %368, %369, %370, %371)
+  b49(%373 xs: ptr, %374 xs: ptr, %375 n: i64, %376 i: i64, %377 x: ptr, %378 value: ptr):
+    %379 p: word = proj %378.0 std::option::Option.Some
+    drop %378
+    %380 tag: i64 = tag %379 ctor std::option::Option
+    switch %380 0 => b50(%373, %374, %375, %376, %377, %379) 1 => b51(%373, %374, %375, %376, %377, %379)
+  b50(%381 xs: ptr, %382 xs: ptr, %383 n: i64, %384 i: i64, %385 x: ptr, %386 p: ptr):
+    drop %386
+    jump b46(%381, %382, %383, %384, %385)
+  b51(%387 xs: ptr, %388 xs: ptr, %389 n: i64, %390 i: i64, %391 x: ptr, %392 p: ptr):
+    %393 p: word = proj %392.0 std::option::Option.Some
+    drop %392
+    %394 unbox: i64 = unbox %393
+    drop %393
+    jump b47(%394, %387, %388, %389, %390, %391)
+
+fn $entry#1 top -> unit ; main::nested_options, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn main$1#2 lambda -> word ; main::nested_options, captures [], frame 3 slots [%0 word*, %1 word*, %2 i64]
+  b0(%0 env: ptr, %1 o: word):
+    drop %0
+    call depth#3(%1) -> b1()
+  b1(%2 r: i64):
+    %3 box: word = box %2
+    ret %3
+
+fn depth#3 top -> i64 ; main::nested_options, frame 1 slots [%0 word*]
+  b0(%0 o: ptr):
+    %6 tag: i64 = tag %0 ctor std::option::Option
+    switch %6 0 => b6(%0) 1 => b7(%0)
+  b1():
+    %1 lit: i64 = const 0
+    ret %1
+  b2():
+    %2 lit: i64 = const 1
+    ret %2
+  b3():
+    %3 lit: i64 = const 2
+    ret %3
+  b4():
+    %4 lit: i64 = const 3
+    ret %4
+  b5():
+    %5 lit: i64 = const 4
+    ret %5
+  b6(%7 o: ptr):
+    drop %7
+    jump b1()
+  b7(%8 o: ptr):
+    %9 p: word = proj %8.0 std::option::Option.Some
+    drop %8
+    %10 tag: i64 = tag %9 ctor std::option::Option
+    switch %10 0 => b8(%9) 1 => b9(%9)
+  b8(%11 p: ptr):
+    drop %11
+    jump b2()
+  b9(%12 p: ptr):
+    %13 p: word = proj %12.0 std::option::Option.Some
+    drop %12
+    %14 tag: i64 = tag %13 ctor std::option::Option
+    switch %14 0 => b10(%13) 1 => b11(%13)
+  b10(%15 p: ptr):
+    drop %15
+    jump b3()
+  b11(%16 p: ptr):
+    %17 p: word = proj %16.0 std::option::Option.Some
+    drop %16
+    %18 tag: i64 = tag %17 ctor std::option::Option
+    switch %18 0 => b12(%17) 1 => b13(%17)
+  b12(%19 p: ptr):
+    drop %19
+    jump b4()
+  b13(%20 p: ptr):
+    %21 p: word = proj %20.0 std::option::Option.Some
+    drop %20
+    drop %21
+    jump b5()
+
+fn main$2#5 lambda -> word ; main::nested_options, captures [word*], frame 3 slots [%0 word*, %1 word*, %4 word*]
+  b0(%0 env: ptr, %1 a: word):
+    %2 shapes: ptr = capture %0.0
+    drop %0
+    %3 f: ptr = closure main$2$1#6[%1]
+    call map#4(%2, %3) -> b1()
+  b1(%4 r: ptr):
+    ret %4
+
+fn main$2$1#6 lambda -> word ; main::nested_options, captures [word*], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 b: word):
+    %2 a: ptr = capture %0.0
+    drop %0
+    %3 t: bool = eq.any %2, %1
+    drop %1
+    drop %2
+    if %3 then b1() else b2()
+  b1():
+    %4 lit: i64 = const 1
+    %5 box: word = box %4
+    ret %5
+  b2():
+    %6 lit: i64 = const 0
+    %7 box: word = box %6
+    ret %7
+
+fn wrap#7 top -> ptr ; main::nested_options, frame 1 slots [%0 word*]
+  b0(%0 x: word):
+    %1 r: ptr = alloc std::option::Option.Some(%0)
+    ret %1
+
+fn main$3#8 lambda -> word ; main::nested_options, captures [], frame 3 slots [%0 word*, %1 word*, %2 bool]
+  b0(%0 env: ptr, %1 x: word):
+    drop %0
+    call is_some#9(%1) -> b1()
+  b1(%2 r: bool):
+    %3 box: word = box %2
+    ret %3
+
+fn flatten#11 top -> ptr ; main::nested_options, frame 1 slots [%0 word*]
+  b0(%0 o: ptr):
+    %3 tag: i64 = tag %0 ctor std::option::Option
+    switch %3 0 => b3(%0) 1 => b4(%0)
+  b1(%1 inner: ptr):
+    ret %1
+  b2():
+    %2 v: ptr = const static std::option::Option.None
+    ret %2
+  b3(%4 o: ptr):
+    drop %4
+    jump b2()
+  b4(%5 o: ptr):
+    %6 p: word = proj %5.0 std::option::Option.Some
+    drop %5
+    jump b1(%6)
+
+fn main$4#12 lambda -> word ; main::nested_options, captures [word*], frame 1 slots [%0 word*]
+  b0(%0 env: ptr):
+    %1 keep: ptr = capture %0.0
+    drop %0
+    ret %1
+
+fn main$5#13 lambda -> word ; main::nested_options, captures [], frame 6 slots [%0 word*, %1 word*, %2 word*, %3 i64, %4 word*, %5 word*]
+  b0(%0 env: ptr, %1 acc: word, %2 o: word):
+    drop %0
+    dup %2
+    call depth#3(%2) -> b1(%1, %2)
+  b1(%3 r: i64, %4 acc: ptr, %5 o: ptr):
+    %6 box: word = box %3
+    %7 r: ptr = $map_insert(%4, %5, %6)
+    ret %7

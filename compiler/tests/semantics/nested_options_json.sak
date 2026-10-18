@@ -1,0 +1,23 @@
+// milestone: M3
+// covers: M4-OPT research/08 §6.2 (nested-option corpus, JSON); design §17.99
+// spec: §17.99
+
+// JSON keeps no `Option` depth: `Some(None)` and `None` both encode as `null`, so a decode
+// reads the outermost `None` back (the open round-trip question of research/09 §9). The JS and
+// WASM backends print the same lines.
+import std/json.{DecodeError}
+
+type Cell = { name: String, value: Option<Option<Int>> }
+
+pub fn main() -> Unit ! {Console} {
+  let absent: Option<Option<Int>> = None
+  let cells = [
+    Cell { name: "unset", value: None },
+    Cell { name: "null", value: Some(None) },
+    Cell { name: "zero", value: Some(Some(0)) },
+  ]
+  Console.print("{Json.encode(Some(Some(0)))} {Json.encode(absent)} {Json.encode(cells)}")
+  let back: Result<List<Option<Int>>, DecodeError> = Json.decode("[null, 0, 7]")
+  let deep: Result<List<Option<Option<Int>>>, DecodeError> = Json.decode("[null, 0]")
+  Console.print("{back} {deep}")
+}
