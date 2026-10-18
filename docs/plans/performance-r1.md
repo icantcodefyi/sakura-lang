@@ -349,3 +349,13 @@ authority).
 2. `sakura_core/src/builtins.rs` (WS8's crate) changed by one added and three removed externals: `fs_memory_root` in; `fs_detached_root`, `file_buffer`, `file_contents` out.
 3. A memory `Dir` has no host path, so `Http.recording` and `Sql.sqlite` under `Fs.memory` still fail with `this directory has no host access`. Cassettes inside the fake would need a separate decision.
 4. No tour page described the old limitation; one sentence was added to the `Fs.memory` row of `website/content/docs/tour/testing.mdx`.
+
+**WS-P1** (`49cdc6d..9f36028`, §17.111):
+
+1. Only closures of direct **first-order** defs (no function-typed parameter) carry `$d`. A function hidden in a type variable (`app(f, x)` with `x: A = fn(…)`) can reach a twin as an argument without `$d`; it is harmless only if no twin reached through `.$d` calls its arguments. A higher-order lambda or def passed as a value therefore runs CPS (`direct_higher_order.sakura` pins this; exposing them crashes it with `D090`).
+2. The runtime `$d` test lives once, in the CPS entry of a higher-order direct def (`if (f.$d !== undefined) return $ret($k, map$d(xs, f))`), not at each call site, so the continuation is not emitted twice. Call sites inline the twin when every function argument is statically twinned.
+3. No runtime callback builtin gained a twin: std's `map`/`filter`/`fold`/`find`/`all`/`any`/`sort_by` are Sakura defs (they get twins by the def rule), `list_map` and the other `list_*`/`map_update` callback builtins are not reachable from Sakura code, and the reachable callback builtins (`defect_catch`, `file_closing`, `cli_parse`, `http_*`, `serve_listen`, `property_run`) perform or suspend.
+4. Clauses are analysed like any def (`StateGet`/`StateSet` allowed), so a pure clause has a twin and its CPS entry is the adapter; WS-P2's dispatch can use it.
+5. `BuildOptions` lives in `sakura_analysis`, so `direct` is there (hand-written `Default`, `true`); `tools/sakura_eval`'s two const literals gained `direct: true`. `--no-direct` is on `build`, `run` and `test`. `--dump direct` prints instead of writing JS and adds the reason `recursion` (until WS-P3).
+6. Trace parity covers `mode: test` fixtures too: the `sakura test` runner grants node write access to the operator's `SAKURA_TRACE` file. For programs, stderr (defect codes and spans) must also match.
+7. `bench compare` of `shapes` blocks on peak RSS on Bun at n=50000 (180 → 273 MB, rerun 324 MB) while time improved 41%. The post-GC heap stays 0 MB after 100 runs, and the same build's peak swings 304–402 MB between runs: JSC GC pacing under a faster allocation rate, not retained data (Node's RSS fell). Not suppressed; WS-A to decide whether Bun's peak RSS needs a wider threshold.
