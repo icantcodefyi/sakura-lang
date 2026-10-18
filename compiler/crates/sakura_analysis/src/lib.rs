@@ -495,7 +495,7 @@ fn has_entry(program: &sakura_hir::Program) -> bool {
 }
 
 /// What [`Analysis::build_js`] and [`Analysis::lower_core`] produce besides the program.
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug)]
 pub struct BuildOptions {
     /// Report `V8001` when the user package has no `pub fn main` (for `sakura run`).
     pub need_entry: bool,
@@ -503,6 +503,20 @@ pub struct BuildOptions {
     pub std_tests: bool,
     /// Synthesize a property per contracted `pub fn` (`sakura test --contracts`, design §7.4).
     pub contract_tests: bool,
+    /// Emit direct twins (design §17.111); `false` (`--no-direct`) forces the CPS ABI for the
+    /// whole program, so every fixture runs under both ABIs.
+    pub direct: bool,
+}
+
+impl Default for BuildOptions {
+    fn default() -> Self {
+        BuildOptions {
+            need_entry: false,
+            std_tests: false,
+            contract_tests: false,
+            direct: true,
+        }
+    }
 }
 
 /// The result of [`Analysis::build_js`]: every diagnostic, and the emitted files if there were no
@@ -528,12 +542,29 @@ impl Analysis {
                     text: snapshot.file(f).text.clone(),
                 })
                 .collect();
-            sakura_codegen_js::emit(&m, &sakura_codegen_js::Options::new(sources))
+            let opts = sakura_codegen_js::Options {
+                direct_style: opts.direct,
+                ..sakura_codegen_js::Options::new(sources)
+            };
+            sakura_codegen_js::emit(&m, &opts)
                 .into_iter()
                 .map(|f| (f.path, f.text))
                 .collect()
         });
         BuildResult { diagnostics, files }
+    }
+
+    /// `sakura build --dump direct`: every def and lambda as `direct` or `cps(<reason>)`
+    /// (design §17.111), or `None` if there were errors.
+    pub fn dump_direct(
+        snapshot: &Snapshot,
+        opts: &BuildOptions,
+    ) -> (Option<String>, Vec<Diagnostic>) {
+        let (module, diagnostics) = Analysis::lower_core(snapshot, opts);
+        (
+            module.map(|m| sakura_codegen_js::dump_direct(&m)),
+            diagnostics,
+        )
     }
 
     /// Check and lower to validated Core (the input of every backend and of `sakura_eval`). The

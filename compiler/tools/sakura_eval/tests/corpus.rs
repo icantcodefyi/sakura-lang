@@ -11,6 +11,7 @@ const ENTRY: BuildOptions = BuildOptions {
     need_entry: true,
     std_tests: false,
     contract_tests: false,
+    direct: true,
 };
 use sakura_eval::{Limits, Stop, run_main};
 

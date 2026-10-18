@@ -101,6 +101,15 @@ enum Command {
         /// its status.
         #[arg(long)]
         manifest: bool,
+        /// Print a compiler fact instead of writing JS. `direct`: every def and lambda as
+        /// `direct` or `cps(<reason>)`, reasons `row`, `callee <name>`, `closure-call`,
+        /// `perform <Effect.op>`, `with`, `try`, `fail`, `recursion` (design §17.111).
+        #[arg(long, value_enum)]
+        dump: Option<Dump>,
+        /// Force the CPS ABI for the whole program (design §17.111; the semantics suite runs
+        /// every fixture both ways).
+        #[arg(long, hide = true)]
+        no_direct: bool,
         paths: Vec<PathBuf>,
     },
     /// Build and run `main` with node. The exit code is the program's: 0 ok, 1 `main` failed,
@@ -111,6 +120,8 @@ enum Command {
         path: Option<PathBuf>,
         #[arg(long, default_value = "target/sakura/js")]
         out_dir: PathBuf,
+        #[arg(long, hide = true)]
+        no_direct: bool,
         /// Arguments passed to the program.
         #[arg(last = true)]
         args: Vec<String>,
@@ -127,6 +138,8 @@ enum Command {
         std: bool,
         #[arg(long, default_value = "target/sakura/js")]
         out_dir: PathBuf,
+        #[arg(long, hide = true)]
+        no_direct: bool,
         paths: Vec<PathBuf>,
     },
     /// Rewrite files in the canonical format (design §12.5).
@@ -180,6 +193,11 @@ enum Command {
     /// Language server on stdin/stdout: diagnostics, hover, go to definition, completion,
     /// formatting and quick fixes. The workspace is the client's first workspace folder.
     Lsp,
+}
+
+#[derive(Clone, Copy, clap::ValueEnum)]
+enum Dump {
+    Direct,
 }
 
 /// `sakura test` options that shape the run (besides what to build and where).
@@ -281,8 +299,26 @@ fn dispatch(command: Command) -> ExitCode {
             layout,
             out_dir,
             manifest,
+            dump,
+            no_direct,
             paths,
         } => match load(&paths).map_err(usage_error).and_then(|snapshot| {
+            let opts = BuildOptions {
+                direct: !no_direct,
+                ..BuildOptions::default()
+            };
+            if let Some(Dump::Direct) = dump {
+                return match Analysis::dump_direct(&snapshot, &opts) {
+                    (Some(text), _) => {
+                        print!("{text}");
+                        Ok(())
+                    }
+                    (None, diags) => {
+                        report(json, &snapshot, &diags, &[], true);
+                        Err(ExitCode::from(EXIT_ERRORS))
+                    }
+                };
+            }
             let out_dir = out_dir.unwrap_or_else(|| Path::new("target/sakura").join(&emit));
             if emit == "lir" {
                 if manifest {
@@ -294,7 +330,7 @@ fn dispatch(command: Command) -> ExitCode {
                 };
                 return build_lir(json, &snapshot, &out_dir, layout);
             }
-            let dir = build(json, &snapshot, &out_dir, BuildOptions::default(), false)?;
+            let dir = build(json, &snapshot, &out_dir, opts, false)?;
             if manifest {
                 write_manifest(&snapshot, &dir).map_err(usage_error)?;
             }
@@ -306,13 +342,15 @@ fn dispatch(command: Command) -> ExitCode {
         Command::Run {
             path,
             out_dir,
+            no_direct,
             args,
-        } => run(path, &out_dir, &args),
+        } => run(path, &out_dir, !no_direct, &args),
         Command::Test {
             json,
             flags,
             std,
             out_dir,
+            no_direct,
             paths,
         } => {
             let snapshot = if std {
@@ -321,7 +359,7 @@ fn dispatch(command: Command) -> ExitCode {
                 load(&paths)
             };
             match snapshot {
-                Ok(snapshot) => test(json, &flags, &out_dir, &snapshot, std),
+                Ok(snapshot) => test(json, &flags, &out_dir, &snapshot, std, !no_direct),
                 Err(e) => usage_error(e),
             }
         }
@@ -516,7 +554,7 @@ fn write_manifest(snapshot: &Snapshot, dir: &Path) -> Result<(), String> {
     std::fs::write(path, text).map_err(|e| format!("{}: {e}", path.display()))
 }
 
-fn run(path: Option<PathBuf>, out_dir: &Path, args: &[String]) -> ExitCode {
+fn run(path: Option<PathBuf>, out_dir: &Path, direct: bool, args: &[String]) -> ExitCode {
     let paths: Vec<PathBuf> = path.into_iter().collect();
     let snapshot = match load(&paths) {
         Ok(s) => s,
@@ -524,6 +562,7 @@ fn run(path: Option<PathBuf>, out_dir: &Path, args: &[String]) -> ExitCode {
     };
     let opts = BuildOptions {
         need_entry: true,
+        direct,
         ..BuildOptions::default()
     };
     let dir = match build(false, &snapshot, out_dir, opts, true) {
@@ -575,6 +614,7 @@ fn test(
     out_dir: &Path,
     snapshot: &Snapshot,
     std_tests: bool,
+    direct: bool,
 ) -> ExitCode {
     // Design §17.73, §17.102: recording reaches exactly the manifest's `net` hosts, so it needs
     // some, and its default `Env` reads exactly the manifest's `env` keys.
@@ -606,6 +646,7 @@ fn test(
         need_entry: false,
         std_tests: std_tests || testing::only_std(snapshot),
         contract_tests: contracts,
+        direct,
     };
     let dir = match build(json, snapshot, out_dir, opts, true) {
         Ok(d) => d,

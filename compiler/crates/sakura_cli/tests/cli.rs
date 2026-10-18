@@ -881,3 +881,51 @@ test "replays" {{
         missing.stdout
     );
 }
+
+/// `sakura build --dump direct` (design §17.111) on research/10's kernels: `fib` stays
+/// `cps(recursion)` until §17.112, the higher-order `list_map_fold` and its lambdas are direct.
+#[test]
+fn dump_direct_lists_every_def_with_its_reason() {
+    let micro = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../research/10-evidence");
+    let out = sakura(&["build", "--dump", "direct", "micro.sakura"], &micro);
+    assert_eq!(out.code, Some(0), "{}", out.stderr);
+    let snapshot = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/snapshots/micro.direct");
+    common::compare_file(&snapshot, &out.stdout).unwrap();
+
+    let dir = tmp(
+        "dump-direct",
+        r#"error Oops(code: Int)
+fn apply(f: fn(Int) -> Int, x: Int) -> Int { f(x) }
+fn call_first(fs: List<fn(Int) -> Int>) -> Int {
+  match fs[0] {
+    Some(f) => f(1),
+    None => 0,
+  }
+}
+fn uses_first(fs: List<fn(Int) -> Int>) -> Int { call_first(fs) + apply(fn(x) { x + 1 }, 2) }
+fn caught() -> Int {
+  try { if true { fail Oops { code: 1 } }; 2 } catch { Oops { code: c } => c }
+}
+pub fn main() -> Unit ! {Console} {
+  Console.print("{uses_first([fn(x) { x }])} {caught()}")
+}
+"#,
+    );
+    let out = sakura(&["build", "--dump", "direct", "main.sakura"], &dir);
+    assert_eq!(out.code, Some(0), "{}", out.stderr);
+    for line in [
+        "main::main::main cps(row)",
+        "main::main::$entry cps(with)",
+        "main::main::apply direct",
+        "main::main::call_first cps(closure-call)",
+        "main::main::uses_first cps(callee call_first)",
+        "main::main::uses_first$1 direct",
+        "main::main::caught cps(try)",
+    ] {
+        assert!(
+            out.stdout.lines().any(|l| l == line),
+            "{line}\n{}",
+            out.stdout
+        );
+    }
+}
