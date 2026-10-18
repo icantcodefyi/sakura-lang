@@ -18,6 +18,7 @@ mod doc;
 mod fix;
 mod manifest;
 mod new;
+mod setup;
 mod testing;
 mod verify;
 mod wasm;
@@ -211,18 +212,31 @@ enum Command {
         action: McpAction,
     },
     /// Create a project in a new directory: `sakura.toml`, `sakura.lock`, `src/main.sakura` with one
-    /// test, and a `[permissions]` table.
+    /// test, a `[permissions]` table, and `AGENTS.md` and `CLAUDE.md` for coding agents.
     New {
         /// `cli`, `lib` or `agent` (`api` needs `std/serve`).
         #[arg(value_parser = ["cli", "lib", "agent", "api"])]
         kind: String,
         /// Package name and directory: lowercase letters, digits and `_`.
         name: String,
+        /// Then run `sakura setup --apply` for this client in the new project.
+        #[arg(long, value_parser = ["claude", "codex", "cursor", "all"])]
+        setup: Option<String>,
     },
     /// Make the current directory a project, keeping existing files.
     Init {
         #[arg(long, default_value = "cli", value_parser = ["cli", "lib", "agent", "api"])]
         kind: String,
+    },
+    /// Print, and with `--apply` write, this project's agent files: the `sakura` skill, the
+    /// client's MCP entry (merged into an existing config), Cursor's rule, and `AGENTS.md` and
+    /// `CLAUDE.md` when absent. Nothing outside the project is touched.
+    Setup {
+        #[arg(long, default_value = "all", value_parser = ["claude", "codex", "cursor", "all"])]
+        client: String,
+        /// Write the files (default: only print what would be written).
+        #[arg(long)]
+        apply: bool,
     },
     /// Language server on stdin/stdout: diagnostics, hover, go to definition, completion,
     /// formatting and quick fixes. The workspace is the client's first workspace folder.
@@ -263,7 +277,8 @@ enum McpAction {
     /// Serve MCP on stdin/stdout. Tools: compiler_info, check, symbol_query, hole_context,
     /// docs_query, explain_diagnostic, format, check_patch, apply_patch, test.
     Serve {
-        /// The workspace (default: the current directory). Patches are written only inside it.
+        /// The workspace (default: the nearest directory upward from the current one that holds
+        /// `sakura.toml`). Patches are written only inside it.
         #[arg(long)]
         root: Option<PathBuf>,
     },
@@ -280,6 +295,30 @@ const SKILL: &[(&str, &str)] = &[
     (
         "SKILL.md",
         include_str!("../../../../skills/sakura/SKILL.md"),
+    ),
+    (
+        "assets/AGENTS.md",
+        include_str!("../../../../skills/sakura/assets/AGENTS.md"),
+    ),
+    (
+        "assets/CLAUDE.md",
+        include_str!("../../../../skills/sakura/assets/CLAUDE.md"),
+    ),
+    (
+        "assets/mcp-claude.json",
+        include_str!("../../../../skills/sakura/assets/mcp-claude.json"),
+    ),
+    (
+        "assets/mcp-codex.toml",
+        include_str!("../../../../skills/sakura/assets/mcp-codex.toml"),
+    ),
+    (
+        "assets/mcp-cursor.json",
+        include_str!("../../../../skills/sakura/assets/mcp-cursor.json"),
+    ),
+    (
+        "assets/sakura.mdc",
+        include_str!("../../../../skills/sakura/assets/sakura.mdc"),
     ),
     (
         "references/diagnostics.md",
@@ -306,13 +345,6 @@ const SKILL: &[(&str, &str)] = &[
 /// The skill as this binary hands it out: `SKILL.md`'s `sakura-compiler-version` and
 /// `sakura-compiler-git` metadata name this build (the commit from `SAKURA_GIT_COMMIT` at build
 /// time, as in `manifest.json`), so the bundle always matches the compiler that wrote it.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "`sakura setup` (design §17.143) writes the bundle"
-    )
-)]
 fn skill_bundle() -> Vec<(&'static str, String)> {
     SKILL
         .iter()
@@ -323,7 +355,15 @@ fn skill_bundle() -> Vec<(&'static str, String)> {
         .collect()
 }
 
-#[cfg_attr(not(test), expect(dead_code, reason = "see `skill_bundle`"))]
+/// A template of the skill's `assets/` (design §17.143), as written into projects.
+fn asset(name: &str) -> &'static str {
+    let path = format!("assets/{name}");
+    SKILL
+        .iter()
+        .find(|(p, _)| *p == path)
+        .map_or_else(|| panic!("no skill asset {name}"), |(_, text)| text)
+}
+
 fn fill_skill_metadata(text: &str) -> String {
     let git = option_env!("SAKURA_GIT_COMMIT").unwrap_or("unknown");
     let mut out = String::new();
@@ -523,7 +563,10 @@ fn dispatch(command: Command) -> ExitCode {
             print!("{}", prompt(budget));
             ExitCode::SUCCESS
         }
-        Command::New { kind, name } => new::new(&kind, &name, Path::new(&name)),
+        Command::New { kind, name, setup } => {
+            new::new(&kind, &name, Path::new(&name), setup.as_deref())
+        }
+        Command::Setup { client, apply } => setup::setup(&client, apply),
         Command::Init { kind } => new::init(&kind),
         Command::Lsp => match sakura_lsp::serve() {
             Ok(()) => ExitCode::SUCCESS,
@@ -532,8 +575,16 @@ fn dispatch(command: Command) -> ExitCode {
         Command::Mcp {
             action: McpAction::Serve { root },
         } => {
+            let root = match root.map_or_else(|| sakura_mcp::project_root(Path::new(".")), Ok) {
+                Ok(root) => root,
+                Err(e) => {
+                    return usage_error(format!(
+                        "mcp: {e}; start the server inside a Sakura project or pass --root"
+                    ));
+                }
+            };
             let config = sakura_mcp::Config {
-                root: root.unwrap_or_else(|| PathBuf::from(".")),
+                root,
                 run_tests: Some(testing::mcp_run_tests),
                 backends: &TARGETS,
                 solver_status: Some(verify::solver_status),

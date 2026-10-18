@@ -1,0 +1,3 @@
+[mcp_servers.sakura]
+command = "sakura"
+args = ["mcp", "serve"]

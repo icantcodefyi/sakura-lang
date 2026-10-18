@@ -1,0 +1,6 @@
+---
+description: Use the project's Sakura workflow for Sakura source and manifests.
+globs: "**/*.sakura,**/sakura.toml"
+alwaysApply: false
+---
+Read AGENTS.md and use the installed sakura skill before changing Sakura code.

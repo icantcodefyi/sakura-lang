@@ -118,9 +118,20 @@ pub struct Mcp {
 
 impl Mcp {
     pub fn start(root: &std::path::Path) -> Mcp {
-        let mut child = Command::new(env!("CARGO_BIN_EXE_sakura"))
-            .args(["mcp", "serve", "--root"])
-            .arg(root)
+        let mut cmd = Command::new(env!("CARGO_BIN_EXE_sakura"));
+        cmd.args(["mcp", "serve", "--root"]).arg(root);
+        Mcp::spawn(cmd)
+    }
+
+    /// `sakura mcp serve` with no `--root`, started in `cwd`.
+    pub fn start_in(cwd: &std::path::Path) -> Mcp {
+        let mut cmd = Command::new(env!("CARGO_BIN_EXE_sakura"));
+        cmd.args(["mcp", "serve"]).current_dir(cwd);
+        Mcp::spawn(cmd)
+    }
+
+    fn spawn(mut cmd: Command) -> Mcp {
+        let mut child = cmd
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null())

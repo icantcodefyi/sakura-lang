@@ -270,9 +270,11 @@ fn new_projects_check_and_are_formatted() {
         let out = sakura(&["new", kind, &name], &dir);
         assert_eq!(out.code, Some(0), "{}", out.stderr);
         let project = dir.join(&name);
-        for f in ["sakura.toml", "sakura.lock", "src/main.sakura"] {
+        for f in ["sakura.toml", "sakura.lock", "src/main.sakura", "AGENTS.md"] {
             assert!(project.join(f).is_file(), "{kind}: {f}");
         }
+        let claude = std::fs::read_to_string(project.join("CLAUDE.md")).unwrap();
+        assert_eq!(claude, "@AGENTS.md\n", "{kind}");
         let check = sakura(&["check"], &project);
         assert_eq!(check.code, Some(0), "{kind}: {}", check.stderr);
         assert_eq!(
@@ -287,6 +289,16 @@ fn new_projects_check_and_are_formatted() {
     assert_eq!(sakura(&["new", "lib", "p_lib"], &dir).code, Some(2));
     assert_eq!(sakura(&["new", "lib", "Bad-Name"], &dir).code, Some(2));
     assert_eq!(sakura(&["init"], &dir.join("p_cli")).code, Some(2));
+    // `init` keeps an existing `AGENTS.md` and adds what is missing.
+    let mine = dir.join("mine");
+    std::fs::create_dir_all(&mine).unwrap();
+    std::fs::write(mine.join("AGENTS.md"), "my rules\n").unwrap();
+    assert_eq!(sakura(&["init"], &mine).code, Some(0));
+    assert_eq!(
+        std::fs::read_to_string(mine.join("AGENTS.md")).unwrap(),
+        "my rules\n"
+    );
+    assert!(mine.join("CLAUDE.md").is_file());
     let _ = std::fs::remove_dir_all(&dir);
 }
 

@@ -1,10 +1,11 @@
 //! `sakura new <kind> <name>` and `sakura init`: a project with `sakura.toml`, `sakura.lock`,
-//! `src/main.sakura` with one test, and a `[permissions]` table (design §12.1).
+//! `src/main.sakura` with one test, a `[permissions]` table, and `AGENTS.md` and `CLAUDE.md`
+//! (`@AGENTS.md`) for coding agents (design §12.1, §17.143).
 
 use std::path::Path;
 use std::process::ExitCode;
 
-use crate::usage_error;
+use crate::{asset, setup, usage_error};
 
 const CLI: &str = r#"import std/cli.{Cli}
 
@@ -98,12 +99,16 @@ fn template(kind: &str) -> Result<(&'static str, &'static str), String> {
     })
 }
 
-/// Creates `dir` (which must be empty or absent) as a `kind` project named `name`.
-pub fn new(kind: &str, name: &str, dir: &Path) -> ExitCode {
+/// Creates `dir` (which must be empty or absent) as a `kind` project named `name`, then runs
+/// `sakura setup --apply` in it for `setup_client`, if given.
+pub fn new(kind: &str, name: &str, dir: &Path, setup_client: Option<&str>) -> ExitCode {
     if dir.read_dir().is_ok_and(|mut d| d.next().is_some()) {
         return usage_error(format!("{} exists and is not empty", dir.display()));
     }
-    scaffold(kind, name, dir)
+    match (scaffold(kind, name, dir), setup_client) {
+        (code, Some(client)) if code == ExitCode::SUCCESS => setup::setup_in(dir, client, true),
+        (code, _) => code,
+    }
 }
 
 /// Makes the current directory a `kind` project named after it. Existing files are kept.
@@ -143,6 +148,8 @@ fn scaffold(kind: &str, name: &str, dir: &Path) -> ExitCode {
         ("sakura.lock", LOCK),
         ("src/main.sakura", main),
         (".gitignore", "/target/\n"),
+        ("AGENTS.md", asset("AGENTS.md")),
+        ("CLAUDE.md", asset("CLAUDE.md")),
     ];
     for (rel, text) in files {
         let path = dir.join(rel);

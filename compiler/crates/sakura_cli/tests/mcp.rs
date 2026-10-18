@@ -134,3 +134,34 @@ fn check_patch_apply_and_test_over_stdio() {
 
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// Without `--root` the server's workspace is the nearest `sakura.toml` upward from where it was
+/// started; outside a project it refuses to start and names the directory it searched (§17.143).
+#[test]
+fn serve_without_root_finds_the_project_or_refuses() {
+    let dir = std::env::temp_dir().join(format!("sakura-mcp-{} root", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let project = dir.join("demo");
+    std::fs::create_dir_all(project.join("src/nested")).unwrap();
+    std::fs::write(project.join("sakura.toml"), "[package]\nname = \"demo\"\n").unwrap();
+    std::fs::write(project.join("src/main.sakura"), BROKEN).unwrap();
+
+    let mut s = Mcp::start_in(&project.join("src/nested"));
+    let (info, err) = s.call("compiler_info", json!({}));
+    assert!(!err, "{info}");
+    let root = info["workspace_root"].as_str().unwrap();
+    assert_eq!(
+        std::fs::canonicalize(root).unwrap(),
+        std::fs::canonicalize(&project).unwrap()
+    );
+    drop(s);
+
+    let outside = common::sakura(&["mcp", "serve"], &dir);
+    assert_eq!(outside.code, Some(2), "{}", outside.stderr);
+    assert!(
+        outside.stderr.contains("no sakura.toml in") && outside.stderr.contains("--root"),
+        "{}",
+        outside.stderr
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
