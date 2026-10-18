@@ -79,7 +79,10 @@ test "a recorded exchange replays offline; sakura test --record fetches it once"
   with Http.host(),
       Fs.rooted(Test.fixtures()),
       Budget.unlimited(),
-      Llm.recording(Path.of("extract_ticket.jsonl"), Llm.anthropic(key, Model.of("claude-sonnet-5-5"))) {
+      Llm.recording(
+        Path.of("extract_ticket.jsonl"),
+        Llm.anthropic(key, Model.of("claude-sonnet-5-5")),
+      ) {
     let t = extract_ticket(Untrusted.of("Login page 500s since 9am, blocking all customers"))
     expect_eq(t.priority, High)
   }
