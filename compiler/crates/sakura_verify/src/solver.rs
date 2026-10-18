@@ -387,8 +387,20 @@ fn model(text: &str) -> Model {
 /// Decides `o` with `primary`; every `unsat` is re-asked of `cross` when given, and a `sat` there
 /// blocks the proof (§17.85): the obligation becomes `unknown` with `solver_disagreement`.
 pub fn verify(vc: &DefVc, o: &Obligation, primary: &Solver, cross: Option<&Solver>) -> Record {
+    solve(vc, o, primary, cross).0
+}
+
+/// [`verify`] with the answers [`decide`] was given, in order: what a proof cache entry keeps so
+/// that the record can be rebuilt without a solver (`crate::cache::Cache::reuse`).
+pub fn solve(
+    vc: &DefVc,
+    o: &Obligation,
+    primary: &Solver,
+    cross: Option<&Solver>,
+) -> (Record, Vec<Answer>) {
+    let mut answers = vec![];
     let mut r = decide(vc, o, Some(primary.info()), |_, script| {
-        match primary.ask(script) {
+        let a = match primary.ask(script) {
             Answer::Unsat => match cross.map(|c| (c, c.ask(script))) {
                 Some((c, Answer::Sat(_))) => Answer::Unknown(Reason::new(
                     ReasonKind::SolverDisagreement,
@@ -397,8 +409,10 @@ pub fn verify(vc: &DefVc, o: &Obligation, primary: &Solver, cross: Option<&Solve
                 _ => Answer::Unsat,
             },
             a => a,
-        }
+        };
+        answers.push(a.clone());
+        a
     });
     r.cross_check = cross.map(Solver::info);
-    r
+    (r, answers)
 }

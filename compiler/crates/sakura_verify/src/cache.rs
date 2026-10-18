@@ -9,7 +9,9 @@
 //!
 //! A persisted record removes a check only if its HMAC-SHA256 verifies under the per-installation
 //! key `$XDG_STATE_HOME/sakura/proof.key` (mode 0600, outside the repository and `target/`). Any
-//! other record is a lookup hint: the solver reruns.
+//! other record is a lookup hint: the solver reruns. An authenticated record also keeps the
+//! solver's answers, so `sakura verify` rebuilds its obligation record from them instead of
+//! solving again ([`Cache::reuse`]).
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -20,7 +22,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::core::{ContractId, Def, DefId, Local, Module};
-use crate::record::{Record, SolverInfo, Status, hex};
+use crate::record::{Answer, Model, Reason, ReasonKind, Record, SolverInfo, Status, decide, hex};
 use crate::smt;
 use crate::vc::{self, DefVc, Kind, Obligation, Profile};
 
@@ -185,36 +187,66 @@ impl ProofKey {
     }
 }
 
+/// One answer of a `proved` or `disproved` verdict, in the order [`decide`] asked.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Reply {
+    Unsat,
+    Sat(Model),
+}
+
 /// A persisted verdict. `mac` covers every other field in this order.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Entry {
     pub key: String,
     pub status: Status,
     pub solver: SolverInfo,
-    /// sha256 of the record the verdict came from.
+    /// The solver every `unsat` was re-asked of, if any.
+    pub cross_check: Option<SolverInfo>,
+    /// sha256 of the record the verdict came from, before any replay and without its span.
     pub transcript: String,
     pub dependencies: Vec<String>,
+    pub replies: Vec<Reply>,
     pub mac: String,
 }
 
+/// Moving code changes a record's span but not its key, so the span is left out.
+fn transcript(r: &Record) -> String {
+    let r = Record {
+        span: None,
+        ..r.clone()
+    };
+    hex(&Sha256::digest(
+        serde_json::to_string(&r).expect("record").as_bytes(),
+    ))
+}
+
 impl Entry {
-    pub fn new(key: String, r: &Record, k: Option<&ProofKey>) -> Option<Entry> {
+    /// The entry for record `r` as [`decide`] returned it from `answers` (before any replay).
+    pub fn new(key: String, r: &Record, answers: &[Answer], k: Option<&ProofKey>) -> Option<Entry> {
         let solver = r.solver.clone()?;
         if !matches!(r.status, Status::Proved | Status::Disproved) {
             // `unknown` is history, never a reusable result (§17.86).
             return None;
         }
-        let transcript = hex(&Sha256::digest(
-            serde_json::to_string(r).expect("record").as_bytes(),
-        ));
+        let replies = answers
+            .iter()
+            .map(|a| match a {
+                Answer::Unsat => Some(Reply::Unsat),
+                Answer::Sat(m) => Some(Reply::Sat(m.clone())),
+                Answer::Unknown(_) => None,
+            })
+            .collect::<Option<Vec<_>>>()?;
         let mut dependencies: Vec<String> = r.summaries.iter().chain(&r.inlined).cloned().collect();
         dependencies.sort();
         let mut e = Entry {
             key,
             status: r.status,
             solver,
-            transcript,
+            cross_check: r.cross_check.clone(),
+            transcript: transcript(r),
             dependencies,
+            replies,
             mac: String::new(),
         };
         e.mac = k.map_or(String::new(), |k| hex(&hmac(&k.0, &e.signed())));
@@ -294,6 +326,36 @@ impl Cache {
             Some(k) if e.authentic(k) => Lookup::Authenticated(e),
             _ => Lookup::Hint(e),
         }
+    }
+
+    /// The record of `o` rebuilt from the authenticated entry under `key` without a solver: the
+    /// entry's replies given to [`decide`] again. Only an entry obtained with `solver` and the same
+    /// cross-check solver (or none) counts, and only when the rebuilt record has the entry's
+    /// status and transcript and uses every reply. `None` (missing, unsigned, tampered, foreign
+    /// or stale) means: solve it.
+    pub fn reuse(
+        &self,
+        key: &str,
+        vc: &DefVc,
+        o: &Obligation,
+        solver: &SolverInfo,
+        cross: Option<&SolverInfo>,
+    ) -> Option<Record> {
+        let Lookup::Authenticated(e) = self.get(key) else {
+            return None;
+        };
+        if e.solver != *solver || e.cross_check.as_ref() != cross {
+            return None;
+        }
+        let mut replies = e.replies.iter();
+        let mut r = decide(vc, o, Some(solver.clone()), |_, _| match replies.next() {
+            Some(Reply::Unsat) => Answer::Unsat,
+            Some(Reply::Sat(m)) => Answer::Sat(m.clone()),
+            None => Answer::Unknown(Reason::new(ReasonKind::SolverUnknown, "no cached reply")),
+        });
+        r.cross_check = cross.cloned();
+        (replies.next().is_none() && r.status == e.status && transcript(&r) == e.transcript)
+            .then_some(r)
     }
 
     /// The one question the removal hook (V3) may ask.
@@ -393,8 +455,10 @@ mod tests {
                 rlimit: 10_000_000,
                 deadline_ms: 5000,
             },
+            cross_check: None,
             transcript: "t".into(),
             dependencies: vec![],
+            replies: vec![],
             mac: String::new(),
         };
         e.mac = hex(&hmac(&[7; 32], &e.signed()));
