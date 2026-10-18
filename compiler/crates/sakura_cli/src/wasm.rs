@@ -77,7 +77,11 @@ pub fn build(
     if let Some(e) = sakura_lir::validate::validate(&lir, Default::default()).first() {
         panic!("LIR validator: {e}");
     }
-    let bytes = sakura_codegen_wasm::emit(&lir, &Default::default()).map_err(usage_error)?;
+    let wasm = sakura_codegen_wasm::Options {
+        direct: opts.direct,
+        ..Default::default()
+    };
+    let bytes = sakura_codegen_wasm::emit(&lir, &wasm).map_err(usage_error)?;
     let write = |name: &str, bytes: &[u8]| -> Result<(), ExitCode> {
         let path = out_dir.join(name);
         std::fs::create_dir_all(out_dir)

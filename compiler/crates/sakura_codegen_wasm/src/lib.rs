@@ -62,6 +62,9 @@ pub struct Options {
     /// Omit the `sakura.debug` section (`sakura build --strip`, ABI §12).
     pub strip: bool,
     pub host: Host,
+    /// Emit native twins for direct regions (design §17.118); `false` (`--no-direct`) runs every
+    /// call through continuation frames, the all-frame baseline.
+    pub direct: bool,
 }
 
 impl Default for Options {
@@ -70,6 +73,7 @@ impl Default for Options {
             max_heap: DEFAULT_MAX_HEAP,
             strip: false,
             host: Host::Abi,
+            direct: true,
         }
     }
 }
@@ -375,6 +379,21 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
         }
     }
     let test_handler = clause_codes(&mut statics, "std::test::Test", "test");
+    // Direct regions (design §17.118): each such function also gets a native twin, after the
+    // program's functions.
+    let regions = if opts.direct {
+        sakura_lir::direct::regions(m)
+    } else {
+        vec![false; m.funcs.len()]
+    };
+    let mut twins = vec![None; m.funcs.len()];
+    let mut next_twin = first_user + n;
+    for (t, &r) in twins.iter_mut().zip(&regions) {
+        if r {
+            *t = Some(next_twin);
+            next_twin += 1;
+        }
+    }
     let env = func::Env {
         m,
         rt: &layout.rt,
@@ -389,6 +408,13 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
             .enumerate()
             .map(|(k, n)| (n.clone(), layout.first_import + k as u32))
             .collect(),
+        twins,
+        recursive: (0..m.funcs.len())
+            .map(|i| m.direct.recursive(i as u32))
+            .collect(),
+        may_abort: func::may_abort(m, &regions),
+        gauge: g + 3,
+        state: g + 4,
     };
     let mut user = Vec::with_capacity(m.funcs.len());
     for f in &m.funcs {
@@ -397,6 +423,16 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
             &format!("{}::{}", f.module, f.name),
             vec![ValType::I32, ValType::I32],
             vec![ValType::I32],
+            body,
+        ));
+    }
+    for (f, _) in m.funcs.iter().zip(&regions).filter(|(_, r)| **r) {
+        let body = func::compile_twin(&env, &mut statics, f).map_err(|e| format!("WASM: {e}"))?;
+        let (params, results) = func::twin_type(f);
+        user.push(added(
+            &format!("{}::{}$d", f.module, f.name),
+            params,
+            results,
             body,
         ));
     }
@@ -600,6 +636,9 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
                 (ValType::I32, true, 0),
                 (ValType::I32, true, 0),
                 (ValType::I32, false, ABI_VERSION as i64),
+                // The twins' gauge and state (`func::compile_twin`).
+                (ValType::I32, true, 0),
+                (ValType::I32, true, 0),
             ],
             data: statics.bytes.clone(),
             exports,

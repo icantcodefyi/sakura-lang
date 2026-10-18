@@ -1,0 +1,35 @@
+// milestone: M3
+// covers: design §17.118 (direct regions on WASM: owned arguments survive a gauge abort and the frame restart)
+
+type Acc = { total: Int, label: String }
+
+// Non-tail recursion over owned values: past the gauge the region is run again through frames.
+fn walk(xs: List<Int>, s: String, n: Int) -> Int {
+  if n == 0 { List.len(xs) + String.len(s) } else { walk(xs, s, n - 1) + 1 }
+}
+
+fn fold_acc(a: Acc, n: Int) -> Acc {
+  if n == 0 { a } else { fold_acc(Acc { total: a.total + n, label: a.label }, n - 1) }
+}
+
+fn deep_acc(a: Acc, n: Int) -> Int { if n == 0 { a.total } else { deep_acc(a, n - 1) + 1 } }
+
+fn half(x: Float, n: Int) -> Float { if n == 0 { x } else { half(x, n - 1) * 1.0 } }
+
+// A non-recursive region that enters a recursive one: an abort deep inside leaves both.
+fn shallow(xs: List<Int>, n: Int) -> Int { walk(xs, "ab", n) * 2 }
+
+pub fn main() -> Unit ! {Console} {
+  let xs = [1, 2, 3]
+  Console.print("{walk(xs, "hello", 10)} {walk(xs, "hello", 200000)} {xs}")
+  let a = fold_acc(Acc { total: 0, label: "acc" }, 1000)
+  Console.print("{a.total} {a.label} {deep_acc(a, 100000)}")
+  Console.print("{half(2.5, 10)} {half(2.5, 100000)}")
+  var i = 0
+  var t = 0
+  while i < 20 {
+    t = t + shallow(xs, 5000)
+    i = i + 1
+  }
+  Console.print("{t} {shallow(xs, 3)}")
+}
