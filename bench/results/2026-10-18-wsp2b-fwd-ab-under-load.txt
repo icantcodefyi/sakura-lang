@@ -1,0 +1,22 @@
+# handled_fwd/node n=100000 interleaved fresh-process A/B, runner.mjs measure (ms per call, min and median of 9 samples); base d2cd5f8, head e2c9092; v26.11.0; load: 24.57 15.15 12.70
+1 base min 1.8727 med 1.9183
+1 head min 1.8227 med 1.8468
+2 base min 1.8116 med 1.8692
+2 head min 1.7184 med 1.7365
+3 base min 1.7836 med 1.7932
+3 head min 1.7261 med 1.7408
+4 base min 1.7821 med 1.8066
+4 head min 1.7349 med 1.7445
+5 base min 1.7885 med 1.8007
+5 head min 1.7182 med 1.7409
+6 base min 1.7905 med 1.8061
+6 head min 1.7254 med 1.7464
+7 base min 1.7903 med 1.8008
+7 head min 1.7302 med 1.7373
+8 base min 1.7890 med 1.8366
+8 head min 1.7447 med 1.8288
+9 base min 1.8655 med 1.9022
+9 head min 1.8022 med 1.9570
+10 base min 1.8126 med 2.1528
+10 head min 1.8873 med 2.5840
+# load after: 20.39 14.68 12.58

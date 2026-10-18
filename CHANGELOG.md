@@ -334,6 +334,11 @@ published yet.
 - Faster checked reads on the JS backend (design §17.151): `xs[i].expect(…)` and
   `Map.get(m, k).expect(…)`, when the `Option` is used only there, compile to one checked
   read that builds no `Option`. A miss is still `D030` with the same message and exit 70.
+- Loops on the JS backend that perform effects whose handlers are found at run time now run
+  as plain JS loops (design §17.156): an iteration whose handler answers directly continues
+  in place, and only an iteration that suspends or reaches a handler that itself performs
+  allocates a continuation. `handled_suspend` runs about 3× faster on Node and its peak memory
+  there fell from ~120 MB to ~50–64 MB. Semantics, traces and output are unchanged.
 - Faster collections on the JS backend (design §17.116): `List.map`, `filter`, `filter_map`,
   `flat_map`, `range`, `zip` and `enumerate` build their result in place before returning it,
   `for` over a list reads each leaf of the vector once, `for` over a `Map` or `Set` copies

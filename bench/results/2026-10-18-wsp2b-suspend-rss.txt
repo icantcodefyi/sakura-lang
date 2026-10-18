@@ -1,0 +1,58 @@
+# handled_suspend/Node peak RSS, base d2cd5f8 vs head e2c9092 (WS-P2b), v26.11.0; fresh processes of runner.mjs measure, interleaved; maxrss from /usr/bin/time -l (MiB); host load 8.5-10.4
+100000 base 1 rss=82.1 med=3.7127
+100000 head 1 rss=53.4 med=0.7339
+100000 base 2 rss=65.8 med=4.3189
+100000 head 2 rss=51.4 med=1.2538
+100000 base 3 rss=81.8 med=4.7794
+100000 head 3 rss=55.0 med=1.0230
+100000 base 4 rss=82.1 med=4.3756
+100000 head 4 rss=61.4 med=0.2895
+100000 base 5 rss=83.2 med=1.6278
+100000 head 5 rss=56.5 med=0.2676
+100000 base 6 rss=111.7 med=1.7795
+100000 head 6 rss=56.1 med=0.5780
+100000 base 7 rss=116.2 med=1.3684
+100000 head 7 rss=61.1 med=0.2511
+100000 base 8 rss=116.5 med=1.3677
+100000 head 8 rss=60.7 med=1.1420
+100000 base 9 rss=116.0 med=1.2973
+100000 head 9 rss=60.7 med=0.2509
+100000 base 10 rss=117.4 med=1.2907
+100000 head 10 rss=60.7 med=0.2514
+100000 base 11 rss=112.0 med=1.3289
+100000 head 11 rss=60.6 med=0.2632
+100000 base 12 rss=116.0 med=1.2835
+100000 head 12 rss=61.3 med=0.2603
+1000000 base 1 rss=114.6 med=12.7516
+1000000 head 1 rss=49.8 med=2.3769
+1000000 base 2 rss=114.8 med=12.4640
+1000000 head 2 rss=49.9 med=2.6087
+1000000 base 3 rss=114.9 med=16.1164
+1000000 head 3 rss=50.0 med=2.4025
+1000000 base 4 rss=115.0 med=12.7485
+1000000 head 4 rss=50.0 med=2.3812
+1000000 base 5 rss=114.4 med=12.7555
+1000000 head 5 rss=49.9 med=2.3978
+1000000 base 6 rss=114.8 med=12.5905
+1000000 head 6 rss=49.7 med=2.4345
+1000000 base 7 rss=114.3 med=12.4863
+1000000 head 7 rss=49.6 med=2.3745
+1000000 base 8 rss=114.7 med=12.7073
+1000000 head 8 rss=49.6 med=2.3758
+1000000 base 9 rss=114.6 med=12.8628
+1000000 head 9 rss=50.0 med=2.3998
+1000000 base 10 rss=114.8 med=12.6017
+1000000 head 10 rss=49.7 med=2.3764
+1000000 base 11 rss=114.6 med=12.4463
+1000000 head 11 rss=49.7 med=2.4123
+1000000 base 12 rss=114.5 med=12.4111
+1000000 head 12 rss=49.6 med=2.4439
+# post-GC heapUsed after 60 runs of run(1000000), two gc() calls (MiB), 3 processes each
+base 4.81 4.81 4.81
+head 4.81 4.81 4.81
+# --trace-gc, one measure process at n=1000000
+base scavenges=850 mark-compact=0 last: 819 ms: Scavenge 37.6 (71.2) -> 5.7 (71.2) MB, pooled: 0.0 MB, 0.06 / 0.00 ms (average mu = 1.000, current mu = 1.000) allocation failure; 
+head scavenges=2 mark-compact=0 last: 193 ms: Scavenge 5.8 (8.0) -> 5.6 (8.5) MB, pooled: 0.0 MB, 0.22 / 0.00 ms (average mu = 1.000, current mu = 1.000) allocation failure; 
+# --max-semi-space-size=8 (diagnostic only), n=1000000, 6 processes each (MiB)
+base 65.7 66.1 66.0 65.7 65.8 65.6
+head 49.7 50.2 50.2 49.9 49.9 50.0
