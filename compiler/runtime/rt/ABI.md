@@ -1,12 +1,14 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.1.3**, agreed before `sakura_lir` or `sakura_rt`
+**Status:** design specification, version **1.2.0**, agreed before `sakura_lir` or `sakura_rt`
 emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed, 1.0.2 the
 R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
 the end, with the questions still open), and 1.1.0 the four `stats()` counters and the
 direct-style twins of design §17.118 (plan item L4), 1.1.1 the gate 10 erratum to §8.1 and
 §8.4 (design §17.159; the plan's "1.0.3"), 1.1.2 the hostile-host hardening of plan WS12
-item 8 (§8.1, §8.4–§8.6), and 1.1.3 the defect sites of plan L5 (§5, §6.5, §12; design §17.162). Owned by the designer; implemented jointly by M4-LIR (`crates/sakura_lir`)
+item 8 (§8.1, §8.4–§8.6), 1.1.3 the defect sites of plan L5 (§5, §6.5, §12; design §17.162), and 1.2.0 the `restarts`
+counter, the import and handle-kind lists as built and §5's fallback wording (design §17.160,
+§17.161; plan M4-OPT). Owned by the designer; implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
 (`crates/sakura_codegen_wasm`, `runtime/js/sakura_wasm_host.js`). This document is prose,
 tables and byte layouts; it contains no code and is not itself normative language
@@ -39,9 +41,10 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   MINOR is greater than its own (the module may need an import the host lacks). The refusal is
   the driver diagnostic `V8003 abi_version_mismatch` (requested from `sakura_diagnostics`), never
   a trap.
-- `sakura_rt`, std and user code are compiled with the same ABI revision (research/08 §3.4);
-  the linker rejects a mismatch of `sakura_abi_version` between the runtime object and the
-  emitter's expectation.
+- `sakura_rt`, std and user code are compiled with the same ABI revision (research/08 §3.4).
+  As built (1.2.0): the emitter and the runtime object take the revision and the counter count
+  from one file, `runtime/rt/src/abi.rs`, which `sakura_codegen_wasm` includes, and a test of
+  that crate holds the Node host's `ABI_VERSION` and counter list to it.
 - 1.0.1 changes bytes (the `Handler` payload, the tuple's second word, the table formats) as a
   PATCH because nothing had been emitted against 1.0.0 (design §17.108); from the first emitted
   module on, such a change is MAJOR as stated above.
@@ -73,6 +76,14 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   `rt_raise`'s `site` argument are those 1.0.2 defined (a host that ignores the section prints
   the record without spans, as before); the trailing site parameter is a parameter of
   internal functions, which no export or import names. `sakura_abi_version` stays `0x010100`.
+- 1.2.0 (MINOR, design §17.160 (2), (4), §17.161, §17.191 (1)) appends an eleventh counter,
+  `restarts`, to `stats()` after `drops` (§10; the export now returns 88 bytes), and restates
+  three things as built: §5's gauge fallback (the caller runs the call again through frames;
+  it does not rewrite it), §8.2's import list (the W1, W2 and L4 imports, the fourth shape
+  `hosted`) and §8.4's handle kinds 0–7 with the kinds `retire_handle` receives. Nothing
+  shipped changes: the ten counters keep their offsets, so a 1.2 host reads a 1.1 module's ten
+  (`stats()` returns its length), and a 1.1 host refuses a 1.2 module by the MINOR rule above.
+  `sakura_abi_version` is `0x010200`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -159,7 +170,7 @@ not need a size lookup, and flags so `Dup`/`Drop` on a static literal is one bra
 | 14 | `Handler` | `u32 effect_id`, `u32 type_id` (the layout row of its state), `u32 n_state`, `u32 n_clauses`, state slots (initial values) at offset 24, then `n_clauses` 4-byte clause closure pointers. The state's types are known where the `handler` expression is compiled, so an `Int`/`Float` state is an unboxed slot and `StateGet`/`StateSet` never box (design §17.108); a type-variable state is kind 0 as everywhere |
 | 15 | `Secret` | `ptr inner` (a `String` or `Bytes`), never readable by `Show`, `Eq` (`V2032` already forbids), JSON or the host import copy-out (§8.3: the import kind `secret` is the only way out) |
 | 16 | `Untrusted` | `ptr inner` |
-| 17 | `Handle` | `u32 kind`, `u32 slot`, `u32 generation` (§8.4): `Dir`, `File`, `Body`, socket; `flags.scoped = 1` for `File` and `Body` |
+| 17 | `Handle` | `u32 kind`, `u32 slot`, `u32 generation` (§8.4, kinds as listed there): `Dir`, `Body`, a JS value; `flags.scoped = 1` for `Body` |
 | 18 | `Range` | two `i64` (JS: the tuple `[start, end]`) |
 | 0x8000 | `SomeBox` | `slot` payload (§4.3); produced only by the runtime's `some` constructor under `--layout=niche` |
 | 0x8001 | `Frame`, 0x8002 `Activation`, 0x8003 `FinEntry`, 0x8004 `Task`, 0x8005 `Request` | execution state, §7; allocated in the activation arena, never in a user slot |
@@ -276,9 +287,9 @@ by default, plan §3.1 M4-OPT).
   no-suspend analysis (research/08 §3.2 item 6) proves never performs, installs, fails or
   calls a non-direct function may additionally be emitted as `(args…) -> result` in native
   WASM parameters with its own WASM stack frame. Its recursion depth is bounded by a counted
-  **depth gauge** global (as JS `G.d`, limit 400): past the limit the direct call is rewritten
-  by the caller into the frame protocol, so the native stack never overflows. Direct functions
-  may raise a defect (§6.5) and nothing else.
+  **depth gauge** global: past its limit the direct attempt is abandoned and the caller makes
+  the same call through the frame protocol (as compiled, below), so the native stack never
+  overflows. Direct functions may raise a defect (§6.5) and nothing else.
   **As compiled (1.1.0, design §17.118):** the functions are `sakura_lir::direct::regions`
   (direct by the §17.111 facts, and first-order straight-line LIR: no `with`, `try`, handler
   state, callback or closure call; every call a call of another such function). Each gets a
@@ -292,7 +303,13 @@ by default, plan §3.1 M4-OPT).
   which call recursive defs through frames. Direct code performs nothing, so running it again
   is unobservable; a region that cannot run out (no cycle of twins, deepest chain within the
   budget) is entered without holding its arguments, otherwise the caller holds (`Dup`s) them
-  for the second attempt. Every defect keeps its code, message and site.
+  for the second attempt. Every defect keeps its code, message and site. **1.2.0:** each second
+  attempt adds one to the `restarts` counter (§10) before it starts (every backend that runs
+  this fallback counts it, a native one included), so the bound of design
+  §17.160 (2) is measured: a program's `restarts` is at most the number of entries into
+  regions that can run out of gauge, and one entry is restarted at most once: the frame path
+  calls recursive defs through frames, and a call it makes into another non-recursive region
+  is a new entry, counted on its own.
 - **Blame sites** (1.1.3, design §7.2, §17.115, §17.162; as JS `$site`, `runtime/js/ABI.md`
   §5). A top-level function whose `requires` or `where` checks blame its caller takes one
   trailing `i64` parameter, a site group id (§12) or 0: a call of it by name passes the group
@@ -524,23 +541,58 @@ reads a guest object header and the guest never receives a host pointer.
 
 ### 8.2 Import table
 
-One module `sakura_host`. The names and arities mirror `sakura_core::builtins::BUILTINS` with
-ABI `Cps` that reach the host (the JS runtime's `fs_*`, `file_*`, `http_send`,
-`http_stream_*`, `sql_*`, `serve_listen`, `llm_anthropic`, `clock_*`, `random_*`, `env_get`,
-`log_write`, `console_print`, `cli_*`, `secret_*`); the exact list is generated from the
-`BUILTINS` table by `sakura_codegen_wasm` and checked by a test against `sakura_wasm_host.js`
-exports (as the JS builtins test does). Every import has one of three shapes:
+One module `sakura_host`. The imports mirror the `sakura_core::builtins::BUILTINS` that reach
+the host, plus the runtime's own; the exact list is `sakura_codegen_wasm::validate::IMPORTS`
+and `HOSTED` (below), the §1 gate rejects a module naming any other, and `parity.rs` fails on
+an import the Node host lacks. Every import has one of four shapes:
 
 | Shape | Signature | Used for |
 |---|---|---|
-| `sync` | `(args as scalars/slices…) -> i32 status` plus results through `alloc_bytes` copy-out or an out-slot in the frame | `console_print`, `clock_now_ms`, `random_*`, `env_get`, `string_*` helpers that stay on the host in v1, `fs_root`, `fs_memory_root`, `fs_subdir` |
-| `async` | `(request_id: i32, args…) -> i32 accepted` | anything that suspends: `clock_sleep_ms`, `http_send`, `http_stream_open`, `file_read`, `sql_*`, `serve_listen`, `llm_anthropic`; completion comes back through the export `complete` (§8.5) |
-| `callback` | the host receives a `callback_id: i32` and later calls the export `invoke(callback_id, args_ptr)`; used only by `serve_listen` and `Task` fibers | reentrancy, §8.5 |
+| `sync` | `(args as scalars/slices…) -> scalar`, or a `Bytes` from `alloc_bytes` copy-out | console, clock reads, `random_*`, `log_write`, `file_close`, the test runner, SQL and JS-built handlers, `http_body_close`, `serve_respond`, `trace_*`, `retire_handle`, `abort` |
+| `async` | `(request_id: i32, args…) -> i32 accepted` | anything that suspends: `clock_sleep_ms`, `http_send`, `http_stream_open`, `http_stream_read`, `serve_listen`; completion comes back through the export `complete` (§8.5) |
+| `callback` | the host receives a `callback_id: i32` and later calls the export `invoke(callback_id, args_ptr)`; used only by `serve_listen` | reentrancy, §8.5 |
+| `hosted` (1.2.0) | `(ptr: i32, len: i32) -> i32`: the arguments as one `sakura-vt1` tuple, the answer a status-prefixed `Bytes` from `alloc_bytes` (§8.1) | a builtin whose JS implementation the host runs as is: `fs_*`, `file_open`/`file_read`/`file_write`, `env_get`, `cli_*`, `json_*`, `http_body_of`, `http_recording_*` |
 
 Statuses: `0 ok`, `1 err` (the operation's ordinary `Err(reason)`; the reason string is copied
 out), `2 denied` (a `[permissions]` refusal, reported as the operation's ordinary error, as JS),
 `3 host_failure` (becomes `D091`), `4 ok_handle` (an `ok` completion whose payload starts with
 the 12 bytes `kind, slot, generation` of the host handle it carries; §8.5, design §17.129 P10).
+
+**As built (1.2.0, design §17.161).** The imports of an ABI module (`Host::Abi`) are exactly
+these; a WASI command (the pure corpus on Wasmtime, `Host::Wasi`) imports only
+`wasi_snapshot_preview1.fd_write` and `proc_exit` and implements the pure ones inside itself:
+
+- Runtime (M4-RT): `retire_handle(kind, slot, generation)`, `abort(request)`,
+  `trace_enabled() -> i32`, `trace_write(ptr, len)` (one §17.80 trace line).
+- Console, clock, random, log (M4-WASM): `console_print(ptr, len)`, `console_read_line() ->
+  Bytes` (0 at the end), `clock_now_ms() -> i64`, `clock_monotonic_ms() -> i64`, `async`
+  `clock_sleep_ms(request, ms: i64)`, `random_int(lo: i64, hi: i64) -> i64`, `random_float() ->
+  f64`, `random_bytes(n: i64) -> Bytes`, `random_uuid() -> Bytes`, `log_write(ptr, len)`,
+  `file_close(id: i64)`.
+- Test runner (W1): `test_seed() -> i64`, `test_record_failure(ptr, len)`, `test_failures() ->
+  i64`, `test_output(ptr, len)`, `test_output_lines() -> Bytes`, `test_fixtures() -> Bytes`,
+  `test_snapshot(name, name_len, rendered, rendered_len)`; property sessions `prop_begin(ptr,
+  len) -> i64`, `prop_next(session: i64, result: i64, ptr, len) -> Bytes`, `prop_record(session:
+  i64, ptr, len)`, `prop_failures(session: i64) -> i64`.
+- Host-built handlers (W2): SQL `sql_open_memory() -> i64`, `sql_open_file(ptr, len) -> i64`,
+  `sql_needs_root(instance: i64) -> i32`, `sql_root(instance: i64, ptr, len)`,
+  `sql_query`/`sql_execute(instance: i64, ptr, len) -> Bytes`, `sql_begin(instance: i64) ->
+  Bytes`, `sql_release`/`sql_rollback(instance: i64, token: i64)`; JS-built handlers
+  `js_handler(name, name_len, ptr, len) -> i64` (kind `secret`, §8.1), `js_clause(instance:
+  i64, op, ptr, len) -> Bytes`, `js_resume(session, status, ptr, len) -> Bytes`,
+  `js_callback(id: i64, ptr, len) -> Bytes`.
+- HTTP and serving (W2): `async` `http_send(request, ptr, len)` and `http_stream_open(request,
+  ptr, len)` (both kind `secret`), `async` `http_stream_read(request, ptr, len)`,
+  `http_body_close(ptr, len)`, `serve_listen(request, listener, ptr, len)` (`async` and
+  `callback`), `serve_respond(task: i64, ptr, len)`.
+- `hosted` (W1, W2): `cli_args`, `cli_parse`, `env_get`, `file_open`, `file_read`,
+  `file_write`, `fs_exists`, `fs_list`, `fs_memory_root`, `fs_read`, `fs_root`, `fs_subdir`,
+  `fs_write`, `http_body_of`, `http_recording_append`, `http_recording_append_stream`,
+  `http_recording_lookup`, `http_recording_lookup_stream`, `http_recording_open`,
+  `json_decode`, `json_encode`, `json_parse`, `json_schema`.
+
+L4 added no import: twins are internal functions, and their gauge and state are module
+globals (§5). `ptr, len` is a slice (§8.1) and every unannotated parameter an `i32`.
 
 ### 8.3 Permissions and capabilities
 
@@ -552,7 +604,7 @@ is a slot over an in-memory store with no host authority (design §17.119). Path
 
 ### 8.4 Handle tables
 
-Host side: one table per **kind** (`dir`, `file`, `body`, `socket`, `sql`), entries `(slot,
+Host side: one table per **kind** (the 1.2.0 list below), entries `(slot,
 generation, instance_id, authority, state ∈ {open, closing, closed}, host object)`. Guest
 side: the `Handle` object. Every operation on a handle checks kind, instance, generation and
 state; a mismatch is the operation's ordinary error `"the file is closed"`/`"the body is
@@ -569,6 +621,15 @@ never reuses a slot, so a generation mismatch is reachable only from a forged or
 (a host fault); the generation increment and retirement above are the rule for a host that
 reuses slots. A `File`'s `id` is the JS runtime's plain `Int` id into its own file table, as on
 JS, not a packed handle; `dir` and `body` are handles.
+
+Handle kinds (1.2.0, design §17.161): `0 dir`, `1 file`, `2 body`, `3 socket`, `4 sql`, `5
+callback`, `6 jsvalue`, `7 js_handler`. `file` is reserved (a `File`'s `id` is a plain `Int`,
+above) and `socket` unused (a served request is a task, `invoke`); `jsvalue` is an opaque host
+value a JS callback returned, which the guest only passes back to the host and never decodes.
+From a guest and host that keep these rules, `retire_handle` receives kinds 0, 2 and 4–7: a
+`dir`, `body` or `jsvalue` handle when its `Handle` object dies (§3.5), and kinds 4, 5 and 7
+as below. The guest passes on whatever kind a handle it was given carries, so a host ignores
+a kind it does not know.
 
 Instances and callbacks (1.1.2, design §17.161): a host-built handler's state, an `Sql`
 database (kind 4, `sql`) or a JS-built handler such as `Llm.anthropic` with its key (kind 7),
@@ -654,8 +715,8 @@ cannot return several values through `extern "C"`, so the M4-WASM linker synthes
   one free list each, carved from 64 KiB runs; larger objects are **page runs** (`class = 0xFF`,
   run size stored in a `u32` at offset −8 from the 8-aligned header), 4 KiB-granular, first fit
   over an address-ordered free list, coalesced on free, from the same bounded heap. Every size
-  computation is checked before alignment and growth. Counters (reported by `stats()`;
-  `sakura run --stats` prints them): `requested` (cumulative bytes requested), `live` and
+  computation is checked before alignment and growth. Counters (reported by `stats()`):
+  `requested` (cumulative bytes requested), `live` and
   `peak` (bytes of live blocks at their class or run size), `live_objects` (live blocks; the
   §7.5 tests compare it), `committed` (linear memory above the heap base), `free_list_bytes`
   (small free lists plus free page runs), and since 1.1.0 (design §17.118) `frames`
@@ -663,8 +724,11 @@ cannot return several values through `extern "C"`, so the M4-WASM linker synthes
   allocated, the LIR's `Box`), `dups` (reference-count increments compiled code asked for:
   `Dup` and the increments of projections, captures and state reads) and `drops` (calls of the
   `drop` export, compiled code's and the host's), each a cumulative `u64` in that order after
-  the first six. `sakura_wasm_host.js` appends them as one JSON line at exit when
-  `SAKURA_WASM_STATS=<path>` is set, for benchmark records. A dlmalloc comparison harness stays in `runtime/rt/bench`.
+  the first six, and since 1.2.0 (design §17.160 (2)) `restarts` (direct-region calls run again
+  through frames after their twin ran out of gauge, §5) after `drops`. The interface is
+  `SAKURA_WASM_STATS=<path>`: `sakura_wasm_host.js` appends the counters by name as one JSON
+  line at exit, for benchmark records; there is no CLI flag, and the JS backend reports no
+  counters. A dlmalloc comparison harness stays in `runtime/rt/bench`.
 - Failed growth or an exhausted limit is **one defect path**: `D096 heap_exhausted` from the
   allocating site, after which the task unwinds (§6.4). The runtime reserves a fixed emergency
   region (64 KiB, committed at start, its own free lists, small blocks only, used only while the

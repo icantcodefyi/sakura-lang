@@ -23,7 +23,7 @@ use crate::heap::DEFAULT_MAX_HEAP;
 use crate::layout::{BOOL, F64, I64, WORD};
 use crate::object::{FALSE, TRUE, UNIT, bool_word};
 use crate::vt::secret_import;
-use crate::{Defect, Res, Rt, tag};
+use crate::{Defect, Res, Rt, STATS, tag};
 
 struct Instance(UnsafeCell<Option<Rt>>);
 
@@ -214,11 +214,9 @@ pub extern "C" fn rt_task_free(task: u32) {
     rt().task_free(task);
 }
 
-/// The number of `stats()` counters.
-pub const STATS: usize = 10;
-
 /// The `stats()` counters (ABI §10), [`STATS`] little-endian `u64`s: requested, live, peak,
-/// live objects, committed, free-list bytes, frames, boxes, dups, drops. Returns their address.
+/// live objects, committed, free-list bytes, frames, boxes, dups, drops, restarts. Returns their
+/// address.
 #[unsafe(no_mangle)]
 pub extern "C" fn rt_stats() -> u32 {
     struct Counters(UnsafeCell<[u64; STATS]>);
@@ -240,6 +238,7 @@ pub extern "C" fn rt_stats() -> u32 {
             s.boxes,
             s.dups,
             s.drops,
+            s.restarts,
         ];
     }
     at as usize as u32
@@ -290,6 +289,12 @@ pub extern "C" fn rt_dup(w: u32) -> u32 {
             1
         }
     }
+}
+
+/// A twin ran out of gauge and its frame-protocol caller runs the call again through frames.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_restart() {
+    rt().heap.stats.restarts += 1;
 }
 
 #[unsafe(no_mangle)]

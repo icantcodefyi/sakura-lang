@@ -217,6 +217,11 @@ published yet.
 - The WASM module's `stats()` export also reports frames, `Int`/`Float` boxes, `Dup`s and
   `Drop`s (runtime ABI 1.1.0), and `SAKURA_WASM_STATS=<path>` makes the WASM host append them
   at exit. The LIR computes the same direct facts as `sakura build --dump direct`.
+- The WASM module's `stats()` export reports an eleventh counter, `restarts`: the calls of a
+  direct function run again through frames after its native twin ran out of stack gauge
+  (runtime ABI 1.2.0, design §17.160 (2)). ABI 1.2.0 also lists the host imports and handle
+  kinds as built; a 1.1 host refuses a 1.2 module (`V8003`), so the bundled host and the
+  module move together.
 
 - `--target wasm` runs `Http.host()` sends and streams, `Sql.sqlite`, `Serve.host()`,
   `Llm.stream` through `Llm.anthropic` and `Log.json()` as the JS backend does; every

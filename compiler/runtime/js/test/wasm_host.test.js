@@ -5,7 +5,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { Host, HostFault, Reader, defectSpans, readDebug, runTests } from "../sakura_wasm_host.js";
+import { ABI_VERSION, AbiMismatch, Host, HostFault, Reader, defectSpans, readDebug, runTests } from "../sakura_wasm_host.js";
 import * as rt from "../sakura_runtime.js";
 
 /** A host over one page of memory with a bump `alloc_bytes` (a `Bytes`' data at +12). */
@@ -311,7 +311,7 @@ test("sakura.debug sites render as the JS backend's spans; a malformed section i
   const site = (start, end, role, contract) => [...u32(0), ...u32(start), ...u32(end), role, ...u32(contract)];
   const section = [
     ...new TextEncoder().encode("SKRDBG01"),
-    ...u32(0x010100),
+    ...u32(ABI_VERSION),
     ...new Array(32).fill(0),
     ...u32(1),
     ...u32(uri.length),
@@ -331,4 +331,33 @@ test("sakura.debug sites render as the JS backend's spans; a malformed section i
   assert.deepEqual(defectSpans(debug, 3), []);
   assert.equal(readDebug(debugModule(section.slice(0, 60))), null);
   assert.equal(readDebug(new WebAssembly.Module(Uint8Array.from([0, 0x61, 0x73, 0x6d, 1, 0, 0, 0]))), null);
+});
+
+/** A module whose only content is the exported global `sakura_abi_version = v` (ABI §0). */
+function versioned(v) {
+  const leb = [];
+  for (let x = v, more = true; more; ) {
+    const b = x & 0x7f;
+    x >>= 7;
+    more = !((x === 0 && (b & 0x40) === 0) || (x === -1 && (b & 0x40) !== 0));
+    leb.push(more ? b | 0x80 : b);
+  }
+  const name = [...new TextEncoder().encode("sakura_abi_version")];
+  const globals = [1, 0x7f, 0, 0x41, ...leb, 0x0b];
+  const exports = [1, name.length, ...name, 3, 0];
+  return Uint8Array.from([
+    ...[0, 0x61, 0x73, 0x6d, 1, 0, 0, 0],
+    ...[6, globals.length, ...globals],
+    ...[7, exports.length, ...exports],
+  ]);
+}
+
+test("the host refuses another MAJOR or a newer MINOR (AbiMismatch, reported as V8003) and accepts an older MINOR", async () => {
+  assert.equal(ABI_VERSION, 0x010200);
+  for (const v of [0x010300, 0x020000, 0x000200]) {
+    await assert.rejects(new Host().instantiate(versioned(v)), AbiMismatch, `0x${v.toString(16)}`);
+  }
+  for (const v of [0x010200, 0x010100, 0x010000, 0x010201]) {
+    await new Host().instantiate(versioned(v));
+  }
 });

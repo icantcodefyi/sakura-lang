@@ -29,7 +29,7 @@ fn smallest(meta: &str) -> (String, String) {
 
 fn counters(line: &str) -> Vec<(String, u64)> {
     let v: serde_json::Value = serde_json::from_str(line).expect("a stats line");
-    ["frames", "boxes", "dups", "drops"]
+    ["frames", "boxes", "dups", "drops", "restarts"]
         .iter()
         .map(|k| (k.to_string(), v[k].as_u64().expect("a counter")))
         .collect()

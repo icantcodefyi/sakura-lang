@@ -634,3 +634,60 @@ fn log_json_writes_what_js_writes() {
     assert_eq!(run("wasm"), js);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// ABI 1.2.0 §5, §10 and design §17.160 (2): an entry from frame code into a direct region whose
+/// twin runs out of gauge is run again through frames once, and `stats()` counts it in
+/// `restarts`; the rerun's own call into another region is a new entry, counted on its own. An
+/// entry that stays within the gauge, a held twin that defects, and every call under
+/// `--no-direct` count none.
+#[test]
+fn a_twin_that_runs_out_of_gauge_restarts_once_per_entry() {
+    if !available() {
+        eprintln!("skipped: node is missing");
+        return;
+    }
+    let dir = std::env::temp_dir().join(format!("sakura-wasm-restarts-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let defs = "fn sum(n: Int) -> Int { if n == 0 { 0 } else { n + sum(n - 1) } }\n\n\
+                fn zero() -> Int { List.len([]) }\n\n\
+                fn sum_until(n: Int) -> Int { if n == 0 { 1 / zero() } else { n + sum_until(n - 1) } }\n\n\
+                fn total(n: Int) -> Int { sum(n) }\n\n\
+                fn outer(n: Int) -> Int { total(n) }\n\n\
+                fn until(n: Int) -> Int { sum_until(n) }\n\n";
+    let restarts = |name: &str, body: &str, flags: &[&str], stdout: &str, code: i32| {
+        let src = dir.join(format!("{name}.sak"));
+        std::fs::write(
+            &src,
+            format!("{defs}pub fn main() -> Unit ! {{Console}} {{\n{body}}}\n"),
+        )
+        .unwrap();
+        let stats = dir.join(format!("{name}{}.jsonl", flags.len()));
+        let _ = std::fs::remove_file(&stats);
+        let out_dir = dir.join(format!("out-{name}{}", flags.len()));
+        let mut args = vec!["run", "--target", "wasm"];
+        args.extend(flags);
+        let file = format!("{name}.sak");
+        args.extend(["--out-dir", out_dir.to_str().unwrap(), &file]);
+        let out = sakura_env(&args, &dir, &[("SAKURA_WASM_STATS", &stats)]);
+        assert_eq!(out.code, Some(code), "{name}: {}", out.stderr);
+        assert_eq!(out.stdout, stdout, "{name}");
+        let line = std::fs::read_to_string(&stats).unwrap();
+        let v: serde_json::Value = serde_json::from_str(line.lines().last().unwrap()).unwrap();
+        v["restarts"].as_u64().expect("a restarts counter")
+    };
+    let print = |call: &str| format!("  Console.print(Int.to_string({call}))\n");
+    let flat = [
+        print("total(100000)"),
+        print("total(10)"),
+        print("total(100000)"),
+    ]
+    .concat();
+    let sums = "5000050000\n55\n5000050000\n";
+    assert_eq!(restarts("flat", &flat, &[], sums, 0), 2);
+    assert_eq!(restarts("flat", &flat, &["--no-direct"], sums, 0), 0);
+    let nested = print("outer(100000)");
+    assert_eq!(restarts("nested", &nested, &[], "5000050000\n", 0), 2);
+    let defect = print("until(10)");
+    assert_eq!(restarts("defect", &defect, &[], "", 70), 0);
+    let _ = std::fs::remove_dir_all(&dir);
+}

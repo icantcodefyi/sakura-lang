@@ -49,6 +49,9 @@ pub struct Stats {
     pub dups: u64,
     /// Words given up through the `drop` export (compiled code's `Drop`s and the host's).
     pub drops: u64,
+    /// Direct-region calls run again through frames after their twin ran out of gauge
+    /// (ABI 1.2.0, design §17.160 (2)): at most one per entry from frame-protocol code.
+    pub restarts: u64,
 }
 
 #[derive(Default)]

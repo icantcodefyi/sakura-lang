@@ -1600,7 +1600,8 @@ impl Gen<'_, '_> {
     /// Frame-protocol code entering a direct region (design §17.118): the call runs as a native
     /// call of the callee's twin with a fresh gauge. When the twin can abort (`hold`), the
     /// arguments stay held (`Dup`ed) until it returns, because an aborted twin is run again
-    /// through frames; the code after this is that frame-protocol call.
+    /// through frames, counted by `rt_restart` (ABI 1.2.0 `restarts`); the code after this is
+    /// that frame-protocol call.
     fn enter_twin(
         &mut self,
         s: &mut InstructionSink<'_>,
@@ -1663,7 +1664,9 @@ impl Gen<'_, '_> {
         self.depth -= 1;
         s.end();
         s.i32_const(OK).global_set(self.env.state);
-        if !hold {
+        if hold {
+            self.call_rt(s, "rt_restart")?;
+        } else {
             // `may_abort` bounds this region below the gauge, and its arguments are gone.
             self.pad(s, &rest, Some((90, "a direct region ran out of gauge")))?;
         }
