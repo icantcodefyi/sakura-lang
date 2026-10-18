@@ -12,7 +12,10 @@
 //! outside the project and its proofs directory). Any
 //! other record is a lookup hint: the solver reruns. An authenticated record also keeps the
 //! solver's answers, so `sakura verify` rebuilds its obligation record from them instead of
-//! solving again ([`Cache::reuse`]).
+//! solving again ([`Cache::reuse`]). Besides `proved` and `disproved`, an `unknown` whose reason
+//! is `resource_limit` is kept for that reuse only (§17.164): the `rlimit` is in the key and binds
+//! deterministically, so solving again would give the same answer; nothing but `proved` removes
+//! a check ([`Cache::proves`]).
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -31,8 +34,8 @@ pub const DOMAIN: &str = "sakura-proof-v1";
 /// Bumped whenever the encoding of a VC changes meaning.
 pub const ENCODER: &str = "sakura_verify/vc-1";
 /// The layout of an [`Entry`] and the reply protocol of its `replies`: an entry of another format
-/// is missing and solved again (security review K2).
-pub const FORMAT: u32 = 1;
+/// is missing and solved again (security review K2). 2: [`Reply::ResourceLimit`] (§17.164).
+pub const FORMAT: u32 = 2;
 const MAX_RECORD: u64 = 64 * 1024;
 
 /// A def's Core with every span removed: moving code does not change a proof.
@@ -221,12 +224,15 @@ impl ProofKey {
     }
 }
 
-/// One answer of a `proved` or `disproved` verdict, in the order [`decide`] asked.
+/// One answer of a cached verdict, in the order [`decide`] asked.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Reply {
     Unsat,
     Sat(Model),
+    /// `unknown` because the `rlimit` bound, with the solver's detail (§17.164); the last reply
+    /// of an `unknown` entry.
+    ResourceLimit(String),
 }
 
 /// A persisted verdict. `mac` covers every other field in this order.
@@ -261,8 +267,11 @@ impl Entry {
     /// The entry for record `r` as [`decide`] returned it from `answers` (before any replay).
     pub fn new(key: String, r: &Record, answers: &[Answer], k: Option<&ProofKey>) -> Option<Entry> {
         let solver = r.solver.clone()?;
-        if !matches!(r.status, Status::Proved | Status::Disproved) {
-            // `unknown` is history, never a reusable result (§17.86).
+        // Any other `unknown` is history, never a reusable result (§17.86, §17.164).
+        let limited = matches!(&r.reason, Some(why) if why.kind == ReasonKind::ResourceLimit);
+        if !(matches!(r.status, Status::Proved | Status::Disproved)
+            || r.status == Status::Unknown && limited)
+        {
             return None;
         }
         let replies = answers
@@ -270,6 +279,9 @@ impl Entry {
             .map(|a| match a {
                 Answer::Unsat => Some(Reply::Unsat),
                 Answer::Sat(m) => Some(Reply::Sat(m.clone())),
+                Answer::Unknown(why) if why.kind == ReasonKind::ResourceLimit => {
+                    Some(Reply::ResourceLimit(why.detail.clone()))
+                }
                 Answer::Unknown(_) => None,
             })
             .collect::<Option<Vec<_>>>()?;
@@ -391,6 +403,9 @@ impl Cache {
         let mut r = decide(vc, o, Some(solver.clone()), |_, _| match replies.next() {
             Some(Reply::Unsat) => Answer::Unsat,
             Some(Reply::Sat(m)) => Answer::Sat(m.clone()),
+            Some(Reply::ResourceLimit(detail)) => {
+                Answer::Unknown(Reason::new(ReasonKind::ResourceLimit, detail.clone()))
+            }
             None => Answer::Unknown(Reason::new(ReasonKind::SolverUnknown, "no cached reply")),
         });
         r.cross_check = cross.cloned();
@@ -398,7 +413,8 @@ impl Cache {
             .then_some(r)
     }
 
-    /// The one question the removal hook (V3) may ask.
+    /// The one question the removal hook (V3) may ask: only `proved` removes a check, so a
+    /// reusable `unknown` (§17.164) never does.
     pub fn proves(&self, key: &str) -> bool {
         matches!(self.get(key), Lookup::Authenticated(e) if e.status == Status::Proved)
     }

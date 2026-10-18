@@ -7,7 +7,9 @@ mod common;
 use std::collections::BTreeMap;
 
 use sakura_verify::cache::{self, Cache, Entry, ProofKey};
-use sakura_verify::record::{Answer, Model, Record, SolverInfo, Status, decide};
+use sakura_verify::record::{
+    Answer, Model, Reason, ReasonKind, Record, SolverInfo, Status, decide,
+};
 use sakura_verify::smt::Query;
 use sakura_verify::vc::{DefVc, Kind, Obligation, Profile};
 
@@ -183,6 +185,80 @@ fn authenticated_entries_are_reused_and_nothing_else_is() {
         key: None,
     };
     assert_eq!(unkeyed.reuse(k, vc, o, &z3, None), None);
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Design §17.164 (1): an `unknown` whose reason is `resource_limit` is cached and rebuilt from
+/// its entry with the same reason; it never removes a check; a forged detail is solved again; an
+/// `unknown` for any other reason (a timeout, a crash) is not cached at all.
+#[cfg(unix)]
+#[test]
+fn resource_limit_unknowns_are_reused_and_no_other_unknown_is() {
+    let base = std::env::temp_dir().join(format!("sakura-verify-rlimit-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&base);
+    let cache = Cache {
+        dir: base.join("proofs"),
+        key: Some(ProofKey::load_or_create(&base.join("state/sakura/proof.key"), &[]).unwrap()),
+    };
+    let z3 = solver(1);
+    let snap = common::snapshot("scale");
+    // Every path feasible, every other query out of resources (or out of time).
+    let solve = |vc: &DefVc, o: &Obligation, kind: ReasonKind| {
+        let mut answers = vec![];
+        let r = decide(vc, o, Some(z3.clone()), |q, _| {
+            let a = if q == Query::Feasible {
+                Answer::Sat(Model::new())
+            } else {
+                Answer::Unknown(Reason::new(kind, "max. resource limit exceeded"))
+            };
+            answers.push(a.clone());
+            a
+        });
+        (r, answers)
+    };
+    let mut unknowns = 0;
+    for vc in sakura_verify::vc::generate(&snap.module, Profile::Js) {
+        for o in &vc.obligations {
+            let k = cache::key(&snap.module, &vc, o, &z3, "trust");
+            for kind in [
+                ReasonKind::Timeout,
+                ReasonKind::Crash,
+                ReasonKind::SolverUnknown,
+            ] {
+                let (r, answers) = solve(&vc, o, kind);
+                if r.status == Status::Unknown {
+                    assert_eq!(
+                        Entry::new(k.clone(), &r, &answers, cache.key.as_ref()),
+                        None
+                    );
+                }
+            }
+            let (r, answers) = solve(&vc, o, ReasonKind::ResourceLimit);
+            if r.status != Status::Unknown {
+                continue;
+            }
+            unknowns += 1;
+            let e = Entry::new(k.clone(), &r, &answers, cache.key.as_ref()).expect("cached");
+            cache.put(&e).unwrap();
+            assert_eq!(cache.reuse(&k, &vc, o, &z3, None).as_ref(), Some(&r));
+            assert!(!cache.proves(&k), "an unknown never removes a check");
+            assert_eq!(
+                cache.reuse(&k, &vc, o, &solver(2), None),
+                None,
+                "another rlimit"
+            );
+            let path = cache.dir.join(format!("{k}.json"));
+            let original = std::fs::read_to_string(&path).unwrap();
+            let forged = original.replace("max. resource limit exceeded", "forged");
+            assert_ne!(forged, original);
+            std::fs::write(&path, forged).unwrap();
+            assert_eq!(cache.reuse(&k, &vc, o, &z3, None), None, "a forged detail");
+        }
+    }
+    assert!(unknowns > 0);
+    // The checks of `scale` stay: nothing in the cache is `proved`.
+    let sites = cache.check_sites(&snap.module, Profile::Js, &z3, "trust");
+    assert!(!sites.is_empty() && sites.values().all(|s| !s.proved));
     let _ = std::fs::remove_dir_all(&base);
 }
 
