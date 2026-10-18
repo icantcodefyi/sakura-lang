@@ -12,12 +12,15 @@ structured tools instead of parsing terminal output.
 No release is published yet. Build the CLI from a checkout:
 
 ```sh
-cargo install --locked --path compiler/crates/sakura_cli
+cd compiler
+cargo install --locked --path crates/sakura_cli
 sakura mcp serve --help
 ```
 
 The server works on the workspace in its current directory, or the one named by
-`--root <dir>`. It writes files only inside that directory, and only through `apply_patch`.
+`--root <dir>`. Source edits are written only inside that directory through `apply_patch`;
+`test` executes the supplied test runner. Compiler HTTP transport and the
+`--tools` function-export flag are planned, not supported options.
 
 ## Client setup
 
@@ -74,6 +77,16 @@ Kinds include `conflict`, `unknown_snapshot`, `unknown_patch`, `spec_frozen`,
 `fix_requires_review` and `internal_error`. A compiler crash inside a tool is reported as
 `internal_error` and the session continues.
 
+`compiler_info` returns `compiler`, `version`, `schema_version`, `edition`, `tools`,
+`features`, `workspace_root`, `manifest` and `lock_digest`. Capabilities describe the
+running build: `backends` includes `wasm` when compiled in, `verify: true` reports
+CLI verification support with solver availability/version status, and
+`test_execution` reports whether the server has a test runner. A missing solver
+does not mean verification is unimplemented; `verify` is not an MCP tool.
+
+MCP results are JSON objects containing records and summaries, not the CLI
+`--json` JSON Lines stream. Read `tools/list` for the running server's schemas.
+
 ## Workflow
 
 1. `check` with no `snapshot` reads the workspace from disk and returns a `snapshot` id.
@@ -81,11 +94,13 @@ Kinds include `conflict`, `unknown_snapshot`, `unknown_patch`, `spec_frozen`,
 2. Propose a change with `check_patch(snapshot, edits)`. Offsets are zero-based UTF-8 bytes.
    Each edit of an existing file carries that file's `content_hash`, and a mismatch is a
    `conflict`. Edits apply all together or not at all.
-3. Read the new diagnostics and `interface_delta`. Pass `frozen_specs: "all"` (or a list of
-   symbol names) to have signature, effect-row, contract, test and `[permissions]` changes
-   reported as `V8020`.
-4. `apply_patch(snapshot, patch_id)` writes the files. If a file changed on disk since the
-   snapshot, nothing is written and the result is a `conflict`: run `check` again.
+3. Read the new diagnostics and `interface_delta`. Pass `frozen_specs: "all"` (or a
+   comma-separated string of symbol names) on `check_patch` to have signature,
+   effect-row, contract, test and `[permissions]` changes reported as `V8020`.
+4. `apply_patch(snapshot, patch_id, frozen_specs: "all")` writes the files using the
+   original base snapshot. `frozen_specs` is optional on **each** patch call; a check
+   does not attach the freeze policy to the patch. Repeat it when applying.
+   If a file changed on disk since the snapshot, nothing is written and the result is a `conflict`: run `check` again.
 5. `test` to run the tests against the new snapshot.
 
 A diagnostic fix id (`f:…`) can be passed to `apply_patch` directly. Fixes whose impact is

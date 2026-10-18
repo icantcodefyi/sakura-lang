@@ -137,6 +137,10 @@ published yet.
 
 ### Fixed
 
+- Agent-facing status and MCP documentation now distinguish implemented CLI, stdio,
+  WASM and verification capabilities from planned exports, and explain opt-in frozen specs.
+  Contributor guidance points to the existing Rust workspace and its checks.
+
 - `sakura fmt` keeps file header comments above sorted imports when an inline block comment
   precedes the first import, while moving that inline comment with its import.
 - `sakura fmt` preserves U+FDD0 in strings and comments instead of decoding it as a newline,

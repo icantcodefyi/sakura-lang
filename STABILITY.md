@@ -2,7 +2,7 @@
 
 ## Today: pre-alpha / design phase
 
-Sakura Lang has no released compiler, supported versions, or stable language/API contract.
+Sakura Lang has a source-buildable compiler, but no released compiler, supported versions, or stable language/API contract.
 [The design](docs/design.md) is provisional; examples are illustrative unless
 explicitly backed by a runnable test. Research and performance goals do not imply
 verified soundness, production readiness, or measured efficiency.
@@ -23,8 +23,9 @@ stabilization decisions separately and list the scope of any promised contract.
 Internal compiler crates remain unpublished implementation details until an SDK
 is deliberately designed; sharing a repository does not make their APIs stable.
 
-Pin the development toolchain when implementation starts and separately declare
-and test the minimum supported Rust version (MSRV). Both are undecided today.
+The development toolchain is pinned in `compiler/rust-toolchain.toml`, and
+`compiler/Cargo.toml` declares `rust-version = "1.99"`. Separately declare
+and test the minimum supported Rust version (MSRV); that validation is not established today.
 MSRV increases may occur in pre-1.0 minor releases and must be announced in notes.
 Supported host/target and OS/ABI minimums will be stated only after native smoke
 tests exist; there are no supported target guarantees yet.

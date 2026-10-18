@@ -4,10 +4,10 @@ description: Reference for the JSON Lines diagnostics produced by sakura check -
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  The source-built compiler runs the core language and much of M3 on JavaScript: contracts, typed effects and failures, std handlers, permissions, LSP and MCP. M3 is still in progress; no release or stable compatibility contract exists. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
+  The source-built compiler runs the core language and M3 standard library on JavaScript, with LSP and stdio MCP tools. WASM and verification are available as previews; backend parity and optimization work remain. No release or stable compatibility contract exists. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
 </Callout>
 
-Diagnostics are an API. Every diagnostic has a stable code, byte spans, structured expected and actual values, causal links, and fixes that declare their impact. The CLI, the LSP server, and the [MCP server](/docs/agents/mcp) share one analysis library and one format.
+Diagnostics are an API. Every diagnostic has a stable code, byte spans, structured expected and actual values, causal links, and fixes that declare their impact. The CLI, the LSP server, and the [MCP server](/docs/agents/mcp) share one analysis library; CLI JSON Lines, MCP result objects and LSP messages wrap that data differently.
 
 ```bash
 sakura check --json
@@ -22,8 +22,8 @@ sakura test --json
 | --- | --- |
 | `diagnostic` | An error, warning, or note. Shape below. |
 | `hole` | A [typed hole](/docs/agents/typed-holes) with its context. |
-| `obligation` | A claim about the program and its status: `proved`, `runtime_checked`, `tested`, or `trusted`. |
-| `progress` | Progress of a long run. |
+| `obligation` | Emitted by `sakura verify --json`: `proved`, `disproved`, `unknown` or `unsupported`. See [verify](/docs/agents/verify). |
+| `test` | A test result from `sakura test --json`. |
 | `summary` | End of run. `summary.truncated` is `true` if output hit the cap. |
 
 ## The diagnostic record
@@ -36,7 +36,7 @@ fn greet(name: String) -> Unit {
 }
 ```
 
-`sakura check --json` would report it as one line, shown here pretty-printed. Hashes and ids are shortened.
+`sakura check --json` reports it as one line, shown here pretty-printed with illustrative paths and shortened hashes and ids. Only the first fix is included.
 
 ```json
 {
@@ -46,14 +46,14 @@ fn greet(name: String) -> Unit {
   "code": "V3001",
   "severity": "error",
   "phase": "effect",
-  "message": "function `greet` performs `Console`, which its signature does not allow",
+  "message": "function `greet` performs `Console`, which its signature does not allow (allowed: `{}`)",
   "snapshot": "sha256:91c0",
   "symbol_id": "hello::main::greet",
   "spans": [
     { "uri": "file:///work/hello/src/main.sakura", "content_hash": "sha256:4be2",
-      "start_byte": 3, "end_byte": 8, "role": "primary", "label": "`greet` is declared pure" },
+      "start_byte": 3, "end_byte": 8, "role": "primary" },
     { "uri": "file:///work/hello/src/main.sakura", "content_hash": "sha256:4be2",
-      "start_byte": 35, "end_byte": 65, "role": "cause", "label": "`Console.print` introduces `Console` here" }
+      "start_byte": 35, "end_byte": 65, "role": "cause", "label": "`Console.print` performs `Console` here" }
   ],
   "related_ids": [],
   "expected": { "render": "{}", "row": { "labels": [], "tail": null } },
@@ -62,16 +62,16 @@ fn greet(name: String) -> Unit {
   "counterexample": null,
   "explanation_uri": "sakura://explain/V3001",
   "fixes": [
-    { "id": "f:01", "title": "Add `Console` to the signature of `greet`",
+    { "id": "f:01", "title": "Add `Console` to the signature",
       "applicability": "suggested", "impact": "interface_change",
       "edits": [ { "span": { "uri": "file:///work/hello/src/main.sakura", "content_hash": "sha256:4be2",
-                             "start_byte": 30, "end_byte": 30, "role": "primary", "label": "" },
+                             "start_byte": 30, "end_byte": 30, "role": "primary" },
                    "replacement": " ! {Console}" } ] }
   ]
 }
 ```
 
-For `V3001`, the design specifies two fixes: add the effect to the signature (`interface_change`) or handle it locally with `with` (`local`). Only the first is shown.
+For `V3001`, the compiler offers two fixes: add the effect to the signature (`interface_change`) or handle it locally with `with` (`local`). The local handler edit is `incomplete`: the agent must supply a suitable handler.
 
 ## Fields
 
@@ -131,11 +131,11 @@ Compiler fixes with `interface_change`, `contract_change`, or `authority_change`
 
 ### Frozen specs
 
-`sakura check --frozen-specs <symbols|all>`, `sakura fix`, and the MCP `apply_patch` tool reject any patch that changes a frozen symbol's signature, effect row, error union, `requires`/`ensures`/`where` clauses, or any `test`/`property` body. The diagnostic is `V8020 spec_frozen` and names the clause. This stops an agent from passing a check by editing the spec.
+With `--frozen-specs <symbols|all>`, `sakura check` and `sakura fix` compare selected signatures, effect rows, error unions, contracts, test/property bodies and permissions against Git `HEAD` (or `--since <rev>`). MCP `check_patch` reports violations against its base snapshot, and `apply_patch` rejects them, only when each call receives the optional `frozen_specs` argument. The diagnostic is `V8020 spec_frozen` and names the clause. This stops an agent from passing a check by editing the spec.
 
 ## Error codes
 
-Codes are `V` + a phase digit + three digits for errors, `W` for warnings, and `D` for runtime defects. Codes are never reused or renumbered; retired codes stay documented. Every code has an explain page with a minimal pair: wrong program, diagnostic, fixed program.
+Codes are `V` + a phase digit + three digits for errors, `W` for warnings, and `D` for runtime defects. Codes are never reused or renumbered; retired codes stay documented. `sakura explain <code>` reads the diagnostic registry. Explanations include guidance and, for some codes, wrong/fixed examples; generated per-code website pages are planned.
 
 | Phase digit | Area | Examples |
 | --- | --- | --- |
@@ -146,11 +146,11 @@ Codes are `V` + a phase digit + three digits for errors, `W` for warnings, and `
 | `4` | Patterns | `V4001` non-exhaustive match, `V4002` redundant arm |
 | `5` | Contracts and refinements | `V5001` predicate outside the contract subset |
 | `6` | Capabilities, resources, escape | `V6002` capability escapes its scope, `V6003` resource escapes, `V6010` non-std effect in `main` |
-| `7` | Tests and verification | None named in the design yet |
+| `7` | Tests and verification | `W7001` property discard budget, `W7002` vacuous obligation |
 | `8` | Packages, build, frozen specs | `V8020` spec frozen |
 | `9` | Internal | Compiler bugs |
 
-Warnings named in the design include `W1002` (a local shadows an import), `W4010` (catch-all `_` on an open error union), `W5005` (an O(n) contract on a hot path), `W7001` (property generator discard budget exceeded), and `W8001` (a collection update copies in a loop).
+Warnings named in the design include `W1002` (a local shadows an import), `W4010` (catch-all `_` on an open error union), `W5005` (an O(n) contract on a hot path), `W7001` (property generator discard budget exceeded), `W7002` (a proof over impossible assumptions), and `W8001` (a collection update copies in a loop).
 
 Runtime defects are not diagnostics from `sakura check`. They terminate the task; if `main` defects, the program writes one `defect` record to stderr and exits with status 70:
 

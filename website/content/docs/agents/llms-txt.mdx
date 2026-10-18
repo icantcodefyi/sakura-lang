@@ -1,6 +1,6 @@
 ---
 title: llms.txt and Markdown exports
-description: The two llms.txt files for Sakura Lang - this site's Markdown exports, and the language reference in docs/llms.txt that sakura prompt will emit.
+description: The two llms.txt files for Sakura Lang - this site's Markdown exports, and the language reference in docs/llms.txt that sakura prompt emits.
 ---
 
 There are two different `llms.txt` files in the Sakura Lang project. Do not confuse them.
@@ -39,7 +39,7 @@ Use `/llms.txt` to choose pages when context is tight. Use a per-page `.md` URL 
 
 ## The language reference: `docs/llms.txt`
 
-[`docs/llms.txt`](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/llms.txt) is the one-file reference an agent needs to write correct Sakura Lang. It is about 16 KB, roughly 4,500 tokens, and covers:
+[`docs/llms.txt`](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/llms.txt) is the one-file reference an agent needs to write correct Sakura Lang. It covers:
 
 - the toolchain loop (`sakura check --json`, `sakura test --json`, `sakura run`) and fix impact rules;
 - the syntax on one screen, plus the rules agents get wrong (newlines, casing, no call-site type arguments, no named arguments, explicit imports, one lambda form);
@@ -49,7 +49,7 @@ Use `/llms.txt` to choose pages when context is tight. Use a per-page `.md` URL 
 - the most used standard library names;
 - common diagnostics and their fixes.
 
-It is kept in sync with [`docs/design.md`](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md), which is authoritative if they ever disagree. Library signatures are deliberately not in it; look them up with the implemented MCP `symbol_query` tool; `sakura doc --search` is planned.
+The [design](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md) is provisional and includes unimplemented decisions. Use the guide embedded in your compiler for its availability claims. Retrieve full library signatures with MCP `symbol_query` or the implemented offline `sakura doc --search` command.
 
 ### `sakura prompt`
 
@@ -58,7 +58,9 @@ sakura prompt
 sakura prompt --budget 8000
 ```
 
-`sakura prompt [--budget tokens]` will print `docs/llms.txt` for the edition the installed compiler implements, plus requested library signatures within the token budget (design §12.1). Until it exists, fetch the file from the repository:
+`sakura prompt` prints the compiler's embedded `docs/llms.txt`. `--budget N` estimates four bytes per token and drops trailing whole sections to fit; it is not a tokenizer and does not add library signatures. Use `sakura doc <symbol>` or `sakura doc --search <pattern>` for those.
+
+For browsing the latest source guide (which may differ from your installed binary):
 
 ```bash
 curl https://raw.githubusercontent.com/icantcodefyi/sakura-lang/master/docs/llms.txt
@@ -85,7 +87,7 @@ borrow syntax from other languages.
   a check. Never use .trust(@trust(...)) or Secret.expose without a true reason.
 - No call-site type arguments and no named arguments: annotate the binding
   (`let rows: List<User> = Sql.query(q)`) and pass records for options.
-  Import every non-prelude name explicitly (`import std/http.{Http, Request}`).
+  Import every non-prelude name explicitly (`import std/http.{Http}` and `import std/request.{Request}`).
 - Use `sakura explain <code>` before guessing at a fix.
 ```
 

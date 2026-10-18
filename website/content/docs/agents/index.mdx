@@ -4,7 +4,7 @@ description: How an AI agent is expected to work with Sakura Lang, from reading 
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  The source-built compiler runs the core language and much of M3 on JavaScript: contracts, typed effects and failures, std handlers, permissions, LSP and MCP. M3 is still in progress; no release or stable compatibility contract exists. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
+  The source-built compiler runs the core language and M3 standard library on JavaScript, with LSP and stdio MCP tools. WASM and verification are available as previews; backend parity and optimization work remain. No release or stable compatibility contract exists. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
 </Callout>
 
 Sakura Lang is designed to be written by agents and reviewed by humans. The signature is the contract: parameter types with refinements, result type, effect row, error union, and `requires`/`ensures`. Agents write bodies against it; humans review signatures and the diff of signatures.
@@ -17,18 +17,18 @@ Sakura Lang is designed to be written by agents and reviewed by humans. The sign
 | [`/llms-full.txt`](/llms-full.txt) | Every page on this site concatenated into one Markdown file. |
 | `/docs/<page>.md` | Any page on this site as Markdown. Append `.md` to its URL; the docs root is `/docs.md`. |
 | Copy as Markdown | A button at the top of every page, next to a menu with the `.md` link and the GitHub source. |
-| [`docs/llms.txt`](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/llms.txt) | The language reference for agents: the whole core language in one file of about 4,500 tokens. Lives in the repository. |
-| [`docs/design.md`](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md) | The authoritative v0 design. When anything else disagrees with it, it wins. |
+| [`docs/llms.txt`](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/llms.txt) | The language reference for agents: the whole core language in one file. Lives in the repository. |
+| [`docs/design.md`](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md) | The provisional v0 design, including unimplemented decisions; use the compiler and its matched guide for availability. |
 
 The two `llms.txt` files are different things. See [llms.txt](/docs/agents/llms-txt).
 
-## Toolchain by milestone
+## Implemented toolchain
 
 | Tool | Purpose | Design |
 | --- | --- | --- |
-| `sakura check --json` | Diagnostics, holes, and obligations as JSON Lines. | design §12.2, M0 |
+| `sakura check --json` | Diagnostics, holes, and a summary as JSON Lines. | design §12.2, M0 |
 | `?name` typed holes | Placeholders the checker reports with expected type, effects, locals, and candidates. | design §12.4, M2 |
-| `sakura prompt` | Emits `docs/llms.txt` matched to the compiler's edition, plus requested library signatures. | design §12.1, M2 |
+| `sakura prompt` | Emits the embedded language guide; `--budget` truncates whole sections using a byte-based estimate. Retrieve signatures with `sakura doc`. | design §12.1, M2 |
 | `sakura fix`, `--frozen-specs` | Applies compiler fixes by impact class and rejects patches that touch frozen specs. | design §7.3, M3 |
 | [`sakura audit`](/docs/agents/audit), [`sakura doc`](/docs/agents/doc) | Trust inventory and offline signature search. | design §17.78, M3 |
 | [`sakura build --manifest`](/docs/agents/build-manifest) | Trusted components and runtime contract obligations. | design §17.76, M3 |
@@ -38,9 +38,9 @@ The two `llms.txt` files are different things. See [llms.txt](/docs/agents/llms-
 
 Milestones are defined in [design §14.3](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/design.md). See also the [roadmap](/docs/roadmap).
 
-## The intended loop
+## The working loop
 
-This is how an agent is expected to work with the full v0 toolchain. `sakura fix`, `--frozen-specs`, and the compiler MCP server are available.
+Use this loop with the source-built CLI or compiler MCP server. A successful `check` can still contain holes; finish with tests and a build.
 
 <AgentLoop />
 
@@ -93,7 +93,7 @@ Each problem is a `diagnostic` record with a stable code, byte spans, structured
 
 ### Report signature changes
 
-If the task really needs a new effect, error tag, permission, or a changed contract, make the change and list it for the reviewer. During repair, specs can be frozen (`--frozen-specs`), and any patch that touches them is rejected with `V8020`.
+If the task really needs a new effect, error tag, permission, or a changed contract, make the change and list it for the reviewer. During repair, use `--frozen-specs all --since <baseline>` against the agreed Git revision; MCP callers must pass `frozen_specs: "all"` on both patch calls. Run `sakura build` after tests to reject remaining holes.
 
 </Step>
 </Steps>
@@ -113,7 +113,7 @@ If the task really needs a new effect, error tag, permission, or a changed contr
     The site's Markdown exports and the language's `docs/llms.txt`.
   </Card>
   <Card title="MCP server" href="/docs/agents/mcp">
-    The implemented `sakura mcp serve` compiler tools and `@tool` export.
+    The implemented stdio compiler tools and the planned function-export interface.
   </Card>
   <Card title="Diagnostics" href="/docs/agents/diagnostics">
     The JSON Lines format, error codes, and fix impact classes.

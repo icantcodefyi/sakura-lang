@@ -78,7 +78,7 @@ export function llmsTxt() {
 
 > ${site.description}
 
-Sakura Lang is pre-alpha and nothing is released. The v0 language design is written (docs/design.md in the repository). The compiler builds from source and checks and runs M0 to M2 programs (effects, handlers, typed errors, holes) on JavaScript; the M3 standard library (http, sql, fs, cli, ai, task) is not built yet, so examples that use it do not run. Build it: ${site.url}/docs/quickstart
+Sakura Lang is pre-alpha and nothing is released. The v0 language design is written (docs/design.md in the repository). The source-built compiler runs the core language and M3 standard library on JavaScript, including HTTP, SQLite, filesystem, CLI, AI and tasks. WASM build/run/test with a Node host and solver-backed verification are available as previews; backend parity and optimization work remain. Build it: ${site.url}/docs/quickstart
 
 - The core language for agents, in one file: ${site.github}/blob/master/docs/llms.txt
 - Every docs page is available as Markdown: append \`.md\` to its URL (for example ${site.url}/docs/tour/effects.md).

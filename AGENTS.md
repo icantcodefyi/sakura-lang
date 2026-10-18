@@ -13,18 +13,20 @@ Sakura Lang is an agent-first language in **pre-alpha / design phase**. Read
   `bun install --frozen-lockfile`, then `bun run fmt:check`, `bun run lint`
   (oxlint), `bun run typecheck` and `bun run build`; `bun run fmt` formats
   (oxfmt) and `bun run dev` serves locally.
-- Compiler: no workspace/toolchain/MSRV exists yet. When introduced, use the
-  pinned toolchain and root `cargo fmt --all -- --check`,
+- Compiler: the Cargo workspace lives in `compiler/`, with its development
+  toolchain pinned in `compiler/rust-toolchain.toml`. From `compiler/`, run
+  `cargo fmt --all -- --check`,
   `cargo clippy --workspace --all-targets --locked -- -D warnings`, and
-  `cargo test --workspace --locked`. Do not report these as run today.
+  `cargo test --workspace --locked`. These are current gates; report their results.
+  The manifest declares `rust-version`; a separately tested MSRV is not established.
 - Map checks to changes: docs → links/examples; website → lint/build and affected
   UI; workflows → YAML/actionlint; compiler → targeted regression and conformance
   cases plus workspace checks. Require deterministic output, malformed-input
   recovery, explicit resource limits, and versioned diagnostic contracts.
 - Generated website `.source/` and `.next/` come from Fumadocs/Next.js tooling;
-  edit their source files. Preserve lockfiles. No compiler code generator or
-  snapshot harness exists yet. Review every snapshot diff; never normalize away
-  semantics. Add spec-linked positive and negative cases when tests exist.
+  edit their source files. Preserve lockfiles. The compiler has JS and WASM code
+  generation, fixture harnesses and checked-in snapshots. Review every snapshot
+  diff; never normalize away semantics. Add spec-linked positive and negative cases.
 - Use [RFCs](docs/rfcs/README.md) for language/protocol/stability changes and
   [ADRs](docs/adr/README.md) for architecture. Explain compatibility and update
   the changelog for user-visible changes. Label pseudocode and unimplemented goals.
