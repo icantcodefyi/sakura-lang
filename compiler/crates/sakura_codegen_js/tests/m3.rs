@@ -1008,6 +1008,109 @@ pub fn main() -> Unit ! {{Console}} {{
     assert!(err.contains("\"code\":\"D002\""), "{err}");
 }
 
+/// Gate 10 (H1, H2; design §17.159 (6)): `serve_listen` refuses a request body over 1 MiB with
+/// 413 and closes the connection without running the handler, accepts one of exactly 1 MiB, and
+/// answers a reply Node refuses (a header name with a space) with 500, reported as a `D091`
+/// defect, and keeps serving.
+#[test]
+fn serve_listen_caps_request_bodies_and_survives_invalid_replies() {
+    use std::io::{Read, Write};
+    let port = std::net::TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let src = format!(
+        r#"import std/serve.{{Serve, ServeError, Address}}
+import std/router.{{Router}}
+import std/request.{{Request}}
+import std/response.{{Response, Status}}
+@external(js, "sakura_runtime", "serve_listen")
+fn serve_listen<e>(addr: Address, handle: fn(Request) -> Response ! e) -> Never ! {{Fail<ServeError> | e}}
+fn host() -> Handler<Serve> {{
+  handler Serve {{ fn serve(handle, addr) {{ serve_listen(addr, handle) }} }}
+}}
+pub fn main() -> Unit ! {{Console}} {{
+  let r = Router.new()
+    .get("/health", fn(_) {{ Response.status(200, "ok") }})
+    .get("/bad", fn(_) {{ Response {{ status: Status.from(200), headers: [("bad name", "x")], body: "x" }} }})
+    .post("/len", fn(req) {{ Response.status(201, "{{String.len(req.body)}}") }})
+  let s = try {{ with host() {{ Serve.listen(r, Address {{ host: "127.0.0.1", port: {port} }}) }} }}
+  Console.print("{{s}}")
+}}
+"#
+    );
+    let (m, sources) = common::build("serve_limits", &src, false).unwrap();
+    let dir = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("serve_limits");
+    common::write(&m, sources, &dir);
+    let mut child = std::process::Command::new("node")
+        .arg(dir.join("__main__.js"))
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    let request = |head: &str, body: &[u8]| -> String {
+        for _ in 0..100 {
+            if let Ok(mut s) = std::net::TcpStream::connect(("127.0.0.1", port)) {
+                s.write_all(head.as_bytes()).unwrap();
+                s.write_all(body).unwrap();
+                let mut out = String::new();
+                s.read_to_string(&mut out).unwrap();
+                return out;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+        panic!("server did not start");
+    };
+    let max = 1 << 20;
+    let post = |len: usize| {
+        format!(
+            "POST /len HTTP/1.1\r\nhost: x\r\ncontent-length: {len}\r\nconnection: close\r\n\r\n"
+        )
+    };
+    // The declared length is refused before any of the body is read.
+    let large = request(&post(max + 1), b"");
+    let exact = request(&post(max), &vec![b'a'; max]);
+    let bad = request(
+        "GET /bad HTTP/1.1\r\nhost: x\r\nconnection: close\r\n\r\n",
+        b"",
+    );
+    let health = request(
+        "GET /health HTTP/1.1\r\nhost: x\r\nconnection: close\r\n\r\n",
+        b"",
+    );
+    child.kill().unwrap();
+    child.wait().unwrap();
+    let mut err = String::new();
+    child
+        .stderr
+        .take()
+        .unwrap()
+        .read_to_string(&mut err)
+        .unwrap();
+    assert!(
+        large.starts_with("HTTP/1.1 413")
+            && large.to_ascii_lowercase().contains("connection: close")
+            && large.ends_with("request body too large"),
+        "{large}"
+    );
+    assert!(
+        exact.starts_with("HTTP/1.1 201") && exact.ends_with(&max.to_string()),
+        "{exact}"
+    );
+    assert!(
+        bad.starts_with("HTTP/1.1 500")
+            && bad.ends_with("internal error")
+            && !bad.contains("bad name"),
+        "{bad}"
+    );
+    assert!(
+        health.starts_with("HTTP/1.1 200") && health.ends_with("ok"),
+        "{health}"
+    );
+    assert!(err.contains("\"code\":\"D091\""), "{err}");
+}
+
 /// A bodiless `@llm` function generates `Llm.generate(Llm.request(system, Prompt.of(parts)))`
 /// (design §11.1): `Untrusted<String>` parameters are `Untrusted` parts, the others `Text`
 /// parts shown by name, and the output is decoded at the declared result type.

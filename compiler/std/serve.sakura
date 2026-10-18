@@ -1,6 +1,8 @@
 // HTTP servers (design §10.2, §10.4, M3). `listen` runs a router until the process stops;
 // each request runs in its own task with the handlers installed around `listen`, and a
-// handler's defect becomes a 500 with a redacted report, never a crashed server.
+// handler's defect becomes a 500 with a redacted report, never a crashed server. The host
+// server reads at most 1 MiB (1,048,576 bytes) of a request body: a larger one is answered
+// 413 and its connection closed without running the handler (design §17.159 (6)).
 // needs M3: `[permissions] net` scoping of the address.
 
 import std/request.{Get, Request}
@@ -28,7 +30,9 @@ pub fn of(host: String, port: Int) -> Address
   requires port >= 0 && port <= 65_535
 { Address { host, port } }
 
-/// Listens on the host network, within the manifest's `net` list.
+/// Listens on the host network, within the manifest's `net` list. A request body over 1 MiB
+/// (1,048,576 bytes) is answered 413 and its connection closed; a reply with a status or header
+/// the server cannot send is a defect answered 500, and the server keeps running.
 pub fn host() -> Handler<Serve> {
   handler Serve {
     fn serve(handle, addr) { serve_listen(addr, handle) }

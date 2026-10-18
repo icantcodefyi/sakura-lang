@@ -9,6 +9,11 @@ published yet.
 
 ### Security
 
+- `Serve.host()` reads at most 1 MiB of a request body: a larger body is answered `413` and
+  its connection closed without running the handler. A reply whose status or headers the
+  server cannot send is reported as a `D091` defect and answered `500`, and the server keeps
+  running instead of stopping (security review H1, H2).
+
 - `--target wasm` now sends `Secret` HTTP headers (`Http.bearer`, and `Llm.anthropic` over
   `Http.host()`) instead of refusing the request, as gate 10 approved (security review W0):
   `http_send` and `http_stream_open` are kind-`secret` host imports beside `js_handler`, and

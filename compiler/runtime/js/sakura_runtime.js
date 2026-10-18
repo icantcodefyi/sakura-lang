@@ -4156,12 +4156,18 @@ export function serve_listen(addr, handle, ctx, k) {
   return suspend(s.stopped, (reason) => fail(ctx, new ServeError(reason)), s.close);
 }
 
+/** The largest request body `serveHttp` reads (design §17.159 (6)); a larger one is a 413. */
+export const MAX_REQUEST_BODY = 1 << 20;
+
 /**
  * The HTTP server behind `serve_listen` (the WASM host's too): `addr` must be in the manifest's
  * `net` list; each request becomes a `Request` for `run(request, reply)`, where `reply(o)` takes
  * the handler's outcome (`ok` with the `Response`; a `fail`, its `error` or `Show` text
- * `shown`, or a `defect` is reported on stderr and answered 500). Returns `{ err }`, or `{ stopped, close }` (`stopped` resolves to why the
- * server stopped).
+ * `shown`, or a `defect` is reported on stderr and answered 500). A body over
+ * `MAX_REQUEST_BODY` is answered 413 and the connection closed without running the handler; a
+ * `Response` whose status or headers Node refuses is reported as a `D091` defect and answered
+ * 500, and the server keeps running. Returns `{ err }`, or `{ stopped, close }` (`stopped`
+ * resolves to why the server stopped).
  */
 export function serveHttp(addr, run) {
   const where = `${addr.host}:${addr.port}`;
@@ -4173,11 +4179,27 @@ export function serveHttp(addr, run) {
   let server;
   const stopped = new Promise((resolve) => {
     server = proc.getBuiltinModule("node:http").createServer((req, res) => {
-      const plain = (status, text) =>
-        res.writeHead(status, { "content-type": "text/plain", "content-length": Buffer.byteLength(text) }).end(text);
+      const plain = (status, text, extra = {}) =>
+        res
+          .writeHead(status, { "content-type": "text/plain", "content-length": Buffer.byteLength(text), ...extra })
+          .end(text);
       const chunks = [];
-      req.on("data", (c) => chunks.push(c));
+      let size = 0;
+      let refused = false;
+      const tooLarge = () => {
+        refused = true;
+        chunks.length = 0;
+        plain(413, "request body too large", { connection: "close" });
+      };
+      if (Number(req.headers["content-length"]) > MAX_REQUEST_BODY) tooLarge();
+      req.on("data", (c) => {
+        if (refused) return;
+        size += c.length;
+        if (size > MAX_REQUEST_BODY) tooLarge();
+        else chunks.push(c);
+      });
       req.on("end", () => {
+        if (refused) return;
         const tag = methods.indexOf(req.method);
         if (tag < 0) {
           plain(405, "method not allowed");
@@ -4191,9 +4213,17 @@ export function serveHttp(addr, run) {
           if (o.kind === "ok") {
             const r = o.value;
             const hs = { ...Object.fromEntries(items(r.headers)), "content-length": Buffer.byteLength(r.body) };
-            res.writeHead(r.status, hs);
-            res.end(r.body);
-            return;
+            try {
+              res.writeHead(r.status, hs);
+            } catch (e) {
+              // An invalid status or header: a defect of this request, not of the server.
+              o = { kind: "defect", code: "D091", message: `host operation failed: invalid response: ${e.message}` };
+              for (const name of res.getHeaderNames()) res.removeHeader(name);
+            }
+            if (o.kind === "ok") {
+              res.end(r.body);
+              return;
+            }
           }
           if (o.kind === "defect") {
             writeErr(JSON.stringify({ schema_version: "1.0", kind: "defect", code: o.code, message: o.message }));

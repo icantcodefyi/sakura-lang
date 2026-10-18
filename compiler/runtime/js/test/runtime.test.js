@@ -889,3 +889,54 @@ test("violated blames the call site from the table, else the clause", () => {
   assert.equal(spans(-1), "primary@2");
   assert.equal(spans(undefined), "primary@2");
 });
+
+test("serveHttp refuses a body over 1 MiB with 413 and answers an invalid status with 500", async () => {
+  const http = await import("node:http");
+  const net = await import("node:net");
+  class Method extends rt.Variant {}
+  Method.prototype.$t = rt.variantType("Method", "std::request", [["Get", []], ["Post", []]]);
+  class Request {
+    constructor(method, url, headers, body) {
+      Object.assign(this, { method, url, headers, body });
+    }
+  }
+  rt.def("std::request::Method", Method);
+  rt.def("std::request::Request", Request);
+  const port = await new Promise((resolve) => {
+    const probe = net.createServer().listen(0, "127.0.0.1", () => {
+      const { port } = probe.address();
+      probe.close(() => resolve(port));
+    });
+  });
+  const seen = [];
+  const s = rt.serveHttp({ host: "127.0.0.1", port }, (req, reply) => {
+    seen.push(req.url);
+    const status = req.url === "/bad" ? 42 : 200;
+    reply({ kind: "ok", value: { status, headers: rt.list([]), body: String(req.body.length) } });
+  });
+  const send = (path, chunks = []) =>
+    new Promise((resolve) => {
+      const q = http.request({ host: "127.0.0.1", port, path, method: "POST", agent: false });
+      q.setHeader("connection", "close");
+      q.on("response", (r) => {
+        let body = "";
+        r.on("data", (c) => (body += c));
+        r.on("end", () => resolve([r.statusCode, r.headers.connection, body]));
+        r.on("error", () => resolve([r.statusCode, r.headers.connection, body]));
+      });
+      // Writing past the refusal may fail once the server closes; the response already came.
+      q.on("error", () => {});
+      for (const c of chunks) q.write(c);
+      q.end();
+    });
+  try {
+    // A chunked body has no declared length: it is counted as it arrives.
+    const big = Array.from({ length: 17 }, () => Buffer.alloc(64 * 1024, 97));
+    assert.deepEqual(await send("/big", big), [413, "close", "request body too large"]);
+    assert.deepEqual(await send("/bad"), [500, "close", "internal error"]);
+    assert.deepEqual(await send("/ok", [Buffer.alloc(rt.MAX_REQUEST_BODY, 97)]), [200, "close", String(1 << 20)]);
+    assert.deepEqual(seen, ["/bad", "/ok"], "the handler never saw the refused body");
+  } finally {
+    s.close();
+  }
+});
