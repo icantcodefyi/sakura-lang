@@ -1416,9 +1416,10 @@ function snapshot(runner, module, name, rendered) {
   if (have === null) {
     return `snapshot ${name} does not exist yet; run \`sakura test --update-snapshots\` and review it`;
   }
-  // A CRLF checkout of an LF snapshot (design §17.180 (4b)).
+  // A snapshot whose line endings git converted, or a value that gained or lost `\r`
+  // (design §17.196 (1)).
   if (have.replaceAll("\r\n", "\n") === want.replaceAll("\r\n", "\n")) {
-    return `snapshot ${name} differs from ${file} only in line endings: snapshots are LF (\`*.snap text eol=lf\` in .gitattributes)`;
+    return `snapshot ${name} differs from ${file} only in line endings: \`*.snap -text\` in .gitattributes keeps git from converting snapshots; if the new value is right, run \`sakura test --update-snapshots\``;
   }
   return `snapshot ${name} differs from ${file}:\n--- expected\n${have}--- actual\n${want}`;
 }

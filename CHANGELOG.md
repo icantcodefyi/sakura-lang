@@ -249,8 +249,11 @@ published yet.
   its guards, is an error from `sakura build`, `run` and `test` instead of a build that runs away
   in memory and time (design §17.193). The arm count itself is not limited.
 
-- `sakura new` and `sakura init` write `.gitattributes` with `*.sak text eol=lf` and
-  `*.snap text eol=lf`, so Windows checkouts stay LF (design §17.180 (4b)).
+- `sakura new` and `sakura init` write `.gitattributes` with `*.sak text eol=lf`, so Windows
+  checkouts of sources stay LF, and `*.snap -text`, so git never converts a snapshot's line
+  endings and a value with `\r\n` compares byte for byte (design §17.180 (4b), §17.196 (1)).
+  A snapshot that differs only in line endings names `*.snap -text` and
+  `sakura test --update-snapshots`.
 
 - `sakura verify --json` writes `schema_version: "1.1"` on every record, and its `summary`
   counts `reused`: the obligations whose record was rebuilt from an authenticated cache entry

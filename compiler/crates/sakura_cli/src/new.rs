@@ -148,8 +148,9 @@ fn scaffold(kind: &str, name: &str, dir: &Path) -> ExitCode {
         ("sakura.lock", LOCK),
         ("src/main.sak", main),
         (".gitignore", "/target/\n"),
-        // LF in every checkout, so `fmt --check` and snapshots hold on Windows (§17.180 (4b)).
-        (".gitattributes", "*.sak text eol=lf\n*.snap text eol=lf\n"),
+        // Sources LF in every checkout, so `fmt --check` holds on Windows; snapshots exactly as
+        // the runner wrote them, `\r` included (§17.180 (4b), §17.196 (1)).
+        (".gitattributes", "*.sak text eol=lf\n*.snap -text\n"),
         ("AGENTS.md", asset("AGENTS.md")),
         ("CLAUDE.md", asset("CLAUDE.md")),
     ];

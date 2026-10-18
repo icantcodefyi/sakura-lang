@@ -126,6 +126,8 @@ fn snapshots_are_written_only_on_update_then_compared() {
     assert_eq!(code, Some(3));
     let failure = recs[0]["failures"][0].as_str().unwrap();
     assert!(failure.contains("only in line endings"), "{failure}");
+    assert!(failure.contains("*.snap -text"), "{failure}");
+    assert!(failure.contains("--update-snapshots"), "{failure}");
     std::fs::write(&file, "<h1>bye</h1>\n").unwrap();
     let (code, recs) = run(&dir, "snapshot", false);
     assert_eq!(code, Some(3));
