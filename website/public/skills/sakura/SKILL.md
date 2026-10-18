@@ -153,4 +153,5 @@ Load references selectively: `references/language.md` is generated verbatim from
 `sakura prompt`'s source; `references/stdlib.md` contains generated API signatures;
 `references/diagnostics.md` comes from the diagnostic registry. Until the generated
 bundle is available, use `sakura prompt`, `sakura doc` and `sakura explain` directly.
-Use only recipes and project/client templates actually present in your bundle.
+Read [the tested cookbook](references/recipes.md) for complete offline projects.
+Use only project/client templates actually present in your bundle.
