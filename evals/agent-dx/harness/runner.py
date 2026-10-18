@@ -33,7 +33,6 @@ HARNESS_VERSION = '2'
 SUITE = offline.SUITE
 OWNER = 'icantcodefyi'
 OWNER_TOTAL_USD = 10.0  # owner decision 2026-10-18: $10 total across every live run
-MAX_LIVE_EPISODES = 48  # 12 tasks x 2 conditions x 2 models x 1 episode
 PRICE_CEILING = (4.0, 20.0)  # USD per million input/output tokens, README model A envelope
 MAX_TURNS = 40
 MAX_INPUT_CAP = 60_000  # the §17.146 envelope; §17.165 pairs a 60,000 arm against 40,000
@@ -140,9 +139,6 @@ class Ledger:
     def spent(self):
         return round(sum(e['cost_usd'] if e['status'] == 'settled' else e['reserved_usd']
                          for e in self.data['entries']), 6)
-
-    def episodes(self):
-        return len({(e['run_id'], e['episode']) for e in self.data['entries']})
 
     def _write(self):
         temporary = self.path.with_suffix('.tmp')
@@ -702,10 +698,11 @@ def command_run(args):
         key = os.environ.get('ANTHROPIC_API_KEY')
         if not key and not args.plan_only:
             raise Refused('ANTHROPIC_API_KEY is not set')
+        # Per approved run (§17.182 (4)); across runs the dollar ledger is the only rail.
+        if not 0 < len(plan) <= args.max_episodes:
+            raise Refused(f'{len(plan)} episodes planned; --max-episodes allows '
+                          f'{args.max_episodes} for this run')
         ledger = Ledger(args.ledger, run_id)
-        if ledger.episodes() + len(plan) > MAX_LIVE_EPISODES:
-            raise Refused(f'{ledger.episodes()} live episodes recorded; {len(plan)} more would '
-                          f'exceed the {MAX_LIVE_EPISODES}-episode cap')
     elif args.backend == 'scripted':
         offline.require(args.script and len(plan) == 1, 'scripted runs need --script and one episode')
     print(json.dumps({'run_id': run_id, 'episodes': len(plan), 'estimated_usd': round(estimate, 4),
@@ -815,6 +812,8 @@ def main(argv=None):
     run.add_argument('--budget-usd', type=float)
     run.add_argument('--approved-by')
     run.add_argument('--seed', type=int, default=0)
+    run.add_argument('--max-episodes', type=int, default=48,
+                     help='live episodes this approved run may plan (default 48)')
     run.add_argument('--input-caps', help='comma-separated aggregate input caps, one arm each '
                      '(e.g. 40000,60000, §17.165); default: each task\'s own cap')
     run.add_argument('--run-id')

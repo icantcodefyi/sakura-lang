@@ -69,6 +69,10 @@ published yet.
 - `V2002` names a `Type.member` callee as written: ``List.map` (std/list) takes 2 arguments,
   this call passes 1`` rather than the bare `map` (design §17.182 (3)).
 
+- The agent-eval runner caps the episodes of one approved run with `--max-episodes` (default
+  48) instead of 48 across all runs, leaving the dollar ledger as the only cap across runs;
+  `agent-eval.yml` gains `seed` and `max_episodes` inputs (design §17.182 (4)).
+
 - A loop body with more than eight CPS steps keeps the shared-continuation form instead of
   the resumable `for (;;)` loop, which copies the rest of an iteration once per step;
   `sakura build --dump direct` lists each such loop as `resumable` or

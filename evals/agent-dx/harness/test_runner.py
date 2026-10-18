@@ -304,12 +304,16 @@ class LiveMode(Base):
         self.assertEqual(Mock.seen, [])
 
     def test_episode_cap(self):
+        approved = ('--budget-usd', '1', '--approved-by', 'icantcodefyi', '--plan-only')
+        result = self.live(*approved, '--input-caps', '40000,60000', '--max-episodes', '1')
+        self.assertIn('--max-episodes allows 1', result.stderr)
+        # Episodes of earlier runs no longer count against the cap; the dollar ledger does.
         entry = {'run_id': 'old', 'model': 'm', 'turn': 0, 'status': 'settled',
                  'reserved_usd': 0.0, 'cost_usd': 0.0, 'input_tokens': 0, 'output_tokens': 0}
         self.ledger.write_text(json.dumps({'schema_version': 1, 'owner_cap_usd': 10.0, 'entries': [
             dict(entry, episode=str(i)) for i in range(48)]}))
-        result = self.live('--budget-usd', '1', '--approved-by', 'icantcodefyi')
-        self.assertIn('48-episode cap', result.stderr)
+        result = self.live(*approved)
+        self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(Mock.seen, [])
 
     def test_failed_request_keeps_reservation(self):

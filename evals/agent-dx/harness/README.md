@@ -77,7 +77,8 @@ Replay refuses transcripts recorded by another harness version.
   the $10 owner total; before each request it reserves `counted input × input price
   + max_tokens × output price` in `reports/ledger.json` and settles the reported
   usage afterwards. A failed request keeps its reservation as spent and halts the
-  run. The ledger also caps live episodes at 48 across all runs. Caching, thinking,
+  run. `--max-episodes` (default 48) caps the episodes one approved run may plan;
+  across runs the dollar ledger is the only cap (§17.182 (4)). Caching, thinking,
   server tools and sampling overrides are never requested.
 
 Tests exercise live mode only against a local mock server.
@@ -105,16 +106,16 @@ ANTHROPIC_API_KEY=… python3 evals/agent-dx/harness/runner.py run --backend liv
 git commit -m "chore(evals): record agent-eval spend" -- evals/agent-dx/reports/ledger.json
 ```
 
-The next run (§17.165 (3)–(4)) pairs the arms and repeats with a second order seed. It
-needs a fresh key and the owner's written approval of its worst case; the full design is
-96 episodes per seed, so `--tasks` must select a subset or the owner must raise the
-48-episode ledger cap first. Check the plan first:
+The next run (§17.182 (4)) pairs the arms on tasks 03, 04 and 10: 24 episodes per seed,
+at most $5.04 per seed. Seed 1 needs a fresh key and the owner's written approval; seed 2
+needs the owner to raise the $10 total. Check the plan first:
 
 ```sh
 python3 evals/agent-dx/harness/runner.py run --backend live --plan-only \
-  --sakura compiler/target/release/sakura --tasks <ids> --input-caps 40000,60000 \
+  --sakura compiler/target/release/sakura --input-caps 40000,60000 \
+  --tasks 03-path-label,04-local-env-handler,10-http-validation \
   --model claude-opus-5-5=4/20 --model claude-sonnet-5-5=2/10 \
-  --budget-usd <approved> --approved-by icantcodefyi --seed 1   # then --seed 2
+  --budget-usd <approved> --approved-by icantcodefyi --seed 1 --max-episodes 24
 ```
 
 Transcripts and the summary land in `target/agent-dx/runs/<run-id>/` (ignored;
@@ -122,7 +123,7 @@ raw messages stay private until redacted). Replay one with
 `runner.py replay --sakura … --transcript <file>`. Alternatively dispatch
 `agent-eval.yml` from GitHub after creating the `agent-eval` environment with the
 owner as required reviewer and its `ANTHROPIC_API_KEY` secret; it commits the ledger
-back to `master` and uploads only the summary.
+back to `main` and uploads only the summary.
 
 ## Limits
 

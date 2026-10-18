@@ -2,7 +2,8 @@
 
 Status: **first paid pilot run; report available, owner review pending**.
 See the [2026-10-18 report](reports/2026-10-18-pilot.md): 48 episodes, $4.200730
-spent. The episode cap is exhausted; the remaining dollars authorize no rerun.
+spent. The next run (design §17.182 (4)) is 24 paired episodes per seed under the
+remaining dollars; it needs a fresh key and the owner's written approval.
 This implements the 12-task authoring portion of [DX5](../../docs/plans/agent-dx.md),
 [design §17.146](../../docs/design.md) and the evaluation design in
 [research/11 §5](../../research/11-agent-dx.md). Research §4 covers client setup;

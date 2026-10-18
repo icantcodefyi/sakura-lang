@@ -34,6 +34,14 @@ on:
       conditions:
         description: "Conditions"
         default: baseline,skill
+      seed:
+        description: "Episode order seed"
+        required: true
+        default: "1"
+      max_episodes:
+        description: "Live episodes this run may plan"
+        required: true
+        default: "48"
 
 permissions:
   contents: write # commits the spend ledger back to main
@@ -76,12 +84,15 @@ jobs:
           TASKS: ${{ inputs.tasks }}
           CONDITIONS: ${{ inputs.conditions }}
           INPUT_CAPS: ${{ inputs.input_caps }}
+          SEED: ${{ inputs.seed }}
+          MAX_EPISODES: ${{ inputs.max_episodes }}
         run: |
           python3 evals/agent-dx/harness/runner.py run \
             --sakura compiler/target/release/sakura --backend live \
             --budget-usd "$BUDGET_USD" --approved-by "$APPROVED_BY" \
             --model "$MODEL_A=$PRICES_A" --model "$MODEL_B=$PRICES_B" \
             --tasks "$TASKS" --conditions "$CONDITIONS" --input-caps "$INPUT_CAPS" \
+            --seed "$SEED" --max-episodes "$MAX_EPISODES" \
             --run-id "gh-$GITHUB_RUN_ID" --out "$RUNNER_TEMP/agent-eval"
       - name: Commit the spend ledger
         if: always()
