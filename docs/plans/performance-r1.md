@@ -394,8 +394,9 @@ authority).
    `list_builder_finish`) behind a private abstract `type Builder<A>` in `std/list`. Adding them
    touched files outside WS-P6's paths, each by the mechanical minimum: the `sakura_core`
    builtins table (one line), `sakura_lir/src/builtins.sigs` (three lines, what
-   `examples/regen_core.rs` would write), and both evaluators in `tools/sakura_eval`, where a
-   builder is the list it finishes as. `runtime/rt` has no builder yet (routed in REQUESTS).
+   `examples/regen_core.rs` would write), both evaluators in `tools/sakura_eval` and
+   `runtime/rt/src/wasm.rs` (three `rt_b_` exports, needed once the WASM backend landed during
+   the rebase), where a builder is the list it finishes as.
 4. `concat` keeps its push loop: it starts from `a`, and a builder would copy `a` (O(len a)
    instead of O(len b)). `flat_map` now appends each inner element to its builder instead of
    calling `concat`. `reverse`, `unique` and `merge` keep push loops (not in §17.116's list).
