@@ -123,6 +123,12 @@ jobs:
                   "--json", output / f"immediate-{engine}.json")
           code = command("compare", base_path, head_path, "--json",
                          output / f"compare-{engine}.json", allowed=(0, 2))
+          comparison = json.loads((output / f"compare-{engine}.json").read_text())
+          for row in comparison["rows"]:
+              if row["status"] in ("flagged", "blocked"):
+                  print(f"::warning::{row['program']} on {row['engine']} at n={row['size']}: ratio changed {row['delta']:+.1%}")
+              elif row["status"].startswith("improved"):
+                  print(f"::notice::{row['program']} improved by more than 10%; explain the improvement in the PR")
           if code == 0:
               raise SystemExit(0)
 
@@ -141,7 +147,7 @@ jobs:
                   continue
               confirmation = output / f"confirm-{engine}-{index}.json"
               measure(confirmation, program)
-              if command("compare", paths[0], confirmation, "--json",
+              if command("compare", paths[0], paths[1], confirmation, "--json",
                          output / f"confirmed-{engine}-{index}.json", allowed=(0, 2)) == 2:
                   blocked = True
           raise SystemExit(2 if blocked else 0)
