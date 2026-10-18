@@ -536,6 +536,12 @@ Fixed:
 host's, so it may need imports the host lacks. Rebuild the module with this compiler, whose
 backend, runtime and host share one ABI revision.";
 
+    V8004 "target_unsupported_external" PACKAGE,
+"A user package declares an `@external(js, …)` function, and `--target wasm` has no JavaScript
+to call (design §17.81): the WASM backend runs std's host operations through the runtime's own
+imports only. Build with `--target js`, or write the function in Sakura Lang. (The code is a
+placeholder: the plan named `V8002`, which §17.131 gave to `reserved_package_name`.)";
+
     V8020 "spec_frozen" PACKAGE,
 "A patch modifies a frozen symbol's signature, effect row, error union, contracts, or a test body
 (design §7.3). Frozen specs are the reviewer's intent; change the implementation instead.";
