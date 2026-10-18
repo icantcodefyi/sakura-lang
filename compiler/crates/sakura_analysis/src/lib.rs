@@ -440,6 +440,7 @@ fn analyze(snapshot: &Snapshot, prev: Option<&Analyzed>) -> Analyzed {
         .collect();
     diagnostics.extend(program.diagnostics.iter().cloned());
     diagnostics.extend(type_diags.iter().cloned());
+    diagnostics.extend(reserved_package_name(snapshot));
     let roots: Vec<Option<sakura_syntax::SyntaxNode>> = parses
         .iter()
         .map(|p| p.as_ref().map(sakura_syntax::Parse::syntax))
@@ -649,14 +650,52 @@ fn module_of(uri: &str) -> (&'static str, String) {
     ("main", rel.to_owned())
 }
 
-/// The user package's name: `sakura.toml`'s `name`, or `main` without one (§9, §17.127).
+/// The user package's name: `sakura.toml`'s `name`, or `main` without one (§9, §17.127) or
+/// when the name is reserved (`V8002`).
 fn package_name(snapshot: &Snapshot) -> String {
     (snapshot.files.iter())
         .find(|f| f.uri.ends_with("/sakura.toml"))
         .and_then(|f| Manifest::parse(&f.text).ok())
         .map(|m| m.package.name)
-        .filter(|n| !n.is_empty())
+        .filter(|n| !n.is_empty() && !RESERVED_PACKAGES.contains(&n.as_str()))
         .unwrap_or_else(|| "main".to_owned())
+}
+
+/// `std` is the standard library and `main` the package of a file run without a manifest.
+const RESERVED_PACKAGES: [&str; 2] = ["std", "main"];
+
+/// `V8002` when `sakura.toml` names its package `std` or `main` (§17.131), at the `name` line.
+fn reserved_package_name(snapshot: &Snapshot) -> Option<Diagnostic> {
+    let file = snapshot
+        .file_ids()
+        .find(|&f| snapshot.file(f).uri.ends_with("/sakura.toml"))?;
+    let text = &snapshot.file(file).text;
+    let name = Manifest::parse(text).ok()?.package.name;
+    if !RESERVED_PACKAGES.contains(&name.as_str()) {
+        return None;
+    }
+    let mut start = 0;
+    let mut span = (0, 0);
+    for line in text.split_inclusive('\n') {
+        let key = line.trim_start();
+        if key.starts_with("name") && key[4..].trim_start().starts_with('=') {
+            let indent = line.len() - key.len();
+            span = (start + indent, start + line.trim_end().len());
+            break;
+        }
+        start += line.len();
+    }
+    let message = format!(
+        "sakura.toml names the package `{name}`, which is reserved: `std` is the standard \
+         library and `main` the package of a file run without a manifest (design §17.131)"
+    );
+    Some(
+        Diagnostic::error(codes::V8002, Phase::Package, message).with_span(Span::primary(
+            file,
+            span.0 as u32,
+            span.1 as u32,
+        )),
+    )
 }
 
 /// Parses every Sakura Lang file: the parses by `FileId` (`None` for other files) and their

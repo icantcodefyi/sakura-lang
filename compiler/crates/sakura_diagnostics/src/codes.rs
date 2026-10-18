@@ -517,6 +517,19 @@ Fixed:
 Fixed:
     pub fn main() -> Unit ! {Console} { Console.print(\"hello\") }";
 
+    V8002 "reserved_package_name" PACKAGE,
+"`sakura.toml` names its package `std` or `main` (design §9, §17.131). The first segment of an
+import is a package name: `std` is the standard library and `main` is the package of a file run
+without a manifest, so a package under either name would make `import std/…` or `import main/…`
+mean two things.
+
+Wrong:
+    [package]
+    name = \"main\"
+Fixed:
+    [package]
+    name = \"billing\"";
+
     V8020 "spec_frozen" PACKAGE,
 "A patch modifies a frozen symbol's signature, effect row, error union, contracts, or a test body
 (design §7.3). Frozen specs are the reviewer's intent; change the implementation instead.";

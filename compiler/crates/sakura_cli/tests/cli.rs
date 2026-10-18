@@ -832,6 +832,45 @@ pub fn greet(n: Name) -> String { "hi " + n }
     );
 }
 
+/// Design §17.131: a manifest may not name its package `std` or `main` (`V8002`, at the line).
+#[test]
+fn reserved_package_names_are_v8002() {
+    for name in ["std", "main"] {
+        let dir =
+            std::env::temp_dir().join(format!("sakura-cli-{}-pkg-{name}", std::process::id()));
+        std::fs::create_dir_all(dir.join("src")).unwrap();
+        let manifest = format!("[package]\nname = \"{name}\"\n");
+        std::fs::write(dir.join("sakura.toml"), &manifest).unwrap();
+        std::fs::write(
+            dir.join("src/main.sakura"),
+            "pub fn main() -> Unit ! {Console} { Console.print(\"hi\") }\n",
+        )
+        .unwrap();
+        let out = sakura(&["check", "--json"], &dir);
+        assert_eq!(out.code, Some(1), "{}", out.stderr);
+        let recs = common::json_lines(&out.stdout).unwrap();
+        let d = recs
+            .iter()
+            .find(|r| r["code"] == "V8002")
+            .expect(&out.stdout);
+        let span = &d["spans"][0];
+        assert!(
+            span["uri"].as_str().unwrap().ends_with("/sakura.toml"),
+            "{d}"
+        );
+        let (start, end) = (
+            span["start_byte"].as_u64().unwrap(),
+            span["end_byte"].as_u64().unwrap(),
+        );
+        assert_eq!(
+            &manifest[start as usize..end as usize],
+            format!("name = \"{name}\"")
+        );
+        let run = sakura(&["run", dir.to_str().unwrap()], &dir);
+        assert!(run.stderr.contains("error[V8002]"), "{}", run.stderr);
+    }
+}
+
 /// Design §17.73 (gate 6): `sakura test --record` writes a cassette through std `Http.recording`
 /// from a scripted outer `Http`; a plain `sakura test` then replays it with the network denied.
 #[test]
