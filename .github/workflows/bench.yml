@@ -97,7 +97,7 @@ jobs:
 
           def measure(path, program=None):
               args = ["run", "--suite", "js", "--engine", engine,
-                      "--lane", "matched", "--sizes", "quick", "--json", path]
+                      "--lane", "matched", "--sizes", "quick", "--processes", "5", "--json", path]
               if program is not None:
                   args += ["--filter", program]
               # Missing optional toolchains are recorded by the harness on PRs.
@@ -131,8 +131,8 @@ jobs:
           base_path, base = max(choices, key=lambda item: item[1]["meta"]["started"])
           print(f"Comparing ratios against {base_path}")
 
-          # Suppress only timing blocks for this first pass: checksum, stack, complexity
-          # and RSS failures must fail without waiting for a confirmation measurement.
+          # Checksum, stack, complexity and malformed RSS data still fail immediately.
+          # Node RSS crossings need the same one-time confirmation as timing (§17.136).
           command("compare", base_path, head_path, "--block", "1e300",
                   "--json", output / f"immediate-{engine}.json")
           code = command("compare", base_path, head_path, "--json",
@@ -143,13 +143,25 @@ jobs:
                   print(f"::warning::{row['program']} on {row['engine']} at n={row['size']}: ratio changed {row['delta']:+.1%}")
               elif row["status"].startswith("improved"):
                   print(f"::notice::{row['program']} improved by more than 10%; explain the improvement in the PR")
-          if code == 0:
-              raise SystemExit(0)
+          def annotate_rss(report):
+              for row in report["rss"]:
+                  if row["status"] in ("flagged", "blocked"):
+                      print(f"::warning::{row['program']} {row['variant']}/{row['engine']} n={row['size']}: "
+                            f"peak RSS base={row['base_bytes']}, head={row['head_bytes']}, "
+                            f"confirmation={row['confirmation_bytes']} bytes; "
+                            f"medians base={row['base_median_bytes']}, head={row['head_median_bytes']}, "
+                            f"confirmation={row['confirmation_median_bytes']}; "
+                            f"counts base={row['base_processes']}, head={row['head_processes']}, "
+                            f"confirmation={row['confirmation_processes']}; {row['note']}")
+
+          annotate_rss(comparison)
+          if not comparison["confirmation_programs"]:
+              raise SystemExit(code)
 
           # Confirm the same program, so an unrelated regression in a second full run
           # cannot confirm a noisy first measurement. Preserve both sets of samples.
           blocked = False
-          for index, program in enumerate(sorted({row["program"] for row in head["results"]})):
+          for index, program in enumerate(comparison["confirmation_programs"]):
               paths = []
               for label, data in (("base", base), ("head", head)):
                   subset = copy.deepcopy(data)
@@ -157,13 +169,12 @@ jobs:
                   path = output / f"{label}-{engine}-{index}.json"
                   path.write_text(json.dumps(subset))
                   paths.append(path)
-              if command("compare", *paths, allowed=(0, 2)) == 0:
-                  continue
               confirmation = output / f"confirm-{engine}-{index}.json"
               measure(confirmation, program)
               if command("compare", paths[0], paths[1], confirmation, "--json",
                          output / f"confirmed-{engine}-{index}.json", allowed=(0, 2)) == 2:
                   blocked = True
+              annotate_rss(json.loads((output / f"confirmed-{engine}-{index}.json").read_text()))
           raise SystemExit(2 if blocked else 0)
           PY
       - uses: actions/upload-artifact@v6

@@ -82,6 +82,10 @@ published yet.
 
 ### Changed
 
+- Benchmark peak-RSS crossings above 25% now require one confirmation group on Node;
+  Bun crossings warn only (design §17.136). Compare output retains both groups' maxima,
+  medians and counts, and CI reuses the timing confirmation run.
+
 - **Security (design §17.130):** an opaque type is `Schema` only inside its declaring module.
   Elsewhere, any `Schema` bound that reaches one (`Json.decode`, `Sql.query` rows,
   `Llm.generate`, `Cli.parse`, `Tool.of` arguments, `property` parameters) is the new error

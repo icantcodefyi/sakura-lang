@@ -5,6 +5,8 @@ import io
 import json
 import shutil
 import tempfile
+import textwrap
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 from pathlib import Path
@@ -58,9 +60,7 @@ class Compare(unittest.TestCase):
         self.assertEqual(out["verdict"], "blocked")
         self.assertTrue(any("complexity" in i for i in out["immediate"]))
 
-    def test_rss_and_checksum_changes_fail_immediately(self):
-        out = bench.compare(self.base, [doc(pair(20.0, 10.0), rss=1300)])
-        self.assertTrue(any("RSS" in i for i in out["immediate"]))
+    def test_checksum_changes_fail_immediately(self):
         head = doc(pair(20.0, 10.0))
         head["results"][0]["checksum"] = "2"
         out = bench.compare(self.base, [head])
@@ -77,23 +77,60 @@ def rss_doc(peaks, engine="node"):
 
 
 class RssComparison(unittest.TestCase):
-    def test_one_or_two_outliers_still_block_on_both_engines(self):
-        for engine in ("node", "bun"):
-            for peaks in ([1000, 1000, 1000, 1000, 3000], [3000, 1000, 1000, 3000, 1000]):
-                with self.subTest(engine=engine, peaks=peaks):
-                    out = bench.compare(rss_doc([1000] * 5, engine), [rss_doc(peaks, engine)])
-                    self.assertEqual(out["verdict"], "blocked")
-                    self.assertTrue(out["immediate"])
-                    self.assertEqual(out["rss"][0]["head_median_bytes"], 1000)
-                    self.assertEqual(out["rss"][0]["head_bytes"], 3000)
+    def test_node_crossing_confirmed_blocks_even_with_only_one_peak(self):
+        base = rss_doc([1000] * 5)
+        head = rss_doc([1000, 1000, 1000, 1000, 3000])
+        confirmation = rss_doc([1000, 1000, 1000, 1000, 1300])
+        out = bench.compare(base, [head, confirmation])
+        self.assertEqual(out["verdict"], "blocked")
+        self.assertFalse(out["immediate"])
+        self.assertEqual(out["rss"][0]["head_median_bytes"], 1000)
+        self.assertEqual(out["rss"][0]["head_bytes"], 3000)
+        self.assertEqual(out["rss"][0]["confirmation_bytes"], 1300)
+        self.assertEqual(out["rss"][0]["confirmation_median_bytes"], 1000)
+        self.assertEqual(out["rss"][0]["confirmation_processes"], 5)
+        self.assertEqual(out["confirmation_programs"], [])
 
-    def test_majority_regression_blocks_without_confirmation(self):
-        for engine in ("node", "bun"):
-            base = rss_doc([1000] * 5, engine)
-            head = rss_doc([1000, 1300, 1300, 1000, 1300], engine)
-            out = bench.compare(base, [head, base])
-            self.assertEqual(out["verdict"], "blocked")
-            self.assertTrue(any("maximum" in message for message in out["immediate"]))
+    def test_node_crossing_not_confirmed_passes_with_note(self):
+        base, head = rss_doc([1000] * 5), rss_doc([1300] * 5)
+        out = bench.compare(base, [head, base])
+        self.assertEqual(out["verdict"], "flagged")
+        self.assertEqual(out["rss"][0]["status"], "flagged")
+        self.assertIn("not confirmed", out["rss"][0]["note"])
+        self.assertEqual(out["confirmation_programs"], [])
+        self.assertFalse(out["immediate"])
+
+    def test_node_first_group_crossing_requests_one_confirmation(self):
+        out = bench.compare(rss_doc([1000] * 5), [rss_doc([1300] * 5)])
+        self.assertEqual(out["verdict"], "flagged")
+        self.assertEqual(out["confirmation_programs"], ["p"])
+        self.assertIn("needs one confirmation", out["rss"][0]["note"])
+
+    def test_bun_crossing_warns_even_when_confirmed(self):
+        base, head = rss_doc([1000] * 5, "bun"), rss_doc([1300] * 5, "bun")
+        for heads in ([head], [head, head]):
+            out = bench.compare(base, heads)
+            self.assertEqual(out["verdict"], "flagged")
+            self.assertEqual(out["rss"][0]["status"], "flagged")
+            self.assertIn("advisory", out["rss"][0]["note"])
+            self.assertEqual(out["confirmation_programs"], [])
+            self.assertFalse(out["immediate"])
+
+    def test_confirmation_must_cross_in_the_same_cell(self):
+        base, head, confirmation = (rss_doc([1000] * 5), rss_doc([1300] * 5), rss_doc([1000] * 5))
+        # A rise in the other variant cannot confirm the Sakura peak.
+        head["results"][1] = base["results"][1]
+        confirmation["results"][1] = rss_doc([1400] * 5)["results"][1]
+        out = bench.compare(base, [head, confirmation])
+        self.assertEqual(out["verdict"], "flagged")
+        self.assertTrue(all(row["status"] == "flagged" for row in out["rss"]))
+        confirmation["results"] = []
+        self.assertEqual(bench.compare(base, [head, confirmation])["verdict"], "flagged")
+
+    def test_only_one_confirmation_group_decides_rss(self):
+        base, head = rss_doc([1000] * 5), rss_doc([1300] * 5)
+        self.assertEqual(bench.compare(base, [head, head, base])["verdict"], "blocked")
+        self.assertEqual(bench.compare(base, [head, base, head])["verdict"], "flagged")
 
     def test_median_rise_is_diagnostic_and_does_not_change_the_maximum_rule(self):
         out = bench.compare(rss_doc([1000, 1000, 1000, 1000, 3000]), [rss_doc([1300] * 5)])
@@ -111,27 +148,27 @@ class RssComparison(unittest.TestCase):
     def test_twenty_five_percent_boundary_is_unchanged(self):
         base = rss_doc([1000] * 5)
         self.assertEqual(bench.compare(base, [rss_doc([1250] * 5)])["verdict"], "ok")
-        self.assertEqual(bench.compare(base, [rss_doc([1251] * 5)])["verdict"], "blocked")
+        self.assertEqual(bench.compare(base, [rss_doc([1251] * 5), rss_doc([1251] * 5)])["verdict"], "blocked")
 
     def test_legacy_either_side_uses_maximum_on_both_sides(self):
         legacy = doc(pair(20.0, 10.0), rss=1000)
         new = rss_doc([1000, 1000, 1000, 1000, 3000])
-        out = bench.compare(legacy, [new])
+        out = bench.compare(legacy, [new, new])
         self.assertEqual(out["verdict"], "blocked")
         self.assertIn("maximum", out["rss"][0]["statistic"])
         self.assertEqual(out["rss"][0]["head_bytes"], 3000)
-        out = bench.compare(new, [doc(pair(20.0, 10.0), rss=4000)])
+        out = bench.compare(new, [doc(pair(20.0, 10.0), rss=4000)] * 2)
         self.assertEqual(out["verdict"], "blocked")
         self.assertEqual(out["rss"][0]["base_bytes"], 3000)
 
     def test_fewer_than_five_processes_preserves_maximum_gate(self):
         for count in (1, 2, 3, 4):
-            out = bench.compare(rss_doc([1000] * 5), [rss_doc([1000] * (count - 1) + [1300])])
+            out = bench.compare(rss_doc([1000] * 5), [rss_doc([1000] * (count - 1) + [1300])] * 2)
             self.assertEqual(out["verdict"], "blocked")
             self.assertIn("maximum", out["rss"][0]["statistic"])
 
     def test_all_samples_used_when_more_than_five_processes_requested(self):
-        out = bench.compare(rss_doc([1000] * 7), [rss_doc([1000] * 3 + [1300] * 4)])
+        out = bench.compare(rss_doc([1000] * 7), [rss_doc([1000] * 3 + [1300] * 4)] * 2)
         self.assertEqual(out["verdict"], "blocked")
         self.assertEqual(out["rss"][0]["head_processes"], 7)
 
@@ -147,22 +184,46 @@ class RssComparison(unittest.TestCase):
                     self.assertEqual(out["verdict"], "blocked")
                     self.assertTrue(any("invalid/incomplete process RSS" in message for message in out["immediate"]))
 
-    def test_cli_reports_maximum_median_and_exit_status(self):
+    def test_cli_reports_both_groups_and_exit_status(self):
+        cases = [("node", 1300, 1400, bench.EXIT_BLOCKED, "confirmed"),
+                 ("node", 1300, 1000, bench.EXIT_OK, "not confirmed"),
+                 ("bun", 1300, 1400, bench.EXIT_OK, "advisory")]
         with tempfile.TemporaryDirectory() as tmp:
-            base, head, report = [Path(tmp) / f"{name}.json" for name in ("base", "head", "report")]
-            base.write_text(json.dumps(rss_doc([1000] * 5)))
-            for peaks, expected in (([1000, 1000, 1000, 1000, 3000], bench.EXIT_BLOCKED),
-                                    ([1300] * 5, bench.EXIT_BLOCKED), ([1000] * 5, bench.EXIT_OK)):
-                head.write_text(json.dumps(rss_doc(peaks)))
-                stdout = io.StringIO()
-                with contextlib.redirect_stdout(stdout):
-                    code = bench.main(["compare", str(base), str(head), "--json", str(report)])
-                self.assertEqual(code, expected)
-                self.assertEqual(json.loads(report.read_text())["rss"][0]["statistic"], "maximum")
-                self.assertIn("head_median_bytes", report.read_text())
-                if expected == bench.EXIT_BLOCKED:
-                    self.assertIn("IMMEDIATE FAILURE", stdout.getvalue())
+            base, head, confirmation, report = [Path(tmp) / f"{name}.json"
+                                                for name in ("base", "head", "confirmation", "report")]
+            for engine, first, second, expected, note in cases:
+                with self.subTest(engine=engine, second=second):
+                    for path, value in ((base, 1000), (head, first), (confirmation, second)):
+                        path.write_text(json.dumps(rss_doc([value] * 5, engine)))
+                    stdout = io.StringIO()
+                    with contextlib.redirect_stdout(stdout):
+                        code = bench.main(["compare", str(base), str(head), str(confirmation), "--json", str(report)])
+                    self.assertEqual(code, expected)
+                    row = json.loads(report.read_text())["rss"][0]
+                    self.assertEqual(row["statistic"], "maximum")
+                    self.assertEqual(row["head_bytes"], first)
+                    self.assertEqual(row["confirmation_bytes"], second)
+                    self.assertIn(f"maximum 1000 → {first}", stdout.getvalue())
+                    self.assertIn(f"confirmation maximum {second}", stdout.getvalue())
                     self.assertIn("median is diagnostic only", stdout.getvalue())
+                    self.assertIn(note, stdout.getvalue())
+
+    def test_malformed_or_failed_confirmation_still_blocks(self):
+        base, head = rss_doc([1000] * 5), rss_doc([1300] * 5)
+        for failure in ("samples", "checksum", "changed", "oracle"):
+            with self.subTest(failure=failure):
+                confirmation = rss_doc([1000] * 5)
+                if failure == "samples":
+                    confirmation["results"][0]["process_rss_bytes"] = [1000] * 4
+                elif failure == "checksum":
+                    confirmation["results"][0]["checksum_ok"] = False
+                elif failure == "changed":
+                    confirmation["results"][0]["checksum"] = "2"
+                else:
+                    confirmation["meta"]["failures"] = [{"program": "p", "variant": "sakura", "engine": "node", "error": "oracle failed"}]
+                out = bench.compare(base, [head, confirmation])
+                self.assertEqual(out["verdict"], "blocked")
+                self.assertTrue(out["immediate"])
 
     def test_checksum_failure_still_blocks_when_median_is_stable(self):
         base, head = rss_doc([1000] * 5), rss_doc([1000] * 5)
@@ -170,6 +231,58 @@ class RssComparison(unittest.TestCase):
         out = bench.compare(base, [head])
         self.assertEqual(out["verdict"], "blocked")
         self.assertTrue(any("checksum" in message for message in out["immediate"]))
+
+
+class CiConfirmation(unittest.TestCase):
+    def test_ci_reuses_one_five_process_rerun_for_rss_and_timing(self):
+        workflow = (bench.ROOT / ".github/workflows/bench.yml").read_text()
+        script = textwrap.dedent(workflow[workflow.index("          import copy, json, os, pathlib, subprocess"):
+                                          workflow.index("          PY", workflow.index("          import copy, json, os, pathlib, subprocess"))])
+        cases = [("node", 1300, 1400, 20.0, 2, 2),
+                 ("node", 1300, 1000, 20.0, 0, 2),
+                 ("bun", 1300, 1400, 20.0, 0, 1),
+                 ("node", 1300, 1400, 22.4, 2, 2),
+                 ("bun", 1300, 1400, 22.4, 2, 2)]
+        for engine, first, second, sakura_ms, expected_code, expected_runs in cases:
+            with self.subTest(engine=engine, second=second, sakura_ms=sakura_ms), tempfile.TemporaryDirectory() as tmp:
+                base = rss_doc([1000] * 5, engine)
+                groups = [rss_doc([first] * 5, engine), rss_doc([second] * 5, engine)]
+                for group in (base, *groups):
+                    group["meta"].update(host={"id": "test", "os": "Darwin", "cpu": "test"}, started="2026-10-18")
+                for group in groups:
+                    group["results"][0]["median_ms"] = sakura_ms
+                root = Path(tmp)
+                (root / "bench-results").mkdir()
+                baseline = root / "baseline.json"
+                baseline.write_text(json.dumps(base))
+                runs = []
+
+                def command(args, check=False):
+                    self.assertEqual(args[0], "bench")
+                    if args[1] == "run":
+                        self.assertEqual(args[args.index("--processes") + 1], "5")
+                        if runs:
+                            self.assertEqual(args[args.index("--filter") + 1], "p")
+                        path = Path(args[args.index("--json") + 1])
+                        path.write_text(json.dumps(groups[len(runs)]))
+                        runs.append(path)
+                        return SimpleNamespace(returncode=0)
+                    return SimpleNamespace(returncode=bench.main(args[1:]))
+
+                stdout = io.StringIO()
+                with (contextlib.chdir(root), contextlib.redirect_stdout(stdout),
+                      patch.dict("os.environ", {"BENCH_ENGINE": engine}),
+                      patch.object(Path, "glob", return_value=[baseline]),
+                      patch.object(bench.subprocess, "run", side_effect=command)):
+                    with self.assertRaises(SystemExit) as stopped:
+                        exec(compile(script, "bench.yml:perf", "exec"), {})
+                self.assertEqual(stopped.exception.code, expected_code)
+                self.assertEqual(len(runs), expected_runs)
+                self.assertIn("::warning::p", stdout.getvalue())
+                if expected_runs == 2:
+                    report = json.loads((root / "bench-results" / f"confirmed-{engine}-0.json").read_text())
+                    self.assertEqual(report["rss"][0]["head_bytes"], first)
+                    self.assertEqual(report["rss"][0]["confirmation_bytes"], second)
 
 
 class RssCollection(unittest.TestCase):

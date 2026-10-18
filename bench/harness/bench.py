@@ -412,8 +412,8 @@ def rss_comparison(base, b, head, r, jump):
 
 
 def compare(base, heads, flag=0.05, block=0.10, abs_ms=0.1, slope_jump=0.5, rss_jump=0.25):
-    """Rows and verdict per §17.110. A block needs every head (the CI's confirmation rerun) to
-    exceed both thresholds; immediate failures need one head."""
+    """Timing policy per §17.110 and maximum-RSS policy per §17.136.
+    Node RSS needs the first two heads to cross; Bun RSS is advisory."""
     b_rat = ratios(base)
     h_rats = [ratios(h) for h in heads]
     head = heads[0]
@@ -448,27 +448,56 @@ def compare(base, heads, flag=0.05, block=0.10, abs_ms=0.1, slope_jump=0.5, rss_
                      "head_ratio": h_rats[0][key][0] / h_rats[0][key][1], "delta": d, "status": status})
 
     immediate, rss_rows = [], []
+    confirmation_programs = {r["program"] for r in rows if r["status"] == "blocked"} if len(heads) == 1 else set()
+    confirmation = heads[1] if len(heads) > 1 else None
+    confirmation_by = {(r["program"], r["variant"], r["engine"], r["size"]): r
+                       for r in confirmation["results"]} if confirmation else {}
     b_by = {(r["program"], r["variant"], r["engine"], r["size"]): r for r in base["results"]}
     for r in head["results"]:
         key = (r["program"], r["variant"], r["engine"], r["size"])
-        if not r["checksum_ok"]:
-            immediate.append(f"{key}: checksum {r['checksum']}")
         b = b_by.get(key)
-        if b and b["checksum_ok"] and r["checksum_ok"] and b["checksum"] != r["checksum"]:
-            immediate.append(f"{key}: checksum changed {b['checksum']} → {r['checksum']}")
         if b:
             try:
                 memory = rss_comparison(base, b, head, r, rss_jump)
+                cr = confirmation_by.get(key)
+                confirmed = rss_comparison(base, b, confirmation, cr, rss_jump) if cr else None
             except ValueError as error:
                 immediate.append(f"{key}: {error}")
                 memory = None
             if memory:
+                crossed = memory["status"] == "blocked"
+                confirmation_crossed = confirmed is not None and confirmed["status"] == "blocked"
+                memory.update({"confirmation_bytes": confirmed["head_bytes"] if confirmed else None,
+                               "confirmation_median_bytes": confirmed["head_median_bytes"] if confirmed else None,
+                               "confirmation_processes": confirmed["head_processes"] if confirmed else None,
+                               "note": ""})
+                if r["engine"] == "bun" and (crossed or confirmation_crossed):
+                    memory.update(status="flagged", note="Bun peak RSS is advisory (§17.136)")
+                elif r["engine"] == "node" and (crossed or confirmation_crossed):
+                    if crossed and confirmation_crossed:
+                        memory["note"] = "Node peak RSS crossing confirmed by the second group (§17.136)"
+                    else:
+                        memory["status"] = "flagged"
+                        memory["note"] = ("Node peak RSS crossing needs one confirmation group (§17.136)" if confirmation is None
+                                          else "Node peak RSS crossing not confirmed in the same cell (§17.136)")
+                        if confirmation is None:
+                            confirmation_programs.add(r["program"])
+                if memory["status"] in ("flagged", "blocked"):
+                    worse(memory["status"])
                 rss_rows.append({field: r[field] for field in ("program", "variant", "engine", "size")} | memory)
-                if memory["status"] == "blocked":
+                if memory["status"] == "blocked" and r["engine"] != "node":
                     before, after = memory["base_bytes"], memory["head_bytes"]
                     immediate.append(f"{key}: peak RSS ({memory['statistic']}) {before} → {after} (+{after / before - 1:.0%})")
-    for f in head["meta"].get("failures", []):
-        immediate.append(f"{f['program']} {f['variant']}/{f['engine']}: {f['error'].splitlines()[0]}")
+    for group in heads:
+        for r in group["results"]:
+            key = (r["program"], r["variant"], r["engine"], r["size"])
+            if not r["checksum_ok"]:
+                immediate.append(f"{key}: checksum {r['checksum']}")
+            b = b_by.get(key)
+            if b and b["checksum_ok"] and r["checksum_ok"] and b["checksum"] != r["checksum"]:
+                immediate.append(f"{key}: checksum changed {b['checksum']} → {r['checksum']}")
+        for f in group["meta"].get("failures", []):
+            immediate.append(f"{f['program']} {f['variant']}/{f['engine']}: {f['error'].splitlines()[0]}")
     for p, v, e in sorted({(r["program"], r["variant"], r["engine"]) for r in head["results"]}):
         pts = lambda res: [(r["size"], r["median_ms"]) for r in res["results"]
                            if (r["program"], r["variant"], r["engine"]) == (p, v, e)]
@@ -477,7 +506,8 @@ def compare(base, heads, flag=0.05, block=0.10, abs_ms=0.1, slope_jump=0.5, rss_
             immediate.append(f"({p!r}, {v!r}, {e!r}): complexity changed, log-log slope {sb:.2f} → {sh_:.2f}")
     if immediate:
         worse("blocked")
-    return {"verdict": verdict, "rows": rows, "immediate": immediate, "rss": rss_rows}
+    return {"verdict": verdict, "rows": rows, "immediate": immediate, "rss": rss_rows,
+            "confirmation_programs": sorted(confirmation_programs)}
 
 
 def cmd_compare(a):
@@ -492,16 +522,21 @@ def cmd_compare(a):
     for r in out["rows"]:
         print(f"| {r['program']} | {r['engine']} | {r['size']} | {r['base_ratio']:.3f} | {r['head_ratio']:.3f} "
               f"| {r['delta']:+.1%} | {r['status']} |")
-    memory_changes = [r for r in out["rss"] if r["status"] == "blocked"
+    memory_changes = [r for r in out["rss"] if r["status"] in ("flagged", "blocked")
                       or (r["base_median_bytes"] and r["head_median_bytes"]
                           and r["head_median_bytes"] > r["base_median_bytes"] * 1.25)]
     for r in memory_changes:
         median = (f"{r['base_median_bytes']} → {r['head_median_bytes']} bytes"
                   if r["base_median_bytes"] is not None and r["head_median_bytes"] is not None else "unavailable (legacy result)")
+        confirmation = (f"; confirmation maximum {r['confirmation_bytes']} bytes, "
+                        f"process median {r['confirmation_median_bytes']} bytes "
+                        f"(processes {r['confirmation_processes'] or 'unknown'})"
+                        if r["confirmation_bytes"] is not None else "")
         print(f"\nRSS detail: {r['program']} {r['variant']}/{r['engine']} n={r['size']}: "
               f"maximum {r['base_bytes']} → {r['head_bytes']} bytes; "
               f"process median {median} "
-              f"(processes {r['base_processes'] or 'unknown'} → {r['head_processes'] or 'unknown'}; median is diagnostic only)")
+              f"(processes {r['base_processes'] or 'unknown'} → {r['head_processes'] or 'unknown'}; median is diagnostic only)"
+              f"{confirmation}; {r['status']} {r['note']}")
     for i in out["immediate"]:
         print(f"\nIMMEDIATE FAILURE: {i}")
     print(f"\nverdict: {out['verdict']}")

@@ -41,7 +41,7 @@ bench/bench oracle [--filter <glob>] [--write]
 | Command | Behaviour | Exit |
 |---|---|---|
 | `run` | Builds the release CLI and every variant, runs the oracle for each (variant, engine), then times every (program, variant, engine, size) in `--processes` (5) fresh processes, in an order shuffled with `--seed` (20261018), serially, GC on. Each process warms up 250 ms (2 s with `--stable`), calibrates a ≥ 30 ms batch and records nine samples; peak RSS comes from `wait4`. Prints a Markdown table of medians and Sakura/hand-JS ratios on stdout and writes the `sakura-bench-v1` JSON. `--sizes quick` times the first two sizes. | 0; 1 an oracle or checksum failed (that program is not timed); 3 a toolchain is missing (its variants are skipped and listed in `meta.missing`) |
-| `compare` | Per (program, engine, size), the head's ratio Sakura/hand JS against the base's: worse by > `--flag` (5%) flags; worse by > `--block` (10%) **and** by ≥ `--abs-ms` (0.1) ms per workload beyond the base ratio blocks, but only if every head file given agrees (pass the CI's confirmation rerun of the blocked programs as a second head). Immediate failures, from the first head alone: a failed oracle or checksum, a checksum different from the base, peak RSS up > 25% (maximum across fresh processes), a log-log slope across the size sweep up by > 0.5 (a complexity-class change). An improvement > 10% is reported for the pull request to explain. | 0 ok or flagged; 2 blocked |
+| `compare` | Per (program, engine, size), the head's ratio Sakura/hand JS against the base's: worse by > `--flag` (5%) flags; worse by > `--block` (10%) **and** by ≥ `--abs-ms` (0.1) ms per workload beyond the base ratio blocks, but only if every head file given agrees (pass the CI's confirmation rerun of the blocked programs as a second head). Peak RSS up > 25% (maximum across fresh processes) blocks on Node only when the first and confirmation groups cross in the same cell; a single crossing warns. Bun RSS crossings only warn (§17.136). Immediate failures: a failed oracle or checksum, a checksum different from the base, malformed RSS samples, a log-log slope across the size sweep up by > 0.5 (a complexity-class change); native RSS crossings retain the immediate block. An improvement > 10% is reported for the pull request to explain. | 0 ok or flagged; 2 blocked |
 | `bless` | Copies a run into `baselines/<host-id>.json`; refuses a run with failures or made from a dirty `compiler/` or `bench/` tree. | 0; 1 refused |
 | `compile` | The research/10 §6 budgets on generated packages (`target/corpus/<lines>`, 50-function modules): `check` of 10k and 100k lines and `build` of 10k lines, each 15 fresh processes; `sakura lsp` edit → `publishDiagnostics` on the 10k package, 15 edits in one warm server alternating a type error in a private body and its fix (the server publishes nothing for a clean file it has never reported). p95 against 1 s / 3 s / 500 ms / 100 ms. | 0; 2 over budget |
 | `oracle` | Checks Sakura and hand JS on Node against `meta.toml`, or records it with `--write`. | 0; 1 a mismatch |
@@ -171,7 +171,8 @@ JS controls for `handled_*` are closure calls on a stateful object (research/10
 7. **The compile corpus imports `corpus/gen/m<i>`**, its manifest's name (design §9,
    §17.127). Until WS9 the analysis named every user package `main`.
 8. **`compare` confirmation** is a second head file rather than a rerun inside `compare`; the
-   CI job reruns the flagged programs with `--filter` and passes both files.
+   CI job reruns programs selected by `confirmation_programs` (a timing block or an initial
+   Node RSS crossing) once with `--filter` and `--processes 5`, then passes both files.
 
 ## Methodology
 
@@ -259,13 +260,30 @@ per-cell coverage explicitly because `compare` only compares overlapping ratio c
 
 ### Peak RSS measurement and the WS-P1 investigation
 
-**Decision: retain the maximum-based >25% immediate block on both engines. Do not widen
-Bun's margin or replace the gate with a median on this evidence.** The measurement change
-retains every process peak in `process_rss_bytes` instead of discarding all but the largest.
-`rss_bytes` keeps its original maximum meaning. `compare` adds `rss` diagnostic rows with
-base/head maxima, process medians and sample counts; the CLI prints those details when a
-maximum or median rises >25%. **The median is diagnostic only and never changes the
-verdict.** This makes a suspected noisy RSS block reviewable without silently accepting it.
+**Current rule: maximum-based >25%, with Node confirmation and advisory Bun crossings
+([design §17.136](../docs/design.md), amending §17.110).** On Node the first crossing
+requests one automatic second group of five fresh processes in the same CI job, using
+the 10% timing-block confirmation mechanism. The program is rerun once, covering the same
+cells; it blocks on RSS only if both groups' maxima exceed the baseline maximum by more
+than 25% in the **same (program, variant, engine, size) cell**. An unconfirmed crossing
+passes with a warning annotation and a note. On Bun an RSS crossing only warns, even if a
+second group also crosses; it never blocks on RSS. Native rows retain their immediate
+maximum-based gate. Correctness, malformed RSS data and complexity failures still block.
+
+A local `bench compare base.json head.json` uses the same policy: a Node RSS crossing
+warns, notes that confirmation is needed, and lists the program in `confirmation_programs`.
+Pass exactly one independently measured second head file to evaluate confirmation:
+`bench compare base.json head.json confirmation.json`. `compare` reads files; CI performs
+the automatic measurement. The first two head groups decide RSS even if additional files
+are supplied. Never rerun until green. A timing and RSS crossing in one program shares
+one confirmation run, and both groups' raw samples remain in the uploaded artefact.
+
+`rss_bytes` remains the maximum across all fresh processes; `process_rss_bytes` retains
+every peak. The additive `rss` diagnostic rows report base/head maxima, process medians
+and counts, plus `confirmation_bytes`, `confirmation_median_bytes`, `confirmation_processes`,
+status and a policy note. The human output prints both groups for crossings.
+**Medians are diagnostic only and never change the verdict.** Bun remains advisory until
+the unchanged-commit noise study specified in §17.136 clears the confirmed rule.
 
 Legacy `sakura-bench-v1` files remain comparable: maximum against maximum, with unavailable
 medians/counts reported as null. Never infer missing peaks or compare a new median with an
@@ -379,11 +397,11 @@ separate matched measurements and provenance before any policy proposal. This ex
 shows unchanged-build RSS variability; it does not prove GC pacing is the cause or prove
 the absence of a leak.
 
-The historical WS-P1 **180 → 273 MB** comparison therefore still blocks, as does any new
-maximum increase >25%, regardless of timing gains or the median. No baselines were blessed,
-rewritten or retrospectively passed. Quiet repetitions and separately allocated CI runners
-are needed before adopting a replacement statistic or margin; persistent RSS increases
-must remain visible even if retained heap is small.
+Under the policy used for this investigation, the historical WS-P1 **180 → 273 MB**
+comparison blocked regardless of timing gains or the median. §17.136 subsequently made
+Bun RSS advisory and Node RSS subject to confirmation, as described above. The retained
+reports below record the historical verdicts; no baselines or evidence were rewritten.
+Persistent RSS increases remain visible even if retained heap is small.
 
 Reproduce the analysis from the retained files (no compiler build or baseline write):
 
@@ -402,10 +420,11 @@ bench/bench compare bench/results/rss-824a876/suite-1.json \
 ```
 
 The retained [comparison](results/rss-824a876/comparison-1-3.json)
-([CLI output](results/rss-824a876/comparison-1-3.log)) exits 2: Bun `shapes`/Sakura n=50000
+([CLI output](results/rss-824a876/comparison-1-3.log)) historically exited 2: Bun `shapes`/Sakura n=50000
 rises from 256.3 to 332.2 MB maximum (+29.6%), while its median rises 19.0%. Other timing
 rows are warnings. This is an unchanged-source diagnostic, not a successful comparison;
-a measurement run's successful checksum exit is a different check. The 21 harness unit
+a measurement run's successful checksum exit is a different check. With §17.136 the
+same Bun crossing now warns and exits 0 unless another gate blocks. The 21 harness unit
 tests pass ([log](results/rss-824a876/tests.log)), and [validation](results/rss-824a876/validation.json)
 reproduces the summary and confirms identical new/legacy maximum-gate verdicts on all
 six ordered run comparisons. Collection used `record_load.py -- bench/bench run --suite js --seed 20261018`
@@ -430,7 +449,9 @@ source compatibility as well as checksums, versions and flags.
 Policy uses `delta = R_head / R_base − 1`. Above 5% warns. Above 10% blocks only with at
 least 0.1 ms per workload of excess Sakura time
 `S_head − R_base × J_head`, confirmed at the same input size by a second run. Checksum,
-stack, complexity and RSS failures are independent gates; ratios do not neutralise them.
+stack and complexity failures are independent gates; ratios do not neutralise them.
+RSS follows §17.136: a confirmed Node crossing blocks, an unconfirmed Node crossing or
+any Bun crossing warns, and native crossings block immediately.
 The harness approximates a complexity change by a log-log slope increase above 0.5, which
 is a screening signal requiring inspection of raw size-sweep data. Do not mistake a
 warning or an unconfirmed timing block for evidence of a compiler regression. Explain
@@ -468,4 +489,6 @@ follows Okasaki's insertion (*Red-black trees in a functional setting*, JFP 1999
 `deltablue` is ported from Are We Fast Yet (Marr, Daloze and Mössenböck, DLS 2016), derived
 from Mario Wolczko's Smalltalk version of John Maloney's benchmark; see its `LICENSE`.
 
-AI involvement: written by Claude (Opus 5.5) as WS-B; the human contributor owns the result.
+AI involvement: written by Claude (Opus 5.5) as WS-B; GPT-6.1-Sol implemented and tested
+the §17.136 RSS confirmation policy and updated this methodology. The human contributor
+owns the result.
