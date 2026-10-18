@@ -1,0 +1,99 @@
+name: Agent eval (paid, owner-approved)
+
+# Design §17.146 / plan DX5. Spends the owner's Anthropic budget: manual dispatch only, in the
+# protected `agent-eval` environment whose required reviewer is the owner. Never runs on push,
+# pull requests or a schedule. The runner keeps the $10-total ledger and refuses on its own too.
+on:
+  workflow_dispatch:
+    inputs:
+      budget_usd:
+        description: "Spend cap for this run in USD (the ledger also enforces $10 total)"
+        required: true
+      approved_by:
+        description: "Approver; must be the owner"
+        required: true
+      model_a:
+        description: "Pinned Anthropic model ID A"
+        required: true
+      prices_a:
+        description: "Model A USD per million input/output tokens, e.g. 4/20"
+        required: true
+      model_b:
+        description: "Pinned Anthropic model ID B"
+        required: true
+      prices_b:
+        description: "Model B USD per million input/output tokens, e.g. 2/10"
+        required: true
+      tasks:
+        description: "Comma-separated task ids, or all"
+        default: all
+      conditions:
+        description: "Conditions"
+        default: baseline,skill
+
+permissions:
+  contents: write # commits the spend ledger back to master
+
+concurrency:
+  group: agent-eval
+  cancel-in-progress: false
+
+jobs:
+  episodes:
+    name: Episodes
+    if: github.event_name == 'workflow_dispatch' && github.actor == 'icantcodefyi'
+    runs-on: ubuntu-latest
+    environment: agent-eval
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install pinned Rust toolchain
+        working-directory: compiler
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+      - name: Build the CLI
+        working-directory: compiler
+        run: cargo build --release -p sakura_cli --locked
+      - name: Allow unprivileged network namespaces for the episode sandbox
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Run episodes
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          BUDGET_USD: ${{ inputs.budget_usd }}
+          APPROVED_BY: ${{ inputs.approved_by }}
+          MODEL_A: ${{ inputs.model_a }}
+          PRICES_A: ${{ inputs.prices_a }}
+          MODEL_B: ${{ inputs.model_b }}
+          PRICES_B: ${{ inputs.prices_b }}
+          TASKS: ${{ inputs.tasks }}
+          CONDITIONS: ${{ inputs.conditions }}
+        run: |
+          python3 evals/agent-dx/harness/runner.py run \
+            --sakura compiler/target/release/sakura --backend live \
+            --budget-usd "$BUDGET_USD" --approved-by "$APPROVED_BY" \
+            --model "$MODEL_A=$PRICES_A" --model "$MODEL_B=$PRICES_B" \
+            --tasks "$TASKS" --conditions "$CONDITIONS" \
+            --run-id "gh-$GITHUB_RUN_ID" --out "$RUNNER_TEMP/agent-eval"
+      - name: Commit the spend ledger
+        if: always()
+        run: |
+          git diff --quiet -- evals/agent-dx/reports/ledger.json && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore(evals): record agent-eval spend for run $GITHUB_RUN_ID" \
+            -- evals/agent-dx/reports/ledger.json
+          git pull --rebase origin master
+          git push origin HEAD:master
+      # Summaries only: raw transcripts stay private until reviewed and redacted.
+      - name: Upload the summary
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: agent-eval-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/agent-eval/summary.json
+            ${{ runner.temp }}/agent-eval/run.json
+            evals/agent-dx/reports/ledger.json
+          if-no-files-found: warn
