@@ -6,7 +6,7 @@ export const site = {
     "Sakura Lang is an agent-first programming language. Every signature declares its effects, errors and contracts, and the compiler seals them on every build.",
   // The canonical origin for metadata, OG images, the sitemap and llms.txt links. Vercel production
   // also sets NEXT_PUBLIC_SITE_URL, which wins: update both when the domain moves.
-  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://sakura-lang.vercel.app",
+  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.sakuralang.com",
   github: "https://github.com/icantcodefyi/sakuralang",
   license: "MIT OR Apache-2.0",
   author: {
