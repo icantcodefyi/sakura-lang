@@ -1,13 +1,14 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.0.1**, agreed before `sakura_lir` or `sakura_rt`
-emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed (the list is
-kept as history at the end, with the questions still open). Owned by the designer; implemented jointly by M4-LIR (`crates/sakura_lir`)
+**Status:** design specification, version **1.0.2**, agreed before `sakura_lir` or `sakura_rt`
+emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed and 1.0.2 the
+R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
+the end, with the questions still open). Owned by the designer; implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
 (`crates/sakura_codegen_wasm`, `runtime/js/sakura_wasm_host.js`). This document is prose,
 tables and byte layouts; it contains no code and is not itself normative language
 specification (STABILITY.md: pre-alpha). Controlling decisions: design §17.81–§17.83, §17.88,
-§17.92–§17.99, §17.103 (fast by default), §17.108 (1.0.1). Evidence: [research/08](../../../research/08-m4-wasm-and-verification.md),
+§17.92–§17.99, §17.103 (fast by default), §17.108 (1.0.1), §17.129 (1.0.2). Evidence: [research/08](../../../research/08-m4-wasm-and-verification.md),
 [research/09](../../../research/09-m4-abi-and-encoding.md) with
 [09-evidence](../../../research/09-evidence/). Every section names the research it rests on or
 states its own rationale.
@@ -40,7 +41,12 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   emitter's expectation.
 - 1.0.1 changes bytes (the `Handler` payload, the tuple's second word, the table formats) as a
   PATCH because nothing had been emitted against 1.0.0 (design §17.108); from the first emitted
-  module on, such a change is MAJOR as stated above. `sakura_abi_version` is `0x010001`.
+  module on, such a change is MAJOR as stated above.
+- 1.0.2 states the return register and `env` convention (§5), the outcome numbers and the
+  defect message and site (§6.5, §9), the `ok_handle` completion status and runtime-side
+  queueing (§8.2, §8.5) and cancellation and finalizer semantics (§6.4, §7.4), as design
+  §17.129 endorsed P8–P12. It is a PATCH for the same reason as 1.0.1: no module has been
+  emitted. `sakura_abi_version` is `0x010002`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -232,6 +238,14 @@ by default, plan §3.1 M4-OPT).
   table, in deterministic order. Calling a function value: allocate or reuse the callee frame,
   store the arguments, set `frame.code = closure.code`, return step `Call`. The capture list is
   what Core's `Bind::Closure(DefId, Vec<Atom>)` names; the LIR owns the free-variable analysis.
+- **Return register** (design §17.129 P8). A callee leaves its owned result, and an unwinding
+  `Fail` caught by a catch entry its owned error (§6.4), in the task's 8-byte return register;
+  the resume block of the frame that receives it takes the register first. The driver never
+  drops the register's contents, because it cannot know whether the bits are a word. A task's
+  result is a generic word (§4). `env` is passed on a function's **entry** call only; a
+  function that needs it after its first call or suspension keeps it, counted, in a slot. The
+  `frame` argument is the frame's address, a transient borrow for that one call; every stored
+  link is an id (§7.2).
 - **Direct style** (as JS `f$d`): a top-level function with row `{}` that the transitive
   no-suspend analysis (research/08 §3.2 item 6) proves never performs, installs, fails or
   calls a non-direct function may additionally be emitted as `(args…) -> result` in native
@@ -273,7 +287,7 @@ popped by a `fail` that unwound past it) is detected, not dereferenced.
 
 | Step | Meaning | Driver action |
 |---|---|---|
-| 0 `Return` | the frame's result slot holds the owned result | pop the frame, deliver the result to the parent's named slot, resume parent at its `block` |
+| 0 `Return` | the return register (§5) holds the owned result | pop the frame, resume the parent at its `block`, whose resume block takes the result from the register |
 | 1 `Call` | the function set up a child frame (in `task.next_frame`) | push it, continue |
 | 2 `Fail` | `task.error` holds the owned error value | unwind to the innermost catch entry (§6.4) |
 | 3 `Defect` | `task.defect` holds `{code, message, spans}` | unwind every finalizer (§6.4), end the task |
@@ -308,10 +322,17 @@ A `Try` region pushes a **catch entry** on the task's catch stack: `join_block`,
 (non-owning), `fin_mark` (the finalizer stack height at entry, as JS `catcher.m`). `fail e`
 pops finalizer entries above `fin_mark` and runs each (newest first) with `returned = false`,
 pops frames down to `frame_id` (dropping their slots), then resumes the catching frame at
-`join_block` with the error in the designated slot. A finalizer entry (tag 0x8003) owns its
+`join_block` with the error in the return register (§5). A finalizer entry (tag 0x8003) owns its
 cleanup closure and borrows the task; `finalize(fin, body)` pushes the entry, runs `body`,
 and on normal return pops and runs it with `returned = true` exactly once (as JS). A defect or
-cancellation unwinds the whole stack the same way with `returned = false`. Finalizers run on
+cancellation unwinds the whole stack the same way with `returned = false`. A finalizer closure
+takes one `Bool` parameter, `returned`, in slot 0, and runs under the activation in scope where
+it was registered (the entry records it). While a finalizer runs the task is not unwinding: the
+interrupted unwinding is kept in four slots after the finalizer's own, so a finalizer's own
+`try` and finalizers nest. A defect, an escaping `Fail` (`D093`) or `exit` inside finalizers
+aborts every running finalizer and continues the outer unwinding; finalizers they registered
+still run. A defect replaces a `Fail` being unwound; otherwise the first unwinding wins
+(design §17.129 P12). Finalizers run on
 the trampoline like any Sakura code (they are closures); a `Fail` inside a finalizer is a
 defect `D093 finalizer_failed`, as the JS runtime's behaviour will be pinned to by a shared
 fixture (today JS lets it escape; the fixture decides and both backends follow it).
@@ -319,7 +340,10 @@ fixture (today JS lets it escape; the fixture decides and both backends follow i
 ### 6.5 Outcome protocol
 
 A task ends in exactly one of: `ok(value)`, `fail(error)`, `defect(code, message, spans)`,
-`cancelled`; a task that is waiting is `pending(request_id)`. The host reads the outcome from
+`cancelled`; a task that is waiting is `pending(request_id)`. The outcome numbers are `ok 0`,
+`fail 1`, `defect 2`, `cancelled 3`, `pending 4`, `exit 5` (design §17.129 P9); a defect
+outcome's value is its `D` number, and the `run` and `outcome` exports (§9) also carry its
+message and site, because the §12.2 defect record needs them. The host reads the outcome from
 the task record (§7.3) after `run` returns. Defects are **never traps**: the LIR emits the
 compare-and-branch and jumps to a shared per-function defect block that fills `task.defect`
 (code as a `u16` from the `D` registry, message as a static string offset, the site id from
@@ -377,7 +401,10 @@ One thread. A single run queue in the arena; `Task.deterministic(seed)` orders f
 with the §11 generator; `yield_now` under it does not suspend (as JS). `cancel(task)` marks the
 task and its descendants, bumps each epoch, aborts each pending request through the host
 (§8.5), and wakes each so it stops at its next effect operation or suspension and runs its
-finalizers before `cancel` returns (as JS `cancelTask`). A scope ends only when every child
+finalizers before `cancel` returns (as JS `cancelTask`). A pending request's continuation is
+dropped without running user code; a running task stops at its next `perform` (which then
+returns no frame) or suspension; "before `cancel` returns" is reached by the canceller joining
+the task (design §17.129 P12). A scope ends only when every child
 has an outcome and every request of the scope's tasks is terminal (research/09 §4).
 
 ### 7.5 Required cycle and lifetime tests (M4-RT gate; from research/09 §4)
@@ -444,7 +471,8 @@ exports (as the JS builtins test does). Every import has one of three shapes:
 
 Statuses: `0 ok`, `1 err` (the operation's ordinary `Err(reason)`; the reason string is copied
 out), `2 denied` (a `[permissions]` refusal, reported as the operation's ordinary error, as JS),
-`3 host_failure` (becomes `D091`).
+`3 host_failure` (becomes `D091`), `4 ok_handle` (an `ok` completion whose payload starts with
+the 12 bytes `kind, slot, generation` of the host handle it carries; §8.5, design §17.129 P10).
 
 ### 8.3 Permissions and capabilities
 
@@ -476,10 +504,11 @@ remains the std `@resource` opaque record `{ id: Int, path, mode }` (§17.89 ite
   inputs)` in its closures, never guest pointers (research/09 §5 item 6).
 - Completion: the host calls the export `complete(request_id, status, payload_ptr, payload_len)`
   after copying the payload out. The guest checks the request's generation, that `state ==
-  pending`, and that `task.epoch == request.task_epoch`; on any mismatch it **discards** the
-  payload (drops the `Bytes`), asks the host to close any host resource the completion carried
-  (the import `retire_handle(kind: i32, slot: i32, generation: i32)`, no result), and returns 0;
-  the host then does nothing else.
+  pending`, and that `task.epoch == request.task_epoch`; on any mismatch (a stale, duplicate
+  or older-epoch completion) it **discards** the payload (drops the `Bytes`), and when the
+  status is `4 ok_handle` retires the handle named by the payload's first 12 bytes through the
+  import `retire_handle(kind: i32, slot: i32, generation: i32)` (no result), and returns 0;
+  the host then does nothing else. The binding is on the M4-WASM host as well (P10).
   Otherwise it marks the request `completed`, moves the continuation frame back to the task,
   stores the decoded result in the frame's result slot, marks the task runnable and returns 1.
   Completion can win exactly once.
@@ -490,7 +519,9 @@ remains the std `@resource` opaque record `{ id: Int, path, mode }` (§17.89 ite
   running (the trampoline returned `pending` or `yield`). If the host is called back
   synchronously from inside an import (the Node `fetch` abort path can do this), it queues
   the completion and delivers it after the import returns (research/09 §5 "queue completion
-  until guest state is consistent").
+  until guest state is consistent"). As defence the runtime also queues a `complete` that
+  arrives while guest code is running: it returns `2` (queued) and delivers it at the next
+  scheduler point with the usual checks (design §17.129 P11).
 - Limits: at most `SAKURA_MAX_REQUESTS` (default 4,096) pending requests and
   `SAKURA_MAX_COPY_BYTES` (default 256 MiB) aggregate in-flight copied bytes per instance;
   exceeding either is the operation's ordinary error `"too many pending operations"` /
@@ -506,10 +537,11 @@ ledger runs at process exit.
 
 ## 9. Exports
 
-`memory`, `sakura_abi_version` (global), `run(task) -> i32`, `start(entry_fn) -> task`,
+`memory`, `sakura_abi_version` (global), `run(task) -> i32` (an outcome number, §6.5), `start(entry_fn) -> task`,
 `complete(req, status, ptr, len) -> i32`, `invoke(cb, ptr, len) -> i32`, `alloc_bytes(len) ->
 ptr`, `drop(ptr)`, `layout_table() -> (ptr, len)`, `effect_table() -> (ptr, len)`, `outcome(task)
--> (kind, ptr, len)` (the outcome encoded as §8.1 transport), `tests() -> (ptr, len)` (the
+-> (kind, ptr, len)` (the outcome encoded as §8.1 transport; a defect's carries its code,
+message and site, §6.5), `tests() -> (ptr, len)` (the
 test list and `effects` map as JS `__tests__.js`, in transport encoding), `stats() -> (ptr,
 len)` (§10 counters). Nothing else; the validator rejects extra exports (§1). The list
 describes the **linked** module: rustc exports a `static` as a global holding its address and
@@ -621,7 +653,9 @@ double completions; cancellation races; shutdown with pending work).
 ## Open questions (from M4-RT R2)
 
 Readings `sakura_rt` implements where 1.0.1 is still silent; each is a question for the designer
-(`compiler/REQUESTS.md`, 2026-10-18) and, where the LIR must agree, says so.
+(`compiler/REQUESTS.md`, 2026-10-18) and, where the LIR must agree, says so. Design §17.129
+endorsed P8–P12 (P9 amended: `run` and `outcome` carry a defect's message and site) and 1.0.2
+folds them into §5, §6.2, §6.4, §6.5, §7.4, §8.2, §8.5 and §9; they stay below as history.
 
 - **P1 Activation state (§6.3, design §17.108).** §17.108 keeps an activation's live state slots
   as generic words, but `StateGet`/`StateSet` address the *activation*, so the amendment's goal
