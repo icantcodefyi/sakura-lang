@@ -1,7 +1,7 @@
 # ADR 0003: Hand-written release workflow and installers over cargo-dist
 
 - Date: 2026-10-18
-- Status: Proposed
+- Status: Accepted (by @icantcodefyi, 2026-10-18)
 - Decision owner: @icantcodefyi
 - Design entry: [design §17.157](../design.md); evidence: [research/13](../../research/13-release.md)
 

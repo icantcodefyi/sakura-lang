@@ -43,3 +43,6 @@ mutable objects; every traversal and queue keeps AWFY's order. Both:
   destination values after the scale and offset changes, and 0 for n = 0 (AWFY's version
   needs n >= 1). run(n) adds the two. Every AWFY check still fails the run (a defect in
   Sakura, an Error in JS).
+
+Owner acceptance: @icantcodefyi accepted including this port under the terms above on
+2026-10-18.
