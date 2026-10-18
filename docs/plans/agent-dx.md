@@ -182,3 +182,43 @@ scheduled beside W2 as the first agent-DX items, DX5's runner and DX6's workflow
    Distribution provenance also tracks `compiler/examples`, the recipe reference's
    canonical inputs. Commit source changes first, then regenerate and commit the
    distribution separately; the manifest must not point at an uncommitted source.
+
+### DX3 (Opus, also the Sol and Astra parts)
+
+1. **90 pages, not 73.** §17.144 counted the `V`/`W` codes; the registry also holds 17 runtime
+   defects (`D…`), which get pages too. A defect page says there is no compile-time fixture
+   instead of showing an empty minimal pair; the retired `V5002` says it is never reported.
+   `index.mdx` lists the codes by phase (the §12.3 digit groups, then warnings, then defects);
+   `meta.json` is generated as well, so every file in `website/content/docs/errors/` is an
+   output, and a file there that the generator does not write (a page without a code) fails
+   `--check` and `outputs_are_fresh`. The pages live under "Reference" in the sidebar, after
+   the standard library. The "generated" note is a YAML comment in the frontmatter, because an
+   MDX comment leaked into the `.md` export.
+2. **Which fixture.** A code with several `tests/ui` fixtures shows the first (by name) that has
+   a `.fixed.sakura` companion, else the first, and links the others. A directory fixture
+   (`V1030_import_cycle/`) shows each file and says the ui suite does not run it yet; so does
+   `W8001` (milestone M5). The wrong program is shown without its harness directives (other
+   leading comments stay). The diagnostic is the fixture's `.jsonl` record for the code,
+   pretty-printed in the contract's key order; fixtures run through `// command:` (no `.jsonl`)
+   say which command reports the code. `V0008`'s 10,000-byte nesting is linked, not inlined (a
+   page inlines up to 2,000 bytes).
+3. **Companions: 64**, one for every code whose fixture the ui suite runs (all of them; no
+   frequency data exists to order them, so none was left out). Each is the wrong fixture with
+   the minimal repair, `sakura fmt`-clean (`fmt_clean.rs` covers `tests/ui`), and `ui.rs` runs
+   it with the wrong fixture's command (`check`, `run`, `build`, `test --contracts`) and
+   requires exit 0 with no error or warning. A companion without its wrong fixture fails the
+   suite. Missing: `V1030` (directory fixture), `W8001` (not reported before M5), and the codes
+   with no fixture (`V5002`, `V8002`–`V8004`, `V8020`, `V9001`, `W7002`, the defects).
+4. **Link check.** Index links are built from the same registry walk that writes the pages, and
+   `--check` fails on any page/code mismatch, so a dangling index link cannot be committed; no
+   separate crawler was added. The website build renders every page (MDX escaping of `{`, `}`,
+   `<`, `>` and `*` outside inline code is the generator's job; a unit test covers it).
+5. **`sakura explain` prints `https://www.sakuralang.com/docs/errors/<code>`** last, the
+   canonical `site.url` of `website/lib/site.ts` (the live domain since `f1de9f4`). `cli.rs` asserts
+   the printed base appears in `site.ts`, so a domain change fails a test until both move.
+   `explanation_uri` is unchanged (`sakura://explain/<code>`).
+6. **Explanations expanded (32 codes)** that had no repair or minimal pair: `V0004`, `V1001`,
+   `V1003`–`V1005`, `V1011`, `V1012`, `V1020`, `V1041`, `V2002`–`V2005`, `V3002`, `V3010`–`V3012`,
+   `V3020`, `V4003`, `V5001`, `V6010`, `V9002`, `W1002`, `W4010`, `W8001`, `D004`, `D011`, `D020`,
+   `D021`, `D030`, `D031`, `D091`. The pairs follow the fixtures and companions (each sample
+   was parsed with the CLI); `skills/sakura/references/diagnostics.md` regenerates with them.
