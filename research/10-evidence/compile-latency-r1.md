@@ -266,6 +266,108 @@ What this says, for whoever takes the next row (no change to inference was made 
   type twice, in its vector and as its map key. Borrowing instead of cloning is a refactor of
   the readers, not of inference.
 
+## WS-C1b and WS-C1c: the reuse path carries std's results and parses none of std
+
+Measured 2026-10-19 by Claude Opus 5.5: `b0dfe8b1` (before) against the WS-C1b commit applied
+to it (after), instrumented release builds in separate target directories, same host, load
+average 13 to 30, so every number is indicative. A reused module's symbols, evaluated names
+and interface hash are now its predecessor's, and std's items, imports and exports come from
+the predecessor `Program`, so nothing on the reuse path walks a std tree.
+
+**Verdict: an analysis that reuses std falls from 8.28 to 1.09 ms (target ≤ 3 ms, met).**
+
+Hello-world under fresh URIs in one process (`latency_loop`), 5 alternating runs of 300
+analyses per side, the 299 that reused std in each; median ms over all 1,495:
+
+| Phase | Before | After |
+|---|---:|---:|
+| `evaluated_functions` | 1.32 | **0.05** |
+| `interface_hash` | 2.21 | **0.01** |
+| lower | 1.07 | **0.38** |
+| check | 0.59 | 0.51 |
+| `symbols::index` | 3.08 | **0.11** |
+| **total** | **8.28** | **1.09** |
+
+Per-run medians of the total: 8.21 to 8.37 ms before, 1.05 to 1.15 after. Three of the
+carried phases are at or near §17.204 (2)'s 0.1 ms; `symbols::index` (0.11) includes indexing
+the hello module, and lower (0.38) includes lowering it.
+
+**What bounds the 1.09 ms.** A sampling profile of the after loop (8 s, 5,372 samples in the
+loop) puts 1,164 samples in `check_program_reusing`, 919 in lower and 280 in
+`symbols::index`. All three are mostly copies of std's results made per analysis: the
+previous interner's hash tables and typed bodies, std's HIR defs and bodies, and std's
+symbols. Sharing them (an `Arc` per reused module) instead of cloning is the next lever; it
+changes `sakura_hir` and `sakura_types` types, so it is not done here.
+
+**What the phase lines do not show.** `Analysis::analyze` drops the analysis it evicts from its
+cache of 8, outside the timed `analyze`. In the loop that drop is 2,842 of the 5,372 samples:
+1,380 in `sakura_syntax`'s `Teardown`, which walks each of the 46 dropped parse trees even
+though the parse cache still holds them, 690 in dropping the HIR and 627 in dropping the typed
+program. Wall time per `Analysis::analyze` over 1,000 calls (3 alternating runs) is 9.7 ms
+before and 2.5 ms after, so the target holds end to end. A single `sakura check` never evicts.
+WS-C1c removes the std trees from a reusing analysis and with them the `Teardown` walk (below).
+
+**A case the review found.** A reused module in an import cycle with an edited one lost a
+`V1006` when carried whole: a fresh lowering binds the edited module's imports before the
+reused module's exports exist, and a carried module's exports are already there. The carried
+run now ends before the first module that imports one past it (`sakura_hir::carried`). std
+imports nothing outside std, so its run is unchanged, and so are the numbers above.
+
+**WS-C1c: std's trees are parsed on demand.** `Analyzed.parses` holds a slot per file, filled
+on first use; the files `sakura_hir::carried` names are not parsed by the analysis, and their
+parse diagnostics are the predecessor's. In one process this saves no parse (std's trees were
+cache hits already), but the evicted entry no longer holds std's trees, so the `Teardown` walk
+goes. A second measurement, base (`b0dfe8b1`), WS-C1b and WS-C1c alternating, 5 runs each
+(load average 7 to 16, with a spike in runs 4 and 5):
+
+| Side | Phase-line total, median of 1,495 (ms) | Wall per `Analysis::analyze`, median of 5 runs of 1,000 (ms) |
+|---|---:|---:|
+| base | 8.49 | 10.58 (9.91–15.63) |
+| WS-C1b | 1.32 | 2.84 (2.49–6.40) |
+| WS-C1c | 1.38 | **2.13** (1.79–2.26) |
+
+The phase lines are unchanged within noise, as expected; the wall time per call falls by
+0.7 ms, and WS-C1c is below WS-C1b in every one of the 5 paired runs. In a fresh process the
+saving is the 3.25 ms parse of std once WS-C2 supplies std's analysis without trees.
+
+**The std-first flip (§17.204 (1a)) is not made.** Its acceptance is fresh-first and std-first
+within 1 ms on the hello-world in process. A throwaway probe on WS-C1c, alternating within each
+iteration a fresh analysis and std's analysis followed by a reusing one (parse cache warm for
+both), 3 runs of 80 iterations: std-first costs 1.11, 1.04 and 1.08 ms more (paired medians;
+p25 0.95 to 0.99, p75 1.24 to 1.34), on medians of 17.1 to 17.2 ms against 18.2 to 18.4. That
+is the reuse path's own cost, mostly the per-analysis copies above, so it misses by about
+0.1 ms. Sharing std's results instead of copying them, or WS-C2's cache, changes the
+comparison; the flip waits for one of them. Question for the designer in the report.
+
+**A single `sakura check` is unchanged.** Release CLIs, `compile_latency.py time --runs 41`,
+`8d2fd1e8` (before) against the final WS-C1c tree (after), load average 11 to 14:
+
+| Case | Side | Median ms | p95 ms | Range ms |
+|---|---|---:|---:|---:|
+| `check_hello` | before | 25.5 | 42.0 | 24.3–46.9 |
+| `check_hello` | after | 25.4 | 45.0 | 24.4–54.7 |
+| `check_cold_10k` | before | 60.7 | 66.3 | 59.0–69.9 |
+| `check_cold_10k` | after | 60.9 | 67.9 | 59.1–70.4 |
+
+A first version of the per-file calls walked every function body a second time (after the
+whole-tree scan for `where` clauses) and collected every token of each callee, which is
+quadratic along a method chain: the 10k corpus took 62.1 ms against 60.0 (31 runs, minimum
+60.9 against 59.0). One walk over a file's calls, placing each call by its ancestors, and the
+callee's last token read from its end removed it; std's evaluated set is the same 76 names
+either way.
+
+**Two reuse fixes.** Evaluated names (design §17.87) are now the names *called* in `where`
+clauses and, transitively, in the bodies and contracts of functions so named. Before, every
+identifier in an evaluated function's body counted, so std's set held parameters and locals,
+and a user function named `g` had its body hashed as interface: editing it rechecked every
+module (47 checked on `b0dfe8b1`, 1 now). And the calls in an evaluated function's
+`requires`/`ensures` did not count, though the evaluator runs them: after an edit to a
+function called only from such a contract, a literal into the refined type kept its old
+verdict (a missing `V5004`). `tests/evaluated.rs` fails on `b0dfe8b1` for both, and fails
+again if the contract calls or the transitive expansion are removed. Each file keeps its
+calls, not its closure: a `where` clause in one file can reach a function of another only
+through the fixpoint over every file's calls.
+
 ## Rows proposed for `performance-r1.md` §9
 
 - **WS-C1a** (check, 36% of std's analysis): reused modules' defs are not checked again (the
