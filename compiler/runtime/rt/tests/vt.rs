@@ -1,7 +1,8 @@
 //! `sakura-vt1` (`src/vt.rs`): values survive an encode/decode round trip with their kinds, and
 //! malformed input from a host (ABI §14 hostile-host cases: truncated values, unknown tags,
 //! unknown types and constructors, wrong slot counts and kinds, non-UTF-8 strings, nesting past
-//! the bound) is `D090` and leaves no object behind.
+//! the bound) is `D090` and leaves no object behind. A `Secret` crosses redacted unless the
+//! encoder is in `secret` mode (ABI §8.1).
 
 mod common;
 
@@ -112,6 +113,22 @@ fn values_round_trip_with_their_kinds() {
     // whose `Int` slot encodes as an `Int`).
     let w = decode(&mut rt, &v).unwrap();
     assert_eq!(encode(&mut rt, w), v);
+    rt.drop(w);
+    assert_eq!(rt.stats().live_objects, base);
+}
+
+#[test]
+fn secrets_cross_only_to_secret_imports() {
+    let mut rt = runtime();
+    let base = rt.stats().live_objects;
+    let mut v = vec![t::SECRET];
+    v.extend(string("demo-token"));
+    let w = decode(&mut rt, &v).unwrap();
+    assert_eq!(rt.tag(w), tag::SECRET);
+    assert_eq!(encode(&mut rt, w), [t::SECRET, t::UNIT]);
+    rt.sched.vt_secrets = true;
+    assert_eq!(encode(&mut rt, w), v);
+    rt.sched.vt_secrets = false;
     rt.drop(w);
     assert_eq!(rt.stats().live_objects, base);
 }

@@ -178,6 +178,9 @@ pub struct Sched {
     /// Contract predicates being evaluated (`contract_enter`/`contract_exit`): a defect
     /// raised inside one is `D011` (design §7.1, as JS).
     pub contract_depth: u32,
+    /// Encode a `Secret`'s inner value (`sakura_rt::vt`): only around an import of kind
+    /// `secret` (ABI §8.1).
+    pub vt_secrets: bool,
     /// Effect traces (design §17.80, `SAKURA_TRACE`): on, the next record's `seq`, the next
     /// task number, and the operation-name table (`u32 n`, then per effect an offset to
     /// `u32 n_ops` and `n_ops` name offsets; names `u32 len` + UTF-8; offsets relative).

@@ -654,6 +654,29 @@ pub extern "C" fn rt_vt_end() -> u32 {
     ptr(r)
 }
 
+/// A host's defect answer (`u32` code, then the message) at `(at, len)`; the message is kept
+/// in `HOST_MESSAGE` until the next one.
+fn host_defect(rt: &Rt, at: u32, len: u32) -> Defect {
+    let code = rt.heap.mem.u32(at);
+    let msg = rt.heap.mem.bytes(at + 4, len - 4);
+    // SAFETY: the only reference to the buffer while it is written; a defect record
+    // points at it afterwards (see `HOST_MESSAGE`).
+    let buf = unsafe { &mut *HOST_MESSAGE.0.get() };
+    let n = msg.len().min(buf.len());
+    // Cut at a character boundary so the text stays UTF-8.
+    let n = (0..=n)
+        .rev()
+        .find(|&k| core::str::from_utf8(&msg[..k]).is_ok())
+        .unwrap_or(0);
+    buf[..n].copy_from_slice(&msg[..n]);
+    // SAFETY: `buf[..n]` is UTF-8 (checked above) and the buffer is a static.
+    let message = unsafe { core::str::from_utf8_unchecked(&buf[..n]) };
+    Defect {
+        code: code as u16,
+        message,
+    }
+}
+
 /// Read what a host-delegated builtin returned (`b`, a `Bytes`, consumed): 0 ok and 1 failed
 /// (the value is held for `rt_vt_take_*`), 2 after a defect (raised here).
 #[unsafe(no_mangle)]
@@ -670,26 +693,7 @@ pub extern "C" fn rt_vt_result(b: u32) -> u32 {
             transport().result = w as u64;
             status as u32
         }),
-        2 if len >= 5 => {
-            let code = rt.heap.mem.u32(at + 1);
-            let msg = rt.heap.mem.bytes(at + 5, len - 5);
-            // SAFETY: the only reference to the buffer while it is written; a defect record
-            // points at it afterwards (see `HOST_MESSAGE`).
-            let buf = unsafe { &mut *HOST_MESSAGE.0.get() };
-            let n = msg.len().min(buf.len());
-            // Cut at a character boundary so the text stays UTF-8.
-            let n = (0..=n)
-                .rev()
-                .find(|&k| core::str::from_utf8(&msg[..k]).is_ok())
-                .unwrap_or(0);
-            buf[..n].copy_from_slice(&msg[..n]);
-            // SAFETY: `buf[..n]` is UTF-8 (checked above) and the buffer is a static.
-            let message = unsafe { core::str::from_utf8_unchecked(&buf[..n]) };
-            Err(Defect {
-                code: code as u16,
-                message,
-            })
-        }
+        2 if len >= 5 => Err(host_defect(rt, at + 1, len - 1)),
         _ => Err(crate::vt::MALFORMED),
     };
     rt.drop(b);
@@ -1103,19 +1107,33 @@ pub extern "C" fn rt_code_file_close(env: u32, _frame: u32) -> u32 {
 // ---- SQL (`Sql.memory()`) ----------------------------------------------------------------------
 
 /// A host-built handler whose clause closures capture `instance` (an `i64`, the host's id of
-/// its state), e.g. one in-memory database per `Sql.memory()`.
-fn instance_handler(rt: &mut Rt, effect: u32, codes: u32, n: u32, instance: i64) -> Res<u32> {
+/// its state), e.g. one in-memory database per `Sql.memory()`. With `js` (a JS-built handler,
+/// `rt_code_js_clause`) they also capture the operation and its arity, which follow the `n`
+/// codes at `codes`.
+fn instance_handler(
+    rt: &mut Rt,
+    effect: u32,
+    codes: u32,
+    n: u32,
+    instance: i64,
+    js: bool,
+) -> Res<u32> {
+    let caps = if js { 3 } else { 1 };
     let h = rt.new_object(tag::HANDLER, 24 + 4 * n)?;
     for (off, v) in [(8, effect), (12, u32::MAX), (16, 0), (20, n)] {
         rt.heap.mem.set_u32(h + off, v);
     }
     for i in 0..n {
         let c = rt
-            .new_object(tag::CLOSURE, 24)
+            .new_object(tag::CLOSURE, 16 + 8 * caps)
             .inspect_err(|_| rt.drop(h))?;
         rt.heap.mem.set_u32(c + 8, rt.heap.mem.u32(codes + 4 * i));
-        rt.heap.mem.set_u32(c + 12, 1);
+        rt.heap.mem.set_u32(c + 12, caps);
         rt.set_slot(c, 0, instance as u64);
+        if js {
+            rt.set_slot(c, 1, u64::from(i));
+            rt.set_slot(c, 2, u64::from(rt.heap.mem.u32(codes + 4 * (n + i))));
+        }
         rt.heap.mem.set_u32(h + 24 + 4 * i, c);
     }
     Ok(h)
@@ -1127,7 +1145,7 @@ pub extern "C" fn rt_b_sql_memory(effect: u32, codes: u32, n: u32) -> u32 {
     // SAFETY: a plain import returning a scalar.
     let instance = unsafe { host::sql_open_memory() };
     let rt = rt();
-    let r = instance_handler(rt, effect, codes, n, instance);
+    let r = instance_handler(rt, effect, codes, n, instance, false);
     ptr(r)
 }
 
@@ -1316,6 +1334,162 @@ pub extern "C" fn rt_code_sql_rollback(env: u32, _frame: u32) -> u32 {
     // SAFETY: a plain import with scalar arguments.
     unsafe { host::sql_rollback(instance, token) };
     ret(rt, UNIT as u64)
+}
+
+// ---- JS-built handlers (`Llm.anthropic`): clauses the host runs with the JS runtime ---------
+
+/// `Llm.anthropic(key, model)`: the JS runtime's handler, built on the host (`key` crosses to
+/// this import of kind `secret`, ABI §8.1).
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_b_llm_anthropic(effect: u32, codes: u32, n: u32, key: u32, model: u32) -> u32 {
+    js_handler("llm_anthropic", effect, codes, n, &[key, model])
+}
+
+/// A handler the host builds by calling the JS runtime's `name(...args)` (the arguments
+/// consumed); its clauses are `rt_code_js_clause`.
+fn js_handler(name: &str, effect: u32, codes: u32, n: u32, args: &[u32]) -> u32 {
+    let rt = rt();
+    rt.sched.vt_secrets = true;
+    let b = encode_args(rt, args);
+    rt.sched.vt_secrets = false;
+    let r = b.and_then(|b| {
+        let (len, at) = rt.data(b);
+        // SAFETY: a plain import with slices inside linear memory (`name` is in the runtime's
+        // data), copied in at once.
+        let instance =
+            unsafe { host::js_handler(name.as_ptr() as u32, name.len() as u32, at, len) };
+        rt.drop(b);
+        instance_handler(rt, effect, codes, n, instance, true)
+    });
+    ptr(r)
+}
+
+/// Slot of a JS clause's frame holding the host's session while an operation it performs runs
+/// (then a flag: that operation returns `Unit`). Slots 2.. hold the clause's arguments, at
+/// most four words (`sakura_codegen_wasm` refuses other operations).
+const JS_SESSION: u32 = 6;
+const JS_UNIT: u32 = 7;
+
+/// A clause of a JS-built handler: the host runs the JS clause, and each operation the JS
+/// code performs (`Http.send`, `Budget.reserve`/`settle`) is performed here, on the handlers
+/// outside this one, its result or failure handed back to the JS continuation, until the JS
+/// clause returns, fails or defects.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_js_clause(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    let answer = match rt.block(frame) {
+        0 => {
+            let clause = rt.take_fslot(frame, 0) as u32;
+            let instance = rt.slot(clause, 0) as i64;
+            let (op, arity) = (rt.slot(clause, 1) as u32, rt.slot(clause, 2) as usize);
+            rt.drop(clause);
+            let mut args = [0; 4];
+            for (i, a) in args.iter_mut().enumerate().take(arity) {
+                *a = rt.take_fslot(frame, 2 + i as u32) as u32;
+            }
+            encode_args(rt, &args[..arity]).map(|b| {
+                let (len, at) = rt.data(b);
+                // SAFETY: a plain import with a slice inside linear memory, copied in at once.
+                let out = unsafe { host::js_clause(instance, op, at, len) };
+                rt.drop(b);
+                out
+            })
+        }
+        1 => {
+            rt.try_pop(frame);
+            let v = rt.take_ret() as u32;
+            // A `Unit` result is no word.
+            let v = if rt.fslot(frame, JS_UNIT) != 0 {
+                UNIT
+            } else {
+                v
+            };
+            js_resume(rt, frame, 0, v)
+        }
+        _ => {
+            let e = rt.take_ret() as u32;
+            js_resume(rt, frame, 1, e)
+        }
+    };
+    match answer {
+        Ok(b) => js_answer(rt, frame, b),
+        Err(d) => rt.raise(d),
+    }
+}
+
+/// The JS continuation waiting in the frame's session gets `v` (consumed): the operation's
+/// result (`status` 0) or its failure (1).
+fn js_resume(rt: &mut Rt, frame: u32, status: u32, v: u32) -> Res<u32> {
+    let session = rt.fslot(frame, JS_SESSION) as u32;
+    let b = encode_args(rt, &[v])?;
+    let (len, at) = rt.data(b);
+    // SAFETY: a plain import with a slice inside linear memory, copied in at once.
+    let out = unsafe { host::js_resume(session, status, at, len) };
+    rt.drop(b);
+    Ok(out)
+}
+
+/// What the JS clause did next (a `Bytes`, consumed): `u8` 0 returned, 1 failed (then the
+/// value), 2 defected (`u32` code, message), or 3 performs an operation: `u32` session, `u32`
+/// op, `u8` whether it returns `Unit`, the effect's name (`u32 len`, UTF-8), then the
+/// arguments as one tuple.
+fn js_answer(rt: &mut Rt, frame: u32, b: u32) -> u32 {
+    if b == 0 {
+        return rt.raise(Defect::HEAP_EXHAUSTED);
+    }
+    let (len, at) = rt.data(b);
+    let status = if len == 0 { 255 } else { rt.heap.mem.u8(at) };
+    let r = match status {
+        0 => rt.vt_decode(at + 1, len - 1).map(|v| ret(rt, v as u64)),
+        1 => rt.vt_decode(at + 1, len - 1).map(|e| rt.fail(e)),
+        2 if len >= 5 => Err(host_defect(rt, at + 1, len - 1)),
+        3 if len >= 14 => js_perform(rt, frame, at, len),
+        _ => Err(crate::vt::MALFORMED),
+    };
+    rt.drop(b);
+    r.unwrap_or_else(|d| rt.raise(d))
+}
+
+fn js_perform(rt: &mut Rt, frame: u32, at: u32, len: u32) -> Res<u32> {
+    let m = &rt.heap.mem;
+    let (session, op, unit, name_len) =
+        (m.u32(at + 1), m.u32(at + 5), m.u8(at + 9), m.u32(at + 10));
+    if name_len > len - 14 {
+        return Err(crate::vt::MALFORMED);
+    }
+    let effect = rt
+        .effect_named(rt.heap.mem.bytes(at + 14, name_len))
+        .ok_or(Defect::INTERNAL)?;
+    let args = rt.vt_decode(at + 14 + name_len, len - 14 - name_len)?;
+    if rt.tag(args) != tag::TUPLE {
+        rt.drop(args);
+        return Err(crate::vt::MALFORMED);
+    }
+    let n = rt.obj_row(args).n_slots;
+    rt.set_fslot(frame, JS_SESSION, u64::from(session));
+    rt.set_fslot(frame, JS_UNIT, u64::from(unit));
+    let performed = rt
+        .try_push(frame, 2)
+        .and_then(|()| rt.perform_value(frame, effect, op, n));
+    let c = match performed {
+        Ok(c) => c,
+        Err(d) => {
+            rt.drop(args);
+            return Err(d);
+        }
+    };
+    if c == 0 {
+        rt.drop(args);
+        return Ok(step::YIELD);
+    }
+    for i in 0..n {
+        let x = rt.slot(args, i);
+        rt.set_slot(args, i, 0);
+        rt.set_fslot(c, 2 + i, x);
+    }
+    rt.drop(args);
+    rt.set_block(frame, 1);
+    Ok(step::CALL)
 }
 
 // ---- property tests (`property_run`; the search runs on the host, JS `propertySteps`) ----------
@@ -1782,6 +1956,12 @@ mod host {
         pub fn sql_begin(instance: i64) -> u32;
         pub fn sql_release(instance: i64, token: i64);
         pub fn sql_rollback(instance: i64, token: i64);
+        /// JS-built handlers (`rt_code_js_clause`): build one (the arguments are a `secret`
+        /// import's, ABI §8.1), run a clause, resume its continuation; answers as
+        /// `js_answer` reads them.
+        pub fn js_handler(name: u32, name_len: u32, ptr: u32, len: u32) -> i64;
+        pub fn js_clause(instance: i64, op: u32, ptr: u32, len: u32) -> u32;
+        pub fn js_resume(session: u32, status: u32, ptr: u32, len: u32) -> u32;
     }
 }
 

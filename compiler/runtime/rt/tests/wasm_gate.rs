@@ -68,6 +68,9 @@ const IMPORTS: &[&str] = &[
     "prop_next",
     "prop_record",
     "prop_failures",
+    "js_handler",
+    "js_clause",
+    "js_resume",
 ];
 
 /// The ABI §1 allowlist, from an empty set (research/09 §1).

@@ -11,7 +11,12 @@
 //!   8 Variant u32 type_id, u32 ctor, u32 n, value*    9 Tuple u32 n, value*
 //!   10 Map u32 n, (value, value)*        11 Set u32 n, value*
 //!   12 Handle u32 kind, u32 slot, u32 generation       13 Untrusted value
+//!   14 Secret value
 //! ```
+//!
+//! A `Secret` carries its inner value only to an import of kind `secret` (ABI §8.1; the
+//! encoder's `Sched::vt_secrets`); to any other import it is redacted to `14, Unit`, so a
+//! cassette lookup sees that a header is secret but never its value.
 //!
 //! Decoding validates everything (tags, type ids, constructors, slot counts and kinds, UTF-8,
 //! lengths) and is bounded: nesting at most [`MAX_DEPTH`], at most [`MAX_NODES`] values. A
@@ -41,6 +46,7 @@ pub mod t {
     pub const SET: u8 = 11;
     pub const HANDLE: u8 = 12;
     pub const UNTRUSTED: u8 = 13;
+    pub const SECRET: u8 = 14;
 }
 
 /// Handle kinds (ABI §8.4).
@@ -54,7 +60,7 @@ pub const MALFORMED: Defect = Defect {
 };
 pub const NOT_TRANSPORTABLE: Defect = Defect {
     code: 90,
-    message: "a value that cannot cross the host boundary (a function, handler or secret)",
+    message: "a value that cannot cross the host boundary (a function or handler)",
 };
 
 /// A decoded value: a word (owned) or a scalar.
@@ -319,6 +325,10 @@ impl Rt {
                 let v = self.vt_value(r, depth + 1).and_then(|v| self.vt_word(v))?;
                 V::Word(self.untrusted_of(v)?)
             }
+            t::SECRET => {
+                let v = self.vt_value(r, depth + 1).and_then(|v| self.vt_word(v))?;
+                V::Word(self.secret_wrap(v)?)
+            }
             _ => return Err(MALFORMED),
         })
     }
@@ -481,6 +491,11 @@ impl Rt {
                 self.put(b, &[t::UNTRUSTED])?;
                 self.vt_enc(b, WORD, self.heap.mem.u32(w + 8) as u64, depth + 1)
             }
+            tag::SECRET if self.sched.vt_secrets => {
+                self.put(b, &[t::SECRET])?;
+                self.vt_enc(b, WORD, self.heap.mem.u32(w + 8) as u64, depth + 1)
+            }
+            tag::SECRET => self.put(b, &[t::SECRET, t::UNIT]),
             _ => Err(NOT_TRANSPORTABLE),
         }
     }
