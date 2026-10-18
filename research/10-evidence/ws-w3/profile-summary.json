@@ -1,0 +1,701 @@
+{
+  "whole_process_samples": 4138,
+  "jit_samples": 3971,
+  "rows": [
+    {
+      "percent_whole_process": 28.18,
+      "samples": 1166,
+      "dso": "[JIT] tid 2794",
+      "symbol": "sakura_rt[9f79f6d20163315b]::wasm::rt"
+    },
+    {
+      "percent_whole_process": 15.59,
+      "samples": 645,
+      "dso": "[JIT] tid 2794",
+      "symbol": "<sakura_rt[9f79f6d20163315b]::Rt>::arena_obj"
+    },
+    {
+      "percent_whole_process": 11.62,
+      "samples": 481,
+      "dso": "[JIT] tid 2794",
+      "symbol": "main::fib::fib"
+    },
+    {
+      "percent_whole_process": 7.32,
+      "samples": 303,
+      "dso": "[JIT] tid 2794",
+      "symbol": "run"
+    },
+    {
+      "percent_whole_process": 7.15,
+      "samples": 296,
+      "dso": "[JIT] tid 2794",
+      "symbol": "<sakura_rt[9f79f6d20163315b]::Rt>::pop_frame"
+    },
+    {
+      "percent_whole_process": 4.35,
+      "samples": 180,
+      "dso": "[JIT] tid 2794",
+      "symbol": "<sakura_rt[9f79f6d20163315b]::Rt>::code"
+    },
+    {
+      "percent_whole_process": 3.67,
+      "samples": 152,
+      "dso": "[JIT] tid 2794",
+      "symbol": "<sakura_rt[9f79f6d20163315b]::Rt>::call"
+    },
+    {
+      "percent_whole_process": 3.5,
+      "samples": 145,
+      "dso": "[JIT] tid 2794",
+      "symbol": "<sakura_rt[9f79f6d20163315b]::heap::Heap>::alloc"
+    },
+    {
+      "percent_whole_process": 2.42,
+      "samples": 100,
+      "dso": "[JIT] tid 2794",
+      "symbol": "sakura_rt[9f79f6d20163315b]::wasm::dispatch"
+    },
+    {
+      "percent_whole_process": 2.25,
+      "samples": 93,
+      "dso": "[JIT] tid 2794",
+      "symbol": "<sakura_rt[9f79f6d20163315b]::Rt>::frame_alloc"
+    },
+    {
+      "percent_whole_process": 1.96,
+      "samples": 81,
+      "dso": "[JIT] tid 2794",
+      "symbol": "<sakura_rt[9f79f6d20163315b]::Rt>::arena_new"
+    },
+    {
+      "percent_whole_process": 1.81,
+      "samples": 75,
+      "dso": "[JIT] tid 2794",
+      "symbol": "<sakura_rt[9f79f6d20163315b]::heap::Heap>::free"
+    },
+    {
+      "percent_whole_process": 1.74,
+      "samples": 72,
+      "dso": "[JIT] tid 2794",
+      "symbol": "<sakura_rt[9f79f6d20163315b]::Rt>::arena_free"
+    },
+    {
+      "percent_whole_process": 1.62,
+      "samples": 67,
+      "dso": "[JIT] tid 2794",
+      "symbol": "rt_set_ret"
+    },
+    {
+      "percent_whole_process": 1.04,
+      "samples": 43,
+      "dso": "[JIT] tid 2794",
+      "symbol": "rt_take_ret"
+    },
+    {
+      "percent_whole_process": 1.01,
+      "samples": 42,
+      "dso": "[JIT] tid 2794",
+      "symbol": "rt_call"
+    },
+    {
+      "percent_whole_process": 0.7,
+      "samples": 29,
+      "dso": "[JIT] tid 2794",
+      "symbol": "wasmtime_builtin_memory_fill"
+    },
+    {
+      "percent_whole_process": 0.36,
+      "samples": 15,
+      "dso": "wasmtime",
+      "symbol": "_RNvMNtCs8JjuN4JZtbQ_9regalloc23ionINtNtB2_15data_structures3EnvINtNtNtCskMe0eq0sfaI_17cranelift_codegen8machinst5vcode5VCodeNtNtNtNtNtNtB16_3isa7aarch645lower4isle14generated_code5MInstEE4initB16_"
+    },
+    {
+      "percent_whole_process": 0.22,
+      "samples": 9,
+      "dso": "libc.so.6",
+      "symbol": "0x00000000000a2dd8"
+    },
+    {
+      "percent_whole_process": 0.22,
+      "samples": 9,
+      "dso": "wasmtime",
+      "symbol": "memset@plt"
+    },
+    {
+      "percent_whole_process": 0.14,
+      "samples": 6,
+      "dso": "wasmtime",
+      "symbol": "_RNvMNtCs8JjuN4JZtbQ_9regalloc23ionINtNtB2_15data_structures3EnvINtNtNtCskMe0eq0sfaI_17cranelift_codegen8machinst5vcode5VCodeNtNtNtNtNtNtB16_3isa7aarch645lower4isle14generated_code5MInstEE3runB16_"
+    },
+    {
+      "percent_whole_process": 0.12,
+      "samples": 5,
+      "dso": "wasmtime",
+      "symbol": "_RINvMsd_NtNtNtCs3XFGBRFiuKX_5alloc11collections5btree8navigateINtNtB8_4node7NodeRefNtNtB11_6marker5ImmutNtNtNtCs8JjuN4JZtbQ_9regalloc23ion15data_structures12LiveRangeKeyNtB1G_14LiveRangeIndexNtB1l_14LeafOrInternalE30find_leaf_edges_spanning_rangeB1E_INtNtNtCs7z6u5Op6t72_4core3ops5range9RangeFromB1E_EECskMe0eq0sfaI_17cranelift_codegen"
+    },
+    {
+      "percent_whole_process": 0.1,
+      "samples": 4,
+      "dso": "libc.so.6",
+      "symbol": "0x00000000000a2d94"
+    },
+    {
+      "percent_whole_process": 0.1,
+      "samples": 4,
+      "dso": "wasmtime",
+      "symbol": "_RNvMNtNtCs8JjuN4JZtbQ_9regalloc23ion7processINtNtB4_15data_structures3EnvINtNtNtCskMe0eq0sfaI_17cranelift_codegen8machinst5vcode5VCodeINtNtNtNtB1g_3isa13pulley_shared4inst11InstAndKindNtNtB2f_8pulley328Pulley32EEE29try_to_allocate_bundle_to_regB1g_"
+    },
+    {
+      "percent_whole_process": 0.1,
+      "samples": 4,
+      "dso": "wasmtime",
+      "symbol": "_RNvMs0_NtNtCs8JjuN4JZtbQ_9regalloc23ion11requirementINtNtB7_15data_structures3EnvINtNtNtCskMe0eq0sfaI_17cranelift_codegen8machinst5vcode5VCodeINtNtNtNtB1o_3isa13pulley_shared4inst11InstAndKindNtNtB2n_8pulley328Pulley32EEE19compute_requirementB1o_"
+    },
+    {
+      "percent_whole_process": 0.1,
+      "samples": 4,
+      "dso": "wasmtime",
+      "symbol": "_RNvMs3_NtCskMe0eq0sfaI_17cranelift_codegen6egraphNtB5_10EgraphPass3run"
+    },
+    {
+      "percent_whole_process": 0.07,
+      "samples": 3,
+      "dso": "libc.so.6",
+      "symbol": "0x00000000000a2d84"
+    },
+    {
+      "percent_whole_process": 0.07,
+      "samples": 3,
+      "dso": "wasmtime",
+      "symbol": "_RINvMs0_NtCskMe0eq0sfaI_17cranelift_codegen15scoped_hash_mapINtB6_13ScopedHashMapTNtNtNtB8_2ir5types4TypeNtNtB1m_12instructions15InstructionDataEINtNtCs7z6u5Op6t72_4core6option6OptionNtNtB1m_8entities5ValueEE3getNtNtB8_6egraph10GVNContextEB8_"
+    },
+    {
+      "percent_whole_process": 0.07,
+      "samples": 3,
+      "dso": "wasmtime",
+      "symbol": "_RNvXs4_NtNtCskMe0eq0sfaI_17cranelift_codegen8machinst5vcodeINtB5_5VCodeNtNtNtNtNtNtB9_3isa7aarch645lower4isle14generated_code5MInstENtCs8JjuN4JZtbQ_9regalloc28Function13inst_operandsB9_"
+    },
+    {
+      "percent_whole_process": 0.07,
+      "samples": 3,
+      "dso": "[unknown]",
+      "symbol": "0xffffda1c06e6c288"
+    },
+    {
+      "percent_whole_process": 0.07,
+      "samples": 3,
+      "dso": "[unknown]",
+      "symbol": "0xffffda1c06e6fedc"
+    },
+    {
+      "percent_whole_process": 0.05,
+      "samples": 2,
+      "dso": "wasmtime",
+      "symbol": "ZSTD_compressBlock_doubleFast_noDict_5"
+    },
+    {
+      "percent_whole_process": 0.05,
+      "samples": 2,
+      "dso": "wasmtime",
+      "symbol": "_RINvMs1_NtCs70sPrJNYMDu_10wasmparser13binary_readerNtB6_12BinaryReader14visit_operatorINtNtNtNtB8_7readers4core9operators17FrameStackAdapterNtB1p_15OperatorFactoryEEB8_"
+    },
+    {
+      "percent_whole_process": 0.05,
+      "samples": 2,
+      "dso": "wasmtime",
+      "symbol": "_RINvNtNtCskMe0eq0sfaI_17cranelift_codegen8machinst7compile7compileNtNtNtB6_3isa7aarch6414AArch64BackendEB6_"
+    },
+    {
+      "percent_whole_process": 0.05,
+      "samples": 2,
+      "dso": "wasmtime",
+      "symbol": "_RINvNtNtNtNtNtCskMe0eq0sfaI_17cranelift_codegen3isa7aarch645lower4isle14generated_code17constructor_lowerINtNtNtBc_8machinst4isle11IsleContextNtB2_5MInstNtB8_14AArch64BackendEEBc_"
+    },
+    {
+      "percent_whole_process": 0.05,
+      "samples": 2,
+      "dso": "wasmtime",
+      "symbol": "_RNvMNtCs8JjuN4JZtbQ_9regalloc23ionINtNtB2_15data_structures3EnvINtNtNtCskMe0eq0sfaI_17cranelift_codegen8machinst5vcode5VCodeNtNtNtNtNtNtB16_3isa7aarch645lower4isle14generated_code5MInstEE3newB16_"
+    },
+    {
+      "percent_whole_process": 0.05,
+      "samples": 2,
+      "dso": "wasmtime",
+      "symbol": "_RNvMs2_NtNtCskMe0eq0sfaI_17cranelift_codegen8machinst5vcodeINtB5_5VCodeNtNtNtNtNtNtB9_3isa7aarch645lower4isle14generated_code5MInstE4emitB9_"
+    },
+    {
+      "percent_whole_process": 0.05,
+      "samples": 2,
+      "dso": "wasmtime",
+      "symbol": "_RNvMs9_NtNtCs3XFGBRFiuKX_5alloc11collections11binary_heapINtB5_10BinaryHeapNtNtNtCs8JjuN4JZtbQ_9regalloc23ion15data_structures14PrioQueueEntryE3popCskMe0eq0sfaI_17cranelift_codegen"
+    },
+    {
+      "percent_whole_process": 0.05,
+      "samples": 2,
+      "dso": "wasmtime",
+      "symbol": "_RNvNtCskMe0eq0sfaI_17cranelift_codegen20remove_constant_phis23do_remove_constant_phis"
+    },
+    {
+      "percent_whole_process": 0.05,
+      "samples": 2,
+      "dso": "wasmtime",
+      "symbol": "_RNvXs0_NtNtCs8JjuN4JZtbQ_9regalloc23ion13reg_traversalNtB5_16RegTraversalIterNtNtNtNtCs7z6u5Op6t72_4core4iter6traits8iterator8Iterator4next"
+    },
+    {
+      "percent_whole_process": 0.05,
+      "samples": 2,
+      "dso": "wasmtime",
+      "symbol": "_RNvXsa_NtNtCskMe0eq0sfaI_17cranelift_codegen2ir3dfgNtB5_9ValueDataINtNtCs7z6u5Op6t72_4core7convert4FromNtB5_15ValueDataPackedE4from"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "[JIT] tid 2794",
+      "symbol": "<sakura_rt[9f79f6d20163315b]::Rt>::drop"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "libc.so.6",
+      "symbol": "__mprotect"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "libc.so.6",
+      "symbol": "cfree"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "libc.so.6",
+      "symbol": "realloc"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "libc.so.6",
+      "symbol": "0x00000000000929e8"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "libc.so.6",
+      "symbol": "0x000000000009400c"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "libc.so.6",
+      "symbol": "0x0000000000094014"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "libc.so.6",
+      "symbol": "0x00000000000941c4"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "libc.so.6",
+      "symbol": "0x0000000000095350"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "libc.so.6",
+      "symbol": "0x0000000000095364"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "libc.so.6",
+      "symbol": "0x00000000000a1954"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "libc.so.6",
+      "symbol": "0x00000000000a1a40"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "libc.so.6",
+      "symbol": "0x00000000000a1aa4"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RINvMNtCs8JjuN4JZtbQ_9regalloc23cfgNtB3_7CFGInfo4initINtNtNtCskMe0eq0sfaI_17cranelift_codegen8machinst5vcode5VCodeNtNtNtNtNtNtBW_3isa7aarch645lower4isle14generated_code5MInstEEBW_"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RINvMs1_NtCskMe0eq0sfaI_17cranelift_codegen7ctxhashINtB6_10CtxHashMapTNtNtNtB8_2ir5types4TypeNtNtB1a_12instructions15InstructionDataEINtNtB8_15scoped_hash_map3ValINtNtCs7z6u5Op6t72_4core6option6OptionNtNtB1a_8entities5ValueEEE6insertNtNtB8_6egraph10GVNContextEB8_"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RINvMsA_NtNtCskMe0eq0sfaI_17cranelift_codegen2ir12instructionsNtB6_15InstructionData4hashNtCseSnsuaCWRPj_10rustc_hash8FxHasherEBa_"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RINvMsN_NtNtNtCs3XFGBRFiuKX_5alloc11collections5btree4nodeINtB6_6HandleINtB6_7NodeRefNtNtB6_6marker3MutNtNtNtCs8JjuN4JZtbQ_9regalloc23ion15data_structures12LiveRangeKeyNtB1F_14LiveRangeIndexNtB1n_4LeafENtB1n_4EdgeE16insert_recursingNtNtBc_5alloc6GlobalNCNvMs4_NtNtB8_3map5entryINtB4a_11VacantEntryB1D_B2G_E12insert_entry0ECskMe0eq0sfaI_17cranelift_codegen"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RINvMs_NtCsrhFg1ml2eP_9hashbrown5tableINtB5_9HashTableINtNtCskMe0eq0sfaI_17cranelift_codegen7ctxhash10BucketDataNtNtNtBV_2ir8entities5ValueINtNtBV_15scoped_hash_map3ValNtNtNtBV_6egraph9elaborate15ElaboratedValueEEE5entryNCINvMs1_BT_INtBT_10CtxHashMapB1M_B2d_E5entryNtBT_7NullCtxE0NCB3y_s_0EBV_"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RINvMsc_NtNtCskMe0eq0sfaI_17cranelift_codegen2ir12instructionsNtB6_15InstructionData10map_valuesNCINvMsb_NtB8_3dfgNtB1F_13DataFlowGraph21overwrite_inst_valuesINtNtNtCs3XFGBRFiuKX_5alloc3vec5drain5DrainNtNtB8_8entities5ValueEE0EBa_"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RINvMsc_NtNtCskMe0eq0sfaI_17cranelift_codegen2ir12instructionsNtB6_15InstructionData10map_valuesNCINvMsb_NtB8_3dfgNtB1F_13DataFlowGraph21overwrite_inst_valuesINtNtNtNtCs7z6u5Op6t72_4core4iter8adapters3map3MapINtNtNtB2F_5slice4iter7IterMutNtNtNtBa_6egraph9elaborate15ElaboratedValueENCNvMs0_B3Q_NtB3Q_10Elaborator18process_elab_stacks_0EE0EBa_"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RINvMsj_NtCs3XFGBRFiuKX_5alloc3vecINtB6_3VecTNtNtCskMe0eq0sfaI_17cranelift_codegen10traversals5EventNtNtNtBL_2ir8entities5BlockEE16extend_desugaredINtNtNtNtCs7z6u5Op6t72_4core4iter8adapters3map3MapINtNtB2q_6filter6FilterINtNtB2q_3rev3RevINtNtB2q_7flatten7FlatMapINtNtB2u_6option8IntoIterNtB1C_4InstEIB2m_INtNtNtB2u_5slice4iter4IterNtNtB1E_12instructions9BlockCallENCNCNvMs1_NtB1E_8functionNtB60_15FunctionStencil16block_successors00ENCB5U_0EENCNvXs_BJ_NtBJ_7DfsIterNtNtNtB2s_6traits8iterator8Iterator4next0ENCB78_s_0EEBL_"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RINvMsj_NtCs3XFGBRFiuKX_5alloc3vecINtB6_3VecTNtNvMs0_NtNtCskMe0eq0sfaI_17cranelift_codegen6egraph9elaborateNtBP_10Elaborator18topo_sorted_values5EventNtNtNtBT_2ir8entities5ValueEE16extend_desugaredINtNtNtNtCs7z6u5Op6t72_4core4iter8adapters3map3MapINtNtB3e_6filter6FilterINtNtB3e_3rev3RevINtNtB3e_5chain5ChainIB4C_INtNtB3e_6copied6CopiedINtNtNtB3i_5slice4iter4IterB2o_EEINtNtB3e_7flatten7FlatMapIB5p_NtNtB2s_12instructions9BlockCallEINtNtB3e_10filter_map9FilterMapIB3a_B5o_NCNvMB6r_B6p_4args0ENCNCNvMsb_NtB2s_3dfgNtB84_13DataFlowGraph11inst_values00ENCB7Y_0EEIB5W_INtNtB3i_6option8IntoIterNtB2q_14ExceptionTableEIB6X_IB5p_NtNtB2s_15exception_table26InternalExceptionTableItemENCNvMBa1_NtBa1_18ExceptionTableData8contexts0ENCB7Y_s_0EEENCNvMs0_BP_B1H_18topo_sorted_valuess_0ENCBbP_s0_0EEBT_"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RINvNtCs8JjuN4JZtbQ_9regalloc27domtree9calculateNCINvMNtB4_3cfgNtBQ_7CFGInfo4initINtNtNtCskMe0eq0sfaI_17cranelift_codegen8machinst5vcode5VCodeNtNtNtNtNtNtB1o_3isa7aarch645lower4isle14generated_code5MInstEEs_0EB1o_"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RINvNtNtCskMe0eq0sfaI_17cranelift_codegen4opts14generated_code20constructor_simplifyNtB4_11IsleContextINtCsfvOWjyTGRGc_8smallvec8SmallVecANtNtNtB6_2ir8entities5Valuej5_EEB6_"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RINvNtNtNtNtCs7z6u5Op6t72_4core5slice4sort6shared9smallsort25insertion_sort_shift_leftNtNtNtCs8JjuN4JZtbQ_9regalloc23ion15data_structures18LiveRangeListEntryNCINvMB8_SB1m_20sort_unstable_by_keyNtB1s_9ProgPointNCNvMNtB1q_5spillINtB1o_3EnvINtNtNtCskMe0eq0sfaI_17cranelift_codegen8machinst5vcode5VCodeINtNtNtNtB3U_3isa13pulley_shared4inst11InstAndKindNtNtB4T_8pulley328Pulley32EEE39try_allocating_regs_for_spilled_bundles0E0EB3U_"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RINvNvMs2_NtCs3XFGBRFiuKX_5alloc7raw_vecINtB8_11RawVecInnerpE7reserve21do_reserve_and_handleNtNtBa_5alloc6GlobalECskMe0eq0sfaI_17cranelift_codegen"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RINvXs3_NtNtCs7MihiwVAI84_22wasmtime_internal_core5alloc11try_collectINtNtB8_3vec6TryVecINtNtCslx2A0cyKdmX_16cranelift_bitset6scalar12ScalarBitSetjEEINtB6_9TryExtendB1o_E10try_extendINtNtNtNtCs7z6u5Op6t72_4core4iter8adapters4take4TakeINtNtNtB31_7sources6repeat6RepeatB1o_EEECskMe0eq0sfaI_17cranelift_codegen"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RINvXsw_CsfvOWjyTGRGc_8smallvecINtB6_8SmallVecANtNtNtCskMe0eq0sfaI_17cranelift_codegen2ir5types4Typej10_EINtNtNtNtCs7z6u5Op6t72_4core4iter6traits7collect6ExtendBJ_E6extendNtNvMsb_NtBN_3dfgNtB2R_13DataFlowGraph17inst_result_types15InstResultTypesEBP_"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNCNvMs2_NtNtCskMe0eq0sfaI_17cranelift_codegen8machinst5vcodeINtB7_5VCodeNtNtNtNtNtNtBb_3isa7aarch645lower4isle14generated_code5MInstE4emit0Bb_"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNCNvMs3_NtCskMe0eq0sfaI_17cranelift_codegen14alias_analysisNtB7_13AliasAnalysis26compute_block_input_states0B9_"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvCs6rREvFdRhLb_7___rustc35___rust_no_alloc_shim_is_unstable_v2"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvMNtNtCs8JjuN4JZtbQ_9regalloc23ion15redundant_movesNtB2_23RedundantMoveEliminator11clear_alloc"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvMNtNtCs8JjuN4JZtbQ_9regalloc23ion15redundant_movesNtB2_23RedundantMoveEliminator12process_move"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvMNtNtCs8JjuN4JZtbQ_9regalloc23ion7processINtNtB4_15data_structures3EnvINtNtNtCskMe0eq0sfaI_17cranelift_codegen8machinst5vcode5VCodeINtNtNtNtB1g_3isa13pulley_shared4inst11InstAndKindNtNtB2f_8pulley328Pulley32EEE27recompute_bundle_propertiesB1g_"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvMs0_NtCslx2A0cyKdmX_16cranelift_bitset8compoundNtB5_14CompoundBitSet6insertCskMe0eq0sfaI_17cranelift_codegen"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvMs0_NtNtCs8JjuN4JZtbQ_9regalloc23ion10liverangesINtNtB7_15data_structures3EnvINtNtNtCskMe0eq0sfaI_17cranelift_codegen8machinst5vcode5VCodeINtNtNtNtB1n_3isa13pulley_shared4inst11InstAndKindNtNtB2m_8pulley328Pulley32EEE25insert_use_into_liverangeB1n_"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvMs0_NtNtCskMe0eq0sfaI_17cranelift_codegen2ir6layoutNtB5_6Layout15assign_inst_seq.llvm.11039805257885688311"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvMs1_NtCskMe0eq0sfaI_17cranelift_codegen14alias_analysisNtB5_10LastStores14get_last_store"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvMs1_NtCskMe0eq0sfaI_17cranelift_codegen6egraphNtB5_11OptimizeCtx17insert_pure_enode"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvMs1_NtCslchibGluO72_18cranelift_frontend3ssaNtB5_10SSABuilder16use_var_nonlocal.llvm.17843901043101186100"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvMs1_NtNtCskMe0eq0sfaI_17cranelift_codegen8machinst5lowerINtB5_5LowerNtNtNtNtNtNtB9_3isa7aarch645lower4isle14generated_code5MInstE28lower_branch_blockparam_argsB9_"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvMs3_NtCs8izvoYIyp4d_16cranelift_entity4listINtB5_10EntityListNtNtNtCskMe0eq0sfaI_17cranelift_codegen2ir8entities5ValueE4pushB16_"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvMs3_NtCskMe0eq0sfaI_17cranelift_codegen14alias_analysisNtB5_13AliasAnalysis3new"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvMs4_NtNtCskMe0eq0sfaI_17cranelift_codegen2ir6layoutNtB5_6Layout11append_inst"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvMs4_NtNtCskMe0eq0sfaI_17cranelift_codegen8machinst6bufferINtB5_10MachBufferNtNtNtNtNtNtB9_3isa7aarch645lower4isle14generated_code5MInstE13island_neededB9_"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvMs4_NtNtNtNtCs3XFGBRFiuKX_5alloc11collections5btree3map5entryINtB5_11VacantEntryNtNtNtCs8JjuN4JZtbQ_9regalloc23ion15data_structures12LiveRangeKeyNtB1l_14LiveRangeIndexE12insert_entryCskMe0eq0sfaI_17cranelift_codegen"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvMs6_NtNtCs8JjuN4JZtbQ_9regalloc23ion15data_structuresNtB5_10LiveRanges3add"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvMs7_Cs7OlYwvhc1Zo_7bumpaloNtB5_4Bump4growCs8JjuN4JZtbQ_9regalloc2"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvMs8_NtCs9oUa0NMYVAQ_15crossbeam_deque5dequeINtB5_7StealerNtNtCseIP9jExq93D_10rayon_core3job6JobRefE5stealB10_"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvMs9_NtNtCskMe0eq0sfaI_17cranelift_codegen8machinst3abiINtB5_6CalleeNtNtNtNtB9_3isa7aarch643abi18AArch64MachineDepsE13gen_call_argsB9_"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvMsA_NtNtCskMe0eq0sfaI_17cranelift_codegen2ir12instructionsNtB5_15InstructionData9arguments"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvMs_NtNtCskMe0eq0sfaI_17cranelift_codegen8machinst10blockorderNtB4_18BlockLoweringOrder3new"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvMsb_NtNtCskMe0eq0sfaI_17cranelift_codegen2ir3dfgNtB5_13DataFlowGraph17make_inst_results"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvMsc_NtNtCskMe0eq0sfaI_17cranelift_codegen2ir12instructionsNtB5_15InstructionData12analyze_call"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvMsc_NtNtCskMe0eq0sfaI_17cranelift_codegen2ir3dfgNtB5_13DataFlowGraph10make_block"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvMsd_CsfvOWjyTGRGc_8smallvecINtB5_8SmallVecANtNtNtNtNtNtCskMe0eq0sfaI_17cranelift_codegen3isa7aarch645lower4isle14generated_code5MInstj4_E8try_growBU_.llvm.14043408157140986013"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvMsf_NtNtCskMe0eq0sfaI_17cranelift_codegen2ir12instructionsNtB5_17OperandConstraint7resolve.llvm.7433493734893424089"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvNtCskMe0eq0sfaI_17cranelift_codegen14alias_analysis8classify"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvNtCskMe0eq0sfaI_17cranelift_codegen15inst_predicates25must_lower_even_if_unused"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvNtNtCskMe0eq0sfaI_17cranelift_codegen8machinst5lower18compute_use_states"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvXNvMsb_NtNtCskMe0eq0sfaI_17cranelift_codegen2ir3dfgNtB8_13DataFlowGraph17inst_result_typesNtB2_15InstResultTypesNtNtNtNtCs7z6u5Op6t72_4core4iter6traits8iterator8Iterator4next"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvXs0_NtCslchibGluO72_18cranelift_frontend8frontendNtB5_15FuncInstBuilderNtNtNtCskMe0eq0sfaI_17cranelift_codegen2ir7builder15InstBuilderBase14build_aux_inst"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvXs2_NtNtCs7HaW2mv5hwE_3std4hash6randomNtB5_13DefaultHasherNtNtCs7z6u5Op6t72_4core4hash6Hasher5write.llvm.8155721349076034554"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "_RNvXs4_NtNtCskMe0eq0sfaI_17cranelift_codegen8machinst5vcodeINtB5_5VCodeNtNtNtNtNtNtB9_3isa7aarch645lower4isle14generated_code5MInstENtCs8JjuN4JZtbQ_9regalloc28Function11block_predsB9_"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "wasmtime",
+      "symbol": "malloc@plt"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "[unknown]",
+      "symbol": "0xffffda1c06dacba0"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "[unknown]",
+      "symbol": "0xffffda1c06dc9f84"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "[unknown]",
+      "symbol": "0xffffda1c06dd0c58"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "[unknown]",
+      "symbol": "0xffffda1c06e25be4"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "[unknown]",
+      "symbol": "0xffffda1c06e6c274"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "[unknown]",
+      "symbol": "0xffffda1c06ecf9fc"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "[unknown]",
+      "symbol": "0xffffda1c06f0bb0c"
+    },
+    {
+      "percent_whole_process": 0.02,
+      "samples": 1,
+      "dso": "[unknown]",
+      "symbol": "0xffffda1c074484ac"
+    }
+  ],
+  "inclusive_sample_counts": {
+    "<sakura_rt[9f79f6d20163315b]::Rt>::pop_frame": 653,
+    "run": 3997,
+    "<sakura_rt[9f79f6d20163315b]::Rt>::arena_obj": 645,
+    "sakura_rt[9f79f6d20163315b]::wasm::dispatch": 2054,
+    "sakura_rt[9f79f6d20163315b]::wasm::rt": 1166,
+    "<sakura_rt[9f79f6d20163315b]::Rt>::arena_new": 81,
+    "<sakura_rt[9f79f6d20163315b]::Rt>::frame_alloc": 373,
+    "<sakura_rt[9f79f6d20163315b]::Rt>::drop": 1
+  },
+  "script_sample_blocks": 4138
+}

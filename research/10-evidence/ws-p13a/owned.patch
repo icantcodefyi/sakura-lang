@@ -1,0 +1,8 @@
+--- a/main/main.js
++++ b/main/main.js
+@@ -1000 +1000 @@
+-  const r = $rt.map_insert(vars, id, v);
++  const r = $rt.map_insert_owned(vars, id, v);
+@@ -1029 +1029 @@
+-  const r = $rt.map_insert(cons, id, c);
++  const r = $rt.map_insert_owned(cons, id, c);

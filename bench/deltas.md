@@ -68,4 +68,37 @@ older ordinary-JS controls and current matched-suite controls in one before/afte
 A subsequent compiler change needs a fresh run; do not relabel these measurements with
 that change's commit.
 
+## Round-18 bars and representation carries
+
+These are the design dispositions in §17.199 (3), §17.201 (2), and §17.211 (5).
+They do not promote any loaded-host reading to an official ceiling result.
+
+| Program and contract | Recorded evidence | Disposition and next reading |
+|---|---|---|
+| `countdown`, §17.118 direct-region bar | The [M4-OPT reading, §17.199 (3)](../docs/design.md) records seven frames on both measured paths, 103 versus 103 ms at n=300000, and 116 versus 113 ms at n=3000000, near the 101 ms Node startup floor. The current [small-size counter snapshot](../compiler/crates/sakura_cli/tests/snapshots/bench_counters.txt) separately records 4 direct versus 7 all-frame frames at n=1000. | **Met by counter**, per §17.199 (3). The historical ratio is "at floor" under the design's rule. No M5 carry. Read again at the §17.153 quiet window. |
+| `fib`, §17.118 direct-region bar | M4-OPT reported approximately 3.9× in [REQUESTS](../compiler/REQUESTS.md), ratified in §17.199 (3). Historical advisory reading, not newly measured here. | Meets the bar on advisory evidence. Read again at the quiet window. |
+| `nbody`, §17.118 direct-region bar | M4-OPT reported approximately 2.8× in [REQUESTS](../compiler/REQUESTS.md), ratified in §17.199 (3). Historical advisory reading, not newly measured here. | Meets the bar on advisory evidence. No carry of the **bar**. Its allocation ceiling remains carried below. Read again at the quiet window. |
+| `deltablue`, JS representation ceiling | Post-definition-boundary WS-P11a measured about 61× hand JS on Node at n=1000. The WS-P11 profile attributed 36% to HAMT reads and 13% to insertion-log path copies. [WS-P13a ablation](../research/10-evidence/ws-p13a/README.md) records current baseline Node ratios of 64.11× at n=1000 and 69.08× at n=5000 (advisory). | Fourth JS representation-bound carry under §17.201 (2). §17.177 question (6) decides ownership through parameters, fields, and tuple results together with dense Int storage. The default keeps the HAMT and trie. |
+
+## WASM allocation carries
+
+Every number below is from the existing [WS-B advisory run](results/2026-10-19-wsb-wasm-advisory.md)
+at `72aaf6fe`, with [raw records](results/2026-10-19-wsb-wasm-advisory.json).
+The ratios divide WASM time by hand JS on Node. They are **not** the M4 envelope
+against native ports. The host was loaded, with `quiet: false` and peak load 8.79.
+
+| Program | Historical advisory ratio, Node / Wasmtime, first / second size | Allocation cause and carry |
+|---|---|---|
+| `nbody` | n=1000 / 5000. Node 74.42× / 74.59×. Wasmtime 107.03× / 108.22×. | Record updates and persistent `List.set` copies. §17.211 records about 2.5 KB requested and 42 dups per step. Its callback frames are separately assigned to WS-W2. Carry allocation to N0b's LIR ownership facts and owned `List.set`, N3, and N4. Read with the JS carry at §17.177's windows. |
+| `sieve` | n=1000 / 10000. Node 48.94× / 48.73×. Wasmtime 81.58× / 81.81×. | Persistent sequence updates and representation overhead. Carry to N0b, N3, and N4, with owned sequence updates where proved. Read with the JS carry at §17.177's windows. |
+| `spectral_norm` | n=50 / 100. Node 49.07× / 46.26×. Wasmtime 78.07× / 74.94×. | Persistent numeric sequences and allocation around indexed operations. Carry to N0b, N3, and N4. Read with the JS carry at §17.177's windows. |
+| `rbtree` | n=1000 / 10000. Node 37.71× / 20.92×. Wasmtime 43.07× / 27.04×. | Persistent tree-node allocation and reference-count traffic, including deliberately retained versions. Carry to N0b, N3, and N4. Ownership does not permit mutation of retained versions. Read at §17.177's windows alongside the JS carries. |
+| `binary_trees` | n=8 / 10. Node 7.77× / 7.31×. Wasmtime 13.55× / 13.54×. | Tree-node allocation and reference-count traffic. The counter snapshot already has only four direct frames at n=8. Carry to N0b, N3, and N4. Read at §17.177's windows alongside the JS carries. |
+| `deltablue` | n=100 / 1000. Node 362.31× / 309.09×. Wasmtime 480.46× / 607.51×. | Planner records, persistent maps and logs, and boxed values. Carry to N0b, N3, and N4. Read with the JS carry at §17.177's windows, including question (6). |
+
+The Wasmtime-over-Node factor is recorded, not pursued, per §17.211 (6).
+The M4 envelope still needs the owner's quiet window after WS-W1 and WS-W2.
+[WS-W3](../research/10-evidence/ws-w3/README.md) separately attributes the all-frame protocol.
+Its eventual 2× all-frame `fib` improvement, with twins unchanged, is M5 work and gates nothing.
+
 AI assistance: GPT-6-Astra prepared this ledger; GPT-6.1-Sol added the WS-S10 boundaries; the human contributor owns review.

@@ -1,0 +1,1945 @@
+{
+  "base": {
+    "total_sampled_us": 4699941,
+    "samples": 4214,
+    "functions": [
+      {
+        "name": "hget",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1390,
+        "sampled_us": 1515938,
+        "percent": 32.25440489572103
+      },
+      {
+        "name": "setAt",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1069,
+        "sampled_us": 823380,
+        "percent": 17.518943322905542
+      },
+      {
+        "name": "upsert",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1475,
+        "sampled_us": 292858,
+        "percent": 6.231099496780917
+      },
+      {
+        "name": "(garbage collector)",
+        "file": "",
+        "line_zero_based": -1,
+        "sampled_us": 275750,
+        "percent": 5.867094927361854
+      },
+      {
+        "name": "at",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1023,
+        "sampled_us": 252451,
+        "percent": 5.371365300117597
+      },
+      {
+        "name": "var_of$d",
+        "file": "main.js",
+        "line_zero_based": 717,
+        "sampled_us": 160823,
+        "percent": 3.421808912069322
+      },
+      {
+        "name": "map_get_expect",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 2237,
+        "sampled_us": 150130,
+        "percent": 3.194295417750989
+      },
+      {
+        "name": "mapFind",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1595,
+        "sampled_us": 127180,
+        "percent": 2.7059914156369196
+      },
+      {
+        "name": "map_insert",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1604,
+        "sampled_us": 88436,
+        "percent": 1.8816406418718874
+      },
+      {
+        "name": "execute$d",
+        "file": "main.js",
+        "line_zero_based": 1931,
+        "sampled_us": 80867,
+        "percent": 1.720596067057012
+      },
+      {
+        "name": "put_var$d",
+        "file": "main.js",
+        "line_zero_based": 997,
+        "sampled_us": 72434,
+        "percent": 1.5411682827507835
+      },
+      {
+        "name": "popcount",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1382,
+        "sampled_us": 69664,
+        "percent": 1.4822313726916998
+      },
+      {
+        "name": "keyOf",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 908,
+        "sampled_us": 61272,
+        "percent": 1.303675939761797
+      },
+      {
+        "name": "Var",
+        "file": "main.js",
+        "line_zero_based": 17,
+        "sampled_us": 52512,
+        "percent": 1.1172906213077993
+      },
+      {
+        "name": "hashOf",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1363,
+        "sampled_us": 44499,
+        "percent": 0.9467991193932009
+      },
+      {
+        "name": "con_of$d",
+        "file": "main.js",
+        "line_zero_based": 815,
+        "sampled_us": 42937,
+        "percent": 0.913564659641472
+      },
+      {
+        "name": "list_builder_finish",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1180,
+        "sampled_us": 40416,
+        "percent": 0.8599256884288548
+      },
+      {
+        "name": "hset",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1409,
+        "sampled_us": 33252,
+        "percent": 0.7074982430630512
+      },
+      {
+        "name": "list_at",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1096,
+        "sampled_us": 32534,
+        "percent": 0.6922214555459313
+      },
+      {
+        "name": "set_value$d",
+        "file": "main.js",
+        "line_zero_based": 754,
+        "sampled_us": 28631,
+        "percent": 0.6091778598922838
+      },
+      {
+        "name": "push",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1031,
+        "sampled_us": 23350,
+        "percent": 0.4968147472489548
+      },
+      {
+        "name": "(program)",
+        "file": "",
+        "line_zero_based": -1,
+        "sampled_us": 22448,
+        "percent": 0.4776230169697875
+      },
+      {
+        "name": "remove_propagate_from",
+        "file": "main.js",
+        "line_zero_based": 1069,
+        "sampled_us": 21323,
+        "percent": 0.4536865462779214
+      },
+      {
+        "name": "ret",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 38,
+        "sampled_us": 19959,
+        "percent": 0.424664905367961
+      },
+      {
+        "name": "value_of$d",
+        "file": "main.js",
+        "line_zero_based": 683,
+        "sampled_us": 19571,
+        "percent": 0.41640948258712185
+      },
+      {
+        "name": "List",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 942,
+        "sampled_us": 19565,
+        "percent": 0.41628182141009856
+      },
+      {
+        "name": "Planner",
+        "file": "main.js",
+        "line_zero_based": 7,
+        "sampled_us": 18013,
+        "percent": 0.3832601302867419
+      },
+      {
+        "name": "recalculate$d",
+        "file": "main.js",
+        "line_zero_based": 1717,
+        "sampled_us": 16003,
+        "percent": 0.34049363598394106
+      },
+      {
+        "name": "is_unary$d",
+        "file": "main.js",
+        "line_zero_based": 1868,
+        "sampled_us": 15099,
+        "percent": 0.32125935197909933
+      },
+      {
+        "name": "list",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 959,
+        "sampled_us": 15023,
+        "percent": 0.319642310403471
+      },
+      {
+        "name": "satisfy",
+        "file": "main.js",
+        "line_zero_based": 1292,
+        "sampled_us": 14516,
+        "percent": 0.3088549409450034
+      },
+      {
+        "name": "consuming$d",
+        "file": "main.js",
+        "line_zero_based": 1839,
+        "sampled_us": 13009,
+        "percent": 0.2767907086493213
+      },
+      {
+        "name": "execute_plan$d",
+        "file": "main.js",
+        "line_zero_based": 770,
+        "sampled_us": 12009,
+        "percent": 0.255513845812107
+      },
+      {
+        "name": "Builder",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 996,
+        "sampled_us": 11316,
+        "percent": 0.24076897986591747
+      },
+      {
+        "name": "filter$d",
+        "file": "list.js",
+        "line_zero_based": 54,
+        "sampled_us": 11201,
+        "percent": 0.23832214063963783
+      },
+      {
+        "name": "add_constraint",
+        "file": "main.js",
+        "line_zero_based": 590,
+        "sampled_us": 10775,
+        "percent": 0.22925819707098452
+      },
+      {
+        "name": "put_con$d",
+        "file": "main.js",
+        "line_zero_based": 1026,
+        "sampled_us": 10293,
+        "percent": 0.2190027491834472
+      },
+      {
+        "name": "(idle)",
+        "file": "",
+        "line_zero_based": -1,
+        "sampled_us": 10078,
+        "percent": 0.2144282236734461
+      },
+      {
+        "name": "fromLeaves",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 972,
+        "sampled_us": 9933,
+        "percent": 0.21134307856205004
+      },
+      {
+        "name": "add_propagate",
+        "file": "main.js",
+        "line_zero_based": 1653,
+        "sampled_us": 9412,
+        "percent": 0.20025783302386135
+      },
+      {
+        "name": "make_plan$d",
+        "file": "main.js",
+        "line_zero_based": 2032,
+        "sampled_us": 8606,
+        "percent": 0.1831086815770666
+      },
+      {
+        "name": "list_push_owned",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1136,
+        "sampled_us": 8545,
+        "percent": 0.18181079294399652
+      },
+      {
+        "name": "list_get_expect",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 2233,
+        "sampled_us": 7555,
+        "percent": 0.16074669873515435
+      },
+      {
+        "name": "attached$d",
+        "file": "main.js",
+        "line_zero_based": 943,
+        "sampled_us": 7352,
+        "percent": 0.15642749557919983
+      },
+      {
+        "name": "consuming$1$d",
+        "file": "main.js",
+        "line_zero_based": 1853,
+        "sampled_us": 6204,
+        "percent": 0.13200165704207775
+      },
+      {
+        "name": "is_satisfied$d",
+        "file": "main.js",
+        "line_zero_based": 826,
+        "sampled_us": 6004,
+        "percent": 0.1277462844746349
+      },
+      {
+        "name": "same",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1359,
+        "sampled_us": 5933,
+        "percent": 0.12623562721319267
+      },
+      {
+        "name": "add_to_graph$d",
+        "file": "main.js",
+        "line_zero_based": 2186,
+        "sampled_us": 5929,
+        "percent": 0.12615051976184383
+      },
+      {
+        "name": "inputs_known$d",
+        "file": "main.js",
+        "line_zero_based": 2133,
+        "sampled_us": 4595,
+        "percent": 0.09776718473699988
+      },
+      {
+        "name": "j3",
+        "file": "main.js",
+        "line_zero_based": 1247,
+        "sampled_us": 4522,
+        "percent": 0.09621397374988325
+      },
+      {
+        "name": "concat$d",
+        "file": "list.js",
+        "line_zero_based": 140,
+        "sampled_us": 4515,
+        "percent": 0.09606503571002274
+      },
+      {
+        "name": "j5",
+        "file": "main.js",
+        "line_zero_based": 496,
+        "sampled_us": 4480,
+        "percent": 0.09532034551072024
+      },
+      {
+        "name": "set_mark$d",
+        "file": "main.js",
+        "line_zero_based": 1637,
+        "sampled_us": 4475,
+        "percent": 0.09521396119653416
+      },
+      {
+        "name": "VMap",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1320,
+        "sampled_us": 4434,
+        "percent": 0.09434160982020838
+      },
+      {
+        "name": "j4",
+        "file": "main.js",
+        "line_zero_based": 493,
+        "sampled_us": 4245,
+        "percent": 0.09032028274397487
+      },
+      {
+        "name": "choose_method$d",
+        "file": "main.js",
+        "line_zero_based": 1409,
+        "sampled_us": 4217,
+        "percent": 0.08972453058453286
+      },
+      {
+        "name": "concat$o",
+        "file": "list.js",
+        "line_zero_based": 165,
+        "sampled_us": 3869,
+        "percent": 0.08232018231718229
+      },
+      {
+        "name": "",
+        "file": "main.js",
+        "line_zero_based": 415,
+        "sampled_us": 3673,
+        "percent": 0.07814991720108827
+      },
+      {
+        "name": "output$d",
+        "file": "main.js",
+        "line_zero_based": 1040,
+        "sampled_us": 3272,
+        "percent": 0.06961789520336532
+      },
+      {
+        "name": "incremental_add",
+        "file": "main.js",
+        "line_zero_based": 1227,
+        "sampled_us": 3245,
+        "percent": 0.06904341990676054
+      },
+      {
+        "name": "compileForInternalLoader",
+        "file": "realm",
+        "line_zero_based": 424,
+        "sampled_us": 2996,
+        "percent": 0.06374548106029417
+      },
+      {
+        "name": "list_builder_push",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1171,
+        "sampled_us": 2969,
+        "percent": 0.06317100576368938
+      },
+      {
+        "name": "chain_test",
+        "file": "main.js",
+        "line_zero_based": 116,
+        "sampled_us": 2206,
+        "percent": 0.04693675941889483
+      },
+      {
+        "name": "",
+        "file": "main.js",
+        "line_zero_based": 349,
+        "sampled_us": 2129,
+        "percent": 0.04529844098042933
+      },
+      {
+        "name": "fileURLToPath",
+        "file": "url",
+        "line_zero_based": 1655,
+        "sampled_us": 1881,
+        "percent": 0.04002177899680017
+      },
+      {
+        "name": "j5",
+        "file": "main.js",
+        "line_zero_based": 249,
+        "sampled_us": 1535,
+        "percent": 0.03265998445512401
+      },
+      {
+        "name": "remove_from_graph$d",
+        "file": "main.js",
+        "line_zero_based": 880,
+        "sampled_us": 1531,
+        "percent": 0.032574877003775156
+      },
+      {
+        "name": "",
+        "file": "main.js",
+        "line_zero_based": 521,
+        "sampled_us": 1519,
+        "percent": 0.032319554649728584
+      },
+      {
+        "name": "list_len",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1089,
+        "sampled_us": 1513,
+        "percent": 0.0321918934727053
+      },
+      {
+        "name": "",
+        "file": "runner.mjs",
+        "line_zero_based": 0,
+        "sampled_us": 1510,
+        "percent": 0.032128062884193655
+      },
+      {
+        "name": "j6",
+        "file": "main.js",
+        "line_zero_based": 252,
+        "sampled_us": 1508,
+        "percent": 0.032085509158519224
+      },
+      {
+        "name": "HLeaf",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1336,
+        "sampled_us": 1507,
+        "percent": 0.03206423229568201
+      },
+      {
+        "name": "",
+        "file": "main.js",
+        "line_zero_based": 1380,
+        "sampled_us": 1505,
+        "percent": 0.03202167857000758
+      },
+      {
+        "name": "unary$d",
+        "file": "main.js",
+        "line_zero_based": 579,
+        "sampled_us": 1500,
+        "percent": 0.03191529425582151
+      },
+      {
+        "name": "",
+        "file": "main.js",
+        "line_zero_based": 1238,
+        "sampled_us": 1497,
+        "percent": 0.031851463667309864
+      },
+      {
+        "name": "sum_values$d",
+        "file": "main.js",
+        "line_zero_based": 694,
+        "sampled_us": 1496,
+        "percent": 0.03183018680447265
+      },
+      {
+        "name": "read",
+        "file": "",
+        "line_zero_based": -1,
+        "sampled_us": 1495,
+        "percent": 0.03180890994163544
+      },
+      {
+        "name": "compileSourceTextModule",
+        "file": "utils",
+        "line_zero_based": 337,
+        "sampled_us": 1494,
+        "percent": 0.03178763307879822
+      },
+      {
+        "name": "k",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 275,
+        "sampled_us": 1492,
+        "percent": 0.031745079353123797
+      },
+      {
+        "name": "hmerge",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1436,
+        "sampled_us": 1491,
+        "percent": 0.03172380249028658
+      },
+      {
+        "name": "new_var$d",
+        "file": "main.js",
+        "line_zero_based": 564,
+        "sampled_us": 1490,
+        "percent": 0.031702525627449366
+      },
+      {
+        "name": "run",
+        "file": "main.js",
+        "line_zero_based": 105,
+        "sampled_us": 1488,
+        "percent": 0.031659971901774935
+      },
+      {
+        "name": "new_mark$d",
+        "file": "main.js",
+        "line_zero_based": 1273,
+        "sampled_us": 1482,
+        "percent": 0.03153231072475165
+      },
+      {
+        "name": "list_push",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1108,
+        "sampled_us": 1445,
+        "percent": 0.03074506679977472
+      },
+      {
+        "name": "drive",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 284,
+        "sampled_us": 1348,
+        "percent": 0.02868121110456493
+      },
+      {
+        "name": "binary$d",
+        "file": "main.js",
+        "line_zero_based": 616,
+        "sampled_us": 1150,
+        "percent": 0.02446839226279649
+      },
+      {
+        "name": "",
+        "file": "main.js",
+        "line_zero_based": 532,
+        "sampled_us": 911,
+        "percent": 0.019383222044702265
+      },
+      {
+        "name": "Con",
+        "file": "main.js",
+        "line_zero_based": 30,
+        "sampled_us": 544,
+        "percent": 0.0115746133834446
+      },
+      {
+        "name": "required$d",
+        "file": "main.js",
+        "line_zero_based": 606,
+        "sampled_us": 298,
+        "percent": 0.0063405051254898735
+      },
+      {
+        "name": "list_builder",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1168,
+        "sampled_us": 265,
+        "percent": 0.0056383686518618
+      },
+      {
+        "name": "",
+        "file": "main.js",
+        "line_zero_based": 1254,
+        "sampled_us": 162,
+        "percent": 0.003446851779628723
+      },
+      {
+        "name": "incremental_remove",
+        "file": "main.js",
+        "line_zero_based": 844,
+        "sampled_us": 21,
+        "percent": 0.00044681411958150114
+      },
+      {
+        "name": "j4",
+        "file": "main.js",
+        "line_zero_based": 1250,
+        "sampled_us": 16,
+        "percent": 0.00034042980539542944
+      },
+      {
+        "name": "fold$d",
+        "file": "list.js",
+        "line_zero_based": 8,
+        "sampled_us": 14,
+        "percent": 0.0002978760797210008
+      },
+      {
+        "name": "inputs$d",
+        "file": "main.js",
+        "line_zero_based": 1583,
+        "sampled_us": 3,
+        "percent": 6.383058851164301e-05
+      }
+    ]
+  },
+  "owned": {
+    "total_sampled_us": 4500822,
+    "samples": 3945,
+    "functions": [
+      {
+        "name": "hget",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1390,
+        "sampled_us": 1871276,
+        "percent": 41.57631650396306
+      },
+      {
+        "name": "at",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1023,
+        "sampled_us": 256665,
+        "percent": 5.702624987169011
+      },
+      {
+        "name": "(garbage collector)",
+        "file": "",
+        "line_zero_based": -1,
+        "sampled_us": 248651,
+        "percent": 5.524568623242599
+      },
+      {
+        "name": "var_of$d",
+        "file": "main.js",
+        "line_zero_based": 717,
+        "sampled_us": 208636,
+        "percent": 4.635508802614278
+      },
+      {
+        "name": "put_var$d",
+        "file": "main.js",
+        "line_zero_based": 997,
+        "sampled_us": 169786,
+        "percent": 3.7723331427014886
+      },
+      {
+        "name": "popcount",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1382,
+        "sampled_us": 164011,
+        "percent": 3.6440232473090473
+      },
+      {
+        "name": "map_get_expect",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 2237,
+        "sampled_us": 145077,
+        "percent": 3.223344535731473
+      },
+      {
+        "name": "mapFind",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1595,
+        "sampled_us": 141774,
+        "percent": 3.149957941016108
+      },
+      {
+        "name": "keyOf",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 908,
+        "sampled_us": 141512,
+        "percent": 3.1441367821255763
+      },
+      {
+        "name": "execute$d",
+        "file": "main.js",
+        "line_zero_based": 1931,
+        "sampled_us": 106726,
+        "percent": 2.3712557395071387
+      },
+      {
+        "name": "list_set_owned",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1124,
+        "sampled_us": 75291,
+        "percent": 1.6728277634618742
+      },
+      {
+        "name": "set_value$d",
+        "file": "main.js",
+        "line_zero_based": 754,
+        "sampled_us": 72055,
+        "percent": 1.6009297857146982
+      },
+      {
+        "name": "map_insert_owned",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1610,
+        "sampled_us": 59782,
+        "percent": 1.3282462625715925
+      },
+      {
+        "name": "upsertOwned",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1498,
+        "sampled_us": 55289,
+        "percent": 1.2284200530480878
+      },
+      {
+        "name": "hashOf",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1363,
+        "sampled_us": 48500,
+        "percent": 1.0775809396594667
+      },
+      {
+        "name": "list_at",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1096,
+        "sampled_us": 39497,
+        "percent": 0.8775508118294836
+      },
+      {
+        "name": "value_of$d",
+        "file": "main.js",
+        "line_zero_based": 683,
+        "sampled_us": 38257,
+        "percent": 0.8500002888361281
+      },
+      {
+        "name": "Var",
+        "file": "main.js",
+        "line_zero_based": 17,
+        "sampled_us": 38152,
+        "percent": 0.8476673816471747
+      },
+      {
+        "name": "add_propagate",
+        "file": "main.js",
+        "line_zero_based": 1653,
+        "sampled_us": 37900,
+        "percent": 0.8420684043936864
+      },
+      {
+        "name": "execute_plan$d",
+        "file": "main.js",
+        "line_zero_based": 770,
+        "sampled_us": 37816,
+        "percent": 0.8402020786425235
+      },
+      {
+        "name": "list_builder_finish",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1180,
+        "sampled_us": 34603,
+        "percent": 0.7688151186605469
+      },
+      {
+        "name": "same",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1359,
+        "sampled_us": 32199,
+        "percent": 0.7154026531153642
+      },
+      {
+        "name": "con_of$d",
+        "file": "main.js",
+        "line_zero_based": 815,
+        "sampled_us": 28733,
+        "percent": 0.6383944977161949
+      },
+      {
+        "name": "hsetOwned",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1512,
+        "sampled_us": 26966,
+        "percent": 0.5991350024506634
+      },
+      {
+        "name": "is_unary$d",
+        "file": "main.js",
+        "line_zero_based": 1868,
+        "sampled_us": 26775,
+        "percent": 0.5948913331831386
+      },
+      {
+        "name": "remove_propagate_from",
+        "file": "main.js",
+        "line_zero_based": 1069,
+        "sampled_us": 22353,
+        "percent": 0.49664261328264037
+      },
+      {
+        "name": "Planner",
+        "file": "main.js",
+        "line_zero_based": 7,
+        "sampled_us": 22137,
+        "percent": 0.4918434899225075
+      },
+      {
+        "name": "recalculate$d",
+        "file": "main.js",
+        "line_zero_based": 1717,
+        "sampled_us": 21810,
+        "percent": 0.48457815039119523
+      },
+      {
+        "name": "satisfy",
+        "file": "main.js",
+        "line_zero_based": 1292,
+        "sampled_us": 20955,
+        "percent": 0.46558162042400253
+      },
+      {
+        "name": "list",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 959,
+        "sampled_us": 20308,
+        "percent": 0.4512064685073082
+      },
+      {
+        "name": "make_plan$d",
+        "file": "main.js",
+        "line_zero_based": 2032,
+        "sampled_us": 19653,
+        "percent": 0.4366535712809793
+      },
+      {
+        "name": "push",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1031,
+        "sampled_us": 19242,
+        "percent": 0.42752190599850426
+      },
+      {
+        "name": "filter$d",
+        "file": "list.js",
+        "line_zero_based": 54,
+        "sampled_us": 19034,
+        "percent": 0.4229005279480059
+      },
+      {
+        "name": "fromLeaves",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 972,
+        "sampled_us": 11907,
+        "percent": 0.26455167522732514
+      },
+      {
+        "name": "incremental_add",
+        "file": "main.js",
+        "line_zero_based": 1227,
+        "sampled_us": 11887,
+        "percent": 0.2641073119532388
+      },
+      {
+        "name": "consuming$d",
+        "file": "main.js",
+        "line_zero_based": 1839,
+        "sampled_us": 11354,
+        "percent": 0.25226503069883677
+      },
+      {
+        "name": "ret",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 38,
+        "sampled_us": 11157,
+        "percent": 0.24788805244908596
+      },
+      {
+        "name": "choose_method$d",
+        "file": "main.js",
+        "line_zero_based": 1409,
+        "sampled_us": 10984,
+        "percent": 0.2440443101282388
+      },
+      {
+        "name": "add_to_graph$d",
+        "file": "main.js",
+        "line_zero_based": 2186,
+        "sampled_us": 9100,
+        "percent": 0.202185289709302
+      },
+      {
+        "name": "Builder",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 996,
+        "sampled_us": 9000,
+        "percent": 0.1999634733388701
+      },
+      {
+        "name": "list_push_owned",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1136,
+        "sampled_us": 8527,
+        "percent": 0.18945428190672725
+      },
+      {
+        "name": "Con",
+        "file": "main.js",
+        "line_zero_based": 30,
+        "sampled_us": 8526,
+        "percent": 0.18943206374302293
+      },
+      {
+        "name": "(idle)",
+        "file": "",
+        "line_zero_based": -1,
+        "sampled_us": 8171,
+        "percent": 0.18154461562798974
+      },
+      {
+        "name": "put_con$d",
+        "file": "main.js",
+        "line_zero_based": 1026,
+        "sampled_us": 8048,
+        "percent": 0.17881178149235852
+      },
+      {
+        "name": "new_mark$d",
+        "file": "main.js",
+        "line_zero_based": 1273,
+        "sampled_us": 7500,
+        "percent": 0.16663622778239176
+      },
+      {
+        "name": "",
+        "file": "main.js",
+        "line_zero_based": 1380,
+        "sampled_us": 7432,
+        "percent": 0.16512539265049805
+      },
+      {
+        "name": "",
+        "file": "main.js",
+        "line_zero_based": 415,
+        "sampled_us": 6997,
+        "percent": 0.15546049143911933
+      },
+      {
+        "name": "(program)",
+        "file": "",
+        "line_zero_based": -1,
+        "sampled_us": 5976,
+        "percent": 0.13277574629700975
+      },
+      {
+        "name": "set_mark$d",
+        "file": "main.js",
+        "line_zero_based": 1637,
+        "sampled_us": 5939,
+        "percent": 0.13195367423994994
+      },
+      {
+        "name": "j5",
+        "file": "main.js",
+        "line_zero_based": 249,
+        "sampled_us": 5553,
+        "percent": 0.12337746305008285
+      },
+      {
+        "name": "is_satisfied$d",
+        "file": "main.js",
+        "line_zero_based": 826,
+        "sampled_us": 4865,
+        "percent": 0.10809136642151145
+      },
+      {
+        "name": "consuming$1$d",
+        "file": "main.js",
+        "line_zero_based": 1853,
+        "sampled_us": 4542,
+        "percent": 0.10091489954501644
+      },
+      {
+        "name": "inputs$d",
+        "file": "main.js",
+        "line_zero_based": 1583,
+        "sampled_us": 4500,
+        "percent": 0.09998173666943505
+      },
+      {
+        "name": "list_get_expect",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 2233,
+        "sampled_us": 4100,
+        "percent": 0.09109447118770748
+      },
+      {
+        "name": "attached$d",
+        "file": "main.js",
+        "line_zero_based": 943,
+        "sampled_us": 3374,
+        "percent": 0.07496408433837197
+      },
+      {
+        "name": "output$d",
+        "file": "main.js",
+        "line_zero_based": 1040,
+        "sampled_us": 3285,
+        "percent": 0.07298666776868759
+      },
+      {
+        "name": "list_builder",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1168,
+        "sampled_us": 3282,
+        "percent": 0.07292001327757464
+      },
+      {
+        "name": "inputs_known$d",
+        "file": "main.js",
+        "line_zero_based": 2133,
+        "sampled_us": 3176,
+        "percent": 0.07056488792491683
+      },
+      {
+        "name": "fold$d",
+        "file": "list.js",
+        "line_zero_based": 8,
+        "sampled_us": 3037,
+        "percent": 0.0674765631700165
+      },
+      {
+        "name": "remove_from_graph$d",
+        "file": "main.js",
+        "line_zero_based": 880,
+        "sampled_us": 3020,
+        "percent": 0.06709885438704308
+      },
+      {
+        "name": "List",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 942,
+        "sampled_us": 3016,
+        "percent": 0.0670099817322258
+      },
+      {
+        "name": "compileSourceTextModule",
+        "file": "utils",
+        "line_zero_based": 337,
+        "sampled_us": 2985,
+        "percent": 0.06632121865739192
+      },
+      {
+        "name": "unsatisfied$d",
+        "file": "main.js",
+        "line_zero_based": 1011,
+        "sampled_us": 2936,
+        "percent": 0.06523252863588029
+      },
+      {
+        "name": "sum_values$1$d",
+        "file": "main.js",
+        "line_zero_based": 706,
+        "sampled_us": 2531,
+        "percent": 0.05623417233563113
+      },
+      {
+        "name": "list_builder_push",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1171,
+        "sampled_us": 2417,
+        "percent": 0.05370130167333878
+      },
+      {
+        "name": "add_constraint",
+        "file": "main.js",
+        "line_zero_based": 590,
+        "sampled_us": 2092,
+        "percent": 0.046480398469435136
+      },
+      {
+        "name": "j5",
+        "file": "main.js",
+        "line_zero_based": 496,
+        "sampled_us": 2062,
+        "percent": 0.04581385355830557
+      },
+      {
+        "name": "j4",
+        "file": "main.js",
+        "line_zero_based": 493,
+        "sampled_us": 1911,
+        "percent": 0.042458910838953416
+      },
+      {
+        "name": "concat$d",
+        "file": "list.js",
+        "line_zero_based": 140,
+        "sampled_us": 1760,
+        "percent": 0.03910396811960126
+      },
+      {
+        "name": "finalizeResolution",
+        "file": "resolve",
+        "line_zero_based": 194,
+        "sampled_us": 1579,
+        "percent": 0.03508248048911954
+      },
+      {
+        "name": "j3",
+        "file": "main.js",
+        "line_zero_based": 1247,
+        "sampled_us": 1536,
+        "percent": 0.03412709944983383
+      },
+      {
+        "name": "",
+        "file": "main.js",
+        "line_zero_based": 260,
+        "sampled_us": 1510,
+        "percent": 0.03354942719352154
+      },
+      {
+        "name": "pushLeaf",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1060,
+        "sampled_us": 1510,
+        "percent": 0.03354942719352154
+      },
+      {
+        "name": "extract_plan$d",
+        "file": "main.js",
+        "line_zero_based": 742,
+        "sampled_us": 1507,
+        "percent": 0.033482772702408584
+      },
+      {
+        "name": "",
+        "file": "usertiming",
+        "line_zero_based": 0,
+        "sampled_us": 1506,
+        "percent": 0.033460554538704265
+      },
+      {
+        "name": "list_push",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1108,
+        "sampled_us": 1505,
+        "percent": 0.03343833637499995
+      },
+      {
+        "name": "",
+        "file": "readable",
+        "line_zero_based": 0,
+        "sampled_us": 1501,
+        "percent": 0.033349463720182666
+      },
+      {
+        "name": "j4",
+        "file": "main.js",
+        "line_zero_based": 1250,
+        "sampled_us": 1496,
+        "percent": 0.033238372901661074
+      },
+      {
+        "name": "",
+        "file": "main.js",
+        "line_zero_based": 521,
+        "sampled_us": 1492,
+        "percent": 0.0331495002468438
+      },
+      {
+        "name": "new_var$d",
+        "file": "main.js",
+        "line_zero_based": 564,
+        "sampled_us": 1492,
+        "percent": 0.0331495002468438
+      },
+      {
+        "name": "",
+        "file": "main.js",
+        "line_zero_based": 1238,
+        "sampled_us": 1473,
+        "percent": 0.03272735513646174
+      },
+      {
+        "name": "concat$o",
+        "file": "list.js",
+        "line_zero_based": 165,
+        "sampled_us": 996,
+        "percent": 0.022129291049501624
+      },
+      {
+        "name": "required$d",
+        "file": "main.js",
+        "line_zero_based": 606,
+        "sampled_us": 975,
+        "percent": 0.021662709611710927
+      },
+      {
+        "name": "",
+        "file": "main.js",
+        "line_zero_based": 532,
+        "sampled_us": 772,
+        "percent": 0.017152422379734193
+      },
+      {
+        "name": "chain_test",
+        "file": "main.js",
+        "line_zero_based": 116,
+        "sampled_us": 736,
+        "percent": 0.01635256848637871
+      },
+      {
+        "name": "",
+        "file": "main.js",
+        "line_zero_based": 349,
+        "sampled_us": 300,
+        "percent": 0.00666544911129567
+      },
+      {
+        "name": "",
+        "file": "main.js",
+        "line_zero_based": 1254,
+        "sampled_us": 170,
+        "percent": 0.003777087829734213
+      },
+      {
+        "name": "drive",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 284,
+        "sampled_us": 168,
+        "percent": 0.0037326515023255753
+      },
+      {
+        "name": "binary$d",
+        "file": "main.js",
+        "line_zero_based": 616,
+        "sampled_us": 85,
+        "percent": 0.0018885439148671065
+      },
+      {
+        "name": "list_len",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1089,
+        "sampled_us": 81,
+        "percent": 0.001799671260049831
+      },
+      {
+        "name": "incremental_remove",
+        "file": "main.js",
+        "line_zero_based": 844,
+        "sampled_us": 62,
+        "percent": 0.001377526149667772
+      }
+    ]
+  },
+  "flat": {
+    "total_sampled_us": 2334829,
+    "samples": 2577,
+    "functions": [
+      {
+        "name": "(garbage collector)",
+        "file": "",
+        "line_zero_based": -1,
+        "sampled_us": 247370,
+        "percent": 10.594780174479586
+      },
+      {
+        "name": "set_value$d",
+        "file": "main.js",
+        "line_zero_based": 754,
+        "sampled_us": 214398,
+        "percent": 9.182599667898591
+      },
+      {
+        "name": "execute$d",
+        "file": "main.js",
+        "line_zero_based": 1931,
+        "sampled_us": 203191,
+        "percent": 8.702607342978865
+      },
+      {
+        "name": "$denseGet",
+        "file": "main.js",
+        "line_zero_based": 2252,
+        "sampled_us": 140215,
+        "percent": 6.005364846847456
+      },
+      {
+        "name": "list_builder_finish",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1180,
+        "sampled_us": 115499,
+        "percent": 4.946786252869054
+      },
+      {
+        "name": "list_at",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1096,
+        "sampled_us": 85660,
+        "percent": 3.66879116200801
+      },
+      {
+        "name": "Var",
+        "file": "main.js",
+        "line_zero_based": 17,
+        "sampled_us": 82450,
+        "percent": 3.531307860233019
+      },
+      {
+        "name": "execute_plan$d",
+        "file": "main.js",
+        "line_zero_based": 770,
+        "sampled_us": 75821,
+        "percent": 3.247389851676504
+      },
+      {
+        "name": "ret",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 38,
+        "sampled_us": 64382,
+        "percent": 2.757461038902635
+      },
+      {
+        "name": "satisfy",
+        "file": "main.js",
+        "line_zero_based": 1292,
+        "sampled_us": 63643,
+        "percent": 2.7258098987120682
+      },
+      {
+        "name": "filter$d",
+        "file": "list.js",
+        "line_zero_based": 54,
+        "sampled_us": 63539,
+        "percent": 2.721355611053315
+      },
+      {
+        "name": "put_var$d",
+        "file": "main.js",
+        "line_zero_based": 997,
+        "sampled_us": 61783,
+        "percent": 2.6461466771228213
+      },
+      {
+        "name": "list",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 959,
+        "sampled_us": 60754,
+        "percent": 2.6020749271145767
+      },
+      {
+        "name": "add_propagate",
+        "file": "main.js",
+        "line_zero_based": 1653,
+        "sampled_us": 57666,
+        "percent": 2.469816847400816
+      },
+      {
+        "name": "var_of$d",
+        "file": "main.js",
+        "line_zero_based": 717,
+        "sampled_us": 55966,
+        "percent": 2.3970063760558054
+      },
+      {
+        "name": "consuming$d",
+        "file": "main.js",
+        "line_zero_based": 1839,
+        "sampled_us": 35856,
+        "percent": 1.5357013297333553
+      },
+      {
+        "name": "$denseInsert",
+        "file": "main.js",
+        "line_zero_based": 2248,
+        "sampled_us": 35740,
+        "percent": 1.530733085806284
+      },
+      {
+        "name": "Builder",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 996,
+        "sampled_us": 35493,
+        "percent": 1.5201541526167441
+      },
+      {
+        "name": "value_of$d",
+        "file": "main.js",
+        "line_zero_based": 683,
+        "sampled_us": 31466,
+        "percent": 1.3476789949071217
+      },
+      {
+        "name": "output$d",
+        "file": "main.js",
+        "line_zero_based": 1040,
+        "sampled_us": 31298,
+        "percent": 1.3404836071506736
+      },
+      {
+        "name": "fromLeaves",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 972,
+        "sampled_us": 30912,
+        "percent": 1.3239513471864535
+      },
+      {
+        "name": "remove_propagate_from",
+        "file": "main.js",
+        "line_zero_based": 1069,
+        "sampled_us": 30572,
+        "percent": 1.3093892529174513
+      },
+      {
+        "name": "(program)",
+        "file": "",
+        "line_zero_based": -1,
+        "sampled_us": 27090,
+        "percent": 1.1602562757272588
+      },
+      {
+        "name": "push",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1031,
+        "sampled_us": 26822,
+        "percent": 1.148777919068163
+      },
+      {
+        "name": "is_unary$d",
+        "file": "main.js",
+        "line_zero_based": 1868,
+        "sampled_us": 26592,
+        "percent": 1.1389270905920734
+      },
+      {
+        "name": "j3",
+        "file": "main.js",
+        "line_zero_based": 1247,
+        "sampled_us": 25584,
+        "percent": 1.0957547640533847
+      },
+      {
+        "name": "con_of$d",
+        "file": "main.js",
+        "line_zero_based": 815,
+        "sampled_us": 24598,
+        "percent": 1.0535246906732785
+      },
+      {
+        "name": "list_get_expect",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 2233,
+        "sampled_us": 24318,
+        "percent": 1.041532377745865
+      },
+      {
+        "name": "consuming$1$d",
+        "file": "main.js",
+        "line_zero_based": 1853,
+        "sampled_us": 23830,
+        "percent": 1.0206314895009443
+      },
+      {
+        "name": "List",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 942,
+        "sampled_us": 21419,
+        "percent": 0.9173691092581084
+      },
+      {
+        "name": "set_mark$d",
+        "file": "main.js",
+        "line_zero_based": 1637,
+        "sampled_us": 19547,
+        "percent": 0.8371919314005437
+      },
+      {
+        "name": "inputs$d",
+        "file": "main.js",
+        "line_zero_based": 1583,
+        "sampled_us": 17482,
+        "percent": 0.7487486235608689
+      },
+      {
+        "name": "recalculate$d",
+        "file": "main.js",
+        "line_zero_based": 1717,
+        "sampled_us": 17112,
+        "percent": 0.7329016386210725
+      },
+      {
+        "name": "add_to_graph$d",
+        "file": "main.js",
+        "line_zero_based": 2186,
+        "sampled_us": 16400,
+        "percent": 0.7024069000342209
+      },
+      {
+        "name": "make_plan$d",
+        "file": "main.js",
+        "line_zero_based": 2032,
+        "sampled_us": 16021,
+        "percent": 0.6861744478931862
+      },
+      {
+        "name": "incremental_add",
+        "file": "main.js",
+        "line_zero_based": 1227,
+        "sampled_us": 12243,
+        "percent": 0.5243638827511565
+      },
+      {
+        "name": "",
+        "file": "main.js",
+        "line_zero_based": 1380,
+        "sampled_us": 12074,
+        "percent": 0.5171256653056819
+      },
+      {
+        "name": "Planner",
+        "file": "main.js",
+        "line_zero_based": 7,
+        "sampled_us": 11942,
+        "percent": 0.5114721463541869
+      },
+      {
+        "name": "",
+        "file": "main.js",
+        "line_zero_based": 415,
+        "sampled_us": 10577,
+        "percent": 0.453009620833046
+      },
+      {
+        "name": "add_constraint",
+        "file": "main.js",
+        "line_zero_based": 590,
+        "sampled_us": 10566,
+        "percent": 0.45253849425375475
+      },
+      {
+        "name": "list_push_owned",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1136,
+        "sampled_us": 10009,
+        "percent": 0.42868235746600714
+      },
+      {
+        "name": "put_con$d",
+        "file": "main.js",
+        "line_zero_based": 1026,
+        "sampled_us": 9013,
+        "percent": 0.3860239871956362
+      },
+      {
+        "name": "Con",
+        "file": "main.js",
+        "line_zero_based": 30,
+        "sampled_us": 8130,
+        "percent": 0.34820537178525707
+      },
+      {
+        "name": "choose_method$d",
+        "file": "main.js",
+        "line_zero_based": 1409,
+        "sampled_us": 7866,
+        "percent": 0.3368983338822672
+      },
+      {
+        "name": "attached$d",
+        "file": "main.js",
+        "line_zero_based": 943,
+        "sampled_us": 7081,
+        "percent": 0.3032770279964828
+      },
+      {
+        "name": "(idle)",
+        "file": "",
+        "line_zero_based": -1,
+        "sampled_us": 6633,
+        "percent": 0.28408932731262115
+      },
+      {
+        "name": "",
+        "file": "main.js",
+        "line_zero_based": 521,
+        "sampled_us": 6444,
+        "percent": 0.27599451608661707
+      },
+      {
+        "name": "j5",
+        "file": "main.js",
+        "line_zero_based": 249,
+        "sampled_us": 6321,
+        "percent": 0.2707264643363604
+      },
+      {
+        "name": "is_satisfied$d",
+        "file": "main.js",
+        "line_zero_based": 826,
+        "sampled_us": 6028,
+        "percent": 0.2581773654516027
+      },
+      {
+        "name": "concat$d",
+        "file": "list.js",
+        "line_zero_based": 140,
+        "sampled_us": 5994,
+        "percent": 0.25672115602470247
+      },
+      {
+        "name": "",
+        "file": "main.js",
+        "line_zero_based": 1238,
+        "sampled_us": 5962,
+        "percent": 0.2553506059758552
+      },
+      {
+        "name": "binary$d",
+        "file": "main.js",
+        "line_zero_based": 616,
+        "sampled_us": 5938,
+        "percent": 0.25432269343921976
+      },
+      {
+        "name": "list_len",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1089,
+        "sampled_us": 5862,
+        "percent": 0.2510676370732075
+      },
+      {
+        "name": "",
+        "file": "main.js",
+        "line_zero_based": 596,
+        "sampled_us": 5833,
+        "percent": 0.24982557609143968
+      },
+      {
+        "name": "",
+        "file": "main.js",
+        "line_zero_based": 349,
+        "sampled_us": 4582,
+        "percent": 0.19624563511931709
+      },
+      {
+        "name": "sum_values$d",
+        "file": "main.js",
+        "line_zero_based": 694,
+        "sampled_us": 4520,
+        "percent": 0.19359019439967554
+      },
+      {
+        "name": "unsatisfied$d",
+        "file": "main.js",
+        "line_zero_based": 1011,
+        "sampled_us": 4517,
+        "percent": 0.1934617053325961
+      },
+      {
+        "name": "new_var$d",
+        "file": "main.js",
+        "line_zero_based": 564,
+        "sampled_us": 4023,
+        "percent": 0.1723038389535165
+      },
+      {
+        "name": "read",
+        "file": "",
+        "line_zero_based": -1,
+        "sampled_us": 3183,
+        "percent": 0.13632690017127594
+      },
+      {
+        "name": "pushLeafOwned",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1161,
+        "sampled_us": 3003,
+        "percent": 0.12861755614651008
+      },
+      {
+        "name": "unary$d",
+        "file": "main.js",
+        "line_zero_based": 579,
+        "sampled_us": 3000,
+        "percent": 0.12848906707943067
+      },
+      {
+        "name": "j5",
+        "file": "main.js",
+        "line_zero_based": 496,
+        "sampled_us": 2997,
+        "percent": 0.12836057801235123
+      },
+      {
+        "name": "pushLeaf",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1060,
+        "sampled_us": 2975,
+        "percent": 0.12741832485376872
+      },
+      {
+        "name": "is_input$d",
+        "file": "main.js",
+        "line_zero_based": 1894,
+        "sampled_us": 2959,
+        "percent": 0.1267330498293451
+      },
+      {
+        "name": "j4",
+        "file": "main.js",
+        "line_zero_based": 493,
+        "sampled_us": 2740,
+        "percent": 0.11735334793254666
+      },
+      {
+        "name": "drive",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 284,
+        "sampled_us": 2366,
+        "percent": 0.10133504423664431
+      },
+      {
+        "name": "list_builder_push",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1171,
+        "sampled_us": 1953,
+        "percent": 0.08364638266870936
+      },
+      {
+        "name": "",
+        "file": "main.js",
+        "line_zero_based": 532,
+        "sampled_us": 1915,
+        "percent": 0.08201885448570323
+      },
+      {
+        "name": "concat$o",
+        "file": "list.js",
+        "line_zero_based": 165,
+        "sampled_us": 1868,
+        "percent": 0.08000585910145883
+      },
+      {
+        "name": "list_builder",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1168,
+        "sampled_us": 1697,
+        "percent": 0.07268198227793128
+      },
+      {
+        "name": "chain_test",
+        "file": "main.js",
+        "line_zero_based": 116,
+        "sampled_us": 1685,
+        "percent": 0.07216802600961356
+      },
+      {
+        "name": "",
+        "file": "main.js",
+        "line_zero_based": 1254,
+        "sampled_us": 1672,
+        "percent": 0.07161124005226935
+      },
+      {
+        "name": "getFileProtocolModuleFormat",
+        "file": "get_format",
+        "line_zero_based": 170,
+        "sampled_us": 1641,
+        "percent": 0.07028351969244857
+      },
+      {
+        "name": "incremental_remove",
+        "file": "main.js",
+        "line_zero_based": 844,
+        "sampled_us": 1524,
+        "percent": 0.06527244607635077
+      },
+      {
+        "name": "remove_from_graph$d",
+        "file": "main.js",
+        "line_zero_based": 880,
+        "sampled_us": 1518,
+        "percent": 0.06501546794219192
+      },
+      {
+        "name": "remove_from_graph$1$d",
+        "file": "main.js",
+        "line_zero_based": 988,
+        "sampled_us": 1504,
+        "percent": 0.06441585229582124
+      },
+      {
+        "name": "isBuildingSnapshot",
+        "file": "startup_snapshot",
+        "line_zero_based": 20,
+        "sampled_us": 1501,
+        "percent": 0.0642873632287418
+      },
+      {
+        "name": "bounce",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 33,
+        "sampled_us": 1499,
+        "percent": 0.06420170385068885
+      },
+      {
+        "name": "",
+        "file": "webcrypto",
+        "line_zero_based": 0,
+        "sampled_us": 1497,
+        "percent": 0.0641160444726359
+      },
+      {
+        "name": "j6",
+        "file": "main.js",
+        "line_zero_based": 252,
+        "sampled_us": 1496,
+        "percent": 0.06407321478360942
+      },
+      {
+        "name": "compileSourceTextModule",
+        "file": "utils",
+        "line_zero_based": 337,
+        "sampled_us": 1471,
+        "percent": 0.0630024725579475
+      },
+      {
+        "name": "sum_values$1$d",
+        "file": "main.js",
+        "line_zero_based": 706,
+        "sampled_us": 1403,
+        "percent": 0.06009005370414707
+      },
+      {
+        "name": "",
+        "file": "",
+        "line_zero_based": -1,
+        "sampled_us": 1309,
+        "percent": 0.05606406293565824
+      },
+      {
+        "name": "list_push",
+        "file": "sakura_runtime.js",
+        "line_zero_based": 1108,
+        "sampled_us": 1012,
+        "percent": 0.043343645294794605
+      },
+      {
+        "name": "",
+        "file": "main.js",
+        "line_zero_based": 260,
+        "sampled_us": 411,
+        "percent": 0.017603002189882
+      },
+      {
+        "name": "required$d",
+        "file": "main.js",
+        "line_zero_based": 606,
+        "sampled_us": 248,
+        "percent": 0.010621762878566268
+      },
+      {
+        "name": "inputs_known$d",
+        "file": "main.js",
+        "line_zero_based": 2133,
+        "sampled_us": 114,
+        "percent": 0.004882584549018365
+      },
+      {
+        "name": "j4",
+        "file": "main.js",
+        "line_zero_based": 1250,
+        "sampled_us": 12,
+        "percent": 0.0005139562683177226
+      },
+      {
+        "name": "fold$d",
+        "file": "list.js",
+        "line_zero_based": 8,
+        "sampled_us": 9,
+        "percent": 0.000385467201238292
+      }
+    ]
+  }
+}

@@ -1,0 +1,35 @@
+--- a/main/main.js
++++ b/main/main.js
+@@ -554,2 +554,2 @@
+-  const r = $rt.map_empty();
+-  const r_1 = $rt.map_empty();
++  const r = [];
++  const r_1 = [];
+@@ -567 +567 @@
+-  const r = $rt.map_len(vars);
++  const r = vars.length;
+@@ -594 +594 @@
+-  const r = $rt.map_len(cons);
++  const r = cons.length;
+@@ -720 +720 @@
+-  const r_1 = $rt.map_get_expect(vars, id, "variable");
++  const r_1 = $denseGet(vars, id, "variable");
+@@ -818 +818 @@
+-  const r_1 = $rt.map_get_expect(cons, id, "constraint");
++  const r_1 = $denseGet(cons, id, "constraint");
+@@ -1000 +1000 @@
+-  const r = $rt.map_insert_owned(vars, id, v);
++  const r = $denseInsert(vars, id, v);
+@@ -1029 +1029 @@
+-  const r = $rt.map_insert_owned(cons, id, c);
++  const r = $denseInsert(cons, id, c);
+@@ -2247,0 +2248,9 @@
++
++function $denseInsert(a, id, value) {
++  a[id] = value;
++  return a;
++}
++function $denseGet(a, id, message) {
++  return id >= 0 && id < a.length && a[id] !== undefined
++    ? a[id] : $rt.option_expect($rt.None, message);
++}

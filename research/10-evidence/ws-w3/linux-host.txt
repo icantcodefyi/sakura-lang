@@ -1,0 +1,6 @@
+Linux 8f34dc35e27b 7.0.5-orbstack-00330-ge3df4e19b0a0-dirty #1 SMP PREEMPT Sun May 10 11:47:42 UTC 2026 aarch64 aarch64 aarch64 GNU/Linux
+perf version 6.8.12
+wasmtime 49.0.3 (f96eabaa1 2026-10-14)
+12
+2
+["ubuntu@sha256:68ee22004a9109b44973313b02ff7b1de250f1de0f5ecb628d73f579aaff33ac"]
