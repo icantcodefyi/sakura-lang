@@ -564,14 +564,11 @@ impl Rt {
         self.heap.free(a);
     }
 
-    /// `E.op(args…)` from the frame at `f`: a clause frame with `n_slots` (slot 0 is the
-    /// activation id, the caller stores the arguments after it). `Ok(0)` when the task is
-    /// cancelled: the caller returns `step::YIELD` and the task unwinds there (ABI §7.4).
-    pub fn perform(&mut self, f: u32, effect: u32, op: u32, n_slots: u32) -> Res<u32> {
-        let t = self.cur();
-        if self.u(t, T_CANCELLED) != 0 {
-            return Ok(0);
-        }
+    /// The innermost activation of `effect` in scope at the frame `f` (its id and address) and
+    /// its handler's clause closure `op` (borrowed). An `op` past the handler's clause count is
+    /// `D090`: compiled code never makes one, but a host answer naming an operation
+    /// (`js_perform`) is not trusted to stay in range (security review W1).
+    fn clause_for(&self, f: u32, effect: u32, op: u32) -> Res<(u32, u32, u32)> {
         let mut id = self.u(f, F_ACT);
         let a = loop {
             let a = self.arena_get(id, tag::ACTIVATION)?;
@@ -583,10 +580,21 @@ impl Rt {
                 return Err(Defect::INTERNAL);
             }
         };
-        let clause = self
-            .heap
-            .mem
-            .u32(self.handler_clause(self.u(a, A_HANDLER), op));
+        let h = self.u(a, A_HANDLER);
+        if op >= self.heap.mem.u32(h + 20) {
+            return Err(crate::vt::MALFORMED);
+        }
+        Ok((id, a, self.heap.mem.u32(self.handler_clause(h, op))))
+    }
+
+    /// `E.op(args…)` from the frame at `f`: a clause frame with `n_slots` (slot 0 is the
+    /// activation id, the caller stores the arguments after it). `Ok(0)` when the task is
+    /// cancelled: the caller returns `step::YIELD` and the task unwinds there (ABI §7.4).
+    pub fn perform(&mut self, f: u32, effect: u32, op: u32, n_slots: u32) -> Res<u32> {
+        if self.u(self.cur(), T_CANCELLED) != 0 {
+            return Ok(0);
+        }
+        let (id, a, clause) = self.clause_for(f, effect, op)?;
         let c = self.call_closure(clause, n_slots)?;
         // The clause sees the handlers outside its own activation (design §5.5).
         self.set(c, F_ACT, self.u(a, A_OUTER));
@@ -1841,21 +1849,7 @@ impl Rt {
         if self.u(t, T_CANCELLED) != 0 {
             return Ok(0);
         }
-        let mut id = self.u(f, F_ACT);
-        let a = loop {
-            let a = self.arena_get(id, tag::ACTIVATION)?;
-            if self.u(a, A_EFFECT) == effect {
-                break a;
-            }
-            id = self.u(a, A_OUTER);
-            if id == 0 {
-                return Err(Defect::INTERNAL);
-            }
-        };
-        let clause = self
-            .heap
-            .mem
-            .u32(self.handler_clause(self.u(a, A_HANDLER), op));
+        let (id, a, clause) = self.clause_for(f, effect, op)?;
         if self.sched.trace {
             self.trace(t, Trace::Op(effect, op));
         }

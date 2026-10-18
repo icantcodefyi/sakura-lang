@@ -64,6 +64,7 @@ const QUICK: u32 = 22;
 const OVERFLOW: u32 = 23;
 const OOM_MAIN: u32 = 24;
 const FIN_ALLOC: u32 = 25;
+const BAD_OP: u32 = 27;
 
 const TABLE: &[Code] = &[
     callback_stub,
@@ -93,6 +94,7 @@ const TABLE: &[Code] = &[
     oom_main,
     fin_alloc,
     fin_fail,
+    bad_op,
 ];
 
 fn codes() -> Vec<Option<CodeDesc<'static>>> {
@@ -125,6 +127,7 @@ fn codes() -> Vec<Option<CodeDesc<'static>>> {
         d("oom_main", &[WORD], &[I64]),
         d("fin_alloc", &[BOOL], &[I64]),
         d("fin_fail", &[BOOL], &[]),
+        d("bad_op", &[I64], &[]),
     ]
 }
 
@@ -294,6 +297,26 @@ fn tick(rt: &mut Rt, _env: u32, f: u32) -> u32 {
     let v = ok!(rt, rt.state(act, 0)) + 1;
     ok!(rt, rt.set_state(act, 0, v));
     rt.set_ret(v);
+    RETURN
+}
+
+/// Install a one-clause `Counter` handler and perform its operation `op` (slot 0) with
+/// `perform_value`, as `js_perform` does for an operation a host answer names (W1).
+fn bad_op(rt: &mut Rt, _env: u32, f: u32) -> u32 {
+    if rt.block(f) == 0 {
+        let h = ok!(rt, handler(rt, COUNTER, COUNTER_STATE, &[TICK], &[0]));
+        ok!(rt, rt.handle_install(f, h));
+        let op = rt.fslot(f, 0) as u32;
+        let c = ok!(rt, rt.perform_value(f, COUNTER, op, 0));
+        if c == 0 {
+            return YIELD;
+        }
+        rt.set_block(f, 1);
+        return CALL;
+    }
+    let _ = rt.take_ret();
+    rt.handle_exit(f);
+    rt.set_ret(UNIT as u64);
     RETURN
 }
 
@@ -1091,4 +1114,19 @@ fn the_arena_table_grows_before_its_first_entry() {
     }
     assert_eq!(rt.heap.mem.bytes(rt.layout, 64), &layout_bytes_before[..]);
     rt.drop(obj);
+}
+
+#[test]
+fn an_operation_past_the_handlers_clauses_is_d090() {
+    // Hostile host (security review W1): `js_perform` performs the `op` a host answer names;
+    // past the handler's clause count it is `D090`, never a read beyond the handler.
+    let mut rt = runtime(64 << 20);
+    ten_times(&mut rt, |rt| {
+        for op in [1, 7, u32::MAX] {
+            let (task, kind) = run_task(rt, BAD_OP, 1, u64::from(op), 0);
+            assert_eq!(kind, outcome::DEFECT, "op {op}");
+            assert_eq!(rt.defect(task).unwrap().map(|(d, _)| d.code), Some(90));
+            finish(rt, task);
+        }
+    });
 }
