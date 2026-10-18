@@ -9,8 +9,8 @@ direct-style twins of design §17.118 (plan item L4), 1.1.1 the gate 10 erratum 
 item 8 (§8.1, §8.4–§8.6), 1.1.3 the defect sites of plan L5 (§5, §6.5, §12; design §17.162), and 1.2.0 the `restarts`
 counter, the import and handle-kind lists as built and §5's fallback wording (design §17.160,
 §17.161; plan M4-OPT), and 1.2.1 the fail-closed copy budget of §8.5, its reading as a
-per-instance ceiling and a cut body as `Err` (design §17.209), and 1.2.2 the root task's release
-(design §17.212). Owned by the designer;
+per-instance ceiling and a cut body as `Err` (design §17.209), and 1.2.2 the root task's release and
+the copy budget of a served request (design §17.212, §17.216 (4)). Owned by the designer;
 implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
 (`crates/sakura_codegen_wasm`, `runtime/js/sakura_wasm_host.js`). This document is prose,
@@ -101,6 +101,8 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   sides (a host calls it only when the module has it, and a host without it runs a module that
   has it as before), so it is a PATCH as §17.212 decided and `sakura_abi_version` stays
   `0x010200`.
+  §8.5 also states how the copy budget applies to a served request and its reply (design
+  §17.216 (4)): until then a request over it ended the process.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -696,7 +698,11 @@ wrong class.
   (`Clock.sleep` and `serve_listen` on a full table; a synchronous
   answer past the budget, raised by the guest from a status-2 answer, or ending the run where
   the import has no answer). The budget counts one answer, and an HTTP completion together
-  with the completions already queued for delivery.
+  with the completions already queued for delivery. Served requests are held to the budget
+  too, each on its own as one answer is (in-flight requests are not summed): a request
+  (`invoke`) over it is refused with `413` before the guest sees it, and a reply
+  (`serve_respond`) over it is not copied in but answered `500`, each with the defect `D091` on
+  stderr; the server keeps serving (1.2.2, design §17.216 (4)).
 - Limit variables (1.2.1, design §17.209 (1)): unset is the default; decimal digits with a value
   from 1 to 2^53 - 1 are that value; anything else (empty, a sign, a fraction, an exponent,
   spaces, words) is the defect `D091` naming the variable, the value seen and the accepted

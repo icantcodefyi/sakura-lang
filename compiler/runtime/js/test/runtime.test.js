@@ -913,7 +913,7 @@ test("violated blames the call site from the table, else the clause", () => {
   assert.equal(spans(undefined), "primary@2");
 });
 
-test("serveHttp refuses a body over 1 MiB with 413 and answers an invalid status with 500", async () => {
+test("serveHttp refuses a body over 1 MiB or a too large request with 413 and answers an invalid status with 500", async () => {
   const http = await import("node:http");
   const net = await import("node:net");
   class Method extends rt.Variant {}
@@ -934,6 +934,7 @@ test("serveHttp refuses a body over 1 MiB with 413 and answers an invalid status
   const seen = [];
   const s = rt.serveHttp({ host: "127.0.0.1", port }, (req, reply) => {
     seen.push(req.url);
+    if (req.url === "/huge") return reply({ kind: "too large", code: "D091", message: "request too large" });
     const status = req.url === "/bad" ? 42 : 200;
     reply({ kind: "ok", value: { status, headers: rt.list([]), body: String(req.body.length) } });
   });
@@ -956,9 +957,10 @@ test("serveHttp refuses a body over 1 MiB with 413 and answers an invalid status
     // A chunked body has no declared length: it is counted as it arrives.
     const big = Array.from({ length: 17 }, () => Buffer.alloc(64 * 1024, 97));
     assert.deepEqual(await send("/big", big), [413, "close", "request body too large"]);
+    assert.deepEqual(await send("/huge"), [413, "close", "request body too large"]);
     assert.deepEqual(await send("/bad"), [500, "close", "internal error"]);
     assert.deepEqual(await send("/ok", [Buffer.alloc(rt.MAX_REQUEST_BODY, 97)]), [200, "close", String(1 << 20)]);
-    assert.deepEqual(seen, ["/bad", "/ok"], "the handler never saw the refused body");
+    assert.deepEqual(seen, ["/huge", "/bad", "/ok"], "the runner never saw the body over 1 MiB");
   } finally {
     s.close();
   }

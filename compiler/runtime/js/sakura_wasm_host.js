@@ -402,7 +402,8 @@ export class Host {
     this.nextCallback = 1;
     // A failure on its way out of a JS clause through the guest's frames (`js_resume`).
     this.escaping = null;
-    // Served requests by task (`serve_listen`): how to reply, and the response once sent.
+    // Served requests by task (`serve_listen`): how to reply, and the answer once the response
+    // is sent (its `D091` past the copy budget).
     this.served = new Map();
     // Handle tables (ABI §8.4): `${kind}:${slot}` → { generation, object }.
     this.handles = new Map();
@@ -677,9 +678,14 @@ export class Host {
             const w = new Writer();
             this.encode(w, value, ["A", "std::request::Request", []]);
             const bytes = w.done();
+            // A request past the copy budget is refused before the guest sees it (§17.216 (4)).
+            if (bytes.length > this.maxCopy) {
+              const message = `request too large: ${bytes.length} bytes over SAKURA_MAX_COPY_BYTES`;
+              return reply({ kind: "too large", code: "D091", message });
+            }
             const task = this.exports.invoke(listener, this.copyOut(bytes), bytes.length);
             if (task === 0) return reply({ kind: "gone" });
-            this.served.set(task, { reply, response: null });
+            this.served.set(task, { reply, answer: null });
             this.wake?.();
           });
           if (s.err !== undefined) {
@@ -691,9 +697,14 @@ export class Host {
           return 1;
         },
         serve_respond: (task, ptr, len) => {
-          const [r] = this.decode(new Reader(this.copyIn(ptr, len)));
           const s = this.served.get(Number(task));
-          if (s !== undefined) s.response = r;
+          if (len > this.maxCopy) {
+            const message = `${TOO_LARGE}: ${len} bytes over SAKURA_MAX_COPY_BYTES`;
+            if (s !== undefined) s.answer = { kind: "defect", code: "D091", message };
+            return;
+          }
+          const [r] = this.decode(new Reader(this.copyIn(ptr, len)));
+          if (s !== undefined) s.answer = { kind: "ok", value: r };
         },
         js_callback: (id, ptr, len) => {
           const c = this.callbacks.get(Number(id));
@@ -1179,8 +1190,7 @@ export class Host {
       if (kind === OUTCOME.pending) continue;
       this.served.delete(task);
       const o = this.outcome(task, kind);
-      if (o.kind === "ok" && s.response !== null) s.reply({ kind: "ok", value: s.response });
-      else s.reply(o);
+      s.reply(o.kind === "ok" && s.answer !== null ? s.answer : o);
     }
   }
 

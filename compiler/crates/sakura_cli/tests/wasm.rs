@@ -586,6 +586,165 @@ fn serve_host_answers_on_wasm_as_on_js() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// `method path` with `body` on `port`: the status code, the `connection` header and the body.
+fn http_send(port: u16, method: &str, path: &str, body: &str) -> String {
+    use std::io::{Read, Write};
+    let mut s = std::net::TcpStream::connect(("127.0.0.1", port)).unwrap();
+    write!(
+        s,
+        "{method} {path} HTTP/1.1\r\nhost: 127.0.0.1\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
+        body.len()
+    )
+    .unwrap();
+    let mut out = String::new();
+    s.read_to_string(&mut out).unwrap();
+    let status = out.split(' ').nth(1).unwrap_or("").to_string();
+    let (head, body) = out.split_once("\r\n\r\n").unwrap_or((&out, ""));
+    let close = head
+        .lines()
+        .any(|l| l.eq_ignore_ascii_case("connection: close"));
+    format!("{status} {close} {body}")
+}
+
+/// Design §17.216 (4), §17.159 (6): on WASM, with `SAKURA_MAX_COPY_BYTES=1024`, a 2 KiB request
+/// is `413` with the connection closed and the handler not run, and a 2 KiB reply is `500`,
+/// each with one `D091` record on stderr; the server answers the requests after each. The JS
+/// backend copies nothing into a guest, so the same program answers both with `200` there.
+#[cfg(unix)]
+#[test]
+fn serve_over_the_copy_budget_answers_413_or_500_and_keeps_serving() {
+    use std::os::unix::process::CommandExt;
+    if !available() {
+        eprintln!("skipped: node is missing");
+        return;
+    }
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("serve_budget");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    let big = "x".repeat(2048);
+    let mut answers = vec![];
+    for target in ["js", "wasm"] {
+        let port = std::net::TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port();
+        std::fs::write(
+            dir.join("sakura.toml"),
+            format!(
+                "[package]\nname = \"srv\"\nversion = \"0.1.0\"\nedition = \"2026\"\n\n\
+                 [permissions]\nnet = [\"127.0.0.1:{port}\"]\n"
+            ),
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("src/main.sak"),
+            format!(
+                "import std/request.{{Request}}\nimport std/response.{{Response}}\n\
+                 import std/router.{{Router}}\nimport std/serve.{{Address, Serve, ServeError}}\n\n\
+                 pub fn main() -> Unit ! {{Console, Serve, Fail<ServeError>}} {{\n\
+                 \x20 let router = Router.new()\n\
+                 \x20   .get(\"/hi\", fn(_req) {{ Response.status(200, \"hello\") }})\n\
+                 \x20   .post(\"/echo\", fn(req) {{ Response.status(200, \"{{String.len(req.body)}}\") }})\n\
+                 \x20   .get(\"/big\", fn(_req) {{ Response.status(200, String.repeat(\"y\", 2048)) }})\n\
+                 \x20 Serve.listen(router, Address.of(\"127.0.0.1\", {port}))\n}}\n"
+            ),
+        )
+        .unwrap();
+        let err = dir.join(format!("{target}.stderr"));
+        let out_dir = dir.join(format!("out-{target}"));
+        let mut child = std::process::Command::new(env!("CARGO_BIN_EXE_sakura"))
+            .args([
+                "run",
+                "--target",
+                target,
+                "--out-dir",
+                out_dir.to_str().unwrap(),
+            ])
+            .env("SAKURA_MAX_COPY_BYTES", "1024")
+            .current_dir(&dir)
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::fs::File::create(&err).unwrap())
+            .process_group(0)
+            .spawn()
+            .unwrap();
+        let start = std::time::Instant::now();
+        while std::net::TcpStream::connect(("127.0.0.1", port)).is_err() {
+            assert!(
+                start.elapsed() < TIME_LIMIT,
+                "{target}: the server did not start\n{}",
+                std::fs::read_to_string(&err).unwrap_or_default()
+            );
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+        let got = [
+            http_send(port, "POST", "/echo", &big),
+            http_send(port, "GET", "/hi", ""),
+            http_send(port, "POST", "/echo", "small"),
+            http_send(port, "GET", "/big", ""),
+            http_send(port, "GET", "/hi", ""),
+        ]
+        .map(|a| a.replace(&"y".repeat(2048), "y*2048"));
+        let alive = child.try_wait().unwrap().is_none();
+        // `--` is required: procps `kill` (Linux) takes `-9 -PGID` as options (as above).
+        let _ = std::process::Command::new("kill")
+            .args(["-9", "--", &format!("-{}", child.id())])
+            .status();
+        let _ = child.wait();
+        let stderr = std::fs::read_to_string(&err).unwrap_or_default();
+        let defects: Vec<String> = stderr
+            .lines()
+            .filter(|l| l.contains("\"kind\":\"defect\""))
+            .map(|l| {
+                let v: serde_json::Value = serde_json::from_str(l).unwrap();
+                format!(
+                    "{} {}",
+                    v["code"].as_str().unwrap(),
+                    v["message"].as_str().unwrap()
+                )
+            })
+            .collect();
+        answers.push((target, got, alive, defects, stderr.clone()));
+    }
+    let (_, js, js_alive, js_defects, js_err) = &answers[0];
+    assert_eq!(
+        js,
+        &[
+            "200 true 2048",
+            "200 true hello",
+            "200 true 5",
+            "200 true y*2048",
+            "200 true hello"
+        ],
+        "{js_err}"
+    );
+    assert!(*js_alive && js_defects.is_empty(), "{js_err}");
+    let (_, wasm, wasm_alive, wasm_defects, wasm_err) = &answers[1];
+    assert_eq!(
+        wasm,
+        &[
+            "413 true request body too large",
+            "200 true hello",
+            "200 true 5",
+            "500 true internal error",
+            "200 true hello"
+        ],
+        "{wasm_err}"
+    );
+    assert!(*wasm_alive, "the WASM server ended:\n{wasm_err}");
+    assert_eq!(
+        wasm_defects,
+        &[
+            "D091 request too large: 2191 bytes over SAKURA_MAX_COPY_BYTES",
+            "D091 response too large: 2081 bytes over SAKURA_MAX_COPY_BYTES"
+        ],
+        "{wasm_err}"
+    );
+    assert!(!wasm_err.to_lowercase().contains("unhandled"), "{wasm_err}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// `Log.json()` (plan §3.7 W2) runs the JS runtime's handler on the host: its stderr lines
 /// are JS's byte for byte, as are stdout and the trace.
 #[test]

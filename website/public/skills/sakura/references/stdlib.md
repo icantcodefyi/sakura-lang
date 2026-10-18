@@ -105,6 +105,11 @@ checked skill reference; they are not additional APIs.
   budget covers every host answer, the first answer), never an unlimited or zero budget
   (§17.209). The budget is a per-instance memory ceiling, not a byte-exact contract: near it
   the two backends may differ, so read at most about that many bytes.
+- `Serve.host()` answers a request body over 1 MiB with `413` and closes the connection
+  without running the handler, and answers a handler's failure, defect or invalid response
+  with `500` and the record on stderr; the server keeps serving (§17.159 (6)). On
+  `--target wasm` a request over `SAKURA_MAX_COPY_BYTES` (headers included) is that `413`
+  and a response over it is that `500`, each with the defect `D091` on stderr (§17.216 (4)).
 
 ## Module dependencies (non-test code)
 

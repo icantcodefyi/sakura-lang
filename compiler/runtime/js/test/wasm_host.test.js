@@ -237,6 +237,21 @@ test("a sync answer past the copy budget is a D091 answer, not a guest heap exha
   assert.deepEqual(code, u32(91));
 });
 
+test("a served reply past the copy budget is answered as its D091, never copied in", () => {
+  const { h } = host();
+  h.copyBudget = 64;
+  const answers = [];
+  h.served.set(7, { reply: (o) => answers.push(o), answer: null });
+  h.exports.outcome = () => [0, 0, 0];
+  // A slice past the end of memory: copying it in would be a host fault.
+  h.imports().sakura_host.serve_respond(7, h.exports.memory.buffer.byteLength, 100);
+  h.reply();
+  assert.deepEqual(answers, [
+    { kind: "defect", code: "D091", message: "response too large: 100 bytes over SAKURA_MAX_COPY_BYTES" },
+  ]);
+  assert.equal(h.served.size, 0);
+});
+
 test("retire_handle forgets callbacks, closes databases and drops JS-built handlers", () => {
   const { h } = host();
   const retire = h.imports().sakura_host.retire_handle;

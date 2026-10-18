@@ -4238,7 +4238,9 @@ export const MAX_REQUEST_BODY = 1 << 20;
  * `net` list; each request becomes a `Request` for `run(request, reply)`, where `reply(o)` takes
  * the handler's outcome (`ok` with the `Response`; a `fail`, its `error` or `Show` text
  * `shown`, or a `defect` is reported on stderr and answered 500). A body over
- * `MAX_REQUEST_BODY` is answered 413 and the connection closed without running the handler; a
+ * `MAX_REQUEST_BODY` is answered 413 and the connection closed without running the handler (so
+ * is the outcome `too large`, the WASM host's request past its copy budget, whose defect is
+ * reported on stderr); a
  * `Response` whose status or headers Node refuses is reported as a `D091` defect and answered
  * 500, and the server keeps running. Returns `{ err }`, or `{ stopped, close }` (`stopped`
  * resolves to why the server stopped).
@@ -4250,6 +4252,8 @@ export function serveHttp(addr, run) {
   const Request = std("std::request::Request");
   const Method = std("std::request::Method");
   const methods = Method.prototype.$t.ctors.map((c) => c.name.toUpperCase());
+  const report = (o) =>
+    writeErr(JSON.stringify({ schema_version: "1.0", kind: "defect", code: o.code, message: o.message }));
   let server;
   const stopped = new Promise((resolve) => {
     server = proc.getBuiltinModule("node:http").createServer((req, res) => {
@@ -4284,6 +4288,11 @@ export function serveHttp(addr, run) {
         const body = Buffer.concat(chunks).toString("utf8");
         const value = new Request(new Method(tag, []), req.url, list(headers), body, list([]), list([]));
         run(value, (o) => {
+          if (o.kind === "too large") {
+            report(o);
+            tooLarge();
+            return;
+          }
           if (o.kind === "ok") {
             const r = o.value;
             const hs = { ...Object.fromEntries(items(r.headers)), "content-length": Buffer.byteLength(r.body) };
@@ -4300,7 +4309,7 @@ export function serveHttp(addr, run) {
             }
           }
           if (o.kind === "defect") {
-            writeErr(JSON.stringify({ schema_version: "1.0", kind: "defect", code: o.code, message: o.message }));
+            report(o);
           } else if (o.kind === "fail") {
             writeErr(`error: request failed with ${o.shown ?? show(o.error)}`);
           }

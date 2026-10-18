@@ -198,6 +198,12 @@ published yet.
 
 ### Fixed
 
+- `Serve.host()` on `--target wasm` no longer ends the process when a request is larger than
+  `SAKURA_MAX_COPY_BYTES`: the request is answered `413` with the connection closed and the
+  handler not run, as a body over 1 MiB already is, and a handler's response over the budget is
+  `500`; each writes the defect `D091` to stderr, and the server keeps serving (design §17.216
+  (4)). The JS backend copies nothing into a guest and is unchanged.
+
 - On `--target wasm`, running `main` again on one instance (the benchmark harness's Node cells
   do, once per sample) no longer keeps 4 objects per run: the Node host releases each finished
   root task through the new module export `task_free`, and the clauses of a host handler
