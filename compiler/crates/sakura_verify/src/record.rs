@@ -147,7 +147,8 @@ pub fn decide(
     mut ask: impl FnMut(Query, &str) -> Answer,
 ) -> Record {
     let mut r = Record {
-        schema_version: "1.0",
+        // `sakura verify`'s records are schema 1.1 (§12.2, §17.164).
+        schema_version: "1.1",
         kind: "obligation",
         id: obligation_id(vc, o),
         symbol_id: vc.symbol_id.clone(),

@@ -578,10 +578,12 @@ fn build_manifest_lists_trusted_base_and_obligations() {
             "obligations",
             "schema_version",
             "snapshot",
+            "target",
             "trusted"
         ]
     );
-    assert_eq!(m["schema_version"], "1.0");
+    assert_eq!(m["schema_version"], "1.1");
+    assert_eq!(m["target"], "js");
     assert!(m["snapshot"].as_str().unwrap().starts_with("sha256:"));
     assert_eq!(keys(&m["compiler"]), ["git", "version"]);
 
@@ -1304,10 +1306,10 @@ fn proof_key_is_never_created_by_build_or_inside_the_project() {
     assert!(!inside.exists(), "no key inside the project");
 }
 
-/// Plan §3.7 item 9 (C1/V3 deviation 7), design §17.86: a second `sakura verify` on an unchanged
-/// tree asks the solver nothing beyond its version and prints byte-identical JSON; a forged
-/// record is solved again, never trusted; a body-only edit solves only the edited function's
-/// obligations.
+/// Plan §3.7 item 9 (C1/V3 deviation 7), design §17.86, §17.164 (2): a second `sakura verify` on
+/// an unchanged tree asks the solver nothing beyond its version, prints the same records and
+/// counts every one as `reused`; a forged record is solved again, never trusted; a body-only
+/// edit solves only the edited function's obligations.
 #[cfg(unix)]
 #[test]
 fn verify_reuses_only_authenticated_unchanged_records() {
@@ -1337,6 +1339,7 @@ fn verify_reuses_only_authenticated_unchanged_records() {
         let _ = std::fs::remove_file(&log);
         n
     };
+    // The records, and the summary's `reused` count.
     let verify = || {
         let out = sakura_in_state(
             &[
@@ -1350,12 +1353,21 @@ fn verify_reuses_only_authenticated_unchanged_records() {
             &state,
         );
         assert_eq!(out.status.code(), Some(1), "{out:?}");
-        String::from_utf8(out.stdout).unwrap()
+        let mut recs = common::json_lines(&String::from_utf8(out.stdout).unwrap()).unwrap();
+        let summary = recs.pop().unwrap();
+        assert_eq!(summary["kind"], "summary");
+        assert_eq!(summary["schema_version"], "1.1");
+        (recs, summary["reused"].as_u64().unwrap())
     };
-    let first = verify();
+    let (first, reused) = verify();
     let all = solves();
     assert!(all > 0);
-    assert_eq!(verify(), first, "the same records");
+    assert_eq!(reused, 0, "nothing to reuse yet");
+    assert_eq!(
+        verify(),
+        (first.clone(), first.len() as u64),
+        "the same records, all reused"
+    );
     assert_eq!(solves(), 0, "an unchanged tree solves nothing");
 
     // Forge every verdict, keeping the MAC: each record is solved again and the output is the same.
@@ -1371,7 +1383,11 @@ fn verify_reuses_only_authenticated_unchanged_records() {
         assert_ne!(forged, text);
         std::fs::write(&path, forged).unwrap();
     }
-    assert_eq!(verify(), first, "forged records are not believed");
+    assert_eq!(
+        verify(),
+        (first.clone(), 0),
+        "forged records are not believed"
+    );
     assert_eq!(solves(), all, "every forged record is solved again");
     verify();
     assert_eq!(solves(), 0, "the rewritten records are authentic");
@@ -1382,9 +1398,207 @@ fn verify_reuses_only_authenticated_unchanged_records() {
         SCALE.replace("{ total * p / 100 }", "{ p * total / 100 }"),
     )
     .unwrap();
-    verify();
+    let (_, reused) = verify();
     let edited = solves();
     assert!(0 < edited && edited < all, "{edited} of {all}");
+    assert!(0 < reused && reused < first.len() as u64, "{reused}");
+}
+
+/// Design §17.164 (1): an `unknown` whose reason is `resource_limit` is reused by `sakura verify`
+/// (the `rlimit` binds deterministically and is in the key), so a second run solves nothing;
+/// `sakura build` never drops a check for it, even under the same `rlimit`.
+#[cfg(unix)]
+#[test]
+fn verify_reuses_resource_limit_unknowns_and_build_keeps_their_checks() {
+    use std::os::unix::fs::PermissionsExt;
+    if !has_z3() {
+        return;
+    }
+    let dir = tmp("verify-rlimit", SCALE);
+    // The build recomputes keys with the manifest's `rlimit`: the same as `verify`'s here.
+    std::fs::write(
+        dir.join("sakura.toml"),
+        "[package]\nname = \"verify_rlimit\"\n\n[permissions]\n\n[verify]\nrlimit = 1\n",
+    )
+    .unwrap();
+    let state = outside(&dir, "state");
+    let log = outside(&dir, "z3.log");
+    let wrapper = outside(&dir, "z3");
+    std::fs::write(
+        &wrapper,
+        format!(
+            "#!/bin/sh\necho \"$1\" >> '{}'\nexec z3 \"$@\"\n",
+            log.display()
+        ),
+    )
+    .unwrap();
+    std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let solves = || {
+        let n = std::fs::read_to_string(&log)
+            .unwrap_or_default()
+            .lines()
+            .filter(|l| *l != "--version")
+            .count();
+        let _ = std::fs::remove_file(&log);
+        n
+    };
+    let verify = || {
+        let args = [
+            "verify",
+            "--json",
+            "--solver",
+            wrapper.to_str().unwrap(),
+            "main.sak",
+        ];
+        let out = sakura_in_state(&args, &dir, &state);
+        let mut recs = common::json_lines(&String::from_utf8(out.stdout).unwrap()).unwrap();
+        let summary = recs.pop().unwrap();
+        (recs, summary)
+    };
+    let (first, summary) = verify();
+    assert!(solves() > 0);
+    let limited = first
+        .iter()
+        .filter(|r| r["status"] == "unknown" && r["reason"]["kind"] == "resource_limit")
+        .count();
+    assert!(limited > 0, "{first:#?}");
+    assert_eq!(summary["unknown"], limited);
+    assert_eq!(summary["reused"], 0);
+    let (again, summary) = verify();
+    assert_eq!(again, first, "the same records");
+    assert_eq!(solves(), 0, "a resource-limit unknown is not solved again");
+    assert_eq!(summary["reused"], first.len());
+
+    let out = sakura_in_state(&["build", "--manifest", "main.sak"], &dir, &state);
+    assert_eq!(out.status.code(), Some(0), "{out:?}");
+    let js = std::fs::read_to_string(dir.join("target/sakura/js/verify_rlimit/main.js")).unwrap();
+    assert!(js.contains("postcondition `scale` of scale violated"));
+    let manifest = std::fs::read_to_string(dir.join("target/sakura/manifest.json")).unwrap();
+    assert!(!manifest.contains("\"proved\""), "{manifest}");
+}
+
+/// Plan V4b, design §17.164 (4): on the i64 profile (`--target wasm`) a `disproved` obligation is
+/// replayed on the LIR evaluator, whose `Int` is WASM's: the wrong `ensures` defects with `D021`
+/// and the multiplication's overflow with `D001`, so both are `confirmed`. A function whose
+/// parameters are not all `Int` or `Bool` is not replayed.
+#[test]
+fn verify_confirms_i64_counterexamples_by_replay() {
+    if !has_z3() {
+        return;
+    }
+    let src = SCALE.replace(
+        "pub fn main",
+        "fn first_or(xs: List<Int>, d: Int) -> Int\n  ensures result > d\n{ d }\n\npub fn main",
+    );
+    let dir = tmp("verify-i64", &src);
+    let state = outside(&dir, "state");
+    let out = sakura_in_state(
+        &["verify", "--json", "--target", "wasm", "main.sak"],
+        &dir,
+        &state,
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert_eq!(out.status.code(), Some(1), "{stdout}");
+    let recs = common::json_lines(&stdout).unwrap();
+    let find = |symbol: &str, clause: &str| {
+        recs.iter()
+            .find(|r| r["symbol_id"] == symbol && r["clause"].as_str().unwrap().starts_with(clause))
+            .unwrap_or_else(|| panic!("{symbol} {clause}\n{stdout}"))
+    };
+    let wrong = find("main::main::scale_wrong", "ensures");
+    assert_eq!(wrong["profile"], "i64");
+    assert_eq!(wrong["status"], "disproved");
+    assert_eq!(wrong["replay"], "confirmed");
+    let overflow = find("main::main::scale", "overflow");
+    assert_eq!(overflow["status"], "disproved");
+    assert_eq!(overflow["replay"], "confirmed");
+    let input = |k: &str| overflow["counterexample"]["inputs"][k].as_str().unwrap();
+    let (p, total) = (
+        input("p").parse::<i128>().unwrap(),
+        input("total").parse::<i128>().unwrap(),
+    );
+    assert!(
+        total * p > i64::MAX as i128,
+        "the model overflows i64: {p} * {total}"
+    );
+    let unreplayed = find("main::main::first_or", "ensures");
+    assert_eq!(unreplayed["status"], "disproved");
+    assert_ne!(unreplayed["replay"], "confirmed");
+    // The JS profile still replays on the Core evaluator (`D003`, not `D001`).
+    let js = sakura_in_state(&["verify", "--json", "main.sak"], &dir, &state);
+    let js = common::json_lines(&String::from_utf8_lossy(&js.stdout)).unwrap();
+    let js_overflow = js
+        .iter()
+        .find(|r| r["symbol_id"] == "main::main::scale" && r["obligation"] == "overflow")
+        .unwrap();
+    assert_eq!(js_overflow["profile"], "js");
+    assert_eq!(js_overflow["replay"], "confirmed");
+    let human = sakura_in_state(&["verify", "--target", "wasm", "main.sak"], &dir, &state);
+    let text = String::from_utf8_lossy(&human.stderr);
+    assert!(text.contains(" reused) (profile i64,"), "{text}");
+}
+
+/// Design §17.163 (3), §17.164 (4): `sakura build --target wasm --manifest` writes the manifest
+/// with `target: "wasm"` and the WASM runtime in its trusted base; no WASM build drops a check,
+/// so every obligation is `runtime_checked`, even after `sakura verify --target wasm`.
+#[test]
+fn build_wasm_manifest_names_its_target() {
+    let dir = tmp("manifest-wasm", AUDITED);
+    let state = outside(&dir, "state");
+    let out = sakura_in_state(
+        &["build", "--target", "wasm", "--manifest", "main.sak"],
+        &dir,
+        &state,
+    );
+    assert_eq!(out.status.code(), Some(0), "{out:?}");
+    let read = || -> serde_json::Value {
+        let text = std::fs::read_to_string(dir.join("target/sakura/manifest.json")).unwrap();
+        serde_json::from_str(&text).unwrap()
+    };
+    let m = read();
+    assert_eq!(m["schema_version"], "1.1");
+    assert_eq!(m["target"], "wasm");
+    let runtime: Vec<(&str, &str)> = m["trusted"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|t| t["kind"] == "runtime")
+        .map(|t| (t["id"].as_str().unwrap(), t["sha256"].as_str().unwrap()))
+        .collect();
+    let ids: Vec<&str> = runtime.iter().map(|r| r.0).collect();
+    assert_eq!(
+        ids,
+        ["sakura_rt.wasm", "sakura_wasm_host.js", "sakura_runtime.js"]
+    );
+    for (id, sha) in &runtime[1..] {
+        let emitted = std::fs::read(dir.join("target/sakura/wasm").join(id)).unwrap();
+        assert_eq!(*sha, sakura_diagnostics::sha256(&emitted), "{id}");
+    }
+    let statuses = |m: &serde_json::Value| -> Vec<String> {
+        m["obligations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|o| o["status"].as_str().unwrap().to_owned())
+            .collect()
+    };
+    assert!(!statuses(&m).is_empty());
+    assert!(statuses(&m).iter().all(|s| s == "runtime_checked"));
+    if !has_z3() {
+        return;
+    }
+    sakura_in_state(&["verify", "--target", "wasm", "main.sak"], &dir, &state);
+    assert_eq!(
+        read()["target"],
+        "wasm",
+        "verify records the profile it used"
+    );
+    sakura_in_state(
+        &["build", "--target", "wasm", "--manifest", "main.sak"],
+        &dir,
+        &state,
+    );
+    assert!(statuses(&read()).iter().all(|s| s == "runtime_checked"));
 }
 
 /// Design §17.98, §17.105: a proof over an impossible path is `proved` with

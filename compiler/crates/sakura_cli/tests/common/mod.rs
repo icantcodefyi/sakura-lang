@@ -196,7 +196,12 @@ pub fn json_lines(stdout: &str) -> Result<Vec<serde_json::Value>, String> {
     for line in stdout.lines() {
         let v: serde_json::Value =
             serde_json::from_str(line).map_err(|e| format!("bad JSON line {line:?}: {e}"))?;
-        if v["schema_version"] != "1.0" || !v["kind"].is_string() {
+        // Major 1, the same MINOR on every line of one command's output (§12.2, §17.164).
+        let version = v["schema_version"].as_str().unwrap_or("");
+        let same = recs
+            .first()
+            .is_none_or(|r: &serde_json::Value| r["schema_version"] == version);
+        if !version.starts_with("1.") || !same || !v["kind"].is_string() {
             return Err(format!("record without schema_version/kind: {line}"));
         }
         recs.push(v);

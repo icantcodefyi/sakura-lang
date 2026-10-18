@@ -504,11 +504,12 @@ fn dispatch(command: Command) -> ExitCode {
                 };
             }
             if target == "wasm" && emit == "js" {
-                if manifest {
-                    return Err(usage_error("`--manifest` needs `--target js`"));
-                }
                 let out_dir = out_dir.unwrap_or_else(|| Path::new("target/sakura/wasm").into());
-                return wasm::build(json, &snapshot, &out_dir, &opts, false).map(|_| ());
+                wasm::build(json, &snapshot, &out_dir, &opts, false)?;
+                if manifest {
+                    write_manifest(&snapshot, "wasm").map_err(usage_error)?;
+                }
+                return Ok(());
             }
             let out_dir = out_dir.unwrap_or_else(|| Path::new("target/sakura").join(&emit));
             if emit == "lir" {
@@ -521,9 +522,9 @@ fn dispatch(command: Command) -> ExitCode {
                 };
                 return build_lir(json, &snapshot, &out_dir, layout);
             }
-            let dir = build(json, &snapshot, &out_dir, opts, false)?;
+            build(json, &snapshot, &out_dir, opts, false)?;
             if manifest {
-                write_manifest(&snapshot, &dir).map_err(usage_error)?;
+                write_manifest(&snapshot, "js").map_err(usage_error)?;
             }
             Ok(())
         }) {
@@ -798,23 +799,20 @@ fn dump_owned(m: &sakura_core::Module) -> String {
         .collect()
 }
 
-/// Writes `target/sakura/manifest.json` for a build emitted into `dir`.
-fn write_manifest(snapshot: &Snapshot, dir: &Path) -> Result<(), String> {
-    let runtime = dir.join("sakura_runtime.js");
-    let runtime =
-        std::fs::read_to_string(&runtime).map_err(|e| format!("{}: {e}", runtime.display()))?;
-    let statuses = verify::build_statuses(snapshot);
-    write_manifest_with(&Analysis::analyze(snapshot), &runtime, &statuses)
+/// Writes `target/sakura/manifest.json` for the build just made for `target`.
+fn write_manifest(snapshot: &Snapshot, target: &str) -> Result<(), String> {
+    let statuses = verify::build_statuses(snapshot, target);
+    write_manifest_with(&Analysis::analyze(snapshot), target, &statuses)
 }
 
 /// Writes `target/sakura/manifest.json` with each obligation's status from `statuses` (by id),
 /// `runtime_checked` for the rest.
 fn write_manifest_with(
     a: &sakura_analysis::Analyzed,
-    runtime: &str,
+    target: &str,
     statuses: &std::collections::BTreeMap<String, &str>,
 ) -> Result<(), String> {
-    let value = manifest::manifest(a, runtime, statuses);
+    let value = manifest::manifest(a, target, statuses);
     let path = Path::new("target/sakura/manifest.json");
     std::fs::create_dir_all("target/sakura").map_err(|e| format!("target/sakura: {e}"))?;
     let text = serde_json::to_string_pretty(&value).unwrap_or_default() + "\n";

@@ -6,7 +6,8 @@
 //! one record per obligation, stores each `proved`/`disproved` verdict in the proof cache under
 //! its `sakura-proof-v1` key with the installation key's MAC, and updates the manifest. An
 //! obligation whose key has an authenticated record from the same solvers and limits is not
-//! solved again: its record is rebuilt from the cached answers. `sakura
+//! solved again: its record is rebuilt from the cached answers, and the summary counts it as
+//! `reused` (§17.164). `sakura
 //! build` recomputes the keys from the program it is building and drops a check only when the
 //! cache holds an authenticated `proved` record for every obligation of that check.
 
@@ -30,6 +31,8 @@ use serde_json::{Value, json};
 const PROOFS: &str = "target/sakura/proofs";
 /// The trust policy every cache key names (§17.86): std contracts serve as summaries.
 const TRUST: &str = "sakura-trust-v1";
+/// The JSON Lines schema of every record `sakura verify` writes (§12.2, §17.164).
+const SCHEMA: &str = "1.1";
 
 pub(crate) fn profile(target: &str) -> Profile {
     match target {
@@ -115,11 +118,15 @@ pub(crate) fn verify(opts: &Options, paths: &[PathBuf]) -> ExitCode {
     let clauses = a.obligations();
     let (info, cross) = (z3.info(), cvc5.as_ref().map(Solver::info));
     let mut results = Vec::new();
+    let mut reused = 0;
     for vc in vc::generate(&core, profile) {
         for o in &vc.obligations {
             let key = cache::key(&core, &vc, o, &info, TRUST);
             let mut r = match cache.reuse(&key, &vc, o, &info, cross.as_ref()) {
-                Some(r) => r,
+                Some(r) => {
+                    reused += 1;
+                    r
+                }
                 None => {
                     let (r, answers) = solver::solve(&vc, o, &z3, cvc5.as_ref());
                     if let Some(e) = Entry::new(key, &r, &answers, cache.key.as_ref())
@@ -130,8 +137,8 @@ pub(crate) fn verify(opts: &Options, paths: &[PathBuf]) -> ExitCode {
                     r
                 }
             };
-            if r.status == Status::Disproved && profile == Profile::Js {
-                replay(&module, &vc, o, &mut r);
+            if r.status == Status::Disproved {
+                replay(&module, profile, &vc, o, &mut r);
             }
             let manifest_id = clause_id(&clauses, &core, o.contract);
             results.push((r, manifest_id));
@@ -145,7 +152,7 @@ pub(crate) fn verify(opts: &Options, paths: &[PathBuf]) -> ExitCode {
         }
     }
     let statuses = statuses.into_iter().map(|(k, s)| (k, name(s))).collect();
-    if let Err(e) = crate::write_manifest_with(&a, sakura_codegen_js::RUNTIME, &statuses) {
+    if let Err(e) = crate::write_manifest_with(&a, opts.target, &statuses) {
         return crate::usage_error(e);
     }
     let files = snapshot.files();
@@ -159,10 +166,12 @@ pub(crate) fn verify(opts: &Options, paths: &[PathBuf]) -> ExitCode {
         for (r, id) in &results {
             println!("{}", record(r, id.as_deref(), snapshot.hash(), files));
         }
-        for d in diagnostic_records(&warnings, files, snapshot.hash()) {
+        for mut d in diagnostic_records(&warnings, files, snapshot.hash()) {
+            d["schema_version"] = json!(SCHEMA);
             println!("{d}");
         }
         let mut summary = summary_record(&warnings, snapshot.hash());
+        summary.insert("schema_version".into(), json!(SCHEMA));
         for s in [
             Status::Proved,
             Status::Disproved,
@@ -171,6 +180,7 @@ pub(crate) fn verify(opts: &Options, paths: &[PathBuf]) -> ExitCode {
         ] {
             summary.insert(name(s).into(), count(s).into());
         }
+        summary.insert("reused".into(), reused.into());
         println!("{}", Value::Object(summary));
     } else {
         for (r, _) in &results {
@@ -178,7 +188,7 @@ pub(crate) fn verify(opts: &Options, paths: &[PathBuf]) -> ExitCode {
         }
         eprint!("{}", render_human(&warnings, &crate::display_files(files)));
         eprintln!(
-            "{} proved, {} disproved, {} unknown, {} unsupported (profile {}, z3 {}, rlimit {})",
+            "{} proved, {} disproved, {} unknown, {} unsupported ({reused} reused) (profile {}, z3 {}, rlimit {})",
             count(Status::Proved),
             count(Status::Disproved),
             count(Status::Unknown),
@@ -292,10 +302,18 @@ fn human(r: &Record, files: &[SourceFile]) -> String {
     out
 }
 
-/// Runs a `disproved` obligation's function on the model's inputs with the Core evaluator, and
-/// marks the counterexample `confirmed` when the run defects as the obligation predicts (§17.85).
-/// Only functions without effects whose parameters are all `Int` or `Bool` are replayed.
-fn replay(module: &sakura_core::Module, vc: &DefVc, o: &Obligation, r: &mut Record) {
+/// Runs a `disproved` obligation's function on the model's inputs and marks the counterexample
+/// `confirmed` when the run defects as the obligation predicts (§17.85): on the JS profile with
+/// the Core evaluator (JS-safe integers), on the i64 profile with the LIR evaluator, whose `Int`
+/// is WASM's (plan V4b, §17.164). Only functions without effects whose parameters are all `Int`
+/// or `Bool` are replayed.
+fn replay(
+    module: &sakura_core::Module,
+    profile: Profile,
+    vc: &DefVc,
+    o: &Obligation,
+    r: &mut Record,
+) {
     use sakura_core::{Atom, Bind, Expr, FnDef, FnKind, Lit, Local, LocalDecl, Row, Ty};
     let Some(c) = &r.counterexample else { return };
     let target = sakura_core::DefId(vc.def);
@@ -340,17 +358,33 @@ fn replay(module: &sakura_core::Module, vc: &DefVc, o: &Obligation, r: &mut Reco
         refined_params: vec![],
     });
     m.entry = Some(sakura_core::DefId(m.defs.len() as u32 - 1));
-    let expected: &[&str] = match o.kind {
-        Kind::Ensures => &["D021"],
-        Kind::Requires => &["D020"],
-        Kind::Where => &["D010"],
-        Kind::Overflow => &["D003"],
-        Kind::Division => &["D002", "D003"],
+    // Leaving JS's safe range is `D003`; i64 overflow, `MIN / -1` included, is `D001` (§17.80).
+    let expected: &[&str] = match (o.kind, profile) {
+        (Kind::Ensures, _) => &["D021"],
+        (Kind::Requires, _) => &["D020"],
+        (Kind::Where, _) => &["D010"],
+        (Kind::Overflow, Profile::Js) => &["D003"],
+        (Kind::Overflow, Profile::I64) => &["D001"],
+        (Kind::Division, Profile::Js) => &["D002", "D003"],
+        (Kind::Division, Profile::I64) => &["D001", "D002"],
     };
-    let out = sakura_eval::run_main(&m, sakura_eval::Limits::default());
-    if let Err(sakura_eval::Stop::Defect { code, .. }) = &out.result
-        && expected.contains(&code.as_str())
-    {
+    let code = match profile {
+        Profile::Js => match sakura_eval::run_main(&m, sakura_eval::Limits::default()).result {
+            Err(sakura_eval::Stop::Defect { code, .. }) => code,
+            _ => return,
+        },
+        Profile::I64 => {
+            let Ok(lir) = sakura_lir::from_core(&m, sakura_lir::Layout::Tagged) else {
+                return;
+            };
+            let lir_limits = sakura_eval::lir::Limits::default();
+            match sakura_eval::lir::run_main(&lir, lir_limits).ending {
+                sakura_eval::lir::Ending::Defect { code, .. } => code,
+                _ => return,
+            }
+        }
+    };
+    if expected.contains(&code.as_str()) {
         r.replay = Some(Replay::Confirmed);
     }
 }
@@ -409,8 +443,12 @@ pub(crate) fn build_js(snapshot: &Snapshot, opts: &BuildOptions) -> BuildResult 
 }
 
 /// The manifest statuses of `sakura build --manifest`: `proved` for every clause whose checks
-/// the build dropped; every other clause stays `runtime_checked`.
-pub(crate) fn build_statuses(snapshot: &Snapshot) -> BTreeMap<String, &'static str> {
+/// the build dropped; every other clause stays `runtime_checked`. Only the JS build drops checks
+/// (C1/V3 deviation 2), so a WASM manifest is all `runtime_checked` until M4-OPT.
+pub(crate) fn build_statuses(snapshot: &Snapshot, target: &str) -> BTreeMap<String, &'static str> {
+    if target != "js" {
+        return BTreeMap::new();
+    }
     let a = Analysis::analyze(snapshot);
     match Analysis::lower_core(snapshot, &BuildOptions::default()) {
         (Some(m), _) => proved(&a, &m, Profile::Js).1,

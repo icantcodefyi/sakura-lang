@@ -7,14 +7,35 @@ use sakura_analysis::Analyzed;
 use sakura_diagnostics::{Span, sha256, span_json};
 use serde_json::{Value, json};
 
-/// The manifest of a successful build whose runtime is `runtime` (`sakura_runtime.js` as emitted),
-/// with `statuses` by obligation id; an obligation without one is `runtime_checked`.
-pub(crate) fn manifest(a: &Analyzed, runtime: &str, statuses: &BTreeMap<String, &str>) -> Value {
+/// The runtime a build for `target` runs on: for WASM, `sakura_rt` linked into the module and the
+/// Node host with the JS runtime it delegates to (§17.163 (3)).
+fn runtimes(target: &str) -> Vec<(&'static str, &'static [u8])> {
+    let js = (
+        sakura_codegen_js::RUNTIME_FILE,
+        sakura_codegen_js::RUNTIME.as_bytes(),
+    );
+    match target {
+        "wasm" => {
+            let [(host, host_text), _] = sakura_codegen_wasm::HOST_FILES;
+            vec![
+                ("sakura_rt.wasm", sakura_codegen_wasm::RUNTIME),
+                (host, host_text.as_bytes()),
+                js,
+            ]
+        }
+        _ => vec![js],
+    }
+}
+
+/// The manifest of a successful build for `target` (`js` or `wasm`, the profile its obligations
+/// were discharged for), with `statuses` by obligation id; an obligation without one is
+/// `runtime_checked`.
+pub(crate) fn manifest(a: &Analyzed, target: &str, statuses: &BTreeMap<String, &str>) -> Value {
     let version = env!("CARGO_PKG_VERSION");
-    let mut trusted = vec![
-        json!({"kind": "compiler", "id": format!("sakura@{version}")}),
-        json!({"kind": "runtime", "id": "sakura_runtime.js", "sha256": sha256(runtime.as_bytes())}),
-    ];
+    let mut trusted = vec![json!({"kind": "compiler", "id": format!("sakura@{version}")})];
+    for (id, bytes) in runtimes(target) {
+        trusted.push(json!({"kind": "runtime", "id": id, "sha256": sha256(bytes)}));
+    }
     for site in crate::audit::sites(a, true) {
         let id = site["symbol_id"].as_str().unwrap_or("");
         let kind = match site["site"].as_str() {
@@ -41,7 +62,9 @@ pub(crate) fn manifest(a: &Analyzed, runtime: &str, statuses: &BTreeMap<String, 
         })
         .collect();
     json!({
-        "schema_version": "1.0",
+        // 1.1 added `target` (§17.163 (3)).
+        "schema_version": "1.1",
+        "target": target,
         "snapshot": a.snapshot.hash(),
         // Set by release builds; local builds do not know their commit.
         "compiler": {"version": version, "git": option_env!("SAKURA_GIT_COMMIT")},

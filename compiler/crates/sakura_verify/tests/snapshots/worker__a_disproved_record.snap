@@ -3,7 +3,7 @@ source: crates/sakura_verify/tests/worker.rs
 expression: r
 ---
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "kind": "obligation",
   "id": "o:2ee927e19d68c8ecb2010be3237393f2e280e4910c7d5dc6cb4f62c07a364d59",
   "symbol_id": "main::main::scale_wrong",
