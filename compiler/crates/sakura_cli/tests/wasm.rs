@@ -336,6 +336,60 @@ test "replays" {{
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Design §17.159 (6) (security review C1): a cassette exchange line missing a field fails std
+/// `Http.recording`'s open with an `HttpError` naming the file, the line and the field, on both
+/// backends (the WASM host opens cassettes with the JS runtime), not a `D090` at lookup.
+#[test]
+fn a_malformed_cassette_line_is_an_http_error_naming_it() {
+    if !available() {
+        eprintln!("skipped: node is missing");
+        return;
+    }
+    let dir = std::env::temp_dir().join(format!("sakura-wasm-cassette-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::create_dir_all(dir.join("tests/fixtures")).unwrap();
+    std::fs::write(
+        dir.join("sakura.toml"),
+        "[package]\nname = \"c\"\nversion = \"0.1.0\"\nedition = \"2026\"\n",
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("tests/fixtures/api.jsonl"),
+        "{\"schema_version\":\"1.0\",\"kind\":\"cassette\"}\n\
+         {\"method\":\"GET\",\"url\":\"https://api.example/a\",\"headers\":[],\"body\":\"\",\
+         \"status\":200,\"response_body\":\"live\"}\n",
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("src/main.sakura"),
+        r#"import std/fs.{Fs}
+import std/http.{Http}
+import std/request.{Method, Request}
+import std/response.{HttpError}
+import std/url.{Url}
+
+test "a malformed exchange names its line" {
+  with Fs.rooted(Test.fixtures()), Http.scripted([]), Http.recording("api.jsonl") {
+    match try { Http.send(Request.of(Method.Get, Url.from("https://api.example/a"))) } {
+      Err(HttpError { status, reason }) => {
+        expect_eq(status, None)
+        expect_eq(reason, "api.jsonl:2: not a cassette exchange (missing response_headers)")
+      },
+      other => expect_eq("{other}", "an HttpError"),
+    }
+  }
+}
+"#,
+    )
+    .unwrap();
+    for target in ["js", "wasm"] {
+        let out = sakura(&["test", "--target", target, "--json"], &dir);
+        assert_eq!(out.code, Some(0), "{target}: {}{}", out.stdout, out.stderr);
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// `trace` without its task numbers.
 fn untasked(trace: &str) -> String {
     trace

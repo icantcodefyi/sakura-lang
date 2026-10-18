@@ -45,6 +45,10 @@ published yet.
 
 ### Fixed
 
+- A cassette line that lacks an exchange field (or has one of the wrong type) now fails
+  `Http.recording`'s open with `<path>:<line>: not a cassette exchange (missing <field>)`
+  instead of a `D090` at replay (security review C1).
+
 - The Sakura skill starts with a bounded guide read and recommends targeted lookup
   to avoid repeated full-guide input costs. The first paid DX5 pilot now has a
   public report; no additional episodes are authorized.

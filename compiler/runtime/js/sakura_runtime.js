@@ -3486,7 +3486,21 @@ function requestKey(req) {
   return exchangeKey(method, req.url, items(req.headers).map(([n, v]) => [n, v]), req.body);
 }
 
-/** Reads `path` inside `dir` (a missing file is empty); `Ok(id)` or `Err(reason)`. */
+/** The first field a cassette exchange line `x` lacks or has of the wrong type, or `undefined`. */
+function missingExchangeField(x) {
+  const is = (f, ok) => x !== null && typeof x === "object" && ok(x[f]);
+  const str = (v) => typeof v === "string";
+  for (const f of ["method", "url", "body"]) if (!is(f, str)) return f;
+  for (const f of ["headers", "response_headers"]) if (!is(f, Array.isArray)) return f;
+  if (!is("status", Number.isInteger)) return "status";
+  if (!is("response_body", str) && !is("response_body_base64", str)) return "response_body";
+  return undefined;
+}
+
+/**
+ * Reads `path` inside `dir` (a missing file is empty); `Ok(id)` or `Err(reason)`, naming the
+ * line of a malformed header or exchange (design §17.159 (6)).
+ */
 export function http_recording_open(dir, path) {
   const r = inside(dir, path, recording());
   let text = "";
@@ -3518,6 +3532,8 @@ export function http_recording_open(dir, path) {
       headed = true;
       continue;
     }
+    const missing = missingExchangeField(x);
+    if (missing !== undefined) return Err(`${path}:${i + 1}: not a cassette exchange (missing ${missing})`);
     const key = exchangeKey(x.method, x.url, x.headers, x.body);
     if (!byKey.has(key)) byKey.set(key, { next: 0, exchanges: [] });
     byKey.get(key).exchanges.push(x);

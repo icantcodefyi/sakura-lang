@@ -743,6 +743,29 @@ test("cassettes record, replay in order and never touch secret headers", async (
     fs.writeFileSync(path.join(dir, "bad.jsonl"), "{\n");
     assert.match(rt.http_recording_open(rt.fixtures_dir(dir, false), "bad.jsonl").fields[0], /^bad\.jsonl:1: /);
 
+    // Design §17.159 (6): an exchange line missing a field (or with one of the wrong type) fails
+    // `open` naming the file, the line and the field, not a `D090` at lookup.
+    const good = JSON.parse(text.split("\n")[1]);
+    const header = text.split("\n")[0];
+    const { response_body: _, ...bodiless } = good;
+    for (const [x, field] of [
+      [{ ...good, method: undefined }, "method"],
+      [{ ...good, url: 7 }, "url"],
+      [{ ...good, body: undefined }, "body"],
+      [{ ...good, headers: "accept" }, "headers"],
+      [{ ...good, response_headers: undefined }, "response_headers"],
+      [{ ...good, status: 200.5 }, "status"],
+      [bodiless, "response_body"],
+      [[], "method"],
+    ]) {
+      fs.writeFileSync(path.join(dir, "shape.jsonl"), `${header}\n\n${JSON.stringify(x)}\n`);
+      const err = rt.http_recording_open(rt.fixtures_dir(dir, false), "shape.jsonl");
+      assert.deepEqual(err, rt.Err(`shape.jsonl:3: not a cassette exchange (missing ${field})`));
+    }
+    const { response_body: __, ...base64 } = { ...good, response_body_base64: "b25l" };
+    fs.writeFileSync(path.join(dir, "shape.jsonl"), `${header}\n${JSON.stringify(base64)}\n`);
+    assert.equal(rt.http_recording_open(rt.fixtures_dir(dir, false), "shape.jsonl").tag, 0);
+
     // Design §17.122: the header line is required on open, naming the file and the fix.
     const exchange = text.split("\n")[1];
     for (const [name, content] of [
