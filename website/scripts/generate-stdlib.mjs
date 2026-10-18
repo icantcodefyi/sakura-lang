@@ -2,7 +2,10 @@ import { readFileSync, writeFileSync } from "node:fs";
 
 const index = readFileSync(new URL("../../compiler/std/INDEX.md", import.meta.url), "utf8");
 const prelude = index.slice(index.indexOf("## Prelude"), index.indexOf("## Conventions"));
-const signatures = index.slice(index.indexOf("## Signatures"), index.indexOf("## Deviations"));
+// Rust generator markers are HTML comments, which MDX cannot parse.
+const signatures = index
+  .slice(index.indexOf("## Signatures"), index.indexOf("## Deviations"))
+  .replace(/^<!-- agent_docs:.*-->\n\n?/gm, "");
 const intro = `---
 title: Standard library
 description: Public std signatures generated from compiler/std/INDEX.md, with current JS limitations.
