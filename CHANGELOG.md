@@ -58,6 +58,15 @@ published yet.
 
 ### Added
 
+- `--target wasm` runs direct code without continuation frames: each direct top-level
+  function whose body is first-order gets a native twin with `Int`/`Float` arguments in
+  registers, and deep recursion falls back to frames past a stack gauge (design §17.118).
+  `fib` 30 runs about 4× faster on Node; output, defects and traces are unchanged.
+  `--no-direct` builds the all-frame module.
+- The WASM module's `stats()` export also reports frames, `Int`/`Float` boxes, `Dup`s and
+  `Drop`s (runtime ABI 1.1.0), and `SAKURA_WASM_STATS=<path>` makes the WASM host append them
+  at exit. The LIR computes the same direct facts as `sakura build --dump direct`.
+
 - `--target wasm` runs `Http.host()` sends and streams, `Sql.sqlite`, `Serve.host()`,
   `Llm.stream` through `Llm.anthropic` and `Log.json()` as the JS backend does; every
   semantics fixture and example agrees with JS on output and effect trace, with `@js`/`@wasm`
