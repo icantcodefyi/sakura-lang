@@ -1,0 +1,6 @@
+// milestone: M3
+// expect: V1002
+// §17.165: the one std/list function within two edits is suggested, machine-applicable.
+import std/list
+
+pub fn size() -> Int { List.lenth([1]) }

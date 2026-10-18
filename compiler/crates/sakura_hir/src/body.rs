@@ -815,7 +815,9 @@ impl<'a> BodyCx<'a> {
             ),
         };
         let mut d = diag::error(diag::UNRESOLVED_NAME, file, name.text_range(), what);
-        if let Some(s) = did_you_mean(member, cands.iter().map(String::as_str)) {
+        let near = did_you_mean(member, cands.iter().map(String::as_str))
+            .or_else(|| diag::only_within(member, cands.iter().map(String::as_str), 2));
+        if let Some(s) = near {
             d.message.push_str(&format!("; did you mean `{s}`?"));
             d = d.with_fix(diag::replace_fix(
                 file,

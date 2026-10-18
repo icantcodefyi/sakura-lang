@@ -1,0 +1,6 @@
+// milestone: M3
+// expect: V1002
+// §17.165: `len` is three edits from `lenght`, so nothing is guessed.
+import std/list
+
+pub fn size() -> Int { List.lenght([1]) }

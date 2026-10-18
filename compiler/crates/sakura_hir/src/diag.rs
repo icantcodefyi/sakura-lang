@@ -72,6 +72,17 @@ pub fn did_you_mean<'a>(name: &str, candidates: impl Iterator<Item = &'a str>) -
     best.map(|(_, c)| c)
 }
 
+/// The one candidate within `limit` edits of `name`, if exactly one is (design §17.165).
+pub fn only_within<'a>(
+    name: &str,
+    candidates: impl Iterator<Item = &'a str>,
+    limit: usize,
+) -> Option<&'a str> {
+    let mut near = candidates.filter(|c| *c != name && levenshtein(name, c) <= limit);
+    let first = near.next()?;
+    near.all(|c| c == first).then_some(first)
+}
+
 /// Optimal string alignment distance: Levenshtein plus adjacent transpositions (`lsit` → `list`).
 fn levenshtein(a: &str, b: &str) -> usize {
     let a: Vec<char> = a.chars().collect();
