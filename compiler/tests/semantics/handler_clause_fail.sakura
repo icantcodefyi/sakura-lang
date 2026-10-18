@@ -1,0 +1,26 @@
+// milestone: M3
+// covers: performance-r1 WS-S; design §17.111–§17.116
+
+error Boom(value: Int)
+
+effect Probe {
+  fn read() -> Int ! {Fail<Boom>}
+}
+
+fn broken() -> Handler<Probe> {
+  handler Probe {
+    fn read() { fail Boom { value: 7 } }
+  }
+}
+
+fn working() -> Handler<Probe> {
+  handler Probe {
+    fn read() { 42 }
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let failed = try { with broken() { Probe.read() } }
+  Console.print("{failed}")
+  Console.print("{try { with working() { Probe.read() } }}")
+}

@@ -1,0 +1,14 @@
+// milestone: M3
+// covers: performance-r1 WS-S; design §17.111–§17.116
+
+pub fn main() -> Unit ! {Console} {
+  let original = List.range(0, 100)
+  let alias = original
+  let mapped = List.map(original, fn(x) { x + 1 })
+  let filtered = List.filter(mapped, fn(x) { x % 2 == 0 })
+  let updated = List.push(original, 100)
+  Console.print("{List.len(original)} {List.sum(original)} {original == alias}")
+  Console.print("{List.len(mapped)} {List.sum(mapped)}")
+  Console.print("{List.len(filtered)} {List.sum(filtered)}")
+  Console.print("{List.len(updated)} {List.sum(updated)} {List.len(alias)}")
+}

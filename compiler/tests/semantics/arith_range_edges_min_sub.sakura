@@ -1,0 +1,9 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D003
+// covers: performance-r1 WS-S; design §17.111–§17.116
+
+pub fn main() -> Unit ! {Console} {
+  let one = 1
+  Console.print("{-9_007_199_254_740_991 - one}")
+}

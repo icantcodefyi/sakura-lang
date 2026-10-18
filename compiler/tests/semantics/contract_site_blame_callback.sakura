@@ -1,0 +1,12 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D020
+// covers: performance-r1 WS-S; design §17.111–§17.116
+
+// Today the callback D020 reports only the clause span; WS-P5 owns caller-site blame.
+fn positive(x: Int) -> Int
+  requires nonzero: x > 0
+  ensures result > 0
+{ x }
+
+pub fn main() -> Unit ! {Console} { let _ = List.map([0], positive) }

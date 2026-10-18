@@ -1,0 +1,21 @@
+// milestone: M3
+// covers: performance-r1 WS-S; design §17.111–§17.116
+
+type Op = { apply: fn(Int) -> Int }
+
+fn pure(op: Op, x: Int) -> Int { op.apply(x) }
+
+fn effectful(op: Op, x: Int) -> Int ! {Console} {
+  Console.print("effectful")
+  op.apply(x)
+}
+
+pub fn main() -> Unit ! {Console} {
+  let offset = 7
+  let f = fn(x) { x + offset }
+  let op = Op { apply: f }
+  let table: Map<String, fn(Int) -> Int> = Map.insert(Map.empty(), "add", f)
+  let stored = Map.get(table, "add").expect("stored closure")
+  Console.print("{pure(op, 3)} {stored(5)}")
+  Console.print("{effectful(op, 4)} {List.map([1, 2], stored)}")
+}

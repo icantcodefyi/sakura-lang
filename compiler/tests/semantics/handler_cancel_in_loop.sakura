@@ -1,0 +1,47 @@
+// milestone: M3
+// covers: performance-r1 WS-S; design §17.111–§17.116
+
+error Stop
+
+effect Counter {
+  fn next() -> Int
+}
+
+fn counter() -> Handler<Counter> {
+  handler Counter {
+    var n = 0
+    fn next() {
+      n = n + 1
+      n
+    }
+  }
+}
+
+fn spin() -> Int ! {Clock, Console, Counter} {
+  var n = 0
+  for _ in 0..1_000_000 {
+    n = Counter.next()
+    if n == 1 {
+      Console.print("started")
+      Clock.sleep(Duration.millis(10))
+    }
+  }
+  Console.print("finished")
+  n
+}
+
+pub fn main() -> Unit ! {Console} {
+  with Clock.virtual(), Task.deterministic(7) {
+    let outcome = try {
+      Task.all([
+        fn() { with counter() { spin() } },
+        fn() {
+          Clock.sleep(Duration.millis(1))
+          fail Stop
+        },
+      ])
+    }
+    Console.print("{outcome}")
+    Console.print("joined")
+  }
+}

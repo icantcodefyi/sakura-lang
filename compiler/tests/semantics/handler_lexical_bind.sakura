@@ -1,0 +1,29 @@
+// milestone: M3
+// covers: performance-r1 WS-S; design §17.111–§17.116
+
+effect Counter {
+  fn next() -> Int
+}
+
+fn counter(start: Int) -> Handler<Counter> {
+  handler Counter {
+    var n = start
+    fn next() {
+      n = n + 1
+      n
+    }
+  }
+}
+
+fn escaped() -> fn() -> Int ! {Counter} { with counter(100) { fn() { Counter.next() } } }
+
+pub fn main() -> Unit ! {Console} {
+  with counter(0) {
+    for _ in 0..3 { Console.print("{Counter.next()}") }
+    let dynamic = fn() { Counter.next() }
+    with counter(10) { Console.print("{dynamic()}") }
+    Console.print("{dynamic()}")
+  }
+  let later = escaped()
+  with counter(20) { Console.print("{later()}") }
+}

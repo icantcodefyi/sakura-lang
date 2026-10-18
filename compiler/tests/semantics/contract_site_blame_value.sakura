@@ -1,0 +1,14 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D020
+// covers: performance-r1 WS-S; design §17.111–§17.116
+
+fn positive(x: Int) -> Int
+  requires nonzero: x > 0
+  ensures result > 0
+{ x }
+
+pub fn main() -> Unit ! {Console} {
+  let f = positive
+  let _ = f(0)
+}

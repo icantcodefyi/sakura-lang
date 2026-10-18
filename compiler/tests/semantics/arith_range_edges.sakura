@@ -1,0 +1,18 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D003
+// covers: performance-r1 WS-S; design §17.111–§17.116
+
+// JS-safe profile extrema. The i64 D001 case is defect_D001_int_overflow.sakura.
+// Negating/dividing the JS-safe minimum is valid; these operations must keep their checks.
+fn maximum() -> Int { 9_007_199_254_740_991 }
+
+fn minimum() -> Int { -9_007_199_254_740_991 }
+
+pub fn main() -> Unit ! {Console} {
+  let max = maximum()
+  let min = minimum()
+  Console.print("{max - 1 + 1} {min + 1 - 1}")
+  Console.print("{0 - min} {min / -1}")
+  Console.print("{max + 1}")
+}
