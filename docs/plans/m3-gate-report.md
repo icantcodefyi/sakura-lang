@@ -10,7 +10,8 @@ Bun 1.4.3, Node 26). Ubuntu and macOS were also covered by CI run
 
 Audited by an AI agent (Claude Opus 5.5). The repository owner owns the result. Fixes made during
 the audit are listed under each gate and in [Fixes](#fixes-landed-with-this-report). They were
-re-checked locally on top of `76fd183` before pushing.
+re-checked locally (cargo gates and website commands) after rebasing onto `8ce80d7`, which
+added M4 LIR, runtime, bench and `Fs.memory` commits, before pushing.
 
 ## Summary
 
@@ -54,7 +55,10 @@ against the 79 codes in `codes.rs`:
   `D004`, `D030`, `D031`, `D091`. The four `D` codes are constructed by `runtime/js/sakura_runtime.js`
   (and tested in `runtime/js/test/runtime.test.js`), which the gate's grep does not cover.
 - Constructed but not registered: `V9999` (exempt by the gate), and `W7002` (`sakura_verify`,
-  M4). §17.105 has V3 register `W7002`, so this is expected.
+  M4). §17.105 has V3 register `W7002`, so this is expected. On `57ae00d` (after the audit)
+  `sakura_lir`'s interpreter also constructs the unregistered M4 runtime defects `D092`, `D094`
+  and `D096` (`runtime/rt/ABI.md`). They are M4 codes, outside M3's scope, and need registering
+  when M4 integrates.
 - `V`/`W` codes without a `tests/ui` fixture at `76fd183`: `V1011`, `V1040`, `V1041` (covered
   only by `sakura_hir` snapshots), `V9002`, `V8020`, `V9001`, plus `V5002` (retired).
   - **Added:** `tests/ui/V1011_missing_body`, `V1040_assign_immutable`, `V1041_jump_outside_loop`
@@ -192,4 +196,6 @@ All five named cases passed in gate 1 or gate 5 (see table).
    verified example, so it is not done here.
 6. **Fuzzing:** `check` at about 5 exec/s gets little coverage in ten minutes. Consider a longer
    budget or a lighter std snapshot for that target.
-7. Re-run this audit on the commit that closes items 1–3, then mark M3 complete in the roadmap.
+7. **M4-RT / M4-LIR:** register `D092 rc_overflow`, `D094 context_escaped` and `D096 heap_exhausted`
+   (constructed by `sakura_lir/src/interp.rs` since `57ae00d`) and `W7002` before M4 integration.
+8. Re-run this audit on the commit that closes items 1–3, then mark M3 complete in the roadmap.
