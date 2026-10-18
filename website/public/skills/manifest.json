@@ -3,9 +3,9 @@
   "compiler_version": "0.1.0-alpha.1",
   "source": "skills/sakura/",
   "archive": "sakura-skill.zip",
-  "sha256": "f02170f87887d62e2c84376a125199e8e9a8933f7d3477ceab363732c57833e8",
+  "sha256": "e4bd05a0f2ae5b546d415c60bddd32cfd1c62e04673e2ead1dd24e505f03e295",
   "files": {
-    "SKILL.md": "2b43728a12cb84c104baf26a64dda659eecc454a77dea7651fedb01f5fd92a34",
+    "SKILL.md": "d9a6443329bbab11aa9fc5133229448f9fa874ddc4f2c1e9639776e54e400907",
     "assets/AGENTS.md": "cd66267fce3300b6efc8ec59aeacc67e02345a430ef478b89d195dc3e48078a0",
     "assets/CLAUDE.md": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49",
     "assets/mcp-claude.json": "14c2ed6fc7a9ac45ff258725bf03a1bcca03ea2c2d9fa20c84c8a4dd456abd71",

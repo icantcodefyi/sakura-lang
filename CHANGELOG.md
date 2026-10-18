@@ -9,6 +9,10 @@ published yet.
 
 ### Fixed
 
+- The Sakura skill starts with a bounded guide read and recommends targeted lookup
+  to avoid repeated full-guide input costs. The first paid DX5 pilot now has a
+  public report; no additional episodes are authorized.
+
 - A `requires` violated inside a self-tail-recursive function now blames the self call
   (`down2(n - 2)`) instead of the outer call that entered the loop. Contracted functions
   take their blame site as a trailing parameter on the JS backend, and predicates that

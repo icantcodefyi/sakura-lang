@@ -12,8 +12,11 @@ metadata:
 
 # Write Sakura with the compiler
 
-Run `sakura --version`, then read `sakura prompt` before editing. Use the guide
-embedded in that executable; an edition alone does not identify a compatible
+Run `sakura --version`, then start with `sakura prompt --budget 3000` before
+editing. Retrieve a specific symbol with `sakura doc` or a diagnostic with
+`sakura explain` as needed. Avoid repeatedly loading larger guides: tool results
+remain in conversation history and can consume an aggregate input budget again
+on each turn. Use the guide embedded in that executable; an edition alone does not identify a compatible
 pre-alpha commit. The CLI fills the skill's metadata from its version and build-time
 `SAKURA_GIT_COMMIT`. Website copies retain placeholders; their content manifest records
 the compiler version and file/ZIP SHA-256 hashes, without a Git commit. If provenance
