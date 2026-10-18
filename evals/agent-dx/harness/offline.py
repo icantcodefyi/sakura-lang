@@ -2,6 +2,7 @@
 """Trusted fixture validation only; no model API, agent runner or security sandbox."""
 import argparse
 import collections
+import concurrent.futures
 import hashlib
 import json
 import os
@@ -254,16 +255,19 @@ def exercise(task, metadata, binary, scratch):
             b'configured(read: fn() -> String ! {Env}) -> String {', b'configured(read: fn() -> String ! {Env}) -> String ! {Env} {')
         materialize(directory, altered)
         rejected(lambda: checked(binary, directory, commit), 'V8020')
-    print(f'{task.name}: schema + starter diagnostics + gold {len(results["gold"])}/'
-          f'{len(results["gold"])} pass; hollow 0/{len(results["hollow"])} pass; controls rejected',
-          flush=True)
+    return (f'{task.name}: schema + starter diagnostics + gold {len(results["gold"])}/'
+            f'{len(results["gold"])} pass; hollow 0/{len(results["hollow"])} pass; controls rejected')
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--sakura', required=True, help='locally built CLI; no API calls')
     parser.add_argument('--task', help='validate one task while authoring; CI omits this')
+    parser.add_argument('--jobs', type=int, default=min(os.cpu_count() or 1, 32),
+                        help='parallel tasks (default: CPU count capped at 32; 1 for serial)')
     args = parser.parse_args()
+    if args.jobs < 1:
+        parser.error('--jobs must be a positive integer')
     binary = str(Path(args.sakura).resolve())
     schema = json.loads((SUITE / 'task.schema.json').read_text())
     tasks = sorted((SUITE / 'tasks').iterdir())
@@ -286,11 +290,16 @@ def main():
     temporary = ROOT / 'target/agent-dx'
     temporary.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='offline-', dir=temporary) as directory:
-        for task in tasks:
+        def execute(task):
             try:
-                exercise(task, metadata[task.name], binary, Path(directory))
+                return exercise(task, metadata[task.name], binary, Path(directory))
             except AssertionError as error:
                 raise AssertionError(f'{task.name}: {error}') from error
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(args.jobs, len(tasks))) as pool:
+            reports = list(pool.map(execute, tasks))
+        for report in reports:
+            print(report, flush=True)
 
 
 if __name__ == '__main__':

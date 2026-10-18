@@ -61,6 +61,10 @@ published yet.
 
 ### Changed
 
+- The agent-DX offline fixture validator runs independent tasks in a thread pool,
+  with `--jobs 1` for serial execution and byte-identical task-ordered reports
+  (design §17.197).
+
 - The Sakura skill keeps its examples, syntax list, and edit loop in a smaller entry
   point, with repair and completion detail in its references. Its 7,500-byte ASCII
   limit now measures release metadata after template fill, with a 7,000-byte source

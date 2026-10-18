@@ -9,6 +9,22 @@ Python 3.11+ standard library only, plus Git, Node and a built `sakura`.
   so `cargo test --workspace` in `ci.yml` runs it on Linux and macOS without secrets).
 - `fixtures/` holds a committed canned transcript that CI replays.
 
+## Offline fixture validation
+
+`offline.py --sakura /absolute/path/to/sakura` runs independent tasks in a thread
+pool. `--jobs N` selects a positive worker count. The default is the CPU count
+(or 1 if unavailable), capped at 32; at most the selected task count runs at once.
+`--jobs 1` runs serially. Each task retains its own directory and Git repository;
+gold, hollow and controls within a task run sequentially. Report lines print in
+task order, so successful serial and parallel reports are byte-identical.
+`--task 03-path-label` selects one task.
+
+Run the scheduling regression checks without a compiler or provider calls:
+
+```sh
+python3 -m unittest -v evals/agent-dx/harness/test_offline.py
+```
+
 ## What an episode does
 
 1. Copies only the task's `starter/` into a fresh directory under ignored
