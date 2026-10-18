@@ -34,7 +34,8 @@ pub effect Http {
   fn stream<T, e>(req: Request, body: fn(Incoming) -> T ! e) -> T ! {Fail<HttpError> | e}
   /// Up to `max` bytes of the body; empty at the end. Fails when the connection drops or after
   /// the `stream` callback has left.
-  fn read_chunk(body: Body, max: Int) -> Bytes ! {Fail<HttpError>}
+  fn read_chunk(body: Body, max: Int) -> Bytes
+    ! {Fail<HttpError>}
     requires max > 0
 }
 
@@ -92,7 +93,9 @@ fn allowed(hosts: List<String>, req: Request) -> Unit ! {Fail<HttpError>} {
 fn host_port(u: Url) -> String {
   match Url.host(u) {
     None => "",
-    Some(h) => if String.contains(h, ":") { h } else if String.starts_with(u, "https://") { "{h}:443" } else { "{h}:80" },
+    Some(h) => if String.contains(h, ":") { h } else if String.starts_with(u, "https://") {
+      "{h}:443"
+    } else { "{h}:80" },
   }
 }
 
@@ -108,7 +111,7 @@ fn host_port(u: Url) -> String {
 /// with `HttpError` before any replay or forward (put it in `secret_headers`, `Http.bearer`);
 /// a `set-cookie` response header is stored and replayed as `<redacted>`. The URL and body are
 /// stored verbatim.
-pub fn recording(path: Path) -> Handler<Http, {Http, Fs}> { replaying(cassette(path)) }
+pub fn recording(path: Path) -> Handler<Http, {Fs, Http}> { replaying(cassette(path)) }
 
 /// A cassette file, read on first use. `Llm.recording` opens one per installation and replays
 /// each call through it, so its exchanges advance in order across calls (design §17.102).
@@ -124,7 +127,7 @@ pub fn open(c: Cassette) -> Cassette ! {Fs, Fail<HttpError>} {
 }
 
 /// `recording` over the cassette `c`: one already open is not read again.
-pub fn replaying(c: Cassette) -> Handler<Http, {Http, Fs}> {
+pub fn replaying(c: Cassette) -> Handler<Http, {Fs, Http}> {
   handler Http {
     var cur = c
     fn send(req) {
@@ -136,7 +139,7 @@ pub fn replaying(c: Cassette) -> Handler<Http, {Http, Fs}> {
           let resp = Http.send(req)
           ok_or_fail(http_recording_append(id, req, resp))
           resp
-        }
+        },
         Err(reason) => fail HttpError { status: None, reason },
       }
     }
@@ -150,7 +153,7 @@ pub fn replaying(c: Cassette) -> Handler<Http, {Http, Fs}> {
           let got = Http.stream(req, fn(i) { (i.status, i.headers, read_body(i.body)) })
           ok_or_fail(http_recording_append_stream(id, req, got.0, got.1, got.2))
           Incoming { status: got.0, headers: got.1, body: http_body_of(got.2) }
-        }
+        },
       }
       http_stream_closing(incoming.body, fn() { body(incoming) })
     }
@@ -162,7 +165,10 @@ fn read_body(b: Body) -> Bytes ! {Http, Fail<HttpError>} {
   var out: List<Int> = []
   var chunk = Http.read_chunk(b, 65_536)
   while Bytes.len(chunk) > 0 {
-    out = List.concat(out, List.filter_map(List.range(0, Bytes.len(chunk)), fn(i) { Bytes.get(chunk, i) }))
+    out = List.concat(
+      out,
+      List.filter_map(List.range(0, Bytes.len(chunk)), fn(i) { Bytes.get(chunk, i) }),
+    )
     chunk = Http.read_chunk(b, 65_536)
   }
   Bytes.from_list(out)
@@ -182,16 +188,21 @@ pub fn scripted(script: List<(Matcher, Response)>) -> Handler<Http> {
     fn stream(req, body) {
       let resp = scripted_response(script, req)
       let b = http_body_of(String.to_bytes(resp.body))
-      http_stream_closing(b, fn() { body(Incoming { status: resp.status, headers: resp.headers, body: b }) })
+      http_stream_closing(b, fn() {
+        body(Incoming { status: resp.status, headers: resp.headers, body: b })
+      })
     }
     fn read_chunk(b, max) { ok_or_fail(http_stream_read(b, max)) }
   }
 }
 
-fn scripted_response(script: List<(Matcher, Response)>, req: Request) -> Response ! {Fail<HttpError>} {
+fn scripted_response(script: List<(Matcher, Response)>, req: Request) -> Response
+  ! {Fail<HttpError>}
+{
   match List.find(script, fn(entry) { matches(entry.0, req) }) {
     Some(entry) => entry.1,
-    None => fail HttpError { status: None, reason: "no scripted response for {req.method} {req.url}" },
+    None =>
+      fail HttpError { status: None, reason: "no scripted response for {req.method} {req.url}" },
   }
 }
 
@@ -235,7 +246,13 @@ fn http_body_of(bytes: Bytes) -> Body
 fn http_recording_lookup_stream(id: Int, req: Request) -> Result<Option<Incoming>, String>
 
 @external(js, "sakura_runtime", "http_recording_append_stream")
-fn http_recording_append_stream(id: Int, req: Request, status: Status, headers: List<(String, String)>, body: Bytes) -> Result<Unit, String>
+fn http_recording_append_stream(
+  id: Int,
+  req: Request,
+  status: Status,
+  headers: List<(String, String)>,
+  body: Bytes,
+) -> Result<Unit, String>
 
 @external(js, "sakura_runtime", "http_recording_open")
 fn http_recording_open(dir: Dir, path: String) -> Result<Int, String>
@@ -247,7 +264,10 @@ fn http_recording_lookup(id: Int, req: Request) -> Result<Option<Response>, Stri
 fn http_recording_append(id: Int, req: Request, resp: Response) -> Result<Unit, String>
 
 test "scripted matches by path and method" {
-  let script = [(Path("/a"), Response.status(200, "a")), (Method(Method.Post), Response.status(201, "p"))]
+  let script = [
+    (Path("/a"), Response.status(200, "a")),
+    (Method(Method.Post), Response.status(201, "p")),
+  ]
   with scripted(script) {
     expect_eq(try { get(Url.from("https://x/a?q=1")).body }, Ok("a"))
     expect_eq(try { Http.send(Request.post("/b", "")).status }, Ok(Status.from(201)))
@@ -258,14 +278,20 @@ test "scripted matches by path and method" {
 test "429 is RateLimited with its Retry-After" {
   let limited = Response { ..Response.status(429, ""), headers: [("Retry-After", "2")] }
   with scripted([(Any, limited)]) {
-    expect_fail(fn() { get(Url.from("/x")) }, RateLimited { retry_after: Some(Duration.seconds(2)) })
+    expect_fail(
+      fn() { get(Url.from("/x")) },
+      RateLimited { retry_after: Some(Duration.seconds(2)) },
+    )
   }
 }
 
 test "scoped forwards only listed hosts" {
   let ok = Response.status(200, "ok")
   with scripted([(Any, ok)]), scoped(["api.example.com:443", "localhost:8080"]) {
-    expect_eq(try { Http.send(Request.of(Method.Get, Url.from("https://api.example.com/v1"))) }, Ok(ok))
+    expect_eq(
+      try { Http.send(Request.of(Method.Get, Url.from("https://api.example.com/v1"))) },
+      Ok(ok),
+    )
     expect_eq(try { Http.send(Request.of(Method.Get, Url.from("http://localhost:8080/"))) }, Ok(ok))
     expect((try { Http.send(Request.of(Method.Get, Url.from("https://evil.example/"))) }).is_err())
   }
@@ -282,26 +308,44 @@ test "scripted and scoped stream a body as one chunk" {
   let ok = Response.status(200, "hello")
   with scripted([(Any, ok)]), scoped(["a.example:443"]) {
     let got = try {
-      Http.stream(Request.of(Method.Get, Url.from("https://a.example/x")), fn(i) {
-        let first = Http.read_chunk(i.body, 3)
-        let rest = Http.read_chunk(i.body, 100)
-        (i.status, String.from_bytes(first), String.from_bytes(rest), Bytes.len(Http.read_chunk(i.body, 100)))
-      })
+      Http.stream(
+        Request.of(Method.Get, Url.from("https://a.example/x")),
+        fn(i) {
+          let first = Http.read_chunk(i.body, 3)
+          let rest = Http.read_chunk(i.body, 100)
+          (
+            i.status,
+            String.from_bytes(first),
+            String.from_bytes(rest),
+            Bytes.len(Http.read_chunk(i.body, 100)),
+          )
+        },
+      )
     }
     expect_eq(got, Ok((Status.from(200), Ok("hel"), Ok("lo"), 0)))
-    let denied = try { Http.stream(Request.of(Method.Get, Url.from("https://b.example/")), fn(i) { i.status }) }
+    let denied = try {
+      Http.stream(Request.of(Method.Get, Url.from("https://b.example/")), fn(i) { i.status })
+    }
     expect(denied.is_err())
   }
 }
 
 test "recording refuses a credential in ordinary headers" {
-  let leaky = Request { ..Request.of(Method.Get, Url.from("https://a.example/x")), headers: [("Authorization", "Bearer x")] }
-  with Fs.rooted(Test.fixtures()), scripted([(Any, Response.status(200, "forwarded"))]), recording(Path.of("absent.jsonl")) {
+  let leaky = Request {
+    ..Request.of(Method.Get, Url.from("https://a.example/x")),
+    headers: [("Authorization", "Bearer x")],
+  }
+  with Fs.rooted(Test.fixtures()),
+      scripted([(Any, Response.status(200, "forwarded"))]),
+      recording(Path.of("absent.jsonl")) {
     match try { Http.send(leaky) } {
       Err(HttpError { status, reason }) => {
         expect_eq(status, None)
-        expect_eq(reason, "header Authorization belongs in secret_headers (Http.bearer); not recorded")
-      }
+        expect_eq(
+          reason,
+          "header Authorization belongs in secret_headers (Http.bearer); not recorded",
+        )
+      },
       other => expect_eq("{other}", "an HttpError"),
     }
     let streamed = try { Http.stream(leaky, fn(i) { i.status }) }

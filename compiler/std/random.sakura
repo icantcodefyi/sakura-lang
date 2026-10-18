@@ -5,10 +5,12 @@ import std/uuid.{Uuid}
 
 pub effect Random {
   /// Uniform in `[lo, hi]`, inclusive.
-  fn int(lo: Int, hi: Int) -> Int requires lo <= hi
+  fn int(lo: Int, hi: Int) -> Int
+    requires lo <= hi
   /// Uniform in `[0, 1)`.
   fn float() -> Float
-  fn bytes(n: Int) -> Bytes requires n >= 0
+  fn bytes(n: Int) -> Bytes
+    requires n >= 0
   /// Version 4 (random) UUID.
   fn uuid() -> Uuid
 }
@@ -58,9 +60,7 @@ pub fn seeded(seed: Int) -> Handler<Random> {
   }
 }
 
-fn hex_digit(n: Int) -> String {
-  String.chars("0123456789abcdef")[n].unwrap_or("0")
-}
+fn hex_digit(n: Int) -> String { String.chars("0123456789abcdef")[n].unwrap_or("0") }
 
 test "seeded draws are reproducible and in range" {
   let draw = fn() { [Random.int(1, 6), Random.int(1, 6), Random.int(1, 6), Random.int(1, 6)] }

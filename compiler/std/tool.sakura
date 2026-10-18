@@ -18,7 +18,8 @@ pub fn from<A: Schema, R: Schema, E: Schema + Show, e>(
   name: String,
   description: String,
   f: fn(A) -> R ! {Fail<E> | e},
-) -> Tool<e> {
+) -> Tool<e>
+{
   let witness: Option<A> = None
   with_schema(name, description, Json.schema(witness), f)
 }
@@ -28,9 +29,7 @@ pub fn name<e>(t: Tool<e>) -> String { t.spec.name }
 pub fn spec<e>(t: Tool<e>) -> ToolSpec { t.spec }
 
 /// Runs the tool on the model's `input` under the caller's handlers.
-pub fn call<e>(t: Tool<e>, input: Json) -> Json
-  ! {Fail<ToolError> | e}
-{
+pub fn call<e>(t: Tool<e>, input: Json) -> Json ! {Fail<ToolError> | e} {
   let run = t.run
   run(input)
 }
@@ -40,11 +39,14 @@ fn with_schema<A: Schema, R: Schema, E: Schema + Show, e>(
   description: String,
   schema: Json,
   f: fn(A) -> R ! {Fail<E> | e},
-) -> Tool<e> {
-  Tool { spec: ToolSpec { name, description, schema }, run: fn(input) { invoke(name, f, input) } }
-}
+) -> Tool<e>
+{ Tool { spec: ToolSpec { name, description, schema }, run: fn(input) { invoke(name, f, input) } } }
 
-fn invoke<A: Schema, R: Schema, E: Schema + Show, e>(name: String, f: fn(A) -> R ! {Fail<E> | e}, input: Json) -> Json
+fn invoke<A: Schema, R: Schema, E: Schema + Show, e>(
+  name: String,
+  f: fn(A) -> R ! {Fail<E> | e},
+  input: Json,
+) -> Json
   ! {Fail<ToolError> | e}
 {
   let args: A = match Json.decode(Json.encode(input)) {
@@ -57,7 +59,8 @@ fn invoke<A: Schema, R: Schema, E: Schema + Show, e>(name: String, f: fn(A) -> R
       // A union encodes as `{"Tag": {…}}`, a single tag as its fields.
       let tag = tag_of(show(failure))
       let payload = match to_json(failure) {
-        Json.Object(m) if Map.len(m) == 1 && Map.contains(m, tag) => Map.get(m, tag).unwrap_or(Json.Null),
+        Json.Object(m) if Map.len(m) == 1 && Map.contains(m, tag) =>
+          Map.get(m, tag).unwrap_or(Json.Null),
         j => j,
       }
       fail ToolError { tool: name, tag, payload }

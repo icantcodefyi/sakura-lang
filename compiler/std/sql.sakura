@@ -45,9 +45,7 @@ pub fn template<R>(parts: List<String>, args: List<SqlValue>) -> Query<R> {
 
 /// Executes each statement in order.
 pub fn migrate(statements: List<Query<Unit>>) -> Unit ! {Sql, Fail<SqlError>} {
-  for s in statements {
-    let _ = Sql.execute(s)
-  }
+  for s in statements { let _ = Sql.execute(s) }
 }
 
 /// SQLite database file at `path`, through the installed `Fs` handler's directory.
@@ -59,7 +57,10 @@ pub fn sqlite(path: Path) -> Handler<Sql, {Fs}>
 pub fn memory() -> Handler<Sql>
 
 test "template binds arguments as parameters" {
-  let q: Query<Unit> = template(["select * from users where id = ", " and name = ", ""], [Int(1), Text("a")])
+  let q: Query<Unit> = template(
+    ["select * from users where id = ", " and name = ", ""],
+    [Int(1), Text("a")],
+  )
   expect_eq(q.text, "select * from users where id = ? and name = ?")
   expect_eq(q.params, [Int(1), Text("a")])
 }
@@ -69,6 +70,9 @@ test "an Untrusted interpolation is a bound parameter (design §17.101)" {
     let _ = Sql.execute(sql"create table users (name text)")
     let _ = Sql.execute(sql"insert into users (name) values ({"ada"})")
     expect_eq(Sql.execute(sql"update users set name = name where name = {Untrusted.of("ada")}"), 1)
-    expect_eq(Sql.execute(sql"update users set name = name where name = {Untrusted.of("x' or 1=1 --")}"), 0)
+    expect_eq(
+      Sql.execute(sql"update users set name = name where name = {Untrusted.of("x' or 1=1 --")}"),
+      0,
+    )
   }
 }

@@ -13,12 +13,12 @@ let ms_per_day = 86_400_000
 pub fn from_unix_millis(ms: Int) -> Instant { Instant(ms) }
 
 pub fn to_unix_millis(i: Instant) -> Int {
-  match i { Instant(ms) => ms }
+  match i {
+    Instant(ms) => ms,
+  }
 }
 
-pub fn add(i: Instant, d: Duration) -> Instant {
-  Instant(to_unix_millis(i) + d.to_millis())
-}
+pub fn add(i: Instant, d: Duration) -> Instant { Instant(to_unix_millis(i) + d.to_millis()) }
 
 /// `a - b` as a duration (negative when `a` is earlier).
 pub fn diff(a: Instant, b: Instant) -> Duration {
@@ -52,20 +52,33 @@ pub fn parse(text: String) -> Result<Instant, TimeError> {
   if !shape || !tail { return bad }
   let field = fn(start, end) { String.parse_int(List.join(List.slice(cs, start, end), "")) }
   let frac = if n == 24 { field(20, 23) } else { Some(0) }
-  match (field(0, 4), field(5, 7), field(8, 10), field(11, 13), field(14, 16), field(17, 19), frac) {
+  match (
+    field(0, 4),
+    field(5, 7),
+    field(8, 10),
+    field(11, 13),
+    field(14, 16),
+    field(17, 19),
+    frac,
+  ) {
     (Some(y), Some(mo), Some(d), Some(h), Some(mi), Some(s), Some(ms)) => {
       let days = days_from_civil(y, mo, d)
-      let in_range = y >= 0 && h >= 0 && h <= 23 && mi >= 0 && mi <= 59 && s >= 0 && s <= 59 && ms >= 0
+      let in_range = y >= 0
+        && h >= 0
+        && h <= 23
+        && mi >= 0
+        && mi <= 59
+        && s >= 0
+        && s <= 59
+        && ms >= 0
       if !in_range || civil_from_days(days) != (y, mo, d) { return bad }
       Ok(Instant(days * ms_per_day + ((h * 60 + mi) * 60 + s) * 1000 + ms))
-    }
+    },
     _ => bad,
   }
 }
 
-fn pad(n: Int, width: Int) -> String {
-  String.pad_left(Int.to_string(n), width, "0")
-}
+fn pad(n: Int, width: Int) -> String { String.pad_left(Int.to_string(n), width, "0") }
 
 fn floor_div(a: Int, b: Int) -> Int {
   let q = a / b

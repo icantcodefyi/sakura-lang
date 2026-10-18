@@ -39,6 +39,4 @@ test "format" {
   expect_eq(format(2.0, 0), "2")
 }
 
-test "round of nan is a defect" {
-  expect_defect(fn() { round(sqrt(-1.0)) })
-}
+test "round of nan is a defect" { expect_defect(fn() { round(sqrt(-1.0)) }) }

@@ -53,15 +53,11 @@ fn sub(a: Cost, b: Cost) -> Cost {
 }
 
 fn over(l: Limits, c: Cost) -> Option<BudgetKind> {
-  if l.tokens.map(fn(t) { c.tokens > t }).unwrap_or(false) {
-    Some(Tokens)
-  } else if l.usd.map(fn(u) { c.usd > u }).unwrap_or(false) {
-    Some(Usd)
-  } else if l.calls.map(fn(n) { c.calls > n }).unwrap_or(false) {
+  if l.tokens.map(fn(t) { c.tokens > t }).unwrap_or(false) { Some(Tokens) } else if l.usd
+    .map(fn(u) { c.usd > u })
+    .unwrap_or(false) { Some(Usd) } else if l.calls.map(fn(n) { c.calls > n }).unwrap_or(false) {
     Some(Calls)
-  } else {
-    None
-  }
+  } else { None }
 }
 
 test "limits fail the reservation that would exceed them" {
@@ -81,6 +77,9 @@ test "settle replaces the estimate with the actual cost" {
       Ok(res) => Budget.settle(res, Cost { tokens: 100, usd: 0.0, calls: 1 }),
       Err(_) => expect(false),
     }
-    expect_eq(try { Budget.reserve(Cost { tokens: 800, usd: 0.0, calls: 1 }) }, Ok(Reservation { estimate: Cost { tokens: 800, usd: 0.0, calls: 1 } }))
+    expect_eq(
+      try { Budget.reserve(Cost { tokens: 800, usd: 0.0, calls: 1 }) },
+      Ok(Reservation { estimate: Cost { tokens: 800, usd: 0.0, calls: 1 } }),
+    )
   }
 }

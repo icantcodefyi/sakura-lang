@@ -11,5 +11,7 @@ pub fn of(parts: List<PromptPart>) -> Prompt { Prompt(parts) }
 pub fn text(s: String) -> Prompt { Prompt([Text(s)]) }
 
 pub fn parts(p: Prompt) -> List<PromptPart> {
-  match p { Prompt(ps) => ps }
+  match p {
+    Prompt(ps) => ps,
+  }
 }

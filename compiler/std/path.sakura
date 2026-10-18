@@ -21,16 +21,12 @@ pub fn is_relative(s: String) -> Bool {
 /// `of("./")` is `.`.
 pub fn of(s: String) -> Path
   requires is_relative(s)
-{
-  Path.from(normalize(s))
-}
+{ Path.from(normalize(s)) }
 
 /// `p` followed by the segments of `rest`.
 pub fn join(p: Path, rest: String) -> Path
   requires is_relative(rest)
-{
-  Path.from(normalize(p + "/" + rest))
-}
+{ Path.from(normalize(p + "/" + rest)) }
 
 pub fn to_string(p: Path) -> String { p }
 

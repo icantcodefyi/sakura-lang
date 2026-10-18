@@ -38,7 +38,8 @@ pub effect Fs {
   /// defect or cancellation.
   fn with_file<T, e>(path: Path, mode: Mode, body: fn(File) -> T ! e) -> T ! {Fail<FsError> | e}
   /// Up to `max` bytes from the current position; empty at the end of the file.
-  fn read_chunk(file: File, max: Int) -> Bytes ! {Fail<FsError>}
+  fn read_chunk(file: File, max: Int) -> Bytes
+    ! {Fail<FsError>}
     requires max > 0
   /// Writes at the end of the file; fails for a file opened with `Read`.
   fn write_chunk(file: File, data: Bytes) -> Unit ! {Fail<FsError>}
@@ -55,7 +56,12 @@ pub fn rooted(dir: Dir) -> Handler<Fs> {
     fn read(path) { ok_or_fail(path, fs_read(dir, Path.to_string(path))) }
     fn read_text(path) {
       let bytes = ok_or_fail(path, fs_read(dir, Path.to_string(path)))
-      untrusted.of(ok_or_fail(path, String.from_bytes(bytes).map_err(fn(e) { "invalid UTF-8 at byte {e.offset}" })))
+      untrusted.of(
+        ok_or_fail(
+          path,
+          String.from_bytes(bytes).map_err(fn(e) { "invalid UTF-8 at byte {e.offset}" }),
+        ),
+      )
     }
     fn write(path, data) { ok_or_fail(path, fs_write(dir, Path.to_string(path), data)) }
     fn list(p) { ok_or_fail(p, fs_list(dir, Path.to_string(p))) }
@@ -89,7 +95,9 @@ fn read_file(file: File, max: Int) -> Bytes ! {Fail<FsError>} {
 }
 
 fn write_file(file: File, data: Bytes) -> Unit ! {Fail<FsError>} {
-  if file.mode == Read { fail FsError { path: Path.to_string(file.path), reason: "opened for reading" } }
+  if file.mode == Read {
+    fail FsError { path: Path.to_string(file.path), reason: "opened for reading" }
+  }
   ok_or_fail(file.path, file_write(file.id, data))
 }
 
@@ -104,7 +112,9 @@ pub fn read_all(file: File) -> Bytes ! {Fs, Fail<FsError>} {
   Bytes.from_list(out)
 }
 
-fn to_list(b: Bytes) -> List<Int> { List.filter_map(List.range(0, Bytes.len(b)), fn(i) { Bytes.get(b, i) }) }
+fn to_list(b: Bytes) -> List<Int> {
+  List.filter_map(List.range(0, Bytes.len(b)), fn(i) { Bytes.get(b, i) })
+}
 
 fn ok_or_fail<T>(path: Path, r: Result<T, String>) -> T ! {Fail<FsError>} {
   match r {

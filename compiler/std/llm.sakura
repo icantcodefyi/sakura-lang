@@ -19,21 +19,36 @@ pub type Model = Model(String)
 /// `T` is the output type, named by the binding's annotation
 /// (`let req: Request<Ticket> = Llm.request(system, user)`). Change fields with a record
 /// update: `Request { ..req, max_tokens: 4_000 }`.
-pub type Request<T> = { system: String, user: Prompt, model: Model, max_tokens: Int, temperature: Float }
+pub type Request<T> = {
+  system: String,
+  user: Prompt,
+  model: Model,
+  max_tokens: Int,
+  temperature: Float,
+}
 
 /// The provider declined to answer.
 pub error Refused
+
 /// The output did not decode as the requested type; one violation per failed check.
 pub error InvalidOutput(violations: List<Violation>)
+
 /// The output hit `max_tokens`.
 pub error Truncated
+
 /// The provider answered with an unexpected HTTP status, or no answer arrived (`status` 0);
 /// `reason` says which, e.g. a cassette miss naming `sakura test --record`.
 pub error ProviderError(status: Int, reason: String)
 
 /// `RateLimited` is `std/http.RateLimited`, `Timeout` is `std/task.Timeout` (§5.9) and
 /// `BudgetExceeded` is `std/budget`'s, raised by handlers that reserve against `Budget` (§17.69).
-pub type LlmError = Refused | InvalidOutput | Truncated | RateLimited | Timeout | ProviderError | BudgetExceeded
+pub type LlmError = Refused
+  | InvalidOutput
+  | Truncated
+  | RateLimited
+  | Timeout
+  | ProviderError
+  | BudgetExceeded
 
 /// What the provider sees of a tool: `schema` is the JSON Schema of its arguments.
 pub type ToolSpec = { name: String, description: String, schema: Json }
@@ -77,7 +92,7 @@ pub fn default() -> Model { Model("default") }
 /// Anthropic's Messages API with `T`'s JSON Schema as the output format. Each call reserves
 /// against the installed `Budget` first and settles the reported usage after.
 @external(js, "sakura_runtime", "llm_anthropic")
-pub fn anthropic(key: Secret<String>, model: Model) -> Handler<Llm, {Http, Budget}>
+pub fn anthropic(key: Secret<String>, model: Model) -> Handler<Llm, {Budget, Http}>
 
 /// `provider` under `Budget.unlimited()` and `Http.recording(path)` (design §17.102): a call
 /// whose Messages API exchange is in the cassette replays it; a miss reaches the enclosing
@@ -86,7 +101,7 @@ pub fn anthropic(key: Secret<String>, model: Model) -> Handler<Llm, {Http, Budge
 /// identical requests replay in recorded order. The key travels in `secret_headers`, which are
 /// never written or matched:
 /// `with Http.host(), Fs.rooted(Test.fixtures()), Llm.recording(Path.of("x.jsonl"), Llm.anthropic(key, model))`.
-pub fn recording(path: Path, provider: Handler<Llm, {Http, Budget}>) -> Handler<Llm, {Http, Fs}> {
+pub fn recording(path: Path, provider: Handler<Llm, {Budget, Http}>) -> Handler<Llm, {Fs, Http}> {
   handler Llm {
     var c = Http.cassette(path)
     fn generate(req) {
@@ -143,27 +158,27 @@ fn opened(c: Cassette) -> Cassette ! {Fs, Fail<LlmError>} {
   }
 }
 
-fn recorded<T, e>(c: Cassette, provider: Handler<Llm, {Http, Budget}>, call: fn() -> T ! {Llm | e})
-  -> T ! {Http, Fs, Fail<LlmError> | e} {
-  with Budget.unlimited(), Http.replaying(c), provider {
-    call()
-  }
-}
+fn recorded<T, e>(
+  c: Cassette,
+  provider: Handler<Llm, {Budget, Http}>,
+  call: fn() -> T ! {Llm | e},
+) -> T
+  ! {Fs, Http, Fail<LlmError> | e}
+{ with Budget.unlimited(), Http.replaying(c), provider { call() } }
 
 /// `recorded` with the network denied; a miss (status 0) says how to record it (§17.125).
-fn offline<T, e>(c: Cassette, provider: Handler<Llm, {Http, Budget}>, call: fn() -> T ! {Llm | e})
-  -> T ! {Fs, Fail<LlmError> | e} {
-  try {
-    with Http.scripted([]) {
-      recorded(c, provider, call)
-    }
-  } catch {
+fn offline<T, e>(
+  c: Cassette,
+  provider: Handler<Llm, {Budget, Http}>,
+  call: fn() -> T ! {Llm | e},
+) -> T
+  ! {Fs, Fail<LlmError> | e}
+{
+  try { with Http.scripted([]) { recorded(c, provider, call) } } catch {
     ProviderError(status, reason) => {
-      if status == 0 {
-        fail ProviderError(status, "{reason}; record it with Llm.recording")
-      }
+      if status == 0 { fail ProviderError(status, "{reason}; record it with Llm.recording") }
       fail ProviderError(status, reason)
-    }
+    },
   }
 }
 
@@ -205,13 +220,16 @@ fn scripted_step<T: Schema>(text: String, turn: Int) -> Step<T> ! {Fail<LlmError
     Err(_) => None,
   }
   match uses {
-    Some(Json.Array(items)) => Use(List.map(List.enumerate(items), fn(p) {
-      ToolCall {
-        id: "call_" + Int.to_string(turn) + "_" + Int.to_string(p.0),
-        name: Json.get_string(p.1, "name").unwrap_or(""),
-        input: Json.get(p.1, "input").unwrap_or(Json.Null),
-      }
-    })),
+    Some(Json.Array(items)) =>
+      Use(
+        List.map(List.enumerate(items), fn(p) {
+          ToolCall {
+            id: "call_" + Int.to_string(turn) + "_" + Int.to_string(p.0),
+            name: Json.get_string(p.1, "name").unwrap_or(""),
+            input: Json.get(p.1, "input").unwrap_or(Json.Null),
+          }
+        }),
+      ),
     _ => Answer(decode_output(text)),
   }
 }
@@ -219,7 +237,10 @@ fn scripted_step<T: Schema>(text: String, turn: Int) -> Step<T> ! {Fail<LlmError
 fn decode_output<T: Schema>(text: String) -> T ! {Fail<LlmError>} {
   match Json.decode(text) {
     Ok(value) => value,
-    Err(e) => fail InvalidOutput { violations: [Violation { type_name: "output", clause: e.message, value_summary: e.path }] },
+    Err(e) =>
+      fail InvalidOutput {
+        violations: [Violation { type_name: "output", clause: e.message, value_summary: e.path }],
+      },
   }
 }
 
@@ -265,12 +286,14 @@ test "scripted stream reports a partial, then the value" {
 
 test "recording a missing exchange without --record is a ProviderError naming it" {
   let req: Request<Int> = request("Count.", Prompt.text("how many?"))
-  with Fs.rooted(Test.fixtures()), Http.scripted([]), recording(Path.of("absent.jsonl"), anthropic(Secret.of("k"), default())) {
+  with Fs.rooted(Test.fixtures()),
+      Http.scripted([]),
+      recording(Path.of("absent.jsonl"), anthropic(Secret.of("k"), default())) {
     match try { Llm.generate(req) } {
       Err(ProviderError { status, reason }) => {
         expect_eq(status, 0)
         expect(String.contains(reason, "sakura test --record"))
-      }
+      },
       other => expect_eq("{other}", "a ProviderError"),
     }
   }
@@ -280,7 +303,7 @@ test "recording a missing exchange without --record is a ProviderError naming it
         expect_eq(status, 0)
         expect(String.contains(reason, "sakura test --record"))
         expect(String.contains(reason, "Llm.recording"))
-      }
+      },
       other => expect_eq("{other}", "a ProviderError"),
     }
   }

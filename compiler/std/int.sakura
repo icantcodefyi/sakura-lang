@@ -19,25 +19,17 @@ pub fn wrapping_add(a: Int, b: Int) -> Int
 
 /// Absolute value; `abs` of the minimum `Int` overflows (Defect `D001`).
 @total
-pub fn abs(i: Int) -> Int {
-  if i < 0 { 0 - i } else { i }
-}
+pub fn abs(i: Int) -> Int { if i < 0 { 0 - i } else { i } }
 
 @total
-pub fn min(a: Int, b: Int) -> Int {
-  if a <= b { a } else { b }
-}
+pub fn min(a: Int, b: Int) -> Int { if a <= b { a } else { b } }
 
 @total
-pub fn max(a: Int, b: Int) -> Int {
-  if a >= b { a } else { b }
-}
+pub fn max(a: Int, b: Int) -> Int { if a >= b { a } else { b } }
 
 pub fn clamp(i: Int, lo: Int, hi: Int) -> Int
   requires lo <= hi
-{
-  min(max(i, lo), hi)
-}
+{ min(max(i, lo), hi) }
 
 /// `base` to the power `exp`, by squaring; overflow is Defect `D001`.
 pub fn pow(base: Int, exp: Int) -> Int

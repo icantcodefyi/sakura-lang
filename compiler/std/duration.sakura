@@ -11,7 +11,9 @@ pub fn seconds(n: Int) -> Duration { Duration(n * 1000) }
 pub fn minutes(n: Int) -> Duration { Duration(n * 60_000) }
 
 pub fn to_millis(d: Duration) -> Int {
-  match d { Duration(ms) => ms }
+  match d {
+    Duration(ms) => ms,
+  }
 }
 
 test "units convert to milliseconds" {

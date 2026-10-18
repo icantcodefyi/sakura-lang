@@ -10,19 +10,17 @@ pub type Gen<A> = { sample: fn(Int) -> A ! {Random} }
 /// Uniform integers in `[lo, hi]`.
 pub fn int(lo: Int, hi: Int) -> Gen<Int>
   requires lo <= hi
-{
-  Gen { sample: fn(size) { Random.int(lo, hi) } }
-}
+{ Gen { sample: fn(size) { Random.int(lo, hi) } } }
 
-pub fn bool() -> Gen<Bool> {
-  Gen { sample: fn(size) { Random.int(0, 1) == 1 } }
-}
+pub fn bool() -> Gen<Bool> { Gen { sample: fn(size) { Random.int(0, 1) == 1 } } }
 
 /// One of `choices`, uniformly.
 pub fn one_of<A>(choices: List<A>) -> Gen<A>
   requires List.len(choices) > 0
 {
-  Gen { sample: fn(size) { choices[Random.int(0, List.len(choices) - 1)].expect("index in range") } }
+  Gen {
+    sample: fn(size) { choices[Random.int(0, List.len(choices) - 1)].expect("index in range") },
+  }
 }
 
 /// Lists of up to `max_len` elements (and at most `size`).
@@ -41,7 +39,10 @@ pub fn list<A>(item: Gen<A>, max_len: Int) -> Gen<List<A>>
 pub fn string(max_len: Int) -> Gen<String>
   requires max_len >= 0
 {
-  map(list(one_of(String.chars("abcdefghijklmnopqrstuvwxyz")), max_len), fn(cs) { List.join(cs, "") })
+  map(
+    list(one_of(String.chars("abcdefghijklmnopqrstuvwxyz")), max_len),
+    fn(cs) { List.join(cs, "") },
+  )
 }
 
 pub fn map<A, B>(g: Gen<A>, f: fn(A) -> B) -> Gen<B> {
@@ -55,7 +56,9 @@ pub fn pair<A, B>(a: Gen<A>, b: Gen<B>) -> Gen<(A, B)> {
 /// Runs `prop` on `runs` generated values. Stops at the first case that records a
 /// failure and reports that input in the test output.
 /// ponytail: no shrinking; the growing `size` keeps early counterexamples small.
-pub fn for_all<A: Show, e>(g: Gen<A>, runs: Int, prop: fn(A) -> Unit ! {Test | e}) -> Unit ! {Random, Test | e} {
+pub fn for_all<A: Show, e>(g: Gen<A>, runs: Int, prop: fn(A) -> Unit ! {Test | e}) -> Unit
+  ! {Random, Test | e}
+{
   for i in 0..runs {
     let before = Test.failures()
     let x = g.sample(i)

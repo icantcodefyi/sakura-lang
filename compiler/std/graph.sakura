@@ -7,9 +7,7 @@ pub type NodeId = NodeId(Int)
 
 pub type Graph<N> = { nodes: Map<Int, N>, edges: Map<Int, List<NodeId>>, next: Int }
 
-pub fn empty<N>() -> Graph<N> {
-  Graph { nodes: Map.empty(), edges: Map.empty(), next: 0 }
-}
+pub fn empty<N>() -> Graph<N> { Graph { nodes: Map.empty(), edges: Map.empty(), next: 0 } }
 
 /// Adds `n` and returns the new graph with its id.
 pub fn insert<N>(g: Graph<N>, n: N) -> (Graph<N>, NodeId) {
@@ -18,9 +16,7 @@ pub fn insert<N>(g: Graph<N>, n: N) -> (Graph<N>, NodeId) {
 }
 
 @total
-pub fn get<N>(g: Graph<N>, id: NodeId) -> Option<N> {
-  g.nodes.get(slot(id))
-}
+pub fn get<N>(g: Graph<N>, id: NodeId) -> Option<N> { g.nodes.get(slot(id)) }
 
 /// Adds the edge `a -> b`. Both ids must belong to `g`. Adding an edge twice is a no-op.
 pub fn connect<N>(g: Graph<N>, a: NodeId, b: NodeId) -> Graph<N>
@@ -31,14 +27,14 @@ pub fn connect<N>(g: Graph<N>, a: NodeId, b: NodeId) -> Graph<N>
 }
 
 /// Targets of edges leaving `id`, in insertion order; `[]` for unknown ids.
-pub fn neighbors<N>(g: Graph<N>, id: NodeId) -> List<NodeId> {
-  g.edges.get(slot(id)).unwrap_or([])
-}
+pub fn neighbors<N>(g: Graph<N>, id: NodeId) -> List<NodeId> { g.edges.get(slot(id)).unwrap_or([]) }
 
 pub fn len<N>(g: Graph<N>) -> Int { g.nodes.len() }
 
 fn slot(id: NodeId) -> Int {
-  match id { NodeId(n) => n }
+  match id {
+    NodeId(n) => n,
+  }
 }
 
 test "insert, connect, neighbors" {

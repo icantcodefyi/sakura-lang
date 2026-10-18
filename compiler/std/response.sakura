@@ -14,22 +14,28 @@ pub error HttpError(status: Option<Status>, reason: String)
 
 pub fn status(code: Int, body: String) -> Response
   requires code >= 100 && code <= 599
-{
-  Response { status: Status.from(code), headers: [], body }
-}
+{ Response { status: Status.from(code), headers: [], body } }
 
 /// A 200 response with `value` encoded as JSON.
 pub fn ok_json<T: Schema>(value: T) -> Response {
-  Response { status: Status.from(200), headers: [("content-type", "application/json")], body: Json.encode(value) }
+  Response {
+    status: Status.from(200),
+    headers: [("content-type", "application/json")],
+    body: Json.encode(value),
+  }
 }
 
 /// A 200 response with an HTML page.
 pub fn html(h: Html) -> Response {
-  Response { status: Status.from(200), headers: [("content-type", "text/html; charset=utf-8")], body: Html.to_string(h) }
+  Response {
+    status: Status.from(200),
+    headers: [("content-type", "text/html; charset=utf-8")],
+    body: Html.to_string(h),
+  }
 }
 
 /// The body decoded as `T` (named by the binding's annotation), refinements included.
-pub fn json<T: Schema>(r: Response, limit: Int) -> T ! {Fail<HttpError | DecodeError>} {
+pub fn json<T: Schema>(r: Response, limit: Int) -> T ! {Fail<DecodeError | HttpError>} {
   match Json.decode(checked_body(r, limit)) {
     Ok(value) => value,
     Err(e) => fail e,
@@ -43,7 +49,11 @@ pub fn text(r: Response, limit: Int) -> Untrusted<String> ! {Fail<HttpError>} {
 
 /// The body of a 2xx response that is at most `limit` bytes.
 fn checked_body(r: Response, limit: Int) -> String ! {Fail<HttpError>} {
-  if r.status < 200 || r.status > 299 { fail HttpError { status: Some(r.status), reason: "status {r.status}" } }
-  if String.len(r.body) > limit { fail HttpError { status: Some(r.status), reason: "body exceeds {limit} bytes" } }
+  if r.status < 200 || r.status > 299 {
+    fail HttpError { status: Some(r.status), reason: "status {r.status}" }
+  }
+  if String.len(r.body) > limit {
+    fail HttpError { status: Some(r.status), reason: "body exceeds {limit} bytes" }
+  }
   r.body
 }

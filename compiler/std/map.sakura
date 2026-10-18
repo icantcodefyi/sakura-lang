@@ -33,9 +33,7 @@ pub fn of<K: Hash, V>(pairs: List<(K, V)>) -> Map<K, V> {
 }
 
 @total
-pub fn contains<K: Hash, V>(m: Map<K, V>, k: K) -> Bool {
-  get(m, k).is_some()
-}
+pub fn contains<K: Hash, V>(m: Map<K, V>, k: K) -> Bool { get(m, k).is_some() }
 
 /// Sets `k` to `f(current)`, where `current` is `None` when `k` is absent.
 pub fn update<K: Hash, V, e>(m: Map<K, V>, k: K, f: fn(Option<V>) -> V ! e) -> Map<K, V> ! e {
@@ -43,14 +41,10 @@ pub fn update<K: Hash, V, e>(m: Map<K, V>, k: K, f: fn(Option<V>) -> V ! e) -> M
 }
 
 /// Keys in insertion order.
-pub fn keys<K: Hash, V>(m: Map<K, V>) -> List<K> {
-  List.map(entries(m), fn(kv) { kv.0 })
-}
+pub fn keys<K: Hash, V>(m: Map<K, V>) -> List<K> { List.map(entries(m), fn(kv) { kv.0 }) }
 
 /// Values in key insertion order.
-pub fn values<K: Hash, V>(m: Map<K, V>) -> List<V> {
-  List.map(entries(m), fn(kv) { kv.1 })
-}
+pub fn values<K: Hash, V>(m: Map<K, V>) -> List<V> { List.map(entries(m), fn(kv) { kv.1 }) }
 
 test "insert, get, contains, len" {
   let m = Map.of([("a", 1), ("b", 2)])
@@ -73,6 +67,7 @@ test "remove and update" {
   let m = Map.of([("a", 1)])
   expect_eq(m.remove("a").len(), 0)
   expect_eq(m.remove("zzz"), m)
-  let counted = m.update("a", fn(n) { n.unwrap_or(0) + 1 }).update("b", fn(n) { n.unwrap_or(0) + 1 })
+  let counted = m.update("a", fn(n) { n.unwrap_or(0) + 1 })
+    .update("b", fn(n) { n.unwrap_or(0) + 1 })
   expect_eq(counted.entries(), [("a", 2), ("b", 1)])
 }

@@ -2,7 +2,12 @@
 // `Json.Object(m)`): the variant names `Bool` and `String` would otherwise collide with
 // the prelude types. Typed encode/decode use the derived `Schema` codec (milestone M3).
 
-pub type Json = Null | Bool(Bool) | Number(Float) | String(String) | Array(List<Json>) | Object(Map<String, Json>)
+pub type Json = Null
+  | Bool(Bool)
+  | Number(Float)
+  | String(String)
+  | Array(List<Json>)
+  | Object(Map<String, Json>)
 
 /// Where and why decoding failed. `path` is a JSON Pointer such as `/items/0/email`.
 pub error DecodeError(path: String, message: String)

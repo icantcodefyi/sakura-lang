@@ -31,7 +31,9 @@ pub fn expect_eq<A: Eq + Show>(actual: A, expected: A) -> Unit ! {Test} {
 }
 
 /// `body` must fail with exactly `err`.
-pub fn expect_fail<T, E: Eq + Show, e>(body: fn() -> T ! {Fail<E> | e}, err: E) -> Unit ! {Test | e} {
+pub fn expect_fail<T, E: Eq + Show, e>(body: fn() -> T ! {Fail<E> | e}, err: E) -> Unit
+  ! {Test | e}
+{
   let outcome = try { body() }
   match outcome {
     Ok(_) => Test.record_failure("expected failure {show(err)}, but the body returned"),
@@ -40,13 +42,18 @@ pub fn expect_fail<T, E: Eq + Show, e>(body: fn() -> T ! {Fail<E> | e}, err: E) 
 }
 
 /// `body` must fail with an error for which `pred` is true.
-pub fn expect_fails_with<T, E: Show, e>(body: fn() -> T ! {Fail<E> | e}, pred: fn(E) -> Bool) -> Unit ! {Test | e} {
+pub fn expect_fails_with<T, E: Show, e>(
+  body: fn() -> T ! {Fail<E> | e},
+  pred: fn(E) -> Bool,
+) -> Unit
+  ! {Test | e}
+{
   let outcome = try { body() }
   match outcome {
     Ok(_) => Test.record_failure("expected a failure, but the body returned"),
     Err(got) => {
       if !pred(got) { Test.record_failure("failure {show(got)} did not satisfy the predicate") }
-    }
+    },
   }
 }
 
@@ -56,9 +63,7 @@ pub fn expect_fails_with<T, E: Show, e>(body: fn() -> T ! {Fail<E> | e}, pred: f
 pub fn expect_defect<T, e>(body: fn() -> T ! e) -> Unit ! {Test | e}
 
 /// The test's captured output (`Console.print`, `Log.event`) must equal `lines`.
-pub fn expect_output(lines: List<String>) -> Unit ! {Test} {
-  expect_eq(Test.output_lines(), lines)
-}
+pub fn expect_output(lines: List<String>) -> Unit ! {Test} { expect_eq(Test.output_lines(), lines) }
 
 /// Compares `show(value)` with the stored snapshot `name`.
 pub fn expect_snapshot<A: Show>(name: String, value: A) -> Unit ! {Test} {

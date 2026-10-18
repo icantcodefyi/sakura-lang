@@ -59,5 +59,8 @@ test "virtual clock advances only by sleeping" {
     Clock.sleep(Duration.millis(-50))
     (before, Clock.now(), Clock.monotonic())
   }
-  expect_eq(seen, (Instant.from_unix_millis(0), Instant.from_unix_millis(3000), Duration.millis(3000)))
+  expect_eq(
+    seen,
+    (Instant.from_unix_millis(0), Instant.from_unix_millis(3000), Duration.millis(3000)),
+  )
 }

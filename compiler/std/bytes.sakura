@@ -21,6 +21,4 @@ test "from_list, len, get" {
   expect_eq(get(b, 3), None)
 }
 
-test "bytes outside 0..=255 blame the caller" {
-  expect_defect(fn() { from_list([256]) })
-}
+test "bytes outside 0..=255 blame the caller" { expect_defect(fn() { from_list([256]) }) }

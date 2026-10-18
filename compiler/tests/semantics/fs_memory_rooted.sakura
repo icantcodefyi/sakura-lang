@@ -31,7 +31,9 @@ test "the §15.6 narrowing reads through the fake" {
 test "a write under the narrowed handler is visible to the outer one" {
   with Fs.memory(files()) {
     let wrote = try {
-      with Fs.rooted(Dir.subdir(Fs.root(), "data")) { Fs.write(Path.of("x.txt"), String.to_bytes("x")) }
+      with Fs.rooted(Dir.subdir(Fs.root(), "data")) {
+        Fs.write(Path.of("x.txt"), String.to_bytes("x"))
+      }
     }
     expect_eq(wrote, Ok(()))
     expect_eq(try { Fs.read(Path.of("data/x.txt")) }, Ok(String.to_bytes("x")))
@@ -40,13 +42,19 @@ test "a write under the narrowed handler is visible to the outer one" {
 
 test "subdir needs an existing directory" {
   with Fs.memory(files()) {
-    expect_fail(fn() { Dir.subdir(Fs.root(), "nope") }, FsError { path: "nope", reason: "no such directory" })
+    expect_fail(
+      fn() { Dir.subdir(Fs.root(), "nope") },
+      FsError { path: "nope", reason: "no such directory" },
+    )
     expect_fail(
       fn() { Dir.subdir(Fs.root(), "data/a.txt") },
       FsError { path: "data/a.txt", reason: "not a directory" },
     )
     expect_eq(try { Fs.exists(Path.of("data/sub")) }, Ok(true))
-    expect_fail(fn() { Fs.read(Path.of("data")) }, FsError { path: "data", reason: "is a directory" })
+    expect_fail(
+      fn() { Fs.read(Path.of("data")) },
+      FsError { path: "data", reason: "is a directory" },
+    )
   }
 }
 
@@ -89,7 +97,9 @@ test "list returns files and implied directories, sorted" {
     let names = try { List.map(Fs.list(Path.of(".")), fn(e) { (e.name, e.is_dir) }) }
     expect_eq(names, Ok([("data", true), ("top.txt", false)]))
     let inner = try {
-      with Fs.rooted(Dir.subdir(Fs.root(), "data")) { List.map(Fs.list(Path.of(".")), fn(e) { e.name }) }
+      with Fs.rooted(Dir.subdir(Fs.root(), "data")) {
+        List.map(Fs.list(Path.of(".")), fn(e) { e.name })
+      }
     }
     expect_eq(inner, Ok(["a.txt", "sub"]))
   }

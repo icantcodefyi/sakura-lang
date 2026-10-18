@@ -4,14 +4,15 @@
 // interpolated `Html` value is markup and any other value goes through `from`, as escaped text
 // (design §17.77).
 
-
 pub opaque type Html = Html(String)
 
 /// `s` as text: `& < > " '` are escaped.
 pub fn text(s: String) -> Html { Html(escape(s)) }
 
 /// Untrusted text, escaped; the safe way to show it.
-pub fn untrusted(u: Untrusted<String>) -> Html { text(Untrusted.trust(u, @trust("escaped as HTML text"))) }
+pub fn untrusted(u: Untrusted<String>) -> Html {
+  text(Untrusted.trust(u, @trust("escaped as HTML text")))
+}
 
 /// Markup inserted as it is. `sakura audit` lists every `@trust` reason.
 pub fn raw(markup: String, reason: Trust) -> Html { Html(markup) }
@@ -50,8 +51,15 @@ fn escape(s: String) -> String {
 test "text is escaped, markup is kept" {
   let name = "<script>alert('x') & \"y\"</script>"
   let page = html"<p>Hi, {name}</p>"
-  expect_eq(to_string(page), "<p>Hi, &lt;script&gt;alert(&#39;x&#39;) &amp; &quot;y&quot;&lt;/script&gt;</p>")
-  let list = concat([raw("<ul>", @trust("constant markup")), text("a<b"), raw("</ul>", @trust("constant markup"))])
+  expect_eq(
+    to_string(page),
+    "<p>Hi, &lt;script&gt;alert(&#39;x&#39;) &amp; &quot;y&quot;&lt;/script&gt;</p>",
+  )
+  let list = concat([
+    raw("<ul>", @trust("constant markup")),
+    text("a<b"),
+    raw("</ul>", @trust("constant markup")),
+  ])
   expect_eq(to_string(list), "<ul>a&lt;b</ul>")
 }
 
@@ -61,7 +69,10 @@ test "a page composes Html fragments as markup and escapes everything else" {
   let banner = raw("<hr class=\"x\">", @trust("constant markup"))
   let count = 3
   let page = html"<main>{title}{banner}<p>{untrusted(body)}</p><p>{count} items</p></main>"
-  expect_eq(to_string(page), "<main><h1>Tom &amp; Jerry</h1><hr class=\"x\"><p>&lt;img src=x onerror=alert(1)&gt;</p><p>3 items</p></main>")
+  expect_eq(
+    to_string(page),
+    "<main><h1>Tom &amp; Jerry</h1><hr class=\"x\"><p>&lt;img src=x onerror=alert(1)&gt;</p><p>3 items</p></main>",
+  )
   let direct = html"<p>{body}</p>"
   expect_eq(to_string(direct), "<p>&lt;img src=x onerror=alert(1)&gt;</p>")
 }

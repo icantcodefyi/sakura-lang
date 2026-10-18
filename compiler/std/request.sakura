@@ -28,13 +28,15 @@ pub fn of(method: Method, url: Url) -> Request {
 }
 
 /// A `POST` of `body` to `path`, for route handlers and their tests.
-pub fn post(path: String, body: String) -> Request {
-  Request { ..of(Post, Url.from(path)), body }
-}
+pub fn post(path: String, body: String) -> Request { Request { ..of(Post, Url.from(path)), body } }
 
 /// A `POST` of `body` encoded as JSON.
 pub fn post_json<T: Schema>(url: Url, body: T) -> Request {
-  Request { ..of(Post, url), headers: [("content-type", "application/json")], body: Json.encode(body) }
+  Request {
+    ..of(Post, url),
+    headers: [("content-type", "application/json")],
+    body: Json.encode(body),
+  }
 }
 
 /// The body decoded as `T` (named by the binding's annotation), refinements included.
@@ -67,5 +69,8 @@ test "post and param" {
   expect_eq(req.method, Post)
   expect_eq(param(req, "invite"), Some("abc"))
   expect_eq(param(Request { ..req, params: [("invite", "path")] }, "invite"), Some("path"))
-  expect_eq(header(Request { ..req, headers: [("Content-Type", "text/plain")] }, "content-type"), Some("text/plain"))
+  expect_eq(
+    header(Request { ..req, headers: [("Content-Type", "text/plain")] }, "content-type"),
+    Some("text/plain"),
+  )
 }

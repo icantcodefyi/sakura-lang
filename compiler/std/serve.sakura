@@ -20,17 +20,13 @@ pub effect Serve {
 }
 
 /// Serves `router` on `addr`: `Serve.serve` with the router's dispatch as the handler.
-pub fn listen<e>(router: Router<e>, addr: Address) -> Never
-  ! {Serve, Fail<ServeError> | e}
-{
+pub fn listen<e>(router: Router<e>, addr: Address) -> Never ! {Serve, Fail<ServeError> | e} {
   Serve.serve(fn(req) { Router.handle(router, req) }, addr)
 }
 
 pub fn of(host: String, port: Int) -> Address
   requires port >= 0 && port <= 65_535
-{
-  Address { host, port }
-}
+{ Address { host, port } }
 
 /// Listens on the host network, within the manifest's `net` list.
 pub fn host() -> Handler<Serve> {
@@ -42,7 +38,8 @@ pub fn host() -> Handler<Serve> {
 /// Serves until the process stops, each request in its own task; a failure or defect in
 /// `handle` becomes a 500 and the server keeps running.
 @external(js, "sakura_runtime", "serve_listen")
-fn serve_listen<e>(addr: Address, handle: fn(Request) -> Response ! e) -> Never ! {Fail<ServeError> | e}
+fn serve_listen<e>(addr: Address, handle: fn(Request) -> Response ! e) -> Never
+  ! {Fail<ServeError> | e}
 
 /// Test handler: `serve` answers each of `requests` in order, writes
 /// `"<METHOD> <path> -> <status> <body>"` to the test output, then fails with
@@ -63,7 +60,10 @@ test "scripted listen answers each request with the router" {
   let r = Router.new().get("/health", fn(_) { Response.status(200, "ok") })
   let reqs = [Request.of(Get, Url.from("/health")), Request.post("/health", "")]
   with scripted(reqs) {
-    expect_fail(fn() { Serve.listen(r, of("127.0.0.1", 8080)) }, ServeError { reason: "no more requests" })
+    expect_fail(
+      fn() { Serve.listen(r, of("127.0.0.1", 8080)) },
+      ServeError { reason: "no more requests" },
+    )
   }
   expect_output(["Get /health -> 200 ok", "Post /health -> 405 method not allowed"])
 }

@@ -1,6 +1,7 @@
 // Structured logging as an effect. Prelude effect.
 
 import std/json.{Json}
+
 pub type Level = Debug | Info | Warn | Error
 
 pub effect Log {

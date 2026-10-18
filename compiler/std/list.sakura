@@ -21,9 +21,7 @@ pub fn push<A>(xs: List<A>, x: A) -> List<A>
 /// `xs = List.set(xs, i, x)`.
 pub fn set<A>(xs: List<A>, i: Int, x: A) -> List<A>
   requires 0 <= i && i < len(xs)
-{
-  list_set(xs, i, x)
-}
+{ list_set(xs, i, x) }
 
 @external(js, "sakura_runtime", "list_set")
 fn list_set<A>(xs: List<A>, i: Int, x: A) -> List<A>
@@ -48,9 +46,7 @@ pub fn map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! e {
 
 pub fn filter<A, e>(xs: List<A>, f: fn(A) -> Bool ! e) -> List<A> ! e {
   var out: List<A> = []
-  for x in xs {
-    if f(x) { out = push(out, x) }
-  }
+  for x in xs { if f(x) { out = push(out, x) } }
   out
 }
 
@@ -59,8 +55,8 @@ pub fn filter_map<A, B, e>(xs: List<A>, f: fn(A) -> Option<B> ! e) -> List<B> ! 
   var out: List<B> = []
   for x in xs {
     match f(x) {
-      Some(y) => { out = push(out, y) }
-      None => {}
+      Some(y) => { out = push(out, y) },
+      None => {},
     }
   }
   out
@@ -81,34 +77,26 @@ pub fn fold<A, B, e>(xs: List<A>, init: B, f: fn(B, A) -> B ! e) -> B ! e {
 
 /// The first element for which `f` is true. Stops calling `f` after the first match.
 pub fn find<A, e>(xs: List<A>, f: fn(A) -> Bool ! e) -> Option<A> ! e {
-  for x in xs {
-    if f(x) { return Some(x) }
-  }
+  for x in xs { if f(x) { return Some(x) } }
   None
 }
 
 /// True when `f` holds for every element (true for `[]`). In the contract subset.
 @total
 pub fn all<A, e>(xs: List<A>, f: fn(A) -> Bool ! e) -> Bool ! e {
-  for x in xs {
-    if !f(x) { return false }
-  }
+  for x in xs { if !f(x) { return false } }
   true
 }
 
 /// True when `f` holds for some element (false for `[]`). In the contract subset.
 @total
 pub fn any<A, e>(xs: List<A>, f: fn(A) -> Bool ! e) -> Bool ! e {
-  for x in xs {
-    if f(x) { return true }
-  }
+  for x in xs { if f(x) { return true } }
   false
 }
 
 /// Stable ascending sort.
-pub fn sort<A: Ord>(xs: List<A>) -> List<A> {
-  sort_by(xs, fn(x) { x })
-}
+pub fn sort<A: Ord>(xs: List<A>) -> List<A> { sort_by(xs, fn(x) { x }) }
 
 /// Stable ascending sort by `key` (merge sort, O(n log n) key calls).
 pub fn sort_by<A, K: Ord>(xs: List<A>, key: fn(A) -> K) -> List<A> {
@@ -127,12 +115,12 @@ fn merge<A, K: Ord>(a: List<A>, b: List<A>, key: fn(A) -> K) -> List<A> {
       (Some(x), Some(y)) if key(y) < key(x) => {
         out = push(out, y)
         j = j + 1
-      }
+      },
       (Some(x), _) => {
         out = push(out, x)
         i = i + 1
-      }
-      _ => { i = len(a) }
+      },
+      _ => { i = len(a) },
     }
   }
   concat(concat(out, slice(a, i, len(a))), slice(b, j, len(b)))
@@ -143,8 +131,8 @@ pub fn zip<A, B>(a: List<A>, b: List<B>) -> List<(A, B)> {
   var out: List<(A, B)> = []
   for (i, x) in enumerate(a) {
     match b[i] {
-      Some(y) => { out = push(out, (x, y)) }
-      None => { return out }
+      Some(y) => { out = push(out, (x, y)) },
+      None => { return out },
     }
   }
   out
@@ -167,8 +155,8 @@ pub fn reverse<A>(xs: List<A>) -> List<A> {
   while i > 0 {
     i = i - 1
     match xs[i] {
-      Some(x) => { out = push(out, x) }
-      None => {}
+      Some(x) => { out = push(out, x) },
+      None => {},
     }
   }
   out
@@ -185,9 +173,7 @@ pub fn join(xs: List<String>, sep: String) -> String {
 }
 
 /// Sum with checked arithmetic: overflow is Defect `D001`.
-pub fn sum(xs: List<Int>) -> Int {
-  fold(xs, 0, fn(acc, x) { acc + x })
-}
+pub fn sum(xs: List<Int>) -> Int { fold(xs, 0, fn(acc, x) { acc + x }) }
 
 @total
 pub fn first<A>(xs: List<A>) -> Option<A> { get(xs, 0) }
@@ -196,9 +182,7 @@ pub fn first<A>(xs: List<A>) -> Option<A> { get(xs, 0) }
 pub fn last<A>(xs: List<A>) -> Option<A> { get(xs, len(xs) - 1) }
 
 @total
-pub fn contains<A: Eq>(xs: List<A>, x: A) -> Bool {
-  any(xs, fn(y) { y == x })
-}
+pub fn contains<A: Eq>(xs: List<A>, x: A) -> Bool { any(xs, fn(y) { y == x }) }
 
 /// Drops later duplicates, keeping first occurrences in order.
 pub fn unique<A: Hash>(xs: List<A>) -> List<A> {
@@ -294,6 +278,4 @@ test "join, sum, first, last, contains, unique, range" {
   expect_eq(range(5, 2), [])
 }
 
-test "sum overflow is a defect" {
-  expect_defect(fn() { sum([9_223_372_036_854_775_807, 1]) })
-}
+test "sum overflow is a defect" { expect_defect(fn() { sum([9_223_372_036_854_775_807, 1]) }) }

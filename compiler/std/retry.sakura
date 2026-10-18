@@ -20,17 +20,23 @@ pub type Policy<E> = {
 /// deadline. Change fields with a record update: `Policy { ..retry.policy(f, 5), jitter: false }`.
 pub fn policy<E>(retry_on: fn(E) -> Bool, max_attempts: Int) -> Policy<E>
   requires max_attempts >= 1
-{
-  Policy { retry_on, max_attempts, backoff: Duration.millis(100), jitter: true, deadline: None }
-}
+{ Policy { retry_on, max_attempts, backoff: Duration.millis(100), jitter: true, deadline: None } }
 
-pub fn retry<T, E, e>(p: Policy<E>, action: fn() -> T ! {Fail<E> | e}) -> T ! {Clock, Random, Fail<E> | e} {
+pub fn retry<T, E, e>(p: Policy<E>, action: fn() -> T ! {Fail<E> | e}) -> T
+  ! {Clock, Random, Fail<E> | e}
+{
   let started = Clock.monotonic()
   attempt(p, action, 1, p.backoff, started)
 }
 
-fn attempt<T, E, e>(p: Policy<E>, action: fn() -> T ! {Fail<E> | e}, n: Int, delay: Duration, started: Duration)
-  -> T ! {Clock, Random, Fail<E> | e}
+fn attempt<T, E, e>(
+  p: Policy<E>,
+  action: fn() -> T ! {Fail<E> | e},
+  n: Int,
+  delay: Duration,
+  started: Duration,
+) -> T
+  ! {Clock, Random, Fail<E> | e}
 {
   let outcome = try { action() }
   match outcome {
@@ -42,7 +48,7 @@ fn attempt<T, E, e>(p: Policy<E>, action: fn() -> T ! {Fail<E> | e}, n: Int, del
       Clock.sleep(wait)
       let next = Duration.millis(Int.min(delay.to_millis() * 2, 3_600_000))
       attempt(p, action, n + 1, next, started)
-    }
+    },
   }
 }
 
@@ -52,7 +58,7 @@ fn past_deadline(deadline: Option<Duration>, started: Duration, wait: Duration) 
     Some(limit) => {
       let spent = Clock.monotonic().to_millis() - started.to_millis()
       spent + wait.to_millis() > limit.to_millis()
-    }
+    },
   }
 }
 
@@ -104,7 +110,11 @@ test "retry_on false stops at the first error" {
 }
 
 test "deadline stops retrying early" {
-  let p = Policy { ..policy(fn(e) { true }, 10), jitter: false, deadline: Some(Duration.millis(250)) }
+  let p = Policy {
+    ..policy(fn(e) { true }, 10),
+    jitter: false,
+    deadline: Some(Duration.millis(250)),
+  }
   with Clock.virtual(), attempts() {
     expect_fail(fn() { retry(p, fn() { flaky_until(10) }) }, Flaky { attempt: 2 })
   }

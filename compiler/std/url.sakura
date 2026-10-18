@@ -8,7 +8,9 @@ pub type Url = String where is_valid(it)
 /// Starts with `https://`, `http://` or `/`, and has no spaces.
 @total
 pub fn is_valid(s: String) -> Bool {
-  (String.starts_with(s, "https://") || String.starts_with(s, "http://") || String.starts_with(s, "/"))
+  (String.starts_with(s, "https://")
+    || String.starts_with(s, "http://")
+    || String.starts_with(s, "/"))
     && !String.contains(s, " ")
 }
 
@@ -20,9 +22,7 @@ pub fn host(u: Url) -> Option<String> {
 /// The path without scheme, host or query: `/a/b` for `https://x/a/b?q=1`.
 pub fn path(u: Url) -> String {
   let no_query = List.first(String.split(u, "?")).unwrap_or("")
-  if String.starts_with(no_query, "/") {
-    no_query
-  } else {
+  if String.starts_with(no_query, "/") { no_query } else {
     let parts = String.split(no_query, "/")
     "/{List.join(List.slice(parts, 3, List.len(parts)), "/")}"
   }
@@ -68,9 +68,15 @@ test "host, path and query" {
 
 test "template percent-encodes interpolated values" {
   let q = "a b&c=d/é"
-  expect_eq(template(["https://x.test/search?q=", ""], [UrlPart.from(q)]), Url.from("https://x.test/search?q=a%20b%26c%3Dd%2F%C3%A9"))
+  expect_eq(
+    template(["https://x.test/search?q=", ""], [UrlPart.from(q)]),
+    Url.from("https://x.test/search?q=a%20b%26c%3Dd%2F%C3%A9"),
+  )
   expect_eq(template(["/users/", "/posts"], [UrlPart.from(7)]), Url.from("/users/7/posts"))
-  expect_eq(url"https://x.test/search?q={q}", Url.from("https://x.test/search?q=a%20b%26c%3Dd%2F%C3%A9"))
+  expect_eq(
+    url"https://x.test/search?q={q}",
+    Url.from("https://x.test/search?q=a%20b%26c%3Dd%2F%C3%A9"),
+  )
   expect_eq(url"/users/{7}/posts?u={Untrusted.of("a b")}", Url.from("/users/7/posts?u=a%20b"))
   expect_eq(encode_component(q), "a%20b%26c%3Dd%2F%C3%A9")
 }
