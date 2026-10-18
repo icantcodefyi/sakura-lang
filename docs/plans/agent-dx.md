@@ -45,11 +45,27 @@ scheduled beside W2 as the first agent-DX items, DX5's runner and DX6's workflow
    channel. Nothing publishes until these are given.
 2. DX5: the pilot budget (dollars) and the two pinned model identifiers at run time; whether a
    replication is funded after the pilot's report.
-   **Owner answer (2026-10-18): no paid runs for now (budget $0).** Build the tasks, oracles,
-   transcript replay and the offline CI parts only; the paid workflow stays undispatched.
+   **Owner answer (2026-10-18):** up to **$10 total** on the owner's Anthropic API key
+   (Anthropic models only), provided through `request_secret` when the runner is ready; no
+   other paid runs. Build the tasks, oracles, transcript replay and the offline CI parts first.
 3. DX7/DX8: the VS Code marketplace publisher and the plugin marketplace namespace.
 4. DX2: whether `sakura new` should offer `--setup <client>` as a shortcut once `setup` exists
    (proposed: yes, same code path, same project-local rule).
+
+**Owner answers, 2026-10-18 (items 1 and 3):**
+
+- Platforms: matrix **A** first, macOS arm64 (`aarch64-apple-darwin`) and Linux x86-64
+  (`x86_64-unknown-linux-gnu`); then **B** (+ Linux arm64), then **C** (+ Windows x86-64, macOS
+  x86-64), each after the previous one ships.
+- First tag: **`v0.1.0-alpha.1`**.
+- Names: **`sakuralang`** wherever it can be had. The repository stays under the owner's account
+  and is renamed `icantcodefyi/sakuralang` (done 2026-10-18; no GitHub organisation for now).
+  crates.io `sakuralang`, npm `sakuralang`, Homebrew tap `icantcodefyi/homebrew-sakuralang`
+  (formula `sakuralang`, installing the `sakura` binary), VS Code Marketplace and Open VSX
+  publisher `sakuralang`, Claude plugin marketplace in this repository.
+- CI runners: the owner proposes Blacksmith (free tier) for faster Actions; it needs the owner to
+  install its GitHub App. Evaluate and switch the Linux jobs once installed.
+- Signing and credentials: still open.
 
 ## 4. Deviations recorded during implementation
 
