@@ -1369,6 +1369,56 @@ fn build_drops_only_checks_with_authenticated_proofs() {
     assert!(build(&dir, &state, &[]).contains(ensures_check));
 }
 
+const PREDICATES: &str = "fn same(x: Int) -> Int
+  ensures result == x
+{ x }
+
+fn clamp(x: Int) -> Int
+  ensures result >= 0 && result <= 100
+{ if x < 0 { 0 } else if x > 100 { 100 } else { x } }
+
+fn echo(x: Int) -> Int
+  ensures same(result) == x
+{ x }
+
+pub fn main() -> Unit {
+  let _a = clamp(150)
+  let _b = echo(3)
+}
+";
+
+/// Design §17.98, §17.118: a dropped check's predicate goes with it when the proof covers every
+/// binding in it (a compound `&&` included); a predicate that calls a function keeps its
+/// computation, so a defect inside the callee would still surface as `D011`.
+#[test]
+fn build_deletes_a_proved_checks_predicate_unless_it_calls_a_function() {
+    if !has_z3() {
+        return;
+    }
+    let dir = tmp("verify-predicate", PREDICATES);
+    let state = outside(&dir, "state");
+    let verified = sakura_in_state(&["verify", "main.sak"], &dir, &state);
+    assert_eq!(verified.status.code(), Some(0), "{verified:?}");
+    let out = sakura_in_state(&["build", "main.sak"], &dir, &state);
+    assert_eq!(out.status.code(), Some(0), "{out:?}");
+    let js = emitted_js(&dir);
+    let body = |f: &str| {
+        let at = js.find(&format!("function {f}$d(")).unwrap();
+        js[at..at + js[at..].find("\n}\n").unwrap()].to_owned()
+    };
+    assert!(!js.contains("violated"), "every check is proved: {js}");
+    let clamp = body("clamp");
+    assert!(
+        !clamp.contains("result >= 0") && !clamp.contains("result <= 100"),
+        "{clamp}"
+    );
+    let echo = body("echo");
+    assert!(
+        echo.contains("same$d(result)") && echo.contains("contract_enter"),
+        "{echo}"
+    );
+}
+
 /// Security review K3: `sakura build` only loads the proof key, even beside a proofs directory,
 /// and `sakura verify` from a subdirectory refuses a key inside the project root.
 #[test]

@@ -73,6 +73,11 @@ published yet.
   endings as the reason a file is listed. `sakura test` reports a snapshot that differs only
   in `\r\n` against `\n` as a line-ending mismatch.
 
+- `sakura build` deletes a proved check's predicate along with the check: a `requires` or
+  `ensures` built from comparisons, arithmetic, projections and constructors is no longer
+  evaluated once `sakura verify` proved it. A predicate that calls a function is still
+  evaluated, so a defect inside that function is still reported (design §17.98, §17.118).
+
 - `V1002` on `Type.member` suggests the one exported function that is a prefix of the typed
   name or extends it (`List.lenght` → `len`, `List.fil` → `filter`) when no near spelling
   exists, as a `suggested` fix, never `machine_applicable`; `sakura explain V1002` names
