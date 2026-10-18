@@ -1,0 +1,30 @@
+---
+source: crates/sakura_fmt/tests/fmt.rs
+expression: "check(path, &text)"
+input_file: tests/fmt/round8_if_branches.sakura
+---
+// §17.133: an `if` with an `else` keeps every branch on one line or breaks every branch.
+fn encode(c: String, unreserved: String) -> String {
+  var out = ""
+  if String.contains(unreserved, c) {
+    out = out + c
+  } else {
+    let b = String.to_bytes(c)
+    out = out + "%" + show(Bytes.len(b))
+  }
+  out
+}
+
+fn pick(n: Int) -> String {
+  let short = if n > 0 { "pos" } else if n < 0 { "neg" } else { "zero" }
+  if n > 100 {
+    "big"
+  } else if n > 10 {
+    "medium"
+  } else {
+    let s = short + "!"
+    s
+  }
+}
+
+fn guard(n: Int) -> Int { if n > 0 { n } else { 0 } }

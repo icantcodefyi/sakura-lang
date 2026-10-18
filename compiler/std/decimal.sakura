@@ -39,7 +39,9 @@ pub fn to_string(d: Decimal) -> String {
   let u = units(d, scale)
   let digits = Int.to_string(Int.abs(u))
   let sign = if u < 0 { "-" } else { "" }
-  if scale == 0 { sign + digits } else {
+  if scale == 0 {
+    sign + digits
+  } else {
     let padded = String.pad_left(digits, scale + 1, "0")
     let cut = String.len(padded) - scale
     sign + String.slice(padded, 0, cut) + "." + String.slice(padded, cut, String.len(padded))
@@ -71,7 +73,9 @@ pub fn mul(a: Decimal, b: Decimal) -> Decimal {
 pub fn div_checked(a: Decimal, b: Decimal, places: Int) -> Option<Decimal>
   requires places >= 0
 {
-  if b == zero() { None } else {
+  if b == zero() {
+    None
+  } else {
     let sa = List.len(a.frac)
     let sb = List.len(b.frac)
     let n = units(a, sa) * Int.pow(10, sb + places)
@@ -87,7 +91,9 @@ pub fn round(d: Decimal, places: Int) -> Decimal
   requires places >= 0
 {
   let s = List.len(d.frac)
-  if s <= places { d } else {
+  if s <= places {
+    d
+  } else {
     from_units(round_quotient(units(d, s), Int.pow(10, s - places)), places)
   }
 }

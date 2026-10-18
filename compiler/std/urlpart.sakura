@@ -12,7 +12,9 @@ pub fn from<T: Show>(v: T) -> UrlPart {
   let unreserved = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
   var out = ""
   for c in String.chars(show(v)) {
-    if String.contains(unreserved, c) { out = out + c } else {
+    if String.contains(unreserved, c) {
+      out = out + c
+    } else {
       let b = String.to_bytes(c)
       for i in 0..Bytes.len(b) {
         let byte = Bytes.get(b, i).unwrap_or(0)

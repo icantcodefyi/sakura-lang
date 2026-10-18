@@ -21,7 +21,9 @@ pub fn trust<T>(u: Untrusted<T>, reason: Trust) -> T { inner(u) }
 /// The value if `pred` holds; otherwise a `Violation` naming `clause`.
 pub fn check<T>(u: Untrusted<T>, clause: String, pred: fn(T) -> Bool) -> Result<T, Violation> {
   let v = inner(u)
-  if pred(v) { Ok(v) } else {
+  if pred(v) {
+    Ok(v)
+  } else {
     Err(Violation { type_name: "Untrusted", clause, value_summary: "<untrusted>" })
   }
 }

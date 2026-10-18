@@ -54,7 +54,9 @@ pub fn handle<e>(r: Router<e>, req: Request) -> Response ! e {
       None => (),
     }
   }
-  if path_matched { Response.status(405, "method not allowed") } else {
+  if path_matched {
+    Response.status(405, "method not allowed")
+  } else {
     Response.status(404, "not found")
   }
 }
@@ -65,13 +67,17 @@ fn segments(path: String) -> List<String> {
 
 /// The parameters if `path` matches `pattern`.
 fn bind(pattern: List<String>, path: List<String>) -> Option<List<(String, String)>> {
-  if List.len(pattern) != List.len(path) { None } else {
+  if List.len(pattern) != List.len(path) {
+    None
+  } else {
     var params: List<(String, String)> = []
     var ok = true
     for pair in List.zip(pattern, path) {
       if String.starts_with(pair.0, ":") {
         params = params.push((String.slice(pair.0, 1, String.len(pair.0)), pair.1))
-      } else if pair.0 != pair.1 { ok = false }
+      } else if pair.0 != pair.1 {
+        ok = false
+      }
     }
     if ok { Some(params) } else { None }
   }

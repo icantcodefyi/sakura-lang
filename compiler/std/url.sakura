@@ -22,7 +22,9 @@ pub fn host(u: Url) -> Option<String> {
 /// The path without scheme, host or query: `/a/b` for `https://x/a/b?q=1`.
 pub fn path(u: Url) -> String {
   let no_query = List.first(String.split(u, "?")).unwrap_or("")
-  if String.starts_with(no_query, "/") { no_query } else {
+  if String.starts_with(no_query, "/") {
+    no_query
+  } else {
     let parts = String.split(no_query, "/")
     "/{List.join(List.slice(parts, 3, List.len(parts)), "/")}"
   }

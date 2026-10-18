@@ -67,7 +67,11 @@ pub fn format(text: &str) -> Result<String, Vec<Diagnostic>> {
     if !parse.errors.is_empty() {
         return Err(parse.errors);
     }
-    let out = Fmt { src: text }.file(&parse.syntax());
+    let out = Fmt {
+        src: text,
+        in_branch: Default::default(),
+    }
+    .file(&parse.syntax());
     let mut result = String::with_capacity(out.len());
     for line in out.split('\n') {
         result.push_str(trim_layout_space(line));
@@ -431,6 +435,9 @@ fn lead_doc(comments: Vec<(String, bool)>) -> Doc {
 
 struct Fmt<'a> {
     src: &'a str,
+    /// Set while formatting a branch of an `if … else`: its one-statement block joins the
+    /// `if`'s group instead of forming its own (§17.133).
+    in_branch: std::cell::Cell<bool>,
 }
 
 impl Fmt<'_> {
@@ -818,14 +825,13 @@ impl Fmt<'_> {
             LIST_EXPR => self.comma_list("[", "]", &seq(n, is_expr), false),
             IF_EXPR => {
                 let e = ast::IfExpr::cast(n.clone()).expect("kind checked");
-                let els = e
-                    .else_branch()
-                    .map_or_else(nil, |b| t(" else ").append(self.node(b.syntax())));
+                if e.else_branch().is_some() {
+                    return self.if_chain(&e).group();
+                }
                 t("if ")
                     .append(self.opt(e.cond()))
                     .append(t(" "))
                     .append(self.opt(e.then_branch()))
-                    .append(els)
             }
             MATCH_EXPR => {
                 let e = ast::MatchExpr::cast(n.clone()).expect("kind checked");
@@ -1115,15 +1121,45 @@ impl Fmt<'_> {
     // ---- Statements and expressions ----
 
     fn block(&self, n: &SyntaxNode) -> Doc {
+        let in_branch = self.in_branch.replace(false);
         let s = seq(n, is_stmt);
         if s.entries.len() == 1 && !s.has_comments() {
-            return t("{")
+            let doc = t("{")
                 .append(line().append(self.entry(&s.entries[0])).nest(INDENT))
                 .append(line())
-                .append(t("}"))
-                .group();
+                .append(t("}"));
+            return if in_branch { doc } else { doc.group() };
         }
         self.braced_lines(&s, "", true)
+    }
+
+    /// `if c { … } else if d { … } else { … }` whose blocks share one group, so every branch
+    /// stays on one line or every branch breaks (§17.133); conditions break on their own.
+    fn if_chain(&self, e: &ast::IfExpr) -> Doc {
+        let branch = |b: &SyntaxNode| {
+            self.in_branch.set(true);
+            let doc = self.node(b);
+            self.in_branch.set(false);
+            doc
+        };
+        let then = e.then_branch().map_or_else(nil, |b| branch(b.syntax()));
+        let els = match e.else_branch() {
+            None => nil(),
+            // An `else if` without comments of its own continues the chain's group.
+            Some(ast::ElseBranch::IfExpr(i))
+                if leading_comments(i.syntax()).is_empty()
+                    && comments_before(&i.syntax().clone().into()).is_empty()
+                    && !has_stray_comments(i.syntax()) =>
+            {
+                t(" else ").append(self.if_chain(&i))
+            }
+            Some(b) => t(" else ").append(branch(b.syntax())),
+        };
+        t("if ")
+            .append(self.opt(e.cond()).group())
+            .append(t(" "))
+            .append(then)
+            .append(els)
     }
 
     /// `lhs = value`. Comments after `=` are kept: block comments inline, a line comment ends

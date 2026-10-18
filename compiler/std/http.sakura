@@ -93,9 +93,13 @@ fn allowed(hosts: List<String>, req: Request) -> Unit ! {Fail<HttpError>} {
 fn host_port(u: Url) -> String {
   match Url.host(u) {
     None => "",
-    Some(h) => if String.contains(h, ":") { h } else if String.starts_with(u, "https://") {
+    Some(h) => if String.contains(h, ":") {
+      h
+    } else if String.starts_with(u, "https://") {
       "{h}:443"
-    } else { "{h}:80" },
+    } else {
+      "{h}:80"
+    },
   }
 }
 
