@@ -287,15 +287,12 @@ impl<'a> Printer<'a> {
         }
     }
 
-    /// Row variables are numbered by position in the def's `row_vars` (global ids shift
-    /// whenever another module gains a row variable).
+    /// Row variables are numbered per def (design §17.194); `r?` marks one the validator rejects.
     fn row_var(&self, v: u32) -> String {
-        match self
-            .def
-            .and_then(|d| d.row_vars.iter().position(|x| *x == v))
-        {
-            Some(i) => format!("r{i}"),
-            None => format!("r?{v}"),
+        if self.def.is_some_and(|d| v < d.row_params) {
+            format!("r{v}")
+        } else {
+            format!("r?{v}")
         }
     }
 

@@ -41,6 +41,8 @@ pub(crate) struct FnLower<'a, 'p> {
     name: String,
     lambdas: u32,
     row_vars: Vec<u32>,
+    /// The top-level def this body belongs to (itself, or the def a lambda was lifted from).
+    root: DefId,
     /// Type arguments of a specialized copy (see [`Lower::def_spec`]).
     subst: Subst,
     /// Type parameters whose schema is a runtime value (dictionary passing): the local
@@ -66,6 +68,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
         module: hir::ModuleId,
         body_id: hir::BodyId,
         name: String,
+        root: DefId,
     ) -> Self {
         let p = l.p;
         let t = l.t;
@@ -92,6 +95,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
             name,
             lambdas: 0,
             row_vars: Vec::new(),
+            root,
             subst: Vec::new(),
             reps: Vec::new(),
             match_nodes: 0,
@@ -115,7 +119,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
         } else {
             Vec::new()
         };
-        let mut s = FnLower::new(l, def.module, body_id, l_name(hdef));
+        let mut s = FnLower::new(l, def.module, body_id, l_name(hdef), id);
         s.subst = subst;
         let mut params: Vec<Local> = Vec::new();
         for (i, p) in rep_params {
@@ -137,6 +141,10 @@ impl<'a, 'p> FnLower<'a, 'p> {
         };
         if let Some(sc) = &scheme {
             s.row_vars = sc.row_params.iter().map(|p| p.0).collect();
+            let mut ty: Vec<u32> = sc.params.iter().map(|p| p.0).collect();
+            // `runtime_typed_params`' order, so `schema{i}` is `Var(i)`.
+            ty.sort_unstable();
+            s.l.schemes.insert(id, (ty, s.row_vars.clone()));
         }
         params.extend(
             s.body
@@ -171,6 +179,8 @@ impl<'a, 'p> FnLower<'a, 'p> {
             ret,
             row,
             row_vars: s.row_vars,
+            ty_params: 0,
+            row_params: 0,
             pos,
             body,
             refined_params,
@@ -332,7 +342,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
         let module = l.module_name(def.module);
         let case_name = format!("{}$case", l.m.defs[id.index()].name);
         let case = l.push_placeholder(&case_name, module);
-        let mut c = FnLower::new(l, def.module, body_id, "property".into());
+        let mut c = FnLower::new(l, def.module, body_id, "property".into(), case);
         let body = c.body;
         let params: Vec<Local> = body.params.iter().map(|&p| c.param(p)).collect();
         let schemas: Vec<Ty> = body
@@ -451,6 +461,8 @@ impl<'a, 'p> FnLower<'a, 'p> {
             ret: Ty::Unit,
             row: Row::empty(),
             row_vars: vec![],
+            ty_params: 0,
+            row_params: 0,
             pos,
             body: blk.finish(Expr::Ret(local(r))),
             refined_params: vec![],
@@ -475,6 +487,8 @@ impl<'a, 'p> FnLower<'a, 'p> {
             ret,
             row: Row::empty(),
             row_vars: vec![],
+            ty_params: 0,
+            row_params: 0,
             pos,
             body,
             refined_params: vec![],
@@ -492,7 +506,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
     ) -> FnDef {
         let tname = l.p.def(ty_def).name.clone();
         let pos = l.pos(ty_def.module, l.p.def(ty_def).range);
-        let mut s = FnLower::new(l, ty_def.module, pred, tname.clone());
+        let mut s = FnLower::new(l, ty_def.module, pred, tname.clone(), id);
         let it = s.body.params.first().copied();
         let params: Vec<Local> = it.iter().map(|&p| s.param(p)).collect();
         let x = params.first().map(|p| local(*p)).unwrap_or(unit());
@@ -566,6 +580,8 @@ impl<'a, 'p> FnLower<'a, 'p> {
             ret: ret_ty,
             row: Row::empty(),
             row_vars: vec![],
+            ty_params: 0,
+            row_params: 0,
             pos,
             body,
             refined_params: vec![],
@@ -582,7 +598,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
         id: DefId,
     ) -> FnDef {
         let pos = l.pos(module, range);
-        let mut s = FnLower::new(l, module, pred, name);
+        let mut s = FnLower::new(l, module, pred, name, id);
         let params: Vec<Local> = s.body.params.clone().iter().map(|&p| s.param(p)).collect();
         let cond = match s.body.value {
             Some(v) => s.predicate(v),
@@ -2089,6 +2105,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
         caps.extend(self.reps.iter().map(|(_, l)| local(*l)));
         let module = self.l.module_name(self.module);
         let id = self.l.push_placeholder(&name, module.clone());
+        self.l.root_of.insert(id, self.root);
         let body_ref = self.body;
         let typed = self.typed;
         let row_vars = self.row_vars.clone();
@@ -2111,6 +2128,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
             name: name.clone(),
             lambdas: 0,
             row_vars,
+            root: self.root,
             subst: self.subst.clone(),
             reps: Vec::new(),
             match_nodes: 0,
@@ -2155,6 +2173,8 @@ impl<'a, 'p> FnLower<'a, 'p> {
             ret,
             row,
             row_vars: s.row_vars,
+            ty_params: 0,
+            row_params: 0,
             pos,
             body: code,
             refined_params: vec![],

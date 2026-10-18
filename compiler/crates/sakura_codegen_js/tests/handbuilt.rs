@@ -66,6 +66,8 @@ fn add_def(
         ret,
         row,
         row_vars: vec![],
+        ty_params: 0,
+        row_params: 0,
         pos: None,
         body,
         refined_params: vec![],

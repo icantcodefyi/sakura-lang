@@ -165,6 +165,12 @@ published yet.
 - `agent_docs` normalizes Windows path separators so the skill mirror, manifest,
   hashes, and ZIP are byte-identical to Unix output (design §17.180 (5)).
 
+- Core is a function of the source: type and row parameters are numbered per definition, so
+  `sakura build --dump core`, the Core snapshot and the emitted JS of a program no longer
+  depend on what an earlier analysis in the same process (an LSP or MCP server, a test run)
+  had checked. `sakura verify` solves the obligations of generic definitions once more, since
+  their cache keys hash the renumbered Core (design §17.194).
+
 - `file://` URIs are RFC 8089 on every OS (design §17.180 (4a)): on Windows a source is
   `file:///C:/dir/src/main.sak` instead of `file://C:%5Cdir%5Csrc%5Cmain.sak`, so its module
   name, the `sakura.toml` lookup, terminal paths relative to the working directory and the

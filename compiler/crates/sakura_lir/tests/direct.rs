@@ -80,8 +80,7 @@ fn single(path: &Path) -> Option<sakura_core::Module> {
 fn lir_facts_agree_with_dump_direct() {
     common::big_stack(|| {
         let r = root();
-        // (name, files) of every program, lowered concurrently below: the check holds for any
-        // Core, so which earlier analysis each lowering reuses does not matter here.
+        // (name, files) of every program, lowered concurrently below.
         let mut inputs: Vec<(String, Vec<(String, String)>)> = vec![];
         let file = |p: &Path| {
             vec![(

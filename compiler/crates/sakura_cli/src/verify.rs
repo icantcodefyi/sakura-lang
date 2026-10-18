@@ -348,6 +348,8 @@ fn replay(
         ret: d.ret.clone(),
         row: Row::empty(),
         row_vars: vec![],
+        ty_params: d.ty_params,
+        row_params: d.row_params,
         pos: None,
         body: Expr::Let {
             local: Local(0),

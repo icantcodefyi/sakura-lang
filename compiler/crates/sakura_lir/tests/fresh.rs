@@ -8,12 +8,7 @@ mod regen;
 
 #[test]
 fn the_corpus_matches_its_generator() {
-    let stale = std::thread::Builder::new()
-        .stack_size(1 << 28)
-        .spawn(|| regen::stale(&regen::outputs().0))
-        .unwrap()
-        .join()
-        .unwrap();
+    let stale = regen::stale(&regen::outputs().0);
     assert!(
         stale.is_empty(),
         "stale corpus files (run `cargo run -p sakura_lir --example regen_core` and review the \

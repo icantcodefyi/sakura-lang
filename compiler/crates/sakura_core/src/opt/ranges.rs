@@ -685,6 +685,8 @@ mod tests {
             ret: Ty::Int,
             row: Row::empty(),
             row_vars: vec![],
+            ty_params: 0,
+            row_params: 0,
             pos: None,
             body,
         }

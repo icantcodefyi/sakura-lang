@@ -102,6 +102,54 @@ impl Validator<'_> {
         self.errors.push(message);
     }
 
+    /// Parameters are numbered per def (design §17.194), below its counts.
+    fn ty_var(&mut self, v: u32) {
+        if v != u32::MAX && v >= self.def.ty_params {
+            let n = self.def.ty_params;
+            self.err(format!(
+                "type variable T{v} is not below the def's {n} type parameters"
+            ));
+        }
+    }
+
+    fn row_var(&mut self, v: u32) {
+        if v >= self.def.row_params {
+            let n = self.def.row_params;
+            self.err(format!(
+                "row variable r{v} is not below the def's {n} row parameters"
+            ));
+        }
+    }
+
+    fn row_vars(&mut self, r: &Row) {
+        if let Some(f) = &r.fail {
+            self.ty_vars(f);
+        }
+        if let Some(v) = r.tail {
+            self.row_var(v);
+        }
+    }
+
+    fn ty_vars(&mut self, t: &Ty) {
+        match t {
+            Ty::Var(v) => self.ty_var(*v),
+            Ty::Tuple(ts) | Ty::Adt(_, ts) | Ty::Refined(_, ts) => {
+                ts.iter().for_each(|t| self.ty_vars(t))
+            }
+            Ty::Fn(f) => {
+                f.params.iter().for_each(|t| self.ty_vars(t));
+                self.ty_vars(&f.ret);
+                self.row_vars(&f.row);
+            }
+            Ty::List(t) | Ty::Set(t) => self.ty_vars(t),
+            Ty::Map(k, v) => {
+                self.ty_vars(k);
+                self.ty_vars(v);
+            }
+            _ => {}
+        }
+    }
+
     fn check_def(&mut self) {
         let def = self.def;
         if !def.refined_params.is_empty() && def.refined_params.len() != def.params.len() {
@@ -112,6 +160,14 @@ impl Validator<'_> {
                 self.err(format!("unknown refinement #{}", r.0));
             }
         }
+        for &v in &def.row_vars {
+            self.row_var(v);
+        }
+        for l in &def.locals {
+            self.ty_vars(&l.ty);
+        }
+        self.ty_vars(&def.ret);
+        self.row_vars(&def.row);
         match def.kind {
             FnKind::Top { .. } | FnKind::Test | FnKind::Const => {
                 if !def.captures.is_empty() {
@@ -348,6 +404,16 @@ impl Validator<'_> {
             Bind::Atom(a) => self.atom(a),
             Bind::Prim(op, args) => {
                 self.atoms(args);
+                match op {
+                    PrimOp::Show(t) | PrimOp::Schema(t) => self.ty_vars(t),
+                    PrimOp::SchemaOf(t, vars) => {
+                        self.ty_vars(t);
+                        for &v in vars {
+                            self.ty_var(v);
+                        }
+                    }
+                    _ => {}
+                }
                 if op.arity() != args.len() {
                     self.err(format!("{op:?} takes {} operands", op.arity()));
                 }

@@ -273,7 +273,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
             }
             _ => (Ty::Unit, Ty::Never),
         };
-        let mut c = FnLower::new(l, f.module, body_id, hdef.name.clone());
+        let mut c = FnLower::new(l, f.module, body_id, hdef.name.clone(), case);
         let body = c.body;
         let params: Vec<Local> = body.params.iter().map(|&p| c.param(p)).collect();
         let schemas: Vec<Ty> = body

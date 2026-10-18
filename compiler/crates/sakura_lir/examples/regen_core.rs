@@ -25,6 +25,9 @@ use std::path::{Path, PathBuf};
 
 use sakura_analysis::{Analysis, BuildOptions, Snapshot};
 use sakura_core as c;
+
+#[path = "../tests/common/mod.rs"]
+mod common;
 use sakura_lir::snapshot as v;
 
 fn entry() -> BuildOptions {
@@ -76,13 +79,14 @@ pub fn stale(files: &[(PathBuf, String)]) -> Vec<PathBuf> {
     out
 }
 
-/// Every file the corpus should hold (path, text), and the programs left out with why.
+/// Every file the corpus should hold (path, text), and the programs left out with why. Programs
+/// are lowered concurrently: Core does not depend on which earlier analysis is reused (§17.194).
 pub fn outputs() -> (Vec<(PathBuf, String)>, Vec<String>) {
-    let mut files = Vec::new();
     let here = Path::new(env!("CARGO_MANIFEST_DIR"));
     let corpus = here.join("tests/corpus");
     let semantics = here.join("../../tests/semantics");
     let mut report = Vec::new();
+    let mut jobs: Vec<Job> = Vec::new();
 
     for path in sorted(&semantics, "sak") {
         let name = stem(&path);
@@ -112,14 +116,13 @@ pub fn outputs() -> (Vec<(PathBuf, String)>, Vec<String>) {
         }
         let stdout = std::fs::read_to_string(path.with_extension("stdout")).unwrap_or_default();
         let uri = format!("file:///semantics/{name}.sak");
-        match snapshot(&uri, &text) {
-            Ok((core, _)) => {
-                let out = corpus.join("semantics").join(&name);
-                files.push((out.with_extension("json"), core.to_json()));
-                files.push((out.with_extension("expected"), expected(&ending, &stdout)));
-            }
-            Err(e) => report.push(format!("semantics/{name}: {e}")),
-        }
+        let out = corpus.join("semantics").join(&name);
+        jobs.push(Job {
+            out,
+            uri,
+            text,
+            known: Some((ending, stdout)),
+        });
     }
 
     // Differential programs (`diff/`) and LIR adversarial cases (`lir/`): the reference
@@ -127,33 +130,60 @@ pub fn outputs() -> (Vec<(PathBuf, String)>, Vec<String>) {
     let evaluated = [corpus.join("diff"), corpus.join("lir")];
     for path in evaluated.iter().flat_map(|d| sorted(d, "sak")) {
         let text = std::fs::read_to_string(&path).unwrap();
-        let uri = "file:///diff/main.sak";
-        let result = snapshot(uri, &text).and_then(|(core, live)| {
-            let out = std::thread::Builder::new()
-                .stack_size(1 << 28)
-                .spawn(move || sakura_eval::run_main(&live, sakura_eval::Limits::default()))
-                .unwrap()
-                .join()
-                .unwrap();
-            let ending = match out.result {
-                Ok(()) => "ok".to_owned(),
-                Err(sakura_eval::Stop::Defect { code, .. }) if code != "D003" => code,
-                Err(other) => return Err(format!("reference evaluator: {other:?}")),
-            };
-            Ok((core, ending, out.stdout))
+        let uri = "file:///diff/main.sak".to_owned();
+        jobs.push(Job {
+            out: path.with_extension(""),
+            uri,
+            text,
+            known: None,
         });
-        match result {
-            Ok((core, ending, stdout)) => {
-                let out = path.with_extension("");
-                files.push((out.with_extension("json"), core.to_json()));
-                files.push((out.with_extension("expected"), expected(&ending, &stdout)));
-            }
-            Err(e) => report.push(format!("{}: {e}", path.display())),
-        }
     }
 
+    let done = common::par_map(
+        &jobs,
+        |Job {
+             out,
+             uri,
+             text,
+             known,
+         }| {
+            let (core, live) = snapshot(uri, text)?;
+            let (ending, stdout) = match known {
+                Some(k) => k.clone(),
+                None => {
+                    let out = sakura_eval::run_main(&live, sakura_eval::Limits::default());
+                    let ending = match out.result {
+                        Ok(()) => "ok".to_owned(),
+                        Err(sakura_eval::Stop::Defect { code, .. }) if code != "D003" => code,
+                        Err(other) => return Err(format!("reference evaluator: {other:?}")),
+                    };
+                    (ending, out.stdout)
+                }
+            };
+            Ok([
+                (out.with_extension("json"), core.to_json()),
+                (out.with_extension("expected"), expected(&ending, &stdout)),
+            ])
+        },
+    );
+    let mut files = Vec::new();
+    for (Job { out, .. }, r) in jobs.iter().zip(done) {
+        match r {
+            Ok(fs) => files.extend(fs),
+            Err(e) => report.push(format!("{}: {e}", out.display())),
+        }
+    }
     files.push((here.join("src/builtins.sigs"), builtin_sigs()));
     (files, report)
+}
+
+/// One program to lower: its output path without extension, and its expected ending and stdout
+/// (`None` when the reference evaluator decides them).
+struct Job {
+    out: PathBuf,
+    uri: String,
+    text: String,
+    known: Option<(String, String)>,
 }
 
 fn expected(ending: &str, stdout: &str) -> String {

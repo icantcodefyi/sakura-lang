@@ -332,6 +332,12 @@ pub struct FnDef {
     pub row: Row,
     /// Row variables in scope (the def's own and, for lifted code, its parent's).
     pub row_vars: Vec<u32>,
+    /// The size of the def's parameter numbering (design §17.194): every `Ty::Var(k)` has
+    /// `k < ty_params` or is `u32::MAX` (no parameter), and every row variable is below
+    /// `row_params`. A top-level def and the lambdas and clauses lifted from it share one
+    /// numbering, its scheme's parameters first.
+    pub ty_params: u32,
+    pub row_params: u32,
     pub pos: Option<Pos>,
     pub body: Expr,
     /// The refined type each parameter was declared with (`p: Percent`), one entry per

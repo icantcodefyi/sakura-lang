@@ -27,6 +27,8 @@ fn top(name: &str, b: FnBuilder, params: Vec<Local>, ret: Ty, row: Row, body: Ex
         ret,
         row,
         row_vars: vec![],
+        ty_params: 0,
+        row_params: 0,
         pos: None,
         body,
         refined_params: vec![],
@@ -197,4 +199,51 @@ fn rejects_double_binding() {
         ..Module::default()
     };
     assert_eq!(errors(&m), vec!["def #0: local %0 is bound twice"]);
+}
+
+/// Design §17.194: type and row parameters are numbered per def, below its counts; an
+/// interner index (`Var(184)`, tail `56`) is rejected.
+#[test]
+fn rejects_parameters_beyond_the_defs_numbering() {
+    let def = |var: u32, tail: u32| {
+        let f = Ty::Fn(Box::new(FnTy {
+            params: vec![Ty::Var(var)],
+            ret: Ty::Var(var),
+            row: Row {
+                tail: Some(tail),
+                ..Row::default()
+            },
+        }));
+        let mut b = FnBuilder::new();
+        let x = b.local("x", Ty::Var(var));
+        let g = b.local("f", f);
+        let r = b.local("r", Ty::Var(var));
+        let mut blk = Block::new();
+        blk.push(r, Bind::Call(local(g), vec![local(x)]));
+        let body = blk.finish(Expr::Ret(local(r)));
+        let row = Row {
+            tail: Some(tail),
+            ..Row::default()
+        };
+        let mut d = top("apply", b, vec![x, g], Ty::Var(var), row, body);
+        d.row_vars = vec![tail];
+        d.ty_params = 1;
+        d.row_params = 1;
+        Module {
+            defs: vec![d],
+            ..Module::default()
+        }
+    };
+    assert_eq!(errors(&def(0, 0)), Vec::<String>::new());
+    let errs = errors(&def(184, 56));
+    assert!(
+        errs.contains(
+            &"def #0: type variable T184 is not below the def's 1 type parameters".into()
+        ),
+        "{errs:?}"
+    );
+    assert!(
+        errs.contains(&"def #0: row variable r56 is not below the def's 1 row parameters".into()),
+        "{errs:?}"
+    );
 }

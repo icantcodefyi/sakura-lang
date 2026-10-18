@@ -7,6 +7,7 @@
 
 mod expr;
 mod matchc;
+mod params;
 mod walk;
 
 use std::collections::HashMap;
@@ -86,6 +87,7 @@ pub fn lower(program: &hir::Program, typed: &TypedProgram, opts: &LowerOptions) 
     }
     l.init_literals();
     crate::opt::optimize(&mut l.m);
+    params::number(&mut l.m, &l.root_of, &l.schemes);
     Lowered {
         module: l.m,
         diagnostics: l.diags,
@@ -138,6 +140,10 @@ pub(crate) struct Lower<'p> {
     literal_inits: Vec<DefId>,
     /// `--contracts` candidates skipped for an opaque parameter, one line each (§17.130).
     contract_skips: Vec<String>,
+    /// Lifted lambda or clause → the def it was lifted from, and a lowered def → its scheme's
+    /// type and row parameters: the inputs of [`params::number`].
+    root_of: HashMap<DefId, DefId>,
+    schemes: HashMap<DefId, (Vec<u32>, Vec<u32>)>,
 }
 
 /// A field's `where`: its predicate body, the field name and its range.
@@ -172,6 +178,8 @@ impl<'p> Lower<'p> {
             record_news: HashMap::new(),
             literal_inits: Vec::new(),
             contract_skips: Vec::new(),
+            root_of: HashMap::new(),
+            schemes: HashMap::new(),
         }
     }
 
@@ -326,6 +334,8 @@ impl<'p> Lower<'p> {
             ret: Ty::Unit,
             row: Row::empty(),
             row_vars: vec![],
+            ty_params: 0,
+            row_params: 0,
             pos: None,
             body: Expr::Ret(unit()),
             refined_params: vec![],
