@@ -111,7 +111,7 @@ class Writer {
   }
 }
 
-class Reader {
+export class Reader {
   constructor(bytes) {
     this.b = bytes;
     this.v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -695,7 +695,12 @@ export class Host {
       case T.float:
         return r.f64();
       case T.string:
-        return utf8.decode(r.slice());
+        try {
+          return utf8.decode(r.slice());
+        } catch (e) {
+          if (e instanceof HostFault) throw e;
+          throw new HostFault("a string the guest passed is not UTF-8");
+        }
       case T.bytes:
         return new Uint8Array(r.slice());
       case T.list:
@@ -770,6 +775,18 @@ export class Host {
     this.wake?.();
   }
 
+  /**
+   * The resource ledger (ABI §8.6), run when the instance ends (an outcome, a trap or exit):
+   * abort every request in flight, drop queued completions and retire every handle, because
+   * guest finalizers cannot run after a trap. A completion arriving later is discarded.
+   */
+  close() {
+    for (const abort of this.inflight.values()) abort();
+    this.inflight.clear();
+    this.completed.length = 0;
+    this.handles.clear();
+  }
+
   /** Deliver queued completions: copy each payload out, then `complete` (ABI §8.5). */
   deliver() {
     const e = this.exports;
@@ -779,8 +796,9 @@ export class Host {
     }
   }
 
-  async instantiate(module) {
-    const { instance } = await WebAssembly.instantiate(module, this.imports());
+  async instantiate(bytes) {
+    const module = await WebAssembly.compile(bytes);
+    const instance = await WebAssembly.instantiate(module, coverage.wrap(module, this.imports()));
     this.exports = instance.exports;
     const v = this.exports.sakura_abi_version.value;
     if (v >> 16 !== ABI_VERSION >> 16 || ((v >> 8) & 0xff) > ((ABI_VERSION >> 8) & 0xff)) {
@@ -840,6 +858,46 @@ export class Host {
   }
 }
 
+/**
+ * Host-import coverage (plan §3.7 W2): with `SAKURA_WASM_COVERAGE=<path>`, every import the
+ * module calls is counted, and at exit one JSON line `{declared, provided, called}` is appended
+ * (the module's `sakura_host` imports, this host's, and the calls by name), which the parity
+ * harness merges into its report of uncovered imports.
+ */
+const coverage = {
+  path: proc?.env?.SAKURA_WASM_COVERAGE,
+  declared: new Set(),
+  provided: new Set(),
+  called: new Map(),
+  armed: false,
+  wrap(module, imports) {
+    if (!this.path) return imports;
+    if (!this.armed) {
+      this.armed = true;
+      proc.on("exit", () => {
+        const line = {
+          declared: [...this.declared].sort(),
+          provided: [...this.provided].sort(),
+          called: Object.fromEntries([...this.called].sort()),
+        };
+        proc.getBuiltinModule("node:fs").appendFileSync(this.path, `${JSON.stringify(line)}\n`);
+      });
+    }
+    for (const i of WebAssembly.Module.imports(module)) {
+      if (i.module === "sakura_host") this.declared.add(i.name);
+    }
+    const host = {};
+    for (const [name, f] of Object.entries(imports.sakura_host)) {
+      this.provided.add(name);
+      host[name] = (...a) => {
+        this.called.set(name, (this.called.get(name) ?? 0) + 1);
+        return f(...a);
+      };
+    }
+    return { ...imports, sakura_host: host };
+  },
+};
+
 /** The module's ABI version is not one this host implements (`V8003`, ABI §0). */
 export class AbiMismatch extends Error {
   constructor(version) {
@@ -882,6 +940,7 @@ export async function runMain(bytes, argv = []) {
     // A trap: a runtime bug (ABI §8.6), reported as `D090` with what the engine says.
     o = { kind: "defect", code: "D090", message: `trap: ${e.message}` };
   }
+  host.close();
   rt.flushOut();
   switch (o.kind) {
     case "ok":
@@ -1002,6 +1061,7 @@ export async function runTests(bytes, seed, filter, snapshotDir, update) {
       defect,
     });
   }
+  host.close();
   emit({ kind: "summary", passed, failed, skipped, total: tests.length, seed });
   return failed > 0 ? 3 : 0;
 }
