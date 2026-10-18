@@ -893,7 +893,7 @@ impl<'m> Vm<'m> {
                     };
                     let e = arms
                         .iter()
-                        .find(|(k, _)| i64::from(*k) == t)
+                        .find(|(k, _)| *k == t)
                         .map(|(_, e)| e)
                         .or(default.as_ref())
                         .ok_or(Ending::Internal(format!("no switch arm for {t}")))?;

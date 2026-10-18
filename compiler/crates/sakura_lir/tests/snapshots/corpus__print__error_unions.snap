@@ -101,9 +101,7 @@ fn fetch_retrying#3 top -> ptr ; main::error_unions, frame 3 slots [%0 i64, %1 w
 
 fn fetch#4 top -> ptr ; main::error_unions, frame 1 slots [%0 i64]
   b0(%0 id: i64):
-    %5 lit: i64 = const 1
-    %6 is: bool = eq.int %0, %5
-    if %6 then b5(%0) else b6(%0)
+    switch %0 1 => b5() 2 => b6() 3 => b7() _ => b8()
   b1():
     %1 lit: ptr = const str 3
     ret %1
@@ -116,19 +114,11 @@ fn fetch#4 top -> ptr ; main::error_unions, frame 1 slots [%0 i64]
   b4():
     %4 err: ptr = alloc main::error_unions::NotFound()
     fail %4
-  b5(%7 id: i64):
+  b5():
     jump b1()
-  b6(%8 id: i64):
-    %9 lit: i64 = const 2
-    %10 is: bool = eq.int %8, %9
-    if %10 then b7(%8) else b8(%8)
-  b7(%11 id: i64):
+  b6():
     jump b2()
-  b8(%12 id: i64):
-    %13 lit: i64 = const 3
-    %14 is: bool = eq.int %12, %13
-    if %14 then b9() else b10()
-  b9():
+  b7():
     jump b3()
-  b10():
+  b8():
     jump b4()

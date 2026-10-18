@@ -540,10 +540,12 @@ pub enum Term {
         then: Edge,
         els: Edge,
     },
-    /// Branches on an `i64` discriminant from [`Inst::Tag`].
+    /// Branches on an `i64`: a discriminant from [`Inst::Tag`] or the scrutinee of an `Int`
+    /// literal `match` (design §17.200 (2)). Keys are distinct; without a default they cover
+    /// every value `tag` can hold.
     Switch {
         tag: Var,
-        arms: Vec<(u32, Edge)>,
+        arms: Vec<(i64, Edge)>,
         default: Option<Edge>,
     },
     /// The callee's result arrives as `cont`'s first parameter, then `cont.args`.

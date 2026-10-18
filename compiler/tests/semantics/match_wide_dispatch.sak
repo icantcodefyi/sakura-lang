@@ -1,0 +1,210 @@
+// milestone: M2
+// covers: design §17.200 (3) (past 256 blocks the WASM dispatch is two-level and its blocks share locals: calls, a catch, performs and resumes in one such function); MatchExpr TryExpr
+
+error Odd
+
+fn check(k: Int) -> Int ! {Fail<Odd>} {
+  if k % 7 == 3 { fail Odd }
+  k * 2
+}
+
+fn step(k: Int, acc: Int) -> Int ! {Console, Fail<Odd>} {
+  match k {
+    0 => {
+      Console.print("at 0")
+      acc + 0
+    },
+    1 => try { check(1) } catch {
+      Odd => -1,
+    },
+    2 => acc + check(2),
+    3 => try { check(3) } catch {
+      Odd => -3,
+    },
+    4 => acc + check(4),
+    5 => try { check(5) } catch {
+      Odd => -5,
+    },
+    6 => acc + check(6),
+    7 => try { check(7) } catch {
+      Odd => -7,
+    },
+    8 => acc + check(8),
+    9 => try { check(9) } catch {
+      Odd => -9,
+    },
+    10 => {
+      Console.print("at 10")
+      acc + 10
+    },
+    11 => try { check(11) } catch {
+      Odd => -11,
+    },
+    12 => acc + check(12),
+    13 => try { check(13) } catch {
+      Odd => -13,
+    },
+    14 => acc + check(14),
+    15 => try { check(15) } catch {
+      Odd => -15,
+    },
+    16 => acc + check(16),
+    17 => try { check(17) } catch {
+      Odd => -17,
+    },
+    18 => acc + check(18),
+    19 => try { check(19) } catch {
+      Odd => -19,
+    },
+    20 => {
+      Console.print("at 20")
+      acc + 20
+    },
+    21 => try { check(21) } catch {
+      Odd => -21,
+    },
+    22 => acc + check(22),
+    23 => try { check(23) } catch {
+      Odd => -23,
+    },
+    24 => acc + check(24),
+    25 => try { check(25) } catch {
+      Odd => -25,
+    },
+    26 => acc + check(26),
+    27 => try { check(27) } catch {
+      Odd => -27,
+    },
+    28 => acc + check(28),
+    29 => try { check(29) } catch {
+      Odd => -29,
+    },
+    30 => {
+      Console.print("at 30")
+      acc + 30
+    },
+    31 => try { check(31) } catch {
+      Odd => -31,
+    },
+    32 => acc + check(32),
+    33 => try { check(33) } catch {
+      Odd => -33,
+    },
+    34 => acc + check(34),
+    35 => try { check(35) } catch {
+      Odd => -35,
+    },
+    36 => acc + check(36),
+    37 => try { check(37) } catch {
+      Odd => -37,
+    },
+    38 => acc + check(38),
+    39 => try { check(39) } catch {
+      Odd => -39,
+    },
+    40 => {
+      Console.print("at 40")
+      acc + 40
+    },
+    41 => try { check(41) } catch {
+      Odd => -41,
+    },
+    42 => acc + check(42),
+    43 => try { check(43) } catch {
+      Odd => -43,
+    },
+    44 => acc + check(44),
+    45 => try { check(45) } catch {
+      Odd => -45,
+    },
+    46 => acc + check(46),
+    47 => try { check(47) } catch {
+      Odd => -47,
+    },
+    48 => acc + check(48),
+    49 => try { check(49) } catch {
+      Odd => -49,
+    },
+    50 => {
+      Console.print("at 50")
+      acc + 50
+    },
+    51 => try { check(51) } catch {
+      Odd => -51,
+    },
+    52 => acc + check(52),
+    53 => try { check(53) } catch {
+      Odd => -53,
+    },
+    54 => acc + check(54),
+    55 => try { check(55) } catch {
+      Odd => -55,
+    },
+    56 => acc + check(56),
+    57 => try { check(57) } catch {
+      Odd => -57,
+    },
+    58 => acc + check(58),
+    59 => try { check(59) } catch {
+      Odd => -59,
+    },
+    60 => {
+      Console.print("at 60")
+      acc + 60
+    },
+    61 => try { check(61) } catch {
+      Odd => -61,
+    },
+    62 => acc + check(62),
+    63 => try { check(63) } catch {
+      Odd => -63,
+    },
+    64 => acc + check(64),
+    65 => try { check(65) } catch {
+      Odd => -65,
+    },
+    66 => acc + check(66),
+    67 => try { check(67) } catch {
+      Odd => -67,
+    },
+    68 => acc + check(68),
+    69 => try { check(69) } catch {
+      Odd => -69,
+    },
+    70 => {
+      Console.print("at 70")
+      acc + 70
+    },
+    71 => try { check(71) } catch {
+      Odd => -71,
+    },
+    72 => acc + check(72),
+    73 => try { check(73) } catch {
+      Odd => -73,
+    },
+    74 => acc + check(74),
+    75 => try { check(75) } catch {
+      Odd => -75,
+    },
+    76 => acc + check(76),
+    77 => try { check(77) } catch {
+      Odd => -77,
+    },
+    78 => acc + check(78),
+    79 => try { check(79) } catch {
+      Odd => -79,
+    },
+    _ => acc - 1,
+  }
+}
+
+fn run(k: Int) -> String ! {Console} {
+  match try { step(k, 100) } {
+    Ok(v) => "{v}",
+    Err(Odd) => "odd",
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  for k in [0, 1, 3, 10, 24, 59, 70, 79, 200] { Console.print("{k}: {run(k)}") }
+}

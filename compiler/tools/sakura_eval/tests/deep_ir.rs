@@ -2,8 +2,8 @@
 //! nest one level per arm or `let` goes through every phase in process, on the test harness's
 //! default thread stack, as `cargo test` runs it in the debug profile: checking, Core lowering
 //! and its passes, the Core dump, the JS emitter, the LIR lowering and validator, the WASM
-//! emitter, the snapshot round trip and both evaluators, and the emitted JS runs on Node; each
-//! prints the expected output.
+//! emitter, the snapshot round trip and both evaluators, and the emitted JS and WASM run on
+//! Node; each prints the expected output.
 
 use std::process::Command;
 
@@ -64,6 +64,15 @@ fn expected() -> String {
     )
 }
 
+/// Runs node on `args`, which prints the expected output and exits 0 (V8 compiling a function
+/// in the background can still fail after the output).
+fn node(args: &[std::path::PathBuf]) {
+    let out = Command::new("node").args(args).output().expect("node");
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert_eq!(String::from_utf8_lossy(&out.stdout), expected(), "{stderr}");
+    assert!(out.status.success(), "{:?}: {stderr}", out.status);
+}
+
 #[test]
 fn wide_shapes_go_through_every_phase_and_run_on_node() {
     let uri = "file:///deep/src/main.sak".to_owned();
@@ -106,17 +115,7 @@ fn wide_shapes_go_through_every_phase_and_run_on_node() {
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(path, &f.text).unwrap();
     }
-    let out = Command::new("node")
-        .arg(dir.join("__main__.js"))
-        .output()
-        .expect("node");
-    let _ = std::fs::remove_dir_all(&dir);
-    assert_eq!(
-        String::from_utf8_lossy(&out.stdout),
-        expected(),
-        "{}",
-        String::from_utf8_lossy(&out.stderr)
-    );
+    node(&[dir.join("__main__.js")]);
 
     let lir = sakura_lir::from_core(&module, sakura_lir::Layout::Tagged).expect("lowers to LIR");
     let errors = sakura_lir::validate::validate(&lir, Default::default());
@@ -127,8 +126,16 @@ fn wide_shapes_go_through_every_phase_and_run_on_node() {
         "the WASM backend's runtime object is missing"
     );
     if wasm {
-        sakura_codegen_wasm::emit(&lir, &Default::default()).expect("emits WASM");
+        // The dispatch is two-level past 256 blocks and a literal switch is a table or a
+        // binary search (§17.200 (2), (3)), so node compiles the module.
+        let module = sakura_codegen_wasm::emit(&lir, &Default::default()).expect("emits WASM");
+        std::fs::write(dir.join("main.wasm"), module).unwrap();
+        for (name, text) in sakura_codegen_wasm::HOST_FILES {
+            std::fs::write(dir.join(name), text).unwrap();
+        }
+        node(&[dir.join("sakura_wasm_host.js"), dir.join("main.wasm")]);
     }
+    let _ = std::fs::remove_dir_all(&dir);
 
     let core = sakura_eval::run_main(&module, sakura_eval::Limits::default());
     assert_eq!(

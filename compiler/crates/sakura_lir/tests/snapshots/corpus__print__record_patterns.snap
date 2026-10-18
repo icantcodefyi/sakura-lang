@@ -58,9 +58,7 @@ fn where_is#2 top -> ptr ; main::record_patterns, frame 1 slots [%0 word*]
     %19 p: i64 = proj %0.1 main::record_patterns::Point
     %20 p: word = proj %0.2 main::record_patterns::Point
     drop %0
-    %21 lit: i64 = const 0
-    %22 is: bool = eq.int %18, %21
-    if %22 then b4(%18, %19, %20) else b5(%18, %19, %20)
+    switch %18 0 => b4(%18, %19, %20) _ => b5(%18, %19, %20)
   b1():
     %1 lit: ptr = const str 3
     ret %1
@@ -92,14 +90,12 @@ fn where_is#2 top -> ptr ; main::record_patterns, frame 1 slots [%0 word*]
     drop %15
     drop %16
     ret %17
-  b4(%23 p: i64, %24 p: i64, %25 p: ptr):
-    %29 lit: i64 = const 0
-    %30 is: bool = eq.int %24, %29
-    if %30 then b6(%25) else b7(%25)
-  b5(%26 p: i64, %27 p: i64, %28 p: ptr):
-    jump b3(%26, %27, %28)
-  b6(%31 p: ptr):
-    drop %31
+  b4(%21 p: i64, %22 p: i64, %23 p: ptr):
+    switch %22 0 => b6(%23) _ => b7(%23)
+  b5(%24 p: i64, %25 p: i64, %26 p: ptr):
+    jump b3(%24, %25, %26)
+  b6(%27 p: ptr):
+    drop %27
     jump b1()
-  b7(%32 p: ptr):
-    jump b2(%32)
+  b7(%28 p: ptr):
+    jump b2(%28)

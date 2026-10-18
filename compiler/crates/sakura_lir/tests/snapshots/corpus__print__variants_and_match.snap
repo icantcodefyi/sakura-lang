@@ -183,9 +183,7 @@ fn area#2 top -> i64 ; main::variants_and_match, frame 1 slots [%0 word*]
 
 fn describe#3 top -> ptr ; main::variants_and_match, frame 1 slots [%0 i64]
   b0(%0 n: i64):
-    %6 lit: i64 = const 0
-    %7 is: bool = eq.int %0, %6
-    if %7 then b5(%0) else b6(%0)
+    switch %0 0 => b5(%0) 1 => b6(%0) 2 => b7(%0) 3 => b8(%0) _ => b9(%0)
   b1():
     %1 lit: ptr = const str 4
     ret %1
@@ -198,31 +196,19 @@ fn describe#3 top -> ptr ; main::variants_and_match, frame 1 slots [%0 i64]
   b4():
     %5 lit: ptr = const str 7
     ret %5
-  b5(%8 n: i64):
+  b5(%6 n: i64):
     jump b1()
-  b6(%9 n: i64):
-    %10 lit: i64 = const 1
-    %11 is: bool = eq.int %9, %10
-    if %11 then b7(%9) else b8(%9)
-  b7(%12 n: i64):
+  b6(%7 n: i64):
     jump b2()
-  b8(%13 n: i64):
-    %14 lit: i64 = const 2
-    %15 is: bool = eq.int %13, %14
-    if %15 then b9(%13) else b10(%13)
-  b9(%16 n: i64):
+  b7(%8 n: i64):
     jump b2()
-  b10(%17 n: i64):
-    %18 lit: i64 = const 3
-    %19 is: bool = eq.int %17, %18
-    if %19 then b11(%17) else b12(%17)
-  b11(%20 n: i64):
+  b8(%9 n: i64):
     jump b2()
-  b12(%21 n: i64):
-    %22 lit: i64 = const 0
-    %23 t: bool = lt.int %21, %22
-    if %23 then b13(%21) else b14(%21)
-  b13(%24 n: i64):
-    jump b3(%24)
-  b14(%25 n: i64):
+  b9(%10 n: i64):
+    %11 lit: i64 = const 0
+    %12 t: bool = lt.int %10, %11
+    if %12 then b10(%10) else b11(%10)
+  b10(%13 n: i64):
+    jump b3(%13)
+  b11(%14 n: i64):
     jump b4()

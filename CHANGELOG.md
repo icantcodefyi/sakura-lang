@@ -228,13 +228,17 @@ published yet.
   variants in linear time. Such a program still exceeds node's limits when it runs: its JS nests
   a labeled block per arm, and its WASM a `block` per LIR block.
 
-- A 3,000-arm literal `match` now runs on node with the JS backend (design §17.200): a `match`
+- A 3,000-arm literal `match` now runs on node with both backends (design §17.200): a `match`
   on `Int` or `String` literals is one `switch` over its literals instead of a chain of tests
   (`--dump core` shows it), an `else` no longer nests, a join past 64 nested labeled blocks is
   an arrow function, and the rows after a failed guard continue in a join, so the emitted JS
-  nests as deep as the source plus a constant. The snapshot writer grows its stack like its
-  reader. A direct-style loop body still nests a labeled block per arm (about 1,500 overflow
-  node's parser), and the WASM module still nests a `block` per LIR block.
+  nests as deep as the source plus a constant. On WASM a function past 256 blocks dispatches
+  through two levels of `br_table` and its blocks share locals, and an `Int` switch of more
+  than eight arms is a jump by index arithmetic when its keys are dense or a binary search:
+  the module no longer traps at compile, and V8 no longer runs out of memory optimizing a
+  function of thousands of blocks. The snapshot writer grows its stack like its reader. A
+  direct-style JS loop body still nests a labeled block per arm (about 1,500 overflow node's
+  parser).
 
 - `agent_docs` normalizes Windows path separators so the skill mirror, manifest,
   hashes, and ZIP are byte-identical to Unix output (design §17.180 (5)).

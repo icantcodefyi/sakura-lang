@@ -1,8 +1,9 @@
 //! One LIR function as one WASM function `(env, frame) -> step` (ABI §5, §6).
 //!
-//! **Control.** The blocks become the cases of a `br_table` dispatch inside one `loop`: a local
-//! `$b` names the case to run, a jump sets it and branches back to the loop. Case `i < n` is
-//! block `i` with its parameters already in locals; the *resume* cases come after them, one per
+//! **Control.** The blocks become the cases of a `br_table` dispatch inside one `loop`, two-level
+//! past 256 blocks (`Gen::dispatch`): a local `$b` names the case to run, a jump sets it and
+//! branches back to the loop. Case `i < n` is block `i` with its parameters already in locals;
+//! the *resume* cases come after them, one per
 //! block the trampoline resumes (the entry, call and `perform` continuations, catch targets):
 //! each takes the block's parameters out of the frame slots (the first from the return register
 //! for a continuation or catch target) and falls into the block's own case. On entry `$b` is
@@ -203,6 +204,60 @@ fn val_type(r: Repr) -> ValType {
     }
 }
 
+/// The runtime export taking the held host result in representation `r`.
+fn take_fn(r: Repr) -> &'static str {
+    match r {
+        Repr::I64 => "rt_vt_take_i64",
+        Repr::F64 => "rt_vt_take_f64",
+        Repr::Bool => "rt_vt_take_bool",
+        _ => "rt_vt_take_word",
+    }
+}
+
+/// Each variable's local, from `first`, and the locals to declare for them. A variable lives
+/// only in the block that defines it (the LIR passes every value on edges and through frame
+/// slots), so past [`CHUNK`] blocks the blocks share locals: the `k`-th variable of a type a
+/// block defines takes that type's `k`-th local. V8's optimizing tier is quadratic in locals
+/// times branches back to the dispatch loop, and ran out of memory on a function of 6,000
+/// blocks with a local per variable. Smaller functions keep a local per variable.
+fn locals(f: &Func, first: u32) -> (Vec<u32>, Vec<(u32, ValType)>) {
+    if f.blocks.len() <= CHUNK {
+        let slots = (0..f.vars.len() as u32).map(|v| first + v).collect();
+        return (
+            slots,
+            f.vars.iter().map(|v| (1, val_type(v.repr))).collect(),
+        );
+    }
+    const TYPES: [ValType; 3] = [ValType::I64, ValType::F64, ValType::I32];
+    let kind = |v: Var| {
+        TYPES
+            .iter()
+            .position(|t| *t == val_type(f.repr(v)))
+            .unwrap()
+    };
+    let mut nth = vec![0u32; f.vars.len()];
+    let mut most = [1u32; 3];
+    for b in &f.blocks {
+        let mut next = [0u32; 3];
+        for v in b
+            .params
+            .iter()
+            .copied()
+            .chain(b.insts.iter().filter_map(Inst::dst))
+        {
+            let k = kind(v);
+            nth[v.index()] = next[k];
+            next[k] += 1;
+            most[k] = most[k].max(next[k]);
+        }
+    }
+    let base = [first, first + most[0], first + most[0] + most[1]];
+    let slots = (0..f.vars.len())
+        .map(|v| base[kind(Var(v as u32))] + nth[v])
+        .collect();
+    (slots, (0..3).map(|k| (most[k], TYPES[k])).collect())
+}
+
 /// A value of representation `r` that nothing reads (a twin's result after a defect or abort).
 fn placeholder(s: &mut InstructionSink<'_>, r: Repr) {
     match val_type(r) {
@@ -322,27 +377,18 @@ pub fn compile(env: &Env<'_>, statics: &mut Statics, f: &Func) -> Result<Functio
         }
     }
     let n = f.blocks.len() as u32;
-    let mut cases = vec![];
-    let mut case_of = HashMap::new();
-    for b in 0..n {
-        cases.push(Case::Block(BlockId(b)));
-    }
-    for (b, r) in resume.iter().enumerate() {
-        if *r != Resume::No {
-            case_of.insert(b as u32, cases.len() as u32);
-            cases.push(Case::Resume(BlockId(b as u32)));
-        }
-    }
-    let bad = cases.len() as u32;
-    cases.push(Case::Bad);
+    let mut sel: Vec<Option<Case>> = (0..n).map(|b| Some(Case::Block(BlockId(b)))).collect();
+    sel.extend(
+        (0..n).map(|b| (resume[b as usize] != Resume::No).then_some(Case::Resume(BlockId(b)))),
+    );
+    let tables = tables(f, &mut sel);
 
-    // Locals: 0 env, 1 frame, then one per variable, then scratch.
-    let first_var = 2u32;
-    let scratch = first_var + f.vars.len() as u32;
-    let mut locals: Vec<(u32, ValType)> = f.vars.iter().map(|v| (1, val_type(v.repr))).collect();
-    locals.push((3, ValType::I32)); // $b, $f2, $u
-    locals.push((1, ValType::I64)); // $t
-    let mut func = Function::new(locals);
+    // Locals: 0 env, 1 frame, then the variables', then scratch.
+    let (slots, mut decls) = locals(f, 2);
+    let scratch = 2 + decls.iter().map(|(n, _)| n).sum::<u32>();
+    decls.push((3, ValType::I32)); // $b, $f2, $u
+    decls.push((1, ValType::I64)); // $t
+    let mut func = Function::new(decls);
     let mut g = Gen {
         env,
         statics,
@@ -350,14 +396,16 @@ pub fn compile(env: &Env<'_>, statics: &mut Statics, f: &Func) -> Result<Functio
         desc: &desc,
         resume: &resume,
         stacks: &stacks,
-        first_var,
+        tables: &tables,
+        slots: &slots,
+        shared: f.blocks.len() > CHUNK,
         lb: scratch,
         lf2: scratch + 1,
         lu: scratch + 2,
         lt: scratch + 3,
-        n_cases: cases.len() as u32,
-        case: 0,
+        to_loop: 0,
         depth: 0,
+        cur: BlockId(0),
         twin: false,
     };
     let mut s = func.instructions();
@@ -367,37 +415,12 @@ pub fn compile(env: &Env<'_>, statics: &mut Statics, f: &Func) -> Result<Functio
         .i32_const(n as i32)
         .i32_add();
     s.local_set(g.lb);
-    s.loop_(BlockType::Empty);
-    for _ in 0..cases.len() {
-        s.block(BlockType::Empty);
-    }
-    let targets: Vec<u32> = (0..2 * n)
-        .map(|i| {
-            if i < n {
-                i
-            } else {
-                case_of.get(&(i - n)).copied().unwrap_or(bad)
-            }
-        })
-        .collect();
-    s.local_get(g.lb).br_table(targets, bad);
-    for (c, case) in cases.iter().enumerate() {
-        s.end();
-        g.case = c as u32;
-        match case {
-            Case::Block(b) => g.block(&mut s, *b)?,
-            Case::Resume(b) => g.resume(&mut s, *b)?,
-            Case::Bad => {
-                g.raise(
-                    &mut s,
-                    90,
-                    "a frame resumed at a block that is not resumable",
-                    None,
-                );
-            }
-        }
-    }
-    s.end(); // loop
+    g.dispatch(
+        &mut s,
+        &sel,
+        n,
+        "a frame resumed at a block that is not resumable",
+    )?;
     s.unreachable();
     s.end();
     Ok(func)
@@ -417,14 +440,16 @@ pub fn compile_twin(env: &Env<'_>, statics: &mut Statics, f: &Func) -> Result<Fu
     let n = f.blocks.len() as u32;
     let n_params = f.params().len() as u32;
     // Locals: the parameters, two unused `i32`s where frame-protocol code has env and frame,
-    // one per variable, then scratch.
-    let first_var = n_params + 2;
-    let scratch = first_var + f.vars.len() as u32;
-    let mut locals: Vec<(u32, ValType)> = vec![(2, ValType::I32)];
-    locals.extend(f.vars.iter().map(|v| (1, val_type(v.repr))));
-    locals.push((3, ValType::I32));
-    locals.push((1, ValType::I64));
-    let mut func = Function::new(locals);
+    // the variables', then scratch.
+    let (slots, vars) = locals(f, n_params + 2);
+    let scratch = n_params + 2 + vars.iter().map(|(n, _)| n).sum::<u32>();
+    let mut decls: Vec<(u32, ValType)> = vec![(2, ValType::I32)];
+    decls.extend(vars);
+    decls.push((3, ValType::I32));
+    decls.push((1, ValType::I64));
+    let mut func = Function::new(decls);
+    let mut sel: Vec<Option<Case>> = (0..n).map(|b| Some(Case::Block(BlockId(b)))).collect();
+    let tables = tables(f, &mut sel);
     let mut g = Gen {
         env,
         statics,
@@ -432,14 +457,16 @@ pub fn compile_twin(env: &Env<'_>, statics: &mut Statics, f: &Func) -> Result<Fu
         desc: &desc,
         resume: &resume,
         stacks: &stacks,
-        first_var,
+        tables: &tables,
+        slots: &slots,
+        shared: f.blocks.len() > CHUNK,
         lb: scratch,
         lf2: scratch + 1,
         lu: scratch + 2,
         lt: scratch + 3,
-        n_cases: n + 1,
-        case: 0,
+        to_loop: 0,
         depth: 0,
+        cur: BlockId(0),
         twin: true,
     };
     let mut s = func.instructions();
@@ -464,35 +491,74 @@ pub fn compile_twin(env: &Env<'_>, statics: &mut Statics, f: &Func) -> Result<Fu
         s.local_get(i as u32).local_set(g.local(p));
     }
     s.i32_const(0).local_set(g.lb);
-    s.loop_(BlockType::Empty);
-    for _ in 0..=n {
-        s.block(BlockType::Empty);
-    }
-    s.local_get(g.lb).br_table(0..n, n);
-    for c in 0..=n {
-        s.end();
-        g.case = c;
-        if c < n {
-            g.block(&mut s, BlockId(c))?;
-        } else {
-            g.raise(
-                &mut s,
-                90,
-                "a twin jumped to a block that does not exist",
-                None,
-            );
-        }
-    }
-    s.end(); // loop
+    g.dispatch(
+        &mut s,
+        &sel,
+        n,
+        "a twin jumped to a block that does not exist",
+    )?;
     s.unreachable();
     s.end();
     Ok(func)
 }
 
+/// What a dispatch selector runs.
+#[derive(Clone, Copy)]
 enum Case {
     Block(BlockId),
     Resume(BlockId),
+    /// Entry `i` of the dense table of the `Switch` that ends block `b`.
+    Table(BlockId, u32),
     Bad,
+}
+
+/// The cases one dispatch level holds, past it the dispatch is two-level (design §17.200 (3)).
+const CHUNK: usize = 256;
+
+/// A `Switch` of at most this many arms tests them one after another, as small ones always did.
+const LINEAR: usize = 8;
+
+/// A dense `Switch` (design §17.200 (2)): key `min + i` runs `entries[i]` (an arm's index, or
+/// the default), as dispatch case `base + i`.
+struct Table {
+    base: u32,
+    min: i64,
+    entries: Vec<Option<usize>>,
+}
+
+/// The dense tables of `f`'s switches, each appended to `sel` as a run of cases: a switch with
+/// a default and more than [`LINEAR`] arms whose keys span at most twice their number.
+fn tables(f: &Func, sel: &mut Vec<Option<Case>>) -> HashMap<BlockId, Table> {
+    let mut out = HashMap::new();
+    for (b, block) in f.blocks.iter().enumerate() {
+        let Term::Switch {
+            arms,
+            default: Some(_),
+            ..
+        } = &block.term
+        else {
+            continue;
+        };
+        let (Some(min), Some(max)) = (
+            arms.iter().map(|(k, _)| *k).min(),
+            arms.iter().map(|(k, _)| *k).max(),
+        ) else {
+            continue;
+        };
+        let span = i128::from(max) - i128::from(min) + 1;
+        if arms.len() <= LINEAR || span > 2 * arms.len() as i128 {
+            continue;
+        }
+        let mut entries = vec![None; span as usize];
+        for (i, (k, _)) in arms.iter().enumerate() {
+            entries[(i128::from(*k) - i128::from(min)) as usize] = Some(i);
+        }
+        let base = sel.len() as u32;
+        let b = BlockId(b as u32);
+        sel.extend((0..span as u32).map(|i| Some(Case::Table(b, i))));
+        out.insert(b, Table { base, min, entries });
+    }
+    out
 }
 
 /// Owned references held by the block's variables (the validator's count).
@@ -505,16 +571,21 @@ struct Gen<'e, 's> {
     desc: &'e FrameDesc,
     resume: &'e [Resume],
     stacks: &'e [Option<Vec<Region>>],
-    first_var: u32,
+    tables: &'e HashMap<BlockId, Table>,
+    /// Each variable's local, and whether blocks share them ([`locals`]).
+    slots: &'e [u32],
+    shared: bool,
     /// Scratch locals: the case selector, a callee frame, an `i32` and an `i64`.
     lb: u32,
     lf2: u32,
     lu: u32,
     lt: u32,
-    n_cases: u32,
-    /// The case being emitted and the structured blocks opened inside it.
-    case: u32,
+    /// The labels between the case being emitted and the dispatch loop, and the structured
+    /// blocks opened inside the case.
+    to_loop: u32,
     depth: u32,
+    /// The block being emitted.
+    cur: BlockId,
     /// Compiling the direct twin: arguments and result are native, a defect or an abort
     /// returns a placeholder with the state global set.
     twin: bool,
@@ -522,7 +593,7 @@ struct Gen<'e, 's> {
 
 impl Gen<'_, '_> {
     fn local(&self, v: Var) -> u32 {
-        self.first_var + v.0
+        self.slots[v.index()]
     }
 
     fn repr(&self, v: Var) -> Repr {
@@ -544,7 +615,98 @@ impl Gen<'_, '_> {
 
     /// Branch back to the dispatch loop, which runs case `$b`.
     fn br_loop(&self, s: &mut InstructionSink<'_>) {
-        s.br(self.n_cases - 1 - self.case + self.depth);
+        s.br(self.to_loop + self.depth);
+    }
+
+    /// The dispatch loop: one `block` per case and a `br_table` on `$b` over `sel` (a missing
+    /// selector runs a case raising `bad`), one-level for at most [`CHUNK`] blocks and
+    /// `2 * CHUNK` selectors, else an outer `br_table` on `$b >> 8` over chunks of 256
+    /// selectors and an inner one on `$b & 255`, so nesting is at most 257 + ⌈selectors/256⌉ + 1.
+    fn dispatch(
+        &mut self,
+        s: &mut InstructionSink<'_>,
+        sel: &[Option<Case>],
+        blocks: u32,
+        bad: &str,
+    ) -> Result<(), String> {
+        s.loop_(BlockType::Empty);
+        if blocks as usize <= CHUNK && sel.len() <= 2 * CHUNK {
+            self.level(s, sel, 0, bad)?;
+        } else {
+            let chunks: Vec<_> = sel.chunks(CHUNK).collect();
+            let k = chunks.len() as u32;
+            for _ in 0..=k {
+                s.block(BlockType::Empty);
+            }
+            s.local_get(self.lb).i32_const(8).i32_shr_u();
+            s.br_table(0..k, k);
+            for (j, chunk) in chunks.into_iter().enumerate() {
+                s.end();
+                self.level(s, chunk, k - j as u32, bad)?;
+            }
+            s.end();
+            self.to_loop = 0;
+            self.raise(s, 90, bad, None);
+        }
+        s.end(); // loop
+        Ok(())
+    }
+
+    /// One `br_table` over `sel` and its cases, `outer` labels inside the loop: on `$b`, or on
+    /// `$b & 255` inside a chunk (`outer` > 0).
+    fn level(
+        &mut self,
+        s: &mut InstructionSink<'_>,
+        sel: &[Option<Case>],
+        outer: u32,
+        bad: &str,
+    ) -> Result<(), String> {
+        let mut cases: Vec<Case> = sel.iter().flatten().copied().collect();
+        let miss = cases.len() as u32;
+        cases.push(Case::Bad);
+        let mut next = 0;
+        let targets: Vec<u32> = sel
+            .iter()
+            .map(|c| match c {
+                Some(_) => {
+                    next += 1;
+                    next - 1
+                }
+                None => miss,
+            })
+            .collect();
+        for _ in &cases {
+            s.block(BlockType::Empty);
+        }
+        s.local_get(self.lb);
+        if outer > 0 {
+            s.i32_const(CHUNK as i32 - 1).i32_and();
+        }
+        s.br_table(targets, miss);
+        let n = cases.len() as u32;
+        for (i, case) in cases.into_iter().enumerate() {
+            s.end();
+            self.to_loop = n - 1 - i as u32 + outer;
+            match case {
+                Case::Block(b) => self.block(s, b)?,
+                Case::Resume(b) => self.resume(s, b)?,
+                Case::Table(b, i) => self.table_entry(s, b, i),
+                Case::Bad => self.raise(s, 90, bad, None),
+            }
+        }
+        Ok(())
+    }
+
+    /// A dense table's entry: the arm for its key, or the default.
+    fn table_entry(&mut self, s: &mut InstructionSink<'_>, b: BlockId, i: u32) {
+        let Term::Switch { arms, default, .. } = &self.f.block(b).term else {
+            unreachable!("tables are built from switches")
+        };
+        let e = match self.tables[&b].entries[i as usize] {
+            Some(a) => &arms[a].1,
+            None => default.as_ref().expect("a dense table has a default"),
+        };
+        self.edge(s, e);
     }
 
     fn goto(&self, s: &mut InstructionSink<'_>, case: u32) {
@@ -784,6 +946,7 @@ impl Gen<'_, '_> {
     }
 
     fn block(&mut self, s: &mut InstructionSink<'_>, b: BlockId) -> Result<(), String> {
+        self.cur = b;
         let block = self.f.block(b);
         let mut live = Live::new();
         for &p in &block.params {
@@ -1533,23 +1696,58 @@ impl Gen<'_, '_> {
         dst: Var,
         live: &Live,
     ) -> Result<(), String> {
-        let take = match self.repr(dst) {
-            Repr::I64 => "rt_vt_take_i64",
-            Repr::F64 => "rt_vt_take_f64",
-            Repr::Bool => "rt_vt_take_bool",
-            _ => "rt_vt_take_word",
-        };
-        self.call_rt(s, take)?;
+        self.call_rt(s, take_fn(self.repr(dst)))?;
+        self.set_taken(s, dst);
+        let _ = live;
+        Ok(())
+    }
+
+    /// A taken host result on the stack into `dst`.
+    fn set_taken(&self, s: &mut InstructionSink<'_>, dst: Var) {
         if self.repr(dst) == Repr::Unit {
             s.call(self.env.rt["drop"]);
         } else {
             s.local_set(self.local(dst));
         }
-        let _ = live;
-        Ok(())
     }
 
     // ---- terminators ----------------------------------------------------------------------
+
+    /// `if tag == k { edge }` for each arm, falling through when none matches.
+    fn tests<'a>(
+        &mut self,
+        s: &mut InstructionSink<'_>,
+        tag: u32,
+        arms: impl IntoIterator<Item = &'a (i64, Edge)>,
+    ) {
+        for (k, e) in arms {
+            s.local_get(tag).i64_const(*k).i64_eq();
+            s.if_(BlockType::Empty);
+            self.depth += 1;
+            self.edge(s, e);
+            self.depth -= 1;
+            s.end();
+        }
+    }
+
+    /// Splits the sorted arms on the middle key until [`LINEAR`] remain, which are tested; a
+    /// key in none leaves the block opened at depth `miss`.
+    fn search(&mut self, s: &mut InstructionSink<'_>, tag: u32, arms: &[&(i64, Edge)], miss: u32) {
+        if arms.len() <= LINEAR {
+            self.tests(s, tag, arms.iter().copied());
+            s.br(self.depth - miss);
+            return;
+        }
+        let (lo, hi) = arms.split_at(arms.len() / 2);
+        s.local_get(tag).i64_const(hi[0].0).i64_lt_s();
+        s.if_(BlockType::Empty);
+        self.depth += 1;
+        self.search(s, tag, lo, miss);
+        s.else_();
+        self.search(s, tag, hi, miss);
+        self.depth -= 1;
+        s.end();
+    }
 
     fn edge(&mut self, s: &mut InstructionSink<'_>, e: &Edge) {
         let params = &self.f.block(e.block).params;
@@ -1568,25 +1766,36 @@ impl Gen<'_, '_> {
 
     /// After a call returned its result on the stack: the result into the continuation's first
     /// parameter, the carried values into the rest, then the continuation (not its resume
-    /// case: nothing is in the frame).
+    /// case: nothing is in the frame). With shared locals ([`locals`]) the carried values are
+    /// read first, since the first parameter may share a local with one of them.
     fn continue_at(&self, s: &mut InstructionSink<'_>, cont: &Edge) {
-        let params = &self.f.block(cont.block).params;
-        if self.repr(params[0]) == Repr::Unit {
+        let p0 = self.f.block(cont.block).params[0];
+        if self.shared {
+            self.carry(s, cont);
+        }
+        if self.repr(p0) == Repr::Unit {
             s.drop();
         } else {
-            s.local_set(self.local(params[0]));
+            s.local_set(self.local(p0));
         }
+        if !self.shared {
+            self.carry(s, cont);
+        }
+        self.goto(s, cont.block.0);
+    }
+
+    /// `cont`'s carried values into its parameters after the first.
+    fn carry(&self, s: &mut InstructionSink<'_>, cont: &Edge) {
         for &a in &cont.args {
             if self.repr(a) != Repr::Unit {
                 s.local_get(self.local(a));
             }
         }
-        for &p in params[1..].iter().rev() {
+        for &p in self.f.block(cont.block).params[1..].iter().rev() {
             if self.repr(p) != Repr::Unit {
                 s.local_set(self.local(p));
             }
         }
-        self.goto(s, cont.block.0);
     }
 
     /// Push the arguments of a twin call and call it.
@@ -1786,11 +1995,31 @@ impl Gen<'_, '_> {
                 s.end();
             }
             Term::Switch { tag, arms, default } => {
-                for (k, e) in arms {
-                    s.local_get(self.local(*tag)).i64_const(*k as i64).i64_eq();
-                    s.if_(BlockType::Empty);
+                let tag = self.local(*tag);
+                if let Some(t) = self.tables.get(&self.cur) {
+                    // Index arithmetic (design §17.200 (2)): case `base + (tag - min)`.
+                    let (base, min, span) = (t.base, t.min, t.entries.len());
+                    s.local_get(tag).i64_const(min).i64_sub().local_tee(self.lt);
+                    s.i64_const(span as i64).i64_lt_u().if_(BlockType::Empty);
+                    s.local_get(self.lt)
+                        .i32_wrap_i64()
+                        .i32_const(base as i32)
+                        .i32_add();
+                    s.local_set(self.lb);
                     self.depth += 1;
-                    self.edge(s, e);
+                    self.br_loop(s);
+                    self.depth -= 1;
+                    s.end();
+                } else if arms.len() <= LINEAR {
+                    self.tests(s, tag, arms);
+                } else {
+                    // A binary search whose leaves test their keys and else leave the block.
+                    let mut sorted: Vec<&(i64, Edge)> = arms.iter().collect();
+                    sorted.sort_by_key(|(k, _)| *k);
+                    s.block(BlockType::Empty);
+                    self.depth += 1;
+                    let miss = self.depth;
+                    self.search(s, tag, &sorted, miss);
                     self.depth -= 1;
                     s.end();
                 }
@@ -1825,17 +2054,13 @@ impl Gen<'_, '_> {
                 self.depth -= 1;
                 s.end();
                 let p0 = self.f.block(cont.block).params[0];
-                self.take_result(s, p0, &rest)?;
-                let params = &self.f.block(cont.block).params[1..];
-                for &a in &cont.args {
-                    if self.repr(a) != Repr::Unit {
-                        s.local_get(self.local(a));
-                    }
-                }
-                for &p in params.iter().rev() {
-                    if self.repr(p) != Repr::Unit {
-                        s.local_set(self.local(p));
-                    }
+                self.call_rt(s, take_fn(self.repr(p0)))?;
+                if self.shared {
+                    self.carry(s, cont);
+                    self.set_taken(s, p0);
+                } else {
+                    self.set_taken(s, p0);
+                    self.carry(s, cont);
                 }
                 self.goto(s, cont.block.0);
             }

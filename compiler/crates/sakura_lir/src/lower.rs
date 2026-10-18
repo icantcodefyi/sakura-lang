@@ -958,8 +958,8 @@ impl<'c, 'a> Fl<'c, 'a> {
         self.b.coerce(b, v, want)
     }
 
-    /// A literal switch as a chain of equality tests, one block each, as the `If` chain it
-    /// replaced lowered.
+    /// An `Int` literal switch is one `Switch` on the value; a `String` one a chain of equality
+    /// tests, one block each, as the `If` chain it replaced lowered.
     #[allow(clippy::too_many_arguments)]
     fn lit_switch(
         &mut self,
@@ -971,14 +971,44 @@ impl<'c, 'a> Fl<'c, 'a> {
         mut env: Env,
         regions: Vec<RegionKind>,
     ) -> R<()> {
-        let (kind, repr) = match lits.first() {
-            Some(core::Lit::String(_)) => (CmpKind::String, Repr::Ptr),
-            _ => (CmpKind::Int, Repr::I64),
-        };
         let rest = |block| Rest { block, from: 0 };
+        let lit = |k: u32| lits.get(k as usize).ok_or("switch key out of range");
         let mut live = self.fv(rest(default));
         for (_, a) in arms {
             live.extend(self.fv(rest(a)));
+        }
+        if !matches!(lits.first(), Some(core::Lit::String(_))) {
+            let tag = self.atom_as(b, &env, scrut, Repr::I64)?;
+            let args = self.pass(&env, &live)?;
+            let mut work = Vec::new();
+            let mut edge = |s: &mut Self, r| {
+                let (ab, aenv) = s.new_block(vec![], &live, regions.clone());
+                work.push((r, ab, aenv));
+                Edge {
+                    block: ab,
+                    args: args.clone(),
+                }
+            };
+            let mut edges = Vec::new();
+            for (k, a) in arms {
+                let core::Lit::Int(key) = lit(*k)? else {
+                    return Err("an `Int` switch with a non-`Int` key".into());
+                };
+                edges.push((*key, edge(self, rest(a))));
+            }
+            let default = edge(self, rest(default));
+            self.b.end(
+                b,
+                Term::Switch {
+                    tag,
+                    arms: edges,
+                    default: Some(default),
+                },
+            );
+            for (r, ab, aenv) in work {
+                self.block(r, ab, aenv, regions.clone())?;
+            }
+            return Ok(());
         }
         // Both edges of an `If` pass the same values: before the last test, the arm gets the
         // scrutinee too.
@@ -989,16 +1019,11 @@ impl<'c, 'a> Fl<'c, 'a> {
         let mut work = Vec::new();
         for (i, (k, arm)) in arms.iter().enumerate() {
             let live = if i + 1 < arms.len() { &tested } else { &live };
-            let s = self.atom_as(b, &env, scrut, repr)?;
-            let key = Atom::Lit(
-                lits.get(*k as usize)
-                    .ok_or("switch key out of range")?
-                    .clone(),
-            );
-            let key = self.atom_as(b, &env, &key, repr)?;
+            let s = self.atom_as(b, &env, scrut, Repr::Ptr)?;
+            let key = self.atom_as(b, &env, &Atom::Lit(lit(*k)?.clone()), Repr::Ptr)?;
             let c = self.b.fresh(b, "is", Repr::Bool, |dst| Inst::Prim {
                 dst,
-                op: PrimOp::Cmp(CmpOp::Eq, kind),
+                op: PrimOp::Cmp(CmpOp::Eq, CmpKind::String),
                 args: vec![s, key],
             });
             let args = self.pass(&env, live)?;
@@ -1200,7 +1225,7 @@ impl<'c, 'a> Fl<'c, 'a> {
                         args: args.clone(),
                     };
                     match k {
-                        Some(k) => edges.push((k, e)),
+                        Some(k) => edges.push((i64::from(k), e)),
                         None => dflt = Some(e),
                     }
                     work.push((r, ab, aenv));

@@ -44,7 +44,7 @@ semantics/direct_inlined_bind_defect: 5 funcs, 13 blocks, 0 dup, 3 drop, valid
 semantics/direct_region_restart: 7 funcs, 38 blocks, 3 dup, 32 drop, valid
 semantics/early_return: 4 funcs, 21 blocks, 3 dup, 24 drop, valid
 semantics/effects_and_handlers: 9 funcs, 47 blocks, 6 dup, 22 drop, valid
-semantics/error_unions: 5 funcs, 37 blocks, 0 dup, 5 drop, valid
+semantics/error_unions: 5 funcs, 35 blocks, 0 dup, 5 drop, valid
 semantics/function_values: 5 funcs, 14 blocks, 2 dup, 15 drop, valid
 semantics/fused_get_expect: 7 funcs, 37 blocks, 7 dup, 32 drop, valid
 semantics/fused_get_expect_map_miss: 3 funcs, 9 blocks, 1 dup, 4 drop, valid
@@ -78,7 +78,8 @@ semantics/loop_resume_bound: 14 funcs, 65 blocks, 0 dup, 47 drop, valid
 semantics/loop_resume_edges: 20 funcs, 108 blocks, 0 dup, 51 drop, valid
 semantics/loop_resume_twice: 15 funcs, 48 blocks, 0 dup, 39 drop, valid
 semantics/loops: 4 funcs, 53 blocks, 10 dup, 29 drop, valid
-semantics/match_literal_switch: 6 funcs, 302 blocks, 0 dup, 87 drop, valid
+semantics/match_literal_switch: 6 funcs, 230 blocks, 0 dup, 87 drop, valid
+semantics/match_wide_dispatch: 5 funcs, 345 blocks, 2 dup, 61 drop, valid
 semantics/million_operations: 5 funcs, 13 blocks, 0 dup, 2 drop, valid
 semantics/mutual_recursion: 4 funcs, 21 blocks, 0 dup, 9 drop, valid
 semantics/mutual_tail_blame: 4 funcs, 19 blocks, 0 dup, 6 drop, valid
@@ -114,7 +115,7 @@ semantics/typed_errors: 8 funcs, 50 blocks, 4 dup, 29 drop, valid
 semantics/url_untrusted_component: 14 funcs, 98 blocks, 25 dup, 52 drop, valid
 semantics/uuid_decode: 9 funcs, 56 blocks, 6 dup, 38 drop, valid
 semantics/validate_untrusted_into_refined: 9 funcs, 47 blocks, 1 dup, 28 drop, valid
-semantics/variants_and_match: 4 funcs, 46 blocks, 2 dup, 35 drop, valid
+semantics/variants_and_match: 4 funcs, 43 blocks, 2 dup, 35 drop, valid
 diff/diff_0001: 28 funcs, 342 blocks, 53 dup, 174 drop, valid
 diff/diff_0002: 21 funcs, 253 blocks, 47 dup, 130 drop, valid
 diff/diff_0003: 12 funcs, 89 blocks, 9 dup, 60 drop, valid
