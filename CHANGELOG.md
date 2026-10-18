@@ -176,6 +176,13 @@ published yet.
 
 ### Fixed
 
+- After an edit, a literal into a refined type is checked again when the edited function is
+  reached from the refinement only through a `requires` or `ensures` clause, in the LSP and MCP
+  servers and any other process that analyses more than once (design §17.87). Before, the
+  literal kept its old verdict, so a `V5004` could be missing. Only the names a refinement's
+  evaluation can call now make a function's body interface, so editing a function that merely
+  shares its name with a parameter or local of such a call chain rechecks its own module only.
+
 - After an edit, an unchanged module's `test` block no longer reports a `V5004` (a literal
   that breaks a refinement) twice, or a typed hole twice, in the LSP and MCP servers and any
   other process that analyses more than once: a reused module's tests, types and effects are

@@ -234,40 +234,58 @@ fn fn_name(item: &sakura_syntax::SyntaxNode) -> Option<sakura_syntax::SyntaxToke
         .find(|t| t.kind() == sakura_syntax::SyntaxKind::IDENT)
 }
 
-/// The functions the checker may evaluate on a literal (design §17.87), by name over every
-/// module: names in `where` clauses, then, until nothing changes, names in the bodies of
-/// functions so named. By name, so a clash costs only reuse, never soundness.
-fn evaluated_functions(roots: &[sakura_syntax::SyntaxNode]) -> HashSet<String> {
-    use sakura_syntax::SyntaxKind::{BLOCK, FN_DECL, IDENT, WHERE_CLAUSE};
-    let idents = |n: &sakura_syntax::SyntaxNode| -> Vec<String> {
-        n.descendants_with_tokens()
+/// The names called in `n`: the last name of each callee, or every name of a callee that does
+/// not end in one (`(f)(x)`). The evaluator follows calls only, so a local or a parameter is not
+/// a function it can run.
+fn called(n: &sakura_syntax::SyntaxNode) -> Vec<String> {
+    use sakura_syntax::SyntaxKind::{CALL_EXPR, IDENT};
+    let mut out = Vec::new();
+    for callee in
+        (n.descendants().filter(|c| c.kind() == CALL_EXPR)).filter_map(|c| c.first_child())
+    {
+        let tokens: Vec<sakura_syntax::SyntaxToken> = (callee.descendants_with_tokens())
             .filter_map(|e| e.into_token())
-            .filter(|t| t.kind() == IDENT)
-            .map(|t| t.text().to_owned())
-            .collect()
-    };
+            .filter(|t| !t.kind().is_trivia())
+            .collect();
+        match tokens.last() {
+            Some(t) if t.kind() == IDENT => out.push(t.text().to_owned()),
+            _ => out
+                .extend((tokens.iter().filter(|t| t.kind() == IDENT)).map(|t| t.text().to_owned())),
+        }
+    }
+    out
+}
+
+/// The functions the checker may evaluate on a literal (design §17.87), by name over every
+/// module: names called in `where` clauses, then, until nothing changes, names called in the
+/// bodies and contracts of functions so named. By name, so a clash costs only reuse, never
+/// soundness.
+fn evaluated_functions(roots: &[sakura_syntax::SyntaxNode]) -> HashSet<String> {
+    use sakura_syntax::SyntaxKind::{BLOCK, CONTRACT, FN_DECL, WHERE_CLAUSE};
     let mut names: HashSet<String> = roots
         .iter()
         .flat_map(|r| r.descendants().filter(|n| n.kind() == WHERE_CLAUSE))
-        .flat_map(|w| idents(&w))
+        .flat_map(|w| called(&w))
         .collect();
-    let fns: Vec<(String, sakura_syntax::SyntaxNode)> = roots
+    let fns: Vec<(String, Vec<sakura_syntax::SyntaxNode>)> = roots
         .iter()
         .flat_map(|r| r.children().filter(|i| i.kind() == FN_DECL))
         .filter_map(|f| {
-            let body = f.children().find(|c| c.kind() == BLOCK)?;
-            Some((fn_name(&f)?.text().to_owned(), body))
+            let parts = f
+                .children()
+                .filter(|c| matches!(c.kind(), BLOCK | CONTRACT));
+            Some((fn_name(&f)?.text().to_owned(), parts.collect()))
         })
         .collect();
     let mut expanded = vec![false; fns.len()];
     let mut grew = true;
     while grew {
         grew = false;
-        for ((name, body), done) in fns.iter().zip(&mut expanded) {
+        for ((name, parts), done) in fns.iter().zip(&mut expanded) {
             if !*done && names.contains(name) {
                 *done = true;
                 grew = true;
-                names.extend(idents(body));
+                names.extend(parts.iter().flat_map(called));
             }
         }
     }
