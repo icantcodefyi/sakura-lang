@@ -1,0 +1,13 @@
+family = "self-tail and mutual recursion"
+sizes = [100000, 1000000, 10000000]
+lane = "matched"
+ints = "js-safe"
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "0"
+"1" = "2"
+"2" = "5"
+"3" = "12"
+"100000" = "399993"
+"1000000" = "3999993"
+"10000000" = "39999993"

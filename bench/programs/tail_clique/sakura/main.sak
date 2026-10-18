@@ -1,0 +1,23 @@
+// A tail-call clique (design §17.208 (3)): each of three states calls both others in tail
+// position, so no state nests the other two and the cycle runs through a dispatch join
+// (§17.192 (2)). run(n) takes n steps from `a`; the sum of the edge weights is the checksum.
+import std/cli.{Cli}
+
+fn a(n: Int, acc: Int) -> Int {
+  if n == 0 { acc } else if n % 2 == 0 { b(n - 1, acc + 1) } else { c(n - 1, acc + 2) }
+}
+
+fn b(n: Int, acc: Int) -> Int {
+  if n == 0 { acc } else if n % 3 == 0 { a(n - 1, acc + 3) } else { c(n - 1, acc + 4) }
+}
+
+fn c(n: Int, acc: Int) -> Int {
+  if n == 0 { acc } else if n % 5 == 0 { a(n - 1, acc + 5) } else { b(n - 1, acc + 6) }
+}
+
+pub fn run(n: Int) -> Int { a(n, 0) }
+
+// `sakura run main.sak -- <n>...` prints run(n) for each argument.
+pub fn main() -> Unit ! {Cli, Console} {
+  for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+}

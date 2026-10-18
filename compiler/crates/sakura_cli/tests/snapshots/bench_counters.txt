@@ -58,6 +58,9 @@ sieve n=1000
 spectral_norm n=50
   direct: frames 4, boxes 2050, dups 100213, drops 202369, restarts 0
   all-frame: frames 200265, boxes 2050, dups 100213, drops 202369, restarts 0
+tail_clique n=100000
+  direct: frames 4, boxes 0, dups 2, drops 6, restarts 0
+  all-frame: frames 6, boxes 0, dups 2, drops 6, restarts 0
 tokenizer n=1000
   direct: frames 4, boxes 0, dups 3005, drops 10011, restarts 0
   all-frame: frames 1005, boxes 0, dups 3005, drops 10011, restarts 0

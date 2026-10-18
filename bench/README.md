@@ -171,13 +171,15 @@ whole table.
 
 ## Programs
 
-Fifteen §17.109 families; `handled` is six entries and `contracts` has its companion, so
-there are 21 program directories. All use `ints = "js-safe"`.
+Fifteen §17.109 families; `handled` is six entries, `contracts` has its companion and
+`tail_clique` joins `countdown`'s family (§17.208 (3)), so there are 22 program directories.
+All use `ints = "js-safe"`.
 
 | Program | Sizes | `run(n)` returns |
 |---|---|---|
 | `fib` | 20, 24, 27, 30 | `fib(n)`, naive recursion, checked add |
 | `countdown` | 1e3, 1e4, 1e5, 3e5 (+1e6 oracle only) | `sum_tail(n, 0)` (self-tail) + 1 if `is_even(n)` (mutual recursion, n deep); JS uses loops |
+| `tail_clique` | 1e5, 1e6, 1e7 | n steps of three states that each tail-call both others (the WS-P9b dispatch join), summing a weight per edge; JS is the state machine as a loop |
 | `sieve` | 1e3, 1e4, 5e4, 2e5 | primes below n; each prime p with p² < n clears its multiples from p² by index: `List.set` in Sakura (design §17.126), an in-place array write in every control |
 | `nbody` | 1e3, 5e3, 2e4, 1e5 | energy after n steps × 10⁹, rounded half away from zero (n = 1000 gives the Benchmarks Game −0.169087605) |
 | `spectral_norm` | 50, 100, 200, 400 | norm × 10⁹ rounded; `run(0)` = 0 |
@@ -275,7 +277,7 @@ The primary observation is per **(program, engine, lane, integer corpus, input s
 contributes the median of nine calibrated batches; the default is five fresh processes
 per variant. The ratio of medians is not the median of 25 cross-paired process ratios.
 Do not pool input sizes, engines, lanes or hosts. `handled_*` cases and the contract-free
-companion remain separate; a median over the 21 directories is not the fifteen-family
+companion remain separate; a median over the 22 directories is not the fifteen-family
 acceptance statistic in §17.109.
 
 The release compiler builds once before timing. The oracle checks 0–3, all four sizes,
