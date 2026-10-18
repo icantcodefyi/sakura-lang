@@ -79,6 +79,69 @@ fn refuses_parse_errors() {
     assert!(!errors.is_empty());
 }
 
+// Design §12.5: formatting preserves comments and reparses idempotently.
+#[test]
+fn noncharacter_comment_regression() {
+    let text = include_str!("../../../fuzz/corpus/fmt_idempotent/noncharacter_comment.sakura");
+    assert_eq!(text.as_bytes(), &[0x2f, 0x2f, 0xef, 0xb7, 0x90]);
+    assert_eq!(
+        check(Path::new("noncharacter_comment.sakura"), text),
+        format!("{text}\n")
+    );
+}
+
+#[test]
+fn line_comment_boundaries_preserve_unicode_and_controls() {
+    // The lexer ends // and /// comments only at LF, even when another tool treats
+    // one of these characters as a line break. Test both embedded and trailing text.
+    for c in [
+        '\u{fdd0}', '\u{2028}', '\u{2029}', '\u{85}', '\u{b}', '\u{c}', '\r',
+    ] {
+        for prefix in ["//", "///"] {
+            for text in [
+                format!("{prefix}{c}"),
+                format!(
+                    "{prefix} before{c}fn hidden() -> Int {{ 0 }}\nfn visible() -> Int {{ 1 }}\n"
+                ),
+                format!("fn visible() -> Int {{ 1 }} {prefix}{c}\n"),
+            ] {
+                let comments = |source: &str| -> Vec<String> {
+                    parse(source)
+                        .syntax()
+                        .descendants_with_tokens()
+                        .filter_map(|e| e.into_token())
+                        .filter(|t| {
+                            matches!(t.kind(), SyntaxKind::COMMENT | SyntaxKind::DOC_COMMENT)
+                        })
+                        .map(|t| t.text().to_string())
+                        .collect()
+                };
+                let original_comments = comments(&text);
+                assert_eq!(original_comments.len(), 1);
+                assert!(original_comments[0].contains(c));
+                let once = check(Path::new("line_comment_boundaries.sakura"), &text);
+                assert_eq!(
+                    original_comments,
+                    comments(&once),
+                    "character {c:?}: {text:?}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn raw_newlines_and_noncharacters_are_preserved() {
+    for text in [
+        "/* \u{fdd0}n\n\u{fdd0}e \u{fdd0} \nend */\n",
+        "fn f() -> String { \"\u{fdd0}n\n\u{fdd0}e \u{fdd0} \nend\" }\n",
+        "fn f() -> String { \"outer{\"\u{fdd0}n\u{fdd0}e\"}\" }\n",
+    ] {
+        let once = check(Path::new("raw_newlines_and_noncharacters.sakura"), text);
+        assert_eq!(once, text);
+    }
+}
+
 #[test]
 fn deepest_accepted_input_formats() {
     // Just under the parser's nesting limit, on the default 2 MiB test-thread stack.

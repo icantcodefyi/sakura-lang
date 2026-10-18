@@ -55,9 +55,8 @@ type Doc = RcDoc<'static, ()>;
 
 pub const WIDTH: usize = 100;
 const INDENT: isize = 2;
-/// Stands in for line breaks inside string literals and comments while rendering, so trailing
-/// whitespace can be trimmed everywhere else. A Unicode noncharacter; if the source contains it,
-/// trimming is skipped.
+/// Escapes line breaks inside strings and comments while rendering. Literal occurrences are
+/// escaped too, so every Unicode scalar value can round-trip through the formatter.
 const RAW_NL: char = '\u{FDD0}';
 
 /// Format a whole module. Returns the parse errors instead if the file does not parse cleanly,
@@ -69,14 +68,15 @@ pub fn format(text: &str) -> Result<String, Vec<Diagnostic>> {
         return Err(parse.errors);
     }
     let out = Fmt { src: text }.file(&parse.syntax());
-    let trim = !text.contains(RAW_NL);
     let mut result = String::with_capacity(out.len());
     for line in out.split('\n') {
-        result.push_str(if trim { line.trim_end() } else { line });
+        result.push_str(trim_layout_space(line));
         result.push('\n');
     }
     result.pop();
-    let result = result.replace(RAW_NL, "\n");
+    let result = result
+        .replace("\u{fdd0}n", "\n")
+        .replace("\u{fdd0}e", "\u{fdd0}");
     match guard(&parse, &result) {
         Some(d) => Err(vec![d]),
         None => Ok(result),
@@ -110,10 +110,10 @@ fn guard(input: &sakura_syntax::Parse, output: &str) -> Option<Diagnostic> {
     }
     let mut kept: Vec<String> = comments(&reparsed)
         .iter()
-        .map(|t| t.text().trim_end().to_string())
+        .map(|t| trim_layout_space(t.text()).to_string())
         .collect();
     for c in comments(input) {
-        let text = c.text().trim_end();
+        let text = trim_layout_space(c.text());
         match kept.iter().position(|k| k == text) {
             Some(i) => {
                 kept.swap_remove(i);
@@ -147,7 +147,23 @@ fn t(s: impl Into<String>) -> Doc {
 
 /// Text that may contain line breaks that must be kept exactly (strings, comments).
 fn raw(s: &str) -> Doc {
-    t(s.replace('\n', &RAW_NL.to_string()))
+    if !s.contains(['\n', RAW_NL]) {
+        return t(s);
+    }
+    // Escape bytes must not contribute to the layout's character width.
+    RcDoc::new(pretty::Doc::RenderLen(
+        s.chars().count(),
+        RcDoc::new(pretty::Doc::OwnedText(protect_raw(s).into())),
+    ))
+}
+
+fn protect_raw(s: &str) -> String {
+    s.replace(RAW_NL, "\u{fdd0}e").replace('\n', "\u{fdd0}n")
+}
+
+/// Other whitespace-like characters, including CR, belong to a line comment until LF.
+fn trim_layout_space(s: &str) -> &str {
+    s.trim_end_matches([' ', '\t'])
 }
 
 fn nl() -> Doc {
@@ -350,7 +366,7 @@ fn seq(container: &SyntaxNode, is_entry: impl Fn(SyntaxKind) -> bool) -> Seq {
             NodeOrToken::Node(_) => {}
             NodeOrToken::Token(tok) => match tok.kind() {
                 k if is_comment(k) => {
-                    let text = tok.text().trim_end().to_string();
+                    let text = trim_layout_space(tok.text()).to_string();
                     match entries.last_mut() {
                         Some(last)
                             if newlines == 0 && pending.is_empty() && last.trailing.is_none() =>
@@ -1533,7 +1549,7 @@ impl Fmt<'_> {
                 let blank = i == 0 || s.dangling[i - 1].blank_after;
                 out.push_str(if blank { "\n\n" } else { "\n" });
             }
-            out.push_str(&c.text.replace('\n', &RAW_NL.to_string()));
+            out.push_str(&protect_raw(&c.text));
         }
         if !out.is_empty() {
             out.push('\n');
@@ -1606,7 +1622,7 @@ fn leading_comments(n: &SyntaxNode) -> Vec<(String, bool)> {
 
 fn comment_entry(t: &SyntaxToken) -> (String, bool) {
     (
-        t.text().trim_end().to_string(),
+        trim_layout_space(t.text()).to_string(),
         breaks_line(t, SyntaxToken::next_token),
     )
 }
@@ -1688,7 +1704,7 @@ fn split_gap(el: &SyntaxElement) -> SplitGap {
         trailing: concat(
             before
                 .iter()
-                .flat_map(|c| [t(" "), raw(c.text().trim_end())]),
+                .flat_map(|c| [t(" "), raw(trim_layout_space(c.text()))]),
         ),
         ends_line: before.last().is_some_and(|c| {
             let (text, newline_after) = comment_entry(c);
@@ -1812,7 +1828,7 @@ fn inner_comments(
         };
         match tok.kind() {
             k if is_comment(k) => {
-                let text = tok.text().trim_end().to_string();
+                let text = trim_layout_space(tok.text()).to_string();
                 let c = InnerComment {
                     block: text.starts_with("/*"),
                     text,
