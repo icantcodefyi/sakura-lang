@@ -589,17 +589,24 @@ impl Rt {
 
     /// `Map.get(m, k) -> Option<V>`.
     pub fn map_get(&mut self, m: u32, k: u32) -> Res<u32> {
-        let r = self.find(m, k, true).and_then(|(_, s)| match s {
-            Some(s) => {
-                let (_, log, _) = self.mfields(m);
-                let v = self.slot(self.at(log, s), 1) as u32;
-                self.dup(v)?;
-                self.some(v)
-            }
+        let r = self.map_value(m, k).and_then(|v| match v {
+            Some(v) => self.some(v),
             None => Ok(self.none()),
         });
         self.drop2(m, k);
         r
+    }
+
+    /// The value under `k` counted, or `None` (`m` and `k` borrowed): `map_get` without the
+    /// `Option`.
+    pub(crate) fn map_value(&mut self, m: u32, k: u32) -> Res<Option<u32>> {
+        let Some(s) = self.find(m, k, true)?.1 else {
+            return Ok(None);
+        };
+        let (_, log, _) = self.mfields(m);
+        let v = self.slot(self.at(log, s), 1) as u32;
+        self.dup(v)?;
+        Ok(Some(v))
     }
 
     pub fn map_contains(&mut self, m: u32, k: u32) -> Res<bool> {

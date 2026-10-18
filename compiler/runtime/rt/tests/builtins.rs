@@ -231,7 +231,8 @@ fn wrappers_and_option_expect() {
     });
 }
 
-/// `opt`'s fused reads (design §17.151) are `option_expect` of the `get`, references balanced.
+/// `opt`'s fused reads (design §17.151) are `option_expect` of the `get`, references balanced,
+/// and a hit reads in place without building the `Option` (M4-OPT).
 #[test]
 fn fused_get_expect() {
     balanced(|rt| {
@@ -240,7 +241,9 @@ fn fused_get_expect() {
         let xs = rt.list_push(e, x).unwrap();
         rt.dup(xs).unwrap();
         let m = s(rt, "msg");
+        let before = rt.stats().requested;
         let v = rt.list_get_expect(xs, 0, m).unwrap();
+        assert_eq!(rt.stats().requested, before, "no Option is built");
         assert_eq!(text(rt, v), "x");
         rt.dup(xs).unwrap();
         let m = s(rt, "msg");
@@ -251,7 +254,9 @@ fn fused_get_expect() {
         let map = rt.map_insert(e, k, v).unwrap();
         rt.dup(map).unwrap();
         let (k, m) = (s(rt, "tea"), s(rt, "msg"));
+        let before = rt.stats().requested;
         let v = rt.map_get_expect(map, k, m).unwrap();
+        assert_eq!(rt.stats().requested, before, "no Option is built");
         assert_eq!(text(rt, v), "3");
         rt.drop(xs);
         let (k, m) = (s(rt, "coffee"), s(rt, "msg"));

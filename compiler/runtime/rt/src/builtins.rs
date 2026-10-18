@@ -424,17 +424,41 @@ impl Rt {
         ))
     }
 
-    /// `option_expect(list_get(xs, i), msg)`, fused by `opt` (design §17.151). ponytail: the
-    /// composition, so WASM still builds the `Option`; read in place when WASM indexing is measured.
+    /// `option_expect(list_get(xs, i), msg)`, fused by `opt` (design §17.151): the element is
+    /// read in place, so no `Option` is built (M4-OPT).
     pub fn list_get_expect(&mut self, xs: u32, i: i64, msg: u32) -> Res<u32> {
-        let o = self.list_get(xs, i).inspect_err(|_| self.drop(msg))?;
-        self.option_expect(o, msg)
+        let v = self.list_value(xs, i);
+        self.drop(xs);
+        self.expected(v, msg)
     }
 
-    /// `option_expect(map_get(m, k), msg)` (design §17.151); the composition, as above.
+    /// `option_expect(map_get(m, k), msg)` (design §17.151), read in place as above.
     pub fn map_get_expect(&mut self, m: u32, k: u32, msg: u32) -> Res<u32> {
-        let o = self.map_get(m, k).inspect_err(|_| self.drop(msg))?;
-        self.option_expect(o, msg)
+        let v = self.map_value(m, k);
+        self.drop2(m, k);
+        self.expected(v, msg)
+    }
+
+    /// A fused read's value, or `option_expect`'s `D030` with the program's message; consumes
+    /// `msg`.
+    fn expected(&mut self, v: Res<Option<u32>>, msg: u32) -> Res<u32> {
+        match v {
+            Ok(Some(x)) => {
+                self.drop(msg);
+                Ok(x)
+            }
+            Ok(None) => Err(self.with_text(
+                Defect {
+                    code: 30,
+                    message: "Option.expect on None",
+                },
+                msg,
+            )),
+            Err(d) => {
+                self.drop(msg);
+                Err(d)
+            }
+        }
     }
 
     /// `Untrusted.of`, `Secret.wrap`: a one-slot wrapper owning `x`.

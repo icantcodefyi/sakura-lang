@@ -349,14 +349,22 @@ impl Rt {
 
     /// `List.get(xs, i) -> Option<A>`.
     pub fn list_get(&mut self, xs: u32, i: i64) -> Res<u32> {
-        let n = self.list_n(xs) as i64;
-        let r = if (0..n).contains(&i) {
-            self.some_of(xs, i as u32)
-        } else {
-            Ok(self.none())
-        };
+        let r = self.list_value(xs, i).and_then(|v| match v {
+            Some(x) => self.some(x),
+            None => Ok(self.none()),
+        });
         self.drop(xs);
         r
+    }
+
+    /// `xs[i]` counted, or `None` out of range (`xs` borrowed): `list_get` without the `Option`.
+    pub(crate) fn list_value(&mut self, xs: u32, i: i64) -> Res<Option<u32>> {
+        if !(0..self.list_n(xs) as i64).contains(&i) {
+            return Ok(None);
+        }
+        let x = self.at(xs, i as u32);
+        self.dup(x)?;
+        Ok(Some(x))
     }
 
     /// `Some(xs[i])`, counting the element (xs borrowed).

@@ -73,6 +73,11 @@ published yet.
   endings as the reason a file is listed. `sakura test` reports a snapshot that differs only
   in `\r\n` against `\n` as a line-ending mismatch.
 
+- On `--target wasm`, a fused `xs[i].expect(…)` or `map[k].expect(…)` (design §17.151) reads
+  the element in place instead of building and dropping an `Option`: `nbody` at n = 1000
+  requests 2,514,572 heap bytes instead of 2,874,956 (−12.5%); output and defects are
+  unchanged.
+
 - `sakura test --contracts --target wasm` runs the synthesized contract properties on WASM
   instead of refusing, with the counterexamples, shrinks, stored regressions and exit code JS
   reports for the same seed (design §17.163 (4)). `sakura test --record --target wasm` is
@@ -83,8 +88,8 @@ published yet.
   says `proved` for those clauses (design §17.163 (4), M4-OPT). The JS modules a WASM build
   writes for decoding keep every check.
 
-- `sakura build` deletes a proved check's predicate along with the check: a `requires` or
-  `ensures` built from comparisons, arithmetic, projections and constructors is no longer
+- `sakura build` deletes a proved check's predicate along with the check: an `ensures` or
+  `where` built from comparisons, arithmetic, projections and constructors is no longer
   evaluated once `sakura verify` proved it. A predicate that calls a function is still
   evaluated, so a defect inside that function is still reported (design §17.98, §17.118).
 
