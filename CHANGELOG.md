@@ -9,6 +9,12 @@ published yet.
 
 ### Security
 
+- The proof key is refused when its directory is writable by other users or owned by another
+  user, as a readable key file already was; a key inside the project root or the proofs
+  directory is refused from any working directory; `sakura build` only reads the key and
+  never creates it; and a proof cache entry carries a `format` under its MAC, so an entry of
+  another format is solved again (security review K1–K3, design §17.164 (3)).
+
 - `--target wasm` checks what its JS host answers instead of trusting it (security review
   W1–W4, W7–W11; ABI 1.1.2): an operation index or a builtin result of the wrong shape is a
   `D090` defect, never a heap read, and a completion payload must be a fresh `Bytes`. A

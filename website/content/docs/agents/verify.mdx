@@ -93,7 +93,7 @@ Spans carry the source URI, content hash and byte range. The summary includes `p
 
 Verification writes records to `target/sakura/proofs/<key>.json`. A `sakura-proof-v1` digest covers the normalized verification condition, the function's own Core body, inlined definitions, assumed contracts, target profile, encoder version, solver identity and limits, and trust policy. A body-only edit invalidates that function's proofs; a callee contract change invalidates dependent proofs. A caller that assumes only a callee's contract can retain its conditional result after that callee's body changes.
 
-A digest alone cannot authenticate an editable file. Records carry an **HMAC-SHA256** made with a per-installation key at `$XDG_STATE_HOME/sakura/proof.key`, falling back to `~/.local/state/sakura/proof.key`. The key is created on first use with mode `0600`; a key inside the project is refused. If authentication is unavailable, verification warns and no build drops checks based on those records. Copying records from another installation or editing a `proved` field does not authorize check removal.
+A digest alone cannot authenticate an editable file. Records carry an **HMAC-SHA256** made with a per-installation key at `$XDG_STATE_HOME/sakura/proof.key`, falling back to `~/.local/state/sakura/proof.key`. `sakura verify` creates the key on first use with mode `0600`; `sakura build` only reads it. A key inside the project or its proofs directory, readable by other users, or in a directory another user owns or can write is refused. If authentication is unavailable, verification warns and no build drops checks based on those records. Copying records from another installation or editing a `proved` field does not authorize check removal.
 
 After verification, run:
 

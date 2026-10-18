@@ -48,12 +48,22 @@ fn limits(a: &Analyzed, flag: Option<u64>) -> Result<Limits, String> {
     Limits::with_rlimit(flag, manifest)
 }
 
-/// The proof cache with this installation's key (created on first use), or the reason it has
-/// none: then nothing it holds is authenticated.
-fn cache() -> (Cache, Option<String>) {
+/// The proof cache with this installation's key (created on first use when `create`, so only by
+/// `sakura verify`), or the reason it has none: then nothing it holds is authenticated. The key
+/// may not live in the project (the directory holding `sakura.toml`, else the working
+/// directory) or the proofs directory (security review K3).
+fn cache(create: bool) -> (Cache, Option<String>) {
+    let root = sakura_mcp::project_root(Path::new(".")).unwrap_or_else(|_| PathBuf::from("."));
+    let forbidden = [root.as_path(), Path::new(PROOFS)];
     let key = ProofKey::default_path()
         .ok_or_else(|| "neither XDG_STATE_HOME nor HOME is set".to_owned())
-        .and_then(|p| ProofKey::load_or_create(&p, &[Path::new(".")]));
+        .and_then(|p| {
+            if create {
+                ProofKey::load_or_create(&p, &forbidden)
+            } else {
+                ProofKey::load(&p, &forbidden)
+            }
+        });
     let (key, why) = match key {
         Ok(k) => (Some(k), None),
         Err(e) => (None, Some(e)),
@@ -96,7 +106,7 @@ pub(crate) fn verify(opts: &Options, paths: &[PathBuf]) -> ExitCode {
         Err(why) => return crate::usage_error(format!("sakura verify needs Z3: {}", why.detail)),
     };
     let cvc5 = Solver::find(SolverKind::Cvc5, None, limits).ok();
-    let (cache, no_key) = cache();
+    let (cache, no_key) = cache(true);
     if let Some(why) = no_key {
         eprintln!("warning: proofs are not authenticated, so no build drops a check: {why}");
     }
@@ -348,7 +358,7 @@ fn replay(module: &sakura_core::Module, vc: &DefVc, o: &Obligation, r: &mut Reco
 /// What `sakura build` knows from the proof cache about the program `module` (Core as lowered,
 /// before any check is dropped): the checks it may drop on `profile`, and per manifest id, the
 /// clauses all of whose checks are among them. Nothing without a `target/sakura/proofs`
-/// directory, so a build never creates the installation key.
+/// directory; a build only loads the installation key, never creates it.
 fn proved(
     a: &Analyzed,
     module: &sakura_core::Module,
@@ -364,7 +374,7 @@ fn proved(
     let Ok(limits) = limits(a, None) else {
         return none();
     };
-    let (cache, _) = cache();
+    let (cache, _) = cache(false);
     let core = snap::convert::convert(module);
     let sites = cache.check_sites(&core, profile, &limits.info(SolverKind::Z3), TRUST);
     let clauses = a.obligations();

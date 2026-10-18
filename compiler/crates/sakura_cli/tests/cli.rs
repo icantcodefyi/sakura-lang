@@ -1251,9 +1251,10 @@ fn build_drops_only_checks_with_authenticated_proofs() {
     let manifest = std::fs::read_to_string(dir.join("target/sakura/manifest.json")).unwrap();
     assert_eq!(manifest.matches("\"proved\"").count(), 1, "{manifest}");
 
-    // Another installation's key: the record is only a hint.
+    // Another installation's key: the record is only a hint, and the build creates no key.
     let other = outside(&dir, "other-state");
     assert!(build(&dir, &other, &[]).contains(ensures_check));
+    assert!(!other.exists(), "a build never creates the proof key");
 
     // A body-only edit changes the key.
     std::fs::write(
@@ -1262,6 +1263,34 @@ fn build_drops_only_checks_with_authenticated_proofs() {
     )
     .unwrap();
     assert!(build(&dir, &state, &[]).contains(ensures_check));
+}
+
+/// Security review K3: `sakura build` only loads the proof key, even beside a proofs directory,
+/// and `sakura verify` from a subdirectory refuses a key inside the project root.
+#[test]
+fn proof_key_is_never_created_by_build_or_inside_the_project() {
+    let dir = tmp("verify-key", SCALE);
+    std::fs::write(
+        dir.join("sakura.toml"),
+        "[package]\nname = \"verify_key\"\n\n[permissions]\n",
+    )
+    .unwrap();
+    std::fs::create_dir_all(dir.join("target/sakura/proofs")).unwrap();
+    let state = outside(&dir, "key-state");
+    let _ = std::fs::remove_dir_all(&state);
+    let out = sakura_in_state(&["build", "main.sakura"], &dir, &state);
+    assert_eq!(out.status.code(), Some(0), "{out:?}");
+    assert!(!state.exists(), "a build never creates the proof key");
+    if !has_z3() {
+        return;
+    }
+    let sub = dir.join("sub");
+    std::fs::create_dir_all(&sub).unwrap();
+    let inside = dir.join("state");
+    let out = sakura_in_state(&["verify", "../main.sakura"], &sub, &inside);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(stderr.contains("must live outside"), "{out:?}");
+    assert!(!inside.exists(), "no key inside the project");
 }
 
 /// Plan §3.7 item 9 (C1/V3 deviation 7), design §17.86: a second `sakura verify` on an unchanged

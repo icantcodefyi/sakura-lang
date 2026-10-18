@@ -2330,6 +2330,7 @@ name = "sakura_verify"
 version = "0.1.0-alpha.1"
 dependencies = [
  "insta",
+ "rustix",
  "sakura_analysis",
  "sakura_core",
  "sakura_core_snapshot",

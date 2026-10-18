@@ -8,7 +8,8 @@
 //! the callee's body changes.
 //!
 //! A persisted record removes a check only if its HMAC-SHA256 verifies under the per-installation
-//! key `$XDG_STATE_HOME/sakura/proof.key` (mode 0600, outside the repository and `target/`). Any
+//! key `$XDG_STATE_HOME/sakura/proof.key` (mode 0600, in a directory only its owner can write,
+//! outside the project and its proofs directory). Any
 //! other record is a lookup hint: the solver reruns. An authenticated record also keeps the
 //! solver's answers, so `sakura verify` rebuilds its obligation record from them instead of
 //! solving again ([`Cache::reuse`]).
@@ -29,6 +30,9 @@ use crate::vc::{self, DefVc, Kind, Obligation, Profile};
 pub const DOMAIN: &str = "sakura-proof-v1";
 /// Bumped whenever the encoding of a VC changes meaning.
 pub const ENCODER: &str = "sakura_verify/vc-1";
+/// The layout of an [`Entry`] and the reply protocol of its `replies`: an entry of another format
+/// is missing and solved again (security review K2).
+pub const FORMAT: u32 = 1;
 const MAX_RECORD: u64 = 64 * 1024;
 
 /// A def's Core with every span removed: moving code does not change a proof.
@@ -112,10 +116,21 @@ impl ProofKey {
     }
 
     /// Loads the key, creating it (32 bytes from the OS, mode 0600) on first use. Refuses a key
-    /// inside any of `forbidden` (the repository, `target/`) or readable by other users.
-    #[cfg(unix)]
+    /// inside any of `forbidden` (the project root, the proofs directory), readable by other
+    /// users, or in a directory another user owns or can write (security review K1).
     pub fn load_or_create(path: &Path, forbidden: &[&Path]) -> Result<ProofKey, String> {
-        use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
+        Self::open(path, forbidden, true)
+    }
+
+    /// Loads the key as [`ProofKey::load_or_create`] does, but never creates it or its directory
+    /// (`sakura build`).
+    pub fn load(path: &Path, forbidden: &[&Path]) -> Result<ProofKey, String> {
+        Self::open(path, forbidden, false)
+    }
+
+    #[cfg(unix)]
+    fn open(path: &Path, forbidden: &[&Path], create: bool) -> Result<ProofKey, String> {
+        use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt, PermissionsExt};
         let dir = path.parent().ok_or("key path has no directory")?;
         // Resolve the nearest existing ancestor before creating anything.
         let existing = dir
@@ -135,11 +150,30 @@ impl ProofKey {
                 ));
             }
         }
-        fs::DirBuilder::new()
-            .recursive(true)
-            .mode(0o700)
-            .create(dir)
-            .map_err(|e| format!("{}: {e}", dir.display()))?;
+        if create {
+            fs::DirBuilder::new()
+                .recursive(true)
+                .mode(0o700)
+                .create(dir)
+                .map_err(|e| format!("{}: {e}", dir.display()))?;
+        }
+        // Whoever can write the directory can replace the key file in it.
+        let meta = fs::metadata(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+        if meta.mode() & 0o022 != 0 {
+            return Err(format!(
+                "{} is writable by other users (mode {:o})",
+                dir.display(),
+                meta.mode() & 0o777
+            ));
+        }
+        let me = rustix::process::geteuid().as_raw();
+        if meta.uid() != me {
+            return Err(format!(
+                "{} is owned by uid {}, not by this user (uid {me})",
+                dir.display(),
+                meta.uid()
+            ));
+        }
         match fs::read(path) {
             Ok(bytes) => {
                 let mode = fs::metadata(path)
@@ -158,7 +192,7 @@ impl ProofKey {
                     .map_err(|_| format!("{} is not a 32-byte key", path.display()))?;
                 Ok(ProofKey(key))
             }
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound && create => {
                 let mut key = [0u8; 32];
                 fs::File::open("/dev/urandom")
                     .and_then(|mut f| std::io::Read::read_exact(&mut f, &mut key))
@@ -177,7 +211,7 @@ impl ProofKey {
     }
 
     #[cfg(not(unix))]
-    pub fn load_or_create(_: &Path, _: &[&Path]) -> Result<ProofKey, String> {
+    fn open(_: &Path, _: &[&Path], _: bool) -> Result<ProofKey, String> {
         Err("no protected key storage on this platform; proofs are rerun".into())
     }
 
@@ -198,6 +232,8 @@ pub enum Reply {
 /// A persisted verdict. `mac` covers every other field in this order.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Entry {
+    /// [`FORMAT`] when written; `get` treats any other value as missing.
+    pub format: u32,
     pub key: String,
     pub status: Status,
     pub solver: SolverInfo,
@@ -240,6 +276,7 @@ impl Entry {
         let mut dependencies: Vec<String> = r.summaries.iter().chain(&r.inlined).cloned().collect();
         dependencies.sort();
         let mut e = Entry {
+            format: FORMAT,
             key,
             status: r.status,
             solver,
@@ -319,6 +356,9 @@ impl Cache {
         else {
             return Lookup::Missing;
         };
+        if e.format != FORMAT {
+            return Lookup::Missing;
+        }
         if e.key != key {
             return Lookup::Hint(e);
         }
@@ -446,6 +486,7 @@ mod tests {
         };
         let k = "a".repeat(64);
         let mut e = Entry {
+            format: FORMAT,
             key: k.clone(),
             status: Status::Proved,
             solver: SolverInfo {

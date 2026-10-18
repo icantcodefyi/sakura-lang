@@ -185,3 +185,73 @@ fn authenticated_entries_are_reused_and_nothing_else_is() {
     assert_eq!(unkeyed.reuse(k, vc, o, &z3, None), None);
     let _ = std::fs::remove_dir_all(&base);
 }
+
+/// Security review K1: a key directory another user can write, or that another user owns, is
+/// refused as a readable key file is, even when the key file in it is private; `load` never
+/// creates the key (K3).
+#[cfg(unix)]
+#[test]
+fn key_directory_mode_and_owner_are_checked() {
+    use std::os::unix::fs::{MetadataExt, PermissionsExt};
+    let base = std::env::temp_dir().join(format!("sakura-verify-keydir-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&base);
+    let path = base.join("state/sakura/proof.key");
+    let dir = path.parent().unwrap();
+    assert!(ProofKey::load(&path, &[]).is_err(), "nothing to load yet");
+    assert!(!dir.exists(), "load creates nothing");
+    ProofKey::load_or_create(&path, &[]).unwrap();
+    assert!(ProofKey::load(&path, &[]).is_ok());
+    for mode in [0o720, 0o702, 0o777] {
+        std::fs::set_permissions(dir, std::fs::Permissions::from_mode(mode)).unwrap();
+        let err = ProofKey::load_or_create(&path, &[]).err().expect("refused");
+        assert!(err.contains("writable by other users"), "{mode:o}: {err}");
+        assert!(ProofKey::load(&path, &[]).is_err());
+    }
+    std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700)).unwrap();
+    assert!(ProofKey::load(&path, &[]).is_ok());
+    // A directory owned by root (and not writable by others), unless the test runs as root.
+    let root_owned = std::path::Path::new("/usr");
+    if std::fs::metadata(&base).unwrap().uid() != 0 {
+        let err = ProofKey::load(&root_owned.join("proof.key"), &[])
+            .err()
+            .expect("refused");
+        assert!(err.contains("is owned by uid 0"), "{err}");
+    }
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Security review K2, design §17.164 (3): an entry of another `format` is missing, not a hint.
+#[cfg(unix)]
+#[test]
+fn an_entry_of_another_format_is_missing() {
+    let base = std::env::temp_dir().join(format!("sakura-verify-format-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&base);
+    let cache = Cache {
+        dir: base.join("proofs"),
+        key: Some(ProofKey::load_or_create(&base.join("state/sakura/proof.key"), &[]).unwrap()),
+    };
+    let snap = common::snapshot("scale");
+    let z3 = solver(10_000_000);
+    let (k, e) = sakura_verify::vc::generate(&snap.module, Profile::Js)
+        .iter()
+        .flat_map(|vc| vc.obligations.iter().map(move |o| (vc, o)))
+        .find_map(|(vc, o)| {
+            let k = cache::key(&snap.module, vc, o, &z3, "trust");
+            let (r, answers) = fake_solve(vc, o);
+            Entry::new(k.clone(), &r, &answers, cache.key.as_ref()).map(|e| (k, e))
+        })
+        .expect("an entry");
+    assert_eq!(e.format, cache::FORMAT);
+    cache.put(&e).unwrap();
+    assert!(matches!(cache.get(&k), cache::Lookup::Authenticated(_)));
+    // Another format is missing before its MAC is looked at.
+    let mut v: serde_json::Value = serde_json::to_value(&e).unwrap();
+    v["format"] = (cache::FORMAT + 1).into();
+    std::fs::write(base.join(format!("proofs/{k}.json")), v.to_string()).unwrap();
+    assert_eq!(cache.get(&k), cache::Lookup::Missing);
+    // An entry written before `format` existed does not parse: missing too.
+    v.as_object_mut().unwrap().remove("format");
+    std::fs::write(base.join(format!("proofs/{k}.json")), v.to_string()).unwrap();
+    assert_eq!(cache.get(&k), cache::Lookup::Missing);
+    let _ = std::fs::remove_dir_all(&base);
+}
