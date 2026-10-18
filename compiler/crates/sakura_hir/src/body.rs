@@ -827,9 +827,8 @@ impl<'a> BodyCx<'a> {
         };
         let mut d = diag::error(diag::UNRESOLVED_NAME, file, name.text_range(), what);
         let near = did_you_mean(member, cands.iter().map(String::as_str))
-            .or_else(|| diag::only_within(member, cands.iter().map(String::as_str), 2))
             .map(|s| (s, Applicability::MachineApplicable));
-        // A prefix is weaker evidence than two edits: only `suggested` (design §17.182 (2)).
+        // A prefix is weaker evidence than a near spelling: only `suggested` (design §17.187).
         let fns = hm
             .exports
             .iter()

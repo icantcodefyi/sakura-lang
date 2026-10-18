@@ -1,6 +1,10 @@
 // milestone: M3
-// expect: V1002
-// §17.165: the one std/list function within two edits is suggested, machine-applicable.
+// expect: V1002 V1002
+// §17.187: `lenth` is two edits from `len`, too far for the proportional did-you-mean, so the
+// prefix rule suggests `len` as `suggested`, not `machine_applicable`. `lne` is one transposition
+// from `len`, within the proportional limit, so that fix is `machine_applicable`.
 import std/list
 
 pub fn size() -> Int { List.lenth([1]) }
+
+pub fn size2() -> Int { List.lne([1]) }
