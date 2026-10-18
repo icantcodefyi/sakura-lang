@@ -130,6 +130,10 @@ enum Command {
         /// every fixture both ways).
         #[arg(long, hide = true)]
         no_direct: bool,
+        /// With `--target wasm`, a WASI command for `wasmtime run` instead of the Node module:
+        /// the pure host operations are built in, the rest trap (`bench/` Wasmtime cells).
+        #[arg(long, hide = true)]
+        wasi: bool,
         paths: Vec<PathBuf>,
     },
     /// Build and run `main` with node. The exit code is the program's: 0 ok, 1 `main` failed,
@@ -472,6 +476,7 @@ fn dispatch(command: Command) -> ExitCode {
             manifest,
             dump,
             no_direct,
+            wasi,
             paths,
         } => match load(&paths).map_err(usage_error).and_then(|snapshot| {
             let opts = BuildOptions {
@@ -501,9 +506,17 @@ fn dispatch(command: Command) -> ExitCode {
                     }
                 };
             }
+            if wasi && (target != "wasm" || emit != "js") {
+                return Err(usage_error("`--wasi` needs `--target wasm`"));
+            }
             if target == "wasm" && emit == "js" {
                 let out_dir = out_dir.unwrap_or_else(|| Path::new("target/sakura/wasm").into());
-                wasm::build(json, &snapshot, &out_dir, &opts, false)?;
+                let host = if wasi {
+                    sakura_codegen_wasm::Host::Wasi
+                } else {
+                    sakura_codegen_wasm::Host::Abi
+                };
+                wasm::build(json, &snapshot, &out_dir, &opts, false, host)?;
                 if manifest {
                     write_manifest(&snapshot, "wasm").map_err(usage_error)?;
                 }
@@ -835,7 +848,7 @@ fn run(
         ..BuildOptions::default()
     };
     let built = if target == "wasm" {
-        wasm::build(false, &snapshot, out_dir, &opts, true)
+        wasm::build(false, &snapshot, out_dir, &opts, true, Default::default())
     } else {
         build(false, &snapshot, out_dir, opts, true)
     };
@@ -949,7 +962,7 @@ fn test(
         all_fns: false,
     };
     let built = if wasm {
-        wasm::build(json, snapshot, out_dir, &opts, true)
+        wasm::build(json, snapshot, out_dir, &opts, true, Default::default())
     } else {
         build(json, snapshot, out_dir, opts, true)
     };

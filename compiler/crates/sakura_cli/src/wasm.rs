@@ -59,6 +59,7 @@ pub fn build(
     out_dir: &Path,
     opts: &BuildOptions,
     then: bool,
+    host: sakura_codegen_wasm::Host,
 ) -> Result<PathBuf, ExitCode> {
     let refused = js_externals(snapshot);
     if !refused.is_empty() {
@@ -88,6 +89,7 @@ pub fn build(
     }
     let wasm = sakura_codegen_wasm::Options {
         direct: opts.direct,
+        host,
         sources: snapshot
             .file_ids()
             .map(|f| snapshot.file(f).uri.clone())

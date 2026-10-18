@@ -873,3 +873,63 @@ fn http_send_over_the_copy_budget_fails_alike_on_both_backends() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// `build --target wasm --wasi` (hidden; the Wasmtime cells of `bench/`): a WASI command that
+/// imports `wasi_snapshot_preview1` instead of the Node host, and that `wasmtime run` runs.
+#[test]
+fn build_wasi_writes_a_command_for_wasmtime() {
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("wasi_command");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("main.sak"),
+        "pub fn main() -> Unit ! {Console} {\n  Console.print(\"{6 * 7}\")\n}\n",
+    )
+    .unwrap();
+    let args = [
+        "build",
+        "--target",
+        "wasm",
+        "--wasi",
+        "--out-dir",
+        "out",
+        "main.sak",
+    ];
+    let built = sakura(&args, &dir);
+    assert_eq!(built.code, Some(0), "{}", built.stderr);
+    let bytes = std::fs::read(dir.join("out/main.wasm")).unwrap();
+    let has = |name: &[u8]| bytes.windows(name.len()).any(|w| w == name);
+    assert!(has(b"wasi_snapshot_preview1") && has(b"_start"));
+    assert!(
+        !has(b"sakura_host"),
+        "a WASI command imports nothing from the Node host"
+    );
+    let Ok(run) = std::process::Command::new("wasmtime")
+        .arg("run")
+        .arg(dir.join("out/main.wasm"))
+        .output()
+    else {
+        eprintln!("skipped running it: wasmtime is missing");
+        return;
+    };
+    assert!(
+        run.status.success(),
+        "{}",
+        String::from_utf8_lossy(&run.stderr)
+    );
+    assert_eq!(String::from_utf8_lossy(&run.stdout), "42\n");
+}
+
+#[test]
+fn build_wasi_needs_the_wasm_target() {
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("wasi_js");
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("main.sak"), "pub fn main() -> Unit { () }\n").unwrap();
+    let out = sakura(&["build", "--wasi", "--out-dir", "out", "main.sak"], &dir);
+    assert_eq!(out.code, Some(2), "{}", out.stderr);
+    assert!(
+        out.stderr.contains("`--wasi` needs `--target wasm`"),
+        "{}",
+        out.stderr
+    );
+}
