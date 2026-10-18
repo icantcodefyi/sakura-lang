@@ -436,15 +436,14 @@ impl Rt {
         self.unwrap(s)
     }
 
-    /// `List.set`; out of range is `D020` (std's `requires` already checked it; defence).
+    /// `List.set`; out of range is `D020` (std's `requires` already checked it; defence). A list
+    /// no other reference reaches is updated in place (design §17.149).
     pub fn list_set(&mut self, xs: u32, i: i64, x: u32) -> Res<u32> {
         if !(0..self.list_n(xs) as i64).contains(&i) {
             self.drop2(xs, x);
             return Err(LIST_SET);
         }
-        let r = self.set_at_b(xs, i as u32, x);
-        self.drop(xs);
-        r
+        self.list_set_in(xs, i as u32, x)
     }
 
     /// `String.from_bytes`: `Ok(string)` or `Err(Utf8Error { offset })` at the first byte that

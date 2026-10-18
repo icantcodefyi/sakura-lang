@@ -2,8 +2,9 @@
 //! and `ListNode` (tag 9) objects: a 32-way trie of full leaves plus a tail of up to 32 words.
 //! A push onto the newest version appends to the shared tail node in place (the node owns all
 //! `count` words it holds; each root sees its first `tail_len`); any other push copies at most
-//! 32 words. Trie nodes are never mutated. Node `kind` 0 is a leaf or tail, 1 a branch (ABI P4:
-//! kind 2 is unused).
+//! 32 words. A node is written only when no other reference reaches it: `List.set` on such a
+//! root writes each such node of its path and copies the first shared one with the path below
+//! (design §17.149). Node `kind` 0 is a leaf or tail, 1 a branch (ABI P4: kind 2 is unused).
 //!
 //! ListRoot: `len` @8, `shift` @12, `root` @16, `tail` @20, `tail_len` @24.
 //! ListNode: `kind` @8, `count` @12, words @16.
@@ -243,6 +244,69 @@ impl Rt {
         }
         let below = self.set_in(self.child(node, j), level - 5, i, x)?;
         self.copy_node(node, len, j, below)
+    }
+
+    /// `xs` (consumed) with element `i` (in range) replaced by `x` (consumed): in place when no
+    /// other reference reaches `xs`.
+    pub(crate) fn list_set_in(&mut self, xs: u32, i: u32, x: u32) -> Res<u32> {
+        if self.unique(xs) {
+            return self
+                .set_owned(xs, i, x)
+                .map(|_| xs)
+                .inspect_err(|_| self.drop(xs));
+        }
+        let r = self.set_at_b(xs, i, x);
+        self.drop(xs);
+        r
+    }
+
+    /// Replace element `i` (in range) of `xs` (no other reference reaches it) by `x` (consumed),
+    /// in place: every path node no other reference reaches is written, and the first shared
+    /// one is copied with the path below it (design §17.149, the per-node test of §17.126).
+    fn set_owned(&mut self, xs: u32, i: u32, x: u32) -> Res<()> {
+        let (n, shift, root, tail, tl) = self.fields(xs);
+        let off = n - tl;
+        let (field, node, new) = if i >= off {
+            if self.unique(tail) {
+                self.write_word(tail, i - off, x);
+                return Ok(());
+            }
+            (20, tail, self.copy_node(tail, tl, i - off, x)?)
+        } else {
+            (16, root, self.set_unique(root, shift, i, x)?)
+        };
+        if new != node {
+            self.heap.mem.set_u32(xs + field, new);
+            self.drop(node);
+        }
+        Ok(())
+    }
+
+    /// `node` (owned by a parent no other reference reaches) with element `i` replaced by `x`
+    /// (consumed): `node` itself when it is unique too, else a copy.
+    fn set_unique(&mut self, node: u32, level: u32, i: u32, x: u32) -> Res<u32> {
+        if !self.unique(node) {
+            return self.set_in(node, level, i, x);
+        }
+        let j = (i >> level) & 31;
+        if level == 0 {
+            self.write_word(node, j, x);
+            return Ok(node);
+        }
+        let child = self.child(node, j);
+        let new = self.set_unique(child, level - 5, i, x)?;
+        if new != child {
+            self.heap.mem.set_u32(node + 16 + 4 * j, new);
+            self.drop(child);
+        }
+        Ok(node)
+    }
+
+    /// Word `j` of `node` becomes `x` (consumed); the old word is released.
+    fn write_word(&mut self, node: u32, j: u32, x: u32) {
+        let old = self.child(node, j);
+        self.heap.mem.set_u32(node + 16 + 4 * j, x);
+        self.drop(old);
     }
 
     /// `List.push`, consuming both. A uniquely owned root is updated in place (§0 fast by

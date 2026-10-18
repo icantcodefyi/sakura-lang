@@ -9,6 +9,10 @@
 //! child node `(ptr, 0)`. A collision node has `bitmap = 0` and `n ≥ 2` leaves of one hash
 //! (JS `HColl`). The root is a branch node or 0; where JS keeps a lone leaf as the root, this
 //! keeps it in a one-entry branch (ABI P4).
+//!
+//! An insert or removal on a root no other reference reaches reuses the root and its log, and
+//! an insert writes each HAMT branch no other reference reaches (design §17.149); otherwise the
+//! path is copied.
 
 use crate::{Res, Rt, tag};
 
@@ -357,6 +361,113 @@ impl Rt {
             .inspect_err(|_| self.drop2(log2, root))
     }
 
+    /// `upsert` on `m` (consumed; no other reference reaches it), in place (design §17.149):
+    /// the root is reused, the log is updated by `list_set_in`/`list_push`, which test their own
+    /// nodes, and every HAMT branch no other reference reaches is written.
+    fn upsert_owned(&mut self, m: u32, key: u32, entry: u32, map: bool) -> Res<u32> {
+        let (len, log, hamt) = self.mfields(m);
+        let (h, s) = self
+            .find(m, key, map)
+            .inspect_err(|_| self.drop2(entry, m))?;
+        // The log moves out of `m` for the update; meanwhile `m` holds the static empty list, so
+        // it can be dropped on failure.
+        self.heap.mem.set_u32(m + 12, self.empty_list);
+        let log2 = match s {
+            Some(s) => self.list_set_in(log, s, entry),
+            None => self.list_push(log, entry),
+        };
+        let log2 = log2.inspect_err(|_| self.drop(m))?;
+        self.heap.mem.set_u32(m + 12, log2);
+        if s.is_some() {
+            return Ok(m);
+        }
+        let leaf = Ent::leaf(self.list_n(log2) - 1, h);
+        let root = if self.unique(hamt) {
+            self.hset_in_place(hamt, 0, leaf)
+        } else {
+            let r = self
+                .hset(Self::root_ent(hamt), 0, leaf)
+                .and_then(|e| self.wrap_root(e));
+            if r.is_ok() {
+                self.drop(hamt);
+            }
+            r
+        };
+        let root = root.inspect_err(|_| self.drop(m))?;
+        self.heap.mem.set_u32(m + 8, len + 1);
+        self.heap.mem.set_u32(m + 16, root);
+        Ok(m)
+    }
+
+    /// Branch `node` (no other reference reaches it) with the new key's `leaf` added, in place:
+    /// `node`, or a node one entry larger that took its entries over. On failure `node` is
+    /// unchanged.
+    fn hset_in_place(&mut self, node: u32, shift: u32, leaf: Ent) -> Res<u32> {
+        let (bm, n) = (self.bitmap(node), self.n_ents(node));
+        let bit = 1 << ((leaf.1 >> shift) & 31);
+        let i = (bm & (bit - 1)).count_ones();
+        if bm & bit != 0 {
+            let c = self.ent(node, i);
+            // A unique child is updated (or replaced and freed) by the recursion; a shared one
+            // is copied and this node's reference to it released.
+            let in_place = self.is_branch(c) && self.unique(c.0);
+            let c2 = if in_place {
+                Ent::node(self.hset_in_place(c.0, shift + 5, leaf)?)
+            } else {
+                self.hset(c, shift + 5, leaf)?
+            };
+            self.set_ent(node, i, c2);
+            if !in_place {
+                self.drop_ent(c);
+            }
+            return Ok(node);
+        }
+        let p = self.hnode_raw(bm | bit, n + 1)?;
+        self.heap.mem.copy(p + 16, node + 16, 8 * i);
+        self.heap
+            .mem
+            .copy(p + 16 + 8 * (i + 1), node + 16 + 8 * i, 8 * (n - i));
+        self.set_ent(p, i, leaf);
+        self.free_node(node);
+        Ok(p)
+    }
+
+    /// `without` on `m` (consumed; no other reference reaches it): the root is reused and the
+    /// log updated by `list_set_in`; the HAMT path is copied as `hdel` does.
+    fn without_owned(&mut self, m: u32, key: u32, map: bool) -> Res<u32> {
+        let tag = self.tag(m);
+        let (len, log, hamt) = self.mfields(m);
+        let (h, s) = self.find(m, key, map).inspect_err(|_| self.drop(m))?;
+        let Some(s) = s else {
+            return Ok(m);
+        };
+        // The index first: `hdel` reads keys through the log, which the hole overwrites.
+        let root = match self.hdel(Self::root_ent(hamt), 0, h, key, log, map) {
+            Ok(Del::New(e)) => self.wrap_root(e),
+            Ok(Del::Gone) => Ok(0),
+            Ok(Del::Same) => unreachable!("a found key is in the index"),
+            Err(e) => Err(e),
+        };
+        let root = root.inspect_err(|_| self.drop(m))?;
+        self.heap.mem.set_u32(m + 16, root);
+        self.drop(hamt);
+        self.heap.mem.set_u32(m + 12, self.empty_list);
+        let log2 = self
+            .list_set_in(log, s, self.hole)
+            .inspect_err(|_| self.drop(m))?;
+        let size = len - 1;
+        let holes = self.list_n(log2) - size;
+        for (off, v) in [(8, size), (12, log2), (20, holes)] {
+            self.heap.mem.set_u32(m + off, v);
+        }
+        if holes > 32 && holes > size {
+            let r = self.rebuild(log2, tag, map);
+            self.drop(m);
+            return r;
+        }
+        Ok(m)
+    }
+
     /// `m` (borrowed) without `key` (borrowed).
     fn without(&mut self, m: u32, key: u32, map: bool) -> Res<u32> {
         let tag = self.tag(m);
@@ -455,14 +566,24 @@ impl Rt {
     }
 
     pub fn map_insert(&mut self, m: u32, k: u32, v: u32) -> Res<u32> {
+        if self.unique(m) {
+            let e = self.pair(k, v).inspect_err(|_| self.drop(m))?;
+            return self.upsert_owned(m, k, e, true);
+        }
         let r = self.pair(k, v).and_then(|e| self.upsert(m, k, e, true));
         self.drop(m);
         r
     }
 
     pub fn map_remove(&mut self, m: u32, k: u32) -> Res<u32> {
-        let r = self.without(m, k, true);
-        self.drop2(m, k);
+        let r = if self.unique(m) {
+            self.without_owned(m, k, true)
+        } else {
+            let r = self.without(m, k, true);
+            self.drop(m);
+            r
+        };
+        self.drop(k);
         r
     }
 
@@ -527,6 +648,7 @@ impl Rt {
                 self.drop(x);
                 self.dup(s).map(|_| s)
             }
+            Ok(false) if self.unique(s) => return self.upsert_owned(s, x, x, false),
             Ok(false) => self.upsert(s, x, x, false),
             Err(e) => {
                 self.drop(x);
@@ -562,8 +684,14 @@ impl Rt {
     }
 
     pub fn set_remove(&mut self, s: u32, x: u32) -> Res<u32> {
-        let r = self.without(s, x, false);
-        self.drop2(s, x);
+        let r = if self.unique(s) {
+            self.without_owned(s, x, false)
+        } else {
+            let r = self.without(s, x, false);
+            self.drop(s);
+            r
+        };
+        self.drop(x);
         r
     }
 

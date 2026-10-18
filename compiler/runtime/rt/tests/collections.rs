@@ -483,6 +483,100 @@ fn list_map_and_set_agree_with_a_model_under_random_persistent_updates() {
     assert_eq!(baseline(&rt), base);
 }
 
+/// Design §17.149: an update of a list, map or set no other reference reaches writes it in
+/// place (the same root comes back), each shared node on the path is copied, and every retained
+/// version stays as it was.
+#[test]
+fn owned_updates_write_in_place_and_keep_retained_versions() {
+    let mut rt = rt();
+    let base = baseline(&rt);
+    let mut rand = Lcg(11);
+    let n = scale(5_000) as i64;
+    let mut xs = rt.list_range(0, n).unwrap();
+    let mut model: Vec<i64> = (0..n).collect();
+    let mut kept: Vec<(u32, Vec<i64>)> = vec![];
+    for step in 0..scale(20_000) as i64 {
+        let i = rand.below(n as usize);
+        let x = int(&mut rt, -step);
+        let shared = rand.below(50) == 0;
+        if shared {
+            kept.push((dup(&mut rt, xs), model.clone()));
+        }
+        let next = rt.list_set(xs, i as i64, x).unwrap();
+        assert_eq!(next == xs, !shared, "in place exactly when unique");
+        xs = next;
+        model[i] = -step;
+    }
+    kept.push((xs, model));
+    for (v, model) in &kept {
+        assert_eq!(&to_ints(&rt, *v), model);
+    }
+    for (v, _) in kept {
+        rt.drop(v);
+    }
+
+    let mut m = rt.map_empty();
+    let mut model: Vec<(i64, i64)> = vec![];
+    let mut kept = vec![];
+    for i in 0..scale(8_000) as i64 {
+        let k = rand.below(700) as i64;
+        if rand.below(40) == 0 {
+            kept.push((dup(&mut rt, m), model.clone()));
+        }
+        let key = int(&mut rt, k);
+        if rand.below(3) == 0 {
+            m = rt.map_remove(m, key).unwrap();
+            model.retain(|e| e.0 != k);
+        } else {
+            let v = int(&mut rt, i);
+            m = rt.map_insert(m, key, v).unwrap();
+            match model.iter_mut().find(|e| e.0 == k) {
+                Some(e) => e.1 = i,
+                None => model.push((k, i)),
+            }
+        }
+    }
+    kept.push((m, model));
+    for (mm, model) in &kept {
+        let entries = kept!(rt.map_entries(*mm)).unwrap();
+        let want: Vec<String> = model.iter().map(|(k, v)| format!("({k}, {v})")).collect();
+        assert_eq!(show(&mut rt, entries), format!("[{}]", want.join(", ")));
+        rt.drop(entries);
+        for (k, v) in model {
+            let key = int(&mut rt, *k);
+            let got = kept!(rt.map_get(*mm, key)).unwrap();
+            assert_eq!(show(&mut rt, got), format!("Some({v})"));
+            rt.drop(got);
+        }
+    }
+    for (mm, _) in kept {
+        rt.drop(mm);
+    }
+
+    let mut set = rt.set_empty();
+    let mut kept = vec![];
+    for i in 0..scale(3_000) as i64 {
+        if i % 500 == 0 {
+            kept.push((dup(&mut rt, set), i));
+        }
+        let x = int(&mut rt, i);
+        set = rt.set_insert(set, x).unwrap();
+    }
+    for i in (0..scale(3_000) as i64).step_by(3) {
+        let x = int(&mut rt, i);
+        set = rt.set_remove(set, x).unwrap();
+    }
+    for (s, len) in &kept {
+        assert_eq!(kept!(rt.set_len(*s)), *len);
+    }
+    assert_eq!(kept!(rt.set_len(set)), scale(3_000) as i64 * 2 / 3);
+    for (s, _) in kept {
+        rt.drop(s);
+    }
+    rt.drop(set);
+    assert_eq!(baseline(&rt), base);
+}
+
 #[test]
 fn map_and_set_keep_insertion_order() {
     let mut rt = rt();

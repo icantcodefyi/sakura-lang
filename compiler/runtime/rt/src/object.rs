@@ -66,6 +66,11 @@ impl Rt {
         is_ptr(w) && self.flags(w) & STATIC == 0
     }
 
+    /// No other reference reaches `w`: an update may write it in place (design §17.149).
+    pub(crate) fn unique(&self, w: u32) -> bool {
+        self.counted(w) && self.rc(w) == 1
+    }
+
     /// `Dup`: one more owner. `D092` instead of wrapping at 2^32 − 1.
     pub fn dup(&mut self, w: u32) -> Res<()> {
         if !self.counted(w) {
