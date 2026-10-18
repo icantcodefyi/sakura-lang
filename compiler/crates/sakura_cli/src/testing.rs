@@ -16,14 +16,20 @@ pub fn node() -> std::process::Command {
     std::process::Command::new(std::env::var_os("SAKURA_NODE").unwrap_or_else(|| "node".into()))
 }
 
-/// Checks and emits JS for `snapshot` into `out_dir` (plus the test driver). Returns the build's
-/// diagnostics either way; the directory only if there were no errors.
+/// Checks and emits JS for `snapshot` into `out_dir` (plus the test driver), without the checks
+/// of proved obligations when `proofs` (`sakura build`). Returns the build's diagnostics either
+/// way; the directory only if there were no errors.
 pub fn emit(
     snapshot: &Snapshot,
     out_dir: &Path,
     opts: &BuildOptions,
+    proofs: bool,
 ) -> Result<(PathBuf, Vec<Diagnostic>), Result<Vec<Diagnostic>, String>> {
-    let result = Analysis::build_js(snapshot, opts);
+    let result = if proofs {
+        crate::verify::build_js(snapshot, opts)
+    } else {
+        Analysis::build_js(snapshot, opts)
+    };
     let failed = result.diagnostics.iter().any(Diagnostic::is_error);
     let Some(files) = result.files.filter(|_| !failed) else {
         return Err(Ok(result.diagnostics));
@@ -151,7 +157,7 @@ pub fn mcp_run_tests(
         std_tests: only_std(snapshot),
         ..BuildOptions::default()
     };
-    let built = match emit(snapshot, &dir, &opts) {
+    let built = match emit(snapshot, &dir, &opts, false) {
         Err(Err(e)) => return Err(e),
         Err(Ok(diags)) => {
             let mut records =

@@ -14,6 +14,11 @@ path = "src/main.rs"
 
 [dependencies]
 sakura_analysis.workspace = true
+sakura_codegen_js.workspace = true
+sakura_core.workspace = true
+sakura_core_snapshot = { path = "../sakura_core_snapshot", features = ["convert"] }
+sakura_eval.workspace = true
+sakura_verify = { path = "../sakura_verify" }
 sakura_hir.workspace = true
 sakura_types.workspace = true
 sakura_diagnostics.workspace = true

@@ -18,6 +18,17 @@ pub struct Manifest {
     pub permissions: Permissions,
     #[serde(default)]
     pub targets: BTreeMap<String, toml::Value>,
+    #[serde(default)]
+    pub verify: Verify,
+}
+
+/// `[verify]`: `sakura verify` settings (design §17.106).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Verify {
+    /// Z3's resource limit per query, when the default is too small for this project;
+    /// `sakura verify --rlimit` overrides it.
+    pub rlimit: Option<u64>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]

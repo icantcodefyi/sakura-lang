@@ -11,6 +11,7 @@
 //! key `$XDG_STATE_HOME/sakura/proof.key` (mode 0600, outside the repository and `target/`). Any
 //! other record is a lookup hint: the solver reruns.
 
+use std::collections::BTreeMap;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -18,10 +19,10 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-use crate::core::{Def, Module};
+use crate::core::{ContractId, Def, DefId, Local, Module};
 use crate::record::{Record, SolverInfo, Status, hex};
 use crate::smt;
-use crate::vc::{DefVc, Obligation};
+use crate::vc::{self, DefVc, Kind, Obligation, Profile};
 
 pub const DOMAIN: &str = "sakura-proof-v1";
 /// Bumped whenever the encoding of a VC changes meaning.
@@ -299,6 +300,54 @@ impl Cache {
     pub fn proves(&self, key: &str) -> bool {
         matches!(self.get(key), Lookup::Authenticated(e) if e.status == Status::Proved)
     }
+
+    /// The runtime checks `sakura build` may drop on `profile` (§7.5, §17.84, §17.98), keyed by
+    /// (def, local the `Check` binds), each with whether it may: a function's own `ensures` and
+    /// `where` checks may go when [`Cache::proves`] every obligation of the check under the key
+    /// recomputed from `m` now, so an edit to the function's body, a callee's contract or an
+    /// inlined definition keeps it. Entry checks blamed on a caller (`requires`, a refined
+    /// parameter through `T.from`) are not listed, because one proved call site says nothing about
+    /// another, and neither is checked arithmetic, which Core has no unchecked form of.
+    pub fn check_sites(
+        &self,
+        m: &Module,
+        profile: Profile,
+        solver: &SolverInfo,
+        trust: &str,
+    ) -> BTreeMap<(DefId, Local), CheckSite> {
+        let mut sites: BTreeMap<(DefId, Local), CheckSite> = BTreeMap::new();
+        for vc in vc::generate(m, profile) {
+            for o in &vc.obligations {
+                let (Some(contract), true, None) = (
+                    o.contract,
+                    matches!(o.kind, Kind::Ensures | Kind::Where),
+                    o.callee,
+                ) else {
+                    continue;
+                };
+                let Some(local) = o.site.rsplit_once('%').and_then(|(_, l)| l.parse().ok()) else {
+                    continue;
+                };
+                let proved = self.proves(&key(m, &vc, o, solver, trust));
+                sites
+                    .entry((vc.def, local))
+                    .or_insert(CheckSite {
+                        contract,
+                        proved: true,
+                    })
+                    .proved &= proved;
+            }
+        }
+        sites
+    }
+}
+
+/// A runtime check [`Cache::check_sites`] considered.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CheckSite {
+    pub contract: ContractId,
+    /// Every obligation of the check has an authenticated `proved` record.
+    pub proved: bool,
 }
 
 #[cfg(test)]

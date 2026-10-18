@@ -9,6 +9,8 @@ use crate::ir::*;
 
 use std::collections::HashMap;
 
+pub mod proved;
+
 pub fn optimize(m: &mut Module) {
     for i in 0..m.defs.len() {
         let mut returns = HashMap::new();

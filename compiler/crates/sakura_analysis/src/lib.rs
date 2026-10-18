@@ -22,7 +22,7 @@ mod specs;
 mod symbols;
 
 pub use edit::{Conflict, FileEdit};
-pub use manifest::{FsPermissions, Manifest, Package, Permissions};
+pub use manifest::{FsPermissions, Manifest, Package, Permissions, Verify};
 pub use nav::{Completion, Hover, Location};
 pub use query::SymbolQuery;
 pub use specs::{Frozen, InterfaceChange, InterfaceDelta, InterfaceEntry, Obligation};
@@ -509,6 +509,8 @@ pub struct BuildOptions {
     pub std_tests: bool,
     /// Synthesize a property per contracted `pub fn` (`sakura test --contracts`, design §7.4).
     pub contract_tests: bool,
+    /// Also lower unreachable user functions, after the reachable ones (`sakura verify`).
+    pub all_fns: bool,
     /// Emit direct twins (design §17.111); `false` (`--no-direct`) forces the CPS ABI for the
     /// whole program, so every fixture runs under both ABIs.
     pub direct: bool,
@@ -521,6 +523,7 @@ impl Default for BuildOptions {
             std_tests: false,
             contract_tests: false,
             direct: true,
+            all_fns: false,
         }
     }
 }
@@ -539,25 +542,33 @@ impl Analysis {
     /// Check, then generate JS. Holes are rejected with `V2050`; see [`BuildOptions`].
     pub fn build_js(snapshot: &Snapshot, opts: &BuildOptions) -> BuildResult {
         let (module, diagnostics) = Analysis::lower_core(snapshot, opts);
-        let files = module.map(|m| {
-            let sources = snapshot
-                .file_ids()
-                .map(|f| sakura_codegen_js::Source {
-                    file: f,
-                    name: snapshot.file(f).uri.clone(),
-                    text: snapshot.file(f).text.clone(),
-                })
-                .collect();
-            let opts = sakura_codegen_js::Options {
-                direct_style: opts.direct,
-                ..sakura_codegen_js::Options::new(sources)
-            };
-            sakura_codegen_js::emit(&m, &opts)
-                .into_iter()
-                .map(|f| (f.path, f.text))
-                .collect()
-        });
+        let files = module.map(|m| Analysis::emit_js(snapshot, &m, opts));
         BuildResult { diagnostics, files }
+    }
+
+    /// The JS files of Core `m` lowered from `snapshot` (the second half of [`Analysis::build_js`],
+    /// for callers that transform Core in between).
+    pub fn emit_js(
+        snapshot: &Snapshot,
+        m: &sakura_core::Module,
+        opts: &BuildOptions,
+    ) -> Vec<(String, String)> {
+        let sources = snapshot
+            .file_ids()
+            .map(|f| sakura_codegen_js::Source {
+                file: f,
+                name: snapshot.file(f).uri.clone(),
+                text: snapshot.file(f).text.clone(),
+            })
+            .collect();
+        let opts = sakura_codegen_js::Options {
+            direct_style: opts.direct,
+            ..sakura_codegen_js::Options::new(sources)
+        };
+        sakura_codegen_js::emit(m, &opts)
+            .into_iter()
+            .map(|f| (f.path, f.text))
+            .collect()
     }
 
     /// `sakura build --dump direct`: every def and lambda as `direct` or `cps(<reason>)`
@@ -612,6 +623,7 @@ impl Analysis {
         let lower = sakura_core::LowerOptions {
             std_tests: opts.std_tests,
             contract_tests: opts.contract_tests,
+            all_fns: opts.all_fns,
         };
         let lowered = sakura_core::lower(program, typed, &lower);
         diagnostics.extend(lowered.diagnostics);

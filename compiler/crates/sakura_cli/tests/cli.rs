@@ -1001,3 +1001,201 @@ pub fn main() -> Unit ! {Console} {
         );
     }
 }
+
+/// `sakura` with the proof key under `state` (`XDG_STATE_HOME`), so tests never share a key.
+fn sakura_in_state(args: &[&str], cwd: &Path, state: &Path) -> std::process::Output {
+    std::process::Command::new(env!("CARGO_BIN_EXE_sakura"))
+        .args(args)
+        .current_dir(cwd)
+        .env("XDG_STATE_HOME", state)
+        .output()
+        .expect("spawn sakura")
+}
+
+/// A directory beside the project `dir`: the proof key may not live inside the project.
+fn outside(dir: &Path, name: &str) -> std::path::PathBuf {
+    std::path::PathBuf::from(format!("{}-{name}", dir.display()))
+}
+
+/// Whether the pinned Z3 (plan §3.5) is on `PATH`; `sakura verify` tests skip without it.
+fn has_z3() -> bool {
+    let ok = std::process::Command::new("z3")
+        .arg("--version")
+        .output()
+        .is_ok_and(|o| String::from_utf8_lossy(&o.stdout).contains("5.3.1"));
+    if !ok {
+        eprintln!("skipped: Z3 5.3.1 is not on PATH");
+    }
+    ok
+}
+
+/// Design §14.3 M4 as split by §17.84.
+const SCALE: &str = "type Percent = Int where it >= 0 && it <= 100
+
+fn scale(p: Percent, total: Int) -> Int
+  requires total >= 0
+  ensures result <= total
+{ total * p / 100 }
+
+fn scale_wrong(p: Percent, total: Int) -> Int
+  requires total >= 0
+  ensures result <= total
+{ total * p / 50 }
+
+pub fn main() -> Unit {
+  let _a = scale(Percent.from(50), 10)
+  let _b = scale_wrong(Percent.from(50), 10)
+}
+";
+
+/// The emitted JS of the user's `main` module.
+fn emitted_js(dir: &Path) -> String {
+    std::fs::read_to_string(dir.join("target/sakura/js/main/main.js")).unwrap()
+}
+
+/// Design §17.84, §17.85, §17.98, §17.106 (plan §3.5 V3): `scale`'s `ensures` is proved, the
+/// overflow of `total * p` is its own obligation, and the wrong body is disproved with a
+/// counterexample the evaluator confirms; statuses reach the manifest under its ids.
+#[test]
+fn verify_reports_the_scale_acceptance() {
+    if !has_z3() {
+        return;
+    }
+    let dir = tmp("verify-scale", SCALE);
+    let state = outside(&dir, "state");
+    let out = sakura_in_state(&["verify", "--json", "main.sakura"], &dir, &state);
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert_eq!(
+        out.status.code(),
+        Some(1),
+        "a disproved obligation exits 1\n{stdout}"
+    );
+    let recs = common::json_lines(&stdout).unwrap();
+    let find = |symbol: &str, clause: &str| {
+        recs.iter()
+            .find(|r| r["symbol_id"] == symbol && r["clause"].as_str().unwrap().starts_with(clause))
+            .unwrap_or_else(|| panic!("{symbol} {clause}\n{stdout}"))
+    };
+    let ensures = find("main::main::scale", "ensures");
+    assert_eq!(ensures["status"], "proved");
+    assert_eq!(ensures["path_feasible"], true);
+    assert_eq!(ensures["solver"]["rlimit"], 10_000_000);
+    assert!(ensures["manifest_id"].as_str().unwrap().starts_with("o:"));
+    // The intermediate overflow is reported on its own and is not proved on the JS profile.
+    let overflow = find("main::main::scale", "overflow");
+    assert_ne!(overflow["status"], "proved");
+    assert!(overflow["manifest_id"].is_null());
+    let wrong = find("main::main::scale_wrong", "ensures");
+    assert_eq!(wrong["status"], "disproved");
+    assert_eq!(wrong["replay"], "confirmed");
+    let input = |k: &str| {
+        wrong["counterexample"]["inputs"][k]
+            .as_str()
+            .unwrap()
+            .parse::<i64>()
+            .unwrap()
+    };
+    let (p, total) = (input("p"), input("total"));
+    assert!((0..=100).contains(&p) && total >= 0 && total * p / 50 > total);
+    assert_eq!(recs.last().unwrap()["kind"], "summary");
+    // Both overflows and the wrong `ensures`.
+    assert_eq!(recs.last().unwrap()["disproved"], 3);
+
+    let manifest: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(dir.join("target/sakura/manifest.json")).unwrap(),
+    )
+    .unwrap();
+    let status = |id: &serde_json::Value| {
+        manifest["obligations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|o| &o["id"] == id)
+            .map(|o| o["status"].clone())
+    };
+    assert_eq!(status(&ensures["manifest_id"]).unwrap(), "proved");
+    assert_eq!(status(&wrong["manifest_id"]).unwrap(), "disproved");
+
+    let more = sakura_in_state(
+        &["verify", "--json", "--rlimit", "20000000", "main.sakura"],
+        &dir,
+        &state,
+    );
+    let more = common::json_lines(&String::from_utf8_lossy(&more.stdout)).unwrap();
+    assert_eq!(more[0]["solver"]["rlimit"], 20_000_000);
+    let human = sakura_in_state(&["verify", "main.sakura"], &dir, &state);
+    let text = String::from_utf8_lossy(&human.stdout);
+    assert!(
+        text.contains("proved      main::main::scale ensures scale at main.sakura:"),
+        "{text}"
+    );
+    assert!(text.contains("counterexample: p = "), "{text}");
+}
+
+/// Design §7.5, §17.86, §17.98: `sakura build` drops a check only for an authenticated `proved`
+/// record whose key still matches; a body edit or another installation's key keeps it.
+#[test]
+fn build_drops_only_checks_with_authenticated_proofs() {
+    if !has_z3() {
+        return;
+    }
+    let ensures_check = "postcondition `scale` of scale violated";
+    let dir = tmp("verify-build", SCALE);
+    let state = outside(&dir, "state");
+    let build = |dir: &Path, state: &Path, args: &[&str]| {
+        let out = sakura_in_state(&[&["build"], args, &["main.sakura"]].concat(), dir, state);
+        assert_eq!(out.status.code(), Some(0), "{out:?}");
+        emitted_js(dir)
+    };
+    assert!(
+        build(&dir, &state, &[]).contains(ensures_check),
+        "no proofs yet"
+    );
+    sakura_in_state(&["verify", "main.sakura"], &dir, &state);
+    let js = build(&dir, &state, &["--manifest"]);
+    assert!(!js.contains(ensures_check), "the proved check is dropped");
+    assert!(js.contains("postcondition `scale_wrong` of scale_wrong violated"));
+    assert!(
+        js.contains("precondition `scale` of scale violated"),
+        "entry checks stay"
+    );
+    let manifest = std::fs::read_to_string(dir.join("target/sakura/manifest.json")).unwrap();
+    assert_eq!(manifest.matches("\"proved\"").count(), 1, "{manifest}");
+
+    // Another installation's key: the record is only a hint.
+    let other = outside(&dir, "other-state");
+    assert!(build(&dir, &other, &[]).contains(ensures_check));
+
+    // A body-only edit changes the key.
+    std::fs::write(
+        dir.join("main.sakura"),
+        SCALE.replace("{ total * p / 100 }", "{ p * total / 100 }"),
+    )
+    .unwrap();
+    assert!(build(&dir, &state, &[]).contains(ensures_check));
+}
+
+/// Design §17.98, §17.105: a proof over an impossible path is `proved` with
+/// `path_feasible: false` and the warning `W7002`.
+#[test]
+fn verify_warns_w7002_on_a_vacuous_obligation() {
+    if !has_z3() {
+        return;
+    }
+    let src = "fn f(x: Int) -> Int\n  requires x > 0 && x < 0\n  ensures result > 100\n{ x }\n\npub fn main() -> Unit {}\n";
+    let dir = tmp("verify-vacuous", src);
+    let out = sakura_in_state(
+        &["verify", "--json", "main.sakura"],
+        &dir,
+        &outside(&dir, "state"),
+    );
+    assert_eq!(out.status.code(), Some(0));
+    let recs = common::json_lines(&String::from_utf8_lossy(&out.stdout)).unwrap();
+    let ensures = recs.iter().find(|r| r["clause"] == "ensures f").unwrap();
+    assert_eq!(ensures["status"], "proved");
+    assert_eq!(ensures["path_feasible"], false);
+    let w = recs.iter().find(|r| r["kind"] == "diagnostic").unwrap();
+    assert_eq!(w["code"], "W7002");
+    assert_eq!(w["severity"], "warning");
+    assert_eq!(recs.last().unwrap()["warnings"], 1);
+}

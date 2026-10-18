@@ -25,6 +25,10 @@ pub struct LowerOptions {
     pub std_tests: bool,
     /// Synthesize a property per contracted `pub fn` (`sakura test --contracts`, design §7.4).
     pub contract_tests: bool,
+    /// Also lower every function of the user's packages with a body, reachable or not
+    /// (`sakura verify`). They are lowered after everything reachable, so the reachable defs keep
+    /// the ids a build without this option gives them.
+    pub all_fns: bool,
 }
 
 pub struct Lowered {
@@ -76,6 +80,10 @@ pub fn lower(program: &hir::Program, typed: &TypedProgram, opts: &LowerOptions) 
         l.contract_tests();
     }
     l.drain();
+    if opts.all_fns {
+        l.all_fns();
+        l.drain();
+    }
     l.init_literals();
     crate::opt::optimize(&mut l.m);
     Lowered {
@@ -327,6 +335,29 @@ impl<'p> Lower<'p> {
                     };
                 }
                 _ => self.unsupported(hd.module, def.range, "this kind of definition"),
+            }
+        }
+    }
+
+    /// Queues every function of the user's packages that has a body.
+    fn all_fns(&mut self) {
+        for (mi, module) in self.p.modules.iter().enumerate() {
+            if self.p.packages[module.package.0 as usize].name == "std" {
+                continue;
+            }
+            for (index, d) in module.defs.iter() {
+                if let hir::DefKind::Fn(f) = &d.kind
+                    && self
+                        .p
+                        .body(hir::ModuleId(mi as u32), f.body)
+                        .value
+                        .is_some()
+                {
+                    self.def(hir::DefId {
+                        module: hir::ModuleId(mi as u32),
+                        index,
+                    });
+                }
             }
         }
     }

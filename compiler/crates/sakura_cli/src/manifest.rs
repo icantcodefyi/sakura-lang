@@ -1,12 +1,15 @@
-//! `sakura build --manifest` (design §17.76): the trusted base and every contract obligation of
-//! a build, so `sakura verify` (M4) can record statuses against stable ids.
+//! `sakura build --manifest` and `sakura verify` (design §17.76, §17.85): the trusted base and
+//! every contract obligation of a build with its status, under ids that stay stable across edits.
+
+use std::collections::BTreeMap;
 
 use sakura_analysis::Analyzed;
 use sakura_diagnostics::{Span, sha256, span_json};
 use serde_json::{Value, json};
 
-/// The manifest of a successful build whose runtime is `runtime` (`sakura_runtime.js` as emitted).
-pub(crate) fn manifest(a: &Analyzed, runtime: &str) -> Value {
+/// The manifest of a successful build whose runtime is `runtime` (`sakura_runtime.js` as emitted),
+/// with `statuses` by obligation id; an obligation without one is `runtime_checked`.
+pub(crate) fn manifest(a: &Analyzed, runtime: &str, statuses: &BTreeMap<String, &str>) -> Value {
     let version = env!("CARGO_PKG_VERSION");
     let mut trusted = vec![
         json!({"kind": "compiler", "id": format!("sakura@{version}")}),
@@ -26,7 +29,6 @@ pub(crate) fn manifest(a: &Analyzed, runtime: &str) -> Value {
         }
         trusted.push(entry);
     }
-    // At M3 every contract is checked at run time; `sakura verify` (M4) updates these ids.
     let files = a.snapshot.files();
     let obligations: Vec<Value> = a
         .obligations()
@@ -34,7 +36,8 @@ pub(crate) fn manifest(a: &Analyzed, runtime: &str) -> Value {
         .map(|o| {
             let span = Span::primary(o.file, o.range[0], o.range[1]);
             json!({"id": o.id, "symbol_id": o.symbol_id, "clause": o.clause,
-                "status": "runtime_checked", "span": span_json(&span, files)})
+                "status": statuses.get(&o.id).copied().unwrap_or("runtime_checked"),
+                "span": span_json(&span, files)})
         })
         .collect();
     json!({

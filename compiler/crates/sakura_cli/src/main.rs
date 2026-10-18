@@ -19,6 +19,7 @@ mod fix;
 mod manifest;
 mod new;
 mod testing;
+mod verify;
 
 const EXIT_ERRORS: u8 = 1;
 const EXIT_USAGE: u8 = 2;
@@ -125,6 +126,27 @@ enum Command {
         /// Arguments passed to the program.
         #[arg(last = true)]
         args: Vec<String>,
+    },
+    /// Discharge contract, overflow and division obligations with Z3 (design §7.5): one status
+    /// per obligation (`proved`, `disproved` with a counterexample, `unknown` with a reason,
+    /// `unsupported`), proofs recorded for `sakura build`, which then drops the runtime checks
+    /// they cover, and the statuses written to `target/sakura/manifest.json`. Exit 1 when an
+    /// obligation is disproved.
+    Verify {
+        #[arg(long)]
+        json: bool,
+        /// The profile obligations are checked on: `js` (`Int` within ±(2^53−1)) or `wasm`
+        /// (`i64`).
+        #[arg(long, default_value = "js", value_parser = ["js", "wasm"])]
+        target: String,
+        /// Z3's resource limit per query [default: the manifest's `[verify] rlimit`, else
+        /// 10000000]. Recorded in every record and in the proof's cache key.
+        #[arg(long, value_name = "N")]
+        rlimit: Option<u64>,
+        /// The Z3 binary [default: `z3` on PATH]; its version must be the pinned one.
+        #[arg(long, value_name = "PATH")]
+        solver: Option<PathBuf>,
+        paths: Vec<PathBuf>,
     },
     /// Run `test` blocks under deterministic default handlers with the network denied.
     Test {
@@ -243,6 +265,7 @@ fn main() -> ExitCode {
         Command::Check { json: true, .. }
             | Command::Build { json: true, .. }
             | Command::Test { json: true, .. }
+            | Command::Verify { json: true, .. }
             | Command::Audit { json: true, .. }
             | Command::Doc { json: true, .. }
     );
@@ -363,6 +386,21 @@ fn dispatch(command: Command) -> ExitCode {
                 Err(e) => usage_error(e),
             }
         }
+        Command::Verify {
+            json,
+            target,
+            rlimit,
+            solver,
+            paths,
+        } => verify::verify(
+            &verify::Options {
+                json,
+                target: &target,
+                rlimit,
+                solver: solver.as_deref(),
+            },
+            &paths,
+        ),
         Command::Fmt { check, paths } => fmt(check, &paths),
         Command::Audit { json, paths } => audit::audit(json, &paths),
         Command::Doc {
@@ -495,7 +533,8 @@ fn build(
     opts: BuildOptions,
     then: bool,
 ) -> Result<PathBuf, ExitCode> {
-    match testing::emit(snapshot, out_dir, &opts) {
+    // Only `sakura build` drops the checks of proved obligations (design §7.5).
+    match testing::emit(snapshot, out_dir, &opts, !then) {
         Ok((dir, diags)) => {
             if (json && !then) || !diags.is_empty() {
                 report(json, snapshot, &diags, &[], !then);
@@ -547,7 +586,18 @@ fn write_manifest(snapshot: &Snapshot, dir: &Path) -> Result<(), String> {
     let runtime = dir.join("sakura_runtime.js");
     let runtime =
         std::fs::read_to_string(&runtime).map_err(|e| format!("{}: {e}", runtime.display()))?;
-    let value = manifest::manifest(&Analysis::analyze(snapshot), &runtime);
+    let statuses = verify::build_statuses(snapshot);
+    write_manifest_with(&Analysis::analyze(snapshot), &runtime, &statuses)
+}
+
+/// Writes `target/sakura/manifest.json` with each obligation's status from `statuses` (by id),
+/// `runtime_checked` for the rest.
+fn write_manifest_with(
+    a: &sakura_analysis::Analyzed,
+    runtime: &str,
+    statuses: &std::collections::BTreeMap<String, &str>,
+) -> Result<(), String> {
+    let value = manifest::manifest(a, runtime, statuses);
     let path = Path::new("target/sakura/manifest.json");
     std::fs::create_dir_all("target/sakura").map_err(|e| format!("target/sakura: {e}"))?;
     let text = serde_json::to_string_pretty(&value).unwrap_or_default() + "\n";
@@ -647,6 +697,7 @@ fn test(
         std_tests: std_tests || testing::only_std(snapshot),
         contract_tests: contracts,
         direct,
+        all_fns: false,
     };
     let dir = match build(json, snapshot, out_dir, opts, true) {
         Ok(d) => d,

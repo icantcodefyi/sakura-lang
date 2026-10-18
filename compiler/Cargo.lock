@@ -1031,12 +1031,17 @@ version = "0.0.0"
 dependencies = [
  "clap",
  "sakura_analysis",
+ "sakura_codegen_js",
+ "sakura_core",
+ "sakura_core_snapshot",
  "sakura_diagnostics",
+ "sakura_eval",
  "sakura_hir",
  "sakura_lir",
  "sakura_lsp",
  "sakura_mcp",
  "sakura_types",
+ "sakura_verify",
  "serde_json",
 ]
 

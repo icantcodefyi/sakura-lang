@@ -94,6 +94,19 @@ impl Limits {
         }
         Ok(l)
     }
+
+    /// The [`SolverInfo`] the pinned `kind` records under these limits: what [`Solver::info`]
+    /// returns for a solver [`Solver::find`] accepted, so a proof's cache key can be recomputed
+    /// without running it (`sakura build`).
+    pub fn info(&self, kind: SolverKind) -> SolverInfo {
+        SolverInfo {
+            name: kind.binary().into(),
+            version: kind.pinned().into(),
+            timeout_ms: self.timeout_ms,
+            rlimit: self.rlimit,
+            deadline_ms: self.deadline.as_millis() as u64,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -152,11 +165,8 @@ impl Solver {
 
     pub fn info(&self) -> SolverInfo {
         SolverInfo {
-            name: self.kind.binary().into(),
             version: self.version.clone(),
-            timeout_ms: self.limits.timeout_ms,
-            rlimit: self.limits.rlimit,
-            deadline_ms: self.limits.deadline.as_millis() as u64,
+            ..self.limits.info(self.kind)
         }
     }
 
