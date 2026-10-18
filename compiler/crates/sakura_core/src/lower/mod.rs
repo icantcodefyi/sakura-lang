@@ -34,27 +34,7 @@ pub struct Lowered {
 
 /// Lower `program` (already checked without errors) to one Core module.
 pub fn lower(program: &hir::Program, typed: &TypedProgram, opts: &LowerOptions) -> Lowered {
-    let mut l = Lower {
-        p: program,
-        t: typed,
-        m: Module::default(),
-        diags: Vec::new(),
-        defs: HashMap::new(),
-        types: HashMap::new(),
-        effects: HashMap::new(),
-        ty_cache: HashMap::new(),
-        refined: HashMap::new(),
-        queue: Vec::new(),
-        ctor_fns: HashMap::new(),
-        specs: HashMap::new(),
-        spec_count: HashMap::new(),
-        dicts: HashMap::new(),
-        schema_cache: HashMap::new(),
-        refinements: HashMap::new(),
-        field_checks: HashMap::new(),
-        record_news: HashMap::new(),
-        literal_inits: Vec::new(),
-    };
+    let mut l = Lower::new(program, typed);
     l.builtin_types();
     let main = program
         .packages
@@ -104,6 +84,17 @@ pub fn lower(program: &hir::Program, typed: &TypedProgram, opts: &LowerOptions) 
     }
 }
 
+/// The `pub fn`s `sakura test --contracts` skips because a parameter reaches an opaque type from
+/// another module (design §17.130), one `skipped <fn>: <param>: …` line each, in source order.
+pub fn contract_skips(program: &hir::Program, typed: &TypedProgram) -> Vec<String> {
+    let mut l = Lower::new(program, typed);
+    l.builtin_types();
+    for f in l.user_items() {
+        let _ = l.contract_plan(f);
+    }
+    l.contract_skips
+}
+
 pub(crate) struct Lower<'p> {
     pub p: &'p hir::Program,
     pub t: &'p TypedProgram,
@@ -137,6 +128,8 @@ pub(crate) struct Lower<'p> {
     record_news: HashMap<TypeId, DefId>,
     /// Constants `V.from(lit)` for literals coerced into refined types, in lowering order.
     literal_inits: Vec<DefId>,
+    /// `--contracts` candidates skipped for an opaque parameter, one line each (§17.130).
+    contract_skips: Vec<String>,
 }
 
 /// A field's `where`: its predicate body, the field name and its range.
@@ -149,6 +142,31 @@ pub(crate) type Subst = Vec<(u32, Ty)>;
 const MAX_SPECS: u32 = 64;
 
 impl<'p> Lower<'p> {
+    fn new(p: &'p hir::Program, t: &'p TypedProgram) -> Self {
+        Lower {
+            p,
+            t,
+            m: Module::default(),
+            diags: Vec::new(),
+            defs: HashMap::new(),
+            types: HashMap::new(),
+            effects: HashMap::new(),
+            ty_cache: HashMap::new(),
+            refined: HashMap::new(),
+            queue: Vec::new(),
+            ctor_fns: HashMap::new(),
+            specs: HashMap::new(),
+            spec_count: HashMap::new(),
+            dicts: HashMap::new(),
+            schema_cache: HashMap::new(),
+            refinements: HashMap::new(),
+            field_checks: HashMap::new(),
+            record_news: HashMap::new(),
+            literal_inits: Vec::new(),
+            contract_skips: Vec::new(),
+        }
+    }
+
     pub fn unsupported(&mut self, module: hir::ModuleId, range: text_size::TextRange, what: &str) {
         let file = self.p.module(module).file;
         self.diags.push(

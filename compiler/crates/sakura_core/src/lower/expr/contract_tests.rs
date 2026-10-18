@@ -30,25 +30,71 @@ impl Lower<'_> {
 
     /// A property test for every eligible `pub fn` of the user package, in source order.
     pub(crate) fn contract_tests(&mut self) {
-        let p = self.p;
-        for (mi, module) in p.modules.iter().enumerate() {
-            if p.packages[module.package.0 as usize].name == "std" {
-                continue;
-            }
-            for &index in &module.items {
-                let f = hir::DefId {
-                    module: hir::ModuleId(mi as u32),
-                    index,
-                };
-                if let Some(handlers) = self.contract_plan(f) {
-                    self.contract_test(f, &handlers);
-                }
+        for f in self.user_items() {
+            if let Some(handlers) = self.contract_plan(f) {
+                self.contract_test(f, &handlers);
             }
         }
     }
 
+    pub(crate) fn user_items(&self) -> Vec<hir::DefId> {
+        let p = self.p;
+        let user = |m: &hir::Module| p.packages[m.package.0 as usize].name != "std";
+        (p.modules.iter().enumerate())
+            .filter(|(_, m)| user(m))
+            .flat_map(|(mi, m)| {
+                m.items.iter().map(move |&index| hir::DefId {
+                    module: hir::ModuleId(mi as u32),
+                    index,
+                })
+            })
+            .collect()
+    }
+
+    /// The first opaque type from another module that `t` reaches, directly or through a field:
+    /// data cannot build one there, so neither can a generator (§17.130).
+    fn foreign_opaque(
+        &self,
+        t: &Ty,
+        from: hir::ModuleId,
+        seen: &mut Vec<TypeId>,
+    ) -> Option<hir::DefId> {
+        let mut inner = |t: &Ty| self.foreign_opaque(t, from, seen);
+        match t {
+            Ty::Adt(id, args) => {
+                let hir_def = self.types.iter().find(|(_, v)| *v == id).map(|(d, _)| *d);
+                if let Some(d) = hir_def
+                    && !self.p.constructors_visible(d, from)
+                {
+                    return Some(d);
+                }
+                if let Some(d) = args.iter().find_map(&mut inner) {
+                    return Some(d);
+                }
+                if seen.contains(id) {
+                    return None;
+                }
+                seen.push(*id);
+                let def = &self.m.types[id.index()];
+                let fields = def.fields().iter().map(|f| &f.ty);
+                let ctor_fields = def.ctors().iter().flat_map(|c| &c.fields);
+                fields
+                    .chain(ctor_fields)
+                    .find_map(|t| self.foreign_opaque(t, from, seen))
+            }
+            Ty::Refined(r, args) => {
+                let base = crate::lower::subst(&self.m.refinements[r.index()].base, args);
+                self.foreign_opaque(&base, from, seen)
+            }
+            Ty::Tuple(ts) => ts.iter().find_map(inner),
+            Ty::List(t) | Ty::Set(t) => inner(t),
+            Ty::Map(k, v) => inner(k).or_else(|| inner(v)),
+            _ => None,
+        }
+    }
+
     /// The handlers to install if `f` gets a property; `None` if it is skipped.
-    fn contract_plan(&mut self, f: hir::DefId) -> Option<Handlers> {
+    pub(crate) fn contract_plan(&mut self, f: hir::DefId) -> Option<Handlers> {
         let p = self.p;
         let def = p.def(f);
         let hir::DefKind::Fn(fd) = &def.kind else {
@@ -74,6 +120,27 @@ impl Lower<'_> {
         let refined = schemas.iter().any(|t| matches!(t, Ty::Refined(..)));
         if !(has_requires || refined) || !schemas.iter().all(generatable) {
             return None;
+        }
+        let names = fd.sig.params.iter().map(|x| x.name.as_str());
+        for (name, t) in names.zip(&schemas) {
+            if let Some(d) = self.foreign_opaque(t, f.module, &mut Vec::new()) {
+                let m = p.module(d.module);
+                let home = format!("{}/{}", p.packages[m.package.0 as usize].name, m.path);
+                let opaque = &p.def(d).name;
+                let line = if matches!(t, Ty::Adt(id, _) if self.types.get(&d) == Some(id)) {
+                    format!(
+                        "skipped {}: {name}: {opaque} is opaque outside {home}",
+                        def.name
+                    )
+                } else {
+                    format!(
+                        "skipped {}: {name} holds {opaque}, which is opaque outside {home}",
+                        def.name
+                    )
+                };
+                self.contract_skips.push(line);
+                return None;
+            }
         }
         let handlers = self.contract_handlers(f)?;
         let row = self.t.interner.row_data(row);

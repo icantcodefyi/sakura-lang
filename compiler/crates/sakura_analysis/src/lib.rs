@@ -306,6 +306,11 @@ pub struct Analyzed {
 }
 
 impl Analyzed {
+    /// The `pub fn`s `sakura test --contracts` skips for an opaque parameter (design §17.130).
+    pub fn contract_skips(&self) -> Vec<String> {
+        sakura_core::contract_skips(&self.program, &self.typed)
+    }
+
     /// Every definition of the snapshot, std included.
     pub fn symbols(&self) -> &[Symbol] {
         &self.symbols

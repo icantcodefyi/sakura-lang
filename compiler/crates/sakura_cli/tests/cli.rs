@@ -799,6 +799,39 @@ pub fn exact(x: Int) -> Int
     assert!(plain.stderr.contains("no tests"), "{}", plain.stderr);
 }
 
+/// Design §17.130: `--contracts` skips a `pub fn` with a parameter that is opaque outside its
+/// module (its generator would build one from data) and names it; a refined sibling still runs.
+#[test]
+fn test_contracts_skip_opaque_parameters() {
+    let dir = tmp(
+        "contracts-opaque",
+        r#"import std/html.{Html}
+
+type Name = String where String.len(it) > 0
+
+pub fn render(h: Html) -> String
+  requires Html.to_string(h) != ""
+{ Html.to_string(h) }
+
+pub fn greet(n: Name) -> String { "hi " + n }
+"#,
+    );
+    let out = sakura(&["test", "--contracts", "main.sakura"], &dir);
+    assert_eq!(out.code, Some(0), "{}{}", out.stdout, out.stderr);
+    assert!(
+        out.stdout.contains("test contract: greet ... ok"),
+        "{}",
+        out.stdout
+    );
+    assert!(!out.stdout.contains("contract: render"), "{}", out.stdout);
+    assert!(
+        out.stdout
+            .contains("skipped render: h: Html is opaque outside std/html\n"),
+        "{}",
+        out.stdout
+    );
+}
+
 /// Design §17.73 (gate 6): `sakura test --record` writes a cassette through std `Http.recording`
 /// from a scripted outer `Http`; a plain `sakura test` then replays it with the network denied.
 #[test]

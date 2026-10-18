@@ -690,7 +690,12 @@ fn test(
             println!("{line}");
         }
     } else {
-        print_test_results(&stdout);
+        let skips = if contracts {
+            Analysis::analyze(snapshot).contract_skips()
+        } else {
+            Vec::new()
+        };
+        print_test_results(&stdout, &skips);
         eprint!(
             "{}",
             render_human(&warnings, &display_files(snapshot.files()))
@@ -715,8 +720,8 @@ fn test(
     }
 }
 
-/// Terminal rendering of the runner's JSON records.
-fn print_test_results(jsonl: &str) {
+/// Terminal rendering of the runner's JSON records; `skips` go before the summary line.
+fn print_test_results(jsonl: &str, skips: &[String]) {
     for line in jsonl.lines() {
         let Ok(r) = serde_json::from_str::<serde_json::Value>(line) else {
             continue;
@@ -746,10 +751,15 @@ fn print_test_results(jsonl: &str) {
                     }
                 }
             }
-            Some("summary") => println!(
-                "\n{} passed, {} failed, {} skipped (seed {})",
-                r["passed"], r["failed"], r["skipped"], r["seed"]
-            ),
+            Some("summary") => {
+                for s in skips {
+                    println!("{s}");
+                }
+                println!(
+                    "\n{} passed, {} failed, {} skipped (seed {})",
+                    r["passed"], r["failed"], r["skipped"], r["seed"]
+                )
+            }
             _ => {}
         }
     }

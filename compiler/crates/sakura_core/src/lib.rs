@@ -12,7 +12,7 @@ mod pretty;
 mod validate;
 
 pub use ir::*;
-pub use lower::{LowerOptions, Lowered, lower};
+pub use lower::{LowerOptions, Lowered, contract_skips, lower};
 /// Recursive walks over Core expressions run under this, so deep `Let` chains cannot
 /// overflow the stack.
 pub use sakura_hir::ensure_stack;
