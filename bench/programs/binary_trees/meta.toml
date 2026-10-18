@@ -1,0 +1,14 @@
+family = "allocation"
+sizes = [8, 10, 12, 14]
+lane = "matched"
+ints = "js-safe"
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "4398"
+"1" = "4398"
+"2" = "4398"
+"3" = "4398"
+"8" = "25774"
+"10" = "135854"
+"12" = "674478"
+"14" = "3222190"

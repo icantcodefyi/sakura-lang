@@ -1,0 +1,14 @@
+// range → map → filter → fold, each stage a fresh list (unfused).
+import std/cli.{Cli}
+
+pub fn run(n: Int) -> Int {
+  let xs = List.range(0, n)
+  let ys = List.map(xs, fn(x) { x * 7 % 1000 })
+  let zs = List.filter(ys, fn(y) { y % 2 == 0 })
+  List.fold(zs, 0, fn(acc, z) { acc + z })
+}
+
+// `sakura run main.sakura -- <n>...` prints run(n) for each argument.
+pub fn main() -> Unit ! {Cli, Console} {
+  for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+}

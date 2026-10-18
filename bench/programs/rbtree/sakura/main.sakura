@@ -1,0 +1,79 @@
+// Persistent red-black tree (Okasaki insertion). Every 100th version is retained and probed
+// after the build, so old versions must stay intact. run(n) = final size + per retained
+// version j: black height + (1 if j*3 is a member).
+import std/cli.{Cli}
+
+type Color = Red | Black
+type Tree = E | T(Color, Tree, Int, Tree)
+
+fn balance(c: Color, l: Tree, k: Int, r: Tree) -> Tree {
+  match (c, l, r) {
+    (Black, T(Red, T(Red, a, x, b), y, d), _) => T(Red, T(Black, a, x, b), y, T(Black, d, k, r)),
+    (Black, T(Red, a, x, T(Red, b, y, d)), _) => T(Red, T(Black, a, x, b), y, T(Black, d, k, r)),
+    (Black, _, T(Red, T(Red, b, y, d), z, e)) => T(Red, T(Black, l, k, b), y, T(Black, d, z, e)),
+    (Black, _, T(Red, b, y, T(Red, d, z, e))) => T(Red, T(Black, l, k, b), y, T(Black, d, z, e)),
+    _ => T(c, l, k, r),
+  }
+}
+
+fn ins(t: Tree, k: Int) -> Tree {
+  match t {
+    E => T(Red, E, k, E),
+    T(c, l, y, r) => if k < y { balance(c, ins(l, k), y, r) } else if k > y {
+      balance(c, l, y, ins(r, k))
+    } else { t },
+  }
+}
+
+fn insert(t: Tree, k: Int) -> Tree {
+  match ins(t, k) {
+    T(_, l, y, r) => T(Black, l, y, r),
+    E => E,
+  }
+}
+
+fn member(t: Tree, k: Int) -> Bool {
+  match t {
+    E => false,
+    T(_, l, y, r) => if k < y { member(l, k) } else if k > y { member(r, k) } else { true },
+  }
+}
+
+fn size(t: Tree) -> Int {
+  match t {
+    E => 0,
+    T(_, l, _, r) => size(l) + 1 + size(r),
+  }
+}
+
+fn black_height(t: Tree) -> Int {
+  match t {
+    E => 0,
+    T(Black, l, _, _) => 1 + black_height(l),
+    T(Red, l, _, _) => black_height(l),
+  }
+}
+
+pub fn run(n: Int) -> Int {
+  var t = E
+  var kept: List<Tree> = []
+  var i = 0
+  while i < n {
+    t = insert(t, i * 7919 % (2 * n + 1))
+    if i % 100 == 0 { kept = List.push(kept, t) }
+    i = i + 1
+  }
+  var sum = size(t)
+  var j = 0
+  for v in kept {
+    sum = sum + black_height(v)
+    if member(v, j * 3) { sum = sum + 1 }
+    j = j + 1
+  }
+  sum
+}
+
+// `sakura run main.sakura -- <n>...` prints run(n) for each argument.
+pub fn main() -> Unit ! {Cli, Console} {
+  for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+}

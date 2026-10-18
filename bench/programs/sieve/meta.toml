@@ -1,0 +1,14 @@
+family = "integer loop"
+sizes = [1000, 10000, 50000, 200000]
+lane = "matched"
+ints = "js-safe"
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "0"
+"1" = "0"
+"2" = "0"
+"3" = "1"
+"1000" = "168"
+"10000" = "1229"
+"50000" = "5133"
+"200000" = "17984"

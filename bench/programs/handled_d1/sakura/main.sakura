@@ -1,0 +1,58 @@
+// A hot loop performing Tick, whose handler is 1 frame(s) from the perform (0 unrelated
+// handlers installed inside it). run(n) = sum of (counter % 7) over n operations.
+import std/cli.{Cli}
+
+effect Tick {
+  fn next() -> Int
+}
+
+fn counter() -> Handler<Tick> {
+  handler Tick {
+    var value = 0
+    fn next() {
+      value = value + 1
+      value
+    }
+  }
+}
+
+effect Pad1 {
+  fn pad() -> Int
+}
+
+fn pad1() -> Handler<Pad1> {
+  handler Pad1 {
+    fn pad() { 1 }
+  }
+}
+
+effect Pad0 {
+  fn pad() -> Int
+}
+
+fn pad0() -> Handler<Pad0> {
+  handler Pad0 {
+    fn pad() { 0 }
+  }
+}
+
+pub fn run(n: Int) -> Int {
+  with counter() {
+    with pad1() {
+      with pad0() {
+        var acc = 0
+        var i = 0
+        while i < n {
+          acc = acc + Tick.next() % 7
+          i = i + 1
+        }
+        acc
+      }
+    }
+  }
+}
+
+// `sakura run main.sakura -- <n>...` prints run(n) for each argument.
+pub fn main() -> Unit ! {Cli, Console} {
+  for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+}

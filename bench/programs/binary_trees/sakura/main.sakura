@@ -1,0 +1,39 @@
+// Binary trees (Benchmarks Game task definition): short-lived trees per depth plus one long-lived
+// tree. run(n) uses max depth max(6, n) and returns the sum of every check.
+import std/cli.{Cli}
+
+type Tree = Leaf | Node(Tree, Tree)
+
+fn bottom_up(depth: Int) -> Tree {
+  if depth > 0 { Node(bottom_up(depth - 1), bottom_up(depth - 1)) } else { Node(Leaf, Leaf) }
+}
+
+fn check(t: Tree) -> Int {
+  match t {
+    Leaf => 0,
+    Node(l, r) => 1 + check(l) + check(r),
+  }
+}
+
+pub fn run(n: Int) -> Int {
+  let min_depth = 4
+  let max_depth = Int.max(min_depth + 2, n)
+  var total = check(bottom_up(max_depth + 1))
+  let long_lived = bottom_up(max_depth)
+  var d = min_depth
+  while d <= max_depth {
+    let iterations = Int.pow(2, max_depth - d + min_depth)
+    var i = 0
+    while i < iterations {
+      total = total + check(bottom_up(d))
+      i = i + 1
+    }
+    d = d + 2
+  }
+  total + check(long_lived)
+}
+
+// `sakura run main.sakura -- <n>...` prints run(n) for each argument.
+pub fn main() -> Unit ! {Cli, Console} {
+  for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+}

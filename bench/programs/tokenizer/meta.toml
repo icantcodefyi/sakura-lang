@@ -1,0 +1,14 @@
+family = "strings"
+sizes = [1000, 10000, 50000, 100000]
+lane = "matched"
+ints = "js-safe"
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "0"
+"1" = "51"
+"2" = "105"
+"3" = "154"
+"1000" = "46325"
+"10000" = "463250"
+"50000" = "2316250"
+"100000" = "4632500"

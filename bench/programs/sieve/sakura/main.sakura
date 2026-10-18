@@ -1,0 +1,34 @@
+// Primes below n. Sakura Lang has no mutable array, so each prime p with p*p < n makes one
+// full pass that builds a fresh List<Bool> clearing its multiples; the JS control does the
+// same passes over fresh arrays.
+import std/cli.{Cli}
+
+pub fn run(n: Int) -> Int {
+  var flags: List<Bool> = []
+  var i = 0
+  while i < n {
+    flags = List.push(flags, i >= 2)
+    i = i + 1
+  }
+  var p = 2
+  while p * p < n {
+    if Option.unwrap_or(flags[p], false) {
+      var next: List<Bool> = []
+      var j = 0
+      for f in flags {
+        next = List.push(next, f && (j < p * p || j % p != 0))
+        j = j + 1
+      }
+      flags = next
+    }
+    p = p + 1
+  }
+  var count = 0
+  for f in flags { if f { count = count + 1 } }
+  count
+}
+
+// `sakura run main.sakura -- <n>...` prints run(n) for each argument.
+pub fn main() -> Unit ! {Cli, Console} {
+  for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+}

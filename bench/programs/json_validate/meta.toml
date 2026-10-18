@@ -1,0 +1,14 @@
+family = "agent data"
+sizes = [100, 1000, 10000, 30000]
+lane = "matched"
+ints = "js-safe"
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "0"
+"1" = "1000"
+"2" = "1033"
+"3" = "1067"
+"100" = "20340"
+"1000" = "597442"
+"10000" = "45079959"
+"30000" = "395923135"

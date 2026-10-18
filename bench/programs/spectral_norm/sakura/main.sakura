@@ -1,0 +1,72 @@
+// Spectral norm (Benchmarks Game task definition): nested Float loops over persistent Lists.
+// run(n) is the norm times 10^9, rounded half away from zero; run(0) is 0.
+import std/cli.{Cli}
+
+fn a(i: Int, j: Int) -> Float { 1.0 / Int.to_float((i + j) * (i + j + 1) / 2 + i + 1) }
+
+fn at(v: List<Float>, i: Int) -> Float { Option.expect(v[i], "vector index") }
+
+fn mul_av(v: List<Float>, n: Int) -> List<Float> {
+  var out: List<Float> = []
+  var i = 0
+  while i < n {
+    var sum = 0.0
+    var j = 0
+    while j < n {
+      sum = sum + a(i, j) * at(v, j)
+      j = j + 1
+    }
+    out = List.push(out, sum)
+    i = i + 1
+  }
+  out
+}
+
+fn mul_atv(v: List<Float>, n: Int) -> List<Float> {
+  var out: List<Float> = []
+  var i = 0
+  while i < n {
+    var sum = 0.0
+    var j = 0
+    while j < n {
+      sum = sum + a(j, i) * at(v, j)
+      j = j + 1
+    }
+    out = List.push(out, sum)
+    i = i + 1
+  }
+  out
+}
+
+fn mul_atav(v: List<Float>, n: Int) -> List<Float> { mul_atv(mul_av(v, n), n) }
+
+pub fn run(n: Int) -> Int {
+  if n == 0 { return 0 }
+  var u: List<Float> = []
+  var k = 0
+  while k < n {
+    u = List.push(u, 1.0)
+    k = k + 1
+  }
+  var v = u
+  var i = 0
+  while i < 10 {
+    v = mul_atav(u, n)
+    u = mul_atav(v, n)
+    i = i + 1
+  }
+  var vbv = 0.0
+  var vv = 0.0
+  var m = 0
+  while m < n {
+    vbv = vbv + at(u, m) * at(v, m)
+    vv = vv + at(v, m) * at(v, m)
+    m = m + 1
+  }
+  Float.round(Float.sqrt(vbv / vv) * 1.0e9)
+}
+
+// `sakura run main.sakura -- <n>...` prints run(n) for each argument.
+pub fn main() -> Unit ! {Cli, Console} {
+  for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+}

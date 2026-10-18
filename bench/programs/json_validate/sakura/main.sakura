@@ -1,0 +1,48 @@
+// JSON Lines of n users, every 17th with an empty name and every 13th with age 200. Each line
+// is decoded into a refined record (the refinements are checked by Json.decode) and each valid
+// one re-encoded. run(n) = valid + encoded bytes + sum of valid ids + 1000 * invalid.
+import std/cli.{Cli}
+import std/json.{DecodeError}
+
+type Name = String where String.len(it) > 0 && String.len(it) <= 32
+type Age = Int where it >= 0 && it <= 150
+type User = { id: Int, name: Name, age: Age }
+
+fn line(i: Int) -> String {
+  let name = if i % 17 == 0 { "" } else { "user{i}" }
+  let age = if i % 13 == 0 { 200 } else { i % 90 }
+  "\{\"id\": {i}, \"name\": \"{name}\", \"age\": {age}}"
+}
+
+pub fn run(n: Int) -> Int {
+  var lines: List<String> = []
+  var i = 0
+  while i < n {
+    lines = List.push(lines, line(i))
+    i = i + 1
+  }
+  let text = List.join(lines, "\n")
+  var valid = 0
+  var bytes = 0
+  var ids = 0
+  var invalid = 0
+  for l in String.split(text, "\n") {
+    if l != "" {
+      let decoded: Result<User, DecodeError> = Json.decode(l)
+      match decoded {
+        Ok(u) => {
+          valid = valid + 1
+          bytes = bytes + String.len(Json.encode(u))
+          ids = ids + u.id
+        },
+        Err(_) => { invalid = invalid + 1 },
+      }
+    }
+  }
+  valid + bytes + ids + 1000 * invalid
+}
+
+// `sakura run main.sakura -- <n>...` prints run(n) for each argument.
+pub fn main() -> Unit ! {Cli, Console} {
+  for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+}

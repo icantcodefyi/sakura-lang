@@ -1,0 +1,14 @@
+family = "effects (handler depth 16)"
+sizes = [1000, 10000, 100000, 1000000]
+lane = "matched"
+ints = "js-safe"
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "0"
+"1" = "1"
+"2" = "3"
+"3" = "6"
+"1000" = "3003"
+"10000" = "29998"
+"100000" = "300000"
+"1000000" = "2999998"

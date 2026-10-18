@@ -1,0 +1,14 @@
+family = "contracts (contract-free companion)"
+sizes = [1000, 10000, 100000, 1000000]
+lane = "matched"
+ints = "js-safe"
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "0"
+"1" = "1"
+"2" = "2"
+"3" = "3"
+"1000" = "8440"
+"10000" = "85000"
+"100000" = "850000"
+"1000000" = "8500000"

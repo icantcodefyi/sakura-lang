@@ -1,0 +1,14 @@
+family = "numeric nested loops"
+sizes = [50, 100, 200, 400]
+lane = "matched"
+ints = "js-safe"
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "0"
+"1" = "1000000000"
+"2" = "1183350177"
+"3" = "1233644501"
+"50" = "1274193837"
+"100" = "1274219991"
+"200" = "1274223601"
+"400" = "1274224081"

@@ -1,0 +1,3 @@
+#!/bin/sh
+# bench/bench <command> — see bench/README.md.
+exec python3 "$(dirname "$0")/harness/bench.py" "$@"

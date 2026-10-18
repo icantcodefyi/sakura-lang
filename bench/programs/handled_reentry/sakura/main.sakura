@@ -1,0 +1,26 @@
+// The operation is performed from a callback that std's List.fold calls, re-entering the
+// handler from inside a higher-order function.
+import std/cli.{Cli}
+
+effect Tick {
+  fn next() -> Int
+}
+
+fn counter() -> Handler<Tick> {
+  handler Tick {
+    var value = 0
+    fn next() {
+      value = value + 1
+      value
+    }
+  }
+}
+
+pub fn run(n: Int) -> Int {
+  with counter() { List.fold(List.range(0, n), 0, fn(acc, _) { acc + Tick.next() % 7 }) }
+}
+
+// `sakura run main.sakura -- <n>...` prints run(n) for each argument.
+pub fn main() -> Unit ! {Cli, Console} {
+  for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+}

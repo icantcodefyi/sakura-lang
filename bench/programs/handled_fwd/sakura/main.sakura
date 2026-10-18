@@ -1,0 +1,41 @@
+// Every operation goes through a wrapper handler that forwards it to the outer counter.
+import std/cli.{Cli}
+
+effect Tick {
+  fn next() -> Int
+}
+
+fn counter() -> Handler<Tick> {
+  handler Tick {
+    var value = 0
+    fn next() {
+      value = value + 1
+      value
+    }
+  }
+}
+
+fn forward() -> Handler<Tick, {Tick}> {
+  handler Tick {
+    fn next() { Tick.next() }
+  }
+}
+
+pub fn run(n: Int) -> Int {
+  with counter() {
+    with forward() {
+      var acc = 0
+      var i = 0
+      while i < n {
+        acc = acc + Tick.next() % 7
+        i = i + 1
+      }
+      acc
+    }
+  }
+}
+
+// `sakura run main.sakura -- <n>...` prints run(n) for each argument.
+pub fn main() -> Unit ! {Cli, Console} {
+  for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+}

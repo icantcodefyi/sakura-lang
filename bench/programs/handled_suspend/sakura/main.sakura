@@ -1,0 +1,37 @@
+// The counter loop under Clock.virtual, suspending once halfway through with a real
+// Clock.sleep (the task parks and resumes). run(n) = loop sum + virtual milliseconds elapsed.
+import std/cli.{Cli}
+
+effect Tick {
+  fn next() -> Int
+}
+
+fn counter() -> Handler<Tick> {
+  handler Tick {
+    var value = 0
+    fn next() {
+      value = value + 1
+      value
+    }
+  }
+}
+
+pub fn run(n: Int) -> Int {
+  with Clock.virtual() {
+    with counter() {
+      var acc = 0
+      var i = 0
+      while i < n {
+        acc = acc + Tick.next() % 7
+        if i == n / 2 { Clock.sleep(Duration.millis(1)) }
+        i = i + 1
+      }
+      acc + Instant.to_unix_millis(Clock.now())
+    }
+  }
+}
+
+// `sakura run main.sakura -- <n>...` prints run(n) for each argument.
+pub fn main() -> Unit ! {Cli, Console} {
+  for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+}

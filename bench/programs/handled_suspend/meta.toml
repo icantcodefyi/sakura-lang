@@ -1,0 +1,14 @@
+family = "effects (one Clock.virtual suspend/resume)"
+sizes = [1000, 10000, 100000, 1000000]
+lane = "matched"
+ints = "js-safe"
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "0"
+"1" = "2"
+"2" = "4"
+"3" = "7"
+"1000" = "3004"
+"10000" = "29999"
+"100000" = "300001"
+"1000000" = "2999999"

@@ -1,0 +1,22 @@
+// The contracts program with every contract removed by hand: the companion control.
+import std/cli.{Cli}
+
+fn increment(x: Int) -> Int { x + 1 }
+
+fn total(xs: List<Int>) -> Int { List.fold(xs, 0, fn(a, x) { a + x }) }
+
+pub fn run(n: Int) -> Int {
+  let xs = List.range(0, 16)
+  var i = 0
+  var acc = 0
+  while i < n {
+    i = increment(i)
+    if i % 16 == 0 { acc = acc + total(xs) }
+  }
+  acc + i
+}
+
+// `sakura run main.sakura -- <n>...` prints run(n) for each argument.
+pub fn main() -> Unit ! {Cli, Console} {
+  for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+}

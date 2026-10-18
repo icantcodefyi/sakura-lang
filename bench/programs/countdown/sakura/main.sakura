@@ -1,0 +1,18 @@
+// Self-tail recursion (sum 1..n) and mutual recursion (parity of n), both n deep.
+import std/cli.{Cli}
+
+fn sum_tail(n: Int, acc: Int) -> Int { if n == 0 { acc } else { sum_tail(n - 1, acc + n) } }
+
+fn is_even(n: Int) -> Bool { if n == 0 { true } else { is_odd(n - 1) } }
+
+fn is_odd(n: Int) -> Bool { if n == 0 { false } else { is_even(n - 1) } }
+
+pub fn run(n: Int) -> Int {
+  let parity = if is_even(n) { 1 } else { 0 }
+  sum_tail(n, 0) + parity
+}
+
+// `sakura run main.sakura -- <n>...` prints run(n) for each argument.
+pub fn main() -> Unit ! {Cli, Console} {
+  for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+}

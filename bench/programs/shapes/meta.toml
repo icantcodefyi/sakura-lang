@@ -1,0 +1,14 @@
+family = "records/variants/Option"
+sizes = [1000, 10000, 50000, 100000]
+lane = "matched"
+ints = "js-safe"
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "0"
+"1" = "834"
+"2" = "3255"
+"3" = "22007"
+"1000" = "6657763"
+"10000" = "70030571"
+"50000" = "352360464"
+"100000" = "702336374"

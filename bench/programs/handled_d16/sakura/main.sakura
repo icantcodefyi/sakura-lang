@@ -1,0 +1,214 @@
+// A hot loop performing Tick, whose handler is 16 frame(s) from the perform (15 unrelated
+// handlers installed inside it). run(n) = sum of (counter % 7) over n operations.
+import std/cli.{Cli}
+
+effect Tick {
+  fn next() -> Int
+}
+
+fn counter() -> Handler<Tick> {
+  handler Tick {
+    var value = 0
+    fn next() {
+      value = value + 1
+      value
+    }
+  }
+}
+
+effect Pad1 {
+  fn pad() -> Int
+}
+
+fn pad1() -> Handler<Pad1> {
+  handler Pad1 {
+    fn pad() { 1 }
+  }
+}
+
+effect Pad2 {
+  fn pad() -> Int
+}
+
+fn pad2() -> Handler<Pad2> {
+  handler Pad2 {
+    fn pad() { 2 }
+  }
+}
+
+effect Pad3 {
+  fn pad() -> Int
+}
+
+fn pad3() -> Handler<Pad3> {
+  handler Pad3 {
+    fn pad() { 3 }
+  }
+}
+
+effect Pad4 {
+  fn pad() -> Int
+}
+
+fn pad4() -> Handler<Pad4> {
+  handler Pad4 {
+    fn pad() { 4 }
+  }
+}
+
+effect Pad5 {
+  fn pad() -> Int
+}
+
+fn pad5() -> Handler<Pad5> {
+  handler Pad5 {
+    fn pad() { 5 }
+  }
+}
+
+effect Pad6 {
+  fn pad() -> Int
+}
+
+fn pad6() -> Handler<Pad6> {
+  handler Pad6 {
+    fn pad() { 6 }
+  }
+}
+
+effect Pad7 {
+  fn pad() -> Int
+}
+
+fn pad7() -> Handler<Pad7> {
+  handler Pad7 {
+    fn pad() { 7 }
+  }
+}
+
+effect Pad8 {
+  fn pad() -> Int
+}
+
+fn pad8() -> Handler<Pad8> {
+  handler Pad8 {
+    fn pad() { 8 }
+  }
+}
+
+effect Pad9 {
+  fn pad() -> Int
+}
+
+fn pad9() -> Handler<Pad9> {
+  handler Pad9 {
+    fn pad() { 9 }
+  }
+}
+
+effect Pad10 {
+  fn pad() -> Int
+}
+
+fn pad10() -> Handler<Pad10> {
+  handler Pad10 {
+    fn pad() { 10 }
+  }
+}
+
+effect Pad11 {
+  fn pad() -> Int
+}
+
+fn pad11() -> Handler<Pad11> {
+  handler Pad11 {
+    fn pad() { 11 }
+  }
+}
+
+effect Pad12 {
+  fn pad() -> Int
+}
+
+fn pad12() -> Handler<Pad12> {
+  handler Pad12 {
+    fn pad() { 12 }
+  }
+}
+
+effect Pad13 {
+  fn pad() -> Int
+}
+
+fn pad13() -> Handler<Pad13> {
+  handler Pad13 {
+    fn pad() { 13 }
+  }
+}
+
+effect Pad14 {
+  fn pad() -> Int
+}
+
+fn pad14() -> Handler<Pad14> {
+  handler Pad14 {
+    fn pad() { 14 }
+  }
+}
+
+effect Pad15 {
+  fn pad() -> Int
+}
+
+fn pad15() -> Handler<Pad15> {
+  handler Pad15 {
+    fn pad() { 15 }
+  }
+}
+
+pub fn run(n: Int) -> Int {
+  with counter() {
+    with pad1() {
+      with pad2() {
+        with pad3() {
+          with pad4() {
+            with pad5() {
+              with pad6() {
+                with pad7() {
+                  with pad8() {
+                    with pad9() {
+                      with pad10() {
+                        with pad11() {
+                          with pad12() {
+                            with pad13() {
+                              with pad14() {
+                                with pad15() {
+                                  var acc = 0
+                                  var i = 0
+                                  while i < n {
+                                    acc = acc + Tick.next() % 7
+                                    i = i + 1
+                                  }
+                                  acc
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// `sakura run main.sakura -- <n>...` prints run(n) for each argument.
+pub fn main() -> Unit ! {Cli, Console} {
+  for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+}

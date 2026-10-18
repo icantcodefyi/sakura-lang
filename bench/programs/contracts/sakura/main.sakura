@@ -1,0 +1,40 @@
+// A scalar contract on a hot function and a collection precondition checked every 16 steps.
+// negative(0) violates the requires (D020), negative(1) the ensures (D021).
+import std/cli.{Cli}
+
+fn increment(x: Int) -> Int
+  requires x >= 0
+  ensures result > x
+{ x + 1 }
+
+fn total(xs: List<Int>) -> Int
+  requires List.all(xs, fn(x) { x >= 0 })
+{ List.fold(xs, 0, fn(a, x) { a + x }) }
+
+fn broken(x: Int) -> Int
+  ensures result > x
+{ x }
+
+pub fn run(n: Int) -> Int {
+  let xs = List.range(0, 16)
+  var i = 0
+  var acc = 0
+  while i < n {
+    i = increment(i)
+    if i % 16 == 0 { acc = acc + total(xs) }
+  }
+  acc + i
+}
+
+pub fn negative(k: Int) -> Int { if k == 0 { increment(0 - 1) } else { broken(k) } }
+
+// `sakura run main.sakura -- <n>...` prints run(n) for each argument; `-- negative <k>` calls
+// negative(k). Code reachable only from other exports is not emitted, so main must reach it.
+pub fn main() -> Unit ! {Cli, Console} {
+  match Cli.args() {
+    ["negative", k] => Console.print("{negative(Option.expect(String.parse_int(k), "case"))}"),
+    args => {
+      for arg in args { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+    },
+  }
+}

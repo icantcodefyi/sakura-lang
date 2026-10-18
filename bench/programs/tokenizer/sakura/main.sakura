@@ -1,0 +1,34 @@
+// Build text of n words (ASCII and non-ASCII), split it, and consume every token:
+// run(n) = tokens + 3 * UTF-8 bytes + 7 * Unicode scalars + 11 * tokens ending in ",".
+import std/cli.{Cli}
+
+let words = ["alpha", "naïve", "日本語", "🌸", "x1", "Grüße", "ok", "mañana"]
+
+pub fn run(n: Int) -> Int {
+  var s = ""
+  var i = 0
+  while i < n {
+    let w = Option.expect(words[i % 8], "word")
+    let sep = if i % 5 == 4 { ", " } else { " " }
+    s = "{s}{w}{sep}"
+    i = i + 1
+  }
+  var tokens = 0
+  var bytes = 0
+  var scalars = 0
+  var commas = 0
+  for t in String.split(s, " ") {
+    if t != "" {
+      tokens = tokens + 1
+      bytes = bytes + String.len(t)
+      scalars = scalars + List.len(String.chars(t))
+      if String.ends_with(t, ",") { commas = commas + 1 }
+    }
+  }
+  tokens + 3 * bytes + 7 * scalars + 11 * commas
+}
+
+// `sakura run main.sakura -- <n>...` prints run(n) for each argument.
+pub fn main() -> Unit ! {Cli, Console} {
+  for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+}

@@ -1,0 +1,14 @@
+family = "higher-order"
+sizes = [1000, 10000, 100000, 300000]
+lane = "matched"
+ints = "js-safe"
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "0"
+"1" = "0"
+"2" = "0"
+"3" = "14"
+"1000" = "249500"
+"10000" = "2495000"
+"100000" = "24950000"
+"300000" = "74850000"

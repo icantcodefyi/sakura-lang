@@ -1,0 +1,52 @@
+// Persistent Map with Int, String and tuple keys plus a Set: build, look up, update, remove.
+// The Int map's state after the build is retained as a snapshot and read at the end.
+import std/cli.{Cli}
+
+pub fn run(n: Int) -> Int {
+  var mi: Map<Int, Int> = Map.empty()
+  var ms: Map<String, Int> = Map.empty()
+  var mt: Map<(Int, Int), Int> = Map.empty()
+  var s: Set<Int> = Set.empty()
+  var i = 0
+  while i < n {
+    mi = Map.insert(mi, i, i % 1000)
+    ms = Map.insert(ms, "k{i}", i % 1000)
+    mt = Map.insert(mt, (i % 100, i / 100), i % 7)
+    s = Set.insert(s, i % 97)
+    i = i + 1
+  }
+  let snapshot = mi
+  var found = 0
+  i = 0
+  while i < 2 * n {
+    found = found + Option.unwrap_or(Map.get(mi, i), 0)
+    found = found + Option.unwrap_or(Map.get(ms, "k{i}"), 0)
+    found = found + Option.unwrap_or(Map.get(mt, (i % 100, i / 100)), 0)
+    i = i + 1
+  }
+  i = 0
+  while i < n {
+    mi = Map.update(mi, i, fn(v) { Option.unwrap_or(v, 0) + 7 })
+    ms = Map.update(ms, "k{i}", fn(v) { Option.unwrap_or(v, 0) + 7 })
+    i = i + 2
+  }
+  i = 0
+  while i < n {
+    mi = Map.remove(mi, i)
+    ms = Map.remove(ms, "k{i}")
+    mt = Map.remove(mt, (i % 100, i / 100))
+    i = i + 3
+  }
+  var total = 0
+  for (_, v) in Map.entries(mi) { total = total + v }
+  for (_, v) in Map.entries(ms) { total = total + v }
+  for (_, v) in Map.entries(mt) { total = total + v }
+  var snap = 0
+  for (_, v) in Map.entries(snapshot) { snap = snap + v }
+  found + total + snap + Map.len(mi) + Map.len(ms) + Map.len(mt) + Map.len(snapshot) + Set.len(s)
+}
+
+// `sakura run main.sakura -- <n>...` prints run(n) for each argument.
+pub fn main() -> Unit ! {Cli, Console} {
+  for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+}
