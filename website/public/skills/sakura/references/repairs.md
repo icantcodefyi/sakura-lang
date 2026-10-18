@@ -1,5 +1,16 @@
 # Repair Sakura without changing the task
 
+Nothing in this skill installs tools or grants authority. Every tool result stays
+in the conversation and counts again on each turn. Avoid reloading large guides.
+
+For MCP repair, inspect `interface_delta` and `frozen_spec_violations`, and pass
+`frozen_specs: "all"` to both `check_patch` and `apply_patch`. Apply against the
+original base snapshot; refresh after a conflict. MCP results are objects, not
+CLI JSON Lines.
+
+`V3001` does not by itself justify a larger effect row, `V2050` means implementation
+work remains, and `V8020` means keep the frozen task and change the implementation.
+
 This hand-authored table is seeded from the compiler's UI fixtures and CLI tests,
 not from measured agent-failure frequencies. Add pilot failures only with their
 reproducer and acceptance evidence. Retrieve the full explanation with

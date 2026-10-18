@@ -364,7 +364,14 @@ fn skill_bundle() -> Vec<(&'static str, String)> {
     SKILL
         .iter()
         .map(|&(path, text)| match path {
-            "SKILL.md" => (path, fill_skill_metadata(text)),
+            "SKILL.md" => (
+                path,
+                fill_skill_metadata(
+                    text,
+                    env!("CARGO_PKG_VERSION"),
+                    option_env!("SAKURA_GIT_COMMIT").unwrap_or("unknown"),
+                ),
+            ),
             _ => (path, text.to_owned()),
         })
         .collect()
@@ -379,8 +386,7 @@ fn asset(name: &str) -> &'static str {
         .map_or_else(|| panic!("no skill asset {name}"), |(_, text)| text)
 }
 
-fn fill_skill_metadata(text: &str) -> String {
-    let git = option_env!("SAKURA_GIT_COMMIT").unwrap_or("unknown");
+fn fill_skill_metadata(text: &str, version: &str, git: &str) -> String {
     let mut out = String::new();
     let mut fences = 0;
     for line in text.split_inclusive('\n') {
@@ -388,9 +394,7 @@ fn fill_skill_metadata(text: &str) -> String {
         let indent = &line[..line.len() - line.trim_start().len()];
         let value = match line.trim_start().split_once(':') {
             _ if fences != 1 => None,
-            Some(("sakura-compiler-version", _)) => {
-                Some(("sakura-compiler-version", env!("CARGO_PKG_VERSION")))
-            }
+            Some(("sakura-compiler-version", _)) => Some(("sakura-compiler-version", version)),
             Some(("sakura-compiler-git", _)) => Some(("sakura-compiler-git", git)),
             _ => None,
         };
@@ -1217,16 +1221,22 @@ mod tests {
         );
     }
 
-    /// `SKILL.md` is at most 7,500 bytes of ASCII (design §17.182 (1)), so it survives an
-    /// 8,000-character tool-output cut with its metadata filled in.
     #[test]
     fn skill_entry_point_stays_under_its_bar() {
-        let text = super::SKILL[0].1;
-        assert!(text.is_ascii(), "SKILL.md must be ASCII");
+        let source = super::SKILL[0].1;
+        let filled = super::fill_skill_metadata(
+            source,
+            env!("CARGO_PKG_VERSION"),
+            "0123456789abcdef0123456789abcdef01234567",
+        );
+        assert!(source.is_ascii(), "SKILL.md source must be ASCII");
+        assert!(filled.is_ascii(), "filled SKILL.md must be ASCII");
         assert!(
-            text.len() <= 7500,
-            "SKILL.md is {} bytes; the bar is 7,500 (design §17.182 (1))",
-            text.len()
+            filled.len() <= 7500,
+            "SKILL.md is {} bytes filled (bar 7,500), {} bytes source (target 7,000); \
+             move prose to references/ (design §17.188)",
+            filled.len(),
+            source.len()
         );
     }
 

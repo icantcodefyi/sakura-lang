@@ -61,6 +61,11 @@ published yet.
 
 ### Changed
 
+- The Sakura skill keeps its examples, syntax list, and edit loop in a smaller entry
+  point, with repair and completion detail in its references. Its 7,500-byte ASCII
+  limit now measures release metadata after template fill, with a 7,000-byte source
+  working target (design §17.188).
+
 - **Breaking:** a program means the same whatever its checkout's line endings (design §2,
   §17.180 (4b)): a `\r\n` inside a string literal is `\n`, and a line comment ends before the
   `\r`, so a CRLF file no longer prints a longer string. `sakura fmt` writes LF (a bare `\r` in

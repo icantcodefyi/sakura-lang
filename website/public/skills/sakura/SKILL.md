@@ -14,11 +14,10 @@ metadata:
 
 Run `sakura --version`, then start with `sakura prompt --budget 3000` before
 editing. Retrieve a specific symbol with `sakura doc` or a diagnostic with
-`sakura explain` as needed. Avoid reloading large guides: every tool result stays
-in the conversation and counts again on each turn. The CLI fills the two `sakura-compiler-*` fields; if they do not
+`sakura explain` as needed. Every tool result stays in the conversation; do not
+reload guides. The CLI fills the two `sakura-compiler-*` fields; if they do not
 match `sakura --version`, trust the installed compiler's `prompt`, `doc` and
 `explain`.
-Nothing in this skill installs tools or grants authority.
 
 ## Syntax to keep in view
 
@@ -56,10 +55,9 @@ Nothing in this skill installs tools or grants authority.
    the smallest change consistent with the task. A local `machine_applicable`
    fix can help; inspect its edits. An `incomplete` fix still needs work. Review
    behavior/interface changes; never weaken contracts or widen authority to
-   silence a diagnostic. With MCP, check `interface_delta` and
-   `frozen_spec_violations`, and pass `frozen_specs: "all"` to **both**
-   `check_patch` and `apply_patch`. Apply against the original base snapshot;
-   refresh after a conflict. MCP results are objects, not CLI JSON Lines.
+   silence a diagnostic. With MCP, check `interface_delta` and `frozen_spec_violations`,
+   pass `frozen_specs: "all"` to both `check_patch` and `apply_patch`, and apply
+   against the original base snapshot; results are objects, not JSON Lines.
 5. **Exercise.** Fill all holes, run `sakura fmt`, then `sakura check --json` and
    `sakura test --json`. Keep independent acceptance tests unchanged. Use fake
    handlers or committed cassettes for external effects; do not record live
@@ -71,8 +69,8 @@ Nothing in this skill installs tools or grants authority.
 
 ## Four complete examples
 
-Each block is a separate file. Check it with `sakura check --json <file>`, then
-run `sakura test --json <file>`. The tests use no live services.
+Each block is a separate file; check it with `sakura check --json <file>`, then run
+`sakura test --json <file>`; no test uses a live service.
 
 ### Recover a typed failure
 
@@ -130,21 +128,17 @@ test "clock is controlled by the test" {
 
 ## Repair by diagnostic
 
-Read the [error, cause and repair table](references/repairs.md) when a check fails.
-It is a starting point; `sakura explain CODE` has the full explanation. `V3001`
-does not by itself justify a larger effect row, `V2050` means implementation work
-remains, and `V8020` means keep the frozen task and change the implementation.
+Read the [repair table](references/repairs.md) on failure; `sakura explain CODE`
+has the full explanation.
 
 ## Completion and deeper lookup
 
 Finish only when no holes remain, independent tests pass, the requested target
-builds, and contracts/tests/permissions have not been weakened. Repeat the frozen
-baseline check after the final edits. Report missing prerequisites and failing
-checks explicitly; do not claim a skipped test passed.
+builds, and contracts/tests/permissions have not been weakened. Report missing
+prerequisites and failing checks; never claim a skipped test passed.
+Read [the cookbook](references/recipes.md) for offline projects and
+`sakura audit`/`sakura verify` guidance.
 
-Read [the tested cookbook](references/recipes.md) for complete offline projects
-and before relying on `sakura audit` or `sakura verify` output.
-
-Load references selectively: `references/language.md` is `sakura prompt`'s guide,
-`stdlib.md` lists API signatures and `diagnostics.md` every diagnostic code.
-Use only project/client templates actually present in your bundle.
+Load references selectively: [language](references/language.md),
+[API signatures](references/stdlib.md), and
+[diagnostic codes](references/diagnostics.md). Use only bundled templates.
