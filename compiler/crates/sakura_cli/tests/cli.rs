@@ -748,6 +748,55 @@ test "never sees OTHER" { expect_eq(Env.get("OTHER"), None) }
     assert!(out.contains("never sees OTHER ... ok"), "{out}");
 }
 
+/// Design §17.159 (3), security review R1/R2: plain `sakura test` passes empty grants in
+/// `SAKURA_PERMISSIONS`, so a test that installs `Env.host()` reads no runner variable, and
+/// `Sql.sqlite` under `Fs.host()` (which Node's permission model does not cover) creates no file.
+#[test]
+fn test_host_handlers_fail_closed_without_record() {
+    let dir = tmp(
+        "host-closed",
+        r#"import std/fs.{Fs}
+import std/path.{Path}
+import std/sql.{Sql, SqlError}
+
+test "Env.host() reads no runner variable" {
+  expect_eq(with Env.host() { Env.get("SAKURA_PROBE") }, None)
+}
+
+test "Sql.sqlite under Fs.host() cannot open" {
+  let r = with Fs.host(), Sql.sqlite(Path.of("probe.db")) {
+    try {
+      let _ = Sql.execute(sql"create table t (x integer)")
+      "opened"
+    } catch {
+      SqlError { .. } => "refused",
+    }
+  }
+  expect_eq(r, "refused")
+}
+"#,
+    );
+    std::fs::write(
+        dir.join("sakura.toml"),
+        "[package]\nname = \"host_closed\"\n\n[permissions]\n",
+    )
+    .unwrap();
+    let out = std::process::Command::new(env!("CARGO_BIN_EXE_sakura"))
+        .args(["test", "main.sakura"])
+        .current_dir(&dir)
+        .env("SAKURA_PROBE", "leaked")
+        .output()
+        .expect("run sakura");
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(out.status.code(), Some(0), "{text}");
+    assert!(!text.contains("leaked"), "{text}");
+    assert!(!dir.join("probe.db").exists());
+}
+
 /// Design §7.4 (gate 6): `sakura test --contracts` runs a synthesized property per contracted
 /// `pub fn`, reports one that gives up as a `W7001` record before the summary, writes a shrunk
 /// failure to `tests/regressions/<fn>.json`, and replays that file first on the next run.

@@ -104,14 +104,16 @@ pub fn run_node_tests(
             cmd.arg(format!("--allow-fs-write={}", Path::new(&path).display()));
         }
     }
-    if let Some((net, env)) = record {
+    // The runtime's `http_send` checks the hosts, `env_get` the keys and `fs_root` the
+    // directories (runtime/js/ABI.md §7). Without `--record` every grant is empty, so a test's
+    // own `Env.host()`, `Fs.host()` (and `Sql.sqlite`, which Node's model does not cover) or
+    // `Http.host()` fails closed (design §17.159 (3)); `Test.fixtures()` carries its own grants.
+    let (net, env): (&[String], &[String]) = record.unwrap_or((&[], &[]));
+    let permissions = serde_json::json!({"fs": {"read": [], "write": []}, "net": net, "env": env});
+    cmd.env("SAKURA_PERMISSIONS", permissions.to_string());
+    if record.is_some() {
         writable(&mut cmd, &snapshots.with_file_name("fixtures"))?;
-        // The runtime's `http_send` checks the hosts and `env_get` the keys (runtime/js/ABI.md §7).
-        let permissions =
-            serde_json::json!({"fs": {"read": [], "write": []}, "net": net, "env": env});
-        cmd.arg("--allow-net")
-            .env("SAKURA_RECORD", "1")
-            .env("SAKURA_PERMISSIONS", permissions.to_string());
+        cmd.arg("--allow-net").env("SAKURA_RECORD", "1");
     }
     cmd.arg("--max-old-space-size=1024");
     // A `--target wasm` build runs its module's tests through the WASM host.

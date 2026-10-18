@@ -2802,7 +2802,7 @@ const DIR_BRAND = Symbol("Dir");
 /**
  * `[permissions]` of the manifest, passed by the driver as JSON in `SAKURA_PERMISSIONS`
  * (`{"fs": {"read": […], "write": […]}, "net": […], "env": […]}`); `null` when unset (no
- * limits: tests and plain `node` runs).
+ * limits: plain `node` runs; `sakura test` always sets it).
  */
 let permissions;
 function granted() {

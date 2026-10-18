@@ -417,7 +417,8 @@ value's runtime shape, decoding fails with "the target type is not known".
 (paths relative to the working directory). When it is set, `fs_root()`'s `Dir` (and its
 subdirectories) reads only under `fs.read` and writes only under `fs.write`, `http_send` only
 reaches `net` hosts, and `env_get` only sees `env` keys; each refusal is the operation's
-ordinary error. Unset means no limits.
+ordinary error. Unset means no limits. `sakura test` always sets it: without `--record` every
+grant is empty, so a test's own `Fs.host()`, `Http.host()` or `Env.host()` fails closed.
 
 **Capabilities.** `$rt.Dir` holds a host directory in a private field and is only built by
 `fs_root()` (the working directory) and `fs_subdir`. Every `fs_*` path is relative and must

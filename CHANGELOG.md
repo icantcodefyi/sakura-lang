@@ -32,6 +32,10 @@ published yet.
   `sakura test` will pass empty permissions to the runtime, `Serve.host()` gains a request body
   cap, the proof key's directory mode is checked, non-release workflows pin action SHAs, and
   WASM may send `Secret` headers once the approved transport change lands.
+- `sakura test` always passes `SAKURA_PERMISSIONS`: without `--record` its grants are empty,
+  so a test that installs `Env.host()` reads no runner variable and `Sql.sqlite` under
+  `Fs.host()` cannot create a database file (WS12 item 2, review R1/R2). `Test.fixtures()`
+  keeps its own grants.
 
 ### Changed
 
