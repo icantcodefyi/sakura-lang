@@ -762,8 +762,12 @@ impl SakuraServer {
         id
     }
 
-    /// `file://` URI for a workspace-relative path, absolute path or URI.
+    /// `file://` URI for a workspace-relative path, absolute path or URI; a `file:` URI in a
+    /// client's spelling (`file:///c%3A/…`) is canonical, as the snapshot's URIs are.
     fn uri(&self, path: &str) -> String {
+        if let Some(p) = disk::uri_path(path) {
+            return disk::file_uri(&p);
+        }
         if path.contains("://") {
             return path.to_owned();
         }
@@ -778,12 +782,7 @@ impl SakuraServer {
 
     /// Selected URIs for a `paths` filter (`None`: everything).
     fn uris(&self, paths: &[String]) -> Result<Option<Vec<String>>, Failure> {
-        Ok((!paths.is_empty()).then(|| {
-            paths
-                .iter()
-                .map(|p| self.uri(p).trim_end_matches('/').to_owned())
-                .collect()
-        }))
+        Ok((!paths.is_empty()).then(|| paths.iter().map(|p| self.uri(p)).collect()))
     }
 
     fn edits(&self, edits: &[EditParam]) -> Vec<FileEdit> {
@@ -835,12 +834,8 @@ fn conflict(c: sakura_analysis::Conflict) -> Failure {
 
 fn selected(only: &Option<Vec<String>>, uri: &str) -> bool {
     only.as_ref().is_none_or(|o| {
-        o.iter().any(|p| {
-            uri == p
-                || uri
-                    .strip_prefix(p.as_str())
-                    .is_some_and(|r| r.starts_with('/'))
-        })
+        o.iter()
+            .any(|p| uri == p || disk::uri_below(uri, p).is_some())
     })
 }
 
@@ -996,6 +991,21 @@ mod tests {
             .unwrap();
         assert_eq!(applied.files()[0].text, "let s = \"è\"\n");
         assert_eq!(e.replacement, "è");
+    }
+
+    #[test]
+    fn path_filters_match_whole_segments() {
+        for root in ["file:///p", "file:///C:/p"] {
+            let only = Some(vec![format!("{root}/src")]);
+            assert!(selected(&only, &format!("{root}/src")));
+            assert!(selected(&only, &format!("{root}/src/a/b.sak")), "{root}");
+            assert!(!selected(&only, &format!("{root}/srcs/b.sak")), "{root}");
+            assert!(selected(
+                &Some(vec![format!("{root}/src/")]),
+                &format!("{root}/src/b.sak")
+            ));
+        }
+        assert!(selected(&Some(vec!["file:///".into()]), "file:///p/b.sak"));
     }
 
     #[test]

@@ -241,7 +241,7 @@ impl Analyzed {
                 let span = self
                     .snapshot
                     .file_ids()
-                    .find(|&f| self.snapshot.file(f).uri.ends_with("/sakura.toml"))
+                    .find(|&f| crate::disk::is_manifest(&self.snapshot.file(f).uri))
                     .map(|f| Span::primary(f, 0, 0))
                     .or(at(None));
                 report(

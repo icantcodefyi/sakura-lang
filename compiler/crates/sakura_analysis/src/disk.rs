@@ -1,5 +1,6 @@
-//! Building snapshots from disk, for the frontends (CLI, LSP, MCP). Compiler phases never call
-//! this: they only see the [`Snapshot`] it returns.
+//! Building snapshots from disk, for the frontends (CLI, LSP, MCP), and the URI helpers. Compiler
+//! phases never read the disk: they only see the [`Snapshot`] it returns, and take URIs apart
+//! with the pure [`uri_segments`].
 
 use std::path::{Path, PathBuf};
 
@@ -127,10 +128,38 @@ fn collect(path: &Path, out: &mut Vec<PathBuf>) -> std::io::Result<()> {
     Ok(())
 }
 
-/// `file://` URI for an absolute path, percent-encoding the bytes that are not URI-safe.
+/// `file://` URI for an absolute path, percent-encoding the bytes that are not URI-safe. RFC 8089
+/// on every OS (design §17.180 (4a)): `file:///tmp/a%20b.sak`, `file:///C:/dir/src/main.sak` (the
+/// drive letter upper-cased, so a client's `c%3A` spelling canonicalizes to the same URI),
+/// `file://server/share/x.sak` for a UNC path.
 pub fn file_uri(path: &Path) -> String {
+    path_uri(&path.to_string_lossy(), cfg!(windows))
+}
+
+fn path_uri(path: &str, windows: bool) -> String {
+    let path = if windows {
+        let p = path.replace('\\', "/");
+        // `\\?\C:\…` and `\\?\UNC\server\…` are the verbatim spellings of `C:\…` and `\\server\…`.
+        let p = match p.strip_prefix("//?/") {
+            Some(rest) => match rest.strip_prefix("UNC/") {
+                Some(unc) => format!("//{unc}"),
+                None => rest.to_owned(),
+            },
+            None => p,
+        };
+        match p.as_bytes() {
+            [d, b':', ..] if d.is_ascii_alphabetic() => {
+                format!("/{}{}", d.to_ascii_uppercase() as char, &p[1..])
+            }
+            // `//server/share/…`: the server is the URI's authority.
+            [b'/', b'/', ..] => p[2..].to_owned(),
+            _ => p,
+        }
+    } else {
+        path.to_owned()
+    };
     let mut uri = String::from("file://");
-    for b in path.to_string_lossy().bytes() {
+    for b in path.bytes() {
         if b.is_ascii_alphanumeric() || b"/-._~:".contains(&b) {
             uri.push(b as char);
         } else {
@@ -140,9 +169,16 @@ pub fn file_uri(path: &Path) -> String {
     uri
 }
 
-/// The path of a `file://` URI (inverse of [`file_uri`]); `None` for other schemes.
+/// The path of a `file://` URI (inverse of [`file_uri`]); `None` for other schemes and, off
+/// Windows, for a URI naming another host.
 pub fn uri_path(uri: &str) -> Option<PathBuf> {
-    let raw = uri.strip_prefix("file://")?.as_bytes();
+    uri_file_path(uri, cfg!(windows)).map(PathBuf::from)
+}
+
+fn uri_file_path(uri: &str, windows: bool) -> Option<String> {
+    let rest = uri.strip_prefix("file://")?;
+    let (host, path) = rest.split_at(rest.find('/').unwrap_or(rest.len()));
+    let raw = path.as_bytes();
     let mut bytes = Vec::with_capacity(raw.len());
     let mut i = 0;
     while i < raw.len() {
@@ -160,7 +196,47 @@ pub fn uri_path(uri: &str) -> Option<PathBuf> {
             }
         }
     }
-    Some(PathBuf::from(String::from_utf8_lossy(&bytes).into_owned()))
+    let path = String::from_utf8_lossy(&bytes).into_owned();
+    let local = host.is_empty() || host.eq_ignore_ascii_case("localhost");
+    if !windows {
+        return local.then_some(path);
+    }
+    let path = match path.as_bytes() {
+        _ if !local => format!("//{host}{path}"),
+        [b'/', d, b':' | b'|', ..] if d.is_ascii_alphabetic() => {
+            format!("{}:{}", d.to_ascii_uppercase() as char, &path[3..])
+        }
+        _ => path,
+    };
+    Some(path.replace('/', "\\"))
+}
+
+/// A URI as `scheme://authority` followed by its non-empty `/`-separated path segments, still
+/// percent-encoded: `file:///C:/p/src/a.sak` is `file://`, `C:`, `p`, `src`, `a.sak`; a URI
+/// without `://` is one item. The one place URI text is taken apart (design §17.180 (4a)): the
+/// module name, the `sakura.toml` test and the directory prefixes all compare segments, so they
+/// hold for every OS's URIs alike.
+pub fn uri_segments(uri: &str) -> Vec<&str> {
+    let Some(i) = uri.find("://") else {
+        return vec![uri];
+    };
+    let rest = &uri[i + 3..];
+    let host = rest.find('/').unwrap_or(rest.len());
+    let mut segments = vec![&uri[..i + 3 + host]];
+    segments.extend(rest[host..].split('/').filter(|s| !s.is_empty()));
+    segments
+}
+
+/// Whether `uri` names a `sakura.toml`.
+pub fn is_manifest(uri: &str) -> bool {
+    matches!(uri_segments(uri).as_slice(), [_, .., last] if *last == "sakura.toml")
+}
+
+/// The part of `uri` strictly below the directory URI `dir` (with or without its trailing `/`),
+/// by whole segments: `src/a.sak` for `file:///p/src/a.sak` below `file:///p`.
+pub fn uri_below(uri: &str, dir: &str) -> Option<String> {
+    let (u, d) = (uri_segments(uri), uri_segments(dir));
+    (u.len() > d.len() && u.starts_with(&d)).then(|| u[d.len()..].join("/"))
 }
 
 /// Writes the files of `snapshot` that differ from `base` back to disk, all or nothing as far as
@@ -221,6 +297,62 @@ mod tests {
         assert_eq!(uri, "file:///tmp/a%20b/%C3%BC.sak");
         assert_eq!(uri_path(&uri).unwrap(), p);
         assert_eq!(uri_path("sakura:///std/list.sak"), None);
+        assert_eq!(uri_path("file://host/tmp/x.sak"), None);
+        assert_eq!(
+            uri_path("file://LocalHost/tmp/x.sak").unwrap(),
+            Path::new("/tmp/x.sak")
+        );
+    }
+
+    #[test]
+    fn windows_paths_are_rfc_8089_uris() {
+        let cases = [
+            (r"C:\dir\src\main.sak", "file:///C:/dir/src/main.sak"),
+            (r"c:\a b\ü.sak", "file:///C:/a%20b/%C3%BC.sak"),
+            (r"\\?\C:\dir\x.sak", "file:///C:/dir/x.sak"),
+            (r"\\server\share\x.sak", "file://server/share/x.sak"),
+            (r"\\?\UNC\server\share\x.sak", "file://server/share/x.sak"),
+            // git-base joins git's `/` names onto a `\` directory; the URI is `disk::load`'s.
+            (r"C:\repo\src/sub/x.sak", "file:///C:/repo/src/sub/x.sak"),
+        ];
+        for (path, uri) in cases {
+            assert_eq!(path_uri(path, true), uri, "{path}");
+        }
+        let back = |u| uri_file_path(u, true).unwrap();
+        assert_eq!(back("file:///C:/dir/src/main.sak"), r"C:\dir\src\main.sak");
+        // VS Code's spelling of the same file.
+        assert_eq!(back("file:///c%3A/dir/main.sak"), r"C:\dir\main.sak");
+        assert_eq!(back("file://server/share/x.sak"), r"\\server\share\x.sak");
+        assert_eq!(
+            path_uri(&back("file:///c%3A/a%20b/x.sak"), true),
+            "file:///C:/a%20b/x.sak"
+        );
+    }
+
+    #[test]
+    fn uri_tests_compare_segments() {
+        for root in ["file:///p", "file:///C:/p", "file://server/share/p"] {
+            let main = format!("{root}/src/main.sak");
+            assert!(is_manifest(&format!("{root}/sakura.toml")), "{root}");
+            assert!(
+                !is_manifest(&format!("{root}/src/notsakura.toml")),
+                "{root}"
+            );
+            assert_eq!(uri_below(&main, root).as_deref(), Some("src/main.sak"));
+            assert_eq!(
+                uri_below(&main, &format!("{root}/")).as_deref(),
+                Some("src/main.sak")
+            );
+            assert_eq!(uri_below(&main, &format!("{root}/sr")), None);
+            assert_eq!(uri_below(root, root), None);
+        }
+        assert_eq!(
+            uri_below("file:///x.sak", "file:///").as_deref(),
+            Some("x.sak")
+        );
+        assert_eq!(uri_below("sakura:///p/x.sak", "file:///p"), None);
+        assert!(!is_manifest("sakura.toml"));
+        assert_eq!(uri_segments("untitled:Untitled-1"), ["untitled:Untitled-1"]);
     }
 
     #[test]

@@ -108,7 +108,7 @@ impl Analyzed {
             .snapshot
             .files()
             .iter()
-            .find(|f| f.uri.ends_with("/sakura.toml"))?;
+            .find(|f| crate::disk::is_manifest(&f.uri))?;
         Some(Manifest::parse(&file.text))
     }
 

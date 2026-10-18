@@ -656,18 +656,23 @@ fn module_of(uri: &str) -> (&'static str, String) {
     if let Some(rest) = path.strip_prefix("sakura:///std/") {
         return ("std", rest.to_owned());
     }
-    let rel = match path.rfind("/src/") {
-        Some(i) => &path[i + 5..],
-        None => path.rsplit('/').next().unwrap_or(path),
+    let segments = disk::uri_segments(path);
+    let file = segments.len() - 1;
+    let rel = match segments[1.min(file)..file]
+        .iter()
+        .rposition(|&s| s == "src")
+    {
+        Some(i) => segments[i + 2..].join("/"),
+        None => segments[file].to_owned(),
     };
-    ("main", rel.to_owned())
+    ("main", rel)
 }
 
 /// The user package's name: `sakura.toml`'s `name`, or `main` without one (§9, §17.127) or
 /// when the name is reserved (`V8002`).
 fn package_name(snapshot: &Snapshot) -> String {
     (snapshot.files.iter())
-        .find(|f| f.uri.ends_with("/sakura.toml"))
+        .find(|f| disk::is_manifest(&f.uri))
         .and_then(|f| Manifest::parse(&f.text).ok())
         .map(|m| m.package.name)
         .filter(|n| !n.is_empty() && !RESERVED_PACKAGES.contains(&n.as_str()))
@@ -681,7 +686,7 @@ const RESERVED_PACKAGES: [&str; 2] = ["std", "main"];
 fn reserved_package_name(snapshot: &Snapshot) -> Option<Diagnostic> {
     let file = snapshot
         .file_ids()
-        .find(|&f| snapshot.file(f).uri.ends_with("/sakura.toml"))?;
+        .find(|&f| disk::is_manifest(&snapshot.file(f).uri))?;
     let text = &snapshot.file(file).text;
     let name = Manifest::parse(text).ok()?.package.name;
     if !RESERVED_PACKAGES.contains(&name.as_str()) {
@@ -798,6 +803,16 @@ mod tests {
             ("main", "users/repo".into())
         );
         assert_eq!(module_of("file:///tmp/hello.sak"), ("main", "hello".into()));
+        // The same project checked out on Windows (design §17.180 (4a)).
+        assert_eq!(
+            module_of("file:///C:/p/src/users/repo.sak"),
+            ("main", "users/repo".into())
+        );
+        assert_eq!(
+            module_of("file:///C:/tmp/hello.sak"),
+            ("main", "hello".into())
+        );
+        assert_eq!(module_of("file:///C:/src/a.sak"), ("main", "a".into()));
     }
 
     #[test]

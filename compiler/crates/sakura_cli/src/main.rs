@@ -860,7 +860,7 @@ fn run(
         .snapshot
         .files()
         .iter()
-        .find(|f| f.uri.ends_with("/sakura.toml"))
+        .find(|f| disk::is_manifest(&f.uri))
         .and_then(|f| disk::uri_path(&f.uri))
         .and_then(|p| p.parent().map(Path::to_path_buf));
     let mut node = if target == "wasm" {
@@ -1138,12 +1138,12 @@ fn tally(diags: &[sakura_diagnostics::Diagnostic]) -> String {
 /// Files with `file://` URIs replaced by paths relative to the working directory, for humans.
 fn display_files(files: &[SourceFile]) -> Vec<SourceFile> {
     let cwd = std::env::current_dir()
-        .map(|d| disk::file_uri(&d) + "/")
+        .map(|d| disk::file_uri(&d))
         .unwrap_or_default();
     files
         .iter()
         .map(|f| SourceFile {
-            uri: f.uri.strip_prefix(&cwd).unwrap_or(&f.uri).to_owned(),
+            uri: disk::uri_below(&f.uri, &cwd).unwrap_or_else(|| f.uri.clone()),
             ..f.clone()
         })
         .collect()

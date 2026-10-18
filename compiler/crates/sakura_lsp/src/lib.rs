@@ -281,7 +281,7 @@ impl Server {
         open.sort();
         let fallback = s
             .file_ids()
-            .find(|&f| s.file(f).uri.ends_with("/sakura.toml"))
+            .find(|&f| disk::is_manifest(&s.file(f).uri))
             .or_else(|| open.iter().find_map(|u| s.file_id(u)));
         for d in &a.check.diagnostics {
             let span = match (d.spans.first(), fallback) {
