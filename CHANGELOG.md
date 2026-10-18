@@ -58,6 +58,12 @@ published yet.
 - `sakura build --emit lir` writes the WASM backend's validated low-level IR as text to
   `target/sakura/lir/main.lir` (M4 preview; no WASM is emitted yet). `--layout=niche` is
   accepted and refused until the `Option` niche layout lands.
+- `sakura verify [--json] [--target js|wasm] [--rlimit N] [--solver PATH]` discharges
+  contract, overflow and division obligations with Z3 5.3.1 (`proved`, `disproved` with a
+  counterexample replayed through the evaluator, `unknown`, `unsupported`, and `W7002` for a
+  proof over an impossible path) and records statuses in the manifest; `sakura build` then
+  drops a proved `ensures`/`where` check only while its MAC-authenticated proof still matches the
+  code. `[verify] rlimit` in `sakura.toml` sets the solver budget.
 - `sakura test --record`, `Http.recording`, `Llm.replay` and `Test.fixtures` support
   scoped cassette recording and offline replay. Example fixtures are explicitly synthetic.
 - Scoped escape diagnostics `V6002`/`V6003`, foreign-capability FFI rejection `V6001`,
