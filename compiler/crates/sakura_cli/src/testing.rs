@@ -44,6 +44,8 @@ pub fn emit(
     // A build without tests emits no `__tests__.js`; one from an earlier build (say with
     // `--contracts`) must not run instead.
     let _ = std::fs::remove_file(out_dir.join("__tests__.js"));
+    // Nor may a `--target wasm` build's tests in the same directory.
+    let _ = std::fs::remove_file(out_dir.join(crate::wasm::TESTS));
     for (rel, text) in &files {
         write(rel, text).map_err(Err)?;
     }
@@ -108,9 +110,14 @@ pub fn run_node_tests(
             .env("SAKURA_RECORD", "1")
             .env("SAKURA_PERMISSIONS", permissions.to_string());
     }
-    cmd.arg("--max-old-space-size=1024")
-        .arg(dir.join("__sakura_test__.js"))
-        .arg(seed.to_string())
+    cmd.arg("--max-old-space-size=1024");
+    // A `--target wasm` build runs its module's tests through the WASM host.
+    if dir.join(crate::wasm::TESTS).exists() {
+        cmd.args(crate::wasm::test_runner(&dir));
+    } else {
+        cmd.arg(dir.join("__sakura_test__.js"));
+    }
+    cmd.arg(seed.to_string())
         .arg(filter)
         .arg(snapshots)
         .arg(if update { "1" } else { "0" })

@@ -12,6 +12,8 @@ use crate::{EXIT_ERRORS, report, usage_error};
 
 pub const MODULE: &str = "main.wasm";
 pub const HOST: &str = "sakura_wasm_host.js";
+/// Written beside the module when it has tests (as the JS target's `__tests__.js`).
+pub const TESTS: &str = "__tests__.wasm";
 
 /// `@external(js, …)` in a user package: the WASM backend has no JS to call (design §17.81).
 /// Std's externals are the runtime's builtins, which this backend implements or reports at
@@ -83,6 +85,11 @@ pub fn build(
             .map_err(|e| usage_error(format!("{}: {e}", path.display())))
     };
     write(MODULE, &bytes)?;
+    // A marker that the module has tests; one from an earlier build must not linger.
+    let _ = std::fs::remove_file(out_dir.join(TESTS));
+    if !lir.tests.is_empty() {
+        write(TESTS, b"")?;
+    }
     for (name, text) in sakura_codegen_wasm::HOST_FILES {
         write(name, text.as_bytes())?;
     }
@@ -111,6 +118,12 @@ pub fn build(
         report(json, snapshot, &diags, &[], !then);
     }
     Ok(out_dir.to_path_buf())
+}
+
+/// The arguments before `<seed> <filter> <snapshot-dir> <update>` that run the module's tests.
+pub fn test_runner(dir: &Path) -> Vec<std::ffi::OsString> {
+    let abs = |p: PathBuf| std::path::absolute(&p).unwrap_or(p).into_os_string();
+    vec![abs(dir.join(HOST)), "--test".into(), abs(dir.join(MODULE))]
 }
 
 /// The node command line that runs `main` of the module built into `dir`.

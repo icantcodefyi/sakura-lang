@@ -164,8 +164,12 @@ enum Command {
         /// Run the embedded std library's own tests instead of a project's.
         #[arg(long, conflicts_with = "paths")]
         std: bool,
-        #[arg(long, default_value = "target/sakura/js")]
-        out_dir: PathBuf,
+        /// `js`, or `wasm` (the module's tests on node through `sakura_wasm_host.js`).
+        #[arg(long, default_value = "js", value_parser = ["js", "wasm"])]
+        target: String,
+        /// Where the build goes [default: target/sakura/<target>].
+        #[arg(long)]
+        out_dir: Option<PathBuf>,
         #[arg(long, hide = true)]
         no_direct: bool,
         paths: Vec<PathBuf>,
@@ -389,6 +393,7 @@ fn dispatch(command: Command) -> ExitCode {
             json,
             flags,
             std,
+            target,
             out_dir,
             no_direct,
             paths,
@@ -398,8 +403,10 @@ fn dispatch(command: Command) -> ExitCode {
             } else {
                 load(&paths)
             };
+            let out_dir = out_dir.unwrap_or_else(|| Path::new("target/sakura").join(&target));
+            let wasm = target == "wasm";
             match snapshot {
-                Ok(snapshot) => test(json, &flags, &out_dir, &snapshot, std, !no_direct),
+                Ok(snapshot) => test(json, &flags, &out_dir, &snapshot, std, !no_direct, wasm),
                 Err(e) => usage_error(e),
             }
         }
@@ -698,6 +705,7 @@ fn test(
     snapshot: &Snapshot,
     std_tests: bool,
     direct: bool,
+    wasm: bool,
 ) -> ExitCode {
     // Design §17.73, §17.102: recording reaches exactly the manifest's `net` hosts, so it needs
     // some, and its default `Env` reads exactly the manifest's `env` keys.
@@ -732,11 +740,24 @@ fn test(
         direct,
         all_fns: false,
     };
-    let dir = match build(json, snapshot, out_dir, opts, true) {
+    if wasm && (record || contracts) {
+        return usage_error("`--record` and `--contracts` need `--target js`");
+    }
+    let built = if wasm {
+        wasm::build(json, snapshot, out_dir, &opts, true)
+    } else {
+        build(json, snapshot, out_dir, opts, true)
+    };
+    let dir = match built {
         Ok(d) => d,
         Err(code) => return code,
     };
-    if !dir.join("__tests__.js").exists() {
+    let has_tests = if wasm {
+        dir.join(wasm::TESTS).exists()
+    } else {
+        dir.join("__tests__.js").exists()
+    };
+    if !has_tests {
         if json {
             println!("{}", testing::no_tests_summary(seed));
         } else {
