@@ -135,7 +135,7 @@ With `--frozen-specs <symbols|all>`, `sakura check` and `sakura fix` compare sel
 
 ## Error codes
 
-Codes are `V` + a phase digit + three digits for errors, `W` for warnings, and `D` for runtime defects. Codes are never reused or renumbered; retired codes stay documented. `sakura explain <code>` reads the diagnostic registry. Explanations include guidance and, for some codes, wrong/fixed examples; generated per-code website pages are planned.
+Codes are `V` + a phase digit + three digits for errors, `W` for warnings, and `D` for runtime defects. Codes are never reused or renumbered; retired codes stay documented. `sakura explain <code>` reads the diagnostic registry. Each code has a generated [error page](/docs/errors) with its explanation, a program that triggers it and, for most codes, the fixed program; `explanation_uri` (`sakura://explain/<code>`) maps to `/docs/errors/<code>`, and `sakura explain` prints that URL after its text.
 
 | Phase digit | Area | Examples |
 | --- | --- | --- |

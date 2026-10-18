@@ -1,6 +1,9 @@
 //! `cargo run -p agent_docs [-- --check]`: writes the agent-facing references from the compiler's
 //! own sources (design §17.142): the `sakura` skill's `references/` and the signature listing of
-//! `compiler/std/INDEX.md`. `--check` writes nothing and exits 1 when any output is stale.
+//! `compiler/std/INDEX.md`, and the error-code pages (design §17.144, [`errors`]). `--check`
+//! writes nothing and exits 1 when any output is stale or an error page has no code.
+
+mod errors;
 
 mod cookbook;
 
@@ -37,6 +40,14 @@ fn main() -> ExitCode {
         }
     };
     let mut stale = Vec::new();
+    for rel in orphans(&root, &outputs) {
+        if check {
+            stale.push(rel);
+        } else {
+            std::fs::remove_file(root.join(&rel)).unwrap();
+            eprintln!("removed {rel}");
+        }
+    }
     for (rel, bytes) in &outputs {
         let path = root.join(rel);
         if std::fs::read(&path).ok().as_deref() == Some(bytes.as_slice()) {
@@ -75,6 +86,19 @@ fn main() -> ExitCode {
     ExitCode::FAILURE
 }
 
+/// Files in the generated error-page directory that the generator does not write: a page whose
+/// code left the registry.
+fn orphans(root: &Path, outputs: &agent_docs::Files) -> Vec<String> {
+    let mut found: Vec<String> = std::fs::read_dir(root.join(errors::DIR))
+        .into_iter()
+        .flatten()
+        .filter_map(|e| Some(format!("{}/{}", errors::DIR, e.ok()?.file_name().to_str()?)))
+        .filter(|rel| !outputs.contains_key(rel))
+        .collect();
+    found.sort();
+    found
+}
+
 /// Every generated file, as `(path relative to the repository, contents)`.
 fn outputs(root: &Path) -> Result<agent_docs::Files, String> {
     let read = |rel: &str| {
@@ -109,6 +133,9 @@ fn outputs(root: &Path) -> Result<agent_docs::Files, String> {
     let commit = agent_docs::source_commit(root)?;
     for (name, bytes) in agent_docs::distribution(&skill, env!("CARGO_PKG_VERSION"), &commit)? {
         out.insert(format!("website/public/skills/{name}"), bytes);
+    }
+    for (rel, text) in errors::pages(root)? {
+        out.insert(rel, text.into_bytes());
     }
     Ok(out)
 }
@@ -233,7 +260,13 @@ mod tests {
     #[test]
     fn outputs_are_fresh() {
         let root = super::repo();
-        for (rel, bytes) in super::outputs(&root).unwrap() {
+        let outputs = super::outputs(&root).unwrap();
+        let orphans = super::orphans(&root, &outputs);
+        assert!(
+            orphans.is_empty(),
+            "error pages without a code: {orphans:?}"
+        );
+        for (rel, bytes) in outputs {
             let on_disk = std::fs::read(root.join(&rel)).unwrap_or_default();
             assert!(
                 on_disk == bytes,

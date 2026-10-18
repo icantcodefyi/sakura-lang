@@ -13,6 +13,7 @@
     "...cookbook",
     "---Reference---",
     "stdlib",
+    "errors",
     "roadmap",
     "prior-art",
     "faq"
