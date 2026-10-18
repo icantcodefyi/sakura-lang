@@ -1203,3 +1203,39 @@ fn verify_warns_w7002_on_a_vacuous_obligation() {
     assert_eq!(w["severity"], "warning");
     assert_eq!(recs.last().unwrap()["warnings"], 1);
 }
+
+/// `--dump core` prints the user modules' Core with the JS interval pass's verdicts (design
+/// §17.114): `fib`'s `n - 1` and `n - 2` are proved by `n < 2` failing, the sum is not.
+#[test]
+fn build_dump_core_marks_proved_operations() {
+    let dir = tmp(
+        "dump-core",
+        "fn fib(n: Int) -> Int { if n < 2 { n } else { fib(n - 1) + fib(n - 2) } }\n\
+         pub fn main() -> Unit ! {Console} { Console.print(\"{fib(20)}\") }\n",
+    );
+    let out = sakura(&["build", "--dump", "core", "main.sakura"], &dir);
+    assert_eq!(out.code, Some(0), "{}", out.stderr);
+    let fib: String = out
+        .stdout
+        .lines()
+        .skip_while(|l| !l.starts_with("fn fib"))
+        .take_while(|l| *l != "}")
+        .map(|l| format!("{l}\n"))
+        .collect();
+    assert_eq!(
+        fib,
+        "fn fib#2(n%0: Int) -> Int {
+  let t%1: Bool = lt(int)(n%0, 2)
+  if t%1 {
+    ret n%0
+  } else {
+    let t%3: Int = intsub(n%0, 1) proved
+    let r%4: Int = call @fib#2(t%3)
+    let t%5: Int = intsub(n%0, 2) proved
+    let r%6: Int = call @fib#2(t%5)
+    let t%7: Int = intadd(r%4, r%6)
+    ret t%7
+  }
+"
+    );
+}

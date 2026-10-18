@@ -3,6 +3,7 @@
 use std::fmt::{self, Write};
 
 use crate::ir::*;
+use crate::opt::ranges::{self, Profile};
 
 impl fmt::Display for Module {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -11,6 +12,8 @@ impl fmt::Display for Module {
             def: None,
             out: String::new(),
             depth: 0,
+            profile: None,
+            proved: Vec::new(),
         };
         p.module();
         f.write_str(&p.out)
@@ -20,11 +23,19 @@ impl fmt::Display for Module {
 impl Module {
     /// The defs of one source module only (for snapshots and `--dump core` of user code).
     pub fn display_module(&self, module: &str) -> String {
+        self.display_module_for(module, None)
+    }
+
+    /// [`Module::display_module`] with each `Int` operation the interval pass proves for
+    /// `profile` marked `proved` (design §17.114; `--dump core`).
+    pub fn display_module_for(&self, module: &str, profile: Option<Profile>) -> String {
         let mut p = Printer {
             m: self,
             def: None,
             out: String::new(),
             depth: 0,
+            profile,
+            proved: Vec::new(),
         };
         for (i, d) in self.defs.iter().enumerate() {
             if d.module == module {
@@ -41,6 +52,9 @@ struct Printer<'a> {
     def: Option<&'a FnDef>,
     out: String,
     depth: usize,
+    profile: Option<Profile>,
+    /// The interval pass's verdict per local of `def` under `profile`.
+    proved: Vec<bool>,
 }
 
 impl<'a> Printer<'a> {
@@ -132,6 +146,9 @@ impl<'a> Printer<'a> {
 
     fn def(&mut self, id: DefId, d: &'a FnDef) {
         self.def = Some(d);
+        self.proved = self
+            .profile
+            .map_or_else(Vec::new, |p| ranges::analyze(d, p));
         let kind = match &d.kind {
             FnKind::Top { export: true } => "pub fn".to_owned(),
             FnKind::Top { export: false } => "fn".to_owned(),
@@ -318,7 +335,12 @@ impl<'a> Printer<'a> {
             Expr::Let {
                 local, bind, body, ..
             } => {
-                let line = format!("let {} = {}", self.decl(*local), self.bind(bind));
+                let proved = if self.proved.get(local.index()) == Some(&true) {
+                    " proved"
+                } else {
+                    ""
+                };
+                let line = format!("let {} = {}{proved}", self.decl(*local), self.bind(bind));
                 self.line(&line);
                 self.expr(body);
             }

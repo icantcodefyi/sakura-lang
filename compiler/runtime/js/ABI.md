@@ -259,7 +259,7 @@ suspend; `timeout` is std code over `race`. `clock_virtual_sleep(now, ms, $ctx, 
 |---|---|
 | `Unit` | `undefined` |
 | `Bool`, `Float` | boolean, number |
-| `Int` | number, always a safe integer; `$rt.add/sub/mul/div/rem/neg` check every operation |
+| `Int` | number, always a safe integer; `$rt.add/sub/mul/div/rem/neg` check every operation the interval pass does not prove (`opt::ranges`, design §17.114), which is emitted as the raw operator (`a * b + 0`, `(a - a % b) / b + 0` and `a % b + 0` keep `-0` out) |
 | `String` | string; `String.len` and offsets are UTF-8 bytes, `Ord` is code point order. `String.len` is O(n) over the JS string (nothing is cached, design §17.116): hoist it out of loops |
 | `Bytes` | `Uint8Array`, never mutated |
 | tuple | array |

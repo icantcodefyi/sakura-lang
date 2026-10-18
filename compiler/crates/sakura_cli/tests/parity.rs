@@ -27,6 +27,10 @@ const KNOWN: &[(&str, &str)] = &[
         "JS stops with D003 beyond ±(2^53−1); Int is i64 on WASM (§17.80), no @wasm variant yet",
     ),
     (
+        "arith_ranges_counter_overflow.sakura",
+        "JS stops with D003 beyond ±(2^53−1); Int is i64 on WASM (§17.80), no @wasm variant yet",
+    ),
+    (
         "defect_D003_js_unsafe_integer.sakura",
         "a JS-only defect (§17.80): WASM computes the i64 result",
     ),

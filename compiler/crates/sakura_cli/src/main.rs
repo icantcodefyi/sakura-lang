@@ -106,7 +106,9 @@ enum Command {
         manifest: bool,
         /// Print a compiler fact instead of writing JS. `direct`: every def and lambda as
         /// `direct` or `cps(<reason>)`, reasons `row`, `callee <name>`, `closure-call`,
-        /// `perform <Effect.op>`, `with`, `try`, `fail`, `recursion` (design §17.111).
+        /// `perform <Effect.op>`, `with`, `try`, `fail`, `recursion` (design §17.111). `core`:
+        /// the user modules' Core, each `Int` operation the JS interval pass proves marked
+        /// `proved` (design §17.114).
         #[arg(long, value_enum)]
         dump: Option<Dump>,
         /// Force the CPS ABI for the whole program (design §17.111; the semantics suite runs
@@ -230,6 +232,7 @@ enum Command {
 #[derive(Clone, Copy, clap::ValueEnum)]
 enum Dump {
     Direct,
+    Core,
 }
 
 /// `sakura test` options that shape the run (besides what to build and where).
@@ -340,8 +343,15 @@ fn dispatch(command: Command) -> ExitCode {
                 direct: !no_direct,
                 ..BuildOptions::default()
             };
-            if let Some(Dump::Direct) = dump {
-                return match Analysis::dump_direct(&snapshot, &opts) {
+            if let Some(dump) = dump {
+                let text = match dump {
+                    Dump::Direct => Analysis::dump_direct(&snapshot, &opts),
+                    Dump::Core => {
+                        let (m, diags) = Analysis::lower_core(&snapshot, &opts);
+                        (m.map(|m| dump_core(&m)), diags)
+                    }
+                };
+                return match text {
                     (Some(text), _) => {
                         print!("{text}");
                         Ok(())
@@ -603,6 +613,20 @@ fn build_lir(
         report(json, snapshot, &diags, &[], true);
     }
     Ok(())
+}
+
+/// `--dump core`: the Core of every non-std module, `Int` operations marked for the JS profile.
+fn dump_core(m: &sakura_core::Module) -> String {
+    let modules: std::collections::BTreeSet<&str> = m
+        .defs
+        .iter()
+        .map(|d| d.module.as_str())
+        .filter(|module| !module.starts_with("std"))
+        .collect();
+    modules
+        .into_iter()
+        .map(|module| m.display_module_for(module, Some(sakura_core::opt::ranges::Profile::Js)))
+        .collect()
 }
 
 /// Writes `target/sakura/manifest.json` for a build emitted into `dir`.

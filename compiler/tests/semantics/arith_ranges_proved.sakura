@@ -1,0 +1,35 @@
+// milestone: M3
+// covers: design §17.114 (interval pass); performance-r1 WS-P4
+
+// Operations the JS interval pass proves, at the edges of ±(2^53−1). Each must give exactly the
+// checked result; `arith_ranges_counter_overflow.sakura` is the unproved twin of `up`.
+fn up(from: Int) -> Int {
+  var i = from
+  while i < 9_007_199_254_740_991 { i = i + 1 }
+  i
+}
+
+fn down(from: Int) -> Int {
+  var i = from
+  while i > -9_007_199_254_740_991 { i = i - 1 }
+  i
+}
+
+fn pred(n: Int) -> Int { if n < 2 { n } else { n - 1 } }
+
+fn steps(n: Int) -> Int {
+  var total = 0
+  for k in 1..n { total = total + 100 / k + 100 % k }
+  total
+}
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("{up(9_007_199_254_740_988)} {down(-9_007_199_254_740_988)}")
+  Console.print("{pred(9_007_199_254_740_991)} {pred(-9_007_199_254_740_991)}")
+  Console.print("{(-7) / 2} {(-7) % 2} {7 / -2} {7 % -2} {(-9_007_199_254_740_991) / -1}")
+  // A zero result is +0: `-0` would show as `-Infinity` here.
+  Console.print(
+    "{1.0 / Int.to_float((-4) % 2)} {1.0 / Int.to_float((-3) * 0)} {1.0 / Int.to_float((-1) / 2)}",
+  )
+  Console.print("{steps(6)}")
+}

@@ -1,0 +1,15 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D003
+// covers: design §17.114 (interval pass); performance-r1 WS-P4
+
+// `i <= MAX` lets the counter reach the end of the JS range, so `i + 1` keeps its check and the
+// last step defects. The proved twin (`i < MAX`) is `up` in `arith_ranges_proved.sakura`.
+pub fn main() -> Unit ! {Console} {
+  var i = 9_007_199_254_740_989
+  while i <= 9_007_199_254_740_991 {
+    Console.print("{i}")
+    i = i + 1
+  }
+  Console.print("never printed")
+}

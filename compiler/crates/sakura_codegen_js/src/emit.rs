@@ -336,6 +336,8 @@ struct FnEmit<'a> {
     closures: Closures,
     ns: &'a RefCell<BTreeSet<String>>,
     pool: &'a Pool,
+    /// Locals bound by an `Int` operation the interval pass proves (design §17.114).
+    proved: Vec<bool>,
 }
 
 impl<'a> FnEmit<'a> {
@@ -387,6 +389,7 @@ impl<'a> FnEmit<'a> {
             closures: direct::closures(def),
             ns,
             pool,
+            proved: sakura_core::opt::ranges::analyze(def, sakura_core::opt::ranges::Profile::Js),
         };
         e.analyze_labels();
         e
@@ -865,7 +868,7 @@ impl<'a> FnEmit<'a> {
         let xs = self.name(x).to_owned();
         let rhs = match bind {
             Bind::Atom(a) => self.atom(a),
-            Bind::Prim(op, args) => self.prim(op, args),
+            Bind::Prim(op, args) => self.prim(op, args, self.proved[x.index()]),
             Bind::Call(f @ Atom::Global(d), args) => {
                 if let Some(site) = self.site_for(f, pos) {
                     w.line(&site);
@@ -1140,7 +1143,8 @@ impl<'a> FnEmit<'a> {
         }
     }
 
-    fn prim(&mut self, op: &PrimOp, args: &[Atom]) -> String {
+    /// `proved`: the operation cannot leave ±(2^53−1) or divide by zero, so it needs no check.
+    fn prim(&mut self, op: &PrimOp, args: &[Atom], proved: bool) -> String {
         let a: Vec<String> = args.iter().map(|x| self.atom(x)).collect();
         let bin = |o: &str| format!("({} {o} {})", a[0], a[1]);
         let cmp = |t: &CmpTy, o: &str| match t {
@@ -1152,6 +1156,12 @@ impl<'a> FnEmit<'a> {
             _ => bin(if neg { "!==" } else { "===" }),
         };
         match op {
+            // `+ 0` turns a `-0` into `0`, as the runtime's checked versions do.
+            PrimOp::IntAdd if proved => bin("+"),
+            PrimOp::IntSub if proved => bin("-"),
+            PrimOp::IntMul if proved => format!("({} * {} + 0)", a[0], a[1]),
+            PrimOp::IntDiv if proved => format!("(({0} - {0} % {1}) / {1} + 0)", a[0], a[1]),
+            PrimOp::IntRem if proved => format!("({} % {} + 0)", a[0], a[1]),
             PrimOp::IntAdd => format!("$rt.add({}, {})", a[0], a[1]),
             PrimOp::IntSub => format!("$rt.sub({}, {})", a[0], a[1]),
             PrimOp::IntMul => format!("$rt.mul({}, {})", a[0], a[1]),

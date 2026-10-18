@@ -4,6 +4,10 @@
 //! - Self tail calls become jumps to a loop header, so tail-recursive functions run as loops
 //!   (and, when pure, as direct-style JS loops). A call inside a `Handle` or `Try` region is
 //!   not a tail call: the region must stay installed while the callee runs.
+//!
+//! [`ranges`] is not a rewrite: backends run it at emission for their `Int` range.
+
+pub mod ranges;
 
 use crate::ir::*;
 
