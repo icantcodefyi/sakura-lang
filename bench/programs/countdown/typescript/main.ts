@@ -1,0 +1,11 @@
+// Matched lane allows loops here (plan §2.1): the same sums, in the same order.
+export function run(n: number) {
+  let acc = 0;
+  for (let i = n; i > 0; i--) acc += i;
+  let even = true;
+  for (let i = n; i > 0; i--) even = !even;
+  return acc + (even ? 1 : 0);
+}
+
+import { main } from "../../_shared/typescript/runner.ts";
+if (import.meta.main) await main(run, 1000000);
