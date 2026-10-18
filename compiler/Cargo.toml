@@ -25,6 +25,7 @@ sakura_eval = { path = "tools/sakura_eval" }
 sakura_lir = { path = "crates/sakura_lir" }
 sakura_mcp = { path = "crates/sakura_mcp" }
 sakura_lsp = { path = "crates/sakura_lsp" }
+sakura_codegen_wasm = { path = "crates/sakura_codegen_wasm" }
 
 # External crates. Add new ones here and use `dep.workspace = true` in crates.
 rowan = "0.16.1"
@@ -47,6 +48,7 @@ tokio = { version = "1.53.3", features = ["rt-multi-thread", "macros", "io-std",
 lsp-server = "0.10.0"
 lsp-types = "0.97.0"
 wasmparser = { version = "0.262.0", default-features = false, features = ["std", "validate", "features"] }
+wasm-encoder = { version = "0.262.0", default-features = false, features = ["std", "wasmparser"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
