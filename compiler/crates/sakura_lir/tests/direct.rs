@@ -133,6 +133,7 @@ fn lir_facts_agree_with_dump_direct() {
         // Fixtures that do not check (`mode: check` negatives) have no Core; everything else
         // is compared.
         assert!(compared >= 150, "only {compared} programs compared");
+        eprintln!("{compared} of {} programs compared", programs.len());
         // The whole dump is pinned by `sakura_cli/tests/snapshots/micro.direct`.
         assert!(
             micro_dump.contains("main::main::fib direct\n"),
