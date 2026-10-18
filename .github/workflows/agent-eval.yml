@@ -27,6 +27,10 @@ on:
       tasks:
         description: "Comma-separated task ids, or all"
         default: all
+      input_caps:
+        description: "Paired aggregate input caps, comma-separated"
+        required: true
+        default: "40000,60000"
       conditions:
         description: "Conditions"
         default: baseline,skill
@@ -71,12 +75,13 @@ jobs:
           PRICES_B: ${{ inputs.prices_b }}
           TASKS: ${{ inputs.tasks }}
           CONDITIONS: ${{ inputs.conditions }}
+          INPUT_CAPS: ${{ inputs.input_caps }}
         run: |
           python3 evals/agent-dx/harness/runner.py run \
             --sakura compiler/target/release/sakura --backend live \
             --budget-usd "$BUDGET_USD" --approved-by "$APPROVED_BY" \
             --model "$MODEL_A=$PRICES_A" --model "$MODEL_B=$PRICES_B" \
-            --tasks "$TASKS" --conditions "$CONDITIONS" \
+            --tasks "$TASKS" --conditions "$CONDITIONS" --input-caps "$INPUT_CAPS" \
             --run-id "gh-$GITHUB_RUN_ID" --out "$RUNNER_TEMP/agent-eval"
       - name: Commit the spend ledger
         if: always()
