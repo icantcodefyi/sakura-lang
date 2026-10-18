@@ -77,8 +77,9 @@ Kinds include `conflict`, `unknown_snapshot`, `unknown_patch`, `spec_frozen`,
 `fix_requires_review` and `internal_error`. A compiler crash inside a tool is reported as
 `internal_error` and the session continues.
 
-`compiler_info` returns `compiler`, `version`, `schema_version`, `edition`, `tools`,
-`features`, `workspace_root`, `manifest` and `lock_digest`. Capabilities describe the
+`compiler_info` returns `compiler`, `version`, `commit` (the source commit a release build
+was stamped with, else `null`), `schema_version`, `edition`, `tools`, `features`,
+`workspace_root`, `manifest` and `lock_digest`. Capabilities describe the
 running build: `backends` includes `wasm` when compiled in, `verify: true` reports
 CLI verification support with solver availability/version status, and
 `test_execution` reports whether the server has a test runner. A missing solver

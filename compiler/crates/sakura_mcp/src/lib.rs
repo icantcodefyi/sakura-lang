@@ -299,6 +299,7 @@ impl SakuraServer {
         CallToolResult::structured(json!({
             "compiler": "sakura",
             "version": env!("CARGO_PKG_VERSION"),
+            "commit": option_env!("SAKURA_GIT_COMMIT"),
             "schema_version": SCHEMA_VERSION,
             "edition": "2026",
             "tools": tools,

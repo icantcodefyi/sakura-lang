@@ -54,6 +54,23 @@ fn check_patch_apply_and_test_over_stdio() {
     assert_eq!(features["backends"], json!(targets), "{info}");
     assert_eq!(features["verify"], true, "{info}");
     assert_eq!(features["test_execution"], true, "{info}");
+    // The release stamp (design §17.147): the same commit `--version` prints, `null` unstamped.
+    assert_eq!(info["version"], env!("CARGO_PKG_VERSION"), "{info}");
+    assert_eq!(
+        info["commit"],
+        json!(option_env!("SAKURA_GIT_COMMIT")),
+        "{info}"
+    );
+    let version = std::process::Command::new(env!("CARGO_BIN_EXE_sakura"))
+        .arg("--version")
+        .output()
+        .unwrap();
+    let version = String::from_utf8(version.stdout).unwrap();
+    let want = match option_env!("SAKURA_GIT_COMMIT") {
+        Some(commit) => format!("sakura {} ({commit})\n", env!("CARGO_PKG_VERSION")),
+        None => format!("sakura {}\n", env!("CARGO_PKG_VERSION")),
+    };
+    assert_eq!(version, want);
     let solver = &features["solver"];
     assert_eq!(solver["name"], "z3", "{info}");
     let z3_found = std::process::Command::new("z3")

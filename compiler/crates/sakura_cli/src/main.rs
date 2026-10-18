@@ -33,10 +33,19 @@ const EXIT_PERMISSION: u8 = 75;
 /// per-test watchdog (worker threads) when long suites need it.
 const TEST_TIME_LIMIT: Duration = Duration::from_secs(120);
 
+/// `sakura --version`: the crate version, and the commit when the build was stamped with
+/// `SAKURA_GIT_COMMIT` (release builds, design §17.147).
+fn version() -> &'static str {
+    match option_env!("SAKURA_GIT_COMMIT") {
+        Some(commit) => format!("{} ({commit})", env!("CARGO_PKG_VERSION")).leak(),
+        None => env!("CARGO_PKG_VERSION"),
+    }
+}
+
 #[derive(Parser)]
 #[command(
     name = "sakura",
-    version,
+    version = version(),
     about = "The Sakura Lang compiler and toolchain"
 )]
 struct Cli {
