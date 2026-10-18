@@ -1,26 +1,25 @@
-// UUIDs in canonical lowercase `8-4-4-4-12` hex form.
+// UUIDs in canonical lowercase `8-4-4-4-12` hex form. A refinement rather than an opaque
+// type (design §17.130): the invariant is a predicate over the text, so `Json.decode` and
+// `Cli.parse` read a `Uuid` from a string and check it.
 
-/// Built only by `parse`, `from_canonical` and `Random.uuid()`.
-pub opaque type Uuid = Uuid(String)
+pub type Uuid = String where is_canonical(it)
 
 pub error UuidError(input: String)
 
-pub fn to_string(u: Uuid) -> String {
-  match u {
-    Uuid(s) => s,
-  }
-}
+pub fn to_string(u: Uuid) -> String { u }
 
 /// Accepts the `8-4-4-4-12` form in either case; stores it lowercase.
 pub fn parse(text: String) -> Result<Uuid, UuidError> {
-  let lower = String.to_lower(text)
-  if is_canonical(lower) { Ok(Uuid(lower)) } else { Err(UuidError { input: text }) }
+  match Uuid.validate(String.to_lower(text)) {
+    Ok(u) => Ok(u),
+    Err(_) => Err(UuidError { input: text }),
+  }
 }
 
-/// For text already in canonical form, such as a generator's output.
+/// For text already in canonical form, such as a generator's output: the generated `from`.
 pub fn from_canonical(text: String) -> Uuid
   requires is_canonical(text)
-{ Uuid(text) }
+{ Uuid.from(text) }
 
 /// Lowercase hex in the `8-4-4-4-12` form.
 @total
@@ -28,7 +27,9 @@ pub fn is_canonical(text: String) -> Bool {
   let cs = String.chars(text)
   List.len(cs) == 36
     && List.all(List.enumerate(cs), fn(ic) {
-      if ic.0 == 8 || ic.0 == 13 || ic.0 == 18 || ic.0 == 23 { ic.1 == "-" } else {
+      if ic.0 == 8 || ic.0 == 13 || ic.0 == 18 || ic.0 == 23 {
+        ic.1 == "-"
+      } else {
         String.contains("0123456789abcdef", ic.1)
       }
     })

@@ -1,3 +1,5 @@
 // milestone: M1
 // expect: V1006
-fn forged() -> Uuid { Uuid("not-a-uuid") }
+import std/html.{Html}
+
+fn forged() -> Html { Html("<script>evil()</script>") }

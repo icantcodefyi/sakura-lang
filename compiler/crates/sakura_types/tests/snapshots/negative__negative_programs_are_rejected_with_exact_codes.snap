@@ -1,6 +1,5 @@
 ---
 source: crates/sakura_types/tests/negative.rs
-assertion_line: 313
 expression: transcript
 ---
 ## wrong result type
@@ -155,11 +154,11 @@ V3001 7:51 handler clause `next` performs `Fail<A>`, which the handler's type do
   actual: {Fail<A>}
 
 ## reading a field of an opaque type outside its module
-V1006 8:27 `Decimal` is opaque: its constructors and fields are private to module `std/decimal`
+V1006 8:34 `Query` is opaque: its constructors and fields are private to module `std/sql`
   Definition in std declared `pub opaque` here
 
 ## updating a field of an opaque type outside its module
-V1006 8:42 `Decimal` is opaque: its constructors and fields are private to module `std/decimal`
+V1006 8:50 `Query` is opaque: its constructors and fields are private to module `std/sql`
   Definition in std declared `pub opaque` here
 
 ## calling a function field of an opaque type outside its module

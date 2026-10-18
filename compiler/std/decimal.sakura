@@ -4,14 +4,23 @@
 // Digits are held in `Int`, so a value with more digits than `Int` holds is a defect like any
 // `Int` overflow. Interpolation shows the record form; use `to_string` for display.
 
-/// `whole` is the floor of the value and `frac` the digits of the rest, which lies in [0, 1),
-/// without trailing zeros: -1.25 is `{ whole: -2, frac: [7, 5] }`. This field order is what
-/// makes the derived `Ord` numeric.
-pub opaque type Decimal = { whole: Int, frac: List<Int> }
+/// `whole` is the floor of the value and `frac` the digits of the rest, which lies in [0, 1):
+/// -1.25 is `{ whole: -2, frac: [7, 5] }`. This field order is what makes the derived `Ord`
+/// numeric. Its JSON form is the record, so `Json.decode` reads a `Decimal` and checks it.
+pub type DecimalRepr = { whole: Int, frac: List<Int> }
+
+/// A refinement rather than an opaque type (design §17.130): canonical form is a predicate.
+pub type Decimal = DecimalRepr where is_canonical(it)
+
+/// Every `frac` element is a digit and the last is not 0.
+@total
+pub fn is_canonical(d: DecimalRepr) -> Bool {
+  List.all(d.frac, fn(x) { x >= 0 && x <= 9 }) && List.last(d.frac) != Some(0)
+}
 
 pub error DecimalError(input: String)
 
-pub fn from_int(n: Int) -> Decimal { Decimal { whole: n, frac: [] } }
+pub fn from_int(n: Int) -> Decimal { Decimal.from(DecimalRepr { whole: n, frac: [] }) }
 
 pub fn zero() -> Decimal { from_int(0) }
 
@@ -129,7 +138,7 @@ fn from_units(u: Int, scale: Int) -> Decimal {
     )
   }
   while List.last(frac) == Some(0) { frac = List.slice(frac, 0, List.len(frac) - 1) }
-  Decimal { whole, frac }
+  Decimal.from(DecimalRepr { whole, frac })
 }
 
 fn d(text: String) -> Decimal {
@@ -177,4 +186,12 @@ test "round and div_checked round half to even" {
   expect_eq(div_checked(d("2"), d("-3"), 2).map(to_string), Some("-0.67"))
   expect_eq(div_checked(d("10"), d("0.25"), 0).map(to_string), Some("40"))
   expect_eq(div_checked(d("1"), zero(), 2), None)
+}
+
+fn decoded(text: String) -> Decimal { Json.decode(text).unwrap_or(from_int(-999_999)) }
+
+test "decodes the record form and checks canonical form" {
+  expect_eq(decoded("\{\"whole\":-2,\"frac\":[7,5]\}"), d("-1.25"))
+  expect_eq(decoded("\{\"whole\":1,\"frac\":[5,0]\}"), from_int(-999_999))
+  expect_eq(decoded("\{\"whole\":1,\"frac\":[12]\}"), from_int(-999_999))
 }

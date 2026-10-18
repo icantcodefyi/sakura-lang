@@ -701,6 +701,8 @@ fn prim(module: &Module, op: &PrimOp, args: &[Value]) -> R<Value> {
     use Value::*;
     let bad = || Stop::Internal(format!("bad operands for {op:?}: {args:?}"));
     Ok(match (op, args) {
+        // Schemas feed the JSON codec, which the evaluator does not implement.
+        (Schema(_), _) => return Err(Stop::Unsupported("schemas (Json codecs)".into())),
         (IntAdd, [Int(a), Int(b)]) => checked(a.checked_add(*b), "+")?,
         (IntSub, [Int(a), Int(b)]) => checked(a.checked_sub(*b), "-")?,
         (IntMul, [Int(a), Int(b)]) => checked(a.checked_mul(*b), "*")?,

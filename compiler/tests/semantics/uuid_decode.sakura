@@ -1,0 +1,23 @@
+// milestone: M3
+// covers: Refinement
+// spec: §4.3, §10.3, §17.130
+
+// `Uuid` is a refinement of `String` (§17.130), so `Json.decode` reads one from a string and
+// runs its predicate: canonical text decodes, anything else is a typed `DecodeError`.
+import std/json.{DecodeError}
+import std/uuid.{Uuid}
+
+type Ref = { id: Uuid }
+
+fn read(text: String) -> Result<Ref, DecodeError> { Json.decode(text) }
+
+pub fn main() -> Unit ! {Console} {
+  match read("\{\"id\": \"6ba7b810-9dad-11d1-80b4-00c04fd430c8\"\}") {
+    Ok(r) => Console.print("ok {Uuid.to_string(r.id)}"),
+    Err(e) => Console.print("unexpected {e.path}: {e.message}"),
+  }
+  match read("\{\"id\": \"nope\"\}") {
+    Ok(_) => Console.print("unexpected ok"),
+    Err(e) => Console.print("DecodeError at {e.path}"),
+  }
+}

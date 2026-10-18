@@ -158,12 +158,12 @@ const CASES: &[(&str, &str, &[&str])] = &[
     ),
     (
         "reading a field of an opaque type outside its module",
-        "import std/decimal.{Decimal}\nfn f(d: Decimal) -> Int { d.whole }",
+        "import std/sql.{Query}\nfn f(q: Query<Unit>) -> String { q.text }",
         &["V1006"],
     ),
     (
         "updating a field of an opaque type outside its module",
-        "import std/decimal.{Decimal}\nfn f(d: Decimal) -> Decimal { var x = d; x.whole = 1; x }",
+        "import std/sql.{Query}\nfn f(q: Query<Unit>) -> Query<Unit> { var x = q; x.text = \"drop table t\"; x }",
         &["V1006"],
     ),
     (

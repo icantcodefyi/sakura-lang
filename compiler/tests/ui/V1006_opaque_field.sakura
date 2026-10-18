@@ -1,5 +1,5 @@
 // milestone: M1
 // expect: V1006
-import std/decimal.{Decimal}
+import std/sql.{Query}
 
-fn whole(d: Decimal) -> Int { d.whole }
+fn text(q: Query<Unit>) -> String { q.text }

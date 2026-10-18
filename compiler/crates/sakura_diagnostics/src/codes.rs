@@ -168,9 +168,9 @@ private item `pub` (an interface change) or use a public API; build and read an 
 through the functions its module exports.
 
 Wrong:
-    fn make() -> Uuid { Uuid(\"not checked\") }
+    fn make() -> Html { Html(\"<b>not escaped</b>\") }
 Fixed:
-    fn make() -> Result<Uuid, UuidError> { Uuid.parse(text) }";
+    fn make() -> Html { Html.text(\"<b>escaped</b>\") }";
 
     V1007 "wrong_kind" RESOLVE,
 "A name resolved to the wrong kind of item for where it is used: an effect where a type is

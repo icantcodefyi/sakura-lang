@@ -2051,7 +2051,7 @@ export function random_host() {
       (_i, lo, hi, _ctx, k) => ret(k, random_int(lo, hi)),
       (_i, _ctx, k) => ret(k, random_float()),
       (_i, n, _ctx, k) => ret(k, random_bytes(n)),
-      (_i, _ctx, k) => ret(k, variant("std::uuid::Uuid", 0, [random_uuid()])),
+      (_i, _ctx, k) => ret(k, random_uuid()),
     ],
     [],
   );
