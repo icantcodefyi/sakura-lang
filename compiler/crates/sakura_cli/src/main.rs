@@ -118,7 +118,10 @@ enum Command {
         /// `direct` or `cps(<reason>)`, reasons `row`, `callee <name>`, `closure-call`,
         /// `perform <Effect.op>`, `with`, `try`, `fail`, `recursion` (design §17.111). `core`:
         /// the user modules' Core, each `Int` operation the JS interval pass proves marked
-        /// `proved` (design §17.114).
+        /// `proved` (design §17.114) and each in-place update `owned`. `owned`: each consuming
+        /// site of an owned-capable update as `owned` or `shared(<reason>)`, reasons `origin`,
+        /// `borrowed-after`, `captured`, `stored`, `escapes-call <name>`, `join` (design
+        /// §17.149).
         #[arg(long, value_enum)]
         dump: Option<Dump>,
         /// Force the CPS ABI for the whole program (design §17.111; the semantics suite runs
@@ -256,6 +259,7 @@ enum Command {
 enum Dump {
     Direct,
     Core,
+    Owned,
 }
 
 /// `sakura test` options that shape the run (besides what to build and where).
@@ -474,6 +478,10 @@ fn dispatch(command: Command) -> ExitCode {
                     Dump::Core => {
                         let (m, diags) = Analysis::lower_core(&snapshot, &opts);
                         (m.map(|m| dump_core(&m)), diags)
+                    }
+                    Dump::Owned => {
+                        let (m, diags) = Analysis::lower_core(&snapshot, &opts);
+                        (m.map(|m| dump_owned(&m)), diags)
                     }
                 };
                 return match text {
@@ -764,6 +772,21 @@ fn dump_core(m: &sakura_core::Module) -> String {
     modules
         .into_iter()
         .map(|module| m.display_module_for(module, Some(sakura_core::opt::ranges::Profile::Js)))
+        .collect()
+}
+
+/// `--dump owned`: each consuming site of every non-std module, `owned` or `shared(<reason>)`
+/// (design §17.149).
+fn dump_owned(m: &sakura_core::Module) -> String {
+    let modules: std::collections::BTreeSet<&str> = m
+        .defs
+        .iter()
+        .map(|d| d.module.as_str())
+        .filter(|module| !module.starts_with("std"))
+        .collect();
+    modules
+        .into_iter()
+        .map(|module| sakura_core::opt::owned::display_module(m, module))
         .collect()
 }
 

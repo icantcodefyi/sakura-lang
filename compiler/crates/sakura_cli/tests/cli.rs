@@ -1263,6 +1263,66 @@ fn build_dump_core_marks_proved_operations() {
     );
 }
 
+/// `--dump owned` lists each consuming site of an owned-capable update as `owned` or
+/// `shared(<reason>)` with the fixed reason set, and each consuming def (design §17.149).
+#[test]
+fn build_dump_owned_gives_each_site_and_reason() {
+    let dir = tmp(
+        "dump-owned",
+        "fn keep(xs: List<Int>) -> Int { List.len(xs) }\n\
+         \n\
+         fn grow(xs: List<Int>) -> List<Int> { List.push(xs, 1) }\n\
+         \n\
+         fn pick(xs: List<Int>, flag: Bool) -> List<Int> {\n\
+           let ys = if flag { xs } else { [1, 2] }\n\
+           List.push(ys, 3)\n\
+         }\n\
+         \n\
+         pub fn main() -> Unit ! {Console} {\n\
+           var a: List<Int> = []\n\
+           a = List.push(a, 1)\n\
+           let b = List.range(0, 3)\n\
+           let f = fn() { List.len(b) }\n\
+           let b2 = List.push(b, 1)\n\
+           let c = List.range(0, 3)\n\
+           let box = [c]\n\
+           let c2 = List.push(c, 1)\n\
+           let d = List.range(0, 3)\n\
+           let n = keep(d)\n\
+           let d2 = List.push(d, 1)\n\
+           let e = List.range(0, 3)\n\
+           let e2 = List.push(e, 1)\n\
+           Console.print(\"{a} {f()} {b2} {box} {c2} {n} {d2} {e} {e2} {grow([0])} {pick([], true)}\")\n\
+         }\n",
+    );
+    let out = sakura(&["build", "--dump", "owned", "main.sakura"], &dir);
+    assert_eq!(out.code, Some(0), "{}", out.stderr);
+    assert_eq!(
+        out.stdout,
+        "fn main
+  r%1 = list_push(xs%0) owned
+  r%4 = list_push(r%2) shared(captured)
+  r%7 = list_push(r%5) shared(stored)
+  r%10 = list_push(r%8) shared(escapes-call keep)
+  r%12 = list_push(r%11) shared(borrowed-after)
+  r%41 = grow(xs%40) owned
+  r%46 = pick(xs%45) owned
+fn grow consumes xs
+  r%1 = list_push(xs%0) shared(origin)
+fn pick consumes xs
+  r%4 = list_push(v%2) shared(join)
+"
+    );
+    // `--dump core` marks the same owned sites.
+    let core = sakura(&["build", "--dump", "core", "main.sakura"], &dir);
+    assert!(
+        core.stdout
+            .contains("let r%1: List<Int> = call $list_push(xs%0, 1) owned"),
+        "{}",
+        core.stdout
+    );
+}
+
 /// `--dump core` shows a `requires` seeding the interval pass (design §17.154): `countdown`'s
 /// `sum_tail` with `requires n >= 0` proves `n - 1` past the check, and `acc + n` stays checked.
 #[test]
