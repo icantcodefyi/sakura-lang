@@ -484,3 +484,19 @@ language/diagnostic questions are recorded in `compiler/REQUESTS.md`. A small
 post-pilot skill wording change encourages bounded, targeted retrieval; it was
 not the skill evaluated in this run. Historical implementation entries above
 record their status at authoring time.
+
+### DX5 (round 14, §17.182): skill size bar and the next run
+
+1. **`SKILL.md` ≤ 7,500 bytes, ASCII**, pinned by a `sakura_cli` test; the cuts are named in
+   §17.182 (1) (provenance paragraph to one sentence, `audit`/`verify` paragraph to one sentence,
+   the bundle-history sentences dropped); the four examples, the edit loop and the syntax list stay.
+2. **Messages**: `V1002`'s `Type.member` form gains the prefix rule (`List.lenght` → `len`,
+   `suggested` fix only) and `explain V1002` names the `len` convention; `V2002` names the callee
+   as written (`List.map` (std/list)). Message text only; codes, schema and spans unchanged.
+3. **Runner and workflow**: `--max-episodes` (default 48, per approved run) replaces the all-runs
+   constant; the dollar ledger stays the only cross-run rail; `agent-eval.yml` gains `input_caps`
+   (default `40000,60000`), `seed` and `max_episodes`; the §17.165 (3) harness changes land first.
+4. **Next run**: tasks 03, 04 and 10 × 2 conditions × 2 models × 2 caps = 24 episodes per seed,
+   worst case $5.04 per seed (inside the $5.80 remaining). Seed 1 needs a fresh owner key and the
+   owner's written approval of that worst case; seed 2 needs the owner to raise the eval total.
+   No paid call before both exist.
