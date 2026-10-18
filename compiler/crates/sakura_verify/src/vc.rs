@@ -944,6 +944,10 @@ impl<'m> Gen<'m> {
                 path.region = path.region.saturating_sub(1);
                 Val::Unit
             }
+            // `opt`'s rewrite of `eq(any)` (design §17.183), read as the equality it replaces.
+            Bind::Call(Atom::Builtin(n), _) if n == "tag_eq" => {
+                self.havoc(&name, &ty, "structural equality")
+            }
             Bind::Call(Atom::Builtin(n), _) => self.havoc(&name, &ty, format!("builtin `${n}`")),
             Bind::Call(callee, args) => {
                 let vs: Vec<Val> = args.iter().map(|a| self.atom(f, a)).collect();

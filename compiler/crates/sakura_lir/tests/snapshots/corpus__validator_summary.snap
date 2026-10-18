@@ -102,6 +102,8 @@ semantics/show_format: 3 funcs, 13 blocks, 2 dup, 35 drop, valid
 semantics/sql_untrusted_param: 16 funcs, 112 blocks, 10 dup, 52 drop, valid
 semantics/std_collections: 32 funcs, 194 blocks, 55 dup, 146 drop, valid
 semantics/strings_and_interpolation: 3 funcs, 10 blocks, 0 dup, 17 drop, valid
+semantics/tag_eq: 13 funcs, 57 blocks, 1 dup, 94 drop, valid
+semantics/tag_eq_defect: 3 funcs, 10 blocks, 0 dup, 5 drop, valid
 semantics/trace_decode_then_spawn: 7 funcs, 27 blocks, 3 dup, 25 drop, valid
 semantics/tuples: 3 funcs, 9 blocks, 1 dup, 29 drop, valid
 semantics/type_aliases: 4 funcs, 10 blocks, 0 dup, 7 drop, valid

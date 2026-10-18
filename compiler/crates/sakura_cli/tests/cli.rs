@@ -1939,3 +1939,36 @@ fn build_dump_core_fuses_get_expect() {
         "{lines:#?}"
     );
 }
+
+/// `--dump core` shows `opt`'s tag compare (design §17.183): `==`/`!=` on a type whose
+/// constructors have no fields, or against a field-less constructor, is `tag_eq`; payloads on
+/// both sides, records and generic code keep `eq(any)`.
+#[test]
+fn build_dump_core_compares_tags() {
+    let dir = tmp(
+        "dump-core-tags",
+        "type Dir = NoDir | Forward\n\
+         type Shape = Empty | Circle(Int)\n\
+         type Con = { dir: Dir }\n\
+         fn same(a: Dir, b: Dir) -> Bool { a != b }\n\
+         fn empty(s: Shape) -> Bool { s == Empty }\n\
+         fn shapes(a: Shape, b: Shape) -> Bool { a == b }\n\
+         fn cons(a: Con, b: Con) -> Bool { a == b }\n\
+         fn generic<T: Eq>(a: T, b: T) -> Bool { a == b }\n\
+         pub fn main() -> Unit ! {Console} { Console.print(\"{same(NoDir, Forward)} \
+         {empty(Empty)} {shapes(Empty, Empty)} {cons(Con { dir: NoDir }, Con { dir: NoDir })} \
+         {generic(1, 1)}\") }\n",
+    );
+    let out = sakura(&["build", "--dump", "core", "main.sak"], &dir);
+    assert_eq!(out.code, Some(0), "{}", out.stderr);
+    let lines: Vec<&str> = out.stdout.lines().map(str::trim).collect();
+    let has = |s: &str| lines.contains(&s);
+    assert!(has("let t%3: Bool = call $tag_eq(a%0, b%1)"), "{lines:#?}");
+    assert!(has("let t%2: Bool = not(t%3)"), "{lines:#?}");
+    assert!(has("let t%2: Bool = call $tag_eq(s%0, v%1)"), "{lines:#?}");
+    let structural = lines
+        .iter()
+        .filter(|l| **l == "let t%2: Bool = eq(any)(a%0, b%1)")
+        .count();
+    assert_eq!(structural, 3, "{lines:#?}");
+}

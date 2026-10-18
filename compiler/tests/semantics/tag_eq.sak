@@ -1,0 +1,63 @@
+// milestone: M3
+// covers: performance-r1 WS-P11a; design §17.183 item 1 (equality decided by constructor tags)
+// spec: §17.183
+
+// `opt` lowers `==`/`!=` to a tag compare when the operands' type has no constructor fields
+// (`Dir`), or when one side is a field-less constructor (`Empty`, `None`). Payload-carrying
+// constructors on both sides, records, lists, tuples and generic code keep structural
+// equality. Every comparison prints the same result either way.
+
+type Dir = NoDir | Forward | Backward
+
+type Shape = Empty | Circle(Int) | Rect(Int, Int)
+type Con = { dir: Dir, strength: Int }
+
+fn same(a: Dir, b: Dir) -> Bool { a == b }
+
+fn not_forward(d: Dir) -> Bool { d != Forward }
+
+fn is_empty(s: Shape) -> Bool { s == Empty }
+
+fn not_empty(s: Shape) -> Bool { s != Empty }
+
+fn shapes(a: Shape, b: Shape) -> Bool { a == b }
+
+fn cons(a: Con, b: Con) -> Bool { a == b }
+
+fn dirs(a: List<Dir>, b: List<Dir>) -> Bool { a == b }
+
+fn pairs(a: (Dir, Int), b: (Dir, Int)) -> Bool { a == b }
+
+fn generic<T: Eq>(a: T, b: T) -> Bool { a == b }
+
+fn absent(o: Option<Int>) -> Bool { o == None }
+
+fn flip(d: Dir) -> Dir {
+  if d == Forward { Backward } else if d == Backward { Forward } else { NoDir }
+}
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("{same(Forward, Forward)} {same(Forward, Backward)} {same(NoDir, NoDir)}")
+  Console.print("{not_forward(Forward)} {not_forward(NoDir)}")
+  Console.print(
+    "{is_empty(Empty)} {is_empty(Circle(0))} {not_empty(Rect(1, 2))} {not_empty(Empty)}",
+  )
+  Console.print(
+    "{shapes(Circle(1), Circle(1))} {shapes(Circle(1), Circle(2))} {shapes(Empty, Empty)}",
+  )
+  let c = Con { dir: Forward, strength: 1 }
+  Console.print(
+    "{cons(c, Con { dir: Forward, strength: 1 })} {cons(c, Con { ..c, dir: Backward })}",
+  )
+  Console.print("{dirs([Forward, NoDir], [Forward, NoDir])} {dirs([Forward], [Backward])}")
+  Console.print("{pairs((Forward, 1), (Forward, 1))} {pairs((Forward, 1), (NoDir, 1))}")
+  Console.print("{generic(Forward, Forward)} {generic(Forward, NoDir)}")
+  Console.print("{absent(None)} {absent(Some(0))}")
+  var d = Forward
+  var flips = 0
+  while flips < 1001 {
+    d = flip(d)
+    flips = flips + 1
+  }
+  Console.print("{d == Backward} {d != NoDir}")
+}

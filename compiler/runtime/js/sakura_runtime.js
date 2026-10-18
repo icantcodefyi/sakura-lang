@@ -839,6 +839,11 @@ export function eq(a, b) {
   return true;
 }
 
+/** `eq` of two values of one variant type when constructor tags decide it (design §17.183). */
+export function tag_eq(a, b) {
+  return a.tag === b.tag;
+}
+
 /** Total order: -1, 0, 1. Floats order NaN last. ponytail: recursive in nesting depth. */
 export function cmp(a, b) {
   switch (typeof a) {

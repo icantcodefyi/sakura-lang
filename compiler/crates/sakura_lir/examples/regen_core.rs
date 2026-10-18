@@ -259,6 +259,7 @@ fn builtin_sigs() -> String {
         ("list_at", "(ptr, i64) -> word"),
         ("list_get_expect", "(ptr, i64, ptr) -> word"),
         ("map_get_expect", "(ptr, word, ptr) -> word"),
+        ("tag_eq", "(ptr, ptr) -> bool"),
         ("contract_enter", "() -> unit"),
         ("contract_exit", "() -> unit"),
         ("match_failure", "() -> unit"),

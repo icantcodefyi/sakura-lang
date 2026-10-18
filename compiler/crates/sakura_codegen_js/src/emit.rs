@@ -1369,6 +1369,13 @@ impl<'a> FnEmit<'a> {
                     self.site_arg(f, pos)
                 )
             }
+            Bind::Call(Atom::Builtin(name), args) if name == "tag_eq" => {
+                format!(
+                    "({}.tag === {}.tag)",
+                    self.atom(&args[0]),
+                    self.atom(&args[1])
+                )
+            }
             Bind::Call(Atom::Builtin(name), args) => {
                 let owned = if self.owned.owned(x) { "_owned" } else { "" };
                 format!("$rt.{name}{owned}({})", self.atoms(args))
@@ -2037,6 +2044,7 @@ const TOTAL: &[&str] = &[
     "int_abs",
     "int_to_float",
     "float_is_nan",
+    "tag_eq",
 ];
 
 /// Does every path from `e` reach a `contract_exit` (collected in `exits`) without a bind that

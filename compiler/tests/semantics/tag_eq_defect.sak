@@ -1,0 +1,16 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D030
+// covers: Defect
+// spec: §17.183
+
+// A defect on the branch a tag compare selects is raised as before: `D030` with the message.
+
+type Dir = NoDir | Forward | Backward
+
+fn pick(d: Dir) -> Int { if d != Backward { 1 } else { Option.expect(None, "not backward") } }
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("{pick(Forward)}")
+  Console.print("{pick(Backward)}")
+}

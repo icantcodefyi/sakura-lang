@@ -81,6 +81,8 @@ pub(crate) fn call(m: &mut Machine, name: &str, args: Vec<Value>, hs: &Rc<Handle
         };
     }
     let v = match (name, args.as_slice()) {
+        // `opt`'s tag compare (design §17.183) is defined as the equality it replaces.
+        ("tag_eq", [a, b]) => Bool(equal(a, b)),
         ("list_empty", []) => list(vec![]),
         ("list_len", [List(xs)]) => Int(xs.len() as i64),
         ("list_get", [List(xs), Int(i)]) => {

@@ -14,6 +14,7 @@
 //!   found by [`handlers::bind`] (design §17.113).
 //! - `list_get`/`map_get` whose `Option` only feeds the next binding's `option_expect` become
 //!   one checked read, `list_get_expect`/`map_get_expect` (design §17.151).
+//! - Equality that only constructor tags decide becomes `tag_eq` ([`tags`], design §17.183).
 //!
 //! [`ranges`] is not a rewrite: backends run it at emission for their `Int` range, and
 //! [`owned`] at emission for in-place updates (design §17.149).
@@ -27,11 +28,13 @@ use std::collections::{BTreeSet, HashMap};
 pub mod handlers;
 pub mod owned;
 pub mod proved;
+pub mod tags;
 
 pub fn optimize(m: &mut Module) {
     handlers::inline_constructors(m);
     for i in 0..m.defs.len() {
         fuse_expect(&mut m.defs[i]);
+        tags::rewrite(&m.types, &mut m.defs[i]);
         let mut returns = HashMap::new();
         return_joins(&m.defs[i].body, &mut returns);
         thread_jumps(&mut m.defs[i].body, &returns);

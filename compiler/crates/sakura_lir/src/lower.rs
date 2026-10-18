@@ -1325,6 +1325,9 @@ impl<'c, 'a> Fl<'c, 'a> {
                         let (ps, r) = self.cx.direct_sig(*d)?;
                         (Callee::Direct(FuncId(*d)), ps, r)
                     }
+                    Atom::Builtin(n) if n == "tag_eq" => {
+                        return Ok(Step::Value(self.tag_eq(b, env, args, &name)?));
+                    }
                     Atom::Builtin(n) => {
                         let (sig, cps) = self.cx.sig(n)?;
                         if !cps {
@@ -1622,6 +1625,34 @@ impl<'c, 'a> Fl<'c, 'a> {
             dst,
             shape,
             args: vs,
+        }))
+    }
+
+    /// `opt`'s `tag_eq(a, b)` (design §17.183): two tag reads and an integer compare.
+    fn tag_eq(&mut self, b: BlockId, env: &Env, args: &[Atom], name: &str) -> R<Var> {
+        let [a, _] = args else {
+            return Err("tag_eq takes two operands".into());
+        };
+        let Atom::Local(l) = a else {
+            return Err("tag_eq of a non-local".into());
+        };
+        let core::Ty::Adt(t, _) = &self.def.locals[*l as usize].ty else {
+            return Err("tag_eq of a non-variant".into());
+        };
+        let layout = self.cx.layout(*t)?;
+        let mut tags = Vec::new();
+        for a in args {
+            let v = self.atom_as(b, env, a, Repr::Ptr)?;
+            tags.push(self.b.fresh(b, "tag", Repr::I64, |dst| Inst::Tag {
+                dst,
+                src: v,
+                of: TagOf::Ctor(layout),
+            }));
+        }
+        Ok(self.b.fresh(b, name, Repr::Bool, |dst| Inst::Prim {
+            dst,
+            op: PrimOp::Cmp(CmpOp::Eq, CmpKind::Int),
+            args: tags,
         }))
     }
 

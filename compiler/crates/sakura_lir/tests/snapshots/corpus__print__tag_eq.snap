@@ -1,0 +1,445 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::tag_eq::Con | Con 32b (dir: word*, strength: i64)
+layout 1 variant main::tag_eq::Dir | NoDir 16b () | Forward 16b () | Backward 16b ()
+layout 2 variant main::tag_eq::Shape | Empty 16b () | Circle 24b (i64) | Rect 32b (i64, i64)
+layout 3 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 4 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 5 shape |  32b (word*, word*)
+layout 6 shape |  32b (i64, word*)
+layout 7 shape |  32b (word*, i64)
+
+fn main#0 pub top -> unit ; main::tag_eq, frame 48 slots [%2 bool, %8 bool, %9 word*, %16 bool, %17 word*, %20 bool, %23 bool, %28 bool, %29 word*, %32 bool, %35 bool, %41 bool, %42 word*, %50 bool, %51 word*, %57 bool, %58 word*, %61 bool, %67 bool, %75 bool, %76 word*, %83 bool, %84 word*, %87 bool, %95 bool, %96 word*, %103 bool, %104 word*, %107 bool, %115 bool, %123 bool, %124 word*, %127 bool, %135 bool, %145 bool, %146 word*, %149 bool, %153 bool, %159 bool, %160 word*, %163 bool, %166 bool, %173 bool, %174 word*, %177 bool, %196 bool, %210 word*, %211 i64]
+  b0():
+    %0 v: ptr = const static main::tag_eq::Dir.Forward
+    %1 v: ptr = const static main::tag_eq::Dir.Forward
+    call same#2(%0, %1) -> b1()
+  b1(%2 r: bool):
+    %3 s: ptr = show %2
+    %4 lit: ptr = const str 0
+    %5 s: ptr = concat %3, %4
+    drop %3
+    drop %4
+    %6 v: ptr = const static main::tag_eq::Dir.Forward
+    %7 v: ptr = const static main::tag_eq::Dir.Backward
+    call same#2(%6, %7) -> b2(%5)
+  b2(%8 r: bool, %9 s: ptr):
+    %10 s: ptr = show %8
+    %11 s: ptr = concat %9, %10
+    drop %9
+    drop %10
+    %12 lit: ptr = const str 0
+    %13 s: ptr = concat %11, %12
+    drop %11
+    drop %12
+    %14 v: ptr = const static main::tag_eq::Dir.NoDir
+    %15 v: ptr = const static main::tag_eq::Dir.NoDir
+    call same#2(%14, %15) -> b3(%13)
+  b3(%16 r: bool, %17 s: ptr):
+    %18 s: ptr = show %16
+    %19 s: ptr = concat %17, %18
+    drop %17
+    drop %18
+    perform std::console::Console.print(%19) -> b4()
+  b4(%20 r: unit):
+    %21 box: word = box %20
+    drop %21
+    %22 v: ptr = const static main::tag_eq::Dir.Forward
+    call not_forward#3(%22) -> b5()
+  b5(%23 r: bool):
+    %24 s: ptr = show %23
+    %25 lit: ptr = const str 0
+    %26 s: ptr = concat %24, %25
+    drop %24
+    drop %25
+    %27 v: ptr = const static main::tag_eq::Dir.NoDir
+    call not_forward#3(%27) -> b6(%26)
+  b6(%28 r: bool, %29 s: ptr):
+    %30 s: ptr = show %28
+    %31 s: ptr = concat %29, %30
+    drop %29
+    drop %30
+    perform std::console::Console.print(%31) -> b7()
+  b7(%32 r: unit):
+    %33 box: word = box %32
+    drop %33
+    %34 v: ptr = const static main::tag_eq::Shape.Empty
+    call is_empty#4(%34) -> b8()
+  b8(%35 r: bool):
+    %36 s: ptr = show %35
+    %37 lit: ptr = const str 0
+    %38 s: ptr = concat %36, %37
+    drop %36
+    drop %37
+    %39 lit: i64 = const 0
+    %40 r: ptr = alloc main::tag_eq::Shape.Circle(%39)
+    call is_empty#4(%40) -> b9(%38)
+  b9(%41 r: bool, %42 s: ptr):
+    %43 s: ptr = show %41
+    %44 s: ptr = concat %42, %43
+    drop %42
+    drop %43
+    %45 lit: ptr = const str 0
+    %46 s: ptr = concat %44, %45
+    drop %44
+    drop %45
+    %47 lit: i64 = const 1
+    %48 lit: i64 = const 2
+    %49 r: ptr = alloc main::tag_eq::Shape.Rect(%47, %48)
+    call not_empty#5(%49) -> b10(%46)
+  b10(%50 r: bool, %51 s: ptr):
+    %52 s: ptr = show %50
+    %53 s: ptr = concat %51, %52
+    drop %51
+    drop %52
+    %54 lit: ptr = const str 0
+    %55 s: ptr = concat %53, %54
+    drop %53
+    drop %54
+    %56 v: ptr = const static main::tag_eq::Shape.Empty
+    call not_empty#5(%56) -> b11(%55)
+  b11(%57 r: bool, %58 s: ptr):
+    %59 s: ptr = show %57
+    %60 s: ptr = concat %58, %59
+    drop %58
+    drop %59
+    perform std::console::Console.print(%60) -> b12()
+  b12(%61 r: unit):
+    %62 box: word = box %61
+    drop %62
+    %63 lit: i64 = const 1
+    %64 r: ptr = alloc main::tag_eq::Shape.Circle(%63)
+    %65 lit: i64 = const 1
+    %66 r: ptr = alloc main::tag_eq::Shape.Circle(%65)
+    call shapes#6(%64, %66) -> b13()
+  b13(%67 r: bool):
+    %68 s: ptr = show %67
+    %69 lit: ptr = const str 0
+    %70 s: ptr = concat %68, %69
+    drop %68
+    drop %69
+    %71 lit: i64 = const 1
+    %72 r: ptr = alloc main::tag_eq::Shape.Circle(%71)
+    %73 lit: i64 = const 2
+    %74 r: ptr = alloc main::tag_eq::Shape.Circle(%73)
+    call shapes#6(%72, %74) -> b14(%70)
+  b14(%75 r: bool, %76 s: ptr):
+    %77 s: ptr = show %75
+    %78 s: ptr = concat %76, %77
+    drop %76
+    drop %77
+    %79 lit: ptr = const str 0
+    %80 s: ptr = concat %78, %79
+    drop %78
+    drop %79
+    %81 v: ptr = const static main::tag_eq::Shape.Empty
+    %82 v: ptr = const static main::tag_eq::Shape.Empty
+    call shapes#6(%81, %82) -> b15(%80)
+  b15(%83 r: bool, %84 s: ptr):
+    %85 s: ptr = show %83
+    %86 s: ptr = concat %84, %85
+    drop %84
+    drop %85
+    perform std::console::Console.print(%86) -> b16()
+  b16(%87 r: unit):
+    %88 box: word = box %87
+    drop %88
+    %89 v: ptr = const static main::tag_eq::Dir.Forward
+    %90 lit: i64 = const 1
+    %91 rec: ptr = alloc main::tag_eq::Con(%89, %90)
+    %92 v: ptr = const static main::tag_eq::Dir.Forward
+    %93 lit: i64 = const 1
+    %94 rec: ptr = alloc main::tag_eq::Con(%92, %93)
+    dup %91
+    call cons#7(%91, %94) -> b17(%91)
+  b17(%95 r: bool, %96 rec: ptr):
+    %97 s: ptr = show %95
+    %98 lit: ptr = const str 0
+    %99 s: ptr = concat %97, %98
+    drop %97
+    drop %98
+    %100 v: ptr = const static main::tag_eq::Dir.Backward
+    %101 strength: i64 = proj %96.1 main::tag_eq::Con
+    %102 rec: ptr = alloc main::tag_eq::Con(%100, %101)
+    call cons#7(%96, %102) -> b18(%99)
+  b18(%103 r: bool, %104 s: ptr):
+    %105 s: ptr = show %103
+    %106 s: ptr = concat %104, %105
+    drop %104
+    drop %105
+    perform std::console::Console.print(%106) -> b19()
+  b19(%107 r: unit):
+    %108 box: word = box %107
+    drop %108
+    %109 v: ptr = const static main::tag_eq::Dir.Forward
+    %110 v: ptr = const static main::tag_eq::Dir.NoDir
+    %111 xs: ptr = alloc list(%109, %110)
+    %112 v: ptr = const static main::tag_eq::Dir.Forward
+    %113 v: ptr = const static main::tag_eq::Dir.NoDir
+    %114 xs: ptr = alloc list(%112, %113)
+    call dirs#8(%111, %114) -> b20()
+  b20(%115 r: bool):
+    %116 s: ptr = show %115
+    %117 lit: ptr = const str 0
+    %118 s: ptr = concat %116, %117
+    drop %116
+    drop %117
+    %119 v: ptr = const static main::tag_eq::Dir.Forward
+    %120 xs: ptr = alloc list(%119)
+    %121 v: ptr = const static main::tag_eq::Dir.Backward
+    %122 xs: ptr = alloc list(%121)
+    call dirs#8(%120, %122) -> b21(%118)
+  b21(%123 r: bool, %124 s: ptr):
+    %125 s: ptr = show %123
+    %126 s: ptr = concat %124, %125
+    drop %124
+    drop %125
+    perform std::console::Console.print(%126) -> b22()
+  b22(%127 r: unit):
+    %128 box: word = box %127
+    drop %128
+    %129 v: ptr = const static main::tag_eq::Dir.Forward
+    %130 lit: i64 = const 1
+    %131 tup: ptr = alloc tuple#7(word, i64)(%129, %130)
+    %132 v: ptr = const static main::tag_eq::Dir.Forward
+    %133 lit: i64 = const 1
+    %134 tup: ptr = alloc tuple#7(word, i64)(%132, %133)
+    call pairs#9(%131, %134) -> b23()
+  b23(%135 r: bool):
+    %136 s: ptr = show %135
+    %137 lit: ptr = const str 0
+    %138 s: ptr = concat %136, %137
+    drop %136
+    drop %137
+    %139 v: ptr = const static main::tag_eq::Dir.Forward
+    %140 lit: i64 = const 1
+    %141 tup: ptr = alloc tuple#7(word, i64)(%139, %140)
+    %142 v: ptr = const static main::tag_eq::Dir.NoDir
+    %143 lit: i64 = const 1
+    %144 tup: ptr = alloc tuple#7(word, i64)(%142, %143)
+    call pairs#9(%141, %144) -> b24(%138)
+  b24(%145 r: bool, %146 s: ptr):
+    %147 s: ptr = show %145
+    %148 s: ptr = concat %146, %147
+    drop %146
+    drop %147
+    perform std::console::Console.print(%148) -> b25()
+  b25(%149 r: unit):
+    %150 box: word = box %149
+    drop %150
+    %151 v: ptr = const static main::tag_eq::Dir.Forward
+    %152 v: ptr = const static main::tag_eq::Dir.Forward
+    call generic#10(%151, %152) -> b26()
+  b26(%153 r: bool):
+    %154 s: ptr = show %153
+    %155 lit: ptr = const str 0
+    %156 s: ptr = concat %154, %155
+    drop %154
+    drop %155
+    %157 v: ptr = const static main::tag_eq::Dir.Forward
+    %158 v: ptr = const static main::tag_eq::Dir.NoDir
+    call generic#10(%157, %158) -> b27(%156)
+  b27(%159 r: bool, %160 s: ptr):
+    %161 s: ptr = show %159
+    %162 s: ptr = concat %160, %161
+    drop %160
+    drop %161
+    perform std::console::Console.print(%162) -> b28()
+  b28(%163 r: unit):
+    %164 box: word = box %163
+    drop %164
+    %165 v: ptr = const static std::option::Option.None
+    call absent#11(%165) -> b29()
+  b29(%166 r: bool):
+    %167 s: ptr = show %166
+    %168 lit: ptr = const str 0
+    %169 s: ptr = concat %167, %168
+    drop %167
+    drop %168
+    %170 lit: i64 = const 0
+    %171 box: word = box %170
+    %172 r: ptr = alloc std::option::Option.Some(%171)
+    call absent#11(%172) -> b30(%169)
+  b30(%173 r: bool, %174 s: ptr):
+    %175 s: ptr = show %173
+    %176 s: ptr = concat %174, %175
+    drop %174
+    drop %175
+    perform std::console::Console.print(%176) -> b31()
+  b31(%177 r: unit):
+    %178 box: word = box %177
+    drop %178
+    %179 v: ptr = const static main::tag_eq::Dir.Forward
+    %216 lit: i64 = const 0
+    jump b34(%179, %216)
+  b32(%180 d: ptr, %181 flips: i64):
+    %182 v: ptr = const static main::tag_eq::Dir.Backward
+    %183 tag: i64 = tag %180 ctor main::tag_eq::Dir
+    %184 tag: i64 = tag %182 ctor main::tag_eq::Dir
+    drop %182
+    %185 t: bool = eq.int %183, %184
+    %186 s: ptr = show %185
+    %187 lit: ptr = const str 0
+    %188 s: ptr = concat %186, %187
+    drop %186
+    drop %187
+    %189 v: ptr = const static main::tag_eq::Dir.NoDir
+    %190 tag: i64 = tag %180 ctor main::tag_eq::Dir
+    drop %180
+    %191 tag: i64 = tag %189 ctor main::tag_eq::Dir
+    drop %189
+    %192 t: bool = eq.int %190, %191
+    %193 t: bool = not %192
+    %194 s: ptr = show %193
+    %195 s: ptr = concat %188, %194
+    drop %188
+    drop %194
+    perform std::console::Console.print(%195) -> b33()
+  b33(%196 r: unit):
+    %197 box: word = box %196
+    %198 unbox: unit = unbox %197
+    drop %197
+    ret %198
+  b34(%199 d: ptr, %200 flips: i64):
+    %201 lit: i64 = const 1001
+    %202 t: bool = lt.int %200, %201
+    if %202 then b36(%199, %200) else b37(%199, %200)
+  b35(%203 v: word, %204 d: ptr, %205 flips: i64):
+    drop %203
+    jump b34(%204, %205)
+  b36(%206 d: ptr, %207 flips: i64):
+    call flip#12(%206) -> b38(%207)
+  b37(%208 d: ptr, %209 flips: i64):
+    jump b32(%208, %209)
+  b38(%210 r: ptr, %211 flips: i64):
+    %212 lit: i64 = const 1
+    %213 t: i64 = intadd %211, %212
+    %214 lit: unit = const ()
+    %215 box: word = box %214
+    jump b35(%215, %210, %213)
+
+fn $entry#1 top -> unit ; main::tag_eq, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn same#2 top -> bool ; main::tag_eq, frame 2 slots [%0 word*, %1 word*]
+  b0(%0 a: ptr, %1 b: ptr):
+    %2 tag: i64 = tag %0 ctor main::tag_eq::Dir
+    drop %0
+    %3 tag: i64 = tag %1 ctor main::tag_eq::Dir
+    drop %1
+    %4 t: bool = eq.int %2, %3
+    ret %4
+
+fn not_forward#3 top -> bool ; main::tag_eq, frame 1 slots [%0 word*]
+  b0(%0 d: ptr):
+    %1 v: ptr = const static main::tag_eq::Dir.Forward
+    %2 tag: i64 = tag %0 ctor main::tag_eq::Dir
+    drop %0
+    %3 tag: i64 = tag %1 ctor main::tag_eq::Dir
+    drop %1
+    %4 t: bool = eq.int %2, %3
+    %5 t: bool = not %4
+    ret %5
+
+fn is_empty#4 top -> bool ; main::tag_eq, frame 1 slots [%0 word*]
+  b0(%0 s: ptr):
+    %1 v: ptr = const static main::tag_eq::Shape.Empty
+    %2 tag: i64 = tag %0 ctor main::tag_eq::Shape
+    drop %0
+    %3 tag: i64 = tag %1 ctor main::tag_eq::Shape
+    drop %1
+    %4 t: bool = eq.int %2, %3
+    ret %4
+
+fn not_empty#5 top -> bool ; main::tag_eq, frame 1 slots [%0 word*]
+  b0(%0 s: ptr):
+    %1 v: ptr = const static main::tag_eq::Shape.Empty
+    %2 tag: i64 = tag %0 ctor main::tag_eq::Shape
+    drop %0
+    %3 tag: i64 = tag %1 ctor main::tag_eq::Shape
+    drop %1
+    %4 t: bool = eq.int %2, %3
+    %5 t: bool = not %4
+    ret %5
+
+fn shapes#6 top -> bool ; main::tag_eq, frame 2 slots [%0 word*, %1 word*]
+  b0(%0 a: ptr, %1 b: ptr):
+    %2 t: bool = eq.any %0, %1
+    drop %0
+    drop %1
+    ret %2
+
+fn cons#7 top -> bool ; main::tag_eq, frame 2 slots [%0 word*, %1 word*]
+  b0(%0 a: ptr, %1 b: ptr):
+    %2 t: bool = eq.any %0, %1
+    drop %0
+    drop %1
+    ret %2
+
+fn dirs#8 top -> bool ; main::tag_eq, frame 2 slots [%0 word*, %1 word*]
+  b0(%0 a: ptr, %1 b: ptr):
+    %2 t: bool = eq.any %0, %1
+    drop %0
+    drop %1
+    ret %2
+
+fn pairs#9 top -> bool ; main::tag_eq, frame 2 slots [%0 word*, %1 word*]
+  b0(%0 a: ptr, %1 b: ptr):
+    %2 t: bool = eq.any %0, %1
+    drop %0
+    drop %1
+    ret %2
+
+fn generic#10 top -> bool ; main::tag_eq, frame 2 slots [%0 word*, %1 word*]
+  b0(%0 a: word, %1 b: word):
+    %2 t: bool = eq.any %0, %1
+    drop %0
+    drop %1
+    ret %2
+
+fn absent#11 top -> bool ; main::tag_eq, frame 1 slots [%0 word*]
+  b0(%0 o: ptr):
+    %1 v: ptr = const static std::option::Option.None
+    %2 tag: i64 = tag %0 ctor std::option::Option
+    drop %0
+    %3 tag: i64 = tag %1 ctor std::option::Option
+    drop %1
+    %4 t: bool = eq.int %2, %3
+    ret %4
+
+fn flip#12 top -> ptr ; main::tag_eq, frame 1 slots [%0 word*]
+  b0(%0 d: ptr):
+    %1 v: ptr = const static main::tag_eq::Dir.Forward
+    %2 tag: i64 = tag %0 ctor main::tag_eq::Dir
+    %3 tag: i64 = tag %1 ctor main::tag_eq::Dir
+    drop %1
+    %4 t: bool = eq.int %2, %3
+    if %4 then b1(%0) else b2(%0)
+  b1(%5 d: ptr):
+    drop %5
+    %7 v: ptr = const static main::tag_eq::Dir.Backward
+    ret %7
+  b2(%6 d: ptr):
+    %8 v: ptr = const static main::tag_eq::Dir.Backward
+    %9 tag: i64 = tag %6 ctor main::tag_eq::Dir
+    drop %6
+    %10 tag: i64 = tag %8 ctor main::tag_eq::Dir
+    drop %8
+    %11 t: bool = eq.int %9, %10
+    if %11 then b4() else b5()
+  b3(%12 v: ptr):
+    ret %12
+  b4():
+    %13 v: ptr = const static main::tag_eq::Dir.Forward
+    jump b3(%13)
+  b5():
+    %14 v: ptr = const static main::tag_eq::Dir.NoDir
+    jump b3(%14)

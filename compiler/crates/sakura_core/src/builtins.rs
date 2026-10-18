@@ -107,6 +107,8 @@ table! {
     Direct option_expect/2,
     // `get` + an immediately consumed `option_expect`, fused by `opt` (design §17.151)
     Direct list_get_expect/3, Direct map_get_expect/3,
+    // Equality that only constructor tags decide, rewritten by `opt` (design §17.183)
+    Direct tag_eq/2,
     // Host primitives behind the std effects (design §10.2) and deterministic generators
     Direct console_host/0, Direct console_print/1, Direct console_read_line/0,
     Direct clock_now_ms/0, Direct clock_monotonic_ms/0, Cps clock_sleep_ms/1,

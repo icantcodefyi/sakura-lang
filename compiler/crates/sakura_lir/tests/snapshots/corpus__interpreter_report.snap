@@ -102,6 +102,8 @@ semantics/show_format: ok, 37 allocated, 8 dup, 45 drop, peak 7, live 0/0
 semantics/sql_untrusted_param: unsupported (builtin sql_memory)
 semantics/std_collections: ok, 191 allocated, 350 dup, 541 drop, peak 17, live 0/0
 semantics/strings_and_interpolation: ok, 13 allocated, 0 dup, 13 drop, peak 4, live 0/0
+semantics/tag_eq: ok, 72 allocated, 1 dup, 73 drop, peak 4, live 0/0
+semantics/tag_eq_defect: D030, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
 semantics/trace_decode_then_spawn: unsupported (builtin task_host)
 semantics/tuples: ok, 24 allocated, 2 dup, 26 drop, peak 6, live 0/0
 semantics/type_aliases: ok, 7 allocated, 0 dup, 7 drop, peak 4, live 0/0
