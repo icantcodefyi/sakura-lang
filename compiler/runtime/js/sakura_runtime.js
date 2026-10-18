@@ -1926,17 +1926,41 @@ export function property_run(seed, schemas, names, kase, rec, fails, nops, regre
       };
     });
     const frames = { e: TEST, i: { e: TEST, c: clauses, s: [] }, n: ctx.h };
-    const done = (o) => {
-      if (o.kind === "ok" && o.value === false) return then({ kind: "discard" });
-      if (o.kind === "fail") msgs.push(`failed with ${show(o.error)}`);
-      if (o.kind === "defect") msgs.push(`defect ${o.code}: ${o.message}`);
-      return then(msgs.length === 0 ? { kind: "pass" } : { kind: "fail", why: msgs.join("; ") });
-    };
+    const done = (o) => then(caseResult(o, msgs));
     const o = runTask(kase, values, frames);
     return o instanceof Promise ? suspend(o, done) : done(o);
   };
+  const steps = propertySteps(seed, schemas, names, regression);
+  const advance = (result) => {
+    const s = steps.next(result);
+    if (s.done) return s.value === null ? ret(k, undefined) : perform(ctx, TEST, rec, [s.value], k);
+    return exec(s.value.run, (r) => bounce(advance, [r]));
+  };
+  return advance(undefined);
+}
+
+/**
+ * How one case ended (`o`, a task outcome; `msgs`, the failures it recorded through `Test`):
+ * `{ kind: "discard" }` when it returned `false` (a `requires` filtered the input), else a
+ * pass, or a failure with every message joined.
+ */
+export function caseResult(o, msgs) {
+  if (o.kind === "ok" && o.value === false) return { kind: "discard" };
+  if (o.kind === "fail") msgs.push(`failed with ${o.shown ?? show(o.error)}`);
+  if (o.kind === "defect") msgs.push(`defect ${o.code}: ${o.message}`);
+  return msgs.length === 0 ? { kind: "pass" } : { kind: "fail", why: msgs.join("; ") };
+}
+
+/**
+ * A property's search as steps (design §7.4): yields `{ run: values }` for each case to run and
+ * takes back its `caseResult`; returns `null` when the property holds, else the message to
+ * report through `Test.record_failure`. A stored regression runs first; then RUNS generated
+ * cases; the first failing input is shrunk greedily (the first smaller candidate that still
+ * fails, until none does or MAX_SHRINK_TRIES ran). `property_run` and the WASM host
+ * (`sakura_wasm_host.js`) both drive it, so they search and report alike.
+ */
+export function* propertySteps(seed, schemas, names, regression) {
   const shown = (vs) => vs.map((v, i) => `${names[i]} = ${showIn(v, schemas[i], null)}`).join(", ");
-  const report = (msg) => perform(ctx, TEST, rec, [msg], k);
   const save = (vs, why) => {
     if (regression === "") return;
     const inputs = Object.fromEntries(vs.map((v, i) => [names[i], toJs(v, schemas[i])]));
@@ -1946,33 +1970,38 @@ export function property_run(seed, schemas, names, kase, rec, fails, nops, regre
   let discards = 0;
   let tries = 0;
   let replayed = "";
-  const shrink = (first, best, why, shrunk) => {
-    const cands = [];
-    for (let p = 0; p < best.length; p++) {
-      for (const c of shrinks(schemas[p], best[p])) cands.push(replaced(best, p, c));
-    }
-    const attempt = (j) => {
-      if (j >= cands.length || tries >= MAX_SHRINK_TRIES) {
-        const steps = `${shrunk} step${shrunk === 1 ? "" : "s"}`;
-        const from = shrunk === 0 ? "" : ` (shrunk in ${steps} from ${shown(first)})`;
-        save(best, why);
-        return report(`property falsified by ${shown(best)}: ${why}${from}${replayed} (${GEN_PROTOCOL}, seed ${seed})`);
+  function* shrink(first, failedWith) {
+    let [best, why, shrunk] = [first, failedWith, 0];
+    for (;;) {
+      const cands = [];
+      for (let p = 0; p < best.length; p++) {
+        for (const c of shrinks(schemas[p], best[p])) cands.push(replaced(best, p, c));
       }
-      tries++;
-      return exec(cands[j], (r) =>
-        r.kind === "fail"
-          ? bounce(shrink, [first, cands[j], r.why, shrunk + 1])
-          : bounce(attempt, [j + 1]),
-      );
-    };
-    return attempt(0);
-  };
-  const run = (i) => {
-    if (i >= RUNS) {
-      // A property that barely ran is a false green (design §17.64).
-      if (discards * 10 <= RUNS * 9) return ret(k, undefined);
-      return report(`property gave up: ${discards} of ${RUNS} inputs discarded by requires (${GEN_PROTOCOL}, seed ${seed})`);
+      let smaller = false;
+      for (let j = 0; j < cands.length && tries < MAX_SHRINK_TRIES; j++) {
+        tries++;
+        const r = yield { run: cands[j] };
+        if (r.kind === "fail") {
+          [best, why, shrunk, smaller] = [cands[j], r.why, shrunk + 1, true];
+          break;
+        }
+      }
+      if (!smaller) break;
     }
+    const steps = `${shrunk} step${shrunk === 1 ? "" : "s"}`;
+    const from = shrunk === 0 ? "" : ` (shrunk in ${steps} from ${shown(first)})`;
+    save(best, why);
+    return `property falsified by ${shown(best)}: ${why}${from}${replayed} (${GEN_PROTOCOL}, seed ${seed})`;
+  }
+  const stored = loadRegression(regression, schemas, names);
+  if (stored !== null) {
+    const r = yield { run: stored };
+    if (r.kind === "fail") {
+      replayed = " (stored regression replayed)";
+      return yield* shrink(stored, r.why);
+    }
+  }
+  for (let i = 0; i < RUNS; i++) {
     let values;
     try {
       const pool = new Map();
@@ -1980,21 +2009,15 @@ export function property_run(seed, schemas, names, kase, rec, fails, nops, regre
     } catch (e) {
       if (e !== DISCARD) throw e;
       discards++;
-      return bounce(run, [i + 1]);
+      continue;
     }
-    return exec(values, (r) => {
-      if (r.kind === "fail") return shrink(values, values, r.why, 0);
-      if (r.kind === "discard") discards++;
-      return bounce(run, [i + 1]);
-    });
-  };
-  const stored = loadRegression(regression, schemas, names);
-  if (stored === null) return run(0);
-  return exec(stored, (r) => {
-    if (r.kind !== "fail") return bounce(run, [0]);
-    replayed = " (stored regression replayed)";
-    return shrink(stored, stored, r.why, 0);
-  });
+    const r = yield { run: values };
+    if (r.kind === "fail") return yield* shrink(values, r.why);
+    if (r.kind === "discard") discards++;
+  }
+  // A property that barely ran is a false green (design §17.64).
+  if (discards * 10 <= RUNS * 9) return null;
+  return `property gave up: ${discards} of ${RUNS} inputs discarded by requires (${GEN_PROTOCOL}, seed ${seed})`;
 }
 
 // ---------------------------------------------------------------------------------------------
