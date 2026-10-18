@@ -139,6 +139,46 @@ scheduled beside W2 as the first agent-DX items, DX5's runner and DX6's workflow
    mirror bytes, hashes and manifest metadata. Website formatting excludes this
    generated directory so it cannot rewrite the canonical skill's bytes.
 
+### DX2 (Opus, `new`, `setup`, MCP root; templates and prose in one pass)
+
+1. **One source for every template.** The six files under `skills/sakura/assets/` are part of
+   the embedded bundle (`SKILL` in `sakura_cli/src/main.rs`), so `new`/`init` and `setup` write
+   the bytes the installed skill also carries; `setup` reads the MCP entry to merge from the
+   same template it would create. `AGENTS.md` is research/11 §4's prose, tightened (about 160
+   words), plus the `compiler_info.workspace_root` check; Cursor's rule is research/11 §2's
+   proposed `sakura.mdc` verbatim.
+2. **Ownership rule.** The skill directories and `.cursor/rules/sakura.mdc` are Sakura-owned:
+   `setup` creates them, rewrites them when they differ from this binary (`update`), and
+   reports `same` otherwise. `AGENTS.md`/`CLAUDE.md` are user-owned: created when absent, else
+   `keep`. In a client config only the `sakura` entry is Sakura's: it is added when absent and
+   reported `same` when equal; an existing, **different** `sakura` entry is kept untouched
+   (`keep … differs`) rather than replaced, so a hand-edited entry (an explicit `--root`, an
+   `env`) survives. A compiler upgrade that changes the template therefore does not rewrite a
+   customised entry.
+3. **Merging.** JSON configs are parsed and re-serialised (2-space pretty, key order kept);
+   Codex's TOML is never re-serialised: the template is appended, so comments and layout stay,
+   and the result is re-parsed (an inline `mcp_servers = { … }`, which a table header cannot
+   extend, is refused). A fresh config is the template's bytes. **"Patch"** is the template
+   entry printed under `add this entry by hand`, not a unified diff; any config that cannot be
+   merged makes the whole run write nothing and exit 2, in a dry run as well.
+4. **Root resolution** is `sakura_mcp::project_root` (nearest ancestor holding `sakura.toml`,
+   the start directory included); `setup` uses it too, so it works from a subdirectory. `--root`
+   still wins and is not checked for a manifest. `setup` defaults to `--client all`;
+   `new --setup <client>` (§3 item 4, implemented as proposed) calls the same `setup_in` with
+   `--apply` on the new directory. `init` has no `--setup` (`setup` covers it).
+5. **`toml`** moves from `sakura_cli`'s dev-dependencies to its dependencies (already a
+   workspace dependency; `Cargo.lock` unchanged).
+6. **Client smoke runs: not done; `setup` is not advertised yet.** On 2026-10-18, with
+   Claude Code 2.1.302 and codex-cli 0.163.0 on this machine and a scratch project from
+   `sakura new cli demo --setup all`: `claude mcp list` from `src/` found the project's
+   `sakura` entry (`sakura mcp serve`, project scope) and reported it *pending approval*, as
+   §17.143 requires; `codex mcp list` did not show it because the scratch project is not
+   trusted. Approving a project server and trusting a Codex project are user-level client
+   settings this task must not change, and Cursor has no headless agent installed here, so the
+   research/11 §4 runs (list tools, `compiler_info`, check a hole, patch, test, start outside)
+   remain for the owner. The quickstart documents the `AGENTS.md`/`CLAUDE.md` scaffold only;
+   `setup` joins it and the agents landing page once the three runs are recorded here.
+
 ### DX4 (GPT-6-Astra, recipes and extraction/rendering)
 
 1. **Ownership override.** The owner assigned both authoring and extraction/rendering

@@ -45,6 +45,8 @@ sakura test compiler/examples/typed_errors
 
 Run `sakura new cli hello` to scaffold a project (`lib`, `agent`, and `api` templates also exist), or write the two files below by hand. A project is a `sakura.toml` manifest and a `src/` directory, and one file is one module.
 
+The scaffold also writes `AGENTS.md`, short instructions for coding agents (check the compiler version, read `sakura prompt`, run `check`, `fmt --check` and `test`, never widen a contract to pass), and a `CLAUDE.md` that imports it with `@AGENTS.md`. `sakura init` writes them only when they are absent and never overwrites a file.
+
 ```toml title="hello/sakura.toml"
 [package]
 name = "hello"

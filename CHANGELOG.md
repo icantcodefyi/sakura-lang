@@ -44,6 +44,14 @@ published yet.
   diagnostic and, for 64 codes, a fixed program the ui suite checks clean. `sakura explain`
   prints the page URL after its text, and 32 explanations that lacked a repair gained one.
 
+- `sakura new` and `sakura init` write `AGENTS.md` and a `CLAUDE.md` importing it when
+  absent. `sakura setup [--client claude|codex|cursor|all] [--apply]` prints, and with
+  `--apply` writes, the project-local `sakura` skill, the client's MCP entry (merged into an
+  existing config; a config it cannot parse gets a printed entry and nothing is written) and
+  Cursor's rule; `sakura new --setup <client>` runs it after scaffolding. `sakura mcp serve`
+  without `--root` uses the nearest `sakura.toml` upward and refuses to start outside a
+  project (§17.143).
+
 - Canonical Sakura agent skill source with a compiler-driven edit loop, four offline
   examples and a fixture-seeded repair table. Generated references, embedded metadata
   and distribution are tracked separately in the agent DX plan.
