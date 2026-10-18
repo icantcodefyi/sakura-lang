@@ -65,6 +65,6 @@ The committed fixtures in `llm_extract`, `agent_loop` and `secrets` are **synthe
 
 All twelve examples now execute in run or test mode; these three replay committed fixtures. This is evidence for the example gate, not evidence that all M3 exit gates have passed.
 
-## Still planned
+## Streaming responses
 
-`--contracts` is absent from the tested CLI. Generated tests from contracts remain [planned](/docs/tour/testing#property-tests-from-contracts-planned). Streaming HTTP (`Http.stream`, `Http.read_chunk`, `Body`, `Incoming`, design §17.88) is also absent from the embedded std library; the current cassette handler implements `Http.send`.
+`Http.recording` also implements `Http.stream` (design §17.88): a replayed exchange delivers its recorded body to the callback. Under `--record` the handler reads the whole streamed body from the outer `Http` before replaying it to the callback, so recording does not stream through.

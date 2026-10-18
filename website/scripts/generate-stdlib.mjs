@@ -22,10 +22,9 @@ The [capabilities tour](/docs/tour/capabilities), [contracts tour](/docs/tour/co
 
 ## Current scope and limitations
 
-- \`Http.recording\`, \`Llm.replay\`, \`Test.fixtures\`, \`Untrusted.validate\` and \`Html.from\` are implemented.
-- Streaming HTTP (\`Http.stream\`, \`Http.read_chunk\`, \`Body\`, \`Incoming\`, design §17.88) remains planned; it is absent from these signatures.
+- \`Http.recording\`, \`Llm.replay\`, \`Llm.recording\`, \`Test.fixtures\`, \`Untrusted.validate\` and \`Html.from\` are implemented, as is streaming HTTP (\`Http.stream\`, \`Http.read_chunk\`, \`Body\`, \`Incoming\`, design §17.88).
 - \`Sql.postgres\` is not implemented. The source index records it as deferred past M4; SQLite and memory SQL cover the current examples.
-- Direct \`Untrusted<String>\` SQL interpolation currently fails with \`V2032\`, despite the broader claim in the source index's deviations. Validate to a refined string first.
+- \`Untrusted<String>\` interpolated into \`sql"…"\` is a bound parameter and into \`html"…"\` escaped text (design §17.101); in \`url"…"\` it is still \`V2001\`.
 - \`Task.par_map\` lives in \`std/task\`, not \`List\`. \`Env.host()\` takes no scope argument; use \`Env.only\` for attenuation.
 - JS \`Int\` arithmetic has a safe-integer range of ±(2^53−1); full-range i64 execution is planned for WASM. WASM and native execution are not CLI targets yet.
 - M3 still has [exit gates](/docs/roadmap). This signature inventory does not claim that M3, multi-package tooling or static verification is complete.

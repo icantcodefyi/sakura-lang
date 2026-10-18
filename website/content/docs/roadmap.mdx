@@ -18,8 +18,8 @@ Working today:
 - Std data, JSON schemas and codecs, SQLite and memory SQL, filesystem and file callbacks, HTTP, serving, CLI, structured tasks, budgets, tools and agent loops. `sql"…"` arguments use `SqlValue.from` conversions and become bound parameters.
 - `Tool.of` on a named `@tool` function, `@llm` body generation, and effect-row parameters on types: `Tool<e>`, `Agent<T, e>`, `Router<e>`.
 - `sakura new <cli|lib|agent|api> <name>`, `init`, LSP, compiler MCP, impact-aware fixes and frozen-spec checks. Analysis reuses unchanged modules' signatures and bodies; a private-body edit parses, lowers and checks only its module. Item collection, imports and exports remain global. Bodies reachable from a refinement predicate are part of the interface hash, so editing one invalidates reuse.
-- [`sakura audit`](/docs/agents/audit), [`sakura doc`](/docs/agents/doc), [`sakura build --manifest`](/docs/agents/build-manifest) and [`sakura test --record`](/docs/agents/cassettes).
-- `Html.from` and nested `Html` templates, plus `Http.recording`, `Llm.replay` and `Test.fixtures` for offline cassettes.
+- [`sakura audit`](/docs/agents/audit), [`sakura doc`](/docs/agents/doc), [`sakura build --manifest`](/docs/agents/build-manifest), [`sakura test --record`](/docs/agents/cassettes) and `sakura test --contracts` (a generated property per contracted `pub fn`, `W7001` when it gives up).
+- `Html.from` and nested `Html` templates; `Untrusted<T>` in `sql"…"` is a bound parameter and in `html"…"` escaped text (design §17.101). `Http.recording`, `Llm.replay`, `Llm.recording` and `Test.fixtures` for offline cassettes, and streaming HTTP (`Http.stream`, `Http.read_chunk`).
 - `sakura run` checks declared root permissions (exit 75 on denial) and passes `[permissions]` as `SAKURA_PERMISSIONS`; host handlers enforce filesystem, network and environment grants. This is not an OS sandbox for arbitrary JS or trusted FFI.
 - Tests accept escaping typed failures and report them as failed tests. `Llm.anthropic` requests SSE and delivers one partial callback per text delta; local mock tests cover this, not a live-provider guarantee.
 
@@ -27,7 +27,7 @@ All twelve repository examples pass their current harness modes: seven run plus 
 
 ### M3 exit gates
 
-All ten gates must pass on `origin/master` on Ubuntu and macOS before integrating the M4 backend with the existing compiler. The isolated early milestones below are the plan §3.5 exception. Commands are run in `compiler/` unless stated otherwise. These are acceptance requirements, not a claim that every command or flag is available today.
+All eleven gates must pass on `origin/master` on Ubuntu and macOS before integrating the M4 backend with the existing compiler. The isolated early milestones below are the plan §3.5 exception. Commands are run in `compiler/` unless stated otherwise. These are acceptance requirements, not a claim that every command or flag is available today.
 
 1. `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, and `cargo test --workspace --locked` pass with both `UI_MILESTONE` and `SEMANTICS_MILESTONE` at 3.
 2. Every registered diagnostic except `V9999`, M5's `W8001` and retired codes such as `V5002` is constructed by a crate and has a passing UI fixture. `W8001` has a fixture skipped by milestone. Compare `grep -rhoE '\b[VWD][0-9]{3,4}\b' crates --exclude-dir=sakura_diagnostics | sort -u` against the registry.
@@ -38,9 +38,10 @@ All ten gates must pass on `origin/master` on Ubuntu and macOS before integratin
 7. `SAKURA_DIFF_PROGRAMS=2000 cargo test -p sakura_eval --test differential` passes with the expanded generator. Each of `parse`, `check`, `fmt_idempotent`, and `row_unify` runs clean via `cargo fuzz run <target> -- -max_total_time=600` on the gate-review day.
 8. `cargo test -p sakura_fmt --test props` and the formatter corpus pass; `sakura fmt --check` is clean on `std/`, `examples/`, and `tests/`.
 9. In `website/`, `bun run fmt:check`, `bun run lint`, `bun run typecheck`, and `bun run build` pass; documentation matches the implemented behavior and this plan.
-10. The named CODEOWNERS maintainer reviews the escape rules and cassette format because both affect security.
+10. The named CODEOWNERS maintainer reviews the escape rules, the cassette format and the `Untrusted` template rule (WS8 item 2), because all three affect security.
+11. WS8 (design §17.100–§17.102) passes: the `rows.rs` catch cases, `tests/semantics/sql_untrusted_param.sakura`, the `std/llm` recording miss, `examples/llm_extract`'s recorded test and the `cli.rs` `--record` environment case.
 
-The local documentation verification passed the CLI integration suite, all twelve example modes and all 101 std tests. It did not establish all ten gates on both CI platforms. `--contracts` is absent, streaming HTTP remains planned, and the audit literal inventory is incomplete. Gate 5 still has a Planned section in `std/INDEX.md`; named maintainer review and the full gate-day fuzz/diagnostic evidence remain required.
+The [gate report](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/plans/m3-gate-report.md) records the latest audit of every gate against a named commit. The audit of 2026-10-18 left gate 10 (named maintainer review, packet in [docs/reviews](https://github.com/icantcodefyi/sakura-lang/blob/master/docs/reviews/m3-security-review.md)) and the exemption rules for gates 2 and 8 to the owner; M3 is complete only when the report shows every gate passing.
 
 ## M4: WASM and contract verification
 
