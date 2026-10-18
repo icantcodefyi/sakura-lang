@@ -359,6 +359,42 @@ scheduled beside W2 as the first agent-DX items, DX5's runner and DX6's workflow
     local `assemble` used a renamed macOS binary as a stand-in Linux archive), fresh-host
     acceptance per platform, and DX2's client trust runs.
 
+### DX7 (Opus, VS Code client; first part)
+
+1. **Server additions in `sakura_lsp`** (the client stays thin): diagnostics carry
+   `codeDescription.href` = `https://www.sakuralang.com/docs/errors/<code>` (every registry code
+   has a page, §17.144); quick fixes carry `data: {impact, applicability}`; when the client
+   advertises `workspace.workspaceEdit.documentChanges`, a fix's edit is `documentChanges` with
+   the open document's version (else `changes`, as before). `tests/lsp.rs` asserts all three.
+2. **Stale fixes in VS Code.** `vscode-languageclient` 10.1.2 drops the version when it converts
+   `documentChanges`, so VS Code would apply a stale edit. The client replaces each fix's edit
+   with the hidden command `sakura.applyFix` (plain JSON edits plus the document version seen
+   when the fixes were requested) and refuses with a warning when the document has changed
+   since. Lost: VS Code's refactor preview for these fixes.
+3. **Root.** One `LanguageClient` per project root (nearest ancestor `sakura.toml`, else the
+   workspace folder, else the file's directory), locked with `workspaceFolder` so the server's
+   first workspace folder is the project; document selectors are relative patterns under each
+   root. Nested projects both attach to the inner project's files (duplicate diagnostics);
+   not handled.
+4. **Versions.** Latest stable packages (Bun 1.4.3 tooling, `vsce` 4.0.0 works with
+   `--no-dependencies` because Bun bundles the client), except `@types/vscode` **1.91.0** with
+   `engines.vscode ^1.91.0`: the floor `vscode-languageclient` 10 itself requires, so editors on
+   older VS Code bases (Cursor, VSCodium via Open VSX) can install it. Integration tests ran on
+   VS Code 1.142.0 (stable) only.
+5. **Version string.** `vsce package` accepts `0.1.0-alpha.1`, but `vsce publish` rejects SemVer
+   pre-release suffixes; docs/release.md §5 tells the owner to publish `0.1.0` with
+   `--pre-release`. Licence files are copied in at package time (`--skip-license`; the package
+   is dual-licensed and `vsce` looks for a single `LICENSE`).
+6. **Tests.** `bun run test`: root selection, executable resolution (setting, `~/`, relative,
+   `PATH` order, non-executables, missing), impact titles, grammar drift. `bun run test:vscode`
+   (`@vscode/test-electron` 3.1.0, a small runner instead of Mocha) on a scratch workspace of two
+   projects against a real `sakura lsp`: stdio start with error-page links, root selection
+   (unopened files of the project analysed, the sibling project's not), UTF-16 hole context after
+   inserting `é𝄞`, impact titles and a refused stale fix, format on save, a missing executable
+   then recovery. CI runs them under `xvfb-run` on Linux and uploads the `.vsix`; no publishing.
+   Not tested: the grammar's tokenisation inside VS Code (it is the website's grammar byte for
+   byte, which Shiki already renders) and the error popup's buttons.
+
 ### DX5 (GPT-6-Astra, task authoring and offline acceptance)
 
 1. **Owner-assigned scope.** Twelve tasks now live under `evals/agent-dx/tasks/`,

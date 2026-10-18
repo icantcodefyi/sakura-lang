@@ -87,3 +87,12 @@ the user installer and its tests, `tools/release/` archive, smoke and assembly) 
 release workflow, archives and npm packages read), the Homebrew formula and the npm
 wrapper. Nothing in either directory publishes; `.github/workflows/release.yml` does,
 only for an owner-pushed tag and behind protected environments.
+
+## Amendment: editor integrations (2026-10-18)
+
+Decision [§17.148](../design.md) adds top-level `editors/`, one directory per editor package.
+`editors/vscode/` is the VS Code extension (a Bun/TypeScript project with its own lockfile, a
+client of `sakura lsp`); its TextMate grammar is generated from
+`website/lib/sakura/grammar.ts` and checked for drift. `editors/tree-sitter-sakura/` follows.
+CI builds and tests the extension and keeps the `.vsix` as an artifact; publishing to the
+Marketplace or Open VSX is the owner's (docs/release.md).

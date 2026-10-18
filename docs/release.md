@@ -97,6 +97,22 @@ and an expiry. Store `HOMEBREW_TAP_TOKEN` in `release-homebrew`. The main repo's
 reviewed GitHub App scoped to the tap are alternatives; a broad classic `repo`
 token is unnecessary. See [GitHub token setup](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens).
 
+### VS Code Marketplace and Open VSX
+
+The extension in [`editors/vscode/`](../editors/vscode/) (DX7) uses publisher **`sakuralang`**
+on both. CI builds, tests and uploads a `.vsix` artifact; it never publishes.
+
+- **VS Code Marketplace:** sign in at the [publisher management page](https://marketplace.visualstudio.com/manage),
+  create publisher ID `sakuralang`, and create an Azure DevOps personal access token with the
+  **Marketplace (Manage)** scope, all accessible organizations and a short expiry
+  ([publishing guide](https://code.visualstudio.com/api/working-with-extensions/publishing-extension)).
+- **Open VSX:** create an Eclipse account, sign the publisher agreement, create an access token
+  at [open-vsx.org](https://open-vsx.org), then the namespace with
+  `npx ovsx create-namespace sakuralang -p <token>`
+  ([publishing guide](https://github.com/eclipse/openvsx/wiki/Publishing-Extensions)).
+
+Keep both tokens out of the repository; no workflow holds them.
+
 ### Signing and Blacksmith
 
 Owner signing choice remains open. Recommended first policy: SHA-256 and GitHub
@@ -260,6 +276,16 @@ and summary before approving, not only the dry run's.
    versions and **`--tag alpha`**, not `latest`. Owner handles initial ownership/
    2FA. Test `npm install -g sakuralang@0.1.0-alpha.1` and the binary on clean
    hosts; upload success does not prove platform selection works.
+
+5. **VS Code extension.** After the GitHub release (its users need a `sakura`), in
+   `editors/vscode/`: the Marketplace rejects SemVer pre-release suffixes, so set
+   `package.json`'s version to a plain `0.1.0` (later alphas `0.1.1`, `0.1.2`, …), then
+   `bun install --frozen-lockfile`, `bun run test`, `bun run build`, and
+   `bunx vsce package --pre-release --no-dependencies --skip-license` after copying the two
+   licence files in (as `bun run package` does). Install the `.vsix` with
+   `code --install-extension` and open a project before publishing that same file:
+   `bunx vsce publish --pre-release --packagePath sakura-0.1.0.vsix` and
+   `bunx ovsx publish sakura-0.1.0.vsix --pre-release -p <token>`. Commit the version change.
 
 A later channel failure does not authorize mutating earlier assets. Record
 partial rollout and seek approval for remaining publication. Resume identical

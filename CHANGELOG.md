@@ -30,6 +30,14 @@ published yet.
 
 ### Added
 
+- A VS Code extension in `editors/vscode/` (not published; build a `.vsix` locally):
+  `.sakura` highlighting generated from the website grammar, language configuration, and a
+  client for `sakura lsp` per project (nearest `sakura.toml`) with error-page links,
+  quick fixes showing their impact class, stale-fix refusal, Show Hole Context and format on
+  save. `sakura lsp` diagnostics gain `codeDescription` links to `/docs/errors/<code>`, quick
+  fixes carry `data.impact`/`data.applicability`, and a client supporting `documentChanges`
+  gets fixes pinned to the document version. New docs page: Editor setup.
+
 - Release preparation for `v0.1.0-alpha.1` (not published): the workspace version is
   `0.1.0-alpha.1`; `sakura --version` and MCP `compiler_info` (`commit`) report the source
   commit of a stamped build. `release.yml` builds macOS arm64 and Linux x86-64 archives
