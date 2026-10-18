@@ -1,9 +1,10 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-// Nested scopes, outermost first (design §6.2, §15.6). Each one can only narrow the one around it.
-const SCOPES: { code: ReactNode; note: string }[] = [
-  { code: "host", note: "everything the machine can do" },
+// Nested scopes, outermost first (design §6.2, §15.6). Each one can only narrow the one around it;
+// `reach` is an illustrative share of the host's authority, not a measured quantity.
+const SCOPES: { code: ReactNode; note: string; reach: number }[] = [
+  { code: "host", note: "everything the machine can do", reach: 100 },
   {
     code: (
       <>
@@ -11,6 +12,7 @@ const SCOPES: { code: ReactNode; note: string }[] = [
       </>
     ),
     note: 'fs.read = ["./data"], net = [], the ceiling',
+    reach: 64,
   },
   {
     code: (
@@ -19,6 +21,7 @@ const SCOPES: { code: ReactNode; note: string }[] = [
       </>
     ),
     note: "root handlers for these effects only",
+    reach: 42,
   },
   {
     code: (
@@ -28,10 +31,12 @@ const SCOPES: { code: ReactNode; note: string }[] = [
       </>
     ),
     note: "paths resolve inside ./data",
+    reach: 20,
   },
   {
     code: "word_counts(text) -> Map<String, Int>",
     note: "pure: no row, no authority at all",
+    reach: 0,
   },
 ];
 
@@ -58,26 +63,27 @@ const REFUSED: { code: string; why: string; tag: string }[] = [
   },
 ];
 
-function Frames({ depth = 0 }: { depth?: number }): ReactNode {
-  const s = SCOPES[depth];
-  if (!s) return null;
-  const last = depth === SCOPES.length - 1;
+/** One row per scope; the bar under each shows how much of the host's authority is left. */
+function Scopes(): ReactNode {
   return (
-    <div
-      className={`rounded-xl border ${
-        last
-          ? "border-dashed border-strong bg-card"
-          : depth % 2
-            ? "border-strong bg-card"
-            : "border-strong bg-muted/70"
-      } px-2.5 pt-2.5 pb-2.5 sm:px-4 sm:pt-3`}
-    >
-      <p className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 px-1 pb-2.5">
-        <code className="font-mono text-[11.5px] text-foreground sm:text-[12.5px]">{s.code}</code>
-        <span className="text-[12px] text-muted-foreground sm:text-[12.5px]">{s.note}</span>
-      </p>
-      <Frames depth={depth + 1} />
-    </div>
+    <ol className="divide-y divide-border rounded-xl border border-strong bg-card px-4 sm:px-5">
+      {SCOPES.map((s, i) => (
+        <li key={i} className="grid gap-2 py-3.5">
+          <p className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+            <code className="font-mono text-[11.5px] text-foreground sm:text-[12.5px]">
+              {s.code}
+            </code>
+            <span className="text-[12px] text-muted-foreground sm:text-[12.5px]">{s.note}</span>
+          </p>
+          <span aria-hidden className="block h-1.5 rounded-full bg-muted">
+            <span
+              className="block h-full rounded-full bg-sakura"
+              style={{ width: `${s.reach}%` }}
+            />
+          </span>
+        </li>
+      ))}
+    </ol>
   );
 }
 
@@ -98,9 +104,10 @@ export function Authority() {
           </p>
         </div>
         <figure className="lg:col-start-1 lg:row-span-2 lg:row-start-1">
-          <Frames />
+          <Scopes />
           <figcaption className="mt-3 text-[12.5px] text-faint">
-            Scopes of authority for the CLI example in design §15.6, outermost first.
+            Scopes of authority for the CLI example in design §15.6, outermost first. Each one runs
+            inside the one above it and can only narrow it.
           </figcaption>
         </figure>
         <div className="lg:col-start-2">
