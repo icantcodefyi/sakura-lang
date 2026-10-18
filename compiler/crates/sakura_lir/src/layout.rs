@@ -447,19 +447,36 @@ pub fn closure_slots(f: &Func) -> Vec<Slot> {
 /// with kinds and names as in [`LayoutTable::to_bytes`] (0 = absent: no kinds words when there
 /// are no slots). A kind-0 frame or capture slot owns its word.
 pub fn code_table(m: &Module) -> Vec<u8> {
+    code_table_with(m, &[])
+}
+
+/// A code the runtime provides rather than the LIR (the callback stub, host clauses): its
+/// name and the kinds of its frame slots and captures, as a [`code_table`] entry.
+pub type NativeCode<'a> = (&'a str, &'a [Slot], &'a [Slot]);
+
+/// [`code_table`] with `natives` as codes `n..` after the module's `n` functions (the WASM
+/// backend's funcref table puts the runtime's codes there).
+pub fn code_table_with(m: &Module, natives: &[NativeCode<'_>]) -> Vec<u8> {
+    let mut codes: Vec<(&str, Vec<Slot>, Vec<Slot>)> = m
+        .funcs
+        .iter()
+        .map(|f| {
+            let frame = FrameDesc::of(f).slots.into_iter().map(|(_, s)| s).collect();
+            (f.name.as_str(), frame, closure_slots(f))
+        })
+        .collect();
+    codes.extend(natives.iter().map(|&(n, f, c)| (n, f.to_vec(), c.to_vec())));
     let mut w = Writer::default();
-    let dir = w.reserve(1 + m.funcs.len());
-    w.set(dir, &[m.funcs.len() as u32]);
-    let entries: Vec<usize> = m.funcs.iter().map(|_| w.reserve(5)).collect();
-    for (i, (f, &at)) in m.funcs.iter().zip(&entries).enumerate() {
+    let dir = w.reserve(1 + codes.len());
+    w.set(dir, &[codes.len() as u32]);
+    let entries: Vec<usize> = codes.iter().map(|_| w.reserve(5)).collect();
+    for (i, ((name, frame, caps), &at)) in codes.iter().zip(&entries).enumerate() {
         w.set(dir + 1 + i, &[w.offset(at)]);
-        let frame: Vec<Slot> = FrameDesc::of(f).slots.into_iter().map(|(_, s)| s).collect();
-        let caps = closure_slots(f);
-        let nm = w.name(&f.name);
+        let nm = w.name(name);
         w.fix_name(at, nm);
         w.set(at + 1, &[frame.len() as u32]);
         w.set(at + 3, &[caps.len() as u32]);
-        for (field, slots) in [(at + 2, &frame), (at + 4, &caps)] {
+        for (field, slots) in [(at + 2, frame), (at + 4, caps)] {
             if slots.is_empty() {
                 continue;
             }
