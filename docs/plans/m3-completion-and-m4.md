@@ -208,6 +208,25 @@ Owner: **Opus**, per crate as below; the items are small and independent of each
 
 Performance (§17.103): items 1–6 add nothing to a production path; item 2's unwrap is one inline field read. The `SqlValue.from` JSON round trip is flagged for research/10, not changed here.
 
+### WS9 — M3 close-out (round 7, §17.120–§17.127, §17.129)
+
+Owner: **Opus**, per crate as below; the items are small and independent except where noted. Each lands with its own commit and the test named is its acceptance bar. Nothing here changes a rule the security packet describes without being listed in that packet.
+
+1. `sakura_diagnostics` (§17.120): register `D092 rc_overflow`, `D094 context_escaped`, `D096 heap_exhausted` and `W7002 vacuous_obligation` (§17.105) with `explain` text. Test: the gate 2 two-way grep over `crates runtime/js runtime/rt` has an empty difference in both directions; `sakura explain D092` prints the entry.
+2. `sakura_cli` tests (§17.121): `directives()` accepts `fmt`; new integration test `fmt_clean` as gate 8 states it; `// fmt: exempt covers <productions>` headers on `blocks_and_let`, `if_else`, `imports`, `newline_rule`. Tests: `fmt_clean` passes on master; a unit case where a `std/` path with the directive fails; a case where an unformatted `tests/semantics` file without the directive fails.
+3. `runtime/js`, `std/http`, fixtures, website (§17.122): the cassette header line `{"schema_version": "1.0", "kind": "cassette"}` written on first append and required on open; the credential-header refusal (`authorization`, `proxy-authorization`, `x-api-key`, `api-key`, `x-auth-token`, `cookie`, case-insensitive) at every lookup, before forwarding; `set-cookie` stored as `<redacted>`; the three committed cassettes regenerated with the header; `agents/cassettes.mdx` and `std/http` docs state the three rules. Tests: in `std/http`, a request with `("Authorization", "Bearer x")` in `headers` under `Http.recording` fails `HttpError` whose reason names `secret_headers`, and the file is unchanged; a fixture without the header line fails `open` naming the file; `cli.rs::test_record_then_replay_through_http_recording` asserts the first line of the written file; a recorded `set-cookie` replays as `<redacted>`; `examples` still green.
+4. `sakura_types` (§17.123): `spawns` takes the candidates of a non-lambda body from the capture analysis (free locals through nested lambdas, minus their binders); the `ponytail:` note in `escape.rs` goes. Tests: `tests/escape.rs` rejects `Task.spawn(s, make(fn() { Fs.read(f) }))` with `f` bound in an inner `with` and accepts the same with `f` bound outside the `Scope`'s `with`, and accepts a nested lambda whose own parameter shadows a scoped outer local; `tests/ui/V6002_spawn_nested_lambda.sakura`.
+5. `std/urlpart` (new), `std/url`, `std/INDEX.md`, `docs/llms.txt` (§17.124): `UrlPart`, `from<T: Show>`, `to_string`; `Url.template` over `List<UrlPart>`; `Url.encode_component` implemented by `UrlPart`. Tests: the existing std test still passes through `template`; `tests/semantics/url_untrusted_component.sakura` prints `https://x.test/u/7?q=a%20b%26c` for `url"https://x.test/u/{id}?q={u}"` with `id: Int = 7` and `u = Untrusted.of("a b&c")` (if tagged `url` templates do not yet lower on JS, this item makes them); `acceptance.rs` has `Secret<String>` in `url"…"` still `V2032`.
+6. `std/llm`, `std/INDEX.md` (§17.125): `replay`'s miss is caught with `try … catch` and re-raised as `ProviderError` whose reason names `Llm.recording` and `sakura test --record`; `Cassette.open(c)` spelling. Test: the std test "recording a missing exchange without --record is a ProviderError naming it" gains the `Llm.recording` assertion for `replay`.
+7. `runtime/js`, `std/list`, `std/INDEX.md`, `docs/llms.txt`, `bench/programs/sieve` (§17.126): `list_set` (path copy) and `List.set` with its `requires`; the sieve's Sakura port uses it (the JS control is unchanged). Tests: a `tests/semantics/list_set.sakura` that sets in a loop and checks the old version is intact, with an out-of-range `set` as a `D020` `expect-defect` case; `bench run` on `sieve` agrees with the control's checksums; `bench/README.md` records the before/after.
+8. `sakura_analysis`, `sakura_cli`, fixtures, `bench/programs` (§17.127): the package name from the manifest (`main` without one); the JSON `module` field and the runner's snapshot path follow. Tests: `cli.rs`: a project named `acme` with `import acme/util` runs, and `import main/util` is `V1005` with the note naming `acme`; `examples/property`'s "rendering is stable" finds its snapshot (D's 2026-10-18 request); re-blessed `main::` fixtures reviewed line by line.
+9. `crates/sakura_core_snapshot` (§17.129): `disable_recursion_limit` under `serde_stacker` with an explicit nesting bound in `Module::check`. Tests: `program(50)` of the differential generator round-trips and joins the LIR corpus; a snapshot nested past the bound is an error, not a crash.
+10. Plan and report: after items 1–9 land, re-run the gate audit (gate report follow-up 8) on that commit, update `docs/plans/m3-gate-report.md`, and set the roadmap to "M3 complete pending the owner's security review (gate 10)" (§17.128).
+
+Performance (§17.103): items 3 and 6 are test-only; item 4 is compile-time; item 5 is one encoding pass per interpolation as today; item 7 removes an O(n) pass per update; item 8 is a name.
+
+Waits for: nothing; items 1–9 are independent. Items 3–6 are the surfaces the owner reviews, so they land before the packet is read (§17.128).
+
 ### Ordering
 
 ```
@@ -216,6 +235,7 @@ WS1 ─┬─▶ WS2 ─┬─▶ WS3 (--contracts, UI_MILESTONE=3 last)
      ├─▶ WS1b (literal evaluation, W5005, contains-rule; independent of WS2/WS4)
      └─▶ WS5 fixtures green            WS5 audit/doc/fuzz, WS6, WS7 run from day one
 WS8 (round-5 decisions) runs from day one; item 3 waits for item 2, item 6 for nothing.
+WS9 (round-7 close-out) runs after the gate audit; its items are independent of each other.
 ```
 
 ---
@@ -269,6 +289,8 @@ No WasmGC, no JSPI, no typed continuations, no WASI components, no browser std s
 
 Rule: before the §4 gates pass, M4 work may create new crates and `compiler/runtime/rt`, and may add tests under `compiler/tests/abi/`, but may not edit any M0–M3 crate, `runtime/js`, `std`, the CLI or CI workflows (so WS1b–WS7 never rebase over M4 churn). Each milestone names its proof.
 
+**"After the gates" means (§17.128):** gates 1–9 and 11 pass on the commit where WS9 lands (the gate report's follow-up 8 re-audit), which makes M3 *complete pending review*. L3, V3, R4, W1 and C1 may start then; they need not wait for gate 10, the owner's signature on `docs/reviews/m3-security-review.md`. Until that signature, the reviewed surfaces are frozen: `sakura_types/src/check/escape.rs` and the `V6001` part of `decls.rs`; the cassette code (`runtime/js` cassettes section, `std/http` `Cassette`/`recording`/`replaying`, `std/llm` `recording`/`replay`); the template conversion (`check/expr.rs` `template`, `lower/expr.rs` `untrusted_value`), `std/url` and `std/urlpart`. Only WS9's own items touch them; "changes requested" on the packet becomes WS9b under the same freeze.
+
 | Milestone | Workstream | May start | Content | Done when |
 |---|---|---|---|---|
 | **R1** | M4-RT | now | `sakura_rt` crate skeleton (`no_std`, host `cargo test`, `wasm32-unknown-unknown` build), allocator with size classes, page runs, counters, `SAKURA_MAX_HEAP` growth and `D096`, headers and `Dup`/`Drop` with the destruction worklist | host tests: size-class boundaries, OOM path, million-object destruction, `rc_overflow_is_D092`; the wasm object passes the ABI §1 validator gate |
@@ -300,18 +322,18 @@ Owner's decision carried from §6 item 2: `sakura verify` needs a `z3` binary on
 
 ## 4. M3 exit gates
 
-All must pass on `origin/master`, on ubuntu and macos, before M4 backend coding starts. Each gate names its command.
+All must pass on `origin/master`, on ubuntu and macos. Gates 1–9 and 11 passing after WS9 makes M3 **complete pending review**, which is when M4's "after the gates" milestones start (§3.5, §17.128); gate 10 is tracked separately and closes M3 when signed. Each gate names its command.
 
 1. `cd compiler && cargo fmt --all -- --check && cargo clippy --workspace --all-targets --locked -- -D warnings && cargo test --workspace --locked` green with `UI_MILESTONE = 3` and `SEMANTICS_MILESTONE = 3`.
-2. Every code in `sakura_diagnostics::codes` except `V9999`, the M5 `W8001` and retired codes (`V5002`, §17.87) is constructed by some crate and has a passing `tests/ui` fixture; `W8001` has its fixture and is skipped by milestone, not by hand. Check: `grep -rhoE '\b[VWD][0-9]{3,4}\b' crates --exclude-dir=sakura_diagnostics | sort -u` versus the registry.
+2. Two-way (§17.120): every code in `sakura_diagnostics::codes` except `V9999` and retired codes (`V5002`, §17.87) is constructed by some crate or runtime, and every code constructed by `crates`, `runtime/js` or `runtime/rt` is registered. Every registered code has a passing `tests/ui` fixture except: `W8001` (M5; has its fixture, skipped by milestone, not by hand), `V9001` (a compiler bug by definition; no fixture), `V8020` (needs a git baseline; covered by `cli.rs::frozen_specs_compare_with_git_head`), and the runtime-limit defects `D092`, `D094`, `D096` (covered by `sakura_rt`'s and `sakura_lir`'s own tests, e.g. `rc_overflow_is_D092`). Check: `grep -rhoE '\b[VWD][0-9]{3,4}\b' crates runtime/js runtime/rt --exclude-dir=sakura_diagnostics | sort -u` versus the registry, in both directions.
 3. The §14.3 M3 acceptance programs exist as tests and pass: `m3.rs::m3_acceptance_contracts` (D020 span, D010), `cli.rs` exit 75, `tests/ui/V6003_route_handler_returns_file.sakura`, `lsp.rs` stale-and-Unicode replay equal to MCP `hole_context`, `recheck.rs` counters.
 4. `cargo test -p sakura_cli --test examples`: all twelve examples are `mode: run` or `mode: test`; none is `check` only; `llm_extract`, `agent_loop` and `secrets` replay committed cassettes with the network denied.
 5. `sakura test --std`: green; `std/INDEX.md` has no “Planned” section; `docs/llms.txt` “Not yet (M3)” is empty (or names only `Sql.postgres` if deferred by the owner).
 6. `sakura audit --json`, `sakura doc --search "fn(List<A>) -> Int"`, `sakura build --manifest`, `sakura test --contracts`, `sakura test --record` each have a `cli.rs` test.
 7. `SAKURA_DIFF_PROGRAMS=2000 cargo test -p sakura_eval --test differential` green with the WS6 generator; `cargo fuzz run <target> -- -max_total_time=600` clean for all four targets on the day of the gate review.
-8. `cargo test -p sakura_fmt --test props` and the fmt corpus green; `sakura fmt --check` clean on `std/`, `examples/`, `tests/`.
+8. `cargo test -p sakura_fmt --test props` and the fmt corpus green; `cargo test -p sakura_cli --test fmt_clean` green (§17.121): `sakura fmt --check` clean on every `.sakura` under `std/`, `examples/`, `tests/semantics/` and `tests/ui/`, skipping only `tests/fmt/` (formatter inputs), `tests/ui` fixtures whose `expect:` holds a `V00xx` parse code, and fixtures under `tests/semantics/` or `tests/ui/` with a `// fmt: exempt <reason>` harness directive naming the grammar productions their layout covers; the directive anywhere under `std/` or `examples/` fails the test.
 9. Website: `bun run fmt:check && bun run lint && bun run typecheck && bun run build` green with the WS7 pages; `docs/roadmap.mdx` matches this plan.
-10. Named maintainer review (CODEOWNERS) of WS1's escape rules and WS2's cassette format, because both are security-relevant (§6.3, §17.57).
+10. Named maintainer review (CODEOWNERS) of WS1's escape rules and WS2's cassette format, because both are security-relevant (§6.3, §17.57), plus WS8 item 2 (templates). The packet is `docs/reviews/m3-security-review.md`, describing the state after WS9's fixes (§17.122–§17.125); the owner signs its table. Tracked separately from gates 1–9 and 11 (§17.128).
 11. WS8 green (§17.100–§17.102): the `rows.rs` catch cases, `tests/semantics/sql_untrusted_param.sakura`, the `std/llm` recording miss, `examples/llm_extract`'s recorded test, and the `cli.rs` `--record` env case; item 2 is in the maintainer review of 10 (it touches a trust boundary).
 
 ---
@@ -404,6 +426,8 @@ All must pass on `origin/master`, on ubuntu and macos, before M4 backend coding 
 8. **Record-then-replay CLI test** (WS3 item 3, gate 6): `cli.rs::test_record_then_replay_through_http_recording` records through std `Http.recording` over `Http.scripted` with `--record`, then replays with `Http.host()` as the outer handler under a plain `sakura test` (network denied), and checks that a missing cassette fails with the `no recording for …` message.
 
 ### WS8 (round-5 decisions, §17.100–§17.102)
+
+Reviewed in §17.125 (round 7): all six endorsed; item 1 closed by §17.124, item 4 rewritten by WS9.6.
 
 1. **Templates without a `from`.** The unwrap is marked by a new field `TypedBody::unwrapped: HashSet<ExprId>` beside `conversions` (REQUESTS.md, 2026-10-18), and applies only where the element type has a home-module `from` (`sql`, `html`). `url"…"`'s element type is `String`, which has no `from`, and std has no `shell` tag yet, so `Untrusted<String>` in `url"…"` is still `V2001`. §4.11 says `url` encodes it; closing that gap needs either a `from` for `url`'s element or a pass-through rule for `Untrusted<String>` into a `String` element, which is a design decision.
 2. **`Untrusted<Html>` in `html"…"`** goes through `Html.from` like any other value, so it renders as the escaped text of its shown form (`Html(&quot;…&quot;)`), never as markup. That is what §17.101 asks; the std test pins the text.
