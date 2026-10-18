@@ -35,6 +35,7 @@ semantics/direct_closure_values: ok, 28 allocated, 19 dup, 47 drop, peak 10, liv
 semantics/direct_higher_order: ok, 3000079 allocated, 39 dup, 3000118 drop, peak 13, live 0/0
 semantics/direct_inlined_bind_blame: D020, 3 allocated, 0 dup, 3 drop, peak 2, live 0/0
 semantics/direct_inlined_bind_defect: D021, 4 allocated, 0 dup, 4 drop, peak 2, live 0/0
+semantics/direct_region_restart: ok, 1028 allocated, 22 dup, 1050 drop, peak 9, live 0/0
 semantics/early_return: ok, 16 allocated, 6 dup, 22 drop, peak 5, live 0/0
 semantics/effects_and_handlers: ok, 30 allocated, 39 dup, 69 drop, peak 13, live 0/0
 semantics/error_unions: ok, 8 allocated, 2 dup, 10 drop, peak 3, live 0/0

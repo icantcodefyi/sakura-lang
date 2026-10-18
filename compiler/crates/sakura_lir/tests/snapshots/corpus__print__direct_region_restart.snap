@@ -1,0 +1,236 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::direct_region_restart::Acc | Acc 32b (total: i64, label: word*)
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::direct_region_restart, frame 28 slots [%9 i64, %10 word*, %16 i64, %17 word*, %18 word*, %25 bool, %26 word*, %32 word*, %33 word*, %44 i64, %45 word*, %46 word*, %49 bool, %50 word*, %54 f64, %55 word*, %61 f64, %62 word*, %63 word*, %66 bool, %67 word*, %76 i64, %77 word*, %80 bool, %99 i64, %100 word*, %101 i64, %102 i64]
+  b0():
+    %0 lit: i64 = const 1
+    %1 box: word = box %0
+    %2 lit: i64 = const 2
+    %3 box: word = box %2
+    %4 lit: i64 = const 3
+    %5 box: word = box %4
+    %6 xs: ptr = alloc list(%1, %3, %5)
+    %7 lit: ptr = const str 0
+    %8 lit: i64 = const 10
+    dup %6
+    call walk#2(%6, %7, %8) -> b1(%6)
+  b1(%9 r: i64, %10 xs: ptr):
+    %11 s: ptr = show %9
+    %12 lit: ptr = const str 1
+    %13 s: ptr = concat %11, %12
+    drop %11
+    drop %12
+    %14 lit: ptr = const str 0
+    %15 lit: i64 = const 200000
+    dup %10
+    call walk#2(%10, %14, %15) -> b2(%10, %13)
+  b2(%16 r: i64, %17 xs: ptr, %18 s: ptr):
+    %19 s: ptr = show %16
+    %20 s: ptr = concat %18, %19
+    drop %18
+    drop %19
+    %21 lit: ptr = const str 1
+    %22 s: ptr = concat %20, %21
+    drop %20
+    drop %21
+    %23 s: ptr = show %17
+    %24 s: ptr = concat %22, %23
+    drop %22
+    drop %23
+    perform std::console::Console.print(%24) -> b3(%17)
+  b3(%25 r: unit, %26 xs: ptr):
+    %27 box: word = box %25
+    drop %27
+    %28 lit: i64 = const 0
+    %29 lit: ptr = const str 2
+    %30 rec: ptr = alloc main::direct_region_restart::Acc(%28, %29)
+    %31 lit: i64 = const 1000
+    call fold_acc#3(%30, %31) -> b4(%26)
+  b4(%32 r: ptr, %33 xs: ptr):
+    %34 total: i64 = proj %32.0 main::direct_region_restart::Acc
+    %35 s: ptr = show %34
+    %36 lit: ptr = const str 1
+    %37 s: ptr = concat %35, %36
+    drop %35
+    drop %36
+    %38 label: word = proj %32.1 main::direct_region_restart::Acc
+    %39 s: ptr = show %38
+    drop %38
+    %40 s: ptr = concat %37, %39
+    drop %37
+    drop %39
+    %41 lit: ptr = const str 1
+    %42 s: ptr = concat %40, %41
+    drop %40
+    drop %41
+    %43 lit: i64 = const 100000
+    call deep_acc#4(%32, %43) -> b5(%33, %42)
+  b5(%44 r: i64, %45 xs: ptr, %46 s: ptr):
+    %47 s: ptr = show %44
+    %48 s: ptr = concat %46, %47
+    drop %46
+    drop %47
+    perform std::console::Console.print(%48) -> b6(%45)
+  b6(%49 r: unit, %50 xs: ptr):
+    %51 box: word = box %49
+    drop %51
+    %52 lit: f64 = const 2.5
+    %53 lit: i64 = const 10
+    call half#5(%52, %53) -> b7(%50)
+  b7(%54 r: f64, %55 xs: ptr):
+    %56 s: ptr = show %54
+    %57 lit: ptr = const str 1
+    %58 s: ptr = concat %56, %57
+    drop %56
+    drop %57
+    %59 lit: f64 = const 2.5
+    %60 lit: i64 = const 100000
+    call half#5(%59, %60) -> b8(%55, %58)
+  b8(%61 r: f64, %62 xs: ptr, %63 s: ptr):
+    %64 s: ptr = show %61
+    %65 s: ptr = concat %63, %64
+    drop %63
+    drop %64
+    perform std::console::Console.print(%65) -> b9(%62)
+  b9(%66 r: unit, %67 xs: ptr):
+    %68 box: word = box %66
+    drop %68
+    %108 lit: i64 = const 0
+    %109 lit: i64 = const 0
+    jump b13(%108, %109, %67)
+  b10(%69 i: i64, %70 t: i64, %71 xs: ptr):
+    %72 s: ptr = show %70
+    %73 lit: ptr = const str 1
+    %74 s: ptr = concat %72, %73
+    drop %72
+    drop %73
+    %75 lit: i64 = const 3
+    call shallow#6(%71, %75) -> b11(%74)
+  b11(%76 r: i64, %77 s: ptr):
+    %78 s: ptr = show %76
+    %79 s: ptr = concat %77, %78
+    drop %77
+    drop %78
+    perform std::console::Console.print(%79) -> b12()
+  b12(%80 r: unit):
+    %81 box: word = box %80
+    %82 unbox: unit = unbox %81
+    drop %81
+    ret %82
+  b13(%83 i: i64, %84 t: i64, %85 xs: ptr):
+    %86 lit: i64 = const 20
+    %87 t: bool = lt.int %83, %86
+    if %87 then b15(%85, %83, %84) else b16(%85, %83, %84)
+  b14(%88 v: word, %89 i: i64, %90 t: i64, %91 xs: ptr):
+    drop %88
+    jump b13(%89, %90, %91)
+  b15(%92 xs: ptr, %93 i: i64, %94 t: i64):
+    %98 lit: i64 = const 5000
+    dup %92
+    call shallow#6(%92, %98) -> b17(%92, %93, %94)
+  b16(%95 xs: ptr, %96 i: i64, %97 t: i64):
+    jump b10(%96, %97, %95)
+  b17(%99 r: i64, %100 xs: ptr, %101 i: i64, %102 t: i64):
+    %103 t: i64 = intadd %102, %99
+    %104 lit: i64 = const 1
+    %105 t: i64 = intadd %101, %104
+    %106 lit: unit = const ()
+    %107 box: word = box %106
+    jump b14(%107, %105, %103, %100)
+
+fn $entry#1 top -> unit ; main::direct_region_restart, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn walk#2 top -> i64 ; main::direct_region_restart, frame 4 slots [%0 word*, %1 word*, %2 i64, %16 i64]
+  b0(%0 xs: ptr, %1 s: ptr, %2 n: i64):
+    %3 lit: i64 = const 0
+    %4 t: bool = eq.int %2, %3
+    if %4 then b1(%0, %1, %2) else b2(%0, %1, %2)
+  b1(%5 xs: ptr, %6 s: ptr, %7 n: i64):
+    %11 r: i64 = $list_len(%5)
+    %12 r: i64 = $string_len(%6)
+    %13 t: i64 = intadd %11, %12
+    ret %13
+  b2(%8 xs: ptr, %9 s: ptr, %10 n: i64):
+    %14 lit: i64 = const 1
+    %15 t: i64 = intsub %10, %14
+    call walk#2(%8, %9, %15) -> b3()
+  b3(%16 r: i64):
+    %17 lit: i64 = const 1
+    %18 t: i64 = intadd %16, %17
+    ret %18
+
+fn fold_acc#3 top -> ptr ; main::direct_region_restart, frame 2 slots [%0 word*, %1 i64]
+  b0(%0 a: ptr, %1 n: i64):
+    jump b1(%0, %1)
+  b1(%2 a: ptr, %3 n: i64):
+    %4 lit: i64 = const 0
+    %5 t: bool = eq.int %3, %4
+    if %5 then b2(%2, %3) else b3(%2, %3)
+  b2(%6 a: ptr, %7 n: i64):
+    ret %6
+  b3(%8 a: ptr, %9 n: i64):
+    %10 total: i64 = proj %8.0 main::direct_region_restart::Acc
+    %11 t: i64 = intadd %10, %9
+    %12 label: word = proj %8.1 main::direct_region_restart::Acc
+    drop %8
+    %13 rec: ptr = alloc main::direct_region_restart::Acc(%11, %12)
+    %14 lit: i64 = const 1
+    %15 t: i64 = intsub %9, %14
+    jump b1(%13, %15)
+
+fn deep_acc#4 top -> i64 ; main::direct_region_restart, frame 3 slots [%0 word*, %1 i64, %11 i64]
+  b0(%0 a: ptr, %1 n: i64):
+    %2 lit: i64 = const 0
+    %3 t: bool = eq.int %1, %2
+    if %3 then b1(%0, %1) else b2(%0, %1)
+  b1(%4 a: ptr, %5 n: i64):
+    %8 total: i64 = proj %4.0 main::direct_region_restart::Acc
+    drop %4
+    ret %8
+  b2(%6 a: ptr, %7 n: i64):
+    %9 lit: i64 = const 1
+    %10 t: i64 = intsub %7, %9
+    call deep_acc#4(%6, %10) -> b3()
+  b3(%11 r: i64):
+    %12 lit: i64 = const 1
+    %13 t: i64 = intadd %11, %12
+    ret %13
+
+fn half#5 top -> f64 ; main::direct_region_restart, frame 3 slots [%0 f64, %1 i64, %10 f64]
+  b0(%0 x: f64, %1 n: i64):
+    %2 lit: i64 = const 0
+    %3 t: bool = eq.int %1, %2
+    if %3 then b1(%0, %1) else b2(%0, %1)
+  b1(%4 x: f64, %5 n: i64):
+    ret %4
+  b2(%6 x: f64, %7 n: i64):
+    %8 lit: i64 = const 1
+    %9 t: i64 = intsub %7, %8
+    call half#5(%6, %9) -> b3()
+  b3(%10 r: f64):
+    %11 lit: f64 = const 1.0
+    %12 t: f64 = floatmul %10, %11
+    ret %12
+
+fn shallow#6 top -> i64 ; main::direct_region_restart, frame 3 slots [%0 word*, %1 i64, %3 i64]
+  b0(%0 xs: ptr, %1 n: i64):
+    %2 lit: ptr = const str 3
+    call walk#2(%0, %2, %1) -> b1()
+  b1(%3 r: i64):
+    %4 lit: i64 = const 2
+    %5 t: i64 = intmul %3, %4
+    ret %5

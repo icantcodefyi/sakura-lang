@@ -35,6 +35,7 @@ semantics/direct_closure_values: 6 funcs, 22 blocks, 6 dup, 21 drop, valid
 semantics/direct_higher_order: 20 funcs, 59 blocks, 10 dup, 57 drop, valid
 semantics/direct_inlined_bind_blame: 5 funcs, 12 blocks, 0 dup, 3 drop, valid
 semantics/direct_inlined_bind_defect: 5 funcs, 13 blocks, 0 dup, 3 drop, valid
+semantics/direct_region_restart: 7 funcs, 38 blocks, 3 dup, 32 drop, valid
 semantics/early_return: 4 funcs, 21 blocks, 3 dup, 24 drop, valid
 semantics/effects_and_handlers: 9 funcs, 47 blocks, 6 dup, 22 drop, valid
 semantics/error_unions: 5 funcs, 38 blocks, 0 dup, 5 drop, valid
