@@ -388,10 +388,12 @@ fn js_and_wasm_agree_on_the_semantics_corpus() {
     eprintln!("traced operations on WASM: {ops:?}");
     eprintln!("{}", import_report(&covered));
     assert!(total > 0 && examples > 0, "parity corpus must not be empty");
+    // Projects with no test blocks start no host; the corpus as a whole must exercise it.
+    assert!(
+        covered.iter().any(|(_, i)| !i.provided.is_empty()),
+        "no WASM host-import coverage was recorded"
+    );
     for (name, i) in &covered {
-        if i.provided.is_empty() {
-            failures.push(format!("{name}: no WASM host-import coverage was recorded"));
-        }
         let missing: Vec<&String> = i.declared.difference(&i.provided).collect();
         if !missing.is_empty() {
             failures.push(format!("{name}: the host lacks imports {missing:?}"));
