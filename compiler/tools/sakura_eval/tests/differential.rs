@@ -1145,7 +1145,7 @@ fn js_backend_agrees_with_the_evaluator() {
     let workers = std::thread::available_parallelism()
         .map_or(4, |n| n.get())
         .min(8);
-    let results: Vec<(u64, Result<Option<(String, bool)>, String>)> = std::thread::scope(|s| {
+    let results: Vec<(u64, Checked)> = std::thread::scope(|s| {
         let handles: Vec<_> = seeds
             .chunks(seeds.len().div_ceil(workers).max(1))
             .map(|chunk| {
@@ -1201,7 +1201,9 @@ fn js_backend_agrees_with_the_evaluator() {
 /// `Ok(Some((ending, lir)))` agree (`lir`: the LIR interpreter was compared too), `Ok(None)`
 /// skipped (evaluator lacks a feature), `Err` disagree or the program did not compile (a
 /// generator or compiler bug).
-fn check_one(seed: u64, dir: &Path) -> Result<Option<(String, bool)>, String> {
+type Checked = Result<Option<(String, bool)>, String>;
+
+fn check_one(seed: u64, dir: &Path) -> Checked {
     let src = program(seed);
     let snapshot = Snapshot::with_std([("file:///diff/main.sakura".to_owned(), src.clone())]);
     // One lowering feeds both backends, so they run exactly the same Core.
