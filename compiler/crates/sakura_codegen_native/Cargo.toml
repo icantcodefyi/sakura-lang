@@ -1,0 +1,31 @@
+[package]
+name = "sakura_codegen_native"
+description = "Native codegen toolchain skeleton; LIR lowering is not implemented."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[features]
+default = []
+native = ["dep:sakura_lir", "dep:cranelift-codegen", "dep:cranelift-frontend", "dep:cranelift-module", "dep:cranelift-object", "dep:cranelift-native", "dep:target-lexicon", "dep:gimli", "dep:object"]
+
+[dependencies]
+sakura_lir = { workspace = true, optional = true }
+cranelift-codegen = { workspace = true, optional = true }
+cranelift-frontend = { workspace = true, optional = true }
+cranelift-module = { workspace = true, optional = true }
+cranelift-object = { workspace = true, optional = true }
+cranelift-native = { workspace = true, optional = true }
+target-lexicon = { workspace = true, optional = true }
+gimli = { workspace = true, optional = true }
+object = { workspace = true, optional = true }
+
+[[test]]
+name = "smoke"
+required-features = ["native"]
+
+[lints]
+workspace = true

@@ -12,7 +12,13 @@ publish.workspace = true
 name = "sakura"
 path = "src/main.rs"
 
+[features]
+default = []
+native = ["dep:sakura_codegen_native", "sakura_codegen_native/native", "dep:sakura_host_native", "sakura_host_native/native"]
+
 [dependencies]
+sakura_codegen_native = { workspace = true, optional = true }
+sakura_host_native = { workspace = true, optional = true }
 sakura_analysis.workspace = true
 sakura_codegen_js.workspace = true
 sakura_core.workspace = true

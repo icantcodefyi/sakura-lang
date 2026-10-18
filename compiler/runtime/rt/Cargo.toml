@@ -8,6 +8,15 @@ license.workspace = true
 repository.workspace = true
 publish.workspace = true
 
+# N0a: staticlib crate type and native export wait for N1a (see REQUESTS.md).
+[features]
+default = []
+native = []
+valgrind = ["native", "dep:crabgrind"]
+
+[dependencies]
+crabgrind = { workspace = true, optional = true }
+
 [dev-dependencies]
 wasmparser.workspace = true
 insta.workspace = true

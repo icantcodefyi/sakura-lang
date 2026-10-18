@@ -1,6 +1,27 @@
 [workspace]
 resolver = "3"
 members = ["crates/*", "tools/*", "runtime/rt"]
+# Keep the N0a native skeletons opt-in for plain `cargo build` / `cargo test`.
+default-members = [
+    "crates/sakura_analysis",
+    "crates/sakura_cli",
+    "crates/sakura_codegen_js",
+    "crates/sakura_codegen_wasm",
+    "crates/sakura_core",
+    "crates/sakura_core_snapshot",
+    "crates/sakura_diagnostics",
+    "crates/sakura_fmt",
+    "crates/sakura_hir",
+    "crates/sakura_lir",
+    "crates/sakura_lsp",
+    "crates/sakura_mcp",
+    "crates/sakura_syntax",
+    "crates/sakura_types",
+    "crates/sakura_verify",
+    "runtime/rt",
+    "tools/agent_docs",
+    "tools/sakura_eval",
+]
 
 [workspace.package]
 version = "0.1.0-alpha.1"
@@ -27,6 +48,10 @@ sakura_mcp = { path = "crates/sakura_mcp" }
 sakura_lsp = { path = "crates/sakura_lsp" }
 sakura_codegen_wasm = { path = "crates/sakura_codegen_wasm" }
 
+sakura_codegen_native = { path = "crates/sakura_codegen_native" }
+sakura_host_native = { path = "crates/sakura_host_native" }
+sakura_rt = { path = "runtime/rt" }
+
 # External crates. Add new ones here and use `dep.workspace = true` in crates.
 rowan = "0.16.1"
 text-size = "1.1.1"
@@ -44,11 +69,27 @@ stacker = "0.1.25"
 toml = "1.1.8"
 rmcp = { version = "3.5.1", default-features = false, features = ["server", "macros", "transport-io"] }
 schemars = "1.2.3"
-tokio = { version = "1.53.3", features = ["rt-multi-thread", "macros", "io-std", "process", "time"] }
+tokio = { version = "=1.53.3", features = ["rt-multi-thread", "macros", "io-std", "process", "time"] }
 lsp-server = "0.10.0"
 lsp-types = "0.97.0"
 wasmparser = { version = "0.262.0", default-features = false, features = ["std", "validate", "features"] }
 wasm-encoder = { version = "0.262.0", default-features = false, features = ["std", "wasmparser"] }
+
+# Native toolchain, qualified together (design §17.175).
+cranelift-codegen = "=0.136.3"
+cranelift-frontend = "=0.136.3"
+cranelift-module = "=0.136.3"
+cranelift-object = "=0.136.3"
+cranelift-native = "=0.136.3"
+target-lexicon = "=0.13.5"
+gimli = "=0.34.0"
+object = "=0.40.0"
+cap-std = "=4.0.3"
+crabgrind = "=0.4.0"
+reqwest = { version = "=0.13.5", default-features = false, features = ["rustls-no-provider", "stream"] }
+rustls = { version = "=0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
+rusqlite = { version = "=0.40.2", features = ["bundled"] }
+hyper = { version = "=1.12.0", default-features = false, features = ["server", "http1", "http2"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

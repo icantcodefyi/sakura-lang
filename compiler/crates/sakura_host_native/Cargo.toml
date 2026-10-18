@@ -1,0 +1,29 @@
+[package]
+name = "sakura_host_native"
+description = "Native host toolchain skeleton; host adapters are not implemented."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[features]
+default = []
+native = ["sakura_rt/native", "dep:sakura_rt", "dep:tokio", "dep:reqwest", "dep:rustls", "dep:rusqlite", "dep:hyper", "dep:cap-std"]
+
+[dependencies]
+sakura_rt = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+reqwest = { workspace = true, optional = true }
+rustls = { workspace = true, optional = true }
+rusqlite = { workspace = true, optional = true }
+hyper = { workspace = true, optional = true }
+cap-std = { workspace = true, optional = true }
+
+[[test]]
+name = "smoke"
+required-features = ["native"]
+
+[lints]
+workspace = true
