@@ -89,19 +89,21 @@ export function test$0$run(seed, $ctx, $k) {
 export function test$1($ctx, $k) {
   if (++$G.d > $L) return $b(test$1, [$ctx, $k]);
   const f = test$1$1;
-  return f(3, $ctx, (r) => {
-    return $std_test.expect_eq$_(r, 3, $ctx, (r_1) => {
-      return f(true, $ctx, (r_2) => {
-        return $std_test.expect(r_2, $ctx, $k);
-      });
-    });
+  const r = test$1$1$d(3);
+  return $std_test.expect_eq$_(r, 3, $ctx, (r_1) => {
+    const r_2 = test$1$1$d(true);
+    return $std_test.expect(r_2, $ctx, $k);
   });
 }
 
-function test$1$1(x, $ctx, $k) {
-  if (++$G.d > $L) return $b(test$1$1, [x, $ctx, $k]);
-  return $ret($k, x);
+function test$1$1$d(x) {
+  return x;
 }
+
+function test$1$1(x, $ctx, $k) {
+  return $ret($k, test$1$1$d(x));
+}
+test$1$1.$d = test$1$1$d;
 
 export function test$1$run(seed, $ctx, $k) {
   if (++$G.d > $L) return $b(test$1$run, [seed, $ctx, $k]);

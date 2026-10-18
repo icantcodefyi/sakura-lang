@@ -56,6 +56,7 @@ export function counter$d() {
 export function counter($ctx, $k) {
   return $ret($k, counter$d());
 }
+counter.$d = counter$d;
 
 function answer$1($ctx, $k) {
   if (++$G.d > $L) return $b(answer$1, [$ctx, $k]);
@@ -63,7 +64,15 @@ function answer$1($ctx, $k) {
   return $f0.i.c[0]($f0.i, $rt.cctx($ctx, $f0), $k);
 }
 
+export function twice$d(f) {
+  const r = f.$d();
+  const r_1 = f.$d();
+  const t = $rt.add(r, r_1);
+  return t;
+}
+
 export function twice(f, $ctx, $k) {
+  if (f.$d !== undefined) return $ret($k, twice$d(f));
   if (++$G.d > $L) return $b(twice, [f, $ctx, $k]);
   return f($ctx, (r) => {
     return f($ctx, (r_1) => {
@@ -73,14 +82,18 @@ export function twice(f, $ctx, $k) {
   });
 }
 
-function counter$Counter_next(inst, $ctx, $k) {
-  if (++$G.d > $L) return $b(counter$Counter_next, [inst, $ctx, $k]);
+function counter$Counter_next$d(inst) {
   const n = inst.s[0];
   const t = $rt.add(n, 1);
   inst.s[0] = t;
   const set = undefined;
   const n_1 = inst.s[0];
-  return $ret($k, n_1);
+  return n_1;
 }
+
+function counter$Counter_next(inst, $ctx, $k) {
+  return $ret($k, counter$Counter_next$d(inst));
+}
+counter$Counter_next.$d = counter$Counter_next$d;
 
 //# sourceMappingURL=main.js.map

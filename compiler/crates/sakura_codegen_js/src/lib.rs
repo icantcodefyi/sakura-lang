@@ -32,8 +32,8 @@ pub struct Source {
 #[derive(Clone, Debug, Default)]
 pub struct Options {
     pub sources: Vec<Source>,
-    /// Emit direct-style versions of pure functions (design §13.3, M2). On by default via
-    /// [`Options::new`]; tests turn it off to compare both ABIs.
+    /// Emit direct twins of direct defs and lambdas (design §13.3, §17.111). On by default via
+    /// [`Options::new`]; `--no-direct` turns it off so every fixture runs under both ABIs.
     pub direct_style: bool,
 }
 
@@ -58,7 +58,7 @@ pub fn emit(m: &Module, opts: &Options) -> Vec<OutputFile> {
     let direct = if opts.direct_style {
         direct::analyze(m)
     } else {
-        vec![false; m.defs.len()]
+        direct::Facts::none(m)
     };
     let cx = Cx::new(m, direct, opts);
 
@@ -150,6 +150,20 @@ pub fn emit(m: &Module, opts: &Options) -> Vec<OutputFile> {
     files
 }
 
+/// `sakura build --dump direct` (design §17.111): every def and lambda as `direct` or
+/// `cps(<reason>)`, in definition order.
+pub fn dump_direct(m: &Module) -> String {
+    let facts = direct::analyze(m);
+    let mut out = String::new();
+    for (d, verdict) in m.defs.iter().zip(&facts.verdicts) {
+        let _ = match verdict {
+            Ok(()) => writeln!(out, "{}::{} direct", d.module, d.name),
+            Err(why) => writeln!(out, "{}::{} cps({why})", d.module, d.name),
+        };
+    }
+    out
+}
+
 /// `std::console` → `std/console.js`, `main` → `main.js`.
 pub fn module_path(module: &str) -> String {
     format!("{}.js", module.replace("::", "/"))
@@ -158,7 +172,7 @@ pub fn module_path(module: &str) -> String {
 /// Shared naming and analysis results for one emission.
 pub(crate) struct Cx<'a> {
     pub m: &'a Module,
-    pub direct: Vec<bool>,
+    pub direct: direct::Facts,
     /// Defs whose contract checks blame their caller (`requires`, `T.from`'s `where`): callers
     /// with a known target record the call's span first (ABI.md §5).
     pub takes_site: Vec<bool>,
@@ -169,7 +183,7 @@ pub(crate) struct Cx<'a> {
 }
 
 impl<'a> Cx<'a> {
-    fn new(m: &'a Module, direct: Vec<bool>, opts: &Options) -> Self {
+    fn new(m: &'a Module, direct: direct::Facts, opts: &Options) -> Self {
         let mut used: BTreeMap<&str, BTreeSet<String>> = BTreeMap::new();
         let mut unique = |module: &'a str, base: String| {
             let taken = used.entry(module).or_default();

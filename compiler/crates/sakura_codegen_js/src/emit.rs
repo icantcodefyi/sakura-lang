@@ -11,6 +11,7 @@ use std::fmt::Write;
 use sakura_core::builtins::{self, Abi};
 use sakura_core::*;
 
+use crate::direct::{self, Closures};
 use crate::sourcemap::{self, Mapping};
 use crate::{Cx, RESERVED, RUNTIME_FILE, ident, js_string, module_path};
 
@@ -51,7 +52,7 @@ pub(crate) fn module(cx: &Cx, module: &str) -> (String, String) {
     for (i, d) in cx.m.defs.iter().enumerate() {
         if d.module == module {
             let id = DefId(i as u32);
-            if cx.direct[i] {
+            if cx.direct.direct(id) {
                 FnEmit::new(cx, id, module, &module_defs, Mode::Direct, &ns, &pool).def(&mut w);
             }
             FnEmit::new(cx, id, module, &module_defs, Mode::Cps, &ns, &pool).def(&mut w);
@@ -331,6 +332,8 @@ struct FnEmit<'a> {
     /// Inline recursive labels whose entry block is being emitted.
     in_entry: Vec<Label>,
     ctxs: u32,
+    /// Locals bound to a closure of a known def: a call of one with a twin is inlined.
+    closures: Closures,
     ns: &'a RefCell<BTreeSet<String>>,
     pool: &'a Pool,
 }
@@ -381,6 +384,7 @@ impl<'a> FnEmit<'a> {
             in_loop: Vec::new(),
             in_entry: Vec::new(),
             ctxs: 0,
+            closures: direct::closures(def),
             ns,
             pool,
         };
@@ -444,7 +448,7 @@ impl<'a> FnEmit<'a> {
                     w.line("}");
                 }
             }
-            Mode::Cps if self.cx.direct[self.id.index()] => {
+            Mode::Cps if self.cx.direct.direct(self.id) => {
                 if constant {
                     w.line(&format!("let {name}$once = false, {name}$value;"));
                 }
@@ -455,9 +459,33 @@ impl<'a> FnEmit<'a> {
                     params.join(", ")
                 ));
                 w.depth += 1;
-                w.line(&format!("return $ret($k, {name}$d({ps}));"));
+                // The twin assumes its function-typed arguments carry `$d` (design §17.111);
+                // otherwise the CPS body runs.
+                let tests: Vec<String> = d
+                    .params
+                    .iter()
+                    .filter(|p| direct::fn_param(d, **p))
+                    .map(|p| format!("{}.$d !== undefined", self.name(*p)))
+                    .collect();
+                let twin = format!("return $ret($k, {name}$d({ps}));");
+                if tests.is_empty() {
+                    w.line(&twin);
+                } else {
+                    w.line(&format!("if ({}) {twin}", tests.join(" && ")));
+                    w.line(&format!(
+                        "if (++$G.d > $L) return $b({name}, [{}]);",
+                        params.join(", ")
+                    ));
+                    if !site.is_empty() {
+                        w.line(site);
+                    }
+                    self.expr(w, &d.body, "$ctx");
+                }
                 w.depth -= 1;
                 w.line("}");
+                if self.cx.direct.exposes(self.id) && d.captures.is_empty() {
+                    w.line(&format!("{name}.$d = {name}$d;"));
+                }
             }
             Mode::Cps => {
                 params.extend(["$ctx".into(), "$k".into()]);
@@ -593,11 +621,14 @@ impl<'a> FnEmit<'a> {
     fn is_cps(&self, b: &Bind) -> bool {
         match b {
             Bind::Perform(..) => true,
-            Bind::Call(Atom::Global(d), _) => !self.cx.direct[d.index()],
-            Bind::Call(Atom::Builtin(name), _) => {
-                builtins::lookup(name).is_none_or(|b| b.abi == Abi::Cps)
-            }
-            Bind::Call(..) => true,
+            Bind::Call(callee, args) => !self.cx.direct.call_ok(
+                self.cx.m,
+                self.def,
+                &self.closures,
+                self.mode == Mode::Direct,
+                callee,
+                args,
+            ),
             _ => false,
         }
     }
@@ -806,13 +837,29 @@ impl<'a> FnEmit<'a> {
                 format!("{}$d({})", self.def_ref(*d), self.atoms(args))
             }
             Bind::Call(Atom::Builtin(name), args) => format!("$rt.{name}({})", self.atoms(args)),
+            // A closure of a direct def bound in this function, or (in a twin) a function-typed
+            // parameter, which carries `$d`.
+            Bind::Call(Atom::Local(l), args) => match self.closures.get(l) {
+                Some((d, caps)) => format!(
+                    "{}$d({})",
+                    self.def_ref(*d),
+                    self.atoms(&[caps.as_slice(), args].concat())
+                ),
+                None => format!("{}.$d({})", self.name(*l), self.atoms(args)),
+            },
             Bind::Call(..) | Bind::Perform(..) => unreachable!("CPS binding"),
             Bind::Closure(d, caps) => {
-                let f = self.cx.def_names[d.index()].clone();
+                let f = self.def_ref(*d);
                 if caps.is_empty() {
                     f
                 } else {
-                    format!("{f}.bind(null, {})", self.atoms(caps))
+                    let caps = self.atoms(caps);
+                    if self.cx.direct.exposes(*d) {
+                        w.line(&format!("const {xs} = {f}.bind(null, {caps});"));
+                        w.line(&format!("{xs}.$d = {f}$d.bind(null, {caps});"));
+                        return;
+                    }
+                    format!("{f}.bind(null, {caps})")
                 }
             }
             Bind::Alloc(alloc, args) => self.alloc(alloc, args),

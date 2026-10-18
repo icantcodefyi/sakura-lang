@@ -37,13 +37,34 @@ A top-level constant (`FnKind::Const`) is emitted as `c$init` (its body) and `c`
 evaluates `c$init` on first use and returns the cached value afterwards (`c$d` likewise in the
 direct ABI).
 
-### Direct-style functions (M2)
+### Direct twins (design §17.111)
 
-A top-level function whose row is `{}` and whose body only calls other direct functions or
-direct builtins (no closures, no recursion except self tail calls, which become loops) is also
-emitted as a plain function `f$d(a1, …, an) → value`. CPS callers call `f$d` inline; the CPS
-name `f` stays exported as an adapter `(…, $ctx, $k) => $rt.ret($k, f$d(…))` for uses as a
-value. Direct functions may throw a defect (below) and nothing else.
+A def (top-level function, constant, lambda or clause) is **direct** when its row is `{}` or
+only row variables of its function-typed parameters, its body has no `Perform`, `Handle`, `Try`
+or `Fail`, every call is of a direct def, a `Direct` builtin, a function-typed parameter or a
+local bound to a closure of a direct def, and it is not recursive (a cycle of such calls,
+closures included, stays CPS until §17.112). It is also emitted as a plain function
+`f$d(captures…, a1, …, an) → value` that may throw a defect and nothing else.
+`sakura build --dump direct` prints the verdict per def (`direct` or `cps(<reason>)`);
+`--no-direct` (hidden) emits no twins, so the semantics suite runs every fixture under both
+ABIs and compares their effect traces.
+
+- A twin calls a direct def as `g$d(…)`, a closure-bound local as `lam$d(caps…, …)`, and a
+  function-typed parameter `p` as `p.$d(…)`: it assumes its function-typed arguments carry
+  twins, and passes only twinned function values to other twins.
+- The CPS name `f` stays the entry for CPS callers and uses as a value. For a direct def
+  without function-typed parameters it is the adapter `return $rt.ret($k, f$d(…))`. For a
+  higher-order one it tests `p.$d !== undefined` on every function-typed parameter, calls
+  `f$d` when all pass, and otherwise runs the CPS body (a `{}`-row callback may still suspend,
+  `fn() { with Clock.host() { Clock.sleep(…) } }`, so nothing runs an unknown function value
+  under a nested driver).
+- CPS code calls `f$d` inline when `f` is direct and every function-typed argument is
+  statically twinned (a direct first-order def or a closure-bound local of one); otherwise it
+  makes the CPS call and the entry test decides.
+
+No runtime builtin both takes a callback and can be reached from pure Sakura code (std's
+`map`/`filter`/`fold`/… are Sakura defs with twins; the remaining callback builtins perform),
+so none has a twin.
 
 Before emission, `sakura_core::opt` threads jumps to join points that only return, and turns self
 tail calls (outside `with`/`try` regions) into loops. Join points whose jumps all stay in one JS
@@ -221,7 +242,7 @@ suspend; `timeout` is std code over `race`. `clock_virtual_sleep(now, ms, $ctx, 
 | `Option`, `Result` | the runtime's `$rt.Option` / `$rt.Result` variants (`None`/`Some` = tags 0/1, `Ok`/`Err` = 0/1) |
 | `List` | `$rt.List`: a persistent vector, a 32-way trie of full leaves plus a tail of up to 32 elements; `get`/`push`/`set` O(log32 n). A push onto the newest version appends to the shared tail in place. Literals: `$rt.list([…])`; `$rt.toArray(xs)` copies out |
 | `Map`, `Set` | `$rt.VMap` / `$rt.VSet`: an insertion-order log (a `List` of entries, removed ones as holes, compacted when holes outnumber entries) plus a HAMT from `$rt.keyOf(key)` (structural) to the entry's log position. Insert, update, remove and lookup O(log32 n); updating a key keeps its position |
-| closure | JS function with the CPS ABI |
+| closure | JS function with the CPS ABI. A closure of a direct, **first-order** def (no function-typed parameter) also has own property `$d`, its twin with the captures bound: `f.$d = f$d` once per module for defs and capture-free lambdas, `x = f.bind(null, c…); x.$d = f$d.bind(null, c…)` otherwise. Testing `$d` is one load. Higher-order closures never expose `$d`: a function hidden in a type variable (`app(f, x)` with `x: A = fn(…)`) may reach a twin as an argument without `$d`, which is sound only if no twin reached through `.$d` calls its arguments |
 | `Handler` | `$rt.Handler { e, c, s }`; instances are `{ e, c, s }` |
 | `Secret` | `$rt.Secret` with a private field; `toString`, `toJSON` and `Symbol.toPrimitive` throw; `Show` prints `<secret>` |
 | `Range` | the tuple `[start, end]` (ponytail: a real type when ranges get methods) |

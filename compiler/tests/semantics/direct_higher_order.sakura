@@ -1,0 +1,35 @@
+// milestone: M3
+// covers: design §17.111 (performance-r1 WS-P1); runs under both ABIs with equal traces
+
+fn apply(f: fn(Int) -> Int, x: Int) -> Int { f(x) }
+
+// A function hidden in a type variable reaches a twin only as an argument it never calls.
+fn app<A, B>(f: fn(A) -> B, x: A) -> B { f(x) }
+
+// The lambda calls a captured function value, so it and `twice_each` stay CPS.
+fn twice_each(xs: List<Int>, f: fn(Int) -> Int) -> List<Int> { List.map(xs, fn(x) { f(f(x)) }) }
+
+// Recursion through a closure stays CPS (§17.112), so depth 1,000,000 is stack-safe.
+fn down(n: Int) -> Int { if n == 0 { 0 } else { apply(fn(x) { down(x) }, n - 1) + 1 } }
+
+pub fn main() -> Unit ! {Console} {
+  let k = 3
+  let add_k = fn(x) { x + k }
+  Console.print("{apply(add_k, 1)} {add_k(2)} {List.map([1, 2], add_k)} {twice_each([1], add_k)}")
+  // `{}`-row callbacks that suspend have no twin: `map` and `app` run their CPS bodies.
+  let slept = List.map([1, 2], fn(x) {
+    with Clock.virtual() {
+      Clock.sleep(Duration.millis(x))
+      x * 10
+    }
+  })
+  let late = fn(y: Int) -> Int {
+    with Clock.virtual() {
+      Clock.sleep(Duration.millis(1))
+      y
+    }
+  }
+  let higher = fn(h: fn(Int) -> Int) { h(5) }
+  Console.print("{slept} {app(add_k, 4)} {app(higher, add_k)} {app(higher, late)}")
+  Console.print("{down(1_000_000)}")
+}
