@@ -89,13 +89,12 @@ The reviewed `Formula/sakuralang.rb` will install `sakura` from immutable archiv
 The user command will be `brew install icantcodefyi/sakuralang/sakuralang`.
 This is a custom tap, not Homebrew core; see [tap maintenance](https://docs.brew.sh/How-to-Create-and-Maintain-a-Tap).
 
-For automation create a fine-grained PAT through GitHub **Settings → Developer
-settings → Personal access tokens → Fine-grained tokens**. Choose owner
-`icantcodefyi`, only repository `homebrew-sakuralang`, **Contents: read and write**
-and an expiry. Store `HOMEBREW_TAP_TOKEN` in `release-homebrew`. The main repo's
-`GITHUB_TOKEN` does not grant tap-repo writes. Manual owner Git credentials or a
-reviewed GitHub App scoped to the tap are alternatives; a broad classic `repo`
-token is unnecessary. See [GitHub token setup](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens).
+Automation uses a deploy key: an Ed25519 key added to `homebrew-sakuralang` with write
+access (and to no other repository), its private half stored as `HOMEBREW_TAP_DEPLOY_KEY`
+in `release-homebrew`. The main repo's `GITHUB_TOKEN` does not grant tap-repo writes; a
+deploy key is narrower than a personal access token and does not expire with one. To
+rotate it, generate a new key, replace the deploy key and the secret, then delete the old
+key (see [deploy keys](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys)).
 
 ### VS Code Marketplace and Open VSX
 
@@ -254,7 +253,7 @@ publication; same-source builds are not assumed byte-identical.
 The tag run of `release.yml` rebuilds and re-smoke-tests, then pauses at three jobs:
 approving `release-github` attests every file and creates the prerelease
 (`--prerelease --latest=false`); `release-homebrew` commits the filled formula with
-`HOMEBREW_TAP_TOKEN`; `release-npm` publishes the platform packages, then the wrapper, with
+`HOMEBREW_TAP_DEPLOY_KEY`; `release-npm` publishes the platform packages, then the wrapper, with
 `--tag alpha` (trusted publishing, else `NPM_TOKEN`). The latter two wait for the first.
 Native builds are not proven byte-identical, so review the tag run's own `SHA256SUMS`
 and summary before approving, not only the dry run's.
