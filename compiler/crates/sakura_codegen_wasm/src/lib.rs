@@ -18,7 +18,7 @@ pub mod wasi;
 use std::collections::HashMap;
 
 use sakura_lir::layout::{Slot, SlotKind};
-use sakura_lir::lir::Module;
+use sakura_lir::lir::{Module, Repr};
 use wasm_encoder::{BlockType, ExportKind, Function, MemArg, ValType};
 
 /// The `sakura_rt` wasm object, empty when `build.rs` could not build it.
@@ -105,7 +105,9 @@ fn natives(layout: &link::Layout) -> Vec<String> {
 
 /// Host-built root handlers: the builtin that builds one, its effect, and the prefix of the
 /// native codes of its clauses (`rt_code_<prefix>_<op>`; a missing one is
-/// `rt_code_unsupported`, a `D090` when performed).
+/// `rt_code_unsupported`, a `D090` when performed). Prefix `js` is a handler the JS runtime
+/// builds on the host: every clause is `rt_code_js_clause`, and the operations' arities follow
+/// the codes.
 const HOST_HANDLERS: &[(&str, &str, &str)] = &[
     ("console_host", "std::console::Console", "console"),
     ("clock_host", "std::clock::Clock", "clock"),
@@ -115,6 +117,7 @@ const HOST_HANDLERS: &[(&str, &str, &str)] = &[
     ("sql_memory", "std::sql::Sql", "sql"),
     ("task_host", "std::task::Task", "task"),
     ("task_deterministic", "std::task::Task", "task"),
+    ("llm_anthropic", "std::llm::Llm", "js"),
 ];
 
 /// The native codes `rt_init` receives (the callback stub, then the finalizers and clauses the
@@ -160,6 +163,8 @@ fn native_slots(name: &str) -> (Vec<Slot>, Vec<Slot>) {
         "rt_code_task_all" => (vec![w, i, w, w, i, i, w], vec![w]),
         "rt_code_task_race" => (vec![w, i, w, w, i, i], vec![w]),
         "rt_code_task_yield_now" => (vec![w, i], vec![w]),
+        // The clause, the activation, up to four arguments, the host's session, a flag.
+        "rt_code_js_clause" => (vec![w, i, w, w, w, w, i, i], vec![i, i, i]),
         _ => (vec![], vec![]),
     }
 }
@@ -181,6 +186,9 @@ pub const HOSTED: &[&str] = &[
     "fs_root",
     "fs_subdir",
     "fs_write",
+    "http_recording_append",
+    "http_recording_lookup",
+    "http_recording_open",
     "json_decode",
     "json_encode",
     "json_parse",
@@ -315,18 +323,30 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     // `rt_code_unsupported`), as `u32`s in the static block: (effect id, offset, count).
     let clause_codes = |statics: &mut data::Statics, effect: &str, prefix: &str| {
         let e = m.effects.iter().position(|x| x.name == effect)?;
-        let codes: Vec<u8> = m.effects[e]
-            .ops
+        let ops = &m.effects[e].ops;
+        let mut codes: Vec<u32> = ops
             .iter()
             .map(|op| {
-                let native = format!("rt_code_{prefix}_{}", op.name);
+                let native = if prefix == "js" {
+                    // The bridge passes at most four owned arguments and one owned result.
+                    let owned = |r: &Repr| matches!(r, Repr::Ptr | Repr::Word);
+                    let fits = op.sig.params.len() <= 4
+                        && op.sig.params.iter().all(owned)
+                        && owned(&op.sig.ret);
+                    if fits { "rt_code_js_clause" } else { "" }.to_string()
+                } else {
+                    format!("rt_code_{prefix}_{}", op.name)
+                };
                 match natives.iter().position(|x| *x == native) {
                     Some(_) => code_of(&native),
                     None => code_of("rt_code_unsupported"),
                 }
             })
-            .flat_map(u32::to_le_bytes)
             .collect();
+        if prefix == "js" {
+            codes.extend(ops.iter().map(|op| op.sig.params.len() as u32));
+        }
+        let codes: Vec<u8> = codes.into_iter().flat_map(u32::to_le_bytes).collect();
         Some((
             e as u32,
             statics.bytes(&codes),

@@ -19,6 +19,9 @@
 
 import * as rt from "./sakura_runtime.js";
 
+// The guest writes the trace (`trace_write`), including the operations host clauses perform.
+rt.stopTracing();
+
 /** ABI §0: the version this host implements. */
 export const ABI_VERSION = 0x010002;
 
@@ -59,6 +62,8 @@ const T = Object.freeze({
   set: 11,
   handle: 12,
   untrusted: 13,
+  // Inner value only to an import of kind `secret` (ABI §8.1); otherwise `Unit` (redacted).
+  secret: 14,
 });
 /** Handle kinds (ABI §8.4). */
 const DIR = 0;
@@ -162,6 +167,7 @@ const cpsContext = () => ({ h: null, c: { j: (e) => ({ fail: e }), m: 0 }, t: { 
 /** Run a CPS host function's bounces to its answer. */
 function settle(x) {
   while (x !== null && typeof x === "object" && typeof x.f === "function" && Array.isArray(x.a)) {
+    rt.G.d = 0;
     x = x.f(...x.a);
   }
   return x;
@@ -193,6 +199,15 @@ export const HOSTED = {
   fs_root: { run: () => ({ ok: rt.fs_root() }), result: () => DIR_SCHEMA },
   fs_subdir: { run: (_h, d, name) => ({ ok: rt.fs_subdir(d, name) }), result: () => R(DIR_SCHEMA, "S") },
   fs_write: { run: (_h, d, p, data) => ({ ok: rt.fs_write(d, p, data) }), result: () => R("U", "S") },
+  http_recording_open: { run: (_h, d, p) => ({ ok: rt.http_recording_open(d, p) }), result: () => R("I", "S") },
+  http_recording_lookup: {
+    run: (_h, id, req) => ({ ok: rt.http_recording_lookup(id, req) }),
+    result: () => R(OPT(["A", "std::response::Response", []]), "S"),
+  },
+  http_recording_append: {
+    run: (_h, id, req, resp) => ({ ok: rt.http_recording_append(id, req, resp) }),
+    result: () => R("U", "S"),
+  },
   json_decode: {
     run: (_h, text, schema) => ({ ok: rt.json_decode(text, JSON.parse(schema)) }),
     result: ([, schema]) => R(JSON.parse(schema), DECODE_ERROR),
@@ -205,6 +220,56 @@ export const HOSTED = {
   },
 };
 
+/**
+ * Handlers the JS runtime builds (`rt_b_<name>` in `sakura_rt`): `build(...args)`, per
+ * operation the position of its schema argument (which crosses as its JSON text), and the
+ * schema of its result from the clause's arguments (`null`: by the value). Their clauses run
+ * here (`js_clause`); what they perform runs in the guest (`PERFORMS`).
+ */
+const JS_HANDLERS = {
+  llm_anthropic: {
+    build: (key, model) => rt.llm_anthropic(key, model),
+    schemaArg: [1, -1, 2, 3],
+    results: [(a) => a[1], () => null, (a) => a[2], (a) => ["A", "std::llm::Step", [a[3]]]],
+  },
+};
+
+/**
+ * The operations a JS-built handler may perform in the guest, by effect: per operation
+ * whether it returns `Unit` (1) or a value (0). Others (`Http.stream`, whose callback is JS) are
+ * a `D090`.
+ */
+const PERFORMS = {
+  "std::http::Http": [0],
+  "std::budget::Budget": [0, 1],
+};
+
+/**
+ * Handler frames standing for the guest's handlers outside a JS-built one: performing on one
+ * stops the JS code with `{ perform }`, which `jsStep` hands to the guest.
+ */
+const guestFrames = Object.keys(PERFORMS).reduce((n, e) => {
+  const c = [0, 1, 2, 3].map((op) => (_i, ...a) => {
+    const k = a.pop();
+    const ctx = a.pop();
+    return { perform: { e, op, args: a, ctx, k } };
+  });
+  return { e, i: { e, c, s: [] }, n };
+}, null);
+
+/** A defect thrown by the JS runtime as a status-2 answer (`u32` code, message). */
+function defectAnswer(e) {
+  if (!(e instanceof rt.Defect)) throw e;
+  const out = new Writer();
+  out.u8(2);
+  out.u32(Number(e.code.slice(1)));
+  const m = utf8out.encode(e.detail);
+  out.room(m.length);
+  out.buf.set(m, out.n);
+  out.n += m.length;
+  return out.done();
+}
+
 /** One instance of a module and its host state. */
 export class Host {
   constructor({ argv = [] } = {}) {
@@ -215,6 +280,10 @@ export class Host {
     // `Sql.memory()` connections by id (JS `sqlConnection`), property sessions by id.
     this.sql = [];
     this.props = [];
+    // JS-built handlers by instance id, and their continuations waiting on a guest operation.
+    this.jsHandlers = [];
+    this.sessions = new Map();
+    this.nextSession = 1;
     // Handle tables (ABI §8.4): `${kind}:${slot}` → { generation, object }.
     this.handles = new Map();
     this.nextSlot = 1;
@@ -355,6 +424,28 @@ export class Host {
         },
         prop_record: (session, ptr, len) => this.props[Number(session)].msgs.push(this.string(ptr, len)),
         prop_failures: (session) => BigInt(this.props[Number(session)].msgs.length),
+        js_handler: (np, nl, ptr, len) => {
+          const name = this.string(np, nl);
+          const args = this.decode(new Reader(this.copyIn(ptr, len)));
+          this.jsHandlers.push({ spec: JS_HANDLERS[name], h: JS_HANDLERS[name].build(...args) });
+          return BigInt(this.jsHandlers.length - 1);
+        },
+        js_clause: (inst, op, ptr, len) => {
+          const { spec, h } = this.jsHandlers[Number(inst)];
+          const args = this.decode(new Reader(this.copyIn(ptr, len)));
+          const at = spec.schemaArg[op];
+          if (at >= 0) args[at] = JSON.parse(args[at]);
+          const run = { schema: spec.results[op](args) };
+          const ctx = { h: guestFrames, c: { j: (e) => ({ fail: e }), m: 0 }, t: { id: 0, fins: [] }, p: null };
+          return this.jsStep(run, () => h.c[op](h, ...args, ctx, (v) => ({ ok: v })));
+        },
+        js_resume: (session, status, ptr, len) => {
+          const s = this.sessions.get(session);
+          this.sessions.delete(session);
+          if (s === undefined) throw new HostFault("an unknown JS handler session");
+          const [v] = this.decode(new Reader(this.copyIn(ptr, len)));
+          return this.jsStep(s.run, () => (status === 0 ? s.k(v) : rt.fail(s.ctx, v)));
+        },
         trace_enabled: () => (this.traceFd === null ? 0 : 1),
         trace_write: (ptr, len) => {
           rt.flushOut();
@@ -439,6 +530,41 @@ export class Host {
     const slot = this.nextSlot++;
     this.handles.set(`${kind}:${slot}`, { generation: 1, object });
     return [slot, 1];
+  }
+
+  /**
+   * Run a JS-built handler's clause from `start` until it returns, fails, defects or performs
+   * an operation the guest runs (its continuation kept as a session): `js_answer`'s format.
+   */
+  jsStep(run, start) {
+    const w = new Writer();
+    try {
+      const r = settle(start());
+      if ("perform" in r) {
+        const { e, op, args, ctx, k } = r.perform;
+        const unit = PERFORMS[e][op];
+        if (unit === undefined) {
+          throw new rt.Defect("D090", `${e} operation ${op} from a JS handler is not supported by the WASM backend yet`);
+        }
+        const session = this.nextSession++;
+        this.sessions.set(session, { run, ctx, k });
+        w.u8(3);
+        w.u32(session);
+        w.u32(op);
+        w.u8(unit);
+        w.bytes(utf8out.encode(e));
+        this.encodeDynamic(w, args, 0);
+      } else if ("fail" in r) {
+        w.u8(1);
+        this.encodeDynamic(w, r.fail, 0);
+      } else {
+        w.u8(0);
+        this.encode(w, r.ok, run.schema);
+      }
+    } catch (e) {
+      return this.copyOut(defectAnswer(e));
+    }
+    return this.copyOut(w.done());
   }
 
   /** Encode JS value `v` of schema `s` (type arguments `env`) into `w`. */
@@ -536,6 +662,14 @@ export class Host {
       return w.u32(generation);
     }
     if (v instanceof rt.List) return this.encode(w, v, ["L", null], null, depth);
+    if (v instanceof rt.Untrusted) {
+      w.u8(T.untrusted);
+      return this.encodeDynamic(w, v.v, depth + 1);
+    }
+    if (v instanceof rt.Secret) {
+      w.u8(T.secret);
+      return this.encodeDynamic(w, rt.Secret.expose(v), depth + 1);
+    }
     if (Array.isArray(v)) return this.encode(w, v, ["T", ...v.map(() => null)], null, depth);
     const t = v?.constructor?.prototype?.$t;
     if (t !== undefined) return this.encode(w, v, ["A", t.id, []], null, depth);
@@ -595,6 +729,8 @@ export class Host {
       }
       case T.untrusted:
         return rt.untrusted_of(this.decode(r, depth + 1));
+      case T.secret:
+        return rt.secret_wrap(this.decode(r, depth + 1));
       default:
         throw new HostFault(`unknown value tag ${tag}`);
     }
@@ -619,15 +755,7 @@ export class Host {
         this.encode(w, r.ok, op.result(args));
       }
     } catch (e) {
-      if (!(e instanceof rt.Defect)) throw e;
-      const out = new Writer();
-      out.u8(2);
-      out.u32(Number(e.code.slice(1)));
-      const m = utf8out.encode(e.detail);
-      out.room(m.length);
-      out.buf.set(m, out.n);
-      out.n += m.length;
-      return this.copyOut(out.done());
+      return this.copyOut(defectAnswer(e));
     }
     return this.copyOut(w.done());
   }

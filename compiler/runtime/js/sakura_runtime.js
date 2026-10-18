@@ -153,10 +153,14 @@ const opNames = new Map();
 export function registerOps(effects) {
   for (const [e, ops] of Object.entries(effects)) opNames.set(e, ops);
 }
-const traceFd = (() => {
+let traceFd = (() => {
   const path = globalThis.process?.env?.SAKURA_TRACE;
   return path ? globalThis.process.getBuiltinModule("node:fs").openSync(path, "a") : null;
 })();
+/** Write no trace records: the WASM host traces the guest, whose host clauses run here. */
+export function stopTracing() {
+  traceFd = null;
+}
 let traceSeq = 0;
 function trace(t, record) {
   const line = JSON.stringify({ seq: traceSeq++, task: t.id, ...record });

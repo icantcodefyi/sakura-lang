@@ -66,6 +66,9 @@ pub const IMPORTS: &[&str] = &[
     "prop_next",
     "prop_record",
     "prop_failures",
+    "js_handler",
+    "js_clause",
+    "js_resume",
 ];
 
 /// The gate for `host`: a [`Host::Wasi`] command may also import `fd_write` and `proc_exit`
