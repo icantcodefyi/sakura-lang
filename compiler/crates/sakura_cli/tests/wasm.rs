@@ -454,3 +454,52 @@ fn serve_host_answers_on_wasm_as_on_js() {
     assert_eq!(answers[1], answers[0]);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// `Log.json()` (plan §3.7 W2) runs the JS runtime's handler on the host: its stderr lines
+/// are JS's byte for byte, as are stdout and the trace.
+#[test]
+fn log_json_writes_what_js_writes() {
+    if !available() {
+        eprintln!("skipped: node is missing");
+        return;
+    }
+    let dir = std::env::temp_dir().join(format!("sakura-wasm-logjson-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("main.sakura"),
+        "pub fn main() -> Unit ! {Console} {\n\
+         \x20 with Log.json() {\n\
+         \x20   Log.event(Level.Info, \"started\", [(\"n\", Json.Number(1.5)), (\"who\", Json.String(\"ann\"))])\n\
+         \x20   Console.print(\"between\")\n\
+         \x20   Log.event(Level.Error, \"done\", [])\n\
+         \x20 }\n}\n",
+    )
+    .unwrap();
+    let run = |target: &str| {
+        let trace = dir.join(format!("{target}.trace"));
+        let out_dir = dir.join(format!("out-{target}"));
+        let out = sakura_env(
+            &[
+                "run",
+                "--target",
+                target,
+                "--out-dir",
+                out_dir.to_str().unwrap(),
+                "main.sakura",
+            ],
+            &dir,
+            &[("SAKURA_TRACE", &trace)],
+        );
+        let trace = std::fs::read_to_string(&trace).unwrap_or_default();
+        (out.code, out.stdout, out.stderr, trace)
+    };
+    let js = run("js");
+    assert_eq!(js.0, Some(0), "{}", js.2);
+    assert_eq!(
+        js.2,
+        "{\"level\":\"Info\",\"message\":\"started\",\"fields\":{\"n\":1.5,\"who\":\"ann\"}}\n\
+         {\"level\":\"Error\",\"message\":\"done\",\"fields\":{}}\n"
+    );
+    assert_eq!(run("wasm"), js);
+    let _ = std::fs::remove_dir_all(&dir);
+}

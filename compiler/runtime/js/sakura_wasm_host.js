@@ -247,6 +247,7 @@ const JS_HANDLERS = {
     // each returns `Unit`: `stream`'s `on_partial`.
     closures: [[], [], [[1, 1]], []],
   },
+  log_json: { build: () => rt.log_json(), schemaArg: [-1], results: [() => "U"], closures: [[]] },
 };
 
 /** Handle kinds of host JS values (`sakura_rt::vt`): a function, an opaque result. */

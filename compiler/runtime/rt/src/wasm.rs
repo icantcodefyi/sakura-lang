@@ -1745,6 +1745,12 @@ pub extern "C" fn rt_b_llm_anthropic(effect: u32, codes: u32, n: u32, key: u32, 
     js_handler("llm_anthropic", effect, codes, n, &[key, model])
 }
 
+/// `Log.json()`: the JS runtime's handler (its JSON lines are the JS backend's byte for byte).
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_b_log_json(effect: u32, codes: u32, n: u32) -> u32 {
+    js_handler("log_json", effect, codes, n, &[])
+}
+
 /// A handler the host builds by calling the JS runtime's `name(...args)` (the arguments
 /// consumed); its clauses are `rt_code_js_clause`.
 fn js_handler(name: &str, effect: u32, codes: u32, n: u32, args: &[u32]) -> u32 {

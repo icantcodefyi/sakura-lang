@@ -113,7 +113,7 @@ const HOST_HANDLERS: &[(&str, &str, &str)] = &[
     ("clock_host", "std::clock::Clock", "clock"),
     ("random_host", "std::random::Random", "random"),
     ("log_stderr", "std::log::Log", "log_stderr"),
-    ("log_json", "std::log::Log", "log_json"),
+    ("log_json", "std::log::Log", "js"),
     ("sql_memory", "std::sql::Sql", "sql"),
     ("sql_sqlite", "std::sql::Sql", "sql"),
     ("task_host", "std::task::Task", "task"),
@@ -342,11 +342,12 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
             .iter()
             .map(|op| {
                 let native = if prefix == "js" {
-                    // The bridge passes at most four owned arguments and one owned result.
+                    // The bridge passes at most four owned arguments and one owned result
+                    // (or none).
                     let owned = |r: &Repr| matches!(r, Repr::Ptr | Repr::Word);
                     let fits = op.sig.params.len() <= 4
                         && op.sig.params.iter().all(owned)
-                        && owned(&op.sig.ret);
+                        && (owned(&op.sig.ret) || op.sig.ret == Repr::Unit);
                     if fits { "rt_code_js_clause" } else { "" }.to_string()
                 } else {
                     format!("rt_code_{prefix}_{}", op.name)
