@@ -21,6 +21,7 @@ pub mod mem;
 pub mod object;
 pub mod scratch;
 pub mod show;
+pub mod task;
 pub mod value;
 pub mod vt;
 #[cfg(target_arch = "wasm32")]
@@ -113,6 +114,10 @@ pub mod tag {
     pub const FIN_ENTRY: u16 = 0x8003;
     pub const TASK: u16 = 0x8004;
     pub const REQUEST: u16 = 0x8005;
+    /// A fiber group (`Task.scope`, `all`, `race`), execution state like the above.
+    pub const GROUP: u16 = 0x8006;
+    /// A `Task.deterministic` generator's state (`sakura-gen-v1`).
+    pub const RNG: u16 = 0x8007;
 }
 
 /// One runtime instance: the heap plus the module's tables. On wasm32 there is exactly one,

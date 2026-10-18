@@ -116,10 +116,12 @@ pub extern "C" fn rt_init(
     stub: u32,
     file_close: u32,
     sql_rollback: u32,
+    cancel_all: u32,
 ) -> u32 {
     let rt = rt();
     rt.sched.file_close_code = file_close;
     rt.sched.sql_rollback_code = sql_rollback;
+    rt.sched.cancel_all_code = cancel_all;
     rt.set_codes(codes);
     rt.set_effects(effects);
     rt.sched.ops = ops;
@@ -749,20 +751,82 @@ pub extern "C" fn rt_vt_take_bool() -> u32 {
 // `rt_k_<name>` is a native code called like a Sakura function: its arguments are in its frame
 // slots 0.. in the builtin's representations, its result goes to the return register.
 
-/// `clock_virtual_sleep(now, ms)`: `now + max(ms, 0)` at once. ponytail: one sleeper at a
-/// time; concurrent virtual sleepers wake in call order, not in virtual-time order as JS's
-/// queue orders them (add a sleeper queue in the scheduler when a fixture needs it).
+/// `clock_virtual_sleep(now, ms)`: suspends until virtual time `now + max(ms, 0)` comes up and
+/// returns it (JS's sleeper queue: the runtime wakes the earliest sleeper when no task can run).
 #[unsafe(no_mangle)]
 pub extern "C" fn rt_k_clock_virtual_sleep(_env: u32, frame: u32) -> u32 {
     let rt = rt();
-    let (now, ms) = (rt.fslot(frame, 0) as i64, rt.fslot(frame, 1) as i64);
-    match now.checked_add(ms.max(0)) {
-        Some(t) => {
-            rt.set_ret(t as u64);
-            step::RETURN
-        }
-        None => rt.raise(Defect::INT_OVERFLOW),
+    if rt.block(frame) == 1 {
+        let _ = rt.take_ret();
+        let at = rt.fslot(frame, 0);
+        return ret(rt, at);
     }
+    let (now, ms) = (rt.fslot(frame, 0) as i64, rt.fslot(frame, 1) as i64);
+    let Some(at) = now.checked_add(ms.max(0)) else {
+        return rt.raise(Defect::INT_OVERFLOW);
+    };
+    rt.set_fslot(frame, 0, at as u64);
+    match rt.virtual_sleep(at) {
+        Ok(_) => {
+            rt.set_block(frame, 1);
+            step::SUSPEND
+        }
+        Err(d) => rt.raise(d),
+    }
+}
+
+// ---- std::task::Task (`crate::task`) ----------------------------------------------------------
+
+/// `Task.host()`: the clauses at `codes`, no generator.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_b_task_host(effect: u32, codes: u32, n: u32) -> u32 {
+    let rt = rt();
+    ptr(crate::task::task_handler(rt, effect, codes, n, UNIT))
+}
+
+/// `Task.deterministic(seed)`: the clauses at `codes` over a `sakura-gen-v1` generator.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_b_task_deterministic(effect: u32, codes: u32, n: u32, seed: i64) -> u32 {
+    let rt = rt();
+    let r = crate::task::deterministic_rng(rt, seed)
+        .and_then(|g| crate::task::task_handler(rt, effect, codes, n, g));
+    ptr(r)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_task_scope(env: u32, frame: u32) -> u32 {
+    crate::task::scope(rt(), env, frame)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_task_spawn(env: u32, frame: u32) -> u32 {
+    crate::task::spawn(rt(), env, frame)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_task_join(env: u32, frame: u32) -> u32 {
+    crate::task::join(rt(), env, frame)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_task_all(env: u32, frame: u32) -> u32 {
+    crate::task::all(rt(), env, frame)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_task_race(env: u32, frame: u32) -> u32 {
+    crate::task::race(rt(), env, frame)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_task_yield_now(env: u32, frame: u32) -> u32 {
+    crate::task::yield_now(rt(), env, frame)
+}
+
+/// `Task.scope`'s finalizer.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_task_cancel_all(env: u32, frame: u32) -> u32 {
+    crate::task::cancel_all(rt(), env, frame)
 }
 
 /// A host-built root handler (`console_host`, `clock_host`, …): no state (`type_id =

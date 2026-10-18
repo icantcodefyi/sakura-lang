@@ -116,7 +116,10 @@ const T_DEFECT_LEN: u32 = 152;
 const T_DEFECT_MSG: u32 = 156;
 /// The task's number in creation order, as JS numbers tasks in effect traces (§17.80).
 const T_NO: u32 = 164;
-const TASK_SIZE: u32 = 168;
+/// The fiber group the task belongs to (0 for none) and whether a `join` named it.
+const T_GROUP: u32 = 168;
+const T_JOINED: u32 = 172;
+const TASK_SIZE: u32 = 176;
 /// Words of one catch entry on the task's catch stack (`catch_entry`).
 const CATCH_WORDS: u32 = 7;
 /// Slots a finalizer frame adds after its own for the unwinding it interrupts: while a
@@ -160,6 +163,13 @@ pub struct Sched {
     pub file_close_code: u32,
     /// The code of `Sql.transaction`'s finalizer (`rt_code_sql_rollback`), set at link time.
     pub sql_rollback_code: u32,
+    /// The code of `Task.scope`'s finalizer (`rt_code_task_cancel_all`), set at link time.
+    pub cancel_all_code: u32,
+    /// A task to run before the current one continues (`handoff`): a fiber starts eagerly.
+    handoff: u32,
+    /// Virtual sleepers (`virtual_sleep`): `at` (two words), order, request id.
+    sleepers: Option<Stack>,
+    sleeper_seq: u32,
     pub exit_code: i32,
     /// Set when an export compiled code called raised a defect (wasm32 `rt_take_defect`).
     pub raised: bool,
@@ -958,11 +968,43 @@ impl Rt {
             self.sched.head -= 1;
             self.stack_set(&q, self.sched.head, id);
             Ok(())
+        } else if front {
+            // No room before the head: shift the queue right by one.
+            let r = self.push(&mut q, id);
+            if r.is_ok() {
+                for i in (self.sched.head + 1..q.len).rev() {
+                    let v = self.stack_at(&q, i - 1);
+                    self.stack_set(&q, i, v);
+                }
+                self.stack_set(&q, self.sched.head, id);
+            }
+            r
         } else {
             self.push(&mut q, id)
         };
         self.sched.queue = Some(q);
         r
+    }
+
+    /// Take task `id` out of the run queue, if it is there.
+    fn unqueue(&mut self, id: u32) {
+        let Some(mut q) = self.sched.queue.take() else {
+            return;
+        };
+        if let Some(at) = (self.sched.head..q.len).find(|&i| self.stack_at(&q, i) == id) {
+            for i in at..q.len - 1 {
+                let v = self.stack_at(&q, i + 1);
+                self.stack_set(&q, i, v);
+            }
+            q.len -= 1;
+        }
+        self.sched.queue = Some(q);
+    }
+
+    /// Run the runnable task `child` before the current task continues; the current task
+    /// returns `step::YIELD` next (a fiber starts eagerly, as JS `runTask` from `startFiber`).
+    pub fn handoff(&mut self, child: u32) {
+        self.sched.handoff = child;
     }
 
     fn dequeue(&mut self) -> Option<u32> {
@@ -1013,6 +1055,11 @@ impl Rt {
                     return Next::Done(kind);
                 }
                 let Some(id) = self.dequeue() else {
+                    // Nothing can run: virtual time advances to the earliest sleeper.
+                    if let Some(req) = self.pop_sleeper() {
+                        self.complete(req, status::OK, 0);
+                        continue;
+                    }
                     return Next::Done(outcome::PENDING);
                 };
                 if let Some(t) = self
@@ -1129,11 +1176,20 @@ impl Rt {
                 if self.u(t, T_MODE) != NONE {
                     return;
                 }
+                let child = core::mem::take(&mut self.sched.handoff);
                 if self.u(t, T_BLOCKED) > 0 {
                     self.set(t, T_STATE, BLOCKED);
                 } else {
                     self.set(t, T_STATE, RUNNABLE);
-                    if self.enqueue(id, false).is_err() {
+                    if self.enqueue(id, child != 0).is_err() {
+                        self.record_defect(t, Defect::HEAP_EXHAUSTED);
+                        self.begin(t, DEFECT);
+                        return;
+                    }
+                }
+                if child != 0 && self.arena_obj(child, tag::TASK).is_some() {
+                    self.unqueue(child);
+                    if self.enqueue(child, true).is_err() {
                         self.record_defect(t, Defect::HEAP_EXHAUSTED);
                         self.begin(t, DEFECT);
                         return;
@@ -1351,6 +1407,7 @@ impl Rt {
     fn finish_task(&mut self, t: u32, kind: u32) {
         self.set(t, T_OUTCOME, kind);
         self.set(t, T_STATE, DONE);
+        self.fiber_done(t, kind);
         while let Some(id) = self.tpop(t, T_FINS) {
             let c = self.take_fin(id);
             self.drop(c);
@@ -1485,6 +1542,225 @@ impl Rt {
         // SAFETY: a plain import with a slice inside linear memory, copied in before it returns.
         unsafe {
             crate::host::trace_write(at, len)
+        }
+    }
+}
+
+// ---- virtual time and fibers (std::clock virtual sleeps, std::task::Task) ----------------
+//
+// As the JS runtime: a virtual sleep wakes when no task can run, earliest time first and ties
+// in sleep order (JS's `virtualTick` on `setImmediate`); a fiber starts eagerly, running until it
+// suspends or ends before its parent continues (`startFiber` runs it synchronously); a fiber
+// group (`Task.scope`, `all`, `race`) reacts when a member ends (`onDone`): the first failure,
+// or for `race` the first outcome, decides the group and cancels the members still running.
+
+/// Fiber group kinds.
+pub mod group {
+    pub const SCOPE: u32 = 0;
+    pub const ALL: u32 = 1;
+    pub const RACE: u32 = 2;
+}
+
+// Group (tag 0x8006): kind, the deciding member's task id (0 for none), the owner waiting on a
+// `race` (0 for none), then the members in start order (a scratch stack).
+const G_KIND: u32 = 8;
+const G_DECIDED: u32 = 12;
+const G_WAITER: u32 = 16;
+const G_FIBERS: u32 = 20;
+const GROUP_SIZE: u32 = 32;
+
+impl Rt {
+    /// Suspend the current task until virtual time `at`: a request the scheduler completes when
+    /// nothing can run. The caller stores what it needs, sets its resume block and returns
+    /// `step::SUSPEND`.
+    pub fn virtual_sleep(&mut self, at: i64) -> Res<u32> {
+        let req = self.request(0)?.ok_or(Defect::INTERNAL)?;
+        let mut q = self.sched.sleepers.take().unwrap_or(Stack::NONE);
+        let seq = self.sched.sleeper_seq;
+        self.sched.sleeper_seq += 1;
+        let r = [at as u32, (at >> 32) as u32, seq, req]
+            .iter()
+            .try_for_each(|&v| self.push(&mut q, v));
+        self.sched.sleepers = Some(q);
+        r.map(|_| req)
+    }
+
+    /// The request of the earliest virtual sleeper (ties in sleep order), removed.
+    fn pop_sleeper(&mut self) -> Option<u32> {
+        let mut q = self.sched.sleepers.take()?;
+        let n = q.len / 4;
+        let key = |rt: &Rt, i: u32| {
+            let at = rt.stack_at(&q, 4 * i) as u64 | (rt.stack_at(&q, 4 * i + 1) as u64) << 32;
+            (at as i64, rt.stack_at(&q, 4 * i + 2))
+        };
+        let best = (0..n).min_by_key(|&i| key(self, i));
+        let r = best.map(|i| {
+            let req = self.stack_at(&q, 4 * i + 3);
+            for j in 4 * i..q.len - 4 {
+                let v = self.stack_at(&q, j + 4);
+                self.stack_set(&q, j, v);
+            }
+            q.len -= 4;
+            req
+        });
+        self.sched.sleepers = Some(q);
+        r
+    }
+
+    /// A new fiber group of `kind` owned by the current task: its arena id.
+    pub fn group_new(&mut self, kind: u32) -> Res<u32> {
+        let g = self.new_object(tag::GROUP, GROUP_SIZE)?;
+        self.set(g, G_KIND, kind);
+        Stack::NONE.store(&mut self.heap.mem, g + G_FIBERS);
+        self.arena_new(g).inspect_err(|_| self.heap.free(g))
+    }
+
+    fn group(&self, id: u32) -> Option<u32> {
+        self.arena_obj(id, tag::GROUP)
+    }
+
+    /// The members of group `id`, in start order.
+    pub fn group_members(&self, id: u32) -> Stack {
+        self.group(id)
+            .map_or(Stack::NONE, |g| Stack::load(&self.heap.mem, g + G_FIBERS))
+    }
+
+    /// The deciding member of group `id` (0 for none).
+    pub fn group_decided(&self, id: u32) -> u32 {
+        self.group(id).map_or(0, |g| self.u(g, G_DECIDED))
+    }
+
+    /// Release group `id` (its members keep running; their end no longer reaches it).
+    pub fn group_free(&mut self, id: u32) {
+        if let Some(g) = self.group(id) {
+            let s = Stack::load(&self.heap.mem, g + G_FIBERS);
+            self.stack_free(s);
+            self.arena_free(id);
+            self.heap.free(g);
+        }
+    }
+
+    /// Start `body` (a closure value, consumed) as a member of group `id`, under activation
+    /// `act` (the performer's), and hand off to it: the caller returns `step::YIELD` next.
+    pub fn fiber_start(&mut self, id: u32, body: u32, act: u32) -> Res<u32> {
+        let g = self.group(id).ok_or(Defect::INTERNAL)?;
+        let child = self.spawn_value(body)?;
+        let t = self.task(child);
+        self.set(t, T_GROUP, id);
+        if let Some(f) = self.arena_obj(self.u(t, T_FRAME), tag::FRAME) {
+            self.set(f, F_ACT, act);
+        }
+        let mut s = Stack::load(&self.heap.mem, g + G_FIBERS);
+        let r = self.push(&mut s, child);
+        s.store(&mut self.heap.mem, g + G_FIBERS);
+        r?;
+        self.handoff(child);
+        Ok(child)
+    }
+
+    /// The activation of the frame that performed the operation whose clause frame is `f`.
+    pub fn performer_activation(&self, f: u32) -> u32 {
+        self.arena_obj(self.u(f, F_PARENT), tag::FRAME)
+            .map_or(0, |p| self.u(p, F_ACT))
+    }
+
+    /// Mark fiber task `child` as joined (`Task.join`).
+    pub fn set_joined(&mut self, child: u32) {
+        if let Some(t) = self.arena_obj(child, tag::TASK) {
+            self.set(t, T_JOINED, 1);
+        }
+    }
+
+    pub fn joined(&self, child: u32) -> bool {
+        self.arena_obj(child, tag::TASK)
+            .is_some_and(|t| self.u(t, T_JOINED) != 0)
+    }
+
+    /// Whether task `id` has an outcome.
+    pub fn is_done(&self, id: u32) -> bool {
+        self.arena_obj(id, tag::TASK)
+            .is_none_or(|t| self.u(t, T_STATE) == DONE)
+    }
+
+    /// Block the current task until group `id` is decided (`Task.race`); the caller returns
+    /// `step::YIELD`. False when it already is.
+    pub fn wait_decided(&mut self, id: u32) -> bool {
+        let Some(g) = self.group(id) else {
+            return false;
+        };
+        if self.u(g, G_DECIDED) != 0 {
+            return false;
+        }
+        self.set(g, G_WAITER, self.sched.current);
+        let t = self.cur();
+        self.set(t, T_BLOCKED, self.u(t, T_BLOCKED) + 1);
+        true
+    }
+
+    /// A member of a fiber group ended (JS `onDone`).
+    fn fiber_done(&mut self, t: u32, kind: u32) {
+        let Some(g) = self.group(self.u(t, T_GROUP)) else {
+            return;
+        };
+        let decides = match self.u(g, G_KIND) {
+            group::SCOPE => kind != outcome::OK && kind != outcome::CANCELLED,
+            group::ALL => kind != outcome::OK,
+            _ => true,
+        };
+        if !decides || self.u(g, G_DECIDED) != 0 {
+            return;
+        }
+        let me = self.u(t, T_ID);
+        self.set(g, G_DECIDED, me);
+        let members = Stack::load(&self.heap.mem, g + G_FIBERS);
+        for i in 0..members.len {
+            let f = self.stack_at(&members, i);
+            if f != me && !self.is_done(f) {
+                self.cancel(f);
+            }
+        }
+        let waiter = self.u(g, G_WAITER);
+        if let Some(w) = self.arena_obj(waiter, tag::TASK) {
+            self.set(g, G_WAITER, 0);
+            self.set(w, T_BLOCKED, 0);
+            if self.u(w, T_STATE) == BLOCKED {
+                self.set(w, T_STATE, RUNNABLE);
+                let _ = self.enqueue(waiter, false);
+            }
+        }
+    }
+
+    /// Continue the current task with fiber `child`'s outcome (JS `propagate`): its value, its
+    /// failure, its defect, or the current task is cancelled. Returns the step.
+    pub fn propagate(&mut self, child: u32) -> u32 {
+        let Ok((kind, value)) = self.outcome(child) else {
+            return self.raise(Defect::FIBER_RETIRED);
+        };
+        match kind {
+            outcome::OK | outcome::FAIL => {
+                let w = value as u32;
+                if self.dup(w).is_err() {
+                    return self.raise(Defect::RC_OVERFLOW);
+                }
+                if kind == outcome::OK {
+                    self.set_ret(w as u64);
+                    step::RETURN
+                } else {
+                    self.fail(w)
+                }
+            }
+            outcome::DEFECT => match self.defect(child) {
+                Ok(Some((d, site))) => self.raise_at(d, site),
+                _ => self.raise(Defect::INTERNAL),
+            },
+            _ => {
+                // JS `throw CANCEL`: the current task ends cancelled.
+                let t = self.cur();
+                self.set(t, T_CANCELLED, 1);
+                self.set(t, T_EPOCH, self.u(t, T_EPOCH) + 1);
+                self.begin(t, CANCEL);
+                step::YIELD
+            }
         }
     }
 }
