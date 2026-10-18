@@ -5,7 +5,7 @@
 
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitStatus, Stdio};
+use std::process::{Child, Command, ExitStatus, Stdio};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -128,7 +128,8 @@ impl Solver {
         let unavailable = |d: String| Reason::new(ReasonKind::SolverUnavailable, d);
         let path = match explicit {
             Some(p) => p.to_owned(),
-            None => on_path(kind.binary())
+            None => std::env::var_os("PATH")
+                .and_then(|p| on_path(kind.binary(), &p))
                 .ok_or_else(|| unavailable(format!("`{}` is not on PATH", kind.binary())))?,
         };
         let out = Command::new(&path)
@@ -208,12 +209,8 @@ impl Solver {
             match child.try_wait() {
                 Ok(Some(s)) => break s,
                 Ok(None) if Instant::now() >= deadline => {
-                    let _ = child.kill();
-                    match child.wait() {
-                        // It ended on its own after the last poll (a crash still being reported,
-                        // say): its own status decides, not the deadline.
-                        Ok(s) if !killed(s) => break s,
-                        _ => {}
+                    if let Some(s) = kill_at_deadline(&mut child) {
+                        break s;
                     }
                     // The reader is detached: a grandchild may still hold the pipe.
                     return Answer::Unknown(Reason::new(
@@ -246,22 +243,37 @@ impl Solver {
     }
 }
 
-/// Whether `s` is the deadline's kill rather than the solver's own exit or crash.
+/// Kills `child` at the deadline: `Some` with its own status when it ended on its own after the
+/// last poll (a crash still being reported, say), so that status decides; `None` when the kill
+/// ended it.
 #[cfg(unix)]
-fn killed(s: ExitStatus) -> bool {
+fn kill_at_deadline(child: &mut Child) -> Option<ExitStatus> {
     use std::os::unix::process::ExitStatusExt;
     const SIGKILL: i32 = 9;
-    s.signal() == Some(SIGKILL)
+    let _ = child.kill();
+    child.wait().ok().filter(|s| s.signal() != Some(SIGKILL))
 }
 
 #[cfg(not(unix))]
-fn killed(_: ExitStatus) -> bool {
-    true
+use kill_flagged as kill_at_deadline;
+
+/// [`kill_at_deadline`] without signals (Windows): the kill is a flag, so a child still running
+/// at the last look before it is the deadline's (design §17.180 (4c)).
+#[cfg_attr(unix, allow(dead_code))]
+fn kill_flagged(child: &mut Child) -> Option<ExitStatus> {
+    if let Ok(Some(s)) = child.try_wait() {
+        return Some(s);
+    }
+    let _ = child.kill();
+    let _ = child.wait();
+    None
 }
 
-fn on_path(binary: &str) -> Option<PathBuf> {
-    std::env::split_paths(&std::env::var_os("PATH")?)
-        .map(|d| d.join(binary))
+/// The first `<dir>/<binary>` on `path`, with the platform's executable suffix (`z3.exe`).
+fn on_path(binary: &str, path: &std::ffi::OsStr) -> Option<PathBuf> {
+    let file = format!("{binary}{}", std::env::consts::EXE_SUFFIX);
+    std::env::split_paths(path)
+        .map(|d| d.join(&file))
         .find(|p| p.is_file())
 }
 
@@ -415,4 +427,33 @@ pub fn solve(
     });
     r.cross_check = cross.map(Solver::info);
     (r, answers)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::process::Command;
+    use std::time::Duration;
+
+    #[test]
+    fn the_path_lookup_appends_the_executable_suffix() {
+        let dir = std::env::temp_dir().join(format!("sakura-exe-suffix-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join(format!("z3{}", std::env::consts::EXE_SUFFIX));
+        std::fs::write(&file, "").unwrap();
+        let path = std::env::join_paths([&dir]).unwrap();
+        assert_eq!(super::on_path("z3", &path), Some(file));
+        assert_eq!(super::on_path("cvc5", &path), None);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_kill_flag_tells_a_deadline_kill_from_an_exit() {
+        let mut running = Command::new("sleep").arg("30").spawn().unwrap();
+        assert_eq!(super::kill_flagged(&mut running), None);
+        let mut exited = Command::new("sh").args(["-c", "exit 3"]).spawn().unwrap();
+        std::thread::sleep(Duration::from_millis(300));
+        let status = super::kill_flagged(&mut exited).expect("it ended on its own");
+        assert_eq!(status.code(), Some(3));
+    }
 }
