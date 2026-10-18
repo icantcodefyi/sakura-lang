@@ -1,7 +1,9 @@
 //! Differential check: every `compiler/tests/semantics` program in `run` mode, lowered to Core
 //! and run by the reference evaluator, must print exactly its `.stdout` — the same file the JS
-//! backend is held to by `sakura_cli`'s semantics suite. Programs that use something the
-//! evaluator does not implement are skipped and listed, never counted as agreeing.
+//! backend is held to by `sakura_cli`'s semantics suite, and end the same way (a program with an
+//! `expect-defect` with that defect). The evaluator audits the interval pass (design §17.114)
+//! on every program. Programs that use something the evaluator does not implement are skipped
+//! and listed, never counted as agreeing.
 
 use std::path::Path;
 
@@ -34,7 +36,15 @@ fn evaluator_agrees_with_expected_stdout() {
             .take_while(|l| l.starts_with("//"))
             .find_map(|l| l.strip_prefix("// mode:"))
             .map_or("run", str::trim);
-        if mode != "run" || text.contains("// expect-exit:") {
+        let defect = text
+            .lines()
+            .take_while(|l| l.starts_with("//"))
+            .find_map(|l| l.strip_prefix("// expect-defect:"))
+            .map(|c| c.trim().to_owned());
+        // `needs:` names a backend other than JS (`D001` before `D003` needs 64-bit `Int`).
+        let other_backend = text.contains("\n// needs:");
+        if mode != "run" || other_backend || (text.contains("// expect-exit:") && defect.is_none())
+        {
             continue;
         }
         let snapshot = Snapshot::with_std([(format!("file:///semantics/{name}"), text)]);
@@ -52,14 +62,25 @@ fn evaluator_agrees_with_expected_stdout() {
         // Deep programs (1,000,000-deep recursion) need more stack than the test thread has.
         let out = std::thread::Builder::new()
             .stack_size(1 << 30)
-            .spawn(move || run_main(&module, Limits::default()))
+            .spawn(move || {
+                let limits = Limits {
+                    audit_ranges: true,
+                    ..Limits::default()
+                };
+                run_main(&module, limits)
+            })
             .unwrap()
             .join()
             .unwrap();
         match out.result {
             Err(Stop::Unsupported(what)) => skipped.push(format!("{name}: evaluator lacks {what}")),
             Err(Stop::Limit(what)) => skipped.push(format!("{name}: evaluator {what}")),
-            Ok(()) if out.stdout == expected => agreed += 1,
+            Ok(()) if defect.is_none() && out.stdout == expected => agreed += 1,
+            Err(Stop::Defect { ref code, .. })
+                if defect.as_ref() == Some(code) && out.stdout == expected =>
+            {
+                agreed += 1
+            }
             result => failures.push(format!(
                 "{name}: {result:?}\n--- expected\n{expected}--- evaluator\n{}",
                 out.stdout

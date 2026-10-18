@@ -3,19 +3,23 @@
 //! the same lines and end the same way (ok, or the same defect code after the same output).
 //! The same Core also lowers to LIR (`sakura_lir::from_core`), which must validate, and the LIR
 //! interpreter (`sakura_eval::lir`, plan §3.5 L3) must agree too and end with every object and
-//! arena slot released; it is skipped where the evaluator stops with JS's `D003`, because `Int`
-//! is i64 on WASM (§17.80). Wherever the LIR is compared, the WASM backend is the fourth
-//! evaluator (plan §3.5 W1): the LIR linked with `sakura_rt` runs on node through
-//! `sakura_wasm_host.js` and must print and end the same (skipped when the compiler was built
-//! without the wasm32 target, and for a program that parses an `Int` beyond ±(2^53−1): §17.44
-//! makes that `None` on JS, which the evaluators follow, and `Some` on WASM's i64).
+//! arena slot released; it is skipped where the evaluator stops with JS's `D003` (or a contract
+//! predicate's `D011` caused by one), because `Int` is i64 on WASM (§17.80). Wherever the LIR is
+//! compared, the WASM backend is the fourth evaluator (plan §3.5 W1): the LIR linked with
+//! `sakura_rt` runs on node through `sakura_wasm_host.js` and must print and end the same
+//! (skipped when the compiler was built without the wasm32 target, and for a program that parses
+//! an `Int` beyond ±(2^53−1): §17.44 makes that `None` on JS, which the evaluators follow, and
+//! `Some` on WASM's i64).
 //!
 //! The generator covers the M0–M3 forms: ints, strings, options, blocks and matches; records,
 //! variants and record/list patterns; lists and the `List` std functions with effectful callbacks;
 //! `var` loops with `break`/`continue`/`return`; `try`/`catch` over error tags (partial catches
 //! let the rest propagate); user effects with stateful and forwarding handlers under nested
 //! `with`, including an operation whose callback runs under the perform site's handlers; and
-//! `requires`/`ensures` that sometimes fail (`D020`/`D021`/`D011`). The same oracle is meant to
+//! `requires`/`ensures` that sometimes fail (`D020`/`D021`/`D011`); and `Int` arithmetic at the
+//! ends of the JS range, under comparisons and in counters that stop at or step past an end. The
+//! evaluator also audits the interval pass (design §17.114): an operation it proves for the JS
+//! or i64 profile that defects as that profile forbids fails the run. The same oracle is meant to
 //! check the WASM backend in M4 (research/08 §7).
 //!
 //! `SAKURA_DIFF_PROGRAMS` (default 500) and `SAKURA_DIFF_SEED` (default 1) control the run; a failure
@@ -254,8 +258,7 @@ impl Gen<'_> {
 
     fn leaf(&mut self, ty: Ty) -> String {
         match ty {
-            // 2^52: a few doublings away from the JS safe-range defect D003.
-            Ty::Int if self.rng.chance(4) => "4503599627370496".into(),
+            Ty::Int if self.rng.chance(5) => self.edge(),
             Ty::Int => {
                 let n = self.rng.below(21) as i64 - 10;
                 if n < 0 {
@@ -343,6 +346,39 @@ impl Gen<'_> {
         }
     }
 
+    /// An `Int` at or next to an end of the JS range, or 2^52 (a few doublings from `D003`).
+    fn edge(&mut self) -> String {
+        self.rng
+            .pick(&[
+                "4503599627370496",
+                "9007199254740991",
+                "9007199254740990",
+                "(-9007199254740991)",
+                "(-9007199254740990)",
+            ])
+            .into()
+    }
+
+    /// Arithmetic on a local under a comparison of it, often against a range edge: the
+    /// interval pass (design §17.114) proves some of these operations and must keep the check
+    /// on the rest.
+    fn guarded(&mut self, d: u32) -> String {
+        let v = self.name();
+        let e = self.expr(Ty::Int, d);
+        let bound = if self.rng.chance(50) {
+            self.edge()
+        } else {
+            self.expr(Ty::Int, d)
+        };
+        let rel = self.rng.pick(&["<", "<=", "==", "!=", ">", ">="]);
+        let arm = |g: &mut Self| {
+            let op = g.rng.pick(&["+", "-", "*", "/", "%"]);
+            format!("{v} {op} {}", g.leaf(Ty::Int))
+        };
+        let (a, b) = (arm(self), arm(self));
+        format!("({{ let {v} = {e}; if {v} {rel} {bound} {{ {a} }} else {{ {b} }} }})")
+    }
+
     /// Forms specific to `ty`.
     fn typed(&mut self, ty: Ty, d: u32) -> String {
         let contract = self.cx.contract;
@@ -362,7 +398,7 @@ impl Gen<'_> {
         let int_form = if !ops.is_empty() && self.rng.chance(30) {
             self.rng.pick(&ops)
         } else {
-            self.rng.below(16)
+            self.rng.below(18)
         };
         match ty {
             Ty::Int => match int_form {
@@ -391,6 +427,7 @@ impl Gen<'_> {
                     format!("Around.around({x}, {f})")
                 }
                 11 if self.cx.acc => "Acc.total()".into(),
+                15 | 16 if !contract => self.guarded(d),
                 12 if !contract => format!("List.sum({})", self.expr(Ty::List, d)),
                 13 if !contract => {
                     let xs = self.expr(Ty::List, d);
@@ -875,16 +912,31 @@ impl Gen<'_> {
         let ty = self.rng.pick(&[Ty::Int, Ty::Int, Ty::Str, Ty::List]);
         let init = self.expr(ty, d);
         let x = self.name();
-        let (header, x_ty) = match self.rng.below(3) {
+        let (header, x_ty) = match self.rng.below(4) {
             0 => (format!("for {x} in {}", self.expr(Ty::List, d)), Ty::Int),
             1 => {
                 let lo = self.rng.below(5) as i64 - 2;
                 (format!("for {x} in {lo}..{}", self.rng.below(5)), Ty::Int)
             }
-            _ => (
+            2 => (
                 format!("var {x} = 0; while {x} < {}", self.rng.below(5)),
                 Ty::Int,
             ),
+            // A counter a few steps from an end of the range; `<=`/`>=` overflow on the last
+            // step (`D003`), `<`/`>` stop just inside, where the counter's check is proved.
+            _ => {
+                let rel = self.rng.pick(&["<", "<=", ">", ">="]);
+                let (end, back) = if rel.starts_with('<') {
+                    ("9007199254740991", "-")
+                } else {
+                    ("(-9007199254740991)", "+")
+                };
+                let steps = 1 + self.rng.below(4);
+                (
+                    format!("var {x} = {end} {back} {steps}; while {x} {rel} {end}"),
+                    Ty::Int,
+                )
+            }
         };
         let (cx, scope) = (self.cx, self.locals.len());
         self.locals.push((t.clone(), ty));
@@ -892,7 +944,8 @@ impl Gen<'_> {
         self.cx.in_loop = true;
         let mut inner = if header.starts_with("var") {
             // Count first so `continue` cannot loop forever.
-            format!("{x} = {x} + 1; ")
+            let step = if header.contains('>') { "-" } else { "+" };
+            format!("{x} = {x} {step} 1; ")
         } else {
             String::new()
         };
@@ -1120,20 +1173,32 @@ fn defect_code(line: &str) -> Option<String> {
     Some(rest.split('"').next()?.to_owned())
 }
 
-fn run_eval(module: sakura_core::Module) -> Option<Ending> {
+/// The evaluator's ending, and whether it stopped at the JS range (`D003`, also inside a
+/// contract predicate, where it surfaces as `D011`).
+fn run_eval(module: sakura_core::Module) -> Option<(Ending, bool)> {
     let out = std::thread::Builder::new()
         .stack_size(1 << 28)
-        .spawn(move || run_main(&module, Limits::default()))
+        .spawn(move || {
+            let limits = Limits {
+                audit_ranges: true,
+                ..Limits::default()
+            };
+            run_main(&module, limits)
+        })
         .unwrap()
         .join()
         .unwrap();
+    let mut js_range = false;
     let end = match out.result {
         Ok(()) => "ok".to_owned(),
-        Err(Stop::Defect { code, .. }) => code,
+        Err(Stop::Defect { code, message }) => {
+            js_range = code == "D003" || message.starts_with("contract evaluation failed: D003");
+            code
+        }
         Err(Stop::Unsupported(_)) => return None,
         Err(other) => format!("{other:?}"),
     };
-    Some((out.stdout, end))
+    Some(((out.stdout, end), js_range))
 }
 
 #[test]
@@ -1245,14 +1310,14 @@ fn check_one(seed: u64, dir: &Path) -> Checked {
     if let Some(e) = errors.first() {
         return Err(format!("LIR validator: {e}\n{src}"));
     }
-    let Some(eval) = run_eval(module) else {
+    let Some((eval, js_range)) = run_eval(module) else {
         return Ok(None);
     };
     let js = run_js(dir, &files);
     if js != eval {
         return Err(format!("JS {js:?}\nevaluator {eval:?}\n{src}"));
     }
-    if eval.1 == "D003" {
+    if js_range {
         return Ok(Some((js.1, None)));
     }
     let wasm = (sakura_codegen_wasm::available() && !parses_beyond_js_range(&src))

@@ -108,6 +108,10 @@ pub struct Limits {
     pub max_steps: u64,
     /// Nested calls; bounds the Rust stack. Run on a thread with a large stack for deep programs.
     pub max_depth: usize,
+    /// Stop with [`Stop::Internal`] when an `Int` operation that `opt::ranges` proves for the JS
+    /// or the i64 profile defects as that profile forbids: the soundness oracle of design
+    /// §17.114 for differential tests.
+    pub audit_ranges: bool,
 }
 
 impl Default for Limits {
@@ -115,6 +119,7 @@ impl Default for Limits {
         Limits {
             max_steps: 50_000_000,
             max_depth: 10_000,
+            audit_ranges: false,
         }
     }
 }
@@ -209,6 +214,9 @@ pub(crate) struct Machine<'m> {
     stdout: String,
     failures: Vec<String>,
     test_output: Vec<String>,
+    /// Per def, the locals `opt::ranges` proves for the JS and the i64 profile
+    /// (`Limits::audit_ranges`).
+    proved: Vec<[Vec<bool>; 2]>,
 }
 
 impl<'m> Machine<'m> {
@@ -223,7 +231,32 @@ impl<'m> Machine<'m> {
             stdout: String::new(),
             failures: Vec::new(),
             test_output: Vec::new(),
+            proved: if limits.audit_ranges {
+                use sakura_core::opt::ranges::{Profile, analyze};
+                let both = |d| [analyze(d, Profile::Js), analyze(d, Profile::I64)];
+                module.defs.iter().map(both).collect()
+            } else {
+                Vec::new()
+            },
         }
+    }
+
+    /// `Limits::audit_ranges`: a proved operation bound to `local` in `def` defected `code`.
+    fn audit(&self, def: DefId, local: Local, code: &str) -> R<()> {
+        let Some([js, i64]) = self.proved.get(def.index()) else {
+            return Ok(());
+        };
+        let i = local.index();
+        // D003 is the JS range: an i64 proof does not exclude it.
+        if js[i] || (i64[i] && code != "D003") {
+            let profile = if js[i] { "JS" } else { "i64" };
+            return Err(Stop::Internal(format!(
+                "opt::ranges proved {} in {} for the {profile} profile, but it defected {code}",
+                self.module.def(def).local(local).name,
+                self.module.def(def).name
+            )));
+        }
+        Ok(())
     }
 
     fn finish(&mut self, def: DefId, hs: &Rc<Handlers>) -> R<()> {
@@ -334,7 +367,7 @@ impl<'m> Machine<'m> {
             {
                 env[l.index()] = Some(v);
             }
-            match self.eval(&mut env, &fd.body, hs, true, &[])? {
+            match self.eval(def, &mut env, &fd.body, hs, true, &[])? {
                 Flow::Ret(v) => return Ok(Ok(v)),
                 Flow::Fail(e) => return Ok(Err(e)),
                 Flow::Jump(l, _) => {
@@ -424,6 +457,7 @@ impl<'m> Machine<'m> {
 
     fn eval(
         &mut self,
+        def: DefId,
         env: &mut [Option<Value>],
         mut expr: &Expr,
         hs: &Rc<Handlers>,
@@ -445,7 +479,11 @@ impl<'m> Machine<'m> {
                     local, bind, body, ..
                 } => {
                     self.tick()?;
-                    match self.bind(env, bind, hs).map_err(|e| self.in_contract(e))? {
+                    let bound = self.bind(env, bind, hs);
+                    if let Err(Stop::Defect { code, .. }) = &bound {
+                        self.audit(def, *local, code)?;
+                    }
+                    match bound.map_err(|e| self.in_contract(e))? {
                         Ok(v) => env[local.index()] = Some(v),
                         Err(e) => return Ok(Flow::Fail(e)),
                     }
@@ -468,7 +506,7 @@ impl<'m> Machine<'m> {
                     } else {
                         rets.to_vec()
                     };
-                    let mut flow = self.eval(env, body, hs, tail, &inner)?;
+                    let mut flow = self.eval(def, env, body, hs, tail, &inner)?;
                     loop {
                         match flow {
                             Flow::Jump(l, args) if l == *label => {
@@ -476,7 +514,7 @@ impl<'m> Machine<'m> {
                                 for (p, v) in params.iter().zip(args) {
                                     env[p.index()] = Some(v);
                                 }
-                                flow = self.eval(env, join, hs, tail, rets)?;
+                                flow = self.eval(def, env, join, hs, tail, rets)?;
                             }
                             other => return Ok(other),
                         }
@@ -522,10 +560,10 @@ impl<'m> Machine<'m> {
                         clauses: h.clauses.clone().into(),
                     };
                     let inner = Rc::new(Handlers::Frame(Rc::new(inst), hs.clone()));
-                    return self.eval(env, body, &inner, false, &[]);
+                    return self.eval(def, env, body, &inner, false, &[]);
                 }
                 Expr::Try { on_fail, body } => {
-                    return Ok(match self.eval(env, body, hs, false, &[])? {
+                    return Ok(match self.eval(def, env, body, hs, false, &[])? {
                         Flow::Fail(e) => Flow::Jump(*on_fail, vec![e]),
                         other => other,
                     });
