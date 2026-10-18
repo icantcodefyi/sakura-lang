@@ -399,8 +399,9 @@ pub enum Expr {
         join: Box<Expr>,
         body: Box<Expr>,
     },
-    /// Branch on a variant's constructor or an error value's tag. Arm keys index
-    /// `SwitchOn::Variant`'s constructors or `SwitchOn::Errors`' members.
+    /// Branch on a variant's constructor, an error value's tag or a literal. Arm keys index
+    /// `SwitchOn::Variant`'s constructors, `SwitchOn::Errors`' members or `SwitchOn::Lit`'s
+    /// literals.
     Switch {
         scrut: Atom,
         on: SwitchOn,
@@ -467,6 +468,9 @@ impl Drop for Expr {
 pub enum SwitchOn {
     Variant(TypeId),
     Errors(Vec<TypeId>),
+    /// Distinct `Int` or `String` literals compared by equality, in the order their rows
+    /// appear; never exhaustive, so the switch has a default (design §17.200 (2)).
+    Lit(Vec<Lit>),
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -47,21 +47,19 @@ export function run(n, $ctx, $k) {
               acc_3 = t_2;
               i_3 = i_1;
               break j5;
-            } else {
-              v_3 = undefined;
-              acc_3 = t_2;
-              i_3 = i_1;
-              break j5;
             }
+            v_3 = undefined;
+            acc_3 = t_2;
+            i_3 = i_1;
+            break j5;
           }
           const t_5 = (i_3 + 1);
           v_2 = undefined;
           acc_2 = acc_3;
           i_2 = t_5;
           break j4;
-        } else {
-          return j2(acc_1, i_1);
         }
+        return j2(acc_1, i_1);
       }
       acc_1 = acc_2;
       i_1 = i_2;

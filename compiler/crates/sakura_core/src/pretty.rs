@@ -421,6 +421,7 @@ impl<'a> Printer<'a> {
                     let name = match on {
                         SwitchOn::Variant(t) => self.m.ty(*t).ctors()[*key as usize].name.clone(),
                         SwitchOn::Errors(ts) => self.type_name(ts[*key as usize]).to_owned(),
+                        SwitchOn::Lit(ls) => self.atom(&Atom::Lit(ls[*key as usize].clone())),
                     };
                     self.line(&format!("{name} =>"));
                     self.depth += 1;

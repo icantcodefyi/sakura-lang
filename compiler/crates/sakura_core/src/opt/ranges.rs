@@ -370,12 +370,32 @@ impl Ranges {
                     }
                     return;
                 }
-                Expr::Switch { arms, default, .. } => {
-                    for (_, a) in arms {
-                        self.walk(a);
+                Expr::Switch {
+                    scrut,
+                    on,
+                    arms,
+                    default,
+                } => {
+                    // An `Int` literal arm knows the scrutinee's value, the default every value
+                    // it is not, as the `If` chain this switch replaced did.
+                    let key = |k: u32| match on {
+                        SwitchOn::Lit(ls) if matches!(ls[k as usize], Lit::Int(_)) => {
+                            Some(Atom::Lit(ls[k as usize].clone()))
+                        }
+                        _ => None,
+                    };
+                    for (k, a) in arms {
+                        match key(*k) {
+                            Some(lit) => self.assuming(&[(Rel::Eq, scrut.clone(), lit)], a, None),
+                            None => self.walk(a),
+                        }
                     }
                     if let Some(d) = default {
-                        self.walk(d);
+                        let facts: Vec<Fact> = arms
+                            .iter()
+                            .filter_map(|(k, _)| Some((Rel::Ne, scrut.clone(), key(*k)?)))
+                            .collect();
+                        self.assuming(&facts, d, None);
                     }
                     return;
                 }

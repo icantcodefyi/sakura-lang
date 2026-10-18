@@ -958,6 +958,68 @@ impl<'c, 'a> Fl<'c, 'a> {
         self.b.coerce(b, v, want)
     }
 
+    /// A literal switch as a chain of equality tests, one block each, as the `If` chain it
+    /// replaced lowered.
+    #[allow(clippy::too_many_arguments)]
+    fn lit_switch(
+        &mut self,
+        scrut: &Atom,
+        lits: &[core::Lit],
+        arms: &'a [(u32, core::Block)],
+        default: &'a core::Block,
+        mut b: BlockId,
+        mut env: Env,
+        regions: Vec<RegionKind>,
+    ) -> R<()> {
+        let (kind, repr) = match lits.first() {
+            Some(core::Lit::String(_)) => (CmpKind::String, Repr::Ptr),
+            _ => (CmpKind::Int, Repr::I64),
+        };
+        let rest = |block| Rest { block, from: 0 };
+        let mut live = self.fv(rest(default));
+        for (_, a) in arms {
+            live.extend(self.fv(rest(a)));
+        }
+        // Both edges of an `If` pass the same values: before the last test, the arm gets the
+        // scrutinee too.
+        let mut tested = live.clone();
+        if let Atom::Local(l) = scrut {
+            tested.insert(*l);
+        }
+        let mut work = Vec::new();
+        for (i, (k, arm)) in arms.iter().enumerate() {
+            let live = if i + 1 < arms.len() { &tested } else { &live };
+            let s = self.atom_as(b, &env, scrut, repr)?;
+            let key = Atom::Lit(
+                lits.get(*k as usize)
+                    .ok_or("switch key out of range")?
+                    .clone(),
+            );
+            let key = self.atom_as(b, &env, &key, repr)?;
+            let c = self.b.fresh(b, "is", Repr::Bool, |dst| Inst::Prim {
+                dst,
+                op: PrimOp::Cmp(CmpOp::Eq, kind),
+                args: vec![s, key],
+            });
+            let args = self.pass(&env, live)?;
+            let (ab, aenv) = self.new_block(vec![], live, regions.clone());
+            let (nb, nenv) = self.new_block(vec![], live, regions.clone());
+            let then = Edge {
+                block: ab,
+                args: args.clone(),
+            };
+            let els = Edge { block: nb, args };
+            self.b.end(b, Term::If { cond: c, then, els });
+            work.push((rest(arm), ab, aenv));
+            (b, env) = (nb, nenv);
+        }
+        work.push((rest(default), b, env));
+        for (r, ab, aenv) in work {
+            self.block(r, ab, aenv, regions.clone())?;
+        }
+        Ok(())
+    }
+
     fn close_regions(&mut self, b: BlockId, regions: &[RegionKind], keep: usize) {
         for r in regions[keep..].iter().rev() {
             self.b.push(
@@ -1092,6 +1154,17 @@ impl<'c, 'a> Fl<'c, 'a> {
             }
             Terminator::Switch {
                 scrut,
+                on: core::SwitchOn::Lit(lits),
+                arms,
+                default,
+            } => {
+                let default = default
+                    .as_deref()
+                    .ok_or("a literal switch has no default")?;
+                self.lit_switch(scrut, lits, arms, default, b, env, regions)?;
+            }
+            Terminator::Switch {
+                scrut,
                 on,
                 arms,
                 default,
@@ -1102,6 +1175,7 @@ impl<'c, 'a> Fl<'c, 'a> {
                     core::SwitchOn::Errors(ts) => {
                         TagOf::Member(ts.iter().map(|t| self.cx.layout(*t)).collect::<R<_>>()?)
                     }
+                    core::SwitchOn::Lit(_) => unreachable!("matched above"),
                 };
                 let tag = self
                     .b

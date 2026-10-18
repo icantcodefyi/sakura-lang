@@ -29,9 +29,8 @@ export function run(n, $ctx, $k) {
           acc_2 = t_2;
           i_2 = t_3;
           break j4;
-        } else {
-          return $ret($k, acc_1);
         }
+        return $ret($k, acc_1);
       }
       acc_1 = acc_2;
       i_1 = i_2;

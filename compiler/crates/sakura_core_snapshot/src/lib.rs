@@ -222,8 +222,16 @@ impl Ctx<'_> {
                     default,
                 } => {
                     self.atom(scrut)?;
-                    if let SwitchOn::Variant(t) = on {
-                        self.ty(*t)?;
+                    match on {
+                        SwitchOn::Variant(t) => {
+                            self.ty(*t)?;
+                        }
+                        SwitchOn::Lit(ls) => {
+                            for (k, _) in arms {
+                                Self::ok((*k as usize) < ls.len(), "switch key")?;
+                            }
+                        }
+                        SwitchOn::Errors(_) => {}
                     }
                     arms.iter().for_each(|(_, a)| nested(a));
                     if let Some(d) = default {
@@ -457,10 +465,30 @@ pub struct LocalDecl {
 }
 
 /// Statements run in order, then the terminator.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Deserialize)]
 pub struct Block {
     pub stmts: Vec<Stmt>,
     pub term: Terminator,
+}
+
+/// The derived serialiser, run under `ensure_stack` (design §17.200 (5)): serde's derives
+/// recurse once per nested block, and `serde_stacker` guards only reading.
+impl Serialize for Block {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        #[derive(Serialize)]
+        #[serde(rename = "Block")]
+        struct Fields<'a> {
+            stmts: &'a [Stmt],
+            term: &'a Terminator,
+        }
+        sakura_hir::ensure_stack(|| {
+            Fields {
+                stmts: &self.stmts,
+                term: &self.term,
+            }
+            .serialize(s)
+        })
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -508,6 +536,8 @@ pub enum Terminator {
 pub enum SwitchOn {
     Variant(TypeId),
     Errors(Vec<TypeId>),
+    /// Arm keys index the literals (`Int` or `String`, distinct).
+    Lit(Vec<Lit>),
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

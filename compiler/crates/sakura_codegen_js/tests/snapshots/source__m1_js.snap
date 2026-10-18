@@ -50,9 +50,8 @@ export function parse_age(s, $ctx, $k) {
         const t = (p >= 0);
         if (t) {
           return $ret($k, p);
-        } else {
-          break j2;
         }
+        break j2;
       }
       default: {
         break j2;

@@ -78,6 +78,7 @@ semantics/loop_resume_bound: ok, 92 allocated, 40 dup, 132 drop, peak 10, live 0
 semantics/loop_resume_edges: ok, 71 allocated, 49 dup, 120 drop, peak 12, live 0/0
 semantics/loop_resume_twice: ok, 201 allocated, 56 dup, 257 drop, peak 12, live 0/0
 semantics/loops: ok, 44 allocated, 38 dup, 82 drop, peak 12, live 0/0
+semantics/match_literal_switch: ok, 53 allocated, 0 dup, 53 drop, peak 4, live 0/0
 semantics/million_operations: ok, 4 allocated, 1000000 dup, 1000004 drop, peak 4, live 0/0
 semantics/mutual_recursion: ok, 8 allocated, 0 dup, 8 drop, peak 4, live 0/0
 semantics/mutual_tail_blame: D020, 5 allocated, 0 dup, 5 drop, peak 4, live 0/0

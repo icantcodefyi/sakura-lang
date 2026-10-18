@@ -1,18 +1,20 @@
-//! Deep intermediate representations (design §17.193): a flat source whose IR nests one level
-//! per arm or `let` goes through every phase in process, on the test harness's default thread
-//! stack, as `cargo test` runs it in the debug profile: checking, Core lowering and its passes,
-//! the Core dump, the JS emitter, the LIR lowering and validator, the WASM emitter, the snapshot
-//! round trip, and both evaluators, which print the expected output.
+//! Deep intermediate representations (design §17.193, §17.200): a flat source whose IR would
+//! nest one level per arm or `let` goes through every phase in process, on the test harness's
+//! default thread stack, as `cargo test` runs it in the debug profile: checking, Core lowering
+//! and its passes, the Core dump, the JS emitter, the LIR lowering and validator, the WASM
+//! emitter, the snapshot round trip and both evaluators, and the emitted JS runs on Node; each
+//! prints the expected output.
+
+use std::process::Command;
 
 use sakura_analysis::{Analysis, BuildOptions, Snapshot};
 use sakura_lir::snapshot;
 
 const N: usize = 3000;
 
-/// A 3,000-arm `Int` literal `match`, a 3,000-arm `String` literal `match`, a 3,000-constructor
-/// enumeration matched exhaustively and a 3,000-`let` body; `chains: false` leaves out the two
-/// literal matches, the shapes that lower to an `If` chain as deep as their arm count.
-fn program(chains: bool) -> String {
+/// A 3,000-constructor enumeration matched exhaustively, a 3,000-`let` body, 3,000-arm `Int`
+/// and `String` literal `match`es, a sparse one (keys 1,000 apart) and 3,000 guarded rows.
+fn program() -> String {
     let mut s = format!(
         "type Big = {}\n\n",
         (0..N)
@@ -25,40 +27,47 @@ fn program(chains: bool) -> String {
     s += "  }\n}\n\nfn lets(x: Int) -> Int {\n  let a0 = x + 1\n";
     (1..N).for_each(|i| s += &format!("  let a{i} = a{} + 1\n", i - 1));
     s += &format!("  a{}\n}}\n\n", N - 1);
-    let mut main = vec![
+    s += "fn int_arm(x: Int) -> Int {\n  match x {\n";
+    (0..N).for_each(|i| s += &format!("    {i} => {},\n", 3 * i));
+    s += "    _ => -1,\n  }\n}\n\nfn str_arm(s: String) -> Int {\n  match s {\n";
+    (0..N).for_each(|i| s += &format!("    \"k{i}\" => {i},\n"));
+    s += "    _ => -1,\n  }\n}\n\nfn sparse_arm(x: Int) -> Int {\n  match x {\n";
+    (0..N).for_each(|i| s += &format!("    {} => {i},\n", 1000 * i));
+    s += "    _ => -1,\n  }\n}\n\nfn guard_arm(x: Int) -> Int {\n  match x {\n";
+    (0..N).for_each(|i| s += &format!("    n if n < {} => {i},\n", i + 1));
+    s += "    _ => -1,\n  }\n}\n\n";
+    let main = [
         format!("{{big_index(C{})}} {{big_index(C0)}}", N - 1),
         "{lets(0)}".to_owned(),
-    ];
-    if chains {
-        s += "fn int_arm(x: Int) -> Int {\n  match x {\n";
-        (0..N).for_each(|i| s += &format!("    {i} => {},\n", 3 * i));
-        s += "    _ => -1,\n  }\n}\n\nfn str_arm(s: String) -> Int {\n  match s {\n";
-        (0..N).for_each(|i| s += &format!("    \"k{i}\" => {i},\n"));
-        s += "    _ => -1,\n  }\n}\n\n";
-        main.push(format!(
-            "{{int_arm({})}} {{int_arm(1500)}} {{int_arm(-5)}}",
+        format!("{{int_arm({})}} {{int_arm(1500)}} {{int_arm(-5)}}", N - 1),
+        format!("{{str_arm(\"k{}\")}} {{str_arm(\"nope\")}}", N - 1),
+        format!(
+            "{{sparse_arm({})}} {{sparse_arm(1500000)}} {{sparse_arm(7)}}",
+            1000 * (N - 1)
+        ),
+        format!(
+            "{{guard_arm({})}} {{guard_arm(-5)}} {{guard_arm({N})}}",
             N - 1
-        ));
-        main.push(format!("{{str_arm(\"k{}\")}} {{str_arm(\"nope\")}}", N - 1));
-    }
+        ),
+    ];
     s += "pub fn main() -> Unit ! {Console} {\n";
     main.iter()
         .for_each(|m| s += &format!("  Console.print(\"{m}\")\n"));
     s + "}\n"
 }
 
-fn expected(chains: bool) -> String {
-    let mut out = format!("{} 0\n{N}\n", N - 1);
-    if chains {
-        out += &format!("{} 4500 -1\n{} -1\n", 3 * (N - 1), N - 1);
-    }
-    out
+fn expected() -> String {
+    let n = N - 1;
+    format!(
+        "{n} 0\n{N}\n{} 4500 -1\n{n} -1\n{n} 1500 -1\n{n} 0 -1\n",
+        3 * n
+    )
 }
 
-/// Every phase on `program(chains)`; returns the snapshot round trip's result.
-fn through_every_phase(chains: bool) -> Result<snapshot::Snapshot, String> {
+#[test]
+fn wide_shapes_go_through_every_phase_and_run_on_node() {
     let uri = "file:///deep/src/main.sak".to_owned();
-    let snap = Snapshot::with_std([(uri, program(chains))]);
+    let snap = Snapshot::with_std([(uri, program())]);
     let opts = BuildOptions {
         need_entry: true,
         ..Default::default()
@@ -70,11 +79,14 @@ fn through_every_phase(chains: bool) -> Result<snapshot::Snapshot, String> {
 
     let user = module.defs.iter().find(|d| d.name == "big_index").unwrap();
     let dump = module.display_module_for(&user.module, Some(sakura_core::opt::ranges::Profile::Js));
-    assert!(
-        dump.contains("fn big_index"),
-        "{}",
-        &dump[..dump.len().min(500)]
-    );
+    // A literal `match` is one `Switch` (§17.200 (2)), not a chain of tests.
+    for f in ["int_arm", "str_arm", "sparse_arm"] {
+        let start = dump.find(&format!("fn {f}#")).expect(f);
+        let body = &dump[start..];
+        let body = &body[..body.find("\n}\n").expect("ends")];
+        assert_eq!(body.matches("switch ").count(), 1, "{f}");
+        assert!(!body.contains("if "), "{f}");
+    }
 
     let sources = snap
         .file_ids()
@@ -84,12 +96,27 @@ fn through_every_phase(chains: bool) -> Result<snapshot::Snapshot, String> {
             text: snap.file(f).text.clone(),
         })
         .collect();
-    let js: usize = sakura_codegen_js::emit(&module, &sakura_codegen_js::Options::new(sources))
-        .iter()
-        .map(|f| f.text.len())
-        .sum();
+    let files = sakura_codegen_js::emit(&module, &sakura_codegen_js::Options::new(sources));
+    let js: usize = files.iter().map(|f| f.text.len()).sum();
     // Indentation stops at a fixed depth, so the output is linear in the program.
     assert!(js < 16 << 20, "{js} bytes of JS");
+    let dir = std::env::temp_dir().join(format!("sakura-deep-ir-{}", std::process::id()));
+    for f in &files {
+        let path = dir.join(&f.path);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, &f.text).unwrap();
+    }
+    let out = Command::new("node")
+        .arg(dir.join("__main__.js"))
+        .output()
+        .expect("node");
+    let _ = std::fs::remove_dir_all(&dir);
+    assert_eq!(
+        String::from_utf8_lossy(&out.stdout),
+        expected(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
 
     let lir = sakura_lir::from_core(&module, sakura_lir::Layout::Tagged).expect("lowers to LIR");
     let errors = sakura_lir::validate::validate(&lir, Default::default());
@@ -106,33 +133,24 @@ fn through_every_phase(chains: bool) -> Result<snapshot::Snapshot, String> {
     let core = sakura_eval::run_main(&module, sakura_eval::Limits::default());
     assert_eq!(
         (core.stdout.as_str(), &core.result),
-        (&*expected(chains), &Ok(()))
+        (&*expected(), &Ok(()))
     );
     let run = sakura_eval::lir::run_main(&lir, Default::default());
-    assert_eq!(run.stdout, expected(chains), "{}", run.ending.summary());
+    assert_eq!(run.stdout, expected(), "{}", run.ending.summary());
 
+    // A literal `match` is one node deep and guarded rows a sequence of joins, so the snapshot's
+    // depth bound (§17.129) holds for every shape.
     let written = snapshot::Snapshot {
         format: snapshot::FORMAT.to_owned(),
         files: snap.file_ids().map(|f| snap.file(f).uri.clone()).collect(),
         module: snapshot::convert::convert(&module),
     };
-    written.module.check()?;
-    let read = snapshot::Snapshot::from_json(&written.to_json())?;
+    written
+        .module
+        .check()
+        .expect("within the snapshot's bounds");
+    let read = snapshot::Snapshot::from_json(&written.to_json()).expect("round trips");
     assert_eq!(read, written);
-    Ok(read)
-}
-
-#[test]
-fn wide_shapes_go_through_every_phase_and_round_trip() {
-    through_every_phase(false).expect("round trips");
-}
-
-/// The snapshot format bounds block nesting at `MAX_BLOCK_DEPTH` (§17.129), which a literal
-/// chain of 3,000 arms passes, so it is refused before it is written; every other phase takes it.
-#[test]
-fn literal_chains_go_through_every_phase() {
-    let err = through_every_phase(true).unwrap_err();
-    assert!(err.contains("blocks nested deeper than"), "{err}");
 }
 
 /// The `V4004` records of `source`, as (message, primary span's start, its text).

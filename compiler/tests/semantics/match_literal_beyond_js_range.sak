@@ -1,0 +1,19 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D003
+// expect-exit@wasm: 0
+// covers: design §17.200 (2) (a column holding an `Int` past the JS range keeps its tests in row order, so on JS the literal defects only after the guarded row before it fails)
+
+fn f(x: Int, g: Bool) -> Int {
+  match x {
+    1 => 10,
+    _ if g => 20,
+    9_007_199_254_740_993 => 30,
+    _ => 0,
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("{f(5, true)}")
+  Console.print("{f(5, false)}")
+}

@@ -345,6 +345,31 @@ impl Validator<'_> {
                         }
                         ts.len()
                     }
+                    SwitchOn::Lit(ls) => {
+                        let int = match (scrut, self.atom_ty(scrut)) {
+                            (_, Some(Ty::Int)) | (Atom::Lit(Lit::Int(_)), _) => Some(true),
+                            (_, Some(Ty::String)) | (Atom::Lit(Lit::String(_)), _) => Some(false),
+                            _ => None,
+                        };
+                        let mut keys = std::collections::HashSet::new();
+                        for l in ls {
+                            let key = match l {
+                                Lit::Int(i) if int == Some(true) => Ok(*i),
+                                Lit::String(s) if int == Some(false) => Err(s.as_str()),
+                                _ => {
+                                    self.err(format!("switch key {l:?} on a non-literal type"));
+                                    continue;
+                                }
+                            };
+                            if !keys.insert(key) {
+                                self.err(format!("literal switch repeats {l:?}"));
+                            }
+                        }
+                        if default.is_none() {
+                            self.err("literal switch has no default".into());
+                        }
+                        ls.len()
+                    }
                 };
                 let mut seen = vec![false; width];
                 for (key, arm) in arms {

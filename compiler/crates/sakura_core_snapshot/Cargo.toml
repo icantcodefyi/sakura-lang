@@ -19,6 +19,7 @@ bless = ["convert", "dep:sakura_analysis"]
 serde.workspace = true
 serde_json = { workspace = true, features = ["unbounded_depth"] }
 serde_stacker.workspace = true
+sakura_hir.workspace = true
 sakura_analysis = { workspace = true, optional = true }
 sakura_core = { workspace = true, optional = true }
 

@@ -11,20 +11,18 @@ function is_even$d(n_1) {
       const t = (n === 0);
       if (t) {
         return true;
-      } else {
-        const t_1 = (n - 1);
-        if (!Number.isSafeInteger(t_1)) $rt.sub(n, 1);
-        n_2 = t_1;
-        break j1;
       }
+      const t_1 = (n - 1);
+      if (!Number.isSafeInteger(t_1)) $rt.sub(n, 1);
+      n_2 = t_1;
+      break j1;
     }
     const t_2 = (n_2 === 0);
     if (t_2) {
       return false;
-    } else {
-      const t_3 = (n_2 - 1);
-      if (!Number.isSafeInteger(t_3)) $rt.sub(n_2, 1);
-      n = t_3;
-      continue j0;
     }
+    const t_3 = (n_2 - 1);
+    if (!Number.isSafeInteger(t_3)) $rt.sub(n_2, 1);
+    n = t_3;
+    continue j0;
   }

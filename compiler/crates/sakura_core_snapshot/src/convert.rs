@@ -283,6 +283,7 @@ fn block_inner(mut e: &c::Expr) -> v::Block {
             on: match on {
                 c::SwitchOn::Variant(t) => v::SwitchOn::Variant(t.0),
                 c::SwitchOn::Errors(ts) => v::SwitchOn::Errors(ts.iter().map(|t| t.0).collect()),
+                c::SwitchOn::Lit(ls) => v::SwitchOn::Lit(ls.iter().map(lit).collect()),
             },
             arms: arms.iter().map(|(k, b)| (*k, block(b))).collect(),
             default: default.as_ref().map(|d| Box::new(block(d))),
@@ -313,15 +314,19 @@ fn atoms(a: &[c::Atom]) -> Vec<v::Atom> {
 fn atom(a: &c::Atom) -> v::Atom {
     match a {
         c::Atom::Local(l) => v::Atom::Local(l.0),
-        c::Atom::Lit(l) => v::Atom::Lit(match l {
-            c::Lit::Unit => v::Lit::Unit,
-            c::Lit::Bool(b) => v::Lit::Bool(*b),
-            c::Lit::Int(i) => v::Lit::Int(*i),
-            c::Lit::Float(f) => v::Lit::Float(*f),
-            c::Lit::String(s) => v::Lit::String(s.clone()),
-        }),
+        c::Atom::Lit(l) => v::Atom::Lit(lit(l)),
         c::Atom::Global(d) => v::Atom::Global(d.0),
         c::Atom::Builtin(b) => v::Atom::Builtin(b.clone()),
+    }
+}
+
+fn lit(l: &c::Lit) -> v::Lit {
+    match l {
+        c::Lit::Unit => v::Lit::Unit,
+        c::Lit::Bool(b) => v::Lit::Bool(*b),
+        c::Lit::Int(i) => v::Lit::Int(*i),
+        c::Lit::Float(f) => v::Lit::Float(*f),
+        c::Lit::String(s) => v::Lit::String(s.clone()),
     }
 }
 

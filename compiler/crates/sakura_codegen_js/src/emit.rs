@@ -716,7 +716,32 @@ impl<'a> FnEmit<'a> {
     fn analyze_labels(&mut self) {
         let mut infos = HashMap::new();
         collect_labels(&self.def.body, &mut infos, &mut Vec::new());
+        let mut deep = HashSet::new();
+        // Direct code has no bounce for a loop's back edge, so a join in a loop body stays
+        // inline there: an arrow jumping back would take the loop out of line.
+        let pin = self.mode == Mode::Direct;
+        deep_joins(&self.def.body, &infos, (0, pin, false), &mut deep);
+        for l in &deep {
+            infos.get_mut(l).expect("collected").inline = false;
+        }
         self.labels = infos;
+        self.settle_labels();
+        // If an arrow join still moved a loop out of line, the function keeps every join
+        // inline. ponytail: a direct loop body nests as deep as its joins (a `match` of about
+        // 1,500 arms in a loop overflows V8's parser); a switch over the join chain would not.
+        if self.mode == Mode::Direct && self.labels.values().any(|l| !l.inline && l.recursive) {
+            self.labels.values_mut().for_each(|l| l.inline = true);
+            self.settle_labels();
+        }
+        assert!(
+            self.mode == Mode::Cps || self.labels.values().all(|l| l.inline || !l.recursive),
+            "direct-style bodies only use inline loops ({})",
+            self.def.name
+        );
+    }
+
+    /// Takes a join out of line while some jump to it comes from another JS function.
+    fn settle_labels(&mut self) {
         loop {
             let mut frames = Frames::default();
             self.frames(&self.def.body, 0, &mut frames);
@@ -737,11 +762,6 @@ impl<'a> FnEmit<'a> {
                 break;
             }
         }
-        assert!(
-            self.mode == Mode::Cps || self.labels.values().all(|l| l.inline),
-            "direct-style bodies only use inline join points ({})",
-            self.def.name
-        );
     }
 
     fn frames(&self, e: &Expr, frame: u32, f: &mut Frames) {
@@ -1101,11 +1121,23 @@ impl<'a> FnEmit<'a> {
             } => {
                 let s = self.atom(scrut);
                 match on {
-                    SwitchOn::Variant(_) => {
-                        w.line(&format!("switch ({s}.tag) {{"));
+                    SwitchOn::Variant(_) | SwitchOn::Lit(_) => {
+                        let lits = match on {
+                            SwitchOn::Lit(ls) => Some(ls),
+                            _ => None,
+                        };
+                        match lits {
+                            Some(_) => w.line(&format!("switch ({s}) {{")),
+                            None => w.line(&format!("switch ({s}.tag) {{")),
+                        }
                         w.depth += 1;
                         for (key, arm) in arms {
-                            w.line(&format!("case {key}: {{"));
+                            match lits {
+                                Some(ls) => {
+                                    w.line(&format!("case {}: {{", lit_js(&ls[*key as usize])))
+                                }
+                                None => w.line(&format!("case {key}: {{")),
+                            }
                             w.depth += 1;
                             self.expr(w, arm, ctx);
                             w.depth -= 1;
@@ -1145,16 +1177,15 @@ impl<'a> FnEmit<'a> {
                     }
                 }
             }
+            // `then` ends in a `return`, `break`, `continue` or `throw`, so `els` follows at the
+            // same depth: a chain of `If`s does not nest (design §17.200 (4)).
             Expr::If { cond, then, els } => {
                 w.line(&format!("if ({}) {{", self.atom(cond)));
                 w.depth += 1;
                 self.expr(w, then, ctx);
                 w.depth -= 1;
-                w.line("} else {");
-                w.depth += 1;
-                self.expr(w, els, ctx);
-                w.depth -= 1;
                 w.line("}");
+                self.expr(w, els, ctx);
             }
             Expr::Handle { handler, body } => {
                 let h = self.atom(handler);
@@ -1866,6 +1897,59 @@ fn collect_labels_inner(e: &Expr, infos: &mut HashMap<Label, LabelInfo>, inside:
             collect_labels(els, infos, inside);
         }
     }
+}
+
+/// The deepest nesting of inline join blocks (design §17.200 (4)): V8's parser overflows on
+/// about 1,500 nested blocks, and a `match`'s arms are a chain of joins as long as the arms.
+const MAX_INLINE_JOINS: usize = 64;
+
+/// The joins nested deeper than [`MAX_INLINE_JOINS`] entry blocks, which take the arrow form,
+/// at `(depth, pin, pinned)`: a loop stays inline, and so does every join in its body when
+/// `pin`.
+fn deep_joins(
+    e: &Expr,
+    infos: &HashMap<Label, LabelInfo>,
+    at: (usize, bool, bool),
+    out: &mut HashSet<Label>,
+) {
+    sakura_core::ensure_stack(|| match e {
+        Expr::Let { body, .. } | Expr::Handle { body, .. } | Expr::Try { body, .. } => {
+            deep_joins(body, infos, at, out)
+        }
+        Expr::Ret(_) | Expr::Fail(_) | Expr::Jump(..) => {}
+        Expr::LetJoin {
+            label, join, body, ..
+        } => {
+            let (depth, pin, pinned) = at;
+            let recursive = infos[label].recursive;
+            let inline = recursive || pinned || depth < MAX_INLINE_JOINS;
+            if !inline {
+                out.insert(*label);
+            }
+            // An inline join's code follows its entry block; a loop's or an arrow's is nested.
+            let nested = usize::from(!inline || recursive);
+            deep_joins(
+                join,
+                infos,
+                (depth + nested, pin, pinned || pin && recursive),
+                out,
+            );
+            let entry = inline && !matches!(&**body, Expr::Jump(l, _) if l == label);
+            deep_joins(body, infos, (depth + usize::from(entry), pin, pinned), out);
+        }
+        Expr::Switch { arms, default, .. } => {
+            for (_, a) in arms {
+                deep_joins(a, infos, at, out);
+            }
+            if let Some(d) = default {
+                deep_joins(d, infos, at, out);
+            }
+        }
+        Expr::If { then, els, .. } => {
+            deep_joins(then, infos, at, out);
+            deep_joins(els, infos, at, out);
+        }
+    })
 }
 
 /// Every join's body by label.

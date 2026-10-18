@@ -661,6 +661,15 @@ impl<'m> Machine<'m> {
                             .position(|m| m == t)
                             .map(|i| i as u32)
                             .unwrap_or(u32::MAX),
+                        (SwitchOn::Lit(lits), Value::Int(_) | Value::Str(_)) => lits
+                            .iter()
+                            .position(|l| match (l, &v) {
+                                (Lit::Int(a), Value::Int(b)) => a == b,
+                                (Lit::String(a), Value::Str(b)) => **a == **b,
+                                _ => false,
+                            })
+                            .map(|i| i as u32)
+                            .unwrap_or(u32::MAX),
                         _ => return Err(Stop::Internal(format!("switch on {v:?}"))),
                     };
                     expr = match arms.iter().find(|(k, _)| *k == key) {

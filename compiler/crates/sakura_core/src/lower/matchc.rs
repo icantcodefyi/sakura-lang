@@ -3,9 +3,10 @@
 //!
 //! A pattern matrix (one row per arm alternative, one column per occurrence) is split on the
 //! first column the first row tests: variants become a `Switch` on the tag, error tags a
-//! `Switch` over the union, literals a chain of equality tests, lists a chain of length tests,
-//! records and tuples are expanded without a test. Arm bodies are join points so they are never
-//! duplicated; guards run at the leaves and fall through to the remaining rows.
+//! `Switch` over the union, `Int` and `String` literals a `Switch` over the column's literals,
+//! `Bool` and `Float` literals an `If` per literal, lists a chain of length tests, records and tuples are expanded without a
+//! test. Arm bodies are join points so they are never duplicated; guards run at the leaves and
+//! fall through to the remaining rows.
 
 use std::collections::{BTreeSet, HashMap};
 
@@ -336,20 +337,61 @@ impl FnLower<'_, '_> {
         let Some(guard) = info.guard else {
             return jump;
         };
-        self.scoped(|s| {
+        // The rows after a failed guard continue in the join `next` (or are one jump), and the
+        // joins that rest binds move out beside it, so a run of guarded rows is a sequence of
+        // joins rather than an `If` nested once per row (design §17.200 (5)).
+        let mut rest = self.compile(occ, rows, arms, fb);
+        let mut hoisted = Vec::new();
+        while let Expr::LetJoin {
+            label,
+            params,
+            join,
+            body,
+        } = &mut rest
+        {
+            let join = std::mem::replace(join, Box::new(Expr::Ret(unit())));
+            let body = std::mem::replace(&mut **body, Expr::Ret(unit()));
+            hoisted.push((*label, std::mem::take(params), join));
+            rest = body;
+        }
+        let (fall, rest) = match rest {
+            Expr::Jump(..) | Expr::Ret(_) | Expr::Fail(_) => (rest, None),
+            _ => {
+                let next = self.b.label();
+                (Expr::Jump(next, vec![]), Some((next, rest)))
+            }
+        };
+        let test = self.scoped(|s| {
             for (l, a) in &row.binds {
                 s.env.insert(*l, a.clone());
             }
             let Some(c) = s.expr(guard) else {
                 return Expr::Ret(unit());
             };
-            let rest = s.compile(occ, rows, arms, fb);
             Expr::If {
                 cond: c,
                 then: Box::new(jump),
-                els: Box::new(rest),
+                els: Box::new(fall),
             }
-        })
+        });
+        let mut e = match rest {
+            Some((next, rest)) => Expr::LetJoin {
+                label: next,
+                params: vec![],
+                join: Box::new(rest),
+                body: Box::new(test),
+            },
+            None => test,
+        };
+        for (label, params, join) in hoisted.into_iter().rev() {
+            e = Expr::LetJoin {
+                label,
+                params,
+                join,
+                body: Box::new(e),
+            };
+        }
+        e
     }
 
     /// Replace column `col` of every row with `n` sub-patterns (no test needed).
@@ -558,6 +600,10 @@ impl FnLower<'_, '_> {
         }
     }
 
+    /// `Int` and `String` switch on every distinct literal in the column (design §17.200 (2)):
+    /// an arm takes the rows holding its literal or a wildcard, in their order, and the default
+    /// the wildcard rows. `Bool`, `Float` and an `Int` column past the JS range test the first
+    /// row's literal with an `If`.
     fn split_lit(
         &mut self,
         occ: Occ,
@@ -567,51 +613,94 @@ impl FnLower<'_, '_> {
         arms: &[ArmInfo],
         fb: &Fallback,
     ) -> Expr {
-        let (atom, oty) = occ[col].clone();
-        let matching = |p: &P| matches!(p, P::Lit(l) if *l == lit);
-        let spec: Vec<Row> = rows
-            .iter()
-            .filter(|r| matching(&r.pats[col]) || matches!(r.pats[col], P::Any))
-            .map(|r| {
-                let mut r = r.clone();
-                r.pats.remove(col);
-                r
-            })
-            .collect();
-        let others: Vec<Row> = rows
-            .iter()
-            .filter(|r| !matching(&r.pats[col]))
-            .cloned()
-            .collect();
         let mut spec_occ = occ.clone();
         spec_occ.remove(col);
-        self.scoped(|s| {
-            let cond = match lit {
-                Lit::Bool(true) => atom.clone(),
-                Lit::Bool(false) => s.bind(
-                    "not",
-                    Ty::Bool,
-                    Bind::Prim(PrimOp::Not, vec![atom.clone()]),
-                    None,
-                ),
-                _ => s.bind(
-                    "is",
-                    Ty::Bool,
-                    Bind::Prim(
-                        PrimOp::Eq(cmp_ty(&oty)),
-                        vec![atom.clone(), Atom::Lit(lit.clone())],
+        let without = |r: &Row| {
+            let mut r = r.clone();
+            r.pats.remove(col);
+            r
+        };
+        let (atom, oty) = occ[col].clone();
+        // On JS an `Int` literal past ±(2^53 − 1) is a defect when it is evaluated (`D003`), and
+        // a `switch` evaluates its cases before the default's guarded rows: such a column keeps
+        // the tests in row order.
+        const JS_SAFE: u64 = (1 << 53) - 1;
+        let switchable = matches!(lit, Lit::Int(_) | Lit::String(_))
+            && rows.iter().all(
+                |r| !matches!(&r.pats[col], P::Lit(Lit::Int(i)) if i.unsigned_abs() > JS_SAFE),
+            );
+        if !switchable {
+            let matching = |p: &P| matches!(p, P::Lit(l) if *l == lit);
+            let spec: Vec<Row> = rows
+                .iter()
+                .filter(|r| matching(&r.pats[col]) || matches!(r.pats[col], P::Any))
+                .map(without)
+                .collect();
+            let others: Vec<Row> = rows
+                .iter()
+                .filter(|r| !matching(&r.pats[col]))
+                .cloned()
+                .collect();
+            return self.scoped(|s| {
+                let cond = match lit {
+                    Lit::Bool(true) => atom.clone(),
+                    Lit::Bool(false) => {
+                        s.bind("not", Ty::Bool, Bind::Prim(PrimOp::Not, vec![atom]), None)
+                    }
+                    _ => s.bind(
+                        "is",
+                        Ty::Bool,
+                        Bind::Prim(PrimOp::Eq(cmp_ty(&oty)), vec![atom, Atom::Lit(lit.clone())]),
+                        None,
                     ),
-                    None,
-                ),
-            };
-            let then = s.compile(spec_occ, spec, arms, fb);
-            let els = s.compile(occ, others, arms, fb);
-            Expr::If {
-                cond,
-                then: Box::new(then),
-                els: Box::new(els),
+                };
+                let then = s.compile(spec_occ, spec, arms, fb);
+                let els = s.compile(occ, others, arms, fb);
+                Expr::If {
+                    cond,
+                    then: Box::new(then),
+                    els: Box::new(els),
+                }
+            });
+        }
+        let mut lits = Vec::new();
+        let mut index = HashMap::new();
+        let mut groups: Vec<Vec<usize>> = Vec::new();
+        let mut wild = Vec::new();
+        for (i, r) in rows.iter().enumerate() {
+            match &r.pats[col] {
+                P::Lit(l) => {
+                    let k = *index.entry(lit_key(l)).or_insert_with(|| {
+                        lits.push(l.clone());
+                        groups.push(Vec::new());
+                        groups.len() - 1
+                    });
+                    groups[k].push(i);
+                }
+                _ => wild.push(i),
             }
-        })
+        }
+        let mut switch_arms = Vec::new();
+        for (k, group) in groups.iter().enumerate() {
+            let (mut g, mut w) = (group.iter().peekable(), wild.iter().peekable());
+            let mut spec = Vec::new();
+            while let Some(&i) = match (g.peek(), w.peek()) {
+                (Some(a), Some(b)) if a < b => g.next(),
+                (Some(_), None) => g.next(),
+                _ => w.next(),
+            } {
+                spec.push(without(&rows[i]));
+            }
+            switch_arms.push((k as u32, self.compile(spec_occ.clone(), spec, arms, fb)));
+        }
+        let rest = wild.iter().map(|&i| without(&rows[i])).collect();
+        let default = self.compile(spec_occ, rest, arms, fb);
+        Expr::Switch {
+            scrut: atom,
+            on: SwitchOn::Lit(lits),
+            arms: switch_arms,
+            default: Some(Box::new(default)),
+        }
     }
 
     /// Lists: test the length against every fixed length up to the longest pattern, then
@@ -734,5 +823,20 @@ impl FnLower<'_, '_> {
             occ.splice(col..=col, subs);
             s.compile(occ, spec, arms, fb)
         })
+    }
+}
+
+#[derive(PartialEq, Eq, Hash)]
+enum LitKey<'a> {
+    Int(i64),
+    Str(&'a str),
+}
+
+/// Only `Int` and `String` columns are switched on.
+fn lit_key(l: &Lit) -> LitKey<'_> {
+    match l {
+        Lit::Int(i) => LitKey::Int(*i),
+        Lit::String(s) => LitKey::Str(s),
+        _ => unreachable!("switch on a {l:?} literal"),
     }
 }

@@ -832,6 +832,9 @@ impl<'m> Gen<'m> {
                         },
                     };
                 }
+                if let SwitchOn::Lit(lits) = on {
+                    return self.lit_switch(f, &s, lits, arms, default.as_deref(), path);
+                }
                 let tag = self.tag(&s);
                 let mut out = vec![];
                 for (key, b) in arms {
@@ -870,6 +873,35 @@ impl<'m> Gen<'m> {
                 out
             }
         }
+    }
+
+    /// An `Int` arm assumes the scrutinee equals its literal and the default that it equals
+    /// none; a `String` scrutinee is not modelled, so its arms assume nothing.
+    fn lit_switch(
+        &mut self,
+        f: &mut Frame,
+        s: &Val,
+        lits: &[Lit],
+        arms: &[(u32, Block)],
+        default: Option<&Block>,
+        mut path: Path,
+    ) -> Vec<Exit> {
+        let key = |k: u32| match (s, &lits[k as usize]) {
+            (Val::Int(x), Lit::Int(i)) => Some(Term::eq(x.clone(), Term::Int(*i as i128))),
+            _ => None,
+        };
+        let mut out = vec![];
+        for (k, b) in arms {
+            let mut p = path.clone();
+            p.assume.extend(key(*k));
+            out.extend(self.block(f, b, p));
+        }
+        if let Some(d) = default {
+            path.assume
+                .extend(arms.iter().filter_map(|(k, _)| key(*k).map(Term::negate)));
+            out.extend(self.block(f, d, path));
+        }
+        out
     }
 
     fn tag(&mut self, s: &Val) -> Term {
