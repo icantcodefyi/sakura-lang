@@ -370,5 +370,11 @@ fn js_and_wasm_agree_on_the_semantics_corpus() {
     );
     eprintln!("traced operations on WASM: {ops:?}");
     eprintln!("{}", import_report(&covered));
+    for (name, i) in &covered {
+        let missing: Vec<&String> = i.declared.difference(&i.provided).collect();
+        if !missing.is_empty() {
+            failures.push(format!("{name}: the host lacks imports {missing:?}"));
+        }
+    }
     assert!(failures.is_empty(), "{}", failures.join("\n\n"));
 }
