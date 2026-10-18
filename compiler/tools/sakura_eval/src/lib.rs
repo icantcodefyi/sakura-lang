@@ -112,6 +112,10 @@ pub struct Limits {
     /// or the i64 profile defects as that profile forbids: the soundness oracle of design
     /// §17.114 for differential tests.
     pub audit_ranges: bool,
+    /// Stop with [`Stop::Internal`] when a value that an update `opt::owned` proves owned has
+    /// consumed is read again: the soundness oracle of design §17.149 (an in-place backend
+    /// would have shown the read the updated value).
+    pub audit_owned: bool,
 }
 
 impl Default for Limits {
@@ -120,6 +124,7 @@ impl Default for Limits {
             max_steps: 50_000_000,
             max_depth: 10_000,
             audit_ranges: false,
+            audit_owned: false,
         }
     }
 }
@@ -217,6 +222,38 @@ pub(crate) struct Machine<'m> {
     /// Per def, the locals `opt::ranges` proves for the JS and the i64 profile
     /// (`Limits::audit_ranges`).
     proved: Vec<[Vec<bool>; 2]>,
+    /// `Limits::audit_owned`: consuming summaries, each def's owned sites, and the identities
+    /// of the values those sites consumed (kept allocated by a weak reference, so an address
+    /// is never reused for a live value).
+    owned: Owned,
+}
+
+#[derive(Default)]
+struct Owned {
+    summaries: Vec<sakura_core::opt::owned::Summary>,
+    facts: Vec<sakura_core::opt::owned::Facts>,
+    consumed: std::collections::HashSet<usize>,
+    pins: Vec<Pin>,
+}
+
+#[allow(dead_code)]
+enum Pin {
+    Seq(std::rc::Weak<Vec<Value>>),
+    Map(std::rc::Weak<Vec<(Value, Value)>>),
+}
+
+/// The identity of a `List`, `Map` or `Set` value.
+fn identity(v: &Value) -> Option<(usize, Pin)> {
+    match v {
+        Value::List(r) | Value::Set(r) => {
+            Some((Rc::as_ptr(r) as usize, Pin::Seq(Rc::downgrade(r))))
+        }
+        Value::Map(r) => Some((
+            Rc::as_ptr(r) as *const () as usize,
+            Pin::Map(Rc::downgrade(r)),
+        )),
+        _ => None,
+    }
 }
 
 impl<'m> Machine<'m> {
@@ -243,6 +280,35 @@ impl<'m> Machine<'m> {
             } else {
                 Vec::new()
             },
+            owned: if limits.audit_owned {
+                use sakura_core::opt::owned::{analyze, summaries};
+                let summaries = summaries(module);
+                let facts = module
+                    .defs
+                    .iter()
+                    .map(|d| analyze(module, d, &summaries, &[]))
+                    .collect();
+                Owned {
+                    summaries,
+                    facts,
+                    ..Owned::default()
+                }
+            } else {
+                Owned::default()
+            },
+        }
+    }
+
+    /// `Limits::audit_owned`: the argument an owned update bound to `local` in `def` consumes.
+    fn owned_arg<'b>(&self, def: DefId, local: Local, bind: &'b Bind) -> Option<&'b Atom> {
+        let facts = self.owned.facts.get(def.index())?;
+        if !facts.owned(local) {
+            return None;
+        }
+        let p = sakura_core::opt::owned::consumed(bind, &self.owned.summaries)?;
+        match bind {
+            Bind::Call(_, args) => args.get(p),
+            _ => None,
         }
     }
 
@@ -440,6 +506,20 @@ impl<'m> Machine<'m> {
     }
 
     fn atom(&self, env: &[Option<Value>], a: &Atom) -> R<Value> {
+        let v = self.atom_unchecked(env, a)?;
+        if let Atom::Local(l) = a
+            && !self.owned.consumed.is_empty()
+            && identity(&v).is_some_and(|(id, _)| self.owned.consumed.contains(&id))
+        {
+            return Err(Stop::Internal(format!(
+                "opt::owned: a value an owned update consumed was read again (%{})",
+                l.0
+            )));
+        }
+        Ok(v)
+    }
+
+    fn atom_unchecked(&self, env: &[Option<Value>], a: &Atom) -> R<Value> {
         Ok(match a {
             Atom::Local(l) => env
                 .get(l.index())
@@ -473,10 +553,13 @@ impl<'m> Machine<'m> {
             match expr {
                 Expr::Let {
                     local,
-                    bind: Bind::Call(f, args),
+                    bind: bind @ Bind::Call(f, args),
                     body,
                     ..
-                } if tail && returns(body, *local, rets) => {
+                } if tail
+                    && returns(body, *local, rets)
+                    && self.owned_arg(def, *local, bind).is_none() =>
+                {
                     self.tick()?;
                     return Ok(Flow::TailCall(self.atom(env, f)?, self.atoms(env, args)?));
                 }
@@ -484,18 +567,37 @@ impl<'m> Machine<'m> {
                     local, bind, body, ..
                 } => {
                     self.tick()?;
+                    let consumed = match self.owned_arg(def, *local, bind) {
+                        Some(a) => Some(self.atom(env, a)?),
+                        None => None,
+                    };
                     let bound = self.bind(env, bind, hs);
                     if let Err(Stop::Defect { code, .. }) = &bound {
                         self.audit(def, *local, code)?;
                     }
                     match bound.map_err(|e| self.in_contract(e))? {
-                        Ok(v) => env[local.index()] = Some(v),
+                        Ok(v) => {
+                            // An update that returns its argument unchanged consumed nothing.
+                            if let Some((id, pin)) = consumed.as_ref().and_then(identity)
+                                && identity(&v).map(|(i, _)| i) != Some(id)
+                            {
+                                self.owned.consumed.insert(id);
+                                self.owned.pins.push(pin);
+                            }
+                            env[local.index()] = Some(v)
+                        }
                         Err(e) => return Ok(Flow::Fail(e)),
                     }
                     expr = body;
                 }
                 Expr::Ret(a) => return Ok(Flow::Ret(self.atom(env, a)?)),
-                Expr::Jump(l, args) => return Ok(Flow::Jump(*l, self.atoms(env, args)?)),
+                // A jump does not read its arguments: lowering passes every `var` to every join,
+                // read or not. A consumed value it passes is caught where the parameter is read.
+                Expr::Jump(l, args) => {
+                    let vs: R<Vec<Value>> =
+                        args.iter().map(|a| self.atom_unchecked(env, a)).collect();
+                    return Ok(Flow::Jump(*l, vs?));
+                }
                 Expr::Fail(a) => return Ok(Flow::Fail(self.atom(env, a)?)),
                 Expr::LetJoin {
                     label,

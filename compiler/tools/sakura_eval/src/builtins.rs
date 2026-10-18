@@ -78,6 +78,18 @@ pub(crate) fn call(m: &mut Machine, name: &str, args: Vec<Value>, hs: &Rc<Handle
             ys.push(x.clone());
             list(ys)
         }
+        ("list_set", [List(xs), Int(i), x]) => {
+            // `List.set`'s `requires` has checked the index; out of range is defence.
+            let i = index(*i, xs.len()).ok_or_else(|| {
+                defect(
+                    "D020",
+                    "precondition of List.set violated: 0 <= i && i < len(xs)",
+                )
+            })?;
+            let mut ys = (**xs).clone();
+            ys[i] = x.clone();
+            list(ys)
+        }
         // A builder is the list it would finish as (design §17.116).
         ("list_builder", []) => list(vec![]),
         ("list_builder_push", [List(xs), x]) => {

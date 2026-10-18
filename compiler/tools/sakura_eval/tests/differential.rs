@@ -13,6 +13,7 @@
 //!
 //! The generator covers the M0–M3 forms: ints, strings, options, blocks and matches; records,
 //! variants and record/list patterns; lists and the `List` std functions with effectful callbacks;
+//! `List.set`, `Map` and `Set` updates, which the ownership pass may run in place (§17.149);
 //! `var` loops with `break`/`continue`/`return`; `try`/`catch` over error tags (partial catches
 //! let the rest propagate); user effects with stateful and forwarding handlers under nested
 //! `with`, including an operation whose callback runs under the perform site's handlers; and
@@ -504,11 +505,11 @@ impl Gen<'_> {
             },
             Ty::List if contract => self.leaf(Ty::List),
             Ty::List => {
-                let form = self.rng.below(14);
+                let form = self.rng.below(17);
                 // Only generate what the form uses: a dropped operand could still record a tag
                 // in `raised`.
                 let xs = match form {
-                    0 | 13 => String::new(),
+                    0 | 13 | 15 | 16 => String::new(),
                     _ => self.expr(Ty::List, d),
                 };
                 match form {
@@ -574,6 +575,21 @@ impl Gen<'_> {
                             "List.map(List.enumerate({xs}), fn({p}) {{ let {i} = {p}.0; let {x} = {p}.1; {e} }})"
                         )
                     }
+                    14 => self.list_set(&xs, d),
+                    // Owned updates from the empty singletons (design §17.149).
+                    15 => format!(
+                        "Map.values(Map.remove(Map.insert(Map.insert(Map.empty(), {}, {}), {}, {}), {}))",
+                        self.expr(Ty::Int, d),
+                        self.expr(Ty::Int, d),
+                        self.expr(Ty::Int, d),
+                        self.expr(Ty::Int, d),
+                        self.expr(Ty::Int, d)
+                    ),
+                    16 => format!(
+                        "Set.to_list(Set.insert(Set.insert(Set.empty(), {}), {}))",
+                        self.expr(Ty::Int, d),
+                        self.expr(Ty::Int, d)
+                    ),
                     _ => format!(
                         "List.range({}, {})",
                         self.rng.below(5) as i64 - 2,
@@ -908,6 +924,15 @@ impl Gen<'_> {
         }
     }
 
+    /// `List.set` of `xs` at an index in range, or `xs` when it is empty.
+    fn list_set(&mut self, xs: &str, d: u32) -> String {
+        let v = self.name();
+        let (i, x) = (self.expr(Ty::Int, d), self.expr(Ty::Int, d));
+        format!(
+            "({{ let {v} = {xs}; if List.len({v}) > 0 {{ List.set({v}, Int.abs({i}) % List.len({v}), {x}) }} else {{ {v} }} }})"
+        )
+    }
+
     /// `var t = …; for/while … { …; t = … }`, leaving `t` in scope.
     fn var_loop(&mut self, d: u32) -> String {
         let t = self.name();
@@ -958,6 +983,7 @@ impl Gen<'_> {
         let update = match ty {
             Ty::Int => format!("{t} + {}", self.expr(Ty::Int, d)),
             Ty::Str => format!("{t} + {}", self.expr(Ty::Str, d)),
+            _ if self.rng.chance(40) => self.list_set(&t, d),
             _ => format!("List.push({t}, {})", self.expr(Ty::Int, d)),
         };
         self.cx = cx;
@@ -1228,6 +1254,7 @@ fn run_eval(module: sakura_core::Module) -> Option<(Ending, bool)> {
         .spawn(move || {
             let limits = Limits {
                 audit_ranges: true,
+                audit_owned: true,
                 ..Limits::default()
             };
             run_main(&module, limits)

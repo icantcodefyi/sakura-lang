@@ -65,6 +65,7 @@ fn evaluator_agrees_with_expected_stdout() {
             .spawn(move || {
                 let limits = Limits {
                     audit_ranges: true,
+                    audit_owned: true,
                     ..Limits::default()
                 };
                 run_main(&module, limits)
