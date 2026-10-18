@@ -54,6 +54,44 @@ when `f` is not an operation (`Console.captured()`, `Clock.fixed(t)`, `Random.se
   `Schema` only inside their modules (§17.130, `V2033`). `Uuid`, `Path` and `Decimal` are
   refinements, so they decode through their predicates.
 
+## By task
+
+| Task | Start here |
+|---|---|
+| Transform, filter or update collections | `List.map`, `filter_map`, `fold`, `set`; `Map.update`; `Set.of` |
+| Parse text and validate data | `String.parse_int`, `Json.decode`, `Untrusted.validate`, `Result` |
+| Read CLI arguments and files | `Cli.parse`, `Path`, `Dir`, `Fs.rooted`; test with `Cli.of`, `Fs.memory` |
+| Call HTTP or dispatch a route | `Request`, `Response`, `Http`; `Router.handle` for server-free tests |
+| Query a database | `sql` templates, `Sql.query`; `Sql.memory` for tests |
+| Call a model or run tools | `Prompt`, `Llm`, `Tool`, `Agent`, `Budget`; `Llm.scripted` for tests |
+| Retry, time or parallelize work | `retry`, `Clock`, `Random`, `std/task.timeout`, `std/task.par_map` |
+| Test effects deterministically | `Test`, `Console.captured`, `Clock.fixed`, `Http.scripted`, `Serve.scripted` |
+
+## Complexity and behaviour notes
+
+These authored notes complement the generated signatures and are copied into the
+checked skill reference; they are not additional APIs.
+
+- `List.set` makes an **O(log32 n) path copy**, sharing untouched branches (§17.126).
+  Use it for indexed updates instead of rebuilding the list with `map` or slices.
+  Its index must satisfy the generated `requires` clause; `List.get` returns `Option`.
+- `String.len` counts **UTF-8 bytes**, not characters, and is **O(n) on JS**.
+  `String.chars` returns Unicode scalars; `graphemes` returns grapheme clusters.
+  `String.slice` uses byte offsets, clamps bounds and defects (`D031`) if an
+  endpoint splits a character. Cache lengths in loops when the string is unchanged.
+- `Untrusted.validate` is compiler-known (§17.71); validation checks the target
+  refinement. `trust` requires an explicit `Trust` argument and does not validate.
+- `File` is a resource (§17.70); use `Fs.with_file` to bound its lifetime.
+- Each non-`UrlPart` interpolation in `url"…"` goes through `UrlPart.from`, which
+  percent-encodes `show(value)` (§17.124). `Url.template` assembles those parts.
+- Each non-`Html` interpolation in `html"…"` goes through `Html.from` and is escaped
+  (§17.77); an `Html` value is already markup. Each `sql"…"` value goes through
+  `SqlValue.from` and is a parameter (§4.11), not concatenated query text.
+- `Http.recording` writes a schema-version line, refuses credential-bearing
+  headers and redacts `set-cookie` (§17.122). `Cassette.open(c)` (also `c.open()`)
+  opens a cassette (§17.125). A `Llm.replay` miss is `ProviderError` with guidance
+  naming `Llm.recording` and `sakura test --record`; it does not call a provider.
+
 ## Module dependencies (non-test code)
 
 Acyclic. Test blocks additionally use `std/test`, which depends on `std/core` and (for

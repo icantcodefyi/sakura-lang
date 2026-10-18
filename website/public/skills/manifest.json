@@ -3,13 +3,13 @@
   "compiler_version": "0.0.0",
   "source": "skills/sakura/",
   "archive": "sakura-skill.zip",
-  "sha256": "e8526bc0f8877f034cf16486741d973d194a7559517e3f3b2e5679f1b18aab8f",
+  "sha256": "ee33791041d9028223d0a37b64af372c424b693ce171ff520af5a8b33b5d88df",
   "files": {
     "SKILL.md": "2b43728a12cb84c104baf26a64dda659eecc454a77dea7651fedb01f5fd92a34",
     "references/diagnostics.md": "48fd85bcec3613b04691ca087c478cb533625878e29d62be71c87f9638ac0f66",
     "references/language.md": "dfd4a14eb0ede94ac31229aa2d281ba71c152db7292a0e72547051403296a920",
     "references/recipes.md": "036d0ebd8d4cce121c71f04416b84d611beb45c3e303d9dec4a20713dab8c60c",
     "references/repairs.md": "ec24b51a994491926f7012b274a1f98b606f6624f0aa992567ef26995a7771f9",
-    "references/stdlib.md": "cae357bd1627a9f213390d7bd50e43c770c5741638363f36c7e2bbbcde31728c"
+    "references/stdlib.md": "ddefa602455877aa8561706f73c6484ef55397d1de83f82b2067b08202cdbb3d"
   }
 }

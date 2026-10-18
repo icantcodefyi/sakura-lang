@@ -13,6 +13,9 @@ published yet.
   ZIP SHA-256 hashes remain. Identical contents stay fresh across commits and rebases,
   and generation no longer requires Git history. CLI commit metadata stays build-time.
 
+- Restored std index complexity and behaviour notes and added a task-oriented lookup
+  table; the checked skill reference and downloadable bundle include both.
+
 - Website production builds preserve Fumadocs search highlights without Lightning CSS's
   false positive `::highlight` warnings; Turbopack still minifies the emitted CSS.
 
