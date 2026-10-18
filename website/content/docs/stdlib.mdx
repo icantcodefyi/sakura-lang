@@ -225,7 +225,7 @@ fn parse(text: String) -> Result<Instant, TimeError>
 ### `std/uuid`
 
 ```sakura
-opaque type Uuid = Uuid(String)
+type Uuid = String where is_canonical(it)
 error UuidError(input: String)
 fn to_string(u: Uuid) -> String
 fn parse(text: String) -> Result<Uuid, UuidError>
@@ -404,7 +404,9 @@ fn map<T, U>(s: Secret<T>, f: fn(T) -> U) -> Secret<U>
 ### `std/decimal`
 
 ```sakura
-opaque type Decimal = { whole: Int, frac: List<Int> }
+type DecimalRepr = { whole: Int, frac: List<Int> }
+type Decimal = DecimalRepr where is_canonical(it)
+fn is_canonical(d: DecimalRepr) -> Bool    // @total
 error DecimalError(input: String)
 fn from_int(n: Int) -> Decimal
 fn zero() -> Decimal

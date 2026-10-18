@@ -70,6 +70,16 @@ published yet.
 
 ### Changed
 
+- **Security (design §17.130):** an opaque type is `Schema` only inside its declaring module.
+  Elsewhere, any `Schema` bound that reaches one (`Json.decode`, `Sql.query` rows,
+  `Llm.generate`, `Cli.parse`, `Tool.of` arguments, `property` parameters) is the new error
+  `V2033 opaque_not_schema`, so data can no longer forge a `Query<R>`, `Html` or `UrlPart`.
+  `sakura test --contracts` skips a `pub fn` with such a parameter and names it. `Uuid` is now
+  `String where is_canonical(it)` and `Decimal` is `DecimalRepr where is_canonical(it)`, so both
+  decode with their check; programs that built `Uuid("…")` or matched on it use `Uuid.parse`.
+- A `sakura.toml` naming its package `std` or `main` is `V8002 reserved_package_name` (§17.131).
+- `sakura fmt` keeps an `if … else` on one line only when every branch fits; otherwise every
+  branch is a block (§17.133).
 - Retired `V5002`; narrowed `W5005` to user clauses scanning collection parameters with
   `List.all`, `List.any` or `List.contains`. `String.contains` no longer triggers it.
 - WS7 Phase B documents the landed CLI and language behavior, regenerates the website

@@ -50,7 +50,9 @@ when `f` is not an operation (`Console.captured()`, `Clock.fixed(t)`, `Random.se
   `User { id: 1, name: "a" }`, `Map.of([("a", 1)])`, `Set.of([1])`, floats always with a
   `.` or exponent (`2.0`); strings are quoted inside containers and raw at the top level of
   an interpolation.
-- **Opaque types:** `Uuid`, `Prompt`, `Query`, `Html` and `UrlPart` are `pub opaque` (design §17.10).
+- **Opaque types:** `Prompt`, `Query`, `Html` and `UrlPart` are `pub opaque` (design §17.10), and
+  `Schema` only inside their modules (§17.130, `V2033`). `Uuid`, `Path` and `Decimal` are
+  refinements, so they decode through their predicates.
 
 ## Module dependencies (non-test code)
 
@@ -261,7 +263,7 @@ fn parse(text: String) -> Result<Instant, TimeError>
 ### `std/uuid`
 
 ```sakura
-opaque type Uuid = Uuid(String)
+type Uuid = String where is_canonical(it)
 error UuidError(input: String)
 fn to_string(u: Uuid) -> String
 fn parse(text: String) -> Result<Uuid, UuidError>
@@ -440,7 +442,9 @@ fn map<T, U>(s: Secret<T>, f: fn(T) -> U) -> Secret<U>
 ### `std/decimal`
 
 ```sakura
-opaque type Decimal = { whole: Int, frac: List<Int> }
+type DecimalRepr = { whole: Int, frac: List<Int> }
+type Decimal = DecimalRepr where is_canonical(it)
+fn is_canonical(d: DecimalRepr) -> Bool    // @total
 error DecimalError(input: String)
 fn from_int(n: Int) -> Decimal
 fn zero() -> Decimal
@@ -757,8 +761,9 @@ fn memory() -> Handler<Sql>    // @external
     and `@trust("…")` is accepted only at a `Trust` parameter (`V6001`). `Untrusted.check(u, clause, pred)` takes the clause text for
     its `Violation`; `Secret.of` and `Secret.map` are additions for tests and derived
     credentials.
-15. **`Decimal` is `{ whole: Int, frac: List<Int> }`** (floor and fractional digits, no
-    trailing zeros), not `{ units: Int, scale: Int }`: derived `Ord` compares fields in order,
+15. **`Decimal` is `DecimalRepr where is_canonical(it)`** over `{ whole: Int, frac: List<Int> }`
+    (floor and fractional digits, no trailing zeros; a refinement since §17.130, so its JSON
+    form is the record and decoding checks it), not `{ units: Int, scale: Int }`: derived `Ord` compares fields in order,
     which is numeric only for this form. `div_checked(a, b, places)` and `round` round half to
     even. Interpolation shows the record form; `Decimal.to_string` gives `-12.34`.
 16. **`Tool<e>` and `Agent<T, e>`** (resolved, §17.49): a tool runs under the caller's

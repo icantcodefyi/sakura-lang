@@ -126,6 +126,7 @@ Type-directed results are named by annotation: `let rows: List<User> = Sql.query
 - `V4001 non-exhaustive match` — add the listed witness case; do not add `_` on closed unions unless intended.
 - `V2040 unused value` — you forgot `xs = List.push(xs, v)` or `let _ =`.
 - `V2031 Secret is not Show` / `V2032 constraint not satisfied` — pass the secret to a sink (`Http.bearer`), never into text; add the constraint or use a type that has it.
+- `V2033 opaque_not_schema` — `Json.decode` (or `Sql.query`, `Llm.generate`, `Cli.parse`, `Tool.of`, a `property`) reached `Query`/`Html`/`UrlPart` from another module: decode the representation (`String`) and call the constructor (`Html.text(s)`, `UrlPart.from(s)`).
 - `V5004 literal violates refinement` — the literal can never satisfy the type's `where` clause; change the literal or the type, never the clause.
 - `V6002/V6003 escapes scope` — return data, not the capability/resource/handler.
 - `V3020 test uses effect without handler` — wrap the test body in `with <fake handler>`.

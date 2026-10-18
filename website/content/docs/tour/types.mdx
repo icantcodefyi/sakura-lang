@@ -158,7 +158,7 @@ Constraints come from a fixed set that the compiler derives structurally. There 
 | `Ord` | `Int`, `Float` (NaN last), `String`, `Bytes`, and tuples, records, variants of `Ord` parts (declaration order) | `Map`, `Set`, functions, `Secret` |
 | `Hash` | `Eq` types except `Float`, `Map`, `Set` | as `Eq`, plus `Float` |
 | `Show` | all data types; records print as `User { id: 1, email: "a@b" }` | functions, handlers, resources, `Secret` |
-| `Schema` | data types made of `Schema` parts, refinements included (JSON Schema plus codec) | functions, handlers, resources, `Secret`, `Graph` |
+| `Schema` | data types made of `Schema` parts, refinements included (JSON Schema plus codec) | functions, handlers, resources, `Secret`, `Graph`, an opaque type outside its module (`V2033`) |
 
 An unconstrained type parameter can only be passed around and matched through concrete constructors. Each constraint unlocks a fixed set of operations: `Eq` gives `==` and `!=`; `Ord` gives `<`, `<=`, `>`, `>=` and implies `Eq`; `Hash` makes a type usable as a `Map` key or `Set` element; `Show` allows interpolation and `show`; `Schema` allows `Json.encode` and `Json.decode`. A concrete type that lacks a required constraint is `V2032`.
 
@@ -229,7 +229,7 @@ pub fn issue(user: Int) -> Token ! {Random} {
 }
 ```
 
-Other modules can only get a `Token` from `tokens.issue`. Std uses the same mechanism: `Uuid` comes only from `Uuid.parse` or `Random.uuid`, a SQL `Query<R>` only from the `sql"…"` template, and `Html` only from escaping code. Opaque types still derive `Eq`, `Ord`, `Hash`, `Show`, and `Schema`. To validate by predicate rather than by construction, use a refinement type.
+Other modules can only get a `Token` from `tokens.issue`. Std uses the same mechanism: a SQL `Query<R>` comes only from the `sql"…"` template, `Html` only from escaping code, and `UrlPart` only from `UrlPart.from`. Opaque types derive `Eq`, `Ord`, `Hash` and `Show`, and `Schema` only inside their declaring module, so `Json.decode`, `Sql.query` rows, `Llm.generate`, `Cli.parse`, `Tool.of` and `property` parameters cannot build one elsewhere (`V2033`); decode the representation and call the constructor instead. To validate by predicate rather than by construction, use a refinement type: `Uuid`, `Path` and `Decimal` are refinements and decode with their check.
 
 ## Method-call resolution
 
