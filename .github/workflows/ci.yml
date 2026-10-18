@@ -46,11 +46,23 @@ jobs:
         run: bun run build
 
   rust:
-    name: Rust (${{ matrix.os }})
+    name: Rust (${{ matrix.label }})
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            label: "ubuntu-latest, 1/2"
+            partition: --partition hash:1/2
+            checks: true
+          - os: ubuntu-latest
+            label: "ubuntu-latest, 2/2"
+            partition: --partition hash:2/2
+            checks: false
+          - os: macos-latest
+            label: macos-latest
+            partition: ""
+            checks: true
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     env:
@@ -157,15 +169,19 @@ jobs:
         with:
           tool: cargo-nextest@0.9.148
       - name: Check formatting
+        if: matrix.checks
         run: cargo fmt --all -- --check
       - name: Clippy
+        if: matrix.checks
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Tests
         # The required Parity matrix runs this identical target on both backends/OSes.
-        run: cargo nextest run --workspace --locked -E 'not (package(=sakura_cli) & binary(=parity))'
+        run: cargo nextest run --workspace --locked ${{ matrix.partition }} -E 'not (package(=sakura_cli) & binary(=parity))'
       - name: Doctests
+        if: matrix.checks
         run: cargo test --workspace --doc --locked
       - name: Agent docs are fresh (design §17.142)
+        if: matrix.checks
         run: cargo run -p agent_docs --locked -- --check
 
   native:
@@ -321,6 +337,7 @@ jobs:
   ci-required:
     name: ci-required
     if: always()
+    # The rust result requires every matrix child, including both Ubuntu partitions.
     needs: [website, rust, native, parity, vscode]
     runs-on: ubuntu-latest
     timeout-minutes: 5

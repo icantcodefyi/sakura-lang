@@ -135,6 +135,9 @@ using its pinned toolchain: fmt, clippy, workspace tests with cargo-nextest,
 `cargo test --workspace --doc --locked`, and the agent-doc freshness check.
 The nextest filter excludes only `sakura_cli::parity`: the required Parity matrix
 runs that identical target for JS and WASM on both operating systems.
+Ubuntu tests use two nextest hash partitions; fmt, clippy, doctests, and agent-doc
+freshness run in the first. macOS runs the full filtered suite in one job.
+`ci-required` requires every Rust matrix child, including both Ubuntu partitions.
 Nextest runs test binaries in parallel; its configuration serializes tests that
 share solver scripts or WASM example output. The local gate remains
 `cargo test --workspace --locked` (above).
