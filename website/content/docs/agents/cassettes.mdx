@@ -39,7 +39,7 @@ A cassette is a JSON Lines file (design §17.122). Three rules apply:
 2. **Credential headers are refused.** A request whose ordinary `headers` contain `authorization`, `proxy-authorization`, `x-api-key`, `api-key`, `x-auth-token` or `cookie` (in any case) fails under `Http.recording` with `HttpError` reading `header <name> belongs in secret_headers (Http.bearer); not recorded`. This happens before any replay or forward, recording or not, so a plain-string token is never written. Use `Http.bearer` or another `secret_headers` entry instead.
 3. **`set-cookie` is redacted.** A `set-cookie` response header is stored as `["set-cookie", "<redacted>"]` and replays as that literal. Other response headers are stored as the server sent them.
 
-The URL and the request body are stored verbatim: a replay must match them. A `Secret` cannot reach them without an audited `Secret.expose` (`V2031` in `url"…"` and `Json.encode`), but a credential that was never a `Secret` and is put in a query string or body is outside this guarantee.
+The URL and the request body are stored verbatim: a replay must match them. A `Secret` cannot reach them without an audited `Secret.expose` (`V2031` in `url"…"`, `V2032` in `Json.encode`), but a credential that was never a `Secret` and is put in a query string or body is outside this guarantee.
 
 ## LLM replay
 

@@ -4,7 +4,9 @@ For: **@icantcodefyi** (CODEOWNERS for `/compiler/` and `/docs/`). Prepared 2026
 agent (Claude Opus 5.5) against `origin/master` at `76fd183`; revised 2026-10-18 by the design
 agent (Claude Fable 5.1, round 7) so that it describes the state **after WS9's fixes** (plan
 [WS9](../plans/m3-completion-and-m4.md#2-workstreams-to-finish-m3) items
-3–6, design §17.122–§17.125). The human reviewer owns the verdict.
+3–6, design §17.122–§17.125). Checked against the landed code at `a843e60` by the WS9.10 re-audit
+(Claude Opus 5.5), which corrected the statements that did not match it and added the finding
+in part C. The human reviewer owns the verdict.
 
 Gate 10 of [plan §4](../plans/m3-completion-and-m4.md#4-m3-exit-gates) needs a named maintainer
 review of three security-relevant pieces. Everything below passes its tests once WS9 lands
@@ -12,7 +14,8 @@ review of three security-relevant pieces. Everything below passes its tests once
 whether the *rules* are the right ones and whether the code enforces them. Budget: about 45
 minutes, in three parts. Sign off at the bottom.
 
-**Review the commit that WS9.10's re-audit names in the gate report**, not `76fd183`. Until the
+**Review `a843e60`**, the commit WS9.10's re-audit names in the
+[gate report](../plans/m3-gate-report.md#re-audit-2026-10-18-at-a843e60), not `76fd183`. Until the
 table below is signed, the files listed in each part are frozen (§17.128): only WS9's own items
 touch them, and M3 is "complete pending review". If you request changes, WS9b carries them under
 the same freeze and this packet is re-issued.
@@ -44,20 +47,23 @@ Commits: `28a80bf` (escape check), `02928e6` (`File` is `@resource`), `d9566ab` 
 **The rules in plain language.**
 
 1. A type is *scoped* when it is an external (bodiless) type, a `Handler<…>`, a `@resource` type
-   (v0: `std/fs.File`, `std/http.Body`), or contains one. A function value is also scoped when
-   it may capture a scoped local, followed through the locals it flows into.
+   (v0: `std/fs.File`, `std/http.Body`), or contains one. A value whose type contains a function is
+   also scoped when it may hold a lambda that captures a scoped local, followed through the locals
+   it flows into (so a record holding such a closure counts).
 2. `V6002`: a scoped value is the result of a `with`, is `return`ed out of one, is the type of a
    top-level `let`, or is captured by a `Task.spawn` body when the capture was bound inside a
    `with` that encloses the spawn but not the `Scope`. **The candidates are the body's free
    locals** (§17.123): every local the body expression mentions, including inside lambdas nested
    anywhere in it (`Task.spawn(s, make(fn() { Fs.read(f) }))`), minus the binders those lambdas
    introduce. Before WS9 only directly read locals were candidates for a non-lambda body.
-3. `V6003`: a callback that receives a resource returns something holding that resource, or a
+3. `V6003`: a callback that receives a resource returns something holding a resource, or a
    resource is stored in handler `var` state. This applies to *any* function or operation whose
-   parameter is a callback whose type contains a resource, so a user wrapper around
-   `Fs.with_file` is checked at its callers.
-4. `V6001`: a user `@external` that takes or returns another package's capability, a `@resource`
-   type, or any `Handler<…>`, which would let FFI forge authority.
+   parameter is a callback taking a value whose type contains a resource, so a user wrapper
+   around `Fs.with_file` is checked at its callers. For a callback argument that is a named
+   function rather than a lambda, its declared return type is checked.
+4. `V6001`: a user `@external` that takes or returns, at any depth, an external or `@resource`
+   type of another package, or any `Handler<…>`, which would let FFI forge authority. A package's
+   own `@resource` types are allowed.
 5. Not checked in v0: **affinity** (using a resource more than once). This was deliberate (§17.70).
 
 **Known deviations and limits (all recorded in plan §7).**
@@ -71,13 +77,14 @@ Commits: `28a80bf` (escape check), `02928e6` (`File` is `@resource`), `d9566ab` 
 **Decided before your review (§17.123), for you to confirm or overturn.**
 
 - [ ] The nested-lambda gap is **closed** (rule 2 above), not deferred to M4.
-- [ ] `Secret<T>` is **not** scoped: it is data, not authority; it may be stored and returned, and
-      its guards are `V2031` and the audited `Secret.expose`. (`Trust` is external but excluded
+- [ ] `Secret<T>` is **not** scoped (unless `T` is): it is data, not authority; it may be stored
+      and returned, and its guards are `V2031` (not `Show`), `V2032` (not `Schema`, `Eq`, `Ord`,
+      `Hash`) and the audited `Secret.expose`. (`Trust` is external but excluded
       here because `V6001` has its own rule for it.)
 - [ ] Deferring affinity **stands**: the runtime closes a `File` at the callback boundary, so a
       late use is `FsError`, not authority (§8.4).
 - [ ] `V6001` **is** the only FFI guard: a std `@external` is in the trusted computing base
-      (§6.6) and listed by `sakura audit`.
+      (§6.6) and listed by `sakura build --manifest` (`sakura audit` lists only the user's packages).
 
 ---
 
@@ -104,12 +111,13 @@ Commits: `b63106f`, `6848fef`, `3271928`, `db0dbbc`, `77bb106`, `c049072`, and W
 
 **The format and rules in plain language.**
 
-1. The file is JSON Lines. Its first line is `{"schema_version": "1.0", "kind": "cassette"}`;
-   then one exchange per line:
+1. The file is JSON Lines. Its first line is `{"schema_version":"1.0","kind":"cassette"}` (as
+   `JSON.stringify` writes it); then one exchange per line:
    `{method, url, headers, body, status, response_headers, response_body | response_body_base64}`.
    A missing or empty file is a cassette with no exchanges and gets the header on its first
-   append. A file whose first non-empty line has no `schema_version`, or a major other than `1`,
-   fails `open` with `HttpError` naming the file and `sakura test --record`.
+   append. A file whose first non-empty line has no string `schema_version`, or a major other than
+   `1`, fails `open` with `HttpError` `<path>:<line>: not a version 1 cassette (no schema_version
+   line); re-record it with sakura test --record`. `kind` is not checked.
 2. The match key is `(method, url, headers, body)` of the request. `secret_headers` are **never
    read** by cassette code, so they are neither written nor matched. `Http.bearer` and
    `Llm.anthropic`'s `x-api-key` both go into `secret_headers`. **The guarantee, precisely: a
@@ -118,33 +126,36 @@ Commits: `b63106f`, `6848fef`, `3271928`, `db0dbbc`, `77bb106`, `c049072`, and W
 3. **Credential-shaped ordinary headers are refused.** A request whose `headers` has a name that
    lowercases to `authorization`, `proxy-authorization`, `x-api-key`, `api-key`, `x-auth-token`
    or `cookie` fails under `Http.recording` with
-   `HttpError { reason: "header <name> belongs in secret_headers (Http.bearer); not recorded" }`,
-   on hit and miss alike and before any forwarding, so a plain-string token is never written.
+   `HttpError { reason: "header <name> belongs in secret_headers (Http.bearer); not recorded" }`
+   (`<name>` as the program wrote it), on hit and miss alike, for `send` and `stream`, and before
+   any forwarding, so a plain-string token is never written. The append path checks again.
    `Http.host` and `Http.scripted` are not recorders and are unchanged.
-4. `set-cookie` in `response_headers` is stored as `["set-cookie", "<redacted>"]` and replays as
-   that literal. Other response headers are the server's data and are stored verbatim.
+4. A `set-cookie` value in `response_headers` is stored as `<redacted>` (the name keeps the
+   server's casing) and replays as that literal. Other response headers are the server's data and are stored verbatim.
 5. Repeated identical requests replay in recorded order and the last one repeats.
 6. A miss outside `--record` fails with `no recording for <METHOD> <url> in <path>; run sakura
    test --record`. Under `Llm.replay` the miss is `ProviderError { status: 0, reason }` whose
-   reason names `Llm.recording` and `sakura test --record` (§17.125 (4)).
+   reason names `Llm.recording` and `sakura test --record` (§17.125 (4)). Only `status == 0`
+   is reworded; a recorded non-2xx `ProviderError` is re-raised unchanged.
 7. Appending is possible only when `SAKURA_RECORD=1`, which only `sakura test --record` sets.
    `--record` grants the manifest's `net`, write access to `tests/fixtures`, and the
    manifest's `env` keys (so tests can read a real key via `Env.host()`). It is refused with
    exit 75 when `net` is empty. A plain `sakura test` grants read access to `tests/fixtures` only,
    with the network denied and an empty `Env`.
 8. The cassette path must be relative, contain no `..` segment, and resolve (after `realpath`)
-   inside the `Dir` and the manifest's grants.
+   inside the `Dir` and the manifest's grants. A memory `Dir` (`Fs.memory`) is refused.
 
 **Things the code does NOT protect (confirm these are acceptable).**
 
 - **The URL and the request body are written verbatim.** They are the request, a replay must
-  match them, and a `Secret` cannot enter them without an audited `Secret.expose` (`V2032` in
-  `url"…"`, `V2031` in `Json.encode`). A plain `String` token that was never a `Secret` and is put
+  match them, and a `Secret` cannot enter them without an audited `Secret.expose` (`V2031` in
+  `url"…"`, `V2032` in `Json.encode`). A plain `String` token that was never a `Secret` and is put
   in a query string or a JSON body is outside the guarantee; the header denylist (rule 3) catches
   that mistake only for headers.
 - A replayed response is not authenticated. Anyone who can edit the committed `.jsonl` controls
-  what the program "receives". Response bodies reach user code as `Untrusted<String>` through
-  `Response.text`, as live ones do. Cassettes are reviewed like any committed test data.
+  what the program "receives". A replayed response reaches user code exactly as a live one
+  does: `Response.text` gives `Untrusted<String>`, `Response.json` a schema-checked `T`, and the
+  public `body` field a plain `String`. Cassettes are reviewed like any committed test data.
 - Containment uses `realpath` then a later open (time-of-check to time-of-use). That is fine
   for a test runner; it is not a sandbox (the roadmap already says the JS host is not an OS
   sandbox).
@@ -177,7 +188,7 @@ items 2–3; plan §7 WS8 items 1–2.
 |---|---|
 | `compiler/crates/sakura_types/src/check/expr.rs` (template conversion, `unwrapped`) | unwrap rule |
 | `compiler/crates/sakura_core/src/lower/expr.rs` (`untrusted_value`) | lowering |
-| `compiler/tests/semantics/sql_untrusted_param.sakura` | `' or 1=1 --` returns nothing |
+| `compiler/tests/semantics/sql_untrusted_param.sakura` | `x' or 1=1 --` matches no row (prints `1` then `0`) |
 | `compiler/tests/semantics/url_untrusted_component.sakura` (WS9.5) | `a b&c` becomes `a%20b%26c` |
 | `compiler/std/sql.sakura`, `compiler/std/html.sakura` tests | std-level pins |
 | `compiler/std/urlpart.sakura` (WS9.5), `compiler/std/url.sakura` | `UrlPart`, `from<T: Show>`, `template` |
@@ -190,13 +201,14 @@ Commits: `61f84e7`, `e31946a`, `4d1c21c`, and WS9.5.
 argument is unwrapped to `T` and **always** goes through `X.from`, never the pass-through, even
 when `T` is already `X`. So in SQL it becomes a bound parameter, in HTML escaped text, and in a
 URL a percent-encoded `UrlPart`. `Untrusted<Html>` in `html"…"` renders as the escaped text of
-its shown form, never as markup. `Secret<String>` in any template is still `V2032`.
+its shown form, never as markup. `Secret<String>` (or `Untrusted<Secret<String>>`) is rejected: `V2032` in `sql"…"` (not
+`Schema`) and `V2031` in `html"…"` and `url"…"` (not `Show`, §4.4).
 
 **`url"…"` after WS9 (§17.124).** The element type is the opaque `std/urlpart.UrlPart`, built only
 by `UrlPart.from<T: Show>`, which percent-encodes `show(v)` (unreserved set `A–Z a–z 0–9 - . _ ~`).
 A `String`, `Int` or `Uuid` goes through `from`; an `Untrusted<T>` is unwrapped and goes through
 `from`; a `UrlPart` passes through, which is safe because nothing but `from` constructs one.
-Before WS9 the element type was `String`, so `Untrusted<String>` was `V2001` and `Int` was `V2032`
+Before WS9 the element type was `String`, so `Untrusted<String>` and `Int` were both `V2001`
 although §4.11 promised both.
 
 **Known deviations.**
@@ -204,8 +216,26 @@ although §4.11 promised both.
 - There is no `shell` tag yet, so it is not covered; §17.124's pattern (an opaque element type
   whose `from` quotes) is how it will be.
 - `Untrusted<Html>` renders `Html(&quot;…&quot;)`, the escaped `Show` form of the wrapper, rather
-  than the escaped markup text. Endorsed in §17.125 (2): `Html` is opaque and not `Schema`, so
-  the value arises only from `Untrusted.of(html"…")` in a test, and the invariant holds.
+  than the escaped markup text. Endorsed in §17.125 (2), but its reasons do not hold: `Html`
+  **is** `Schema` (opaque types derive constraints, §4.2), and `Untrusted.of` takes any `T`. The
+  conclusion holds anyway: an `Untrusted<Html>` always goes through `Html.from`, so it is escaped
+  text, never markup (pinned by `std/html.sakura`'s test).
+
+**Found in the WS9.10 re-audit, not decided: `Json.decode` forges opaque std types.** Opaque
+types derive constraints (§4.2, §17.10), so `Query<R>`, `Html` and `UrlPart` are `Schema`, and
+`Json.decode` (and anything else that decodes through `Schema`) builds them from any JSON text
+with no diagnostic and no `sakura audit` site. Checked on the `a843e60` binary: a program decoding
+an attacker-controlled body into `type Report = { title: String, q: Query<Row> }` and running
+`Sql.query(rep.q)` executes `select name from users where 1=1 --` (it prints `rows: 1`); decoding
+`{"Html":"<script>evil()</script>"}` into `Html` and interpolating it into `html"<p>{h}</p>"`
+renders the script tag; decoding `{"UrlPart":"a&b=c"}` gives an unencoded `UrlPart`. So "`Query<R>`
+only from `sql"…"`, `Html` only by escaping code" (§9, §17.10) holds for constructors but not for
+decoding, and the template invariant above can be bypassed by data. The fix is a design decision
+(for example: an opaque type is not `Schema` outside its module unless it declares a decoder,
+or decoding an opaque type is `V2032`), so it is filed in `compiler/REQUESTS.md` for the designer
+and not changed here.
+
+- [ ] Decide whether this blocks gate 10, and which rule closes it.
 
 **Decided before your review (§17.124, §17.125), for you to confirm or overturn.**
 
