@@ -1,7 +1,7 @@
 # Agent DX pilot: authored tasks and offline acceptance
 
-Status: **offline fixtures only; no model episodes have run**. This implements the
-12-task authoring portion of [DX5](../../docs/plans/agent-dx.md),
+Status: **offline fixtures and an offline-tested runner; no model episodes have run**.
+This implements the 12-task authoring portion of [DX5](../../docs/plans/agent-dx.md),
 [design §17.146](../../docs/design.md) and the evaluation design in
 [research/11 §5](../../research/11-agent-dx.md). Research §4 covers client setup;
 the evaluation section is §5 in the current file. This suite is separate from the
@@ -9,8 +9,9 @@ compiler's Core evaluator, `compiler/tools/sakura_eval`.
 
 The owner decision in the plan's §3 overrides the original cross-provider proposal:
 **Anthropic models only, at most $10 total on the owner's Anthropic key**. Task
-creation and offline validation do not authorize a paid run. No secrets, API client,
-paid workflow or model runner are included here. Opus owns that next stage.
+creation and offline validation do not authorize a paid run. The episode runner, its
+spend ledger and the owner-dispatched workflow are described in
+[harness/README.md](harness/README.md); none of them has made a paid call.
 
 ## Tasks and acceptance
 
@@ -164,10 +165,10 @@ through it on the host. No build, compiler or diagnostic semantics change here.
    cached categories, latency, cost, termination and unauthorized edits. Persist
    failed and capped episodes too. Keep raw provider messages private until redacted.
 
-The runner, canned-transcript accounting/timeout/termination replay, hardened
-isolation, approval checks and protected `agent-eval.yml` workflow remain **Opus's
-next-stage acceptance work**. Existing MCP tests continue in regular CI. Do not
-claim DX5 complete or request the owner's key before that runner is validated.
+[harness/README.md](harness/README.md) maps this protocol onto `runner.py`, lists
+where the runner is narrower than this protocol (one worker, no memory limit), and
+gives the owner's commands. DX5 is complete only after the owner-approved pilot and
+its reviewed report.
 
 ## Metrics and reporting
 

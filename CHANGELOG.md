@@ -41,6 +41,12 @@ published yet.
   schema and frozen-baseline checks in ordinary Cargo CI. The protocol defines
   the Anthropic-only $10 pilot budget; paid execution and its runner remain deferred.
 
+- The agent-DX episode runner (`evals/agent-dx/harness/runner.py`): isolated episodes,
+  hidden oracles on frozen snapshots, JSONL transcripts, metrics, transcript replay
+  and a scripted backend tested offline in CI. Live Anthropic runs require an owner
+  approval, a budget and pinned prices, and stop at a committed $10-total spend ledger;
+  `agent-eval.yml` is manual-dispatch only. No paid run has happened.
+
 - Eight offline cookbook projects cover refined JSON, file CLI, HTTP retry/cassettes,
   SQLite parameters, direct router tests, scripted LLM tools, budgeted agents and
   persistent indexed updates. Cookbook pages and the embedded skill reference are

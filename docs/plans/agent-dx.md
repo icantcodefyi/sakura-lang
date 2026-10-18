@@ -382,3 +382,32 @@ scheduled beside W2 as the first agent-DX items, DX5's runner and DX6's workflow
    acceptance; no model results or completed-DX5 claim are made. ADR 0002 records
    `evals/`. AI assistance: GPT-6-Astra authored the corpus, protocol and offline
    checks; the human contributor owns acceptance.
+
+### DX5 (Opus 5.5, runner, isolation and accounting)
+
+1. **Python, not a new crate or SDK.** `evals/agent-dx/harness/runner.py` uses only the
+   Python standard library and reuses `offline.py`'s guard, frozen-spec check and per-oracle
+   execution, so model candidates are judged by exactly the rules the gold/hollow fixtures
+   proved. The live backend calls the Messages API over `urllib` (no SDK, no retries) and
+   counts input with the free `count_tokens` endpoint before each request.
+2. **CI wiring.** The runner tests are a second Cargo test in `sakura_cli/tests/agent_dx.rs`
+   (scripted episodes, replay of a committed canned transcript and of fresh ones, every cap
+   and termination, approval refusals, live mode against a local mock), so the existing
+   `cargo test --workspace` step in `ci.yml` runs them on Linux and macOS without secrets.
+   No new `ci.yml` step was added; it would only run the same test twice.
+3. **Spend ledger.** `evals/agent-dx/reports/ledger.json` records a reservation before every
+   live request and its settled cost after; unknown outcomes stay charged at the reservation
+   and halt the run. The runner hard-codes the $10 owner total, the owner as the only
+   approver, a $4/$20 price ceiling and 48 live episodes across all runs (so a smoke run
+   counts toward the 48). `agent-eval.yml` commits the ledger back to `master`; local runs
+   must commit it by hand.
+4. **Conditions.** Only `baseline` and `skill` (normal discovery: listed by name and
+   description, loaded by tool call, activation recorded) are implemented, the two the
+   funded matrix uses. Forced load, guide, bootstrap and MCP stay unfunded.
+5. **Narrower than the protocol.** One worker instead of two; network denial by
+   `sandbox-exec`/`unshare` and filesystem limits by tool path checks, without a container
+   or memory limit; submissions after an output/input/wall cap are not snapshotted (only the
+   final answer or a check/test submits). The workflow uploads only the summary and ledger;
+   raw transcripts are not kept by the workflow. The `agent-eval` environment, its required
+   reviewer and secret must be created by the owner; nothing was dispatched and no paid
+   call was made. AI assistance: Opus 5.5 wrote the runner, tests and workflow.
