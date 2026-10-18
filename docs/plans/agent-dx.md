@@ -101,7 +101,7 @@ scheduled beside W2 as the first agent-DX items, DX5's runner and DX6's workflow
    authored prelude/conventions sections serve it until Astra asks for more).
 3. **Commit fill.** `skill_bundle()` in `sakura_cli/src/main.rs` rewrites `SKILL.md`'s
    `sakura-compiler-version` (crate version) and `sakura-compiler-git` (`SAKURA_GIT_COMMIT` at
-   build time, as `manifest.json` already does; `unknown` in a local build) inside the
+   build time; `unknown` in a local build) inside the
    frontmatter. No `sakura` command writes the bundle until DX2's `setup`
    (`expect(dead_code)` marks it); a unit test pins it to the source tree.
 4. **The harness found a broken sample**: `docs/llms.txt`'s syntax screen failed `V3001` (`main`
@@ -124,14 +124,16 @@ scheduled beside W2 as the first agent-DX items, DX5's runner and DX6's workflow
    extras or comments. It rejects ZIP32 size/count limits; no compression dependency.
    The source placeholders remain unchanged in the raw mirror and ZIP; the CLI's
    build-time metadata fill remains separate, as required by byte equality.
-2. The manifest's `commit` is the last Git commit changing canonical inputs
-   (`SKILL.md`, authored `repairs.md`, assets, `docs/llms.txt`, std sources, the
-   diagnostic registry or workspace version); it is deliberately not HEAD, which
-   would make committing generated files invalidate themselves. `compiler_version`
+2. **Content-only distribution (manifest-history fix).** The committed manifest
+   omits `commit`; the old last-canonical-input commit changed after rebasing over
+   source edits, even when final bundle bytes were unchanged. `compiler_version`
    comes from the workspace package version; `files` maps every skill-relative path
-   to its SHA-256, and `sha256` hashes the archive. Commit canonical input changes
-   before regenerating the distribution. Rust CI fetches full history for this
-   provenance lookup. No per-commit website copies or release assets are published.
+   to its SHA-256, and `sha256` hashes the archive. Schema version remains 1 in this
+   pre-alpha; consumers must use hashes rather than the removed `commit` field.
+   Generation and drift checks never query Git and need no history. Regenerate
+   whenever content changes, in the same commit as sources if desired. Release
+   provenance belongs at release/build time, as with the CLI's `SAKURA_GIT_COMMIT`.
+   No per-commit website copies or release assets are published.
 3. `agent_docs --check` compares binary outputs and rejects orphan public files;
    regeneration removes them. The CLI harness independently checks ZIP layout,
    mirror bytes, hashes and manifest metadata. Website formatting excludes this
@@ -179,9 +181,9 @@ scheduled beside W2 as the first agent-DX items, DX5's runner and DX6's workflow
 6. **Mirror rebase.** Integrated Sol's `d552545` binary-output pipeline and independent
    ZIP/mirror/hash checks. Cookbook outputs enter the in-memory skill before the
    distribution is rendered, so a single invocation includes the fresh recipes.
-   Distribution provenance also tracks `compiler/examples`, the recipe reference's
-   canonical inputs. Commit source changes first, then regenerate and commit the
-   distribution separately; the manifest must not point at an uncommitted source.
+   The recipe reference's canonical inputs are under `compiler/examples`. The
+   original source-first, separate-regeneration commit procedure is superseded by
+   DX1's content-only manifest fix above; a single commit can include both.
 
 ### DX3 (Opus, also the Sol and Astra parts)
 
@@ -222,3 +224,12 @@ scheduled beside W2 as the first agent-DX items, DX5's runner and DX6's workflow
    `V3020`, `V4003`, `V5001`, `V6010`, `V9002`, `W1002`, `W4010`, `W8001`, `D004`, `D011`, `D020`,
    `D021`, `D030`, `D031`, `D091`. The pairs follow the fixtures and companions (each sample
    was parsed with the CLI); `skills/sakura/references/diagnostics.md` regenerates with them.
+
+7. **Manifest history follow-up (GPT-6.1-Sol).** The registry edits exposed DX1's
+   history-dependent `commit` field: rebases changed its expected value without
+   changing bundle bytes. DX1's content-only distribution now removes that field
+   and lookup; the CLI harness still checks every mirror byte, ZIP layout and
+   file/archive hash, and rejects a committed `commit` field. Website and skill
+   docs distinguish this content manifest from CLI build-time provenance. History
+   verification uses an unrelated throwaway commit and a bundle-source edit/revert
+   pair, requiring unchanged distribution bytes and a green `agent_docs --check`.

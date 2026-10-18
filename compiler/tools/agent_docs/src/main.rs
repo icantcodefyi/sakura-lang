@@ -130,8 +130,7 @@ fn outputs(root: &Path) -> Result<agent_docs::Files, String> {
         }
         out.insert(name, text.into_bytes());
     }
-    let commit = agent_docs::source_commit(root)?;
-    for (name, bytes) in agent_docs::distribution(&skill, env!("CARGO_PKG_VERSION"), &commit)? {
+    for (name, bytes) in agent_docs::distribution(&skill, env!("CARGO_PKG_VERSION"))? {
         out.insert(format!("website/public/skills/{name}"), bytes);
     }
     for (rel, text) in errors::pages(root)? {

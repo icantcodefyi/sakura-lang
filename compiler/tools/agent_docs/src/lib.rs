@@ -2,7 +2,6 @@
 
 use std::collections::BTreeMap;
 use std::path::Path;
-use std::process::Command;
 
 use sha2::{Digest, Sha256};
 
@@ -44,38 +43,6 @@ pub fn files(root: &Path) -> Result<Files, String> {
     Ok(out)
 }
 
-/// Last commit changing canonical inputs, excluding generated references and distribution.
-/// Unlike HEAD, this remains stable when the generated artifacts are committed or rebased.
-pub fn source_commit(root: &Path) -> Result<String, String> {
-    let out = Command::new("git")
-        .current_dir(root)
-        .args([
-            "log",
-            "-1",
-            "--format=%H",
-            "--",
-            "skills/sakura/SKILL.md",
-            "skills/sakura/references/repairs.md",
-            "skills/sakura/assets",
-            "docs/llms.txt",
-            ":(glob)compiler/std/**/*.sakura",
-            "compiler/crates/sakura_diagnostics/src/codes.rs",
-            "compiler/Cargo.toml",
-            "compiler/examples",
-        ])
-        .output()
-        .map_err(|e| format!("cannot identify skill source commit: {e}"))?;
-    let commit = String::from_utf8(out.stdout)
-        .map_err(|e| e.to_string())?
-        .trim()
-        .to_owned();
-    if !out.status.success() || commit.len() != 40 || !commit.bytes().all(|b| b.is_ascii_hexdigit())
-    {
-        return Err("cannot identify skill source commit (full Git history is required)".into());
-    }
-    Ok(commit)
-}
-
 fn sha256(bytes: &[u8]) -> String {
     Sha256::digest(bytes)
         .iter()
@@ -83,8 +50,9 @@ fn sha256(bytes: &[u8]) -> String {
         .collect()
 }
 
-/// Every public artifact. The mirror is byte-identical, including source metadata placeholders.
-pub fn distribution(skill: &Files, version: &str, commit: &str) -> Result<Files, String> {
+/// Every public artifact, determined only by bundle bytes and the compiler version.
+/// The mirror is byte-identical, including source metadata placeholders.
+pub fn distribution(skill: &Files, version: &str) -> Result<Files, String> {
     let zip = stored_zip(skill)?;
     let digest = sha256(&zip);
     let hashes: BTreeMap<_, _> = skill
@@ -93,7 +61,6 @@ pub fn distribution(skill: &Files, version: &str, commit: &str) -> Result<Files,
         .collect();
     let manifest = serde_json::json!({
         "schema_version": 1,
-        "commit": commit,
         "compiler_version": version,
         "source": "skills/sakura/",
         "archive": "sakura-skill.zip",

@@ -608,8 +608,7 @@ fn website_skill_distribution_matches_source() {
     };
     let root = skill_dir().join("../..");
     let skill = agent_docs::files(&skill_dir()).unwrap();
-    let commit = agent_docs::source_commit(&root).unwrap();
-    let expected = agent_docs::distribution(&skill, env!("CARGO_PKG_VERSION"), &commit).unwrap();
+    let expected = agent_docs::distribution(&skill, env!("CARGO_PKG_VERSION")).unwrap();
     let public = root.join("website/public/skills");
     let actual = agent_docs::files(&public).unwrap();
     let differences: Vec<_> = expected
@@ -623,7 +622,10 @@ fn website_skill_distribution_matches_source() {
     );
 
     let manifest: Value = serde_json::from_slice(&actual["manifest.json"]).unwrap();
-    assert_eq!(manifest["commit"], commit);
+    assert!(
+        manifest.get("commit").is_none(),
+        "committed artifacts must not depend on Git history"
+    );
     assert_eq!(manifest["compiler_version"], env!("CARGO_PKG_VERSION"));
     assert_eq!(manifest["schema_version"], 1);
     assert_eq!(manifest["source"], "skills/sakura/");
