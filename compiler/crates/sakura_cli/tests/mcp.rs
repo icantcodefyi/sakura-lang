@@ -33,6 +33,37 @@ fn check_patch_apply_and_test_over_stdio() {
         assert!(names.contains(&want), "{names:?}");
     }
 
+    // `compiler_info` reports this binary's capabilities: the `--target`s `--help` lists, and
+    // `verify` with the status of the solver it would use.
+    let (info, err) = s.call("compiler_info", json!({}));
+    assert!(!err, "{info}");
+    let help = std::process::Command::new(env!("CARGO_BIN_EXE_sakura"))
+        .args(["build", "--help"])
+        .output()
+        .unwrap();
+    let help = String::from_utf8(help.stdout).unwrap();
+    let targets = help
+        .lines()
+        .find(|l| l.contains("--target <TARGET>"))
+        .and_then(|l| l.split("[possible values: ").nth(1))
+        .and_then(|rest| rest.split(']').next())
+        .expect("`build --help` lists the targets");
+    let targets: Vec<&str> = targets.split(", ").collect();
+    assert!(targets.contains(&"wasm"), "{help}");
+    let features = &info["features"];
+    assert_eq!(features["backends"], json!(targets), "{info}");
+    assert_eq!(features["verify"], true, "{info}");
+    assert_eq!(features["test_execution"], true, "{info}");
+    let solver = &features["solver"];
+    assert_eq!(solver["name"], "z3", "{info}");
+    let z3_found = std::process::Command::new("z3")
+        .arg("--version")
+        .output()
+        .is_ok_and(|o| {
+            String::from_utf8_lossy(&o.stdout).contains(solver["pinned"].as_str().unwrap())
+        });
+    assert_eq!(solver["available"], z3_found, "{info}");
+
     let (check, err) = s.call("check", json!({}));
     assert!(!err, "{check}");
     assert!(check["summary"]["errors"].as_u64().unwrap() > 0, "{check}");

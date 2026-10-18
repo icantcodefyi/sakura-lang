@@ -88,7 +88,7 @@ enum Command {
         json: bool,
         /// `js`, or `wasm`: one module linked with the `sakura_rt` runtime (`main.wasm`, with
         /// the Node host `sakura_wasm_host.js`), into `target/sakura/wasm` by default.
-        #[arg(long, default_value = "js", value_parser = ["js", "wasm"])]
+        #[arg(long, default_value = "js", value_parser = TARGETS)]
         target: String,
         /// What to write: the JS modules, or the WASM backend's LIR as text (`main.lir`).
         #[arg(long, default_value = "js", value_parser = ["js", "lir"])]
@@ -124,7 +124,7 @@ enum Command {
         /// A file or directory (default: `src/` if present, else `.`).
         path: Option<PathBuf>,
         /// `js`, or `wasm` (run on node through `sakura_wasm_host.js`).
-        #[arg(long, default_value = "js", value_parser = ["js", "wasm"])]
+        #[arg(long, default_value = "js", value_parser = TARGETS)]
         target: String,
         /// Where the build goes [default: target/sakura/<target>].
         #[arg(long)]
@@ -145,7 +145,7 @@ enum Command {
         json: bool,
         /// The profile obligations are checked on: `js` (`Int` within ±(2^53−1)) or `wasm`
         /// (`i64`).
-        #[arg(long, default_value = "js", value_parser = ["js", "wasm"])]
+        #[arg(long, default_value = "js", value_parser = TARGETS)]
         target: String,
         /// Z3's resource limit per query [default: the manifest's `[verify] rlimit`, else
         /// 10000000]. Recorded in every record and in the proof's cache key.
@@ -167,7 +167,7 @@ enum Command {
         #[arg(long, conflicts_with = "paths")]
         std: bool,
         /// `js`, or `wasm` (the module's tests on node through `sakura_wasm_host.js`).
-        #[arg(long, default_value = "js", value_parser = ["js", "wasm"])]
+        #[arg(long, default_value = "js", value_parser = TARGETS)]
         target: String,
         /// Where the build goes [default: target/sakura/<target>].
         #[arg(long)]
@@ -268,6 +268,9 @@ enum McpAction {
         root: Option<PathBuf>,
     },
 }
+
+/// The backends `--target` accepts; `compiler_info` reports the same list.
+const TARGETS: [&str; 2] = ["js", "wasm"];
 
 const LLMS_TXT: &str = include_str!("../../../../docs/llms.txt");
 
@@ -459,6 +462,8 @@ fn dispatch(command: Command) -> ExitCode {
             let config = sakura_mcp::Config {
                 root: root.unwrap_or_else(|| PathBuf::from(".")),
                 run_tests: Some(testing::mcp_run_tests),
+                backends: &TARGETS,
+                solver_status: Some(verify::solver_status),
             };
             match sakura_mcp::serve(config) {
                 Ok(()) => ExitCode::SUCCESS,

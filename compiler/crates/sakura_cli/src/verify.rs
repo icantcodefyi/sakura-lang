@@ -398,3 +398,17 @@ pub(crate) fn build_statuses(snapshot: &Snapshot) -> BTreeMap<String, &'static s
         _ => BTreeMap::new(),
     }
 }
+
+/// Whether `sakura verify` would find its pinned Z3 (on `PATH`), for MCP `compiler_info`.
+pub fn solver_status() -> Value {
+    let z3 = SolverKind::Z3;
+    match Solver::find(z3, None, Limits::default()) {
+        Ok(s) => json!({
+            "name": z3.binary(), "pinned": z3.pinned(), "available": true,
+            "version": s.version, "path": s.path.display().to_string(),
+        }),
+        Err(why) => json!({
+            "name": z3.binary(), "pinned": z3.pinned(), "available": false, "detail": why.detail,
+        }),
+    }
+}

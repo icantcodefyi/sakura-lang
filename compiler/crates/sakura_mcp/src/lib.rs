@@ -49,6 +49,11 @@ pub struct Config {
     /// inside it.
     pub root: PathBuf,
     pub run_tests: Option<TestRunner>,
+    /// The `--target`s this binary builds (`compiler_info.features.backends`).
+    pub backends: &'static [&'static str],
+    /// Reports the verifier's solver status (`compiler_info.features.solver`); `None` when the
+    /// binary has no `sakura verify`.
+    pub solver_status: Option<fn() -> Value>,
 }
 
 /// Serves MCP on stdin/stdout until the client disconnects.
@@ -98,6 +103,8 @@ const KEEP_PATCHES: usize = 64;
 pub struct SakuraServer {
     root: PathBuf,
     run_tests: Option<TestRunner>,
+    backends: &'static [&'static str],
+    solver_status: Option<fn() -> Value>,
     state: Arc<Mutex<State>>,
     tool_router: ToolRouter<Self>,
 }
@@ -244,6 +251,8 @@ impl SakuraServer {
         SakuraServer {
             root: std::path::absolute(&config.root).unwrap_or(config.root),
             run_tests: config.run_tests,
+            backends: config.backends,
+            solver_status: config.solver_status,
             state: Arc::default(),
             tool_router: Self::tool_router(),
         }
@@ -278,7 +287,9 @@ impl SakuraServer {
             "tools": tools,
             "features": {
                 "check": true, "holes": true, "contracts": "runtime_checked",
-                "backends": ["js"], "verify": false, "test_execution": self.run_tests.is_some(),
+                "backends": self.backends, "verify": self.solver_status.is_some(),
+                "solver": self.solver_status.map(|f| f()),
+                "test_execution": self.run_tests.is_some(),
             },
             "workspace_root": self.root.display().to_string(),
             "manifest": manifest,
