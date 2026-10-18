@@ -12,8 +12,46 @@ use sakura_diagnostics::Diagnostic;
 /// The `sakura test` driver (`node __sakura_test__.js <seed> <filter> <snapshots> <update>`).
 const TEST_RUNNER: &str = include_str!("test_runner.js");
 
+/// `node`, or `SAKURA_NODE` when set. On Windows the `PATH` lookup honours `PATHEXT`, so a
+/// `node.cmd` shim is found when there is no `node.exe` (design §17.180 (4c)); Rust spawns it
+/// through its batch-file path.
 pub fn node() -> std::process::Command {
-    std::process::Command::new(std::env::var_os("SAKURA_NODE").unwrap_or_else(|| "node".into()))
+    if let Some(node) = std::env::var_os("SAKURA_NODE") {
+        return std::process::Command::new(node);
+    }
+    #[cfg(windows)]
+    if let Some(path) = std::env::var_os("PATH") {
+        let pathext = std::env::var_os("PATHEXT").unwrap_or_else(|| ".COM;.EXE;.BAT;.CMD".into());
+        if let Some(node) = on_path("node", &path, &pathext) {
+            return std::process::Command::new(node);
+        }
+    }
+    std::process::Command::new("node")
+}
+
+/// The first `<dir>/<name><ext>` that is a file, directories in `path` order and, within each,
+/// extensions in `pathext` order (`cmd.exe`'s rule).
+#[cfg_attr(not(windows), allow(dead_code))]
+fn on_path(name: &str, path: &std::ffi::OsStr, pathext: &std::ffi::OsStr) -> Option<PathBuf> {
+    let pathext = pathext.to_string_lossy().to_ascii_lowercase();
+    let exts: Vec<&str> = pathext.split(';').filter(|e| !e.is_empty()).collect();
+    std::env::split_paths(path).find_map(|dir| {
+        exts.iter()
+            .map(|ext| dir.join(format!("{name}{ext}")))
+            .find(|p| p.is_file())
+    })
+}
+
+/// The directory Node's `--allow-fs-*` grants name. Node's loader resolves the entry's real
+/// path, so on Unix the grant must be the real path too (macOS's `/tmp` and `$TMPDIR` are
+/// symlinks); elsewhere it is `std::path::absolute`, since Windows' `canonicalize` adds a `\\?\`
+/// prefix (design §17.180 (4c)).
+fn grant_root(dir: &Path) -> PathBuf {
+    #[cfg(unix)]
+    if let Ok(real) = std::fs::canonicalize(dir) {
+        return real;
+    }
+    std::path::absolute(dir).unwrap_or_else(|_| dir.to_path_buf())
 }
 
 /// Checks and emits JS for `snapshot` into `out_dir` (plus the test driver), without the checks
@@ -73,7 +111,7 @@ pub fn run_node_tests(
     record: Option<(&[String], &[String])>,
     limit: Duration,
 ) -> Result<NodeRun, String> {
-    let dir = std::fs::canonicalize(dir).unwrap_or_else(|_| dir.to_path_buf());
+    let dir = grant_root(dir);
     let mut cmd = node();
     cmd.arg("--permission")
         .arg(format!("--allow-fs-read={}", dir.display()))
@@ -288,4 +326,48 @@ pub fn no_tests_summary(seed: u64) -> String {
     format!(
         r#"{{"schema_version":"1.0","kind":"summary","passed":0,"failed":0,"skipped":0,"total":0,"seed":{seed}}}"#
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    #[test]
+    fn node_lookup_tries_each_pathext_in_order_per_directory() {
+        let tmp = std::env::temp_dir().join(format!("sakura-pathext-{}", std::process::id()));
+        let (a, b) = (tmp.join("a"), tmp.join("b"));
+        for d in [&a, &b] {
+            std::fs::create_dir_all(d).unwrap();
+        }
+        std::fs::write(a.join("node.cmd"), "").unwrap();
+        std::fs::write(b.join("node.exe"), "").unwrap();
+        std::fs::write(b.join("node.cmd"), "").unwrap();
+        let path = std::env::join_paths([&a, &b]).unwrap();
+        // The earlier directory wins over a preferred extension in a later one.
+        assert_eq!(
+            super::on_path("node", &path, ".COM;.EXE;.BAT;.CMD".as_ref()),
+            Some(a.join("node.cmd"))
+        );
+        // Within one directory `node.exe` comes before `node.cmd`.
+        let only_b = std::env::join_paths([&b]).unwrap();
+        assert_eq!(
+            super::on_path("node", &only_b, ".EXE;.CMD".as_ref()),
+            Some(b.join("node.exe"))
+        );
+        assert_eq!(super::on_path("node", &only_b, ".BAT".as_ref()), None);
+        std::fs::remove_dir_all(&tmp).unwrap();
+    }
+
+    #[test]
+    fn grant_root_is_absolute_without_a_verbatim_prefix() {
+        let root = super::grant_root(Path::new("no-such-dir"));
+        assert!(root.is_absolute(), "{}", root.display());
+        assert!(
+            !root.to_string_lossy().starts_with(r"\\?\"),
+            "{}",
+            root.display()
+        );
+        let here = super::grant_root(Path::new("."));
+        assert!(here.is_absolute() && !here.to_string_lossy().starts_with(r"\\?\"));
+    }
 }

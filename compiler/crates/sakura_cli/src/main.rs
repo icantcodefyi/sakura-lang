@@ -884,9 +884,25 @@ fn run(
         node.current_dir(root);
     }
     match node.status() {
-        Ok(status) => ExitCode::from(status.code().map_or(EXIT_DEFECT, |c| c as u8)),
+        Ok(status) => ExitCode::from(child_exit(status.code())),
         Err(e) => usage_error(format!("cannot start node: {e}")),
     }
+}
+
+/// The program's exit code as ours. A signal (Unix) or a code outside `0..=255` (a Windows
+/// NTSTATUS, Ctrl-C's `0xC000013A` say) is a defect, the raw code on one stderr line (design
+/// §17.180 (4c)).
+fn child_exit(code: Option<i32>) -> u8 {
+    let Some(c) = code else {
+        return EXIT_DEFECT;
+    };
+    u8::try_from(c).unwrap_or_else(|_| {
+        eprintln!(
+            "error: the program exited with code {c} (0x{:08X})",
+            c as u32
+        );
+        EXIT_DEFECT
+    })
 }
 
 fn test(
@@ -1186,6 +1202,20 @@ fn explain(code: &str) -> ExitCode {
 #[cfg(test)]
 mod tests {
     use std::path::Path;
+
+    #[test]
+    fn a_child_code_outside_a_byte_is_a_defect() {
+        assert_eq!(super::child_exit(Some(0)), 0);
+        assert_eq!(super::child_exit(Some(255)), 255);
+        assert_eq!(super::child_exit(None), super::EXIT_DEFECT);
+        assert_eq!(super::child_exit(Some(256)), super::EXIT_DEFECT);
+        assert_eq!(super::child_exit(Some(-1)), super::EXIT_DEFECT);
+        // Ctrl-C on Windows: STATUS_CONTROL_C_EXIT.
+        assert_eq!(
+            super::child_exit(Some(0xC000013A_u32 as i32)),
+            super::EXIT_DEFECT
+        );
+    }
 
     /// The embedded bundle is exactly `skills/sakura/` (no file missing or extra), with only the
     /// compiler metadata lines of `SKILL.md` filled in.
