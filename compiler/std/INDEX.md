@@ -50,6 +50,7 @@ when `f` is not an operation (`Console.captured()`, `Clock.fixed(t)`, `Random.se
   `User { id: 1, name: "a" }`, `Map.of([("a", 1)])`, `Set.of([1])`, floats always with a
   `.` or exponent (`2.0`); strings are quoted inside containers and raw at the top level of
   an interpolation.
+- **Opaque types:** `Uuid`, `Prompt` and `Query` are `pub opaque` (design §17.10).
 
 ## Module dependencies (non-test code)
 
@@ -78,12 +79,6 @@ tool → llm [M3]         agent → budget, core, llm, prompt, tool [M3]
 The M3 modules' test handlers are written in Sakura Lang (`Http.scripted`, `Budget.limits`,
 `Cli.of`, `Fs.memory`, `Llm.scripted`); their host handlers and `Schema` codecs are runtime
 externals.
-
-## Planned, not yet in source (design §10, milestone M3)
-
-`Http.stream`, `Http.read_chunk`, `Body` and `Incoming` (streaming responses, design §17.88),
-waiting for the runtime's `http_stream_*` externals. `Uuid`, `Prompt` and `Query` are
-`pub opaque` (design §17.10).
 
 ## Signatures
 
