@@ -32,6 +32,19 @@ pub fn slice<A>(xs: List<A>, start: Int, end: Int) -> List<A>
 
 pub fn empty<A>() -> List<A> { [] }
 
+// A transient builder (design §17.116): created and finished inside one function body below,
+// never returned or stored. `finish` gives the list a push loop would have built.
+type Builder<A>
+
+@external(js, "sakura_runtime", "list_builder")
+fn builder<A>() -> Builder<A>
+
+@external(js, "sakura_runtime", "list_builder_push")
+fn append<A>(b: Builder<A>, x: A) -> Builder<A>
+
+@external(js, "sakura_runtime", "list_builder_finish")
+fn finish<A>(b: Builder<A>) -> List<A>
+
 pub fn concat<A>(a: List<A>, b: List<A>) -> List<A> {
   var out = a
   for x in b { out = push(out, x) }
@@ -39,33 +52,33 @@ pub fn concat<A>(a: List<A>, b: List<A>) -> List<A> {
 }
 
 pub fn map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! e {
-  var out: List<B> = []
-  for x in xs { out = push(out, f(x)) }
-  out
+  var out: Builder<B> = builder()
+  for x in xs { out = append(out, f(x)) }
+  finish(out)
 }
 
 pub fn filter<A, e>(xs: List<A>, f: fn(A) -> Bool ! e) -> List<A> ! e {
-  var out: List<A> = []
-  for x in xs { if f(x) { out = push(out, x) } }
-  out
+  var out: Builder<A> = builder()
+  for x in xs { if f(x) { out = append(out, x) } }
+  finish(out)
 }
 
 /// Maps and keeps only the `Some` results, in order.
 pub fn filter_map<A, B, e>(xs: List<A>, f: fn(A) -> Option<B> ! e) -> List<B> ! e {
-  var out: List<B> = []
+  var out: Builder<B> = builder()
   for x in xs {
     match f(x) {
-      Some(y) => { out = push(out, y) },
+      Some(y) => { out = append(out, y) },
       None => {},
     }
   }
-  out
+  finish(out)
 }
 
 pub fn flat_map<A, B, e>(xs: List<A>, f: fn(A) -> List<B> ! e) -> List<B> ! e {
-  var out: List<B> = []
-  for x in xs { out = concat(out, f(x)) }
-  out
+  var out: Builder<B> = builder()
+  for x in xs { for y in f(x) { out = append(out, y) } }
+  finish(out)
 }
 
 /// Left fold: `f(f(f(init, x0), x1), x2)`.
@@ -128,25 +141,27 @@ fn merge<A, K: Ord>(a: List<A>, b: List<A>, key: fn(A) -> K) -> List<A> {
 
 /// Pairs elements by index; the result is as long as the shorter list.
 pub fn zip<A, B>(a: List<A>, b: List<B>) -> List<(A, B)> {
-  var out: List<(A, B)> = []
-  for (i, x) in enumerate(a) {
+  var out: Builder<(A, B)> = builder()
+  var i = 0
+  for x in a {
     match b[i] {
-      Some(y) => { out = push(out, (x, y)) },
-      None => { return out },
+      Some(y) => { out = append(out, (x, y)) },
+      None => { return finish(out) },
     }
+    i = i + 1
   }
-  out
+  finish(out)
 }
 
 /// Pairs each element with its zero-based index.
 pub fn enumerate<A>(xs: List<A>) -> List<(Int, A)> {
-  var out: List<(Int, A)> = []
+  var out: Builder<(Int, A)> = builder()
   var i = 0
   for x in xs {
-    out = push(out, (i, x))
+    out = append(out, (i, x))
     i = i + 1
   }
-  out
+  finish(out)
 }
 
 pub fn reverse<A>(xs: List<A>) -> List<A> {
@@ -199,13 +214,13 @@ pub fn unique<A: Hash>(xs: List<A>) -> List<A> {
 
 /// `[start, start + 1, …, end - 1]`; empty when `end <= start`.
 pub fn range(start: Int, end: Int) -> List<Int> {
-  var out: List<Int> = []
+  var out: Builder<Int> = builder()
   var i = start
   while i < end {
-    out = push(out, i)
+    out = append(out, i)
     i = i + 1
   }
-  out
+  finish(out)
 }
 
 test "len, get and indexing never defect" {
@@ -276,6 +291,22 @@ test "join, sum, first, last, contains, unique, range" {
   expect_eq(unique([3, 1, 3, 2, 1]), [3, 1, 2])
   expect_eq(range(2, 5), [2, 3, 4])
   expect_eq(range(5, 2), [])
+}
+
+test "built lists equal push loops across leaves and leave their inputs intact" {
+  let xs = range(0, 1100)
+  var pushed: List<Int> = []
+  for x in xs { pushed = push(pushed, x * 2) }
+  let doubled = xs.map(fn(x) { x * 2 })
+  expect_eq(doubled, pushed)
+  expect_eq(doubled.push(7)[1100], Some(7))
+  expect_eq(len(doubled), 1100)
+  expect_eq(xs[1099], Some(1099))
+  expect_eq(len(xs.filter(fn(x) { x % 33 == 0 })), 34)
+  expect_eq(enumerate(xs)[1050], Some((1050, 1050)))
+  expect_eq(zip(xs, doubled)[1099], Some((1099, 2198)))
+  expect_eq(len(xs.flat_map(fn(x) { [x, x] })), 2200)
+  expect_eq(sum(xs), 604450)
 }
 
 test "sum overflow is a defect" { expect_defect(fn() { sum([9_223_372_036_854_775_807, 1]) }) }

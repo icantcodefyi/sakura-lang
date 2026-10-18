@@ -4,7 +4,8 @@
 
 pub error Utf8Error(offset: Int)
 
-/// Length in UTF-8 bytes.
+/// Length in UTF-8 bytes. On the JS backend this is O(n) (the text is stored as UTF-16 and
+/// the length is not cached): compute it once outside a loop rather than in its condition.
 @external(js, "sakura_runtime", "string_len")
 @total
 pub fn len(s: String) -> Int
