@@ -431,27 +431,29 @@ fn proved(
     (drop, statuses)
 }
 
+/// Drops from `module` the checks of obligations proved on `target`'s profile (§7.5), with
+/// their predicates where the proof covers them (§17.118).
+pub(crate) fn drop_proved(snapshot: &Snapshot, module: &mut sakura_core::Module, target: &str) {
+    let (drop, _) = proved(&Analysis::analyze(snapshot), module, profile(target));
+    sakura_core::opt::proved::remove_proved_checks(module, &drop);
+}
+
 /// `sakura build`'s JS: Core without the checks of proved obligations (§7.5), then the emitter.
 pub(crate) fn build_js(snapshot: &Snapshot, opts: &BuildOptions) -> BuildResult {
     let (module, diagnostics) = Analysis::lower_core(snapshot, opts);
     let files = module.map(|mut m| {
-        let (drop, _) = proved(&Analysis::analyze(snapshot), &m, Profile::Js);
-        sakura_core::opt::proved::remove_proved_checks(&mut m, &drop);
+        drop_proved(snapshot, &mut m, "js");
         Analysis::emit_js(snapshot, &m, opts)
     });
     BuildResult { diagnostics, files }
 }
 
 /// The manifest statuses of `sakura build --manifest`: `proved` for every clause whose checks
-/// the build dropped; every other clause stays `runtime_checked`. Only the JS build drops checks
-/// (C1/V3 deviation 2), so a WASM manifest is all `runtime_checked` until M4-OPT.
+/// the build for `target` dropped; every other clause stays `runtime_checked`.
 pub(crate) fn build_statuses(snapshot: &Snapshot, target: &str) -> BTreeMap<String, &'static str> {
-    if target != "js" {
-        return BTreeMap::new();
-    }
     let a = Analysis::analyze(snapshot);
     match Analysis::lower_core(snapshot, &BuildOptions::default()) {
-        (Some(m), _) => proved(&a, &m, Profile::Js).1,
+        (Some(m), _) => proved(&a, &m, profile(target)).1,
         _ => BTreeMap::new(),
     }
 }

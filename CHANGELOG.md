@@ -73,6 +73,11 @@ published yet.
   endings as the reason a file is listed. `sakura test` reports a snapshot that differs only
   in `\r\n` against `\n` as a line-ending mismatch.
 
+- `sakura build --target wasm` drops the checks of obligations `sakura verify --target wasm`
+  proved on the `i64` profile, as the JS build does for the `js` profile, and its manifest
+  says `proved` for those clauses (design §17.163 (4), M4-OPT). The JS modules a WASM build
+  writes for decoding keep every check.
+
 - `sakura build` deletes a proved check's predicate along with the check: a `requires` or
   `ensures` built from comparisons, arithmetic, projections and constructors is no longer
   evaluated once `sakura verify` proved it. A predicate that calls a function is still

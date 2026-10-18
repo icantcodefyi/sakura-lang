@@ -1680,8 +1680,9 @@ fn verify_confirms_i64_counterexamples_by_replay() {
 }
 
 /// Design §17.163 (3), §17.164 (4): `sakura build --target wasm --manifest` writes the manifest
-/// with `target: "wasm"` and the WASM runtime in its trusted base; no WASM build drops a check,
-/// so every obligation is `runtime_checked`, even after `sakura verify --target wasm`.
+/// with `target: "wasm"` and the WASM runtime in its trusted base; every obligation is
+/// `runtime_checked` until `sakura verify --target wasm` proves one on the `i64` profile, after
+/// which the WASM build drops its check (M4-OPT, §7.5) and the manifest says `proved`.
 #[test]
 fn build_wasm_manifest_names_its_target() {
     let dir = tmp("manifest-wasm", AUDITED);
@@ -1725,6 +1726,12 @@ fn build_wasm_manifest_names_its_target() {
     };
     assert!(!statuses(&m).is_empty());
     assert!(statuses(&m).iter().all(|s| s == "runtime_checked"));
+    let check = "postcondition `bounded` of scale violated";
+    let module = || {
+        let bytes = std::fs::read(dir.join("target/sakura/wasm/main.wasm")).unwrap();
+        String::from_utf8_lossy(&bytes).into_owned()
+    };
+    assert!(module().contains(check), "no proofs yet");
     if !has_z3() {
         return;
     }
@@ -1734,12 +1741,19 @@ fn build_wasm_manifest_names_its_target() {
         "wasm",
         "verify records the profile it used"
     );
-    sakura_in_state(
+    let out = sakura_in_state(
         &["build", "--target", "wasm", "--manifest", "main.sak"],
         &dir,
         &state,
     );
-    assert!(statuses(&read()).iter().all(|s| s == "runtime_checked"));
+    assert_eq!(out.status.code(), Some(0), "{out:?}");
+    assert!(!module().contains(check), "the proved check is dropped");
+    assert!(
+        module().contains("precondition `scale` of scale violated"),
+        "entry checks stay"
+    );
+    let proved = statuses(&read()).iter().filter(|s| *s == "proved").count();
+    assert_eq!(proved, 1);
 }
 
 /// Design §17.98, §17.105: a proof over an impossible path is `proved` with

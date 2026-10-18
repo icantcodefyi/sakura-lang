@@ -202,7 +202,7 @@ fn top_score(scores: NonEmpty<Int>) -> Int
 
 ## Contracts are always checked
 
-The JS build retains runtime contracts unless matching authenticated proofs allow check removal; see [`sakura verify`](/docs/agents/verify) for the exact scope.
+`sakura build` retains runtime contracts, on JS and WASM, unless matching authenticated proofs allow check removal; see [`sakura verify`](/docs/agents/verify) for the exact scope.
 
 Contract violations are [defects](/docs/tour/effects), not effects. A defect terminates the current task after resource finalizers run. `try` cannot catch it. `Task.scope` and the test runner observe it as an outcome, and a defect in `main` exits with status 70 and a structured report.
 
