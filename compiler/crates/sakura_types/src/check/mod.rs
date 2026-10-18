@@ -21,8 +21,8 @@ mod refine;
 
 use std::collections::{HashMap, HashSet};
 
-use la_arena::ArenaMap;
 use sakura_diagnostics::{Code, Diagnostic, Phase, Rendered, Span, SpanRole};
+use sakura_hir::arena::ArenaMap;
 use sakura_hir::{Body, BodyId, DefId, DefKind, ExprId, LocalId, ModuleId, PatId, Program};
 use text_size::TextRange;
 

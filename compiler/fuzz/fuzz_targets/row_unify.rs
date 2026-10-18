@@ -7,7 +7,7 @@ fn label(n: u8) -> Label {
     Label {
         effect: Effect::Def(DefId {
             module: ModuleId(0),
-            index: la_arena::Idx::from_raw(la_arena::RawIdx::from_u32(n as u32)),
+            index: sakura_hir::arena::Idx::from_raw(sakura_hir::arena::RawIdx::from_u32(n as u32)),
         }),
         args: vec![],
     }

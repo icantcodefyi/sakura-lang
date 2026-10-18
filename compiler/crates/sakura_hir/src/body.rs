@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use la_arena::Idx;
+use crate::arena::Idx;
 use sakura_diagnostics::{Applicability, Fix};
 use sakura_syntax::{SyntaxKind::*, SyntaxNode, SyntaxToken};
 use text_size::TextRange;
@@ -1279,7 +1279,7 @@ impl<'a> BodyCx<'a> {
                 let pat = self.pattern_opt(pat_node, range);
                 if let Some(kw) = token(s, LET_KW) {
                     for raw in before..self.body.locals.len() {
-                        let l = LocalId::from_raw(la_arena::RawIdx::from(raw as u32));
+                        let l = LocalId::from_raw(crate::arena::RawIdx::from(raw as u32));
                         self.let_kw.insert(l, kw.text_range());
                     }
                 }

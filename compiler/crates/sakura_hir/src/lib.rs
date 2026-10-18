@@ -41,6 +41,7 @@ pub fn ensure_stack<R>(f: impl FnOnce() -> R) -> R {
     stacker::maybe_grow(100 * 1024, 1024 * 1024, f)
 }
 
+pub mod arena;
 mod body;
 mod diag;
 mod dump;

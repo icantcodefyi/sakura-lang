@@ -93,7 +93,7 @@ impl<'a> Printer<'a> {
         def.map_or("<err>".into(), |d| self.program.def_path(d))
     }
 
-    fn item(&mut self, index: la_arena::Idx<Def>) {
+    fn item(&mut self, index: crate::arena::Idx<Def>) {
         let m = self.program.module(self.module);
         let def = &m.defs[index];
         let vis = if def.is_pub { "pub " } else { "" };

@@ -14,7 +14,7 @@
 
 use std::collections::HashMap;
 
-use la_arena::ArenaMap;
+use sakura_hir::arena::ArenaMap;
 use sakura_hir::{
     BinaryOp, Body, BodyId, Builtin, DefId, DefKind, Expr, ExprId, Literal, LocalId, ModuleId, Pat,
     Program, Res, Signature, Stmt, TypeRes, UnaryOp,

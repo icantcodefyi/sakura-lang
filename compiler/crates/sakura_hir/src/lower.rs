@@ -11,7 +11,7 @@
 
 use std::collections::BTreeMap;
 
-use la_arena::Idx;
+use crate::arena::Idx;
 use sakura_diagnostics::{Applicability, Diagnostic, Edit, FileId, Fix, Impact, Phase, codes};
 use sakura_syntax::ast::AstNode;
 use sakura_syntax::{SyntaxKind, SyntaxKind::*, SyntaxNode, SyntaxToken};
@@ -535,7 +535,7 @@ impl Cx {
     }
 
     fn placeholder_body(&mut self, m: ModuleId) -> BodyId {
-        let owner = Idx::from_raw(la_arena::RawIdx::from(u32::MAX));
+        let owner = Idx::from_raw(crate::arena::RawIdx::from(u32::MAX));
         self.program.modules[m.0 as usize]
             .bodies
             .alloc(Body::empty(owner))

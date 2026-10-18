@@ -15,7 +15,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use la_arena::ArenaMap;
+use sakura_hir::arena::ArenaMap;
 use sakura_hir::{BodyId, ExprId, LocalId, ModuleId, PatId};
 use text_size::TextRange;
 

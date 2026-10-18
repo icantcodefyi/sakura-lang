@@ -18,9 +18,9 @@
 
 use std::collections::{HashMap, HashSet};
 
-use la_arena::ArenaMap;
 use sakura_diagnostics::codes::{V6002, V6003};
 use sakura_diagnostics::{Diagnostic, Phase, SpanRole};
+use sakura_hir::arena::ArenaMap;
 use sakura_hir::{
     Body, DefId, DefKind, Expr, ExprId, LocalId, Pat, PatId, Program, Res, Stmt, TypeDefBody,
 };

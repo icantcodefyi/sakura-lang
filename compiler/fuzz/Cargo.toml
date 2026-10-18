@@ -21,7 +21,6 @@ sakura_hir = { path = "../crates/sakura_hir" }
 sakura_lir = { path = "../crates/sakura_lir" }
 sakura_codegen_wasm = { path = "../crates/sakura_codegen_wasm" }
 sakura_verify = { path = "../crates/sakura_verify" }
-la-arena = "0.3.1"
 
 [[bin]]
 name = "parse"

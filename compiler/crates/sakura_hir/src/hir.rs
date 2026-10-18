@@ -5,7 +5,7 @@
 use std::collections::BTreeMap;
 use std::ops::Index;
 
-use la_arena::{Arena, ArenaMap, Idx};
+use crate::arena::{Arena, ArenaMap, Idx};
 use sakura_diagnostics::{Diagnostic, FileId};
 use text_size::TextRange;
 

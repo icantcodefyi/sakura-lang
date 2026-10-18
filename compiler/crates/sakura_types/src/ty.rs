@@ -326,7 +326,7 @@ impl Interner {
 pub(crate) fn test_def(i: u32) -> DefId {
     DefId {
         module: sakura_hir::ModuleId(0),
-        index: la_arena::Idx::from_raw(la_arena::RawIdx::from_u32(i)),
+        index: sakura_hir::arena::Idx::from_raw(sakura_hir::arena::RawIdx::from_u32(i)),
     }
 }
 
