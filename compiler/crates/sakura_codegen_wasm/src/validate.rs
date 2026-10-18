@@ -40,6 +40,14 @@ pub const IMPORTS: &[&str] = &[
     "console_read_line",
     "trace_enabled",
     "trace_write",
+    "clock_now_ms",
+    "clock_monotonic_ms",
+    "clock_sleep_ms",
+    "random_int",
+    "random_float",
+    "random_bytes",
+    "random_uuid",
+    "log_write",
 ];
 
 /// The gate for `host`: a [`Host::Wasi`] command may also import `fd_write` and `proc_exit`

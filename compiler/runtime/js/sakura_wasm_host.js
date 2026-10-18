@@ -43,6 +43,11 @@ export class Host {
   constructor({ argv = [] } = {}) {
     this.argv = argv;
     this.exports = null;
+    // Requests in flight (ABI §8.5): request id → how to abort the host operation.
+    this.inflight = new Map();
+    // Completions waiting for the guest to stop running: [request, status, payload bytes].
+    this.completed = [];
+    this.wake = null;
     this.traceFd = null;
     const path = proc?.env?.SAKURA_TRACE;
     if (path) {
@@ -85,7 +90,22 @@ export class Host {
           return line.tag === 1 ? this.copyOut(new TextEncoder().encode(line.fields[0])) : 0;
         },
         retire_handle: (_kind, _slot, _generation) => {},
-        abort: (_request) => {},
+        abort: (request) => {
+          this.inflight.get(request)?.();
+          this.inflight.delete(request);
+        },
+        clock_now_ms: () => BigInt(rt.clock_now_ms()),
+        clock_monotonic_ms: () => BigInt(rt.clock_monotonic_ms()),
+        clock_sleep_ms: (request, ms) => {
+          const timer = setTimeout(() => this.complete(request, 0, null), Number(ms));
+          this.inflight.set(request, () => clearTimeout(timer));
+          return 1;
+        },
+        random_int: (lo, hi) => BigInt(rt.random_int(Number(lo), Number(hi))),
+        random_float: () => rt.random_float(),
+        random_bytes: (n) => this.copyOut(rt.random_bytes(Number(n))),
+        random_uuid: () => this.copyOut(new TextEncoder().encode(rt.random_uuid())),
+        log_write: (ptr, len) => rt.log_write(this.string(ptr, len)),
         trace_enabled: () => (this.traceFd === null ? 0 : 1),
         trace_write: (ptr, len) => {
           rt.flushOut();
@@ -106,6 +126,25 @@ export class Host {
     return p;
   }
 
+  /**
+   * A host operation finished: queue its completion for the guest, which takes it at its next
+   * scheduler point (ABI §8.5: `complete` is never called while the guest runs).
+   */
+  complete(request, status, bytes) {
+    if (!this.inflight.delete(request)) return;
+    this.completed.push([request, status, bytes]);
+    this.wake?.();
+  }
+
+  /** Deliver queued completions: copy each payload out, then `complete` (ABI §8.5). */
+  deliver() {
+    const e = this.exports;
+    for (const [request, status, bytes] of this.completed.splice(0)) {
+      const p = bytes === null ? 0 : this.copyOut(bytes);
+      e.complete(request, status, p, bytes?.length ?? 0);
+    }
+  }
+
   async instantiate(module) {
     const { instance } = await WebAssembly.instantiate(module, this.imports());
     this.exports = instance.exports;
@@ -123,8 +162,18 @@ export class Host {
     if (task === 0) return { kind: "defect", code: "D096", message: "heap exhausted" };
     let kind = e.run(task);
     while (kind === OUTCOME.pending) {
-      // No host operation can complete yet: nothing is in flight in W1's import set.
-      return { kind: "defect", code: "D090", message: "every task is waiting" };
+      if (this.completed.length === 0) {
+        if (this.inflight.size === 0) {
+          return { kind: "defect", code: "D090", message: "every task is waiting" };
+        }
+        rt.flushOut();
+        await new Promise((resolve) => {
+          this.wake = resolve;
+        });
+        this.wake = null;
+      }
+      this.deliver();
+      kind = e.run(task);
     }
     return this.outcome(task, kind);
   }

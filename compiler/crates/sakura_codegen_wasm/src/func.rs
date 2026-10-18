@@ -53,9 +53,9 @@ pub struct Env<'a> {
     pub rt: &'a HashMap<String, u32>,
     /// Global holding the static block's address.
     pub static_base: u32,
-    /// Codes of the native console clauses (`rt_code_console_*`).
-    pub console_print: u32,
-    pub console_read_line: u32,
+    /// Host-built root handlers by builtin (`console_host`, …): the effect id and the
+    /// static-block offset and count of its clauses' native codes.
+    pub host_handlers: HashMap<String, (u32, u32, u32)>,
     /// The native code of each `cps` builtin the runtime implements (`rt_k_<name>`).
     pub cps: HashMap<String, u32>,
 }
@@ -1145,18 +1145,12 @@ impl Gen<'_, '_> {
                 s.i64_add().local_set(d);
                 return Ok(());
             }
-            "console_host" => {
-                let effect = self
-                    .env
-                    .m
-                    .effects
-                    .iter()
-                    .position(|e| e.name == "std::console::Console")
-                    .ok_or("console_host without std::console::Console")?;
-                s.i32_const(effect as i32)
-                    .i32_const(self.env.console_print as i32)
-                    .i32_const(self.env.console_read_line as i32);
-                self.call_rt(s, "rt_b_console_host")?;
+            _ if self.env.host_handlers.contains_key(name) => {
+                let (effect, codes, n) = self.env.host_handlers[name];
+                s.i32_const(effect as i32);
+                self.static_addr(s, codes);
+                s.i32_const(n as i32);
+                self.call_rt(s, "rt_b_host_handler")?;
                 s.local_set(d);
                 return self.check_zero(s, d, live);
             }

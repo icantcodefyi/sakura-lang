@@ -15,12 +15,27 @@ pub mod link;
 pub mod validate;
 pub mod wasi;
 
+use std::collections::HashMap;
+
 use sakura_lir::layout::{Slot, SlotKind};
 use sakura_lir::lir::Module;
 use wasm_encoder::{BlockType, ExportKind, Function, MemArg, ValType};
 
 /// The `sakura_rt` wasm object, empty when `build.rs` could not build it.
 pub const RUNTIME: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/sakura_rt.wasm"));
+
+/// What a WASM build writes beside `main.wasm` for Node: the host adapter and the JS runtime
+/// whose host functions it delegates to.
+pub const HOST_FILES: [(&str, &str); 2] = [
+    (
+        "sakura_wasm_host.js",
+        include_str!("../../../runtime/js/sakura_wasm_host.js"),
+    ),
+    (
+        "sakura_runtime.js",
+        include_str!("../../../runtime/js/sakura_runtime.js"),
+    ),
+];
 
 /// ABI §0: `MAJOR << 16 | MINOR << 8 | PATCH`.
 pub const ABI_VERSION: u32 = 0x01_00_02;
@@ -87,6 +102,17 @@ fn natives(layout: &link::Layout) -> Vec<String> {
     out.extend(cps);
     out
 }
+
+/// Host-built root handlers: the builtin that builds one, its effect, and the prefix of the
+/// native codes of its clauses (`rt_code_<prefix>_<op>`; a missing one is
+/// `rt_code_unsupported`, a `D090` when performed).
+const HOST_HANDLERS: &[(&str, &str, &str)] = &[
+    ("console_host", "std::console::Console", "console"),
+    ("clock_host", "std::clock::Clock", "clock"),
+    ("random_host", "std::random::Random", "random"),
+    ("log_stderr", "std::log::Log", "log_stderr"),
+    ("log_json", "std::log::Log", "log_json"),
+];
 
 /// The functions the linker synthesises, in order, before the program's.
 const FIXED: &[&str] = &[
@@ -178,12 +204,34 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     let g = layout.first_global;
     let (static_base, inited, abi) = (g, g + 1, g + 2);
     let code_of = |name: &str| n + natives.iter().position(|x| x == name).unwrap() as u32;
+    let mut host_handlers = HashMap::new();
+    for (builtin, effect, prefix) in HOST_HANDLERS {
+        let Some(e) = m.effects.iter().position(|x| x.name == *effect) else {
+            continue;
+        };
+        let codes: Vec<u8> = m.effects[e]
+            .ops
+            .iter()
+            .map(|op| {
+                let native = format!("rt_code_{prefix}_{}", op.name);
+                match natives.iter().position(|x| *x == native) {
+                    Some(_) => code_of(&native),
+                    None => code_of("rt_code_unsupported"),
+                }
+            })
+            .flat_map(u32::to_le_bytes)
+            .collect();
+        let n_ops = m.effects[e].ops.len() as u32;
+        host_handlers.insert(
+            builtin.to_string(),
+            (e as u32, statics.bytes(&codes), n_ops),
+        );
+    }
     let env = func::Env {
         m,
         rt: &layout.rt,
         static_base,
-        console_print: code_of("rt_code_console_print"),
-        console_read_line: code_of("rt_code_console_read_line"),
+        host_handlers,
         cps: natives
             .iter()
             .filter_map(|x| Some((x.strip_prefix("rt_k_")?.to_string(), code_of(x))))
