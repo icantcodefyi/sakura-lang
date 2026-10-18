@@ -1,0 +1,21 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D020
+// covers: design §17.138 (a one-use temporary inlined into the next call keeps the
+// producer's blame span); its pair is direct_inlined_bind_defect
+
+type Box = { v: Int }
+
+fn boxed(n: Int) -> Box
+  requires positive: n > 0
+{ Box { v: n } }
+
+fn open(b: Box) -> Int { b.v * 2 }
+
+// In `run$d`, `boxed(n)` is emitted inside `open$d(…)`; its `requires` still blames this call.
+fn run(n: Int) -> Int { open(boxed(n)) }
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("{run(2)}")
+  Console.print("{run(0)}")
+}

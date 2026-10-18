@@ -1,0 +1,21 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D021
+// covers: design §17.138 (the consumer of an inlined one-use temporary defects after the
+// producer ran, with the span the un-inlined form reports); its pair is
+// direct_inlined_bind_blame
+
+type Box = { v: Int }
+
+fn make(n: Int) -> Box { Box { v: n } }
+
+fn halve(b: Box) -> Int
+  ensures halved: result > 0
+{ b.v / 2 }
+
+fn run(n: Int) -> Int { halve(make(n)) }
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("{run(4)}")
+  Console.print("{run(1)}")
+}

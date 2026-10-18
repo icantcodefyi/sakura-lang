@@ -59,6 +59,10 @@ ABIs and compares their effect traces.
   `f$d` when all pass, and otherwise runs the CPS body (a `{}`-row callback may still suspend,
   `fn() { with Clock.host() { Clock.sleep(…) } }`, so nothing runs an unknown function value
   under a nested driver).
+- In a twin, a reference-valued temporary read once, by the next binding, is inlined into it
+  when that binding is a call that emits nothing before its expression (no `$S.s`):
+  `check$d(bottom_up$d(t))`, so the frame does not keep the value alive (design §17.138). Not
+  into an allocation: V8 allocates an array literal before evaluating its elements.
 - CPS code calls `f$d` inline when `f` is direct and every function-typed argument is
   statically twinned (a direct first-order def or a closure-bound local of one); otherwise it
   makes the CPS call and the entry test decides.

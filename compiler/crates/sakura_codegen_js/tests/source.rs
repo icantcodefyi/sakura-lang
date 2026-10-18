@@ -114,6 +114,42 @@ pub fn main() -> Unit ! {Console} { Console.print("{sum_to(10000000, 0)} {fib(20
     );
 }
 
+/// A one-use reference-valued temporary in direct code is inlined into its consumer, so the frame
+/// does not keep a discarded tree reachable (research/10-evidence/binary-trees-rss.md). A
+/// temporary read twice, or passed to a call that sets the blame site first, stays a local.
+#[test]
+fn one_use_temporaries_do_not_outlive_their_consumer() {
+    let src = r#"
+type Tree = Leaf | Node(Tree, Tree)
+fn make(d: Int) -> Tree { if d > 0 { Node(make(d - 1), make(d - 1)) } else { Node(Leaf, Leaf) } }
+fn size(t: Tree) -> Int {
+  match t {
+    Leaf => 0,
+    Node(l, r) => 1 + size(l) + size(r),
+  }
+}
+fn nonempty(t: Tree) -> Int requires size(t) > 0 { size(t) }
+fn run(n: Int) -> Int {
+  let stretch = size(make(n + 1))
+  let kept = make(n)
+  let twice = make(1)
+  stretch + size(kept) + size(twice) + size(twice) + nonempty(make(2))
+}
+pub fn main() -> Unit ! {Console} { Console.print("{run(3)}") }
+"#;
+    let r = common::run("one_use", src).unwrap();
+    assert_eq!((r.stdout.as_str(), r.code), ("59\n", 0), "{}", r.stderr);
+    let (m, sources) = common::build("one_use", src, false).unwrap();
+    let js = sakura_codegen_js::emit(&m, &sakura_codegen_js::Options::new(sources))
+        .into_iter()
+        .find(|f| f.path == "main/main.js")
+        .unwrap()
+        .text;
+    let run = &js[js.find("function run$d").expect("run is direct")..];
+    let run = &run[..run.find("\n}\n").unwrap()];
+    insta::assert_snapshot!(run);
+}
+
 /// `cargo test -p sakura_codegen_js --test source bench -- --ignored --nocapture`: wall time of
 /// the same programs with and without the direct-style fast path (design §13.3 "measured").
 #[test]

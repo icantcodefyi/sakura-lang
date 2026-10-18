@@ -342,6 +342,10 @@ struct FnEmit<'a> {
     /// The `Handle`s over a handler literal being emitted, innermost last: the handler's local
     /// and the JS name of the instance.
     insts: Vec<(Local, String)>,
+    /// Direct code: how often each local is read, and the producer expressions of one-use
+    /// temporaries inlined into their consumer (see [`FnEmit::fuses`]).
+    uses: HashMap<Local, u32>,
+    inlined: HashMap<Local, String>,
     ns: &'a RefCell<BTreeSet<String>>,
     pool: &'a Pool,
     /// Locals bound by an `Int` operation the interval pass proves (design §17.114).
@@ -397,6 +401,8 @@ impl<'a> FnEmit<'a> {
             closures: direct::closures(def),
             bound: handlers::bind(cx.m, def),
             insts: Vec::new(),
+            uses: HashMap::new(),
+            inlined: HashMap::new(),
             ns,
             pool,
             proved: sakura_core::opt::ranges::analyze(
@@ -406,6 +412,9 @@ impl<'a> FnEmit<'a> {
             ),
         };
         e.analyze_labels();
+        if mode == Mode::Direct {
+            count_uses(&def.body, &mut e.uses);
+        }
         e
     }
 
@@ -731,7 +740,7 @@ impl<'a> FnEmit<'a> {
                 if self.is_cps(*local, bind) {
                     self.cps_call(w, *local, bind, *pos, body, ctx);
                 } else {
-                    self.simple_bind(w, *local, bind, *pos);
+                    self.simple_bind(w, *local, bind, *pos, body);
                     self.expr(w, body, ctx);
                 }
             }
@@ -948,7 +957,39 @@ impl<'a> FnEmit<'a> {
         }
     }
 
-    fn simple_bind(&mut self, w: &mut W, x: Local, bind: &Bind, pos: Option<Pos>) {
+    /// In direct code, a reference-valued temporary read once, by the next binding, is
+    /// inlined into it: `check$d(bottom_up$d(t))`, not `const r = bottom_up$d(t);
+    /// check$d(r);`, which keeps `r` (a whole tree) reachable from the frame until the
+    /// function returns. The consumer is a call that emits no statement before its
+    /// expression (no site register, check or bound perform), and its other operands are
+    /// plain reads, so the producer still runs right after the statements before it and
+    /// before the consumer. Not an allocation: V8 allocates `new T(1, [a, f()])`'s array
+    /// before calling `f`, and that array then survives everything `f` allocates.
+    fn fuses(&self, x: Local, bind: &Bind, body: &Expr) -> bool {
+        let reference = !matches!(
+            self.def.local(x).ty,
+            Ty::Unit | Ty::Bool | Ty::Int | Ty::Float
+        );
+        let consumer = match body {
+            Expr::Let {
+                bind: Bind::Call(callee, args),
+                pos,
+                ..
+            } => {
+                *callee != Atom::Local(x)
+                    && self.site_for(callee, *pos).is_none()
+                    && args.contains(&Atom::Local(x))
+            }
+            _ => false,
+        };
+        self.mode == Mode::Direct
+            && reference
+            && consumer
+            && matches!(bind, Bind::Call(..) | Bind::Alloc(..))
+            && self.uses.get(&x) == Some(&1)
+    }
+
+    fn simple_bind(&mut self, w: &mut W, x: Local, bind: &Bind, pos: Option<Pos>, body: &Expr) {
         let xs = self.name(x).to_owned();
         let rhs = match bind {
             Bind::Atom(a) => self.atom(a),
@@ -1072,7 +1113,11 @@ impl<'a> FnEmit<'a> {
             }
             Bind::Hole(h) => format!("$rt.defect(\"D090\", \"typed hole ?{h} was evaluated\")"),
         };
-        w.line(&format!("const {xs} = {rhs};"));
+        if self.fuses(x, bind, body) {
+            self.inlined.insert(x, rhs);
+        } else {
+            w.line(&format!("const {xs} = {rhs};"));
+        }
     }
 
     fn jump(&mut self, w: &mut W, l: Label, args: &[Atom]) {
@@ -1194,7 +1239,10 @@ impl<'a> FnEmit<'a> {
 
     fn atom(&self, a: &Atom) -> String {
         match a {
-            Atom::Local(l) => self.name(*l).to_owned(),
+            Atom::Local(l) => match self.inlined.get(l) {
+                Some(e) => e.clone(),
+                None => self.name(*l).to_owned(),
+            },
             Atom::Lit(lit) => lit_js(lit),
             Atom::Global(d) => self.def_ref(*d),
             Atom::Builtin(name) => match builtins::lookup(name) {
@@ -1390,6 +1438,73 @@ fn collect_labels_inner(e: &Expr, infos: &mut HashMap<Label, LabelInfo>, inside:
             collect_labels(els, infos, inside);
         }
     }
+}
+
+/// How often each local is read in `e`.
+fn count_uses(e: &Expr, out: &mut HashMap<Local, u32>) {
+    sakura_core::ensure_stack(|| {
+        let mut read = |a: &Atom| {
+            if let Atom::Local(l) = a {
+                *out.entry(*l).or_default() += 1;
+            }
+        };
+        match e {
+            Expr::Let { bind, body, .. } => {
+                match bind {
+                    Bind::Atom(a) | Bind::Check(_, a) | Bind::Proj(a, _) | Bind::StateGet(a, _) => {
+                        read(a)
+                    }
+                    Bind::StateSet(a, _, v) => {
+                        read(a);
+                        read(v);
+                    }
+                    Bind::Prim(_, xs) | Bind::Closure(_, xs) | Bind::Alloc(_, xs) => {
+                        xs.iter().for_each(read)
+                    }
+                    Bind::Call(f, xs) => {
+                        read(f);
+                        xs.iter().for_each(read);
+                    }
+                    Bind::Perform(_, _, xs) => xs.iter().for_each(read),
+                    Bind::MakeHandler { state, clauses, .. } => {
+                        state.iter().chain(clauses).for_each(read)
+                    }
+                    Bind::Hole(_) => {}
+                }
+                count_uses(body, out)
+            }
+            Expr::Ret(a) | Expr::Fail(a) => read(a),
+            Expr::Jump(_, xs) => xs.iter().for_each(read),
+            Expr::LetJoin { join, body, .. } => {
+                count_uses(join, out);
+                count_uses(body, out);
+            }
+            Expr::Switch {
+                scrut,
+                arms,
+                default,
+                ..
+            } => {
+                read(scrut);
+                for (_, a) in arms {
+                    count_uses(a, out);
+                }
+                if let Some(d) = default {
+                    count_uses(d, out);
+                }
+            }
+            Expr::If { cond, then, els } => {
+                read(cond);
+                count_uses(then, out);
+                count_uses(els, out);
+            }
+            Expr::Handle { handler, body } => {
+                read(handler);
+                count_uses(body, out);
+            }
+            Expr::Try { body, .. } => count_uses(body, out),
+        }
+    })
 }
 
 fn lit_js(lit: &Lit) -> String {
