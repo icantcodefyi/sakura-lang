@@ -34,7 +34,10 @@ published yet.
   `Llm.stream` through `Llm.anthropic` and `Log.json()` as the JS backend does; every
   semantics fixture and example agrees with JS on output and effect trace, with `@js`/`@wasm`
   fixture expectations where `Int` differs, and the parity harness reports which host
-  imports the corpus exercised (plan M4 W2).
+  imports the corpus exercised (plan M4 W2). Until the owner's review of `Secret` transport
+  (design §17.155), a WASM request carrying `secret_headers` is refused rather than sent.
+  JS traces no longer spend a task number on a refinement check inside a JSON decode, so task
+  numbers compare exactly across backends.
 
 - A VS Code extension in `editors/vscode/` (not published; build a `.vsix` locally):
   `.sakura` highlighting generated from the website grammar, language configuration, and a
