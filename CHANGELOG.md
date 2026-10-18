@@ -9,6 +9,11 @@ published yet.
 
 ### Fixed
 
+- A `requires` violated inside a self-tail-recursive function now blames the self call
+  (`down2(n - 2)`) instead of the outer call that entered the loop. Contracted functions
+  take their blame site as a trailing parameter on the JS backend, and predicates that
+  cannot defect skip the `D011` bracket (design §17.115); defect codes are unchanged.
+
 - The committed skill manifest omits its history-dependent `commit` field; file and
   ZIP SHA-256 hashes remain. Identical contents stay fresh across commits and rebases,
   and generation no longer requires Git history. CLI commit metadata stays build-time.
