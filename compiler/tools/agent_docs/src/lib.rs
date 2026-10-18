@@ -17,18 +17,11 @@ pub fn files(root: &Path) -> Result<Files, String> {
             if kind.is_dir() {
                 visit(root, &path, out)?;
             } else if kind.is_file() {
-                let name = path
-                    .strip_prefix(root)
-                    .unwrap()
-                    .to_str()
-                    .ok_or("non-UTF-8 skill path")?;
-                if name.contains('\\') {
-                    return Err(format!("invalid skill path: {name}"));
+                let name = bundle_path(path.strip_prefix(root).unwrap())?;
+                let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
+                if out.insert(name.clone(), bytes).is_some() {
+                    return Err(format!("duplicate skill path: {name}"));
                 }
-                out.insert(
-                    name.to_owned(),
-                    std::fs::read(&path).map_err(|e| e.to_string())?,
-                );
             } else {
                 return Err(format!(
                     "{}: skill files must be regular files",
@@ -41,6 +34,15 @@ pub fn files(root: &Path) -> Result<Files, String> {
     let mut out = Files::new();
     visit(root, root, &mut out)?;
     Ok(out)
+}
+
+fn bundle_path(path: &Path) -> Result<String, String> {
+    let name = path.to_str().ok_or("non-UTF-8 skill path")?;
+    let name = name.replace('\\', "/");
+    if name.split('/').any(|part| matches!(part, "" | "." | "..")) {
+        return Err(format!("invalid skill path: {name}"));
+    }
+    Ok(name)
 }
 
 fn sha256(bytes: &[u8]) -> String {
@@ -157,6 +159,72 @@ fn stored_zip(files: &Files) -> Result<Vec<u8>, String> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn path_separators_do_not_change_distribution_bytes() {
+        use super::{Files, bundle_path, distribution};
+        use std::path::Path;
+
+        // Design §17.180 (5), §17.191 item 10; road-to-1.0 §6 P5.
+        let unix: Files = [
+            ("SKILL.md".into(), b"skill".to_vec()),
+            ("references/nested/日本語.md".into(), b"reference".to_vec()),
+        ]
+        .into();
+        for path in [
+            r"references\nested\日本語.md",
+            r"references/nested\日本語.md",
+            "references/nested/日本語.md",
+        ] {
+            let mut skill = Files::new();
+            skill.insert(
+                bundle_path(Path::new("SKILL.md")).unwrap(),
+                b"skill".to_vec(),
+            );
+            skill.insert(bundle_path(Path::new(path)).unwrap(), b"reference".to_vec());
+            assert_eq!(skill, unix, "{path}");
+            assert_eq!(
+                distribution(&skill, "0.1.0").unwrap(),
+                distribution(&unix, "0.1.0").unwrap(),
+                "mirror, manifest, hashes and ZIP must match for {path}"
+            );
+        }
+    }
+
+    #[test]
+    fn normalized_paths_stay_inside_the_bundle() {
+        for path in [r"..\escape.md", r"references\..\escape.md", r"\escape.md"] {
+            assert!(
+                super::bundle_path(std::path::Path::new(path)).is_err(),
+                "{path}"
+            );
+        }
+    }
+
+    #[test]
+    fn collected_paths_use_forward_slashes() {
+        let root = std::env::temp_dir().join(format!("agent-docs-paths-{}", std::process::id()));
+        let nested = root.join("references/nested");
+        std::fs::create_dir_all(&nested).unwrap();
+        std::fs::write(nested.join("test.md"), b"reference").unwrap();
+        let collected = super::files(&root).unwrap();
+        assert_eq!(collected.len(), 1);
+        assert_eq!(collected["references/nested/test.md"], b"reference");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn colliding_normalized_paths_are_rejected() {
+        let root =
+            std::env::temp_dir().join(format!("agent-docs-collision-{}", std::process::id()));
+        std::fs::create_dir_all(root.join("references")).unwrap();
+        std::fs::write(root.join("references/test.md"), b"nested").unwrap();
+        std::fs::write(root.join(r"references\test.md"), b"literal backslash").unwrap();
+        let error = super::files(&root).unwrap_err();
+        assert_eq!(error, "duplicate skill path: references/test.md");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
     #[test]
     fn standard_crc_vector() {
         assert_eq!(super::crc32(b"123456789"), 0xcbf43926);

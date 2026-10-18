@@ -127,6 +127,9 @@ published yet.
 
 ### Fixed
 
+- `agent_docs` normalizes Windows path separators so the skill mirror, manifest,
+  hashes, and ZIP are byte-identical to Unix output (design §17.180 (5)).
+
 - `file://` URIs are RFC 8089 on every OS (design §17.180 (4a)): on Windows a source is
   `file:///C:/dir/src/main.sak` instead of `file://C:%5Cdir%5Csrc%5Cmain.sak`, so its module
   name, the `sakura.toml` lookup, terminal paths relative to the working directory and the
