@@ -134,3 +134,60 @@ fn literal_chains_go_through_every_phase() {
     let err = through_every_phase(true).unwrap_err();
     assert!(err.contains("blocks nested deeper than"), "{err}");
 }
+
+/// The `V4004` records of `source`, as (message, primary span's start, its text).
+fn too_large(source: &str) -> Vec<(String, usize, String)> {
+    let snap = Snapshot::with_std([("file:///big/src/main.sak".to_owned(), source.to_owned())]);
+    let opts = BuildOptions {
+        need_entry: true,
+        ..Default::default()
+    };
+    let (module, diags) = Analysis::lower_core(&snap, &opts);
+    assert!(module.is_none());
+    diags
+        .iter()
+        .filter(|d| d.code.0 == "V4004")
+        .map(|d| {
+            let s = &d.spans[0];
+            let (start, end) = (s.start as usize, s.end as usize);
+            (d.message.clone(), start, source[start..end].to_owned())
+        })
+        .collect()
+}
+
+fn or_tuple(alt: &str, n: usize) -> String {
+    format!("({})", vec![alt; n].join(", "))
+}
+
+/// An irrefutable pattern spends the budget too, reported at the pattern.
+#[test]
+fn a_let_pattern_past_the_budget_is_v4004() {
+    let bools = format!("({})", vec!["Bool"; 21].join(", "));
+    let pat = or_tuple("true | false", 21);
+    let src = format!(
+        "fn f(t: {bools}) -> Int {{\n  let {pat} = t\n  1\n}}\n\npub fn main() -> Unit ! {{Console}} {{ Console.print(\"{{f({})}}\") }}\n",
+        or_tuple("true", 21)
+    );
+    let found = too_large(&src);
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert_eq!(found[0].2, pat);
+    assert!(found[0].0.contains("stopped at 1048577"), "{}", found[0].0);
+}
+
+/// A `match` in a guard is lowered for each leaf its row reaches; it spends the enclosing
+/// tree's budget, which is reported once, at the outer `match`.
+#[test]
+fn a_match_in_a_guard_past_the_budget_is_reported_once() {
+    let lits = (1..=20)
+        .map(|i| i.to_string())
+        .collect::<Vec<_>>()
+        .join(" | ");
+    let src = format!(
+        "fn f(x: Int, a: Int, b: Int, c: Int, d: Int, e: Int) -> Int {{\n  match x {{\n    0 | 1 | 2 if match (a, b, c, d, e) {{ {} => true, _ => false }} => 1,\n    _ => 0,\n  }}\n}}\n\npub fn main() -> Unit ! {{Console}} {{ Console.print(\"{{f(1, 1, 1, 1, 1, 1)}}\") }}\n",
+        or_tuple(&lits, 5)
+    );
+    let found = too_large(&src);
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert_eq!(found[0].2, "match");
+    assert_eq!(found[0].1, src.find("match x").unwrap());
+}

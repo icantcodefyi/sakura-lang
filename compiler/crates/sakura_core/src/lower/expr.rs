@@ -9,7 +9,7 @@ use std::collections::{BTreeSet, HashMap};
 
 use sakura_hir::{self as hir, ExprId, LocalId, Res};
 use sakura_types::TypedBody;
-use text_size::TextRange;
+use text_size::{TextRange, TextSize};
 
 use super::{Lower, Subst, walk};
 use crate::build::*;
@@ -46,6 +46,8 @@ pub(crate) struct FnLower<'a, 'p> {
     /// Type parameters whose schema is a runtime value (dictionary passing): the local
     /// holding it. See [`Lower::def_dict`].
     reps: Vec<(u32, Local)>,
+    /// Decision-tree nodes the `match` being compiled has built (`V4004`).
+    pub(super) match_nodes: usize,
 }
 
 /// How to call a function: its atom, schema types for leading parameters (dictionary
@@ -92,6 +94,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
             row_vars: Vec::new(),
             subst: Vec::new(),
             reps: Vec::new(),
+            match_nodes: 0,
         }
     }
 
@@ -1179,8 +1182,15 @@ impl<'a, 'p> FnLower<'a, 'p> {
                 let v = self.local_atom(v, "x", sty.clone());
                 let after = self.b.label();
                 let (r, vs) = self.join_params(Some(ty));
-                let inner =
-                    self.match_arms(v, sty, arms, after, super::matchc::Fallback::Unreachable);
+                let site = TextRange::at(self.range(e).start(), TextSize::of("match"));
+                let inner = self.match_arms(
+                    v,
+                    sty,
+                    arms,
+                    after,
+                    super::matchc::Fallback::Unreachable,
+                    site,
+                );
                 Some(self.merge(after, r, vs, inner))
             }
             hir::Expr::Loop { body: lb } => self.loop_(*lb),
@@ -1933,6 +1943,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
                 arms,
                 after,
                 super::matchc::Fallback::Fail(local(err)),
+                TextRange::at(s.range(e).start(), TextSize::of("try")),
             ),
         });
         let body_code = self.scoped(|s| {
@@ -2102,6 +2113,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
             row_vars,
             subst: self.subst.clone(),
             reps: Vec::new(),
+            match_nodes: 0,
         };
         let mut captures: Vec<Local> = free
             .iter()

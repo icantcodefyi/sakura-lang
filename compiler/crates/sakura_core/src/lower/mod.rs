@@ -191,6 +191,29 @@ impl<'p> Lower<'p> {
         );
     }
 
+    /// `V4004`: one pattern match's decision tree passed [`matchc::MAX_MATCH_NODES`].
+    pub fn match_too_large(
+        &mut self,
+        module: hir::ModuleId,
+        site: text_size::TextRange,
+        nodes: usize,
+    ) {
+        let file = self.p.module(module).file;
+        self.diags.push(
+            Diagnostic::error(
+                sakura_diagnostics::codes::V4004,
+                Phase::Pattern,
+                format!(
+                    "this pattern match compiles to a decision tree of more than {} nodes \
+                     (stopped at {nodes}); split it into smaller `match`es, or move rows with \
+                     wildcards first",
+                    matchc::MAX_MATCH_NODES
+                ),
+            )
+            .with_span(Span::primary(file, site.start().into(), site.end().into())),
+        );
+    }
+
     pub fn module_name(&self, module: hir::ModuleId) -> String {
         let m = self.p.module(module);
         format!("{}::{}", self.p.packages[m.package.0 as usize].name, m.path)

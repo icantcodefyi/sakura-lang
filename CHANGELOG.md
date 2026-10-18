@@ -229,6 +229,11 @@ published yet.
 
 ### Added
 
+- `V4004 match_too_large` (pattern phase): a `match`, `catch` or `let` pattern whose decision
+  tree passes 1,048,576 nodes, counting the rows its or-patterns expand into and the matches in
+  its guards, is an error from `sakura build`, `run` and `test` instead of a build that runs away
+  in memory and time (design §17.193). The arm count itself is not limited.
+
 - `sakura new` and `sakura init` write `.gitattributes` with `*.sak text eol=lf` and
   `*.snap text eol=lf`, so Windows checkouts stay LF (design §17.180 (4b)).
 

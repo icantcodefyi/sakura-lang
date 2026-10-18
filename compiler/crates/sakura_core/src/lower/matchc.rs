@@ -10,6 +10,7 @@
 use std::collections::{BTreeSet, HashMap};
 
 use sakura_hir::{self as hir, LocalId, Res};
+use text_size::TextRange;
 
 use super::expr::{FnLower, cmp_ty, lit_of};
 use super::{subst, walk};
@@ -63,6 +64,10 @@ struct ArmInfo {
 
 type Occ = Vec<(Atom, Ty)>;
 
+/// The decision-tree nodes (tests and leaves) one `match` may build, counting the rows that
+/// or-patterns expand into; past it the tree is abandoned with `V4004` (design §17.193).
+pub(crate) const MAX_MATCH_NODES: usize = 1 << 20;
+
 impl FnLower<'_, '_> {
     /// Arms as join points jumping to `after(value, vars…)`, then the decision tree.
     pub(crate) fn match_arms(
@@ -72,6 +77,7 @@ impl FnLower<'_, '_> {
         arms: &[hir::MatchArm],
         after: Label,
         fallback: Fallback,
+        site: TextRange,
     ) -> Expr {
         let body = self.body;
         let mut joins = Vec::new();
@@ -112,7 +118,9 @@ impl FnLower<'_, '_> {
                 arm: i,
             })
             .collect();
-        let mut e = self.compile(vec![(scrut, ty)], rows, &infos, &fallback);
+        let mut e = self.budgeted(site, |s| {
+            s.compile(vec![(scrut, ty)], rows, &infos, &fallback)
+        });
         for (label, params, code) in joins.into_iter().rev() {
             e = Expr::LetJoin {
                 label,
@@ -143,7 +151,31 @@ impl FnLower<'_, '_> {
             binds: vec![],
             arm: 0,
         };
-        self.compile(vec![(v, ty)], vec![row], &[info], &Fallback::Unreachable)
+        let site = self.body.source_map.pat(pat);
+        self.budgeted(site, |s| {
+            s.compile(vec![(v, ty)], vec![row], &[info], &Fallback::Unreachable)
+        })
+    }
+
+    /// Builds a tree with `f`, reporting `V4004` at `site` when it passes the budget. A `match`
+    /// in a guard is lowered once per leaf its row reaches, so it spends the enclosing tree's
+    /// budget rather than a fresh one, and only the outermost tree reports.
+    fn budgeted(&mut self, site: TextRange, f: impl FnOnce(&mut Self) -> Expr) -> Expr {
+        let outermost = self.match_nodes == 0;
+        let e = f(self);
+        if outermost {
+            let used = std::mem::take(&mut self.match_nodes);
+            if used > MAX_MATCH_NODES {
+                self.l.match_too_large(self.module, site, used);
+            }
+        }
+        e
+    }
+
+    /// Counts `n` nodes; `false` once the budget is spent.
+    fn spend(&mut self, n: usize) -> bool {
+        self.match_nodes = self.match_nodes.saturating_add(n);
+        self.match_nodes <= MAX_MATCH_NODES
     }
 
     fn norm(&mut self, p: hir::PatId) -> P {
@@ -220,6 +252,10 @@ impl FnLower<'_, '_> {
     }
 
     fn compile_inner(&mut self, occ: Occ, rows: Vec<Row>, arms: &[ArmInfo], fb: &Fallback) -> Expr {
+        // Over budget: `budgeted` reports `V4004`, so the tree is never emitted.
+        if !self.spend(1) {
+            return Expr::Ret(unit());
+        }
         // Expand or-patterns at the top of any column, then record bindings.
         let mut expanded = Vec::new();
         let mut todo: Vec<Row> = rows.into_iter().rev().collect();
@@ -229,6 +265,9 @@ impl FnLower<'_, '_> {
                     let P::Or(alts) = std::mem::replace(&mut row.pats[c], P::Any) else {
                         unreachable!()
                     };
+                    if !self.spend(alts.len().saturating_sub(1)) {
+                        return Expr::Ret(unit());
+                    }
                     for alt in alts.into_iter().rev() {
                         let mut r = row.clone();
                         r.pats[c] = alt;

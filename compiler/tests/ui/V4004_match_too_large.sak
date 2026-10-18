@@ -1,0 +1,16 @@
+// milestone: M3
+// expect: V4004
+// command: build
+// Every combination of the five or-patterns is a row, 20^5 of them, and the wildcard rows
+// around them are copied into the branches: past the budget.
+fn inside(a: Int, b: Int, c: Int, d: Int, e: Int) -> Bool {
+  match (a, b, c, d, e) {
+    (0, _, _, _, _) => false,
+    (1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20, 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20, 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20, 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20, 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20) =>
+      true,
+    (_, 0, _, _, _) => false,
+    _ => false,
+  }
+}
+
+pub fn main() -> Unit ! {Console} { Console.print("{inside(1, 2, 3, 4, 5)}") }

@@ -541,6 +541,24 @@ Wrong:
 Fixed:
     (_, 0) | (0, _) => 1";
 
+    V4004 "match_too_large" PATTERN,
+"A `match` compiles to a decision tree of more than 1,048,576 nodes (tests and leaves, counting
+the rows its or-patterns expand into), so the compiler stops building it (design §17.193). The
+count is a function of the source alone. The number of arms is not limited: a flat `match` of
+thousands of literals or constructors stays far under the budget. The tree grows with the
+product of the alternatives when several columns are each matched by or-patterns, and when rows
+with wildcards are copied into every branch of the columns tested before them; a `match` in a
+guard counts toward the enclosing one, once for each branch the guard's row reaches. Test one column
+at a time, or move the rows with wildcards first. Core lowering counts the tree, so `sakura build`,
+`run` and `test` report it and `sakura check` does not. Below, `L` stands for `1 | 2 | … | 20`, so the
+wrong `match` has a row for each of 20^5 combinations.
+
+Wrong:
+    match (a, b, c, d, e) { (L, L, L, L, L) => true, _ => false }
+Fixed:
+    fn small(x: Int) -> Bool { match x { L => true, _ => false } }
+    small(a) && small(b) && small(c) && small(d) && small(e)";
+
     // 5: contracts / refinements
     V5001 "impure_contract" CONTRACT,
 "Predicates in `where`, `requires`, `ensures` and `property` bodies must be pure, terminating and

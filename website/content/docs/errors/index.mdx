@@ -6,7 +6,7 @@ description: "Every Sakura Lang diagnostic code with its explanation, a program 
 
 Every diagnostic code the compiler and the runtime report, with its explanation, a program that triggers it and, where one is checked in, the fixed program. Codes are stable and never renumbered (design §12.3); `sakura explain <code>` prints the same explanation offline, and a diagnostic's `explanation_uri` (`sakura://explain/<code>`) maps to `/docs/errors/<code>`. `V` codes are errors, `W` warnings and `D` runtime defects; the [diagnostics reference](/docs/agents/diagnostics) describes the JSON records.
 
-90 codes; 64 pages show a fixed program that the compiler's test suite checks.
+91 codes; 65 pages show a fixed program that the compiler's test suite checks.
 
 ## Lex and parse
 
@@ -84,6 +84,7 @@ Every diagnostic code the compiler and the runtime report, with its explanation,
 | [V4001](/docs/errors/V4001) | `non_exhaustive_match` | A `match` does not cover every value. |
 | [V4002](/docs/errors/V4002) | `unreachable_arm` | A `match` arm can never be reached because earlier arms already cover every value it matches. |
 | [V4003](/docs/errors/V4003) | `or_pattern_bindings` | All alternatives of an or-pattern must bind the same names with the same types (design §3.2). |
+| [V4004](/docs/errors/V4004) | `match_too_large` | A `match` compiles to a decision tree of more than 1,048,576 nodes (tests and leaves, counting the rows its or-patterns expand into), so the compiler stops building it (design §17.193). |
 
 ## Contracts and refinements
 
