@@ -726,3 +726,96 @@ implementable as written; design §17.108 endorsed E1–E12 (E6 amended for hand
   `SAKURA_MAX_HEAP` like everything else. The emergency region is a separate 64 KiB pool with
   its own free lists, committed at start, used only while the runtime has enabled emergency
   allocation (unwinding) and only for small blocks.
+
+## Questions and errata (from M4-LIR)
+
+Recorded by the `sakura_lir` implementer (L1, L2, L1a) where this document is ambiguous or
+silent. Each entry names the reading implemented in `crates/sakura_lir` and why; none changes a
+decision, and each is a question for the designer (`compiler/REQUESTS.md`, 2026-10-18). Numbered
+L1… so they do not collide with the M4-RT entries above.
+
+- **L1 Agreement with 1.0.1.** `sakura_lir` emits the §3.4 layout table
+  (`LayoutTable::to_bytes`) and code descriptor table (`layout::code_table`), decoded in
+  `crates/sakura_lir/tests/abi.rs` exactly as `runtime/rt/src/layout.rs` reads them, and the
+  effect table of open question P3 (`layout::effect_table`); tuple rows per shape (§3.2 tag 5),
+  `Unit` fields as kind-0 immediates, slots at offset 16 (24 for handler state), and handler
+  state rows (L11). Snapshots of all three tables are in `compiler/tests/abi/`.
+- **L2 E2 needs dynamic tuple reads and row-blind structural operations.** A tuple's row is fixed
+  where it is built, but its static type differs between generic and monomorphic code:
+  `fn dup<A>(x: A) -> (A, A) { (x, x) }` builds `(word, word)` and `dup(20).0 + 1` reads it as
+  `(Int, Int)`; `(7, "seven")` is built `(i64, word)` and read by
+  `fn first<A, B>(p: (A, B)) -> A`. So (a) a tuple element read is the LIR's `TupleGet`, which
+  takes the slot kind from the object's row and boxes or unboxes to the reader's representation
+  (a branch per read; a static check is impossible), and (b) `Eq`, `Ord`, `Hash` and `Show` of
+  tuples must not depend on the row: `(3, 3)` built either way is one value, one `Set` member
+  and one `Map` key, so `Hash` of an `i64` slot and of an `IntBox` word must agree. Builtins that
+  read tuples (`map_of`) read through rows too. `crates/sakura_lir/tests/corpus/lir/tuple_shapes.sakura`
+  pins both; it failed in the interpreter until (b) held. This answers M4-RT's P5: the LIR
+  projects through the row kinds and never coerces a tuple at an instantiation site, and
+  `sakura_rt` already implements (b). Question for the designer: keep E2 with these two
+  conditions, or make tuples all words (one row per arity, no conversion, one `IntBox` per
+  scalar element)? Either is one change in `sakura_lir/src/lower.rs`; under §17.103 the first
+  costs a branch per generic read and the second an allocation per scalar element.
+- **L3 Closure calls (§5, §6.1).** The frame has no `env` field. Read: calling a closure stores it
+  as the callee frame's slot 0, owned (the callee frame owns its closure); a clause takes the
+  activation id in slot 1, then the operation's arguments (L12). The function loads every
+  capture at entry (each load a new reference) and drops the closure, so only block 0 needs
+  `env` and no resumed block reads it. Every argument and result passed through a closure value
+  other than a clause is a generic word (Lean's boxed convention), because the callee may be a
+  generic function, a lambda, the callback stub or an adapter; a direct call of a top-level
+  function keeps known representations, and a top-level function used as a value is a static
+  closure (§3.1 `static`) of a generated adapter. `MakeCallback` returns an existing callback
+  unchanged, so the first perform site wins (as JS `callback` and `sakura_eval`).
+- **L4 Catch entries record the target's region state (§6.4).** A `try`'s join point may lie
+  outside `with` and `try` regions opened after the `try` in the same function (Core: "a join
+  point defined outside body"), so a caught `fail` must also release those activations and pop
+  those catch entries. A catch entry therefore holds, besides `join_block`, `frame_id` and
+  `fin_mark`, the activation id in scope at the join and the catch-stack height there; the LIR's
+  `TryPush` carries the static counts (`Exits { handles, trys }`) the runtime computes them from.
+  The values the catch block receives besides the error are moved into the catching frame's
+  slots by `TryPush` and dropped by `TryPop`; when a `fail` resumes a frame that was suspended at
+  a call, the slots of that abandoned continuation are dropped.
+- **L5 The defect path (§5, §6.5).** §5 asks for balance "including the defect path". The LIR has
+  no defect edges: an instruction that can defect (checked arithmetic, `Check`, a builtin)
+  leaves its block owning exactly the references the validator's count holds at that
+  instruction, and the defect path releases them before unwinding frames. The emitter
+  materialises this as a per-site landing pad (or spills the live set) in front of the shared
+  per-function defect block. The interpreter does so, and every corpus program that ends in a
+  defect ends with no live object.
+- **L6 Builtins take owned arguments**, as calls do (§5): `list_len(xs)` drops `xs`. Conservative;
+  M5 may mark builtin parameters borrowed. A builtin's parameter and result representations are
+  those of its std `@external` declaration (type-variable positions are words; `Int`, `Float`,
+  `Bool`, `Unit` known scalars; a `Never` result is `unit`), plus the four `sakura_core` emits
+  itself (`list_at: (ptr, i64) -> word`, `contract_enter`, `contract_exit`, `match_failure`);
+  table: `crates/sakura_lir/tests/corpus/builtins.sigs`. `sakura_rt`'s builtins must take the same.
+- **L7 Frame and closure slot kinds.** Frame slots are the entry parameters, then every parameter
+  of a block the trampoline resumes (a call or `perform` continuation, a catch target), in block
+  order. `Bool` and `Unit` values there use kind 3; an activation id uses kind 1 (non-owning,
+  zero-extended), including as a closure capture (a lambda in a clause that reads the clause's
+  state captures the activation id, never the activation, as §7.1 requires).
+- **L8 `Unit`-typed Core temporaries.** Core types some temporaries `Unit` although they hold a
+  value (the `ok`/`err` of a `try`, join parameters); the LIR represents a `Unit` local bound to
+  a reference, and every `Unit` join parameter, as a generic word. A request to `sakura_core`
+  for after the gates is in `compiler/REQUESTS.md`.
+- **L9 Constants** (`FnKind::Const`) are evaluated at each use, as in `sakura_eval`, not cached as
+  JS does; they are pure, so only allocation counts differ.
+- **L10 `D003`.** It never occurs on this profile (§17.80): `Int` arithmetic is checked `i64`.
+  Fixtures whose `needs:` names the JS backend are outside the LIR corpus; M4 fixtures use their
+  `expect-defect` (or `expect-defect@wasm`).
+- **L11 Handler state rows (§17.108 E6 amendment; 1.0.1 §3.2 tag 14).** Each `handler`
+  expression's state is described by the shape row of its state values where it is built (a
+  type-variable state is kind 0), shared with tuple rows of the same shape, as 1.0.1 §3.4 says
+  ("one entry per handler state shape"). `MakeHandler`, `StateGet` and `StateSet` name the row,
+  and the validator checks every state value against it. An activation's live state follows its
+  handler's row (M4-RT's P1, the same reading: otherwise `StateGet`/`StateSet`, which address
+  the activation, would still box). A host-built handler (`console_host`) has no state and no
+  row (`type_id = 0xFFFF_FFFF`). Static resolution: a clause's activation parameter gets the row
+  of the `handler` expression that lists the clause, and the row follows `let` aliases, jump
+  arguments and closure captures. Effect: `semantics/million_operations` allocates 4 objects
+  instead of 2,000,005 (with L12).
+- **L12 Clauses use their operation's declared representations.** A clause is called only by
+  `perform`, and both know the operation's signature, so `perform` passes its arguments, and the
+  clause returns its result, in the representations of the operation's declared types (a
+  type-variable position stays a word; a function-typed argument is the callback closure). The
+  effect table records each operation's signature for the validator. Same reason as L11: an
+  `Int`-returning operation would otherwise box once per `perform` (§17.103).
