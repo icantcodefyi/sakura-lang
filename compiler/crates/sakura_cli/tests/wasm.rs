@@ -9,7 +9,13 @@ use std::path::Path;
 
 /// The run-mode examples of `examples/README.md` that W1 runs on WASM, in table order; the
 /// others are listed in `docs/plans/m3-completion-and-m4.md` §7 (W1) with what they need.
-const EXAMPLES: &[&str] = &["hello", "contracts", "counter", "typed_errors", "word_count"];
+const EXAMPLES: &[&str] = &[
+    "hello",
+    "contracts",
+    "counter",
+    "typed_errors",
+    "word_count",
+];
 
 fn available() -> bool {
     let node = std::process::Command::new("node")
