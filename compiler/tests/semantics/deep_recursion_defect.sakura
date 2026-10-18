@@ -1,0 +1,15 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D002
+// covers: performance-r1 WS-P3; design §17.112 (a defect inside the nested driver)
+
+fn zero() -> Int { List.len([]) }
+
+// Direct for the first LIMIT frames, then the CPS body under `runSync`, where the division fails.
+fn sum_until(n: Int) -> Int { if n == 0 { 1 / zero() } else { n + sum_until(n - 1) } }
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("before")
+  Console.print("{sum_until(1_000_000)}")
+  Console.print("never printed")
+}
