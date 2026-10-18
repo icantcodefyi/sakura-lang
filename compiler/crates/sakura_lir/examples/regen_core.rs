@@ -7,6 +7,9 @@
 //! writes `src/builtins.sigs`, the representation of each runtime builtin's parameters and result,
 //! read from std's `@external` declarations.
 //!
+//! `-- --check` writes nothing and exits 1 listing every stale or orphaned file;
+//! `tests/fresh.rs` runs the same comparison under `cargo test`.
+//!
 //! Conversion failures are reported, never guessed: a Core form this file does not know stops
 //! the run.
 //!
@@ -34,12 +37,53 @@ fn entry() -> BuildOptions {
 type R<T> = Result<T, String>;
 
 fn main() {
+    let (files, report) = outputs();
+    let check = std::env::args().nth(1).as_deref() == Some("--check");
+    let stale = stale(&files);
+    if check {
+        for p in &stale {
+            eprintln!("stale: {}", p.display());
+        }
+        std::process::exit(i32::from(!stale.is_empty()));
+    }
+    for (path, text) in &files {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    }
+    for r in &report {
+        eprintln!("{r}");
+    }
+}
+
+/// The files of `outputs` whose committed text differs (or that do not exist), and the corpus
+/// files no output names (a fixture that was removed or renamed).
+pub fn stale(files: &[(PathBuf, String)]) -> Vec<PathBuf> {
+    let mut out: Vec<PathBuf> = files
+        .iter()
+        .filter(|(p, text)| std::fs::read_to_string(p).ok().as_deref() != Some(text.as_str()))
+        .map(|(p, _)| p.clone())
+        .collect();
+    let corpus = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/corpus");
+    for sub in ["semantics", "diff", "lir"] {
+        for ext in ["json", "expected"] {
+            for p in sorted(&corpus.join(sub), ext) {
+                if !files.iter().any(|(f, _)| *f == p) {
+                    out.push(p);
+                }
+            }
+        }
+    }
+    out
+}
+
+/// Every file the corpus should hold (path, text), and the programs left out with why.
+pub fn outputs() -> (Vec<(PathBuf, String)>, Vec<String>) {
+    let mut files = Vec::new();
     let here = Path::new(env!("CARGO_MANIFEST_DIR"));
     let corpus = here.join("tests/corpus");
     let semantics = here.join("../../tests/semantics");
     let mut report = Vec::new();
 
-    std::fs::create_dir_all(corpus.join("semantics")).unwrap();
     for path in sorted(&semantics, "sakura") {
         let name = stem(&path);
         let text = std::fs::read_to_string(&path).unwrap();
@@ -71,8 +115,8 @@ fn main() {
         match snapshot(&uri, &text) {
             Ok((core, _)) => {
                 let out = corpus.join("semantics").join(&name);
-                std::fs::write(out.with_extension("json"), core.to_json()).unwrap();
-                std::fs::write(out.with_extension("expected"), expected(&ending, &stdout)).unwrap();
+                files.push((out.with_extension("json"), core.to_json()));
+                files.push((out.with_extension("expected"), expected(&ending, &stdout)));
             }
             Err(e) => report.push(format!("semantics/{name}: {e}")),
         }
@@ -101,17 +145,15 @@ fn main() {
         match result {
             Ok((core, ending, stdout)) => {
                 let out = path.with_extension("");
-                std::fs::write(out.with_extension("json"), core.to_json()).unwrap();
-                std::fs::write(out.with_extension("expected"), expected(&ending, &stdout)).unwrap();
+                files.push((out.with_extension("json"), core.to_json()));
+                files.push((out.with_extension("expected"), expected(&ending, &stdout)));
             }
             Err(e) => report.push(format!("{}: {e}", path.display())),
         }
     }
 
-    std::fs::write(here.join("src/builtins.sigs"), builtin_sigs()).unwrap();
-    for r in &report {
-        eprintln!("{r}");
-    }
+    files.push((here.join("src/builtins.sigs"), builtin_sigs()));
+    (files, report)
 }
 
 fn expected(ending: &str, stdout: &str) -> String {
