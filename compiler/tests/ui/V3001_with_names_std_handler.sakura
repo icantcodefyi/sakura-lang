@@ -1,0 +1,7 @@
+// milestone: M3
+// expect: V3001
+// expect-span: V3001 cause 7:47
+// §17.165: `std/env` has one deterministic handler, so the `with` fix names `Env.of`.
+import std/env
+
+pub fn apply(f: fn() -> Int ! {Env}) -> Int { f() }

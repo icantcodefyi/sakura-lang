@@ -1,0 +1,8 @@
+// milestone: M3
+// expect: V3001
+// §17.165: a residual failure has no handler; the fix recovers with `try`/`catch`.
+error ParseErr(input: String)
+
+fn parse(s: String) -> Int ! {Fail<ParseErr>} { fail ParseErr(s) }
+
+pub fn read() -> Int { parse("x") }

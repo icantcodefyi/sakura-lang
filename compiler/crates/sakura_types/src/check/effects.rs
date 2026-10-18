@@ -3,11 +3,11 @@
 
 use sakura_diagnostics::codes::{V3001, V3020};
 use sakura_diagnostics::{Applicability, Diagnostic, Edit, Fix, Impact, Phase};
-use sakura_hir::{DefKind, Expr, ExprId, Res, Stmt};
+use sakura_hir::{DefId, DefKind, Expr, ExprId, Res, Stmt};
 use text_size::TextRange;
 
 use super::{Checker, RowViolation, ViolationKind};
-use crate::ty::{Effect, Label, Tail};
+use crate::ty::{Effect, Label, Tail, Type};
 
 impl Checker<'_> {
     pub(super) fn report_violations(&mut self) {
@@ -192,28 +192,42 @@ impl Checker<'_> {
             edits: vec![edit],
         });
         let only_fail = extra.iter().all(|l| l.effect == Effect::Fail);
+        let mut effects = extra.iter().filter_map(|l| match l.effect {
+            Effect::Def(d) => Some(d),
+            Effect::Fail => None,
+        });
+        let handler = match (effects.next(), effects.next()) {
+            (Some(d), None) => self.std_handler(d),
+            _ => None,
+        };
         let (open, close, title) = if only_fail {
             (
-                "{ try ",
+                "{ try ".to_string(),
                 " catch { _ => ?recover } }",
-                "Recover from the failure locally with `try`/`catch`",
+                "Recover from the failure locally with `try`/`catch`".to_string(),
+            )
+        } else if let Some((call, shown)) = handler {
+            (
+                format!("{{ with {call} "),
+                " }",
+                format!("Handle the effect locally with `with {shown}`"),
             )
         } else {
             (
-                "{ with ?handler ",
+                "{ with ?handler ".to_string(),
                 " }",
-                "Handle the effect locally with `with`",
+                "Handle the effect locally with `with`".to_string(),
             )
         };
         if body.end() > body.start() && !extra.is_empty() {
             fixes.push(Fix {
-                title: title.into(),
+                title,
                 applicability: Applicability::Incomplete,
                 impact: Impact::Local,
                 edits: vec![
                     Edit {
                         span: self.span(TextRange::empty(body.start())),
-                        replacement: open.into(),
+                        replacement: open,
                     },
                     Edit {
                         span: self.span(TextRange::empty(body.end())),
@@ -223,6 +237,68 @@ impl Checker<'_> {
             });
         }
         fixes
+    }
+
+    /// The one deterministic handler constructor `std` exports for `effect` (§17.165): a pure
+    /// `pub fn` in the effect's module, other than `host`, returning `Handler<effect>` whose
+    /// clauses perform nothing. Returns the call with a hole per parameter
+    /// (`Env.of(?vars)`) and its short form (`Env.of(…)`).
+    fn std_handler(&mut self, effect: DefId) -> Option<(String, String)> {
+        let program = self.program;
+        let m = program.module(effect.module);
+        if program.packages[m.package.0 as usize].name != "std" {
+            return None;
+        }
+        let mut found = None;
+        for (name, &index) in &m.exports {
+            let def = DefId {
+                module: effect.module,
+                index,
+            };
+            let DefKind::Fn(f) = &program.def(def).kind else {
+                continue;
+            };
+            if name == "host" {
+                continue;
+            }
+            let Some(scheme) = self.scheme_of(def) else {
+                continue;
+            };
+            let Type::Fn { ret, row, .. } = self.inf.interner.ty(scheme.ty).clone() else {
+                continue;
+            };
+            let Type::Handler {
+                label,
+                row: clauses,
+            } = self.inf.interner.ty(ret).clone()
+            else {
+                continue;
+            };
+            if label.effect != Effect::Def(effect) || !self.is_pure(row) || !self.is_pure(clauses) {
+                continue;
+            }
+            if found.is_some() {
+                return None;
+            }
+            let holes: Vec<String> = f
+                .sig
+                .params
+                .iter()
+                .map(|p| format!("?{}", p.name))
+                .collect();
+            let effect_name = &program.def(effect).name;
+            let dots = if holes.is_empty() { "" } else { "…" };
+            found = Some((
+                format!("{effect_name}.{name}({})", holes.join(", ")),
+                format!("{effect_name}.{name}({dots})"),
+            ));
+        }
+        found
+    }
+
+    fn is_pure(&mut self, row: crate::ty::RowId) -> bool {
+        let flat = self.inf.flatten_row(row);
+        flat.labels.is_empty() && matches!(flat.tail, Tail::Closed)
     }
 
     /// Whether `e`'s row contains `label` (for `Fail`, any of its tags).

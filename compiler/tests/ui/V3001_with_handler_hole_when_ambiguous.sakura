@@ -1,0 +1,7 @@
+// milestone: M3
+// expect: V3001
+// §17.165: `std/clock` has two deterministic handlers (`fixed`, `virtual`), so the fix keeps
+// `?handler`.
+import std/clock
+
+pub fn stamp() -> Instant { Clock.now() }

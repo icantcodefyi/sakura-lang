@@ -11,7 +11,12 @@ row is an upper bound (design §5.7); omitting `!` means `! {}`.
 
 The `cause` span points at the call that introduced the effect. Two repairs:
 - add the effect to the signature (`interface_change`: every caller must allow it too), or
-- handle it locally with `with handler { … }` (`local`).
+- handle it locally with `with handler { … }` (`local`). When `std` has one deterministic
+  handler for the effect, the fix names it (`with Env.of(?vars)`); fill its holes.
+
+When the effect is a residual `Fail<E>`, there is no handler to install: recover locally with
+`try { body } catch { Tag { .. } => fallback }` (unmatched tags propagate), or add `Fail<E>`
+to the signature so callers see the failure.
 
 Wrong:
 
@@ -138,6 +143,8 @@ pub fn main() -> Unit ! {Console} { greet("Sakura Lang") }
   ]
 }
 ```
+
+More fixtures for this code: [`compiler/tests/ui/V3001_residual_fail_uses_try.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3001_residual_fail_uses_try.sakura), [`compiler/tests/ui/V3001_with_handler_hole_when_ambiguous.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3001_with_handler_hole_when_ambiguous.sakura), [`compiler/tests/ui/V3001_with_names_std_handler.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V3001_with_names_std_handler.sakura).
 
 ## Fixed program
 
