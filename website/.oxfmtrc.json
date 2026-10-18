@@ -1,5 +1,12 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
   "printWidth": 100,
-  "ignorePatterns": [".next/**", ".source/**", "next-env.d.ts", "bun.lock", "content/**/*.mdx"]
+  "ignorePatterns": [
+    ".next/**",
+    ".source/**",
+    "next-env.d.ts",
+    "bun.lock",
+    "content/**/*.mdx",
+    "public/skills/**"
+  ]
 }

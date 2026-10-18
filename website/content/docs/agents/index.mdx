@@ -9,6 +9,25 @@ description: How an AI agent is expected to work with Sakura Lang, from reading 
 
 Sakura Lang is designed to be written by agents and reviewed by humans. The signature is the contract: parameter types with refinements, result type, effect row, error union, and `requires`/`ensures`. Agents write bodies against it; humans review signatures and the diff of signatures.
 
+## Portable Sakura skill
+
+Read the raw [`SKILL.md`](/skills/sakura/SKILL.md), or download the
+[complete skill ZIP](/skills/sakura-skill.zip) with its
+[SHA-256 checksum](/skills/sakura-skill.sha256) and
+[provenance manifest](/skills/manifest.json). The skill and its relative references
+are a byte-identical mirror of [`skills/sakura/`](https://github.com/icantcodefyi/sakuralang/tree/master/skills/sakura).
+
+Verify the ZIP with `shasum -a 256 -c sakura-skill.sha256`, then extract its `sakura/`
+folder under one project-local skill directory: `.claude/skills/sakura/`,
+`.agents/skills/sakura/`, or `.cursor/skills/sakura/`. Keep its `references/` and any
+`assets/` alongside `SKILL.md`.
+
+The manifest records the canonical inputs' Git commit, compiler version and every
+file's SHA-256. The website tracks current source; the source metadata placeholders
+are filled when the CLI embeds its matching bundle. Prefer your compiler's embedded
+guide when versions differ. For an immutable revision, substitute the manifest's
+commit in `https://raw.githubusercontent.com/icantcodefyi/sakuralang/<commit>/skills/sakura/SKILL.md`.
+
 ## Available today
 
 | Resource | What it is |

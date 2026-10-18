@@ -115,3 +115,24 @@ scheduled beside W2 as the first agent-DX items, DX5's runner and DX6's workflow
    her `@SAKURA_COMPILER_VERSION@`/`@SAKURA_COMPILER_GIT@` placeholders stay in the source.
 6. `cargo test --workspace` also fails on stale outputs (`agent_docs`'s `outputs_are_fresh`),
    beside the CI step `cargo run -p agent_docs --locked -- --check`.
+
+### DX1 (Sol, website distribution)
+
+1. `agent_docs` writes `website/public/skills/sakura/` byte-for-byte, plus sibling
+   `sakura-skill.zip`, `sakura-skill.sha256` and `manifest.json`. ZIP32 uses STORE,
+   sorted UTF-8 paths under `sakura/`, 1980-01-01 timestamps and no host attributes,
+   extras or comments. It rejects ZIP32 size/count limits; no compression dependency.
+   The source placeholders remain unchanged in the raw mirror and ZIP; the CLI's
+   build-time metadata fill remains separate, as required by byte equality.
+2. The manifest's `commit` is the last Git commit changing canonical inputs
+   (`SKILL.md`, authored `repairs.md`, assets, `docs/llms.txt`, std sources, the
+   diagnostic registry or workspace version); it is deliberately not HEAD, which
+   would make committing generated files invalidate themselves. `compiler_version`
+   comes from the workspace package version; `files` maps every skill-relative path
+   to its SHA-256, and `sha256` hashes the archive. Commit canonical input changes
+   before regenerating the distribution. Rust CI fetches full history for this
+   provenance lookup. No per-commit website copies or release assets are published.
+3. `agent_docs --check` compares binary outputs and rejects orphan public files;
+   regeneration removes them. The CLI harness independently checks ZIP layout,
+   mirror bytes, hashes and manifest metadata. Website formatting excludes this
+   generated directory so it cannot rewrite the canonical skill's bytes.

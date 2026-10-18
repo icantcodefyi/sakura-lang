@@ -9,6 +9,7 @@ dependencies = [
  "sakura_analysis",
  "sakura_diagnostics",
  "serde_json",
+ "sha2",
 ]
 
 [[package]]
@@ -1044,6 +1045,7 @@ dependencies = [
 name = "sakura_cli"
 version = "0.0.0"
 dependencies = [
+ "agent_docs",
  "clap",
  "sakura_analysis",
  "sakura_codegen_js",
@@ -1059,6 +1061,7 @@ dependencies = [
  "sakura_types",
  "sakura_verify",
  "serde_json",
+ "sha2",
  "toml",
 ]
 

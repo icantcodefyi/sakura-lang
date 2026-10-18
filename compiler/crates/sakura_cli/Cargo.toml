@@ -30,6 +30,8 @@ clap.workspace = true
 serde_json.workspace = true
 
 [dev-dependencies]
+agent_docs = { path = "../../tools/agent_docs" }
+sha2.workspace = true
 toml.workspace = true
 
 [lints]

@@ -495,3 +495,95 @@ fn harness_rejects_unclassified_fences_and_checks_wrong_fixed_pairs() {
     assert_eq!(orphans(&fixtures, &expect).len(), 1);
     let _ = std::fs::remove_dir_all(&expect);
 }
+
+/// The distributed tree and every archive byte must be reproducible from the source bundle.
+#[test]
+fn website_skill_distribution_matches_source() {
+    use sha2::{Digest, Sha256};
+
+    let hash = |bytes: &[u8]| -> String {
+        Sha256::digest(bytes)
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect()
+    };
+    let root = skill_dir().join("../..");
+    let skill = agent_docs::files(&skill_dir()).unwrap();
+    let commit = agent_docs::source_commit(&root).unwrap();
+    let expected = agent_docs::distribution(&skill, env!("CARGO_PKG_VERSION"), &commit).unwrap();
+    let public = root.join("website/public/skills");
+    let actual = agent_docs::files(&public).unwrap();
+    let differences: Vec<_> = expected
+        .keys()
+        .chain(actual.keys())
+        .filter(|name| expected.get(*name) != actual.get(*name))
+        .collect();
+    assert!(
+        differences.is_empty(),
+        "website skill distribution drifted at {differences:?}: run `cargo run -p agent_docs` in compiler/"
+    );
+
+    let manifest: Value = serde_json::from_slice(&actual["manifest.json"]).unwrap();
+    assert_eq!(manifest["commit"], commit);
+    assert_eq!(manifest["compiler_version"], env!("CARGO_PKG_VERSION"));
+    assert_eq!(manifest["schema_version"], 1);
+    assert_eq!(manifest["source"], "skills/sakura/");
+    assert_eq!(manifest["archive"], "sakura-skill.zip");
+    let zip = &actual["sakura-skill.zip"];
+    let digest = hash(zip);
+    assert_eq!(manifest["sha256"], digest);
+    assert_eq!(
+        actual["sakura-skill.sha256"],
+        format!("{digest}  sakura-skill.zip\n").as_bytes()
+    );
+    assert_eq!(manifest["files"].as_object().unwrap().len(), skill.len());
+    for (name, bytes) in &skill {
+        assert_eq!(&actual[&format!("sakura/{name}")], bytes, "mirror: {name}");
+        assert_eq!(manifest["files"][name], hash(bytes), "manifest: {name}");
+    }
+    assert!(actual["sakura/SKILL.md"].starts_with(b"---\n"));
+
+    // Inspect the ZIP layout independently of its writer: one sakura/ root, fixed metadata,
+    // sorted entries, no traversal or extra files, and byte-identical uncompressed bodies.
+    let u16_at = |i| u16::from_le_bytes(zip[i..i + 2].try_into().unwrap());
+    let u32_at = |i| u32::from_le_bytes(zip[i..i + 4].try_into().unwrap());
+    let mut pos = 0;
+    for (name, bytes) in &skill {
+        assert_eq!(u32_at(pos), 0x04034b50, "ZIP local header: {name}");
+        assert_eq!(u16_at(pos + 6), 0x0800, "UTF-8 flag");
+        assert_eq!(u16_at(pos + 8), 0, "STORE method");
+        assert_eq!(u16_at(pos + 10), 0, "fixed DOS time");
+        assert_eq!(u16_at(pos + 12), 33, "fixed DOS date");
+        assert_eq!(u32_at(pos + 18) as usize, bytes.len());
+        assert_eq!(u32_at(pos + 22) as usize, bytes.len());
+        let name_len = usize::from(u16_at(pos + 26));
+        assert_eq!(u16_at(pos + 28), 0, "no extra fields");
+        pos += 30;
+        assert_eq!(
+            &zip[pos..pos + name_len],
+            format!("sakura/{name}").as_bytes()
+        );
+        pos += name_len;
+        assert_eq!(&zip[pos..pos + bytes.len()], bytes, "ZIP body: {name}");
+        pos += bytes.len();
+    }
+    let central_offset = pos;
+    for name in skill.keys() {
+        assert_eq!(u32_at(pos), 0x02014b50, "ZIP central header: {name}");
+        let name_len = usize::from(u16_at(pos + 28));
+        assert_eq!(u16_at(pos + 30), 0, "no central extra fields");
+        assert_eq!(u16_at(pos + 32), 0, "no file comments");
+        assert_eq!(
+            &zip[pos + 46..pos + 46 + name_len],
+            format!("sakura/{name}").as_bytes()
+        );
+        pos += 46 + name_len;
+    }
+    assert_eq!(u32_at(pos), 0x06054b50, "ZIP end record");
+    assert_eq!(usize::from(u16_at(pos + 8)), skill.len());
+    assert_eq!(usize::from(u16_at(pos + 10)), skill.len());
+    assert_eq!(u32_at(pos + 12) as usize, pos - central_offset);
+    assert_eq!(u32_at(pos + 16) as usize, central_offset);
+    assert_eq!(u16_at(pos + 20), 0, "no archive comment");
+    assert_eq!(zip.len(), pos + 22, "no trailing data");
+}

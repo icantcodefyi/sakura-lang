@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "commit": "9bab1b8c3c1e26ebf501b6f821b1eb4f541497de",
+  "compiler_version": "0.0.0",
+  "source": "skills/sakura/",
+  "archive": "sakura-skill.zip",
+  "sha256": "bd88e2f517496e067161c6d57d0985294fc0228122689797413182b39ae5997f",
+  "files": {
+    "SKILL.md": "efaf418f1ebb91b363e6658f41550d8786e82c70cfa1be35a84d3562efdc8344",
+    "references/diagnostics.md": "2edfc5fbcb7b33cd77bec42828c9ded9496677b36dc5c31b01dc7e646ba75452",
+    "references/language.md": "dfd4a14eb0ede94ac31229aa2d281ba71c152db7292a0e72547051403296a920",
+    "references/repairs.md": "ec24b51a994491926f7012b274a1f98b606f6624f0aa992567ef26995a7771f9",
+    "references/stdlib.md": "cae357bd1627a9f213390d7bd50e43c770c5741638363f36c7e2bbbcde31728c"
+  }
+}

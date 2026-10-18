@@ -12,6 +12,18 @@ There are two different `llms.txt` files in the Sakura Lang project. Do not conf
 | Status | Live today | Exists today as a file; `sakura prompt` emits it |
 | Use it for | Explanations, the tour, agent tooling docs | Writing Sakura Lang code |
 
+## Portable skill
+
+The [`sakura` skill](/skills/sakura/SKILL.md) adds the compiler workflow, examples
+and repairs to the language reference. Its relative references are served raw
+alongside it. Download the [ZIP](/skills/sakura-skill.zip), verify its
+[SHA-256 checksum](/skills/sakura-skill.sha256), and inspect the
+[manifest](/skills/manifest.json) for the source commit, compiler version and file
+hashes. The [agents overview](/docs/agents#portable-sakura-skill) lists project-local
+install paths and immutable source URLs. These are byte-identical source files,
+including metadata placeholders; the installed compiler embeds its own matched
+bundle. They are served directly, without the docs Markdown transformation.
+
 ## Site exports
 
 <Callout type="info" title="Available today">

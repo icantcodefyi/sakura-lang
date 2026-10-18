@@ -35,17 +35,32 @@ fn main() -> ExitCode {
         }
     };
     let mut stale = Vec::new();
-    for (rel, text) in outputs {
+    for (rel, bytes) in &outputs {
         let path = root.join(rel);
-        if std::fs::read_to_string(&path).ok().as_deref() == Some(text.as_str()) {
+        if std::fs::read(&path).ok().as_deref() == Some(bytes.as_slice()) {
             continue;
         }
         if check {
-            stale.push(rel);
+            stale.push(rel.clone());
         } else {
             std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-            std::fs::write(&path, text).unwrap();
+            std::fs::write(&path, bytes).unwrap();
             eprintln!("wrote {rel}");
+        }
+    }
+    // Removed source files must not remain downloadable in the mirror or archive.
+    let public = root.join("website/public/skills");
+    if public.exists() {
+        for rel in agent_docs::files(&public).unwrap().keys() {
+            let rel = format!("website/public/skills/{rel}");
+            if !outputs.contains_key(&rel) {
+                if check {
+                    stale.push(rel);
+                } else {
+                    std::fs::remove_file(root.join(&rel)).unwrap();
+                    eprintln!("removed {rel}");
+                }
+            }
         }
     }
     if stale.is_empty() {
@@ -59,7 +74,7 @@ fn main() -> ExitCode {
 }
 
 /// Every generated file, as `(path relative to the repository, contents)`.
-fn outputs(root: &Path) -> Result<Vec<(&'static str, String)>, String> {
+fn outputs(root: &Path) -> Result<agent_docs::Files, String> {
     let read = |rel: &str| {
         std::fs::read_to_string(root.join(rel)).map_err(|e| format!("cannot read {rel}: {e}"))
     };
@@ -68,7 +83,7 @@ fn outputs(root: &Path) -> Result<Vec<(&'static str, String)>, String> {
         return Err("the embedded std is empty; rebuild sakura_analysis".into());
     }
     let index = with_signatures(&read("compiler/std/INDEX.md")?, &listing)?;
-    Ok(vec![
+    let references = [
         (
             "skills/sakura/references/language.md",
             read("docs/llms.txt")?,
@@ -76,7 +91,20 @@ fn outputs(root: &Path) -> Result<Vec<(&'static str, String)>, String> {
         ("skills/sakura/references/stdlib.md", index.clone()),
         ("skills/sakura/references/diagnostics.md", diagnostics()),
         ("compiler/std/INDEX.md", index),
-    ])
+    ];
+    let mut skill = agent_docs::files(&root.join("skills/sakura"))?;
+    let mut out = agent_docs::Files::new();
+    for (name, text) in references {
+        if let Some(name) = name.strip_prefix("skills/sakura/") {
+            skill.insert(name.into(), text.as_bytes().to_vec());
+        }
+        out.insert(name.into(), text.into_bytes());
+    }
+    let commit = agent_docs::source_commit(root)?;
+    for (name, bytes) in agent_docs::distribution(&skill, env!("CARGO_PKG_VERSION"), &commit)? {
+        out.insert(format!("website/public/skills/{name}"), bytes);
+    }
+    Ok(out)
 }
 
 /// `index` with the text between [`BEGIN`] and [`END`] replaced by `listing`.
@@ -199,10 +227,10 @@ mod tests {
     #[test]
     fn outputs_are_fresh() {
         let root = super::repo();
-        for (rel, text) in super::outputs(&root).unwrap() {
-            let on_disk = std::fs::read_to_string(root.join(rel)).unwrap_or_default();
+        for (rel, bytes) in super::outputs(&root).unwrap() {
+            let on_disk = std::fs::read(root.join(&rel)).unwrap_or_default();
             assert!(
-                on_disk == text,
+                on_disk == bytes,
                 "{rel} is stale: run `cargo run -p agent_docs` in compiler/ and commit it"
             );
         }

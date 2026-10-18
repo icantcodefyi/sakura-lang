@@ -23,6 +23,10 @@ published yet.
 
 ### Added
 
+- Downloadable Sakura skill with a byte-identical website mirror, deterministic ZIP,
+  SHA-256 checksum and provenance manifest. `agent_docs --check` and the CLI harness
+  reject distribution drift; the agents docs and `/llms.txt` link the bundle.
+
 - Canonical Sakura agent skill source with a compiler-driven edit loop, four offline
   examples and a fixture-seeded repair table. Generated references, embedded metadata
   and distribution are tracked separately in the agent DX plan.
