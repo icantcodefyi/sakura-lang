@@ -13,7 +13,7 @@ let days = 365.24
 fn at(bs: List<Body>, i: Int) -> Body { Option.expect(bs[i], "body index") }
 
 fn set(bs: List<Body>, i: Int, b: Body) -> List<Body> {
-  List.concat(List.push(List.slice(bs, 0, i), b), List.slice(bs, i + 1, List.len(bs)))
+  List.set(bs, i, b)
 }
 
 fn planet(x: Float, y: Float, z: Float, vx: Float, vy: Float, vz: Float, m: Float) -> Body {
