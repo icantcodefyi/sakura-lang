@@ -35,10 +35,6 @@ const KNOWN: &[(&str, &str)] = &[
         "a JS-only defect (§17.80): WASM computes the i64 result",
     ),
     (
-        "properties.sakura",
-        "property tests: property_run (sakura-gen-v1 generation and shrinking) is not on WASM yet",
-    ),
-    (
         "test_blocks.sakura",
         "an expect_defect body overflows Int: its trace's defect event is D003 on JS, D001 on WASM",
     ),

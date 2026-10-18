@@ -83,6 +83,7 @@ const TESTED: &[&str] = &[
     "word_count",
     "concurrency",
     "graph",
+    "property",
 ];
 
 #[test]
