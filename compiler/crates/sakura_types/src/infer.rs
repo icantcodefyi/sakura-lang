@@ -182,6 +182,24 @@ impl Infer {
         Self::default()
     }
 
+    /// Inference over an earlier check's `interner`, whose types may mention that check's
+    /// variables (one left unsolved in a body that failed to check): fresh variables are
+    /// numbered after all of them, so none aliases (design §17.194 (4)).
+    pub fn continuing(interner: Interner) -> Self {
+        let (ty, row) = interner.var_bounds();
+        let row_slot = RowSlot::Unbound {
+            level: 0,
+            upper: None,
+            ends: None,
+        };
+        Infer {
+            interner,
+            ty_vars: vec![TySlot::Unbound { level: 0 }; ty as usize],
+            row_vars: vec![row_slot; row as usize],
+            ..Self::default()
+        }
+    }
+
     /// The base of refined type `def` at its positional `args` (`NonEmpty<Int>` → `List<Int>`).
     // ponytail: row arguments are not substituted; a refined type over an effectful function
     // type would keep its row parameter. Carry row slots here if one ever appears.

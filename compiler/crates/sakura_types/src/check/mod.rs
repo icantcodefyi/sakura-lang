@@ -28,8 +28,10 @@ use text_size::TextRange;
 
 use crate::infer::Infer;
 use crate::render::Names;
-use crate::ty::{Constraint, Label, ParamId, RowId, RowParamId, Scheme, TypeId};
-use crate::{CallTarget, Hole, TypedProgram};
+use crate::ty::{
+    Constraint, Interner, Label, ParamId, RowId, RowParamId, Scheme, Tail, Type, TypeId,
+};
+use crate::{CallTarget, Hole, TypedBody, TypedProgram};
 
 pub(crate) use decls::GenericSlot;
 
@@ -237,8 +239,12 @@ pub(crate) fn check(
     if let Some((prev, _)) = reuse {
         // Reused bodies hold the previous `TypeId`s and their defs' `ParamId`s, so start from
         // the previous interner and declarations, and never check those defs again.
-        cx.inf.interner = prev.interner.clone();
+        cx.inf = Infer::continuing(prev.interner.clone());
         for (def, s) in prev.defs.iter().filter(|(d, _)| reused(d.module)) {
+            debug_assert!(
+                ty_var(&prev.interner, s.ty, ANY, &mut HashSet::new()).is_none(),
+                "reused scheme of {def:?} mentions an inference variable"
+            );
             cx.schemes.insert(*def, s.clone());
             cx.checked.insert(*def);
         }
@@ -253,6 +259,9 @@ pub(crate) fn check(
             cx.fields.insert(*d, f.clone());
         }
     }
+    let prev_vars = reuse
+        .filter(|_| cfg!(debug_assertions))
+        .map(|(prev, _)| prev.interner.var_bounds());
     cx.prepare();
     for (mi, module) in program.modules.iter().enumerate() {
         let mid = ModuleId(mi as u32);
@@ -275,6 +284,15 @@ pub(crate) fn check(
             .retain(|d| d.spans.first().is_none_or(|s| !reused_file(s.file)));
         for (key, body) in prev.bodies.iter().filter(|((m, _), _)| reused(*m)) {
             cx.out.bodies.insert(*key, body.clone());
+        }
+        let checked = cx.out.bodies.iter().filter(|((m, _), _)| !reused(*m));
+        for (key, body) in checked.filter(|_| prev_vars.is_some()) {
+            let old = prev_vars.and_then(|below| body_var(&cx.inf.interner, body, below));
+            assert!(
+                old.is_none(),
+                "checked body {key:?} mentions {}, numbered like the reused analysis' own",
+                old.unwrap_or_default()
+            );
         }
         let holes = prev.holes.iter().filter(|h| reused(h.module)).cloned();
         cx.out.holes.extend(holes);
@@ -451,4 +469,70 @@ pub(crate) fn constraint_of(b: sakura_hir::Bound) -> Constraint {
         sakura_hir::Bound::Show => Constraint::Show,
         sakura_hir::Bound::Schema => Constraint::Schema,
     }
+}
+
+/// Bounds `(ty, row)` below which [`ty_var`] reports a variable: every one.
+const ANY: (u32, u32) = (u32::MAX, u32::MAX);
+
+/// An inference variable numbered below `below` that `b`'s types mention, if any. `check` with
+/// reuse starts from the previous interner, whose types may mention the previous check's
+/// variables (an unsolved one in a body that failed to check), so its own variables must be
+/// numbered after them or the two would alias (design §17.194 (4)).
+fn body_var(i: &Interner, b: &TypedBody, below: (u32, u32)) -> Option<String> {
+    let mut seen = HashSet::new();
+    let schemes = b.local_schemes.values().map(|s| s.ty);
+    let tys = (b.types.values().copied())
+        .chain(b.pat_types.values().copied())
+        .chain(b.locals.values().copied())
+        .chain(schemes)
+        .chain(b.instantiations.values().flatten().copied())
+        .chain(
+            b.conversions
+                .values()
+                .flat_map(|(_, ts)| ts.iter().copied()),
+        );
+    let rows = b.rows.values().copied();
+    tys.map(Ok).chain(rows.map(Err)).find_map(|t| match t {
+        Ok(t) => ty_var(i, t, below, &mut seen),
+        Err(r) => row_var(i, r, below, &mut seen),
+    })
+}
+
+fn ty_var(
+    i: &Interner,
+    t: TypeId,
+    below: (u32, u32),
+    seen: &mut HashSet<TypeId>,
+) -> Option<String> {
+    if !seen.insert(t) {
+        return None;
+    }
+    let ty = |t: &TypeId, seen: &mut HashSet<TypeId>| ty_var(i, *t, below, seen);
+    match i.ty(t) {
+        Type::Var(v) => (v.0 < below.0).then(|| format!("{v:?}")),
+        Type::Tuple(ts) | Type::Con(_, ts) => ts.iter().find_map(|t| ty(t, seen)),
+        Type::Fn { params, ret, row } => (params.iter().chain([ret]))
+            .find_map(|t| ty(t, seen))
+            .or_else(|| row_var(i, *row, below, seen)),
+        Type::Handler { label, row } => (label.args.iter())
+            .find_map(|t| ty(t, seen))
+            .or_else(|| row_var(i, *row, below, seen)),
+        Type::RowArg(row) => row_var(i, *row, below, seen),
+        Type::Union(_) | Type::Never | Type::Param(_) | Type::Error => None,
+    }
+}
+
+fn row_var(
+    i: &Interner,
+    r: RowId,
+    below: (u32, u32),
+    seen: &mut HashSet<TypeId>,
+) -> Option<String> {
+    let row = i.row_data(r);
+    if let Tail::Var(v) = row.tail
+        && v.0 < below.1
+    {
+        return Some(format!("{v:?}"));
+    }
+    (row.labels.iter().flat_map(|l| &l.args)).find_map(|&t| ty_var(i, t, below, seen))
 }

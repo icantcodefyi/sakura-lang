@@ -188,6 +188,23 @@ impl Interner {
         id
     }
 
+    /// One past the highest type and row inference variable any interned type or row mentions.
+    pub fn var_bounds(&self) -> (u32, u32) {
+        let ty = (self.types.iter())
+            .filter_map(|t| match t {
+                Type::Var(v) => Some(v.0 + 1),
+                _ => None,
+            })
+            .max();
+        let row = (self.rows.iter())
+            .filter_map(|r| match r.tail {
+                Tail::Var(v) => Some(v.0 + 1),
+                _ => None,
+            })
+            .max();
+        (ty.unwrap_or(0), row.unwrap_or(0))
+    }
+
     pub fn ty(&self, id: TypeId) -> &Type {
         &self.types[id.0 as usize]
     }
