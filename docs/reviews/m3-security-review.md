@@ -254,8 +254,13 @@ runs. The template conversion (`check/expr.rs` `template`, `lower/expr.rs` `untr
 `std/urlpart` are untouched by the fix; `holds` (`check/body.rs::adt_holds`) is the one checker
 change.
 
-- [ ] WS10 landed (commit: ______); the three `V2033` fixtures and the `acceptance.rs` cases
-      above pass, and the rule in §17.130 is the one to freeze.
+- [ ] WS10 landed (commits: `93cc256` the `holds` rule and `V2033`, with the fixtures and
+      `acceptance.rs` cases; `2dd0f34` `Uuid`/`Decimal` as refinements and `uuid_decode`;
+      `9267060` the `--contracts` skip); the three `V2033` fixtures and the `acceptance.rs` cases
+      above pass, and the rule in §17.130 is the one to freeze. One gap found while landing it,
+      filed in `compiler/REQUESTS.md` for the designer and not changed by WS10: assigning a field
+      of a refined record (`var x = d; x.frac = [5, 0]`) skips the predicate, so outside
+      `std/decimal` a `Decimal` can lose its canonical form, which `opaque` used to prevent.
 
 **Decided before your review (§17.124, §17.125), for you to confirm or overturn.**
 
