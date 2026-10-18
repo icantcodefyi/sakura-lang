@@ -183,6 +183,42 @@ fn test_json_has_exactly_one_summary_at_the_end() {
     assert_eq!(recs[2]["failed"], 1);
 }
 
+/// Design §17.186: Node's loader realpaths the entry script, so a build directory reached through
+/// a symlink must still be granted under its real path, and the snapshot write must be granted.
+#[cfg(unix)]
+#[test]
+fn test_writes_snapshots_from_a_project_behind_a_symlink() {
+    let base = std::env::temp_dir().join(format!("sakura-cli-{}-symlinked", std::process::id()));
+    let _ = std::fs::remove_dir_all(&base);
+    std::fs::create_dir_all(base.join("real/proj")).unwrap();
+    std::os::unix::fs::symlink(base.join("real"), base.join("link")).unwrap();
+    let proj = base.join("link/proj");
+    std::fs::write(
+        proj.join("main.sak"),
+        "test \"renders\" { expect_snapshot(\"page\", 42) }\n",
+    )
+    .unwrap();
+    let out_dir = proj.join("target/sakura/js");
+    let args = ["test", "--json", "--out-dir", out_dir.to_str().unwrap()];
+    let update = sakura(
+        &[&args[..], &["--update-snapshots", "main.sak"]].concat(),
+        &proj,
+    );
+    assert_eq!(update.code, Some(0), "{}{}", update.stdout, update.stderr);
+    let snap = base.join("real/proj/tests/__snapshots__/main/page.snap");
+    assert_eq!(std::fs::read_to_string(&snap).unwrap(), "42\n");
+    let compare = sakura(&[&args[..], &["main.sak"]].concat(), &proj);
+    assert_eq!(
+        compare.code,
+        Some(0),
+        "{}{}",
+        compare.stdout,
+        compare.stderr
+    );
+    let recs = common::json_lines(&compare.stdout).unwrap();
+    assert_eq!(recs[0]["status"], "passed");
+}
+
 /// std's own `test` blocks run under the same runner as user tests and must all pass.
 #[test]
 fn std_tests_pass() {
