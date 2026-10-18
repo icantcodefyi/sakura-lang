@@ -1738,9 +1738,14 @@ function bindVars(s, env) {
   return [s[0], ...s.slice(1).map((a) => bindVars(a, env))];
 }
 
-/** Does `v` satisfy refined type `r`? Runs its pure `where` predicate as a child task. */
+/**
+ * Does `v` satisfy refined type `r`? Runs its pure `where` predicate under the current task's
+ * identity (design §17.155): a drive that cannot perform spends no task number, and a defect in
+ * it is the decoding task's. Its own finalizer list keeps an unwind off the borrowed task's.
+ */
 function satisfies(r, v) {
-  const o = runTask(r.check, [v]);
+  const t = { id: T.t?.id ?? null, fins: [], cancelled: false, wake: null, kids: new Set() };
+  const o = runTask(r.check, [v], null, t);
   if (o instanceof Promise) throw internal(`the where clause of ${r.name} suspended`);
   if (o.kind === "defect") throw o.error;
   return o.kind === "ok" && o.value === true;

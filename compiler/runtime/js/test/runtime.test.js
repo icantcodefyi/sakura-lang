@@ -771,3 +771,27 @@ test("sakura-gen-v1: the SplitMix64 reference vector and its derived draws (ABI 
   assert.notEqual(rt.caseStream(0, 3, 1).next(), rt.caseStream(0, 3, 2).next());
   assert.notEqual(rt.caseStream(0, 3, 1).next(), rt.taskStream(0).next());
 });
+
+test("a refined decode runs its predicate under the decoding task and allocates no task", () => {
+  // Design §17.155: the predicate sees the decoding task's id, and the next task the program
+  // creates takes the number after it.
+  const seen = [];
+  rt.refined("t::Small", "Small", "I", (v, _ctx, k) => {
+    seen.push(rt.T.t.id);
+    return ret(k, v < 10);
+  });
+  const probe = (_ctx, k) => {
+    seen.push(rt.T.t.id);
+    return ret(k, undefined);
+  };
+  const main = (_ctx, k) => {
+    seen.push(rt.T.t.id);
+    const r = rt.json_decode("3", ["A", "t::Small", []]);
+    rt.runTask(probe);
+    return ret(k, r);
+  };
+  assert.equal(rt.runTask(main).kind, "ok");
+  const [decoding, predicate, next] = seen;
+  assert.equal(predicate, decoding);
+  assert.equal(next, decoding + 1);
+});

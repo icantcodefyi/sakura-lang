@@ -1,0 +1,25 @@
+// milestone: M3
+// covers: design §17.155 (a refinement predicate in a decode spends no trace task number), §17.80
+
+// A decode of a refined record runs each `where` predicate under the decoding task, so the
+// children `Task.all` starts next are numbered 1 and 2 on both backends, and their performs
+// carry those numbers in the trace (`tests/parity.rs` compares task numbers exactly).
+import std/json.{DecodeError}
+
+type Percent = Int where it >= 0 && it <= 100
+
+type Score = { name: String, percent: Percent }
+
+fn read(text: String) -> Result<List<Score>, DecodeError> { Json.decode(text) }
+
+pub fn main() -> Unit ! {Console, Task} {
+  match read("[\{\"name\": \"a\", \"percent\": 40\}, \{\"name\": \"b\", \"percent\": 90\}]") {
+    Ok(scores) => {
+      let shown = Task.all(
+        List.map(scores, fn(s) { fn() { Console.print("{s.name} {s.percent}") } }),
+      )
+      Console.print("children {List.len(shown)}")
+    },
+    Err(e) => Console.print("unexpected {e.path}: {e.message}"),
+  }
+}

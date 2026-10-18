@@ -9,9 +9,8 @@
 //! (§17.80: the backends differ exactly at `Int` ±(2^53−1); `common::expectation`). Fixtures
 //! WASM cannot run yet are listed in `KNOWN` with the reason; one
 //! that starts agreeing fails the test until it is removed, so the list stays exact.
-//! Task numbers in traces are compared up to renaming in order of first appearance: JS spends
-//! a task number on each refinement check a JSON decode runs (`runTask(r.check, …)`), which on
-//! WASM the host's copy of the JS runtime runs outside the guest. An example with
+//! Task numbers in traces compare exactly (design §17.155: a runtime-internal drive spends no
+//! number on either backend). An example with
 //! `stdout-regex` (the host clock) is held to its regex by `tests/wasm.rs`, not compared here.
 //! The report on stderr gives the counts and which effect operations the traces covered.
 //! Skipped when node is missing, unless `SAKURA_REQUIRE_WASM=1`.
@@ -132,32 +131,8 @@ fn run_mode(mode: &str, target: &str, name: &str, dir: &Path, rest: &[&str]) -> 
         } else {
             out.stdout
         },
-        trace: renumbered(&std::fs::read_to_string(&trace).unwrap_or_default()),
+        trace: std::fs::read_to_string(&trace).unwrap_or_default(),
     }
-}
-
-/// `trace` with its `"task":n` numbers renamed 0, 1, … in order of first appearance.
-fn renumbered(trace: &str) -> String {
-    let mut seen: Vec<String> = vec![];
-    let mut out = String::new();
-    for line in trace.lines() {
-        match line.find("\"task\":") {
-            Some(at) => {
-                let rest = &line[at + 7..];
-                let end = rest
-                    .find(|c: char| !c.is_ascii_digit())
-                    .unwrap_or(rest.len());
-                let id = &rest[..end];
-                let k = seen.iter().position(|s| s == id).unwrap_or_else(|| {
-                    seen.push(id.to_owned());
-                    seen.len() - 1
-                });
-                out.push_str(&format!("{}{k}{}\n", &line[..at + 7], &rest[end..]));
-            }
-            None => out.push_str(&format!("{line}\n")),
-        }
-    }
-    out
 }
 
 /// `None` when the backends agree, or, for a fixture with a backend's own expectation
