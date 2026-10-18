@@ -1,0 +1,11 @@
+// milestone: M1
+// expect-exit: 70
+// expect-defect: D004
+// covers: Defect; design §17.162 (the message names the value on every backend)
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("before")
+  let nan = 0.0 / 0.0
+  Console.print("{Float.round(nan)}")
+  Console.print("never printed")
+}

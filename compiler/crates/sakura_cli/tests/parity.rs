@@ -1,9 +1,9 @@
 //! JS vs WASM parity (plan §3.1 M4-WASM acceptance, §17.80): every run-mode fixture of
 //! `compiler/tests/semantics` runs with `--target js` and `--target wasm`, and the two must
-//! agree on stdout, the exit code, the defect code on stderr, and the effect trace
-//! (`SAKURA_TRACE`); every test-mode fixture runs `sakura test --json` on both, which must
-//! agree on the exit code, each test's status, failures, captured output and defect code,
-//! and the trace. The examples (`compiler/examples`) are held to the same, run in their project
+//! agree on stdout, the exit code, the defect record on stderr (code, message and site spans,
+//! design §17.162), and the effect trace (`SAKURA_TRACE`); every test-mode fixture runs
+//! `sakura test --json` on both, which must agree on the exit code, each test's status,
+//! failures, captured output and defect code and message, and the trace. The examples (`compiler/examples`) are held to the same, run in their project
 //! (run-mode ones with their `args`, and every one's tests). A fixture with an `@js`/`@wasm`
 //! directive or a `<name>.<backend>.stdout` is held to each backend's own expectation instead
 //! (§17.80: the backends differ exactly at `Int` ±(2^53−1); `common::expectation`). Fixtures
@@ -30,7 +30,7 @@ const KNOWN: &[(&str, &str)] = &[];
 struct Run {
     code: Option<i32>,
     stdout: String,
-    defect: Option<String>,
+    defect: Option<Defect>,
     trace: String,
     /// On WASM: the host imports the module declares, the host provides, and those called
     /// (`SAKURA_WASM_COVERAGE`, `sakura_wasm_host.js`).
@@ -65,9 +65,30 @@ fn imports(path: &Path) -> Imports {
     out
 }
 
-fn defect_code(stderr: &str) -> Option<String> {
-    let at = stderr.find("\"code\":\"D")? + 8;
-    Some(stderr[at..at + 4].to_owned())
+/// The §12.2 defect record's three fields an agent acts on (§17.162): code, message and the
+/// site (the `spans` array as JSON; absent and empty are the same).
+#[derive(Debug, PartialEq)]
+struct Defect {
+    code: String,
+    message: String,
+    spans: String,
+}
+
+/// The first defect record on stderr.
+fn defect_record(stderr: &str) -> Option<Defect> {
+    let v = stderr
+        .lines()
+        .filter(|l| l.contains("\"kind\":\"defect\""))
+        .find_map(|l| serde_json::from_str::<serde_json::Value>(l).ok())?;
+    let spans = match &v["spans"] {
+        serde_json::Value::Null => "[]".to_owned(),
+        s => s.to_string(),
+    };
+    Some(Defect {
+        code: v["code"].as_str()?.to_owned(),
+        message: v["message"].as_str().unwrap_or_default().to_owned(),
+        spans,
+    })
 }
 
 /// `sakura test --json`'s `test` records without their timing, one line each.
@@ -75,10 +96,10 @@ fn test_records(stdout: &str) -> String {
     let mut out = String::new();
     for r in json_lines(stdout).unwrap_or_default() {
         if r["kind"] == "test" {
-            let defect = r["defect"]["code"].as_str().unwrap_or("");
+            let code = r["defect"]["code"].as_str().unwrap_or("");
             out.push_str(&format!(
-                "{} {} {} {} {}\n",
-                r["name"], r["status"], r["failures"], r["output"], defect
+                "{} {} {} {} {} {}\n",
+                r["name"], r["status"], r["failures"], r["output"], code, r["defect"]["message"]
             ));
         }
     }
@@ -127,7 +148,7 @@ fn run_mode(mode: &str, target: &str, name: &str, dir: &Path, rest: &[&str]) -> 
     Run {
         imports: imports(&coverage),
         code: if out.timed_out { None } else { out.code },
-        defect: defect_code(&out.stderr),
+        defect: defect_record(&out.stderr),
         stdout: if mode == "test" {
             test_records(&out.stdout)
         } else {
@@ -158,7 +179,7 @@ fn compare(
                     return Some(format!("{b}: exit {:?}, expected {}", r.code, e.exit));
                 }
                 if let Some(code) = &e.defect
-                    && r.defect.as_ref() != Some(code)
+                    && r.defect.as_ref().map(|d| &d.code) != Some(code)
                     && !trace_defects(&r.trace).contains(code)
                 {
                     return Some(format!("{b}: no defect {code}"));
@@ -173,6 +194,14 @@ fn compare(
                         ));
                     }
                 }
+            }
+            // Only a backend-named expectation is masked: the same expected code must come
+            // with the same message and site.
+            if ej.defect == ew.defect && js.defect != wasm.defect {
+                return Some(format!(
+                    "defect records differ\n--- js\n{:?}\n--- wasm\n{:?}",
+                    js.defect, wasm.defect
+                ));
             }
             if mode == "test" && js.stdout != wasm.stdout {
                 return Some(format!(
@@ -206,7 +235,7 @@ fn compare(
     }
     if js.defect != wasm.defect {
         return Some(format!(
-            "defect {:?} on js, {:?} on wasm",
+            "defect records differ\n--- js\n{:?}\n--- wasm\n{:?}",
             js.defect, wasm.defect
         ));
     }
@@ -322,6 +351,49 @@ fn a_single_trace_event_divergence_is_rejected() {
 }
 
 #[test]
+fn a_wrong_defect_site_or_message_is_rejected() {
+    let run = |stderr: &str| Run {
+        code: Some(70),
+        stdout: String::new(),
+        defect: defect_record(stderr),
+        trace: String::new(),
+        imports: Imports::default(),
+    };
+    let record = |message: &str, start: u32| {
+        format!(
+            "{{\"schema_version\":\"1.0\",\"kind\":\"defect\",\"code\":\"D020\",\
+             \"message\":\"{message}\",\"spans\":[{{\"uri\":\"file:///a.sakura\",\
+             \"start_byte\":{start},\"end_byte\":40,\"role\":\"primary\"}}]}}"
+        )
+    };
+    let js = run(&record("precondition `p` of f violated", 30));
+    assert_eq!(js.defect.as_ref().unwrap().code, "D020");
+    assert_eq!(
+        compare(
+            None,
+            "run",
+            &js,
+            &run(&record("precondition `p` of f violated", 30))
+        ),
+        None
+    );
+    for wasm in [
+        run(&record("precondition `p` of f violated", 31)),
+        run(&record("contract `p` violated", 30)),
+        run(
+            "{\"schema_version\":\"1.0\",\"kind\":\"defect\",\"code\":\"D020\",\
+             \"message\":\"precondition `p` of f violated\"}",
+        ),
+    ] {
+        let difference = compare(None, "run", &js, &wasm).expect("a different record must fail");
+        assert!(
+            difference.starts_with("defect records differ"),
+            "{difference}"
+        );
+    }
+}
+
+#[test]
 fn js_and_wasm_agree_on_the_semantics_corpus() {
     let node = std::process::Command::new("node").arg("--version").output();
     if !node.is_ok_and(|out| out.status.success()) {
@@ -405,7 +477,7 @@ fn js_and_wasm_agree_on_the_semantics_corpus() {
     }
     eprintln!(
         "parity: {agree} of {total} run- and test-mode fixtures agree on stdout (test records), \
-         exit, defect and trace; {known} known differences; {examples_agree} of {examples} \
+         exit, defect record and trace; {known} known differences; {examples_agree} of {examples} \
          example runs and test runs agree; {} failures",
         failures.len()
     );

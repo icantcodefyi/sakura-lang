@@ -1,0 +1,19 @@
+// milestone: M3
+// needs: contract checks; a predicate calls a function whose own precondition fails
+// expect-exit: 70
+// expect-defect: D011
+// covers: Defect; design §17.162 (the inner check's message and spans)
+
+fn half(x: Int) -> Int
+  requires even: x % 2 == 0
+{ x / 2 }
+
+fn halves(x: Int) -> Int
+  requires small: half(x) < 10
+{ half(x) }
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("{halves(4)}")
+  Console.print("{halves(3)}")
+  Console.print("never printed")
+}

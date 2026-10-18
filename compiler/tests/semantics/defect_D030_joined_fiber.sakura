@@ -1,0 +1,17 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D030
+// covers: Defect; design §17.162 (a child's defect keeps its message through `join`)
+
+fn lookup(key: String) -> Int {
+  Map.of([("a", 1)]).get(key).expect("{key} is configured")
+}
+
+pub fn main() -> Unit ! {Console, Task} {
+  Console.print("before")
+  let n = Task.scope(fn(s) {
+    let f = Task.spawn(s, fn() { lookup("b") })
+    Task.join(f)
+  })
+  Console.print("{n}")
+}

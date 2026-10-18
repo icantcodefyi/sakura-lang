@@ -1,0 +1,15 @@
+// milestone: M3
+// needs: contract checks; the predicate's own defect carries the program's message
+// expect-exit: 70
+// expect-defect: D011
+// covers: Defect; design §17.162 (`contract evaluation failed: D030: <message>`)
+
+fn first(xs: List<Int>) -> Int
+  requires headed: xs.get(0).expect("the list has a head") >= 0
+{ List.len(xs) }
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("before")
+  Console.print("{first([])}")
+  Console.print("never printed")
+}

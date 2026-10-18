@@ -1,0 +1,12 @@
+// milestone: M3
+// needs: requires checks in std, named and unnamed
+// expect-exit: 70
+// expect-defect: D020
+// covers: Defect; design §17.162 (std's clauses blame the program's call)
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("{Int.clamp(7, 1, 5)}")
+  Console.print("{Int.pow(2, 10)}")
+  Console.print("{Int.clamp(7, 5, 1)}")
+  Console.print("never printed")
+}
