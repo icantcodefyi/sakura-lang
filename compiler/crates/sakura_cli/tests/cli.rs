@@ -1052,6 +1052,36 @@ test "replays" {{
     );
 }
 
+/// `--dump direct`'s loop lines (design §17.181 (1)): a loop body with nine CPS steps keeps the
+/// shared-continuation form, eight and `loop_resume_twice`'s `spin` stay resumable.
+#[test]
+fn dump_direct_names_loops_over_the_step_bound() {
+    let semantics = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/semantics");
+    for (file, lines) in [
+        (
+            "loop_resume_bound.sak",
+            &[
+                "main::loop_resume_bound::nine loop j1 shared(too-many-steps(9))",
+                "main::loop_resume_bound::eight loop j1 resumable",
+            ][..],
+        ),
+        (
+            "loop_resume_twice.sak",
+            &["main::loop_resume_twice::spin loop j1 resumable"][..],
+        ),
+    ] {
+        let out = sakura(&["build", "--dump", "direct", file], &semantics);
+        assert_eq!(out.code, Some(0), "{}", out.stderr);
+        for line in lines {
+            assert!(
+                out.stdout.lines().any(|l| l == *line),
+                "{line}\n{}",
+                out.stdout
+            );
+        }
+    }
+}
+
 /// `sakura build --dump direct` (design §17.111) on research/10's kernels: the recursive `fib`
 /// (§17.112), the higher-order `list_map_fold` and its lambdas are direct.
 #[test]

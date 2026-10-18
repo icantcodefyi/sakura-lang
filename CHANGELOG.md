@@ -61,6 +61,11 @@ published yet.
 
 ### Changed
 
+- A loop body with more than eight CPS steps keeps the shared-continuation form instead of
+  the resumable `for (;;)` loop, which copies the rest of an iteration once per step;
+  `sakura build --dump direct` lists each such loop as `resumable` or
+  `shared(too-many-steps(<n>))` (design §17.181 (1)).
+
 - **Breaking:** Sakura Lang source files end in `.sak` instead of `.sakura`, a clean switch
   with no fallback (owner decision, design §17.179). Rename sources with
   `git mv main.sakura main.sak`; `sakura` names the rename when given a `.sakura` file or a

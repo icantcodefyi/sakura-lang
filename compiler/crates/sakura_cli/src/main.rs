@@ -116,7 +116,9 @@ enum Command {
         manifest: bool,
         /// Print a compiler fact instead of writing JS. `direct`: every def and lambda as
         /// `direct` or `cps(<reason>)`, reasons `row`, `callee <name>`, `closure-call`,
-        /// `perform <Effect.op>`, `with`, `try`, `fail`, `recursion` (design §17.111). `core`:
+        /// `perform <Effect.op>`, `with`, `try`, `fail`, `recursion` (design §17.111), then each
+        /// join-point loop of a resumable shape as `resumable` or
+        /// `shared(too-many-steps(<n>))` (design §17.181 (1)). `core`:
         /// the user modules' Core, each `Int` operation the JS interval pass proves marked
         /// `proved` (design §17.114) and each in-place update `owned`. `owned`: each consuming
         /// site of an owned-capable update as `owned` or `shared(<reason>)`, reasons `origin`,

@@ -572,14 +572,15 @@ impl Analysis {
     }
 
     /// `sakura build --dump direct`: every def and lambda as `direct` or `cps(<reason>)`
-    /// (design §17.111), or `None` if there were errors.
+    /// (design §17.111), then each resumable-shaped loop (§17.181 (1)), or `None` if there were
+    /// errors.
     pub fn dump_direct(
         snapshot: &Snapshot,
         opts: &BuildOptions,
     ) -> (Option<String>, Vec<Diagnostic>) {
         let (module, diagnostics) = Analysis::lower_core(snapshot, opts);
         (
-            module.map(|m| sakura_codegen_js::dump_direct(&m)),
+            module.map(|m| sakura_codegen_js::dump_direct(&m) + &sakura_codegen_js::dump_loops(&m)),
             diagnostics,
         )
     }

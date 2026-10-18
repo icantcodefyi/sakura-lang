@@ -17,6 +17,25 @@ use crate::direct::{self, Closures};
 use crate::sourcemap::{self, Mapping};
 use crate::{Cx, RESERVED, RUNTIME_FILE, ident, js_string, module_path};
 
+/// `--dump direct`'s loop lines: each CPS def's join-point loops of a resumable shape as
+/// `resumable` or `shared(too-many-steps(<n>))` (design §17.181 (1)).
+pub(crate) fn dump_loops(cx: &Cx, out: &mut String) {
+    let (ns, pool) = (RefCell::new(BTreeSet::new()), Pool::default());
+    for (i, d) in cx.m.defs.iter().enumerate() {
+        let e = FnEmit::new(cx, DefId(i as u32), &d.module, &[], Mode::Cps, &ns, &pool);
+        for (l, n) in e.loops() {
+            let _ = match n <= MAX_LOOP_STEPS {
+                true => writeln!(out, "{}::{} loop j{} resumable", d.module, d.name, l.0),
+                false => writeln!(
+                    out,
+                    "{}::{} loop j{} shared(too-many-steps({n}))",
+                    d.module, d.name, l.0
+                ),
+            };
+        }
+    }
+}
+
 pub(crate) fn module(cx: &Cx, module: &str) -> (String, String) {
     let mut w = W {
         out: String::new(),
@@ -399,6 +418,10 @@ struct FnEmit<'a> {
     rl: Option<Resumable<'a>>,
 }
 
+/// The most CPS steps a resumable loop's body may have (design §17.181 (1)): the slow path
+/// copies the iteration's remainder once per step.
+const MAX_LOOP_STEPS: usize = 8;
+
 /// A resumable loop being emitted (design §17.156 (2)): `const jL = (ps) => { gauge; jL: for
 /// (;;) { … } }`. On the fast path its inner joins are labelled blocks and the back edge is
 /// `continue`. An iteration leaves the loop only at a CPS step (it suspends or forwards to a CPS
@@ -501,13 +524,10 @@ impl<'a> FnEmit<'a> {
         e.analyze_labels();
         if mode == Mode::Cps && cx.direct.enabled {
             e.resumable = e
-                .labels
-                .iter()
-                .filter(|(l, i)| {
-                    let mut found = false;
-                    i.recursive && !i.inline && e.loop_steps(e.joins[*l], &mut found) && found
-                })
-                .map(|(l, _)| *l)
+                .loops()
+                .into_iter()
+                .filter(|(_, n)| *n <= MAX_LOOP_STEPS)
+                .map(|(l, _)| l)
                 .collect();
         }
         brackets(&def.body, &e.proved, &mut e.unbracketed);
@@ -797,9 +817,29 @@ impl<'a> FnEmit<'a> {
         }
     }
 
-    /// Are the CPS steps in a loop body (`found` when there is one) only unbound performs and
-    /// `cps` builtins, with no inner loop, `with` or `try` (design §17.156 (2))?
-    fn loop_steps(&self, e: &Expr, found: &mut bool) -> bool {
+    /// The join-point loops of a resumable shape (design §17.156 (2)), with their CPS step
+    /// counts, sorted by label. Those over [`MAX_LOOP_STEPS`] keep the shared-continuation form
+    /// (§17.181 (1)).
+    fn loops(&self) -> Vec<(Label, usize)> {
+        let mut loops: Vec<(Label, usize)> = self
+            .labels
+            .iter()
+            .filter_map(|(l, i)| {
+                let mut steps = 0;
+                (i.recursive
+                    && !i.inline
+                    && self.loop_steps(self.joins[l], &mut steps)
+                    && steps > 0)
+                    .then_some((*l, steps))
+            })
+            .collect();
+        loops.sort_by_key(|(l, _)| l.0);
+        loops
+    }
+
+    /// Are the CPS steps in a loop body (counted into `steps`) only unbound performs and `cps`
+    /// builtins, with no inner loop, `with` or `try` (design §17.156 (2))?
+    fn loop_steps(&self, e: &Expr, steps: &mut usize) -> bool {
         sakura_core::ensure_stack(|| match e {
             Expr::Let {
                 local, bind, body, ..
@@ -811,24 +851,24 @@ impl<'a> FnEmit<'a> {
                             if builtins::lookup(name).is_some_and(|b| b.abi == Abi::Cps) => {}
                         _ => return false,
                     }
-                    *found = true;
+                    *steps += 1;
                 }
-                self.loop_steps(body, found)
+                self.loop_steps(body, steps)
             }
             Expr::Ret(_) | Expr::Fail(_) | Expr::Jump(..) => true,
             Expr::LetJoin {
                 label, join, body, ..
             } => {
                 !self.labels[label].recursive
-                    && self.loop_steps(join, found)
-                    && self.loop_steps(body, found)
+                    && self.loop_steps(join, steps)
+                    && self.loop_steps(body, steps)
             }
             Expr::Switch { arms, default, .. } => {
-                arms.iter().all(|(_, a)| self.loop_steps(a, found))
-                    && default.as_ref().is_none_or(|d| self.loop_steps(d, found))
+                arms.iter().all(|(_, a)| self.loop_steps(a, steps))
+                    && default.as_ref().is_none_or(|d| self.loop_steps(d, steps))
             }
             Expr::If { then, els, .. } => {
-                self.loop_steps(then, found) && self.loop_steps(els, found)
+                self.loop_steps(then, steps) && self.loop_steps(els, steps)
             }
             Expr::Handle { .. } | Expr::Try { .. } => false,
         })

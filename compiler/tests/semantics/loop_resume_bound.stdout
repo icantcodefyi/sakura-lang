@@ -1,0 +1,7 @@
+nine i=0 acc=3 t=2
+nine i=1 acc=42 t=4
+nine i=2 acc=149 t=6
+eight i=0 acc=7 t=8
+eight i=1 acc=41 t=12
+eight i=2 acc=120 t=14
+149 120

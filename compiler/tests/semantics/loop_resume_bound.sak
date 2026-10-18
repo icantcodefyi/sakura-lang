@@ -1,0 +1,61 @@
+// milestone: M3
+// covers: performance-r1 WS-P2b; design §17.181 (1) (a loop body with nine CPS steps keeps the
+// shared-continuation form and one with eight stays resumable; both suspend and resume with
+// their loop and handler state, and their traces match under --no-direct)
+
+effect Counter {
+  fn next() -> Int
+}
+
+fn counter() -> Handler<Counter> {
+  handler Counter {
+    var n = 0
+    fn next() {
+      n = n + 1
+      n
+    }
+  }
+}
+
+fn nine(tag: String) -> Int ! {Clock, Console, Counter} {
+  var acc = 0
+  var i = 0
+  while i < 3 {
+    let a = Counter.next()
+    let b = Counter.next()
+    Clock.sleep(Duration.millis(1))
+    let c = Counter.next()
+    if a % 2 == 0 { Clock.sleep(Duration.millis(2)) }
+    let d = Counter.next()
+    Clock.sleep(Duration.millis(1))
+    acc = acc + a + b * c - d
+    Console.print("{tag} i={i} acc={acc} t={Instant.to_unix_millis(Clock.now())}")
+    i = i + 1
+  }
+  acc
+}
+
+fn eight(tag: String) -> Int ! {Clock, Console, Counter} {
+  var acc = 0
+  var i = 0
+  while i < 3 {
+    let a = Counter.next()
+    let b = Counter.next()
+    Clock.sleep(Duration.millis(1))
+    let c = Counter.next()
+    if a % 2 == 0 { Clock.sleep(Duration.millis(2)) }
+    Clock.sleep(Duration.millis(1))
+    acc = acc + a + b * c
+    Console.print("{tag} i={i} acc={acc} t={Instant.to_unix_millis(Clock.now())}")
+    i = i + 1
+  }
+  acc
+}
+
+pub fn main() -> Unit ! {Console} {
+  with Clock.virtual() {
+    let x = with counter() { nine("nine") }
+    let y = with counter() { eight("eight") }
+    Console.print("{x} {y}")
+  }
+}

@@ -164,6 +164,17 @@ pub fn dump_direct(m: &Module) -> String {
     out
 }
 
+/// The loop lines of `sakura build --dump direct` (design §17.181 (1)), kept apart from
+/// [`dump_direct`]'s def lines, which the LIR reproduces (§17.118).
+pub fn dump_loops(m: &Module) -> String {
+    let mut out = String::new();
+    emit::dump_loops(
+        &Cx::new(m, direct::analyze(m), &Options::new(Vec::new())),
+        &mut out,
+    );
+    out
+}
+
 /// `std::console` → `std/console.js`, `main` → `main.js`.
 pub fn module_path(module: &str) -> String {
     format!("{}.js", module.replace("::", "/"))
