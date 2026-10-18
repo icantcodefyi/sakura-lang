@@ -19,8 +19,23 @@ fn std_test_blocks_pass() {
         include_str!("test_runner.js"),
     )
     .unwrap();
-    let r = common::node(&dir, "__sakura_test__.js", &["1"]);
-    assert_eq!(r.code, 0, "{}{}", r.stdout, r.stderr);
+    // `Test.fixtures()` is an empty `tests/fixtures`, as under `sakura test` (design §17.73).
+    let fixtures = dir.join("fixtures");
+    std::fs::create_dir_all(&fixtures).unwrap();
+    let out = std::process::Command::new("node")
+        .arg(dir.join("__sakura_test__.js"))
+        .arg("1")
+        .env("SAKURA_FIXTURES", &fixtures)
+        .env_remove("SAKURA_RECORD")
+        .output()
+        .expect("node runs");
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
 }
 
 #[test]
