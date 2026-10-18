@@ -1,122 +1,65 @@
-//! The converter from live Core (feature `convert`). Callers run it only under `SAKURA_BLESS=1`,
-//! so changes in M0–M3 lowering never fail an M4 crate's tests (plan §3.5); review every snapshot
-//! diff it produces.
+//! The converter from live Core (feature `convert`), and the `SAKURA_BLESS=1` snapshot writer
+//! over the real frontend (feature `bless`). Review every snapshot diff it produces.
 
-use std::path::Path;
-
-use sakura_analysis::Analysis;
 use sakura_core as c;
-use sakura_hir as h;
 
 use crate as v;
 
-/// For each `<dir>/fixtures/<name>.sakura`, writes `<dir>/core/<name>.json` under
-/// `SAKURA_BLESS=1`; otherwise asserts each snapshot exists.
-pub fn bless_dir(dir: &Path) {
-    let bless = std::env::var("SAKURA_BLESS").is_ok_and(|v| v == "1");
-    for entry in std::fs::read_dir(dir.join("fixtures")).unwrap() {
-        let path = entry.unwrap().path();
-        let name = path.file_stem().unwrap().to_str().unwrap().to_owned();
-        let out = dir.join("core").join(format!("{name}.json"));
-        if !bless {
-            assert!(out.exists(), "{name}: no snapshot; run with SAKURA_BLESS=1");
-            continue;
-        }
-        let source = std::fs::read_to_string(&path).unwrap();
-        std::fs::write(&out, snapshot(&name, &source).to_json()).unwrap();
-    }
-}
+#[cfg(feature = "bless")]
+pub use bless::{bless_dir, snapshot};
 
-/// The snapshot of the program `source` (as `file:///<name>/src/main.sakura`, with std).
-///
-/// # Panics
-///
-/// If the program has errors.
-pub fn snapshot(name: &str, source: &str) -> v::Snapshot {
-    let uri = format!("file:///{name}/src/main.sakura");
-    let snap = sakura_analysis::Snapshot::with_std([(uri, source.to_owned())]);
-    let (module, diags) = Analysis::lower_core(&snap, &Default::default());
-    let errors: Vec<String> = diags
-        .iter()
-        .filter(|d| d.is_error())
-        .map(|d| format!("{}: {}", d.code.0, d.message))
-        .collect();
-    let module = module.unwrap_or_else(|| panic!("{name}: {}", errors.join("\n")));
-    let analyzed = Analysis::analyze(&snap);
-    let files = snap.file_ids().map(|f| snap.file(f).uri.clone()).collect();
-    let mut m = convert(&module);
-    refined_params(&analyzed.program, &mut m);
-    v::Snapshot {
-        format: v::FORMAT.to_owned(),
-        files,
-        module: m,
-    }
-}
+#[cfg(feature = "bless")]
+mod bless {
+    use std::path::Path;
 
-/// Core erases refined types to their base; recover each user function parameter's refinement
-/// from its HIR signature.
-fn refined_params(p: &h::Program, m: &mut v::Module) {
-    let module_name = |id: h::ModuleId| {
-        let md = p.module(id);
-        format!("{}::{}", p.packages[md.package.0 as usize].name, md.path)
-    };
-    for (mi, md) in p.modules.iter().enumerate() {
-        let mid = h::ModuleId(mi as u32);
-        let mname = module_name(mid);
-        for (_, d) in md.defs.iter() {
-            let h::DefKind::Fn(f) = &d.kind else { continue };
-            let Some(core) = m.defs.iter().position(|cd| {
-                cd.name == d.name
-                    && cd.module == mname
-                    && matches!(cd.kind, v::FnKind::Top { .. })
-                    && cd.params.len() == f.sig.params.len()
-            }) else {
+    use sakura_analysis::Analysis;
+
+    use crate as v;
+
+    /// For each `<dir>/fixtures/<name>.sakura`, writes `<dir>/core/<name>.json` under
+    /// `SAKURA_BLESS=1`; otherwise asserts each snapshot exists.
+    pub fn bless_dir(dir: &Path) {
+        let bless = std::env::var("SAKURA_BLESS").is_ok_and(|v| v == "1");
+        for entry in std::fs::read_dir(dir.join("fixtures")).unwrap() {
+            let path = entry.unwrap().path();
+            let name = path.file_stem().unwrap().to_str().unwrap().to_owned();
+            let out = dir.join("core").join(format!("{name}.json"));
+            if !bless {
+                assert!(out.exists(), "{name}: no snapshot; run with SAKURA_BLESS=1");
                 continue;
-            };
-            let refined: Vec<Option<v::RefinedParam>> = f
-                .sig
-                .params
-                .iter()
-                .map(|param| {
-                    let h::TypeRefKind::Named {
-                        res: h::TypeRes::Def(t),
-                        ..
-                    } = &param.ty.kind
-                    else {
-                        return None;
-                    };
-                    let td = p.def(*t);
-                    let h::DefKind::Type(h::TypeDef {
-                        body: h::TypeDefBody::Refined { .. },
-                        ..
-                    }) = &td.kind
-                    else {
-                        return None;
-                    };
-                    let tmod = module_name(t.module);
-                    let from = format!("{}$from", td.name);
-                    let check = m
-                        .defs
-                        .iter()
-                        .position(|cd| cd.name == from && cd.module == tmod)
-                        .map(|i| i as u32);
-                    Some(v::RefinedParam {
-                        ty: format!("{tmod}::{}", td.name),
-                        check,
-                    })
-                })
-                .collect();
-            if refined.iter().any(Option::is_some) {
-                m.defs[core].refined_params = refined;
             }
+            let source = std::fs::read_to_string(&path).unwrap();
+            std::fs::write(&out, snapshot(&name, &source).to_json()).unwrap();
+        }
+    }
+
+    /// The snapshot of the program `source` (as `file:///<name>/src/main.sakura`, with std).
+    ///
+    /// # Panics
+    ///
+    /// If the program has errors.
+    pub fn snapshot(name: &str, source: &str) -> v::Snapshot {
+        let uri = format!("file:///{name}/src/main.sakura");
+        let snap = sakura_analysis::Snapshot::with_std([(uri, source.to_owned())]);
+        let (module, diags) = Analysis::lower_core(&snap, &Default::default());
+        let errors: Vec<String> = diags
+            .iter()
+            .filter(|d| d.is_error())
+            .map(|d| format!("{}: {}", d.code.0, d.message))
+            .collect();
+        let module = module.unwrap_or_else(|| panic!("{name}: {}", errors.join("\n")));
+        v::Snapshot {
+            format: v::FORMAT.to_owned(),
+            files: snap.file_ids().map(|f| snap.file(f).uri.clone()).collect(),
+            module: super::convert(&module),
         }
     }
 }
 
-/// Core's module as a snapshot module, without [`v::Def::refined_params`].
+/// Core's module as a snapshot module.
 pub fn convert(m: &c::Module) -> v::Module {
     v::Module {
-        defs: m.defs.iter().map(def).collect(),
+        defs: m.defs.iter().map(|d| def(m, d)).collect(),
         types: m
             .types
             .iter()
@@ -207,7 +150,7 @@ fn pos(p: c::Pos) -> v::Pos {
     }
 }
 
-fn def(d: &c::FnDef) -> v::Def {
+fn def(m: &c::Module, d: &c::FnDef) -> v::Def {
     v::Def {
         name: d.name.clone(),
         module: d.module.clone(),
@@ -236,7 +179,19 @@ fn def(d: &c::FnDef) -> v::Def {
         row_vars: d.row_vars.clone(),
         pos: d.pos.map(pos),
         body: block(&d.body),
-        refined_params: vec![],
+        refined_params: d
+            .refined_params
+            .iter()
+            .map(|r| {
+                r.map(|r| {
+                    let r = &m.refinements[r.index()];
+                    v::RefinedParam {
+                        ty: r.qualified_name(),
+                        check: Some(r.check.0),
+                    }
+                })
+            })
+            .collect(),
     }
 }
 

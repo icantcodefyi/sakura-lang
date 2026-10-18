@@ -9,8 +9,11 @@ repository.workspace = true
 publish.workspace = true
 
 [features]
-# The converter from live Core; only the `SAKURA_BLESS=1` tests enable it (as a dev-dependency).
-convert = ["dep:sakura_analysis", "dep:sakura_core", "dep:sakura_hir"]
+# The converter from live Core.
+convert = ["dep:sakura_core"]
+# `convert::snapshot`/`bless_dir` over the real frontend, for `SAKURA_BLESS=1` tests (enable it
+# only as a dev-dependency).
+bless = ["convert", "dep:sakura_analysis"]
 
 [dependencies]
 serde.workspace = true
@@ -18,7 +21,6 @@ serde_json = { workspace = true, features = ["unbounded_depth"] }
 serde_stacker.workspace = true
 sakura_analysis = { workspace = true, optional = true }
 sakura_core = { workspace = true, optional = true }
-sakura_hir = { workspace = true, optional = true }
 
 [lints]
 workspace = true

@@ -17,7 +17,9 @@ sha2.workspace = true
 
 [dev-dependencies]
 insta.workspace = true
-sakura_core_snapshot = { path = "../sakura_core_snapshot", features = ["convert"] }
+sakura_analysis.workspace = true
+sakura_core.workspace = true
+sakura_core_snapshot = { path = "../sakura_core_snapshot", features = ["bless"] }
 
 [lints]
 workspace = true

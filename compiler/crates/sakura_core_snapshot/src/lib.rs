@@ -1,13 +1,13 @@
 //! `sakura-core-snapshot-v1` (design §17.107): a committed, lossless copy of Core
 //! (`sakura_core::ir`) that M4 crates (`sakura_verify`, `sakura_lir`) read instead of a live
 //! `sakura_core` dependency (plan §3.5: M4 work before the M3 gates must not follow M0–M3 churn).
-//! [`convert`] (feature `convert`, enabled only by `SAKURA_BLESS=1` tests) writes it from the real
-//! frontend.
+//! [`convert`] (feature `convert`) converts live Core; with feature `bless` (only for
+//! `SAKURA_BLESS=1` tests) it also writes snapshots from the real frontend.
 //!
-//! The data mirrors `sakura_core::ir` field by field, with two changes. Expressions are flattened
-//! into blocks (a list of statements and one terminator) so a long `let` chain does not nest, and
-//! the snapshot adds what Core erases but the verifier needs: each def's refined parameters
-//! ([`Def::refined_params`]), taken from the HIR signature.
+//! The data mirrors `sakura_core::ir` field by field, except that expressions are flattened into
+//! blocks (a list of statements and one terminator) so a long `let` chain does not nest, and that
+//! [`Def::refined_params`] names each refined parameter's type and `T$check` def instead of a
+//! refinement id.
 
 #[cfg(feature = "convert")]
 pub mod convert;
@@ -416,8 +416,8 @@ pub struct Def {
     pub row_vars: Vec<u32>,
     pub pos: Option<Pos>,
     pub body: Block,
-    /// Per parameter, the refined type it was declared with (`p: Percent`), if any, and the
-    /// def that checks its `where` (`Percent$from`) when Core contains one. Not in Core.
+    /// Per parameter (or empty when none is), the refined type it was declared with
+    /// (`p: Percent`), from Core's `FnDef::refined_params`.
     pub refined_params: Vec<Option<RefinedParam>>,
 }
 
@@ -425,7 +425,9 @@ pub struct Def {
 pub struct RefinedParam {
     /// Qualified name of the refined type (`main::main::Percent`).
     pub ty: String,
-    /// The `from` def, whose entry `where` check is the refinement's predicate.
+    /// `T$check(it) -> Bool`, the refinement's `where` predicate. Always present in snapshots
+    /// converted from Core with `refined_params` (§17.107); `None` reads as "assume only the base
+    /// type".
     pub check: Option<DefId>,
 }
 

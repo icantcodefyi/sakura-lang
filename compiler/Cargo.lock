@@ -1071,7 +1071,6 @@ version = "0.0.0"
 dependencies = [
  "sakura_analysis",
  "sakura_core",
- "sakura_hir",
  "serde",
  "serde_json",
  "serde_stacker",
@@ -1195,6 +1194,8 @@ name = "sakura_verify"
 version = "0.0.0"
 dependencies = [
  "insta",
+ "sakura_analysis",
+ "sakura_core",
  "sakura_core_snapshot",
  "sakura_diagnostics",
  "serde",

@@ -28,7 +28,7 @@ expression: r
   "reason": null,
   "path_feasible": true,
   "path_conditions": [
-    "|Percent$from.v%3|",
+    "|Percent$check.v%3|",
     "|t%3|",
     "(in_js |t%11|)",
     "(in_js |t%12|)"

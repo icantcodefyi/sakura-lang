@@ -295,12 +295,16 @@ pub fn generate_def(m: &Module, profile: Profile, def: DefId) -> DefVc {
         if let Some(Some(r)) = d.refined_params.get(i) {
             match r.check {
                 Some(check) => {
+                    // A caller established the refinement: assume `T$check(p)` (§17.84).
                     g.vc.inlined.insert(format!("refinement {}", r.ty));
                     let mut sub = Frame::new(m.def(check), Emit::Silent, &m.def(check).name);
-                    if let Some(p2) =
+                    if let Some((p2, holds)) =
                         g.inline(&mut sub, check, vec![], vec![v.clone()], path.clone())
                     {
-                        path = p2.0;
+                        path = p2;
+                        if let Val::Bool(t) = holds {
+                            path.assume.push(t);
+                        }
                     }
                 }
                 None => g.vc.notes.push(format!(
