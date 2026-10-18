@@ -100,8 +100,11 @@ unused_must_use = "deny"
 all = { level = "warn", priority = -1 }
 
 # Debug info dominates target/ size. Keep line tables (backtraces) for our crates, none for deps.
+# The test suites spend their time in the compiler itself (in process and through the `sakura`
+# binary), which runs 10-20x faster at opt-level 1; debug assertions and overflow checks stay on.
 [profile.dev]
 debug = "line-tables-only"
+opt-level = 1
 
 [profile.dev.package."*"]
 debug = false
