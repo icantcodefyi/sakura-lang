@@ -390,19 +390,27 @@ pub fn json_validate(n: i64) -> i64 {
     let text = lines.join("\n");
     let (mut valid, mut bytes, mut ids, mut invalid) = (0, 0, 0, 0);
     for line in text.split('\n').filter(|l| !l.is_empty()) {
-        let value: serde_json::Value = serde_json::from_str(line).expect("generated JSON");
+        let Ok(value) = serde_json::from_str::<serde_json::Value>(line) else {
+            invalid += 1;
+            continue;
+        };
         match (
-            value["id"].as_i64(),
+            value["id"].as_f64(),
             value["name"].as_str(),
-            value["age"].as_i64(),
+            value["age"].as_f64(),
         ) {
             (Some(id), Some(name), Some(age))
-                if id.abs() <= 9_007_199_254_740_991
+                if id.is_finite()
+                    && id.fract() == 0.0
+                    && id.abs() <= 9_007_199_254_740_991.0
                     && !name.is_empty()
                     && name.len() <= 32
-                    && (0..=150).contains(&age) =>
+                    && age.fract() == 0.0
+                    && (0.0..=150.0).contains(&age) =>
             {
                 valid += 1;
+                let id = id as i64;
+                let age = age as i64;
                 let name = serde_json::to_string(name).unwrap();
                 let encoded = format!("{{\"id\":{id},\"name\":{name},\"age\":{age}}}");
                 bytes += encoded.len() as i64;

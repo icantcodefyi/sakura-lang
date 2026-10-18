@@ -425,7 +425,8 @@ func JsonValidate(n int64) int64 {
 		}
 		var value map[string]any
 		if err := json.Unmarshal([]byte(line), &value); err != nil {
-			panic(err)
+			invalid++
+			continue
 		}
 		id, okid := value["id"].(float64)
 		name, okname := value["name"].(string)

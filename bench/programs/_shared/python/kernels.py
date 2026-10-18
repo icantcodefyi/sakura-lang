@@ -186,17 +186,25 @@ def json_validate(n):
     for line in text.split('\n'):
         if not line:
             continue
-        user = json.loads(line)
-        ident, name, age = user['id'], user['name'], user['age']
-        if (type(ident) is not int or abs(ident) > 9007199254740991 or
+        try:
+            user = json.loads(line)
+        except ValueError:
+            invalid += 1
+            continue
+        if not isinstance(user, dict):
+            invalid += 1
+            continue
+        ident, name, age = user.get('id'), user.get('name'), user.get('age')
+        if (type(ident) not in (int, float) or not abs(ident) <= 9007199254740991 or
+                not math.isfinite(ident) or ident != int(ident) or
                 not isinstance(name, str) or not 0 < len(name.encode()) <= 32 or
-                type(age) is not int or not 0 <= age <= 150):
+                type(age) not in (int, float) or not 0 <= age <= 150 or age != int(age)):
             invalid += 1
         else:
             valid += 1
-            encoded = json.dumps({'id': ident, 'name': name, 'age': age}, separators=(',', ':'), ensure_ascii=False)
+            encoded = json.dumps({'id': int(ident), 'name': name, 'age': int(age)}, separators=(',', ':'), ensure_ascii=False)
             byte_count += len(encoded.encode())
-            ids += ident
+            ids += int(ident)
     return valid + byte_count + ids + 1000 * invalid
 
 
