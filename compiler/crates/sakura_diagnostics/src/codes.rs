@@ -550,6 +550,24 @@ Fixed (a range the generator constructs):
       requires number >= 0
     { \"SKU-{number}\" }";
 
+    W7002 "vacuous_obligation" VERIFY,
+"A contract obligation was proved only because the assumptions on its path are contradictory, so
+the path can never run and the proof says nothing useful (design §17.98, §17.105). The verifier
+checks the path's feasibility first; `unsat` is reported as `proved` with `path_feasible: false`
+and this warning. Usually a `requires` or a branch condition rules out every input; remove the
+contradiction or the dead branch.
+
+Warning:
+    fn f(x: Int) -> Int
+      requires x > 0 && x < 0
+      ensures result > 100
+    { x }
+Fixed:
+    fn f(x: Int) -> Int
+      requires x > 0
+      ensures result > 0
+    { x }";
+
     W8001 "copy_on_write" PACKAGE,
 "An update to a shared collection is forced to copy inside a loop because another reference
 retains the old value (design §8.2). Drop the retaining use or restructure the loop.";
@@ -594,6 +612,29 @@ Sakura Lang defect). Never your program's fault; please report it.";
 
     D091 "host_failure" RUNTIME,
 "A host operation failed outside Sakura Lang's control (for example a rejected host promise).";
+
+    D092 "rc_overflow" RUNTIME,
+"On the WASM runtime, an object's reference count would pass 2^32 − 1. The count is left
+unchanged and the task ends with this defect instead of wrapping (`runtime/rt/ABI.md` §13).";
+
+    D093 "finalizer_failed" RUNTIME,
+"On the WASM runtime, a finalizer (the cleanup of `Fs.with_file` and similar) failed with an error.
+A finalizer may not raise; handle the error inside it (`runtime/rt/ABI.md` §6.4).";
+
+    D094 "context_escaped" RUNTIME,
+"On the WASM runtime, an operation callback was called after its handler's perform site was gone.
+Defence in depth: a program that passes the escape check (`V6002`) cannot reach it, so this is a
+runtime or compiler bug; please report it (`runtime/rt/ABI.md` §13).";
+
+    D095 "fiber_retired" RUNTIME,
+"On the WASM runtime, `join` was called on a fiber that had already been retired. Defence in
+depth: unreachable from a program that passes the escape check, so this is a runtime or compiler
+bug; please report it (`runtime/rt/ABI.md` §13).";
+
+    D096 "heap_exhausted" RUNTIME,
+"On the WASM runtime, the heap limit (`SAKURA_MAX_HEAP`) was reached or memory could not grow.
+The task ends without running further user code. Raise the limit or reduce live data
+(`runtime/rt/ABI.md` §13).";
 }
 
 #[cfg(test)]
@@ -651,36 +692,78 @@ mod tests {
         }
     }
 
-    /// Every `Code("…")` literal in the compiler's crates must be registered here.
+    /// Plan §4 gate 2, two-way (§17.120): every code-shaped token (`\b[VWD][0-9]{3,4}\b`) in the
+    /// sources of `crates` (minus this one), `runtime/js` and `runtime/rt` is registered, and every
+    /// registered code appears there.
     #[test]
-    fn every_code_used_in_the_workspace_is_registered() {
-        fn scan(dir: &std::path::Path, out: &mut Vec<(String, String)>) {
+    fn gate_2_registry_and_constructed_codes_agree() {
+        fn scan(dir: &std::path::Path, out: &mut std::collections::BTreeMap<String, String>) {
             for entry in std::fs::read_dir(dir).into_iter().flatten().flatten() {
                 let path = entry.path();
+                let name = entry.file_name();
                 if path.is_dir() {
-                    scan(&path, out);
-                } else if path.extension().is_some_and(|e| e == "rs") {
-                    let text = std::fs::read_to_string(&path).unwrap_or_default();
-                    for (i, _) in text.match_indices("Code(\"") {
-                        let code: String =
-                            text[i + 6..].chars().take_while(|c| *c != '"').collect();
-                        out.push((code, path.display().to_string()));
+                    if !matches!(
+                        name.to_str(),
+                        Some("sakura_diagnostics" | "target" | "node_modules")
+                    ) {
+                        scan(&path, out);
+                    }
+                    continue;
+                }
+                if !path
+                    .extension()
+                    .is_some_and(|e| e == "rs" || e == "js" || e == "mjs")
+                {
+                    continue;
+                }
+                let text = std::fs::read(&path).unwrap_or_default();
+                let word = |i: usize| {
+                    text.get(i)
+                        .is_some_and(|b| b.is_ascii_alphanumeric() || *b == b'_')
+                };
+                for i in 0..text.len() {
+                    if !matches!(text[i], b'V' | b'W' | b'D') || (i > 0 && word(i - 1)) {
+                        continue;
+                    }
+                    let digits = text[i + 1..]
+                        .iter()
+                        .take_while(|b| b.is_ascii_digit())
+                        .count();
+                    if (3..=4).contains(&digits) && !word(i + 1 + digits) {
+                        let code = String::from_utf8_lossy(&text[i..=i + digits]).into_owned();
+                        out.entry(code)
+                            .or_insert_with(|| path.display().to_string());
                     }
                 }
             }
         }
-        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
-        let mut used = Vec::new();
-        scan(&root, &mut used);
-        for (code, file) in used {
-            let looks_like_code = code.len() >= 4 && code[1..].bytes().all(|b| b.is_ascii_digit());
-            if looks_like_code {
-                assert!(
-                    lookup(&code).is_some(),
-                    "{code} used in {file} is not registered"
-                );
-            }
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let mut used = std::collections::BTreeMap::new();
+        for dir in ["crates", "runtime/js", "runtime/rt"] {
+            scan(&root.join(dir), &mut used);
         }
+        // `V9999` is the unregistered sentinel; `D800` is a UTF-16 surrogate in a comment.
+        for code in ["V9999", "D800"] {
+            used.remove(code);
+        }
+        let unregistered: Vec<_> = used
+            .iter()
+            .filter(|(code, _)| lookup(code).is_none())
+            .collect();
+        assert!(
+            unregistered.is_empty(),
+            "constructed but not registered: {unregistered:?}"
+        );
+        // `V5002` is retired (§17.87); `W8001` is registered ahead of its M5 check.
+        let unconstructed: Vec<_> = REGISTRY
+            .iter()
+            .map(|i| i.code.0)
+            .filter(|c| !used.contains_key(*c) && !matches!(*c, "V5002" | "W8001"))
+            .collect();
+        assert!(
+            unconstructed.is_empty(),
+            "registered but never constructed: {unconstructed:?}"
+        );
     }
 
     #[test]

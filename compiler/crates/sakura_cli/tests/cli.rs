@@ -33,6 +33,11 @@ fn explain_known_and_unknown_codes() {
     assert!(out.stdout.contains("Wrong:") && out.stdout.contains("Fixed:"));
     let defect = sakura(&["explain", "D020"], Path::new("."));
     assert!(defect.stdout.contains("(runtime defect)"));
+    let rc = sakura(&["explain", "D092"], Path::new("."));
+    assert!(
+        rc.stdout
+            .starts_with("D092 rc_overflow (runtime defect)\n\n")
+    );
     assert_eq!(sakura(&["explain", "V9999"], Path::new(".")).code, Some(2));
 }
 
