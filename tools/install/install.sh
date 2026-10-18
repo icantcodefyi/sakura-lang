@@ -41,7 +41,10 @@ version=${version#v}
 case $version in
 *[!0-9A-Za-z.-]* | .* | *..*) die "not a version: $version" ;;
 esac
-[ -n "$prefix" ] || die "--prefix is empty"
+case $prefix in
+/*) ;;
+*) die "--prefix must be an absolute path" ;;
+esac
 
 # Platform detection: exactly the host's own CPU and ABI.
 os=$(uname -s)
@@ -119,6 +122,14 @@ else
 fi
 [ "$actual" = "$expected" ] || die "SHA-256 mismatch for $archive (expected $expected, got $actual); nothing was installed"
 
+# Attestation verification must succeed before extracting or executing the archive.
+if command -v gh >/dev/null 2>&1; then
+	gh attestation verify "$tmp/$archive" --repo icantcodefyi/sakuralang ||
+		die "attestation verification failed for $archive; nothing was installed"
+else
+	echo "integrity verified, not attested"
+fi
+
 # Only regular files and directories, all directly under the archive's top directory.
 tar -tvzf "$tmp/$archive" >"$tmp/listing" || die "cannot read $archive"
 if cut -c 1 "$tmp/listing" | grep -qv '[-d]'; then
@@ -145,7 +156,7 @@ case $reported in
 esac
 
 mkdir -p "$prefix/bin"
-staged="$prefix/bin/.sakura.install.$$"
+staged=$(mktemp "$prefix/bin/.sakura.install.XXXXXX") || die "cannot create a staging file"
 cp "$binary" "$staged"
 chmod 755 "$staged"
 mv -f "$staged" "$prefix/bin/sakura"

@@ -48,12 +48,62 @@ expect() {
 
 good="$work/good release"
 release "$good"
+# Keep the no-gh path deterministic even on hosts with an authenticated GitHub CLI.
+python=$(python3 -c 'import sys; print(sys.executable)')
+no_gh="$work/no gh"
+mkdir "$no_gh"
+for tool in sh uname awk cut grep tar gzip mkdir mktemp cp chmod mv rm ls sed cat sysctl ldd dirname sha256sum shasum find wc head curl wget ln; do
+	if path=$(command -v "$tool"); then ln -s "$path" "$no_gh/$tool"; fi
+done
+PATH=$no_gh
+export PATH
 expect "install into a prefix with spaces" ok "$work/prefix one" --base-url "$good"
+if ! grep -q '^integrity verified, not attested$' "$work/out"; then
+	echo "FAIL no gh: missing attestation notice"
+	failures=$((failures + 1))
+fi
 expect "repeat install" ok "$work/prefix one" --base-url "$good"
 if [ "$(find "$work/prefix one/bin" -mindepth 1 | wc -l)" -ne 1 ]; then
 	echo "FAIL install left files beside sakura"
 	failures=$((failures + 1))
 fi
+
+# A stub verifies the exact command and downloaded archive, without network or credentials.
+gh_tools="$work/gh tools"
+mkdir "$gh_tools"
+cat >"$gh_tools/gh" <<'EOF'
+#!/bin/sh
+set -eu
+[ "$#" -eq 5 ] && [ "$1" = attestation ] && [ "$2" = verify ] &&
+	[ -f "$3" ] && [ "$4" = --repo ] && [ "$5" = icantcodefyi/sakuralang ] || exit 2
+case $3 in
+*/sakuralang-9.9.9-test.1-*.tar.gz) ;;
+*) exit 2 ;;
+esac
+echo verified >"$GH_TEST_CALLED"
+exit "$GH_TEST_STATUS"
+EOF
+chmod 755 "$gh_tools/gh"
+GH_TEST_CALLED="$work/gh called"
+GH_TEST_STATUS=0
+export GH_TEST_CALLED GH_TEST_STATUS
+PATH="$gh_tools:$no_gh"
+expect "gh attestation verified" ok "$work/attested" --base-url "$good"
+if [ ! -f "$GH_TEST_CALLED" ] || grep -q 'not attested' "$work/out"; then
+	echo "FAIL gh verification was skipped or reported as unattested"
+	failures=$((failures + 1))
+fi
+rm -f "$GH_TEST_CALLED"
+GH_TEST_STATUS=1
+expect "gh attestation failure" fail "$work/unattested" --base-url "$good"
+if [ ! -f "$GH_TEST_CALLED" ] || ! grep -q 'attestation verification failed' "$work/out"; then
+	echo "FAIL gh failure: wrong refusal"
+	failures=$((failures + 1))
+fi
+PATH=$no_gh
+expect "relative prefix refused" fail "relative-prefix" --base-url "$good"
+expect "dash-leading prefix refused" fail "-prefix" --base-url "$good"
+expect "empty prefix refused" fail "" --base-url "$good"
 
 bad="$work/bad hash"
 release "$bad"
@@ -107,7 +157,7 @@ done
 expect "symlink entry" fail "$work/p7" --base-url "$links"
 
 traversal="$work/traversal"
-python3 -I - "$traversal" "$version" <<'EOF'
+"$python" -I - "$traversal" "$version" <<'EOF'
 import hashlib, io, os, sys, tarfile
 out, version = sys.argv[1], sys.argv[2]
 os.makedirs(out)

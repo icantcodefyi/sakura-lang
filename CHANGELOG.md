@@ -9,6 +9,10 @@ published yet.
 
 ### Security
 
+- The installer verifies GitHub artifact attestations when `gh` is available and fails
+  on verification errors; otherwise it reports "integrity verified, not attested".
+  Installation now requires an absolute prefix and uses a securely created staging file.
+
 - M3 exit gate 10 passed on 2026-10-18: the [security review](docs/reviews/m3-security-review.md)
   of the escape rules, the cassette format and the `Untrusted` template rule is signed by
   Claude Fable 5.1 under the owner's written delegation (design §17.159; not the owner's

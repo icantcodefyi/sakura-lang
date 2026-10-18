@@ -147,7 +147,15 @@ jobs:
       - name: Check sums, installer and npm offline install on this host
         run: |
           (cd dist && sha256sum --check --strict SHA256SUMS)
-          sh dist/install.sh --prefix "$RUNNER_TEMP/install prefix" --base-url "$PWD/dist"
+          # These local artifacts are not attested until publication. Exercise the
+          # installer's explicit no-gh fallback without hiding verification failures.
+          installer_tools="$RUNNER_TEMP/installer-tools"
+          mkdir "$installer_tools"
+          for tool in uname ls ldd grep mktemp rm cp awk sha256sum cut tar gzip mkdir chmod mv; do
+            ln -s "$(command -v "$tool")" "$installer_tools/$tool"
+          done
+          PATH="$installer_tools" /bin/sh dist/install.sh \
+            --prefix "$RUNNER_TEMP/install prefix" --base-url "$PWD/dist"
           "$RUNNER_TEMP/install prefix/bin/sakura" --version
           npm install --global --prefix "$RUNNER_TEMP/npm prefix" --offline --ignore-scripts \
             --no-audit --no-fund --cache "$RUNNER_TEMP/empty-npm-cache" \
