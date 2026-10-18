@@ -1,0 +1,5 @@
+ending: ok
+--- stdout
+1
+0
+<p>&lt;b&gt;x</p>

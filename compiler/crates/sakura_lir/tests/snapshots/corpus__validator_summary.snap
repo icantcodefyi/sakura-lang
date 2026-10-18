@@ -2,14 +2,24 @@
 source: crates/sakura_lir/tests/corpus.rs
 expression: summary
 ---
+semantics/arith_range_edges_division_zero: 2 funcs, 4 blocks, 0 dup, 1 drop, valid
+semantics/arith_range_edges_remainder_zero: 2 funcs, 4 blocks, 0 dup, 1 drop, valid
 semantics/blocks_and_let: 2 funcs, 5 blocks, 0 dup, 6 drop, valid
 semantics/catch_around_row_polymorphic_call: 6 funcs, 29 blocks, 4 dup, 13 drop, valid
 semantics/closures: 8 funcs, 23 blocks, 4 dup, 19 drop, valid
 semantics/constants: 6 funcs, 16 blocks, 3 dup, 16 drop, valid
+semantics/contract_site_blame: 3 funcs, 6 blocks, 0 dup, 0 drop, valid
+semantics/contract_site_blame_callback: 5 funcs, 14 blocks, 3 dup, 5 drop, valid
+semantics/contract_site_blame_callback_ensures: 5 funcs, 14 blocks, 3 dup, 5 drop, valid
+semantics/contract_site_blame_ensures: 3 funcs, 6 blocks, 0 dup, 0 drop, valid
+semantics/contract_site_blame_value: 3 funcs, 6 blocks, 0 dup, 0 drop, valid
+semantics/contract_site_blame_value_ensures: 3 funcs, 6 blocks, 0 dup, 0 drop, valid
 semantics/contracts_hold: 4 funcs, 12 blocks, 0 dup, 1 drop, valid
 semantics/deep_countdown: 3 funcs, 9 blocks, 0 dup, 1 drop, valid
+semantics/deep_sum: 3 funcs, 9 blocks, 0 dup, 1 drop, valid
 semantics/defect_D001_int_overflow: 3 funcs, 8 blocks, 0 dup, 3 drop, valid
 semantics/defect_D002_division_by_zero: 3 funcs, 8 blocks, 0 dup, 3 drop, valid
+semantics/defect_D010_generic_refinement_from: 3 funcs, 8 blocks, 1 dup, 4 drop, valid
 semantics/defect_D010_refinement_from: 3 funcs, 11 blocks, 0 dup, 3 drop, valid
 semantics/defect_D011_contract_evaluation_failed: 3 funcs, 8 blocks, 0 dup, 3 drop, valid
 semantics/defect_D020_requires_blames_caller: 5 funcs, 16 blocks, 0 dup, 3 drop, valid
@@ -17,19 +27,25 @@ semantics/defect_D021_ensures_blames_callee: 3 funcs, 9 blocks, 0 dup, 3 drop, v
 semantics/defect_D030_option_expect: 3 funcs, 8 blocks, 0 dup, 4 drop, valid
 semantics/defect_D031_string_slice_boundary: 3 funcs, 8 blocks, 0 dup, 3 drop, valid
 semantics/deterministic_clock_random: 30 funcs, 153 blocks, 9 dup, 94 drop, valid
+semantics/direct_closure_values: 6 funcs, 21 blocks, 6 dup, 21 drop, valid
 semantics/early_return: 4 funcs, 21 blocks, 3 dup, 24 drop, valid
 semantics/effects_and_handlers: 9 funcs, 46 blocks, 6 dup, 22 drop, valid
 semantics/error_unions: 5 funcs, 38 blocks, 0 dup, 5 drop, valid
 semantics/function_values: 5 funcs, 14 blocks, 2 dup, 15 drop, valid
+semantics/generic_refinement: 10 funcs, 43 blocks, 10 dup, 32 drop, valid
 semantics/generics: 16 funcs, 101 blocks, 21 dup, 46 drop, valid
 semantics/handler_callback_context: 15 funcs, 42 blocks, 2 dup, 24 drop, valid
+semantics/handler_cancel_in_loop: 14 funcs, 44 blocks, 0 dup, 14 drop, valid
+semantics/handler_clause_fail: 6 funcs, 19 blocks, 0 dup, 6 drop, valid
 semantics/handler_forwarding: 6 funcs, 16 blocks, 0 dup, 9 drop, valid
+semantics/handler_lexical_bind: 7 funcs, 30 blocks, 1 dup, 10 drop, valid
 semantics/handler_state: 8 funcs, 22 blocks, 1 dup, 9 drop, valid
 semantics/hello: 3 funcs, 6 blocks, 0 dup, 4 drop, valid
 semantics/if_else: 3 funcs, 21 blocks, 0 dup, 6 drop, valid
 semantics/imports: 9 funcs, 22 blocks, 0 dup, 20 drop, valid
 semantics/let_polymorphism: 4 funcs, 10 blocks, 2 dup, 19 drop, valid
 semantics/list_patterns: 4 funcs, 30 blocks, 8 dup, 31 drop, valid
+semantics/list_retained_version: 10 funcs, 45 blocks, 18 dup, 46 drop, valid
 semantics/list_set: 7 funcs, 35 blocks, 15 dup, 58 drop, valid
 semantics/literal_refinement_checked_at_startup: 5 funcs, 12 blocks, 1 dup, 4 drop, valid
 semantics/literal_refinement_decided: 3 funcs, 6 blocks, 0 dup, 11 drop, valid
@@ -45,11 +61,13 @@ semantics/records: 3 funcs, 9 blocks, 1 dup, 24 drop, valid
 semantics/row_param_type: 6 funcs, 22 blocks, 4 dup, 16 drop, valid
 semantics/row_widening: 15 funcs, 31 blocks, 1 dup, 10 drop, valid
 semantics/show_format: 3 funcs, 13 blocks, 2 dup, 35 drop, valid
+semantics/sql_untrusted_param: 16 funcs, 111 blocks, 10 dup, 52 drop, valid
 semantics/std_collections: 32 funcs, 192 blocks, 55 dup, 147 drop, valid
 semantics/strings_and_interpolation: 3 funcs, 10 blocks, 0 dup, 17 drop, valid
 semantics/tuples: 3 funcs, 9 blocks, 1 dup, 29 drop, valid
 semantics/type_aliases: 4 funcs, 10 blocks, 0 dup, 7 drop, valid
 semantics/typed_errors: 8 funcs, 50 blocks, 4 dup, 29 drop, valid
+semantics/url_untrusted_component: 13 funcs, 97 blocks, 25 dup, 52 drop, valid
 semantics/validate_untrusted_into_refined: 7 funcs, 42 blocks, 1 dup, 28 drop, valid
 semantics/variants_and_match: 4 funcs, 46 blocks, 2 dup, 35 drop, valid
 diff/diff_0001: 28 funcs, 337 blocks, 51 dup, 173 drop, valid

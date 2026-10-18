@@ -1,0 +1,5 @@
+ending: ok
+--- stdout
+10 12
+effectful
+11 [8, 9]

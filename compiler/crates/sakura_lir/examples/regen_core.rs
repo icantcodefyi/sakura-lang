@@ -11,7 +11,8 @@
 //! the run.
 //!
 //! Expectations: a semantics program's are its `.stdout` file and its `expect-defect` directive
-//! (the `@wasm` variant when present); programs whose `needs:` names the JS backend are left out.
+//! (the `@wasm` variant when present); programs whose `needs:` names the JS backend or that
+//! expect the JS-only `D003` are left out.
 //! A differential program's are the reference evaluator's (`sakura_eval::run_main`), which the
 //! JS backend is held to by `tools/sakura_eval/tests/differential.rs`.
 
@@ -58,6 +59,11 @@ fn main() {
             .or_else(|| d.get("expect-defect"))
             .cloned()
             .unwrap_or_else(|| "ok".into());
+        // `D003` is the JS profile's; `Int` is i64 on WASM (§17.80).
+        if ending == "D003" {
+            report.push(format!("semantics/{name}: left out (expects the JS-only D003)"));
+            continue;
+        }
         let stdout = std::fs::read_to_string(path.with_extension("stdout")).unwrap_or_default();
         let uri = format!("file:///semantics/{name}.sakura");
         match snapshot(&uri, &text) {
@@ -220,7 +226,15 @@ fn builtin_sigs() -> String {
     for (name, sig) in sigs {
         // `cps`: the builtin calls back into Sakura code (sakura_core::builtins::Abi::Cps).
         let cps = match c::builtins::lookup(&name) {
-            Some(b) => b.abi == c::builtins::Abi::Cps,
+            Some(b) => {
+                let params = sig.split(" -> ").next().unwrap_or("()");
+                let params = params.trim_matches(['(', ')']);
+                let arity = params.split(", ").filter(|p| !p.is_empty()).count();
+                if arity != b.arity {
+                    eprintln!("builtins.sigs: {name} takes {} arguments in Core: {sig}", b.arity);
+                }
+                b.abi == c::builtins::Abi::Cps
+            }
             None => {
                 eprintln!("builtins.sigs: {name} is not in sakura_core::builtins::BUILTINS");
                 false
@@ -233,7 +247,10 @@ fn builtin_sigs() -> String {
 
 fn balanced(s: &str) -> bool {
     let mut depth = 0i32;
-    for ch in s.chars() {
+    for (ch, next) in s.chars().zip(s.chars().skip(1).chain([' '])) {
+        if ch == '-' && next == '>' {
+            depth += 1; // cancels the arrow's `>`
+        }
         match ch {
             '(' | '<' | '[' | '{' => depth += 1,
             ')' | '>' | ']' | '}' => depth -= 1,
@@ -247,22 +264,31 @@ fn balanced(s: &str) -> bool {
 fn signature(decl: &str) -> Option<String> {
     let after_fn = decl.split_once("fn ")?.1;
     let (head, rest) = after_fn.split_once('(')?;
-    let tparams: Vec<&str> = head
+    let tparam_decls: Vec<&str> = head
         .split_once('<')
-        .map(|(_, t)| t.trim_end().trim_end_matches('>'))
-        .map(|t| {
-            t.split(',')
-                .map(|p| p.split(':').next().unwrap_or("").trim())
-                .collect()
-        })
+        .map(|(_, t)| t.trim_end().trim_end_matches('>').split(',').collect())
         .unwrap_or_default();
+    let tparams: Vec<&str> = tparam_decls
+        .iter()
+        .map(|p| p.split(':').next().unwrap_or("").trim())
+        .collect();
+    // `sakura_core` passes a schema per `Schema`-bounded type parameter after the declared
+    // parameters (`lower/mod.rs`, "trailing schema arguments").
+    let schemas = tparam_decls
+        .iter()
+        .filter(|p| p.contains("Schema"))
+        .count();
     // Split the parameter list at its closing parenthesis and top-level commas.
     let mut depth = 0i32;
     let mut params = Vec::new();
     let mut cur = String::new();
     let mut tail = "";
+    let mut prev = ' ';
     for (k, ch) in rest.char_indices() {
+        let arrow = prev == '-' && ch == '>';
+        prev = ch;
         match ch {
+            '>' if arrow => {}
             '(' | '<' | '[' | '{' => depth += 1,
             ')' if depth == 0 => {
                 params.push(std::mem::take(&mut cur));
@@ -282,6 +308,7 @@ fn signature(decl: &str) -> Option<String> {
         .iter()
         .filter(|p| !p.trim().is_empty())
         .map(|p| repr(p.split_once(':').map_or("", |(_, t)| t), &tparams))
+        .chain(std::iter::repeat_n("ptr".to_owned(), schemas))
         .collect();
     let ret = tail
         .trim()

@@ -1,0 +1,4 @@
+ending: ok
+--- stdout
+Err(Boom { value: 7 })
+Ok(42)

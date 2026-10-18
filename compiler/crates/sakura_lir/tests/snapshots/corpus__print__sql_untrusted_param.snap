@@ -1,0 +1,107 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::sql_untrusted_param::Row | Row 24b (name: word*)
+layout 1 variant std::html::Html | Html 24b (word*)
+layout 2 error std::json::DecodeError | DecodeError 32b (path: word*, message: word*)
+layout 3 variant std::json::Json | Null 16b () | Bool 24b (bool) | Number 24b (f64) | String 24b (word*) | Array 24b (word*) | Object 24b (word*)
+layout 4 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 5 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 6 record std::sql::Query | Query 32b (text: word*, params: word*)
+layout 7 error std::sql::SqlError | SqlError 24b (message: word*)
+layout 8 variant std::sql::SqlValue | Null 16b () | Int 24b (i64) | Float 24b (f64) | Text 24b (word*) | Blob 24b (word*)
+layout 9 shape |  32b (word*, word*)
+layout 10 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::sql_untrusted_param, frame 13 slots [%5 word*, %10 word*, %11 word*, %12 bool, %18 word*, %19 i64, %21 word*, %26 word*, %27 i64, %30 word*, %33 bool, %37 word*, %40 bool]
+  b0():
+    %0 r: ptr = $sql_memory()
+    handle_push %0
+    %15 lit: ptr = const str 3
+    %16 parts: ptr = alloc list(%15)
+    %17 args: ptr = alloc list()
+    call template#2(%16, %17) -> b6()
+  b1(%1 v: word):
+    drop %1
+    %2 lit: ptr = const str 0
+    %3 r: ptr = $untrusted_of(%2)
+    %4 raw: word = $untrusted_value(%3)
+    call from#7(%4) -> b2()
+  b2(%5 conv: ptr):
+    %6 lit: ptr = const str 1
+    %7 lit: ptr = const str 2
+    %8 parts: ptr = alloc list(%6, %7)
+    %9 args: ptr = alloc list(%5)
+    call template#8(%8, %9) -> b3()
+  b3(%10 tmpl: ptr):
+    call to_string#9(%10) -> b4()
+  b4(%11 r: ptr):
+    perform std::console::Console.print(%11) -> b5()
+  b5(%12 r: unit):
+    %13 box: word = box %12
+    %14 unbox: unit = unbox %13
+    drop %13
+    ret %14
+  b6(%18 tmpl: ptr) [handle]:
+    perform std::sql::Sql.execute(%18) -> b7()
+  b7(%19 r: i64) [handle]:
+    %20 lit: ptr = const str 4
+    call from#4(%20) -> b8()
+  b8(%21 conv: ptr) [handle]:
+    %22 lit: ptr = const str 5
+    %23 lit: ptr = const str 6
+    %24 parts: ptr = alloc list(%22, %23)
+    %25 args: ptr = alloc list(%21)
+    call template#2(%24, %25) -> b9()
+  b9(%26 tmpl: ptr) [handle]:
+    perform std::sql::Sql.execute(%26) -> b10()
+  b10(%27 r: i64) [handle]:
+    %28 lit: ptr = const str 4
+    %29 r: ptr = $untrusted_of(%28)
+    call find#5(%29) -> b11()
+  b11(%30 r: ptr) [handle]:
+    %31 r: i64 = $list_len(%30)
+    %32 s: ptr = show %31
+    perform std::console::Console.print(%32) -> b12()
+  b12(%33 r: unit) [handle]:
+    %34 box: word = box %33
+    drop %34
+    %35 lit: ptr = const str 7
+    %36 r: ptr = $untrusted_of(%35)
+    call find#5(%36) -> b13()
+  b13(%37 r: ptr) [handle]:
+    %38 r: i64 = $list_len(%37)
+    %39 s: ptr = show %38
+    perform std::console::Console.print(%39) -> b14()
+  b14(%40 r: unit) [handle]:
+    %41 box: word = box %40
+    handle_pop
+    jump b1(%41)
+
+fn $entry#1 top -> unit ; main::sql_untrusted_param, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn find#5 top -> ptr ; main::sql_untrusted_param, frame 4 slots [%0 word*, %2 word*, %7 word*, %10 word*]
+  b0(%0 u: ptr):
+    %1 raw: word = $untrusted_value(%0)
+    call from#4(%1) -> b1()
+  b1(%2 conv: ptr):
+    %3 lit: ptr = const str 9
+    %4 lit: ptr = const str 10
+    %5 parts: ptr = alloc list(%3, %4)
+    %6 args: ptr = alloc list(%2)
+    call template#2(%5, %6) -> b2()
+  b2(%7 tmpl: ptr):
+    unsupported "schema"
+    %8 placeholder: unit = const ()
+    %9 placeholder: word = box %8
+    perform std::sql::Sql.query(%7, %9) -> b3()
+  b3(%10 r: ptr):
+    ret %10

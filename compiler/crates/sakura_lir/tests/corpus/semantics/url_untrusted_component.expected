@@ -1,0 +1,3 @@
+ending: ok
+--- stdout
+https://x.test/u/7?q=a%20b%26c

@@ -5,16 +5,14 @@ bytes_get: (ptr, i64) -> ptr
 bytes_len: (ptr) -> i64
 cli_args: () -> ptr
 cli_exit: (i64) -> unit
-cli_parse: (ptr) -> word cps
+cli_parse: (ptr, ptr) -> word cps
 clock_host: () -> ptr
 clock_virtual_sleep: (i64, i64) -> i64 cps
 console_host: () -> ptr
 contract_enter: () -> unit
 contract_exit: () -> unit
 env_get: (ptr) -> ptr
-file_buffer: (ptr) -> i64
-file_closing: (i64) -> unit cps
-file_contents: (i64) -> ptr
+file_closing: (i64, ptr) -> word cps
 file_open: (ptr, ptr, ptr) -> ptr
 file_read: (i64, i64) -> ptr
 file_write: (i64, ptr) -> ptr
@@ -22,9 +20,9 @@ float_format: (f64, i64) -> ptr
 float_round: (f64) -> i64
 float_sqrt: (f64) -> f64
 float_to_int_checked: (f64) -> ptr
-fs_detached_root: () -> ptr
 fs_exists: (ptr, ptr) -> bool
 fs_list: (ptr, ptr) -> ptr
+fs_memory_root: (ptr) -> ptr
 fs_read: (ptr, ptr) -> ptr
 fs_root: () -> ptr
 fs_subdir: (ptr, ptr) -> ptr
@@ -36,17 +34,17 @@ http_recording_lookup: (i64, ptr) -> ptr
 http_recording_lookup_stream: (i64, ptr) -> ptr
 http_recording_open: (ptr, ptr) -> ptr
 http_send: (ptr) -> ptr cps
-http_stream_closing: (ptr) -> unit cps
+http_stream_closing: (ptr, ptr) -> word cps
 http_stream_open: (ptr) -> ptr cps
 http_stream_read: (ptr, i64) -> ptr cps
 int_checked_add: (i64, i64) -> ptr
 int_to_float: (i64) -> f64
 int_to_string: (i64) -> ptr
 int_wrapping_add: (i64, i64) -> i64
-json_decode: (ptr) -> ptr
-json_encode: (word) -> ptr
+json_decode: (ptr, ptr) -> ptr
+json_encode: (word, ptr) -> ptr
 json_parse: (ptr) -> ptr
-json_schema: (ptr) -> ptr
+json_schema: (ptr, ptr) -> ptr
 list_at: (ptr, i64) -> word
 list_get: (ptr, i64) -> ptr
 list_len: (ptr) -> i64
@@ -67,7 +65,7 @@ option_expect: (ptr, ptr) -> word
 random_host: () -> ptr
 secret_expose: (ptr) -> word
 secret_wrap: (ptr) -> ptr
-serve_listen: (ptr) -> unit cps
+serve_listen: (ptr, ptr) -> unit cps
 set_contains: (ptr, word) -> bool
 set_empty: () -> ptr
 set_insert: (ptr, word) -> ptr
@@ -94,7 +92,7 @@ string_to_upper: (ptr) -> ptr
 string_trim: (ptr) -> ptr
 task_deterministic: (i64) -> ptr
 task_host: () -> ptr
-test_expect_defect: () -> unit cps
+test_expect_defect: (ptr) -> unit cps
 untrusted_of: (word) -> ptr
 untrusted_validate: (ptr) -> ptr
 untrusted_value: (ptr) -> word

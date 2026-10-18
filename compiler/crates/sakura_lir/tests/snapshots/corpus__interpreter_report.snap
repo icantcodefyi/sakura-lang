@@ -2,14 +2,24 @@
 source: crates/sakura_lir/tests/corpus.rs
 expression: report
 ---
+semantics/arith_range_edges_division_zero: D002, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
+semantics/arith_range_edges_remainder_zero: D002, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/blocks_and_let: ok, 5 allocated, 0 dup, 5 drop, peak 4, live 0/0
 semantics/catch_around_row_polymorphic_call: ok, 17 allocated, 9 dup, 26 drop, peak 9, live 0/0
 semantics/closures: ok, 24 allocated, 11 dup, 35 drop, peak 9, live 0/0
 semantics/constants: ok, 17 allocated, 10 dup, 27 drop, peak 8, live 0/0
+semantics/contract_site_blame: D020, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
+semantics/contract_site_blame_callback: D020, 4 allocated, 3 dup, 7 drop, peak 4, live 0/0
+semantics/contract_site_blame_callback_ensures: D021, 4 allocated, 3 dup, 7 drop, peak 4, live 0/0
+semantics/contract_site_blame_ensures: D021, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
+semantics/contract_site_blame_value: D020, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
+semantics/contract_site_blame_value_ensures: D021, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/contracts_hold: ok, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
 semantics/deep_countdown: ok, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
+semantics/deep_sum: ok, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
 semantics/defect_D001_int_overflow: D001, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/defect_D002_division_by_zero: D002, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
+semantics/defect_D010_generic_refinement_from: D010, 2 allocated, 1 dup, 3 drop, peak 2, live 0/0
 semantics/defect_D010_refinement_from: D010, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/defect_D011_contract_evaluation_failed: D011, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/defect_D020_requires_blames_caller: D020, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
@@ -17,19 +27,25 @@ semantics/defect_D021_ensures_blames_callee: D021, 1 allocated, 0 dup, 1 drop, p
 semantics/defect_D030_option_expect: D030, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/defect_D031_string_slice_boundary: D031, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/deterministic_clock_random: ok, 82 allocated, 16 dup, 98 drop, peak 11, live 0/0
+semantics/direct_closure_values: ok, 28 allocated, 18 dup, 46 drop, peak 10, live 0/0
 semantics/early_return: ok, 16 allocated, 6 dup, 22 drop, peak 5, live 0/0
 semantics/effects_and_handlers: ok, 30 allocated, 37 dup, 67 drop, peak 13, live 0/0
 semantics/error_unions: ok, 8 allocated, 2 dup, 10 drop, peak 3, live 0/0
 semantics/function_values: ok, 20 allocated, 7 dup, 27 drop, peak 9, live 0/0
+semantics/generic_refinement: ok, 31 allocated, 21 dup, 52 drop, peak 7, live 0/0
 semantics/generics: ok, 81 allocated, 158 dup, 239 drop, peak 12, live 0/0
 semantics/handler_callback_context: ok, 34 allocated, 29 dup, 63 drop, peak 16, live 0/0
+semantics/handler_cancel_in_loop: unsupported (builtin task_deterministic)
+semantics/handler_clause_fail: ok, 11 allocated, 2 dup, 13 drop, peak 4, live 0/0
 semantics/handler_forwarding: ok, 13 allocated, 3 dup, 16 drop, peak 7, live 0/0
+semantics/handler_lexical_bind: ok, 20 allocated, 7 dup, 27 drop, peak 7, live 0/0
 semantics/handler_state: ok, 14 allocated, 5 dup, 19 drop, peak 6, live 0/0
 semantics/hello: ok, 3 allocated, 0 dup, 3 drop, peak 3, live 0/0
 semantics/if_else: ok, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/imports: ok, 23 allocated, 8 dup, 31 drop, peak 7, live 0/0
 semantics/let_polymorphism: ok, 16 allocated, 2 dup, 18 drop, peak 6, live 0/0
 semantics/list_patterns: ok, 32 allocated, 26 dup, 58 drop, peak 7, live 0/0
+semantics/list_retained_version: ok, 839 allocated, 13243 dup, 14082 drop, peak 209, live 0/0
 semantics/list_set: D020, 7384 allocated, 3343692 dup, 3351076 drop, peak 2673, live 0/0
 semantics/literal_refinement_checked_at_startup: D010, 3 allocated, 0 dup, 3 drop, peak 3, live 0/0
 semantics/literal_refinement_decided: ok, 8 allocated, 0 dup, 8 drop, peak 4, live 0/0
@@ -45,11 +61,13 @@ semantics/records: ok, 18 allocated, 1 dup, 19 drop, peak 6, live 0/0
 semantics/row_param_type: ok, 27 allocated, 12 dup, 39 drop, peak 10, live 0/0
 semantics/row_widening: ok, 11 allocated, 4 dup, 15 drop, peak 7, live 0/0
 semantics/show_format: ok, 37 allocated, 8 dup, 45 drop, peak 7, live 0/0
+semantics/sql_untrusted_param: unsupported (builtin sql_memory)
 semantics/std_collections: ok, 198 allocated, 361 dup, 559 drop, peak 18, live 0/0
 semantics/strings_and_interpolation: ok, 13 allocated, 0 dup, 13 drop, peak 4, live 0/0
 semantics/tuples: ok, 24 allocated, 2 dup, 26 drop, peak 6, live 0/0
 semantics/type_aliases: ok, 7 allocated, 0 dup, 7 drop, peak 4, live 0/0
 semantics/typed_errors: ok, 35 allocated, 9 dup, 44 drop, peak 6, live 0/0
+semantics/url_untrusted_component: unsupported (builtin string_to_bytes)
 semantics/validate_untrusted_into_refined: ok, 34 allocated, 7 dup, 41 drop, peak 5, live 0/0
 semantics/variants_and_match: ok, 30 allocated, 7 dup, 37 drop, peak 7, live 0/0
 diff/diff_0001: ok, 184 allocated, 210 dup, 394 drop, peak 14, live 0/0

@@ -1,0 +1,46 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 shape |  32b (word*, word*)
+layout 3 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::deep_sum, frame 2 slots [%1 i64, %3 bool]
+  b0():
+    %0 lit: i64 = const 1000000
+    call sum#2(%0) -> b1()
+  b1(%1 r: i64):
+    %2 s: ptr = show %1
+    perform std::console::Console.print(%2) -> b2()
+  b2(%3 r: unit):
+    %4 box: word = box %3
+    %5 unbox: unit = unbox %4
+    drop %4
+    ret %5
+
+fn $entry#1 top -> unit ; main::deep_sum, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn sum#2 top -> i64 ; main::deep_sum, frame 3 slots [%0 i64, %8 i64, %9 i64]
+  b0(%0 n: i64):
+    %1 lit: i64 = const 0
+    %2 t: bool = eq.int %0, %1
+    if %2 then b1(%0) else b2(%0)
+  b1(%3 n: i64):
+    %5 lit: i64 = const 0
+    ret %5
+  b2(%4 n: i64):
+    %6 lit: i64 = const 1
+    %7 t: i64 = intsub %4, %6
+    call sum#2(%7) -> b3(%4)
+  b3(%8 r: i64, %9 n: i64):
+    %10 t: i64 = intadd %9, %8
+    ret %10

@@ -1,0 +1,147 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 shape |  32b (word*, word*)
+layout 3 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::list_retained_version, frame 37 slots [%2 word*, %4 word*, %5 word*, %7 word*, %8 word*, %9 word*, %17 i64, %18 word*, %19 word*, %20 word*, %21 word*, %22 word*, %30 bool, %31 word*, %32 word*, %33 word*, %34 word*, %40 i64, %41 word*, %42 word*, %43 word*, %44 word*, %47 bool, %48 word*, %49 word*, %50 word*, %56 i64, %57 word*, %58 word*, %59 word*, %62 bool, %63 word*, %64 word*, %70 i64, %71 word*, %72 word*, %80 bool]
+  b0():
+    %0 lit: i64 = const 0
+    %1 lit: i64 = const 100
+    call range#2(%0, %1) -> b1()
+  b1(%2 r: ptr):
+    %3 f: ptr = closure main$1#3[]
+    dup %2
+    call map#4(%2, %3) -> b2(%2)
+  b2(%4 r: ptr, %5 r: ptr):
+    %6 f: ptr = closure main$2#5[]
+    dup %4
+    call filter#6(%4, %6) -> b3(%5, %4)
+  b3(%7 r: ptr, %8 r: ptr, %9 r: ptr):
+    %10 lit: i64 = const 100
+    %11 box: word = box %10
+    dup %8
+    %12 r: ptr = $list_push(%8, %11)
+    dup %8
+    %13 r: i64 = $list_len(%8)
+    %14 s: ptr = show %13
+    %15 lit: ptr = const str 0
+    %16 s: ptr = concat %14, %15
+    drop %14
+    drop %15
+    dup %8
+    call sum#7(%8) -> b4(%8, %9, %7, %12, %16)
+  b4(%17 r: i64, %18 r: ptr, %19 r: ptr, %20 r: ptr, %21 r: ptr, %22 s: ptr):
+    %23 s: ptr = show %17
+    %24 s: ptr = concat %22, %23
+    drop %22
+    drop %23
+    %25 lit: ptr = const str 0
+    %26 s: ptr = concat %24, %25
+    drop %24
+    drop %25
+    %27 t: bool = eq.any %18, %18
+    %28 s: ptr = show %27
+    %29 s: ptr = concat %26, %28
+    drop %26
+    drop %28
+    perform std::console::Console.print(%29) -> b5(%18, %19, %20, %21)
+  b5(%30 r: unit, %31 r: ptr, %32 r: ptr, %33 r: ptr, %34 r: ptr):
+    %35 box: word = box %30
+    drop %35
+    dup %32
+    %36 r: i64 = $list_len(%32)
+    %37 s: ptr = show %36
+    %38 lit: ptr = const str 0
+    %39 s: ptr = concat %37, %38
+    drop %37
+    drop %38
+    call sum#7(%32) -> b6(%31, %33, %34, %39)
+  b6(%40 r: i64, %41 r: ptr, %42 r: ptr, %43 r: ptr, %44 s: ptr):
+    %45 s: ptr = show %40
+    %46 s: ptr = concat %44, %45
+    drop %44
+    drop %45
+    perform std::console::Console.print(%46) -> b7(%41, %42, %43)
+  b7(%47 r: unit, %48 r: ptr, %49 r: ptr, %50 r: ptr):
+    %51 box: word = box %47
+    drop %51
+    dup %49
+    %52 r: i64 = $list_len(%49)
+    %53 s: ptr = show %52
+    %54 lit: ptr = const str 0
+    %55 s: ptr = concat %53, %54
+    drop %53
+    drop %54
+    call sum#7(%49) -> b8(%48, %50, %55)
+  b8(%56 r: i64, %57 r: ptr, %58 r: ptr, %59 s: ptr):
+    %60 s: ptr = show %56
+    %61 s: ptr = concat %59, %60
+    drop %59
+    drop %60
+    perform std::console::Console.print(%61) -> b9(%57, %58)
+  b9(%62 r: unit, %63 r: ptr, %64 r: ptr):
+    %65 box: word = box %62
+    drop %65
+    dup %64
+    %66 r: i64 = $list_len(%64)
+    %67 s: ptr = show %66
+    %68 lit: ptr = const str 0
+    %69 s: ptr = concat %67, %68
+    drop %67
+    drop %68
+    call sum#7(%64) -> b10(%63, %69)
+  b10(%70 r: i64, %71 r: ptr, %72 s: ptr):
+    %73 s: ptr = show %70
+    %74 s: ptr = concat %72, %73
+    drop %72
+    drop %73
+    %75 lit: ptr = const str 0
+    %76 s: ptr = concat %74, %75
+    drop %74
+    drop %75
+    %77 r: i64 = $list_len(%71)
+    %78 s: ptr = show %77
+    %79 s: ptr = concat %76, %78
+    drop %76
+    drop %78
+    perform std::console::Console.print(%79) -> b11()
+  b11(%80 r: unit):
+    %81 box: word = box %80
+    %82 unbox: unit = unbox %81
+    drop %81
+    ret %82
+
+fn $entry#1 top -> unit ; main::list_retained_version, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn main$1#3 lambda -> word ; main::list_retained_version, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 x: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 lit: i64 = const 1
+    %4 t: i64 = intadd %2, %3
+    %5 box: word = box %4
+    ret %5
+
+fn main$2#5 lambda -> word ; main::list_retained_version, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 x: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 lit: i64 = const 2
+    %4 t: i64 = intrem %2, %3
+    %5 lit: i64 = const 0
+    %6 t: bool = eq.int %4, %5
+    %7 box: word = box %6
+    ret %7

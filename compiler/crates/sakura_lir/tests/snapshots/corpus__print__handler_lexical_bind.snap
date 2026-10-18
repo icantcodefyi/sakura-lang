@@ -1,0 +1,138 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 shape |  32b (word*, word*)
+layout 3 shape |  32b (i64, word*)
+layout 4 shape |  24b (i64)
+
+fn main#0 pub top -> unit ; main::handler_lexical_bind, frame 18 slots [%1 word*, %3 word*, %5 word*, %6 word*, %7 word*, %10 bool, %15 word*, %16 word*, %19 word*, %22 bool, %24 word*, %25 word*, %28 bool, %29 word*, %39 i64, %40 i64, %42 bool, %43 i64]
+  b0():
+    %0 lit: i64 = const 0
+    call counter#2(%0) -> b1()
+  b1(%1 r: ptr):
+    handle_push %1
+    %45 lit: i64 = const 0
+    jump b14(%45)
+  b2(%2 v: word):
+    drop %2
+    call escaped#4() -> b3()
+  b3(%3 r: ptr):
+    %4 lit: i64 = const 20
+    call counter#2(%4) -> b4(%3)
+  b4(%5 r: ptr, %6 r: ptr):
+    handle_push %5
+    call %6() -> b5()
+  b5(%7 r: word) [handle]:
+    %8 unbox: i64 = unbox %7
+    drop %7
+    %9 s: ptr = show %8
+    perform std::console::Console.print(%9) -> b6()
+  b6(%10 r: unit) [handle]:
+    %11 box: word = box %10
+    %12 unbox: unit = unbox %11
+    drop %11
+    handle_pop
+    ret %12
+  b7() [handle]:
+    %13 f: ptr = closure main$1#3[]
+    %14 lit: i64 = const 10
+    call counter#2(%14) -> b8(%13)
+  b8(%15 r: ptr, %16 f: ptr) [handle]:
+    handle_push %15
+    dup %16
+    call %16() -> b12(%16)
+  b9(%17 v: word, %18 f: ptr) [handle]:
+    drop %17
+    call %18() -> b10()
+  b10(%19 r: word) [handle]:
+    %20 unbox: i64 = unbox %19
+    drop %19
+    %21 s: ptr = show %20
+    perform std::console::Console.print(%21) -> b11()
+  b11(%22 r: unit) [handle]:
+    %23 box: word = box %22
+    handle_pop
+    jump b2(%23)
+  b12(%24 r: word, %25 f: ptr) [handle, handle]:
+    %26 unbox: i64 = unbox %24
+    drop %24
+    %27 s: ptr = show %26
+    perform std::console::Console.print(%27) -> b13(%25)
+  b13(%28 r: unit, %29 f: ptr) [handle, handle]:
+    %30 box: word = box %28
+    handle_pop
+    jump b9(%30, %29)
+  b14(%31 i: i64) [handle]:
+    %32 lit: i64 = const 3
+    %33 more: bool = lt.int %31, %32
+    if %33 then b15(%31) else b16(%31)
+  b15(%34 i: i64) [handle]:
+    perform main::handler_lexical_bind::Counter.next() -> b18(%34)
+  b16(%35 i: i64) [handle]:
+    jump b7()
+  b17(%36 i: i64) [handle]:
+    %37 lit: i64 = const 1
+    %38 i: i64 = intadd %36, %37
+    jump b14(%38)
+  b18(%39 r: i64, %40 i: i64) [handle]:
+    %41 s: ptr = show %39
+    perform std::console::Console.print(%41) -> b19(%40)
+  b19(%42 r: unit, %43 i: i64) [handle]:
+    %44 box: word = box %42
+    drop %44
+    jump b17(%43)
+
+fn $entry#1 top -> unit ; main::handler_lexical_bind, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn counter#2 top -> ptr ; main::handler_lexical_bind, frame 1 slots [%0 i64]
+  b0(%0 start: i64):
+    %1 next: ptr = closure counter$Counter_next#6[]
+    %2 handler: ptr = handler main::handler_lexical_bind::Counter row 4 state(%0) clauses(%1)
+    ret %2
+
+fn main$1#3 lambda -> word ; main::handler_lexical_bind, captures [], frame 2 slots [%0 word*, %1 i64]
+  b0(%0 env: ptr):
+    drop %0
+    perform main::handler_lexical_bind::Counter.next() -> b1()
+  b1(%1 r: i64):
+    %2 box: word = box %1
+    ret %2
+
+fn escaped#4 top -> ptr ; main::handler_lexical_bind, frame 1 slots [%1 word*]
+  b0():
+    %0 lit: i64 = const 100
+    call counter#2(%0) -> b1()
+  b1(%1 r: ptr):
+    handle_push %1
+    %2 f: ptr = closure escaped$1#5[]
+    handle_pop
+    ret %2
+
+fn escaped$1#5 lambda -> word ; main::handler_lexical_bind, captures [], frame 2 slots [%0 word*, %1 i64]
+  b0(%0 env: ptr):
+    drop %0
+    perform main::handler_lexical_bind::Counter.next() -> b1()
+  b1(%1 r: i64):
+    %2 box: word = box %1
+    ret %2
+
+fn counter$Counter_next#6 clause main::handler_lexical_bind::Counter.next -> i64 ; main::handler_lexical_bind, captures [], frame 2 slots [%0 word*, %1 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    %2 n: i64 = state_get %1[0] row 4
+    %3 lit: i64 = const 1
+    %4 t: i64 = intadd %2, %3
+    state_set %1[0] row 4 = %4
+    %5 set: unit = const ()
+    %6 n: i64 = state_get %1[0] row 4
+    ret %6
