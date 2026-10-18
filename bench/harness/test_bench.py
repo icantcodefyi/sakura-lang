@@ -694,6 +694,15 @@ class Workflow(unittest.TestCase):
         self.assertEqual(workflow.count("NOISE_REPEATS: ${{ inputs.repeats || 5 }}"), 2)
         self.assertIn("name: bench-noise-${{ matrix.os }}-${{ matrix.engine }}", workflow)
 
+    def test_the_wasm_nightly_installs_the_pinned_wasmtime_and_runs_the_lane(self):
+        workflow = (bench.ROOT / ".github/workflows/bench.yml").read_text()
+        job = workflow[workflow.index("  nightly-wasm:"):workflow.index("  noise:")]
+        self.assertIn("if: github.event.schedule == '17 2 * * *' ||", job)
+        self.assertIn("WASMTIME_VERSION: ${{ steps.pins.outputs.wasmtime }}", job)
+        self.assertIn("rustup target add wasm32-unknown-unknown", job)
+        self.assertIn("bench run --suite wasm --lane matched --sizes all --stable", job)
+        pins = (bench.BENCH / "toolchains.toml").read_text()
+        self.assertIn('wasmtime = "', pins)
 
 
 if __name__ == "__main__":
