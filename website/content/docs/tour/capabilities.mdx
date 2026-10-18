@@ -17,6 +17,8 @@ A handler for `Fs` is built from a `Dir` capability value. Every path is resolve
 
 The effect row still matters: a function can only perform the effects in its row, and a pure function cannot touch the outside world at all. But the row is what a function *needs*. What it may actually *reach* is set by whoever installs the handler.
 
+<CapabilityScopes />
+
 ## Root authority comes from the host
 
 The entry point is `pub fn main() -> Unit ! {…}`. The host supplies root handlers for exactly the std effects `main` declares, and nothing else. Only std effects may appear in `main`'s row (`V6010`), because only they have host root handlers.

@@ -5,6 +5,8 @@ description: Replay HTTP and LLM exchanges with Test.fixtures, and opt into reco
 
 Ordinary `sakura test` denies network access. `Http.recording` and `Llm.replay` let tests exercise provider-shaped exchanges offline using JSON Lines cassettes under `tests/fixtures/`.
 
+<CassetteFlow />
+
 ## HTTP replay
 
 `Test.fixtures()` returns a `Dir` rooted at the package's `tests/fixtures` directory. It is read-only during ordinary tests. Install it with `Fs.rooted`, then put `Http.recording` inside an outer HTTP handler. The first handler in a `with` list is outermost.

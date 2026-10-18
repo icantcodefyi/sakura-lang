@@ -53,6 +53,8 @@ test "labels count from the handler's start" {
 
 A clause runs in place of the operation call. Its return value is the operation's result. This happens exactly once, in tail position, by construction. Handlers are **tail-resumptive**: there is no `resume`, no multi-shot resumption, and no first-class continuations. `resume` is a reserved keyword (`V0007`).
 
+<HandlerFlow />
+
 This keeps handlers cheap and predictable. A handler is a service the body calls, not a construct that can rewind or duplicate the body. Generators and backtracking would need non-tail `control` operations; design §16 lists them as a possible later edition, not v0.
 
 ## Nesting and shadowing
