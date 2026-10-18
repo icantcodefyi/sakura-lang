@@ -237,3 +237,96 @@ fn http_host_sends_on_wasm_as_on_js() {
     }
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// `trace` without its task numbers.
+fn untasked(trace: &str) -> String {
+    trace
+        .lines()
+        .map(|l| match (l.find("\"task\":"), l.find(",\"e")) {
+            (Some(a), Some(b)) if a < b => format!("{}{}\n", &l[..a], &l[b + 1..]),
+            _ => format!("{l}\n"),
+        })
+        .collect()
+}
+
+/// `Sql.sqlite(path)` (plan §3.7 W2): the file opens on the first operation inside the
+/// directory `Fs.root()` gives then, on both backends, with the same output and operations;
+/// a file that cannot open is the operation's `SqlError`, and the next operation tries again.
+/// Task numbers are not compared: JS performs that `Fs.root()` in a task of its own
+/// (`runTask` in `sql_sqlite`), WASM in the clause's (the open question of plan §7 W1 item 17).
+#[test]
+fn sql_sqlite_opens_on_first_use_on_wasm_as_on_js() {
+    if !available() {
+        eprintln!("skipped: node is missing");
+        return;
+    }
+    let dir = std::env::temp_dir().join(format!("sakura-wasm-sqlite-{}", std::process::id()));
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(
+        dir.join("sakura.toml"),
+        "[package]\nname = \"s\"\nversion = \"0.1.0\"\nedition = \"2026\"\n\n\
+         [permissions]\nfs.read = [\"./data\"]\nfs.write = [\"./data\"]\n",
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("src/main.sakura"),
+        "import std/fs.{Fs}\nimport std/path.{Path}\nimport std/sql.{Sql, SqlError}\n\n\
+         type Row = { id: Int, name: String }\n\n\
+         pub fn main() -> Unit ! {Console, Fs, Fail<SqlError>} {\n\
+         \x20 with Sql.sqlite(Path.of(\"data/app.db\")) {\n\
+         \x20   sql.migrate([sql\"create table if not exists t (id integer primary key, name text)\"])\n\
+         \x20   let n = Sql.transaction(fn() { Sql.execute(sql\"insert into t (name) values ({\"ann\"})\") })\n\
+         \x20   let rows: List<Row> = Sql.query(sql\"select id, name from t\")\n\
+         \x20   Console.print(\"{n} {rows}\")\n\
+         \x20 }\n\
+         \x20 with Sql.sqlite(Path.of(\"data/missing/app.db\")) {\n\
+         \x20   for _ in [1, 2] {\n\
+         \x20     match try { Sql.execute(sql\"select 1\") } {\n\
+         \x20       Ok(_) => Console.print(\"unexpected\"),\n\
+         \x20       Err(_) => Console.print(\"cannot open\"),\n\
+         \x20     }\n\
+         \x20   }\n\
+         \x20 }\n}\n",
+    )
+    .unwrap();
+    let run = |target: &str| {
+        let _ = std::fs::remove_dir_all(dir.join("data"));
+        std::fs::create_dir_all(dir.join("data")).unwrap();
+        let trace = dir.join(format!("{target}.trace"));
+        let out_dir = dir.join(format!("out-{target}"));
+        let out = sakura_env(
+            &[
+                "run",
+                "--target",
+                target,
+                "--out-dir",
+                out_dir.to_str().unwrap(),
+            ],
+            &dir,
+            &[("SAKURA_TRACE", &trace)],
+        );
+        assert!(
+            dir.join("data/app.db").exists(),
+            "{target}: no database file"
+        );
+        (
+            out,
+            untasked(&std::fs::read_to_string(&trace).unwrap_or_default()),
+        )
+    };
+    let (js, js_trace) = run("js");
+    let (wasm, wasm_trace) = run("wasm");
+    assert_eq!(js.code, Some(0), "{}{}", js.stdout, js.stderr);
+    assert_eq!(
+        js.stdout,
+        "1 [Row { id: 1, name: \"ann\" }]\ncannot open\ncannot open\n"
+    );
+    assert_eq!(js_trace.matches("\"op\":\"root\"").count(), 3, "{js_trace}");
+    assert_eq!(
+        (wasm.code, &wasm.stdout, &wasm_trace),
+        (js.code, &js.stdout, &js_trace),
+        "{}",
+        wasm.stderr
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}

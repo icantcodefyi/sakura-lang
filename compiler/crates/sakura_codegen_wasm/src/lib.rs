@@ -115,6 +115,7 @@ const HOST_HANDLERS: &[(&str, &str, &str)] = &[
     ("log_stderr", "std::log::Log", "log_stderr"),
     ("log_json", "std::log::Log", "log_json"),
     ("sql_memory", "std::sql::Sql", "sql"),
+    ("sql_sqlite", "std::sql::Sql", "sql"),
     ("task_host", "std::task::Task", "task"),
     ("task_deterministic", "std::task::Task", "task"),
     ("llm_anthropic", "std::llm::Llm", "js"),
@@ -144,11 +145,11 @@ fn native_slots(name: &str) -> (Vec<Slot>, Vec<Slot>) {
     );
     match name {
         "rt_code_callback_stub" => (vec![], vec![w, i]),
-        "rt_code_file_close"
-        | "rt_code_sql_query"
-        | "rt_code_sql_execute"
-        | "rt_code_sql_transaction"
-        | "rt_code_task_cancel_all" => (vec![], vec![i]),
+        "rt_code_file_close" | "rt_code_task_cancel_all" => (vec![], vec![i]),
+        // Slot 0 the instance, 1 the activation, then the arguments, kept while a
+        // `Sql.sqlite` clause performs `Fs.root()` (`sakura_rt::wasm::sql_instance`).
+        "rt_code_sql_query" => (vec![i, i, w, w], vec![i]),
+        "rt_code_sql_execute" | "rt_code_sql_transaction" => (vec![i, i, w], vec![i]),
         "rt_code_sql_rollback"
         | "rt_code_prop_record"
         | "rt_code_prop_failures"

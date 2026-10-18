@@ -1149,6 +1149,56 @@ pub extern "C" fn rt_b_sql_memory(effect: u32, codes: u32, n: u32) -> u32 {
     ptr(r)
 }
 
+/// `Sql.sqlite(path)` (as JS `sql_sqlite`): a database file the host opens on first use, inside
+/// the directory `Fs.root()` gives then (`sql_instance`).
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_b_sql_sqlite(effect: u32, codes: u32, n: u32, path: u32) -> u32 {
+    let rt = rt();
+    let (len, at) = rt.data(path);
+    // SAFETY: a plain import with a slice inside linear memory, copied in at once.
+    let instance = unsafe { host::sql_open_file(at, len) };
+    rt.drop(path);
+    let r = instance_handler(rt, effect, codes, n, instance, false);
+    ptr(r)
+}
+
+/// The block a SQL clause resumes at with the directory `Fs.root()` returned.
+const SQL_ROOTED: u32 = 9;
+
+/// A SQL clause's instance, kept in its frame's slot 0. A `Sql.sqlite` database opens on its
+/// first operation, as on JS: while the host needs the directory, the clause performs
+/// `Fs.root()` on the handlers outside its own and resumes at `SQL_ROOTED`, where the
+/// directory goes to the host (`sql_root`). `Err` is the step to return meanwhile.
+fn sql_instance(rt: &mut Rt, frame: u32) -> Result<i64, u32> {
+    if rt.block(frame) == SQL_ROOTED {
+        let dir = rt.take_ret() as u32;
+        let instance = rt.fslot(frame, 0) as i64;
+        let b = encode_args(rt, &[dir]).map_err(|d| rt.raise(d))?;
+        let (len, at) = rt.data(b);
+        // SAFETY: a plain import with a slice inside linear memory, copied in at once.
+        unsafe { host::sql_root(instance, at, len) };
+        rt.drop(b);
+        return Ok(instance);
+    }
+    let instance = instance_of(rt, frame);
+    rt.set_fslot(frame, 0, instance as u64);
+    // SAFETY: a plain import with a scalar argument.
+    if unsafe { host::sql_needs_root(instance) } == 0 {
+        return Ok(instance);
+    }
+    let Some(fs) = rt.effect_named(b"std::fs::Fs") else {
+        return Err(rt.raise(Defect::INTERNAL));
+    };
+    match rt.perform_value(frame, fs, 0, 0) {
+        Ok(0) => Err(step::YIELD),
+        Ok(_) => {
+            rt.set_block(frame, SQL_ROOTED);
+            Err(step::CALL)
+        }
+        Err(d) => Err(rt.raise(d)),
+    }
+}
+
 /// A clause's instance (its closure's capture) and the clause closure released.
 fn instance_of(rt: &mut Rt, frame: u32) -> i64 {
     let clause = rt.take_fslot(frame, 0) as u32;
@@ -1216,7 +1266,10 @@ fn ok_or_fail(rt: &mut Rt, r: Res<(u8, u32)>) -> u32 {
 #[unsafe(no_mangle)]
 pub extern "C" fn rt_code_sql_query(_env: u32, frame: u32) -> u32 {
     let rt = rt();
-    let instance = instance_of(rt, frame);
+    let instance = match sql_instance(rt, frame) {
+        Ok(i) => i,
+        Err(step) => return step,
+    };
     let (q, schema) = (
         rt.take_fslot(frame, 2) as u32,
         rt.take_fslot(frame, 3) as u32,
@@ -1235,7 +1288,10 @@ pub extern "C" fn rt_code_sql_query(_env: u32, frame: u32) -> u32 {
 #[unsafe(no_mangle)]
 pub extern "C" fn rt_code_sql_execute(_env: u32, frame: u32) -> u32 {
     let rt = rt();
-    let instance = instance_of(rt, frame);
+    let instance = match sql_instance(rt, frame) {
+        Ok(i) => i,
+        Err(step) => return step,
+    };
     let q = rt.take_fslot(frame, 2) as u32;
     let r = encode_args(rt, &[q]).and_then(|b| {
         let (len, at) = rt.data(b);
@@ -1262,8 +1318,11 @@ pub extern "C" fn rt_code_sql_execute(_env: u32, frame: u32) -> u32 {
 pub extern "C" fn rt_code_sql_transaction(_env: u32, frame: u32) -> u32 {
     let rt = rt();
     match rt.block(frame) {
-        0 => {
-            let instance = instance_of(rt, frame);
+        0 | SQL_ROOTED => {
+            let instance = match sql_instance(rt, frame) {
+                Ok(i) => i,
+                Err(step) => return step,
+            };
             let body = rt.take_fslot(frame, 2) as u32;
             // SAFETY: a plain import; the answer arrives as a `Bytes`.
             let begun = answer(rt, unsafe { host::sql_begin(instance) });
@@ -2015,6 +2074,11 @@ mod host {
         /// SQL (JS `sqlConnection`): a new in-memory database's id, its queries and
         /// statements (`sakura-vt1` arguments; status-prefixed answers), savepoints.
         pub fn sql_open_memory() -> i64;
+        /// `Sql.sqlite(path)`: a database the host opens on first use; whether it still needs
+        /// the directory, and the directory (a `sakura-vt1` tuple holding the `Dir`).
+        pub fn sql_open_file(ptr: u32, len: u32) -> i64;
+        pub fn sql_needs_root(instance: i64) -> u32;
+        pub fn sql_root(instance: i64, ptr: u32, len: u32);
         pub fn sql_query(instance: i64, ptr: u32, len: u32) -> u32;
         pub fn sql_execute(instance: i64, ptr: u32, len: u32) -> u32;
         pub fn sql_begin(instance: i64) -> u32;

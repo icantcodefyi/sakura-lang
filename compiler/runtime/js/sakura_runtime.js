@@ -3608,10 +3608,15 @@ export function sql_sqlite(path) {
   return sqlHandler((ctx) => {
     const o = runTask((c, k) => perform(c, "std::fs::Fs", 0, [], (d) => ret(k, d)), [], ctx.p ?? ctx.h);
     if (o instanceof Promise || o.kind !== "ok") throw new Error("Fs.root() is not available");
-    const r = inside(o.value, rel, true);
-    if (r.err !== undefined) throw new Error(`${rel}: ${r.err}`);
-    return new (proc.getBuiltinModule("node:sqlite").DatabaseSync)(r.path);
+    return sqliteFile(o.value, rel);
   });
+}
+
+/** The SQLite database file `rel` inside directory `d` (`Sql.sqlite`; the WASM host's too). */
+export function sqliteFile(d, rel) {
+  const r = inside(d, rel, true);
+  if (r.err !== undefined) throw new Error(`${rel}: ${r.err}`);
+  return new (proc.getBuiltinModule("node:sqlite").DatabaseSync)(r.path);
 }
 
 // ---------------------------------------------------------------------------------------------

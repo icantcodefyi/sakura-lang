@@ -377,6 +377,27 @@ export class Host {
           this.sql.push(rt.sqlConnection(() => new (proc.getBuiltinModule("node:sqlite").DatabaseSync)(":memory:")));
           return BigInt(this.sql.length - 1);
         },
+        // `Sql.sqlite(path)`: opened on first use with the directory the guest's `Fs.root()`
+        // gave (`sql_root`), as JS `sql_sqlite`; until then `sql_needs_root` says 1.
+        sql_open_file: (ptr, len) => {
+          const path = this.string(ptr, len);
+          const file = { dir: null, open: false };
+          const c = rt.sqlConnection(() => {
+            const d = file.dir;
+            file.dir = null;
+            if (d === null) throw new Error("Fs.root() is not available");
+            const db = rt.sqliteFile(d, path);
+            file.open = true;
+            return db;
+          });
+          this.sql.push(Object.assign(c, { file }));
+          return BigInt(this.sql.length - 1);
+        },
+        sql_needs_root: (inst) => (this.sql[Number(inst)].file?.open === false ? 1 : 0),
+        sql_root: (inst, ptr, len) => {
+          const [d] = this.decode(new Reader(this.copyIn(ptr, len)));
+          this.sql[Number(inst)].file.dir = d;
+        },
         sql_query: (inst, ptr, len) => {
           const [q, schema] = this.decode(new Reader(this.copyIn(ptr, len)));
           const s = JSON.parse(schema);
