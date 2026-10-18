@@ -15,7 +15,7 @@ sakura verify --target wasm --rlimit 20000000 --solver /path/to/z3 src
 
 Install **Z3 5.3.1** separately, then check `z3 --version`. The CLI uses `z3` on `PATH` or the binary named by `--solver PATH`; it checks the version and refuses a missing or different version. It downloads nothing. If pinned cvc5 **1.4.2** is also available on `PATH`, it cross-checks Z3's `unsat` answers; a disagreement prevents a proof.
 
-`--target js` is the default: `Int` must fit within ±(2^53−1). `--target wasm` selects the signed i64 verification profile, reported as `i64`. Selecting this profile does not build or execute WASM. To execute it, use [`sakura run --target wasm`](/docs/tour/memory#backends); builds and tests also accept that target.
+`--target js` is the default: `Int` must fit within ±(2^53−1). `--target wasm` selects the signed i64 verification profile, reported as `i64`. Selecting this profile does not build or execute WASM; counterexamples are replayed on the compiler's reference interpreter for WASM's `Int` (see below). To execute it, use [`sakura run --target wasm`](/docs/tour/memory#backends); builds and tests also accept that target.
 
 The command accepts source files or directories; with no paths it uses `src/` when present, otherwise the current directory. Its options are `--json`, `--target js|wasm`, `--rlimit N` and `--solver PATH` (plus `--help`). There are no CLI timeout, cross-check or proof-certificate flags.
 
@@ -50,8 +50,10 @@ Running `sakura verify main.sak` with Z3 5.3.1 produced the following output (ob
 ```text
 proved      main::main::main requires ordered at main.sak:9:16
 proved      main::main::clamp ensures bounded at main.sak:3:20
-2 proved, 0 disproved, 0 unknown, 0 unsupported (profile js, z3 5.3.1, rlimit 10000000)
+2 proved, 0 disproved, 0 unknown, 0 unsupported (0 reused) (profile js, z3 5.3.1, rlimit 10000000)
 ```
+
+Running it again on the unchanged file prints the same obligations and `(2 reused)`: both records came from the proof cache, and the solver was not asked again.
 
 The first result proves that this call meets `ordered`; it says nothing about another caller. The second proves `bounded` on normal return, assuming the precondition. Neither proves termination or the absence of every possible defect.
 
@@ -69,7 +71,7 @@ Arithmetic is checked separately. For example, `total * p / 100` can satisfy an 
 
 A completed verification exits **1** if any obligation is `disproved`, otherwise **0**, even with `unknown`, `unsupported` or warnings. Loading, compilation and solver setup errors can also fail. An automation gate that requires proofs must inspect the records, not just the exit code.
 
-Counterexamples contain source values. Replay currently runs through the Core evaluator on the JS profile for eligible pure top-level functions whose parameters are all `Int` or `Bool`. `replay: "confirmed"` means execution produced the defect predicted by that obligation; `candidate` or `unavailable` is not confirmation. i64 replay is not implemented.
+Counterexamples contain source values. Replay runs eligible pure top-level functions whose parameters are all `Int` or `Bool` on the model's inputs: on the JS profile through the Core evaluator, on the i64 profile through the LIR evaluator, whose `Int` is WASM's (an i64 overflow is `D001` there, where the JS profile's range check is `D003`). `replay: "confirmed"` means execution produced the defect predicted by that obligation; `candidate` or `unavailable` is not confirmation.
 
 ### W7002: vacuous proofs
 
@@ -77,7 +79,7 @@ The verifier first checks whether an obligation's assumptions are feasible. An i
 
 ## JSON Lines
 
-`sakura verify --json main.sak` writes one `obligation` record per obligation, any `W7002` `diagnostic` records, then a final `summary`. These are separate JSON objects, one per line, with `schema_version: "1.0"`.
+`sakura verify --json main.sak` writes one `obligation` record per obligation, any `W7002` `diagnostic` records, then a final `summary`. These are separate JSON objects, one per line, with `schema_version: "1.1"`. Version 1.1 added the summary's `reused` count; a consumer checks the major version and ignores fields it does not know. Other commands still write `1.0`.
 
 Obligation records include:
 
@@ -87,7 +89,7 @@ Obligation records include:
 - `reason` with `kind` and `detail`, or `counterexample` with `failed`, `inputs` and summary values, plus `replay`; fields without a result can be null. Counterexample integers are decimal strings to preserve i64 precision.
 - `snapshot` and `manifest_id`: the latter identifies the contract clause updated in the manifest and is null for arithmetic obligations.
 
-Spans carry the source URI, content hash and byte range. The summary includes `proved`, `disproved`, `unknown` and `unsupported` counts as well as diagnostic counts. Consume records by `kind`; a stream can contain both proof results and diagnostics.
+Spans carry the source URI, content hash and byte range. The summary includes `proved`, `disproved`, `unknown` and `unsupported` counts, `reused` (how many of those records were rebuilt from an authenticated cache entry instead of being solved), and diagnostic counts. Consume records by `kind`; a stream can contain both proof results and diagnostics.
 
 ## Proof cache and build behavior
 
@@ -103,7 +105,7 @@ sakura build --manifest main.sak
 
 Only JS output from `sakura build` removes checks, and only a function's **own `ensures` and non-entry `where` checks** whose every obligation has an authenticated `proved` record matching the Core being built. **This proof-removal pass retains `requires`, `T.from` entry checks and checked arithmetic.** The separate interval optimization can remove arithmetic guards it proves safe; that is not a solver verdict. In the example, `clamp` can lose its postcondition check, but its entry precondition remains. The predicate is still computed, so a defect during predicate evaluation remains `D011`.
 
-The build recomputes cache keys without running Z3. Missing, stale or unauthenticated proofs leave checks intact. `sakura run`, `sakura test` and `sakura build --emit lir` keep all checks. `sakura verify` reuses an authenticated record whose obligation, solver version, limits and cross-check solver are unchanged, so a second run on an unchanged tree solves nothing; `unknown` obligations are solved again on every run.
+The build recomputes cache keys without running Z3. Missing, stale or unauthenticated proofs leave checks intact. `sakura run`, `sakura test` and `sakura build --emit lir` keep all checks. `sakura verify` reuses an authenticated record whose obligation, solver version, limits and cross-check solver are unchanged, so a second run on an unchanged tree solves nothing; the summary's `reused` count says how many records came from the cache. An `unknown` whose reason is `resource_limit` is reused too, because the `rlimit` is part of the key and binds the same way on every run; raise `--rlimit` or `[verify] rlimit` to try again with a larger budget. Any other `unknown` (a timeout, a crash, a solver disagreement) is solved again on every run. A reused `unknown` never removes a check: builds drop checks only for `proved` records. Proof records written by an older compiler use another entry format and are solved again once.
 
 See the [build manifest](/docs/agents/build-manifest) for the trusted base and clause records. `verify` writes `target/sakura/manifest.json` with verification statuses; a clause takes its worst obligation's status (`disproved`, then `unknown`, then `unsupported`, then `proved`). `build --manifest` describes the actual build: `proved` only for clauses whose checks it all removed, and `runtime_checked` for the rest. Building therefore replaces prior `unknown` or `disproved` manifest statuses with `runtime_checked` where checks remain.
 

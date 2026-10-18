@@ -146,6 +146,21 @@ published yet.
 
 ### Added
 
+- `sakura verify --json` writes `schema_version: "1.1"` on every record, and its `summary`
+  counts `reused`: the obligations whose record was rebuilt from an authenticated cache entry
+  instead of being solved; the human summary prints `(n reused)`. Consumers check the major
+  version and ignore unknown fields. An `unknown` whose reason is `resource_limit` is now
+  cached and reused by `sakura verify` (the `rlimit` is in the key), so a second run does not
+  spend the full budget on it again; it never removes a check. Proof cache entries move to
+  format 2, so each obligation is solved once more after upgrading (design §17.164 (1), (2)).
+- `sakura verify --target wasm` replays a `disproved` obligation on the LIR evaluator, whose
+  `Int` is WASM's i64, and marks a counterexample that defects as predicted `confirmed`, as
+  the JS profile already did on the Core evaluator (plan V4b, design §17.164 (4)).
+- `sakura build --target wasm --manifest` writes `target/sakura/manifest.json` instead of
+  refusing. The manifest is schema 1.1 and gains `target` (`js` or `wasm`); a WASM manifest
+  lists `sakura_rt.wasm`, `sakura_wasm_host.js` and `sakura_runtime.js` as its runtime, and
+  every clause stays `runtime_checked` because WASM builds drop no checks yet
+  (design §17.163 (3)).
 - `--target wasm` runs direct code without continuation frames: each direct top-level
   function whose body is first-order gets a native twin with `Int`/`Float` arguments in
   registers, and deep recursion falls back to frames past a stack gauge (design §17.118).

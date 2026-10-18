@@ -31,7 +31,7 @@ The example proves two obligations: this call meets `ordered`, and `clamp` meets
 ## Read the result, not just the exit code
 
 - `proved`: holds under the recorded assumptions. `W7002` and `path_feasible: false` flag a vacuous proof whose assumptions cannot hold.
-- `disproved`: a counterexample exists. Inspect `replay` to distinguish a confirmed JS execution from a candidate; i64 replay remains planned.
+- `disproved`: a counterexample exists. Inspect `replay` to distinguish a confirmed execution from a candidate; JS-profile counterexamples are replayed on the Core evaluator, i64 ones on the LIR evaluator.
 - `unknown`: the solver could not decide within its limits, or encountered a solver failure.
 - `unsupported`: the obligation is outside the implemented fragment.
 
