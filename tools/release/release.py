@@ -289,7 +289,7 @@ def render(text, ver, sums):
 
 
 def npm_pack(stage, out):
-    p = subprocess.run(["npm", "pack", "--json", "--pack-destination", str(Path(out).resolve())], cwd=stage,
+    p = subprocess.run(["npm", "pack", "--ignore-scripts", "--json", "--pack-destination", str(Path(out).resolve())], cwd=stage,
                        check=True, capture_output=True, text=True)
     return json.loads(p.stdout)[0]["filename"]
 
