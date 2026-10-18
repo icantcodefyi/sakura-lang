@@ -26,3 +26,8 @@ claim is correct. Compiler fmt,
 clippy and tests, website gates, ASan, Miri and Valgrind were not run: this changes
 only research documentation/evidence and implements no native code. Code examples
 in the report are descriptive signatures/messages, not purported runnable programs.
+
+Landing re-audit: rebased onto `9032f28`; inspected changes to ABI.md (1.1.1
+erratum), runtime Secret transport, HTTP recording validation and serve body
+limits. Report §1 records the delta. Local-link/JSON checks and whitespace checks
+passed again after rebase. The original source-inspection baseline stays `194e5cd`.

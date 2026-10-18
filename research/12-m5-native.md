@@ -33,6 +33,19 @@ required future input, not something present at this baseline: it adds `restarts
 reconciles imports/kinds 5–6, and corrects the restart wording. Re-audit against the
 M4 exit commit before N1. Source comments saying 1.0.2 do not override the constant.
 
+**Landing re-audit:** rebased onto `9032f28`. ABI prose is now **1.1.1**, a PATCH
+erratum retaining exported `0x010100`; 1.2.0 is still pending. Its §8.1 now correctly
+locates Secret redaction in the runtime transport encoder, with `SECRET_IMPORTS`
+allowlisting `js_handler`, `http_send` and `http_stream_open`. Native adapters must
+port this explicit egress policy; cassette imports receive redacted values. Zeroing
+transport buffers does not erase decoded strings or justify a stronger security
+claim. §8.4 clarifies that Node issues fresh slots at generation 1 without reuse and
+that File IDs are plain JS table integers, not packed handles. A new native handle
+table must specify its own generation/retirement policy and preserve observable
+errors. The landing base also fixes cassette validation and caps server request
+bodies at 1 MiB; N1b must carry these into native fixtures. Original-baseline
+observations elsewhere in this report remain explicitly historical.
+
 | Component | Observed stable release | Primary evidence and qualification |
 | --- | --- | --- |
 | Cranelift codegen/frontend/object | **0.136.3**, 2026-10-14; declared Rust minimum 1.96.0 | [Registry snapshot](12-evidence/versions.json), [crate release](https://docs.rs/crate/cranelift/0.136.3). Pin the family together. |
