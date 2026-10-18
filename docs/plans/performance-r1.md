@@ -184,6 +184,14 @@ to stdout by a benchmark program.
 - Job `nightly`: `workflow_dispatch` and a schedule, `macos-latest`, `bench run --suite all`
   with the pinned toolchains installed; a missing toolchain fails this job.
 - No job commits results. Baselines are blessed by hand from the reference machine.
+- Measurement policy (§17.153): authoritative numbers come from a **quiet window** on the
+  reference machine (agents paused by the owner; every 15-second `record_load.py` snapshot's
+  one-minute load ≤ a quarter of the logical CPUs, 3.0 on the 12-CPU host; no other build,
+  benchmark or agent executable in the busiest list); the harness records `meta.host.quiet` and
+  `bench bless` refuses a run that is not quiet. `bench compare` prints `advisory (host load L)`
+  instead of `ok`/`blocked` when either run exceeded the threshold; advisory runs show direction
+  only. A weekly scheduled `noise` run (the existing manual job, five repeats) characterises the
+  runners and is the CI half of the §17.136 Bun study.
 
 ---
 
@@ -303,9 +311,14 @@ matches its expected snapshot.
 
 ## 5. Acceptance of the round
 
-1. §17.109 suite rule on the reference machine, both engines, matched lane: median ratio ≤ 1.5,
-   no program above its ceiling (`bench compare` against the pre-round baseline shows the
-   deltas; the final numbers are blessed as the new baseline).
+1. §17.109 suite rule on the reference machine, both engines, matched lane, **measured in a
+   quiet window (§17.153; §3.4 below)**: median ratio ≤ 1.5, no program other than `sieve`,
+   `nbody` and `spectral_norm` above its ceiling (§17.152: those three are representation-bound
+   and are reported with their post-landing ratios and the named remaining cause; `map_set` is
+   3.0 on Node and 5.0 provisional on Bun) (`bench compare` against the pre-round baseline shows
+   the deltas; the final numbers are blessed as the new baseline). A workstream *lands* on
+   deterministic evidence plus an advisory before/after and is *accepted against its ceiling*
+   only at the quiet window (§17.153 item 4).
 2. `cargo test --workspace --locked` green, including the `--no-direct` semantics run and the
    trace-parity assertion on every `tests/semantics` fixture.
 3. `deep_countdown`, `deep_sum`, `million_operations` green on Node and Bun; `handler_cancel_in_loop`
@@ -427,3 +440,25 @@ authority).
 6. `sakura build --dump core` is a second `Dump` variant beside WS-P1's `direct`. It prints instead of building and shows the JS profile only.
 7. `runtime/js/ABI.md` §7's `Int` row (WS-P6's section) now says proved operations are raw. The `emit.rs` hunks are a `proved` field on `FnEmit` and the `Bind::Prim` arms of `simple_bind` and `prim`, as posted in REQUESTS.
 8. Measured on `13d49d5`, before WS-P6's list builders landed. Not met: `countdown` 1.3 (1.57 Node, 2.75 Bun) and `sieve` 1.5 (27×/60×, dominated by `List.set`, outside WS-P4's scope). The bench was taken under host load 10–11, and an unchanged-code rerun blocks, so the deltas are recorded as inconclusive where noisy (`bench/deltas.md`).
+
+## 9. Round 10 (§17.149–§17.154): ownership, fusion, benchmark definitions, measurement
+
+Evidence: `research/10-evidence/perf-gaps-r2.md` (Astra, `de3c42e`, measured at `1ced38d`),
+WS-P4 deviation 8, WS-P6 items 6–7. Every workstream below lands on deterministic evidence
+(semantics, trace and `--no-direct` parity, the `sakura_eval` audits, WASM parity, no CI block)
+plus an advisory before/after in `bench/deltas.md`, and is accepted against its ceiling only at
+the next quiet window (§17.153).
+
+| ID | Workstream (decision) | Owner | Paths | Starts after | Acceptance |
+|---|---|---|---|---|---|
+| **WS-P7** | Ownership facts in Core; in-place update of owned `List`/`Map`/`Set` on JS and native (§17.149) | Opus; CODEOWNERS review (semantics-adjacent) | `sakura_core/src/opt/owned.rs`, `sakura_core/src/builtins.rs` (`fresh`, `consumes` columns), `sakura_codegen_js` (owned entries), `runtime/js` (`list_set_owned`, `list_push_owned`, `map_set_owned`, `map_remove_owned`, `set_add_owned`, `set_remove_owned`; leaf/entries cache invalidation; `ABI.md` §7), `sakura_lir` + `runtime/rt` (`builtins.sigs`, owning entries, per-node rc test in `list.rs`/`map.rs`), `tools/sakura_eval` (`Limits::audit_owned`), `sakura_cli` (`--dump owned`) | now; M4-LIR coordination for the rt half | the §17.149 invariant fixtures (retained version after `set`/`push`/`Map.set` with shared leaf, tail and HAMT subtree; captured before update; stored in a record/`Map` value; the loop run twice; empty singleton; inside `with`/`try`/after a `Perform`; generic `List<A>`) pass with trace, `--no-direct` and WASM parity; `audit_owned` on in the differential and corpus runs; `--dump owned` reasons from the fixed set; advisory delta on `sieve` (path copies gone) and `map_set` (node copies gone); `--dump direct` unaffected |
+| **WS-P8** | `list_get`/`map_get` + immediately consumed `option_expect` fuse into `list_get_expect`/`map_get_expect` (§17.151) | Opus, small | `sakura_core/src/opt.rs` (peephole after inlining), `sakura_core/src/builtins.rs`, `runtime/js`, `runtime/rt` + `sakura_lir/src/builtins.sigs`, `tools/sakura_eval` (composition) | now | fixtures: in range; out of range with identical `D030` message, span and exit 70 under both ABIs and on WASM; Option used twice not fused (`--dump core`); `Map` key miss; advisory delta on `spectral_norm` |
+| **WS-P4b** | `opt::ranges` seeds parameter intervals from `requires` and refined-parameter `where` (§17.154) | Opus, small | `sakura_core/src/opt/ranges.rs`, `tools/sakura_eval` generator cases | now | a seeded `requires` violated at run time still defects `D020` before the body (the `audit_ranges` oracle); a parameter without a clause is the whole range; `countdown` with `requires n >= 0` shows `n - 1` proved in `--dump core` and `acc + n` checked |
+| **WS-S10** | Benchmark-definition fixes (§17.150) | Sol; Astra records the boundaries | `bench/programs/nbody/sakura/main.sakura` (`List.set`), `bench/programs/countdown/js/main.mjs` (explicit overflow check), an audit of the other controls' check placement, `research/10-evidence/ws-a/{nbody,countdown}-definition-change.json`, `bench/deltas.md` (boundary rows, not optimisation rows) | now | oracles pass at every size; boundary records carry both blob hashes; pre-change ratios excluded from comparisons and noise summaries; raw runs retained |
+| **WS-B10** | Harness: `meta.host.quiet`, `bless` refusal, advisory verdict, per-key-kind `map_set` results (§17.152 item 3, §17.153) | Opus (WS-B); Sol (`bench.yml` weekly `noise` schedule); Astra (`bench/README.md` quiet-window protocol) | `bench/harness`, `bench/README.md`, `.github/workflows/bench.yml` | now | fixtures: a run over the load threshold is `quiet: false` and `bless` refuses it; `compare` of a loaded base prints `advisory (host load L)`; `map_set` reports `Int`, `String` and tuple keys as separate cells; the weekly job uploads five noise artefacts |
+| **Quiet window** | Close-out remeasure (§17.153) | owner announces; Astra runs and reports; owner blesses | `bench/baselines/<host-id>.json`, `bench/deltas.md` | WS-P7, WS-P8, WS-P4b, WS-S10, WS-B10 landed; WS-P2 and WS-P5 landed (`m3-completion-and-m4.md` §3.7 item 6) | §5 item 1 as amended; `countdown`'s two halves reported separately (§17.154 item 3); `map_set` per key kind decides the provisional Bun ceiling; `pipeline` remeasured with WS-P4's fast path; the three representation-bound programs reported with cause |
+| **WS-P9** (conditional) | Mutual tail calls inside a direct component become jumps into one merged loop (§17.154 item 3) | Opus | `sakura_core/src/opt.rs` (`tail_calls` over a component), `sakura_lir` mirror (§17.118 parity) | the quiet window shows the mutual half dominates `countdown` | `deep_countdown`, `mutual_recursion` and the gauge fixtures unchanged under both ABIs and on WASM; `--dump direct` parity; advisory delta on `countdown` |
+
+Representation research (§17.152 item 1) is `m3-completion-and-m4.md` §3.7 item 11, now
+`research/12-m5-native.md`, with the perf-gaps-r2 numbers as its brief; no representation changes
+before that round.
