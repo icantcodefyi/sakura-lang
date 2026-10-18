@@ -1,0 +1,5 @@
+ending: ok
+--- stdout
+a 40
+b 90
+children 2

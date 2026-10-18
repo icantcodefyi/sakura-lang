@@ -2,10 +2,11 @@
 source: crates/sakura_lir/tests/corpus.rs
 expression: text
 ---
-layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
-layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
-layout 2 shape |  32b (word*, word*)
-layout 3 shape |  32b (i64, word*)
+layout 0 variant std::list::Builder
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
 
 fn main#0 pub top -> unit ; main::newline_rule, frame 8 slots [%22 i64, %23 i64, %24 i64, %25 bool, %26 word*, %44 bool, %47 bool, %50 bool]
   b0():

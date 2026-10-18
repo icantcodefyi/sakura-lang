@@ -1,0 +1,175 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::list::Builder
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::fused_get_expect, frame 33 slots [%2 word*, %19 i64, %20 word*, %21 word*, %22 word*, %28 i64, %29 word*, %30 word*, %31 word*, %37 i64, %38 word*, %39 word*, %40 word*, %43 bool, %44 word*, %45 word*, %48 i64, %49 word*, %50 word*, %55 i64, %56 word*, %57 word*, %60 bool, %61 word*, %64 i64, %65 word*, %70 i64, %71 word*, %74 bool, %92 i64, %93 word*, %94 i64, %95 i64]
+  b0():
+    %0 lit: i64 = const 0
+    %1 lit: i64 = const 100
+    call range#2(%0, %1) -> b1()
+  b1(%2 r: ptr):
+    %101 lit: i64 = const 0
+    %102 lit: i64 = const 0
+    jump b13(%101, %102, %2)
+  b2(%3 sum: i64, %4 i: i64, %5 r: ptr):
+    %6 r: ptr = $map_empty()
+    %7 lit: ptr = const str 0
+    %8 lit: i64 = const 3
+    %9 box: word = box %8
+    %10 r: ptr = $map_insert(%6, %7, %9)
+    %11 lit: ptr = const str 1
+    %12 lit: i64 = const 5
+    %13 box: word = box %12
+    %14 r: ptr = $map_insert(%10, %11, %13)
+    %15 s: ptr = show %3
+    %16 lit: ptr = const str 2
+    %17 s: ptr = concat %15, %16
+    drop %15
+    drop %16
+    %18 lit: i64 = const 31
+    dup %5
+    call at#3(%5, %18) -> b3(%5, %14, %17)
+  b3(%19 r: i64, %20 r: ptr, %21 r: ptr, %22 s: ptr):
+    %23 s: ptr = show %19
+    %24 s: ptr = concat %22, %23
+    drop %22
+    drop %23
+    %25 lit: ptr = const str 2
+    %26 s: ptr = concat %24, %25
+    drop %24
+    drop %25
+    %27 lit: i64 = const 32
+    dup %20
+    call at#3(%20, %27) -> b4(%20, %21, %26)
+  b4(%28 r: i64, %29 r: ptr, %30 r: ptr, %31 s: ptr):
+    %32 s: ptr = show %28
+    %33 s: ptr = concat %31, %32
+    drop %31
+    drop %32
+    %34 lit: ptr = const str 2
+    %35 s: ptr = concat %33, %34
+    drop %33
+    drop %34
+    %36 lit: i64 = const 99
+    dup %29
+    call at#3(%29, %36) -> b5(%29, %30, %35)
+  b5(%37 r: i64, %38 r: ptr, %39 r: ptr, %40 s: ptr):
+    %41 s: ptr = show %37
+    %42 s: ptr = concat %40, %41
+    drop %40
+    drop %41
+    perform std::console::Console.print(%42) -> b6(%38, %39)
+  b6(%43 r: unit, %44 r: ptr, %45 r: ptr):
+    %46 box: word = box %43
+    drop %46
+    %47 lit: ptr = const str 0
+    dup %45
+    call price#4(%45, %47) -> b7(%44, %45)
+  b7(%48 r: i64, %49 r: ptr, %50 r: ptr):
+    %51 s: ptr = show %48
+    %52 lit: ptr = const str 2
+    %53 s: ptr = concat %51, %52
+    drop %51
+    drop %52
+    %54 lit: ptr = const str 1
+    call price#4(%50, %54) -> b8(%49, %53)
+  b8(%55 r: i64, %56 r: ptr, %57 s: ptr):
+    %58 s: ptr = show %55
+    %59 s: ptr = concat %57, %58
+    drop %57
+    drop %58
+    perform std::console::Console.print(%59) -> b9(%56)
+  b9(%60 r: unit, %61 r: ptr):
+    %62 box: word = box %60
+    drop %62
+    %63 lit: i64 = const 7
+    dup %61
+    call twice#5(%61, %63) -> b10(%61)
+  b10(%64 r: i64, %65 r: ptr):
+    %66 s: ptr = show %64
+    %67 lit: ptr = const str 2
+    %68 s: ptr = concat %66, %67
+    drop %66
+    drop %67
+    %69 lit: i64 = const 100
+    call twice#5(%65, %69) -> b11(%68)
+  b11(%70 r: i64, %71 s: ptr):
+    %72 s: ptr = show %70
+    %73 s: ptr = concat %71, %72
+    drop %71
+    drop %72
+    perform std::console::Console.print(%73) -> b12()
+  b12(%74 r: unit):
+    %75 box: word = box %74
+    %76 unbox: unit = unbox %75
+    drop %75
+    ret %76
+  b13(%77 sum: i64, %78 i: i64, %79 r: ptr):
+    %80 lit: i64 = const 100
+    %81 t: bool = lt.int %78, %80
+    if %81 then b15(%79, %77, %78) else b16(%79, %77, %78)
+  b14(%82 v: word, %83 sum: i64, %84 i: i64, %85 r: ptr):
+    drop %82
+    jump b13(%83, %84, %85)
+  b15(%86 r: ptr, %87 sum: i64, %88 i: i64):
+    dup %86
+    call at#3(%86, %88) -> b17(%86, %87, %88)
+  b16(%89 r: ptr, %90 sum: i64, %91 i: i64):
+    jump b2(%90, %91, %89)
+  b17(%92 r: i64, %93 r: ptr, %94 sum: i64, %95 i: i64):
+    %96 t: i64 = intadd %94, %92
+    %97 lit: i64 = const 1
+    %98 t: i64 = intadd %95, %97
+    %99 lit: unit = const ()
+    %100 box: word = box %99
+    jump b14(%100, %96, %98, %93)
+
+fn $entry#1 top -> unit ; main::fused_get_expect, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn at#3 top -> i64 ; main::fused_get_expect, frame 2 slots [%0 word*, %1 i64]
+  b0(%0 xs: ptr, %1 i: i64):
+    %2 lit: ptr = const str 3
+    %3 r: word = $list_get_expect(%0, %1, %2)
+    %4 unbox: i64 = unbox %3
+    drop %3
+    ret %4
+
+fn price#4 top -> i64 ; main::fused_get_expect, frame 2 slots [%0 word*, %1 word*]
+  b0(%0 m: ptr, %1 k: ptr):
+    %2 lit: ptr = const str 4
+    %3 r: word = $map_get_expect(%0, %1, %2)
+    %4 unbox: i64 = unbox %3
+    drop %3
+    ret %4
+
+fn twice#5 top -> i64 ; main::fused_get_expect, frame 4 slots [%0 word*, %1 i64, %3 bool, %4 word*]
+  b0(%0 xs: ptr, %1 i: i64):
+    %2 r: ptr = $list_get(%0, %1)
+    dup %2
+    call is_some#6(%2) -> b1(%2)
+  b1(%3 r: bool, %4 r: ptr):
+    if %3 then b2(%4) else b3(%4)
+  b2(%5 r: ptr):
+    %7 lit: ptr = const str 5
+    %8 r: word = $option_expect(%5, %7)
+    %9 unbox: i64 = unbox %8
+    drop %8
+    ret %9
+  b3(%6 r: ptr):
+    drop %6
+    %10 lit: i64 = const 1
+    %11 t: i64 = intneg %10
+    ret %11

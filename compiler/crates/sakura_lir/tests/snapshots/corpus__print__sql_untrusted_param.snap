@@ -6,13 +6,14 @@ layout 0 record main::sql_untrusted_param::Row | Row 24b (name: word*)
 layout 1 variant std::html::Html | Html 24b (word*)
 layout 2 error std::json::DecodeError | DecodeError 32b (path: word*, message: word*)
 layout 3 variant std::json::Json | Null 16b () | Bool 24b (bool) | Number 24b (f64) | String 24b (word*) | Array 24b (word*) | Object 24b (word*)
-layout 4 variant std::option::Option | None 16b () | Some 24b (word*)
-layout 5 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
-layout 6 record std::sql::Query | Query 32b (text: word*, params: word*)
-layout 7 error std::sql::SqlError | SqlError 24b (message: word*)
-layout 8 variant std::sql::SqlValue | Null 16b () | Int 24b (i64) | Float 24b (f64) | Text 24b (word*) | Blob 24b (word*)
-layout 9 shape |  32b (word*, word*)
-layout 10 shape |  32b (i64, word*)
+layout 4 variant std::list::Builder
+layout 5 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 6 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 7 record std::sql::Query | Query 32b (text: word*, params: word*)
+layout 8 error std::sql::SqlError | SqlError 24b (message: word*)
+layout 9 variant std::sql::SqlValue | Null 16b () | Int 24b (i64) | Float 24b (f64) | Text 24b (word*) | Blob 24b (word*)
+layout 10 shape |  32b (word*, word*)
+layout 11 shape |  32b (i64, word*)
 
 fn main#0 pub top -> unit ; main::sql_untrusted_param, frame 13 slots [%5 word*, %10 word*, %11 word*, %12 bool, %18 word*, %19 i64, %21 word*, %26 word*, %27 i64, %30 word*, %33 bool, %37 word*, %40 bool]
   b0():

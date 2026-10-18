@@ -3,11 +3,12 @@ source: crates/sakura_lir/tests/corpus.rs
 expression: text
 ---
 layout 0 error main::effects_and_handlers::Full | Full 16b ()
-layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
-layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
-layout 3 shape |  32b (word*, word*)
-layout 4 shape |  32b (i64, word*)
-layout 5 shape |  24b (word*)
+layout 1 variant std::list::Builder
+layout 2 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 3 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 4 shape |  32b (word*, word*)
+layout 5 shape |  32b (i64, word*)
+layout 6 shape |  24b (word*)
 
 fn main#0 pub top -> unit ; main::effects_and_handlers, frame 11 slots [%1 word*, %4 bool, %8 bool, %11 word*, %16 word*, %17 word*, %20 bool, %23 word*, %27 i64, %30 word*, %35 i64]
   b0():
@@ -93,7 +94,7 @@ fn bounded#2 top -> ptr ; main::effects_and_handlers, frame 1 slots [%0 i64]
     %1 r: ptr = $map_empty()
     %2 put: ptr = closure bounded$Store_put#5[%0]
     %3 get: ptr = closure bounded$Store_get#7[]
-    %4 handler: ptr = handler main::effects_and_handlers::Store row 5 state(%1) clauses(%2, %3)
+    %4 handler: ptr = handler main::effects_and_handlers::Store row 6 state(%1) clauses(%2, %3)
     ret %4
 
 fn fill#3 top -> i64 ; main::effects_and_handlers, frame 8 slots [%0 word*, %1 word*, %2 word*, %32 bool, %33 word*, %34 word*, %35 i64, %36 i64]
@@ -136,7 +137,7 @@ fn bounded$Store_put#5 clause main::effects_and_handlers::Store.put -> unit ; ma
   b0(%0 env: ptr, %1 inst: id, %2 key: ptr, %3 value: i64):
     %4 limit: i64 = capture %0.0
     drop %0
-    %5 data: word = state_get %1[0] row 5
+    %5 data: word = state_get %1[0] row 6
     %6 r: i64 = $map_len(%5)
     %7 t: bool = ge.int %6, %4
     if %7 then b5(%1, %2, %3) else b6(%1, %2, %3)
@@ -144,10 +145,10 @@ fn bounded$Store_put#5 clause main::effects_and_handlers::Store.put -> unit ; ma
     if %8 then b3(%9, %10, %11) else b4(%9, %10, %11)
   b2(%12 v: word, %13 inst: id, %14 key: ptr, %15 value: i64):
     drop %12
-    %16 data: word = state_get %13[0] row 5
+    %16 data: word = state_get %13[0] row 6
     %17 box: word = box %15
     %18 r: ptr = $map_insert(%16, %14, %17)
-    state_set %13[0] row 5 = %18
+    state_set %13[0] row 6 = %18
     %19 set: unit = const ()
     %20 lit: unit = const ()
     ret %20
@@ -160,7 +161,7 @@ fn bounded$Store_put#5 clause main::effects_and_handlers::Store.put -> unit ; ma
     %29 box: word = box %28
     jump b2(%29, %24, %25, %26)
   b5(%30 inst: id, %31 key: ptr, %32 value: i64):
-    %36 data: word = state_get %30[0] row 5
+    %36 data: word = state_get %30[0] row 6
     dup %31
     call contains#6(%36, %31) -> b7(%30, %31, %32)
   b6(%33 inst: id, %34 key: ptr, %35 value: i64):
@@ -173,6 +174,6 @@ fn bounded$Store_put#5 clause main::effects_and_handlers::Store.put -> unit ; ma
 fn bounded$Store_get#7 clause main::effects_and_handlers::Store.get -> ptr ; main::effects_and_handlers, captures [], frame 3 slots [%0 word*, %1 i64, %2 word*]
   b0(%0 env: ptr, %1 inst: id, %2 key: ptr):
     drop %0
-    %3 data: word = state_get %1[0] row 5
+    %3 data: word = state_get %1[0] row 6
     %4 r: ptr = $map_get(%3, %2)
     ret %4

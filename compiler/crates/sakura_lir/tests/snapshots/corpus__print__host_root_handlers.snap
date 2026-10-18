@@ -1,0 +1,150 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::duration::Duration | Duration 24b (i64)
+layout 1 variant std::instant::Instant | Instant 24b (i64)
+layout 2 variant std::list::Builder
+layout 3 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 4 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 5 shape |  32b (word*, word*)
+layout 6 shape |  32b (i64, word*)
+layout 7 shape |  16b ()
+
+fn main#0 pub top -> unit ; main::host_root_handlers, frame 26 slots [%0 word*, %4 bool, %6 word*, %8 word*, %9 word*, %10 bool, %11 word*, %13 word*, %14 word*, %15 i64, %16 word*, %17 i64, %18 i64, %23 bool, %27 i64, %31 bool, %33 f64, %40 bool, %43 word*, %48 bool, %50 word*, %51 word*, %52 bool, %56 bool, %59 word*, %63 bool]
+  b0():
+    perform std::console::Console.read_line() -> b1()
+  b1(%0 r: ptr):
+    %1 s: ptr = show %0
+    drop %0
+    %2 lit: ptr = const str 0
+    %3 s: ptr = concat %2, %1
+    drop %1
+    drop %2
+    perform std::console::Console.print(%3) -> b2()
+  b2(%4 r: unit):
+    %5 box: word = box %4
+    drop %5
+    perform std::clock::Clock.monotonic() -> b3()
+  b3(%6 r: ptr):
+    %7 lit: i64 = const 1
+    call millis#7(%7) -> b4(%6)
+  b4(%8 r: ptr, %9 r: ptr):
+    perform std::clock::Clock.sleep(%8) -> b5(%9)
+  b5(%10 r: unit, %11 r: ptr):
+    %12 box: word = box %10
+    drop %12
+    perform std::clock::Clock.monotonic() -> b6(%11)
+  b6(%13 r: ptr, %14 r: ptr):
+    call to_millis#8(%13) -> b7(%14)
+  b7(%15 r: i64, %16 r: ptr):
+    call to_millis#8(%16) -> b8(%15)
+  b8(%17 r: i64, %18 r: i64):
+    %19 t: bool = ge.int %18, %17
+    %20 s: ptr = show %19
+    %21 lit: ptr = const str 1
+    %22 s: ptr = concat %21, %20
+    drop %20
+    drop %21
+    perform std::console::Console.print(%22) -> b9()
+  b9(%23 r: unit):
+    %24 box: word = box %23
+    drop %24
+    %25 lit: i64 = const 7
+    %26 lit: i64 = const 7
+    perform std::random::Random.int(%25, %26) -> b10()
+  b10(%27 r: i64):
+    %28 s: ptr = show %27
+    %29 lit: ptr = const str 2
+    %30 s: ptr = concat %29, %28
+    drop %28
+    drop %29
+    perform std::console::Console.print(%30) -> b11()
+  b11(%31 r: unit):
+    %32 box: word = box %31
+    drop %32
+    perform std::random::Random.float() -> b12()
+  b12(%33 r: f64):
+    %34 lit: f64 = const 0.0
+    %35 t: bool = ge.float %33, %34
+    if %35 then b23(%33) else b24(%33)
+  b13(%36 v: bool):
+    %37 s: ptr = show %36
+    %38 lit: ptr = const str 3
+    %39 s: ptr = concat %38, %37
+    drop %37
+    drop %38
+    perform std::console::Console.print(%39) -> b14()
+  b14(%40 r: unit):
+    %41 box: word = box %40
+    drop %41
+    %42 lit: i64 = const 16
+    perform std::random::Random.bytes(%42) -> b15()
+  b15(%43 r: ptr):
+    %44 r: i64 = $bytes_len(%43)
+    %45 s: ptr = show %44
+    %46 lit: ptr = const str 4
+    %47 s: ptr = concat %46, %45
+    drop %45
+    drop %46
+    perform std::console::Console.print(%47) -> b16()
+  b16(%48 r: unit):
+    %49 box: word = box %48
+    drop %49
+    perform std::random::Random.uuid() -> b17()
+  b17(%50 r: ptr):
+    call to_string#9(%50) -> b18()
+  b18(%51 r: ptr):
+    call is_canonical#10(%51) -> b19()
+  b19(%52 r: bool):
+    %53 s: ptr = show %52
+    %54 lit: ptr = const str 5
+    %55 s: ptr = concat %54, %53
+    drop %53
+    drop %54
+    perform std::console::Console.print(%55) -> b20()
+  b20(%56 r: unit):
+    %57 box: word = box %56
+    drop %57
+    %58 lit: ptr = const str 6
+    perform std::env::Env.get(%58) -> b21()
+  b21(%59 r: ptr):
+    %60 s: ptr = show %59
+    drop %59
+    %61 lit: ptr = const str 7
+    %62 s: ptr = concat %61, %60
+    drop %60
+    drop %61
+    perform std::console::Console.print(%62) -> b22()
+  b22(%63 r: unit):
+    %64 box: word = box %63
+    %65 unbox: unit = unbox %64
+    drop %64
+    ret %65
+  b23(%66 r: f64):
+    %68 lit: f64 = const 1.0
+    %69 t: bool = lt.float %66, %68
+    jump b13(%69)
+  b24(%67 r: f64):
+    %70 lit: bool = const false
+    jump b13(%70)
+
+fn $entry#2 top -> unit ; main::host_root_handlers, frame 1 slots [%6 bool]
+  b0():
+    %0 clock: ptr = $clock_host()
+    handle_push %0
+    %1 console: ptr = $console_host()
+    handle_push %1
+    %2 get: ptr = closure host$Env_get#3[]
+    %3 secret: ptr = closure host$Env_secret#4[]
+    %4 env: ptr = handler std::env::Env row 7 state() clauses(%2, %3)
+    handle_push %4
+    %5 random: ptr = $random_host()
+    handle_push %5
+    call main#0() -> b1()
+  b1(%6 r: unit) [handle, handle, handle, handle]:
+    handle_pop
+    handle_pop
+    handle_pop
+    handle_pop
+    ret %6

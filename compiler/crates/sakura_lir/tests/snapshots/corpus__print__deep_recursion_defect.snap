@@ -1,0 +1,65 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 shape |  32b (word*, word*)
+layout 3 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::deep_recursion_defect, frame 4 slots [%1 bool, %4 i64, %6 bool, %9 bool]
+  b0():
+    %0 lit: ptr = const str 0
+    perform std::console::Console.print(%0) -> b1()
+  b1(%1 r: unit):
+    %2 box: word = box %1
+    drop %2
+    %3 lit: i64 = const 1000000
+    call sum_until#2(%3) -> b2()
+  b2(%4 r: i64):
+    %5 s: ptr = show %4
+    perform std::console::Console.print(%5) -> b3()
+  b3(%6 r: unit):
+    %7 box: word = box %6
+    drop %7
+    %8 lit: ptr = const str 1
+    perform std::console::Console.print(%8) -> b4()
+  b4(%9 r: unit):
+    %10 box: word = box %9
+    %11 unbox: unit = unbox %10
+    drop %10
+    ret %11
+
+fn $entry#1 top -> unit ; main::deep_recursion_defect, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn sum_until#2 top -> i64 ; main::deep_recursion_defect, frame 4 slots [%0 i64, %5 i64, %10 i64, %11 i64]
+  b0(%0 n: i64):
+    %1 lit: i64 = const 0
+    %2 t: bool = eq.int %0, %1
+    if %2 then b1(%0) else b2(%0)
+  b1(%3 n: i64):
+    call zero#3() -> b3()
+  b2(%4 n: i64):
+    %8 lit: i64 = const 1
+    %9 t: i64 = intsub %4, %8
+    call sum_until#2(%9) -> b4(%4)
+  b3(%5 r: i64):
+    %6 lit: i64 = const 1
+    %7 t: i64 = intdiv %6, %5
+    ret %7
+  b4(%10 r: i64, %11 n: i64):
+    %12 t: i64 = intadd %11, %10
+    ret %12
+
+fn zero#3 top -> i64 ; main::deep_recursion_defect, frame 0 slots []
+  b0():
+    %0 xs: ptr = alloc list()
+    %1 r: i64 = $list_len(%0)
+    ret %1

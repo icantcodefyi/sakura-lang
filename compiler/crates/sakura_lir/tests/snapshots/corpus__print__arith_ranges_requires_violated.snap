@@ -1,0 +1,65 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 shape |  32b (word*, word*)
+layout 3 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::arith_ranges_requires_violated, frame 5 slots [%1 i64, %3 bool, %6 i64, %8 bool, %11 bool]
+  b0():
+    %0 lit: i64 = const 4
+    call down2#2(%0) -> b1()
+  b1(%1 r: i64):
+    %2 s: ptr = show %1
+    perform std::console::Console.print(%2) -> b2()
+  b2(%3 r: unit):
+    %4 box: word = box %3
+    drop %4
+    %5 lit: i64 = const 3
+    call down2#2(%5) -> b3()
+  b3(%6 r: i64):
+    %7 s: ptr = show %6
+    perform std::console::Console.print(%7) -> b4()
+  b4(%8 r: unit):
+    %9 box: word = box %8
+    drop %9
+    %10 lit: ptr = const str 0
+    perform std::console::Console.print(%10) -> b5()
+  b5(%11 r: unit):
+    %12 box: word = box %11
+    %13 unbox: unit = unbox %12
+    drop %12
+    ret %13
+
+fn $entry#1 top -> unit ; main::arith_ranges_requires_violated, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn down2#2 top -> i64 ; main::arith_ranges_requires_violated, frame 1 slots [%0 i64]
+  b0(%0 n: i64):
+    jump b1(%0)
+  b1(%1 n: i64):
+    %2 enter: unit = $contract_enter()
+    %3 lit: i64 = const 0
+    %4 t: bool = ge.int %1, %3
+    %5 exit: unit = $contract_exit()
+    check D020 %4 ; nonneg
+    %6 pre: unit = const ()
+    %7 lit: i64 = const 0
+    %8 t: bool = eq.int %1, %7
+    if %8 then b2(%1) else b3(%1)
+  b2(%9 n: i64):
+    %11 lit: i64 = const 0
+    ret %11
+  b3(%10 n: i64):
+    %12 lit: i64 = const 2
+    %13 t: i64 = intsub %10, %12
+    %14 lit: unit = const ()
+    jump b1(%13)

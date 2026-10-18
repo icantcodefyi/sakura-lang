@@ -27,7 +27,7 @@ fn main#0 pub top -> unit ; main::literal_refinement_checked_at_startup, frame 3
 
 fn $entry#1 top -> unit ; main::literal_refinement_checked_at_startup, frame 2 slots [%0 word*, %2 bool]
   b0():
-    call Slug$from$lit#4() -> b1()
+    call Slug$from$lit#5() -> b1()
   b1(%0 lit: ptr):
     drop %0
     %1 console: ptr = $console_host()
@@ -39,11 +39,22 @@ fn $entry#1 top -> unit ; main::literal_refinement_checked_at_startup, frame 2 s
 
 fn title#2 top -> ptr ; main::literal_refinement_checked_at_startup, frame 1 slots [%0 word*]
   b0():
-    call Slug$from$lit#4() -> b1()
+    call Slug$from$lit#5() -> b1()
   b1(%0 lit: ptr):
     ret %0
 
-fn Slug$from#3 top -> ptr ; main::literal_refinement_checked_at_startup, frame 1 slots [%0 word*]
+fn Slug$check#3 top -> bool ; main::literal_refinement_checked_at_startup, frame 1 slots [%0 word*]
+  b0(%0 it: ptr):
+    %1 enter: unit = $contract_enter()
+    %2 lit: ptr = const str 1
+    %3 r: ptr = $string_split(%0, %2)
+    %4 r: i64 = $list_len(%3)
+    %5 lit: i64 = const 1
+    %6 t: bool = eq.int %4, %5
+    %7 exit: unit = $contract_exit()
+    ret %6
+
+fn Slug$from#4 top -> ptr ; main::literal_refinement_checked_at_startup, frame 1 slots [%0 word*]
   b0(%0 it: ptr):
     %1 enter: unit = $contract_enter()
     %2 lit: ptr = const str 1
@@ -57,9 +68,9 @@ fn Slug$from#3 top -> ptr ; main::literal_refinement_checked_at_startup, frame 1
     %8 ok: unit = const ()
     ret %0
 
-fn Slug$from$lit#4 const -> ptr ; main::literal_refinement_checked_at_startup, frame 1 slots [%1 word*]
+fn Slug$from$lit#5 const -> ptr ; main::literal_refinement_checked_at_startup, frame 1 slots [%1 word*]
   b0():
     %0 lit: ptr = const str 2
-    call Slug$from#3(%0) -> b1()
+    call Slug$from#4(%0) -> b1()
   b1(%1 v: ptr):
     ret %1

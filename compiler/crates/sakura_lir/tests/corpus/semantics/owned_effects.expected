@@ -1,0 +1,8 @@
+ending: ok
+--- stdout
+with 40 11240 Some(242) Some(320)
+try 41 781 Some(0)
+try 879
+fill [6] [1, 2, 3]
+[0, 1, 2]
+[7, 1, 2, 8]

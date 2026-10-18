@@ -1,0 +1,285 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::duration::Duration | Duration 24b (i64)
+layout 1 variant std::instant::Instant | Instant 24b (i64)
+layout 2 variant std::list::Builder
+layout 3 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 4 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 5 shape |  32b (word*, word*)
+layout 6 shape |  32b (i64, word*)
+layout 7 shape |  24b (i64)
+
+fn main#0 pub top -> unit ; main::direct_higher_order, frame 29 slots [%3 i64, %4 word*, %10 word*, %11 word*, %12 word*, %23 word*, %24 word*, %25 word*, %33 word*, %34 word*, %35 word*, %38 bool, %39 word*, %47 word*, %48 word*, %56 word*, %57 word*, %58 word*, %59 word*, %60 word*, %66 word*, %67 word*, %68 word*, %69 word*, %75 word*, %76 word*, %80 bool, %83 i64, %85 bool]
+  b0():
+    %0 lit: i64 = const 3
+    %1 f: ptr = closure main$1#2[%0]
+    %2 lit: i64 = const 1
+    dup %1
+    call apply#3(%1, %2) -> b1(%1)
+  b1(%3 r: i64, %4 f: ptr):
+    %5 s: ptr = show %3
+    %6 lit: ptr = const str 0
+    %7 s: ptr = concat %5, %6
+    drop %5
+    drop %6
+    %8 lit: i64 = const 2
+    %9 box: word = box %8
+    dup %4
+    call %4(%9) -> b2(%4, %7)
+  b2(%10 r: word, %11 f: ptr, %12 s: ptr):
+    %13 unbox: i64 = unbox %10
+    drop %10
+    %14 s: ptr = show %13
+    %15 s: ptr = concat %12, %14
+    drop %12
+    drop %14
+    %16 lit: ptr = const str 0
+    %17 s: ptr = concat %15, %16
+    drop %15
+    drop %16
+    %18 lit: i64 = const 1
+    %19 box: word = box %18
+    %20 lit: i64 = const 2
+    %21 box: word = box %20
+    %22 xs: ptr = alloc list(%19, %21)
+    dup %11
+    call map#4(%22, %11) -> b3(%11, %17)
+  b3(%23 r: ptr, %24 f: ptr, %25 s: ptr):
+    %26 s: ptr = show %23
+    drop %23
+    %27 s: ptr = concat %25, %26
+    drop %25
+    drop %26
+    %28 lit: ptr = const str 0
+    %29 s: ptr = concat %27, %28
+    drop %27
+    drop %28
+    %30 lit: i64 = const 1
+    %31 box: word = box %30
+    %32 xs: ptr = alloc list(%31)
+    dup %24
+    call twice_each#5(%32, %24) -> b4(%24, %29)
+  b4(%33 r: ptr, %34 f: ptr, %35 s: ptr):
+    %36 s: ptr = show %33
+    drop %33
+    %37 s: ptr = concat %35, %36
+    drop %35
+    drop %36
+    perform std::console::Console.print(%37) -> b5(%34)
+  b5(%38 r: unit, %39 f: ptr):
+    %40 box: word = box %38
+    drop %40
+    %41 lit: i64 = const 1
+    %42 box: word = box %41
+    %43 lit: i64 = const 2
+    %44 box: word = box %43
+    %45 xs: ptr = alloc list(%42, %44)
+    %46 f: ptr = closure main$2#6[]
+    call map#4(%45, %46) -> b6(%39)
+  b6(%47 r: ptr, %48 f: ptr):
+    %49 f: ptr = closure main$3#9[]
+    %50 f: ptr = closure main$4#10[]
+    %51 s: ptr = show %47
+    drop %47
+    %52 lit: ptr = const str 0
+    %53 s: ptr = concat %51, %52
+    drop %51
+    drop %52
+    %54 lit: i64 = const 4
+    %55 box: word = box %54
+    dup %48
+    call app#11(%48, %55) -> b7(%48, %49, %50, %53)
+  b7(%56 r: word, %57 f: ptr, %58 f: ptr, %59 f: ptr, %60 s: ptr):
+    %61 unbox: i64 = unbox %56
+    drop %56
+    %62 s: ptr = show %61
+    %63 s: ptr = concat %60, %62
+    drop %60
+    drop %62
+    %64 lit: ptr = const str 0
+    %65 s: ptr = concat %63, %64
+    drop %63
+    drop %64
+    dup %59
+    call app#11(%59, %57) -> b8(%58, %59, %65)
+  b8(%66 r: word, %67 f: ptr, %68 f: ptr, %69 s: ptr):
+    %70 unbox: i64 = unbox %66
+    drop %66
+    %71 s: ptr = show %70
+    %72 s: ptr = concat %69, %71
+    drop %69
+    drop %71
+    %73 lit: ptr = const str 0
+    %74 s: ptr = concat %72, %73
+    drop %72
+    drop %73
+    call app#11(%68, %67) -> b9(%74)
+  b9(%75 r: word, %76 s: ptr):
+    %77 unbox: i64 = unbox %75
+    drop %75
+    %78 s: ptr = show %77
+    %79 s: ptr = concat %76, %78
+    drop %76
+    drop %78
+    perform std::console::Console.print(%79) -> b10()
+  b10(%80 r: unit):
+    %81 box: word = box %80
+    drop %81
+    %82 lit: i64 = const 1000000
+    call down#12(%82) -> b11()
+  b11(%83 r: i64):
+    %84 s: ptr = show %83
+    perform std::console::Console.print(%84) -> b12()
+  b12(%85 r: unit):
+    %86 box: word = box %85
+    %87 unbox: unit = unbox %86
+    drop %86
+    ret %87
+
+fn $entry#1 top -> unit ; main::direct_higher_order, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn main$1#2 lambda -> word ; main::direct_higher_order, captures [i64], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 x: word):
+    %2 k: i64 = capture %0.0
+    drop %0
+    %3 unbox: i64 = unbox %1
+    drop %1
+    %4 t: i64 = intadd %3, %2
+    %5 box: word = box %4
+    ret %5
+
+fn apply#3 top -> i64 ; main::direct_higher_order, frame 3 slots [%0 word*, %1 i64, %3 word*]
+  b0(%0 f: ptr, %1 x: i64):
+    %2 box: word = box %1
+    call %0(%2) -> b1()
+  b1(%3 r: word):
+    %4 unbox: i64 = unbox %3
+    drop %3
+    ret %4
+
+fn twice_each#5 top -> ptr ; main::direct_higher_order, frame 3 slots [%0 word*, %1 word*, %3 word*]
+  b0(%0 xs: ptr, %1 f: ptr):
+    %2 f: ptr = closure twice_each$1#19[%1]
+    call map#4(%0, %2) -> b1()
+  b1(%3 r: ptr):
+    ret %3
+
+fn main$2#6 lambda -> word ; main::direct_higher_order, captures [], frame 6 slots [%0 word*, %1 word*, %8 word*, %9 i64, %10 bool, %11 i64]
+  b0(%0 env: ptr, %1 x: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 now: ptr = closure virtual$Clock_now#14[]
+    %4 monotonic: ptr = closure virtual$Clock_monotonic#16[]
+    %5 sleep: ptr = closure virtual$Clock_sleep#17[]
+    %6 lit: i64 = const 0
+    %7 r: ptr = handler std::clock::Clock row 7 state(%6) clauses(%3, %4, %5)
+    handle_push %7
+    call millis#8(%2) -> b1(%2)
+  b1(%8 r: ptr, %9 x: i64) [handle]:
+    perform std::clock::Clock.sleep(%8) -> b2(%9)
+  b2(%10 r: unit, %11 x: i64) [handle]:
+    %12 box: word = box %10
+    drop %12
+    %13 lit: i64 = const 10
+    %14 t: i64 = intmul %11, %13
+    %15 box: word = box %14
+    handle_pop
+    ret %15
+
+fn main$3#9 lambda -> word ; main::direct_higher_order, captures [], frame 6 slots [%0 word*, %1 word*, %9 word*, %10 i64, %11 bool, %12 i64]
+  b0(%0 env: ptr, %1 y: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 now: ptr = closure virtual$Clock_now#14[]
+    %4 monotonic: ptr = closure virtual$Clock_monotonic#16[]
+    %5 sleep: ptr = closure virtual$Clock_sleep#17[]
+    %6 lit: i64 = const 0
+    %7 r: ptr = handler std::clock::Clock row 7 state(%6) clauses(%3, %4, %5)
+    handle_push %7
+    %8 lit: i64 = const 1
+    call millis#8(%8) -> b1(%2)
+  b1(%9 r: ptr, %10 y: i64) [handle]:
+    perform std::clock::Clock.sleep(%9) -> b2(%10)
+  b2(%11 r: unit, %12 y: i64) [handle]:
+    %13 box: word = box %11
+    drop %13
+    %14 box: word = box %12
+    handle_pop
+    ret %14
+
+fn main$4#10 lambda -> word ; main::direct_higher_order, captures [], frame 3 slots [%0 word*, %1 word*, %4 word*]
+  b0(%0 env: ptr, %1 h: word):
+    drop %0
+    %2 lit: i64 = const 5
+    %3 box: word = box %2
+    call %1(%3) -> b1()
+  b1(%4 r: word):
+    %5 unbox: i64 = unbox %4
+    drop %4
+    %6 box: word = box %5
+    ret %6
+
+fn app#11 top -> word ; main::direct_higher_order, frame 3 slots [%0 word*, %1 word*, %2 word*]
+  b0(%0 f: ptr, %1 x: word):
+    call %0(%1) -> b1()
+  b1(%2 r: word):
+    ret %2
+
+fn down#12 top -> i64 ; main::direct_higher_order, frame 2 slots [%0 i64, %9 i64]
+  b0(%0 n: i64):
+    %1 lit: i64 = const 0
+    %2 t: bool = eq.int %0, %1
+    if %2 then b1(%0) else b2(%0)
+  b1(%3 n: i64):
+    %5 lit: i64 = const 0
+    ret %5
+  b2(%4 n: i64):
+    %6 f: ptr = closure down$1#13[]
+    %7 lit: i64 = const 1
+    %8 t: i64 = intsub %4, %7
+    call apply#3(%6, %8) -> b3()
+  b3(%9 r: i64):
+    %10 lit: i64 = const 1
+    %11 t: i64 = intadd %9, %10
+    ret %11
+
+fn down$1#13 lambda -> word ; main::direct_higher_order, captures [], frame 3 slots [%0 word*, %1 word*, %3 i64]
+  b0(%0 env: ptr, %1 x: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    call down#12(%2) -> b1()
+  b1(%3 r: i64):
+    %4 box: word = box %3
+    ret %4
+
+fn twice_each$1#19 lambda -> word ; main::direct_higher_order, captures [word*], frame 5 slots [%0 word*, %1 word*, %5 word*, %6 word*, %9 word*]
+  b0(%0 env: ptr, %1 x: word):
+    %2 f: ptr = capture %0.0
+    drop %0
+    %3 unbox: i64 = unbox %1
+    drop %1
+    %4 box: word = box %3
+    dup %2
+    call %2(%4) -> b1(%2)
+  b1(%5 r: word, %6 f: ptr):
+    %7 unbox: i64 = unbox %5
+    drop %5
+    %8 box: word = box %7
+    call %6(%8) -> b2()
+  b2(%9 r: word):
+    %10 unbox: i64 = unbox %9
+    drop %9
+    %11 box: word = box %10
+    ret %11

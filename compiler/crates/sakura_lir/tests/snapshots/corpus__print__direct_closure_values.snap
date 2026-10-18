@@ -3,12 +3,13 @@ source: crates/sakura_lir/tests/corpus.rs
 expression: text
 ---
 layout 0 record main::direct_closure_values::Op | Op 24b (apply: word*)
-layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
-layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
-layout 3 shape |  32b (word*, word*)
-layout 4 shape |  32b (i64, word*)
+layout 1 variant std::list::Builder
+layout 2 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 3 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 4 shape |  32b (word*, word*)
+layout 5 shape |  32b (i64, word*)
 
-fn main#0 pub top -> unit ; main::direct_closure_values, frame 15 slots [%11 i64, %12 word*, %13 word*, %19 word*, %20 word*, %21 word*, %22 word*, %26 bool, %27 word*, %28 word*, %31 i64, %32 word*, %41 word*, %42 word*, %45 bool]
+fn main#0 pub top -> unit ; main::direct_closure_values, frame 15 slots [%10 i64, %11 word*, %12 word*, %18 word*, %19 word*, %20 word*, %21 word*, %25 bool, %26 word*, %27 word*, %30 i64, %31 word*, %40 word*, %41 word*, %44 bool]
   b0():
     %0 lit: i64 = const 7
     %1 f: ptr = closure main$1#2[%0]
@@ -18,59 +19,58 @@ fn main#0 pub top -> unit ; main::direct_closure_values, frame 15 slots [%11 i64
     %4 lit: ptr = const str 0
     %5 r: ptr = $map_insert(%3, %4, %1)
     %6 lit: ptr = const str 0
-    %7 r: ptr = $map_get(%5, %6)
-    %8 lit: ptr = const str 1
-    %9 r: word = $option_expect(%7, %8)
-    %10 lit: i64 = const 3
+    %7 lit: ptr = const str 1
+    %8 r: word = $map_get_expect(%5, %6, %7)
+    %9 lit: i64 = const 3
     dup %2
-    call pure#3(%2, %10) -> b1(%2, %9)
-  b1(%11 r: i64, %12 rec: ptr, %13 r: ptr):
-    %14 s: ptr = show %11
-    %15 lit: ptr = const str 2
-    %16 s: ptr = concat %14, %15
+    call pure#3(%2, %9) -> b1(%2, %8)
+  b1(%10 r: i64, %11 rec: ptr, %12 r: ptr):
+    %13 s: ptr = show %10
+    %14 lit: ptr = const str 2
+    %15 s: ptr = concat %13, %14
+    drop %13
     drop %14
-    drop %15
-    %17 lit: i64 = const 5
-    %18 box: word = box %17
-    dup %13
-    call %13(%18) -> b2(%12, %13, %16)
-  b2(%19 r: word, %20 rec: ptr, %21 r: ptr, %22 s: ptr):
-    %23 unbox: i64 = unbox %19
-    drop %19
-    %24 s: ptr = show %23
-    %25 s: ptr = concat %22, %24
-    drop %22
-    drop %24
-    perform std::console::Console.print(%25) -> b3(%20, %21)
-  b3(%26 r: unit, %27 rec: ptr, %28 r: ptr):
-    %29 box: word = box %26
-    drop %29
-    %30 lit: i64 = const 4
-    call effectful#4(%27, %30) -> b4(%28)
-  b4(%31 r: i64, %32 r: ptr):
-    %33 s: ptr = show %31
-    %34 lit: ptr = const str 2
-    %35 s: ptr = concat %33, %34
+    %16 lit: i64 = const 5
+    %17 box: word = box %16
+    dup %12
+    call %12(%17) -> b2(%11, %12, %15)
+  b2(%18 r: word, %19 rec: ptr, %20 r: ptr, %21 s: ptr):
+    %22 unbox: i64 = unbox %18
+    drop %18
+    %23 s: ptr = show %22
+    %24 s: ptr = concat %21, %23
+    drop %21
+    drop %23
+    perform std::console::Console.print(%24) -> b3(%19, %20)
+  b3(%25 r: unit, %26 rec: ptr, %27 r: ptr):
+    %28 box: word = box %25
+    drop %28
+    %29 lit: i64 = const 4
+    call effectful#4(%26, %29) -> b4(%27)
+  b4(%30 r: i64, %31 r: ptr):
+    %32 s: ptr = show %30
+    %33 lit: ptr = const str 2
+    %34 s: ptr = concat %32, %33
+    drop %32
     drop %33
-    drop %34
-    %36 lit: i64 = const 1
-    %37 box: word = box %36
-    %38 lit: i64 = const 2
-    %39 box: word = box %38
-    %40 xs: ptr = alloc list(%37, %39)
-    call map#5(%40, %32) -> b5(%35)
-  b5(%41 r: ptr, %42 s: ptr):
-    %43 s: ptr = show %41
+    %35 lit: i64 = const 1
+    %36 box: word = box %35
+    %37 lit: i64 = const 2
+    %38 box: word = box %37
+    %39 xs: ptr = alloc list(%36, %38)
+    call map#5(%39, %31) -> b5(%34)
+  b5(%40 r: ptr, %41 s: ptr):
+    %42 s: ptr = show %40
+    drop %40
+    %43 s: ptr = concat %41, %42
     drop %41
-    %44 s: ptr = concat %42, %43
     drop %42
-    drop %43
-    perform std::console::Console.print(%44) -> b6()
-  b6(%45 r: unit):
-    %46 box: word = box %45
-    %47 unbox: unit = unbox %46
-    drop %46
-    ret %47
+    perform std::console::Console.print(%43) -> b6()
+  b6(%44 r: unit):
+    %45 box: word = box %44
+    %46 unbox: unit = unbox %45
+    drop %45
+    ret %46
 
 fn $entry#1 top -> unit ; main::direct_closure_values, frame 1 slots [%1 bool]
   b0():

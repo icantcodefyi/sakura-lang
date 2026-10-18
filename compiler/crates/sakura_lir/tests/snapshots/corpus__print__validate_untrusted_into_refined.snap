@@ -121,16 +121,16 @@ fn percent#2 top -> ptr ; main::validate_untrusted_into_refined, frame 2 slots [
     %1 raw: word = $untrusted_value(%0)
     %2 unbox: i64 = unbox %1
     drop %1
-    call Percent$validate#6(%2) -> b1()
-  b1(%3 r: word):
+    call Percent$validate#8(%2) -> b1()
+  b1(%3 r: ptr):
     ret %3
 
 fn slug#3 top -> ptr ; main::validate_untrusted_into_refined, frame 2 slots [%0 word*, %3 word*]
   b0(%0 raw: ptr):
     %1 r: ptr = $untrusted_of(%0)
     %2 raw: word = $untrusted_value(%1)
-    call Slug$validate#5(%2) -> b1()
-  b1(%3 r: word):
+    call Slug$validate#6(%2) -> b1()
+  b1(%3 r: ptr):
     %4 tag: i64 = tag %3 ctor std::result::Result
     switch %4 0 => b2(%3) 1 => b3(%3)
   b2(%5 r: ptr):
@@ -142,7 +142,18 @@ fn slug#3 top -> ptr ; main::validate_untrusted_into_refined, frame 2 slots [%0 
     drop %6
     fail %8
 
-fn Slug$validate#5 top -> word ; main::validate_untrusted_into_refined, frame 1 slots [%0 word*]
+fn Slug$check#5 top -> bool ; main::validate_untrusted_into_refined, frame 1 slots [%0 word*]
+  b0(%0 it: ptr):
+    %1 enter: unit = $contract_enter()
+    %2 lit: ptr = const str 3
+    %3 r: ptr = $string_split(%0, %2)
+    %4 r: i64 = $list_len(%3)
+    %5 lit: i64 = const 1
+    %6 t: bool = eq.int %4, %5
+    %7 exit: unit = $contract_exit()
+    ret %6
+
+fn Slug$validate#6 top -> ptr ; main::validate_untrusted_into_refined, frame 1 slots [%0 word*]
   b0(%0 it: ptr):
     %1 enter: unit = $contract_enter()
     %2 lit: ptr = const str 3
@@ -166,7 +177,24 @@ fn Slug$validate#5 top -> word ; main::validate_untrusted_into_refined, frame 1 
     %17 err: ptr = alloc std::result::Result.Err(%15)
     ret %17
 
-fn Percent$validate#6 top -> word ; main::validate_untrusted_into_refined, frame 1 slots [%0 i64]
+fn Percent$check#7 top -> bool ; main::validate_untrusted_into_refined, frame 1 slots [%0 i64]
+  b0(%0 it: i64):
+    %1 enter: unit = $contract_enter()
+    %2 lit: i64 = const 0
+    %3 t: bool = ge.int %0, %2
+    if %3 then b2(%0) else b3(%0)
+  b1(%4 v: bool):
+    %5 exit: unit = $contract_exit()
+    ret %4
+  b2(%6 it: i64):
+    %8 lit: i64 = const 100
+    %9 t: bool = le.int %6, %8
+    jump b1(%9)
+  b3(%7 it: i64):
+    %10 lit: bool = const false
+    jump b1(%10)
+
+fn Percent$validate#8 top -> ptr ; main::validate_untrusted_into_refined, frame 1 slots [%0 i64]
   b0(%0 it: i64):
     %1 enter: unit = $contract_enter()
     %2 lit: i64 = const 0

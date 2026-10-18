@@ -2,10 +2,11 @@
 source: crates/sakura_lir/tests/corpus.rs
 expression: text
 ---
-layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
-layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
-layout 2 shape |  32b (word*, word*)
-layout 3 shape |  32b (i64, word*)
+layout 0 variant std::list::Builder
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
 
 fn main#0 pub top -> unit ; main::list_retained_version, frame 37 slots [%2 word*, %4 word*, %5 word*, %7 word*, %8 word*, %9 word*, %17 i64, %18 word*, %19 word*, %20 word*, %21 word*, %22 word*, %30 bool, %31 word*, %32 word*, %33 word*, %34 word*, %40 i64, %41 word*, %42 word*, %43 word*, %44 word*, %47 bool, %48 word*, %49 word*, %50 word*, %56 i64, %57 word*, %58 word*, %59 word*, %62 bool, %63 word*, %64 word*, %70 i64, %71 word*, %72 word*, %80 bool]
   b0():

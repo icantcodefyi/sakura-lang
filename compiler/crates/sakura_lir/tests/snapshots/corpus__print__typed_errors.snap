@@ -4,10 +4,11 @@ expression: text
 ---
 layout 0 error main::typed_errors::Negative | Negative 24b (value: i64)
 layout 1 error main::typed_errors::ParseError | ParseError 24b (input: word*)
-layout 2 variant std::option::Option | None 16b () | Some 24b (word*)
-layout 3 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
-layout 4 shape |  32b (word*, word*)
-layout 5 shape |  32b (i64, word*)
+layout 2 variant std::list::Builder
+layout 3 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 4 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 5 shape |  32b (word*, word*)
+layout 6 shape |  32b (i64, word*)
 
 fn main#0 pub top -> unit ; main::typed_errors, frame 14 slots [%1 word*, %2 bool, %5 word*, %6 bool, %9 word*, %10 bool, %14 bool, %18 bool, %25 bool, %28 word*, %39 word*, %45 word*, %47 word*, %50 i64]
   b0():

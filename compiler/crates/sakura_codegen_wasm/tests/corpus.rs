@@ -12,11 +12,30 @@ use std::process::Command;
 use sakura_codegen_wasm::{Host, Options};
 use sakura_lir::snapshot;
 
-/// Programs that cannot run on WASM yet, with the reason.
-const KNOWN: &[(&str, &str)] = &[(
-    "semantics/sql_untrusted_param",
-    "SQL rows decode with the program's JS type descriptors, which a bare corpus module lacks",
-)];
+/// Programs that cannot run as a bare corpus module, on one runner (`Some`) or both, with
+/// the reason. `sakura_cli/tests/parity.rs` runs them all through `sakura build --target wasm`.
+const KNOWN: &[(&str, Option<Host>, &str)] = &[
+    (
+        "semantics/sql_untrusted_param",
+        None,
+        "SQL rows decode with the program's JS type descriptors, which a bare corpus module lacks",
+    ),
+    (
+        "semantics/uuid_decode",
+        None,
+        "`Json.decode` needs the program's JS type descriptors, which a bare corpus module lacks",
+    ),
+    (
+        "semantics/trace_decode_then_spawn",
+        None,
+        "`Json.decode` needs the program's JS type descriptors, which a bare corpus module lacks",
+    ),
+    (
+        "semantics/host_root_handlers",
+        Some(Host::Wasi),
+        "the root Clock, Random and Console imports are impure, which a WASI command traps (W1 note 8)",
+    ),
+];
 
 struct Program {
     name: String,
@@ -102,7 +121,9 @@ fn sweep(host: Host, run: impl Fn(&Path) -> std::process::Output) -> Vec<String>
         let got = ending(out.status.code(), &stderr);
         let ok = got == p.ending && stdout == p.stdout;
         report.insert(p.name.clone(), ok);
-        match (ok, KNOWN.iter().find(|(n, _)| *n == p.name)) {
+        match (ok, KNOWN
+            .iter()
+            .find(|(n, h, _)| *n == p.name && h.is_none_or(|h| h == host))) {
             (true, Some(_)) => failures.push(format!("{}: passes now; drop it from KNOWN", p.name)),
             (false, None) => failures.push(format!(
                 "{}: expected {} got {got}\n--- expected stdout\n{}--- stdout\n{stdout}--- stderr\n{stderr}",

@@ -1,0 +1,57 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 shape |  32b (word*, word*)
+layout 3 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::fused_get_expect_map_miss, frame 7 slots [%6 i64, %7 word*, %9 bool, %10 word*, %13 i64, %15 bool, %18 bool]
+  b0():
+    %0 r: ptr = $map_empty()
+    %1 lit: ptr = const str 0
+    %2 lit: i64 = const 3
+    %3 box: word = box %2
+    %4 r: ptr = $map_insert(%0, %1, %3)
+    %5 lit: ptr = const str 0
+    dup %4
+    call price#2(%4, %5) -> b1(%4)
+  b1(%6 r: i64, %7 r: ptr):
+    %8 s: ptr = show %6
+    perform std::console::Console.print(%8) -> b2(%7)
+  b2(%9 r: unit, %10 r: ptr):
+    %11 box: word = box %9
+    drop %11
+    %12 lit: ptr = const str 1
+    call price#2(%10, %12) -> b3()
+  b3(%13 r: i64):
+    %14 s: ptr = show %13
+    perform std::console::Console.print(%14) -> b4()
+  b4(%15 r: unit):
+    %16 box: word = box %15
+    drop %16
+    %17 lit: ptr = const str 2
+    perform std::console::Console.print(%17) -> b5()
+  b5(%18 r: unit):
+    %19 box: word = box %18
+    %20 unbox: unit = unbox %19
+    drop %19
+    ret %20
+
+fn $entry#1 top -> unit ; main::fused_get_expect_map_miss, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn price#2 top -> i64 ; main::fused_get_expect_map_miss, frame 2 slots [%0 word*, %1 word*]
+  b0(%0 m: ptr, %1 k: ptr):
+    %2 lit: ptr = const str 3
+    %3 r: word = $map_get_expect(%0, %1, %2)
+    %4 unbox: i64 = unbox %3
+    drop %3
+    ret %4

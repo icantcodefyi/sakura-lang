@@ -70,3 +70,20 @@ fn scale#3 top -> i64 ; main::contracts_hold, frame 2 slots [%0 i64, %1 i64]
     check D021 %10 ; scale
     %12 post: unit = const ()
     ret %7
+
+fn Percent$check#4 top -> bool ; main::contracts_hold, frame 1 slots [%0 i64]
+  b0(%0 it: i64):
+    %1 enter: unit = $contract_enter()
+    %2 lit: i64 = const 0
+    %3 t: bool = ge.int %0, %2
+    if %3 then b2(%0) else b3(%0)
+  b1(%4 v: bool):
+    %5 exit: unit = $contract_exit()
+    ret %4
+  b2(%6 it: i64):
+    %8 lit: i64 = const 100
+    %9 t: bool = le.int %6, %8
+    jump b1(%9)
+  b3(%7 it: i64):
+    %10 lit: bool = const false
+    jump b1(%10)

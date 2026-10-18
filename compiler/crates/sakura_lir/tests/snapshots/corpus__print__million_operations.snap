@@ -8,22 +8,23 @@ layout 2 shape |  32b (word*, word*)
 layout 3 shape |  32b (i64, word*)
 layout 4 shape |  24b (i64)
 
-fn main#0 pub top -> unit ; main::million_operations, frame 3 slots [%0 word*, %2 i64, %4 bool]
+fn main#0 pub top -> unit ; main::million_operations, frame 2 slots [%4 i64, %6 bool]
   b0():
-    call counter#2() -> b1()
-  b1(%0 r: ptr):
-    handle_push %0
-    %1 lit: i64 = const 1000000
-    call spin#3(%1) -> b2()
-  b2(%2 r: i64) [handle]:
-    %3 s: ptr = show %2
-    perform std::console::Console.print(%3) -> b3()
-  b3(%4 r: unit) [handle]:
-    %5 box: word = box %4
-    %6 unbox: unit = unbox %5
-    drop %5
+    %0 next: ptr = closure counter$Counter_next#4[]
+    %1 lit: i64 = const 0
+    %2 r: ptr = handler main::million_operations::Counter row 4 state(%1) clauses(%0)
+    handle_push %2
+    %3 lit: i64 = const 1000000
+    call spin#3(%3) -> b1()
+  b1(%4 r: i64) [handle]:
+    %5 s: ptr = show %4
+    perform std::console::Console.print(%5) -> b2()
+  b2(%6 r: unit) [handle]:
+    %7 box: word = box %6
+    %8 unbox: unit = unbox %7
+    drop %7
     handle_pop
-    ret %6
+    ret %8
 
 fn $entry#1 top -> unit ; main::million_operations, frame 1 slots [%1 bool]
   b0():

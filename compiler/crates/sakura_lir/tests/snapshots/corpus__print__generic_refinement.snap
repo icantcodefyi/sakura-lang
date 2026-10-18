@@ -103,9 +103,9 @@ fn top#3 top -> i64 ; main::generic_refinement, frame 2 slots [%0 word*, %5 word
     %15 is: bool = eq.int %11, %14
     if %15 then b5(%0, %13) else b6(%0, %13)
   b1(%1 v: i64, %2 xs: ptr):
-    %3 f: ptr = closure top$1#7[]
+    %3 f: ptr = closure top$1#8[]
     %4 box: word = box %1
-    call fold#9(%2, %4, %3) -> b2()
+    call fold#10(%2, %4, %3) -> b2()
   b2(%5 r: word):
     %6 unbox: i64 = unbox %5
     drop %5
@@ -137,7 +137,7 @@ fn top#3 top -> i64 ; main::generic_refinement, frame 2 slots [%0 word*, %5 word
 fn check#4 top -> ptr ; main::generic_refinement, frame 2 slots [%0 word*, %1 word*]
   b0(%0 xs: ptr):
     call NonEmpty$validate#6(%0) -> b1()
-  b1(%1 r: word):
+  b1(%1 r: ptr):
     %15 tag: i64 = tag %1 ctor std::result::Result
     switch %15 0 => b4(%1) 1 => b5(%1)
   b2(%2 ok: ptr):
@@ -183,7 +183,7 @@ fn Full$from#5 top -> ptr ; main::generic_refinement, frame 1 slots [%0 word*]
     %4 ok: unit = const ()
     ret %0
 
-fn NonEmpty$validate#6 top -> word ; main::generic_refinement, frame 1 slots [%0 word*]
+fn NonEmpty$validate#6 top -> ptr ; main::generic_refinement, frame 1 slots [%0 word*]
   b0(%0 it: ptr):
     %1 enter: unit = $contract_enter()
     dup %0
@@ -205,14 +205,23 @@ fn NonEmpty$validate#6 top -> word ; main::generic_refinement, frame 1 slots [%0
     %15 err: ptr = alloc std::result::Result.Err(%13)
     ret %15
 
-fn top$1#7 lambda -> word ; main::generic_refinement, captures [], frame 4 slots [%0 word*, %1 word*, %2 word*, %5 i64]
+fn NonEmpty$check#7 top -> bool ; main::generic_refinement, frame 1 slots [%0 word*]
+  b0(%0 it: ptr):
+    %1 enter: unit = $contract_enter()
+    %2 r: i64 = $list_len(%0)
+    %3 lit: i64 = const 0
+    %4 t: bool = gt.int %2, %3
+    %5 exit: unit = $contract_exit()
+    ret %4
+
+fn top$1#8 lambda -> word ; main::generic_refinement, captures [], frame 4 slots [%0 word*, %1 word*, %2 word*, %5 i64]
   b0(%0 env: ptr, %1 best: word, %2 s: word):
     drop %0
     %3 unbox: i64 = unbox %1
     drop %1
     %4 unbox: i64 = unbox %2
     drop %2
-    call max#8(%3, %4) -> b1()
+    call max#9(%3, %4) -> b1()
   b1(%5 r: i64):
     %6 box: word = box %5
     ret %6

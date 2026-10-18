@@ -2,11 +2,12 @@
 source: crates/sakura_lir/tests/corpus.rs
 expression: text
 ---
-layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
-layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
-layout 2 variant std::urlpart::UrlPart | UrlPart 24b (word*)
-layout 3 shape |  32b (word*, word*)
-layout 4 shape |  32b (i64, word*)
+layout 0 variant std::list::Builder
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 variant std::urlpart::UrlPart | UrlPart 24b (word*)
+layout 4 shape |  32b (word*, word*)
+layout 5 shape |  32b (i64, word*)
 
 fn main#0 pub top -> unit ; main::url_untrusted_component, frame 6 slots [%3 word*, %4 word*, %6 word*, %7 word*, %13 word*, %14 bool]
   b0():

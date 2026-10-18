@@ -1,0 +1,57 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::list::Builder
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::fused_get_expect_out_of_range, frame 8 slots [%2 word*, %4 i64, %5 word*, %7 bool, %8 word*, %11 i64, %13 bool, %16 bool]
+  b0():
+    %0 lit: i64 = const 0
+    %1 lit: i64 = const 40
+    call range#2(%0, %1) -> b1()
+  b1(%2 r: ptr):
+    %3 lit: i64 = const 39
+    dup %2
+    call at#3(%2, %3) -> b2(%2)
+  b2(%4 r: i64, %5 r: ptr):
+    %6 s: ptr = show %4
+    perform std::console::Console.print(%6) -> b3(%5)
+  b3(%7 r: unit, %8 r: ptr):
+    %9 box: word = box %7
+    drop %9
+    %10 lit: i64 = const 40
+    call at#3(%8, %10) -> b4()
+  b4(%11 r: i64):
+    %12 s: ptr = show %11
+    perform std::console::Console.print(%12) -> b5()
+  b5(%13 r: unit):
+    %14 box: word = box %13
+    drop %14
+    %15 lit: ptr = const str 0
+    perform std::console::Console.print(%15) -> b6()
+  b6(%16 r: unit):
+    %17 box: word = box %16
+    %18 unbox: unit = unbox %17
+    drop %17
+    ret %18
+
+fn $entry#1 top -> unit ; main::fused_get_expect_out_of_range, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn at#3 top -> i64 ; main::fused_get_expect_out_of_range, frame 2 slots [%0 word*, %1 i64]
+  b0(%0 xs: ptr, %1 i: i64):
+    %2 lit: ptr = const str 1
+    %3 r: word = $list_get_expect(%0, %1, %2)
+    %4 unbox: i64 = unbox %3
+    drop %3
+    ret %4

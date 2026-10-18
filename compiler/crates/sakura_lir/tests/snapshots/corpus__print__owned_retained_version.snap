@@ -1,0 +1,455 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 shape |  32b (word*, word*)
+layout 3 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%9 word*, %10 word*, %15 word*, %16 word*, %26 i64, %27 word*, %28 word*, %29 word*, %50 bool, %51 word*, %59 i64, %60 word*, %61 word*, %82 bool, %83 word*, %128 bool, %129 word*, %130 word*, %157 bool, %158 word*, %159 word*, %192 bool, %193 word*, %194 word*, %195 word*, %216 bool, %250 word*, %251 word*, %252 i64, %253 word*, %254 word*, %255 word*, %326 word*, %327 i64]
+  b0():
+    %0 xs: ptr = alloc list()
+    %350 lit: i64 = const 0
+    jump b34(%0, %350)
+  b1(%1 xs: ptr, %2 i: i64):
+    %332 lit: i64 = const 0
+    jump b29(%1, %332)
+  b2(%3 xs: ptr, %4 i: i64):
+    %5 lit: i64 = const 1
+    %6 t: i64 = intneg %5
+    %7 lit: i64 = const 5
+    %8 box: word = box %6
+    dup %3
+    call set#2(%3, %7, %8) -> b3(%3)
+  b3(%9 r: ptr, %10 xs: ptr):
+    %11 lit: i64 = const 2
+    %12 t: i64 = intneg %11
+    %13 lit: i64 = const 98
+    %14 box: word = box %12
+    call set#2(%9, %13, %14) -> b4(%10)
+  b4(%15 r: ptr, %16 xs: ptr):
+    %17 lit: i64 = const 7
+    %18 box: word = box %17
+    %19 r: ptr = $list_push(%15, %18)
+    dup %16
+    %20 r: i64 = $list_len(%16)
+    %21 s: ptr = show %20
+    %22 lit: ptr = const str 0
+    %23 s: ptr = concat %22, %21
+    drop %21
+    drop %22
+    %24 lit: ptr = const str 1
+    %25 s: ptr = concat %23, %24
+    drop %23
+    drop %24
+    dup %16
+    call sum#3(%16) -> b5(%16, %19, %25)
+  b5(%26 r: i64, %27 xs: ptr, %28 r: ptr, %29 s: ptr):
+    %30 s: ptr = show %26
+    %31 s: ptr = concat %29, %30
+    drop %29
+    drop %30
+    %32 lit: ptr = const str 1
+    %33 s: ptr = concat %31, %32
+    drop %31
+    drop %32
+    %34 lit: i64 = const 5
+    dup %27
+    %35 item: ptr = $list_get(%27, %34)
+    %36 s: ptr = show %35
+    drop %35
+    %37 s: ptr = concat %33, %36
+    drop %33
+    drop %36
+    %38 lit: ptr = const str 1
+    %39 s: ptr = concat %37, %38
+    drop %37
+    drop %38
+    %40 lit: i64 = const 98
+    dup %27
+    %41 item: ptr = $list_get(%27, %40)
+    %42 s: ptr = show %41
+    drop %41
+    %43 s: ptr = concat %39, %42
+    drop %39
+    drop %42
+    %44 lit: ptr = const str 1
+    %45 s: ptr = concat %43, %44
+    drop %43
+    drop %44
+    %46 lit: i64 = const 100
+    %47 item: ptr = $list_get(%27, %46)
+    %48 s: ptr = show %47
+    drop %47
+    %49 s: ptr = concat %45, %48
+    drop %45
+    drop %48
+    perform std::console::Console.print(%49) -> b6(%28)
+  b6(%50 r: unit, %51 r: ptr):
+    %52 box: word = box %50
+    drop %52
+    dup %51
+    %53 r: i64 = $list_len(%51)
+    %54 s: ptr = show %53
+    %55 lit: ptr = const str 2
+    %56 s: ptr = concat %55, %54
+    drop %54
+    drop %55
+    %57 lit: ptr = const str 1
+    %58 s: ptr = concat %56, %57
+    drop %56
+    drop %57
+    dup %51
+    call sum#3(%51) -> b7(%51, %58)
+  b7(%59 r: i64, %60 r: ptr, %61 s: ptr):
+    %62 s: ptr = show %59
+    %63 s: ptr = concat %61, %62
+    drop %61
+    drop %62
+    %64 lit: ptr = const str 1
+    %65 s: ptr = concat %63, %64
+    drop %63
+    drop %64
+    %66 lit: i64 = const 5
+    dup %60
+    %67 item: ptr = $list_get(%60, %66)
+    %68 s: ptr = show %67
+    drop %67
+    %69 s: ptr = concat %65, %68
+    drop %65
+    drop %68
+    %70 lit: ptr = const str 1
+    %71 s: ptr = concat %69, %70
+    drop %69
+    drop %70
+    %72 lit: i64 = const 98
+    dup %60
+    %73 item: ptr = $list_get(%60, %72)
+    %74 s: ptr = show %73
+    drop %73
+    %75 s: ptr = concat %71, %74
+    drop %71
+    drop %74
+    %76 lit: ptr = const str 1
+    %77 s: ptr = concat %75, %76
+    drop %75
+    drop %76
+    %78 lit: i64 = const 100
+    dup %60
+    %79 item: ptr = $list_get(%60, %78)
+    %80 s: ptr = show %79
+    drop %79
+    %81 s: ptr = concat %77, %80
+    drop %77
+    drop %80
+    perform std::console::Console.print(%81) -> b8(%60)
+  b8(%82 r: unit, %83 r: ptr):
+    %84 box: word = box %82
+    drop %84
+    %85 r: ptr = $map_empty()
+    %311 lit: i64 = const 0
+    jump b25(%83, %311, %85)
+  b9(%86 xs: ptr, %87 i: i64, %88 m: ptr):
+    %89 lit: i64 = const 7
+    %90 t: i64 = intneg %89
+    %91 lit: i64 = const 7
+    %92 box: word = box %91
+    %93 box: word = box %90
+    dup %88
+    %94 r: ptr = $map_insert(%88, %92, %93)
+    %95 lit: i64 = const 1000
+    %96 box: word = box %95
+    %97 lit: i64 = const 1
+    %98 box: word = box %97
+    %99 r: ptr = $map_insert(%94, %96, %98)
+    %100 lit: i64 = const 3
+    %101 box: word = box %100
+    %102 r: ptr = $map_remove(%99, %101)
+    dup %88
+    %103 r: i64 = $map_len(%88)
+    %104 s: ptr = show %103
+    %105 lit: ptr = const str 3
+    %106 s: ptr = concat %105, %104
+    drop %104
+    drop %105
+    %107 lit: ptr = const str 1
+    %108 s: ptr = concat %106, %107
+    drop %106
+    drop %107
+    %109 lit: i64 = const 7
+    %110 box: word = box %109
+    dup %88
+    %111 r: ptr = $map_get(%88, %110)
+    %112 s: ptr = show %111
+    drop %111
+    %113 s: ptr = concat %108, %112
+    drop %108
+    drop %112
+    %114 lit: ptr = const str 1
+    %115 s: ptr = concat %113, %114
+    drop %113
+    drop %114
+    %116 lit: i64 = const 3
+    %117 box: word = box %116
+    dup %88
+    %118 r: ptr = $map_get(%88, %117)
+    %119 s: ptr = show %118
+    drop %118
+    %120 s: ptr = concat %115, %119
+    drop %115
+    drop %119
+    %121 lit: ptr = const str 1
+    %122 s: ptr = concat %120, %121
+    drop %120
+    drop %121
+    %123 lit: i64 = const 1000
+    %124 box: word = box %123
+    %125 r: ptr = $map_get(%88, %124)
+    %126 s: ptr = show %125
+    drop %125
+    %127 s: ptr = concat %122, %126
+    drop %122
+    drop %126
+    perform std::console::Console.print(%127) -> b10(%86, %102)
+  b10(%128 r: unit, %129 xs: ptr, %130 r: ptr):
+    %131 box: word = box %128
+    drop %131
+    dup %130
+    %132 r: i64 = $map_len(%130)
+    %133 s: ptr = show %132
+    %134 lit: ptr = const str 4
+    %135 s: ptr = concat %134, %133
+    drop %133
+    drop %134
+    %136 lit: ptr = const str 1
+    %137 s: ptr = concat %135, %136
+    drop %135
+    drop %136
+    %138 lit: i64 = const 7
+    %139 box: word = box %138
+    dup %130
+    %140 r: ptr = $map_get(%130, %139)
+    %141 s: ptr = show %140
+    drop %140
+    %142 s: ptr = concat %137, %141
+    drop %137
+    drop %141
+    %143 lit: ptr = const str 1
+    %144 s: ptr = concat %142, %143
+    drop %142
+    drop %143
+    %145 lit: i64 = const 3
+    %146 box: word = box %145
+    dup %130
+    %147 r: ptr = $map_get(%130, %146)
+    %148 s: ptr = show %147
+    drop %147
+    %149 s: ptr = concat %144, %148
+    drop %144
+    drop %148
+    %150 lit: ptr = const str 1
+    %151 s: ptr = concat %149, %150
+    drop %149
+    drop %150
+    %152 lit: i64 = const 1000
+    %153 box: word = box %152
+    dup %130
+    %154 r: ptr = $map_get(%130, %153)
+    %155 s: ptr = show %154
+    drop %154
+    %156 s: ptr = concat %151, %155
+    drop %151
+    drop %155
+    perform std::console::Console.print(%156) -> b11(%129, %130)
+  b11(%157 r: unit, %158 xs: ptr, %159 r: ptr):
+    %160 box: word = box %157
+    drop %160
+    %161 r: ptr = $set_empty()
+    %288 lit: i64 = const 0
+    jump b21(%158, %288, %159, %161)
+  b12(%162 xs: ptr, %163 i: i64, %164 m: ptr, %165 s: ptr):
+    %166 lit: i64 = const 999
+    %167 box: word = box %166
+    dup %165
+    %168 r: ptr = $set_insert(%165, %167)
+    dup %165
+    %169 r: i64 = $set_len(%165)
+    %170 s: ptr = show %169
+    %171 lit: ptr = const str 5
+    %172 s: ptr = concat %171, %170
+    drop %170
+    drop %171
+    %173 lit: ptr = const str 1
+    %174 s: ptr = concat %172, %173
+    drop %172
+    drop %173
+    %175 lit: i64 = const 999
+    %176 box: word = box %175
+    %177 r: bool = $set_contains(%165, %176)
+    %178 s: ptr = show %177
+    %179 s: ptr = concat %174, %178
+    drop %174
+    drop %178
+    %180 lit: ptr = const str 1
+    %181 s: ptr = concat %179, %180
+    drop %179
+    drop %180
+    dup %168
+    %182 r: i64 = $set_len(%168)
+    %183 s: ptr = show %182
+    %184 s: ptr = concat %181, %183
+    drop %181
+    drop %183
+    %185 lit: ptr = const str 1
+    %186 s: ptr = concat %184, %185
+    drop %184
+    drop %185
+    %187 lit: i64 = const 999
+    %188 box: word = box %187
+    dup %168
+    %189 r: bool = $set_contains(%168, %188)
+    %190 s: ptr = show %189
+    %191 s: ptr = concat %186, %190
+    drop %186
+    drop %190
+    perform std::console::Console.print(%191) -> b13(%162, %164, %168)
+  b13(%192 r: unit, %193 xs: ptr, %194 m: ptr, %195 r: ptr):
+    %196 box: word = box %192
+    drop %196
+    %197 xs: ptr = alloc list()
+    %198 lit: i64 = const 0
+    %199 box: word = box %198
+    %200 lit: i64 = const 0
+    %201 box: word = box %200
+    %202 lit: i64 = const 0
+    %203 box: word = box %202
+    %204 xs: ptr = alloc list(%199, %201, %203)
+    %260 lit: i64 = const 0
+    jump b16(%193, %260, %194, %195, %197, %204)
+  b14(%205 xs: ptr, %206 i: i64, %207 m: ptr, %208 s: ptr, %209 versions: ptr, %210 v: ptr):
+    drop %205
+    drop %207
+    drop %208
+    %211 s: ptr = show %209
+    drop %209
+    %212 lit: ptr = const str 1
+    %213 s: ptr = concat %211, %212
+    drop %211
+    drop %212
+    %214 s: ptr = show %210
+    drop %210
+    %215 s: ptr = concat %213, %214
+    drop %213
+    drop %214
+    perform std::console::Console.print(%215) -> b15()
+  b15(%216 r: unit):
+    %217 box: word = box %216
+    %218 unbox: unit = unbox %217
+    drop %217
+    ret %218
+  b16(%219 xs: ptr, %220 i: i64, %221 m: ptr, %222 s: ptr, %223 versions: ptr, %224 v: ptr):
+    %225 lit: i64 = const 3
+    %226 t: bool = lt.int %220, %225
+    if %226 then b18(%219, %220, %221, %222, %223, %224) else b19(%219, %220, %221, %222, %223, %224)
+  b17(%227 v: word, %228 xs: ptr, %229 i: i64, %230 m: ptr, %231 s: ptr, %232 versions: ptr, %233 v: ptr):
+    drop %227
+    jump b16(%228, %229, %230, %231, %232, %233)
+  b18(%234 xs: ptr, %235 i: i64, %236 m: ptr, %237 s: ptr, %238 versions: ptr, %239 v: ptr):
+    dup %239
+    %246 r: ptr = $list_push(%238, %239)
+    %247 lit: i64 = const 1
+    %248 t: i64 = intadd %235, %247
+    %249 box: word = box %248
+    call set#2(%239, %235, %249) -> b20(%234, %235, %236, %237, %246)
+  b19(%240 xs: ptr, %241 i: i64, %242 m: ptr, %243 s: ptr, %244 versions: ptr, %245 v: ptr):
+    jump b14(%240, %241, %242, %243, %244, %245)
+  b20(%250 r: ptr, %251 xs: ptr, %252 i: i64, %253 m: ptr, %254 s: ptr, %255 r: ptr):
+    %256 lit: i64 = const 1
+    %257 t: i64 = intadd %252, %256
+    %258 lit: unit = const ()
+    %259 box: word = box %258
+    jump b17(%259, %251, %257, %253, %254, %255, %250)
+  b21(%261 xs: ptr, %262 i: i64, %263 m: ptr, %264 s: ptr):
+    %265 lit: i64 = const 100
+    %266 t: bool = lt.int %262, %265
+    if %266 then b23(%261, %262, %263, %264) else b24(%261, %262, %263, %264)
+  b22(%267 v: word, %268 xs: ptr, %269 i: i64, %270 m: ptr, %271 s: ptr):
+    drop %267
+    jump b21(%268, %269, %270, %271)
+  b23(%272 xs: ptr, %273 i: i64, %274 m: ptr, %275 s: ptr):
+    %280 lit: i64 = const 40
+    %281 t: i64 = intrem %273, %280
+    %282 box: word = box %281
+    %283 r: ptr = $set_insert(%275, %282)
+    %284 lit: i64 = const 1
+    %285 t: i64 = intadd %273, %284
+    %286 lit: unit = const ()
+    %287 box: word = box %286
+    jump b22(%287, %272, %285, %274, %283)
+  b24(%276 xs: ptr, %277 i: i64, %278 m: ptr, %279 s: ptr):
+    jump b12(%276, %277, %278, %279)
+  b25(%289 xs: ptr, %290 i: i64, %291 m: ptr):
+    %292 lit: i64 = const 300
+    %293 t: bool = lt.int %290, %292
+    if %293 then b27(%289, %290, %291) else b28(%289, %290, %291)
+  b26(%294 v: word, %295 xs: ptr, %296 i: i64, %297 m: ptr):
+    drop %294
+    jump b25(%295, %296, %297)
+  b27(%298 xs: ptr, %299 i: i64, %300 m: ptr):
+    %304 box: word = box %299
+    %305 box: word = box %299
+    %306 r: ptr = $map_insert(%300, %304, %305)
+    %307 lit: i64 = const 1
+    %308 t: i64 = intadd %299, %307
+    %309 lit: unit = const ()
+    %310 box: word = box %309
+    jump b26(%310, %298, %308, %306)
+  b28(%301 xs: ptr, %302 i: i64, %303 m: ptr):
+    jump b9(%301, %302, %303)
+  b29(%312 xs: ptr, %313 i: i64):
+    %314 lit: i64 = const 100
+    %315 t: bool = lt.int %313, %314
+    if %315 then b31(%312, %313) else b32(%312, %313)
+  b30(%316 v: word, %317 xs: ptr, %318 i: i64):
+    drop %316
+    jump b29(%317, %318)
+  b31(%319 xs: ptr, %320 i: i64):
+    %323 lit: i64 = const 2
+    %324 t: i64 = intmul %320, %323
+    %325 box: word = box %324
+    call set#2(%319, %320, %325) -> b33(%320)
+  b32(%321 xs: ptr, %322 i: i64):
+    jump b2(%321, %322)
+  b33(%326 r: ptr, %327 i: i64):
+    %328 lit: i64 = const 1
+    %329 t: i64 = intadd %327, %328
+    %330 lit: unit = const ()
+    %331 box: word = box %330
+    jump b30(%331, %326, %329)
+  b34(%333 xs: ptr, %334 i: i64):
+    %335 lit: i64 = const 100
+    %336 t: bool = lt.int %334, %335
+    if %336 then b36(%333, %334) else b37(%333, %334)
+  b35(%337 v: word, %338 xs: ptr, %339 i: i64):
+    drop %337
+    jump b34(%338, %339)
+  b36(%340 xs: ptr, %341 i: i64):
+    %344 box: word = box %341
+    %345 r: ptr = $list_push(%340, %344)
+    %346 lit: i64 = const 1
+    %347 t: i64 = intadd %341, %346
+    %348 lit: unit = const ()
+    %349 box: word = box %348
+    jump b35(%349, %345, %347)
+  b37(%342 xs: ptr, %343 i: i64):
+    jump b1(%342, %343)
+
+fn $entry#1 top -> unit ; main::owned_retained_version, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1

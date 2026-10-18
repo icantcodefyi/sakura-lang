@@ -9,10 +9,13 @@ layout 3 shape |  32b (word*, word*)
 layout 4 shape |  32b (i64, word*)
 layout 5 shape |  16b ()
 
-fn main#0 pub top -> unit ; main::handler_clause_fail, frame 8 slots [%2 bool, %6 bool, %9 word*, %11 word*, %15 i64, %16 word*, %18 word*, %22 i64]
+fn main#0 pub top -> unit ; main::handler_clause_fail, frame 6 slots [%2 bool, %6 bool, %9 word*, %16 i64, %17 word*, %24 i64]
   b0():
-    try_push -> b9(err, )
-    call broken#2() -> b10()
+    try_push -> b8(err, )
+    %19 read: ptr = closure broken$Probe_read#5[]
+    %20 r: ptr = handler main::handler_clause_fail::Probe row 5 state() clauses(%19)
+    handle_push %20
+    perform main::handler_clause_fail::Probe.read() -> b10()
   b1(%0 v: ptr):
     %1 s: ptr = show %0
     drop %0
@@ -21,7 +24,10 @@ fn main#0 pub top -> unit ; main::handler_clause_fail, frame 8 slots [%2 bool, %
     %3 box: word = box %2
     drop %3
     try_push -> b5(err, )
-    call working#3() -> b6()
+    %11 read: ptr = closure working$Probe_read#4[]
+    %12 r: ptr = handler main::handler_clause_fail::Probe row 5 state() clauses(%11)
+    handle_push %12
+    perform main::handler_clause_fail::Probe.read() -> b7()
   b3(%4 v: ptr):
     %5 s: ptr = show %4
     drop %4
@@ -34,31 +40,25 @@ fn main#0 pub top -> unit ; main::handler_clause_fail, frame 8 slots [%2 bool, %
   b5(%9 e: word):
     %10 err: ptr = alloc std::result::Result.Err(%9)
     jump b3(%10)
-  b6(%11 r: ptr) [try]:
-    handle_push %11
-    perform main::handler_clause_fail::Probe.read() -> b8()
-  b7(%12 v: i64) [try]:
-    %13 box: word = box %12
-    %14 ok: ptr = alloc std::result::Result.Ok(%13)
+  b6(%13 v: i64) [try]:
+    %14 box: word = box %13
+    %15 ok: ptr = alloc std::result::Result.Ok(%14)
     try_pop
-    jump b3(%14)
-  b8(%15 r: i64) [try, handle]:
+    jump b3(%15)
+  b7(%16 r: i64) [try, handle]:
     handle_pop
-    jump b7(%15)
-  b9(%16 e: word):
-    %17 err: ptr = alloc std::result::Result.Err(%16)
-    jump b1(%17)
-  b10(%18 r: ptr) [try]:
-    handle_push %18
-    perform main::handler_clause_fail::Probe.read() -> b12()
-  b11(%19 v: i64) [try]:
-    %20 box: word = box %19
-    %21 ok: ptr = alloc std::result::Result.Ok(%20)
+    jump b6(%16)
+  b8(%17 e: word):
+    %18 err: ptr = alloc std::result::Result.Err(%17)
+    jump b1(%18)
+  b9(%21 v: i64) [try]:
+    %22 box: word = box %21
+    %23 ok: ptr = alloc std::result::Result.Ok(%22)
     try_pop
-    jump b1(%21)
-  b12(%22 r: i64) [try, handle]:
+    jump b1(%23)
+  b10(%24 r: i64) [try, handle]:
     handle_pop
-    jump b11(%22)
+    jump b9(%24)
 
 fn $entry#1 top -> unit ; main::handler_clause_fail, frame 1 slots [%1 bool]
   b0():
