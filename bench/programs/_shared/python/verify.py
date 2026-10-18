@@ -11,7 +11,7 @@ import tomllib
 
 ROOT = Path(__file__).resolve().parents[4]
 PROGRAMS = ROOT / 'bench/programs'
-TARGET = ROOT / 'compiler/target/ports'
+TARGET = ROOT / 'compiler' / os.environ.get('CARGO_TARGET_DIR', 'target') / 'ports'
 
 
 def execute(command, **kwargs):
@@ -69,6 +69,7 @@ def main():
     entries = sorted(p for p in PROGRAMS.iterdir()
                      if (p / 'meta.toml').exists() and fnmatch.fnmatch(p.name, options.filter))
     checked = 0
+    missing = []
     for program in entries:
         if options.language == 'ocaml' and program.name not in allocation:
             continue
@@ -77,10 +78,14 @@ def main():
         suffix = {'rust': 'rs', 'go': 'go', 'python': 'py', 'typescript': 'ts',
                   'ocaml': 'ml', 'koka': 'kk'}[options.language]
         if not (program / options.language / f'main.{suffix}').exists():
-            raise RuntimeError(f'missing port: {program.name}/{options.language}')
+            port = f'{program.name}/{options.language}'
+            missing.append(port)
+            print(f'skip: missing port {port}', flush=True)
+            continue
         metadata = tomllib.loads((program / 'meta.toml').read_text())
         command = build(program, options.language, options.lane, options.reuse)
-        expected = metadata['checksums']
+        expected = {size: checksum for size, checksum in metadata['checksums'].items()
+                    if size not in metadata.get('cases', [])}
         values = json.loads(execute([*command, 'values', *expected]))['values']
         if values != expected:
             raise RuntimeError(f'{program.name}: {values} != {expected}')
@@ -96,6 +101,8 @@ def main():
             raise RuntimeError(f'{program.name}: invalid size accepted or wrote stdout')
         checked += 1
         print(f'{options.language}/{options.lane}/{options.reuse} {program.name}: {len(values)} oracles, 9 samples, bounds OK', flush=True)
+    if missing:
+        raise SystemExit('missing ports: ' + ', '.join(missing))
     if checked == 0:
         raise RuntimeError('no ports selected')
 

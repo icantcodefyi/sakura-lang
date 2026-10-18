@@ -97,6 +97,41 @@ func Countdown(n int64) int64 {
 	}
 	return acc
 }
+func TailClique(n int64) int64 {
+	const (
+		a = iota
+		b
+		c
+	)
+	state := a
+	var acc int64
+	for n != 0 {
+		var weight int64
+		switch state {
+		case a:
+			if n%2 == 0 {
+				state, weight = b, 1
+			} else {
+				state, weight = c, 2
+			}
+		case b:
+			if n%3 == 0 {
+				state, weight = a, 3
+			} else {
+				state, weight = c, 4
+			}
+		case c:
+			if n%5 == 0 {
+				state, weight = a, 5
+			} else {
+				state, weight = b, 6
+			}
+		}
+		n--
+		acc += weight
+	}
+	return acc
+}
 func Sieve(n int64) int64 {
 	flags := make([]bool, n)
 	for i := range flags {

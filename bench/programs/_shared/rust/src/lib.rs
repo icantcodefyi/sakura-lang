@@ -76,6 +76,44 @@ pub fn countdown(n: i64) -> i64 {
     }
     acc + i64::from(even)
 }
+pub fn tail_clique(mut n: i64) -> i64 {
+    enum State {
+        A,
+        B,
+        C,
+    }
+    let mut state = State::A;
+    let mut acc = 0;
+    while n != 0 {
+        let (next, weight) = match state {
+            State::A => {
+                if n % 2 == 0 {
+                    (State::B, 1)
+                } else {
+                    (State::C, 2)
+                }
+            }
+            State::B => {
+                if n % 3 == 0 {
+                    (State::A, 3)
+                } else {
+                    (State::C, 4)
+                }
+            }
+            State::C => {
+                if n % 5 == 0 {
+                    (State::A, 5)
+                } else {
+                    (State::B, 6)
+                }
+            }
+        };
+        n -= 1;
+        acc += weight;
+        state = next;
+    }
+    acc
+}
 pub fn sieve(n: i64) -> i64 {
     let n = usize::try_from(n).expect("size");
     let mut flags: Vec<bool> = (0..n).map(|i| i >= 2).collect();

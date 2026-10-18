@@ -18,6 +18,21 @@ def countdown(n):
     return acc + int(even)
 
 
+def tail_clique(n):
+    state = 'a'
+    acc = 0
+    while n != 0:
+        if state == 'a':
+            state, weight = ('b', 1) if n % 2 == 0 else ('c', 2)
+        elif state == 'b':
+            state, weight = ('a', 3) if n % 3 == 0 else ('c', 4)
+        else:
+            state, weight = ('a', 5) if n % 5 == 0 else ('b', 6)
+        n -= 1
+        acc += weight
+    return acc
+
+
 def sieve(n):
     flags = [i >= 2 for i in range(n)]
     p = 2

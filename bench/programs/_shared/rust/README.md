@@ -22,7 +22,10 @@ python3 bench/programs/_shared/python/verify.py --language koka --reuse no-reuse
 Each command builds entries, checks every oracle size, checks nine real sample records at
 one timed size, and rejects a negative size. This validates correctness and the sample
 protocol; its measurements are not reference-machine performance results. Build artifacts
-stay in `compiler/target/ports`. `--filter <glob>` selects entries. Rust dependencies are
+stay in `compiler/target/ports`, or `$CARGO_TARGET_DIR/ports` when set.
+`--filter <glob>` selects entries. Missing ports print `skip: missing port
+<program>/<language>` and the verifier checks the remaining entries before failing
+with the complete missing-port list. Rust dependencies are
 locked and builds are offline after their first fetch. Python and TypeScript are context
 panels added by the assignment; the main native panels are the ones in design §17.109.
 
@@ -73,6 +76,9 @@ countdown's maximum sum is 500,000,500,000; shapes' MINSTD product is below
 collection/checksum accumulations are below 10^12. Array/index arithmetic is below these
 bounds. Thus Go/OCaml fixed-width and Python/Koka arbitrary-precision integers cannot
 reach a point where their overflow behavior differs for any accepted corpus input.
+`tail_clique` takes at most 10^7 transitions, adding at most 6 per step, so its
+accumulator stays below 6×10^7. Its loop follows the three Sakura states without
+recursive calls; the JS and TypeScript controls check each decrement and addition.
 Rust matched additionally enables overflow checks. This does not implement the separate
 i64 corpus or support arbitrary unbounded input sizes.
 
