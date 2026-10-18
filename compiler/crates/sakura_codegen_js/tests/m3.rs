@@ -1195,7 +1195,11 @@ test "replays" {{
     );
     assert_eq!(run("cassette_record", live, true), (Some(0), String::new()));
     let text = std::fs::read_to_string(fixtures.join("api.jsonl")).unwrap();
-    assert_eq!(text.lines().count(), 2, "a header line and one exchange: {text}");
+    assert_eq!(
+        text.lines().count(),
+        2,
+        "a header line and one exchange: {text}"
+    );
     assert!(
         !text.contains("sk-live") && !text.contains("authorization"),
         "{text}"
