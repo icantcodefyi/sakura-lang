@@ -46,10 +46,6 @@ const KNOWN: &[(&str, &str)] = &[
         "test_blocks.sakura",
         "an expect_defect body overflows Int: its trace's defect event is D003 on JS, D001 on WASM",
     ),
-    (
-        "sql_untrusted_param.sakura",
-        "the SQL host (sql_memory) is not implemented on WASM yet",
-    ),
 ];
 
 struct Run {

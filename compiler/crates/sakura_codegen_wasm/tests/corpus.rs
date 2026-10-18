@@ -20,7 +20,7 @@ const KNOWN: &[(&str, &str)] = &[
     ),
     (
         "semantics/sql_untrusted_param",
-        "the SQL host (sql_memory) is not implemented on WASM yet",
+        "SQL rows decode with the program's JS type descriptors, which a bare corpus module lacks",
     ),
 ];
 
