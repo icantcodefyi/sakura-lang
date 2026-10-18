@@ -1,0 +1,15 @@
+// milestone: M3
+// expect: V2034
+// spec: §4.3, §8.1, §17.135
+
+// `r` is a plain record, but the prefix `r.total` is a `Decimal`: assigning `frac` through it
+// would build a non-canonical `Decimal` without running `is_canonical`.
+import std/decimal.{Decimal, DecimalRepr}
+
+type Receipt = { total: Decimal }
+
+fn f(start: Receipt) -> Receipt {
+  var r = start
+  r.total.frac = [5, 0]
+  r
+}

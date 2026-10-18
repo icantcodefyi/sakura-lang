@@ -523,3 +523,86 @@ fn f() -> List<Row> ! {Sql, Fail<SqlError>} { Sql.query(sql"select body from pos
         rows.render()
     );
 }
+
+/// §17.135: a field assignment through a refined prefix is `V2034` in every module, the
+/// declaring one included; whole reassignment and a refined field of a plain record are fine.
+#[test]
+fn refined_field_assignment_is_v2034() {
+    let a = r#"pub type PosRepr = { n: Int, m: Int }
+pub type Pos = PosRepr where it.n > 0
+fn own(p: Pos) -> Pos { var x = p
+  x.n = -1
+  x }
+"#;
+    let c = check_modules(&[("a", a)]);
+    assert_eq!(c.codes(), vec!["V2034"], "{}", c.render());
+    let b = r#"import main/a.{Pos, PosRepr}
+fn other(p: Pos) -> Pos { var x = p
+  x.m = 3
+  x }
+"#;
+    let c = check_modules(&[("a", a.replace("x.n = -1", "x = p").as_str()), ("b", b)]);
+    assert_eq!(c.codes(), vec!["V2034"], "{}", c.render());
+    let fine = check(
+        r#"import std/decimal.{Decimal}
+type PosRepr = { n: Int }
+type Pos = PosRepr where it.n > 0
+type Receipt = { total: Decimal, lines: Int }
+fn next(p: Pos) -> Pos { Pos.from(PosRepr { n: p.n + 1 }) }
+fn f(p: Pos, r0: Receipt, d: Decimal) -> (Pos, Receipt) {
+  var x = p
+  x = next(x)
+  x = Pos.from(PosRepr { ..x, n: 2 })
+  var r = r0
+  r.total = Decimal.add(r.total, d)
+  r.lines = 2
+  (x, r)
+}
+"#,
+    );
+    assert!(fine.diags.is_empty(), "{}", fine.render());
+}
+
+/// The fix rebuilds every record on the path and nests `from` for a refinement over a
+/// refinement, naming the outermost one.
+#[test]
+fn v2034_fix_rebuilds_through_from() {
+    let fix_of = |src: &str| {
+        let c = check(src);
+        assert_eq!(c.codes(), vec!["V2034"], "{}", c.render());
+        let edits = &c.diags[0].fixes[0].edits;
+        (
+            c.diags[0].message.clone(),
+            edits[0].replacement.clone() + "v" + &edits[1].replacement,
+        )
+    };
+    let (msg, fix) = fix_of(
+        r#"type PosRepr = { n: Int }
+type Pos = PosRepr where it.n > 0
+type Small = Pos where it.n < 10
+fn f(p: Small, v: Int) -> Small { var x = p
+  x.n = v
+  x }
+"#,
+    );
+    assert!(
+        msg.starts_with("`x.n = …` rebuilds `x` as `Pos`, but `x` is a `Small`"),
+        "{msg}"
+    );
+    assert_eq!(fix, "x = Small.from(Pos.from(PosRepr { ..x, n: v }))");
+    let (msg, fix) = fix_of(
+        r#"type Inner = { k: Int }
+type PosRepr = { n: Int, inner: Inner }
+type Pos = PosRepr where it.n > 0
+type Outer = { pos: Pos }
+fn f(o: Outer, v: Int) -> Outer { var x = o
+  x.pos.inner.k = v
+  x }
+"#,
+    );
+    assert!(msg.contains("rebuilds `x.pos` as `PosRepr`"), "{msg}");
+    assert_eq!(
+        fix,
+        "x.pos = Pos.from(PosRepr { ..x.pos, inner: Inner { ..x.pos.inner, k: v } })"
+    );
+}

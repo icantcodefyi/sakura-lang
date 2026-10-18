@@ -94,6 +94,11 @@ published yet.
   `String where is_canonical(it)` and `Decimal` is `DecimalRepr where is_canonical(it)`, so both
   decode with their check; programs that built `Uuid("…")` or matched on it use `Uuid.parse`.
 - A `sakura.toml` naming its package `std` or `main` is `V8002 reserved_package_name` (§17.131).
+- A field assignment through a refined type (`x.n = -1` on `var x: Pos`, or `r.total.frac = …`
+  through a `Decimal`) is the new error `V2034 refined_field_assignment` (design §17.135), in
+  every module: the sugar rebuilt the base type and skipped the predicate. The suggested fix
+  rewrites it to `x = Pos.from(PosRepr { ..x, n: -1 })`; use `Pos.validate(…)?` for data.
+  Whole reassignment of a refined `var` is unchanged.
 - `sakura fmt` keeps an `if … else` on one line only when every branch fits; otherwise every
   branch is a block (§17.133).
 - Retired `V5002`; narrowed `W5005` to user clauses scanning collection parameters with

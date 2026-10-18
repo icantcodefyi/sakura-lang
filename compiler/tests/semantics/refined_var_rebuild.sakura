@@ -1,0 +1,29 @@
+// milestone: M3
+// needs: refined-type from
+// expect-exit: 70
+// expect-defect: D010
+// covers: Defect
+// spec: §4.3, §8.1, §17.135
+
+// A refined `var` is reassigned whole, never field by field (`V2034`): through a function
+// that returns the refined type, or rebuilt with `from`, which runs the predicate.
+import std/decimal.{Decimal}
+
+type PosRepr = { n: Int }
+type Pos = PosRepr where it.n > 0
+type Receipt = { total: Decimal }
+
+fn next(p: Pos) -> Pos { Pos.from(PosRepr { n: p.n + 1 }) }
+
+pub fn main() -> Unit ! {Console} {
+  var x = Pos.from(PosRepr { n: 1 })
+  for _ in 0..3 { x = next(x) }
+  Console.print("{x.n}")
+  x = Pos.from(PosRepr { ..x, n: 10 })
+  Console.print("{x.n}")
+  var r = Receipt { total: Decimal.from_int(1) }
+  for _ in 0..2 { r.total = Decimal.add(r.total, Decimal.from_int(2)) }
+  Console.print(Decimal.to_string(r.total))
+  x = Pos.from(PosRepr { ..x, n: -1 })
+  Console.print("never printed")
+}

@@ -681,8 +681,15 @@ impl Checker<'_> {
                     .with_fix(fix("Declare the `var` inside the `try`"));
                     self.push(d);
                 }
-                for f in fields {
+                let mut refined = None;
+                for (k, f) in fields.iter().enumerate() {
+                    if refined.is_none() && self.refined_def(t).is_some() {
+                        refined = Some((k, t));
+                    }
                     t = self.field_type(*value, *range, t, f);
+                }
+                if let Some((k, pt)) = refined {
+                    self.refined_field_assignment(*local, fields, k, pt, *value, *range);
                 }
                 self.check(*value, t)
             }
@@ -1015,6 +1022,110 @@ impl Checker<'_> {
                 .with_label("declared `pub opaque` here"),
         );
         self.push(d);
+    }
+
+    /// The refined type `t` names, if any.
+    fn refined_def(&mut self, t: TypeId) -> Option<DefId> {
+        let t = self.inf.settle(t);
+        match self.inf.interner.ty(t) {
+            Type::Con(TyCon::Adt(d), _) if self.inf.refined_bases.contains_key(d) => Some(*d),
+            _ => None,
+        }
+    }
+
+    /// `x.f1.….fn = v` where the prefix `x.f1.….fk` has the refined type `pt`: the sugar
+    /// rebuilds the prefix as its base and would skip the predicate (`V2034`, §17.135).
+    fn refined_field_assignment(
+        &mut self,
+        local: sakura_hir::LocalId,
+        fields: &[String],
+        k: usize,
+        pt: TypeId,
+        value: ExprId,
+        range: text_size::TextRange,
+    ) {
+        let name = self.hir_body().locals[local].name.clone();
+        let prefix = std::iter::once(name.as_str())
+            .chain(fields[..k].iter().map(String::as_str))
+            .collect::<Vec<_>>()
+            .join(".");
+        let target = std::iter::once(name.as_str())
+            .chain(fields.iter().map(String::as_str))
+            .collect::<Vec<_>>()
+            .join(".");
+        let def = self.refined_def(pt).expect("refined prefix");
+        let ty = self.render(pt);
+        let pt = self.inf.settle(pt);
+        let base = match self.inf.interner.ty(pt).clone() {
+            Type::Con(TyCon::Adt(d), args) => self.inf.refined_base(d, &args),
+            _ => None,
+        };
+        let base = base.map_or_else(|| "its base".into(), |b| format!("`{}`", self.render(b)));
+        let tname = self.program.def(def).name.clone();
+        let mut d = Diagnostic::error(
+            sakura_diagnostics::codes::V2034,
+            Phase::Type,
+            format!(
+                "`{target} = …` rebuilds `{prefix}` as {base}, but `{prefix}` is a `{ty}`; a field assignment would skip its predicate. Rebuild it through `{tname}.from(…)` (trusted, listed by `sakura audit`) or `{tname}.validate(…)?` for data (design §17.135)"
+            ),
+        )
+        .with_span(self.span(range))
+        .with_span(
+            self.span_in(def.module, self.program.def(def).range)
+                .with_role(sakura_diagnostics::SpanRole::Definition)
+                .with_label(format!("`{tname}` is a refined type")),
+        )
+        .with_expected(Rendered::text(ty));
+        if let Some((open, close)) = self.rebuild(&prefix, pt, &fields[k..]) {
+            let v = self.expr_range(value);
+            d = d.with_fix(sakura_diagnostics::Fix {
+                title: format!("Rebuild `{prefix}` through `{tname}.from`"),
+                applicability: sakura_diagnostics::Applicability::Suggested,
+                impact: sakura_diagnostics::Impact::Local,
+                edits: vec![
+                    sakura_diagnostics::Edit {
+                        span: self.span(text_size::TextRange::new(range.start(), v.start())),
+                        replacement: format!("{prefix} = {open}"),
+                    },
+                    sakura_diagnostics::Edit {
+                        span: self.span(text_size::TextRange::empty(v.end())),
+                        replacement: close,
+                    },
+                ],
+            });
+        }
+        self.push(d);
+    }
+
+    /// The text around the value that rebuilds `path` (of type `t`) with `fields` replaced,
+    /// entering each refinement through `from`: `Pos.from(PosRepr { ..x, n: ` and ` })`.
+    fn rebuild(&mut self, path: &str, t: TypeId, fields: &[String]) -> Option<(String, String)> {
+        let Some((f, rest)) = fields.split_first() else {
+            return Some((String::new(), String::new()));
+        };
+        let mut froms = Vec::new();
+        let mut cur = self.inf.settle(t);
+        loop {
+            match self.inf.interner.ty(cur).clone() {
+                Type::Con(TyCon::Adt(d), args) if self.is_record(d) => {
+                    let (_, ft) = self.fields_at(d, &args).into_iter().find(|(n, _)| n == f)?;
+                    let (open, close) = self.rebuild(&format!("{path}.{f}"), ft, rest)?;
+                    let rec = &self.program.def(d).name;
+                    let open = froms
+                        .iter()
+                        .map(|n| format!("{n}.from("))
+                        .collect::<String>()
+                        + &format!("{rec} {{ ..{path}, {f}: {open}");
+                    return Some((open, close + " }" + &")".repeat(froms.len())));
+                }
+                Type::Con(TyCon::Adt(d), args) if self.inf.refined_bases.contains_key(&d) => {
+                    froms.push(self.program.def(d).name.clone());
+                    let base = self.inf.refined_base(d, &args)?;
+                    cur = self.inf.settle(base);
+                }
+                _ => return None,
+            }
+        }
     }
 
     pub(super) fn field_type(

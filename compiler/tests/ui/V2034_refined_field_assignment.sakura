@@ -1,0 +1,15 @@
+// milestone: M3
+// expect: V2034
+// spec: §4.3, §8.1, §17.135
+
+// `x.n = -1` is sugar for `x = PosRepr { ..x, n: -1 }`, a `PosRepr`, so it would hand back a
+// `Pos` whose predicate never ran. Rebuild through `Pos.from` or `Pos.validate` instead.
+type PosRepr = { n: Int }
+
+type Pos = PosRepr where it.n > 0
+
+fn f(p: Pos) -> Pos {
+  var x = p
+  x.n = -1
+  x
+}

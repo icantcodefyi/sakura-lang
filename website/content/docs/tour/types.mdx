@@ -128,7 +128,7 @@ The predicate must be in the contract subset: pure, terminating, no loops or rec
 - Schema decoding (`Json.decode`, `Request.json`, `Llm.generate`), which checks nested refinements and reports a typed `DecodeError`, never a defect.
 - Literals: `let p: Percent = 50` is checked at compile time where possible, otherwise at program start (warning `V5002`).
 
-A refined value coerces implicitly to its base: a `Percent` works anywhere an `Int` does. The reverse never happens implicitly. Because no value can be mutated, a validated value stays valid. Contracts are covered in [Contracts](/docs/tour/contracts).
+A refined value coerces implicitly to its base: a `Percent` works anywhere an `Int` does. The reverse never happens implicitly. Because no value can be mutated, a validated value stays valid. A field assignment through a refined type (`x.n = -1` on `var x: Pos`) would rebuild the base type and skip the predicate, so it is `V2034`: write `x = Pos.from(PosRepr { ..x, n: -1 })`, or `Pos.validate(…)?` for data. Reassigning the whole value is fine. Contracts are covered in [Contracts](/docs/tour/contracts).
 
 ## Generics and constraints
 

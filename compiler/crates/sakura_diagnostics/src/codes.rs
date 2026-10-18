@@ -295,6 +295,24 @@ Fixed:
     let r: ReportIn = Json.decode(text)?
     let body = Html.text(r.body)";
 
+    V2034 "refined_field_assignment" TYPE,
+"A field assignment changes a field of a `var` whose type, or the type of a prefix of the path,
+is a refined type (design §17.135). `x.n = v` on `var x` is sugar for
+`x = PosRepr { ..x, n: v }` (§8.1), and a record update yields the base type, so the statement
+would put an unchecked `PosRepr` where a `Pos` is promised and skip the predicate. The rule
+holds in every module, the declaring one included. Rebuild the value through the refinement:
+`Pos.from(…)` for a value the program trusts (it is checked, and `sakura audit` lists the site)
+or `Pos.validate(…)?` for data. Whole reassignment (`x = next(x)`) and a field assignment on a
+plain record whose field is refined (`r.total = Decimal.add(r.total, y)`) are unaffected.
+
+Wrong:
+    type Pos = PosRepr where it.n > 0
+    var x = p
+    x.n = -1
+Fixed:
+    x = Pos.from(PosRepr { ..x, n: -1 })
+    x = Pos.validate(PosRepr { ..x, n: input })?";
+
     V2040 "unused_value" TYPE,
 "A non-final expression statement produces a non-`Unit` value that is dropped. This catches
 forgotten reassignments such as `List.push(xs, 1)` (design §8.1).
