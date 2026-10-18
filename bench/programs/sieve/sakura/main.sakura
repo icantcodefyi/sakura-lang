@@ -1,6 +1,6 @@
 // Primes below n. Each prime p with p*p < n clears its multiples from p*p with `List.set`,
-// which copies one trie path per write (design §17.126); the JS control still makes one full
-// pass over a fresh array per prime.
+// which copies one trie path per write (design §17.126); the controls write the same indices
+// in place.
 import std/cli.{Cli}
 
 pub fn run(n: Int) -> Int {

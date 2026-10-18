@@ -77,15 +77,14 @@ pub fn countdown(n: i64) -> i64 {
     acc + i64::from(even)
 }
 pub fn sieve(n: i64) -> i64 {
+    let n = usize::try_from(n).expect("size");
     let mut flags: Vec<bool> = (0..n).map(|i| i >= 2).collect();
     let mut p = 2usize;
-    while p * p < n as usize {
+    while p * p < n {
         if flags[p] {
-            flags = flags
-                .iter()
-                .enumerate()
-                .map(|(j, &f)| f && (j < p * p || j % p != 0))
-                .collect();
+            for j in (p * p..n).step_by(p) {
+                flags[j] = false;
+            }
         }
         p += 1;
     }

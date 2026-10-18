@@ -104,11 +104,9 @@ func Sieve(n int64) int64 {
 	}
 	for p := int64(2); p*p < n; p++ {
 		if flags[p] {
-			next := make([]bool, len(flags))
-			for j, f := range flags {
-				next[j] = f && (int64(j) < p*p || int64(j)%p != 0)
+			for j := p * p; j < n; j += p {
+				flags[j] = false
 			}
-			flags = next
 		}
 	}
 	var count int64

@@ -23,7 +23,8 @@ def sieve(n):
     p = 2
     while p * p < n:
         if flags[p]:
-            flags = [flag and (j < p * p or j % p != 0) for j, flag in enumerate(flags)]
+            for j in range(p * p, n, p):
+                flags[j] = False
         p += 1
     return sum(flags)
 
