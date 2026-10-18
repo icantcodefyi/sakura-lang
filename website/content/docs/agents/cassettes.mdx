@@ -105,7 +105,7 @@ All twelve examples now execute in run or test mode; these three replay committe
 
 ## Streaming responses
 
-`Http.recording` also implements `Http.stream` (design §17.88): a replayed exchange delivers its recorded body to the callback. Under `--record` the handler reads the whole streamed body from the outer `Http` before replaying it to the callback, so recording does not stream through.
+`Http.recording` also implements `Http.stream` (design §17.88): a replayed exchange delivers its recorded body to the callback. Under `--record` the handler reads the whole streamed body from the outer `Http` before replaying it to the callback, so recording does not stream through. It records at most 16 MiB (16,777,216 bytes) of a streamed body: past that, `Http.stream` fails with `HttpError` reading `response body over 16 MiB: sakura test --record stores at most 16,777,216 bytes of a streamed body`, and nothing is appended to the cassette.
 
 `Http.read_chunk` returns at most the requested number of bytes and an empty buffer at EOF. Consume the body inside the callback; it is closed when that scope exits:
 

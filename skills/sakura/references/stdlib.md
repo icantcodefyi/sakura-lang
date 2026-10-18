@@ -89,8 +89,12 @@ checked skill reference; they are not additional APIs.
   `SqlValue.from` and is a parameter (§4.11), not concatenated query text.
 - `Http.recording` writes a schema-version line, refuses credential-bearing
   headers and redacts `set-cookie` (§17.122). `Cassette.open(c)` (also `c.open()`)
-  opens a cassette (§17.125). A `Llm.replay` miss is `ProviderError` with guidance
-  naming `Llm.recording` and `sakura test --record`; it does not call a provider.
+  opens a cassette (§17.125). Under `sakura test --record` it stores at most 16 MiB
+  (16,777,216 bytes) of a streamed body; past that `Http.stream` fails with `HttpError`
+  `"response body over 16 MiB: sakura test --record stores at most 16,777,216 bytes of a
+  streamed body"` and nothing is appended (§17.205). A `Llm.replay` miss is
+  `ProviderError` with guidance naming `Llm.recording` and `sakura test --record`; it does
+  not call a provider.
 
 ## Module dependencies (non-test code)
 

@@ -114,7 +114,8 @@ fn host_port(u: Url) -> String {
 /// `proxy-authorization`, `x-api-key`, `api-key`, `x-auth-token` or `cookie` (any case) fails
 /// with `HttpError` before any replay or forward (put it in `secret_headers`, `Http.bearer`);
 /// a `set-cookie` response header is stored and replayed as `<redacted>`. The URL and body are
-/// stored verbatim.
+/// stored verbatim. A streamed body is recorded only up to 16 MiB (16,777,216 bytes): past it
+/// `stream` fails with `HttpError` naming the limit and the exchange is not appended.
 pub fn recording(path: Path) -> Handler<Http, {Fs, Http}> { replaying(cassette(path)) }
 
 /// A cassette file, read on first use. `Llm.recording` opens one per installation and replays
@@ -165,10 +166,19 @@ pub fn replaying(c: Cassette) -> Handler<Http, {Fs, Http}> {
   }
 }
 
+// At most 16 MiB, so one boxed `Int` per byte stays far under the test runner's heap (§17.205).
 fn read_body(b: Body) -> Bytes ! {Http, Fail<HttpError>} {
   var out: List<Int> = []
+  var n = 0
   var chunk = Http.read_chunk(b, 65_536)
   while Bytes.len(chunk) > 0 {
+    n = n + Bytes.len(chunk)
+    if n > 16_777_216 {
+      fail HttpError {
+        status: None,
+        reason: "response body over 16 MiB: sakura test --record stores at most 16,777,216 bytes of a streamed body",
+      }
+    }
     out = List.concat(
       out,
       List.filter_map(List.range(0, Bytes.len(chunk)), fn(i) { Bytes.get(chunk, i) }),

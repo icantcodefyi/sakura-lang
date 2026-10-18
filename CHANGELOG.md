@@ -9,6 +9,13 @@ published yet.
 
 ### Security
 
+- `sakura test --record` stores at most 16 MiB (16,777,216 bytes) of a streamed response body:
+  past that, `Http.stream` under `Http.recording` fails with `HttpError` `"response body over
+  16 MiB: sakura test --record stores at most 16,777,216 bytes of a streamed body"` and the
+  cassette is not appended to. A larger body was held whole, one list element per byte, until
+  the test runner's heap ran out (security review C2, design §17.205 (2)). To migrate, record
+  a smaller response, or read a large one with `Http.stream` outside `Http.recording`.
+
 - The proof key is refused when its directory is writable by other users or owned by another
   user, as a readable key file already was; a key inside the project root or the proofs
   directory is refused from any working directory; `sakura build` only reads the key and
