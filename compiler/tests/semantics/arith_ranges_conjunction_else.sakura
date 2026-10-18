@@ -1,6 +1,7 @@
 // milestone: M3
 // expect-exit: 70
 // expect-defect: D003
+// expect-exit@wasm: 0
 // covers: design §17.154 (a conjunction is not negated); performance-r1 WS-P4b
 
 // The else of `flag && n < 1 - MAX` does not know `n >= 1 - MAX` (`flag` may be false), so

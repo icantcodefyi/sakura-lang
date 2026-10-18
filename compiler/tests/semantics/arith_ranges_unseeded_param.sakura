@@ -1,6 +1,7 @@
 // milestone: M3
 // expect-exit: 70
 // expect-defect: D003
+// expect-exit@wasm: 0
 // covers: design §17.154 (a parameter without a clause is the whole range); performance-r1 WS-P4b
 
 // Without a `requires`, `n - 1` under `n != 0` keeps its check: the end of the JS range defects.

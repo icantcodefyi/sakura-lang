@@ -1,6 +1,7 @@
 // milestone: M3
 // expect-exit: 70
 // expect-defect: D003
+// expect-exit@wasm: 0
 // covers: design §17.154 (facts on a loop's `Bool` do not cross its back edge); performance-r1 WS-P4b
 
 // `ok` enters the loop as `x < MAX`, but the back edge sets it to `true` without that fact, so
