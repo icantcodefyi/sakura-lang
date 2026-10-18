@@ -120,9 +120,8 @@ pub struct Record {
     pub warnings: Vec<&'static str>,
 }
 
-/// `W7002 vacuous_obligation` (§17.105): proved only because the path is impossible. The code is
-/// registered in `sakura_diagnostics` at V3.
-pub const VACUOUS_OBLIGATION: &str = "W7002";
+/// `W7002 vacuous_obligation` (§17.105): proved only because the path is impossible.
+pub const VACUOUS_OBLIGATION: &str = sakura_diagnostics::codes::W7002.0;
 
 /// `o:` + sha256 of the symbol, clause and site (the §17.76 manifest id, per site).
 pub fn obligation_id(vc: &DefVc, o: &Obligation) -> String {

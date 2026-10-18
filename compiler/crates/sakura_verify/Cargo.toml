@@ -10,6 +10,7 @@ publish.workspace = true
 
 [dependencies]
 sakura_core_snapshot = { path = "../sakura_core_snapshot" }
+sakura_diagnostics.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true

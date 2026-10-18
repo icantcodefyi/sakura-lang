@@ -1194,6 +1194,7 @@ version = "0.0.0"
 dependencies = [
  "insta",
  "sakura_core_snapshot",
+ "sakura_diagnostics",
  "serde",
  "serde_json",
  "sha2",
