@@ -1,0 +1,10 @@
+// milestone: M3
+// expect: V2002 V2002
+// expect-span: V2002 8:43
+// §17.165: a call to a declared function names it, its home module and both counts.
+import std/env
+import std/list
+
+pub fn home() -> Option<String> ! {Env} { Env.get("A", "B") }
+
+pub fn doubled() -> List<Int> { List.map([1, 2]) }

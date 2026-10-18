@@ -805,18 +805,27 @@ impl Checker<'_> {
                 if params.len() != given {
                     // A `Missing` argument means a parse error already explains the call.
                     let range = self.expr_range(e);
-                    let shown = self.render(ft);
                     if !broken {
-                        self.error(
-                            V2002,
-                            Phase::Type,
-                            range,
-                            format!(
-                                "this call passes {given} argument{} to a function of type `{shown}`, which takes {}",
-                                if given == 1 { "" } else { "s" },
-                                params.len()
+                        let takes = params.len();
+                        let plural = |n: usize| if n == 1 { "" } else { "s" };
+                        let msg = match self.b.calls.get(e) {
+                            Some(CallTarget::Def(d) | CallTarget::Method(d)) => format!(
+                                "`{}` ({}) takes {takes} argument{}, this call passes {given}",
+                                self.callee_name(*d),
+                                self.module_path(d.module),
+                                plural(takes)
                             ),
-                        );
+                            _ => format!(
+                                "this call passes {given} argument{} to a function of type `{}`, which takes {takes}",
+                                plural(given),
+                                self.render(ft)
+                            ),
+                        };
+                        let d = Diagnostic::error(V2002, Phase::Type, msg)
+                            .with_span(self.span(range))
+                            .with_expected(Rendered::text(takes.to_string()))
+                            .with_actual(Rendered::text(given.to_string()));
+                        self.push(d);
                     }
                     for &a in args {
                         rows.push(self.synth(a).1);

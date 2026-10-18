@@ -39,11 +39,11 @@ fn four() -> Int { double(2, 2) }
 {
   "schema_version": "1.0",
   "kind": "diagnostic",
-  "id": "d:61ad7e6f1b4ce063",
+  "id": "d:5f6e42c350a5bf1f",
   "code": "V2002",
   "severity": "error",
   "phase": "type",
-  "message": "this call passes 2 arguments to a function of type `fn(Int) -> Int`, which takes 1",
+  "message": "`double` (main/V2002_arity_mismatch) takes 1 argument, this call passes 2",
   "snapshot": "sha256:$SNAPSHOT",
   "symbol_id": "main::V2002_arity_mismatch::four",
   "spans": [
@@ -56,8 +56,12 @@ fn four() -> Int { double(2, 2) }
     }
   ],
   "related_ids": [],
-  "expected": null,
-  "actual": null,
+  "expected": {
+    "render": "1"
+  },
+  "actual": {
+    "render": "2"
+  },
   "obligation": null,
   "counterexample": null,
   "explanation_uri": "sakura://explain/V2002",
@@ -65,7 +69,7 @@ fn four() -> Int { double(2, 2) }
 }
 ```
 
-More fixtures for this code: [`compiler/tests/ui/V2002_row_argument_count.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2002_row_argument_count.sakura).
+More fixtures for this code: [`compiler/tests/ui/V2002_function_value_keeps_type.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2002_function_value_keeps_type.sakura), [`compiler/tests/ui/V2002_names_callee_and_module.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2002_names_callee_and_module.sakura), [`compiler/tests/ui/V2002_row_argument_count.sakura`](https://github.com/icantcodefyi/sakuralang/blob/master/compiler/tests/ui/V2002_row_argument_count.sakura).
 
 ## Fixed program
 

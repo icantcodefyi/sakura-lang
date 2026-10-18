@@ -58,7 +58,9 @@ V2031 7:39 `Secret<String>` is not `Show`, so it cannot be interpolated or print
   actual: Secret<String>
 
 ## arity
-V2002 8:17 this call passes 2 arguments to a function of type `fn(Int) -> Int`, which takes 1
+V2002 8:17 `g` (main/main) takes 1 argument, this call passes 2
+  expected: 1
+  actual: 2
 
 ## not callable
 V2003 7:28 `Int` is not a function, so it cannot be called

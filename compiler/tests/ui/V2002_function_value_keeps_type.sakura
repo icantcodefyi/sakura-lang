@@ -1,0 +1,7 @@
+// milestone: M3
+// expect: V2002
+// §17.165: a function value has no declaration to name, so the message keeps its type.
+pub fn twice() -> Int {
+  let f = fn(x: Int) -> Int { x * 2 }
+  f(1, 2)
+}

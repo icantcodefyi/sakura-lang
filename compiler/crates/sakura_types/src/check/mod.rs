@@ -342,6 +342,27 @@ impl<'p> Checker<'p> {
         name.to_string()
     }
 
+    /// `pkg/path` of a module, e.g. `std/env`.
+    fn module_path(&self, module: ModuleId) -> String {
+        let m = self.program.module(module);
+        format!(
+            "{}/{}",
+            self.program.packages[m.package.0 as usize].name, m.path
+        )
+    }
+
+    /// A callee as written at its home: `Env.get` for an operation, `Option.Some` for a
+    /// variant, the bare name otherwise.
+    fn callee_name(&self, def: DefId) -> String {
+        let m = self.program.module(def.module);
+        let d = &m.defs[def.index];
+        match &d.kind {
+            DefKind::Op(op) => format!("{}.{}", m.defs[op.effect].name, d.name),
+            DefKind::Variant(v) => format!("{}.{}", m.defs[v.parent].name, d.name),
+            _ => d.name.clone(),
+        }
+    }
+
     fn module(&self) -> ModuleId {
         self.b.module.expect("no current module")
     }
