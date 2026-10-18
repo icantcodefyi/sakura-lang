@@ -8,6 +8,7 @@ target/
 
 # Local tooling and build artifacts
 *.tsbuildinfo
+__pycache__/
 coverage/
 playwright-report/
 test-results/
