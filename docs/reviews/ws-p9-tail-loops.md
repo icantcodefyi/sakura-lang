@@ -1,11 +1,12 @@
 # WS-P9 review packet (mutual tail loops)
 
 For: **@icantcodefyi** (CODEOWNERS for `/compiler/`). Prepared 2026-10-19 by an AI agent (Claude
-Opus 5.5) at design §17.192 (3). The human reviewer owns the verdict.
+Opus 5.5) at design §17.192 (3), and extended the same day by the same agent for WS-P9b
+(§17.192 (2)) and the nested-`if` fix it needed. The human reviewer owns the verdict.
 
 **Status: awaiting review. Not approved.** Signing the table at the bottom closes plan
-[`performance-r1.md`](../plans/performance-r1.md) §5 item 6 for WS-P9. The work is merged and
-pinned by fixtures; nothing waits on the sign-off. This packet changes no code.
+[`performance-r1.md`](../plans/performance-r1.md) §5 item 6 for WS-P9 and WS-P9b. The work is
+merged and pinned by fixtures; nothing waits on the sign-off. This packet changes no code.
 
 Commits under review:
 
@@ -13,13 +14,16 @@ Commits under review:
 | --- | --- | --- |
 | WS-P9: mutual tail calls become jumps into one loop per def | `ad6e2e19` (measured before rebase as `bd869ef`) | §17.160 (5), endorsed as built in §17.192 (1) |
 | Plan notes and the advisory `countdown` delta | `1276088c` | plan §8 WS-P9 items 1–8 |
+| Tail calls under nested `if`s: return joins threaded through the inner `if`'s join | `72bb3829` (`perf(core): thread return joins through nested ifs`) | §17.160 (5), §17.192 (2) |
+| WS-P9b: a cycle with no nesting order merges through a dispatch join | `527a131b` (`perf(core): merge un-nestable tail cycles through a dispatch join (WS-P9b)`) | §17.192 (2) |
 
 Why the review: WS-P9 changes no output, effect order or defect message, but it moves the code
 that decides which call a contract defect blames. Before WS-P9 a call such as `down(n - 2)` in
 `up` was an ordinary call, and the callee's `requires` blamed it through the site parameter
 (§17.115). After WS-P9 that call is a jump inside a copy of `up`'s body placed in `down`, and
 the blame is set by a binding the transform inserts. The question for the reviewer is whether,
-on every path, a defect still names the call as written in the source.
+on every path, a defect still names the call as written in the source. WS-P9b adds a second
+place such a call can land: a jump out of an arm of a dispatch join into the host's loop.
 
 ---
 
@@ -78,7 +82,44 @@ only after `down`'s `requires n >= 0` and `n != 0`. This only drops the overflow
 `MERGE_NODES` = 1,024 copied Core expressions per def. A member's body sees only the labels of
 the members around it and of the next one, so `nest` searches an order (first fit in `DefId`
 order). A cycle with no fitting order, such as a three-def clique where each def calls both
-others, keeps its calls. WS-P9b (§17.192 (2)) will take that shape.
+others, takes the dispatch join of (f), which counts as one copied expression, so its members
+may copy at most 1,023.
+
+**(f) The dispatch join (WS-P9b).** When `nest` finds no order, `tail_calls` puts one join
+inside the host's loop, after the host's own body:
+
+```
+join j<host>(params…) {                       // the host's self-tail loop, as before
+  join j<hub>(state: Int, slots…) {           // one slot per member parameter, member order
+    let arm = eq(int)(state, 0)
+    if arm { join j<g>(g's params) { g's body } jump j<g>(g's slots) }
+    else   { join j<h>(h's params) { h's body } jump j<h>(h's slots) }
+  }
+  host's body
+}
+```
+
+Core has no `Int` switch (`Switch` takes variants and error tags), so the dispatch is an `if`
+chain on the state with one arm per copied member, the last arm untested. Each arm is that
+member's own self loop, so a member's self call stays a direct jump. A jump to the host is a
+direct jump to the host's label, with the `$site` binding of (b). Only a cross-member jump goes
+through the hub: it passes the target's state, its arguments in the target's slots and a dead
+filler in every other member's slots (`filler`): `0`, `0.0` and `false` for `Int`, `Float` and
+`Bool`, and `()` for any other type. JS is untyped; the LIR coerces `()` to a reference slot by
+boxing it, the placeholder its own lowering already uses for code that cannot run. No arm reads
+another member's slot. `$site` is bound only before jumps to the host, so blame works as in
+(b): a copied member still has no checks of its own, and a member call of the host blames that
+call. Members are in `DefId` order, so the output is deterministic.
+
+**(g) Tail calls under nested `if`s.** Lowering gives each `if` in tail position a join for its
+value. For `if a { x } else if b { f(n) } else { g(n) }` the inner `if`'s join only jumps on to
+the outer one's, whose code is `ret v`. `return_joins` recorded only joins whose code is
+`ret v`, in one pass, so `f(n)` stayed `let r = call f(n); jump j_inner(r)` and was no tail
+call. Self tail loops, WS-P9 and WS-P9b all missed it. A join whose code jumps to a return join
+with one of its own parameters is now a return join too, and `thread_jumps` turns jumps to it
+into `ret`. A `ret` inside a `Handle` or `Try` region leaves the region exactly as a jump to a
+join outside it does: the LIR pops it before `ret`, which `corpus__print__handler_state.snap`
+and `corpus__print__handler_callback_context.snap` show.
 
 Unchanged: `--no-direct` emission (the Core is the same for both ABIs), non-tail calls, generic
 cycles, handler regions and the ABI. No def, export or ABI entry is added.
@@ -100,6 +141,11 @@ therefore also a trace and defect parity check.
 | Merged cycles run in constant stack on both backends | §17.160 (5) | `mutual_tail_loop` (`is_even`/`is_odd` and a three-state cycle at 10^6); `bench_counters` (`countdown` n=1000 frames 1,006 → 4 direct, 1,007 → 7 all-frame) |
 | Non-tail mutual calls, generic cycles and a five-def cycle keep their calls | §17.160 (5) limits | `mutual_tail_calls_share_one_loop` in `sakura_codegen_js/tests/source.rs` and its snapshot; `mutual_tail_loop` (`count_even`/`count_odd`, `left`/`right`) |
 | `--dump direct` and the LIR agree on direct facts | §17.118 | `sakura_lir/tests/direct.rs` (the `ping`/`pong` "recursion" reason case now uses a non-tail cycle, since a tail cycle no longer forms a component) |
+| A defect raised through a dispatch join blames the call as written: a contract-checking host whose members are dispatch arms | §17.115, §17.192 (2) | `requires_in_a_dispatch_tail_loop_blames_the_member_call` in `sakura_codegen_js/tests/m3.rs` (both ABIs; message names `down`, spans `down(n - 2)` and `n >= 0`, and `down` keeps no call); `mutual_tail_dispatch_blame` (`D020` after 10^6 iterations, JS and WASM, spans compared by `parity.rs`); `corpus__print__mutual_tail_dispatch_blame.snap` (each arm's jump to the host rebinds `$site` to its own group, `const 4` and `const 5`) |
+| Cycles with no nesting order run in constant stack on both backends, effects in program order | §17.192 (2) | `mutual_tail_dispatch` (a three-def clique, a clique with `Int`/`String`, `Int`/`Bool` and `Int`/`List<Int>` parameters, a self call and `Console.print`, and a four-def clique, each at 10^6, both ABIs and WASM); `a_dispatch_tail_cycle_runs_in_a_few_frames` in `sakura_cli/tests/wasm.rs` (14 frames direct, 21 all-frame; 3,000,059 before) |
+| The limits: 1,024 copied expressions, 1,023 plus the dispatch | §17.160 (5), §17.192 (2) | `merging_stops_at_1024_copied_expressions` in `sakura_codegen_js/tests/source.rs` (merged at the limit, not one expression over, for a nesting and a dispatch host) |
+| Fillers are never read and allocate nothing | §17.192 (2) | `corpus__interpreter_report.snap` (`mutual_tail_dispatch`: live 0/0); the `boxes` counter of the fixture equals the unmerged program's (35,714) |
+| A call under nested `if`s in tail position is a tail call | §17.160 (5) | `tail_calls_under_nested_ifs_become_jumps` in `sakura_codegen_js/tests/source.rs` (a self call under `else if` and a mutual pair under nested `if`s keep no call); every changed snapshot of `72bb3829` drops a join that only forwarded its value, with dup and drop counts unchanged |
 
 ## 3. Known limits and open notes
 
@@ -112,7 +158,17 @@ therefore also a trace and defect parity check.
   the external call that first entered it. This is the same rule §17.115 set for self tail
   calls, extended to calls in copied bodies.
 - The k² code growth is bounded by the two limits in 1(e), not measured against plan §5 item 4's
-  2× `micro.sak` budget. `micro.sak` has no mutual tail cycle.
+  2× `micro.sak` budget. `micro.sak` has no mutual tail cycle. A dispatch host copies as many
+  bodies as a nesting one, plus the `if` chain and one join per arm.
+- A filler is a value the interval pass sees: an `Int` slot's facts include the `0` that other
+  members' jumps pass. This is sound; at most it keeps an overflow check the pass would
+  otherwise drop.
+- Each dispatch arm is a join with one jump into it, so entering an arm costs one more jump
+  than a nested copy does (in the LIR one block per arm, `down#2`'s `b3` and `b4` in
+  `corpus__print__mutual_tail_dispatch_blame.snap`).
+- Before `72bb3829`, `else if` chains in tail position ran through frames; existing programs
+  with that shape now loop. rbtree's all-frame WASM run takes 21,969 frames instead of 22,054
+  (`bench_counters.txt`); no other benchmark counter moved.
 - Performance (plan §8 WS-P9 item 7) is advisory under host load. The quiet window decides it
   (§17.153). Nothing here was blessed.
 
@@ -121,6 +177,7 @@ therefore also a trace and defect parity check.
 | Item | Reviewer | Date | Verdict |
 | --- | --- | --- | --- |
 | WS-P9 mutual tail loops (sections 1–2) | | | |
+| WS-P9b dispatch join and nested-`if` return joins (sections 1(f), 1(g) and 2) | | | |
 
 Requested changes go to the implementer as a new plan item. This packet is then re-issued
 against the fixing commit.
