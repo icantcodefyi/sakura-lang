@@ -656,6 +656,37 @@ Readings `sakura_rt` implements where 1.0.1 is still silent; each is a question 
   over their UTF-8 bytes (cached in the header, §3.2), composites an FxHash-style mix of their
   normalised contents finished by murmur3 `fmix32`.
 
+- **P8 Results, errors and `env` (§5, §6.2, §6.4).** "The frame's result slot" and "the parent's
+  named slot" have no field in the §6.1 frame. Implemented: a callee leaves its result, and a
+  caught `Fail` its error, in the task's 8-byte **return register**, which the parent's resume
+  block takes first (the driver never drops it, because it cannot know whether the bits are a
+  word). `env` (the closure) is passed on a function's entry call only; a function that needs
+  it after its first call or suspension keeps it (counted) in a slot. The `frame` argument is
+  the frame's address, a transient borrow for that call; stored links are ids (§7.2). A task's
+  result is a generic word. LIR must agree.
+- **P9 Outcome numbers (§6.5).** `ok 0, fail 1, defect 2, cancelled 3, pending 4, exit 5`; a
+  defect outcome's value is its `D` number. The runtime keeps the code, not yet the message or
+  site (`run` and `outcome` exports land with W1).
+- **P10 A late completion that carries a handle (§8.5).** Once a request is cancelled its id is
+  stale, so the guest cannot know what the completion carried. Implemented: the status
+  `4 ok_handle` says the payload's first 12 bytes are `kind, slot, generation`; a stale,
+  duplicate or older-epoch `ok_handle` completion retires that handle and drops the payload.
+  Host must agree.
+- **P11 Completion while the guest runs (§8.5).** The host is required to queue; as defence the
+  runtime also queues a `complete` that arrives while guest code is running, returns `2`
+  (queued), and delivers it at the next scheduler point with the usual checks.
+- **P12 Cancellation and finalizers (§6.4, §7.4).** `cancel` marks the task and its
+  descendants, bumps epochs, drops the continuation of a pending request without running user
+  code and calls `abort`; a running task stops at its next `perform` (which then returns no
+  frame) or suspension. "Before `cancel` returns" is reached by the canceller joining the
+  task. Finalizers run on the trampoline with `returned` (`Bool`) in slot 0, under the
+  activation in scope where they were registered (the finalizer entry records it). While one
+  runs the task is not unwinding: the interrupted unwinding is kept in four slots after the
+  finalizer's own, so a finalizer's own `try` and finalizers nest. A defect, an escaping
+  `Fail` (`D093`) or `exit` inside finalizers aborts every running finalizer and continues the
+  outer unwinding; finalizers they registered still run. A defect replaces a `Fail` being
+  unwound; otherwise the first unwinding wins.
+
 ## Errata history (1.0.0 → 1.0.1)
 
 Recorded by the `sakura_rt` implementer during R1 where 1.0.0 was ambiguous, silent or not
