@@ -691,3 +691,73 @@ fn a_twin_that_runs_out_of_gauge_restarts_once_per_entry() {
     assert_eq!(restarts("defect", &defect, &[], "", 70), 0);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// Design §7.4, §17.163 (4): `sakura test --contracts --target wasm` falsifies a wrong `ensures`
+/// with the counterexample, shrink and message JS reports for the same seed, stores the same
+/// regression, and exits 3 as JS does; `--record` still needs `--target js`.
+#[test]
+fn contract_tests_fail_on_wasm_as_on_js() {
+    if !available() {
+        eprintln!("skipped: node is missing");
+        return;
+    }
+    let src = "type Percent = Int where it >= 0 && it <= 100\n\n\
+               pub fn wrong(p: Percent, total: Int) -> Int\n\
+               \x20 requires total >= 0 && total <= 1000000\n\
+               \x20 ensures result <= total\n\
+               { total * p / 50 }\n";
+    let run = |target: &str| {
+        let dir = std::env::temp_dir().join(format!(
+            "sakura-wasm-contracts-{target}-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("main.sak"), src).unwrap();
+        let out = sakura(
+            &[
+                "test",
+                "--contracts",
+                "--json",
+                "--seed",
+                "7",
+                "--target",
+                target,
+                "main.sak",
+            ],
+            &dir,
+        );
+        let records = json_lines(&out.stdout).unwrap();
+        let test = records
+            .iter()
+            .find(|r| r["kind"] == "test")
+            .unwrap_or_else(|| panic!("{target}: {}", out.stdout))
+            .clone();
+        let regression = std::fs::read_to_string(dir.join("tests/regressions/wrong.json"));
+        let _ = std::fs::remove_dir_all(&dir);
+        (
+            out.code,
+            test["status"].clone(),
+            test["failures"].clone(),
+            regression.ok(),
+        )
+    };
+    let js = run("js");
+    assert_eq!(js.0, Some(3));
+    assert_eq!(js.1, "failed");
+    assert!(js.2.to_string().contains("D021"), "{}", js.2);
+    assert!(js.3.is_some(), "JS stores the shrunk case");
+    assert_eq!(run("wasm"), js);
+
+    let dir = std::env::temp_dir().join(format!("sakura-wasm-record-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("main.sak"), src).unwrap();
+    let out = sakura(&["test", "--record", "--target", "wasm", "main.sak"], &dir);
+    assert_eq!(out.code, Some(2), "{}", out.stderr);
+    assert!(
+        out.stderr.contains("`--record` needs `--target js`"),
+        "{}",
+        out.stderr
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}

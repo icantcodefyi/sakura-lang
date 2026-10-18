@@ -73,6 +73,11 @@ published yet.
   endings as the reason a file is listed. `sakura test` reports a snapshot that differs only
   in `\r\n` against `\n` as a line-ending mismatch.
 
+- `sakura test --contracts --target wasm` runs the synthesized contract properties on WASM
+  instead of refusing, with the counterexamples, shrinks, stored regressions and exit code JS
+  reports for the same seed (design §17.163 (4)). `sakura test --record --target wasm` is
+  refused with `` `--record` needs `--target js` `` before the permission check.
+
 - `sakura build --target wasm` drops the checks of obligations `sakura verify --target wasm`
   proved on the `i64` profile, as the JS build does for the `js` profile, and its manifest
   says `proved` for those clauses (design §17.163 (4), M4-OPT). The JS modules a WASM build

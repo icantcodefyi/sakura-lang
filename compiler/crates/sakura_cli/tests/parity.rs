@@ -2,7 +2,8 @@
 //! `compiler/tests/semantics` runs with `--target js` and `--target wasm`, and the two must
 //! agree on stdout, the exit code, the defect record on stderr (code, message and site spans,
 //! design §17.162), and the effect trace (`SAKURA_TRACE`); every test-mode fixture runs
-//! `sakura test --json` on both, which must agree on the exit code, each test's status,
+//! `sakura test --json` on both (with `--contracts` under `// contracts: true`, design
+//! §17.163 (4)), which must agree on the exit code, each test's status,
 //! failures, captured output and defect code and message, and the trace. The examples (`compiler/examples`) are held to the same, run in their project
 //! (run-mode ones with their `args`, and every one's tests). A fixture with an `@js`/`@wasm`
 //! directive or a `<name>.<backend>.stdout` is held to each backend's own expectation instead
@@ -106,8 +107,8 @@ fn test_records(stdout: &str) -> String {
     out
 }
 
-/// `sakura <mode>` on `target` for fixture `name` in `dir`, or (with `name` empty) for the
-/// project in `dir` with program arguments `rest`.
+/// `sakura <mode>` on `target` for fixture `name` in `dir` with flags `rest`, or (with `name`
+/// empty) for the project in `dir` with program arguments `rest`.
 fn run_mode(mode: &str, target: &str, name: &str, dir: &Path, rest: &[&str]) -> Run {
     let tmp = Path::new(env!("CARGO_TARGET_TMPDIR")).join("parity");
     std::fs::create_dir_all(&tmp).unwrap();
@@ -132,6 +133,7 @@ fn run_mode(mode: &str, target: &str, name: &str, dir: &Path, rest: &[&str]) -> 
         args.push("--json");
     }
     if !name.is_empty() {
+        args.extend(rest);
         args.push(name);
     } else if !rest.is_empty() {
         args.push("--");
@@ -450,9 +452,13 @@ fn js_and_wasm_agree_on_the_semantics_corpus() {
         }
     }
     let pairs = par_map(&jobs, |job| match job {
-        Job::Fixture(path, _, mode) => {
+        Job::Fixture(path, d, mode) => {
             let name = path.file_name().unwrap().to_string_lossy();
-            run_pair(&primary, mode, &name, path.parent().unwrap(), &[])
+            let flags: &[&str] = match d.get("contracts").map(String::as_str) {
+                Some("true") if mode == "test" => &["--contracts"],
+                _ => &[],
+            };
+            run_pair(&primary, mode, &name, path.parent().unwrap(), flags)
         }
         Job::Example(dir, d, mode) => {
             let args: Vec<&str> = d

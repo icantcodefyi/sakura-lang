@@ -9,6 +9,7 @@ Append entries as: `YYYY-MM-DD, from <crate> to <crate>: what and why`. The owne
   - `// expect: V4001 V4002` (tests/ui only) = the multiset of error/warning codes `sakura check --json` must report; nothing else. Optional `// expect-span: V4001 12:5` pins line:col of the primary span.
   - `// expect-exit: 70` and `// expect-defect: D020` = runtime exit code and defect code for programs that defect (`mode: run`, stdout still compared).
   - `// seed: N` = `--seed N` for run/test. `// covers: IfExpr MatchArm ...` = §3 productions exercised (documentation only).
+  - `// contracts: true` (`mode: test` only) = `sakura test --contracts`, so the synthesized contract properties run too (M4-OPT, both backends).
   - Projects (`examples/<name>/`) carry the directives in `src/main.sakura` and expected stdout in `examples/<name>/expected.stdout`.
   - Negative programs with expected diagnostics live in `tests/ui/<code>_<slug>.sakura`; positive run programs in `tests/semantics/<slug>.sakura`.
 

@@ -922,6 +922,9 @@ fn test(
         contracts,
     } = *flags;
     let filter = filter.as_deref().unwrap_or("");
+    if wasm && record {
+        return usage_error("`--record` needs `--target js`");
+    }
     let granted = if record {
         let (net, env) = match Analysis::analyze(snapshot).manifest() {
             Some(Ok(m)) => (m.permissions.net, m.permissions.env),
@@ -945,9 +948,6 @@ fn test(
         direct,
         all_fns: false,
     };
-    if wasm && (record || contracts) {
-        return usage_error("`--record` and `--contracts` need `--target js`");
-    }
     let built = if wasm {
         wasm::build(json, snapshot, out_dir, &opts, true)
     } else {

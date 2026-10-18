@@ -1,0 +1,13 @@
+// milestone: M3
+// mode: test
+// contracts: true
+// covers: design §7.4, §17.163 (4): `sakura test --contracts` runs the synthesized property on WASM as on JS (tests/parity.rs compares the records)
+
+type Percent = Int where it >= 0 && it <= 100
+
+pub fn scale(p: Percent, total: Int) -> Int
+  requires total >= 0 && total <= 1000000
+  ensures result >= 0 && result <= total
+{ total * p / 100 }
+
+test "an ordinary test runs beside the contract test" { expect_eq(scale(Percent.from(50), 10), 5) }

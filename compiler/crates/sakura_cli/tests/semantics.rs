@@ -1,7 +1,8 @@
 //! `compiler/tests/semantics`: programs run end to end. `// mode: run` (default) compares stdout
 //! with `<name>.stdout`, the exit code with `// expect-exit:` (default 0) and, when given, stderr
 //! with the substring of `// expect-stderr:`; `// mode: test`
-//! requires `sakura test` to pass; `// mode: check` requires a clean `sakura check`. `run` and
+//! requires `sakura test` to pass (with `--contracts` under `// contracts: true`, design §7.4);
+//! `// mode: check` requires a clean `sakura check`. `run` and
 //! `test` fixtures also run under `--no-direct` with identical effect traces (design §17.111).
 //! These runs are on JS, so `@js` directives apply (§17.80); `tests/parity.rs` holds WASM to
 //! JS and to its own `@wasm` expectations.
@@ -22,6 +23,9 @@ fn run(path: &Path, d: &std::collections::BTreeMap<String, String>) -> Result<()
     let mut args = vec![mode, name];
     if let (Some(seed), "run" | "test") = (seed, mode) {
         args.extend(["--seed", seed]);
+    }
+    if mode == "test" && d.get("contracts").is_some_and(|v| v == "true") {
+        args.push("--contracts");
     }
     if mode == "check" {
         return expect(path, d, mode, &sakura(&args, dir), "");
