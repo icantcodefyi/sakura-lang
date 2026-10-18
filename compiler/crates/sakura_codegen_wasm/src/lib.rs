@@ -117,6 +117,18 @@ const HOST_HANDLERS: &[(&str, &str, &str)] = &[
     ("task_deterministic", "std::task::Task", "task"),
 ];
 
+/// The native codes `rt_init` receives (the callback stub, then the finalizers and clauses the
+/// runtime makes closures of), in its order.
+const NATIVE_CODES: &[&str] = &[
+    "rt_code_callback_stub",
+    "rt_code_file_close",
+    "rt_code_sql_rollback",
+    "rt_code_task_cancel_all",
+    "rt_code_prop_record",
+    "rt_code_prop_failures",
+    "rt_code_prop_forward",
+];
+
 /// The frame and capture slot kinds of a native code's code-table entry: the words a code
 /// keeps across a suspension are released by the trampoline if the task unwinds meanwhile.
 fn native_slots(name: &str) -> (Vec<Slot>, Vec<Slot>) {
@@ -134,7 +146,12 @@ fn native_slots(name: &str) -> (Vec<Slot>, Vec<Slot>) {
         | "rt_code_sql_execute"
         | "rt_code_sql_transaction"
         | "rt_code_task_cancel_all" => (vec![], vec![i]),
-        "rt_code_sql_rollback" => (vec![], vec![i, i]),
+        "rt_code_sql_rollback"
+        | "rt_code_prop_record"
+        | "rt_code_prop_failures"
+        | "rt_code_prop_forward" => (vec![], vec![i, i]),
+        // `property_run`: its arguments, the host's session and the running case.
+        "rt_k_property_run" => (vec![i, w, w, w, i, i, i, w, i, i], vec![]),
         // `std::task::Task`'s clauses (`sakura_rt::task`): slot 0 the clause, 1 the activation,
         // the arguments, then the clause's own state.
         "rt_code_task_scope" => (vec![w, i, w, w, i], vec![w]),
@@ -287,6 +304,13 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     let g = layout.first_global;
     let (static_base, inited, abi) = (g, g + 1, g + 2);
     let code_of = |name: &str| n + natives.iter().position(|x| x == name).unwrap() as u32;
+    // The native codes the runtime itself builds closures of, in `rt_init`'s order.
+    let native_table: Vec<u8> = NATIVE_CODES
+        .iter()
+        .map(|name| code_of(name))
+        .flat_map(u32::to_le_bytes)
+        .collect();
+    let native_table_off = statics.bytes(&native_table);
     // The native code of each operation of `effect` (`rt_code_<prefix>_<op>`, or
     // `rt_code_unsupported`), as `u32`s in the static block: (effect id, offset, count).
     let clause_codes = |statics: &mut data::Statics, effect: &str, prefix: &str| {
@@ -401,11 +425,10 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     for off in [layout_off, codes_off, effects_off, ops_off] {
         s.local_get(0).i32_const(off as i32).i32_add();
     }
-    s.i32_const(n as i32)
-        .i32_const(code_of("rt_code_file_close") as i32)
-        .i32_const(code_of("rt_code_sql_rollback") as i32)
-        .i32_const(code_of("rt_code_task_cancel_all") as i32)
-        .call(rtf("rt_init")?);
+    s.i32_const(native_table_off as i32)
+        .global_get(static_base)
+        .i32_add();
+    s.call(rtf("rt_init")?);
     s.if_(BlockType::Empty).i32_const(0).return_().end();
     s.i32_const(1).global_set(inited).i32_const(1).end();
     funcs.push(added(FIXED[1], vec![], i32s(1), f));

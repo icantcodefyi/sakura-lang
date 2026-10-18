@@ -212,8 +212,9 @@ export class Host {
     this.exports = null;
     // Requests in flight (ABI §8.5): request id → how to abort the host operation.
     this.inflight = new Map();
-    // `Sql.memory()` connections by id (JS `sqlConnection`).
+    // `Sql.memory()` connections by id (JS `sqlConnection`), property sessions by id.
     this.sql = [];
+    this.props = [];
     // Handle tables (ABI §8.4): `${kind}:${slot}` → { generation, object }.
     this.handles = new Map();
     this.nextSlot = 1;
@@ -319,6 +320,41 @@ export class Host {
         sql_begin: (inst) => this.answer(this.sql[Number(inst)].begin(null), "I", SQL_ERROR),
         sql_release: (inst, token) => this.sql[Number(inst)].release(Number(token)),
         sql_rollback: (inst, token) => this.sql[Number(inst)].rollback(Number(token)),
+        // Property tests: the search is the JS runtime's (`propertySteps`), the cases run here.
+        prop_begin: (ptr, len) => {
+          const [seed, schemas, names, regression] = this.decode(new Reader(this.copyIn(ptr, len)));
+          const ss = schemas.map((t) => JSON.parse(t));
+          this.props.push({ schemas: ss, steps: rt.propertySteps(seed, ss, names, regression), msgs: [] });
+          return BigInt(this.props.length - 1);
+        },
+        prop_next: (session, result, ptr, len) => {
+          const p = this.props[Number(session)];
+          const kind = Number(result & 0xffn);
+          const text = len === 0 ? "" : this.string(ptr, len);
+          const outcome = [
+            null,
+            { kind: "ok", value: true },
+            { kind: "ok", value: false },
+            { kind: "fail", shown: text },
+            { kind: "defect", code: `D${String(Number(result >> 8n)).padStart(3, "0")}`, message: text },
+            { kind: "cancelled" },
+          ][kind];
+          const step = p.steps.next(outcome === null ? undefined : rt.caseResult(outcome, p.msgs));
+          p.msgs = [];
+          const w = new Writer();
+          if (step.done && step.value === null) {
+            w.u8(1);
+          } else if (step.done) {
+            w.u8(2);
+            this.encode(w, step.value, "S");
+          } else {
+            w.u8(0);
+            this.encode(w, step.value.run, ["T", ...p.schemas]);
+          }
+          return this.copyOut(w.done());
+        },
+        prop_record: (session, ptr, len) => this.props[Number(session)].msgs.push(this.string(ptr, len)),
+        prop_failures: (session) => BigInt(this.props[Number(session)].msgs.length),
         trace_enabled: () => (this.traceFd === null ? 0 : 1),
         trace_write: (ptr, len) => {
           rt.flushOut();
@@ -780,6 +816,18 @@ export async function runTests(bytes, seed, filter, snapshotDir, update) {
     update,
     fixtures: snapshotDir === "" ? "" : path.join(snapshotDir, "..", "fixtures"),
   };
+  // Contract regressions (design §7.4) as `test_runner.js` keeps them: stored inputs are read,
+  // a new shrunk failure goes to the CLI as a `regression` record.
+  const fs = proc.getBuiltinModule("node:fs");
+  const regressions = snapshotDir === "" ? "" : path.join(snapshotDir, "..", "regressions");
+  rt.regressions.load = (name) => {
+    try {
+      return regressions === "" ? null : fs.readFileSync(path.join(regressions, `${name}.json`), "utf8");
+    } catch {
+      return null;
+    }
+  };
+  rt.regressions.save = (name, text) => emit({ kind: "regression", name, text });
   await loadTypes();
   await host.instantiate(bytes);
   const tests = host.tests();

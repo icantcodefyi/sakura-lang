@@ -62,6 +62,10 @@ pub const IMPORTS: &[&str] = &[
     "sql_begin",
     "sql_release",
     "sql_rollback",
+    "prop_begin",
+    "prop_next",
+    "prop_record",
+    "prop_failures",
 ];
 
 /// The gate for `host`: a [`Host::Wasi`] command may also import `fd_write` and `proc_exit`
