@@ -344,3 +344,6 @@ def handled_suspend(n):
                 elapsed += 1
         return acc + elapsed
     return asyncio.run(workload())
+
+# Separate file retains the third-party DeltaBlue provenance.
+from deltablue import run as deltablue

@@ -2,7 +2,9 @@
 
 The per-program entry points call the kernels and sample printers in `../<language>/`.
 All ports reproduce the complete `[checksums]` table in the program's `meta.toml`.
-No port edits the Sakura or hand-JS oracle. DeltaBlue awaits WS-B's source and metadata.
+No port edits the Sakura or hand-JS oracle. DeltaBlue retains the provenance and licensing
+notice in `bench/programs/deltablue/LICENSE`; its arena-index graph follows the same planner
+and constraint operations as the JS classes and Sakura records.
 
 Run the independent port verifier from the repository root (Python 3.11+):
 
@@ -88,3 +90,6 @@ initial conditions are retained in Rust rather than shortened by a style lint.
 
 AI involvement: GPT-6.1-Sol implemented these mechanical ports and verification tooling.
 The human contributor owns the result. No baseline has been blessed by this work.
+
+TypeScript was executed by the pinned Bun runtime against all oracle sizes. No standalone
+TypeScript compiler is installed in this worktree, so a `tsc` check was not run.
