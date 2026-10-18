@@ -3,7 +3,9 @@
 //! - Jumps to a join point that only returns one of its parameters become that return.
 //! - Self tail calls become jumps to a loop header, so tail-recursive functions run as loops
 //!   (and, when pure, as direct-style JS loops). A call inside a `Handle` or `Try` region is
-//!   not a tail call: the region must stay installed while the callee runs.
+//!   not a tail call: the region must stay installed while the callee runs. In a def that
+//!   blames its caller, the jump is preceded by `let $site = ()` at the call's position, so a
+//!   backend can blame the self call for the next iteration's checks (design §17.115).
 //! - Calls of handler constructors are inlined, and performs bound to a handler literal are
 //!   found by [`handlers::bind`] (design §17.113).
 //!
@@ -29,9 +31,37 @@ pub fn optimize(m: &mut Module) {
         let mut used = HashMap::new();
         label_uses(&m.defs[i].body, &mut used);
         drop_dead_joins(&mut m.defs[i].body, &used);
-        tail_calls(&mut m.defs[i], DefId(i as u32));
+        let site = blames_caller(m, &m.defs[i].body);
+        tail_calls(&mut m.defs[i], DefId(i as u32), site);
     }
 }
+
+/// Does `e` check a contract that blames the caller (`requires`, `T.from`'s `where`)? Such a
+/// def is told its call site (design §17.115).
+pub fn blames_caller(m: &Module, e: &Expr) -> bool {
+    crate::ensure_stack(|| blames_caller_inner(m, e))
+}
+
+fn blames_caller_inner(m: &Module, e: &Expr) -> bool {
+    match e {
+        Expr::Let { bind, body, .. } => {
+            matches!(bind, Bind::Check(c, _) if m.contracts[c.index()].kind != ContractKind::Ensures)
+                || blames_caller(m, body)
+        }
+        Expr::Ret(_) | Expr::Jump(..) | Expr::Fail(_) => false,
+        Expr::LetJoin { join, body, .. } => blames_caller(m, join) || blames_caller(m, body),
+        Expr::Switch { arms, default, .. } => {
+            arms.iter().any(|(_, a)| blames_caller(m, a))
+                || default.as_ref().is_some_and(|d| blames_caller(m, d))
+        }
+        Expr::If { then, els, .. } => blames_caller(m, then) || blames_caller(m, els),
+        Expr::Handle { body, .. } | Expr::Try { body, .. } => blames_caller(m, body),
+    }
+}
+
+/// The local a self tail call of a def that blames its caller binds to `()` right before its
+/// jump, at the call's position: the next iteration's checks blame that call (design §17.115).
+pub const SITE_MARK: &str = "$site";
 
 fn label_uses(e: &Expr, out: &mut HashMap<Label, usize>) {
     crate::ensure_stack(|| label_uses_inner(e, out))
@@ -176,7 +206,7 @@ fn thread_jumps_inner(e: &mut Expr, returns: &HashMap<Label, usize>) {
     }
 }
 
-fn tail_calls(def: &mut FnDef, me: DefId) {
+fn tail_calls(def: &mut FnDef, me: DefId, site: bool) {
     if !matches!(def.kind, FnKind::Top { .. }) || !has_self_tail_call(&def.body, me) {
         return;
     }
@@ -190,7 +220,7 @@ fn tail_calls(def: &mut FnDef, me: DefId) {
         })
         .collect();
     let mut body = std::mem::replace(&mut def.body, Expr::Ret(Atom::Lit(Lit::Unit)));
-    rewrite(&mut body, me, label);
+    rewrite(&mut body, me, label, site.then_some(&mut def.locals));
     def.body = Expr::LetJoin {
         label,
         params: std::mem::replace(&mut def.params, fresh.clone()),
@@ -202,14 +232,14 @@ fn tail_calls(def: &mut FnDef, me: DefId) {
     };
 }
 
-fn is_self_tail(e: &Expr, me: DefId) -> Option<&[Atom]> {
+fn is_self_tail(e: &Expr, me: DefId) -> Option<(&[Atom], Option<Pos>)> {
     match e {
         Expr::Let {
             local,
             bind: Bind::Call(Atom::Global(d), args),
             body,
-            ..
-        } if *d == me && **body == Expr::Ret(Atom::Local(*local)) => Some(args),
+            pos,
+        } if *d == me && **body == Expr::Ret(Atom::Local(*local)) => Some((args, *pos)),
         _ => None,
     }
 }
@@ -239,32 +269,47 @@ fn has_self_tail_call_inner(e: &Expr, me: DefId) -> bool {
     }
 }
 
-fn rewrite(e: &mut Expr, me: DefId, label: Label) {
-    crate::ensure_stack(|| rewrite_inner(e, me, label))
+fn rewrite(e: &mut Expr, me: DefId, label: Label, sites: Option<&mut Vec<LocalDecl>>) {
+    crate::ensure_stack(|| rewrite_inner(e, me, label, sites))
 }
 
-fn rewrite_inner(e: &mut Expr, me: DefId, label: Label) {
-    if let Some(args) = is_self_tail(e, me) {
-        *e = Expr::Jump(label, args.to_vec());
+fn rewrite_inner(e: &mut Expr, me: DefId, label: Label, mut sites: Option<&mut Vec<LocalDecl>>) {
+    if let Some((args, pos)) = is_self_tail(e, me) {
+        let jump = Expr::Jump(label, args.to_vec());
+        *e = match sites {
+            Some(locals) => {
+                locals.push(LocalDecl {
+                    name: SITE_MARK.into(),
+                    ty: Ty::Unit,
+                });
+                Expr::Let {
+                    local: Local(locals.len() as u32 - 1),
+                    bind: Bind::Atom(Atom::Lit(Lit::Unit)),
+                    pos,
+                    body: Box::new(jump),
+                }
+            }
+            None => jump,
+        };
         return;
     }
     match e {
-        Expr::Let { body, .. } => rewrite(body, me, label),
+        Expr::Let { body, .. } => rewrite(body, me, label, sites),
         Expr::LetJoin { join, body, .. } => {
-            rewrite(join, me, label);
-            rewrite(body, me, label);
+            rewrite(join, me, label, sites.as_deref_mut());
+            rewrite(body, me, label, sites);
         }
         Expr::Switch { arms, default, .. } => {
             for (_, a) in arms {
-                rewrite(a, me, label);
+                rewrite(a, me, label, sites.as_deref_mut());
             }
             if let Some(d) = default {
-                rewrite(d, me, label);
+                rewrite(d, me, label, sites);
             }
         }
         Expr::If { then, els, .. } => {
-            rewrite(then, me, label);
-            rewrite(els, me, label);
+            rewrite(then, me, label, sites.as_deref_mut());
+            rewrite(els, me, label, sites);
         }
         Expr::Ret(_) | Expr::Jump(..) | Expr::Fail(_) | Expr::Handle { .. } | Expr::Try { .. } => {}
     }
