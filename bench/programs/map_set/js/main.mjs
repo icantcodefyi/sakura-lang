@@ -32,3 +32,46 @@ export function run(n) {
   for (const v of snapshot.values()) snap += v;
   return found + total + snap + mi.size + ms.size + mt.size + snapshot.size + s.size;
 }
+
+// run's three key kinds as separate entries (meta.toml `cases`, design §17.152 item 3);
+// run(n) = run_int(n) + run_string(n) + run_tuple(n).
+export function run_int(n) {
+  const mi = new Map(), s = new Set();
+  for (let i = 0; i < n; i++) {
+    mi.set(i, i % 1000);
+    s.add(i % 97);
+  }
+  const snapshot = new Map(mi);
+  let found = 0;
+  for (let i = 0; i < 2 * n; i++) found += mi.get(i) ?? 0;
+  for (let i = 0; i < n; i += 2) mi.set(i, (mi.get(i) ?? 0) + 7);
+  for (let i = 0; i < n; i += 3) mi.delete(i);
+  let total = 0;
+  for (const v of mi.values()) total += v;
+  let snap = 0;
+  for (const v of snapshot.values()) snap += v;
+  return found + total + snap + mi.size + snapshot.size + s.size;
+}
+
+export function run_string(n) {
+  const ms = new Map();
+  for (let i = 0; i < n; i++) ms.set(`k${i}`, i % 1000);
+  let found = 0;
+  for (let i = 0; i < 2 * n; i++) found += ms.get(`k${i}`) ?? 0;
+  for (let i = 0; i < n; i += 2) ms.set(`k${i}`, (ms.get(`k${i}`) ?? 0) + 7);
+  for (let i = 0; i < n; i += 3) ms.delete(`k${i}`);
+  let total = 0;
+  for (const v of ms.values()) total += v;
+  return found + total + ms.size;
+}
+
+export function run_tuple(n) {
+  const mt = new Map();
+  for (let i = 0; i < n; i++) mt.set(`${i % 100},${Math.trunc(i / 100)}`, i % 7);
+  let found = 0;
+  for (let i = 0; i < 2 * n; i++) found += mt.get(`${i % 100},${Math.trunc(i / 100)}`) ?? 0;
+  for (let i = 0; i < n; i += 3) mt.delete(`${i % 100},${Math.trunc(i / 100)}`);
+  let total = 0;
+  for (const v of mt.values()) total += v;
+  return found + total + mt.size;
+}

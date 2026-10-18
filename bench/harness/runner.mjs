@@ -2,11 +2,14 @@
 //   node runner.mjs values  <module> <n>...          → {"values": {"<n>": checksum, ...}}
 //   node runner.mjs negative <module> <k>...         → {"defects": {"<k>": "D020", ...}}
 //   node runner.mjs measure <module> <n> [--stable]  → {"n", "batch", "samples_ms", "checksum"}
+// `values` and `measure` call `run` unless `--fn <name>` names another entry (meta.toml `cases`).
 // measure: warmup 250 ms (2 s with --stable), a power-of-two batch calibrated to ≥ 30 ms, then
 // nine samples of that batch (ms per call). Peak RSS is taken by the harness from wait4.
 // <module> is a Sakura entry built by harness/bench.py (exports `program` and `runTask`) or a
 // hand-written JS module exporting `run(n)`. Nothing else is written to stdout.
 const [mode, path, ...rest] = process.argv.slice(2);
+const fnAt = rest.indexOf("--fn");
+const entry = fnAt < 0 ? "run" : rest.splice(fnAt, 2)[1];
 const mod = await import(new URL(path, `file://${process.cwd()}/`).href);
 const sakura = "runTask" in mod;
 
@@ -26,7 +29,7 @@ const out = (v) => process.stdout.write(`${JSON.stringify(v)}\n`);
 
 if (mode === "values") {
   const values = {};
-  for (const n of rest) values[n] = String(await call("run", Number(n)));
+  for (const n of rest) values[n] = String(await call(entry, Number(n)));
   out({ values });
 } else if (mode === "negative") {
   const defects = {};
@@ -46,7 +49,7 @@ if (mode === "values") {
   let sink;
   async function batch(count) {
     for (let i = 0; i < count; i++) {
-      const v = call("run", n);
+      const v = call(entry, n);
       sink = v instanceof Promise ? await v : v;
     }
   }

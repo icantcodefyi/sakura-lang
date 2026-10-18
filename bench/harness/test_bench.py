@@ -355,5 +355,184 @@ class Oracle(unittest.TestCase):
         self.assertTrue(any("oracle failed" in f["error"] for f in out["meta"]["failures"]))
 
 
+def snapshot(load, *busy):
+    return {"utc": "2026-10-18T00:00:00Z", "load_1m": load,
+            "busiest": [{"executable": name, "cpu_percent": cpu} for name, cpu in busy]}
+
+
+def loaded(document, load=10.4, ci=False):
+    """Mark a document as measured on a host with this one-minute load (§17.153)."""
+    verdict = bench.quiet_verdict([snapshot(load)], 12, ci)
+    document["meta"]["host"] = {"id": "test", "quiet": verdict["quiet"], "load": verdict}
+    return document
+
+
+class QuietWindow(unittest.TestCase):
+    def test_a_run_over_the_load_threshold_is_not_quiet(self):
+        verdict = bench.quiet_verdict([snapshot(1.0), snapshot(3.2), snapshot(2.0)], 12, False)
+        self.assertFalse(verdict["quiet"])
+        self.assertEqual((verdict["threshold"], verdict["max_load_1m"]), (3.0, 3.2))
+        self.assertIn("one-minute load 3.20 > 3", verdict["reasons"][0])
+        self.assertTrue(bench.quiet_verdict([snapshot(3.0), snapshot(0.5)], 12, False)["quiet"])
+
+    def test_a_busy_build_benchmark_or_agent_process_is_not_quiet(self):
+        for name in ("rustc", "cargo", "node", "bun", "claude", "Python", "clang-21", "ld64.lld"):
+            with self.subTest(name=name):
+                verdict = bench.quiet_verdict([snapshot(1.0, (name, 85.0))], 12, False)
+                self.assertFalse(verdict["quiet"])
+                self.assertIn(f"busy: {name}", verdict["reasons"])
+        # Idle (paused) agents and unrelated busy programs do not count.
+        self.assertTrue(bench.quiet_verdict([snapshot(1.0, ("node", 0.3), ("WindowServer", 40.0),
+                                                      ("Google Chrome Helper", 30.0))], 12, False)["quiet"])
+
+    def test_ci_is_never_quiet(self):
+        verdict = bench.quiet_verdict([snapshot(0.1)], 4, True)
+        self.assertFalse(verdict["quiet"])
+        self.assertIn("CI runner", verdict["reasons"][0])
+
+    def test_snapshot_reads_the_host(self):
+        s = bench.load_snapshot()
+        self.assertGreaterEqual(s["load_1m"], 0)
+        self.assertLessEqual(len(s["busiest"]), 12)
+
+    def test_run_records_the_verdict_in_meta_host(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "run.json"
+            with (patch.object(bench, "build_cli"), patch.object(bench, "build_sakura", return_value="unused"),
+                  patch.object(bench, "oracle"), patch.object(bench, "programs", return_value=["p"]),
+                  patch.object(bench, "variants", return_value=[("sakura", "node")]),
+                  patch.object(bench, "meta", return_value={"sizes": [1], "ints": "js-safe", "checksums": {"1": "1"}}),
+                  patch.object(bench, "measure", return_value=([1.0] * 9, "1", 100)),
+                  patch.object(bench, "load_snapshot", side_effect=[snapshot(1.0), snapshot(4.5, ("rustc", 90.0))]),
+                  patch.dict("os.environ", {"GITHUB_ACTIONS": "false"}),
+                  patch.object(bench.os, "cpu_count", return_value=12)):
+                bench.main(["run", "--engine", "node", "--processes", "1", "--json", str(output)])
+            host = json.loads(output.read_text())["meta"]["host"]
+            self.assertIs(host["quiet"], False)
+            self.assertEqual(host["load"]["max_load_1m"], 4.5)
+            self.assertEqual(len(host["load"]["snapshots"]), 2)
+            self.assertIn("busy: rustc", host["load"]["reasons"])
+
+
+class Bless(unittest.TestCase):
+    def bless(self, document):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "run.json"
+            path.write_text(json.dumps(document))
+            stderr = io.StringIO()
+            with patch.object(bench, "BENCH", Path(tmp)), patch.object(bench, "ROOT", Path(tmp)), \
+                 contextlib.redirect_stderr(stderr):
+                code = bench.main(["bless", str(path)])
+            return code, (Path(tmp) / "baselines" / "test.json").exists(), stderr.getvalue()
+
+    def test_bless_refuses_a_run_that_is_not_quiet(self):
+        code, written, message = self.bless(loaded(doc(pair(20.0, 10.0)), load=3.5))
+        self.assertEqual((code, written), (bench.EXIT_ORACLE, False))
+        self.assertIn("not made in a quiet window: one-minute load 3.50 > 3", message)
+        code, written, message = self.bless(loaded(doc(pair(20.0, 10.0)), load=0.5, ci=True))
+        self.assertEqual((code, written), (bench.EXIT_ORACLE, False))
+        self.assertIn("CI runner", message)
+
+    def test_bless_refuses_a_run_without_a_verdict(self):
+        legacy = doc(pair(20.0, 10.0))
+        legacy["meta"]["host"] = {"id": "test"}
+        code, written, message = self.bless(legacy)
+        self.assertEqual((code, written), (bench.EXIT_ORACLE, False))
+        self.assertIn("no quiet verdict", message)
+
+    def test_bless_copies_a_quiet_run(self):
+        self.assertEqual(self.bless(loaded(doc(pair(20.0, 10.0)), load=2.9))[:2], (bench.EXIT_OK, True))
+
+
+class AdvisoryCompare(unittest.TestCase):
+    base = doc(pair(20.0, 10.0))
+
+    def test_loaded_base_or_head_is_advisory_never_blocked_or_ok(self):
+        regressed = doc(pair(22.4, 10.0))  # +12%: blocked on a quiet host
+        for base, head in ((loaded(doc(pair(20.0, 10.0))), regressed), (self.base, loaded(doc(pair(22.4, 10.0))))):
+            out = bench.compare(base, [head])
+            self.assertEqual((out["verdict"], out["host_load"]), ("advisory", 10.4))
+            self.assertEqual(out["rows"][0]["status"], "blocked")  # the row keeps its direction
+        self.assertEqual(bench.compare(self.base, [loaded(doc(pair(20.0, 10.0)))])["verdict"], "advisory")
+
+    def test_loaded_rss_and_complexity_are_advisory_and_need_no_confirmation(self):
+        out = bench.compare(rss_doc([1000] * 5), [loaded(rss_doc([1300] * 5))])
+        self.assertEqual(out["verdict"], "advisory")
+        self.assertEqual(out["confirmation_programs"], [])
+        out = bench.compare(rss_doc([1000] * 5, "native"), [loaded(rss_doc([1300] * 5, "native"))])
+        self.assertEqual(out["verdict"], "advisory")
+
+    def test_correctness_still_blocks_on_a_loaded_host(self):
+        head = loaded(doc(pair(20.0, 10.0)))
+        head["results"][0]["checksum"] = "2"
+        self.assertEqual(bench.compare(self.base, [head])["verdict"], "blocked")
+
+    def test_quiet_legacy_and_ci_runs_keep_the_gate(self):
+        for head in (loaded(doc(pair(22.4, 10.0)), load=2.0), doc(pair(22.4, 10.0)),
+                     loaded(doc(pair(22.4, 10.0)), load=10.4, ci=True)):
+            self.assertEqual(bench.compare(self.base, [head])["verdict"], "blocked")
+
+    def test_cli_prints_advisory_with_the_load_and_exits_zero(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base, head = Path(tmp) / "base.json", Path(tmp) / "head.json"
+            base.write_text(json.dumps(self.base))
+            head.write_text(json.dumps(loaded(doc(pair(22.4, 10.0)), load=10.4)))
+            stdout = io.StringIO()
+            with contextlib.redirect_stdout(stdout):
+                code = bench.main(["compare", str(base), str(head)])
+        self.assertEqual(code, bench.EXIT_OK)
+        self.assertIn("verdict: advisory (host load 10.40", stdout.getvalue())
+
+
+class KeyKindCases(unittest.TestCase):
+    def test_map_set_reports_int_string_and_tuple_keys_as_separate_cells(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "run.json"
+            m = bench.meta("map_set") | {"sizes": [1000]}
+            calls = []
+
+            def measure(variant, engine, artefact, n, stable, case=None):
+                calls.append((variant, case))
+                table = m["checksums"][case] if case else m["checksums"]
+                return [1.0] * 9, table[str(n)], 100
+
+            with (patch.object(bench, "build_cli"), patch.object(bench, "build_sakura", return_value="unused"),
+                  patch.object(bench, "oracle"), patch.object(bench, "programs", return_value=["map_set"]),
+                  patch.object(bench, "meta", return_value=m), patch.object(bench, "measure", side_effect=measure)):
+                code = bench.main(["run", "--engine", "node", "--processes", "1", "--json", str(output)])
+            rows = json.loads(output.read_text())["results"]
+        cells = {(r["program"], r["variant"]) for r in rows}
+        for program in ("map_set", "map_set:int", "map_set:string", "map_set:tuple"):
+            self.assertIn((program, "sakura"), cells)
+            self.assertIn((program, "js"), cells)
+        self.assertTrue(all(r["checksum_ok"] for r in rows))
+        self.assertEqual(set(calls), {(v, c) for v in ("sakura", "js") for c in (None, *m["cases"])})
+        self.assertEqual(bench.cases(m, "native"), [])  # native ports implement run only
+        self.assertEqual(code, bench.EXIT_OK)
+        self.assertIn(("map_set:int", "node", 1000), bench.ratios({"results": rows}))
+
+    def test_case_checksums_are_part_of_the_oracle(self):
+        m = bench.meta("map_set")
+        self.assertEqual(m["cases"], ["int", "string", "tuple"])
+        for n in bench.oracle_inputs(m):  # the cases partition run(n)
+            self.assertEqual(sum(int(m["checksums"][c][str(n)]) for c in m["cases"]), int(m["checksums"][str(n)]))
+        js = bench.PROGRAMS / "map_set" / "js" / "main.mjs"
+        bench.oracle("map_set", m, "js", "node", js)  # runner.mjs --fn run_<case>
+        m["checksums"]["tuple"]["1000"] = "1"
+        with self.assertRaisesRegex(bench.Fail, r"run_tuple\(1000\) = 5657, expected 1"):
+            bench.oracle("map_set", m, "js", "node", js)
+
+
+class Workflow(unittest.TestCase):
+    def test_noise_runs_weekly_with_five_repeats_and_nightly_keeps_its_own_schedule(self):
+        workflow = (bench.ROOT / ".github/workflows/bench.yml").read_text()
+        self.assertIn('- cron: "43 3 * * 1"', workflow)
+        self.assertIn("if: github.event.schedule == '43 3 * * 1' || (github.event_name == 'workflow_dispatch' "
+                      "&& inputs.mode == 'noise')", workflow)
+        self.assertIn("if: github.event.schedule == '17 2 * * *' ||", workflow)
+        self.assertEqual(workflow.count("NOISE_REPEATS: ${{ inputs.repeats || 5 }}"), 2)
+        self.assertIn("name: bench-noise-${{ matrix.os }}-${{ matrix.engine }}", workflow)
+
+
 if __name__ == "__main__":
     unittest.main()

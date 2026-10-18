@@ -40,9 +40,9 @@ bench/bench oracle [--filter <glob>] [--write]
 
 | Command | Behaviour | Exit |
 |---|---|---|
-| `run` | Builds the release CLI and every variant, runs the oracle for each (variant, engine), then times every (program, variant, engine, size) in `--processes` (5) fresh processes, in an order shuffled with `--seed` (20261018), serially, GC on. Each process warms up 250 ms (2 s with `--stable`), calibrates a ≥ 30 ms batch and records nine samples; peak RSS comes from `wait4`. Prints a Markdown table of medians and Sakura/hand-JS ratios on stdout and writes the `sakura-bench-v1` JSON. `--sizes quick` times the first two sizes. | 0; 1 an oracle or checksum failed (that program is not timed); 3 a toolchain is missing (its variants are skipped and listed in `meta.missing`) |
-| `compare` | Per (program, engine, size), the head's ratio Sakura/hand JS against the base's: worse by > `--flag` (5%) flags; worse by > `--block` (10%) **and** by ≥ `--abs-ms` (0.1) ms per workload beyond the base ratio blocks, but only if every head file given agrees (pass the CI's confirmation rerun of the blocked programs as a second head). Peak RSS up > 25% (maximum across fresh processes) blocks on Node only when the first and confirmation groups cross in the same cell; a single crossing warns. Bun RSS crossings only warn (§17.136). Immediate failures: a failed oracle or checksum, a checksum different from the base, malformed RSS samples, a log-log slope across the size sweep up by > 0.5 (a complexity-class change); native RSS crossings retain the immediate block. An improvement > 10% is reported for the pull request to explain. | 0 ok or flagged; 2 blocked |
-| `bless` | Copies a run into `baselines/<host-id>.json`; refuses a run with failures or made from a dirty `compiler/` or `bench/` tree. | 0; 1 refused |
+| `run` | Builds the release CLI and every variant, runs the oracle for each (variant, engine), then times every (program, variant, engine, size) in `--processes` (5) fresh processes, in an order shuffled with `--seed` (20261018), serially, GC on. Each process warms up 250 ms (2 s with `--stable`), calibrates a ≥ 30 ms batch and records nine samples; peak RSS comes from `wait4`. Prints a Markdown table of medians and Sakura/hand-JS ratios on stdout and writes the `sakura-bench-v1` JSON. `--sizes quick` times the first two sizes. Samples host load every 15 s while timing and records the quiet verdict in `meta.host.quiet` and `meta.host.load` ([Quiet window](#quiet-window-17153)). | 0; 1 an oracle or checksum failed (that program is not timed); 3 a toolchain is missing (its variants are skipped and listed in `meta.missing`) |
+| `compare` | Per (program, engine, size), the head's ratio Sakura/hand JS against the base's: worse by > `--flag` (5%) flags; worse by > `--block` (10%) **and** by ≥ `--abs-ms` (0.1) ms per workload beyond the base ratio blocks, but only if every head file given agrees (pass the CI's confirmation rerun of the blocked programs as a second head). Peak RSS up > 25% (maximum across fresh processes) blocks on Node only when the first and confirmation groups cross in the same cell; a single crossing warns. Bun RSS crossings only warn (§17.136). Immediate failures: a failed oracle or checksum, a checksum different from the base, malformed RSS samples, a log-log slope across the size sweep up by > 0.5 (a complexity-class change); native RSS crossings retain the immediate block. An improvement > 10% is reported for the pull request to explain. If the base or any head was measured on a loaded host (`meta.host.quiet: false`, not CI), the verdict is `advisory (host load L)` instead of `ok`, `flagged` or `blocked`: rows keep their statuses as direction only, no confirmation is requested, and only correctness failures (oracle, checksum, malformed samples) still block (§17.153). | 0 ok, flagged or advisory; 2 blocked |
+| `bless` | Copies a run into `baselines/<host-id>.json`; refuses a run with failures, made from a dirty `compiler/` or `bench/` tree, or whose `meta.host.quiet` is not `true` (a loaded host, a CI runner, or a run recorded before §17.153), printing the reasons. | 0; 1 refused |
 | `compile` | The research/10 §6 budgets on generated packages (`target/corpus/<lines>`, 50-function modules): `check` of 10k and 100k lines and `build` of 10k lines, each 15 fresh processes; `sakura lsp` edit → `publishDiagnostics` on the 10k package, 15 edits in one warm server alternating a type error in a private body and its fix (the server publishes nothing for a clean file it has never reported). p95 against 1 s / 3 s / 500 ms / 100 ms. | 0; 2 over budget |
 | `oracle` | Checks Sakura and hand JS on Node against `meta.toml`, or records it with `--write`. | 0; 1 a mismatch |
 
@@ -91,13 +91,19 @@ lane = "matched"
 ints = "js-safe"                  # every value within ±(2^53 − 1)
 check_sizes = [1000000]           # optional: oracle-only sizes, never timed
 negative = [{ arg = 0, defect = "D020" }]   # optional: negative(arg) must defect with this code
+cases = ["int", "string", "tuple"]          # optional: entries run_<case>(n), timed as <name>:<case>
 
 [checksums]                       # run(n) for 0, 1, 2, 3, every size and every check size
 "0" = "0"
 ```
 
-`bench/bench oracle --write` records `[checksums]` from the Sakura program and refuses
-unless the hand-JS control prints the same values; `bench/bench oracle` checks both
+A program with `cases` also exports `run_<case>` in Sakura (reachable from `main`) and in
+hand JS, with a `[checksums.<case>]` table each. `run` times every case as its own cell named
+`<name>:<case>` (`map_set:int`) beside the whole program, on the JS panel only; native ports
+implement `run`. `runner.mjs values|measure … --fn run_<case>` selects the entry.
+
+`bench/bench oracle --write` records `[checksums]` (and every case table) from the Sakura
+program and refuses unless the hand-JS control prints the same values; `bench/bench oracle` checks both
 against the table (and the negative cases against Sakura). Every port must reproduce the
 whole table.
 
@@ -116,7 +122,7 @@ there are 21 program directories. All use `ints = "js-safe"`.
 | `binary_trees` | 8, 10, 12, 14 | sum of every check (stretch, per-depth, long-lived) at max depth max(6, n) |
 | `pipeline` | 1e3, 1e4, 1e5, 3e5 | `fold(filter(map(range(0, n), x*7 % 1000), even), +)`, every stage fresh |
 | `rbtree` | 1e3, 1e4, 5e4, 1e5 | Okasaki tree of keys `i*7919 % (2n+1)`; every 100th version retained; size + per retained version j: black height + member(j*3) |
-| `map_set` | 1e3, 1e4, 5e4, 1e5 | `Int`, `String` and `(Int, Int)` maps + an `Int` set: build, look up 2n keys, update evens, remove multiples of 3, sum; the Int map after the build is a retained snapshot (JS copies it) |
+| `map_set` | 1e3, 1e4, 5e4, 1e5 | `Int`, `String` and `(Int, Int)` maps + an `Int` set: build, look up 2n keys, update evens, remove multiples of 3, sum; the Int map after the build is a retained snapshot (JS copies it). Cases `int` (with the snapshot and the set), `string`, `tuple` partition the checksum and are timed separately (§17.152 item 3) |
 | `shapes` | 1e3, 1e4, 5e4, 1e5 | n MINSTD-generated items, five rounds of `..` updates, variant dispatch and `Option` |
 | `tokenizer` | 1e3, 1e4, 5e4, 1e5 | text of n ASCII and non-ASCII words; tokens + 3·UTF-8 bytes + 7·scalars + 11·tokens ending in `,` |
 | `json_validate` | 100, 1e3, 1e4, 3e4 | n JSON lines decoded into a refined record (every 17th empty name, every 13th age 200), valid ones re-encoded; valid + bytes + ids + 1000·invalid |
@@ -166,7 +172,8 @@ JS controls for `handled_*` are closure calls on a stateful object (research/10
    `sakura build` library flag would replace it.
 6. **Result schema additions** to plan §3.3: `meta.dirty`, `meta.missing` (toolchains
    skipped), `meta.failures` (oracle and build failures with their output), `flags.suite`,
-   `flags.engines`, `flags.processes`, and per-row `process_rss_bytes` (all process peaks); `compile` results carry `p95_ms` and `budget_ms` and
+   `flags.engines`, `flags.processes`, `meta.host.quiet` and `meta.host.load` (§17.153), case
+   cells named `<program>:<case>`, and per-row `process_rss_bytes` (all process peaks); `compile` results carry `p95_ms` and `budget_ms` and
    use `engine: "cli"`, `lane: "compile"`, `size` = corpus lines.
 7. **The compile corpus imports `corpus/gen/m<i>`**, its manifest's name (design §9,
    §17.127). Until WS9 the analysis named every user package `main`.
@@ -239,7 +246,8 @@ load averages have different averaging windows. Its observation overhead is pres
 both variants. Label runs made during other builds or benchmarks as **shared-host/noisy**.
 Never stop an unrelated process to improve a result.
 
-The manual CI noise job is deliberately small: `fib` and `pipeline`, the first two sizes,
+The CI noise job runs weekly (Mondays 03:43 UTC, five repeats; §17.153 item 2) and on
+manual dispatch. It is deliberately small: `fib` and `pipeline`, the first two sizes,
 five processes per cell, Node on Ubuntu and Node/Bun on macOS, serial repetitions within
 each job. It uses the default 250 ms warmup to characterise the PR configuration; this does
 not establish the noise of the stable nightly configuration or of the other families.
@@ -257,6 +265,39 @@ Its ordered-pair counts are a descriptive sensitivity check, not independent tri
 policy evidence also run `bench/bench compare base.json head.json confirmation.json`:
 all three must come from the same unchanged source for a no-change experiment. Check
 per-cell coverage explicitly because `compare` only compares overlapping ratio cells.
+
+### Quiet window (§17.153)
+
+Ceilings and baselines are judged only from a **quiet window** on the reference machine
+(host `d88970189598`, 12 logical CPUs). Every other run is directional.
+
+1. The owner announces the window and pauses the agents; nobody stops another process from
+   a harness, ever.
+2. Build first (`cd compiler && cargo build --release --locked -p sakura_cli`) and wait for
+   the one-minute load to settle, because the harness samples only the timing phase.
+3. Astra runs the full suite from a clean tree under the recorder:
+   ```sh
+   python3 research/10-evidence/record_load.py --log bench/target/quiet-load.jsonl -- \
+     bench/bench run --suite js --stable --json bench/target/quiet.json
+   ```
+4. `run` takes a snapshot before timing, every 15 s and after it: the one-minute load and
+   the twelve busiest executables outside its own process tree. The run is **quiet** when
+   every snapshot's load is at most a quarter of the logical CPUs (3.0 here) and no build,
+   benchmark or agent executable (`cargo`, `rustc`, `clang`, `node`, `bun`, `python`,
+   `claude`, `codex`, …) uses ≥ 10% CPU in any snapshot. A CI runner is never quiet.
+   `meta.host.quiet` holds the verdict; `meta.host.load` holds the threshold, the maximum
+   load, the reasons and every snapshot. `run` prints `[load] quiet` or the reasons.
+5. A run that is not quiet is retained as evidence, labelled shared-host/noisy, and the
+   window is retried later; it is never rerun until green within the window.
+6. Astra reports the results (`bench/deltas.md`, `map_set`'s three key kinds, `countdown`'s
+   two halves); the owner reviews and runs `bench/bench bless`, which refuses any run whose
+   `meta.host.quiet` is not `true`.
+
+One window closes a batch of landings, not one per workstream. Between windows, an
+implementer's before/after on the loaded machine is **advisory**: `compare` prints
+`verdict: advisory (host load L)`, exits 0, and its rows give direction only, which counts
+only when the change exceeds the unchanged-build noise band; it never declares a ceiling
+met. CI pull-request runs keep the ratio-to-ratio gate against the blessed baseline.
 
 ### Peak RSS measurement and the WS-P1 investigation
 
@@ -490,5 +531,6 @@ follows Okasaki's insertion (*Red-black trees in a functional setting*, JFP 1999
 from Mario Wolczko's Smalltalk version of John Maloney's benchmark; see its `LICENSE`.
 
 AI involvement: written by Claude (Opus 5.5) as WS-B; GPT-6.1-Sol implemented and tested
-the §17.136 RSS confirmation policy and updated this methodology. The human contributor
-owns the result.
+the §17.136 RSS confirmation policy and updated this methodology; Claude (Opus 5.5) wrote the
+§17.153 quiet-window recording, advisory verdict, weekly noise schedule and `map_set` key-kind
+cases (WS-B10). The human contributor owns the result.

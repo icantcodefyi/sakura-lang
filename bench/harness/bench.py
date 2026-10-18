@@ -17,6 +17,7 @@ import statistics
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import tomllib
 from pathlib import Path
@@ -198,13 +199,30 @@ def oracle(p, m, variant, engine, artefact):
             code = json_lines(out)[-1]["defects"][str(case["arg"])]
             if code != case["defect"]:
                 bad.append(f"negative({case['arg']}) gave {code}, expected {case['defect']}")
+    for case in cases(m, engine):
+        want = m["checksums"].get(case, {})
+        got = json_lines(spawn(command(variant, engine, artefact, "values", "--fn", f"run_{case}",
+                                       *oracle_inputs(m)))[0])[-1]["values"]
+        bad += [f"run_{case}({n}) = {got.get(str(n))}, expected {want.get(str(n))}"
+                for n in oracle_inputs(m) if str(got.get(str(n))) != str(want.get(str(n)))]
     if bad:
         raise Fail(f"{p} {variant}/{engine}: oracle failed: " + "; ".join(bad))
 
 
-def measure(variant, engine, artefact, n, stable):
+def cases(m, engine):
+    """meta.toml `cases`: entries `run_<case>` timed as their own cells (`map_set:int`, §17.152
+    item 3). The JS panel only; native ports implement `run`."""
+    return [] if engine == "native" else list(m.get("cases", []))
+
+
+def label(p, case):
+    return p if case is None else f"{p}:{case}"
+
+
+def measure(variant, engine, artefact, n, stable, case=None):
     """One fresh process: nine samples (ms per call), the checksum, peak RSS."""
-    out, rss = spawn(command(variant, engine, artefact, "measure", n, *(["--stable"] if stable else [])))
+    out, rss = spawn(command(variant, engine, artefact, "measure", n, *(["--stable"] if stable else []),
+                             *(["--fn", f"run_{case}"] if case else [])))
     lines = json_lines(out)
     if engine == "native":
         samples = [l["ms"] for l in lines]
@@ -230,6 +248,54 @@ def host():
     os_name = f"{system} {machine}"
     hid = hashlib.sha256(f"{cpu}|{os_name}|{mem}".encode()).hexdigest()[:12]
     return {"id": hid, "cpu": cpu, "os": f"{system} {platform.release()} {machine}", "mem_bytes": mem}
+
+
+# The quiet window (§17.153): every snapshot's one-minute load is at most a quarter of the logical
+# CPUs and no other build, benchmark or agent executable is among the busiest; CI is never quiet.
+LOAD_INTERVAL_S = 15
+BUSY_CPU_PERCENT = 10.0
+# ponytail: a name list; a busy process under another name is missed, the owner's pause covers it.
+BUSY_EXECUTABLE = re.compile(r"(cargo|rustc|rust-analyzer|cc1.*|clang.*|ld|ld64.*|go|ocaml.*|koka|node|bun|"
+                             r"deno|python[0-9.]*|claude|codex|hyperfine|sakura|wasmtime|tsc|esbuild)")
+
+
+def load_snapshot():
+    """One-minute load and the twelve busiest executables outside this harness's process tree."""
+    ps = subprocess.run(["ps", "-axo", "pid=,ppid=,pcpu=,comm="], capture_output=True, text=True).stdout
+    procs = [(int(f[0]), int(f[1]), float(f[2]), Path(f[3]).name)
+             for f in (line.split(None, 3) for line in ps.splitlines()) if len(f) == 4]
+    ours = {os.getpid()}
+    while grown := {pid for pid, ppid, _c, _n in procs if ppid in ours} - ours:
+        ours |= grown
+    top = sorted((p for p in procs if p[0] not in ours), key=lambda p: -p[2])[:12]
+    return {"utc": datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "load_1m": os.getloadavg()[0],
+            "busiest": [{"executable": n, "cpu_percent": c} for _p, _pp, c, n in top]}
+
+
+def quiet_verdict(snapshots, cpus, ci):
+    """`meta.host.load`: the quiet verdict over a run's snapshots and the reasons it is not quiet."""
+    threshold = cpus / 4
+    peak = max(s["load_1m"] for s in snapshots)
+    busy = sorted({b["executable"] for s in snapshots for b in s["busiest"]
+                   if b["cpu_percent"] >= BUSY_CPU_PERCENT and BUSY_EXECUTABLE.fullmatch(b["executable"].lower())})
+    reasons = ((["CI runner (trend evidence, never a bless)"] if ci else [])
+               + ([f"one-minute load {peak:.2f} > {threshold:g}"] if peak > threshold else [])
+               + ([f"busy: {', '.join(busy)}"] if busy else []))
+    return {"quiet": not reasons, "ci": ci, "threshold": threshold, "logical_cpus": cpus,
+            "interval_s": LOAD_INTERVAL_S, "max_load_1m": peak, "reasons": reasons, "snapshots": snapshots}
+
+
+def sample_load(stop, snapshots):
+    while not stop.wait(LOAD_INTERVAL_S):
+        snapshots.append(load_snapshot())
+
+
+def host_load(doc):
+    """The maximum one-minute load of a loaded non-CI run, else None (quiet, CI or legacy)."""
+    h = doc["meta"].get("host", {})
+    load = h.get("load") or {}
+    return load.get("max_load_1m") if h.get("quiet") is False and not load.get("ci") else None
 
 
 ENGINE_VERSIONS = {"node": ["node", "--version"], "bun": ["bun", "--version"], "rustc": ["rustc", "--version"],
@@ -297,26 +363,35 @@ def cmd_run(a):
         if failed:  # plan §3.2: nothing is timed for a program whose oracle failed
             status = EXIT_ORACLE
             continue
-        jobs += [(p, v, e, built[v], n) for v, e in verified for n in sizes]
+        jobs += [(p, c, v, e, built[v], n) for v, e in verified for c in [None, *cases(m, e)] for n in sizes]
 
     order = [(j, i) for j in jobs for i in range(a.processes)]
     random.Random(a.seed).shuffle(order)
     collected = {}
+    snapshots, stop = [load_snapshot()], threading.Event()  # timing only: the build's load is ours
+    sampler = threading.Thread(target=sample_load, args=(stop, snapshots), daemon=True)
+    sampler.start()
     for k, (job, _i) in enumerate(order, 1):
-        p, variant, engine, art, n = job
-        log(f"[{k}/{len(order)}] {p} {variant}/{engine} n={n}")
+        p, case, variant, engine, art, n = job
+        log(f"[{k}/{len(order)}] {label(p, case)} {variant}/{engine} n={n}")
         try:
-            samples, checksum, rss = measure(variant, engine, art, n, a.stable)
+            samples, checksum, rss = measure(variant, engine, art, n, a.stable, case)
         except Fail as e:
             samples, checksum, rss = [], f"error: {e}", 0
         collected.setdefault(job, []).append((samples, checksum, rss))
+    stop.set()
+    sampler.join()
+    snapshots.append(load_snapshot())
+    load = quiet_verdict(snapshots, os.cpu_count() or 1, os.environ.get("GITHUB_ACTIONS") == "true")
+    res["meta"].setdefault("host", {}).update(quiet=load["quiet"], load=load)
+    log(f"[load] {'quiet' if load['quiet'] else 'not quiet: ' + '; '.join(load['reasons'])}")
 
-    for (p, variant, engine, _art, n), runs in collected.items():
+    for (p, case, variant, engine, _art, n), runs in collected.items():
         m = meta(p)
-        expected = str(m["checksums"][str(n)])
+        expected = str((m["checksums"][case] if case else m["checksums"])[str(n)])
         medians = [statistics.median(s) for s, _c, _r in runs if s]
         res["results"].append({
-            "program": p, "variant": variant, "engine": engine, "lane": a.lane, "ints": m["ints"], "size": n,
+            "program": label(p, case), "variant": variant, "engine": engine, "lane": a.lane, "ints": m["ints"], "size": n,
             "samples_ms": [x for s, _c, _r in runs for x in s],
             "median_ms": statistics.median(medians) if medians else None,
             "process_medians_ms": medians,
@@ -413,7 +488,9 @@ def rss_comparison(base, b, head, r, jump):
 
 def compare(base, heads, flag=0.05, block=0.10, abs_ms=0.1, slope_jump=0.5, rss_jump=0.25):
     """Timing policy per §17.110 and maximum-RSS policy per §17.136.
-    Node RSS needs the first two heads to cross; Bun RSS is advisory."""
+    Node RSS needs the first two heads to cross; Bun RSS is advisory. When the base or a head
+    was measured on a loaded host (§17.153) the verdict is `advisory`: only a correctness
+    failure (checksum, oracle, malformed samples) still blocks."""
     b_rat = ratios(base)
     h_rats = [ratios(h) for h in heads]
     head = heads[0]
@@ -447,7 +524,7 @@ def compare(base, heads, flag=0.05, block=0.10, abs_ms=0.1, slope_jump=0.5, rss_
         rows.append({"program": p, "engine": e, "size": n, "base_ratio": base_ratio,
                      "head_ratio": h_rats[0][key][0] / h_rats[0][key][1], "delta": d, "status": status})
 
-    immediate, rss_rows = [], []
+    immediate, correctness, rss_rows = [], [], []  # measured (advisory when loaded), and correctness
     confirmation_programs = {r["program"] for r in rows if r["status"] == "blocked"} if len(heads) == 1 else set()
     confirmation = heads[1] if len(heads) > 1 else None
     confirmation_by = {(r["program"], r["variant"], r["engine"], r["size"]): r
@@ -462,7 +539,7 @@ def compare(base, heads, flag=0.05, block=0.10, abs_ms=0.1, slope_jump=0.5, rss_
                 cr = confirmation_by.get(key)
                 confirmed = rss_comparison(base, b, confirmation, cr, rss_jump) if cr else None
             except ValueError as error:
-                immediate.append(f"{key}: {error}")
+                correctness.append(f"{key}: {error}")
                 memory = None
             if memory:
                 crossed = memory["status"] == "blocked"
@@ -492,22 +569,26 @@ def compare(base, heads, flag=0.05, block=0.10, abs_ms=0.1, slope_jump=0.5, rss_
         for r in group["results"]:
             key = (r["program"], r["variant"], r["engine"], r["size"])
             if not r["checksum_ok"]:
-                immediate.append(f"{key}: checksum {r['checksum']}")
+                correctness.append(f"{key}: checksum {r['checksum']}")
             b = b_by.get(key)
             if b and b["checksum_ok"] and r["checksum_ok"] and b["checksum"] != r["checksum"]:
-                immediate.append(f"{key}: checksum changed {b['checksum']} → {r['checksum']}")
+                correctness.append(f"{key}: checksum changed {b['checksum']} → {r['checksum']}")
         for f in group["meta"].get("failures", []):
-            immediate.append(f"{f['program']} {f['variant']}/{f['engine']}: {f['error'].splitlines()[0]}")
+            correctness.append(f"{f['program']} {f['variant']}/{f['engine']}: {f['error'].splitlines()[0]}")
     for p, v, e in sorted({(r["program"], r["variant"], r["engine"]) for r in head["results"]}):
         pts = lambda res: [(r["size"], r["median_ms"]) for r in res["results"]
                            if (r["program"], r["variant"], r["engine"]) == (p, v, e)]
         sb, sh_ = slope(pts(base)), slope(pts(head))
         if sb is not None and sh_ is not None and sh_ - sb > slope_jump:
             immediate.append(f"({p!r}, {v!r}, {e!r}): complexity changed, log-log slope {sb:.2f} → {sh_:.2f}")
-    if immediate:
+    loads = [x for x in map(host_load, (base, *heads)) if x is not None]
+    load = max(loads) if loads else None
+    if load is not None and not correctness:  # §17.153 item 3: direction only, never ok or blocked
+        verdict, confirmation_programs = "advisory", set()
+    elif immediate or correctness:
         worse("blocked")
-    return {"verdict": verdict, "rows": rows, "immediate": immediate, "rss": rss_rows,
-            "confirmation_programs": sorted(confirmation_programs)}
+    return {"verdict": verdict, "host_load": load, "rows": rows, "immediate": correctness + immediate,
+            "rss": rss_rows, "confirmation_programs": sorted(confirmation_programs)}
 
 
 def cmd_compare(a):
@@ -539,7 +620,8 @@ def cmd_compare(a):
               f"{confirmation}; {r['status']} {r['note']}")
     for i in out["immediate"]:
         print(f"\nIMMEDIATE FAILURE: {i}")
-    print(f"\nverdict: {out['verdict']}")
+    advisory = f" (host load {out['host_load']:.2f}; direction only, §17.153)" if out["verdict"] == "advisory" else ""
+    print(f"\nverdict: {out['verdict']}{advisory}")
     if a.json:
         Path(a.json).write_text(json.dumps(out, indent=1) + "\n")
     return EXIT_BLOCKED if out["verdict"] == "blocked" else EXIT_OK
@@ -556,6 +638,11 @@ def cmd_bless(a):
     bad = [r for r in doc["results"] if not r["checksum_ok"]] + doc["meta"].get("failures", [])
     if bad or doc["meta"].get("dirty"):
         log("refusing to bless: " + ("oracle failures" if bad else "the run was made from a dirty tree"))
+        return EXIT_ORACLE
+    h = doc["meta"].get("host", {})
+    if h.get("quiet") is not True:  # §17.153 item 1
+        reasons = (h.get("load") or {}).get("reasons") or ["no quiet verdict recorded (made before §17.153)"]
+        log("refusing to bless: the run was not made in a quiet window: " + "; ".join(reasons))
         return EXIT_ORACLE
     dest = BENCH / "baselines" / f"{doc['meta']['host']['id']}.json"
     dest.parent.mkdir(exist_ok=True)
@@ -712,11 +799,17 @@ def cmd_oracle(a):
             entry = build_sakura(p)
             js = PROGRAMS / p / "js" / "main.mjs"
             if a.write:
-                values = lambda art: json_lines(spawn(command("x", "node", art, "values", *oracle_inputs(m)))[0])[-1]["values"]
-                sk, hand = values(entry), values(js)
-                if sk != hand:
-                    raise Fail(f"{p}: Sakura {sk} != JS {hand}")
-                write_checksums(p, sk)
+                tables = {}
+                for case in [None, *cases(m, "node")]:
+                    fn = ["--fn", f"run_{case}"] if case else []
+                    values = lambda art: json_lines(spawn(command("x", "node", art, "values", *fn,
+                                                                  *oracle_inputs(m)))[0])[-1]["values"]
+                    sk, hand = values(entry), values(js)
+                    if sk != hand:
+                        raise Fail(f"{p}: Sakura {label('run', case)} {sk} != JS {hand}")
+                    tables[case] = sk
+                sk = tables.pop(None)
+                write_checksums(p, sk, tables)
                 log(f"{p}: wrote {len(sk)} checksums")
             else:
                 oracle(p, m, "sakura", "node", entry)
@@ -728,11 +821,14 @@ def cmd_oracle(a):
     return status
 
 
-def write_checksums(p, values):
+def write_checksums(p, values, case_values=None):
     path = PROGRAMS / p / "meta.toml"
     head = path.read_text().split("[checksums]")[0].rstrip() + "\n\n"
-    body = "".join(f'"{n}" = "{v}"\n' for n, v in values.items())
-    path.write_text(head + "[checksums]  # run(n), recorded by `bench oracle --write`\n" + body)
+    table = lambda vs: "".join(f'"{n}" = "{v}"\n' for n, v in vs.items())
+    body = "[checksums]  # run(n), recorded by `bench oracle --write`\n" + table(values)
+    for case, vs in (case_values or {}).items():
+        body += f"\n[checksums.{case}]  # run_{case}(n)\n" + table(vs)
+    path.write_text(head + body)
 
 
 # ---------------------------------------------------------------------------------------------

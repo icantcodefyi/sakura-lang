@@ -18,7 +18,8 @@ on:
         type: number
         default: 5
   schedule:
-    - cron: "17 2 * * *"
+    - cron: "17 2 * * *" # nightly
+    - cron: "43 3 * * 1" # weekly noise, five repeats (design §17.153 item 2)
 
 permissions:
   contents: read
@@ -185,7 +186,7 @@ jobs:
           if-no-files-found: warn
 
   nightly:
-    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode != 'noise')
+    if: github.event.schedule == '17 2 * * *' || (github.event_name == 'workflow_dispatch' && inputs.mode != 'noise')
     runs-on: macos-latest
     timeout-minutes: 180
     defaults:
@@ -262,7 +263,7 @@ jobs:
           if-no-files-found: warn
 
   noise:
-    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'noise'
+    if: github.event.schedule == '43 3 * * 1' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'noise')
     name: Noise (${{ matrix.os }}, ${{ matrix.engine }})
     strategy:
       fail-fast: false
@@ -289,7 +290,7 @@ jobs:
       - name: Validate repeat count and read pins
         id: pins
         env:
-          NOISE_REPEATS: ${{ inputs.repeats }}
+          NOISE_REPEATS: ${{ inputs.repeats || 5 }}
         run: |
           python3 - <<'PY'
           import os, tomllib
@@ -320,7 +321,7 @@ jobs:
           workspaces: compiler
       - name: Repeat quick matched JS subset with load snapshots
         env:
-          NOISE_REPEATS: ${{ inputs.repeats }}
+          NOISE_REPEATS: ${{ inputs.repeats || 5 }}
           BENCH_ENGINE: ${{ matrix.engine }}
         run: |
           python3 - <<'PY'

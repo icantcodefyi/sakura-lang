@@ -46,7 +46,101 @@ pub fn run(n: Int) -> Int {
   found + total + snap + Map.len(mi) + Map.len(ms) + Map.len(mt) + Map.len(snapshot) + Set.len(s)
 }
 
-// `sakura run main.sakura -- <n>...` prints run(n) for each argument.
+// run's three key kinds as separate entries, timed as their own cells (design §17.152 item 3):
+// run(n) = run_int(n) + run_string(n) + run_tuple(n); the Int map keeps the snapshot and the Set.
+pub fn run_int(n: Int) -> Int {
+  var mi: Map<Int, Int> = Map.empty()
+  var s: Set<Int> = Set.empty()
+  var i = 0
+  while i < n {
+    mi = Map.insert(mi, i, i % 1000)
+    s = Set.insert(s, i % 97)
+    i = i + 1
+  }
+  let snapshot = mi
+  var found = 0
+  i = 0
+  while i < 2 * n {
+    found = found + Option.unwrap_or(Map.get(mi, i), 0)
+    i = i + 1
+  }
+  i = 0
+  while i < n {
+    mi = Map.update(mi, i, fn(v) { Option.unwrap_or(v, 0) + 7 })
+    i = i + 2
+  }
+  i = 0
+  while i < n {
+    mi = Map.remove(mi, i)
+    i = i + 3
+  }
+  var total = 0
+  for (_, v) in Map.entries(mi) { total = total + v }
+  var snap = 0
+  for (_, v) in Map.entries(snapshot) { snap = snap + v }
+  found + total + snap + Map.len(mi) + Map.len(snapshot) + Set.len(s)
+}
+
+pub fn run_string(n: Int) -> Int {
+  var ms: Map<String, Int> = Map.empty()
+  var i = 0
+  while i < n {
+    ms = Map.insert(ms, "k{i}", i % 1000)
+    i = i + 1
+  }
+  var found = 0
+  i = 0
+  while i < 2 * n {
+    found = found + Option.unwrap_or(Map.get(ms, "k{i}"), 0)
+    i = i + 1
+  }
+  i = 0
+  while i < n {
+    ms = Map.update(ms, "k{i}", fn(v) { Option.unwrap_or(v, 0) + 7 })
+    i = i + 2
+  }
+  i = 0
+  while i < n {
+    ms = Map.remove(ms, "k{i}")
+    i = i + 3
+  }
+  var total = 0
+  for (_, v) in Map.entries(ms) { total = total + v }
+  found + total + Map.len(ms)
+}
+
+pub fn run_tuple(n: Int) -> Int {
+  var mt: Map<(Int, Int), Int> = Map.empty()
+  var i = 0
+  while i < n {
+    mt = Map.insert(mt, (i % 100, i / 100), i % 7)
+    i = i + 1
+  }
+  var found = 0
+  i = 0
+  while i < 2 * n {
+    found = found + Option.unwrap_or(Map.get(mt, (i % 100, i / 100)), 0)
+    i = i + 1
+  }
+  i = 0
+  while i < n {
+    mt = Map.remove(mt, (i % 100, i / 100))
+    i = i + 3
+  }
+  var total = 0
+  for (_, v) in Map.entries(mt) { total = total + v }
+  found + total + Map.len(mt)
+}
+
+// `sakura run main.sakura -- <n>...` prints run(n) for each argument; `-- int <n>` (or `string`,
+// `tuple`) prints that entry. Code reachable only from other exports is not emitted.
 pub fn main() -> Unit ! {Cli, Console} {
-  for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+  match Cli.args() {
+    ["int", n] => Console.print("{run_int(Option.expect(String.parse_int(n), "size"))}"),
+    ["string", n] => Console.print("{run_string(Option.expect(String.parse_int(n), "size"))}"),
+    ["tuple", n] => Console.print("{run_tuple(Option.expect(String.parse_int(n), "size"))}"),
+    args => {
+      for arg in args { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+    },
+  }
 }

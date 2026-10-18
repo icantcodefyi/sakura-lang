@@ -30,13 +30,18 @@ def ratio_rows(document):
     return ratios
 
 
+def configuration(value):
+    """Per-run load observations (`meta.host.quiet`, `meta.host.load`) differ between repeats."""
+    return {k: v for k, v in value.items() if k not in ('quiet', 'load')} if isinstance(value, dict) else value
+
+
 def analyze(paths, excluded_programs=()):
     documents = [json.loads(path.read_text()) for path in paths]
     first = documents[0]['meta']
     for document in documents:
         current = document['meta']
         for field in ('commit', 'host', 'engines'):
-            if current[field] != first[field]:
+            if configuration(current[field]) != configuration(first[field]):
                 raise ValueError(f'mismatched {field}; do not pool machines, pins or commits')
         for field in ('suite', 'engines', 'lane', 'sizes', 'stable', 'filter', 'processes'):
             if current['flags'][field] != first['flags'][field]:

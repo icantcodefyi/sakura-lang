@@ -12,6 +12,10 @@ published yet.
 - Benchmark results retain every process peak RSS, and comparisons report process medians
   alongside the unchanged maximum-based +25% RSS gate. The WS-P1 variance study and raw
   evidence are documented in `bench/README.md`.
+- Benchmark runs record host load and a quiet-window verdict (`meta.host.quiet`);
+  `bench bless` refuses runs that are not quiet, `bench compare` reports loaded-host runs as
+  `advisory (host load L)`, `map_set` times its `Int`, `String` and tuple keys as separate
+  cells, and the CI noise job runs weekly (design §17.153).
 
 - Research on language design, agent ergonomics, memory management, effects,
   standard-library direction, and open-source engineering practices in `research/`.
