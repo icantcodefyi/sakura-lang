@@ -115,9 +115,11 @@ pub extern "C" fn rt_init(
     ops: u32,
     stub: u32,
     file_close: u32,
+    sql_rollback: u32,
 ) -> u32 {
     let rt = rt();
     rt.sched.file_close_code = file_close;
+    rt.sched.sql_rollback_code = sql_rollback;
     rt.set_codes(codes);
     rt.set_effects(effects);
     rt.sched.ops = ops;
@@ -1036,6 +1038,224 @@ pub extern "C" fn rt_code_file_close(env: u32, _frame: u32) -> u32 {
     ret(rt, UNIT as u64)
 }
 
+// ---- SQL (`Sql.memory()`) ----------------------------------------------------------------------
+
+/// A host-built handler whose clause closures capture `instance` (an `i64`, the host's id of
+/// its state), e.g. one in-memory database per `Sql.memory()`.
+fn instance_handler(rt: &mut Rt, effect: u32, codes: u32, n: u32, instance: i64) -> Res<u32> {
+    let h = rt.new_object(tag::HANDLER, 24 + 4 * n)?;
+    for (off, v) in [(8, effect), (12, u32::MAX), (16, 0), (20, n)] {
+        rt.heap.mem.set_u32(h + off, v);
+    }
+    for i in 0..n {
+        let c = rt
+            .new_object(tag::CLOSURE, 24)
+            .inspect_err(|_| rt.drop(h))?;
+        rt.heap.mem.set_u32(c + 8, rt.heap.mem.u32(codes + 4 * i));
+        rt.heap.mem.set_u32(c + 12, 1);
+        rt.set_slot(c, 0, instance as u64);
+        rt.heap.mem.set_u32(h + 24 + 4 * i, c);
+    }
+    Ok(h)
+}
+
+/// `Sql.memory()`: a fresh in-memory database on the host, as JS `sql_memory`.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_b_sql_memory(effect: u32, codes: u32, n: u32) -> u32 {
+    // SAFETY: a plain import returning a scalar.
+    let instance = unsafe { host::sql_open_memory() };
+    let rt = rt();
+    let r = instance_handler(rt, effect, codes, n, instance);
+    ptr(r)
+}
+
+/// A clause's instance (its closure's capture) and the clause closure released.
+fn instance_of(rt: &mut Rt, frame: u32) -> i64 {
+    let clause = rt.take_fslot(frame, 0) as u32;
+    let instance = rt.slot(clause, 0) as i64;
+    rt.drop(clause);
+    instance
+}
+
+/// The `sakura-vt1` tuple of `args` (consumed words) as a `Bytes`.
+fn encode_args(rt: &mut Rt, args: &[u32]) -> Res<u32> {
+    let r = (|| {
+        let mut b = rt.strbuf()?;
+        let r = (|| {
+            rt.put(&mut b, &[crate::vt::t::TUPLE])?;
+            rt.put(&mut b, &(args.len() as u32).to_le_bytes())?;
+            for &a in args {
+                rt.vt_encode_word(&mut b, a)?;
+            }
+            Ok(())
+        })();
+        match r {
+            Ok(()) => {
+                let s = rt.finish(b);
+                rt.string_to_bytes(s)
+            }
+            Err(e) => {
+                rt.strbuf_free(b);
+                Err(e)
+            }
+        }
+    })();
+    for &a in args {
+        rt.drop(a);
+    }
+    r
+}
+
+/// A host answer (`u8` status 0 ok / 1 failed, then a `sakura-vt1` value; consumed): the
+/// status and the value (owned).
+fn answer(rt: &mut Rt, b: u32) -> Res<(u8, u32)> {
+    if b == 0 {
+        return Err(Defect::HEAP_EXHAUSTED);
+    }
+    let (len, at) = rt.data(b);
+    let status = if len == 0 { 255 } else { rt.heap.mem.u8(at) };
+    let r = match status {
+        0 | 1 => rt.vt_decode(at + 1, len - 1).map(|w| (status, w)),
+        _ => Err(crate::vt::MALFORMED),
+    };
+    rt.drop(b);
+    r
+}
+
+/// Return the host's answer, or `fail` with it (an `SqlError`), from a clause.
+fn ok_or_fail(rt: &mut Rt, r: Res<(u8, u32)>) -> u32 {
+    match r {
+        Ok((0, v)) => ret(rt, v as u64),
+        Ok((_, e)) => rt.fail(e),
+        Err(d) => rt.raise(d),
+    }
+}
+
+/// `Sql.query(q, schema)`: the rows decoded by the host with `schema` (as JS `rowOf`).
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_sql_query(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    let instance = instance_of(rt, frame);
+    let (q, schema) = (
+        rt.take_fslot(frame, 2) as u32,
+        rt.take_fslot(frame, 3) as u32,
+    );
+    let r = encode_args(rt, &[q, schema]).and_then(|b| {
+        let (len, at) = rt.data(b);
+        // SAFETY: a plain import with a slice inside linear memory, copied in at once.
+        let out = unsafe { host::sql_query(instance, at, len) };
+        rt.drop(b);
+        answer(rt, out)
+    });
+    ok_or_fail(rt, r)
+}
+
+/// `Sql.execute(q)`: rows affected.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_sql_execute(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    let instance = instance_of(rt, frame);
+    let q = rt.take_fslot(frame, 2) as u32;
+    let r = encode_args(rt, &[q]).and_then(|b| {
+        let (len, at) = rt.data(b);
+        // SAFETY: as in `rt_code_sql_query`.
+        let out = unsafe { host::sql_execute(instance, at, len) };
+        rt.drop(b);
+        answer(rt, out)
+    });
+    match r {
+        // `execute` returns an `Int` in its declared representation (errata L12).
+        Ok((0, v)) => {
+            let n = rt.int_of(v);
+            rt.drop(v);
+            ret(rt, n as u64)
+        }
+        r => ok_or_fail(rt, r),
+    }
+}
+
+/// `Sql.transaction(body)` (as JS `sqlHandler`): a savepoint on the host, a finalizer that
+/// rolls it back on defect or cancellation, and a catch entry that rolls back and re-fails;
+/// on return the savepoint is released and the finalizer popped.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_sql_transaction(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    match rt.block(frame) {
+        0 => {
+            let instance = instance_of(rt, frame);
+            let body = rt.take_fslot(frame, 2) as u32;
+            // SAFETY: a plain import; the answer arrives as a `Bytes`.
+            let begun = answer(rt, unsafe { host::sql_begin(instance) });
+            let token = match begun {
+                Ok((0, t)) => {
+                    let token = rt.int_of(t);
+                    rt.drop(t);
+                    token
+                }
+                Ok((_, e)) => {
+                    rt.drop(body);
+                    return rt.fail(e);
+                }
+                Err(d) => {
+                    rt.drop(body);
+                    return rt.raise(d);
+                }
+            };
+            rt.set_fslot(frame, 0, instance as u64);
+            rt.set_fslot(frame, 1, token as u64);
+            let closer = rt
+                .new_object(tag::CLOSURE, 32)
+                .inspect(|&c| {
+                    rt.heap.mem.set_u32(c + 8, rt.sched.sql_rollback_code);
+                    rt.heap.mem.set_u32(c + 12, 2);
+                    rt.set_slot(c, 0, instance as u64);
+                    rt.set_slot(c, 1, token as u64);
+                })
+                .and_then(|c| rt.fin_push(c))
+                .and_then(|()| rt.try_push(frame, 2));
+            if let Err(d) = closer {
+                rt.drop(body);
+                return rt.raise(d);
+            }
+            match rt.call_value(body, 0) {
+                Ok(_) => {
+                    rt.set_block(frame, 1);
+                    step::CALL
+                }
+                Err(d) => rt.raise(d),
+            }
+        }
+        1 => {
+            let v = rt.take_ret();
+            rt.try_pop(frame);
+            let (instance, token) = (rt.fslot(frame, 0) as i64, rt.fslot(frame, 1) as i64);
+            // SAFETY: a plain import with scalar arguments.
+            unsafe { host::sql_release(instance, token) };
+            let closer = rt.fin_pop();
+            rt.drop(closer);
+            ret(rt, v)
+        }
+        _ => {
+            let e = rt.take_ret() as u32;
+            let (instance, token) = (rt.fslot(frame, 0) as i64, rt.fslot(frame, 1) as i64);
+            // SAFETY: a plain import with scalar arguments.
+            unsafe { host::sql_rollback(instance, token) };
+            rt.fail(e)
+        }
+    }
+}
+
+/// `Sql.transaction`'s finalizer: roll the savepoint in its captures back (a no-op once
+/// released or rolled back).
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_sql_rollback(env: u32, _frame: u32) -> u32 {
+    let rt = rt();
+    let (instance, token) = (rt.slot(env, 0) as i64, rt.slot(env, 1) as i64);
+    // SAFETY: a plain import with scalar arguments.
+    unsafe { host::sql_rollback(instance, token) };
+    ret(rt, UNIT as u64)
+}
+
 // ---- the test runner's `std::test::Test` handler (`sakura test --target wasm`) --------------
 
 /// A root task for test wrapper `code` under the runner's `Test` handler `h` (consumed); the
@@ -1223,6 +1443,14 @@ mod host {
         pub fn test_snapshot(name: u32, name_len: u32, rendered: u32, rendered_len: u32);
         /// Closes a file the host's `file_open` opened (JS `file_close`).
         pub fn file_close(id: i64);
+        /// SQL (JS `sqlConnection`): a new in-memory database's id, its queries and
+        /// statements (`sakura-vt1` arguments; status-prefixed answers), savepoints.
+        pub fn sql_open_memory() -> i64;
+        pub fn sql_query(instance: i64, ptr: u32, len: u32) -> u32;
+        pub fn sql_execute(instance: i64, ptr: u32, len: u32) -> u32;
+        pub fn sql_begin(instance: i64) -> u32;
+        pub fn sql_release(instance: i64, token: i64);
+        pub fn sql_rollback(instance: i64, token: i64);
     }
 }
 

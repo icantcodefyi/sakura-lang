@@ -58,6 +58,12 @@ const IMPORTS: &[&str] = &[
     "test_fixtures",
     "test_snapshot",
     "file_close",
+    "sql_open_memory",
+    "sql_query",
+    "sql_execute",
+    "sql_begin",
+    "sql_release",
+    "sql_rollback",
 ];
 
 /// The ABI §1 allowlist, from an empty set (research/09 §1).

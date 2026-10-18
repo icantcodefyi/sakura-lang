@@ -158,6 +158,8 @@ pub struct Sched {
     pub callback_code: u32,
     /// The code of `file_closing`'s finalizer (`rt_code_file_close`), set at link time.
     pub file_close_code: u32,
+    /// The code of `Sql.transaction`'s finalizer (`rt_code_sql_rollback`), set at link time.
+    pub sql_rollback_code: u32,
     pub exit_code: i32,
     /// Set when an export compiled code called raised a defect (wasm32 `rt_take_defect`).
     pub raised: bool,
