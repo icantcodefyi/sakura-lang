@@ -40,3 +40,39 @@ Status: **open; recommendations, not decisions or implementation authorization**
 
 No M5 implementation starts before the design round reads and disposes these
 items. No quiet-window baseline was blessed, and no compiler or design file changed.
+
+**Answered (Fable, round 13, design §17.169–§17.178; plan `docs/plans/m5-native.md`).**
+1. **ABI/profile:** approved as `offset32-v1` (§17.169): ABI 1.2.0 bytes unchanged, a fixed
+   8-byte-aligned reserved heap (no `Vec<u8>`), `ctx*` first on every C ABI export/import,
+   `code` a table index. Versions: 1.3.0 = the four counters after `restarts` (N0b); 1.4.0 =
+   §1b native profile, handle policy, `sakura.native` record (N1a). `ptr64-v1` is a later,
+   separately versioned decision after N2's baseline is measured.
+2. **Host coverage:** N1a roots; N1b Http (reqwest+rustls), Sql.sqlite (rusqlite), serve (hyper),
+   Llm (Rust over native Http), and every `sync` helper, each ported or listed in an exclusion
+   table (§17.170). Excluded and named: arbitrary JS FFI (`V8004` on `--target native`, no new
+   code), kinds 5–6, WASI, cross-thread sends. A Node bridge counts for nothing in acceptance.
+3. **Concurrency:** one thread per instance, Tokio `current_thread`, bounded blocking pool
+   (`SAKURA_BLOCKING_THREADS`, default 4), copied completions queued per ABI §8.5; cancel
+   detaches and discards, `sqlite3_interrupt` on cancel, nothing reported as undone; shutdown
+   cancels, waits for in-flight blocking jobs, runs the §8.6 ledger. Atomic promotion deferred
+   past M5 (§16 item 22) (§17.171).
+4. **Reuse/borrowing:** counters `reuse_attempts`, `reuses`, `borrow_candidates`, `borrows`
+   (per-node attempts; `reuse_rate` `null` at zero attempts); WS-P7 facts recomputed in the LIR
+   from the snapshot with a `--dump owned` parity test, not serialised; token linearity in the
+   validator with freeing on every exit edge; borrows never across suspension/handler/closure/
+   host/unknown callee, tail-position rule; `List.map` is in N3; N4's bar is exact `E` (§17.176).
+5. **Representation:** pending, each with the deciding window and a default (§17.177, plan §3):
+   trie stays, boxed words stay, constructor-site reuse only, if a window does not happen.
+6. **W8001:** static proven-copy only (`borrowed-after`, `captured`, `stored` with a live
+   witness); `origin`/`escapes-call`/`join` never warn; witness span in `Shared`, surfaced as the
+   existing `cause` label, no new JSON field; N5's bar pinned by N0b counters; no observed-copy
+   report in M5 (§17.172).
+7. **Sanitizer-clean:** four named lanes with detection controls; generated code = Memcheck with
+   `crabgrind` annotations plus the `--native-checks` checked lowering; the exit wording never
+   says "full ASan" (§17.173).
+8. **Regions:** deferred out of M5; §14.3 amended; a measured trigger after N3/N4 (§17.174).
+9. **Toolchain/release:** Cranelift family 0.136.3 and the pins of §17.175 (1); line tables and
+   unwind tables from N2; compile budget set from N2's p95 report; floors glibc ≥ 2.35,
+   macOS ≥ 12.0 once smoke tests exist; feature-gated flag, then experimental in release
+   binaries after N2's matrix is green on A; GNU matrix A→B→C, no musl (§17.175).
+N0a (Sol) starts now; the rest follows plan §2's start conditions.
