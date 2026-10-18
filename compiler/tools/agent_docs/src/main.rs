@@ -63,7 +63,11 @@ fn outputs(root: &Path) -> Result<Vec<(&'static str, String)>, String> {
     let read = |rel: &str| {
         std::fs::read_to_string(root.join(rel)).map_err(|e| format!("cannot read {rel}: {e}"))
     };
-    let index = with_signatures(&read("compiler/std/INDEX.md")?, &std_signatures())?;
+    let listing = std_signatures();
+    if listing.is_empty() {
+        return Err("the embedded std is empty; rebuild sakura_analysis".into());
+    }
+    let index = with_signatures(&read("compiler/std/INDEX.md")?, &listing)?;
     Ok(vec![
         (
             "skills/sakura/references/language.md",
