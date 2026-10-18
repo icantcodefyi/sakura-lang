@@ -5,16 +5,47 @@
 // `values` and `measure` call `run` unless `--fn <name>` names another entry (meta.toml `cases`).
 // measure: warmup 250 ms (2 s with --stable), a power-of-two batch calibrated to ≥ 30 ms, then
 // nine samples of that batch (ms per call). Peak RSS is taken by the harness from wait4.
-// <module> is a Sakura entry built by harness/bench.py (exports `program` and `runTask`) or a
+// <module> is a Sakura entry built by harness/bench.py (exports `program` and `runTask`), a
+// `sakura build --target wasm` module (`main.wasm`, run in the Node host beside it) or a
 // hand-written JS module exporting `run(n)`. Nothing else is written to stdout.
 const [mode, path, ...rest] = process.argv.slice(2);
 const fnAt = rest.indexOf("--fn");
 const entry = fnAt < 0 ? "run" : rest.splice(fnAt, 2)[1];
-const mod = await import(new URL(path, `file://${process.cwd()}/`).href);
+const url = new URL(path, `file://${process.cwd()}/`);
+const isWasm = path.endsWith(".wasm");
+const mod = isWasm ? await wasm(url) : await import(url.href);
 const sakura = "runTask" in mod;
+
+// A WASM module's one entry is `main` (ABI §9): it prints run(n) for the argument n, and
+// run_<case>(n) or negative(k) for `<case> n` or `negative k`. Each call runs `main` as a new
+// task on the same instance, with the print captured (decoded, not written).
+async function wasm(url) {
+  const { Host, loadTypes } = await import(new URL("sakura_wasm_host.js", url).href);
+  const host = new Host();
+  const imports = host.imports.bind(host);
+  let printed;
+  host.imports = () => {
+    const i = imports();
+    i.sakura_host.console_print = (ptr, len) => {
+      printed = host.string(ptr, len);
+    };
+    return i;
+  };
+  await loadTypes();
+  await host.instantiate(process.getBuiltinModule("node:fs").readFileSync(url));
+  return {
+    async call(name, n) {
+      host.argv = name === "run" ? [String(n)] : [name.replace(/^run_/, ""), String(n)];
+      printed = undefined;
+      const o = await host.runTask(-1);
+      return o.kind === "ok" ? printed : unwrap(o);
+    },
+  };
+}
 
 // One task boundary per whole workload through the public CPS adapter, as research/10 does.
 function call(name, n) {
+  if (isWasm) return mod.call(name, n);
   if (!sakura) return mod[name](n);
   const outcome = mod.runTask(mod.program[name], [n]);
   return outcome instanceof Promise ? outcome.then(unwrap) : unwrap(outcome);

@@ -292,7 +292,7 @@ class RssCollection(unittest.TestCase):
             peaks = [100, 110, 105, 1000, 115]
             with (patch.object(bench, "build_cli"), patch.object(bench, "build_sakura", return_value="unused"),
                   patch.object(bench, "oracle"), patch.object(bench, "programs", return_value=["p"]),
-                  patch.object(bench, "variants", return_value=[("sakura", "node")]),
+                  patch.object(bench, "variants", return_value=[("sakura", "js", "node")]),
                   patch.object(bench, "meta", return_value={"sizes": [1], "ints": "js-safe", "checksums": {"1": "1"}}),
                   patch.object(bench, "measure", side_effect=[([1.0] * 9, "1", r) for r in peaks]),
                   patch.object(bench, "new_result", return_value={"meta": {"missing": [], "failures": []}, "results": []})):
@@ -422,7 +422,7 @@ class QuietWindow(unittest.TestCase):
             output = Path(tmp) / "run.json"
             with (patch.object(bench, "build_cli"), patch.object(bench, "build_sakura", return_value="unused"),
                   patch.object(bench, "oracle"), patch.object(bench, "programs", return_value=["p"]),
-                  patch.object(bench, "variants", return_value=[("sakura", "node")]),
+                  patch.object(bench, "variants", return_value=[("sakura", "js", "node")]),
                   patch.object(bench, "meta", return_value={"sizes": [1], "ints": "js-safe", "checksums": {"1": "1"}}),
                   patch.object(bench, "measure", return_value=([1.0] * 9, "1", 100)),
                   patch.object(bench, "load_snapshot", side_effect=[snapshot(1.0), snapshot(4.5, ("rustc", 90.0))]),
@@ -464,6 +464,18 @@ class Bless(unittest.TestCase):
 
     def test_bless_copies_a_quiet_run(self):
         self.assertEqual(self.bless(loaded(doc(pair(20.0, 10.0)), load=2.9))[:2], (bench.EXIT_OK, True))
+
+    def test_a_wasm_run_is_blessed_beside_the_js_baseline_not_over_it(self):
+        run = loaded(wasm_doc(30.0, 10.0), load=2.9)
+        run["meta"]["flags"] = {"suite": "wasm"}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "run.json"
+            path.write_text(json.dumps(run))
+            with patch.object(bench, "BENCH", Path(tmp)), patch.object(bench, "ROOT", Path(tmp)), \
+                 contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(bench.main(["bless", str(path)]), bench.EXIT_OK)
+            self.assertEqual([p.relative_to(tmp).as_posix() for p in Path(tmp).rglob("test.json")],
+                             ["baselines/wasm/test.json"])
 
 
 class AdvisoryCompare(unittest.TestCase):
@@ -531,7 +543,7 @@ class KeyKindCases(unittest.TestCase):
         self.assertEqual(set(calls), {(v, c) for v in ("sakura", "js") for c in (None, *m["cases"])})
         self.assertEqual(bench.cases(m, "native"), [])  # native ports implement run only
         self.assertEqual(code, bench.EXIT_OK)
-        self.assertIn(("map_set:int", "node", 1000), bench.ratios({"results": rows}))
+        self.assertIn(("map_set:int", "js", "node", 1000), bench.ratios({"results": rows}))
 
     def test_case_checksums_are_part_of_the_oracle(self):
         m = bench.meta("map_set")
@@ -545,6 +557,133 @@ class KeyKindCases(unittest.TestCase):
             bench.oracle("map_set", m, "js", "node", js)
 
 
+IMPURE = """// Sleeps through the root Clock, which the WASI embedding does not implement.
+import std/cli.{Cli}
+
+pub fn run(n: Int) -> Int ! {Clock} {
+  Clock.sleep(Duration.millis(1))
+  n
+}
+
+pub fn main() -> Unit ! {Cli, Clock, Console} {
+  for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+}
+"""
+
+
+def wasm_doc(sakura_ms, js_ms, engine="node", n=100):
+    """A WASM-lane document: Sakura on the WASM backend over hand JS on Node."""
+    d = doc({("p", "sakura", engine, n): sakura_ms, ("p", "js", "node", n): js_ms})
+    for r in d["results"]:
+        r["backend"] = "wasm" if r["variant"] == "sakura" else "js"
+    return d
+
+
+@unittest.skipUnless(shutil.which("wasmtime"), "wasmtime unavailable")
+class WasmLane(unittest.TestCase):
+    """§17.191 (2): the lane's acceptance fixtures, on real builds of the bench programs."""
+
+    @classmethod
+    def setUpClass(cls):
+        bench.build_cli()
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp)
+        saved = bench.PROGRAMS, bench.TARGET, dict(bench.WASI_BUILT)
+        bench.TARGET = self.tmp / "target"
+        bench.WASI_BUILT.clear()
+
+        def restore():
+            bench.PROGRAMS, bench.TARGET = saved[:2]
+            bench.WASI_BUILT.clear()
+            bench.WASI_BUILT.update(saved[2])
+        self.addCleanup(restore)
+
+    def run_suite(self, *flags, measure=None):
+        output = self.tmp / "run.json"
+        fake = measure or (lambda variant, engine, art, n, stable, case=None:
+                           ([1.0] * 9, bench.meta("fib")["checksums"][str(n)], 100))
+        with (patch.object(bench, "measure", side_effect=fake),
+              patch.object(bench, "load_snapshot", return_value=snapshot(11.0, ("cargo", 90.0))),
+              patch.dict("os.environ", {"GITHUB_ACTIONS": "false"})):
+            code = bench.main(["run", "--suite", "wasm", "--sizes", "quick", "--processes", "1",
+                               *flags, "--json", str(output)])
+        return code, json.loads(output.read_text())
+
+    def test_a_record_carries_the_counters_backend_and_the_quiet_verdict(self):
+        code, out = self.run_suite("--filter", "fib")
+        self.assertEqual((code, out["meta"]["failures"], out["meta"]["absent"]), (bench.EXIT_OK, [], []))
+        cells = {bench.cell(r)[1:4]: r for r in out["results"] if r["size"] == 20}
+        self.assertEqual(set(cells), {("sakura", "wasm", "node"), ("sakura", "wasm", "wasmtime"), ("js", "js", "node")})
+        stats = cells[("sakura", "wasm", "node")]["stats"]
+        for counter in ("frames", "boxes", "dups", "drops", "restarts"):
+            self.assertIsInstance(stats[counter], int)
+        self.assertEqual(cells[("sakura", "wasm", "wasmtime")]["stats"], stats)
+        self.assertNotIn("stats", cells[("js", "js", "node")])
+        self.assertIs(out["meta"]["host"]["quiet"], False)
+        self.assertIn(("fib", "wasm", "wasmtime", 20), bench.ratios(out))
+
+    def test_the_wasmtime_cell_is_absent_for_an_impure_program(self):
+        bench.PROGRAMS = self.tmp / "programs"
+        program = bench.PROGRAMS / "impure"
+        (program / "sakura").mkdir(parents=True)
+        (program / "js").mkdir()
+        (program / "sakura" / "main.sak").write_text(IMPURE)
+        (program / "js" / "main.mjs").write_text("export function run(n) { return n; }\n")
+        (program / "meta.toml").write_text('sizes = [5, 6]\nints = "js-safe"\n\n[checksums]\n'
+                                           + "".join(f'"{n}" = "{n}"\n' for n in (0, 1, 2, 3, 5, 6)))
+        code, out = self.run_suite(measure=lambda variant, engine, art, n, stable, case=None: ([1.0] * 9, str(n), 100))
+        self.assertEqual((code, out["meta"]["failures"]), (bench.EXIT_OK, []))
+        [absent] = out["meta"]["absent"]
+        self.assertEqual((absent["program"], absent["engine"]), ("impure", "wasmtime"))
+        self.assertIn("the host operation `clock_sleep_ms` is not pure", absent["reason"])
+        self.assertEqual({bench.cell(r)[1:4] for r in out["results"]}, {("sakura", "wasm", "node"), ("js", "js", "node")})
+
+    def test_a_builtin_only_the_node_host_implements_has_no_wasmtime_cell(self):
+        with self.assertRaisesRegex(bench.NoWasi, "the builtin `json_decode` exists only in the Node host"):
+            bench.values("sakura", "wasmtime", "json_validate", [100])
+
+    def test_negative_cases_defect_on_both_engines(self):
+        module = bench.build_wasm("contracts")
+        for engine, art in (("node", module), ("wasmtime", "contracts")):
+            with self.subTest(engine=engine):
+                self.assertEqual([bench.defect("sakura", engine, art, k) for k in (0, 1)], ["D020", "D021"])
+
+    def test_wasmtime_measures_calls_from_its_output_lines(self):
+        samples, checksum, rss = bench.measure("sakura", "wasmtime", "fib", 20, False)
+        self.assertEqual((len(samples), checksum), (9, "6765"))
+        self.assertTrue(all(0 < ms < 100 for ms in samples))
+        self.assertGreater(rss, 0)
+
+
+class WasmCompare(unittest.TestCase):
+    def test_a_cell_the_base_has_cannot_go_absent_silently(self):
+        base, head = wasm_doc(30.0, 10.0, "wasmtime"), wasm_doc(30.0, 10.0, "node")
+        head["meta"]["absent"] = [{"program": "p", "variant": "sakura", "backend": "wasm", "engine": "wasmtime",
+                                   "reason": "p: the builtin `json_decode` exists only in the Node host's JS"}]
+        out = bench.compare(base, [head])
+        self.assertEqual(out["verdict"], "blocked")
+        self.assertIn("p sakura/wasm/wasmtime: absent", out["immediate"][0])
+        self.assertEqual(bench.compare(wasm_doc(30.0, 10.0, "node"), [head])["verdict"], "ok")
+
+    def test_wasm_cells_compare_over_hand_js_on_node(self):
+        for engine in ("node", "wasmtime"):
+            with self.subTest(engine=engine):
+                out = bench.compare(wasm_doc(30.0, 10.0, engine), [wasm_doc(33.6, 10.0, engine)])  # +12%
+                [row] = out["rows"]
+                self.assertEqual((row["backend"], row["engine"], row["base_ratio"]), ("wasm", engine, 3.0))
+                self.assertEqual(out["verdict"], "blocked")
+
+    def test_wasm_and_js_backends_are_separate_cells(self):
+        js, wasm = doc(pair(20.0, 10.0)), wasm_doc(40.0, 10.0)
+        both = {"schema": bench.SCHEMA, "meta": {"failures": []},
+                "results": wasm["results"] + [r for r in js["results"] if r["variant"] == "sakura"]}
+        self.assertEqual(bench.ratios(both), {("p", "wasm", "node", 100): (40.0, 10.0), ("p", "js", "node", 100): (20.0, 10.0)})
+        self.assertEqual(bench.compare(js, [wasm])["rows"], [])  # a legacy JS base has no WASM cells
+        self.assertIn("ratio wasm/node", bench.summary(both))
+
+
 class Workflow(unittest.TestCase):
     def test_noise_runs_weekly_with_five_repeats_and_nightly_keeps_its_own_schedule(self):
         workflow = (bench.ROOT / ".github/workflows/bench.yml").read_text()
@@ -554,6 +693,7 @@ class Workflow(unittest.TestCase):
         self.assertIn("if: github.event.schedule == '17 2 * * *' ||", workflow)
         self.assertEqual(workflow.count("NOISE_REPEATS: ${{ inputs.repeats || 5 }}"), 2)
         self.assertIn("name: bench-noise-${{ matrix.os }}-${{ matrix.engine }}", workflow)
+
 
 
 if __name__ == "__main__":

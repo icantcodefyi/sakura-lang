@@ -286,6 +286,11 @@ published yet.
 
 ### Added
 
+- `bench/bench run --suite wasm` times the benchmark suite built with `--target wasm` on Node
+  and Wasmtime against hand JS on Node, after the same oracle, recording each row's `backend`
+  and the module's `stats()` counters; its numbers stay advisory until a quiet-window bless
+  (design §17.191 (2), §17.153). The nightly benchmark workflow runs it as its own job.
+
 - `V4004 match_too_large` (pattern phase): a `match`, `catch` or `let` pattern whose decision
   tree passes 1,048,576 nodes, counting the rows its or-patterns expand into and the matches in
   its guards, is an error from `sakura build`, `run` and `test` instead of a build that runs away

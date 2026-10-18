@@ -15,7 +15,7 @@ Numbers from this suite are workload-specific observations, not a language ranki
 bench/
   bench                     # entry point: `bench/bench <command>` (Python 3.11+, stdlib only)
   harness/bench.py          # orchestration: build, oracle, run, compare, bless, compile
-  harness/runner.mjs        # in-process JS-panel runner (Node and Bun)
+  harness/runner.mjs        # in-process runner: JS panel (Node and Bun), WASM modules on Node
   harness/test_bench.py     # harness tests: python3 -m unittest discover -s bench/harness
   results/                  # recorded runs kept for reference (not baselines; never written by CI)
   programs/<name>/
@@ -32,6 +32,7 @@ bench/
 bench/bench run --suite js --json out.json                 # Node and Bun, all sizes
 bench/bench run --suite js --engine node --sizes quick --filter 'handled_*' --json out.json
 bench/bench run --suite native --lane idiomatic --json out.json
+bench/bench run --suite wasm --sizes quick --json out.json  # Sakura on WASM (Node, Wasmtime)
 bench/bench compare bench/baselines/<host-id>.json head.json [rerun.json] [--json verdict.json]
 bench/bench bless out.json                                 # → baselines/<host-id>.json, commit by hand
 bench/bench compile --json compile.json
@@ -82,6 +83,43 @@ compilers are on `PATH`; those two integration tests explicitly skip if unavaila
 One process per cell is a correctness smoke test; timings on a loaded host are advisory.
 The [native integration validation](../research/10-evidence/ws-a/nativeports-validation.md)
 records the original failures, controlled probes and full-run results.
+
+### WASM lane (§17.191 (2))
+
+`--suite wasm` times Sakura built with `--target wasm` on Node and on Wasmtime, each cell
+divided by hand JS on Node (Wasmtime runs no JS), after the same oracle as the JS lane:
+every checksum, the negative cases and the `cases` entries, on both engines. `--engine node`
+or `--engine wasmtime` selects one. Its rows carry `backend: "wasm"`; JS-lane rows carry
+`"js"` and native rows `"native"`, which is also how rows from before the lane are read.
+`compare` and the summary key cells by backend, so a WASM cell is only ever compared with a
+WASM cell; the ratio columns are `ratio wasm/node` and `ratio wasm/wasmtime`.
+
+| Engine | Module | One timed call |
+|---|---|---|
+| `node` | `target/wasm/<name>/main.wasm` with the `sakura_wasm_host.js` built beside it | `runner.mjs` instantiates the module once; a call runs `main` as a new task with the arguments `n` (`<case> n`, `negative k`) and captures its print instead of writing it |
+| `wasmtime` | a WASI command (`sakura build --target wasm --wasi`) of the program with `main` (its last item) replaced, one build per input list, in `target/wasi/<name>/` | the embedding has no `Cli.args`, so the new `main` prints `run(n)` for a literal `n` until the harness kills it, and the samples are taken from when its lines arrive; process start and Cranelift compilation come before the first line |
+
+Both use the JS panel's protocol: 250 ms warmup (2 s with `--stable`), a power-of-two batch
+calibrated to 30 ms, nine samples, five fresh processes per cell. Each Node row also has
+`stats`, the module's `stats()` counters (ABI §10) after one `main` with that cell's
+arguments, which the host's own CLI appends under `SAKURA_WASM_STATS` in a separate untimed
+process (§17.118); they are deterministic, as `compiler/crates/sakura_cli/tests/bench_counters.rs`
+pins. Wasmtime rows have none.
+
+A program that traps in the WASI embedding's adapter for a host operation (the backtrace's
+`wasm::host::<name>`: clocks, files, network), or that needs a builtin the Node host
+implements in JS (`D090 builtin <name> is not supported`: `Json`), has no Wasmtime cell.
+`meta.absent` records it with the operation and the run does not fail; today that is
+`json_validate` alone.
+
+Limits of the measurement. A Node call includes reading the argument, rendering the
+checksum, decoding the print and one `await`, about 4 µs on a loaded M4 Pro against 0.1 ms
+for `fib` at n = 20; a Wasmtime call includes the same work and a pipe write. On a reused
+instance the runtime keeps four objects (344 bytes) of every finished `main` task, so the
+peak RSS of a short cell grows with its call count. Wasmtime's peak RSS includes its compiler.
+
+The lane's numbers are advisory: none enters `deltas.md` or a baseline before the owner's
+quiet window (§17.153). The nightly workflow runs the lane as its own job, `nightly-wasm`.
 
 ## Program interface
 
@@ -197,7 +235,9 @@ JS controls for `handled_*` are closure calls on a stateful object (research/10
 6. **Result schema additions** to plan §3.3: `meta.dirty`, `meta.missing` (toolchains
    skipped), `meta.failures` (oracle and build failures with their output), `flags.suite`,
    `flags.engines`, `flags.processes`, `meta.host.quiet` and `meta.host.load` (§17.153), case
-   cells named `<program>:<case>`, and per-row `process_rss_bytes` (all process peaks); `compile` results carry `p95_ms` and `budget_ms` and
+   cells named `<program>:<case>`, and per-row `process_rss_bytes` (all process peaks); per-row
+   `backend`, `stats` on WASM rows from Node and `meta.absent` (cells an impure program has no
+   Wasmtime cell for, with the reason; §17.191 (2)); `compile` results carry `p95_ms` and `budget_ms` and
    use `engine: "cli"`, `lane: "compile"`, `size` = corpus lines.
 7. **The compile corpus imports `corpus/gen/m<i>`**, its manifest's name (design §9,
    §17.127). Until WS9 the analysis named every user package `main`.

@@ -27,7 +27,8 @@ ROOT = BENCH.parent
 PROGRAMS = BENCH / "programs"
 TARGET = BENCH / "target"
 RUNNER = BENCH / "harness" / "runner.mjs"
-SAKURA = ROOT / "compiler" / "target" / "release" / "sakura"
+# cargo resolves a relative CARGO_TARGET_DIR against compiler/, where build_cli runs it.
+SAKURA = ROOT / "compiler" / os.environ.get("CARGO_TARGET_DIR", "target") / "release" / "sakura"
 SCHEMA = "sakura-bench-v1"
 SMALL = [0, 1, 2, 3]
 SEED = 20261018
@@ -38,6 +39,10 @@ EXIT_OK, EXIT_ORACLE, EXIT_BLOCKED, EXIT_TOOLCHAIN = 0, 1, 2, 3
 
 class Fail(Exception):
     """A build or oracle failure for one program; it is recorded and that program is not timed."""
+
+
+class NoWasi(Fail):
+    """The program needs what a WASI command does not have: it has no Wasmtime cell."""
 
 
 def log(*a):
@@ -52,6 +57,14 @@ def sh(cmd, cwd=None, timeout=PROCESS_TIMEOUT):
     if r.returncode != 0:
         raise Fail(f"`{' '.join(map(str, cmd))}` exited {r.returncode}:\n{(r.stdout + r.stderr)[-3000:]}")
     return r.stdout
+
+
+def run(cmd, env=None):
+    """subprocess.run capturing text, with a timeout that is a Fail."""
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=PROCESS_TIMEOUT, env=env)
+    except subprocess.TimeoutExpired:
+        raise Fail(f"`{' '.join(map(str, cmd))}` timed out after {PROCESS_TIMEOUT} s") from None
 
 
 def version(cmd):
@@ -96,6 +109,57 @@ def build_sakura(p):
     entry = out / "bench_entry.mjs"
     entry.write_text("\n".join(kept) + "\n")
     return entry
+
+
+def build_wasm(p):
+    """programs/<p> with `--target wasm`; runner.mjs loads the module into the Node host beside it."""
+    out = TARGET / "wasm" / p
+    sh([str(SAKURA), "build", "--target", "wasm", "--out-dir", str(out), str(PROGRAMS / p / "sakura" / "main.sak")])
+    return out / "main.wasm"
+
+
+WASI_BUILT = {}
+FOREVER = 10 ** 15
+
+
+def wasmtime(p, entry, inputs, forever=False):
+    """`wasmtime run` of programs/<p> built as a WASI command whose `main` prints `entry(n)` for
+    each input, or for the one input until killed. The WASI embedding has no `Cli.args`, so each
+    input list is its own build: the program with `main` (its last item) replaced, built once
+    per run of the harness."""
+    key = (p, entry, tuple(inputs), forever)
+    if key not in WASI_BUILT:
+        source = (PROGRAMS / p / "sakura" / "main.sak").read_text()
+        # ponytail: `main` is every program's last item, so an item after it would be dropped;
+        # parse the items if a program ever puts one there.
+        at = source.index("\npub fn main(") + 1
+        head, signature = source[:at], source[at:source.index("\n", at)]  # keeps main's effect row
+        if forever:
+            body = (f'  let n = Option.expect(String.parse_int("{inputs[0]}"), "size")\n'
+                    f'  for _ in 0..{FOREVER} {{ Console.print("{{{entry}(n)}}") }}')
+        else:
+            args = ", ".join(f'"{n}"' for n in inputs)
+            body = (f'  for arg in [{args}] '
+                    f'{{ Console.print("{{{entry}(Option.expect(String.parse_int(arg), "size"))}}") }}')
+        d = TARGET / "wasi" / p / "-".join([entry, *map(str, inputs), *(["loop"] if forever else [])])
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "main.sak").write_text(f"{head}{signature}\n{body}\n}}\n")
+        sh([str(SAKURA), "build", "--target", "wasm", "--wasi", "--out-dir", str(d / "out"), str(d / "main.sak")])
+        WASI_BUILT[key] = d / "out" / "main.wasm"
+    return ["wasmtime", "run", str(WASI_BUILT[key])]
+
+
+# ponytail: reads wasmtime's backtrace text and the backend's D090 message; a structured outcome
+# from the WASI command would replace both.
+def no_wasi(error):
+    """Why a WASI command could not run the program, from its failure: a host operation the
+    embedding traps (`unreachable` in `wasm::host::<name>`: clocks, files, network), or a
+    builtin only the Node host implements, in JS (`D090`: `Json`). None for any other failure."""
+    m = re.search(r"\b0:\s+0x[0-9a-f]+ - .*::wasm::host::(\w+)", error)
+    if m and "wasm `unreachable`" in error:
+        return f"the host operation `{m[1]}` is not pure; the WASI embedding traps it"
+    m = re.search(r"defect D090: builtin (\w+) is not supported by the WASM backend", error)
+    return f"the builtin `{m[1]}` exists only in the Node host's JS" if m else None
 
 
 def build_rust(p, lane):
@@ -150,14 +214,26 @@ NATIVE = {
 }
 
 
+JS_ENGINES, WASM_ENGINES = ("node", "bun"), ("node", "wasmtime")
+
+
 def variants(suite, engines, p):
-    """(variant, engine) pairs that exist for program p in this suite."""
+    """(variant, backend, engine) cells for program p in this suite. The WASM lane's control is
+    hand JS on Node for both engines: Wasmtime runs no JS."""
     out = []
     if suite in ("js", "all"):
-        out += [(v, e) for e in engines for v in ("sakura", "js")]
+        out += [(v, "js", e) for e in engines if e in JS_ENGINES for v in ("sakura", "js")]
+    if suite == "wasm":
+        out += [("sakura", "wasm", e) for e in engines if e in WASM_ENGINES] + [("js", "js", "node")]
     if suite in ("native", "all"):
-        out += [(v, "native") for v, (src, *_rest) in NATIVE.items() if (PROGRAMS / p / src).exists()]
+        out += [(v, "native", "native") for v, (src, *_rest) in NATIVE.items() if (PROGRAMS / p / src).exists()]
     return out
+
+
+def cell(r):
+    """A result row's identity. Rows recorded before the WASM lane have no `backend`."""
+    backend = r.get("backend") or ("native" if r["engine"] == "native" else "js")
+    return r["program"], r["variant"], backend, r["engine"], r["size"]
 
 
 # ---------------------------------------------------------------------------------------------
@@ -196,24 +272,45 @@ def json_lines(text):
     return [json.loads(l) for l in text.splitlines() if l.strip()]
 
 
+def values(variant, engine, artefact, inputs, entry="run"):
+    """{"<n>": checksum} of entry(n) for each input, from one process."""
+    if engine == "wasmtime":
+        r = run(wasmtime(artefact, entry, inputs))
+        if r.returncode != 0:
+            if reason := no_wasi(r.stderr):  # the whole stderr: frame 0 heads a long backtrace
+                raise NoWasi(f"{artefact}: {reason}")
+            raise Fail(f"`{' '.join(r.args)}` exited {r.returncode}: {r.stderr[-2000:]}")
+        return dict(zip(map(str, inputs), r.stdout.splitlines()))
+    fn = [] if entry == "run" else ["--fn", entry]
+    return json_lines(spawn(command(variant, engine, artefact, "values", *fn, *inputs))[0])[-1]["values"]
+
+
+def defect(variant, engine, artefact, k):
+    """The defect code negative(k) ends with, or None."""
+    if engine == "wasmtime":  # `_start` exits 70 after `defect Dnnn: message` on stderr
+        r = run(wasmtime(artefact, "negative", [k]))
+        m = re.match(r"defect (D\d{3}):", r.stderr)
+        return m[1] if r.returncode == 70 and m else None
+    return json_lines(spawn(command(variant, engine, artefact, "negative", k))[0])[-1]["defects"][str(k)]
+
+
 def oracle(p, m, variant, engine, artefact):
     """Raise Fail unless the artefact reproduces every checksum (and defect) in meta.toml."""
-    want = m.get("checksums", {})
-    got = json_lines(spawn(command(variant, engine, artefact, "values", *oracle_inputs(m)))[0])[-1]["values"]
-    bad = [f"run({n}) = {got.get(str(n))}, expected {want.get(str(n))}"
-           for n in oracle_inputs(m) if str(got.get(str(n))) != str(want.get(str(n)))]
+    inputs = oracle_inputs(m)
+
+    def check(entry, want):
+        got = values(variant, engine, artefact, inputs, entry)
+        return [f"{entry}({n}) = {got.get(str(n))}, expected {want.get(str(n))}"
+                for n in inputs if str(got.get(str(n))) != str(want.get(str(n)))]
+
+    bad = check("run", m.get("checksums", {}))
     if variant == "sakura":
         for case in m.get("negative", []):
-            out = spawn(command(variant, engine, artefact, "negative", case["arg"]))[0]
-            code = json_lines(out)[-1]["defects"][str(case["arg"])]
+            code = defect(variant, engine, artefact, case["arg"])
             if code != case["defect"]:
                 bad.append(f"negative({case['arg']}) gave {code}, expected {case['defect']}")
     for case in cases(m, engine):
-        want = m["checksums"].get(case, {})
-        got = json_lines(spawn(command(variant, engine, artefact, "values", "--fn", f"run_{case}",
-                                       *oracle_inputs(m)))[0])[-1]["values"]
-        bad += [f"run_{case}({n}) = {got.get(str(n))}, expected {want.get(str(n))}"
-                for n in oracle_inputs(m) if str(got.get(str(n))) != str(want.get(str(n)))]
+        bad += check(f"run_{case}", m["checksums"].get(case, {}))
     if bad:
         raise Fail(f"{p} {variant}/{engine}: oracle failed: " + "; ".join(bad))
 
@@ -230,6 +327,8 @@ def label(p, case):
 
 def measure(variant, engine, artefact, n, stable, case=None):
     """One fresh process: nine samples (ms per call), the checksum, peak RSS."""
+    if engine == "wasmtime":
+        return measure_lines(wasmtime(artefact, f"run_{case}" if case else "run", [n], forever=True), stable)
     out, rss = spawn(command(variant, engine, artefact, "measure", n, *(["--stable"] if stable else []),
                              *(["--fn", f"run_{case}"] if case else [])))
     lines = json_lines(out)
@@ -239,6 +338,61 @@ def measure(variant, engine, artefact, n, stable, case=None):
     else:
         samples, checksum = lines[-1]["samples_ms"], lines[-1]["checksum"]
     return samples, str(checksum), rss
+
+
+def measure_lines(cmd, stable, timeout=PROCESS_TIMEOUT):
+    """runner.mjs's measure protocol over a process that prints one checksum per call until it is
+    killed: warm up for 250 ms (2 s with --stable) from its first line, calibrate a power-of-two
+    batch to ≥ 30 ms, then nine samples (ms per call) from when the lines arrive. Process start,
+    compilation and instantiation come before the first line, outside every sample."""
+    with tempfile.TemporaryFile() as err:
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=err)
+        watchdog = threading.Timer(timeout, proc.kill)
+        watchdog.start()
+        try:
+            def lines(count):
+                for _ in range(count):
+                    line = proc.stdout.readline()
+                    if not line:
+                        err.seek(0)
+                        raise Fail(f"`{' '.join(cmd)}` stopped printing: {err.read().decode(errors='replace')[-2000:]}")
+                return line
+
+            last = lines(1)
+            start = time.perf_counter()
+            while time.perf_counter() - start < (2 if stable else 0.25):
+                last = lines(1)
+            count = 1
+            while True:
+                t = time.perf_counter()
+                last = lines(count)
+                if time.perf_counter() - t >= 0.03 or count >= 1 << 20:
+                    break
+                count *= 2
+            samples = []
+            for _ in range(9):
+                t = time.perf_counter()
+                last = lines(count)
+                samples.append((time.perf_counter() - t) * 1000 / count)
+        finally:
+            watchdog.cancel()
+            proc.kill()
+            _pid, _status, ru = os.wait4(proc.pid, 0)
+            proc.returncode = -9  # reaped by wait4, not Popen
+            proc.stdout.close()
+    return samples, last.decode().strip(), ru.ru_maxrss * (1 if sys.platform == "darwin" else 1024)
+
+
+def wasm_stats(module, args):
+    """§17.118: the module's `stats()` counters after one `main` with these arguments, appended by
+    the Node host's own CLI under `SAKURA_WASM_STATS`. They are deterministic: one process."""
+    with tempfile.TemporaryDirectory() as d:
+        path = Path(d) / "stats.jsonl"
+        cmd = ["node", str(module.parent / "sakura_wasm_host.js"), str(module), *map(str, args)]
+        r = run(cmd, env={**os.environ, "SAKURA_WASM_STATS": str(path)})
+        if r.returncode != 0 or not path.exists():
+            raise Fail(f"`{' '.join(cmd)}` exited {r.returncode}: {r.stderr[-2000:]}")
+        return json_lines(path.read_text())[-1]
 
 
 # ---------------------------------------------------------------------------------------------
@@ -309,7 +463,7 @@ def host_load(doc):
 
 ENGINE_VERSIONS = {"node": ["node", "--version"], "bun": ["bun", "--version"], "rustc": ["rustc", "--version"],
                    "go": ["go", "version"], "ocaml": ["ocamlopt", "-version"], "koka": ["koka", "--version"],
-                   "hyperfine": ["hyperfine", "--version"]}
+                   "hyperfine": ["hyperfine", "--version"], "wasmtime": ["wasmtime", "--version"]}
 
 
 def engines_meta():
@@ -325,7 +479,7 @@ def new_result(flags):
             "meta": {"commit": git("rev-parse", "HEAD"), "dirty": bool(git("status", "--porcelain", "--", "compiler", "bench")),
                      "host": host(), "engines": engines_meta(), "flags": flags, "seed": flags["seed"],
                      "started": datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                     "missing": [], "failures": []},
+                     "missing": [], "failures": [], "absent": []},
             "results": []}
 
 
@@ -333,13 +487,13 @@ def new_result(flags):
 # bench run
 
 def cmd_run(a):
-    engines = [a.engine] if a.engine else ["node", "bun"]
+    engines = [a.engine] if a.engine else list(WASM_ENGINES if a.suite == "wasm" else JS_ENGINES)
     sizes_flag = a.sizes
     flags = {"suite": a.suite, "engines": engines, "lane": a.lane, "sizes": sizes_flag, "stable": a.stable,
              "filter": a.filter, "processes": a.processes, "seed": a.seed}
     res = new_result(flags)
     missing = res["meta"]["missing"]
-    if a.suite in ("js", "all"):
+    if a.suite in ("js", "all", "wasm"):
         missing += [e for e in engines if not shutil.which(e)]
     if a.suite in ("native", "all"):
         missing += [tool for _v, (_s, tool, *_r) in NATIVE.items() if not shutil.which(tool)]
@@ -348,31 +502,52 @@ def cmd_run(a):
     status = EXIT_TOOLCHAIN if missing else EXIT_OK
 
     build_cli()
-    jobs = []  # (program, variant, engine, artefact, size)
+    jobs = []  # (program, case, variant, backend, engine, artefact, size)
+    stats = {}  # (program, case, size) → the WASM module's counters, from the Node host (§17.118)
     for p in programs(a.filter):
         m = meta(p)
         sizes = m["sizes"][:2] if sizes_flag == "quick" else m["sizes"]
         built, verified, failed = {}, [], False
-        for variant, engine in variants(a.suite, engines, p):
+        for variant, backend, engine in variants(a.suite, engines, p):
             tool = engine if engine != "native" else NATIVE[variant][1]
             if tool in missing:
                 continue
             try:
-                if variant not in built:  # one build per variant, shared by the engines
-                    built[variant] = (build_sakura(p) if variant == "sakura" else
-                                      PROGRAMS / p / "js" / "main.mjs" if variant == "js" else
-                                      NATIVE[variant][2](p, a.lane))
-                log(f"[oracle] {p} {variant}/{engine}")
-                oracle(p, m, variant, engine, built[variant])
-                verified.append((variant, engine))
+                if engine == "wasmtime":  # wasmtime() builds a WASI command per input list
+                    art = p
+                else:
+                    if (variant, backend) not in built:  # one build per variant, shared by the engines
+                        built[(variant, backend)] = (build_sakura(p) if (variant, backend) == ("sakura", "js") else
+                                                     build_wasm(p) if backend == "wasm" else
+                                                     PROGRAMS / p / "js" / "main.mjs" if variant == "js" else
+                                                     NATIVE[variant][2](p, a.lane))
+                    art = built[(variant, backend)]
+                log(f"[oracle] {p} {variant}/{backend}/{engine}")
+                oracle(p, m, variant, engine, art)
+                if engine == "wasmtime":  # build every timed driver now, not between timed processes
+                    for c in [None, *cases(m, engine)]:
+                        for n in sizes:
+                            wasmtime(p, f"run_{c}" if c else "run", [n], forever=True)
+                if backend == "wasm" and (p, None, sizes[0]) not in stats:
+                    if ("sakura", "wasm") not in built:
+                        built[("sakura", "wasm")] = build_wasm(p)
+                    for c in [None, *cases(m, engine)]:
+                        for n in sizes:
+                            stats[(p, c, n)] = wasm_stats(built[("sakura", "wasm")], [n] if c is None else [c, n])
+                verified.append((variant, backend, engine, art))
+            except NoWasi as e:  # §17.191 (2): the Wasmtime cell of an impure program is absent
+                log(f"[absent] {e}")
+                res["meta"]["absent"].append({"program": p, "variant": variant, "backend": backend,
+                                              "engine": engine, "reason": str(e)})
             except Fail as e:
                 log(f"[FAIL] {e}")
-                res["meta"]["failures"].append({"program": p, "variant": variant, "engine": engine, "error": str(e)})
+                res["meta"]["failures"].append({"program": p, "variant": variant, "backend": backend,
+                                                "engine": engine, "error": str(e)})
                 failed = True
         if failed:  # plan §3.2: nothing is timed for a program whose oracle failed
             status = EXIT_ORACLE
             continue
-        jobs += [(p, c, v, e, built[v], n) for v, e in verified for c in [None, *cases(m, e)] for n in sizes]
+        jobs += [(p, c, v, b, e, art, n) for v, b, e, art in verified for c in [None, *cases(m, e)] for n in sizes]
 
     order = [(j, i) for j in jobs for i in range(a.processes)]
     random.Random(a.seed).shuffle(order)
@@ -381,8 +556,8 @@ def cmd_run(a):
     sampler = threading.Thread(target=sample_load, args=(stop, snapshots), daemon=True)
     sampler.start()
     for k, (job, _i) in enumerate(order, 1):
-        p, case, variant, engine, art, n = job
-        log(f"[{k}/{len(order)}] {label(p, case)} {variant}/{engine} n={n}")
+        p, case, variant, backend, engine, art, n = job
+        log(f"[{k}/{len(order)}] {label(p, case)} {variant}/{backend}/{engine} n={n}")
         try:
             samples, checksum, rss = measure(variant, engine, art, n, a.stable, case)
         except Fail as e:
@@ -395,19 +570,21 @@ def cmd_run(a):
     res["meta"].setdefault("host", {}).update(quiet=load["quiet"], load=load)
     log(f"[load] {'quiet' if load['quiet'] else 'not quiet: ' + '; '.join(load['reasons'])}")
 
-    for (p, case, variant, engine, _art, n), runs in collected.items():
+    for (p, case, variant, backend, engine, _art, n), runs in collected.items():
         m = meta(p)
         expected = str((m["checksums"][case] if case else m["checksums"])[str(n)])
         medians = [statistics.median(s) for s, _c, _r in runs if s]
         res["results"].append({
-            "program": label(p, case), "variant": variant, "engine": engine, "lane": a.lane, "ints": m["ints"], "size": n,
+            "program": label(p, case), "variant": variant, "backend": backend, "engine": engine,
+            "lane": a.lane, "ints": m["ints"], "size": n,
             "samples_ms": [x for s, _c, _r in runs for x in s],
             "median_ms": statistics.median(medians) if medians else None,
             "process_medians_ms": medians,
             "rss_bytes": max(r for _s, _c, r in runs),
             "process_rss_bytes": [r for _s, _c, r in runs],
             "checksum_ok": all(c == expected for _s, c, _r in runs),
-            "checksum": next((c for _s, c, _r in runs if c != expected), expected)})
+            "checksum": next((c for _s, c, _r in runs if c != expected), expected),
+            **({"stats": stats.get((p, case, n))} if backend == "wasm" else {})})
         if not res["results"][-1]["checksum_ok"]:
             status = EXIT_ORACLE
 
@@ -418,14 +595,19 @@ def cmd_run(a):
     return status
 
 
+def control(backend, engine):
+    """The hand-JS engine a Sakura cell is divided by: its own, or Node for the WASM lane."""
+    return engine if backend == "js" else "node"
+
+
 def ratios(res):
-    """{(program, engine, size): (sakura_ms, js_ms)} for every pair present."""
-    by = {(r["program"], r["variant"], r["engine"], r["size"]): r for r in res["results"]}
+    """{(program, backend, engine, size): (sakura_ms, js_ms)} for every pair present."""
+    by = {cell(r): r for r in res["results"]}
     out = {}
-    for (p, v, e, n), r in by.items():
-        js = by.get((p, "js", e, n))
+    for (p, v, b, e, n), r in by.items():
+        js = by.get((p, "js", "js", control(b, e), n))
         if v == "sakura" and js and r["median_ms"] and js["median_ms"]:
-            out[(p, e, n)] = (r["median_ms"], js["median_ms"])
+            out[(p, b, e, n)] = (r["median_ms"], js["median_ms"])
     return out
 
 
@@ -433,10 +615,13 @@ def summary(res):
     """Markdown table of medians and Sakura/hand-JS ratios (and native medians if present)."""
     rows = {}
     for r in res["results"]:
-        rows.setdefault((r["program"], r["size"]), {})[(r["variant"], r["engine"])] = r
-    cols = sorted({k for v in rows.values() for k in v}, key=lambda k: (k[1] == "native", k[1], k[0] != "sakura", k[0]))
-    engines = sorted({e for _v, e in cols if e != "native"})
-    head = ["Program", "n"] + [f"{v}/{e} ms" for v, e in cols] + [f"ratio {e}" for e in engines]
+        rows.setdefault((r["program"], r["size"]), {})[cell(r)[1:4]] = r
+    cols = sorted({k for v in rows.values() for k in v},
+                  key=lambda k: (k[2] == "native", k[1] != "js", k[2], k[0] != "sakura", k[0]))
+    pairs = sorted({(b, e) for v, b, e in cols if v == "sakura"}, key=lambda k: (k[0] != "js", k))
+    name = lambda b, e: e if b == "js" else f"{b}/{e}"
+    head = (["Program", "n"] + [f"{v}/{name(b, e)} ms" for v, b, e in cols]
+            + [f"ratio {name(b, e)}" for b, e in pairs])
     lines = ["| " + " | ".join(head) + " |", "|---|---:|" + "---:|" * (len(head) - 2)]
     for (p, n), cells in sorted(rows.items()):
         def ms(c):
@@ -447,8 +632,8 @@ def summary(res):
                 return "✗ checksum"
             return f"{r['median_ms']:.4g}"
         rat = []
-        for e in engines:
-            s, j = cells.get(("sakura", e)), cells.get(("js", e))
+        for b, e in pairs:
+            s, j = cells.get(("sakura", b, e)), cells.get(("js", "js", control(b, e)))
             rat.append(f"{s['median_ms'] / j['median_ms']:.2f}×" if s and j and s["median_ms"] and j["median_ms"] else "—")
         lines.append("| " + " | ".join([p, str(n)] + [ms(c) for c in cols] + rat) + " |")
     return "\n".join(lines)
@@ -511,7 +696,7 @@ def compare(base, heads, flag=0.05, block=0.10, abs_ms=0.1, slope_jump=0.5, rss_
         verdict = max(verdict, v, key=order.index)
 
     for key in sorted(set(b_rat) & set(h_rats[0])):
-        p, e, n = key
+        p, backend, e, n = key
         bs, bj = b_rat[key]
         base_ratio = bs / bj
         deltas, absolute = [], []
@@ -530,17 +715,16 @@ def compare(base, heads, flag=0.05, block=0.10, abs_ms=0.1, slope_jump=0.5, rss_
             status = "improved >10%: explain in the PR"
         if status in ("flagged", "blocked"):
             worse(status)
-        rows.append({"program": p, "engine": e, "size": n, "base_ratio": base_ratio,
+        rows.append({"program": p, "backend": backend, "engine": e, "size": n, "base_ratio": base_ratio,
                      "head_ratio": h_rats[0][key][0] / h_rats[0][key][1], "delta": d, "status": status})
 
     immediate, correctness, rss_rows = [], [], []  # measured (advisory when loaded), and correctness
     confirmation_programs = {r["program"] for r in rows if r["status"] == "blocked"} if len(heads) == 1 else set()
     confirmation = heads[1] if len(heads) > 1 else None
-    confirmation_by = {(r["program"], r["variant"], r["engine"], r["size"]): r
-                       for r in confirmation["results"]} if confirmation else {}
-    b_by = {(r["program"], r["variant"], r["engine"], r["size"]): r for r in base["results"]}
+    confirmation_by = {cell(r): r for r in confirmation["results"]} if confirmation else {}
+    b_by = {cell(r): r for r in base["results"]}
     for r in head["results"]:
-        key = (r["program"], r["variant"], r["engine"], r["size"])
+        key = cell(r)
         b = b_by.get(key)
         if b:
             try:
@@ -570,26 +754,31 @@ def compare(base, heads, flag=0.05, block=0.10, abs_ms=0.1, slope_jump=0.5, rss_
                             confirmation_programs.add(r["program"])
                 if memory["status"] in ("flagged", "blocked"):
                     worse(memory["status"])
-                rss_rows.append({field: r[field] for field in ("program", "variant", "engine", "size")} | memory)
+                rss_rows.append(dict(zip(("program", "variant", "backend", "engine", "size"), key)) | memory)
                 if memory["status"] == "blocked" and r["engine"] != "node":
                     before, after = memory["base_bytes"], memory["head_bytes"]
                     immediate.append(f"{key}: peak RSS ({memory['statistic']}) {before} → {after} (+{after / before - 1:.0%})")
     for group in heads:
         for r in group["results"]:
-            key = (r["program"], r["variant"], r["engine"], r["size"])
+            key = cell(r)
             if not r["checksum_ok"]:
                 correctness.append(f"{key}: checksum {r['checksum']}")
             b = b_by.get(key)
             if b and b["checksum_ok"] and r["checksum_ok"] and b["checksum"] != r["checksum"]:
                 correctness.append(f"{key}: checksum changed {b['checksum']} → {r['checksum']}")
         for f in group["meta"].get("failures", []):
-            correctness.append(f"{f['program']} {f['variant']}/{f['engine']}: {f['error'].splitlines()[0]}")
-    for p, v, e in sorted({(r["program"], r["variant"], r["engine"]) for r in head["results"]}):
-        pts = lambda res: [(r["size"], r["median_ms"]) for r in res["results"]
-                           if (r["program"], r["variant"], r["engine"]) == (p, v, e)]
+            correctness.append(f"{f['program']} {f['variant']}/{f.get('backend', 'js')}/{f['engine']}: "
+                               f"{f['error'].splitlines()[0]}")
+        for f in group["meta"].get("absent", []):  # a cell the base has must not just vanish
+            if any(cell(r)[1:4] == (f["variant"], f["backend"], f["engine"])
+                   and r["program"].split(":")[0] == f["program"] for r in base["results"]):
+                correctness.append(f"{f['program']} {f['variant']}/{f['backend']}/{f['engine']}: "
+                                   f"absent, {f['reason']}")
+    for series in sorted({cell(r)[:4] for r in head["results"]}):
+        pts = lambda res: [(r["size"], r["median_ms"]) for r in res["results"] if cell(r)[:4] == series]
         sb, sh_ = slope(pts(base)), slope(pts(head))
         if sb is not None and sh_ is not None and sh_ - sb > slope_jump:
-            immediate.append(f"({p!r}, {v!r}, {e!r}): complexity changed, log-log slope {sb:.2f} → {sh_:.2f}")
+            immediate.append(f"{series}: complexity changed, log-log slope {sb:.2f} → {sh_:.2f}")
     loads = [x for x in map(host_load, (base, *heads)) if x is not None]
     load = max(loads) if loads else None
     if load is not None and not correctness:  # §17.153 item 3: direction only, never ok or blocked
@@ -608,9 +797,9 @@ def cmd_compare(a):
             log(f"not a {SCHEMA} file")
             return EXIT_BLOCKED
     out = compare(base, heads, a.flag, a.block, a.abs_ms)
-    print("| Program | Engine | n | Base ratio | Head ratio | Δ | Status |\n|---|---|---:|---:|---:|---:|---|")
+    print("| Program | Backend | Engine | n | Base ratio | Head ratio | Δ | Status |\n|---|---|---|---:|---:|---:|---:|---|")
     for r in out["rows"]:
-        print(f"| {r['program']} | {r['engine']} | {r['size']} | {r['base_ratio']:.3f} | {r['head_ratio']:.3f} "
+        print(f"| {r['program']} | {r['backend']} | {r['engine']} | {r['size']} | {r['base_ratio']:.3f} | {r['head_ratio']:.3f} "
               f"| {r['delta']:+.1%} | {r['status']} |")
     memory_changes = [r for r in out["rss"] if r["status"] in ("flagged", "blocked")
                       or (r["base_median_bytes"] and r["head_median_bytes"]
@@ -622,7 +811,7 @@ def cmd_compare(a):
                         f"process median {r['confirmation_median_bytes']} bytes "
                         f"(processes {r['confirmation_processes'] or 'unknown'})"
                         if r["confirmation_bytes"] is not None else "")
-        print(f"\nRSS detail: {r['program']} {r['variant']}/{r['engine']} n={r['size']}: "
+        print(f"\nRSS detail: {r['program']} {r['variant']}/{r['backend']}/{r['engine']} n={r['size']}: "
               f"maximum {r['base_bytes']} → {r['head_bytes']} bytes; "
               f"process median {median} "
               f"(processes {r['base_processes'] or 'unknown'} → {r['head_processes'] or 'unknown'}; median is diagnostic only)"
@@ -653,8 +842,11 @@ def cmd_bless(a):
         reasons = (h.get("load") or {}).get("reasons") or ["no quiet verdict recorded (made before §17.153)"]
         log("refusing to bless: the run was not made in a quiet window: " + "; ".join(reasons))
         return EXIT_ORACLE
-    dest = BENCH / "baselines" / f"{doc['meta']['host']['id']}.json"
-    dest.parent.mkdir(exist_ok=True)
+    # A WASM run has no JS-lane cells: blessed over the JS baseline it would leave the PR job's
+    # compare nothing to compare.
+    suite = doc["meta"].get("flags", {}).get("suite")
+    dest = BENCH / "baselines" / ("wasm" if suite == "wasm" else "") / f"{doc['meta']['host']['id']}.json"
+    dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy(a.result, dest)
     log(f"blessed {dest.relative_to(ROOT)}; review and commit it by hand")
     return EXIT_OK
@@ -846,8 +1038,8 @@ def main(argv=None):
     ap = argparse.ArgumentParser(prog="bench", description=__doc__)
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run", help="build, verify and time the suite")
-    r.add_argument("--suite", choices=["js", "native", "all"], default="js")
-    r.add_argument("--engine", choices=["node", "bun"])
+    r.add_argument("--suite", choices=["js", "wasm", "native", "all"], default="js")
+    r.add_argument("--engine", choices=["node", "bun", "wasmtime"])
     r.add_argument("--lane", choices=["matched", "idiomatic"], default="matched")
     r.add_argument("--filter", default="*", help="glob over program names")
     r.add_argument("--sizes", choices=["all", "quick"], default="all")
