@@ -772,7 +772,12 @@ test "replays" {{
         recorded.stderr
     );
     let cassette = std::fs::read_to_string(dir.join("tests/fixtures/api.jsonl")).unwrap();
-    assert_eq!(cassette.lines().count(), 1, "{cassette}");
+    assert_eq!(
+        cassette.lines().next(),
+        Some(r#"{"schema_version":"1.0","kind":"cassette"}"#),
+        "{cassette}"
+    );
+    assert_eq!(cassette.lines().count(), 2, "{cassette}");
     assert!(
         cassette.contains("live") && !cassette.contains("sk-live"),
         "{cassette}"

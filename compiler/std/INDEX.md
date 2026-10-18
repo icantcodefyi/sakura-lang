@@ -558,10 +558,10 @@ fn post_json<T: Schema>(url: Url, body: T) -> Response ! {Http, Fail<HttpError |
 fn bearer(req: Request, token: Secret<String>) -> Request
 fn host() -> Handler<Http>
 fn scoped(hosts: List<String>) -> Handler<Http, {Http}>
-fn recording(path: Path) -> Handler<Http, {Http, Fs}>
+fn recording(path: Path) -> Handler<Http, {Http, Fs}>    // schema_version line; refuses credential headers; set-cookie redacted (§17.122)
 opaque type Cassette = { path: Path, id: Int }
 fn cassette(path: Path) -> Cassette
-fn open(c: Cassette) -> Cassette ! {Fs, Fail<HttpError>}
+fn open(c: Cassette) -> Cassette ! {Fs, Fail<HttpError>}    // written Cassette.open(c) or c.open() (§17.125)
 fn replaying(c: Cassette) -> Handler<Http, {Http, Fs}>
 fn scripted(script: List<(Matcher, Response)>) -> Handler<Http>
 ```

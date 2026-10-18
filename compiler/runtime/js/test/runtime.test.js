@@ -535,7 +535,9 @@ test("cassettes record, replay in order and never touch secret headers", async (
     }
     const text = fs.readFileSync(path.join(dir, "api.jsonl"), "utf8");
     assert.ok(!text.includes("sk-live") && !text.includes("authorization"));
-    assert.deepEqual(JSON.parse(text.split("\n")[0]), {
+    assert.equal(text.split("\n")[0], '{"schema_version":"1.0","kind":"cassette"}');
+    assert.equal(text.split("\n").length, 4, "one header line, then one line per exchange");
+    assert.deepEqual(JSON.parse(text.split("\n")[1]), {
       method: "GET",
       url: "https://x/a",
       headers: [["accept", "text/plain"]],
@@ -553,6 +555,44 @@ test("cassettes record, replay in order and never touch secret headers", async (
     assert.equal(rt.http_recording_lookup(again, req("https://x/a", "{}")).tag, 1);
     fs.writeFileSync(path.join(dir, "bad.jsonl"), "{\n");
     assert.match(rt.http_recording_open(rt.fixtures_dir(dir, false), "bad.jsonl").fields[0], /^bad\.jsonl:1: /);
+
+    // Design §17.122: the header line is required on open, naming the file and the fix.
+    const exchange = text.split("\n")[1];
+    for (const [name, content] of [
+      ["headless.jsonl", `${exchange}\n`],
+      ["v2.jsonl", `\n{"schema_version":"2.0","kind":"cassette"}\n${exchange}\n`],
+    ]) {
+      fs.writeFileSync(path.join(dir, name), content);
+      const err = rt.http_recording_open(rt.fixtures_dir(dir, false), name);
+      assert.equal(err.tag, 1);
+      assert.match(err.fields[0], new RegExp(`^${name.replace(".", "\\.")}:\\d+: .*sakura test --record$`));
+    }
+
+    // A credential in ordinary headers is refused before lookup and forward, recording or
+    // not, and the file is unchanged.
+    process.env.SAKURA_RECORD = "1";
+    const rec = rt.http_recording_open(rt.fixtures_dir(dir, true), "api.jsonl").fields[0];
+    for (const name of ["Authorization", "proxy-authorization", "X-API-Key", "api-key", "x-auth-token", "Cookie"]) {
+      const leaky = { ...req("https://x/a"), headers: rt.list([[name, "Bearer sk-plain"]]) };
+      const refused = rt.http_recording_lookup(rec, leaky);
+      assert.equal(refused.tag, 1);
+      assert.equal(refused.fields[0], `header ${name} belongs in secret_headers (Http.bearer); not recorded`);
+      assert.equal(rt.http_recording_lookup_stream(rec, leaky).tag, 1);
+      assert.equal(rt.http_recording_append(rec, leaky, new Response(200, rt.list([]), "")).tag, 1);
+    }
+    assert.equal(fs.readFileSync(path.join(dir, "api.jsonl"), "utf8"), text);
+
+    // `set-cookie` is stored, and replays, as `<redacted>`; other response headers stay.
+    const cookie = new Response(200, rt.list([["Set-Cookie", "session=s3cret"], ["etag", "x1"]]), "c");
+    assert.deepEqual(rt.http_recording_append(rec, req("https://x/cookie"), cookie), rt.Ok(undefined));
+    assert.ok(!fs.readFileSync(path.join(dir, "api.jsonl"), "utf8").includes("s3cret"));
+    delete process.env.SAKURA_RECORD;
+    const replay = rt.http_recording_open(rt.fixtures_dir(dir, false), "api.jsonl").fields[0];
+    const headers = rt.http_recording_lookup(replay, req("https://x/cookie")).fields[0].fields[0].headers;
+    assert.deepEqual(rt.toArray(headers), [
+      ["Set-Cookie", "<redacted>"],
+      ["etag", "x1"],
+    ]);
   } finally {
     if (saved === undefined) delete process.env.SAKURA_RECORD;
     else process.env.SAKURA_RECORD = saved;

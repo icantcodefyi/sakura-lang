@@ -31,6 +31,16 @@ test "billing cassette replays offline" {
 
 A request matches on method, URL, ordinary headers and body. `Request.secret_headers` are neither recorded nor matched. Keep credentials in that secret channel; ordinary headers and bodies are cassette data. Identical requests consume matching responses in order; the last response repeats. Without recording mode, a miss fails with `HttpError` and a message pointing to `sakura test --record`.
 
+## Cassette format and redaction
+
+A cassette is a JSON Lines file (design §17.122). Three rules apply:
+
+1. **Header line.** The first line is `{"schema_version":"1.0","kind":"cassette"}`; each later line is one exchange, `{method, url, headers, body, status, response_headers, response_body}`. A missing or empty file has no exchanges and gets the header on its first append. A file whose first non-empty line has no `schema_version`, or a major version other than `1`, fails to open with `HttpError` naming the file and `sakura test --record`.
+2. **Credential headers are refused.** A request whose ordinary `headers` contain `authorization`, `proxy-authorization`, `x-api-key`, `api-key`, `x-auth-token` or `cookie` (in any case) fails under `Http.recording` with `HttpError` reading `header <name> belongs in secret_headers (Http.bearer); not recorded`. This happens before any replay or forward, recording or not, so a plain-string token is never written. Use `Http.bearer` or another `secret_headers` entry instead.
+3. **`set-cookie` is redacted.** A `set-cookie` response header is stored as `["set-cookie", "<redacted>"]` and replays as that literal. Other response headers are stored as the server sent them.
+
+The URL and the request body are stored verbatim: a replay must match them. A `Secret` cannot reach them without an audited `Secret.expose` (`V2032` in `url"…"`, `V2031` in `Json.encode`), but a credential that was never a `Secret` and is put in a query string or body is outside this guarantee.
+
 ## LLM replay
 
 `Llm.replay(path)` installs the Anthropic adapter over `Http.recording`, an empty scripted outer HTTP handler and `Budget.unlimited()`, using a placeholder secret. It needs `Fs`, not live provider credentials. It replays generation, free text, partial callbacks and tool turns; missing exchanges fail as `ProviderError`.

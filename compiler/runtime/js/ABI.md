@@ -320,13 +320,21 @@ next read; empty at the end; `Err` after closing or when the connection drops; c
 task aborts the fetch). `http_body_of(bytes)` is a body without a connection, for
 `Http.scripted` and replayed cassettes, which deliver their body in one chunk (cut at `max`).
 
-**Cassettes** (design §17.73, behind std's `Http.recording`). A cassette is a JSON Lines file
-inside a `Dir`, one exchange per line:
+**Cassettes** (design §17.73, §17.122, behind std's `Http.recording`). A cassette is a JSON
+Lines file inside a `Dir`: the line `{"schema_version":"1.0","kind":"cassette"}` first, then
+one exchange per line:
 `{"method","url","headers","body","status","response_headers","response_body"}` (`method`
 upper-case, headers `[[name, value], …]`). The key is (`method`, `url`, `headers`, `body`);
-`secret_headers` are never read, so they are neither written nor matched.
-`http_recording_open(dir, path) -> Result<Int, String>` reads the file (missing is empty) and
-returns a fresh cursor; `http_recording_lookup(id, req) -> Result<Option<Response>, String>` is
+`secret_headers` are never read, so they are neither written nor matched. A request whose
+`headers` hold a name that lowercases to `authorization`, `proxy-authorization`, `x-api-key`,
+`api-key`, `x-auth-token` or `cookie` is refused by every lookup and append with
+`Err("header <name> belongs in secret_headers (Http.bearer); not recorded")`; a `set-cookie`
+response header is written as `"<redacted>"`.
+`http_recording_open(dir, path) -> Result<Int, String>` reads the file (missing or empty is a
+cassette with no exchanges, which gets the header line on its first append; a first non-empty
+line without `schema_version` major `1` is `Err("<path>:<line>: not a version 1 cassette (…);
+re-record it with sakura test --record")`) and returns a fresh cursor;
+`http_recording_lookup(id, req) -> Result<Option<Response>, String>` is
 `Ok(Some(r))` for the next recorded exchange with `req`'s key (in file order; the last one
 repeats), `Ok(None)` for a miss under `SAKURA_RECORD=1` (the caller forwards to the outer `Http`
 and appends), and `Err("no recording for GET <url> in <path>; run sakura test --record")`

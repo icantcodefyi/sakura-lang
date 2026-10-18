@@ -101,7 +101,13 @@ fn host_port(u: Url) -> String {
 /// match a recorded exchange gets its response; identical requests replay in recorded order,
 /// the last one repeating. A miss fails with `HttpError` naming `sakura test --record`, under
 /// which it is forwarded to the enclosing `Http` and appended. `secret_headers` are never
-/// written and never part of the match (design §17.57, §17.73).
+/// written and never part of the match (design §17.57, §17.73). Three rules (§17.122): the
+/// file's first line is `{"schema_version":"1.0","kind":"cassette"}`, written on the first
+/// append and required by `open`; a request whose `headers` hold `authorization`,
+/// `proxy-authorization`, `x-api-key`, `api-key`, `x-auth-token` or `cookie` (any case) fails
+/// with `HttpError` before any replay or forward (put it in `secret_headers`, `Http.bearer`);
+/// a `set-cookie` response header is stored and replayed as `<redacted>`. The URL and body are
+/// stored verbatim.
 pub fn recording(path: Path) -> Handler<Http, {Http, Fs}> { replaying(cassette(path)) }
 
 /// A cassette file, read on first use. `Llm.recording` opens one per installation and replays
@@ -110,7 +116,8 @@ pub opaque type Cassette = { path: Path, id: Int }
 
 pub fn cassette(path: Path) -> Cassette { Cassette { path, id: 0 } }
 
-/// `c` with its file read; an open cassette as it is.
+/// `c` with its file read; an open cassette as it is. Written `Cassette.open(c)` or `c.open()`.
+/// A file whose first line is not a version 1 cassette header fails, naming the file.
 pub fn open(c: Cassette) -> Cassette ! {Fs, Fail<HttpError>} {
   if c.id != 0 { return c }
   Cassette { path: c.path, id: ok_or_fail(http_recording_open(Fs.root(), Path.to_string(c.path))) }
@@ -284,5 +291,23 @@ test "scripted and scoped stream a body as one chunk" {
     expect_eq(got, Ok((Status.from(200), Ok("hel"), Ok("lo"), 0)))
     let denied = try { Http.stream(Request.of(Method.Get, Url.from("https://b.example/")), fn(i) { i.status }) }
     expect(denied.is_err())
+  }
+}
+
+test "recording refuses a credential in ordinary headers" {
+  let leaky = Request { ..Request.of(Method.Get, Url.from("https://a.example/x")), headers: [("Authorization", "Bearer x")] }
+  with Fs.rooted(Test.fixtures()), scripted([(Any, Response.status(200, "forwarded"))]), recording(Path.of("absent.jsonl")) {
+    match try { Http.send(leaky) } {
+      Err(HttpError { status, reason }) => {
+        expect_eq(status, None)
+        expect_eq(reason, "header Authorization belongs in secret_headers (Http.bearer); not recorded")
+      }
+      other => expect_eq("{other}", "an HttpError"),
+    }
+    let streamed = try { Http.stream(leaky, fn(i) { i.status }) }
+    expect(streamed.is_err())
+    let plain = try { Http.send(Request.of(Method.Get, Url.from("https://a.example/x"))) }
+    expect(String.contains("{plain}", "no recording for GET https://a.example/x"))
+    expect(!Fs.exists(Path.of("absent.jsonl")))
   }
 }

@@ -3,7 +3,8 @@
 These are **hand-authored, synthetic** HTTP cassettes (design §17.73), not recordings of a
 real service: no request was ever sent to a provider, and the response bodies, ids and token
 counts are invented to match the documented response shapes. They contain no secrets: secret
-headers are never written to a cassette or used to match one.
+headers are never written to a cassette or used to match one. The first line is the
+cassette header `{"schema_version":"1.0","kind":"cassette"}` (design §17.122).
 
 `billing.jsonl`: one `POST https://billing/charge` exchange for `call_billing`. The demo `BILLING_TOKEN` travels as a secret header, so it is in neither the key nor the file.
 

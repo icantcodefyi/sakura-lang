@@ -3092,13 +3092,26 @@ export function http_stream_read(body, max, _ctx, k) {
   return suspend(chunk, k, () => b.abort?.abort());
 }
 
-// Cassettes behind `Http.recording(path)` (design §17.73): JSON Lines of
-// `{method, url, headers, body, status, response_headers, response_body}` in a `Dir`. The key is
-// (method, url, headers, body); `secret_headers` are never read here, so they are neither
-// written nor matched. `SAKURA_RECORD=1` (set only by `sakura test --record`) allows appends.
+// Cassettes behind `Http.recording(path)` (design §17.73, §17.122): JSON Lines in a `Dir`, a
+// `{"schema_version":"1.0","kind":"cassette"}` line first, then one
+// `{method, url, headers, body, status, response_headers, response_body}` per exchange. The key
+// is (method, url, headers, body); `secret_headers` are never read here, so they are neither
+// written nor matched. A credential-shaped ordinary header is refused before any lookup or
+// forward, and `set-cookie` is stored as `<redacted>`. `SAKURA_RECORD=1` (set only by
+// `sakura test --record`) allows appends.
 const cassettes = new Map();
 let nextCassette = 1;
 const recording = () => proc?.env?.SAKURA_RECORD === "1";
+const CASSETTE_HEADER = JSON.stringify({ schema_version: "1.0", kind: "cassette" });
+const CREDENTIAL_HEADERS = new Set(["authorization", "proxy-authorization", "x-api-key", "api-key", "x-auth-token", "cookie"]);
+
+/** The refusal reason when `req.headers` holds a credential-shaped name, else `undefined`. */
+function credentialHeader(req) {
+  for (const [name] of items(req.headers)) {
+    if (CREDENTIAL_HEADERS.has(name.toLowerCase())) return `header ${name} belongs in secret_headers (Http.bearer); not recorded`;
+  }
+  return undefined;
+}
 
 function exchangeKey(method, url, headers, body) {
   return JSON.stringify([method, url, headers, body]);
@@ -3118,8 +3131,10 @@ export function http_recording_open(dir, path) {
   } catch (e) {
     if (e.code !== "ENOENT") return Err(`${path}: ${hostMessage(e)}`);
   }
-  // Each key's exchanges replay in recorded order; the last one repeats.
+  // Each key's exchanges replay in recorded order; the last one repeats. The first non-empty
+  // line is the header; a file without one is empty and gets it on the first append.
   const byKey = new Map();
+  let headed = false;
   const lines = text.split("\n");
   for (let i = 0; i < lines.length; i++) {
     if (lines[i].trim() === "") continue;
@@ -3129,18 +3144,29 @@ export function http_recording_open(dir, path) {
     } catch (e) {
       return Err(`${path}:${i + 1}: ${e.message}`);
     }
+    if (!headed) {
+      const version = typeof x?.schema_version === "string" ? x.schema_version : null;
+      if (version === null || version.split(".")[0] !== "1") {
+        const found = version === null ? "no schema_version line" : `schema_version ${version}`;
+        return Err(`${path}:${i + 1}: not a version 1 cassette (${found}); re-record it with sakura test --record`);
+      }
+      headed = true;
+      continue;
+    }
     const key = exchangeKey(x.method, x.url, x.headers, x.body);
     if (!byKey.has(key)) byKey.set(key, { next: 0, exchanges: [] });
     byKey.get(key).exchanges.push(x);
   }
   const id = nextCassette++;
-  cassettes.set(id, { dir, path, byKey });
+  cassettes.set(id, { dir, path, byKey, headed });
   return Ok(id);
 }
 
 /** The next recorded exchange for `req` (`{ x }`), or the `Result` a miss returns. */
 function replayed(id, req) {
   const c = cassettes.get(id);
+  const refused = credentialHeader(req);
+  if (refused !== undefined) return { miss: Err(refused) };
   const hit = c.byKey.get(requestKey(req));
   if (hit !== undefined) return { x: hit.exchanges[Math.min(hit.next++, hit.exchanges.length - 1)] };
   if (recording()) return { miss: Ok(None) };
@@ -3189,6 +3215,8 @@ export function http_recording_append_stream(id, req, status, headers, bytes) {
 function appendExchange(id, req, status, headers, body) {
   const c = cassettes.get(id);
   if (!recording()) return Err(`${c.path}: recording needs sakura test --record`);
+  const refused = credentialHeader(req);
+  if (refused !== undefined) return Err(refused);
   const [method, url, reqHeaders, reqBody] = JSON.parse(requestKey(req));
   const x = {
     method,
@@ -3196,11 +3224,13 @@ function appendExchange(id, req, status, headers, body) {
     headers: reqHeaders,
     body: reqBody,
     status,
-    response_headers: items(headers).map(([n, v]) => [n, v]),
+    response_headers: items(headers).map(([n, v]) => [n, n.toLowerCase() === "set-cookie" ? "<redacted>" : v]),
     ...body,
   };
-  const r = fsResult(c.dir, c.path, true, (p) => nodeFs().appendFileSync(p, `${JSON.stringify(x)}\n`));
+  const line = `${c.headed ? "" : `${CASSETTE_HEADER}\n`}${JSON.stringify(x)}\n`;
+  const r = fsResult(c.dir, c.path, true, (p) => nodeFs().appendFileSync(p, line));
   if (r.tag !== 0) return Err(`${c.path}: ${r.fields[0]}`);
+  c.headed = true;
   const key = requestKey(req);
   if (!c.byKey.has(key)) c.byKey.set(key, { next: 1, exchanges: [] });
   c.byKey.get(key).exchanges.push(x);
