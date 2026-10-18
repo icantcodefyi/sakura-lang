@@ -142,6 +142,9 @@ pub struct Module {
     pub builtins: BTreeMap<String, Sig>,
     pub entry: Option<FuncId>,
     pub tests: Vec<(String, FuncId)>,
+    /// The direct facts of the Core defs (§17.118), indexed by their [`FuncId`]s (the functions
+    /// lowering adds after them, adapters, have none).
+    pub direct: crate::direct::Facts,
 }
 
 impl Module {

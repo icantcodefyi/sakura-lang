@@ -16,6 +16,8 @@ sakura_core_snapshot = { path = "../sakura_core_snapshot", features = ["convert"
 [dev-dependencies]
 insta.workspace = true
 sakura_analysis.workspace = true
+# The `--dump direct` parity test (§17.118) compares with the JS backend's facts.
+sakura_codegen_js.workspace = true
 sakura_eval.workspace = true
 
 [lints]

@@ -203,6 +203,7 @@ pub fn lower(core: &core::Module, sigs: &BTreeMap<String, (Sig, bool)>) -> R<Mod
             .iter()
             .map(|(name, d)| (name.clone(), FuncId(*d)))
             .collect(),
+        direct: crate::direct::analyze(core),
     })
 }
 

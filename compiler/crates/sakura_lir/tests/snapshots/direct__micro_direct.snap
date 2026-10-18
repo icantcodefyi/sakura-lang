@@ -1,0 +1,22 @@
+---
+source: crates/sakura_lir/tests/direct.rs
+expression: user
+---
+main::main::main cps(row)
+main::main::$entry cps(with)
+main::main::fib direct
+main::main::tail_sum direct
+main::main::loop_sum direct
+main::main::list_map_fold direct
+main::main::records direct
+main::main::strings direct
+main::main::effects direct
+main::main::contracts direct
+main::main::contracts_plain direct
+main::main::increment_plain direct
+main::main::increment direct
+main::main::counter direct
+main::main::counter$Tick_next direct
+main::main::list_map_fold$1 direct
+main::main::list_map_fold$2 direct
+main::main::sum_tail direct

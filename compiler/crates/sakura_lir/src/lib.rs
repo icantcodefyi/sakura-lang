@@ -5,6 +5,7 @@
 //! committed snapshot. Output is [`lir::Module`], checked by [`validate`] and run by
 //! `sakura_eval::lir`.
 
+pub mod direct;
 pub mod layout;
 pub mod lir;
 pub mod lower;
