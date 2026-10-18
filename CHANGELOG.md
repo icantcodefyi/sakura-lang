@@ -61,6 +61,13 @@ published yet.
 
 ### Changed
 
+- **Breaking:** a program means the same whatever its checkout's line endings (design §2,
+  §17.180 (4b)): a `\r\n` inside a string literal is `\n`, and a line comment ends before the
+  `\r`, so a CRLF file no longer prints a longer string. `sakura fmt` writes LF (a bare `\r` in
+  a string of a CRLF file becomes the `\r` escape), and `sakura fmt --check` names CRLF line
+  endings as the reason a file is listed. `sakura test` reports a snapshot that differs only
+  in `\r\n` against `\n` as a line-ending mismatch.
+
 - `V1002` on `Type.member` suggests the one exported function that is a prefix of the typed
   name or extends it (`List.lenght` → `len`, `List.fil` → `filter`) when no near spelling
   exists, as a `suggested` fix, never `machine_applicable`; `sakura explain V1002` names
@@ -114,6 +121,12 @@ published yet.
   outline.
 
 ### Fixed
+
+- `file://` URIs are RFC 8089 on every OS (design §17.180 (4a)): on Windows a source is
+  `file:///C:/dir/src/main.sak` instead of `file://C:%5Cdir%5Csrc%5Cmain.sak`, so its module
+  name, the `sakura.toml` lookup, terminal paths relative to the working directory and the
+  MCP `paths` filter work there. Unix URIs are unchanged. The MCP `paths` filter accepts a
+  client's spelling of a `file:` URI (`file:///c%3A/…`).
 
 - `sakura run` exits 70 with the raw code on stderr when the program's exit code is outside
   `0..=255` (a Windows NTSTATUS such as Ctrl-C's), instead of truncating it to a byte. On
@@ -177,6 +190,9 @@ published yet.
   The WS-S10 evidence records the remaining controls' arithmetic-check gaps.
 
 ### Added
+
+- `sakura new` and `sakura init` write `.gitattributes` with `*.sak text eol=lf` and
+  `*.snap text eol=lf`, so Windows checkouts stay LF (design §17.180 (4b)).
 
 - `sakura verify --json` writes `schema_version: "1.1"` on every record, and its `summary`
   counts `reused`: the obligations whose record was rebuilt from an authenticated cache entry
