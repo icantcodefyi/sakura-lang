@@ -4,7 +4,11 @@
 //! The same Core also lowers to LIR (`sakura_lir::from_core`), which must validate, and the LIR
 //! interpreter (`sakura_eval::lir`, plan §3.5 L3) must agree too and end with every object and
 //! arena slot released; it is skipped where the evaluator stops with JS's `D003`, because `Int`
-//! is i64 on WASM (§17.80).
+//! is i64 on WASM (§17.80). Wherever the LIR is compared, the WASM backend is the fourth
+//! evaluator (plan §3.5 W1): the LIR linked with `sakura_rt` runs on node through
+//! `sakura_wasm_host.js` and must print and end the same (skipped when the compiler was built
+//! without the wasm32 target, and for a program that parses an `Int` beyond ±(2^53−1): §17.44
+//! makes that `None` on JS, which the evaluators follow, and `Some` on WASM's i64).
 //!
 //! The generator covers the M0–M3 forms: ints, strings, options, blocks and matches; records,
 //! variants and record/list patterns; lists and the `List` std functions with effectful callbacks;
@@ -1172,7 +1176,11 @@ fn js_backend_agrees_with_the_evaluator() {
         .count();
     let lir_agreed = results
         .iter()
-        .filter(|(_, r)| matches!(r, Ok(Some((_, true)))))
+        .filter(|(_, r)| matches!(r, Ok(Some((_, Some(_))))))
+        .count();
+    let wasm_agreed = results
+        .iter()
+        .filter(|(_, r)| matches!(r, Ok(Some((_, Some(true))))))
         .count();
     let skipped = results
         .iter()
@@ -1189,8 +1197,8 @@ fn js_backend_agrees_with_the_evaluator() {
         .filter_map(|(seed, r)| r.as_ref().err().map(|e| format!("seed {seed}: {e}")))
         .collect();
     eprintln!(
-        "differential: {agreed} agree ({lir_agreed} with the LIR too), {} disagree, {skipped} \
-         skipped; endings {endings:?}",
+        "differential: {agreed} agree ({lir_agreed} with the LIR too, {wasm_agreed} with WASM \
+         too), {} disagree, {skipped} skipped; endings {endings:?}",
         failures.len()
     );
     assert!(failures.is_empty(), "{}", failures.join("\n\n"));
@@ -1200,10 +1208,10 @@ fn js_backend_agrees_with_the_evaluator() {
     );
 }
 
-/// `Ok(Some((ending, lir)))` agree (`lir`: the LIR interpreter was compared too), `Ok(None)`
-/// skipped (evaluator lacks a feature), `Err` disagree or the program did not compile (a
-/// generator or compiler bug).
-type Checked = Result<Option<(String, bool)>, String>;
+/// `Ok(Some((ending, lir)))` agree (`lir`: `Some(wasm)` when the LIR interpreter was compared
+/// too, `wasm` when the WASM backend was as well), `Ok(None)` skipped (evaluator lacks a
+/// feature), `Err` disagree or the program did not compile (a generator or compiler bug).
+type Checked = Result<Option<(String, Option<bool>)>, String>;
 
 fn check_one(seed: u64, dir: &Path) -> Checked {
     let src = program(seed);
@@ -1245,13 +1253,60 @@ fn check_one(seed: u64, dir: &Path) -> Checked {
         return Err(format!("JS {js:?}\nevaluator {eval:?}\n{src}"));
     }
     if eval.1 == "D003" {
-        return Ok(Some((js.1, false)));
+        return Ok(Some((js.1, None)));
     }
+    let wasm = (sakura_codegen_wasm::available() && !parses_beyond_js_range(&src))
+        .then(|| sakura_codegen_wasm::emit(&lir, &Default::default()))
+        .transpose()
+        .map_err(|e| format!("WASM: {e}\n{src}"))?;
     match run_lir(lir) {
-        None => Ok(Some((js.1, false))),
-        Some(lir) if lir == eval => Ok(Some((js.1, true))),
-        Some(lir) => Err(format!("LIR {lir:?}\nevaluator {eval:?}\n{src}")),
+        None => return Ok(Some((js.1, None))),
+        Some(lir) if lir == eval => {}
+        Some(lir) => return Err(format!("LIR {lir:?}\nevaluator {eval:?}\n{src}")),
     }
+    let Some(wasm) = wasm else {
+        return Ok(Some((js.1, Some(false))));
+    };
+    match run_wasm(dir, &wasm) {
+        w if w == eval => Ok(Some((js.1, Some(true)))),
+        w => Err(format!("WASM {w:?}\nevaluator {eval:?}\n{src}")),
+    }
+}
+
+/// Whether `src` has a `String.parse_int("…")` of an integer the JS backend cannot represent
+/// but i64 can (design §17.44: `None` on JS, `Some` on WASM).
+fn parses_beyond_js_range(src: &str) -> bool {
+    src.split("String.parse_int(\"").skip(1).any(|rest| {
+        let digits = rest.split('"').next().unwrap_or_default();
+        digits
+            .parse::<i64>()
+            .is_ok_and(|n| n.unsigned_abs() > (1 << 53) - 1)
+    })
+}
+
+/// The WASM backend's ending: the module beside the Node host, run as `sakura run --target
+/// wasm` runs it.
+fn run_wasm(dir: &Path, wasm: &[u8]) -> Ending {
+    std::fs::create_dir_all(dir).unwrap();
+    std::fs::write(dir.join("main.wasm"), wasm).unwrap();
+    for (name, text) in sakura_codegen_wasm::HOST_FILES {
+        std::fs::write(dir.join(name), text).unwrap();
+    }
+    let out = Command::new("node")
+        .arg(dir.join("sakura_wasm_host.js"))
+        .arg(dir.join("main.wasm"))
+        .output()
+        .expect("node");
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    let end = match out.status.code() {
+        Some(0) => "ok".to_owned(),
+        Some(70) => stderr
+            .lines()
+            .find_map(defect_code)
+            .unwrap_or_else(|| format!("defect? {stderr}")),
+        other => format!("exit {other:?}: {stderr}"),
+    };
+    (String::from_utf8_lossy(&out.stdout).into_owned(), end)
 }
 
 /// The LIR interpreter's ending, `None` if it lacks a builtin. An unbalanced run (an object or

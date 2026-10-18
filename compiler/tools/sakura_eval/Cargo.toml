@@ -15,6 +15,7 @@ sakura_lir.workspace = true
 [dev-dependencies]
 sakura_analysis.workspace = true
 sakura_codegen_js.workspace = true
+sakura_codegen_wasm.workspace = true
 
 [lints]
 workspace = true
