@@ -5,14 +5,14 @@ use std::path::{Path, PathBuf};
 
 use crate::Snapshot;
 
-/// Reads every `.sakura` file under `roots` (files or directories; `target`, `node_modules` and
+/// Reads every `.sak` file under `roots` (files or directories; `target`, `node_modules` and
 /// dot-directories are skipped) plus the project's `sakura.toml` into a snapshot with the std
 /// library. URIs are `file://` + absolute path.
 pub fn load(roots: &[PathBuf]) -> Result<Snapshot, String> {
     read(roots, true)
 }
 
-/// The `.sakura` files under `roots`, each with its `file://` URI, without std or the manifest:
+/// The `.sak` files under `roots`, each with its `file://` URI, without std or the manifest:
 /// what `sakura fmt` formats, so a std checkout's files are formatted like any other.
 pub fn load_sources(roots: &[PathBuf]) -> Result<Snapshot, String> {
     read(roots, false)
@@ -23,8 +23,24 @@ fn read(roots: &[PathBuf], analyze: bool) -> Result<Snapshot, String> {
     for root in roots {
         collect(root, &mut files).map_err(|e| format!("{}: {e}", root.display()))?;
     }
+    // `.sakura` was the extension before design §17.179 (rename:keep): a file named on the
+    // command line, or a tree with no `.sak` sources, gets the rename instead of a silent skip.
+    let (legacy, mut files): (Vec<_>, Vec<_>) = files
+        .into_iter()
+        .partition(|p| p.extension().is_some_and(|e| e == "sakura"));
+    if let Some(old) = legacy
+        .iter()
+        .find(|p| roots.contains(p))
+        .or(legacy.first().filter(|_| files.is_empty()))
+    {
+        return Err(format!(
+            "{}: Sakura Lang source files end in .sak, not .sakura; rename it to {}",
+            old.display(),
+            old.with_extension("sak").display()
+        ));
+    }
     if files.is_empty() {
-        return Err("no .sakura files found".into());
+        return Err("no .sak files found".into());
     }
     if let Some(manifest) = roots
         .iter()
@@ -48,20 +64,20 @@ fn read(roots: &[PathBuf], analyze: bool) -> Result<Snapshot, String> {
 }
 
 /// `sakura:///std/<path>` for a file inside a std library checkout (a directory named `std` with
-/// `INDEX.md` and `core.sakura`), so `sakura check std/list.sakura` checks it as std, not as a user module
+/// `INDEX.md` and `core.sak`), so `sakura check std/list.sak` checks it as std, not as a user module
 /// that redeclares the prelude.
 pub fn std_uri(path: &Path) -> Option<String> {
     let std_dir = path.ancestors().skip(1).find(|d| {
         d.file_name().is_some_and(|n| n == "std")
             && d.join("INDEX.md").is_file()
-            && d.join("core.sakura").is_file()
+            && d.join("core.sak").is_file()
     })?;
     let rel = path
         .strip_prefix(std_dir)
         .ok()?
         .to_str()?
         .replace('\\', "/");
-    rel.ends_with(".sakura")
+    rel.ends_with(".sak")
         .then(|| format!("sakura:///std/{rel}"))
 }
 
@@ -92,6 +108,7 @@ fn collect(path: &Path, out: &mut Vec<PathBuf>) -> std::io::Result<()> {
         out.push(path.to_path_buf());
         return Ok(());
     }
+    // `.sakura` files too, so `read` can name the rename (rename:keep).
     for entry in std::fs::read_dir(path)? {
         let path = entry?.path();
         let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
@@ -100,7 +117,10 @@ fn collect(path: &Path, out: &mut Vec<PathBuf>) -> std::io::Result<()> {
         }
         if path.is_dir() {
             collect(&path, out)?;
-        } else if path.extension().is_some_and(|e| e == "sakura") {
+        } else if path
+            .extension()
+            .is_some_and(|e| e == "sak" || e == "sakura")
+        {
             out.push(path);
         }
     }
@@ -183,7 +203,7 @@ pub fn write_changes(
             std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
         }
         // Write then rename, so a crash never leaves a half-written source file.
-        let tmp = path.with_extension("sakura.tmp");
+        let tmp = path.with_extension("sak.tmp");
         std::fs::write(&tmp, text).map_err(|e| format!("{}: {e}", tmp.display()))?;
         std::fs::rename(&tmp, path).map_err(|e| format!("{}: {e}", path.display()))?;
     }
@@ -196,20 +216,20 @@ mod tests {
 
     #[test]
     fn uris_round_trip() {
-        let p = Path::new("/tmp/a b/ü.sakura");
+        let p = Path::new("/tmp/a b/ü.sak");
         let uri = file_uri(p);
-        assert_eq!(uri, "file:///tmp/a%20b/%C3%BC.sakura");
+        assert_eq!(uri, "file:///tmp/a%20b/%C3%BC.sak");
         assert_eq!(uri_path(&uri).unwrap(), p);
-        assert_eq!(uri_path("sakura:///std/list.sakura"), None);
+        assert_eq!(uri_path("sakura:///std/list.sak"), None);
     }
 
     #[test]
     fn files_of_a_std_checkout_load_as_std() {
         let std_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../std");
-        let uri = std_uri(&std::path::absolute(std_dir.join("list.sakura")).unwrap());
-        assert_eq!(uri.as_deref(), Some("sakura:///std/list.sakura"));
-        assert_eq!(std_uri(Path::new("/tmp/app/src/list.sakura")), None);
-        let snap = load(&[std_dir.join("result.sakura")]).unwrap();
+        let uri = std_uri(&std::path::absolute(std_dir.join("list.sak")).unwrap());
+        assert_eq!(uri.as_deref(), Some("sakura:///std/list.sak"));
+        assert_eq!(std_uri(Path::new("/tmp/app/src/list.sak")), None);
+        let snap = load(&[std_dir.join("result.sak")]).unwrap();
         let embedded = Snapshot::with_std([]);
         assert_eq!(snap.files().len(), embedded.files().len());
     }

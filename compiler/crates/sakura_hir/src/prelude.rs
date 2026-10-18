@@ -1,7 +1,7 @@
 //! The prelude (design §9): names in scope in every module without an import.
 //!
 //! Builtin types come from [`Builtin`](crate::Builtin). Everything else is declared in Sakura Lang by
-//! the `std` package (`compiler/std/*.sakura`) and plugged in here by name: each entry says which
+//! the `std` package (`compiler/std/*.sak`) and plugged in here by name: each entry says which
 //! std module declares it. Entries whose module is not in the snapshot simply do not resolve,
 //! and using them reports `V1002` naming the missing module. To grow the prelude, declare the
 //! item `pub` in its std module and add a row below.

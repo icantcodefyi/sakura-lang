@@ -2,7 +2,7 @@
 source: crates/sakura_fmt/tests/fmt.rs
 assertion_line: 66
 expression: "check(path, &text)"
-input_file: tests/fmt/design_15_4_typed_errors_across_a_public_boundary.sakura
+input_file: tests/fmt/design_15_4_typed_errors_across_a_public_boundary.sak
 ---
 error NotFound(id: String)
 error Forbidden

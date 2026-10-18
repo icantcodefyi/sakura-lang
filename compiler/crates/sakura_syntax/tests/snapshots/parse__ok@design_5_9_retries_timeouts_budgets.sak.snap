@@ -2,7 +2,7 @@
 source: crates/sakura_syntax/tests/parse.rs
 assertion_line: 32
 expression: out
-input_file: crates/sakura_syntax/tests/data/ok/design_5_9_retries_timeouts_budgets.sakura
+input_file: crates/sakura_syntax/tests/data/ok/design_5_9_retries_timeouts_budgets.sak
 ---
 SOURCE_FILE@0..567
   TYPE_DECL@0..137

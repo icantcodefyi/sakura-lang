@@ -13,7 +13,7 @@ fn check_patch_apply_and_test_over_stdio() {
     let dir = std::env::temp_dir().join(format!("sakura-mcp-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    std::fs::write(dir.join("main.sakura"), BROKEN).unwrap();
+    std::fs::write(dir.join("main.sak"), BROKEN).unwrap();
     let mut s = Mcp::start(&dir);
 
     let tools = s.request("tools/list", json!({}));
@@ -89,8 +89,8 @@ fn check_patch_apply_and_test_over_stdio() {
         .unwrap()
         .iter()
         .flat_map(|d| d["spans"].as_array().unwrap())
-        .find(|sp| sp["uri"].as_str().unwrap().ends_with("/main.sakura"))
-        .expect("a diagnostic in main.sakura")
+        .find(|sp| sp["uri"].as_str().unwrap().ends_with("/main.sak"))
+        .expect("a diagnostic in main.sak")
         .clone();
     let snapshot = check["snapshot"].as_str().unwrap().to_owned();
     let start = BROKEN.find("true").unwrap();
@@ -119,7 +119,7 @@ fn check_patch_apply_and_test_over_stdio() {
     assert_eq!(patched["summary"]["errors"], 0, "{patched}");
     assert_eq!(patched["frozen_spec_violations"], json!([]), "{patched}");
     assert_eq!(
-        std::fs::read_to_string(dir.join("main.sakura")).unwrap(),
+        std::fs::read_to_string(dir.join("main.sak")).unwrap(),
         BROKEN
     );
 
@@ -129,7 +129,7 @@ fn check_patch_apply_and_test_over_stdio() {
     );
     assert!(!err, "{applied}");
     assert_eq!(applied["snapshot"], patched["snapshot"]);
-    let on_disk = std::fs::read_to_string(dir.join("main.sakura")).unwrap();
+    let on_disk = std::fs::read_to_string(dir.join("main.sak")).unwrap();
     assert!(on_disk.contains("{ x * 2 }"), "{on_disk}");
 
     // Applying the same patch again: the file no longer matches the base snapshot.
@@ -161,7 +161,7 @@ fn serve_without_root_finds_the_project_or_refuses() {
     let project = dir.join("demo");
     std::fs::create_dir_all(project.join("src/nested")).unwrap();
     std::fs::write(project.join("sakura.toml"), "[package]\nname = \"demo\"\n").unwrap();
-    std::fs::write(project.join("src/main.sakura"), BROKEN).unwrap();
+    std::fs::write(project.join("src/main.sak"), BROKEN).unwrap();
 
     let mut s = Mcp::start_in(&project.join("src/nested"));
     let (info, err) = s.call("compiler_info", json!({}));

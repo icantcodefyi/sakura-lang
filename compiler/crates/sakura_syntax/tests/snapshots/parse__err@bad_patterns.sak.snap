@@ -2,7 +2,7 @@
 source: crates/sakura_syntax/tests/parse.rs
 assertion_line: 42
 expression: out
-input_file: crates/sakura_syntax/tests/data/err/bad_patterns.sakura
+input_file: crates/sakura_syntax/tests/data/err/bad_patterns.sak
 ---
 V0001 45..46: expected a pattern
 V0001 63..64: expected `]`, found identifier

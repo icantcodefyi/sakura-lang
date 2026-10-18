@@ -1,4 +1,4 @@
-//! Shared pieces of the `.sakura` fixture harnesses: discovery, header directives, and running the
+//! Shared pieces of the `.sak` fixture harnesses: discovery, header directives, and running the
 //! real `sakura` binary with a time limit. Fixture format: `compiler/REQUESTS.md` (F → E).
 #![allow(dead_code)]
 
@@ -23,12 +23,12 @@ pub fn tests_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests")
 }
 
-/// `.sakura` files directly inside `compiler/tests/<suite>`, sorted.
+/// `.sak` files directly inside `compiler/tests/<suite>`, sorted.
 pub fn fixtures(suite: &str) -> Vec<PathBuf> {
     let mut out: Vec<PathBuf> = std::fs::read_dir(tests_dir().join(suite))
         .map(|rd| {
             rd.filter_map(|e| e.ok().map(|e| e.path()))
-                .filter(|p| p.extension().is_some_and(|e| e == "sakura"))
+                .filter(|p| p.extension().is_some_and(|e| e == "sak"))
                 .collect()
         })
         .unwrap_or_default();

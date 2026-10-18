@@ -84,9 +84,9 @@ def build_cli():
 
 
 def build_sakura(p):
-    """Compile programs/<p>/sakura/main.sakura; return an entry module for runner.mjs."""
+    """Compile programs/<p>/sakura/main.sak; return an entry module for runner.mjs."""
     out = TARGET / "sakura" / p
-    sh([str(SAKURA), "build", "--out-dir", str(out), str(PROGRAMS / p / "sakura" / "main.sakura")])
+    sh([str(SAKURA), "build", "--out-dir", str(out), str(PROGRAMS / p / "sakura" / "main.sak")])
     # ponytail: rewrites the emitted __main__.js (std imports + registerOps, then runMain) into
     # an importable entry; replace with a `sakura build` library mode if the CLI grows one.
     lines = (out / "__main__.js").read_text().splitlines()
@@ -669,7 +669,7 @@ BUDGETS_MS = {"check_cold_10k": 1000, "build_10k": 500, "check_cold_100k": 3000,
 def corpus(lines):
     """A generated package of ~`lines` lines: modules of plain functions, records and matches."""
     d = TARGET / "corpus" / f"{lines}"
-    entry = d / "src" / "main.sakura"
+    entry = d / "src" / "main.sak"
     if entry.exists() and "import corpus/" in entry.read_text():  # older corpora import `main/`
         return d
     (d / "src" / "gen").mkdir(parents=True, exist_ok=True)
@@ -687,10 +687,10 @@ def corpus(lines):
                      f"  let s = match r.b {{ \"{f}\" => 1, _ => 2 }}",
                      f"  if y > {f} {{ y + s + String.len(r.b) }} else {{ r.a + s }}",
                      "}", "", "", ""]
-        (d / "src" / "gen" / f"m{m}.sakura").write_text("\n".join(body))
+        (d / "src" / "gen" / f"m{m}.sak").write_text("\n".join(body))
     imports = [f"import corpus/gen/m{m}" for m in range(mods)]
     calls = " + ".join(f"m{m}.f0(1, m{m}.R{m} {{ a: 1, b: \"x\" }})" for m in range(mods))
-    (d / "src" / "main.sakura").write_text("\n".join(imports) + f"\n\npub fn main() -> Unit ! {{Console}} {{\n"
+    (d / "src" / "main.sak").write_text("\n".join(imports) + f"\n\npub fn main() -> Unit ! {{Console}} {{\n"
                                            f"  Console.print(\"{{{calls}}}\")\n}}\n")
     return d
 
@@ -713,7 +713,7 @@ def lsp_edit_ms(root, runs=15):
     """Warm `sakura lsp`: time from a didChange to its publishDiagnostics. The server publishes
     nothing for a clean file it has not reported before, so edits alternate between a private
     body with a type error and the fixed body; both publish."""
-    path = root / "src" / "gen" / "m0.sakura"
+    path = root / "src" / "gen" / "m0.sak"
     uri, text = path.as_uri(), path.read_text()
     broken = text.replace("x * 1 % 1000", 'x * "1" % 1000', 1)
     proc = subprocess.Popen([str(SAKURA), "lsp"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -768,7 +768,7 @@ def cmd_compile(a):
     build_cli()
     res = new_result({"command": "compile", "seed": SEED})
     small, large = corpus(10_000), corpus(100_000)
-    lines = lambda d: sum(len(f.read_text().splitlines()) for f in d.rglob("*.sakura"))
+    lines = lambda d: sum(len(f.read_text().splitlines()) for f in d.rglob("*.sak"))
     cases = {"check_cold_10k": (small, lambda: timed([str(SAKURA), "check", str(small)])),
              "build_10k": (small, lambda: timed([str(SAKURA), "build", "--out-dir", str(TARGET / "corpus-out"), str(small)])),
              "check_cold_100k": (large, lambda: timed([str(SAKURA), "check", str(large)])),

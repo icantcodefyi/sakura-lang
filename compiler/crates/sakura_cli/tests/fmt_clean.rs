@@ -1,4 +1,4 @@
-//! Plan §4 gate 8 (§17.121): `sakura fmt --check` is clean on every `.sakura` under `std/`,
+//! Plan §4 gate 8 (§17.121): `sakura fmt --check` is clean on every `.sak` under `std/`,
 //! `examples/`, `tests/semantics/` and `tests/ui/`. Skipped: `tests/fmt/` (formatter inputs),
 //! `tests/ui` fixtures whose `expect:` holds a `V00xx` parse code, and `tests/semantics` or
 //! `tests/ui` fixtures with the harness directive `// fmt: exempt covers <productions>`. The
@@ -40,7 +40,7 @@ fn sakura_files(dir: &Path, out: &mut Vec<PathBuf>) {
             if !matches!(name.to_str(), Some("target" | "node_modules")) {
                 sakura_files(&path, out);
             }
-        } else if path.extension().is_some_and(|e| e == "sakura") {
+        } else if path.extension().is_some_and(|e| e == "sak") {
             out.push(path);
         }
     }
@@ -94,22 +94,22 @@ fn fmt_clean() {
 #[test]
 fn the_directive_is_refused_outside_test_fixtures() {
     let text = "// fmt: exempt covers IfExpr\npub fn f() -> Int { 1 }\n";
-    assert!(checked("std/list.sakura", text).is_err());
-    assert!(checked("examples/hello/src/main.sakura", text).is_err());
-    assert_eq!(checked("tests/semantics/if_else.sakura", text), Ok(false));
-    assert!(checked("tests/ui/x.sakura", "// fmt: exempt\nfn f() {}\n").is_err());
+    assert!(checked("std/list.sak", text).is_err());
+    assert!(checked("examples/hello/src/main.sak", text).is_err());
+    assert_eq!(checked("tests/semantics/if_else.sak", text), Ok(false));
+    assert!(checked("tests/ui/x.sak", "// fmt: exempt\nfn f() {}\n").is_err());
     let parse = "// expect: V0001\nfn f( {}\n";
-    assert_eq!(checked("tests/ui/V0001_x.sakura", parse), Ok(false));
-    assert_eq!(checked("tests/semantics/x.sakura", parse), Ok(true));
+    assert_eq!(checked("tests/ui/V0001_x.sak", parse), Ok(false));
+    assert_eq!(checked("tests/semantics/x.sak", parse), Ok(true));
 }
 
 #[test]
 fn an_unformatted_fixture_without_the_directive_fails() {
     let text = "// milestone: M0\npub fn main() -> Unit ! {Console} { Console.print(\"a\"); Console.print(\"b\") }\n";
-    assert_eq!(checked("tests/semantics/semis.sakura", text), Ok(true));
+    assert_eq!(checked("tests/semantics/semis.sak", text), Ok(true));
     let dir = std::env::temp_dir().join(format!("sakura-fmt-clean-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    let file = dir.join("semis.sakura");
+    let file = dir.join("semis.sak");
     std::fs::write(&file, text).unwrap();
     let list = unformatted(std::slice::from_ref(&file));
     let _ = std::fs::remove_dir_all(&dir);

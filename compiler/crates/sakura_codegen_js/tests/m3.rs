@@ -32,7 +32,7 @@ pub fn main() -> Unit ! {Console} {
     let start = src.find(call).unwrap();
     let primary = &d["spans"][0];
     assert_eq!(primary["role"], "primary", "{d}");
-    assert_eq!(primary["uri"], "blame_requires.sakura", "{d}");
+    assert_eq!(primary["uri"], "blame_requires.sak", "{d}");
     assert_eq!(
         (primary["start_byte"].as_u64(), primary["end_byte"].as_u64()),
         (Some(start as u64), Some((start + call.len()) as u64)),

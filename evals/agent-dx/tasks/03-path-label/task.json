@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "03-path-label",
-  "revision": 1,
+  "revision": 2,
   "category": "diagnose-repair",
   "skills": [
     "imports",
@@ -13,13 +13,13 @@
     "revision": "d64323e7bc75a94c83cd77199a042b71af3d352f",
     "backend": "js"
   },
-  "starter_sha256": "5778f287a6cab6c30e30a4f312b382c6ca37527ce41ecd092181969218e012ac",
+  "starter_sha256": "2c4893a337f6f0265e0b92b08c054c3a13f39d8edbb29245c151eddb6efc96ad",
   "starter_files": {
     "sakura.toml": "9c68c7830eaabecd510fca91efa5e16a7f626b0d4749b5fd04b4b207e7826c0c",
-    "src/main.sakura": "9bc27fc751dca1b1351714fd10a768352473098ca2a8e295566c853369b90ff7"
+    "src/main.sak": "9bc27fc751dca1b1351714fd10a768352473098ca2a8e295566c853369b90ff7"
   },
   "editable_files": [
-    "src/main.sakura"
+    "src/main.sak"
   ],
   "frozen_baseline": {
     "strategy": "commit-starter",
@@ -28,8 +28,8 @@
   },
   "oracle": {
     "files": [
-      "oracle/normalize.sakura",
-      "oracle/unicode.sakura"
+      "oracle/normalize.sak",
+      "oracle/unicode.sak"
     ],
     "command": [
       "sakura",

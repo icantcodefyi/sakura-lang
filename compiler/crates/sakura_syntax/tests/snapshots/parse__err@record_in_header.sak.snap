@@ -2,7 +2,7 @@
 source: crates/sakura_syntax/tests/parse.rs
 assertion_line: 38
 expression: out
-input_file: crates/sakura_syntax/tests/data/err/record_in_header.sakura
+input_file: crates/sakura_syntax/tests/data/err/record_in_header.sak
 ---
 V0001 38..39: a record literal in an `if`/`while`/`for`/`match`/`with` header or a contract must be parenthesized: `(Name { … })`
 

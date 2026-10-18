@@ -30,7 +30,7 @@ pub struct PackageInput<'a> {
     pub modules: Vec<ModuleInput>,
 }
 
-/// One parsed source file. `path` is relative to `src/` without `.sakura` (`users/repo`).
+/// One parsed source file. `path` is relative to `src/` without `.sak` (`users/repo`).
 #[derive(Clone, Debug)]
 pub struct ModuleInput {
     pub file: FileId,

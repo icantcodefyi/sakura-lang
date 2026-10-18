@@ -28,7 +28,7 @@ pub fn run(n: Int) -> Int {
 
 pub fn negative(k: Int) -> Int { if k == 0 { increment(0 - 1) } else { broken(k) } }
 
-// `sakura run main.sakura -- <n>...` prints run(n) for each argument; `-- negative <k>` calls
+// `sakura run main.sak -- <n>...` prints run(n) for each argument; `-- negative <k>` calls
 // negative(k). Code reachable only from other exports is not emitted, so main must reach it.
 pub fn main() -> Unit ! {Cli, Console} {
   match Cli.args() {

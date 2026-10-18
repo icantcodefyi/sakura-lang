@@ -2,7 +2,7 @@
 source: crates/sakura_syntax/tests/parse.rs
 assertion_line: 38
 expression: out
-input_file: crates/sakura_syntax/tests/data/err/strings.sakura
+input_file: crates/sakura_syntax/tests/data/err/strings.sak
 ---
 V0001 29..30: expected an expression inside `{}` (write `\{` for a literal brace), found `}`
 V0001 46..47: expected `}` to close the interpolation (write `\{` for a literal brace), found identifier

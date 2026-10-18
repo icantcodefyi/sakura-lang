@@ -15,7 +15,7 @@ const emit = (record) => process.stdout.write(`${JSON.stringify({ schema_version
 const fs = process.getBuiltinModule("node:fs");
 const path = process.getBuiltinModule("node:path");
 
-// `std::test::Test` operations in declaration order (compiler/std/test.sakura); a test in sakura_cli
+// `std::test::Test` operations in declaration order (compiler/std/test.sak); a test in sakura_cli
 // checks this list against the std source.
 export const OPS = ["record_failure", "failures", "output", "output_lines", "snapshot", "fixtures"];
 // `Test.fixtures()`: `tests/fixtures` next to the snapshot directory, writable only under

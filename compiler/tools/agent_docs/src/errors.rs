@@ -1,6 +1,6 @@
 //! The error-code reference (design §17.144): one MDX page per entry of `codes::REGISTRY` under
 //! `website/content/docs/errors/`, with the registry's explanation, the `compiler/tests/ui`
-//! fixture as the wrong program and its `.fixed.sakura` companion as the fixed one, plus an index
+//! fixture as the wrong program and its `.fixed.sak` companion as the fixed one, plus an index
 //! by phase and the section's `meta.json`. Every file in the directory is generated.
 
 use std::path::Path;
@@ -62,7 +62,7 @@ pub fn pages(root: &Path) -> Result<Vec<(String, String)>, String> {
     Ok(out)
 }
 
-/// The first `<code>_*.sakura` fixture with a fixed companion, else the first one, else a
+/// The first `<code>_*.sak` fixture with a fixed companion, else the first one, else a
 /// `<code>_*/` directory fixture.
 fn fixture(ui: &Path, names: &[String], code: &str) -> Result<Option<Fixture>, String> {
     let prefix = format!("{code}_");
@@ -71,11 +71,9 @@ fn fixture(ui: &Path, names: &[String], code: &str) -> Result<Option<Fixture>, S
     };
     let wrong: Vec<&String> = names
         .iter()
-        .filter(|n| {
-            n.starts_with(&prefix) && n.ends_with(".sakura") && !n.ends_with(".fixed.sakura")
-        })
+        .filter(|n| n.starts_with(&prefix) && n.ends_with(".sak") && !n.ends_with(".fixed.sak"))
         .collect();
-    let fixed_of = |n: &str| format!("{}.fixed.sakura", n.trim_end_matches(".sakura"));
+    let fixed_of = |n: &str| format!("{}.fixed.sak", n.trim_end_matches(".sak"));
     let chosen = wrong
         .iter()
         .find(|n| names.contains(&fixed_of(n)))
@@ -90,7 +88,7 @@ fn fixture(ui: &Path, names: &[String], code: &str) -> Result<Option<Fixture>, S
         let mut files: Vec<String> = std::fs::read_dir(ui.join(dir))
             .map_err(|e| format!("cannot read {UI}/{dir}: {e}"))?
             .filter_map(|e| e.ok()?.file_name().into_string().ok())
-            .filter(|n| n.ends_with(".sakura"))
+            .filter(|n| n.ends_with(".sak"))
             .collect();
         files.sort();
         let files = files
@@ -110,7 +108,7 @@ fn fixture(ui: &Path, names: &[String], code: &str) -> Result<Option<Fixture>, S
         .contains(&fixed_of(name))
         .then(|| read(&fixed_of(name)))
         .transpose()?;
-    let jsonl_name = format!("{}.jsonl", name.trim_end_matches(".sakura"));
+    let jsonl_name = format!("{}.jsonl", name.trim_end_matches(".sak"));
     let jsonl = names
         .contains(&jsonl_name)
         .then(|| read(&jsonl_name))
@@ -286,7 +284,7 @@ fn page(info: &CodeInfo, fixture: Option<&Fixture>) -> String {
     out.push_str("\n## Fixed program\n\n");
     match &f.fixed {
         Some(fixed) => {
-            let rel = format!("{}.fixed.sakura", f.rel.trim_end_matches(".sakura"));
+            let rel = format!("{}.fixed.sak", f.rel.trim_end_matches(".sak"));
             out.push_str(&format!(
                 "{}, which `sakura {command}` accepts with no diagnostics:\n\n```sakura\n{}\n```\n",
                 link(&rel),

@@ -20,7 +20,7 @@ pub use json::{
 /// of the `&[SourceFile]` slice handed to a renderer.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SourceFile {
-    /// `file:///abs/path.sakura` for files on disk, `sakura:///std/...` for embedded std sources.
+    /// `file:///abs/path.sak` for files on disk, `sakura:///std/...` for embedded std sources.
     pub uri: String,
     pub text: String,
     /// `sha256:<hex>` of `text`'s UTF-8 bytes.

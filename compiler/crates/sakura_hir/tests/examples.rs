@@ -1,4 +1,4 @@
-//! The design §15 example corpus (`compiler/examples/*/src/*.sakura`) lowered with the real std.
+//! The design §15 example corpus (`compiler/examples/*/src/*.sak`) lowered with the real std.
 //! `example(name)` renders the dump and diagnostics, handy when debugging a failure.
 
 use std::path::Path;
@@ -12,7 +12,7 @@ fn sakura_files(dir: &Path) -> Vec<(String, String)> {
         .flatten()
         .filter_map(|e| {
             let p = e.ok()?.path();
-            (p.extension()? == "sakura").then(|| {
+            (p.extension()? == "sak").then(|| {
                 let name = p.file_stem().unwrap().to_string_lossy().into_owned();
                 (name, std::fs::read_to_string(&p).unwrap())
             })

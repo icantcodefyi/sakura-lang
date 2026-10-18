@@ -1,7 +1,7 @@
 ---
 source: crates/sakura_fmt/tests/fmt.rs
 expression: "check(path, &text)"
-input_file: tests/fmt/expression_comments.sakura
+input_file: tests/fmt/expression_comments.sak
 ---
 // Comments inside expressions: around binary operators and before the `.` of a chain.
 fn total(order: Order) -> Int {

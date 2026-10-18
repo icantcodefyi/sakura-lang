@@ -21,7 +21,7 @@ fn fixtures(dir: &str) -> Vec<(String, String)> {
         .map(|rd| {
             rd.flatten()
                 .map(|e| e.path())
-                .filter(|p| p.extension().is_some_and(|x| x == "sakura"))
+                .filter(|p| p.extension().is_some_and(|x| x == "sak"))
                 .map(|p| {
                     let name = p.file_name().unwrap().to_string_lossy().into_owned();
                     (name, std::fs::read_to_string(&p).unwrap())

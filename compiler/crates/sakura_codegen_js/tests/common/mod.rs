@@ -42,7 +42,7 @@ pub fn build_with(
     let mut files: Vec<PathBuf> = std::fs::read_dir(compiler_dir().join("std"))
         .unwrap()
         .map(|e| e.unwrap().path())
-        .filter(|p| p.extension().is_some_and(|e| e == "sakura"))
+        .filter(|p| p.extension().is_some_and(|e| e == "sak"))
         .collect();
     files.sort();
     for (i, path) in files.iter().enumerate() {
@@ -57,7 +57,7 @@ pub fn build_with(
         });
         sources.push(Source {
             file,
-            name: format!("sakura:///std/{stem}.sakura"),
+            name: format!("sakura:///std/{stem}.sak"),
             text,
         });
     }
@@ -70,7 +70,7 @@ pub fn build_with(
         .collect();
     sources.push(Source {
         file,
-        name: format!("{name}.sakura"),
+        name: format!("{name}.sak"),
         text: src.to_owned(),
     });
     let user = vec![sakura_hir::ModuleInput {

@@ -9,7 +9,7 @@ import std/llm.{Llm, LlmError, Request}
 import std/response.{Response}
 import std/tool.{ToolError}
 
-// examples/contracts/src/main.sakura:8
+// examples/contracts/src/main.sak:8
 type Percent = Int where it >= 0 && it <= 100
 
 fn percent_0() -> Percent { Percent.from(-1) }
@@ -22,7 +22,7 @@ fn percent_3() -> Percent { Percent.from(100) }
 
 fn percent_4() -> Percent { Percent.from(101) }
 
-// std/response.sakura:16
+// std/response.sak:16
 fn status_0() -> Response { Response.status(99, "") }
 
 fn status_1() -> Response { Response.status(100, "") }
@@ -33,7 +33,7 @@ fn status_3() -> Response { Response.status(599, "") }
 
 fn status_4() -> Response { Response.status(600, "") }
 
-// std/int.sakura:37
+// std/int.sak:37
 fn clamp_0(x: Int) -> Int
   ensures result >= 0 && result <= 0
 { Int.clamp(x, 0, 0) }
@@ -54,7 +54,7 @@ fn clamp_4(x: Int) -> Int
   ensures result >= 0 && result <= 1000
 { Int.clamp(x, 0, 1000) }
 
-// std/gen.sakura:30
+// std/gen.sak:30
 fn gen_list_0() -> Gen<List<Int>> { Gen.list(Gen.int(0, 1), -1) }
 
 fn gen_list_1() -> Gen<List<Int>> { Gen.list(Gen.int(0, 1), 0) }
@@ -65,7 +65,7 @@ fn gen_list_3() -> Gen<List<Int>> { Gen.list(Gen.int(0, 1), 20) }
 
 fn gen_list_4() -> Gen<List<Int>> { Gen.list(Gen.int(0, 1), 100) }
 
-// std/string.sakura:74
+// std/string.sak:74
 fn repeat_0() -> String { String.repeat("a", -1) }
 
 fn repeat_1() -> String { String.repeat("a", 0) }
@@ -76,7 +76,7 @@ fn repeat_3() -> String { String.repeat("a", 20) }
 
 fn repeat_4() -> String { String.repeat("a", 100) }
 
-// std/int.sakura:44
+// std/int.sak:44
 fn pow_domain_0() -> Int { Int.pow(2, -1) }
 
 fn pow_domain_1() -> Int { Int.pow(2, 0) }
@@ -87,7 +87,7 @@ fn pow_domain_3() -> Int { Int.pow(2, 20) }
 
 fn pow_domain_4() -> Int { Int.pow(2, 100) }
 
-// std/decimal.sakura:72
+// std/decimal.sak:72
 fn decimal_0() -> Option<Decimal> { Decimal.div_checked(Decimal.from_int(1), Decimal.from_int(3), -1) }
 
 fn decimal_1() -> Option<Decimal> { Decimal.div_checked(Decimal.from_int(1), Decimal.from_int(3), 0) }
@@ -98,7 +98,7 @@ fn decimal_3() -> Option<Decimal> { Decimal.div_checked(Decimal.from_int(1), Dec
 
 fn decimal_4() -> Option<Decimal> { Decimal.div_checked(Decimal.from_int(1), Decimal.from_int(3), 100) }
 
-// std/agent.sakura:38
+// std/agent.sak:38
 fn agent_steps_0(req: Request<String>) -> String ! {Budget, Llm, Fail<LlmError | ToolError>} { Agent.run(Agent { request: req, tools: [], max_steps: -1, stop: fn(_p) { false } }) }
 
 fn agent_steps_1(req: Request<String>) -> String ! {Budget, Llm, Fail<LlmError | ToolError>} { Agent.run(Agent { request: req, tools: [], max_steps: 0, stop: fn(_p) { false } }) }
@@ -109,7 +109,7 @@ fn agent_steps_3(req: Request<String>) -> String ! {Budget, Llm, Fail<LlmError |
 
 fn agent_steps_4(req: Request<String>) -> String ! {Budget, Llm, Fail<LlmError | ToolError>} { Agent.run(Agent { request: req, tools: [], max_steps: 100, stop: fn(_p) { false } }) }
 
-// examples/contracts/src/main.sakura:15-18, `pct` specialised to a constant
+// examples/contracts/src/main.sak:15-18, `pct` specialised to a constant
 fn discount_0(price: Int) -> Int
   requires price >= 0
   ensures result <= price

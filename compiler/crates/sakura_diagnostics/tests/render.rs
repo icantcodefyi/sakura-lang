@@ -5,7 +5,7 @@ use serde_json::Value;
 fn hello() -> Vec<SourceFile> {
     // `é` is two UTF-8 bytes, so every later byte offset differs from the char offset.
     vec![SourceFile::new(
-        "file:///work/main.sakura",
+        "file:///work/main.sak",
         "fn greet(name: String) -> Unit {\n  Console.print(\"héllo, {name}\")\n}\n",
     )]
 }

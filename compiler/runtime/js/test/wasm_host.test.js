@@ -307,7 +307,7 @@ function debugModule(payload) {
 }
 
 test("sakura.debug sites render as the JS backend's spans; a malformed section is ignored", () => {
-  const uri = [...new TextEncoder().encode("file:///a.sakura")];
+  const uri = [...new TextEncoder().encode("file:///a.sak")];
   const site = (start, end, role, contract) => [...u32(0), ...u32(start), ...u32(end), role, ...u32(contract)];
   const section = [
     ...new TextEncoder().encode("SKRDBG01"),
@@ -324,7 +324,7 @@ test("sakura.debug sites render as the JS backend's spans; a malformed section i
     ...u32(0),
   ];
   const debug = readDebug(debugModule(section));
-  const span = (start_byte, end_byte, role) => ({ uri: "file:///a.sakura", start_byte, end_byte, role });
+  const span = (start_byte, end_byte, role) => ({ uri: "file:///a.sak", start_byte, end_byte, role });
   assert.deepEqual(defectSpans(debug, 2), [span(40, 50, "primary"), span(10, 20, "definition")]);
   assert.deepEqual(defectSpans(debug, 1), [span(10, 20, "primary")]);
   assert.deepEqual(defectSpans(debug, 0), []);

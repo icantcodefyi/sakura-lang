@@ -1,7 +1,7 @@
 ---
 source: crates/sakura_fmt/tests/fmt.rs
 expression: "check(path, &text)"
-input_file: tests/fmt/signature_comments.sakura
+input_file: tests/fmt/signature_comments.sak
 ---
 // Comments in signatures, types and patterns are laid out, not kept verbatim.
 fn /* name */ clamp(x: Int, /* low */ lo: Int, hi /* high */: Int) -> /* result */ Int

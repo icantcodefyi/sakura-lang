@@ -2,7 +2,7 @@
 source: crates/sakura_syntax/tests/parse.rs
 assertion_line: 32
 expression: out
-input_file: crates/sakura_syntax/tests/data/ok/design_15_12_graph_without_cycles_in_the_heap.sakura
+input_file: crates/sakura_syntax/tests/data/ok/design_15_12_graph_without_cycles_in_the_heap.sak
 ---
 SOURCE_FILE@0..256
   IMPORT@0..32

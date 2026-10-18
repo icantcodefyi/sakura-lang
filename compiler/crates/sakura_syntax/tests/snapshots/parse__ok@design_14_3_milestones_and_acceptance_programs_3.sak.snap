@@ -2,7 +2,7 @@
 source: crates/sakura_syntax/tests/parse.rs
 assertion_line: 28
 expression: out
-input_file: crates/sakura_syntax/tests/data/ok/design_14_3_milestones_and_acceptance_programs_3.sakura
+input_file: crates/sakura_syntax/tests/data/ok/design_14_3_milestones_and_acceptance_programs_3.sak
 ---
 SOURCE_FILE@0..244
   TYPE_DECL@0..45

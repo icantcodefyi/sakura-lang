@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "10-http-validation",
-  "revision": 1,
+  "revision": 2,
   "category": "deterministic-effects",
   "skills": [
     "http-scripted",
@@ -13,13 +13,13 @@
     "revision": "d64323e7bc75a94c83cd77199a042b71af3d352f",
     "backend": "js"
   },
-  "starter_sha256": "57d9c32437a4d5ffbc19b3e68c0ab356b091bf94c56cf8f02c5b392762085733",
+  "starter_sha256": "67b6d060485b6c369e16bfa13e48fd32f0d38b29934eb9b77d315d100ae23880",
   "starter_files": {
     "sakura.toml": "4751dd8432802969addad5f74c530fb8ff348001524676db1fecf7f8721e0ece",
-    "src/main.sakura": "6dabae5333ea4bb7ef3cd9f2959d01a09a06967e385cf8f7f25d6718ea67b2e3"
+    "src/main.sak": "6dabae5333ea4bb7ef3cd9f2959d01a09a06967e385cf8f7f25d6718ea67b2e3"
   },
   "editable_files": [
-    "src/main.sakura"
+    "src/main.sak"
   ],
   "frozen_baseline": {
     "strategy": "commit-starter",
@@ -28,9 +28,9 @@
   },
   "oracle": {
     "files": [
-      "oracle/valid.sakura",
-      "oracle/invalid.sakura",
-      "oracle/failure.sakura"
+      "oracle/valid.sak",
+      "oracle/invalid.sak",
+      "oracle/failure.sak"
     ],
     "command": [
       "sakura",

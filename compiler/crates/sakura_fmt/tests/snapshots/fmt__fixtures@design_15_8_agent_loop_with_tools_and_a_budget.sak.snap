@@ -2,7 +2,7 @@
 source: crates/sakura_fmt/tests/fmt.rs
 assertion_line: 66
 expression: "check(path, &text)"
-input_file: tests/fmt/design_15_8_agent_loop_with_tools_and_a_budget.sakura
+input_file: tests/fmt/design_15_8_agent_loop_with_tools_and_a_budget.sak
 ---
 import std/agent.{Agent}
 import std/budget.{Budget, BudgetExceeded, Limits}

@@ -362,7 +362,7 @@ fn a_wrong_defect_site_or_message_is_rejected() {
     let record = |message: &str, start: u32| {
         format!(
             "{{\"schema_version\":\"1.0\",\"kind\":\"defect\",\"code\":\"D020\",\
-             \"message\":\"{message}\",\"spans\":[{{\"uri\":\"file:///a.sakura\",\
+             \"message\":\"{message}\",\"spans\":[{{\"uri\":\"file:///a.sak\",\
              \"start_byte\":{start},\"end_byte\":40,\"role\":\"primary\"}}]}}"
         )
     };
@@ -446,7 +446,7 @@ fn js_and_wasm_agree_on_the_semantics_corpus() {
         .collect();
     dirs.sort();
     for dir in dirs {
-        let d = directives(&std::fs::read_to_string(dir.join("src/main.sakura")).unwrap());
+        let d = directives(&std::fs::read_to_string(dir.join("src/main.sak")).unwrap());
         let args: Vec<&str> = d
             .get("args")
             .map_or("", String::as_str)

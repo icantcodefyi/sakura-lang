@@ -2,7 +2,7 @@
 source: crates/sakura_fmt/tests/fmt.rs
 assertion_line: 66
 expression: "check(path, &text)"
-input_file: tests/fmt/design_15_7_typed_llm_extraction_with_budget_and_off.sakura
+input_file: tests/fmt/design_15_7_typed_llm_extraction_with_budget_and_off.sak
 ---
 import std/budget.{Budget, BudgetExceeded, Limits}
 import std/http.{Http}

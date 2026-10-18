@@ -2,7 +2,7 @@
 source: crates/sakura_syntax/tests/parse.rs
 assertion_line: 32
 expression: out
-input_file: crates/sakura_syntax/tests/data/ok/design_15_10_structured_concurrency_timeout_retry.sakura
+input_file: crates/sakura_syntax/tests/data/ok/design_15_10_structured_concurrency_timeout_retry.sak
 ---
 SOURCE_FILE@0..1098
   IMPORT@0..61

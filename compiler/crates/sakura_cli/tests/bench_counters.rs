@@ -50,7 +50,7 @@ fn every_benchmark_records_its_counters_on_wasm() {
     let mut programs: Vec<PathBuf> = std::fs::read_dir(&root)
         .unwrap()
         .filter_map(|e| e.ok().map(|e| e.path()))
-        .filter(|p| p.join("sakura/main.sakura").exists())
+        .filter(|p| p.join("sakura/main.sak").exists())
         .collect();
     programs.sort();
     let tmp = Path::new(env!("CARGO_TARGET_TMPDIR")).join("bench_counters");
@@ -66,7 +66,7 @@ fn every_benchmark_records_its_counters_on_wasm() {
             let mut args = vec!["build", "--target", "wasm"];
             args.extend(flags);
             let out_str = out_dir.display().to_string();
-            args.extend(["--out-dir", &out_str, "main.sakura"]);
+            args.extend(["--out-dir", &out_str, "main.sak"]);
             let built = sakura(&args, &p.join("sakura"));
             if built.code != Some(0) {
                 failures.push(format!("{name} {variant}: build: {}", built.stderr));

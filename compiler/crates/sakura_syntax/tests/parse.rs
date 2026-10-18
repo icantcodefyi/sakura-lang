@@ -26,7 +26,7 @@ fn render(text: &str) -> (String, usize) {
 
 #[test]
 fn ok() {
-    insta::glob!("data/ok/*.sakura", |path| {
+    insta::glob!("data/ok/*.sak", |path| {
         let text = std::fs::read_to_string(path).unwrap();
         let (out, errors) = render(&text);
         insta::assert_snapshot!(out);
@@ -36,7 +36,7 @@ fn ok() {
 
 #[test]
 fn err() {
-    insta::glob!("data/err/*.sakura", |path| {
+    insta::glob!("data/err/*.sak", |path| {
         let text = std::fs::read_to_string(path).unwrap();
         let (out, errors) = render(&text);
         insta::assert_snapshot!(out);

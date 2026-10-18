@@ -1364,7 +1364,7 @@ type Checked = Result<Option<(String, Option<bool>)>, String>;
 
 fn check_one(seed: u64, dir: &Path) -> Checked {
     let src = program(seed);
-    let snapshot = Snapshot::with_std([("file:///diff/main.sakura".to_owned(), src.clone())]);
+    let snapshot = Snapshot::with_std([("file:///diff/main.sak".to_owned(), src.clone())]);
     // One lowering feeds both backends, so they run exactly the same Core.
     let (module, diagnostics) = Analysis::lower_core(&snapshot, &ENTRY);
     let errors: Vec<String> = diagnostics

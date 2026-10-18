@@ -21,7 +21,7 @@ pub fn main() -> Unit ! {Console} {
 ";
 
 fn lowered(src: &str) -> Module {
-    let snapshot = Snapshot::with_std([("file:///main.sakura".to_owned(), src.to_owned())]);
+    let snapshot = Snapshot::with_std([("file:///main.sak".to_owned(), src.to_owned())]);
     let opts = BuildOptions {
         need_entry: true,
         ..BuildOptions::default()

@@ -37,7 +37,7 @@
           "sakura"
         ],
         "extensions": [
-          ".sakura"
+          ".sak"
         ],
         "configuration": "./language-configuration.json",
         "icon": {

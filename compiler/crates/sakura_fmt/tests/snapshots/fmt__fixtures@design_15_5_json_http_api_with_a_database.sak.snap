@@ -2,7 +2,7 @@
 source: crates/sakura_fmt/tests/fmt.rs
 assertion_line: 66
 expression: "check(path, &text)"
-input_file: tests/fmt/design_15_5_json_http_api_with_a_database.sakura
+input_file: tests/fmt/design_15_5_json_http_api_with_a_database.sak
 ---
 import std/http.{BadRequest, Request, Response, Status}
 import std/path.{Path}

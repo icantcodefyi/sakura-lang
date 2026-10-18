@@ -2,7 +2,7 @@
 source: crates/sakura_syntax/tests/parse.rs
 assertion_line: 42
 expression: out
-input_file: crates/sakura_syntax/tests/data/err/statements.sakura
+input_file: crates/sakura_syntax/tests/data/err/statements.sak
 ---
 V0001 23..24: expected a variable name, found `=`
 V0001 35..37: expected `in`, found identifier

@@ -173,7 +173,7 @@ pub fn tools() -> Unit {
 }
 "#);
 
-snap!(agent_row_params, "main" => include_str!("inputs/agent_row_params.sakura"));
+snap!(agent_row_params, "main" => include_str!("inputs/agent_row_params.sak"));
 
 snap!(hello_world, "main" => r#"
 fn greet(name: String) -> Unit ! {Console} {
@@ -637,7 +637,7 @@ fn f(s: S) -> Int { match s { A(n) => List.len([n]), B => 0 } }
     assert_eq!(check(&[("main", src)]), check(&[("main", src)]));
 }
 
-/// The real std (`compiler/std/*.sakura`) resolves without errors (in files that parse).
+/// The real std (`compiler/std/*.sak`) resolves without errors (in files that parse).
 #[test]
 fn real_std_resolves() {
     let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../std");
@@ -645,7 +645,7 @@ fn real_std_resolves() {
         .unwrap()
         .filter_map(|e| {
             let p = e.ok()?.path();
-            (p.extension()? == "sakura").then(|| {
+            (p.extension()? == "sak").then(|| {
                 let name = p.file_stem().unwrap().to_string_lossy().into_owned();
                 (name, std::fs::read_to_string(&p).unwrap())
             })

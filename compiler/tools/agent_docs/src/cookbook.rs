@@ -35,7 +35,7 @@ pub fn outputs(root: &Path) -> Result<Vec<(String, String)>, String> {
             .and_then(|s| s.split_once('\n'))
             .ok_or_else(|| format!("{name}/recipe.md needs a level-one title"))?;
         let description = prose.trim().lines().next().unwrap_or("");
-        let source = read(&dir.join("src/main.sakura"))?;
+        let source = read(&dir.join("src/main.sak"))?;
         let header: Vec<_> = source.lines().take_while(|l| l.starts_with("//")).collect();
         if !header.contains(&"// milestone: M3")
             || !header
@@ -61,7 +61,7 @@ pub fn outputs(root: &Path) -> Result<Vec<(String, String)>, String> {
              From the repository root, with this checkout's `sakura` on `PATH`:\n\n\
              ```sh\ncd compiler/examples/{name}\nsakura check --json\n{command}sakura test --json\n```\n\n\
              ### Manifest and permissions\n\n```toml\n{manifest}```\n\n\
-             ### Source and tests\n\n`src/main.sakura` includes all required imports and tests.\n\n\
+             ### Source and tests\n\n`src/main.sak` includes all required imports and tests.\n\n\
              ```sakura test id=cookbook-{name} project={name}\n{source}```\n",
             prose.trim(),
             if run { "run + test" } else { "test" },

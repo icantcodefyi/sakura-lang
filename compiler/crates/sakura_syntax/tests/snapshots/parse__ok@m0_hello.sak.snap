@@ -1,7 +1,7 @@
 ---
 source: crates/sakura_syntax/tests/parse.rs
 expression: out
-input_file: crates/sakura_syntax/tests/data/ok/m0_hello.sakura
+input_file: crates/sakura_syntax/tests/data/ok/m0_hello.sak
 ---
 SOURCE_FILE@0..139
   FN_DECL@0..79

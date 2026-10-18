@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "09-scripted-reading",
-  "revision": 1,
+  "revision": 2,
   "category": "deterministic-effects",
   "skills": [
     "llm-scripted",
@@ -13,13 +13,13 @@
     "revision": "d64323e7bc75a94c83cd77199a042b71af3d352f",
     "backend": "js"
   },
-  "starter_sha256": "8bd7f668c28624dd06ca08fcf353ba1bfe7378a4763eee7f9b82e8f35853a754",
+  "starter_sha256": "4a2e3329acc96a848bb1e7e234d49ced2895d49bcfc238cfce327ec730b6380d",
   "starter_files": {
     "sakura.toml": "dbfa3862c1c914eea1b9115dd4167f678c464d0aa45c26bafa21ef8eb9b68ad2",
-    "src/main.sakura": "1c908e1ef9b377d6bf2de64743f9b24ae9701864ab099f4d022b35677512b562"
+    "src/main.sak": "1c908e1ef9b377d6bf2de64743f9b24ae9701864ab099f4d022b35677512b562"
   },
   "editable_files": [
-    "src/main.sakura"
+    "src/main.sak"
   ],
   "frozen_baseline": {
     "strategy": "commit-starter",
@@ -28,8 +28,8 @@
   },
   "oracle": {
     "files": [
-      "oracle/positive.sakura",
-      "oracle/nonpositive.sakura"
+      "oracle/positive.sak",
+      "oracle/nonpositive.sak"
     ],
     "command": [
       "sakura",

@@ -1,6 +1,6 @@
 //! Design §17.118: the LIR's direct facts, computed from the snapshot form of Core
 //! (`sakura_lir::direct`), agree with the JS backend's `--dump direct`
-//! (`sakura_codegen_js::dump_direct`, §17.111) on `research/10-evidence/micro.sakura`, every
+//! (`sakura_codegen_js::dump_direct`, §17.111) on `research/10-evidence/micro.sak`, every
 //! `tests/semantics` fixture, the LIR corpus sources, the benchmark programs and the examples.
 
 mod common;
@@ -24,7 +24,7 @@ fn sorted(dir: &Path, ext: &str) -> Vec<PathBuf> {
     out
 }
 
-/// Every `.sakura` file under `dir`, as `(path relative to dir, text)`.
+/// Every `.sak` file under `dir`, as `(path relative to dir, text)`.
 fn tree(dir: &Path, rel: &str, out: &mut Vec<(String, String)>) {
     let mut entries: Vec<PathBuf> = std::fs::read_dir(dir)
         .unwrap()
@@ -35,7 +35,7 @@ fn tree(dir: &Path, rel: &str, out: &mut Vec<(String, String)>) {
         let name = p.file_name().unwrap().to_string_lossy().into_owned();
         if p.is_dir() {
             tree(&p, &format!("{rel}{name}/"), out);
-        } else if name.ends_with(".sakura") {
+        } else if name.ends_with(".sak") {
             out.push((format!("{rel}{name}"), std::fs::read_to_string(&p).unwrap()));
         }
     }
@@ -73,7 +73,7 @@ fn agree(m: &sakura_core::Module) -> Result<String, String> {
 
 fn single(path: &Path) -> Option<sakura_core::Module> {
     let text = std::fs::read_to_string(path).unwrap();
-    core(vec![("file:///p/main.sakura".into(), text)])
+    core(vec![("file:///p/main.sak".into(), text)])
 }
 
 #[test]
@@ -81,22 +81,22 @@ fn lir_facts_agree_with_dump_direct() {
     common::big_stack(|| {
         let r = root();
         let mut programs: Vec<(String, Option<sakura_core::Module>)> = vec![];
-        let micro = r.join("research/10-evidence/micro.sakura");
+        let micro = r.join("research/10-evidence/micro.sak");
         programs.push(("micro".into(), single(&micro)));
-        for p in sorted(&r.join("compiler/tests/semantics"), "sakura") {
+        for p in sorted(&r.join("compiler/tests/semantics"), "sak") {
             programs.push((format!("semantics/{}", p.display()), single(&p)));
         }
         for sub in ["diff", "lir"] {
             let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("tests/corpus")
                 .join(sub);
-            for p in sorted(&dir, "sakura") {
+            for p in sorted(&dir, "sak") {
                 programs.push((format!("corpus/{sub}/{}", p.display()), single(&p)));
             }
         }
         let mut benches: Vec<PathBuf> = std::fs::read_dir(r.join("bench/programs"))
             .unwrap()
-            .filter_map(|e| e.ok().map(|e| e.path().join("sakura/main.sakura")))
+            .filter_map(|e| e.ok().map(|e| e.path().join("sakura/main.sak")))
             .filter(|p| p.exists())
             .collect();
         benches.sort();
@@ -120,7 +120,7 @@ fn lir_facts_agree_with_dump_direct() {
             programs.push((format!("example/{name}"), core(files)));
         }
 
-        let micro_dump = agree(programs[0].1.as_ref().expect("micro.sakura checks")).unwrap();
+        let micro_dump = agree(programs[0].1.as_ref().expect("micro.sak checks")).unwrap();
         let (mut compared, mut failures) = (0, vec![]);
         for (name, m) in &programs {
             let Some(m) = m else { continue };
@@ -182,7 +182,7 @@ pub fn main() -> Unit ! {Console} {
 
 #[test]
 fn each_reason_is_reported() {
-    let m = core(vec![("file:///p/main.sakura".into(), REASONS.into())]).expect("checks");
+    let m = core(vec![("file:///p/main.sak".into(), REASONS.into())]).expect("checks");
     let dump = agree(&m).unwrap();
     let verdict = |name: &str| -> &str {
         dump.lines()
@@ -211,7 +211,7 @@ fn each_reason_is_reported() {
 /// and a malformed one is refused before analysis.
 #[test]
 fn facts_survive_the_committed_form_and_malformed_input_is_refused() {
-    let m = single(&root().join("research/10-evidence/micro.sakura")).unwrap();
+    let m = single(&root().join("research/10-evidence/micro.sak")).unwrap();
     let s = snapshot::Snapshot {
         format: snapshot::FORMAT.into(),
         files: vec![],
@@ -233,7 +233,7 @@ fn facts_survive_the_committed_form_and_malformed_input_is_refused() {
 #[test]
 fn regions_are_direct_first_order_code() {
     common::big_stack(|| {
-        let m = core(vec![("file:///p/main.sakura".into(), REASONS.into())]).expect("checks");
+        let m = core(vec![("file:///p/main.sak".into(), REASONS.into())]).expect("checks");
         let lir = sakura_lir::from_core(&m, Default::default()).unwrap();
         let regions = direct::regions(&lir);
         let region = |name: &str| -> bool {

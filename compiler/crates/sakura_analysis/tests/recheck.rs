@@ -10,9 +10,9 @@ const GEN: &str = "pub fn id<A>(a: A) -> A { a }\n";
 
 fn snap(lib: &str, extra: bool) -> Snapshot {
     let mut files = vec![
-        ("file:///p/src/app.sakura".to_owned(), APP.to_owned()),
-        ("file:///p/src/gen.sakura".to_owned(), GEN.to_owned()),
-        ("file:///p/src/lib.sakura".to_owned(), lib.to_owned()),
+        ("file:///p/src/app.sak".to_owned(), APP.to_owned()),
+        ("file:///p/src/gen.sak".to_owned(), GEN.to_owned()),
+        ("file:///p/src/lib.sak".to_owned(), lib.to_owned()),
     ];
     // A file that is not a module, sorted last: no reuse (the file set differs), same `FileId`s.
     if extra {
@@ -42,7 +42,7 @@ fn a_private_body_edit_rechecks_only_its_module() {
     let edited = LIB.replace("{ x }", "{ x + \"1\" }");
     let warm = Analysis::analyze(&snap(&edited, false));
     let after = stats();
-    // Only lib.sakura of the three user modules (and none of std) is parsed, lowered and checked.
+    // Only lib.sak of the three user modules (and none of std) is parsed, lowered and checked.
     assert_eq!(after.parses - cold.parses, 1, "parses");
     assert_eq!(after.lowers - cold.lowers, 1, "lowers");
     assert_eq!(after.checked_modules - cold.checked_modules, 1, "checks");
@@ -62,7 +62,7 @@ fn a_private_body_edit_rechecks_only_its_module() {
     );
     assert_eq!(warm.check.holes.len(), 1);
     // Hover in the reused module still sees its types.
-    let app = warm.snapshot.file_id("file:///p/src/app.sakura").unwrap();
+    let app = warm.snapshot.file_id("file:///p/src/app.sak").unwrap();
     let at = APP.find("twice").unwrap() as u32 + 1;
     assert!(
         warm.hover(app, at)
@@ -82,9 +82,9 @@ fn a_private_body_edit_rechecks_only_its_module() {
             .replace("lib.twice(2)", "lib.twice(gen.id(2))")
             .replace("import main/lib\n", "import main/gen\nimport main/lib\n");
         let mut files = vec![
-            ("file:///p/src/app.sakura".to_owned(), app),
-            ("file:///p/src/lib.sakura".to_owned(), lib.to_owned()),
-            ("file:///p/src/gen.sakura".to_owned(), GEN.to_owned()),
+            ("file:///p/src/app.sak".to_owned(), app),
+            ("file:///p/src/lib.sak".to_owned(), lib.to_owned()),
+            ("file:///p/src/gen.sak".to_owned(), GEN.to_owned()),
         ];
         if extra {
             files.push(("zzz:///notes.txt".to_owned(), String::new()));
@@ -115,8 +115,8 @@ fn a_private_body_edit_rechecks_only_its_module() {
         );
         let user = "import main/pred\n\npub fn one() -> Int { pred.other() }\n";
         Snapshot::with_std([
-            ("file:///q/src/pred.sakura".to_owned(), pred),
-            ("file:///q/src/user.sakura".to_owned(), user.to_owned()),
+            ("file:///q/src/pred.sak".to_owned(), pred),
+            ("file:///q/src/user.sak".to_owned(), user.to_owned()),
         ])
     };
     let _ = Analysis::analyze(&refined("n > 0", "1"));

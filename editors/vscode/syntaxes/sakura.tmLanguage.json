@@ -2,7 +2,7 @@
   "name": "Sakura Lang",
   "scopeName": "source.sakura",
   "fileTypes": [
-    "sakura"
+    "sak"
   ],
   "patterns": [
     {

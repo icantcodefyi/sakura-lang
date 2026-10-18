@@ -24,7 +24,7 @@ fn evaluator_agrees_with_expected_stdout() {
     let mut paths: Vec<_> = std::fs::read_dir(&dir)
         .unwrap()
         .filter_map(|e| e.ok().map(|e| e.path()))
-        .filter(|p| p.extension().is_some_and(|e| e == "sakura"))
+        .filter(|p| p.extension().is_some_and(|e| e == "sak"))
         .collect();
     paths.sort();
     let (mut agreed, mut failures, mut skipped) = (0, Vec::new(), Vec::new());

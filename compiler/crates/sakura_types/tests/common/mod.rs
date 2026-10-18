@@ -95,7 +95,7 @@ fn walk(root: &Path, dir: &Path, out: &mut Vec<(String, String)>) {
         let p = e.path();
         if p.is_dir() {
             walk(root, &p, out);
-        } else if p.extension().is_some_and(|x| x == "sakura") {
+        } else if p.extension().is_some_and(|x| x == "sak") {
             let rel = p.strip_prefix(root).unwrap().with_extension("");
             out.push((
                 rel.to_string_lossy().replace('\\', "/"),

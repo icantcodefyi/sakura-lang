@@ -2,7 +2,7 @@
 source: crates/sakura_fmt/tests/fmt.rs
 assertion_line: 66
 expression: "check(path, &text)"
-input_file: tests/fmt/design_15_6_cli_tool_with_file_io_and_attenuated_aut.sakura
+input_file: tests/fmt/design_15_6_cli_tool_with_file_io_and_attenuated_aut.sak
 ---
 import std/cli.{Cli, CliError}
 import std/fs.{Dir, Fs, FsError}

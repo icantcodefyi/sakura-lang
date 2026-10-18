@@ -1,7 +1,7 @@
 ---
 source: crates/sakura_syntax/tests/parse.rs
 expression: out
-input_file: crates/sakura_syntax/tests/data/ok/design_14_3_milestones_and_acceptance_programs_0.sakura
+input_file: crates/sakura_syntax/tests/data/ok/design_14_3_milestones_and_acceptance_programs_0.sak
 ---
 SOURCE_FILE@0..139
   FN_DECL@0..79

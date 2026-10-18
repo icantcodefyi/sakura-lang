@@ -2,7 +2,7 @@
 source: crates/sakura_syntax/tests/parse.rs
 assertion_line: 42
 expression: out
-input_file: crates/sakura_syntax/tests/data/err/generic_args.sakura
+input_file: crates/sakura_syntax/tests/data/err/generic_args.sak
 ---
 V0001 17..18: expected `>`, found `)`
 V0001 52..53: expected `,` or `>`, found `=`

@@ -8,7 +8,7 @@ fuzz_target!(|data: &[u8]| {
     }
     let text = String::from_utf8_lossy(data).into_owned();
     // Include std so resolution, inference, contracts and escape checking all run.
-    let snapshot = Snapshot::with_std([("file:///fuzz/src/main.sakura".into(), text)]);
+    let snapshot = Snapshot::with_std([("file:///fuzz/src/main.sak".into(), text)]);
     let checked = Analysis::check(&snapshot);
     for diagnostic in &checked.diagnostics {
         assert!(sakura_diagnostics_code(diagnostic.code.0));

@@ -2,7 +2,7 @@
 source: crates/sakura_syntax/tests/parse.rs
 assertion_line: 28
 expression: out
-input_file: crates/sakura_syntax/tests/data/ok/design_5_3_fail_e_and_error_unions.sakura
+input_file: crates/sakura_syntax/tests/data/ok/design_5_3_fail_e_and_error_unions.sak
 ---
 SOURCE_FILE@0..144
   ERROR_DECL@0..30

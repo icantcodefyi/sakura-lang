@@ -1,4 +1,4 @@
-// `scale.sakura` with a body-only edit of `scale` (the cache test).
+// `scale.sak` with a body-only edit of `scale` (the cache test).
 type Percent = Int where it >= 0 && it <= 100
 
 fn scale(p: Percent, total: Int) -> Int

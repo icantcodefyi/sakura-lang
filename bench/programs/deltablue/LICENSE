@@ -28,7 +28,7 @@ before this program is redistributed outside this repository.
 Changes from the Are We Fast Yet version
 ----------------------------------------
 
-js/main.mjs keeps AWFY's classes and methods. sakura/main.sakura reimplements the same
+js/main.mjs keeps AWFY's classes and methods. sakura/main.sak reimplements the same
 algorithm over persistent maps of variable and constraint records, because Sakura Lang has no
 mutable objects; every traversal and queue keeps AWFY's order. Both:
 

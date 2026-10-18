@@ -2,7 +2,7 @@
 source: crates/sakura_syntax/tests/parse.rs
 assertion_line: 38
 expression: out
-input_file: crates/sakura_syntax/tests/data/err/operators.sakura
+input_file: crates/sakura_syntax/tests/data/err/operators.sak
 ---
 V0010 33..34: comparisons do not chain; combine them with `&&`
 V0010 51..53: ranges do not chain

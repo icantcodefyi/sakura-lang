@@ -898,8 +898,8 @@ test("a refined decode runs its predicate under the decoding task and allocates 
 });
 
 test("violated blames the call site from the table, else the clause", () => {
-  const call = { uri: "m.sakura", start_byte: 10, end_byte: 14 };
-  const clause = { uri: "m.sakura", start_byte: 2, end_byte: 6 };
+  const call = { uri: "m.sak", start_byte: 10, end_byte: 14 };
+  const clause = { uri: "m.sak", start_byte: 2, end_byte: 6 };
   rt.sites(900, [call]);
   const spans = (site) => {
     try {

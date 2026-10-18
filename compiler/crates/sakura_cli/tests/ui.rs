@@ -1,7 +1,7 @@
-//! `compiler/tests/ui`: programs with expected diagnostics. Each `<name>.sakura` declares the codes
+//! `compiler/tests/ui`: programs with expected diagnostics. Each `<name>.sak` declares the codes
 //! `sakura check --json` must report (`// expect: V4001 V4002`, optionally `// expect-span: V4001
 //! [role] 12:5`), and `<name>.jsonl` holds the full JSON output with the fixture directory as `$DIR`.
-//! A `<name>.fixed.sakura` companion is the repaired program shown on the code's error page
+//! A `<name>.fixed.sak` companion is the repaired program shown on the code's error page
 //! (design §17.144): it must come out of the same command with exit 0 and no error or warning.
 
 mod common;
@@ -139,8 +139,8 @@ fn ui() {
     let mut report = Report::default();
     for path in fixtures("ui") {
         let name = path.file_name().unwrap().to_string_lossy().into_owned();
-        if name.ends_with(".fixed.sakura") {
-            let wrong = path.with_file_name(name.replace(".fixed.sakura", ".sakura"));
+        if name.ends_with(".fixed.sak") {
+            let wrong = path.with_file_name(name.replace(".fixed.sak", ".sak"));
             if !wrong.exists() {
                 report.fail(&name, "a fixed companion without its wrong fixture");
             }
@@ -154,7 +154,7 @@ fn ui() {
             }
             None => {
                 report.settle(&name, &d, run(&path));
-                let fixed = path.with_extension("fixed.sakura");
+                let fixed = path.with_extension("fixed.sak");
                 if fixed.exists() {
                     match run_fixed(&fixed, d.get("command").map(String::as_str)) {
                         Ok(()) => report.pass(),

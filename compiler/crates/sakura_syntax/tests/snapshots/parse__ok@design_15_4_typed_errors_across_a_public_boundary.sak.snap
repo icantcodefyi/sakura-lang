@@ -2,7 +2,7 @@
 source: crates/sakura_syntax/tests/parse.rs
 assertion_line: 32
 expression: out
-input_file: crates/sakura_syntax/tests/data/ok/design_15_4_typed_errors_across_a_public_boundary.sakura
+input_file: crates/sakura_syntax/tests/data/ok/design_15_4_typed_errors_across_a_public_boundary.sak
 ---
 SOURCE_FILE@0..1126
   ERROR_DECL@0..26

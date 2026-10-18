@@ -1,7 +1,7 @@
 ---
 source: crates/sakura_fmt/tests/fmt.rs
 expression: "check(path, &text)"
-input_file: tests/fmt/comment_positions.sakura
+input_file: tests/fmt/comment_positions.sak
 ---
 fn calls() -> Int {
   let a = f(

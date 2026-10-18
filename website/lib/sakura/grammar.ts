@@ -10,7 +10,7 @@ export const sakuraGrammar: LanguageRegistration = {
   displayName: "Sakura Lang",
   scopeName: "source.sakura",
   aliases: [],
-  fileTypes: ["sakura"],
+  fileTypes: ["sak"],
   patterns: [
     { include: "#comments" },
     { include: "#effect-row" },

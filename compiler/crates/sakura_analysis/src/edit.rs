@@ -140,7 +140,7 @@ mod tests {
 
     fn edit(start: u32, end: u32, text: &str, hash: &str) -> FileEdit {
         FileEdit {
-            uri: "file:///a.sakura".into(),
+            uri: "file:///a.sak".into(),
             start_byte: start,
             end_byte: end,
             replacement: text.into(),
@@ -150,7 +150,7 @@ mod tests {
 
     #[test]
     fn edits_apply_atomically_and_check_hashes() {
-        let s = Snapshot::new([("file:///a.sakura".into(), "héllo world".into())]);
+        let s = Snapshot::new([("file:///a.sak".into(), "héllo world".into())]);
         let h = s.files()[0].content_hash.clone();
         let out = s
             .apply_edits(&[edit(7, 12, "Sakura Lang", &h), edit(0, 0, ">", &h)])
@@ -163,7 +163,7 @@ mod tests {
         assert!(err(&[edit(2, 2, "", &h)]).contains("UTF-8"));
         assert!(err(&[edit(0, 99, "", &h)]).contains("outside"));
         let new = FileEdit {
-            uri: "file:///b.sakura".into(),
+            uri: "file:///b.sak".into(),
             start_byte: 0,
             end_byte: 0,
             replacement: "fn f() -> Int { 1 }".into(),

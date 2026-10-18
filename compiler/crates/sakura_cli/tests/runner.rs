@@ -140,7 +140,7 @@ fn filter_selects_tests() {
 #[test]
 fn runner_ops_match_std_test_effect() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let std = std::fs::read_to_string(root.join("../../std/test.sakura")).unwrap();
+    let std = std::fs::read_to_string(root.join("../../std/test.sak")).unwrap();
     let body = std
         .split("pub effect Test {")
         .nth(1)

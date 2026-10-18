@@ -1,7 +1,7 @@
 //! Regenerates the committed Core snapshot corpus in `tests/corpus/` (plan §3.5 L1/L2).
 //!
 //! `cargo run -p sakura_lir --example regen_core` lowers every `run`-mode program of
-//! `compiler/tests/semantics` and every `tests/corpus/{diff,lir}/*.sakura` program with the live
+//! `compiler/tests/semantics` and every `tests/corpus/{diff,lir}/*.sak` program with the live
 //! frontend and writes, beside each, `<name>.json` (the shared `sakura-core-snapshot-v1`,
 //! §17.107) and `<name>.expected` (how the program ends and what it prints). It also
 //! writes `src/builtins.sigs`, the representation of each runtime builtin's parameters and result,
@@ -84,7 +84,7 @@ pub fn outputs() -> (Vec<(PathBuf, String)>, Vec<String>) {
     let semantics = here.join("../../tests/semantics");
     let mut report = Vec::new();
 
-    for path in sorted(&semantics, "sakura") {
+    for path in sorted(&semantics, "sak") {
         let name = stem(&path);
         let text = std::fs::read_to_string(&path).unwrap();
         let d = directives(&text);
@@ -111,7 +111,7 @@ pub fn outputs() -> (Vec<(PathBuf, String)>, Vec<String>) {
             continue;
         }
         let stdout = std::fs::read_to_string(path.with_extension("stdout")).unwrap_or_default();
-        let uri = format!("file:///semantics/{name}.sakura");
+        let uri = format!("file:///semantics/{name}.sak");
         match snapshot(&uri, &text) {
             Ok((core, _)) => {
                 let out = corpus.join("semantics").join(&name);
@@ -125,9 +125,9 @@ pub fn outputs() -> (Vec<(PathBuf, String)>, Vec<String>) {
     // Differential programs (`diff/`) and LIR adversarial cases (`lir/`): the reference
     // evaluator is the oracle for both.
     let evaluated = [corpus.join("diff"), corpus.join("lir")];
-    for path in evaluated.iter().flat_map(|d| sorted(d, "sakura")) {
+    for path in evaluated.iter().flat_map(|d| sorted(d, "sak")) {
         let text = std::fs::read_to_string(&path).unwrap();
-        let uri = "file:///diff/main.sakura";
+        let uri = "file:///diff/main.sak";
         let result = snapshot(uri, &text).and_then(|(core, live)| {
             let out = std::thread::Builder::new()
                 .stack_size(1 << 28)

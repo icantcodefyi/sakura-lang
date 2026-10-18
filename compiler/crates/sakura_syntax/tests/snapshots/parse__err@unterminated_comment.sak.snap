@@ -2,7 +2,7 @@
 source: crates/sakura_syntax/tests/parse.rs
 assertion_line: 38
 expression: out
-input_file: crates/sakura_syntax/tests/data/err/unterminated_comment.sakura
+input_file: crates/sakura_syntax/tests/data/err/unterminated_comment.sak
 ---
 V0002 20..62: unterminated block comment
 

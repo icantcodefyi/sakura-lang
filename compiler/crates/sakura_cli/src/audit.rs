@@ -257,13 +257,13 @@ fn f() -> Int {
 }
 "#;
         let a = Analysis::analyze(&Snapshot::with_std([(
-            "file:///audit/src/main.sakura".into(),
+            "file:///audit/src/main.sak".into(),
             text.into(),
         )]));
         let user = records(&a);
         assert!(
             user.iter()
-                .all(|r| r["span"]["uri"] == "file:///audit/src/main.sakura"),
+                .all(|r| r["span"]["uri"] == "file:///audit/src/main.sak"),
             "std sites are not listed"
         );
         assert_eq!(

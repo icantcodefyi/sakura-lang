@@ -15,22 +15,22 @@ const file = (path: string, text = "", mode = 0o644) => {
 describe("projectRoot", () => {
   const app = join(tmp, "ws", "app");
   file(join(app, "sakura.toml"));
-  file(join(app, "src", "deep", "main.sakura"));
-  file(join(tmp, "ws", "loose", "x.sakura"));
+  file(join(app, "src", "deep", "main.sak"));
+  file(join(tmp, "ws", "loose", "x.sak"));
 
   test("is the nearest sakura.toml, not the workspace folder", () => {
-    expect(projectRoot(join(app, "src", "deep", "main.sakura"))).toBe(app);
+    expect(projectRoot(join(app, "src", "deep", "main.sak"))).toBe(app);
     expect(projectRoot(join(app, "sakura.toml"))).toBe(app);
   });
 
   test("a nested project wins over its parent", () => {
     const inner = join(app, "vendor", "inner");
     file(join(inner, "sakura.toml"));
-    expect(projectRoot(join(inner, "src", "lib.sakura"))).toBe(inner);
+    expect(projectRoot(join(inner, "src", "lib.sak"))).toBe(inner);
   });
 
   test("is undefined outside any project", () => {
-    expect(projectRoot(join(tmp, "ws", "loose", "x.sakura"))).toBeUndefined();
+    expect(projectRoot(join(tmp, "ws", "loose", "x.sak"))).toBeUndefined();
   });
 });
 

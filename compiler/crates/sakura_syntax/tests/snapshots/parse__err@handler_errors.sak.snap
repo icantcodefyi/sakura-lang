@@ -2,7 +2,7 @@
 source: crates/sakura_syntax/tests/parse.rs
 assertion_line: 42
 expression: out
-input_file: crates/sakura_syntax/tests/data/err/handler_errors.sakura
+input_file: crates/sakura_syntax/tests/data/err/handler_errors.sak
 ---
 V0001 53..56: expected `var` state or an operation clause `fn name(…) { … }`
 V0001 76..77: expected `)`, found `{`

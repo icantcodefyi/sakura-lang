@@ -2,7 +2,7 @@
 source: crates/sakura_fmt/tests/fmt.rs
 assertion_line: 45
 expression: "check(path, &text)"
-input_file: tests/fmt/design_15_2_refinements_and_contracts.sakura
+input_file: tests/fmt/design_15_2_refinements_and_contracts.sak
 ---
 type Percent = Int where it >= 0 && it <= 100
 

@@ -129,7 +129,7 @@ def guard(task, candidate, metadata):
     for name, content in original.items():
         if name not in metadata['editable_files']:
             require(candidate[name] == content, f'immutable file changed: {name}')
-    source = candidate['src/main.sakura'].decode()
+    source = candidate['src/main.sak'].decode()
     require(not re.search(r'@trust\b|@external\b|\.host\s*\(', source),
             'trust, externals and host handlers forbidden in this pilot')
 
@@ -148,8 +148,8 @@ def checked(binary, directory, commit):
 
 
 def oracle(binary, directory, task, name, candidate):
-    source = candidate['src/main.sakura'] + b'\n' + (task / name).read_bytes()
-    (directory / 'src/main.sakura').write_bytes(source)
+    source = candidate['src/main.sak'] + b'\n' + (task / name).read_bytes()
+    (directory / 'src/main.sak').write_bytes(source)
     check = run([binary, 'check', '--json'], directory)
     require(check[0] == 0 and records(check)[-1].get('holes') == 0,
             f'oracle must compile before behavioral acceptance: {check}')
@@ -188,9 +188,9 @@ def validate_task(task, metadata, schema):
     hashes, aggregate = starter_hashes(task / 'starter')
     require(metadata['starter_files'] == hashes, f'{task.name}: starter file hash drift')
     require(metadata['starter_sha256'] == aggregate, f'{task.name}: starter tree hash drift')
-    require(set(hashes) == {'sakura.toml', 'src/main.sakura'}, 'unexpected starter files')
+    require(set(hashes) == {'sakura.toml', 'src/main.sak'}, 'unexpected starter files')
     require(0 < (task / 'prompt.md').stat().st_size <= 2400, 'prompt exceeds compact pilot size')
-    require(len((task / 'starter/src/main.sakura').read_text().splitlines()) <= 80,
+    require(len((task / 'starter/src/main.sak').read_text().splitlines()) <= 80,
             'starter exceeds compact pilot size')
     require(set(metadata['oracle']['files']) == {'oracle/' + p for p in files(task / 'oracle')},
             'missing or unlisted oracle')
@@ -230,7 +230,7 @@ def exercise(task, metadata, binary, scratch):
     altered['sakura.toml'] += b'net = ["*"]\n'
     rejected(lambda: guard(task, altered, metadata), 'immutable file')
     altered = dict(gold)
-    altered['src/main.sakura'] += b'\nfn bypass() -> Int { Untrusted.trust(Untrusted.of(1), @trust("bypass")) }\n'
+    altered['src/main.sak'] += b'\nfn bypass() -> Int { Untrusted.trust(Untrusted.of(1), @trust("bypass")) }\n'
     rejected(lambda: guard(task, altered, metadata), 'trust, externals')
     # These are valid candidates as far as the path/permission guard is concerned;
     # the compiler must enforce frozen tests/contracts and unfinished holes.
@@ -239,18 +239,18 @@ def exercise(task, metadata, binary, scratch):
         ('unfinished-hole', lambda s: s + '\nfn unfinished() -> Int { ?body }\n', 'holes rejected'),
     ):
         altered = dict(gold)
-        altered['src/main.sakura'] = transform(gold['src/main.sakura'].decode()).encode()
+        altered['src/main.sak'] = transform(gold['src/main.sak'].decode()).encode()
         guard(task, altered, metadata)
         materialize(directory, altered)
         rejected(lambda: checked(binary, directory, commit), reason)
     if task.name == '11-successor-contract':
         altered = dict(gold)
-        altered['src/main.sakura'] = gold['src/main.sakura'].replace(b'result == x + 1', b'true')
+        altered['src/main.sak'] = gold['src/main.sak'].replace(b'result == x + 1', b'true')
         materialize(directory, altered)
         rejected(lambda: checked(binary, directory, commit), 'V8020')
     if task.name == '04-local-env-handler':
         altered = dict(gold)
-        altered['src/main.sakura'] = gold['src/main.sakura'].replace(
+        altered['src/main.sak'] = gold['src/main.sak'].replace(
             b'configured(read: fn() -> String ! {Env}) -> String {', b'configured(read: fn() -> String ! {Env}) -> String ! {Env} {')
         materialize(directory, altered)
         rejected(lambda: checked(binary, directory, commit), 'V8020')
@@ -278,7 +278,7 @@ def main():
     # A malformed manifest must not silently become a skipped task.
     bad = dict(metadata[tasks[0].name], unexpected=True)
     rejected(lambda: validate(bad, schema), 'unknown fields')
-    bad = dict(metadata[tasks[0].name], oracle={'files': ['../outside', 'oracle/valid.sakura'], 'command': []})
+    bad = dict(metadata[tasks[0].name], oracle={'files': ['../outside', 'oracle/valid.sak'], 'command': []})
     rejected(lambda: validate(bad, schema), 'pattern mismatch')
     if args.task:
         require(args.task in metadata, 'unknown selected task')

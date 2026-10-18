@@ -8,7 +8,7 @@ fuzz_target!(|data: &[u8]| {
         return;
     }
     let text = String::from_utf8_lossy(data).into_owned();
-    let snapshot = Snapshot::with_std([("file:///fuzz/src/main.sakura".into(), text)]);
+    let snapshot = Snapshot::with_std([("file:///fuzz/src/main.sak".into(), text)]);
     let opts = BuildOptions {
         all_fns: true,
         ..Default::default()

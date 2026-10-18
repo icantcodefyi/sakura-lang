@@ -6,7 +6,7 @@
 // Design §15.8. `main` calls a real model, so CI runs the offline test only: `research`
 // replays `tests/fixtures/research.jsonl` (a synthetic two-step cassette, see
 // `tests/fixtures/README.md`) through `Llm.anthropic`, with the knowledge base scripted; the
-// scripted agent-loop tests are `tests/semantics/std_agent.sakura`. Difference from the design text: `Prompt`
+// scripted agent-loop tests are `tests/semantics/std_agent.sak`. Difference from the design text: `Prompt`
 // comes from `std/prompt` and `HttpError`, `Response`, `Status` from `std/response` (one
 // home module per type, see compiler/std/INDEX.md), and `Budget.limits` is installed outside
 // `Llm.anthropic`, whose handler performs `Budget`.

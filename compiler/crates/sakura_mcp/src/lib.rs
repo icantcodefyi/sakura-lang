@@ -989,7 +989,7 @@ mod tests {
 
     #[test]
     fn minimal_edits_respect_char_boundaries() {
-        let f = sakura_diagnostics::SourceFile::new("file:///a.sakura", "let s = \"é\"\n");
+        let f = sakura_diagnostics::SourceFile::new("file:///a.sak", "let s = \"é\"\n");
         let e = minimal_edit(&f, "let s = \"è\"\n");
         let applied = Snapshot::new([(f.uri.clone(), f.text.clone())])
             .apply_edits(std::slice::from_ref(&e))

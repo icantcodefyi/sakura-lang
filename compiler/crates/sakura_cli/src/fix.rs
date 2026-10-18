@@ -142,7 +142,7 @@ pub fn fix(
     }
 }
 
-/// `src/app.sakura:3:14` for the `uri` and `start_byte` of a JSON span.
+/// `src/app.sak:3:14` for the `uri` and `start_byte` of a JSON span.
 fn location(snapshot: &Snapshot, span: &Value) -> String {
     let uri = span["uri"].as_str().unwrap_or_default();
     let Some(file) = snapshot.file_id(uri) else {
@@ -165,7 +165,7 @@ fn location(snapshot: &Snapshot, span: &Value) -> String {
     format!("{}:{line}:{col}", shown.display())
 }
 
-/// The `.sakura` files and `sakura.toml` under `roots` as of git revision `rev`, with the same URIs
+/// The `.sak` files and `sakura.toml` under `roots` as of git revision `rev`, with the same URIs
 /// `disk::load` gives the working tree. ponytail: one `git show` per file; `git cat-file
 /// --batch` when workspaces get large.
 pub fn git_base(rev: &str, roots: &[PathBuf]) -> Result<Snapshot, String> {
@@ -189,7 +189,7 @@ pub fn git_base(rev: &str, roots: &[PathBuf]) -> Result<Snapshot, String> {
             &dir,
             &["ls-tree", "-r", "-z", "--name-only", rev, "--", &spec],
         )?;
-        for name in listed.split('\0').filter(|n| n.ends_with(".sakura")) {
+        for name in listed.split('\0').filter(|n| n.ends_with(".sak")) {
             let path = dir.join(name);
             let text = git(&dir, &["show", &format!("{rev}:./{name}")])?;
             files.push((

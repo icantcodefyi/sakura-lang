@@ -2,7 +2,7 @@
 source: crates/sakura_syntax/tests/parse.rs
 assertion_line: 42
 expression: out
-input_file: crates/sakura_syntax/tests/data/err/effect_rows.sakura
+input_file: crates/sakura_syntax/tests/data/err/effect_rows.sak
 ---
 V0001 29..30: expected a row variable after `|`, found `}`
 V0001 62..63: expected a row variable after `|`, found type name

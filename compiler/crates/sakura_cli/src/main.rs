@@ -223,7 +223,7 @@ enum Command {
         #[command(subcommand)]
         action: McpAction,
     },
-    /// Create a project in a new directory: `sakura.toml`, `sakura.lock`, `src/main.sakura` with one
+    /// Create a project in a new directory: `sakura.toml`, `sakura.lock`, `src/main.sak` with one
     /// test, a `[permissions]` table, and `AGENTS.md` and `CLAUDE.md` for coding agents.
     New {
         /// `cli`, `lib` or `agent` (`api` needs `std/serve`).

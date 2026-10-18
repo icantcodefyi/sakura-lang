@@ -46,7 +46,7 @@ jobs:
           mkdir -p "$CORPUS"
           cp fuzz/corpus/"$FUZZ_TARGET"/* "$CORPUS"/
           if [ "$FUZZ_TARGET" != row_unify ]; then
-            cp tests/ui/*.sakura tests/semantics/*.sakura "$CORPUS"/
+            cp tests/ui/*.sak tests/semantics/*.sak "$CORPUS"/
           fi
       - name: Fuzz for ten minutes
         run: >-

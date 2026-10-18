@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "05-stable-unique",
-  "revision": 1,
+  "revision": 2,
   "category": "holes-retrieval",
   "skills": [
     "typed-holes",
@@ -13,13 +13,13 @@
     "revision": "d64323e7bc75a94c83cd77199a042b71af3d352f",
     "backend": "js"
   },
-  "starter_sha256": "31b4503f3f57ec6045118102348cdc2e7a48e3bdc17feda69145ff8916b96d3d",
+  "starter_sha256": "1f32e25e0e517ad5a869d87ad7341645f3f10c381ef9243daf203838ebdb39ed",
   "starter_files": {
     "sakura.toml": "04bbb2e8f8abc2b33f611a38d0cfae91a184be04fea6f831b41f86c0d982e402",
-    "src/main.sakura": "3b5c028e3b67f8d7aa8d6663b52a454c2309381d081d03588b815a1ab5029cbf"
+    "src/main.sak": "3b5c028e3b67f8d7aa8d6663b52a454c2309381d081d03588b815a1ab5029cbf"
   },
   "editable_files": [
-    "src/main.sakura"
+    "src/main.sak"
   ],
   "frozen_baseline": {
     "strategy": "commit-starter",
@@ -28,8 +28,8 @@
   },
   "oracle": {
     "files": [
-      "oracle/order.sakura",
-      "oracle/empty.sakura"
+      "oracle/order.sak",
+      "oracle/empty.sak"
     ],
     "command": [
       "sakura",

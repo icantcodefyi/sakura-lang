@@ -72,20 +72,20 @@
           "type": "string",
           "pattern": "^[0-9a-f]{64}$"
         },
-        "src/main.sakura": {
+        "src/main.sak": {
           "type": "string",
           "pattern": "^[0-9a-f]{64}$"
         }
       },
       "required": [
         "sakura.toml",
-        "src/main.sakura"
+        "src/main.sak"
       ],
       "additionalProperties": false
     },
     "editable_files": {
       "const": [
-        "src/main.sakura"
+        "src/main.sak"
       ]
     },
     "frozen_baseline": {
@@ -115,7 +115,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "pattern": "^oracle/[a-z]+(-[a-z]+)*[.]sakura$"
+            "pattern": "^oracle/[a-z]+(-[a-z]+)*[.]sak$"
           },
           "minItems": 2,
           "maxItems": 4,

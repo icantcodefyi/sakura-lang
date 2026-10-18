@@ -2,7 +2,7 @@
 source: crates/sakura_syntax/tests/parse.rs
 assertion_line: 42
 expression: out
-input_file: crates/sakura_syntax/tests/data/err/stray_else.sakura
+input_file: crates/sakura_syntax/tests/data/err/stray_else.sak
 ---
 V0001 25..29: expected an expression
 V0001 54..55: expected `if` or `{` after `else`, found `}`

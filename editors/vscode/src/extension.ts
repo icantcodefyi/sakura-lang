@@ -155,7 +155,7 @@ async function showHoleContext(): Promise<unknown> {
   const editor = vscode.window.activeTextEditor;
   const client = editor && clients.get(rootOf(editor.document.uri));
   if (!editor || editor.document.languageId !== "sakura" || !client) {
-    vscode.window.showInformationMessage("Sakura: open a .sakura file of a running project.");
+    vscode.window.showInformationMessage("Sakura: open a .sak file of a running project.");
     return null;
   }
   const c2p = client.code2ProtocolConverter;

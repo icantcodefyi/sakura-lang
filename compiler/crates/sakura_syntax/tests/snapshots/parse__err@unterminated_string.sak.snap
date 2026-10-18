@@ -2,7 +2,7 @@
 source: crates/sakura_syntax/tests/parse.rs
 assertion_line: 38
 expression: out
-input_file: crates/sakura_syntax/tests/data/err/unterminated_string.sakura
+input_file: crates/sakura_syntax/tests/data/err/unterminated_string.sak
 ---
 V0002 21..40: unterminated string literal
 V0001 40..40: expected `}`, found end of file

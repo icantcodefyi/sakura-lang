@@ -5,9 +5,9 @@ use sakura_analysis::{Analysis, FileEdit, Snapshot, stats};
 #[test]
 fn edits_reparse_only_the_edited_file_and_queries_share_one_analysis() {
     let files = [
-        ("file:///p/src/a.sakura", "pub fn a() -> Int { 1 }\n"),
-        ("file:///p/src/b.sakura", "pub fn b() -> Int { 2 }\n"),
-        ("file:///p/src/c.sakura", "fn private_body() -> Int { 3 }\n"),
+        ("file:///p/src/a.sak", "pub fn a() -> Int { 1 }\n"),
+        ("file:///p/src/b.sak", "pub fn b() -> Int { 2 }\n"),
+        ("file:///p/src/c.sak", "fn private_body() -> Int { 3 }\n"),
     ];
     let snap = Snapshot::with_std(files.map(|(u, t)| (u.to_owned(), t.to_owned())));
     let before = stats();
@@ -36,7 +36,7 @@ fn edits_reparse_only_the_edited_file_and_queries_share_one_analysis() {
         .unwrap();
     let warm = Analysis::analyze(&edited);
     let after = stats();
-    assert_eq!(after.parses - cold.parses, 1, "only c.sakura is reparsed");
+    assert_eq!(after.parses - cold.parses, 1, "only c.sak is reparsed");
     assert_eq!(after.analyses - cold.analyses, 1);
     assert!(warm.interface_delta(&first).is_empty());
 }

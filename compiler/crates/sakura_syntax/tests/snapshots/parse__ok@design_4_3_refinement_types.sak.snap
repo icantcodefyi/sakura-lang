@@ -2,7 +2,7 @@
 source: crates/sakura_syntax/tests/parse.rs
 assertion_line: 28
 expression: out
-input_file: crates/sakura_syntax/tests/data/ok/design_4_3_refinement_types.sakura
+input_file: crates/sakura_syntax/tests/data/ok/design_4_3_refinement_types.sak
 ---
 SOURCE_FILE@0..166
   TYPE_DECL@0..69

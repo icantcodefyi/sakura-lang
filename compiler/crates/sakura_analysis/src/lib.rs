@@ -647,11 +647,11 @@ impl Analysis {
     }
 }
 
-/// Where a snapshot file belongs: `("std", "list")` for `sakura:///std/list.sakura`; user files are
+/// Where a snapshot file belongs: `("std", "list")` for `sakura:///std/list.sak`; user files are
 /// package `main` (renamed by [`package_name`]) with the path relative to the last `src/`
 /// (`users/repo`), or the file stem.
 fn module_of(uri: &str) -> (&'static str, String) {
-    let path = uri.strip_suffix(".sakura").unwrap_or(uri);
+    let path = uri.strip_suffix(".sak").unwrap_or(uri);
     if let Some(rest) = path.strip_prefix("sakura:///std/") {
         return ("std", rest.to_owned());
     }
@@ -782,7 +782,7 @@ fn lower(
 /// Whether a snapshot file is a Sakura Lang module (other files, like `sakura.toml`, ride along for
 /// manifest checks).
 pub fn is_module(uri: &str) -> bool {
-    uri.ends_with(".sakura")
+    uri.ends_with(".sak")
 }
 
 #[cfg(test)]
@@ -791,42 +791,33 @@ mod tests {
 
     #[test]
     fn module_paths() {
+        assert_eq!(module_of("sakura:///std/list.sak"), ("std", "list".into()));
         assert_eq!(
-            module_of("sakura:///std/list.sakura"),
-            ("std", "list".into())
-        );
-        assert_eq!(
-            module_of("file:///p/src/users/repo.sakura"),
+            module_of("file:///p/src/users/repo.sak"),
             ("main", "users/repo".into())
         );
-        assert_eq!(
-            module_of("file:///tmp/hello.sakura"),
-            ("main", "hello".into())
-        );
+        assert_eq!(module_of("file:///tmp/hello.sak"), ("main", "hello".into()));
     }
 
     #[test]
     fn std_is_embedded() {
         let std: Vec<_> = std_sources().collect();
-        assert!(
-            std.iter()
-                .any(|(uri, _)| uri == "sakura:///std/core.sakura")
-        );
+        assert!(std.iter().any(|(uri, _)| uri == "sakura:///std/core.sak"));
     }
 
     #[test]
     fn snapshot_is_order_independent_and_content_addressed() {
         let a = Snapshot::new([
-            ("file:///b.sakura".into(), "x".into()),
-            ("file:///a.sakura".into(), "y".into()),
+            ("file:///b.sak".into(), "x".into()),
+            ("file:///a.sak".into(), "y".into()),
         ]);
         let b = Snapshot::new([
-            ("file:///a.sakura".into(), "y".into()),
-            ("file:///b.sakura".into(), "x".into()),
+            ("file:///a.sak".into(), "y".into()),
+            ("file:///b.sak".into(), "x".into()),
         ]);
         assert_eq!(a.hash(), b.hash());
-        assert_eq!(a.file_id("file:///a.sakura"), Some(FileId(0)));
-        let c = Snapshot::new([("file:///a.sakura".into(), "z".into())]);
+        assert_eq!(a.file_id("file:///a.sak"), Some(FileId(0)));
+        let c = Snapshot::new([("file:///a.sak".into(), "z".into())]);
         assert_ne!(a.hash(), c.hash());
     }
 }

@@ -70,14 +70,14 @@ fn examples() {
     let mut dirs: Vec<_> = std::fs::read_dir(&root)
         .unwrap()
         .filter_map(|e| e.ok().map(|e| e.path()))
-        .filter(|p| p.join("src/main.sakura").is_file())
+        .filter(|p| p.join("src/main.sak").is_file())
         .collect();
     dirs.sort();
     assert!(!dirs.is_empty(), "no examples under {}", root.display());
     let mut report = Report::default();
     for dir in dirs {
         let name = dir.file_name().unwrap().to_string_lossy().into_owned();
-        let d = directives(&std::fs::read_to_string(dir.join("src/main.sakura")).unwrap());
+        let d = directives(&std::fs::read_to_string(dir.join("src/main.sak")).unwrap());
         match skip_reason(&d, EXAMPLES_MILESTONE) {
             Some(why) => report.skip(&name, why),
             None => report.settle(&name, &d, run(&dir, &d)),

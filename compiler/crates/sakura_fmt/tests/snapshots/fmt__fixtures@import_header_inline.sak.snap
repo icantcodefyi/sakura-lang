@@ -1,7 +1,7 @@
 ---
 source: crates/sakura_fmt/tests/fmt.rs
 expression: "check(path, &text)"
-input_file: tests/fmt/import_header_inline.sakura
+input_file: tests/fmt/import_header_inline.sak
 ---
 // milestone: M1
 // expect: V1002

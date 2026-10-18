@@ -2,7 +2,7 @@
 source: crates/sakura_syntax/tests/parse.rs
 assertion_line: 42
 expression: out
-input_file: crates/sakura_syntax/tests/data/err/reserved_and_invalid.sakura
+input_file: crates/sakura_syntax/tests/data/err/reserved_and_invalid.sak
 ---
 V0007 28..33: `actor` is reserved for a later edition
 V0007 61..66: `spawn` is reserved for a later edition

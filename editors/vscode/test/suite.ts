@@ -34,10 +34,10 @@ const tests: [string, (api: SakuraApi) => Promise<void>][] = [
   [
     "stdio start: diagnostics with their error-page link",
     async (api) => {
-      await open("a/src/main.sakura");
+      await open("a/src/main.sak");
       await waitFor("a server", () => api.roots().length > 0);
       await api.ready(a);
-      const [d] = await diagnostics("a/src/main.sakura");
+      const [d] = await diagnostics("a/src/main.sak");
       assert.equal(d.source, "sakura");
       const code = d.code as { value: string; target: vscode.Uri };
       assert.match(code.value, /^[A-Z]\d{4}$/);
@@ -51,16 +51,16 @@ const tests: [string, (api: SakuraApi) => Promise<void>][] = [
     "root selection: the nearest sakura.toml, not the workspace folder",
     async (api) => {
       assert.deepEqual(api.roots(), [a]);
-      // a/src/bad.sakura was never opened; the server found it under its root.
-      await diagnostics("a/src/bad.sakura");
+      // a/src/bad.sak was never opened; the server found it under its root.
+      await diagnostics("a/src/bad.sak");
       // b is another project: its files are not analysed by a's server.
-      assert.equal(vscode.languages.getDiagnostics(uri("b/src/bad.sakura")).length, 0);
+      assert.equal(vscode.languages.getDiagnostics(uri("b/src/bad.sak")).length, 0);
     },
   ],
   [
     "UTF-16 positions after edits: hole context at the cursor",
     async () => {
-      const editor = await open("a/src/holes.sakura");
+      const editor = await open("a/src/holes.sak");
       await editor.edit((e) => e.insert(new vscode.Position(0, 0), "// é𝄞\n"));
       const line = editor.document.lineAt(1).text;
       const at = line.indexOf("{ ?rest");
@@ -79,9 +79,9 @@ const tests: [string, (api: SakuraApi) => Promise<void>][] = [
   [
     "quick fixes show their impact class and refuse to apply once stale",
     async () => {
-      const editor = await open("a/src/fix.sakura");
+      const editor = await open("a/src/fix.sak");
       const doc = editor.document;
-      await diagnostics("a/src/fix.sakura");
+      await diagnostics("a/src/fix.sak");
       // Only this extension's fixes (VS Code's built-in chat offers its own "Fix").
       const fixes = async () =>
         (
@@ -107,7 +107,7 @@ const tests: [string, (api: SakuraApi) => Promise<void>][] = [
   [
     "format on save",
     async () => {
-      const editor = await open("a/src/fmt.sakura");
+      const editor = await open("a/src/fmt.sak");
       await editor.edit((e) => e.insert(new vscode.Position(1, 0), "\n"));
       await editor.document.save();
       assert.ok(editor.document.getText().startsWith("fn double(x: Int) -> Int"));

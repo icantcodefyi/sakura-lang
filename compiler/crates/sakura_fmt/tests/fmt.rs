@@ -1,4 +1,4 @@
-//! `compiler/tests/fmt/*.sakura` are formatter inputs; their formatted output is snapshotted. Every
+//! `compiler/tests/fmt/*.sak` are formatter inputs; their formatted output is snapshotted. Every
 //! input and every `sakura_syntax` fixture must format idempotently into a file that reparses
 //! without errors and keeps every token (modulo `,`/`;`/newlines and sorted rows/imports).
 
@@ -58,7 +58,7 @@ fn check(path: &Path, text: &str) -> String {
 
 #[test]
 fn fixtures() {
-    insta::glob!("../../../tests/fmt", "*.sakura", |path| {
+    insta::glob!("../../../tests/fmt", "*.sak", |path| {
         let text = std::fs::read_to_string(path).unwrap();
         insta::assert_snapshot!(check(path, &text));
     });
@@ -82,10 +82,10 @@ fn refuses_parse_errors() {
 // Design §12.5: formatting preserves comments and reparses idempotently.
 #[test]
 fn noncharacter_comment_regression() {
-    let text = include_str!("../../../fuzz/corpus/fmt_idempotent/noncharacter_comment.sakura");
+    let text = include_str!("../../../fuzz/corpus/fmt_idempotent/noncharacter_comment.sak");
     assert_eq!(text.as_bytes(), &[0x2f, 0x2f, 0xef, 0xb7, 0x90]);
     assert_eq!(
-        check(Path::new("noncharacter_comment.sakura"), text),
+        check(Path::new("noncharacter_comment.sak"), text),
         format!("{text}\n")
     );
 }
@@ -119,7 +119,7 @@ fn line_comment_boundaries_preserve_unicode_and_controls() {
                 let original_comments = comments(&text);
                 assert_eq!(original_comments.len(), 1);
                 assert!(original_comments[0].contains(c));
-                let once = check(Path::new("line_comment_boundaries.sakura"), &text);
+                let once = check(Path::new("line_comment_boundaries.sak"), &text);
                 assert_eq!(
                     original_comments,
                     comments(&once),
@@ -137,7 +137,7 @@ fn raw_newlines_and_noncharacters_are_preserved() {
         "fn f() -> String { \"\u{fdd0}n\n\u{fdd0}e \u{fdd0} \nend\" }\n",
         "fn f() -> String { \"outer{\"\u{fdd0}n\u{fdd0}e\"}\" }\n",
     ] {
-        let once = check(Path::new("raw_newlines_and_noncharacters.sakura"), text);
+        let once = check(Path::new("raw_newlines_and_noncharacters.sak"), text);
         assert_eq!(once, text);
     }
 }

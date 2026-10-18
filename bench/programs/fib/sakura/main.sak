@@ -5,7 +5,7 @@ fn fib(n: Int) -> Int { if n < 2 { n } else { fib(n - 1) + fib(n - 2) } }
 
 pub fn run(n: Int) -> Int { fib(n) }
 
-// `sakura run main.sakura -- <n>...` prints run(n) for each argument.
+// `sakura run main.sak -- <n>...` prints run(n) for each argument.
 pub fn main() -> Unit ! {Cli, Console} {
   for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
 }

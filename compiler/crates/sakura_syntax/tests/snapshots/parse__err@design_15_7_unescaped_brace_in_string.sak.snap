@@ -2,7 +2,7 @@
 source: crates/sakura_syntax/tests/parse.rs
 assertion_line: 42
 expression: out
-input_file: crates/sakura_syntax/tests/data/err/design_15_7_unescaped_brace_in_string.sakura
+input_file: crates/sakura_syntax/tests/data/err/design_15_7_unescaped_brace_in_string.sak
 ---
 V0002 1313..1519: unterminated string literal
 V0004 1315..1316: unexpected character `\`

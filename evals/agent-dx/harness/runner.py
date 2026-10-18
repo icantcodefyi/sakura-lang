@@ -272,8 +272,8 @@ def verdict(task, meta, binary, candidate, scratch):
         offline.materialize(directory, candidate)
     except (AssertionError, KeyError, UnicodeDecodeError) as error:
         reasons.append(f'guard: {error}')
-        if 'src/main.sakura' in candidate:
-            (directory / 'src/main.sakura').write_bytes(candidate['src/main.sakura'])
+        if 'src/main.sak' in candidate:
+            (directory / 'src/main.sak').write_bytes(candidate['src/main.sak'])
     try:
         rows = offline.records(offline.run([binary, 'check', '--json'], directory))
         codes, holes = codes_of(rows), rows[-1].get('holes')

@@ -2,7 +2,7 @@
 source: crates/sakura_syntax/tests/parse.rs
 assertion_line: 42
 expression: out
-input_file: crates/sakura_syntax/tests/data/err/round2_forms.sakura
+input_file: crates/sakura_syntax/tests/data/err/round2_forms.sak
 ---
 V0011 122..123: expressions take no type arguments; annotate the binding instead, e.g. `let rows: List<User> = Sql.query(q)`
 V0011 150..151: expressions take no type arguments; annotate the binding instead, e.g. `let rows: List<User> = Sql.query(q)`

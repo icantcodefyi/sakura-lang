@@ -1,7 +1,7 @@
 ---
 source: crates/sakura_fmt/tests/fmt.rs
 expression: "check(path, &text)"
-input_file: tests/fmt/import_comments.sakura
+input_file: tests/fmt/import_comments.sak
 ---
 // Licence header: stays at the top of the file.
 

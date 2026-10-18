@@ -18,8 +18,8 @@ RUNNER = HERE / 'runner.py'
 TASKS = HERE.parent / 'tasks'
 SAKURA = os.environ.get('SAKURA', '')
 TASK = '03-path-label'
-GOLD = (TASKS / TASK / 'gold/src/main.sakura').read_text()
-HOLLOW = (TASKS / TASK / 'hollow/src/main.sakura').read_text()
+GOLD = (TASKS / TASK / 'gold/src/main.sak').read_text()
+HOLLOW = (TASKS / TASK / 'hollow/src/main.sak').read_text()
 PRICES = 'claude-test=4/20'
 
 
@@ -38,7 +38,7 @@ def done():
 
 
 def write(uid, text):
-    return tool('write_file', uid, path='src/main.sakura', content=text)
+    return tool('write_file', uid, path='src/main.sak', content=text)
 
 
 def check(uid, sub='check'):

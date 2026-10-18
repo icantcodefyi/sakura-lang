@@ -11,7 +11,7 @@ expression: recs
     "name": "result",
     "snapshot": "sha256:snap",
     "span": {
-      "uri": "file:///work/main.sakura",
+      "uri": "file:///work/main.sak",
       "content_hash": "sha256:ec3588ff2edf0796d65d68df71928d166a05a98c8a3a04c39169f14e61a1880b",
       "start_byte": 59,
       "end_byte": 63,

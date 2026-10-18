@@ -15,9 +15,9 @@ fn diagnostics_navigation_and_formatting_over_stdio() {
     let dir = std::env::temp_dir().join(format!("sakura-lsp-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    std::fs::write(dir.join("main.sakura"), BROKEN).unwrap();
+    std::fs::write(dir.join("main.sak"), BROKEN).unwrap();
     let root = format!("file://{}", dir.display());
-    let uri = format!("{root}/main.sakura");
+    let uri = format!("{root}/main.sak");
 
     let (mut c, init) = Lsp::start(&root);
     assert_eq!(init["capabilities"]["positionEncoding"], "utf-16", "{init}");
@@ -113,7 +113,7 @@ fn quick_fixes_name_the_document_version() {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let root = format!("file://{}", dir.display());
-    let uri = format!("{root}/main.sakura");
+    let uri = format!("{root}/main.sak");
     let caps = json!({"workspace": {"workspaceEdit": {"documentChanges": true}}});
     let (mut c, _) = Lsp::start_with(&root, caps);
     let case = "fn count() -> Int { list.len([1, 2]) }\n";
@@ -149,9 +149,9 @@ fn lsp_hole_context_matches_mcp_after_unicode_edits() {
         "// é𝄞\nfn label(n: Int) -> Int { String.len(\"é𝄞\") + ?rest }\n",
     ];
     let last = steps[2];
-    std::fs::write(dir.join("main.sakura"), steps[0]).unwrap();
+    std::fs::write(dir.join("main.sak"), steps[0]).unwrap();
     let root = format!("file://{}", dir.display());
-    let uri = format!("{root}/main.sakura");
+    let uri = format!("{root}/main.sak");
 
     let (mut c, _) = Lsp::start(&root);
     let doc = json!({"uri": uri, "languageId": "sakura", "version": 1, "text": steps[0]});
@@ -173,7 +173,7 @@ fn lsp_hole_context_matches_mcp_after_unicode_edits() {
     let from_lsp = c.request("sakura/holeContext", at);
     assert!(c.shutdown());
 
-    std::fs::write(dir.join("main.sakura"), last).unwrap();
+    std::fs::write(dir.join("main.sak"), last).unwrap();
     let mut m = Mcp::start(&dir);
     let (check, _) = m.call("check", json!({}));
     let hole_id = &check["holes"][0]["id"];
@@ -195,10 +195,10 @@ fn std_definitions_open_and_disk_edits_show_without_save() {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let main = "pub fn main() -> Unit ! {Console} { Console.print(\"hi\") }\n";
-    std::fs::write(dir.join("main.sakura"), main).unwrap();
-    std::fs::write(dir.join("other.sakura"), "fn ok() -> Int { 1 }\n").unwrap();
+    std::fs::write(dir.join("main.sak"), main).unwrap();
+    std::fs::write(dir.join("other.sak"), "fn ok() -> Int { 1 }\n").unwrap();
     let root = format!("file://{}", dir.display());
-    let uri = format!("{root}/main.sakura");
+    let uri = format!("{root}/main.sak");
 
     let (mut c, _) = Lsp::start(&root);
     let doc = json!({"uri": uri, "languageId": "sakura", "version": 1, "text": main});
@@ -209,7 +209,7 @@ fn std_definitions_open_and_disk_edits_show_without_save() {
     let def = c.request("textDocument/definition", at);
     let target = def["uri"].as_str().unwrap_or_default();
     assert!(
-        target.starts_with("file://") && target.ends_with("/std/console.sakura"),
+        target.starts_with("file://") && target.ends_with("/std/console.sak"),
         "{def}"
     );
     let path = target.strip_prefix("file://").unwrap();
@@ -221,11 +221,11 @@ fn std_definitions_open_and_disk_edits_show_without_save() {
     );
     assert!(std::fs::metadata(path).unwrap().permissions().readonly());
 
-    std::fs::write(dir.join("other.sakura"), "fn bad() -> Int { \"no\" }\n").unwrap();
+    std::fs::write(dir.join("other.sak"), "fn bad() -> Int { \"no\" }\n").unwrap();
     let change =
         json!({"textDocument": {"uri": uri, "version": 2}, "contentChanges": [{"text": main}]});
     c.notify("textDocument/didChange", change);
-    let other = c.diagnostics(&format!("{root}/other.sakura"));
+    let other = c.diagnostics(&format!("{root}/other.sak"));
     assert!(other.iter().any(|d| d["code"] == "V2001"), "{other:?}");
     assert!(c.shutdown());
     let _ = std::fs::remove_dir_all(&dir);

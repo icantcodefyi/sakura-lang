@@ -9,7 +9,7 @@
 //! - `hole-step`: no error and at least one hole;
 //! - `wrong:<code>`: `<code>` is reported as an error whose primary span covers exactly the text
 //!   in `<id>.span`; the fixed program is the fence with the same id and another mode, else
-//!   `<id>.fixed.sakura`, and must check clean;
+//!   `<id>.fixed.sak`, and must check clean;
 //! - `fragment`: not a complete program, labelled so, not run.
 //!
 //! Recipe fences add `project=<example-directory>` to `test`: their source must match the
@@ -227,7 +227,7 @@ fn classify(fences: Vec<Fence>) -> Result<Vec<Fixture>, Vec<String>> {
     }
 }
 
-/// A fresh project holding `source` as `src/main.sakura`.
+/// A fresh project holding `source` as `src/main.sak`.
 fn project(name: &str, source: &str) -> PathBuf {
     let dir = std::env::temp_dir()
         .join(format!("sakura-agent-docs-{}", std::process::id()))
@@ -235,7 +235,7 @@ fn project(name: &str, source: &str) -> PathBuf {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(dir.join("src")).unwrap();
     std::fs::write(dir.join("sakura.toml"), MANIFEST).unwrap();
-    std::fs::write(dir.join("src/main.sakura"), source).unwrap();
+    std::fs::write(dir.join("src/main.sak"), source).unwrap();
     dir
 }
 
@@ -314,7 +314,7 @@ fn positive(
             .join("../../examples")
             .join(example);
         let canonical =
-            std::fs::read_to_string(original.join("src/main.sakura")).map_err(|e| e.to_string())?;
+            std::fs::read_to_string(original.join("src/main.sak")).map_err(|e| e.to_string())?;
         if source != canonical {
             return Err(format!(
                 "{example}: recipe source differs from the example; regenerate agent_docs"
@@ -373,7 +373,7 @@ fn wrong(f: &Fixture, code: &str, fixed: Option<&Fixture>, expect: &Path) -> Res
             fixed.project.as_deref(),
         ),
         None => {
-            let path = expect.join(format!("{}.fixed.sakura", f.id));
+            let path = expect.join(format!("{}.fixed.sak", f.id));
             let source = std::fs::read_to_string(&path).map_err(|_| {
                 format!(
                     "no fixed program: add a fence `id={}` or {}",
@@ -420,7 +420,7 @@ fn orphans(fixtures: &[Fixture], expect: &Path) -> Vec<String> {
             Mode::Run => used.push(format!("{}.stdout", f.id)),
             Mode::Wrong(_) => {
                 used.push(format!("{}.span", f.id));
-                used.push(format!("{}.fixed.sakura", f.id));
+                used.push(format!("{}.fixed.sak", f.id));
             }
             _ => {}
         }

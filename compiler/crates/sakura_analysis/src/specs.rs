@@ -317,7 +317,7 @@ mod tests {
 
     fn analyze(text: &str) -> std::sync::Arc<Analyzed> {
         Analysis::analyze(&Snapshot::with_std([(
-            "file:///p/src/app.sakura".into(),
+            "file:///p/src/app.sak".into(),
             text.into(),
         )]))
     }

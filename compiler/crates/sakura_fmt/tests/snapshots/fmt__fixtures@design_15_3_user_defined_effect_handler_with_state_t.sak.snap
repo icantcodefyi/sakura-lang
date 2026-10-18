@@ -2,7 +2,7 @@
 source: crates/sakura_fmt/tests/fmt.rs
 assertion_line: 45
 expression: "check(path, &text)"
-input_file: tests/fmt/design_15_3_user_defined_effect_handler_with_state_t.sakura
+input_file: tests/fmt/design_15_3_user_defined_effect_handler_with_state_t.sak
 ---
 effect Counter {
   fn next() -> Int

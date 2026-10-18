@@ -16,7 +16,7 @@ mod bless {
 
     use crate as v;
 
-    /// For each `<dir>/fixtures/<name>.sakura`, writes `<dir>/core/<name>.json` under
+    /// For each `<dir>/fixtures/<name>.sak`, writes `<dir>/core/<name>.json` under
     /// `SAKURA_BLESS=1`; otherwise asserts each snapshot exists.
     pub fn bless_dir(dir: &Path) {
         let bless = std::env::var("SAKURA_BLESS").is_ok_and(|v| v == "1");
@@ -33,13 +33,13 @@ mod bless {
         }
     }
 
-    /// The snapshot of the program `source` (as `file:///<name>/src/main.sakura`, with std).
+    /// The snapshot of the program `source` (as `file:///<name>/src/main.sak`, with std).
     ///
     /// # Panics
     ///
     /// If the program has errors.
     pub fn snapshot(name: &str, source: &str) -> v::Snapshot {
-        let uri = format!("file:///{name}/src/main.sakura");
+        let uri = format!("file:///{name}/src/main.sak");
         let snap = sakura_analysis::Snapshot::with_std([(uri, source.to_owned())]);
         let (module, diags) = Analysis::lower_core(&snap, &Default::default());
         let errors: Vec<String> = diags

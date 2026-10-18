@@ -43,7 +43,7 @@ def main():
                 label = f"{page.stem}-{index}"
                 project = Path(tmp) / label
                 (project / "src").mkdir(parents=True)
-                (project / "src/main.sakura").write_text(code + "\n")
+                (project / "src/main.sak").write_text(code + "\n")
                 (project / "sakura.toml").write_text('[package]\nname = "docs_sample"\n')
                 if page.stem == "cassettes":
                     shutil.copytree(
@@ -64,7 +64,7 @@ def main():
                     else:
                         assert "synthetic-key" not in cassette.read_text()
                         # Replay must work without any response from the outer HTTP handler.
-                        (project / "src/main.sakura").write_text(
+                        (project / "src/main.sak").write_text(
                             code.replace(
                                 "Http.scripted([(Matcher.Any, response)])", "Http.scripted([])"
                             )
@@ -85,7 +85,7 @@ def main():
                     )
                     documented = re.search(r"```json\n(.*?)\n```", page.read_text(), re.S)
                     assert documented and regression == json.loads(documented.group(1))
-                    (project / "src/main.sakura").write_text(
+                    (project / "src/main.sak").write_text(
                         code.replace("{ x }", "{ x + 1 }")
                     )
                     result = subprocess.run(

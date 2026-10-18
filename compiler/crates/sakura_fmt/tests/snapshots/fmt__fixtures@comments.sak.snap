@@ -1,7 +1,7 @@
 ---
 source: crates/sakura_fmt/tests/fmt.rs
 expression: "check(path, &text)"
-input_file: tests/fmt/comments.sakura
+input_file: tests/fmt/comments.sak
 ---
 // File header comment.
 

@@ -2,9 +2,9 @@
 source: crates/sakura_fmt/tests/fmt.rs
 assertion_line: 45
 expression: "check(path, &text)"
-input_file: tests/fmt/design_15_1_hello_world_with_effects.sakura
+input_file: tests/fmt/design_15_1_hello_world_with_effects.sak
 ---
-// examples/hello/src/main.sakura
+// examples/hello/src/main.sak
 fn greet(name: String) -> Unit ! {Clock, Console} {
   let now = Clock.now()
   Console.print("hello, {name}; it is {Instant.format_iso(now)}")

@@ -2,7 +2,7 @@
 source: crates/sakura_fmt/tests/fmt.rs
 assertion_line: 45
 expression: "check(path, &text)"
-input_file: tests/fmt/design_15_9_property_test_and_snapshot.sakura
+input_file: tests/fmt/design_15_9_property_test_and_snapshot.sak
 ---
 fn normalize(xs: List<Int>) -> List<Int> { List.unique(List.sort(xs)) }
 

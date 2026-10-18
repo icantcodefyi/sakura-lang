@@ -1,4 +1,4 @@
-//! Runs `compiler/tests/semantics/*.sakura` (`// mode: run`, milestone ≤ M2) through the real
+//! Runs `compiler/tests/semantics/*.sak` (`// mode: run`, milestone ≤ M2) through the real
 //! pipeline under node and compares stdout and the exit code.
 
 mod common;
@@ -15,7 +15,7 @@ fn semantics_corpus() {
     let mut files: Vec<_> = std::fs::read_dir(&dir)
         .unwrap()
         .map(|e| e.unwrap().path())
-        .filter(|p| p.extension().is_some_and(|e| e == "sakura"))
+        .filter(|p| p.extension().is_some_and(|e| e == "sak"))
         .collect();
     files.sort();
     let mut failures = Vec::new();

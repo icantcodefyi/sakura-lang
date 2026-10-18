@@ -2,7 +2,7 @@
 source: crates/sakura_syntax/tests/parse.rs
 assertion_line: 42
 expression: out
-input_file: crates/sakura_syntax/tests/data/err/unclosed_match.sakura
+input_file: crates/sakura_syntax/tests/data/err/unclosed_match.sak
 ---
 V0001 58..60: expected `}`, found `fn`
 

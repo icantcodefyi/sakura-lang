@@ -158,8 +158,7 @@ pub fn main() -> Unit ! {Console} { Console.print("{run(3)}") }
 #[test]
 fn loops_with_unbound_performs_resume_at_their_head() {
     for (name, n) in [("handled_suspend", "300001"), ("handled_fwd", "300000")] {
-        let path =
-            common::compiler_dir().join(format!("../bench/programs/{name}/sakura/main.sakura"));
+        let path = common::compiler_dir().join(format!("../bench/programs/{name}/sakura/main.sak"));
         let src = std::fs::read_to_string(path).unwrap();
         let src = src.replace("pub fn main()", "pub fn bench_main()")
             + "pub fn main() -> Unit ! {Console} { Console.print(\"{run(100000)}\") }\n";
@@ -250,7 +249,7 @@ fn walkdir(dir: &std::path::Path) -> Vec<PathBuf> {
         let p = e.path();
         if p.is_dir() {
             out.extend(walkdir(&p));
-        } else if p.extension().is_some_and(|x| x == "sakura") {
+        } else if p.extension().is_some_and(|x| x == "sak") {
             out.push(p);
         }
     }

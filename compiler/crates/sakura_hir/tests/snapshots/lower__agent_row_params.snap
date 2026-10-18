@@ -1,6 +1,6 @@
 ---
 source: crates/sakura_hir/tests/lower.rs
-expression: "check(& [(\"main\", include_str!(\"inputs/agent_row_params.sakura\"))])"
+expression: "check(& [(\"main\", include_str!(\"inputs/agent_row_params.sak\"))])"
 ---
 == main
 pub type Tool<e> = record

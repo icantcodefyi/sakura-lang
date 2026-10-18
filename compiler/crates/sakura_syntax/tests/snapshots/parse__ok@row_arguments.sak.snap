@@ -1,7 +1,7 @@
 ---
 source: crates/sakura_syntax/tests/parse.rs
 expression: out
-input_file: crates/sakura_syntax/tests/data/ok/row_arguments.sakura
+input_file: crates/sakura_syntax/tests/data/ok/row_arguments.sak
 ---
 SOURCE_FILE@0..303
   TYPE_DECL@0..62

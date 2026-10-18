@@ -4,7 +4,7 @@
 // expect-exit@wasm: 0
 // covers: performance-r1 WS-S; design §17.111–§17.116
 
-// JS-safe profile extrema. The i64 D001 case is defect_D001_int_overflow.sakura.
+// JS-safe profile extrema. The i64 D001 case is defect_D001_int_overflow.sak.
 // Negating/dividing the JS-safe minimum is valid; these operations must keep their checks.
 fn maximum() -> Int { 9_007_199_254_740_991 }
 

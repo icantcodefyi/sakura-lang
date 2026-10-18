@@ -1,4 +1,4 @@
-//! Embeds `compiler/std/**.sakura` so the compiler is relocatable and no phase reads the filesystem.
+//! Embeds `compiler/std/**.sak` so the compiler is relocatable and no phase reads the filesystem.
 
 use std::path::{Path, PathBuf};
 
@@ -10,7 +10,7 @@ fn collect(dir: &Path, out: &mut Vec<PathBuf>) {
         let path = entry.path();
         if path.is_dir() {
             collect(&path, out);
-        } else if path.extension().is_some_and(|e| e == "sakura") {
+        } else if path.extension().is_some_and(|e| e == "sak") {
             out.push(path);
         }
     }

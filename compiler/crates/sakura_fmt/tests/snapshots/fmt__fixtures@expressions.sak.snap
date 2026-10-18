@@ -1,7 +1,7 @@
 ---
 source: crates/sakura_fmt/tests/fmt.rs
 expression: "check(path, &text)"
-input_file: tests/fmt/expressions.sakura
+input_file: tests/fmt/expressions.sak
 ---
 fn exprs(xs: List<Int>, c: Bool) -> Int {
   let condition = first_long_condition_name && second_long_condition_name

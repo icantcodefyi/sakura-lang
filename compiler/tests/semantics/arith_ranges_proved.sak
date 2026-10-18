@@ -2,7 +2,7 @@
 // covers: design §17.114 (interval pass); performance-r1 WS-P4
 
 // Operations the JS interval pass proves, at the edges of ±(2^53−1). Each must give exactly the
-// checked result; `arith_ranges_counter_overflow.sakura` is the unproved twin of `up`.
+// checked result; `arith_ranges_counter_overflow.sak` is the unproved twin of `up`.
 fn up(from: Int) -> Int {
   var i = from
   while i < 9_007_199_254_740_991 { i = i + 1 }

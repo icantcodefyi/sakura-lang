@@ -25,7 +25,7 @@ pub fn main() -> Unit {
 "#;
 
 fn core() -> Module {
-    let snap = Snapshot::with_std([("file:///c1/src/main.sakura".into(), PROGRAM.into())]);
+    let snap = Snapshot::with_std([("file:///c1/src/main.sak".into(), PROGRAM.into())]);
     let (m, diags) = Analysis::lower_core(&snap, &Default::default());
     m.unwrap_or_else(|| panic!("{diags:?}"))
 }

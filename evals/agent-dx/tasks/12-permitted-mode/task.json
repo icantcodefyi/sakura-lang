@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "12-permitted-mode",
-  "revision": 1,
+  "revision": 2,
   "category": "preserve-assurance",
   "skills": [
     "env-authority",
@@ -13,13 +13,13 @@
     "revision": "d64323e7bc75a94c83cd77199a042b71af3d352f",
     "backend": "js"
   },
-  "starter_sha256": "45f201e4e68bf0bb015bbc51c0a2d669189d4246ea0a32eb2e95feccaaa61f71",
+  "starter_sha256": "cf50a6ac591fc4523b42092fbfe95040cdabab9d97a0bf76e472880aa6fb2342",
   "starter_files": {
     "sakura.toml": "ff523b55e5184b55b66fd7f30916fe3759ea199fea8553184412e0252220aeab",
-    "src/main.sakura": "567fd43edbcd4a57835415e2a3052320ce7dcea20e4c9e78b18054f5c083dca2"
+    "src/main.sak": "567fd43edbcd4a57835415e2a3052320ce7dcea20e4c9e78b18054f5c083dca2"
   },
   "editable_files": [
-    "src/main.sakura"
+    "src/main.sak"
   ],
   "frozen_baseline": {
     "strategy": "commit-starter",
@@ -28,8 +28,8 @@
   },
   "oracle": {
     "files": [
-      "oracle/granted.sakura",
-      "oracle/denied.sakura"
+      "oracle/granted.sak",
+      "oracle/denied.sak"
     ],
     "command": [
       "sakura",

@@ -277,7 +277,7 @@ pub fn contract_outcomes(
     Ok((kept, warnings))
 }
 
-/// Whether `snapshot` holds only std modules (`sakura test std/list.sakura`, or a std checkout as the
+/// Whether `snapshot` holds only std modules (`sakura test std/list.sak`, or a std checkout as the
 /// MCP workspace): then std's own tests are the ones to run.
 pub fn only_std(snapshot: &Snapshot) -> bool {
     snapshot.user_files().next().is_none()

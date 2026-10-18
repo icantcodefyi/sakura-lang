@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "01-bounded-clamp",
-  "revision": 1,
+  "revision": 2,
   "category": "syntax-data",
   "skills": [
     "contracts",
@@ -12,13 +12,13 @@
     "revision": "d64323e7bc75a94c83cd77199a042b71af3d352f",
     "backend": "js"
   },
-  "starter_sha256": "8bf296bf5d82398c81888020c57432ab0c4ca89ded07fe4a46786989538b2361",
+  "starter_sha256": "a03ced840e72101418212bfb80920fc0682b5109aeae29ca13010123d7913c47",
   "starter_files": {
     "sakura.toml": "e0c61a052546f3d0d5ab44f7343bf80d82be65203a1b9466eae30720f4e9620c",
-    "src/main.sakura": "3f30db0971d2144af800682d08b66449b51d46738ba78ecb5355ff2b290ea128"
+    "src/main.sak": "3f30db0971d2144af800682d08b66449b51d46738ba78ecb5355ff2b290ea128"
   },
   "editable_files": [
-    "src/main.sakura"
+    "src/main.sak"
   ],
   "frozen_baseline": {
     "strategy": "commit-starter",
@@ -27,8 +27,8 @@
   },
   "oracle": {
     "files": [
-      "oracle/bounds.sakura",
-      "oracle/inside.sakura"
+      "oracle/bounds.sak",
+      "oracle/inside.sak"
     ],
     "command": [
       "sakura",

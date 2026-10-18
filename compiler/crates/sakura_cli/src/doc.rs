@@ -64,7 +64,7 @@ mod tests {
 
     #[test]
     fn name_id_and_type_search_preserve_mcp_records_and_contracts() {
-        let a = Analysis::analyze(&Snapshot::with_std([("file:///docs/src/main.sakura".into(), "/// Counts a list.\nfn count<A>(xs: List<A>) -> Int\n  ensures result >= 0\n{ List.len(xs) }\n".into())]));
+        let a = Analysis::analyze(&Snapshot::with_std([("file:///docs/src/main.sak".into(), "/// Counts a list.\nfn count<A>(xs: List<A>) -> Int\n  ensures result >= 0\n{ List.len(xs) }\n".into())]));
         let by_name = query(&a, None, Some("count"));
         let symbol = by_name["symbols"]
             .as_array()

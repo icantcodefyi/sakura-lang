@@ -156,7 +156,7 @@ case $reported in
 esac
 
 mkdir -p "$prefix/bin"
-staged=$(mktemp "$prefix/bin/.sakura.install.XXXXXX") || die "cannot create a staging file"
+staged=$(mktemp "$prefix/bin/.sak.install.XXXXXX") || die "cannot create a staging file"
 cp "$binary" "$staged"
 chmod 755 "$staged"
 mv -f "$staged" "$prefix/bin/sakura"

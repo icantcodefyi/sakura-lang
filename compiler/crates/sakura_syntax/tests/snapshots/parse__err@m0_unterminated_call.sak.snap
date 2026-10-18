@@ -2,7 +2,7 @@
 source: crates/sakura_syntax/tests/parse.rs
 assertion_line: 38
 expression: out
-input_file: crates/sakura_syntax/tests/data/err/m0_unterminated_call.sakura
+input_file: crates/sakura_syntax/tests/data/err/m0_unterminated_call.sak
 ---
 V0001 49..50: expected `)`, found `}`
 

@@ -2,7 +2,7 @@
 source: crates/sakura_fmt/tests/fmt.rs
 assertion_line: 66
 expression: "check(path, &text)"
-input_file: tests/fmt/design_15_10_structured_concurrency_timeout_retry.sakura
+input_file: tests/fmt/design_15_10_structured_concurrency_timeout_retry.sak
 ---
 import std/http.{Any, Http, HttpError, RateLimited, Response}
 import std/retry.{Policy, retry}

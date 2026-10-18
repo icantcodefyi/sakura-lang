@@ -66,7 +66,7 @@ fn a_clause_failing_with_an_undeclared_tag_is_still_rejected() {
     assert_eq!(c.codes(), vec!["V3001"], "{}", c.render());
 }
 
-/// D's `tests/semantics/handler_callback_context.sakura` (perform-callbacks plan §1.4).
+/// D's `tests/semantics/handler_callback_context.sak` (perform-callbacks plan §1.4).
 #[test]
 fn store_with_reentrant_callbacks_checks() {
     let src = r#"effect Store {

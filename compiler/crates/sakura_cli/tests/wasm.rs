@@ -15,7 +15,7 @@ fn examples() -> Vec<(String, std::collections::BTreeMap<String, String>)> {
         .unwrap()
         .filter_map(|e| {
             let dir = e.ok()?.path();
-            let src = std::fs::read_to_string(dir.join("src/main.sakura")).ok()?;
+            let src = std::fs::read_to_string(dir.join("src/main.sak")).ok()?;
             Some((
                 dir.file_name()?.to_string_lossy().into_owned(),
                 directives(&src),
@@ -115,7 +115,7 @@ fn a_user_js_external_is_refused_on_wasm() {
     let dir = std::env::temp_dir().join(format!("sakura-wasm-external-{}", std::process::id()));
     std::fs::create_dir_all(dir.join("src")).unwrap();
     std::fs::write(
-        dir.join("src/main.sakura"),
+        dir.join("src/main.sak"),
         "@external(js, \"left_pad\", \"pad\")\nfn pad(s: String) -> String\n\n\
          pub fn main() -> Unit ! {Console} { Console.print(pad(\"x\")) }\n",
     )
@@ -129,7 +129,7 @@ fn a_user_js_external_is_refused_on_wasm() {
         .expect("a diagnostic record");
     assert_eq!(d["code"], "V8004", "{d}");
     let span = &d["spans"][0];
-    let text = std::fs::read_to_string(dir.join("src/main.sakura")).unwrap();
+    let text = std::fs::read_to_string(dir.join("src/main.sak")).unwrap();
     let (a, b) = (
         span["start_byte"].as_u64().unwrap() as usize,
         span["end_byte"].as_u64().unwrap() as usize,
@@ -190,7 +190,7 @@ fn http_host_sends_on_wasm_as_on_js() {
     )
     .unwrap();
     std::fs::write(
-        dir.join("src/main.sakura"),
+        dir.join("src/main.sak"),
         format!(
             "import std/http.{{Http}}\nimport std/request.{{Get, Request}}\n\
              import std/response.{{HttpError}}\nimport std/url.{{Url}}\n\n\
@@ -299,7 +299,7 @@ test "replays" {{
          [permissions]\nnet = [\"api.example:443\"]\n",
     )
     .unwrap();
-    let main = dir.join("src/main.sakura");
+    let main = dir.join("src/main.sak");
     std::fs::write(
         &main,
         program(r#"Http.scripted([(Any, Response.status(200, "live"))])"#),
@@ -362,7 +362,7 @@ fn a_malformed_cassette_line_is_an_http_error_naming_it() {
     )
     .unwrap();
     std::fs::write(
-        dir.join("src/main.sakura"),
+        dir.join("src/main.sak"),
         r#"import std/fs.{Fs}
 import std/http.{Http}
 import std/request.{Method, Request}
@@ -410,7 +410,7 @@ fn sql_sqlite_opens_on_first_use_on_wasm_as_on_js() {
     )
     .unwrap();
     std::fs::write(
-        dir.join("src/main.sakura"),
+        dir.join("src/main.sak"),
         "import std/fs.{Fs}\nimport std/path.{Path}\nimport std/sql.{Sql, SqlError}\n\n\
          type Row = { id: Int, name: String }\n\n\
          pub fn main() -> Unit ! {Console, Fs, Fail<SqlError>} {\n\
@@ -523,7 +523,7 @@ fn serve_host_answers_on_wasm_as_on_js() {
         )
         .unwrap();
         std::fs::write(
-            dir.join("src/main.sakura"),
+            dir.join("src/main.sak"),
             format!(
                 "import std/request.{{Request}}\nimport std/response.{{Response}}\n\
                  import std/router.{{Router}}\nimport std/serve.{{Address, Serve, ServeError}}\n\n\
@@ -597,7 +597,7 @@ fn log_json_writes_what_js_writes() {
     let dir = std::env::temp_dir().join(format!("sakura-wasm-logjson-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(
-        dir.join("main.sakura"),
+        dir.join("main.sak"),
         "pub fn main() -> Unit ! {Console} {\n\
          \x20 with Log.json() {\n\
          \x20   Log.event(Level.Info, \"started\", [(\"n\", Json.Number(1.5)), (\"who\", Json.String(\"ann\"))])\n\
@@ -616,7 +616,7 @@ fn log_json_writes_what_js_writes() {
                 target,
                 "--out-dir",
                 out_dir.to_str().unwrap(),
-                "main.sakura",
+                "main.sak",
             ],
             &dir,
             &[("SAKURA_TRACE", &trace)],

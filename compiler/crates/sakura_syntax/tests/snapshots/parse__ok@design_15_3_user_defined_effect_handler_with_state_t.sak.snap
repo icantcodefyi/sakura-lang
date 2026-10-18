@@ -2,7 +2,7 @@
 source: crates/sakura_syntax/tests/parse.rs
 assertion_line: 28
 expression: out
-input_file: crates/sakura_syntax/tests/data/ok/design_15_3_user_defined_effect_handler_with_state_t.sakura
+input_file: crates/sakura_syntax/tests/data/ok/design_15_3_user_defined_effect_handler_with_state_t.sak
 ---
 SOURCE_FILE@0..644
   EFFECT_DECL@0..58

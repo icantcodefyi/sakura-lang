@@ -18,13 +18,13 @@ const manifest = (name: string) =>
 const files: Record<string, string> = {
   ".vscode/settings.json": JSON.stringify({ "sakura.path": resolve(bin) }),
   "a/sakura.toml": manifest("a"),
-  "a/src/main.sakura": "fn double(x: Int) -> Int { x * true }\n",
-  "a/src/bad.sakura": 'fn bad() -> Int { "no" }\n',
-  "a/src/holes.sakura": "fn label(n: Int) -> Int { ?rest }\n",
-  "a/src/fix.sakura": "fn count() -> Int { list.len([1, 2]) }\n",
-  "a/src/fmt.sakura": "fn double(x: Int)->Int{x*2}\n",
+  "a/src/main.sak": "fn double(x: Int) -> Int { x * true }\n",
+  "a/src/bad.sak": 'fn bad() -> Int { "no" }\n',
+  "a/src/holes.sak": "fn label(n: Int) -> Int { ?rest }\n",
+  "a/src/fix.sak": "fn count() -> Int { list.len([1, 2]) }\n",
+  "a/src/fmt.sak": "fn double(x: Int)->Int{x*2}\n",
   "b/sakura.toml": manifest("b"),
-  "b/src/bad.sakura": 'fn bad() -> Int { "no" }\n',
+  "b/src/bad.sak": 'fn bad() -> Int { "no" }\n',
 };
 for (const [path, text] of Object.entries(files)) {
   mkdirSync(join(ws, path, ".."), { recursive: true });

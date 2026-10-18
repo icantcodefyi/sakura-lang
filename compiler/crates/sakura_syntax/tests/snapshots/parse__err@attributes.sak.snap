@@ -2,7 +2,7 @@
 source: crates/sakura_syntax/tests/parse.rs
 assertion_line: 42
 expression: out
-input_file: crates/sakura_syntax/tests/data/err/attributes.sakura
+input_file: crates/sakura_syntax/tests/data/err/attributes.sak
 ---
 V0001 2..4: expected an attribute name directly after `@`, found `fn`
 V0001 21..25: expected an attribute name directly after `@`, found type name

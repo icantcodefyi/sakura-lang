@@ -2,7 +2,7 @@
 source: crates/sakura_syntax/tests/parse.rs
 assertion_line: 38
 expression: out
-input_file: crates/sakura_syntax/tests/data/err/junk_items.sakura
+input_file: crates/sakura_syntax/tests/data/err/junk_items.sak
 ---
 V0001 0..1: expected an item (`fn`, `type`, `error`, `effect`, `import`, `let`, `test` or `property`), found identifier
 V0001 29..30: expected an item (`fn`, `type`, `error`, `effect`, `import`, `let`, `test` or `property`), found `)`

@@ -1,7 +1,7 @@
 ---
 source: crates/sakura_fmt/tests/fmt.rs
 expression: "check(path, &text)"
-input_file: tests/fmt/round8_if_branches.sakura
+input_file: tests/fmt/round8_if_branches.sak
 ---
 // §17.133: an `if` with an `else` keeps every branch on one line or breaks every branch.
 fn encode(c: String, unreserved: String) -> String {

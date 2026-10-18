@@ -2,7 +2,7 @@
 source: crates/sakura_fmt/tests/fmt.rs
 assertion_line: 66
 expression: "check(path, &text)"
-input_file: tests/fmt/round2_forms.sakura
+input_file: tests/fmt/round2_forms.sak
 ---
 // §17 forms: `pub opaque`, parenthesized types, external types, and operator line breaks.
 pub opaque type Email = { address: String }

@@ -1,4 +1,4 @@
-// examples/hello/src/main.sakura
+// examples/hello/src/main.sak
 fn greet(name: String) -> Unit ! {Console, Clock} {
   let now = Clock.now()
   Console.print("hello, {name}; it is {Instant.format_iso(now)}")

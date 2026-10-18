@@ -132,7 +132,7 @@ pub fn run_tuple(n: Int) -> Int {
   found + total + Map.len(mt)
 }
 
-// `sakura run main.sakura -- <n>...` prints run(n) for each argument; `-- int <n>` (or `string`,
+// `sakura run main.sak -- <n>...` prints run(n) for each argument; `-- int <n>` (or `string`,
 // `tuple`) prints that entry. Code reachable only from other exports is not emitted.
 pub fn main() -> Unit ! {Cli, Console} {
   match Cli.args() {

@@ -25,9 +25,9 @@ fn at(needle: &str, nth: usize) -> u32 {
 
 #[test]
 fn hover_definition_completion() {
-    let snap = Snapshot::with_std([("file:///p/src/app.sakura".into(), SRC.into())]);
+    let snap = Snapshot::with_std([("file:///p/src/app.sak".into(), SRC.into())]);
     let a = Analysis::analyze(&snap);
-    let file = snap.file_id("file:///p/src/app.sakura").unwrap();
+    let file = snap.file_id("file:///p/src/app.sak").unwrap();
 
     let h = a.hover(file, at("clamp", 0) + 2).unwrap();
     assert!(
@@ -57,7 +57,7 @@ fn hover_definition_completion() {
         h.markdown
     );
     let def = a.definition(file, at("print", 0) + 1).unwrap();
-    assert_eq!(def.uri, "sakura:///std/console.sakura");
+    assert_eq!(def.uri, "sakura:///std/console.sak");
 
     // Completion: `Console.` lists operations; a bare prefix finds locals and items.
     let after_dot = at("Console.print", 0) + "Console.".len() as u32;
@@ -85,9 +85,9 @@ fn hover_definition_completion() {
 #[test]
 fn hover_on_unicode_text_uses_byte_offsets() {
     let src = "fn f() -> String { let s = \"héllo 🌍\"; s }\n";
-    let snap = Snapshot::with_std([("file:///p/src/u.sakura".into(), src.into())]);
+    let snap = Snapshot::with_std([("file:///p/src/u.sak".into(), src.into())]);
     let a = Analysis::analyze(&snap);
-    let file = snap.file_id("file:///p/src/u.sakura").unwrap();
+    let file = snap.file_id("file:///p/src/u.sak").unwrap();
     let last_s = src.rfind(" s }").unwrap() as u32 + 1;
     let h = a.hover(file, last_s).unwrap();
     assert_eq!(h.markdown, "```sakura\nlet s: String\n```");
@@ -100,7 +100,7 @@ fn hover_on_unicode_text_uses_byte_offsets() {
 #[test]
 fn tool_argument_records_are_not_symbols() {
     let src = "import std/tool.{Tool}\n\n@tool(\"Adds.\")\nfn add(a: Int, b: Int) -> Int { a + b }\n\npub fn tools() -> Unit { let _ = Tool.of(add) }\n";
-    let snap = Snapshot::with_std([("file:///p/src/app.sakura".into(), src.into())]);
+    let snap = Snapshot::with_std([("file:///p/src/app.sak".into(), src.into())]);
     let a = Analysis::analyze(&snap);
     assert!(a.check.diagnostics.is_empty(), "{:?}", a.check.diagnostics);
     let names: Vec<&str> = a

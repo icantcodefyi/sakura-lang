@@ -2,7 +2,7 @@
 source: crates/sakura_syntax/tests/parse.rs
 assertion_line: 42
 expression: out
-input_file: crates/sakura_syntax/tests/data/err/lex_errors.sakura
+input_file: crates/sakura_syntax/tests/data/err/lex_errors.sak
 ---
 V0007 23..29: `resume` is reserved for a later edition
 V0003 32..51: integer literal does not fit in a signed 64-bit `Int`

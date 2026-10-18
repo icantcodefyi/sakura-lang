@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "07-health-route",
-  "revision": 1,
+  "revision": 2,
   "category": "application-change",
   "skills": [
     "router",
@@ -13,13 +13,13 @@
     "revision": "d64323e7bc75a94c83cd77199a042b71af3d352f",
     "backend": "js"
   },
-  "starter_sha256": "86ffa6955ebed4bf7d3aa2fcc460849e7805a328e63900b2a998158549ef0d29",
+  "starter_sha256": "247bd7ed2aebd410031907cd2a9565c9c6c5d1a0138b2cf09f5fd29766a9a54e",
   "starter_files": {
     "sakura.toml": "a9af8096b5d0e135579f5a3f7488a81277fa21252b5fa4ee569c0a842b80510b",
-    "src/main.sakura": "047907b6986c2bd17653e3c0f78a6da4f89c60ca16419e3f0f8e8ffe1899754b"
+    "src/main.sak": "047907b6986c2bd17653e3c0f78a6da4f89c60ca16419e3f0f8e8ffe1899754b"
   },
   "editable_files": [
-    "src/main.sakura"
+    "src/main.sak"
   ],
   "frozen_baseline": {
     "strategy": "commit-starter",
@@ -28,8 +28,8 @@
   },
   "oracle": {
     "files": [
-      "oracle/health.sakura",
-      "oracle/dispatch.sakura"
+      "oracle/health.sak",
+      "oracle/dispatch.sak"
     ],
     "command": [
       "sakura",

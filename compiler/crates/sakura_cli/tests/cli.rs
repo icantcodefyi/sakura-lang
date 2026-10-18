@@ -8,7 +8,7 @@ use std::path::Path;
 fn tmp(name: &str, text: &str) -> std::path::PathBuf {
     let dir = std::env::temp_dir().join(format!("sakura-cli-{}-{name}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    std::fs::write(dir.join("main.sakura"), text).unwrap();
+    std::fs::write(dir.join("main.sak"), text).unwrap();
     dir
 }
 
@@ -17,9 +17,29 @@ fn usage_errors_exit_2() {
     let here = Path::new(".");
     assert_eq!(sakura(&[], here).code, Some(2));
     assert_eq!(sakura(&["frobnicate"], here).code, Some(2));
-    let missing = sakura(&["check", "definitely/not/here.sakura"], here);
+    let missing = sakura(&["check", "definitely/not/here.sak"], here);
     assert_eq!(missing.code, Some(2), "{}", missing.stderr);
     assert!(missing.stderr.contains("error:"));
+}
+
+/// Design §17.179 (rename:keep): `.sakura` is no source extension, and says so.
+#[test]
+fn legacy_sakura_extension_names_the_rename() {
+    let dir = tmp("legacy-ext", "fn one() -> Int { 1 }\n");
+    std::fs::write(dir.join("old.sakura"), "fn f() -> Int { 1 }\n").unwrap();
+    let named = sakura(&["check", "old.sakura"], &dir);
+    assert_eq!(named.code, Some(2), "{}", named.stderr);
+    assert!(
+        named.stderr.contains("rename it to old.sak"),
+        "{}",
+        named.stderr
+    );
+    // Alongside `.sak` sources a stray `.sakura` file is skipped, as the LSP's workspace load needs.
+    assert_eq!(sakura(&["check", "."], &dir).code, Some(0));
+    std::fs::remove_file(dir.join("main.sak")).unwrap();
+    let only = sakura(&["check", "."], &dir);
+    assert_eq!(only.code, Some(2), "{}", only.stderr);
+    assert!(only.stderr.contains("not .sakura"), "{}", only.stderr);
 }
 
 #[test]
@@ -55,7 +75,7 @@ fn explain_known_and_unknown_codes() {
 #[test]
 fn check_json_goes_to_stdout_and_ends_with_summary() {
     let dir = tmp("json", "fn main( -> Unit {}\n");
-    let out = sakura(&["check", "--json", "main.sakura"], &dir);
+    let out = sakura(&["check", "--json", "main.sak"], &dir);
     let recs = common::json_lines(&out.stdout).unwrap();
     let summary = recs.last().unwrap();
     assert_eq!(out.code, Some(if summary["errors"] == 0 { 0 } else { 1 }));
@@ -63,7 +83,7 @@ fn check_json_goes_to_stdout_and_ends_with_summary() {
         assert_eq!(r["kind"], "diagnostic");
         assert_eq!(r["snapshot"], summary["snapshot"]);
         let uri = r["spans"][0]["uri"].as_str().unwrap();
-        let user = uri.starts_with("file:///") && uri.ends_with("/main.sakura");
+        let user = uri.starts_with("file:///") && uri.ends_with("/main.sak");
         assert!(user || uri.starts_with("sakura:///std/"), "{uri}");
     }
     assert!(out.stderr.is_empty(), "{}", out.stderr);
@@ -72,9 +92,9 @@ fn check_json_goes_to_stdout_and_ends_with_summary() {
 #[test]
 fn check_human_goes_to_stderr_with_relative_paths() {
     let dir = tmp("human", "fn main( -> Unit {}\n");
-    let out = sakura(&["check", "main.sakura"], &dir);
+    let out = sakura(&["check", "main.sak"], &dir);
     assert!(out.stdout.is_empty());
-    assert!(out.stderr.contains("┌─ main.sakura:"), "{}", out.stderr);
+    assert!(out.stderr.contains("┌─ main.sak:"), "{}", out.stderr);
 }
 
 #[test]
@@ -95,36 +115,33 @@ fn prompt_prints_llms_txt_within_budget() {
 fn fmt_check_then_rewrite() {
     let messy = "fn   add(a: Int,b: Int) -> Int {a+b}\n";
     let dir = tmp("fmt dir", messy);
-    let check = sakura(&["fmt", "--check", "main.sakura"], &dir);
+    let check = sakura(&["fmt", "--check", "main.sak"], &dir);
     assert_eq!(check.code, Some(1), "{}", check.stderr);
     assert!(
-        check.stdout.trim_end().ends_with("main.sakura"),
+        check.stdout.trim_end().ends_with("main.sak"),
         "{}",
         check.stdout
     );
     assert_eq!(
-        std::fs::read_to_string(dir.join("main.sakura")).unwrap(),
+        std::fs::read_to_string(dir.join("main.sak")).unwrap(),
         messy
     );
-    let fix = sakura(&["fmt", "main.sakura"], &dir);
+    let fix = sakura(&["fmt", "main.sak"], &dir);
     assert_eq!(fix.code, Some(0), "{}", fix.stderr);
-    let formatted = std::fs::read_to_string(dir.join("main.sakura")).unwrap();
+    let formatted = std::fs::read_to_string(dir.join("main.sak")).unwrap();
     assert_ne!(formatted, messy);
-    assert_eq!(
-        sakura(&["fmt", "--check", "main.sakura"], &dir).code,
-        Some(0)
-    );
+    assert_eq!(sakura(&["fmt", "--check", "main.sak"], &dir).code, Some(0));
 }
 
 #[test]
 fn fmt_refuses_files_that_do_not_parse() {
     let broken = "fn main( -> Unit {}\n";
     let dir = tmp("fmt-broken", broken);
-    let out = sakura(&["fmt", "main.sakura"], &dir);
+    let out = sakura(&["fmt", "main.sak"], &dir);
     assert_eq!(out.code, Some(1));
     assert!(out.stderr.contains("error[V0001]"), "{}", out.stderr);
     assert_eq!(
-        std::fs::read_to_string(dir.join("main.sakura")).unwrap(),
+        std::fs::read_to_string(dir.join("main.sak")).unwrap(),
         broken
     );
 }
@@ -135,7 +152,7 @@ fn test_json_has_exactly_one_summary_at_the_end() {
         "test-json",
         "test \"adds\" { expect_eq(1 + 1, 2) }\ntest \"fails\" { expect_eq(1, 2) }\n",
     );
-    let out = sakura(&["test", "--json", "main.sakura", "--seed", "3"], &dir);
+    let out = sakura(&["test", "--json", "main.sak", "--seed", "3"], &dir);
     assert_eq!(out.code, Some(3), "{}{}", out.stdout, out.stderr);
     let recs = common::json_lines(&out.stdout).unwrap();
     let kinds: Vec<&str> = recs.iter().map(|r| r["kind"].as_str().unwrap()).collect();
@@ -174,20 +191,17 @@ fn std_tests_pass() {
 fn fix_previews_then_applies_machine_applicable_fixes() {
     let src = "fn count() -> Int { list.len([1, 2]) }\n";
     let dir = tmp("fix", src);
-    let preview = sakura(&["fix", "--preview", "main.sakura"], &dir);
+    let preview = sakura(&["fix", "--preview", "main.sak"], &dir);
     assert_eq!(preview.code, Some(0), "{}", preview.stderr);
     assert!(preview.stdout.contains("V1004") && preview.stdout.contains("would apply"));
-    assert_eq!(
-        std::fs::read_to_string(dir.join("main.sakura")).unwrap(),
-        src
-    );
+    assert_eq!(std::fs::read_to_string(dir.join("main.sak")).unwrap(), src);
 
-    let out = sakura(&["fix", "main.sakura"], &dir);
+    let out = sakura(&["fix", "main.sak"], &dir);
     assert_eq!(out.code, Some(0), "{}", out.stderr);
-    let fixed = std::fs::read_to_string(dir.join("main.sakura")).unwrap();
+    let fixed = std::fs::read_to_string(dir.join("main.sak")).unwrap();
     assert_eq!(fixed, "fn count() -> Int { List.len([1, 2]) }\n");
     assert_eq!(
-        sakura(&["fix", "--apply", "f:nope", "main.sakura"], &dir).code,
+        sakura(&["fix", "--apply", "f:nope", "main.sak"], &dir).code,
         Some(2)
     );
 }
@@ -217,13 +231,13 @@ fn frozen_specs_compare_with_git_head() {
         assert!(ok, "git {args:?}");
     };
     git(&["init", "-q"]);
-    git(&["add", "main.sakura"]);
+    git(&["add", "main.sak"]);
     git(&["commit", "-qm", "base"]);
-    let text = std::fs::read_to_string(dir.join("main.sakura")).unwrap();
-    std::fs::write(dir.join("main.sakura"), text.replace("lo <= hi", "lo < hi")).unwrap();
+    let text = std::fs::read_to_string(dir.join("main.sak")).unwrap();
+    std::fs::write(dir.join("main.sak"), text.replace("lo <= hi", "lo < hi")).unwrap();
 
     let out = sakura(
-        &["check", "--json", "--frozen-specs", "all", "main.sakura"],
+        &["check", "--json", "--frozen-specs", "all", "main.sak"],
         &dir,
     );
     assert_eq!(out.code, Some(1), "{}", out.stderr);
@@ -238,7 +252,7 @@ fn frozen_specs_compare_with_git_head() {
     );
 
     // `sakura fix` compares with the same baseline: the fixed files still weaken `clamp`.
-    let fix = sakura(&["fix", "--frozen-specs", "clamp", "main.sakura"], &dir);
+    let fix = sakura(&["fix", "--frozen-specs", "clamp", "main.sak"], &dir);
     assert_eq!(fix.code, Some(1), "{}", fix.stderr);
     assert!(fix.stderr.contains("V8020"), "{}", fix.stderr);
     let bad_rev = sakura(
@@ -248,16 +262,16 @@ fn frozen_specs_compare_with_git_head() {
             "all",
             "--since",
             "no-such-rev",
-            "main.sakura",
+            "main.sak",
         ],
         &dir,
     );
     assert_eq!(bad_rev.code, Some(2), "{}", bad_rev.stderr);
 
     // Other symbols frozen, or no flag: the edit is allowed.
-    let other = sakura(&["check", "--frozen-specs", "helper", "main.sakura"], &dir);
+    let other = sakura(&["check", "--frozen-specs", "helper", "main.sak"], &dir);
     assert_eq!(other.code, Some(0), "{}", other.stderr);
-    assert_eq!(sakura(&["check", "main.sakura"], &dir).code, Some(0));
+    assert_eq!(sakura(&["check", "main.sak"], &dir).code, Some(0));
 }
 
 #[test]
@@ -270,7 +284,7 @@ fn new_projects_check_and_are_formatted() {
         let out = sakura(&["new", kind, &name], &dir);
         assert_eq!(out.code, Some(0), "{}", out.stderr);
         let project = dir.join(&name);
-        for f in ["sakura.toml", "sakura.lock", "src/main.sakura", "AGENTS.md"] {
+        for f in ["sakura.toml", "sakura.lock", "src/main.sak", "AGENTS.md"] {
             assert!(project.join(f).is_file(), "{kind}: {f}");
         }
         let claude = std::fs::read_to_string(project.join("CLAUDE.md")).unwrap();
@@ -310,7 +324,7 @@ fn run_exits_75_when_permissions_do_not_cover_main() {
     );
     let manifest = "[package]\nname = \"perm\"\n\n[permissions]\n";
     std::fs::write(dir.join("sakura.toml"), manifest).unwrap();
-    let denied = sakura(&["run", "main.sakura"], &dir);
+    let denied = sakura(&["run", "main.sak"], &dir);
     assert_eq!(denied.code, Some(75), "{}", denied.stderr);
     assert!(denied.stderr.contains("fs.read") && denied.stdout.is_empty());
 
@@ -319,7 +333,7 @@ fn run_exits_75_when_permissions_do_not_cover_main() {
         format!("{manifest}fs.read = [\".\"]\n"),
     )
     .unwrap();
-    let allowed = sakura(&["run", "main.sakura"], &dir);
+    let allowed = sakura(&["run", "main.sak"], &dir);
     assert_eq!(allowed.code, Some(0), "{}", allowed.stderr);
     assert_eq!(allowed.stdout, "started\n");
 }
@@ -363,7 +377,7 @@ fn the_package_is_named_by_its_manifest() {
     std::fs::create_dir_all(dir.join("src")).unwrap();
     std::fs::write(dir.join("sakura.toml"), "[package]\nname = \"acme\"\n").unwrap();
     std::fs::write(
-        dir.join("src/util.sakura"),
+        dir.join("src/util.sak"),
         "pub fn twice(x: Int) -> Int { x * 2 }\n",
     )
     .unwrap();
@@ -371,7 +385,7 @@ fn the_package_is_named_by_its_manifest() {
         let text = format!(
             "import {package}/util\n\npub fn main() -> Unit ! {{Console}} {{ Console.print(\"{{util.twice(21)}}\") }}\n"
         );
-        std::fs::write(dir.join("src/main.sakura"), text).unwrap();
+        std::fs::write(dir.join("src/main.sak"), text).unwrap();
     };
     main("acme");
     let out = sakura(&["run", dir.to_str().unwrap()], &dir);
@@ -420,7 +434,7 @@ pub fn authorize(req: Request, token: Secret<String>) -> Request {
 #[test]
 fn audit_json_lists_user_sites_then_a_summary() {
     let dir = tmp("audit", AUDITED);
-    let out = sakura(&["audit", "--json", "main.sakura"], &dir);
+    let out = sakura(&["audit", "--json", "main.sak"], &dir);
     assert_eq!(out.code, Some(0), "{}", out.stderr);
     let recs = common::json_lines(&out.stdout).unwrap();
     let (summary, sites) = recs.split_last().unwrap();
@@ -429,7 +443,7 @@ fn audit_json_lists_user_sites_then_a_summary() {
     assert_eq!(kinds, ["total", "from", "trust", "trust"], "{recs:#?}");
     assert!(sites.iter().all(|r| r["kind"] == "audit"
         && r["schema_version"] == "1.0"
-        && r["span"]["uri"].as_str().unwrap().ends_with("/main.sakura")));
+        && r["span"]["uri"].as_str().unwrap().ends_with("/main.sak")));
     assert_eq!(sites[2]["reason"], "computed locally");
     assert_eq!(sites[2]["sink"], "std::untrusted::trust");
     assert_eq!(sites[3]["reason"], "derived key");
@@ -442,7 +456,7 @@ fn audit_json_lists_user_sites_then_a_summary() {
         "audit-broken",
         &format!("{AUDITED}fn bad() -> Int {{ \"no\" }}\n"),
     );
-    assert_eq!(sakura(&["audit", "main.sakura"], &broken).code, Some(0));
+    assert_eq!(sakura(&["audit", "main.sak"], &broken).code, Some(0));
 }
 
 /// Design §17.78, §17.87: a literal whose refinement the checker cannot decide keeps a
@@ -455,7 +469,7 @@ fn audit_lists_undecided_literal_conversions() {
          type Percent = Int where it >= 0 && it <= 100\n\
          pub fn main() -> Unit ! {Console} {\n  let s: Slug = \"sakura\"\n  let p: Percent = 50\n  Console.print(\"{s} {p}\")\n}\n",
     );
-    let out = sakura(&["audit", "--json", "main.sakura"], &dir);
+    let out = sakura(&["audit", "--json", "main.sak"], &dir);
     assert_eq!(out.code, Some(0), "{}", out.stderr);
     let recs = common::json_lines(&out.stdout).unwrap();
     let (summary, sites) = recs.split_last().unwrap();
@@ -465,7 +479,7 @@ fn audit_lists_undecided_literal_conversions() {
     assert_eq!(sites[0]["symbol_id"], "main::main::main");
     assert_eq!(sites[0]["sink"], "main::main::from");
     assert_eq!(summary["by_site"]["from"], 1);
-    let human = sakura(&["audit", "main.sakura"], &dir);
+    let human = sakura(&["audit", "main.sak"], &dir);
     assert_eq!(human.code, Some(0), "{}", human.stderr);
     assert!(
         human
@@ -517,7 +531,7 @@ fn build_emits_lir() {
         "emit-lir",
         "pub fn main() -> Unit ! {Console} { Console.print(\"hi\") }\n",
     );
-    let out = sakura(&["build", "--emit", "lir", "main.sakura"], &dir);
+    let out = sakura(&["build", "--emit", "lir", "main.sak"], &dir);
     assert_eq!(out.code, Some(0), "{}", out.stderr);
     let lir = std::fs::read_to_string(dir.join("target/sakura/lir/main.lir")).unwrap();
     assert!(
@@ -527,7 +541,7 @@ fn build_emits_lir() {
     assert!(lir.contains("fn $entry#"), "{lir}");
 
     let niche = sakura(
-        &["build", "--emit", "lir", "--layout", "niche", "main.sakura"],
+        &["build", "--emit", "lir", "--layout", "niche", "main.sak"],
         &dir,
     );
     assert_eq!(niche.code, Some(2), "{}", niche.stderr);
@@ -536,10 +550,7 @@ fn build_emits_lir() {
         "{}",
         niche.stderr
     );
-    let both = sakura(
-        &["build", "--emit", "lir", "--manifest", "main.sakura"],
-        &dir,
-    );
+    let both = sakura(&["build", "--emit", "lir", "--manifest", "main.sak"], &dir);
     assert_eq!(both.code, Some(2), "{}", both.stderr);
 }
 
@@ -552,7 +563,7 @@ fn build_manifest_lists_trusted_base_and_obligations() {
         let text = std::fs::read_to_string(dir.join("target/sakura/manifest.json")).unwrap();
         serde_json::from_str(&text).unwrap()
     };
-    let out = sakura(&["build", "--manifest", "main.sakura"], &dir);
+    let out = sakura(&["build", "--manifest", "main.sak"], &dir);
     assert_eq!(out.code, Some(0), "{}", out.stderr);
     let m = read(&dir);
     let keys = |v: &serde_json::Value| -> Vec<String> {
@@ -643,13 +654,13 @@ fn build_manifest_lists_trusted_base_and_obligations() {
         &AUDITED.replace("total * p / 100", "(total * p) / 100"),
     );
     assert_eq!(
-        sakura(&["build", "--manifest", "main.sakura"], &edited).code,
+        sakura(&["build", "--manifest", "main.sak"], &edited).code,
         Some(0)
     );
     assert_eq!(ids(&read(&edited)), ids(&m));
     let broken = tmp("manifest-broken", "fn bad() -> Int { \"no\" }\n");
     assert_eq!(
-        sakura(&["build", "--manifest", "main.sakura"], &broken).code,
+        sakura(&["build", "--manifest", "main.sak"], &broken).code,
         Some(1)
     );
     assert!(!broken.join("target/sakura/manifest.json").exists());
@@ -680,7 +691,7 @@ test "fixtures are writable while recording" {
     );
     let manifest = "[package]\nname = \"record\"\n\n[permissions]\n";
     std::fs::write(dir.join("sakura.toml"), manifest).unwrap();
-    let refused = sakura(&["test", "--record", "main.sakura"], &dir);
+    let refused = sakura(&["test", "--record", "main.sak"], &dir);
     assert_eq!(refused.code, Some(75), "{}", refused.stderr);
     assert!(
         refused.stderr.contains("[permissions] net"),
@@ -690,7 +701,7 @@ test "fixtures are writable while recording" {
     assert!(refused.stdout.is_empty());
 
     // Without `--record` the fixtures are read-only.
-    let plain = sakura(&["test", "main.sakura"], &dir);
+    let plain = sakura(&["test", "main.sak"], &dir);
     assert_eq!(plain.code, Some(3), "{}{}", plain.stdout, plain.stderr);
     assert!(plain.stdout.contains("read-only"), "{}", plain.stdout);
 
@@ -699,7 +710,7 @@ test "fixtures are writable while recording" {
         format!("{manifest}net = [\"api.example.com:443\"]\n"),
     )
     .unwrap();
-    let recorded = sakura(&["test", "--record", "main.sakura"], &dir);
+    let recorded = sakura(&["test", "--record", "main.sak"], &dir);
     assert_eq!(
         recorded.code,
         Some(0),
@@ -741,7 +752,7 @@ test "never sees OTHER" { expect_eq(Env.get("OTHER"), None) }
     };
     let manifest = "[package]\nname = \"record_env\"\n\n[permissions]\nenv = [\"K\"]\n";
     std::fs::write(dir.join("sakura.toml"), manifest).unwrap();
-    let refused = run(&["test", "--record", "main.sakura"]);
+    let refused = run(&["test", "--record", "main.sak"]);
     assert_eq!(refused.status.code(), Some(75), "{}", text(&refused));
 
     std::fs::write(
@@ -749,9 +760,9 @@ test "never sees OTHER" { expect_eq(Env.get("OTHER"), None) }
         format!("{manifest}net = [\"127.0.0.1:1\"]\n"),
     )
     .unwrap();
-    let recorded = run(&["test", "--record", "main.sakura"]);
+    let recorded = run(&["test", "--record", "main.sak"]);
     assert_eq!(recorded.status.code(), Some(0), "{}", text(&recorded));
-    let plain = run(&["test", "main.sakura"]);
+    let plain = run(&["test", "main.sak"]);
     assert_eq!(plain.status.code(), Some(3), "{}", text(&plain));
     let out = text(&plain);
     assert!(
@@ -795,7 +806,7 @@ test "Sql.sqlite under Fs.host() cannot open" {
     )
     .unwrap();
     let out = std::process::Command::new(env!("CARGO_BIN_EXE_sakura"))
-        .args(["test", "main.sakura"])
+        .args(["test", "main.sak"])
         .current_dir(&dir)
         .env("SAKURA_PROBE", "leaked")
         .output()
@@ -832,7 +843,7 @@ pub fn exact(x: Int) -> Int
 "#,
     );
     let _ = std::fs::remove_dir_all(dir.join("tests"));
-    let out = sakura(&["test", "--contracts", "--json", "main.sakura"], &dir);
+    let out = sakura(&["test", "--contracts", "--json", "main.sak"], &dir);
     assert_eq!(out.code, Some(3), "{}{}", out.stdout, out.stderr);
     let recs = common::json_lines(&out.stdout).unwrap();
     let kinds: Vec<&str> = recs.iter().map(|r| r["kind"].as_str().unwrap()).collect();
@@ -853,7 +864,7 @@ pub fn exact(x: Int) -> Int
         (w["code"].as_str(), w["severity"].as_str()),
         (Some("W7001"), Some("warning"))
     );
-    let text = std::fs::read_to_string(dir.join("main.sakura")).unwrap();
+    let text = std::fs::read_to_string(dir.join("main.sak")).unwrap();
     let start = w["spans"][0]["start_byte"].as_u64().unwrap() as usize;
     let end = w["spans"][0]["end_byte"].as_u64().unwrap() as usize;
     assert_eq!(&text[start..end], "exact");
@@ -866,7 +877,7 @@ pub fn exact(x: Int) -> Int
 
     // The stored input runs first: an edited regression is the reported counterexample.
     std::fs::write(&file, r#"{"inputs": {"total": 1, "p": 100}}"#).unwrap();
-    let again = sakura(&["test", "--contracts", "main.sakura"], &dir);
+    let again = sakura(&["test", "--contracts", "main.sak"], &dir);
     assert_eq!(again.code, Some(3), "{}{}", again.stdout, again.stderr);
     assert!(
         again
@@ -879,7 +890,7 @@ pub fn exact(x: Int) -> Int
     assert!(again.stderr.contains("warning[W7001]"), "{}", again.stderr);
 
     // Without the flag there are no synthesized tests (and no stale ones from the last build).
-    let plain = sakura(&["test", "main.sakura"], &dir);
+    let plain = sakura(&["test", "main.sak"], &dir);
     assert_eq!(plain.code, Some(0), "{}{}", plain.stdout, plain.stderr);
     assert!(plain.stderr.contains("no tests"), "{}", plain.stderr);
 }
@@ -901,7 +912,7 @@ pub fn render(h: Html) -> String
 pub fn greet(n: Name) -> String { "hi " + n }
 "#,
     );
-    let out = sakura(&["test", "--contracts", "main.sakura"], &dir);
+    let out = sakura(&["test", "--contracts", "main.sak"], &dir);
     assert_eq!(out.code, Some(0), "{}{}", out.stdout, out.stderr);
     assert!(
         out.stdout.contains("test contract: greet ... ok"),
@@ -927,7 +938,7 @@ fn reserved_package_names_are_v8002() {
         let manifest = format!("[package]\nname = \"{name}\"\n");
         std::fs::write(dir.join("sakura.toml"), &manifest).unwrap();
         std::fs::write(
-            dir.join("src/main.sakura"),
+            dir.join("src/main.sak"),
             "pub fn main() -> Unit ! {Console} { Console.print(\"hi\") }\n",
         )
         .unwrap();
@@ -991,7 +1002,7 @@ test "replays" {{
         "[package]\nname = \"record_replay\"\n\n[permissions]\nnet = [\"api.example:443\"]\n",
     )
     .unwrap();
-    let recorded = sakura(&["test", "--record", "main.sakura"], &dir);
+    let recorded = sakura(&["test", "--record", "main.sak"], &dir);
     assert_eq!(
         recorded.code,
         Some(0),
@@ -1012,8 +1023,8 @@ test "replays" {{
     );
 
     // The real host handler under the test runner's denied network: only the cassette answers.
-    std::fs::write(dir.join("main.sakura"), program("Http.host()")).unwrap();
-    let replayed = sakura(&["test", "main.sakura"], &dir);
+    std::fs::write(dir.join("main.sak"), program("Http.host()")).unwrap();
+    let replayed = sakura(&["test", "main.sak"], &dir);
     assert_eq!(
         replayed.code,
         Some(0),
@@ -1022,7 +1033,7 @@ test "replays" {{
         replayed.stderr
     );
     std::fs::remove_file(dir.join("tests/fixtures/api.jsonl")).unwrap();
-    let missing = sakura(&["test", "main.sakura"], &dir);
+    let missing = sakura(&["test", "main.sak"], &dir);
     assert_eq!(
         missing.code,
         Some(3),
@@ -1044,7 +1055,7 @@ test "replays" {{
 #[test]
 fn dump_direct_lists_every_def_with_its_reason() {
     let micro = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../research/10-evidence");
-    let out = sakura(&["build", "--dump", "direct", "micro.sakura"], &micro);
+    let out = sakura(&["build", "--dump", "direct", "micro.sak"], &micro);
     assert_eq!(out.code, Some(0), "{}", out.stderr);
     let snapshot = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/snapshots/micro.direct");
     common::compare_file(&snapshot, &out.stdout).unwrap();
@@ -1068,7 +1079,7 @@ pub fn main() -> Unit ! {Console} {
 }
 "#,
     );
-    let out = sakura(&["build", "--dump", "direct", "main.sakura"], &dir);
+    let out = sakura(&["build", "--dump", "direct", "main.sak"], &dir);
     assert_eq!(out.code, Some(0), "{}", out.stderr);
     for line in [
         "main::main::main cps(row)",
@@ -1152,7 +1163,7 @@ fn verify_reports_the_scale_acceptance() {
     }
     let dir = tmp("verify-scale", SCALE);
     let state = outside(&dir, "state");
-    let out = sakura_in_state(&["verify", "--json", "main.sakura"], &dir, &state);
+    let out = sakura_in_state(&["verify", "--json", "main.sak"], &dir, &state);
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert_eq!(
         out.status.code(),
@@ -1206,16 +1217,16 @@ fn verify_reports_the_scale_acceptance() {
     assert_eq!(status(&wrong["manifest_id"]).unwrap(), "disproved");
 
     let more = sakura_in_state(
-        &["verify", "--json", "--rlimit", "20000000", "main.sakura"],
+        &["verify", "--json", "--rlimit", "20000000", "main.sak"],
         &dir,
         &state,
     );
     let more = common::json_lines(&String::from_utf8_lossy(&more.stdout)).unwrap();
     assert_eq!(more[0]["solver"]["rlimit"], 20_000_000);
-    let human = sakura_in_state(&["verify", "main.sakura"], &dir, &state);
+    let human = sakura_in_state(&["verify", "main.sak"], &dir, &state);
     let text = String::from_utf8_lossy(&human.stdout);
     assert!(
-        text.contains("proved      main::main::scale ensures scale at main.sakura:"),
+        text.contains("proved      main::main::scale ensures scale at main.sak:"),
         "{text}"
     );
     assert!(text.contains("counterexample: p = "), "{text}");
@@ -1232,7 +1243,7 @@ fn build_drops_only_checks_with_authenticated_proofs() {
     let dir = tmp("verify-build", SCALE);
     let state = outside(&dir, "state");
     let build = |dir: &Path, state: &Path, args: &[&str]| {
-        let out = sakura_in_state(&[&["build"], args, &["main.sakura"]].concat(), dir, state);
+        let out = sakura_in_state(&[&["build"], args, &["main.sak"]].concat(), dir, state);
         assert_eq!(out.status.code(), Some(0), "{out:?}");
         emitted_js(dir)
     };
@@ -1240,7 +1251,7 @@ fn build_drops_only_checks_with_authenticated_proofs() {
         build(&dir, &state, &[]).contains(ensures_check),
         "no proofs yet"
     );
-    sakura_in_state(&["verify", "main.sakura"], &dir, &state);
+    sakura_in_state(&["verify", "main.sak"], &dir, &state);
     let js = build(&dir, &state, &["--manifest"]);
     assert!(!js.contains(ensures_check), "the proved check is dropped");
     assert!(js.contains("postcondition `scale_wrong` of scale_wrong violated"));
@@ -1258,7 +1269,7 @@ fn build_drops_only_checks_with_authenticated_proofs() {
 
     // A body-only edit changes the key.
     std::fs::write(
-        dir.join("main.sakura"),
+        dir.join("main.sak"),
         SCALE.replace("{ total * p / 100 }", "{ p * total / 100 }"),
     )
     .unwrap();
@@ -1278,7 +1289,7 @@ fn proof_key_is_never_created_by_build_or_inside_the_project() {
     std::fs::create_dir_all(dir.join("target/sakura/proofs")).unwrap();
     let state = outside(&dir, "key-state");
     let _ = std::fs::remove_dir_all(&state);
-    let out = sakura_in_state(&["build", "main.sakura"], &dir, &state);
+    let out = sakura_in_state(&["build", "main.sak"], &dir, &state);
     assert_eq!(out.status.code(), Some(0), "{out:?}");
     assert!(!state.exists(), "a build never creates the proof key");
     if !has_z3() {
@@ -1287,7 +1298,7 @@ fn proof_key_is_never_created_by_build_or_inside_the_project() {
     let sub = dir.join("sub");
     std::fs::create_dir_all(&sub).unwrap();
     let inside = dir.join("state");
-    let out = sakura_in_state(&["verify", "../main.sakura"], &sub, &inside);
+    let out = sakura_in_state(&["verify", "../main.sak"], &sub, &inside);
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(stderr.contains("must live outside"), "{out:?}");
     assert!(!inside.exists(), "no key inside the project");
@@ -1333,7 +1344,7 @@ fn verify_reuses_only_authenticated_unchanged_records() {
                 "--json",
                 "--solver",
                 wrapper.to_str().unwrap(),
-                "main.sakura",
+                "main.sak",
             ],
             &dir,
             &state,
@@ -1367,7 +1378,7 @@ fn verify_reuses_only_authenticated_unchanged_records() {
 
     // A body-only edit: only `scale`'s obligations are solved again.
     std::fs::write(
-        dir.join("main.sakura"),
+        dir.join("main.sak"),
         SCALE.replace("{ total * p / 100 }", "{ p * total / 100 }"),
     )
     .unwrap();
@@ -1386,7 +1397,7 @@ fn verify_warns_w7002_on_a_vacuous_obligation() {
     let src = "fn f(x: Int) -> Int\n  requires x > 0 && x < 0\n  ensures result > 100\n{ x }\n\npub fn main() -> Unit {}\n";
     let dir = tmp("verify-vacuous", src);
     let out = sakura_in_state(
-        &["verify", "--json", "main.sakura"],
+        &["verify", "--json", "main.sak"],
         &dir,
         &outside(&dir, "state"),
     );
@@ -1410,7 +1421,7 @@ fn build_dump_core_marks_proved_operations() {
         "fn fib(n: Int) -> Int { if n < 2 { n } else { fib(n - 1) + fib(n - 2) } }\n\
          pub fn main() -> Unit ! {Console} { Console.print(\"{fib(20)}\") }\n",
     );
-    let out = sakura(&["build", "--dump", "core", "main.sakura"], &dir);
+    let out = sakura(&["build", "--dump", "core", "main.sak"], &dir);
     assert_eq!(out.code, Some(0), "{}", out.stderr);
     let fib: String = out
         .stdout
@@ -1469,7 +1480,7 @@ fn build_dump_owned_gives_each_site_and_reason() {
            Console.print(\"{a} {f()} {b2} {box} {c2} {n} {d2} {e} {e2} {grow([0])} {pick([], true)}\")\n\
          }\n",
     );
-    let out = sakura(&["build", "--dump", "owned", "main.sakura"], &dir);
+    let out = sakura(&["build", "--dump", "owned", "main.sak"], &dir);
     assert_eq!(out.code, Some(0), "{}", out.stderr);
     assert_eq!(
         out.stdout,
@@ -1488,7 +1499,7 @@ fn pick consumes xs
 "
     );
     // `--dump core` marks the same owned sites.
-    let core = sakura(&["build", "--dump", "core", "main.sakura"], &dir);
+    let core = sakura(&["build", "--dump", "core", "main.sak"], &dir);
     assert!(
         core.stdout
             .contains("let r%1: List<Int> = call $list_push(xs%0, 1) owned"),
@@ -1507,7 +1518,7 @@ fn build_dump_core_shows_requires_seeds() {
          { if n == 0 { acc } else { sum_tail(n - 1, acc + n) } }\n\
          pub fn main() -> Unit ! {Console} { Console.print(\"{sum_tail(10, 0)}\") }\n",
     );
-    let out = sakura(&["build", "--dump", "core", "main.sakura"], &dir);
+    let out = sakura(&["build", "--dump", "core", "main.sak"], &dir);
     assert_eq!(out.code, Some(0), "{}", out.stderr);
     let lines: Vec<&str> = out
         .stdout
@@ -1538,7 +1549,7 @@ fn build_dump_core_fuses_get_expect() {
          pub fn main() -> Unit ! {Console} \
          { Console.print(\"{at([1], 0)} {price(Map.empty(), \"x\")} {twice([1], 0)}\") }\n",
     );
-    let out = sakura(&["build", "--dump", "core", "main.sakura"], &dir);
+    let out = sakura(&["build", "--dump", "core", "main.sak"], &dir);
     assert_eq!(out.code, Some(0), "{}", out.stderr);
     let lines: Vec<&str> = out.stdout.lines().map(str::trim).collect();
     let has = |s: &str| lines.contains(&s);
