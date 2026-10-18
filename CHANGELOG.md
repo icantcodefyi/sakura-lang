@@ -65,6 +65,11 @@ published yet.
   with `--jobs 1` for serial execution and byte-identical task-ordered reports
   (design §17.197).
 
+- A process that analyses several programs (the LSP and MCP servers, test suites) analyses
+  the std library once and reuses it for every program after the first; a single `sakura
+  check` is unchanged. Snapshot files now list std first, so `FileId`s in `--dump core` and
+  the Core snapshot's `files` change order, and the snapshot hash changes (design §17.195).
+
 - The Sakura skill keeps its examples, syntax list, and edit loop in a smaller entry
   point, with repair and completion detail in its references. Its 7,500-byte ASCII
   limit now measures release metadata after template fill, with a 7,000-byte source

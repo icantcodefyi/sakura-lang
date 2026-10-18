@@ -5,7 +5,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 
 use sakura_diagnostics::{
     Diagnostic, FileId, HoleReport, Phase, Rendered, SourceFile, Span, codes, sha256,
@@ -48,13 +48,14 @@ pub struct Snapshot {
 }
 
 impl Snapshot {
-    /// Files are sorted by URI so the same inputs give the same `FileId`s and hash.
+    /// Files are sorted std first, then by URI, so the same inputs give the same `FileId`s and
+    /// hash, and std's `FileId`s are a prefix shared by every snapshot (design §17.195).
     pub fn new(files: impl IntoIterator<Item = (String, String)>) -> Self {
         let mut files: Vec<SourceFile> = files
             .into_iter()
             .map(|(uri, text)| SourceFile::new(uri, text))
             .collect();
-        files.sort_by(|a, b| a.uri.cmp(&b.uri));
+        files.sort_by(|a, b| (!is_std(&a.uri), &a.uri).cmp(&(!is_std(&b.uri), &b.uri)));
         files.dedup_by(|a, b| a.uri == b.uri);
         let mut material = String::new();
         for f in &files {
@@ -97,7 +98,7 @@ impl Snapshot {
     pub fn user_files(&self) -> impl Iterator<Item = FileId> + '_ {
         self.file_ids().filter(|&f| {
             let uri = &self.file(f).uri;
-            !uri.starts_with("sakura:///std/") && is_module(uri)
+            !is_std(uri) && is_module(uri)
         })
     }
 
@@ -132,7 +133,9 @@ impl Analysis {
     /// snapshot (hover, completion, `hole_context`) share one analysis, files whose text did
     /// not change are not parsed again, and when no module's interface changed since the
     /// previous analysis only the edited modules are lowered and type-checked again (design
-    /// §14.3 M3, §17.74).
+    /// §14.3 M3, §17.74). After an analysis of other files, std is reused from an analysis of
+    /// std alone, made once per process, and only the user modules are lowered and checked
+    /// (§17.195).
     pub fn analyze(snapshot: &Snapshot) -> Arc<Analyzed> {
         static CACHE: Mutex<Vec<Arc<Analyzed>>> = Mutex::new(Vec::new());
         const KEEP: usize = 8;
@@ -147,8 +150,15 @@ impl Analysis {
             // The latest analysis is usually the previous edit of this snapshot.
             cache.last().cloned()
         };
+        // Not for a process's first analysis: one fresh analysis is cheaper than std's plus a
+        // reusing one, which still hashes and indexes every std file.
+        let has_std = snapshot.files.first().is_some_and(|f| is_std(&f.uri));
+        let std = (has_std && prev.is_some()).then(|| std::iter::once_with(std_analysis));
         // Unlocked, so callers on other threads analyse their snapshots in parallel.
-        let analyzed = Arc::new(analyze(snapshot, prev.as_deref()));
+        let analyzed = Arc::new(analyze(
+            snapshot,
+            prev.as_deref().into_iter().chain(std.into_iter().flatten()),
+        ));
         let mut cache = lock();
         if let Some(hit) = cache.iter().find(|a| a.snapshot.hash == snapshot.hash) {
             return hit.clone();
@@ -349,8 +359,16 @@ impl Analyzed {
     }
 }
 
-/// Every frontend phase: HIR, typed program, symbols, and their diagnostics and holes.
-fn analyze(snapshot: &Snapshot, prev: Option<&Analyzed>) -> Analyzed {
+/// std alone, analysed once per process: the `prev` of a snapshot whose latest cached analysis
+/// has other files (design §17.195).
+fn std_analysis<'a>() -> &'a Analyzed {
+    static STD: OnceLock<Analyzed> = OnceLock::new();
+    STD.get_or_init(|| analyze(&Snapshot::new(std_sources()), []))
+}
+
+/// Every frontend phase: HIR, typed program, symbols, and their diagnostics and holes; reusing
+/// the first of `prevs` that matches (see below).
+fn analyze<'a>(snapshot: &Snapshot, prevs: impl IntoIterator<Item = &'a Analyzed>) -> Analyzed {
     ANALYSES.fetch_add(1, Ordering::Relaxed);
     let (parses, mut diagnostics) = parse_all(snapshot);
     let trees: Vec<sakura_syntax::SyntaxNode> =
@@ -360,22 +378,31 @@ fn analyze(snapshot: &Snapshot, prev: Option<&Analyzed>) -> Analyzed {
         .iter()
         .map(|p| p.as_ref().map(|p| interface_hash(&p.syntax(), &evaluated)))
         .collect();
-    // Reuse `prev` only for the same files with the same interfaces; then a module is reused
-    // (neither lowered nor checked again) when its text is unchanged and none of its
-    // diagnostics points into a changed file.
+    // Reuse a `prev` whose files are a prefix of this snapshot's with the same URIs, where every
+    // edited file kept its interface: the same files (an edit), or std alone, which depends on
+    // no user module. An unchanged file's hash is not compared: it differs only when another
+    // module's names change which of its bodies count (`evaluated`), and nothing it holds has
+    // changed. Then a module is reused (neither lowered nor checked again) when its text is
+    // unchanged and none of its diagnostics points into a changed file; files past the prefix
+    // are new.
     let name = package_name(snapshot);
-    let prev = prev.filter(|p| {
-        p.interfaces == interfaces
-            && p.program.packages.last().is_some_and(|pk| pk.name == name)
-            && p.snapshot.files.len() == snapshot.files.len()
-            && (p.snapshot.files.iter().zip(&snapshot.files)).all(|(a, b)| a.uri == b.uri)
+    let prev = prevs.into_iter().find(|p| {
+        let n = p.snapshot.files.len();
+        let same_files = n == snapshot.files.len()
+            && p.program.packages.last().is_some_and(|pk| pk.name == name);
+        (same_files || p.snapshot.files.iter().all(|f| is_std(&f.uri)))
+            && n <= snapshot.files.len()
+            && (p.snapshot.files.iter().zip(&snapshot.files).enumerate()).all(|(i, (a, b))| {
+                a.uri == b.uri
+                    && (a.content_hash == b.content_hash || p.interfaces[i] == interfaces[i])
+            })
     });
-    let changed: Vec<bool> = match prev {
-        Some(p) => (p.snapshot.files.iter().zip(&snapshot.files))
-            .map(|(a, b)| a.content_hash != b.content_hash)
-            .collect(),
-        None => vec![true; snapshot.files.len()],
-    };
+    let changed: Vec<bool> = (0..snapshot.files.len())
+        .map(|i| {
+            prev.and_then(|p| p.snapshot.files.get(i))
+                .is_none_or(|a| a.content_hash != snapshot.files[i].content_hash)
+        })
+        .collect();
     let reused_file: Vec<bool> = (0..snapshot.files.len())
         .map(|file| {
             prev.is_some_and(|p| {
@@ -794,6 +821,10 @@ fn lower(
     }
 }
 
+fn is_std(uri: &str) -> bool {
+    uri.starts_with("sakura:///std/")
+}
+
 /// Whether a snapshot file is a Sakura Lang module (other files, like `sakura.toml`, ride along for
 /// manifest checks).
 pub fn is_module(uri: &str) -> bool {
@@ -828,6 +859,67 @@ mod tests {
     fn std_is_embedded() {
         let std: Vec<_> = std_sources().collect();
         assert!(std.iter().any(|(uri, _)| uri == "sakura:///std/core.sak"));
+    }
+
+    /// Design §17.195, §13.2: reusing std from its once-per-process analysis gives the same
+    /// diagnostics, holes, Core and JS as analysing everything, for every `ui`, `semantics` and
+    /// bench program.
+    #[test]
+    fn std_reuse_matches_a_fresh_analysis() {
+        let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../..");
+        let dirs = [
+            "compiler/tests/ui",
+            "compiler/tests/semantics",
+            "bench/programs",
+        ];
+        let sak = |p: &std::path::Path| p.extension().is_some_and(|e| e == "sak");
+        // A program is a `.sak` file, a bench program's `sakura/main.sak`, or a `ui` directory.
+        let mut programs: Vec<Vec<std::path::PathBuf>> = (dirs.iter())
+            .flat_map(|d| std::fs::read_dir(format!("{root}/{d}")).unwrap())
+            .map(|e| e.unwrap().path())
+            .map(|p| match (p.is_dir(), p.join("sakura/main.sak")) {
+                (true, main) if main.exists() => vec![main],
+                (true, _) => (std::fs::read_dir(&p).unwrap())
+                    .map(|e| e.unwrap().path())
+                    .filter(|f| sak(f))
+                    .collect(),
+                (false, _) => vec![p].into_iter().filter(|f| sak(f)).collect(),
+            })
+            .filter(|files| !files.is_empty())
+            .collect();
+        programs.iter_mut().for_each(|files| files.sort());
+        programs.sort();
+        let std = std_analysis();
+        let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
+        std::thread::scope(|s| {
+            for chunk in programs.chunks(programs.len().div_ceil(threads)) {
+                s.spawn(move || {
+                    for files in chunk {
+                        let snap = Snapshot::with_std(files.iter().map(|f| {
+                            let name = f.file_name().unwrap().to_string_lossy();
+                            let text = std::fs::read_to_string(f).unwrap();
+                            (format!("file:///t/src/{name}"), text)
+                        }));
+                        let out = |a: &Analyzed| {
+                            let core =
+                                (!a.check.has_errors() && a.check.holes.is_empty()).then(|| {
+                                    sakura_core::lower(&a.program, &a.typed, &Default::default())
+                                });
+                            let js = (core.as_ref())
+                                .filter(|c| !c.diagnostics.iter().any(Diagnostic::is_error))
+                                .map(|c| {
+                                    Analysis::emit_js(&snap, &c.module, &BuildOptions::default())
+                                });
+                            let core = core.map(|c| (c.module, c.diagnostics));
+                            (format!("{:?}", a.check), format!("{core:?}"), js)
+                        };
+                        let fresh = out(&analyze(&snap, []));
+                        let reused = out(&analyze(&snap, [std]));
+                        assert!(fresh == reused, "{} differs", files[0].display());
+                    }
+                });
+            }
+        });
     }
 
     #[test]

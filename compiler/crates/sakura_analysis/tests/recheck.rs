@@ -14,7 +14,8 @@ fn snap(lib: &str, extra: bool) -> Snapshot {
         ("file:///p/src/gen.sak".to_owned(), GEN.to_owned()),
         ("file:///p/src/lib.sak".to_owned(), lib.to_owned()),
     ];
-    // A file that is not a module, sorted last: no reuse (the file set differs), same `FileId`s.
+    // A file that is not a module, sorted last: no reuse of user modules (the file set
+    // differs), only of std; same `FileId`s.
     if extra {
         files.push(("zzz:///notes.txt".to_owned(), String::new()));
     }
@@ -49,9 +50,11 @@ fn a_private_body_edit_rechecks_only_its_module() {
 
     // Same diagnostics and holes as checking everything: app's error and hole carry over.
     let full = Analysis::analyze(&snap(&edited, true));
-    assert!(
-        stats().checked_modules - after.checked_modules > 2,
-        "no reuse across file sets"
+    // std alone is analysed here, once per process, and reused (design §17.195).
+    assert_eq!(
+        stats().checked_modules - after.checked_modules,
+        sakura_analysis::std_sources().count() + 3,
+        "only std is reused across file sets"
     );
     assert_eq!(report(&warm), report(&full));
     let codes: Vec<&str> = warm.check.diagnostics.iter().map(|d| d.code.0).collect();
@@ -107,7 +110,7 @@ fn a_private_body_edit_rechecks_only_its_module() {
     assert_eq!(code(reused.files), code(full.files));
 
     // A function a refinement predicate calls is run on literals at compile time (design
-    // §17.87), so its body is interface: editing it rechecks every module, editing another
+    // §17.87), so its body is interface: editing it rechecks every user module, editing another
     // body does not.
     let refined = |positive: &str, other: &str| {
         let pred = format!(
@@ -125,15 +128,15 @@ fn a_private_body_edit_rechecks_only_its_module() {
     assert_eq!(stats().checked_modules - before.checked_modules, 1);
     let before = stats();
     let _ = Analysis::analyze(&refined("n > 1", "2"));
-    assert!(stats().checked_modules - before.checked_modules > 2);
+    assert_eq!(stats().checked_modules - before.checked_modules, 2);
 
-    // A signature change rechecks everything.
+    // A signature change rechecks every user module; std is reused (design §17.195).
     let sig = edited.replace(
         "pub fn twice(x: Int) -> Int",
         "pub fn twice(x: Int) -> Float",
     );
     let before = stats();
     let _ = Analysis::analyze(&snap(&sig, false));
-    assert!(stats().checked_modules - before.checked_modules > 2);
-    assert!(stats().lowers - before.lowers > 2);
+    assert_eq!(stats().checked_modules - before.checked_modules, 3);
+    assert_eq!(stats().lowers - before.lowers, 3);
 }

@@ -43,12 +43,13 @@ pub fn lower(packages: &[PackageInput<'_>]) -> Program {
     lower_with(packages, None).0
 }
 
-/// [`lower`], where `prev` is the lowering of an earlier snapshot with the same files and the
-/// same interfaces (items, signatures and imports in the same order): every module for which
-/// `reuse` holds keeps `prev`'s signatures, bodies and diagnostics (those whose primary span is
-/// in its file), so only the other modules are lowered again (design §17.74). Item collection
-/// and import binding (phases 1–3) still run over every module; they read no bodies. Also
-/// returns how many modules were lowered.
+/// [`lower`], where `prev` is the lowering of an earlier snapshot whose modules are a prefix of
+/// these, with the same files and the same interfaces (items, signatures and imports in the
+/// same order), and which depend on no module past the prefix: the same snapshot after an edit
+/// (design §17.74), or std alone (§17.195). Every module for which `reuse` holds keeps `prev`'s
+/// signatures, bodies and diagnostics (those whose primary span is in its file), so only the
+/// other modules are lowered again. Item collection and import binding (phases 1–3) still run
+/// over every module; they read no bodies. Also returns how many modules were lowered.
 pub fn lower_reusing(
     packages: &[PackageInput<'_>],
     prev: &Program,
