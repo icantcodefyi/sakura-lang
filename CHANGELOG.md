@@ -30,6 +30,12 @@ published yet.
 
 ### Added
 
+- `--target wasm` runs `Http.host()` sends and streams, `Sql.sqlite`, `Serve.host()`,
+  `Llm.stream` through `Llm.anthropic` and `Log.json()` as the JS backend does; every
+  semantics fixture and example agrees with JS on output and effect trace, with `@js`/`@wasm`
+  fixture expectations where `Int` differs, and the parity harness reports which host
+  imports the corpus exercised (plan M4 W2).
+
 - A VS Code extension in `editors/vscode/` (not published; build a `.vsix` locally):
   `.sakura` highlighting generated from the website grammar, language configuration, and a
   client for `sakura lsp` per project (nearest `sakura.toml`) with error-page links,
