@@ -13,16 +13,10 @@ use sakura_codegen_wasm::{Host, Options};
 use sakura_lir::snapshot;
 
 /// Programs that cannot run on WASM yet, with the reason.
-const KNOWN: &[(&str, &str)] = &[
-    (
-        "semantics/handler_cancel_in_loop",
-        "Task.deterministic: fibers and the deterministic scheduler are not wired to compiled code",
-    ),
-    (
-        "semantics/sql_untrusted_param",
-        "SQL rows decode with the program's JS type descriptors, which a bare corpus module lacks",
-    ),
-];
+const KNOWN: &[(&str, &str)] = &[(
+    "semantics/sql_untrusted_param",
+    "SQL rows decode with the program's JS type descriptors, which a bare corpus module lacks",
+)];
 
 struct Program {
     name: String,

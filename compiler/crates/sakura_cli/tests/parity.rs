@@ -35,10 +35,6 @@ const KNOWN: &[(&str, &str)] = &[
         "a JS-only defect (§17.80): WASM computes the i64 result",
     ),
     (
-        "handler_cancel_in_loop.sakura",
-        "Task.deterministic: fibers are not wired to compiled code yet (W1 follow-up)",
-    ),
-    (
         "properties.sakura",
         "property tests: property_run (sakura-gen-v1 generation and shrinking) is not on WASM yet",
     ),

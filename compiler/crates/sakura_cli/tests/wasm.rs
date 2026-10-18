@@ -81,6 +81,8 @@ const TESTED: &[&str] = &[
     "typed_errors",
     "json_api",
     "word_count",
+    "concurrency",
+    "graph",
 ];
 
 #[test]
