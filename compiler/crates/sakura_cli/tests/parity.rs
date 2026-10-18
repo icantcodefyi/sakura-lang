@@ -34,11 +34,7 @@ const KNOWN: &[(&str, &str)] = &[
     ),
     (
         "sql_untrusted_param.sakura",
-        "PrimOp::Schema is Inst::Unsupported in the LIR (schemas, REQUESTS 2026-10-18)",
-    ),
-    (
-        "uuid_decode.sakura",
-        "Json.decode needs PrimOp::Schema (Inst::Unsupported in the LIR)",
+        "the SQL host (sql_memory) is not implemented on WASM yet",
     ),
 ];
 

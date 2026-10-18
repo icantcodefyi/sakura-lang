@@ -20,7 +20,7 @@ const KNOWN: &[(&str, &str)] = &[
     ),
     (
         "semantics/sql_untrusted_param",
-        "PrimOp::Schema lowers to Inst::Unsupported in sakura_lir (REQUESTS 2026-10-18)",
+        "the SQL host (sql_memory) is not implemented on WASM yet",
     ),
 ];
 
