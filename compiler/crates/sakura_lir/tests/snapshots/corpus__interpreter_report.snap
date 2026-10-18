@@ -81,6 +81,8 @@ semantics/loops: ok, 44 allocated, 38 dup, 82 drop, peak 12, live 0/0
 semantics/million_operations: ok, 4 allocated, 1000000 dup, 1000004 drop, peak 4, live 0/0
 semantics/mutual_recursion: ok, 8 allocated, 0 dup, 8 drop, peak 4, live 0/0
 semantics/mutual_tail_blame: D020, 5 allocated, 0 dup, 5 drop, peak 4, live 0/0
+semantics/mutual_tail_dispatch: ok, 309574 allocated, 1 dup, 309575 drop, peak 5, live 0/0
+semantics/mutual_tail_dispatch_blame: D020, 5 allocated, 0 dup, 5 drop, peak 4, live 0/0
 semantics/mutual_tail_loop: ok, 28 allocated, 0 dup, 28 drop, peak 4, live 0/0
 semantics/nested_options: ok, 280 allocated, 474 dup, 754 drop, peak 47, live 0/0
 semantics/nested_options_json: unsupported (builtin json_encode)

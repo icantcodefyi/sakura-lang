@@ -10,7 +10,8 @@
 //! - Tail calls around a cycle of monomorphic top-level defs without contract checks become
 //!   jumps too: each def of the cycle gets a copy of the others as join points of one loop, at
 //!   most `MERGE_MEMBERS` defs and `MERGE_NODES` copied expressions, so `is_even`/`is_odd` run
-//!   in constant stack (design §17.160 (5)).
+//!   in constant stack (design §17.160 (5)). A cycle whose copies cannot nest, such as three
+//!   defs each calling both others, takes them as arms of one dispatch join (design §17.192 (2)).
 //! - Calls of handler constructors are inlined, and performs bound to a handler literal are
 //!   found by [`handlers::bind`] (design §17.113).
 //! - `list_get`/`map_get` whose `Option` only feeds the next binding's `option_expect` become
@@ -46,13 +47,20 @@ pub fn optimize(m: &mut Module) {
     let merges = merges(m);
     let originals: HashMap<DefId, FnDef> = merges
         .iter()
-        .flatten()
+        .flat_map(|g| &g.members)
         .map(|&g| (g, m.def(g).clone()))
         .collect();
-    for (i, members) in merges.iter().enumerate() {
+    for (i, merge) in merges.iter().enumerate() {
         let site = blames_caller(m, &m.defs[i].body);
-        let members: Vec<(DefId, &FnDef)> = members.iter().map(|g| (*g, &originals[g])).collect();
-        tail_calls(&mut m.defs[i], DefId(i as u32), &members, site);
+        let members: Vec<(DefId, &FnDef)> =
+            merge.members.iter().map(|g| (*g, &originals[g])).collect();
+        tail_calls(
+            &mut m.defs[i],
+            DefId(i as u32),
+            &members,
+            merge.dispatch,
+            site,
+        );
     }
 }
 
@@ -395,9 +403,17 @@ const MERGE_MEMBERS: usize = 4;
 /// The most Core expressions (a `let`, a switch arm, a jump, ...) a def copies from other members.
 const MERGE_NODES: usize = 1024;
 
-/// Per def, the other members of its tail-call cycle that it copies into its loop, in nesting
-/// order, or none.
-fn merges(m: &Module) -> Vec<Vec<DefId>> {
+/// The other members of a def's tail-call cycle that it copies into its loop.
+#[derive(Clone, Default)]
+struct Merge {
+    /// In nesting order ([`nest`]), or in `DefId` order when `dispatch`.
+    members: Vec<DefId>,
+    /// No nesting order exists: the members are arms of one dispatch join.
+    dispatch: bool,
+}
+
+/// Per def, the members it merges, if any.
+fn merges(m: &Module) -> Vec<Merge> {
     let edges: Vec<BTreeSet<DefId>> = m
         .defs
         .iter()
@@ -421,7 +437,7 @@ fn merges(m: &Module) -> Vec<Vec<DefId>> {
             && d.row.tail.is_none()
             && !d.locals.iter().any(|l| handlers::mentions_var(&l.ty))
     };
-    let mut out = vec![Vec::new(); m.defs.len()];
+    let mut out = vec![Merge::default(); m.defs.len()];
     for (i, f) in m.defs.iter().enumerate() {
         let me = DefId(i as u32);
         if !mono(f) || edges[i].iter().all(|&t| t == me) {
@@ -447,9 +463,20 @@ fn merges(m: &Module) -> Vec<Vec<DefId>> {
             continue;
         }
         let mut order = vec![me];
-        if nest(&mut order, &members, &edges) {
-            out[i] = order.split_off(1);
-        }
+        out[i] = if nest(&mut order, &members, &edges) {
+            Merge {
+                members: order.split_off(1),
+                dispatch: false,
+            }
+        } else if left > 0 {
+            // The dispatch counts as one copied expression.
+            Merge {
+                members,
+                dispatch: true,
+            }
+        } else {
+            continue;
+        };
     }
     out
 }
@@ -542,8 +569,8 @@ fn has_check(e: &Expr) -> bool {
 }
 
 /// `def`'s self tail calls, and its tail calls of `members` (copies of their bodies placed in
-/// `def` as join points, [`nest`]), become jumps.
-fn tail_calls(def: &mut FnDef, me: DefId, members: &[(DefId, &FnDef)], site: bool) {
+/// `def` as join points, [`nest`], or as the arms of a dispatch join), become jumps.
+fn tail_calls(def: &mut FnDef, me: DefId, members: &[(DefId, &FnDef)], dispatch: bool, site: bool) {
     let mut targets = BTreeSet::new();
     tail_targets(&def.body, &mut targets);
     if !matches!(def.kind, FnKind::Top { .. }) || members.is_empty() && !targets.contains(&me) {
@@ -560,7 +587,7 @@ fn tail_calls(def: &mut FnDef, me: DefId, members: &[(DefId, &FnDef)], site: boo
             Local(def.locals.len() as u32 - 1)
         })
         .collect();
-    let mut loops = vec![(me, label)];
+    let mut entries = vec![(me, Entry::direct(label))];
     let mut heads = Vec::new();
     let mut bodies = vec![std::mem::replace(
         &mut def.body,
@@ -572,27 +599,120 @@ fn tail_calls(def: &mut FnDef, me: DefId, members: &[(DefId, &FnDef)], site: boo
         let mut body = d.body.clone();
         renumber(&mut body, lo, next);
         next += max_label(&d.body).map_or(0, |l| l + 1);
-        loops.push((g, Label(next)));
+        entries.push((g, Entry::direct(Label(next))));
         heads.push((
             Label(next),
-            d.params.iter().map(|p| Local(p.0 + lo)).collect(),
+            d.params.iter().map(|p| Local(p.0 + lo)).collect::<Vec<_>>(),
         ));
         next += 1;
         bodies.push(body);
     }
-    let mut sites = site.then_some(&mut def.locals);
-    for b in &mut bodies {
-        rewrite(b, me, &loops, sites.as_deref_mut());
-    }
-    let mut join = bodies.pop().expect("the def's own body");
-    while let (Some(body), Some((label, params))) = (bodies.pop(), heads.pop()) {
-        join = Expr::LetJoin {
-            label,
-            params,
-            join: Box::new(join),
-            body: Box::new(body),
+    let join = if dispatch {
+        let hub = Label(next);
+        let slots: Vec<Vec<LocalDecl>> = heads
+            .iter()
+            .map(|(_, ps)| ps.iter().map(|p| def.locals[p.index()].clone()).collect())
+            .collect();
+        let locals = &mut def.locals;
+        let mut local = |name: &str, ty: Ty| {
+            locals.push(LocalDecl {
+                name: name.into(),
+                ty,
+            });
+            Local(locals.len() as u32 - 1)
         };
-    }
+        let state = local("state", Ty::Int);
+        let slots: Vec<Vec<Local>> = slots
+            .into_iter()
+            .map(|ds| ds.into_iter().map(|d| local(&d.name, d.ty)).collect())
+            .collect();
+        let tests: Vec<Local> = (1..heads.len()).map(|_| local("arm", Ty::Bool)).collect();
+        // A cross-member call passes its state, its arguments in its own slots and a dead
+        // filler of the slot's type in every other member's.
+        let fill: Vec<Vec<Atom>> = slots
+            .iter()
+            .map(|ss| {
+                ss.iter()
+                    .map(|s| filler(&def.locals[s.index()].ty))
+                    .collect()
+            })
+            .collect();
+        for (k, (_, entry)) in entries.iter_mut().enumerate().skip(1) {
+            let k = k - 1;
+            let mut args = vec![Atom::Lit(Lit::Int(k as i64))];
+            args.extend(fill[..k].iter().flatten().cloned());
+            let at = args.len();
+            args.extend(fill[k + 1..].iter().flatten().cloned());
+            *entry = Entry {
+                label: hub,
+                args,
+                at,
+            };
+        }
+        let mut sites = site.then_some(&mut def.locals);
+        let mut bodies = bodies.into_iter();
+        let mut host = bodies.next().expect("the def's own body");
+        rewrite(&mut host, me, &entries, sites.as_deref_mut());
+        let mut arms: Vec<Expr> = bodies
+            .zip(heads)
+            .zip(&slots)
+            .enumerate()
+            .map(|(k, ((mut body, (own, params)), ss))| {
+                // A member's self call stays a direct jump to its own loop.
+                let mut entries = entries.clone();
+                entries[k + 1].1 = Entry::direct(own);
+                rewrite(&mut body, me, &entries, sites.as_deref_mut());
+                Expr::LetJoin {
+                    label: own,
+                    params,
+                    join: Box::new(body),
+                    body: Box::new(Expr::Jump(
+                        own,
+                        ss.iter().map(|s| Atom::Local(*s)).collect(),
+                    )),
+                }
+            })
+            .collect();
+        let mut chain = arms.pop().expect("a member");
+        for (k, (arm, test)) in arms.into_iter().zip(tests).enumerate().rev() {
+            chain = Expr::Let {
+                local: test,
+                bind: Bind::Prim(
+                    PrimOp::Eq(CmpTy::Int),
+                    vec![Atom::Local(state), Atom::Lit(Lit::Int(k as i64))],
+                ),
+                pos: None,
+                body: Box::new(Expr::If {
+                    cond: Atom::Local(test),
+                    then: Box::new(arm),
+                    els: Box::new(chain),
+                }),
+            };
+        }
+        Expr::LetJoin {
+            label: hub,
+            params: std::iter::once(state)
+                .chain(slots.into_iter().flatten())
+                .collect(),
+            join: Box::new(chain),
+            body: Box::new(host),
+        }
+    } else {
+        let mut sites = site.then_some(&mut def.locals);
+        for b in &mut bodies {
+            rewrite(b, me, &entries, sites.as_deref_mut());
+        }
+        let mut join = bodies.pop().expect("the def's own body");
+        while let (Some(body), Some((label, params))) = (bodies.pop(), heads.pop()) {
+            join = Expr::LetJoin {
+                label,
+                params,
+                join: Box::new(join),
+                body: Box::new(body),
+            };
+        }
+        join
+    };
     def.body = Expr::LetJoin {
         label,
         params: std::mem::replace(&mut def.params, fresh.clone()),
@@ -602,6 +722,38 @@ fn tail_calls(def: &mut FnDef, me: DefId, members: &[(DefId, &FnDef)], site: boo
             fresh.into_iter().map(Atom::Local).collect(),
         )),
     };
+}
+
+/// Where a merged tail call jumps: `label`, with the call's arguments spliced into `args` at
+/// `at`. A direct jump has no other `args`; a jump through the dispatch join adds the member's
+/// state and the fillers of the other members' slots.
+#[derive(Clone)]
+struct Entry {
+    label: Label,
+    args: Vec<Atom>,
+    at: usize,
+}
+
+impl Entry {
+    fn direct(label: Label) -> Entry {
+        Entry {
+            label,
+            args: Vec::new(),
+            at: 0,
+        }
+    }
+}
+
+/// A value of type `ty` for a dispatch slot no arm reads: a literal for a scalar type, `()` for
+/// any other (both backends accept it in a reference position: JS is untyped and the LIR boxes
+/// `()`, as for its own placeholders).
+fn filler(ty: &Ty) -> Atom {
+    Atom::Lit(match ty {
+        Ty::Int => Lit::Int(0),
+        Ty::Float => Lit::Float(0.0),
+        Ty::Bool => Lit::Bool(false),
+        _ => Lit::Unit,
+    })
 }
 
 fn tail_call(e: &Expr) -> Option<(DefId, &[Atom], Option<Pos>)> {
@@ -648,22 +800,24 @@ fn tail_targets_inner(e: &Expr, out: &mut BTreeSet<DefId>) {
     }
 }
 
-/// Tail calls of a def in `loops` become jumps to its label; one of `me` binds the site mark
+/// Tail calls of a def in `loops` become jumps to its entry; one of `me` binds the site mark
 /// first when `sites` is given.
-fn rewrite(e: &mut Expr, me: DefId, loops: &[(DefId, Label)], sites: Option<&mut Vec<LocalDecl>>) {
+fn rewrite(e: &mut Expr, me: DefId, loops: &[(DefId, Entry)], sites: Option<&mut Vec<LocalDecl>>) {
     crate::ensure_stack(|| rewrite_inner(e, me, loops, sites))
 }
 
 fn rewrite_inner(
     e: &mut Expr,
     me: DefId,
-    loops: &[(DefId, Label)],
+    loops: &[(DefId, Entry)],
     mut sites: Option<&mut Vec<LocalDecl>>,
 ) {
     if let Some((d, args, pos)) = tail_call(e)
-        && let Some(&(_, label)) = loops.iter().find(|(g, _)| *g == d)
+        && let Some((_, entry)) = loops.iter().find(|(g, _)| *g == d)
     {
-        let jump = Expr::Jump(label, args.to_vec());
+        let mut all = entry.args.clone();
+        all.splice(entry.at..entry.at, args.iter().cloned());
+        let jump = Expr::Jump(entry.label, all);
         *e = match sites {
             Some(locals) if d == me => {
                 locals.push(LocalDecl {

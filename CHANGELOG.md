@@ -237,6 +237,12 @@ published yet.
   too, where they ran through frames before. A terminating program's output, effects and
   defects are unchanged.
 
+- A tail-call cycle whose functions cannot be nested inside each other, such as three
+  functions that each call both others, also runs as one loop per function: the loop
+  dispatches on a state number to its copies of the other functions (design §17.192 (2),
+  WS-P9b). WS-P9's limits still apply (four functions, 1,024 copied expressions), and output,
+  effects, defect messages and blame sites are unchanged.
+
 - A `requires` violated inside a self-tail-recursive function now blames the self call
   (`down2(n - 2)`) instead of the outer call that entered the loop. Contracted functions
   take their blame site as a trailing parameter on the JS backend, and predicates that

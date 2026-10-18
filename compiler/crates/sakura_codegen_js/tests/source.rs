@@ -193,6 +193,70 @@ pub fn main() -> Unit ! {Console} { Console.print("{walk(1000001)} {ping(1000000
     }
 }
 
+/// Design §17.160 (5), §17.192 (2): a def copies at most 1,024 Core expressions from the other
+/// members of its cycle, and a dispatch join counts as one of them. `h` checks a contract, so it
+/// hosts but is never copied, and the members it copies keep their bodies as counted. With one
+/// member `h` nests it; with two, both called from `h`, no nesting order exists and `h` merges
+/// them through a dispatch join.
+#[test]
+fn merging_stops_at_1024_copied_expressions() {
+    use sakura_core::Expr;
+    fn size(e: &Expr) -> usize {
+        1 + match e {
+            Expr::Let { body, .. } | Expr::Handle { body, .. } | Expr::Try { body, .. } => {
+                size(body)
+            }
+            Expr::LetJoin { join, body, .. } => size(join) + size(body),
+            Expr::If { then, els, .. } => size(then) + size(els),
+            Expr::Switch { arms, default, .. } => {
+                arms.iter().map(|(_, a)| size(a)).sum::<usize>()
+                    + default.as_deref().map_or(0, size)
+            }
+            Expr::Ret(_) | Expr::Jump(..) | Expr::Fail(_) => 0,
+        }
+    }
+    // `g` has `lets` straight-line expressions before its call of `h`.
+    let copies = |lets: usize, dispatch: bool| {
+        let chain: String = (1..=lets)
+            .map(|i| format!("  let v{i} = v{} + 1\n", i - 1))
+            .collect();
+        let (calls, other) = if dispatch {
+            (
+                "if n % 2 == 0 { g(n - 1) } else { k(n - 1) }",
+                "fn k(n: Int) -> Int { h(n - 1) }\n",
+            )
+        } else {
+            ("g(n - 1)", "")
+        };
+        let src = format!(
+            "fn h(n: Int) -> Int\n  requires n >= 0\n{{ if n == 0 {{ 0 }} else {{ {calls} }} }}\n\
+             fn g(n: Int) -> Int {{\n  let v0 = n\n{chain}  h(v{lets} - {lets} - 1)\n}}\n\
+             {other}pub fn main() -> Unit ! {{Console}} {{ Console.print(\"{{h(1000)}}\") }}\n"
+        );
+        let (m, _) = common::build("merge_limit", &src, false).unwrap();
+        let def = |name: &str| m.defs.iter().find(|d| d.name == name).unwrap();
+        let mut copied = size(&def("g").body);
+        if dispatch {
+            copied += size(&def("k").body);
+        }
+        let core = m.to_string();
+        let h = &core[core.find("fn h#").unwrap()..];
+        let merged = !h[..h.find("\n}\n").unwrap()].contains("call @");
+        (copied, merged)
+    };
+    for (dispatch, limit) in [(false, 1024), (true, 1023)] {
+        let (base, _) = copies(0, dispatch);
+        assert_eq!(copies(1, dispatch).0, base + 1);
+        let at = limit - base;
+        assert_eq!(copies(at, dispatch), (limit, true), "dispatch {dispatch}");
+        assert_eq!(
+            copies(at + 1, dispatch),
+            (limit + 1, false),
+            "dispatch {dispatch}"
+        );
+    }
+}
+
 /// A one-use reference-valued temporary in direct code is inlined into its consumer, so the frame
 /// does not keep a discarded tree reachable (research/10-evidence/binary-trees-rss.md). A
 /// temporary read twice stays a local; a contracted consumer takes its blame site as an

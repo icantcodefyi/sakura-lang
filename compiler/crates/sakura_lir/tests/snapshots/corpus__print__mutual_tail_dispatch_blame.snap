@@ -1,0 +1,219 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 shape |  32b (word*, word*)
+layout 3 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::mutual_tail_dispatch_blame, frame 6 slots [%2 i64, %7 i64, %8 word*, %11 bool, %15 i64, %17 bool]
+  b0():
+    %0 lit: i64 = const 1000000
+    %1 $site: i64 = const 2
+    call down#2(%0, %1) -> b1()
+  b1(%2 r: i64):
+    %3 s: ptr = show %2
+    %4 lit: ptr = const str 0
+    %5 s: ptr = concat %3, %4
+    drop %3
+    drop %4
+    %6 lit: i64 = const 4
+    call right#3(%6) -> b2(%5)
+  b2(%7 r: i64, %8 s: ptr):
+    %9 s: ptr = show %7
+    %10 s: ptr = concat %8, %9
+    drop %8
+    drop %9
+    perform std::console::Console.print(%10) -> b3()
+  b3(%11 r: unit):
+    %12 box: word = box %11
+    drop %12
+    %13 lit: i64 = const 2
+    %14 $site: i64 = const 3
+    call down#2(%13, %14) -> b4()
+  b4(%15 r: i64):
+    %16 s: ptr = show %15
+    perform std::console::Console.print(%16) -> b5()
+  b5(%17 r: unit):
+    %18 box: word = box %17
+    %19 unbox: unit = unbox %18
+    drop %18
+    ret %19
+
+fn $entry#1 top -> unit ; main::mutual_tail_dispatch_blame, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn down#2 top -> i64 ; main::mutual_tail_dispatch_blame, frame 2 slots [%0 i64, %1 i64]
+  b0(%0 n: i64, %1 $site: i64):
+    jump b1(%0, %1)
+  b1(%2 n: i64, %3 $site: i64):
+    %55 enter: unit = $contract_enter()
+    %56 lit: i64 = const 0
+    %57 t: bool = ge.int %2, %56
+    %58 exit: unit = $contract_exit()
+    check D020 %57 blame %3+0 ; nonneg
+    %59 pre: unit = const ()
+    %60 lit: i64 = const 0
+    %61 t: bool = eq.int %2, %60
+    if %61 then b13(%2, %3) else b14(%2, %3)
+  b2(%4 state: i64, %5 n: i64, %6 n: i64, %7 $site: i64):
+    %8 lit: i64 = const 0
+    %9 arm: bool = eq.int %4, %8
+    if %9 then b3(%5, %6, %7) else b4(%5, %6, %7)
+  b3(%10 n: i64, %11 n: i64, %12 $site: i64):
+    jump b5(%10, %12)
+  b4(%13 n: i64, %14 n: i64, %15 $site: i64):
+    jump b10(%14, %15)
+  b5(%16 n: i64, %17 $site: i64):
+    %18 lit: i64 = const 0
+    %19 t: bool = eq.int %16, %18
+    if %19 then b6(%16, %17) else b7(%16, %17)
+  b6(%20 n: i64, %21 $site: i64):
+    %24 lit: i64 = const 0
+    ret %24
+  b7(%22 n: i64, %23 $site: i64):
+    %25 lit: i64 = const 2
+    %26 t: i64 = intrem %22, %25
+    %27 lit: i64 = const 0
+    %28 t: bool = eq.int %26, %27
+    if %28 then b8(%22, %23) else b9(%22, %23)
+  b8(%29 n: i64, %30 $site: i64):
+    %33 lit: i64 = const 1
+    %34 t: i64 = intsub %29, %33
+    %35 $site: i64 = const 4
+    jump b1(%34, %35)
+  b9(%31 n: i64, %32 $site: i64):
+    %36 lit: i64 = const 1
+    %37 t: i64 = intsub %31, %36
+    %38 lit: i64 = const 1
+    %39 lit: i64 = const 0
+    jump b2(%38, %39, %37, %32)
+  b10(%40 n: i64, %41 $site: i64):
+    %42 lit: i64 = const 1
+    %43 t: bool = le.int %40, %42
+    if %43 then b11(%40, %41) else b12(%40, %41)
+  b11(%44 n: i64, %45 $site: i64):
+    %48 lit: i64 = const 2
+    %49 t: i64 = intsub %44, %48
+    %50 $site: i64 = const 5
+    jump b1(%49, %50)
+  b12(%46 n: i64, %47 $site: i64):
+    %51 lit: i64 = const 1
+    %52 t: i64 = intsub %46, %51
+    %53 lit: i64 = const 0
+    %54 lit: i64 = const 0
+    jump b2(%53, %52, %54, %47)
+  b13(%62 n: i64, %63 $site: i64):
+    %66 lit: i64 = const 0
+    ret %66
+  b14(%64 n: i64, %65 $site: i64):
+    %67 lit: i64 = const 2
+    %68 t: i64 = intrem %64, %67
+    %69 lit: i64 = const 0
+    %70 t: bool = eq.int %68, %69
+    if %70 then b15(%64, %65) else b16(%64, %65)
+  b15(%71 n: i64, %72 $site: i64):
+    %75 lit: i64 = const 1
+    %76 t: i64 = intsub %71, %75
+    %77 lit: i64 = const 1
+    %78 lit: i64 = const 0
+    jump b2(%77, %78, %76, %72)
+  b16(%73 n: i64, %74 $site: i64):
+    %79 lit: i64 = const 1
+    %80 t: i64 = intsub %73, %79
+    %81 lit: i64 = const 0
+    %82 lit: i64 = const 0
+    jump b2(%81, %80, %82, %74)
+
+fn right#3 top -> i64 ; main::mutual_tail_dispatch_blame, frame 3 slots [%0 i64, %10 i64, %27 i64]
+  b0(%0 n: i64):
+    jump b1(%0)
+  b1(%1 n: i64):
+    %13 lit: i64 = const 0
+    %14 t: bool = eq.int %1, %13
+    if %14 then b6(%1) else b7(%1)
+  b2(%2 n: i64):
+    %3 lit: i64 = const 1
+    %4 t: bool = le.int %2, %3
+    if %4 then b3(%2) else b4(%2)
+  b3(%5 n: i64):
+    %7 lit: i64 = const 2
+    %8 t: i64 = intsub %5, %7
+    %9 $site: i64 = const 5
+    call down#2(%8, %9) -> b5()
+  b4(%6 n: i64):
+    %11 lit: i64 = const 1
+    %12 t: i64 = intsub %6, %11
+    jump b1(%12)
+  b5(%10 r: i64):
+    ret %10
+  b6(%15 n: i64):
+    %17 lit: i64 = const 0
+    ret %17
+  b7(%16 n: i64):
+    %18 lit: i64 = const 2
+    %19 t: i64 = intrem %16, %18
+    %20 lit: i64 = const 0
+    %21 t: bool = eq.int %19, %20
+    if %21 then b8(%16) else b9(%16)
+  b8(%22 n: i64):
+    %24 lit: i64 = const 1
+    %25 t: i64 = intsub %22, %24
+    %26 $site: i64 = const 4
+    call down#2(%25, %26) -> b10()
+  b9(%23 n: i64):
+    %28 lit: i64 = const 1
+    %29 t: i64 = intsub %23, %28
+    jump b2(%29)
+  b10(%27 r: i64):
+    ret %27
+
+fn left#4 top -> i64 ; main::mutual_tail_dispatch_blame, frame 3 slots [%0 i64, %17 i64, %27 i64]
+  b0(%0 n: i64):
+    jump b1(%0)
+  b1(%1 n: i64):
+    %20 lit: i64 = const 1
+    %21 t: bool = le.int %1, %20
+    if %21 then b8(%1) else b9(%1)
+  b2(%2 n: i64):
+    %3 lit: i64 = const 0
+    %4 t: bool = eq.int %2, %3
+    if %4 then b3(%2) else b4(%2)
+  b3(%5 n: i64):
+    %7 lit: i64 = const 0
+    ret %7
+  b4(%6 n: i64):
+    %8 lit: i64 = const 2
+    %9 t: i64 = intrem %6, %8
+    %10 lit: i64 = const 0
+    %11 t: bool = eq.int %9, %10
+    if %11 then b5(%6) else b6(%6)
+  b5(%12 n: i64):
+    %14 lit: i64 = const 1
+    %15 t: i64 = intsub %12, %14
+    %16 $site: i64 = const 4
+    call down#2(%15, %16) -> b7()
+  b6(%13 n: i64):
+    %18 lit: i64 = const 1
+    %19 t: i64 = intsub %13, %18
+    jump b1(%19)
+  b7(%17 r: i64):
+    ret %17
+  b8(%22 n: i64):
+    %24 lit: i64 = const 2
+    %25 t: i64 = intsub %22, %24
+    %26 $site: i64 = const 5
+    call down#2(%25, %26) -> b10()
+  b9(%23 n: i64):
+    %28 lit: i64 = const 1
+    %29 t: i64 = intsub %23, %28
+    jump b2(%29)
+  b10(%27 r: i64):
+    ret %27

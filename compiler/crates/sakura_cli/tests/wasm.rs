@@ -692,6 +692,41 @@ fn a_twin_that_runs_out_of_gauge_restarts_once_per_entry() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Design §17.192 (2): tail cycles with no nesting order run as one loop per def on WASM, so the
+/// fixture's three 10^6-step cycles take a few frames in all (3,000,059 before the dispatch join).
+#[test]
+fn a_dispatch_tail_cycle_runs_in_a_few_frames() {
+    if !available() {
+        eprintln!("skipped: node is missing");
+        return;
+    }
+    let dir = std::env::temp_dir().join(format!("sakura-wasm-dispatch-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let fixture = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/semantics");
+    std::fs::copy(
+        fixture.join("mutual_tail_dispatch.sak"),
+        dir.join("main.sak"),
+    )
+    .unwrap();
+    let expected = std::fs::read_to_string(fixture.join("mutual_tail_dispatch.stdout")).unwrap();
+    for flags in [&[][..], &["--no-direct"][..]] {
+        let stats = dir.join(format!("stats{}.jsonl", flags.len()));
+        let _ = std::fs::remove_file(&stats);
+        let out_dir = dir.join(format!("out{}", flags.len()));
+        let mut args = vec!["run", "--target", "wasm"];
+        args.extend(flags);
+        args.extend(["--out-dir", out_dir.to_str().unwrap(), "main.sak"]);
+        let out = sakura_env(&args, &dir, &[("SAKURA_WASM_STATS", &stats)]);
+        assert_eq!(out.code, Some(0), "{flags:?}: {}", out.stderr);
+        assert_eq!(out.stdout, expected, "{flags:?}");
+        let line = std::fs::read_to_string(&stats).unwrap();
+        let v: serde_json::Value = serde_json::from_str(line.lines().last().unwrap()).unwrap();
+        let frames = v["frames"].as_u64().expect("a frames counter");
+        assert!(frames < 100, "{flags:?}: {frames} frames");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// Design §7.4, §17.163 (4): `sakura test --contracts --target wasm` falsifies a wrong `ensures`
 /// with the counterexample, shrink and message JS reports for the same seed, stores the same
 /// regression, and exits 3 as JS does; `--record` still needs `--target js`.

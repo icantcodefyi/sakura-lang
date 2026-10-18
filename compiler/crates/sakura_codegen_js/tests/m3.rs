@@ -140,6 +140,45 @@ pub fn main() -> Unit ! {Console} {
     }
 }
 
+/// Design §17.192 (2): `down` calls both members, so no nesting order exists and they are arms
+/// of its dispatch join; the call of `down` in `left` still binds the site, so the violating
+/// iteration blames it under both ABIs.
+#[test]
+fn requires_in_a_dispatch_tail_loop_blames_the_member_call() {
+    let src = r#"fn down(n: Int) -> Int
+  requires nonneg: n >= 0
+{ if n == 0 { 0 } else if n % 2 == 0 { left(n - 1) } else { right(n - 1) } }
+fn left(n: Int) -> Int { if n <= 1 { down(n - 2) } else { right(n - 1) } }
+fn right(n: Int) -> Int { if n == 0 { 0 } else if n % 2 == 0 { down(n - 1) } else { left(n - 1) } }
+pub fn main() -> Unit ! {Console} {
+  Console.print("{down(4)} {right(4)}")
+  Console.print("{down(2)}")
+}
+"#;
+    let (m, _) = common::build("dispatch_blame", src, false).unwrap();
+    let core = m.to_string();
+    let down = &core[core.find("fn down#").unwrap()..];
+    let down = &down[..down.find("\n}\n").unwrap()];
+    assert!(!down.contains("call @"), "{down}");
+    for direct in [true, false] {
+        let r = run_abi("dispatch_blame", src, direct);
+        assert_eq!((r.stdout.as_str(), r.code), ("0 0\n", 70), "{}", r.stderr);
+        let d = defect_record(&r.stderr);
+        assert_eq!(d["code"], "D020", "{d}");
+        assert_eq!(
+            d["message"], "precondition `nonneg` of down violated",
+            "{d}"
+        );
+        let span = |k: usize| {
+            let at = |s: &str| d["spans"][k][s].as_u64().unwrap() as usize;
+            &src[at("start_byte")..at("end_byte")]
+        };
+        assert_eq!(d["spans"][0]["role"], "primary", "{d}");
+        assert_eq!(span(0), "down(n - 2)", "{d}");
+        assert_eq!(span(1), "n >= 0", "{d}");
+    }
+}
+
 /// Design §17.115: the `D011` bracket is elided around a predicate that cannot defect, and
 /// kept (with its `D011`) around one that can: an unproved checked `+` or a user call.
 #[test]

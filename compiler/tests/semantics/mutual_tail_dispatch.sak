@@ -1,0 +1,70 @@
+// milestone: M4
+// covers: performance-r1 WS-P9b; design §17.192 (2) (a tail cycle with no nesting order shares one loop through a dispatch join)
+
+// A clique: each state calls both others, so no def can nest the other two.
+fn a(n: Int, acc: Int) -> Int {
+  if n == 0 { acc } else if n % 2 == 0 { b(n - 1, acc + 1) } else { c(n - 1, acc + 2) }
+}
+
+fn b(n: Int, acc: Int) -> Int {
+  if n == 0 { acc } else if n % 3 == 0 { a(n - 1, acc + 3) } else { c(n - 1, acc + 4) }
+}
+
+fn c(n: Int, acc: Int) -> Int {
+  if n == 0 { acc } else if n % 5 == 0 { a(n - 1, acc + 5) } else { b(n - 1, acc + 6) }
+}
+
+// States with different parameters, a self call and effects: the join carries one slot per
+// member parameter, and the self call stays a direct jump.
+fn lex(n: Int, word: String) -> Int ! {Console} {
+  if n < 3 { Console.print("lex {n} {word}") } else { () }
+  if n == 0 {
+    String.len(word)
+  } else if n % 4 == 0 {
+    space(n - 1, true)
+  } else if n % 7 == 0 {
+    digits(n - 1, [n])
+  } else {
+    lex(n - 1, "w")
+  }
+}
+
+fn space(n: Int, fresh: Bool) -> Int ! {Console} {
+  if n < 3 { Console.print("space {n} {fresh}") } else { () }
+  if n == 0 { 10 } else if n % 2 == 0 { lex(n - 1, "") } else { digits(n - 1, []) }
+}
+
+fn digits(n: Int, seen: List<Int>) -> Int ! {Console} {
+  if n < 3 { Console.print("digits {n} {List.len(seen)}") } else { () }
+  if n == 0 {
+    20 + List.len(seen)
+  } else if n % 3 == 0 {
+    space(n - 1, false)
+  } else {
+    lex(n - 1, "d")
+  }
+}
+
+// Four states, each calling the other three: the largest cycle one loop takes.
+fn w(n: Int) -> Int {
+  if n == 0 { 1 } else if n % 3 == 0 { x(n - 1) } else if n % 3 == 1 { y(n - 1) } else { z(n - 1) }
+}
+
+fn x(n: Int) -> Int {
+  if n == 0 { 2 } else if n % 3 == 0 { y(n - 1) } else if n % 3 == 1 { z(n - 1) } else { w(n - 1) }
+}
+
+fn y(n: Int) -> Int {
+  if n == 0 { 3 } else if n % 3 == 0 { z(n - 1) } else if n % 3 == 1 { w(n - 1) } else { x(n - 1) }
+}
+
+fn z(n: Int) -> Int {
+  if n == 0 { 4 } else if n % 3 == 0 { w(n - 1) } else if n % 3 == 1 { x(n - 1) } else { y(n - 1) }
+}
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("{a(1_000_000, 0)} {b(7, 0)} {c(10, 0)}")
+  Console.print("{lex(1_000_000, "")}")
+  Console.print("{space(3, false)}")
+  Console.print("{w(1_000_000)} {x(5)} {y(6)} {z(7)}")
+}
