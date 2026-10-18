@@ -151,6 +151,32 @@ pub fn main() -> Unit ! {Console} { Console.print("{run(3)}") }
     insta::assert_snapshot!(run);
 }
 
+/// A loop whose only CPS steps are unbound performs is a `for (;;)` with a resumable entry
+/// (design §17.156 (2)): `handled_suspend`'s iterations run the bound counter inline and leave
+/// the loop only to sleep; `handled_fwd`'s forwarding clause is CPS, so every iteration takes
+/// the slow path `$s13(acc_1, i_1)`, which re-enters the loop through `j3`.
+#[test]
+fn loops_with_unbound_performs_resume_at_their_head() {
+    for (name, n) in [("handled_suspend", "300001"), ("handled_fwd", "300000")] {
+        let path =
+            common::compiler_dir().join(format!("../bench/programs/{name}/sakura/main.sakura"));
+        let src = std::fs::read_to_string(path).unwrap();
+        let src = src.replace("pub fn main()", "pub fn bench_main()")
+            + "pub fn main() -> Unit ! {Console} { Console.print(\"{run(100000)}\") }\n";
+        let r = common::run(name, &src).unwrap();
+        assert_eq!((r.stdout.trim(), r.code), (n, 0), "{}", r.stderr);
+        let (m, sources) = common::build(name, &src, false).unwrap();
+        let js = sakura_codegen_js::emit(&m, &sakura_codegen_js::Options::new(sources))
+            .into_iter()
+            .find(|f| f.path == "main/main.js")
+            .unwrap()
+            .text;
+        let run = &js[js.find("export function run(").expect("run is CPS")..];
+        let run = &run[..run.find("\n}\n").unwrap()];
+        insta::assert_snapshot!(name, run);
+    }
+}
+
 /// `cargo test -p sakura_codegen_js --test source bench -- --ignored --nocapture`: wall time of
 /// the same programs with and without the direct-style fast path (design §13.3 "measured").
 #[test]

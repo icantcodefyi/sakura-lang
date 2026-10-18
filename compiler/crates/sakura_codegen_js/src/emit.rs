@@ -391,6 +391,45 @@ struct FnEmit<'a> {
     twin: &'static str,
     /// The `contract_enter`/`contract_exit` binds around predicates that cannot defect.
     unbracketed: HashSet<Local>,
+    /// Join-point loops emitted with a resumable entry (design §17.156 (2)), and every join's
+    /// body, which their slow path splices or redefines.
+    resumable: HashSet<Label>,
+    joins: HashMap<Label, &'a Expr>,
+    /// The resumable loop whose body is being emitted.
+    rl: Option<Resumable<'a>>,
+}
+
+/// A resumable loop being emitted (design §17.156 (2)): `const jL = (ps) => { gauge; jL: for
+/// (;;) { … } }`. On the fast path its inner joins are labelled blocks and the back edge is
+/// `continue`. An iteration leaves the loop only at a CPS step (it suspends or forwards to a CPS
+/// clause), into the slow path: a continuation `$sN(live…)`, made by a function emitted once
+/// after `jL` from the iteration's live locals. So the loop body captures nothing and allocates
+/// nothing on the fast path (a closure there would give its block a context per iteration). The
+/// slow path's back edge calls `jL`, which re-enters the loop at its head, counting one frame.
+struct Resumable<'a> {
+    label: Label,
+    /// The joins defined in the loop body.
+    inner: HashSet<Label>,
+    /// The locals bound in the loop (its parameters and its body's binds).
+    bound: HashSet<Local>,
+    /// The inner joins whose scope the fast path is in, outermost first.
+    open: Vec<Label>,
+    slow: bool,
+    /// The slow paths to emit after the loop: the CPS step's local, the code after it, the open
+    /// joins and the live locals.
+    pending: Vec<(Local, &'a Expr, Vec<Label>, Vec<Local>)>,
+}
+
+/// How a jump to a join is emitted at the current point.
+#[derive(PartialEq)]
+enum Target {
+    /// `return jN(…)`.
+    Call,
+    /// Assign the parameters, then `break`/`continue`.
+    Inline,
+    /// Assign the parameters, then emit the join's body here (a straight-line inner join of a
+    /// resumable loop, from its slow path).
+    Splice,
 }
 
 impl<'a> FnEmit<'a> {
@@ -454,8 +493,23 @@ impl<'a> FnEmit<'a> {
             owned: owned::analyze(cx.m, def, &cx.summaries, &[]),
             twin: "$d",
             unbracketed: HashSet::new(),
+            resumable: HashSet::new(),
+            joins: HashMap::new(),
+            rl: None,
         };
+        collect_joins(&def.body, &mut e.joins);
         e.analyze_labels();
+        if mode == Mode::Cps && cx.direct.enabled {
+            e.resumable = e
+                .labels
+                .iter()
+                .filter(|(l, i)| {
+                    let mut found = false;
+                    i.recursive && !i.inline && e.loop_steps(e.joins[*l], &mut found) && found
+                })
+                .map(|(l, _)| *l)
+                .collect();
+        }
         brackets(&def.body, &e.proved, &mut e.unbracketed);
         if mode == Mode::Direct {
             count_uses(&def.body, &mut e.uses);
@@ -743,6 +797,186 @@ impl<'a> FnEmit<'a> {
         }
     }
 
+    /// Are the CPS steps in a loop body (`found` when there is one) only unbound performs and
+    /// `cps` builtins, with no inner loop, `with` or `try` (design §17.156 (2))?
+    fn loop_steps(&self, e: &Expr, found: &mut bool) -> bool {
+        sakura_core::ensure_stack(|| match e {
+            Expr::Let {
+                local, bind, body, ..
+            } => {
+                if self.is_cps(*local, bind) {
+                    match bind {
+                        Bind::Perform(..) => {}
+                        Bind::Call(Atom::Builtin(name), _)
+                            if builtins::lookup(name).is_some_and(|b| b.abi == Abi::Cps) => {}
+                        _ => return false,
+                    }
+                    *found = true;
+                }
+                self.loop_steps(body, found)
+            }
+            Expr::Ret(_) | Expr::Fail(_) | Expr::Jump(..) => true,
+            Expr::LetJoin {
+                label, join, body, ..
+            } => {
+                !self.labels[label].recursive
+                    && self.loop_steps(join, found)
+                    && self.loop_steps(body, found)
+            }
+            Expr::Switch { arms, default, .. } => {
+                arms.iter().all(|(_, a)| self.loop_steps(a, found))
+                    && default.as_ref().is_none_or(|d| self.loop_steps(d, found))
+            }
+            Expr::If { then, els, .. } => {
+                self.loop_steps(then, found) && self.loop_steps(els, found)
+            }
+            Expr::Handle { .. } | Expr::Try { .. } => false,
+        })
+    }
+
+    fn target(&self, l: Label) -> Target {
+        if let Some(r) = &self.rl
+            && (l == r.label || r.inner.contains(&l))
+        {
+            return match r.slow {
+                false => Target::Inline,
+                true if r.open.contains(&l) && self.straight(l) => Target::Splice,
+                true => Target::Call,
+            };
+        }
+        if self.labels[&l].inline {
+            Target::Inline
+        } else {
+            Target::Call
+        }
+    }
+
+    /// Is a join's body a run of binds ending in a jump, return or failure?
+    fn straight(&self, l: Label) -> bool {
+        let mut e = self.joins[&l];
+        loop {
+            match e {
+                Expr::Let { body, .. } => e = body,
+                Expr::Ret(_) | Expr::Jump(..) | Expr::Fail(_) => return true,
+                _ => return false,
+            }
+        }
+    }
+
+    fn fast(&self) -> bool {
+        self.rl.as_ref().is_some_and(|r| !r.slow)
+    }
+
+    /// The continuation of a CPS step on a resumable loop's fast path: `$k`, a join, or the slow
+    /// path `$sN` with the live locals bound (emitted after the loop, see [`Resumable`]).
+    fn lift(&mut self, x: Local, body: &'a Expr) -> String {
+        let r = self.rl.as_ref().expect("in a resumable loop");
+        match body {
+            Expr::Ret(Atom::Local(v)) if *v == x => return "$k".into(),
+            Expr::Jump(l, args)
+                if args.as_slice() == [Atom::Local(x)]
+                    && (*l == r.label || !r.inner.contains(l) && !self.labels[l].inline) =>
+            {
+                return format!("j{}", l.0);
+            }
+            _ => {}
+        }
+        let open = r.open.clone();
+        let need = self.needed(body, &open);
+        let mut reads = HashMap::new();
+        let mut binds = HashSet::from([x]);
+        for e in std::iter::once(body).chain(need.iter().map(|l| self.joins[l])) {
+            self.reads(e, &mut reads);
+            bound_locals(e, &mut binds);
+        }
+        for l in &need {
+            binds.extend(&self.labels[l].params);
+        }
+        let mut live: Vec<Local> = reads
+            .into_keys()
+            .filter(|l| r.bound.contains(l) && !binds.contains(l))
+            .collect();
+        live.sort();
+        let k = format!("$s{}", x.0);
+        let k = if live.is_empty() {
+            k
+        } else {
+            let ls: Vec<&str> = live.iter().map(|l| self.name(*l)).collect();
+            format!("{k}({})", ls.join(", "))
+        };
+        if let Some(r) = self.rl.as_mut() {
+            r.pending.push((x, body, open, live));
+        }
+        k
+    }
+
+    /// The open joins the code `body` reaches, outermost first.
+    fn needed(&self, body: &Expr, open: &[Label]) -> Vec<Label> {
+        let mut need = HashSet::new();
+        jumps(body, &mut need);
+        // An inner join jumps only to joins outside it, which come before it in `open`.
+        for l in open.iter().rev() {
+            if need.contains(l) {
+                jumps(self.joins[l], &mut need);
+            }
+        }
+        open.iter().copied().filter(|l| need.contains(l)).collect()
+    }
+
+    /// The locals the emitted code of `e` reads (a call of a closure-bound local reads its
+    /// captures instead).
+    fn reads(&self, e: &Expr, out: &mut HashMap<Local, u32>) {
+        count_uses(e, out);
+        let mut calls = HashSet::new();
+        closure_calls(e, &mut calls);
+        for l in calls {
+            if let Some((_, caps)) = self.closures.get(&l) {
+                for c in caps {
+                    if let Atom::Local(c) = c {
+                        out.insert(*c, 1);
+                    }
+                }
+            }
+        }
+    }
+
+    /// The slow paths of the resumable loop just emitted (see [`Resumable`]).
+    fn slow_paths(&mut self, w: &mut W, ctx: &str) {
+        let pending = std::mem::take(&mut self.rl.as_mut().expect("in a resumable loop").pending);
+        for (x, body, open, live) in pending {
+            let ps: Vec<&str> = live.iter().map(|l| self.name(*l)).collect();
+            let ps = if ps.is_empty() {
+                String::new()
+            } else {
+                format!("({}) => ", ps.join(", "))
+            };
+            w.line(&format!("const $s{} = {ps}({}) => {{", x.0, self.name(x)));
+            w.depth += 1;
+            let r = self.rl.as_mut().expect("in a resumable loop");
+            r.open = open;
+            r.slow = true;
+            // The open joins it reaches are spliced in at their jumps, or defined here when they
+            // branch.
+            for l in self.needed(body, &self.rl.as_ref().unwrap().open.clone()) {
+                if !self.straight(l) {
+                    let ps: Vec<String> = self.labels[&l]
+                        .params
+                        .iter()
+                        .map(|p| self.name(*p).to_owned())
+                        .collect();
+                    w.line(&format!("const j{} = ({}) => {{", l.0, ps.join(", ")));
+                    w.depth += 1;
+                    self.expr(w, self.joins[&l], ctx);
+                    w.depth -= 1;
+                    w.line("};");
+                }
+            }
+            self.expr(w, body, ctx);
+            w.depth -= 1;
+            w.line("};");
+        }
+    }
+
     /// The direct clause a perform bound to a handler literal calls (design §17.113): its def,
     /// the closure's captures and the handler's local.
     fn bound_clause(&self, x: Local, b: &Bind) -> Option<(DefId, &[Atom], Local)> {
@@ -780,11 +1014,11 @@ impl<'a> FnEmit<'a> {
         format!("$ctx{}", self.ctxs)
     }
 
-    fn expr(&mut self, w: &mut W, e: &Expr, ctx: &str) {
+    fn expr(&mut self, w: &mut W, e: &'a Expr, ctx: &str) {
         sakura_core::ensure_stack(|| self.expr_inner(w, e, ctx))
     }
 
-    fn expr_inner(&mut self, w: &mut W, e: &Expr, ctx: &str) {
+    fn expr_inner(&mut self, w: &mut W, e: &'a Expr, ctx: &str) {
         match e {
             Expr::Let {
                 local,
@@ -808,7 +1042,7 @@ impl<'a> FnEmit<'a> {
                 let s = format!("return $rt.fail({ctx}, {});", self.atom(a));
                 w.line(&s);
             }
-            Expr::Jump(l, args) => self.jump(w, *l, args),
+            Expr::Jump(l, args) => self.jump(w, *l, args, ctx),
             Expr::LetJoin {
                 label,
                 params,
@@ -920,7 +1154,7 @@ impl<'a> FnEmit<'a> {
         x: Local,
         bind: &Bind,
         pos: Option<Pos>,
-        body: &Expr,
+        body: &'a Expr,
         ctx: &str,
     ) {
         // The continuation: `$k` for a tail call, a join point for `jump j(x)`, else an arrow.
@@ -928,7 +1162,7 @@ impl<'a> FnEmit<'a> {
         let k = match body {
             Expr::Ret(Atom::Local(r)) if *r == x && self.mode == Mode::Cps => Some("$k".to_owned()),
             Expr::Jump(l, args)
-                if args.as_slice() == [Atom::Local(x)] && !self.labels[l].inline =>
+                if args.as_slice() == [Atom::Local(x)] && self.target(*l) == Target::Call =>
             {
                 Some(format!("j{}", l.0))
             }
@@ -951,6 +1185,21 @@ impl<'a> FnEmit<'a> {
                 w.line(&format!(
                     "const {f} = $rt.find({ctx}, {eff}, {op}), {c} = {f}.i.c[{op}];"
                 ));
+                let a: Vec<String> = std::iter::once(format!("{f}.i"))
+                    .chain(args.iter().map(|a| self.atom(a)))
+                    .collect();
+                let a = a.join(", ");
+                // In a resumable loop only the CPS clause allocates the continuation; a twin's
+                // result continues the iteration (design §17.156 (2)).
+                if self.fast() {
+                    let k = self.lift(x, body);
+                    w.line(&format!(
+                        "if ({c}.$d === undefined) return {c}({a}, $rt.cctx({ctx}, {f}), {k});"
+                    ));
+                    w.line(&format!("const {xs} = {c}.$d({a});"));
+                    self.expr(w, body, ctx);
+                    return;
+                }
                 let k = match k {
                     Some(k) => k,
                     None => {
@@ -963,10 +1212,6 @@ impl<'a> FnEmit<'a> {
                         k
                     }
                 };
-                let a: Vec<String> = std::iter::once(format!("{f}.i"))
-                    .chain(args.iter().map(|a| self.atom(a)))
-                    .collect();
-                let a = a.join(", ");
                 w.line(&format!(
                     "if ({c}.$d !== undefined) return $ret({k}, {c}.$d({a}));"
                 ));
@@ -1000,6 +1245,11 @@ impl<'a> FnEmit<'a> {
             }
             _ => unreachable!("not a CPS binding"),
         };
+        if self.fast() {
+            let k = self.lift(x, body);
+            w.line(&format!("return {head}{k}{site});"));
+            return;
+        }
         match k {
             Some(k) => w.line(&format!("return {head}{k}{site});")),
             None => {
@@ -1187,14 +1437,34 @@ impl<'a> FnEmit<'a> {
         }
     }
 
-    fn jump(&mut self, w: &mut W, l: Label, args: &[Atom]) {
-        let info = &self.labels[&l];
-        if !info.inline {
-            let s = format!("return j{}({});", l.0, self.atoms(args));
-            w.line(&s);
-            return;
+    fn jump(&mut self, w: &mut W, l: Label, args: &[Atom], ctx: &str) {
+        let params = self.labels[&l].params.clone();
+        match self.target(l) {
+            Target::Call => {
+                let s = format!("return j{}({});", l.0, self.atoms(args));
+                w.line(&s);
+                return;
+            }
+            // A block of its own, declaring the join's parameters (the slow path is outside
+            // the loop body that declares them).
+            Target::Splice => {
+                w.line("{");
+                w.depth += 1;
+                if !params.is_empty() {
+                    let ps: Vec<String> = params
+                        .iter()
+                        .zip(args)
+                        .map(|(p, a)| format!("{} = {}", self.name(*p), self.atom(a)))
+                        .collect();
+                    w.line(&format!("let {};", ps.join(", ")));
+                }
+                self.expr(w, self.joins[&l], ctx);
+                w.depth -= 1;
+                w.line("}");
+                return;
+            }
+            Target::Inline => {}
         }
-        let params = info.params.clone();
         self.assign(w, &params, args);
         if self.in_loop.contains(&l) {
             w.line(&format!("continue j{};", l.0));
@@ -1234,15 +1504,48 @@ impl<'a> FnEmit<'a> {
         w: &mut W,
         label: Label,
         params: &[Local],
-        join: &Expr,
-        body: &Expr,
+        join: &'a Expr,
+        body: &'a Expr,
         ctx: &str,
     ) {
         let info = &self.labels[&label];
-        let (inline, recursive) = (info.inline, info.recursive);
+        let (inline, recursive) = match &self.rl {
+            Some(r) if r.inner.contains(&label) => (!r.slow, false),
+            _ => (info.inline, info.recursive),
+        };
         let ps: Vec<String> = params.iter().map(|p| self.name(*p).to_owned()).collect();
         let ps = ps.join(", ");
         let j = format!("j{}", label.0);
+        if self.resumable.contains(&label) {
+            w.line(&format!("const {j} = ({ps}) => {{"));
+            w.depth += 1;
+            w.line(&format!("if (++$G.d > $L) return $b({j}, [{ps}]);"));
+            w.line(&format!("{j}: for (;;) {{"));
+            w.depth += 1;
+            let mut inner = HashMap::new();
+            collect_joins(join, &mut inner);
+            let mut bound = HashSet::from_iter(params.iter().copied());
+            bound_locals(join, &mut bound);
+            let outer = self.rl.replace(Resumable {
+                label,
+                inner: inner.into_keys().collect(),
+                bound,
+                open: Vec::new(),
+                slow: false,
+                pending: Vec::new(),
+            });
+            self.in_loop.push(label);
+            self.expr(w, join, ctx);
+            self.in_loop.pop();
+            w.depth -= 1;
+            w.line("}");
+            w.depth -= 1;
+            w.line("};");
+            self.slow_paths(w, ctx);
+            self.rl = outer;
+            self.expr(w, body, ctx);
+            return;
+        }
         if !inline {
             w.line(&format!("const {j} = ({ps}) => {{"));
             w.depth += 1;
@@ -1272,7 +1575,14 @@ impl<'a> FnEmit<'a> {
                 if recursive {
                     self.in_entry.push(label);
                 }
+                let fast = self.fast();
+                if fast && let Some(r) = self.rl.as_mut() {
+                    r.open.push(label);
+                }
                 self.expr(w, body, ctx);
+                if fast && let Some(r) = self.rl.as_mut() {
+                    r.open.pop();
+                }
                 if recursive {
                     self.in_entry.pop();
                 }
@@ -1505,6 +1815,125 @@ fn collect_labels_inner(e: &Expr, infos: &mut HashMap<Label, LabelInfo>, inside:
             collect_labels(els, infos, inside);
         }
     }
+}
+
+/// Every join's body by label.
+fn collect_joins<'e>(e: &'e Expr, out: &mut HashMap<Label, &'e Expr>) {
+    sakura_core::ensure_stack(|| match e {
+        Expr::Let { body, .. } | Expr::Handle { body, .. } | Expr::Try { body, .. } => {
+            collect_joins(body, out)
+        }
+        Expr::Ret(_) | Expr::Fail(_) | Expr::Jump(..) => {}
+        Expr::LetJoin {
+            label, join, body, ..
+        } => {
+            out.insert(*label, join);
+            collect_joins(join, out);
+            collect_joins(body, out);
+        }
+        Expr::Switch { arms, default, .. } => {
+            for (_, a) in arms {
+                collect_joins(a, out);
+            }
+            if let Some(d) = default {
+                collect_joins(d, out);
+            }
+        }
+        Expr::If { then, els, .. } => {
+            collect_joins(then, out);
+            collect_joins(els, out);
+        }
+    })
+}
+
+/// Every local `e` binds: its `let`s and its joins' parameters.
+fn bound_locals(e: &Expr, out: &mut HashSet<Local>) {
+    sakura_core::ensure_stack(|| match e {
+        Expr::Let { local, body, .. } => {
+            out.insert(*local);
+            bound_locals(body, out)
+        }
+        Expr::Handle { body, .. } | Expr::Try { body, .. } => bound_locals(body, out),
+        Expr::Ret(_) | Expr::Fail(_) | Expr::Jump(..) => {}
+        Expr::LetJoin {
+            params, join, body, ..
+        } => {
+            out.extend(params);
+            bound_locals(join, out);
+            bound_locals(body, out);
+        }
+        Expr::Switch { arms, default, .. } => {
+            for (_, a) in arms {
+                bound_locals(a, out);
+            }
+            if let Some(d) = default {
+                bound_locals(d, out);
+            }
+        }
+        Expr::If { then, els, .. } => {
+            bound_locals(then, out);
+            bound_locals(els, out);
+        }
+    })
+}
+
+/// Every local `e` calls.
+fn closure_calls(e: &Expr, out: &mut HashSet<Local>) {
+    sakura_core::ensure_stack(|| match e {
+        Expr::Let { bind, body, .. } => {
+            if let Bind::Call(Atom::Local(l), _) = bind {
+                out.insert(*l);
+            }
+            closure_calls(body, out)
+        }
+        Expr::Handle { body, .. } | Expr::Try { body, .. } => closure_calls(body, out),
+        Expr::Ret(_) | Expr::Fail(_) | Expr::Jump(..) => {}
+        Expr::LetJoin { join, body, .. } => {
+            closure_calls(join, out);
+            closure_calls(body, out);
+        }
+        Expr::Switch { arms, default, .. } => {
+            for (_, a) in arms {
+                closure_calls(a, out);
+            }
+            if let Some(d) = default {
+                closure_calls(d, out);
+            }
+        }
+        Expr::If { then, els, .. } => {
+            closure_calls(then, out);
+            closure_calls(els, out);
+        }
+    })
+}
+
+/// Every join jumped to in `e`.
+fn jumps(e: &Expr, out: &mut HashSet<Label>) {
+    sakura_core::ensure_stack(|| match e {
+        Expr::Let { body, .. } | Expr::Handle { body, .. } | Expr::Try { body, .. } => {
+            jumps(body, out)
+        }
+        Expr::Ret(_) | Expr::Fail(_) => {}
+        Expr::Jump(l, _) => {
+            out.insert(*l);
+        }
+        Expr::LetJoin { join, body, .. } => {
+            jumps(join, out);
+            jumps(body, out);
+        }
+        Expr::Switch { arms, default, .. } => {
+            for (_, a) in arms {
+                jumps(a, out);
+            }
+            if let Some(d) = default {
+                jumps(d, out);
+            }
+        }
+        Expr::If { then, els, .. } => {
+            jumps(then, out);
+            jumps(els, out);
+        }
+    })
 }
 
 /// Every `contract_enter` whose predicate cannot defect, and the `contract_exit`s that close

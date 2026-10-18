@@ -1,0 +1,57 @@
+---
+source: crates/sakura_codegen_js/tests/source.rs
+expression: run
+---
+export function run(n, $ctx, $k) {
+  if (++$G.d > $L) return $b(run, [n, $ctx, $k]);
+  const next = counter$Tick_next;
+  const r = $rt.makeHandler("main::main::Tick", [0], [next]);
+  const $ctx1 = $rt.install($ctx, r);
+  const next_1 = forward$Tick_next;
+  const r_1 = $rt.makeHandler("main::main::Tick", [], [next_1]);
+  const j1 = (v_1) => {
+    return $ret($k, v_1);
+  };
+  const $ctx2 = $rt.install($ctx1, r_1);
+  const $i2 = $ctx2.h.i;
+  const j2 = (acc, i) => {
+    return j1(acc);
+  };
+  const j3 = (acc_1, i_1) => {
+    if (++$G.d > $L) return $b(j3, [acc_1, i_1]);
+    j3: for (;;) {
+      const t = (i_1 < n);
+      let v_2, acc_2, i_2;
+      j4: {
+        if (t) {
+          const $f13 = $rt.find($ctx2, "main::main::Tick", 0), $cl13 = $f13.i.c[0];
+          if ($cl13.$d === undefined) return $cl13($f13.i, $rt.cctx($ctx2, $f13), $s13(acc_1, i_1));
+          const r_2 = $cl13.$d($f13.i);
+          const t_1 = (r_2 % 7 + 0);
+          const t_2 = (acc_1 + t_1);
+          if (!Number.isSafeInteger(t_2)) $rt.add(acc_1, t_1);
+          const t_3 = (i_1 + 1);
+          v_2 = undefined;
+          acc_2 = t_2;
+          i_2 = t_3;
+          break j4;
+        } else {
+          return j2(acc_1, i_1);
+        }
+      }
+      acc_1 = acc_2;
+      i_1 = i_2;
+      continue j3;
+    }
+  };
+  const $s13 = (acc_1, i_1) => (r_2) => {
+    const t_1 = (r_2 % 7 + 0);
+    const t_2 = (acc_1 + t_1);
+    if (!Number.isSafeInteger(t_2)) $rt.add(acc_1, t_1);
+    const t_3 = (i_1 + 1);
+    {
+      let v_2 = undefined, acc_2 = t_2, i_2 = t_3;
+      return j3(acc_2, i_2);
+    }
+  };
+  return j3(0, 0);

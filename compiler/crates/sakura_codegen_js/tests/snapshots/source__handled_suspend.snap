@@ -1,0 +1,84 @@
+---
+source: crates/sakura_codegen_js/tests/source.rs
+expression: run
+---
+export function run(n, $ctx, $k) {
+  if (++$G.d > $L) return $b(run, [n, $ctx, $k]);
+  const now = $std_clock.virtual$Clock_now;
+  const monotonic = $std_clock.virtual$Clock_monotonic;
+  const sleep = $std_clock.virtual$Clock_sleep;
+  const r = $rt.makeHandler("std::clock::Clock", [0], [now, monotonic, sleep]);
+  const $ctx1 = $rt.install($ctx, r);
+  const $i1 = $ctx1.h.i;
+  const next = counter$Tick_next;
+  const r_1 = $rt.makeHandler("main::main::Tick", [0], [next]);
+  const j1 = (v_1) => {
+    return $ret($k, v_1);
+  };
+  const $ctx2 = $rt.install($ctx1, r_1);
+  const $i2 = $ctx2.h.i;
+  const j2 = (acc, i) => {
+    if ($T.t.cancelled || $tr) $rt.bound("std::clock::Clock", 0);
+    const r_5 = $std_clock.virtual$Clock_now$d($i1);
+    const r_6 = $std_instant.to_unix_millis$d(r_5);
+    const t_6 = (acc + r_6);
+    if (!Number.isSafeInteger(t_6)) $rt.add(acc, r_6);
+    return j1(t_6);
+  };
+  const j3 = (acc_1, i_1) => {
+    if (++$G.d > $L) return $b(j3, [acc_1, i_1]);
+    j3: for (;;) {
+      const t = (i_1 < n);
+      let v_2, acc_2, i_2;
+      j4: {
+        if (t) {
+          if ($T.t.cancelled || $tr) $rt.bound("main::main::Tick", 0);
+          const r_2 = counter$Tick_next$d($i2);
+          const t_1 = (r_2 % 7 + 0);
+          const t_2 = (acc_1 + t_1);
+          if (!Number.isSafeInteger(t_2)) $rt.add(acc_1, t_1);
+          const t_3 = ((n - n % 2) / 2 + 0);
+          const t_4 = (i_1 === t_3);
+          let v_3, acc_3, i_3;
+          j5: {
+            if (t_4) {
+              const r_3 = $std_duration.millis$d(1);
+              const $f22 = $rt.find($ctx2, "std::clock::Clock", 2), $cl22 = $f22.i.c[2];
+              if ($cl22.$d === undefined) return $cl22($f22.i, r_3, $rt.cctx($ctx2, $f22), $s22(i_1, t_2));
+              const r_4 = $cl22.$d($f22.i, r_3);
+              v_3 = r_4;
+              acc_3 = t_2;
+              i_3 = i_1;
+              break j5;
+            } else {
+              v_3 = undefined;
+              acc_3 = t_2;
+              i_3 = i_1;
+              break j5;
+            }
+          }
+          const t_5 = (i_3 + 1);
+          v_2 = undefined;
+          acc_2 = acc_3;
+          i_2 = t_5;
+          break j4;
+        } else {
+          return j2(acc_1, i_1);
+        }
+      }
+      acc_1 = acc_2;
+      i_1 = i_2;
+      continue j3;
+    }
+  };
+  const $s22 = (i_1, t_2) => (r_4) => {
+    {
+      let v_3 = r_4, acc_3 = t_2, i_3 = i_1;
+      const t_5 = (i_3 + 1);
+      {
+        let v_2 = undefined, acc_2 = acc_3, i_2 = t_5;
+        return j3(acc_2, i_2);
+      }
+    }
+  };
+  return j3(0, 0);
