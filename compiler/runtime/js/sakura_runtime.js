@@ -1107,6 +1107,59 @@ export function list_push(xs, x) {
 export function list_set(xs, i, x) {
   return setAt(xs, i, x);
 }
+
+// Owned entries (design §17.149, ABI.md §7): the compiler calls `<builtin>_owned` only when its
+// ownership pass proves that no other reference to any node of the first argument exists, so
+// they update it in place and return it. The empty singletons are shared, so an update of one
+// allocates as the persistent operation does. `list_at`'s leaf cache stays valid: it holds a
+// node, and these entries write into nodes instead of replacing them (a full tail moves into
+// the trie as the same array).
+
+/** `List.set` in place: no path is copied. */
+export function list_set_owned(xs, i, x) {
+  const off = xs.n - xs.tl;
+  if (i >= off) {
+    xs.tail[i - off] = x;
+    return xs;
+  }
+  let node = xs.root;
+  for (let level = xs.shift; level > 0; level -= 5) node = node[(i >>> level) & 31];
+  node[i & 31] = x;
+  return xs;
+}
+/** `List.push` in place: the wrapper is reused and a full tail joins the trie unchanged. */
+export function list_push_owned(xs, x) {
+  if (xs === EMPTY_LIST) return push(xs, x);
+  const tl = xs.tl;
+  if (tl < 32) {
+    if (xs.tail.length !== tl) xs.tail = xs.tail.slice(0, tl);
+    xs.tail.push(x);
+    xs.tl = tl + 1;
+    xs.n += 1;
+    return xs;
+  }
+  const off = xs.n - tl;
+  if (xs.root === null) {
+    xs.root = [xs.tail];
+  } else if (off >>> 5 >= 1 << xs.shift) {
+    xs.root = [xs.root, path(xs.shift, xs.tail)];
+    xs.shift += 5;
+  } else {
+    pushLeafOwned(xs.root, xs.shift, off, xs.tail);
+  }
+  xs.tail = [x];
+  xs.tl = 1;
+  xs.n += 1;
+  return xs;
+}
+
+function pushLeafOwned(node, level, off, leaf) {
+  const i = (off >>> level) & 31;
+  if (level === 5) node[i] = leaf;
+  else if (i < node.length) pushLeafOwned(node[i], level - 5, off, leaf);
+  else node[i] = path(level - 5, leaf);
+}
+
 export function list_builder() {
   return new Builder();
 }
@@ -1436,6 +1489,68 @@ function without(C, m, key) {
   return new C(log, hdel(m.idx, 0, h, key), size);
 }
 
+/** `upsert` on a map or set no other reference reaches: log and trie are updated in place. */
+function upsertOwned(m, key, e) {
+  const h = hashOf(key);
+  const s = hget(m.idx, h, key);
+  if (s >= 0) {
+    list_set_owned(m.log, s, e);
+    return m;
+  }
+  m.log = list_push_owned(m.log, e);
+  m.idx = hsetOwned(m.idx, 0, new HLeaf(h, key, m.log.n - 1));
+  m.size += 1;
+  return m;
+}
+
+/** `hset` writing the path's branch nodes in place; leaves and collisions as `hset`. */
+function hsetOwned(node, shift, leaf) {
+  if (!(node instanceof HNode)) return hset(node, shift, leaf);
+  const bit = 1 << ((leaf.h >>> shift) & 31);
+  const i = popcount(node.bm & (bit - 1));
+  if (node.bm & bit) {
+    node.a[i] = hsetOwned(node.a[i], shift + 5, leaf);
+  } else {
+    node.a.splice(i, 0, leaf);
+    node.bm |= bit;
+  }
+  return node;
+}
+
+/** `without` on a map or set no other reference reaches. */
+function withoutOwned(C, m, key) {
+  const h = hashOf(key);
+  const s = hget(m.idx, h, key);
+  if (s < 0) return m;
+  list_set_owned(m.log, s, HOLE);
+  m.size -= 1;
+  const holes = m.log.n - m.size;
+  if (holes > 32 && holes > m.size) {
+    const live = items(m.log).filter((e) => e !== HOLE);
+    return rebuild(C, live, C === VMap ? (e) => keyOf(e[0]) : keyOf);
+  }
+  m.idx = hdelOwned(m.idx, 0, h, key);
+  return m;
+}
+
+/** `hdel` writing the path's branch nodes in place; the result has `hdel`'s shape. */
+function hdelOwned(node, shift, h, k) {
+  if (!(node instanceof HNode)) return hdel(node, shift, h, k);
+  const bit = 1 << ((h >>> shift) & 31);
+  if ((node.bm & bit) === 0) return node;
+  const i = popcount(node.bm & (bit - 1));
+  const child = hdelOwned(node.a[i], shift + 5, h, k);
+  if (child === null) {
+    node.a.splice(i, 1);
+    node.bm &= ~bit;
+  } else {
+    node.a[i] = child;
+  }
+  if (node.a.length === 0) return null;
+  if (node.a.length === 1 && !(node.a[0] instanceof HNode)) return node.a[0];
+  return node;
+}
+
 /** A map or set of the distinct-keyed entries `es`, in order. */
 function rebuild(C, es, keyFn) {
   let idx = null;
@@ -1487,6 +1602,12 @@ export function map_insert(m, k, v) {
 export function map_remove(m, k) {
   return without(VMap, m, keyOf(k));
 }
+export function map_insert_owned(m, k, v) {
+  return m === EMPTY_MAP ? map_insert(m, k, v) : upsertOwned(m, keyOf(k), [k, v]);
+}
+export function map_remove_owned(m, k) {
+  return withoutOwned(VMap, m, keyOf(k));
+}
 export function map_contains(m, k) {
   return mapFind(m, k) !== undefined;
 }
@@ -1518,6 +1639,11 @@ export function set_of(xs) {
 export function set_insert(s, x) {
   const key = keyOf(x);
   return hget(s.idx, hashOf(key), key) >= 0 ? s : upsert(VSet, s, key, x);
+}
+export function set_insert_owned(s, x) {
+  const key = keyOf(x);
+  if (hget(s.idx, hashOf(key), key) >= 0) return s;
+  return s === EMPTY_SET ? upsert(VSet, s, key, x) : upsertOwned(s, key, x);
 }
 export function set_remove(s, x) {
   return without(VSet, s, keyOf(x));

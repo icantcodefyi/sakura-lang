@@ -326,6 +326,23 @@ suspend; `timeout` is std code over `race`. `clock_virtual_sleep(now, ms, $ctx, 
 | `Secret` | `$rt.Secret` with a private field; `toString`, `toJSON` and `Symbol.toPrimitive` throw; `Show` prints `<secret>` |
 | `Range` | the tuple `[start, end]` (ponytail: a real type when ranges get methods) |
 
+**Owned entries (design §17.149).** `list_set`, `list_push`, `map_insert`, `map_remove` and
+`set_insert` each have an in-place twin `<name>_owned` with the same arguments (the builtins
+table's `consumes` column; a test checks the exports). The compiler calls one only where
+`sakura_core::opt::owned` proves the consumed argument (the first) owned: no other reference to
+any of its nodes exists, so no program can observe the write. The entry updates the value and
+returns it: `list_set_owned` writes the element into its leaf or the tail, `list_push_owned`
+appends to the tail and moves a full tail into the trie as the same array, the map and set
+entries do the same to the log and write the HAMT's branch nodes (`hsetOwned`, `hdelOwned`),
+building exactly what the persistent operation builds. `list_at`'s leaf cache stays valid, since
+nodes are written, never replaced (a moved tail is the same array). An update of an empty
+singleton (`list_empty()`, `$rt.list([])`, `map_empty()`, `set_empty()`) allocates as the
+persistent one does; `list_set` cannot reach one (its `requires`). There is no entries cache:
+`map_entries` and `set_to_list` return the log, so they are not borrows and their argument is
+never owned afterwards. A def that consumes a parameter (`opt::owned::summaries`; std's
+`List.set`) also gets an owned entry `f$o`, its direct twin with that parameter owned, which
+call sites with an owned argument call instead of `f$d`.
+
 **Schemas.** A runtime schema describes a Core type (`emit::schema`): `"U" "B" "I" "F" "S"
 "Y"` (Unit, Bool, Int, Float, String, Bytes), `["T", s…]` tuple, `["L", s]` list, `["E", s]`
 set, `["M", sk, sv]` map, `["A", id, [s…]]` a named type by qualified name (`"std::option::Option"`,

@@ -37,6 +37,23 @@ fn builtin_table_matches_runtime_exports() {
         })
         .collect();
     let names: Vec<&str> = BUILTINS.iter().map(|b| b.name).collect();
+    // Each owned-capable builtin has an in-place entry of the same arity (design §17.149).
+    let owned: Vec<String> = BUILTINS
+        .iter()
+        .filter(|b| b.consumes.is_some())
+        .map(|b| format!("{}_owned", b.name))
+        .collect();
+    let expected: Vec<String> = expected
+        .into_iter()
+        .chain(BUILTINS.iter().filter(|b| b.consumes.is_some()).map(|b| {
+            assert_eq!(b.abi, Abi::Direct, "{} is owned-capable", b.name);
+            format!("{}_owned/{}", b.name, b.arity)
+        }))
+        .collect();
+    let names: Vec<&str> = names
+        .into_iter()
+        .chain(owned.iter().map(String::as_str))
+        .collect();
     let script = format!(
         "const rt = await import('./sakura_runtime.js'); for (const n of {names:?}) \
          console.log(typeof rt[n] === 'function' ? `${{n}}/${{rt[n].length}}` : `${{n}} missing`);"

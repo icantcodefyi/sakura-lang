@@ -384,6 +384,70 @@ test("builders, leaf iteration and map logs keep lists persistent (design §17.1
   assert.deepEqual(rt.toArray(rt.map_entries(rt.map_remove(m, 2))), [[1, "a"], [3, "c"]]);
 });
 
+test("owned entries update in place and build what the persistent operations build (design §17.149)", () => {
+  let seed = 11;
+  const rand = (n) => {
+    seed = (Math.imul(seed, 1103515245) + 12345) & 0x7fffffff;
+    return seed % n;
+  };
+  const shape = (xs) => [xs.n, xs.shift, xs.root, xs.tail.slice(0, xs.tl), xs.tl];
+  // One linear chain each way: the owned entry returns its argument (except for the empty
+  // singleton), and the result has the persistent one's elements and trie shape.
+  let p = rt.list_empty();
+  let o = rt.list_empty();
+  for (let i = 0; i < 40_000; i++) {
+    const before = o;
+    if (p.n > 0 && rand(3) === 0) {
+      const j = rand(p.n);
+      p = rt.list_set(p, j, -i);
+      o = rt.list_set_owned(o, j, -i);
+    } else {
+      p = rt.list_push(p, i);
+      o = rt.list_push_owned(o, i);
+    }
+    assert.equal(o === before, before !== rt.list_empty());
+    // Reads between updates go through the leaf cache, which must follow the writes.
+    const k = rand(o.n);
+    assert.equal(rt.list_at(o, k), rt.list_at(p, k));
+    if (i % 997 === 0) assert.deepEqual(shape(o), shape(p));
+  }
+  assert.deepEqual(rt.toArray(o), rt.toArray(p));
+  assert.deepEqual(rt.toArray(rt.list_empty()), []);
+
+  for (const mk of [(i) => i, (i) => `k${i}`, (i) => [i % 7, `x${i}`]]) {
+    let pm = rt.map_empty();
+    let om = rt.map_empty();
+    for (let i = 0; i < 6_000; i++) {
+      const k = mk(rand(500));
+      if (rand(3) === 0) {
+        pm = rt.map_remove(pm, k);
+        om = rt.map_remove_owned(om, k);
+      } else {
+        pm = rt.map_insert(pm, k, i);
+        om = rt.map_insert_owned(om, k, i);
+      }
+      if (i % 500 === 0) {
+        assert.deepEqual(om.idx, pm.idx);
+        assert.deepEqual(rt.toArray(rt.map_entries(om)), rt.toArray(rt.map_entries(pm)));
+      }
+    }
+    assert.equal(rt.map_len(om), rt.map_len(pm));
+    assert.deepEqual(rt.toArray(rt.map_entries(om)), rt.toArray(rt.map_entries(pm)));
+    assert.deepEqual(om.idx, pm.idx);
+  }
+  assert.equal(rt.map_len(rt.map_empty()), 0);
+
+  let ps = rt.set_empty();
+  let os = rt.set_empty();
+  for (let i = 0; i < 5_000; i++) {
+    ps = rt.set_insert(ps, i % 1_000);
+    os = rt.set_insert_owned(os, i % 1_000);
+  }
+  assert.deepEqual(rt.toArray(rt.set_to_list(os)), rt.toArray(rt.set_to_list(ps)));
+  assert.deepEqual(os.idx, ps.idx);
+  assert.equal(rt.set_len(rt.set_empty()), 0);
+});
+
 test("Map and Set keep insertion order", () => {
   let m = rt.map_empty();
   for (const k of ["b", "a", "c"]) m = rt.map_insert(m, k, k.toUpperCase());

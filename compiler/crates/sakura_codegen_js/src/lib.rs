@@ -176,6 +176,9 @@ pub(crate) struct Cx<'a> {
     /// Defs whose contract checks blame their caller (`requires`, `T.from`'s `where`): callers
     /// with a known target record the call's span first (ABI.md §5).
     pub takes_site: Vec<bool>,
+    /// Per def, its ownership summary (design §17.149): a direct def that consumes a parameter
+    /// also gets an owned entry `f$o`, its twin with that parameter owned.
+    pub summaries: Vec<sakura_core::opt::owned::Summary>,
     pub def_names: Vec<String>,
     pub type_names: Vec<String>,
     pub lines: BTreeMap<FileId, (usize, LineIndex)>,
@@ -217,6 +220,7 @@ impl<'a> Cx<'a> {
             m,
             direct,
             takes_site,
+            summaries: sakura_core::opt::owned::summaries(m),
             def_names,
             type_names,
             lines,

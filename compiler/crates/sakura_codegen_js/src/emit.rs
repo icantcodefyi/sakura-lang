@@ -10,6 +10,7 @@ use std::fmt::Write;
 
 use sakura_core::builtins::{self, Abi};
 use sakura_core::opt::handlers::{self, Bound};
+use sakura_core::opt::owned;
 use sakura_core::*;
 
 use crate::direct::{self, Closures};
@@ -55,6 +56,11 @@ pub(crate) fn module(cx: &Cx, module: &str) -> (String, String) {
             let id = DefId(i as u32);
             if cx.direct.direct(id) {
                 FnEmit::new(cx, id, module, &module_defs, Mode::Direct, &ns, &pool).def(&mut w);
+                if cx.summaries[i].consumes.is_some() {
+                    let mut e = FnEmit::new(cx, id, module, &module_defs, Mode::Direct, &ns, &pool);
+                    e.owned_entry();
+                    e.def(&mut w);
+                }
             }
             FnEmit::new(cx, id, module, &module_defs, Mode::Cps, &ns, &pool).def(&mut w);
         }
@@ -350,6 +356,10 @@ struct FnEmit<'a> {
     pool: &'a Pool,
     /// Locals bound by an `Int` operation the interval pass proves (design §17.114).
     proved: Vec<bool>,
+    /// Consuming sites whose argument is owned: they call the in-place entry (design §17.149).
+    owned: owned::Facts,
+    /// `$d`, or `$o` for the owned entry of a consuming def.
+    twin: &'static str,
 }
 
 impl<'a> FnEmit<'a> {
@@ -410,12 +420,23 @@ impl<'a> FnEmit<'a> {
                 def,
                 sakura_core::opt::ranges::Profile::Js,
             ),
+            owned: owned::analyze(cx.m, def, &cx.summaries, &[]),
+            twin: "$d",
         };
         e.analyze_labels();
         if mode == Mode::Direct {
             count_uses(&def.body, &mut e.uses);
         }
         e
+    }
+
+    /// Make this the owned entry `f$o`: the twin with the consumed parameter owned.
+    fn owned_entry(&mut self) {
+        let p = self.cx.summaries[self.id.index()]
+            .consumes
+            .map(|p| self.def.params[p]);
+        self.owned = owned::analyze(self.cx.m, self.def, &self.cx.summaries, &Vec::from_iter(p));
+        self.twin = "$o";
     }
 
     fn name(&self, l: Local) -> &str {
@@ -451,7 +472,8 @@ impl<'a> FnEmit<'a> {
         match self.mode {
             Mode::Direct => {
                 w.line(&format!(
-                    "{body_export}function {body_name}$d({}) {{",
+                    "{body_export}function {body_name}{}({}) {{",
+                    self.twin,
                     params.join(", ")
                 ));
                 w.depth += 1;
@@ -1009,9 +1031,14 @@ impl<'a> FnEmit<'a> {
                 if let Some(site) = self.site_for(f, pos) {
                     w.line(&site);
                 }
-                format!("{}$d({})", self.def_ref(*d), self.atoms(args))
+                // An owned argument goes to the callee's owned entry (design §17.149).
+                let twin = if self.owned.owned(x) { "$o" } else { "$d" };
+                format!("{}{twin}({})", self.def_ref(*d), self.atoms(args))
             }
-            Bind::Call(Atom::Builtin(name), args) => format!("$rt.{name}({})", self.atoms(args)),
+            Bind::Call(Atom::Builtin(name), args) => {
+                let owned = if self.owned.owned(x) { "_owned" } else { "" };
+                format!("$rt.{name}{owned}({})", self.atoms(args))
+            }
             // A closure of a direct def bound in this function, or (in a twin) a function-typed
             // parameter, which carries `$d`.
             Bind::Call(Atom::Local(l), args) => match self.closures.get(l) {
