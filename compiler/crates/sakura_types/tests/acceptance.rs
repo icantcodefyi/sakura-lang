@@ -346,6 +346,33 @@ fn h(s: Untrusted<String>, m: Untrusted<Html>) -> Html { html"<p>{s}{m}</p>" }
     assert_eq!(plain.codes(), vec!["V2032"], "{}", plain.render());
 }
 
+/// §17.124: `url"…"`'s element type is `UrlPart`, so a `String`, an `Int`, a `Uuid` and an
+/// `Untrusted<T>` go through `UrlPart.from` and a `UrlPart` passes through. A `Secret` is not
+/// `Show`, the constraint `UrlPart.from` needs, so it is rejected with `V2031` (§4.4).
+#[test]
+fn url_template_arguments_convert_with_url_part_from() {
+    let src = r#"import std/url.{Url}
+import std/urlpart.{UrlPart}
+fn u(s: String, n: Int, id: Uuid, q: Untrusted<String>, p: UrlPart) -> Url { url"https://x.test/{s}/{n}/{id}?q={q}&p={p}" }
+"#;
+    let c = check(src);
+    assert!(c.diags.is_empty(), "{}", c.render());
+    let (_, body, typed) = c.body_of("u");
+    let names: Vec<_> = typed
+        .conversions
+        .iter()
+        .map(|(_, (d, _))| c.program.def(*d).name.clone())
+        .collect();
+    assert_eq!(names, vec!["from"; 4], "{body:?}");
+    assert_eq!(typed.unwrapped.len(), 1, "{body:?}");
+    for arg in ["Secret<String>", "Untrusted<Secret<String>>"] {
+        let secret = check(&format!(
+            "import std/url.{{Url}}\nfn u(s: {arg}) -> Url {{ url\"https://x.test/{{s}}\" }}\n"
+        ));
+        assert_eq!(secret.codes(), vec!["V2031"], "{}", secret.render());
+    }
+}
+
 /// §17.61: a hole carries its allowed row in structured form too.
 #[test]
 fn hole_allowed_effects_are_structured() {

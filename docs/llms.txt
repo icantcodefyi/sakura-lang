@@ -106,7 +106,7 @@ Option.map unwrap_or or_fail expect is_some      Result.map map_err unwrap_or ra
 Int.to_float to_string abs min max clamp pow checked_add    Float.round to_int_checked sqrt is_nan format
 Json.encode decode parse get get_string      Instant.from_unix_millis to_unix_millis parse add diff format_iso   Duration.millis seconds minutes to_millis
 Console.print read_line   Clock.now monotonic sleep   Random.int float bytes uuid   Env.get secret   Log.event
-Fs.root read read_text write list exists with_file read_chunk write_chunk read_all rooted memory   Dir.subdir   Path.of join to_string validate   Url.from validate host path query_param
+Fs.root read read_text write list exists with_file read_chunk write_chunk read_all rooted memory   Dir.subdir   Path.of join to_string validate   Url.from validate host path query_param encode_component   UrlPart.from to_string
 Http.get post_json send stream read_chunk bearer scoped scripted recording   Request.of post post_json json param header   Response.status ok_json html json text
 Sql.query execute transaction memory sqlite   sql.migrate   Cli.args exit parse of   Budget.limits unlimited reserve settle
 Llm.request generate generate_text stream step scripted anthropic recording replay (LlmError = Refused | InvalidOutput | Truncated | RateLimited | Timeout | ProviderError | BudgetExceeded)

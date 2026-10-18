@@ -50,7 +50,7 @@ when `f` is not an operation (`Console.captured()`, `Clock.fixed(t)`, `Random.se
   `User { id: 1, name: "a" }`, `Map.of([("a", 1)])`, `Set.of([1])`, floats always with a
   `.` or exponent (`2.0`); strings are quoted inside containers and raw at the top level of
   an interpolation.
-- **Opaque types:** `Uuid`, `Prompt` and `Query` are `pub opaque` (design §17.10).
+- **Opaque types:** `Uuid`, `Prompt`, `Query`, `Html` and `UrlPart` are `pub opaque` (design §17.10).
 
 ## Module dependencies (non-test code)
 
@@ -67,7 +67,8 @@ log → json, test, list, core                  gen → test, random, list, int,
 retry → duration, int   (+ Clock, Random)     task → duration, list (+ Clock)   [M3]
 graph → map, list       untrusted → core        path → string, list
 secret → core           decimal → string, list, int
-url → string, list      cli [M3]                fs → path, untrusted, map [M3]
+url → string, list, urlpart   urlpart → string, list, bytes [M3]   cli [M3]
+fs → path, untrusted, map [M3]
 request → url, json [M3]                       response → html, json, untrusted [M3]
 html → core [M3]        router → request, response, url [M3]
 serve → request, response, router, url [M3]
@@ -510,8 +511,16 @@ fn is_valid(s: String) -> Bool    // @total
 fn host(u: Url) -> Option<String>
 fn path(u: Url) -> String
 fn query_param(u: Url, name: String) -> Option<String>
-fn template(parts: List<String>, args: List<String>) -> Url
+fn template(parts: List<String>, args: List<UrlPart>) -> Url    // url"…"; each value through UrlPart.from (§17.124)
 fn encode_component(s: String) -> String
+```
+
+### `std/urlpart`
+
+```sakura
+opaque type UrlPart = UrlPart(String)
+fn from<T: Show>(v: T) -> UrlPart    // percent-encodes show(v); each non-UrlPart url"…" value goes through it (§17.124)
+fn to_string(p: UrlPart) -> String
 ```
 
 ### `std/request`

@@ -1,0 +1,42 @@
+// URL components (design §4.11, §17.124). `url"…"`'s element type: each interpolated value
+// goes through `UrlPart.from`, so it is percent-encoded and cannot add a path segment, a query
+// parameter or a fragment. An `Untrusted<T>` is encoded as its wrapped value (§17.101).
+
+/// A percent-encoded URL component. Opaque: only `from` builds one, so `url"…"` passes a
+/// `UrlPart` through as it is.
+pub opaque type UrlPart = UrlPart(String)
+
+/// `show(v)` with the UTF-8 bytes of every character except `A–Z a–z 0–9 - . _ ~`
+/// percent-encoded: `from("a b&c")` is `a%20b%26c`, `from(7)` is `7`.
+pub fn from<T: Show>(v: T) -> UrlPart {
+  let unreserved = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
+  var out = ""
+  for c in String.chars(show(v)) {
+    if String.contains(unreserved, c) {
+      out = out + c
+    } else {
+      let b = String.to_bytes(c)
+      for i in 0..Bytes.len(b) {
+        let byte = Bytes.get(b, i).unwrap_or(0)
+        out = out + "%" + hex_digit(byte / 16) + hex_digit(byte % 16)
+      }
+    }
+  }
+  UrlPart(out)
+}
+
+/// The encoded text.
+pub fn to_string(p: UrlPart) -> String {
+  match p {
+    UrlPart(s) => s,
+  }
+}
+
+fn hex_digit(n: Int) -> String { String.chars("0123456789ABCDEF")[n].unwrap_or("0") }
+
+test "from percent-encodes the shown value" {
+  expect_eq(to_string(from("a b&c=d/é")), "a%20b%26c%3Dd%2F%C3%A9")
+  expect_eq(to_string(from("AZaz09-._~")), "AZaz09-._~")
+  expect_eq(to_string(from(7)), "7")
+  expect_eq(to_string(from(-7)), "-7")
+}

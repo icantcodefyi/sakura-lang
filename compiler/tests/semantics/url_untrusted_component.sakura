@@ -1,0 +1,12 @@
+// milestone: M3
+// covers: Template
+// spec: §4.11, §17.101, §17.124
+
+// `url"…"` sends every value through `UrlPart.from`: an `Int` is shown, an `Untrusted<T>` is
+// its wrapped value, and both are percent-encoded, so `&` cannot start a query parameter.
+
+pub fn main() -> Unit ! {Console} {
+  let id: Int = 7
+  let u = Untrusted.of("a b&c")
+  Console.print(url"https://x.test/u/{id}?q={u}")
+}
