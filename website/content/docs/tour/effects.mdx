@@ -152,6 +152,8 @@ There is no implicit conversion between error types. A catch-all `_ => …` arm 
 
 A **defect** is a bug, not an expected failure. It terminates the current task after running resource finalizers. `try` cannot catch it. `Task.scope` and the test runner observe it as `Outcome.Defect(info)`, and `main` ending in a defect exits with status 70 and writes a `defect` record to stderr. By contrast, a typed failure that escapes `main` exits with status 1 and prints `error: main failed with <Show of the error>`.
 
+<FailureFlow />
+
 | Code | Defect |
 | --- | --- |
 | `D001` | `Int` overflow |

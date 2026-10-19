@@ -53,6 +53,8 @@ Analysis works on an immutable **workspace snapshot**. `check` without a `snapsh
 
 `check_patch` lets an agent try an edit without changing anything. The interface delta tells the agent, and the reviewer, whether the edit changes a public signature, effect row, or error union. `apply_patch` then commits it and returns the new snapshot.
 
+<PatchFlow />
+
 **Frozen specs are opt-in on each call.** Pass `frozen_specs: "all"` (or comma-separated symbol names, including `permissions`) to both `check_patch` and `apply_patch`. The check returns `frozen_spec_violations`; application rejects changes to the selected signatures, effect rows, error unions, contracts, tests/properties and permissions with `V8020`. Use the original base snapshot when applying. Omitting `frozen_specs` does not enforce a prior check's freeze policy. The CLI compares against Git: `sakura check --frozen-specs all --since <baseline>`.
 
 ### Authority

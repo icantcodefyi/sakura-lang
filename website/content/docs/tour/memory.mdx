@@ -145,6 +145,10 @@ There is no shared mutable memory, so tasks cannot race on data. Tasks communica
 | WebAssembly (`wasm-encoder`, runtime in linear memory) | M4 | complete; in every release | non-atomic RC, no WASM GC required |
 | Native (Cranelift) | M5 | experimental; source builds with the `native` feature only | non-atomic RC; Perceus reuse after 1.0 |
 
+Every backend starts from the same Core:
+
+<PipelineFlow />
+
 Release binaries support JavaScript (the default) and WASM:
 
 ```bash

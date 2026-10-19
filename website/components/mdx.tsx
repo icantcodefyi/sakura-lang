@@ -6,12 +6,15 @@ import type { ComponentProps } from "react";
 import type { MDXComponents } from "mdx/types";
 import {
   AgentLoop,
-  CapabilityScopes,
+  AuthorityFlow,
   CassetteFlow,
   ContractFlow,
   EffectFlow,
+  FailureFlow,
   HandlerFlow,
+  PatchFlow,
   PipelineFlow,
+  VerifyFlow,
 } from "@/components/docs-diagrams";
 
 /** Callouts are tinted panels in the callout colour, without the default side stripe. */
@@ -28,13 +31,16 @@ export function getMDXComponents(components?: MDXComponents) {
   return {
     ...defaultMdxComponents,
     AgentLoop,
+    AuthorityFlow,
     Callout: SakuraCallout,
-    CapabilityScopes,
     CassetteFlow,
     ContractFlow,
     EffectFlow,
+    FailureFlow,
     HandlerFlow,
+    PatchFlow,
     PipelineFlow,
+    VerifyFlow,
     Step,
     Steps,
     Tab,
