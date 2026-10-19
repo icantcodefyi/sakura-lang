@@ -64,6 +64,7 @@ pub(crate) fn manifest(a: &Analyzed, target: &str, statuses: &BTreeMap<String, &
     json!({
         // 1.1 added `target` (§17.163 (3)).
         "schema_version": "1.1",
+        "kind": "manifest",
         "target": target,
         "snapshot": a.snapshot.hash(),
         // Set by release builds; local builds do not know their commit.

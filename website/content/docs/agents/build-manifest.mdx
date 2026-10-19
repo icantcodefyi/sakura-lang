@@ -14,7 +14,7 @@ A successful build writes its output to `target/sakura/js` (or `target/sakura/wa
 
 The manifest is one JSON object with:
 
-- `schema_version: "1.1"`, `target` (`js` or `wasm`: the build target, and the verification profile its statuses were obtained for) and the input `snapshot` hash. Version 1.1 added `target`.
+- `schema_version: "1.1"`, `kind: "manifest"`, `target` (`js` or `wasm`: the build target, and the verification profile its statuses were obtained for) and the input `snapshot` hash. Version 1.1 added `target`.
 - `compiler.version` and `compiler.git`; local builds may have a null git value.
 - `trusted` entries for the compiler, the runtime (with SHA-256), std host bindings, user `@external` declarations, `@trust` reasons and `@total` declarations. The JS runtime is `sakura_runtime.js`; a WASM build lists `sakura_rt.wasm` (linked into `main.wasm`), the Node host `sakura_wasm_host.js` and the `sakura_runtime.js` it delegates to.
 - `obligations` with an ID, symbol ID, clause, status and source span. Build records have status `proved` only for clauses whose checks were all removed using matching authenticated proofs; other clauses remain `runtime_checked`. A WASM build removes the checks proved by `sakura verify --target wasm` (the `i64` profile), and a JS build those proved on the `js` profile.

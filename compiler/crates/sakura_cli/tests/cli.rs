@@ -682,6 +682,7 @@ fn build_manifest_lists_trusted_base_and_obligations() {
         keys(&m),
         [
             "compiler",
+            "kind",
             "obligations",
             "schema_version",
             "snapshot",

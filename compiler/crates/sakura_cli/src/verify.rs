@@ -96,7 +96,11 @@ pub(crate) fn verify(opts: &Options, paths: &[PathBuf]) -> ExitCode {
     };
     let (module, diags) = Analysis::lower_core(&snapshot, &all);
     let Some(module) = module else {
-        crate::report(opts.json, &snapshot, &diags, &[], true);
+        if opts.json {
+            print_json(&snapshot, &[], &diags, 0);
+        } else {
+            crate::report(false, &snapshot, &diags, &[], true);
+        }
         return ExitCode::from(crate::EXIT_ERRORS);
     };
     let z3 = match Solver::find(SolverKind::Z3, opts.solver, limits.clone()) {
@@ -158,25 +162,7 @@ pub(crate) fn verify(opts: &Options, paths: &[PathBuf]) -> ExitCode {
         .collect();
     let count = |s: Status| results.iter().filter(|(r, _)| r.status == s).count();
     if opts.json {
-        for (r, id) in &results {
-            println!("{}", record(r, id.as_deref(), snapshot.hash(), files));
-        }
-        for mut d in diagnostic_records(&warnings, files, snapshot.hash()) {
-            d["schema_version"] = json!(SCHEMA);
-            println!("{d}");
-        }
-        let mut summary = summary_record(&warnings, snapshot.hash());
-        summary.insert("schema_version".into(), json!(SCHEMA));
-        for s in [
-            Status::Proved,
-            Status::Disproved,
-            Status::Unknown,
-            Status::Unsupported,
-        ] {
-            summary.insert(name(s).into(), count(s).into());
-        }
-        summary.insert("reused".into(), reused.into());
-        println!("{}", Value::Object(summary));
+        print_json(&snapshot, &results, &warnings, reused);
     } else {
         for (r, _) in &results {
             println!("{}", human(r, files));
@@ -198,6 +184,37 @@ pub(crate) fn verify(opts: &Options, paths: &[PathBuf]) -> ExitCode {
     } else {
         ExitCode::SUCCESS
     }
+}
+
+/// The JSON Lines output: one record per obligation, the diagnostics, then the summary, every
+/// one at [`SCHEMA`], also when the program does not compile.
+fn print_json(
+    snapshot: &Snapshot,
+    results: &[(Record, Option<String>)],
+    diags: &[Diagnostic],
+    reused: usize,
+) {
+    let files = snapshot.files();
+    for (r, id) in results {
+        println!("{}", record(r, id.as_deref(), snapshot.hash(), files));
+    }
+    for mut d in diagnostic_records(diags, files, snapshot.hash()) {
+        d["schema_version"] = json!(SCHEMA);
+        println!("{d}");
+    }
+    let mut summary = summary_record(diags, snapshot.hash());
+    summary.insert("schema_version".into(), json!(SCHEMA));
+    for s in [
+        Status::Proved,
+        Status::Disproved,
+        Status::Unknown,
+        Status::Unsupported,
+    ] {
+        let n = results.iter().filter(|(r, _)| r.status == s).count();
+        summary.insert(name(s).into(), n.into());
+    }
+    summary.insert("reused".into(), reused.into());
+    println!("{}", Value::Object(summary));
 }
 
 fn name(s: Status) -> &'static str {

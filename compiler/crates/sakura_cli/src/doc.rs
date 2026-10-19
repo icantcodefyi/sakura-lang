@@ -54,7 +54,7 @@ fn query(a: &Analyzed, search: Option<&str>, symbol: Option<&str>) -> Value {
             value
         })
         .collect();
-    json!({"snapshot": a.snapshot.hash(), "total": symbols.len(), "symbols": symbols, "truncated": false})
+    json!({"schema_version": "1.0", "kind": "symbol_query", "snapshot": a.snapshot.hash(), "total": symbols.len(), "symbols": symbols, "truncated": false})
 }
 
 #[cfg(test)]

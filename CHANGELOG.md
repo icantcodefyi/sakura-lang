@@ -22,6 +22,12 @@ Compare the release tag with main when identifying changes not in that preview.
 
 ### Changed
 
+- Every `--json` record carries `kind` and `schema_version` (design §17.232 (b)):
+  `sakura doc --json` gains `"kind": "symbol_query"` and `"schema_version": "1.0"`, and
+  `target/sakura/manifest.json` gains `"kind": "manifest"` (still schema 1.1). `sakura verify
+  --json` on a program that does not compile now writes its diagnostics and summary at schema
+  1.1, like every other `verify` record, instead of 1.0. The fields of every kind are listed in
+  `compiler/contracts/json.txt`, which a test checks every command's output against.
 - The documented npm install is the plain `npm install --global sakuralang`: the packages ship
   no lifecycle scripts, and `release.py` now refuses to pack one that declares `preinstall`,
   `install`, `postinstall` or `prepare`.
