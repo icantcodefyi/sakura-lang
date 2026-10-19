@@ -38,7 +38,8 @@ pub struct SakuraModule {
     /// The `sakura.debug` table (ABI §12) (+56) and its length (+64).
     debug: *const u8,
     debug_len: u32,
-    _reserved: u32,
+    /// The type descriptors' offset in the static block (+68).
+    schemas: u32,
 }
 
 const _: () = assert!(size_of::<SakuraModule>() == 72);
@@ -204,6 +205,7 @@ fn run(m: &'static SakuraModule) -> Result<i32, String> {
             effects: m.effects,
             ops: m.ops,
             natives: m.natives,
+            schemas: m.schemas,
         },
     });
     let config = Config::from_env()?;

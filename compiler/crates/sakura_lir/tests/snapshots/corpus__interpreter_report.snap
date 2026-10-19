@@ -9,6 +9,7 @@ semantics/arith_ranges_requires_seeded: ok, 23 allocated, 0 dup, 23 drop, peak 4
 semantics/arith_ranges_requires_violated: D020, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
 semantics/blocks_and_let: ok, 5 allocated, 0 dup, 5 drop, peak 4, live 0/0
 semantics/catch_around_row_polymorphic_call: ok, 17 allocated, 9 dup, 26 drop, peak 9, live 0/0
+semantics/cli_parse_messages: unsupported (builtin cli_parse)
 semantics/closures: ok, 24 allocated, 12 dup, 36 drop, peak 9, live 0/0
 semantics/constants: ok, 17 allocated, 10 dup, 27 drop, peak 8, live 0/0
 semantics/contract_site_blame: D020, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
@@ -65,6 +66,7 @@ semantics/host_fs_env: unsupported (builtin string_to_bytes)
 semantics/host_root_handlers: unsupported (builtin clock_host)
 semantics/if_else: ok, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/imports: ok, 23 allocated, 8 dup, 31 drop, peak 7, live 0/0
+semantics/json_codec: unsupported (builtin json_encode)
 semantics/let_polymorphism: ok, 16 allocated, 2 dup, 18 drop, peak 6, live 0/0
 semantics/line_endings_crlf: ok, 26 allocated, 5 dup, 31 drop, peak 9, live 0/0
 semantics/line_endings_lf: ok, 26 allocated, 5 dup, 31 drop, peak 9, live 0/0

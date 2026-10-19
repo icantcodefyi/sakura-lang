@@ -236,6 +236,18 @@ wasm32 linker appends them (`rt_code_callback_stub`, then every `rt_code_*` sort
 host does not provide yet is `rt_code_unsupported` in its slot (`D090` when performed), so
 indices never shift between targets or milestones.
 
+**Type descriptors and JSON.** The native image's static block also holds the module's type
+descriptors (`u32 len`, then UTF-8 JSON; its offset in the image descriptor): every named type
+and refinement reachable from the module's `Schema` values (every type when one has an unsolved
+parameter), by qualified name, as `["r", name, [[field, schema]…]]`, `["v", name, [[ctor,
+[schema…]]…]]` or `["w", name, base, check]` with `check` the predicate's code; field schemas
+mention refined types and the type's own parameters as `["V", i]` (the JS backend's
+`recordType`, `variantType` and `refined`). The `hosted` builtins `json_decode`, `json_encode`,
+`json_parse` and `json_schema` are answered by the runtime's codec (`sakura_rt::json`, `no_std`)
+from these and §8.1 bytes, with the JS runtime's rules and messages; a refinement's `where` runs
+as a nested call on the decoding task's frames (no task number, design §17.155), and a defect
+in it is the decode's. WASM keeps the JS codec; the WASM image carries no descriptors.
+
 **Failures.** Overflow and zero divisors are branches to the defect path; a CPU trap is `D090`.
 The runtime staticlib that native programs link is built with `panic = "abort"`, so nothing
 unwinds across generated code and a runtime bug aborts the process (the Rust library the host

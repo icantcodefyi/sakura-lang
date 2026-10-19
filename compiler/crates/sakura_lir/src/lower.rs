@@ -134,6 +134,8 @@ struct Cx<'a> {
     groups: HashMap<(core::DefId, Pos), u32>,
     /// The direct facts (§17.118), for the performs lowered as clause calls.
     facts: crate::direct::Facts,
+    /// The types of the module's `Schema` values, the roots of [`Module::schemas`].
+    schema_roots: Vec<(core::Ty, Vec<u32>)>,
 }
 
 pub fn lower(core: &core::Module, sigs: &BTreeMap<String, (Sig, bool)>) -> R<Module> {
@@ -163,6 +165,7 @@ pub fn lower(core: &core::Module, sigs: &BTreeMap<String, (Sig, bool)>) -> R<Mod
         sites: vec![],
         groups: HashMap::new(),
         facts: crate::direct::analyze(core),
+        schema_roots: vec![],
     };
     cx.takes_site = (0..core.defs.len())
         .map(|i| {
@@ -246,6 +249,7 @@ pub fn lower(core: &core::Module, sigs: &BTreeMap<String, (Sig, bool)>) -> R<Mod
             .map(|(name, d)| (name.clone(), FuncId(*d)))
             .collect(),
         direct: cx.facts,
+        schemas: crate::schema::descriptors(core, &cx.schema_roots),
     })
 }
 
@@ -1892,6 +1896,7 @@ impl<'c, 'a> Fl<'c, 'a> {
                     P::SchemaOf(_, vars) => vars.as_slice(),
                     _ => &[],
                 };
+                self.cx.schema_roots.push((ty.clone(), vars.to_vec()));
                 let mut acc: Option<Var> = None;
                 for piece in crate::schema::pieces(self.cx.core, ty, vars) {
                     let v = match piece {

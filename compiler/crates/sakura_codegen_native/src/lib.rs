@@ -243,6 +243,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     put(48, m.entry.map_or(u32::MAX, |e| e.0));
     put(52, sakura_rt::native::CODES.len() as u32);
     put(64, debug.len() as u32);
+    put(68, image.schemas);
     let mut d = DataDescription::new();
     d.define(bytes.into_boxed_slice());
     d.set_align(8);

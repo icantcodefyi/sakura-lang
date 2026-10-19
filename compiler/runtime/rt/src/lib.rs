@@ -18,6 +18,7 @@ pub mod exec;
 pub mod exports;
 pub mod generate;
 pub mod heap;
+pub mod json;
 pub mod layout;
 pub mod list;
 pub mod map;

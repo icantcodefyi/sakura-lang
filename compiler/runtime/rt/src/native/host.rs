@@ -65,6 +65,10 @@ pub trait Host {
     /// The guest's last reference to `handle` died (ABI §8.4).
     fn retire_handle(&mut self, handle: HandleId);
 
+    /// `Cli.args()`: the program's arguments.
+    fn cli_args(&mut self) -> Hosted<Vec<String>> {
+        Err(unsupported())
+    }
     fn env_get(&mut self, _key: &str) -> Hosted<Option<String>> {
         Err(unsupported())
     }

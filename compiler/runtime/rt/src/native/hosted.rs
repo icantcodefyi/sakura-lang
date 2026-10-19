@@ -6,12 +6,14 @@
 //! defect texts) is the one wasm32 runs. Answers keep JS's shapes: an operation's ordinary
 //! failure is the `Err` of its `Result`, a forged handle is `D090` (W8), a host failure `D091`.
 
+use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
 
 use super::Ctx;
 use super::host::{FileMode, HandleId, Host, HostError, Hosted};
 use crate::cx::{Cx, TOO_LARGE};
+use crate::json;
 use crate::vt::{DIR, t};
 
 /// The hosted builtins by index, the order of the compiler's `HOSTED` table (`sakura_lir::image`;
@@ -48,7 +50,23 @@ pub const HOSTED: &[&str] = &[
 #[unsafe(no_mangle)]
 pub extern "C" fn rt_hosted(ctx: Ctx<'_>, id: u32, at: u32, len: u32) -> u32 {
     let mut cx = Cx::native(ctx);
-    let answer = {
+    let name = HOSTED.get(id as usize).copied();
+    let answer = if let Some(name) = name.filter(|n| n.starts_with("json_") || *n == "cli_parse") {
+        // The codec runs guest code (a refinement's `where`), so it reads a copy.
+        let args = {
+            let rt = cx.rt();
+            (u64::from(at) + u64::from(len) <= rt.heap.mem.size())
+                .then(|| rt.heap.mem.bytes(at, len).to_vec())
+        };
+        match args {
+            Some(args) => match json(&mut cx, name, &args) {
+                Ok(Ok(answer)) => answer,
+                Ok(Err(d)) => coded(u32::from(d.code), d.message),
+                Err(e) => defect(e),
+            },
+            None => defect(fault("a hosted argument outside the heap")),
+        }
+    } else {
         let (rt, host) = cx.hosted_parts();
         let ids = Ids {
             result: rt.result_id(),
@@ -63,7 +81,7 @@ pub extern "C" fn rt_hosted(ctx: Ctx<'_>, id: u32, at: u32, len: u32) -> u32 {
             ))
         } else {
             let args = rt.heap.mem.bytes(at, len);
-            call(host, &ids, HOSTED.get(id as usize).copied(), args)
+            call(host, &ids, name, args)
         };
         match r {
             Ok(w) => w.0,
@@ -91,10 +109,14 @@ struct Ids {
 }
 
 fn defect(e: HostError) -> Vec<u8> {
-    let (code, msg) = match e {
-        HostError::Fault(m) => (90u32, m),
-        HostError::Failure(m) | HostError::Err(m) => (91, m),
-    };
+    match e {
+        HostError::Fault(m) => coded(90, &m),
+        HostError::Failure(m) | HostError::Err(m) => coded(91, &m),
+    }
+}
+
+/// Status 2: defect `code` with `msg`.
+fn coded(code: u32, msg: &str) -> Vec<u8> {
     let mut out = Vec::with_capacity(5 + msg.len());
     out.push(2);
     out.extend_from_slice(&code.to_le_bytes());
@@ -119,6 +141,15 @@ fn call(host: &mut dyn Host, ids: &Ids, name: Option<&str>, args: &[u8]) -> Host
         }
     };
     match name {
+        Some("cli_args") => {
+            arity(0)?;
+            r.end()?;
+            let args = host.cli_args()?;
+            w.list(args.len());
+            for a in &args {
+                w.string(a);
+            }
+        }
         Some("env_get") => {
             arity(1)?;
             let key = r.string()?;
@@ -393,4 +424,148 @@ impl W {
         self.0.push(t::HANDLE);
         self.u32(h.kind).u32(h.slot).u32(h.generation)
     }
+}
+
+// ---- JSON -------------------------------------------------------------------------------------
+
+/// A module's type descriptors with the lookups the JSON codec makes, built at an instance's
+/// first JSON call.
+pub(crate) struct TypeIndex {
+    descs: Vec<u8>,
+    by_name: BTreeMap<Vec<u8>, usize>,
+    ids: BTreeMap<Vec<u8>, u32>,
+    of_id: Vec<Option<usize>>,
+}
+
+impl TypeIndex {
+    /// The index of `descs` (`sakura_lir::schema::descriptors`) over `rt`'s layout table.
+    pub(crate) fn new(rt: &crate::Rt, descs: Vec<u8>) -> TypeIndex {
+        let mut by_name = BTreeMap::new();
+        // A malformed table indexes what it could read: lookups past it find nothing.
+        let _ = json::descriptors(&descs, &mut |name, at| {
+            by_name.insert(name.to_vec(), at);
+        });
+        let n = rt.heap.mem.u32(rt.layout);
+        let mut ids = BTreeMap::new();
+        let mut of_id = Vec::with_capacity(n as usize);
+        for id in 0..n {
+            let at = rt.type_name(id);
+            let name = (at != 0).then(|| rt.heap.mem.bytes(at + 4, rt.heap.mem.u32(at)).to_vec());
+            of_id.push(name.as_ref().and_then(|n| by_name.get(n).copied()));
+            if let Some(name) = name {
+                ids.entry(name).or_insert(id);
+            }
+        }
+        TypeIndex {
+            descs,
+            by_name,
+            ids,
+            of_id,
+        }
+    }
+}
+
+/// The codec's view of the instance: the index, and the guest for `where` predicates.
+struct Native<'c, 'x> {
+    cx: &'c mut Cx<'x>,
+    index: &'c TypeIndex,
+}
+
+impl json::Types for Native<'_, '_> {
+    fn type_id(&mut self, name: &[u8]) -> Option<u32> {
+        self.index.ids.get(name).copied()
+    }
+
+    fn find(&mut self, name: &[u8]) -> Option<usize> {
+        self.index.by_name.get(name).copied()
+    }
+
+    fn find_id(&mut self, id: u32) -> Option<usize> {
+        self.index.of_id.get(id as usize).copied().flatten()
+    }
+
+    fn satisfies(&mut self, check: u32, kind: u32, vt: &[u8]) -> crate::Res<bool> {
+        let rt = self.cx.rt();
+        let scalar = || {
+            let mut a = [0; 8];
+            a.copy_from_slice(vt.get(1..9).ok_or(crate::vt::MALFORMED)?);
+            Ok(u64::from_le_bytes(a))
+        };
+        let (arg, word) = match kind {
+            crate::layout::I64 | crate::layout::F64 => (scalar()?, false),
+            crate::layout::BOOL => (u64::from(vt.get(1) == Some(&1)), false),
+            _ => {
+                let n = u32::try_from(vt.len()).map_err(|_| crate::Defect::HEAP_EXHAUSTED)?;
+                let b = rt.new_bytes(n)?;
+                rt.heap.mem.bytes_mut(b + 12, n).copy_from_slice(vt);
+                let w = rt.vt_decode(b + 12, n);
+                rt.drop(b);
+                (u64::from(w?), true)
+            }
+        };
+        let n = rt.nested_enter(check, arg).inspect_err(|_| {
+            if word {
+                rt.drop(arg as u32);
+            }
+        })?;
+        while let Some((code, env, frame)) = self.cx.rt().nested_next(n) {
+            let s = self.cx.dispatch(code, env, frame);
+            self.cx.rt().nested_after(n, s)?;
+        }
+        let r = self.cx.rt().take_ret();
+        Ok(r == 1 || r == u64::from(crate::object::TRUE))
+    }
+}
+
+/// A `json_*` builtin on its argument tuple: the answer, or the defect it is (a malformed tuple
+/// is the host's).
+fn json(cx: &mut Cx<'_>, name: &str, args: &[u8]) -> Hosted<Result<Vec<u8>, crate::Defect>> {
+    let index = cx.type_index();
+    let mut r = Reader { b: args, at: 0 };
+    let n = r.tuple()?;
+    let mut out = Vec::new();
+    let mut types = Native { cx, index: &index };
+    let descs = &index.descs;
+    let done = match (name, n) {
+        ("json_decode", 2) => {
+            let (text, schema) = (r.string()?, r.string()?);
+            r.end()?;
+            json::decode(
+                text.as_bytes(),
+                schema.as_bytes(),
+                descs,
+                &mut types,
+                &mut out,
+            )
+        }
+        ("json_parse", 1) => {
+            let text = r.string()?;
+            r.end()?;
+            json::parse(text.as_bytes(), &mut types, &mut out)
+        }
+        ("json_encode", 2) => {
+            let start = r.at;
+            r.at = json::vt_skip(args, start, 0).map_err(|d| fault(d.message))?;
+            let value = &args[start..r.at];
+            let schema = r.string()?;
+            r.end()?;
+            json::encode(value, schema.as_bytes(), descs, &mut types, &mut out)
+        }
+        ("cli_parse", 2) => {
+            let start = r.at;
+            r.at = json::vt_skip(args, start, 0).map_err(|d| fault(d.message))?;
+            let list = &args[start..r.at];
+            let schema = r.string()?;
+            r.end()?;
+            json::cli_parse(list, schema.as_bytes(), descs, &mut types, &mut out)
+        }
+        ("json_schema", 2) => {
+            r.at = json::vt_skip(args, r.at, 0).map_err(|d| fault(d.message))?;
+            let schema = r.string()?;
+            r.end()?;
+            json::schema(schema.as_bytes(), descs, &mut types, &mut out)
+        }
+        _ => return Err(fault("a hosted call with the wrong arity")),
+    };
+    Ok(done.map(|()| out))
 }

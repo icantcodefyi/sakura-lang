@@ -53,6 +53,14 @@ pub enum Next {
     Done(u32),
 }
 
+/// A nested call in progress (`Rt::nested_enter`): the frame it returns to, and the task's
+/// catch entries then (a `fail` to a later one is caught inside the call).
+#[derive(Clone, Copy)]
+pub struct Nested {
+    base: u32,
+    catches: u32,
+}
+
 /// A compiled function on the host: the funcref table entry `call_indirect` would reach.
 pub type Code = fn(&mut Rt, u32, u32) -> u32;
 
@@ -453,6 +461,103 @@ impl Rt {
     pub fn call_closure(&mut self, closure: u32, n_slots: u32) -> Res<u32> {
         let code = self.u(closure, 8);
         self.call(code, n_slots, closure)
+    }
+
+    /// Start a nested call of `code` with `arg` in slot 0 on top of the running frame (a
+    /// refinement's `where` that a decode runs, JS `satisfies`): the callee runs on the current
+    /// task, so it spends no task number (design §17.155). The caller drives it with
+    /// [`Rt::nested_next`] and [`Rt::nested_after`] until `nested_next` answers `None`, then
+    /// takes the result with `take_ret`.
+    pub fn nested_enter(&mut self, code: u32, arg: u64) -> Res<Nested> {
+        let t = self.cur();
+        let n = Nested {
+            base: self.u(t, T_FRAME),
+            catches: self.tstack(t, T_CATCHES).len / CATCH_WORDS,
+        };
+        let size = self.frame_size(code, 1);
+        let f = self.call(code, size, 0)?;
+        self.set_fslot(f, 0, arg);
+        let next = self.u(t, T_NEXT_FRAME);
+        self.set(t, T_FRAME, next);
+        self.set(t, T_NEXT_FRAME, 0);
+        Ok(n)
+    }
+
+    /// The nested call's next frame to run, `(code, env, frame)`; `None` once it has returned
+    /// to its base. A `fail` caught inside the call unwinds here first, its finalizers run as
+    /// frames of the call.
+    pub fn nested_next(&mut self, n: Nested) -> Option<(u32, u32, u32)> {
+        let t = self.cur();
+        while self.u(t, T_MODE) != NONE && self.unwind(t) {}
+        let fid = self.u(t, T_FRAME);
+        if fid == n.base {
+            self.sched.dispatched = n.base;
+            return None;
+        }
+        let f = self.arena_obj(fid, tag::FRAME)?;
+        let env = self.u(t, T_NEXT_ENV);
+        self.set(t, T_NEXT_ENV, 0);
+        self.sched.dispatched = fid;
+        Some((self.u(f, F_CODE), env, f))
+    }
+
+    /// Act on the step a nested frame returned. A call, a return and a `fail` to a `try` inside
+    /// the call continue; anything else (a defect, or what a pure function cannot do) pops the
+    /// nested frames and is the error, the task's own defect record kept as the first.
+    pub fn nested_after(&mut self, n: Nested, s: u32) -> Res<()> {
+        let t = self.cur();
+        let fid = self.sched.dispatched;
+        match s {
+            step::RETURN => {
+                let parent = self
+                    .arena_obj(fid, tag::FRAME)
+                    .map_or(n.base, |f| self.u(f, F_PARENT));
+                self.pop_frame(t, fid);
+                self.set(t, T_FRAME, parent);
+                Ok(())
+            }
+            step::CALL => {
+                let next = self.u(t, T_NEXT_FRAME);
+                self.set(t, T_FRAME, next);
+                self.set(t, T_NEXT_FRAME, 0);
+                Ok(())
+            }
+            step::FAIL
+                if self
+                    .arena_obj(fid, tag::FRAME)
+                    .is_some_and(|f| self.u(f, F_CATCH) > n.catches) =>
+            {
+                let f = self.arena_obj(fid, tag::FRAME).expect("the failing frame");
+                self.begin(t, FAIL);
+                self.set(t, T_TARGET, self.u(f, F_CATCH));
+                Ok(())
+            }
+            _ => {
+                let d = if s == step::DEFECT && self.u(t, T_DEFECT) != 0 {
+                    Defect {
+                        code: self.u(t, T_DEFECT) as u16,
+                        message: "a where clause failed",
+                    }
+                } else {
+                    if s == step::FAIL {
+                        let e = self.take_ret();
+                        self.drop(e as u32);
+                    }
+                    Defect::INTERNAL
+                };
+                let mut fid = self.u(t, T_FRAME);
+                while fid != n.base && fid != 0 {
+                    let parent = self
+                        .arena_obj(fid, tag::FRAME)
+                        .map_or(0, |f| self.u(f, F_PARENT));
+                    self.pop_frame(t, fid);
+                    fid = parent;
+                }
+                self.set(t, T_FRAME, n.base);
+                self.sched.dispatched = n.base;
+                Err(d)
+            }
+        }
     }
 
     /// Pop frame `id`: release the activations it installed, drop its slots, retire it.

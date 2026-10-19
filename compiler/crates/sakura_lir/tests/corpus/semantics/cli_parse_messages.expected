@@ -1,0 +1,15 @@
+ending: ok
+--- stdout
+Args { verbose: false, name: None, tag: ["a", "b"], port: 80, ratio: 0.5, level: High }
+Args { verbose: true, name: Some("x"), tag: ["a", "b"], port: 80, ratio: 0.5, level: High }
+usage: [--verbose] [--name <value>] [--tag <value>]... --port <value> --ratio <value> --level <value>
+unknown argument --nope
+usage: [--verbose] [--name <value>] [--tag <value>]... --port <value> --ratio <value> --level <value>
+--port needs a value
+missing --port
+usage: [--verbose] [--name <value>] [--tag <value>]... --port <value> --ratio <value> --level <value>
+--port: "0" does not satisfy the where clause of Port
+--ratio: expected a number, found "x"
+--port: expected an integer, found "9007199254740993"
+--port given more than once
+--level: unknown constructor "Mid" of Level

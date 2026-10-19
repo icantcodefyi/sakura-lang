@@ -1,0 +1,200 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::cli_parse_messages::Args | Args 64b (verbose: bool, name: word*, tag: word*, port: i64, ratio: f64, level: word*)
+layout 1 variant main::cli_parse_messages::Level | Low 16b () | High 16b ()
+layout 2 error std::cli::CliError | CliError 24b (message: word*)
+layout 3 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 4 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 5 shape |  32b (word*, word*)
+layout 6 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::cli_parse_messages, frame 25 slots [%11 word*, %12 word*, %13 bool, %14 word*, %20 word*, %21 word*, %22 bool, %26 word*, %27 bool, %31 word*, %32 bool, %36 word*, %37 bool, %42 word*, %43 bool, %52 word*, %53 bool, %62 word*, %63 bool, %72 word*, %73 bool, %84 word*, %85 bool, %94 word*, %95 bool]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 lit: ptr = const str 1
+    %2 lit: ptr = const str 2
+    %3 lit: ptr = const str 3
+    %4 lit: ptr = const str 4
+    %5 lit: ptr = const str 5
+    %6 lit: ptr = const str 6
+    %7 lit: ptr = const str 7
+    %8 lit: ptr = const str 6
+    %9 lit: ptr = const str 8
+    %10 xs: ptr = alloc list(%0, %1, %2, %3, %4, %5, %6, %7, %8, %9)
+    dup %10
+    call parsed#2(%10) -> b1(%10)
+  b1(%11 r: ptr, %12 xs: ptr):
+    perform std::console::Console.print(%11) -> b2(%12)
+  b2(%13 r: unit, %14 xs: ptr):
+    %15 box: word = box %13
+    drop %15
+    %16 lit: ptr = const str 9
+    %17 lit: ptr = const str 10
+    %18 lit: ptr = const str 11
+    %19 xs: ptr = alloc list(%16, %17, %18)
+    call concat#3(%14, %19) -> b3()
+  b3(%20 r: ptr):
+    call parsed#2(%20) -> b4()
+  b4(%21 r: ptr):
+    perform std::console::Console.print(%21) -> b5()
+  b5(%22 r: unit):
+    %23 box: word = box %22
+    drop %23
+    %24 lit: ptr = const str 12
+    %25 xs: ptr = alloc list(%24)
+    call parsed#2(%25) -> b6()
+  b6(%26 r: ptr):
+    perform std::console::Console.print(%26) -> b7()
+  b7(%27 r: unit):
+    %28 box: word = box %27
+    drop %28
+    %29 lit: ptr = const str 13
+    %30 xs: ptr = alloc list(%29)
+    call parsed#2(%30) -> b8()
+  b8(%31 r: ptr):
+    perform std::console::Console.print(%31) -> b9()
+  b9(%32 r: unit):
+    %33 box: word = box %32
+    drop %33
+    %34 lit: ptr = const str 0
+    %35 xs: ptr = alloc list(%34)
+    call parsed#2(%35) -> b10()
+  b10(%36 r: ptr):
+    perform std::console::Console.print(%36) -> b11()
+  b11(%37 r: unit):
+    %38 box: word = box %37
+    drop %38
+    %39 lit: ptr = const str 2
+    %40 lit: ptr = const str 14
+    %41 xs: ptr = alloc list(%39, %40)
+    call parsed#2(%41) -> b12()
+  b12(%42 r: ptr):
+    perform std::console::Console.print(%42) -> b13()
+  b13(%43 r: unit):
+    %44 box: word = box %43
+    drop %44
+    %45 lit: ptr = const str 0
+    %46 lit: ptr = const str 15
+    %47 lit: ptr = const str 2
+    %48 lit: ptr = const str 14
+    %49 lit: ptr = const str 4
+    %50 lit: ptr = const str 16
+    %51 xs: ptr = alloc list(%45, %46, %47, %48, %49, %50)
+    call parsed#2(%51) -> b14()
+  b14(%52 r: ptr):
+    perform std::console::Console.print(%52) -> b15()
+  b15(%53 r: unit):
+    %54 box: word = box %53
+    drop %54
+    %55 lit: ptr = const str 0
+    %56 lit: ptr = const str 17
+    %57 lit: ptr = const str 2
+    %58 lit: ptr = const str 11
+    %59 lit: ptr = const str 4
+    %60 lit: ptr = const str 16
+    %61 xs: ptr = alloc list(%55, %56, %57, %58, %59, %60)
+    call parsed#2(%61) -> b16()
+  b16(%62 r: ptr):
+    perform std::console::Console.print(%62) -> b17()
+  b17(%63 r: unit):
+    %64 box: word = box %63
+    drop %64
+    %65 lit: ptr = const str 0
+    %66 lit: ptr = const str 18
+    %67 lit: ptr = const str 2
+    %68 lit: ptr = const str 14
+    %69 lit: ptr = const str 4
+    %70 lit: ptr = const str 16
+    %71 xs: ptr = alloc list(%65, %66, %67, %68, %69, %70)
+    call parsed#2(%71) -> b18()
+  b18(%72 r: ptr):
+    perform std::console::Console.print(%72) -> b19()
+  b19(%73 r: unit):
+    %74 box: word = box %73
+    drop %74
+    %75 lit: ptr = const str 0
+    %76 lit: ptr = const str 14
+    %77 lit: ptr = const str 0
+    %78 lit: ptr = const str 19
+    %79 lit: ptr = const str 2
+    %80 lit: ptr = const str 14
+    %81 lit: ptr = const str 4
+    %82 lit: ptr = const str 16
+    %83 xs: ptr = alloc list(%75, %76, %77, %78, %79, %80, %81, %82)
+    call parsed#2(%83) -> b20()
+  b20(%84 r: ptr):
+    perform std::console::Console.print(%84) -> b21()
+  b21(%85 r: unit):
+    %86 box: word = box %85
+    drop %86
+    %87 lit: ptr = const str 0
+    %88 lit: ptr = const str 14
+    %89 lit: ptr = const str 2
+    %90 lit: ptr = const str 20
+    %91 lit: ptr = const str 4
+    %92 lit: ptr = const str 21
+    %93 xs: ptr = alloc list(%87, %88, %89, %90, %91, %92)
+    call parsed#2(%93) -> b22()
+  b22(%94 r: ptr):
+    perform std::console::Console.print(%94) -> b23()
+  b23(%95 r: unit):
+    %96 box: word = box %95
+    %97 unbox: unit = unbox %96
+    drop %96
+    ret %97
+
+fn $entry#1 top -> unit ; main::cli_parse_messages, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn parsed#2 top -> ptr ; main::cli_parse_messages, frame 3 slots [%0 word*, %9 word*, %12 word*]
+  b0(%0 args: ptr):
+    try_push -> b4(err, )
+    %11 schema: ptr = const str 22
+    call $cli_parse(%0, %11) -> b5()
+  b1(%1 v: ptr):
+    %2 tag: i64 = tag %1 ctor std::result::Result
+    switch %2 0 => b2(%1) 1 => b3(%1)
+  b2(%3 v: ptr):
+    %5 p: word = proj %3.0 std::result::Result.Ok
+    drop %3
+    %6 s: ptr = show %5
+    drop %5
+    ret %6
+  b3(%4 v: ptr):
+    %7 p: word = proj %4.0 std::result::Result.Err
+    drop %4
+    %8 message: word = proj %7.0 std::cli::CliError
+    drop %7
+    ret %8
+  b4(%9 e: word):
+    %10 err: ptr = alloc std::result::Result.Err(%9)
+    jump b1(%10)
+  b5(%12 r: word) [try]:
+    %13 ok: ptr = alloc std::result::Result.Ok(%12)
+    try_pop
+    jump b1(%13)
+
+fn Port$check#4 top -> bool ; main::cli_parse_messages, frame 1 slots [%0 i64]
+  b0(%0 it: i64):
+    %1 enter: unit = $contract_enter()
+    %2 lit: i64 = const 0
+    %3 t: bool = gt.int %0, %2
+    if %3 then b2(%0) else b3(%0)
+  b1(%4 v: bool):
+    %5 exit: unit = $contract_exit()
+    ret %4
+  b2(%6 it: i64):
+    %8 lit: i64 = const 65536
+    %9 t: bool = lt.int %6, %8
+    jump b1(%9)
+  b3(%7 it: i64):
+    %10 lit: bool = const false
+    jump b1(%10)

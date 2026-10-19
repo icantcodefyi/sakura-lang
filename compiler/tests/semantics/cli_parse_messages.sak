@@ -1,0 +1,44 @@
+// milestone: M5
+// covers: design §10.5, §17.38 (`Cli.parse`), §17.213 (1)
+// spec: §10.5
+
+// `Cli.parse` held to the JS runtime's text on every backend (the native host parses on its
+// own): switches, optional and repeated flags, numbers, refinements, a variant from its name,
+// and each failure's message, the usage included.
+import std/cli.{Cli, CliError}
+
+type Level = Low | High
+
+type Port = Int where it > 0 && it < 65536
+
+type Args = {
+  verbose: Bool,
+  name: Option<String>,
+  tag: List<String>,
+  port: Port,
+  ratio: Float,
+  level: Level,
+}
+
+fn parsed(args: List<String>) -> String {
+  let r: Result<Args, CliError> = try { Cli.parse(args) }
+  match r {
+    Ok(a) => "{a}",
+    Err(e) => e.message,
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let ok = ["--port", "80", "--ratio", ".5", "--level", "High", "--tag", "a", "--tag", "b"]
+  Console.print(parsed(ok))
+  Console.print(parsed(List.concat(ok, ["--verbose", "--name", "x"])))
+  Console.print(parsed(["--help"]))
+  Console.print(parsed(["--nope"]))
+  Console.print(parsed(["--port"]))
+  Console.print(parsed(["--ratio", "1"]))
+  Console.print(parsed(["--port", "0", "--ratio", "1", "--level", "Low"]))
+  Console.print(parsed(["--port", "+12", "--ratio", "x", "--level", "Low"]))
+  Console.print(parsed(["--port", "9007199254740993", "--ratio", "1", "--level", "Low"]))
+  Console.print(parsed(["--port", "1", "--port", "2", "--ratio", "1", "--level", "Low"]))
+  Console.print(parsed(["--port", "1", "--ratio", "inf", "--level", "Mid"]))
+}

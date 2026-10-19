@@ -84,6 +84,8 @@ pub struct Config {
     /// `SAKURA_MAX_COPY_BYTES`, the instance's `Limits::max_copy_bytes`: a read stops one byte
     /// past it, so the runtime refuses the answer (`D091`) without the host holding the rest.
     pub max_copy_bytes: u64,
+    /// `Cli.args()`: the executable's arguments after its name.
+    pub args: Vec<String>,
 }
 
 impl Config {
@@ -113,6 +115,7 @@ impl Config {
             stdin: None,
             trace: std::env::var_os("SAKURA_TRACE").map(PathBuf::from),
             blocking_threads,
+            args: std::env::args().skip(1).collect(),
             max_copy_bytes,
         })
     }
@@ -127,6 +130,7 @@ impl Config {
             trace: None,
             blocking_threads: 1,
             max_copy_bytes: MAX_COPY_BYTES,
+            args: vec![],
         }
     }
 }
@@ -492,6 +496,10 @@ impl Host for NativeHost {
         if handle.kind == DIR {
             self.dirs.retire(handle);
         }
+    }
+
+    fn cli_args(&mut self) -> Hosted<Vec<String>> {
+        Ok(self.config.args.clone())
     }
 
     fn env_get(&mut self, key: &str) -> Hosted<Option<String>> {

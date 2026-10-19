@@ -1,0 +1,570 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::json_codec::Boxed | Boxed 24b (n: i64)
+layout 1 error main::json_codec::Denied | Denied 16b ()
+layout 2 record main::json_codec::Item | Item 48b (name: word*, tags: word*, size: word*, shape: word*)
+layout 3 error main::json_codec::NotFound | NotFound 24b (what: word*)
+layout 4 error main::json_codec::Odd | Odd 24b (n: i64)
+layout 5 record main::json_codec::Pair | Pair 32b (left: word*, right: word*)
+layout 6 variant main::json_codec::Shape | Dot 16b () | Circle 24b (f64) | Rect 32b (i64, i64)
+layout 7 variant main::json_codec::Tree | Leaf 16b () | Node 32b (word*, i64)
+layout 8 error std::json::DecodeError | DecodeError 32b (path: word*, message: word*)
+layout 9 variant std::json::Json | Null 16b () | Bool 24b (bool) | Number 24b (f64) | String 24b (word*) | Array 24b (word*) | Object 24b (word*)
+layout 10 variant std::list::Builder
+layout 11 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 12 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 13 shape |  32b (word*, word*)
+layout 14 shape |  32b (i64, word*)
+layout 15 shape |  32b (word*, i64)
+layout 16 shape |  40b (i64, word*, bool)
+
+fn main#0 pub top -> unit ; main::json_codec, frame 274 slots [%18 bool, %28 bool, %33 bool, %39 bool, %54 word*, %57 bool, %66 word*, %69 bool, %77 bool, %90 bool, %98 bool, %106 bool, %116 word*, %120 bool, %126 bool, %132 word*, %134 bool, %140 bool, %146 bool, %152 bool, %158 bool, %163 bool, %210 word*, %211 word*, %212 word*, %213 word*, %214 word*, %215 word*, %216 word*, %217 word*, %218 word*, %219 word*, %220 word*, %221 word*, %222 word*, %223 word*, %224 word*, %225 bool, %226 word*, %227 word*, %228 word*, %229 word*, %230 word*, %231 word*, %232 word*, %233 word*, %234 word*, %235 word*, %236 word*, %237 word*, %238 word*, %239 word*, %241 word*, %242 word*, %243 word*, %244 word*, %245 word*, %246 word*, %247 word*, %248 word*, %249 word*, %250 word*, %251 word*, %252 word*, %253 word*, %254 word*, %255 bool, %256 word*, %257 word*, %258 word*, %259 word*, %260 word*, %261 word*, %262 word*, %263 word*, %264 word*, %265 word*, %266 word*, %267 word*, %268 word*, %270 word*, %271 word*, %272 word*, %273 word*, %274 word*, %275 word*, %276 word*, %277 word*, %278 word*, %279 word*, %280 word*, %281 word*, %282 word*, %283 bool, %284 word*, %285 word*, %286 word*, %287 word*, %288 word*, %289 word*, %290 word*, %291 word*, %292 word*, %293 word*, %294 word*, %295 word*, %297 word*, %298 word*, %299 word*, %300 word*, %301 word*, %302 word*, %303 word*, %304 word*, %305 word*, %306 word*, %307 word*, %308 word*, %309 bool, %310 word*, %311 word*, %312 word*, %313 word*, %314 word*, %315 word*, %316 word*, %317 word*, %318 word*, %319 word*, %320 word*, %322 word*, %323 word*, %324 word*, %325 word*, %326 word*, %327 word*, %328 word*, %329 word*, %330 word*, %331 word*, %332 word*, %333 bool, %334 word*, %335 word*, %336 word*, %337 word*, %338 word*, %339 word*, %340 word*, %341 word*, %342 word*, %343 word*, %345 word*, %346 word*, %347 word*, %348 word*, %349 word*, %350 word*, %351 word*, %352 word*, %353 word*, %354 word*, %355 bool, %356 word*, %357 word*, %358 word*, %359 word*, %360 word*, %361 word*, %362 word*, %363 word*, %364 word*, %366 word*, %367 word*, %368 word*, %369 word*, %370 word*, %371 word*, %372 word*, %373 word*, %374 word*, %375 bool, %376 word*, %377 word*, %378 word*, %379 word*, %380 word*, %381 word*, %382 word*, %383 word*, %385 word*, %386 word*, %387 word*, %388 word*, %389 word*, %390 word*, %391 word*, %392 word*, %393 bool, %394 word*, %395 word*, %396 word*, %397 word*, %398 word*, %399 word*, %400 word*, %402 word*, %403 word*, %404 word*, %405 word*, %406 word*, %407 word*, %408 word*, %409 bool, %410 word*, %411 word*, %412 word*, %413 word*, %414 word*, %415 word*, %417 word*, %418 word*, %419 word*, %420 word*, %421 word*, %422 word*, %423 bool, %424 word*, %425 word*, %426 word*, %427 word*, %428 word*, %430 word*, %431 word*, %432 word*, %433 word*, %434 word*, %435 bool, %436 word*, %437 word*, %438 word*, %439 word*, %441 word*, %442 word*, %443 word*, %444 word*, %445 bool, %446 word*, %447 word*, %448 word*, %450 word*, %451 word*, %452 word*, %453 bool, %454 word*, %455 word*, %457 word*, %458 word*, %459 bool, %460 word*, %462 word*, %463 bool, %469 bool, %474 word*, %475 bool, %484 bool, %490 bool, %495 word*, %496 bool, %502 bool, %509 bool, %516 bool, %523 bool, %530 bool]
+  b0():
+    %0 lit: f64 = const 0.0
+    %1 t: f64 = floatneg %0
+    %2 lit: f64 = const 0.1
+    %3 box: word = box %2
+    %4 lit: f64 = const 1.0
+    %5 box: word = box %4
+    %6 box: word = box %1
+    %7 lit: f64 = const 1e21
+    %8 box: word = box %7
+    %9 lit: f64 = const 1.5e-7
+    %10 box: word = box %9
+    %11 lit: f64 = const 123456789.125
+    %12 box: word = box %11
+    %13 lit: f64 = const 1e-6
+    %14 box: word = box %13
+    %15 xs: ptr = alloc list(%3, %5, %6, %8, %10, %12, %14)
+    %16 schema: ptr = const str 0
+    %17 r: ptr = $json_encode(%15, %16)
+    perform std::console::Console.print(%17) -> b1()
+  b1(%18 r: unit):
+    %19 box: word = box %18
+    drop %19
+    %20 lit: i64 = const 3
+    %21 t: i64 = intneg %20
+    %22 lit: i64 = const 9007199254740991
+    %23 box: word = box %22
+    %24 box: word = box %21
+    %25 xs: ptr = alloc list(%23, %24)
+    %26 schema: ptr = const str 1
+    %27 r: ptr = $json_encode(%25, %26)
+    perform std::console::Console.print(%27) -> b2()
+  b2(%28 r: unit):
+    %29 box: word = box %28
+    drop %29
+    %30 schema: ptr = const str 2
+    %31 lit: ptr = const str 3
+    %32 r: ptr = $json_encode(%31, %30)
+    perform std::console::Console.print(%32) -> b3()
+  b3(%33 r: unit):
+    %34 box: word = box %33
+    drop %34
+    %35 lit: ptr = const str 4
+    %36 r: ptr = $string_to_bytes(%35)
+    %37 schema: ptr = const str 5
+    %38 r: ptr = $json_encode(%36, %37)
+    perform std::console::Console.print(%38) -> b4()
+  b4(%39 r: unit):
+    %40 box: word = box %39
+    drop %40
+    %41 lit: ptr = const str 6
+    %42 lit: i64 = const 1
+    %43 tup: ptr = alloc tuple#15(word, i64)(%41, %42)
+    %44 lit: ptr = const str 7
+    %45 lit: i64 = const 2
+    %46 tup: ptr = alloc tuple#15(word, i64)(%44, %45)
+    %47 lit: ptr = const str 8
+    %48 lit: i64 = const 3
+    %49 tup: ptr = alloc tuple#15(word, i64)(%47, %48)
+    %50 lit: ptr = const str 9
+    %51 lit: i64 = const 4
+    %52 tup: ptr = alloc tuple#15(word, i64)(%50, %51)
+    %53 xs: ptr = alloc list(%43, %46, %49, %52)
+    call of#2(%53) -> b5()
+  b5(%54 r: ptr):
+    %55 schema: ptr = const str 10
+    %56 r: ptr = $json_encode(%54, %55)
+    perform std::console::Console.print(%56) -> b6()
+  b6(%57 r: unit):
+    %58 box: word = box %57
+    drop %58
+    %59 lit: i64 = const 2
+    %60 lit: ptr = const str 11
+    %61 tup: ptr = alloc tuple#14(i64, word)(%59, %60)
+    %62 lit: i64 = const 1
+    %63 lit: ptr = const str 8
+    %64 tup: ptr = alloc tuple#14(i64, word)(%62, %63)
+    %65 xs: ptr = alloc list(%61, %64)
+    call of#2(%65) -> b7()
+  b7(%66 r: ptr):
+    %67 schema: ptr = const str 12
+    %68 r: ptr = $json_encode(%66, %67)
+    perform std::console::Console.print(%68) -> b8()
+  b8(%69 r: unit):
+    %70 box: word = box %69
+    drop %70
+    %71 lit: i64 = const 1
+    %72 lit: ptr = const str 13
+    %73 lit: bool = const true
+    %74 tup: ptr = alloc tuple#16(i64, word, bool)(%71, %72, %73)
+    %75 schema: ptr = const str 14
+    %76 r: ptr = $json_encode(%74, %75)
+    perform std::console::Console.print(%76) -> b9()
+  b9(%77 r: unit):
+    %78 box: word = box %77
+    drop %78
+    %79 lit: ptr = const str 15
+    %80 xs: ptr = alloc list(%79)
+    %81 v: ptr = const static std::option::Option.None
+    %82 lit: i64 = const 2
+    %83 lit: i64 = const 3
+    %84 r: ptr = alloc main::json_codec::Shape.Rect(%82, %83)
+    %85 lit: ptr = const str 16
+    %86 rec: ptr = alloc main::json_codec::Item(%85, %80, %81, %84)
+    %87 xs: ptr = alloc list(%86)
+    %88 schema: ptr = const str 17
+    %89 r: ptr = $json_encode(%87, %88)
+    perform std::console::Console.print(%89) -> b10()
+  b10(%90 r: unit):
+    %91 box: word = box %90
+    drop %91
+    %92 v: ptr = const static main::json_codec::Shape.Dot
+    %93 lit: f64 = const 1.5
+    %94 r: ptr = alloc main::json_codec::Shape.Circle(%93)
+    %95 xs: ptr = alloc list(%92, %94)
+    %96 schema: ptr = const str 18
+    %97 r: ptr = $json_encode(%95, %96)
+    perform std::console::Console.print(%97) -> b11()
+  b11(%98 r: unit):
+    %99 box: word = box %98
+    drop %99
+    %100 lit: ptr = const str 19
+    %101 r: ptr = alloc main::json_codec::NotFound(%100)
+    %102 err: ptr = alloc main::json_codec::Denied()
+    %103 xs: ptr = alloc list(%101, %102)
+    %104 schema: ptr = const str 20
+    %105 r: ptr = $json_encode(%103, %104)
+    perform std::console::Console.print(%105) -> b12()
+  b12(%106 r: unit):
+    %107 box: word = box %106
+    drop %107
+    %108 lit: f64 = const 1.0
+    %109 r: ptr = alloc std::json::Json.Number(%108)
+    %110 lit: ptr = const str 11
+    %111 tup: ptr = alloc tuple#13(word, word)(%110, %109)
+    %112 v: ptr = const static std::json::Json.Null
+    %113 lit: ptr = const str 21
+    %114 tup: ptr = alloc tuple#13(word, word)(%113, %112)
+    %115 xs: ptr = alloc list(%111, %114)
+    call of#2(%115) -> b13()
+  b13(%116 r: ptr):
+    %117 r: ptr = alloc std::json::Json.Object(%116)
+    %118 schema: ptr = const str 22
+    %119 r: ptr = $json_encode(%117, %118)
+    perform std::console::Console.print(%119) -> b14()
+  b14(%120 r: unit):
+    %121 box: word = box %120
+    drop %121
+    %122 schema: ptr = const str 17
+    %123 lit: ptr = const str 23
+    %124 r: ptr = $json_decode(%123, %122)
+    %125 s: ptr = show %124
+    drop %124
+    perform std::console::Console.print(%125) -> b15()
+  b15(%126 r: unit):
+    %127 box: word = box %126
+    drop %127
+    %128 schema: ptr = const str 5
+    %129 lit: ptr = const str 24
+    %130 r: ptr = $json_decode(%129, %128)
+    %131 f: ptr = closure main$1#3[]
+    call map#4(%130, %131) -> b16()
+  b16(%132 r: ptr):
+    %133 s: ptr = show %132
+    drop %132
+    perform std::console::Console.print(%133) -> b17()
+  b17(%134 r: unit):
+    %135 box: word = box %134
+    drop %135
+    %136 schema: ptr = const str 20
+    %137 lit: ptr = const str 25
+    %138 r: ptr = $json_decode(%137, %136)
+    %139 s: ptr = show %138
+    drop %138
+    perform std::console::Console.print(%139) -> b18()
+  b18(%140 r: unit):
+    %141 box: word = box %140
+    drop %141
+    %142 schema: ptr = const str 10
+    %143 lit: ptr = const str 26
+    %144 r: ptr = $json_decode(%143, %142)
+    %145 s: ptr = show %144
+    drop %144
+    perform std::console::Console.print(%145) -> b19()
+  b19(%146 r: unit):
+    %147 box: word = box %146
+    drop %147
+    %148 schema: ptr = const str 12
+    %149 lit: ptr = const str 27
+    %150 r: ptr = $json_decode(%149, %148)
+    %151 s: ptr = show %150
+    drop %150
+    perform std::console::Console.print(%151) -> b20()
+  b20(%152 r: unit):
+    %153 box: word = box %152
+    drop %153
+    %154 schema: ptr = const str 2
+    %155 lit: ptr = const str 28
+    %156 r: ptr = $json_decode(%155, %154)
+    %157 s: ptr = show %156
+    drop %156
+    perform std::console::Console.print(%157) -> b21()
+  b21(%158 r: unit):
+    %159 box: word = box %158
+    drop %159
+    %160 lit: ptr = const str 29
+    %161 r: ptr = $json_parse(%160)
+    %162 s: ptr = show %161
+    drop %161
+    perform std::console::Console.print(%162) -> b22()
+  b22(%163 r: unit):
+    %164 box: word = box %163
+    drop %164
+    %165 schema: ptr = const str 30
+    %166 lit: ptr = const str 31
+    %167 r: ptr = $json_decode(%166, %165)
+    %168 schema: ptr = const str 1
+    %169 lit: ptr = const str 32
+    %170 r: ptr = $json_decode(%169, %168)
+    %171 schema: ptr = const str 33
+    %172 lit: ptr = const str 34
+    %173 r: ptr = $json_decode(%172, %171)
+    %174 schema: ptr = const str 35
+    %175 lit: ptr = const str 36
+    %176 r: ptr = $json_decode(%175, %174)
+    %177 schema: ptr = const str 35
+    %178 lit: ptr = const str 37
+    %179 r: ptr = $json_decode(%178, %177)
+    %180 schema: ptr = const str 35
+    %181 lit: ptr = const str 38
+    %182 r: ptr = $json_decode(%181, %180)
+    %183 schema: ptr = const str 35
+    %184 lit: ptr = const str 39
+    %185 r: ptr = $json_decode(%184, %183)
+    %186 schema: ptr = const str 40
+    %187 lit: ptr = const str 41
+    %188 r: ptr = $json_decode(%187, %186)
+    %189 schema: ptr = const str 10
+    %190 lit: ptr = const str 42
+    %191 r: ptr = $json_decode(%190, %189)
+    %192 schema: ptr = const str 20
+    %193 lit: ptr = const str 43
+    %194 r: ptr = $json_decode(%193, %192)
+    %195 schema: ptr = const str 44
+    %196 lit: ptr = const str 45
+    %197 r: ptr = $json_decode(%196, %195)
+    %198 schema: ptr = const str 46
+    %199 lit: ptr = const str 47
+    %200 r: ptr = $json_decode(%199, %198)
+    %201 schema: ptr = const str 5
+    %202 lit: ptr = const str 48
+    %203 r: ptr = $json_decode(%202, %201)
+    %204 schema: ptr = const str 30
+    %205 lit: ptr = const str 49
+    %206 r: ptr = $json_decode(%205, %204)
+    %207 schema: ptr = const str 35
+    %208 lit: ptr = const str 50
+    %209 r: ptr = $json_decode(%208, %207)
+    call shown#6(%167) -> b23(%170, %173, %176, %179, %182, %185, %188, %191, %194, %197, %200, %203, %206, %209)
+  b23(%210 r: ptr, %211 r: ptr, %212 r: ptr, %213 r: ptr, %214 r: ptr, %215 r: ptr, %216 r: ptr, %217 r: ptr, %218 r: ptr, %219 r: ptr, %220 r: ptr, %221 r: ptr, %222 r: ptr, %223 r: ptr, %224 r: ptr):
+    perform std::console::Console.print(%210) -> b24(%211, %212, %213, %214, %215, %216, %217, %218, %219, %220, %221, %222, %223, %224)
+  b24(%225 r: unit, %226 r: ptr, %227 r: ptr, %228 r: ptr, %229 r: ptr, %230 r: ptr, %231 r: ptr, %232 r: ptr, %233 r: ptr, %234 r: ptr, %235 r: ptr, %236 r: ptr, %237 r: ptr, %238 r: ptr, %239 r: ptr):
+    %240 box: word = box %225
+    drop %240
+    call shown#6(%226) -> b25(%227, %228, %229, %230, %231, %232, %233, %234, %235, %236, %237, %238, %239)
+  b25(%241 r: ptr, %242 r: ptr, %243 r: ptr, %244 r: ptr, %245 r: ptr, %246 r: ptr, %247 r: ptr, %248 r: ptr, %249 r: ptr, %250 r: ptr, %251 r: ptr, %252 r: ptr, %253 r: ptr, %254 r: ptr):
+    perform std::console::Console.print(%241) -> b26(%242, %243, %244, %245, %246, %247, %248, %249, %250, %251, %252, %253, %254)
+  b26(%255 r: unit, %256 r: ptr, %257 r: ptr, %258 r: ptr, %259 r: ptr, %260 r: ptr, %261 r: ptr, %262 r: ptr, %263 r: ptr, %264 r: ptr, %265 r: ptr, %266 r: ptr, %267 r: ptr, %268 r: ptr):
+    %269 box: word = box %255
+    drop %269
+    call shown#6(%256) -> b27(%257, %258, %259, %260, %261, %262, %263, %264, %265, %266, %267, %268)
+  b27(%270 r: ptr, %271 r: ptr, %272 r: ptr, %273 r: ptr, %274 r: ptr, %275 r: ptr, %276 r: ptr, %277 r: ptr, %278 r: ptr, %279 r: ptr, %280 r: ptr, %281 r: ptr, %282 r: ptr):
+    perform std::console::Console.print(%270) -> b28(%271, %272, %273, %274, %275, %276, %277, %278, %279, %280, %281, %282)
+  b28(%283 r: unit, %284 r: ptr, %285 r: ptr, %286 r: ptr, %287 r: ptr, %288 r: ptr, %289 r: ptr, %290 r: ptr, %291 r: ptr, %292 r: ptr, %293 r: ptr, %294 r: ptr, %295 r: ptr):
+    %296 box: word = box %283
+    drop %296
+    call shown#6(%284) -> b29(%285, %286, %287, %288, %289, %290, %291, %292, %293, %294, %295)
+  b29(%297 r: ptr, %298 r: ptr, %299 r: ptr, %300 r: ptr, %301 r: ptr, %302 r: ptr, %303 r: ptr, %304 r: ptr, %305 r: ptr, %306 r: ptr, %307 r: ptr, %308 r: ptr):
+    perform std::console::Console.print(%297) -> b30(%298, %299, %300, %301, %302, %303, %304, %305, %306, %307, %308)
+  b30(%309 r: unit, %310 r: ptr, %311 r: ptr, %312 r: ptr, %313 r: ptr, %314 r: ptr, %315 r: ptr, %316 r: ptr, %317 r: ptr, %318 r: ptr, %319 r: ptr, %320 r: ptr):
+    %321 box: word = box %309
+    drop %321
+    call shown#6(%310) -> b31(%311, %312, %313, %314, %315, %316, %317, %318, %319, %320)
+  b31(%322 r: ptr, %323 r: ptr, %324 r: ptr, %325 r: ptr, %326 r: ptr, %327 r: ptr, %328 r: ptr, %329 r: ptr, %330 r: ptr, %331 r: ptr, %332 r: ptr):
+    perform std::console::Console.print(%322) -> b32(%323, %324, %325, %326, %327, %328, %329, %330, %331, %332)
+  b32(%333 r: unit, %334 r: ptr, %335 r: ptr, %336 r: ptr, %337 r: ptr, %338 r: ptr, %339 r: ptr, %340 r: ptr, %341 r: ptr, %342 r: ptr, %343 r: ptr):
+    %344 box: word = box %333
+    drop %344
+    call shown#6(%334) -> b33(%335, %336, %337, %338, %339, %340, %341, %342, %343)
+  b33(%345 r: ptr, %346 r: ptr, %347 r: ptr, %348 r: ptr, %349 r: ptr, %350 r: ptr, %351 r: ptr, %352 r: ptr, %353 r: ptr, %354 r: ptr):
+    perform std::console::Console.print(%345) -> b34(%346, %347, %348, %349, %350, %351, %352, %353, %354)
+  b34(%355 r: unit, %356 r: ptr, %357 r: ptr, %358 r: ptr, %359 r: ptr, %360 r: ptr, %361 r: ptr, %362 r: ptr, %363 r: ptr, %364 r: ptr):
+    %365 box: word = box %355
+    drop %365
+    call shown#6(%356) -> b35(%357, %358, %359, %360, %361, %362, %363, %364)
+  b35(%366 r: ptr, %367 r: ptr, %368 r: ptr, %369 r: ptr, %370 r: ptr, %371 r: ptr, %372 r: ptr, %373 r: ptr, %374 r: ptr):
+    perform std::console::Console.print(%366) -> b36(%367, %368, %369, %370, %371, %372, %373, %374)
+  b36(%375 r: unit, %376 r: ptr, %377 r: ptr, %378 r: ptr, %379 r: ptr, %380 r: ptr, %381 r: ptr, %382 r: ptr, %383 r: ptr):
+    %384 box: word = box %375
+    drop %384
+    call shown#6(%376) -> b37(%377, %378, %379, %380, %381, %382, %383)
+  b37(%385 r: ptr, %386 r: ptr, %387 r: ptr, %388 r: ptr, %389 r: ptr, %390 r: ptr, %391 r: ptr, %392 r: ptr):
+    perform std::console::Console.print(%385) -> b38(%386, %387, %388, %389, %390, %391, %392)
+  b38(%393 r: unit, %394 r: ptr, %395 r: ptr, %396 r: ptr, %397 r: ptr, %398 r: ptr, %399 r: ptr, %400 r: ptr):
+    %401 box: word = box %393
+    drop %401
+    call shown#6(%394) -> b39(%395, %396, %397, %398, %399, %400)
+  b39(%402 r: ptr, %403 r: ptr, %404 r: ptr, %405 r: ptr, %406 r: ptr, %407 r: ptr, %408 r: ptr):
+    perform std::console::Console.print(%402) -> b40(%403, %404, %405, %406, %407, %408)
+  b40(%409 r: unit, %410 r: ptr, %411 r: ptr, %412 r: ptr, %413 r: ptr, %414 r: ptr, %415 r: ptr):
+    %416 box: word = box %409
+    drop %416
+    call shown#6(%410) -> b41(%411, %412, %413, %414, %415)
+  b41(%417 r: ptr, %418 r: ptr, %419 r: ptr, %420 r: ptr, %421 r: ptr, %422 r: ptr):
+    perform std::console::Console.print(%417) -> b42(%418, %419, %420, %421, %422)
+  b42(%423 r: unit, %424 r: ptr, %425 r: ptr, %426 r: ptr, %427 r: ptr, %428 r: ptr):
+    %429 box: word = box %423
+    drop %429
+    call shown#6(%424) -> b43(%425, %426, %427, %428)
+  b43(%430 r: ptr, %431 r: ptr, %432 r: ptr, %433 r: ptr, %434 r: ptr):
+    perform std::console::Console.print(%430) -> b44(%431, %432, %433, %434)
+  b44(%435 r: unit, %436 r: ptr, %437 r: ptr, %438 r: ptr, %439 r: ptr):
+    %440 box: word = box %435
+    drop %440
+    call shown#6(%436) -> b45(%437, %438, %439)
+  b45(%441 r: ptr, %442 r: ptr, %443 r: ptr, %444 r: ptr):
+    perform std::console::Console.print(%441) -> b46(%442, %443, %444)
+  b46(%445 r: unit, %446 r: ptr, %447 r: ptr, %448 r: ptr):
+    %449 box: word = box %445
+    drop %449
+    call shown#6(%446) -> b47(%447, %448)
+  b47(%450 r: ptr, %451 r: ptr, %452 r: ptr):
+    perform std::console::Console.print(%450) -> b48(%451, %452)
+  b48(%453 r: unit, %454 r: ptr, %455 r: ptr):
+    %456 box: word = box %453
+    drop %456
+    call shown#6(%454) -> b49(%455)
+  b49(%457 r: ptr, %458 r: ptr):
+    perform std::console::Console.print(%457) -> b50(%458)
+  b50(%459 r: unit, %460 r: ptr):
+    %461 box: word = box %459
+    drop %461
+    call shown#6(%460) -> b51()
+  b51(%462 r: ptr):
+    perform std::console::Console.print(%462) -> b52()
+  b52(%463 r: unit):
+    %464 box: word = box %463
+    drop %464
+    %465 schema: ptr = const str 51
+    %466 lit: ptr = const str 52
+    %467 r: ptr = $json_decode(%466, %465)
+    %468 s: ptr = show %467
+    drop %467
+    perform std::console::Console.print(%468) -> b53()
+  b53(%469 r: unit):
+    %470 box: word = box %469
+    drop %470
+    %471 schema: ptr = const str 51
+    %472 lit: ptr = const str 53
+    %473 r: ptr = $json_decode(%472, %471)
+    call shown#6(%473) -> b54()
+  b54(%474 r: ptr):
+    perform std::console::Console.print(%474) -> b55()
+  b55(%475 r: unit):
+    %476 box: word = box %475
+    drop %476
+    %477 lit: i64 = const 1
+    %478 lit: i64 = const 2
+    %479 r: ptr = alloc main::json_codec::Shape.Rect(%477, %478)
+    %480 v: ptr = const static std::option::Option.None
+    %481 rec: ptr = alloc main::json_codec::Pair(%479, %480)
+    %482 schema: ptr = const str 54
+    %483 r: ptr = $json_encode(%481, %482)
+    perform std::console::Console.print(%483) -> b56()
+  b56(%484 r: unit):
+    %485 box: word = box %484
+    drop %485
+    %486 schema: ptr = const str 55
+    %487 lit: ptr = const str 56
+    %488 r: ptr = $json_decode(%487, %486)
+    %489 s: ptr = show %488
+    drop %488
+    perform std::console::Console.print(%489) -> b57()
+  b57(%490 r: unit):
+    %491 box: word = box %490
+    drop %491
+    %492 schema: ptr = const str 55
+    %493 lit: ptr = const str 57
+    %494 r: ptr = $json_decode(%493, %492)
+    call shown#6(%494) -> b58()
+  b58(%495 r: ptr):
+    perform std::console::Console.print(%495) -> b59()
+  b59(%496 r: unit):
+    %497 box: word = box %496
+    drop %497
+    %498 schema: ptr = const str 10
+    %499 lit: ptr = const str 58
+    %500 r: ptr = $json_decode(%499, %498)
+    %501 s: ptr = show %500
+    drop %500
+    perform std::console::Console.print(%501) -> b60()
+  b60(%502 r: unit):
+    %503 box: word = box %502
+    drop %503
+    %504 v: ptr = const static std::option::Option.None
+    %505 schema: ptr = const str 33
+    %506 r: ptr = $json_schema(%504, %505)
+    %507 schema: ptr = const str 22
+    %508 r: ptr = $json_encode(%506, %507)
+    perform std::console::Console.print(%508) -> b61()
+  b61(%509 r: unit):
+    %510 box: word = box %509
+    drop %510
+    %511 v: ptr = const static std::option::Option.None
+    %512 schema: ptr = const str 59
+    %513 r: ptr = $json_schema(%511, %512)
+    %514 schema: ptr = const str 22
+    %515 r: ptr = $json_encode(%513, %514)
+    perform std::console::Console.print(%515) -> b62()
+  b62(%516 r: unit):
+    %517 box: word = box %516
+    drop %517
+    %518 v: ptr = const static std::option::Option.None
+    %519 schema: ptr = const str 60
+    %520 r: ptr = $json_schema(%518, %519)
+    %521 schema: ptr = const str 22
+    %522 r: ptr = $json_encode(%520, %521)
+    perform std::console::Console.print(%522) -> b63()
+  b63(%523 r: unit):
+    %524 box: word = box %523
+    drop %524
+    %525 v: ptr = const static std::option::Option.None
+    %526 schema: ptr = const str 54
+    %527 r: ptr = $json_schema(%525, %526)
+    %528 schema: ptr = const str 22
+    %529 r: ptr = $json_encode(%527, %528)
+    perform std::console::Console.print(%529) -> b64()
+  b64(%530 r: unit):
+    %531 box: word = box %530
+    %532 unbox: unit = unbox %531
+    drop %531
+    ret %532
+
+fn $entry#1 top -> unit ; main::json_codec, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn main$1#3 lambda -> word ; main::json_codec, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 b: word):
+    drop %0
+    %2 r: i64 = $bytes_len(%1)
+    %3 box: word = box %2
+    ret %3
+
+fn Small$check#5 top -> bool ; main::json_codec, frame 1 slots [%0 i64]
+  b0(%0 it: i64):
+    %1 enter: unit = $contract_enter()
+    %2 lit: i64 = const 10
+    %3 t: bool = lt.int %0, %2
+    %4 exit: unit = $contract_exit()
+    ret %3
+
+fn shown#6 top -> ptr ; main::json_codec, frame 1 slots [%0 word*]
+  b0(%0 r: ptr):
+    %1 tag: i64 = tag %0 ctor std::result::Result
+    switch %1 0 => b1(%0) 1 => b2(%0)
+  b1(%2 r: ptr):
+    %4 p: word = proj %2.0 std::result::Result.Ok
+    drop %2
+    drop %4
+    %5 lit: ptr = const str 61
+    ret %5
+  b2(%3 r: ptr):
+    %6 p: word = proj %3.0 std::result::Result.Err
+    drop %3
+    %7 path: word = proj %6.0 std::json::DecodeError
+    %8 s: ptr = show %7
+    drop %7
+    %9 lit: ptr = const str 62
+    %10 s: ptr = concat %8, %9
+    drop %8
+    drop %9
+    %11 message: word = proj %6.1 std::json::DecodeError
+    drop %6
+    %12 s: ptr = show %11
+    drop %11
+    %13 s: ptr = concat %10, %12
+    drop %10
+    drop %12
+    ret %13
+
+fn Even$check#7 top -> bool ; main::json_codec, frame 2 slots [%0 i64, %2 bool]
+  b0(%0 it: i64):
+    %1 enter: unit = $contract_enter()
+    call even#8(%0) -> b1()
+  b1(%2 r: bool):
+    %3 exit: unit = $contract_exit()
+    ret %2
+
+fn even#8 top -> bool ; main::json_codec, frame 3 slots [%0 i64, %1 word*, %7 word*]
+  b0(%0 n: i64):
+    try_push -> b1(err, )
+    %4 box: word = box %0
+    %5 xs: ptr = alloc list(%4)
+    %6 f: ptr = closure even$1#9[]
+    call map#11(%5, %6) -> b2()
+  b1(%1 e: word):
+    %2 p: i64 = proj %1.0 main::json_codec::Odd
+    drop %1
+    %3 lit: bool = const false
+    ret %3
+  b2(%7 r: ptr) [try]:
+    %8 r: i64 = $list_len(%7)
+    %9 lit: i64 = const 1
+    %10 t: bool = eq.int %8, %9
+    try_pop
+    ret %10
+
+fn even$1#9 lambda -> word ; main::json_codec, captures [], frame 3 slots [%0 word*, %1 word*, %3 i64]
+  b0(%0 env: ptr, %1 x: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    call half#10(%2) -> b1()
+  b1(%3 r: i64):
+    %4 box: word = box %3
+    ret %4
+
+fn half#10 top -> i64 ; main::json_codec, frame 1 slots [%0 i64]
+  b0(%0 n: i64):
+    %1 lit: i64 = const 2
+    %2 t: i64 = intrem %0, %1
+    %3 lit: i64 = const 0
+    %4 t: bool = eq.int %2, %3
+    if %4 then b1(%0) else b2(%0)
+  b1(%5 n: i64):
+    %7 lit: i64 = const 2
+    %8 t: i64 = intdiv %5, %7
+    ret %8
+  b2(%6 n: i64):
+    %9 rec: ptr = alloc main::json_codec::Odd(%6)
+    fail %9

@@ -16,7 +16,7 @@ pub enum Piece {
 /// The pieces of the schema of `ty`, where type parameter `vars[k]` is operand `k`.
 pub fn pieces(m: &core::Module, ty: &core::Ty, vars: &[u32]) -> Vec<Piece> {
     let mut out = vec![];
-    write(m, ty, vars, &mut out);
+    write(m, ty, vars, false, &mut out);
     // Merge adjacent text.
     let mut merged: Vec<Piece> = vec![];
     for p in out {
@@ -49,16 +49,18 @@ fn quoted(s: &str) -> String {
     q
 }
 
-fn all(m: &core::Module, ts: &[core::Ty], vars: &[u32], out: &mut Vec<Piece>) {
+fn all(m: &core::Module, ts: &[core::Ty], vars: &[u32], params: bool, out: &mut Vec<Piece>) {
     for (i, t) in ts.iter().enumerate() {
         if i > 0 {
             text(out, ", ");
         }
-        write(m, t, vars, out);
+        write(m, t, vars, params, out);
     }
 }
 
-fn write(m: &core::Module, ty: &core::Ty, vars: &[u32], out: &mut Vec<Piece>) {
+/// `params`: a type parameter not in `vars` is `["V", i]`, the enclosing descriptor's own
+/// parameter (as in the JS backend's type descriptors), instead of `null`.
+fn write(m: &core::Module, ty: &core::Ty, vars: &[u32], params: bool, out: &mut Vec<Piece>) {
     use core::Ty;
     match ty {
         Ty::Unit => text(out, "\"U\""),
@@ -69,24 +71,24 @@ fn write(m: &core::Module, ty: &core::Ty, vars: &[u32], out: &mut Vec<Piece>) {
         Ty::Bytes => text(out, "\"Y\""),
         Ty::Tuple(ts) => {
             text(out, "[\"T\", ");
-            all(m, ts, vars, out);
+            all(m, ts, vars, params, out);
             text(out, "]");
         }
         Ty::List(t) => {
             text(out, "[\"L\", ");
-            write(m, t, vars, out);
+            write(m, t, vars, params, out);
             text(out, "]");
         }
         Ty::Set(t) => {
             text(out, "[\"E\", ");
-            write(m, t, vars, out);
+            write(m, t, vars, params, out);
             text(out, "]");
         }
         Ty::Map(k, v) => {
             text(out, "[\"M\", ");
-            write(m, k, vars, out);
+            write(m, k, vars, params, out);
             text(out, ", ");
-            write(m, v, vars, out);
+            write(m, v, vars, params, out);
             text(out, "]");
         }
         Ty::Adt(t, args) => {
@@ -98,7 +100,7 @@ fn write(m: &core::Module, ty: &core::Ty, vars: &[u32], out: &mut Vec<Piece>) {
                     quoted(&format!("{}::{}", d.module, d.name))
                 ),
             );
-            all(m, args, vars, out);
+            all(m, args, vars, params, out);
             text(out, "]]");
         }
         Ty::Union(ts) => {
@@ -120,14 +122,172 @@ fn write(m: &core::Module, ty: &core::Ty, vars: &[u32], out: &mut Vec<Piece>) {
                     quoted(&format!("{}::{}", d.module, d.name))
                 ),
             );
-            all(m, args, vars, out);
+            all(m, args, vars, params, out);
             text(out, "]]");
         }
         Ty::Var(i) => match vars.iter().position(|v| v == i) {
             Some(k) => out.push(Piece::Operand(k)),
+            None if params && *i != u32::MAX => text(out, &format!("[\"V\", {i}]")),
             None => text(out, "null"),
         },
         Ty::Opaque(name) => text(out, &format!("[\"X\", {}]", quoted(name))),
         Ty::Never | Ty::Fn(_) | Ty::Handler(_) | Ty::Instance(_) => text(out, "null"),
+    }
+}
+
+/// One schema as text, type parameters as `["V", i]`.
+fn param_text(m: &core::Module, ty: &core::Ty) -> String {
+    let mut out = vec![];
+    write(m, ty, &[], true, &mut out);
+    out.into_iter()
+        .map(|p| match p {
+            Piece::Text(t) => t,
+            Piece::Operand(_) => unreachable!("no operands without vars"),
+        })
+        .collect()
+}
+
+/// The type descriptors of every named type and refinement reachable from `roots` (the
+/// program's `Schema` types, each with the type parameters its `SchemaOf` supplies), for the native runtime's JSON and SQL codecs (`sakura_rt::json`;
+/// the JS backend's `recordType`, `variantType` and `refined`): one JSON object by qualified
+/// name, sorted, with
+///
+/// ```text
+/// record      ["r", name, [[field, schema]…]]
+/// variant     ["v", name, [[ctor, [schema…]]…]]
+/// refinement  ["w", name, base schema, the predicate's function index]
+/// ```
+///
+/// Field schemas mention refined types (`Module::field_schemas`) and the type's own parameters
+/// as `["V", i]`. Empty when nothing is reachable.
+pub fn descriptors(m: &core::Module, roots: &[(core::Ty, Vec<u32>)]) -> String {
+    use core::{Ty, TypeKind};
+    use std::collections::BTreeMap;
+    let field_tys = |t: u32| -> Vec<Vec<Ty>> {
+        let d = &m.types[t as usize];
+        let given = m
+            .field_schemas
+            .iter()
+            .find(|(id, _)| *id == t)
+            .map(|(_, s)| s);
+        match &d.kind {
+            TypeKind::Record { fields, .. } => match given {
+                Some(s) => s.clone(),
+                None => vec![fields.iter().map(|f| f.ty.clone()).collect()],
+            },
+            TypeKind::Variant { ctors } => match given {
+                Some(s) => s.clone(),
+                None => ctors.iter().map(|c| c.fields.clone()).collect(),
+            },
+        }
+    };
+    let mut out: BTreeMap<String, String> = BTreeMap::new();
+    let mut todo: Vec<Ty> = roots.iter().map(|(t, _)| t.clone()).collect();
+    // A value without a schema encodes by its own type, which can be any (JS `dynamicJs`).
+    if roots.iter().any(|(t, vars)| unknown(t, vars)) {
+        todo.extend((0..m.types.len() as u32).map(|t| Ty::Adt(t, vec![])));
+        todo.extend((0..m.refinements.len() as u32).map(|r| Ty::Refined(r, vec![])));
+    }
+    while let Some(t) = todo.pop() {
+        walk_named(m, &t, &mut out, &mut todo, &field_tys);
+    }
+    if out.is_empty() {
+        return String::new();
+    }
+    let body: Vec<String> = out
+        .into_iter()
+        .map(|(k, v)| format!("{}: {v}", quoted(&k)))
+        .collect();
+    format!("{{{}}}", body.join(", "))
+}
+
+/// Whether `t`'s schema has a `null` (a part with no runtime schema; `vars` are supplied).
+fn unknown(t: &core::Ty, vars: &[u32]) -> bool {
+    use core::Ty;
+    match t {
+        Ty::Tuple(ts) | Ty::Adt(_, ts) | Ty::Refined(_, ts) => ts.iter().any(|t| unknown(t, vars)),
+        Ty::List(t) | Ty::Set(t) => unknown(t, vars),
+        Ty::Map(k, v) => unknown(k, vars) || unknown(v, vars),
+        Ty::Var(i) => !vars.contains(i),
+        Ty::Never | Ty::Fn(_) | Ty::Handler(_) | Ty::Instance(_) => true,
+        _ => false,
+    }
+}
+
+/// Record the descriptors of the named types in `t` that `out` lacks; their field types go to
+/// `more`.
+fn walk_named(
+    m: &core::Module,
+    t: &core::Ty,
+    out: &mut std::collections::BTreeMap<String, String>,
+    more: &mut Vec<core::Ty>,
+    field_tys: &dyn Fn(u32) -> Vec<Vec<core::Ty>>,
+) {
+    use core::{Ty, TypeKind};
+    match t {
+        Ty::Tuple(ts) => ts
+            .iter()
+            .for_each(|t| walk_named(m, t, out, more, field_tys)),
+        Ty::List(t) | Ty::Set(t) => walk_named(m, t, out, more, field_tys),
+        Ty::Map(k, v) => {
+            walk_named(m, k, out, more, field_tys);
+            walk_named(m, v, out, more, field_tys);
+        }
+        Ty::Adt(id, args) => {
+            args.iter()
+                .for_each(|t| walk_named(m, t, out, more, field_tys));
+            let d = &m.types[*id as usize];
+            let key = format!("{}::{}", d.module, d.name);
+            if out.contains_key(&key) {
+                return;
+            }
+            let rows = field_tys(*id);
+            let text = match &d.kind {
+                TypeKind::Record { fields, .. } => {
+                    let fs: Vec<String> = fields
+                        .iter()
+                        .zip(&rows[0])
+                        .map(|(f, ty)| format!("[{}, {}]", quoted(&f.name), param_text(m, ty)))
+                        .collect();
+                    format!("[\"r\", {}, [{}]]", quoted(&d.name), fs.join(", "))
+                }
+                TypeKind::Variant { ctors } => {
+                    let cs: Vec<String> = ctors
+                        .iter()
+                        .zip(&rows)
+                        .map(|(c, tys)| {
+                            let hs: Vec<String> = tys.iter().map(|t| param_text(m, t)).collect();
+                            format!("[{}, [{}]]", quoted(&c.name), hs.join(", "))
+                        })
+                        .collect();
+                    format!("[\"v\", {}, [{}]]", quoted(&d.name), cs.join(", "))
+                }
+            };
+            out.insert(key, text);
+            more.extend(rows.into_iter().flatten());
+        }
+        Ty::Union(ts) => {
+            for &id in ts {
+                walk_named(m, &Ty::Adt(id, vec![]), out, more, field_tys);
+            }
+        }
+        Ty::Refined(r, args) => {
+            args.iter()
+                .for_each(|t| walk_named(m, t, out, more, field_tys));
+            let d = &m.refinements[*r as usize];
+            let key = format!("{}::{}", d.module, d.name);
+            if out.contains_key(&key) {
+                return;
+            }
+            let text = format!(
+                "[\"w\", {}, {}, {}]",
+                quoted(&d.name),
+                param_text(m, &d.base),
+                d.check
+            );
+            out.insert(key, text);
+            more.push(d.base.clone());
+        }
+        _ => {}
     }
 }

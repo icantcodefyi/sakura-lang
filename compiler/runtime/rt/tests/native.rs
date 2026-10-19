@@ -128,6 +128,9 @@ fn program() -> Rc<Program> {
     for _ in 0..10 {
         bytes.extend(N.to_le_bytes());
     }
+    // No type descriptors.
+    let schemas = align8(&mut bytes);
+    bytes.extend(0u32.to_le_bytes());
     Rc::new(Program {
         image: Image {
             bytes,
@@ -136,6 +139,7 @@ fn program() -> Rc<Program> {
             effects,
             ops,
             natives,
+            schemas,
         },
     })
 }

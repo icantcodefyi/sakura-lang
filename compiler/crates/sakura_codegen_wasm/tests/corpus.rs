@@ -36,6 +36,16 @@ const KNOWN: &[(&str, Option<Host>, &str)] = &[
         "`Json.encode` and `Json.decode` need the program's JS type descriptors, which a bare corpus module lacks",
     ),
     (
+        "semantics/json_codec",
+        None,
+        "`Json.encode`, `Json.decode` and `Json.schema` need the program's JS type descriptors, which a bare corpus module lacks",
+    ),
+    (
+        "semantics/cli_parse_messages",
+        None,
+        "`Cli.parse` needs the program's JS type descriptors, which a bare corpus module lacks",
+    ),
+    (
         "semantics/host_fs_env",
         None,
         "`Fs.list`'s `Entry` decodes with the program's JS type descriptors, which a bare corpus module lacks, and a WASI command has no hosted Fs imports",

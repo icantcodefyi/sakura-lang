@@ -164,6 +164,7 @@ impl Program {
         let mut s = Statics::default();
         let t = image::tables(&m, &mut s, &names);
         let handlers = image::handlers(&m, &mut s, n, &names);
+        let schemas = image::schemas(&m, &mut s);
         // Every literal and every defect message the evaluator may raise, interned up front.
         s.bytes(NOT_RESUMABLE.as_bytes());
         s.bytes(NO_ARM.as_bytes());
@@ -228,6 +229,7 @@ impl Program {
             effects: t.effects,
             ops: t.ops,
             natives: handlers.natives,
+            schemas,
         };
         let cps = image::cps(n, &names);
         let info = m.funcs.iter().map(func_info).collect();

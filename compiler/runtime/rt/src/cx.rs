@@ -338,6 +338,31 @@ impl Cx<'_> {
         self.host()
     }
 
+    /// The instance's JSON type index (`native::hosted`), built from the module's descriptors
+    /// at the first call.
+    pub(crate) fn type_index(&mut self) -> alloc::rc::Rc<crate::native::hosted::TypeIndex> {
+        let p = self.p.as_ptr();
+        // SAFETY: plain reads and one write of fields no reference covers, on a live instance.
+        if let Some(t) = unsafe { (*p).types.clone() } {
+            return t;
+        }
+        // SAFETY: as above; the `Rc` is cloned out, so no borrow of the instance remains.
+        let module = unsafe { (*p).module.clone() };
+        let image = module.image();
+        let at = image.schemas as usize;
+        let descs = image
+            .bytes
+            .get(at..at + 4)
+            .map(|n| u32::from_le_bytes([n[0], n[1], n[2], n[3]]) as usize)
+            .and_then(|n| image.bytes.get(at + 4..at + 4 + n))
+            .unwrap_or(&[])
+            .to_vec();
+        let t = alloc::rc::Rc::new(crate::native::hosted::TypeIndex::new(self.rt(), descs));
+        // SAFETY: as above.
+        unsafe { (*p).types = Some(t.clone()) };
+        t
+    }
+
     pub(crate) fn max_copy(&self) -> u64 {
         // SAFETY: a plain read of a field no reference covers.
         unsafe { (*self.p.as_ptr()).max_copy }

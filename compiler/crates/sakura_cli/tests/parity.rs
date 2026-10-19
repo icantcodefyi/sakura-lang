@@ -655,17 +655,8 @@ fn wasm_twins_agree_with_wasm_frames() {
 /// the test until it is removed (as [`KNOWN`]).
 #[cfg(feature = "native")]
 const KNOWN_NATIVE: &[(&str, &str)] = &[
-    (
-        "nested_options_json.sak",
-        "Json.encode and Json.decode are N1b's",
-    ),
     ("sql_untrusted_param.sak", "Sql.memory is N1b's"),
-    ("trace_decode_then_spawn.sak", "Json.decode is N1b's"),
-    ("uuid_decode.sak", "Json.decode is N1b's"),
-    ("example cli_files", "Cli.parse is N1b's (D091)"),
-    ("example json_refined", "Json.decode is N1b's (D091)"),
     ("example secrets", "a hosted builtin N1b ports (D091)"),
-    ("example word_count", "Cli.parse is N1b's (D091)"),
 ];
 
 /// Plan M5 N2c: `--target native` (experimental) agrees with JS on every run-mode fixture and

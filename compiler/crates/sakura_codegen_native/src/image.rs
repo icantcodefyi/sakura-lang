@@ -43,6 +43,7 @@ pub struct Tables {
     pub statics: Statics,
     tables: shared::Tables,
     natives: u32,
+    schemas: u32,
     /// Host-built root handlers by builtin.
     pub host_handlers: HashMap<String, Clauses>,
     /// The code of each `cps` builtin the runtime implements (`rt_k_<name>`).
@@ -56,10 +57,12 @@ impl Tables {
         let mut statics = Statics::default();
         let tables = shared::tables(m, &mut statics, &names);
         let handlers = shared::handlers(m, &mut statics, n, &names);
+        let schemas = shared::schemas(m, &mut statics);
         Tables {
             statics,
             tables,
             natives: handlers.natives,
+            schemas,
             host_handlers: handlers.host,
             cps: shared::cps(n, &names),
         }
@@ -75,6 +78,7 @@ impl Tables {
             effects: self.tables.effects,
             ops: self.tables.ops,
             natives: self.natives,
+            schemas: self.schemas,
         }
     }
 }

@@ -136,6 +136,21 @@ Node host's teardown and not from compiled code. **Left of N2:** the `sakura.nat
 `{js, wasm, native} × {ubuntu, macos}` matrix, plus test mode (`sakura test --target native`)
 once N1b's services land; `deep_recursion_gauge` and the exact-i64 lane.
 
+**N1b progress (2026-10-19).** §17.229 (5) landed first (bc61e0c5): both JS hosts answer an OS
+error by its class, as `sakura_host_native` does, and Node chains timers so a sleep of any
+length is honoured. The JSON codec is now written once in `runtime/rt/src/json.rs` (§17.213 (1)):
+`no_std`, schema-driven, over the module's type descriptors. `sakura_lir::schema::descriptors`
+emits them and the native image carries them at +68. `Json.encode`, `decode`, `parse`, `schema`
+and `Cli.parse` run on it natively and hold to the JS runtime's text: number text, escapes,
+base64, index-key order, decode paths and messages. A refinement's `where` runs as a nested
+call on the decoding task (`Rt::nested_enter`), and a `fail` caught inside it unwinds there.
+`Cli.args` is hosted. New fixtures: `json_codec` and `cli_parse_messages`. The native corpus
+agrees on 176 of 177 programs (the miss is `sql_untrusted_param`), and native CLI parity on 127
+of 129 (`sql_untrusted_param` and the `secrets` example's `Http.recording`). **Left of N1b:**
+Sql, Http and cassettes, serve, Llm, `secret_*`, `log_json`, the test runner's codes, `V8004`
+and the exclusion table. The WASI command does not call the codec yet (no Wasmtime
+`json_validate` cell).
+
 ### Start conditions in one view
 
 - **Now:** N0a (Sol). It may run beside the whole M4 close-out: no file of `m3-completion-and-m4.md`

@@ -314,6 +314,14 @@ impl Statics {
     }
 }
 
+/// The type descriptors of [`Module::schemas`] as raw bytes (`u32 len`, UTF-8), for the native
+/// image only (the WASM host reads the JS backend's descriptors instead).
+pub fn schemas(m: &Module, s: &mut Statics) -> u32 {
+    let mut b = (m.schemas.len() as u32).to_le_bytes().to_vec();
+    b.extend_from_slice(m.schemas.as_bytes());
+    s.bytes(&b)
+}
+
 /// The layout, code, effect and operation tables' offsets in the block.
 pub struct Tables {
     pub layout: u32,

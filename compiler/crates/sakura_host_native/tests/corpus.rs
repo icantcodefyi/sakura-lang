@@ -21,15 +21,7 @@ use sakura_rt::native::{Instance, Limits, Outcome};
 
 /// Programs that need a standard service of N1b, with the reason (an empty table at N1b's end,
 /// or one justified there: design §17.170 (2)).
-const KNOWN_NATIVE: &[(&str, &str)] = &[
-    ("semantics/sql_untrusted_param", "Sql.memory is N1b's"),
-    ("semantics/uuid_decode", "Json.decode is N1b's"),
-    ("semantics/trace_decode_then_spawn", "Json.decode is N1b's"),
-    (
-        "semantics/nested_options_json",
-        "Json.encode and Json.decode are N1b's",
-    ),
-];
+const KNOWN_NATIVE: &[(&str, &str)] = &[("semantics/sql_untrusted_param", "Sql.memory is N1b's")];
 
 struct Program {
     name: String,

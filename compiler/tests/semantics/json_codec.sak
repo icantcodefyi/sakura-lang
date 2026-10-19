@@ -1,0 +1,141 @@
+// milestone: M5
+// covers: design §17.213 (1) (the Rust JSON codec), runtime/js/ABI.md §7
+// spec: §10.3
+
+// `Json.encode`, `Json.decode`, `Json.parse` and `Json.schema` held to the JS runtime's text on every backend
+// (the native host's codec is its own): numbers, string escapes, bytes as base64, maps with
+// array-index keys, variants, error unions, records with optional fields, refinements (one whose
+// `where` catches a `fail`), generic records, repeated keys, the `Json` value, and each decode
+// error's JSON Pointer and message.
+import std/json.{DecodeError, Json}
+
+type Shape = Dot | Circle(Float) | Rect(Int, Int)
+
+type Item = { name: String, tags: List<String>, size: Option<Int>, shape: Shape }
+
+type Small = Int where it < 10
+
+type Boxed = { n: Small }
+
+error NotFound(what: String)
+
+error Denied
+
+type Problem = NotFound | Denied
+
+type Tree = Leaf | Node(List<Tree>, Small)
+
+type Pair<T> = { left: T, right: Option<T> }
+
+error Odd(n: Int)
+
+fn half(n: Int) -> Int ! {Fail<Odd>} { if n % 2 == 0 { n / 2 } else { fail Odd { n: n } } }
+
+fn even(n: Int) -> Bool {
+  try { List.len(List.map([n], fn(x) { half(x) })) == 1 } catch {
+    Odd { n: _ } => false,
+  }
+}
+
+type Even = Int where even(it)
+
+fn shown<T>(r: Result<T, DecodeError>) -> String {
+  match r {
+    Ok(_) => "ok",
+    Err(e) => "{e.path}: {e.message}",
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  Console.print(Json.encode([0.1, 1.0, -0.0, 1.0e21, 1.5e-7, 123456789.125, 0.000001]))
+  Console.print(Json.encode([9007199254740991, -3]))
+  Console.print(Json.encode("quote \" slash \\ tab \t nl \n bell \u{7} é 😀"))
+  Console.print(Json.encode(String.to_bytes("hello world")))
+  Console.print(Json.encode(Map.of([("10", 1), ("2", 2), ("a", 3), ("01", 4)])))
+  Console.print(Json.encode(Map.of([(2, "b"), (1, "a")])))
+  Console.print(Json.encode((1, "x", true)))
+  let item = Item { name: "kite", tags: ["red"], size: None, shape: Rect(2, 3) }
+  Console.print(Json.encode([item]))
+  Console.print(Json.encode([Dot, Circle(1.5)]))
+  let problems: List<Problem> = [NotFound("cat"), Denied]
+  Console.print(Json.encode(problems))
+  Console.print(Json.encode(Json.Object(Map.of([("b", Json.Number(1.0)), ("1", Json.Null)]))))
+
+  let back: Result<List<Item>, DecodeError> = Json.decode(
+    "[\{\"name\": \"kite\", \"tags\": [], \"shape\": \{\"Circle\": 2\}\}]",
+  )
+  Console.print("{back}")
+  let bytes: Result<Bytes, DecodeError> = Json.decode("\"aGVsbG8=\"")
+  Console.print("{Result.map(bytes, fn(b) { Bytes.len(b) })}")
+  let problem: Result<List<Problem>, DecodeError> = Json.decode(
+    "[\{\"Denied\": \{\}\}, \{\"NotFound\": \{\"what\": \"dog\"\}\}]",
+  )
+  Console.print("{problem}")
+  let map: Result<Map<String, Int>, DecodeError> = Json.decode(
+    "\{\"a\": 1, \"b\": 3, \"a\": 2, \"7\": 0, \"3\": 1, \"3\": 2\}",
+  )
+  Console.print("{map}")
+  let pairs: Result<Map<Int, String>, DecodeError> = Json.decode("[[1, \"x\"]]")
+  Console.print("{pairs}")
+  let escaped: Result<String, DecodeError> = Json.decode("\"\\u00e9\\ud83d\\ude00\\n\"")
+  Console.print("{escaped}")
+  let parsed = Json.parse(" \{\"k\": [1, 2.5, \"s\", true, null], \"2\": 0, \"1\": 1\} ")
+  Console.print("{parsed}")
+
+  let a: Result<Int, DecodeError> = Json.decode("1.5")
+  let b: Result<List<Int>, DecodeError> = Json.decode("[1, \"2\"]")
+  let c: Result<Item, DecodeError> = Json.decode("\{\"name\": \"x\"\}")
+  let d: Result<Shape, DecodeError> = Json.decode("\"Square\"")
+  let e: Result<Shape, DecodeError> = Json.decode("\{\"Rect\": [1]\}")
+  let f: Result<Shape, DecodeError> = Json.decode("\{\"Dot\": 1\}")
+  let g: Result<Shape, DecodeError> = Json.decode("\"Circle\"")
+  let h: Result<Boxed, DecodeError> = Json.decode("\{\"n\": 12\}")
+  let i: Result<Map<String, Int>, DecodeError> = Json.decode("\{\"a/b~c\": true\}")
+  let j: Result<List<Problem>, DecodeError> = Json.decode("[\{\"Missing\": \{\}\}]")
+  let k: Result<(Int, Int), DecodeError> = Json.decode("[1, 2, 3]")
+  let l: Result<Map<Int, Int>, DecodeError> = Json.decode("[[1]]")
+  let m: Result<Bytes, DecodeError> = Json.decode("\"a\"")
+  let n: Result<Int, DecodeError> = Json.decode("9007199254740993")
+  let o: Result<Shape, DecodeError> = Json.decode("\{\"Dot\": 1, \"Rect\": 2\}")
+  Console.print(shown(a))
+  Console.print(shown(b))
+  Console.print(shown(c))
+  Console.print(shown(d))
+  Console.print(shown(e))
+  Console.print(shown(f))
+  Console.print(shown(g))
+  Console.print(shown(h))
+  Console.print(shown(i))
+  Console.print(shown(j))
+  Console.print(shown(k))
+  Console.print(shown(l))
+  Console.print(shown(m))
+  Console.print(shown(n))
+  Console.print(shown(o))
+
+  let p: Result<Pair<Boxed>, DecodeError> = Json.decode("\{\"left\": \{\"n\": 1\}\}")
+  Console.print("{p}")
+  let q: Result<Pair<Boxed>, DecodeError> = Json.decode(
+    "\{\"left\": \{\"n\": 1\}, \"right\": \{\"n\": 12\}\}",
+  )
+  Console.print(shown(q))
+  let shapes: Pair<Shape> = Pair { left: Rect(1, 2), right: None }
+  Console.print(Json.encode(shapes))
+  let evens: Result<List<Even>, DecodeError> = Json.decode("[2, 4]")
+  Console.print("{evens}")
+  let odd: Result<List<Even>, DecodeError> = Json.decode("[2, 3]")
+  Console.print(shown(odd))
+  let repeated: Result<Map<String, Int>, DecodeError> = Json.decode(
+    "\{\"a\": \"x\", \"b\": 1, \"\\u0061\": 2\}",
+  )
+  Console.print("{repeated}")
+
+  let wi: Option<Item> = None
+  Console.print(Json.encode(Json.schema(wi)))
+  let wt: Option<Tree> = None
+  Console.print(Json.encode(Json.schema(wt)))
+  let wp: Option<(Map<Int, Bytes>, List<Problem>)> = None
+  Console.print(Json.encode(Json.schema(wp)))
+  let ws: Option<Pair<Shape>> = None
+  Console.print(Json.encode(Json.schema(ws)))
+}

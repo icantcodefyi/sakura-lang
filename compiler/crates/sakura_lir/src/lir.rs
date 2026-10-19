@@ -148,6 +148,8 @@ pub struct Module {
     /// The direct facts of the Core defs (§17.118), indexed by their [`FuncId`]s (the functions
     /// lowering adds after them, adapters, have none).
     pub direct: crate::direct::Facts,
+    /// The type descriptors the native JSON and SQL codecs read ([`crate::schema::descriptors`]).
+    pub schemas: String,
 }
 
 impl Module {

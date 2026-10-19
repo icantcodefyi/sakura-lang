@@ -106,6 +106,27 @@ pub(crate) fn int_text(i: i64) -> Fixed {
     f
 }
 
+/// The shortest round-trip decimal digits of finite, nonzero `|f|`, their count `k` and the
+/// position `n` of the decimal point (`f = 0.d₁…d_k × 10^n`), as ECMAScript's
+/// `Number::toString` names them.
+pub(crate) fn shortest(f: f64) -> ([u8; 20], i32, i32) {
+    let mut sci = Fixed::new();
+    let _ = write!(sci, "{:e}", f.abs());
+    let s = sci.bytes();
+    let e_at = s.iter().position(|&b| b == b'e').unwrap_or(s.len());
+    let mut digits = [0u8; 20];
+    let mut k = 0;
+    for &b in &s[..e_at] {
+        if b != b'.' {
+            digits[k] = b;
+            k += 1;
+        }
+    }
+    let exp_text = core::str::from_utf8(&s[e_at + 1..]).unwrap_or("0");
+    let e: i32 = exp_text.parse().unwrap_or(0);
+    (digits, k as i32, e + 1)
+}
+
 /// JS `showFloat`: `String(f)` (shortest round-trip digits, JS exponent rules) with `.0` added to
 /// a mantissa without a point; `-0.0`, `NaN`, `Infinity`, `-Infinity`.
 pub(crate) fn float_text(f: f64) -> Fixed {
@@ -126,21 +147,8 @@ pub(crate) fn float_text(f: f64) -> Fixed {
         });
         return out;
     }
-    let mut sci = Fixed::new();
-    let _ = write!(sci, "{:e}", f.abs());
-    let s = sci.bytes();
-    let e_at = s.iter().position(|&b| b == b'e').unwrap_or(s.len());
-    let mut digits = [0u8; 20];
-    let mut k = 0;
-    for &b in &s[..e_at] {
-        if b != b'.' {
-            digits[k] = b;
-            k += 1;
-        }
-    }
-    let exp_text = core::str::from_utf8(&s[e_at + 1..]).unwrap_or("0");
-    let e: i32 = exp_text.parse().unwrap_or(0);
-    let (digits, k, n) = (&digits[..k], k as i32, e + 1);
+    let (digits, k, n) = shortest(f);
+    let digits = &digits[..k as usize];
     if f < 0.0 {
         out.push(b"-");
     }

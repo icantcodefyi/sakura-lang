@@ -8,6 +8,14 @@ Compare the release tag with main when identifying changes not in that preview.
 
 ## [Unreleased]
 
+### Added
+
+- `sakura run --target native` (a compiler built with the `native` feature) runs `Json.encode`,
+  `Json.decode`, `Json.parse`, `Json.schema`, `Cli.args` and `Cli.parse` (plan row N1b). The JSON
+  codec is written once in the Rust runtime and matches the JS runtime's text and decode
+  messages, `where` clauses included. Programs that use `Sql`, `Http`, `serve` or `Llm` still
+  stop with a `D090` or `D091` defect natively.
+
 ### Changed
 
 - Exhaustiveness checking costs each `match` arm the earlier arms with the same head constructor,

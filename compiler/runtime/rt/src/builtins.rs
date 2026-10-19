@@ -539,7 +539,7 @@ impl Rt {
 
 /// JS's `StrDecimalLiteral` restricted as `string_parse_float`'s regex:
 /// `^[+-]?([0-9]+(\.[0-9]*)?|\.[0-9]+)([eE][+-]?[0-9]+)?$`.
-fn decimal(t: &str) -> bool {
+pub(crate) fn decimal(t: &str) -> bool {
     let b = t.as_bytes();
     let mut i = usize::from(matches!(b.first(), Some(b'+' | b'-')));
     let digits = |i: &mut usize| {

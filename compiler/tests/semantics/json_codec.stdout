@@ -1,0 +1,43 @@
+[0.1,1,0,1e+21,1.5e-7,123456789.125,0.000001]
+[9007199254740991,-3]
+"quote \" slash \\ tab \t nl \n bell \u0007 é 😀"
+"aGVsbG8gd29ybGQ="
+{"2":2,"10":1,"a":3,"01":4}
+[[2,"b"],[1,"a"]]
+[1,"x",true]
+[{"name":"kite","tags":["red"],"size":null,"shape":{"Rect":[2,3]}}]
+["Dot",{"Circle":1.5}]
+[{"NotFound":{"what":"cat"}},{"Denied":{}}]
+{"1":null,"b":1}
+Ok([Item { name: "kite", tags: [], size: None, shape: Circle(2.0) }])
+Ok(5)
+Ok([Denied, NotFound { what: "dog" }])
+Ok(Map.of([("3", 2), ("7", 0), ("a", 2), ("b", 3)]))
+Ok(Map.of([(1, "x")]))
+Ok("é😀\n")
+Ok(Object(Map.of([("1", Number(1.0)), ("2", Number(0.0)), ("k", Array([Number(1.0), Number(2.5), String("s"), Bool(true), Null]))])))
+: expected an integer, found a number
+/1: expected an integer, found a string
+/tags: missing field
+: unknown constructor "Square" of Shape
+/Rect: expected an array of 2
+: expected "Dot" without a payload, found an object
+: expected a payload for Circle, found a string
+/n: does not satisfy the where clause of Small
+/a~1b~0c: expected an integer, found a boolean
+/0: unknown error tag "Missing"
+: expected an array of 2, found an array
+/0: expected a [key, value] pair
+: expected a base64 string, found a string
+: expected an integer, found an integer
+: expected an object with one key, found an object
+Ok(Pair { left: Boxed { n: 1 }, right: None })
+/right/n: does not satisfy the where clause of Small
+{"left":{"Rect":[1,2]},"right":null}
+Ok([2, 4])
+/1: does not satisfy the where clause of Even
+Ok(Map.of([("a", 2), ("b", 1)]))
+{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","properties":{"name":{"type":"string"},"tags":{"type":"array","items":{"type":"string"}},"size":{"anyOf":[{"type":"integer"},{"type":"null"}]},"shape":{"oneOf":[{"const":"Dot"},{"type":"object","properties":{"Circle":{"type":"number"}},"required":["Circle"],"additionalProperties":false},{"type":"object","properties":{"Rect":{"type":"array","prefixItems":[{"type":"integer"},{"type":"integer"}],"minItems":2,"maxItems":2}},"required":["Rect"],"additionalProperties":false}]}},"required":["name","tags","shape"],"additionalProperties":false}
+{"$schema":"https://json-schema.org/draft/2020-12/schema","oneOf":[{"const":"Leaf"},{"type":"object","properties":{"Node":{"type":"array","prefixItems":[{"type":"array","items":{"$ref":"#/$defs/Tree"}},{"type":"integer"}],"minItems":2,"maxItems":2}},"required":["Node"],"additionalProperties":false}],"$defs":{"Tree":{"oneOf":[{"const":"Leaf"},{"type":"object","properties":{"Node":{"type":"array","prefixItems":[{"type":"array","items":{"$ref":"#/$defs/Tree"}},{"type":"integer"}],"minItems":2,"maxItems":2}},"required":["Node"],"additionalProperties":false}]}}}
+{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"array","prefixItems":[{"type":"array","items":{"type":"array","prefixItems":[{"type":"integer"},{"type":"string","contentEncoding":"base64"}],"minItems":2,"maxItems":2}},{"type":"array","items":{"oneOf":[{"type":"object","properties":{"NotFound":{"type":"object","properties":{"what":{"type":"string"}},"required":["what"],"additionalProperties":false}},"required":["NotFound"],"additionalProperties":false},{"type":"object","properties":{"Denied":{"type":"object","properties":{},"required":[],"additionalProperties":false}},"required":["Denied"],"additionalProperties":false}]}}],"minItems":2,"maxItems":2}
+{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","properties":{"left":{"oneOf":[{"const":"Dot"},{"type":"object","properties":{"Circle":{"type":"number"}},"required":["Circle"],"additionalProperties":false},{"type":"object","properties":{"Rect":{"type":"array","prefixItems":[{"type":"integer"},{"type":"integer"}],"minItems":2,"maxItems":2}},"required":["Rect"],"additionalProperties":false}]},"right":{"anyOf":[{"oneOf":[{"const":"Dot"},{"type":"object","properties":{"Circle":{"type":"number"}},"required":["Circle"],"additionalProperties":false},{"type":"object","properties":{"Rect":{"type":"array","prefixItems":[{"type":"integer"},{"type":"integer"}],"minItems":2,"maxItems":2}},"required":["Rect"],"additionalProperties":false}]},{"type":"null"}]}},"required":["left"],"additionalProperties":false}

@@ -10,7 +10,7 @@
 //! instance (`Instance` is neither `Send` nor `Sync`); a process may hold many.
 
 pub mod host;
-mod hosted;
+pub(crate) mod hosted;
 
 use alloc::boxed::Box;
 use alloc::rc::Rc;
@@ -43,9 +43,11 @@ pub struct SakuraInstance {
     abi: u32,
     pub(crate) rt: Rt,
     pub(crate) host: NonNull<dyn Host>,
-    module: Rc<dyn Module>,
+    pub(crate) module: Rc<dyn Module>,
     /// The aggregate size of one host answer (`SAKURA_MAX_COPY_BYTES`, ABI §8.5).
     pub(crate) max_copy: u64,
+    /// The JSON codec's type index, built at the first JSON call.
+    pub(crate) types: Option<Rc<hosted::TypeIndex>>,
 }
 
 /// A native function's handle on its instance (ABI-identical to `SakuraInstance *`). Only the
@@ -124,6 +126,9 @@ pub struct Image {
     pub ops: u32,
     /// The ten `u32` codes `rt_init` receives (`NATIVE_CODES` order).
     pub natives: u32,
+    /// The type descriptors the JSON and SQL codecs read (`u32 len`, UTF-8 JSON;
+    /// `sakura_lir::schema::descriptors`).
+    pub schemas: u32,
 }
 
 /// `SAKURA_MAX_HEAP`, `SAKURA_MAX_REQUESTS` and `SAKURA_MAX_COPY_BYTES` (ABI §8.5, §10).
@@ -198,6 +203,7 @@ impl<H: Host + 'static> Instance<H> {
             host: host_dyn,
             module: module.clone(),
             max_copy: limits.max_copy_bytes,
+            types: None,
         })));
         let inst = Instance { p, host };
         let mut cx = Cx::native(Ctx(p, PhantomData));
