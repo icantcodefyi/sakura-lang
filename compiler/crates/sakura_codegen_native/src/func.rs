@@ -1125,6 +1125,12 @@ impl Gen<'_, '_, '_> {
                 self.dup(x, live)?;
                 *live.entry(*v).or_default() += 1;
             }
+            Inst::DupCandidate(v) => {
+                let x = self.val(*v)?;
+                let r = self.call1("rt_dup_candidate", &[x], types::I32)?;
+                self.pad_if(r, live, None)?;
+                *live.entry(*v).or_default() += 1;
+            }
             Inst::Drop(v) => {
                 let x = self.val(*v)?;
                 self.call0("drop", &[x])?;

@@ -23,7 +23,7 @@ import * as rt from "./sakura_runtime.js";
 rt.stopTracing();
 
 /** ABI §0: the version this host implements. */
-export const ABI_VERSION = 0x010200;
+export const ABI_VERSION = 0x010400;
 
 /** The `stats()` counters in order (ABI §10). */
 export const STATS = [
@@ -38,6 +38,10 @@ export const STATS = [
   "dups",
   "drops",
   "restarts",
+  "reuse_attempts",
+  "reuses",
+  "borrow_candidates",
+  "borrows",
 ];
 
 /** Outcome kinds (ABI §6.5). */
@@ -1235,7 +1239,8 @@ export class Host {
     const path = proc?.env?.SAKURA_WASM_STATS;
     if (path) {
       proc.on("exit", () => {
-        proc.getBuiltinModule("node:fs").appendFileSync(path, `${JSON.stringify(this.stats())}\n`);
+        const line = { abi_version: v, ...this.stats() };
+        proc.getBuiltinModule("node:fs").appendFileSync(path, `${JSON.stringify(line)}\n`);
       });
     }
     return this;

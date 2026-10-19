@@ -16,7 +16,7 @@ fn main#0 pub top -> unit ; main::direct_higher_order, frame 29 slots [%3 i64, %
     %0 lit: i64 = const 3
     %1 f: ptr = closure main$1#2[%0]
     %2 lit: i64 = const 1
-    dup %1
+    dup.candidate %1
     call apply#3(%1, %2) -> b1(%1)
   b1(%3 r: i64, %4 f: ptr):
     %5 s: ptr = show %3
@@ -44,7 +44,7 @@ fn main#0 pub top -> unit ; main::direct_higher_order, frame 29 slots [%3 i64, %
     %20 lit: i64 = const 2
     %21 box: word = box %20
     %22 xs: ptr = alloc list(%19, %21)
-    dup %11
+    dup.candidate %11
     call map#4(%22, %11) -> b3(%11, %17)
   b3(%23 r: ptr, %24 f: ptr, %25 s: ptr):
     %26 s: ptr = show %23
@@ -89,7 +89,7 @@ fn main#0 pub top -> unit ; main::direct_higher_order, frame 29 slots [%3 i64, %
     drop %52
     %54 lit: i64 = const 4
     %55 box: word = box %54
-    dup %48
+    dup.candidate %48
     call app#11(%48, %55) -> b7(%48, %49, %50, %53)
   b7(%56 r: word, %57 f: ptr, %58 f: ptr, %59 f: ptr, %60 s: ptr):
     %61 unbox: i64 = unbox %56
@@ -102,7 +102,7 @@ fn main#0 pub top -> unit ; main::direct_higher_order, frame 29 slots [%3 i64, %
     %65 s: ptr = concat %63, %64
     drop %63
     drop %64
-    dup %59
+    dup.candidate %59
     call app#11(%59, %57) -> b8(%58, %59, %65)
   b8(%66 r: word, %67 f: ptr, %68 f: ptr, %69 s: ptr):
     %70 unbox: i64 = unbox %66

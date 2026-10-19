@@ -43,7 +43,7 @@ fn main#0 pub top -> unit ; main::row_param_type, frame 26 slots [%8 i64, %9 wor
   b6(%31 r: unit, %32 xs: ptr):
     %33 box: word = box %31
     drop %33
-    dup %32
+    dup.candidate %32
     %34 n: i64 = $list_len(%32)
     %63 lit: i64 = const 0
     jump b8(%63, %32, %34)
@@ -54,7 +54,7 @@ fn main#0 pub top -> unit ; main::row_param_type, frame 26 slots [%8 i64, %9 wor
     %39 more: bool = lt.int %36, %38
     if %39 then b9(%37, %38, %36) else b10(%37, %38, %36)
   b9(%40 xs: ptr, %41 n: i64, %42 i: i64):
-    dup %40
+    dup.candidate %40
     %46 x: word = $list_at(%40, %42)
     %52 lit: i64 = const 10
     call apply#5(%46, %52) -> b12(%40, %41, %42)

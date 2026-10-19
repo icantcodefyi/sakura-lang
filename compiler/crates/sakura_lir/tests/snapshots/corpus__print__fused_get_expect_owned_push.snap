@@ -76,12 +76,12 @@ fn grow#2 top -> ptr ; main::fused_get_expect_owned_push, frame 2 slots [%0 i64,
     drop %7
     jump b2(%8, %9)
   b4(%10 xs: ptr, %11 i: i64):
-    dup %10
+    dup.candidate %10
     %14 r: i64 = $list_len(%10)
     %15 lit: i64 = const 1
     %16 t: i64 = intsub %14, %15
     %17 lit: ptr = const str 1
-    dup %10
+    dup.candidate %10
     %18 r: word = $list_get_expect(%10, %16, %17)
     %19 unbox: i64 = unbox %18
     drop %18

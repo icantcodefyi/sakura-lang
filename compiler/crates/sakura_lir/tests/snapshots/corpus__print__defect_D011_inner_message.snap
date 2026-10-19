@@ -45,7 +45,7 @@ fn first#2 top -> i64 ; main::defect_D011_inner_message, frame 2 slots [%0 word*
     %2 enter: unit = $contract_enter()
     %3 lit: i64 = const 0
     %4 lit: ptr = const str 2
-    dup %0
+    dup.candidate %0
     %5 r: word = $list_get_expect(%0, %3, %4)
     %6 unbox: i64 = unbox %5
     drop %5

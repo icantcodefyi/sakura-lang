@@ -22,7 +22,7 @@ fn main#0 pub top -> unit ; main::std_collections, frame 42 slots [%3 word*, %4 
     %7 s: ptr = concat %5, %6
     drop %5
     drop %6
-    dup %4
+    dup.candidate %4
     call unique#3(%4) -> b2(%4, %7)
   b2(%8 r: ptr, %9 r: ptr, %10 s: ptr):
     %11 s: ptr = show %8
@@ -34,7 +34,7 @@ fn main#0 pub top -> unit ; main::std_collections, frame 42 slots [%3 word*, %4 
     %14 s: ptr = concat %12, %13
     drop %12
     drop %13
-    dup %9
+    dup.candidate %9
     call reverse#4(%9) -> b3(%9, %14)
   b3(%15 r: ptr, %16 r: ptr, %17 s: ptr):
     %18 s: ptr = show %15
@@ -47,7 +47,7 @@ fn main#0 pub top -> unit ; main::std_collections, frame 42 slots [%3 word*, %4 
     %22 box: word = box %20
     drop %22
     %23 lit: ptr = const str 2
-    dup %21
+    dup.candidate %21
     call join#5(%21, %23) -> b5(%21)
   b5(%24 r: ptr, %25 r: ptr):
     %26 s: ptr = show %24
@@ -57,7 +57,7 @@ fn main#0 pub top -> unit ; main::std_collections, frame 42 slots [%3 word*, %4 
     drop %26
     drop %27
     %29 lit: ptr = const str 3
-    dup %25
+    dup.candidate %25
     call contains#6(%25, %29) -> b6(%25, %28)
   b6(%30 r: bool, %31 r: ptr, %32 s: ptr):
     %33 s: ptr = show %30
@@ -69,7 +69,7 @@ fn main#0 pub top -> unit ; main::std_collections, frame 42 slots [%3 word*, %4 
     drop %34
     drop %35
     %37 f: ptr = closure main$1#7[]
-    dup %31
+    dup.candidate %31
     call find#8(%31, %37) -> b7(%31, %36)
   b7(%38 r: ptr, %39 r: ptr, %40 s: ptr):
     %41 s: ptr = show %38
@@ -83,7 +83,7 @@ fn main#0 pub top -> unit ; main::std_collections, frame 42 slots [%3 word*, %4 
     drop %45
     %46 r: ptr = $map_empty()
     %47 f: ptr = closure main$2#9[]
-    dup %44
+    dup.candidate %44
     call fold#13(%44, %46, %47) -> b9(%44)
   b9(%48 r: word, %49 r: ptr):
     %50 s: ptr = show %48

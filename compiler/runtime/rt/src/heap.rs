@@ -52,6 +52,16 @@ pub struct Stats {
     /// Direct-region calls run again through frames after their twin ran out of gauge
     /// (ABI 1.2.0, design §17.160 (2)): at most one per entry from frame-protocol code.
     pub restarts: u64,
+    /// Owned updates that tested whether they may write an object in place (ABI 1.3.0,
+    /// design §17.176 (1)): a collection's wrapper and each node on the update's path.
+    pub reuse_attempts: u64,
+    /// The `reuse_attempts` that wrote the existing object instead of copying it.
+    pub reuses: u64,
+    /// Executed `Dup`s the LIR marked as a borrow candidate: a reference that stays live
+    /// after a call which only reads it, so borrowing would remove the pair.
+    pub borrow_candidates: u64,
+    /// Calls that passed an argument under the borrowed convention; none before plan N4.
+    pub borrows: u64,
 }
 
 #[derive(Default)]

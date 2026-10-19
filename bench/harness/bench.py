@@ -394,7 +394,12 @@ def wasm_stats(module, args):
         r = run(cmd, env={**os.environ, "SAKURA_WASM_STATS": str(path)})
         if r.returncode != 0 or not path.exists():
             raise Fail(f"`{' '.join(cmd)}` exited {r.returncode}: {r.stderr[-2000:]}")
-        return json_lines(path.read_text())[-1]
+        stats = json_lines(path.read_text())[-1]
+        # ABI 1.3.0 (design §17.176 (1)): the counter set is the one `abi_version` names.
+        if "reuse_attempts" in stats:
+            attempts = stats["reuse_attempts"]
+            stats["reuse_rate"] = stats["reuses"] / attempts if attempts else None
+        return stats
 
 
 # ---------------------------------------------------------------------------------------------

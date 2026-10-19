@@ -1,6 +1,6 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.2.5**, agreed before `sakura_lir` or `sakura_rt`
+**Status:** design specification, version **1.4.0**, agreed before `sakura_lir` or `sakura_rt`
 emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed, 1.0.2 the
 R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
 the end, with the questions still open), and 1.1.0 the four `stats()` counters and the
@@ -12,7 +12,9 @@ counter, the import and handle-kind lists as built and §5's fallback wording (d
 per-instance ceiling and a cut body as `Err` (design §17.209), and 1.2.2 the root task's release and
 the copy budget of a served request (design §17.212, §17.216 (4)), 1.2.3 the failure modes of a
 served request (design §17.223), 1.2.4 bound performs and `with` regions in direct twins
-(§5, §6.3; design §17.211 (1)), and 1.2.5 closure twins (§5; design §17.211 (2)). Owned by
+(§5, §6.3; design §17.211 (1)), 1.2.5 closure twins (§5; design §17.211 (2)), 1.3.0 the reuse
+and borrow counters (§10; design §17.176 (1)) and 1.4.0 the native profile (§1b; design
+§17.169). Owned by
 the designer;
 implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
@@ -134,12 +136,19 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   `call_indirect` and a table in the static block. The twins and their table entries are
   internal to the linked module; no byte, import or export changes and no counter is added
   (`restarts` also counts abandoned regions, §10), so `sakura_abi_version` stays `0x010200`.
+- 1.3.0 (MINOR, design §17.169 (3), §17.176 (1), plan M5 N0b) appends four counters to
+  `stats()` after `restarts` (§10: `reuse_attempts`, `reuses`, `borrow_candidates`, `borrows`;
+  the export now returns 120 bytes). Nothing shipped changes: the eleven counters keep their
+  offsets, so a 1.3 host reads a 1.2 module's eleven (`stats()` returns its length). The
+  counters a module writes are part of what it requires of its host (the rule below), so this is
+  a MINOR and a 1.2 host refuses a 1.3 module. The runtime function a marked `Dup` calls
+  (`rt_dup_candidate`) is internal to the linked module; no import or export is added.
 - 1.4.0 (MINOR, design §17.169 (3), plan M5 N1a) adds §1b, the native profile
   `offset32-v1` (heap, context, C prototypes, dispatch table, `sakura.native`), with native
-  paragraphs in §8.4 and §8.5. No wasm32 byte, import or export changes. The text lands before
+  paragraphs in §8.4 and §8.5. No wasm32 byte, import or export changes. The text landed before
   N0b's 1.3.0 counters, and versions never reorder (§17.169 (3)), so the constant
-  `sakura_abi_version` stays `0x010200` on both targets until 1.3.0 is in and becomes
-  `0x010400` then, in one step; no module ever records `0x010300` (design §17.229 (1)); no
+  `sakura_abi_version` stayed `0x010200` on both targets until 1.3.0 was in; N0b set it to
+  `0x010400` in one step, and no module ever records `0x010300` (design §17.229 (1)); no
   native module is emitted before N2.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
@@ -996,9 +1005,25 @@ cannot return several values through `extern "C"`, so the M4-WASM linker synthes
   `drop` export, compiled code's and the host's), each a cumulative `u64` in that order after
   the first six, and since 1.2.0 (design §17.160 (2)) `restarts` (direct-region calls run again
   through frames after their twin ran out of gauge or, since 1.2.5, was abandoned at a closure
-  without a twin, §5) after `drops`. The interface is
-  `SAKURA_WASM_STATS=<path>`: `sakura_wasm_host.js` appends the counters by name as one JSON
-  line at exit, for benchmark records; there is no CLI flag, and the JS backend reports no
+  without a twin, §5) after `drops`, and since 1.3.0 (design §17.176 (1)) four after
+  `restarts`, each deterministic for a fixed execution: `reuse_attempts` (an owned update's
+  tests of whether it may write an object in place: the wrapper of a `List`, `Map` or `Set`
+  that `List.set`, `List.push` (a list literal and a list builder push too), `Map.insert`,
+  `Map.remove`, `Set.insert` or `Set.remove` consumes, then each trie or HAMT node and the log
+  list on the update's path that it reaches through a node it wrote; the runtime's own list
+  building is not counted; plan N3 adds constructor sites holding a reuse token), `reuses` (the
+  attempts that wrote the existing object: no other reference reached it, it is not static and
+  it had room, so a HAMT node that grows for a new key is a miss; a node below a copied one is
+  copied without a test, so a wrapper hit never hides copied descendants; a remove copies its
+  index path without testing it, which N0b does not count),
+  `borrow_candidates` (executed `Dup`s the LIR marked: the reference stays live after a call
+  that only reads it, a read-only builtin or a direct def whose ownership summary borrows the
+  parameter, so borrowing would remove the `Dup` and the callee's `Drop`; each is also counted
+  in `dups`) and `borrows` (calls that passed an argument under a borrowed convention: 0 until
+  plan N4). A benchmark record adds `reuse_rate = reuses / reuse_attempts` (`null` when
+  attempts are 0) and the module's `abi_version`, which names the counter set. The interface is
+  `SAKURA_WASM_STATS=<path>`: `sakura_wasm_host.js` appends the module's `abi_version` and the
+  counters by name as one JSON line at exit, for benchmark records; there is no CLI flag, and the JS backend reports no
   counters. A dlmalloc comparison harness stays in `runtime/rt/bench`.
 - Failed growth or an exhausted limit is **one defect path**: `D096 heap_exhausted` from the
   allocating site, after which the task unwinds (§6.4). The runtime reserves a fixed emergency

@@ -21,7 +21,7 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 117 slots [%9 i64
     %6 xs: ptr = alloc list(%1, %3, %5)
     %7 lit: ptr = const str 0
     %8 lit: i64 = const 10
-    dup %6
+    dup.candidate %6
     call walk#2(%6, %7, %8) -> b1(%6)
   b1(%9 r: i64, %10 xs: ptr):
     %11 s: ptr = show %9
@@ -31,7 +31,7 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 117 slots [%9 i64
     drop %12
     %14 lit: ptr = const str 0
     %15 lit: i64 = const 200000
-    dup %10
+    dup.candidate %10
     call walk#2(%10, %14, %15) -> b2(%10, %13)
   b2(%16 r: i64, %17 xs: ptr, %18 s: ptr):
     %19 s: ptr = show %16
@@ -114,7 +114,7 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 117 slots [%9 i64
     drop %72
     drop %73
     %75 lit: i64 = const 3
-    dup %71
+    dup.candidate %71
     call shallow#6(%71, %75) -> b11(%71, %69, %70, %74)
   b11(%76 r: i64, %77 xs: ptr, %78 i: i64, %79 t: i64, %80 s: ptr):
     %81 s: ptr = show %76
@@ -154,7 +154,7 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 117 slots [%9 i64
   b16(%112 v: word, %113 i: i64, %114 t: i64, %115 xs: ptr):
     drop %112
     %116 lit: i64 = const 200000
-    dup %115
+    dup.candidate %115
     call mid#9(%115, %116) -> b17(%115, %113, %114)
   b17(%117 r: i64, %118 xs: ptr, %119 i: i64, %120 t: i64):
     %121 s: ptr = show %117
@@ -163,7 +163,7 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 117 slots [%9 i64
     drop %121
     drop %122
     %124 lit: i64 = const 3
-    dup %118
+    dup.candidate %118
     call mid#9(%118, %124) -> b18(%118, %119, %120, %123)
   b18(%125 r: i64, %126 xs: ptr, %127 i: i64, %128 t: i64, %129 s: ptr):
     %130 s: ptr = show %125
@@ -245,7 +245,7 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 117 slots [%9 i64
     jump b20(%197, %195, %196, %194)
   b30(%200 r: i64, %201 xs: ptr, %202 i: i64, %203 t: i64, %204 f: ptr, %205 $act: id) [handle, handle]:
     %207 lit: i64 = const 200000
-    dup %201
+    dup.candidate %201
     call mid#9(%201, %207) -> b31(%201, %202, %203, %204, %200, %205)
   b31(%208 r: i64, %209 xs: ptr, %210 i: i64, %211 t: i64, %212 f: ptr, %213 r: i64, %214 $act: id) [handle, handle]:
     %215 lit: i64 = const 3
@@ -302,7 +302,7 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 117 slots [%9 i64
     jump b37(%270, %271, %272)
   b39(%273 xs: ptr, %274 i: i64, %275 t: i64):
     %279 lit: i64 = const 5000
-    dup %273
+    dup.candidate %273
     call shallow#6(%273, %279) -> b41(%273, %274, %275)
   b40(%276 xs: ptr, %277 i: i64, %278 t: i64):
     jump b10(%277, %278, %276)

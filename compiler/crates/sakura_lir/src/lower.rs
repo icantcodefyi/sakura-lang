@@ -33,6 +33,8 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
+use sakura_core::opt::owned;
+
 use crate::layout::{LayoutTable, Slot};
 use crate::lir::{self, *};
 use crate::snapshot::{
@@ -196,8 +198,23 @@ pub fn lower(core: &core::Module, sigs: &BTreeMap<String, (Sig, bool)>) -> R<Mod
         .into_iter()
         .map(|f| f.ok_or_else(|| "missing function".to_owned()))
         .collect::<R<_>>()?;
+    // Design §17.176 (2): the ownership facts, recomputed from the snapshot.
+    let sums = owned::summaries(&crate::snapshot::convert::back(core));
+    let borrows = |callee: &Callee, i: usize| match callee {
+        Callee::Builtin(name) => owned::BORROWS.contains(&name.as_str()),
+        // A top-level def: its LIR arguments are its Core parameters (then `$site`). A bound
+        // perform's direct clause call is never a candidate (§17.176 (4)).
+        Callee::Direct(f) => {
+            core.defs
+                .get(f.index())
+                .is_some_and(|d| matches!(d.kind, core::FnKind::Top { .. }))
+                && cx.facts.direct(f.0)
+                && sums.get(f.index()).is_some_and(|s| s.borrows(i))
+        }
+        Callee::Closure(_) => false,
+    };
     for f in &mut funcs {
-        ownership(f)?;
+        ownership(f, &borrows)?;
     }
     let builtins = cx
         .used_builtins
@@ -2232,7 +2249,13 @@ fn collect_joins<'e>(
 
 /// Inserts `Dup`/`Drop` so that every reference is consumed or dropped exactly once in each
 /// block (module docs). Runs after lowering, before validation.
-pub fn ownership(f: &mut Func) -> R<()> {
+///
+/// A `Dup` of a reference that stays live after a call whose callee only reads it is a
+/// [`Inst::DupCandidate`] (design §17.176 (1), research/12 §3.2's pair `E`): `borrows(callee, i)`
+/// says the callee retains nothing of argument `i`. Only a callee no suspension can reach
+/// qualifies (§17.176 (4)): a read-only builtin or a direct top-level def, never a closure or
+/// a handler clause.
+pub fn ownership(f: &mut Func, borrows: &dyn Fn(&Callee, usize) -> bool) -> R<()> {
     let reprs: Vec<Repr> = f.vars.iter().map(|v| v.repr).collect();
     let managed = |v: Var| reprs[v.index()].is_managed();
     for (bi, block) in f.blocks.iter_mut().enumerate() {
@@ -2278,6 +2301,25 @@ pub fn ownership(f: &mut Func) -> R<()> {
                 defs.push((d, Some(k)));
             }
         }
+        // The arguments of the call at `p` that only read `v`, when `v` (last used at `last`)
+        // stays live after it.
+        let reads = |p: usize, v: Var, last: usize| -> usize {
+            let (callee, args, live_after) = match (block.insts.get(p), &block.term) {
+                (Some(Inst::Builtin { name, args, .. }), _) => {
+                    (Callee::Builtin(name.clone()), args, p < last)
+                }
+                (None, Term::Call { callee, args, cont }) => {
+                    (callee.clone(), args, cont.args.contains(&v))
+                }
+                _ => return 0,
+            };
+            if !live_after {
+                return 0;
+            }
+            (0..args.len())
+                .filter(|&i| args[i] == v && borrows(&callee, i))
+                .count()
+        };
         let mut before: Vec<Vec<Inst>> = vec![Vec::new(); n + 1];
         let mut after: Vec<Vec<Inst>> = vec![Vec::new(); n];
         let mut at_start: Vec<Inst> = Vec::new();
@@ -2303,8 +2345,13 @@ pub fn ownership(f: &mut Func) -> R<()> {
                 } else {
                     consumes.saturating_sub(1)
                 };
-                for _ in 0..dups {
-                    before[p].push(Inst::Dup(v));
+                let candidates = reads(p, v, last).min(dups);
+                for k in 0..dups {
+                    before[p].push(if k < candidates {
+                        Inst::DupCandidate(v)
+                    } else {
+                        Inst::Dup(v)
+                    });
                 }
                 if p == last && consumes == 0 {
                     if p == n {

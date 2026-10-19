@@ -507,7 +507,7 @@ fn lex#5 top -> i64 ; main::mutual_tail_dispatch, frame 10 slots [%0 i64, %1 wor
     %99 s: ptr = concat %97, %98
     drop %97
     drop %98
-    dup %92
+    dup.candidate %92
     %100 r: i64 = $list_len(%92)
     %101 s: ptr = show %100
     %102 s: ptr = concat %99, %101
@@ -715,7 +715,7 @@ fn space#6 top -> i64 ; main::mutual_tail_dispatch, frame 10 slots [%0 i64, %1 b
     %114 s: ptr = concat %112, %113
     drop %112
     drop %113
-    dup %107
+    dup.candidate %107
     %115 r: i64 = $list_len(%107)
     %116 s: ptr = show %115
     %117 s: ptr = concat %114, %116
@@ -1614,7 +1614,7 @@ fn digits#11 top -> i64 ; main::mutual_tail_dispatch, frame 10 slots [%0 i64, %1
     %157 s: ptr = concat %155, %156
     drop %155
     drop %156
-    dup %150
+    dup.candidate %150
     %158 r: i64 = $list_len(%150)
     %159 s: ptr = show %158
     %160 s: ptr = concat %157, %159

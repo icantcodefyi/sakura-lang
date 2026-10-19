@@ -535,6 +535,9 @@ pub enum Inst {
     /// Closes the innermost `try` region, dropping its carried values.
     TryPop,
     Dup(Var),
+    /// A `Dup` before a call that only reads the reference, which stays live after the call:
+    /// the pair borrowing would remove (design §17.176 (1)). Counted in `borrow_candidates`.
+    DupCandidate(Var),
     Drop(Var),
     /// A typed hole: evaluating it is a defect.
     Hole {
@@ -640,6 +643,7 @@ impl Inst {
             | TryPush { .. }
             | TryPop
             | Dup(_)
+            | DupCandidate(_)
             | Drop(_)
             | Hole { .. }
             | Unsupported { .. } => None,
@@ -679,7 +683,7 @@ impl Inst {
             Builtin { args, .. } => all(args, Consume),
             HandlePush { handler, .. } => vec![(*handler, Consume)],
             TryPush { carry, .. } => all(carry, Consume),
-            Dup(v) | Drop(v) => vec![(*v, Borrow)],
+            Dup(v) | DupCandidate(v) | Drop(v) => vec![(*v, Borrow)],
         }
     }
 }

@@ -323,6 +323,10 @@ fn append_stats(path: &std::ffi::OsStr, s: sakura_rt::Stats) -> Result<(), Strin
         ("dups", s.dups),
         ("drops", s.drops),
         ("restarts", s.restarts),
+        ("reuse_attempts", s.reuse_attempts),
+        ("reuses", s.reuses),
+        ("borrow_candidates", s.borrow_candidates),
+        ("borrows", s.borrows),
     ];
     let body: Vec<String> = fields.iter().map(|(k, v)| format!("\"{k}\":{v}")).collect();
     std::fs::OpenOptions::new()

@@ -33,7 +33,7 @@ fn main#0 pub top -> unit ; main::fused_get_expect, frame 33 slots [%2 word*, %1
     drop %15
     drop %16
     %18 lit: i64 = const 31
-    dup %5
+    dup.candidate %5
     call at#3(%5, %18) -> b3(%5, %14, %17)
   b3(%19 r: i64, %20 r: ptr, %21 r: ptr, %22 s: ptr):
     %23 s: ptr = show %19
@@ -45,7 +45,7 @@ fn main#0 pub top -> unit ; main::fused_get_expect, frame 33 slots [%2 word*, %1
     drop %24
     drop %25
     %27 lit: i64 = const 32
-    dup %20
+    dup.candidate %20
     call at#3(%20, %27) -> b4(%20, %21, %26)
   b4(%28 r: i64, %29 r: ptr, %30 r: ptr, %31 s: ptr):
     %32 s: ptr = show %28
@@ -57,7 +57,7 @@ fn main#0 pub top -> unit ; main::fused_get_expect, frame 33 slots [%2 word*, %1
     drop %33
     drop %34
     %36 lit: i64 = const 99
-    dup %29
+    dup.candidate %29
     call at#3(%29, %36) -> b5(%29, %30, %35)
   b5(%37 r: i64, %38 r: ptr, %39 r: ptr, %40 s: ptr):
     %41 s: ptr = show %37
@@ -69,7 +69,7 @@ fn main#0 pub top -> unit ; main::fused_get_expect, frame 33 slots [%2 word*, %1
     %46 box: word = box %43
     drop %46
     %47 lit: ptr = const str 0
-    dup %45
+    dup.candidate %45
     call price#4(%45, %47) -> b7(%44, %45)
   b7(%48 r: i64, %49 r: ptr, %50 r: ptr):
     %51 s: ptr = show %48
@@ -89,7 +89,7 @@ fn main#0 pub top -> unit ; main::fused_get_expect, frame 33 slots [%2 word*, %1
     %62 box: word = box %60
     drop %62
     %63 lit: i64 = const 7
-    dup %61
+    dup.candidate %61
     call twice#5(%61, %63) -> b10(%61)
   b10(%64 r: i64, %65 r: ptr):
     %66 s: ptr = show %64
@@ -118,7 +118,7 @@ fn main#0 pub top -> unit ; main::fused_get_expect, frame 33 slots [%2 word*, %1
     drop %82
     jump b13(%83, %84, %85)
   b15(%86 r: ptr, %87 sum: i64, %88 i: i64):
-    dup %86
+    dup.candidate %86
     call at#3(%86, %88) -> b17(%86, %87, %88)
   b16(%89 r: ptr, %90 sum: i64, %91 i: i64):
     jump b2(%90, %91, %89)

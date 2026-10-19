@@ -24,7 +24,7 @@ fn main#0 pub top -> unit ; main::owned_record_retained, frame 57 slots [%8 word
     %218 lit: i64 = const 0
     jump b27(%4, %218)
   b2(%6 p: ptr, %7 i: i64):
-    dup %6
+    dup.candidate %6
     call show#3(%6) -> b3(%6, %7)
   b3(%8 r: ptr, %9 p: ptr, %10 i: i64):
     %11 s: ptr = show %8
@@ -58,7 +58,7 @@ fn main#0 pub top -> unit ; main::owned_record_retained, frame 57 slots [%8 word
   b8(%34 r: unit, %35 i: i64, %36 r: ptr):
     %37 box: word = box %34
     drop %37
-    dup %36
+    dup.candidate %36
     call show#3(%36) -> b9(%35, %36)
   b9(%38 r: ptr, %39 i: i64, %40 r: ptr):
     %41 s: ptr = show %38
@@ -213,7 +213,7 @@ fn main#0 pub top -> unit ; main::owned_record_retained, frame 57 slots [%8 word
     %146 cons: word = proj %140.1 main::owned_record_retained::Planner
     drop %140
     %147 rec: ptr = alloc main::owned_record_retained::Planner(%145, %146, %144)
-    dup %147
+    dup.candidate %147
     call show#3(%147) -> b18(%147)
   b18(%148 r: ptr, %149 rec: ptr):
     %150 s: ptr = show %148
@@ -348,7 +348,7 @@ fn $entry#1 top -> unit ; main::owned_record_retained, frame 1 slots [%1 bool]
 
 fn bump#2 top -> ptr ; main::owned_record_retained, frame 6 slots [%0 word*, %1 i64, %2 i64, %3 word*, %4 i64, %7 word*]
   b0(%0 p: ptr, %1 i: i64):
-    dup %0
+    dup.candidate %0
     call var_of#10(%0, %1) -> b1(%0, %1)
   b1(%2 r: i64, %3 p: ptr, %4 i: i64):
     %5 lit: i64 = const 1
@@ -420,7 +420,7 @@ fn put_then_fail#5 top -> ptr ; main::owned_record_retained, frame 4 slots [%0 w
     call put_var#4(%0, %1, %2) -> b1()
   b1(%3 r: ptr):
     %4 lit: i64 = const 0
-    dup %3
+    dup.candidate %3
     call var_of#10(%3, %4) -> b2(%3)
   b2(%5 r: i64, %6 r: ptr):
     %7 lit: i64 = const 42

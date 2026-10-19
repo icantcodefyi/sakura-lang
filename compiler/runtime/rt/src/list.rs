@@ -249,7 +249,7 @@ impl Rt {
     /// `xs` (consumed) with element `i` (in range) replaced by `x` (consumed): in place when no
     /// other reference reaches `xs`.
     pub(crate) fn list_set_in(&mut self, xs: u32, i: u32, x: u32) -> Res<u32> {
-        if self.unique(xs) {
+        if self.reusable(xs) {
             return self
                 .set_owned(xs, i, x)
                 .map(|_| xs)
@@ -267,7 +267,7 @@ impl Rt {
         let (n, shift, root, tail, tl) = self.fields(xs);
         let off = n - tl;
         let (field, node, new) = if i >= off {
-            if self.unique(tail) {
+            if self.reusable(tail) {
                 self.write_word(tail, i - off, x);
                 return Ok(());
             }
@@ -285,7 +285,7 @@ impl Rt {
     /// `node` (owned by a parent no other reference reaches) with element `i` replaced by `x`
     /// (consumed): `node` itself when it is unique too, else a copy.
     fn set_unique(&mut self, node: u32, level: u32, i: u32, x: u32) -> Res<u32> {
-        if !self.unique(node) {
+        if !self.reusable(node) {
             return self.set_in(node, level, i, x);
         }
         let j = (i >> level) & 31;
@@ -312,7 +312,19 @@ impl Rt {
     /// `List.push`, consuming both. A uniquely owned root is updated in place (§0 fast by
     /// default: a loop that builds a list allocates no roots).
     pub fn list_push(&mut self, xs: u32, x: u32) -> Res<u32> {
-        if self.rc(xs) != 1 || self.flags(xs) & STATIC != 0 {
+        let unique = self.unique(xs);
+        self.push_in(xs, x, unique)
+    }
+
+    /// [`Rt::list_push`] for a push compiled code asks for (`List.push`, a list literal, a
+    /// builder) and for `Map.insert`'s log: its test is counted ([`Rt::reusable`]).
+    pub fn list_push_update(&mut self, xs: u32, x: u32) -> Res<u32> {
+        let unique = self.reusable(xs);
+        self.push_in(xs, x, unique)
+    }
+
+    fn push_in(&mut self, xs: u32, x: u32, unique: bool) -> Res<u32> {
+        if !unique {
             let r = self.push_b(xs, x);
             self.drop(xs);
             return r;

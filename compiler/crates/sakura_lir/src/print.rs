@@ -368,6 +368,7 @@ fn inst(m: &Module, f: &Func, i: &Inst) -> String {
         }
         TryPop => "try_pop".into(),
         Dup(v) => format!("dup %{}", v.0),
+        DupCandidate(v) => format!("dup.candidate %{}", v.0),
         Drop(v) => format!("drop %{}", v.0),
         Hole { id } => format!("hole ?{id}"),
         Unsupported { what } => format!("unsupported {what:?}"),

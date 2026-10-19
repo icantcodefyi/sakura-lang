@@ -884,6 +884,109 @@ fn a_twin_that_runs_out_of_gauge_restarts_once_per_entry() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// ABI 1.3.0 §10 and design §17.176 (1): hand-audited fixtures for the reuse and borrow counters.
+/// A list literal is an empty list and one `List.push` per element, each testing the list it
+/// pushes to: the first is the static empty list (a miss), the rest hits. `List.set` tests the
+/// list, then the node it writes (a three-element list's tail); a retained list is a miss and
+/// nothing below it is tested; a list whose wrapper is fresh but whose tail is shared with the
+/// retained one hits on the wrapper and misses on the tail, so the hit masks no copied node.
+/// `Map.insert` of an existing key tests the map, then its log list and the log's tail. A
+/// borrow candidate is a `Dup` before a call that only reads a list that stays live after it:
+/// `List.set`'s `requires` reads `len(xs)` once per call, a direct def that only reads its
+/// parameter is one per call with the list live after it, and the last call is none; a def that
+/// returns its parameter, an effectful (CPS) def, a closure and a handler clause called directly
+/// by a bound perform (§17.176 (4)) are never candidates. `borrows`
+/// is 0 before plan N4. Each tuple is (reuse attempts, reuses, borrow candidates, borrows).
+#[test]
+fn reuse_and_borrow_counters_reconcile_by_hand() {
+    if !available() {
+        eprintln!("skipped: node is missing");
+        return;
+    }
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("reuse_counters");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let defs = "effect Pick {\n  fn pick(xs: List<Int>, ys: List<Int>) -> Int\n}\n\n\
+                fn count(xs: List<Int>) -> Int { List.len(xs) }\n\n\
+                fn keep(xs: List<Int>) -> List<Int> { xs }\n\n\
+                fn noisy(xs: List<Int>) -> Int ! {Console} {\n\
+                \x20 Console.print(\".\")\n\
+                \x20 List.len(xs)\n\
+                }\n\n";
+    let counters = |name: &str, body: &str, stdout: &str| {
+        let src = dir.join(format!("{name}.sak"));
+        let main = format!("{defs}pub fn main() -> Unit ! {{Console}} {{\n{body}}}\n");
+        std::fs::write(&src, main).unwrap();
+        let stats = dir.join(format!("{name}.jsonl"));
+        let out_dir = dir.join(format!("out-{name}"));
+        let file = format!("{name}.sak");
+        let args = [
+            "run",
+            "--target",
+            "wasm",
+            "--out-dir",
+            out_dir.to_str().unwrap(),
+            &file,
+        ];
+        let out = sakura_env(&args, &dir, &[("SAKURA_WASM_STATS", &stats)]);
+        assert_eq!(out.code, Some(0), "{name}: {}", out.stderr);
+        assert_eq!(out.stdout, stdout, "{name}");
+        let line = std::fs::read_to_string(&stats).unwrap();
+        let v: serde_json::Value = serde_json::from_str(line.lines().last().unwrap()).unwrap();
+        assert_eq!(v["abi_version"], 0x010400, "{name}");
+        let n = |k: &str| v[k].as_u64().unwrap_or_else(|| panic!("{name}: no {k}"));
+        (
+            n("reuse_attempts"),
+            n("reuses"),
+            n("borrow_candidates"),
+            n("borrows"),
+        )
+    };
+    let print = |e: &str| format!("  Console.print(Int.to_string({e}))\n");
+    assert_eq!(counters("none", &print("1"), "1\n"), (0, 0, 0, 0));
+    // Literal 3/2; `List.set` on the dead list: wrapper and tail hit; `requires` reads `xs`.
+    let set = "  let xs = [1, 2, 3]\n  let ys = List.set(xs, 0, 9)\n";
+    let dead = format!("{set}{}", print("List.len(ys)"));
+    assert_eq!(counters("set_dead", &dead, "3\n"), (5, 4, 1, 0));
+    // The retained `xs` is a miss; no node below it is tested.
+    let live = format!("{set}{}", print("List.len(ys) + List.len(xs)"));
+    assert_eq!(counters("set_retained", &live, "6\n"), (4, 2, 1, 0));
+    // `List.push` on the retained `xs`: a miss, and `ys` appends into the shared tail. Then
+    // `List.set` on `ys`: the wrapper hits, the shared tail misses and is copied.
+    let masked =
+        "  let xs = [1, 2, 3]\n  let ys = List.push(xs, 4)\n  let zs = List.set(ys, 0, 9)\n";
+    let masked = format!("{masked}{}", print("List.len(zs) + List.len(xs)"));
+    assert_eq!(
+        counters("wrapper_hit_tail_copied", &masked, "7\n"),
+        (6, 3, 1, 0)
+    );
+    // The static empty map misses; the second insert (same key) hits on the map, its log and
+    // the log's tail. Retaining `m1` makes the second insert a miss as well.
+    let map = "  let m1 = Map.insert(Map.empty(), 1, 10)\n  let m2 = Map.insert(m1, 1, 11)\n";
+    let owned = format!("{map}{}", print("Map.len(m2)"));
+    assert_eq!(counters("map_owned", &owned, "1\n"), (4, 3, 0, 0));
+    let shared = format!("{map}{}", print("Map.len(m2) + Map.len(m1)"));
+    assert_eq!(counters("map_retained", &shared, "2\n"), (2, 0, 0, 0));
+    // Two reads of `xs` with `xs` live after; the third is its last use.
+    let reads = format!(
+        "  let xs = [1, 2, 3]\n{}",
+        print("count(xs) + count(xs) + count(xs)")
+    );
+    assert_eq!(counters("borrow_candidates", &reads, "9\n"), (3, 2, 2, 0));
+    let none = format!(
+        "  let xs = [1, 2, 3]\n  let f = fn(ys: List<Int>) -> Int {{ List.len(ys) }}\n{}",
+        print("List.len(keep(xs)) + noisy(xs) + f(xs) + f(xs) + List.len(xs)")
+    );
+    assert_eq!(counters("no_candidates", &none, ".\n15\n"), (3, 2, 0, 0));
+    // The clause only reads `b`, but a clause is not a candidate: two literals, 2/1 and 1/0.
+    let clause = format!(
+        "  let xs = [1, 2]\n  let ys = [3]\n  let n = with handler Pick {{ fn pick(a, b) {{ List.len(b) }} }} {{ Pick.pick(xs, ys) }}\n{}",
+        print("n + List.len(xs) + List.len(ys)")
+    );
+    assert_eq!(counters("clause", &clause, "4\n"), (3, 1, 0, 0));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// Design §17.212: the Node host releases each finished root task (`task_free`) and a host
 /// handler owns its clauses, so `main` run again on one instance, returning, failing or
 /// defecting, leaves the guest heap's live objects and bytes as the first run left them.

@@ -102,6 +102,9 @@ pub struct Stats {
     pub freed: u64,
     pub dups: u64,
     pub drops: u64,
+    /// The executed `Dup`s marked as borrow candidates (ABI 1.3.0, design §17.176 (1)), also
+    /// counted in `dups`.
+    pub borrow_candidates: u64,
     pub peak_objects: usize,
     pub frames: u64,
     pub activations: u64,
@@ -1462,7 +1465,10 @@ impl<'m> Vm<'m> {
                 }
                 Ok(())
             }
-            Dup(v) => {
+            Dup(v) | DupCandidate(v) => {
+                if matches!(inst, DupCandidate(_)) {
+                    self.stats.borrow_candidates += 1;
+                }
                 let w = self.word(cur, *v)?;
                 if let Some(r) = &mut self.frame(cur)?.regs[v.index()] {
                     r.owned += 1;

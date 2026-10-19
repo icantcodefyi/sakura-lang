@@ -15,7 +15,7 @@ fn main#0 pub top -> unit ; main::owned_loop_twice, frame 29 slots [%1 word*, %3
     %2 lit: i64 = const 40
     call squares#2(%2) -> b2(%1)
   b2(%3 r: ptr, %4 r: ptr):
-    dup %4
+    dup.candidate %4
     call sum#3(%4) -> b3(%4, %3)
   b3(%5 r: i64, %6 r: ptr, %7 r: ptr):
     %8 s: ptr = show %5
@@ -23,7 +23,7 @@ fn main#0 pub top -> unit ; main::owned_loop_twice, frame 29 slots [%1 word*, %3
     %10 s: ptr = concat %8, %9
     drop %8
     drop %9
-    dup %7
+    dup.candidate %7
     call sum#3(%7) -> b4(%6, %7, %10)
   b4(%11 r: i64, %12 r: ptr, %13 r: ptr, %14 s: ptr):
     %15 s: ptr = show %11
@@ -78,7 +78,7 @@ fn main#0 pub top -> unit ; main::owned_loop_twice, frame 29 slots [%1 word*, %3
     %40 lit: ptr = const str 1
     %41 lit: ptr = const str 0
     %42 r: ptr = $string_split(%40, %41)
-    dup %42
+    dup.candidate %42
     call counts#6(%42) -> b10(%42)
   b10(%43 r: ptr, %44 r: ptr):
     %45 s: ptr = show %43
@@ -193,7 +193,7 @@ fn bumped#4 top -> ptr ; main::owned_loop_twice, frame 6 slots [%0 word*, %15 wo
     %29 lit: i64 = const 0
     jump b2(%0, %29)
   b2(%1 xs: ptr, %2 i: i64):
-    dup %1
+    dup.candidate %1
     %3 r: i64 = $list_len(%1)
     %4 t: bool = lt.int %2, %3
     if %4 then b4(%1, %2) else b5(%1, %2)
@@ -201,7 +201,7 @@ fn bumped#4 top -> ptr ; main::owned_loop_twice, frame 6 slots [%0 word*, %15 wo
     drop %5
     jump b2(%6, %7)
   b4(%8 xs: ptr, %9 i: i64):
-    dup %8
+    dup.candidate %8
     %12 item: ptr = $list_get(%8, %9)
     %13 lit: i64 = const 0
     %14 box: word = box %13
@@ -237,7 +237,7 @@ fn base#5 const -> ptr ; main::owned_loop_twice, frame 0 slots []
 fn counts#6 top -> ptr ; main::owned_loop_twice, frame 7 slots [%0 word*, %26 word*, %27 word*, %28 i64, %29 i64, %30 word*, %31 word*]
   b0(%0 words: ptr):
     %1 r: ptr = $map_empty()
-    dup %0
+    dup.candidate %0
     %2 n: i64 = $list_len(%0)
     %37 lit: i64 = const 0
     jump b1(%37, %1, %0, %2)
@@ -245,10 +245,10 @@ fn counts#6 top -> ptr ; main::owned_loop_twice, frame 7 slots [%0 word*, %26 wo
     %7 more: bool = lt.int %3, %6
     if %7 then b2(%5, %6, %3, %4) else b3(%5, %6, %3, %4)
   b2(%8 words: ptr, %9 n: i64, %10 i: i64, %11 m: ptr):
-    dup %8
+    dup.candidate %8
     %16 x: word = $list_at(%8, %10)
-    dup %11
-    dup %16
+    dup.candidate %11
+    dup.candidate %16
     %23 r: ptr = $map_get(%11, %16)
     %24 lit: i64 = const 0
     %25 box: word = box %24

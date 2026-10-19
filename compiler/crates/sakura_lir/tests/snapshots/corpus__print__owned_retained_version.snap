@@ -34,7 +34,7 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     %19 lit: i64 = const 7
     %20 box: word = box %19
     %21 r: ptr = $list_push(%17, %20)
-    dup %18
+    dup.candidate %18
     %22 r: i64 = $list_len(%18)
     %23 s: ptr = show %22
     %24 lit: ptr = const str 0
@@ -45,7 +45,7 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     %27 s: ptr = concat %25, %26
     drop %25
     drop %26
-    dup %18
+    dup.candidate %18
     call sum#3(%18) -> b5(%18, %21, %27)
   b5(%28 r: i64, %29 xs: ptr, %30 r: ptr, %31 s: ptr):
     %32 s: ptr = show %28
@@ -57,7 +57,7 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     drop %33
     drop %34
     %36 lit: i64 = const 5
-    dup %29
+    dup.candidate %29
     %37 item: ptr = $list_get(%29, %36)
     %38 s: ptr = show %37
     drop %37
@@ -69,7 +69,7 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     drop %39
     drop %40
     %42 lit: i64 = const 98
-    dup %29
+    dup.candidate %29
     %43 item: ptr = $list_get(%29, %42)
     %44 s: ptr = show %43
     drop %43
@@ -91,7 +91,7 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
   b6(%52 r: unit, %53 r: ptr):
     %54 box: word = box %52
     drop %54
-    dup %53
+    dup.candidate %53
     %55 r: i64 = $list_len(%53)
     %56 s: ptr = show %55
     %57 lit: ptr = const str 2
@@ -102,7 +102,7 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     %60 s: ptr = concat %58, %59
     drop %58
     drop %59
-    dup %53
+    dup.candidate %53
     call sum#3(%53) -> b7(%53, %60)
   b7(%61 r: i64, %62 r: ptr, %63 s: ptr):
     %64 s: ptr = show %61
@@ -114,7 +114,7 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     drop %65
     drop %66
     %68 lit: i64 = const 5
-    dup %62
+    dup.candidate %62
     %69 item: ptr = $list_get(%62, %68)
     %70 s: ptr = show %69
     drop %69
@@ -126,7 +126,7 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     drop %71
     drop %72
     %74 lit: i64 = const 98
-    dup %62
+    dup.candidate %62
     %75 item: ptr = $list_get(%62, %74)
     %76 s: ptr = show %75
     drop %75
@@ -138,7 +138,7 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     drop %77
     drop %78
     %80 lit: i64 = const 100
-    dup %62
+    dup.candidate %62
     %81 item: ptr = $list_get(%62, %80)
     %82 s: ptr = show %81
     drop %81
@@ -168,7 +168,7 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     %102 lit: i64 = const 3
     %103 box: word = box %102
     %104 r: ptr = $map_remove(%101, %103)
-    dup %90
+    dup.candidate %90
     %105 r: i64 = $map_len(%90)
     %106 s: ptr = show %105
     %107 lit: ptr = const str 3
@@ -181,7 +181,7 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     drop %109
     %111 lit: i64 = const 7
     %112 box: word = box %111
-    dup %90
+    dup.candidate %90
     %113 r: ptr = $map_get(%90, %112)
     %114 s: ptr = show %113
     drop %113
@@ -194,7 +194,7 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     drop %116
     %118 lit: i64 = const 3
     %119 box: word = box %118
-    dup %90
+    dup.candidate %90
     %120 r: ptr = $map_get(%90, %119)
     %121 s: ptr = show %120
     drop %120
@@ -217,7 +217,7 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
   b10(%130 r: unit, %131 xs: ptr, %132 r: ptr):
     %133 box: word = box %130
     drop %133
-    dup %132
+    dup.candidate %132
     %134 r: i64 = $map_len(%132)
     %135 s: ptr = show %134
     %136 lit: ptr = const str 4
@@ -230,7 +230,7 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     drop %138
     %140 lit: i64 = const 7
     %141 box: word = box %140
-    dup %132
+    dup.candidate %132
     %142 r: ptr = $map_get(%132, %141)
     %143 s: ptr = show %142
     drop %142
@@ -243,7 +243,7 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     drop %145
     %147 lit: i64 = const 3
     %148 box: word = box %147
-    dup %132
+    dup.candidate %132
     %149 r: ptr = $map_get(%132, %148)
     %150 s: ptr = show %149
     drop %149
@@ -256,7 +256,7 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     drop %152
     %154 lit: i64 = const 1000
     %155 box: word = box %154
-    dup %132
+    dup.candidate %132
     %156 r: ptr = $map_get(%132, %155)
     %157 s: ptr = show %156
     drop %156
@@ -275,7 +275,7 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     %169 box: word = box %168
     dup %167
     %170 r: ptr = $set_insert(%167, %169)
-    dup %167
+    dup.candidate %167
     %171 r: i64 = $set_len(%167)
     %172 s: ptr = show %171
     %173 lit: ptr = const str 5
@@ -297,7 +297,7 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     %183 s: ptr = concat %181, %182
     drop %181
     drop %182
-    dup %170
+    dup.candidate %170
     %184 r: i64 = $set_len(%170)
     %185 s: ptr = show %184
     %186 s: ptr = concat %183, %185
@@ -309,7 +309,7 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     drop %187
     %189 lit: i64 = const 999
     %190 box: word = box %189
-    dup %170
+    dup.candidate %170
     %191 r: bool = $set_contains(%170, %190)
     %192 s: ptr = show %191
     %193 s: ptr = concat %188, %192

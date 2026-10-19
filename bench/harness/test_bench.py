@@ -618,8 +618,15 @@ class WasmLane(unittest.TestCase):
         cells = {bench.cell(r)[1:4]: r for r in out["results"] if r["size"] == 20}
         self.assertEqual(set(cells), {("sakura", "wasm", "node"), ("sakura", "wasm", "wasmtime"), ("js", "js", "node")})
         stats = cells[("sakura", "wasm", "node")]["stats"]
-        for counter in ("frames", "boxes", "dups", "drops", "restarts"):
+        for counter in ("frames", "boxes", "dups", "drops", "restarts",
+                        "reuse_attempts", "reuses", "borrow_candidates", "borrows"):
             self.assertIsInstance(stats[counter], int)
+        # ABI 1.3.0's set, named by the record's `abi_version` (design §17.176 (1)).
+        self.assertEqual(stats["abi_version"], 0x010400)
+        self.assertEqual(stats["borrows"], 0)
+        rate = stats["reuse_rate"]
+        self.assertTrue(rate is None if stats["reuse_attempts"] == 0
+                        else rate == stats["reuses"] / stats["reuse_attempts"])
         self.assertEqual(cells[("sakura", "wasm", "wasmtime")]["stats"], stats)
         self.assertNotIn("stats", cells[("js", "js", "node")])
         self.assertIs(out["meta"]["host"]["quiet"], False)

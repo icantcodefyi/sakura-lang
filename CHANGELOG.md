@@ -19,6 +19,15 @@ Compare the release tag with main when identifying changes not in that preview.
   own worker thread, with rows, decode errors and SQLite's messages matching the JS runtime.
   Cancelling a running statement (a lost `Task.race`, a `timeout`) interrupts it, and a write
   that committed before stays committed.
+- The WASM runtime's `stats()` reports four more counters, recorded by `SAKURA_WASM_STATS`,
+  `SAKURA_NATIVE_STATS` and `bench/harness` (runtime ABI 1.3.0, design §17.176 (1), plan row
+  N0b): `reuse_attempts` and `reuses` (an owned `List`, `Map` or `Set` update testing whether it
+  may write its wrapper and each node on its path in place, and the tests that could),
+  `borrow_candidates` (executed reference-count increments before a call that only reads the
+  value, which stays live after it) and `borrows` (always 0 until borrowing lands). Benchmark
+  records add `reuse_rate` (`null` when nothing was attempted) and the module's `abi_version`.
+- `sakura build --target wasm --dump owned` prints the ownership facts as the LIR computes them
+  from the committed Core snapshot (design §17.176 (2)); they match the JS backend's dump.
 
 ### Changed
 
@@ -28,6 +37,10 @@ Compare the release tag with main when identifying changes not in that preview.
   --json` on a program that does not compile now writes its diagnostics and summary at schema
   1.1, like every other `verify` record, instead of 1.0. The fields of every kind are listed in
   `compiler/contracts/json.txt`, which a test checks every command's output against.
+- WASM modules record runtime ABI `0x010400` (1.4.0: 1.3.0's counters and 1.4.0's native
+  profile text, design §17.229 (1)). A 1.2 host refuses them with `V8003`, as the ABI's MINOR
+  rule says, since a module now writes counters an older host does not read; the 1.4 host still
+  runs 1.1 and 1.2 modules.
 - The documented npm install is the plain `npm install --global sakuralang`: the packages ship
   no lifecycle scripts, and `release.py` now refuses to pack one that declares `preinstall`,
   `install`, `postinstall` or `prepare`.

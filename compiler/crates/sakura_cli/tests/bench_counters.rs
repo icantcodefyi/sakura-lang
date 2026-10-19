@@ -1,6 +1,7 @@
-//! Design §17.118: the `stats()` counters (frames, boxes, `Dup`/`Drop`) of every benchmark
-//! program on WASM, with direct regions and all-frame (`--no-direct`), at the program's
-//! smallest timed size. The counters are deterministic, so the record is a reviewed snapshot
+//! Design §17.118, §17.176 (1): the `stats()` counters (frames, boxes, `Dup`/`Drop`, restarts,
+//! and ABI 1.3.0's reuse and borrow counters, the baseline plan N3 and N4 reconcile against) of
+//! every benchmark program on WASM, with direct regions and all-frame (`--no-direct`), at the
+//! program's smallest timed size. The counters are deterministic, so the record is a reviewed snapshot
 //! (`tests/snapshots/bench_counters.txt`, `SAKURA_BLESS=1` rewrites it); the timing lane of
 //! `bench/harness` reads the same counters through `SAKURA_WASM_STATS`.
 
@@ -29,10 +30,20 @@ fn smallest(meta: &str) -> (String, String) {
 
 fn counters(line: &str) -> Vec<(String, u64)> {
     let v: serde_json::Value = serde_json::from_str(line).expect("a stats line");
-    ["frames", "boxes", "dups", "drops", "restarts"]
-        .iter()
-        .map(|k| (k.to_string(), v[k].as_u64().expect("a counter")))
-        .collect()
+    [
+        "frames",
+        "boxes",
+        "dups",
+        "drops",
+        "restarts",
+        "reuse_attempts",
+        "reuses",
+        "borrow_candidates",
+        "borrows",
+    ]
+    .iter()
+    .map(|k| (k.to_string(), v[k].as_u64().expect("a counter")))
+    .collect()
 }
 
 #[test]

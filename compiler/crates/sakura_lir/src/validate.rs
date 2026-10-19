@@ -343,12 +343,12 @@ impl<'a> Checker<'a> {
     fn inst(&self, st: &mut State, inst: &Inst) -> R {
         use Inst::*;
         match inst {
-            Dup(v) | Drop(v) => {
+            Dup(v) | DupCandidate(v) | Drop(v) => {
                 self.not_id(*v, "is counted")?;
                 self.managed(*v)?;
                 self.use_var(st, *v, Use::Borrow)?;
                 let c = st.count.entry(*v).or_insert(0);
-                *c += if matches!(inst, Dup(_)) { 1 } else { -1 };
+                *c += if matches!(inst, Drop(_)) { -1 } else { 1 };
             }
             _ => {
                 for (v, u) in inst.uses() {
@@ -716,7 +716,7 @@ impl<'a> Checker<'a> {
                     "`TryPop` outside a `try` region".into()
                 })?;
             }
-            Dup(_) | Drop(_) | Hole { .. } | Unsupported { .. } => {}
+            Dup(_) | DupCandidate(_) | Drop(_) | Hole { .. } | Unsupported { .. } => {}
         }
         if let Some(d) = inst.dst() {
             self.define(st, d)?;

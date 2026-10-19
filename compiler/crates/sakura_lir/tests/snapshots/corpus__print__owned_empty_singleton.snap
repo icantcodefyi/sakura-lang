@@ -191,7 +191,7 @@ fn main#0 pub top -> unit ; main::owned_empty_singleton, frame 18 slots [%14 wor
     %144 s: ptr = concat %142, %143
     drop %142
     drop %143
-    dup %140
+    dup.candidate %140
     %145 r: i64 = $set_len(%140)
     %146 s: ptr = show %145
     %147 s: ptr = concat %144, %146

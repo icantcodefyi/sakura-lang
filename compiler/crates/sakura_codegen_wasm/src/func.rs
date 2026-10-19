@@ -1302,6 +1302,12 @@ impl Gen<'_, '_> {
                 self.dup(s, self.local(*v), live)?;
                 *live.entry(*v).or_default() += 1;
             }
+            Inst::DupCandidate(v) => {
+                s.local_get(self.local(*v));
+                self.call_rt(s, "rt_dup_candidate")?;
+                self.pad_if(s, live, None)?;
+                *live.entry(*v).or_default() += 1;
+            }
             Inst::Drop(v) => {
                 s.local_get(self.local(*v));
                 self.call_rt(s, "drop")?;

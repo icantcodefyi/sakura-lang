@@ -374,7 +374,7 @@ impl Rt {
         self.heap.mem.set_u32(m + 12, self.empty_list);
         let log2 = match s {
             Some(s) => self.list_set_in(log, s, entry),
-            None => self.list_push(log, entry),
+            None => self.list_push_update(log, entry),
         };
         let log2 = log2.inspect_err(|_| self.drop(m))?;
         self.heap.mem.set_u32(m + 12, log2);
@@ -382,7 +382,7 @@ impl Rt {
             return Ok(m);
         }
         let leaf = Ent::leaf(self.list_n(log2) - 1, h);
-        let root = if self.unique(hamt) {
+        let root = if self.reusable(hamt) {
             self.hset_in_place(hamt, 0, leaf)
         } else {
             let r = self
@@ -410,7 +410,7 @@ impl Rt {
             let c = self.ent(node, i);
             // A unique child is updated (or replaced and freed) by the recursion; a shared one
             // is copied and this node's reference to it released.
-            let in_place = self.is_branch(c) && self.unique(c.0);
+            let in_place = self.is_branch(c) && self.reusable(c.0);
             let c2 = if in_place {
                 Ent::node(self.hset_in_place(c.0, shift + 5, leaf)?)
             } else {
@@ -422,6 +422,9 @@ impl Rt {
             }
             return Ok(node);
         }
+        // No slot for the key: a larger node takes the entries over. `node` passed its test
+        // (every caller tested it), but its storage is not reused, so that hit is a miss.
+        self.heap.stats.reuses -= 1;
         let p = self.hnode_raw(bm | bit, n + 1)?;
         self.heap.mem.copy(p + 16, node + 16, 8 * i);
         self.heap
@@ -566,7 +569,7 @@ impl Rt {
     }
 
     pub fn map_insert(&mut self, m: u32, k: u32, v: u32) -> Res<u32> {
-        if self.unique(m) {
+        if self.reusable(m) {
             let e = self.pair(k, v).inspect_err(|_| self.drop(m))?;
             return self.upsert_owned(m, k, e, true);
         }
@@ -576,7 +579,7 @@ impl Rt {
     }
 
     pub fn map_remove(&mut self, m: u32, k: u32) -> Res<u32> {
-        let r = if self.unique(m) {
+        let r = if self.reusable(m) {
             self.without_owned(m, k, true)
         } else {
             let r = self.without(m, k, true);
@@ -655,7 +658,7 @@ impl Rt {
                 self.drop(x);
                 self.dup(s).map(|_| s)
             }
-            Ok(false) if self.unique(s) => return self.upsert_owned(s, x, x, false),
+            Ok(false) if self.reusable(s) => return self.upsert_owned(s, x, x, false),
             Ok(false) => self.upsert(s, x, x, false),
             Err(e) => {
                 self.drop(x);
@@ -691,7 +694,7 @@ impl Rt {
     }
 
     pub fn set_remove(&mut self, s: u32, x: u32) -> Res<u32> {
-        let r = if self.unique(s) {
+        let r = if self.reusable(s) {
             self.without_owned(s, x, false)
         } else {
             let r = self.without(s, x, false);

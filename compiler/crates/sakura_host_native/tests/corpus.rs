@@ -228,13 +228,17 @@ fn run_compiled(
 /// The counters of a `SAKURA_NATIVE_STATS` line (or of `s`) that do not depend on the static
 /// block's size, which differs because the evaluator interns every message up front.
 fn ownership(line: &str) -> Vec<(String, u64)> {
-    const KEPT: [&str; 6] = [
+    const KEPT: [&str; 10] = [
         "live_objects",
         "frames",
         "boxes",
         "dups",
         "drops",
         "restarts",
+        "reuse_attempts",
+        "reuses",
+        "borrow_candidates",
+        "borrows",
     ];
     line.trim()
         .trim_matches(|c| c == '{' || c == '}')
@@ -256,6 +260,10 @@ fn counters(s: &Stats) -> Vec<(String, u64)> {
         ("dups", s.dups),
         ("drops", s.drops),
         ("restarts", s.restarts),
+        ("reuse_attempts", s.reuse_attempts),
+        ("reuses", s.reuses),
+        ("borrow_candidates", s.borrow_candidates),
+        ("borrows", s.borrows),
     ]
     .into_iter()
     .map(|(k, v)| (k.to_string(), v))

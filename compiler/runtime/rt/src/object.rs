@@ -85,6 +85,17 @@ impl Rt {
         self.counted(w) && self.rc(w) == 1
     }
 
+    /// An owned update testing whether it may write `w` in place: [`Rt::unique`], counted
+    /// (ABI 1.3.0 `reuse_attempts` and `reuses`, design §17.176 (1)). A collection update
+    /// tests its wrapper and then each node on its path, so a hit on the wrapper never hides
+    /// a copied node below it.
+    pub(crate) fn reusable(&mut self, w: u32) -> bool {
+        let u = self.unique(w);
+        self.heap.stats.reuse_attempts += 1;
+        self.heap.stats.reuses += u64::from(u);
+        u
+    }
+
     /// `Dup`: one more owner. `D092` instead of wrapping at 2^32 − 1.
     pub fn dup(&mut self, w: u32) -> Res<()> {
         if !self.counted(w) {

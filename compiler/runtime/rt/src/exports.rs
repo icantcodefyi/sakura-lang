@@ -210,7 +210,8 @@ pub extern "C" fn rt_task_free(task: u32) {
 }
 
 /// The `stats()` counters (ABI §10), [`crate::STATS`] little-endian `u64`s: requested, live,
-/// peak, live objects, committed, free-list bytes, frames, boxes, dups, drops, restarts.
+/// peak, live objects, committed, free-list bytes, frames, boxes, dups, drops, restarts,
+/// reuse attempts, reuses, borrow candidates, borrows.
 /// Returns their address.
 #[cfg(target_arch = "wasm32")]
 #[unsafe(no_mangle)]
@@ -236,6 +237,10 @@ pub extern "C" fn rt_stats() -> u32 {
             s.dups,
             s.drops,
             s.restarts,
+            s.reuse_attempts,
+            s.reuses,
+            s.borrow_candidates,
+            s.borrows,
         ];
     }
     at as usize as u32
@@ -313,7 +318,11 @@ fn compiled_defect(rt: &mut Rt, code: u32, at: u32, len: u32) -> Defect {
 #[unsafe(no_mangle)]
 pub extern "C" fn rt_dup(#[cfg(not(target_arch = "wasm32"))] ctx: Ctx<'_>, w: u32) -> u32 {
     let mut cx = cx!(ctx);
-    let rt = cx.rt();
+    counted_dup(cx.rt(), w)
+}
+
+/// `Dup` for compiled code: counted in `dups`; 1 after raising `D092`.
+fn counted_dup(rt: &mut Rt, w: u32) -> u32 {
     rt.heap.stats.dups += 1;
     match rt.dup(w) {
         Ok(()) => 0,
@@ -322,6 +331,18 @@ pub extern "C" fn rt_dup(#[cfg(not(target_arch = "wasm32"))] ctx: Ctx<'_>, w: u3
             1
         }
     }
+}
+
+/// `rt_dup` at a `Dup` the LIR marked as a borrow candidate (ABI 1.3.0, design §17.176 (1)).
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_dup_candidate(
+    #[cfg(not(target_arch = "wasm32"))] ctx: Ctx<'_>,
+    w: u32,
+) -> u32 {
+    let mut cx = cx!(ctx);
+    let rt = cx.rt();
+    rt.heap.stats.borrow_candidates += 1;
+    counted_dup(rt, w)
 }
 
 /// A twin ran out of gauge and its frame-protocol caller runs the call again through frames.
@@ -1610,10 +1631,10 @@ builtins! {
     rt_b_list_len(xs: u32) -> i64 = plain |rt| rt.list_len(xs);
     rt_b_list_at(xs: u32, i: i64) -> u32 = ptr |rt| rt.list_at(xs, i);
     rt_b_list_get(xs: u32, i: i64) -> u32 = ptr |rt| rt.list_get(xs, i);
-    rt_b_list_push(xs: u32, x: u32) -> u32 = ptr |rt| rt.list_push(xs, x);
+    rt_b_list_push(xs: u32, x: u32) -> u32 = ptr |rt| rt.list_push_update(xs, x);
     // std/list's transient builders (design §17.116): here a builder is the list it finishes as.
     rt_b_list_builder() -> u32 = plain |rt| rt.list_empty();
-    rt_b_list_builder_push(b: u32, x: u32) -> u32 = ptr |rt| rt.list_push(b, x);
+    rt_b_list_builder_push(b: u32, x: u32) -> u32 = ptr |rt| rt.list_push_update(b, x);
     rt_b_list_builder_finish(b: u32) -> u32 = plain |rt| {
         let _ = rt;
         b

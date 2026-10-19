@@ -40,7 +40,7 @@ fn every_program_lowers_and_validates() {
                 for b in &f.blocks {
                     for i in &b.insts {
                         match i {
-                            lir::Inst::Dup(_) => dups += 1,
+                            lir::Inst::Dup(_) | lir::Inst::DupCandidate(_) => dups += 1,
                             lir::Inst::Drop(_) => drops += 1,
                             _ => {}
                         }

@@ -15,7 +15,7 @@ fn main#0 pub top -> unit ; main::fused_get_expect_out_of_range, frame 8 slots [
     call range#2(%0, %1) -> b1()
   b1(%2 r: ptr):
     %3 lit: i64 = const 39
-    dup %2
+    dup.candidate %2
     call at#3(%2, %3) -> b2(%2)
   b2(%4 r: i64, %5 r: ptr):
     %6 s: ptr = show %4

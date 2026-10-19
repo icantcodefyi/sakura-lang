@@ -101,6 +101,34 @@ user; if N1b has none, N1b deletes it. (4) The image builder moves to `sakura_li
 N2's first commit (the N2 row). (5) Host `Err` text follows one errno-class table on both hosts
 and a sleep is honoured for any duration on both (the N1b row); not an M4 item.
 
+**N0b completion (2026-10-19).** ABI 1.3.0's four counters follow `restarts` in `stats()`
+(120 bytes) and `sakura_abi_version` is `0x010400` on both targets (§17.229 (1)); the Node host,
+`SAKURA_NATIVE_STATS` and `bench/harness` read them, and a record adds `abi_version` and
+`reuse_rate` (`null` at 0 attempts). `reuse_attempts`/`reuses` count each uniqueness test of an
+owned `List`/`Map`/`Set` update (the wrapper, then each node it writes on the path; a node below
+a copied one is copied untested; a HAMT node that grows is a miss; the runtime's own list
+building is not counted), through one runtime helper (`Rt::reusable`). The LIR recomputes
+`opt::owned` from the snapshot by reading it back as Core (`sakura_core_snapshot::convert::back`,
+checked as `convert`'s exact inverse on the corpus), so one analysis serves both backends;
+`--target wasm --dump owned` prints it and `sakura_lir/tests/direct.rs` holds it equal to the JS
+dump on 243 programs. The ownership pass marks a `Dup` as `DupCandidate` when the reference
+stays live after a call that only reads it: a read-only builtin (`opt::owned::BORROWS`) or a
+direct top-level def whose summary borrows the parameter (never a closure or a bound
+perform's clause); it calls `rt_dup_candidate` (internal to the
+linked module). `borrows` is 0. Acceptance as built: `reuse_and_borrow_counters_reconcile_by_hand`
+(`sakura_cli/tests/wasm.rs`) pins nine hand-audited fixtures, including a wrapper hit over a
+copied tail; `bench_counters.txt` records the baseline for every benchmark before N3, with the
+1.2 counters unchanged; the native corpus compares the four counters with the evaluator.
+**Readings for the designer:** (1) `E` covers what `opt::owned` tracks (collections, carriers,
+functions); a `String` read by `String.length` with the string live after is not a candidate.
+(2) Miss reasons are not built: `stats()` is the only channel and N3 adds the layout and
+no-candidate misses. (3) N0b changes no WASM code, so the allocation-bound WASM cells (row 195)
+should not move at N0b's window. (4) A list literal is an empty list and one push per element, so
+it counts as `n` attempts and `n − 1` hits. (5) The paired `rbtree` records are row M's.
+(6) `Map.remove`/`Set.remove` reuse the wrapper and log but copy the HAMT path through `hdel`
+with no test, so those copies are not attempts; an in-place index delete is N3's.
+AI implementation: Claude Opus 5.5; the human contributor owns acceptance.
+
 **N2 progress (2026-10-19), in landable slices.** Each keeps the gates green, never lowers the
 native corpus count and leaves JS and WASM output unchanged. **N2a, frame-protocol code (landed):**
 `sakura_codegen_native::emit` lowers every LIR function to a CLIF function `(ctx, env, frame) ->

@@ -44,7 +44,7 @@ fn $entry#1 top -> unit ; main::defect_D010_generic_refinement_from, frame 1 slo
 fn NonEmpty$from#2 top -> ptr ; main::defect_D010_generic_refinement_from, frame 2 slots [%0 word*, %1 i64]
   b0(%0 it: ptr, %1 $site: i64):
     %2 enter: unit = $contract_enter()
-    dup %0
+    dup.candidate %0
     %3 r: i64 = $list_len(%0)
     %4 lit: i64 = const 0
     %5 t: bool = gt.int %3, %4

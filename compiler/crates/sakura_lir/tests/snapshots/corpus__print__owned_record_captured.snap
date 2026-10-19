@@ -53,7 +53,7 @@ fn main#0 pub top -> unit ; main::owned_record_captured, frame 38 slots [%1 word
     %28 lit: i64 = const 2
     %29 box: word = box %28
     %30 xs: ptr = alloc list(%25, %27, %29)
-    dup %22
+    dup.candidate %22
     call total#6(%22, %30) -> b6(%22)
   b6(%31 r: i64, %32 r: ptr):
     %33 lit: i64 = const 1
@@ -286,7 +286,7 @@ fn keep_start#7 top -> ptr ; main::owned_record_captured, frame 9 slots [%0 word
     drop %7
     drop %8
     %10 lit: i64 = const 0
-    dup %6
+    dup.candidate %6
     call var_of#11(%6, %10) -> b3(%6, %9)
   b3(%11 r: i64, %12 p: ptr, %13 s: ptr):
     %14 s: ptr = show %11
@@ -355,7 +355,7 @@ fn keep_for_handler#10 top -> ptr ; main::owned_record_captured, frame 8 slots [
     ret %5
   b3(%6 p: ptr, %7 i: i64) [try]:
     %8 lit: i64 = const 0
-    dup %6
+    dup.candidate %6
     call var_of#11(%6, %8) -> b4(%6)
   b4(%9 r: i64, %10 p: ptr) [try]:
     %11 lit: i64 = const 200

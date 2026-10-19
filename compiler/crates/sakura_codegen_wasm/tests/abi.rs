@@ -21,5 +21,5 @@ fn the_node_host_implements_the_shared_abi_revision_and_counters() {
         .filter(|n| !n.is_empty())
         .collect();
     assert_eq!(names.len(), STATS, "{names:?}");
-    assert_eq!(names.last(), Some(&"restarts"));
+    assert_eq!(names.last(), Some(&"borrows"));
 }

@@ -783,6 +783,12 @@ impl<'p, 'c> Run<'p, 'c> {
                 self.dup(*v, false)?;
                 self.live.add(*v);
             }
+            Inst::DupCandidate(v) => {
+                if rt::rt_dup_candidate(self.ctx, self.word(*v)) != 0 {
+                    return Err(self.pad(false, None));
+                }
+                self.live.add(*v);
+            }
             Inst::Drop(v) => {
                 rt::drop(ctx, self.word(*v));
                 self.live.consume(*v);

@@ -35,7 +35,7 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     %20 box: word = box %18
     drop %20
     %21 f: ptr = closure main$1#2[]
-    dup %19
+    dup.candidate %19
     call map#4(%19, %21) -> b2(%19)
   b2(%22 r: ptr, %23 xs: ptr):
     %24 s: ptr = show %22
@@ -46,7 +46,7 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     drop %27
     dup %26
     %28 f: ptr = closure main$2#5[%26]
-    dup %26
+    dup.candidate %26
     call map#4(%26, %28) -> b4(%26)
   b4(%29 r: ptr, %30 xs: ptr):
     %31 s: ptr = show %29
@@ -293,7 +293,7 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
   b31(%239 r: unit, %240 xs: ptr, %241 xs: ptr):
     %242 box: word = box %239
     drop %242
-    dup %241
+    dup.candidate %241
     %243 n: i64 = $list_len(%241)
     %381 lit: i64 = const 0
     jump b39(%381, %240, %241, %243)
@@ -302,7 +302,7 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     %246 f: ptr = closure main$5#13[]
     call fold#14(%244, %245, %246) -> b33()
   b33(%247 r: word):
-    dup %247
+    dup.candidate %247
     %248 r: i64 = $map_len(%247)
     %249 s: ptr = show %248
     %250 lit: ptr = const str 0
@@ -311,7 +311,7 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     drop %250
     %252 v: ptr = const static std::option::Option.None
     %253 r: ptr = alloc std::option::Option.Some(%252)
-    dup %247
+    dup.candidate %247
     %254 r: ptr = $map_get(%247, %253)
     %255 s: ptr = show %254
     drop %254
@@ -323,7 +323,7 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     drop %256
     drop %257
     %259 v: ptr = const static std::option::Option.None
-    dup %247
+    dup.candidate %247
     %260 r: ptr = $map_get(%247, %259)
     %261 s: ptr = show %260
     drop %260
@@ -395,7 +395,7 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     %312 more: bool = lt.int %308, %311
     if %312 then b40(%309, %310, %311, %308) else b41(%309, %310, %311, %308)
   b40(%313 xs: ptr, %314 xs: ptr, %315 n: i64, %316 i: i64):
-    dup %314
+    dup.candidate %314
     %321 x: word = $list_at(%314, %316)
     %328 value: word = proj %321.1 main::nested_options::Cell
     %347 tag: i64 = tag %328 ctor std::option::Option
