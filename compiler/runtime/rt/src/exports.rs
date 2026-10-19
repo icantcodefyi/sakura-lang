@@ -810,7 +810,21 @@ pub extern "C" fn rt_vt_begin(#[cfg(not(target_arch = "wasm32"))] ctx: Ctx<'_>) 
         r
     });
     rt.vt.n = 0;
+    rt.vt.wipe = false;
     status(rt, r)
+}
+
+/// The call in progress carries key material (`std/crypto`'s `hosted` imports, ABI 1.6.0): the
+/// argument buffer is overwritten wherever it is freed or copied from, and so is the answer
+/// once `rt_vt_result` has decoded it.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_vt_wipe(#[cfg(not(target_arch = "wasm32"))] ctx: Ctx<'_>) {
+    let mut cx = cx!(ctx);
+    let rt = cx.rt();
+    rt.vt.wipe = true;
+    if let Some(b) = rt.vt.args.as_mut() {
+        b.wipe();
+    }
 }
 
 fn push(rt: &mut Rt, f: impl FnOnce(&mut Rt, &mut crate::scratch::StrBuf) -> Res<()>) -> u32 {
@@ -867,8 +881,7 @@ pub extern "C" fn rt_vt_end(#[cfg(not(target_arch = "wasm32"))] ctx: Ctx<'_>) ->
         return ptr(rt, Err(Defect::INTERNAL));
     };
     rt.heap.mem.set_u32(b.obj() + 16 + 1, rt.vt.n);
-    let s = rt.finish(b);
-    let r = rt.string_to_bytes(s);
+    let r = rt.finish_bytes(b);
     ptr(rt, r)
 }
 
@@ -920,6 +933,9 @@ pub extern "C" fn rt_vt_result(
         2 if len >= 5 => Err(host_defect(rt, at + 1, len - 1)),
         _ => Err(crate::vt::MALFORMED),
     };
+    if core::mem::take(&mut rt.vt.wipe) {
+        rt.heap.mem.fill(at, 0, len);
+    }
     rt.drop(b);
     match r {
         Ok(s) => s,

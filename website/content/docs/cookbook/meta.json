@@ -11,6 +11,7 @@
     "budgeted_agent",
     "indexed_update",
     "url_build",
-    "form_upload"
+    "form_upload",
+    "sign_webhook"
   ]
 }

@@ -281,6 +281,8 @@ fn a_host_answer_of_another_shape_than_the_declared_result_is_d090() {
         (&handle(2), top::DIR, false),
         (&handle(2), top::BODY, true),
         (&handle(6), top::BODY, false),
+        (&[t::BYTES, 1, 0, 0, 0, 7], top::BYTES, true),
+        (&string("s"), top::BYTES, false),
         (&int(1), top::ANY, true),
         (&int(1), 99, false),
     ];

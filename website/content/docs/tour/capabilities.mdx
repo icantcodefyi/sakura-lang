@@ -259,7 +259,7 @@ test "only the signed body is authentic" {
 
 `generate_key` draws its material from `Random`, the one source of entropy. `Random.host()` is the operating system's generator. Under `Random.seeded`, the test default, the same seed makes the same key on every backend, which is why seeded randomness is for tests only: a key made under it is not secret.
 
-On `--target wasm` the crypto primitives are not available yet. They reach the host through new ABI imports, which arrive after the `v0.1.0` tag, and until then a call is the defect `D090`. JS and native compute them now, and the official NIST and RFC vectors hold the two equal.
+The primitives are `node:crypto` on `--target js`, the same functions in the Node host on `--target wasm`, and the RustCrypto crates on `--target native`. The official NIST and RFC vectors hold the three equal. The [signed webhook recipe](/docs/cookbook/sign_webhook) puts this check behind a router endpoint.
 
 ## The trusted computing base
 

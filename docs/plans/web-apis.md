@@ -376,6 +376,13 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
   `D020`; `crypto.verify`; HKDF and PBKDF2 keys extractable when imported so; the host-floor
   limits as typed errors on every backend. Still to do on `main` now: the 2^20-byte PBKDF2
   output bound as `Err(CryptoError(Length(bits)))`, replacing native `D096` / JS `D090`.
+- **7a-W built (held branch `hold/webapis-7a-wasm`, stacked on #5).** The five `crypto_*`
+  builtins are `hosted` imports of an ABI module (`sakura_lir::image::WASM_HOSTED`, outside
+  the `HOSTED` table native shares, since native has them as `rt_b_crypto_*`); the guest zeroes
+  the argument tuple before freeing it and the Node host zeroes its copied slice, the decoded
+  `Bytes` and its answer. A WASI command (the pure corpus on Wasmtime) has no JS host, so the
+  seven fixtures stay in the corpus test's `KNOWN` for `Host::Wasi` only; `parity.rs`'s
+  `KNOWN` is empty.
 
 ### Phase 7b: `std/crypto` tier 1b
 

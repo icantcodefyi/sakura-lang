@@ -28,21 +28,7 @@ use std::path::{Path, PathBuf};
 
 /// Fixtures that do not agree yet, and why. Empty since W2 (plan §3.7 row 3); a fixture
 /// that WASM cannot run yet goes here with the reason.
-const KNOWN: &[(&str, &str)] = &[
-    // `std/crypto` on WASM is the host's through `hosted` imports, an ABI MINOR revision that
-    // waits for the `v0.1.0` tag (design §17.263 (2)); until then each primitive is `D090`.
-    ("crypto_derive_rejects_bounds.sak", CRYPTO_ON_WASM),
-    (
-        "crypto_generate_under_seeded_random_is_deterministic.sak",
-        CRYPTO_ON_WASM,
-    ),
-    ("crypto_hkdf_rfc5869.sak", CRYPTO_ON_WASM),
-    ("crypto_hmac_rfc4231.sak", CRYPTO_ON_WASM),
-    ("crypto_pbkdf2_rfc7914.sak", CRYPTO_ON_WASM),
-    ("crypto_sha2_cavp.sak", CRYPTO_ON_WASM),
-    ("crypto_verify_rejects_tampered.sak", CRYPTO_ON_WASM),
-];
-const CRYPTO_ON_WASM: &str = "std/crypto's hosted imports wait for the tag (ABI MINOR)";
+const KNOWN: &[(&str, &str)] = &[];
 
 struct Run {
     code: Option<i32>,

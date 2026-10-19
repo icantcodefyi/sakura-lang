@@ -12,30 +12,47 @@ use std::process::Command;
 use sakura_codegen_wasm::{Host, Options};
 use sakura_lir::snapshot;
 
-/// `std/crypto`'s primitives on WASM wait for their hosted imports (design §17.263 (2)).
-const CRYPTO_ON_WASM: &str = "std/crypto's hosted imports wait for the v0.1.0 tag (ABI MINOR)";
+/// `std/crypto`'s primitives are the Node host's `hosted` imports (ABI 1.6.0); a WASI command
+/// has no JS host and the wasm32 runtime no cryptography (design §17.266 (1)).
+const CRYPTO_ON_WASI: &str = "std/crypto is Node host imports, which WASI lacks";
 
 /// Programs that cannot run as a bare corpus module, on one runner (`Some`) or both, with
 /// the reason. `sakura_cli/tests/parity.rs` runs them all through `sakura build --target wasm`.
 const KNOWN: &[(&str, Option<Host>, &str)] = &[
     (
         "semantics/crypto_derive_rejects_bounds",
-        None,
-        CRYPTO_ON_WASM,
+        Some(Host::Wasi),
+        CRYPTO_ON_WASI,
     ),
     (
         "semantics/crypto_generate_under_seeded_random_is_deterministic",
-        None,
-        CRYPTO_ON_WASM,
+        Some(Host::Wasi),
+        CRYPTO_ON_WASI,
     ),
-    ("semantics/crypto_hkdf_rfc5869", None, CRYPTO_ON_WASM),
-    ("semantics/crypto_hmac_rfc4231", None, CRYPTO_ON_WASM),
-    ("semantics/crypto_pbkdf2_rfc7914", None, CRYPTO_ON_WASM),
-    ("semantics/crypto_sha2_cavp", None, CRYPTO_ON_WASM),
+    (
+        "semantics/crypto_hkdf_rfc5869",
+        Some(Host::Wasi),
+        CRYPTO_ON_WASI,
+    ),
+    (
+        "semantics/crypto_hmac_rfc4231",
+        Some(Host::Wasi),
+        CRYPTO_ON_WASI,
+    ),
+    (
+        "semantics/crypto_pbkdf2_rfc7914",
+        Some(Host::Wasi),
+        CRYPTO_ON_WASI,
+    ),
+    (
+        "semantics/crypto_sha2_cavp",
+        Some(Host::Wasi),
+        CRYPTO_ON_WASI,
+    ),
     (
         "semantics/crypto_verify_rejects_tampered",
-        None,
-        CRYPTO_ON_WASM,
+        Some(Host::Wasi),
+        CRYPTO_ON_WASI,
     ),
     (
         "semantics/sql_untrusted_param",

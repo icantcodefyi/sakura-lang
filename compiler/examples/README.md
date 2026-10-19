@@ -48,5 +48,6 @@ cookbook and `skills/sakura/references/recipes.md` through `agent_docs`.
 | `indexed_update` | run + test |
 | `url_build` | run + test |
 | `form_upload` | test (script and router) |
+| `sign_webhook` | test (direct router calls) |
 
 See [cookbook.md](cookbook.md) for the compiler baseline and regeneration command.

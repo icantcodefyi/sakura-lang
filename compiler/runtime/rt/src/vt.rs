@@ -46,6 +46,8 @@ pub struct Transport {
     pub(crate) args: Option<StrBuf>,
     pub(crate) n: u32,
     pub(crate) result: u64,
+    /// The call carries key material (`rt_vt_wipe`): the answer is overwritten once decoded.
+    pub(crate) wipe: bool,
 }
 
 pub const MAX_DEPTH: u32 = 64;
@@ -99,6 +101,7 @@ pub mod top {
     pub const CLI_ERROR: u32 = 7;
     pub const DIR: u32 = 8;
     pub const BODY: u32 = 9;
+    pub const BYTES: u32 = 10;
 }
 
 pub const MALFORMED: Defect = Defect {
@@ -195,6 +198,7 @@ impl Rt {
             top::CLI_ERROR => typed(self.type_named(b"std::cli::CliError")),
             top::DIR => handle(DIR),
             top::BODY => handle(BODY),
+            top::BYTES => tagged(tag::BYTES),
             _ => false,
         };
         if ok { Ok(()) } else { Err(MALFORMED) }

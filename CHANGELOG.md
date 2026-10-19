@@ -21,6 +21,12 @@ retains earlier implementation history.
 - The WASM runtime ABI is 1.5.0 (`sakura_abi_version` `0x010500`): the `sync` import
   `clock_monotonic_us() -> i64` backs `Clock.monotonic_micros` on `Clock.host`. A 1.4 host
   refuses a 1.5 module (`V8003`); the Node host and the native host implement the import.
+- The WASM runtime ABI is 1.6.0 (`sakura_abi_version` `0x010600`; design §17.266 (1)):
+  `std/crypto` runs on `--target wasm`, where its primitives were the defect `D090`. Its five
+  primitives are `hosted` imports the Node host serves with `node:crypto`, as the JS backend
+  does, so the NIST CAVP and RFC vectors agree on JS, WASM and native. Key material crosses
+  as `Bytes`; the guest zeroes every copy of the argument tuple and the answer before freeing
+  them, and the host zeroes its copies. A 1.5 host refuses a 1.6 module (`V8003`); a WASI command does not have the imports.
 
 ### Added
 
@@ -35,6 +41,9 @@ retains earlier implementation history.
   `read_line` answers `lines` in order and then end of input (the dialogs need scripted
   input, which `Console.captured` does not take). The concurrency tour shows the
   `setTimeout`, `setInterval` and `clearTimeout` idioms.
+- A cookbook recipe, `sign_webhook`: a router endpoint that checks a delivery's Base64
+  HMAC-SHA-256 `X-Signature` with a verify-only `CryptoKey` (`key.verify`, constant time),
+  tested with a changed body, another secret and a missing or malformed header.
 
 ## [0.1.0] - 2026-10-20
 

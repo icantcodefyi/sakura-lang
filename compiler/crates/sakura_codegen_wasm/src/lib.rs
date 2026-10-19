@@ -13,7 +13,7 @@ pub mod link;
 pub mod validate;
 pub mod wasi;
 
-use sakura_lir::image::{self, HOSTED, Statics};
+use sakura_lir::image::{self, Statics};
 use sakura_lir::lir::{Callee, Module, Term};
 use wasm_encoder::{BlockType, ExportKind, Function, MemArg, ValType};
 
@@ -145,7 +145,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
             }
         }
         used.into_iter()
-            .filter(|n| HOSTED.iter().any(|(h, _)| h == n))
+            .filter(|n| image::wasm_hosted(n).is_some())
             .collect()
     };
     let imports = if wasi {

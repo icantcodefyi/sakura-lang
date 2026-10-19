@@ -1,0 +1,89 @@
+// milestone: M3
+// mode: test
+// spec: RFC 0002 §2.7
+
+import std/bytes.{Alphabet}
+import std/crypto
+import std/crypto.{Algorithm, CryptoKey, Digest, KeyError, KeyFormat, Usage}
+import std/request.{Request}
+import std/response.{Response, Status}
+import std/router.{Router}
+
+/// The provider's signing secret as an HMAC-SHA-256 key that can only verify.
+fn webhook_key(secret: Secret<String>) -> Result<CryptoKey, KeyError> {
+  let material = Secret.map(secret, fn(s) { String.to_bytes(s) }, @trust("webhook signing key"))
+  crypto.import_key(KeyFormat.Raw, Algorithm.Hmac(Digest.Sha256), [Usage.Verify], false, material)
+}
+
+/// Whether `x-signature` is the Base64 HMAC-SHA-256 of the body under `key`, compared in
+/// constant time. A missing or malformed header is not authentic.
+fn authentic(key: CryptoKey, req: Request) -> Bool {
+  match Request.header(req, "x-signature").map(fn(s) { Bytes.from_base64(s, Alphabet.Standard) }) {
+    Some(Ok(tag)) => key.verify(tag, String.to_bytes(req.body)),
+    _ => false,
+  }
+}
+
+fn receive(key: CryptoKey, req: Request) -> Response {
+  if authentic(key, req) {
+    Response.status(200, "accepted")
+  } else {
+    Response.status(401, "bad signature")
+  }
+}
+
+fn app(key: CryptoKey) -> Router<{}> {
+  Router.new().post("/webhook", fn(req) { receive(key, req) })
+}
+
+/// What the provider does: sign `body` with the shared secret and send the tag in a header.
+fn delivery(secret: String, body: String) -> Request {
+  let signer = crypto.import_key(
+    KeyFormat.Raw,
+    Algorithm.Hmac(Digest.Sha256),
+    [Usage.Sign],
+    false,
+    Secret.of(String.to_bytes(secret)),
+  )
+  let tag = match signer {
+    Ok(key) => Bytes.to_base64(crypto.hmac(key, String.to_bytes(body)), Alphabet.Standard, true),
+    Err(_) => "",
+  }
+  Request { ..Request.post("/webhook", body), headers: [("X-Signature", tag)] }
+}
+
+fn status_of(req: Request) -> Status {
+  match webhook_key(Secret.of("whsec_test")) {
+    Ok(key) => Router.handle(app(key), req).status,
+    Err(_) => Status.from(500),
+  }
+}
+
+test "a delivery signed with the shared secret is accepted" {
+  expect_eq(status_of(delivery("whsec_test", "\{\"event\":\"paid\"\}")), Status.from(200))
+}
+
+test "a changed body or another secret is rejected" {
+  let signed = delivery("whsec_test", "\{\"event\":\"paid\"\}")
+  expect_eq(status_of(Request { ..signed, body: "\{\"event\":\"refund\"\}" }), Status.from(401))
+  expect_eq(status_of(delivery("whsec_other", "\{\"event\":\"paid\"\}")), Status.from(401))
+}
+
+test "a missing or malformed signature is rejected" {
+  let signed = delivery("whsec_test", "ping")
+  expect_eq(status_of(Request { ..signed, headers: [] }), Status.from(401))
+  expect_eq(
+    status_of(Request { ..signed, headers: [("x-signature", "not base64!")] }),
+    Status.from(401),
+  )
+}
+
+test "the receiving key can verify but not sign" {
+  match webhook_key(Secret.of("whsec_test")) {
+    Ok(key) => {
+      expect(crypto.permits(key, Usage.Verify))
+      expect(!crypto.permits(key, Usage.Sign))
+    },
+    Err(_) => expect(false),
+  }
+}

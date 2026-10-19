@@ -1707,10 +1707,7 @@ impl Gen<'_, '_> {
         live: &Live,
     ) -> Result<u32, String> {
         let import = self.env.hosted[name];
-        let expect = sakura_lir::image::HOSTED
-            .iter()
-            .find(|(h, _)| *h == name)
-            .map_or(0, |&(_, t)| t);
+        let expect = sakura_lir::image::wasm_hosted(name).unwrap_or(0);
         // Until `rt_vt_end` the unpushed arguments are still held here.
         let mut held = live.clone();
         for &a in args {
@@ -1720,6 +1717,11 @@ impl Gen<'_, '_> {
         }
         self.call_rt(s, "rt_vt_begin")?;
         self.pad_if(s, &held, None)?;
+        let wipe = name.starts_with("crypto_");
+        if wipe {
+            // Key material (`std/crypto`'s revealed `Secret`s, ABI §8.1, 1.6.0).
+            self.call_rt(s, "rt_vt_wipe")?;
+        }
         for &a in args {
             let push = match self.repr(a) {
                 Repr::I64 => "rt_vt_push_i64",
@@ -1742,6 +1744,13 @@ impl Gen<'_, '_> {
         s.local_get(self.lu).i32_const(12).i32_add();
         s.local_get(self.lu).i32_load(mem(8, 2));
         s.call(import).local_set(self.lf2);
+        if wipe {
+            // The tuple itself, before the block is freed.
+            s.local_get(self.lu).i32_const(12).i32_add();
+            s.i32_const(0);
+            s.local_get(self.lu).i32_load(mem(8, 2));
+            s.memory_fill(0);
+        }
         s.local_get(self.lu);
         self.call_rt(s, "drop")?;
         s.local_get(self.lf2);
