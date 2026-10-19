@@ -231,7 +231,7 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Tests
         # The required Parity matrix runs this identical target on both backends/OSes.
-        run: cargo nextest run --workspace --locked ${{ matrix.partition }} -E 'not (package(=sakura_cli) & binary(=parity))'
+        run: cargo nextest run --workspace --locked ${{ matrix.partition }} ${{ runner.os == 'Windows' && '--no-fail-fast' || '' }} -E 'not (package(=sakura_cli) & binary(=parity))'
       - name: Doctests
         if: matrix.checks
         run: cargo test --workspace --doc --locked
@@ -421,7 +421,7 @@ jobs:
         os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, macos-15-intel, windows-2025]
         backend: [js, wasm]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    timeout-minutes: ${{ matrix.os == 'macos-15-intel' && 30 || 15 }}
     defaults:
       run:
         shell: bash

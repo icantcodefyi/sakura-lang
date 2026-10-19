@@ -41,7 +41,13 @@ fn setup(tag: &str) -> PathBuf {
     )
     .unwrap();
     std::fs::write(out.join("__tests__.js"), TESTS).unwrap();
-    std::fs::canonicalize(dir).unwrap()
+    // Resolve Unix temp-directory symlinks for Node's grants; Windows' canonicalize adds
+    // a verbatim prefix that Node's loader does not use when checking those grants.
+    #[cfg(unix)]
+    let dir = std::fs::canonicalize(dir).unwrap();
+    #[cfg(not(unix))]
+    let dir = std::path::absolute(dir).unwrap();
+    dir
 }
 
 fn run(dir: &Path, filter: &str, update: bool) -> (Option<i32>, Vec<serde_json::Value>) {
@@ -62,8 +68,9 @@ fn run(dir: &Path, filter: &str, update: bool) -> (Option<i32>, Vec<serde_json::
         .output()
         .expect("node");
     assert!(
-        out.status.code().is_some(),
-        "{}",
+        matches!(out.status.code(), Some(0 | 3)),
+        "unexpected runner status {:?}: {}",
+        out.status.code(),
         String::from_utf8_lossy(&out.stderr)
     );
     let recs = String::from_utf8(out.stdout)
