@@ -1,0 +1,3 @@
+pub fn greeting() -> String { "café" }
+
+pub fn count() -> Int { "suppressed" }

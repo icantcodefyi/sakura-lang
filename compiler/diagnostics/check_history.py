@@ -21,7 +21,7 @@ def parse(text):
         code, status, title = fields
         if not re.fullmatch(r"[VWD][0-9]{3,4}", code):
             raise ValueError(f"line {number}: invalid code {code}")
-        if status not in STATUSES or not re.fullmatch(r"[a-z_]+", title):
+        if status not in STATUSES or not re.fullmatch(r"[a-z][a-z0-9_]*", title):
             raise ValueError(f"line {number}: invalid status or title")
         if code in entries:
             raise ValueError(f"line {number}: duplicate {code}")

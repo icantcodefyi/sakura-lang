@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
 use lsp_types as lsp;
-use sakura_analysis::{Analysis, Analyzed, Snapshot, disk};
+use sakura_analysis::{Analysis, Analyzed, Snapshot, Source, disk};
 use sakura_diagnostics::{Diagnostic, FileId, Severity, Span, hole_records};
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
@@ -83,7 +83,8 @@ pub fn serve() -> Result<(), String> {
 struct Server {
     /// Workspace files as last read from disk, re-read before every analysis so edits outside
     /// the editor (an agent, `git checkout`) show up on the next keystroke.
-    disk: Vec<(String, String)>,
+    /// A file that is not UTF-8 stays one (`V0015`, design §17.243 (3)).
+    disk: Vec<Source>,
     root: PathBuf,
     utf8: bool,
     /// The client takes `documentChanges`: quick fixes then name the document version they were
@@ -200,12 +201,10 @@ impl Server {
 
     fn reload_disk(&mut self) {
         self.disk = match disk::load(&disk::default_roots(&self.root)) {
-            Ok(s) => s
-                .files()
-                .iter()
-                .map(|f| (f.uri.clone(), f.text.clone()))
+            Ok(s) => s.sources().collect(),
+            Err(_) => (sakura_analysis::std_sources())
+                .map(|(uri, text)| Source::text(uri, text))
                 .collect(),
-            Err(_) => sakura_analysis::std_sources().collect(),
         };
     }
 
@@ -260,14 +259,14 @@ impl Server {
     /// Re-analyzes disk files overlaid with open documents and publishes diagnostics.
     fn reanalyze(&mut self) -> Vec<Notification> {
         self.reload_disk();
-        let mut files: Vec<(String, String)> = self
+        let mut files: Vec<Source> = self
             .disk
             .iter()
-            .filter(|(uri, _)| !self.open.contains_key(uri))
+            .filter(|s| !self.open.contains_key(&s.file.uri))
             .cloned()
             .collect();
-        files.extend(self.open.iter().map(|(u, (_, t))| (u.clone(), t.clone())));
-        let a = Analysis::analyze(&Snapshot::new(files));
+        files.extend((self.open.iter()).map(|(u, (_, t))| Source::text(u.clone(), t.clone())));
+        let a = Analysis::analyze(&Snapshot::of(files));
         self.current = Some(a.clone());
         self.publish(&a)
     }

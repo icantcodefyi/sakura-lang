@@ -1,0 +1,10 @@
+// milestone: M1
+// expect: V0015 V2001
+// A source file that is not UTF-8 is `V0015` at its first invalid byte, and nothing else in it
+// is reported; the other files are checked (design §17.243 (3), §17.253 (1)). `names.sak` holds
+// one Latin-1 byte, 0xE9, in a string, and a type error after it.
+import main/names
+
+pub fn shout() -> String { names.greeting() }
+
+pub fn wrong() -> Int { "not an Int" }

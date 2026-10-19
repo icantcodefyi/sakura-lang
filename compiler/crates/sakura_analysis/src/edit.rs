@@ -52,17 +52,13 @@ impl FileEdit {
 impl Snapshot {
     /// A new snapshot with `edits` applied, or the first conflict: an unknown or stale content
     /// hash, an out-of-range or non-character-boundary offset, overlapping edits, or an edit to
-    /// the embedded std library.
+    /// the embedded std library or to a file that is not UTF-8.
     pub fn apply_edits(&self, edits: &[FileEdit]) -> Result<Snapshot, Conflict> {
         let conflict = |uri: &str, reason: String| Conflict {
             uri: uri.to_owned(),
             reason,
         };
-        let mut files: Vec<(String, String)> = self
-            .files
-            .iter()
-            .map(|f| (f.uri.clone(), f.text.clone()))
-            .collect();
+        let mut files: Vec<crate::Source> = self.sources().collect();
         let mut uris: Vec<&str> = edits.iter().map(|e| e.uri.as_str()).collect();
         uris.sort_unstable();
         uris.dedup();
@@ -74,6 +70,13 @@ impl Snapshot {
             // Stable: insertions at one offset keep their given order.
             mine.sort_by_key(|e| (e.start_byte, e.end_byte));
             let existing = self.file_id(uri).map(|id| self.file(id));
+            // Its text is not its bytes, so an edit would rewrite them (`V0015`).
+            if self
+                .file_id(uri)
+                .is_some_and(|id| self.not_utf8(id).is_some())
+            {
+                return Err(conflict(uri, "the file is not UTF-8 (V0015)".into()));
+            }
             let text = match existing {
                 Some(f) => {
                     for e in &mine {
@@ -125,12 +128,12 @@ impl Snapshot {
                 at = end;
             }
             out.push_str(&text[at..]);
-            match files.iter_mut().find(|(u, _)| u == uri) {
-                Some(f) => f.1 = out,
-                None => files.push((uri.to_owned(), out)),
+            match files.iter_mut().find(|s| s.file.uri == uri) {
+                Some(s) => *s = crate::Source::text(uri.to_owned(), out),
+                None => files.push(crate::Source::text(uri.to_owned(), out)),
             }
         }
-        Ok(Snapshot::new(files))
+        Ok(Snapshot::of(files))
     }
 }
 

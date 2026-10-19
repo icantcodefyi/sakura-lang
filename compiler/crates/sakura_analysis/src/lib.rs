@@ -42,10 +42,60 @@ pub fn std_sources() -> impl Iterator<Item = (String, String)> {
         .map(|(path, text)| (format!("sakura:///std/{path}"), (*text).to_owned()))
 }
 
+/// A file read from disk whose bytes are not UTF-8 (`V0015`, design §17.243 (3), §17.253 (1)):
+/// the first invalid byte and its offset. The file's text is the bytes decoded with each invalid
+/// sequence replaced by U+FFFD, so the text before `offset` is the file's own, and its content
+/// hash is the bytes'.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct NotUtf8 {
+    pub offset: u32,
+    pub byte: u8,
+}
+
+/// One input file of a [`Snapshot`]: its text, or the bytes of a file that is not UTF-8.
+#[derive(Clone, Debug)]
+pub struct Source {
+    pub file: SourceFile,
+    pub not_utf8: Option<NotUtf8>,
+}
+
+impl Source {
+    pub fn text(uri: String, text: String) -> Source {
+        Source {
+            file: SourceFile::new(uri, text),
+            not_utf8: None,
+        }
+    }
+
+    /// A file's bytes as read from disk: its text when they are UTF-8, else [`NotUtf8`].
+    pub fn bytes(uri: String, bytes: Vec<u8>) -> Source {
+        match String::from_utf8(bytes) {
+            Ok(text) => Source::text(uri, text),
+            Err(e) => {
+                let offset = e.utf8_error().valid_up_to();
+                let bytes = e.into_bytes();
+                Source {
+                    file: SourceFile {
+                        uri,
+                        text: String::from_utf8_lossy(&bytes).into_owned(),
+                        content_hash: sha256(&bytes),
+                    },
+                    not_utf8: Some(NotUtf8 {
+                        offset: offset as u32,
+                        byte: bytes[offset],
+                    }),
+                }
+            }
+        }
+    }
+}
+
 /// An immutable set of source files plus the hash that identifies it (`snapshot` in JSON).
 #[derive(Clone, Debug)]
 pub struct Snapshot {
     files: Vec<SourceFile>,
+    /// By `FileId`: the files that are not UTF-8.
+    not_utf8: Vec<Option<NotUtf8>>,
     hash: String,
 }
 
@@ -53,23 +103,43 @@ impl Snapshot {
     /// Files are sorted std first, then by URI, so the same inputs give the same `FileId`s and
     /// hash, and std's `FileId`s are a prefix shared by every snapshot (design §17.195).
     pub fn new(files: impl IntoIterator<Item = (String, String)>) -> Self {
-        let mut files: Vec<SourceFile> = files
-            .into_iter()
-            .map(|(uri, text)| SourceFile::new(uri, text))
-            .collect();
-        files.sort_by(|a, b| (!is_std(&a.uri), &a.uri).cmp(&(!is_std(&b.uri), &b.uri)));
-        files.dedup_by(|a, b| a.uri == b.uri);
+        Snapshot::of(files.into_iter().map(|(uri, text)| Source::text(uri, text)))
+    }
+
+    /// [`Snapshot::new`] over sources, some of which may not be UTF-8.
+    pub fn of(sources: impl IntoIterator<Item = Source>) -> Self {
+        let mut sources: Vec<Source> = sources.into_iter().collect();
+        sources.sort_by(|a, b| {
+            let (a, b) = (&a.file.uri, &b.file.uri);
+            (!is_std(a), a).cmp(&(!is_std(b), b))
+        });
+        sources.dedup_by(|a, b| a.file.uri == b.file.uri);
         let mut material = String::new();
-        for f in &files {
-            material.push_str(&f.uri);
+        for s in &sources {
+            material.push_str(&s.file.uri);
             material.push('\0');
-            material.push_str(&f.content_hash);
+            material.push_str(&s.file.content_hash);
             material.push('\n');
         }
+        let (files, not_utf8) = sources.into_iter().map(|s| (s.file, s.not_utf8)).unzip();
         Snapshot {
             hash: sha256(material.as_bytes()),
             files,
+            not_utf8,
         }
+    }
+
+    /// The snapshot's files as [`Source`]s, to build another snapshot from.
+    pub fn sources(&self) -> impl Iterator<Item = Source> + '_ {
+        (self.files.iter().zip(&self.not_utf8)).map(|(f, n)| Source {
+            file: f.clone(),
+            not_utf8: *n,
+        })
+    }
+
+    /// Whether file `id` was read from bytes that are not UTF-8 (`V0015`).
+    pub fn not_utf8(&self, id: FileId) -> Option<NotUtf8> {
+        self.not_utf8[id.0 as usize]
     }
 
     pub fn files(&self) -> &[SourceFile] {
@@ -94,6 +164,12 @@ impl Snapshot {
     /// A snapshot of `files` plus the embedded std library.
     pub fn with_std(files: impl IntoIterator<Item = (String, String)>) -> Self {
         Snapshot::new(files.into_iter().chain(std_sources()))
+    }
+
+    /// [`Snapshot::with_std`] over sources, some of which may not be UTF-8.
+    pub fn of_with_std(sources: impl IntoIterator<Item = Source>) -> Self {
+        let std = std_sources().map(|(uri, text)| Source::text(uri, text));
+        Snapshot::of(sources.into_iter().chain(std))
     }
 
     /// Sakura Lang modules that are not part of the embedded std library.
@@ -549,7 +625,10 @@ fn analyze<'a>(snapshot: &Snapshot, prevs: impl IntoIterator<Item = &'a Analyzed
                         ..d.clone()
                     }),
             ),
-            None => diagnostics.extend(parse(i).iter().flat_map(|p| p.errors.iter().cloned())),
+            None => match snapshot.not_utf8[i] {
+                Some(n) => diagnostics.push(not_utf8(FileId(i as u32), n)),
+                None => diagnostics.extend(parse(i).iter().flat_map(|p| p.errors.iter().cloned())),
+            },
         }
     }
     let (mut program, lowered) = lower(
@@ -621,6 +700,12 @@ fn analyze<'a>(snapshot: &Snapshot, prevs: impl IntoIterator<Item = &'a Analyzed
     diagnostics.extend(reserved_package_name(snapshot));
     diagnostics.extend(dependencies_not_supported(snapshot));
     diagnostics.extend(manifest_invalid(snapshot));
+    // A file that is not UTF-8 is a broken module: `V0015` is its one diagnostic, by the cascade
+    // rule by place (design §17.207 (1), §17.243 (3)); the other files are checked as usual.
+    diagnostics.retain(|d| {
+        d.code == codes::V0015
+            || !(d.spans.first()).is_some_and(|s| snapshot.not_utf8[s.file.0 as usize].is_some())
+    });
     let roots: Vec<Option<sakura_syntax::SyntaxNode>> = (0..parses.len())
         .map(|i| match reused_file[i] {
             true => None,
@@ -665,6 +750,10 @@ impl Analysis {
     /// The canonical formatting of one file (design §12.5), or its parse errors: the formatter
     /// refuses files that do not parse.
     pub fn format(snapshot: &Snapshot, file: FileId) -> Result<String, Vec<Diagnostic>> {
+        // Its text is not the file's bytes, so formatting it would rewrite them.
+        if let Some(n) = snapshot.not_utf8(file) {
+            return Err(vec![not_utf8(file, n)]);
+        }
         sakura_fmt::format(&snapshot.file(file).text).map_err(|mut diags| {
             for d in &mut diags {
                 set_file(d, file);
@@ -935,6 +1024,17 @@ fn manifest_invalid(snapshot: &Snapshot) -> Option<Diagnostic> {
     )
 }
 
+/// `V0015` for file `file`, which is not UTF-8, at its first invalid byte (design §17.243 (3),
+/// §17.253 (1)): an empty span, since the byte is no character of the decoded text.
+fn not_utf8(file: FileId, n: NotUtf8) -> Diagnostic {
+    let message = format!(
+        "the source file is not UTF-8: invalid byte 0x{:02X} at offset {}",
+        n.byte, n.offset
+    );
+    Diagnostic::error(codes::V0015, Phase::Lex, message)
+        .with_span(Span::primary(file, n.offset, n.offset))
+}
+
 /// Parses file `file` of `snapshot`, or `None` if it is not a Sakura Lang module.
 fn parse_file(snapshot: &Snapshot, file: FileId) -> Option<sakura_syntax::Parse> {
     let source = snapshot.file(file);
@@ -1076,13 +1176,14 @@ mod tests {
                 s.spawn(move || {
                     for files in chunk {
                         let snapshot = |edited: Option<usize>| {
-                            Snapshot::with_std(files.iter().enumerate().map(|(i, f)| {
+                            // Bytes, as `disk::load` reads them (a `V0015` fixture is not UTF-8).
+                            Snapshot::of_with_std(files.iter().enumerate().map(|(i, f)| {
                                 let name = f.file_name().unwrap().to_string_lossy();
-                                let mut text = std::fs::read_to_string(f).unwrap();
+                                let mut bytes = std::fs::read(f).unwrap();
                                 if edited == Some(i) {
-                                    text.push('\n');
+                                    bytes.push(b'\n');
                                 }
-                                (format!("file:///t/src/{name}"), text)
+                                Source::bytes(format!("file:///t/src/{name}"), bytes)
                             }))
                         };
                         let out = |a: &Analyzed| {

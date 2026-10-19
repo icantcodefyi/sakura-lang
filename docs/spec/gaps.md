@@ -41,8 +41,9 @@ separator placement, incomplete fractions, exponents and radix prefixes case by 
 rule's token sets under LF, CRLF and comments, and the
 [reserved-word fixture](../../compiler/crates/sakura_syntax/tests/data/err/reserved_positions.sak)
 places every future word in each position.
-[invalid_utf8_source_is_a_usage_error](../../compiler/crates/sakura_cli/tests/cli.rs) pins
-that the CLI refuses a non-UTF-8 file with exit 2 before lexing.
+[invalid_utf8_source_is_v0015](../../compiler/crates/sakura_cli/tests/cli.rs) and the
+[V0015 fixture](../../compiler/tests/ui/V0015_source_not_utf8/app.sak) pin that a non-UTF-8
+source file is `V0015` from the loader, exit 1, with its other diagnostics suppressed.
 Decided in design §17.243 (round 27); the fixtures follow the decisions, which were:
 
 - `-9223372036854775808` is `V0003` because the lexer rejects the positive magnitude before
@@ -56,8 +57,9 @@ Decided in design §17.243 (round 27); the fixtures follow the decisions, which 
   [misplaced-separator fixture](../../compiler/tests/ui/V0006_misplaced_digit_separator.sak).
 - A non-UTF-8 file has no diagnostic code, only the usage error; `sakura_syntax::lex`
   accepts a Rust string, so totality is claimed over text, not arbitrary bytes.
-  → `V0015 source_not_utf8` (planned) from the loader, a `tests/ui` fixture; `lex` keeps `&str`
+  → `V0015 source_not_utf8` from the loader, a `tests/ui` fixture; `lex` keeps `&str`
   (§17.243 (3), read with `V0015` by §17.253 (1); `V0014` stays `named_argument`).
+  `sakura.toml` is still read as text, so a manifest that is not UTF-8 stays a usage error.
 
 ## Grammar alternatives and divergence fixtures
 

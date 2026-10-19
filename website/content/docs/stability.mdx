@@ -51,8 +51,8 @@ first version that honours the guarantees, so they are not breaking changes unde
   the contract.
 - **Lexical rules.** An `Int` literal is in `[0, 2^63 − 1]`; write the minimum as `Int.min`.
   A digit separator `_` goes only between two digits.
-- **A source file that is not UTF-8** becomes a diagnostic (`V0015 source_not_utf8`,
-  planned) instead of a usage error.
+- **A source file that is not UTF-8** becomes a diagnostic,
+  [`V0015 source_not_utf8`](/docs/errors/V0015), instead of a usage error.
 - **`[permissions] process` is reserved.** `process = []` is accepted and grants nothing,
   the same as leaving the key out. Today a non-empty list is accepted and also grants
   nothing; it becomes [`V8006`](/docs/errors/V8006).

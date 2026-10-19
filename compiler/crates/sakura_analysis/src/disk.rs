@@ -4,7 +4,7 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::Snapshot;
+use crate::{Snapshot, Source};
 
 /// Reads every `.sak` file under `roots` (files or directories; `target`, `node_modules` and
 /// dot-directories are skipped) plus the project's `sakura.toml` into a snapshot with the std
@@ -53,15 +53,23 @@ fn read(roots: &[PathBuf], analyze: bool) -> Result<Snapshot, String> {
     let mut sources = Vec::new();
     for path in files {
         let abs = std::path::absolute(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-        let text = std::fs::read_to_string(&abs).map_err(|e| format!("{}: {e}", path.display()))?;
-        let std = analyze.then(|| std_uri(&abs)).flatten();
-        sources.push((std.unwrap_or_else(|| file_uri(&abs)), text));
+        // Bytes, so a file that is not UTF-8 is `V0015` in the analysis, not an error here
+        // (design §17.243 (3)).
+        // `sakura.toml` is not a source file: read as text, so one that is not UTF-8 is still
+        // this function's error.
+        let uri = (analyze.then(|| std_uri(&abs)).flatten()).unwrap_or_else(|| file_uri(&abs));
+        let source = if is_manifest(&uri) {
+            std::fs::read_to_string(&abs).map(|text| Source::text(uri, text))
+        } else {
+            std::fs::read(&abs).map(|bytes| Source::bytes(uri, bytes))
+        };
+        sources.push(source.map_err(|e| format!("{}: {e}", path.display()))?);
     }
     if !analyze {
-        return Ok(Snapshot::new(sources));
+        return Ok(Snapshot::of(sources));
     }
     // Files given explicitly come first, so a std file read from disk replaces its embedded copy.
-    Ok(Snapshot::with_std(sources))
+    Ok(Snapshot::of_with_std(sources))
 }
 
 /// `sakura:///std/<path>` for a file inside a std library checkout (a directory named `std` with

@@ -91,9 +91,21 @@ fn fixture(ui: &Path, names: &[String], code: &str) -> Result<Option<Fixture>, S
             .filter(|n| n.ends_with(".sak") || n == "sakura.toml")
             .collect();
         files.sort();
+        // A file that is not UTF-8 (`V0015`'s fixture) is described, not shown.
+        let read_any = |name: &str| {
+            let bytes = std::fs::read(ui.join(name))
+                .map_err(|e| format!("cannot read {UI}/{name}: {e}"))?;
+            Ok::<String, String>(String::from_utf8(bytes).unwrap_or_else(|e| {
+                let at = e.utf8_error().valid_up_to();
+                format!(
+                    "// This file is not UTF-8 (byte 0x{:02X} at offset {at}), so it is not shown here.",
+                    e.as_bytes()[at]
+                )
+            }))
+        };
         let files = files
             .into_iter()
-            .map(|f| Ok((f.clone(), read(&format!("{dir}/{f}"))?)))
+            .map(|f| Ok((f.clone(), read_any(&format!("{dir}/{f}"))?)))
             .collect::<Result<Vec<_>, String>>()?;
         let jsonl_name = format!("{dir}.jsonl");
         let jsonl = names

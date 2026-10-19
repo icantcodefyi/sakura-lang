@@ -23,6 +23,12 @@ Releases follow the [stability policy](STABILITY.md). The published preview is
   `LinkError`. A module this host cannot link is now the defect `D090` "the host could not
   link the module" (exit `70`) from `run` and `test` alike. A stripped module is still
   compared after instantiation.
+- A source file that is not UTF-8 is now the diagnostic `V0015 source_not_utf8` (design
+  §17.243 (3), §17.253 (1)) instead of a usage error with exit `2`: `check`, `build`, `run`,
+  `test`, `verify`, `fmt` and the LSP report it at the first invalid byte (the message names
+  the byte and its offset), `--json` carries it like any `V` with exit `1`, the file's other
+  diagnostics are suppressed and the other files are checked. `sakura fmt` and edits never
+  rewrite such a file. `sakura.toml` that is not UTF-8 is still a usage error.
 
 ## [0.1.0] - Unreleased
 

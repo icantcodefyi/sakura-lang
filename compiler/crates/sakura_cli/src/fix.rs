@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
-use sakura_analysis::{Analysis, FileEdit, Frozen, Snapshot, disk};
+use sakura_analysis::{Analysis, FileEdit, Frozen, Snapshot, Source, disk};
 use sakura_diagnostics::diagnostic_records;
 use serde_json::Value;
 
@@ -191,23 +191,28 @@ pub fn git_base(rev: &str, roots: &[PathBuf]) -> Result<Snapshot, String> {
         )?;
         for name in listed.split('\0').filter(|n| n.ends_with(".sak")) {
             let path = dir.join(name);
-            let text = git(&dir, &["show", &format!("{rev}:./{name}")])?;
-            files.push((
+            let bytes = git_bytes(&dir, &["show", &format!("{rev}:./{name}")])?;
+            files.push(Source::bytes(
                 disk::std_uri(&path).unwrap_or_else(|| disk::file_uri(&path)),
-                text,
+                bytes,
             ));
         }
         if let Some(manifest) = disk::manifest_near(root)
             && let Some(mdir) = manifest.parent()
             && let Ok(text) = git(mdir, &["show", &format!("{rev}:./sakura.toml")])
         {
-            files.push((disk::file_uri(&manifest), text));
+            files.push(Source::text(disk::file_uri(&manifest), text));
         }
     }
-    Ok(Snapshot::with_std(files))
+    Ok(Snapshot::of_with_std(files))
 }
 
 fn git(dir: &Path, args: &[&str]) -> Result<String, String> {
+    String::from_utf8(git_bytes(dir, args)?).map_err(|e| e.to_string())
+}
+
+/// `git`'s stdout as bytes: a source file that is not UTF-8 is `V0015`, not an error here.
+fn git_bytes(dir: &Path, args: &[&str]) -> Result<Vec<u8>, String> {
     let out = Command::new("git")
         .current_dir(dir)
         .args(args)
@@ -220,5 +225,5 @@ fn git(dir: &Path, args: &[&str]) -> Result<String, String> {
             String::from_utf8_lossy(&out.stderr).trim()
         ));
     }
-    String::from_utf8(out.stdout).map_err(|e| e.to_string())
+    Ok(out.stdout)
 }

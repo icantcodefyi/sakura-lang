@@ -22,16 +22,45 @@ fn usage_errors_exit_2() {
     assert!(missing.stderr.contains("error:"));
 }
 
-/// Source text is UTF-8: a file that is not is a usage error naming it, before any lexing,
-/// so no diagnostic code is involved (docs/spec/gaps.md).
+/// Design §17.243 (3), §17.253 (1): a source file that is not UTF-8 is `V0015` at its first
+/// invalid byte from every command that loads sources, `--json` as any `V` and exit 1; `fmt`
+/// leaves its bytes alone.
 #[test]
-fn invalid_utf8_source_is_a_usage_error() {
+fn invalid_utf8_source_is_v0015() {
+    let bytes = b"fn main() -> Unit { \"\xff\" }\n";
     let dir = tmp("invalid-utf8", "");
-    std::fs::write(dir.join("main.sak"), b"fn main() -> Unit { \"\xff\" }\n").unwrap();
-    let out = sakura(&["check", "main.sak"], &dir);
-    assert_eq!(out.code, Some(2), "{}", out.stderr);
-    assert!(out.stderr.starts_with("error: main.sak:"), "{}", out.stderr);
-    assert!(!out.stderr.contains("error["), "{}", out.stderr);
+    std::fs::write(dir.join("main.sak"), bytes).unwrap();
+    let out = sakura(&["check", "--json", "main.sak"], &dir);
+    assert_eq!(out.code, Some(1), "{}", out.stderr);
+    let recs = common::json_lines(&out.stdout).unwrap();
+    assert_eq!(recs.len(), 2, "{}", out.stdout);
+    assert_eq!(recs[0]["code"], "V0015");
+    assert_eq!(recs[0]["phase"], "lex");
+    assert_eq!(
+        recs[0]["message"],
+        "the source file is not UTF-8: invalid byte 0xFF at offset 21"
+    );
+    assert_eq!(recs[0]["spans"][0]["start_byte"], 21);
+    assert_eq!(recs[0]["spans"][0]["end_byte"], 21);
+    // The span's content hash is the file's bytes', not its decoded text's.
+    assert_eq!(
+        recs[0]["spans"][0]["content_hash"],
+        sakura_diagnostics::sha256(bytes)
+    );
+    for command in [
+        &["build", "main.sak"][..],
+        &["fmt", "main.sak"],
+        &["fmt", "--check"],
+    ] {
+        let out = sakura(command, &dir);
+        assert_eq!(out.code, Some(1), "{command:?}: {}", out.stderr);
+        assert!(
+            out.stderr.contains("error[V0015]"),
+            "{command:?}: {}",
+            out.stderr
+        );
+    }
+    assert_eq!(std::fs::read(dir.join("main.sak")).unwrap(), bytes);
 }
 
 /// Design §17.179 (rename:keep): `.sakura` is no source extension, and says so.

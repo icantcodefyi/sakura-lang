@@ -26,6 +26,10 @@ The position fixture gives each word as a function, effect operation, and member
 
 **G05** LF and CRLF are line terminators, a line-comment token excludes the CR of CRLF, and a raw CRLF inside a string denotes LF. [crlf_means_lf](../../compiler/crates/sakura_syntax/src/lexer.rs), [CRLF semantics](../../compiler/tests/semantics/line_endings_crlf.sak), [LF semantics](../../compiler/tests/semantics/line_endings_lf.sak).
 
+Informative: the lexer reads text, so source is UTF-8; a source file whose bytes are not is
+`V0015` from the loader, at the first invalid byte, and nothing else in that file is reported
+([V0015 fixture](../../compiler/tests/ui/V0015_source_not_utf8/app.sak); design §17.243 (3)).
+
 **G06** Strings use double quotes, allow raw newlines, and use `{ Expression }` for interpolation, including nested strings. [Strings](../../compiler/crates/sakura_syntax/tests/data/ok/lexical.sak), [tree-sitter lexical corpus](../../editors/tree-sitter-sakura/test/corpus/lexical.txt).
 
 **G07** Valid escapes are `\\`, `\"`, `\n`, `\r`, `\t`, `\0`, `\{`, `\}`, and `\u{hex}` for a Unicode scalar value, while an invalid escape produces `V0005`. [strings_and_escapes](../../compiler/crates/sakura_syntax/src/lexer.rs), [invalid escape](../../compiler/tests/ui/V0005_invalid_escape.sak).

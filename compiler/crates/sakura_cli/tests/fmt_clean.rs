@@ -1,6 +1,7 @@
 //! Plan §4 gate 8 (§17.121): `sakura fmt --check` is clean on every `.sak` under `std/`,
 //! `examples/`, `tests/semantics/` and `tests/ui/`. Skipped: `tests/fmt/` (formatter inputs),
-//! `tests/ui` fixtures whose `expect:` holds a `V00xx` parse code, and `tests/semantics` or
+//! `tests/ui` fixtures whose `expect:` holds a `V00xx` parse code or that are not UTF-8
+//! (`V0015`), and `tests/semantics` or
 //! `tests/ui` fixtures with the harness directive `// fmt: exempt covers <productions>`. The
 //! directive anywhere else fails.
 
@@ -77,7 +78,14 @@ fn fmt_clean() {
             .to_str()
             .unwrap()
             .replace('\\', "/");
-        match checked(&rel, &std::fs::read_to_string(&path).unwrap()) {
+        // `fmt` refuses a file that is not UTF-8 (`V0015`), which only its ui fixture may be.
+        let Ok(text) = String::from_utf8(std::fs::read(&path).unwrap()) else {
+            if !rel.starts_with("tests/ui/") {
+                errors.push(format!("{rel}: not UTF-8"));
+            }
+            continue;
+        };
+        match checked(&rel, &text) {
             Ok(true) => check.push(path),
             Ok(false) => {}
             Err(e) => errors.push(e),

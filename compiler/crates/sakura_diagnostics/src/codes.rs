@@ -151,6 +151,13 @@ Wrong:
 Fixed:
     clamp(x, 0, 10)";
 
+    V0015 "source_not_utf8" LEX,
+"The source file is not UTF-8. Sakura Lang source is UTF-8 text; the message names the first
+invalid byte and its offset, where the span points. The rest of that file is not checked until
+its encoding is fixed (its other diagnostics would be about text it does not hold); the other
+files are checked as usual. Save the file as UTF-8: a Latin-1 `é` is the byte 0xE9, which UTF-8
+writes as 0xC3 0xA9. `sakura fmt` and edits leave such a file untouched.";
+
     // 1: resolve / modules
     V1001 "duplicate_definition" RESOLVE,
 "Two items in the same module and namespace have the same name (design §9). Rename or remove one;
@@ -981,10 +988,11 @@ mod tests {
                 !info.title.is_empty() && !info.explain.trim().is_empty(),
                 "{c}"
             );
+            // snake_case, a digit after the first letter (`source_not_utf8`, design §17.253 (1)).
             assert!(
-                info.title
-                    .bytes()
-                    .all(|b| b.is_ascii_lowercase() || b == b'_'),
+                info.title.starts_with(|c: char| c.is_ascii_lowercase())
+                    && (info.title.bytes())
+                        .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_'),
                 "{c}"
             );
             assert_eq!(

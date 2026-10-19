@@ -10,6 +10,42 @@ const BROKEN: &str = "fn double(x: Int) -> Int { x * true }\n\n\
 const FIXED: &str = "fn double(x: Int) -> Int { x * 2 }\n\n\
                      test \"doubles\" { expect_eq(double(2), 4) }\n";
 
+/// Design §17.243 (3): a workspace file the server reads from disk that is not UTF-8 is `V0015`
+/// at its first invalid byte, alone, and the rest of the workspace is analysed (before, the
+/// server fell back to std alone and reported nothing).
+#[test]
+fn a_disk_file_that_is_not_utf8_is_v0015() {
+    let dir = std::env::temp_dir().join(format!("sakura-lsp-latin1-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("main.sak"), "fn one() -> Int { true }\n").unwrap();
+    std::fs::write(
+        dir.join("names.sak"),
+        b"fn cafe() -> String { \"caf\xe9\" }\n",
+    )
+    .unwrap();
+    let root = common::file_uri(&dir);
+    let (mut c, _) = Lsp::start(&root);
+    let main = format!("{root}/main.sak");
+    let doc = json!({"uri": main, "languageId": "sakura", "version": 1,
+                     "text": "fn one() -> Int { true }\n"});
+    c.notify("textDocument/didOpen", json!({"textDocument": doc}));
+    // Published in file order: `main.sak`, then `names.sak`.
+    let main_diags = c.diagnostics(&main);
+    assert!(
+        main_diags.iter().any(|d| d["code"] == "V2001"),
+        "{main_diags:?}"
+    );
+    let diags = c.diagnostics(&format!("{root}/names.sak"));
+    assert_eq!(diags.len(), 1, "{diags:?}");
+    assert_eq!(diags[0]["code"], "V0015");
+    assert_eq!(
+        diags[0]["range"]["start"],
+        json!({"line": 0, "character": 26})
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 #[test]
 fn diagnostics_navigation_and_formatting_over_stdio() {
     let dir = std::env::temp_dir().join(format!("sakura lsp é-{}", std::process::id()));

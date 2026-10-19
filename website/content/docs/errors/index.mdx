@@ -6,7 +6,7 @@ description: "Every Sakura Lang diagnostic code with its explanation, a program 
 
 Every diagnostic code the compiler and the runtime report, with its explanation, a program that triggers it and, where one is checked in, the fixed program. Codes are stable and never renumbered (design §12.3); `sakura explain <code>` prints the same explanation offline, and a diagnostic's `explanation_uri` (`sakura://explain/<code>`) maps to `/docs/errors/<code>`. `V` codes are errors, `W` warnings and `D` runtime defects; the [diagnostics reference](/docs/agents/diagnostics) describes the JSON records.
 
-93 codes; 65 pages show a fixed program that the compiler's test suite checks.
+94 codes; 65 pages show a fixed program that the compiler's test suite checks.
 
 ## Lex and parse
 
@@ -26,6 +26,7 @@ Every diagnostic code the compiler and the runtime report, with its explanation,
 | [V0012](/docs/errors/V0012) | `keyword_expression_operand` | `if`, `match`, `with`, `try`, `fn`, `handler` and `fail` expressions cannot be operands of a binary or postfix operator without parentheses (design §3.2). |
 | [V0013](/docs/errors/V0013) | `invalid_assign_target` | The left side of `=` must be a `var` name or a field path on one (`u.email = e`). |
 | [V0014](/docs/errors/V0014) | `named_argument` | Calls take positional arguments only (design §3.2 rule 13); `name: value` exists only inside attribute arguments. |
+| [V0015](/docs/errors/V0015) | `source_not_utf8` | The source file is not UTF-8. |
 
 ## Names and modules
 

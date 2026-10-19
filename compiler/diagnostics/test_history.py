@@ -40,9 +40,14 @@ class HistoryTests(unittest.TestCase):
 
     def test_malformed_or_empty_registry_fails_closed(self):
         for text in ["", "# comment", "V1001 active", "V1001 unknown title",
-                     "V1001 active title\nV1001 active title", "X1001 active title"]:
+                     "V1001 active title\nV1001 active title", "X1001 active title",
+                     "V1001 active 8bit", "V1001 active Title"]:
             with self.subTest(text=text), self.assertRaises(ValueError):
                 parse(text)
+
+    def test_titles_may_hold_digits_after_the_first_letter(self):
+        self.assertEqual({"V0015": ("active", "source_not_utf8")},
+                         parse("V0015 active source_not_utf8"))
 
     def test_initial_source_baseline_preserves_retirement(self):
         source = '    V5002 "old" CONTRACT,\n"Retired (design): never reported.\n'

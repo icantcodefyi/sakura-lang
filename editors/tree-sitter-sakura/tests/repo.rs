@@ -169,7 +169,15 @@ fn every_sak_file_parses_like_the_compiler() {
         .unwrap();
     let (mut compared, mut failures) = (0, Vec::new());
     for file in &files {
-        let text = std::fs::read_to_string(root.join(file)).unwrap();
+        // A file that is not UTF-8 is `V0015`, which only the compiler's loader reports.
+        let Ok(text) = String::from_utf8(std::fs::read(root.join(file)).unwrap()) else {
+            if !compiler_only.contains(file) {
+                failures.push(format!(
+                    "{file}: not UTF-8; list it in test/compiler-only.txt"
+                ));
+            }
+            continue;
+        };
         let tree = parser.parse(&text, None).unwrap();
         let ts_error = tree.root_node().has_error();
         let cst_error = !sakura_syntax::parse(&text).errors.is_empty();
