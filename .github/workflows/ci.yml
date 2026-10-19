@@ -1,3 +1,7 @@
+# Diff main from its last green CI run so cancelled changes stay covered.
+# Unknown paths, missing history, nightly and manual runs check everything.
+# Superseded PR/main runs cancel. Each nightly has an isolated, non-cancelling group.
+# ci-required keeps its branch-protection name and accepts only success/intentional skips.
 name: CI
 
 on:
@@ -13,12 +17,42 @@ permissions:
   contents: read
 
 concurrency:
-  # PRs share a group per PR (superseded runs cancel); every main commit gets its own run.
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name == 'schedule' && github.run_id || github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
 
 jobs:
+  changes:
+    name: Changes
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      base: ${{ steps.paths.outputs.base }}
+      compiler: ${{ steps.paths.outputs.compiler }}
+      website: ${{ steps.paths.outputs.website }}
+      docs: ${{ steps.paths.outputs.docs }}
+      workflows: ${{ steps.paths.outputs.workflows }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Test change detection
+        run: python3 -m unittest discover -s tools/ci -v
+      - name: Detect changed areas
+        id: paths
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: python3 tools/ci/changes.py
+
   website:
+    needs: changes
+    if: needs.changes.outputs.website == 'true' || needs.changes.outputs.docs == 'true' || needs.changes.outputs.compiler == 'true' || needs.changes.outputs.workflows == 'true'
     name: Website
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -61,6 +95,8 @@ jobs:
           python3 scripts/check-doc-links.py http://127.0.0.1:3000
 
   rust:
+    needs: changes
+    if: needs.changes.outputs.compiler == 'true' || needs.changes.outputs.workflows == 'true'
     name: Rust (${{ matrix.label }})
     strategy:
       fail-fast: false
@@ -133,6 +169,8 @@ jobs:
           cache-workspace-crates: true
           shared-key: compiler
           key: wasm32-unknown-unknown
+          cache-bin: false
+          save-if: ${{ matrix.checks }}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 26
@@ -239,7 +277,14 @@ jobs:
           echo "$RUNNER_TEMP/solvers/cvc5/bin" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/solvers/z3/bin/z3" --version
           "$RUNNER_TEMP/solvers/cvc5/bin/cvc5" --version
+      - name: Cache cargo-nextest
+        id: cache-nextest
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cargo/bin/cargo-nextest*
+          key: cargo-nextest-0.9.148-${{ runner.os }}-${{ runner.arch }}
       - name: Install cargo-nextest
+        if: steps.cache-nextest.outputs.cache-hit != 'true'
         uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
         with:
           tool: cargo-nextest@0.9.148
@@ -258,11 +303,6 @@ jobs:
       - name: Agent docs are fresh (design §17.142)
         if: matrix.checks
         run: cargo run -p agent_docs --locked -- --check
-      - name: Check authored documentation examples
-        if: matrix.os == 'ubuntu-latest' && matrix.checks
-        env:
-          SAKURA_BIN: ${{ github.workspace }}/compiler/target/debug/sakura
-        run: python3 ../website/scripts/check-doc-sweep.py
       - name: Windows installer fixture tests
         if: runner.os == 'Windows' && matrix.checks
         shell: pwsh
@@ -273,6 +313,8 @@ jobs:
         run: ../tools/install/test.ps1 -Binary target/debug/sakura.exe
 
   msrv:
+    needs: changes
+    if: needs.changes.outputs.compiler == 'true' || needs.changes.outputs.workflows == 'true'
     name: Rust MSRV
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -297,6 +339,8 @@ jobs:
           workspaces: compiler
           shared-key: msrv-${{ env.MSRV }}
           key: wasm32-unknown-unknown
+          cache-workspace-crates: true
+          cache-bin: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 26
@@ -369,7 +413,14 @@ jobs:
           echo "$RUNNER_TEMP/solvers/cvc5/bin" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/solvers/z3/bin/z3" --version
           "$RUNNER_TEMP/solvers/cvc5/bin/cvc5" --version
+      - name: Cache cargo-nextest
+        id: cache-nextest
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cargo/bin/cargo-nextest*
+          key: cargo-nextest-0.9.148-${{ runner.os }}-${{ runner.arch }}
       - name: Install cargo-nextest
+        if: steps.cache-nextest.outputs.cache-hit != 'true'
         uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
         with:
           tool: cargo-nextest@0.9.148
@@ -379,6 +430,8 @@ jobs:
         run: cargo "+$MSRV" nextest run --workspace --locked -E 'not (package(=sakura_cli) & binary(=parity))'
 
   native:
+    needs: changes
+    if: needs.changes.outputs.compiler == 'true' || needs.changes.outputs.workflows == 'true'
     name: Native (${{ matrix.os }})
     strategy:
       fail-fast: false
@@ -471,6 +524,8 @@ jobs:
           valgrind --error-exitcode=1 --leak-check=full "$RUNNER_TEMP/n0a"
 
   parity:
+    needs: changes
+    if: needs.changes.outputs.compiler == 'true' || needs.changes.outputs.workflows == 'true'
     name: Parity (${{ matrix.backend }}, ${{ matrix.os }})
     # Share Rust's build cache without waiting for the full workspace test suites.
     strategy:
@@ -502,6 +557,7 @@ jobs:
           cache-workspace-crates: true
           shared-key: compiler
           key: wasm32-unknown-unknown
+          cache-bin: false
           save-if: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -520,6 +576,8 @@ jobs:
           if-no-files-found: error
 
   vscode:
+    needs: changes
+    if: needs.changes.outputs.compiler == 'true' || needs.changes.outputs.workflows == 'true'
     name: VS Code extension
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -568,6 +626,8 @@ jobs:
           if-no-files-found: error
 
   tree-sitter:
+    needs: changes
+    if: needs.changes.outputs.compiler == 'true' || needs.changes.outputs.workflows == 'true' || needs.changes.outputs.docs == 'true' || needs.changes.outputs.website == 'true'
     name: Tree-sitter grammar
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -619,6 +679,8 @@ jobs:
           cargo "+$toolchain" test
 
   diagnostic-codes:
+    needs: changes
+    if: needs.changes.outputs.compiler == 'true' || needs.changes.outputs.docs == 'true' || needs.changes.outputs.website == 'true' || needs.changes.outputs.workflows == 'true'
     name: Diagnostic code history
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -633,10 +695,14 @@ jobs:
         run: python3 -m unittest discover -s compiler/diagnostics -v
       - name: Preserve every previous code assignment (RFC 0001)
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || github.sha }}
-        run: python3 compiler/diagnostics/check_history.py --base "$BASE_SHA"
+          BASE_SHA: ${{ needs.changes.outputs.base }}
+        run: |
+          test -n "$BASE_SHA"
+          python3 compiler/diagnostics/check_history.py --base "$BASE_SHA"
 
   release-tooling:
+    needs: changes
+    if: needs.changes.outputs.compiler == 'true' || needs.changes.outputs.docs == 'true' || needs.changes.outputs.workflows == 'true'
     name: Release policy
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -656,32 +722,60 @@ jobs:
       - name: Check candidate deprecations and MSRV
         run: python3 -I tools/release/release.py prepare
 
+  doc-checks:
+    name: Documentation examples
+    needs: changes
+    if: needs.changes.outputs.docs == 'true' || needs.changes.outputs.website == 'true' || needs.changes.outputs.compiler == 'true' || needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SAKURA_BIN: ${{ github.workspace }}/compiler/target/debug/sakura
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned Rust toolchain
+        working-directory: compiler
+        run: |
+          rustup show active-toolchain || rustup toolchain install
+          rustup target add wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: compiler
+          cache-workspace-crates: true
+          shared-key: compiler
+          key: wasm32-unknown-unknown
+          cache-bin: false
+          save-if: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - name: Build documentation compiler
+        working-directory: compiler
+        run: cargo build -p sakura_cli --locked
+      - name: Agent docs are fresh (design §17.142)
+        working-directory: compiler
+        run: cargo run -p agent_docs --locked -- --check
+      - name: Check authored documentation examples
+        run: python3 website/scripts/check-doc-sweep.py
+
   ci-required:
     name: ci-required
     if: always()
     # The rust result requires every matrix child, including both partitions on each OS.
-    needs: [website, rust, msrv, native, parity, vscode, tree-sitter, diagnostic-codes, release-tooling]
+    needs: [changes, website, rust, msrv, native, parity, vscode, tree-sitter, diagnostic-codes, release-tooling, doc-checks]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Check all jobs
         env:
-          WEBSITE_RESULT: ${{ needs.website.result }}
-          RUST_RESULT: ${{ needs.rust.result }}
-          MSRV_RESULT: ${{ needs.msrv.result }}
-          DIAGNOSTIC_CODES_RESULT: ${{ needs.diagnostic-codes.result }}
-          NATIVE_RESULT: ${{ needs.native.result }}
-          PARITY_RESULT: ${{ needs.parity.result }}
-          VSCODE_RESULT: ${{ needs.vscode.result }}
-          TREE_SITTER_RESULT: ${{ needs.tree-sitter.result }}
-          RELEASE_TOOLING_RESULT: ${{ needs.release-tooling.result }}
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          JOB_RESULTS: ${{ join(needs.*.result, ' ') }}
         run: |
-          test "$WEBSITE_RESULT" = success
-          test "$RUST_RESULT" = success
-          test "$MSRV_RESULT" = success
-          test "$DIAGNOSTIC_CODES_RESULT" = success
-          test "$NATIVE_RESULT" = success
-          test "$PARITY_RESULT" = success
-          test "$VSCODE_RESULT" = success
-          test "$TREE_SITTER_RESULT" = success
-          test "$RELEASE_TOOLING_RESULT" = success
+          test "$CHANGES_RESULT" = success
+          for result in $JOB_RESULTS; do
+            case "$result" in
+              success|skipped) ;;
+              *) echo "Required job ended with $result" >&2; exit 1 ;;
+            esac
+          done

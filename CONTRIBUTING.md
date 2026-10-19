@@ -187,7 +187,39 @@ effects, or grant capabilities merely to silence a compiler error.
 
 ## Automation and bootstrap policy
 
-CI runs on pushes to `main`, PRs, and merge groups. `ci-required` aggregates
+### CI policy
+
+CI runs on pushes to `main`, PRs, merge groups, manual dispatch and a daily schedule.
+The first `changes` job compares main against its last successful push CI run,
+so cancelling a compiler run and then pushing docs still selects compiler checks.
+PRs compare against their merge base; merge groups compare against their base.
+Renames count both paths. Missing history, unavailable baseline API results and
+unknown paths conservatively run everything. Diagnostic history uses the same
+baseline and fails closed when it cannot obtain one.
+
+- Compiler/runtime/std, benchmark programs and editor changes run the full Rust,
+  parity, native, MSRV and editor checks. Compiler changes also rebuild the website
+  because its generated references depend on the compiler.
+- Website changes run website, documentation and Tree-sitter corpus checks. Docs
+  (`docs/`, `research/` and Markdown) select the same checks without the Rust matrix.
+  Documentation examples build the current CLI in a separate Linux job.
+- Workflow, tool and packaging changes run every check. The nightly and manual
+  runs force all areas on, including the scheduled native checks.
+- A newer push to `main` cancels the previous push run; PR runs cancel per PR.
+  Each nightly has its own concurrency group and is never superseded by a push
+  or another nightly. All jobs use public GitHub-hosted runners.
+
+`ci-required` retains its branch-protection name. Change detection must succeed;
+other jobs may succeed or be intentionally skipped. Failure and cancellation
+always fail the aggregate.
+
+Rust caches include the OS, architecture, toolchain and dependency hashes. Rust
+partitions and parity share the compiler cache; the first partition per OS saves
+it and parity/docs only restore it. Native and MSRV have separate cache namespaces.
+Pinned nextest binaries and checksum-verified solver installs are cached by version,
+OS and architecture. Tool version bumps invalidate their caches.
+
+`ci-required` aggregates
 website, Rust, MSRV, native, parity, Tree-sitter, and VS Code checks. The Rust jobs run in `compiler/`
 using its pinned toolchain: fmt, clippy, workspace tests with cargo-nextest,
 `cargo test --workspace --doc --locked`, and the agent-doc freshness check.
@@ -195,7 +227,7 @@ The nextest filter excludes only `sakura_cli::parity`: the required Parity matri
 runs that identical target for JS and WASM on both operating systems.
 Ubuntu and macOS tests each use two nextest hash partitions; fmt, clippy,
 doctests, and agent-doc freshness run in the first partition on each OS.
-`ci-required` requires every Rust matrix child, including both partitions on each OS.
+`ci-required` requires every selected Rust matrix child, including both partitions on each OS.
 Nextest runs test binaries in parallel; its configuration serializes tests that
 share solver scripts or WASM example output. The local gate remains
 `cargo test --workspace --locked` (above).
@@ -206,8 +238,8 @@ and deletion of `main`, with no bypass actors. When the project leaves
 bootstrap, enable required `ci-required` checks and PR reviews before accepting
 routine changes. A green gate is still expected now; investigate failures.
 
-Actions are pinned to major versions for bootstrap; **reviewed full commit SHA
-pinning is required before the first release**. Dependabot checks Actions and the
+Actions are pinned to reviewed full commit SHAs; preserve those pins when updating
+CI. Dependabot checks Actions and the
 website's native Bun ecosystem weekly. GitHub supports the text `bun.lock` file
 ([supported ecosystems](https://docs.github.com/en/code-security/reference/supply-chain-security/supported-ecosystems-and-repositories)).
 Cargo dependency updates are not yet configured in `.github/dependabot.yml`.
