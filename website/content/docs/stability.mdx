@@ -54,8 +54,8 @@ first version that honours the guarantees, so they are not breaking changes unde
 - **A source file that is not UTF-8** becomes a diagnostic,
   [`V0015 source_not_utf8`](/docs/errors/V0015), instead of a usage error.
 - **`[permissions] process` is reserved.** `process = []` is accepted and grants nothing,
-  the same as leaving the key out. Today a non-empty list is accepted and also grants
-  nothing; it becomes [`V8006`](/docs/errors/V8006).
+  the same as leaving the key out. A non-empty list, which 0.1.0 accepted and which also
+  granted nothing, is [`V8006`](/docs/errors/V8006).
 
 ## After 1.0
 

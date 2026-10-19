@@ -10,7 +10,9 @@ sakura.toml is not a valid manifest: the TOML is malformed, a key is unknown,
 a value has the wrong type, or `[package]` has no `name`. The message is the parser's and the span
 points at the key, the value or the syntax error. Nothing builds or runs until it is fixed. The
 manifest has `[package]` (`name`, `version`, `edition`), `[permissions]` and `[verify]`; any other
-table, `[targets]` included, is unknown. `[dependencies]` is `V8005` instead.
+table, `[targets]` included, is unknown. `[dependencies]` is `V8005` instead. `[permissions]
+process` is reserved: `process = []` is accepted and grants nothing, and any other list is
+`V8006`, since no std effect starts processes.
 
 Wrong:
 

@@ -905,6 +905,48 @@ fn dependencies_are_v8005_before_anything_runs() {
     }
 }
 
+/// Design §17.253 (3): `[permissions] process = []` is accepted and grants what leaving it out
+/// grants, so `check` and `run` behave as without it; `process = ["git"]` is `V8006` from `run`
+/// and nothing runs.
+#[test]
+fn an_empty_process_list_is_accepted_and_a_nonempty_one_is_v8006() {
+    let dir = std::env::temp_dir().join(format!("sakura-cli-{}-process", std::process::id()));
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(
+        dir.join("src/main.sak"),
+        "pub fn main() -> Unit ! {Console} { Console.print(\"ran\") }\n",
+    )
+    .unwrap();
+    let manifest = |process: &str| {
+        let text = format!("[package]\nname = \"app\"\n\n[permissions]\n{process}\n");
+        std::fs::write(dir.join("sakura.toml"), text).unwrap();
+    };
+    manifest("");
+    let (absent_check, absent_run) = (sakura(&["check"], &dir), sakura(&["run"], &dir));
+    manifest("process = []");
+    let check = sakura(&["check"], &dir);
+    assert_eq!(check.code, absent_check.code, "{}", check.stderr);
+    assert_eq!(check.code, Some(0), "{}", check.stderr);
+    let run = sakura(&["run"], &dir);
+    assert_eq!(
+        (run.code, &run.stdout),
+        (absent_run.code, &absent_run.stdout)
+    );
+    assert_eq!(run.stdout, "ran\n", "{}", run.stderr);
+    manifest("process = [\"git\"]");
+    let run = sakura(&["run"], &dir);
+    assert_eq!(run.code, Some(1), "{}", run.stderr);
+    assert!(run.stderr.contains("error[V8006]"), "{}", run.stderr);
+    assert!(
+        run.stderr
+            .contains("`process` grants nothing in this version"),
+        "{}",
+        run.stderr
+    );
+    assert!(!run.stdout.contains("ran"), "{}", run.stdout);
+    std::fs::remove_dir_all(&dir).ok();
+}
+
 /// Design §17.239: a manifest that does not parse is `V8006` at the parser's span from every
 /// command (`--json` as any `V`, human on `run`) and exit 1, never a usage error; nothing runs.
 #[test]

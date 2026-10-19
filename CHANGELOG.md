@@ -29,6 +29,11 @@ Releases follow the [stability policy](STABILITY.md). The published preview is
   the byte and its offset), `--json` carries it like any `V` with exit `1`, the file's other
   diagnostics are suppressed and the other files are checked. `sakura fmt` and edits never
   rewrite such a file. `sakura.toml` that is not UTF-8 is still a usage error.
+- `[permissions] process` in `sakura.toml` is reserved (design §17.253 (3)): `process = []`
+  is accepted and grants nothing, the same as leaving the key out, and a non-empty list,
+  which used to be accepted and granted nothing either, is `V8006 manifest_invalid` at the
+  value: "`process` grants nothing in this version: no std effect starts processes; the key
+  is reserved".
 
 ## [0.1.0] - Unreleased
 

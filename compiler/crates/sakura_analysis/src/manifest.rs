@@ -47,7 +47,8 @@ pub struct Permissions {
     /// Environment variables `Env` may read.
     #[serde(default)]
     pub env: Vec<String>,
-    /// Programs `Process` may start.
+    /// Reserved (design §17.253 (3)): always empty, since [`Manifest::parse`] refuses any other
+    /// list with `V8006`; no std effect starts processes.
     #[serde(default)]
     pub process: Vec<String>,
 }
@@ -78,8 +79,33 @@ impl Manifest {
         };
         let mut table = toml::de::DeTable::parse(text).map_err(invalid)?;
         table.get_mut().remove("dependencies");
-        Manifest::deserialize(toml::de::Deserializer::from(table)).map_err(invalid)
+        let process = process_value(table.get_ref());
+        let manifest =
+            Manifest::deserialize(toml::de::Deserializer::from(table)).map_err(invalid)?;
+        // `process` is reserved (design §17.253 (3)): `[]` grants nothing, as leaving it out
+        // does, and any other list is `V8006` at the value until an RFC adds a `Process` effect.
+        if !manifest.permissions.process.is_empty() {
+            return Err(ManifestError {
+                message: PROCESS_RESERVED.to_owned(),
+                span: process.unwrap_or(0..0),
+            });
+        }
+        Ok(manifest)
     }
+}
+
+/// `V8006`'s message for a non-empty `[permissions] process` (design §17.253 (3)).
+pub const PROCESS_RESERVED: &str = "`process` grants nothing in this version: no std effect \
+                                    starts processes; the key is reserved";
+
+/// The byte range of `[permissions] process`'s value, in either the table or the dotted form.
+fn process_value(table: &toml::de::DeTable) -> Option<std::ops::Range<usize>> {
+    let (_, permissions) = table.iter().find(|(k, _)| k.get_ref() == "permissions")?;
+    let toml::de::DeValue::Table(permissions) = permissions.get_ref() else {
+        return None;
+    };
+    let (_, value) = permissions.iter().find(|(k, _)| k.get_ref() == "process")?;
+    Some(value.span())
 }
 
 /// The byte range of the `dependencies` key, in any form (`[dependencies]`, empty or not, an
@@ -200,6 +226,36 @@ mod tests {
         }
         assert_eq!(dependencies_key("[package]\nname = \"x\"\n"), None);
         assert_eq!(dependencies_key("[dependencies\n"), None);
+    }
+
+    /// Design §17.253 (3): `process = []` parses and grants what the absent key grants; any
+    /// other list is `V8006` with the reserved message at the value, in every spelling.
+    #[test]
+    fn process_is_reserved() {
+        let absent = Manifest::parse("[package]\nname = \"x\"\n").unwrap();
+        let empty = Manifest::parse("[package]\nname = \"x\"\n[permissions]\nprocess = []\n");
+        assert_eq!(empty.unwrap(), absent);
+        for (text, at) in [
+            (
+                "[package]\nname = \"x\"\n[permissions]\nprocess = [\"git\"]\n",
+                "[\"git\"]",
+            ),
+            (
+                "permissions.process = [\"git\", \"ls\"]\n[package]\nname = \"x\"\n",
+                "[\"git\", \"ls\"]",
+            ),
+            (
+                "permissions = { process = [\"sh\"] }\n[package]\nname = \"x\"\n",
+                "[\"sh\"]",
+            ),
+        ] {
+            let e = Manifest::parse(text).unwrap_err();
+            assert_eq!(e.message, PROCESS_RESERVED, "{text}");
+            assert_eq!(&text[e.span.clone()], at, "{text}");
+        }
+        // A value of the wrong type stays the parser's own error.
+        let e = Manifest::parse("[package]\nname = \"x\"\n[permissions]\nprocess = \"git\"\n");
+        assert!(e.unwrap_err().message.contains("invalid type"));
     }
 
     /// Design §17.239: every failure is the parser's message at the parser's span.

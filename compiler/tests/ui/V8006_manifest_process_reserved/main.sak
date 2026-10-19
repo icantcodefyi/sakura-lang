@@ -1,0 +1,4 @@
+// expect: V8006
+// `[permissions] process` is reserved: a non-empty list is `V8006` at the value, since no std
+// effect starts processes (design §17.253 (3)); `process = []` grants nothing and is accepted.
+pub fn main() -> Unit ! {Console} { Console.print("hi") }
