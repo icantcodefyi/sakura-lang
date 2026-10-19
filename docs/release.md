@@ -409,30 +409,34 @@ publication; same-source builds are not assumed byte-identical.
 ## 6. Publish each approved channel
 
 The tag run of `release.yml` rebuilds and re-smoke-tests, then pauses at three jobs:
-approving `release-github` attests every file and creates the prerelease
-(`--prerelease --latest=false`); `release-homebrew` commits the filled formula with
-`HOMEBREW_TAP_DEPLOY_KEY`; `release-npm` publishes the platform packages, then the wrapper, with
-`--tag alpha` (trusted publishing, else `NPM_TOKEN`). The latter two wait for the first.
+approving `release-github` attests every file and creates the release;
+`release-homebrew` commits the filled formula with `HOMEBREW_TAP_DEPLOY_KEY`; `release-npm`
+publishes the platform packages, then the wrapper (trusted publishing, else `NPM_TOKEN`).
+The latter two wait for the first. The flags follow the version string (design §17.249): a
+plain `X.Y.Z` such as `0.1.0` is created `--latest=true` and publishes to npm `latest`; only a
+version with a prerelease identifier (`-alpha.N`, `-rc.N`) is created
+`--prerelease --latest=false` and publishes under that identifier's dist-tag (`alpha`, `rc`).
 Native builds are not proven byte-identical, so review the tag run's own `SHA256SUMS`
 and summary before approving, not only the dry run's.
 
 1. **GitHub first.** Approve `release-github` for the tagged run/inventory. Create
-   prerelease `v0.1.0-alpha.1`, explicitly not stable/latest. Publish tested bytes,
-   final hashes, notices, skill assets, provenance and approved signatures/
-   attestations. Notes state alpha limits, tested platforms/floors, Node 26,
+   release `v<version>`, marked latest or prerelease by the version string as above.
+   Publish tested bytes, final hashes, notices, skill assets, provenance and approved
+   signatures/attestations. Notes call the version a pre-1.0 preview with no stability promise yet
+   (RFC 0001, STABILITY.md) and state tested platforms/floors, Node 26,
    solver scope and signing/notarization status. Verify downloaded assets. Run
    `gh attestation verify <downloaded-file> --repo icantcodefyi/sakuralang` and
    inspect expected source/workflow identity.
 2. **Homebrew.** Once asset URLs work, review formula version/targets/hashes/Node
-   dependency. Explicitly accept the alpha as the tap's current formula, then
+   dependency. Explicitly accept the release as the tap's current formula, then
    approve `release-homebrew` or push it personally. Exercise installation and
    formula tests on supported hosts. A mutable formula name is not version
    pinning; immutable archive downloads remain the pinned route.
 3. **npm.** Approve `release-npm`. Publish platform packages first, verify their
    availability/digests, then `sakuralang` with exact matching optional dependency
-   versions and **`--tag alpha`**, not `latest`. Owner handles initial ownership/
-   2FA. Test `npm install -g sakuralang@0.1.0-alpha.1` and the binary on clean
-   hosts; upload success does not prove platform selection works.
+   versions and the version's dist-tag (`latest` for `X.Y.Z`, else `alpha`/`rc`). Owner
+   handles initial ownership/2FA. Test `npm install -g sakuralang@<version>` and the
+   binary on clean hosts; upload success does not prove platform selection works.
 
 4. **VS Code extension.** After the GitHub release (its users need a `sakura`), in
    `editors/vscode/`: the Marketplace rejects SemVer pre-release suffixes, so set

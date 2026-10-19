@@ -34,6 +34,21 @@ class ReleasePackaging(unittest.TestCase):
         self.assertIn("powershell -ExecutionPolicy Bypass -File .\\install.ps1 -Version 1.2.3", readme)
         self.assertNotIn("install -m", readme)
 
+    def test_dist_tag_follows_the_version_string(self):
+        for ver, tag in (("0.1.0", "latest"), ("1.2.3", "latest"), ("0.1.0-alpha.1", "alpha"), ("0.2.0-rc.2", "rc")):
+            with self.subTest(ver=ver):
+                self.assertEqual(release.dist_tag(ver), tag)
+        for ver in ("0.1.0-beta.1", "0.1.0-1", "0.1.0-dev"):
+            with self.subTest(ver=ver), contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                release.dist_tag(ver)
+
+    def test_notes_call_every_version_a_pre_1_0_preview(self):
+        for ver in ("0.1.0", "0.1.0-alpha.1"):
+            notes = release.release_notes(ver, "0" * 40)
+            self.assertIn(f"Sakura Lang {ver}, a pre-1.0 preview release", notes)
+            self.assertIn("they begin at\nv0.2.0; STABILITY.md lists what each contract covers today.", notes)
+            self.assertNotIn("pre-alpha", notes)
+
     def test_notes_distinguish_unsigned_dry_run_and_notarized_release(self):
         unsigned = release.release_notes("1.2.3", "0" * 40)
         signed = release.release_notes("1.2.3", "0" * 40, True)

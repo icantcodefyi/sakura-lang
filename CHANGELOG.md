@@ -209,6 +209,11 @@ Entries marked **Breaking** can change what a program that worked on `v0.1.0-alp
   rule says, since a module now writes counters an older host does not read; the 1.4 host still
   runs 1.1 and 1.2 modules.
 
+- Release flags follow the version string (design §17.249): a plain `X.Y.Z` such as `0.1.0` is a
+  GitHub release marked latest and publishes to npm `latest`; only `-alpha.N` or `-rc.N` is a
+  GitHub prerelease under the `alpha` or `rc` dist-tag. The release notes call every 0.x version
+  a pre-1.0 preview with no stability promise yet (RFC 0001, STABILITY.md).
+
 - The documented npm install is the plain `npm install --global sakuralang`: the packages ship
   no lifecycle scripts, and `release.py` now refuses to pack one that declares `preinstall`,
   `install`, `postinstall` or `prepare`.

@@ -70,6 +70,17 @@ def semver(text):
     return major, minor, patch, pre is None, tuple(identifiers)
 
 
+def dist_tag(ver):
+    # Design §17.249: a plain X.Y.Z is the GitHub latest release and npm `latest`; a version
+    # with a prerelease identifier is a GitHub prerelease under that identifier's dist-tag.
+    identifiers = semver(ver)[4]
+    if not identifiers:
+        return "latest"
+    if identifiers[0][1] not in ("alpha", "rc"):
+        fail(f"prerelease identifier must start with alpha or rc: {ver!r}")
+    return identifiers[0][1]
+
+
 def release_date(value):
     if type(value) is datetime.date:
         return value
@@ -341,8 +352,9 @@ def release_notes(ver, commit, macos_signed=False):
         "Dry run: macOS signing and notarization were skipped; these artifacts have no\n"
         "Developer ID signature or notarization."
     )
-    return f"""Sakura Lang {ver}, a pre-alpha release from commit {commit}. Nothing beyond the
-versioned diagnostic schema and the fixture formats is stable (STABILITY.md).
+    return f"""Sakura Lang {ver}, a pre-1.0 preview release from commit {commit}. There is no stability
+promise yet: RFC 0001 proposes the guarantees and, if the owner accepts it, they begin at
+v0.2.0; STABILITY.md lists what each contract covers today.
 
 Packaging targets (called supported for this version only after the published-install
 smoke passes on every applicable channel):
@@ -728,6 +740,7 @@ def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("version")
+    sub.add_parser("dist-tag")
     p = sub.add_parser("prepare")
     p.add_argument("--previous-tag")
     p.add_argument("--date", help="candidate release date in UTC (YYYY-MM-DD)")
@@ -752,6 +765,8 @@ def main():
         fail(f"--commit must be a full 40-character SHA, not {args.commit!r}")
     if args.cmd == "version":
         print(version())
+    elif args.cmd == "dist-tag":
+        print(dist_tag(version()))
     else:
         {"archive": archive, "smoke": smoke, "accept": accept, "assemble": assemble, "prepare": prepare}[args.cmd](args)
 
