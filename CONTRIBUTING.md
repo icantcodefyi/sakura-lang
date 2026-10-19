@@ -190,8 +190,10 @@ effects, or grant capabilities merely to silence a compiler error.
 ### CI policy
 
 CI runs on pushes to `main`, PRs, merge groups, manual dispatch and a daily schedule.
-The first `changes` job compares main against its last successful push CI run,
+The first `changes` job compares main against its last successful push or nightly CI run,
 so cancelling a compiler run and then pushing docs still selects compiler checks.
+A green nightly advances this baseline even when frequent pushes keep cancelling
+push runs. Focused manual runs never advance it.
 PRs compare against their merge base; merge groups compare against their base.
 Renames count both paths. Missing history, unavailable baseline API results and
 unknown paths conservatively run everything. Diagnostic history uses the same

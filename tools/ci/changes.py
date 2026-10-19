@@ -32,8 +32,8 @@ def comparison_base(event, base):
             base = subprocess.check_output([
                 "gh", "api", "--method", "GET",
                 f"repos/{os.environ['GITHUB_REPOSITORY']}/actions/workflows/ci.yml/runs",
-                "-f", "branch=main", "-f", "event=push", "-f", "status=success",
-                "-f", "per_page=1", "--jq", ".workflow_runs[0].head_sha // empty",
+                "-f", "branch=main", "-f", "status=success", "-f", "per_page=100",
+                "--jq", '.workflow_runs | map(select(.event == "push" or .event == "schedule")) | .[0].head_sha // empty',
             ], text=True).strip()
         except (subprocess.CalledProcessError, OSError):
             print("Unavailable successful CI baseline; running all areas.")
