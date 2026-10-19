@@ -10,6 +10,9 @@ Compare the release tag with main when identifying changes not in that preview.
 
 ### Documentation
 
+- Draft public-interface inventory in `STABILITY.md`, with a generated clap/environment/exit-code
+  baseline and workspace drift test; classifications await RFC 0001 acceptance at v0.2.0.
+
 - Rechecked M4 guides against the compiler, repaired runnable tour examples, and
   documented current-main migration notes, runtime limits, caching and release status.
   Added a broad sample gate and rendered-route/link checks; refreshed generated agent

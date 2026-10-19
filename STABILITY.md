@@ -42,6 +42,72 @@ files are per-build artefacts with no compatibility promise: their format, name 
 may change in any release, any of them may be deleted at any time, and a missing, damaged or
 foreign file only costs the analysis it would have saved.
 
+## Draft public-interface inventory
+
+**Draft until RFC 0001 is accepted at v0.2.0.** These are proposed classifications,
+not stability guarantees for the current preview. `stable` means intended for the
+RFC's compatibility contract; `experimental` means no compatibility promise;
+`internal` means an implementation or development interface. The first-honouring
+column is conditional on acceptance: `0.2.0` starts the machine-contract rules and
+compatibility within a 0.x minor line; `1.0.0` starts full source/std compatibility
+within a major. `—` makes no stabilization commitment.
+
+This inventory follows design §17.232 and the actual parser, emitters and hosts.
+The [generated CLI baseline](compiler/contracts/cli.txt) pins commands, arguments,
+accepted values, defaults, hidden switches, literal environment reads and driver
+exit constants. [Regeneration and scope](compiler/contracts/README.md) explain the
+drift test. Human wording, diagnostic prose, help layout and generated code bytes
+are not contracts. Flags below belong only to their named command; positionals
+and built-in help commands are also captured in the baseline.
+
+| Surface | Item (implemented unless explicitly qualified) | Draft level | First honouring version |
+| --- | --- | --- | --- |
+| CLI | Root `-h`/`--help`, `-V`/`--version`; `help [COMMAND]`; per-command `-h`/`--help` | stable | 0.2.0 |
+| CLI | `check [PATHS]`: `--json`, `--frozen-specs`, `--since` | stable | 0.2.0 |
+| CLI | `fix [PATHS]`: `--preview`, `--apply`, `--frozen-specs`, `--since`, `--json` | stable | 0.2.0 |
+| CLI | `build [PATHS]`: `--json`, `--target js\|wasm`, `--out-dir`, `--manifest` | stable | 0.2.0 |
+| CLI | `build --emit js\|lir`, `--layout tagged\|niche` (`niche` accepted by clap but unimplemented) | experimental | — |
+| CLI | `build --dump direct\|core\|owned`; hidden `build --no-direct`, `--wasi` | internal | — |
+| CLI | `run [PATH] [-- ARGS]`: `--target js\|wasm`, `--out-dir` | stable | 0.2.0 |
+| CLI | `verify [PATHS]`: `--json`, `--target js\|wasm`, `--rlimit`, `--solver` | stable | 0.2.0 |
+| CLI | `test [PATHS]`: `--json`, `--seed`, `--filter`, `--update-snapshots`, `--record`, `--contracts`, `--std`, `--target js\|wasm`, `--out-dir` | stable | 0.2.0 |
+| CLI | Hidden `run --no-direct`, `test --no-direct` | internal | — |
+| CLI | `fmt [PATHS] --check`; `audit [PATHS] --json`; `doc [SYMBOL] --search --json`; `explain CODE`; `prompt --budget` | stable | 0.2.0 |
+| CLI | `new KIND NAME --setup`; `init --kind`; `setup --client --apply` (kinds `cli`, `lib`, `agent`, `api`; clients `claude`, `codex`, `cursor`, `all`) | stable | 0.2.0 |
+| CLI | `lsp`; `mcp serve --root` | stable | 0.2.0 |
+| Native | Native backend and Cargo `native` feature; `--target native` is not in this checkout's clap accepted values, so is currently refused even though native crates exist | experimental | — |
+| JSON Lines | `diagnostic`, `hole`, `summary`: `schema_version = "1.0"` in [diagnostic rendering](compiler/crates/sakura_diagnostics/src/json.rs), used by check/build/fix and pre-verification errors | stable | 0.2.0 |
+| JSON Lines | `audit`, audit `summary`: `1.0`; `obligation`: `1.1`; verify's post-solver `diagnostic` and `summary`: `1.1` | stable | 0.2.0 |
+| JSON Lines | Test `test`, `regression`, `summary`: `1.0` on JS and WASM; summary fields differ from check/audit/verify despite the shared kind | stable | 0.2.0 |
+| JSON gaps | `doc --json` emits one object with neither `kind` nor `schema_version`; `build --manifest`/verify's manifest file has `schema_version = "1.1"` but no top-level `kind`. Usage failures may be human stderr even with `--json`; `fix --preview --json` prints a human preview. These are inventory findings for §17.232(b), not invented record kinds | experimental | — (versioning pending) |
+| Runtime JSON | `defect` on stderr: `1.0` | stable | 0.2.0 |
+| Runtime instrumentation | Effect trace and WASM statistics/coverage output formats, separate from CLI `--json` | internal | — |
+| `sakura.toml` | `[package]` with `name`, `version`, `edition`; `[permissions]` with `fs.read`, `fs.write`, `net`, `env`, `process`; `[verify]` with `rlimit` | stable | 0.2.0 |
+| `sakura.toml` | `[dependencies]` currently parsed as string requirements without package resolution; `[targets]` parsed as arbitrary TOML values without a target configuration contract. Neither is a working package/target feature | experimental | — |
+| Std modules | `std/{agent,budget,bytes,cli,clock,console,core,decimal,duration,env,float,fs,gen,graph,html,http,instant,int,json,list,llm,log,map,option,path,prompt,random,request,response,result,retry,router,secret,serve,set,sql,string,task,test,tool,unit,untrusted,url,urlpart,uuid}`: public source signatures in the [generated std index](compiler/std/INDEX.md); target support remains as documented there | stable | 0.2.0 within minor; 1.0.0 within major |
+| Diagnostic identity | Allocated `V0xxx` lex/parse, `V1xxx` resolution, `V2xxx` types, `V3xxx` effects, `V4xxx` patterns, `V5xxx` contracts/refinements, `V6xxx` capabilities, `V8xxx` package/ABI/frozen specs, `V9xxx` compiler failures | stable | 0.2.0 (non-reuse) |
+| Diagnostic identity | Allocated `W1xxx`, `W4xxx`, `W5xxx`, `W7xxx`, `W8xxx` warnings; `D001`–`D004`, `D010`–`D011`, `D020`–`D021`, `D030`–`D031`, `D090`–`D096` runtime defects; retired `V5002` remains reserved. Family labels do not allocate absent codes; the [registry](compiler/crates/sakura_diagnostics/src/codes.rs) lists exact identities | stable | 0.2.0 (non-reuse) |
+| ABI | WASM runtime [ABI 1.2.5](compiler/runtime/rt/ABI.md): version negotiation, layouts/tags, imports/exports, outcomes, ownership and optional-export rules | stable | 0.2.0 (RFC enforcement; existing ABI revision rules apply) |
+| ABI | JS [ABI v0](compiler/runtime/js/ABI.md), generated JS/LIR/Core representations, Rust compiler crate APIs and per-build caches | internal | — |
+| ABI | Native runtime `offset32-v1` and native embedding/host interfaces | experimental | — |
+| LSP | Stdio initialization/shutdown/exit; full document sync (`didOpen`, `didChange`, `didClose`, `didSave`), watched-file notifications, `publishDiagnostics`, hover, definition, completion, formatting, code actions; negotiated UTF-8/UTF-16 positions and versioned workspace edits | stable | 0.2.0 |
+| LSP extension | `sakura/holeContext` and Sakura diagnostic/fix data, implemented in [the server](compiler/crates/sakura_lsp/src/lib.rs) | experimental | — (extension schema decision pending) |
+| MCP | Stdio tools `compiler_info`, `check`, `symbol_query`, `hole_context`, `docs_query`, `explain_diagnostic`, `format`, `check_patch`, `apply_patch`, `test`; snapshot/content-hash and patch-id protocol in [MCP documentation](docs/mcp.md) | stable | 0.2.0 |
+| Environment | `SAKURA_CACHE_DIR`, `SAKURA_NO_CACHE` (cache disabled for any nonempty value other than `0`, not only `1`); `SAKURA_NODE` (Node executable override) | stable | 0.2.0 |
+| Environment | `SAKURA_MAX_COPY_BYTES` (JS/WASM host copy budget); `SAKURA_TRACE` (trace destination) | stable | 0.2.0 |
+| Environment | Native host reads `SAKURA_BLOCKING_THREADS`, `SAKURA_MAX_COPY_BYTES`, `SAKURA_TRACE`, `SAKURA_PERMISSIONS`; native-host behavior remains experimental | experimental | — |
+| Environment | `SAKURA_PERMISSIONS`, `SAKURA_RECORD` (driver-to-host controls); `SAKURA_WASM_STATS`, `SAKURA_WASM_COVERAGE`; `SAKURA_BLESS` (snapshot development helper) | internal | — |
+| Build environment | `SAKURA_GIT_COMMIT`, `SAKURA_BUILD_ID`, `SAKURA_STD_HASH` (compile-time reads, last two generated by the build script) | internal | — |
+| Runtime limits | `SAKURA_MAX_HEAP`, `SAKURA_MAX_REQUESTS` are names used in ABI prose; this checkout does not read them from the environment. Host/runtime option fields and defaults must not be mistaken for implemented env switches | experimental | — |
+| Exit codes | `0` success; `1` diagnostics/errors, disproved verification, formatting differences, or failed `main`; `2` usage/setup/I/O invocation failures; `3` test failures; `70` runtime defect; `75` startup permission denial. `run` forwards the child program's status; these are driver meanings, not an exhaustive set of possible program exit values | stable | 0.2.0 |
+
+The table deliberately records current gaps: per-command `summary` variants and
+verify's diagnostic schema differ; doc/manifest need record identities; native
+help labels and the history gate are separate work. Acceptance must settle the
+experimental LSP extension and unconsumed manifest keys before claiming that
+these are stable. No package resolution, native CLI target, or environment switch
+is promised merely because it appears in a design document.
+
 ## Contracts to define at 1.0
 
 [RFC 0001](docs/rfcs/0001-stability-guarantees.md) drafts these guarantees for

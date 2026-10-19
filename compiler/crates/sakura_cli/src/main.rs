@@ -1302,3 +1302,7 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "../../../tools/agent_docs/cli_surface.rs"]
+mod cli_surface;
