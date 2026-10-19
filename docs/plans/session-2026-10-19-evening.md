@@ -52,10 +52,23 @@ should fold them into `[0.1.0]`.
   - fmt and clippy pass;
   - only the Node 26 tests fail.
   The lead pushes it after the tag unless the owner overrides §17.257.
-- **The `exec` differential fuzz target and `fuzz.yml`'s `max_total_time` input and corpus
-  artifacts** are with Opus. If they haven't landed when you read this, check
-  `git log origin/main -- compiler/fuzz`. The seven-clean-night streak starts when they land
-  (§17.245 (1)).
+- **The `exec` differential fuzz target landed** after this note was first written: `e806d8ad` (the target)
+  and `72eba074` (`fuzz.yml`'s `max_total_time` input, corpora carried between runs as artifacts, and
+  the refreshed `compiler/fuzz/Cargo.lock` that made the 2026-10-19 nightly fail at `cargo fetch`).
+  - **What it compares:** mutated `tests/semantics` programs on the reference evaluator, JS, the LIR
+    evaluator and WASM. JS and WASM must also agree on defect site and effect trace.
+  - **Not run on Windows:** libFuzzer doesn't link on Windows MSVC, so the first real run is the
+    nightly or a manual dispatch. A local driver ran 1,342 inputs.
+  - **Two bugs found.** The nightly `exec` job fails until both are fixed (Opus, each with a
+    `tests/semantics` regression):
+    1. the reference evaluator stops on any `Float % Float` (`Internal("bad operands for FloatRem")`);
+    2. `opt::ranges` is reported proving an operation that then defects with `D003` on
+       `Console.print("{-9007199254740992}")`.
+  - **The seven-clean-night streak** (§17.245 (1)) starts when the job first runs clean.
+  - **Designer questions:**
+    - whether libFuzzer `timeout-`/`oom-` artifacts count against a clean night (the reference
+      evaluator counts a builtin as one step);
+    - §17.225 (4c)'s `sakura verify` replay leg isn't built.
 
 ## 4. Questions for the owner
 
