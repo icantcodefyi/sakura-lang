@@ -206,8 +206,9 @@ Astra reads the files afterwards and writes the report; agents never bless.
    ```
 
 **The runs** (in this order; each ends with `[load] quiet` or `[load] not quiet: <reasons>`;
-on `not quiet` keep the file, stop, and start the window again later, never rerun a cell
-inside the window)
+on `not quiet` keep the file, stop, and resume at that run later; completed quiet runs stand.
+Resume on the same commit in the same worktree, the same night or the next (design §17.252
+(3)); never rerun a cell inside a run)
 
 ```sh
 python3 research/10-evidence/record_load.py --log bench/target/quiet-load-js.jsonl -- \
