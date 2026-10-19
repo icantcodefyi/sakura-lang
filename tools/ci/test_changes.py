@@ -13,7 +13,9 @@ class ChangeDetectionTests(unittest.TestCase):
         cases = {
             "docs/guide.md": {"docs"}, "README.md": {"docs"},
             "research/notes.txt": {"docs"}, "website/content/docs/page.mdx": {"website"},
-            "compiler/README.md": {"compiler"}, "runtime/js/rt.js": {"compiler"},
+            "compiler/README.md": {"compiler"},
+            "compiler/contracts/json.txt": {"compiler"},
+            "compiler/diagnostics/codes.txt": {"compiler"}, "runtime/js/rt.js": {"compiler"},
             "std/core.sak": {"compiler"}, "bench/programs/fib.sak": {"compiler"},
             "editors/vscode/package.json": {"compiler"},
             ".github/workflows/ci.yml": {"workflows"}, "tools/install/test.sh": {"workflows"},

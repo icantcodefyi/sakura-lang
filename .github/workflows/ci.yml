@@ -683,10 +683,10 @@ jobs:
           toolchain=$(sed -n 's/^channel = "\(.*\)"/\1/p' ../../compiler/rust-toolchain.toml)
           cargo "+$toolchain" test
 
-  diagnostic-codes:
+  contracts:
     needs: changes
     if: needs.changes.outputs.compiler == 'true' || needs.changes.outputs.docs == 'true' || needs.changes.outputs.website == 'true' || needs.changes.outputs.workflows == 'true'
-    name: Diagnostic code history
+    name: Contracts
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -698,12 +698,15 @@ jobs:
         run: python3 -m unittest discover -s compiler/tools/agent_docs -p 'test_spec_docs.py' -v
       - name: Test diagnostic history checker
         run: python3 -m unittest discover -s compiler/diagnostics -v
-      - name: Preserve every previous code assignment (RFC 0001)
+      - name: Test JSON contract checker
+        run: python3 -I -m unittest discover -s compiler/contracts
+      - name: Preserve diagnostic and JSON contracts (RFC 0001, design §17.232)
         env:
           BASE_SHA: ${{ needs.changes.outputs.base }}
         run: |
           test -n "$BASE_SHA"
           python3 compiler/diagnostics/check_history.py --base "$BASE_SHA"
+          python3 compiler/contracts/check_json.py --base "$BASE_SHA"
 
   release-tooling:
     needs: changes
@@ -768,7 +771,7 @@ jobs:
     name: ci-required
     if: always()
     # The rust result requires every matrix child, including both partitions on each OS.
-    needs: [changes, website, rust, msrv, native, parity, vscode, tree-sitter, diagnostic-codes, release-tooling, doc-checks]
+    needs: [changes, website, rust, msrv, native, parity, vscode, tree-sitter, contracts, release-tooling, doc-checks]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

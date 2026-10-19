@@ -69,6 +69,9 @@ class HistoryTests(unittest.TestCase):
             registry = root / "compiler/diagnostics/codes.txt"
             registry.parent.mkdir(parents=True)
             initial = "V1001 active original\n"
+            source = root / "compiler/crates/sakura_diagnostics/src/codes.rs"
+            source.parent.mkdir(parents=True)
+            source.write_text('    V1001 "original" RESOLVE,\n"Explanation.\n')
             registry.write_text(initial)
             def commit():
                 git("add", ".")
@@ -79,12 +82,14 @@ class HistoryTests(unittest.TestCase):
             commit()
             base = git("rev-parse", "HEAD").strip()
             registry.write_text(initial)
-            result = subprocess.run(
-                [sys.executable, str(Path(__file__).with_name("check_history.py").resolve()),
-                 "--base", base], cwd=root, text=True, capture_output=True, check=False,
-            )
-            self.assertEqual(result.returncode, 1, result.stderr)
-            self.assertIn("V1002: removed", result.stderr)
+            for cwd in (root, root / "compiler", registry.parent):
+                with self.subTest(cwd=cwd.relative_to(root)):
+                    result = subprocess.run(
+                        [sys.executable, str(Path(__file__).with_name("check_history.py").resolve()),
+                         "--base", base], cwd=cwd, text=True, capture_output=True, check=False,
+                    )
+                    self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                    self.assertIn("V1002: removed", result.stderr)
 
 
 if __name__ == "__main__":

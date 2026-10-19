@@ -74,7 +74,7 @@ def main():
     if not re.fullmatch(r"[0-9a-f]{40}", args.base):
         parser.error("--base must be a full commit SHA")
     root = Path(git("rev-parse", "--show-toplevel").strip())
-    if git("ls-tree", "--name-only", args.base, "--", REGISTRY).strip():
+    if git("ls-tree", "--full-tree", "--name-only", args.base, "--", REGISTRY).strip():
         previous = parse(git("show", f"{args.base}:{REGISTRY}"))
     else:
         previous = initial_registry(git("show", f"{args.base}:{SOURCE}"))
