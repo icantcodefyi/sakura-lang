@@ -109,7 +109,7 @@ step` with C ABI. A LIR block becomes a CLIF block with block parameters, and a 
 reads from the context, so no base is cached across a call. Landing pads repeat the validator's
 count, and checked arithmetic is `s*_overflow` plus branches. The object carries the static block
 (built by `sakura_lir::image`, landed first as §17.229 (2) asks), the code table and a descriptor.
-Its `main` calls `sakura_native_main` in the new crate `sakura_native_driver`. That crate is the
+Its `main` calls `sakura_native_main_v2` in the new crate `sakura_native_driver`. That crate is the
 staticlib a program links with `cc`, and it is the one place outside `sakura_rt` with `unsafe`:
 the C entry and the code table. N2a has no twins, so every call is a frame call (`--no-direct`, as
 the evaluator). Acceptance as built: `sakura_host_native/tests/corpus.rs` compiles, links and runs
@@ -121,10 +121,20 @@ convention (x86-64 and AArch64; elsewhere every call runs on frames) with `(ctx,
 -> (result, state)`. The gauge, the entry and abort rules and the closure twin table
 (`sakura$twins`, §17.211 (2)) come from `sakura_lir::direct`, which the WASM backend now shares.
 The corpus runs both with twins and with `--no-direct`: 165 of 169 agree each way, and the twin
-runs end with the evaluator's live objects. **Next:**
-N2c `sakura build --target native`, the `parity.rs` native backend and the `sakura.native`
-record; N2d symbols, `.eh_frame` and the DWARF line table with the debugger smoke; N2e
-`--native-checks` and the §17.173 lanes; N2f the compile report and the CI parity matrix.
+runs end with the evaluator's live objects. N2c makes the target usable.
+`sakura build --target native` and `sakura run --target native` exist in a compiler built with
+the `native` feature. The `sakura.debug` table moved to `sakura_lir::debug` and now rides in the
+object as well, so native defect records carry JS's spans, key order included. `parity.rs`
+gains the native backend for run mode: 121 of 129 run-mode fixtures and examples agree with JS
+both with twins and under `--no-direct`. The 8 in `KNOWN_NATIVE` are N1b's hosted services. The
+CI native job runs it. On `direct_region_restart`, native and WASM agree on frames (1,700,161),
+restarts (29), dups and live objects. Drops are one lower on native in every program, from the
+Node host's teardown and not from compiled code. **Left of N2:** the `sakura.native` record
+(ABI §1b), with N2d; N2d symbols, `.eh_frame`/compact unwind and the DWARF line table with the
+`lldb`/`gdb`/`perf` smoke; N2e `--native-checks` and the §17.173 lanes with the five
+`native_detect.rs` faults; N2f the compile report (lowering, codegen, object, link p95) and the
+`{js, wasm, native} × {ubuntu, macos}` matrix, plus test mode (`sakura test --target native`)
+once N1b's services land; `deep_recursion_gauge` and the exact-i64 lane.
 
 ### Start conditions in one view
 
