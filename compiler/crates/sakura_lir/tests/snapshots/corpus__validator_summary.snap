@@ -86,7 +86,7 @@ semantics/match_wide_dispatch: 5 funcs, 222 blocks, 2 dup, 61 drop, valid
 semantics/million_operations: 5 funcs, 13 blocks, 0 dup, 2 drop, valid
 semantics/mutual_recursion: 4 funcs, 21 blocks, 0 dup, 9 drop, valid
 semantics/mutual_tail_blame: 4 funcs, 19 blocks, 0 dup, 6 drop, valid
-semantics/mutual_tail_dispatch: 12 funcs, 308 blocks, 3 dup, 97 drop, valid
+semantics/mutual_tail_dispatch: 12 funcs, 304 blocks, 3 dup, 97 drop, valid
 semantics/mutual_tail_dispatch_blame: 5 funcs, 47 blocks, 0 dup, 6 drop, valid
 semantics/mutual_tail_loop: 13 funcs, 112 blocks, 0 dup, 41 drop, valid
 semantics/nested_options: 21 funcs, 140 blocks, 41 dup, 163 drop, valid

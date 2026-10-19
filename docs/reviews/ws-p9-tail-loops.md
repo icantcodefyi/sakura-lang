@@ -159,7 +159,8 @@ therefore also a trace and defect parity check.
   calls, extended to calls in copied bodies.
 - The k² code growth is bounded by the two limits in 1(e), not measured against plan §5 item 4's
   2× `micro.sak` budget. `micro.sak` has no mutual tail cycle. A dispatch host copies as many
-  bodies as a nesting one, plus the `if` chain and one join per arm.
+  bodies as a nesting one, plus the dispatch `switch` (an `if` chain until §17.208 (1)) and one
+  join per arm.
 - A filler is a value the interval pass sees: an `Int` slot's facts include the `0` that other
   members' jumps pass. This is sound; at most it keeps an overflow check the pass would
   otherwise drop.

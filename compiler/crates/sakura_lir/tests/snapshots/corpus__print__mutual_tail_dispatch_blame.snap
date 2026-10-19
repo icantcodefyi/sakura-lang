@@ -54,83 +54,81 @@ fn down#2 top -> i64 ; main::mutual_tail_dispatch_blame, frame 2 slots [%0 i64, 
   b0(%0 n: i64, %1 $site: i64):
     jump b1(%0, %1)
   b1(%2 n: i64, %3 $site: i64):
-    %55 enter: unit = $contract_enter()
-    %56 lit: i64 = const 0
-    %57 t: bool = ge.int %2, %56
-    %58 exit: unit = $contract_exit()
-    check D020 %57 blame %3+0 ; nonneg
-    %59 pre: unit = const ()
-    %60 lit: i64 = const 0
-    %61 t: bool = eq.int %2, %60
-    if %61 then b13(%2, %3) else b14(%2, %3)
-  b2(%4 state: i64, %5 n: i64, %6 n: i64, %7 $site: i64):
-    %8 lit: i64 = const 0
-    %9 arm: bool = eq.int %4, %8
-    if %9 then b3(%5, %6, %7) else b4(%5, %6, %7)
-  b3(%10 n: i64, %11 n: i64, %12 $site: i64):
-    jump b5(%10, %12)
-  b4(%13 n: i64, %14 n: i64, %15 $site: i64):
-    jump b10(%14, %15)
-  b5(%16 n: i64, %17 $site: i64):
-    %18 lit: i64 = const 0
-    %19 t: bool = eq.int %16, %18
-    if %19 then b6(%16, %17) else b7(%16, %17)
-  b6(%20 n: i64, %21 $site: i64):
-    %24 lit: i64 = const 0
-    ret %24
-  b7(%22 n: i64, %23 $site: i64):
-    %25 lit: i64 = const 2
-    %26 t: i64 = intrem %22, %25
-    %27 lit: i64 = const 0
-    %28 t: bool = eq.int %26, %27
-    if %28 then b8(%22, %23) else b9(%22, %23)
-  b8(%29 n: i64, %30 $site: i64):
-    %33 lit: i64 = const 1
-    %34 t: i64 = intsub %29, %33
-    %35 $site: i64 = const 4
-    jump b1(%34, %35)
-  b9(%31 n: i64, %32 $site: i64):
-    %36 lit: i64 = const 1
-    %37 t: i64 = intsub %31, %36
-    %38 lit: i64 = const 1
-    %39 lit: i64 = const 0
-    jump b2(%38, %39, %37, %32)
-  b10(%40 n: i64, %41 $site: i64):
-    %42 lit: i64 = const 1
-    %43 t: bool = le.int %40, %42
-    if %43 then b11(%40, %41) else b12(%40, %41)
-  b11(%44 n: i64, %45 $site: i64):
-    %48 lit: i64 = const 2
-    %49 t: i64 = intsub %44, %48
-    %50 $site: i64 = const 5
-    jump b1(%49, %50)
-  b12(%46 n: i64, %47 $site: i64):
-    %51 lit: i64 = const 1
-    %52 t: i64 = intsub %46, %51
-    %53 lit: i64 = const 0
+    %53 enter: unit = $contract_enter()
     %54 lit: i64 = const 0
-    jump b2(%53, %52, %54, %47)
-  b13(%62 n: i64, %63 $site: i64):
-    %66 lit: i64 = const 0
-    ret %66
-  b14(%64 n: i64, %65 $site: i64):
-    %67 lit: i64 = const 2
-    %68 t: i64 = intrem %64, %67
-    %69 lit: i64 = const 0
-    %70 t: bool = eq.int %68, %69
-    if %70 then b15(%64, %65) else b16(%64, %65)
-  b15(%71 n: i64, %72 $site: i64):
+    %55 t: bool = ge.int %2, %54
+    %56 exit: unit = $contract_exit()
+    check D020 %55 blame %3+0 ; nonneg
+    %57 pre: unit = const ()
+    %58 lit: i64 = const 0
+    %59 t: bool = eq.int %2, %58
+    if %59 then b13(%2, %3) else b14(%2, %3)
+  b2(%4 state: i64, %5 n: i64, %6 n: i64, %7 $site: i64):
+    switch %4 0 => b3(%5, %6, %7) _ => b4(%5, %6, %7)
+  b3(%8 n: i64, %9 n: i64, %10 $site: i64):
+    jump b5(%8, %10)
+  b4(%11 n: i64, %12 n: i64, %13 $site: i64):
+    jump b10(%12, %13)
+  b5(%14 n: i64, %15 $site: i64):
+    %16 lit: i64 = const 0
+    %17 t: bool = eq.int %14, %16
+    if %17 then b6(%14, %15) else b7(%14, %15)
+  b6(%18 n: i64, %19 $site: i64):
+    %22 lit: i64 = const 0
+    ret %22
+  b7(%20 n: i64, %21 $site: i64):
+    %23 lit: i64 = const 2
+    %24 t: i64 = intrem %20, %23
+    %25 lit: i64 = const 0
+    %26 t: bool = eq.int %24, %25
+    if %26 then b8(%20, %21) else b9(%20, %21)
+  b8(%27 n: i64, %28 $site: i64):
+    %31 lit: i64 = const 1
+    %32 t: i64 = intsub %27, %31
+    %33 $site: i64 = const 4
+    jump b1(%32, %33)
+  b9(%29 n: i64, %30 $site: i64):
+    %34 lit: i64 = const 1
+    %35 t: i64 = intsub %29, %34
+    %36 lit: i64 = const 1
+    %37 lit: i64 = const 0
+    jump b2(%36, %37, %35, %30)
+  b10(%38 n: i64, %39 $site: i64):
+    %40 lit: i64 = const 1
+    %41 t: bool = le.int %38, %40
+    if %41 then b11(%38, %39) else b12(%38, %39)
+  b11(%42 n: i64, %43 $site: i64):
+    %46 lit: i64 = const 2
+    %47 t: i64 = intsub %42, %46
+    %48 $site: i64 = const 5
+    jump b1(%47, %48)
+  b12(%44 n: i64, %45 $site: i64):
+    %49 lit: i64 = const 1
+    %50 t: i64 = intsub %44, %49
+    %51 lit: i64 = const 0
+    %52 lit: i64 = const 0
+    jump b2(%51, %50, %52, %45)
+  b13(%60 n: i64, %61 $site: i64):
+    %64 lit: i64 = const 0
+    ret %64
+  b14(%62 n: i64, %63 $site: i64):
+    %65 lit: i64 = const 2
+    %66 t: i64 = intrem %62, %65
+    %67 lit: i64 = const 0
+    %68 t: bool = eq.int %66, %67
+    if %68 then b15(%62, %63) else b16(%62, %63)
+  b15(%69 n: i64, %70 $site: i64):
+    %73 lit: i64 = const 1
+    %74 t: i64 = intsub %69, %73
     %75 lit: i64 = const 1
-    %76 t: i64 = intsub %71, %75
+    %76 lit: i64 = const 0
+    jump b2(%75, %76, %74, %70)
+  b16(%71 n: i64, %72 $site: i64):
     %77 lit: i64 = const 1
-    %78 lit: i64 = const 0
-    jump b2(%77, %78, %76, %72)
-  b16(%73 n: i64, %74 $site: i64):
-    %79 lit: i64 = const 1
-    %80 t: i64 = intsub %73, %79
-    %81 lit: i64 = const 0
-    %82 lit: i64 = const 0
-    jump b2(%81, %80, %82, %74)
+    %78 t: i64 = intsub %71, %77
+    %79 lit: i64 = const 0
+    %80 lit: i64 = const 0
+    jump b2(%79, %78, %80, %72)
 
 fn right#3 top -> i64 ; main::mutual_tail_dispatch_blame, frame 3 slots [%0 i64, %10 i64, %27 i64]
   b0(%0 n: i64):

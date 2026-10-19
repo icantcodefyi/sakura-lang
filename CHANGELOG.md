@@ -393,8 +393,8 @@ published yet.
 
 - A tail-call cycle whose functions cannot be nested inside each other, such as three
   functions that each call both others, also runs as one loop per function: the loop
-  dispatches on a state number to its copies of the other functions (design §17.192 (2),
-  WS-P9b). WS-P9's limits still apply (four functions, 1,024 copied expressions), and output,
+  dispatches on a state number, with one `switch` (§17.208 (1)), to its copies of the other
+  functions (design §17.192 (2), WS-P9b). WS-P9's limits still apply (four functions, 1,024 copied expressions), and output,
   effects, defect messages and blame sites are unchanged.
 
 - A `requires` violated inside a self-tail-recursive function now blames the self call

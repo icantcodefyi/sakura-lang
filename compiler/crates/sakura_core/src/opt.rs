@@ -626,7 +626,6 @@ fn tail_calls(def: &mut FnDef, me: DefId, members: &[(DefId, &FnDef)], dispatch:
             .into_iter()
             .map(|ds| ds.into_iter().map(|d| local(&d.name, d.ty)).collect())
             .collect();
-        let tests: Vec<Local> = (1..heads.len()).map(|_| local("arm", Ty::Bool)).collect();
         // A cross-member call passes its state, its arguments in its own slots and a dead
         // filler of the slot's type in every other member's.
         let fill: Vec<Vec<Atom>> = slots
@@ -673,28 +672,20 @@ fn tail_calls(def: &mut FnDef, me: DefId, members: &[(DefId, &FnDef)], dispatch:
                 }
             })
             .collect();
-        let mut chain = arms.pop().expect("a member");
-        for (k, (arm, test)) in arms.into_iter().zip(tests).enumerate().rev() {
-            chain = Expr::Let {
-                local: test,
-                bind: Bind::Prim(
-                    PrimOp::Eq(CmpTy::Int),
-                    vec![Atom::Local(state), Atom::Lit(Lit::Int(k as i64))],
-                ),
-                pos: None,
-                body: Box::new(Expr::If {
-                    cond: Atom::Local(test),
-                    then: Box::new(arm),
-                    els: Box::new(chain),
-                }),
-            };
-        }
+        // One `Switch` on the state (design §17.208 (1)); the last member is its default.
+        let last = arms.pop().expect("a member");
+        let switch = Expr::Switch {
+            scrut: Atom::Local(state),
+            on: SwitchOn::Lit((0..arms.len() as i64).map(Lit::Int).collect()),
+            arms: (0..).zip(arms).collect(),
+            default: Some(Box::new(last)),
+        };
         Expr::LetJoin {
             label: hub,
             params: std::iter::once(state)
                 .chain(slots.into_iter().flatten())
                 .collect(),
-            join: Box::new(chain),
+            join: Box::new(switch),
             body: Box::new(host),
         }
     } else {
