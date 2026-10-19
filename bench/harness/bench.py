@@ -404,7 +404,7 @@ def wasm_stats(module, args):
 
 
 # ---------------------------------------------------------------------------------------------
-# Counting instructions (design §17.262): the primary metric on the reference Mac
+# Counting instructions (design §17.263): the primary metric on the reference Mac
 
 TIME_L = re.compile(r"^\s*(\d+)\s+(instructions retired|cycles elapsed|maximum resident set size)\s*$", re.M)
 INSTRUCTION_BUDGET = 1 << 32  # instructions of work a measured process does beyond its one-call twin
@@ -433,7 +433,12 @@ def calls_command(variant, engine, artefact, n, calls, case=None):
     entry = f"run_{case}" if case else "run"
     if engine == "wasmtime":
         return wasmtime(artefact, entry, [n], repeat=calls)
-    return command(variant, engine, artefact, "values", *(["--fn", entry] if case else []), *[n] * calls)
+    cmd = command(variant, engine, artefact, "values", *(["--fn", entry] if case else []), *[n] * calls)
+    # V8's helper threads (concurrent marking, parallel scavenges, background compilation) retire
+    # a scheduling-dependent number of instructions: hand-JS `shapes` at 100,000 counted 0.46–1.16 G
+    # per call by default and 0.455–0.460 G single-threaded; `--predictable` (single-threaded and
+    # GC heuristics off the clock) also closes n = 50,000's 2.1% range to 0.35% (§17.263).
+    return [cmd[0], "--predictable", *cmd[1:]] if engine == "node" else cmd
 
 
 def count_calls(variant, engine, artefact, n, calls, case=None):
@@ -674,7 +679,7 @@ def cmd_run(a):
     load = quiet_verdict(snapshots, os.cpu_count() or 1, os.environ.get("GITHUB_ACTIONS") == "true")
     res["meta"].setdefault("host", {}).update(quiet=load["quiet"], load=load)
     log(f"[load] {'quiet' if load['quiet'] else 'not quiet: ' + '; '.join(load['reasons'])}"
-        + (" (informational: instruction counts need no quiet host, §17.262)" if a.instructions else ""))
+        + (" (informational: instruction counts need no quiet host, §17.263)" if a.instructions else ""))
 
     for job, runs in collected.items():
         p, case, variant, backend, engine, _art, n = job
@@ -806,7 +811,7 @@ def compare(base, heads, flag=0.05, block=0.10, abs_ms=0.1, slope_jump=0.5, rss_
     was measured on a loaded host (§17.153) the verdict is `advisory`: only a correctness
     failure (checksum, oracle, malformed samples) still blocks. When every file is an
     `--instructions` run the ratios are of instructions per call and the host's load is not read
-    (§17.262); the absolute floor is a time and does not apply."""
+    (§17.263); the absolute floor is a time and does not apply."""
     field = "instructions" if all(metric(d) == "instructions" for d in (base, *heads)) else "median_ms"
     if field == "instructions":
         abs_ms = 0
@@ -944,7 +949,7 @@ def cmd_compare(a):
     for i in out["immediate"]:
         print(f"\nIMMEDIATE FAILURE: {i}")
     advisory = (f" (host load {out['host_load']:.2f}; direction only, §17.153)" if out["verdict"] == "advisory"
-                else " (instructions per call, §17.262)" if out["metric"] == "instructions" else "")
+                else " (instructions per call, §17.263)" if out["metric"] == "instructions" else "")
     print(f"\nverdict: {out['verdict']}{advisory}")
     if a.json:
         Path(a.json).write_text(json.dumps(out, indent=1) + "\n")
@@ -987,7 +992,7 @@ def envelope(wasm, native):
     reading: `met`, `miss` (a gating cell over its ceiling) or `incomplete` (a gating cell
     unmeasured); `advisory (…)` instead when either run is not quiet, with the reading it would
     have been as `direction` (§17.153). Two `--instructions` runs are read on instructions per
-    call and never advisory (§17.262). A Wasmtime cell recorded in `meta.absent` is read as its
+    call and never advisory (§17.263). A Wasmtime cell recorded in `meta.absent` is read as its
     Node cell (§17.213 (1))."""
     key = "instructions" if metric(wasm) == metric(native) == "instructions" else "median_ms"
     by = {cell(r): r for d in (wasm, native) for r in d["results"]}
@@ -1081,7 +1086,7 @@ def cmd_bless(a):
         log("refusing to bless: " + ("oracle failures" if bad else "the run was made from a dirty tree"))
         return EXIT_ORACLE
     h = doc["meta"].get("host", {})
-    if h.get("quiet") is not True and metric(doc) != "instructions":  # §17.153 item 1; §17.262
+    if h.get("quiet") is not True and metric(doc) != "instructions":  # §17.153 item 1; §17.263
         reasons = (h.get("load") or {}).get("reasons") or ["no quiet verdict recorded (made before §17.153)"]
         log("refusing to bless: the run was not made in a quiet window: " + "; ".join(reasons))
         return EXIT_ORACLE
@@ -1403,7 +1408,7 @@ def main(argv=None):
     r.add_argument("--sizes", choices=["all", "quick"], default="all")
     r.add_argument("--stable", action="store_true", help="2 s in-process warmup instead of 250 ms")
     r.add_argument("--instructions", action="store_true",
-                   help="count instructions retired per call (macOS; §17.262) instead of timing samples")
+                   help="count instructions retired per call (macOS; §17.263) instead of timing samples")
     r.add_argument("--processes", type=int, default=5, help="fresh processes per combination")
     r.add_argument("--seed", type=int, default=SEED)
     r.add_argument("--json", required=True)

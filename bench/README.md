@@ -30,7 +30,7 @@ bench/
 
 ```sh
 bench/bench run --suite js --json out.json                 # Node and Bun, all sizes
-bench/bench run --suite js --instructions --json out.json  # instructions retired per call (macOS, §17.262)
+bench/bench run --suite js --instructions --json out.json  # instructions retired per call (macOS, §17.263)
 bench/bench run --suite js --engine node --sizes quick --filter 'handled_*' --json out.json
 bench/bench run --suite native --lane idiomatic --json out.json
 bench/bench run --suite wasm --sizes quick --json out.json  # Sakura on WASM (Node, Wasmtime)
@@ -44,10 +44,10 @@ bench/bench oracle [--filter <glob>] [--write]
 
 | Command | Behaviour | Exit |
 |---|---|---|
-| `run` | Builds the release CLI and every variant, runs the oracle for each (variant, engine), then times every (program, variant, engine, size) in `--processes` (5) fresh processes, in an order shuffled with `--seed` (20261018), serially, GC on. Each process warms up 250 ms (2 s with `--stable`), calibrates a ≥ 30 ms batch and records nine samples; peak RSS comes from `wait4`. Prints a Markdown table of medians and Sakura/hand-JS ratios on stdout and writes the `sakura-bench-v1` JSON. `--sizes quick` times the first two sizes. Samples host load every 15 s while timing and records the quiet verdict in `meta.host.quiet` and `meta.host.load` ([Quiet window](#quiet-window-17153)). With `--instructions` (macOS) it counts instead of timing ([Instruction counts](#instruction-counts-17262)): `instructions` per call is the cell's metric, `median_ms` beside it is informational, and the load is recorded but read by nothing. | 0; 1 an oracle or checksum failed (that program is not timed); 3 a toolchain is missing (its variants are skipped and listed in `meta.missing`) |
-| `compare` | Per (program, engine, size), the head's ratio Sakura/hand JS against the base's: worse by > `--flag` (5%) flags; worse by > `--block` (10%) **and** by ≥ `--abs-ms` (0.1) ms per workload beyond the base ratio blocks, but only if every head file given agrees (pass the CI's confirmation rerun of the blocked programs as a second head). Peak RSS up > 25% (maximum across fresh processes) blocks on Node only when the first and confirmation groups cross in the same cell; a single crossing warns. Bun RSS crossings only warn (§17.136). Immediate failures: a failed oracle or checksum, a checksum different from the base, malformed RSS samples, a log-log slope across the size sweep up by > 0.5 (a complexity-class change); native RSS crossings retain the immediate block. An improvement > 10% is reported for the pull request to explain. When every file is an `--instructions` run the ratios are of instructions per call, the absolute floor does not apply and the host's load is not read (§17.262). Otherwise, if the base or any head was measured on a loaded host (`meta.host.quiet: false`, not CI), the verdict is `advisory (host load L)` instead of `ok`, `flagged` or `blocked`: rows keep their statuses as direction only, no confirmation is requested, and only correctness failures (oracle, checksum, malformed samples) still block (§17.153). | 0 ok, flagged or advisory; 2 blocked |
-| `envelope` | The §17.109 M4 envelope from a `--suite wasm` file and a `--suite native --lane matched` file of the same commit and host ([M4 envelope](#m4-envelope-17213-2)): one row per program × size × engine × comparison with its ratio, ceiling and status, a reading line, and the same report as JSON with `--json` and Markdown with `--md`. Refuses files of different `meta.commit` or `meta.host.id`, the wrong suites, or a native `idiomatic` lane. When both files are `--instructions` runs the ratios are of instructions per call and the reading is never advisory (§17.262); otherwise, when either run is not quiet the reading is `advisory (host load L)` (or `advisory (CI runner)`), with the reading it would have been as `direction`. | 0 a report, whatever its reading; 2 refused |
-| `bless` | Copies a run into `baselines/<host-id>.json` (a `--suite wasm` run into `baselines/wasm/`); refuses a run with failures or made from a dirty `compiler/` or `bench/` tree. A timed run must also have `meta.host.quiet: true` (not a loaded host, a CI runner, or a run recorded before §17.153); an `--instructions` run needs no quiet host (§17.262). Prints the reasons. | 0; 1 refused |
+| `run` | Builds the release CLI and every variant, runs the oracle for each (variant, engine), then times every (program, variant, engine, size) in `--processes` (5) fresh processes, in an order shuffled with `--seed` (20261018), serially, GC on. Each process warms up 250 ms (2 s with `--stable`), calibrates a ≥ 30 ms batch and records nine samples; peak RSS comes from `wait4`. Prints a Markdown table of medians and Sakura/hand-JS ratios on stdout and writes the `sakura-bench-v1` JSON. `--sizes quick` times the first two sizes. Samples host load every 15 s while timing and records the quiet verdict in `meta.host.quiet` and `meta.host.load` ([Quiet window](#quiet-window-17153)). With `--instructions` (macOS) it counts instead of timing ([Instruction counts](#instruction-counts-17263)): `instructions` per call is the cell's metric, `median_ms` beside it is informational, and the load is recorded but read by nothing. | 0; 1 an oracle or checksum failed (that program is not timed); 3 a toolchain is missing (its variants are skipped and listed in `meta.missing`) |
+| `compare` | Per (program, engine, size), the head's ratio Sakura/hand JS against the base's: worse by > `--flag` (5%) flags; worse by > `--block` (10%) **and** by ≥ `--abs-ms` (0.1) ms per workload beyond the base ratio blocks, but only if every head file given agrees (pass the CI's confirmation rerun of the blocked programs as a second head). Peak RSS up > 25% (maximum across fresh processes) blocks on Node only when the first and confirmation groups cross in the same cell; a single crossing warns. Bun RSS crossings only warn (§17.136). Immediate failures: a failed oracle or checksum, a checksum different from the base, malformed RSS samples, a log-log slope across the size sweep up by > 0.5 (a complexity-class change); native RSS crossings retain the immediate block. An improvement > 10% is reported for the pull request to explain. When every file is an `--instructions` run the ratios are of instructions per call, the absolute floor does not apply and the host's load is not read (§17.263). Otherwise, if the base or any head was measured on a loaded host (`meta.host.quiet: false`, not CI), the verdict is `advisory (host load L)` instead of `ok`, `flagged` or `blocked`: rows keep their statuses as direction only, no confirmation is requested, and only correctness failures (oracle, checksum, malformed samples) still block (§17.153). | 0 ok, flagged or advisory; 2 blocked |
+| `envelope` | The §17.109 M4 envelope from a `--suite wasm` file and a `--suite native --lane matched` file of the same commit and host ([M4 envelope](#m4-envelope-17213-2)): one row per program × size × engine × comparison with its ratio, ceiling and status, a reading line, and the same report as JSON with `--json` and Markdown with `--md`. Refuses files of different `meta.commit` or `meta.host.id`, the wrong suites, or a native `idiomatic` lane. When both files are `--instructions` runs the ratios are of instructions per call and the reading is never advisory (§17.263); otherwise, when either run is not quiet the reading is `advisory (host load L)` (or `advisory (CI runner)`), with the reading it would have been as `direction`. | 0 a report, whatever its reading; 2 refused |
+| `bless` | Copies a run into `baselines/<host-id>.json` (a `--suite wasm` run into `baselines/wasm/`); refuses a run with failures or made from a dirty `compiler/` or `bench/` tree. A timed run must also have `meta.host.quiet: true` (not a loaded host, a CI runner, or a run recorded before §17.153); an `--instructions` run needs no quiet host (§17.263). Prints the reasons. | 0; 1 refused |
 | `compile` | The research/10 §6 budgets on generated packages (`target/corpus/<lines>`, 50-function modules): `check` of 10k and 100k lines and `build` of 10k lines, each 15 fresh processes after one warm-up; `sakura lsp` edit → `publishDiagnostics` on the 10k package, 15 edits in one warm server alternating a type error in a private body and its fix (the server publishes nothing for a clean file it has never reported). p95 against 1 s / 3 s / 500 ms / 100 ms. Also `check_hello` and `test_hello` on the `sakura new cli` project (`target/hello`). A `target_ms` column holds §17.195 (1)'s targets (`check_hello` 10 ms, `check_cold_10k` 45 ms): a miss prints `target missed` and is not an exit; `test_hello` has neither budget nor target, nor has `check_wide_match` (`target/wide_match`: §17.200 (8)'s 3,000-arm `Int` match, guarded rows alternating, and 3,000-constructor enumeration). std's analysis cache is `target/cache` unless `SAKURA_CACHE_DIR` is set. `--instructions` (macOS) also counts each `check`/`build`/`test` process's instructions (median and spread; the LSP case is one server and has none); the budgets stay on time. | 0; 2 over budget |
 | `compile-native` | The native compile report (plan M5 N2, design §17.175 (4)): builds the release CLI with the `native` feature and the driver staticlib (`target/native-driver`), then `sakura build --target native` of every program's `sakura/main.sak`, 15 fresh processes after one warm-up, and reports each phase's p95 from the CLI's `SAKURA_NATIVE_TIMINGS` lines: `frontend` (check and Core), `lowering` (Core → LIR, validated), `codegen` (Cranelift), `object` (unwind, DWARF, the file) and `link` (the system linker). No budget yet: the round after N2 sets it from a quiet window's numbers on the reference host. | 0; 2 a build failed |
 | `oracle` | Checks Sakura and hand JS on Node against `meta.toml`, or records it with `--write`. | 0; 1 a mismatch |
@@ -149,7 +149,7 @@ direction only (§17.153). The `map_set:<kind>` cases have no native
 port and are not rows.
 
 Two `--instructions` files are read on instructions per call against the same ceilings,
-never advisory (§17.262): the ceilings were set on time, and a count ratio is not a time
+never advisory (§17.263): the ceilings were set on time, and a count ratio is not a time
 ratio, so the report says which it read. After both runs its Markdown is the M4 gate
 report's envelope section and goes into `deltas.md`:
 
@@ -400,7 +400,7 @@ policy evidence also run `bench/bench compare base.json head.json confirmation.j
 all three must come from the same unchanged source for a no-change experiment. Check
 per-cell coverage explicitly because `compare` only compares overlapping ratio cells.
 
-### Instruction counts (§17.262)
+### Instruction counts (§17.263)
 
 **The owner's decision of 2026-10-19:** baselines are blessed from instruction counts on the
 reference Mac (host `d88970189598`), measured while other work runs; the quiet window below
@@ -419,24 +419,31 @@ the shuffled order of a timed run:
    call; the few tiny cells at the cap say so in `calls`).
 2. **Measure** each pair: a fresh process calling `run(n)` once and one calling it 1 + k
    times (`runner.mjs values`, a native port's `values`, or a WASI command whose `main`
-   loops k + 1 times). A pair's value is its many-call process less the median one-call
-   process, over k: start-up, loading and the first call's compilation cancel.
+   loops k + 1 times). Node runs with V8's `--predictable`, which keeps garbage collection
+   and compilation on the main thread and its GC heuristics off the clock. By default the
+   helper threads retire a number of instructions that depends on scheduling: hand-JS
+   `shapes` at n = 100,000 counted 0.46–1.16 G per call over five pairs by default and
+   0.455–0.460 G single-threaded, and at n = 50,000 `--predictable` closed a 2.1% range to
+   0.35%; `fib`, `spectral_norm` and `binary_trees` counted the same with and without it.
+   Node's wall time is measured under the flag too. A pair's value is its many-call process
+   less the median one-call process, over k: start-up, loading and the first call's
+   compilation cancel.
 3. **Report** `instructions` (the median over the pairs), `instruction_spread` ((max − min) /
    median of the per-pair values), `cycles` per call, `calls`, every raw counter in
    `process_counters`, and `median_ms` per call from the same processes' wall time.
 
-In the first counted runs (`fib`, 2026-10-19) Node, Wasmtime and native cells spread 0.3%
-or less. Bun is bimodal on some cells: four pairs agree to 0.01% and one retires about 3%
-fewer instructions, consistent with JavaScriptCore's concurrent JIT tiering up at a
-different call; the median is the four. Instructions are not time: a Wasmtime cell's
-instruction ratio and its time ratio can differ by half (`fib`: 1.9× hand JS in
-instructions, 2.9× in time), so a ratio of counts is read as a ratio of counts. Linux CI
-cannot count (`/usr/bin/time` there prints none) and keeps timing; its `compare` against a
-counted baseline reads the baseline's `median_ms`, which a loaded host makes advisory.
+Bun keeps its defaults: JavaScriptCore's concurrent JIT and GC switches did not narrow its
+cells, so a Bun cell can be bimodal (four pairs within 0.01%, one a few percent lower,
+consistent with a tier-up at a different call) and its median is read with its spread.
+Instructions are not time: a Wasmtime cell's instruction ratio and its time ratio can
+differ by half (`fib`: 1.9× hand JS in instructions, 2.9× in time), so a ratio of counts is
+read as a ratio of counts. Linux CI cannot count (`/usr/bin/time` there prints none) and
+keeps timing; its `compare` against a counted baseline reads the baseline's `median_ms`,
+which a loaded host makes advisory.
 
 ### Quiet window (§17.153)
 
-**Superseded for baselines by [§17.262](#instruction-counts-17262).** What follows still
+**Superseded for baselines by [§17.263](#instruction-counts-17263).** What follows still
 describes a timed run's `meta.host.quiet` and the `advisory` verdict.
 
 Ceilings and baselines are judged only from a **quiet window** on the reference machine
