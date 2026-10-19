@@ -203,29 +203,40 @@ pub fn stats() -> Stats {
 /// order with the same signatures, so `DefId`s, `BodyId`s and dependents' results carry over.
 /// The bodies of functions named in `evaluated` count too: the checker runs them on literals.
 fn interface_hash(root: &sakura_syntax::SyntaxNode, evaluated: &HashSet<String>) -> u64 {
-    use sakura_syntax::SyntaxKind::{BLOCK, FN_DECL, PROPERTY_DECL, TEST_DECL};
+    use sakura_syntax::NodeOrToken::{Node, Token};
+    use sakura_syntax::SyntaxKind::{
+        BLOCK, COMMENT, DOC_COMMENT, FN_DECL, IDENT, PROPERTY_DECL, TEST_DECL, WHITESPACE,
+    };
     use std::hash::{Hash, Hasher};
+    // One walk of the green tree, which skips a body without visiting it and makes no red node.
+    let trivia = |k: u16| [WHITESPACE as u16, COMMENT as u16, DOC_COMMENT as u16].contains(&k);
     let mut h = std::hash::DefaultHasher::new();
-    for item in root.children() {
-        let skip = match item.kind() {
-            FN_DECL => !fn_name(&item).is_some_and(|n| evaluated.contains(n.text())),
-            k => matches!(k, TEST_DECL | PROPERTY_DECL),
+    let green = root.green();
+    for item in green.children().filter_map(|c| c.into_node()) {
+        let kind = item.kind().0;
+        let mut skip_body = if kind == FN_DECL as u16 {
+            let name = (item.children().filter_map(|c| c.into_token()))
+                .find(|t| t.kind().0 == IDENT as u16);
+            !name.is_some_and(|n| evaluated.contains(n.text()))
+        } else {
+            kind == TEST_DECL as u16 || kind == PROPERTY_DECL as u16
         };
-        let body = skip
-            .then(|| item.children().find(|c| c.kind() == BLOCK))
-            .flatten()
-            .map(|b| b.text_range());
-        let tokens = item
-            .descendants_with_tokens()
-            .filter_map(|e| e.into_token());
-        for t in tokens.filter(|t| !t.kind().is_trivia()) {
-            if body.is_some_and(|b| b.contains_range(t.text_range())) {
-                continue;
+        let mut stack = vec![item.children()];
+        while let Some(top) = stack.last_mut() {
+            match top.next() {
+                None => _ = stack.pop(),
+                Some(Node(n)) if skip_body && stack.len() == 1 && n.kind().0 == BLOCK as u16 => {
+                    skip_body = false;
+                }
+                Some(Node(n)) => stack.push(n.children()),
+                Some(Token(t)) if trivia(t.kind().0) => {}
+                Some(Token(t)) => {
+                    t.kind().0.hash(&mut h);
+                    t.text().hash(&mut h);
+                }
             }
-            (t.kind() as u16).hash(&mut h);
-            t.text().hash(&mut h);
         }
-        item.kind().hash(&mut h);
+        kind.hash(&mut h);
     }
     h.finish()
 }
