@@ -101,6 +101,26 @@ user; if N1b has none, N1b deletes it. (4) The image builder moves to `sakura_li
 N2's first commit (the N2 row). (5) Host `Err` text follows one errno-class table on both hosts
 and a sleep is honoured for any duration on both (the N1b row); not an M4 item.
 
+**N2 progress (2026-10-19), in landable slices.** Each keeps the gates green, never lowers the
+native corpus count and leaves JS and WASM output unchanged. **N2a, frame-protocol code (landed):**
+`sakura_codegen_native::emit` lowers every LIR function to a CLIF function `(ctx, env, frame) ->
+step` with C ABI. A LIR block becomes a CLIF block with block parameters, and a table on
+`frame.block` reaches the resume blocks. Heap words are offsets from the base, which each access
+reads from the context, so no base is cached across a call. Landing pads repeat the validator's
+count, and checked arithmetic is `s*_overflow` plus branches. The object carries the static block
+(built by `sakura_lir::image`, landed first as §17.229 (2) asks), the code table and a descriptor.
+Its `main` calls `sakura_native_main` in the new crate `sakura_native_driver`. That crate is the
+staticlib a program links with `cc`, and it is the one place outside `sakura_rt` with `unsafe`:
+the C entry and the code table. N2a has no twins, so every call is a frame call (`--no-direct`, as
+the evaluator). Acceptance as built: `sakura_host_native/tests/corpus.rs` compiles, links and runs
+the 169 corpus programs. 165 agree with JS byte for byte. The four misses are the N1b programs
+already in `KNOWN_NATIVE`. Each passing program ends with the evaluator's live objects, frames,
+boxes, `Dup`s and `Drop`s (`SAKURA_NATIVE_STATS`, the WASM host's `SAKURA_WASM_STATS` format).
+Two compilations give the same bytes. **Next:** N2b direct twins and the gauge with `restarts`;
+N2c `sakura build --target native`, the `parity.rs` native backend and the `sakura.native`
+record; N2d symbols, `.eh_frame` and the DWARF line table with the debugger smoke; N2e
+`--native-checks` and the §17.173 lanes; N2f the compile report and the CI parity matrix.
+
 ### Start conditions in one view
 
 - **Now:** N0a (Sol). It may run beside the whole M4 close-out: no file of `m3-completion-and-m4.md`
