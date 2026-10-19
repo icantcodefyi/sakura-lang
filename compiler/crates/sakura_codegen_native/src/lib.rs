@@ -7,6 +7,7 @@
 
 #![cfg(feature = "native")]
 
+mod debuginfo;
 mod func;
 pub mod image;
 mod unwind;
@@ -31,8 +32,12 @@ pub struct Options {
     /// Emit direct twins for direct regions (design §17.118); `false` (`--no-direct`) runs
     /// every call through frames.
     pub direct: bool,
-    /// The URI of each source by `Pos::file`, for the `sakura.debug` table's spans (ABI §12).
+    /// The URI of each source by `Pos::file`, for the `sakura.debug` table's spans (ABI §12)
+    /// and the DWARF line table's file names.
     pub sources: Vec<String>,
+    /// The text of each source by `Pos::file`, for the line table's lines and columns; a
+    /// source without one gets no rows.
+    pub texts: Vec<String>,
 }
 
 impl Default for Options {
@@ -40,6 +45,7 @@ impl Default for Options {
         Options {
             direct: true,
             sources: vec![],
+            texts: vec![],
         }
     }
 }
@@ -67,6 +73,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
         return Err("the native backend needs a 64-bit target".into());
     }
     let mut unwind = unwind::Unwind::new(obj.isa());
+    let mut lines = debuginfo::Lines::default();
     let mut tables = image::Tables::new(m);
     let sig = func::code_signature(&obj);
     let mut ids = vec![];
@@ -117,7 +124,8 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
             )
         })
     });
-    let twin_of = if closes {
+    // Defined after the functions, so `__text` is the object's first section (`debuginfo`).
+    let twin_table = if closes {
         let id = obj
             .declare_data("sakura$twins", Linkage::Local, false, false)
             .map_err(|e| e.to_string())?;
@@ -140,11 +148,11 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
             let r = obj.declare_func_in_data(twins[f].expect("a closure twin"), &mut d);
             d.write_function_addr(8 * f as u32, r);
         }
-        obj.define_data(id, &d).map_err(|e| e.to_string())?;
-        Some(id)
+        Some((id, d))
     } else {
         None
     };
+    let twin_of = twin_table.as_ref().map(|(id, _)| *id);
     let mut rt = HashMap::new();
     let mut ctx = obj.make_context();
     let mut fctx = FunctionBuilderContext::new();
@@ -177,13 +185,18 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
                 enter: &enter,
                 may_abort: &may_abort,
                 twin_of,
+                lines: &mut lines,
             };
             func::compile(&mut env, b, f, twin)?;
         }
         obj.define_function(id, &mut ctx)
             .map_err(|e| format!("{}: {e:?}", f.name))?;
         unwind.add(obj.isa(), &ctx, id)?;
+        lines.add(&ctx, id)?;
         obj.clear_context(&mut ctx);
+    }
+    if let Some((id, d)) = twin_table {
+        obj.define_data(id, &d).map_err(|e| e.to_string())?;
     }
 
     let image = tables.image();
@@ -276,6 +289,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     unwind.add(obj.isa(), &ctx, main)?;
     let mut product = obj.finish();
     unwind.write(&mut product)?;
+    lines.write(&mut product, &opts.sources, &opts.texts)?;
     product.emit().map_err(|e| e.to_string())
 }
 

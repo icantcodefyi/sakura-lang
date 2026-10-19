@@ -77,6 +77,8 @@ pub struct Env<'a> {
     /// The twin table, when a twin calls a closure: per code, the address of its
     /// closure-convention twin or null (design §17.211 (2)).
     pub twin_of: Option<cranelift_module::DataId>,
+    /// The source positions instructions are marked with (the DWARF line table).
+    pub lines: &'a mut crate::debuginfo::Lines,
 }
 
 /// A twin's state, its last result (ABI §5 "direct style", design §17.118): returned,
@@ -774,6 +776,11 @@ impl Gen<'_, '_, '_> {
         let mut regions = self.stacks[b.index()].clone().unwrap_or_default();
         self.open = regions.iter().filter(|r| **r == Region::Handle).count() as u32;
         for inst in &block.insts {
+            // The code from here on comes from the `let` its result was made for.
+            if let Some(loc) = inst.dst().and_then(|d| self.f.locs.get(&d)) {
+                let at = self.e.lines.srcloc(*loc);
+                self.b.set_srcloc(at);
+            }
             if self.inst(inst, &mut live, &mut regions)? == Flow::Stop {
                 return Ok(());
             }

@@ -483,7 +483,8 @@ fn hosted_builtins_follow_the_compiler_table() {
 
 /// Plan M5 N2d: a debugger stopped in the runtime backtraces through compiled Sakura frames by
 /// name, a direct twin (Cranelift's `tail` convention) and its frame-protocol caller included,
-/// from the `.eh_frame` the object carries: `lldb` on macOS, `gdb` elsewhere. Skipped where
+/// from the `.eh_frame` the object carries, each at its `file:line` from the DWARF line table:
+/// `lldb` on macOS, `gdb` elsewhere. Skipped where
 /// neither is installed, except in CI.
 #[test]
 fn a_debugger_backtraces_through_native_frames() {
@@ -519,7 +520,26 @@ fn a_debugger_backtraces_through_native_frames() {
         .expect("the corpus has contract_site_blame");
     let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-debugger");
     std::fs::create_dir_all(&dir).unwrap();
-    let exe = build(&p.name, Default::default(), &p.core, &dir).unwrap();
+    // The line table's sources: the snapshot's URIs, with the fixture's text.
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let json = root.join("crates/sakura_lir/tests/corpus/semantics/contract_site_blame.json");
+    let sources = snapshot::Snapshot::from_json(&std::fs::read_to_string(json).unwrap())
+        .unwrap()
+        .files;
+    let text = std::fs::read_to_string(root.join("tests/semantics/contract_site_blame.sak"));
+    let texts = sources
+        .iter()
+        .map(|uri| match uri.as_str() {
+            "file:///semantics/contract_site_blame.sak" => text.as_ref().unwrap().clone(),
+            _ => String::new(),
+        })
+        .collect();
+    let opts = sakura_codegen_native::Options {
+        sources,
+        texts,
+        ..Default::default()
+    };
+    let exe = build(&p.name, opts, &p.core, &dir).unwrap();
     let out = Command::new(debugger)
         .args(args)
         .arg(&exe)
@@ -540,6 +560,16 @@ fn a_debugger_backtraces_through_native_frames() {
     assert!(
         raise < twin && twin < caller,
         "frames out of order:\n{text}"
+    );
+    // Each Sakura frame at its source line (from the DWARF line table): the `requires` the
+    // twin checks, the call in `main`.
+    let (requires, call) = (
+        at("contract_site_blame.sak:7"),
+        at("contract_site_blame.sak:11"),
+    );
+    assert!(
+        twin < requires && requires < caller && caller < call,
+        "frames without their lines:\n{text}"
     );
 }
 

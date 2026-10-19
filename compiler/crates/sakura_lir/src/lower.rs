@@ -473,6 +473,9 @@ struct FuncBuilder {
     module: String,
     vars: Vec<VarDecl>,
     blocks: Vec<(Block, bool)>,
+    /// The position new variables are made for, and theirs ([`Func::locs`]).
+    pos: Option<Pos>,
+    locs: BTreeMap<Var, Loc>,
 }
 
 impl FuncBuilder {
@@ -482,6 +485,8 @@ impl FuncBuilder {
             module,
             vars: Vec::new(),
             blocks: Vec::new(),
+            pos: None,
+            locs: BTreeMap::new(),
         }
     }
 
@@ -490,7 +495,17 @@ impl FuncBuilder {
             name: name.to_owned(),
             repr,
         });
-        Var(self.vars.len() as u32 - 1)
+        let v = Var(self.vars.len() as u32 - 1);
+        if let Some(p) = self.pos {
+            self.locs.insert(
+                v,
+                Loc {
+                    file: p.file,
+                    offset: p.offset,
+                },
+            );
+        }
+        v
     }
 
     fn repr(&self, v: Var) -> Repr {
@@ -583,6 +598,7 @@ impl FuncBuilder {
             vars: self.vars,
             blocks,
             ret,
+            locs: self.locs,
         })
     }
 }
@@ -1121,6 +1137,7 @@ impl<'c, 'a> Fl<'c, 'a> {
                 }
                 Stmt::Let { local, bind, pos } => {
                     self.pos = *pos;
+                    self.b.pos = *pos;
                     let after = Rest {
                         block: blk,
                         from: i + 1,

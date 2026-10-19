@@ -72,6 +72,10 @@ pub fn build(
             .file_ids()
             .map(|f| snapshot.file(f).uri.clone())
             .collect(),
+        texts: snapshot
+            .file_ids()
+            .map(|f| snapshot.file(f).text.clone())
+            .collect(),
     };
     let object = sakura_codegen_native::emit(&lir, &native).map_err(usage_error)?;
     let driver = driver_dir().map_err(usage_error)?;

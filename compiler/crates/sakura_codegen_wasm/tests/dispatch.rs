@@ -26,6 +26,7 @@ fn with_func(vars: Vec<VarDecl>, blocks: Vec<Block>) -> Vec<u8> {
         vars,
         blocks,
         ret: Repr::I64,
+        locs: Default::default(),
     });
     let errors = sakura_lir::validate::validate(&m, Default::default());
     assert!(errors.is_empty(), "{errors:?}");

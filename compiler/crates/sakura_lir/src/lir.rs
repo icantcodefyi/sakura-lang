@@ -215,6 +215,16 @@ pub struct Func {
     /// Block 0 is the entry; its parameters are the function's parameters.
     pub blocks: Vec<Block>,
     pub ret: Repr,
+    /// The source position of the Core `let` each variable was made for, where it has one:
+    /// the native backend's line table (plan M5 N2d). The WASM backend does not read it.
+    pub locs: BTreeMap<Var, Loc>,
+}
+
+/// A position in a source (`Pos::file`, byte offset).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Loc {
+    pub file: u32,
+    pub offset: u32,
 }
 
 impl Func {
