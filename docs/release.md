@@ -170,93 +170,91 @@ Start with Linux; retain GitHub-hosted publication. Current
 Apple Silicon macOS, but no Intel macOS offering. No billing or paid add-ons are
 authorized by the owner's proposal.
 
-## 2. Quiet window and bless
+## 2. Instruction-count baseline and bless
 
-Every baseline release has one quiet window (design §17.153, §17.228 (2), §17.238 (4)): the
-M4 exit for `v0.1.0`, then `v0.2.0` and `v1.0.0-rc.1` (§17.225 (5)). It measures **the commit
-the gate signs**, never `main`'s head, in a worktree of its own, so the blessed baseline's
-`meta.commit` is that commit and later docs commits move nothing. For M4 the commit is
-`dee11301`. The owner runs every command below in one terminal on the reference machine
-(host id `d88970189598`, 12 CPUs, Apple M4 Pro); nothing else runs on the machine meanwhile.
-Astra reads the files afterwards and writes the report; agents never bless.
+**The owner's decision of 2026-10-19 (design §17.264):** the quiet window is dropped. Every
+baseline release (the M4 exit for `v0.1.0`, then `v0.2.0` and `v1.0.0-rc.1`, §17.225 (5))
+needs **a blessed instruction-count baseline from the reference Mac** (host id
+`d88970189598`, Apple M4 Pro). The primary metric is instructions retired per call, read
+from macOS's `/usr/bin/time -l`; it barely moves with background load, so the runs go while
+agents and builds keep working. Wall time is recorded beside it as information only.
+Agents may make the runs; only the owner blesses.
 
-**Before the window**
-
-1. Pause every agent (Claude Code, Codex, T3 threads) and close builds and browsers.
-   `uptime` must show a one-minute load under 3.0 before each run starts.
-2. A clean worktree at the commit (replace `dee11301` for a later window):
-   ```sh
-   cd <your sakuralang checkout>
-   git fetch origin
-   git worktree add ../sakura-window dee11301 --detach
-   cd ../sakura-window
-   mkdir -p bench/target
-   ```
-3. Toolchains at the pins in [`bench/toolchains.toml`](../bench/toolchains.toml); each line must
-   print the pinned version, or its cells come out `missing` and the envelope `incomplete`:
-   ```sh
-   node --version; bun --version; rustc --version; go version
-   ocamlopt -version; koka --version; wasmtime --version; hyperfine --version
-   ```
-4. Build once, then let the load settle under 3.0 (`uptime`); the harness samples only the
-   timing phase:
-   ```sh
-   (cd compiler && cargo build --release --locked -p sakura_cli)
-   uptime
-   ```
-
-**The runs** (in this order; each ends with `[load] quiet` or `[load] not quiet: <reasons>`;
-on `not quiet` keep the file, stop, and resume at that run later; completed quiet runs stand.
-Resume on the same commit in the same worktree, the same night or the next (design §17.252
-(3)); never rerun a cell inside a run)
+A counted baseline measures the commit it runs at, which must contain the counting harness
+(`320c9980` or later). Use one clean worktree at that commit, so the files' `meta.commit` is
+that commit and later docs commits change nothing:
 
 ```sh
-python3 research/10-evidence/record_load.py --log bench/target/quiet-load-js.jsonl -- \
-  bench/bench run --suite js --stable --json bench/target/quiet-js.json
-python3 research/10-evidence/record_load.py --log bench/target/quiet-load-wasm.jsonl -- \
-  bench/bench run --suite wasm --stable --json bench/target/quiet-wasm.json
-python3 research/10-evidence/record_load.py --log bench/target/quiet-load-native.jsonl -- \
-  bench/bench run --suite native --lane matched --stable --json bench/target/quiet-native.json
-bench/bench compile --json bench/target/quiet-compile.json
-bench/bench envelope bench/target/quiet-wasm.json bench/target/quiet-native.json \
+cd <your sakuralang checkout>
+git fetch origin
+git worktree add ../sakura-counted <commit> --detach
+cd ../sakura-counted
+mkdir -p bench/target
+(cd compiler && cargo build --release --locked -p sakura_cli)
+```
+
+Toolchains at the pins in [`bench/toolchains.toml`](../bench/toolchains.toml); a missing one
+leaves its cells `missing` and the envelope `incomplete`:
+
+```sh
+node --version; bun --version; rustc --version; go version
+ocamlopt -version; koka --version; wasmtime --version
+```
+
+**The runs** (in this order; about 1.5–2 hours in all on a busy machine; each file stands on
+its own, so a run that fails is rerun alone):
+
+```sh
+bench/bench run --suite js --instructions --json bench/target/counted-js.json > bench/target/counted-js.md
+bench/bench run --suite wasm --instructions --json bench/target/counted-wasm.json > bench/target/counted-wasm.md
+bench/bench run --suite native --lane matched --instructions \
+  --json bench/target/counted-native.json > bench/target/counted-native.md
+bench/bench compile --instructions --json bench/target/counted-compile.json > bench/target/counted-compile.md
+bench/bench envelope bench/target/counted-wasm.json bench/target/counted-native.json \
   --json bench/target/envelope.json --md bench/target/envelope.md
 ```
 
-`run` prints a table of medians and Sakura/hand-JS ratios as it goes. `envelope` exits 0
-whatever it reads; its reading line (`met`, `miss`, `incomplete`, or `advisory` when a run
-was not quiet) is the gate report's envelope section, read against design §17.109's ceilings.
-`compile` reports p95 against the research/10 §6 budgets and §17.195 (1)'s targets.
+`run` prints a table of instructions per call, Sakura/hand-JS ratios of those counts and
+each row's widest spread, then the same table of wall time per call (informational). A
+spread above about 1% is reported with its cause before the bless; on Bun one process in five
+can land a few percent low (the JIT tiering at a different call) and the median is the
+other four. `envelope` exits 0 whatever it reads; reading two counted files, its line says
+`M4 envelope on instructions per call: met`, `miss` or `incomplete`, read against §17.109's
+ceilings (set on time; §17.264 (4)). `compile` reports p95 against the research/10 §6 budgets
+and §17.195 (1)'s targets in time, with each case's median instruction count beside them.
 
-**Bless** (the owner only; `bless` refuses a run with a failed oracle, from a dirty
-`compiler/` or `bench/` tree, or whose `meta.host.quiet` is not `true`):
+**Bless** (the owner only; `bless` refuses a run with a failed oracle or one made from a dirty
+`compiler/` or `bench/` tree; a counted run needs no quiet host):
 
 ```sh
-bench/bench bless bench/target/quiet-js.json      # -> bench/baselines/<host-id>.json
-bench/bench bless bench/target/quiet-wasm.json    # -> bench/baselines/wasm/<host-id>.json
+bench/bench bless bench/target/counted-js.json      # -> bench/baselines/<host-id>.json
+bench/bench bless bench/target/counted-wasm.json    # -> bench/baselines/wasm/<host-id>.json
 ```
 
 The native and compile runs are evidence, not baselines, and are not blessed.
 
-**Evidence files**, committed on `main` by hand (copy them from the worktree into your main
-checkout; `D` is the date, `C` the short commit, `H` the host id):
+**Evidence files**, committed on `main` (`D` is the date, `C` the short commit, `H` the host id):
 
 - `bench/baselines/H.json` and `bench/baselines/wasm/H.json`: the two blessed runs.
-- `bench/results/D-C-js.json`, `D-C-wasm.json`, `D-C-native.json`, `D-C-compile.json`,
-  `D-C-envelope.json`, `D-C-envelope.md`, and the three `D-C-load-*.jsonl` recordings.
-- `bench/deltas.md`: the envelope's Markdown and each program's reading against its
-  §17.109 ceiling, every miss with its named decision (Astra writes it; you read it).
-- The checklist line for the window with your name, the date and `meta.commit`.
+- `bench/results/D-C-js.json`, `D-C-wasm.json`, `D-C-native.json`, `D-C-compile.json`, their
+  `.md` tables, `D-C-envelope.json` and `D-C-envelope.md`.
+- `bench/deltas.md`: the envelope's Markdown and each program's reading against its §17.109
+  ceiling, every miss with its named decision.
+- The checklist line for the baseline with your name, the date and `meta.commit`, and the
+  website's [benchmarks page](../website/content/docs/benchmarks.mdx) with its "pending owner
+  bless" label removed.
 
 ```sh
 cd <your sakuralang checkout>
 git add bench/baselines bench/results bench/deltas.md docs/plans/m4-exit-checklist.md
-git commit -m "bench: quiet window at dee11301, blessed JS and WASM baselines"
+git commit -m "bench: bless the instruction-count baselines at <commit>"
 git push origin HEAD:main
-git worktree remove ../sakura-window
+git worktree remove ../sakura-counted
 ```
 
-A code change on a benchmarked path after the window reopens the question for the owner;
-anything else does not (§17.228 (2)).
+A code change on a benchmarked path after the bless reopens the question for the owner;
+anything else does not (§17.228 (2)). The timed `--stable` runs and their quiet verdict
+(§17.153) remain in the harness for direction; they no longer gate a release.
 
 ## 3. Prepare the candidate
 
