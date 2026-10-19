@@ -465,6 +465,11 @@ channels on fresh GitHub-hosted runners and runs the acceptance list (design §1
 row is a release defect fixed forward in a new version. Only after A is published and verified
 begin B; repeat this procedure for later matrix expansions.
 
+The tag push starts `compat.yml`, which runs the previous release's `tests/semantics`, `tests/ui`
+and `examples` under the tagged compiler (design §17.232 (e)); record its run URL. If the
+release ships a WASM ABI version that `compiler/runtime/rt/tests/fixtures/abi/` lacks, capture
+its module with the published binary as that directory's README says (§17.232 (c)).
+
 This draft was researched and written with GPT-6-Astra. It claims no existing
 release, credential, account, App installation or native release test.
 

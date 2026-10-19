@@ -4,7 +4,10 @@
 // same rules with a stand-in for the module's exports, so no module has to misbehave.
 
 import assert from "node:assert/strict";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 import {
   ABI_VERSION,
   AbiMismatch,
@@ -667,5 +670,238 @@ test("runMain and runTests report V8003 for another ABI and exit 2", async () =>
     }
     assert.equal(exit, 2);
     assert.deepEqual(lines, [`error[V8003]: the module needs ABI 2.0.0; this host implements ${host}\n`]);
+  }
+});
+
+// Cross-version ABI fixtures (design §17.232 (c), RFC 0001's ABI row): one module per ABI version
+// a release shipped, built by that release's `sakura build --target wasm` from
+// `runtime/rt/tests/fixtures/abi/program.sak` and committed as `<abi-version>/main.wasm` with its
+// `expected.stdout` (that directory's README.md says how). `SAKURA_ABI_FIXTURES` names another
+// directory of the same shape: `sakura_cli/tests/abi_fixtures.rs` runs these tests on a module
+// the current compiler builds, so the harness is exercised before a release module exists.
+
+const FIXTURES =
+  process.env.SAKURA_ABI_FIXTURES ?? fileURLToPath(new URL("../../rt/tests/fixtures/abi/", import.meta.url));
+const NO_MODULES =
+  "no release module is committed yet: capture v0.1.0's after its tag (runtime/rt/tests/fixtures/abi/README.md)";
+
+/** The committed release modules, by ABI version. */
+function releaseModules() {
+  if (!existsSync(FIXTURES)) return [];
+  return readdirSync(FIXTURES)
+    .filter((name) => /^\d+\.\d+\.\d+$/.test(name))
+    .sort()
+    .map((name) => ({
+      name,
+      bytes: readFileSync(join(FIXTURES, name, "main.wasm")),
+      stdout: readFileSync(join(FIXTURES, name, "expected.stdout"), "utf8"),
+    }));
+}
+
+/** `MAJOR.MINOR.PATCH` of an ABI version word (ABI §0). */
+const abiName = (v) => `${v >> 16}.${(v >> 8) & 0xff}.${v & 0xff}`;
+
+/**
+ * The exported global `sakura_abi_version` (ABI §0) of a module's bytes as `{ value, at, length }`:
+ * the version and the place of its `i32.const` immediate. Sakura modules' globals are numbers, so
+ * a global's type is two bytes.
+ */
+function abiGlobal(bytes) {
+  let p = 8;
+  const u = () => {
+    let v = 0;
+    for (let shift = 0; ; shift += 7) {
+      const b = bytes[p++];
+      v += (b & 0x7f) * 2 ** shift;
+      if (b < 0x80) return v;
+    }
+  };
+  const s = () => {
+    let v = 0n;
+    let shift = 0n;
+    let b;
+    do {
+      b = bytes[p++];
+      v |= BigInt(b & 0x7f) << shift;
+      shift += 7n;
+    } while (b >= 0x80);
+    return Number(b & 0x40 ? v - (1n << shift) : v);
+  };
+  const name = () => {
+    const length = u();
+    const text = new TextDecoder().decode(bytes.subarray(p, p + length));
+    p += length;
+    return text;
+  };
+  const limits = () => {
+    const flags = bytes[p++];
+    u();
+    if (flags & 1) u();
+  };
+  let imported = 0;
+  let index = null;
+  const globals = [];
+  while (p < bytes.length) {
+    const id = bytes[p++];
+    const size = u();
+    const end = p + size;
+    if (id === 2) {
+      for (let n = u(); n > 0; n--) {
+        name();
+        name();
+        const kind = bytes[p++];
+        if (kind === 0) {
+          u();
+        } else if (kind === 1) {
+          p++;
+          limits();
+        } else if (kind === 2) {
+          limits();
+        } else if (kind === 3) {
+          p += 2;
+          imported++;
+        } else if (kind === 4) {
+          p++;
+          u();
+        } else {
+          throw new Error(`unknown import kind ${kind}`);
+        }
+      }
+    } else if (id === 6) {
+      for (let n = u(); n > 0; n--) {
+        p += 2;
+        const global = { op: bytes[p] };
+        for (let op = bytes[p++]; op !== 0x0b; op = bytes[p++]) {
+          if (op === 0x41 || op === 0x42) {
+            global.at = p;
+            global.value = s();
+            global.length = p - global.at;
+          } else if (op === 0x23 || op === 0xd2) {
+            u();
+          } else if (op === 0x43) {
+            p += 4;
+          } else if (op === 0x44) {
+            p += 8;
+          } else if (op === 0xd0) {
+            p++;
+          }
+        }
+        globals.push(global);
+      }
+    } else if (id === 7) {
+      for (let n = u(); n > 0; n--) {
+        const field = name();
+        const kind = bytes[p++];
+        const i = u();
+        if (field === "sakura_abi_version" && kind === 3) index = i;
+      }
+    }
+    p = end;
+  }
+  const global = index === null ? undefined : globals[index - imported];
+  if (global?.op !== 0x41) throw new Error("the module exports no i32.const sakura_abi_version");
+  return global;
+}
+
+/** `bytes` with `sakura_abi_version` rewritten to `v`: a newer module without a newer release. */
+function restamp(bytes, v) {
+  const { at, length } = abiGlobal(bytes);
+  const leb = [];
+  for (let x = v, more = true; more; ) {
+    const b = x & 0x7f;
+    x >>= 7;
+    more = !((x === 0 && (b & 0x40) === 0) || (x === -1 && (b & 0x40) !== 0));
+    leb.push(more ? b | 0x80 : b);
+  }
+  assert.equal(leb.length, length, "the new version is encoded in the old one's bytes");
+  const out = Uint8Array.from(bytes);
+  out.set(leb, at);
+  return out;
+}
+
+/**
+ * What `run()` returns and the program writes to stdout and stderr, buffered output flushed. The
+ * host writes text; the test runner's own events (buffers, between awaits) pass through.
+ */
+async function captured(run) {
+  const out = [];
+  const err = [];
+  const [write, writeErr] = [process.stdout.write, process.stderr.write];
+  const into = (lines, original, stream) =>
+    function (chunk, ...rest) {
+      if (typeof chunk === "string") return lines.push(chunk) > 0;
+      return original.call(stream, chunk, ...rest);
+    };
+  process.stdout.write = into(out, write, process.stdout);
+  process.stderr.write = into(err, writeErr, process.stderr);
+  try {
+    const value = await run();
+    rt.flushOut();
+    return { value, stdout: out.join(""), stderr: err.join("") };
+  } finally {
+    process.stdout.write = write;
+    process.stderr.write = writeErr;
+  }
+}
+
+test("every release module of this host's MAJOR and no greater MINOR runs and prints its output", async (t) => {
+  const modules = releaseModules();
+  if (modules.length === 0) return t.skip(NO_MODULES);
+  for (const { name, bytes, stdout } of modules) {
+    const v = abiGlobal(bytes).value;
+    assert.equal(abiName(v), name, `${name}/main.wasm records ABI ${abiName(v)}`);
+    const compatible = v >> 16 === ABI_VERSION >> 16 && ((v >> 8) & 0xff) <= ((ABI_VERSION >> 8) & 0xff);
+    assert.ok(compatible, `${name}: this host refuses a module a release shipped, which ABI §0 forbids`);
+    assert.deepEqual(await captured(() => runMain(bytes)), { value: 0, stdout, stderr: "" }, name);
+  }
+});
+
+test("a release module restamped with a greater MINOR is refused as V8003 and never runs", async (t) => {
+  const modules = releaseModules();
+  if (modules.length === 0) return t.skip(NO_MODULES);
+  const newer = (ABI_VERSION & 0xff0000) | ((((ABI_VERSION >> 8) & 0xff) + 1) << 8);
+  const refusal = `error[V8003]: the module needs ABI ${abiName(newer)}; this host implements ${abiName(ABI_VERSION)}\n`;
+  for (const { name, bytes } of modules) {
+    const stamped = restamp(bytes, newer);
+    assert.equal(abiGlobal(stamped).value, newer);
+    await assert.rejects(new Host().instantiate(stamped), AbiMismatch, name);
+    assert.deepEqual(await captured(() => runMain(stamped)), { value: 2, stdout: "", stderr: refusal }, name);
+  }
+});
+
+test("task_free absent or present: the same run, and only the finished root tasks stay live", async (t) => {
+  const modules = releaseModules();
+  if (modules.length === 0) return t.skip(NO_MODULES);
+  // ABI §10's counters except the resource ones a retained task changes.
+  const resource = new Set(["live", "peak", "live_objects", "committed", "free_list_bytes"]);
+  const semantic = (stats) => Object.fromEntries(Object.entries(stats).filter(([k]) => !resource.has(k)));
+  const twice = async (bytes, keep) => {
+    const host = new Host();
+    await host.instantiate(bytes);
+    if (!keep) {
+      host.exports = Object.fromEntries(Object.entries(host.exports).filter(([k]) => k !== "task_free"));
+    }
+    const runs = [];
+    for (let i = 0; i < 2; i++) {
+      const { value, stdout } = await captured(() => host.runTask(-1));
+      runs.push({ kind: value.kind, stdout, stats: host.stats() });
+    }
+    host.close();
+    return runs;
+  };
+  for (const { name, bytes, stdout } of modules) {
+    const absent = await twice(bytes, false);
+    assert.deepEqual(absent.map((r) => [r.kind, r.stdout]), [["ok", stdout], ["ok", stdout]], name);
+    const task = absent[1].stats.live_objects - absent[0].stats.live_objects;
+    assert.ok(task > 0, `${name}: without task_free each finished root task stays live`);
+    // A module from before ABI 1.2.2 has no task_free (§9): its own runs are the absent case.
+    if (!WebAssembly.Module.exports(new WebAssembly.Module(bytes)).some((e) => e.name === "task_free")) continue;
+    const present = await twice(bytes, true);
+    assert.deepEqual(present.map((r) => [r.kind, r.stdout]), [["ok", stdout], ["ok", stdout]], name);
+    for (const [i, run] of present.entries()) {
+      assert.deepEqual(semantic(run.stats), semantic(absent[i].stats), `${name}: run ${i + 1}'s counters`);
+      assert.equal(absent[i].stats.live_objects - run.stats.live_objects, task * (i + 1), `${name}: run ${i + 1}`);
+    }
+    assert.equal(present[1].stats.live_objects, present[0].stats.live_objects, `${name}: freed tasks do not accumulate`);
   }
 });

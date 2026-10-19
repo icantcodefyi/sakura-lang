@@ -24,6 +24,8 @@ pnpm-lock.yaml text eol=lf linguist-generated=true
 *.woff binary
 *.woff2 binary
 *.pdf binary
+# Release modules are byte-exact fixtures (compiler/runtime/rt/tests/fixtures/abi/).
+*.wasm binary
 
 # Snapshots are byte-exact data (design §17.196 (1)).
 *.snap -text
