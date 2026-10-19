@@ -68,7 +68,7 @@ The [chapter](diagnostics.md) defines the table's scope.
 | `V2005` | error | `infinite_type` | [V2005_infinite_type.sak](../../compiler/tests/ui/V2005_infinite_type.sak) | active |
 | `V2010` | error | `cannot_infer_type` | [V2010_cannot_infer_type.sak](../../compiler/tests/ui/V2010_cannot_infer_type.sak) | active |
 | `V2015` | error | `error_union_annotation_needed` | [V2015_error_union_annotation_needed.sak](../../compiler/tests/ui/V2015_error_union_annotation_needed.sak) | active |
-| `V2031` | error | `not_show` | [V2031_secret_interpolated.sak](../../compiler/tests/ui/V2031_secret_interpolated.sak) | active |
+| `V2031` | error | `not_show` | [V2031_crypto_key_never_shows.sak](../../compiler/tests/ui/V2031_crypto_key_never_shows.sak) | active |
 | `V2032` | error | `constraint_not_satisfied` | [V2032_constraint_not_satisfied.sak](../../compiler/tests/ui/V2032_constraint_not_satisfied.sak) | active |
 | `V2033` | error | `opaque_not_schema` | [V2033_decode_opaque_html.sak](../../compiler/tests/ui/V2033_decode_opaque_html.sak) | active |
 | `V2034` | error | `refined_field_assignment` | [V2034_refined_field_assignment.sak](../../compiler/tests/ui/V2034_refined_field_assignment.sak) | active |
