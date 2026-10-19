@@ -134,6 +134,9 @@ impl Default for Limits {
 pub struct Outcome {
     pub stdout: String,
     pub result: Result<(), Stop>,
+    /// `Limits::audit_owned`: the updates an owned site made, each of which an in-place backend
+    /// does without copying a path.
+    pub owned_updates: u64,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -163,6 +166,7 @@ pub fn run_main(module: &Module, limits: Limits) -> Outcome {
     Outcome {
         stdout: m.stdout,
         result,
+        owned_updates: m.owned.updates,
     }
 }
 
@@ -232,8 +236,15 @@ pub(crate) struct Machine<'m> {
 struct Owned {
     summaries: Vec<sakura_core::opt::owned::Summary>,
     facts: Vec<sakura_core::opt::owned::Facts>,
+    /// Per consuming def, the facts of its owned entry (`f$o`): the backends call it from an
+    /// owned site, with the consumed parameter owned.
+    entry_facts: Vec<Option<sakura_core::opt::owned::Facts>>,
+    /// Per running frame, whether it runs the owned entry; `enter` marks the next call.
+    frames: Vec<bool>,
+    enter: bool,
     consumed: std::collections::HashSet<usize>,
     pins: Vec<Pin>,
+    updates: u64,
 }
 
 #[allow(dead_code)]
@@ -288,9 +299,19 @@ impl<'m> Machine<'m> {
                     .iter()
                     .map(|d| analyze(module, d, &summaries, &[]))
                     .collect();
+                let entry_facts = module
+                    .defs
+                    .iter()
+                    .zip(&summaries)
+                    .map(|(d, s)| {
+                        s.consumes
+                            .map(|p| analyze(module, d, &summaries, &[d.params[p]]))
+                    })
+                    .collect();
                 Owned {
                     summaries,
                     facts,
+                    entry_facts,
                     ..Owned::default()
                 }
             } else {
@@ -301,7 +322,10 @@ impl<'m> Machine<'m> {
 
     /// `Limits::audit_owned`: the argument an owned update bound to `local` in `def` consumes.
     fn owned_arg<'b>(&self, def: DefId, local: Local, bind: &'b Bind) -> Option<&'b Atom> {
-        let facts = self.owned.facts.get(def.index())?;
+        let facts = match self.owned.frames.last() {
+            Some(true) => self.owned.entry_facts.get(def.index())?.as_ref()?,
+            _ => self.owned.facts.get(def.index())?,
+        };
         if !facts.owned(local) {
             return None;
         }
@@ -411,6 +435,20 @@ impl<'m> Machine<'m> {
     /// Runs `def`, then any tail calls it makes, in one Rust frame.
     fn run_frames(
         &mut self,
+        def: DefId,
+        captures: Vec<Value>,
+        args: Vec<Value>,
+        hs: &Rc<Handlers>,
+    ) -> R<Called> {
+        let entry = std::mem::take(&mut self.owned.enter);
+        self.owned.frames.push(entry);
+        let result = self.run_frames_inner(def, captures, args, hs);
+        self.owned.frames.pop();
+        result
+    }
+
+    fn run_frames_inner(
+        &mut self,
         mut def: DefId,
         mut captures: Vec<Value>,
         mut args: Vec<Value>,
@@ -445,9 +483,14 @@ impl<'m> Machine<'m> {
                     return Err(Stop::Internal(format!("jump to unbound label {}", l.0)));
                 }
                 Flow::TailCall(f, next) => match &f {
+                    // An owned site is never a tail call: the next frame is the plain entry.
                     Value::Fn(c) => match &**c {
-                        Callable::Global(d) => (def, captures, args) = (*d, vec![], next),
+                        Callable::Global(d) => {
+                            *self.owned.frames.last_mut().expect("a frame") = false;
+                            (def, captures, args) = (*d, vec![], next)
+                        }
                         Callable::Closure(d, caps) => {
+                            *self.owned.frames.last_mut().expect("a frame") = false;
                             (def, captures, args) = (*d, caps.clone(), next)
                         }
                         _ => return self.call(&f, next, hs),
@@ -584,7 +627,11 @@ impl<'m> Machine<'m> {
                         Some(a) => Some(self.atom(env, a)?),
                         None => None,
                     };
+                    // An owned call of a consuming def runs its owned entry.
+                    self.owned.enter =
+                        consumed.is_some() && matches!(bind, Bind::Call(Atom::Global(_), _));
                     let bound = self.bind(env, bind, hs);
+                    self.owned.enter = false;
                     if let Err(Stop::Defect { code, .. }) = &bound {
                         self.audit(def, *local, code)?;
                     }
@@ -596,6 +643,7 @@ impl<'m> Machine<'m> {
                             {
                                 self.owned.consumed.insert(id);
                                 self.owned.pins.push(pin);
+                                self.owned.updates += 1;
                             }
                             env[local.index()] = Some(v)
                         }
