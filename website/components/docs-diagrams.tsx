@@ -615,6 +615,57 @@ const DIAGRAMS = {
     ],
     after: "Without --record, a miss fails with HttpError pointing to sakura test --record.",
   },
+  CountFlow: {
+    caption:
+      "How bench/bench run --instructions measures one cell (design §17.264). Start-up cancels in the difference.",
+    nodes: [
+      {
+        id: "cal",
+        code: "calibrate k",
+        note: "double k until k more calls retire 2³² instructions",
+        wide: [0, 0.5],
+        narrow: [0.5, 0],
+      },
+      {
+        id: "one",
+        code: "run(n) × 1",
+        note: "a fresh process: start-up, loading, the first call",
+        wide: [1, 0],
+        narrow: [0, 1],
+      },
+      {
+        id: "many",
+        code: "run(n) × (1\u00a0+\u00a0k)",
+        note: "a fresh process: the same, then k warm calls",
+        wide: [1, 1],
+        narrow: [1, 1],
+      },
+      {
+        id: "diff",
+        code: "(many − one)/k",
+        note: "instructions retired per warm call",
+        wide: [2, 0.5],
+        narrow: [0.5, 2],
+      },
+      {
+        id: "med",
+        code: "median of 5 pairs",
+        note: "reported with its spread, (max − min) / median",
+        tone: "ok",
+        wide: [3, 0.5],
+        narrow: [0.5, 3],
+      },
+    ],
+    edges: [
+      ["cal", "one"],
+      ["cal", "many"],
+      ["one", "diff"],
+      ["many", "diff"],
+      ["diff", "med"],
+    ],
+    after:
+      "The counts come from macOS's /usr/bin/time -l: every thread of the one process it runs, none of its children.",
+  },
 } satisfies Record<string, Diagram>;
 
 type Name = keyof typeof DIAGRAMS;
@@ -931,6 +982,7 @@ export const VerifyFlow = () => <Figure name="VerifyFlow" />;
 export const AgentLoop = () => <Figure name="AgentLoop" />;
 export const PatchFlow = () => <Figure name="PatchFlow" />;
 export const CassetteFlow = () => <Figure name="CassetteFlow" />;
+export const CountFlow = () => <Figure name="CountFlow" />;
 
 /**
  * The diagram in words: each box in order, then where its arrows go when that is not simply the

@@ -58,6 +58,17 @@ Releases follow the [stability policy](STABILITY.md). The published preview is
   record or the effect trace fails the run. The nightly fuzz workflow now carries each
   target's corpus between runs as an artifact, and a manual run takes `max_total_time`, the
   seconds per target.
+- `bench/bench run --instructions` and `bench/bench compile --instructions` (macOS): the
+  benchmark harness counts instructions retired per call through `/usr/bin/time -l`, the
+  primary metric of a baseline from now on (design §17.264, the owner's decision of
+  2026-10-19). Each cell takes a call count calibrated on the counter and five pairs of fresh
+  processes (one call, and 1 + k calls), and reports the median per call with its spread;
+  wall time per call is kept beside it as information. `bless` accepts a counted run without
+  a quiet host, and `compare` and `envelope` read instructions when every file is counted.
+  The quiet benchmark window no longer gates a release: the gate is a blessed
+  instruction-count baseline from the reference Mac (`docs/release.md` §2). The first counted
+  runs are on the website's [benchmarks page](https://www.sakuralang.com/docs/benchmarks),
+  pending the owner's bless.
 
 ### Fixed
 

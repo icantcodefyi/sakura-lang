@@ -24,6 +24,7 @@ const docs = defineDocs({
           "AuthorityFlow",
           "CassetteFlow",
           "ContractFlow",
+          "CountFlow",
           "EffectFlow",
           "FailureFlow",
           "HandlerFlow",

@@ -18,6 +18,7 @@
     "manifest",
     "stdlib",
     "errors",
+    "benchmarks",
     "stability",
     "roadmap",
     "changes",

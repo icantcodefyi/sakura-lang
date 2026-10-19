@@ -47,7 +47,7 @@ The [gate report](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plan
 
 ## M4: WASM and contract verification
 
-M4's work is on main; its exit commit is `dee11301`. The owner's sign-off, a benchmark run on an idle machine and the `v0.1.0` tag close it. Working today:
+M4's work is on main; its exit commit is `dee11301`. The owner's sign-off, a blessed [instruction-count benchmark baseline](/docs/benchmarks) and the `v0.1.0` tag close it. Working today:
 
 - **WASM (W1/W2):** [`build`, `run` and `test --target wasm`](/docs/tour/memory#backends), with Node as the host. The [runtime ABI](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/runtime/rt/ABI.md) defines bounded linear memory, conservative reference counting, persistent collections, frames, the trampoline and scheduler. LIR lowering makes continuations, closure environments, boxing and balanced `Dup`/`Drop` explicit; `sakura build --emit lir` writes it as text. The [ABI research](https://github.com/icantcodefyi/sakuralang/blob/main/research/09-m4-abi-and-encoding.md) records the design rationale.
 - **Host operations:** HTTP sends and streams, SQLite, `Llm.stream`, `Serve.host()` and `Log.json()` run on WASM, including requests carrying `Secret` headers (`Http.bearer`, and `Llm.anthropic` over `Http.host()`), as approved by the security review (W0). Cassettes still never see a secret header's value. This is not live-provider validation.

@@ -12,7 +12,7 @@ const STAGES: { id: Version; name: string; body: string }[] = [
   {
     id: "0.1.0",
     name: "WASM and verification",
-    body: "The first non-alpha preview, after one quiet benchmark window. Adds Linux ARM64, Windows x64 and Intel Mac.",
+    body: "The first non-alpha preview, after a blessed benchmark baseline. Adds Linux ARM64, Windows x64 and Intel Mac.",
   },
   {
     id: "0.2.0",

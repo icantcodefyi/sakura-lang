@@ -51,8 +51,8 @@ function Heading({ href, children }: { href: string; children: string }) {
 
 // `bench/bench compile` workloads: `check_hello` on the `sakura new cli` project and
 // `check_cold_10k` on its generated 10,084-line package; medians of repeated runs on the
-// owner's reference machine. Runtime ratios stay off this page until the quiet-window
-// baselines are blessed (docs/release.md §2).
+// owner's reference machine. Runtime ratios stay off this page; instruction counts live on
+// /docs/benchmarks, pending the owner's bless (docs/release.md §2, design §17.264).
 const LATENCY = [
   { ms: "7", what: "sakura check", on: "a new project" },
   { ms: "35", what: "sakura check", on: "a cold 10k-line package" },

@@ -47,7 +47,7 @@ No. The interfaces are open formats: Markdown docs and `llms.txt`, JSON Lines di
 
 ## Are there performance numbers?
 
-No. JavaScript and WASM execution are implemented, and native code through Cranelift is experimental; Perceus reuse comes after 1.0. No benchmark result has been blessed yet, so these docs quote none. The [benchmark suite](https://github.com/icantcodefyi/sakuralang/tree/main/bench) contains reproducible workloads and reports; its results are specific to workloads and hosts, not a language ranking.
+Instruction counts, yes; times, no. The [benchmarks page](/docs/benchmarks) lists the instructions each benchmark program retires per call on the reference Mac at one commit, pending the owner's bless. A count repeats on one machine, but it is not a time, so no speed claim follows from it. JavaScript and WASM execution are implemented, native code through Cranelift is experimental, and Perceus reuse comes after 1.0. The [benchmark suite](https://github.com/icantcodefyi/sakuralang/tree/main/bench) contains reproducible workloads and reports; its results are specific to workloads and one host, not a language ranking.
 
 ## Why no `mut`?
 
