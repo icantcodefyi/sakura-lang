@@ -114,10 +114,10 @@ fn expected() -> String {
     )
 }
 
-/// Runs node on `args`, which prints the expected output and exits 0 (V8 compiling a function
-/// in the background can still fail after the output). Skipped when node is missing, unless
+/// Runs node on `args`, which prints `expected` and exits 0 (V8 compiling a function in the
+/// background can still fail after the output). Skipped when node is missing, unless
 /// `SAKURA_REQUIRE_WASM=1` (as `sakura_cli/tests/wasm.rs`).
-fn node(args: &[std::path::PathBuf]) {
+fn node(args: &[&dyn AsRef<std::ffi::OsStr>], expected: &str) {
     let found = Command::new("node")
         .arg("--version")
         .output()
@@ -131,7 +131,7 @@ fn node(args: &[std::path::PathBuf]) {
     }
     let out = Command::new("node").args(args).output().expect("node");
     let stderr = String::from_utf8_lossy(&out.stderr);
-    assert_eq!(String::from_utf8_lossy(&out.stdout), expected(), "{stderr}");
+    assert_eq!(String::from_utf8_lossy(&out.stdout), expected, "{stderr}");
     assert!(out.status.success(), "{:?}: {stderr}", out.status);
 }
 
@@ -177,7 +177,7 @@ fn wide_shapes_go_through_every_phase_and_run_on_node() {
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(path, &f.text).unwrap();
     }
-    node(&[dir.join("__main__.js")]);
+    node(&[&dir.join("__main__.js")], &expected());
 
     let lir = sakura_lir::from_core(&module, sakura_lir::Layout::Tagged).expect("lowers to LIR");
     let errors = sakura_lir::validate::validate(&lir, Default::default());
@@ -195,7 +195,10 @@ fn wide_shapes_go_through_every_phase_and_run_on_node() {
         for (name, text) in sakura_codegen_wasm::HOST_FILES {
             std::fs::write(dir.join(name), text).unwrap();
         }
-        node(&[dir.join("sakura_wasm_host.js"), dir.join("main.wasm")]);
+        node(
+            &[&dir.join("sakura_wasm_host.js"), &dir.join("main.wasm")],
+            &expected(),
+        );
     }
     let _ = std::fs::remove_dir_all(&dir);
 
@@ -220,6 +223,103 @@ fn wide_shapes_go_through_every_phase_and_run_on_node() {
         .expect("within the snapshot's bounds");
     let read = snapshot::Snapshot::from_json(&written.to_json()).expect("round trips");
     assert_eq!(read, written);
+}
+
+/// `&&`-guarded rows per function past V8's limit on a loop header's predecessors (design
+/// §17.236), and a sparse literal `match` of as many arms.
+const FAN_IN: [usize; 2] = [16_384, 32_768];
+
+/// A function of `n` rows guarded by an `&&` for each `n`, and a sparse `match` of
+/// `FAN_IN[0]` arms; with the expected output.
+fn fan_in(rows: &[usize]) -> (String, String) {
+    let (mut s, mut main, mut out) = (String::new(), vec![], vec![]);
+    for &n in rows {
+        s += &format!("fn and_{n}(x: Int) -> Int {{\n  match x {{\n");
+        (0..n).for_each(|i| s += &format!("    n if n < {} && n > -{n} => {i},\n", i + 1));
+        s += "    _ => -1,\n  }\n}\n\n";
+        main.push(format!(
+            "{{and_{n}({})}} {{and_{n}(-5)}} {{and_{n}({n})}}",
+            n - 1
+        ));
+        out.push(format!("{} 0 -1", n - 1));
+    }
+    let n = FAN_IN[0];
+    s += "fn sparse(x: Int) -> Int {\n  match x {\n";
+    (0..n).for_each(|i| s += &format!("    {} => {i},\n", 1000 * i));
+    s += "    _ => -1,\n  }\n}\n\n";
+    main.push(format!("{{sparse({})}} {{sparse(7)}}", 1000 * (n - 1)));
+    out.push(format!("{} -1", n - 1));
+    s += "pub fn main() -> Unit ! {Console} {\n";
+    main.iter()
+        .for_each(|m| s += &format!("  Console.print(\"{m}\")\n"));
+    (s + "}\n", out.iter().map(|l| format!("{l}\n")).collect())
+}
+
+fn lower(source: String) -> sakura_core::Module {
+    let snap = Snapshot::with_std([("file:///fan/src/main.sak".to_owned(), source)]);
+    let opts = BuildOptions {
+        need_entry: true,
+        ..Default::default()
+    };
+    let (module, diags) = Analysis::lower_core(&snap, &opts);
+    let errors: Vec<_> = diags.iter().filter(|d| d.is_error()).collect();
+    assert!(errors.is_empty(), "{errors:?}");
+    module.expect("lowers to Core")
+}
+
+/// 16,384 and 32,768 `&&`-guarded rows and a 16,384-arm sparse `match` run on Node with the
+/// optimizing tier compiling every function before it runs (`--no-liftoff`), and on Wasmtime;
+/// 16,384 rows run on the JS backend (at 32,768 its join chain exhausts the stack).
+#[test]
+fn past_16000_guarded_rows_the_wasm_dispatch_runs_on_node_and_wasmtime() {
+    let dir = std::env::temp_dir().join(format!("sakura-fan-in-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let (source, expected) = fan_in(&FAN_IN[..1]);
+    let module = lower(source);
+    let files = sakura_codegen_js::emit(&module, &sakura_codegen_js::Options::new(vec![]));
+    for f in &files {
+        let path = dir.join("js").join(&f.path);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, &f.text).unwrap();
+    }
+    node(&[&dir.join("js/__main__.js")], &expected);
+
+    let wasm = sakura_codegen_wasm::available();
+    assert!(
+        wasm || std::env::var("SAKURA_REQUIRE_WASM").as_deref() != Ok("1"),
+        "the WASM backend's runtime object is missing"
+    );
+    if wasm {
+        let (source, expected) = fan_in(&FAN_IN);
+        let lir = sakura_lir::from_core(&lower(source), sakura_lir::Layout::Tagged)
+            .expect("lowers to LIR");
+        let module = sakura_codegen_wasm::emit(&lir, &Default::default()).expect("emits WASM");
+        std::fs::write(dir.join("main.wasm"), module).unwrap();
+        for (name, text) in sakura_codegen_wasm::HOST_FILES {
+            std::fs::write(dir.join(name), text).unwrap();
+        }
+        let host = dir.join("sakura_wasm_host.js");
+        node(&[&"--no-liftoff", &host, &dir.join("main.wasm")], &expected);
+        let opts = sakura_codegen_wasm::Options {
+            host: sakura_codegen_wasm::Host::Wasi,
+            ..Default::default()
+        };
+        let command = sakura_codegen_wasm::emit(&lir, &opts).expect("emits WASI");
+        std::fs::write(dir.join("wasi.wasm"), command).unwrap();
+        match Command::new("wasmtime")
+            .arg("run")
+            .arg(dir.join("wasi.wasm"))
+            .output()
+        {
+            Ok(out) => {
+                let stderr = String::from_utf8_lossy(&out.stderr);
+                assert_eq!(String::from_utf8_lossy(&out.stdout), expected, "{stderr}");
+                assert!(out.status.success(), "{:?}: {stderr}", out.status);
+            }
+            Err(_) => eprintln!("skipped Wasmtime: wasmtime is missing"),
+        }
+    }
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 /// The `V4004` records of `source`, as (message, primary span's start, its text).

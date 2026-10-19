@@ -21,6 +21,7 @@
 //! block holds there (the validator's simulation, repeated here), then returns step 3; frame
 //! slots are released by the trampoline when it pops the frame.
 
+use std::cell::Cell;
 use std::collections::{BTreeMap, HashMap};
 
 use sakura_lir::layout::{FrameDesc, SlotKind};
@@ -358,6 +359,8 @@ pub fn compile(env: &Env<'_>, statics: &mut Statics, f: &Func) -> Result<Functio
         lu: scratch + 2,
         lt: scratch + 3,
         to_loop: 0,
+        jumps: Cell::new(0),
+        stubs: 0,
         depth: 0,
         cur: BlockId(0),
         open: 0,
@@ -371,13 +374,12 @@ pub fn compile(env: &Env<'_>, statics: &mut Statics, f: &Func) -> Result<Functio
         .i32_add();
     s.local_set(g.lb);
     g.dispatch(
-        &mut s,
+        &mut func,
         &sel,
         n,
         "a frame resumed at a block that is not resumable",
     )?;
-    s.unreachable();
-    s.end();
+    func.instructions().unreachable().end();
     Ok(func)
 }
 
@@ -420,6 +422,8 @@ pub fn compile_twin(env: &Env<'_>, statics: &mut Statics, f: &Func) -> Result<Fu
         lu: scratch + 2,
         lt: scratch + 3,
         to_loop: 0,
+        jumps: Cell::new(0),
+        stubs: 0,
         depth: 0,
         cur: BlockId(0),
         open: 0,
@@ -448,13 +452,12 @@ pub fn compile_twin(env: &Env<'_>, statics: &mut Statics, f: &Func) -> Result<Fu
     }
     s.i32_const(0).local_set(g.lb);
     g.dispatch(
-        &mut s,
+        &mut func,
         &sel,
         n,
         "a twin jumped to a block that does not exist",
     )?;
-    s.unreachable();
-    s.end();
+    func.instructions().unreachable().end();
     Ok(func)
 }
 
@@ -539,9 +542,12 @@ struct Gen<'e, 's> {
     lf2: u32,
     lu: u32,
     lt: u32,
-    /// The labels between the case being emitted and the dispatch loop, and the structured
-    /// blocks opened inside the case.
+    /// The labels between the case being emitted and the dispatch loop (its innermost stub,
+    /// if it has them), and the structured blocks opened inside the case.
     to_loop: u32,
+    /// The jumps back to the dispatch loop emitted so far, and its stubs ([`Gen::dispatch`]).
+    jumps: Cell<u32>,
+    stubs: u32,
     depth: u32,
     /// The block being emitted.
     cur: BlockId,
@@ -575,24 +581,64 @@ impl Gen<'_, '_> {
         Ok(())
     }
 
-    /// Branch back to the dispatch loop, which runs case `$b`.
+    /// Branch back to the dispatch loop, which runs case `$b`, through this jump's stub if the
+    /// loop has them ([`Gen::dispatch`]).
     fn br_loop(&self, s: &mut InstructionSink<'_>) {
-        s.br(self.to_loop + self.depth);
+        let j = self.jumps.get();
+        self.jumps.set(j + 1);
+        let stub = if self.stubs > 0 { j / CHUNK as u32 } else { 0 };
+        s.br(self.to_loop + self.depth + stub);
     }
 
-    /// The dispatch loop: one `block` per case and a `br_table` on `$b` over `sel` (a missing
-    /// selector runs a case raising `bad`), one-level for at most [`CHUNK`] blocks and
+    /// The dispatch loop over [`Gen::cases`]. Past [`CHUNK`] jumps back to the loop (design
+    /// §17.236), each run of 256 jumps, in emission order, branches to its own stub, a `block`
+    /// around the cases whose only exit is one `br` to the loop, so the loop header has at most
+    /// ⌈jumps/256⌉ + 1 predecessors (V8's optimizing tier aborts past 65,535) and nesting grows
+    /// by ⌈jumps/256⌉. The cases are emitted once to count the jumps, again if they need stubs.
+    fn dispatch(
+        &mut self,
+        func: &mut Function,
+        sel: &[Option<Case>],
+        blocks: u32,
+        bad: &str,
+    ) -> Result<(), String> {
+        func.instructions().loop_(BlockType::Empty);
+        let mut body = Vec::new();
+        self.jumps.set(0);
+        self.cases(&mut InstructionSink::new(&mut body), sel, blocks, bad)?;
+        let jumps = self.jumps.get();
+        if jumps as usize <= CHUNK {
+            func.raw(body);
+        } else {
+            self.stubs = jumps.div_ceil(CHUNK as u32);
+            for _ in 0..self.stubs {
+                func.instructions().block(BlockType::Empty);
+            }
+            body.clear();
+            self.jumps.set(0);
+            self.cases(&mut InstructionSink::new(&mut body), sel, blocks, bad)?;
+            func.raw(body);
+            for i in 0..self.stubs {
+                func.instructions().end().br(self.stubs - 1 - i);
+            }
+            self.stubs = 0;
+        }
+        func.instructions().end(); // loop
+        Ok(())
+    }
+
+    /// The dispatch's cases: one `block` per case and a `br_table` on `$b` over `sel` (a
+    /// missing selector runs a case raising `bad`), one-level for at most [`CHUNK`] blocks and
     /// `2 * CHUNK` selectors, else an outer `br_table` on `$b >> 8` over chunks of 256
     /// selectors and an inner one on `$b & 255`, so nesting is at most
     /// 257 + ⌈selectors/256⌉ + 1.
-    fn dispatch(
+    fn cases(
         &mut self,
         s: &mut InstructionSink<'_>,
         sel: &[Option<Case>],
         blocks: u32,
         bad: &str,
     ) -> Result<(), String> {
-        s.loop_(BlockType::Empty);
         if blocks as usize <= CHUNK && sel.len() <= 2 * CHUNK {
             self.level(s, sel, 0, bad)?;
         } else {
@@ -611,7 +657,6 @@ impl Gen<'_, '_> {
             self.to_loop = 0;
             self.raise(s, 90, bad, None);
         }
-        s.end(); // loop
         Ok(())
     }
 

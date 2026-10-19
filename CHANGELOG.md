@@ -353,6 +353,12 @@ Compare the release tag with main when identifying changes not in that preview.
 
 ### Fixed
 
+- A WASM function with more than about 16,000 `&&`-guarded `match` rows no longer aborts Node
+  after printing its output (design §17.236, plan row 31). Past 256 jumps back to a function's
+  dispatch loop, each 256 jumps branch through a stub, so the loop header has at most
+  ⌈jumps/256⌉ + 1 predecessors; V8's optimizing tier failed past 65,535. 16,384 and 32,768 rows
+  run on Node and Wasmtime; functions of at most 256 jumps are byte-identical, and compiling the
+  wide ones is faster on both engines (8,192 rows on Node with `--no-liftoff`: 4.5 s to 0.9 s).
 - Type arguments on the first alternative of a variant list (`type T = Some<Int> | Nada`) are
   `V0001`, as on a later alternative. They were accepted, and `sakura fmt` printed the
   declaration as `Some | Nada`. A lone `Name<Args>` is still an alias.

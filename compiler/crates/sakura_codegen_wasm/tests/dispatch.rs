@@ -2,7 +2,8 @@
 //! `br_table` over its selectors (a block and a resume case per block), one of 257 an outer
 //! `br_table` over chunks of 256 selectors and an inner one per chunk. The locals' two forms
 //! (§17.219 (3)): a function of 256 variables has a local per variable, one of 257 shares
-//! locals by liveness.
+//! locals by liveness. The jumps' two forms (§17.236): a function of 256 jumps back to the
+//! dispatch loop branches to its header directly, one of 257 through a stub per 256 jumps.
 
 use sakura_analysis::{Analysis, BuildOptions, Snapshot};
 use sakura_lir::lir::*;
@@ -125,6 +126,54 @@ fn br_tables(wasm: &[u8]) -> Vec<Vec<usize>> {
     out
 }
 
+/// Per function body, the number of branches to each `loop` header, in order, and the most
+/// `br` and `br_if` to any one `block`.
+fn back_edges(wasm: &[u8]) -> Vec<(Vec<usize>, usize)> {
+    let mut out = Vec::new();
+    for payload in Parser::new(0).parse_all(wasm) {
+        let Payload::CodeSectionEntry(body) = payload.expect("parses") else {
+            continue;
+        };
+        // Each open frame's branch count and whether it is a loop; the function's is first.
+        let mut counts = vec![(0, false)];
+        let mut frames = vec![0];
+        let mut ops = body.get_operators_reader().expect("operators");
+        while !ops.eof() {
+            let op = ops.read().expect("operator");
+            let (depths, plain) = match &op {
+                Operator::Loop { .. } | Operator::Block { .. } | Operator::If { .. } => {
+                    frames.push(counts.len());
+                    counts.push((0, matches!(op, Operator::Loop { .. })));
+                    continue;
+                }
+                Operator::End => {
+                    frames.pop();
+                    continue;
+                }
+                Operator::Br { relative_depth } | Operator::BrIf { relative_depth } => {
+                    (vec![*relative_depth], true)
+                }
+                Operator::BrTable { targets } => {
+                    let mut d: Vec<u32> = targets.targets().map(|d| d.expect("target")).collect();
+                    d.push(targets.default());
+                    (d, false)
+                }
+                _ => continue,
+            };
+            for d in depths {
+                let (n, is_loop) = &mut counts[frames[frames.len() - 1 - d as usize]];
+                if *is_loop || plain {
+                    *n += 1;
+                }
+            }
+        }
+        let loops = counts.iter().filter(|c| c.1).map(|c| c.0).collect();
+        let blocks = counts[1..].iter().filter(|c| !c.1).map(|c| c.0).max();
+        out.push((loops, blocks.unwrap_or(0)));
+    }
+    out
+}
+
 #[test]
 fn past_256_blocks_the_dispatch_is_two_level() {
     if !sakura_codegen_wasm::available() {
@@ -153,4 +202,28 @@ fn past_256_variables_locals_are_shared_by_liveness() {
     let shared = i64_locals(&with_lets(257));
     assert!(shared.contains(&4), "{shared:?}");
     assert!(!shared.iter().any(|&n| n > 256), "{shared:?}");
+}
+
+#[test]
+fn past_256_jumps_the_dispatch_loop_is_entered_through_stubs() {
+    if !sakura_codegen_wasm::available() {
+        assert!(std::env::var("SAKURA_REQUIRE_WASM").as_deref() != Ok("1"));
+        return;
+    }
+    // 256 blocks: 255 jumps and the entry's resume case falling into block 0, each a branch
+    // to the loop header.
+    let direct = back_edges(&with_chain(256));
+    assert!(direct.iter().any(|f| f.0 == [256]), "{direct:?}");
+    // 257 and 32,768 jumps: through 2 and 128 stubs of at most 256, each one branch to the
+    // header.
+    for (n, stubs) in [(257, 2), (32_768, 128)] {
+        let funcs = back_edges(&with_chain(n));
+        assert!(funcs.iter().any(|f| f.0 == [stubs]), "{n}: {funcs:?}");
+        assert!(
+            funcs
+                .iter()
+                .all(|(l, b)| *b <= 256 && l.iter().all(|&e| e <= 256)),
+            "{n}: {funcs:?}"
+        );
+    }
 }
