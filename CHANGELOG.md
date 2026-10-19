@@ -28,6 +28,14 @@ Compare the release tag with main when identifying changes not in that preview.
 
 ### Performance
 
+- Ownership facts follow a collection through records, tuple results, borrowing
+  parameters and closures, and through recursive calls (design §17.201 (3), WS-P13b):
+  a def that threads a record of lists, such as DeltaBlue's `Planner`, updates them in
+  place when its caller's record is owned, on the direct and the CPS ABI. `--dump owned`
+  gains the reasons `param`, `field` and `tuple`, and prints each consuming def's
+  owned-entry verdict beside the plain one. DeltaBlue at n = 5000 on Node takes about
+  half the time (advisory, loaded host); outputs are unchanged.
+
 - The DeltaBlue benchmark stores dense variable and constraint ids in `List` instead
   of `Map`, following design §17.217 and WS-P13c. The std index and Sakura skill
   reference document this collection choice. Oracle checksums are unchanged.
