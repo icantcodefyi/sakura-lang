@@ -144,15 +144,25 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
   Pure Sakura, no externals.
 - **Files.** `compiler/std/url.sak`, new `compiler/std/searchparams.sak`, `INDEX.md`
   dependency graph (`searchparams → string, list, bytes`; `url → … searchparams`).
-- **Tests.** Fixture `url_parse_whatwg.sak` driven by a curated 150-case subset of WHATWG
-  `urltestdata.json` checked in as `compiler/tests/vectors/url.jsonl` (input, base,
-  expected href or failure), read with `Test.fixtures()`; `url_resolve_relative.sak`;
+- **Tests.** Fixture `url_parse_whatwg.sak` and its `.stdout`, generated from the curated
+  150-case subset of WHATWG `urltestdata.json` checked in as
+  `compiler/tests/vectors/url.jsonl` (input, base, expected href or failure) by the
+  semantics test `url_vectors`, which fails when they are stale (`Test.fixtures()` is the
+  package cassette directory, which a single-file fixture does not have; design §17.268
+  (5)); `url_resolve_relative.sak`;
   `url_rejects_idna.sak`; `url_credentials_are_secret.sak` (the password never shows);
   `searchparams_order_and_repeats.sak`; `searchparams_plus_and_percent.sak`;
   `searchparams_sort_stable.sak`. Std `test` blocks for each `with_*`.
 - **Docs.** Stdlib regenerated; `cookbook/http_retry.mdx` or a new
   `cookbook/url_build.mdx` showing `Url.parse` → `with_search` → `to_url`.
 - **Who.** Opus; Sol: the `url.jsonl` subset with the upstream commit hash in its header.
+- **Landed (`3481039f`; design §17.268).** As built, endorsed: the password never
+  serializes; a host that needs IDNA (`xn--` labels included) is `Idna`; `ftp` is special;
+  `with_scheme`/`with_host`/`with_port`/`with_credentials` return `Result`. Still to do on
+  `main` now: `with_path` returns `Result<UrlParts, UrlError>` with the new
+  `UrlReason.OpaquePath` for an opaque-path URL (today it returns the URL unchanged), plus
+  its `_rejects_opaque_path` case. The 896-tuple literal that compiled to a 6 MB
+  `main.wasm` is WS-P19 in the performance push, after WS-P18 and the tag (§17.268 (6)).
 - **Acceptance.** All curated cases agree with the upstream expectation on three
   backends; `url"…"` templates and `Request.url` fixtures are byte-identical to before.
 
@@ -479,6 +489,10 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 - A runtime fix that brings a backend to its own written rule, changes no contract text
   and carries a three-backend fixture is a `fix` commit on `main`, even while the tag is
   pending; a held PR never carries one (§17.267 (2)).
+- A fixture generated from a vector table is committed like any fixture, names its table
+  and its generating test in its header, and that test is the staleness gate (§17.268 (5)).
+- A setter the standard would silently ignore returns `Err` with a typed reason; a setter
+  that applies to every value returns the value (§17.268 (3)).
 
 ## 5. Open items for Fable
 

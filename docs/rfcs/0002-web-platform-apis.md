@@ -309,13 +309,25 @@ capability, the Sakura form that covers the need, and the reason.
   record, `UrlParts { scheme, username, password: Option<Secret<String>>, host, port:
   Option<Int>, path, query: Option<String>, fragment: Option<String> }`, produced by
   `Url.parse(s: String) -> Result<UrlParts, UrlError>` following the WHATWG URL parser for
-  the special schemes (`http`, `https`, `ws`, `wss`, `file`) and opaque paths for others.
-  `Url.resolve(base: UrlParts, relative: String) -> Result<UrlParts, UrlError>` is base
-  resolution. `UrlParts.to_url(p) -> Url`, `to_string`, `origin(p) -> String`, and one
-  `with_<component>` per component returning a new value. Serialization is the standard's.
-  Hosts are ASCII-lowercased; a non-ASCII host is `Err(UrlError(Idna))` in 0.2.0, never
-  mangled; punycode is a later additive change. A URL value grants nothing: `net` is checked
-  by the handler at send time.
+  the special schemes (`http`, `https`, `ws`, `wss`, `ftp`, `file`; `ftp`'s default port is
+  21, design §17.268 (4)) and opaque paths for others. `Url.resolve(base: UrlParts,
+  relative: String) -> Result<UrlParts, UrlError>` is base resolution. `UrlParts.to_url(p)
+  -> Url`, `to_string`, `origin(p) -> String`, and one `with_<component>` per component
+  returning a new value. Serialization is the standard's with one difference: the password
+  is a `Secret` and `to_string`, `to_url` and `origin` never write it (§6.4; basic
+  authentication goes in `Request.secret_headers`); `to_url(parse(s))` of a URL with a
+  password is that URL without it (design §17.268 (1)). `UrlError(reason: UrlReason)` with
+  `UrlReason = Idna | InvalidScheme | InvalidHost | InvalidPort | Relative | OpaquePath`.
+  A setter whose input the standard would silently ignore returns `Err` instead:
+  `with_scheme`, `with_host`, `with_port`, `with_credentials` and `with_path` (an
+  opaque-path URL is `Err(UrlError(OpaquePath))`) return `Result<UrlParts, UrlError>`;
+  `with_query`, `with_fragment` and `with_search` return the value (design §17.268 (3)).
+  Hosts are ASCII-lowercased; a host that needs IDNA, a non-ASCII host or any ASCII
+  `xn--` label, is `Err(UrlError(Idna))` in 0.2.0, never mangled and never passed through
+  unvalidated; punycode is a later additive change that decodes and re-validates such
+  labels (design §17.268 (2)). `Url` itself and `Url.is_valid` are unchanged, so the
+  `url"…"` template and `Http.host()` still accept those hosts. A URL value grants nothing:
+  `net` is checked by the handler at send time.
 - `SearchParams` is an ordered multimap: `SearchParams.parse(query) -> SearchParams` (never
   fails; `application/x-www-form-urlencoded`, `+` is a space), `get`, `get_all`, `has`,
   `append`, `set`, `remove`, `sort` (stable, by name, code-unit order as the standard says),
