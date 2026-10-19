@@ -38,7 +38,7 @@ claimed here until the release floor smoke evidence is in place.
 
 With Node 26 and npm installed:
 
-```bash
+```bash title="npm"
 npm install --global sakuralang@0.1.0-alpha.1
 sakura --version
 ```
@@ -46,7 +46,7 @@ sakura --version
 Alternatively, use the [release installer](#release-installer) with
 `version=0.1.0-alpha.1`, or the Homebrew tap:
 
-```bash
+```bash title="Homebrew"
 brew tap icantcodefyi/sakuralang && brew install sakuralang
 sakura --version
 ```
@@ -61,7 +61,7 @@ Ubuntu 22.04; use glibc 2.35 or later. Alpine/musl has no release artifact.
 
 With Node 26 and npm installed:
 
-```bash
+```bash title="npm"
 npm install --global sakuralang@0.1.0-alpha.1
 sakura --version
 ```
@@ -69,7 +69,7 @@ sakura --version
 Alternatively, use the [release installer](#release-installer) with
 `version=0.1.0-alpha.1`, or the Homebrew tap:
 
-```bash
+```bash title="Homebrew"
 brew tap icantcodefyi/sakuralang && brew install sakuralang
 sakura --version
 ```
@@ -81,7 +81,7 @@ Ubuntu 22.04 ARM64 (glibc 2.35 or later), with CI suites and parity on Ubuntu 24
 ARM64. This target is coming in v0.1.0: alpha.1 does not contain its archive or npm
 platform package. After v0.1.0 publishes, use Node 26 and:
 
-```bash
+```bash title="npm"
 npm install --global sakuralang@0.1.0
 sakura --version
 ```
@@ -126,7 +126,7 @@ never installs Node or edits your shell profile.
 
 For Apple silicon macOS or Linux x64 today:
 
-```bash
+```bash title="Release installer"
 version=0.1.0-alpha.1
 curl -fsSL "https://github.com/icantcodefyi/sakuralang/releases/download/v${version}/install.sh" -o install.sh
 less install.sh

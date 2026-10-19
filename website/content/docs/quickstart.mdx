@@ -89,6 +89,11 @@ property "always starts with Hello"(name: String) {
 
 Run these from `hello/`. With no path, each command uses `src/`.
 
+<Steps>
+<Step>
+
+### Check
+
 ```bash
 sakura check
 ```
@@ -98,6 +103,11 @@ no problems
 ```
 
 `sakura check` parses, resolves names, checks types and effects, and checks that every `match` is exhaustive. It generates no code, and it accepts typed holes.
+
+</Step>
+<Step>
+
+### Test
 
 ```bash
 sakura test
@@ -112,6 +122,11 @@ test always starts with Hello ... ok
 
 `sakura test` runs every `test` and `property` block under deterministic handlers (a fixed clock, a seeded random source, captured console output) with the network denied. `--seed 7` changes the property inputs, `--filter greets` runs matching tests only, and `--json` writes one record per test.
 
+</Step>
+<Step>
+
+### Run
+
 ```bash
 sakura run
 ```
@@ -122,6 +137,9 @@ Hello, world
 
 `sakura run` checks the program, compiles it to JavaScript under `target/sakura/js/`, and runs `main` with `node`. Arguments after `--` go to the program. The exit code is the program's: `0` for success, `1` when `main` fails with an uncaught typed error, `70` for a defect such as integer overflow, with one JSON `defect` record on stderr.
 
+</Step>
+</Steps>
+
 `sakura fmt` rewrites files in the one canonical format; `sakura fmt --check` changes nothing and exits `1` if a file is not formatted.
 
 ## Check it, as an agent would
@@ -131,7 +149,7 @@ Suppose `greet` starts printing without declaring it:
 ```sakura expect=V3001 title="hello/src/main.sak"
 /// Build a greeting for a person.
 fn greet(name: String) -> String {
-  Console.print("greeting {name}")
+  Console.print("greeting {name}") // [!code highlight]
   "Hello, {name}"
 }
 
