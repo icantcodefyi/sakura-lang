@@ -181,17 +181,17 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   has no JS host, reaches them as unsupported builtins (`D090`). Nothing shipped changes, but a module that imports
   them needs a host that has them, so a 1.5 host refuses a 1.6 module by the MINOR rule.
   `sakura_abi_version` is `0x010600`.
-- 1.7.0 (MINOR, design §17.263 (4), §17.270 (3), RFC 0002 §2.4, plan `web-apis.md` phase 4a)
-  changes what `http_send` and `http_stream_open` carry (§8.2): the request's `body` is a
-  `Payload` (`Empty`, `Text`, `Bytes`), sent as its bytes, and the record gains `redirect`,
-  which the host does not read; the host sends every request with Fetch's `redirect:
-  "manual"` and answers a 3xx as it is, since `std/http`'s `follow` sends each hop as its own
-  `http_send` or `http_stream_open` (so the `net` check of §8.3 runs on every hop); the
-  answer's `Response.body` is a `Payload`, `Bytes` or `Empty` when there are none.
+- 1.7.0 (MINOR, design §17.263 (4), §17.271, §17.270 (3), RFC 0002 §2.4, plan `web-apis.md`
+  phase 4a) changes what `http_send` and `http_stream_open` carry (§8.2): the request's `body`
+  is a `Payload` (`Empty`, `Text`, `Bytes`), sent as its bytes, and the record gains
+  `redirect`, which the host does not read; the host sends every request with Fetch's
+  `redirect: "manual"` and answers a 3xx as it is, since `std/http`'s `follow` sends each hop
+  as its own `http_send` or `http_stream_open` (so the `net` check of §8.3 runs on every hop);
+  the answer's `Response.body` is a `Payload`, `Bytes` or `Empty` when there are none.
   `serve_listen` delivers a request body as `Bytes` (`Empty` when there are none) and sends a
   response's `Payload` as its bytes. The import names and shapes are unchanged, but a 1.6 host
-  would decode the new layouts and follow redirects itself, so a 1.6 host refuses a 1.7
-  module by the MINOR rule. `sakura_abi_version` is `0x010700`.
+  would decode the new layouts and follow redirects itself, so a 1.6 host refuses a 1.7 module
+  by the MINOR rule. `sakura_abi_version` is `0x010700`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen

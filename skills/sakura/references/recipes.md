@@ -1005,7 +1005,7 @@ import std/form.{Form, FormError, FormLimits, Part}
 import std/fs.{Fs}
 import std/http.{Http, Matcher}
 import std/path.{Path}
-import std/request.{Bytes, Empty, Post, Request, Text}
+import std/request.{BadRequest, Bytes, Post, Request, Text}
 import std/response.{HttpError, Response, Status}
 import std/router.{Router}
 import std/url.{Url}
@@ -1035,22 +1035,21 @@ fn csv(text: String) -> FileData { file("report.csv", String.to_bytes(text), "te
 fn receive(req: Request) -> Response {
   let limits = FormLimits { max_parts: 4, max_bytes: 65_536, max_field_bytes: 32_768 }
   let content_type = Request.header(req, "content-type").unwrap_or("")
-  let body = match req.body {
-    Bytes(b) => b,
-    Text(s) => String.to_bytes(s),
-    Empty => Bytes.from_list([]),
-  }
-  match Form.parse_multipart(body, content_type, limits) {
-    Ok(form) => {
-      let names = List.map(form.entries, fn(e) {
-        match e.1 {
-          Part.Text(v) => "{e.0}={v}",
-          Part.File(f) => "{e.0}={f.name} ({f.blob.media_type}, {Blob.size(f.blob)} bytes)",
-        }
-      })
-      Response.status(201, List.join(names, "; "))
-    },
-    Err(FormError { reason }) => Response.status(400, "bad form: {reason}"),
+  try {
+    match Form.parse_multipart(Request.bytes(req, limits.max_bytes), content_type, limits) {
+      Ok(form) => {
+        let names = List.map(form.entries, fn(e) {
+          match e.1 {
+            Part.Text(v) => "{e.0}={v}",
+            Part.File(f) => "{e.0}={f.name} ({f.blob.media_type}, {Blob.size(f.blob)} bytes)",
+          }
+        })
+        Response.status(201, List.join(names, "; "))
+      },
+      Err(FormError { reason }) => Response.status(400, "bad form: {reason}"),
+    }
+  } catch {
+    BadRequest { detail } => Response.status(400, detail),
   }
 }
 
@@ -1161,7 +1160,7 @@ edition = "2026"
 import std/bytes.{Alphabet}
 import std/crypto
 import std/crypto.{Algorithm, CryptoKey, Digest, KeyError, KeyFormat, Usage}
-import std/request.{Bytes, Empty, Request, Text}
+import std/request.{BadRequest, Request, Text}
 import std/response.{Response, Status}
 import std/router.{Router}
 
@@ -1173,13 +1172,9 @@ fn webhook_key(secret: Secret<String>) -> Result<CryptoKey, KeyError> {
 
 /// Whether `x-signature` is the Base64 HMAC-SHA-256 of the body under `key`, compared in
 /// constant time. A missing or malformed header is not authentic. The tag covers the body's
-/// bytes as they arrived (`Serve.host()` delivers them as `Bytes`).
-fn authentic(key: CryptoKey, req: Request) -> Bool {
-  let body = match req.body {
-    Bytes(b) => b,
-    Text(s) => String.to_bytes(s),
-    Empty => Bytes.from_list([]),
-  }
+/// bytes as they arrived, read by `Request.bytes`; a body over 64 KiB is `BadRequest`.
+fn authentic(key: CryptoKey, req: Request) -> Bool ! {Fail<BadRequest>} {
+  let body = Request.bytes(req, 65_536)
   match Request.header(req, "x-signature").map(fn(s) { Bytes.from_base64(s, Alphabet.Standard) }) {
     Some(Ok(tag)) => key.verify(tag, body),
     _ => false,
@@ -1187,10 +1182,14 @@ fn authentic(key: CryptoKey, req: Request) -> Bool {
 }
 
 fn receive(key: CryptoKey, req: Request) -> Response {
-  if authentic(key, req) {
-    Response.status(200, "accepted")
-  } else {
-    Response.status(401, "bad signature")
+  try {
+    if authentic(key, req) {
+      Response.status(200, "accepted")
+    } else {
+      Response.status(401, "bad signature")
+    }
+  } catch {
+    BadRequest { detail } => Response.status(400, detail),
   }
 }
 

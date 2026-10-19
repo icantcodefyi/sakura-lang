@@ -2,7 +2,7 @@
 // host handler (§6.2); `Http.scoped(hosts)` attenuates by data; there is no `Net` effect.
 // `Http.recording(path)` replays cassettes (design §17.73). `Http.stream` reads a response as
 // it arrives (design §17.88). Every handler here follows redirects with one loop, `follow`
-// (RFC 0002 §2.4, design §17.263 (4)).
+// (RFC 0002 §2.4, design §17.263 (4), §17.271).
 
 import std/duration.{Duration}
 import std/fs.{Dir, Fs}
@@ -120,7 +120,7 @@ pub fn scoped(hosts: List<String>) -> Handler<Http, {Http}> {
   }
 }
 
-// Redirects (RFC 0002 §2.4, design §17.263 (4)), as Fetch's HTTP-redirect fetch.
+// Redirects (RFC 0002 §2.4, design §17.263 (4), §17.271), as Fetch's HTTP-redirect fetch.
 let max_redirects = 20
 
 let body_headers = ["content-encoding", "content-language", "content-location", "content-type"]
@@ -129,7 +129,7 @@ let body_headers = ["content-encoding", "content-language", "content-location", 
 type Step<T> = Done(T) | Hop(Request)
 
 /// `send(at)` with `redirect: Manual`, then the hops `req.redirect` asks for, each through
-/// `send`; `hops` is the number followed before `at`.
+/// `send`; `hops` is the number followed before `at` (design §17.263 (4), §17.271).
 fn follow<e>(
   req: Request,
   at: Request,

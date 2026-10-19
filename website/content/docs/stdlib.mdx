@@ -568,6 +568,8 @@ fn post_json<T: Schema>(url: Url, body: T) -> Request
 fn with_payload(req: Request, body: Payload) -> Request
 fn with_header(req: Request, name: String, value: String) -> Request
 fn with_headers(req: Request, h: Headers) -> Request
+fn bytes(req: Request, limit: Int) -> Bytes ! {Fail<BadRequest>}
+fn text(req: Request, limit: Int) -> String ! {Fail<BadRequest>}
 fn json<T: Schema>(req: Request, limit: Int) -> T ! {Fail<BadRequest>}
 fn param(req: Request, name: String) -> Option<String>
 fn header(req: Request, name: String) -> Option<String>

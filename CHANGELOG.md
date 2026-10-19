@@ -100,6 +100,9 @@ retains earlier implementation history.
 - A cookbook recipe, `sign_webhook`: a router endpoint that checks a delivery's Base64
   HMAC-SHA-256 `X-Signature` with a verify-only `CryptoKey` (`key.verify`, constant time),
   tested with a changed body, another secret and a missing or malformed header.
+- `Request.bytes(req, limit)` and `Request.text(req, limit)` (design §17.271): a server's
+  readers of a request body, `BadRequest` past `limit`; `text` is strict UTF-8
+  (`BadRequest("body is not UTF-8")`) and `Request.json` decodes `text`.
 
 ### Security
 

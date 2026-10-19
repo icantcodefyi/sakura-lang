@@ -149,8 +149,10 @@ semantics/owned_tuple_threaded: 11 funcs, 71 blocks, 18 dup, 77 drop, valid
 semantics/record_patterns: 3 funcs, 14 blocks, 0 dup, 17 drop, valid
 semantics/records: 3 funcs, 9 blocks, 1 dup, 24 drop, valid
 semantics/refined_var_rebuild: 26 funcs, 131 blocks, 18 dup, 55 drop, valid
+semantics/request_bytes_limit: 9 funcs, 43 blocks, 6 dup, 33 drop, valid
 semantics/request_method_options_trace: 116 funcs, 1391 blocks, 214 dup, 981 drop, valid
 semantics/request_payload_bytes_roundtrip: 28 funcs, 117 blocks, 11 dup, 57 drop, valid
+semantics/request_text_strict_utf8: 21 funcs, 106 blocks, 8 dup, 88 drop, valid
 semantics/response_bytes_limit: 8 funcs, 50 blocks, 4 dup, 41 drop, valid
 semantics/row_param_type: 6 funcs, 22 blocks, 4 dup, 16 drop, valid
 semantics/row_widening: 16 funcs, 30 blocks, 1 dup, 11 drop, valid

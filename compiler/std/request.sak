@@ -79,22 +79,31 @@ pub fn with_headers(req: Request, h: Headers) -> Request {
   Request { ..req, headers: Headers.to_list(h) }
 }
 
+/// The body's bytes (Fetch's `bytes()`): `Empty` as none, `Text` as UTF-8. A body over
+/// `limit` bytes is `BadRequest`.
+pub fn bytes(req: Request, limit: Int) -> Bytes ! {Fail<BadRequest>} {
+  let b = match req.body {
+    Empty => Bytes.from_list([]),
+    Text(s) => String.to_bytes(s),
+    Bytes(b) => b,
+  }
+  if Bytes.len(b) > limit { fail BadRequest { detail: "body exceeds {limit} bytes" } }
+  b
+}
+
+/// The body as strict UTF-8 (Fetch's `text()` substitutes U+FFFD; a server refuses instead).
+/// A body over `limit` bytes or one that is not UTF-8 is `BadRequest`.
+pub fn text(req: Request, limit: Int) -> String ! {Fail<BadRequest>} {
+  match Encoding.decode(bytes(req, limit), Encoding.Utf8, Errors.Fatal) {
+    Ok(s) => s,
+    Err(_) => fail BadRequest { detail: "body is not UTF-8" },
+  }
+}
+
 /// The body decoded as `T` (named by the binding's annotation), refinements included.
 /// A body over `limit` bytes, one that is not UTF-8 or one that does not decode is `BadRequest`.
 pub fn json<T: Schema>(req: Request, limit: Int) -> T ! {Fail<BadRequest>} {
-  let text = match req.body {
-    Empty => "",
-    Text(s) => s,
-    Bytes(b) => {
-      if Bytes.len(b) > limit { fail BadRequest { detail: "body exceeds {limit} bytes" } }
-      match Encoding.decode(b, Encoding.Utf8, Errors.Fatal) {
-        Ok(s) => s,
-        Err(_) => fail BadRequest { detail: "body is not UTF-8" },
-      }
-    },
-  }
-  if String.len(text) > limit { fail BadRequest { detail: "body exceeds {limit} bytes" } }
-  match Json.decode(text) {
+  match Json.decode(text(req, limit)) {
     Ok(value) => value,
     Err(e) => fail BadRequest { detail: "{e.path}: {e.message}" },
   }
@@ -139,4 +148,17 @@ test "payload builders" {
   expect_eq(bad, Err(BadRequest { detail: "body is not UTF-8" }))
   let n: Result<Int, BadRequest> = try { json(post("/n", "42"), 10) }
   expect_eq(n, Ok(42))
+}
+
+test "bytes and text" {
+  let bin = of(Put, Url.from("/f")).with_payload(Bytes(Bytes.from_list([0, 255])))
+  expect_eq(try { bytes(bin, 2) }, Ok(Bytes.from_list([0, 255])))
+  expect_eq(try { bytes(bin, 1) }, Err(BadRequest { detail: "body exceeds 1 bytes" }))
+  expect_eq(try { text(bin, 2) }, Err(BadRequest { detail: "body is not UTF-8" }))
+  expect_eq(try { text(post("/t", "h\u{E9}"), 3) }, Ok("h\u{E9}"))
+  expect_eq(
+    try { text(post("/t", "h\u{E9}"), 2) },
+    Err(BadRequest { detail: "body exceeds 2 bytes" }),
+  )
+  expect_eq(try { bytes(of(Get, Url.from("/")), 0) }, Ok(Bytes.from_list([])))
 }

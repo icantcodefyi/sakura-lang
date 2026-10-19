@@ -1,0 +1,24 @@
+// milestone: M3
+// spec: RFC 0002 §2.4, design §17.271 (5)
+// Spec: https://fetch.spec.whatwg.org/#dom-body-bytes
+
+// `Request.bytes(req, limit)` is a server's reader of a request body: `Empty` as no bytes,
+// `Text` as UTF-8, `Bytes` as they are, and `BadRequest` past `limit` (counted in bytes for a
+// `Text` body too).
+import std/request.{BadRequest, Bytes, Empty, Payload, Post, Request, Text}
+import std/url.{Url}
+
+fn read(body: Payload, limit: Int) -> String {
+  let req = Request.of(Post, Url.from("/upload")).with_payload(body)
+  let got: Result<Bytes, BadRequest> = try { Request.bytes(req, limit) }
+  "{got}"
+}
+
+pub fn main() -> Unit ! {Console} {
+  let binary = Bytes(Bytes.from_list([0, 159, 255]))
+  Console.print("3 of 3: {read(binary, 3)}")
+  Console.print("3 of 2: {read(binary, 2)}")
+  Console.print("text 2 of 2: {read(Text("\u{E9}"), 2)}")
+  Console.print("text 2 of 1: {read(Text("\u{E9}"), 1)}")
+  Console.print("empty: {read(Empty, 0)}")
+}
