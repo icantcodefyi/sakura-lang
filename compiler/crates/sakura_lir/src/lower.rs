@@ -1897,6 +1897,13 @@ impl<'c, 'a> Fl<'c, 'a> {
                     _ => &[],
                 };
                 self.cx.schema_roots.push((ty.clone(), vars.to_vec()));
+                let mut tuples = vec![];
+                crate::schema::tuples(self.cx.core, ty, &mut tuples);
+                for ts in tuples {
+                    let slots: Vec<Slot> =
+                        ts.iter().map(|t| Slot::field_of_repr(repr_of(t))).collect();
+                    self.cx.layouts.tuple(&slots);
+                }
                 let mut acc: Option<Var> = None;
                 for piece in crate::schema::pieces(self.cx.core, ty, vars) {
                     let v = match piece {

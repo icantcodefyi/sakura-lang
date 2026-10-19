@@ -6,7 +6,7 @@
 // (the native host's codec is its own): numbers, string escapes, bytes as base64, maps with
 // array-index keys, variants, error unions, records with optional fields, refinements (one whose
 // `where` catches a `fail`), generic records, repeated keys, the `Json` value, and each decode
-// error's JSON Pointer and message.
+// error's JSON Pointer and message. A tuple decoded but never built still has its layout row.
 import std/json.{DecodeError, Json}
 
 type Shape = Dot | Circle(Float) | Rect(Int, Int)
@@ -77,6 +77,8 @@ pub fn main() -> Unit ! {Console} {
   Console.print("{map}")
   let pairs: Result<Map<Int, String>, DecodeError> = Json.decode("[[1, \"x\"]]")
   Console.print("{pairs}")
+  let triple: Result<(Int, Float, Bool), DecodeError> = Json.decode("[1, 2.5, true]")
+  Console.print("{triple}")
   let escaped: Result<String, DecodeError> = Json.decode("\"\\u00e9\\ud83d\\ude00\\n\"")
   Console.print("{escaped}")
   let parsed = Json.parse(" \{\"k\": [1, 2.5, \"s\", true, null], \"2\": 0, \"1\": 1\} ")

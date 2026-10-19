@@ -201,6 +201,58 @@ pub fn descriptors(m: &core::Module, roots: &[(core::Ty, Vec<u32>)]) -> String {
     format!("{{{}}}", body.join(", "))
 }
 
+/// Every tuple type a value decoded by `t`'s schema can hold, type arguments substituted, into
+/// `out`: the host builds those values, and the runtime picks a tuple's layout row by its
+/// elements' kinds (`vt_decode`), so each needs a row.
+pub fn tuples(m: &core::Module, t: &core::Ty, out: &mut Vec<Vec<core::Ty>>) {
+    let mut seen = std::collections::HashSet::new();
+    let mut todo = vec![t.clone()];
+    while let Some(t) = todo.pop() {
+        if !seen.insert(t.clone()) {
+            continue;
+        }
+        use core::{Ty, TypeKind};
+        match t {
+            Ty::Tuple(ts) => {
+                out.push(ts.clone());
+                todo.extend(ts);
+            }
+            Ty::List(t) | Ty::Set(t) => todo.push(*t),
+            Ty::Map(k, v) => todo.extend([*k, *v]),
+            Ty::Union(ids) => todo.extend(ids.into_iter().map(|id| Ty::Adt(id, vec![]))),
+            Ty::Refined(r, args) => {
+                todo.push(subst(&m.refinements[r as usize].base, &args));
+            }
+            Ty::Adt(id, args) => {
+                let fields: Vec<&Ty> = match &m.types[id as usize].kind {
+                    TypeKind::Record { fields, .. } => fields.iter().map(|f| &f.ty).collect(),
+                    TypeKind::Variant { ctors } => ctors.iter().flat_map(|c| &c.fields).collect(),
+                };
+                todo.extend(fields.into_iter().map(|f| subst(f, &args)));
+                todo.extend(args);
+            }
+            _ => {}
+        }
+    }
+}
+
+/// `t` with its type parameters (`Var(i)`) replaced by `args` where given (a function type is
+/// kept: it has no schema).
+fn subst(t: &core::Ty, args: &[core::Ty]) -> core::Ty {
+    use core::Ty;
+    let all = |ts: &[Ty]| ts.iter().map(|t| subst(t, args)).collect();
+    match t {
+        Ty::Var(i) => args.get(*i as usize).cloned().unwrap_or(Ty::Var(*i)),
+        Ty::Tuple(ts) => Ty::Tuple(all(ts)),
+        Ty::Adt(id, ts) => Ty::Adt(*id, all(ts)),
+        Ty::Refined(r, ts) => Ty::Refined(*r, all(ts)),
+        Ty::List(t) => Ty::List(Box::new(subst(t, args))),
+        Ty::Set(t) => Ty::Set(Box::new(subst(t, args))),
+        Ty::Map(k, v) => Ty::Map(Box::new(subst(k, args)), Box::new(subst(v, args))),
+        t => t.clone(),
+    }
+}
+
 /// Whether `t`'s schema has a `null` (a part with no runtime schema; `vars` are supplied).
 fn unknown(t: &core::Ty, vars: &[u32]) -> bool {
     use core::Ty;

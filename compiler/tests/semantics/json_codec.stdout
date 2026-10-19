@@ -14,6 +14,7 @@ Ok(5)
 Ok([Denied, NotFound { what: "dog" }])
 Ok(Map.of([("3", 2), ("7", 0), ("a", 2), ("b", 3)]))
 Ok(Map.of([(1, "x")]))
+Ok((1, 2.5, true))
 Ok("é😀\n")
 Ok(Object(Map.of([("1", Number(1.0)), ("2", Number(0.0)), ("k", Array([Number(1.0), Number(2.5), String("s"), Bool(true), Null]))])))
 : expected an integer, found a number
