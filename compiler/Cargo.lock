@@ -2334,6 +2334,7 @@ version = "0.1.0-alpha.1"
 dependencies = [
  "sakura_host_native",
  "sakura_rt",
+ "target-lexicon",
 ]
 
 [[package]]

@@ -601,3 +601,56 @@ fn every_compiled_function_has_unwind_information() {
         );
     }
 }
+
+/// ABI §1b: the object carries the `sakura.native` record in a section of its own, and the
+/// driver refuses a program whose record names another layout profile with `V8003`, before
+/// running anything.
+#[test]
+fn the_driver_refuses_a_foreign_sakura_native_record() {
+    use object::{Object, ObjectSection};
+    let p = programs()
+        .into_iter()
+        .find(|p| p.name == "semantics/hello")
+        .unwrap();
+    let m = sakura_lir::lower::lower(&p.core, &sakura_lir::builtin_sigs()).unwrap();
+    let bytes = sakura_codegen_native::emit(&m, &Default::default()).unwrap();
+    let file = object::File::parse(bytes.as_slice()).unwrap();
+    let record = file
+        .sections()
+        .find(|s| matches!(s.name(), Ok("sakura.native" | "__sakura_native")))
+        .expect("a sakura.native section")
+        .data()
+        .unwrap()
+        .to_vec();
+    let has = |b: &[u8], s: &str| b.windows(s.len()).any(|w| w == s.as_bytes());
+    for field in [sakura_codegen_native::CRANELIFT, sakura_rt::native::PROFILE] {
+        assert!(has(&record, field), "the record has no {field}");
+    }
+    let at = bytes.windows(11).position(|w| w == b"offset32-v1").unwrap();
+    let mut foreign = bytes.clone();
+    foreign[at..at + 11].copy_from_slice(b"offset32-v0");
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-record");
+    std::fs::create_dir_all(&dir).unwrap();
+    let (o, exe) = (dir.join("foreign.o"), dir.join("foreign"));
+    std::fs::write(&o, foreign).unwrap();
+    sakura_codegen_native::link(&o, driver(), &exe).unwrap();
+    let out = Command::new(&exe).output().unwrap();
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert_eq!(out.status.code(), Some(70), "{stderr}");
+    assert!(
+        stderr.contains("V8003: the program uses the layout profile offset32-v0"),
+        "{stderr}"
+    );
+    assert!(out.stdout.is_empty());
+}
+
+/// The record's Cranelift version is the workspace pin (design §17.175 (1)).
+#[test]
+fn the_record_names_the_pinned_cranelift() {
+    let manifest = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../Cargo.toml");
+    let pin = format!(
+        "cranelift-codegen = \"={}\"",
+        sakura_codegen_native::CRANELIFT
+    );
+    assert!(std::fs::read_to_string(manifest).unwrap().contains(&pin));
+}

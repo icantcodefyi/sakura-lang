@@ -1,5 +1,5 @@
 //! The entry of a native Sakura program (plan M5 N2; ABI §1b). The object `sakura_codegen_native`
-//! emits defines `main`, which calls [`sakura_native_main_v2`] with the module's descriptor; this
+//! emits defines `main`, which calls [`sakura_native_main_v3`] with the module's descriptor; this
 //! crate, built as a staticlib with `panic = "abort"`, brings the runtime and the native host.
 //! It runs `main` as the Node host does: one instance on one thread, the outcome reported on
 //! stderr and as the exit code.
@@ -9,15 +9,19 @@
 use std::rc::Rc;
 
 use sakura_host_native::{Config, NativeHost, Span, report_spans, run_task};
-use sakura_rt::native::{CODES, Ctx, Image, Instance, Limits, Module, Outcome, SakuraCode};
+use sakura_rt::native::{
+    CODES, Ctx, Image, Instance, Limits, Module, Outcome, PROFILE, SakuraCode,
+};
+use sakura_rt::vt;
 
 /// The module descriptor the compiler emits (`sakura_codegen_native`, symbol `sakura$module`):
 /// pointers are the target's, every other field a `u32`. The layout is a contract between the
 /// compiler and this crate, which ship together.
 #[repr(C)]
 pub struct SakuraModule {
-    /// `sakura_abi_version` the code was compiled against (+0).
-    abi: u32,
+    /// `sakura_abi_version` the code was compiled against (+0); the driver checks the
+    /// `sakura.native` record's.
+    _abi: u32,
     /// The module's functions: codes `0..n_codes` (+4).
     n_codes: u32,
     /// Their entry points (+8).
@@ -40,9 +44,12 @@ pub struct SakuraModule {
     debug_len: u32,
     /// The type descriptors' offset in the static block (+68).
     schemas: u32,
+    /// The `sakura.native` record (+72) and its length (+80) (ABI §1b).
+    native: *const u8,
+    native_len: u32,
 }
 
-const _: () = assert!(size_of::<SakuraModule>() == 72);
+const _: () = assert!(size_of::<SakuraModule>() == 88);
 
 /// A bounds-checked reader of little-endian bytes.
 struct Cursor<'a> {
@@ -59,6 +66,59 @@ impl<'a> Cursor<'a> {
 
     fn u32(&mut self) -> Option<u32> {
         Some(u32::from_le_bytes(self.take(4)?.try_into().ok()?))
+    }
+
+    /// A `sakura-vt1` tag (ABI §8.1).
+    fn tag(&mut self, tag: u8) -> Option<()> {
+        (self.take(1)? == [tag]).then_some(())
+    }
+
+    fn string(&mut self) -> Option<&'a str> {
+        self.tag(vt::t::STRING)?;
+        let n = self.u32()?;
+        std::str::from_utf8(self.take(n as usize)?).ok()
+    }
+}
+
+/// The `sakura.native` record's target, profile and ABI version (ABI §1b), or `None` when it
+/// is malformed.
+fn record(b: &[u8]) -> Option<(&str, &str, u32)> {
+    let mut c = Cursor { b, at: 0 };
+    c.tag(vt::t::TUPLE)?;
+    (c.u32()? == 6).then_some(())?;
+    let target = c.string()?;
+    let (_isa, _cranelift) = (c.string()?, c.string()?);
+    let profile = c.string()?;
+    c.tag(vt::t::INT)?;
+    let abi = i64::from_le_bytes(c.take(8)?.try_into().ok()?);
+    c.tag(vt::t::BYTES)?;
+    (c.u32()? == 32).then_some(())?;
+    c.take(32)?;
+    (c.at == b.len()).then_some((target, profile, u32::try_from(abi).ok()?))
+}
+
+/// Why this runtime refuses a program whose `sakura.native` record is `b`: another target or
+/// profile, another ABI MAJOR or a newer MINOR (ABI §0, §1b).
+fn refuse(b: &[u8]) -> Option<String> {
+    let Some((target, profile, abi)) = record(b) else {
+        return Some("the program's sakura.native record is malformed".into());
+    };
+    let host = target_lexicon::HOST.to_string();
+    let have = sakura_rt::ABI_VERSION;
+    if target != host {
+        Some(format!(
+            "the program was compiled for {target}, this runtime is {host}"
+        ))
+    } else if profile != PROFILE {
+        Some(format!(
+            "the program uses the layout profile {profile}, this runtime {PROFILE}"
+        ))
+    } else if abi >> 16 != have >> 16 || (abi >> 8 & 0xff) > (have >> 8 & 0xff) {
+        Some(format!(
+            "the program was compiled for runtime ABI {abi:#08x}, this runtime is {have:#08x}"
+        ))
+    } else {
+        None
     }
 }
 
@@ -173,12 +233,10 @@ fn limit<T: std::str::FromStr>(
 }
 
 fn run(m: &'static SakuraModule) -> Result<i32, String> {
-    if m.abi != sakura_rt::ABI_VERSION {
-        return Err(format!(
-            "V8003: the program was compiled for runtime ABI {:#08x}, this runtime is {:#08x}",
-            m.abi,
-            sakura_rt::ABI_VERSION
-        ));
+    // SAFETY: the compiler emits `native` as `native_len` immutable bytes.
+    let native = unsafe { std::slice::from_raw_parts(m.native, m.native_len as usize) };
+    if let Some(why) = refuse(native) {
+        return Err(format!("V8003: {why}"));
     }
     if m.n_natives as usize != CODES.len() {
         return Err(format!(
@@ -281,11 +339,11 @@ fn append_stats(path: &std::ffi::OsStr, s: sakura_rt::Stats) -> Result<(), Strin
 /// # Safety
 ///
 /// `m` is the descriptor `sakura_codegen_native` emits: a static that lives as long as the
-/// program, whose `codes`, `image` and `debug` point at `n_codes` functions, `image_len` and
-/// `debug_len` bytes. The suffix is the descriptor layout's version: a layout change renames
+/// program, whose `codes`, `image`, `debug` and `native` point at `n_codes` functions,
+/// `image_len`, `debug_len` and `native_len` bytes. The suffix is the descriptor layout's version: a layout change renames
 /// the entry, so an object from another layout fails to link instead of misreading this one.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn sakura_native_main_v2(m: *const SakuraModule) -> i32 {
+pub unsafe extern "C" fn sakura_native_main_v3(m: *const SakuraModule) -> i32 {
     // SAFETY: the caller's contract above.
     let m = Desc(unsafe { &*m });
     let code = std::thread::Builder::new()

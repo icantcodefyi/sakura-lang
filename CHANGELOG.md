@@ -79,6 +79,9 @@ Compare the release tag with main when identifying changes not in that preview.
   built with the `native` feature (plan M5 N2): Cranelift compiles the program to an
   executable `main` linked with the native runtime, whose defect records carry the same spans
   as JS and WASM. Native stays experimental at `v0.2.0`; release builds do not include it.
+  Native executables carry unwind tables and a DWARF line table, so `lldb`, `gdb` and
+  profilers show Sakura frames at their `.sak` lines, and a `sakura.native` record that the
+  runtime checks before running (`V8003` for another target, layout profile or ABI).
 
 - Release candidate checks enforce deprecation notice periods, major-only removals
   and unchanged Rust MSRV in patch releases; the deprecation registry starts empty.

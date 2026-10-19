@@ -260,7 +260,12 @@ foreign handle, `D090`.
 module_hash: Bytes)`: the target triple, the baseline ISA, the Cranelift version, `offset32-v1`,
 `sakura_abi_version` and the 32-byte hash the compiler derives from the module's inputs. The
 driver checks it before linking or running and refuses a profile, ABI MAJOR or newer MINOR it
-does not implement as `V8003`, as for WASM. N2 emits it; nothing reads it before.
+does not implement as `V8003`, as for WASM. As built (N2): the tuple is in the tagged reading
+of `runtime/rt/src/vt.rs` (`9, 6`, four `String`s, an `Int`, a 32-byte `Bytes`), in the object
+section `sakura.native` (`__TEXT,__sakura_native` on Mach-O); the ISA is Cranelift's name for it
+(`x64`, `aarch64`), and `module_hash` is the SHA-256 of the snapshot hash and the build options.
+The driver checks it at startup, before the program runs (linking does not read it); the target
+must equal the driver's own triple.
 
 ## 2. Scalar representation
 

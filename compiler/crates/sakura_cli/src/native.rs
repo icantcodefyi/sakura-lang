@@ -76,6 +76,12 @@ pub fn build(
             .file_ids()
             .map(|f| snapshot.file(f).text.clone())
             .collect(),
+        // The inputs: the sources (the snapshot hash) and how they were compiled.
+        module_hash: {
+            use sha2::Digest;
+            let inputs = format!("{} {opts:?} drop_proved={}", snapshot.hash(), !then);
+            sha2::Sha256::digest(inputs).into()
+        },
     };
     let object = sakura_codegen_native::emit(&lir, &native).map_err(usage_error)?;
     let driver = driver_dir().map_err(usage_error)?;

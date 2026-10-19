@@ -13,11 +13,12 @@ publish.workspace = true
 # The abort runtime is the final crate's; a panic reaching an `extern "C"` export aborts there.
 [features]
 default = []
-native = ["dep:sakura_rt", "dep:sakura_host_native", "sakura_rt/native", "sakura_host_native/native"]
+native = ["dep:sakura_rt", "dep:sakura_host_native", "sakura_rt/native", "sakura_host_native/native", "dep:target-lexicon"]
 
 [dependencies]
 sakura_rt = { workspace = true, optional = true }
 sakura_host_native = { workspace = true, optional = true }
+target-lexicon = { workspace = true, optional = true }
 
 # Not `workspace = true`: the program's C entry and the compiled module's table are the one place
 # outside `sakura_rt` that needs `unsafe`. Every block carries a `// SAFETY:`.

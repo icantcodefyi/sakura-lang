@@ -1,9 +1,9 @@
 //! The Cranelift backend (plan M5 N2; ABI §1b `offset32-v1`): a lowered LIR module as one
 //! relocatable object. Each LIR function is a frame-protocol function `(ctx, env, frame) ->
 //! step` ([`func`]); the object also carries the module's static block ([`image`]), the table
-//! of its functions, the descriptor `sakura_native_driver` reads, and `main`, which hands that
-//! descriptor to `sakura_native_main_v2`. [`link`] links it with the driver's staticlib into an
-//! executable with the system C linker.
+//! of its functions, the descriptor `sakura_native_driver` reads, the `sakura.native` record
+//! ([`record`]) and `main`, which hands that descriptor to `sakura_native_main_v3`. [`link`]
+//! links it with the driver's staticlib into an executable with the system C linker.
 
 #![cfg(feature = "native")]
 
@@ -24,7 +24,10 @@ use cranelift_object::{ObjectBuilder, ObjectModule};
 use sakura_lir::lir::{Callee, Module, Term};
 
 /// The size of `sakura_native_driver::SakuraModule` on a 64-bit target.
-const DESCRIPTOR: usize = 72;
+const DESCRIPTOR: usize = 88;
+
+/// The Cranelift release the backend is built with: the workspace pin (design §17.175 (1)).
+pub const CRANELIFT: &str = "0.136.3";
 
 /// How [`emit`] compiles.
 #[derive(Clone, Debug)]
@@ -38,6 +41,8 @@ pub struct Options {
     /// The text of each source by `Pos::file`, for the line table's lines and columns; a
     /// source without one gets no rows.
     pub texts: Vec<String>,
+    /// The `sakura.native` record's `module_hash`: a hash of the module's inputs.
+    pub module_hash: [u8; 32],
 }
 
 impl Default for Options {
@@ -46,6 +51,7 @@ impl Default for Options {
             direct: true,
             sources: vec![],
             texts: vec![],
+            module_hash: [0; 32],
         }
     }
 }
@@ -229,6 +235,18 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     d.set_align(8);
     obj.define_data(debug_id, &d).map_err(|e| e.to_string())?;
 
+    // The `sakura.native` record, in its own section so tools read it without running the
+    // program.
+    let record = record(obj.isa(), &opts.module_hash);
+    let native_id = data(&mut obj, "sakura$native", false)?;
+    let mut d = DataDescription::new();
+    d.define(record.clone().into_boxed_slice());
+    d.set_custom_section(match obj.isa().triple().binary_format {
+        target_lexicon::BinaryFormat::Macho => "__TEXT,__sakura_native",
+        _ => "sakura.native",
+    });
+    obj.define_data(native_id, &d).map_err(|e| e.to_string())?;
+
     let module_id = data(&mut obj, "sakura$module", true)?;
     let mut bytes = vec![0u8; DESCRIPTOR];
     let mut put = |at: usize, v: u32| bytes[at..at + 4].copy_from_slice(&v.to_le_bytes());
@@ -244,6 +262,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     put(52, sakura_rt::native::CODES.len() as u32);
     put(64, debug.len() as u32);
     put(68, image.schemas);
+    put(80, record.len() as u32);
     let mut d = DataDescription::new();
     d.define(bytes.into_boxed_slice());
     d.set_align(8);
@@ -253,9 +272,11 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     d.write_data_addr(16, image_gv, 0);
     let debug_gv = obj.declare_data_in_data(debug_id, &mut d);
     d.write_data_addr(56, debug_gv, 0);
+    let native_gv = obj.declare_data_in_data(native_id, &mut d);
+    d.write_data_addr(72, native_gv, 0);
     obj.define_data(module_id, &d).map_err(|e| e.to_string())?;
 
-    // `main(argc, argv)`: `return sakura_native_main_v2(&sakura$module);`
+    // `main(argc, argv)`: `return sakura_native_main_v3(&sakura$module);`
     let ptr = obj.target_config().pointer_type();
     let mut msig = obj.make_signature();
     msig.params.push(AbiParam::new(types::I32));
@@ -268,7 +289,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     nsig.params.push(AbiParam::new(ptr));
     nsig.returns.push(AbiParam::new(types::I32));
     let native_main = obj
-        .declare_function("sakura_native_main_v2", Linkage::Import, &nsig)
+        .declare_function("sakura_native_main_v3", Linkage::Import, &nsig)
         .map_err(|e| e.to_string())?;
     ctx.func.signature = msig;
     {
@@ -292,6 +313,27 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     unwind.write(&mut product)?;
     lines.write(&mut product, &opts.sources, &opts.texts)?;
     product.emit().map_err(|e| e.to_string())
+}
+
+/// The `sakura.native` record (ABI §1b): a `sakura-vt1` tuple (ABI §8.1) of the target
+/// triple, the ISA, the Cranelift version, the layout profile, the ABI version and
+/// `module_hash`, which the driver checks before running (`V8003`).
+pub fn record(isa: &dyn cranelift_codegen::isa::TargetIsa, module_hash: &[u8; 32]) -> Vec<u8> {
+    use sakura_rt::vt::t;
+    let mut b = vec![t::TUPLE];
+    b.extend(6u32.to_le_bytes());
+    let triple = isa.triple().to_string();
+    for s in [&triple, isa.name(), CRANELIFT, sakura_rt::native::PROFILE] {
+        b.push(t::STRING);
+        b.extend((s.len() as u32).to_le_bytes());
+        b.extend(s.as_bytes());
+    }
+    b.push(t::INT);
+    b.extend(i64::from(sakura_rt::ABI_VERSION).to_le_bytes());
+    b.push(t::BYTES);
+    b.extend(32u32.to_le_bytes());
+    b.extend(module_hash);
+    b
 }
 
 /// The driver staticlib's file name in a driver directory (`SAKURA_NATIVE_LIB_DIR`).
