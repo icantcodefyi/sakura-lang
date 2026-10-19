@@ -38,6 +38,7 @@ elif name == "codesign":
         first = pathlib.Path(os.environ["SEARCH"]).read_text().splitlines()[0].strip()
         assert first == '"' + args[args.index("--keychain") + 1] + '"', first
     if os.environ.get("FAIL_SIGN") and "--sign" in args:
+        print(os.environ.get("SIGN_DIAGNOSTIC", ""), file=sys.stderr)
         print("PRIVATE-DIAGNOSTIC: errSecInternalComponent", file=sys.stderr)
         sys.exit(1)
     if os.environ.get("FAIL_VERIFY") and "--verify" in args:
@@ -126,6 +127,20 @@ class Signing(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("::error::Reason: errSecInternalComponent", result.stdout)
         self.assertFalse(any(name == "xcrun" for name, _ in self.calls()))
+
+    def test_signing_failure_does_not_echo_unknown_error_identifiers(self):
+        result = self.run_signing(FAIL_SIGN="1", SIGN_DIAGNOSTIC="errSecUnlistedPrivateMaterial")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn("UnlistedPrivateMaterial", result.stdout + result.stderr)
+
+    def test_signing_failure_reports_fixed_known_reasons(self):
+        for reason in ("unable to build chain", "no identity found", "ambiguous",
+                       "timestamp service is not available", "User interaction is not allowed",
+                       "The specified item could not be found in the keychain", "CSSMERR_TP_CERT_EXPIRED"):
+            with self.subTest(reason=reason):
+                result = self.run_signing(FAIL_SIGN="1", SIGN_DIAGNOSTIC=reason + " PRIVATE-KEY")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("::error::Reason: " + reason, result.stdout)
 
     def test_notarization_transport_failure_removes_credentials(self):
         self.assertNotEqual(self.run_signing(FAIL_NOTARY="1").returncode, 0)

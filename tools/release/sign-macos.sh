@@ -25,7 +25,17 @@ search_list=()
 search_set=0
 # Print only fixed, secret-free failure reasons; the raw log stays private.
 reasons() {
-  grep -oE 'errSec[A-Za-z]+|unable to build chain|no identity found|ambiguous|timestamp service is not available' "$1" | sort -u | sed 's/^/::error::Reason: /' || true
+  for reason in \
+    'errSecInternalComponent' 'errSecAuthFailed' 'errSecInteractionNotAllowed' \
+    'errSecItemNotFound' 'errSecNotAvailable' 'errSecDecode' \
+    'unable to build chain' 'no identity found' 'ambiguous' \
+    'timestamp service is not available' 'User interaction is not allowed' \
+    'The specified item could not be found in the keychain' 'CSSMERR_TP_CERT_EXPIRED'; do
+    if grep -Fq "$reason" "$1"; then
+      echo "::error::Reason: $reason"
+    fi
+  done
+  return 0
 }
 cleanup() {
   status=$?
