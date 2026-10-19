@@ -12,8 +12,11 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 
 - The RFC's inventory table (§1) and shapes (§2) are the scope; a phase does not add a
   signature the RFC does not name without a `design-question` in `compiler/REQUESTS.md`.
-- Versions: phase 0 ships in whichever release is next; phases 1–4 must be on `main`
-  before the `v0.2.0` preparation commit; phases 5–10 are additive and land before
+- Versions (design §17.263): an additive phase ships in whichever release is next; phases
+  0 and 1 are in `v0.1.0`, and 2, 3, 7a and R land on `main` before the tag if their gates
+  are green first. Phases 4a and 4b (the breaking set, and any ABI version bump) are held
+  as PR branches, rebased daily, merged right after the `v0.1.0` tag and on `main` before
+  the `v0.2.0` preparation commit; phases 5–10 are additive and land before
   `v1.0.0-rc.1`; phase 11 is experimental; phase 12 closes each phase's docs and the
   STABILITY inventory rows.
 - Gates per phase, from `compiler/`: `cargo fmt --all -- --check`, `cargo clippy
@@ -51,15 +54,15 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 
 | # | Phase | Version | Who | After |
 |---|---|---|---|---|
-| 0 | Redirect authority fix | next release | Opus | now |
-| 1 | `std/bytes` growth and Base64; `std/encoding` | 0.2.0 | Opus | 0 |
-| 2 | `std/url` parser, `std/searchparams` | 0.2.0 | Opus | 1 |
-| 3 | `std/headers`, `std/blob`, `std/form` | 0.2.0 | Opus | 2 |
-| 4a | HTTP 0.2.0 shape: `Payload`, `Method`, `redirect`, `Response.bytes` | 0.2.0 | Opus | 3 |
-| 4b | Effect additions: `Clock.monotonic_micros`, `Task.cancel`/`cancelled`, `Task.every`, console dialogs, `Json.render` | 0.2.0 | Opus | 0 |
+| 0 | Redirect authority fix | 0.1.0 (`7dd9dd47`) | Opus | landed |
+| 1 | `std/bytes` growth and Base64; `std/encoding` | 0.1.0 (`d0222605`) | Opus | landed |
+| 2 | `std/url` parser, `std/searchparams` | next release | Opus | 1 |
+| 3 | `std/headers`, `std/blob`, `std/form` | next release | Opus | 2 |
+| 4a | HTTP 0.2.0 shape: `Payload`, `Method`, `redirect`, `Response.bytes`; the redirect loop moves into `std/http` | 0.2.0; PR branch until the `v0.1.0` tag | Opus | 3, tag |
+| 4b | Effect additions: `Clock.monotonic_micros`, `Task.cancel`/`cancelled`, `Task.every`, console dialogs, `Json.render` | 0.2.0; PR branch until the `v0.1.0` tag | Opus | 0, tag |
 | 5 | `std/stream` and the `Http`/`Fs` adapters | pre-rc | Opus | 4a |
 | 6 | `std/compress` | pre-rc | Opus | 5 |
-| 7a | `std/crypto` tier 1a: `CryptoKey`, digests, HMAC, HKDF, PBKDF2, import/export | pre-rc | Opus | 1 |
+| 7a | `std/crypto` tier 1a: `CryptoKey`, digests, HMAC, HKDF, PBKDF2, import/export | next release | Opus | 1 |
 | 7b | `std/crypto` tier 1b: AES-GCM, ECDSA/ECDH P-256, Ed25519, X25519, JWK | pre-rc | Opus | 7a |
 | 7c | `std/crypto` tier 2 on JS and WASM-on-JS (RSA, P-384/521, AES-CBC/CTR/KW) | pre-rc, optional | Opus | 7b |
 | 8 | `std/websocket` client | pre-rc | Opus | 4a, 5 |
@@ -80,7 +83,8 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
   existing message form (`<host:port> is not in the manifest's net list`);
   `authorization` and every `secret_headers` entry are dropped on a hop that changes
   origin; the 21st hop is `HttpError("too many redirects")`. No signature changes. Under
-  `Http.scoped(hosts)` the same per-hop check applies to the scoped list.
+  `Http.scoped(hosts)` the hops are checked against `net` but not against the scoped list,
+  which the host cannot see; phase 4a closes that (design §17.263 (4)).
 - **Files.** `compiler/runtime/js/sakura_runtime.js` (`fetchArgs`, the `http_send` and
   `http_stream_open` paths: `redirect: "manual"`, a hop loop), `sakura_wasm_host.js` if it
   wraps those paths, `compiler/runtime/js/*.test.js`, `compiler/std/http.sak` doc
@@ -101,12 +105,14 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 - **Scope.** `Bytes.slice`, `Bytes.concat`; `Alphabet`, `to_base64`, `from_base64`,
   `from_base64_lenient`, `Base64Error`; `std/encoding` with `Encoding`, `Encoding.parse`,
   `Errors`, `Bom`, `EncodingError`, `decode`, `decode_with`, `Decoder.{new, push,
-  finish}`, `encode`. `String.from_bytes` and `String.to_bytes` unchanged.
+  finish}`, `encode` (`requires encodable(enc)`: Windows-1252 is decode-only, design
+  §17.263 (3)). `String.from_bytes` and `String.to_bytes` unchanged.
 - **Files.** `compiler/std/bytes.sak`, new `compiler/std/encoding.sak`, `compiler/std/INDEX.md`
   (authored dependency graph line; signatures regenerated), `sakura_core::builtins` (new
   externals), `sakura_runtime.js` (`bytes_slice`, `bytes_concat`, `bytes_to_base64`,
-  `bytes_from_base64`, `bytes_from_base64_lenient`, `encoding_decode`,
-  `encoding_decoder_push`, `encoding_decoder_finish`, `encoding_encode`),
+  `bytes_from_base64`, `bytes_from_base64_lenient`, `encoding_decode`, `encoding_encode`;
+  `Decoder.push`/`finish` are Sakura over the one stateless decode external, holding an
+  unfinished sequence between pushes, design §17.263 (5)),
   `runtime/rt/src/builtins.rs` (+ a new `codec.rs`; `base64` and UTF-16 by hand, no
   dependency, or `base64` crate `no_std` if its MSRV fits; Windows-1252 as a 32-entry
   table), `sakura_codegen_wasm/src/validate.rs` (`hosted` is not used: these run in the
@@ -168,8 +174,15 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 
 - **Scope.** `Payload`, `Request.body: Payload`, `Response.body: Payload`, `Method.Options`,
   `Method.Trace`, `Request.redirect: Redirect`, `Request.{with_payload, with_header,
-  with_headers}`, `Response.bytes`, `Redirect` wired to the phase-0 hop loop (`Manual`
-  returns the 3xx; `Error` fails). Binary bodies sent and received on JS and WASM (the
+  with_headers}`, `Response.bytes`. Redirect following moves into `std/http` (design
+  §17.263 (4)): every `host()` and `scoped()` send reaches the host with `redirect:
+  "manual"`; one Sakura function follows at most 20 hops for both, resolves `Location`
+  against the request URL with phase 2's parser, checks the hop against `scoped`'s list
+  (the host checks `net` on each send), drops `authorization` and `secret_headers` when
+  scheme, host or port change, returns the 3xx under `Manual` and fails `HttpError` under
+  `Error`; `Http.stream` closes a 3xx body and reopens. The host's hop loop from
+  `7dd9dd47` is deleted in the same commit. `Http.recording` records each hop as an
+  exchange; a 0.1.0 cassette still replays (its request meets no 3xx). Binary bodies sent and received on JS and WASM (the
   WASM `http_send` answer already carries bytes; the text decode moves to `Response.text`).
   `Http.recording` stores binary bodies as `response_body_base64`, which the cassette
   schema already has (§17.209); request bodies likewise. `Serve` passes `Payload` through.
@@ -181,15 +194,20 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
   each), `CHANGELOG.md` `[Unreleased]` → Changed with the migration sentence,
   `dogfood/*` migration list entry (Astra's list; Opus applies).
 - **Tests.** `request_payload_bytes_roundtrip.sak` (scripted), `response_bytes_limit.sak`,
-  `http_redirect_manual_returns_3xx.sak` cannot be scripted (see phase 0) → runtime
-  tests; `request_method_options_trace.sak`; the existing HTTP fixtures updated and
-  reviewed one by one; cassette fixtures with a binary body.
+  `request_method_options_trace.sak`; with the loop in Sakura, `Http.scripted` can answer
+  a 3xx, so the redirect cases are semantics fixtures: `http_redirect_follows.sak`,
+  `http_redirect_manual_returns_3xx.sak`, `http_redirect_error_fails.sak`,
+  `http_redirect_drops_secrets_cross_origin.sak`, `http_redirect_scoped_rejects_hop.sak`,
+  `http_redirect_21_hops.sak`; the per-send `net` check keeps its runtime test; the
+  existing HTTP fixtures updated and reviewed one by one; cassette fixtures with a binary
+  body.
 - **Docs.** Stdlib regenerated; `tour/capabilities.mdx`, `cookbook/http_retry.mdx`,
   `cookbook/router_endpoint.mdx` updated for `Payload`; `agents/cassettes.mdx` for binary
   bodies.
 - **Who.** Opus.
 - **Acceptance.** Corpus and parity green; `sakura test --record` round-trips a binary
-  body; the changelog names the migration; no `.wasm.stdout` added.
+  body; the changelog names the migration and the moved redirect loop; no `.wasm.stdout`
+  added; the owner reviews the PR as security reviewer, since it relocates phase 0.
 
 ### Phase 4b: effect additions and small functions
 
@@ -420,9 +438,10 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
   Sakura source (RFC §2, plan §1). Do not add a `hosted` import for something `rt` can do.
 - No new manifest key, no new diagnostic code is expected through phase 10. A phase that
   needs one files a `design-question` in `compiler/REQUESTS.md` before using it.
-- Breaking changes are phases 4a and 4b only and must be on `main` before the 0.2.0
-  preparation commit; if the window closes first, they wait for the owner's decision, they
-  do not land after the tag.
+- Breaking changes are phases 4a and 4b only. They do not touch `main` before the
+  `v0.1.0` tag (held as PR branches, like PR #4) and must be on `main` before the 0.2.0
+  preparation commit; if that window closes first, they wait for the owner's decision, they
+  do not land after the tag. Additive phases never wait for a tag (design §17.263 (2)).
 - `.wasm.stdout` is a declared difference, never a convenience.
 - Nothing prints compressed bytes or signatures; nothing shows, logs or records a key.
 

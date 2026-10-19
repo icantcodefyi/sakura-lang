@@ -24,8 +24,9 @@ the reason recorded. The implementation order is
 - Discussion and PR: not opened; drafted on `main` at the owner's request. The pitch is the
   owner's message and design §17.262 (round 34).
 - Decision status: Draft.
-- Implementation status: Not started. Phases and owners are in
-  [docs/plans/web-apis.md](../plans/web-apis.md).
+- Implementation status: Phase 0 (`7dd9dd47`) and phase 1 (`d0222605`) are on `main` and
+  ship in `v0.1.0`; phases 2–3 and 7a may follow before the tag, 4a/4b are held for it
+  (design §17.263). Phases and owners are in [docs/plans/web-apis.md](../plans/web-apis.md).
 - Stabilization status: Not stabilized. §Compatibility states which parts are intended
   for the `v0.2.0` contract and which stay experimental.
 - FCP start/end: Not started; the maintainer records seven calendar days under the
@@ -290,7 +291,10 @@ capability, the Sakura form that covers the need, and the reason.
   decoding threads an immutable state: `Decoder.new(enc, errors) -> Decoder`,
   `Decoder.push(d, chunk) -> Result<(Decoder, String), EncodingError>`,
   `Decoder.finish(d) -> Result<String, EncodingError>`. `encode(s, enc) -> Bytes` for
-  `Utf16Le`/`Utf16Be`; `String.to_bytes` stays the UTF-8 path. `encodeInto` is a gap: there
+  `Utf16Le`/`Utf16Be`, declared `requires encodable(enc)`: Windows-1252 cannot encode every
+  string, so it is decode-only and passing it is the caller defect `D020`, a fact about the
+  program, not its input (`TextEncoder` is UTF-8 only; §17.263 (3)); `String.to_bytes` stays
+  the UTF-8 path. `encodeInto` is a gap: there
   is no caller-owned buffer to write into.
 - `String.from_bytes` keeps its strict whole-buffer UTF-8 contract.
 
@@ -350,8 +354,10 @@ capability, the Sakura form that covers the need, and the reason.
   `with_header`, `with_headers(h: Headers)` are the builders.
 - `Method` gains `Options` and `Trace`. `Connect` is a proxy verb and is not added.
 - `Request.redirect: Redirect = Follow | Manual | Error` (default `Follow` from the
-  builders). Under `Follow`, `Http.host()` follows at most 20 hops; **every hop's
-  `host:port` is checked against `net` before it is fetched** and a refused hop fails
+  builders). Under `Follow`, `std/http` follows at most 20 hops in one Sakura loop shared
+  by `Http.host()` and `Http.scoped()`: every send reaches the host with `redirect: "manual"`,
+  each hop is its own send, so **every hop's `host:port` is checked against `net` before it is
+  fetched** and against `scoped`'s list when there is one, and a refused hop fails
   `HttpError` with the same message as a refused first request; `authorization` and every
   `secret_headers` entry are dropped when the hop changes origin, as Fetch does.
   `Manual` returns the 3xx response. `Error` fails `HttpError(status: Some(3xx), …)`. Today
@@ -568,8 +574,11 @@ MINOR revision per phase that adds imports.
 
 ## Compatibility and migration
 
-- **Before the `v0.1.0` tag:** only phase 0 (the redirect fix) may land, as a behaviour fix
-  with a changelog entry; no signature changes.
+- **Before the `v0.1.0` tag** (design §17.263): additive phases land on `main` as their
+  gates go green and ship in whatever release is next (phase 0 `7dd9dd47` and phase 1
+  `d0222605` are in `v0.1.0`); 0.1.0 precedes RFC 0001's compatibility start, so an added
+  module breaks no promise. Phases 4a and 4b and any ABI version bump are held as PR
+  branches, rebased daily, and merged right after the tag.
 - **`v0.2.0`** is the one breaking window before 1.0 (RFC 0001 starts within-minor
   compatibility at 0.2.0, and the roadmap goes from 0.2.0 to `1.0.0-rc.1`). Everything that
   changes an existing record, variant or effect lands there: `Payload` bodies, `Method`
@@ -652,9 +661,10 @@ subtasks the plan names; the owner accepts the RFC and stabilizes.
 
 1. **Does 1.0 wait for `std/worker`?** Recommendation: no. Workers ship experimental in
    the first release whose matrix is green and stabilize in 1.x; everything else in this
-   RFC is in the 1.0 contract. Owner.
+   RFC is in the 1.0 contract. Owner accepted the recommendation on 2026-10-20.
 2. **Tier 2 crypto on native (RSA, P-384/P-521, AES-CBC/CTR/KW).** Recommendation: not
-   before 1.0; typed `Unsupported` is honest. Owner, at the rc.
+   before 1.0; typed `Unsupported` is honest. Owner accepted the recommendation on
+   2026-10-20; revisited at the rc only if asked.
 
 Everything else is decided above; the plan carries the implementer-level choices.
 
