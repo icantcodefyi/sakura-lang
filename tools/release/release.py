@@ -266,7 +266,8 @@ def smoke(args):
         home = tmp / "home"
         home.mkdir()
         # A clean environment: no checkout, an empty HOME, Node from PATH.
-        env = {"PATH": os.environ["PATH"], "HOME": str(home), "LANG": "C.UTF-8"}
+        env = {"PATH": os.environ["PATH"], "HOME": str(home), "LANG": "C.UTF-8",
+               "SAKURA_CACHE_DIR": str(tmp / "cache")}
         out = run([sakura, "--version"], tmp, env)
         if out != f"sakura {ver} ({commit})\n":
             fail(f"--version printed {out!r}")
