@@ -55,6 +55,12 @@ but the timed validation work differs. A fresh quiet-window run is required.
 |---|---|---|---|
 | DeltaBlue: add AWFY projection checks 3 and 4 (§17.183 item 1) | `bench/programs/deltablue/sakura/main.sak`: old `f1da8357e415e16240a224c3094ffb0b1bd49a63` (at `9728a44c`) → new `4f8af375a0b6370723d2b4b56a73650aed3afcd2` (Git blob hashes) | Same planner operations, traversal order and checksums; checks cover indices 0 through n−2, with n=0 returning early and n=1 checking no destinations. All eight oracle sizes (0, 1, 2, 3, 100, 1000, 5000, 10000) pass against unchanged `meta.toml` on Sakura and hand JS under Node and Bun, and Sakura WASM under Node | Benchmark-definition correction, no optimisation or timing claim; old ratios incompatible; no baseline blessed or timing expectations changed |
 
+`d97cf247` is a **method boundary for `bench compile`**: from that commit each
+fresh-process case runs once untimed before its 15 timed samples, so neither the first
+sample's cold OS file cache nor the filling of std's analysis cache (design §17.195 (3))
+lands in its median or p95. Compile-latency readings before `d97cf247` include that first
+cold run; compare them with later readings by direction only, not as a delta.
+
 For each optimisation landing, add a row linking both raw runs and the machine-readable
 `bench/bench compare` output. Record the exact measured commits (not just the later
 report commit), pinned engines, matched lane, input size, absolute Sakura times and
