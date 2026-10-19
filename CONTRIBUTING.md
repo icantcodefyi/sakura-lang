@@ -203,8 +203,11 @@ baseline and fails closed when it cannot obtain one.
 - Website changes run website, documentation and Tree-sitter corpus checks. Docs
   (`docs/`, `research/` and Markdown) select the same checks without the Rust matrix.
   Documentation examples build the current CLI in a separate Linux job.
-- Workflow, tool and packaging changes run every check. The nightly and manual
-  runs force all areas on, including the scheduled native checks.
+- Workflow, tool and packaging changes run every check. The nightly and default
+  manual runs force all areas on, including the scheduled native checks. A manual
+  run may supply `base_sha` to check a specific commit range without push
+  cancellation. Use a temporary ref to pin the commit being checked, then delete
+  that ref after verification. This override never applies to pushes or nightlies.
 - A newer push to `main` cancels the previous push run; PR runs cancel per PR.
   Each nightly has its own concurrency group and is never superseded by a push
   or another nightly. All jobs use public GitHub-hosted runners.

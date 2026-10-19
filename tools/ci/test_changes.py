@@ -31,6 +31,14 @@ class ChangeDetectionTests(unittest.TestCase):
         with patch("subprocess.check_output", side_effect=subprocess.CalledProcessError(128, "git")):
             self.assertEqual(detect("merge_group", "b" * 40, "a" * 40), set(AREAS))
 
+    def test_manual_default_is_full_and_explicit_comparison_can_be_focused(self):
+        base, head = "a" * 40, "b" * 40
+        self.assertEqual(detect("workflow_dispatch", base, head, force_all=True), set(AREAS))
+        self.assertEqual(detect("schedule", base, head), set(AREAS))
+        self.assertEqual(comparison_base("workflow_dispatch", base), base)
+        with patch("subprocess.check_output", return_value=b"README.md\0"):
+            self.assertEqual(detect("workflow_dispatch", base, head), {"docs"})
+
     def test_cancelled_compiler_push_is_carried_into_docs_push(self):
         green, cancelled, docs = "a" * 40, "b" * 40, "c" * 40
         def command(args, **kwargs):
