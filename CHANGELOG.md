@@ -53,6 +53,17 @@ Compare the release tag with main when identifying changes not in that preview.
   link pointing back inside the directory is refused too. To migrate, write to the link's
   target path instead of the link.
 
+- On the JS backend and `--target wasm`, a symbolic link that another process plants at a
+  write's path between the grant check and the open is refused with `"escapes the
+  directory"` and its target is never created. Before, the host checked the path and then
+  opened it in a separate call, which followed the new link. `Fs.write`, `Fs.read`, a `File`
+  opened to read, write or append, and `sakura test --record`'s cassette now open the
+  resolved path with `O_NOFOLLOW` and do their I/O through the descriptor (design §17.233).
+  A link inside the directory that exists before the call still works. Known limit, stated
+  in ABI §8.3: a parent directory swapped for a link in that window, `Sql.sqlite`'s database
+  file, the directory `Fs.list` reads (entry names only) and Windows are not covered on the
+  JS hosts. The native host has no window.
+
 - New macOS tag releases require Developer ID signing with team `P62B65A837` and
   Apple notarization before checksums, Homebrew archives and npm packages are
   assembled. Ordinary dry runs skip signing. A separate protected `sign_test`

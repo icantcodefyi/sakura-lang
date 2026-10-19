@@ -2895,7 +2895,31 @@ function inside(d, rel, forWrite) {
 }
 
 function hostMessage(e) {
+  if (e.code === "ELOOP") return "escapes the directory"; // a link planted after `inside`
   return e.code === "ENOENT" ? "not found" : String(e.message ?? e);
+}
+
+/**
+ * Opens `p`, a path `inside` resolved, with `flags` and `O_NOFOLLOW` (design §17.233), so a
+ * link planted at its final component after the check fails with `ELOOP` instead of being
+ * followed. Intermediate components keep the window (Node has no `openat`); so does Windows,
+ * which has no `O_NOFOLLOW`.
+ */
+function openResolved(p, flags) {
+  const fs = nodeFs();
+  const c = fs.constants;
+  const bits = { r: c.O_RDONLY, w: c.O_WRONLY | c.O_CREAT | c.O_TRUNC, a: c.O_WRONLY | c.O_CREAT | c.O_APPEND };
+  return fs.openSync(p, bits[flags] | (c.O_NOFOLLOW ?? 0));
+}
+
+/** `f(fd)` on `p` opened by `openResolved`, closing the descriptor after. */
+function withResolved(p, flags, f) {
+  const fd = openResolved(p, flags);
+  try {
+    return f(fd);
+  } finally {
+    nodeFs().closeSync(fd);
+  }
 }
 
 function fsResult(d, rel, forWrite, f) {
@@ -2957,7 +2981,7 @@ export function fs_read(d, rel) {
       return Err(store.dirs.has(key) ? "is a directory" : "not found");
     });
   }
-  return fsResult(d, rel, false, (p) => new Uint8Array(nodeFs().readFileSync(p)));
+  return fsResult(d, rel, false, (p) => new Uint8Array(withResolved(p, "r", (fd) => nodeFs().readFileSync(fd))));
 }
 export function fs_write(d, rel, data) {
   if (Dir.store(d) !== null) {
@@ -2968,7 +2992,7 @@ export function fs_write(d, rel, data) {
       return Ok(undefined);
     });
   }
-  return fsResult(d, rel, true, (p) => void nodeFs().writeFileSync(p, data));
+  return fsResult(d, rel, true, (p) => void withResolved(p, "w", (fd) => nodeFs().writeFileSync(fd, data)));
 }
 /** Entries sorted by name. */
 export function fs_list(d, rel) {
@@ -3033,7 +3057,7 @@ export function file_open(d, rel, mode) {
       return Ok(addFile({ files: store.files, key, buf: null, len: 0, view: null }));
     });
   }
-  return fsResult(d, rel, mode.tag !== 0, (p) => addFile({ fd: nodeFs().openSync(p, "rwa"[mode.tag]) }));
+  return fsResult(d, rel, mode.tag !== 0, (p) => addFile({ fd: openResolved(p, "rwa"[mode.tag]) }));
 }
 const EMPTY_BYTES = new Uint8Array(0);
 
@@ -3563,7 +3587,7 @@ export function http_recording_open(dir, path) {
   let text = "";
   if (r.err !== undefined && r.err !== "not found") return Err(`${path}: ${r.err}`);
   try {
-    if (r.err === undefined) text = nodeFs().readFileSync(r.path, "utf8");
+    if (r.err === undefined) text = withResolved(r.path, "r", (fd) => nodeFs().readFileSync(fd, "utf8"));
   } catch (e) {
     if (e.code !== "ENOENT") return Err(`${path}: ${hostMessage(e)}`);
   }
@@ -3666,7 +3690,7 @@ function appendExchange(id, req, status, headers, body) {
     ...body,
   };
   const line = `${c.headed ? "" : `${CASSETTE_HEADER}\n`}${JSON.stringify(x)}\n`;
-  const r = fsResult(c.dir, c.path, true, (p) => nodeFs().appendFileSync(p, line));
+  const r = fsResult(c.dir, c.path, true, (p) => withResolved(p, "a", (fd) => nodeFs().writeFileSync(fd, line)));
   if (r.tag !== 0) return Err(`${c.path}: ${r.fields[0]}`);
   c.headed = true;
   const key = requestKey(req);

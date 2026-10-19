@@ -418,6 +418,21 @@ defence against the host. Nothing in-guest can be. The findings below are graded
 
 Tests that must accompany the change, in the same commit: (a) `crates/sakura_cli/tests/wasm.rs::http_host_sends_on_wasm_as_on_js` asserts WASM stdout equals JS stdout (`201 true 1` first line) and keeps the `s3cr3t` grep over WASM stdout, stderr and trace; (b) `runtime/rt/tests/vt.rs`: the tuple `rt_k_http_send` encodes carries the header's inner value and the tuple `http_recording_lookup`/`http_recording_append` encode carries `14, Unit`; (c) a `tests/wasm.rs` case running a package test with `Http.recording` under `Http.scripted([])` and `Http.bearer` on `--target wasm` asserting the token appears in neither output nor the fixture file (`examples/secrets` already runs on WASM; make the assertion explicit); (d) `runtime/js/test/wasm_host.test.js`: a request whose `secret_headers` decode to a real `rt.Secret` reaches `fetchArgs` with the header set. Docs in the same commit: ABI 1.0.3 erratum (W5, W12), `website/content/docs/roadmap.mdx:53` and `tour/memory.mdx:159` (drop "refused until the owner's security review"), CHANGELOG. The round-11 rule stays: **no further kind-`secret` import without a review entry here**; after this change the list is `js_handler`, `http_send`, `http_stream_open`.
 
+### The JS host's write race (row 30, 2026-10-19)
+
+After `7c5a6dfd`, `inside` checked a path and the open followed in a separate call, so a link a
+concurrent process planted between them was followed (design §17.233). Row 30 opens the
+resolved path with `O_NOFOLLOW` (numeric flags, `?? 0` on Windows) and reads or writes through
+the descriptor at every grant-checked open in `sakura_runtime.js`: `fs_read`, `fs_write`,
+`file_open` in all three modes, the cassette read and append. `hostMessage` maps `ELOOP` to
+`escapes the directory`. `runtime/js/test/runtime.test.js` plants the link from a stubbed
+`realpathSync` on `inside`'s last return, for new and existing files, and asserts the refusal,
+that no target is created and that an outside file is neither changed nor read; it fails on the
+pre-fix runtime. The Node WASM host calls the same `rt` functions. Documented limit (ABI §8.3,
+`runtime/js/ABI.md`): intermediate components, `Sql.sqlite`, `fs_list` (`readdirSync` takes a
+path, so a swapped directory leaks entry names, not contents) and Windows. The owner's review of
+`7c5a6dfd` and row 30 is item 10 of `docs/plans/m4-exit-checklist.md`.
+
 ### Workspace tests
 
 `cargo test --workspace --locked --no-fail-fast` at `6ccce80`: exit 0; 102 test binaries `ok`, 0 failed, 557 tests passed, 2 ignored. The suites named in parts A–C (`escape.rs`, `tests/ui` `V6001`–`V6003`/`V2031`–`V2033`, `semantics` with `sql_untrusted_param`, `url_untrusted_component`, `uuid_decode`, `cli.rs` `test_record_*`, `wasm.rs`, `vt.rs`) are in that run.

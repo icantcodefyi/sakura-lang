@@ -1188,3 +1188,68 @@ test("a write through a dangling symlink in a write grant is refused, never crea
     fs.rmSync(tmp, { recursive: true, force: true });
   }
 });
+
+test("a link planted at a write's final component after the check is refused through the descriptor", { skip: process.platform === "win32" }, async () => {
+  const fs = (await import("node:fs")).default; // the object the runtime's `getBuiltinModule` returns
+  const os = await import("node:os");
+  const path = await import("node:path");
+  const tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "sakura-race-")));
+  const realpathSync = fs.realpathSync;
+  try {
+    const granted = path.join(tmp, "granted");
+    const outside = path.join(tmp, "outside");
+    fs.mkdirSync(granted);
+    fs.mkdirSync(outside);
+    fs.writeFileSync(path.join(outside, "secret"), "kept");
+    fs.writeFileSync(path.join(granted, "old"), "old");
+    const d = rt.fixtures_dir(granted, true);
+    const Mode = (tag) => ({ tag, fields: [] });
+    // The racer: on `inside`'s last `realpathSync` return, swap `name` for a link to outside.
+    const race = (name, target, op) => {
+      const p = path.join(granted, name);
+      fs.realpathSync = (q, ...rest) => {
+        const real = realpathSync(q, ...rest);
+        if (q === p || q === granted) {
+          fs.realpathSync = realpathSync;
+          fs.rmSync(p, { force: true });
+          fs.symlinkSync(path.join(outside, target), p);
+        }
+        return real;
+      };
+      try {
+        return op(name);
+      } finally {
+        fs.realpathSync = realpathSync;
+      }
+    };
+    const refused = rt.Err("escapes the directory");
+    const x = new Uint8Array([120]);
+    // A new file: the parent's `realpathSync` is the last check; the link creates nothing.
+    assert.deepEqual(race("new1", "made", (n) => rt.fs_write(d, n, x)), refused);
+    assert.deepEqual(race("new2", "made", (n) => rt.file_open(d, n, Mode(1))), refused);
+    assert.deepEqual(race("new3", "made", (n) => rt.file_open(d, n, Mode(2))), refused);
+    assert.ok(!fs.existsSync(path.join(outside, "made")), "the link's target was never created");
+    // An existing file swapped for a link to one outside: neither written, appended nor read.
+    fs.writeFileSync(path.join(granted, "a"), "a");
+    assert.deepEqual(race("a", "secret", (n) => rt.fs_write(d, n, x)), refused);
+    fs.writeFileSync(path.join(granted, "b"), "b");
+    assert.deepEqual(race("b", "secret", (n) => rt.file_open(d, n, Mode(2))), refused);
+    fs.writeFileSync(path.join(granted, "c"), "c");
+    assert.deepEqual(race("c", "secret", (n) => rt.fs_read(d, n)), refused);
+    assert.equal(fs.readFileSync(path.join(outside, "secret"), "utf8"), "kept");
+    // Without a race, writes, appends and reads still work, and so does a link inside the grant.
+    assert.deepEqual(rt.fs_write(d, "old", new Uint8Array([110, 101, 119])), rt.Ok(undefined));
+    const id = rt.file_open(d, "old", Mode(2)).fields[0];
+    assert.deepEqual(rt.file_write(id, new Uint8Array([33])), rt.Ok(undefined));
+    rt.file_close(id);
+    const w = rt.file_open(d, "fresh", Mode(1)).fields[0];
+    assert.deepEqual(rt.file_write(w, x), rt.Ok(undefined));
+    rt.file_close(w);
+    fs.symlinkSync("old", path.join(granted, "alias"));
+    assert.deepEqual(rt.fs_read(d, "alias"), rt.Ok(new Uint8Array(Buffer.from("new!"))));
+    assert.deepEqual(rt.fs_read(d, "fresh"), rt.Ok(x));
+  } finally {
+    fs.realpathSync = realpathSync;
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});

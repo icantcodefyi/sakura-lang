@@ -423,7 +423,15 @@ grant is empty, so a test's own `Fs.host()`, `Http.host()` or `Env.host()` fails
 **Capabilities.** `$rt.Dir` holds a host directory in a private field and is only built by
 `fs_root()` (the working directory) and `fs_subdir`. Every `fs_*` path is relative and must
 stay inside the directory after symlinks are resolved (`escapes the directory` otherwise);
-`fs_subdir` fails `no such directory` or `not a directory`.
+`fs_subdir` fails `no such directory` or `not a directory`. Every open passes `O_NOFOLLOW` on
+the resolved path and reads or writes through the descriptor, so a link planted at the final
+component after the check also fails `escapes the directory` (`ELOOP`; design §17.233).
+Limit: a directory of the resolved path swapped for a link between the check and the open,
+`Sql.sqlite`'s database file (`DatabaseSync` opens by path), `fs_list`'s directory (`readdir`
+takes a path; entry names only) and any open on Windows (no
+`O_NOFOLLOW`) keep that window. The racer is a concurrent process with write access inside the
+grant; a Sakura program cannot race itself. The native host has no window (ABI §8.3 in
+`runtime/rt/ABI.md`).
 
 **Memory directories** (design §17.119). `fs_memory_root(files)` is a `Dir` over a fresh store
 (`Map` from normalized path to `Uint8Array`) holding the `(Path, Bytes)` pairs; `Fs.memory` is

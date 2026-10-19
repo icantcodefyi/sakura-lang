@@ -765,6 +765,22 @@ is a `Handle` object (§3.2 tag 17) whose host slot records the resolved directo
 read/write authority; `fs_subdir` creates a new slot with attenuated authority. `fs_memory_root`
 is a slot over an in-memory store with no host authority (design §17.119). Path rules are the JS ones.
 
+**The JS host's open window** (design §17.233). The Node WASM host shares the JS host's `fs`
+code: it resolves a path, checks it against the directory and the grant, then opens the resolved
+path with `O_NOFOLLOW` and reads or writes through the descriptor, so a link planted at the final
+component after the check fails `escapes the directory` and its target is never created. Four
+cases keep the window between the check and the open. Node has no `openat`, so a directory of
+the resolved path swapped for a link is followed. `Sql.sqlite` opens its database by path
+(`DatabaseSync`), so its final component is followed too. `Fs.list` reads a directory by path
+(`readdir` takes no `O_NOFOLLOW`), so a listed directory swapped for a link lists the target's
+entry names (names and kinds only; no file is read or written). Windows has no `O_NOFOLLOW`
+(`fs.constants.O_NOFOLLOW ?? 0`), though creating a link there needs a privilege. The racer is a
+concurrent process with write access inside the grant and less authority than the Sakura
+process; a Sakura program cannot race itself, since the check and the open run synchronously
+inside one host call. On the JS hosts, do not grant a directory, a database's above all, that a
+less-trusted process writes concurrently. The native host opens through a directory handle
+(`cap-std`) and has no window.
+
 ### 8.4 Handle tables
 
 Host side: one table per **kind** (the 1.2.0 list below), entries `(slot,
