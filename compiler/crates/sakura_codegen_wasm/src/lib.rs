@@ -246,7 +246,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     // closure twin, entries appended after the native codes; absent when no region calls a
     // closure.
     let closure_twins = if arity > 0 {
-        func::closure_twins(m, &regions)
+        sakura_lir::direct::closure_twins(m, &regions)
     } else {
         Vec::new()
     };
@@ -268,7 +268,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     let indirect: Vec<(Vec<ValType>, Vec<ValType>)> = (1..=arity)
         .map(|k| (vec![ValType::I32; k], vec![ValType::I32]))
         .collect();
-    let may_abort = func::may_abort(m, &regions);
+    let may_abort = sakura_lir::direct::may_abort(m, &regions);
     let env = func::Env {
         m,
         rt: &layout.rt,
@@ -281,7 +281,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
             .map(|(k, n)| (n.clone(), layout.first_import + k as u32))
             .collect(),
         twins,
-        enter: func::entries(m, &regions, &may_abort),
+        enter: sakura_lir::direct::entries(m, &regions, &may_abort),
         may_abort,
         gauge: g + 3,
         state: g + 4,
