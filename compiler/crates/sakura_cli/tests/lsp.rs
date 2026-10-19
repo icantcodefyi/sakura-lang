@@ -163,12 +163,20 @@ fn lsp_hole_context_matches_mcp_after_unicode_edits() {
     let col: usize = line[..line.find("?rest").unwrap()].encode_utf16().count();
     let at = json!({"textDocument": {"uri": uri}, "position": {"line": 1, "character": col + 1}});
     // The last edit, then a hover cancelled before the server gets to it (it is still
-    // analyzing the edit), then a change that arrives late with an older version.
-    c.notify("textDocument/didChange", change(3, last));
-    let hover = c.send_request("textDocument/hover", at.clone());
-    c.notify("$/cancelRequest", json!({"id": hover}));
+    // analyzing the edit), then a change that arrives late with an older version. The server
+    // may finish its pass between the hover and its cancellation and answer it (design §17.75
+    // cancels only what has arrived), so the edit and hover repeat until one is cancelled.
+    let mut cancelled = Value::Null;
+    for v in 3..23 {
+        c.notify("textDocument/didChange", change(v, last));
+        let hover = c.send_request("textDocument/hover", at.clone());
+        c.notify("$/cancelRequest", json!({"id": hover}));
+        cancelled = c.response(hover);
+        if cancelled["error"]["code"] == -32800 {
+            break;
+        }
+    }
     c.notify("textDocument/didChange", change(2, steps[0]));
-    let cancelled = c.response(hover);
     assert_eq!(cancelled["error"]["code"], -32800, "{cancelled}");
     let from_lsp = c.request("sakura/holeContext", at);
     assert!(c.shutdown());
