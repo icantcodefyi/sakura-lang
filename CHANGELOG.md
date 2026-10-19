@@ -28,6 +28,14 @@ published yet.
 
 ### Security
 
+- A write through a dangling symbolic link inside a directory the manifest's `fs.write` grants
+  is refused with `"escapes the directory"` on the JS backend and `--target wasm`, as the
+  native host already refuses it. Before, `Fs.write`, a `File` opened to write or append,
+  `sakura test --record`'s cassette and `Sql.sqlite` followed the link and created its target
+  wherever it pointed, outside the grant (shipped in `v0.1.0-alpha.1`; N1a review). A dangling
+  link pointing back inside the directory is refused too. To migrate, write to the link's
+  target path instead of the link.
+
 - New macOS tag releases require Developer ID signing with team `P62B65A837` and
   Apple notarization before checksums, Homebrew archives and npm packages are
   assembled. Ordinary dry runs skip signing. A separate protected `sign_test`

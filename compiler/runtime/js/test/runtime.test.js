@@ -1166,3 +1166,25 @@ test("serveHttp answers heap exhaustion 503 with one record; after close a reque
     ["D096"],
   );
 });
+
+test("a write through a dangling symlink in a write grant is refused, never creating its target", { skip: process.platform === "win32" }, async () => {
+  const fs = await import("node:fs");
+  const os = await import("node:os");
+  const path = await import("node:path");
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "sakura-dangle-"));
+  try {
+    const granted = path.join(tmp, "granted");
+    const outside = path.join(tmp, "outside");
+    fs.mkdirSync(granted);
+    fs.symlinkSync(outside, path.join(granted, "dangle"));
+    const d = rt.fixtures_dir(granted, true);
+    // The error native gives (`sakura_host_native` fs.rs `inside`).
+    assert.deepEqual(rt.fs_write(d, "dangle", new Uint8Array([120])), rt.Err("escapes the directory"));
+    const Mode = (tag) => ({ tag, fields: [] });
+    assert.deepEqual(rt.file_open(d, "dangle", Mode(2)), rt.Err("escapes the directory"));
+    assert.ok(!fs.existsSync(outside), "the link's target outside the grant was not created");
+    assert.deepEqual(rt.fs_write(d, "plain", new Uint8Array([120])), rt.Ok(undefined), "a new file is still written");
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});

@@ -2873,6 +2873,12 @@ function inside(d, rel, forWrite) {
     real = fs.realpathSync(full);
   } catch (e) {
     if (!forWrite || e.code !== "ENOENT") return { err: hostMessage(e) };
+    // A dangling symlink names a target this check never sees: writing through it would create
+    // a file wherever it points (as `sakura_host_native` refuses it).
+    try {
+      fs.lstatSync(full);
+      return { err: "escapes the directory" };
+    } catch {}
     try {
       real = path.join(fs.realpathSync(path.dirname(full)), path.basename(full));
     } catch (e2) {
