@@ -8,6 +8,7 @@ mod common;
 use std::path::{Path, PathBuf};
 
 use sakura_analysis::{Analysis, BuildOptions, Snapshot};
+use sakura_lir::lir::FuncKind;
 use sakura_lir::{direct, snapshot};
 
 fn root() -> PathBuf {
@@ -168,6 +169,10 @@ fn counter() -> Handler<Tick> {
 fn fib(n: Int) -> Int { if n < 2 { n } else { fib(n - 1) + fib(n - 2) } }
 fn twice(f: fn(Int) -> Int, x: Int) -> Int { f(f(x)) }
 fn uses_twice(x: Int) -> Int { twice(fn(y) { y + 1 }, x) }
+fn twice_fib(x: Int) -> Int { twice(fib, x) }
+fn maps_prints(xs: List<Int>) -> List<Int> ! {Console} {
+  List.map(xs, fn(x) { Console.print("{x}"); x })
+}
 fn prints() -> Unit ! {Console} { Console.print("x") }
 fn calls_prints() -> Unit ! {Console} { prints() }
 fn ticks() -> Int ! {Tick} { Tick.next() }
@@ -189,7 +194,8 @@ pub fn main() -> Unit ! {Console} {
   let t = with counter() { ticks() }
   let total = t + fib(10) + uses_twice(1) + bound() + unknown(counter()) + calls_catches()
     + keeps([fn(x) { x }]) + ping(2, fn(x) { x }) + (if even2(4) { 1 } else { 0 })
-  Console.print("{total}")
+    + twice_fib(3)
+  Console.print("{total} {maps_prints([1])}")
   calls_prints()
 }
 "#;
@@ -243,11 +249,12 @@ fn facts_survive_the_committed_form_and_malformed_input_is_refused() {
     assert_eq!(direct::dump(&snapshot::Module::default()), "");
 }
 
-/// The direct regions (`direct::regions`): a direct top-level function or clause whose LIR is
-/// first-order code, calling only other such functions, runs without frames. That includes a
-/// def whose performs are bound to its own handler literal, and the literal's direct clause
-/// (design §17.211 (1)). A direct def that calls a function value or a function outside the
-/// regions keeps the frame protocol, as does every `cps` def.
+/// The direct regions (`direct::regions`): a direct function whose LIR calls only other such
+/// functions and closures runs without frames. That includes a def whose performs are bound to
+/// its own handler literal, and the literal's direct clause (design §17.211 (1)), and a def
+/// calling a function-typed parameter, a direct lambda and an adapter (§17.211 (2)). A def that
+/// calls a function outside the regions keeps the frame protocol, as does every `cps` def and
+/// a lambda that performs.
 #[test]
 fn regions_are_direct_first_order_code() {
     common::big_stack(|| {
@@ -262,15 +269,30 @@ fn regions_are_direct_first_order_code() {
                 .unwrap_or_else(|| panic!("no function {name}"));
             regions[i]
         };
-        for name in ["fib", "bound", "counter$Tick_next"] {
+        let names = ["fib", "bound", "counter$Tick_next", "twice", "uses_twice"];
+        for name in names.into_iter().chain(["uses_twice$1", "twice_fib"]) {
             assert!(region(name), "{name} is a direct region");
         }
-        for name in ["twice", "uses_twice", "catches", "ping"] {
+        // A lambda that performs is not direct, so has no twin.
+        for name in ["catches", "calls_catches", "keeps", "ping", "maps_prints$1"] {
             assert!(!region(name), "{name} is not a direct region");
         }
-        // Every region is direct by the facts.
+        // The adapter passing `fib` as a value forwards to a region, so is one.
+        let adapters: Vec<usize> = (0..lir.funcs.len())
+            .filter(|&i| matches!(lir.funcs[i].kind, FuncKind::Adapter { .. }))
+            .collect();
+        assert!(!adapters.is_empty() && adapters.iter().all(|&i| regions[i]));
+        // Every other region is direct by the facts; adapters have no def of their own.
         for (i, &r) in regions.iter().enumerate() {
-            assert!(!r || lir.direct.direct(i as u32), "{}", lir.funcs[i].name);
+            let adapter = matches!(
+                lir.funcs[i].kind,
+                FuncKind::Adapter { .. } | FuncKind::BuiltinAdapter { .. }
+            );
+            assert!(
+                !r || adapter || lir.direct.direct(i as u32),
+                "{}",
+                lir.funcs[i].name
+            );
         }
     });
 }

@@ -83,9 +83,14 @@ pub struct Env<'a> {
     /// Per function, its twin can abort ([`may_abort`]).
     pub may_abort: Vec<bool>,
     /// The globals of the twins' gauge (estimated native stack bytes in use) and state
-    /// ([`OK`], [`DEFECTED`], [`ABORTED`]).
+    /// ([`OK`], [`DEFECTED`], [`ABORTED`], [`CANCELLED`]).
     pub gauge: u32,
     pub state: u32,
+    /// The static-block offset of the twin table: per closure `code`, the funcref table index
+    /// of the code's closure-convention twin, or 0 (design §17.211 (2)).
+    pub twin_of: u32,
+    /// The type of a closure twin taking `k` words (the closure first) is `closure_type + k - 1`.
+    pub closure_type: u32,
 }
 
 /// A twin's state after it returns (ABI §5 "direct style", design §17.118).
@@ -121,9 +126,56 @@ fn twin_calls(f: &Func, twins: &[bool]) -> Vec<usize> {
         .collect()
 }
 
-/// Per function with a twin, whether the twin can run out of gauge: it reaches a cycle of twin
-/// calls, or its deepest chain of twin calls charges more than [`GAUGE_LIMIT`]. A region that
-/// cannot abort is never run again, so its frame-protocol caller need not hold its arguments.
+/// Per function, whether its twin reaches a bound perform through direct calls of twins.
+fn reaches_bound(m: &Module, twins: &[bool]) -> Vec<bool> {
+    let mut bound: Vec<bool> = m
+        .funcs
+        .iter()
+        .zip(twins)
+        .map(|(f, &t)| {
+            t && f
+                .blocks
+                .iter()
+                .any(|b| b.insts.iter().any(|i| matches!(i, Inst::Bound { .. })))
+        })
+        .collect();
+    let callees: Vec<Vec<usize>> = m.funcs.iter().map(|f| twin_calls(f, twins)).collect();
+    loop {
+        let mut changed = false;
+        for f in 0..m.funcs.len() {
+            if twins[f] && !bound[f] && callees[f].iter().any(|&g| bound[g]) {
+                bound[f] = true;
+                changed = true;
+            }
+        }
+        if !changed {
+            return bound;
+        }
+    }
+}
+
+/// The functions whose twins a closure call can enter (design §17.211 (2)), in table order:
+/// closure-convention twins other than clauses, which are called only through bound performs,
+/// and twins reaching a bound perform. A twin calling a closure can abort, so one that entered
+/// such a twin would leave trace records the frame path repeats; calling the closure abandons
+/// it before them instead. No closure call therefore reaches a bound perform through twins.
+pub fn closure_twins(m: &Module, twins: &[bool]) -> Vec<usize> {
+    let bound = reaches_bound(m, twins);
+    (0..m.funcs.len())
+        .filter(|&f| {
+            twins[f]
+                && !bound[f]
+                && m.funcs[f].kind.is_closure()
+                && !matches!(m.funcs[f].kind, FuncKind::Clause { .. })
+        })
+        .collect()
+}
+
+/// Per function with a twin, whether the twin can run out of gauge or be abandoned: it reaches
+/// a cycle of twin calls or a closure call (whose callee may have no twin, and whose depth is
+/// unknown), or its deepest chain of twin calls charges more than [`GAUGE_LIMIT`]. A region
+/// that cannot abort is never run again, so its frame-protocol caller need not hold its
+/// arguments.
 pub fn may_abort(m: &Module, twins: &[bool]) -> Vec<bool> {
     // The deepest charge from each twin's entry; `None` on a cycle. Iterative depth-first.
     const OPEN: Option<i64> = Some(-1);
@@ -152,7 +204,16 @@ pub fn may_abort(m: &Module, twins: &[bool]) -> Vec<bool> {
                 continue;
             }
             let (_, next, _) = work.pop().unwrap();
-            let mut deepest = Some(0i64);
+            let closes = m.funcs[f].blocks.iter().any(|b| {
+                matches!(
+                    b.term,
+                    Term::Call {
+                        callee: Callee::Closure(_),
+                        ..
+                    }
+                )
+            });
+            let mut deepest = (!closes).then_some(0i64);
             for g in next {
                 deepest = match (deepest, depth[g].flatten()) {
                     (Some(a), Some(b)) if b >= 0 => Some(a.max(b)),
@@ -182,32 +243,11 @@ pub fn may_abort(m: &Module, twins: &[bool]) -> Vec<bool> {
 /// a twin's fallback then never re-enters a twin per frame. Not a twin that can abort and
 /// leaves what the frame path would repeat (design §17.211 (1)): a clause, whose activation's
 /// state outlives the abort, or a twin reaching a bound perform, whose trace records were
-/// written. Such a call runs through frames, and the twins it reaches are entered from there.
+/// written. Such a call runs through frames, and the twins it reaches are entered from there:
+/// a region whose bound perform's clause can abort runs on frames down to its next twin call.
+/// A closure call never reaches a bound perform through twins ([`closure_twins`]).
 pub fn entries(m: &Module, twins: &[bool], may_abort: &[bool]) -> Vec<bool> {
-    let mut bound: Vec<bool> = m
-        .funcs
-        .iter()
-        .zip(twins)
-        .map(|(f, &t)| {
-            t && f
-                .blocks
-                .iter()
-                .any(|b| b.insts.iter().any(|i| matches!(i, Inst::Bound { .. })))
-        })
-        .collect();
-    let callees: Vec<Vec<usize>> = m.funcs.iter().map(|f| twin_calls(f, twins)).collect();
-    loop {
-        let mut changed = false;
-        for f in 0..m.funcs.len() {
-            if twins[f] && !bound[f] && callees[f].iter().any(|&g| bound[g]) {
-                bound[f] = true;
-                changed = true;
-            }
-        }
-        if !changed {
-            break;
-        }
-    }
+    let bound = reaches_bound(m, twins);
     (0..m.funcs.len())
         .map(|f| {
             let clause = matches!(m.funcs[f].kind, FuncKind::Clause { .. });
@@ -2016,6 +2056,33 @@ impl Gen<'_, '_> {
                     self.consume(live, a);
                 }
                 self.call_twin(s, twin, args);
+                self.continue_at_checked(s, cont, live)?;
+            }
+            Term::Call {
+                callee: Callee::Closure(c),
+                args,
+                cont,
+            } => {
+                // The closure's twin from the twin table, or the region is abandoned and its
+                // frame-protocol caller runs it again through frames.
+                s.local_get(self.local(*c)).i32_load(mem(8, 2));
+                s.i32_const(4).i32_mul();
+                self.static_addr(s, self.env.twin_of);
+                s.i32_add().i32_load(mem(0, 2)).local_tee(self.lu);
+                s.i32_eqz().if_(BlockType::Empty);
+                self.release(s, live)?;
+                self.leave(s, ABORTED);
+                s.end();
+                self.consume(live, *c);
+                for &a in args {
+                    self.consume(live, a);
+                }
+                s.local_get(self.local(*c));
+                for &a in args {
+                    s.local_get(self.local(a));
+                }
+                s.local_get(self.lu);
+                s.call_indirect(0, self.env.closure_type + args.len() as u32);
                 self.continue_at_checked(s, cont, live)?;
             }
             _ => return Err(format!("{}: a twin cannot compile {t:?}", self.f.name)),

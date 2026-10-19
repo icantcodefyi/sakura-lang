@@ -1,5 +1,5 @@
 // milestone: M3
-// covers: design §17.118 (direct regions on WASM: owned arguments survive a gauge abort and the frame restart), §17.211 (1) (a clause that writes its state and can abort; twins aborting with their `with`s open)
+// covers: design §17.118 (direct regions on WASM: owned arguments survive a gauge abort and the frame restart), §17.211 (1) (a clause that writes its state and can abort; twins aborting with their `with`s open), §17.211 (2) (a callback's twin aborting inside `List.map`'s; a callback with no twin; a callback with a bound perform)
 
 type Acc = { total: Int, label: String }
 
@@ -44,6 +44,19 @@ fn deep(xs: List<Int>, n: Int) -> Int { with counting() { with counting() { walk
 
 fn mid(xs: List<Int>, n: Int) -> Int { with counting() { deep(xs, n) + 1 } }
 
+// A callback with a bound perform has no closure twin: `List.map`'s twin is abandoned before
+// the perform, whose trace record is written once.
+fn tally(xs: List<Int>) -> List<Int> {
+  List.map(xs, fn(x) {
+    (with counting() { Count.bump(1) }) + (if x == 2 { walk(xs, "t", 200000) } else { 0 })
+  })
+}
+
+// A callback's twin aborting at element two: `List.map`'s twin frees what it built.
+fn deep_at_two(xs: List<Int>) -> List<Int> {
+  List.map(xs, fn(x) { if x == 2 { walk(xs, "m", 200000) } else { x } })
+}
+
 pub fn main() -> Unit ! {Console} {
   let xs = [1, 2, 3]
   Console.print("{walk(xs, "hello", 10)} {walk(xs, "hello", 200000)} {xs}")
@@ -76,4 +89,12 @@ pub fn main() -> Unit ! {Console} {
     }
     Console.print("{probe(0)}")
   }
+  Console.print("{deep_at_two([1, 2, 3])}")
+  // A callback that performs has no twin: `List.map`'s twin is abandoned before it calls it.
+  let seen = List.map([1, 2, 3], fn(x) {
+    Console.print("saw {x}")
+    x * 2
+  })
+  Console.print("{seen}")
+  Console.print("{tally(xs)}")
 }

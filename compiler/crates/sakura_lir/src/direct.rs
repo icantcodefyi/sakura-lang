@@ -86,12 +86,13 @@ pub fn dump(m: &Module) -> String {
 
 /// The **direct regions** of a lowered module (§17.118, ABI §5 "direct style"): per function,
 /// whether it may run as a native call with its arguments and result in their representations
-/// and no continuation frame. That holds for a top-level function, constant or clause whose def
-/// is direct and whose LIR body is first-order code: no `try` region or callback, `with`
-/// regions and handler state only as bound performs use them (§17.211 (1)), and every call a
-/// direct call of another such function. A direct def that calls a closure or a `cps` builtin
-/// keeps the frame protocol (its facts still say `direct`; the backend's frames are the
-/// conservative reading).
+/// and no continuation frame. That holds for a function whose def is direct (a top-level
+/// function, constant, clause or lambda; any adapter or builtin adapter, whose body is the
+/// call it forwards) and whose LIR body has no `try` region or callback, `with` regions and
+/// handler state only as bound performs use them (§17.211 (1)), and every call a direct call
+/// of another such function or a closure call (§17.211 (2)). A direct def that calls a `cps`
+/// builtin keeps the frame protocol (its facts still say `direct`; the backend's frames are
+/// the conservative reading).
 pub fn regions(m: &crate::lir::Module) -> Vec<bool> {
     use crate::lir::{Callee, FuncKind, Inst, Term};
     let mut ok: Vec<bool> = m
@@ -99,10 +100,12 @@ pub fn regions(m: &crate::lir::Module) -> Vec<bool> {
         .iter()
         .enumerate()
         .map(|(i, f)| {
-            matches!(
-                f.kind,
-                FuncKind::Top { .. } | FuncKind::Const | FuncKind::Clause { .. }
-            ) && m.direct.direct(i as DefId)
+            let direct = match f.kind {
+                FuncKind::Adapter { .. } | FuncKind::BuiltinAdapter { .. } => true,
+                FuncKind::Test => false,
+                _ => m.direct.direct(i as DefId),
+            };
+            direct
                 && f.blocks.iter().all(|b| {
                     !b.regions.contains(&crate::lir::RegionKind::Try)
                         && b.insts.iter().all(|i| {
@@ -118,7 +121,7 @@ pub fn regions(m: &crate::lir::Module) -> Vec<bool> {
                                 | Term::If { .. }
                                 | Term::Switch { .. }
                                 | Term::Call {
-                                    callee: Callee::Direct(_),
+                                    callee: Callee::Direct(_) | Callee::Closure(_),
                                     ..
                                 }
                         )

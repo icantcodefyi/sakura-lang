@@ -798,7 +798,9 @@ fn log_json_writes_what_js_writes() {
 /// twin runs out of gauge is run again through frames once, and `stats()` counts it in
 /// `restarts`; the rerun's own call into another region is a new entry, counted on its own. An
 /// entry that stays within the gauge, a held twin that defects, and every call under
-/// `--no-direct` count none.
+/// `--no-direct` count none. Design §17.211 (2): `List.map`'s twin calling its callback's
+/// twin, aborting at element two, or abandoned there at a closure with no twin, frees the
+/// list it built: the heap's `live` bytes end as under `--no-direct`.
 #[test]
 fn a_twin_that_runs_out_of_gauge_restarts_once_per_entry() {
     if !available() {
@@ -812,7 +814,16 @@ fn a_twin_that_runs_out_of_gauge_restarts_once_per_entry() {
                 fn sum_until(n: Int) -> Int { if n == 0 { 1 / zero() } else { n + sum_until(n - 1) } }\n\n\
                 fn total(n: Int) -> Int { sum(n) }\n\n\
                 fn outer(n: Int) -> Int { total(n) }\n\n\
-                fn until(n: Int) -> Int { sum_until(n) }\n\n";
+                fn until(n: Int) -> Int { sum_until(n) }\n\n\
+                fn mapped(xs: List<Int>) -> Int {\n\
+                \x20 List.fold(List.map(xs, fn(x) { if x == 2 { sum(100000) } else { x } }), 0, fn(a, y) { a + y })\n\
+                }\n\n\
+                error Oops\n\n\
+                fn fails(x: Int) -> Int ! {Fail<Oops>} { if x > 0 { x } else { fail Oops } }\n\n\
+                fn safe(x: Int) -> Int { try { fails(x) } catch { Oops => 0 } }\n\n\
+                fn applied(fs: List<fn(Int) -> Int>) -> Int {\n\
+                \x20 List.fold(List.map(fs, fn(f) { f(1) }), 0, fn(a, y) { a + y })\n\
+                }\n\n";
     let restarts = |name: &str, body: &str, flags: &[&str], stdout: &str, code: i32| {
         let src = dir.join(format!("{name}.sak"));
         std::fs::write(
@@ -832,7 +843,10 @@ fn a_twin_that_runs_out_of_gauge_restarts_once_per_entry() {
         assert_eq!(out.stdout, stdout, "{name}");
         let line = std::fs::read_to_string(&stats).unwrap();
         let v: serde_json::Value = serde_json::from_str(line.lines().last().unwrap()).unwrap();
-        v["restarts"].as_u64().expect("a restarts counter")
+        (
+            v["restarts"].as_u64().expect("a restarts counter"),
+            v["live"].as_u64().expect("a live counter"),
+        )
     };
     let print = |call: &str| format!("  Console.print(Int.to_string({call}))\n");
     let flat = [
@@ -842,12 +856,29 @@ fn a_twin_that_runs_out_of_gauge_restarts_once_per_entry() {
     ]
     .concat();
     let sums = "5000050000\n55\n5000050000\n";
-    assert_eq!(restarts("flat", &flat, &[], sums, 0), 2);
-    assert_eq!(restarts("flat", &flat, &["--no-direct"], sums, 0), 0);
+    assert_eq!(restarts("flat", &flat, &[], sums, 0).0, 2);
+    assert_eq!(restarts("flat", &flat, &["--no-direct"], sums, 0).0, 0);
     let nested = print("outer(100000)");
-    assert_eq!(restarts("nested", &nested, &[], "5000050000\n", 0), 2);
+    assert_eq!(restarts("nested", &nested, &[], "5000050000\n", 0).0, 2);
     let defect = print("until(10)");
-    assert_eq!(restarts("defect", &defect, &[], "", 70), 0);
+    assert_eq!(restarts("defect", &defect, &[], "", 70).0, 0);
+    let mapped = print("mapped([1, 2, 3])");
+    // `mapped`'s entry, then the rerun's entry into `List.map`'s region.
+    let (n, live) = restarts("mapped", &mapped, &[], "5000050004\n", 0);
+    assert_eq!(n, 2);
+    assert_eq!(
+        (0, live),
+        restarts("mapped", &mapped, &["--no-direct"], "5000050004\n", 0)
+    );
+    // `applied` keeps frames; `List.map`'s twin runs element one's callback through twins and
+    // is abandoned at element two, whose closure has none: one restart, its partial list freed.
+    let applied = print("applied([fn(x) { x + 1 }, fn(x) { safe(x) }, fn(x) { x }])");
+    let (n, live) = restarts("applied", &applied, &[], "4\n", 0);
+    assert_eq!(n, 1);
+    assert_eq!(
+        (0, live),
+        restarts("applied", &applied, &["--no-direct"], "4\n", 0)
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 

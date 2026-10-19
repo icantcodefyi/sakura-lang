@@ -3,13 +3,14 @@ source: crates/sakura_lir/tests/corpus.rs
 expression: text
 ---
 layout 0 record main::direct_region_restart::Acc | Acc 32b (total: i64, label: word*)
-layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
-layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
-layout 3 shape |  32b (word*, word*)
-layout 4 shape |  32b (i64, word*)
-layout 5 shape |  24b (i64)
+layout 1 variant std::list::Builder
+layout 2 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 3 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 4 shape |  32b (word*, word*)
+layout 5 shape |  32b (i64, word*)
+layout 6 shape |  24b (i64)
 
-fn main#0 pub top -> unit ; main::direct_region_restart, frame 98 slots [%9 i64, %10 word*, %16 i64, %17 word*, %18 word*, %25 bool, %26 word*, %32 word*, %33 word*, %44 i64, %45 word*, %46 word*, %49 bool, %50 word*, %54 f64, %55 word*, %61 f64, %62 word*, %63 word*, %66 bool, %67 word*, %76 i64, %77 word*, %78 i64, %79 i64, %80 word*, %83 bool, %84 word*, %85 i64, %86 i64, %89 i64, %90 word*, %91 i64, %92 i64, %97 i64, %98 word*, %99 i64, %100 i64, %101 word*, %104 bool, %105 word*, %106 i64, %107 i64, %117 i64, %118 word*, %119 i64, %120 i64, %125 i64, %126 word*, %127 i64, %128 i64, %129 word*, %132 bool, %133 word*, %134 i64, %135 i64, %150 word*, %153 bool, %158 i64, %159 word*, %160 i64, %161 i64, %162 word*, %163 i64, %166 i64, %167 i64, %168 i64, %169 word*, %170 i64, %171 i64, %173 i64, %174 i64, %175 i64, %176 word*, %177 i64, %178 i64, %189 bool, %190 i64, %191 i64, %192 word*, %196 i64, %197 word*, %198 i64, %199 i64, %200 i64, %203 i64, %204 word*, %205 i64, %206 i64, %207 i64, %214 bool, %215 word*, %216 i64, %217 i64, %235 i64, %236 word*, %237 i64, %238 i64]
+fn main#0 pub top -> unit ; main::direct_region_restart, frame 117 slots [%9 i64, %10 word*, %16 i64, %17 word*, %18 word*, %25 bool, %26 word*, %32 word*, %33 word*, %44 i64, %45 word*, %46 word*, %49 bool, %50 word*, %54 f64, %55 word*, %61 f64, %62 word*, %63 word*, %66 bool, %67 word*, %76 i64, %77 word*, %78 i64, %79 i64, %80 word*, %83 bool, %84 word*, %85 i64, %86 i64, %89 i64, %90 word*, %91 i64, %92 i64, %97 i64, %98 word*, %99 i64, %100 i64, %101 word*, %104 bool, %105 word*, %106 i64, %107 i64, %117 i64, %118 word*, %119 i64, %120 i64, %125 i64, %126 word*, %127 i64, %128 i64, %129 word*, %132 bool, %133 word*, %134 i64, %135 i64, %151 word*, %152 word*, %154 bool, %155 word*, %165 word*, %166 word*, %168 bool, %169 word*, %171 word*, %173 bool, %187 word*, %188 word*, %189 i64, %190 i64, %193 bool, %194 word*, %195 i64, %196 i64, %200 i64, %201 word*, %202 i64, %203 i64, %204 word*, %205 i64, %208 i64, %209 word*, %210 i64, %211 i64, %212 word*, %213 i64, %214 i64, %216 i64, %217 word*, %218 i64, %219 i64, %220 word*, %221 i64, %222 i64, %233 bool, %234 word*, %235 i64, %236 i64, %237 word*, %241 i64, %242 word*, %243 i64, %244 i64, %245 i64, %248 i64, %249 word*, %250 i64, %251 i64, %252 i64, %259 bool, %260 word*, %261 i64, %262 i64, %280 i64, %281 word*, %282 i64, %283 i64]
   b0():
     %0 lit: i64 = const 1
     %1 box: word = box %0
@@ -103,9 +104,9 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 98 slots [%9 i64,
   b9(%66 r: unit, %67 xs: ptr):
     %68 box: word = box %66
     drop %68
-    %244 lit: i64 = const 0
-    %245 lit: i64 = const 0
-    jump b30(%244, %245, %67)
+    %289 lit: i64 = const 0
+    %290 lit: i64 = const 0
+    jump b37(%289, %290, %67)
   b10(%69 i: i64, %70 t: i64, %71 xs: ptr):
     %72 s: ptr = show %70
     %73 lit: ptr = const str 1
@@ -143,13 +144,13 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 98 slots [%9 i64,
   b15(%104 r: unit, %105 xs: ptr, %106 i: i64, %107 t: i64):
     %108 box: word = box %104
     drop %108
-    %109 bump: ptr = closure counting$Count_bump#12[]
+    %109 bump: ptr = closure counting$Count_bump#18[]
     %110 lit: i64 = const 0
-    %111 r: ptr = handler main::direct_region_restart::Count row 5 state(%110) clauses(%109)
-    %194 $act: id = handle_push %111
-    %195 lit: i64 = const 200000
-    %201 clause: ptr = bound %194 main::direct_region_restart::Count.bump
-    call counting$Count_bump#12(%201, %194, %195) -> b27(%105, %106, %107, %194)
+    %111 r: ptr = handler main::direct_region_restart::Count row 6 state(%110) clauses(%109)
+    %239 $act: id = handle_push %111
+    %240 lit: i64 = const 200000
+    %246 clause: ptr = bound %239 main::direct_region_restart::Count.bump
+    call counting$Count_bump#18(%246, %239, %240) -> b34(%105, %106, %107, %239)
   b16(%112 v: word, %113 i: i64, %114 t: i64, %115 xs: ptr):
     drop %112
     %116 lit: i64 = const 200000
@@ -173,103 +174,145 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 98 slots [%9 i64,
   b19(%132 r: unit, %133 xs: ptr, %134 i: i64, %135 t: i64):
     %136 box: word = box %132
     drop %136
-    %137 bump: ptr = closure counting$Count_bump#12[]
+    %137 bump: ptr = closure counting$Count_bump#18[]
     %138 lit: i64 = const 0
-    %139 r: ptr = handler main::direct_region_restart::Count row 5 state(%138) clauses(%137)
+    %139 r: ptr = handler main::direct_region_restart::Count row 6 state(%138) clauses(%137)
     handle_push %139
-    %140 f: ptr = closure main$1#10[]
-    %141 bump: ptr = closure counting$Count_bump#12[]
-    %142 lit: i64 = const 0
-    %143 r: ptr = handler main::direct_region_restart::Count row 5 state(%142) clauses(%141)
-    %156 $act: id = handle_push %143
-    %157 lit: i64 = const 2
-    %164 clause: ptr = bound %156 main::direct_region_restart::Count.bump
-    call counting$Count_bump#12(%164, %156, %157) -> b23(%133, %134, %135, %140, %156)
-  b20(%144 v: word, %145 i: i64, %146 t: i64, %147 f: ptr) [handle]:
-    drop %144
-    %148 lit: i64 = const 0
+    %176 f: ptr = closure main$1#10[]
+    %177 bump: ptr = closure counting$Count_bump#18[]
+    %178 lit: i64 = const 0
+    %179 r: ptr = handler main::direct_region_restart::Count row 6 state(%178) clauses(%177)
+    %198 $act: id = handle_push %179
+    %199 lit: i64 = const 2
+    %206 clause: ptr = bound %198 main::direct_region_restart::Count.bump
+    call counting$Count_bump#18(%206, %198, %199) -> b30(%133, %134, %135, %176, %198)
+  b20(%140 v: word, %141 i: i64, %142 t: i64, %143 xs: ptr):
+    drop %140
+    %144 lit: i64 = const 1
+    %145 box: word = box %144
+    %146 lit: i64 = const 2
+    %147 box: word = box %146
+    %148 lit: i64 = const 3
     %149 box: word = box %148
-    call %147(%149) -> b21()
-  b21(%150 r: word) [handle]:
-    %151 unbox: i64 = unbox %150
-    drop %150
-    %152 s: ptr = show %151
-    perform std::console::Console.print(%152) -> b22()
-  b22(%153 r: unit) [handle]:
-    %154 box: word = box %153
-    %155 unbox: unit = unbox %154
-    drop %154
-    handle_pop
-    ret %155
-  b23(%158 r: i64, %159 xs: ptr, %160 i: i64, %161 t: i64, %162 f: ptr, %163 $act: id) [handle, handle]:
-    %165 lit: i64 = const 200000
-    call mid#9(%159, %165) -> b24(%160, %161, %162, %158, %163)
-  b24(%166 r: i64, %167 i: i64, %168 t: i64, %169 f: ptr, %170 r: i64, %171 $act: id) [handle, handle]:
-    %172 lit: i64 = const 3
-    %179 clause: ptr = bound %171 main::direct_region_restart::Count.bump
-    call counting$Count_bump#12(%179, %171, %172) -> b25(%167, %168, %169, %170, %166)
-  b25(%173 r: i64, %174 i: i64, %175 t: i64, %176 f: ptr, %177 r: i64, %178 r: i64) [handle, handle]:
-    %180 s: ptr = show %177
-    %181 lit: ptr = const str 1
-    %182 s: ptr = concat %180, %181
+    %150 xs: ptr = alloc list(%145, %147, %149)
+    call deep_at_two#11(%150) -> b21(%143)
+  b21(%151 r: ptr, %152 xs: ptr):
+    %153 s: ptr = show %151
+    drop %151
+    perform std::console::Console.print(%153) -> b22(%152)
+  b22(%154 r: unit, %155 xs: ptr):
+    %156 box: word = box %154
+    drop %156
+    %157 lit: i64 = const 1
+    %158 box: word = box %157
+    %159 lit: i64 = const 2
+    %160 box: word = box %159
+    %161 lit: i64 = const 3
+    %162 box: word = box %161
+    %163 xs: ptr = alloc list(%158, %160, %162)
+    %164 f: ptr = closure main$2#12[]
+    call map#13(%163, %164) -> b23(%155)
+  b23(%165 r: ptr, %166 xs: ptr):
+    %167 s: ptr = show %165
+    drop %165
+    perform std::console::Console.print(%167) -> b24(%166)
+  b24(%168 r: unit, %169 xs: ptr):
+    %170 box: word = box %168
+    drop %170
+    call tally#14(%169) -> b25()
+  b25(%171 r: ptr):
+    %172 s: ptr = show %171
+    drop %171
+    perform std::console::Console.print(%172) -> b26()
+  b26(%173 r: unit):
+    %174 box: word = box %173
+    %175 unbox: unit = unbox %174
+    drop %174
+    ret %175
+  b27(%180 v: word, %181 i: i64, %182 t: i64, %183 xs: ptr, %184 f: ptr) [handle]:
     drop %180
-    drop %181
-    %183 s: ptr = show %178
-    %184 s: ptr = concat %182, %183
-    drop %182
-    drop %183
-    %185 lit: ptr = const str 1
-    %186 s: ptr = concat %184, %185
-    drop %184
-    drop %185
-    %187 s: ptr = show %173
-    %188 s: ptr = concat %186, %187
-    drop %186
+    %185 lit: i64 = const 0
+    %186 box: word = box %185
+    call %184(%186) -> b28(%183, %181, %182)
+  b28(%187 r: word, %188 xs: ptr, %189 i: i64, %190 t: i64) [handle]:
+    %191 unbox: i64 = unbox %187
     drop %187
-    perform std::console::Console.print(%188) -> b26(%174, %175, %176)
-  b26(%189 r: unit, %190 i: i64, %191 t: i64, %192 f: ptr) [handle, handle]:
-    %193 box: word = box %189
+    %192 s: ptr = show %191
+    perform std::console::Console.print(%192) -> b29(%188, %189, %190)
+  b29(%193 r: unit, %194 xs: ptr, %195 i: i64, %196 t: i64) [handle]:
+    %197 box: word = box %193
     handle_pop
-    jump b20(%193, %190, %191, %192)
-  b27(%196 r: i64, %197 xs: ptr, %198 i: i64, %199 t: i64, %200 $act: id) [handle]:
-    %202 lit: i64 = const 3
-    %208 clause: ptr = bound %200 main::direct_region_restart::Count.bump
-    call counting$Count_bump#12(%208, %200, %202) -> b28(%197, %198, %199, %196)
-  b28(%203 r: i64, %204 xs: ptr, %205 i: i64, %206 t: i64, %207 r: i64) [handle]:
-    %209 s: ptr = show %207
-    %210 lit: ptr = const str 1
-    %211 s: ptr = concat %209, %210
-    drop %209
-    drop %210
-    %212 s: ptr = show %203
-    %213 s: ptr = concat %211, %212
-    drop %211
-    drop %212
-    perform std::console::Console.print(%213) -> b29(%204, %205, %206)
-  b29(%214 r: unit, %215 xs: ptr, %216 i: i64, %217 t: i64) [handle]:
-    %218 box: word = box %214
-    handle_pop
-    jump b16(%218, %216, %217, %215)
-  b30(%219 i: i64, %220 t: i64, %221 xs: ptr):
-    %222 lit: i64 = const 20
-    %223 t: bool = lt.int %219, %222
-    if %223 then b32(%221, %219, %220) else b33(%221, %219, %220)
-  b31(%224 v: word, %225 i: i64, %226 t: i64, %227 xs: ptr):
+    jump b20(%197, %195, %196, %194)
+  b30(%200 r: i64, %201 xs: ptr, %202 i: i64, %203 t: i64, %204 f: ptr, %205 $act: id) [handle, handle]:
+    %207 lit: i64 = const 200000
+    dup %201
+    call mid#9(%201, %207) -> b31(%201, %202, %203, %204, %200, %205)
+  b31(%208 r: i64, %209 xs: ptr, %210 i: i64, %211 t: i64, %212 f: ptr, %213 r: i64, %214 $act: id) [handle, handle]:
+    %215 lit: i64 = const 3
+    %223 clause: ptr = bound %214 main::direct_region_restart::Count.bump
+    call counting$Count_bump#18(%223, %214, %215) -> b32(%209, %210, %211, %212, %213, %208)
+  b32(%216 r: i64, %217 xs: ptr, %218 i: i64, %219 t: i64, %220 f: ptr, %221 r: i64, %222 r: i64) [handle, handle]:
+    %224 s: ptr = show %221
+    %225 lit: ptr = const str 1
+    %226 s: ptr = concat %224, %225
     drop %224
-    jump b30(%225, %226, %227)
-  b32(%228 xs: ptr, %229 i: i64, %230 t: i64):
-    %234 lit: i64 = const 5000
-    dup %228
-    call shallow#6(%228, %234) -> b34(%228, %229, %230)
-  b33(%231 xs: ptr, %232 i: i64, %233 t: i64):
-    jump b10(%232, %233, %231)
-  b34(%235 r: i64, %236 xs: ptr, %237 i: i64, %238 t: i64):
-    %239 t: i64 = intadd %238, %235
-    %240 lit: i64 = const 1
-    %241 t: i64 = intadd %237, %240
-    %242 lit: unit = const ()
-    %243 box: word = box %242
-    jump b31(%243, %241, %239, %236)
+    drop %225
+    %227 s: ptr = show %222
+    %228 s: ptr = concat %226, %227
+    drop %226
+    drop %227
+    %229 lit: ptr = const str 1
+    %230 s: ptr = concat %228, %229
+    drop %228
+    drop %229
+    %231 s: ptr = show %216
+    %232 s: ptr = concat %230, %231
+    drop %230
+    drop %231
+    perform std::console::Console.print(%232) -> b33(%217, %218, %219, %220)
+  b33(%233 r: unit, %234 xs: ptr, %235 i: i64, %236 t: i64, %237 f: ptr) [handle, handle]:
+    %238 box: word = box %233
+    handle_pop
+    jump b27(%238, %235, %236, %234, %237)
+  b34(%241 r: i64, %242 xs: ptr, %243 i: i64, %244 t: i64, %245 $act: id) [handle]:
+    %247 lit: i64 = const 3
+    %253 clause: ptr = bound %245 main::direct_region_restart::Count.bump
+    call counting$Count_bump#18(%253, %245, %247) -> b35(%242, %243, %244, %241)
+  b35(%248 r: i64, %249 xs: ptr, %250 i: i64, %251 t: i64, %252 r: i64) [handle]:
+    %254 s: ptr = show %252
+    %255 lit: ptr = const str 1
+    %256 s: ptr = concat %254, %255
+    drop %254
+    drop %255
+    %257 s: ptr = show %248
+    %258 s: ptr = concat %256, %257
+    drop %256
+    drop %257
+    perform std::console::Console.print(%258) -> b36(%249, %250, %251)
+  b36(%259 r: unit, %260 xs: ptr, %261 i: i64, %262 t: i64) [handle]:
+    %263 box: word = box %259
+    handle_pop
+    jump b16(%263, %261, %262, %260)
+  b37(%264 i: i64, %265 t: i64, %266 xs: ptr):
+    %267 lit: i64 = const 20
+    %268 t: bool = lt.int %264, %267
+    if %268 then b39(%266, %264, %265) else b40(%266, %264, %265)
+  b38(%269 v: word, %270 i: i64, %271 t: i64, %272 xs: ptr):
+    drop %269
+    jump b37(%270, %271, %272)
+  b39(%273 xs: ptr, %274 i: i64, %275 t: i64):
+    %279 lit: i64 = const 5000
+    dup %273
+    call shallow#6(%273, %279) -> b41(%273, %274, %275)
+  b40(%276 xs: ptr, %277 i: i64, %278 t: i64):
+    jump b10(%277, %278, %276)
+  b41(%280 r: i64, %281 xs: ptr, %282 i: i64, %283 t: i64):
+    %284 t: i64 = intadd %283, %280
+    %285 lit: i64 = const 1
+    %286 t: i64 = intadd %282, %285
+    %287 lit: unit = const ()
+    %288 box: word = box %287
+    jump b38(%288, %286, %284, %281)
 
 fn $entry#1 top -> unit ; main::direct_region_restart, frame 1 slots [%1 bool]
   b0():
@@ -363,21 +406,21 @@ fn shallow#6 top -> i64 ; main::direct_region_restart, frame 3 slots [%0 word*, 
 
 fn bumps#7 top -> i64 ; main::direct_region_restart, frame 9 slots [%0 i64, %6 i64, %7 i64, %8 i64, %10 i64, %11 i64, %12 i64, %16 i64, %17 i64]
   b0(%0 n: i64):
-    %1 bump: ptr = closure counting$Count_bump#12[]
+    %1 bump: ptr = closure counting$Count_bump#18[]
     %2 lit: i64 = const 0
-    %3 r: ptr = handler main::direct_region_restart::Count row 5 state(%2) clauses(%1)
+    %3 r: ptr = handler main::direct_region_restart::Count row 6 state(%2) clauses(%1)
     %4 $act: id = handle_push %3
     %5 lit: i64 = const 3
     %9 clause: ptr = bound %4 main::direct_region_restart::Count.bump
-    call counting$Count_bump#12(%9, %4, %5) -> b1(%0, %4)
+    call counting$Count_bump#18(%9, %4, %5) -> b1(%0, %4)
   b1(%6 r: i64, %7 n: i64, %8 $act: id) [handle]:
     %13 clause: ptr = bound %8 main::direct_region_restart::Count.bump
-    call counting$Count_bump#12(%13, %8, %7) -> b2(%6, %8)
+    call counting$Count_bump#18(%13, %8, %7) -> b2(%6, %8)
   b2(%10 r: i64, %11 r: i64, %12 $act: id) [handle]:
     %14 t: i64 = intadd %11, %10
     %15 lit: i64 = const 3
     %18 clause: ptr = bound %12 main::direct_region_restart::Count.bump
-    call counting$Count_bump#12(%18, %12, %15) -> b3(%14)
+    call counting$Count_bump#18(%18, %12, %15) -> b3(%14)
   b3(%16 r: i64, %17 t: i64) [handle]:
     %19 t: i64 = intadd %17, %16
     handle_pop
@@ -385,18 +428,18 @@ fn bumps#7 top -> i64 ; main::direct_region_restart, frame 9 slots [%0 i64, %6 i
 
 fn counting#8 top -> ptr ; main::direct_region_restart, frame 0 slots []
   b0():
-    %0 bump: ptr = closure counting$Count_bump#12[]
+    %0 bump: ptr = closure counting$Count_bump#18[]
     %1 lit: i64 = const 0
-    %2 handler: ptr = handler main::direct_region_restart::Count row 5 state(%1) clauses(%0)
+    %2 handler: ptr = handler main::direct_region_restart::Count row 6 state(%1) clauses(%0)
     ret %2
 
 fn mid#9 top -> i64 ; main::direct_region_restart, frame 3 slots [%0 word*, %1 i64, %5 i64]
   b0(%0 xs: ptr, %1 n: i64):
-    %2 bump: ptr = closure counting$Count_bump#12[]
+    %2 bump: ptr = closure counting$Count_bump#18[]
     %3 lit: i64 = const 0
-    %4 r: ptr = handler main::direct_region_restart::Count row 5 state(%3) clauses(%2)
+    %4 r: ptr = handler main::direct_region_restart::Count row 6 state(%3) clauses(%2)
     handle_push %4
-    call deep#11(%0, %1) -> b1()
+    call deep#17(%0, %1) -> b1()
   b1(%5 r: i64) [handle]:
     %6 lit: i64 = const 1
     %7 t: i64 = intadd %5, %6
@@ -413,15 +456,106 @@ fn main$1#10 lambda -> word ; main::direct_region_restart, captures [], frame 3 
     %4 box: word = box %3
     ret %4
 
-fn deep#11 top -> i64 ; main::direct_region_restart, frame 3 slots [%0 word*, %1 i64, %9 i64]
+fn deep_at_two#11 top -> ptr ; main::direct_region_restart, frame 2 slots [%0 word*, %2 word*]
+  b0(%0 xs: ptr):
+    dup %0
+    %1 f: ptr = closure deep_at_two$1#16[%0]
+    call map#13(%0, %1) -> b1()
+  b1(%2 r: ptr):
+    ret %2
+
+fn main$2#12 lambda -> word ; main::direct_region_restart, captures [], frame 4 slots [%0 word*, %1 word*, %6 bool, %7 i64]
+  b0(%0 env: ptr, %1 x: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 s: ptr = show %2
+    %4 lit: ptr = const str 4
+    %5 s: ptr = concat %4, %3
+    drop %3
+    drop %4
+    perform std::console::Console.print(%5) -> b1(%2)
+  b1(%6 r: unit, %7 x: i64):
+    %8 box: word = box %6
+    drop %8
+    %9 lit: i64 = const 2
+    %10 t: i64 = intmul %7, %9
+    %11 box: word = box %10
+    ret %11
+
+fn tally#14 top -> ptr ; main::direct_region_restart, frame 2 slots [%0 word*, %2 word*]
+  b0(%0 xs: ptr):
+    dup %0
+    %1 f: ptr = closure tally$1#15[%0]
+    call map#13(%0, %1) -> b1()
+  b1(%2 r: ptr):
+    ret %2
+
+fn tally$1#15 lambda -> word ; main::direct_region_restart, captures [word*], frame 7 slots [%0 word*, %1 word*, %22 i64, %23 i64, %27 i64, %28 word*, %29 i64]
+  b0(%0 env: ptr, %1 x: word):
+    %2 xs: ptr = capture %0.0
+    drop %0
+    %3 unbox: i64 = unbox %1
+    drop %1
+    %4 bump: ptr = closure counting$Count_bump#18[]
+    %5 lit: i64 = const 0
+    %6 r: ptr = handler main::direct_region_restart::Count row 6 state(%5) clauses(%4)
+    %25 $act: id = handle_push %6
+    %26 lit: i64 = const 1
+    %30 clause: ptr = bound %25 main::direct_region_restart::Count.bump
+    call counting$Count_bump#18(%30, %25, %26) -> b6(%2, %3)
+  b1(%7 v: i64, %8 xs: ptr, %9 x: i64):
+    %10 lit: i64 = const 2
+    %11 t: bool = eq.int %9, %10
+    if %11 then b3(%8, %7) else b4(%8, %7)
+  b2(%12 v: i64, %13 v: i64):
+    %14 t: i64 = intadd %13, %12
+    %15 box: word = box %14
+    ret %15
+  b3(%16 xs: ptr, %17 v: i64):
+    %20 lit: ptr = const str 5
+    %21 lit: i64 = const 200000
+    call walk#2(%16, %20, %21) -> b5(%17)
+  b4(%18 xs: ptr, %19 v: i64):
+    drop %18
+    %24 lit: i64 = const 0
+    jump b2(%24, %19)
+  b5(%22 r: i64, %23 v: i64):
+    jump b2(%22, %23)
+  b6(%27 r: i64, %28 xs: ptr, %29 x: i64) [handle]:
+    handle_pop
+    jump b1(%27, %28, %29)
+
+fn deep_at_two$1#16 lambda -> word ; main::direct_region_restart, captures [word*], frame 3 slots [%0 word*, %1 word*, %12 i64]
+  b0(%0 env: ptr, %1 x: word):
+    %2 xs: ptr = capture %0.0
+    drop %0
+    %3 unbox: i64 = unbox %1
+    drop %1
+    %4 lit: i64 = const 2
+    %5 t: bool = eq.int %3, %4
+    if %5 then b1(%2, %3) else b2(%2, %3)
+  b1(%6 xs: ptr, %7 x: i64):
+    %10 lit: ptr = const str 6
+    %11 lit: i64 = const 200000
+    call walk#2(%6, %10, %11) -> b3()
+  b2(%8 xs: ptr, %9 x: i64):
+    drop %8
+    %14 box: word = box %9
+    ret %14
+  b3(%12 r: i64):
+    %13 box: word = box %12
+    ret %13
+
+fn deep#17 top -> i64 ; main::direct_region_restart, frame 3 slots [%0 word*, %1 i64, %9 i64]
   b0(%0 xs: ptr, %1 n: i64):
-    %2 bump: ptr = closure counting$Count_bump#12[]
+    %2 bump: ptr = closure counting$Count_bump#18[]
     %3 lit: i64 = const 0
-    %4 r: ptr = handler main::direct_region_restart::Count row 5 state(%3) clauses(%2)
+    %4 r: ptr = handler main::direct_region_restart::Count row 6 state(%3) clauses(%2)
     handle_push %4
-    %5 bump: ptr = closure counting$Count_bump#12[]
+    %5 bump: ptr = closure counting$Count_bump#18[]
     %6 lit: i64 = const 0
-    %7 r: ptr = handler main::direct_region_restart::Count row 5 state(%6) clauses(%5)
+    %7 r: ptr = handler main::direct_region_restart::Count row 6 state(%6) clauses(%5)
     handle_push %7
     %8 lit: ptr = const str 3
     call walk#2(%0, %8, %1) -> b1()
@@ -430,20 +564,20 @@ fn deep#11 top -> i64 ; main::direct_region_restart, frame 3 slots [%0 word*, %1
     handle_pop
     ret %9
 
-fn counting$Count_bump#12 clause main::direct_region_restart::Count.bump -> i64 ; main::direct_region_restart, captures [], frame 5 slots [%0 word*, %1 i64, %2 i64, %11 i64, %12 i64]
+fn counting$Count_bump#18 clause main::direct_region_restart::Count.bump -> i64 ; main::direct_region_restart, captures [], frame 5 slots [%0 word*, %1 i64, %2 i64, %11 i64, %12 i64]
   b0(%0 env: ptr, %1 inst: id, %2 n: i64):
     drop %0
-    %3 hits: i64 = state_get %1[0] row 5
+    %3 hits: i64 = state_get %1[0] row 6
     %4 lit: i64 = const 1
     %5 t: i64 = intadd %3, %4
-    state_set %1[0] row 5 = %5
+    state_set %1[0] row 6 = %5
     %6 set: unit = const ()
     %7 lit: i64 = const 1
     %8 box: word = box %7
     %9 xs: ptr = alloc list(%8)
-    %10 lit: ptr = const str 4
+    %10 lit: ptr = const str 7
     call walk#2(%9, %10, %2) -> b1(%1)
   b1(%11 r: i64, %12 inst: id):
-    %13 hits: i64 = state_get %12[0] row 5
+    %13 hits: i64 = state_get %12[0] row 6
     %14 t: i64 = intadd %11, %13
     ret %14

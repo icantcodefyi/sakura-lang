@@ -162,6 +162,11 @@ impl<'a> Runtime<'a> {
         Ok(rt)
     }
 
+    /// The index [`Program::indirect`]'s entry `i` gets.
+    pub fn added_type(&self, i: usize) -> u32 {
+        (self.types.len() + i) as u32
+    }
+
     /// The index of the runtime's function type `params -> results`.
     pub fn find_type(&self, params: &[ValType], results: &[ValType]) -> Option<u32> {
         self.types
@@ -435,6 +440,9 @@ impl Reencode for Remap<'_> {
 pub struct Program {
     /// Function imports after the runtime's: module, name, params, results.
     pub imports: Vec<(String, String, Vec<ValType>, Vec<ValType>)>,
+    /// Function types compiled code names in `call_indirect`, first among the added types: type
+    /// `i` is the runtime's type count plus `i` ([`Runtime::added_type`]).
+    pub indirect: Vec<(Vec<ValType>, Vec<ValType>)>,
     /// Added functions; the first must be the dispatcher `(code, env, frame) -> step`.
     pub funcs: Vec<Added>,
     /// Funcref table entries after the runtime's: compiled code, then native codes (final
@@ -471,8 +479,11 @@ pub fn link(rt: &Runtime<'_>, layout: &Layout, p: Program) -> Result<Vec<u8>, St
             t.results().iter().map(|&v| val(v)),
         );
     }
-    // One type per added function (deduplicated).
-    let mut added_types: Vec<(Vec<ValType>, Vec<ValType>)> = vec![];
+    // The `call_indirect` types, then one type per added function (deduplicated).
+    for (ps, rs) in &p.indirect {
+        types.ty().function(ps.iter().copied(), rs.iter().copied());
+    }
+    let mut added_types: Vec<(Vec<ValType>, Vec<ValType>)> = p.indirect.clone();
     let mut type_of = vec![];
     let mut import_types = vec![];
     let keys = p

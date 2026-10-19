@@ -18,7 +18,7 @@ pub mod wasi;
 use std::collections::HashMap;
 
 use sakura_lir::layout::{Slot, SlotKind};
-use sakura_lir::lir::{Module, Repr};
+use sakura_lir::lir::{Callee, Module, Repr, Term};
 use wasm_encoder::{BlockType, ExportKind, Function, MemArg, ValType};
 
 /// The `sakura_rt` wasm object, empty when `build.rs` could not build it.
@@ -417,6 +417,49 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
             next_twin += 1;
         }
     }
+    // `call_indirect` types: a closure twin of `k` words, for every arity a region calls.
+    let arity = m
+        .funcs
+        .iter()
+        .zip(&regions)
+        .filter(|(_, r)| **r)
+        .flat_map(|(f, _)| &f.blocks)
+        .filter_map(|b| match &b.term {
+            Term::Call {
+                callee: Callee::Closure(_),
+                args,
+                ..
+            } => Some(args.len() + 1),
+            _ => None,
+        })
+        .max()
+        .unwrap_or(0);
+    // The twin table (design §17.211 (2)): per closure code, the funcref table index of its
+    // closure twin, entries appended after the native codes; absent when no region calls a
+    // closure.
+    let closure_twins = if arity > 0 {
+        func::closure_twins(m, &regions)
+    } else {
+        Vec::new()
+    };
+    let codes = n as usize + natives.len();
+    let mut twin_of = vec![0u32; codes];
+    for (k, &f) in closure_twins.iter().enumerate() {
+        twin_of[f] = layout.table_base + (codes + k) as u32;
+    }
+    let twin_of_off = if arity > 0 {
+        statics.bytes(
+            &twin_of
+                .iter()
+                .flat_map(|x| x.to_le_bytes())
+                .collect::<Vec<u8>>(),
+        )
+    } else {
+        0
+    };
+    let indirect: Vec<(Vec<ValType>, Vec<ValType>)> = (1..=arity)
+        .map(|k| (vec![ValType::I32; k], vec![ValType::I32]))
+        .collect();
     let may_abort = func::may_abort(m, &regions);
     let env = func::Env {
         m,
@@ -437,6 +480,8 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
         may_abort,
         gauge: g + 3,
         state: g + 4,
+        twin_of: twin_of_off,
+        closure_type: rt.added_type(0),
     };
     let mut user = Vec::with_capacity(m.funcs.len());
     for f in &m.funcs {
@@ -625,6 +670,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     for name in &natives {
         table.push(rtf(name)?);
     }
+    table.extend(closure_twins.iter().map(|&f| env.twins[f].unwrap()));
     let mut exports = vec![
         ("memory".to_string(), ExportKind::Memory, 0),
         ("sakura_abi_version".to_string(), ExportKind::Global, abi),
@@ -660,6 +706,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
         &layout,
         link::Program {
             imports,
+            indirect,
             funcs,
             table,
             globals: vec![

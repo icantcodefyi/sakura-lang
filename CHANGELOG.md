@@ -132,6 +132,13 @@ published yet.
   frames: `handled_d1`, `_d4` and `_d16` run 4 frames per `run(1000)` where they ran 1,005
   (design §17.211 (1)). Output, traces and defects are unchanged.
 
+- `--target wasm` calls a closure inside a direct function through the closure's own direct
+  twin when it has one, so `List.map`, `fold`, `filter` and the other std functions taking a
+  callback run their loop without continuation frames: `contracts_plain`, `pipeline`,
+  `shapes`, `map_set` and `nbody` run 4 frames at their smallest size where they ran 1,121,
+  2,508, 5,010, 2,005 and 7,005 (design §17.211 (2)). A callback that performs still runs
+  through frames. Output, traces and defects are unchanged.
+
 - The agent-DX offline fixture validator runs independent tasks in a thread pool,
   with `--jobs 1` for serial execution and byte-identical task-ordered reports
   (design §17.197).

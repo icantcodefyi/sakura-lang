@@ -1,6 +1,6 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.2.4**, agreed before `sakura_lir` or `sakura_rt`
+**Status:** design specification, version **1.2.5**, agreed before `sakura_lir` or `sakura_rt`
 emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed, 1.0.2 the
 R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
 the end, with the questions still open), and 1.1.0 the four `stats()` counters and the
@@ -11,8 +11,9 @@ counter, the import and handle-kind lists as built and §5's fallback wording (d
 §17.161; plan M4-OPT), and 1.2.1 the fail-closed copy budget of §8.5, its reading as a
 per-instance ceiling and a cut body as `Err` (design §17.209), and 1.2.2 the root task's release and
 the copy budget of a served request (design §17.212, §17.216 (4)), 1.2.3 the failure modes of a
-served request (design §17.223), and 1.2.4 bound performs and `with` regions in direct twins
-(§5, §6.3; design §17.211 (1)). Owned by the designer;
+served request (design §17.223), 1.2.4 bound performs and `with` regions in direct twins
+(§5, §6.3; design §17.211 (1)), and 1.2.5 closure twins (§5; design §17.211 (2)). Owned by
+the designer;
 implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
 (`crates/sakura_codegen_wasm`, `runtime/js/sakura_wasm_host.js`). This document is prose,
@@ -128,6 +129,11 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   regions, and a twin's fourth state, cancelled. The runtime functions it adds are internal to
   the linked module; no byte, import, export or counter changes, so `sakura_abi_version`
   stays `0x010200`.
+- 1.2.5 is an erratum (design §17.211 (2), WS-W2): §5 states how a closure is called in a
+  direct region: lambdas and adapters get closure-convention twins, entered through
+  `call_indirect` and a table in the static block. The twins and their table entries are
+  internal to the linked module; no byte, import or export changes and no counter is added
+  (`restarts` also counts abandoned regions, §10), so `sakura_abi_version` stays `0x010200`.
 - 1.4.0 (MINOR, design §17.169 (3), plan M5 N1a) adds §1b, the native profile
   `offset32-v1` (heap, context, C prototypes, dispatch table, `sakura.native`), with native
   paragraphs in §8.4 and §8.5. No wasm32 byte, import or export changes. The text lands before
@@ -428,8 +434,8 @@ by default, plan §3.1 M4-OPT).
   the gauge ran out. A twin that runs out of gauge releases what it holds and returns 2 through
   every twin above it; the frame-protocol caller then makes the same call through frames,
   which call recursive defs through frames. Direct code performs nothing, so running it again
-  is unobservable; a region that cannot run out (no cycle of twins, deepest chain within the
-  budget) is entered without holding its arguments, otherwise the caller holds (`Dup`s) them
+  is unobservable; a region that cannot run out or be abandoned (no cycle of twins, no closure
+  call, deepest chain within the budget) is entered without holding its arguments, otherwise the caller holds (`Dup`s) them
   for the second attempt. Every defect keeps its code, message and site. **1.2.0:** each second
   attempt adds one to the `restarts` counter (§10) before it starts (every backend that runs
   this fallback counts it, a native one included), so the bound of design
@@ -450,6 +456,19 @@ by default, plan §3.1 M4-OPT).
   after a cancelled `perform`. Frame-protocol code calls through frames, not a twin, a clause
   or a twin reaching a bound perform when it can run out of gauge: a clause's state and a
   written trace record outlive the abort, and running again would repeat them.
+  **1.2.5 (design §17.211 (2)):** a direct lambda, and the adapter of a top-level function or
+  direct builtin used as a value, gets a twin in the closure convention: the closure and every argument a
+  word, a word result. Its funcref table entry follows the native codes, and a table in the
+  static block maps each `code` to that entry or 0. A closure call in a region reads the
+  closure's `code`, and calls its twin through `call_indirect` when the table has one; when it
+  has none (a lambda that is not direct, a clause, the adapter of a `cps` builtin, a native or
+  callback code, or a twin reaching a bound perform), the region is abandoned as if the gauge ran out
+  and its frame-protocol caller runs it again through frames (counted in `restarts`), which
+  call the closure through `rt_call_value`. A region calling a closure can therefore abort, so
+  its frame-protocol caller holds its arguments; a twin reaching a bound perform is left out
+  of the table so that no trace record precedes an abandon. Callbacks of the std collection functions (`List.map`, `fold`,
+  `filter`, ...) are such closure calls: those functions are Sakura code, so their twins loop
+  natively and no runtime loop is needed.
 - **Blame sites** (1.1.3, design §7.2, §17.115, §17.162; as JS `$site`, `runtime/js/ABI.md`
   §5). A top-level function whose `requires` or `where` checks blame its caller takes one
   trailing `i64` parameter, a site group id (§12) or 0: a call of it by name passes the group
@@ -922,7 +941,8 @@ cannot return several values through `extern "C"`, so the M4-WASM linker synthes
   `Dup` and the increments of projections, captures and state reads) and `drops` (calls of the
   `drop` export, compiled code's and the host's), each a cumulative `u64` in that order after
   the first six, and since 1.2.0 (design §17.160 (2)) `restarts` (direct-region calls run again
-  through frames after their twin ran out of gauge, §5) after `drops`. The interface is
+  through frames after their twin ran out of gauge or, since 1.2.5, was abandoned at a closure
+  without a twin, §5) after `drops`. The interface is
   `SAKURA_WASM_STATS=<path>`: `sakura_wasm_host.js` appends the counters by name as one JSON
   line at exit, for benchmark records; there is no CLI flag, and the JS backend reports no
   counters. A dlmalloc comparison harness stays in `runtime/rt/bench`.
