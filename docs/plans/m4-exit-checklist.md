@@ -38,7 +38,7 @@ WS-P13b (DeltaBlue twice as fast on Node) is built and waits behind your window 
 
 | # | Item | Link | Closed by (name, date) |
 |---|---|---|---|
-| 11 | The quiet window: you run the commands of the release procedure's window section on `dee11301` in a clean worktree, idle machine, then bless the two runs; Astra writes the report from the files; a miss is carried only under a named decision (§17.152 (2), §17.228 (2), §17.238 (4)). | [docs/release.md §2](../release.md#2-quiet-window-and-bless), [bench/README.md](../../bench/README.md#quiet-window-17153) | |
+| 11 | **A blessed instruction-count baseline from the reference Mac** (your decision of 2026-10-19, §17.264; it replaces the quiet window, so no idle machine and no paused agents). Counted runs of all four suites at `320c9980` (the counting harness, Node under `--predictable`; `dee11301` predates it, so this baseline also carries WS-P13b, row 31 and the other post-exit commits: §17.264 (3), your call) are in `bench/results/2026-10-19-320c9980-*`, **pending your bless** (the envelope on counts reads `miss` on 241 of 264 gating cells, §17.264 (4)): `bench/bench bless` the counted `js` and `wasm` files as in the release procedure; Astra writes the report from the files; a miss is carried only under a named decision (§17.152 (2), §17.228 (2)). | [docs/release.md §2](../release.md#2-instruction-count-baseline-and-bless), [bench/README.md](../../bench/README.md#instruction-counts-17264) | |
 | 12 | The M4 exit gate signature, or a written delegation. The gate's text is the paragraph after row 31 of plan §3.8; the commit it signs is `dee11301`. Sign here: | [plan §3.8 exit gate](m3-completion-and-m4.md#38-m4-close-out-order-round-12-17166) | |
 
 ## After the window

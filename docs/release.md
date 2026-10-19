@@ -201,8 +201,8 @@ node --version; bun --version; rustc --version; go version
 ocamlopt -version; koka --version; wasmtime --version
 ```
 
-**The runs** (in this order; about 1.5–2 hours in all on a busy machine; each file stands on
-its own, so a run that fails is rerun alone):
+**The runs** (in this order; about an hour in all at `320c9980`, with agents working; each file
+stands on its own, so a run that fails is rerun alone):
 
 ```sh
 bench/bench run --suite js --instructions --json bench/target/counted-js.json > bench/target/counted-js.md
@@ -216,9 +216,10 @@ bench/bench envelope bench/target/counted-wasm.json bench/target/counted-native.
 
 `run` prints a table of instructions per call, Sakura/hand-JS ratios of those counts and
 each row's widest spread, then the same table of wall time per call (informational). A
-spread above about 1% is reported with its cause before the bless; on Bun one process in five
-can land a few percent low (the JIT tiering at a different call) and the median is the
-other four. `envelope` exits 0 whatever it reads; reading two counted files, its line says
+spread above about 1% is reported with its cause before the bless. At `320c9980` Node,
+Wasmtime and native cells spread a median 0.09–0.30%, and every Node or Wasmtime cell over 1%
+was one outlier pair of five; Bun spread a median 1.35%, over 1% on 116 of 198 cells, so a Bun
+count is read with its spread ([bench/README.md](../bench/README.md#instruction-counts-17264)). `envelope` exits 0 whatever it reads; reading two counted files, its line says
 `M4 envelope on instructions per call: met`, `miss` or `incomplete`, read against §17.109's
 ceilings (set on time; §17.264 (4)). `compile` reports p95 against the research/10 §6 budgets
 and §17.195 (1)'s targets in time, with each case's median instruction count beside them.

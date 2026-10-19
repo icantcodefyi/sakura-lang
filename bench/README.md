@@ -435,9 +435,12 @@ the shuffled order of a timed run:
 Bun keeps its defaults: JavaScriptCore's concurrent JIT and GC switches did not narrow its
 cells, so a Bun cell can be bimodal (four pairs within 0.01%, one a few percent lower,
 consistent with a tier-up at a different call) and its median is read with its spread.
-Instructions are not time: a Wasmtime cell's instruction ratio and its time ratio can
-differ by half (`fib`: 1.9× hand JS in instructions, 2.9× in time), so a ratio of counts is
-read as a ratio of counts. Linux CI cannot count (`/usr/bin/time` there prints none) and
+The full run at `320c9980` (`results/2026-10-19-320c9980-*`) spread a median 0.14% on Node's
+JS cells, 0.30% on its WASM lane, 0.11% on Wasmtime, 0.09% native (most of its 26 cells over
+1% are Go, whose collector is concurrent) and 1.35% on Bun (116 of 198 cells over 1%, 48 of
+them in their middle three pairs too); the six counted compiler cases spread 0.16–1.52%.
+Instructions are not time: a Wasmtime cell's instruction ratio and its time ratio differed
+by half in the first counted runs, so a ratio of counts is read as a ratio of counts. Linux CI cannot count (`/usr/bin/time` there prints none) and
 keeps timing; its `compare` against a counted baseline reads the baseline's `median_ms`,
 which a loaded host makes advisory.
 
