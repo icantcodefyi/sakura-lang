@@ -8,7 +8,6 @@
 //! calls through its `sakura_link.dispatch` import, and the ABI §9 exports synthesised over
 //! the runtime's single-value functions.
 
-mod debug;
 mod func;
 pub mod link;
 pub mod validate;
@@ -501,7 +500,10 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     }
     let mut custom = vec![];
     if !opts.strip {
-        custom.push(("sakura.debug".to_string(), debug::section(m, &opts.sources)));
+        custom.push((
+            "sakura.debug".to_string(),
+            sakura_lir::debug::section(m, &opts.sources, ABI_VERSION),
+        ));
     }
     let bytes = link::link(
         &rt,

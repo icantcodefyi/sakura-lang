@@ -154,50 +154,14 @@ fn the_corpus_runs_natively() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// The driver staticlib and the system libraries it links against, built once in its own
-/// target directory (the running `cargo test` holds the workspace's).
-fn driver() -> &'static (PathBuf, Vec<String>) {
-    static DRIVER: OnceLock<(PathBuf, Vec<String>)> = OnceLock::new();
+/// The driver directory, built once in its own target directory (the running `cargo test`
+/// holds the workspace's).
+fn driver() -> &'static PathBuf {
+    static DRIVER: OnceLock<PathBuf> = OnceLock::new();
     DRIVER.get_or_init(|| {
         let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
         let target = Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-driver");
-        let lib = target.join("debug/libsakura_native_driver.a");
-        let libs_file = target.join("native-static-libs.txt");
-        if lib.is_file() && !libs_file.is_file() {
-            // `--print native-static-libs` speaks only when it links.
-            std::fs::remove_file(&lib).unwrap();
-        }
-        let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
-        let output = Command::new(cargo)
-            .current_dir(manifest.join("../.."))
-            .args([
-                "rustc",
-                "-p",
-                "sakura_native_driver",
-                "--features",
-                "native",
-            ])
-            .args([
-                "--lib",
-                "--locked",
-                "--crate-type",
-                "staticlib",
-                "--target-dir",
-            ])
-            .arg(&target)
-            .args(["--", "-Cpanic=abort", "--print", "native-static-libs"])
-            .output()
-            .expect("cargo");
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        assert!(output.status.success(), "building the driver:\n{stderr}");
-        if let Some(line) = stderr
-            .lines()
-            .find_map(|l| l.split_once("native-static-libs: ").map(|(_, r)| r))
-        {
-            std::fs::write(&libs_file, line).unwrap();
-        }
-        let libs = std::fs::read_to_string(&libs_file).unwrap();
-        (lib, libs.split_whitespace().map(String::from).collect())
+        sakura_codegen_native::build_driver(&manifest.join("../.."), &target).unwrap()
     })
 }
 
@@ -227,7 +191,7 @@ fn run_compiled(
         Ok(m) => m,
         Err(e) => return fail(format!("lowering failed: {e}")),
     };
-    let object = match sakura_codegen_native::emit(&m, opts) {
+    let object = match sakura_codegen_native::emit(&m, &opts) {
         Ok(o) => o,
         Err(e) => return fail(format!("codegen failed: {e}")),
     };
@@ -243,8 +207,7 @@ fn run_compiled(
     );
     std::fs::write(&o, object).unwrap();
     let _ = std::fs::remove_file(&stats);
-    let (lib, libs) = driver();
-    if let Err(e) = sakura_codegen_native::link(&o, lib, libs, &exe) {
+    if let Err(e) = sakura_codegen_native::link(&o, driver(), &exe) {
         return fail(e);
     }
     let out = Command::new(&exe)
@@ -316,8 +279,24 @@ fn the_corpus_compiles_links_and_runs_natively() {
     let results = big_stack_map(&programs, |p| {
         let (_, _, _, want) = run_with_stats(&p.core);
         (
-            run_compiled(&p.name, Options { direct: true }, &p.core, &dir),
-            run_compiled(&p.name, Options { direct: false }, &p.core, &dir),
+            run_compiled(
+                &p.name,
+                Options {
+                    direct: true,
+                    ..Default::default()
+                },
+                &p.core,
+                &dir,
+            ),
+            run_compiled(
+                &p.name,
+                Options {
+                    direct: false,
+                    ..Default::default()
+                },
+                &p.core,
+                &dir,
+            ),
             counters(&want),
         )
     });
@@ -374,8 +353,8 @@ fn native_objects_are_deterministic() {
         .filter(|p| p.name.starts_with("semantics/c"))
     {
         let m = sakura_lir::lower::lower(&p.core, &sakura_lir::builtin_sigs()).unwrap();
-        let a = sakura_codegen_native::emit(&m, Default::default()).unwrap();
-        let b = sakura_codegen_native::emit(&m, Default::default()).unwrap();
+        let a = sakura_codegen_native::emit(&m, &Default::default()).unwrap();
+        let b = sakura_codegen_native::emit(&m, &Default::default()).unwrap();
         assert!(a == b, "{}: two compilations differ", p.name);
     }
 }

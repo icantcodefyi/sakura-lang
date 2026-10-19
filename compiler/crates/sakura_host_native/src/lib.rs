@@ -586,9 +586,24 @@ pub fn run_task(inst: &mut Instance<NativeHost>, task: u32) -> Outcome {
     inst.outcome(task)
 }
 
+/// A source span of a defect record (design §17.162), as the JS and WASM hosts render it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Span {
+    pub uri: String,
+    pub start_byte: u32,
+    pub end_byte: u32,
+    /// `primary` or `definition`.
+    pub role: &'static str,
+}
+
 /// How `main` ended as the Node host's `runMain` reports it: the exit code, after writing a
 /// failure or defect record to stderr.
 pub fn report(host: &mut NativeHost, o: &Outcome) -> i32 {
+    report_spans(host, o, &[])
+}
+
+/// [`report`], with a defect record's spans.
+pub fn report_spans(host: &mut NativeHost, o: &Outcome, spans: &[Span]) -> i32 {
     match o {
         Outcome::Ok => 0,
         Outcome::Fail(shown) => {
@@ -598,13 +613,29 @@ pub fn report(host: &mut NativeHost, o: &Outcome) -> i32 {
         Outcome::Exit(code) => *code,
         Outcome::Cancelled | Outcome::Pending => 70,
         Outcome::Defect { code, message, .. } => {
-            let record = serde_json::json!({
-                "schema_version": "1.0",
-                "kind": "defect",
-                "code": format!("D{code:03}"),
-                "message": message,
-            });
-            host.write_err(&record.to_string());
+            // Keys in the JS and WASM hosts' order, so the record's bytes match theirs.
+            let text = |s: &str| serde_json::Value::from(s).to_string();
+            let mut record = format!(
+                "{{\"schema_version\":\"1.0\",\"kind\":\"defect\",\"code\":\"D{code:03}\",\"message\":{}",
+                text(message)
+            );
+            if !spans.is_empty() {
+                let spans: Vec<String> = spans
+                    .iter()
+                    .map(|s| {
+                        format!(
+                            "{{\"uri\":{},\"start_byte\":{},\"end_byte\":{},\"role\":{}}}",
+                            text(&s.uri),
+                            s.start_byte,
+                            s.end_byte,
+                            text(s.role)
+                        )
+                    })
+                    .collect();
+                record.push_str(&format!(",\"spans\":[{}]", spans.join(",")));
+            }
+            record.push('}');
+            host.write_err(&record);
             70
         }
     }

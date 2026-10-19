@@ -2,7 +2,7 @@
 //! relocatable object. Each LIR function is a frame-protocol function `(ctx, env, frame) ->
 //! step` ([`func`]); the object also carries the module's static block ([`image`]), the table
 //! of its functions, the descriptor `sakura_native_driver` reads, and `main`, which hands that
-//! descriptor to `sakura_native_main`. [`link`] links it with the driver's staticlib into an
+//! descriptor to `sakura_native_main_v2`. [`link`] links it with the driver's staticlib into an
 //! executable with the system C linker.
 
 #![cfg(feature = "native")]
@@ -11,7 +11,7 @@ mod func;
 pub mod image;
 
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use cranelift_codegen::ir::{AbiParam, InstBuilder, types};
@@ -22,24 +22,29 @@ use cranelift_object::{ObjectBuilder, ObjectModule};
 use sakura_lir::lir::{Callee, Module, Term};
 
 /// The size of `sakura_native_driver::SakuraModule` on a 64-bit target.
-const DESCRIPTOR: usize = 56;
+const DESCRIPTOR: usize = 72;
 
 /// How [`emit`] compiles.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct Options {
     /// Emit direct twins for direct regions (design §17.118); `false` (`--no-direct`) runs
     /// every call through frames.
     pub direct: bool,
+    /// The URI of each source by `Pos::file`, for the `sakura.debug` table's spans (ABI §12).
+    pub sources: Vec<String>,
 }
 
 impl Default for Options {
     fn default() -> Options {
-        Options { direct: true }
+        Options {
+            direct: true,
+            sources: vec![],
+        }
     }
 }
 
 /// Compile `m` for the host target to a relocatable object (ELF or Mach-O).
-pub fn emit(m: &Module, opts: Options) -> Result<Vec<u8>, String> {
+pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     let mut flags = settings::builder();
     for (k, v) in [
         ("is_pic", "true"),
@@ -200,6 +205,14 @@ pub fn emit(m: &Module, opts: Options) -> Result<Vec<u8>, String> {
     }
     obj.define_data(codes_id, &d).map_err(|e| e.to_string())?;
 
+    // The site table a defect record's spans come from (ABI §12), as WASM's custom section.
+    let debug = sakura_lir::debug::section(m, &opts.sources, sakura_rt::ABI_VERSION);
+    let debug_id = data(&mut obj, "sakura$debug", false)?;
+    let mut d = DataDescription::new();
+    d.define(debug.clone().into_boxed_slice());
+    d.set_align(8);
+    obj.define_data(debug_id, &d).map_err(|e| e.to_string())?;
+
     let module_id = data(&mut obj, "sakura$module", true)?;
     let mut bytes = vec![0u8; DESCRIPTOR];
     let mut put = |at: usize, v: u32| bytes[at..at + 4].copy_from_slice(&v.to_le_bytes());
@@ -213,6 +226,7 @@ pub fn emit(m: &Module, opts: Options) -> Result<Vec<u8>, String> {
     put(44, image.natives);
     put(48, m.entry.map_or(u32::MAX, |e| e.0));
     put(52, sakura_rt::native::CODES.len() as u32);
+    put(64, debug.len() as u32);
     let mut d = DataDescription::new();
     d.define(bytes.into_boxed_slice());
     d.set_align(8);
@@ -220,9 +234,11 @@ pub fn emit(m: &Module, opts: Options) -> Result<Vec<u8>, String> {
     d.write_data_addr(8, codes_gv, 0);
     let image_gv = obj.declare_data_in_data(image_id, &mut d);
     d.write_data_addr(16, image_gv, 0);
+    let debug_gv = obj.declare_data_in_data(debug_id, &mut d);
+    d.write_data_addr(56, debug_gv, 0);
     obj.define_data(module_id, &d).map_err(|e| e.to_string())?;
 
-    // `main(argc, argv)`: `return sakura_native_main(&sakura$module);`
+    // `main(argc, argv)`: `return sakura_native_main_v2(&sakura$module);`
     let ptr = obj.target_config().pointer_type();
     let mut msig = obj.make_signature();
     msig.params.push(AbiParam::new(types::I32));
@@ -235,7 +251,7 @@ pub fn emit(m: &Module, opts: Options) -> Result<Vec<u8>, String> {
     nsig.params.push(AbiParam::new(ptr));
     nsig.returns.push(AbiParam::new(types::I32));
     let native_main = obj
-        .declare_function("sakura_native_main", Linkage::Import, &nsig)
+        .declare_function("sakura_native_main_v2", Linkage::Import, &nsig)
         .map_err(|e| e.to_string())?;
     ctx.func.signature = msig;
     {
@@ -257,18 +273,21 @@ pub fn emit(m: &Module, opts: Options) -> Result<Vec<u8>, String> {
     obj.finish().emit().map_err(|e| e.to_string())
 }
 
-/// Link `object` with the driver staticlib `driver` (and the system libraries it needs,
-/// `native_libs` as `rustc --print native-static-libs` gives them) into the executable `out`.
-pub fn link(
-    object: &Path,
-    driver: &Path,
-    native_libs: &[String],
-    out: &Path,
-) -> Result<(), String> {
+/// The driver staticlib's file name in a driver directory (`SAKURA_NATIVE_LIB_DIR`).
+pub const DRIVER_LIB: &str = "libsakura_native_driver.a";
+/// The system libraries it links against, as `rustc --print native-static-libs` gives them,
+/// one line in this file beside it.
+pub const DRIVER_LIBS: &str = "native-static-libs.txt";
+
+/// Link `object` with the driver in directory `driver` ([`DRIVER_LIB`] and [`DRIVER_LIBS`])
+/// into the executable `out`, with the system C linker.
+pub fn link(object: &Path, driver: &Path, out: &Path) -> Result<(), String> {
+    let libs = std::fs::read_to_string(driver.join(DRIVER_LIBS))
+        .map_err(|e| format!("{}: {e}", driver.join(DRIVER_LIBS).display()))?;
     let output = Command::new("cc")
         .arg(object)
-        .arg(driver)
-        .args(native_libs)
+        .arg(driver.join(DRIVER_LIB))
+        .args(libs.split_whitespace())
         .arg("-o")
         .arg(out)
         .output()
@@ -281,4 +300,48 @@ pub fn link(
             String::from_utf8_lossy(&output.stderr)
         ))
     }
+}
+
+/// Build the driver staticlib from the workspace at `workspace` (`compiler/`) into the driver
+/// directory `target/debug` under `target`, with `cargo` (tests and packaging; the compiler
+/// never builds it). Returns the directory.
+pub fn build_driver(workspace: &Path, target: &Path) -> Result<PathBuf, String> {
+    let dir = target.join("debug");
+    let (lib, libs_file) = (dir.join(DRIVER_LIB), dir.join(DRIVER_LIBS));
+    if lib.is_file() && !libs_file.is_file() {
+        // `--print native-static-libs` speaks only when it links.
+        std::fs::remove_file(&lib).map_err(|e| e.to_string())?;
+    }
+    let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
+    let output = Command::new(cargo)
+        .current_dir(workspace)
+        .args([
+            "rustc",
+            "-p",
+            "sakura_native_driver",
+            "--features",
+            "native",
+        ])
+        .args([
+            "--lib",
+            "--locked",
+            "--crate-type",
+            "staticlib",
+            "--target-dir",
+        ])
+        .arg(target)
+        .args(["--", "-Cpanic=abort", "--print", "native-static-libs"])
+        .output()
+        .map_err(|e| format!("cargo: {e}"))?;
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    if !output.status.success() {
+        return Err(format!("building the driver:\n{stderr}"));
+    }
+    if let Some(line) = stderr
+        .lines()
+        .find_map(|l| l.split_once("native-static-libs: ").map(|(_, r)| r))
+    {
+        std::fs::write(&libs_file, line).map_err(|e| e.to_string())?;
+    }
+    Ok(dir)
 }

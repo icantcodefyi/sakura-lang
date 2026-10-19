@@ -1,5 +1,5 @@
 //! The entry of a native Sakura program (plan M5 N2; ABI §1b). The object `sakura_codegen_native`
-//! emits defines `main`, which calls [`sakura_native_main`] with the module's descriptor; this
+//! emits defines `main`, which calls [`sakura_native_main_v2`] with the module's descriptor; this
 //! crate, built as a staticlib with `panic = "abort"`, brings the runtime and the native host.
 //! It runs `main` as the Node host does: one instance on one thread, the outcome reported on
 //! stderr and as the exit code.
@@ -8,8 +8,8 @@
 
 use std::rc::Rc;
 
-use sakura_host_native::{Config, NativeHost, report, run_task};
-use sakura_rt::native::{CODES, Ctx, Image, Instance, Limits, Module, SakuraCode};
+use sakura_host_native::{Config, NativeHost, Span, report_spans, run_task};
+use sakura_rt::native::{CODES, Ctx, Image, Instance, Limits, Module, Outcome, SakuraCode};
 
 /// The module descriptor the compiler emits (`sakura_codegen_native`, symbol `sakura$module`):
 /// pointers are the target's, every other field a `u32`. The layout is a contract between the
@@ -35,9 +35,92 @@ pub struct SakuraModule {
     entry: u32,
     /// The length of the runtime's `CODES` the code was numbered against (+52).
     n_natives: u32,
+    /// The `sakura.debug` table (ABI §12) (+56) and its length (+64).
+    debug: *const u8,
+    debug_len: u32,
+    _reserved: u32,
 }
 
-const _: () = assert!(size_of::<SakuraModule>() == 56);
+const _: () = assert!(size_of::<SakuraModule>() == 72);
+
+/// A bounds-checked reader of little-endian bytes.
+struct Cursor<'a> {
+    b: &'a [u8],
+    at: usize,
+}
+
+impl<'a> Cursor<'a> {
+    fn take(&mut self, n: usize) -> Option<&'a [u8]> {
+        let s = self.b.get(self.at..self.at.checked_add(n)?)?;
+        self.at += n;
+        Some(s)
+    }
+
+    fn u32(&mut self) -> Option<u32> {
+        Some(u32::from_le_bytes(self.take(4)?.try_into().ok()?))
+    }
+}
+
+/// The sources and sites of a `sakura.debug` table (ABI §12), or `None` when it is malformed:
+/// it is bounds-checked, never trusted.
+struct Debug {
+    sources: Vec<String>,
+    /// `(source, start, end, role, contract)`.
+    sites: Vec<(u32, u32, u32, u8, u32)>,
+}
+
+impl Debug {
+    fn parse(b: &[u8]) -> Option<Debug> {
+        let mut c = Cursor { b, at: 0 };
+        if c.take(8)? != b"SKRDBG01" {
+            return None;
+        }
+        c.take(4 + 32)?;
+        let mut sources = vec![];
+        for _ in 0..c.u32()? {
+            let len = c.u32()? as usize;
+            sources.push(String::from_utf8(c.take(len)?.to_vec()).ok()?);
+            c.take(32)?;
+        }
+        let mut sites = vec![];
+        for _ in 0..c.u32()? {
+            let (s, a, e) = (c.u32()?, c.u32()?, c.u32()?);
+            let role = c.take(1)?[0];
+            sites.push((s, a, e, role, c.u32()?));
+        }
+        Some(Debug { sources, sites })
+    }
+
+    /// The spans of a defect at site id `site` (0 is none), as the JS runtime's `violated`
+    /// gives them (design §17.162; `sakura_wasm_host.js` `defectSpans`).
+    fn spans(&self, site: u32) -> Vec<Span> {
+        let Some(&at) = (site as usize)
+            .checked_sub(1)
+            .and_then(|i| self.sites.get(i))
+        else {
+            return vec![];
+        };
+        let span = |(s, a, e, _, _): (u32, u32, u32, u8, u32), role| {
+            self.sources
+                .get(s as usize)
+                .filter(|uri| !uri.is_empty())
+                .map(|uri| Span {
+                    uri: uri.clone(),
+                    start_byte: a,
+                    end_byte: e,
+                    role,
+                })
+        };
+        if at.3 != 0 || at.4 == 0 {
+            return span(at, "primary").into_iter().collect();
+        }
+        let clause = self.sites.iter().find(|s| s.3 == 1 && s.4 == at.4);
+        span(at, "primary")
+            .into_iter()
+            .chain(clause.and_then(|&c| span(c, "definition")))
+            .collect()
+    }
+}
 
 /// The descriptor, moved to the program's thread.
 struct Desc(&'static SakuraModule);
@@ -103,12 +186,13 @@ fn run(m: &'static SakuraModule) -> Result<i32, String> {
             CODES.len()
         ));
     }
-    // SAFETY: the compiler emits `codes` as `n_codes` function pointers and `image` as
-    // `image_len` bytes, both immutable for the program's life.
-    let (codes, bytes) = unsafe {
+    // SAFETY: the compiler emits `codes` as `n_codes` function pointers, `image` and `debug`
+    // as `image_len` and `debug_len` bytes, all immutable for the program's life.
+    let (codes, bytes, debug) = unsafe {
         (
             std::slice::from_raw_parts(m.codes, m.n_codes as usize),
             std::slice::from_raw_parts(m.image, m.image_len as usize),
+            std::slice::from_raw_parts(m.debug, m.debug_len as usize),
         )
     };
     let module = Rc::new(Linked {
@@ -148,7 +232,11 @@ fn run(m: &'static SakuraModule) -> Result<i32, String> {
         .map_err(|d| format!("D{:03}: {}", d.code, d.message))?;
     let o = run_task(&mut inst, task);
     inst.task_free(task);
-    let code = report(inst.host(), &o);
+    let spans = match (&o, Debug::parse(debug)) {
+        (Outcome::Defect { site, .. }, Some(d)) => d.spans(*site),
+        _ => vec![],
+    };
+    let code = report_spans(inst.host(), &o, &spans);
     inst.host().flush_out();
     if let Some(path) = std::env::var_os("SAKURA_NATIVE_STATS")
         && let Err(e) = append_stats(&path, inst.stats())
@@ -191,9 +279,11 @@ fn append_stats(path: &std::ffi::OsStr, s: sakura_rt::Stats) -> Result<(), Strin
 /// # Safety
 ///
 /// `m` is the descriptor `sakura_codegen_native` emits: a static that lives as long as the
-/// program, whose `codes` and `image` point at `n_codes` functions and `image_len` bytes.
+/// program, whose `codes`, `image` and `debug` point at `n_codes` functions, `image_len` and
+/// `debug_len` bytes. The suffix is the descriptor layout's version: a layout change renames
+/// the entry, so an object from another layout fails to link instead of misreading this one.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn sakura_native_main(m: *const SakuraModule) -> i32 {
+pub unsafe extern "C" fn sakura_native_main_v2(m: *const SakuraModule) -> i32 {
     // SAFETY: the caller's contract above.
     let m = Desc(unsafe { &*m });
     let code = std::thread::Builder::new()

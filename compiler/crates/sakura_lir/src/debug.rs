@@ -1,4 +1,5 @@
-//! The `sakura.debug` custom section (ABI §12), version `SKRDBG01`.
+//! The `sakura.debug` section (ABI §12), version `SKRDBG01`: a custom section of a WASM module,
+//! and a data object of a native one that the native driver reads.
 //!
 //! The sources (URI per `Pos::file`) and the LIR's site table, which the host reads to give a
 //! defect record the spans JS gives it (design §17.162); the function table (each function's
@@ -6,12 +7,13 @@
 //! sources' content hashes are zero (not computed): the section travels inside the module it
 //! describes. The names section carries the function names.
 
-use sakura_lir::lir::{Module, SiteRole};
+use crate::lir::{Module, SiteRole};
 
-pub fn section(m: &Module, sources: &[String]) -> Vec<u8> {
+/// The section of `m` with `sources` (a URI per `Pos::file`) for runtime ABI `abi_version`.
+pub fn section(m: &Module, sources: &[String], abi_version: u32) -> Vec<u8> {
     let mut out = b"SKRDBG01".to_vec();
     let u32 = |out: &mut Vec<u8>, v: u32| out.extend_from_slice(&v.to_le_bytes());
-    u32(&mut out, crate::ABI_VERSION);
+    u32(&mut out, abi_version);
     out.extend_from_slice(&[0; 32]);
     u32(&mut out, sources.len() as u32);
     for uri in sources {
