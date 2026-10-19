@@ -1,0 +1,80 @@
+name: Platform report
+description: Record a device's published-install acceptance results.
+title: "platform: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Report commands you ran on the named device. A complete passing report can add
+        “community-confirmed” evidence for this device, OS build and Sakura version.
+        Owner hardware is optional and does not gate a release. Remove secrets from logs.
+  - type: input
+    id: device
+    attributes:
+      label: Device and OS build
+      description: Include the CPU, memory, OS version and whether emulation was used.
+    validations:
+      required: true
+  - type: textarea
+    id: sakura_version
+    attributes:
+      label: sakura --version
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: os
+    attributes:
+      label: uname -a or winver
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: os_release
+    attributes:
+      label: /etc/os-release
+      description: Paste the file on Linux. Write not applicable on macOS or Windows.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: node
+    attributes:
+      label: node --version
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: installation
+    attributes:
+      label: Installation channel and exact commands
+      description: Use the published installer, npm or Homebrew. Include the pinned version and installed binary path.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance outcomes
+      description: Record pass, fail or not run for every item, with commands, output and exit codes. A community confirmation requires the whole list to pass.
+      value: |
+        sakura new cli demo:
+        sakura check:
+        sakura test:
+        sakura build:
+        sakura run:
+        sakura run --target wasm:
+        MCP initialize, tools/list and compiler_info over stdio:
+        sakura setup --client all --apply, repeated without changes:
+        Missing Node refusal (check succeeds; test fails with an actionable error):
+        Windows only, fmt --check after committing and checking out with core.autocrlf=true:
+        Windows only, sakura lsp initialize over stdio:
+    validations:
+      required: true
+  - type: textarea
+    id: ai
+    attributes:
+      label: AI assistance
+      description: Disclose AI tools used to prepare the report, or write none. Verify each claimed result yourself.
+    validations:
+      required: true
