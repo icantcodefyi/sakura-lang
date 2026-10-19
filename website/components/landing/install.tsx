@@ -7,7 +7,7 @@ const VERSION = "0.1.0-alpha.1";
 const CHANNELS: { name: string; lines: string[]; note: string }[] = [
   {
     name: "npm",
-    lines: [`npm install --global --ignore-scripts sakuralang@${VERSION}`],
+    lines: [`npm install --global sakuralang@${VERSION}`],
     note: "the npm latest tag; needs Node 26",
   },
   {

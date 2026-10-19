@@ -18,6 +18,9 @@ Compare the release tag with main when identifying changes not in that preview.
 
 ### Changed
 
+- The documented npm install is the plain `npm install --global sakuralang`: the packages ship
+  no lifecycle scripts, and `release.py` now refuses to pack one that declares `preinstall`,
+  `install`, `postinstall` or `prepare`.
 - Exhaustiveness checking costs each `match` arm the earlier arms with the same head constructor,
   not every earlier arm (design §17.200 (8)): a `match` of 4,000 guarded rows alternating with
   4,000 literal rows checks in about 20 ms instead of 8.5 s. Diagnostics are unchanged.

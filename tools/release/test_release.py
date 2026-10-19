@@ -19,6 +19,15 @@ class ReleasePackaging(unittest.TestCase):
                 with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
                     release.accept(argparse.Namespace(sakura="/installed path/sakura", commit="0" * 40))
 
+    def test_npm_pack_refuses_install_lifecycle_scripts(self):
+        for hook in release.INSTALL_HOOKS:
+            with self.subTest(hook=hook), tempfile.TemporaryDirectory() as tmp:
+                Path(tmp, "package.json").write_text(json.dumps({"name": "sakuralang", "scripts": {hook: "node x.js"}}))
+                with patch.object(release.subprocess, "run") as npm, contextlib.redirect_stderr(io.StringIO()), \
+                        self.assertRaises(SystemExit):
+                    release.npm_pack(tmp, tmp)
+                npm.assert_not_called()
+
     def test_windows_readme_uses_the_powershell_installer(self):
         readme = release.readme("1.2.3", "x86_64-pc-windows-msvc")
         self.assertIn("sakura.exe", readme)

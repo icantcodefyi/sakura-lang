@@ -360,6 +360,12 @@ tar -xzf "sakuralang-$v-$t.tar.gz" && install -m 755 "sakuralang-$v-$t/sakura" ~
 The scripted path is the same steps: download `install.sh` from the release, read it, run
 `sh install.sh --prefix ~/.local`. `sh tools/install/test.sh` covers its refusals.
 
+The npm packages ship no lifecycle scripts, so users install with a plain
+`npm install --global sakuralang`. `release.py assemble` enforces this: `npm_pack`
+fails if a staged `package.json` declares `preinstall`, `install`, `postinstall` or
+`prepare`, and still packs with `--ignore-scripts`. The release and published-install
+workflows keep `--ignore-scripts` as a guard.
+
 Inspect npm's `npm pack --dry-run` output and actual tarballs. Install with scripts
 disabled/network denied using a preseeded cache or local wrapper/platform
 tarballs. An empty cache cannot prove offline install. Confirm no hidden binary

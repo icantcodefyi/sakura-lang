@@ -610,7 +610,14 @@ def render(text, ver, sums):
     return text
 
 
+# npm runs these on the user's machine; the packages promise to ship none (docs/release.md).
+INSTALL_HOOKS = ("preinstall", "install", "postinstall", "prepare")
+
+
 def npm_pack(stage, out):
+    hooks = sorted(set(json.loads((Path(stage) / "package.json").read_text()).get("scripts", {})) & set(INSTALL_HOOKS))
+    if hooks:
+        fail(f"{stage}/package.json declares install lifecycle scripts {hooks}: the npm packages must not run code on install")
     p = subprocess.run(["npm", "pack", "--ignore-scripts", "--json", "--pack-destination", str(Path(out).resolve())], cwd=stage,
                        check=True, capture_output=True, text=True)
     return json.loads(p.stdout)[0]["filename"]
