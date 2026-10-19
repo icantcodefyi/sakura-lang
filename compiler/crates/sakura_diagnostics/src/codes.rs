@@ -951,20 +951,14 @@ mod tests {
         }
     }
 
-    /// Plan §4 gate 2, two-way (§17.120): every code-shaped token (`\b[VWD][0-9]{3,4}\b`) in the
-    /// sources of `crates` (minus this one), `runtime/js` and `runtime/rt` is registered, and every
-    /// registered code appears there.
-    #[test]
-    fn gate_2_registry_and_constructed_codes_agree() {
+    fn constructed_codes() -> std::collections::BTreeMap<String, String> {
         fn scan(dir: &std::path::Path, out: &mut std::collections::BTreeMap<String, String>) {
-            for entry in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+            for entry in std::fs::read_dir(dir).expect("read source directory") {
+                let entry = entry.expect("read source entry");
                 let path = entry.path();
                 let name = entry.file_name();
                 if path.is_dir() {
-                    if !matches!(
-                        name.to_str(),
-                        Some("sakura_diagnostics" | "target" | "node_modules")
-                    ) {
+                    if !matches!(name.to_str(), Some("target" | "node_modules")) {
                         scan(&path, out);
                     }
                     continue;
@@ -975,7 +969,10 @@ mod tests {
                 {
                     continue;
                 }
-                let text = std::fs::read(&path).unwrap_or_default();
+                if path == std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/codes.rs") {
+                    continue;
+                }
+                let text = std::fs::read(&path).expect("read source file");
                 let word = |i: usize| {
                     text.get(i)
                         .is_some_and(|b| b.is_ascii_alphanumeric() || *b == b'_')
@@ -996,15 +993,26 @@ mod tests {
                 }
             }
         }
-        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap();
         let mut used = std::collections::BTreeMap::new();
-        for dir in ["crates", "runtime/js", "runtime/rt"] {
+        for dir in ["crates", "tools", "runtime/js", "runtime/rt"] {
             scan(&root.join(dir), &mut used);
         }
         // `V9999` is the unregistered sentinel; `D800` is a UTF-16 surrogate in a comment.
         for code in ["V9999", "D800"] {
             used.remove(code);
         }
+        used
+    }
+
+    #[test]
+    fn gate_2_registry_and_constructed_codes_agree() {
+        let used = constructed_codes();
+        let baseline = baseline();
         let unregistered: Vec<_> = used
             .iter()
             .filter(|(code, _)| lookup(code).is_none())
@@ -1013,16 +1021,77 @@ mod tests {
             unregistered.is_empty(),
             "constructed but not registered: {unregistered:?}"
         );
-        // `V5002` is retired (§17.87); `W8001` is registered ahead of its M5 check.
         let unconstructed: Vec<_> = REGISTRY
             .iter()
             .map(|i| i.code.0)
-            .filter(|c| !used.contains_key(*c) && !matches!(*c, "V5002" | "W8001"))
+            .filter(|c| !used.contains_key(*c) && baseline[*c].0 == Status::Active)
             .collect();
         assert!(
             unconstructed.is_empty(),
             "registered but never constructed: {unconstructed:?}"
         );
+    }
+
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    enum Status {
+        Active,
+        Reserved,
+        Retired,
+    }
+
+    fn baseline() -> std::collections::BTreeMap<&'static str, (Status, &'static str)> {
+        let mut entries = std::collections::BTreeMap::new();
+        for line in include_str!("../../../diagnostics/codes.txt").lines() {
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+            let fields: Vec<_> = line.split_whitespace().collect();
+            assert_eq!(fields.len(), 3, "expected CODE STATUS TITLE: {line}");
+            let status = match fields[1] {
+                "active" => Status::Active,
+                "reserved" => Status::Reserved,
+                "retired" => Status::Retired,
+                other => panic!("invalid diagnostic status: {other}"),
+            };
+            assert!(
+                entries.insert(fields[0], (status, fields[2])).is_none(),
+                "duplicate baseline code: {}",
+                fields[0]
+            );
+        }
+        assert!(!entries.is_empty(), "empty diagnostic baseline");
+        entries
+    }
+
+    #[test]
+    fn diagnostic_identity_matches_baseline() {
+        let baseline = baseline();
+        for info in REGISTRY {
+            let (_, title) = baseline
+                .get(info.code.0)
+                .unwrap_or_else(|| panic!("{} missing from diagnostic baseline", info.code.0));
+            assert_eq!(*title, info.title, "{} reassigned", info.code.0);
+        }
+        for code in baseline.keys() {
+            assert!(
+                lookup(code).is_some(),
+                "{code} removed from codes.rs; retain retired entries"
+            );
+        }
+    }
+
+    #[test]
+    fn retired_and_reserved_codes_are_never_constructed() {
+        let used = constructed_codes();
+        for (code, (status, _)) in baseline() {
+            if status != Status::Active {
+                assert!(
+                    !used.contains_key(code),
+                    "{status:?} code {code} used in {:?}",
+                    used.get(code)
+                );
+            }
+        }
     }
 
     #[test]

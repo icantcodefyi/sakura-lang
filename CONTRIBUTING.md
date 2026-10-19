@@ -102,6 +102,19 @@ paths, never semantic content or diagnostic codes. New snapshots must fail CI
 until reviewed and committed. Use the repository's snapshot harness when it exists;
 the compiler uses checked-in fixtures and snapshots.
 
+Diagnostic identities are recorded in [the append-only baseline](compiler/diagnostics/codes.txt)
+and `sakura_diagnostics::codes::REGISTRY`. Add the same code and snake_case title
+to both. Use `reserved` before implementation, `active` while emitted, and
+`retired` when emission stops. Retain retired entries in both files. Never change
+an assigned title or reuse a retired code. The compiler tests compare the table
+with source references; the required `diagnostic-codes` CI job compares it with
+the PR base or previous pushed commit, so deleting a baseline row also fails.
+Run `python3 -m unittest discover -s compiler/diagnostics -v` and
+`python3 compiler/diagnostics/check_history.py --base <full-base-commit-sha>`
+from the repository root to check history locally. Title equality guards the
+machine-readable identity; review must still reject a changed meaning hidden
+behind an unchanged title.
+
 ## Commits and pull request titles
 
 Use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/):

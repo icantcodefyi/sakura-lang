@@ -512,11 +512,27 @@ jobs:
           toolchain=$(sed -n 's/^channel = "\(.*\)"/\1/p' ../../compiler/rust-toolchain.toml)
           cargo "+$toolchain" test
 
+  diagnostic-codes:
+    name: Diagnostic code history
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Test diagnostic history checker
+        run: python3 -m unittest discover -s compiler/diagnostics -v
+      - name: Preserve every previous code assignment (RFC 0001)
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || github.sha }}
+        run: python3 compiler/diagnostics/check_history.py --base "$BASE_SHA"
+
   ci-required:
     name: ci-required
     if: always()
     # The rust result requires every matrix child, including both partitions on each OS.
-    needs: [website, rust, msrv, native, parity, vscode, tree-sitter]
+    needs: [website, rust, msrv, native, parity, vscode, tree-sitter, diagnostic-codes]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -525,6 +541,7 @@ jobs:
           WEBSITE_RESULT: ${{ needs.website.result }}
           RUST_RESULT: ${{ needs.rust.result }}
           MSRV_RESULT: ${{ needs.msrv.result }}
+          DIAGNOSTIC_CODES_RESULT: ${{ needs.diagnostic-codes.result }}
           NATIVE_RESULT: ${{ needs.native.result }}
           PARITY_RESULT: ${{ needs.parity.result }}
           VSCODE_RESULT: ${{ needs.vscode.result }}
@@ -533,6 +550,7 @@ jobs:
           test "$WEBSITE_RESULT" = success
           test "$RUST_RESULT" = success
           test "$MSRV_RESULT" = success
+          test "$DIAGNOSTIC_CODES_RESULT" = success
           test "$NATIVE_RESULT" = success
           test "$PARITY_RESULT" = success
           test "$VSCODE_RESULT" = success
