@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CopyCommand } from "./copy-command";
 
 // Commands and platform rows from /docs/install (content/docs/install.mdx) and
 // packaging/targets.json. Update both together when a release publishes.
@@ -7,7 +8,7 @@ const VERSION = "0.1.0-alpha.1";
 const CHANNELS: { name: string; lines: string[]; note: string }[] = [
   {
     name: "npm",
-    lines: [`npm install --global sakuralang@${VERSION}`],
+    lines: ["npm i -g sakuralang"],
     note: "the npm latest tag; needs Node 26",
   },
   {
@@ -18,7 +19,7 @@ const CHANNELS: { name: string; lines: string[]; note: string }[] = [
   {
     name: "install.sh",
     lines: [
-      `curl -fsSLO https://github.com/icantcodefyi/sakuralang/releases/download/v${VERSION}/install.sh`,
+      `curl -fsSLO \\\n  https://github.com/icantcodefyi/sakuralang/releases/download/v${VERSION}/install.sh`,
       `sh install.sh --version ${VERSION}`,
     ],
     note: "checks SHA256SUMS; verifies attestations when gh is installed",
@@ -61,7 +62,7 @@ export function Install() {
   return (
     <section id="install" className="border-b border-border">
       <div className="mx-auto max-w-6xl px-5 py-24 sm:px-8 md:py-32">
-        <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] md:items-end md:gap-16">
+        <div className="grid gap-x-16 gap-y-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] lg:items-end">
           <h2 className="font-display text-[clamp(2rem,3.6vw,2.9rem)] leading-[1.04] font-semibold tracking-[-0.03em] text-balance">
             Install it today.
           </h2>
@@ -75,28 +76,19 @@ export function Install() {
         </div>
 
         <div className="mt-12 grid gap-x-16 gap-y-12 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
-          <ul className="grid border-t border-foreground/80">
+          <ul className="grid min-w-0 grid-cols-[minmax(0,1fr)] border-t border-foreground/80">
             {CHANNELS.map((c) => (
-              <li key={c.name} className="grid gap-2 border-b border-border py-5">
+              <li
+                key={c.name}
+                className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 border-b border-border py-5"
+              >
                 <p className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                   <span className="font-display text-[1.05rem] font-semibold tracking-[-0.01em]">
                     {c.name}
                   </span>
                   <span className="text-[13px] text-muted-foreground">{c.note}</span>
                 </p>
-                <pre className="font-mono text-[12.5px] leading-[1.7] text-foreground">
-                  {c.lines.map((l) => (
-                    <code
-                      key={l}
-                      className="block pl-[2ch] -indent-[2ch] break-all whitespace-pre-wrap select-all"
-                    >
-                      <span aria-hidden className="text-faint select-none">
-                        ${" "}
-                      </span>
-                      {l}
-                    </code>
-                  ))}
-                </pre>
+                <CopyCommand commands={c.lines} />
               </li>
             ))}
           </ul>
