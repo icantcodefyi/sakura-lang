@@ -1,0 +1,10 @@
+mailto:a@b.test: Err(UrlError { reason: OpaquePath })
+mailto:a@b.test ?q #f: mailto:a@b.test?q#f
+data:text/plain,hi: Err(UrlError { reason: OpaquePath })
+data:text/plain,hi ?q #f: data:text/plain,hi?q#f
+sc:x: Err(UrlError { reason: OpaquePath })
+sc:x ?q #f: sc:x?q#f
+sc://h/x: Ok("sc://h/y")
+sc://h/x ?q #f: sc://h/x?q#f
+sc:/x: Ok("sc:/y")
+sc:/x ?q #f: sc:/x?q#f

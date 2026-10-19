@@ -54,12 +54,14 @@ Releases follow the [stability policy](STABILITY.md). The published preview is
   web-APIs plan phase 2): the web's `URL` and `URLSearchParams` as values. `Url.parse(s)` and
   `Url.resolve(base, relative)` (`new URL(relative, base)`) give `UrlParts { scheme, username,
   password, host, port, path, query, fragment }` or `UrlError { reason }` with `Idna`,
-  `InvalidScheme`, `InvalidHost`, `InvalidPort` or `Relative`; special schemes get the
-  standard's host parsing (IPv4 in every radix, IPv6 compressed), default ports, dot segments
-  and percent-encode sets, other schemes opaque hosts and paths. `to_string` is the standard's
+  `InvalidScheme`, `InvalidHost`, `InvalidPort`, `Relative` or `OpaquePath`; special schemes
+  get the standard's host parsing (IPv4 in every radix, IPv6 compressed), default ports, dot
+  segments and percent-encode sets, other schemes opaque hosts and paths. `to_string` is the standard's
   serialization, `to_url` the `Url` for `Request.of`, `origin` the origin; `with_scheme`,
   `with_host`, `with_port`, `with_path`, `with_query`, `with_fragment` and `with_credentials`
-  are the setters, returning a new value. The password is a `Secret`, which `to_string`,
+  are the setters, returning a new value; the ones that can refuse return `Result`, where the
+  standard's setters ignore the input (`with_path` on an opaque-path URL such as `mailto:x` is
+  `OpaquePath`, design §17.268 (3)). The password is a `Secret`, which `to_string`,
   `to_url` and `origin` leave out. A host that needs IDNA (non-ASCII, or an `xn--` label) is
   `Idna` until punycode lands. `SearchParams` is an ordered multimap (`parse`, `get`,
   `get_all`, `has`, `append`, `set`, `remove`, `sort` in UTF-16 code unit order, `entries`,

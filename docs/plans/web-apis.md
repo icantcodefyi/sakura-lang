@@ -158,10 +158,10 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 - **Who.** Opus; Sol: the `url.jsonl` subset with the upstream commit hash in its header.
 - **Landed (`3481039f`; design §17.268).** As built, endorsed: the password never
   serializes; a host that needs IDNA (`xn--` labels included) is `Idna`; `ftp` is special;
-  `with_scheme`/`with_host`/`with_port`/`with_credentials` return `Result`. Still to do on
-  `main` now: `with_path` returns `Result<UrlParts, UrlError>` with the new
-  `UrlReason.OpaquePath` for an opaque-path URL (today it returns the URL unchanged), plus
-  its `_rejects_opaque_path` case. The 896-tuple literal that compiled to a 6 MB
+  `with_scheme`/`with_host`/`with_port`/`with_credentials` return `Result`, and
+  `with_path` joins them on `main`: `Result<UrlParts, UrlError>` with the new
+  `UrlReason.OpaquePath` for an opaque-path URL, pinned by `url_rejects_opaque_path.sak`
+  (§17.268 (3)). The 896-tuple literal that compiled to a 6 MB
   `main.wasm` is WS-P19 in the performance push, after WS-P18 and the tag (§17.268 (6)).
 - **Acceptance.** All curated cases agree with the upstream expectation on three
   backends; `url"…"` templates and `Request.url` fixtures are byte-identical to before.

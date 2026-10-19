@@ -729,7 +729,7 @@ fn path(u: Url) -> String
 fn query_param(u: Url, name: String) -> Option<String>
 fn template(parts: List<String>, args: List<UrlPart>) -> Url
 fn encode_component(s: String) -> String
-type UrlReason = Idna | InvalidScheme | InvalidHost | InvalidPort | Relative
+type UrlReason = Idna | InvalidScheme | InvalidHost | InvalidPort | Relative | OpaquePath
 error UrlError(reason: UrlReason)
 type UrlParts = { scheme: String, username: String, password: Option<Secret<String>>, host: Option<String>, port: Option<Int>, path: String, query: Option<String>, fragment: Option<String> }
 fn parse(s: String) -> Result<UrlParts, UrlError>
@@ -740,7 +740,7 @@ fn origin(p: UrlParts) -> String
 fn with_scheme(p: UrlParts, scheme: String) -> Result<UrlParts, UrlError>
 fn with_host(p: UrlParts, host: String) -> Result<UrlParts, UrlError>
 fn with_port(p: UrlParts, port: Option<Int>) -> Result<UrlParts, UrlError>
-fn with_path(p: UrlParts, path: String) -> UrlParts
+fn with_path(p: UrlParts, path: String) -> Result<UrlParts, UrlError>
 fn with_query(p: UrlParts, query: Option<String>) -> UrlParts
 fn with_fragment(p: UrlParts, fragment: Option<String>) -> UrlParts
 fn with_credentials(p: UrlParts, username: String, password: Option<Secret<String>>) -> Result<UrlParts, UrlError>    // @trust

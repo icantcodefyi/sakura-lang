@@ -58,7 +58,7 @@ import std/url.{Url, UrlError, UrlReason}
 fn search_url(base: Url, query: String, page: Int) -> Url ! {Fail<UrlError>} {
   let parts = Url.parse(base)?
   let params = Url.search(parts).set("q", query).set("page", Int.to_string(page))
-  parts.with_path("/v1/search").with_search(params).with_fragment(None).to_url()
+  parts.with_path("/v1/search")?.with_search(params).with_fragment(None).to_url()
 }
 
 /// A link from a response (a `Location` header, a `next` link) resolved against the URL that

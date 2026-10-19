@@ -61,9 +61,10 @@ pub fn template(parts: List<String>, args: List<UrlPart>) -> Url {
 pub fn encode_component(s: String) -> String { UrlPart.to_string(UrlPart.from(s)) }
 
 /// Why a URL is not one: a host that needs IDNA (non-ASCII, or an `xn--` label; punycode is
-/// not implemented), a scheme `with_scheme` cannot set, a host or port that does not parse, or
-/// a relative reference with no base to resolve it against.
-pub type UrlReason = Idna | InvalidScheme | InvalidHost | InvalidPort | Relative
+/// not implemented), a scheme `with_scheme` cannot set, a host or port that does not parse, a
+/// relative reference with no base to resolve it against, or a path `with_path` cannot set on
+/// an opaque-path URL such as `mailto:x`.
+pub type UrlReason = Idna | InvalidScheme | InvalidHost | InvalidPort | Relative | OpaquePath
 
 pub error UrlError(reason: UrlReason)
 
@@ -191,9 +192,10 @@ pub fn with_port(p: UrlParts, port: Option<Int>) -> Result<UrlParts, UrlError> {
 }
 
 /// The `pathname` setter: `path` percent-encoded, its dot segments resolved (and `\` a
-/// separator for a special scheme). An opaque-path URL is returned unchanged.
-pub fn with_path(p: UrlParts, path: String) -> UrlParts {
-  if is_opaque(p) { return p }
+/// separator for a special scheme). `OpaquePath` for an opaque-path URL (`mailto:x`), whose
+/// path the standard's setter would leave unchanged.
+pub fn with_path(p: UrlParts, path: String) -> Result<UrlParts, UrlError> {
+  if is_opaque(p) { return Err(UrlError { reason: OpaquePath }) }
   let cs = without_tabs(String.chars(path))
   let first = cs[0].unwrap_or("")
   let segments = if is_special(p.scheme) {
@@ -203,7 +205,7 @@ pub fn with_path(p: UrlParts, path: String) -> UrlParts {
   } else {
     run_path(cs, if first == "/" { 1 } else { 0 }, [], "", p.scheme, false).0
   }
-  UrlParts { ..p, path: join_path(segments) }
+  Ok(UrlParts { ..p, path: join_path(segments) })
 }
 
 /// The query without its `?`, percent-encoded; `None` removes it.
@@ -273,7 +275,7 @@ type State = SchemeStart
   | FileHost
   | PathStart
   | Path
-  | OpaquePath
+  | OpaquePathState
   | Query
   | Fragment
 
@@ -332,7 +334,7 @@ fn basic(input: String, base: Option<UrlParts>) -> Result<UrlParts, UrlError> {
             p = p + 1
           } else {
             opaque_path = Some("")
-            state = OpaquePath
+            state = OpaquePathState
           }
         } else {
           buffer = ""
@@ -579,7 +581,7 @@ fn basic(input: String, base: Option<UrlParts>) -> Result<UrlParts, UrlError> {
           state = Fragment
         }
       },
-      OpaquePath => {
+      OpaquePathState => {
         var text = opaque_path.unwrap_or("")
         while p < n && cs[p] != Some("?") && cs[p] != Some("#") {
           let d = cs[p].unwrap_or("")
@@ -1163,10 +1165,10 @@ test "with_port" {
 
 test "with_path" {
   let p = parse("https://x.test/old?q").unwrap_or(empty())
-  expect_eq(to_string(with_path(p, "/v1/../v2/a b?#")), "https://x.test/v2/a%20b%3F%23?q")
-  expect_eq(to_string(with_path(p, "rel\\x")), "https://x.test/rel/x?q")
+  expect_eq(with_path(p, "/v1/../v2/a b?#").map(to_string), Ok("https://x.test/v2/a%20b%3F%23?q"))
+  expect_eq(with_path(p, "rel\\x").map(to_string), Ok("https://x.test/rel/x?q"))
   let m = parse("mailto:x").unwrap_or(empty())
-  expect_eq(to_string(with_path(m, "/y")), "mailto:x")
+  expect_eq(with_path(m, "/y").map(to_string).map_err(fn(e) { e.reason }), Err(OpaquePath))
 }
 
 test "with_query and with_fragment" {

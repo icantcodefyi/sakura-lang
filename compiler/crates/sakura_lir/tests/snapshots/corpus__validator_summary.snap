@@ -152,6 +152,7 @@ semantics/url_credentials_are_secret: 75 funcs, 1160 blocks, 175 dup, 843 drop, 
 semantics/url_parse_whatwg: 77 funcs, 1173 blocks, 170 dup, 825 drop, valid
 semantics/url_rejects_idna: 65 funcs, 1092 blocks, 165 dup, 757 drop, valid
 semantics/url_rejects_malformed: 77 funcs, 1248 blocks, 180 dup, 870 drop, valid
+semantics/url_rejects_opaque_path: 72 funcs, 1149 blocks, 169 dup, 798 drop, valid
 semantics/url_resolve_relative: 66 funcs, 1098 blocks, 167 dup, 779 drop, valid
 semantics/url_untrusted_component: 14 funcs, 97 blocks, 25 dup, 52 drop, valid
 semantics/uuid_decode: 9 funcs, 52 blocks, 6 dup, 38 drop, valid

@@ -1,0 +1,23 @@
+// milestone: M3
+// spec: RFC 0002 §2.2
+// Spec: https://url.spec.whatwg.org/#dom-url-pathname
+
+// `with_path` on an opaque-path URL is `Err(UrlError(OpaquePath))` where the standard's
+// `pathname` setter does nothing (design §17.268 (3)). `with_query` and `with_fragment` apply
+// to every URL, opaque paths included, and a non-special URL with a host or a `/` path takes a
+// new path.
+import std/url.{Url, UrlParts}
+
+pub fn main() -> Unit ! {Console} {
+  for s in ["mailto:a@b.test", "data:text/plain,hi", "sc:x", "sc://h/x", "sc:/x"] {
+    match Url.parse(s) {
+      Ok(p) => {
+        Console.print("{s}: {Url.with_path(p, "/y").map(fn(u) { Url.to_string(u) })}")
+        Console.print(
+          "{s} ?q #f: {Url.to_string(Url.with_fragment(Url.with_query(p, Some("q")), Some("f")))}",
+        )
+      },
+      Err(e) => Console.print("{s}: {e.reason}"),
+    }
+  }
+}
