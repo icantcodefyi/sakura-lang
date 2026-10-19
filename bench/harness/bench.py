@@ -1008,6 +1008,19 @@ def corpus(lines):
     return d
 
 
+def wide_match():
+    """§17.200 (8)'s 3,000-arm `Int` match and 3,000-constructor enumeration, alternating guarded rows."""
+    d = TARGET / "wide_match"
+    d.mkdir(parents=True, exist_ok=True)
+    n = 3_000
+    src = f"type Big = {' | '.join(f'C{i}' for i in range(n))}\n\nfn big(b: Big) -> Int {{\n  match b {{\n"
+    src += "".join(f"    C{i} => {i},\n" for i in range(n))
+    src += "  }\n}\n\nfn int(x: Int) -> Int {\n  match x {\n"
+    src += "".join(f"    n if n < {-i} => {i},\n    {i} => {i},\n" for i in range(n))
+    (d / "main.sak").write_text(src + "    _ => -1,\n  }\n}\n")
+    return d
+
+
 def p95(xs):
     xs = sorted(xs)
     return xs[min(len(xs) - 1, math.ceil(0.95 * len(xs)) - 1)]
@@ -1085,7 +1098,7 @@ def cmd_compile(a):
     res = new_result({"command": "compile", "seed": SEED,
                       "std_cache": "off" if os.environ.get("SAKURA_NO_CACHE", "0") not in ("", "0") else "on"})
     TARGET.mkdir(parents=True, exist_ok=True)
-    small, large, hi = corpus(10_000), corpus(100_000), hello()
+    small, large, hi, wide = corpus(10_000), corpus(100_000), hello(), wide_match()
     lines = lambda d: sum(len(f.read_text().splitlines()) for f in d.rglob("*.sak"))
     # `test_hello` has no budget or target: it shows the Node spawn's share (§17.195 (1)).
     cases = {"check_hello": (hi, lambda: timed([str(SAKURA), "check", str(hi)])),
@@ -1093,7 +1106,8 @@ def cmd_compile(a):
              "check_cold_10k": (small, lambda: timed([str(SAKURA), "check", str(small)])),
              "build_10k": (small, lambda: timed([str(SAKURA), "build", "--out-dir", str(TARGET / "corpus-out"), str(small)])),
              "check_cold_100k": (large, lambda: timed([str(SAKURA), "check", str(large)])),
-             "lsp_edit_10k": (small, lambda: lsp_edit_ms(small))}
+             "lsp_edit_10k": (small, lambda: lsp_edit_ms(small)),
+             "check_wide_match": (wide, lambda: timed([str(SAKURA), "check", str(wide)]))}
     status = EXIT_OK
     print("| Case | Lines | p95 ms | Median ms | Budget ms | Target ms | |\n|---|---:|---:|---:|---:|---:|---|",
           flush=True)
