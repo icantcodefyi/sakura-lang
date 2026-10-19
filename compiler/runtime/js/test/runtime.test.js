@@ -549,6 +549,35 @@ test("a race cancels the loser, whose finalizer runs before the race returns", a
   assert.ok(Date.now() - t0 < 1_000);
 });
 
+test("a sleep past Node's longest timer chains timers, and a cancel clears the pending one", async () => {
+  // Design §17.229 (5): Node fires a timer past 2^31 - 1 ms after 1 ms instead.
+  const real = { set: globalThis.setTimeout, clear: globalThis.clearTimeout };
+  const armed = [];
+  const cleared = [];
+  globalThis.setTimeout = (f, ms) => {
+    if (ms < 1_000) return real.set(f, ms);
+    const t = { f, ms };
+    armed.push(t);
+    return t;
+  };
+  globalThis.clearTimeout = (t) => (armed.includes(t) ? cleared.push(t) : real.clear(t));
+  try {
+    const frames = rt.install({ h: null, c: null, t: null }, rt.task_host()).h;
+    const loser = ($ctx, $k) => rt.clock_sleep_ms(2 ** 31 + 2_000, $ctx, $k);
+    const winner = ($ctx, $k) => rt.clock_sleep_ms(10, $ctx, () => ret($k, "w"));
+    const race = ($ctx, $k) => rt.perform($ctx, "std::task::Task", 4, [rt.list([loser, winner])], (v) => ret($k, v));
+    const p = rt.runTask(race, [], frames);
+    assert.deepEqual(armed.map((t) => t.ms), [2 ** 31 - 1]);
+    armed[0].f();
+    assert.deepEqual(armed.map((t) => t.ms), [2 ** 31 - 1, 2_001]);
+    assert.deepEqual(await p, ok("w"));
+    assert.deepEqual(cleared, [armed[1]]);
+  } finally {
+    globalThis.setTimeout = real.set;
+    globalThis.clearTimeout = real.clear;
+  }
+});
+
 test("with_file host files: chunked reads, appends, closed on fail, no escapes", async () => {
   const fs = await import("node:fs");
   const os = await import("node:os");
@@ -577,6 +606,14 @@ test("with_file host files: chunked reads, appends, closed on fail, no escapes",
     assert.equal(rt.file_open(root, "../out.txt", WRITE).tag, 1);
     assert.equal(rt.file_open(root, "missing.txt", READ).fields[0], "not found");
     assert.deepEqual(rt.fs_subdir(root, "nope"), rt.Err("no such directory"));
+    // OS errors answer by class (design §17.229 (5)), the texts `sakura_host_native` gives.
+    fs.mkdirSync("sub");
+    assert.deepEqual(rt.fs_read(root, "sub"), rt.Err("is a directory"));
+    fs.writeFileSync("locked.txt", "x");
+    fs.chmodSync("locked.txt", 0);
+    if (process.platform !== "win32" && process.getuid() !== 0) {
+      assert.deepEqual(rt.fs_read(root, "locked.txt"), rt.Err("permission denied"));
+    }
   } finally {
     process.chdir(cwd);
     fs.rmSync(dir, { recursive: true });

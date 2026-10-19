@@ -2343,11 +2343,28 @@ export function clock_monotonic_ms() {
 }
 export function clock_sleep_ms(ms, _ctx, k) {
   if (ms <= 0) return ret(k, undefined);
-  let timer;
+  let cancel;
   const done = new Promise((resolve) => {
-    timer = setTimeout(() => resolve(undefined), ms);
+    cancel = sleep_chain(ms, resolve);
   });
-  return suspend(done, k, () => clearTimeout(timer));
+  return suspend(done, k, () => cancel());
+}
+
+/** Node's longest timer (`setTimeout` fires a longer one after 1 ms). */
+const MAX_TIMER_MS = 2 ** 31 - 1;
+
+/**
+ * Call `done` after `ms` milliseconds, chaining timers of at most `MAX_TIMER_MS` (design §17.229
+ * (5)); returns the function that clears the pending one.
+ */
+export function sleep_chain(ms, done) {
+  let timer;
+  const arm = (left) => {
+    const step = Math.min(left, MAX_TIMER_MS);
+    timer = setTimeout(() => (left > step ? arm(left - step) : done()), step);
+  };
+  arm(ms);
+  return () => clearTimeout(timer);
 }
 
 // Virtual time (`Clock.virtual`, design §5.8): a sleeping task waits until no other work is
@@ -2911,9 +2928,19 @@ function inside(d, rel, forWrite) {
   return { path: real };
 }
 
+/** The `Err` text of an OS error by its class (ABI §8.2): the classes both hosts name. */
+const HOST_MESSAGES = {
+  ENOENT: "not found",
+  EACCES: "permission denied",
+  EPERM: "permission denied",
+  EEXIST: "already exists",
+  EISDIR: "is a directory",
+  ENOTDIR: "not a directory",
+  ELOOP: "escapes the directory", // a link planted after `inside`
+};
+
 function hostMessage(e) {
-  if (e.code === "ELOOP") return "escapes the directory"; // a link planted after `inside`
-  return e.code === "ENOENT" ? "not found" : String(e.message ?? e);
+  return HOST_MESSAGES[e.code] ?? String(e.message ?? e);
 }
 
 /**

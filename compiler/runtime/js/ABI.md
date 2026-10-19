@@ -434,6 +434,10 @@ takes a path; entry names only) and any open on Windows (no
 `O_NOFOLLOW`) keep that window. The racer is a concurrent process with write access inside the
 grant; a Sakura program cannot race itself. The native host has no window (ABI §8.3 in
 `runtime/rt/ABI.md`).
+Other OS errors answer by class (`runtime/rt/ABI.md` §8.2): `EACCES`/`EPERM` → `permission
+denied`, `EEXIST` → `already exists`, `EISDIR` → `is a directory`, `ENOTDIR` → `not a
+directory` (erratum 2026-10-19, design §17.229 (5): until then any code but `ENOENT` and
+`ELOOP` answered Node's message, such as `EACCES: permission denied, open '…'`).
 
 **Memory directories** (design §17.119). `fs_memory_root(files)` is a `Dir` over a fresh store
 (`Map` from normalized path to `Uint8Array`) holding the `(Path, Bytes)` pairs; `Fs.memory` is
@@ -561,7 +565,8 @@ and a specialized copy when they are concrete.
 `sakura_core::builtins::BUILTINS` lists every runtime function Core may call
 (`Atom::Builtin(name)`) with its arity and ABI (`Direct` or `Cps`). A test in
 `sakura_codegen_js` checks the table against this module's exports. Host effects are handlers
-written in std over primitives (`console_print`, `clock_now_ms`, `clock_sleep_ms` (suspends),
+written in std over primitives (`console_print`, `clock_now_ms`, `clock_sleep_ms` (suspends;
+timers past 2^31 − 1 ms are chained, erratum 2026-10-19, design §17.229 (5)),
 `random_int`, `env_get`, `log_write`, …) except `console_host`, which is a handler value.
 A `property` lowers to `case(params…) -> Bool` (`false`: a `requires` clause discarded the
 input, the body did not run) and a test body calling

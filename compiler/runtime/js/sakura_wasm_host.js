@@ -525,8 +525,10 @@ export class Host {
         clock_now_ms: () => BigInt(rt.clock_now_ms()),
         clock_monotonic_ms: () => BigInt(rt.clock_monotonic_ms()),
         clock_sleep_ms: (request, ms) => {
-          const timer = setTimeout(() => this.complete(request, 0, null), Number(ms));
-          this.inflight.set(request, () => clearTimeout(timer));
+          this.inflight.set(
+            request,
+            rt.sleep_chain(Number(ms), () => this.complete(request, 0, null)),
+          );
           return 1;
         },
         random_int: (lo, hi) => BigInt(rt.random_int(Number(lo), Number(hi))),

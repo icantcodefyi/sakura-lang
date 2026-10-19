@@ -49,12 +49,19 @@ pub enum Dir {
     },
 }
 
+/// An OS error's `Err` text by its class (ABI §8.2, design §17.229 (5)): the classes both hosts
+/// name, else the platform's own text, which parity does not compare.
 fn host_message(e: &std::io::Error) -> String {
-    if e.kind() == std::io::ErrorKind::NotFound {
-        "not found".into()
-    } else {
-        e.to_string()
+    use std::io::ErrorKind as K;
+    match e.kind() {
+        K::NotFound => "not found",
+        K::PermissionDenied => "permission denied",
+        K::AlreadyExists => "already exists",
+        K::IsADirectory => "is a directory",
+        K::NotADirectory => "not a directory",
+        _ => return e.to_string(),
     }
+    .into()
 }
 
 /// `realpath`, as Node's `realpathSync`.
@@ -578,6 +585,20 @@ mod tests {
         );
         assert_eq!(d.subdir("missing").err(), Some("no such directory".into()));
         assert_eq!(d.subdir("a.txt").err(), Some("not a directory".into()));
+        // OS errors answer by class (design §17.229 (5)), the texts the JS host gives.
+        assert_eq!(d.read("sub", u64::MAX), Err("is a directory".into()));
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let locked = tmp.join("in/locked");
+            std::fs::write(&locked, b"L").unwrap();
+            std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0)).unwrap();
+            // Root reads it anyway; the class is what is checked.
+            if std::fs::read(&locked).is_err() {
+                assert_eq!(d.read("locked", u64::MAX), Err("permission denied".into()));
+            }
+            std::fs::remove_file(&locked).unwrap();
+        }
         let sub = d.subdir("sub").unwrap();
         sub.write("c", b"C").unwrap();
         assert_eq!(d.read("sub/c", u64::MAX), Ok(b"C".to_vec()));

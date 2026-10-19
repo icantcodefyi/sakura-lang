@@ -10,6 +10,11 @@ Compare the release tag with main when identifying changes not in that preview.
 
 ### Changed
 
+- The JS and WASM hosts answer an OS error by its class, as the native host does (design
+  §17.229 (5)): a permission error is `Err("permission denied")`, not Node's `EACCES:
+  permission denied, open '…'`; likewise `already exists`, `is a directory` and `not a
+  directory`. On Node a sleep longer than 2^31 − 1 ms (about 24.8 days) now waits its full
+  duration instead of firing after 1 ms.
 - `sakura.toml` refuses `[dependencies]` with `V8005 dependencies_not_supported` (RFC 0001,
   design §17.232). Packages arrive in a later minor release and the key is reserved: an empty
   table, entries, an inline `dependencies = {}` or a dotted key is an error at the key from

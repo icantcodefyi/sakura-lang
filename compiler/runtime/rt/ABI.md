@@ -754,6 +754,17 @@ these; a WASI command (the pure corpus on Wasmtime, `Host::Wasi`) imports only
   `http_recording_lookup`, `http_recording_lookup_stream`, `http_recording_open`,
   `json_decode`, `json_encode`, `json_parse`, `json_schema`.
 
+**Host `Err` text** (design §17.229 (5)a; both hosts). The runtime's own messages for `fs_*` and
+`file_*` (`not found`, `escapes the directory`, `not a relative path`, `no such directory`,
+`this directory has no host access`, `not in the manifest's fs.<kind> list`) are the contract.
+An OS error maps by its class, never by its text: not found → `not found`, permission denied →
+`permission denied`, already exists → `already exists`, is a directory → `is a directory`, not
+a directory → `not a directory`. Node maps `e.code` (`ENOENT`; `EACCES`, `EPERM`; `EEXIST`;
+`EISDIR`; `ENOTDIR`), the native host `io::Error::kind()`. Any other class answers the host's
+own text, which parity does not compare. **Sleeps** (§17.229 (5)b): `clock_sleep_ms` waits the
+whole duration on both hosts; Node chains timers of at most 2^31 − 1 ms and a cancel clears the
+pending one.
+
 L4 added no import: twins are internal functions, and their gauge and state are module
 globals (§5). `ptr, len` is a slice (§8.1) and every unannotated parameter an `i32`.
 
