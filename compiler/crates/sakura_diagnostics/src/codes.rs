@@ -86,7 +86,15 @@ Fixed:
 
     V0006 "malformed_number" LEX,
 "A numeric literal is malformed, such as `0x` with no digits, `1.` or `.5`. Write `1.0` and
-`0.5`.";
+`0.5`.
+
+A digit separator is one `_` between two digits of one digit run (design §2.2): `1_000`,
+`0xff_ff` and `1_000.000_5` are numbers; `1_`, `1__000`, `0x_ff`, `1_.5` and `1.5_e3` are not.
+
+Wrong:
+    let n = 1_000_
+Fixed:
+    let n = 1_000";
 
     V0007 "reserved_keyword" PARSE,
 "The word is reserved for a future edition: `verify proof ghost control resume region spawn actor

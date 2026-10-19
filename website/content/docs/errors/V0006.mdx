@@ -9,6 +9,21 @@ An error from the `lex` phase. `sakura explain V0006` prints this explanation of
 A numeric literal is malformed, such as `0x` with no digits, `1.` or `.5`. Write `1.0` and
 `0.5`.
 
+A digit separator is one `_` between two digits of one digit run (design §2.2): `1_000`,
+`0xff_ff` and `1_000.000_5` are numbers; `1_`, `1__000`, `0x_ff`, `1_.5` and `1.5_e3` are not.
+
+Wrong:
+
+```sakura
+let n = 1_000_
+```
+
+Fixed:
+
+```sakura
+let n = 1_000
+```
+
 ## Wrong program
 
 [`compiler/tests/ui/V0006_malformed_number.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V0006_malformed_number.sak), which the compiler's ui suite runs through `sakura check`:
@@ -48,6 +63,8 @@ fn mask() -> Int { 0x }
   "fixes": []
 }
 ```
+
+More fixtures for this code: [`compiler/tests/ui/V0006_misplaced_digit_separator.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/V0006_misplaced_digit_separator.sak).
 
 ## Fixed program
 

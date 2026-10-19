@@ -32,13 +32,14 @@ The position fixture gives each word as a function, effect operation, and member
 
 **G08** A tagged string has a value name immediately adjacent to its opening quote. [Tagged strings](../../compiler/crates/sakura_syntax/tests/data/ok/holes_and_templates.sak).
 
-**G09** Integer tokens support decimal digits, lowercase `0x` hexadecimal and `0b` binary prefixes, and digit separators `_`, while float tokens require digits on both sides of `.` and permit a decimal exponent after the fraction. [Numeric tokens](../../compiler/crates/sakura_syntax/tests/data/ok/lexical.sak), [numbers](../../compiler/crates/sakura_syntax/src/lexer.rs), [numeric_boundaries](../../compiler/crates/sakura_syntax/src/lexer.rs).
+**G09** Integer tokens support decimal digits, lowercase `0x` hexadecimal and `0b` binary prefixes, and digit separators `_`, while float tokens require digits on both sides of `.` and permit a decimal exponent after the fraction; a separator is one `_` between two digits of one digit run, and any other `_` in a numeric token produces `V0006`. [Numeric tokens](../../compiler/crates/sakura_syntax/tests/data/ok/lexical.sak), [numbers](../../compiler/crates/sakura_syntax/src/lexer.rs), [numeric_boundaries](../../compiler/crates/sakura_syntax/src/lexer.rs), [misplaced separators](../../compiler/tests/ui/V0006_misplaced_digit_separator.sak).
 
 **G10** A minus sign is a separate prefix operator, and an integer token greater than `9223372036854775807` produces `V0003`. [Negative pattern](../../compiler/crates/sakura_syntax/tests/data/ok/exprs.sak), [overflow](../../compiler/tests/ui/V0003_int_literal_out_of_range.sak), [numeric_boundaries](../../compiler/crates/sakura_syntax/src/lexer.rs).
 
-Informative, as pinned by `numeric_boundaries`: the lexer accepts a separator anywhere after
-the first digit or radix prefix, so `1_`, `1__000`, `0x_1`, `1_.5`, `1.5_`, and `1.5_e3`
-are tokens, while `_1` is a name and `0x_` is `V0006`.
+Informative, as pinned by `numeric_boundaries` (design §17.243 (2)): `1_000`, `0xFF_ff`,
+`0b1_0` and `1_0.5_0` are tokens; a separator first, last, doubled or beside `.`, an exponent
+or a radix prefix (`1_`, `1__000`, `0x_1`, `0x1_`, `1_.5`, `1.5_`, `1.5_e3`) is `V0006` at
+that `_`; `_1` is a name and `0x_` is `V0006` for its missing digits.
 `.5` and `1.` are a dot and an integer, and `1.e5` is an integer, a dot, and a name.
 An exponent without a fraction (`1e5`), an exponent without digits (`1.5e`), a separator
 inside an exponent, and uppercase or unknown radix prefixes (`0X1`, `0o7`) are `V0006`;

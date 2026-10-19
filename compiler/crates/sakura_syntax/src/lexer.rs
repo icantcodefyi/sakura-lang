@@ -369,6 +369,13 @@ impl Lexer<'_> {
                 start,
                 self.pos,
             );
+        } else if let Some(at) = misplaced_separator(&self.src[start..self.pos]) {
+            self.error(
+                codes::MALFORMED_NUMBER,
+                "a digit separator goes between two digits",
+                start + at,
+                start + at + 1,
+            );
         } else if kind == INT && int_value(&self.src[start..self.pos]).is_none() {
             self.error(
                 codes::INT_OUT_OF_RANGE,
@@ -586,6 +593,22 @@ fn apply_newline_rule(mut tokens: Vec<Token>) -> Vec<Token> {
     merged
 }
 
+/// The offset of the first `_` in a numeric token that is not between two digits of one digit
+/// run (design §2.2, §17.243 (2)): first or last, doubled, or beside `.`, an exponent, a sign or
+/// a radix prefix.
+fn misplaced_separator(text: &str) -> Option<usize> {
+    let (skip, digit): (usize, fn(u8) -> bool) = match text.get(..2) {
+        Some("0x") => (2, |b| b.is_ascii_hexdigit()),
+        Some("0b") => (2, |b| matches!(b, b'0' | b'1')),
+        _ => (0, |b| b.is_ascii_digit()),
+    };
+    let bytes = text.as_bytes();
+    (skip..bytes.len()).find(|&i| {
+        bytes[i] == b'_'
+            && !(i > skip && digit(bytes[i - 1]) && bytes.get(i + 1).is_some_and(|&b| digit(b)))
+    })
+}
+
 /// Value of an `INT` token: underscores removed, `0x`/`0b` decoded. `None` when out of range.
 pub(crate) fn int_value(text: &str) -> Option<i64> {
     let digits = text.replace('_', "");
@@ -749,12 +772,17 @@ mod tests {
     fn numeric_boundaries() {
         let cases = [
             "1_000",
+            "1_000_000",
             "1__000",
             "1_",
+            "1_000_",
             "_1",
             "0x_1",
             "0x1_",
             "0b_1",
+            "0b1_0",
+            "0b1__0",
+            "0xFF_ff",
             "0x_",
             "0b_",
             "0x",
@@ -763,6 +791,8 @@ mod tests {
             "1._5",
             "1.5_",
             "1.5_e3",
+            "1_0.5_0",
+            "1.5e_3",
             ".5",
             "1.",
             "1.e5",

@@ -49,7 +49,9 @@ Decided in design §17.243 (round 27); the fixtures follow the decisions, which 
 - Separators are accepted beyond the design's "between digits" wording: trailing (`1_`),
   repeated (`1__000`), after a radix prefix (`0x_1`), before `.` (`1_.5`), and before an
   exponent (`1.5_e3`).
-  → one `_` between two digits of one run; the five cases become `V0006` (§17.243 (2)).
+  → one `_` between two digits of one run; the five cases are `V0006` (§17.243 (2)), pinned
+  by `numeric_boundaries` and the
+  [misplaced-separator fixture](../../compiler/tests/ui/V0006_misplaced_digit_separator.sak).
 - A non-UTF-8 file has no diagnostic code, only the usage error; `sakura_syntax::lex`
   accepts a Rust string, so totality is claimed over text, not arbitrary bytes.
   → `V0015 source_not_utf8` (planned) from the loader, a `tests/ui` fixture; `lex` keeps `&str`

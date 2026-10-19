@@ -7,6 +7,13 @@ Releases follow the [stability policy](STABILITY.md). The published preview is
 
 ## [Unreleased]
 
+### Changed
+
+- A digit separator in a numeric literal is one `_` between two digits of one digit run
+  (design §2.2, §17.243 (2)). `1_`, `1__000`, `0x_ff`, `0xff_`, `1_.5`, `1.5_` and `1.5_e3`,
+  which the lexer used to accept, are now `V0006 malformed_number` at the misplaced `_`;
+  `1_000`, `0xff_ff` and `1_000.000_5` are unchanged.
+
 ## [0.1.0] - Unreleased
 
 The first non-alpha preview and the close of milestone M4, the WebAssembly backend (exit

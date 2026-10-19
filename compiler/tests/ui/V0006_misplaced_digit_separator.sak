@@ -1,0 +1,23 @@
+// milestone: M0
+// expect: V0006 V0006 V0006 V0006 V0006 V0006 V0006 V0006
+// expect-span: V0006 13:32
+// A digit separator is one `_` between two digits of one digit run (design §2.2, §17.243 (2)):
+// not first or last, not doubled, not beside `.`, an exponent or a radix prefix.
+
+fn grouped() -> Int { 1_000_000 + 0xFF_FF + 0b1010_1010 }
+
+fn grouped_fraction() -> Float { 1_000.000_5 }
+
+fn trailing() -> Int { 1_ }
+
+fn doubled() -> Int { 1_000 + 1__000 }
+
+fn after_radix() -> Int { 0x_ff + 0b_1 }
+
+fn hex_trailing() -> Int { 0xff_ }
+
+fn before_dot() -> Float { 1_.5 }
+
+fn after_fraction() -> Float { 1.5_ }
+
+fn before_exponent() -> Float { 1.5_e3 }

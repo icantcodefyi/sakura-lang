@@ -10,6 +10,7 @@ compiler/fuzz/corpus/parse/depth.sak
 compiler/tests/ui/V0002_unterminated_block_comment.sak
 compiler/tests/ui/V0003_int_literal_out_of_range.sak
 compiler/tests/ui/V0005_invalid_escape.sak
+compiler/tests/ui/V0006_misplaced_digit_separator.sak
 compiler/tests/ui/V0007_reserved_keyword.sak
 compiler/tests/ui/V0008_nesting_limit.sak
 compiler/tests/ui/V0010_chained_comparison.sak
