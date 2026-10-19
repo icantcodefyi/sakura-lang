@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import { SakuraMark } from "@/components/brand";
 import { Seal } from "@/components/seal";
 import { cn } from "@/lib/utils";
@@ -11,7 +19,7 @@ import { TokenSpans, type TokenLine } from "@/components/token-spans";
  * The hero story, in one loop of the agent/compiler conversation:
  * 1. an agent streams `signup` token by token,
  * 2. the checker confirms each effect against the signature as lines land,
- * 3. line 12 performs `Http`, which the signature never allowed: V3001,
+ * 3. line 13 performs `Http`, which the signature never allowed: V3001 (0-based BAD_LINE 12),
  * 4. the agent declines the signature change and deletes the call,
  * 5. the signature is unchanged; its `ensures` stays a runtime check (design §7.2).
  *
@@ -147,6 +155,11 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
   });
 
   const removed = state.deleted >= badLen;
+  // The removed line keeps its box (invisible) and the lines below slide over it by its height:
+  // a transform, so deleting a line is not a layout shift. Measured before paint.
+  const badRow = useRef<HTMLSpanElement>(null);
+  const [lift, setLift] = useState(0);
+  useLayoutEffect(() => setLift(removed ? (badRow.current?.offsetHeight ?? 0) : 0), [removed]);
   const cursorLine = state.phase === "fixing" ? BAD_LINE : rows.findLastIndex((r) => r.started);
   const done = state.phase === "kept";
   const tickerLine = rows.findLastIndex((r, i) => NOTES[i] && r.complete);
@@ -171,8 +184,8 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
         >
           <code className="grid content-start @min-[38rem]:min-w-max">
             {rows.map((r, i) => {
-              if (i === BAD_LINE && removed) return null;
-              const visible = r.started;
+              const gone = i === BAD_LINE && removed;
+              const visible = r.started && !gone;
               const note = NOTES[i];
               const showNote = note && r.complete && !(i === BAD_LINE && state.phase === "fixing");
               const bad = i === BAD_LINE && (state.phase === "caught" || state.phase === "fixing");
@@ -181,7 +194,9 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
               return (
                 <span
                   key={i}
-                  className={`grid min-h-[1lh] grid-cols-[2rem_minmax(0,1fr)] transition-colors duration-300 @min-[38rem]:grid-cols-[2.25rem_1fr_7.5rem] ${
+                  ref={i === BAD_LINE ? badRow : undefined}
+                  style={i > BAD_LINE && lift ? { translate: `0 -${lift}px` } : undefined}
+                  className={`grid min-h-[1lh] grid-cols-[2rem_minmax(0,1fr)] transition-[background-color,translate] duration-300 ease-[var(--ease-out)] @min-[38rem]:grid-cols-[2.25rem_1fr_7.5rem] ${
                     bad ? "bg-fail-wash" : proved ? "bg-ok-wash" : ""
                   } ${visible ? "" : "invisible"}`}
                 >
@@ -191,15 +206,18 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
                     ) : null}
                     {visible ? i + 1 - (removed && i > BAD_LINE ? 1 : 0) : ""}
                   </span>
-                  {/* The invisible full line reserves the final height, so wrapped lines never
-                      push the window taller while the agent types. */}
-                  <span className="grid pr-3 @min-[38rem]:pr-2">
-                    <span className={`invisible col-start-1 row-start-1 ${LINE}`}>
-                      <TokenSpans line={r.line} />
-                    </span>
-                    <span className={`col-start-1 row-start-1 ${LINE}`}>
+                  {/* The whole line is laid out from the first keystroke, the untyped rest
+                      invisible, so a wrapped line never grows or rewraps while the agent types. */}
+                  <span className="pr-3 @min-[38rem]:pr-2">
+                    <span className={`block ${LINE}`}>
                       <TokenSpans line={r.line} upTo={upTo} />
-                      {cursorLine === i && !done ? <Caret /> : null}
+                      {/* Keyed by position: a caret that moved would count as a layout shift; a new one doesn't. */}
+                      {cursorLine === i && !done ? (
+                        <Caret key={`${state.typed}:${state.deleted}`} />
+                      ) : null}
+                      <span className="invisible">
+                        <TokenSpans line={r.line} from={upTo} />
+                      </span>
                     </span>
                   </span>
                   <span className="hidden h-[1lh] items-center pr-4 @min-[38rem]:flex">
@@ -212,16 +230,6 @@ export function HeroDemo({ lines }: { lines: TokenLine[] }) {
                 </span>
               );
             })}
-            {/* Once the bad line is gone, an invisible copy holds its height so the window never
-                shrinks. */}
-            {removed ? (
-              <span className="invisible grid grid-cols-[2rem_minmax(0,1fr)] @min-[38rem]:grid-cols-[2.25rem_1fr_7.5rem]">
-                <span />
-                <span className={`pr-3 @min-[38rem]:pr-2 ${LINE}`}>
-                  <TokenSpans line={lines[BAD_LINE]} />
-                </span>
-              </span>
-            ) : null}
           </code>
         </pre>
 
@@ -269,12 +277,15 @@ function GutterMark({ kind }: { kind: Note["kind"] }) {
   );
 }
 
+/**
+ * An empty inline box with the bar positioned on it: no width of its own and, unlike an
+ * inline-block, no line-break opportunity, so the line wraps exactly as the finished line will.
+ */
 function Caret() {
   return (
-    <span
-      aria-hidden
-      className="ml-px inline-block h-[1.15em] w-[0.5ch] translate-y-[0.2em] bg-sakura motion-safe:animate-[caret_1s_steps(1)_infinite]"
-    />
+    <span aria-hidden className="relative">
+      <span className="absolute bottom-0 left-px h-[1.15em] w-[0.5ch] bg-sakura motion-safe:animate-[caret_1s_steps(1)_infinite]" />
+    </span>
   );
 }
 
@@ -329,19 +340,22 @@ function Diagnostic() {
     <div className="border-t border-border px-4 py-3.5 font-mono text-[11.5px] leading-relaxed @min-[38rem]:px-5">
       <p className="text-foreground">
         <span className="font-semibold text-fail">error V3001</span>{" "}
-        <span className="text-muted-foreground">src/users.sak:12:11</span>
+        <span className="text-muted-foreground">src/users.sak:13:11</span>
       </p>
       <p className="mt-1 font-sans text-[13px] text-foreground">
         function <code className="font-mono">signup</code> performs{" "}
-        <code className="font-mono text-sakura-text">Http</code>, which its signature does not
-        allow.
+        <code className="font-mono text-sakura-text">Http</code> and{" "}
+        <code className="font-mono text-sakura-text">Fail&lt;HttpError | RateLimited&gt;</code>,
+        which its signature does not allow.
       </p>
       <ul className="mt-3 grid gap-1.5">
         <li className="flex flex-wrap items-baseline gap-x-2">
           <span className="rounded border border-border px-1.5 text-[10.5px] text-muted-foreground">
             interface_change
           </span>
-          <span className="text-muted-foreground">add Http to the signature: needs review</span>
+          <span className="text-muted-foreground">
+            add them to the signature: suggested, needs review
+          </span>
         </li>
         <li className="flex flex-wrap items-baseline gap-x-2">
           <span className="rounded border border-ok/40 px-1.5 text-[10.5px] text-ok">agent</span>
