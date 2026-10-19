@@ -1,1 +1,2 @@
 - [12 — M5 native backend, RC, reuse and effects](12-m5-native.md): October 2026 research; representation decisions pending the quiet-window measurements; includes [requests to Fable](12-evidence/REQUESTS.md).
+- [15 — Bun web APIs: coverage, shapes and backend plans](15-web-apis.md): 2026-10-19 research by GPT-6-Astra for the owner's web-APIs request; verified and decided in design §17.262, [RFC 0002](../docs/rfcs/0002-web-platform-apis.md) and [docs/plans/web-apis.md](../docs/plans/web-apis.md).
