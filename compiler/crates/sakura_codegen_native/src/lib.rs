@@ -43,6 +43,9 @@ pub struct Options {
     pub texts: Vec<String>,
     /// The `sakura.native` record's `module_hash`: a hash of the module's inputs.
     pub module_hash: [u8; 32],
+    /// `--native-checks` (design §17.173 (4)): every heap load and store first asks the
+    /// runtime whether it stays inside its object's live block (`rt_check`).
+    pub checks: bool,
 }
 
 impl Default for Options {
@@ -52,6 +55,7 @@ impl Default for Options {
             sources: vec![],
             texts: vec![],
             module_hash: [0; 32],
+            checks: false,
         }
     }
 }
@@ -192,6 +196,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
                 may_abort: &may_abort,
                 twin_of,
                 lines: &mut lines,
+                checks: opts.checks,
             };
             func::compile(&mut env, b, f, twin)?;
         }

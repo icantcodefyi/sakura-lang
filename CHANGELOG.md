@@ -101,6 +101,8 @@ Compare the release tag with main when identifying changes not in that preview.
   Native executables carry unwind tables and a DWARF line table, so `lldb`, `gdb` and
   profilers show Sakura frames at their `.sak` lines, and a `sakura.native` record that the
   runtime checks before running (`V8003` for another target, layout profile or ABI).
+  `sakura build --target native --native-checks` builds a checked executable that stops at
+  any generated heap access outside its object.
 
 - Release candidate checks enforce deprecation notice periods, major-only removals
   and unchanged Rust MSRV in patch releases; the deprecation registry starts empty.

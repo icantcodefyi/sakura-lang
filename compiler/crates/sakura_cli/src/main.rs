@@ -142,6 +142,12 @@ enum Command {
         /// the pure host operations are built in, the rest trap (`bench/` Wasmtime cells).
         #[arg(long, hide = true)]
         wasi: bool,
+        /// With `--target native`, the checked lowering (design §17.173 (4)): every heap load
+        /// and store is checked against the allocator's live blocks, and a stray one stops the
+        /// program. A debug build for the sanitizer lane.
+        #[cfg(feature = "native")]
+        #[arg(long)]
+        native_checks: bool,
         paths: Vec<PathBuf>,
     },
     /// Build and run `main` with node. The exit code is the program's: 0 ok, 1 `main` failed,
@@ -493,6 +499,8 @@ fn dispatch(command: Command) -> ExitCode {
             dump,
             no_direct,
             wasi,
+            #[cfg(feature = "native")]
+            native_checks,
             paths,
         } => match load(&paths).map_err(usage_error).and_then(|snapshot| {
             let opts = BuildOptions {
@@ -526,6 +534,10 @@ fn dispatch(command: Command) -> ExitCode {
                 return Err(usage_error("`--wasi` needs `--target wasm`"));
             }
             #[cfg(feature = "native")]
+            if native_checks && (target != "native" || emit != "js") {
+                return Err(usage_error("`--native-checks` needs `--target native`"));
+            }
+            #[cfg(feature = "native")]
             if target == "native" && emit == "js" {
                 if manifest {
                     return Err(usage_error(
@@ -533,7 +545,7 @@ fn dispatch(command: Command) -> ExitCode {
                     ));
                 }
                 let out_dir = out_dir.unwrap_or_else(|| Path::new("target/sakura/native").into());
-                native::build(json, &snapshot, &out_dir, &opts, false)?;
+                native::build(json, &snapshot, &out_dir, &opts, false, native_checks)?;
                 return Ok(());
             }
             if target == "wasm" && emit == "js" {
@@ -879,7 +891,7 @@ fn run(
     } else if target == "native" {
         #[cfg(feature = "native")]
         {
-            native::build(false, &snapshot, out_dir, &opts, true)
+            native::build(false, &snapshot, out_dir, &opts, true, false)
         }
         #[cfg(not(feature = "native"))]
         unreachable!("`--target native` needs the `native` feature")

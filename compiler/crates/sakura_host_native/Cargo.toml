@@ -37,5 +37,9 @@ required-features = ["native"]
 name = "corpus"
 required-features = ["native"]
 
+[[test]]
+name = "native_detect"
+required-features = ["native"]
+
 [lints]
 workspace = true

@@ -79,6 +79,8 @@ pub struct Env<'a> {
     pub twin_of: Option<cranelift_module::DataId>,
     /// The source positions instructions are marked with (the DWARF line table).
     pub lines: &'a mut crate::debuginfo::Lines,
+    /// `--native-checks`: each heap access calls `rt_check` first.
+    pub checks: bool,
 }
 
 /// A twin's state, its last result (ABI §5 "direct style", design §17.118): returned,
@@ -401,13 +403,26 @@ impl Gen<'_, '_, '_> {
     }
 
     fn load(&mut self, t: Type, obj: Value, offset: i32) -> Value {
+        self.check(obj, offset, t);
         let a = self.addr(obj);
         self.b.ins().load(t, MemFlagsData::trusted(), a, offset)
     }
 
     fn store(&mut self, x: Value, obj: Value, offset: i32) {
+        let t = self.b.func.dfg.value_type(x);
+        self.check(obj, offset, t);
         let a = self.addr(obj);
         self.b.ins().store(MemFlagsData::trusted(), x, a, offset);
+    }
+
+    /// Under `--native-checks`, `rt_check(obj, offset, size)` before an access of a `t`.
+    fn check(&mut self, obj: Value, offset: i32, t: Type) {
+        if self.e.checks {
+            let offset = self.iconst32(i64::from(offset));
+            let len = self.iconst32(i64::from(t.bytes()));
+            self.call0("rt_check", &[obj, offset, len])
+                .expect("rt_check has one signature");
+        }
     }
 
     /// The static block's offset plus `off`.

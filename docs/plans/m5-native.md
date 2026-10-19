@@ -138,9 +138,21 @@ DWARF 4 with a subprogram per function and a line table from each instruction's 
 points; lldb reads it unrelocated, so function addresses are written resolved. The
 `sakura.native` record (ABI §1b) is in its own section, and the driver (entry
 `sakura_native_main_v3`) refuses another target, profile, ABI MAJOR or newer MINOR with `V8003`
-before running. The corpus now has 177 programs; 176 agree each way. **Left of N2:** N2e
-`--native-checks` and the §17.173 lanes with the five `native_detect.rs` faults; N2f the compile report (lowering, codegen, object, link p95) and the
-`{js, wasm, native} × {ubuntu, macos}` matrix, plus test mode (`sakura test --target native`)
+before running. The corpus then had 177 programs; 176 agreed each way. **N2e, the checked
+lowering (landed):** `sakura build --target native --native-checks` calls `rt_check` before
+every generated heap load and store (frame slots and the static block included; generated code
+has no bulk copy). The shadow is the allocator's own header: a live block's tag and its class or
+page-run size bound the access, `free`'s free tag is the poison, and the static block (its
+header overwritten by the image) is bounded by the image; a stray access aborts with a
+`native-checks:` line. Nothing changes for an unchecked build, and no runtime line wasm32
+compiles moves (the WASM runtime embeds panic locations). The corpus runs clean
+under it both ways (179 of 179) on both A targets in the native job, and `native_detect.rs`
+seeds a generated out-of-bounds load and a freed-object read, which it catches. Poison on
+reuse-token consumption waits for N3's reuse (the LIR has no tokens yet). **Left of N2:** the
+other three `native_detect.rs` controls (Miri's invalid slot kind, ASan's double drop and stale
+callback) with the ASan and Memcheck lanes and the `crabgrind` annotations; N2f the compile
+report (lowering, codegen, object, link p95) and the `{js, wasm, native} × {ubuntu, macos}`
+matrix, plus test mode (`sakura test --target native`)
 once N1b's services land; `deep_recursion_gauge` and the exact-i64 lane.
 
 **N1b progress (2026-10-19).** §17.229 (5) landed first (bc61e0c5): both JS hosts answer an OS

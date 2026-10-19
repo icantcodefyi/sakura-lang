@@ -184,9 +184,10 @@ fn build(
     let object =
         sakura_codegen_native::emit(&m, &opts).map_err(|e| format!("codegen failed: {e}"))?;
     let stem = format!(
-        "{}{}",
+        "{}{}{}",
         name.replace('/', "-"),
-        if opts.direct { "" } else { "-frames" }
+        if opts.direct { "" } else { "-frames" },
+        if opts.checks { "-checked" } else { "" }
     );
     let (o, exe) = (dir.join(format!("{stem}.o")), dir.join(&stem));
     std::fs::write(&o, object).unwrap();
@@ -337,6 +338,45 @@ fn the_corpus_compiles_links_and_runs_natively() {
         passed[0],
         passed[1],
         n = programs.len()
+    );
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// Design §17.173 (4): under the checked lowering every corpus program still agrees, with twins
+/// and with `--no-direct`: no generated heap access strays outside its object's live block.
+#[test]
+fn the_corpus_runs_clean_under_native_checks() {
+    use sakura_codegen_native::Options;
+    let programs = programs();
+    driver();
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-checked");
+    std::fs::create_dir_all(&dir).unwrap();
+    let results = big_stack_map(&programs, |p| {
+        [true, false].map(|direct| {
+            let opts = Options {
+                direct,
+                checks: true,
+                ..Default::default()
+            };
+            run_compiled(&p.name, opts, &p.core, &dir)
+        })
+    });
+    let mut failures = vec![];
+    for (p, runs) in programs.iter().zip(results) {
+        for (mode, (got, stdout, stderr, _)) in ["direct", "--no-direct"].into_iter().zip(runs) {
+            let known = KNOWN_NATIVE.iter().any(|(n, _)| *n == p.name);
+            if !known && (got != p.ending || stdout != p.stdout) {
+                failures.push(format!(
+                    "{} ({mode}): expected {} got {got}\n--- stderr\n{stderr}",
+                    p.name, p.ending
+                ));
+            }
+        }
+    }
+    eprintln!(
+        "native-checks: {} of {} programs clean both ways",
+        programs.len() - KNOWN_NATIVE.len() - failures.len(),
+        programs.len() - KNOWN_NATIVE.len()
     );
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }

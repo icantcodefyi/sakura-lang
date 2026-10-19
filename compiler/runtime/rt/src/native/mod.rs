@@ -342,6 +342,45 @@ pub extern "C" fn sakura_abi_version(ctx: Ctx<'_>) -> u32 {
     unsafe { (*ctx.0.as_ptr()).abi }
 }
 
+/// `--native-checks` (design §17.173 (4)): compiled code's access of `len` bytes at `offset` in
+/// the object at `obj` must stay inside that object's live block, as the allocator's own
+/// headers record it: a freed block carries the free tag (the poison `free` writes), a live one
+/// its class or page-run size; the static block, whose header the image overwrites, is
+/// bounded by the image. Anything else stops the process: compiled code has gone wrong.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_check(ctx: Ctx<'_>, obj: u32, offset: u32, len: u32) {
+    use crate::heap::{CLASSES, RUN};
+    let mem = &ctx.rt().heap.mem;
+    let end = u64::from(obj) + u64::from(offset) + u64::from(len);
+    let statics = u64::from(ctx.statics());
+    // SAFETY: a read of a field no mutable reference covers, from a live instance.
+    let image = unsafe { (*ctx.0.as_ptr()).module.image().bytes.len() } as u64;
+    let block = if (statics..statics + image).contains(&u64::from(obj)) {
+        Some(statics + image)
+    } else if obj.is_multiple_of(8)
+        && u64::from(obj) >= u64::from(mem.base()) + 8
+        && u64::from(obj) + 8 <= mem.size()
+        // Tag 0 is a free block's (`heap.rs`); no object has it.
+        && mem.u16(obj) != 0
+    {
+        match mem.u8(obj + 2) {
+            RUN => Some(u64::from(obj) + u64::from(mem.u32(obj - 8)) - 8),
+            c => CLASSES
+                .get(usize::from(c))
+                .map(|&n| u64::from(obj) + u64::from(n)),
+        }
+    } else {
+        None
+    };
+    if block.is_none_or(|block| end > block) {
+        std::eprintln!(
+            "native-checks: an access of {len} bytes at offset {offset} of heap object {obj} \
+             is outside every live object"
+        );
+        std::process::abort();
+    }
+}
+
 /// The module's dispatch for `Cx`: the `Rc` is cloned out of the field first, so no borrow of
 /// the instance spans the call into code.
 pub(crate) fn dispatch(p: NonNull<SakuraInstance>, code: u32, env: u32, frame: u32) -> u32 {

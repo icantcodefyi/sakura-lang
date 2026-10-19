@@ -36,13 +36,15 @@ fn driver_dir() -> Result<PathBuf, String> {
 }
 
 /// Checks, lowers, compiles and links `snapshot` into `out_dir/main`. On failure the
-/// diagnostics are already reported. `then` is the command that continues (`run`).
+/// diagnostics are already reported. `then` is the command that continues (`run`); `checks`
+/// is `--native-checks`.
 pub fn build(
     json: bool,
     snapshot: &Snapshot,
     out_dir: &Path,
     opts: &BuildOptions,
     then: bool,
+    checks: bool,
 ) -> Result<PathBuf, ExitCode> {
     let refused = crate::wasm::js_externals(snapshot, "native");
     if !refused.is_empty() {
@@ -79,9 +81,14 @@ pub fn build(
         // The inputs: the sources (the snapshot hash) and how they were compiled.
         module_hash: {
             use sha2::Digest;
-            let inputs = format!("{} {opts:?} drop_proved={}", snapshot.hash(), !then);
+            let inputs = format!(
+                "{} {opts:?} drop_proved={} checks={checks}",
+                snapshot.hash(),
+                !then
+            );
             sha2::Sha256::digest(inputs).into()
         },
+        checks,
     };
     let object = sakura_codegen_native::emit(&lir, &native).map_err(usage_error)?;
     let driver = driver_dir().map_err(usage_error)?;

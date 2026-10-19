@@ -221,7 +221,11 @@ against the runtime object) has its wasm32 signature with `ctx` prepended: `i32`
 `void`; names are unchanged (`rt_set_ret`, `rt_call`, `rt_vt_result`, …). Two differ in
 meaning, not type: `rt_raise(ctx, code, ptr, len, site)` takes its message as a heap slice
 that must be UTF-8 (invalid text is `D090` instead of the defect); and `drop`, a wasm32 export,
-is `sakura_drop`. A host-delegated builtin (§8.2 shape `hosted`) is `rt_hosted` with the
+is `sakura_drop`. One has no wasm32 counterpart: `void rt_check(ctx, obj, offset, len)`,
+which only the checked lowering calls (`--native-checks`, design §17.173 (4)) before each heap
+load and store, and which aborts the process when the `len` bytes at `obj + offset` leave
+`obj`'s live block (bounded by its header's class or run size; a freed block's tag is 0) or the
+static block. A host-delegated builtin (§8.2 shape `hosted`) is `rt_hosted` with the
 builtin's index in the compiler's `HOSTED` list (sorted by name) instead of a `sakura_host`
 import; arguments and answers are §8.1 bytes exactly as on wasm32, so `rt_vt_result` checks
 both targets' answers the same way (W2). The host-side calls (`run`, `start`, `complete`,

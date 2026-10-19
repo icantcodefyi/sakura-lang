@@ -772,3 +772,38 @@ fn native_agrees_with_js_on_run_mode_programs() {
     assert!(!jobs.is_empty(), "the corpus must not be empty");
     assert!(failures.is_empty(), "{}", failures.join("\n\n"));
 }
+
+/// Design §17.173 (4): `sakura build --target native --native-checks` builds the checked
+/// lowering, which runs a correct program unchanged; the flag needs `--target native`.
+#[cfg(feature = "native")]
+#[test]
+fn native_checks_builds_a_checked_executable() {
+    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let target = Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-driver");
+    let lib = sakura_codegen_native::build_driver(&manifest.join("../.."), &target).unwrap();
+    let env = [("SAKURA_NATIVE_LIB_DIR", lib.as_path())];
+    let fixtures = manifest.join("../../tests/semantics");
+    let out = Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-checks-cli");
+    let out = out.to_str().unwrap();
+    let args = [
+        "build",
+        "--target",
+        "native",
+        "--native-checks",
+        "--out-dir",
+        out,
+    ];
+    let built = sakura_env(&[&args[..], &["hello.sak"]].concat(), &fixtures, &env);
+    assert_eq!(built.code, Some(0), "{}", built.stderr);
+    let ran = std::process::Command::new(Path::new(out).join("main"))
+        .output()
+        .unwrap();
+    assert_eq!(String::from_utf8_lossy(&ran.stdout), "hello, Sakura Lang\n");
+    let refused = sakura(&["build", "--native-checks", "hello.sak"], &fixtures);
+    assert_eq!(refused.code, Some(2), "{}", refused.stderr);
+    assert!(
+        refused
+            .stderr
+            .contains("`--native-checks` needs `--target native`")
+    );
+}
