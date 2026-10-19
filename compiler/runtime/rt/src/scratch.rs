@@ -91,11 +91,14 @@ impl Rt {
     }
 }
 
-/// A `String` under construction: the object grows by copying until `finish`.
+/// A `String` under construction: the object grows by copying until `finish`. A `wipe` buffer
+/// holds key material or a `Secret`'s value (ABI §8.1): every block it leaves behind is
+/// overwritten before it is freed.
 pub struct StrBuf {
     obj: u32,
     len: u32,
     cap: u32,
+    wipe: bool,
 }
 
 impl StrBuf {
@@ -112,6 +115,12 @@ impl StrBuf {
         self.len == 0
     }
 
+    /// Overwrite every block this buffer frees from now on, and the `String` `finish_bytes`
+    /// copies from.
+    pub fn wipe(&mut self) {
+        self.wipe = true;
+    }
+
     /// Keep only the first `n` bytes.
     pub fn truncate(&mut self, n: u32) {
         self.len = self.len.min(n);
@@ -125,6 +134,7 @@ impl Rt {
             obj,
             len: 0,
             cap: 64 - 16,
+            wipe: false,
         })
     }
 
@@ -139,6 +149,9 @@ impl Rt {
             cap.checked_add(16).ok_or(Defect::HEAP_EXHAUSTED)?,
         )?;
         self.heap.mem.copy(obj + 16, b.obj + 16, b.len);
+        if b.wipe {
+            self.heap.mem.fill(b.obj + 16, 0, b.len);
+        }
         self.heap.free(b.obj);
         b.obj = obj;
         b.cap = self.heap.block_size(obj) - 16;
@@ -169,6 +182,27 @@ impl Rt {
     }
 
     pub fn strbuf_free(&mut self, b: StrBuf) {
+        if b.wipe {
+            self.heap.mem.fill(b.obj + 16, 0, b.len);
+        }
         self.heap.free(b.obj);
+    }
+
+    /// The buffer's bytes as a `Bytes` (`string_to_bytes` of `finish`), the `String` overwritten
+    /// first for a `wipe` buffer.
+    pub fn finish_bytes(&mut self, b: StrBuf) -> Res<u32> {
+        let wipe = b.wipe;
+        let s = self.finish(b);
+        if wipe {
+            let (len, at) = self.data(s);
+            let r = self.new_bytes(len);
+            if let Ok(o) = r {
+                self.heap.mem.copy(o + 12, at, len);
+            }
+            self.heap.mem.fill(at, 0, len);
+            self.drop(s);
+            return r;
+        }
+        self.string_to_bytes(s)
     }
 }

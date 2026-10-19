@@ -725,7 +725,10 @@ reads a guest object header and the guest never receives a host pointer.
   `Llm.anthropic`'s key), `http_send` and `http_stream_open` (a request's `secret_headers`, the
   same egress as JS `fetchArgs`), listed in `sakura_rt::vt::SECRET_IMPORTS`; the cassette
   imports (`http_recording_*`) are not, so a recording sees that a header is secret but never
-  its value. The guest zeroes the encoded transport `Bytes` before freeing it and the host
+  its value. The guest zeroes the encoded transport `Bytes` before freeing it, and every
+  intermediate copy the encoder frees (erratum 2026-10-20, design §17.270 (1): until then the
+  blocks the encoder's growth abandoned and the `String` it copied from were freed unzeroed;
+  no byte, import or export changes, so `sakura_abi_version` stays `0x010400`), and the host
   zeroes its copied slice once decoded; the decoded values are JS strings, which cannot be
   zeroed, so the host only drops its references to them (a JS-built handler keeps its key for
   the life of the instance). This redaction is hygiene under the trust model (the host is part

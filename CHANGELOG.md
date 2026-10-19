@@ -149,6 +149,12 @@ Releases follow the [stability policy](STABILITY.md). The published preview is
 
 ### Security
 
+- The WASM guest now also zeroes the intermediate copies of a kind-`secret` import's encoded
+  arguments (`http_send`, `http_stream_open`, `js_handler`; ABI §8.1 erratum, design §17.270
+  (1)): the blocks the encoder's growth freed and the `String` it copied into the transport
+  `Bytes` kept a secret's value in freed heap memory until reused. Hygiene under the trust
+  model, not a defence against the host; no import, export, byte or ABI version changes.
+
 - `Http.host()` checks the manifest's `net` list on every redirect hop (design §17.262 (4),
   RFC 0002 §2.4). The JS host, and the WASM host that shares its code, checked only the first
   URL and let `fetch` follow redirects, so a granted host could send the program to any host.

@@ -328,3 +328,30 @@ fn host_built_instances_are_released_when_their_handler_dies() {
     }
     assert_eq!(rt.stats().live_objects, base);
 }
+
+#[test]
+fn a_wipe_buffer_overwrites_every_block_it_leaves_behind() {
+    // A kind-`secret` import's revealed arguments (ABI §8.1, design §17.270 (1)): the block a
+    // growth abandons and the `String` `finish_bytes` copies from are zero once freed.
+    let mut rt = runtime();
+    let key = [0xa5u8; 40];
+    let mut b = rt.strbuf().unwrap();
+    b.wipe();
+    rt.put(&mut b, &key).unwrap();
+    let first = b.obj();
+    rt.put(&mut b, &[0x5a; 200]).unwrap();
+    assert_ne!(b.obj(), first, "the buffer grew");
+    assert!(rt.heap.mem.bytes(first + 16, 40).iter().all(|&x| x == 0));
+    let last = b.obj();
+    let out = rt.finish_bytes(b).unwrap();
+    assert_eq!(&rt.data_bytes(out)[..40], &key[..]);
+    assert!(rt.heap.mem.bytes(last + 16, 240).iter().all(|&x| x == 0));
+    rt.drop(out);
+    // Without `wipe` nothing is overwritten (the cost stays on secret arguments only).
+    let mut b = rt.strbuf().unwrap();
+    rt.put(&mut b, &key).unwrap();
+    let first = b.obj();
+    rt.put(&mut b, &[0x5a; 200]).unwrap();
+    assert_eq!(rt.heap.mem.bytes(first + 16, 40), &key[..]);
+    rt.strbuf_free(b);
+}

@@ -436,6 +436,9 @@ impl Rt {
     /// tuple: dropping its last reference retires it there.
     pub fn vt_encode_tuple(&mut self, args: &[u32]) -> Res<u32> {
         let mut b = self.strbuf()?;
+        if self.sched.vt_secrets {
+            b.wipe();
+        }
         let r = (|| {
             self.put(&mut b, &[t::TUPLE])?;
             self.put(&mut b, &(args.len() as u32).to_le_bytes())?;
@@ -445,10 +448,7 @@ impl Rt {
             Ok(())
         })();
         match r {
-            Ok(()) => {
-                let s = self.finish(b);
-                self.string_to_bytes(s)
-            }
+            Ok(()) => self.finish_bytes(b),
             Err(e) => {
                 self.strbuf_free(b);
                 Err(e)
