@@ -86,11 +86,12 @@ pub fn dump(m: &Module) -> String {
 
 /// The **direct regions** of a lowered module (§17.118, ABI §5 "direct style"): per function,
 /// whether it may run as a native call with its arguments and result in their representations
-/// and no continuation frame. That holds for a top-level function or constant whose def is
-/// direct and whose LIR body is first-order straight-line code: no handler or `try` region, no
-/// handler state, no callback, and every call a direct call of another such function. A direct
-/// def that calls a closure, a `cps` builtin or a bound clause keeps the frame protocol (its
-/// facts still say `direct`; the backend's frames are the conservative reading).
+/// and no continuation frame. That holds for a top-level function, constant or clause whose def
+/// is direct and whose LIR body is first-order code: no `try` region or callback, `with`
+/// regions and handler state only as bound performs use them (§17.211 (1)), and every call a
+/// direct call of another such function. A direct def that calls a closure or a `cps` builtin
+/// keeps the frame protocol (its facts still say `direct`; the backend's frames are the
+/// conservative reading).
 pub fn regions(m: &crate::lir::Module) -> Vec<bool> {
     use crate::lir::{Callee, FuncKind, Inst, Term};
     let mut ok: Vec<bool> = m
@@ -98,21 +99,16 @@ pub fn regions(m: &crate::lir::Module) -> Vec<bool> {
         .iter()
         .enumerate()
         .map(|(i, f)| {
-            matches!(f.kind, FuncKind::Top { .. } | FuncKind::Const)
-                && m.direct.direct(i as DefId)
+            matches!(
+                f.kind,
+                FuncKind::Top { .. } | FuncKind::Const | FuncKind::Clause { .. }
+            ) && m.direct.direct(i as DefId)
                 && f.blocks.iter().all(|b| {
-                    b.regions.is_empty()
+                    !b.regions.contains(&crate::lir::RegionKind::Try)
                         && b.insts.iter().all(|i| {
                             !matches!(
                                 i,
-                                Inst::HandlePush { .. }
-                                    | Inst::HandlePop
-                                    | Inst::TryPush { .. }
-                                    | Inst::TryPop
-                                    | Inst::StateGet { .. }
-                                    | Inst::StateSet { .. }
-                                    | Inst::MakeCallback { .. }
-                                    | Inst::LoadCapture { .. }
+                                Inst::TryPush { .. } | Inst::TryPop | Inst::MakeCallback { .. }
                             )
                         })
                         && matches!(
@@ -282,8 +278,30 @@ fn collect_closures(b: &Block, out: &mut Closures) {
 struct Bound {
     /// Locals bound to a `MakeHandler`: the clause atoms, in op order.
     handlers: HashMap<Local, Vec<Atom>>,
-    /// Performs (by their local) bound to the innermost enclosing `with` of a literal.
-    performs: HashMap<Local, Local>,
+    /// Performs (by their local) bound to the innermost enclosing `with` of a literal: its
+    /// handler local, the `with`'s body and the operation.
+    performs: HashMap<Local, (Local, *const Block, u32)>,
+}
+
+/// The performs of `d` bound to a `with` of a handler literal whose clause is direct, which a
+/// backend may lower to a direct call of the clause (§17.113 (a), §17.211 (1)): per perform
+/// local, the body of its `with` (its address only identifies the `with` in `d`) and the
+/// clause def.
+pub fn bound(m: &Module, d: &Def, facts: &Facts) -> HashMap<Local, (*const Block, DefId)> {
+    let b = bind(m, d);
+    if b.performs.is_empty() {
+        return HashMap::new();
+    }
+    let mut closures = Closures::new();
+    collect_closures(&d.body, &mut closures);
+    b.performs
+        .iter()
+        .filter_map(|(&x, &(_, body, op))| {
+            let clause = bound_clause(&b, &closures, x, op)?;
+            (facts.direct(clause) && matches!(m.def(clause).kind, FnKind::Clause { .. }))
+                .then_some((x, (body, clause)))
+        })
+        .collect()
 }
 
 fn bind(m: &Module, d: &Def) -> Bound {
@@ -317,14 +335,10 @@ fn literals(b: &Block, out: &mut HashMap<Local, Vec<Atom>>) {
 }
 
 /// `scope`: the enclosing `with`s, innermost last: the effect (`None`: unknown, hides every
-/// effect) and the handler local if it is a literal.
-fn performs(
-    m: &Module,
-    d: &Def,
-    b: &Block,
-    scope: &mut Vec<(Option<EffectId>, Option<Local>)>,
-    out: &mut Bound,
-) {
+/// effect) and, if its handler is a literal, the handler local and the `with`'s body.
+type Scope = Vec<(Option<EffectId>, Option<(Local, *const Block)>)>;
+
+fn performs(m: &Module, d: &Def, b: &Block, scope: &mut Scope, out: &mut Bound) {
     sakura_core::ensure_stack(|| {
         for s in &b.stmts {
             match s {
@@ -344,7 +358,7 @@ fn performs(
                             .rev()
                             .find(|(e2, _)| e2.is_none_or(|e2| e2 == *eff))
                     {
-                        out.performs.insert(*local, h);
+                        out.performs.insert(*local, (h.0, h.1, *op));
                     }
                 }
                 Stmt::Let { .. } => {}
@@ -355,9 +369,12 @@ fn performs(
             Terminator::Handle { handler, body } => {
                 let entry = match handler {
                     Atom::Local(h) => match &d.local(*h).ty {
-                        Ty::Handler(eff) => {
-                            (Some(*eff), out.handlers.contains_key(h).then_some(*h))
-                        }
+                        Ty::Handler(eff) => (
+                            Some(*eff),
+                            out.handlers
+                                .contains_key(h)
+                                .then_some((*h, &**body as *const Block)),
+                        ),
                         _ => (None, None),
                     },
                     _ => (None, None),
@@ -475,7 +492,7 @@ fn body_ok(cx: BodyCx, b: &Block, needs: &mut Vec<Need>) -> Result<(), String> {
 
 /// The clause def a bound perform calls.
 fn bound_clause(bound: &Bound, closures: &Closures, x: Local, op: u32) -> Option<DefId> {
-    let h = bound.performs.get(&x)?;
+    let (h, _, _) = bound.performs.get(&x)?;
     match bound.handlers[h].get(op as usize)? {
         Atom::Local(c) => closures.get(c).map(|(d, _)| *d),
         _ => None,

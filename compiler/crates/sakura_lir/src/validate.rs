@@ -104,6 +104,8 @@ struct State {
     defined: HashSet<Var>,
     count: HashMap<Var, i64>,
     regions: Vec<RegionKind>,
+    /// The block's [`Inst::Bound`]: its closure, activation, effect and operation.
+    bound: Option<(Var, Var, u32, u32)>,
 }
 
 impl<'a> Checker<'a> {
@@ -222,6 +224,7 @@ impl<'a> Checker<'a> {
             defined: HashSet::new(),
             count: HashMap::new(),
             regions: block.regions.clone(),
+            bound: None,
         };
         for &p in &block.params {
             self.define(&mut st, p)?;
@@ -639,9 +642,30 @@ impl<'a> Checker<'a> {
                 self.call_args(args, &sig.params, name)?;
                 dst_is(sig.ret)?;
             }
-            HandlePush { handler } => {
+            HandlePush { handler, act } => {
                 self.managed(*handler)?;
+                if act.is_some() {
+                    dst_is(Repr::Id)?;
+                }
                 st.regions.push(RegionKind::Handle);
+            }
+            Bound {
+                dst,
+                act,
+                effect,
+                op,
+            } => {
+                self.expect(*act, Repr::Id)?;
+                st.bound = Some((*dst, *act, *effect, *op));
+                let e = self
+                    .m
+                    .effects
+                    .get(*effect as usize)
+                    .ok_or_else(|| format!("effect {effect} out of range"))?;
+                ensure((*op as usize) < e.ops.len(), || {
+                    format!("operation {op} out of range")
+                })?;
+                dst_is(Repr::Ptr)?;
             }
             HandlePop => {
                 ensure(st.regions.pop() == Some(RegionKind::Handle), || {
@@ -749,11 +773,26 @@ impl<'a> Checker<'a> {
                         .funcs
                         .get(fid.index())
                         .ok_or_else(|| format!("function {} out of range", fid.0))?;
-                    ensure(!g.kind.is_closure(), || {
-                        format!("{} is called through closures only", g.name)
-                    })?;
                     let params: Vec<Repr> = g.params().iter().map(|&p| g.repr(p)).collect();
-                    self.call_args(args, &params, &g.name)?;
+                    match g.kind {
+                        // A bound perform (design §17.211 (1)): the clause's closure and
+                        // activation from the block's `Bound`, then the arguments.
+                        FuncKind::Clause { effect, op } => {
+                            ensure(
+                                args.len() >= 2
+                                    && st.bound == Some((args[0], args[1], effect, op))
+                                    && params.get(..2) == Some(&[Repr::Ptr, Repr::Id][..]),
+                                || format!("{} is called without its bound perform", g.name),
+                            )?;
+                            self.call_args(&args[2..], &params[2.min(params.len())..], &g.name)?;
+                        }
+                        _ => {
+                            ensure(!g.kind.is_closure(), || {
+                                format!("{} is called through closures only", g.name)
+                            })?;
+                            self.call_args(args, &params, &g.name)?;
+                        }
+                    }
                     result = Some(g.ret);
                 }
                 Callee::Closure(f) => {
@@ -822,6 +861,7 @@ impl<'a> Checker<'a> {
                 defined: st.defined.clone(),
                 count: std::mem::take(&mut counts),
                 regions: vec![],
+                bound: None,
             };
             for (&a, &p) in edge.args.iter().zip(&target.params[lead..]) {
                 self.use_var(&mut edge_st, a, Use::Consume)?;

@@ -1,6 +1,6 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.2.2**, agreed before `sakura_lir` or `sakura_rt`
+**Status:** design specification, version **1.2.4**, agreed before `sakura_lir` or `sakura_rt`
 emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed, 1.0.2 the
 R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
 the end, with the questions still open), and 1.1.0 the four `stats()` counters and the
@@ -10,7 +10,8 @@ item 8 (§8.1, §8.4–§8.6), 1.1.3 the defect sites of plan L5 (§5, §6.5, §
 counter, the import and handle-kind lists as built and §5's fallback wording (design §17.160,
 §17.161; plan M4-OPT), and 1.2.1 the fail-closed copy budget of §8.5, its reading as a
 per-instance ceiling and a cut body as `Err` (design §17.209), and 1.2.2 the root task's release and
-the copy budget of a served request (design §17.212, §17.216 (4)). Owned by the designer;
+the copy budget of a served request (design §17.212, §17.216 (4)), and 1.2.4 bound performs
+and `with` regions in direct twins (§5, §6.3; design §17.211 (1)). Owned by the designer;
 implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
 (`crates/sakura_codegen_wasm`, `runtime/js/sakura_wasm_host.js`). This document is prose,
@@ -113,6 +114,12 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   other direction.
   §8.5 also states how the copy budget applies to a served request and its reply (design
   §17.216 (4)): until then a request over it ended the process.
+- 1.2.4 is an erratum (design §17.211 (1), WS-W1; 1.2.3 is plan §3.8 row 27's, design
+  §17.224): §5 and §6.3 state how a perform bound to a handler literal (design §17.113 (a))
+  compiles: a direct call of its clause, twins for clauses and for functions holding `with`
+  regions, and a twin's fourth state, cancelled. The runtime functions it adds are internal to
+  the linked module; no byte, import, export or counter changes, so `sakura_abi_version`
+  stays `0x010200`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -339,6 +346,19 @@ by default, plan §3.1 M4-OPT).
   regions that can run out of gauge, and one entry is restarted at most once: the frame path
   calls recursive defs through frames, and a call it makes into another non-recursive region
   is a new entry, counted on its own.
+  **1.2.4 (design §17.211 (1)):** a `perform` that design §17.113 (a) binds to a handler
+  literal in the same function, of a direct clause, is a direct call of the clause with its
+  closure, the activation id and the arguments; the `with` that installs the literal yields
+  the activation id, which the function carries like a local. The call is preceded by one
+  runtime call that keeps the perform's two duties: the cancellation test (§7.4) and the
+  §17.80 trace record. So clauses and functions holding `with` regions and handler state are
+  regions too. A twin's `with` opens an activation owned by the current frame without changing
+  any frame's `activation` (only bound performs reach it) and closes it on every exit; one that
+  aborts runs again from its region's entry with fresh activations. A twin's state 3 means the
+  task was cancelled: the frame-protocol caller returns `Yield` and the task unwinds there, as
+  after a cancelled `perform`. Frame-protocol code calls through frames, not a twin, a clause
+  or a twin reaching a bound perform when it can run out of gauge: a clause's state and a
+  written trace record outlive the abort, and running again would repeat them.
 - **Blame sites** (1.1.3, design §7.2, §17.115, §17.162; as JS `$site`, `runtime/js/ABI.md`
   §5). A top-level function whose `requires` or `where` checks blame its caller takes one
   trailing `i64` parameter, a site group id (§12) or 0: a call of it by name passes the group
@@ -407,7 +427,9 @@ stub that swaps the frame's `activation` to the perform site's id before enterin
 function and restores it after; the perform-site id is stored in a capture slot as a
 non-owning id, and the stub checks the generation (research/09 §4 "borrow context ID").
 State: `StateGet`/`StateSet` address the activation's slots through the clause's first
-parameter, which is the activation id.
+parameter, which is the activation id. A bound perform (§5, 1.2.4) passes the clause its
+activation directly; its clause frame keeps the performer's `activation`, which only a
+`with` inside the clause reads, as that clause is direct and performs nothing unbound.
 
 ### 6.4 Catch and finalizer chain
 

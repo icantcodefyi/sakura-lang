@@ -10,15 +10,15 @@ layout 4 shape |  32b (word*, word*)
 layout 5 shape |  32b (i64, word*)
 layout 6 shape |  24b (i64)
 
-fn main#0 pub top -> unit ; main::owned_effects, frame 45 slots [%10 i64, %11 word*, %12 word*, %27 bool, %31 word*, %39 i64, %40 word*, %41 word*, %50 bool, %54 word*, %56 i64, %60 bool, %78 bool, %82 word*, %84 bool, %85 word*, %91 word*, %96 bool, %101 word*, %102 word*, %107 word*, %108 word*, %110 word*, %115 word*, %116 word*, %124 word*, %125 i64, %126 word*, %137 word*, %138 word*, %146 word*, %147 i64, %148 word*, %178 word*, %179 word*, %180 i64, %182 i64, %183 word*, %184 i64, %185 i64, %189 word*, %190 i64, %207 i64, %208 word*, %209 i64]
+fn main#0 pub top -> unit ; main::owned_effects, frame 49 slots [%10 i64, %11 word*, %12 word*, %27 bool, %31 word*, %39 i64, %40 word*, %41 word*, %50 bool, %54 word*, %56 i64, %60 bool, %78 bool, %82 word*, %84 bool, %85 word*, %91 word*, %96 bool, %101 word*, %102 word*, %107 word*, %108 word*, %110 word*, %115 word*, %116 word*, %124 word*, %125 i64, %126 word*, %137 word*, %138 word*, %146 word*, %147 i64, %148 word*, %184 word*, %185 word*, %186 i64, %187 i64, %189 i64, %190 word*, %191 i64, %192 i64, %193 i64, %198 word*, %199 i64, %200 i64, %221 i64, %222 word*, %223 i64, %224 i64]
   b0():
     %0 tick: ptr = closure ticks$Tick_tick#10[]
     %1 lit: i64 = const 100
     %2 r: ptr = handler main::owned_effects::Tick row 6 state(%1) clauses(%0)
-    handle_push %2
-    %159 xs: ptr = alloc list()
-    %216 lit: i64 = const 0
-    jump b46(%159, %216)
+    %159 $act: id = handle_push %2
+    %160 xs: ptr = alloc list()
+    %232 lit: i64 = const 0
+    jump b46(%160, %232, %159)
   b1(%3 v: ptr):
     dup %3
     %4 r: i64 = $list_len(%3)
@@ -270,61 +270,63 @@ fn main#0 pub top -> unit ; main::owned_effects, frame 45 slots [%10 i64, %11 wo
     %157 lit: unit = const ()
     %158 box: word = box %157
     jump b34(%158, %154)
-  b37(%160 xs: ptr, %161 i: i64) [handle]:
-    %195 lit: i64 = const 0
-    jump b39(%160, %195)
-  b38(%162 xs: ptr, %163 i: i64) [handle]:
+  b37(%161 xs: ptr, %162 i: i64, %163 $act: id) [handle]:
+    %205 lit: i64 = const 0
+    jump b39(%161, %205, %163)
+  b38(%164 xs: ptr, %165 i: i64) [handle]:
     handle_pop
-    jump b1(%162)
-  b39(%164 xs: ptr, %165 i: i64) [handle]:
-    %166 lit: i64 = const 40
-    %167 t: bool = lt.int %165, %166
-    if %167 then b41(%164, %165) else b42(%164, %165)
-  b40(%168 v: word, %169 xs: ptr, %170 i: i64) [handle]:
-    drop %168
-    jump b39(%169, %170)
-  b41(%171 xs: ptr, %172 i: i64) [handle]:
-    dup %171
-    %175 item: ptr = $list_get(%171, %172)
-    %176 lit: i64 = const 0
-    %177 box: word = box %176
-    call unwrap_or#3(%175, %177) -> b43(%171, %172)
-  b42(%173 xs: ptr, %174 i: i64) [handle]:
-    jump b38(%173, %174)
-  b43(%178 r: word, %179 xs: ptr, %180 i: i64) [handle]:
-    %181 unbox: i64 = unbox %178
-    drop %178
-    perform main::owned_effects::Tick.tick() -> b44(%179, %180, %181)
-  b44(%182 r: i64, %183 xs: ptr, %184 i: i64, %185 r: i64) [handle]:
-    %186 t: i64 = intadd %185, %182
-    %187 box: word = box %186
-    %188 $site: i64 = const 5
-    call set#4(%183, %184, %187, %188) -> b45(%184)
-  b45(%189 r: ptr, %190 i: i64) [handle]:
-    %191 lit: i64 = const 1
-    %192 t: i64 = intadd %190, %191
-    %193 lit: unit = const ()
-    %194 box: word = box %193
-    jump b40(%194, %189, %192)
-  b46(%196 xs: ptr, %197 i: i64) [handle]:
-    %198 lit: i64 = const 40
-    %199 t: bool = lt.int %197, %198
-    if %199 then b48(%196, %197) else b49(%196, %197)
-  b47(%200 v: word, %201 xs: ptr, %202 i: i64) [handle]:
-    drop %200
-    jump b46(%201, %202)
-  b48(%203 xs: ptr, %204 i: i64) [handle]:
-    perform main::owned_effects::Tick.tick() -> b50(%203, %204)
-  b49(%205 xs: ptr, %206 i: i64) [handle]:
-    jump b37(%205, %206)
-  b50(%207 r: i64, %208 xs: ptr, %209 i: i64) [handle]:
-    %210 box: word = box %207
-    %211 r: ptr = $list_push(%208, %210)
-    %212 lit: i64 = const 1
-    %213 t: i64 = intadd %209, %212
-    %214 lit: unit = const ()
-    %215 box: word = box %214
-    jump b47(%215, %211, %213)
+    jump b1(%164)
+  b39(%166 xs: ptr, %167 i: i64, %168 $act: id) [handle]:
+    %169 lit: i64 = const 40
+    %170 t: bool = lt.int %167, %169
+    if %170 then b41(%166, %167, %168) else b42(%166, %167, %168)
+  b40(%171 v: word, %172 xs: ptr, %173 i: i64, %174 $act: id) [handle]:
+    drop %171
+    jump b39(%172, %173, %174)
+  b41(%175 xs: ptr, %176 i: i64, %177 $act: id) [handle]:
+    dup %175
+    %181 item: ptr = $list_get(%175, %176)
+    %182 lit: i64 = const 0
+    %183 box: word = box %182
+    call unwrap_or#3(%181, %183) -> b43(%175, %176, %177)
+  b42(%178 xs: ptr, %179 i: i64, %180 $act: id) [handle]:
+    jump b38(%178, %179)
+  b43(%184 r: word, %185 xs: ptr, %186 i: i64, %187 $act: id) [handle]:
+    %188 unbox: i64 = unbox %184
+    drop %184
+    %194 clause: ptr = bound %187 main::owned_effects::Tick.tick
+    call ticks$Tick_tick#10(%194, %187) -> b44(%185, %186, %188, %187)
+  b44(%189 r: i64, %190 xs: ptr, %191 i: i64, %192 r: i64, %193 $act: id) [handle]:
+    %195 t: i64 = intadd %192, %189
+    %196 box: word = box %195
+    %197 $site: i64 = const 5
+    call set#4(%190, %191, %196, %197) -> b45(%191, %193)
+  b45(%198 r: ptr, %199 i: i64, %200 $act: id) [handle]:
+    %201 lit: i64 = const 1
+    %202 t: i64 = intadd %199, %201
+    %203 lit: unit = const ()
+    %204 box: word = box %203
+    jump b40(%204, %198, %202, %200)
+  b46(%206 xs: ptr, %207 i: i64, %208 $act: id) [handle]:
+    %209 lit: i64 = const 40
+    %210 t: bool = lt.int %207, %209
+    if %210 then b48(%206, %207, %208) else b49(%206, %207, %208)
+  b47(%211 v: word, %212 xs: ptr, %213 i: i64, %214 $act: id) [handle]:
+    drop %211
+    jump b46(%212, %213, %214)
+  b48(%215 xs: ptr, %216 i: i64, %217 $act: id) [handle]:
+    %225 clause: ptr = bound %217 main::owned_effects::Tick.tick
+    call ticks$Tick_tick#10(%225, %217) -> b50(%215, %216, %217)
+  b49(%218 xs: ptr, %219 i: i64, %220 $act: id) [handle]:
+    jump b37(%218, %219, %220)
+  b50(%221 r: i64, %222 xs: ptr, %223 i: i64, %224 $act: id) [handle]:
+    %226 box: word = box %221
+    %227 r: ptr = $list_push(%222, %226)
+    %228 lit: i64 = const 1
+    %229 t: i64 = intadd %223, %228
+    %230 lit: unit = const ()
+    %231 box: word = box %230
+    jump b47(%231, %227, %229, %224)
 
 fn $entry#1 top -> unit ; main::owned_effects, frame 1 slots [%1 bool]
   b0():

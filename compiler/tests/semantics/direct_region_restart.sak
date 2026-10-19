@@ -1,5 +1,5 @@
 // milestone: M3
-// covers: design §17.118 (direct regions on WASM: owned arguments survive a gauge abort and the frame restart)
+// covers: design §17.118 (direct regions on WASM: owned arguments survive a gauge abort and the frame restart), §17.211 (1) (a clause that writes its state and can abort; twins aborting with their `with`s open)
 
 type Acc = { total: Int, label: String }
 
@@ -19,6 +19,31 @@ fn half(x: Float, n: Int) -> Float { if n == 0 { x } else { half(x, n - 1) * 1.0
 // A non-recursive region that enters a recursive one: an abort deep inside leaves both.
 fn shallow(xs: List<Int>, n: Int) -> Int { walk(xs, "ab", n) * 2 }
 
+effect Count {
+  fn bump(n: Int) -> Int
+}
+
+// A clause that writes its state, then recurses past the gauge.
+fn counting() -> Handler<Count> {
+  handler Count {
+    var hits = 0
+    fn bump(n) {
+      hits = hits + 1
+      walk([1], "x", n) + hits
+    }
+  }
+}
+
+// A clause that can abort runs through frames, and so does a region reaching it: each state
+// write happens once.
+fn bumps(n: Int) -> Int { with counting() { Count.bump(3) + Count.bump(n) + Count.bump(3) } }
+
+// Twins with open `with`s and no bound perform abort past the gauge: each closes its
+// activations before its region runs again through frames.
+fn deep(xs: List<Int>, n: Int) -> Int { with counting() { with counting() { walk(xs, "ab", n) } } }
+
+fn mid(xs: List<Int>, n: Int) -> Int { with counting() { deep(xs, n) + 1 } }
+
 pub fn main() -> Unit ! {Console} {
   let xs = [1, 2, 3]
   Console.print("{walk(xs, "hello", 10)} {walk(xs, "hello", 200000)} {xs}")
@@ -32,4 +57,23 @@ pub fn main() -> Unit ! {Console} {
     i = i + 1
   }
   Console.print("{t} {shallow(xs, 3)}")
+  Console.print("{bumps(3)} {bumps(200000)}")
+  // Under a frame's `with`, the clause runs through frames: each write happens once.
+  with counting() {
+    let a = Count.bump(200000)
+    let b = Count.bump(3)
+    Console.print("{a} {b}")
+  }
+  Console.print("{mid(xs, 200000)} {mid(xs, 3)}")
+  with counting() {
+    // Performed through a lambda, so found from the frame's activation after the inner `with`.
+    let probe = fn(n: Int) -> Int { Count.bump(n) }
+    with counting() {
+      let c = Count.bump(2)
+      let d = mid(xs, 200000)
+      let e = Count.bump(3)
+      Console.print("{c} {d} {e}")
+    }
+    Console.print("{probe(0)}")
+  }
 }

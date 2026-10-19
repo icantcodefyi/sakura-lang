@@ -13,148 +13,149 @@ layout 7 shape |  32b (i64, word*)
 layout 8 shape |  24b (i64)
 layout 9 shape |  16b ()
 
-fn main#0 pub top -> unit ; main::loop_resume_edges, frame 15 slots [%27 word*, %28 i64, %32 bool, %35 i64, %39 bool, %45 bool, %47 word*, %50 i64, %57 bool, %59 word*, %62 i64, %66 i64, %70 bool, %73 i64, %77 bool]
+fn main#0 pub top -> unit ; main::loop_resume_edges, frame 27 slots [%33 word*, %35 i64, %39 bool, %42 i64, %43 i64, %47 bool, %48 i64, %55 bool, %56 i64, %58 word*, %59 i64, %62 i64, %63 i64, %71 bool, %72 i64, %74 word*, %75 i64, %78 i64, %79 i64, %83 i64, %84 i64, %88 bool, %89 i64, %92 i64, %93 i64, %97 bool, %98 i64]
   b0():
     %0 now: ptr = closure virtual$Clock_now#15[]
     %1 monotonic: ptr = closure virtual$Clock_monotonic#17[]
     %2 sleep: ptr = closure virtual$Clock_sleep#18[]
     %3 lit: i64 = const 0
     %4 r: ptr = handler std::clock::Clock row 8 state(%3) clauses(%0, %1, %2)
-    handle_push %4
-    %5 next: ptr = closure counter$Counter_next#14[]
-    %6 lit: i64 = const 0
-    %7 r: ptr = handler main::loop_resume_edges::Counter row 8 state(%6) clauses(%5)
-    handle_push %7
-    %72 lit: i64 = const 9
-    call early#4(%72) -> b21()
-  b1(%8 v: word) [handle]:
-    drop %8
-    %9 next: ptr = closure counter$Counter_next#14[]
-    %10 lit: i64 = const 0
-    %11 r: ptr = handler main::loop_resume_edges::Counter row 8 state(%10) clauses(%9)
-    %12 apply: ptr = closure each$Each_apply#13[]
-    %13 r: ptr = handler main::loop_resume_edges::Each row 9 state() clauses(%12)
-    handle_push %11
+    %5 $act: id = handle_push %4
+    %6 next: ptr = closure counter$Counter_next#14[]
+    %7 lit: i64 = const 0
+    %8 r: ptr = handler main::loop_resume_edges::Counter row 8 state(%7) clauses(%6)
+    handle_push %8
+    %91 lit: i64 = const 9
+    call early#4(%91) -> b21(%5)
+  b1(%9 v: word, %10 $act: id) [handle]:
+    drop %9
+    %11 next: ptr = closure counter$Counter_next#14[]
+    %12 lit: i64 = const 0
+    %13 r: ptr = handler main::loop_resume_edges::Counter row 8 state(%12) clauses(%11)
+    %14 apply: ptr = closure each$Each_apply#13[]
+    %15 r: ptr = handler main::loop_resume_edges::Each row 9 state() clauses(%14)
     handle_push %13
-    %65 lit: i64 = const 7
-    call matcher#6(%65) -> b19()
-  b2(%14 v: word) [handle]:
-    drop %14
-    %15 next: ptr = closure counter$Counter_next#14[]
-    %16 lit: i64 = const 0
-    %17 r: ptr = handler main::loop_resume_edges::Counter row 8 state(%16) clauses(%15)
-    handle_push %17
-    try_push -> b17(err, )
-    %61 lit: i64 = const 10
-    call failing#7(%61) -> b18()
-  b3(%18 v: word) [handle]:
-    drop %18
-    %19 next: ptr = closure counter$Counter_next#14[]
-    %20 lit: i64 = const 0
-    %21 r: ptr = handler main::loop_resume_edges::Counter row 8 state(%20) clauses(%19)
-    handle_push %21
-    try_push -> b13(err, )
-    %49 lit: i64 = const 5
-    call failing#7(%49) -> b14()
-  b4(%22 v: word) [handle]:
-    drop %22
+    handle_push %15
+    %82 lit: i64 = const 7
+    call matcher#6(%82) -> b19(%10)
+  b2(%16 v: word, %17 $act: id) [handle]:
+    drop %16
+    %18 next: ptr = closure counter$Counter_next#14[]
+    %19 lit: i64 = const 0
+    %20 r: ptr = handler main::loop_resume_edges::Counter row 8 state(%19) clauses(%18)
+    handle_push %20
+    try_push -> b17(err, %17)
+    %77 lit: i64 = const 10
+    call failing#7(%77) -> b18(%17)
+  b3(%21 v: word, %22 $act: id) [handle]:
+    drop %21
     %23 next: ptr = closure counter$Counter_next#14[]
     %24 lit: i64 = const 0
     %25 r: ptr = handler main::loop_resume_edges::Counter row 8 state(%24) clauses(%23)
     handle_push %25
-    call breaker#8() -> b9()
-  b5(%26 v: word) [handle]:
+    try_push -> b13(err, %22)
+    %61 lit: i64 = const 5
+    call failing#7(%61) -> b14(%22)
+  b4(%26 v: word, %27 $act: id) [handle]:
     drop %26
-    perform std::clock::Clock.now() -> b6()
-  b6(%27 r: ptr) [handle]:
-    call to_unix_millis#9(%27) -> b7()
-  b7(%28 r: i64) [handle]:
-    %29 s: ptr = show %28
-    %30 lit: ptr = const str 0
-    %31 s: ptr = concat %30, %29
-    drop %29
-    drop %30
-    perform std::console::Console.print(%31) -> b8()
-  b8(%32 r: unit) [handle]:
-    %33 box: word = box %32
-    %34 unbox: unit = unbox %33
-    drop %33
-    handle_pop
-    ret %34
-  b9(%35 r: i64) [handle, handle]:
+    %28 next: ptr = closure counter$Counter_next#14[]
+    %29 lit: i64 = const 0
+    %30 r: ptr = handler main::loop_resume_edges::Counter row 8 state(%29) clauses(%28)
+    handle_push %30
+    call breaker#8() -> b9(%27)
+  b5(%31 v: word, %32 $act: id) [handle]:
+    drop %31
+    %34 clause: ptr = bound %32 std::clock::Clock.now
+    call virtual$Clock_now#15(%34, %32) -> b6()
+  b6(%33 r: ptr) [handle]:
+    call to_unix_millis#9(%33) -> b7()
+  b7(%35 r: i64) [handle]:
     %36 s: ptr = show %35
-    %37 lit: ptr = const str 1
+    %37 lit: ptr = const str 0
     %38 s: ptr = concat %37, %36
     drop %36
     drop %37
-    perform std::console::Console.print(%38) -> b10()
-  b10(%39 r: unit) [handle, handle]:
+    perform std::console::Console.print(%38) -> b8()
+  b8(%39 r: unit) [handle]:
     %40 box: word = box %39
+    %41 unbox: unit = unbox %40
+    drop %40
     handle_pop
-    jump b5(%40)
-  b11(%41 v: ptr) [handle, handle]:
-    %42 s: ptr = show %41
-    drop %41
-    %43 lit: ptr = const str 2
-    %44 s: ptr = concat %43, %42
-    drop %42
-    drop %43
-    perform std::console::Console.print(%44) -> b12()
-  b12(%45 r: unit) [handle, handle]:
-    %46 box: word = box %45
+    ret %41
+  b9(%42 r: i64, %43 $act: id) [handle, handle]:
+    %44 s: ptr = show %42
+    %45 lit: ptr = const str 1
+    %46 s: ptr = concat %45, %44
+    drop %44
+    drop %45
+    perform std::console::Console.print(%46) -> b10(%43)
+  b10(%47 r: unit, %48 $act: id) [handle, handle]:
+    %49 box: word = box %47
     handle_pop
-    jump b4(%46)
-  b13(%47 e: word) [handle, handle]:
-    %48 err: ptr = alloc std::result::Result.Err(%47)
-    jump b11(%48)
-  b14(%50 r: i64) [handle, handle, try]:
-    %51 box: word = box %50
-    %52 ok: ptr = alloc std::result::Result.Ok(%51)
-    try_pop
-    jump b11(%52)
-  b15(%53 v: ptr) [handle, handle]:
-    %54 s: ptr = show %53
+    jump b5(%49, %48)
+  b11(%50 v: ptr, %51 $act: id) [handle, handle]:
+    %52 s: ptr = show %50
+    drop %50
+    %53 lit: ptr = const str 2
+    %54 s: ptr = concat %53, %52
+    drop %52
     drop %53
-    %55 lit: ptr = const str 3
-    %56 s: ptr = concat %55, %54
-    drop %54
-    drop %55
-    perform std::console::Console.print(%56) -> b16()
-  b16(%57 r: unit) [handle, handle]:
-    %58 box: word = box %57
+    perform std::console::Console.print(%54) -> b12(%51)
+  b12(%55 r: unit, %56 $act: id) [handle, handle]:
+    %57 box: word = box %55
     handle_pop
-    jump b3(%58)
-  b17(%59 e: word) [handle, handle]:
-    %60 err: ptr = alloc std::result::Result.Err(%59)
-    jump b15(%60)
-  b18(%62 r: i64) [handle, handle, try]:
-    %63 box: word = box %62
-    %64 ok: ptr = alloc std::result::Result.Ok(%63)
+    jump b4(%57, %56)
+  b13(%58 e: word, %59 $act: id) [handle, handle]:
+    %60 err: ptr = alloc std::result::Result.Err(%58)
+    jump b11(%60, %59)
+  b14(%62 r: i64, %63 $act: id) [handle, handle, try]:
+    %64 box: word = box %62
+    %65 ok: ptr = alloc std::result::Result.Ok(%64)
     try_pop
-    jump b15(%64)
-  b19(%66 r: i64) [handle, handle, handle]:
-    %67 s: ptr = show %66
-    %68 lit: ptr = const str 4
-    %69 s: ptr = concat %68, %67
-    drop %67
+    jump b11(%65, %63)
+  b15(%66 v: ptr, %67 $act: id) [handle, handle]:
+    %68 s: ptr = show %66
+    drop %66
+    %69 lit: ptr = const str 3
+    %70 s: ptr = concat %69, %68
     drop %68
-    perform std::console::Console.print(%69) -> b20()
-  b20(%70 r: unit) [handle, handle, handle]:
-    %71 box: word = box %70
+    drop %69
+    perform std::console::Console.print(%70) -> b16(%67)
+  b16(%71 r: unit, %72 $act: id) [handle, handle]:
+    %73 box: word = box %71
+    handle_pop
+    jump b3(%73, %72)
+  b17(%74 e: word, %75 $act: id) [handle, handle]:
+    %76 err: ptr = alloc std::result::Result.Err(%74)
+    jump b15(%76, %75)
+  b18(%78 r: i64, %79 $act: id) [handle, handle, try]:
+    %80 box: word = box %78
+    %81 ok: ptr = alloc std::result::Result.Ok(%80)
+    try_pop
+    jump b15(%81, %79)
+  b19(%83 r: i64, %84 $act: id) [handle, handle, handle]:
+    %85 s: ptr = show %83
+    %86 lit: ptr = const str 4
+    %87 s: ptr = concat %86, %85
+    drop %85
+    drop %86
+    perform std::console::Console.print(%87) -> b20(%84)
+  b20(%88 r: unit, %89 $act: id) [handle, handle, handle]:
+    %90 box: word = box %88
     handle_pop
     handle_pop
-    jump b2(%71)
-  b21(%73 r: i64) [handle, handle]:
-    %74 s: ptr = show %73
-    %75 lit: ptr = const str 5
-    %76 s: ptr = concat %75, %74
-    drop %74
-    drop %75
-    perform std::console::Console.print(%76) -> b22()
-  b22(%77 r: unit) [handle, handle]:
-    %78 box: word = box %77
+    jump b2(%90, %89)
+  b21(%92 r: i64, %93 $act: id) [handle, handle]:
+    %94 s: ptr = show %92
+    %95 lit: ptr = const str 5
+    %96 s: ptr = concat %95, %94
+    drop %94
+    drop %95
+    perform std::console::Console.print(%96) -> b22(%93)
+  b22(%97 r: unit, %98 $act: id) [handle, handle]:
+    %99 box: word = box %97
     handle_pop
-    jump b1(%78)
+    jump b1(%99, %98)
 
 fn $entry#1 top -> unit ; main::loop_resume_edges, frame 1 slots [%1 bool]
   b0():

@@ -1,0 +1,168 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 error main::handler_cancel_twin::Stop | Stop 16b ()
+layout 1 variant std::duration::Duration | Duration 24b (i64)
+layout 2 variant std::instant::Instant | Instant 24b (i64)
+layout 3 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 4 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 5 variant std::task::Fiber
+layout 6 variant std::task::Scope
+layout 7 shape |  32b (word*, word*)
+layout 8 shape |  32b (i64, word*)
+layout 9 shape |  24b (i64)
+
+fn main#0 pub top -> unit ; main::handler_cancel_twin, frame 5 slots [%9 bool, %12 i64, %16 bool, %19 word*, %24 word*]
+  b0():
+    %0 now: ptr = closure virtual$Clock_now#10[]
+    %1 monotonic: ptr = closure virtual$Clock_monotonic#12[]
+    %2 sleep: ptr = closure virtual$Clock_sleep#13[]
+    %3 lit: i64 = const 0
+    %4 r: ptr = handler std::clock::Clock row 9 state(%3) clauses(%0, %1, %2)
+    %5 lit: i64 = const 7
+    %6 r: ptr = $task_deterministic(%5)
+    handle_push %4
+    handle_push %6
+    try_push -> b5(err, )
+    %21 f: ptr = closure main$1#3[]
+    %22 f: ptr = closure main$2#6[]
+    %23 xs: ptr = alloc list(%21, %22)
+    perform std::task::Task.all(%23) -> b6()
+  b1(%7 v: ptr) [handle, handle]:
+    %8 s: ptr = show %7
+    drop %7
+    perform std::console::Console.print(%8) -> b2()
+  b2(%9 r: unit) [handle, handle]:
+    %10 box: word = box %9
+    drop %10
+    %11 lit: i64 = const 5
+    call outer#4(%11) -> b3()
+  b3(%12 r: i64) [handle, handle]:
+    %13 s: ptr = show %12
+    %14 lit: ptr = const str 0
+    %15 s: ptr = concat %14, %13
+    drop %13
+    drop %14
+    perform std::console::Console.print(%15) -> b4()
+  b4(%16 r: unit) [handle, handle]:
+    %17 box: word = box %16
+    %18 unbox: unit = unbox %17
+    drop %17
+    handle_pop
+    handle_pop
+    ret %18
+  b5(%19 e: word) [handle, handle]:
+    %20 err: ptr = alloc std::result::Result.Err(%19)
+    jump b1(%20)
+  b6(%24 r: ptr) [handle, handle, try]:
+    %25 ok: ptr = alloc std::result::Result.Ok(%24)
+    try_pop
+    jump b1(%25)
+
+fn $entry#1 top -> unit ; main::handler_cancel_twin, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn main$1#3 lambda -> word ; main::handler_cancel_twin, captures [], frame 7 slots [%0 word*, %2 i64, %6 bool, %9 word*, %10 bool, %13 i64, %17 bool]
+  b0(%0 env: ptr):
+    drop %0
+    %1 lit: i64 = const 2
+    call outer#4(%1) -> b1()
+  b1(%2 r: i64):
+    %3 s: ptr = show %2
+    %4 lit: ptr = const str 1
+    %5 s: ptr = concat %4, %3
+    drop %3
+    drop %4
+    perform std::console::Console.print(%5) -> b2()
+  b2(%6 r: unit):
+    %7 box: word = box %6
+    drop %7
+    %8 lit: i64 = const 10
+    call millis#5(%8) -> b3()
+  b3(%9 r: ptr):
+    perform std::clock::Clock.sleep(%9) -> b4()
+  b4(%10 r: unit):
+    %11 box: word = box %10
+    drop %11
+    %12 lit: i64 = const 2
+    call outer#4(%12) -> b5()
+  b5(%13 r: i64):
+    %14 s: ptr = show %13
+    %15 lit: ptr = const str 2
+    %16 s: ptr = concat %15, %14
+    drop %14
+    drop %15
+    perform std::console::Console.print(%16) -> b6()
+  b6(%17 r: unit):
+    %18 box: word = box %17
+    drop %18
+    %19 lit: i64 = const 1
+    %20 box: word = box %19
+    ret %20
+
+fn outer#4 top -> i64 ; main::handler_cancel_twin, frame 5 slots [%0 i64, %5 i64, %6 i64, %8 i64, %9 i64]
+  b0(%0 n: i64):
+    %1 bump: ptr = closure counting$Count_bump#9[]
+    %2 lit: i64 = const 0
+    %3 r: ptr = handler main::handler_cancel_twin::Count row 9 state(%2) clauses(%1)
+    %4 $act: id = handle_push %3
+    call inner#8(%0) -> b1(%4)
+  b1(%5 r: i64, %6 $act: id) [handle]:
+    %7 lit: i64 = const 1
+    %10 clause: ptr = bound %6 main::handler_cancel_twin::Count.bump
+    call counting$Count_bump#9(%10, %6, %7) -> b2(%5)
+  b2(%8 r: i64, %9 r: i64) [handle]:
+    %11 t: i64 = intadd %9, %8
+    handle_pop
+    ret %11
+
+fn main$2#6 lambda -> word ; main::handler_cancel_twin, captures [], frame 3 slots [%0 word*, %2 word*, %3 bool]
+  b0(%0 env: ptr):
+    drop %0
+    %1 lit: i64 = const 1
+    call millis#5(%1) -> b1()
+  b1(%2 r: ptr):
+    perform std::clock::Clock.sleep(%2) -> b2()
+  b2(%3 r: unit):
+    %4 box: word = box %3
+    drop %4
+    %5 err: ptr = alloc main::handler_cancel_twin::Stop()
+    fail %5
+
+fn counting#7 top -> ptr ; main::handler_cancel_twin, frame 0 slots []
+  b0():
+    %0 bump: ptr = closure counting$Count_bump#9[]
+    %1 lit: i64 = const 0
+    %2 handler: ptr = handler main::handler_cancel_twin::Count row 9 state(%1) clauses(%0)
+    ret %2
+
+fn inner#8 top -> i64 ; main::handler_cancel_twin, frame 2 slots [%0 i64, %5 i64]
+  b0(%0 n: i64):
+    %1 bump: ptr = closure counting$Count_bump#9[]
+    %2 lit: i64 = const 0
+    %3 r: ptr = handler main::handler_cancel_twin::Count row 9 state(%2) clauses(%1)
+    %4 $act: id = handle_push %3
+    %6 clause: ptr = bound %4 main::handler_cancel_twin::Count.bump
+    call counting$Count_bump#9(%6, %4, %0) -> b1()
+  b1(%5 r: i64) [handle]:
+    %7 lit: i64 = const 1
+    %8 t: i64 = intadd %5, %7
+    handle_pop
+    ret %8
+
+fn counting$Count_bump#9 clause main::handler_cancel_twin::Count.bump -> i64 ; main::handler_cancel_twin, captures [], frame 3 slots [%0 word*, %1 i64, %2 i64]
+  b0(%0 env: ptr, %1 inst: id, %2 n: i64):
+    drop %0
+    %3 hits: i64 = state_get %1[0] row 9
+    %4 t: i64 = intadd %3, %2
+    state_set %1[0] row 9 = %4
+    %5 set: unit = const ()
+    %6 hits: i64 = state_get %1[0] row 9
+    ret %6

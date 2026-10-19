@@ -417,6 +417,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
             next_twin += 1;
         }
     }
+    let may_abort = func::may_abort(m, &regions);
     let env = func::Env {
         m,
         rt: &layout.rt,
@@ -432,10 +433,8 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
             .map(|(k, n)| (n.clone(), layout.first_import + k as u32))
             .collect(),
         twins,
-        recursive: (0..m.funcs.len())
-            .map(|i| m.direct.recursive(i as u32))
-            .collect(),
-        may_abort: func::may_abort(m, &regions),
+        enter: func::entries(m, &regions, &may_abort),
+        may_abort,
         gauge: g + 3,
         state: g + 4,
     };

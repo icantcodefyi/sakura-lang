@@ -1,0 +1,44 @@
+// milestone: M3
+// covers: design §17.211 (1) (a bound perform in a direct twin stays a cancellation point: a
+// cancelled task woken from a sleep unwinds from the twin, as from a frame)
+
+error Stop
+
+effect Count {
+  fn bump(n: Int) -> Int
+}
+
+fn counting() -> Handler<Count> {
+  handler Count {
+    var hits = 0
+    fn bump(n) {
+      hits = hits + n
+      hits
+    }
+  }
+}
+
+fn inner(n: Int) -> Int { with counting() { Count.bump(n) + 1 } }
+
+fn outer(n: Int) -> Int { with counting() { inner(n) + Count.bump(1) } }
+
+pub fn main() -> Unit ! {Console} {
+  with Clock.virtual(), Task.deterministic(7) {
+    let outcome = try {
+      Task.all([
+        fn() {
+          Console.print("before {outer(2)}")
+          Clock.sleep(Duration.millis(10))
+          Console.print("after {outer(2)}")
+          1
+        },
+        fn() {
+          Clock.sleep(Duration.millis(1))
+          fail Stop
+        },
+      ])
+    }
+    Console.print("{outcome}")
+    Console.print("joined {outer(5)}")
+  }
+}

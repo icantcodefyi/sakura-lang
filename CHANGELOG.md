@@ -114,6 +114,12 @@ published yet.
   body too; nothing else changes. This is a semantics change: owner review requested
   (§17.209 (2)).
 
+- `--target wasm` runs a `perform` bound to a handler literal in the same function (design
+  §17.113 (a)) as a direct call of its clause, and gives such functions and their clauses
+  direct twins, so a loop performing a local handler's operation allocates no continuation
+  frames: `handled_d1`, `_d4` and `_d16` run 4 frames per `run(1000)` where they ran 1,005
+  (design §17.211 (1)). Output, traces and defects are unchanged.
+
 - The agent-DX offline fixture validator runs independent tasks in a thread pool,
   with `--jobs 1` for serial execution and byte-identical task-ordered reports
   (design §17.197).

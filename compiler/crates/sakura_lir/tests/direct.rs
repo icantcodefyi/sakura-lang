@@ -243,10 +243,11 @@ fn facts_survive_the_committed_form_and_malformed_input_is_refused() {
     assert_eq!(direct::dump(&snapshot::Module::default()), "");
 }
 
-/// The direct regions (`direct::regions`): a direct top-level function whose LIR is
-/// first-order straight-line code, calling only other such functions, runs without frames; a
-/// direct def that calls a function value, installs a bound handler, calls a function outside
-/// the regions or is a clause keeps the frame protocol, as does every `cps` def.
+/// The direct regions (`direct::regions`): a direct top-level function or clause whose LIR is
+/// first-order code, calling only other such functions, runs without frames. That includes a
+/// def whose performs are bound to its own handler literal, and the literal's direct clause
+/// (design §17.211 (1)). A direct def that calls a function value or a function outside the
+/// regions keeps the frame protocol, as does every `cps` def.
 #[test]
 fn regions_are_direct_first_order_code() {
     common::big_stack(|| {
@@ -261,15 +262,10 @@ fn regions_are_direct_first_order_code() {
                 .unwrap_or_else(|| panic!("no function {name}"));
             regions[i]
         };
-        assert!(region("fib"));
-        for name in [
-            "twice",
-            "uses_twice",
-            "bound",
-            "counter$Tick_next",
-            "catches",
-            "ping",
-        ] {
+        for name in ["fib", "bound", "counter$Tick_next"] {
+            assert!(region(name), "{name} is a direct region");
+        }
+        for name in ["twice", "uses_twice", "catches", "ping"] {
             assert!(!region(name), "{name} is not a direct region");
         }
         // Every region is direct by the facts.

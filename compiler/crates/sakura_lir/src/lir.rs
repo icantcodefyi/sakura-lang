@@ -495,9 +495,21 @@ pub enum Inst {
         name: String,
         args: Vec<Var>,
     },
-    /// Opens a `with` region: an activation owning `handler` (consumed).
+    /// Opens a `with` region: an activation owning `handler` (consumed). `act` receives the
+    /// activation's id when performs are bound to it ([`Inst::Bound`]).
     HandlePush {
         handler: Var,
+        act: Option<Var>,
+    },
+    /// A perform lexically bound to activation `act` (design §17.113 (a), §17.211 (1)): it
+    /// tests cancellation and writes the §17.80 trace record as a perform does, and yields
+    /// the closure of clause `op` (a new reference), which the block then calls directly with
+    /// `act` and the operation's arguments. A cancelled task unwinds from here.
+    Bound {
+        dst: Var,
+        act: Var,
+        effect: u32,
+        op: u32,
     },
     /// Closes the innermost `with` region of this frame, releasing its activation.
     HandlePop,
@@ -607,10 +619,11 @@ impl Inst {
             | MakeHandler { dst, .. }
             | MakeCallback { dst, .. }
             | StateGet { dst, .. }
+            | Bound { dst, .. }
             | Builtin { dst, .. } => Some(*dst),
+            HandlePush { act, .. } => *act,
             StateSet { .. }
             | Check { .. }
-            | HandlePush { .. }
             | HandlePop
             | TryPush { .. }
             | TryPop
@@ -646,13 +659,13 @@ impl Inst {
                 v
             }
             MakeCallback { f, .. } => vec![(*f, Consume)],
-            StateGet { inst, .. } => vec![(*inst, Borrow)],
+            StateGet { inst, .. } | Bound { act: inst, .. } => vec![(*inst, Borrow)],
             StateSet { inst, value, .. } => vec![(*inst, Borrow), (*value, Consume)],
             Check { cond, blame, .. } => std::iter::once((*cond, Borrow))
                 .chain(blame.map(|(v, _)| (v, Borrow)))
                 .collect(),
             Builtin { args, .. } => all(args, Consume),
-            HandlePush { handler } => vec![(*handler, Consume)],
+            HandlePush { handler, .. } => vec![(*handler, Consume)],
             TryPush { carry, .. } => all(carry, Consume),
             Dup(v) | Drop(v) => vec![(*v, Borrow)],
         }

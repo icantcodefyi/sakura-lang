@@ -8,13 +8,14 @@ layout 2 shape |  32b (word*, word*)
 layout 3 shape |  32b (i64, word*)
 layout 4 shape |  16b ()
 
-fn main#0 pub top -> unit ; main::handler_forwarding, frame 4 slots [%8 word*, %9 bool, %13 word*, %14 bool]
+fn main#0 pub top -> unit ; main::handler_forwarding, frame 4 slots [%8 word*, %9 bool, %14 word*, %16 bool]
   b0():
     %0 greet: ptr = closure plain$Greeter_greet#5[]
     %1 r: ptr = handler main::handler_forwarding::Greeter row 4 state() clauses(%0)
-    handle_push %1
-    %12 lit: ptr = const str 0
-    perform main::handler_forwarding::Greeter.greet(%12) -> b4()
+    %12 $act: id = handle_push %1
+    %13 lit: ptr = const str 0
+    %15 clause: ptr = bound %12 main::handler_forwarding::Greeter.greet
+    call plain$Greeter_greet#5(%15, %12, %13) -> b4()
   b1(%2 v: word):
     drop %2
     %3 greet: ptr = closure plain$Greeter_greet#5[]
@@ -34,12 +35,12 @@ fn main#0 pub top -> unit ; main::handler_forwarding, frame 4 slots [%8 word*, %
     handle_pop
     handle_pop
     ret %11
-  b4(%13 r: ptr) [handle]:
-    perform std::console::Console.print(%13) -> b5()
-  b5(%14 r: unit) [handle]:
-    %15 box: word = box %14
+  b4(%14 r: ptr) [handle]:
+    perform std::console::Console.print(%14) -> b5()
+  b5(%16 r: unit) [handle]:
+    %17 box: word = box %16
     handle_pop
-    jump b1(%15)
+    jump b1(%17)
 
 fn $entry#1 top -> unit ; main::handler_forwarding, frame 1 slots [%1 bool]
   b0():

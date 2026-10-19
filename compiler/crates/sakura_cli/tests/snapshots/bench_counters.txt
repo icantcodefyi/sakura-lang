@@ -17,13 +17,13 @@ fib n=20
   direct: frames 4, boxes 0, dups 2, drops 6, restarts 0
   all-frame: frames 21896, boxes 0, dups 2, drops 6, restarts 0
 handled_d1 n=1000
-  direct: frames 1005, boxes 0, dups 2, drops 2006, restarts 0
+  direct: frames 4, boxes 0, dups 2, drops 2006, restarts 0
   all-frame: frames 1005, boxes 0, dups 2, drops 2006, restarts 0
 handled_d16 n=1000
-  direct: frames 1005, boxes 0, dups 2, drops 2006, restarts 0
+  direct: frames 4, boxes 0, dups 2, drops 2006, restarts 0
   all-frame: frames 1005, boxes 0, dups 2, drops 2006, restarts 0
 handled_d4 n=1000
-  direct: frames 1005, boxes 0, dups 2, drops 2006, restarts 0
+  direct: frames 4, boxes 0, dups 2, drops 2006, restarts 0
   all-frame: frames 1005, boxes 0, dups 2, drops 2006, restarts 0
 handled_fwd n=1000
   direct: frames 2005, boxes 0, dups 2, drops 3006, restarts 0
@@ -32,7 +32,7 @@ handled_reentry n=1000
   direct: frames 2006, boxes 2001, dups 2003, drops 5009, restarts 0
   all-frame: frames 2007, boxes 2001, dups 2003, drops 5009, restarts 0
 handled_suspend n=1000
-  direct: frames 1008, boxes 0, dups 2, drops 3010, restarts 0
+  direct: frames 7, boxes 0, dups 2, drops 3010, restarts 0
   all-frame: frames 1012, boxes 0, dups 2, drops 3010, restarts 0
 json_validate n=100
   direct: frames 4, boxes 0, dups 493, drops 2685, restarts 0

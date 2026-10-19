@@ -78,9 +78,8 @@ pub struct Env<'a> {
     pub hosted: HashMap<String, u32>,
     /// The function index of each function's direct twin (`sakura_lir::direct::regions`).
     pub twins: Vec<Option<u32>>,
-    /// Per function, a direct def on a cycle of calls (§17.112): frame-protocol code calls it
-    /// through frames, so a twin's fallback never re-enters a twin per frame.
-    pub recursive: Vec<bool>,
+    /// Per function, frame-protocol code calls its twin instead of pushing a frame ([`entries`]).
+    pub enter: Vec<bool>,
     /// Per function, its twin can abort ([`may_abort`]).
     pub may_abort: Vec<bool>,
     /// The globals of the twins' gauge (estimated native stack bytes in use) and state
@@ -96,6 +95,9 @@ const DEFECTED: i32 = 1;
 /// The gauge ran out: the region is abandoned and its frame-protocol caller runs it again
 /// through frames. Direct code performs nothing, so running it again is not observable.
 const ABORTED: i32 = 2;
+/// A bound perform found the task cancelled (design §17.211 (1)): the frame-protocol caller
+/// returns `Yield` and the task unwinds there, as after a cancelled `perform`.
+const CANCELLED: i32 = 3;
 /// The gauge's budget: native stack bytes the twins of one region may use (Wasmtime's default
 /// stack is 512 KiB).
 const GAUGE_LIMIT: i32 = 128 * 1024;
@@ -105,6 +107,20 @@ fn gauge_cost(f: &Func) -> i32 {
     (64 + 8 * f.vars.len()).min(GAUGE_LIMIT as usize / 8) as i32
 }
 
+/// The functions with twins that `f` calls directly.
+fn twin_calls(f: &Func, twins: &[bool]) -> Vec<usize> {
+    f.blocks
+        .iter()
+        .filter_map(|b| match &b.term {
+            Term::Call {
+                callee: Callee::Direct(g),
+                ..
+            } if twins[g.index()] => Some(g.index()),
+            _ => None,
+        })
+        .collect()
+}
+
 /// Per function with a twin, whether the twin can run out of gauge: it reaches a cycle of twin
 /// calls, or its deepest chain of twin calls charges more than [`GAUGE_LIMIT`]. A region that
 /// cannot abort is never run again, so its frame-protocol caller need not hold its arguments.
@@ -112,19 +128,7 @@ pub fn may_abort(m: &Module, twins: &[bool]) -> Vec<bool> {
     // The deepest charge from each twin's entry; `None` on a cycle. Iterative depth-first.
     const OPEN: Option<i64> = Some(-1);
     let mut depth: Vec<Option<Option<i64>>> = vec![None; m.funcs.len()];
-    let callees = |f: usize| -> Vec<usize> {
-        m.funcs[f]
-            .blocks
-            .iter()
-            .filter_map(|b| match &b.term {
-                Term::Call {
-                    callee: Callee::Direct(g),
-                    ..
-                } if twins[g.index()] => Some(g.index()),
-                _ => None,
-            })
-            .collect()
-    };
+    let callees = |f: usize| twin_calls(&m.funcs[f], twins);
     for root in (0..m.funcs.len()).filter(|&f| twins[f]) {
         if depth[root].is_some() {
             continue;
@@ -171,6 +175,44 @@ pub fn may_abort(m: &Module, twins: &[bool]) -> Vec<bool> {
         .iter()
         .zip(twins)
         .map(|(d, &t)| t && d.flatten().is_none_or(|d| d > GAUGE_LIMIT as i64))
+        .collect()
+}
+
+/// Per function, whether frame-protocol code enters its twin. Not a recursive def's (§17.112):
+/// a twin's fallback then never re-enters a twin per frame. Not a twin that can abort and
+/// leaves what the frame path would repeat (design §17.211 (1)): a clause, whose activation's
+/// state outlives the abort, or a twin reaching a bound perform, whose trace records were
+/// written. Such a call runs through frames, and the twins it reaches are entered from there.
+pub fn entries(m: &Module, twins: &[bool], may_abort: &[bool]) -> Vec<bool> {
+    let mut bound: Vec<bool> = m
+        .funcs
+        .iter()
+        .zip(twins)
+        .map(|(f, &t)| {
+            t && f
+                .blocks
+                .iter()
+                .any(|b| b.insts.iter().any(|i| matches!(i, Inst::Bound { .. })))
+        })
+        .collect();
+    let callees: Vec<Vec<usize>> = m.funcs.iter().map(|f| twin_calls(f, twins)).collect();
+    loop {
+        let mut changed = false;
+        for f in 0..m.funcs.len() {
+            if twins[f] && !bound[f] && callees[f].iter().any(|&g| bound[g]) {
+                bound[f] = true;
+                changed = true;
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+    (0..m.funcs.len())
+        .map(|f| {
+            let clause = matches!(m.funcs[f].kind, FuncKind::Clause { .. });
+            twins[f] && !m.direct.recursive(f as u32) && !(may_abort[f] && (clause || bound[f]))
+        })
         .collect()
 }
 
@@ -406,6 +448,7 @@ pub fn compile(env: &Env<'_>, statics: &mut Statics, f: &Func) -> Result<Functio
         to_loop: 0,
         depth: 0,
         cur: BlockId(0),
+        open: 0,
         twin: false,
     };
     let mut s = func.instructions();
@@ -435,7 +478,7 @@ pub fn compile(env: &Env<'_>, statics: &mut Statics, f: &Func) -> Result<Functio
 /// [`DEFECTED`] after the same landing pad as in the frame-protocol body.
 pub fn compile_twin(env: &Env<'_>, statics: &mut Statics, f: &Func) -> Result<Function, String> {
     let desc = FrameDesc::of(f);
-    let stacks = vec![Some(vec![]); f.blocks.len()];
+    let stacks = region_stacks(f)?;
     let resume = vec![Resume::No; f.blocks.len()];
     let n = f.blocks.len() as u32;
     let n_params = f.params().len() as u32;
@@ -467,6 +510,7 @@ pub fn compile_twin(env: &Env<'_>, statics: &mut Statics, f: &Func) -> Result<Fu
         to_loop: 0,
         depth: 0,
         cur: BlockId(0),
+        open: 0,
         twin: true,
     };
     let mut s = func.instructions();
@@ -586,6 +630,9 @@ struct Gen<'e, 's> {
     depth: u32,
     /// The block being emitted.
     cur: BlockId,
+    /// The `with` regions open at the terminator being emitted, which a twin leaving early
+    /// closes ([`Gen::continue_at_checked`]).
+    open: u32,
     /// Compiling the direct twin: arguments and result are native, a defect or an abort
     /// returns a placeholder with the state global set.
     twin: bool,
@@ -758,8 +805,10 @@ impl Gen<'_, '_> {
         }
     }
 
-    /// A twin's exit without a result: set the state, return a placeholder.
+    /// A twin's exit without a result: close the activations it opened, set the state, return
+    /// a placeholder.
     fn leave(&self, s: &mut InstructionSink<'_>, state: i32) {
+        self.close_open(s);
         s.i32_const(state).global_set(self.env.state);
         placeholder(s, self.f.ret);
         s.return_();
@@ -956,6 +1005,7 @@ impl Gen<'_, '_> {
             }
         }
         let mut regions = self.stacks[b.index()].clone().unwrap_or_default();
+        self.open = regions.iter().filter(|r| **r == Region::Handle).count() as u32;
         for inst in &block.insts {
             self.inst(s, inst, &mut live, &mut regions)?;
         }
@@ -1194,16 +1244,63 @@ impl Gen<'_, '_> {
                 s.end();
             }
             Inst::Builtin { dst, name, args } => self.builtin(s, *dst, name, args, live)?,
-            Inst::HandlePush { handler } => {
+            Inst::HandlePush { handler, act } if self.twin => {
+                s.local_get(self.local(*handler));
+                self.call_rt(s, "rt_handle_open")?;
+                s.local_set(self.lu);
+                self.check_zero(s, self.lu, live)?;
+                regions.push(Region::Handle);
+                self.open += 1;
+                if let Some(a) = act {
+                    s.local_get(self.lu).local_set(self.local(*a));
+                }
+            }
+            Inst::HandlePush { handler, act } => {
                 regions.push(Region::Handle);
                 s.local_get(1).local_get(self.local(*handler));
                 self.call_rt(s, "rt_handle_install")?;
                 self.pad_if(s, live, None)?;
+                if let Some(a) = act {
+                    // The frame's innermost activation is the one just installed.
+                    s.local_get(1)
+                        .i32_load(mem(20, 2))
+                        .local_set(self.local(*a));
+                }
+            }
+            Inst::HandlePop if self.twin => {
+                regions.pop();
+                self.open -= 1;
+                self.call_rt(s, "rt_handle_close")?;
             }
             Inst::HandlePop => {
                 regions.pop();
                 s.local_get(1);
                 self.call_rt(s, "rt_handle_exit")?;
+            }
+            Inst::Bound {
+                dst,
+                act,
+                effect,
+                op,
+            } => {
+                let d = self.local(*dst);
+                s.local_get(self.local(*act))
+                    .i32_const(*effect as i32)
+                    .i32_const(*op as i32);
+                self.call_rt(s, "rt_bound")?;
+                s.local_set(d);
+                self.check_zero(s, d, &before)?;
+                // Cancelled: the task unwinds from here (ABI §7.4).
+                s.local_get(d).i32_const(1).i32_eq().if_(BlockType::Empty);
+                self.depth += 1;
+                self.release(s, &before)?;
+                if self.twin {
+                    self.leave(s, CANCELLED);
+                } else {
+                    s.i32_const(YIELD).return_();
+                }
+                self.depth -= 1;
+                s.end();
             }
             Inst::TryPush {
                 catch,
@@ -1873,6 +1970,14 @@ impl Gen<'_, '_> {
         self.pad(s, &rest, None)?;
         self.depth -= 1;
         s.end();
+        s.global_get(self.env.state).i32_const(CANCELLED).i32_eq();
+        s.if_(BlockType::Empty);
+        self.depth += 1;
+        s.i32_const(OK).global_set(self.env.state);
+        self.release(s, &rest)?;
+        s.i32_const(YIELD).return_();
+        self.depth -= 1;
+        s.end();
         s.i32_const(OK).global_set(self.env.state);
         if hold {
             self.call_rt(s, "rt_restart")?;
@@ -1918,8 +2023,8 @@ impl Gen<'_, '_> {
         Ok(())
     }
 
-    /// [`Gen::continue_at`] after a twin call inside a twin: a defect or abort leaves this twin
-    /// too, releasing what the block holds.
+    /// [`Gen::continue_at`] after a twin call inside a twin: a defect, abort or cancellation
+    /// leaves this twin too, releasing what the block holds and closing its activations.
     fn continue_at_checked(
         &mut self,
         s: &mut InstructionSink<'_>,
@@ -1935,6 +2040,7 @@ impl Gen<'_, '_> {
                 self.call_rt(s, "drop")?;
             }
         }
+        self.close_open(s);
         // The state stays as the callee set it.
         placeholder(s, self.f.ret);
         s.return_();
@@ -1942,6 +2048,14 @@ impl Gen<'_, '_> {
         s.end();
         self.continue_at(s, cont);
         Ok(())
+    }
+
+    /// The activations this twin opened and has not closed end when it leaves early: an
+    /// aborted twin runs again from its region's entry, and every twin closes its own.
+    fn close_open(&self, s: &mut InstructionSink<'_>) {
+        for _ in 0..self.open {
+            s.call(self.env.rt["rt_handle_close"]);
+        }
     }
 
     /// Store a continuation's carried values in the frame and set the resume block.
@@ -2068,7 +2182,7 @@ impl Gen<'_, '_> {
             Term::Call { callee, args, cont } => {
                 if let Callee::Direct(g) = callee
                     && let Some(twin) = self.env.twins[g.index()]
-                    && !self.env.recursive[g.index()]
+                    && self.env.enter[g.index()]
                 {
                     let held = self.env.may_abort[g.index()];
                     self.enter_twin(s, twin, held, args, cont, live)?;

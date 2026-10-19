@@ -1,0 +1,5 @@
+ending: ok
+--- stdout
+before 4
+Err(Stop)
+joined 7

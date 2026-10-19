@@ -505,6 +505,30 @@ pub extern "C" fn rt_handle_exit(f: u32) {
     rt().handle_exit(f);
 }
 
+/// `HandlePush` in a direct twin (the handler consumed): the activation id, 0 after a defect.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_handle_open(h: u32) -> u32 {
+    let rt = rt();
+    let outer = rt.live_frame(rt.current_frame()).map_or(0, |(_, act)| act);
+    ptr(rt.handle_open(outer, h))
+}
+
+/// `HandlePop` in a direct twin.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_handle_close() {
+    rt().handle_close();
+}
+
+/// `Bound`: clause `op`'s closure of activation `act` (a new reference); 0 after a defect, 1
+/// when the task is cancelled.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_bound(act: u32, effect: u32, op: u32) -> u32 {
+    match rt().bound(act, effect, op) {
+        Ok(0) => 1,
+        r => ptr(r),
+    }
+}
+
 /// `TryPush`: 0, or 1 after a defect.
 #[unsafe(no_mangle)]
 pub extern "C" fn rt_try_push(f: u32, join: u32, handles: u32, trys: u32) -> u32 {

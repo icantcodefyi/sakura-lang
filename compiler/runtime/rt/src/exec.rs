@@ -564,6 +564,16 @@ impl Rt {
     /// `with h { … }` in the frame at `f`: a fresh activation of `handler` (consumed), its
     /// state copied from the handler's initial values.
     pub fn handle_install(&mut self, f: u32, handler: u32) -> Res<u32> {
+        let id = self.handle_open(self.u(f, F_ACT), handler)?;
+        self.set(f, F_ACT, id);
+        Ok(id)
+    }
+
+    /// `with h { … }` in a direct twin (ABI §5, design §17.211 (1)): the activation of
+    /// `handler` (consumed) under `outer`, owned by the current frame like the frame's own, so
+    /// it is released when the frame unwinds. No frame's `activation` changes: only bound
+    /// performs, which name it, reach it.
+    pub fn handle_open(&mut self, outer: u32, handler: u32) -> Res<u32> {
         let t = self.cur();
         let row = self.state_row(handler);
         let n = row.as_ref().map_or(0, |r| r.n_slots);
@@ -572,7 +582,7 @@ impl Rt {
             .inspect_err(|_| self.drop(handler))?;
         self.set(a, A_EFFECT, self.u(handler, 8));
         self.set(a, A_HANDLER, handler);
-        self.set(a, A_OUTER, self.u(f, F_ACT));
+        self.set(a, A_OUTER, outer);
         self.set(a, A_FRAME, self.u(t, T_FRAME));
         self.set(a, A_N, n);
         self.heap
@@ -597,8 +607,35 @@ impl Rt {
             self.release_activation(id);
             return Err(e);
         }
-        self.set(f, F_ACT, id);
         Ok(id)
+    }
+
+    /// The innermost activation a direct twin opened ([`Self::handle_open`]) ends.
+    pub fn handle_close(&mut self) {
+        let t = self.cur();
+        let id = self.tpop(t, T_ACTS).expect("an activation to pop");
+        self.release_activation(id);
+    }
+
+    /// A perform bound to activation `act` (design §17.113 (a)): the cancellation test and the
+    /// trace record of [`Self::perform_value`], then clause `op`'s closure (a new reference),
+    /// which compiled code calls directly. `Ok(0)` when the task is cancelled.
+    pub fn bound(&mut self, act: u32, effect: u32, op: u32) -> Res<u32> {
+        let t = self.cur();
+        if self.u(t, T_CANCELLED) != 0 {
+            return Ok(0);
+        }
+        let a = self.arena_get(act, tag::ACTIVATION)?;
+        let h = self.u(a, A_HANDLER);
+        if self.u(a, A_EFFECT) != effect || op >= self.heap.mem.u32(h + 20) {
+            return Err(Defect::INTERNAL);
+        }
+        let clause = self.heap.mem.u32(self.handler_clause(h, op));
+        if self.sched.trace {
+            self.trace(t, Trace::Op(effect, op));
+        }
+        self.dup(clause)?;
+        Ok(clause)
     }
 
     /// The layout row of a handler's state; `None` for a host-built handler, which has no state

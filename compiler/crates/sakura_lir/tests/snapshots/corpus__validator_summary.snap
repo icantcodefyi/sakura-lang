@@ -41,7 +41,7 @@ semantics/direct_closure_values: 6 funcs, 22 blocks, 6 dup, 21 drop, valid
 semantics/direct_higher_order: 20 funcs, 58 blocks, 10 dup, 57 drop, valid
 semantics/direct_inlined_bind_blame: 5 funcs, 12 blocks, 0 dup, 3 drop, valid
 semantics/direct_inlined_bind_defect: 5 funcs, 13 blocks, 0 dup, 3 drop, valid
-semantics/direct_region_restart: 7 funcs, 38 blocks, 3 dup, 32 drop, valid
+semantics/direct_region_restart: 13 funcs, 68 blocks, 6 dup, 61 drop, valid
 semantics/early_return: 4 funcs, 21 blocks, 3 dup, 24 drop, valid
 semantics/effects_and_handlers: 9 funcs, 45 blocks, 6 dup, 22 drop, valid
 semantics/error_unions: 5 funcs, 28 blocks, 0 dup, 5 drop, valid
@@ -55,6 +55,7 @@ semantics/generics: 16 funcs, 88 blocks, 21 dup, 46 drop, valid
 semantics/handler_callback_context: 15 funcs, 37 blocks, 2 dup, 24 drop, valid
 semantics/handler_cancel_bound: 13 funcs, 39 blocks, 0 dup, 14 drop, valid
 semantics/handler_cancel_in_loop: 14 funcs, 41 blocks, 0 dup, 14 drop, valid
+semantics/handler_cancel_twin: 15 funcs, 38 blocks, 0 dup, 20 drop, valid
 semantics/handler_clause_fail: 6 funcs, 17 blocks, 0 dup, 6 drop, valid
 semantics/handler_forwarding: 6 funcs, 13 blocks, 0 dup, 9 drop, valid
 semantics/handler_lexical_bind: 7 funcs, 26 blocks, 1 dup, 10 drop, valid

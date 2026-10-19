@@ -334,7 +334,25 @@ fn inst(m: &Module, f: &Func, i: &Inst) -> String {
             m.contracts[*contract as usize].name
         ),
         Builtin { dst, name, args } => format!("{} = ${name}({})", def(dst), vars(args)),
-        HandlePush { handler } => format!("handle_push %{}", handler.0),
+        HandlePush { handler, act } => match act {
+            Some(a) => format!("{} = handle_push %{}", def(a), handler.0),
+            None => format!("handle_push %{}", handler.0),
+        },
+        Bound {
+            dst,
+            act,
+            effect,
+            op,
+        } => {
+            let e = &m.effects[*effect as usize];
+            format!(
+                "{} = bound %{} {}.{}",
+                def(dst),
+                act.0,
+                e.name,
+                e.ops[*op as usize].name
+            )
+        }
         HandlePop => "handle_pop".into(),
         TryPush {
             catch,

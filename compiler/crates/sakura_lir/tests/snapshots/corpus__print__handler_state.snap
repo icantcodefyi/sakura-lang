@@ -51,23 +51,25 @@ fn answer#2 top -> i64 ; main::handler_state, frame 1 slots [%4 i64]
     handle_pop
     ret %4
 
-fn nested#3 top -> i64 ; main::handler_state, frame 2 slots [%3 i64, %7 i64]
+fn nested#3 top -> i64 ; main::handler_state, frame 2 slots [%4 i64, %10 i64]
   b0():
     %0 next: ptr = closure counter$Counter_next#5[]
     %1 lit: i64 = const 0
     %2 r: ptr = handler main::handler_state::Counter row 4 state(%1) clauses(%0)
-    handle_push %2
-    perform main::handler_state::Counter.next() -> b1()
-  b1(%3 r: i64) [handle]:
-    %4 next: ptr = closure counter$Counter_next#5[]
-    %5 lit: i64 = const 0
-    %6 r: ptr = handler main::handler_state::Counter row 4 state(%5) clauses(%4)
-    handle_push %6
-    perform main::handler_state::Counter.next() -> b2()
-  b2(%7 r: i64) [handle, handle]:
+    %3 $act: id = handle_push %2
+    %5 clause: ptr = bound %3 main::handler_state::Counter.next
+    call counter$Counter_next#5(%5, %3) -> b1()
+  b1(%4 r: i64) [handle]:
+    %6 next: ptr = closure counter$Counter_next#5[]
+    %7 lit: i64 = const 0
+    %8 r: ptr = handler main::handler_state::Counter row 4 state(%7) clauses(%6)
+    %9 $act: id = handle_push %8
+    %11 clause: ptr = bound %9 main::handler_state::Counter.next
+    call counter$Counter_next#5(%11, %9) -> b2()
+  b2(%10 r: i64) [handle, handle]:
     handle_pop
     handle_pop
-    ret %7
+    ret %10
 
 fn counter#4 top -> ptr ; main::handler_state, frame 0 slots []
   b0():

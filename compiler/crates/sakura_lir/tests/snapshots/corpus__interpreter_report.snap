@@ -41,7 +41,7 @@ semantics/direct_closure_values: ok, 28 allocated, 19 dup, 47 drop, peak 10, liv
 semantics/direct_higher_order: ok, 3000079 allocated, 39 dup, 3000118 drop, peak 13, live 0/0
 semantics/direct_inlined_bind_blame: D020, 3 allocated, 0 dup, 3 drop, peak 2, live 0/0
 semantics/direct_inlined_bind_defect: D021, 4 allocated, 0 dup, 4 drop, peak 2, live 0/0
-semantics/direct_region_restart: ok, 1028 allocated, 22 dup, 1050 drop, peak 9, live 0/0
+semantics/direct_region_restart: ok, 1101 allocated, 36 dup, 1137 drop, peak 16, live 0/0
 semantics/early_return: ok, 16 allocated, 6 dup, 22 drop, peak 5, live 0/0
 semantics/effects_and_handlers: ok, 30 allocated, 39 dup, 69 drop, peak 13, live 0/0
 semantics/error_unions: ok, 8 allocated, 2 dup, 10 drop, peak 3, live 0/0
@@ -55,6 +55,7 @@ semantics/generics: ok, 81 allocated, 158 dup, 239 drop, peak 12, live 0/0
 semantics/handler_callback_context: ok, 34 allocated, 29 dup, 63 drop, peak 16, live 0/0
 semantics/handler_cancel_bound: unsupported (builtin task_deterministic)
 semantics/handler_cancel_in_loop: unsupported (builtin task_deterministic)
+semantics/handler_cancel_twin: unsupported (builtin task_deterministic)
 semantics/handler_clause_fail: ok, 11 allocated, 2 dup, 13 drop, peak 4, live 0/0
 semantics/handler_forwarding: ok, 13 allocated, 3 dup, 16 drop, peak 7, live 0/0
 semantics/handler_lexical_bind: ok, 20 allocated, 7 dup, 27 drop, peak 7, live 0/0

@@ -31,7 +31,7 @@
 //!   last use of every reference whose last use only borrows it. Edges and calls pass
 //!   references owned. No borrow inference, no reuse: those are M5.
 
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use crate::layout::{LayoutTable, Slot};
 use crate::lir::{self, *};
@@ -132,6 +132,8 @@ struct Cx<'a> {
     sites: Vec<Site>,
     /// The site group of each call position, by callee.
     groups: HashMap<(core::DefId, Pos), u32>,
+    /// The direct facts (§17.118), for the performs lowered as clause calls.
+    facts: crate::direct::Facts,
 }
 
 pub fn lower(core: &core::Module, sigs: &BTreeMap<String, (Sig, bool)>) -> R<Module> {
@@ -160,6 +162,7 @@ pub fn lower(core: &core::Module, sigs: &BTreeMap<String, (Sig, bool)>) -> R<Mod
         takes_site: vec![],
         sites: vec![],
         groups: HashMap::new(),
+        facts: crate::direct::analyze(core),
     };
     cx.takes_site = (0..core.defs.len())
         .map(|i| {
@@ -242,7 +245,7 @@ pub fn lower(core: &core::Module, sigs: &BTreeMap<String, (Sig, bool)>) -> R<Mod
             .iter()
             .map(|(name, d)| (name.clone(), FuncId(*d)))
             .collect(),
-        direct: crate::direct::analyze(core),
+        direct: cx.facts,
     })
 }
 
@@ -628,6 +631,12 @@ struct Fl<'c, 'a> {
     site: Local,
     /// The position of the `let` being lowered.
     pos: Option<Pos>,
+    /// Performs bound to a `with` of a handler literal whose clause is direct (design
+    /// §17.211 (1)): the `with`'s body and the clause, lowered as a call of the clause.
+    bound: HashMap<Local, (*const CBlock, core::DefId)>,
+    /// Per `with` (by its body) that bound performs name, the pseudo-local after `$site`
+    /// holding its activation id, which liveness carries like any local.
+    acts: HashMap<*const CBlock, Local>,
 }
 
 impl<'c, 'a> Fl<'c, 'a> {
@@ -645,7 +654,19 @@ impl<'c, 'a> Fl<'c, 'a> {
         };
         let mut reprs = cx.reprs[id as usize].clone();
         reprs.push(Repr::I64);
+        let bound = crate::direct::bound(cx.core, def, &cx.facts);
+        let mut acts = HashMap::new();
+        let named: HashSet<*const CBlock> = bound.values().map(|(body, _)| *body).collect();
+        for body in blocks(&def.body) {
+            let body = body as *const CBlock;
+            if named.contains(&body) {
+                acts.insert(body, reprs.len() as Local);
+                reprs.push(Repr::Id);
+            }
+        }
         Fl {
+            bound,
+            acts,
             site: def.locals.len() as Local,
             pos: None,
             b: FuncBuilder::new(def.name.clone(), def.module.clone()),
@@ -667,6 +688,9 @@ impl<'c, 'a> Fl<'c, 'a> {
     fn name(&self, l: Local) -> &'a str {
         if l == self.site {
             return SITE_MARK;
+        }
+        if l > self.site {
+            return "$act";
         }
         local_name(self.def, l)
     }
@@ -841,6 +865,9 @@ impl<'c, 'a> Fl<'c, 'a> {
                 {
                     out.insert(self.site);
                 }
+                if let Some((body, _)) = self.bound.get(local) {
+                    out.insert(self.acts[body]);
+                }
                 bound.push(*local);
             }
         }
@@ -871,7 +898,15 @@ impl<'c, 'a> Fl<'c, 'a> {
             }
             Terminator::Handle { handler, body } => {
                 add_atom(handler, &bound, &mut out);
-                self.extend(body, &bound, &mut out);
+                let act = self.acts.get(&(&**body as *const CBlock));
+                for l in self.fv(Rest {
+                    block: body,
+                    from: 0,
+                }) {
+                    if !bound.contains(&l) && Some(&l) != act {
+                        out.insert(l);
+                    }
+                }
             }
             Terminator::Try { on_fail, body } => {
                 self.add_join(*on_fail, &bound, &mut out);
@@ -1244,7 +1279,15 @@ impl<'c, 'a> Fl<'c, 'a> {
             }
             Terminator::Handle { handler, body } => {
                 let h = self.atom_as(b, &env, handler, Repr::Ptr)?;
-                self.b.push(b, Inst::HandlePush { handler: h });
+                let act = match self.acts.get(&(&**body as *const CBlock)) {
+                    Some(&a) => {
+                        let v = self.b.var("$act", Repr::Id);
+                        env.insert(a, v);
+                        Some(v)
+                    }
+                    None => None,
+                };
+                self.b.push(b, Inst::HandlePush { handler: h, act });
                 regions.push(RegionKind::Handle);
                 self.block(
                     Rest {
@@ -1518,15 +1561,32 @@ impl<'c, 'a> Fl<'c, 'a> {
                 }
                 let effect = self.cx.effects[*effect as usize];
                 let (cont, cb, cenv) = self.split(env, regions, local, rest, sig.ret)?;
-                self.b.end(
-                    b,
-                    Term::Perform {
+                let term = match self.bound.get(&local) {
+                    // A bound perform calls its clause: closure, activation, arguments.
+                    Some(&(body, clause)) => {
+                        let act = lookup(env, self.acts[&body])?;
+                        let c = self.b.fresh(b, "clause", Repr::Ptr, |dst| Inst::Bound {
+                            dst,
+                            act,
+                            effect,
+                            op: *op,
+                        });
+                        let mut args = vec![c, act];
+                        args.extend(vs);
+                        Term::Call {
+                            callee: Callee::Direct(FuncId(clause)),
+                            args,
+                            cont,
+                        }
+                    }
+                    None => Term::Perform {
                         effect,
                         op: *op,
                         args: vs,
                         cont,
                     },
-                );
+                };
+                self.b.end(b, term);
                 Step::Split(cb, cenv)
             }
             Bind::Closure(d, caps) => {

@@ -17,6 +17,8 @@
 //! Skipped when node is missing locally; CI and `SAKURA_REQUIRE_WASM=1` require it.
 //! `SAKURA_PARITY_BACKEND` selects which backend runs first, against the other reference.
 //! Both executions are necessary in every matrix cell to compare their traces.
+//! `wasm_twins_agree_with_wasm_frames` holds WASM to itself the same way: every fixture runs as
+//! under `--no-direct` (design §17.118, §17.211); `bench_counters.rs` shows the twins run.
 
 mod common;
 
@@ -110,12 +112,17 @@ fn test_records(stdout: &str) -> String {
 /// `sakura <mode>` on `target` for fixture `name` in `dir` with flags `rest`, or (with `name`
 /// empty) for the project in `dir` with program arguments `rest`.
 fn run_mode(mode: &str, target: &str, name: &str, dir: &Path, rest: &[&str]) -> Run {
-    let tmp = Path::new(env!("CARGO_TARGET_TMPDIR")).join("parity");
+    run_in("parity", mode, target, name, dir, rest)
+}
+
+/// [`run_mode`] with its files under the target's `tmp/<sub>`.
+fn run_in(sub: &str, mode: &str, target: &str, name: &str, dir: &Path, rest: &[&str]) -> Run {
+    let tmp = Path::new(env!("CARGO_TARGET_TMPDIR")).join(sub);
     std::fs::create_dir_all(&tmp).unwrap();
     let label = if name.is_empty() {
-        dir.file_name().unwrap().to_str().unwrap()
+        dir.file_name().unwrap().to_str().unwrap().to_owned()
     } else {
-        name
+        format!("{name}{}", rest.concat())
     };
     let trace = tmp.join(format!("{label}.{mode}.{target}.trace"));
     let coverage = tmp.join(format!("{label}.{mode}.{target}.imports"));
@@ -580,4 +587,55 @@ fn a_crlf_fixture_runs_like_its_lf_twin() {
         assert!(!lf.1.is_empty(), "{args:?}: no trace");
         assert_eq!(lf, crlf, "{args:?}");
     }
+}
+
+/// Design §17.118, §17.211: WASM's direct twins are unobservable. Every run- and test-mode
+/// fixture prints, exits, defects and traces exactly as it does under `--no-direct`, where
+/// every call and bound perform is a frame.
+#[test]
+fn wasm_twins_agree_with_wasm_frames() {
+    let node = std::process::Command::new("node").arg("--version").output();
+    if !node.is_ok_and(|out| out.status.success()) {
+        assert!(
+            std::env::var("SAKURA_REQUIRE_WASM").as_deref() != Ok("1")
+                && std::env::var_os("CI").is_none(),
+            "node is missing"
+        );
+        eprintln!("skipped: node is missing");
+        return;
+    }
+    assert!(sakura_codegen_wasm::available(), "WASM runtime is missing");
+    let mut jobs = vec![];
+    for path in fixtures("semantics") {
+        let d = directives(&std::fs::read_to_string(&path).unwrap());
+        let mode = d.get("mode").map_or("run", String::as_str).to_owned();
+        if matches!(mode.as_str(), "run" | "test") && skip_reason(&d, SEMANTICS_MILESTONE).is_none()
+        {
+            let contracts = mode == "test" && d.get("contracts").is_some_and(|v| v == "true");
+            jobs.push((path, mode, contracts));
+        }
+    }
+    let runs = par_map(&jobs, |(path, mode, contracts)| {
+        let name = path.file_name().unwrap().to_string_lossy();
+        let dir = path.parent().unwrap();
+        let flags: &[&str] = if *contracts { &["--contracts"] } else { &[] };
+        let frames = [flags, &["--no-direct"]].concat();
+        (
+            run_in("twins", mode, "wasm", &name, dir, flags),
+            run_in("twins", mode, "wasm", &name, dir, &frames),
+        )
+    });
+    let failures: Vec<String> = jobs
+        .iter()
+        .zip(&runs)
+        .filter_map(|((path, mode, _), (twins, frames))| {
+            let why = compare(None, mode, twins, frames)?;
+            Some(format!(
+                "{} (twins against --no-direct): {why}",
+                path.display()
+            ))
+        })
+        .collect();
+    assert!(!jobs.is_empty(), "the corpus must not be empty");
+    assert!(failures.is_empty(), "{}", failures.join("\n\n"));
 }

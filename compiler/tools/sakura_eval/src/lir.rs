@@ -1358,7 +1358,7 @@ impl<'m> Vm<'m> {
                 }
                 self.set(cur, *dst, v?)
             }
-            HandlePush { handler } => {
+            HandlePush { handler, act } => {
                 let h = self.take_word(cur, *handler)?;
                 let (effect, row, state) = match &self.obj(h)?.body {
                     Body::Handler {
@@ -1382,7 +1382,29 @@ impl<'m> Vm<'m> {
                 }))?;
                 self.stats.activations += 1;
                 self.frame(cur)?.activation = a;
-                Ok(())
+                match act {
+                    Some(d) => self.set(cur, *d, Val::Id(a)),
+                    None => Ok(()),
+                }
+            }
+            Bound { dst, act, op, .. } => {
+                let Val::Id(a) = self.get(cur, *act)? else {
+                    return internal("a bound perform of a non-activation");
+                };
+                let handler = self
+                    .act(a)
+                    .ok_or(Ending::Internal(
+                        "a bound perform of a dead activation".into(),
+                    ))?
+                    .handler;
+                let Body::Handler { clauses, .. } = &self.obj(handler)?.body else {
+                    return internal("activation without a handler");
+                };
+                let clause = *clauses
+                    .get(*op as usize)
+                    .ok_or(Ending::Internal("missing clause".into()))?;
+                self.dup(clause)?;
+                self.set(cur, *dst, Val::W(clause))
             }
             HandlePop => {
                 let a = self.frame(cur)?.activation;
