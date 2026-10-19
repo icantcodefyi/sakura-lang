@@ -8,6 +8,14 @@ Compare the release tag with main when identifying changes not in that preview.
 
 ## [Unreleased]
 
+### Changed
+
+- `sakura.toml` refuses `[dependencies]` with `V8005 dependencies_not_supported` (RFC 0001,
+  design §17.232). Packages arrive in a later minor release and the key is reserved: an empty
+  table, entries, an inline `dependencies = {}` or a dotted key is an error at the key from
+  `check`, `build`, `run`, `test` and the LSP before anything runs, and nothing is fetched. Remove
+  the table; a malformed manifest keeps its parse error alone.
+
 ### Documentation
 
 - Draft public-interface inventory in `STABILITY.md`, with a generated clap/environment/exit-code

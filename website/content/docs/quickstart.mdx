@@ -58,6 +58,8 @@ edition = "2026"
 
 `[permissions]` is the ceiling on what the program may do (design §6). This program only prints, so it is empty. `sakura run` enforces startup grants and passes the table as `SAKURA_PERMISSIONS` for host-handler enforcement. Missing required root authority exits with 75.
 
+A program is one package over std. `[dependencies]` is reserved for packages, which arrive in a later minor release; a manifest that declares it, even empty, is refused with [`V8005`](/docs/errors/V8005) before anything runs.
+
 ```sakura title="hello/src/main.sak"
 /// Build a greeting for a person.
 fn greet(name: String) -> String { "Hello, {name}" }
