@@ -34,6 +34,9 @@ elif name == "security":
     else:
         print("PRIVATE-DIAGNOSTIC")
 elif name == "codesign":
+    if "--verify" in args and "-R" in args and not args[args.index("-R") + 1].startswith("="):
+        print("invalid requirement specification", file=sys.stderr)
+        sys.exit(1)
     if "--sign" in args:
         first = pathlib.Path(os.environ["SEARCH"]).read_text().splitlines()[0].strip()
         assert first == '"' + args[args.index("--keychain") + 1] + '"', first
@@ -125,6 +128,15 @@ class Signing(unittest.TestCase):
         result = self.run_signing(TEST_IDENTITY="Developer ID Application: L8 CONES (WRONGTEAM)")
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse(any(name in ("codesign", "xcrun") for name, _ in self.calls()))
+
+    def test_verification_parses_inline_team_and_notarization_requirements(self):
+        result = self.run_signing()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        verify = [args for name, args in self.calls() if name == "codesign" and "--verify" in args]
+        self.assertEqual([args[args.index("-R") + 1] for args in verify],
+                         ['=anchor apple generic and certificate leaf[subject.OU] = "P62B65A837"', '=notarized'])
+        self.assertTrue(all("--strict" in args for args in verify))
+        self.assertIn("--check-notarization", verify[1])
 
     def test_signing_failure_removes_credentials(self):
         result = self.run_signing(FAIL_SIGN="1")
