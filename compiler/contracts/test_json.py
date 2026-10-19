@@ -25,6 +25,29 @@ class JsonContractTests(unittest.TestCase):
     def test_optional_to_required_fails(self):
         self.assertIn("optional -> required", errors("test 1.0 name string required\ntest 1.0 defect object|null required")[0])
 
+    def test_required_to_optional_fails(self):
+        # Design §17.242 (4): a 1.0 consumer that reads a required field must keep finding it.
+        found = errors("test 1.0 name string optional\ntest 1.0 defect object|null optional")
+        self.assertEqual(["test 1.0 name: required -> optional"], found)
+
+    def test_minor_bump_making_a_required_line_optional_fails(self):
+        found = errors("""
+test 1.0 name string required
+test 1.0 defect object|null optional
+test 1.1 name string optional
+test 1.1 defect object|null optional
+""")
+        self.assertEqual(["test 1.1 name: not kept from 1.0 as it was"], found)
+
+    def test_minor_bump_making_an_optional_line_required_fails(self):
+        found = errors("""
+test 1.0 name string required
+test 1.0 defect object|null optional
+test 1.1 name string required
+test 1.1 defect object|null required
+""")
+        self.assertEqual(["test 1.1 defect: not kept from 1.0 as it was"], found)
+
     def test_addition_without_minor_bump_fails(self):
         found = errors("test 1.0 name string required\ntest 1.0 defect object|null optional\ntest 1.0 seed integer required")
         self.assertIn("without a MINOR bump", found[0])

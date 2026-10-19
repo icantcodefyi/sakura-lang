@@ -1,9 +1,9 @@
 """Keep the JSON contract append-only (design §17.232 (b), RFC 0001).
 
-Against the baseline at the merge base: a removed line, a changed type, optional -> required or a
-MAJOR bump fails; a line added to an existing kind needs a MINOR bump of that kind in the same
-diff (one MINOR step), the new MINOR keeps every line of the kind's previous version, and a
-new kind starts at 1.0.
+Against the baseline at the merge base: a removed line, a changed type, optional -> required,
+required -> optional (design §17.242 (4)) or a MAJOR bump fails; a line added to an existing kind
+needs a MINOR bump of that kind in the same diff (one MINOR step), the new MINOR keeps every line
+of the kind's previous version as it was, and a new kind starts at 1.0.
 """
 
 import argparse
@@ -54,6 +54,8 @@ def compare(previous, current):
             errors.append(f"{name}: type changed from {'|'.join(sorted(types))}")
         if new_required and not required:
             errors.append(f"{name}: optional -> required")
+        if required and not new_required:
+            errors.append(f"{name}: required -> optional")
     old, new = versions(previous), versions(current)
     for kind in sorted(new.keys() - old.keys()):
         if new[kind] != {(1, 0)}:
@@ -73,7 +75,7 @@ def compare(previous, current):
                 if k != kind or v != base:
                     continue
                 now = current.get((k, f"{version[0]}.{version[1]}", field))
-                if now is None or now[0] != entry[0] or (now[1] and not entry[1]):
+                if now is None or now != entry:
                     errors.append(f"{label} {field}: not kept from {base} as it was")
     for key in sorted(current.keys() - previous.keys()):
         kind, version, field = key
