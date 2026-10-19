@@ -10,7 +10,7 @@ publish.workspace = true
 
 [features]
 default = []
-native = ["sakura_rt/native", "dep:sakura_rt", "dep:tokio", "dep:reqwest", "dep:rustls", "dep:rusqlite", "dep:hyper", "dep:cap-std", "dep:serde_json"]
+native = ["sakura_rt/native", "dep:sakura_rt", "dep:tokio", "dep:reqwest", "dep:rustls", "dep:rusqlite", "dep:hyper", "dep:cap-std", "dep:serde_json", "sakura_codegen_native/native"]
 
 [dependencies]
 sakura_rt = { workspace = true, optional = true }
@@ -24,6 +24,8 @@ serde_json = { workspace = true, optional = true }
 
 [dev-dependencies]
 sakura_lir.workspace = true
+# The corpus test compiles each program with N2 and compares it with the evaluator.
+sakura_codegen_native.workspace = true
 
 [[test]]
 name = "smoke"

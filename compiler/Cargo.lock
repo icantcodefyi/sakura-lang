@@ -2188,6 +2188,7 @@ dependencies = [
  "gimli 0.34.0",
  "object 0.40.0",
  "sakura_lir",
+ "sakura_rt",
  "target-lexicon",
 ]
 
@@ -2281,6 +2282,7 @@ dependencies = [
  "reqwest",
  "rusqlite",
  "rustls",
+ "sakura_codegen_native",
  "sakura_lir",
  "sakura_rt",
  "serde_json",
@@ -2322,6 +2324,14 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "sakura_native_driver"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "sakura_host_native",
+ "sakura_rt",
 ]
 
 [[package]]

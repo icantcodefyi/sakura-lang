@@ -1,17 +1,22 @@
-//! Plan M5 N1a acceptance: the LIR corpus (`crates/sakura_lir/tests/corpus`, the run-mode
-//! programs of `tests/semantics` and the differential programs, each with the JS backend's
-//! `.expected`) runs natively from the evaluator's harness (`eval`, the stand-in for N2's code)
-//! over `sakura_rt::native` and the native host, with no Node process, and agrees with the
-//! expected ending and stdout byte for byte. Two instances live in one process and `close()`
-//! releases each one's resources.
+//! Plan M5 N1a and N2 acceptance: the LIR corpus (`crates/sakura_lir/tests/corpus`, the
+//! run-mode programs of `tests/semantics` and the differential programs, each with the JS
+//! backend's `.expected`) runs natively, with no Node process, and agrees with the expected
+//! ending and stdout byte for byte: from the evaluator's harness (`eval`) over
+//! `sakura_rt::native` and the native host, and compiled by `sakura_codegen_native`, linked with
+//! the driver staticlib and run as an executable, whose `stats()` counters at exit must equal
+//! the evaluator's. Two instances live in one process and `close()` releases each one's
+//! resources.
 
 mod eval;
 
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::rc::Rc;
+use std::sync::OnceLock;
 
 use sakura_host_native::{Config, NativeHost, run_task};
 use sakura_lir::snapshot;
+use sakura_rt::Stats;
 use sakura_rt::native::{Instance, Limits, Outcome};
 
 /// Programs that need a standard service of N1b, with the reason (an empty table at N1b's end,
@@ -99,6 +104,12 @@ fn main_once(inst: &mut Instance<NativeHost>, entry: u32) -> Outcome {
 /// (the first run allocates the runtime's lazily built state, as `runtime/rt/tests/exec.rs`
 /// takes its baseline after one repetition); a difference is reported in the ending.
 fn run(core: &snapshot::Module) -> (String, String, String) {
+    let (end, out, err, _) = run_with_stats(core);
+    (end, out, err)
+}
+
+/// [`run`], with the `stats()` counters after the first run.
+fn run_with_stats(core: &snapshot::Module) -> (String, String, String, Stats) {
     let (mut inst, entry) = instance(core);
     let o = main_once(&mut inst, entry);
     let mut end = ending(&o);
@@ -107,7 +118,8 @@ fn run(core: &snapshot::Module) -> (String, String, String) {
         let (out, err) = inst.host().captured();
         (out.to_string(), err.to_string())
     };
-    let base = (inst.stats().live_objects, inst.exec_counts());
+    let stats = inst.stats();
+    let base = (stats.live_objects, inst.exec_counts());
     let again = main_once(&mut inst, entry);
     let after = (inst.stats().live_objects, inst.exec_counts());
     if ending(&again) != ending(&o) || after != base {
@@ -117,7 +129,7 @@ fn run(core: &snapshot::Module) -> (String, String, String) {
         );
     }
     inst.close().close();
-    (end, out, err)
+    (end, out, err, stats)
 }
 
 #[test]
@@ -140,6 +152,204 @@ fn the_corpus_runs_natively() {
     }
     eprintln!("native: {passed} of {} programs agree", programs.len());
     assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// The driver staticlib and the system libraries it links against, built once in its own
+/// target directory (the running `cargo test` holds the workspace's).
+fn driver() -> &'static (PathBuf, Vec<String>) {
+    static DRIVER: OnceLock<(PathBuf, Vec<String>)> = OnceLock::new();
+    DRIVER.get_or_init(|| {
+        let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let target = Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-driver");
+        let lib = target.join("debug/libsakura_native_driver.a");
+        let libs_file = target.join("native-static-libs.txt");
+        if lib.is_file() && !libs_file.is_file() {
+            // `--print native-static-libs` speaks only when it links.
+            std::fs::remove_file(&lib).unwrap();
+        }
+        let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
+        let output = Command::new(cargo)
+            .current_dir(manifest.join("../.."))
+            .args([
+                "rustc",
+                "-p",
+                "sakura_native_driver",
+                "--features",
+                "native",
+            ])
+            .args([
+                "--lib",
+                "--locked",
+                "--crate-type",
+                "staticlib",
+                "--target-dir",
+            ])
+            .arg(&target)
+            .args(["--", "-Cpanic=abort", "--print", "native-static-libs"])
+            .output()
+            .expect("cargo");
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(output.status.success(), "building the driver:\n{stderr}");
+        if let Some(line) = stderr
+            .lines()
+            .find_map(|l| l.split_once("native-static-libs: ").map(|(_, r)| r))
+        {
+            std::fs::write(&libs_file, line).unwrap();
+        }
+        let libs = std::fs::read_to_string(&libs_file).unwrap();
+        (lib, libs.split_whitespace().map(String::from).collect())
+    })
+}
+
+/// How an executable's run ended, in `.expected` terms: the defect record's code on stderr,
+/// else the exit status.
+fn exe_ending(status: std::process::ExitStatus, stderr: &str) -> String {
+    match status.code() {
+        Some(0) => "ok".into(),
+        Some(70) => match stderr.split_once("\"code\":\"") {
+            Some((_, rest)) => rest.chars().take(4).collect(),
+            None => format!("exit 70: {stderr}"),
+        },
+        Some(c) => format!("exit {c}"),
+        None => format!("killed: {status:?}"),
+    }
+}
+
+/// Compile, link and run `core`: `(ending, stdout, stderr, the stats line)`.
+fn run_compiled(
+    name: &str,
+    core: &snapshot::Module,
+    dir: &Path,
+) -> (String, String, String, String) {
+    let fail = |e: String| (e, String::new(), String::new(), String::new());
+    let m = match sakura_lir::lower::lower(core, &sakura_lir::builtin_sigs()) {
+        Ok(m) => m,
+        Err(e) => return fail(format!("lowering failed: {e}")),
+    };
+    let object = match sakura_codegen_native::emit(&m) {
+        Ok(o) => o,
+        Err(e) => return fail(format!("codegen failed: {e}")),
+    };
+    let stem = name.replace('/', "-");
+    let (o, exe, stats) = (
+        dir.join(format!("{stem}.o")),
+        dir.join(&stem),
+        dir.join(format!("{stem}.stats")),
+    );
+    std::fs::write(&o, object).unwrap();
+    let _ = std::fs::remove_file(&stats);
+    let (lib, libs) = driver();
+    if let Err(e) = sakura_codegen_native::link(&o, lib, libs, &exe) {
+        return fail(e);
+    }
+    let out = Command::new(&exe)
+        .current_dir(std::env::temp_dir())
+        .env_remove("SAKURA_PERMISSIONS")
+        .env_remove("SAKURA_TRACE")
+        .env("SAKURA_NATIVE_STATS", &stats)
+        .stdin(std::process::Stdio::null())
+        .output()
+        .unwrap();
+    let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
+    (
+        exe_ending(out.status, &stderr),
+        String::from_utf8_lossy(&out.stdout).into_owned(),
+        stderr,
+        std::fs::read_to_string(&stats).unwrap_or_default(),
+    )
+}
+
+/// The counters of a `SAKURA_NATIVE_STATS` line (or of `s`) that do not depend on the static
+/// block's size, which differs because the evaluator interns every message up front.
+fn ownership(line: &str) -> Vec<(String, u64)> {
+    const KEPT: [&str; 6] = [
+        "live_objects",
+        "frames",
+        "boxes",
+        "dups",
+        "drops",
+        "restarts",
+    ];
+    line.trim()
+        .trim_matches(|c| c == '{' || c == '}')
+        .split(',')
+        .filter_map(|kv| {
+            let (k, v) = kv.split_once(':')?;
+            let k = k.trim_matches('"');
+            KEPT.contains(&k)
+                .then(|| (k.to_string(), v.parse().unwrap_or(u64::MAX)))
+        })
+        .collect()
+}
+
+fn counters(s: &Stats) -> Vec<(String, u64)> {
+    [
+        ("live_objects", s.live_objects),
+        ("frames", s.frames),
+        ("boxes", s.boxes),
+        ("dups", s.dups),
+        ("drops", s.drops),
+        ("restarts", s.restarts),
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v))
+    .collect()
+}
+
+/// Plan N2: every corpus program compiled by Cranelift agrees with the expected ending and
+/// stdout, and ends with the evaluator's live objects, frames, boxes, `Dup`s and `Drop`s: the
+/// frame-protocol code keeps the LIR's ownership count.
+#[test]
+fn the_corpus_compiles_links_and_runs_natively() {
+    let programs = programs();
+    driver();
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-corpus");
+    std::fs::create_dir_all(&dir).unwrap();
+    let results = big_stack_map(&programs, |p| {
+        let (_, _, _, want) = run_with_stats(&p.core);
+        (run_compiled(&p.name, &p.core, &dir), counters(&want))
+    });
+    let mut failures = vec![];
+    let mut passed = 0;
+    for (p, ((got, stdout, stderr, stats), want)) in programs.iter().zip(results) {
+        let ok = got == p.ending && stdout == p.stdout;
+        passed += usize::from(ok);
+        match (ok, KNOWN_NATIVE.iter().find(|(n, _)| *n == p.name)) {
+            (true, Some(_)) => failures.push(format!("{}: passes now; drop it from KNOWN_NATIVE", p.name)),
+            (false, None) => failures.push(format!(
+                "{}: expected {} got {got}\n--- expected stdout\n{}--- stdout\n{stdout}--- stderr\n{stderr}",
+                p.name, p.ending, p.stdout
+            )),
+            _ => {}
+        }
+        if ok && ownership(&stats) != want {
+            failures.push(format!(
+                "{}: counters differ from the evaluator's\n  compiled  {:?}\n  evaluator {want:?}",
+                p.name,
+                ownership(&stats)
+            ));
+        }
+    }
+    eprintln!(
+        "native (compiled): {passed} of {} programs agree",
+        programs.len()
+    );
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// Two compilations of the same program are the same object bytes (AGENTS.md: deterministic
+/// output).
+#[test]
+fn native_objects_are_deterministic() {
+    for p in programs()
+        .iter()
+        .filter(|p| p.name.starts_with("semantics/c"))
+    {
+        let m = sakura_lir::lower::lower(&p.core, &sakura_lir::builtin_sigs()).unwrap();
+        let a = sakura_codegen_native::emit(&m).unwrap();
+        let b = sakura_codegen_native::emit(&m).unwrap();
+        assert!(a == b, "{}: two compilations differ", p.name);
+    }
 }
 
 /// The root handlers' imports natively (plan N1a's named acceptance program).

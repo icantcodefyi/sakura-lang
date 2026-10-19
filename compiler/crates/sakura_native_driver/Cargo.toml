@@ -1,0 +1,30 @@
+[package]
+name = "sakura_native_driver"
+description = "The entry of a native Sakura program: the compiled module's table, the runtime and the native host (ABI §1b)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+# Built as the staticlib a native program links: `cargo rustc -p sakura_native_driver --features
+# native --lib --crate-type staticlib -- -Cpanic=abort` (`sakura_host_native/tests/corpus.rs`).
+# The abort runtime is the final crate's; a panic reaching an `extern "C"` export aborts there.
+[features]
+default = []
+native = ["dep:sakura_rt", "dep:sakura_host_native", "sakura_rt/native", "sakura_host_native/native"]
+
+[dependencies]
+sakura_rt = { workspace = true, optional = true }
+sakura_host_native = { workspace = true, optional = true }
+
+# Not `workspace = true`: the program's C entry and the compiled module's table are the one place
+# outside `sakura_rt` that needs `unsafe`. Every block carries a `// SAFETY:`.
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+unused_must_use = "deny"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+undocumented_unsafe_blocks = "deny"
