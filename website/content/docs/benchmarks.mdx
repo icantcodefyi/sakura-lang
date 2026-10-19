@@ -189,12 +189,12 @@ backend is first-release code: 2–124× behind hand JavaScript by count on this
 native, with its worst cells on contracts, handlers and scalar loops. The native backend is
 experimental, left out of release binaries, and not measured here.
 
-Design §17.109 also set an M4 envelope against Rust, Go, OCaml and Koka. Those ceilings were
+Design §17.109 also set an envelope against Rust, Go, OCaml and Koka. Those ceilings were
 set on wall time, and a count across different engines is not a time, so the envelope is
 reported as information and not as a release gate (design §17.265). On these counts it is not
 met: Sakura WebAssembly on Node is a geometric mean of about 27× Rust and 25× Go on the numeric
 kernels, 11× OCaml and 12× Koka on the allocation kernels, with `tokenizer` the one kernel
-inside its ceiling. The native backend, experimental today and due at M5, is where that comparison is made again.
+inside its ceiling. The native backend, experimental today, is where that comparison will be made again.
 
 What comes next, in order, each landing with a counted before and after against the blessed
 baseline: flat `Float`, `Bool` and `Int` lists and in-place `Float` records (`nbody`,
