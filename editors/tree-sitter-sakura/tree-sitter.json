@@ -1,0 +1,32 @@
+{
+  "$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/config.schema.json",
+  "grammars": [
+    {
+      "name": "sakura",
+      "camelcase": "Sakura",
+      "title": "Sakura Lang",
+      "scope": "source.sakura",
+      "file-types": ["sak"],
+      "injection-regex": "^sakura$",
+      "class-name": "TreeSitterSakura"
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0-alpha.1",
+    "license": "MIT OR Apache-2.0",
+    "description": "Sakura Lang grammar for tree-sitter",
+    "links": {
+      "repository": "https://github.com/icantcodefyi/sakuralang"
+    }
+  },
+  "bindings": {
+    "c": false,
+    "go": false,
+    "java": false,
+    "node": true,
+    "python": false,
+    "rust": true,
+    "swift": false,
+    "zig": false
+  }
+}

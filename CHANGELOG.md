@@ -361,6 +361,12 @@ published yet.
 
 ### Added
 
+- A tree-sitter grammar in `editors/tree-sitter-sakura/` (not published) with highlight,
+  locals, indent and injection queries and Rust and Node bindings. CI parses every `.sak`
+  file in the repository with it and checks that, wherever the compiler's parser reports no
+  syntax error, its tokens, items, statements and match arms have the compiler's spans, with
+  LF and CRLF line endings. It is for editors and tooling; the compiler's parser stays the parser of record.
+
 - `bench/bench run --suite wasm` times the benchmark suite built with `--target wasm` on Node
   and Wasmtime against hand JS on Node, after the same oracle, recording each row's `backend`
   and the module's `stats()` counters; its numbers stay advisory until a quiet-window bless

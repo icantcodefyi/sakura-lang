@@ -1,0 +1,7 @@
+# Written by `tree-sitter generate` and `tree-sitter init`; edit grammar.js instead.
+src/parser.c linguist-generated
+src/grammar.json linguist-generated
+src/node-types.json linguist-generated
+src/tree_sitter/* linguist-generated
+bindings/** linguist-generated
+binding.gyp linguist-generated

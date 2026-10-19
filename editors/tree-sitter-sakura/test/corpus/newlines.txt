@@ -1,0 +1,271 @@
+================================================================================
+A call on the next line is a new statement
+================================================================================
+
+fn f() -> Unit {
+  foo
+  (bar)
+  foo
+  [0]
+  foo
+  -1
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (function_declaration
+    (identifier)
+    (parameters)
+    (named_type
+      (type_name))
+    (block
+      (identifier)
+      (parenthesized_expression
+        (identifier))
+      (identifier)
+      (list_expression
+        (integer))
+      (identifier)
+      (unary_expression
+        (integer)))))
+
+================================================================================
+Leading dot, else and catch continue the statement
+================================================================================
+
+fn f() -> Unit {
+  a
+    .map(g)
+    // a comment between
+    .filter(h)
+  if c {
+  }
+  else {
+  }
+  try {
+  }
+  catch {
+    E => 1
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (function_declaration
+    (identifier)
+    (parameters)
+    (named_type
+      (type_name))
+    (block
+      (call_expression
+        (field_expression
+          (call_expression
+            (field_expression
+              (identifier)
+              (identifier))
+            (arguments
+              (identifier)))
+          (comment)
+          (identifier))
+        (arguments
+          (identifier)))
+      (if_expression
+        (identifier)
+        (block)
+        (block))
+      (try_expression
+        (block)
+        (match_arms
+          (match_arm
+            (type_name)
+            (integer)))))))
+
+================================================================================
+Binary operators continue a statement from either line
+================================================================================
+
+fn f() -> Unit {
+  a
+    + b
+  a +
+    b
+  a
+    > b
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (function_declaration
+    (identifier)
+    (parameters)
+    (named_type
+      (type_name))
+    (block
+      (binary_expression
+        (identifier)
+        (identifier))
+      (binary_expression
+        (identifier)
+        (identifier))
+      (binary_expression
+        (identifier)
+        (identifier)))))
+
+================================================================================
+A type argument list ends a declaration
+================================================================================
+
+type Ids = List<Int>
+type Name = Text
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (type_declaration
+    (type_name)
+    (named_type
+      (type_name)
+      (type_arguments
+        (named_type
+          (type_name)))))
+  (type_declaration
+    (type_name)
+    (named_type
+      (type_name))))
+
+================================================================================
+Line breaks inside parentheses and string interpolations never terminate
+================================================================================
+
+fn f() -> Unit {
+  g(a,
+    b)
+  "{a
+  + b}"
+  (fn() { a
+    b })
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (function_declaration
+    (identifier)
+    (parameters)
+    (named_type
+      (type_name))
+    (block
+      (call_expression
+        (identifier)
+        (arguments
+          (identifier)
+          (identifier)))
+      (string
+        (interpolation
+          (binary_expression
+            (identifier)
+            (identifier))))
+      (parenthesized_expression
+        (lambda_expression
+          (parameters)
+          (block
+            (identifier)
+            (identifier)))))))
+
+================================================================================
+Semicolons, blank lines and a keyword module name after a slash
+================================================================================
+
+import std/test
+import std/http.{Request, Response} as http
+
+fn f() -> Unit { a; b
+
+
+  c }
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (import_declaration
+    (module_path
+      (identifier)
+      (identifier)))
+  (import_declaration
+    (module_path
+      (identifier)
+      (identifier))
+    (import_list
+      (type_name)
+      (type_name))
+    (identifier))
+  (function_declaration
+    (identifier)
+    (parameters)
+    (named_type
+      (type_name))
+    (block
+      (identifier)
+      (identifier)
+      (identifier))))
+
+================================================================================
+Signature parts on their own lines
+================================================================================
+
+@tool("Look up an order")
+pub fn order(id: Int) -> Ticket
+  ! {Llm, Db | e}
+  requires id > 0
+  ensures out: out.id == id
+{
+  ?todo
+}
+
+fn external() -> Int
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (function_declaration
+    (attribute
+      (identifier)
+      (arguments
+        (string
+          (string_content))))
+    (visibility)
+    (identifier)
+    (parameters
+      (parameter
+        (identifier)
+        (named_type
+          (type_name))))
+    (named_type
+      (type_name))
+    (effect_row
+      (named_type
+        (type_name))
+      (named_type
+        (type_name))
+      (identifier))
+    (contract
+      (binary_expression
+        (identifier)
+        (integer)))
+    (contract
+      (identifier)
+      (binary_expression
+        (field_expression
+          (identifier)
+          (identifier))
+        (identifier)))
+    (block
+      (hole)))
+  (function_declaration
+    (identifier)
+    (parameters)
+    (named_type
+      (type_name))))

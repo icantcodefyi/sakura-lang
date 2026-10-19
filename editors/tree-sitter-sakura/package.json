@@ -1,0 +1,60 @@
+{
+  "name": "tree-sitter-sakura",
+  "version": "0.1.0-alpha.1",
+  "description": "Sakura Lang grammar for tree-sitter",
+  "private": true,
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/icantcodefyi/sakuralang.git",
+    "directory": "editors/tree-sitter-sakura"
+  },
+  "license": "MIT OR Apache-2.0",
+  "main": "bindings/node",
+  "types": "bindings/node",
+  "keywords": [
+    "incremental",
+    "parsing",
+    "tree-sitter",
+    "sakura"
+  ],
+  "files": [
+    "grammar.js",
+    "tree-sitter.json",
+    "binding.gyp",
+    "prebuilds/**",
+    "bindings/node/*",
+    "queries/*",
+    "src/**",
+    "*.wasm"
+  ],
+  "dependencies": {
+    "node-addon-api": "8.9.2",
+    "node-gyp-build": "4.8.4"
+  },
+  "devDependencies": {
+    "prebuildify": "6.0.1",
+    "tree-sitter": "0.25.1",
+    "tree-sitter-cli": "0.27.1"
+  },
+  "peerDependencies": {
+    "tree-sitter": "^0.25.1"
+  },
+  "peerDependenciesMeta": {
+    "tree-sitter": {
+      "optional": true
+    }
+  },
+  "trustedDependencies": [
+    "tree-sitter",
+    "tree-sitter-cli"
+  ],
+  "scripts": {
+    "install": "node-gyp-build",
+    "generate": "tree-sitter generate",
+    "test": "tree-sitter test && cargo test",
+    "test:node": "node --test bindings/node/*_test.js",
+    "start": "tree-sitter build --wasm && tree-sitter playground"
+  },
+  "packageManager": "bun@1.4.3"
+}

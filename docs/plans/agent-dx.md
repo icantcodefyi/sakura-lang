@@ -395,6 +395,30 @@ scheduled beside W2 as the first agent-DX items, DX5's runner and DX6's workflow
    Not tested: the grammar's tokenisation inside VS Code (it is the website's grammar byte for
    byte, which Shiki already renders) and the error popup's buttons.
 
+### DX7 (Opus, tree-sitter grammar; second part)
+
+1. **Grammar.** `editors/tree-sitter-sakura/` with tree-sitter CLI 0.27.1 (ABI 15): `grammar.js`
+   and an external scanner for the §2.4 newline rule, nested and `///` comments, the CRLF
+   comment rule and string text. The rule's first condition is read from the parse state (a
+   line break terminates only where the grammar accepts a terminator); its second is the
+   scanner's lookahead past whitespace and comments. `Name {` in a header resolves through a
+   GLR conflict. Queries: highlights, locals, indents (Neovim capture names), SQL and HTML
+   injections. Rust and Node bindings from `tree-sitter init`; `publish = false`,
+   `"private": true`.
+2. **Acceptance** (§17.191 (5)). `tests/repo.rs` parses every tracked `.sak` file: 595 at
+   this commit, 552 compared with the CST (LF and CRLF) by token spans and by item,
+   statement and match-arm ranges, 30 listed in `test/invalid.txt` and rejected by both
+   parsers, 13 listed in `test/compiler-only.txt` (`V0002`, `V0003`, `V0005`, `V0007`,
+   `V0008`, `V0010`, `V0011`, `V0013`, `V0014`, a record in a header and the fuzz depth seeds)
+   that parse without errors here. The corpus (`test/corpus`) is built from the lexer's §2.4,
+   number, string, hole and comment cases, plus a highlight test.
+3. **CI.** Job `Tree-sitter grammar`: the release binary (sha256-pinned), `tree-sitter
+   generate` then `git diff --exit-code -- src` (0.27.1 has no `--check`), `tree-sitter
+   test`, and `cargo test` on the compiler's pinned toolchain, not `--locked` because
+   `sakura_syntax`'s dependency requirements come from the compiler workspace. The Node
+   binding was built and its test run locally only.
+4. **Not done:** VS Code still uses the TextMate grammar; no `tags.scm`; nothing published.
+
 ### DX5 (GPT-6-Astra, task authoring and offline acceptance)
 
 1. **Owner-assigned scope.** Twelve tasks now live under `evals/agent-dx/tasks/`,

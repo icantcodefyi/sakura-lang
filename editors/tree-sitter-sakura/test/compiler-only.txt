@@ -1,0 +1,16 @@
+# Syntax errors only the compiler reports: the tree is well formed (`V0007` reserved words,
+# `V0010` chained comparisons, out-of-range integers, invalid escapes, …) or this grammar is
+# more lenient (an unterminated block comment). tests/repo.rs asserts each parses cleanly here.
+compiler/crates/sakura_syntax/tests/data/err/record_in_header.sak
+compiler/crates/sakura_syntax/tests/data/err/unterminated_comment.sak
+compiler/fuzz/corpus/check/depth.sak
+compiler/fuzz/corpus/parse/depth.sak
+compiler/tests/ui/V0002_unterminated_block_comment.sak
+compiler/tests/ui/V0003_int_literal_out_of_range.sak
+compiler/tests/ui/V0005_invalid_escape.sak
+compiler/tests/ui/V0007_reserved_keyword.sak
+compiler/tests/ui/V0008_nesting_limit.sak
+compiler/tests/ui/V0010_chained_comparison.sak
+compiler/tests/ui/V0011_type_arguments_at_call.sak
+compiler/tests/ui/V0013_invalid_assign_target.sak
+compiler/tests/ui/V0014_named_argument.sak

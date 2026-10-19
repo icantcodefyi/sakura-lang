@@ -1,0 +1,354 @@
+================================================================================
+Types, records, variants and errors
+================================================================================
+
+pub opaque type Email = Text
+type Point<T: Eq + Show> = { x: T, y: T where y > 0 }
+type Shape = Circle(Float) | Square(Float) | Empty
+type Callback = fn(Int) -> Text ! {Http}
+type Pair = (Int, Text)
+type Fiber<T>
+error NotFound(id: Int)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (type_declaration
+    (visibility)
+    (type_name)
+    (named_type
+      (type_name)))
+  (type_declaration
+    (type_name)
+    (type_parameters
+      (type_parameter
+        (type_name)
+        (type_name)
+        (type_name)))
+    (record_type
+      (field_declaration
+        (identifier)
+        (named_type
+          (type_name)))
+      (field_declaration
+        (identifier)
+        (named_type
+          (type_name))
+        (where_clause
+          (binary_expression
+            (identifier)
+            (integer))))))
+  (type_declaration
+    (type_name)
+    (variant_list
+      (variant
+        (type_name)
+        (type_list
+          (named_type
+            (type_name))))
+      (variant
+        (type_name)
+        (type_list
+          (named_type
+            (type_name))))
+      (variant
+        (type_name))))
+  (type_declaration
+    (type_name)
+    (function_type
+      (type_list
+        (named_type
+          (type_name)))
+      (named_type
+        (type_name))
+      (effect_row
+        (named_type
+          (type_name)))))
+  (type_declaration
+    (type_name)
+    (tuple_type
+      (named_type
+        (type_name))
+      (named_type
+        (type_name))))
+  (type_declaration
+    (type_name)
+    (type_parameters
+      (type_parameter
+        (type_name))))
+  (error_declaration
+    (type_name)
+    (field_declaration
+      (identifier)
+      (named_type
+        (type_name)))))
+
+================================================================================
+A record literal, but not in a header
+================================================================================
+
+fn f(c: Con) -> Int {
+  let p = Point { x: 1, y: 2 }
+  let q = users.User { ..p, id: 1 }
+  if c.dir == Forward { c.v1 } else { c.v2 }
+}
+
+fn g(x: Int) -> Int requires x == Limit { x }
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (function_declaration
+    (identifier)
+    (parameters
+      (parameter
+        (identifier)
+        (named_type
+          (type_name))))
+    (named_type
+      (type_name))
+    (block
+      (let_statement
+        (identifier)
+        (record_expression
+          (type_name)
+          (field_initializer
+            (identifier)
+            (integer))
+          (field_initializer
+            (identifier)
+            (integer))))
+      (let_statement
+        (identifier)
+        (record_expression
+          (field_expression
+            (identifier)
+            (type_name))
+          (record_spread
+            (identifier))
+          (field_initializer
+            (identifier)
+            (integer))))
+      (if_expression
+        (binary_expression
+          (field_expression
+            (identifier)
+            (identifier))
+          (type_name))
+        (block
+          (field_expression
+            (identifier)
+            (identifier)))
+        (block
+          (field_expression
+            (identifier)
+            (identifier))))))
+  (function_declaration
+    (identifier)
+    (parameters
+      (parameter
+        (identifier)
+        (named_type
+          (type_name))))
+    (named_type
+      (type_name))
+    (contract
+      (binary_expression
+        (identifier)
+        (type_name)))
+    (block
+      (identifier))))
+
+================================================================================
+Match, patterns, handlers and with
+================================================================================
+
+fn f(x: Shape) -> Int {
+  let n = match x {
+    Circle(r) if r > 1.0 => 1, Square(_) => 2
+    Point { x: 0, .. } | Empty => 3
+    [a, ..rest] => 4
+    (-1, "s") => 5
+  }
+  let h = handler Counter {
+    var count = 0
+    fn next() { count = count + 1 }
+  }
+  with h, mock() {
+    for (i, v) in List.enumerate(xs) { continue }
+    while n < 10 { break }
+    return fail Oops { code: n }
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (function_declaration
+    (identifier)
+    (parameters
+      (parameter
+        (identifier)
+        (named_type
+          (type_name))))
+    (named_type
+      (type_name))
+    (block
+      (let_statement
+        (identifier)
+        (match_expression
+          (identifier)
+          (match_arms
+            (match_arm
+              (variant_pattern
+                (type_name)
+                (identifier))
+              (binary_expression
+                (identifier)
+                (float))
+              (integer))
+            (match_arm
+              (variant_pattern
+                (type_name)
+                (wildcard))
+              (integer))
+            (match_arm
+              (or_pattern
+                (record_pattern
+                  (type_name)
+                  (field_pattern
+                    (identifier)
+                    (integer))
+                  (rest_pattern))
+                (type_name))
+              (integer))
+            (match_arm
+              (list_pattern
+                (identifier)
+                (rest_pattern
+                  (identifier)))
+              (integer))
+            (match_arm
+              (tuple_pattern
+                (negative_literal
+                  (integer))
+                (string
+                  (string_content)))
+              (integer)))))
+      (let_statement
+        (identifier)
+        (handler_expression
+          (type_name)
+          (var_statement
+            (identifier)
+            (integer))
+          (handler_operation
+            (identifier)
+            (parameters)
+            (block
+              (assignment_statement
+                (identifier)
+                (binary_expression
+                  (identifier)
+                  (integer)))))))
+      (with_expression
+        (identifier)
+        (call_expression
+          (identifier)
+          (arguments))
+        (block
+          (for_statement
+            (tuple_pattern
+              (identifier)
+              (identifier))
+            (call_expression
+              (field_expression
+                (type_name)
+                (identifier))
+              (arguments
+                (identifier)))
+            (block
+              (continue_statement)))
+          (while_statement
+            (binary_expression
+              (identifier)
+              (integer))
+            (block
+              (break_statement)))
+          (return_statement
+            (fail_expression
+              (record_expression
+                (type_name)
+                (field_initializer
+                  (identifier)
+                  (identifier))))))))))
+
+================================================================================
+Tests, properties, constants and attribute expressions
+================================================================================
+
+let limit: Int = 10
+
+test "adds" {
+  assert(1 + 1 == 2)
+}
+
+property "reverse twice" (xs: List<Int>)
+  requires List.len(xs) < 100
+{
+  Untrusted.trust(x, @trust("checked"))?
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (constant_declaration
+    (identifier)
+    (named_type
+      (type_name))
+    (integer))
+  (test_declaration
+    (string
+      (string_content))
+    (block
+      (call_expression
+        (identifier)
+        (arguments
+          (binary_expression
+            (binary_expression
+              (integer)
+              (integer))
+            (integer))))))
+  (property_declaration
+    (string
+      (string_content))
+    (parameters
+      (parameter
+        (identifier)
+        (named_type
+          (type_name)
+          (type_arguments
+            (named_type
+              (type_name))))))
+    (contract
+      (binary_expression
+        (call_expression
+          (field_expression
+            (type_name)
+            (identifier))
+          (arguments
+            (identifier)))
+        (integer)))
+    (block
+      (raise_expression
+        (call_expression
+          (field_expression
+            (type_name)
+            (identifier))
+          (arguments
+            (identifier)
+            (attribute
+              (identifier)
+              (arguments
+                (string
+                  (string_content))))))))))

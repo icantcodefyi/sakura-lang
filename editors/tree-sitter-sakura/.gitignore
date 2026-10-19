@@ -1,0 +1,6 @@
+target/
+build/
+prebuilds/
+node_modules/
+*.wasm
+log.html

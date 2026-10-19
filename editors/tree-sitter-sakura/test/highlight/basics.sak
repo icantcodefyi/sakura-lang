@@ -1,0 +1,38 @@
+import std/sql as db
+// <- keyword
+//         ^ module
+
+/// Look up a user.
+// <- comment.documentation
+@tool("Find a user")
+// <- attribute
+pub fn find(id: Int) -> Option<User> ! {Db}
+// <- keyword
+//     ^ function
+//          ^ variable.parameter
+//              ^ type
+{
+  let q = sql"select * from users where id = {id}"
+  //      ^ module
+  //         ^ string
+  match Db.query(q) {
+  // <- keyword.conditional
+  //       ^ function.method.call
+    Some(row) => row.name
+    // <- constructor
+    //               ^ property
+    None => ?todo
+    //      ^ variable.builtin
+  }
+}
+
+fn g(x: Option<Option<Int>>) -> Int {
+//            ^ punctuation.bracket
+  match x {
+    Some(None) => 0
+    //   ^ constructor
+    (A, B) => 1
+    //  ^ constructor
+    _ => 2
+  }
+}

@@ -1,0 +1,158 @@
+================================================================================
+Numbers, ranges and tuple indices
+================================================================================
+
+let a = [0, 1_000, 0xFF_ff, 0b1010, 1.5, 2.0e-3, 1..10, t.0.1]
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (constant_declaration
+    (identifier)
+    (list_expression
+      (integer)
+      (integer)
+      (integer)
+      (integer)
+      (float)
+      (float)
+      (binary_expression
+        (integer)
+        (integer))
+      (field_expression
+        (field_expression
+          (identifier)
+          (integer))
+        (integer)))))
+
+================================================================================
+Strings, escapes, interpolation and tagged strings
+================================================================================
+
+let a = "plain"
+let b = "a{x}b{ f(P {a: 1}) }c"
+let c = sql"select {v}"
+let d = "\n\{\}\u{1F600}"
+let e = "nested {"in{x}"}"
+let f = "// not a comment"
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (constant_declaration
+    (identifier)
+    (string
+      (string_content)))
+  (constant_declaration
+    (identifier)
+    (string
+      (string_content)
+      (interpolation
+        (identifier))
+      (string_content)
+      (interpolation
+        (call_expression
+          (identifier)
+          (arguments
+            (record_expression
+              (type_name)
+              (field_initializer
+                (identifier)
+                (integer))))))
+      (string_content)))
+  (constant_declaration
+    (identifier)
+    (tagged_string
+      (identifier)
+      (string_content)
+      (interpolation
+        (identifier))))
+  (constant_declaration
+    (identifier)
+    (string
+      (escape_sequence)
+      (escape_sequence)
+      (escape_sequence)
+      (escape_sequence)))
+  (constant_declaration
+    (identifier)
+    (string
+      (string_content)
+      (interpolation
+        (string
+          (string_content)
+          (interpolation
+            (identifier))))))
+  (constant_declaration
+    (identifier)
+    (string
+      (string_content))))
+
+================================================================================
+Comments nest, doc comments are three slashes only
+================================================================================
+
+/// The answer.
+//// Not documentation.
+/* outer /* inner */ still outer */
+let a = 42 // trailing
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (doc_comment)
+  (comment)
+  (comment)
+  (constant_declaration
+    (identifier)
+    (integer))
+  (comment))
+
+================================================================================
+Holes, wildcards and reserved words after a dot or fn
+================================================================================
+
+effect Task {
+  fn spawn(body: fn() -> Unit) -> Unit
+}
+
+fn f(_: Int) -> Unit {
+  Task.spawn(?body)
+  let _ = ?todo
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (effect_declaration
+    (type_name)
+    (operation
+      (identifier)
+      (parameters
+        (parameter
+          (identifier)
+          (function_type
+            (type_list)
+            (named_type
+              (type_name)))))
+      (named_type
+        (type_name))))
+  (function_declaration
+    (identifier)
+    (parameters
+      (parameter
+        (wildcard)
+        (named_type
+          (type_name))))
+    (named_type
+      (type_name))
+    (block
+      (call_expression
+        (field_expression
+          (type_name)
+          (identifier))
+        (arguments
+          (hole)))
+      (let_statement
+        (wildcard)
+        (hole)))))
