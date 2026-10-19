@@ -74,8 +74,9 @@ sakura test             # 1 passed, 0 failed
 
 `sakura new` writes `sakura.toml` (with an empty `[permissions]` table), a lockfile,
 `src/main.sak` with one test, and `AGENTS.md`/`CLAUDE.md` for coding agents. Add
-`--setup claude` (or `codex`, `cursor`, `all`) to install the Sakura skill and MCP
-entry for your agent. Continue with the [quickstart guide](website/content/docs/quickstart.mdx).
+`--setup claude` (or `codex`, `cursor`, `all`) to install the `sakura` skill and MCP
+entry for your agent. Continue with the [quickstart guide](website/content/docs/quickstart.mdx);
+the [CLI reference](website/content/docs/cli.mdx) lists every command.
 
 ## A taste
 
@@ -109,7 +110,7 @@ effect Ledger {
 A caller must handle `Ledger` and both errors, or declare them in its own
 signature. The compiler rejects anything else.
 
-## Why Sakura
+## Why Sakura Lang
 
 - **Built for agents.** `sakura setup` installs a skill and MCP entry; `sakura mcp serve`
   exposes `check`, `apply_patch`, `hole_context`, `test` and more; `sakura lsp` serves
@@ -118,28 +119,29 @@ signature. The compiler rejects anything else.
 - **Authority is explicit.** Files, network, clock and randomness are effects. `main`
   gets only what `[permissions]` in `sakura.toml` grants; a denied permission stops
   the program at startup.
-- **Contracts you can prove.** Every contract is checked at runtime, even in
-  `--release`. `sakura verify` asks Z3, cross-checked by cvc5 when it is installed,
-  to prove each one; proved checks drop out of the next build, and failures come back
-  as counterexamples.
+- **Contracts you can prove.** Every contract is checked at runtime in every build.
+  `sakura verify` asks Z3, cross-checked by cvc5 when it is installed, to prove each
+  one; only proved checks drop out of the next build, and failures come back as
+  counterexamples.
 - **Deterministic by construction.** Every source of nondeterminism is an effect, so
   tests run with a fixed clock, seeded randomness and the network denied. `Map`/`Set`
   iteration order is the same on every backend.
-- **Fast feedback.** `sakura check` on a new project takes about 7 ms (release build,
-  Apple M4 Pro, median of the `bench/bench compile` workload). Other machines will
-  differ.
+- **Fast feedback.** `sakura check` reuses a per-build disk cache of the standard
+  library's analysis, so only your own modules are analysed. `bench/bench compile`
+  measures it on your machine; no benchmark result is blessed yet.
 
 ## Status and roadmap
 
 | Release | What it means | State |
 | --- | --- | --- |
 | `v0.1.0-alpha.1` | M0–M3: the language, std, LSP, MCP, the skill, WASM and the verify preview, on npm, Homebrew and install.sh | **shipped** |
-| `v0.1.0` | M4 exit: the first non-alpha preview, after one quiet benchmark window; adds Linux ARM64 | in progress |
-| `v0.2.0` | Native backend behind an experimental flag, Windows x64 and Intel Mac, the stability guarantees of [RFC 0001](docs/rfcs/0001-stability-guarantees.md) | planned |
+| `v0.1.0` | M4 exit (WASM complete, exit commit `dee11301`): the first non-alpha preview, after one quiet benchmark window; adds Linux ARM64 | awaiting sign-off |
+| `v0.2.0` | The stability guarantees of [RFC 0001](docs/rfcs/0001-stability-guarantees.md), Windows x64 and Intel Mac, one `--json` summary kind per record shape | planned |
 | `v1.0.0` | A release candidate, a seven-day soak with no P1 defect, then 1.0; packages follow in 1.x | planned |
 
 The JavaScript and WebAssembly backends ship. The Cranelift native backend is
-**experimental** and in no release. Package management is planned. Releases are not
+**experimental**, exists only in source builds with the `native` feature, and under the current
+plan gates no release. Packages arrive in 1.x; until then `[dependencies]` is refused. Releases are not
 dated; see the [roadmap](website/content/docs/roadmap.mdx) and the
 [road to 1.0](docs/plans/road-to-1.0.md). The [design](docs/design.md) is provisional.
 

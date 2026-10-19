@@ -75,11 +75,11 @@ and built-in help commands are also captured in the baseline.
 | CLI | `fmt [PATHS] --check`; `audit [PATHS] --json`; `doc [SYMBOL] --search --json`; `explain CODE`; `prompt --budget` | stable | 0.2.0 |
 | CLI | `new KIND NAME --setup`; `init --kind`; `setup --client --apply` (kinds `cli`, `lib`, `agent`, `api`; clients `claude`, `codex`, `cursor`, `all`) | stable | 0.2.0 |
 | CLI | `lsp`; `mcp serve --root` | stable | 0.2.0 |
-| Native | Native backend and Cargo `native` feature; `--target native` is not in this checkout's clap accepted values, so is currently refused even though native crates exist | experimental | — |
+| Native | Native backend and Cargo `native` feature; `--target native` on `build`, `run` and `test` is accepted only by a compiler built with that feature, and release binaries are built without it | experimental | — |
 | JSON Lines | `diagnostic`, `hole`, `summary`: `schema_version = "1.0"` in [diagnostic rendering](compiler/crates/sakura_diagnostics/src/json.rs), used by check/build/fix and pre-verification errors | stable | 0.2.0 |
 | JSON Lines | `audit`, audit `summary`: `1.0`; `obligation`: `1.1`; verify's post-solver `diagnostic` and `summary`: `1.1` | stable | 0.2.0 |
 | JSON Lines | Test `test`, `regression`, `summary`: `1.0` on JS and WASM; summary fields differ from check/audit/verify despite the shared kind | stable | 0.2.0 |
-| JSON gaps | `doc --json` emits one object with neither `kind` nor `schema_version`; `build --manifest`/verify's manifest file has `schema_version = "1.1"` but no top-level `kind`. Usage failures may be human stderr even with `--json`; `fix --preview --json` prints a human preview. These are inventory findings for §17.232(b), not invented record kinds | experimental | — (versioning pending) |
+| JSON Lines | `doc --json`: one `symbol_query` record, `1.0`; `build --manifest`/verify's manifest file: `manifest`, `1.1`. Usage failures are human stderr with exit 2 even with `--json` (design §17.242 (3)); `fix --preview --json` prints a human preview | stable (`symbol_query`, `manifest`); usage text is not a contract | 0.2.0 |
 | Runtime JSON | `defect` on stderr: `1.0` | stable | 0.2.0 |
 | Runtime instrumentation | Effect trace and WASM statistics/coverage output formats, separate from CLI `--json` | internal | — |
 | `sakura.toml` | `[package]` with `name`, `version`, `edition`; `[permissions]` with `fs.read`, `fs.write`, `net`, `env`, `process`; `[verify]` with `rlimit` | stable | 0.2.0 |
