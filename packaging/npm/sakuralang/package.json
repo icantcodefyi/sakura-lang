@@ -2,6 +2,19 @@
   "name": "sakuralang",
   "version": "0.1.0-alpha.1",
   "description": "The Sakura Lang compiler and toolchain: the `sakura` command",
+  "keywords": [
+    "sakura",
+    "sakuralang",
+    "programming-language",
+    "compiler",
+    "agents",
+    "ai-agents",
+    "effects",
+    "contracts",
+    "webassembly",
+    "mcp",
+    "lsp"
+  ],
   "license": "MIT OR Apache-2.0",
   "homepage": "https://www.sakuralang.com",
   "repository": {
@@ -9,11 +22,15 @@
     "url": "git+https://github.com/icantcodefyi/sakuralang.git",
     "directory": "packaging/npm/sakuralang"
   },
+  "bugs": {
+    "url": "https://github.com/icantcodefyi/sakuralang/issues"
+  },
   "bin": {
     "sakura": "bin/sakura.js"
   },
   "files": [
     "bin/sakura.js",
+    "README.md",
     "LICENSE-MIT",
     "LICENSE-APACHE"
   ],

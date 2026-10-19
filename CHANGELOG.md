@@ -10,6 +10,8 @@ Compare the release tag with main when identifying changes not in that preview.
 
 ### Added
 
+- The npm packages carry a README, keywords and an issues link, so the npm page shows how to
+  install and start. Each platform package's README points to `sakuralang`.
 - `sakura run --target native` (a compiler built with the `native` feature) runs `Json.encode`,
   `Json.decode`, `Json.parse`, `Json.schema`, `Cli.args` and `Cli.parse` (plan row N1b). The JSON
   codec is written once in the Rust runtime and matches the JS runtime's text and decode

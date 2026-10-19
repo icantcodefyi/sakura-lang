@@ -687,10 +687,15 @@ def assemble(args):
                 "os": [t["os"]],
                 "cpu": [t["cpu"]],
                 **({"libc": [t["libc"]]} if "libc" in t else {}),
-                "files": [f"bin/{binary}", NOTICES] + LICENSES,
+                "keywords": ["sakuralang"],
+                "files": [f"bin/{binary}", "README.md", NOTICES] + LICENSES,
                 "preferUnplugged": True,
             }
             (stage / "package.json").write_text(json.dumps(pkg, indent=2) + "\n")
+            (stage / "README.md").write_text(
+                f"# {t['npm']}\n\nThe `sakura` binary of [Sakura Lang](https://www.sakuralang.com) for "
+                f"`{t['target']}`.\n\nDon't install this directly: run `npm i -g sakuralang`, which picks "
+                f"the package for your platform.\n")
             npm_files.append(npm_pack(stage, out))
 
     (out / "release-notes.md").write_text(release_notes(ver, commit, args.macos_signed))

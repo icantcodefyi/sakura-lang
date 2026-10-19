@@ -71,6 +71,9 @@ class ReleasePackaging(unittest.TestCase):
                     self.assertIn(release.sha256(output / archive_name), (output / "sakuralang.rb").read_text())
                 with tarfile.open(output / f"{target['npm']}-{version}.tgz") as package:
                     self.assertEqual(package.extractfile("package/bin/" + release.binary_name(target["target"])).read(), binaries[target["target"]])
+                    self.assertIn("npm i -g sakuralang", package.extractfile("package/README.md").read().decode())
+            with tarfile.open(output / f"sakuralang-{version}.tgz") as wrapper:
+                self.assertIn("# Sakura Lang", wrapper.extractfile("package/README.md").read().decode())
             record = json.loads((output / "release.json").read_text())
             self.assertEqual(record["macos_signing"], "developer-id-notarized")
             self.assertIn("notarized by Apple", (output / "release-notes.md").read_text())
