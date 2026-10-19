@@ -18,6 +18,8 @@ the rendered `error[V8003]` line and exit 2 for a module of another ABI MAJOR, f
 One host path still misses the code: a module that imports a function this host lacks fails
 with a `LinkError` before the version is read
 ([REQUESTS](../../compiler/REQUESTS.md), M4-OPT question 4).
+Design §17.243 (4): the host reads the version from the `sakura.debug` custom section before
+instantiation, so `V8003` precedes any `LinkError` (Opus, before `v0.2.0`).
 
 The native profile does not read the version yet (ABI §0, N2).
 The formatter's injected dropped-comment fixture covers `V9001` emission in
@@ -39,15 +41,18 @@ rule's token sets under LF, CRLF and comments, and the
 places every future word in each position.
 [invalid_utf8_source_is_a_usage_error](../../compiler/crates/sakura_cli/tests/cli.rs) pins
 that the CLI refuses a non-UTF-8 file with exit 2 before lexing.
-Open decisions, for the designer:
+Decided in design §17.243 (round 27); the fixtures follow the decisions, which were:
 
 - `-9223372036854775808` is `V0003` because the lexer rejects the positive magnitude before
   unary negation, whereas design §2.2 describes the signed range including its minimum.
+  → the token's range is `[0, 2^63 − 1]`, `-2^63` is `Int.min`; §2.2 reworded (§17.243 (1)).
 - Separators are accepted beyond the design's "between digits" wording: trailing (`1_`),
   repeated (`1__000`), after a radix prefix (`0x_1`), before `.` (`1_.5`), and before an
   exponent (`1.5_e3`).
+  → one `_` between two digits of one run; the five cases become `V0006` (§17.243 (2)).
 - A non-UTF-8 file has no diagnostic code, only the usage error; `sakura_syntax::lex`
   accepts a Rust string, so totality is claimed over text, not arbitrary bytes.
+  → `V0014 source_not_utf8` from the loader, a `tests/ui` fixture; `lex` keeps `&str` (§17.243 (3)).
 
 ## Grammar alternatives and divergence fixtures
 
