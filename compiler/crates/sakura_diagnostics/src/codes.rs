@@ -917,6 +917,35 @@ mod tests {
     use std::collections::HashSet;
 
     #[test]
+    fn deprecated_warning_codes_match_metadata() {
+        let metadata: toml::Value = toml::from_str(include_str!("../../../deprecations.toml"))
+            .expect("valid deprecations.toml");
+        let entries = metadata["deprecation"]
+            .as_array()
+            .expect("deprecation array");
+        let mut codes = std::collections::BTreeSet::new();
+        for entry in entries {
+            let code = entry["code"].as_str().expect("deprecation warning code");
+            assert!(codes.insert(code), "duplicate deprecation code {code}");
+            let info =
+                lookup(code).unwrap_or_else(|| panic!("unregistered deprecation code {code}"));
+            assert!(
+                code.starts_with('W') && info.title.starts_with("deprecated_"),
+                "{code} must name a deprecated_* warning"
+            );
+        }
+        for info in REGISTRY {
+            if info.code.0.starts_with('W') && info.title.starts_with("deprecated_") {
+                assert!(
+                    codes.contains(info.code.0),
+                    "{} missing deprecation metadata",
+                    info.code.0
+                );
+            }
+        }
+    }
+
+    #[test]
     fn codes_are_unique_and_well_formed() {
         let mut seen = HashSet::new();
         for info in REGISTRY {

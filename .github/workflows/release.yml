@@ -50,6 +50,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
       - name: Resolve version, commit and mode
         id: plan
         env:
@@ -83,6 +87,8 @@ jobs:
         run: |
           shellcheck tools/release/sign-macos.sh tools/release/verify-macos.sh
           python3 -I -m unittest discover -s tools/release -p 'test_*.py'
+      - name: Check candidate deprecations and MSRV
+        run: python3 -I tools/release/release.py prepare
       - name: Installer tests
         run: |
           shellcheck tools/install/install.sh tools/install/test.sh

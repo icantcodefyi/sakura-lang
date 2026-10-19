@@ -608,11 +608,31 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || github.sha }}
         run: python3 compiler/diagnostics/check_history.py --base "$BASE_SHA"
 
+  release-tooling:
+    name: Release policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - name: Release tooling tests
+        run: python3 -I -m unittest discover -s tools/release -p 'test_*.py'
+      - name: Check candidate deprecations and MSRV
+        run: python3 -I tools/release/release.py prepare
+
   ci-required:
     name: ci-required
     if: always()
     # The rust result requires every matrix child, including both partitions on each OS.
-    needs: [website, rust, msrv, native, parity, vscode, tree-sitter, diagnostic-codes]
+    needs: [website, rust, msrv, native, parity, vscode, tree-sitter, diagnostic-codes, release-tooling]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -626,6 +646,7 @@ jobs:
           PARITY_RESULT: ${{ needs.parity.result }}
           VSCODE_RESULT: ${{ needs.vscode.result }}
           TREE_SITTER_RESULT: ${{ needs.tree-sitter.result }}
+          RELEASE_TOOLING_RESULT: ${{ needs.release-tooling.result }}
         run: |
           test "$WEBSITE_RESULT" = success
           test "$RUST_RESULT" = success
@@ -635,3 +656,4 @@ jobs:
           test "$PARITY_RESULT" = success
           test "$VSCODE_RESULT" = success
           test "$TREE_SITTER_RESULT" = success
+          test "$RELEASE_TOOLING_RESULT" = success

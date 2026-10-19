@@ -53,6 +53,9 @@ Compare the release tag with main when identifying changes not in that preview.
   executable `main` linked with the native runtime, whose defect records carry the same spans
   as JS and WASM. Native stays experimental at `v0.2.0`; release builds do not include it.
 
+- Release candidate checks enforce deprecation notice periods, major-only removals
+  and unchanged Rust MSRV in patch releases; the deprecation registry starts empty.
+
 - Draft grammar and diagnostic specification in `docs/spec/`, indexed by fixtures,
   with a generated diagnostic identity table and a Python drift check; lexical boundary,
   grammar-alternative and tree-sitter divergence fixtures back its rules, and `V8003` has an

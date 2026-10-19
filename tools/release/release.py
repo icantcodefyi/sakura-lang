@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Release packaging for Sakura Lang (design §17.147, research/13 §7).
 
+    release.py prepare [--previous-tag TAG] [--date YYYY-MM-DD]
     release.py version                       print the workspace version (rejects 0.0.0)
     release.py archive  --target T --binary B --out DIR
     release.py smoke    --archive A --commit C
@@ -13,6 +14,8 @@ run with `python3 -I`. Nothing here publishes anything.
 """
 
 import argparse
+import calendar
+import datetime
 import gzip
 import hashlib
 import io
@@ -50,6 +53,168 @@ def version():
     if not m or not SEMVER.match(m.group(1)) or m.group(1) == "0.0.0":
         fail(f"the workspace version must be a release version, not {m and m.group(1)!r}")
     return m.group(1)
+
+
+def semver(text):
+    match = re.fullmatch(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?", text)
+    if not match:
+        fail(f"invalid release version: {text!r}")
+    major, minor, patch = map(int, match.group(1, 2, 3))
+    pre = match.group(4)
+    identifiers = []
+    if pre:
+        for part in pre.split("."):
+            if part.isdigit() and len(part) > 1 and part.startswith("0"):
+                fail(f"invalid numeric prerelease identifier: {text!r}")
+            identifiers.append((0, int(part)) if part.isdigit() else (1, part))
+    return major, minor, patch, pre is None, tuple(identifiers)
+
+
+def release_date(value):
+    if type(value) is datetime.date:
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.date.fromisoformat(value)
+        except ValueError:
+            pass
+    fail(f"expected an ISO calendar date, got {value!r}")
+
+
+def read_toml(text):
+    try:
+        import tomllib
+    except ModuleNotFoundError:
+        fail("prepare requires Python 3.11+ for TOML parsing")
+    try:
+        return tomllib.loads(text)
+    except tomllib.TOMLDecodeError as error:
+        fail(f"invalid release TOML: {error}")
+
+
+def deprecations(text):
+    data = read_toml(text)
+    if set(data) != {"deprecation"} or not isinstance(data["deprecation"], list):
+        fail("deprecations.toml must contain deprecation = [] or [[deprecation]] entries")
+    entries, codes = {}, set()
+    for raw in data["deprecation"]:
+        required = {"feature", "code", "since", "earliest_removal"}
+        allowed = required | {"replacement", "reason", "removed"}
+        if not isinstance(raw, dict) or not required <= raw.keys() or raw.keys() - allowed:
+            fail("deprecation entry has missing or unknown fields")
+        entry = dict(raw)
+        for field in ("feature", "code"):
+            if not isinstance(entry[field], str) or not entry[field].strip():
+                fail(f"deprecation {field} must be a nonempty string")
+        feature, code = entry["feature"], entry["code"]
+        if feature in entries or code in codes or not re.fullmatch(r"W[0-9]{4}", code):
+            fail(f"duplicate feature/code or invalid warning code: {feature!r}, {code!r}")
+        if ("replacement" in entry) == ("reason" in entry):
+            fail(f"{feature}: provide exactly one replacement or reason")
+        explanation = entry.get("replacement", entry.get("reason"))
+        if not isinstance(explanation, str) or not explanation.strip():
+            fail(f"{feature}: replacement or reason must be nonempty")
+        for field in ("since", "earliest_removal"):
+            boundary = entry[field]
+            if not isinstance(boundary, dict) or set(boundary) != {"version", "date"}:
+                fail(f"{feature}: {field} needs exactly version and date")
+            if not isinstance(boundary["version"], str):
+                fail(f"{feature}: {field}.version must be a string")
+            parsed = semver(boundary["version"])
+            if not parsed[3]:
+                fail(f"{feature}: deprecation boundaries must be final releases")
+            entry[field] = {"version": boundary["version"], "date": release_date(boundary["date"])}
+        since, earliest = entry["since"], entry["earliest_removal"]
+        first = semver(since["version"])
+        minimum_version = (first[0], first[1] + 2, 0, True, ())
+        month = since["date"].month - 1 + 6
+        year = since["date"].year + month // 12
+        month = month % 12 + 1
+        try:
+            minimum_date = datetime.date(year, month, min(since["date"].day, calendar.monthrange(year, month)[1]))
+        except ValueError:
+            fail(f"{feature}: since.date cannot represent a six-month deprecation period")
+        if semver(earliest["version"]) < minimum_version or earliest["date"] < minimum_date:
+            fail(f"{feature}: earliest_removal must allow two minors and six calendar months")
+        if "removed" in entry:
+            if not isinstance(entry["removed"], str):
+                fail(f"{feature}: removed must be a version")
+            removed = semver(entry["removed"])
+            if not removed[3] or removed < semver(earliest["version"]) or removed[0] <= first[0]:
+                fail(f"{feature}: removed precedes earliest_removal or is outside a major bump")
+        entries[feature] = entry
+        codes.add(code)
+    return entries
+
+
+def git_text(*arguments):
+    result = subprocess.run(["git", *arguments], cwd=ROOT, text=True, capture_output=True)
+    if result.returncode:
+        fail(f"git {' '.join(arguments)} failed; fetch full release history and tags")
+    return result.stdout
+
+
+def tagged_deprecations(tag):
+    exists = git_text("ls-tree", "--name-only", tag, "compiler/deprecations.toml").strip()
+    return deprecations(git_text("show", f"{tag}:compiler/deprecations.toml")) if exists else {}
+
+
+def prepare(args):
+    candidate = version()
+    current = semver(candidate)
+    today = release_date(args.date) if args.date else datetime.datetime.now(datetime.timezone.utc).date()
+    if git_text("rev-parse", "--is-shallow-repository").strip() == "true":
+        fail("prepare needs full history; fetch --unshallow and release tags")
+    tags = []
+    for tag in git_text("tag", "--merged", "HEAD").splitlines():
+        if tag.startswith("v") and SEMVER.fullmatch(tag[1:]):
+            parsed = semver(tag[1:])
+            if parsed < current:
+                tags.append((parsed, tag))
+    tags.sort()
+    previous = tags[-1][1] if tags else None
+    if args.previous_tag is not None and args.previous_tag != previous:
+        fail(f"--previous-tag must select the latest preceding ancestor release: {previous!r}")
+    entries = deprecations((COMPILER / "deprecations.toml").read_text())
+    if previous is None:
+        if current[2] != 0 or any("removed" in entry for entry in entries.values()):
+            fail("no previous release tag; cannot validate a patch or removal without release history")
+        old_entries = {}
+    else:
+        manifest = read_toml(git_text("show", f"{previous}:compiler/Cargo.toml"))
+        prior = semver(previous[1:])
+        if current[:2] == prior[:2]:
+            msrv = read_toml((COMPILER / "Cargo.toml").read_text())["workspace"]["package"]["rust-version"]
+            if msrv != manifest["workspace"]["package"]["rust-version"]:
+                fail(f"patch release MSRV differs from {previous}; rust-version must stay unchanged")
+        old_entries = tagged_deprecations(previous)
+    for feature, old in old_entries.items():
+        entry = entries.get(feature)
+        if entry is None:
+            fail(f"{feature}: retain historical deprecation metadata")
+        for field in ("code", "since", "earliest_removal"):
+            if entry[field] != old[field]:
+                fail(f"{feature}: historical {field} must not change")
+        if "removed" in old and entry.get("removed") != old["removed"]:
+            fail(f"{feature}: historical removal must not change")
+    for feature, entry in entries.items():
+        if "removed" not in entry or "removed" in old_entries.get(feature, {}):
+            continue
+        if entry["removed"] != candidate or previous is None or current[0] <= semver(previous[1:])[0]:
+            fail(f"{feature}: new removal must name this candidate and occur in a major bump")
+        if today < entry["earliest_removal"]["date"]:
+            fail(f"{feature}: removal date precedes earliest_removal")
+        first = semver(entry["since"]["version"])
+        minors = set()
+        for parsed, tag in tags:
+            if parsed[3] and first <= parsed < current:
+                shipped = tagged_deprecations(tag).get(feature, {})
+                if (shipped.get("code") == entry["code"] and shipped.get("since") == entry["since"]
+                        and "removed" not in shipped):
+                    minors.add(parsed[:2])
+        if len(minors) < 2:
+            fail(f"{feature}: removal needs two shipped final minor releases; prereleases do not count")
+    print(f"candidate {candidate}: deprecation and MSRV checks passed (previous {previous or 'none'})")
 
 
 def target_info(target):
@@ -548,6 +713,9 @@ def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("version")
+    p = sub.add_parser("prepare")
+    p.add_argument("--previous-tag")
+    p.add_argument("--date", help="candidate release date in UTC (YYYY-MM-DD)")
     a = sub.add_parser("archive")
     a.add_argument("--target", required=True)
     a.add_argument("--binary", required=True)
@@ -570,7 +738,7 @@ def main():
     if args.cmd == "version":
         print(version())
     else:
-        {"archive": archive, "smoke": smoke, "accept": accept, "assemble": assemble}[args.cmd](args)
+        {"archive": archive, "smoke": smoke, "accept": accept, "assemble": assemble, "prepare": prepare}[args.cmd](args)
 
 
 if __name__ == "__main__":

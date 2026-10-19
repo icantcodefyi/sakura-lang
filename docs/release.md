@@ -265,15 +265,27 @@ anything else does not (§17.228 (2)).
 2. Set workspace version `0.1.0-alpha.1`; update lockfile and generated content in
    the preparation commit. Update CHANGELOG for user-visible changes. The owner
    reviews STABILITY at the tag; do not invent alpha API guarantees.
-3. Run `cargo run -p agent_docs --locked -- --check` from `compiler/`. Canonical
+3. Run `python3 -I tools/release/release.py prepare` from the repository root.
+   Fetch full history and release tags first. The gate compares the candidate with
+   the highest preceding ancestor release tag. `--previous-tag vX.Y.Z` pins that
+   selection, and `--date YYYY-MM-DD` sets the planned UTC release date.
+   Patch releases retain the previous tag's exact manifest MSRV. Retain every
+   `compiler/deprecations.toml` entry, including removals. Each entry records
+   `feature`, its `deprecated_*` warning `code`, `since = { version, date }`,
+   exactly one `replacement` or `reason`, and `earliest_removal = { version, date }`.
+   Use quoted versions and ISO calendar dates. Removal adds `removed = "X.Y.Z"`
+   only at a major bump after both the written version/date thresholds and two
+   final minor releases with the warning. Prereleases do not count. A first
+   candidate with no earlier tag may bootstrap only at patch zero without removals.
+4. Run `cargo run -p agent_docs --locked -- --check` from `compiler/`. Canonical
    skill, website mirror/ZIP and manifest must agree. Keep frontmatter placeholders;
    separate release provenance binds the canonical ZIP hash to version/commit.
-4. Inspect archive content, embedded runtime/std, notices and channel manifests.
+5. Inspect archive content, embedded runtime/std, notices and channel manifests.
    Native binaries need no checkout. JS execution needs **Node 26**; the current
    WASM host does too. State the prerequisite; shell installation must not
    invisibly install Node. Homebrew declares its tested Node dependency; npm
    packaging states the tested Node range.
-5. Commit preparation and record the full candidate SHA. All native builds set
+6. Commit preparation and record the full candidate SHA. All native builds set
    `SAKURA_GIT_COMMIT` to it. Version, provenance and installed skill must agree.
    Reject `0.0.0`, `unknown`, missing/mismatched SHA or filename-only version bumps.
 
