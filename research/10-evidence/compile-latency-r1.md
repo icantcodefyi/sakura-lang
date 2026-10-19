@@ -431,6 +431,55 @@ check 9.09, lower 6.79, `interface_hash` 4.95, symbols 3.68. `interface_hash` is
 analysis is std's followed by a reusing one, about 1 ms dearer than the fresh analysis it
 replaced (§17.214's probe); not re-measured here.
 
+## WS-C1d and WS-C1e: interface hashing in one walk, the interner on FxHash
+
+Measured 2026-10-19 by Claude Opus 5.5 on WS-C2 (`9fe3050f`, base), WS-C1d on it (c1d) and
+WS-C1e on that (c1e), release CLIs with this note's `instrument` patch, std's analysis cache
+in a fresh `SAKURA_CACHE_DIR` filled by the warm-up run. **The host was loaded** (load average
+about 30 on 12 cores, other agents' builds), so these are indicative readings (§17.153). Every
+table is 41 fresh processes per side, interleaved (`phases` now interleaves its binaries and
+prints p95 as `time` does).
+
+**Verdict: `interface_hash` on the 10k corpus 5.90 → 0.38 ms (acceptance ≤ 2.2) and `check`
+10.28 → 8.15 ms, 21% faster (acceptance ≥ 8%). `check_cold_10k` 42.6 → 35.0 ms median, p95
+44.4 → 35.9 (target ≤ 45).**
+
+Phase lines, `check_cold_10k` (67 files, std's 45 reused), median / p95 ms. The two runs were
+separate (base and c1d, then c1d and c1e), so compare within a run:
+
+| Phase | base | c1d | c1d (second run) | c1e |
+|---|---:|---:|---:|---:|
+| `std_load` | 2.21 / 2.61 | 2.24 / 3.23 | 2.09 / 2.17 | 1.99 / 2.04 |
+| `evaluated_functions` (parses the user files) | 10.91 / 11.88 | 10.82 / 12.69 | 10.11 / 10.43 | 10.00 / 10.27 |
+| `interface_hash` | 5.90 / 6.99 | **0.38 / 0.51** | 0.28 / 0.34 | 0.28 / 0.35 |
+| lower | 8.35 / 9.53 | 8.40 / 9.54 | 7.70 / 8.21 | 7.74 / 8.08 |
+| check | 11.03 / 12.50 | 11.10 / 12.22 | 10.28 / 10.65 | **8.15 / 8.59** |
+| `symbols::index` | 4.43 / 5.22 | 4.33 / 4.88 | 4.19 / 4.32 | 4.16 / 4.44 |
+| analysis total | 41.03 / 48.67 | 35.60 / 40.74 | 32.55 / 33.54 | 30.40 / 31.23 |
+
+`check_hello` (47 files) is unchanged within noise: analysis total 4.00 / 4.87 (base),
+4.02 / 4.46 (c1d); 3.69 / 3.91 (c1d) and 3.58 / 3.68 (c1e) in the second run, where
+`cache_decode` falls 1.79 → 1.71 ms because the interner's two maps are rebuilt with FxHash.
+
+Fresh processes, `compile_latency.py time --runs 41`, one run of all three:
+
+| Case | base | c1d | c1e |
+|---|---:|---:|---:|
+| `check_hello` median / p95 ms | 7.4 / 7.8 | 7.4 / 7.8 | 7.3 / 7.6 |
+| `check_cold_10k` median / p95 ms | 42.6 / 44.4 | 37.1 / 39.1 | 35.0 / 35.9 |
+
+**WS-C1d.** `interface_hash` walked every token of an item through red nodes (one allocation
+per node and token) and dropped those inside a skipped body by range. It now walks the green
+tree with an explicit stack and steps over a skipped body without entering it. What it hashes
+is unchanged; the values differ, which nothing persists across builds.
+
+**WS-C1e.** The `check_loop` profile (std's HIR checked repeatedly, `sample`, self time of the
+active thread): SipHash's `write` and `RandomState::hash_one` were 21.2% before; after, FxHash
+is 4.3% and the SipHash left (maps inside `infer`, outside the row) 2.7%. `check_loop`'s time
+per check of std, 11 alternating runs: 8.21 → 6.95 ms median. `Type::clone` is now the top
+symbol of the checker's own code (8% of active samples), the candidate §17.207 (3) names if
+`check_cold_10k` misses its target at the quiet window.
+
 ## Rows proposed for `performance-r1.md` §9
 
 - **WS-C1a** (check, 36% of std's analysis): reused modules' defs are not checked again (the
@@ -448,7 +497,7 @@ python3 research/10-evidence/compile_latency.py time --runs 61 before=<sakura> a
 git worktree add /tmp/sakura-phases HEAD --detach   # instrument rewrites the file in place
 python3 research/10-evidence/compile_latency.py instrument /tmp/sakura-phases/compiler/crates/sakura_analysis/src/lib.rs
 (cd /tmp/sakura-phases/compiler && cargo build --release --locked -p sakura_cli)
-python3 research/10-evidence/compile_latency.py phases --runs 61 <instrumented sakura>
+python3 research/10-evidence/compile_latency.py phases --runs 61 before=<instrumented sakura> after=<instrumented sakura>
 SAKURA_PHASES=1 <instrumented release test binary> --nocapture 2>&1 \
   | python3 research/10-evidence/compile_latency.py phases -
 # WS-C1a: instrument also writes tests/latency_loop.rs (latency_loop, check_loop)

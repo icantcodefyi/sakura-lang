@@ -12,8 +12,9 @@
         after the first reuses std, and a `check_loop` test that type-checks std's HIR
         SAKURA_CHECK_N times, for a sampling profiler. For a throwaway build only; never commit
         the result.
-    compile_latency.py phases --runs 40 /path/to/instrumented/sakura
-        Median milliseconds per phase over fresh processes, per case.
+    compile_latency.py phases --runs 40 [NAME=]/path/to/instrumented/sakura ...
+        Median and p95 milliseconds per phase over fresh processes, per case, interleaving the
+        binaries as `time` does.
     SAKURA_PHASES=1 <test binary built with the instrumented crate> 2>&1 | compile_latency.py phases -
         The same over every analysis of one process, such as a test suite.
 
@@ -79,18 +80,25 @@ def print_phases(title, lines):
         # A test harness may print its own text on the same line.
         for files, reused, name, ms in re.findall(r"phase (\d+) (\d+) (\w+) ([\d.]+)", line):
             phases[(int(files), int(reused), name)].append(float(ms))
-    print(f"{title}: median ms (snapshot files, files of the reused analysis, phase, analyses)")
+    print(f"{title}: median and p95 ms (snapshot files, files of the reused analysis, phase, analyses)")
     for (files, reused, name), xs in phases.items():
-        print(f"  {files:4} {reused:4}  {name:20} {statistics.median(xs):7.2f}  n={len(xs)}")
+        print(f"  {files:4} {reused:4}  {name:20} {statistics.median(xs):7.2f} {p95(xs):7.2f}  n={len(xs)}")
 
 
 def cmd_phases(a):
-    if a.sakura == "-":
+    if a.binaries == ["-"]:
         return print_phases("stdin", sys.stdin)
+    bins = dict(b.split("=", 1) if "=" in b else (b, b) for b in a.binaries)
     env = {**os.environ, "SAKURA_PHASES": "1"}
-    for case, project in cases(a.sakura).items():
-        lines = [line for _ in range(a.runs) for line in run(a.sakura, project, env)[1].splitlines()]
-        print_phases(f"{case}, {a.runs} processes", lines)
+    for case, project in cases(next(iter(bins.values()))).items():
+        lines = defaultdict(list)
+        for sakura in bins.values():
+            run(sakura, project, env)  # warm the file cache and std's analysis cache
+        for _ in range(a.runs):
+            for name, sakura in bins.items():
+                lines[name] += run(sakura, project, env)[1].splitlines()
+        for name, ls in lines.items():
+            print_phases(f"{case}, {name}, {a.runs} processes", ls)
 
 
 START = r"""
@@ -168,13 +176,13 @@ def cmd_instrument(a):
     before("    let holes = typed\n", lap("check"))
     before("    let mut analyzed = Analyzed {\n", lap("symbols_index"))
     after("    analyzed.check.diagnostics = diagnostics;\n", lap("rest") + END.lstrip("\n"))
-    before("        std_cache::load(&snapshot).unwrap_or_else(|| {\n",
+    before("        match std_cache::load(&snapshot) {\n",
            "        let t = std::time::Instant::now();\n"
            "        let loaded = std_cache::load(&snapshot);\n"
            "        if std::env::var_os(\"SAKURA_PHASES\").is_some() {\n"
            "            eprintln!(\"phase 0 0 std_load {:.3}\", t.elapsed().as_secs_f64() * 1e3);\n"
            "        }\n")
-    s = s.replace("        std_cache::load(&snapshot).unwrap_or_else(|| {\n", "        loaded.unwrap_or_else(|| {\n", 1)
+    s = s.replace("        match std_cache::load(&snapshot) {\n", "        match loaded {\n", 1)
     p.write_text(s)
     c = p.parent / "std_cache.rs"
     s = c.read_text()
@@ -199,7 +207,8 @@ def main():
     t.add_argument("binaries", nargs="+", metavar="NAME=PATH")
     p = sub.add_parser("phases")
     p.add_argument("--runs", type=int, default=40)
-    p.add_argument("sakura", help="an instrumented `sakura`, or - for phase lines on stdin")
+    p.add_argument("binaries", nargs="+", metavar="[NAME=]PATH",
+                   help="instrumented `sakura` binaries, interleaved, or - for phase lines on stdin")
     i = sub.add_parser("instrument")
     i.add_argument("lib")
     a = ap.parse_args()
