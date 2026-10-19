@@ -47,5 +47,7 @@ WS-P13b (DeltaBlue twice as fast on Node) is built and waits behind your window 
 |---|---|---|---|
 | 13 | WS-P13b's CODEOWNERS review (ownership through records, tuples and parameters; §17.149 names it semantics-adjacent). Opus pushes it after item 11 with §17.235 (3)'s conditions; you review the landed series. | [§17.235](../design.md#17-decision-log-rounds-2-to-26), [performance-r1.md §9](performance-r1.md#9-round-10-1714917154-ownership-fusion-benchmark-definitions-measurement) | |
 
-After 12: the `v0.1.0` tag and the three environment approvals ([road-to-1.0.md](road-to-1.0.md)
-stage 2), then `verify-published.yml` on the published channels ([docs/release.md §7](../release.md#7-close-out)).
+After 12: `release.py prepare` on `main`, then a freeze (nothing lands until the tag is pushed), one
+fully green `ci.yml` run on that head, the `v0.1.0` tag on that candidate SHA (never on `dee11301`;
+§17.250) and the three environment approvals ([road-to-1.0.md](road-to-1.0.md) stage 2), then
+`verify-published.yml` on the published channels ([docs/release.md §7](../release.md#7-close-out)).
