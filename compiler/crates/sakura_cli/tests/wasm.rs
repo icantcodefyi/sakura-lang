@@ -898,7 +898,8 @@ fn main_run_again_on_one_instance_keeps_no_objects() {
     std::fs::create_dir_all(&dir).unwrap();
     let runs = r#"
 const [dir] = process.argv.slice(1);
-const { Host, loadTypes } = await import(`${dir}/sakura_wasm_host.js`);
+const { pathToFileURL } = process.getBuiltinModule("node:url");
+const { Host, loadTypes } = await import(pathToFileURL(`${dir}/sakura_wasm_host.js`));
 const host = new Host();
 await loadTypes();
 await host.instantiate(process.getBuiltinModule("node:fs").readFileSync(`${dir}/main.wasm`));
