@@ -2221,6 +2221,7 @@ version = "0.1.0-alpha.1"
 dependencies = [
  "sakura_analysis",
  "sakura_core",
+ "sakura_diagnostics",
  "sakura_hir",
  "serde",
  "serde_json",

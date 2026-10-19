@@ -2135,6 +2135,17 @@ fn pick consumes xs
   r%4 = list_push(v%2) shared(join), owned entry owned
 "
     );
+    // Design §17.176 (2): the LIR's facts, recomputed from the Core snapshot, are the same.
+    let lir = sakura(
+        &["build", "--target", "wasm", "--dump", "owned", "main.sak"],
+        &dir,
+    );
+    assert_eq!(
+        (lir.code, &lir.stdout),
+        (Some(0), &out.stdout),
+        "{}",
+        lir.stderr
+    );
     // `--dump core` marks the same owned sites.
     let core = sakura(&["build", "--dump", "core", "main.sak"], &dir);
     assert!(

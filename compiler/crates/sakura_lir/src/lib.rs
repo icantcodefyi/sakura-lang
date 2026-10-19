@@ -11,6 +11,7 @@ pub mod image;
 pub mod layout;
 pub mod lir;
 pub mod lower;
+pub mod owned;
 pub mod print;
 pub mod schema;
 pub mod validate;

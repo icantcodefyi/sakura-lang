@@ -1,7 +1,8 @@
 //! Design §17.118: the LIR's direct facts, computed from the snapshot form of Core
 //! (`sakura_lir::direct`), agree with the JS backend's `--dump direct`
 //! (`sakura_codegen_js::dump_direct`, §17.111) on `research/10-evidence/micro.sak`, every
-//! `tests/semantics` fixture, the LIR corpus sources, the benchmark programs and the examples.
+//! `tests/semantics` fixture, the LIR corpus sources, the benchmark programs and the examples;
+//! so do its ownership facts (`sakura_lir::owned`, §17.176 (2)) with `--dump owned`.
 
 mod common;
 
@@ -9,7 +10,7 @@ use std::path::{Path, PathBuf};
 
 use sakura_analysis::{Analysis, BuildOptions, Snapshot};
 use sakura_lir::lir::FuncKind;
-use sakura_lir::{direct, snapshot};
+use sakura_lir::{direct, owned, snapshot};
 
 fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..")
@@ -48,12 +49,24 @@ fn core(files: Vec<(String, String)>) -> Option<sakura_core::Module> {
     Analysis::lower_core(&snapshot, &BuildOptions::default()).0
 }
 
-/// The two dumps of one program; `Err` describes the first disagreement.
-fn agree(m: &sakura_core::Module) -> Result<String, String> {
-    let js = sakura_codegen_js::dump_direct(m);
-    let lir = direct::dump(&snapshot::convert::convert(m));
+/// The direct dumps of one program, then the owned ones, which the LIR computes from the
+/// snapshot read back as Core (`convert::back`, its exact inverse); `Err` describes the first
+/// disagreement. Returns both LIR dumps.
+fn agree(m: &sakura_core::Module) -> Result<(String, String), String> {
+    let s = snapshot::convert::convert(m);
+    if snapshot::convert::convert(&snapshot::convert::back(&s)) != s {
+        return Err("the snapshot read back as Core converts to another snapshot".into());
+    }
+    let lir = direct::dump(&s);
+    same(&sakura_codegen_js::dump_direct(m), &lir).map_err(|e| format!("direct: {e}"))?;
+    let lir_owned = owned::dump(&s);
+    same(&sakura_core::opt::owned::display(m), &lir_owned).map_err(|e| format!("owned: {e}"))?;
+    Ok((lir, lir_owned))
+}
+
+fn same(js: &str, lir: &str) -> Result<(), String> {
     if js == lir {
-        return Ok(lir);
+        return Ok(());
     }
     let line = js
         .lines()
@@ -78,7 +91,7 @@ fn single(path: &Path) -> Option<sakura_core::Module> {
 }
 
 #[test]
-fn lir_facts_agree_with_dump_direct() {
+fn lir_facts_agree_with_dump_direct_and_dump_owned() {
     common::big_stack(|| {
         let r = root();
         // (name, files) of every program, lowered concurrently below.
@@ -132,19 +145,27 @@ fn lir_facts_agree_with_dump_direct() {
         let programs: Vec<(String, Option<sakura_core::Module>)> =
             common::par_map(&inputs, |(name, files)| (name.clone(), core(files.clone())));
 
-        let micro_dump = agree(programs[0].1.as_ref().expect("micro.sak checks")).unwrap();
-        let (mut compared, mut failures) = (0, vec![]);
+        let micro_dump = agree(programs[0].1.as_ref().expect("micro.sak checks"))
+            .unwrap()
+            .0;
+        let (mut compared, mut with_sites, mut failures) = (0, 0, vec![]);
         for (name, m) in &programs {
             let Some(m) = m else { continue };
             compared += 1;
-            if let Err(e) = agree(m) {
-                failures.push(format!("{name}: {e}"));
+            match agree(m) {
+                Ok((_, owned)) => with_sites += usize::from(!owned.is_empty()),
+                Err(e) => failures.push(format!("{name}: {e}")),
             }
         }
         assert!(failures.is_empty(), "{}", failures.join("\n"));
         // Fixtures that do not check (`mode: check` negatives) have no Core; everything else
         // is compared.
         assert!(compared >= 150, "only {compared} programs compared");
+        // The owned comparison is not vacuous: many programs have consuming sites.
+        assert!(
+            with_sites >= 30,
+            "only {with_sites} programs with owned sites"
+        );
         eprintln!("{compared} of {} programs compared", programs.len());
         // The whole dump is pinned by `sakura_cli/tests/snapshots/micro.direct`.
         assert!(
@@ -203,7 +224,7 @@ pub fn main() -> Unit ! {Console} {
 #[test]
 fn each_reason_is_reported() {
     let m = core(vec![("file:///p/main.sak".into(), REASONS.into())]).expect("checks");
-    let dump = agree(&m).unwrap();
+    let dump = agree(&m).unwrap().0;
     let verdict = |name: &str| -> &str {
         dump.lines()
             .find_map(|l| l.strip_prefix(&format!("main::main::{name} ")))

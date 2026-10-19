@@ -410,3 +410,366 @@ fn cmp(t: c::CmpTy) -> v::CmpTy {
         c::CmpTy::Any => v::CmpTy::Any,
     }
 }
+
+/// A snapshot module as live Core, so an analysis over Core (`opt::owned`) runs on the committed
+/// form (design §17.176 (2)). The snapshot does not record a def's `ty_params` or `row_params`;
+/// they read 0, so the result is for analyses, never for `sakura_core::validate` or a backend.
+pub fn back(m: &v::Module) -> c::Module {
+    c::Module {
+        defs: m.defs.iter().map(|d| back_def(m, d)).collect(),
+        types: m
+            .types
+            .iter()
+            .map(|t| c::TypeDef {
+                name: t.name.clone(),
+                module: t.module.clone(),
+                params: t.params,
+                kind: match &t.kind {
+                    v::TypeKind::Record { fields, error } => c::TypeKind::Record {
+                        fields: fields
+                            .iter()
+                            .map(|f| c::Field {
+                                name: f.name.clone(),
+                                ty: back_ty(&f.ty),
+                            })
+                            .collect(),
+                        error: *error,
+                    },
+                    v::TypeKind::Variant { ctors } => c::TypeKind::Variant {
+                        ctors: ctors
+                            .iter()
+                            .map(|k| c::Ctor {
+                                name: k.name.clone(),
+                                fields: k.fields.iter().map(back_ty).collect(),
+                            })
+                            .collect(),
+                    },
+                },
+                builtin: t.builtin.clone(),
+            })
+            .collect(),
+        effects: m
+            .effects
+            .iter()
+            .map(|e| c::EffectDef {
+                name: e.name.clone(),
+                module: e.module.clone(),
+                ops: e
+                    .ops
+                    .iter()
+                    .map(|o| c::OpDef {
+                        name: o.name.clone(),
+                        params: o.params.iter().map(back_ty).collect(),
+                        ret: back_ty(&o.ret),
+                        fail: o.fail.as_ref().map(back_ty),
+                    })
+                    .collect(),
+            })
+            .collect(),
+        contracts: m
+            .contracts
+            .iter()
+            .map(|k| c::ContractDecl {
+                kind: match k.kind {
+                    v::ContractKind::Requires => c::ContractKind::Requires,
+                    v::ContractKind::Ensures => c::ContractKind::Ensures,
+                    v::ContractKind::Where => c::ContractKind::Where,
+                },
+                name: k.name.clone(),
+                pos: k.pos.map(back_pos),
+            })
+            .collect(),
+        refinements: m
+            .refinements
+            .iter()
+            .map(|r| c::Refinement {
+                name: r.name.clone(),
+                module: r.module.clone(),
+                base: back_ty(&r.base),
+                check: c::DefId(r.check),
+            })
+            .collect(),
+        field_schemas: m
+            .field_schemas
+            .iter()
+            .map(|(t, fs)| {
+                let fs = fs.iter().map(|f| f.iter().map(back_ty).collect()).collect();
+                (c::TypeId(*t), fs)
+            })
+            .collect(),
+        tests: m
+            .tests
+            .iter()
+            .map(|(name, d)| c::Test {
+                name: name.clone(),
+                def: c::DefId(*d),
+            })
+            .collect(),
+        entry: m.entry.map(c::DefId),
+    }
+}
+
+fn back_pos(p: v::Pos) -> c::Pos {
+    c::Pos {
+        file: sakura_diagnostics::FileId(p.file),
+        offset: p.offset,
+        end: p.end,
+    }
+}
+
+fn back_def(m: &v::Module, d: &v::Def) -> c::FnDef {
+    let locals = |ls: &[v::Local]| ls.iter().map(|&l| c::Local(l)).collect();
+    c::FnDef {
+        name: d.name.clone(),
+        module: d.module.clone(),
+        kind: match &d.kind {
+            v::FnKind::Top { export } => c::FnKind::Top { export: *export },
+            v::FnKind::Lambda => c::FnKind::Lambda,
+            v::FnKind::Clause { effect, op } => c::FnKind::Clause {
+                effect: c::EffectId(*effect),
+                op: *op,
+            },
+            v::FnKind::Test => c::FnKind::Test,
+            v::FnKind::Const => c::FnKind::Const,
+        },
+        captures: locals(&d.captures),
+        params: locals(&d.params),
+        locals: d
+            .locals
+            .iter()
+            .map(|l| c::LocalDecl {
+                name: l.name.clone(),
+                ty: back_ty(&l.ty),
+            })
+            .collect(),
+        ret: back_ty(&d.ret),
+        row: back_row(&d.row),
+        row_vars: d.row_vars.clone(),
+        ty_params: 0,
+        row_params: 0,
+        pos: d.pos.map(back_pos),
+        body: back_block(&d.body),
+        refined_params: d
+            .refined_params
+            .iter()
+            .map(|r| {
+                let r = r.as_ref()?;
+                let i = m.refinements.iter().position(|k| {
+                    r.ty.strip_prefix(k.module.as_str())
+                        .and_then(|t| t.strip_prefix("::"))
+                        == Some(k.name.as_str())
+                })?;
+                Some(c::RefinementId(i as u32))
+            })
+            .collect(),
+    }
+}
+
+fn back_row(r: &v::Row) -> c::Row {
+    c::Row {
+        effects: r.effects.iter().map(|&e| c::EffectId(e)).collect(),
+        fail: r.fail.as_ref().map(|t| Box::new(back_ty(t))),
+        tail: r.tail,
+    }
+}
+
+fn back_ty(t: &v::Ty) -> c::Ty {
+    let list = |ts: &[v::Ty]| ts.iter().map(back_ty).collect();
+    match t {
+        v::Ty::Unit => c::Ty::Unit,
+        v::Ty::Bool => c::Ty::Bool,
+        v::Ty::Int => c::Ty::Int,
+        v::Ty::Float => c::Ty::Float,
+        v::Ty::String => c::Ty::String,
+        v::Ty::Bytes => c::Ty::Bytes,
+        v::Ty::Never => c::Ty::Never,
+        v::Ty::Tuple(ts) => c::Ty::Tuple(list(ts)),
+        v::Ty::Fn(f) => c::Ty::Fn(Box::new(c::FnTy {
+            params: list(&f.params),
+            ret: back_ty(&f.ret),
+            row: back_row(&f.row),
+        })),
+        v::Ty::Adt(id, args) => c::Ty::Adt(c::TypeId(*id), list(args)),
+        v::Ty::Union(ts) => c::Ty::Union(ts.iter().map(|&t| c::TypeId(t)).collect()),
+        v::Ty::List(t) => c::Ty::List(Box::new(back_ty(t))),
+        v::Ty::Map(k, x) => c::Ty::Map(Box::new(back_ty(k)), Box::new(back_ty(x))),
+        v::Ty::Set(t) => c::Ty::Set(Box::new(back_ty(t))),
+        v::Ty::Handler(e) => c::Ty::Handler(c::EffectId(*e)),
+        v::Ty::Instance(e) => c::Ty::Instance(c::EffectId(*e)),
+        v::Ty::Opaque(n) => c::Ty::Opaque(n.clone()),
+        v::Ty::Refined(r, args) => c::Ty::Refined(c::RefinementId(*r), list(args)),
+        v::Ty::Var(x) => c::Ty::Var(*x),
+    }
+}
+
+/// The recursive entry: runs under `ensure_stack` (design §17.193). A block's statements wrap
+/// its terminator from the last one out, so a long chain is a loop, not a recursion.
+fn back_block(b: &v::Block) -> c::Expr {
+    sakura_core::ensure_stack(|| {
+        let mut e = back_term(&b.term);
+        for s in b.stmts.iter().rev() {
+            e = match s {
+                v::Stmt::Let { local, bind, pos } => c::Expr::Let {
+                    local: c::Local(*local),
+                    bind: back_bind(bind),
+                    pos: pos.map(back_pos),
+                    body: Box::new(e),
+                },
+                v::Stmt::Join {
+                    label,
+                    params,
+                    join,
+                } => c::Expr::LetJoin {
+                    label: c::Label(*label),
+                    params: params.iter().map(|&l| c::Local(l)).collect(),
+                    join: Box::new(back_block(join)),
+                    body: Box::new(e),
+                },
+            };
+        }
+        e
+    })
+}
+
+fn back_term(t: &v::Terminator) -> c::Expr {
+    let boxed = |b: &v::Block| Box::new(back_block(b));
+    match t {
+        v::Terminator::Ret(a) => c::Expr::Ret(back_atom(a)),
+        v::Terminator::Jump(l, args) => c::Expr::Jump(c::Label(*l), back_atoms(args)),
+        v::Terminator::Switch {
+            scrut,
+            on,
+            arms,
+            default,
+        } => c::Expr::Switch {
+            scrut: back_atom(scrut),
+            on: match on {
+                v::SwitchOn::Variant(t) => c::SwitchOn::Variant(c::TypeId(*t)),
+                v::SwitchOn::Errors(ts) => {
+                    c::SwitchOn::Errors(ts.iter().map(|&t| c::TypeId(t)).collect())
+                }
+                v::SwitchOn::Lit(ls) => c::SwitchOn::Lit(ls.iter().map(back_lit).collect()),
+            },
+            arms: arms.iter().map(|(k, b)| (*k, back_block(b))).collect(),
+            default: default.as_deref().map(boxed),
+        },
+        v::Terminator::If { cond, then, els } => c::Expr::If {
+            cond: back_atom(cond),
+            then: boxed(then),
+            els: boxed(els),
+        },
+        v::Terminator::Handle { handler, body } => c::Expr::Handle {
+            handler: back_atom(handler),
+            body: boxed(body),
+        },
+        v::Terminator::Try { on_fail, body } => c::Expr::Try {
+            on_fail: c::Label(*on_fail),
+            body: boxed(body),
+        },
+        v::Terminator::Fail(a) => c::Expr::Fail(back_atom(a)),
+    }
+}
+
+fn back_atoms(a: &[v::Atom]) -> Vec<c::Atom> {
+    a.iter().map(back_atom).collect()
+}
+
+fn back_atom(a: &v::Atom) -> c::Atom {
+    match a {
+        v::Atom::Local(l) => c::Atom::Local(c::Local(*l)),
+        v::Atom::Lit(l) => c::Atom::Lit(back_lit(l)),
+        v::Atom::Global(d) => c::Atom::Global(c::DefId(*d)),
+        v::Atom::Builtin(b) => c::Atom::Builtin(b.clone()),
+    }
+}
+
+fn back_lit(l: &v::Lit) -> c::Lit {
+    match l {
+        v::Lit::Unit => c::Lit::Unit,
+        v::Lit::Bool(b) => c::Lit::Bool(*b),
+        v::Lit::Int(i) => c::Lit::Int(*i),
+        v::Lit::Float(f) => c::Lit::Float(*f),
+        v::Lit::String(s) => c::Lit::String(s.clone()),
+    }
+}
+
+fn back_bind(b: &v::Bind) -> c::Bind {
+    match b {
+        v::Bind::Atom(a) => c::Bind::Atom(back_atom(a)),
+        v::Bind::Prim(op, args) => c::Bind::Prim(back_prim(op), back_atoms(args)),
+        v::Bind::Call(f, args) => c::Bind::Call(back_atom(f), back_atoms(args)),
+        v::Bind::Closure(d, caps) => c::Bind::Closure(c::DefId(*d), back_atoms(caps)),
+        v::Bind::Alloc(a, args) => c::Bind::Alloc(
+            match a {
+                v::Alloc::Tuple => c::Alloc::Tuple,
+                v::Alloc::Record(t) => c::Alloc::Record(c::TypeId(*t)),
+                v::Alloc::Variant(t, k) => c::Alloc::Variant(c::TypeId(*t), *k),
+                v::Alloc::List => c::Alloc::List,
+            },
+            back_atoms(args),
+        ),
+        v::Bind::Proj(a, p) => c::Bind::Proj(
+            back_atom(a),
+            match p {
+                v::Proj::Tuple(i) => c::Proj::Tuple(*i),
+                v::Proj::Field(t, i) => c::Proj::Field(c::TypeId(*t), *i),
+                v::Proj::Payload(t, k, i) => c::Proj::Payload(c::TypeId(*t), *k, *i),
+            },
+        ),
+        v::Bind::Perform(e, op, args) => c::Bind::Perform(c::EffectId(*e), *op, back_atoms(args)),
+        v::Bind::Check(k, a) => c::Bind::Check(c::ContractId(*k), back_atom(a)),
+        v::Bind::MakeHandler {
+            effect,
+            state,
+            clauses,
+        } => c::Bind::MakeHandler {
+            effect: c::EffectId(*effect),
+            state: back_atoms(state),
+            clauses: back_atoms(clauses),
+        },
+        v::Bind::StateGet(a, i) => c::Bind::StateGet(back_atom(a), *i),
+        v::Bind::StateSet(a, i, x) => c::Bind::StateSet(back_atom(a), *i, back_atom(x)),
+        v::Bind::Hole(h) => c::Bind::Hole(*h),
+    }
+}
+
+fn back_prim(op: &v::PrimOp) -> c::PrimOp {
+    use c::PrimOp as P;
+    use v::PrimOp as Q;
+    match op {
+        Q::IntAdd => P::IntAdd,
+        Q::IntSub => P::IntSub,
+        Q::IntMul => P::IntMul,
+        Q::IntDiv => P::IntDiv,
+        Q::IntRem => P::IntRem,
+        Q::IntNeg => P::IntNeg,
+        Q::FloatAdd => P::FloatAdd,
+        Q::FloatSub => P::FloatSub,
+        Q::FloatMul => P::FloatMul,
+        Q::FloatDiv => P::FloatDiv,
+        Q::FloatRem => P::FloatRem,
+        Q::FloatNeg => P::FloatNeg,
+        Q::Concat => P::Concat,
+        Q::Not => P::Not,
+        Q::Eq(t) => P::Eq(back_cmp(*t)),
+        Q::Ne(t) => P::Ne(back_cmp(*t)),
+        Q::Lt(t) => P::Lt(back_cmp(*t)),
+        Q::Le(t) => P::Le(back_cmp(*t)),
+        Q::Gt(t) => P::Gt(back_cmp(*t)),
+        Q::Ge(t) => P::Ge(back_cmp(*t)),
+        Q::Show(t) => P::Show(back_ty(t)),
+        Q::Schema(t) => P::Schema(back_ty(t)),
+        Q::SchemaOf(t, vs) => P::SchemaOf(back_ty(t), vs.clone()),
+        Q::ShowWith => P::ShowWith,
+    }
+}
+
+fn back_cmp(t: v::CmpTy) -> c::CmpTy {
+    match t {
+        v::CmpTy::Int => c::CmpTy::Int,
+        v::CmpTy::Float => c::CmpTy::Float,
+        v::CmpTy::Bool => c::CmpTy::Bool,
+        v::CmpTy::String => c::CmpTy::String,
+        v::CmpTy::Any => c::CmpTy::Any,
+    }
+}

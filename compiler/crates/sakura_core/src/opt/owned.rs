@@ -97,7 +97,7 @@ impl Facts {
 }
 
 /// Reads that retain nothing of their arguments.
-const BORROWS: &[&str] = &[
+pub const BORROWS: &[&str] = &[
     "list_len",
     "list_get",
     "list_get_expect",
@@ -178,7 +178,8 @@ pub struct Summary {
 }
 
 impl Summary {
-    fn borrows(&self, slot: usize) -> bool {
+    /// Capture or parameter `slot` (captures first) is only read.
+    pub fn borrows(&self, slot: usize) -> bool {
         self.borrows.get(slot).copied().unwrap_or(false)
     }
 }
@@ -391,6 +392,20 @@ pub fn analyze(m: &Module, def: &FnDef, summaries: &[Summary], owned_params: &[L
         })
         .collect();
     Facts { sites }
+}
+
+/// `--dump owned`: [`display_module`] of every module outside std.
+pub fn display(m: &Module) -> String {
+    let modules: BTreeSet<&str> = m
+        .defs
+        .iter()
+        .map(|d| d.module.as_str())
+        .filter(|module| !module.starts_with("std"))
+        .collect();
+    modules
+        .into_iter()
+        .map(|module| display_module(m, module))
+        .collect()
 }
 
 /// `--dump owned`: each consuming site of the defs of `module`, `owned` or `shared(<reason>)`;

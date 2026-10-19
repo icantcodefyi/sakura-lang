@@ -10,7 +10,7 @@ publish.workspace = true
 
 [features]
 # The converter from live Core.
-convert = ["dep:sakura_core"]
+convert = ["dep:sakura_core", "dep:sakura_diagnostics"]
 # `convert::snapshot`/`bless_dir` over the real frontend, for `SAKURA_BLESS=1` tests (enable it
 # only as a dev-dependency).
 bless = ["convert", "dep:sakura_analysis"]
@@ -22,6 +22,7 @@ serde_stacker.workspace = true
 sakura_hir.workspace = true
 sakura_analysis = { workspace = true, optional = true }
 sakura_core = { workspace = true, optional = true }
+sakura_diagnostics = { workspace = true, optional = true }
 
 [lints]
 workspace = true
