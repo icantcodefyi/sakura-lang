@@ -4,9 +4,17 @@ on:
   schedule:
     - cron: "19 2 * * *"
   workflow_dispatch:
+    inputs:
+      # The campaign input (design §17.225 (4a)): seconds per target; the nightly keeps 600.
+      max_total_time:
+        description: Seconds to fuzz each target (the nightly runs 600)
+        type: number
+        default: 600
 
 permissions:
   contents: read
+  # Read the earlier runs' corpus artifacts.
+  actions: read
 
 concurrency:
   group: ${{ github.workflow }}
@@ -16,11 +24,12 @@ jobs:
   fuzz:
     name: Fuzz ${{ matrix.target }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # A campaign run may take up to the hosted runners' six hours.
+    timeout-minutes: ${{ github.event_name == 'workflow_dispatch' && 360 || 30 }}
     strategy:
       fail-fast: false
       matrix:
-        target: [parse, check, fmt_idempotent, row_unify, lir, vc]
+        target: [parse, check, fmt_idempotent, row_unify, lir, vc, exec]
     defaults:
       run:
         working-directory: compiler
@@ -29,10 +38,16 @@ jobs:
       CARGO_INCREMENTAL: "0"
       FUZZ_TARGET: ${{ matrix.target }}
       CORPUS: ${{ github.workspace }}/compiler/target/fuzz-corpus/${{ matrix.target }}
+      MAX_TOTAL_TIME: ${{ inputs.max_total_time || 600 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # `exec` runs the JS and WASM backends on Node, as the parity job does.
+      - if: matrix.target == 'exec'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
       - name: Install nightly and cargo-fuzz
         run: |
           rustup toolchain install nightly --profile minimal
@@ -41,17 +56,43 @@ jobs:
       # cargo-fuzz has no --locked flag; fetching with it first fails on a stale fuzz/Cargo.lock.
       - name: Check the fuzz lockfile
         run: cargo +nightly fetch --locked --manifest-path fuzz/Cargo.toml
-      - name: Seed the corpus
+      # Corpora are carried between runs as artifacts (design §17.225 (4a)): the newest
+      # unexpired `fuzz-corpus-<target>` of an earlier run, when there is one.
+      - name: Restore the previous corpus
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p "$CORPUS"
-          cp fuzz/corpus/"$FUZZ_TARGET"/* "$CORPUS"/
-          if [ "$FUZZ_TARGET" != row_unify ]; then
-            cp tests/ui/*.sak tests/semantics/*.sak "$CORPUS"/
+          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=fuzz-corpus-$FUZZ_TARGET&per_page=1" \
+            --jq '.artifacts[] | select(.expired | not) | .workflow_run.id')
+          if [ -n "$run" ]; then
+            gh run download "$run" --repo "$GITHUB_REPOSITORY" --name "fuzz-corpus-$FUZZ_TARGET" --dir "$CORPUS"
+          else
+            echo "No earlier corpus for $FUZZ_TARGET; starting from the seeds."
           fi
-      - name: Fuzz for ten minutes
-        run: >-
-          cargo +nightly fuzz run "$FUZZ_TARGET" "$CORPUS" --
-          -max_total_time=600 -max_len=16384 -timeout=10 -rss_limit_mb=2048
+      - name: Seed the corpus
+        run: |
+          cp fuzz/corpus/"$FUZZ_TARGET"/* "$CORPUS"/
+          case "$FUZZ_TARGET" in
+            row_unify) ;;
+            # Its programs grow from the semantics seeds (design §17.225 (4b)).
+            exec) cp tests/semantics/*.sak "$CORPUS"/ ;;
+            *) cp tests/ui/*.sak tests/semantics/*.sak "$CORPUS"/ ;;
+          esac
+      - name: Fuzz
+        run: |
+          case "$MAX_TOTAL_TIME" in
+            '' | *[!0-9]*) echo "max_total_time must be a whole number of seconds" >&2; exit 2 ;;
+          esac
+          cargo +nightly fuzz run "$FUZZ_TARGET" "$CORPUS" -- \
+            "-max_total_time=$MAX_TOTAL_TIME" -max_len=16384 -timeout=10 -rss_limit_mb=2048
+      - name: Upload the corpus
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: fuzz-corpus-${{ matrix.target }}
+          path: compiler/target/fuzz-corpus/${{ matrix.target }}/
+          if-no-files-found: ignore
       - name: Minimize failing inputs
         if: failure()
         run: |
