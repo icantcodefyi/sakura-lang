@@ -5,7 +5,9 @@
         Interleaves the binaries (A, B, A, B, …) on the `sakura new cli` hello-world and the
         `bench compile` 10k-line corpus; prints median, p95 and range per binary and case.
     compile_latency.py instrument compiler/crates/sakura_analysis/src/lib.rs
-        Adds per-phase timing of `analyze`, printed to stderr when SAKURA_PHASES is set, and a
+        Adds per-phase timing of `analyze` and of reading std's analysis cache (`std_cache.rs`:
+        read, sha256, decode, and the whole load as `std_load`), printed to stderr when
+        SAKURA_PHASES is set, and a
         `latency_loop` test that analyses the hello-world under fresh URIs, so every analysis
         after the first reuses std, and a `check_loop` test that type-checks std's HIR
         SAKURA_CHECK_N times, for a sampling profiler. For a throwaway build only; never commit
@@ -166,7 +168,27 @@ def cmd_instrument(a):
     before("    let holes = typed\n", lap("check"))
     before("    let mut analyzed = Analyzed {\n", lap("symbols_index"))
     after("    analyzed.check.diagnostics = diagnostics;\n", lap("rest") + END.lstrip("\n"))
+    before("        std_cache::load(&snapshot).unwrap_or_else(|| {\n",
+           "        let t = std::time::Instant::now();\n"
+           "        let loaded = std_cache::load(&snapshot);\n"
+           "        if std::env::var_os(\"SAKURA_PHASES\").is_some() {\n"
+           "            eprintln!(\"phase 0 0 std_load {:.3}\", t.elapsed().as_secs_f64() * 1e3);\n"
+           "        }\n")
+    s = s.replace("        std_cache::load(&snapshot).unwrap_or_else(|| {\n", "        loaded.unwrap_or_else(|| {\n", 1)
     p.write_text(s)
+    c = p.parent / "std_cache.rs"
+    s = c.read_text()
+    show = ('    if std::env::var_os("SAKURA_PHASES").is_some() {{\n'
+            '        eprintln!("phase 0 0 {} {{:.3}}", t.elapsed().as_secs_f64() * 1e3);\n'
+            '    }}\n    let t = std::time::Instant::now();\n')
+    after("fn load_from(path: &Path, snapshot: &Snapshot) -> Option<Analyzed> {\n",
+          "    let t = std::time::Instant::now();\n")
+    before("    let (magic, rest) = bytes.split_at_checked(MAGIC.len())?;\n", show.format("cache_read"))
+    before("    decode(payload, snapshot)\n}", show.format("cache_sha256"))
+    after("    decode(payload, snapshot)\n}", "")
+    s = s.replace("    decode(payload, snapshot)\n}",
+                  "    let a = decode(payload, snapshot);\n" + show.format("cache_decode") + "    a\n}", 1)
+    c.write_text(s)
 
 
 def main():

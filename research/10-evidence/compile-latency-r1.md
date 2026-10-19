@@ -368,6 +368,69 @@ again if the contract calls or the transitive expansion are removed. Each file k
 calls, not its closure: a `where` clause in one file can reach a function of another only
 through the fixpoint over every file's calls.
 
+## WS-C2: std's analysis from a disk cache, and std first
+
+Measured 2026-10-19 by Claude Opus 5.5: `b641449c` (before) against WS-C2 and the std-first
+flip on it (`93d05c0b`, after), both release CLIs built with this note's `instrument` patch
+(about ten `Instant::now` calls per analysis, the same on both sides) in separate target
+directories. **The host was quiet for these runs** (load average 1.3 to 2.2 for the
+fresh-process and phase runs, about 7 for the paired run), unlike every earlier table here;
+they are still one machine's readings, not the quiet-window `bench compile` run (§17.153).
+std's analysis cache was a fresh `SAKURA_CACHE_DIR`, filled by the warm-up run.
+
+**Verdict: `check_hello` 22.1 → 6.8 ms median (p95 7.6, target ≤ 10) and `check_cold_10k`
+53.9 → 38.5 ms median (p95 40.1, target ≤ 45). Every per-step budget of §17.214 (5) is met.**
+
+Fresh processes, `compile_latency.py time --runs 41` (interleaved, one warm-up each):
+
+| Case | Side | Median ms | p95 ms | Range ms |
+|---|---|---:|---:|---:|
+| `check_hello` | before | 22.1 | 24.1 | 21.7–28.0 |
+| `check_hello` | after | 6.8 | 7.6 | 6.4–7.7 |
+| `check_cold_10k` | before | 53.9 | 56.2 | 53.0–59.0 |
+| `check_cold_10k` | after | 38.5 | 40.1 | 37.8–42.8 |
+
+Phase lines, 41 fresh processes, median ms. After the flip a process's first analysis reuses
+std's (45 files), which is forced inside the `evaluated_functions` lap, so that lap holds
+`std_load`; the row below subtracts it.
+
+| Step | Budget | `check_hello` | `check_cold_10k` |
+|---|---:|---:|---:|
+| read the file (501 KB) | | 0.05 | 0.07 |
+| SHA-256 of the payload | | 0.17 | 0.17 |
+| decode | | 1.60 | 1.61 |
+| **deserialise (`std_load`)** | **≤ 2** | **1.84** | 1.87 |
+| `evaluated_functions` less `std_load` (parses the user files) | | 0.19 | 7.05 |
+| `interface_hash` | | 0.02 | 4.95 |
+| lower | | 0.45 | 6.79 |
+| check | | 0.60 | 9.09 |
+| `symbols::index` | | 0.11 | 3.68 |
+| **reuse path and the hello module** | **≤ 1.5 + ≤ 1** | **1.39** | |
+| analysis total | | 3.23 | 33.54 |
+| before: fresh analysis total | | 20.56 | 51.18 |
+
+The reuse path and the hello module are not separable on the phase lines (each carried phase
+includes the module's own share); together they are 1.39 ms against a combined 2.5. Outside
+`analyze`, paired within the same 61 interleaved processes (wall less the `total` lap), is
+3.81 ms before and 3.79 ms after (budget ≤ 4): unchanged, as expected, and WS-C3's to
+attribute. Subtracting medians of separate runs put it at 1.5 ms before; that was the two
+runs' noise, not the processes.
+
+**Where the decode goes** (release, one process, each part decoded alone, loaded host):
+`Program` 0.69 ms of 214 KB, `TypedProgram` 0.57 ms of 122 KB (its interner 0.37 ms of 44 KB,
+most of it rebuilding the two hash maps from the tables with SipHash, which WS-C1e's FxHash
+addresses), the symbols 0.15 ms of 120 KB. The decode is under budget, so no zero-copy format
+is proposed (§17.204 (4)). Wrapping the decoder in `serde_stacker` cost about 0.4 ms; the one
+recursive HIR type, `TypeRef`, bounds its own depth instead (twice the parser's `MAX_DEPTH`).
+
+**`check_cold_10k` after WS-C2** is the user package's cost: evaluated names and parsing 7.05,
+check 9.09, lower 6.79, `interface_hash` 4.95, symbols 3.68. `interface_hash` is WS-C1d's row
+(≤ 2.2 ms acceptance); check is WS-C1e's.
+
+**With no cache** (`SAKURA_NO_CACHE=1`, a first run, an unwritable directory) the first
+analysis is std's followed by a reusing one, about 1 ms dearer than the fresh analysis it
+replaced (§17.214's probe); not re-measured here.
+
 ## Rows proposed for `performance-r1.md` §9
 
 - **WS-C1a** (check, 36% of std's analysis): reused modules' defs are not checked again (the
@@ -393,6 +456,8 @@ SAKURA_PHASES=1 <instrumented release test binary> --nocapture 2>&1 \
 SAKURA_PHASES=1 SAKURA_LOOP_MAIN=<hello>/src/main.sak <latency_loop binary> latency_loop --nocapture 2>&1 \
   | grep '^phase' | python3 research/10-evidence/compile_latency.py phases -
 SAKURA_CHECK_N=3000 <latency_loop binary> check_loop --nocapture & sample $! 15 1 -file check.sample.txt
+# WS-C2: instrument also times std's cache (std_load, cache_read, cache_sha256, cache_decode)
+SAKURA_CACHE_DIR=/tmp/c python3 research/10-evidence/compile_latency.py phases --runs 41 <instrumented sakura>
 ```
 
 Give every side its own `CARGO_TARGET_DIR`: two worktrees of one workspace get the same

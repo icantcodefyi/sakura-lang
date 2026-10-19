@@ -84,6 +84,15 @@ published yet.
 
 ### Changed
 
+- `sakura check`, `build`, `run`, `test`, the LSP and the MCP server read std's analysis from a
+  cache on disk instead of analysing std in every process: `sakura check` on the `sakura new
+  cli` project falls from about 22 to about 7 ms and on a 10k-line package from about 54 to
+  about 39 ms (one quiet macOS host, release builds; design §17.195 (3), §17.214 (5)). The
+  cache holds one file per compiler build in `<cache>/sakuralang/std`, `<cache>` being
+  `$SAKURA_CACHE_DIR`, else `$XDG_CACHE_HOME` or `~/.cache` on Unix and `%LOCALAPPDATA%` on
+  Windows; `SAKURA_NO_CACHE=1` turns it off. Output is unchanged with and without it; a damaged or missing file is
+  recomputed and rewritten. The files carry no compatibility promise (STABILITY.md).
+
 - **Breaking:** a connection that drops while `Http.host()`'s `send` reads the response body fails with
   `HttpError` (`status: None`, the reason from the host), as a failed connection already did,
   on both backends: the JS backend reported the defect `D091`, and `--target wasm` ended the
