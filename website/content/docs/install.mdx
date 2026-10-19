@@ -1,0 +1,171 @@
+---
+title: Install
+description: Install the Sakura Lang preview on macOS or Linux, with release-specific platform evidence.
+---
+
+Sakura Lang is pre-alpha. `sakuralang@0.1.0-alpha.1` is published on npm for
+Apple silicon macOS and Linux x64. It has no stable language or API compatibility
+promise. Install Node 26 before using npm, `sakura run`, or `sakura test`.
+The standalone compiler can check and build without Node; the installer does not
+install Node for you.
+
+## Platform claims
+
+We use three claim levels, tied to a named release:
+
+- **Supported.** A target in [the inventory](https://github.com/icantcodefyi/sakuralang/blob/main/packaging/targets.json)
+  whose CI suites and parity pass, with a green published-install smoke on a hosted
+  runner of that OS and CPU for that release. An install or run failure there is a
+  P1 release defect, fixed in a new version.
+- **Expected to work.** The same binary on an OS without a hosted runner, with the
+  tested environment stated. This does not mean the project ran it on that device.
+- **Community-confirmed.** An expected-to-work configuration with a report showing
+  the complete acceptance list passing, recorded as
+  `confirmed on <device>, <OS build>, <version> (#issue)`.
+
+The published-install acceptance for v0.1.0 is pending. These commands describe
+available preview channels and planned additions; they do not assign **Supported**
+to a release before that evidence exists. See the
+[platform plan](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plans/road-to-1.0.md#6-platforms-b-and-c-design-17180-acceptance-17227).
+
+## macOS: Apple silicon
+
+Target: `aarch64-apple-darwin`. The alpha.1 archive and npm package exist.
+Release smoke runs on GitHub's macOS ARM64 runner. A minimum macOS version is not
+claimed here until the release floor smoke evidence is in place.
+
+With Node 26 and npm installed:
+
+```bash
+npm install --global --ignore-scripts sakuralang@0.1.0-alpha.1
+sakura --version
+```
+
+Alternatively, use the [release installer](#release-installer) with
+`version=0.1.0-alpha.1`, or the Homebrew tap:
+
+```bash
+brew tap icantcodefyi/sakuralang && brew install sakuralang
+sakura --version
+```
+
+Homebrew installs the formula's current version and its Node dependency; it is not
+a version-pinned install. Check the printed version before reporting a result.
+
+## Linux: x64, glibc
+
+Target: `x86_64-unknown-linux-gnu`. The archive is built and smoke-tested on
+Ubuntu 22.04; use glibc 2.35 or later. Alpine/musl has no release artifact.
+
+With Node 26 and npm installed:
+
+```bash
+npm install --global --ignore-scripts sakuralang@0.1.0-alpha.1
+sakura --version
+```
+
+Alternatively, use the [release installer](#release-installer) with
+`version=0.1.0-alpha.1`, or the Homebrew tap:
+
+```bash
+brew tap icantcodefyi/sakuralang && brew install sakuralang
+sakura --version
+```
+
+## Linux: ARM64, glibc
+
+Target: `aarch64-unknown-linux-gnu`. Packaging and dry-run smoke exist on
+Ubuntu 22.04 ARM64 (glibc 2.35 or later), with CI suites and parity on Ubuntu 24.04
+ARM64. This target is coming in v0.1.0: alpha.1 does not contain its archive or npm
+platform package. After v0.1.0 publishes, use Node 26 and:
+
+```bash
+npm install --global --ignore-scripts sakuralang@0.1.0
+sakura --version
+```
+
+The [release installer](#release-installer) will use `version=0.1.0` after
+publication. Homebrew does not serve Linux ARM64; use npm or the installer.
+32-bit ARM (`armv7`) has no release artifact.
+
+### Raspberry Pi 4 and 5
+
+**Expected to work**, once the Linux ARM64 release is published. The design's
+acceptance wording is reproduced verbatim below. Its Debian container check is
+still pending; this is not a report of a completed run:
+
+> Linux ARM64 is tested on GitHub's Ubuntu ARM64 runners and in a Debian bookworm arm64 container; Raspberry Pi 4 and 5 with 64-bit Raspberry Pi OS (bookworm, glibc 2.36) are expected to work and have not been run on Pi hardware by the project
+
+The planned Debian bookworm ARM64 container has a 1,800 MB memory limit as a
+stand-in for a Pi 4 with 2 GB. Until that run passes, there is no measured memory
+claim. A container is not Pi hardware evidence. Use a 64-bit OS (`uname -m` should
+print `aarch64`), not 32-bit Raspberry Pi OS.
+
+Install Node 26 with [nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+in Bash. Download and inspect its installer, then run it:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.8/install.sh -o install-nvm.sh
+less install-nvm.sh
+bash install-nvm.sh
+export NVM_DIR="$HOME/.nvm"
+. "$NVM_DIR/nvm.sh"
+nvm install 26
+nvm use 26
+node --version
+npm --version
+```
+
+Check that Node prints `v26.x.x`. Then use the Linux ARM64 commands above once
+v0.1.0 is published. Run npm as your normal user with nvm. Sakura's installer
+never installs Node or edits your shell profile.
+
+## Release installer
+
+For Apple silicon macOS or Linux x64 today:
+
+```bash
+version=0.1.0-alpha.1
+curl -fsSL "https://github.com/icantcodefyi/sakuralang/releases/download/v${version}/install.sh" -o install.sh
+less install.sh
+sh install.sh --version "$version"
+export PATH="$HOME/.local/bin:$PATH"
+sakura --version
+```
+
+For Linux ARM64, change the version to `0.1.0` only after that release publishes.
+The installer selects the host's CPU and ABI, checks the archive against
+`SHA256SUMS`, and installs to `~/.local/bin`. If GitHub CLI (`gh`) is installed,
+attestation verification must also pass. Without `gh`, it reports
+`integrity verified, not attested`. To keep the command available in new shells,
+add the PATH line to your shell profile yourself.
+
+## Windows x64: coming in v0.2.0
+
+Windows is coming in v0.2.0. It is not **Supported** by alpha.1, and no Windows
+install command or OS floor is advertised yet. The planned target is
+`x86_64-pc-windows-msvc`, with npm and `install.ps1`; it must enter the inventory
+and pass its smoke tests before those instructions become available. A future
+Windows Server runner result will not imply a Windows 11 device run. Windows
+ARM64 is not an inventory target. Proof caching on Windows is not implemented.
+
+## macOS: Intel, coming in v0.2.0
+
+Intel Mac is coming in v0.2.0. It is not **Supported** by alpha.1. The planned target
+is `x86_64-apple-darwin`; npm, the installer and Homebrew instructions will be added
+after its inventory entry and smoke tests land. No Intel macOS floor is advertised
+yet. A Rosetta archive smoke alone cannot confirm Intel npm or Homebrew installs.
+
+## Check the installation and report a platform
+
+Start with `sakura --version` and [create a project](/docs/quickstart#create-a-project).
+For **Community-confirmed** evidence, [file a platform report](https://github.com/icantcodefyi/sakuralang/issues/new)
+with the device, OS build, exact Sakura version and commit, `node --version`,
+`uname -a` (or `winver`), and `/etc/os-release` on Linux. Record the outcome of the
+whole acceptance list: `new cli`, `check`, `test`, `build`, `run`,
+`run --target wasm`, an MCP initialize handshake, `setup --apply` twice, and the
+expected refusal to run when Node is absent. A successful install alone is not a
+community confirmation. No device confirmations are recorded on this page yet.
+
+Performance measurements in `bench/` apply only to the project's reference host;
+platform acceptance does not establish performance on a Pi or another machine.

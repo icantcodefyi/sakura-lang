@@ -15,6 +15,9 @@ published yet.
 
 ### Added
 
+- Per-OS website install instructions with release-specific platform claims, Node 26
+  setup for Raspberry Pi users, and explicit Windows/Intel Mac v0.2.0 availability.
+
 - Linux ARM64 glibc release archives and the `sakuralang-linux-arm64-gnu` npm package,
   built and smoke-tested on public GitHub-hosted ARM runners. CI runs the Rust suites
   with pinned Z3/cvc5 and both JS/WASM parity lanes on Linux ARM64. The Homebrew
