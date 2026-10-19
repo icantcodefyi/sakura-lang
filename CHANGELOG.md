@@ -17,6 +17,12 @@ Releases follow the [stability policy](STABILITY.md). The published preview is
   §17.243 (5)). A module of another ABI under `sakura test --target wasm` now exits `2` after
   the runner's `V8003` line instead of `70` with "the test runner crashed"; only another
   status, a signal or the time limit is reported by the CLI itself.
+- The Node WASM host reads a module's ABI version from its `sakura.debug` section before
+  compiling or linking it (design §17.243 (4), ABI §0 erratum, no ABI version change), so a
+  module of another ABI is `V8003` with exit `2` even when its imports differ, where it was a
+  `LinkError`. A module this host cannot link is now the defect `D090` "the host could not
+  link the module" (exit `70`) from `run` and `test` alike. A stripped module is still
+  compared after instantiation.
 
 ## [0.1.0] - Unreleased
 

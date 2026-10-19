@@ -150,6 +150,13 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   `sakura_abi_version` stayed `0x010200` on both targets until 1.3.0 was in; N0b set it to
   `0x010400` in one step, and no module ever records `0x010300` (design §17.229 (1)); no
   native module is emitted before N2.
+- Reading order (an erratum, design §17.243 (4); no version changes): the Node host reads the
+  version in the `sakura.debug` header (§12) from the module's bytes, by a scan of the section
+  list, before it compiles or instantiates the module, and refuses by the rule above with
+  `V8003` before any import is resolved. A `LinkError` then means a host bug and is the defect
+  `D090` ("the host could not link the module"). A module without the section (`sakura build
+  --strip`) is held to `sakura_abi_version` after instantiation, as before. No byte, import or
+  export changes, so `sakura_abi_version` stays `0x010400`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen

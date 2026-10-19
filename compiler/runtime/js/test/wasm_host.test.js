@@ -15,6 +15,7 @@ import {
   HostFault,
   OUTCOME,
   Reader,
+  abiVersionOf,
   defectSpans,
   readDebug,
   runMain,
@@ -903,5 +904,61 @@ test("task_free absent or present: the same run, and only the finished root task
       assert.equal(absent[i].stats.live_objects - run.stats.live_objects, task * (i + 1), `${name}: run ${i + 1}`);
     }
     assert.equal(present[1].stats.live_objects, present[0].stats.live_objects, `${name}: freed tasks do not accumulate`);
+  }
+});
+
+/**
+ * A module that imports `sakura_host.no_such_import`, which no host has, and records ABI
+ * `v` in its `sakura.debug` header: instantiating it is a `LinkError` unless the version is
+ * read first.
+ */
+function unlinkable(v) {
+  const enc = (t) => [...new TextEncoder().encode(t)];
+  const leb = (n) => (n < 0x80 ? [n] : [(n & 0x7f) | 0x80, ...leb(n >> 7)]);
+  const section = (id, body) => [id, ...leb(body.length), ...body];
+  const field = (t) => [t.length, ...enc(t)];
+  const debug = [...field("sakura.debug"), ...enc("SKRDBG01"), ...u32(v), ...new Array(32).fill(0), ...u32(0), ...u32(0)];
+  return Uint8Array.from([
+    ...[0, 0x61, 0x73, 0x6d, 1, 0, 0, 0],
+    ...section(1, [1, 0x60, 0, 0]),
+    ...section(2, [1, ...field("sakura_host"), ...field("no_such_import"), 0, 0]),
+    ...section(0, debug),
+  ]);
+}
+
+/** `run()`'s exit code and what it wrote to stderr. */
+async function stderrOf(run) {
+  const lines = [];
+  const write = process.stderr.write;
+  process.stderr.write = (line) => lines.push(line);
+  try {
+    return { exit: await run(), lines };
+  } finally {
+    process.stderr.write = write;
+  }
+}
+
+test("the host reads the ABI version from sakura.debug before linking (design §17.243 (4))", async () => {
+  assert.equal(abiVersionOf(unlinkable(0x020000)), 0x020000);
+  assert.equal(abiVersionOf(unlinkable(ABI_VERSION).buffer), ABI_VERSION);
+  assert.equal(abiVersionOf(versioned(ABI_VERSION)), null, "a stripped module has no section");
+  assert.equal(abiVersionOf(unlinkable(0x020000).slice(0, 40)), null, "a truncated module");
+  assert.equal(abiVersionOf(new Uint8Array([1, 2, 3])), null);
+  await assert.rejects(new Host().instantiate(unlinkable(0x020000)), AbiMismatch);
+  const host = `${ABI_VERSION >> 16}.${(ABI_VERSION >> 8) & 0xff}.${ABI_VERSION & 0xff}`;
+  for (const run of [() => runMain(unlinkable(0x020000)), () => runTests(unlinkable(0x020000), 0, "", "", false)]) {
+    const { exit, lines } = await stderrOf(run);
+    assert.equal(exit, 2);
+    assert.deepEqual(lines, [`error[V8003]: the module needs ABI 2.0.0; this host implements ${host}\n`]);
+  }
+  // Of this host's version, the same module can only fail to link through a host bug: `D090`.
+  for (const run of [() => runMain(unlinkable(ABI_VERSION)), () => runTests(unlinkable(ABI_VERSION), 0, "", "", false)]) {
+    const { exit, lines } = await stderrOf(run);
+    assert.equal(exit, 70);
+    assert.equal(lines.length, 1);
+    const record = JSON.parse(lines[0]);
+    assert.equal(record.kind, "defect");
+    assert.equal(record.code, "D090");
+    assert.match(record.message, /^the host could not link the module: /);
   }
 });

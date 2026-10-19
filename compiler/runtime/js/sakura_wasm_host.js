@@ -99,6 +99,57 @@ export function readDebug(module) {
   }
 }
 
+/**
+ * The ABI version in the header of the `sakura.debug` section of the module bytes `bytes`
+ * (ABI §0, §12), or `null` without one (`sakura build --strip`) or when the bytes are not a
+ * module this scan can read. A scan of the section list, nothing compiled: the host compares
+ * it before any import is resolved, so another ABI is `V8003` and never a `LinkError`
+ * (design §17.243 (4)).
+ */
+export function abiVersionOf(bytes) {
+  const b = ArrayBuffer.isView(bytes)
+    ? new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+    : new Uint8Array(bytes);
+  const magic = [0, 0x61, 0x73, 0x6d, 1, 0, 0, 0];
+  if (b.length < 8 || magic.some((x, i) => b[i] !== x)) return null;
+  let at = 8;
+  const leb = () => {
+    let [value, shift] = [0, 0];
+    for (;;) {
+      if (at >= b.length || shift > 28) return -1;
+      const x = b[at++];
+      value += (x & 0x7f) * 2 ** shift;
+      if ((x & 0x80) === 0) return value;
+      shift += 7;
+    }
+  };
+  const name = [...new TextEncoder().encode("sakura.debug")];
+  while (at < b.length) {
+    const id = b[at++];
+    const size = leb();
+    if (size < 0 || at + size > b.length) return null;
+    const end = at + size;
+    if (id === 0) {
+      const len = leb();
+      if (len === name.length && at + len <= end && name.every((x, i) => b[at + i] === x)) {
+        const p = at + len;
+        const header = [..."SKRDBG01"].map((c) => c.charCodeAt(0));
+        if (p + 12 > end || header.some((x, i) => b[p + i] !== x)) return null;
+        return new DataView(b.buffer, b.byteOffset + p + 8, 4).getUint32(0, true);
+      }
+    }
+    at = end;
+  }
+  return null;
+}
+
+/** `V8003` (ABI §0) unless the host implements ABI version `v`: the same MAJOR, a MINOR no newer. */
+function checkAbi(v) {
+  if (v >> 16 !== ABI_VERSION >> 16 || ((v >> 8) & 0xff) > ((ABI_VERSION >> 8) & 0xff)) {
+    throw new AbiMismatch(v);
+  }
+}
+
 const ROLES = ["primary", "definition"];
 
 /**
@@ -1229,13 +1280,15 @@ export class Host {
   }
 
   async instantiate(bytes) {
+    // The recorded version first (design §17.243 (4)); a stripped module, which has no
+    // section, is held to its export after instantiation, as before.
+    const recorded = abiVersionOf(bytes);
+    if (recorded !== null) checkAbi(recorded);
     this.module = await WebAssembly.compile(bytes);
     this.debug = readDebug(this.module);
     await this.fresh();
     const v = this.exports.sakura_abi_version.value;
-    if (v >> 16 !== ABI_VERSION >> 16 || ((v >> 8) & 0xff) > ((ABI_VERSION >> 8) & 0xff)) {
-      throw new AbiMismatch(v);
-    }
+    checkAbi(v);
     const path = proc?.env?.SAKURA_WASM_STATS;
     if (path) {
       proc.on("exit", () => {
@@ -1400,6 +1453,10 @@ export async function loadTypes() {
  */
 function aborted(e) {
   if (e instanceof rt.Defect) return { kind: "defect", code: e.code, message: e.detail };
+  // The version was compared first, so a module this host cannot link is a host bug.
+  if (e instanceof WebAssembly.LinkError) {
+    return { kind: "defect", code: "D090", message: `the host could not link the module: ${e.message}` };
+  }
   const at = /^\s*at (?:(.+) \()?wasm:\/\/[^\s)]*:(wasm-function\[\d+\]):(0x[0-9a-f]+)/m.exec(e?.stack ?? "");
   const where = at === null ? "" : ` in ${at[1] ?? at[2]} at ${at[3]}`;
   return { kind: "defect", code: "D090", message: `trap: ${e.message}${where}` };
@@ -1514,6 +1571,10 @@ export async function runTests(bytes, seed, filter, snapshotDir, update, host = 
   try {
     await host.instantiate(bytes);
   } catch (e) {
+    if (e instanceof WebAssembly.LinkError) {
+      writeDefect(aborted(e));
+      return 70;
+    }
     if (!(e instanceof AbiMismatch)) throw e;
     writeErr(`error[V8003]: ${e.message}`);
     return 2;

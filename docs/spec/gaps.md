@@ -15,11 +15,13 @@ emission fixture.
 [runMain and runTests report V8003](../../compiler/runtime/js/test/wasm_host.test.js) asserts
 the rendered `error[V8003]` line and exit 2 for a module of another ABI MAJOR, from both
 `runMain` and `runTests` (`sakura test --target wasm`).
-One host path still misses the code: a module that imports a function this host lacks fails
-with a `LinkError` before the version is read
-([REQUESTS](../../compiler/REQUESTS.md), M4-OPT question 4).
-Design §17.243 (4): the host reads the version from the `sakura.debug` custom section before
-instantiation, so `V8003` precedes any `LinkError` (Opus, before `v0.2.0`).
+Since design §17.243 (4) the host reads the version from the `sakura.debug` custom section
+before it compiles or links the module, so a module of another ABI whose imports this host
+lacks is `V8003` too, not a `LinkError`
+([the host reads the ABI version from sakura.debug before linking](../../compiler/runtime/js/test/wasm_host.test.js));
+a `LinkError` on a module of this host's version is `D090`.
+A stripped module (`sakura build --strip`) has no section and is still compared after
+instantiation.
 
 The native profile does not read the version yet (ABI §0, N2).
 The formatter's injected dropped-comment fixture covers `V9001` emission in
