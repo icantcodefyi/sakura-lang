@@ -24,6 +24,10 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   plan:
     name: Plan
@@ -144,23 +148,8 @@ jobs:
           path: archives
       - name: Assemble the release set
         run: python3 -I tools/release/release.py assemble --commit "$COMMIT" --archives archives --out dist
-      - name: Check sums, installer and npm offline install on this host
-        run: |
-          (cd dist && sha256sum --check --strict SHA256SUMS)
-          # These local artifacts are not attested until publication. Exercise the
-          # installer's explicit no-gh fallback without hiding verification failures.
-          installer_tools="$RUNNER_TEMP/installer-tools"
-          mkdir "$installer_tools"
-          for tool in uname ls ldd grep mktemp rm cp awk sha256sum cut tar gzip mkdir chmod mv; do
-            ln -s "$(command -v "$tool")" "$installer_tools/$tool"
-          done
-          PATH="$installer_tools" /bin/sh dist/install.sh \
-            --prefix "$RUNNER_TEMP/install prefix" --base-url "$PWD/dist"
-          "$RUNNER_TEMP/install prefix/bin/sakura" --version
-          npm install --global --prefix "$RUNNER_TEMP/npm prefix" --offline --ignore-scripts \
-            --no-audit --no-fund --cache "$RUNNER_TEMP/empty-npm-cache" \
-            "./dist/sakuralang-$VERSION.tgz" "./dist/sakuralang-linux-x64-gnu-$VERSION.tgz"
-          test "$("$RUNNER_TEMP/npm prefix/bin/sakura" --version)" = "sakura $VERSION ($COMMIT)"
+      - name: Check sums
+        run: (cd dist && sha256sum --check --strict SHA256SUMS)
       - name: Summary
         run: |
           {
@@ -175,10 +164,49 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  smoke-install:
+    name: Install smoke (${{ matrix.target }})
+    needs: [plan, assemble]
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      COMMIT: ${{ needs.plan.outputs.commit }}
+      NPM_PACKAGE: ${{ matrix.npm }}
+    steps:
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-${{ needs.plan.outputs.version }}
+          path: dist
+      - name: Check sums, installer and npm offline install
+        run: |
+          (cd dist && shasum -a 256 --check SHA256SUMS)
+          # These local artifacts are not attested until publication. Exercise the
+          # installer's explicit no-gh fallback without hiding verification failures.
+          installer_tools="$RUNNER_TEMP/installer-tools"
+          mkdir "$installer_tools"
+          for tool in uname sysctl ls ldd grep mktemp rm cp awk shasum cut tar gzip mkdir chmod mv; do
+            if path=$(command -v "$tool"); then ln -s "$path" "$installer_tools/$tool"; fi
+          done
+          PATH="$installer_tools" /bin/sh dist/install.sh \
+            --prefix "$RUNNER_TEMP/install prefix" --base-url "$PWD/dist"
+          "$RUNNER_TEMP/install prefix/bin/sakura" --version
+          npm install --global --prefix "$RUNNER_TEMP/npm prefix" --offline --ignore-scripts \
+            --no-audit --no-fund --cache "$RUNNER_TEMP/empty-npm-cache" \
+            "./dist/sakuralang-$VERSION.tgz" "./dist/$NPM_PACKAGE-$VERSION.tgz"
+          test "$("$RUNNER_TEMP/npm prefix/bin/sakura" --version)" = "sakura $VERSION ($COMMIT)"
+
   # Everything below runs only for an owner-pushed tag, each job behind its environment.
   publish-github:
     name: Publish GitHub prerelease
-    needs: [plan, assemble]
+    needs: [plan, assemble, smoke-install]
     if: github.event_name == 'push' && needs.plan.outputs.publish == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -204,23 +232,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cat > notes.md <<EOF
-          Sakura Lang $VERSION, a pre-alpha release from commit $COMMIT. Nothing beyond the
-          versioned diagnostic schema and the fixture formats is stable (STABILITY.md).
-
-          Platforms: macOS arm64 (aarch64-apple-darwin) and Linux x86-64 glibc
-          (x86_64-unknown-linux-gnu). Binaries are not signed or notarized; verify them with
-          \`SHA256SUMS\` and \`gh attestation verify <file> --repo $GITHUB_REPOSITORY\`.
-
-          Node 26 is required for \`sakura run\`, \`sakura test\` and MCP tools that execute
-          programs; \`check\`, \`build\`, \`doc\` and \`mcp serve\` need no Node. \`sakura verify\`
-          needs the pinned Z3, which is not bundled.
-
-          Install: download \`install.sh\`, read it, then \`sh install.sh --prefix ~/.local\`; or
-          verify and extract an archive by hand (docs/release.md).
-          EOF
           gh release create "v$VERSION" dist/* --repo "$GITHUB_REPOSITORY" --verify-tag \
-            --prerelease --latest=false --title "Sakura Lang $VERSION" --notes-file notes.md
+            --prerelease --latest=false --title "Sakura Lang $VERSION" --notes-file dist/release-notes.md
 
   publish-homebrew:
     name: Publish Homebrew formula

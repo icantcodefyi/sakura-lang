@@ -133,6 +133,28 @@ Source: {REPO_URL}
 """
 
 
+def release_notes(ver, commit):
+    platforms = "\n".join(f"- `{t['target']}` (npm `{t['npm']}`)" for t in TARGETS)
+    return f"""Sakura Lang {ver}, a pre-alpha release from commit {commit}. Nothing beyond the
+versioned diagnostic schema and the fixture formats is stable (STABILITY.md).
+
+Platforms:
+
+{platforms}
+
+Binaries are not signed or notarized; verify them with `SHA256SUMS` and
+`gh attestation verify <file> --repo icantcodefyi/sakuralang`.
+
+Node {NODE_MAJOR} is required for `sakura run`, `sakura test` and MCP tools that execute
+programs; `check`, `build`, `doc` and `mcp serve` need no Node. `sakura verify`
+needs the pinned Z3, which is not bundled.
+
+Install: download `install.sh`, read it, then `sh install.sh --prefix ~/.local`; or
+`npm install -g sakuralang@{ver}`, or verify and extract an archive by hand
+(docs/release.md).
+"""
+
+
 def write_tar(out, top, members, mtime):
     """A deterministic .tar.gz: sorted entries, fixed owner, `mtime`, normalized modes."""
     raw = io.BytesIO()
@@ -360,6 +382,8 @@ def assemble(args):
             }
             (stage / "package.json").write_text(json.dumps(pkg, indent=2) + "\n")
             npm_files.append(npm_pack(stage, out))
+
+    (out / "release-notes.md").write_text(release_notes(ver, commit))
 
     files = sorted(p.name for p in out.iterdir() if p.name not in ("SHA256SUMS", "release.json"))
     record = {

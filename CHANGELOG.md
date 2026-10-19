@@ -13,6 +13,13 @@ published yet.
   of `Map`, following design §17.217 and WS-P13c. The std index and Sakura skill
   reference document this collection choice. Oracle checksums are unchanged.
 
+### Added
+
+- Linux ARM64 glibc release archives and the `sakuralang-linux-arm64-gnu` npm package,
+  built and smoke-tested on public GitHub-hosted ARM runners. CI runs the Rust suites
+  with pinned Z3/cvc5 and both JS/WASM parity lanes on Linux ARM64. The Homebrew
+  formula directs Linux ARM64 users to the release installer or npm.
+
 ### Security
 
 - **Breaking:** `SAKURA_MAX_COPY_BYTES` must be decimal digits with a value from 1 to

@@ -59,6 +59,14 @@ jobs:
             label: "ubuntu-latest, 2/2"
             partition: --partition hash:2/2
             checks: false
+          - os: ubuntu-24.04-arm
+            label: "ubuntu-24.04-arm, 1/2"
+            partition: --partition hash:1/2
+            checks: true
+          - os: ubuntu-24.04-arm
+            label: "ubuntu-24.04-arm, 2/2"
+            partition: --partition hash:2/2
+            checks: false
           - os: macos-latest
             label: "macos-latest, 1/2"
             partition: --partition hash:1/2
@@ -104,6 +112,12 @@ jobs:
               z3_sha256=acca9625e8cc8edeb9647b653a1bd696544ddeb5d1c2970a4576734a0c175b40
               cvc5_platform=Linux-x86_64
               cvc5_sha256=7eb18f8c814c36a46c5a7d003983e9cfbc4b0a9828d6dd596239291bd4cc61d8
+              ;;
+            Linux-ARM64)
+              z3_platform=arm64-glibc-2.38
+              z3_sha256=73195cee08f4a1a53a605b65845268e0ac999666cb8f4e604d2260e0c9c60b5a
+              cvc5_platform=Linux-arm64
+              cvc5_sha256=765ebee59d9e5efccb60a445fa66fbddfb07a8de9fe7a5b6d128e5c2aafec974
               ;;
             macOS-ARM64)
               z3_platform=arm64-osx-13.3
@@ -249,7 +263,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest]
         backend: [js, wasm]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15

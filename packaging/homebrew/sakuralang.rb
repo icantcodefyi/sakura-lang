@@ -23,6 +23,10 @@ class Sakuralang < Formula
   on_linux do
     depends_on arch: :x86_64
 
+    on_arm do
+      odie "Homebrew on Linux ARM64 is not supported. Use the release installer (install.sh) or npm install -g sakuralang."
+    end
+
     on_intel do
       url "https://github.com/icantcodefyi/sakuralang/releases/download/v@VERSION@/sakuralang-@VERSION@-x86_64-unknown-linux-gnu.tar.gz"
       sha256 "@SHA256_x86_64-unknown-linux-gnu@"

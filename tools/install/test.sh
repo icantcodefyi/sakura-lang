@@ -2,13 +2,16 @@
 # Tests install.sh against stub releases (research/13 §4): a good install into a prefix with
 # spaces, a repeat install, and every refusal (bad hash, missing entry, empty sums, no
 # verifier, links, path traversal, wrong version, http://, failed download). Each refusal must
-# leave the prefix without a `sakura`. Run on a matrix-A host: `sh tools/install/test.sh`.
+# leave the prefix without a `sakura`. Run on an inventory host: `sh tools/install/test.sh`.
 set -eu
 
 here=$(cd "$(dirname "$0")" && pwd)
 installer="$here/install.sh"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
+python=$(python3 -c 'import sys; print(sys.executable)')
+targets_file="$here/../../packaging/targets.json"
+targets=$("$python" -I -c 'import json, sys; print("\n".join(t["target"] for t in json.load(open(sys.argv[1]))))' "$targets_file")
 version=9.9.9-test.1
 failures=0
 
@@ -16,10 +19,10 @@ sha() {
 	if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | cut -d ' ' -f 1; else shasum -a 256 "$1" | cut -d ' ' -f 1; fi
 }
 
-# release DIR [REPORTED-VERSION]: stub archives for every matrix-A target, plus SHA256SUMS.
+# release DIR [REPORTED-VERSION]: stub archives for every inventory target, plus SHA256SUMS.
 release() {
 	mkdir -p "$1"
-	for target in aarch64-apple-darwin x86_64-unknown-linux-gnu; do
+	for target in $targets; do
 		top="sakuralang-$version-$target"
 		mkdir -p "$work/stage/$top"
 		printf '#!/bin/sh\necho "sakura %s (0000000000000000000000000000000000000000)"\n' "${2:-$version}" >"$work/stage/$top/sakura"
@@ -49,7 +52,6 @@ expect() {
 good="$work/good release"
 release "$good"
 # Keep the no-gh path deterministic even on hosts with an authenticated GitHub CLI.
-python=$(python3 -c 'import sys; print(sys.executable)')
 no_gh="$work/no gh"
 mkdir "$no_gh"
 for tool in sh uname awk cut grep tar gzip mkdir mktemp cp chmod mv rm ls sed cat sysctl ldd dirname sha256sum shasum find wc head curl wget ln; do
@@ -146,7 +148,7 @@ fi
 # Archives with a symlink, and with a path outside the top directory.
 links="$work/links"
 mkdir -p "$links"
-for target in aarch64-apple-darwin x86_64-unknown-linux-gnu; do
+for target in $targets; do
 	top="sakuralang-$version-$target"
 	mkdir -p "$work/stage/$top"
 	ln -s /bin/sh "$work/stage/$top/sakura"
@@ -157,12 +159,13 @@ done
 expect "symlink entry" fail "$work/p7" --base-url "$links"
 
 traversal="$work/traversal"
-"$python" -I - "$traversal" "$version" <<'EOF'
-import hashlib, io, os, sys, tarfile
+"$python" -I - "$traversal" "$version" "$targets_file" <<'EOF'
+import hashlib, io, json, os, sys, tarfile
 out, version = sys.argv[1], sys.argv[2]
 os.makedirs(out)
 with open(os.path.join(out, "SHA256SUMS"), "w") as sums:
-    for target in ("aarch64-apple-darwin", "x86_64-unknown-linux-gnu"):
+    for entry in json.load(open(sys.argv[3])):
+        target = entry["target"]
         top = f"sakuralang-{version}-{target}"
         path = os.path.join(out, f"{top}.tar.gz")
         with tarfile.open(path, "w:gz") as tar:
