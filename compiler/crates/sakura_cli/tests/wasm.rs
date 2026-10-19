@@ -556,7 +556,7 @@ fn serve_host_answers_on_wasm_as_on_js() {
         let start = std::time::Instant::now();
         while std::net::TcpStream::connect(("127.0.0.1", port)).is_err() {
             assert!(
-                start.elapsed() < TIME_LIMIT,
+                start.elapsed() < time_limit(),
                 "{target}: the server did not start\n{}",
                 std::fs::read_to_string(&err).unwrap_or_default()
             );
@@ -674,7 +674,7 @@ fn serve_over_the_copy_budget_answers_413_or_500_and_keeps_serving() {
         let start = std::time::Instant::now();
         while std::net::TcpStream::connect(("127.0.0.1", port)).is_err() {
             assert!(
-                start.elapsed() < TIME_LIMIT,
+                start.elapsed() < time_limit(),
                 "{target}: the server did not start\n{}",
                 std::fs::read_to_string(&err).unwrap_or_default()
             );

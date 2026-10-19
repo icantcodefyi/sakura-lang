@@ -16,8 +16,12 @@ pub const UI_MILESTONE: i8 = 3;
 /// Waits for Core lowering (`sakura run` needs it).
 pub const SEMANTICS_MILESTONE: i8 = 3;
 
-/// Every invocation is killed after this; a hang is a test failure, not a stuck CI job.
-pub const TIME_LIMIT: Duration = Duration::from_secs(30);
+/// Every invocation is killed after this; a hang is a test failure, not a stuck CI job. 30 s,
+/// times `SAKURA_TEST_TIME_SCALE` on a slower host (CI's Intel macOS lane sets it).
+pub fn time_limit() -> Duration {
+    let scale = std::env::var("SAKURA_TEST_TIME_SCALE").ok();
+    Duration::from_secs(30) * scale.and_then(|s| s.parse().ok()).unwrap_or(1)
+}
 
 pub fn tests_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests")
@@ -168,13 +172,13 @@ pub fn sakura_env(args: &[&str], cwd: &Path, env: &[(&str, &Path)]) -> Output {
         let _ = err.read_to_string(&mut s);
         s
     });
-    let start = Instant::now();
+    let (start, limit) = (Instant::now(), time_limit());
     let mut timed_out = false;
     let status = loop {
         if let Some(status) = child.try_wait().expect("wait sakura") {
             break status;
         }
-        if start.elapsed() > TIME_LIMIT {
+        if start.elapsed() > limit {
             timed_out = true;
             let _ = child.kill();
             break child.wait().expect("wait sakura");

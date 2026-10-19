@@ -111,6 +111,9 @@ jobs:
     env:
       Z3_VERSION: "5.3.1"
       CVC5_VERSION: "1.4.2"
+      # The Intel image builds and runs about 2.5x slower than the others; a `sakura` run under
+      # test gets 90 s there instead of 30 s (`tests/common/mod.rs` `time_limit`).
+      SAKURA_TEST_TIME_SCALE: ${{ matrix.os == 'macos-15-intel' && '3' || '1' }}
     defaults:
       run:
         shell: bash
@@ -451,6 +454,7 @@ jobs:
     env:
       SAKURA_REQUIRE_WASM: "1"
       SAKURA_PARITY_BACKEND: ${{ matrix.backend }}
+      SAKURA_TEST_TIME_SCALE: ${{ matrix.os == 'macos-15-intel' && '3' || '1' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
