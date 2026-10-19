@@ -1,12 +1,13 @@
 #!/bin/sh
 # Installs `sakura` from a Sakura Lang release (design §17.147, research/13 §4).
 #
-#   sh install.sh --version 0.1.0-alpha.1 [--prefix DIR] [--base-url URL-or-DIR]
+#   sh install.sh --version 0.1.0-alpha.1 [--prefix DIR] [--target TRIPLE] [--base-url URL-or-DIR]
 #
 # Downloads SHA256SUMS and this platform's archive, verifies the SHA-256 before extracting
 # anything, refuses unsafe archive entries, runs the binary once, then copies it to
 # PREFIX/bin/sakura (default ~/.local). It never uses sudo, edits shell profiles, installs Node
-# or falls back to another CPU/ABI. Read it before running it; docs/release.md shows the same
+# or falls back to another CPU/ABI. --target deliberately overrides CPU detection
+# (including Rosetta); it must name a supported triple for the host OS. Read it before running it; docs/release.md shows the same
 # steps by hand. The copy attached to a release defaults to that release's version.
 set -eu
 
@@ -19,16 +20,18 @@ die() {
 }
 
 usage() {
-	echo "usage: sh install.sh --version VERSION [--prefix DIR] [--base-url https://URL-or-DIR]"
+	echo "usage: sh install.sh --version VERSION [--prefix DIR] [--target TRIPLE] [--base-url https://URL-or-DIR]"
 	exit "$1"
 }
 
 version=$default_version
 prefix="${HOME:?HOME is not set}/.local"
 base=""
+requested_target=""
 while [ $# -gt 0 ]; do
 	case $1 in
 	--version) [ $# -ge 2 ] || die "--version needs a value"; version=$2; shift 2 ;;
+	--target) [ $# -ge 2 ] || die "--target needs a value"; requested_target=$2; shift 2 ;;
 	--prefix) [ $# -ge 2 ] || die "--prefix needs a value"; prefix=$2; shift 2 ;;
 	--base-url) [ $# -ge 2 ] || die "--base-url needs a value"; base=$2; shift 2 ;;
 	-h | --help) usage 0 ;;
@@ -73,6 +76,16 @@ Linux)
 	;;
 *) die "unsupported operating system: $os" ;;
 esac
+
+if [ -n "$requested_target" ]; then
+	case "$os:$requested_target" in
+	Darwin:aarch64-apple-darwin | Darwin:x86_64-apple-darwin | \
+	Linux:aarch64-unknown-linux-gnu | Linux:x86_64-unknown-linux-gnu)
+		target=$requested_target
+		;;
+	*) die "unsupported --target for $os: $requested_target" ;;
+	esac
+fi
 
 [ -n "$base" ] || base="$releases/v$version"
 base=${base%/}

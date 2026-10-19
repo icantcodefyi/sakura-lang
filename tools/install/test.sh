@@ -25,7 +25,7 @@ release() {
 	for target in $targets; do
 		top="sakuralang-$version-$target"
 		mkdir -p "$work/stage/$top"
-		printf '#!/bin/sh\necho "sakura %s (0000000000000000000000000000000000000000)"\n' "${2:-$version}" >"$work/stage/$top/sakura"
+		printf '#!/bin/sh\necho "sakura %s (0000000000000000000000000000000000000000) %s"\n' "${2:-$version}" "$target" >"$work/stage/$top/sakura"
 		chmod 755 "$work/stage/$top/sakura"
 		tar -czf "$1/$top.tar.gz" -C "$work/stage" "$top"
 		rm -rf "$work/stage"
@@ -190,6 +190,21 @@ if sh "$installer" --prefix "$work/p12" --base-url "$good" >"$work/out" 2>&1; th
 	failures=$((failures + 1))
 else
 	echo "ok   no version given"
+fi
+
+expect "unknown explicit target" fail "$work/unknown target" --base-url "$good" --target unknown-triple
+expect "cross-OS explicit target" fail "$work/cross os" --base-url "$good" --target x86_64-pc-windows-msvc
+fake_host="$work/fake host"
+mkdir "$fake_host"
+cat > "$fake_host/uname" <<'EOF'
+#!/bin/sh
+case $1 in -s) echo Linux;; -m) echo x86_64;; esac
+EOF
+chmod +x "$fake_host/uname"
+PATH="$fake_host:$no_gh" expect "explicit target overrides CPU detection" ok "$work/explicit target" --base-url "$good" --target aarch64-unknown-linux-gnu
+if ! "$work/explicit target/bin/sakura" --version | grep -q aarch64-unknown-linux-gnu; then
+	echo "FAIL explicit target selected another archive"
+	failures=$((failures + 1))
 fi
 
 [ "$failures" -eq 0 ] || { echo "$failures installer test(s) failed"; exit 1; }
