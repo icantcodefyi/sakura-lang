@@ -1,7 +1,6 @@
 //! `sakura.toml` (design §6.2, §9): package identity and the `[permissions]` table that caps the
-//! root handlers `sakura run` installs. `[dependencies]` is reserved and refused (`V8005`, §17.232).
-
-use std::collections::BTreeMap;
+//! root handlers `sakura run` installs. `[dependencies]` is reserved and refused (`V8005`, §17.232);
+//! any other way the file fails to parse is `V8006` (§17.239).
 
 use serde::{Deserialize, Serialize};
 
@@ -13,8 +12,6 @@ pub struct Manifest {
     pub package: Package,
     #[serde(default)]
     pub permissions: Permissions,
-    #[serde(default)]
-    pub targets: BTreeMap<String, toml::Value>,
     #[serde(default)]
     pub verify: Verify,
 }
@@ -64,12 +61,24 @@ pub struct FsPermissions {
     pub write: Vec<String>,
 }
 
+/// Why `sakura.toml` is not a valid manifest (`V8006`, design §17.239): the parser's message and
+/// the byte range it points at (the key, the value or the syntax error).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ManifestError {
+    pub message: String,
+    pub span: std::ops::Range<usize>,
+}
+
 impl Manifest {
-    pub fn parse(text: &str) -> Result<Manifest, String> {
-        if dependencies_key(text).is_some() {
-            return Err(dependencies_message());
-        }
-        toml::from_str(text).map_err(|e| e.to_string().trim_end().to_owned())
+    /// Everything but `dependencies`, which [`dependencies_key`] finds for `V8005`.
+    pub fn parse(text: &str) -> Result<Manifest, ManifestError> {
+        let invalid = |e: toml::de::Error| ManifestError {
+            message: e.message().trim_end().to_owned(),
+            span: e.span().unwrap_or(0..0),
+        };
+        let mut table = toml::de::DeTable::parse(text).map_err(invalid)?;
+        table.get_mut().remove("dependencies");
+        Manifest::deserialize(toml::de::Deserializer::from(table)).map_err(invalid)
     }
 }
 
@@ -120,14 +129,15 @@ impl Permissions {
 }
 
 impl Analyzed {
-    /// The user package's `sakura.toml`, when the snapshot has one.
-    pub fn manifest(&self) -> Option<Result<Manifest, String>> {
+    /// The user package's `sakura.toml`, when the snapshot has a valid one; an invalid one is
+    /// `V8006` among the diagnostics (design §17.239).
+    pub fn manifest(&self) -> Option<Manifest> {
         let file = self
             .snapshot
             .files()
             .iter()
             .find(|f| crate::disk::is_manifest(&f.uri))?;
-        Some(Manifest::parse(&file.text))
+        Manifest::parse(&file.text).ok()
     }
 
     /// The std effects in `main`'s declared row (`Console`, `Fs`, …), if there is a `pub fn
@@ -188,11 +198,44 @@ mod tests {
         ] {
             let span = dependencies_key(text).expect(text);
             assert_eq!(&text[span], "dependencies", "{text}");
-            assert_eq!(Manifest::parse(text), Err(dependencies_message()), "{text}");
+            assert_eq!(Manifest::parse(text).unwrap().package.name, "x", "{text}");
         }
         assert_eq!(dependencies_key("[package]\nname = \"x\"\n"), None);
         assert_eq!(dependencies_key("[dependencies\n"), None);
-        let malformed = Manifest::parse("[package]\nname = \"x\n[dependencies]\n").unwrap_err();
-        assert!(malformed.starts_with("TOML parse error"), "{malformed}");
+    }
+
+    /// Design §17.239: every failure is the parser's message at the parser's span.
+    #[test]
+    fn invalid_manifests_point_at_the_problem() {
+        for (text, at, says) in [
+            (
+                "[package]\nname = \"x\"\n[bogus]\n",
+                "bogus",
+                "unknown field `bogus`",
+            ),
+            (
+                "[package]\nname = \"x\"\n[targets]\njs = {}\n",
+                "targets",
+                "unknown field `targets`",
+            ),
+            (
+                "[package]\nname = \"x\"\nauthor = \"a\"\n",
+                "author",
+                "unknown field `author`",
+            ),
+            ("[package]\nname = 3\n", "3", "invalid type"),
+            (
+                "[package]\nversion = \"1\"\n",
+                "[package]",
+                "missing field `name`",
+            ),
+        ] {
+            let e = Manifest::parse(text).unwrap_err();
+            assert_eq!(&text[e.span.clone()], at, "{text}");
+            assert!(e.message.contains(says), "{text}: {}", e.message);
+        }
+        let e = Manifest::parse("[package]\nname = \"x\n").unwrap_err();
+        assert!(!e.message.contains("TOML parse error"), "{}", e.message);
+        assert_eq!(e.span.start, 19);
     }
 }

@@ -43,12 +43,7 @@ pub(crate) fn profile(target: &str) -> Profile {
 
 /// The limits of §17.106 with `--rlimit`, else `sakura.toml`'s `[verify] rlimit`.
 fn limits(a: &Analyzed, flag: Option<u64>) -> Result<Limits, String> {
-    let manifest = match a.manifest() {
-        Some(Ok(m)) => m.verify.rlimit,
-        Some(Err(e)) => return Err(format!("sakura.toml: {e}")),
-        None => None,
-    };
-    Limits::with_rlimit(flag, manifest)
+    Limits::with_rlimit(flag, a.manifest().and_then(|m| m.verify.rlimit))
 }
 
 /// The proof cache with this installation's key (created on first use when `create`, so only by

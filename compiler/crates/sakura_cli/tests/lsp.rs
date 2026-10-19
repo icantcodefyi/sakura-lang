@@ -230,3 +230,30 @@ fn std_definitions_open_and_disk_edits_show_without_save() {
     assert!(c.shutdown());
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// Design §17.239: an invalid `sakura.toml` is published on the manifest as `V8006`, at the key.
+#[test]
+fn an_invalid_manifest_is_v8006_on_the_manifest() {
+    let dir = std::env::temp_dir().join(format!("sakura-lsp-v8006-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(
+        dir.join("sakura.toml"),
+        "[package]\nname = \"app\"\n[targets]\n",
+    )
+    .unwrap();
+    let root = common::file_uri(&dir);
+    let uri = format!("{root}/src/main.sak");
+    let text = "pub fn main() -> Int { 1 }\n";
+    std::fs::write(dir.join("src/main.sak"), text).unwrap();
+    let (mut c, _) = Lsp::start(&root);
+    let doc = json!({"uri": uri, "languageId": "sakura", "version": 1, "text": text});
+    c.notify("textDocument/didOpen", json!({"textDocument": doc}));
+    let diags = c.diagnostics(&format!("{root}/sakura.toml"));
+    assert_eq!(diags.len(), 1, "{diags:?}");
+    assert_eq!(diags[0]["code"], "V8006", "{diags:?}");
+    let range = json!({"start": {"line": 2, "character": 1}, "end": {"line": 2, "character": 8}});
+    assert_eq!(diags[0]["range"], range, "{diags:?}");
+    assert!(c.shutdown());
+    let _ = std::fs::remove_dir_all(&dir);
+}

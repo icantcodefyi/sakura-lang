@@ -155,7 +155,6 @@ impl Analyzed {
     /// The manifest's `[permissions]` table in a canonical rendering ("" without a manifest).
     fn permissions_text(&self) -> String {
         self.manifest()
-            .and_then(Result::ok)
             .map(|m| m.permissions.render())
             .unwrap_or_default()
     }

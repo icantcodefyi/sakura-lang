@@ -285,7 +285,7 @@ impl SakuraServer {
             .and_then(|p| std::fs::read_to_string(p).ok())
             .map(|t| match sakura_analysis::Manifest::parse(&t) {
                 Ok(m) => json!(m),
-                Err(e) => json!({"error": e}),
+                Err(e) => json!({"error": e.message, "span": [e.span.start, e.span.end]}),
             });
         let lock = std::fs::read(self.root.join("sakura.lock"))
             .ok()

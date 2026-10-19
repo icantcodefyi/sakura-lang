@@ -893,11 +893,7 @@ fn run(
     // Design §6.2: a declared effect without its permission stops `main` before it starts.
     // A program without `sakura.toml` gets none of the gated ones.
     let a = Analysis::analyze(&snapshot);
-    let permissions = match a.manifest() {
-        Some(Ok(m)) => m.permissions,
-        Some(Err(e)) => return usage_error(format!("sakura.toml: {e}")),
-        None => Default::default(),
-    };
+    let permissions = a.manifest().map(|m| m.permissions).unwrap_or_default();
     if let Some(why) = a
         .main_effects()
         .and_then(|e| permissions.startup_denial(&e))
@@ -975,12 +971,13 @@ fn test(
         return usage_error("`--record` needs `--target js`");
     }
     let granted = if record {
-        let (net, env) = match Analysis::analyze(snapshot).manifest() {
-            Some(Ok(m)) => (m.permissions.net, m.permissions.env),
-            Some(Err(e)) => return usage_error(format!("sakura.toml: {e}")),
-            None => (Vec::new(), Vec::new()),
-        };
-        if net.is_empty() {
+        let manifest = Analysis::analyze(snapshot).manifest();
+        let invalid =
+            manifest.is_none() && snapshot.files().iter().any(|f| disk::is_manifest(&f.uri));
+        let m = manifest.unwrap_or_default();
+        let (net, env) = (m.permissions.net, m.permissions.env);
+        // An invalid manifest is the build's `V8006`, not a denial.
+        if net.is_empty() && !invalid {
             eprintln!(
                 "error: permission denied: `sakura test --record` reaches only the hosts in sakura.toml's `[permissions] net`, and it lists none"
             );

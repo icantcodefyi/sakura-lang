@@ -740,6 +740,21 @@ Fixed:
     [package]
     name = \"billing\"";
 
+    V8006 "manifest_invalid" PACKAGE,
+"sakura.toml is not a valid manifest (design §17.239): the TOML is malformed, a key is unknown,
+a value has the wrong type, or `[package]` has no `name`. The message is the parser's and the span
+points at the key, the value or the syntax error. Nothing builds or runs until it is fixed. The
+manifest has `[package]` (`name`, `version`, `edition`), `[permissions]` and `[verify]`; any other
+table, `[targets]` included, is unknown. `[dependencies]` is `V8005` instead.
+
+Wrong:
+    [package]
+    name = \"billing\"
+    [targets]
+Fixed:
+    [package]
+    name = \"billing\"";
+
     V8020 "spec_frozen" PACKAGE,
 "A patch modifies a frozen symbol's signature, effect row, error union, contracts, or a test body
 (design §7.3). Frozen specs are the reviewer's intent; change the implementation instead.";

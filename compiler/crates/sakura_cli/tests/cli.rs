@@ -776,7 +776,7 @@ fn build_manifest_lists_trusted_base_and_obligations() {
 }
 
 /// Design §17.232: `[dependencies]` in any form is `V8005` at the key, before anything runs; the
-/// lock file is untouched. Malformed TOML keeps its parse error alone, and no table is no error.
+/// lock file is untouched. Malformed TOML is `V8006` alone (§17.239), and no table is no error.
 #[test]
 fn dependencies_are_v8005_before_anything_runs() {
     let cases = [
@@ -836,8 +836,8 @@ fn dependencies_are_v8005_before_anything_runs() {
         }
         match case {
             "malformed" => {
-                assert_eq!(run.code, Some(2), "{}", run.stderr);
-                assert!(run.stderr.contains("TOML parse error"), "{}", run.stderr);
+                assert_eq!(run.code, Some(1), "{}", run.stderr);
+                assert!(run.stderr.contains("error[V8006]"), "{}", run.stderr);
                 assert!(!run.stderr.contains("V8005"), "{}", run.stderr);
             }
             "absent" => assert_eq!(run.stdout, "ran\n", "{}", run.stderr),
@@ -847,6 +847,46 @@ fn dependencies_are_v8005_before_anything_runs() {
         assert_eq!(lock, "# lock\n", "{case}");
         std::fs::remove_dir_all(&dir).ok();
     }
+}
+
+/// Design §17.239: a manifest that does not parse is `V8006` at the parser's span from every
+/// command (`--json` as any `V`, human on `run`) and exit 1, never a usage error; nothing runs.
+#[test]
+fn invalid_manifests_are_v8006_from_every_command() {
+    let manifest = "[package]\nname = \"app\"\n\n[targets]\njs = {}\n";
+    let dir = std::env::temp_dir().join(format!("sakura-cli-{}-v8006", std::process::id()));
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(dir.join("sakura.toml"), manifest).unwrap();
+    std::fs::write(
+        dir.join("src/main.sak"),
+        "pub fn main() -> Unit ! {Console} { Console.print(\"ran\") }\n\
+         test \"t\" { assert 1 == 1 }\n",
+    )
+    .unwrap();
+    for args in [
+        &["check", "--json"][..],
+        &["build", "--json"],
+        &["test", "--json"],
+        &["test", "--json", "--record"],
+        &["verify", "--json"],
+    ] {
+        let out = sakura(args, &dir);
+        assert_eq!(out.code, Some(1), "{args:?}: {}{}", out.stdout, out.stderr);
+        let recs = common::json_lines(&out.stdout).unwrap();
+        let d = (recs.iter().find(|r| r["code"] == "V8006")).expect(&out.stdout);
+        let span = &d["spans"][0];
+        let range = span["start_byte"].as_u64().unwrap() as usize
+            ..span["end_byte"].as_u64().unwrap() as usize;
+        assert_eq!(&manifest[range], "targets", "{args:?}");
+        assert!(span["uri"].as_str().unwrap().ends_with("sakura.toml"));
+        assert!(!out.stdout.contains("ran"), "{args:?}: {}", out.stdout);
+        assert!(
+            !out.stderr.contains("sakura.toml:"),
+            "{args:?}: {}",
+            out.stderr
+        );
+    }
+    std::fs::remove_dir_all(&dir).ok();
 }
 
 /// Design §17.73 (gate 6): `sakura test --record` needs `net` hosts in the manifest, and only

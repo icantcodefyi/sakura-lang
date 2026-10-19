@@ -24,7 +24,7 @@ mod std_cache;
 mod symbols;
 
 pub use edit::{Conflict, FileEdit};
-pub use manifest::{FsPermissions, Manifest, Package, Permissions, Verify};
+pub use manifest::{FsPermissions, Manifest, ManifestError, Package, Permissions, Verify};
 pub use nav::{Completion, Hover, Location};
 pub use query::SymbolQuery;
 pub use specs::{Frozen, InterfaceChange, InterfaceDelta, InterfaceEntry, Obligation};
@@ -620,6 +620,7 @@ fn analyze<'a>(snapshot: &Snapshot, prevs: impl IntoIterator<Item = &'a Analyzed
     diagnostics.extend(type_diags.iter().cloned());
     diagnostics.extend(reserved_package_name(snapshot));
     diagnostics.extend(dependencies_not_supported(snapshot));
+    diagnostics.extend(manifest_invalid(snapshot));
     let roots: Vec<Option<sakura_syntax::SyntaxNode>> = (0..parses.len())
         .map(|i| match reused_file[i] {
             true => None,
@@ -916,6 +917,21 @@ fn dependencies_not_supported(snapshot: &Snapshot) -> Option<Diagnostic> {
             manifest::dependencies_message(),
         )
         .with_span(Span::primary(file, key.start as u32, key.end as u32)),
+    )
+}
+
+/// `V8006` when `sakura.toml` is not a valid manifest (§17.239), at the parser's span.
+fn manifest_invalid(snapshot: &Snapshot) -> Option<Diagnostic> {
+    let file = snapshot
+        .file_ids()
+        .find(|&f| disk::is_manifest(&snapshot.file(f).uri))?;
+    let e = Manifest::parse(&snapshot.file(file).text).err()?;
+    Some(
+        Diagnostic::error(codes::V8006, Phase::Package, e.message).with_span(Span::primary(
+            file,
+            e.span.start as u32,
+            e.span.end as u32,
+        )),
     )
 }
 

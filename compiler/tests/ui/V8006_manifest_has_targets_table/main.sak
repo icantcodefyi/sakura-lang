@@ -1,0 +1,3 @@
+// expect: V8006
+// An unknown table is `V8006` at its name; `[targets]` is not a manifest table (design §17.239).
+pub fn main() -> Unit ! {Console} { Console.print("hi") }

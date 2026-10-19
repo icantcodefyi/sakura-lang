@@ -1,0 +1,5 @@
+[package]
+name = "billing"
+
+[permissions]
+net = "localhost:8080"
