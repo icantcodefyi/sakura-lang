@@ -1,0 +1,137 @@
+name: Verify published
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Published version without the v prefix
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# The plan checks this hand-written table against the current target inventory.
+env:
+  ROWS: >-
+    [{"target":"x86_64-unknown-linux-gnu","runner":"ubuntu-22.04","brew":true,"container":null},
+     {"target":"aarch64-unknown-linux-gnu","runner":"ubuntu-22.04-arm","brew":false,"container":null},
+     {"target":"aarch64-unknown-linux-gnu","runner":"ubuntu-24.04-arm","brew":false,"container":{"image":"debian:bookworm","options":"--memory 1800m"}},
+     {"target":"aarch64-apple-darwin","runner":"macos-15","brew":true,"container":null}]
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  plan:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      commit: ${{ steps.plan.outputs.commit }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check row coverage and resolve the published tag
+        id: plan
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          python3 -I - <<'PY'
+          import json, os, re, subprocess
+          from pathlib import Path
+          version = os.environ['VERSION']
+          if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?', version):
+              raise SystemExit('invalid version')
+          rows = json.loads(os.environ['ROWS'])
+          inventory = json.loads(Path('packaging/targets.json').read_text())
+          missing = {t['target'] for t in inventory} - {r['target'] for r in rows}
+          if missing:
+              raise SystemExit(f'targets without verification rows: {sorted(missing)}')
+          tag = f'refs/tags/v{version}'
+          subprocess.run(['git', 'fetch', '--no-tags', 'origin', f'{tag}:{tag}'], check=True)
+          commit = subprocess.check_output(['git', 'rev-parse', f'{tag}^{{commit}}'], text=True).strip()
+          published = json.loads(subprocess.check_output(['git', 'show', f'{commit}:packaging/targets.json']))
+          targets = {t['target'] for t in published}
+          if targets - {r['target'] for r in rows}:
+              raise SystemExit('published tag has targets without verification rows')
+          selected = [r for r in rows if r['target'] in targets]
+          if not selected:
+              raise SystemExit('published tag has no verification rows')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+              out.write(f'matrix={json.dumps(selected)}\ncommit={commit}\n')
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as out:
+              out.write(f'Published v{version} at {commit}. Rows absent from this tag: '
+                        f'{sorted({r["target"] for r in rows} - targets)}\n')
+          PY
+
+  accept:
+    needs: plan
+    name: Published (${{ matrix.target }}, ${{ matrix.container.image || matrix.runner }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.container }}
+    timeout-minutes: 30
+    env:
+      VERSION: ${{ inputs.version }}
+      COMMIT: ${{ needs.plan.outputs.commit }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Prepare Debian userland without gh
+        if: matrix.container != null
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates curl git python3 xz-utils
+          test "$(uname -m)" = aarch64
+          test "$(cat /sys/fs/cgroup/memory.max)" = 1887436800
+          ! command -v gh
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: tooling
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.commit }}
+          path: published
+          persist-credentials: false
+      - name: Use current acceptance tooling with the tag's version and skill source
+        run: cp tooling/tools/release/release.py published/tools/release/release.py
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: matrix.container == null
+        with:
+          node-version: 26
+      - name: Install Node 26 as documented for Raspberry Pi OS
+        if: matrix.container != null
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.8/install.sh -o install-nvm.sh
+          bash install-nvm.sh
+          export NVM_DIR="$HOME/.nvm"
+          . "$NVM_DIR/nvm.sh"
+          nvm install 26
+          nvm use 26
+          node --version
+          npm --version
+          dirname "$(command -v node)" >> "$GITHUB_PATH"
+      - name: Install from the release URL and accept
+        run: |
+          curl -fsSL "https://github.com/icantcodefyi/sakuralang/releases/download/v${VERSION}/install.sh" -o install.sh
+          if [ -z '${{ matrix.container.image }}' ]; then command -v gh; fi
+          sh install.sh --version "$VERSION"
+          python3 -I published/tools/release/release.py accept --sakura "$HOME/.local/bin/sakura" --commit "$COMMIT"
+      - name: Install from npm and accept
+        run: |
+          npm install --global --ignore-scripts "sakuralang@$VERSION"
+          python3 -I published/tools/release/release.py accept --sakura "$(npm prefix --global)/bin/sakura" --commit "$COMMIT"
+      - name: Install from Homebrew and accept
+        if: matrix.brew
+        run: |
+          if [ -d /home/linuxbrew/.linuxbrew/bin ]; then
+            eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          fi
+          brew tap icantcodefyi/sakuralang && brew install sakuralang
+          python3 -I published/tools/release/release.py accept --sakura "$(brew --prefix sakuralang)/bin/sakura" --commit "$COMMIT"
