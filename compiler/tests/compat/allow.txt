@@ -1,0 +1,6 @@
+# Fixtures of the previous release whose outcome under this compiler differs on purpose
+# (design §17.232 (e)): `<fixture> <reason> <CHANGELOG anchor>`, one per line, where the fixture
+# is `semantics/<file>.sak`, `ui/<file or directory>` or `examples/<name>` as the release has it
+# and the anchor is `CHANGELOG.md#<heading>`. An unlisted difference fails the `compat` job; so
+# does a listed fixture that matches again or is not in that release. The harness is
+# `crates/sakura_cli/tests/compat.rs`.

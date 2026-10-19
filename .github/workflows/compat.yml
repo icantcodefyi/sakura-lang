@@ -1,0 +1,64 @@
+# The previous release's tests/semantics, tests/ui and examples under this compiler, on JS and
+# WASM (design §17.232 (e), RFC 0001). `release.py compat-base` picks the release the way
+# `prepare` picks its previous tag; differences need a line in compiler/tests/compat/allow.txt.
+name: Compat
+
+on:
+  schedule:
+    - cron: "53 3 * * *"
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'schedule' && github.run_id || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  compat:
+    name: Compat
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+        working-directory: compiler
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The release tags and the history that orders them.
+          fetch-depth: 0
+      - name: Extract the previous release's corpus
+        id: base
+        working-directory: .
+        run: |
+          base=$(python3 -I tools/release/release.py compat-base)
+          mkdir -p "$RUNNER_TEMP/compat"
+          git archive "$base" compiler/tests/semantics compiler/tests/ui compiler/examples \
+            | tar -x -C "$RUNNER_TEMP/compat"
+          echo "tag=$base" >> "$GITHUB_OUTPUT"
+          echo "Compat: \`$base\`'s corpus under \`$(git rev-parse HEAD)\`" >> "$GITHUB_STEP_SUMMARY"
+      - name: Install pinned Rust toolchain
+        run: |
+          rustup show active-toolchain || rustup toolchain install
+          rustup target add wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: compiler
+          cache-workspace-crates: true
+          shared-key: compiler
+          key: wasm32-unknown-unknown
+          cache-bin: false
+          save-if: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - name: Run the corpus
+        env:
+          SAKURA_COMPAT_DIR: ${{ runner.temp }}/compat/compiler
+          SAKURA_COMPAT_BASE: ${{ steps.base.outputs.tag }}
+        run: cargo test -p sakura_cli --test compat --locked -- --ignored --nocapture

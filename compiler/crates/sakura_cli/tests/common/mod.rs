@@ -15,6 +15,8 @@ use std::time::{Duration, Instant};
 pub const UI_MILESTONE: i8 = 3;
 /// Waits for Core lowering (`sakura run` needs it).
 pub const SEMANTICS_MILESTONE: i8 = 3;
+/// Examples above this milestone are skipped; `// known-bug:` marks the ones blocked elsewhere.
+pub const EXAMPLES_MILESTONE: i8 = 3;
 
 /// Every invocation is killed after this; a hang is a test failure, not a stuck CI job. 30 s,
 /// times `SAKURA_TEST_TIME_SCALE` on a slower host (CI's Intel macOS lane sets it).
@@ -347,6 +349,147 @@ pub fn check_never_crashes(path: &Path) -> Result<(Vec<serde_json::Value>, Strin
         }
     }
     Ok((recs, out.stdout))
+}
+
+/// A `tests/ui` fixture's `.sak` files: the file itself, or a directory fixture's files, sorted.
+pub fn sources(path: &Path) -> Vec<PathBuf> {
+    if !path.is_dir() {
+        return vec![path.to_owned()];
+    }
+    let mut files: Vec<PathBuf> = (std::fs::read_dir(path).unwrap())
+        .map(|e| e.unwrap().path())
+        .filter(|p| p.extension().is_some_and(|e| e == "sak"))
+        .collect();
+    files.sort();
+    files
+}
+
+/// `// command: run|build|test --contracts`: the codes in that command's terminal diagnostics
+/// (`error[V8001]: …`, `warning[W7001]: …`) and its exit code.
+pub fn command_codes(path: &Path, command: &str) -> Result<(Vec<String>, Option<i32>), String> {
+    let dir = path.parent().unwrap();
+    let name = path.file_name().unwrap().to_str().unwrap();
+    let out_dir = std::env::temp_dir().join(format!("sakura-ui-{}-{name}", std::process::id()));
+    let mut args: Vec<&str> = command.split_whitespace().collect();
+    args.extend([name, "--out-dir", out_dir.to_str().unwrap()]);
+    let out = sakura(&args, dir);
+    if out.timed_out {
+        return Err(format!("`sakura {command}` timed out"));
+    }
+    let mut codes = Vec::new();
+    for line in out.stderr.lines() {
+        for prefix in ["error[", "warning["] {
+            if let Some(rest) = line.strip_prefix(prefix)
+                && let Some((code, _)) = rest.split_once(']')
+            {
+                codes.push(code.to_owned());
+            }
+        }
+    }
+    Ok((codes, out.code))
+}
+
+/// A `tests/ui` fixture reports exactly its `// expect:` codes (notes aside), from `sakura check
+/// --json` or from its `// command:`. For `check`, the records and stdout, for span and snapshot
+/// checks; `None` for another command, which has no more to check.
+pub fn ui_codes_match(
+    path: &Path,
+    d: &BTreeMap<String, String>,
+) -> Result<Option<(Vec<serde_json::Value>, String)>, String> {
+    let mut expected: Vec<&str> = d
+        .get("expect")
+        .map_or(vec![], |e| e.split_whitespace().collect());
+    expected.sort();
+    match d.get("command").map(String::as_str) {
+        None | Some("check") => {}
+        Some(command @ ("run" | "build" | "test --contracts")) => {
+            let (mut actual, _) = command_codes(path, command)?;
+            actual.sort();
+            return if actual == expected {
+                Ok(None)
+            } else {
+                Err(format!(
+                    "`sakura {command}`: expected codes {expected:?}, got {actual:?}"
+                ))
+            };
+        }
+        Some(other) => {
+            return Err(format!(
+                "the ui harness does not support `command: {other}`"
+            ));
+        }
+    }
+    let (recs, stdout) = check_never_crashes(path)?;
+    let mut actual: Vec<&str> = recs
+        .iter()
+        .filter(|r| r["kind"] == "diagnostic" && r["severity"] != "note")
+        .map(|r| r["code"].as_str().unwrap())
+        .collect();
+    actual.sort();
+    if actual != expected {
+        return Err(format!("expected codes {expected:?}, got {actual:?}"));
+    }
+    Ok(Some((recs, stdout)))
+}
+
+/// A `.fixed.sak` companion passes the command its wrong fixture uses: exit 0, no error or
+/// warning.
+pub fn run_fixed(path: &Path, command: Option<&str>) -> Result<(), String> {
+    let codes = match command {
+        None | Some("check") => {
+            let (recs, _) = check_never_crashes(path)?;
+            recs.iter()
+                .filter(|r| r["kind"] == "diagnostic" && r["severity"] != "note")
+                .map(|r| r["code"].as_str().unwrap().to_owned())
+                .collect()
+        }
+        Some(command) => match command_codes(path, command)? {
+            (codes, Some(0)) => codes,
+            (_, code) => return Err(format!("`sakura {command}` exited {code:?}")),
+        },
+    };
+    if codes.is_empty() {
+        Ok(())
+    } else {
+        Err(format!("the fixed companion still reports {codes:?}"))
+    }
+}
+
+/// Whether `line` starts with the literal text of `pattern` before its first metacharacter.
+// ponytail: literal-prefix match, not a regex engine (no `regex` dependency for one example);
+// add the crate when an example needs more than a fixed prefix.
+pub fn regex_prefix_fits(pattern: &str, line: &str) -> bool {
+    let p = pattern.strip_prefix('^').unwrap_or(pattern);
+    let literal = &p[..p.find(|c| "[](){}.*+?|\\$".contains(c)).unwrap_or(p.len())];
+    line.starts_with(literal)
+}
+
+/// An example's `expected.stdout` holds `stdout`: byte for byte, or each line an anchored regex
+/// under `// stdout-regex: true`.
+pub fn example_stdout_matches(
+    dir: &Path,
+    d: &BTreeMap<String, String>,
+    stdout: &str,
+) -> Result<(), String> {
+    let path = dir.join("expected.stdout");
+    if d.get("stdout-regex").is_some_and(|v| v == "true") {
+        let want = std::fs::read_to_string(&path).unwrap_or_default();
+        let fits = want.lines().count() == stdout.lines().count()
+            && want
+                .lines()
+                .zip(stdout.lines())
+                .all(|(w, s)| regex_prefix_fits(w, s));
+        if fits {
+            Ok(())
+        } else {
+            Err(format!(
+                "stdout does not match {}:\n{stdout}",
+                path.display()
+            ))
+        }
+    } else {
+        compare_file(&path, stdout)
+    }
 }
 
 #[cfg(test)]

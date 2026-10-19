@@ -221,6 +221,11 @@ baseline and fails closed when it cannot obtain one.
   Each nightly has its own concurrency group and is never superseded by a push
   or another nightly. All jobs use public GitHub-hosted runners.
 
+`compat.yml` runs nightly, on `v*` tags and by manual dispatch, outside `ci-required`: it
+runs the previous release's `tests/semantics`, `tests/ui` and `examples` under the current
+compiler on JS and WASM (`crates/sakura_cli/tests/compat.rs`, design §17.232 (e)). A deliberate
+difference is a line in `compiler/tests/compat/allow.txt` citing its CHANGELOG heading.
+
 `ci-required` retains its branch-protection name. Change detection must succeed;
 other jobs may succeed or be intentionally skipped. Failure and cancellation
 always fail the aggregate.

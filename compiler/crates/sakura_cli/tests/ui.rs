@@ -10,7 +10,7 @@
 mod common;
 
 use common::*;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 /// 1-based `line:col` (col in characters) of a byte offset.
 fn line_col(text: &str, byte: usize) -> String {
@@ -20,103 +20,13 @@ fn line_col(text: &str, byte: usize) -> String {
     format!("{line}:{col}")
 }
 
-/// `// command: run|build|test --contracts`: the codes in that command's terminal diagnostics
-/// (`error[V8001]: …`, `warning[W7001]: …`) and its exit code.
-fn command_codes(path: &Path, command: &str) -> Result<(Vec<String>, Option<i32>), String> {
-    let dir = path.parent().unwrap();
-    let name = path.file_name().unwrap().to_str().unwrap();
-    let out_dir = std::env::temp_dir().join(format!("sakura-ui-{}-{name}", std::process::id()));
-    let mut args: Vec<&str> = command.split_whitespace().collect();
-    args.extend([name, "--out-dir", out_dir.to_str().unwrap()]);
-    let out = sakura(&args, dir);
-    if out.timed_out {
-        return Err(format!("`sakura {command}` timed out"));
-    }
-    let mut codes = Vec::new();
-    for line in out.stderr.lines() {
-        for prefix in ["error[", "warning["] {
-            if let Some(rest) = line.strip_prefix(prefix)
-                && let Some((code, _)) = rest.split_once(']')
-            {
-                codes.push(code.to_owned());
-            }
-        }
-    }
-    Ok((codes, out.code))
-}
-
-/// The companion of `path` passes the command its wrong fixture uses: exit 0, no error or warning.
-fn run_fixed(path: &Path, command: Option<&str>) -> Result<(), String> {
-    let codes = match command {
-        None | Some("check") => {
-            let (recs, _) = check_never_crashes(path)?;
-            recs.iter()
-                .filter(|r| r["kind"] == "diagnostic" && r["severity"] != "note")
-                .map(|r| r["code"].as_str().unwrap().to_owned())
-                .collect()
-        }
-        Some(command) => match command_codes(path, command)? {
-            (codes, Some(0)) => codes,
-            (_, code) => return Err(format!("`sakura {command}` exited {code:?}")),
-        },
-    };
-    if codes.is_empty() {
-        Ok(())
-    } else {
-        Err(format!("the fixed companion still reports {codes:?}"))
-    }
-}
-
-/// A fixture's `.sak` files: the file itself, or a directory fixture's files, sorted.
-fn sources(path: &Path) -> Vec<PathBuf> {
-    if !path.is_dir() {
-        return vec![path.to_owned()];
-    }
-    let mut files: Vec<PathBuf> = (std::fs::read_dir(path).unwrap())
-        .map(|e| e.unwrap().path())
-        .filter(|p| p.extension().is_some_and(|e| e == "sak"))
-        .collect();
-    files.sort();
-    files
-}
-
 fn run(path: &Path) -> Result<(), String> {
     let files = sources(path);
     let text = std::fs::read_to_string(&files[0]).unwrap();
     let d = directives(&text);
-    let mut expected: Vec<&str> = d
-        .get("expect")
-        .map_or(vec![], |e| e.split_whitespace().collect());
-    expected.sort();
-    match d.get("command").map(String::as_str) {
-        None | Some("check") => {}
-        Some(command @ ("run" | "build" | "test --contracts")) => {
-            let (mut actual, _) = command_codes(path, command)?;
-            actual.sort();
-            return if actual == expected {
-                Ok(())
-            } else {
-                Err(format!(
-                    "`sakura {command}`: expected codes {expected:?}, got {actual:?}"
-                ))
-            };
-        }
-        Some(other) => {
-            return Err(format!(
-                "the ui harness does not support `command: {other}`"
-            ));
-        }
-    }
-    let (recs, stdout) = check_never_crashes(path)?;
-    let mut actual: Vec<&str> = recs
-        .iter()
-        .filter(|r| r["kind"] == "diagnostic" && r["severity"] != "note")
-        .map(|r| r["code"].as_str().unwrap())
-        .collect();
-    actual.sort();
-    if actual != expected {
-        return Err(format!("expected codes {expected:?}, got {actual:?}"));
-    }
+    let Some((recs, stdout)) = ui_codes_match(path, &d)? else {
+        return Ok(());
+    };
     // `CODE line:col` pins the primary span; `CODE <role> line:col` a span with that role.
     if let Some(spec) = d.get("expect-span") {
         let parts: Vec<&str> = spec.split_whitespace().collect();

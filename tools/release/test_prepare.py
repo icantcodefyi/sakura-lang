@@ -215,6 +215,34 @@ class Prepare(unittest.TestCase):
         text = (Path(release.__file__).resolve().parents[2] / "compiler/deprecations.toml").read_text()
         self.assertIsInstance(release.deprecations(text), dict)
 
+    def commit(self, version):
+        self.write(version)
+        self.git("add", ".")
+        self.git("commit", "--quiet", "--allow-empty", "-m", version)
+
+    def test_compat_base_follows_the_release_cycle(self):
+        # Design §17.232 (e): prepare's previous tag, or the release HEAD comes after.
+        self.assertIsNone(release.compat_base())
+        self.tag("1.3.0-alpha.1")
+        self.assertIsNone(release.compat_base(), "HEAD is the only release")
+        self.commit("1.3.0-alpha.1")
+        self.assertEqual(release.compat_base(), "v1.3.0-alpha.1", "main after the prerelease")
+        self.commit("1.3.0")
+        self.assertEqual(release.compat_base(), "v1.3.0-alpha.1", "the preparation commit")
+        self.git("tag", "v1.3.0")
+        self.assertEqual(release.compat_base(), "v1.3.0-alpha.1", "the release tag itself")
+        self.commit("1.3.0")
+        self.assertEqual(release.compat_base(), "v1.3.0", "main after the tag")
+        self.commit("1.4.0")
+        self.assertEqual(release.compat_base(), "v1.3.0", "the next preparation commit")
+
+    def test_compat_base_refuses_shallow_history(self):
+        original = release.git_text
+        def git_text(*args):
+            return "true\n" if args[:2] == ("rev-parse", "--is-shallow-repository") else original(*args)
+        with patch.object(release, "git_text", side_effect=git_text), self.refusal("full history"):
+            release.compat_base()
+
     def test_missing_old_metadata_is_allowed_before_registry_existed(self):
         (self.compiler / "deprecations.toml").unlink()
         self.git("add", ".")

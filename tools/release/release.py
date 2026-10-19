@@ -3,6 +3,7 @@
 
     release.py prepare [--previous-tag TAG] [--date YYYY-MM-DD]
     release.py version                       print the workspace version (rejects 0.0.0)
+    release.py compat-base                   print the release tag the compat job runs
     release.py archive  --target T --binary B --out DIR
     release.py smoke    --archive A --commit C
     release.py accept   --sakura INSTALLED --commit C
@@ -170,19 +171,40 @@ def tagged_deprecations(tag):
     return deprecations(git_text("show", f"{tag}:compiler/deprecations.toml")) if exists else {}
 
 
+def release_tags():
+    """Every `vX.Y.Z[-pre]` tag merged into HEAD as `(semver, tag)`, in SemVer precedence."""
+    if git_text("rev-parse", "--is-shallow-repository").strip() == "true":
+        fail("release tags need full history; fetch --unshallow and release tags")
+    tags = []
+    for tag in git_text("tag", "--merged", "HEAD").splitlines():
+        if tag.startswith("v") and SEMVER.fullmatch(tag[1:]):
+            tags.append((semver(tag[1:]), tag))
+    tags.sort()
+    return tags
+
+
+def compat_base():
+    """The release whose fixtures the `compat` job runs under this checkout (design §17.232 (e)).
+
+    It is prepare's previous tag, the highest ancestor release below the workspace version,
+    unless that version is itself tagged at an ancestor other than HEAD: then HEAD comes after
+    the release (main between a tag and the next preparation commit) and compares with it.
+    """
+    current = semver(version())
+    tags = release_tags()
+    head = git_text("rev-parse", "HEAD^{commit}").strip()
+    for parsed, tag in tags:
+        if parsed == current and git_text("rev-parse", f"{tag}^{{commit}}").strip() != head:
+            return tag
+    earlier = [tag for parsed, tag in tags if parsed < current]
+    return earlier[-1] if earlier else None
+
+
 def prepare(args):
     candidate = version()
     current = semver(candidate)
     today = release_date(args.date) if args.date else datetime.datetime.now(datetime.timezone.utc).date()
-    if git_text("rev-parse", "--is-shallow-repository").strip() == "true":
-        fail("prepare needs full history; fetch --unshallow and release tags")
-    tags = []
-    for tag in git_text("tag", "--merged", "HEAD").splitlines():
-        if tag.startswith("v") and SEMVER.fullmatch(tag[1:]):
-            parsed = semver(tag[1:])
-            if parsed < current:
-                tags.append((parsed, tag))
-    tags.sort()
+    tags = [(parsed, tag) for parsed, tag in release_tags() if parsed < current]
     previous = tags[-1][1] if tags else None
     if args.previous_tag is not None and args.previous_tag != previous:
         fail(f"--previous-tag must select the latest preceding ancestor release: {previous!r}")
@@ -741,6 +763,7 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("version")
     sub.add_parser("dist-tag")
+    sub.add_parser("compat-base")
     p = sub.add_parser("prepare")
     p.add_argument("--previous-tag")
     p.add_argument("--date", help="candidate release date in UTC (YYYY-MM-DD)")
@@ -767,6 +790,11 @@ def main():
         print(version())
     elif args.cmd == "dist-tag":
         print(dist_tag(version()))
+    elif args.cmd == "compat-base":
+        base = compat_base()
+        if base is None:
+            fail("no earlier release tag is an ancestor of HEAD; compat has nothing to compare")
+        print(base)
     else:
         {"archive": archive, "smoke": smoke, "accept": accept, "assemble": assemble, "prepare": prepare}[args.cmd](args)
 

@@ -9,9 +9,6 @@ use common::*;
 use std::collections::BTreeMap;
 use std::path::Path;
 
-/// Examples above this milestone are skipped; `// known-bug:` marks the ones blocked elsewhere.
-const EXAMPLES_MILESTONE: i8 = 3;
-
 fn run(dir: &Path, d: &BTreeMap<String, String>) -> Result<(), String> {
     let mode = d.get("mode").map_or("run", String::as_str);
     let ok = |args: &[&str]| {
@@ -34,34 +31,9 @@ fn run(dir: &Path, d: &BTreeMap<String, String>) -> Result<(), String> {
         let mut args = vec!["run", "--"];
         args.extend(d.get("args").map_or("", String::as_str).split_whitespace());
         let stdout = ok(&args)?;
-        let path = dir.join("expected.stdout");
-        if d.get("stdout-regex").is_some_and(|v| v == "true") {
-            let want = std::fs::read_to_string(&path).unwrap_or_default();
-            let fits = want.lines().count() == stdout.lines().count()
-                && want
-                    .lines()
-                    .zip(stdout.lines())
-                    .all(|(w, s)| regex_prefix_fits(w, s));
-            if !fits {
-                return Err(format!(
-                    "stdout does not match {}:\n{stdout}",
-                    path.display()
-                ));
-            }
-        } else {
-            compare_file(&path, &stdout)?;
-        }
+        example_stdout_matches(dir, d, &stdout)?;
     }
     ok(&["test"]).map(|_| ())
-}
-
-/// Whether `line` starts with the literal text of `pattern` before its first metacharacter.
-// ponytail: literal-prefix match, not a regex engine (no `regex` dependency for one example);
-// add the crate when an example needs more than a fixed prefix.
-fn regex_prefix_fits(pattern: &str, line: &str) -> bool {
-    let p = pattern.strip_prefix('^').unwrap_or(pattern);
-    let literal = &p[..p.find(|c| "[](){}.*+?|\\$".contains(c)).unwrap_or(p.len())];
-    line.starts_with(literal)
 }
 
 #[test]
