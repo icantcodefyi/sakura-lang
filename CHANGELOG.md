@@ -23,6 +23,9 @@ Compare the release tag with main when identifying changes not in that preview.
 
 ### Added
 
+- Draft grammar and diagnostic specification in `docs/spec/`, indexed by fixtures,
+  with a generated diagnostic identity table and a Python drift check.
+
 - Published-channel acceptance workflow with exact version/commit checks, a deliberate
   installer target override, and a platform-report issue form for community confirmations.
 - Windows x64 MSVC ZIP and npm packaging, a checksum-verifying PowerShell installer,

@@ -554,6 +554,8 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
+      - name: Check fixture-indexed specification and generated table
+        run: python3 -m unittest discover -s compiler/tools/agent_docs -p 'test_spec_docs.py' -v
       - name: Test diagnostic history checker
         run: python3 -m unittest discover -s compiler/diagnostics -v
       - name: Preserve every previous code assignment (RFC 0001)
