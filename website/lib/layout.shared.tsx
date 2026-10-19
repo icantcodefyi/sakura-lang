@@ -19,6 +19,7 @@ export function baseOptions(): BaseLayoutProps {
         icon: <GitHubIcon />,
         external: true,
       },
+      { text: "Changelog", url: "/changelog" },
       { text: "llms.txt", url: "/llms.txt", external: true },
       { text: "llms-full.txt", url: "/llms-full.txt", external: true },
     ],

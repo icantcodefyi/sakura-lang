@@ -86,6 +86,7 @@ Sakura Lang is in preview: the latest release is v${RELEASE}, with no stable lan
 - The core language for agents, in one file: ${site.github}/blob/main/docs/llms.txt
 - Every docs page is available as Markdown: append \`.md\` to its URL (for example ${site.url}/docs/tour/effects.md).
 - All docs in one file: ${site.url}/llms-full.txt
+- Changelog: ${site.url}/changelog.md
 
 ${index}
 `;

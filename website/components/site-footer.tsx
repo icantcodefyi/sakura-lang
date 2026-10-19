@@ -29,6 +29,7 @@ const COLUMNS = [
     title: "Project",
     links: [
       { href: "/docs/roadmap", label: "Roadmap" },
+      { href: "/changelog", label: "Changelog" },
       { href: "/docs/faq", label: "FAQ" },
       { href: site.github, label: "GitHub" },
     ],
