@@ -10,7 +10,7 @@ layout 4 shape |  32b (word*, word*)
 layout 5 shape |  32b (i64, word*)
 layout 6 shape |  16b ()
 
-fn main#0 pub top -> unit ; main::row_widening, frame 3 slots [%1 word*, %6 i64, %8 bool]
+fn main#0 pub top -> unit ; main::row_widening, frame 3 slots [%1 word*, %7 i64, %9 bool]
   b0():
     %0 lit: i64 = const 5
     call from_unix_millis#2(%0) -> b1()
@@ -18,18 +18,19 @@ fn main#0 pub top -> unit ; main::row_widening, frame 3 slots [%1 word*, %6 i64,
     %2 now: ptr = closure fixed$Clock_now#9[%1]
     %3 monotonic: ptr = closure fixed$Clock_monotonic#10[]
     %4 sleep: ptr = closure fixed$Clock_sleep#12[]
-    %5 r: ptr = handler std::clock::Clock row 6 state() clauses(%2, %3, %4)
-    handle_push %5
+    %5 monotonic_micros: ptr = closure fixed$Clock_monotonic_micros#13[]
+    %6 r: ptr = handler std::clock::Clock row 6 state() clauses(%2, %3, %4, %5)
+    handle_push %6
     call run#4() -> b2()
-  b2(%6 r: i64) [handle]:
-    %7 s: ptr = show %6
-    perform std::console::Console.print(%7) -> b3()
-  b3(%8 r: unit) [handle]:
-    %9 box: word = box %8
-    %10 unbox: unit = unbox %9
-    drop %9
+  b2(%7 r: i64) [handle]:
+    %8 s: ptr = show %7
+    perform std::console::Console.print(%8) -> b3()
+  b3(%9 r: unit) [handle]:
+    %10 box: word = box %9
+    %11 unbox: unit = unbox %10
+    drop %10
     handle_pop
-    ret %10
+    ret %11
 
 fn $entry#1 top -> unit ; main::row_widening, frame 1 slots [%1 bool]
   b0():
@@ -42,10 +43,10 @@ fn $entry#1 top -> unit ; main::row_widening, frame 1 slots [%1 bool]
 
 fn run#4 top -> i64 ; main::row_widening, frame 3 slots [%1 i64, %3 i64, %4 i64]
   b0():
-    %0 fn: ptr = const static closure now_ms$value#13
+    %0 fn: ptr = const static closure now_ms$value#14
     call twice#6(%0) -> b1()
   b1(%1 r: i64):
-    %2 fn: ptr = const static closure seven$value#14
+    %2 fn: ptr = const static closure seven$value#15
     call twice#6(%2) -> b2(%1)
   b2(%3 r: i64, %4 r: i64):
     %5 t: i64 = intadd %4, %3
@@ -78,7 +79,7 @@ fn seven#7 top -> i64 ; main::row_widening, frame 0 slots []
     %0 lit: i64 = const 7
     ret %0
 
-fn now_ms$value#13 adapter of now_ms#5 -> word ; main::row_widening, captures [], frame 2 slots [%0 word*, %1 i64]
+fn now_ms$value#14 adapter of now_ms#5 -> word ; main::row_widening, captures [], frame 2 slots [%0 word*, %1 i64]
   b0(%0 env: ptr):
     drop %0
     call now_ms#5() -> b1()
@@ -86,7 +87,7 @@ fn now_ms$value#13 adapter of now_ms#5 -> word ; main::row_widening, captures []
     %2 box: word = box %1
     ret %2
 
-fn seven$value#14 adapter of seven#7 -> word ; main::row_widening, captures [], frame 2 slots [%0 word*, %1 i64]
+fn seven$value#15 adapter of seven#7 -> word ; main::row_widening, captures [], frame 2 slots [%0 word*, %1 i64]
   b0(%0 env: ptr):
     drop %0
     call seven#7() -> b1()

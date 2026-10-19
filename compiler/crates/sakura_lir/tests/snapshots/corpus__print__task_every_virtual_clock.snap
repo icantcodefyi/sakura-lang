@@ -1,0 +1,106 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::duration::Duration | Duration 24b (i64)
+layout 1 variant std::instant::Instant | Instant 24b (i64)
+layout 2 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 3 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 4 variant std::task::Fiber
+layout 5 variant std::task::Scope
+layout 6 shape |  32b (word*, word*)
+layout 7 shape |  32b (i64, word*)
+layout 8 shape |  24b (i64)
+
+fn main#0 pub top -> unit ; main::task_every_virtual_clock, frame 7 slots [%8 word*, %9 i64, %11 bool, %12 i64, %13 word*, %15 i64, %19 bool]
+  b0():
+    %0 now: ptr = closure virtual$Clock_now#8[]
+    %1 monotonic: ptr = closure virtual$Clock_monotonic#10[]
+    %2 sleep: ptr = closure virtual$Clock_sleep#11[]
+    %3 monotonic_micros: ptr = closure virtual$Clock_monotonic_micros#12[]
+    %4 lit: i64 = const 0
+    %5 r: ptr = handler std::clock::Clock row 8 state(%4) clauses(%0, %1, %2, %3)
+    %6 $act: id = handle_push %5
+    %7 lit: i64 = const 100
+    call millis#3(%7) -> b1(%6)
+  b1(%8 r: ptr, %9 $act: id) [handle]:
+    %10 f: ptr = closure main$1#4[]
+    call every#6(%8, %10) -> b2(%9)
+  b2(%11 r: unit, %12 $act: id) [handle]:
+    %14 clause: ptr = bound %12 std::clock::Clock.monotonic
+    call virtual$Clock_monotonic#10(%14, %12) -> b3()
+  b3(%13 r: ptr) [handle]:
+    call to_millis#5(%13) -> b4()
+  b4(%15 r: i64) [handle]:
+    %16 s: ptr = show %15
+    %17 lit: ptr = const str 0
+    %18 s: ptr = concat %17, %16
+    drop %16
+    drop %17
+    perform std::console::Console.print(%18) -> b5()
+  b5(%19 r: unit) [handle]:
+    %20 box: word = box %19
+    %21 unbox: unit = unbox %20
+    drop %20
+    handle_pop
+    ret %21
+
+fn $entry#1 top -> unit ; main::task_every_virtual_clock, frame 1 slots [%2 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    %1 task: ptr = $task_host()
+    handle_push %1
+    call main#0() -> b1()
+  b1(%2 r: unit) [handle, handle]:
+    handle_pop
+    handle_pop
+    ret %2
+
+fn main$1#4 lambda -> word ; main::task_every_virtual_clock, captures [], frame 12 slots [%0 word*, %1 word*, %3 word*, %4 i64, %5 i64, %6 i64, %14 bool, %15 i64, %27 word*, %28 i64, %29 bool, %30 i64]
+  b0(%0 env: ptr, %1 skipped: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    perform std::clock::Clock.monotonic() -> b1(%2)
+  b1(%3 r: ptr, %4 skipped: i64):
+    call to_millis#5(%3) -> b2(%4)
+  b2(%5 r: i64, %6 skipped: i64):
+    %7 s: ptr = show %5
+    %8 lit: ptr = const str 1
+    %9 s: ptr = concat %8, %7
+    drop %7
+    drop %8
+    %10 lit: ptr = const str 2
+    %11 s: ptr = concat %9, %10
+    drop %9
+    drop %10
+    %12 s: ptr = show %6
+    %13 s: ptr = concat %11, %12
+    drop %11
+    drop %12
+    perform std::console::Console.print(%13) -> b3(%5)
+  b3(%14 r: unit, %15 r: i64):
+    %16 box: word = box %14
+    drop %16
+    %17 lit: i64 = const 200
+    %18 t: bool = eq.int %15, %17
+    if %18 then b5(%15) else b6(%15)
+  b4(%19 v: word, %20 r: i64):
+    drop %19
+    %21 lit: i64 = const 600
+    %22 t: bool = lt.int %20, %21
+    %23 box: word = box %22
+    ret %23
+  b5(%24 r: i64):
+    %26 lit: i64 = const 250
+    call millis#3(%26) -> b7(%24)
+  b6(%25 r: i64):
+    %32 lit: unit = const ()
+    %33 box: word = box %32
+    jump b4(%33, %25)
+  b7(%27 r: ptr, %28 r: i64):
+    perform std::clock::Clock.sleep(%27) -> b8(%28)
+  b8(%29 r: unit, %30 r: i64):
+    %31 box: word = box %29
+    jump b4(%31, %30)

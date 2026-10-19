@@ -232,12 +232,21 @@ pub fn spawn(rt: &mut Rt, _env: u32, frame: u32) -> u32 {
     raise_or(rt, r)
 }
 
+/// `Task.join` on a fiber `Task.cancel` used up (RFC 0002 §2.8).
+const FIBER_CANCELLED: Defect = Defect {
+    code: Defect::FIBER_RETIRED.code,
+    message: "join on a cancelled fiber",
+};
+
 // Slots of `join`: 2 the fiber.
 /// `Task.join(fiber)`: marks it joined, waits for its outcome and propagates it.
 pub fn join(rt: &mut Rt, _env: u32, frame: u32) -> u32 {
     let child = rt.heap.mem.u32(rt.fslot(frame, 2) as u32 + 12);
     if rt.block(frame) == 0 {
         drop_clause(rt, frame);
+        if child == 0 {
+            return rt.raise(FIBER_CANCELLED);
+        }
         rt.set_joined(child);
         rt.set_block(frame, 1);
     }
@@ -250,6 +259,45 @@ pub fn join(rt: &mut Rt, _env: u32, frame: u32) -> u32 {
         Ok(None) => step::YIELD,
         Err(d) => rt.raise(d),
     }
+}
+
+// Slots of `cancel`: 2 the fiber, 3 its task while it unwinds.
+/// `Task.cancel(fiber)` (JS `cancel`): uses the fiber up by clearing its task id in place, so a
+/// later `join` is `D095`; a running fiber is marked joined (its scope ignores the `cancelled`
+/// outcome), cancelled and awaited until its finalizers have run; a finished one keeps its
+/// outcome for its scope.
+pub fn cancel(rt: &mut Rt, _env: u32, frame: u32) -> u32 {
+    if rt.block(frame) == 0 {
+        drop_clause(rt, frame);
+        let f = rt.take_fslot(frame, 2) as u32;
+        let child = rt.heap.mem.u32(f + 12);
+        rt.heap.mem.set_u32(f + 12, 0);
+        rt.drop(f);
+        if child == 0 || rt.is_done(child) {
+            return ret(rt, UNIT as u64);
+        }
+        rt.set_joined(child);
+        rt.cancel(child);
+        rt.set_fslot(frame, 3, child as u64);
+        rt.set_block(frame, 1);
+    }
+    match rt.join(rt.fslot(frame, 3) as u32) {
+        Ok(Some(_)) => ret(rt, UNIT as u64),
+        Ok(None) => step::YIELD,
+        Err(d) => rt.raise(d),
+    }
+}
+
+// Slots of `cancelled`: 2 the scope.
+/// `Task.cancelled(scope)`: whether a member of the scope's group failed, so the group is
+/// cancelling the others (JS `s.failed !== null`).
+pub fn cancelled(rt: &mut Rt, _env: u32, frame: u32) -> u32 {
+    drop_clause(rt, frame);
+    let s = rt.take_fslot(frame, 2) as u32;
+    let gid = rt.heap.mem.u32(s + 12);
+    rt.drop(s);
+    let failed = rt.group_decided(gid) != 0;
+    ret(rt, u64::from(failed))
 }
 
 // Slots of `all` and `race`: 2 bodies, 3 the start order, 4 the next position, 5 the group,

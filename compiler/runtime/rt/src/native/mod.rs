@@ -401,6 +401,10 @@ pub static CODES: &[(&str, SakuraCode)] = {
     &[
         ("rt_code_callback_stub", e::rt_code_callback_stub),
         ("rt_code_clock_monotonic", e::rt_code_clock_monotonic),
+        (
+            "rt_code_clock_monotonic_micros",
+            e::rt_code_clock_monotonic_micros,
+        ),
         ("rt_code_clock_now", e::rt_code_clock_now),
         ("rt_code_clock_sleep", e::rt_code_clock_sleep),
         ("rt_code_console_print", e::rt_code_console_print),
@@ -423,7 +427,9 @@ pub static CODES: &[(&str, SakuraCode)] = {
         ("rt_code_sql_rollback", sql::rt_code_sql_rollback),
         ("rt_code_sql_transaction", sql::rt_code_sql_transaction),
         ("rt_code_task_all", e::rt_code_task_all),
+        ("rt_code_task_cancel", e::rt_code_task_cancel),
         ("rt_code_task_cancel_all", e::rt_code_task_cancel_all),
+        ("rt_code_task_cancelled", e::rt_code_task_cancelled),
         ("rt_code_task_join", e::rt_code_task_join),
         ("rt_code_task_race", e::rt_code_task_race),
         ("rt_code_task_scope", e::rt_code_task_scope),

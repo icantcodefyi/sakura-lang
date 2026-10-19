@@ -432,6 +432,10 @@ impl Host for NativeHost {
         self.started.elapsed().as_millis() as i64
     }
 
+    fn clock_monotonic_us(&mut self) -> i64 {
+        self.started.elapsed().as_micros() as i64
+    }
+
     fn clock_sleep_ms(&mut self, request: u32, ms: i64) {
         let tx = self.tx.clone();
         let task = self.executor.spawn(async move {

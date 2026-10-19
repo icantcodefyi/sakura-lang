@@ -1,0 +1,18 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D095
+// covers: RFC 0002 §2.8 (`Task.cancel` uses the fiber up; a later `join` is `D095`)
+// Spec: https://dom.spec.whatwg.org/#dom-abortcontroller-abort
+
+pub fn main() -> Unit ! {Console, Task} {
+  Console.print("before")
+  let n = Task.scope(fn(s) {
+    let f = Task.spawn(s, fn() {
+      Task.yield_now()
+      1
+    })
+    Task.cancel(f)
+    Task.join(f)
+  })
+  Console.print("{n}")
+}

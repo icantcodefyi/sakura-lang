@@ -22,6 +22,13 @@ pub effect Task {
   fn race<T, e>(bodies: List<fn() -> T ! e>) -> T ! e
   /// A cancellation point for long pure loops.
   fn yield_now() -> Unit
+  /// Cancels `f` (`clearTimeout`, `AbortController.abort`) and waits until it has unwound
+  /// through its finalizers. It uses `f` up: a later `join(f)` is the defect `D095`. A
+  /// finished fiber keeps its outcome, so a failure its scope has not seen still reaches it.
+  fn cancel<T>(f: Fiber<T>) -> Unit
+  /// Whether `s` is cancelling its children because one of them failed (`AbortSignal.aborted`).
+  /// A cancelled task never sees `true`: it stops at this operation.
+  fn cancelled(s: Scope) -> Bool
 }
 
 /// Root handler on the host event loop.
@@ -48,6 +55,25 @@ pub fn timeout<T, e>(limit: Duration, action: fn() -> T ! e) -> T
     },
   ]
   Task.race(bodies)
+}
+
+/// Calls `body` every `period` (`setInterval`) until it returns `false` or the task running it
+/// is cancelled (`clearInterval`: return `false`, or `Task.cancel` its fiber). The first call
+/// comes one `period` after the start. Ticks are serialized: a tick due while `body` runs is
+/// skipped, and `body` receives how many were skipped since its last call (0 when none). A
+/// `period` under 1 ms is 1 ms. Under `Clock.virtual` the ticks are reproducible.
+pub fn every<e>(period: Duration, body: fn(Int) -> Bool ! e) -> Unit ! {Clock, Task | e} {
+  let p = Int.max(period.to_millis(), 1)
+  var next = Clock.monotonic().to_millis() + p
+  var skipped = 0
+  var go = true
+  while go {
+    Clock.sleep(Duration.millis(next - Clock.monotonic().to_millis()))
+    go = body(skipped)
+    // The ticks after `next` that came due before `body` returned.
+    skipped = (Clock.monotonic().to_millis() - next - 1) / p
+    next = next + (skipped + 1) * p
+  }
 }
 
 /// `List.map` with each call in its own child task; results in input order.

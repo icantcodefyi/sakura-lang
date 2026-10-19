@@ -7,6 +7,35 @@ retains earlier implementation history.
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking for user handlers (0.2.0, RFC 0002 §2.8, design §17.262 (3)).** The `Clock`
+  effect gains `monotonic_micros() -> Int` and the `Task` effect gains `cancel<T>(f: Fiber<T>)
+  -> Unit` and `cancelled(s: Scope) -> Bool`, so a user `handler Clock` or `handler Task` must
+  add them; `Clock.host`, `Clock.fixed` (`0`), `Clock.virtual` (its milliseconds × 1000),
+  `Task.host` and `Task.deterministic` implement them. `Task.cancel` cancels a fiber, waits
+  until it has unwound through its finalizers and uses it up: a later `Task.join` of it is
+  the defect `D095` (`join on a cancelled fiber`) on every backend, where `D095` was
+  unreachable before. `Task.cancelled(s)` is whether a child of `s` failed, so the scope is
+  cancelling the others.
+- The WASM runtime ABI is 1.5.0 (`sakura_abi_version` `0x010500`): the `sync` import
+  `clock_monotonic_us() -> i64` backs `Clock.monotonic_micros` on `Clock.host`. A 1.4 host
+  refuses a 1.5 module (`V8003`); the Node host and the native host implement the import.
+
+### Added
+
+- Web timer and dialog idioms (RFC 0002 §1, §2.8; plan `web-apis.md` phase 4b):
+  `std/task.every(period, body)` (`setInterval`: serialized ticks, a tick due while `body` runs
+  is skipped and the next call receives the count, the loop ends when `body` returns `false`
+  or its task is cancelled), `Console.alert`, `Console.confirm` (`true` only for `y` or `yes`
+  in any case; end of input is `false`) and `Console.prompt` (the line, the default for an
+  empty line, `None` at end of input), written in std over `print` and `read_line` so every
+  `Console` handler serves them, and `Json.render(j, indent)` (`JSON.stringify` with an
+  indent of at most 10; compact for `None`). `Console.scripted(lines)` is a test handler whose
+  `read_line` answers `lines` in order and then end of input (the dialogs need scripted
+  input, which `Console.captured` does not take). The concurrency tour shows the
+  `setTimeout`, `setInterval` and `clearTimeout` idioms.
+
 ## [0.1.0] - 2026-10-20
 
 The first non-alpha preview: the WebAssembly backend is complete. Sakura Lang is still pre-1.0: read [STABILITY.md](STABILITY.md) before

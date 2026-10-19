@@ -1,0 +1,154 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::json::Json | Null 16b () | Bool 24b (bool) | Number 24b (f64) | String 24b (word*) | Array 24b (word*) | Object 24b (word*)
+layout 1 variant std::list::Builder
+layout 2 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 3 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 4 shape |  32b (word*, word*)
+layout 5 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::json_render_indent, frame 26 slots [%32 word*, %33 word*, %34 word*, %35 word*, %36 word*, %37 word*, %42 word*, %45 word*, %46 word*, %47 bool, %48 word*, %51 word*, %52 word*, %62 word*, %63 word*, %64 word*, %70 bool, %71 word*, %76 word*, %77 bool, %88 word*, %89 bool, %96 word*, %97 bool, %104 word*, %105 bool]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 r: ptr = alloc std::json::Json.String(%0)
+    %2 lit: ptr = const str 1
+    %3 tup: ptr = alloc tuple#4(word, word)(%2, %1)
+    %4 lit: f64 = const 1.5
+    %5 r: ptr = alloc std::json::Json.Number(%4)
+    %6 lit: ptr = const str 2
+    %7 tup: ptr = alloc tuple#4(word, word)(%6, %5)
+    %8 lit: bool = const true
+    %9 r: ptr = alloc std::json::Json.Bool(%8)
+    %10 lit: ptr = const str 3
+    %11 tup: ptr = alloc tuple#4(word, word)(%10, %9)
+    %12 v: ptr = const static std::json::Json.Null
+    %13 lit: ptr = const str 4
+    %14 tup: ptr = alloc tuple#4(word, word)(%13, %12)
+    %15 lit: f64 = const 1.0
+    %16 r: ptr = alloc std::json::Json.Number(%15)
+    %17 xs: ptr = alloc list()
+    %18 r: ptr = alloc std::json::Json.Array(%17)
+    %19 r: ptr = $map_empty()
+    %20 r: ptr = alloc std::json::Json.Object(%19)
+    %21 xs: ptr = alloc list(%16, %18, %20)
+    %22 r: ptr = alloc std::json::Json.Array(%21)
+    %23 lit: ptr = const str 5
+    %24 tup: ptr = alloc tuple#4(word, word)(%23, %22)
+    %25 lit: ptr = const str 6
+    %26 r: ptr = alloc std::json::Json.String(%25)
+    %27 xs: ptr = alloc list(%26)
+    %28 r: ptr = alloc std::json::Json.Array(%27)
+    %29 lit: ptr = const str 7
+    %30 tup: ptr = alloc tuple#4(word, word)(%29, %28)
+    %31 xs: ptr = alloc list(%30)
+    call of#2(%31) -> b1(%3, %7, %11, %14, %24)
+  b1(%32 r: ptr, %33 tup: ptr, %34 tup: ptr, %35 tup: ptr, %36 tup: ptr, %37 tup: ptr):
+    %38 r: ptr = alloc std::json::Json.Object(%32)
+    %39 lit: ptr = const str 8
+    %40 tup: ptr = alloc tuple#4(word, word)(%39, %38)
+    %41 xs: ptr = alloc list(%33, %34, %35, %36, %37, %40)
+    call of#2(%41) -> b2()
+  b2(%42 r: ptr):
+    %43 r: ptr = alloc std::json::Json.Object(%42)
+    %44 v: ptr = const static std::option::Option.None
+    dup %43
+    call render#3(%43, %44) -> b3(%43)
+  b3(%45 r: ptr, %46 r: ptr):
+    perform std::console::Console.print(%45) -> b4(%46)
+  b4(%47 r: unit, %48 r: ptr):
+    %49 box: word = box %47
+    drop %49
+    %50 v: ptr = const static std::option::Option.None
+    dup %48
+    call render#3(%48, %50) -> b5(%48)
+  b5(%51 r: ptr, %52 r: ptr):
+    %53 schema: ptr = const str 9
+    dup %52
+    %54 r: ptr = $json_encode(%52, %53)
+    %55 t: bool = eq.string %51, %54
+    drop %51
+    drop %54
+    %56 s: ptr = show %55
+    %57 lit: ptr = const str 10
+    %58 s: ptr = concat %56, %57
+    drop %56
+    drop %57
+    %59 lit: i64 = const 0
+    %60 box: word = box %59
+    %61 r: ptr = alloc std::option::Option.Some(%60)
+    dup %52
+    call render#3(%52, %61) -> b6(%52, %58)
+  b6(%62 r: ptr, %63 r: ptr, %64 s: ptr):
+    %65 schema: ptr = const str 9
+    dup %63
+    %66 r: ptr = $json_encode(%63, %65)
+    %67 t: bool = eq.string %62, %66
+    drop %62
+    drop %66
+    %68 s: ptr = show %67
+    %69 s: ptr = concat %64, %68
+    drop %64
+    drop %68
+    perform std::console::Console.print(%69) -> b7(%63)
+  b7(%70 r: unit, %71 r: ptr):
+    %72 box: word = box %70
+    drop %72
+    %73 lit: i64 = const 2
+    %74 box: word = box %73
+    %75 r: ptr = alloc std::option::Option.Some(%74)
+    call render#3(%71, %75) -> b8()
+  b8(%76 r: ptr):
+    perform std::console::Console.print(%76) -> b9()
+  b9(%77 r: unit):
+    %78 box: word = box %77
+    drop %78
+    %79 lit: f64 = const 1.0
+    %80 r: ptr = alloc std::json::Json.Number(%79)
+    %81 lit: f64 = const 2.0
+    %82 r: ptr = alloc std::json::Json.Number(%81)
+    %83 xs: ptr = alloc list(%80, %82)
+    %84 r: ptr = alloc std::json::Json.Array(%83)
+    %85 lit: i64 = const 20
+    %86 box: word = box %85
+    %87 r: ptr = alloc std::option::Option.Some(%86)
+    call render#3(%84, %87) -> b10()
+  b10(%88 r: ptr):
+    perform std::console::Console.print(%88) -> b11()
+  b11(%89 r: unit):
+    %90 box: word = box %89
+    drop %90
+    %91 xs: ptr = alloc list()
+    %92 r: ptr = alloc std::json::Json.Array(%91)
+    %93 lit: i64 = const 4
+    %94 box: word = box %93
+    %95 r: ptr = alloc std::option::Option.Some(%94)
+    call render#3(%92, %95) -> b12()
+  b12(%96 r: ptr):
+    perform std::console::Console.print(%96) -> b13()
+  b13(%97 r: unit):
+    %98 box: word = box %97
+    drop %98
+    %99 lit: ptr = const str 11
+    %100 r: ptr = alloc std::json::Json.String(%99)
+    %101 lit: i64 = const 4
+    %102 box: word = box %101
+    %103 r: ptr = alloc std::option::Option.Some(%102)
+    call render#3(%100, %103) -> b14()
+  b14(%104 r: ptr):
+    perform std::console::Console.print(%104) -> b15()
+  b15(%105 r: unit):
+    %106 box: word = box %105
+    %107 unbox: unit = unbox %106
+    drop %106
+    ret %107
+
+fn $entry#1 top -> unit ; main::json_render_indent, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1

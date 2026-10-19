@@ -122,6 +122,7 @@ effect Clock {
   fn now() -> Instant
   fn monotonic() -> Duration
   fn sleep(d: Duration) -> Unit
+  fn monotonic_micros() -> Int
 }
 fn host() -> Handler<Clock>    // @external
 fn fixed(at: Instant) -> Handler<Clock>
@@ -137,6 +138,10 @@ effect Console {
 }
 fn host() -> Handler<Console>    // @external
 fn captured() -> Handler<Console, {Test}>
+fn scripted(lines: List<String>) -> Handler<Console, {Test}>
+fn alert(message: String) -> Unit ! {Console}
+fn confirm(message: String) -> Bool ! {Console}
+fn prompt(message: String, default: Option<String>) -> Option<String> ! {Console}
 ```
 
 ### `std/core`
@@ -408,6 +413,7 @@ fn encode<T: Schema>(value: T) -> String    // @external
 fn decode<T: Schema>(text: String) -> Result<T, DecodeError>    // @external
 fn parse(text: String) -> Result<Json, DecodeError>    // @external
 fn schema<T: Schema>(witness: Option<T>) -> Json    // @external
+fn render(j: Json, indent: Option<Int>) -> String
 fn get(j: Json, key: String) -> Option<Json>
 fn get_string(j: Json, key: String) -> Option<String>
 ```
@@ -711,11 +717,14 @@ effect Task {
   fn all<T, e>(bodies: List<fn() -> T ! e>) -> List<T> ! e
   fn race<T, e>(bodies: List<fn() -> T ! e>) -> T ! e
   fn yield_now() -> Unit
+  fn cancel<T>(f: Fiber<T>) -> Unit
+  fn cancelled(s: Scope) -> Bool
 }
 fn host() -> Handler<Task>    // @external
 fn deterministic(seed: Int) -> Handler<Task>    // @external
 error Timeout(limit: Duration)
 fn timeout<T, e>(limit: Duration, action: fn() -> T ! e) -> T ! {Clock, Task, Fail<Timeout> | e}
+fn every<e>(period: Duration, body: fn(Int) -> Bool ! e) -> Unit ! {Clock, Task | e}
 fn par_map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! {Task | e}
 ```
 

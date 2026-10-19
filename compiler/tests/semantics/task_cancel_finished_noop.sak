@@ -1,0 +1,17 @@
+// milestone: M3
+// covers: RFC 0002 §2.8 (cancelling a finished fiber, or one already cancelled, does nothing)
+// Spec: https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-cleartimeout
+
+pub fn main() -> Unit ! {Console, Task} {
+  let n = Task.scope(fn(s) {
+    let f = Task.spawn(s, fn() {
+      Console.print("child ran")
+      7
+    })
+    Task.cancel(f)
+    Task.cancel(f)
+    Console.print("cancelled twice")
+    Task.cancelled(s)
+  })
+  Console.print("scope cancelling: {n}")
+}

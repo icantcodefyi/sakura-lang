@@ -45,6 +45,7 @@ const IMPORTS: &[&str] = &[
     "trace_write",
     "clock_now_ms",
     "clock_monotonic_ms",
+    "clock_monotonic_us",
     "clock_sleep_ms",
     "random_int",
     "random_float",

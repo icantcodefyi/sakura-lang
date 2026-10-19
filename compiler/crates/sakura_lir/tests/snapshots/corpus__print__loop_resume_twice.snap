@@ -11,56 +11,57 @@ layout 5 shape |  32b (i64, word*)
 layout 6 shape |  24b (i64)
 layout 7 shape |  16b ()
 
-fn main#0 pub top -> unit ; main::loop_resume_twice, frame 4 slots [%19 bool, %27 i64, %28 i64, %30 i64]
+fn main#0 pub top -> unit ; main::loop_resume_twice, frame 4 slots [%20 bool, %28 i64, %29 i64, %31 i64]
   b0():
     %0 now: ptr = closure virtual$Clock_now#10[]
     %1 monotonic: ptr = closure virtual$Clock_monotonic#12[]
     %2 sleep: ptr = closure virtual$Clock_sleep#13[]
-    %3 lit: i64 = const 0
-    %4 r: ptr = handler std::clock::Clock row 6 state(%3) clauses(%0, %1, %2)
-    handle_push %4
-    %5 next: ptr = closure counter$Counter_next#9[]
-    %6 lit: i64 = const 0
-    %7 r: ptr = handler main::loop_resume_twice::Counter row 6 state(%6) clauses(%5)
-    handle_push %7
-    %29 lit: ptr = const str 2
-    call spin#4(%29) -> b6()
-  b1(%8 v: i64) [handle]:
-    %9 next: ptr = closure counter$Counter_next#9[]
-    %10 lit: i64 = const 0
-    %11 r: ptr = handler main::loop_resume_twice::Counter row 6 state(%10) clauses(%9)
-    handle_push %11
-    %22 next: ptr = closure forward$Counter_next#6[]
-    %23 r: ptr = handler main::loop_resume_twice::Counter row 7 state() clauses(%22)
-    handle_push %23
-    %26 lit: ptr = const str 1
-    call spin#4(%26) -> b5(%8)
-  b2(%12 v: i64, %13 v: i64) [handle]:
-    %14 s: ptr = show %13
-    %15 lit: ptr = const str 0
-    %16 s: ptr = concat %14, %15
-    drop %14
+    %3 monotonic_micros: ptr = closure virtual$Clock_monotonic_micros#15[]
+    %4 lit: i64 = const 0
+    %5 r: ptr = handler std::clock::Clock row 6 state(%4) clauses(%0, %1, %2, %3)
+    handle_push %5
+    %6 next: ptr = closure counter$Counter_next#9[]
+    %7 lit: i64 = const 0
+    %8 r: ptr = handler main::loop_resume_twice::Counter row 6 state(%7) clauses(%6)
+    handle_push %8
+    %30 lit: ptr = const str 2
+    call spin#4(%30) -> b6()
+  b1(%9 v: i64) [handle]:
+    %10 next: ptr = closure counter$Counter_next#9[]
+    %11 lit: i64 = const 0
+    %12 r: ptr = handler main::loop_resume_twice::Counter row 6 state(%11) clauses(%10)
+    handle_push %12
+    %23 next: ptr = closure forward$Counter_next#6[]
+    %24 r: ptr = handler main::loop_resume_twice::Counter row 7 state() clauses(%23)
+    handle_push %24
+    %27 lit: ptr = const str 1
+    call spin#4(%27) -> b5(%9)
+  b2(%13 v: i64, %14 v: i64) [handle]:
+    %15 s: ptr = show %14
+    %16 lit: ptr = const str 0
+    %17 s: ptr = concat %15, %16
     drop %15
-    %17 s: ptr = show %12
-    %18 s: ptr = concat %16, %17
     drop %16
+    %18 s: ptr = show %13
+    %19 s: ptr = concat %17, %18
     drop %17
-    perform std::console::Console.print(%18) -> b3()
-  b3(%19 r: unit) [handle]:
-    %20 box: word = box %19
-    %21 unbox: unit = unbox %20
-    drop %20
+    drop %18
+    perform std::console::Console.print(%19) -> b3()
+  b3(%20 r: unit) [handle]:
+    %21 box: word = box %20
+    %22 unbox: unit = unbox %21
+    drop %21
     handle_pop
-    ret %21
-  b4(%24 v: i64, %25 v: i64) [handle, handle]:
+    ret %22
+  b4(%25 v: i64, %26 v: i64) [handle, handle]:
     handle_pop
-    jump b2(%24, %25)
-  b5(%27 r: i64, %28 v: i64) [handle, handle, handle]:
+    jump b2(%25, %26)
+  b5(%28 r: i64, %29 v: i64) [handle, handle, handle]:
     handle_pop
-    jump b4(%27, %28)
-  b6(%30 r: i64) [handle, handle]:
+    jump b4(%28, %29)
+  b6(%31 r: i64) [handle, handle]:
     handle_pop
-    jump b1(%30)
+    jump b1(%31)
 
 fn $entry#1 top -> unit ; main::loop_resume_twice, frame 1 slots [%1 bool]
   b0():

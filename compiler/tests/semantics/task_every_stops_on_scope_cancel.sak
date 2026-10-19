@@ -1,0 +1,35 @@
+// milestone: M3
+// covers: RFC 0002 §2.8 (`every` ends when its task is cancelled; `Task.cancelled(s)`)
+// Spec: https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-clearinterval
+
+// A sibling fails at 350, so the scope cancels the fiber running `every` and reports
+// `cancelled`; the scope's body still runs to its end, then the failure propagates.
+import std/task.{every}
+
+error Stop
+
+pub fn main() -> Unit ! {Console, Task} {
+  with Clock.virtual() {
+    let r = try {
+      Task.scope(fn(s) {
+        let _ = Task.spawn(s, fn() {
+          every(Duration.millis(100), fn(_) {
+            Console.print("tick at {Clock.monotonic().to_millis()}")
+            true
+          })
+        })
+        let _ = Task.spawn(s, fn() {
+          Clock.sleep(Duration.millis(350))
+          fail Stop
+        })
+        Console.print("cancelled before: {Task.cancelled(s)}")
+        Clock.sleep(Duration.millis(400))
+        Console.print("cancelled after: {Task.cancelled(s)}")
+      })
+      "finished"
+    } catch {
+      Stop => "stopped at {Clock.monotonic().to_millis()}",
+    }
+    Console.print(r)
+  }
+}

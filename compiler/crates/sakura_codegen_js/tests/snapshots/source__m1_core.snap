@@ -53,17 +53,18 @@ test fn test$0$run#_(seed%0: Int) -> Unit {
       let now%14: fn() -> Instant = closure @fixed$Clock_now#_[epoch%3]
       let monotonic%15: fn() -> Duration = closure @fixed$Clock_monotonic#_[]
       let sleep%16: fn(Duration) -> Unit = closure @fixed$Clock_sleep#_[]
-      let clock%4: Handler<Clock> = handler Clock state[] clauses[now%14, monotonic%15, sleep%16]
+      let monotonic_micros%17: fn() -> Int = closure @fixed$Clock_monotonic_micros#_[]
+      let clock%4: Handler<Clock> = handler Clock state[] clauses[now%14, monotonic%15, sleep%16, monotonic_micros%17]
       handle clock%4 {
         let random%5: Handler<Random> = call @seeded#_(seed%0)
         handle random%5 {
           let vars%6: Map<String, String> = call $map_empty()
-          let get%17: fn(String) -> Option<String> = closure @of$Env_get#_[vars%6]
-          let secret%18: fn(String) -> Option<Secret> = closure @of$Env_secret#_[vars%6]
-          let env%7: Handler<Env> = handler Env state[] clauses[get%17, secret%18]
-          let get%19: fn(String) -> Option<String> = closure @host$Env_get#_[]
-          let secret%20: fn(String) -> Option<Secret> = closure @host$Env_secret#_[]
-          let env_host%8: Handler<Env> = handler Env state[] clauses[get%19, secret%20]
+          let get%18: fn(String) -> Option<String> = closure @of$Env_get#_[vars%6]
+          let secret%19: fn(String) -> Option<Secret> = closure @of$Env_secret#_[vars%6]
+          let env%7: Handler<Env> = handler Env state[] clauses[get%18, secret%19]
+          let get%20: fn(String) -> Option<String> = closure @host$Env_get#_[]
+          let secret%21: fn(String) -> Option<Secret> = closure @host$Env_secret#_[]
+          let env_host%8: Handler<Env> = handler Env state[] clauses[get%20, secret%21]
           let env_default%9: Handler<Env> = call $test_env(env_host%8, env%7)
           handle env_default%9 {
             let r%10: Unit = call @test$0#_()
@@ -100,17 +101,18 @@ test fn test$1$run#_(seed%0: Int) -> Unit {
       let now%14: fn() -> Instant = closure @fixed$Clock_now#_[epoch%3]
       let monotonic%15: fn() -> Duration = closure @fixed$Clock_monotonic#_[]
       let sleep%16: fn(Duration) -> Unit = closure @fixed$Clock_sleep#_[]
-      let clock%4: Handler<Clock> = handler Clock state[] clauses[now%14, monotonic%15, sleep%16]
+      let monotonic_micros%17: fn() -> Int = closure @fixed$Clock_monotonic_micros#_[]
+      let clock%4: Handler<Clock> = handler Clock state[] clauses[now%14, monotonic%15, sleep%16, monotonic_micros%17]
       handle clock%4 {
         let random%5: Handler<Random> = call @seeded#_(seed%0)
         handle random%5 {
           let vars%6: Map<String, String> = call $map_empty()
-          let get%17: fn(String) -> Option<String> = closure @of$Env_get#_[vars%6]
-          let secret%18: fn(String) -> Option<Secret> = closure @of$Env_secret#_[vars%6]
-          let env%7: Handler<Env> = handler Env state[] clauses[get%17, secret%18]
-          let get%19: fn(String) -> Option<String> = closure @host$Env_get#_[]
-          let secret%20: fn(String) -> Option<Secret> = closure @host$Env_secret#_[]
-          let env_host%8: Handler<Env> = handler Env state[] clauses[get%19, secret%20]
+          let get%18: fn(String) -> Option<String> = closure @of$Env_get#_[vars%6]
+          let secret%19: fn(String) -> Option<Secret> = closure @of$Env_secret#_[vars%6]
+          let env%7: Handler<Env> = handler Env state[] clauses[get%18, secret%19]
+          let get%20: fn(String) -> Option<String> = closure @host$Env_get#_[]
+          let secret%21: fn(String) -> Option<Secret> = closure @host$Env_secret#_[]
+          let env_host%8: Handler<Env> = handler Env state[] clauses[get%20, secret%21]
           let env_default%9: Handler<Env> = call $test_env(env_host%8, env%7)
           handle env_default%9 {
             let r%10: Unit = call @test$1#_()

@@ -1,0 +1,6 @@
+cancelled before: false
+tick at 100
+tick at 200
+tick at 300
+cancelled after: true
+stopped at 400

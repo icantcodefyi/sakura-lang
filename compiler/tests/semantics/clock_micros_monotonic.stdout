@@ -1,0 +1,4 @@
+non-decreasing: true
+same clock as monotonic: true
+fixed: 0
+virtual: 7000

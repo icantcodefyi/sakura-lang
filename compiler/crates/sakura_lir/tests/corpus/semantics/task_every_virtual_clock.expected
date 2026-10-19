@@ -1,0 +1,7 @@
+ending: ok
+--- stdout
+tick at 100, skipped 0
+tick at 200, skipped 0
+tick at 500, skipped 2
+tick at 600, skipped 0
+stopped at 600

@@ -1154,9 +1154,10 @@ runtime or compiler bug; please report it (`runtime/rt/ABI.md` §13).
 ## D095 `fiber_retired` (runtime defect)
 
 ```text
-On the WASM runtime, `join` was called on a fiber that had already been retired. Defence in
-depth: unreachable from a program that passes the escape check, so this is a runtime or compiler
-bug; please report it (`runtime/rt/ABI.md` §13).
+`Task.join` was called on a fiber that `Task.cancel` had already used up (`join on a cancelled
+fiber`): a cancelled fiber has no result. Cancel or join a fiber, never both. On the WASM runtime
+the code also reports a join of a retired fiber, which a program that passes the escape check
+cannot reach; that is a runtime or compiler bug, please report it (`runtime/rt/ABI.md` §13).
 ```
 
 ## D096 `heap_exhausted` (runtime defect)

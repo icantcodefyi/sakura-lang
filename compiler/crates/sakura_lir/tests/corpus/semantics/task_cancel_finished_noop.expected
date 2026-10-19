@@ -1,0 +1,5 @@
+ending: ok
+--- stdout
+child ran
+cancelled twice
+scope cancelling: false

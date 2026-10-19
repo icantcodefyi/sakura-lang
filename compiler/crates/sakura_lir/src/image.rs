@@ -108,6 +108,9 @@ pub fn native_slots(name: &str) -> (Vec<Slot>, Vec<Slot>) {
         "rt_code_task_all" => (vec![w, i, w, w, i, i, w], vec![w]),
         "rt_code_task_race" => (vec![w, i, w, w, i, i], vec![w]),
         "rt_code_task_yield_now" => (vec![w, i], vec![w]),
+        // `cancel`: the fiber (taken at once), then the fiber's task id while it unwinds.
+        "rt_code_task_cancel" => (vec![w, i, w, i], vec![w]),
+        "rt_code_task_cancelled" => (vec![w, i, w], vec![w]),
         // The clause, the activation, up to four arguments, the host's session, a flag;
         // captures the instance's handle, the operation and its arity.
         "rt_code_js_clause" => (vec![w, i, w, w, w, w, i, i], vec![w, i, i]),

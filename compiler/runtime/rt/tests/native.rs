@@ -45,6 +45,9 @@ impl Host for TestHost {
     fn clock_monotonic_ms(&mut self) -> i64 {
         0
     }
+    fn clock_monotonic_us(&mut self) -> i64 {
+        0
+    }
     fn clock_sleep_ms(&mut self, _request: u32, _ms: i64) {}
     fn abort(&mut self, _request: u32) {}
     fn random_int(&mut self, lo: i64, _hi: i64) -> i64 {

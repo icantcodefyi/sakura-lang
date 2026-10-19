@@ -1,0 +1,5 @@
+ending: ok
+--- stdout
+child waits
+cancelled at 10
+done

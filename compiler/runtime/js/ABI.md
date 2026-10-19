@@ -308,7 +308,7 @@ caller. `std/test`'s `expect_defect` is built on it.
 ### Structured concurrency (design §8.6)
 
 `task_host()` and `task_deterministic(seed)` are `std::task::Task` handlers (ops `scope`,
-`spawn`, `join`, `all`, `race`, `yield_now`). A fiber is a child task (`runTask(body, [], p,
+`spawn`, `join`, `all`, `race`, `yield_now`, `cancel`, `cancelled`). A fiber is a child task (`runTask(body, [], p,
 task)`) under the performer's handlers; JS fibers interleave only where one suspends.
 `cancelTask(t)` marks the task and its descendants: a cancelled task stops at its next effect
 operation (`find` throws a cancel signal) or suspension, and a suspended one is woken at once
@@ -317,7 +317,11 @@ finalizers have run when `cancelTask` returns; the task ends `{ kind: "cancelled
 and a scope cancel the other children on the first failure or defect and propagate it; `race`
 propagates the first outcome and cancels the rest; `scope` joins every child before returning
 (a child's failure surfaces at its `join`, or at scope end if never joined) and cancels them if
-its body fails. `Task.deterministic` starts children in a seeded order and `yield_now` does not
+its body fails. `cancel(f)` (RFC 0002 §2.8) marks the fiber used up, so a later `join` is the
+defect `D095` (`join on a cancelled fiber`); a running fiber is also marked joined, so its scope
+ignores its `cancelled` outcome, and is cancelled with `cancelTask` and awaited; a finished one
+keeps its outcome. `cancelled(s)` is whether a child of `s` has failed (the scope is cancelling
+the others). `Task.deterministic` starts children in a seeded order and `yield_now` does not
 suspend; `timeout` is std code over `race`. `clock_virtual_sleep(now, ms, $ctx, $k)` (behind
 `Clock.virtual`) suspends until no other task can run and then wakes sleepers in order of
 `now + ms` (ties first come, first served), returning that time, so under virtual time a

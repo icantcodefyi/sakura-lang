@@ -648,11 +648,11 @@ function versioned(v) {
 }
 
 test("the host refuses another MAJOR or a newer MINOR (AbiMismatch, reported as V8003) and accepts an older MINOR", async () => {
-  assert.equal(ABI_VERSION, 0x010400);
-  for (const v of [0x010500, 0x020000, 0x000400]) {
+  assert.equal(ABI_VERSION, 0x010500);
+  for (const v of [0x010600, 0x020000, 0x000500]) {
     await assert.rejects(new Host().instantiate(versioned(v)), AbiMismatch, `0x${v.toString(16)}`);
   }
-  for (const v of [0x010400, 0x010200, 0x010100, 0x010000, 0x010401]) {
+  for (const v of [0x010500, 0x010400, 0x010200, 0x010100, 0x010000, 0x010501]) {
     await new Host().instantiate(versioned(v));
   }
 });

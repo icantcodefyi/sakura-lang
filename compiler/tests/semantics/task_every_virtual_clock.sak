@@ -1,0 +1,19 @@
+// milestone: M3
+// covers: RFC 0002 §2.8 (`std/task.every`: serialized ticks, skipped ticks counted, stop on `false`)
+// Spec: https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-setinterval
+
+// The tick at 200 runs for 250 ms, so the ticks due at 300 and 400 are skipped and the next
+// one, at 500, is told so; the body stops the loop at 600.
+import std/task.{every}
+
+pub fn main() -> Unit ! {Console, Task} {
+  with Clock.virtual() {
+    every(Duration.millis(100), fn(skipped) {
+      let t = Clock.monotonic().to_millis()
+      Console.print("tick at {t}, skipped {skipped}")
+      if t == 200 { Clock.sleep(Duration.millis(250)) }
+      t < 600
+    })
+    Console.print("stopped at {Clock.monotonic().to_millis()}")
+  }
+}
