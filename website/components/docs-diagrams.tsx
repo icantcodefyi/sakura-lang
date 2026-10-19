@@ -7,10 +7,12 @@
 // `effect` marks authority, `ok` a good end, `fail` a failure or defect, `exp` an experimental
 // path (dashed). Every outcome is also said in words in its note.
 type Tone = "effect" | "ok" | "fail" | "exp";
-// [column, row]; a half column centres a box between two.
-type At = [number, number];
+// [column, row, span]; a half column centres a box between two, and a span (default 1) widens a
+// box over that many columns.
+type At = [col: number, row: number, span?: number];
 type Node = {
   id: string;
+  /** Wrapped by `wrap`; a no-break space (\u00a0) keeps a group such as `{ id }` whole. */
   code: string;
   note: string;
   tone?: Tone;
@@ -83,7 +85,7 @@ const DIAGRAMS = {
       {
         id: "wasm",
         code: "WebAssembly",
-        note: "complete at M4; runs on Node",
+        note: "complete; runs on Node",
         tone: "ok",
         wide: [3, 2],
         narrow: [1, 6],
@@ -170,7 +172,7 @@ const DIAGRAMS = {
       },
       {
         id: "catch",
-        code: "catch { NotFound { id } => … }",
+        code: "catch { NotFound {\u00a0id\u00a0} => … }",
         note: "a matching arm recovers; the tag leaves the row",
         tone: "ok",
         wide: [1, 0],
@@ -226,7 +228,7 @@ const DIAGRAMS = {
         code: "Counter.next()",
         note: "the body performs an operation",
         wide: [0, 0],
-        narrow: [0, 0],
+        narrow: [0, 0, 2],
       },
       {
         id: "with",
@@ -234,14 +236,14 @@ const DIAGRAMS = {
         note: "the innermost Counter handler takes it",
         tone: "effect",
         wide: [1, 0],
-        narrow: [0, 1],
+        narrow: [0, 1, 2],
       },
       {
         id: "clause",
         code: "fn next()",
         note: "its clause runs in place of the call",
         wide: [2, 0],
-        narrow: [0, 2],
+        narrow: [0, 2, 2],
       },
       {
         id: "result",
@@ -624,19 +626,21 @@ const LAYOUT = {
 } as const;
 type LayoutName = keyof typeof LAYOUT;
 const PAD = { x: 11, y: 10 };
-const CODE = { size: 14, line: 19, em: 0.62 }; // Atkinson Hyperlegible Mono advance
+const CODE = { size: 14, line: 19, em: 0.632 }; // Atkinson Hyperlegible Mono advance, measured
 const NOTE = { size: 13.5, line: 18, em: 0.52 }; // a slightly generous average for the body face
 const SECTION = 24; // room above a row that starts a section
 const LANE = 26; // room outside the grid for edges that loop back
 
 /**
  * Greedy word wrap by an estimated character budget. A word too long for a line breaks after a
- * `(`, `.` or `,` inside it, as code would; otherwise words stay whole.
+ * `(`, `.` or `,` inside it, as code would, or before the `(` when `name(` alone is too long, so
+ * an identifier is never split; otherwise words stay whole.
  */
 function wrap(text: string, chars: number) {
   const lines: string[] = [];
   for (const word of text.split(" ")) {
-    const parts = word.length > chars ? word.split(/(?<=[(.,])/) : [word];
+    let parts = word.length > chars ? word.split(/(?<=[(.,])/) : [word];
+    if (parts.some((p) => p.length > chars)) parts = word.split(/(?<=[.,])|(?=\()/);
     parts.forEach((part, i) => {
       const last = lines.at(-1);
       const glue = i === 0 ? " " : "";
@@ -662,13 +666,14 @@ function layout(d: Diagram, which: LayoutName) {
   const flow = d.flow?.[which] ?? (which === "wide" ? "right" : "down");
   const at = (n: Node) => n[which];
   const back = d.edges.some(([a, b]) => isBack(at(find(d, a)), at(find(d, b)), flow));
-  const cols = Math.max(...d.nodes.map((n) => at(n)[0])) + 1;
+  const span = (n: Node) => at(n)[2] ?? 1;
+  const cols = Math.max(...d.nodes.map((n) => at(n)[0] + span(n)));
   const w = (width - (back && flow === "down" ? LANE : 0) - (cols - 1) * colGap) / cols;
-  const inner = w - 2 * PAD.x;
+  const boxW = (n: Node) => span(n) * w + (span(n) - 1) * colGap;
   const wrapped = d.nodes.map((n) => ({
     n,
-    codeLines: wrap(n.code, Math.floor(inner / (CODE.size * CODE.em))),
-    noteLines: wrap(n.note, Math.floor(inner / (NOTE.size * NOTE.em))),
+    codeLines: wrap(n.code, Math.floor((boxW(n) - 2 * PAD.x) / (CODE.size * CODE.em))),
+    noteLines: wrap(n.note, Math.floor((boxW(n) - 2 * PAD.x) / (NOTE.size * NOTE.em))),
   }));
   const need = (b: (typeof wrapped)[number]) =>
     2 * PAD.y + b.codeLines.length * CODE.line + 4 + b.noteLines.length * NOTE.line;
@@ -688,12 +693,12 @@ function layout(d: Diagram, which: LayoutName) {
     const whole = Number.isInteger(row);
     const h = whole ? rowH[row] : need(b);
     const lo = Math.floor(row);
-    const span = whole ? 0 : tops[lo + 1] + rowH[lo + 1] - tops[lo];
+    const rowSpan = whole ? 0 : tops[lo + 1] + rowH[lo + 1] - tops[lo];
     return {
       ...b.n,
       x: col * (w + colGap),
-      y: whole ? tops[row] : tops[lo] + (span - h) / 2,
-      w,
+      y: whole ? tops[row] : tops[lo] + (rowSpan - h) / 2,
+      w: boxW(b.n),
       h,
       codeLines: b.codeLines,
       noteLines: b.noteLines,
@@ -929,10 +934,12 @@ export const CassetteFlow = () => <Figure name="CassetteFlow" />;
 
 /**
  * The diagram in words: each box in order, then where its arrows go when that is not simply the
- * next box, or that its path ends. `code` formats a code label (backticks for Markdown, nothing
+ * next box, or that its path ends. `format` formats a code label (backticks for Markdown, nothing
  * for the SVG's desc).
  */
-function steps(d: Diagram, code = (s: string) => s) {
+function steps(d: Diagram, format = (s: string) => s) {
+  // No-break spaces only steer the SVG's wrapping; the text gets plain spaces.
+  const code = (s: string) => format(s.replaceAll("\u00a0", " "));
   return d.nodes.map((n, i) => {
     const to = d.edges.filter(([a]) => a === n.id).map(([, b]) => b);
     const then = !to.length
