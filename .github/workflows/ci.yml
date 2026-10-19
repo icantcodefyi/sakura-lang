@@ -202,6 +202,112 @@ jobs:
         if: matrix.checks
         run: cargo run -p agent_docs --locked -- --check
 
+  msrv:
+    name: Rust MSRV
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: compiler
+    env:
+      Z3_VERSION: "5.3.1"
+      CVC5_VERSION: "1.4.2"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Read and install declared MSRV
+        run: |
+          msrv=$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["workspace"]["package"]["rust-version"])')
+          rustup toolchain install "$msrv" --profile minimal --target wasm32-unknown-unknown
+          echo "MSRV=$msrv" >> "$GITHUB_ENV"
+          echo "RUSTUP_TOOLCHAIN=$msrv" >> "$GITHUB_ENV"
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: compiler
+          shared-key: msrv-${{ env.MSRV }}
+          key: wasm32-unknown-unknown
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      # Official release archives; SHA-256 values also match GitHub's asset digests.
+      - name: Select pinned solver archives
+        id: solvers
+        shell: bash
+        run: |
+          case "$RUNNER_OS-$RUNNER_ARCH" in
+            Linux-X64)
+              z3_platform=x64-glibc-2.39
+              z3_sha256=acca9625e8cc8edeb9647b653a1bd696544ddeb5d1c2970a4576734a0c175b40
+              cvc5_platform=Linux-x86_64
+              cvc5_sha256=7eb18f8c814c36a46c5a7d003983e9cfbc4b0a9828d6dd596239291bd4cc61d8
+              ;;
+            *) echo "Unsupported solver platform: $RUNNER_OS-$RUNNER_ARCH" >&2; exit 1 ;;
+          esac
+          {
+            echo "z3_archive=z3-${Z3_VERSION}-${z3_platform}"
+            echo "z3_sha256=$z3_sha256"
+            echo "cvc5_archive=cvc5-${cvc5_platform}-static"
+            echo "cvc5_sha256=$cvc5_sha256"
+          } >> "$GITHUB_OUTPUT"
+      - name: Cache Z3
+        id: cache-z3
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/solvers/z3
+          key: z3-${{ env.Z3_VERSION }}-${{ runner.os }}-${{ runner.arch }}
+      - name: Cache cvc5
+        id: cache-cvc5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/solvers/cvc5
+          key: cvc5-${{ env.CVC5_VERSION }}-${{ runner.os }}-${{ runner.arch }}
+      - name: Install pinned Z3
+        if: steps.cache-z3.outputs.cache-hit != 'true'
+        shell: bash
+        env:
+          ARCHIVE: ${{ steps.solvers.outputs.z3_archive }}
+          SHA256: ${{ steps.solvers.outputs.z3_sha256 }}
+        run: |
+          archive="$RUNNER_TEMP/$ARCHIVE.zip"
+          curl --fail --location --silent --show-error --retry 3 \
+            "https://github.com/Z3Prover/z3/releases/download/z3-${Z3_VERSION}/${ARCHIVE}.zip" \
+            --output "$archive"
+          echo "$SHA256  $archive" | shasum -a 256 --check
+          unzip -q "$archive" -d "$RUNNER_TEMP/z3-unpack"
+          mkdir -p "$RUNNER_TEMP/solvers"
+          mv "$RUNNER_TEMP/z3-unpack/$ARCHIVE" "$RUNNER_TEMP/solvers/z3"
+      - name: Install pinned cvc5
+        if: steps.cache-cvc5.outputs.cache-hit != 'true'
+        shell: bash
+        env:
+          ARCHIVE: ${{ steps.solvers.outputs.cvc5_archive }}
+          SHA256: ${{ steps.solvers.outputs.cvc5_sha256 }}
+        run: |
+          archive="$RUNNER_TEMP/$ARCHIVE.zip"
+          curl --fail --location --silent --show-error --retry 3 \
+            "https://github.com/cvc5/cvc5/releases/download/cvc5-${CVC5_VERSION}/${ARCHIVE}.zip" \
+            --output "$archive"
+          echo "$SHA256  $archive" | shasum -a 256 --check
+          unzip -q "$archive" -d "$RUNNER_TEMP/cvc5-unpack"
+          mkdir -p "$RUNNER_TEMP/solvers"
+          mv "$RUNNER_TEMP/cvc5-unpack/$ARCHIVE" "$RUNNER_TEMP/solvers/cvc5"
+      - name: Put solvers on PATH
+        shell: bash
+        run: |
+          echo "$RUNNER_TEMP/solvers/z3/bin" >> "$GITHUB_PATH"
+          echo "$RUNNER_TEMP/solvers/cvc5/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/solvers/z3/bin/z3" --version
+          "$RUNNER_TEMP/solvers/cvc5/bin/cvc5" --version
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
+        with:
+          tool: cargo-nextest@0.9.148
+      - name: Check workspace on MSRV (RFC 0001)
+        run: cargo "+$MSRV" check --workspace --all-targets --locked
+      - name: Test workspace on MSRV
+        run: cargo "+$MSRV" nextest run --workspace --locked -E 'not (package(=sakura_cli) & binary(=parity))'
+
   native:
     name: Native (${{ matrix.os }})
     strategy:
@@ -410,7 +516,7 @@ jobs:
     name: ci-required
     if: always()
     # The rust result requires every matrix child, including both partitions on each OS.
-    needs: [website, rust, native, parity, vscode, tree-sitter]
+    needs: [website, rust, msrv, native, parity, vscode, tree-sitter]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -418,6 +524,7 @@ jobs:
         env:
           WEBSITE_RESULT: ${{ needs.website.result }}
           RUST_RESULT: ${{ needs.rust.result }}
+          MSRV_RESULT: ${{ needs.msrv.result }}
           NATIVE_RESULT: ${{ needs.native.result }}
           PARITY_RESULT: ${{ needs.parity.result }}
           VSCODE_RESULT: ${{ needs.vscode.result }}
@@ -425,6 +532,7 @@ jobs:
         run: |
           test "$WEBSITE_RESULT" = success
           test "$RUST_RESULT" = success
+          test "$MSRV_RESULT" = success
           test "$NATIVE_RESULT" = success
           test "$PARITY_RESULT" = success
           test "$VSCODE_RESULT" = success

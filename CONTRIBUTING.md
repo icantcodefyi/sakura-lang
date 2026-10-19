@@ -130,7 +130,7 @@ effects, or grant capabilities merely to silence a compiler error.
 ## Automation and bootstrap policy
 
 CI runs on pushes to `main`, PRs, and merge groups. `ci-required` aggregates
-website, Rust, native, parity, and VS Code checks. The Rust jobs run in `compiler/`
+website, Rust, MSRV, native, parity, Tree-sitter, and VS Code checks. The Rust jobs run in `compiler/`
 using its pinned toolchain: fmt, clippy, workspace tests with cargo-nextest,
 `cargo test --workspace --doc --locked`, and the agent-doc freshness check.
 The nextest filter excludes only `sakura_cli::parity`: the required Parity matrix
@@ -154,7 +154,15 @@ website's native Bun ecosystem weekly. GitHub supports the text `bun.lock` file
 ([supported ecosystems](https://docs.github.com/en/code-security/reference/supply-chain-security/supported-ecosystems-and-repositories)).
 Cargo dependency updates are not yet configured in `.github/dependabot.yml`.
 When added, they must target `/compiler`, where the manifest and lockfile live.
-Do not assume the pinned development toolchain establishes a separately tested MSRV.
+The required `msrv` job reads `workspace.package.rust-version` from
+`compiler/Cargo.toml`, explicitly installs that toolchain and the WASM target,
+and runs `cargo +<msrv> check --workspace --all-targets --locked` plus workspace
+nextest tests on one public Linux runner. It excludes the same parity target as
+the Rust jobs; the required Parity matrix still tests both backends. This job is
+separate from the pinned development-toolchain checks and is required by
+`ci-required`. To reproduce it locally, install the declared toolchain, the WASM
+target, Node 26, and the pinned solvers used by CI, then run those commands from
+`compiler/`.
 
 ## License for contributions
 

@@ -24,8 +24,9 @@ Internal compiler crates remain unpublished implementation details until an SDK
 is deliberately designed; sharing a repository does not make their APIs stable.
 
 The development toolchain is pinned in `compiler/rust-toolchain.toml`, and
-`compiler/Cargo.toml` declares `rust-version = "1.99"`. Separately declare
-and test the minimum supported Rust version (MSRV); that validation is not established today.
+the minimum supported Rust version (MSRV) is `workspace.package.rust-version`
+in `compiler/Cargo.toml`. The required `msrv` CI job installs that toolchain,
+checks all workspace targets with the lockfile, and runs workspace tests on Linux.
 MSRV increases may occur in pre-1.0 minor releases and must be announced in notes.
 Supported host/target and OS/ABI minimums will be stated only after native smoke
 tests exist; there are no supported target guarantees yet.

@@ -18,7 +18,8 @@ Sakura Lang is an agent-first language in **pre-alpha / design phase**. Read
   `cargo fmt --all -- --check`,
   `cargo clippy --workspace --all-targets --locked -- -D warnings`, and
   `cargo test --workspace --locked`. These are current gates; report their results.
-  The manifest declares `rust-version`; a separately tested MSRV is not established.
+  The required MSRV CI job reads `workspace.package.rust-version` from the manifest
+  and checks all workspace targets and runs workspace tests on that toolchain.
 - Map checks to changes: docs → links/examples; website → lint/build and affected
   UI; workflows → YAML/actionlint; compiler → targeted regression and conformance
   cases plus workspace checks. Require deterministic output, malformed-input
