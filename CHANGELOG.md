@@ -28,6 +28,9 @@ Compare the release tag with main when identifying changes not in that preview.
 - Exhaustiveness checking costs each `match` arm the earlier arms with the same head constructor,
   not every earlier arm (design §17.200 (8)): a `match` of 4,000 guarded rows alternating with
   4,000 literal rows checks in about 20 ms instead of 8.5 s. Diagnostics are unchanged.
+- The exhaustiveness index recurses into every column a `match` specialises (design §17.200 (8)):
+  8,000 arms under one constructor (`Some(1)`, `Some(2)`, …), over a tuple of literals or over
+  nested constructors check in 30–45 ms instead of 1.7–4.2 s. Diagnostics are unchanged.
 - The JS and WASM hosts answer an OS error by its class, as the native host does (design
   §17.229 (5)): a permission error is `Err("permission denied")`, not Node's `EACCES:
   permission denied, open '…'`; likewise `already exists`, `is a directory` and `not a

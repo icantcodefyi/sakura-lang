@@ -627,3 +627,41 @@ fn wide_match_coverage_is_linear() {
         "checking {PAIRS} pairs took {elapsed:?}"
     );
 }
+
+/// The index recurses into every specialised column (design §17.200 (8)): arms under one
+/// constructor, tuples of literals and nested constructors each cost their own rows. At 4,000
+/// arms each shape took 0.4–1.1 s in a release build when only the first column was indexed;
+/// the three took 44 s here at 16,000 arms, against 0.24 s.
+#[test]
+fn deep_match_coverage_is_linear() {
+    const ARMS: usize = 16_000;
+    fn src(params: &str, scrutinee: &str, arm: impl Fn(usize) -> String, last: &str) -> String {
+        let mut s = format!("fn f({params}) -> Int {{\n  match {scrutinee} {{\n");
+        for i in 0..ARMS {
+            s += &format!("    {} => {i},\n", arm(i));
+        }
+        s + &format!("    {last} => 0,\n  }}\n}}\n")
+    }
+    let started = std::time::Instant::now();
+    let one = src("x: Option<Int>", "x", |i| format!("Some({i})"), "None");
+    assert_eq!(check(&one).codes(), ["V4001"]);
+    let nested = src(
+        "x: Option<Option<Int>>",
+        "x",
+        |i| format!("Some(Some({i}))"),
+        "None",
+    );
+    assert_eq!(check(&nested).codes(), ["V4001"]);
+    let tuple = src(
+        "a: Int, b: Int",
+        "(a, b)",
+        |i| format!("({}, {})", i / 8, i % 8),
+        "(0, 0)",
+    );
+    assert_eq!(check(&tuple).codes(), ["V4002", "V4001"]);
+    let elapsed = started.elapsed();
+    assert!(
+        elapsed.as_secs() < 10,
+        "checking three matches of {ARMS} arms took {elapsed:?}"
+    );
+}

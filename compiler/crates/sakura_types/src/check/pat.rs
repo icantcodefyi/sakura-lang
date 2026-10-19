@@ -304,7 +304,7 @@ impl Checker<'_> {
             let mut unreachable = Vec::new();
             for (pat, guarded, id) in pats {
                 let catch_all = hidden && matches!(pat, exhaust::Pat::Wild);
-                if u.useful_row(&rows, &pat, ty).is_none() && !u.exhausted && !catch_all {
+                if u.useful_row(&mut rows, &pat, ty).is_none() && !u.exhausted && !catch_all {
                     unreachable.push(id);
                 }
                 if !guarded {

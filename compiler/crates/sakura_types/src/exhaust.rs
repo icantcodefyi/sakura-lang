@@ -43,40 +43,22 @@ pub trait Space {
     fn fields(&mut self, ty: TypeId, ctor: &Ctor) -> Vec<TypeId>;
 }
 
-/// A one-column matrix of a `match`'s arms, indexed by head constructor, so that a query reads
-/// the rows that can match it instead of re-specialising every row (design §17.200 (8)). Row order
-/// and repeats do not change usefulness, its witnesses or its step count, so neither is kept.
+/// A `match`'s rows, for usefulness queries. Wraps the matrix's root and the size of its cached
+/// specialisations, which [`Self::push`] drops past [`CACHE_CELLS`].
 #[derive(Default)]
 pub struct Rows {
-    wild: bool,
-    by_ctor: HashMap<Ctor, Vec<Vec<Pat>>>,
+    root: Matrix,
+    cached: usize,
 }
 
 impl Rows {
     pub fn push(&mut self, p: Pat) {
-        match p {
-            Pat::Wild => self.wild = true,
-            Pat::Ctor(c, args) => self.by_ctor.entry(c).or_default().push(args),
-            Pat::Or(alts) => alts.into_iter().for_each(|a| self.push(a)),
+        self.root.push(vec![p], &mut self.cached);
+        if self.cached > CACHE_CELLS {
+            self.root.kids.clear();
+            self.root.default = None;
+            self.cached = 0;
         }
-    }
-
-    /// The rows of the matrix specialised to `c`, as `specialize` makes them.
-    // ponytail: only the first column is indexed; many arms under one constructor (`Some(1)`,
-    // `Some(2)`, … or tuples) still re-specialise those rows per arm. Index the next column if a
-    // program needs it.
-    fn specialize(&self, c: &Ctor, arity: usize) -> Vec<Vec<Pat>> {
-        let mut out: Vec<Vec<Pat>> = self
-            .by_ctor
-            .get(c)
-            .into_iter()
-            .flatten()
-            .map(|args| pad(args, arity))
-            .collect();
-        if self.wild {
-            out.push(vec![Pat::Wild; arity]);
-        }
-        out
     }
 }
 
@@ -86,6 +68,141 @@ impl FromIterator<Pat> for Rows {
         iter.into_iter().for_each(|p| rows.push(p));
         rows
     }
+}
+
+/// A pattern matrix indexed by its first column, whose specialisations are built on first use and
+/// kept, so a query at any depth reads only the rows that can match it there instead of
+/// re-specialising every row per arm (design §17.200 (8)). Row order and repeats change neither
+/// usefulness, its witnesses nor its step count, so neither is kept.
+// ponytail: wildcard rows are copied into every specialisation, so many rows like `(_, k)` mixed
+// with `(k, _)` still cost each arm the wildcard rows. Share them by reference if a program needs it.
+#[derive(Default)]
+struct Matrix {
+    /// Holds a row of width 0.
+    end: bool,
+    /// Whole rows, by head constructor; the keys are the matrix's head constructors.
+    by_ctor: HashMap<Ctor, Vec<Vec<Pat>>>,
+    /// The tails of the rows with a wildcard head: the default matrix's rows.
+    wild: Vec<Vec<Pat>>,
+    /// Cached specialisations, with each constructor's arity, and the default matrix.
+    kids: HashMap<Ctor, (usize, Matrix)>,
+    default: Option<Box<Matrix>>,
+}
+
+/// Cached specialisations past this many cells (patterns plus one per row) are dropped, so a
+/// pattern set that exhausts [`BUDGET`] holds no more memory than one query's path needs.
+const CACHE_CELLS: usize = 1 << 20;
+
+impl Matrix {
+    /// Adds `row`, and its specialisations to the cached matrices, counted in `cached`.
+    fn push(&mut self, mut row: Vec<Pat>, cached: &mut usize) {
+        let Some(head) = row.first() else {
+            self.end = true;
+            return;
+        };
+        match head {
+            Pat::Or(alts) => {
+                for alt in alts.clone() {
+                    let mut r = row.clone();
+                    r[0] = alt;
+                    self.push(r, cached);
+                }
+            }
+            Pat::Wild => {
+                let rest = row.split_off(1);
+                for (arity, kid) in self.kids.values_mut() {
+                    let mut r = vec![Pat::Wild; *arity];
+                    r.extend_from_slice(&rest);
+                    *cached += r.len() + 1;
+                    kid.push(r, cached);
+                }
+                if let Some(d) = &mut self.default {
+                    *cached += rest.len() + 1;
+                    d.push(rest.clone(), cached);
+                }
+                self.wild.push(rest);
+            }
+            Pat::Ctor(c, _) => {
+                if let Some((arity, kid)) = self.kids.get_mut(c) {
+                    let r = specialize_row(&row, *arity);
+                    *cached += r.len() + 1;
+                    kid.push(r, cached);
+                }
+                self.by_ctor.entry(c.clone()).or_default().push(row);
+            }
+        }
+    }
+
+    /// The matrix specialised to `c`, built from the index.
+    fn specialize(&self, c: &Ctor, arity: usize) -> (Matrix, usize) {
+        let mut m = Matrix::default();
+        let mut cells = 0;
+        for r in self.by_ctor.get(c).into_iter().flatten() {
+            let r = specialize_row(r, arity);
+            cells += r.len() + 1;
+            m.push(r, &mut 0);
+        }
+        for rest in &self.wild {
+            let mut r = vec![Pat::Wild; arity];
+            r.extend_from_slice(rest);
+            cells += r.len() + 1;
+            m.push(r, &mut 0);
+        }
+        (m, cells)
+    }
+
+    /// Calls `f` on the matrix specialised to `c`, cached unless the cache is full; a matrix built
+    /// past a full cache is dropped after `f`, so nothing under it is cached or counted.
+    fn with_kid<R>(
+        &mut self,
+        c: &Ctor,
+        arity: usize,
+        cached: &mut usize,
+        f: impl FnOnce(&mut Matrix, &mut usize) -> R,
+    ) -> R {
+        if let Some((a, kid)) = self.kids.get_mut(c) {
+            debug_assert_eq!(*a, arity);
+            return f(kid, cached);
+        }
+        let (mut kid, cells) = self.specialize(c, arity);
+        if *cached + cells > CACHE_CELLS {
+            return f(&mut kid, &mut CACHE_CELLS.clone());
+        }
+        *cached += cells;
+        let (_, kid) = self.kids.entry(c.clone()).or_insert((arity, kid));
+        f(kid, cached)
+    }
+
+    /// Calls `f` on the default matrix, cached unless the cache is full.
+    fn with_default<R>(
+        &mut self,
+        cached: &mut usize,
+        f: impl FnOnce(&mut Matrix, &mut usize) -> R,
+    ) -> R {
+        if let Some(d) = &mut self.default {
+            return f(d, cached);
+        }
+        let mut d = Matrix::default();
+        let mut cells = 0;
+        for r in &self.wild {
+            cells += r.len() + 1;
+            d.push(r.clone(), &mut 0);
+        }
+        if *cached + cells > CACHE_CELLS {
+            return f(&mut d, &mut CACHE_CELLS.clone());
+        }
+        *cached += cells;
+        f(self.default.insert(Box::new(d)), cached)
+    }
+}
+
+fn specialize_row(r: &[Pat], arity: usize) -> Vec<Pat> {
+    let Pat::Ctor(_, args) = &r[0] else {
+        unreachable!("indexed under a constructor")
+    };
+    let mut v = pad(args, arity);
+    v.extend_from_slice(&r[1..]);
+    v
 }
 
 /// Exponential pattern sets are cut off after this many steps (reported as "unknown").
@@ -106,111 +223,74 @@ impl<'a, S: Space> Usefulness<'a, S> {
         }
     }
 
-    /// Is `q` useful with respect to the one-column `rows`? Returns a witness if so. The first
-    /// step of [`Self::useful`], reading `rows`' index; the steps are counted as there.
-    pub fn useful_row(&mut self, rows: &Rows, q: &Pat, ty: TypeId) -> Option<Witness> {
-        self.steps += 1;
-        if self.steps > BUDGET {
-            self.exhausted = true;
-            return None;
-        }
-        match q {
-            Pat::Or(alts) => alts.iter().find_map(|alt| self.useful_row(rows, alt, ty)),
-            Pat::Ctor(c, args) => {
-                let sub = self.space.fields(ty, c);
-                let arity = sub.len();
-                let srows = rows.specialize(c, arity);
-                let w = self.useful(&srows, &pad(args, arity), &sub)?;
-                Some(Witness::Ctor(c.clone(), w))
-            }
-            Pat::Wild => match self.space.ctors(ty) {
-                Some(all) if all.iter().all(|c| rows.by_ctor.contains_key(c)) => {
-                    for c in all {
-                        let sub = self.space.fields(ty, &c);
-                        let srows = rows.specialize(&c, sub.len());
-                        if let Some(w) = self.useful(&srows, &vec![Pat::Wild; sub.len()], &sub) {
-                            return Some(Witness::Ctor(c, w));
-                        }
-                    }
-                    None
-                }
-                all => {
-                    let drows = if rows.wild {
-                        vec![Vec::new()]
-                    } else {
-                        Vec::new()
-                    };
-                    self.useful(&drows, &[], &[])?;
-                    let missing =
-                        all.and_then(|all| all.into_iter().find(|c| !rows.by_ctor.contains_key(c)));
-                    Some(match missing {
-                        Some(c) => {
-                            let arity = self.space.fields(ty, &c).len();
-                            Witness::Ctor(c, vec![Witness::Wild; arity])
-                        }
-                        None => Witness::Wild,
-                    })
-                }
-            },
-        }
+    /// Is `q` useful with respect to the one-column `rows`? Returns a witness if so.
+    pub fn useful_row(&mut self, rows: &mut Rows, q: &Pat, ty: TypeId) -> Option<Witness> {
+        let Rows { root, cached } = rows;
+        let mut w = self.useful(root, cached, std::slice::from_ref(q), &[ty])?;
+        w.pop()
     }
 
     /// Is `q` useful with respect to `rows`? Returns a witness vector if so.
-    fn useful(&mut self, rows: &[Vec<Pat>], q: &[Pat], tys: &[TypeId]) -> Option<Vec<Witness>> {
+    fn useful(
+        &mut self,
+        rows: &mut Matrix,
+        cached: &mut usize,
+        q: &[Pat],
+        tys: &[TypeId],
+    ) -> Option<Vec<Witness>> {
         self.steps += 1;
         if self.steps > BUDGET {
             self.exhausted = true;
             return None;
         }
         let Some(head) = q.first() else {
-            return rows.is_empty().then(Vec::new);
+            return (!rows.end).then(Vec::new);
         };
-        let rows = expand_or(rows);
         match head {
             Pat::Or(alts) => alts.iter().find_map(|alt| {
                 let mut q2 = q.to_vec();
                 q2[0] = alt.clone();
-                self.useful(&rows, &q2, tys)
+                self.useful(rows, cached, &q2, tys)
             }),
             Pat::Ctor(c, args) => {
                 let sub = self.space.fields(tys[0], c);
                 let arity = sub.len();
-                let srows = specialize(&rows, c, arity);
                 let mut sq: Vec<Pat> = pad(args, arity);
                 sq.extend_from_slice(&q[1..]);
                 let mut stys = sub;
                 stys.extend_from_slice(&tys[1..]);
-                self.useful(&srows, &sq, &stys)
-                    .map(|w| rebuild(c.clone(), arity, w))
+                rows.with_kid(c, arity, cached, |srows, cached| {
+                    self.useful(srows, cached, &sq, &stys)
+                })
+                .map(|w| rebuild(c.clone(), arity, w))
             }
             Pat::Wild => {
-                let heads: Vec<Ctor> = head_ctors(&rows);
                 let all = self.space.ctors(tys[0]);
                 match all {
-                    Some(all) if all.iter().all(|c| heads.contains(c)) => {
+                    Some(all) if all.iter().all(|c| rows.by_ctor.contains_key(c)) => {
                         for c in all {
                             let sub = self.space.fields(tys[0], &c);
                             let arity = sub.len();
-                            let srows = specialize(&rows, &c, arity);
                             let mut sq = vec![Pat::Wild; arity];
                             sq.extend_from_slice(&q[1..]);
                             let mut stys = sub;
                             stys.extend_from_slice(&tys[1..]);
-                            if let Some(w) = self.useful(&srows, &sq, &stys) {
+                            let w = rows.with_kid(&c, arity, cached, |srows, cached| {
+                                self.useful(srows, cached, &sq, &stys)
+                            });
+                            if let Some(w) = w {
                                 return Some(rebuild(c, arity, w));
                             }
                         }
                         None
                     }
                     all => {
-                        let drows: Vec<Vec<Pat>> = rows
-                            .iter()
-                            .filter(|r| r[0] == Pat::Wild)
-                            .map(|r| r[1..].to_vec())
-                            .collect();
-                        let mut w = self.useful(&drows, &q[1..], &tys[1..])?;
-                        let missing =
-                            all.and_then(|all| all.into_iter().find(|c| !heads.contains(c)));
+                        let mut w = rows.with_default(cached, |drows, cached| {
+                            self.useful(drows, cached, &q[1..], &tys[1..])
+                        })?;
+                        let missing = all.and_then(|all| {
+                            all.into_iter().find(|c| !rows.by_ctor.contains_key(c))
+                        });
                         let head = match missing {
                             Some(c) => {
                                 let arity = self.space.fields(tys[0], &c).len();
@@ -230,7 +310,7 @@ impl<'a, S: Space> Usefulness<'a, S> {
     pub fn missing(&mut self, mut rows: Rows, ty: TypeId, max: usize) -> Vec<Witness> {
         let mut out = Vec::new();
         while out.len() < max {
-            match self.useful_row(&rows, &Pat::Wild, ty) {
+            match self.useful_row(&mut rows, &Pat::Wild, ty) {
                 Some(w) => {
                     rows.push(witness_pat(&w));
                     out.push(w);
@@ -253,57 +333,6 @@ fn pad(args: &[Pat], arity: usize) -> Vec<Pat> {
     let mut v: Vec<Pat> = args.iter().take(arity).cloned().collect();
     v.resize(arity, Pat::Wild);
     v
-}
-
-fn expand_or(rows: &[Vec<Pat>]) -> Vec<Vec<Pat>> {
-    let mut out = Vec::with_capacity(rows.len());
-    for r in rows {
-        match r.first() {
-            Some(Pat::Or(alts)) => {
-                let alts: Vec<Vec<Pat>> = alts
-                    .iter()
-                    .map(|a| {
-                        let mut r2 = r.clone();
-                        r2[0] = a.clone();
-                        r2
-                    })
-                    .collect();
-                out.extend(expand_or(&alts));
-            }
-            _ => out.push(r.clone()),
-        }
-    }
-    out
-}
-
-fn head_ctors(rows: &[Vec<Pat>]) -> Vec<Ctor> {
-    let mut out: Vec<Ctor> = Vec::new();
-    for r in rows {
-        if let Some(Pat::Ctor(c, _)) = r.first()
-            && !out.contains(c)
-        {
-            out.push(c.clone());
-        }
-    }
-    out
-}
-
-fn specialize(rows: &[Vec<Pat>], c: &Ctor, arity: usize) -> Vec<Vec<Pat>> {
-    rows.iter()
-        .filter_map(|r| match &r[0] {
-            Pat::Ctor(c2, args) if c2 == c => {
-                let mut v = pad(args, arity);
-                v.extend_from_slice(&r[1..]);
-                Some(v)
-            }
-            Pat::Wild => {
-                let mut v = vec![Pat::Wild; arity];
-                v.extend_from_slice(&r[1..]);
-                Some(v)
-            }
-            _ => None,
-        })
-        .collect()
 }
 
 fn rebuild(c: Ctor, arity: usize, mut w: Vec<Witness>) -> Vec<Witness> {
@@ -405,9 +434,9 @@ mod tests {
         let mut s = space();
         let ty = s.opt;
         let mut u = Usefulness::new(&mut s);
-        assert!(u.useful(&[vec![Pat::Wild]], &[none()], &[ty]).is_none());
+        assert!(u.useful_row(&mut m(&[Pat::Wild]), &none(), ty).is_none());
         assert!(
-            u.useful(&[vec![some(Pat::Wild)]], &[none()], &[ty])
+            u.useful_row(&mut m(&[some(Pat::Wild)]), &none(), ty)
                 .is_some()
         );
     }
