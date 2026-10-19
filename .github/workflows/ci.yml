@@ -186,7 +186,7 @@ jobs:
             "https://github.com/Z3Prover/z3/releases/download/z3-${Z3_VERSION}/${ARCHIVE}.zip" \
             --output "$archive"
           if command -v sha256sum >/dev/null; then
-            echo "$SHA256  $archive" | sha256sum --check
+            echo "$SHA256  $archive" | sha256sum -c
           else
             echo "$SHA256  $archive" | shasum -a 256 --check
           fi
@@ -205,7 +205,7 @@ jobs:
             "https://github.com/cvc5/cvc5/releases/download/cvc5-${CVC5_VERSION}/${ARCHIVE}.zip" \
             --output "$archive"
           if command -v sha256sum >/dev/null; then
-            echo "$SHA256  $archive" | sha256sum --check
+            echo "$SHA256  $archive" | sha256sum -c
           else
             echo "$SHA256  $archive" | shasum -a 256 --check
           fi
@@ -448,7 +448,7 @@ jobs:
         with:
           node-version: 26
       - name: Backend parity and comparator regression
-        run: cargo test -p sakura_cli --test parity --locked -- --nocapture
+        run: cargo test -p sakura_cli --test parity --locked -- --nocapture ${{ matrix.os == 'macos-15-intel' && '--test-threads=1' || '' }}
       - name: Print host-import coverage
         if: always()
         run: cat target/tmp/parity/imports.txt
