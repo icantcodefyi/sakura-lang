@@ -342,3 +342,8 @@ begin B; repeat this procedure for later matrix expansions.
 
 This draft was researched and written with GPT-6-Astra. It claims no existing
 release, credential, account, App installation or native release test.
+
+Homebrew 6 requires explicit trust for third-party formulae. Before the published-install
+smoke uses the documented tap/install command, it runs `brew tap icantcodefyi/sakuralang`
+and `brew trust --formula icantcodefyi/sakuralang/sakuralang` on the fresh runner.
+See [Homebrew tap trust](https://docs.brew.sh/Tap-Trust).

@@ -133,5 +133,7 @@ jobs:
           if [ -d /home/linuxbrew/.linuxbrew/bin ]; then
             eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
           fi
+          brew tap icantcodefyi/sakuralang
+          brew trust --formula icantcodefyi/sakuralang/sakuralang
           brew tap icantcodefyi/sakuralang && brew install sakuralang
           python3 -I published/tools/release/release.py accept --sakura "$(brew --prefix sakuralang)/bin/sakura" --commit "$COMMIT"
