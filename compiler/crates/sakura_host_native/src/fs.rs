@@ -592,7 +592,7 @@ mod tests {
             use std::os::unix::fs::PermissionsExt;
             let locked = tmp.join("in/locked");
             std::fs::write(&locked, b"L").unwrap();
-            std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0)).unwrap();
+            std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o0)).unwrap();
             // Root reads it anyway; the class is what is checked.
             if std::fs::read(&locked).is_err() {
                 assert_eq!(d.read("locked", u64::MAX), Err("permission denied".into()));
