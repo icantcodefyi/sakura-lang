@@ -185,7 +185,8 @@ jobs:
           curl --fail --location --silent --show-error --retry 3 \
             "https://github.com/Z3Prover/z3/releases/download/z3-${Z3_VERSION}/${ARCHIVE}.zip" \
             --output "$archive"
-          if command -v sha256sum >/dev/null; then
+          # Some macOS images ship a BSD sha256sum that does not read a GNU checklist from stdin.
+          if [ "$RUNNER_OS" != macOS ]; then
             echo "$SHA256  $archive" | sha256sum -c
           else
             echo "$SHA256  $archive" | shasum -a 256 --check
@@ -204,7 +205,8 @@ jobs:
           curl --fail --location --silent --show-error --retry 3 \
             "https://github.com/cvc5/cvc5/releases/download/cvc5-${CVC5_VERSION}/${ARCHIVE}.zip" \
             --output "$archive"
-          if command -v sha256sum >/dev/null; then
+          # Some macOS images ship a BSD sha256sum that does not read a GNU checklist from stdin.
+          if [ "$RUNNER_OS" != macOS ]; then
             echo "$SHA256  $archive" | sha256sum -c
           else
             echo "$SHA256  $archive" | shasum -a 256 --check
