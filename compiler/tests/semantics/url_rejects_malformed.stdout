@@ -1,0 +1,22 @@
+/just/a/path: Relative
+//host.test/: Relative
+http://: InvalidHost
+https://user@/: InvalidHost
+http://a b/: InvalidHost
+http://a<b/: InvalidHost
+http://1.2.3.256/: InvalidHost
+http://0x100000000/: InvalidHost
+http://[::1/: InvalidHost
+http://[1:2:3:4:5:6:7:8:9]/: InvalidHost
+http://[::1.2.3]/: InvalidHost
+http://x:65536/: InvalidPort
+http://x:8a/: InvalidPort
+sc://x:99999/: InvalidPort
+mailto + b: Err(UrlError { reason: Relative })
+mailto + #b: Ok("mailto:a@b.test#b")
+with_scheme sc: Err(UrlError { reason: InvalidScheme })
+with_scheme 1http: Err(UrlError { reason: InvalidScheme })
+with_scheme file: Err(UrlError { reason: InvalidScheme })
+with_scheme wss: Ok("wss://x.test:8443/")
+with_port 70000: Err(UrlError { reason: InvalidPort })
+with_host a:b: Err(UrlError { reason: InvalidHost })

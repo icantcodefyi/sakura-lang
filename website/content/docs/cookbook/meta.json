@@ -9,6 +9,7 @@
     "router_endpoint",
     "scripted_tool",
     "budgeted_agent",
-    "indexed_update"
+    "indexed_update",
+    "url_build"
   ]
 }

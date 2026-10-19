@@ -1,5 +1,8 @@
-// URLs (design §10.3). `Url.from(s)` and `Url.validate(s)` are generated from the refinement.
+// URLs (design §10.3; RFC 0002 §2.2). `Url.from(s)` and `Url.validate(s)` are generated from the
+// refinement. `Url.parse` and `Url.resolve` are the WHATWG URL Standard's basic URL parser
+// (https://url.spec.whatwg.org/#concept-basic-url-parser), giving `UrlParts`.
 
+import std/searchparams.{SearchParams}
 import std/urlpart.{UrlPart}
 
 /// An absolute `http://` or `https://` URL, or an origin-form path such as `/users?id=1`.
@@ -57,6 +60,972 @@ pub fn template(parts: List<String>, args: List<UrlPart>) -> Url {
 /// (`UrlPart.from(s)` as text).
 pub fn encode_component(s: String) -> String { UrlPart.to_string(UrlPart.from(s)) }
 
+/// Why a URL is not one: a host that needs IDNA (non-ASCII, or an `xn--` label; punycode is
+/// not implemented), a scheme `with_scheme` cannot set, a host or port that does not parse, or
+/// a relative reference with no base to resolve it against.
+pub type UrlReason = Idna | InvalidScheme | InvalidHost | InvalidPort | Relative
+
+pub error UrlError(reason: UrlReason)
+
+/// A URL as the WHATWG URL Standard parses it, each component in its serialized form:
+/// `scheme` lowercase without `:`; `host` `None` for a URL without an authority (`mailto:x`)
+/// and `Some("")` for an empty one (`file:///x`), a domain lowercase, IPv4 dotted, IPv6 in
+/// brackets; `port` `None` when absent or the scheme's default; `path` `/a/b`, or the opaque
+/// text of a URL such as `mailto:x`; `query` and `fragment` without `?` and `#`. The password
+/// is a `Secret`: `to_string`, `to_url` and `origin` never include it.
+pub type UrlParts = {
+  scheme: String,
+  username: String,
+  password: Option<Secret<String>>,
+  host: Option<String>,
+  port: Option<Int>,
+  path: String,
+  query: Option<String>,
+  fragment: Option<String>,
+}
+
+/// `new URL(s)`: an absolute URL. Special schemes (`http`, `https`, `ws`, `wss`, `ftp`,
+/// `file`) get the standard's host parsing, default ports and dot segments; any other scheme
+/// keeps an opaque host and path. Leading and trailing spaces and controls are removed, as are
+/// tabs and newlines anywhere.
+pub fn parse(s: String) -> Result<UrlParts, UrlError> { basic(s, None) }
+
+/// `new URL(relative, base)`: `relative` resolved against `base`; an absolute `relative` ignores
+/// `base`. The password `base` carries is kept when the result keeps its authority.
+pub fn resolve(base: UrlParts, relative: String) -> Result<UrlParts, UrlError> {
+  basic(relative, Some(base))
+}
+
+/// The standard's serialization (`href`) without the password.
+pub fn to_string(p: UrlParts) -> String {
+  var out = p.scheme + ":"
+  match p.host {
+    Some(h) => {
+      out = out + "//"
+      if p.username != "" { out = out + p.username + "@" }
+      out = out + h
+      match p.port {
+        Some(n) => { out = out + ":" + Int.to_string(n) },
+        None => {},
+      }
+    },
+    None => { if String.starts_with(p.path, "//") { out = out + "/." } },
+  }
+  out = out + p.path
+  match p.query {
+    Some(q) => { out = out + "?" + q },
+    None => {},
+  }
+  match p.fragment {
+    Some(f) => { out = out + "#" + f },
+    None => {},
+  }
+  out
+}
+
+/// `to_string(p)` as a `Url`, for `Request.of`.
+pub fn to_url(p: UrlParts) -> Url
+  requires is_valid(to_string(p))
+{ Url.from(to_string(p)) }
+
+/// The origin's serialization: `https://example.com:8443` for `http`, `https`, `ws`, `wss`
+/// and `ftp` (and a `blob:` URL of one), `null` for every other URL.
+pub fn origin(p: UrlParts) -> String {
+  if p.scheme == "blob" {
+    match parse(p.path) {
+      Ok(inner) if inner.scheme == "http" || inner.scheme == "https" => origin(inner),
+      _ => "null",
+    }
+  } else if p.scheme != "file" && is_special(p.scheme) {
+    let port = p.port.map(fn(n) { ":" + Int.to_string(n) }).unwrap_or("")
+    "{p.scheme}://{p.host.unwrap_or("")}{port}"
+  } else {
+    "null"
+  }
+}
+
+/// The `protocol` setter: `InvalidScheme` for text that is not a scheme, for a change between a
+/// special and a non-special scheme, and for `file` with credentials or a port.
+pub fn with_scheme(p: UrlParts, scheme: String) -> Result<UrlParts, UrlError> {
+  let s = String.to_lower(scheme)
+  let cs = String.chars(s)
+  let valid = is_alpha(cs[0].unwrap_or(""))
+    && List.all(cs, fn(c) { is_alpha(c) || is_digit(c) || c == "+" || c == "-" || c == "." })
+  let credentials = p.username != "" || p.password.is_some() || p.port.is_some()
+  let refused = !valid
+    || is_special(s) != is_special(p.scheme)
+    || (s == "file" && credentials)
+    || (p.scheme == "file" && p.host == Some(""))
+  if refused { return Err(UrlError { reason: InvalidScheme }) }
+  Ok(UrlParts { ..p, scheme: s, port: if p.port == default_port(s) { None } else { p.port } })
+}
+
+/// The `hostname` setter, parsed as `parse` parses a host (`localhost` is the empty host of a
+/// `file` URL). `InvalidHost` for an opaque-path URL, a host that does not parse, and an empty
+/// host on a special non-`file` URL or beside credentials or a port.
+pub fn with_host(p: UrlParts, host: String) -> Result<UrlParts, UrlError> {
+  if is_opaque(p) { return Err(UrlError { reason: InvalidHost }) }
+  if host == "" {
+    let refused = (is_special(p.scheme) && p.scheme != "file")
+      || p.username != ""
+      || p.password.is_some()
+      || p.port.is_some()
+    if refused { return Err(UrlError { reason: InvalidHost }) }
+    return Ok(UrlParts { ..p, host: Some("") })
+  }
+  match parse_host(host, !is_special(p.scheme)) {
+    Ok(h) =>
+      Ok(UrlParts { ..p, host: Some(if p.scheme == "file" && h == "localhost" { "" } else { h }) }),
+    Err(r) => Err(UrlError { reason: r }),
+  }
+}
+
+/// The `port` setter: `None` removes it, the scheme's default port is stored as `None`.
+/// `InvalidPort` outside `0..=65535` and for a URL without a host, an empty host or `file`.
+pub fn with_port(p: UrlParts, port: Option<Int>) -> Result<UrlParts, UrlError> {
+  let out_of_range = port.map(fn(n) { n < 0 || n > 65535 }).unwrap_or(false)
+  if out_of_range || p.host == None || p.host == Some("") || p.scheme == "file" {
+    return Err(UrlError { reason: InvalidPort })
+  }
+  Ok(UrlParts { ..p, port: if port == default_port(p.scheme) { None } else { port } })
+}
+
+/// The `pathname` setter: `path` percent-encoded, its dot segments resolved (and `\` a
+/// separator for a special scheme). An opaque-path URL is returned unchanged.
+pub fn with_path(p: UrlParts, path: String) -> UrlParts {
+  if is_opaque(p) { return p }
+  let cs = without_tabs(String.chars(path))
+  let first = cs[0].unwrap_or("")
+  let segments = if is_special(p.scheme) {
+    run_path(cs, if first == "/" || first == "\\" { 1 } else { 0 }, [], "", p.scheme, false).0
+  } else if first == "" {
+    if p.host == None { [""] } else { [] }
+  } else {
+    run_path(cs, if first == "/" { 1 } else { 0 }, [], "", p.scheme, false).0
+  }
+  UrlParts { ..p, path: join_path(segments) }
+}
+
+/// The query without its `?`, percent-encoded; `None` removes it.
+pub fn with_query(p: UrlParts, query: Option<String>) -> UrlParts {
+  let set = if is_special(p.scheme) { special_query_set() } else { query_set() }
+  UrlParts { ..p, query: query.map(fn(q) { encode_set(without_tabs(String.chars(q)), set) }) }
+}
+
+/// The fragment without its `#`, percent-encoded; `None` removes it.
+pub fn with_fragment(p: UrlParts, fragment: Option<String>) -> UrlParts {
+  UrlParts {
+    ..p,
+    fragment: fragment.map(fn(f) { encode_set(without_tabs(String.chars(f)), fragment_set()) }),
+  }
+}
+
+/// The `username` and `password` setters, percent-encoded. `InvalidHost` for a URL that cannot
+/// carry credentials: no host, an empty host, or `file`.
+pub fn with_credentials(
+  p: UrlParts,
+  username: String,
+  password: Option<Secret<String>>,
+) -> Result<UrlParts, UrlError>
+{
+  if p.host == None || p.host == Some("") || p.scheme == "file" {
+    return Err(UrlError { reason: InvalidHost })
+  }
+  let encoded = password.map(fn(s) {
+    Secret.map(
+      s,
+      fn(t) { encode_set(String.chars(t), userinfo_set()) },
+      @trust("percent-encoding a password keeps it inside its Secret"),
+    )
+  })
+  Ok(UrlParts {
+    ..p,
+    username: encode_set(String.chars(username), userinfo_set()),
+    password: encoded,
+  })
+}
+
+/// The query as `SearchParams` (`url.searchParams`); a copy, not a view.
+pub fn search(p: UrlParts) -> SearchParams { SearchParams.parse(p.query.unwrap_or("")) }
+
+/// `p` with `sp` as its query; an empty `sp` removes the query.
+pub fn with_search(p: UrlParts, sp: SearchParams) -> UrlParts {
+  let q = SearchParams.to_string(sp)
+  UrlParts { ..p, query: if q == "" { None } else { Some(q) } }
+}
+
+// The parser's states (https://url.spec.whatwg.org/#scheme-start-state onwards). The path,
+// opaque path, query and fragment states each run to their end in one step.
+type State = SchemeStart
+  | Scheme
+  | NoScheme
+  | SpecialRelativeOrAuthority
+  | PathOrAuthority
+  | RelativeState
+  | RelativeSlash
+  | SpecialAuthoritySlashes
+  | SpecialAuthorityIgnoreSlashes
+  | Authority
+  | Host
+  | Port
+  | File
+  | FileSlash
+  | FileHost
+  | PathStart
+  | Path
+  | OpaquePath
+  | Query
+  | Fragment
+
+// The basic URL parser without a state override; `""` stands for the EOF code point.
+fn basic(input: String, base: Option<UrlParts>) -> Result<UrlParts, UrlError> {
+  let cs = trimmed(String.chars(input))
+  let n = List.len(cs)
+  let has_base = base.is_some()
+  let b = base.unwrap_or(empty())
+  let b_opaque = has_base && is_opaque(b)
+  let b_path = if b_opaque { [] } else { split_path(b.path) }
+  var state = SchemeStart
+  var buffer = ""
+  var at_seen = false
+  var brackets = false
+  var pw_seen = false
+  var scheme = ""
+  var username = ""
+  var pw = ""
+  var password: Option<Secret<String>> = None
+  var host: Option<String> = None
+  var port: Option<Int> = None
+  var path: List<String> = []
+  var opaque_path: Option<String> = None
+  var query: Option<String> = None
+  var fragment: Option<String> = None
+  var p = 0
+  while true {
+    let c = cs[p].unwrap_or("")
+    let special = is_special(scheme)
+    let ends_authority = c == "" || c == "/" || c == "?" || c == "#" || (special && c == "\\")
+    match state {
+      SchemeStart => {
+        if is_alpha(c) {
+          buffer = String.to_lower(c)
+          state = Scheme
+        } else {
+          state = NoScheme
+          p = p - 1
+        }
+      },
+      Scheme => {
+        if is_alpha(c) || is_digit(c) || c == "+" || c == "-" || c == "." {
+          buffer = buffer + String.to_lower(c)
+        } else if c == ":" {
+          scheme = buffer
+          buffer = ""
+          if scheme == "file" {
+            state = File
+          } else if is_special(scheme) && has_base && b.scheme == scheme {
+            state = SpecialRelativeOrAuthority
+          } else if is_special(scheme) {
+            state = SpecialAuthoritySlashes
+          } else if cs[p + 1] == Some("/") {
+            state = PathOrAuthority
+            p = p + 1
+          } else {
+            opaque_path = Some("")
+            state = OpaquePath
+          }
+        } else {
+          buffer = ""
+          state = NoScheme
+          p = -1
+        }
+      },
+      NoScheme => {
+        if !has_base || (b_opaque && c != "#") {
+          return Err(UrlError { reason: Relative })
+        } else if b_opaque {
+          scheme = b.scheme
+          opaque_path = Some(b.path)
+          query = b.query
+          fragment = Some("")
+          state = Fragment
+        } else if b.scheme != "file" {
+          state = RelativeState
+          p = p - 1
+        } else {
+          state = File
+          p = p - 1
+        }
+      },
+      SpecialRelativeOrAuthority => {
+        if c == "/" && cs[p + 1] == Some("/") {
+          state = SpecialAuthorityIgnoreSlashes
+          p = p + 1
+        } else {
+          state = RelativeState
+          p = p - 1
+        }
+      },
+      PathOrAuthority => {
+        if c == "/" {
+          state = Authority
+        } else {
+          state = Path
+          p = p - 1
+        }
+      },
+      RelativeState => {
+        scheme = b.scheme
+        if c == "/" || (is_special(scheme) && c == "\\") {
+          state = RelativeSlash
+        } else {
+          username = b.username
+          password = b.password
+          host = b.host
+          port = b.port
+          path = b_path
+          query = b.query
+          if c == "?" {
+            query = Some("")
+            state = Query
+          } else if c == "#" {
+            fragment = Some("")
+            state = Fragment
+          } else if c != "" {
+            query = None
+            path = shorten(path, scheme)
+            state = Path
+            p = p - 1
+          }
+        }
+      },
+      RelativeSlash => {
+        if special && (c == "/" || c == "\\") {
+          state = SpecialAuthorityIgnoreSlashes
+        } else if c == "/" {
+          state = Authority
+        } else {
+          username = b.username
+          password = b.password
+          host = b.host
+          port = b.port
+          state = Path
+          p = p - 1
+        }
+      },
+      SpecialAuthoritySlashes => {
+        state = SpecialAuthorityIgnoreSlashes
+        if c == "/" && cs[p + 1] == Some("/") { p = p + 1 } else { p = p - 1 }
+      },
+      SpecialAuthorityIgnoreSlashes => {
+        if c != "/" && c != "\\" {
+          state = Authority
+          p = p - 1
+        }
+      },
+      Authority => {
+        if c == "@" {
+          if at_seen { buffer = "%40" + buffer }
+          at_seen = true
+          for cp in String.chars(buffer) {
+            if cp == ":" && !pw_seen {
+              pw_seen = true
+            } else if pw_seen {
+              pw = pw + encode(cp, userinfo_set())
+            } else {
+              username = username + encode(cp, userinfo_set())
+            }
+          }
+          password = if pw == "" { None } else { Some(Secret.of(pw)) }
+          buffer = ""
+        } else if ends_authority {
+          if at_seen && buffer == "" { return Err(UrlError { reason: InvalidHost }) }
+          p = p - List.len(String.chars(buffer)) - 1
+          buffer = ""
+          state = Host
+        } else {
+          buffer = buffer + c
+        }
+      },
+      Host => {
+        if c == ":" && !brackets {
+          if buffer == "" { return Err(UrlError { reason: InvalidHost }) }
+          match parse_host(buffer, !special) {
+            Ok(h) => { host = Some(h) },
+            Err(r) => { return Err(UrlError { reason: r }) },
+          }
+          buffer = ""
+          state = Port
+        } else if ends_authority {
+          p = p - 1
+          if special && buffer == "" { return Err(UrlError { reason: InvalidHost }) }
+          match parse_host(buffer, !special) {
+            Ok(h) => { host = Some(h) },
+            Err(r) => { return Err(UrlError { reason: r }) },
+          }
+          buffer = ""
+          state = PathStart
+        } else {
+          if c == "[" { brackets = true }
+          if c == "]" { brackets = false }
+          buffer = buffer + c
+        }
+      },
+      Port => {
+        if is_digit(c) {
+          buffer = buffer + c
+        } else if ends_authority {
+          if buffer != "" {
+            let value = List.fold(String.chars(buffer), 0, fn(acc, d) {
+              Int.min(acc * 10 + digit_value(d), 65536)
+            })
+            if value > 65535 { return Err(UrlError { reason: InvalidPort }) }
+            port = if Some(value) == default_port(scheme) { None } else { Some(value) }
+            buffer = ""
+          }
+          state = PathStart
+          p = p - 1
+        } else {
+          return Err(UrlError { reason: InvalidPort })
+        }
+      },
+      File => {
+        scheme = "file"
+        host = Some("")
+        if c == "/" || c == "\\" {
+          state = FileSlash
+        } else if has_base && b.scheme == "file" {
+          host = b.host
+          path = b_path
+          query = b.query
+          if c == "?" {
+            query = Some("")
+            state = Query
+          } else if c == "#" {
+            fragment = Some("")
+            state = Fragment
+          } else if c != "" {
+            query = None
+            path = if starts_with_drive(cs, p) { [] } else { shorten(path, scheme) }
+            state = Path
+            p = p - 1
+          }
+        } else {
+          state = Path
+          p = p - 1
+        }
+      },
+      FileSlash => {
+        if c == "/" || c == "\\" {
+          state = FileHost
+        } else {
+          if has_base && b.scheme == "file" {
+            host = b.host
+            let first = b_path[0].unwrap_or("")
+            if !starts_with_drive(cs, p) && is_drive(first) && String.ends_with(first, ":") {
+              path = List.push(path, first)
+            }
+          }
+          state = Path
+          p = p - 1
+        }
+      },
+      FileHost => {
+        if c == "" || c == "/" || c == "\\" || c == "?" || c == "#" {
+          p = p - 1
+          if is_drive(buffer) {
+            // The Windows drive letter quirk: the buffer becomes the first path segment.
+            state = Path
+          } else if buffer == "" {
+            host = Some("")
+            state = PathStart
+          } else {
+            match parse_host(buffer, false) {
+              Ok(h) => { host = Some(if h == "localhost" { "" } else { h }) },
+              Err(r) => { return Err(UrlError { reason: r }) },
+            }
+            buffer = ""
+            state = PathStart
+          }
+        } else {
+          buffer = buffer + c
+        }
+      },
+      PathStart => {
+        if special {
+          state = Path
+          if c != "/" && c != "\\" { p = p - 1 }
+        } else if c == "?" {
+          query = Some("")
+          state = Query
+        } else if c == "#" {
+          fragment = Some("")
+          state = Fragment
+        } else if c != "" {
+          state = Path
+          if c != "/" { p = p - 1 }
+        }
+      },
+      Path => {
+        let r = run_path(cs, p, path, buffer, scheme, true)
+        path = r.0
+        p = r.1
+        buffer = ""
+        if cs[p] == Some("?") {
+          query = Some("")
+          state = Query
+        } else if cs[p] == Some("#") {
+          fragment = Some("")
+          state = Fragment
+        }
+      },
+      OpaquePath => {
+        var text = opaque_path.unwrap_or("")
+        while p < n && cs[p] != Some("?") && cs[p] != Some("#") {
+          let d = cs[p].unwrap_or("")
+          if d == " " {
+            let next = cs[p + 1]
+            text = text + (if next == Some("?") || next == Some("#") { "%20" } else { " " })
+          } else {
+            text = text + encode(d, "")
+          }
+          p = p + 1
+        }
+        opaque_path = Some(text)
+        if cs[p] == Some("?") {
+          query = Some("")
+          state = Query
+        } else if cs[p] == Some("#") {
+          fragment = Some("")
+          state = Fragment
+        }
+      },
+      Query => {
+        let set = if special { special_query_set() } else { query_set() }
+        var text = query.unwrap_or("")
+        while p < n && cs[p] != Some("#") {
+          text = text + encode(cs[p].unwrap_or(""), set)
+          p = p + 1
+        }
+        query = Some(text)
+        if p < n {
+          fragment = Some("")
+          state = Fragment
+        }
+      },
+      Fragment => {
+        fragment = Some(fragment.unwrap_or("") + encode_set(List.slice(cs, p, n), fragment_set()))
+        p = n
+      },
+    }
+    if p >= n { break }
+    p = p + 1
+  }
+  Ok(UrlParts {
+    scheme,
+    username,
+    password,
+    host,
+    port,
+    path: opaque_path.unwrap_or(join_path(path)),
+    query,
+    fragment,
+  })
+}
+
+// The path state from `start` until EOF (or `?`/`#` when `stop`): the segments, and the index
+// of the code point that ended it.
+fn run_path(
+  cs: List<String>,
+  start: Int,
+  init: List<String>,
+  pending: String,
+  scheme: String,
+  stop: Bool,
+) -> (List<String>, Int)
+{
+  let special = is_special(scheme)
+  var path = init
+  var buffer = pending
+  var p = start
+  while true {
+    let c = cs[p].unwrap_or("")
+    let slash = c == "/" || (special && c == "\\")
+    if c == "" || slash || (stop && (c == "?" || c == "#")) {
+      let lower = String.to_lower(buffer)
+      if lower == ".." || lower == ".%2e" || lower == "%2e." || lower == "%2e%2e" {
+        path = shorten(path, scheme)
+        if !slash { path = List.push(path, "") }
+      } else if lower == "." || lower == "%2e" {
+        if !slash { path = List.push(path, "") }
+      } else {
+        let drive = scheme == "file" && List.len(path) == 0 && is_drive(buffer)
+        path = List.push(path, if drive { String.slice(buffer, 0, 1) + ":" } else { buffer })
+      }
+      buffer = ""
+      if !slash { return (path, p) }
+    } else {
+      buffer = buffer + encode(c, path_set())
+    }
+    p = p + 1
+  }
+  (path, p)
+}
+
+// https://url.spec.whatwg.org/#concept-host-parser: the serialized host, or why it fails.
+fn parse_host(input: String, opaque_host: Bool) -> Result<String, UrlReason> {
+  if String.starts_with(input, "[") {
+    if !String.ends_with(input, "]") { return Err(InvalidHost) }
+    return parse_ipv6(String.slice(input, 1, String.len(input) - 1)).map(fn(a) {
+      "[" + ipv6_text(a) + "]"
+    })
+  }
+  let cs = String.chars(input)
+  if opaque_host {
+    if List.any(cs, fn(c) { forbidden_host(c) }) { return Err(InvalidHost) }
+    return Ok(encode_set(cs, ""))
+  }
+  let decoded = percent_decode(input)
+  let ascii = List.all(List.range(0, Bytes.len(decoded)), fn(i) {
+    Bytes.get(decoded, i).unwrap_or(0) < 0x80
+  })
+  if !ascii { return Err(Idna) }
+  // ASCII input: UTS #46 ToASCII is lowercasing, except for `xn--` labels, which need punycode.
+  let domain = String.to_lower(String.from_bytes(decoded).unwrap_or(""))
+  let labels = String.split(domain, ".")
+  if List.any(labels, fn(l) { String.starts_with(l, "xn--") }) { return Err(Idna) }
+  if List.any(String.chars(domain), fn(c) {
+    forbidden_host(c) || c == "%" || code(c) <= 0x1F || code(c) == 0x7F
+  }) { return Err(InvalidHost) }
+  if ends_in_number(labels) { parse_ipv4(labels) } else { Ok(domain) }
+}
+
+fn forbidden_host(c: String) -> Bool { String.contains("\0\t\n\r #/:<>?@[\\]^|", c) }
+
+// https://url.spec.whatwg.org/#ends-in-a-number-checker
+fn ends_in_number(labels: List<String>) -> Bool {
+  let n = List.len(labels)
+  let last = if labels[n - 1] == Some("") && n > 1 { labels[n - 2] } else { labels[n - 1] }
+  match last {
+    Some(l) => {
+      (l != "" && List.all(String.chars(l), fn(c) { is_digit(c) })) || ipv4_number(l).is_some()
+    },
+    None => false,
+  }
+}
+
+// https://url.spec.whatwg.org/#ipv4-number-parser, saturating at 2^32 (already too large).
+fn ipv4_number(s: String) -> Option<Int> {
+  if s == "" { return None }
+  let hex = String.len(s) >= 2 && (String.starts_with(s, "0x") || String.starts_with(s, "0X"))
+  let octal = !hex && String.len(s) >= 2 && String.starts_with(s, "0")
+  let radix = if hex { 16 } else if octal { 8 } else { 10 }
+  let digits = if hex {
+    String.slice(s, 2, String.len(s))
+  } else if octal {
+    String.slice(s, 1, String.len(s))
+  } else {
+    s
+  }
+  var value = 0
+  for c in String.chars(digits) {
+    let d = digit_value(c)
+    if d < 0 || d >= radix { return None }
+    value = Int.min(value * radix + d, 4294967296)
+  }
+  Some(value)
+}
+
+// https://url.spec.whatwg.org/#concept-ipv4-parser, serialized.
+fn parse_ipv4(labels: List<String>) -> Result<String, UrlReason> {
+  let k0 = List.len(labels)
+  let parts = if labels[k0 - 1] == Some("") && k0 > 1 {
+    List.slice(labels, 0, k0 - 1)
+  } else {
+    labels
+  }
+  let k = List.len(parts)
+  if k > 4 { return Err(InvalidHost) }
+  var numbers: List<Int> = []
+  for part in parts {
+    match ipv4_number(part) {
+      Some(v) => { numbers = List.push(numbers, v) },
+      None => { return Err(InvalidHost) },
+    }
+  }
+  let last = numbers[k - 1].unwrap_or(0)
+  if List.any(List.slice(numbers, 0, k - 1), fn(v) { v > 255 }) || last >= Int.pow(256, 5 - k) {
+    return Err(InvalidHost)
+  }
+  var v = last
+  for i in 0..(k - 1) { v = v + numbers[i].unwrap_or(0) * Int.pow(256, 3 - i) }
+  Ok("{v / 16777216}.{v / 65536 % 256}.{v / 256 % 256}.{v % 256}")
+}
+
+// https://url.spec.whatwg.org/#concept-ipv6-parser: the eight pieces.
+fn parse_ipv6(s: String) -> Result<List<Int>, UrlReason> {
+  let cs = String.chars(s)
+  var address = [0, 0, 0, 0, 0, 0, 0, 0]
+  var piece = 0
+  var compress = -1
+  var p = 0
+  if cs[0] == Some(":") {
+    if cs[1] != Some(":") { return Err(InvalidHost) }
+    p = 2
+    piece = 1
+    compress = 1
+  }
+  while p < List.len(cs) {
+    if piece == 8 { return Err(InvalidHost) }
+    if cs[p] == Some(":") {
+      if compress >= 0 { return Err(InvalidHost) }
+      p = p + 1
+      piece = piece + 1
+      compress = piece
+      continue
+    }
+    var value = 0
+    var length = 0
+    while length < 4 && hex_value(cs[p].unwrap_or("")) >= 0 {
+      value = value * 16 + hex_value(cs[p].unwrap_or(""))
+      p = p + 1
+      length = length + 1
+    }
+    if cs[p] == Some(".") {
+      if length == 0 || piece > 6 { return Err(InvalidHost) }
+      p = p - length
+      var seen = 0
+      while p < List.len(cs) {
+        if seen > 0 {
+          if cs[p] == Some(".") && seen < 4 { p = p + 1 } else { return Err(InvalidHost) }
+        }
+        if !is_digit(cs[p].unwrap_or("")) { return Err(InvalidHost) }
+        var octet = -1
+        while is_digit(cs[p].unwrap_or("")) {
+          let d = digit_value(cs[p].unwrap_or(""))
+          if octet == 0 { return Err(InvalidHost) }
+          octet = if octet < 0 { d } else { octet * 10 + d }
+          if octet > 255 { return Err(InvalidHost) }
+          p = p + 1
+        }
+        address = List.set(address, piece, address[piece].unwrap_or(0) * 256 + octet)
+        seen = seen + 1
+        if seen == 2 || seen == 4 { piece = piece + 1 }
+      }
+      if seen != 4 { return Err(InvalidHost) }
+      break
+    } else if cs[p] == Some(":") {
+      p = p + 1
+      if p == List.len(cs) { return Err(InvalidHost) }
+    } else if p < List.len(cs) {
+      return Err(InvalidHost)
+    }
+    address = List.set(address, piece, value)
+    piece = piece + 1
+  }
+  if compress >= 0 {
+    var swaps = piece - compress
+    piece = 7
+    while piece != 0 && swaps > 0 {
+      let other = compress + swaps - 1
+      let a = address[piece].unwrap_or(0)
+      address = List.set(address, piece, address[other].unwrap_or(0))
+      address = List.set(address, other, a)
+      piece = piece - 1
+      swaps = swaps - 1
+    }
+  } else if piece != 8 {
+    return Err(InvalidHost)
+  }
+  Ok(address)
+}
+
+// https://url.spec.whatwg.org/#concept-ipv6-serializer: the first longest run of two or more
+// zero pieces becomes `::`.
+fn ipv6_text(address: List<Int>) -> String {
+  var best = -1
+  var best_len = 1
+  var i = 0
+  while i < 8 {
+    var j = i
+    while j < 8 && address[j] == Some(0) { j = j + 1 }
+    if j - i > best_len {
+      best = i
+      best_len = j - i
+    }
+    i = Int.max(j, i + 1)
+  }
+  var out = ""
+  var ignore = false
+  for k in 0..8 {
+    let piece = address[k].unwrap_or(0)
+    if ignore && piece == 0 { continue }
+    ignore = false
+    if k == best {
+      out = out + (if k == 0 { "::" } else { ":" })
+      ignore = true
+      continue
+    }
+    out = out + hex_lower(piece)
+    if k != 7 { out = out + ":" }
+  }
+  out
+}
+
+fn hex_lower(n: Int) -> String {
+  let d = String.slice("0123456789abcdef", n % 16, n % 16 + 1)
+  if n < 16 { d } else { hex_lower(n / 16) + d }
+}
+
+// Leading and trailing C0 controls and spaces removed, then every tab and newline.
+fn trimmed(cs: List<String>) -> List<String> {
+  var start = 0
+  var end = List.len(cs)
+  while start < end && code(cs[start].unwrap_or("")) <= 0x20 { start = start + 1 }
+  while end > start && code(cs[end - 1].unwrap_or("")) <= 0x20 { end = end - 1 }
+  without_tabs(List.slice(cs, start, end))
+}
+
+fn without_tabs(cs: List<String>) -> List<String> {
+  List.filter(cs, fn(c) { c != "\t" && c != "\n" && c != "\r" })
+}
+
+// A one-byte character's code point; 256 for any other character.
+fn code(c: String) -> Int {
+  let b = String.to_bytes(c)
+  if Bytes.len(b) == 1 { Bytes.get(b, 0).unwrap_or(0) } else { 256 }
+}
+
+fn is_alpha(c: String) -> Bool {
+  c != "" && String.contains("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", c)
+}
+
+fn is_digit(c: String) -> Bool { c != "" && String.contains("0123456789", c) }
+
+fn digit_value(c: String) -> Int { hex_value(c) }
+
+fn hex_value(c: String) -> Int { hex_code(code(c)) }
+
+// The value of an ASCII hex digit's code point, or -1.
+fn hex_code(x: Int) -> Int {
+  if x >= 0x30 && x <= 0x39 {
+    x - 0x30
+  } else if x >= 0x41 && x <= 0x46 {
+    x - 0x37
+  } else if x >= 0x61 && x <= 0x66 {
+    x - 0x57
+  } else {
+    -1
+  }
+}
+
+fn is_special(scheme: String) -> Bool {
+  List.contains(["ftp", "file", "http", "https", "ws", "wss"], scheme)
+}
+
+fn default_port(scheme: String) -> Option<Int> {
+  match scheme {
+    "ftp" => Some(21),
+    "http" | "ws" => Some(80),
+    "https" | "wss" => Some(443),
+    _ => None,
+  }
+}
+
+// A URL whose path is opaque text (`mailto:x`) rather than segments.
+fn is_opaque(p: UrlParts) -> Bool { p.host == None && !String.starts_with(p.path, "/") }
+
+fn split_path(path: String) -> List<String> {
+  let segments = String.split(path, "/")
+  if path == "" { [] } else { List.slice(segments, 1, List.len(segments)) }
+}
+
+fn join_path(segments: List<String>) -> String {
+  List.fold(segments, "", fn(acc, s) { acc + "/" + s })
+}
+
+// https://url.spec.whatwg.org/#shorten-a-urls-path
+fn shorten(path: List<String>, scheme: String) -> List<String> {
+  let n = List.len(path)
+  if n == 0
+    || (scheme == "file"
+      && n == 1
+      && is_drive(path[0].unwrap_or(""))
+      && String.ends_with(path[0].unwrap_or(""), ":")) {
+    path
+  } else {
+    List.slice(path, 0, n - 1)
+  }
+}
+
+// A Windows drive letter: an ASCII letter then `:` or `|`.
+fn is_drive(s: String) -> Bool {
+  let cs = String.chars(s)
+  List.len(cs) == 2 && is_alpha(cs[0].unwrap_or("")) && (cs[1] == Some(":") || cs[1] == Some("|"))
+}
+
+fn starts_with_drive(cs: List<String>, p: Int) -> Bool {
+  let next = cs[p + 2].unwrap_or("")
+  is_drive(cs[p].unwrap_or("") + cs[p + 1].unwrap_or(""))
+    && (next == "" || next == "/" || next == "\\" || next == "?" || next == "#")
+}
+
+// The percent-encode sets beyond the C0 control set (C0 controls and every non-ASCII
+// character are always encoded): https://url.spec.whatwg.org/#percent-encoded-bytes
+fn fragment_set() -> String { " \"<>`" }
+
+fn query_set() -> String { " \"#<>" }
+
+fn special_query_set() -> String { " \"#<>'" }
+
+fn path_set() -> String { " \"#<>?^`\{\}" }
+
+fn userinfo_set() -> String { " \"#<>?^`\{\}/:;=@[\\]|" }
+
+// One character, UTF-8 percent-encoded when it is in the set.
+fn encode(c: String, set: String) -> String {
+  let x = code(c)
+  if x > 0x1F && x < 0x7F && !String.contains(set, c) {
+    c
+  } else {
+    let b = String.to_bytes(c)
+    var out = ""
+    for i in 0..Bytes.len(b) {
+      let byte = Bytes.get(b, i).unwrap_or(0)
+      out = out
+        + "%"
+        + String.slice("0123456789ABCDEF", byte / 16, byte / 16 + 1)
+        + String.slice("0123456789ABCDEF", byte % 16, byte % 16 + 1)
+    }
+    out
+  }
+}
+
+fn encode_set(cs: List<String>, set: String) -> String {
+  List.fold(cs, "", fn(acc, c) { acc + encode(c, set) })
+}
+
+// https://url.spec.whatwg.org/#percent-decode
+fn percent_decode(s: String) -> Bytes {
+  let b = String.to_bytes(s)
+  let n = Bytes.len(b)
+  var out: List<Int> = []
+  var i = 0
+  while i < n {
+    let byte = Bytes.get(b, i).unwrap_or(0)
+    let hi = hex_code(Bytes.get(b, i + 1).unwrap_or(0))
+    let lo = hex_code(Bytes.get(b, i + 2).unwrap_or(0))
+    if byte == 0x25 && hi >= 0 && lo >= 0 {
+      out = List.push(out, hi * 16 + lo)
+      i = i + 3
+    } else {
+      out = List.push(out, byte)
+      i = i + 1
+    }
+  }
+  Bytes.from_list(out)
+}
+
 test "host, path and query" {
   let u = Url.from("https://example.com:8080/a/b?q=1&r=two")
   expect_eq(host(u), Some("example.com:8080"))
@@ -81,4 +1050,166 @@ test "template percent-encodes interpolated values" {
   )
   expect_eq(url"/users/{7}/posts?u={Untrusted.of("a b")}", Url.from("/users/7/posts?u=a%20b"))
   expect_eq(encode_component(q), "a%20b%26c%3Dd%2F%C3%A9")
+}
+
+test "parse serializes as the standard does" {
+  let p = parse("  HTTPS://Ex%41mple.COM:443/a/./b/../%2e%2E/c d?q=1 2#f g\n").unwrap_or(empty())
+  expect_eq(to_string(p), "https://example.com/c%20d?q=1%202#f%20g")
+  expect_eq(
+    (p.host, p.port, p.path, p.query, p.fragment),
+    (Some("example.com"), None, "/c%20d", Some("q=1%202"), Some("f%20g")),
+  )
+  expect_eq(
+    parse("http://0300.0250.0.1:8080").map(fn(u) { to_string(u) }),
+    Ok("http://192.168.0.1:8080/"),
+  )
+  expect_eq(parse("http://[0:0::1]/").map(fn(u) { u.host }), Ok(Some("[::1]")))
+  expect_eq(
+    parse("mailto:Ann@Example.com").map(fn(u) { (u.host, u.path) }),
+    Ok((None, "Ann@Example.com")),
+  )
+  expect_eq(parse("file:///C|/x").map(fn(u) { to_string(u) }), Ok("file:///C:/x"))
+}
+
+test "parse fails with a reason" {
+  let reason = fn(s: String) { parse(s).map(fn(_) { () }).map_err(fn(e) { e.reason }) }
+  expect_eq(reason("/relative"), Err(Relative))
+  expect_eq(reason("http://"), Err(InvalidHost))
+  expect_eq(reason("http://a b/"), Err(InvalidHost))
+  expect_eq(reason("http://1.2.3.256/"), Err(InvalidHost))
+  expect_eq(reason("http://x:65536/"), Err(InvalidPort))
+  expect_eq(reason("http://x:8a/"), Err(InvalidPort))
+  expect_eq(reason("http://bücher.example/"), Err(Idna))
+  expect_eq(reason("http://xn--bcher-kva.example/"), Err(Idna))
+}
+
+test "resolve against a base" {
+  let base = parse("https://u:pw@example.com/a/b/c?q#f").unwrap_or(empty())
+  let href = fn(r: String) { resolve(base, r).map(fn(u) { to_string(u) }) }
+  expect_eq(href("../d"), Ok("https://u@example.com/a/d"))
+  expect_eq(href("?x"), Ok("https://u@example.com/a/b/c?x"))
+  expect_eq(href("#g"), Ok("https://u@example.com/a/b/c?q#g"))
+  expect_eq(href("//other.test/p"), Ok("https://other.test/p"))
+  expect_eq(href("http:/x"), Ok("http://x/"))
+  expect(resolve(base, "d").map(fn(u) { u.password.is_some() }).unwrap_or(false))
+  expect_eq(
+    resolve(parse("mailto:a").unwrap_or(empty()), "b")
+      .map(fn(_) { () })
+      .map_err(fn(e) { e.reason }),
+    Err(Relative),
+  )
+}
+
+test "origin" {
+  let origin_of = fn(s: String) { parse(s).map(fn(u) { origin(u) }).unwrap_or("") }
+  expect_eq(origin_of("https://x.test:8443/p"), "https://x.test:8443")
+  expect_eq(origin_of("ws://x.test:80/"), "ws://x.test")
+  expect_eq(origin_of("blob:https://x.test/uuid"), "https://x.test")
+  expect_eq(origin_of("file:///etc"), "null")
+  expect_eq(origin_of("sc://x/"), "null")
+}
+
+test "with_scheme" {
+  let p = parse("http://x.test:443/").unwrap_or(empty())
+  expect_eq(with_scheme(p, "HTTPS").map(fn(u) { to_string(u) }), Ok("https://x.test/"))
+  expect_eq(
+    with_scheme(p, "sc").map(fn(u) { to_string(u) }).map_err(fn(e) { e.reason }),
+    Err(InvalidScheme),
+  )
+  expect_eq(
+    with_scheme(p, "1x").map(fn(u) { to_string(u) }).map_err(fn(e) { e.reason }),
+    Err(InvalidScheme),
+  )
+  expect_eq(
+    with_scheme(p, "file").map(fn(u) { to_string(u) }).map_err(fn(e) { e.reason }),
+    Err(InvalidScheme),
+  )
+}
+
+test "with_host" {
+  let p = parse("http://x.test/a").unwrap_or(empty())
+  expect_eq(with_host(p, "Y.TEST").map(fn(u) { to_string(u) }), Ok("http://y.test/a"))
+  expect_eq(
+    with_host(p, "a/b").map(fn(u) { to_string(u) }).map_err(fn(e) { e.reason }),
+    Err(InvalidHost),
+  )
+  expect_eq(
+    with_host(p, "").map(fn(u) { to_string(u) }).map_err(fn(e) { e.reason }),
+    Err(InvalidHost),
+  )
+  let f = parse("file://x/p").unwrap_or(empty())
+  expect_eq(with_host(f, "localhost").map(fn(u) { to_string(u) }), Ok("file:///p"))
+  let m = parse("mailto:x").unwrap_or(empty())
+  expect_eq(
+    with_host(m, "y").map(fn(u) { to_string(u) }).map_err(fn(e) { e.reason }),
+    Err(InvalidHost),
+  )
+}
+
+test "with_port" {
+  let p = parse("https://x.test/").unwrap_or(empty())
+  expect_eq(with_port(p, Some(8443)).map(fn(u) { to_string(u) }), Ok("https://x.test:8443/"))
+  expect_eq(with_port(p, Some(443)).map(fn(u) { u.port }), Ok(None))
+  expect_eq(
+    with_port(p, Some(65536)).map(fn(u) { u.port }).map_err(fn(e) { e.reason }),
+    Err(InvalidPort),
+  )
+  let f = parse("file:///x").unwrap_or(empty())
+  expect_eq(
+    with_port(f, Some(1)).map(fn(u) { u.port }).map_err(fn(e) { e.reason }),
+    Err(InvalidPort),
+  )
+}
+
+test "with_path" {
+  let p = parse("https://x.test/old?q").unwrap_or(empty())
+  expect_eq(to_string(with_path(p, "/v1/../v2/a b?#")), "https://x.test/v2/a%20b%3F%23?q")
+  expect_eq(to_string(with_path(p, "rel\\x")), "https://x.test/rel/x?q")
+  let m = parse("mailto:x").unwrap_or(empty())
+  expect_eq(to_string(with_path(m, "/y")), "mailto:x")
+}
+
+test "with_query and with_fragment" {
+  let p = parse("https://x.test/").unwrap_or(empty())
+  expect_eq(to_string(with_query(p, Some("a=b c'#"))), "https://x.test/?a=b%20c%27%23")
+  expect_eq(to_string(with_query(parse("sc://x/").unwrap_or(empty()), Some("'"))), "sc://x/?'")
+  expect_eq(
+    to_string(with_fragment(with_query(p, None), Some("top <1>"))),
+    "https://x.test/#top%20%3C1%3E",
+  )
+  expect_eq(to_string(with_fragment(p, None)), "https://x.test/")
+}
+
+test "with_credentials" {
+  let p = parse("https://x.test/").unwrap_or(empty())
+  let u = with_credentials(p, "a@b", Some(Secret.of("p:w"))).unwrap_or(empty())
+  expect_eq(to_string(u), "https://a%40b@x.test/")
+  expect_eq(u.password.map(fn(s) { Secret.expose(s, @trust("test")) }), Some("p%3Aw"))
+  let f = parse("file:///x").unwrap_or(empty())
+  expect_eq(
+    with_credentials(f, "a", None).map(fn(_) { () }).map_err(fn(e) { e.reason }),
+    Err(InvalidHost),
+  )
+}
+
+test "search and with_search" {
+  let p = parse("https://x.test/s?q=a+b&n=1").unwrap_or(empty())
+  expect_eq(SearchParams.get(search(p), "q"), Some("a b"))
+  let next = with_search(p, SearchParams.set(search(p), "n", "2"))
+  expect_eq(to_string(next), "https://x.test/s?q=a+b&n=2")
+  expect_eq(to_string(with_search(p, SearchParams.parse(""))), "https://x.test/s")
+  expect_eq(to_url(next), Url.from("https://x.test/s?q=a+b&n=2"))
+}
+
+fn empty() -> UrlParts {
+  UrlParts {
+    scheme: "",
+    username: "",
+    password: None,
+    host: None,
+    port: None,
+    path: "",
+    query: None,
+    fragment: None,
+  }
 }

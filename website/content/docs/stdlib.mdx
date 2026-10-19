@@ -23,6 +23,7 @@ The [capabilities tour](/docs/tour/capabilities), [contracts tour](/docs/tour/co
 - `Task.par_map` lives in `std/task`, not `List`. `Env.host()` takes no scope argument; use `Env.only` for attenuation.
 - JS `Int` arithmetic has a safe-integer range of ±(2^53−1); WASM uses signed i64. Both are CLI targets; native is experimental.
 - Web byte and text APIs (RFC 0002): `Uint8Array` is `Bytes`, immutable, so an in-place write is `Bytes.from_list(List.set(...))`; `TextEncoder.encodeInto` has no counterpart because there is no caller-owned buffer; `btoa` takes bytes, so text goes through `String.to_bytes` first; `Encoding.encode` writes UTF-8 and UTF-16 only, since Windows-1252 cannot encode every string.
+- Web URL APIs (RFC 0002): `URL` is `Url.parse` and `Url.resolve` giving a `UrlParts` value, and `URLSearchParams` is `SearchParams`; the setters are `with_*` functions returning a new value, so there is no live `url.searchParams` (read `Url.search`, write `Url.with_search`); a host that needs IDNA (non-ASCII, or an `xn--` label) is `UrlError(Idna)` until punycode lands; the password is a `Secret` that `to_string` leaves out. `Url` stays the prefix check `url"…"` and `Request.url` use.
 - Static verification is implemented for a restricted fragment; see the [roadmap](/docs/roadmap).
 - Prefer `List` for dense integer IDs, as in DeltaBlue; use `Map` for sparse keys. Collection updates return new values: assign the result back. See the source index for complexity and behavior notes.
 
@@ -530,6 +531,22 @@ fn delete<e>(r: Router<e>, pattern: String, h: fn(Request) -> Response ! e) -> R
 fn handle<e>(r: Router<e>, req: Request) -> Response ! e
 ```
 
+### `std/searchparams`
+
+```sakura fragment
+opaque type SearchParams = SearchParams(List<(String, String)>)
+fn parse(query: String) -> SearchParams
+fn get(sp: SearchParams, name: String) -> Option<String>
+fn get_all(sp: SearchParams, name: String) -> List<String>
+fn has(sp: SearchParams, name: String) -> Bool
+fn append(sp: SearchParams, name: String, value: String) -> SearchParams
+fn set(sp: SearchParams, name: String, value: String) -> SearchParams
+fn remove(sp: SearchParams, name: String) -> SearchParams
+fn sort(sp: SearchParams) -> SearchParams
+fn entries(sp: SearchParams) -> List<(String, String)>
+fn to_string(sp: SearchParams) -> String
+```
+
 ### `std/secret`
 
 ```sakura fragment
@@ -682,6 +699,23 @@ fn path(u: Url) -> String
 fn query_param(u: Url, name: String) -> Option<String>
 fn template(parts: List<String>, args: List<UrlPart>) -> Url
 fn encode_component(s: String) -> String
+type UrlReason = Idna | InvalidScheme | InvalidHost | InvalidPort | Relative
+error UrlError(reason: UrlReason)
+type UrlParts = { scheme: String, username: String, password: Option<Secret<String>>, host: Option<String>, port: Option<Int>, path: String, query: Option<String>, fragment: Option<String> }
+fn parse(s: String) -> Result<UrlParts, UrlError>
+fn resolve(base: UrlParts, relative: String) -> Result<UrlParts, UrlError>
+fn to_string(p: UrlParts) -> String
+fn to_url(p: UrlParts) -> Url requires is_valid(to_string(p))
+fn origin(p: UrlParts) -> String
+fn with_scheme(p: UrlParts, scheme: String) -> Result<UrlParts, UrlError>
+fn with_host(p: UrlParts, host: String) -> Result<UrlParts, UrlError>
+fn with_port(p: UrlParts, port: Option<Int>) -> Result<UrlParts, UrlError>
+fn with_path(p: UrlParts, path: String) -> UrlParts
+fn with_query(p: UrlParts, query: Option<String>) -> UrlParts
+fn with_fragment(p: UrlParts, fragment: Option<String>) -> UrlParts
+fn with_credentials(p: UrlParts, username: String, password: Option<Secret<String>>) -> Result<UrlParts, UrlError>    // @trust
+fn search(p: UrlParts) -> SearchParams
+fn with_search(p: UrlParts, sp: SearchParams) -> UrlParts
 ```
 
 ### `std/urlpart`

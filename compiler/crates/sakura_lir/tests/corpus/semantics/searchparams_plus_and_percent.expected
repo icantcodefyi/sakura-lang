@@ -1,0 +1,10 @@
+ending: ok
+--- stdout
+q = "a b c"
+sum = "1+1=2"
+name = "été"
+bad = "��"
+pct = "100%"
+raw = "%zz"
+a+b=x%2By%26z%3D%7E&%C3%A9=*-._
+true

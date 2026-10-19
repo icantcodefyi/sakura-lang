@@ -1,0 +1,84 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::list::Builder
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
+layout 4 variant std::url::State | SchemeStart 16b () | Scheme 16b () | NoScheme 16b () | SpecialRelativeOrAuthority 16b () | PathOrAuthority 16b () | RelativeState 16b () | RelativeSlash 16b () | SpecialAuthoritySlashes 16b () | SpecialAuthorityIgnoreSlashes 16b () | Authority 16b () | Host 16b () | Port 16b () | File 16b () | FileSlash 16b () | FileHost 16b () | PathStart 16b () | Path 16b () | OpaquePath 16b () | Query 16b () | Fragment 16b ()
+layout 5 error std::url::UrlError | UrlError 24b (reason: word*)
+layout 6 record std::url::UrlParts | UrlParts 80b (scheme: word*, username: word*, password: word*, host: word*, port: word*, path: word*, query: word*, fragment: word*)
+layout 7 variant std::url::UrlReason | Idna 16b () | InvalidScheme 16b () | InvalidHost 16b () | InvalidPort 16b () | Relative 16b ()
+layout 8 shape |  32b (word*, word*)
+layout 9 shape |  32b (i64, word*)
+layout 10 shape |  32b (word*, i64)
+
+fn main#0 pub top -> unit ; main::url_rejects_idna, frame 16 slots [%26 word*, %27 word*, %28 i64, %29 i64, %44 word*, %45 word*, %46 i64, %47 i64, %49 bool, %50 word*, %51 i64, %52 i64, %57 bool, %58 word*, %59 i64, %60 i64]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 lit: ptr = const str 1
+    %2 lit: ptr = const str 2
+    %3 lit: ptr = const str 3
+    %4 lit: ptr = const str 4
+    %5 lit: ptr = const str 5
+    %6 lit: ptr = const str 6
+    %7 xs: ptr = alloc list(%0, %1, %2, %3, %4, %5, %6)
+    dup.candidate %7
+    %8 n: i64 = $list_len(%7)
+    %62 lit: i64 = const 0
+    jump b2(%62, %7, %8)
+  b1():
+    %9 lit: unit = const ()
+    ret %9
+  b2(%10 i: i64, %11 xs: ptr, %12 n: i64):
+    %13 more: bool = lt.int %10, %12
+    if %13 then b3(%11, %12, %10) else b4(%11, %12, %10)
+  b3(%14 xs: ptr, %15 n: i64, %16 i: i64):
+    dup.candidate %14
+    %20 x: word = $list_at(%14, %16)
+    call parse#2(%20) -> b6(%14, %15, %16)
+  b4(%17 xs: ptr, %18 n: i64, %19 i: i64):
+    drop %17
+    jump b1()
+  b5(%21 xs: ptr, %22 n: i64, %23 i: i64):
+    %24 lit: i64 = const 1
+    %25 i: i64 = intadd %23, %24
+    jump b2(%25, %21, %22)
+  b6(%26 r: ptr, %27 xs: ptr, %28 n: i64, %29 i: i64):
+    %34 tag: i64 = tag %26 ctor std::result::Result
+    switch %34 0 => b8(%27, %28, %29, %26) 1 => b9(%27, %28, %29, %26)
+  b7(%30 v: word, %31 xs: ptr, %32 n: i64, %33 i: i64):
+    drop %30
+    jump b5(%31, %32, %33)
+  b8(%35 xs: ptr, %36 n: i64, %37 i: i64, %38 r: ptr):
+    %43 p: word = proj %38.0 std::result::Result.Ok
+    drop %38
+    call to_string#3(%43) -> b10(%35, %36, %37)
+  b9(%39 xs: ptr, %40 n: i64, %41 i: i64, %42 r: ptr):
+    %54 p: word = proj %42.0 std::result::Result.Err
+    drop %42
+    %55 reason: word = proj %54.0 std::url::UrlError
+    drop %54
+    %56 s: ptr = show %55
+    drop %55
+    perform std::console::Console.print(%56) -> b12(%39, %40, %41)
+  b10(%44 r: ptr, %45 xs: ptr, %46 n: i64, %47 i: i64):
+    %48 s: ptr = show %44
+    drop %44
+    perform std::console::Console.print(%48) -> b11(%45, %46, %47)
+  b11(%49 r: unit, %50 xs: ptr, %51 n: i64, %52 i: i64):
+    %53 box: word = box %49
+    jump b7(%53, %50, %51, %52)
+  b12(%57 r: unit, %58 xs: ptr, %59 n: i64, %60 i: i64):
+    %61 box: word = box %57
+    jump b7(%61, %58, %59, %60)
+
+fn $entry#1 top -> unit ; main::url_rejects_idna, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1

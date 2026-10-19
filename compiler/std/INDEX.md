@@ -128,15 +128,15 @@ Acyclic. Test blocks additionally use `std/test`, which depends on `std/core` an
 ```text
 core  unit  option  result  set  int  float  duration       (no std dependencies)
 list → set              map → list            string → list       bytes → list
-encoding → bytes, string, list
+encoding → bytes, string, list                searchparams → encoding, string, list, bytes
 json → map              uuid → string, list   instant → duration, string, list, int
 test → core, fs         console → test        clock → duration, instant, int
 random → uuid, int, string, bytes, list       env → map, list
 log → json, test, list, core                  gen → test, random, list, int, string
 retry → duration, int   (+ Clock, Random)     task → duration, list (+ Clock)
 graph → map, list       untrusted → core        path → string, list
-secret → core           decimal → string, list, int
-url → string, list, urlpart   urlpart → string, list, bytes        cli
+secret → core           decimal → string, list, int                 cli
+url → string, list, int, bytes, secret, urlpart, searchparams      urlpart → string, list, bytes
 fs → path, untrusted, map
 request → url, json                            response → html, json, untrusted
 html → core             router → request, response, url
@@ -635,6 +635,22 @@ fn delete<e>(r: Router<e>, pattern: String, h: fn(Request) -> Response ! e) -> R
 fn handle<e>(r: Router<e>, req: Request) -> Response ! e
 ```
 
+### `std/searchparams`
+
+```sakura fragment
+opaque type SearchParams = SearchParams(List<(String, String)>)
+fn parse(query: String) -> SearchParams
+fn get(sp: SearchParams, name: String) -> Option<String>
+fn get_all(sp: SearchParams, name: String) -> List<String>
+fn has(sp: SearchParams, name: String) -> Bool
+fn append(sp: SearchParams, name: String, value: String) -> SearchParams
+fn set(sp: SearchParams, name: String, value: String) -> SearchParams
+fn remove(sp: SearchParams, name: String) -> SearchParams
+fn sort(sp: SearchParams) -> SearchParams
+fn entries(sp: SearchParams) -> List<(String, String)>
+fn to_string(sp: SearchParams) -> String
+```
+
 ### `std/secret`
 
 ```sakura fragment
@@ -787,6 +803,23 @@ fn path(u: Url) -> String
 fn query_param(u: Url, name: String) -> Option<String>
 fn template(parts: List<String>, args: List<UrlPart>) -> Url
 fn encode_component(s: String) -> String
+type UrlReason = Idna | InvalidScheme | InvalidHost | InvalidPort | Relative
+error UrlError(reason: UrlReason)
+type UrlParts = { scheme: String, username: String, password: Option<Secret<String>>, host: Option<String>, port: Option<Int>, path: String, query: Option<String>, fragment: Option<String> }
+fn parse(s: String) -> Result<UrlParts, UrlError>
+fn resolve(base: UrlParts, relative: String) -> Result<UrlParts, UrlError>
+fn to_string(p: UrlParts) -> String
+fn to_url(p: UrlParts) -> Url requires is_valid(to_string(p))
+fn origin(p: UrlParts) -> String
+fn with_scheme(p: UrlParts, scheme: String) -> Result<UrlParts, UrlError>
+fn with_host(p: UrlParts, host: String) -> Result<UrlParts, UrlError>
+fn with_port(p: UrlParts, port: Option<Int>) -> Result<UrlParts, UrlError>
+fn with_path(p: UrlParts, path: String) -> UrlParts
+fn with_query(p: UrlParts, query: Option<String>) -> UrlParts
+fn with_fragment(p: UrlParts, fragment: Option<String>) -> UrlParts
+fn with_credentials(p: UrlParts, username: String, password: Option<Secret<String>>) -> Result<UrlParts, UrlError>    // @trust
+fn search(p: UrlParts) -> SearchParams
+fn with_search(p: UrlParts, sp: SearchParams) -> UrlParts
 ```
 
 ### `std/urlpart`

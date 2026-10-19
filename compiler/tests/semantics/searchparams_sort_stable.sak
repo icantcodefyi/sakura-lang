@@ -1,0 +1,15 @@
+// milestone: M3
+// spec: RFC 0002 §2.2
+// Spec: https://url.spec.whatwg.org/#dom-urlsearchparams-sort
+
+// `sort` orders by name in UTF-16 code unit order and is stable: pairs with the same name
+// keep their relative order. A name outside the Basic Multilingual Plane sorts by its
+// surrogates, so `😀` (0xD83D 0xDE00) comes before `ﬃ` (0xFB03) though its code point is
+// larger.
+import std/searchparams.{SearchParams}
+
+pub fn main() -> Unit ! {Console} {
+  let sp = SearchParams.parse("z=1&a=1&b=1&a=2&z=2&%EF%AC%83=1&%F0%9F%98%80=1&a=3&B=1&=1")
+  Console.print(SearchParams.to_string(SearchParams.sort(sp)))
+  for pair in SearchParams.entries(SearchParams.sort(sp)) { Console.print("{pair.0}={pair.1}") }
+}

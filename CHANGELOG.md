@@ -50,6 +50,24 @@ Releases follow the [stability policy](STABILITY.md). The published preview is
   across chunks, and `Encoding.encode` for UTF-16. The codecs are runtime externals in the JS
   runtime and in `runtime/rt` (WASM and native); RFC 4648 and Encoding Standard vectors in
   `compiler/tests/vectors` hold the two equal. Additive; no ABI change.
+- `std/url` gains the WHATWG URL parser and the new `std/searchparams` (RFC 0002 §2.2,
+  web-APIs plan phase 2): the web's `URL` and `URLSearchParams` as values. `Url.parse(s)` and
+  `Url.resolve(base, relative)` (`new URL(relative, base)`) give `UrlParts { scheme, username,
+  password, host, port, path, query, fragment }` or `UrlError { reason }` with `Idna`,
+  `InvalidScheme`, `InvalidHost`, `InvalidPort` or `Relative`; special schemes get the
+  standard's host parsing (IPv4 in every radix, IPv6 compressed), default ports, dot segments
+  and percent-encode sets, other schemes opaque hosts and paths. `to_string` is the standard's
+  serialization, `to_url` the `Url` for `Request.of`, `origin` the origin; `with_scheme`,
+  `with_host`, `with_port`, `with_path`, `with_query`, `with_fragment` and `with_credentials`
+  are the setters, returning a new value. The password is a `Secret`, which `to_string`,
+  `to_url` and `origin` leave out. A host that needs IDNA (non-ASCII, or an `xn--` label) is
+  `Idna` until punycode lands. `SearchParams` is an ordered multimap (`parse`, `get`,
+  `get_all`, `has`, `append`, `set`, `remove`, `sort` in UTF-16 code unit order, `entries`,
+  `to_string`) over `application/x-www-form-urlencoded`; `Url.search` and `Url.with_search`
+  read and replace a URL's query. Pure Sakura on every backend: 150 WPT `urltestdata.json`
+  cases in `compiler/tests/vectors/url.jsonl` generate a semantics fixture. `Url` and
+  `Url.is_valid` are unchanged; a cookbook recipe (`url_build`) shows parse, `with_search`,
+  `to_url` and `resolve`. Additive; no ABI change.
 
 - `compiler/fuzz`: an `exec` differential target. It mutates `tests/semantics` programs with
   typed edits (literals, operators, match-arm and handler order, `List` and `Map` operations)

@@ -1,0 +1,56 @@
+// milestone: M3
+// mode: run
+// spec: RFC 0002 §2.2
+
+import std/searchparams.{SearchParams}
+import std/url.{Url, UrlError, UrlReason}
+
+/// The search endpoint under `base`'s origin, with `query` and `page` set and the base's other
+/// parameters kept.
+fn search_url(base: Url, query: String, page: Int) -> Url ! {Fail<UrlError>} {
+  let parts = Url.parse(base)?
+  let params = Url.search(parts).set("q", query).set("page", Int.to_string(page))
+  parts.with_path("/v1/search").with_search(params).with_fragment(None).to_url()
+}
+
+/// A link from a response (a `Location` header, a `next` link) resolved against the URL that
+/// was fetched.
+fn follow(current: Url, link: String) -> Url ! {Fail<UrlError>} {
+  Url.resolve(Url.parse(current)?, link)?.to_url()
+}
+
+pub fn main() -> Unit ! {Console, Fail<UrlError>} {
+  let base = url"https://api.example.test/v0/items?key=k1&q=old#top"
+  let first = search_url(base, "rust & sakura", 2)
+  Console.print(first)
+  Console.print(follow(first, "?q=next&page=3"))
+  Console.print(follow(first, "../v2/items"))
+}
+
+test "the query is set and the other parameters are kept" {
+  let u = search_url(url"https://api.example.test/v0?key=k1&q=old&page=1", "a b", 4)
+  expect_eq(u, Url.from("https://api.example.test/v1/search?key=k1&q=a+b&page=4"))
+  let back = Url.search(Url.parse(u)?)
+  expect_eq(back.get("q"), Some("a b"))
+  expect_eq(back.get_all("page"), ["4"])
+}
+
+test "text that would break the query is percent-encoded" {
+  let u = search_url(url"https://x.test/", "1+1=2 & more#", 1)
+  expect_eq(u, Url.from("https://x.test/v1/search?q=1%2B1%3D2+%26+more%23&page=1"))
+}
+
+test "links resolve against the fetched URL" {
+  let here = url"https://api.example.test/v1/search?q=a"
+  expect_eq(follow(here, "/v1/items/7"), Url.from("https://api.example.test/v1/items/7"))
+  expect_eq(follow(here, "//cdn.example.test/x.png"), Url.from("https://cdn.example.test/x.png"))
+  expect_eq(follow(here, "http://other.test"), Url.from("http://other.test/"))
+}
+
+test "a base without a scheme or with a non-ASCII host is a typed error" {
+  expect_fail(fn() { search_url(url"/v0/items", "x", 1) }, UrlError { reason: UrlReason.Relative })
+  expect_fail(
+    fn() { search_url(Url.from("https://bücher.example/"), "x", 1) },
+    UrlError { reason: UrlReason.Idna },
+  )
+}

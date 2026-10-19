@@ -1,0 +1,231 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::encoding::Bom | Strip 16b () | Keep 16b ()
+layout 1 variant std::encoding::Encoding | Utf8 16b () | Utf16Le 16b () | Utf16Be 16b () | Windows1252 16b ()
+layout 2 error std::encoding::EncodingError | EncodingError 24b (reason: word*)
+layout 3 variant std::encoding::EncodingReason | Unsupported 24b (word*) | Malformed 24b (i64)
+layout 4 variant std::encoding::Errors | Fatal 16b () | Replace 16b ()
+layout 5 variant std::list::Builder
+layout 6 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 7 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 8 variant std::searchparams::SearchParams | SearchParams 24b (word*)
+layout 9 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
+layout 10 variant std::url::State | SchemeStart 16b () | Scheme 16b () | NoScheme 16b () | SpecialRelativeOrAuthority 16b () | PathOrAuthority 16b () | RelativeState 16b () | RelativeSlash 16b () | SpecialAuthoritySlashes 16b () | SpecialAuthorityIgnoreSlashes 16b () | Authority 16b () | Host 16b () | Port 16b () | File 16b () | FileSlash 16b () | FileHost 16b () | PathStart 16b () | Path 16b () | OpaquePath 16b () | Query 16b () | Fragment 16b ()
+layout 11 error std::url::UrlError | UrlError 24b (reason: word*)
+layout 12 record std::url::UrlParts | UrlParts 80b (scheme: word*, username: word*, password: word*, host: word*, port: word*, path: word*, query: word*, fragment: word*)
+layout 13 variant std::url::UrlReason | Idna 16b () | InvalidScheme 16b () | InvalidHost 16b () | InvalidPort 16b () | Relative 16b ()
+layout 14 shape |  32b (word*, word*)
+layout 15 shape |  32b (i64, word*)
+layout 16 shape |  32b (word*, i64)
+
+fn main#0 pub top -> unit ; main::searchparams_order_and_repeats, frame 62 slots [%1 word*, %2 word*, %3 word*, %7 bool, %8 word*, %11 word*, %12 word*, %19 word*, %20 word*, %21 word*, %24 bool, %25 word*, %28 bool, %29 word*, %36 bool, %37 word*, %38 word*, %41 bool, %42 word*, %46 word*, %47 word*, %48 word*, %49 word*, %50 word*, %54 bool, %55 word*, %56 word*, %60 word*, %61 word*, %62 word*, %63 word*, %67 bool, %68 word*, %71 word*, %72 word*, %73 word*, %74 word*, %78 bool, %79 word*, %81 word*, %85 bool, %88 word*, %93 word*, %94 word*, %97 word*, %98 word*, %99 word*, %100 word*, %101 word*, %102 word*, %106 bool, %107 word*, %109 word*, %110 word*, %112 word*, %113 word*, %115 word*, %116 word*, %117 word*, %118 word*, %122 bool, %128 bool]
+  b0():
+    %0 lit: ptr = const str 0
+    call parse#2(%0) -> b1()
+  b1(%1 r: ptr):
+    dup %1
+    call entries#3(%1) -> b2(%1)
+  b2(%2 r: ptr, %3 r: ptr):
+    %4 s: ptr = show %2
+    drop %2
+    %5 lit: ptr = const str 1
+    %6 s: ptr = concat %5, %4
+    drop %4
+    drop %5
+    perform std::console::Console.print(%6) -> b3(%3)
+  b3(%7 r: unit, %8 r: ptr):
+    %9 box: word = box %7
+    drop %9
+    %10 lit: ptr = const str 2
+    dup %8
+    call get#4(%8, %10) -> b4(%8)
+  b4(%11 r: ptr, %12 r: ptr):
+    %13 s: ptr = show %11
+    drop %11
+    %14 lit: ptr = const str 3
+    %15 s: ptr = concat %14, %13
+    drop %13
+    drop %14
+    %16 lit: ptr = const str 4
+    %17 s: ptr = concat %15, %16
+    drop %15
+    drop %16
+    %18 lit: ptr = const str 2
+    dup %12
+    call get_all#5(%12, %18) -> b5(%12, %17)
+  b5(%19 r: ptr, %20 r: ptr, %21 s: ptr):
+    %22 s: ptr = show %19
+    drop %19
+    %23 s: ptr = concat %21, %22
+    drop %21
+    drop %22
+    perform std::console::Console.print(%23) -> b6(%20)
+  b6(%24 r: unit, %25 r: ptr):
+    %26 box: word = box %24
+    drop %26
+    %27 lit: ptr = const str 5
+    dup %25
+    call has#6(%25, %27) -> b7(%25)
+  b7(%28 r: bool, %29 r: ptr):
+    %30 s: ptr = show %28
+    %31 lit: ptr = const str 6
+    %32 s: ptr = concat %31, %30
+    drop %30
+    drop %31
+    %33 lit: ptr = const str 7
+    %34 s: ptr = concat %32, %33
+    drop %32
+    drop %33
+    %35 lit: ptr = const str 8
+    dup %29
+    call has#6(%29, %35) -> b8(%29, %34)
+  b8(%36 r: bool, %37 r: ptr, %38 s: ptr):
+    %39 s: ptr = show %36
+    %40 s: ptr = concat %38, %39
+    drop %38
+    drop %39
+    perform std::console::Console.print(%40) -> b9(%37)
+  b9(%41 r: unit, %42 r: ptr):
+    %43 box: word = box %41
+    drop %43
+    %44 lit: ptr = const str 2
+    %45 lit: ptr = const str 9
+    dup %42
+    call set#7(%42, %44, %45) -> b10(%42)
+  b10(%46 r: ptr, %47 r: ptr):
+    dup %46
+    call to_string#8(%46) -> b11(%47, %46)
+  b11(%48 r: ptr, %49 r: ptr, %50 r: ptr):
+    %51 s: ptr = show %48
+    drop %48
+    %52 lit: ptr = const str 10
+    %53 s: ptr = concat %52, %51
+    drop %51
+    drop %52
+    perform std::console::Console.print(%53) -> b12(%49, %50)
+  b12(%54 r: unit, %55 r: ptr, %56 r: ptr):
+    %57 box: word = box %54
+    drop %57
+    %58 lit: ptr = const str 2
+    %59 lit: ptr = const str 11
+    call append#9(%56, %58, %59) -> b13(%55)
+  b13(%60 r: ptr, %61 r: ptr):
+    call to_string#8(%60) -> b14(%61)
+  b14(%62 r: ptr, %63 r: ptr):
+    %64 s: ptr = show %62
+    drop %62
+    %65 lit: ptr = const str 12
+    %66 s: ptr = concat %65, %64
+    drop %64
+    drop %65
+    perform std::console::Console.print(%66) -> b15(%63)
+  b15(%67 r: unit, %68 r: ptr):
+    %69 box: word = box %67
+    drop %69
+    %70 lit: ptr = const str 2
+    dup %68
+    call remove#10(%68, %70) -> b16(%68)
+  b16(%71 r: ptr, %72 r: ptr):
+    call to_string#8(%71) -> b17(%72)
+  b17(%73 r: ptr, %74 r: ptr):
+    %75 s: ptr = show %73
+    drop %73
+    %76 lit: ptr = const str 13
+    %77 s: ptr = concat %76, %75
+    drop %75
+    drop %76
+    perform std::console::Console.print(%77) -> b18(%74)
+  b18(%78 r: unit, %79 r: ptr):
+    %80 box: word = box %78
+    drop %80
+    call to_string#8(%79) -> b19()
+  b19(%81 r: ptr):
+    %82 s: ptr = show %81
+    drop %81
+    %83 lit: ptr = const str 14
+    %84 s: ptr = concat %83, %82
+    drop %82
+    drop %83
+    perform std::console::Console.print(%84) -> b20()
+  b20(%85 r: unit):
+    %86 box: word = box %85
+    drop %86
+    %87 lit: ptr = const str 15
+    call parse#11(%87) -> b21()
+  b21(%88 r: ptr):
+    %89 tag: i64 = tag %88 ctor std::result::Result
+    switch %89 0 => b22(%88) 1 => b23(%88)
+  b22(%90 r: ptr):
+    %92 p: word = proj %90.0 std::result::Result.Ok
+    drop %90
+    dup %92
+    call search#12(%92) -> b24(%92)
+  b23(%91 r: ptr):
+    %125 p: word = proj %91.0 std::result::Result.Err
+    drop %91
+    %126 reason: word = proj %125.0 std::url::UrlError
+    drop %125
+    %127 s: ptr = show %126
+    drop %126
+    perform std::console::Console.print(%127) -> b35()
+  b24(%93 r: ptr, %94 p: ptr):
+    %95 lit: ptr = const str 16
+    %96 lit: ptr = const str 17
+    call set#7(%93, %95, %96) -> b25(%94)
+  b25(%97 r: ptr, %98 p: ptr):
+    dup %98
+    call with_search#13(%98, %97) -> b26(%98)
+  b26(%99 r: ptr, %100 p: ptr):
+    call to_string#14(%99) -> b27(%100)
+  b27(%101 r: ptr, %102 p: ptr):
+    %103 s: ptr = show %101
+    drop %101
+    %104 lit: ptr = const str 18
+    %105 s: ptr = concat %104, %103
+    drop %103
+    drop %104
+    perform std::console::Console.print(%105) -> b28(%102)
+  b28(%106 r: unit, %107 p: ptr):
+    %108 box: word = box %106
+    drop %108
+    dup %107
+    call search#12(%107) -> b29(%107)
+  b29(%109 r: ptr, %110 p: ptr):
+    %111 lit: ptr = const str 2
+    call remove#10(%109, %111) -> b30(%110)
+  b30(%112 r: ptr, %113 p: ptr):
+    %114 lit: ptr = const str 16
+    call remove#10(%112, %114) -> b31(%113)
+  b31(%115 r: ptr, %116 p: ptr):
+    call with_search#13(%116, %115) -> b32()
+  b32(%117 r: ptr):
+    call to_string#14(%117) -> b33()
+  b33(%118 r: ptr):
+    %119 s: ptr = show %118
+    drop %118
+    %120 lit: ptr = const str 19
+    %121 s: ptr = concat %120, %119
+    drop %119
+    drop %120
+    perform std::console::Console.print(%121) -> b34()
+  b34(%122 r: unit):
+    %123 box: word = box %122
+    %124 unbox: unit = unbox %123
+    drop %123
+    ret %124
+  b35(%128 r: unit):
+    %129 box: word = box %128
+    %130 unbox: unit = unbox %129
+    drop %129
+    ret %130
+
+fn $entry#1 top -> unit ; main::searchparams_order_and_repeats, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1

@@ -1,0 +1,899 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::core::Trust
+layout 1 variant std::list::Builder
+layout 2 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 3 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 4 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
+layout 5 variant std::url::State | SchemeStart 16b () | Scheme 16b () | NoScheme 16b () | SpecialRelativeOrAuthority 16b () | PathOrAuthority 16b () | RelativeState 16b () | RelativeSlash 16b () | SpecialAuthoritySlashes 16b () | SpecialAuthorityIgnoreSlashes 16b () | Authority 16b () | Host 16b () | Port 16b () | File 16b () | FileSlash 16b () | FileHost 16b () | PathStart 16b () | Path 16b () | OpaquePath 16b () | Query 16b () | Fragment 16b ()
+layout 6 error std::url::UrlError | UrlError 24b (reason: word*)
+layout 7 record std::url::UrlParts | UrlParts 80b (scheme: word*, username: word*, password: word*, host: word*, port: word*, path: word*, query: word*, fragment: word*)
+layout 8 variant std::url::UrlReason | Idna 16b () | InvalidScheme 16b () | InvalidHost 16b () | InvalidPort 16b () | Relative 16b ()
+layout 9 shape |  32b (word*, word*)
+layout 10 shape |  32b (i64, word*)
+layout 11 shape |  40b (word*, word*, bool)
+layout 12 shape |  32b (word*, i64)
+
+fn main#0 pub top -> unit ; main::url_parse_whatwg, frame 33 slots [%658 word*, %713 word*, %714 word*, %715 i64, %716 i64, %717 word*, %720 bool, %721 word*, %722 i64, %723 i64, %730 bool, %731 word*, %732 i64, %733 i64, %750 word*, %751 word*, %752 i64, %753 i64, %754 word*, %755 bool, %757 word*, %758 word*, %759 i64, %760 i64, %761 word*, %762 word*, %763 bool, %786 word*, %787 word*, %788 i64, %789 i64, %790 word*, %791 bool]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 r: ptr = alloc std::option::Option.Some(%0)
+    %2 lit: ptr = const str 1
+    %3 lit: bool = const true
+    %4 tup: ptr = alloc tuple#11(word, word, bool)(%2, %1, %3)
+    %5 v: ptr = const static std::option::Option.None
+    %6 lit: ptr = const str 2
+    %7 lit: bool = const true
+    %8 tup: ptr = alloc tuple#11(word, word, bool)(%6, %5, %7)
+    %9 v: ptr = const static std::option::Option.None
+    %10 lit: ptr = const str 3
+    %11 lit: bool = const false
+    %12 tup: ptr = alloc tuple#11(word, word, bool)(%10, %9, %11)
+    %13 lit: ptr = const str 0
+    %14 r: ptr = alloc std::option::Option.Some(%13)
+    %15 lit: ptr = const str 4
+    %16 lit: bool = const false
+    %17 tup: ptr = alloc tuple#11(word, word, bool)(%15, %14, %16)
+    %18 lit: ptr = const str 0
+    %19 r: ptr = alloc std::option::Option.Some(%18)
+    %20 lit: ptr = const str 5
+    %21 lit: bool = const true
+    %22 tup: ptr = alloc tuple#11(word, word, bool)(%20, %19, %21)
+    %23 lit: ptr = const str 0
+    %24 r: ptr = alloc std::option::Option.Some(%23)
+    %25 lit: ptr = const str 6
+    %26 lit: bool = const true
+    %27 tup: ptr = alloc tuple#11(word, word, bool)(%25, %24, %26)
+    %28 lit: ptr = const str 0
+    %29 r: ptr = alloc std::option::Option.Some(%28)
+    %30 lit: ptr = const str 7
+    %31 lit: bool = const true
+    %32 tup: ptr = alloc tuple#11(word, word, bool)(%30, %29, %31)
+    %33 lit: ptr = const str 0
+    %34 r: ptr = alloc std::option::Option.Some(%33)
+    %35 lit: ptr = const str 8
+    %36 lit: bool = const true
+    %37 tup: ptr = alloc tuple#11(word, word, bool)(%35, %34, %36)
+    %38 v: ptr = const static std::option::Option.None
+    %39 lit: ptr = const str 9
+    %40 lit: bool = const true
+    %41 tup: ptr = alloc tuple#11(word, word, bool)(%39, %38, %40)
+    %42 lit: ptr = const str 0
+    %43 r: ptr = alloc std::option::Option.Some(%42)
+    %44 lit: ptr = const str 10
+    %45 lit: bool = const true
+    %46 tup: ptr = alloc tuple#11(word, word, bool)(%44, %43, %45)
+    %47 lit: ptr = const str 0
+    %48 r: ptr = alloc std::option::Option.Some(%47)
+    %49 lit: ptr = const str 11
+    %50 lit: bool = const true
+    %51 tup: ptr = alloc tuple#11(word, word, bool)(%49, %48, %50)
+    %52 lit: ptr = const str 0
+    %53 r: ptr = alloc std::option::Option.Some(%52)
+    %54 lit: ptr = const str 12
+    %55 lit: bool = const true
+    %56 tup: ptr = alloc tuple#11(word, word, bool)(%54, %53, %55)
+    %57 lit: ptr = const str 0
+    %58 r: ptr = alloc std::option::Option.Some(%57)
+    %59 lit: ptr = const str 13
+    %60 lit: bool = const false
+    %61 tup: ptr = alloc tuple#11(word, word, bool)(%59, %58, %60)
+    %62 lit: ptr = const str 0
+    %63 r: ptr = alloc std::option::Option.Some(%62)
+    %64 lit: ptr = const str 14
+    %65 lit: bool = const true
+    %66 tup: ptr = alloc tuple#11(word, word, bool)(%64, %63, %65)
+    %67 lit: ptr = const str 0
+    %68 r: ptr = alloc std::option::Option.Some(%67)
+    %69 lit: ptr = const str 15
+    %70 lit: bool = const true
+    %71 tup: ptr = alloc tuple#11(word, word, bool)(%69, %68, %70)
+    %72 lit: ptr = const str 0
+    %73 r: ptr = alloc std::option::Option.Some(%72)
+    %74 lit: ptr = const str 16
+    %75 lit: bool = const true
+    %76 tup: ptr = alloc tuple#11(word, word, bool)(%74, %73, %75)
+    %77 lit: ptr = const str 0
+    %78 r: ptr = alloc std::option::Option.Some(%77)
+    %79 lit: ptr = const str 17
+    %80 lit: bool = const true
+    %81 tup: ptr = alloc tuple#11(word, word, bool)(%79, %78, %80)
+    %82 lit: ptr = const str 0
+    %83 r: ptr = alloc std::option::Option.Some(%82)
+    %84 lit: ptr = const str 18
+    %85 lit: bool = const true
+    %86 tup: ptr = alloc tuple#11(word, word, bool)(%84, %83, %85)
+    %87 lit: ptr = const str 0
+    %88 r: ptr = alloc std::option::Option.Some(%87)
+    %89 lit: ptr = const str 19
+    %90 lit: bool = const true
+    %91 tup: ptr = alloc tuple#11(word, word, bool)(%89, %88, %90)
+    %92 lit: ptr = const str 0
+    %93 r: ptr = alloc std::option::Option.Some(%92)
+    %94 lit: ptr = const str 20
+    %95 lit: bool = const true
+    %96 tup: ptr = alloc tuple#11(word, word, bool)(%94, %93, %95)
+    %97 lit: ptr = const str 21
+    %98 r: ptr = alloc std::option::Option.Some(%97)
+    %99 lit: ptr = const str 22
+    %100 lit: bool = const false
+    %101 tup: ptr = alloc tuple#11(word, word, bool)(%99, %98, %100)
+    %102 lit: ptr = const str 21
+    %103 r: ptr = alloc std::option::Option.Some(%102)
+    %104 lit: ptr = const str 23
+    %105 lit: bool = const false
+    %106 tup: ptr = alloc tuple#11(word, word, bool)(%104, %103, %105)
+    %107 lit: ptr = const str 21
+    %108 r: ptr = alloc std::option::Option.Some(%107)
+    %109 lit: ptr = const str 24
+    %110 lit: bool = const false
+    %111 tup: ptr = alloc tuple#11(word, word, bool)(%109, %108, %110)
+    %112 v: ptr = const static std::option::Option.None
+    %113 lit: ptr = const str 25
+    %114 lit: bool = const false
+    %115 tup: ptr = alloc tuple#11(word, word, bool)(%113, %112, %114)
+    %116 v: ptr = const static std::option::Option.None
+    %117 lit: ptr = const str 26
+    %118 lit: bool = const true
+    %119 tup: ptr = alloc tuple#11(word, word, bool)(%117, %116, %118)
+    %120 v: ptr = const static std::option::Option.None
+    %121 lit: ptr = const str 27
+    %122 lit: bool = const true
+    %123 tup: ptr = alloc tuple#11(word, word, bool)(%121, %120, %122)
+    %124 v: ptr = const static std::option::Option.None
+    %125 lit: ptr = const str 28
+    %126 lit: bool = const true
+    %127 tup: ptr = alloc tuple#11(word, word, bool)(%125, %124, %126)
+    %128 v: ptr = const static std::option::Option.None
+    %129 lit: ptr = const str 29
+    %130 lit: bool = const true
+    %131 tup: ptr = alloc tuple#11(word, word, bool)(%129, %128, %130)
+    %132 v: ptr = const static std::option::Option.None
+    %133 lit: ptr = const str 30
+    %134 lit: bool = const true
+    %135 tup: ptr = alloc tuple#11(word, word, bool)(%133, %132, %134)
+    %136 v: ptr = const static std::option::Option.None
+    %137 lit: ptr = const str 31
+    %138 lit: bool = const true
+    %139 tup: ptr = alloc tuple#11(word, word, bool)(%137, %136, %138)
+    %140 v: ptr = const static std::option::Option.None
+    %141 lit: ptr = const str 32
+    %142 lit: bool = const true
+    %143 tup: ptr = alloc tuple#11(word, word, bool)(%141, %140, %142)
+    %144 v: ptr = const static std::option::Option.None
+    %145 lit: ptr = const str 33
+    %146 lit: bool = const false
+    %147 tup: ptr = alloc tuple#11(word, word, bool)(%145, %144, %146)
+    %148 v: ptr = const static std::option::Option.None
+    %149 lit: ptr = const str 34
+    %150 lit: bool = const false
+    %151 tup: ptr = alloc tuple#11(word, word, bool)(%149, %148, %150)
+    %152 v: ptr = const static std::option::Option.None
+    %153 lit: ptr = const str 35
+    %154 lit: bool = const true
+    %155 tup: ptr = alloc tuple#11(word, word, bool)(%153, %152, %154)
+    %156 v: ptr = const static std::option::Option.None
+    %157 lit: ptr = const str 36
+    %158 lit: bool = const true
+    %159 tup: ptr = alloc tuple#11(word, word, bool)(%157, %156, %158)
+    %160 v: ptr = const static std::option::Option.None
+    %161 lit: ptr = const str 15
+    %162 lit: bool = const true
+    %163 tup: ptr = alloc tuple#11(word, word, bool)(%161, %160, %162)
+    %164 v: ptr = const static std::option::Option.None
+    %165 lit: ptr = const str 37
+    %166 lit: bool = const true
+    %167 tup: ptr = alloc tuple#11(word, word, bool)(%165, %164, %166)
+    %168 v: ptr = const static std::option::Option.None
+    %169 lit: ptr = const str 38
+    %170 lit: bool = const true
+    %171 tup: ptr = alloc tuple#11(word, word, bool)(%169, %168, %170)
+    %172 v: ptr = const static std::option::Option.None
+    %173 lit: ptr = const str 39
+    %174 lit: bool = const true
+    %175 tup: ptr = alloc tuple#11(word, word, bool)(%173, %172, %174)
+    %176 v: ptr = const static std::option::Option.None
+    %177 lit: ptr = const str 40
+    %178 lit: bool = const true
+    %179 tup: ptr = alloc tuple#11(word, word, bool)(%177, %176, %178)
+    %180 v: ptr = const static std::option::Option.None
+    %181 lit: ptr = const str 41
+    %182 lit: bool = const true
+    %183 tup: ptr = alloc tuple#11(word, word, bool)(%181, %180, %182)
+    %184 v: ptr = const static std::option::Option.None
+    %185 lit: ptr = const str 42
+    %186 lit: bool = const false
+    %187 tup: ptr = alloc tuple#11(word, word, bool)(%185, %184, %186)
+    %188 v: ptr = const static std::option::Option.None
+    %189 lit: ptr = const str 43
+    %190 lit: bool = const true
+    %191 tup: ptr = alloc tuple#11(word, word, bool)(%189, %188, %190)
+    %192 v: ptr = const static std::option::Option.None
+    %193 lit: ptr = const str 44
+    %194 lit: bool = const false
+    %195 tup: ptr = alloc tuple#11(word, word, bool)(%193, %192, %194)
+    %196 lit: ptr = const str 45
+    %197 r: ptr = alloc std::option::Option.Some(%196)
+    %198 lit: ptr = const str 46
+    %199 lit: bool = const true
+    %200 tup: ptr = alloc tuple#11(word, word, bool)(%198, %197, %199)
+    %201 lit: ptr = const str 45
+    %202 r: ptr = alloc std::option::Option.Some(%201)
+    %203 lit: ptr = const str 47
+    %204 lit: bool = const true
+    %205 tup: ptr = alloc tuple#11(word, word, bool)(%203, %202, %204)
+    %206 v: ptr = const static std::option::Option.None
+    %207 lit: ptr = const str 48
+    %208 lit: bool = const false
+    %209 tup: ptr = alloc tuple#11(word, word, bool)(%207, %206, %208)
+    %210 lit: ptr = const str 49
+    %211 r: ptr = alloc std::option::Option.Some(%210)
+    %212 lit: ptr = const str 50
+    %213 lit: bool = const false
+    %214 tup: ptr = alloc tuple#11(word, word, bool)(%212, %211, %213)
+    %215 v: ptr = const static std::option::Option.None
+    %216 lit: ptr = const str 51
+    %217 lit: bool = const true
+    %218 tup: ptr = alloc tuple#11(word, word, bool)(%216, %215, %217)
+    %219 lit: ptr = const str 49
+    %220 r: ptr = alloc std::option::Option.Some(%219)
+    %221 lit: ptr = const str 52
+    %222 lit: bool = const false
+    %223 tup: ptr = alloc tuple#11(word, word, bool)(%221, %220, %222)
+    %224 lit: ptr = const str 49
+    %225 r: ptr = alloc std::option::Option.Some(%224)
+    %226 lit: ptr = const str 53
+    %227 lit: bool = const false
+    %228 tup: ptr = alloc tuple#11(word, word, bool)(%226, %225, %227)
+    %229 lit: ptr = const str 49
+    %230 r: ptr = alloc std::option::Option.Some(%229)
+    %231 lit: ptr = const str 54
+    %232 lit: bool = const false
+    %233 tup: ptr = alloc tuple#11(word, word, bool)(%231, %230, %232)
+    %234 v: ptr = const static std::option::Option.None
+    %235 lit: ptr = const str 55
+    %236 lit: bool = const false
+    %237 tup: ptr = alloc tuple#11(word, word, bool)(%235, %234, %236)
+    %238 lit: ptr = const str 49
+    %239 r: ptr = alloc std::option::Option.Some(%238)
+    %240 lit: ptr = const str 56
+    %241 lit: bool = const false
+    %242 tup: ptr = alloc tuple#11(word, word, bool)(%240, %239, %241)
+    %243 lit: ptr = const str 49
+    %244 r: ptr = alloc std::option::Option.Some(%243)
+    %245 lit: ptr = const str 57
+    %246 lit: bool = const false
+    %247 tup: ptr = alloc tuple#11(word, word, bool)(%245, %244, %246)
+    %248 v: ptr = const static std::option::Option.None
+    %249 lit: ptr = const str 58
+    %250 lit: bool = const true
+    %251 tup: ptr = alloc tuple#11(word, word, bool)(%249, %248, %250)
+    %252 lit: ptr = const str 59
+    %253 r: ptr = alloc std::option::Option.Some(%252)
+    %254 lit: ptr = const str 60
+    %255 lit: bool = const true
+    %256 tup: ptr = alloc tuple#11(word, word, bool)(%254, %253, %255)
+    %257 v: ptr = const static std::option::Option.None
+    %258 lit: ptr = const str 61
+    %259 lit: bool = const true
+    %260 tup: ptr = alloc tuple#11(word, word, bool)(%258, %257, %259)
+    %261 lit: ptr = const str 62
+    %262 r: ptr = alloc std::option::Option.Some(%261)
+    %263 lit: ptr = const str 63
+    %264 lit: bool = const false
+    %265 tup: ptr = alloc tuple#11(word, word, bool)(%263, %262, %264)
+    %266 lit: ptr = const str 64
+    %267 r: ptr = alloc std::option::Option.Some(%266)
+    %268 lit: ptr = const str 65
+    %269 lit: bool = const true
+    %270 tup: ptr = alloc tuple#11(word, word, bool)(%268, %267, %269)
+    %271 lit: ptr = const str 66
+    %272 r: ptr = alloc std::option::Option.Some(%271)
+    %273 lit: ptr = const str 67
+    %274 lit: bool = const true
+    %275 tup: ptr = alloc tuple#11(word, word, bool)(%273, %272, %274)
+    %276 lit: ptr = const str 66
+    %277 r: ptr = alloc std::option::Option.Some(%276)
+    %278 lit: ptr = const str 68
+    %279 lit: bool = const true
+    %280 tup: ptr = alloc tuple#11(word, word, bool)(%278, %277, %279)
+    %281 lit: ptr = const str 69
+    %282 r: ptr = alloc std::option::Option.Some(%281)
+    %283 lit: ptr = const str 70
+    %284 lit: bool = const true
+    %285 tup: ptr = alloc tuple#11(word, word, bool)(%283, %282, %284)
+    %286 v: ptr = const static std::option::Option.None
+    %287 lit: ptr = const str 71
+    %288 lit: bool = const false
+    %289 tup: ptr = alloc tuple#11(word, word, bool)(%287, %286, %288)
+    %290 v: ptr = const static std::option::Option.None
+    %291 lit: ptr = const str 72
+    %292 lit: bool = const true
+    %293 tup: ptr = alloc tuple#11(word, word, bool)(%291, %290, %292)
+    %294 v: ptr = const static std::option::Option.None
+    %295 lit: ptr = const str 73
+    %296 lit: bool = const false
+    %297 tup: ptr = alloc tuple#11(word, word, bool)(%295, %294, %296)
+    %298 v: ptr = const static std::option::Option.None
+    %299 lit: ptr = const str 74
+    %300 lit: bool = const false
+    %301 tup: ptr = alloc tuple#11(word, word, bool)(%299, %298, %300)
+    %302 v: ptr = const static std::option::Option.None
+    %303 lit: ptr = const str 75
+    %304 lit: bool = const false
+    %305 tup: ptr = alloc tuple#11(word, word, bool)(%303, %302, %304)
+    %306 v: ptr = const static std::option::Option.None
+    %307 lit: ptr = const str 76
+    %308 lit: bool = const false
+    %309 tup: ptr = alloc tuple#11(word, word, bool)(%307, %306, %308)
+    %310 v: ptr = const static std::option::Option.None
+    %311 lit: ptr = const str 77
+    %312 lit: bool = const false
+    %313 tup: ptr = alloc tuple#11(word, word, bool)(%311, %310, %312)
+    %314 v: ptr = const static std::option::Option.None
+    %315 lit: ptr = const str 78
+    %316 lit: bool = const false
+    %317 tup: ptr = alloc tuple#11(word, word, bool)(%315, %314, %316)
+    %318 v: ptr = const static std::option::Option.None
+    %319 lit: ptr = const str 79
+    %320 lit: bool = const false
+    %321 tup: ptr = alloc tuple#11(word, word, bool)(%319, %318, %320)
+    %322 v: ptr = const static std::option::Option.None
+    %323 lit: ptr = const str 80
+    %324 lit: bool = const false
+    %325 tup: ptr = alloc tuple#11(word, word, bool)(%323, %322, %324)
+    %326 v: ptr = const static std::option::Option.None
+    %327 lit: ptr = const str 81
+    %328 lit: bool = const false
+    %329 tup: ptr = alloc tuple#11(word, word, bool)(%327, %326, %328)
+    %330 v: ptr = const static std::option::Option.None
+    %331 lit: ptr = const str 82
+    %332 lit: bool = const false
+    %333 tup: ptr = alloc tuple#11(word, word, bool)(%331, %330, %332)
+    %334 v: ptr = const static std::option::Option.None
+    %335 lit: ptr = const str 83
+    %336 lit: bool = const false
+    %337 tup: ptr = alloc tuple#11(word, word, bool)(%335, %334, %336)
+    %338 v: ptr = const static std::option::Option.None
+    %339 lit: ptr = const str 84
+    %340 lit: bool = const false
+    %341 tup: ptr = alloc tuple#11(word, word, bool)(%339, %338, %340)
+    %342 v: ptr = const static std::option::Option.None
+    %343 lit: ptr = const str 85
+    %344 lit: bool = const false
+    %345 tup: ptr = alloc tuple#11(word, word, bool)(%343, %342, %344)
+    %346 v: ptr = const static std::option::Option.None
+    %347 lit: ptr = const str 86
+    %348 lit: bool = const false
+    %349 tup: ptr = alloc tuple#11(word, word, bool)(%347, %346, %348)
+    %350 v: ptr = const static std::option::Option.None
+    %351 lit: ptr = const str 87
+    %352 lit: bool = const false
+    %353 tup: ptr = alloc tuple#11(word, word, bool)(%351, %350, %352)
+    %354 v: ptr = const static std::option::Option.None
+    %355 lit: ptr = const str 88
+    %356 lit: bool = const false
+    %357 tup: ptr = alloc tuple#11(word, word, bool)(%355, %354, %356)
+    %358 v: ptr = const static std::option::Option.None
+    %359 lit: ptr = const str 89
+    %360 lit: bool = const false
+    %361 tup: ptr = alloc tuple#11(word, word, bool)(%359, %358, %360)
+    %362 v: ptr = const static std::option::Option.None
+    %363 lit: ptr = const str 90
+    %364 lit: bool = const true
+    %365 tup: ptr = alloc tuple#11(word, word, bool)(%363, %362, %364)
+    %366 v: ptr = const static std::option::Option.None
+    %367 lit: ptr = const str 91
+    %368 lit: bool = const true
+    %369 tup: ptr = alloc tuple#11(word, word, bool)(%367, %366, %368)
+    %370 lit: ptr = const str 92
+    %371 r: ptr = alloc std::option::Option.Some(%370)
+    %372 lit: ptr = const str 93
+    %373 lit: bool = const false
+    %374 tup: ptr = alloc tuple#11(word, word, bool)(%372, %371, %373)
+    %375 v: ptr = const static std::option::Option.None
+    %376 lit: ptr = const str 94
+    %377 lit: bool = const true
+    %378 tup: ptr = alloc tuple#11(word, word, bool)(%376, %375, %377)
+    %379 lit: ptr = const str 49
+    %380 r: ptr = alloc std::option::Option.Some(%379)
+    %381 lit: ptr = const str 95
+    %382 lit: bool = const true
+    %383 tup: ptr = alloc tuple#11(word, word, bool)(%381, %380, %382)
+    %384 lit: ptr = const str 49
+    %385 r: ptr = alloc std::option::Option.Some(%384)
+    %386 lit: ptr = const str 96
+    %387 lit: bool = const false
+    %388 tup: ptr = alloc tuple#11(word, word, bool)(%386, %385, %387)
+    %389 lit: ptr = const str 49
+    %390 r: ptr = alloc std::option::Option.Some(%389)
+    %391 lit: ptr = const str 97
+    %392 lit: bool = const true
+    %393 tup: ptr = alloc tuple#11(word, word, bool)(%391, %390, %392)
+    %394 v: ptr = const static std::option::Option.None
+    %395 lit: ptr = const str 98
+    %396 lit: bool = const true
+    %397 tup: ptr = alloc tuple#11(word, word, bool)(%395, %394, %396)
+    %398 v: ptr = const static std::option::Option.None
+    %399 lit: ptr = const str 99
+    %400 lit: bool = const false
+    %401 tup: ptr = alloc tuple#11(word, word, bool)(%399, %398, %400)
+    %402 v: ptr = const static std::option::Option.None
+    %403 lit: ptr = const str 100
+    %404 lit: bool = const false
+    %405 tup: ptr = alloc tuple#11(word, word, bool)(%403, %402, %404)
+    %406 lit: ptr = const str 101
+    %407 r: ptr = alloc std::option::Option.Some(%406)
+    %408 lit: ptr = const str 102
+    %409 lit: bool = const false
+    %410 tup: ptr = alloc tuple#11(word, word, bool)(%408, %407, %409)
+    %411 lit: ptr = const str 103
+    %412 r: ptr = alloc std::option::Option.Some(%411)
+    %413 lit: ptr = const str 5
+    %414 lit: bool = const false
+    %415 tup: ptr = alloc tuple#11(word, word, bool)(%413, %412, %414)
+    %416 v: ptr = const static std::option::Option.None
+    %417 lit: ptr = const str 104
+    %418 lit: bool = const false
+    %419 tup: ptr = alloc tuple#11(word, word, bool)(%417, %416, %418)
+    %420 v: ptr = const static std::option::Option.None
+    %421 lit: ptr = const str 105
+    %422 lit: bool = const false
+    %423 tup: ptr = alloc tuple#11(word, word, bool)(%421, %420, %422)
+    %424 lit: ptr = const str 106
+    %425 r: ptr = alloc std::option::Option.Some(%424)
+    %426 lit: ptr = const str 107
+    %427 lit: bool = const false
+    %428 tup: ptr = alloc tuple#11(word, word, bool)(%426, %425, %427)
+    %429 lit: ptr = const str 108
+    %430 r: ptr = alloc std::option::Option.Some(%429)
+    %431 lit: ptr = const str 109
+    %432 lit: bool = const false
+    %433 tup: ptr = alloc tuple#11(word, word, bool)(%431, %430, %432)
+    %434 lit: ptr = const str 108
+    %435 r: ptr = alloc std::option::Option.Some(%434)
+    %436 lit: ptr = const str 110
+    %437 lit: bool = const false
+    %438 tup: ptr = alloc tuple#11(word, word, bool)(%436, %435, %437)
+    %439 lit: ptr = const str 111
+    %440 r: ptr = alloc std::option::Option.Some(%439)
+    %441 lit: ptr = const str 112
+    %442 lit: bool = const false
+    %443 tup: ptr = alloc tuple#11(word, word, bool)(%441, %440, %442)
+    %444 lit: ptr = const str 113
+    %445 r: ptr = alloc std::option::Option.Some(%444)
+    %446 lit: ptr = const str 114
+    %447 lit: bool = const false
+    %448 tup: ptr = alloc tuple#11(word, word, bool)(%446, %445, %447)
+    %449 lit: ptr = const str 113
+    %450 r: ptr = alloc std::option::Option.Some(%449)
+    %451 lit: ptr = const str 115
+    %452 lit: bool = const false
+    %453 tup: ptr = alloc tuple#11(word, word, bool)(%451, %450, %452)
+    %454 v: ptr = const static std::option::Option.None
+    %455 lit: ptr = const str 116
+    %456 lit: bool = const false
+    %457 tup: ptr = alloc tuple#11(word, word, bool)(%455, %454, %456)
+    %458 v: ptr = const static std::option::Option.None
+    %459 lit: ptr = const str 117
+    %460 lit: bool = const false
+    %461 tup: ptr = alloc tuple#11(word, word, bool)(%459, %458, %460)
+    %462 v: ptr = const static std::option::Option.None
+    %463 lit: ptr = const str 118
+    %464 lit: bool = const false
+    %465 tup: ptr = alloc tuple#11(word, word, bool)(%463, %462, %464)
+    %466 lit: ptr = const str 119
+    %467 r: ptr = alloc std::option::Option.Some(%466)
+    %468 lit: ptr = const str 120
+    %469 lit: bool = const false
+    %470 tup: ptr = alloc tuple#11(word, word, bool)(%468, %467, %469)
+    %471 v: ptr = const static std::option::Option.None
+    %472 lit: ptr = const str 121
+    %473 lit: bool = const false
+    %474 tup: ptr = alloc tuple#11(word, word, bool)(%472, %471, %473)
+    %475 v: ptr = const static std::option::Option.None
+    %476 lit: ptr = const str 122
+    %477 lit: bool = const false
+    %478 tup: ptr = alloc tuple#11(word, word, bool)(%476, %475, %477)
+    %479 lit: ptr = const str 123
+    %480 r: ptr = alloc std::option::Option.Some(%479)
+    %481 lit: ptr = const str 124
+    %482 lit: bool = const false
+    %483 tup: ptr = alloc tuple#11(word, word, bool)(%481, %480, %482)
+    %484 v: ptr = const static std::option::Option.None
+    %485 lit: ptr = const str 125
+    %486 lit: bool = const true
+    %487 tup: ptr = alloc tuple#11(word, word, bool)(%485, %484, %486)
+    %488 lit: ptr = const str 126
+    %489 r: ptr = alloc std::option::Option.Some(%488)
+    %490 lit: ptr = const str 127
+    %491 lit: bool = const false
+    %492 tup: ptr = alloc tuple#11(word, word, bool)(%490, %489, %491)
+    %493 v: ptr = const static std::option::Option.None
+    %494 lit: ptr = const str 128
+    %495 lit: bool = const true
+    %496 tup: ptr = alloc tuple#11(word, word, bool)(%494, %493, %495)
+    %497 v: ptr = const static std::option::Option.None
+    %498 lit: ptr = const str 129
+    %499 lit: bool = const true
+    %500 tup: ptr = alloc tuple#11(word, word, bool)(%498, %497, %499)
+    %501 v: ptr = const static std::option::Option.None
+    %502 lit: ptr = const str 130
+    %503 lit: bool = const false
+    %504 tup: ptr = alloc tuple#11(word, word, bool)(%502, %501, %503)
+    %505 lit: ptr = const str 131
+    %506 r: ptr = alloc std::option::Option.Some(%505)
+    %507 lit: ptr = const str 5
+    %508 lit: bool = const false
+    %509 tup: ptr = alloc tuple#11(word, word, bool)(%507, %506, %508)
+    %510 v: ptr = const static std::option::Option.None
+    %511 lit: ptr = const str 132
+    %512 lit: bool = const false
+    %513 tup: ptr = alloc tuple#11(word, word, bool)(%511, %510, %512)
+    %514 v: ptr = const static std::option::Option.None
+    %515 lit: ptr = const str 133
+    %516 lit: bool = const true
+    %517 tup: ptr = alloc tuple#11(word, word, bool)(%515, %514, %516)
+    %518 v: ptr = const static std::option::Option.None
+    %519 lit: ptr = const str 134
+    %520 lit: bool = const true
+    %521 tup: ptr = alloc tuple#11(word, word, bool)(%519, %518, %520)
+    %522 v: ptr = const static std::option::Option.None
+    %523 lit: ptr = const str 135
+    %524 lit: bool = const false
+    %525 tup: ptr = alloc tuple#11(word, word, bool)(%523, %522, %524)
+    %526 v: ptr = const static std::option::Option.None
+    %527 lit: ptr = const str 136
+    %528 lit: bool = const false
+    %529 tup: ptr = alloc tuple#11(word, word, bool)(%527, %526, %528)
+    %530 v: ptr = const static std::option::Option.None
+    %531 lit: ptr = const str 137
+    %532 lit: bool = const false
+    %533 tup: ptr = alloc tuple#11(word, word, bool)(%531, %530, %532)
+    %534 lit: ptr = const str 138
+    %535 r: ptr = alloc std::option::Option.Some(%534)
+    %536 lit: ptr = const str 139
+    %537 lit: bool = const false
+    %538 tup: ptr = alloc tuple#11(word, word, bool)(%536, %535, %537)
+    %539 v: ptr = const static std::option::Option.None
+    %540 lit: ptr = const str 140
+    %541 lit: bool = const false
+    %542 tup: ptr = alloc tuple#11(word, word, bool)(%540, %539, %541)
+    %543 lit: ptr = const str 141
+    %544 r: ptr = alloc std::option::Option.Some(%543)
+    %545 lit: ptr = const str 142
+    %546 lit: bool = const false
+    %547 tup: ptr = alloc tuple#11(word, word, bool)(%545, %544, %546)
+    %548 v: ptr = const static std::option::Option.None
+    %549 lit: ptr = const str 143
+    %550 lit: bool = const true
+    %551 tup: ptr = alloc tuple#11(word, word, bool)(%549, %548, %550)
+    %552 v: ptr = const static std::option::Option.None
+    %553 lit: ptr = const str 144
+    %554 lit: bool = const true
+    %555 tup: ptr = alloc tuple#11(word, word, bool)(%553, %552, %554)
+    %556 lit: ptr = const str 145
+    %557 r: ptr = alloc std::option::Option.Some(%556)
+    %558 lit: ptr = const str 146
+    %559 lit: bool = const false
+    %560 tup: ptr = alloc tuple#11(word, word, bool)(%558, %557, %559)
+    %561 lit: ptr = const str 49
+    %562 r: ptr = alloc std::option::Option.Some(%561)
+    %563 lit: ptr = const str 147
+    %564 lit: bool = const false
+    %565 tup: ptr = alloc tuple#11(word, word, bool)(%563, %562, %564)
+    %566 v: ptr = const static std::option::Option.None
+    %567 lit: ptr = const str 148
+    %568 lit: bool = const false
+    %569 tup: ptr = alloc tuple#11(word, word, bool)(%567, %566, %568)
+    %570 v: ptr = const static std::option::Option.None
+    %571 lit: ptr = const str 149
+    %572 lit: bool = const false
+    %573 tup: ptr = alloc tuple#11(word, word, bool)(%571, %570, %572)
+    %574 v: ptr = const static std::option::Option.None
+    %575 lit: ptr = const str 150
+    %576 lit: bool = const false
+    %577 tup: ptr = alloc tuple#11(word, word, bool)(%575, %574, %576)
+    %578 v: ptr = const static std::option::Option.None
+    %579 lit: ptr = const str 151
+    %580 lit: bool = const false
+    %581 tup: ptr = alloc tuple#11(word, word, bool)(%579, %578, %580)
+    %582 v: ptr = const static std::option::Option.None
+    %583 lit: ptr = const str 152
+    %584 lit: bool = const false
+    %585 tup: ptr = alloc tuple#11(word, word, bool)(%583, %582, %584)
+    %586 v: ptr = const static std::option::Option.None
+    %587 lit: ptr = const str 153
+    %588 lit: bool = const false
+    %589 tup: ptr = alloc tuple#11(word, word, bool)(%587, %586, %588)
+    %590 v: ptr = const static std::option::Option.None
+    %591 lit: ptr = const str 154
+    %592 lit: bool = const false
+    %593 tup: ptr = alloc tuple#11(word, word, bool)(%591, %590, %592)
+    %594 v: ptr = const static std::option::Option.None
+    %595 lit: ptr = const str 155
+    %596 lit: bool = const true
+    %597 tup: ptr = alloc tuple#11(word, word, bool)(%595, %594, %596)
+    %598 v: ptr = const static std::option::Option.None
+    %599 lit: ptr = const str 156
+    %600 lit: bool = const true
+    %601 tup: ptr = alloc tuple#11(word, word, bool)(%599, %598, %600)
+    %602 v: ptr = const static std::option::Option.None
+    %603 lit: ptr = const str 157
+    %604 lit: bool = const true
+    %605 tup: ptr = alloc tuple#11(word, word, bool)(%603, %602, %604)
+    %606 v: ptr = const static std::option::Option.None
+    %607 lit: ptr = const str 158
+    %608 lit: bool = const true
+    %609 tup: ptr = alloc tuple#11(word, word, bool)(%607, %606, %608)
+    %610 v: ptr = const static std::option::Option.None
+    %611 lit: ptr = const str 159
+    %612 lit: bool = const false
+    %613 tup: ptr = alloc tuple#11(word, word, bool)(%611, %610, %612)
+    %614 v: ptr = const static std::option::Option.None
+    %615 lit: ptr = const str 160
+    %616 lit: bool = const false
+    %617 tup: ptr = alloc tuple#11(word, word, bool)(%615, %614, %616)
+    %618 v: ptr = const static std::option::Option.None
+    %619 lit: ptr = const str 161
+    %620 lit: bool = const false
+    %621 tup: ptr = alloc tuple#11(word, word, bool)(%619, %618, %620)
+    %622 v: ptr = const static std::option::Option.None
+    %623 lit: ptr = const str 162
+    %624 lit: bool = const false
+    %625 tup: ptr = alloc tuple#11(word, word, bool)(%623, %622, %624)
+    %626 v: ptr = const static std::option::Option.None
+    %627 lit: ptr = const str 163
+    %628 lit: bool = const false
+    %629 tup: ptr = alloc tuple#11(word, word, bool)(%627, %626, %628)
+    %630 v: ptr = const static std::option::Option.None
+    %631 lit: ptr = const str 164
+    %632 lit: bool = const true
+    %633 tup: ptr = alloc tuple#11(word, word, bool)(%631, %630, %632)
+    %634 v: ptr = const static std::option::Option.None
+    %635 lit: ptr = const str 165
+    %636 lit: bool = const true
+    %637 tup: ptr = alloc tuple#11(word, word, bool)(%635, %634, %636)
+    %638 lit: ptr = const str 123
+    %639 r: ptr = alloc std::option::Option.Some(%638)
+    %640 lit: ptr = const str 166
+    %641 lit: bool = const false
+    %642 tup: ptr = alloc tuple#11(word, word, bool)(%640, %639, %641)
+    %643 lit: ptr = const str 123
+    %644 r: ptr = alloc std::option::Option.Some(%643)
+    %645 lit: ptr = const str 167
+    %646 lit: bool = const false
+    %647 tup: ptr = alloc tuple#11(word, word, bool)(%645, %644, %646)
+    %648 v: ptr = const static std::option::Option.None
+    %649 lit: ptr = const str 168
+    %650 lit: bool = const true
+    %651 tup: ptr = alloc tuple#11(word, word, bool)(%649, %648, %650)
+    %652 lit: ptr = const str 169
+    %653 r: ptr = alloc std::option::Option.Some(%652)
+    %654 lit: ptr = const str 170
+    %655 lit: bool = const false
+    %656 tup: ptr = alloc tuple#11(word, word, bool)(%654, %653, %655)
+    %657 xs: ptr = alloc list(%4, %8, %12, %17, %22, %27, %32, %37, %41, %46, %51, %56, %61, %66, %71, %76, %81, %86, %91, %96, %101, %106, %111, %115, %119, %123, %127, %131, %135, %139, %143, %147, %151, %155, %159, %163, %167, %171, %175, %179, %183, %187, %191, %195, %200, %205, %209, %214, %218, %223, %228, %233, %237, %242, %247, %251, %256, %260, %265, %270, %275, %280, %285, %289, %293, %297, %301, %305, %309, %313, %317, %321, %325, %329, %333, %337, %341, %345, %349, %353, %357, %361, %365, %369, %374, %378, %383, %388, %393, %397, %401, %405, %410, %415, %419, %423, %428, %433, %438, %443, %448, %453, %457, %461, %465, %470, %474, %478, %483, %487, %492, %496, %500, %504, %509, %513, %517, %521, %525, %529, %533, %538, %542, %547, %551, %555, %560, %565, %569, %573, %577, %581, %585, %589, %593, %597, %601, %605, %609, %613, %617, %621, %625, %629, %633, %637, %642, %647, %651, %656)
+    call enumerate#2(%657) -> b1()
+  b1(%658 r: ptr):
+    dup.candidate %658
+    %659 n: i64 = $list_len(%658)
+    %797 lit: i64 = const 0
+    jump b3(%797, %658, %659)
+  b2():
+    %660 lit: unit = const ()
+    ret %660
+  b3(%661 i: i64, %662 r: ptr, %663 n: i64):
+    %664 more: bool = lt.int %661, %663
+    if %664 then b4(%662, %663, %661) else b5(%662, %663, %661)
+  b4(%665 r: ptr, %666 n: i64, %667 i: i64):
+    dup.candidate %665
+    %671 x: word = $list_at(%665, %667)
+    %677 t: ptr = tuple_get %671.1
+    %794 p: ptr = tuple_get %677.0
+    %795 p: ptr = tuple_get %677.1
+    %796 p: bool = tuple_get %677.2
+    drop %677
+    jump b7(%794, %795, %796, %665, %666, %667, %671)
+  b5(%668 r: ptr, %669 n: i64, %670 i: i64):
+    drop %668
+    jump b2()
+  b6(%672 r: ptr, %673 n: i64, %674 i: i64):
+    %675 lit: i64 = const 1
+    %676 i: i64 = intadd %674, %675
+    jump b3(%676, %672, %673)
+  b7(%678 input: ptr, %679 base: ptr, %680 with_origin: bool, %681 r: ptr, %682 n: i64, %683 i: i64, %684 x: ptr):
+    %735 tag: i64 = tag %679 ctor std::option::Option
+    switch %735 0 => b15(%681, %682, %683, %684, %678, %679, %680) 1 => b16(%681, %682, %683, %684, %678, %679, %680)
+  b8(%685 v: ptr, %686 r: ptr, %687 n: i64, %688 i: i64, %689 x: ptr, %690 with_origin: bool):
+    %695 tag: i64 = tag %685 ctor std::result::Result
+    switch %695 0 => b10(%686, %687, %688, %689, %690, %685) 1 => b11(%686, %687, %688, %689, %690, %685)
+  b9(%691 v: word, %692 r: ptr, %693 n: i64, %694 i: i64):
+    drop %691
+    jump b6(%692, %693, %694)
+  b10(%696 r: ptr, %697 n: i64, %698 i: i64, %699 x: ptr, %700 with_origin: bool, %701 v: ptr):
+    %708 p: word = proj %701.0 std::result::Result.Ok
+    drop %701
+    %709 t: i64 = tuple_get %699.0
+    drop %699
+    %710 s: ptr = show %709
+    %711 lit: ptr = const str 171
+    %712 s: ptr = concat %710, %711
+    drop %710
+    drop %711
+    call row#5(%708, %700) -> b12(%696, %697, %698, %712)
+  b11(%702 r: ptr, %703 n: i64, %704 i: i64, %705 x: ptr, %706 with_origin: bool, %707 v: ptr):
+    %725 p: word = proj %707.0 std::result::Result.Err
+    drop %707
+    drop %725
+    %726 t: i64 = tuple_get %705.0
+    drop %705
+    %727 s: ptr = show %726
+    %728 lit: ptr = const str 172
+    %729 s: ptr = concat %727, %728
+    drop %727
+    drop %728
+    perform std::console::Console.print(%729) -> b14(%702, %703, %704)
+  b12(%713 r: ptr, %714 r: ptr, %715 n: i64, %716 i: i64, %717 s: ptr):
+    %718 s: ptr = show %713
+    drop %713
+    %719 s: ptr = concat %717, %718
+    drop %717
+    drop %718
+    perform std::console::Console.print(%719) -> b13(%714, %715, %716)
+  b13(%720 r: unit, %721 r: ptr, %722 n: i64, %723 i: i64):
+    %724 box: word = box %720
+    jump b9(%724, %721, %722, %723)
+  b14(%730 r: unit, %731 r: ptr, %732 n: i64, %733 i: i64):
+    %734 box: word = box %730
+    jump b9(%734, %731, %732, %733)
+  b15(%736 r: ptr, %737 n: i64, %738 i: i64, %739 x: ptr, %740 input: ptr, %741 base: ptr, %742 with_origin: bool):
+    drop %741
+    call parse#3(%740) -> b17(%736, %737, %738, %739, %742)
+  b16(%743 r: ptr, %744 n: i64, %745 i: i64, %746 x: ptr, %747 input: ptr, %748 base: ptr, %749 with_origin: bool):
+    %756 p: word = proj %748.0 std::option::Option.Some
+    drop %748
+    call parse#3(%756) -> b18(%743, %744, %745, %746, %747, %749)
+  b17(%750 r: ptr, %751 r: ptr, %752 n: i64, %753 i: i64, %754 x: ptr, %755 with_origin: bool):
+    jump b8(%750, %751, %752, %753, %754, %755)
+  b18(%757 r: ptr, %758 r: ptr, %759 n: i64, %760 i: i64, %761 x: ptr, %762 input: ptr, %763 with_origin: bool):
+    %770 tag: i64 = tag %757 ctor std::result::Result
+    switch %770 0 => b20(%758, %759, %760, %761, %762, %763, %757) 1 => b21(%758, %759, %760, %761, %762, %763, %757)
+  b19(%764 v: ptr, %765 r: ptr, %766 n: i64, %767 i: i64, %768 x: ptr, %769 with_origin: bool):
+    jump b8(%764, %765, %766, %767, %768, %769)
+  b20(%771 r: ptr, %772 n: i64, %773 i: i64, %774 x: ptr, %775 input: ptr, %776 with_origin: bool, %777 r: ptr):
+    %785 p: word = proj %777.0 std::result::Result.Ok
+    drop %777
+    call resolve#4(%785, %775) -> b22(%771, %772, %773, %774, %776)
+  b21(%778 r: ptr, %779 n: i64, %780 i: i64, %781 x: ptr, %782 input: ptr, %783 with_origin: bool, %784 r: ptr):
+    drop %782
+    %792 p: word = proj %784.0 std::result::Result.Err
+    drop %784
+    %793 r: ptr = alloc std::result::Result.Err(%792)
+    jump b19(%793, %778, %779, %780, %781, %783)
+  b22(%786 r: ptr, %787 r: ptr, %788 n: i64, %789 i: i64, %790 x: ptr, %791 with_origin: bool):
+    jump b19(%786, %787, %788, %789, %790, %791)
+
+fn $entry#1 top -> unit ; main::url_parse_whatwg, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn row#5 top -> ptr ; main::url_parse_whatwg, frame 83 slots [%0 word*, %1 bool, %4 word*, %5 word*, %6 bool, %7 word*, %8 word*, %9 bool, %10 word*, %16 word*, %17 word*, %18 bool, %19 word*, %20 word*, %21 word*, %24 word*, %25 word*, %26 bool, %27 word*, %28 word*, %29 word*, %30 word*, %33 word*, %34 word*, %35 bool, %36 word*, %37 word*, %38 word*, %39 word*, %40 word*, %42 word*, %43 word*, %44 bool, %45 word*, %46 word*, %47 word*, %48 word*, %49 word*, %53 word*, %54 word*, %55 bool, %56 word*, %57 word*, %58 word*, %59 word*, %60 word*, %61 word*, %62 word*, %64 word*, %65 word*, %66 bool, %67 word*, %68 word*, %69 word*, %70 word*, %71 word*, %72 word*, %73 word*, %76 word*, %77 word*, %78 bool, %79 word*, %80 word*, %81 word*, %82 word*, %83 word*, %84 word*, %85 word*, %86 word*, %88 word*, %89 word*, %90 bool, %91 word*, %92 word*, %93 word*, %94 word*, %95 word*, %96 word*, %97 word*, %98 word*, %102 word*, %107 word*, %108 word*]
+  b0(%0 p: ptr, %1 with_origin: bool):
+    %2 password: word = proj %0.2 std::url::UrlParts
+    %3 f: ptr = closure row$1#6[]
+    call map#8(%2, %3) -> b1(%0, %1)
+  b1(%4 r: ptr, %5 p: ptr, %6 with_origin: bool):
+    dup %5
+    call to_string#9(%5) -> b2(%5, %6, %4)
+  b2(%7 r: ptr, %8 p: ptr, %9 with_origin: bool, %10 r: ptr):
+    %11 scheme: word = proj %8.0 std::url::UrlParts
+    %12 lit: ptr = const str 173
+    %13 t: ptr = concat %11, %12
+    drop %11
+    drop %12
+    %14 username: word = proj %8.1 std::url::UrlParts
+    %15 lit: ptr = const str 5
+    call unwrap_or#10(%10, %15) -> b3(%8, %9, %7, %13, %14)
+  b3(%16 r: word, %17 p: ptr, %18 with_origin: bool, %19 r: ptr, %20 t: ptr, %21 username: ptr):
+    %22 host: word = proj %17.3 std::url::UrlParts
+    %23 lit: ptr = const str 5
+    call unwrap_or#10(%22, %23) -> b4(%17, %18, %19, %20, %21, %16)
+  b4(%24 r: word, %25 p: ptr, %26 with_origin: bool, %27 r: ptr, %28 t: ptr, %29 username: ptr, %30 r: ptr):
+    %31 port: word = proj %25.4 std::url::UrlParts
+    %32 f: ptr = closure row$2#11[]
+    call map#8(%31, %32) -> b5(%25, %26, %27, %28, %29, %30, %24)
+  b5(%33 r: ptr, %34 p: ptr, %35 with_origin: bool, %36 r: ptr, %37 t: ptr, %38 username: ptr, %39 r: ptr, %40 r: ptr):
+    %41 lit: ptr = const str 5
+    call unwrap_or#10(%33, %41) -> b6(%34, %35, %36, %37, %38, %39, %40)
+  b6(%42 r: word, %43 p: ptr, %44 with_origin: bool, %45 r: ptr, %46 t: ptr, %47 username: ptr, %48 r: ptr, %49 r: ptr):
+    %50 path: word = proj %43.5 std::url::UrlParts
+    %51 query: word = proj %43.6 std::url::UrlParts
+    %52 f: ptr = closure row$3#12[]
+    call map#8(%51, %52) -> b7(%43, %44, %45, %46, %47, %48, %49, %42, %50)
+  b7(%53 r: ptr, %54 p: ptr, %55 with_origin: bool, %56 r: ptr, %57 t: ptr, %58 username: ptr, %59 r: ptr, %60 r: ptr, %61 r: ptr, %62 path: ptr):
+    %63 lit: ptr = const str 5
+    call unwrap_or#10(%53, %63) -> b8(%54, %55, %56, %57, %58, %59, %60, %61, %62)
+  b8(%64 r: word, %65 p: ptr, %66 with_origin: bool, %67 r: ptr, %68 t: ptr, %69 username: ptr, %70 r: ptr, %71 r: ptr, %72 r: ptr, %73 path: ptr):
+    %74 fragment: word = proj %65.7 std::url::UrlParts
+    %75 f: ptr = closure row$4#13[]
+    call map#8(%74, %75) -> b9(%65, %66, %67, %68, %69, %70, %71, %72, %73, %64)
+  b9(%76 r: ptr, %77 p: ptr, %78 with_origin: bool, %79 r: ptr, %80 t: ptr, %81 username: ptr, %82 r: ptr, %83 r: ptr, %84 r: ptr, %85 path: ptr, %86 r: ptr):
+    %87 lit: ptr = const str 5
+    call unwrap_or#10(%76, %87) -> b10(%77, %78, %79, %80, %81, %82, %83, %84, %85, %86)
+  b10(%88 r: word, %89 p: ptr, %90 with_origin: bool, %91 r: ptr, %92 t: ptr, %93 username: ptr, %94 r: ptr, %95 r: ptr, %96 r: ptr, %97 path: ptr, %98 r: ptr):
+    %99 xs: ptr = alloc list(%91, %92, %93, %94, %95, %96, %97, %98, %88)
+    if %90 then b13(%89, %99) else b14(%89, %99)
+  b11(%100 v: ptr):
+    %101 lit: ptr = const str 174
+    call join#15(%100, %101) -> b12()
+  b12(%102 r: ptr):
+    ret %102
+  b13(%103 p: ptr, %104 xs: ptr):
+    call origin#14(%103) -> b15(%104)
+  b14(%105 p: ptr, %106 xs: ptr):
+    drop %105
+    jump b11(%106)
+  b15(%107 r: ptr, %108 xs: ptr):
+    %109 r: ptr = $list_push(%108, %107)
+    jump b11(%109)
+
+fn row$1#6 lambda -> word ; main::url_parse_whatwg, captures [], frame 3 slots [%0 word*, %1 word*, %4 word*]
+  b0(%0 env: ptr, %1 s: word):
+    drop %0
+    %2 lit: unit = const ()
+    %3 box: word = box %2
+    call expose#7(%1, %3) -> b1()
+  b1(%4 r: word):
+    ret %4
+
+fn row$2#11 lambda -> word ; main::url_parse_whatwg, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 n: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 r: ptr = $int_to_string(%2)
+    ret %3
+
+fn row$3#12 lambda -> word ; main::url_parse_whatwg, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 q: word):
+    drop %0
+    %2 lit: ptr = const str 5
+    %3 t: bool = eq.string %1, %2
+    drop %2
+    if %3 then b1(%1) else b2(%1)
+  b1(%4 q: ptr):
+    drop %4
+    %6 lit: ptr = const str 5
+    ret %6
+  b2(%5 q: ptr):
+    %7 lit: ptr = const str 176
+    %8 t: ptr = concat %7, %5
+    drop %5
+    drop %7
+    ret %8
+
+fn row$4#13 lambda -> word ; main::url_parse_whatwg, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 f: word):
+    drop %0
+    %2 lit: ptr = const str 5
+    %3 t: bool = eq.string %1, %2
+    drop %2
+    if %3 then b1(%1) else b2(%1)
+  b1(%4 f: ptr):
+    drop %4
+    %6 lit: ptr = const str 5
+    ret %6
+  b2(%5 f: ptr):
+    %7 lit: ptr = const str 175
+    %8 t: ptr = concat %7, %5
+    drop %5
+    drop %7
+    ret %8

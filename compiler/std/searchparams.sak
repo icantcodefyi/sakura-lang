@@ -1,0 +1,177 @@
+// Query strings as an ordered multimap (the WHATWG URL Standard's `URLSearchParams` and its
+// `application/x-www-form-urlencoded` codec; RFC 0002 §2.2). A value, not a view: changing
+// one never changes the URL it came from (`UrlParts.with_search` attaches it).
+
+import std/encoding.{Bom, Encoding, Errors}
+
+/// Name/value pairs in order; a name may repeat.
+pub opaque type SearchParams = SearchParams(List<(String, String)>)
+
+/// The pairs of `query` (the text after `?`, no leading `?` expected): split on `&`, empty
+/// pieces skipped, each split at its first `=`, `+` read as a space, then percent-decoded as
+/// UTF-8 with U+FFFD for a malformed sequence. Never fails.
+pub fn parse(query: String) -> SearchParams {
+  var pairs: List<(String, String)> = []
+  for piece in String.split(query, "&") {
+    if piece != "" {
+      let at = String.split(piece, "=")
+      let name = at[0].unwrap_or("")
+      let value = String.slice(piece, String.len(name) + 1, String.len(piece))
+      pairs = List.push(pairs, (decode(name), decode(value)))
+    }
+  }
+  SearchParams(pairs)
+}
+
+/// The first value of `name`.
+pub fn get(sp: SearchParams, name: String) -> Option<String> {
+  List.find(entries(sp), fn(p) { p.0 == name }).map(fn(p) { p.1 })
+}
+
+/// Every value of `name`, in order.
+pub fn get_all(sp: SearchParams, name: String) -> List<String> {
+  List.filter_map(entries(sp), fn(p) { if p.0 == name { Some(p.1) } else { None } })
+}
+
+pub fn has(sp: SearchParams, name: String) -> Bool { List.any(entries(sp), fn(p) { p.0 == name }) }
+
+/// Adds a pair at the end.
+pub fn append(sp: SearchParams, name: String, value: String) -> SearchParams {
+  SearchParams(List.push(entries(sp), (name, value)))
+}
+
+/// The first pair named `name` takes `value` and every later one is removed; with none, the
+/// pair is appended.
+pub fn set(sp: SearchParams, name: String, value: String) -> SearchParams {
+  var out: List<(String, String)> = []
+  var found = false
+  for p in entries(sp) {
+    if p.0 != name {
+      out = List.push(out, p)
+    } else if !found {
+      out = List.push(out, (name, value))
+      found = true
+    }
+  }
+  SearchParams(if found { out } else { List.push(out, (name, value)) })
+}
+
+/// Removes every pair named `name` (`delete`).
+pub fn remove(sp: SearchParams, name: String) -> SearchParams {
+  SearchParams(List.filter(entries(sp), fn(p) { p.0 != name }))
+}
+
+/// Stable sort by name in UTF-16 code unit order, as the standard says: pairs with the same
+/// name keep their order.
+pub fn sort(sp: SearchParams) -> SearchParams {
+  let keyed = List.map(entries(sp), fn(p) { (utf16_units(p.0), p) })
+  SearchParams(List.map(List.sort_by(keyed, fn(k) { k.0 }), fn(k) { k.1 }))
+}
+
+pub fn entries(sp: SearchParams) -> List<(String, String)> {
+  match sp {
+    SearchParams(pairs) => pairs,
+  }
+}
+
+/// `name=value` pairs joined by `&`, each side percent-encoded with the
+/// `application/x-www-form-urlencoded` set and a space written as `+`.
+pub fn to_string(sp: SearchParams) -> String {
+  List.join(List.map(entries(sp), fn(p) { "{encode(p.0)}={encode(p.1)}" }), "&")
+}
+
+// The `application/x-www-form-urlencoded` percent-encode set: every byte except ASCII
+// alphanumerics and `*-._`.
+fn encode(s: String) -> String {
+  let keep = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789*-._"
+  var out = ""
+  for c in String.chars(s) {
+    if c == " " {
+      out = out + "+"
+    } else if String.contains(keep, c) {
+      out = out + c
+    } else {
+      let b = String.to_bytes(c)
+      for i in 0..Bytes.len(b) {
+        let byte = Bytes.get(b, i).unwrap_or(0)
+        out = out + "%" + hex(byte / 16) + hex(byte % 16)
+      }
+    }
+  }
+  out
+}
+
+fn hex(n: Int) -> String { String.slice("0123456789ABCDEF", n, n + 1) }
+
+// `+` as a space, then percent-decoding and UTF-8 decoding without BOM handling.
+fn decode(s: String) -> String {
+  if !String.contains(s, "%") && !String.contains(s, "+") { return s }
+  let b = String.to_bytes(s)
+  let n = Bytes.len(b)
+  var out: List<Int> = []
+  var i = 0
+  while i < n {
+    let byte = Bytes.get(b, i).unwrap_or(0)
+    let hi = hex_value(Bytes.get(b, i + 1).unwrap_or(0))
+    let lo = hex_value(Bytes.get(b, i + 2).unwrap_or(0))
+    if byte == 0x25 && hi >= 0 && lo >= 0 {
+      out = List.push(out, hi * 16 + lo)
+      i = i + 3
+    } else {
+      out = List.push(out, if byte == 0x2B { 0x20 } else { byte })
+      i = i + 1
+    }
+  }
+  Encoding.decode_with(Bytes.from_list(out), Encoding.Utf8, Errors.Replace, Bom.Keep).unwrap_or("")
+}
+
+// The value of an ASCII hex digit byte, or -1.
+fn hex_value(b: Int) -> Int {
+  if b >= 0x30 && b <= 0x39 {
+    b - 0x30
+  } else if b >= 0x41 && b <= 0x46 {
+    b - 0x37
+  } else if b >= 0x61 && b <= 0x66 {
+    b - 0x57
+  } else {
+    -1
+  }
+}
+
+// UTF-16BE bytes order names as UTF-16 code units do.
+fn utf16_units(s: String) -> List<Int> {
+  let b = Encoding.encode(s, Encoding.Utf16Be)
+  List.map(List.range(0, Bytes.len(b)), fn(i) { Bytes.get(b, i).unwrap_or(0) })
+}
+
+test "parse decodes plus, percent and bad UTF-8" {
+  let sp = parse("a=1&b=x+y%20z&&c&=e&a=2&d=%FF&f=%zz")
+  expect_eq(
+    entries(sp),
+    [("a", "1"), ("b", "x y z"), ("c", ""), ("", "e"), ("a", "2"), ("d", "\u{FFFD}"), ("f", "%zz")],
+  )
+  expect_eq(get(sp, "a"), Some("1"))
+  expect_eq(get_all(sp, "a"), ["1", "2"])
+  expect_eq(get(sp, "z"), None)
+  expect(has(sp, "c") && !has(sp, "z"))
+}
+
+test "set, append, remove" {
+  let sp = parse("a=1&b=2&a=3")
+  expect_eq(to_string(set(sp, "a", "x")), "a=x&b=2")
+  expect_eq(to_string(set(sp, "z", "9")), "a=1&b=2&a=3&z=9")
+  expect_eq(to_string(append(sp, "b", "4")), "a=1&b=2&a=3&b=4")
+  expect_eq(to_string(remove(sp, "a")), "b=2")
+}
+
+test "to_string encodes the form set" {
+  let sp = append(parse(""), "q r", "a+b&c=d/é*~")
+  expect_eq(to_string(sp), "q+r=a%2Bb%26c%3Dd%2F%C3%A9*%7E")
+  expect_eq(entries(parse(to_string(sp))), entries(sp))
+}
+
+test "sort is stable and by UTF-16 code units" {
+  expect_eq(to_string(sort(parse("z=1&a=2&z=0&a=1"))), "a=2&a=1&z=1&z=0")
+  // U+FFFD sorts after U+1F600 in UTF-16 (a surrogate is 0xD83D), before it in code points.
+  expect_eq(entries(sort(parse("%EF%BF%BD=1&%F0%9F%98%80=2"))).map(fn(p) { p.1 }), ["2", "1"])
+}

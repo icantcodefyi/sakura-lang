@@ -121,6 +121,9 @@ semantics/records: 3 funcs, 9 blocks, 1 dup, 24 drop, valid
 semantics/refined_var_rebuild: 26 funcs, 131 blocks, 18 dup, 55 drop, valid
 semantics/row_param_type: 6 funcs, 22 blocks, 4 dup, 16 drop, valid
 semantics/row_widening: 15 funcs, 29 blocks, 1 dup, 10 drop, valid
+semantics/searchparams_order_and_repeats: 97 funcs, 1324 blocks, 215 dup, 899 drop, valid
+semantics/searchparams_plus_and_percent: 22 funcs, 172 blocks, 32 dup, 80 drop, valid
+semantics/searchparams_sort_stable: 33 funcs, 226 blocks, 50 dup, 101 drop, valid
 semantics/secret_map_defect: 4 funcs, 9 blocks, 0 dup, 5 drop, valid
 semantics/show_format: 3 funcs, 13 blocks, 2 dup, 35 drop, valid
 semantics/sql_cancel_committed: 8 funcs, 36 blocks, 4 dup, 14 drop, valid
@@ -134,6 +137,11 @@ semantics/trace_decode_then_spawn: 7 funcs, 25 blocks, 3 dup, 25 drop, valid
 semantics/tuples: 3 funcs, 9 blocks, 1 dup, 29 drop, valid
 semantics/type_aliases: 4 funcs, 9 blocks, 0 dup, 7 drop, valid
 semantics/typed_errors: 8 funcs, 47 blocks, 4 dup, 29 drop, valid
+semantics/url_credentials_are_secret: 75 funcs, 1160 blocks, 175 dup, 843 drop, valid
+semantics/url_parse_whatwg: 77 funcs, 1173 blocks, 170 dup, 825 drop, valid
+semantics/url_rejects_idna: 65 funcs, 1092 blocks, 165 dup, 757 drop, valid
+semantics/url_rejects_malformed: 77 funcs, 1248 blocks, 180 dup, 870 drop, valid
+semantics/url_resolve_relative: 66 funcs, 1098 blocks, 167 dup, 779 drop, valid
 semantics/url_untrusted_component: 14 funcs, 97 blocks, 25 dup, 52 drop, valid
 semantics/uuid_decode: 9 funcs, 52 blocks, 6 dup, 38 drop, valid
 semantics/validate_untrusted_into_refined: 9 funcs, 43 blocks, 1 dup, 28 drop, valid

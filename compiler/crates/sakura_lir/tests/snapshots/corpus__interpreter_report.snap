@@ -121,6 +121,9 @@ semantics/records: ok, 18 allocated, 1 dup, 19 drop, peak 6, live 0/0
 semantics/refined_var_rebuild: D010, 53 allocated, 52 dup, 105 drop, peak 8, live 0/0
 semantics/row_param_type: ok, 27 allocated, 12 dup, 39 drop, peak 10, live 0/0
 semantics/row_widening: ok, 11 allocated, 4 dup, 15 drop, peak 7, live 0/0
+semantics/searchparams_order_and_repeats: unsupported (builtin string_to_bytes)
+semantics/searchparams_plus_and_percent: unsupported (builtin string_to_bytes)
+semantics/searchparams_sort_stable: unsupported (builtin string_to_bytes)
 semantics/secret_map_defect: unsupported (builtin secret_wrap)
 semantics/show_format: ok, 37 allocated, 8 dup, 45 drop, peak 7, live 0/0
 semantics/sql_cancel_committed: unsupported (builtin clock_host)
@@ -134,6 +137,11 @@ semantics/trace_decode_then_spawn: unsupported (builtin task_host)
 semantics/tuples: ok, 24 allocated, 2 dup, 26 drop, peak 6, live 0/0
 semantics/type_aliases: ok, 7 allocated, 0 dup, 7 drop, peak 4, live 0/0
 semantics/typed_errors: ok, 35 allocated, 9 dup, 44 drop, peak 6, live 0/0
+semantics/url_credentials_are_secret: unsupported (builtin string_to_bytes)
+semantics/url_parse_whatwg: unsupported (builtin string_to_bytes)
+semantics/url_rejects_idna: unsupported (builtin string_to_bytes)
+semantics/url_rejects_malformed: unsupported (builtin string_to_bytes)
+semantics/url_resolve_relative: unsupported (builtin string_to_bytes)
 semantics/url_untrusted_component: unsupported (builtin string_to_bytes)
 semantics/uuid_decode: unsupported (builtin json_decode)
 semantics/validate_untrusted_into_refined: ok, 34 allocated, 7 dup, 41 drop, peak 5, live 0/0

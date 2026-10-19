@@ -1,0 +1,54 @@
+// milestone: M3
+// spec: RFC 0002 §2.2
+// Spec: https://url.spec.whatwg.org/#host-parsing
+
+// Each `UrlError` reason besides `Idna`: a relative reference with no base (or an opaque-path
+// base), hosts that do not parse (empty, forbidden code points, a bad IPv4 or IPv6 address),
+// ports out of range or not digits, and the schemes `with_scheme` refuses: not a scheme, a
+// change between special and non-special, and `file` for a URL with a port.
+import std/url.{Url, UrlParts}
+
+pub fn main() -> Unit ! {Console} {
+  let inputs = [
+    "/just/a/path",
+    "//host.test/",
+    "http://",
+    "https://user@/",
+    "http://a b/",
+    "http://a<b/",
+    "http://1.2.3.256/",
+    "http://0x100000000/",
+    "http://[::1/",
+    "http://[1:2:3:4:5:6:7:8:9]/",
+    "http://[::1.2.3]/",
+    "http://x:65536/",
+    "http://x:8a/",
+    "sc://x:99999/",
+  ]
+  for s in inputs {
+    match Url.parse(s) {
+      Ok(u) => Console.print("{s}: {Url.to_string(u)}"),
+      Err(e) => Console.print("{s}: {e.reason}"),
+    }
+  }
+  match Url.parse("mailto:a@b.test") {
+    Ok(m) => {
+      Console.print("mailto + b: {Url.resolve(m, "b").map(fn(u) { Url.to_string(u) })}")
+      Console.print("mailto + #b: {Url.resolve(m, "#b").map(fn(u) { Url.to_string(u) })}")
+    },
+    Err(e) => Console.print("mailto: {e.reason}"),
+  }
+  match Url.parse("https://x.test:8443/") {
+    Ok(p) => {
+      for scheme in ["sc", "1http", "file", "wss"] {
+        let r = Url.with_scheme(p, scheme).map(fn(u) { Url.to_string(u) })
+        Console.print("with_scheme {scheme}: {r}")
+      }
+      Console.print(
+        "with_port 70000: {Url.with_port(p, Some(70000)).map(fn(u) { Url.to_string(u) })}",
+      )
+      Console.print("with_host a:b: {Url.with_host(p, "a:b").map(fn(u) { Url.to_string(u) })}")
+    },
+    Err(e) => Console.print("https: {e.reason}"),
+  }
+}

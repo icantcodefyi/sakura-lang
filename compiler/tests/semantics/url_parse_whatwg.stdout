@@ -1,0 +1,150 @@
+0: http://example.org/ | http: |  |  | example.org |  | / |  |  | http://example.org
+1: non-special://test/x | non-special: |  |  | test |  | /x |  |  | null
+2: lolscheme:x x#x%20x | lolscheme: |  |  |  |  | x x |  | #x%20x
+3: failure
+4: http://example.org/foo/bar | http: |  |  | example.org |  | /foo/bar |  |  | http://example.org
+5: http://example.org/foo/:/ | http: |  |  | example.org |  | /foo/:/ |  |  | http://example.org
+6: http://example.org/foo/bar#;? | http: |  |  | example.org |  | /foo/bar |  | #;? | http://example.org
+7: http://example.org/x | http: |  |  | example.org |  | /x |  |  | http://example.org
+8: http://%C3%A9@example.com/ | http: | %C3%A9 |  | example.com |  | / |  |  | http://example.com
+9: http://foo.com/ | http: |  |  | foo.com |  | / |  |  | http://foo.com
+10: foo:///////// | foo: |  |  |  |  | /////// |  |  | null
+11: http://foo/abcd?efgh?ijkl | http: |  |  | foo |  | /abcd | ?efgh?ijkl |  | http://foo
+12: failure
+13: http://[::d01:4403]/ | http: |  |  | [::d01:4403] |  | / |  |  | http://[::d01:4403]
+14: madeupscheme:/example.com/ | madeupscheme: |  |  |  |  | /example.com/ |  |  | null
+15: ftps:/example.com/ | ftps: |  |  |  |  | /example.com/ |  |  | null
+16: mailto:/example.com/ | mailto: |  |  |  |  | /example.com/ |  |  | null
+17: gopher:example.com/ | gopher: |  |  |  |  | example.com/ |  |  | null
+18: http://example.org/a/b/c | http: |  |  | example.org |  | /a/b/c |  |  | http://example.org
+19: data:text/html,test#test | data: |  |  |  |  | text/html,test |  | #test | null
+20: file:///C:/foo/bar | file: |  |  |  |  | /C:/foo/bar |  | 
+21: file:///home/me | file: |  |  |  |  | /home/me |  | 
+22: file:/// | file: |  |  |  |  | / |  | 
+23: file:///w:/m | file: |  |  |  |  | /w:/m |  | 
+24: http://example.com/foo/ | http: |  |  | example.com |  | /foo/ |  |  | http://example.com
+25: http://example.com/a | http: |  |  | example.com |  | /a |  |  | http://example.com
+26: http://example.com// | http: |  |  | example.com |  | // |  |  | http://example.com
+27: http://example.com/foo%2 | http: |  |  | example.com |  | /foo%2 |  |  | http://example.com
+28: http://example.com/(%28:%3A%29) | http: |  |  | example.com |  | /(%28:%3A%29) |  |  | http://example.com
+29: http://example.com/%E4%BD%A0%E5%A5%BD%E4%BD%A0%E5%A5%BD | http: |  |  | example.com |  | /%E4%BD%A0%E5%A5%BD%E4%BD%A0%E5%A5%BD |  |  | http://example.com
+30: data:test#%20%C2%BB | data: |  |  |  |  | test |  | #%20%C2%BB | null
+31: failure
+32: failure
+33: gopher://foo:443/ | gopher: |  |  | foo | 443 | / |  |  | null
+34: wss://foo:81/ | wss: |  |  | foo | 81 | / |  |  | wss://foo:81
+35: madeupscheme:/example.com/ | madeupscheme: |  |  |  |  | /example.com/ |  |  | null
+36: data:/example.com/ | data: |  |  |  |  | /example.com/ |  |  | null
+37: https://example.com/ | https: |  |  | example.com |  | / |  |  | https://example.com
+38: data:example.com/ | data: |  |  |  |  | example.com/ |  |  | null
+39: http://www.example.com/ | http: |  |  | www.example.com |  | / |  |  | http://www.example.com
+40: http://www.example.com/ | http: |  | b | www.example.com |  | / |  |  | http://www.example.com
+41: failure
+42: http://a@www.example.com/ | http: | a |  | www.example.com |  | / |  |  | http://www.example.com
+43: failure
+44: http://www.example.com/ | http: |  |  | www.example.com |  | / |  |  | http://www.example.com
+45: http://www.example.com/%E4%B8%AD/test.txt | http: |  |  | www.example.com |  | /%E4%B8%AD/test.txt |  |  | http://www.example.com
+46: file:/// | file: |  |  |  |  | / |  | 
+47: failure
+48: non-special:opaque  x?hi | non-special: |  |  |  |  | opaque  x | ?hi |  | null
+49: failure
+50: failure
+51: failure
+52: failure
+53: failure
+54: failure
+55: http://%F0%9F%98%80@host/ | http: | %F0%9F%98%80 |  | host |  | / |  |  | http://host
+56: about:blank#x | about: |  |  |  |  | blank |  | #x | null
+57: http://host/?%27 | http: |  |  | host |  | / | ?%27 |  | http://host
+58: failure
+59: sc:/i | sc: |  |  |  |  | /i |  |  | null
+60: sc://ho/i | sc: |  |  | ho |  | /i |  |  | null
+61: sc://ho/pa?i | sc: |  |  | ho |  | /pa | ?i |  | null
+62: sc:///pa/pa#i | sc: |  |  |  |  | /pa/pa |  | #i | null
+63: sc://%/ | sc: |  |  | % |  | / |  | 
+64: sc:\../ | sc: |  |  |  |  | \../ |  |  | null
+65: failure
+66: failure
+67: failure
+68: failure
+69: failure
+70: failure
+71: failure
+72: failure
+73: failure
+74: failure
+75: failure
+76: failure
+77: failure
+78: failure
+79: failure
+80: failure
+81: failure
+82: sc://%01%02%03%04%05%06%07%08%0B%0C%0E%0F%10%11%12%13%14%15%16%17%18%19%1A%1B%1C%1D%1E%1F%7F!"$%&'()*+,-.;=_`{}~/ | sc: |  |  | %01%02%03%04%05%06%07%08%0B%0C%0E%0F%10%11%12%13%14%15%16%17%18%19%1A%1B%1C%1D%1E%1F%7F!"$%&'()*+,-.;=_`{}~ |  | / |  |  | null
+83: http://facebook.com/?foo=%7B%22abc%22 | http: |  |  | facebook.com |  | / | ?foo=%7B%22abc%22 |  | http://facebook.com
+84: failure
+85: http://foo.bar/baz?qux#foo%3Ebar | http: |  |  | foo.bar |  | /baz | ?qux | #foo%3Ebar | http://foo.bar
+86: http://192.168.257.com/ | http: |  |  | 192.168.257.com |  | / |  |  | http://192.168.257.com
+87: failure
+88: http://255.255.255.255/ | http: |  |  | 255.255.255.255 |  | / |  |  | http://255.255.255.255
+89: https://127.0.0.1/ | https: |  |  | 127.0.0.1 |  | / |  |  | https://127.0.0.1
+90: failure
+91: failure
+92: file://h/C:/ | file: |  |  | h |  | /C:/ |  | 
+93: file:///test?test | file: |  |  |  |  | /test | ?test | 
+94: file://// | file: |  |  |  |  | // |  | 
+95: file:///localhost//cat | file: |  |  |  |  | /localhost//cat |  | 
+96: file:////pig | file: |  |  |  |  | //pig |  | 
+97: file://host/C: | file: |  |  | host |  | /C: |  | 
+98: file://host/C:/ | file: |  |  | host |  | /C:/ |  | 
+99: file://host/c:/foo/bar | file: |  |  | host |  | /c:/foo/bar |  | 
+100: file://host/C:/ | file: |  |  | host |  | /C:/ |  | 
+101: file:///C:/ | file: |  |  |  |  | /C:/ |  | 
+102: file:///#frag | file: |  |  |  |  | / |  | #frag
+103: failure
+104: file://///foo | file: |  |  |  |  | ///foo |  | 
+105: file:///one/two | file: |  |  |  |  | /one/two |  | 
+106: failure
+107: failure
+108: failure
+109: sc://%C3%B1#x | sc: |  |  | %C3%B1 |  |  |  | #x | null
+110: sc://// | sc: |  |  |  |  | // |  | 
+111: rsync://foo@host:911/sup | rsync: | foo |  | host | 911 | /sup |  |  | null
+112: urn:ietf:rfc:2648 | urn: |  |  |  |  | ietf:rfc:2648 |  |  | null
+113: non-spec:/.//path | non-spec: |  |  |  |  | //path |  | 
+114: non-spec:/.//p | non-spec: |  |  |  |  | //p |  | 
+115: non-special://[1:2:0:0:5::]/ | non-special: |  |  | [1:2:0:0:5::] |  | / |  | 
+116: blob:d3958f5c-0777-0845-9dcf-2cb28783acaf | blob: |  |  |  |  | d3958f5c-0777-0845-9dcf-2cb28783acaf |  |  | null
+117: blob:ftp://host/path | blob: |  |  |  |  | ftp://host/path |  |  | null
+118: failure
+119: http://example.org/test?%3E | http: |  |  | example.org |  | /test | ?%3E | 
+120: failure
+121: a:/test-a-colon-slash.html | a: |  |  |  |  | /test-a-colon-slash.html |  | 
+122: non-spec:/test?a#b%00c | non-spec: |  |  |  |  | /test | ?a | #b%00c
+123: https://example.org/#link | https: |  |  | example.org |  | / |  | #link
+124: wss://%20!%22$%&'()*+,-.%3B%3C%3D%3E%40%5B%5D%5E_%60%7B%7C%7D~@host/ | wss: | %20!%22$%&'()*+,-.%3B%3C%3D%3E%40%5B%5D%5E_%60%7B%7C%7D~ |  | host |  | / |  |  | wss://host
+125: wss://host/%20!%22$%&'()*+,-./:;%3C=%3E@[/]%5E_%60%7B|%7D~ | wss: |  |  | host |  | /%20!%22$%&'()*+,-./:;%3C=%3E@[/]%5E_%60%7B|%7D~ |  |  | wss://host
+126: abc:rootless | abc: |  |  |  |  | rootless |  | 
+127: failure
+128: failure
+129: failure
+130: failure
+131: failure
+132: failure
+133: https://x/%EF%BF%BFy | https: |  |  | x |  | /%EF%BF%BFy |  | 
+134: non-special:x/?#%00y | non-special: |  |  |  |  | x/ |  | #%00y
+135: https://example.com/%22quoted%22 | https: |  |  | example.com |  | /%22quoted%22 |  |  | https://example.com
+136: data://example.com:8080/pathname?search#hash | data: |  |  | example.com | 8080 | /pathname | ?search | #hash | null
+137: javascript://example.com:8080/pathname?search#hash | javascript: |  |  | example.com | 8080 | /pathname | ?search | #hash | null
+138: mailto://example.com:8080/pathname?search#hash | mailto: |  |  | example.com | 8080 | /pathname | ?search | #hash | null
+139: failure
+140: failure
+141: failure
+142: failure
+143: failure
+144: steam://x:0/a | steam: |  |  | x | 0 | /a |  |  | null
+145: chrome-native://x:0 | chrome-native: |  |  | x | 0 |  |  |  | null
+146: http://test/ | http: |  |  | test |  | / |  | 
+147: http://example.org/path | http: |  |  | example.org |  | /path |  | 
+148: non-special:\\opaque\path | non-special: |  |  |  |  | \\opaque\path |  |  | null
+149: foo://foo/\/a | foo: |  |  | foo |  | /\/a |  | 

@@ -126,3 +126,92 @@ fn semantics() {
     }
     report.finish("semantics");
 }
+
+/// `url_parse_whatwg.sak`'s cases and `.stdout` are generated from `tests/vectors/url.jsonl`
+/// (RFC 0002 §2.2, plan web-apis phase 2), so the upstream WPT objects stay the one source and
+/// no vector is edited by hand. `SAKURA_BLESS=1` rewrites both.
+#[test]
+fn url_vectors() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests");
+    let table = std::fs::read_to_string(root.join("vectors/url.jsonl")).unwrap();
+    let (mut cases, mut stdout) = (String::from("  let cases = [\n"), String::new());
+    let rows = table.lines().filter(|l| !l.starts_with('#'));
+    for (i, line) in rows.enumerate() {
+        let v: serde_json::Value = serde_json::from_str(line).unwrap();
+        let s = |k: &str| v[k].as_str().unwrap_or_default().to_owned();
+        let base = v["base"].as_str().map_or_else(
+            || "None".to_owned(),
+            |b| format!("Some({})", sakura_literal(b)),
+        );
+        let origin = v.get("origin").is_some();
+        let input = sakura_literal(&s("input"));
+        // `sakura fmt`'s layout: one line up to 100 columns, else one element per line.
+        let line = format!("    ({input}, {base}, {origin}),\n");
+        if line.chars().count() <= 101 {
+            cases.push_str(&line);
+        } else {
+            cases.push_str(&format!(
+                "    (\n      {input},\n      {base},\n      {origin},\n    ),\n"
+            ));
+        }
+        if v["failure"] == true {
+            stdout.push_str(&format!("{i}: failure\n"));
+            continue;
+        }
+        // `Url.to_string` never includes the password.
+        let mut href = s("href");
+        if !s("password").is_empty() {
+            href = href
+                .replacen(&format!(":{}@", s("password")), "@", 1)
+                .replacen("//@", "//", 1);
+        }
+        let mut fields = vec![href];
+        for k in [
+            "protocol", "username", "password", "hostname", "port", "pathname", "search", "hash",
+        ] {
+            fields.push(s(k));
+        }
+        if origin {
+            fields.push(s("origin"));
+        }
+        stdout.push_str(&format!("{i}: {}\n", fields.join(" | ")));
+    }
+    cases.push_str("  ]\n");
+    let path = root.join("semantics/url_parse_whatwg.sak");
+    let source = std::fs::read_to_string(&path).unwrap();
+    let begin = source.find("  // BEGIN generated").unwrap();
+    let begin = begin + source[begin..].find('\n').unwrap() + 1;
+    let end = source.find("  // END generated").unwrap();
+    let want = format!("{}{cases}{}", &source[..begin], &source[end..]);
+    let out = root.join("semantics/url_parse_whatwg.stdout");
+    if std::env::var_os("SAKURA_BLESS").is_some() {
+        std::fs::write(&path, &want).unwrap();
+        std::fs::write(&out, &stdout).unwrap();
+        return;
+    }
+    assert!(
+        source == want,
+        "{} is stale: SAKURA_BLESS=1",
+        path.display()
+    );
+    let got = std::fs::read_to_string(&out).unwrap_or_default();
+    assert!(got == stdout, "{} is stale: SAKURA_BLESS=1", out.display());
+}
+
+/// `s` as a Sakura string literal: `\`, `"`, `{` and `}` escaped, anything outside printable
+/// ASCII as `\u{…}`.
+fn sakura_literal(s: &str) -> String {
+    let mut out = String::from("\"");
+    for c in s.chars() {
+        match c {
+            '\\' | '"' | '{' | '}' => {
+                out.push('\\');
+                out.push(c);
+            }
+            ' '..='~' => out.push(c),
+            _ => out.push_str(&format!("\\u{{{:X}}}", c as u32)),
+        }
+    }
+    out.push('"');
+    out
+}

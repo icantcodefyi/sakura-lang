@@ -1,0 +1,27 @@
+// milestone: M3
+// spec: RFC 0002 §2.2
+// Spec: https://url.spec.whatwg.org/#concept-domain-to-ascii
+
+// A special URL's host that needs UTS #46 processing is `Err(UrlError(Idna))`, never mangled:
+// non-ASCII text, percent-encoded non-ASCII bytes, a full-width dot and an `xn--` label (punycode
+// is a later, additive change). Non-ASCII elsewhere is percent-encoded as usual, and a
+// non-special URL's opaque host takes it percent-encoded too.
+import std/url.{Url, UrlParts}
+
+pub fn main() -> Unit ! {Console} {
+  let inputs = [
+    "https://bücher.example/",
+    "https://b%C3%BCcher.example/",
+    "http://www.foo\u{3002}bar.com/",
+    "https://xn--bcher-kva.example/",
+    "https://XN--bcher-kva.example/",
+    "https://example.com/bücher?q=é#ü",
+    "sc://bücher/",
+  ]
+  for s in inputs {
+    match Url.parse(s) {
+      Ok(u) => Console.print("{Url.to_string(u)}"),
+      Err(e) => Console.print("{e.reason}"),
+    }
+  }
+}

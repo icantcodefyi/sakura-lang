@@ -1,0 +1,63 @@
+// milestone: M3
+// spec: RFC 0002 §2.2
+// Spec: https://url.spec.whatwg.org/#relative-state
+
+// `Url.resolve` on RFC 3986 §5.4's reference-resolution examples (base `http://a/b/c/d;p?q`),
+// which the WHATWG parser resolves the same way, plus the backslash a special scheme reads as
+// `/` and a scheme-relative reference that replaces the authority. This is the resolution a
+// redirect's `Location` header needs.
+import std/url.{Url, UrlParts}
+
+pub fn main() -> Unit ! {Console} {
+  match Url.parse("http://a/b/c/d;p?q") {
+    Ok(base) => {
+      let refs = [
+        "g:h",
+        "g",
+        "./g",
+        "g/",
+        "/g",
+        "//g",
+        "?y",
+        "g?y",
+        "#s",
+        "g#s",
+        "g?y#s",
+        ";x",
+        "g;x",
+        "",
+        ".",
+        "./",
+        "..",
+        "../",
+        "../g",
+        "../..",
+        "../../",
+        "../../g",
+        "../../../g",
+        "/./g",
+        "/../g",
+        "g.",
+        ".g",
+        "g..",
+        "..g",
+        "./../g",
+        "./g/.",
+        "g/./h",
+        "g/../h",
+        "g;x=1/./y",
+        "g;x=1/../y",
+        "g\\h",
+        "\\\\other\\x",
+        "http:g",
+      ]
+      for r in refs {
+        match Url.resolve(base, r) {
+          Ok(u) => Console.print("\"{r}\" -> {Url.to_string(u)}"),
+          Err(e) => Console.print("\"{r}\" -> {e.reason}"),
+        }
+      }
+    },
+    Err(e) => Console.print("base: {e.reason}"),
+  }
+}

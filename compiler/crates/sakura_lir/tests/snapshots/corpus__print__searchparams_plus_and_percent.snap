@@ -1,0 +1,110 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::encoding::Bom | Strip 16b () | Keep 16b ()
+layout 1 variant std::encoding::Encoding | Utf8 16b () | Utf16Le 16b () | Utf16Be 16b () | Windows1252 16b ()
+layout 2 error std::encoding::EncodingError | EncodingError 24b (reason: word*)
+layout 3 variant std::encoding::EncodingReason | Unsupported 24b (word*) | Malformed 24b (i64)
+layout 4 variant std::encoding::Errors | Fatal 16b () | Replace 16b ()
+layout 5 variant std::list::Builder
+layout 6 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 7 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 8 variant std::searchparams::SearchParams | SearchParams 24b (word*)
+layout 9 shape |  32b (word*, word*)
+layout 10 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::searchparams_plus_and_percent, frame 22 slots [%1 word*, %2 word*, %5 word*, %8 word*, %11 word*, %12 word*, %13 word*, %14 bool, %15 word*, %17 word*, %18 word*, %19 word*, %20 word*, %21 word*, %22 word*, %23 word*, %24 word*, %27 bool, %55 bool, %56 word*, %57 i64, %58 i64]
+  b0():
+    %0 lit: ptr = const str 0
+    call parse#2(%0) -> b1()
+  b1(%1 r: ptr):
+    call entries#3(%1) -> b2()
+  b2(%2 r: ptr):
+    dup.candidate %2
+    %3 n: i64 = $list_len(%2)
+    %60 lit: i64 = const 0
+    jump b14(%60, %2, %3)
+  b3():
+    %4 lit: ptr = const str 1
+    call parse#2(%4) -> b4()
+  b4(%5 r: ptr):
+    %6 lit: ptr = const str 2
+    %7 lit: ptr = const str 3
+    call append#4(%5, %6, %7) -> b5()
+  b5(%8 r: ptr):
+    %9 lit: ptr = const str 4
+    %10 lit: ptr = const str 5
+    call append#4(%8, %9, %10) -> b6()
+  b6(%11 r: ptr):
+    dup %11
+    call to_string#5(%11) -> b7(%11)
+  b7(%12 r: ptr, %13 r: ptr):
+    perform std::console::Console.print(%12) -> b8(%13)
+  b8(%14 r: unit, %15 r: ptr):
+    %16 box: word = box %14
+    drop %16
+    dup %15
+    call to_string#5(%15) -> b9(%15)
+  b9(%17 r: ptr, %18 r: ptr):
+    call parse#2(%17) -> b10(%18)
+  b10(%19 r: ptr, %20 r: ptr):
+    call entries#3(%19) -> b11(%20)
+  b11(%21 r: ptr, %22 r: ptr):
+    call entries#3(%22) -> b12(%21)
+  b12(%23 r: ptr, %24 r: ptr):
+    %25 t: bool = eq.any %24, %23
+    drop %23
+    drop %24
+    %26 s: ptr = show %25
+    perform std::console::Console.print(%26) -> b13()
+  b13(%27 r: unit):
+    %28 box: word = box %27
+    %29 unbox: unit = unbox %28
+    drop %28
+    ret %29
+  b14(%30 i: i64, %31 r: ptr, %32 n: i64):
+    %33 more: bool = lt.int %30, %32
+    if %33 then b15(%31, %32, %30) else b16(%31, %32, %30)
+  b15(%34 r: ptr, %35 n: i64, %36 i: i64):
+    dup.candidate %34
+    %40 x: word = $list_at(%34, %36)
+    %46 t: ptr = tuple_get %40.0
+    %47 s: ptr = show %46
+    drop %46
+    %48 lit: ptr = const str 6
+    %49 s: ptr = concat %47, %48
+    drop %47
+    drop %48
+    %50 t: ptr = tuple_get %40.1
+    drop %40
+    %51 s: ptr = show %50
+    drop %50
+    %52 s: ptr = concat %49, %51
+    drop %49
+    drop %51
+    %53 lit: ptr = const str 7
+    %54 s: ptr = concat %52, %53
+    drop %52
+    drop %53
+    perform std::console::Console.print(%54) -> b18(%34, %35, %36)
+  b16(%37 r: ptr, %38 n: i64, %39 i: i64):
+    drop %37
+    jump b3()
+  b17(%41 r: ptr, %42 n: i64, %43 i: i64):
+    %44 lit: i64 = const 1
+    %45 i: i64 = intadd %43, %44
+    jump b14(%45, %41, %42)
+  b18(%55 r: unit, %56 r: ptr, %57 n: i64, %58 i: i64):
+    %59 box: word = box %55
+    drop %59
+    jump b17(%56, %57, %58)
+
+fn $entry#1 top -> unit ; main::searchparams_plus_and_percent, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1

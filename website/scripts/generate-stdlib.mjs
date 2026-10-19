@@ -31,6 +31,7 @@ The [capabilities tour](/docs/tour/capabilities), [contracts tour](/docs/tour/co
 - \`Task.par_map\` lives in \`std/task\`, not \`List\`. \`Env.host()\` takes no scope argument; use \`Env.only\` for attenuation.
 - JS \`Int\` arithmetic has a safe-integer range of ±(2^53−1); WASM uses signed i64. Both are CLI targets; native is experimental.
 - Web byte and text APIs (RFC 0002): \`Uint8Array\` is \`Bytes\`, immutable, so an in-place write is \`Bytes.from_list(List.set(...))\`; \`TextEncoder.encodeInto\` has no counterpart because there is no caller-owned buffer; \`btoa\` takes bytes, so text goes through \`String.to_bytes\` first; \`Encoding.encode\` writes UTF-8 and UTF-16 only, since Windows-1252 cannot encode every string.
+- Web URL APIs (RFC 0002): \`URL\` is \`Url.parse\` and \`Url.resolve\` giving a \`UrlParts\` value, and \`URLSearchParams\` is \`SearchParams\`; the setters are \`with_*\` functions returning a new value, so there is no live \`url.searchParams\` (read \`Url.search\`, write \`Url.with_search\`); a host that needs IDNA (non-ASCII, or an \`xn--\` label) is \`UrlError(Idna)\` until punycode lands; the password is a \`Secret\` that \`to_string\` leaves out. \`Url\` stays the prefix check \`url"…"\` and \`Request.url\` use.
 - Static verification is implemented for a restricted fragment; see the [roadmap](/docs/roadmap).
 - Prefer \`List\` for dense integer IDs, as in DeltaBlue; use \`Map\` for sparse keys. Collection updates return new values: assign the result back. See the source index for complexity and behavior notes.
 

@@ -1,0 +1,11 @@
+ending: ok
+--- stdout
+entries: [("tag", "a"), ("page", "1"), ("tag", "b"), ("tag", "c"), ("flag", "")]
+get tag: Some("a"), all: ["a", "b", "c"]
+has flag: true, has nope: false
+set: tag=z&page=1&flag=
+append: tag=z&page=1&flag=&tag=y
+remove: page=1&flag=
+original: tag=a&page=1&tag=b&tag=c&flag=
+with_search: https://x.test/list?tag=a&page=2#top
+emptied: https://x.test/list#top

@@ -1,0 +1,25 @@
+// milestone: M3
+// spec: RFC 0002 §2.2
+// Spec: https://url.spec.whatwg.org/#urlencoded-parsing
+
+// The `application/x-www-form-urlencoded` codec: `+` is a space, `%XX` is a byte, the bytes
+// are UTF-8 with U+FFFD for a malformed sequence, and a `%` without two hex digits is text.
+// Serializing writes a space as `+` and percent-encodes everything outside `*-._` and ASCII
+// alphanumerics, so `+`, `&`, `=` and `~` in data survive a round trip.
+import std/searchparams.{SearchParams}
+
+pub fn main() -> Unit ! {Console} {
+  let sp = SearchParams.parse(
+    "q=a+b%20c&sum=1%2B1%3D2&name=%C3%A9t%C3%A9&bad=%FF%FE&pct=100%&raw=%zz",
+  )
+  for pair in SearchParams.entries(sp) { Console.print("{pair.0} = \"{pair.1}\"") }
+  let built = SearchParams.append(
+    SearchParams.append(SearchParams.parse(""), "a b", "x+y&z=~"),
+    "é",
+    "*-._",
+  )
+  Console.print(SearchParams.to_string(built))
+  Console.print(
+    "{SearchParams.entries(SearchParams.parse(SearchParams.to_string(built))) == SearchParams.entries(built)}",
+  )
+}

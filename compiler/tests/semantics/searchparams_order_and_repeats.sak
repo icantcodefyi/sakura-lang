@@ -1,0 +1,36 @@
+// milestone: M3
+// spec: RFC 0002 §2.2
+// Spec: https://url.spec.whatwg.org/#interface-urlsearchparams
+
+// `SearchParams` is an ordered multimap: repeated names keep every value in order, `get` is
+// the first, `set` replaces the first and drops the rest in place, `append` adds at the end,
+// `remove` drops every pair of a name, and `UrlParts.with_search` writes it back as the query
+// (an empty one removes the query). Each operation returns a new value.
+import std/searchparams.{SearchParams}
+import std/url.{Url, UrlParts}
+
+pub fn main() -> Unit ! {Console} {
+  let sp = SearchParams.parse("tag=a&page=1&tag=b&&tag=c&flag")
+  Console.print("entries: {SearchParams.entries(sp)}")
+  Console.print("get tag: {SearchParams.get(sp, "tag")}, all: {SearchParams.get_all(sp, "tag")}")
+  Console.print(
+    "has flag: {SearchParams.has(sp, "flag")}, has nope: {SearchParams.has(sp, "nope")}",
+  )
+  let set = SearchParams.set(sp, "tag", "z")
+  Console.print("set: {SearchParams.to_string(set)}")
+  Console.print("append: {SearchParams.to_string(SearchParams.append(set, "tag", "y"))}")
+  Console.print("remove: {SearchParams.to_string(SearchParams.remove(sp, "tag"))}")
+  Console.print("original: {SearchParams.to_string(sp)}")
+  match Url.parse("https://x.test/list?tag=a&page=1#top") {
+    Ok(p) => {
+      let next = Url.with_search(p, SearchParams.set(Url.search(p), "page", "2"))
+      Console.print("with_search: {Url.to_string(next)}")
+      let cleared = Url.with_search(
+        p,
+        SearchParams.remove(SearchParams.remove(Url.search(p), "tag"), "page"),
+      )
+      Console.print("emptied: {Url.to_string(cleared)}")
+    },
+    Err(e) => Console.print("{e.reason}"),
+  }
+}

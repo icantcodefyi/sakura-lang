@@ -1,0 +1,82 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::encoding::Bom | Strip 16b () | Keep 16b ()
+layout 1 variant std::encoding::Encoding | Utf8 16b () | Utf16Le 16b () | Utf16Be 16b () | Windows1252 16b ()
+layout 2 error std::encoding::EncodingError | EncodingError 24b (reason: word*)
+layout 3 variant std::encoding::EncodingReason | Unsupported 24b (word*) | Malformed 24b (i64)
+layout 4 variant std::encoding::Errors | Fatal 16b () | Replace 16b ()
+layout 5 variant std::list::Builder
+layout 6 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 7 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 8 variant std::searchparams::SearchParams | SearchParams 24b (word*)
+layout 9 shape |  32b (word*, word*)
+layout 10 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::searchparams_sort_stable, frame 13 slots [%1 word*, %2 word*, %3 word*, %4 word*, %5 word*, %6 bool, %7 word*, %9 word*, %10 word*, %36 bool, %37 word*, %38 i64, %39 i64]
+  b0():
+    %0 lit: ptr = const str 0
+    call parse#2(%0) -> b1()
+  b1(%1 r: ptr):
+    dup %1
+    call sort#3(%1) -> b2(%1)
+  b2(%2 r: ptr, %3 r: ptr):
+    call to_string#4(%2) -> b3(%3)
+  b3(%4 r: ptr, %5 r: ptr):
+    perform std::console::Console.print(%4) -> b4(%5)
+  b4(%6 r: unit, %7 r: ptr):
+    %8 box: word = box %6
+    drop %8
+    call sort#3(%7) -> b5()
+  b5(%9 r: ptr):
+    call entries#5(%9) -> b6()
+  b6(%10 r: ptr):
+    dup.candidate %10
+    %11 n: i64 = $list_len(%10)
+    %41 lit: i64 = const 0
+    jump b8(%41, %10, %11)
+  b7():
+    %12 lit: unit = const ()
+    ret %12
+  b8(%13 i: i64, %14 r: ptr, %15 n: i64):
+    %16 more: bool = lt.int %13, %15
+    if %16 then b9(%14, %15, %13) else b10(%14, %15, %13)
+  b9(%17 r: ptr, %18 n: i64, %19 i: i64):
+    dup.candidate %17
+    %23 x: word = $list_at(%17, %19)
+    %29 t: ptr = tuple_get %23.0
+    %30 s: ptr = show %29
+    drop %29
+    %31 lit: ptr = const str 1
+    %32 s: ptr = concat %30, %31
+    drop %30
+    drop %31
+    %33 t: ptr = tuple_get %23.1
+    drop %23
+    %34 s: ptr = show %33
+    drop %33
+    %35 s: ptr = concat %32, %34
+    drop %32
+    drop %34
+    perform std::console::Console.print(%35) -> b12(%17, %18, %19)
+  b10(%20 r: ptr, %21 n: i64, %22 i: i64):
+    drop %20
+    jump b7()
+  b11(%24 r: ptr, %25 n: i64, %26 i: i64):
+    %27 lit: i64 = const 1
+    %28 i: i64 = intadd %26, %27
+    jump b8(%28, %24, %25)
+  b12(%36 r: unit, %37 r: ptr, %38 n: i64, %39 i: i64):
+    %40 box: word = box %36
+    drop %40
+    jump b11(%37, %38, %39)
+
+fn $entry#1 top -> unit ; main::searchparams_sort_stable, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
