@@ -22,14 +22,23 @@ elif name == "security":
         pathlib.Path(args[-1]).touch()
     elif args[0] == "delete-keychain":
         pathlib.Path(args[-1]).unlink()
+    elif args[0] == "list-keychains":
+        state = pathlib.Path(os.environ["SEARCH"])
+        if "-s" in args:
+            state.write_text("".join('    "' + item + '"\\n' for item in args[args.index("-s") + 1:]))
+        else:
+            print(state.read_text(), end="")
     elif args[0] == "find-identity":
         identity = os.environ["TEST_IDENTITY"]
         print('1) 1234567890 "' + identity + '"')
     else:
         print("PRIVATE-DIAGNOSTIC")
 elif name == "codesign":
+    if "--sign" in args:
+        first = pathlib.Path(os.environ["SEARCH"]).read_text().splitlines()[0].strip()
+        assert first == '"' + args[args.index("--keychain") + 1] + '"', first
     if os.environ.get("FAIL_SIGN") and "--sign" in args:
-        print("PRIVATE-DIAGNOSTIC", file=sys.stderr)
+        print("PRIVATE-DIAGNOSTIC: errSecInternalComponent", file=sys.stderr)
         sys.exit(1)
     if os.environ.get("FAIL_VERIFY") and "--verify" in args:
         sys.exit(1)
@@ -64,8 +73,10 @@ class Signing(unittest.TestCase):
             command.chmod(0o755)
         self.binary = self.root / "sakura"
         self.binary.write_bytes(b"MACHO")
+        self.search = '    "/Users/runner/Library/Keychains/login.keychain-db"\n    "/Library/Keychains/My Team.keychain"\n'
+        (self.root / "search").write_text(self.search)
         self.env = dict(os.environ, PATH=f"{tools}:{os.environ['PATH']}",
-                        RUNNER_TEMP=str(self.root), CALLS=str(self.root / "calls"),
+                        RUNNER_TEMP=str(self.root), CALLS=str(self.root / "calls"), SEARCH=str(self.root / "search"),
                         GITHUB_STEP_SUMMARY=str(self.root / "summary"),
                         MACOS_CERT_P12_BASE64=base64.b64encode(b"certificate").decode(),
                         MACOS_CERT_PASSWORD="certificate-password", APPLE_API_KEY_P8="PRIVATE-KEY\nPRIVATE-BODY",
@@ -75,6 +86,7 @@ class Signing(unittest.TestCase):
         result = subprocess.run(["bash", str(SCRIPT), str(self.binary)],
                                 env=dict(self.env, **changes), capture_output=True, text=True, timeout=20)
         self.assertFalse((self.root / "sakura-signing").exists(), "temporary credentials survived")
+        self.assertEqual((self.root / "search").read_text(), self.search, "search list not restored")
         public = "\n".join(line for line in result.stdout.splitlines() if not line.startswith("::add-mask::")) + result.stderr
         for value in ("PRIVATE-DIAGNOSTIC", "derived-keychain-password", "certificate-password", "PRIVATE-KEY", "PRIVATE-BODY", "KEYID", "ISSUERID"):
             self.assertNotIn(value, public)
@@ -96,6 +108,8 @@ class Signing(unittest.TestCase):
         self.assertEqual(notary[:2], ["notarytool", "submit"])
         self.assertIn("--wait", notary)
         self.assertTrue(any(name == "codesign" and "--check-notarization" in args for name, args in calls))
+        imports = [args[1] for name, args in calls if name == "security" and args[0] == "import"]
+        self.assertTrue(imports[1].endswith("DeveloperIDG2CA.cer"))
         self.assertEqual(calls[-1][0:1], ["security"])
         self.assertEqual(calls[-1][1][0], "delete-keychain")
         self.assertIn("stapled ticket", (self.root / "summary").read_text())
@@ -108,7 +122,9 @@ class Signing(unittest.TestCase):
         self.assertFalse(any(name in ("codesign", "xcrun") for name, _ in self.calls()))
 
     def test_signing_failure_removes_credentials(self):
-        self.assertNotEqual(self.run_signing(FAIL_SIGN="1").returncode, 0)
+        result = self.run_signing(FAIL_SIGN="1")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("::error::Reason: errSecInternalComponent", result.stdout)
         self.assertFalse(any(name == "xcrun" for name, _ in self.calls()))
 
     def test_notarization_transport_failure_removes_credentials(self):
