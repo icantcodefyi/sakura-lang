@@ -1,0 +1,5 @@
+# RFC 7914 §11 PBKDF2-HMAC-SHA-256 test vectors, https://www.rfc-editor.org/rfc/rfc7914#section-11, fetched 2026-10-20.
+# RFC 6070's vectors are PBKDF2-HMAC-SHA-1, which std/crypto does not offer. Extracted by script, not edited.
+# Columns: algorithm, TAB, password (ASCII), TAB, salt (ASCII), TAB, iterations, TAB, dkLen (bytes), TAB, DK hex.
+SHA-256	passwd	salt	1	64	55ac046e56e3089fec1691c22544b605f94185216dde0465e68b9d57c20dacbc49ca9cccf179b645991664b39d77ef317c71b845b1e30bd509112041d3a19783
+SHA-256	Password	NaCl	80000	64	4ddcd8f60b98be21830cee5ef22701f9641a4418d04c0414aeff08876b34ab56a1d425a1225833549adb841b51c9b3176a272bdebba1d078478f62b397f33c8d
