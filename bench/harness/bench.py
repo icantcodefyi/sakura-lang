@@ -1142,6 +1142,71 @@ def cmd_compile(a):
 
 
 # ---------------------------------------------------------------------------------------------
+# bench compile-native (plan M5 N2: the native compile report that sets the budget, §17.175 (4))
+
+NATIVE_PHASES = ("frontend_ms", "lowering_ms", "codegen_ms", "object_ms", "link_ms")
+
+
+def build_native_cli():
+    """The CLI with `--target native`, and the driver staticlib it links, as
+    `sakura_codegen_native::build_driver` makes it: return the driver's directory."""
+    compiler = ROOT / "compiler"
+    sh(["cargo", "build", "--release", "--locked", "-p", "sakura_cli", "--features", "native"], cwd=compiler,
+       timeout=1800)
+    target = TARGET / "native-driver"
+    lib, libs = target / "release" / "libsakura_native_driver.a", target / "release" / "native-static-libs.txt"
+    if lib.exists() and not libs.exists():
+        lib.unlink()  # `--print native-static-libs` speaks only when it links
+    r = subprocess.run(["cargo", "rustc", "--release", "--locked", "-p", "sakura_native_driver", "--features", "native",
+                        "--lib", "--crate-type", "staticlib", "--target-dir", str(target), "--", "-Cpanic=abort",
+                        "--print", "native-static-libs"], cwd=compiler, capture_output=True, text=True, timeout=1800)
+    if r.returncode != 0:
+        raise Fail(f"building the native driver:\n{r.stderr[-3000:]}")
+    for line in r.stderr.splitlines():
+        if "native-static-libs: " in line:
+            libs.write_text(line.split("native-static-libs: ", 1)[1])
+    return lib.parent
+
+
+def cmd_compile_native(a):
+    """`sakura build --target native` of every benchmark program, 15 processes after a warm-up,
+    each phase's p95 from the CLI's `SAKURA_NATIVE_TIMINGS` lines (link reported beside the rest)."""
+    os.environ["SAKURA_NATIVE_LIB_DIR"] = str(build_native_cli())
+    os.environ.setdefault("SAKURA_CACHE_DIR", str(TARGET / "cache"))
+    res = new_result({"command": "compile-native", "seed": SEED})
+    status = EXIT_OK
+    print("| Program | " + " | ".join(f"{k[:-3]} p95 ms" for k in NATIVE_PHASES) + " |\n|---|"
+          + "---:|" * len(NATIVE_PHASES), flush=True)
+    for p in sorted(d.name for d in PROGRAMS.iterdir() if (d / "sakura" / "main.sak").exists()):
+        timings = TARGET / "native-timings" / f"{p}.jsonl"
+        timings.parent.mkdir(parents=True, exist_ok=True)
+        timings.unlink(missing_ok=True)
+        os.environ["SAKURA_NATIVE_TIMINGS"] = str(timings)
+        cmd = [str(SAKURA), "build", "--target", "native", "--out-dir", str(TARGET / "native-out" / p),
+               str(PROGRAMS / p / "sakura" / "main.sak")]
+        try:
+            for _ in range(16):
+                sh(cmd)
+        except Fail as e:
+            res["meta"]["failures"].append({"program": p, "variant": "sakura", "engine": "cli", "error": str(e)})
+            print(f"| {p} | ✗ {str(e).splitlines()[0]} |")
+            status = EXIT_BLOCKED
+            continue
+        rows = [json.loads(line) for line in timings.read_text().splitlines()][1:]  # the first warms up
+        phases = {k: [r[k] for r in rows] for k in NATIVE_PHASES}
+        res["results"].append({"program": p, "variant": "sakura", "engine": "cli", "lane": "compile-native",
+                               "ints": None, "samples_ms": phases, "p95_ms": {k: p95(v) for k, v in phases.items()},
+                               "median_ms": {k: statistics.median(v) for k, v in phases.items()},
+                               "budget_ms": None, "target_ms": None, "rss_bytes": None, "checksum_ok": True,
+                               "checksum": None})
+        print(f"| {p} | " + " | ".join(f"{p95(phases[k]):.1f}" for k in NATIVE_PHASES) + " |", flush=True)
+    os.environ.pop("SAKURA_NATIVE_TIMINGS")
+    Path(a.json).parent.mkdir(parents=True, exist_ok=True)
+    Path(a.json).write_text(json.dumps(res, indent=1) + "\n")
+    return status
+
+
+# ---------------------------------------------------------------------------------------------
 # bench oracle (deviation 4: records and checks meta.toml [checksums])
 
 def cmd_oracle(a):
@@ -1216,6 +1281,8 @@ def main(argv=None):
     b.add_argument("result")
     k = sub.add_parser("compile", help="check/build/LSP latency against the research/10 §6 budgets")
     k.add_argument("--json", required=True)
+    n = sub.add_parser("compile-native", help="per-phase p95 of `sakura build --target native` (plan M5 N2)")
+    n.add_argument("--json", required=True)
     o = sub.add_parser("oracle", help="check Sakura and hand JS against meta.toml [checksums]")
     o.add_argument("--filter", default="*")
     o.add_argument("--write", action="store_true", help="record [checksums]; Sakura must equal JS")
@@ -1225,6 +1292,7 @@ def main(argv=None):
         return EXIT_TOOLCHAIN
     try:
         return {"run": cmd_run, "compare": cmd_compare, "bless": cmd_bless, "compile": cmd_compile,
+                "compile-native": cmd_compile_native,
                 "envelope": cmd_envelope, "oracle": cmd_oracle}[a.cmd](a)
     except Fail as e:  # a build of the CLI itself failed
         log(e)

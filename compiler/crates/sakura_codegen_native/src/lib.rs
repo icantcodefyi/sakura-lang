@@ -15,6 +15,7 @@ mod unwind;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::{Duration, Instant};
 
 use cranelift_codegen::ir::{AbiParam, InstBuilder, types};
 use cranelift_codegen::settings::{self, Configurable};
@@ -62,6 +63,14 @@ impl Default for Options {
 
 /// Compile `m` for the host target to a relocatable object (ELF or Mach-O).
 pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
+    emit_timed(m, opts).map(|(object, _)| object)
+}
+
+/// [`emit`], with how long code generation (CLIF, Cranelift, the data) and object emission
+/// (unwind and DWARF sections, the file's bytes) took: the compile report's phases (plan N2,
+/// design §17.175 (4)).
+pub fn emit_timed(m: &Module, opts: &Options) -> Result<(Vec<u8>, [Duration; 2]), String> {
+    let start = Instant::now();
     let mut flags = settings::builder();
     for (k, v) in [
         ("is_pic", "true"),
@@ -314,10 +323,12 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     obj.define_function(main, &mut ctx)
         .map_err(|e| format!("main: {e:?}"))?;
     unwind.add(obj.isa(), &ctx, main)?;
+    let codegen = start.elapsed();
     let mut product = obj.finish();
     unwind.write(&mut product)?;
     lines.write(&mut product, &opts.sources, &opts.texts)?;
-    product.emit().map_err(|e| e.to_string())
+    let object = product.emit().map_err(|e| e.to_string())?;
+    Ok((object, [codegen, start.elapsed() - codegen]))
 }
 
 /// The `sakura.native` record (ABI §1b): a `sakura-vt1` tuple (ABI §8.1) of the target

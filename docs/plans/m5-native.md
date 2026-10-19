@@ -179,8 +179,10 @@ seeds a generated out-of-bounds load and a freed-object read, which it catches. 
 reuse-token consumption waits for N3's reuse (the LIR has no tokens yet). **Left of N2:** the
 other three `native_detect.rs` controls (Miri's invalid slot kind, ASan's double drop and stale
 callback) with the ASan and Memcheck lanes and the `crabgrind` annotations; N2f the compile
-report (lowering, codegen, object, link p95) and the `{js, wasm, native} × {ubuntu, macos}`
-matrix, plus test mode (`sakura test --target native`)
+report's numbers at a quiet window on the reference host (`bench/bench compile-native` landed:
+per program, frontend, lowering, codegen, object and link p95 from `SAKURA_NATIVE_TIMINGS`;
+on a loaded laptop codegen is at most 49 ms (`deltablue`), object emission under 1 ms and the
+link 58–145 ms) and the `{js, wasm, native} × {ubuntu, macos}` matrix, plus test mode (`sakura test --target native`)
 once N1b's services land; `deep_recursion_gauge` and the exact-i64 lane.
 
 **N1b progress (2026-10-19).** §17.229 (5) landed first (bc61e0c5): both JS hosts answer an OS

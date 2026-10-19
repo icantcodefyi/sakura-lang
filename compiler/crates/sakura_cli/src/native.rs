@@ -3,8 +3,10 @@
 //! `main` (ABI §1b). The driver comes from `SAKURA_NATIVE_LIB_DIR`, else `lib/sakura/native`
 //! beside the `sakura` binary's directory.
 
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
+use std::time::{Duration, Instant};
 
 use sakura_analysis::{Analysis, BuildOptions, Snapshot};
 
@@ -46,6 +48,7 @@ pub fn build(
     then: bool,
     checks: bool,
 ) -> Result<PathBuf, ExitCode> {
+    let start = Instant::now();
     let refused = crate::wasm::js_externals(snapshot, "native");
     if !refused.is_empty() {
         report(json, snapshot, &refused, &[], true);
@@ -61,6 +64,7 @@ pub fn build(
     if !then {
         crate::verify::drop_proved(snapshot, &mut module, "wasm");
     }
+    let frontend = start.elapsed();
     let lir = match sakura_lir::from_core(&module, sakura_lir::Layout::Tagged) {
         Ok(lir) => lir,
         Err(e) => panic!("LIR lowering: {e}"),
@@ -68,6 +72,7 @@ pub fn build(
     if let Some(e) = sakura_lir::validate::validate(&lir, Default::default()).first() {
         panic!("LIR validator: {e}");
     }
+    let lowering = start.elapsed() - frontend;
     let native = sakura_codegen_native::Options {
         direct: opts.direct,
         sources: snapshot
@@ -90,13 +95,34 @@ pub fn build(
         },
         checks,
     };
-    let object = sakura_codegen_native::emit(&lir, &native).map_err(usage_error)?;
+    let (object, [codegen, emission]) =
+        sakura_codegen_native::emit_timed(&lir, &native).map_err(usage_error)?;
     let driver = driver_dir().map_err(usage_error)?;
     let o = out_dir.join(OBJECT);
     std::fs::create_dir_all(out_dir)
         .and_then(|()| std::fs::write(&o, object))
         .map_err(|e| usage_error(format!("{}: {e}", o.display())))?;
+    let linking = Instant::now();
     sakura_codegen_native::link(&o, &driver, &out_dir.join(EXECUTABLE)).map_err(usage_error)?;
+    // The compile report's phases (plan N2, design §17.175 (4)), one JSON line per build.
+    if let Some(path) = std::env::var_os("SAKURA_NATIVE_TIMINGS") {
+        let ms = |d: Duration| d.as_secs_f64() * 1000.0;
+        let line = serde_json::json!({
+            "frontend_ms": ms(frontend),
+            "lowering_ms": ms(lowering),
+            "codegen_ms": ms(codegen),
+            "object_ms": ms(emission),
+            "link_ms": ms(linking.elapsed()),
+        });
+        let appended = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&path)
+            .and_then(|mut f| writeln!(f, "{line}"));
+        if let Err(e) = appended {
+            eprintln!("warning: SAKURA_NATIVE_TIMINGS: {e}");
+        }
+    }
     if (json && !then) || !diags.is_empty() {
         report(json, snapshot, &diags, &[], !then);
     }
