@@ -421,10 +421,7 @@ export class Host {
     this.wake = null;
     this.traceFd = null;
     const path = proc?.env?.SAKURA_TRACE;
-    if (path) {
-      this.fs = proc.getBuiltinModule("node:fs");
-      this.traceFd = this.fs.openSync(path, "a");
-    }
+    if (path) this.traceFd = proc.getBuiltinModule("node:fs").openSync(path, "a");
   }
 
   /**
@@ -731,7 +728,7 @@ export class Host {
         trace_enabled: () => (this.traceFd === null ? 0 : 1),
         trace_write: (ptr, len) => {
           rt.flushOut();
-          this.fs.writeSync(this.traceFd, `${this.string(ptr, len)}\n`);
+          rt.writeTrace(this.traceFd, this.string(ptr, len));
         },
       },
     };

@@ -42,6 +42,9 @@ Compare the release tag with main when identifying changes not in that preview.
 - The DeltaBlue benchmark stores dense variable and constraint ids in `List` instead
   of `Map`, following design §17.217 and WS-P13c. The std index and Sakura skill
   reference document this collection choice. Oracle checksums are unchanged.
+- `SAKURA_TRACE` effect traces are written in batches on JS and WASM rather than one write per
+  record: a traced 1,000,000-operation run drops from about 5 s to 0.3 s. The lines are
+  unchanged; a run killed by a signal can lose the tail of its trace.
 
 ### Added
 

@@ -302,6 +302,8 @@ caller. `std/test`'s `expect_defect` is built on it.
   cancellation and defect, `{"seq","task","event":"finalizer"|"cancel"|"defect"[,"code"]}`.
   `seq` counts records; tasks are numbered in creation order (the root task is 0), so traces of
   one program under one handler set can be compared line by line across backends.
+  Lines are written in batches and the rest when the process exits, so a run killed by a
+  signal can lose the tail of its trace.
 
 ### Structured concurrency (design §8.6)
 

@@ -194,9 +194,26 @@ export function stopTracing() {
 export const TRACE = traceFd !== null;
 let traceSeq = 0;
 function trace(t, record) {
-  const line = JSON.stringify({ seq: traceSeq++, task: t.id, ...record });
-  globalThis.process.getBuiltinModule("node:fs").writeSync(traceFd, `${line}\n`);
+  writeTrace(traceFd, JSON.stringify({ seq: traceSeq++, task: t.id, ...record }));
 }
+// Trace lines are written in batches and the rest at exit: a write per record put a
+// 1,000,000-operation run's time into syscalls. A killed run loses its unwritten tail.
+const traceLines = [];
+let traceTo = null;
+/** Append `line` to the trace file open as `fd` (this runtime's or the WASM host's). */
+export function writeTrace(fd, line) {
+  if (fd !== traceTo) flushTrace();
+  traceTo = fd;
+  traceLines.push(line);
+  if (traceLines.length >= 4096) flushTrace();
+}
+function flushTrace() {
+  if (traceLines.length === 0) return;
+  const text = `${traceLines.join("\n")}\n`;
+  traceLines.length = 0;
+  globalThis.process.getBuiltinModule("node:fs").writeSync(traceTo, text);
+}
+if (globalThis.process?.env?.SAKURA_TRACE) globalThis.process.on("exit", flushTrace);
 
 /**
  * Context for running a clause found at frame `f`: handlers outside the frame (design §5.5),
