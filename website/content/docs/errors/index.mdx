@@ -6,7 +6,7 @@ description: "Every Sakura Lang diagnostic code with its explanation, a program 
 
 Every diagnostic code the compiler and the runtime report, with its explanation, a program that triggers it and, where one is checked in, the fixed program. Codes are stable and never renumbered (design §12.3); `sakura explain <code>` prints the same explanation offline, and a diagnostic's `explanation_uri` (`sakura://explain/<code>`) maps to `/docs/errors/<code>`. `V` codes are errors, `W` warnings and `D` runtime defects; the [diagnostics reference](/docs/agents/diagnostics) describes the JSON records.
 
-92 codes; 65 pages show a fixed program that the compiler's test suite checks.
+93 codes; 65 pages show a fixed program that the compiler's test suite checks.
 
 ## Lex and parse
 
@@ -113,6 +113,7 @@ Every diagnostic code the compiler and the runtime report, with its explanation,
 | [V8003](/docs/errors/V8003) | `abi_version_mismatch` | The WASM module was compiled against a runtime ABI this host does not implement (`runtime/rt/ABI.md` §0): its major version differs, or its minor version is newer than the host's, so it may need imports the host lacks. |
 | [V8004](/docs/errors/V8004) | `target_unsupported_external` | A user package declares an `@external(js, …)` function, and `--target wasm` has no JavaScript to call (design §17.81): the WASM backend runs std's host operations through the runtime's own imports only. |
 | [V8005](/docs/errors/V8005) | `dependencies_not_supported` | Packages are not supported yet: `sakura.toml` declares `[dependencies]` (design §17.232, RFC 0001). |
+| [V8006](/docs/errors/V8006) | `manifest_invalid` | sakura.toml is not a valid manifest (design §17.239): the TOML is malformed, a key is unknown, a value has the wrong type, or `[package]` has no `name`. |
 | [V8020](/docs/errors/V8020) | `spec_frozen` | A patch modifies a frozen symbol's signature, effect row, error union, contracts, or a test body (design §7.3). |
 
 ## Internal

@@ -1206,7 +1206,7 @@ The `hole` record is exactly:
 
 `V` + phase digit + three digits; `W` for warnings; `D` for runtime defects. Phases: `0` lex/parse, `1` resolve/modules, `2` types, `3` effects/handlers, `4` patterns, `5` contracts/refinements, `6` capabilities/resources/escape, `7` tests/verification, `8` packages/build/frozen specs, `9` internal. The letters are opaque and read as `V` violation (an error is a contract violation), `W` warning, `D` defect; they do not change with the language's name (§17 entry 47). Codes are never reused or renumbered; retired codes stay documented and are never constructed (`V5002`, retired by §17.87). Every code has an `explain` page with a minimal pair (wrong program → diagnostic → fixed program), generated from the registry and the `tests/ui` fixtures onto the website at `/docs/errors/<code>` (§17.144); `explanation_uri` stays `sakura://explain/<code>` and tools map it to that page. The registry is `sakura_diagnostics::codes`.
 
-Package codes: `V8001` missing entry point, `V8002` reserved package name, `V8003` ABI version mismatch, `V8004` an `@external(js, …)` on a target without JavaScript, `V8005` a `[dependencies]` table in `sakura.toml` (packages are reserved, §17.232), `V8020` a frozen spec modified.
+Package codes: `V8001` missing entry point, `V8002` reserved package name, `V8003` ABI version mismatch, `V8004` an `@external(js, …)` on a target without JavaScript, `V8005` a `[dependencies]` table in `sakura.toml` (packages are reserved, §17.232), `V8006` a `sakura.toml` that is not a valid manifest (§17.239), `V8020` a frozen spec modified.
 
 Defect codes in v0:
 

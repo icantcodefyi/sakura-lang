@@ -19,7 +19,18 @@ Compare the release tag with main when identifying changes not in that preview.
   design §17.232). Packages arrive in a later minor release and the key is reserved: an empty
   table, entries, an inline `dependencies = {}` or a dotted key is an error at the key from
   `check`, `build`, `run`, `test` and the LSP before anything runs, and nothing is fetched. Remove
-  the table; a malformed manifest keeps its parse error alone.
+  the table.
+- A `sakura.toml` that is not a valid manifest is `V8006 manifest_invalid` (design §17.239): an
+  unknown table or key, a value of the wrong type, a missing `[package] name` or malformed TOML is
+  reported by `check`, `build`, `run`, `test`, `verify` and the LSP at the place in `sakura.toml`,
+  with the parser's message, `--json` records and exit 1. It replaces the human-only
+  `sakura.toml: …` usage error (exit 2) that only `run`, `test --record` and `verify` printed. Beside
+  `[dependencies]` both `V8005` and `V8006` are reported.
+
+### Removed
+
+- The unused `[targets]` manifest table. It was parsed and never read; it is now an unknown key
+  and so `V8006`.
 
 ### Documentation
 
