@@ -4,7 +4,7 @@ description: Reference for the JSON Lines diagnostics produced by sakura check -
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  The source-built compiler runs the core language and M3 standard library on JavaScript, with LSP and stdio MCP tools. WASM and verification are available as previews; backend parity and optimization work remain. The alpha.1 preview is published without a stable compatibility contract; these docs track current main. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
+  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The published preview, `0.1.0-alpha.1`, has no compatibility promise yet, and these docs track main ([changes since alpha.1](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
 </Callout>
 
 Diagnostics are an API. Every diagnostic has a stable code, byte spans, structured expected and actual values, causal links, and fixes that declare their impact. The CLI, the LSP server, and the [MCP server](/docs/agents/mcp) share one analysis library; CLI JSON Lines, MCP result objects and LSP messages wrap that data differently.

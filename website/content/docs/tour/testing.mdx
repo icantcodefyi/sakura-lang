@@ -4,7 +4,7 @@ description: Unit tests, property tests, contract-generated tests, snapshots, an
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  The source-built compiler runs the core language and much of M3 on JavaScript: contracts, typed effects and failures, std handlers, permissions, LSP and MCP. M3 is complete. The alpha.1 preview is published without a stable compatibility contract; these docs track current main. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
+  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The published preview, `0.1.0-alpha.1`, has no compatibility promise yet, and these docs track main ([changes since alpha.1](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
 </Callout>
 
 Tests are part of the language. `test` and `property` are top-level items, so they live next to the code they test, use the same handlers as production code, and run with `sakura test`. Assertions come from `std/test`, whose names are in the prelude ([design §10.6](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)).

@@ -4,7 +4,7 @@ description: Sakura Lang is an agent-first, general-purpose programming language
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  The source-built compiler runs the core language and much of M3 on JavaScript: contracts, typed effects and failures, std handlers, permissions, LSP and MCP. M3 is complete. The alpha.1 preview is published without a stable compatibility contract; these docs track current main. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
+  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The published preview, `0.1.0-alpha.1`, has no compatibility promise yet, and these docs track main ([changes since alpha.1](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
 </Callout>
 
 Sakura Lang is the programming language built for agents.
@@ -71,20 +71,21 @@ The test installs an in-memory handler for `Users`. `Clock` and `Random` need no
 
 **1. Effects you can see.** Every function type carries an effect row after `!`. Expected failure is the built-in `Fail<E>` effect over a union of `error` tags. There are no exceptions and no null. Defects such as overflow or a violated contract are not effects; they terminate the task. See [Effects](/docs/tour/effects) and [Handlers](/docs/tour/handlers).
 
-**2. Memory without a borrow checker.** Every value has value semantics: no aliasable mutation, no reference cells, no cycles in the safe heap, no lifetimes. The first backend is JavaScript and uses the host GC. The native backend (milestone M5) inserts reference counting at compile time with Perceus-style reuse and has no tracing GC. Speed is a design goal; nothing has been measured. See [Memory model](/docs/tour/memory).
+**2. Memory without a borrow checker.** Every value has value semantics: no aliasable mutation, no reference cells, no cycles in the safe heap, no lifetimes. The JavaScript backend uses the host GC. The WebAssembly backend inserts reference counting at compile time and has no tracing GC; Perceus-style in-place reuse is planned after 1.0. Speed is a design goal, and no performance claim is made yet. See [Memory model](/docs/tour/memory).
 
-**3. Contracts, always checked.** Refinement types (`where`), `requires`, and `ensures` are checked at runtime in every build mode, including `--release`. `sakura test --contracts` generates properties for eligible public functions and saves shrunk failures for replay. Later, `sakura verify` (M4) uses an SMT solver to prove individual obligations and remove only those checks. See [Contracts](/docs/tour/contracts) and [Testing](/docs/tour/testing).
+**3. Contracts, always checked.** Refinement types (`where`), `requires`, and `ensures` are checked at runtime in every build. `sakura test --contracts` generates properties for eligible public functions and saves shrunk failures for replay. `sakura verify` asks the Z3 solver to prove individual obligations, and `sakura build` removes only the checks it proved. See [Contracts](/docs/tour/contracts) and [Testing](/docs/tour/testing).
 
 **4. Secure by construction.** Effects are requirements; handlers are authority. The host supplies root handlers only for the std effects `main` declares, limited by `[permissions]` in `sakura.toml`, and code can only narrow that authority. `Untrusted<T>` marks outside data, `Secret<T>` cannot be shown or serialized, and tagged templates such as `sql"..."` never splice raw text. See [Capabilities and security](/docs/tour/capabilities).
 
 **5. Built for agents.** A grammar that fits on one page, one way to do each thing, typed holes (`?name`), JSON Lines diagnostics with byte spans and fixes labelled by impact, specs frozen during agent repair, and a compiler MCP server. See [For Agents](/docs/agents).
 
-**6. Batteries included.** One `sakura` binary for `new`, `check`, `build`, `run`, `test`, `fmt`, `fix`, `doc`, packages, LSP, and MCP. The v0 standard library covers HTTP client and server, routing, SQL (SQLite first), JSON with derived schemas, CLI parsing, testing, and typed LLM calls with tools and budgets. See [Standard library](/docs/stdlib).
+**6. Batteries included.** One `sakura` binary for `new`, `check`, `build`, `run`, `test`, `verify`, `fmt`, `fix`, `audit`, `doc`, `setup`, LSP, and MCP (see the [CLI reference](/docs/cli)). The v0 standard library covers HTTP client and server, routing, SQL (SQLite first), JSON with derived schemas, CLI parsing, testing, and typed LLM calls with tools and budgets. See [Standard library](/docs/stdlib).
 
 ## Status
 
 - **Design:** [docs/design.md](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md) is the authoritative v0 design. Anything it does not specify is not in v0.
-- **Compiler:** a Rust workspace in [compiler/](https://github.com/icantcodefyi/sakuralang/tree/main/compiler). It parses, resolves, type- and effect-checks and executes the core language and implemented M3 features on JavaScript.
+- **Compiler:** a Rust workspace in [compiler/](https://github.com/icantcodefyi/sakuralang/tree/main/compiler). It checks the whole language and runs it on JavaScript (the default) and WebAssembly, which agree on the test corpus. `sakura verify` proves contracts with Z3. Native code generation through Cranelift is experimental and in no release.
+- **Releases:** `0.1.0-alpha.1` is published on npm, Homebrew and GitHub. It has no compatibility promise; [Stability](/docs/stability) describes what is proposed to become stable at v0.2.0.
 - **Code on this site** follows the v0 design. The repository examples have executable coverage; planned features are labeled and the roadmap records remaining gates. These docs track main; [changes since alpha.1](/docs/changes) need a source build until the next release.
 
 The [roadmap](/docs/roadmap) lists every milestone, M0 to M5.
@@ -96,7 +97,7 @@ The [roadmap](/docs/roadmap) lists every milestone, M0 to M5.
     The problem with agent-written code and the design principles behind Sakura Lang.
   </Card>
   <Card title="Language Tour" href="/docs/tour/basics">
-    Nine short pages covering the whole language, from bindings to concurrency.
+    Ten short pages covering the whole language, from bindings to concurrency.
   </Card>
   <Card title="For Agents" href="/docs/agents">
     llms.txt, the MCP server, JSON diagnostics, and typed holes.

@@ -4,7 +4,7 @@ description: The sakura mcp serve server, which exposes the compiler to agents a
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  The source-built compiler runs the core language and M3 standard library on JavaScript, with LSP and stdio MCP tools. WASM and verification are available as previews; backend parity and optimization work remain. The alpha.1 preview is published without a stable compatibility contract; these docs track current main. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
+  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The published preview, `0.1.0-alpha.1`, has no compatibility promise yet, and these docs track main ([changes since alpha.1](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
 </Callout>
 
 `sakura mcp serve` runs the compiler as a [Model Context Protocol](https://modelcontextprotocol.io) server. An agent calls compiler functions directly instead of running shell commands and parsing their output.

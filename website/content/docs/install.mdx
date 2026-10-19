@@ -119,7 +119,7 @@ npm --version
 ```
 
 Check that Node prints `v26.x.x`. Then use the Linux ARM64 commands above once
-v0.1.0 is published. Run npm as your normal user with nvm. Sakura's installer
+v0.1.0 is published. Run npm as your normal user with nvm. The Sakura Lang installer
 never installs Node or edits your shell profile.
 
 ## Release installer
@@ -160,16 +160,18 @@ ARM64 is not an inventory target. Proof caching on Windows is not implemented.
 
 ## macOS: Intel, coming in v0.2.0
 
-Intel Mac is coming in v0.2.0. It is not **Supported** by alpha.1. The planned target
-is `x86_64-apple-darwin`; npm, the installer and Homebrew instructions will be added
-after its inventory entry and smoke tests land. No Intel macOS floor is advertised
-yet. A Rosetta archive smoke alone cannot confirm Intel npm or Homebrew installs.
+Intel Mac is coming in v0.2.0. It is not **Supported** by alpha.1. The target is
+`x86_64-apple-darwin`. Its archive, npm package (`sakuralang-darwin-x64`) and Homebrew
+formula are built and dry-run tested on main, with the parity suites on hosted Intel
+macOS runners. Install instructions appear once a release carrying it passes its
+published smoke. No Intel macOS floor is advertised yet. A Rosetta archive smoke alone
+cannot confirm Intel npm or Homebrew installs.
 
 ## Check the installation and report a platform
 
 Start with `sakura --version` and [create a project](/docs/quickstart#create-a-project).
 For **Community-confirmed** evidence, [file a platform report](https://github.com/icantcodefyi/sakuralang/issues/new)
-with the device, OS build, exact Sakura version and commit, `node --version`,
+with the device, OS build, exact Sakura Lang version and commit, `node --version`,
 `uname -a` (or `winver`), and `/etc/os-release` on Linux. Record the outcome of the
 whole acceptance list: `new cli`, `check`, `test`, `build`, `run`,
 `run --target wasm`, an MCP initialize handshake, `setup --apply` twice, and the

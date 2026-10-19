@@ -3,8 +3,8 @@ title: Editor setup
 description: Use Sakura Lang in VS Code (and editors built on it) through the compiler's language server, sakura lsp.
 ---
 
-<Callout type="warn" title="Pre-alpha: install from source">
-  The VS Code extension is not on the VS Code Marketplace or Open VSX yet. Build it from the repository as below; it needs a `sakura` executable from the [quickstart](/docs/quickstart#install-from-source).
+<Callout type="warn" title="Pre-alpha: build the extension from source">
+  The VS Code extension is not on the VS Code Marketplace or Open VSX yet. Build it from the repository as below; it needs a `sakura` executable from [Install](/docs/install) or a [source build](/docs/quickstart#install-from-source).
 </Callout>
 
 The editor support is the compiler's own language server, `sakura lsp`, over stdio. The VS Code extension in [`editors/vscode/`](https://github.com/icantcodefyi/sakuralang/tree/main/editors/vscode) is a thin client for it: diagnostics, hover, definitions, completion, formatting and quick fixes come from the compiler you installed, so the editor and `sakura check` always agree.
@@ -52,3 +52,7 @@ its TextMate grammar; installing this tree-sitter grammar does not add LSP featu
 ## Other editors
 
 Any editor with an LSP client can run `sakura lsp` with no arguments in the project directory. The server takes its project from the first workspace folder, prefers UTF-8 positions and falls back to UTF-16, and answers `sakura/holeContext` (a `textDocument` and `position`) with the hole record. Diagnostics carry a `codeDescription` link; quick fixes carry their impact class in `data.impact` and, when the client supports `documentChanges`, the document version they were computed for.
+
+## Stability
+
+The language server's standard protocol features (document sync, diagnostics, hover, definition, completion, formatting and code actions, over stdio) are proposed as **stable from v0.2.0** under [draft RFC 0001](/docs/stability). The `sakura/holeContext` request and the extra fields in a diagnostic's or fix's `data` are **experimental**. The VS Code extension and the Tree-sitter grammar are not published and carry no promise.

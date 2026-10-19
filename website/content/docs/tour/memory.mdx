@@ -4,7 +4,7 @@ description: Value semantics, var rebinding, compiler-inserted reference countin
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  The source-built compiler runs the core language and much of M3 on JavaScript: contracts, typed effects and failures, std handlers, permissions, LSP and MCP. M3 is complete. The alpha.1 preview is published without a stable compatibility contract; these docs track current main. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
+  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The published preview, `0.1.0-alpha.1`, has no compatibility promise yet, and these docs track main ([changes since alpha.1](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
 </Callout>
 
 The compiler owns memory. There are no lifetimes, no borrow annotations, no `Rc`/`Arc`, no pointers, and no reference cells in user code. The price is a restricted data model: no aliasable mutation, no cycles in the heap, and explicit scopes for resources.
@@ -139,13 +139,13 @@ There is no shared mutable memory, so tasks cannot race on data. Tasks communica
 
 ## Backends
 
-| Backend | Milestone | Memory management |
-| --- | --- | --- |
-| JavaScript (ES modules, trampolined CPS) | first, M0 onward | host GC |
-| WebAssembly (`wasm-encoder`, runtime in linear memory) | M4 | non-atomic RC, no WASM GC required |
-| Native (Cranelift) | M5 | Perceus RC with reuse |
+| Backend | Milestone | Status | Memory management |
+| --- | --- | --- | --- |
+| JavaScript (ES modules, trampolined CPS with a direct-style fast path) | M0 onward | the default; in every release | host GC |
+| WebAssembly (`wasm-encoder`, runtime in linear memory) | M4 | complete; in every release | non-atomic RC, no WASM GC required |
+| Native (Cranelift) | M5 | experimental; source builds with the `native` feature only | non-atomic RC; Perceus reuse after 1.0 |
 
-The source-built CLI supports JavaScript (the default) and WASM. Native execution remains planned:
+Release binaries support JavaScript (the default) and WASM:
 
 ```bash
 sakura build --target js
@@ -162,13 +162,17 @@ HTTP sends and streams, `Sql.sqlite`, `Llm.stream`, `Serve.host()` and `Log.json
 
 WASM uses signed i64 `Int`; overflow is `D001`. JavaScript keeps its safe-integer profile (`D003` beyond ±(2^53−1)). `String.parse_int` and `Float.to_int_checked` follow the selected backend's range. The JS/WASM parity matrix is enforced in CI on Ubuntu and macOS, comparing outputs, exits, defects and traces, with explicit backend expectations for those integer differences. WASM defect codes, dynamic messages and source spans now match JS. Spans come from `sakura.debug`; `--strip` removes them. See [server limits and failures](/docs/changes#server-limits-and-failures) for host fault handling.
 
+A compiler built from source with `cargo build --release -p sakura_cli --features native` also accepts `--target native` on `build`, `run` and `test`, producing an executable that runs directly. It is **experimental**: it agrees with JavaScript on the semantics corpus, but `Http`, serving and `Llm` are not ported yet and stop with a `D090` or `D091` defect. See the [roadmap](/docs/roadmap#m5-native-code-experimental).
+
+**Stability.** `--target js` and `--target wasm` are proposed as stable from v0.2.0, and so is the WASM runtime ABI. Generated JavaScript, LIR and WASM bytes are internal and may change in any release. `--target native` is experimental. See [Stability](/docs/stability).
+
 ## Costs and limits
 
 - Reference counting costs something on every `dup` and `drop`. Reuse is what makes it competitive; how well it works is unmeasured.
-- Sharing a large value and then updating it copies. `W8001` copy diagnostics are planned for M5.
+- Sharing a large value and then updating it copies. `W8001` copy diagnostics are planned with Perceus reuse, after 1.0.
 - Cyclic data needs `Graph` and `NodeId`s instead of direct references.
 - On the JS backend, `Int` arithmetic and literals beyond ±(2^53−1) are defect `D003` until a wider representation lands. Parsing is the exception: `String.parse_int` returns `None` for such a value, because parsing is where untrusted input enters.
-- Native handler state uses a per-instance lock. Whether that holds up under parallelism is an open question ([design §16](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)).
+- In the native design, handler state uses a per-instance lock. Whether that holds up under parallelism is an open question ([design §16](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)).
 
 ## What the compiler checks
 
@@ -178,7 +182,7 @@ WASM uses signed i64 `Int`; overflow is `D001`. JavaScript keeps its safe-intege
 - A resource cannot escape its scope (`V6003`).
 - Reference counting is inserted automatically and is never visible in source. Reuse is an optimization only.
 
-The WASM runtime uses conservative reference counting with explicit ownership. Borrow inference and Perceus reuse remain M5 work; JavaScript uses host GC.
+The WASM runtime uses conservative reference counting with explicit ownership. Borrow inference and Perceus reuse come after 1.0; JavaScript uses host GC.
 
 ## Next
 

@@ -1,13 +1,13 @@
 ---
 title: Roadmap
-description: Source-built JS and WASM execution, contract verification, and the remaining M4 and M5 work.
+description: What is built (JS and WASM backends, contract verification), what is experimental (native code), and the releases on the way to 1.0.
 ---
 
 <Callout type="info" title="Where things stand">
-  Sakura Lang is pre-alpha and builds from source. The core language and M3 functionality run on JavaScript. **M3 is complete:** gates 1–9 and 11 pass at `a843e60` and gate 10, the security review, was signed on 2026-10-18 under the owner's delegation (see the gate report below). `sakura build`, `run` and `test` support `--target wasm`, and `sakura verify` checks contracts with a separately installed solver. The alpha.1 preview is published; subsequent changes on main are not in that package. There are no milestone dates.
+  Sakura Lang is pre-alpha. **M3 is complete** (signed 2026-10-18). **M4's work is on main**: the WebAssembly backend runs every corpus program the way JavaScript does, and `sakura verify` proves contracts with Z3. Its exit commit is `dee11301`; the owner's sign-off and the `v0.1.0` tag are pending. Native code generation (M5) is experimental. The published preview is `0.1.0-alpha.1`; later changes on main are not in that package. Releases have no dates.
 </Callout>
 
-The sequence is **M3 → M4 → M5**. The [completion plan](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plans/m3-completion-and-m4.md) defines the gates; [design §17.81–§17.99](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md) defines the provisional M4 decisions. M0–M2 provide the existing parser, type/effect checker, JS backend, handlers, typed holes, formatter and test runner.
+The milestones run **M3 → M4 → M5**; [Toward 1.0](#toward-10) lists the releases. The [completion plan](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plans/m3-completion-and-m4.md) defines the gates; [design §17.81–§17.99](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md) defines the provisional M4 decisions. M0–M2 provide the existing parser, type/effect checker, JS backend, handlers, typed holes, formatter and test runner.
 
 <PipelineFlow />
 
@@ -47,11 +47,11 @@ The [gate report](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plan
 
 ## M4: WASM and contract verification
 
-Working today (source builds; no stable release):
+M4's work is on main; its exit commit is `dee11301`. The owner's sign-off, a benchmark run on an idle machine and the `v0.1.0` tag close it. Working today:
 
 - **WASM (W1/W2):** [`build`, `run` and `test --target wasm`](/docs/tour/memory#backends), with Node as the host. The [runtime ABI](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/runtime/rt/ABI.md) defines bounded linear memory, conservative reference counting, persistent collections, frames, the trampoline and scheduler. LIR lowering makes continuations, closure environments, boxing and balanced `Dup`/`Drop` explicit; `sakura build --emit lir` writes it as text. The [ABI research](https://github.com/icantcodefyi/sakuralang/blob/main/research/09-m4-abi-and-encoding.md) records the design rationale.
 - **Host operations:** HTTP sends and streams, SQLite, `Llm.stream`, `Serve.host()` and `Log.json()` run on WASM, including requests carrying `Secret` headers (`Http.bearer`, and `Llm.anthropic` over `Http.host()`), as approved by the security review (W0). Cassettes still never see a secret header's value. This is not live-provider validation.
-- **Parity:** CI requires the JS/WASM matrix on Ubuntu and macOS through `ci-required`. The harness compares the run/test semantics corpus and example runs for output, exits, defects and effect traces, including task numbers. Backend-specific expectations preserve the intentional JS safe-integer / WASM i64 differences. It also reports host-import coverage; local-server tests exercise network and serving operations outside the offline corpus.
+- **Parity:** CI requires the JS/WASM matrix on Linux x64 and ARM64, Apple silicon and Intel macOS, and Windows x64 through `ci-required`. The harness compares the run/test semantics corpus and example runs for output, exits, defects and effect traces, including task numbers. Backend-specific expectations preserve the intentional JS safe-integer / WASM i64 differences. It also reports host-import coverage; local-server tests exercise network and serving operations outside the offline corpus.
 - **Verification:** [`sakura verify`](/docs/agents/verify) runs pinned Z3 workers over Core obligations and reports `proved`, `disproved`, `unknown` or `unsupported`. cvc5 cross-checks `unsat` when installed. JS and WASM builds remove only eligible checks covered by matching authenticated proofs; other checks remain. Body edits invalidate the function's own proofs. See the [verification tour](/docs/tour/verification).
 - **JS performance:** direct calls, bound handler dispatch, interval-proved arithmetic, owned updates and total-predicate `D011` bracket elision have landed in the WS-P work. `sakura build --dump direct`, `--dump core` and `--dump owned` expose compiler facts; the internal `--no-direct` switch exercises the CPS path. These optimizations do not establish the full performance acceptance bar or a WASM speedup.
 
@@ -73,12 +73,28 @@ For `scale(p, total) = total * p / 100`, proving `ensures result <= total` on no
 
 M4 excludes WasmGC, JSPI, typed continuations, WASI components, browser std support, threads, Perceus reuse/borrow inference, loop/recursion proofs, Float/String solver theories and proof certificates.
 
-## M5: native code and Perceus
+## M5: native code (experimental)
 
-Planned: a Cranelift backend adds native execution, borrow inference and reference-counted in-place reuse, `W8001` copy diagnostics, and internal region optimizations. Acceptance requires that live aliases preserve values, dead aliases allow reuse, cancellation and handler state pass sanitizer checks, and JS, WASM and native agree on the applicable corpus. No native performance claim is established yet.
+A Cranelift backend compiles the same LIR as the WASM backend to a native executable. It is **experimental and in no release**: it exists only in a compiler built from source with the Cargo `native` feature (`cargo build --release -p sakura_cli --features native`), where `sakura build`, `run` and `test` accept `--target native`. Release binaries are built without it.
 
-Native work is **experimental and unreleased**. N0a (toolchain skeleton) and N1a (the native runtime, root handlers, `Env` and `Fs` from the LIR evaluator's harness) are on main behind the opt-in `native` Cargo feature. No release archive or npm package contains it, and `--target native` does not exist yet; the Cranelift backend is plan row N2 in the [M5 plan](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plans/m5-native.md).
+On main, native agrees with JavaScript on every program of the semantics corpus, including direct-style calls, and runs `Json`, `Cli` and `Sql` on its own runtime. `Http`, serving and `Llm` are not ported yet: a program that uses them stops with a `D090` or `D091` defect. The sanitizer lanes that would make it safe to ship are still being built. See the [M5 plan](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plans/m5-native.md).
+
+The current plan, pending the owner's confirmation, is that native gates no release: `--target native` ships as an experimental flag in the first minor release whose native test matrix is green. Borrow inference, Perceus-style in-place reuse, `W8001` copy diagnostics and region optimizations come after 1.0. No native performance claim is made.
+
+## Toward 1.0
+
+The order is set in the [road to 1.0](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plans/road-to-1.0.md). No release has a date; each tag is the owner's.
+
+| Release | What it adds | State |
+| --- | --- | --- |
+| `v0.1.0-alpha.1` | M0–M3: the language, std, LSP, MCP, the skill, WASM and `sakura verify`, on npm, Homebrew and the release installer, for Apple silicon macOS and Linux x64 | published 2026-10-18 |
+| `v0.1.0` | M4 exit, the first non-alpha preview, and Linux ARM64 | pending the owner's sign-off |
+| `v0.2.0` | The [stability guarantees](/docs/stability) of RFC 0001 take effect; Windows x64 and Intel Mac; the `--json` summary split; the spec's grammar and diagnostics | planned |
+| `v1.0.0-rc.1` | Seven clean nights of fuzzing, upgraded dogfood programs, agent evaluation results, the complete spec, signed macOS archives | planned |
+| `v1.0.0` | After a seven-day release-candidate soak with no serious defect and no contract change | planned |
+
+Not part of 1.0: packages (1.x), native as a stable target, Perceus reuse and borrow inference, crates.io publication, the playground and Linguist support.
 
 ## Decisions still open
 
-Plan §6 retains questions about package-management placement, real-provider recording ownership and Windows coverage. The solver decision is now recorded in §3.5: a pinned external binary on `PATH` or `--solver`, without automatic downloads (V2 pins Z3 5.3.1 and cvc5 1.4.2). The std index records PostgreSQL as deferred past M4; SQLite is implemented and `Sql.postgres` is absent. These are scope decisions, not release dates.
+Plan §6 retains questions about package-management placement and real-provider recording ownership. The solver decision is now recorded in §3.5: a pinned external binary on `PATH` or `--solver`, without automatic downloads (V2 pins Z3 5.3.1 and cvc5 1.4.2). The std index records PostgreSQL as deferred past M4; SQLite is implemented and `Sql.postgres` is absent. These are scope decisions, not release dates.
